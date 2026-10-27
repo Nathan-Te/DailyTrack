@@ -1,0 +1,41 @@
+id: laser-cheminee
+intention: Monter une cheminée en sautant d'un mur à l'autre alors que des rayons laser la traversent d'un mur à l'autre : se tenir au mur sous le rayon, attendre qu'il s'éteigne et franchir sa hauteur avant qu'il se rallume.
+etiquettes: laser mural vertical
+famille: laser-cheminee
+theme: neon
+format: 3
+paliers: 17 7
+variante: cy=420 on=90 ra=13 rb=9 s1=100 s2=20
+variante: cy=360 on=120 ra=13 rb=8 s1=30 s2=170
+variante: cy=360 on=150 ra=14 rb=10 s1=100 s2=0
+variante: cy=420 on=120 ra=12 rb=8 s1=60 s2=200
+variante: cy=300 on=90 ra=14 rb=9 s1=150 s2=30
+variante: cy=360 on=90 ra=13 rb=10 s1=0 s2=180
+variante: cy=420 on=150 ra=14 rb=8 s1=100 s2=260
+variante: cy=330 on=90 ra=12 rb=9 s1=30 s2=120
+variante: cy=390 on=120 ra=13 rb=9 s1=60 s2=0
+variante: cy=300 on=90 ra=14 rb=10 s1=0 s2=90
+grille:
+###...........
+###...........
+###...........
+###...........
+###...........
+###...........
+###..###......
+###..###...###
+###..###...###
+###..###...###
+###..###...###
+###..###...###
+###..###...###
+.##..###...###
+.##..###...###
+.....###...###
+.....###...###
+########...###
+########...###
+########...###
+
+laser bas h 3,{ra} 2 {cy} {on} {s1}
+laser haut h 3,{rb} 2 {cy} {on} {s2}

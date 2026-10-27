@@ -1,0 +1,33 @@
+id: laser-barre-sol
+intention: Traverser une dalle dont une barre laser verticale balaie le sol d'un bout à l'autre : l'enjamber d'un saut quand elle arrive, sans retomber sur les pics ni se faire rattraper.
+etiquettes: laser precision
+famille: laser-barre-sol
+theme: neon
+format: 3
+paliers: 9 9
+variante: cy=640 a=5 b=13 len=2 top=7
+variante: cy=720 a=5 b=12 len=2 top=7
+variante: cy=640 a=13 b=5 len=2 top=7
+variante: cy=560 a=12 b=5 len=2 top=7
+variante: cy=800 a=13 b=5 len=2 top=7
+variante: cy=720 a=13 b=6 len=2 top=7
+variante: cy=600 a=6 b=13 len=2 top=7
+variante: cy=900 a=12 b=5 len=2 top=7
+variante: cy=560 a=5 b=12 len=2 top=7
+variante: cy=680 a=13 b=5 len=2 top=7
+grille:
+...................
+...................
+...................
+...................
+...................
+...................
+...................
+...................
+...................
+######..###..######
+######..###..######
+######^^###^^######
+###################
+
+barre mur v {len} {cy} {a},{top} {b},{top}

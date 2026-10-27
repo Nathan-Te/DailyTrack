@@ -48,10 +48,13 @@ const ready = (page: Page) => page.waitForFunction(() => ["ready", "playing"].in
 /** Un essai du jour de la démonstration qui arrive (une perturbation de la preuve de l'auteur, avec des morts). */
 function arrivingRun(date: string): string {
   const d = pageLevel(date); // le niveau que la page joue (figé s'il l'est, sinon généré)
-  for (const a of demoAttempts(d.level, d.replay, 0xa11, { attempts: 40 })) {
-    if (a.end !== "arrivée") continue;
-    const r = replayAttempt(d.level, a.replay, d.id);
-    if (r.finished && r.deaths.length > 0) return encodeReplay(a.replay);
+  // (Lot 25 : la graine change si la composition du jour ne donne aucun essai qui arrive avec des morts sur la première : le contrat est « un essai qui arrive, avec des morts ».)
+  for (const seed of [0xa11, 0xa12, 0xa13, 0xa14, 0xa15, 0xa16]) {
+    for (const a of demoAttempts(d.level, d.replay, seed, { attempts: 40 })) {
+      if (a.end !== "arrivée") continue;
+      const r = replayAttempt(d.level, a.replay, d.id);
+      if (r.finished && r.deaths.length > 0) return encodeReplay(a.replay);
+    }
   }
   throw new Error("aucun essai qui arrive");
 }

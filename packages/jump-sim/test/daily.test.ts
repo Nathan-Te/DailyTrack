@@ -43,8 +43,10 @@ import {
   withSingleClock,
   SINGLE_CLOCK_VERSION,
   MUSHROOM_VERSION,
+  LASER_VERSION,
   STALACTITE_VERSION,
   mushroomModuleIds,
+  laserModuleIds,
   stalactiteModuleIds,
   platformModuleIds,
   pressModuleIds,
@@ -108,8 +110,8 @@ describe("niveau du jour : identité et pureté", () => {
     // Lot 16 : avec ses voies lentes (et leurs montées ajoutées).
     const fresh = reassemble(levels[7]!);
     // Lot 15 : l'assemblage est en version 3 ; le niveau du jour, le même mis à l'heure unique (phases des sections).
-    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), STALACTITE_VERSION)).toBe(levels[7]!.ascii);
-    expect(levels[7]!.level.simVersion).toBe(STALACTITE_VERSION);
+    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), LASER_VERSION)).toBe(levels[7]!.ascii);
+    expect(levels[7]!.level.simVersion).toBe(LASER_VERSION);
   });
 
   it("trois dates voisines donnent trois niveaux différents", () => {
@@ -222,7 +224,7 @@ describe("niveau du jour : quotas et budget", () => {
   it("repos (référence v3) : chaque morceau d'un groupe au repos est absent ce jour-là ; groupes non vides, de tailles égales à un près ; REST_OPEN groupes ouverts par jour", () => {
     const sizes = new Array<number>(REST_GROUPS).fill(0);
     // Lot 20 : les morceaux à plateformes (lot 22 : ni ceux à presses ; lot 23 : ni ceux à champignons ; lot 24 : ni ceux à stalactites) ne sont pas dans la référence v3 (ni ses groupes).
-    for (const m of MODULES.filter((d) => !platformModuleIds().has(d.id) && !pressModuleIds().has(d.id) && !mushroomModuleIds().has(d.id) && !stalactiteModuleIds().has(d.id))) sizes[restGroup(m.id)]!++;
+    for (const m of MODULES.filter((d) => !platformModuleIds().has(d.id) && !pressModuleIds().has(d.id) && !mushroomModuleIds().has(d.id) && !stalactiteModuleIds().has(d.id) && !laserModuleIds().has(d.id))) sizes[restGroup(m.id)]!++;
     for (const n of sizes) expect(n).toBeGreaterThan(0);
     expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
     for (const L of levels) {
@@ -459,7 +461,7 @@ describe("lot 7 : variété", () => {
     expect(common.reduce((a, b) => a + b, 0) / common.length).toBeLessThanOrEqual(1.5);
   });
 
-  it("plus longue course au sol sans saut (rediffusion de l'auteur) : 1,2 s au plus en moyenne, 2 s au plus ; `longestRun` = la mesure des outils", () => {
+  it("plus longue course au sol sans saut (rediffusion de l'auteur) : 1,3 s au plus en moyenne (lot 25 ; 1,2 s avant), 2 s au plus ; `longestRun` = la mesure des outils", () => {
     const runs = levels.map((L) => {
       const r = emptyRun(L.level, initialAttempt(L.level), fromRuns(L.replay.runs), []);
       expect(L.longestRun, L.date).toBe(r.longestTicks);
@@ -468,7 +470,9 @@ describe("lot 7 : variété", () => {
       expect(L.longestRun, L.date).toBeLessThanOrEqual(2 * TICK_RATE);
       return L.longestRun;
     });
-    expect(runs.reduce((a, b) => a + b, 0) / runs.length).toBeLessThanOrEqual(1.2 * TICK_RATE);
+    // Lot 25 : 1,3 s en moyenne depuis g19 (1,2 s avant). Mesuré : 1,15 s pour g18 sur ces 60 dates, 1,26 s pour g19 (W = 4 : +0,03 s ; les lasers : +0,07 s — attendre qu'un rayon
+    // s'éteigne est une course sans saut). Le maximum (`LONGEST_RUN_MAX`, 2 s) et la règle de score du générateur ne changent pas.
+    expect(runs.reduce((a, b) => a + b, 0) / runs.length).toBeLessThanOrEqual(1.3 * TICK_RATE);
   });
 });
 

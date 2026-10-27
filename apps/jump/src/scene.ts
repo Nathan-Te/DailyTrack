@@ -56,6 +56,7 @@ import { createPlatformArt, type PlatformStats } from "./platformArt";
 import { createMushroomArt, type MushroomStats } from "./mushroomArt";
 import { createPressArt, type PressStats } from "./pressArt";
 import { createStalactiteArt, type StalactiteStats } from "./stalactiteArt";
+import { createLaserArt, type LaserStats } from "./laserArt";
 import { SLOW_DEBUG, SLOW_MARK, slowMarkQuads, type SlowDebugPath } from "./slowRoute";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
@@ -187,6 +188,8 @@ export interface JumpScene {
   readonly mushrooms: MushroomStats | null;
   /** Lot 24 : les stalactites à la dernière image (âge dessiné, hauteur, balancement, gouttes, opacité) ; null : le niveau n'en a pas. */
   readonly stalactites: StalactiteStats | null;
+  /** Lot 25 : les lasers à la dernière image (rayon allumé, annonce, opacités, barres : position, vitesse, lueur) ; null : le niveau n'en a pas. */
+  readonly lasers: LaserStats | null;
   /** Lot 23 : un champignon vient de rebondir (indice dans `Level.mushrooms`, rebond renforcé ?) : il s'écrase puis revient. Aucune secousse de caméra. */
   bounceMushroom(index: number, boost: boolean): void;
   /**
@@ -436,6 +439,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
   const mushroomArt = createMushroomArt(world, level);
   // ——— Lot 24 : stalactites (pic de glace, pointe rouge ; tremble et laisse tomber de fines gouttes pendant 0,5 s, tombe, se brise ; estompée et intacte dans le carnage) ———
   const stalactiteArt = createStalactiteArt(world, level, { hazard: palette.hazard });
+  // ——— Lot 25 : lasers (rayon rouge à cœur clair, visée neutre 0,5 s avant l'allumage, émetteurs du néon, barres coulissantes et leur trajet ; estompés dans le carnage) ———
+  const laserArt = createLaserArt(world, level, { hazard: palette.hazard });
 
   // ——— Arrivée : une tuile cerclée qui pulse, un mât et un grand drapeau en damier ———
   const finishCell = cellOrigin(level.finish);
@@ -730,6 +735,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     get stalactites() {
       return stalactiteArt ? stalactiteArt.stats : null;
     },
+    get lasers() {
+      return laserArt ? laserArt.stats : null;
+    },
     bounceMushroom(index, boost) {
       mushroomArt?.bounce(index, boost, lastClock);
     },
@@ -829,6 +837,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
       mushroomArt?.update(clock, animate);
       // Lot 24 : stalactites (état de la simulation ; intactes et estompées dans le carnage).
       stalactiteArt?.update(prev, state, alpha, fade, clock);
+      // Lot 25 : lasers (horloge de la simulation ; estompés dans le carnage comme les autres éléments à horloge).
+      laserArt?.update(prev, state, alpha, fade);
       // Lot 12 : blocs clignotants et alternés.
       dynamic?.update(state, clock, animate, { x: viewX, y: viewY, halfW: frame.halfW, halfH: frame.halfH }, fade);
       // Lot 13 : le vent (particules si les réglages en gardent et que le mouvement n'est pas réduit, sinon flèches fixes).

@@ -35,6 +35,22 @@ export interface SemaineStalactite {
   after: number;
 }
 
+/** Lot 25 : un laser fixe de la miniature : axe, première tuile du rayon et longueur (tuiles). */
+export interface SemaineLaser {
+  axis: "h" | "v";
+  col: number;
+  row: number;
+  length: number;
+}
+
+/** Lot 25 : une barre laser coulissante de la miniature : axe, longueur et les deux positions extrêmes (coin haut-gauche de la première tuile du rayon). */
+export interface SemaineBarre {
+  axis: "h" | "v";
+  length: number;
+  from: [number, number];
+  to: [number, number];
+}
+
 /** Un jour de la semaine, tel que l'outil le montre. */
 export interface SemaineDay {
   date: string;
@@ -50,6 +66,9 @@ export interface SemaineDay {
   presses?: SemainePress[];
   /** Lot 24 : les stalactites (tuile du corps, zone), pour la miniature ; absent des fichiers d'avant le lot. */
   stalactites?: SemaineStalactite[];
+  /** Lot 25 : les lasers fixes et les barres coulissantes, pour la miniature ; absents des fichiers d'avant le lot. */
+  lasers?: SemaineLaser[];
+  barres?: SemaineBarre[];
   pieces: SemainePiece[];
   fallback: boolean;
 }
@@ -67,8 +86,21 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
   const platforms: SemainePlatform[] = [];
   const presses: SemainePress[] = [];
   const stalactites: SemaineStalactite[] = [];
+  const lasers: SemaineLaser[] = [];
+  const barres: SemaineBarre[] = [];
   for (const line of annex.split("\n")) {
     const words = line.trim().split(/\s+/);
+    if (words[0] === "laser") {
+      const at = /^(\d+),(\d+)$/.exec(words[3] ?? "");
+      if (at && (words[2] === "h" || words[2] === "v")) lasers.push({ axis: words[2], col: Number(at[1]), row: Number(at[2]), length: Number(words[4]) });
+      continue;
+    }
+    if (words[0] === "barre") {
+      const a = /^(\d+),(\d+)$/.exec(words[5] ?? "");
+      const b = /^(\d+),(\d+)$/.exec(words[6] ?? "");
+      if (a && b && (words[2] === "h" || words[2] === "v")) barres.push({ axis: words[2], length: Number(words[3]), from: [Number(a[1]), Number(a[2])], to: [Number(b[1]), Number(b[2])] });
+      continue;
+    }
     if (words[0] === "stalactite") {
       const at = /^(\d+),(\d+)$/.exec(words[2] ?? "");
       if (at) stalactites.push({ col: Number(at[1]), row: Number(at[2]), before: Number(words[3]), after: Number(words[4]) });
@@ -98,6 +130,8 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
     platforms,
     ...(presses.length > 0 ? { presses } : {}),
     ...(stalactites.length > 0 ? { stalactites } : {}),
+    ...(lasers.length > 0 ? { lasers } : {}),
+    ...(barres.length > 0 ? { barres } : {}),
     pieces: d.pieces.map((p) => ({ id: p.id, variant: p.variant, col0: p.col0, col1: p.col1 })),
     fallback: d.fallback,
   };

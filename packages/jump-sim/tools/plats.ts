@@ -1,4 +1,4 @@
-import { PRESS_HEIGHT_TILES, TILE_CRUMBLE, TILE_SOLID, UNITS_PER_TILE, circleHitsBox, isSolidTile, isSpikeTile, sawCenter, stalactiteFloorRow, stalactiteZone, type BuiltModule, type Level } from "../src/index";
+import { PRESS_HEIGHT_TILES, barCourse, laserCourse, TILE_CRUMBLE, TILE_SOLID, UNITS_PER_TILE, circleHitsBox, isSolidTile, isSpikeTile, sawCenter, stalactiteFloorRow, stalactiteZone, type BuiltModule, type Level } from "../src/index";
 
 // La **règle des plats** (lot 7), hors de la simulation : dans un morceau, un plat de plus de `FLAT_MAX` tuiles **sans défi** est interdit,
 // sauf si l'élan est le défi lui-même (métadonnée `elan: oui`, `saut-long`) : alors `ELAN_FLAT_MAX` tuiles au plus.
@@ -42,6 +42,15 @@ function dangerMap(level: Level): Uint8Array {
   // Lot 22 : toute la course d'une presse (colonnes × rangées de sa position haute à sa position basse) est un danger.
   for (const p of level.presses) {
     for (let r = p.row; r < p.row + p.travel + PRESS_HEIGHT_TILES; r++) for (let c = p.col; c < p.col + p.width; c++) d[r * W + c] = 1;
+  }
+  // Lot 25 : le rayon d'un laser fixe et toute la course d'une barre coulissante sont un danger ; les colonnes d'un laser fixe aussi, jusqu'au sol (on attend devant, on ne flâne pas dedans).
+  for (const l of level.lasers) {
+    const c = laserCourse(l);
+    for (let r = c.r0; r <= c.r1; r++) for (let col = c.c0; col <= c.c1; col++) d[r * W + col] = 1;
+  }
+  for (const b of level.laserBars) {
+    const c = barCourse(b);
+    for (let r = c.r0; r <= c.r1; r++) for (let col = c.c0; col <= c.c1; col++) d[r * W + col] = 1;
   }
   // Lot 23 : un champignon est un défi (on rebondit en y entrant) : la tuile où il pousse n'est jamais un plat sans défi.
   for (const m of level.mushrooms) d[m.row * W + m.col] = 1;

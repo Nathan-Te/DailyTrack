@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 8;
+export const JUMP_SIM_VERSION = 9;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -52,6 +52,13 @@ export const MUSHROOM_VERSION = 7;
  * sans stalactite se joue **exactement** comme en v3 à v7 : les golden n'ont pas bougé. Les niveaux du jour depuis le générateur g18 sont en v8 ; les morceaux seuls restent en v3.
  */
 export const STALACTITE_VERSION = 8;
+/**
+ * Lot 25 : **version 9 = version 8 + lasers** (`Level.lasers`, `Level.laserBars`, annexes `laser` et `barre`, thème néon). Un **laser fixe** est un rayon horizontal ou vertical
+ * entre deux émetteurs posés sur des pleins, allumé ou éteint selon l'horloge (`f(t + phase)`, entière) ; une **barre laser coulissante** est un rayon toujours allumé dont les
+ * émetteurs glissent en parallèle sur un trajet en aller-retour (table de ralenti `PLATFORM_EASE`, vitesse plafonnée). Seul le rayon tue. Un niveau sans laser se joue
+ * **exactement** comme en v3 à v8 : les golden n'ont pas bougé. Les niveaux du jour depuis le générateur g19 sont en v9 ; les morceaux seuls restent en v3.
+ */
+export const LASER_VERSION = 9;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -73,9 +80,10 @@ export const STALACTITE_VERSION = 8;
  * 15 depuis le lot 20 (plateformes mobiles : niveaux en sim v5, morceaux à plateformes, règles de trajet) ;
  * 16 depuis le lot 22 (presses : niveaux en sim v6, morceaux de l'usine à presses, règles du générateur) ;
  * 17 depuis le lot 23 (champignons : niveaux en sim v7, morceaux de la forêt à champignons, règles du générateur) ;
- * 18 depuis le lot 24 (stalactites : niveaux en sim v8, morceaux de la glace à stalactites, règles du générateur).
+ * 18 depuis le lot 24 (stalactites : niveaux en sim v8, morceaux de la glace à stalactites, règles du générateur) ;
+ * 19 depuis le lot 25 (lasers : niveaux en sim v9, morceaux du néon à lasers, règles du générateur ; variété `VARIETY_DAYS` = 4).
  */
-export const JUMP_GENERATOR_VERSION = 18;
+export const JUMP_GENERATOR_VERSION = 19;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

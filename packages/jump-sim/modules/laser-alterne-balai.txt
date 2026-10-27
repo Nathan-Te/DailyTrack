@@ -1,0 +1,33 @@
+id: laser-alterne-balai
+intention: Traverser un fossé en sautant d'îlot alterné en îlot alterné sous une barre laser qui balaie l'air de haut en bas : chaque saut change les îlots solides, et il faut choisir quand s'élancer pour que la barre soit loin de la trajectoire.
+etiquettes: laser alterne precision
+famille: laser-alterne-balai
+theme: neon
+format: 3
+paliers: 9 9
+variante: cy=400 top=3 bot=7 x=5
+variante: cy=480 top=3 bot=7 x=6
+variante: cy=560 top=3 bot=7 x=8
+variante: cy=400 top=4 bot=7 x=10
+variante: cy=480 top=3 bot=7 x=7
+variante: cy=560 top=4 bot=7 x=6
+variante: cy=400 top=3 bot=7 x=9
+variante: cy=480 top=4 bot=7 x=7
+variante: cy=640 top=3 bot=7 x=5
+variante: cy=520 top=3 bot=7 x=8
+grille:
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+##AAA..BBB..AAA..BBB##
+##..................##
+##^^^^^^^^^^^^^^^^^^##
+######################
+
+barre balai h 5 {cy} {x},{top} {x},{bot}

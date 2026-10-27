@@ -1,0 +1,35 @@
+id: laser-alterne-portes
+intention: Enchaîner trois portails laser posés sur des piliers entre des segments de sol alterné : chaque saut change le sol d'en face, il faut sauter au bon moment pour arriver sur le pilier quand le rayon est éteint.
+etiquettes: laser alterne precision
+famille: laser-alterne-portes
+theme: neon
+format: 3
+paliers: 9 9
+variante: cy=360 on=90 s1=200 s2=290 s3=20
+variante: cy=330 on=90 s1=100 s2=180 s3=260
+variante: cy=300 on=90 s1=0 s2=100 s3=200
+variante: cy=420 on=120 s1=60 s2=0 s3=180
+variante: cy=360 on=90 s1=200 s2=100 s3=0
+variante: cy=300 on=90 s1=150 s2=230 s3=290
+variante: cy=390 on=150 s1=100 s2=20 s3=260
+variante: cy=300 on=120 s1=150 s2=0 s3=100
+variante: cy=360 on=120 s1=40 s2=160 s3=80
+variante: cy=390 on=90 s1=220 s2=300 s3=380
+grille:
+.################..
+.################..
+...................
+...................
+...................
+...................
+...................
+...................
+...................
+##AAA#BBB#AAA#BBB##
+##...#...#...#...##
+##^^^#^^^#^^^#^^^##
+###################
+
+laser un v 5,2 7 {cy} {on} {s1}
+laser deux v 9,2 7 {cy} {on} {s2}
+laser trois v 13,2 7 {cy} {on} {s3}

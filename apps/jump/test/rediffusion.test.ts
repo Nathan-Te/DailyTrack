@@ -147,7 +147,7 @@ describe("mémoire du jour", () => {
     // Ce que la version 2 a réellement écrit : la solution de l'essai codée avec `JUMP_SIM_VERSION` = 2, une vie, une mort.
     const V2_SOLUTION = "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw";
     // Lot 15 : le code est en v4, le niveau d'essai reste en v3 (sa version est celle de la mémoire).
-    expect(JUMP_SIM_VERSION).toBe(8);
+    expect(JUMP_SIM_VERSION).toBe(9);
     expect(ESSAI_LEVEL.simVersion).toBe(3);
     expect(decodeReplay(V2_SOLUTION).simVersion).toBe(2);
     const store = new MemStore();

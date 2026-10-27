@@ -2,6 +2,7 @@ import { Color, DynamicDrawUsage, InstancedMesh, Matrix4, MeshBasicMaterial, Pla
 import { BLOCK_STYLE } from "./blocks";
 import { SHAKES } from "./camera";
 import { MUSHROOM_DOWN, MUSHROOM_RIGHT, MUSHROOM_UP } from "@cdj/jump-sim";
+import { LASER_LOOK } from "./laser";
 import { MUSHROOM_LOOK } from "./mushroom";
 import { WIND_STYLE } from "./wind";
 import type { GameEvent } from "./events";
@@ -182,6 +183,8 @@ export interface FeelColors {
   wind: readonly number[];
   /** Lot 23 : spores d'un champignon qui rebondit (le chapeau et ses taches, `mushroomArt.ts` : jamais la couleur d'un danger ni du personnage). */
   spore: readonly number[];
+  /** Lot 25 : étincelles d'un rayon laser (cyan du néon, blanc, rose pâle du rouge des dangers) : la mort au contact d'un rayon. */
+  arc: readonly number[];
 }
 
 export function feelColors(p: Palette): FeelColors {
@@ -198,6 +201,7 @@ export function feelColors(p: Palette): FeelColors {
     altB: [BLOCK_STYLE.altB.fill, BLOCK_STYLE.altB.edge, 0xffffff],
     wind: [WIND_STYLE.leaf, WIND_STYLE.leafDark, WIND_STYLE.pollen],
     spore: [MUSHROOM_LOOK.cap, MUSHROOM_LOOK.capLight, MUSHROOM_LOOK.spot],
+    arc: [LASER_LOOK.lens, 0xffffff, mixColor(p.hazard, 0xffffff, 0.7)],
   };
 }
 
@@ -323,6 +327,8 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
       pool.emit({ x, y: y + 1, count: 46, angle: UP, spread: 1.1, vmin: 6, vmax: 14, life: 1.7, size: 0.2, gravity: -16, drag: 1.6, colors: colors.confetti, jitter: 0.6 });
       break;
     case "mort":
+      // Lot 25 : touché par un rayon laser, quelques étincelles du néon jaillissent (le rouge, lui, est celui des éclats de la mort) ; la secousse reste celle de la mort, rien de plus.
+      if (e.cause === "laser") pool.emit({ x, y, count: 10, angle: UP, spread: Math.PI, vmin: 2, vmax: 7, life: 0.4, size: 0.08, gravity: -6, drag: 2.5, colors: colors.arc, jitter: 0.6 });
       if (e.source === "jeu") (out.shake = SHAKES.mortAmp), (out.shakeDuration = SHAKES.mortDur);
       break;
     default:

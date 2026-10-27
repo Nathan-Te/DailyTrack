@@ -524,16 +524,20 @@ export function stepPlayerJump(state: Readonly<PlayerState>, input: number, leve
     const t = groundTile(level, x, y);
     carry = t === TILE_BELT_LEFT ? -1 : t === TILE_BELT_RIGHT ? 1 : 0;
   } else if (carry0 !== 0 && vx * carry0 > 0) carry = carry0;
-  const tail = carry !== 0 ? { carry } : {};
 
   if (sprintOn) {
     // L'élan se perd au lâcher, au demi-tour, contre un mur (heurté, glisse, saut mural) ; il se compte au sol à pleine vitesse.
     if (dir === 0 || state.vx * dir < 0 || mx.blocked || slide !== 0 || wallJumped) sprint = 0;
     // Compté à la course exacte (avant l'élan) ou pendant l'élan ; pas pendant le freinage qui suit un élan perdu (au-dessus de la course).
     else if (grounded) sprint = vx * dir === p.runSpeed || (sprint >= (p.sprintDelay ?? 0) && vx * dir > p.runSpeed) ? (sprint < COUNTER_CAP ? sprint + 1 : sprint) : 0;
-    return { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir, sprint, ...tail };
+    const withSprint: PlayerState = { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir, sprint };
+    if (carry !== 0) withSprint.carry = carry;
+    return withSprint;
   }
-  return { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir, ...tail };
+  // (Optimisation du lot 25 : `carry` n'est ajouté que s'il est non nul, sans étaler un objet vide à chaque pas ; mêmes champs, même ordre.)
+  const next: PlayerState = { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir };
+  if (carry !== 0) next.carry = carry;
+  return next;
 }
 
 /** Avance de plusieurs pas avec les commandes données (une par pas). */

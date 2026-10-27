@@ -1,4 +1,4 @@
-import { TICK_RATE, cycleMod, pressPart, type BlinkCycle, type Gust, type Platform, type Press, platformPos } from "@cdj/jump-sim";
+import { TICK_RATE, cycleMod, laserBarPos, laserOn, pressPart, type BlinkCycle, type Gust, type Laser, type LaserBar, type Platform, type Press, platformPos } from "@cdj/jump-sim";
 
 // L'annonce des éléments à horloge (lot 18) — **affichage seul**, logique pure et testée. Principe : un élément à horloge **annonce chacun de ses
 // changements d'état**, assez tôt, par un signe **continu et simple** (une jauge qui descend ou qui monte, une vitesse qui décroît) ; jamais de
@@ -180,4 +180,84 @@ export function pressLook(p: Press, phase: number): PressLook {
   const warn = q <= p.hold - w || q > p.hold ? 0 : (q - (p.hold - w)) / w;
   const since = q - (p.hold + p.fall);
   return { warn, part: pressPart(p, phase) / 4096, dustAge: since >= 0 && since < PRESS_DUST_TICKS ? since : -1 };
+}
+
+// ——— Lasers (lot 25) : la visée qui précède l'allumage, la vitesse d'une barre coulissante ———
+
+/** L'annonce d'un allumage : 0,5 s (60 pas) avant que le rayon s'allume. */
+export const LASER_WARN_TICKS = TICK_RATE / 2;
+
+/** Ce que le laser fixe montre à la phase `phase` de sa section. */
+export interface LaserLook {
+  /** Le rayon rouge est dessiné **exactement** quand la simulation le dit allumé (`laserOn`). */
+  on: boolean;
+  /**
+   * L'annonce, de 0 à 1 : **exactement 0 jusqu'au pas où `q = (phase + décalage) mod cycle` vaut `cycle − 60`**, strictement croissante ensuite, 1 au dernier pas éteint avant
+   * l'allumage (`q = cycle − 1`) ; toujours 0 allumé. Aucune annonce pour l'extinction (le sens sûr).
+   */
+  warn: number;
+}
+
+/**
+ * Le signe continu d'un laser fixe : un fin rayon de visée neutre qui s'intensifie pendant les 0,5 s qui précèdent l'allumage — calculé sur la fonction de la simulation
+ * (`laserOn`, `cycleMod`), jamais sur l'affichage : le rayon rouge part au pas qui suit `warn` = 1. Les phases éteintes durent au moins 120 pas, l'annonce tient toujours ;
+ * si elle ne tenait pas (jamais), elle couvrirait la phase éteinte.
+ */
+export function laserLook(l: Pick<Laser, "cycle" | "on" | "shift">, phase: number): LaserLook {
+  if (laserOn(l, phase)) return { on: true, warn: 0 };
+  const q = cycleMod(phase + l.shift, l.cycle);
+  const w = Math.min(LASER_WARN_TICKS, l.cycle - l.on);
+  const first = l.cycle - w;
+  const warn = q <= first ? 0 : (q - first) / (w - 1);
+  return { on: false, warn };
+}
+
+/** Ce que la barre coulissante annonce : le sens de son glissement (−1 gauche ou haut, 1 droite ou bas, 0 à l'arrêt) et sa vitesse en part de sa pointe (0 à 1). */
+export interface LaserBarLook {
+  dir: -1 | 0 | 1;
+  speed: number;
+}
+
+const barPeaks = new WeakMap<LaserBar, number>();
+
+/** La coordonnée sur laquelle glisse la barre : `y` pour une barre horizontale (elle monte et descend), `x` pour une barre verticale. */
+const slideOf = (b: Pick<LaserBar, "axis">, at: { x: number; y: number }): number => (b.axis === "h" ? at.y : at.x);
+
+/** La demi-fenêtre (pas) sur laquelle la vitesse affichée d'une barre est moyennée : 9 pas, soit 75 ms. */
+export const LASER_BAR_SMOOTH = 4;
+
+/** L'avance de la barre sur son axe de glissement au pas qui commence à la phase `phase` (unités, signée). */
+function barStep(b: LaserBar, phase: number): number {
+  return slideOf(b, laserBarPos(b, phase + 1)) - slideOf(b, laserBarPos(b, phase));
+}
+
+/**
+ * La vitesse de la barre à la phase `phase` (unités par pas) : la moyenne des avances de `2 × LASER_BAR_SMOOTH + 1` pas autour d'elle. La simulation avance par pas entiers de la table de
+ * ralenti, dont l'arrondi fait varier l'avance de quelques pour cent d'un pas à l'autre : la moyenne sur 75 ms donne le signe continu voulu (aucune variation brusque) sans rien changer à
+ * la physique ni à la position dessinée.
+ */
+export function laserBarSpeed(b: LaserBar, phase: number): number {
+  let sum = 0;
+  for (let j = -LASER_BAR_SMOOTH; j <= LASER_BAR_SMOOTH; j++) sum += Math.abs(barStep(b, phase + j));
+  return sum / (2 * LASER_BAR_SMOOTH + 1);
+}
+
+/** La plus grande vitesse (`laserBarSpeed`) de la barre au cours de son aller, au milieu de sa course : sa vitesse de pointe. */
+export function laserBarPeak(b: LaserBar): number {
+  let peak = barPeaks.get(b);
+  if (peak === undefined) {
+    peak = 1;
+    for (let t = 0; t < b.cycle / 2; t++) peak = Math.max(peak, laserBarSpeed(b, t));
+    barPeaks.set(b, peak);
+  }
+  return peak;
+}
+
+/**
+ * Le signe continu d'une barre à la phase `phase` de sa section : sa vitesse **en part de sa pointe** (elle décroît vers chaque extrémité : le ralenti, de la table de la simulation,
+ * qui annonce le demi-tour) et son sens. Calculé sur `laserBarPos`, jamais sur l'affichage : c'est la vitesse réelle de la simulation, moyennée sur 75 ms.
+ */
+export function laserBarLook(b: LaserBar, phase: number): LaserBarLook {
+  const step = barStep(b, phase);
+  return { dir: step > 0 ? 1 : step < 0 ? -1 : 0, speed: Math.min(1, laserBarSpeed(b, phase) / laserBarPeak(b)) };
 }

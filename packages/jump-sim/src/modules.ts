@@ -8,7 +8,7 @@ import { textHash } from "./texthash";
 import { fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
 import { MODULE_ENTRIES, PALIER_LENGTH, SECTION_CLOCK_VERSION, UNITS_PER_TILE, type ModuleEntry } from "./constants";
 import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
-import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, platformPos, pressBox, sawCenter, type Level } from "./level";
+import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, laserBarBox, laserBox, platformPos, pressBox, sawCenter, type Level } from "./level";
 
 // Les morceaux (lot 4) : des portions de niveau écrites en texte qui **portent leur solution**, matière première du niveau du jour (lot 5).
 // La source est un fichier texte par morceau (`packages/jump-sim/modules/<id>.txt`) ; le solveur hors ligne (`npm run solve:modules -w
@@ -50,6 +50,11 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //                                                 (lot 24) une stalactite (syntaxe de `level.ts`) : la tuile de la pointe haute de son corps (sous un plafond plein), en
 //                                                 coordonnées du gabarit (la première copie d'une plage répétée, ou la dernière avec une apostrophe), et sa zone de
 //                                                 déclenchement en colonnes de chaque côté ; section implicite, `{param}` permis ; au niveau du jour l'identifiant prend le nom du morceau
+//   laser <id> <h|v> <c,r> <long> <cycle> <allumé> <décalage>
+//                                                 (lot 25) un laser fixe (syntaxe de `level.ts`) : la première tuile de son rayon en coordonnées du gabarit
+//                                                 (première copie d'une plage répétée, ou dernière avec une apostrophe) ; ses deux émetteurs sont les `#` qui le bornent
+//   barre <id> <h|v> <long> <cycle> <c,r> <c,r>
+//                                                 (lot 25) une barre laser coulissante (syntaxe de `level.ts`) : ses deux positions extrêmes en coordonnées du gabarit
 //   zone <mutateur> …                             et les zones de mutation (ci-dessous)
 //
 // **Mutateurs (lot 7).** Une transformation déclarative du **gabarit** (avant le déroulé des plages répétées : une zone posée sur une plage
@@ -111,7 +116,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse", "champignon", "stalactite"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse", "champignon", "stalactite", "laser"] as const;
 /** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13 ; lot 19, silhouette : `hausse`, `ecart`, `decale`, `echange`). */
 export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent", "hausse", "ecart", "decale", "echange"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
@@ -355,8 +360,8 @@ export function parseModule(text: string): ModuleDef {
     // Lot 22 : les presses sont la seconde mécanique de l'usine : un morceau `presse` est de l'usine, avec ou sans tapis.
     // Lot 23 : les champignons sont la seconde mécanique de la forêt : un morceau `champignon` est de la forêt, avec ou sans vent.
     // Lot 24 : les stalactites sont la seconde mécanique de la glace : un morceau `stalactite` est de la glace, avec ou sans glace au sol.
-    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse")) || (th === "foret" && tags.includes("champignon")) || (th === "glace" && tags.includes("stalactite"));
-    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : th === "foret" ? " (ou « champignon »)" : th === "glace" ? " (ou « stalactite »)" : ""} et « theme: ${th} » vont ensemble`));
+    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse")) || (th === "foret" && tags.includes("champignon")) || (th === "glace" && tags.includes("stalactite")) || (th === "neon" && tags.includes("laser"));
+    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : th === "foret" ? " (ou « champignon »)" : th === "glace" ? " (ou « stalactite »)" : th === "neon" ? " (ou « laser »)" : ""} et « theme: ${th} » vont ensemble`));
   }
   const optional = (k: string, value: string) => {
     const v = meta[k];
@@ -384,6 +389,8 @@ export function parseModule(text: string): ModuleDef {
   if (tags.includes("presse") !== annex.some((l) => l.startsWith("presse "))) throw new ModuleError(where("l'étiquette « presse » et une ligne « presse » du bloc annexe vont ensemble"));
   // Lot 24 : de même pour les stalactites.
   if (tags.includes("stalactite") !== annex.some((l) => l.startsWith("stalactite "))) throw new ModuleError(where("l'étiquette « stalactite » et une ligne « stalactite » du bloc annexe vont ensemble"));
+  // Lot 25 : de même pour les lasers (une ligne « laser » ou « barre » du bloc annexe).
+  if (tags.includes("laser") !== annex.some((l) => l.startsWith("laser ") || l.startsWith("barre "))) throw new ModuleError(where("l'étiquette « laser » et une ligne « laser » ou « barre » du bloc annexe vont ensemble"));
   if (grid.length === 0) throw new ModuleError(where("grille vide"));
   // Lot 23 : l'étiquette `champignon` et des champignons dans la grille vont ensemble.
   if (tags.includes("champignon") !== grid.some((row) => /[mw()]/.test(row))) throw new ModuleError(where("l'étiquette « champignon » et des champignons « m w ( ) » dans la grille vont ensemble"));
@@ -690,6 +697,16 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
               if (Number(sm[1]) + 8 >= z.c0) fail(`${where} : une stalactite y passe`);
               continue;
             }
+            // Lot 25 : ni un laser fixe (colonne en 4e mot, au plus LASER_MAX_LENGTH colonnes de long) ni une barre coulissante (deux positions, mots 6 et 7).
+            const lm = /^laser \S+ [hv] (\d+)(?:'?),/.exec(line);
+            if (lm) {
+              if (Number(lm[1]) + 13 >= z.c0) fail(`${where} : un laser y passe`);
+              continue;
+            }
+            if (line.startsWith("barre ")) {
+              for (const w of line.split(/\s+/).slice(5)) if (Number(/^(\d+)/.exec(w)?.[1] ?? -1) + 8 >= z.c0) fail(`${where} : une barre laser y passe`);
+              continue;
+            }
             for (const w of line.split(/\s+/).slice(5)) {
               const c = Number(/^(\d+)/.exec(w)?.[1] ?? -1);
               if (c >= z.c0) fail(`${where} : une scie y passe`);
@@ -912,7 +929,26 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
       );
       continue;
     }
-    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent », « plateforme », « presse » et « stalactite » sont permis (« ${words[0]} »)`));
+    if (words[0] === "laser" || words[0] === "barre") {
+      // Lot 25 : un laser fixe (`laser <id> <h|v> <c,r> …` : la première tuile du rayon, 4e mot) ou une barre coulissante (`barre <id> <h|v> <long> <cycle> <c,r> <c,r>` : ses deux
+      // positions, mots 6 et 7) : les points traduits comme ceux d'une scie (première copie, ou dernière avec une apostrophe).
+      const first = words[0] === "laser" ? 3 : 5;
+      const last = words[0] === "laser" ? 3 : 6;
+      annex.push(
+        words
+          .map((w, k) => {
+            const m = k >= first && k <= last ? /^(\d+)('?),(\d+)('?)$/.exec(w) : null;
+            if (!m) return w;
+            const col = (m[2] ? cols.last : cols.first)[Number(m[1])];
+            const row = (m[4] ? rows.last : rows.first)[Number(m[3])];
+            if (col === undefined || row === undefined || col < 0 || row < 0) throw new ModuleError(where(`point ${w} hors de la grille ou retiré par la variante`));
+            return `${col + lead},${row}`;
+          })
+          .join(" "),
+      );
+      continue;
+    }
+    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent », « plateforme », « presse », « stalactite », « laser » et « barre » sont permis (« ${words[0]} »)`));
     annex.push(
       words
         .map((w, k) => {
@@ -1007,6 +1043,18 @@ export function palierProblems(m: BuiltModule): string[] {
         const b = pressBox(press, t);
         if (boxesOverlap(box, b)) {
           out.push(`palier d'${name} : la presse ${press.id} y passe`);
+          break;
+        }
+      }
+    }
+    // Lot 25 : ni un rayon (laser fixe, allumé ou non ; barre, à aucun pas de son cycle) : un palier n'est jamais dans la course d'un rayon.
+    for (const l of L.lasers) {
+      if (boxesOverlap(box, laserBox(l))) out.push(`palier d'${name} : le laser ${l.id} y passe`);
+    }
+    for (const b of L.laserBars) {
+      for (let t = 0; t < b.cycle; t++) {
+        if (boxesOverlap(box, laserBarBox(b, t))) {
+          out.push(`palier d'${name} : la barre ${b.id} y passe`);
           break;
         }
       }
