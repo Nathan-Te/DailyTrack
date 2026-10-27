@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ATTEMPT_DEAD,
   DEFAULT_JUMP_PARAMS,
+  LASER_VERSION,
   STALACTITE_VERSION,
   SINGLE_CLOCK_VERSION,
   checkLife,
@@ -116,6 +117,6 @@ describe("la reprise sur un point de passage", () => {
     const v3 = dailyLevel(day("2026-10-29"), null, 3);
     expect(reprise.resume(v3.level, { ...initialAttempt(v3.level), checkpoint: 0 })).toBeNull();
     expect(reprise.resume(d.level, { ...initialAttempt(d.level), checkpoint: -1 })).toBeNull();
-    expect(d.level.simVersion).toBe(STALACTITE_VERSION);
+    expect(d.level.simVersion).toBe(LASER_VERSION);
   });
 });

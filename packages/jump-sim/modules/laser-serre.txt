@@ -1,0 +1,35 @@
+id: laser-serre
+intention: Sauter de pilier en pilier au-dessus des pics, chaque pilier portant un portail laser : se poser, attendre l'extinction du rayon et repartir dans la fenêtre d'une seconde, sans jamais s'y laisser prendre.
+etiquettes: laser precision
+famille: laser-serre
+theme: neon
+format: 3
+paliers: 9 9
+variante: cy=210 on=90 s1=0 s2=0 s3=0
+variante: cy=210 on=90 s1=40 s2=100 s3=160
+variante: cy=210 on=90 s1=100 s2=140 s3=20
+variante: cy=240 on=90 s1=70 s2=0 s3=150
+variante: cy=300 on=150 s1=90 s2=0 s3=200
+variante: cy=270 on=120 s1=0 s2=90 s3=180
+variante: cy=210 on=90 s1=60 s2=0 s3=140
+variante: cy=300 on=90 s1=0 s2=100 s3=200
+variante: cy=300 on=120 s1=60 s2=180 s3=0
+variante: cy=270 on=90 s1=60 s2=140 s3=220
+grille:
+.########################..
+.########################..
+...........................
+...........................
+...........................
+...........................
+...........................
+...........................
+...........................
+#####....###....###....####
+#####....###....###....####
+#####^^^^###^^^^###^^^^####
+###########################
+
+laser un v 4,2 7 {cy} {on} {s1}
+laser deux v 11,2 7 {cy} {on} {s2}
+laser trois v 18,2 7 {cy} {on} {s3}

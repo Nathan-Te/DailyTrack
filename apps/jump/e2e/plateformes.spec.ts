@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
-import { dailyLevel, moduleSolutions, mushroomModuleIds, pressModuleIds, stalactiteModuleIds } from "@cdj/jump-sim";
+import { buildModule, dailyLevel, laserModuleIds, moduleSolutions, mushroomModuleIds, pressModuleIds, stalactiteModuleIds } from "@cdj/jump-sim";
 import { generatedDay } from "./jours";
 import { hasWebGL } from "./phone";
 
@@ -93,7 +93,7 @@ test("niveau du jour (v8 depuis le lot 24) à plateformes : la preuve de l'auteu
   const date = dayWithPlatform();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(8); // lot 24 : le générateur en vigueur (g18) est en v8
+  expect(daily.level.simVersion).toBe(9); // lot 25 : le générateur en vigueur (g19) est en v9
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: J }).__jump;
     j.manual(true);
@@ -196,7 +196,7 @@ test("niveau du jour d'usine (v8 depuis le lot 24) : la preuve de l'auteur, jou�
   const date = dayWithPresses();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await openP(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(8); // lot 24 : le générateur en vigueur (g18) est en v8
+  expect(daily.level.simVersion).toBe(9); // lot 25 : le générateur en vigueur (g19) est en v9
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JP }).__jump;
     j.manual(true);
@@ -265,7 +265,7 @@ test("un morceau à champignon (`?module=champignon-falaise`) : la solution rebo
   for (const [i, m] of first!.list.entries()) expect(result.rotation[i], m.name).toBeCloseTo(rotations[m.name] ?? 0, 6);
 });
 
-/** Un jour sans fichier figé dont le niveau (g18, v8, forêt) a au moins deux morceaux à champignons. */
+/** Un jour sans fichier figé dont le niveau (g19, v9, forêt) a au moins deux morceaux à champignons. */
 function dayWithMushrooms(): string {
   let day = parseDay(generatedDay())!;
   for (let k = 0; k < 90; k++, day++) {
@@ -279,7 +279,7 @@ test("niveau du jour de forêt (v8 depuis le lot 24) : la preuve de l'auteur, jo
   const date = dayWithMushrooms();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(8);
+  expect(daily.level.simVersion).toBe(9);
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JM }).__jump;
     j.manual(true);
@@ -374,7 +374,7 @@ test("le dessin d'une stalactite qui tremble est celui de la simulation : son â
   expect(drawn.opacity).toBe(1);
 });
 
-/** Un jour sans fichier figé dont le niveau (g18, v8, glace) a au moins deux morceaux à stalactites. */
+/** Un jour sans fichier figé dont le niveau (g19, v9, glace) a au moins deux morceaux à stalactites. */
 function dayWithStalactites(): string {
   let day = parseDay(generatedDay())!;
   for (let k = 0; k < 120; k++, day++) {
@@ -388,7 +388,7 @@ test("niveau du jour de glace (v8) : la preuve de l'auteur, jouée pas à pas da
   const date = dayWithStalactites();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(8);
+  expect(daily.level.simVersion).toBe(9);
   expect(daily.theme).toBe("glace");
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JS }).__jump;
@@ -403,6 +403,175 @@ test("niveau du jour de glace (v8) : la preuve de l'auteur, jouée pas à pas da
   }, daily.code);
   expect(result.count).toBeGreaterThanOrEqual(2);
   expect(result.tremblements).toBeGreaterThanOrEqual(2);
+  expect(result.deaths).toBe(0);
+  expect(["finished", "carnage"]).toContain(result.phase); // arrivée sans mort : l'écran d'arrivée passe par le carnage
+});
+
+// ——— Lot 25 : les lasers (dans ce fichier, pour la même raison) ———
+// Un rayon fixe dessiné aux pas exacts où la simulation l'allume, précédé d'une visée neutre qui s'intensifie pendant les 0,5 s qui le précèdent (60 pas) ; une barre coulissante
+// dessinée là où la simulation la met, dont la vitesse (ralentie aux extrémités) est celle de la simulation. Tout se lit en pas à pas (l'état dessiné, lui, s'attend, jamais après un délai).
+// Le niveau du jour de néon (g19) : sa preuve passe ses lasers sans mourir (dernier test du fichier).
+
+interface LasersDebug {
+  count: number;
+  bars: number;
+  /** Ce que le dessin a posé. */
+  on?: boolean[];
+  warn?: number[];
+  rayOpacity?: number[];
+  aimOpacity?: number[];
+  barX?: number[];
+  barY?: number[];
+  barSpeed?: number[];
+  opacity?: number;
+  /** La simulation : boîtes mortelles (unités), phases, rayons allumés, annonce. */
+  sim: { x: number; y: number; w: number; h: number }[];
+  phases: number[];
+  simOn: boolean[];
+  simWarn: number[];
+  simBars: { x: number; y: number; w: number; h: number }[];
+  barPhases: number[];
+  simBarSpeeds: number[];
+}
+interface JL {
+  phase: string;
+  lasers: LasersDebug | null;
+  attempt: { status: string; time: number };
+  manual(on: boolean): void;
+  advance(n: number): unknown;
+  input(bits: number | null): void;
+  restart(): void;
+}
+const lasers = (page: Page) => page.evaluate(() => (window as unknown as { __jump: JL }).__jump.lasers!);
+
+/**
+ * Met la section d'un morceau en marche (en v3, son horloge part quand le personnage y entre) : il marche vers la droite jusqu'à ce que la phase de sa section soit non nulle, puis
+ * s'arrête. Le palier d'entrée et le début du morceau sont du sol plein, loin des rayons.
+ */
+async function startClock(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const j = (window as unknown as { __jump: JL }).__jump;
+    j.manual(true);
+    j.restart();
+    j.input(2);
+    for (let t = 0; t < 300 && Math.max(0, ...(j.lasers!.phases.concat(j.lasers!.barPhases))) === 0; t++) j.advance(1);
+    j.input(0);
+  });
+  expect(await page.evaluate(() => Math.max(0, ...((window as unknown as { __jump: JL }).__jump.lasers!.phases.concat((window as unknown as { __jump: JL }).__jump.lasers!.barPhases))))).toBeGreaterThan(0);
+}
+
+test("un morceau à portails (`?module=laser-allee`) : la visée croît pendant les 60 pas avant l'allumage, le rayon rouge est dessiné aux pas exacts où la simulation l'allume", async ({ page }) => {
+  test.skip(!(await open(page, "?module=laser-allee&variante=0&entree=arret&debug&accueil=0")), "pas de WebGL dans ce navigateur");
+  const first = buildModule("laser-allee", 0).level.lasers[0]!;
+  await startClock(page);
+  const at = async (q: number) => {
+    // Avance jusqu'au pas où `q = (phase + décalage) mod cycle` vaut `q` (le portail n'est pas franchi : le personnage attend sur son palier).
+    const phase = (await lasers(page)).phases[0]!;
+    const here = (((phase + first.shift) % first.cycle) + first.cycle) % first.cycle;
+    const wait = (q - here + first.cycle) % first.cycle;
+    await page.evaluate((n) => (window as unknown as { __jump: JL }).__jump.advance(n), wait);
+    // Le dessin rattrape la simulation à l'image suivante : on attend l'état voulu.
+    await page.waitForFunction((want) => {
+      const l = (window as unknown as { __jump: JL }).__jump.lasers;
+      return !!l && l.on !== undefined && l.simOn[0] === want.on && l.on[0] === want.on && Math.abs((l.warn?.[0] ?? -1) - want.warn) < 1e-9;
+    }, expected(q));
+    return lasers(page);
+  };
+  const expected = (q: number) => {
+    const warn = q <= first.cycle - 60 || q < first.on ? 0 : (q - (first.cycle - 60)) / 59;
+    return { on: q < first.on, warn };
+  };
+  // Avant l'annonce : rien (0 exactement, visée cachée).
+  let l = await at(first.cycle - 60);
+  expect(l.warn![0]).toBe(0);
+  expect(l.aimOpacity![0]).toBe(0);
+  expect(l.on![0]).toBe(false);
+  // Le premier pas annoncé : la visée apparaît, très faible.
+  l = await at(first.cycle - 59);
+  expect(l.warn![0]).toBeCloseTo(1 / 59, 9);
+  expect(l.aimOpacity![0]).toBeGreaterThan(0);
+  // À mi-annonce : plus intense.
+  const mid = await at(first.cycle - 30);
+  expect(mid.aimOpacity![0]).toBeGreaterThan(l.aimOpacity![0]!);
+  // Le dernier pas éteint : la visée est pleine, le rayon rouge n'est pas encore là.
+  l = await at(first.cycle - 1);
+  expect(l.warn![0]).toBe(1);
+  expect(l.aimOpacity![0]).toBeCloseTo(0.85, 9);
+  expect(l.rayOpacity![0]).toBe(0);
+  expect(l.simOn[0]).toBe(false);
+  // Le pas d'après : le rayon rouge, la visée a disparu.
+  l = await at(0);
+  expect(l.on![0]).toBe(true);
+  expect(l.simOn[0]).toBe(true);
+  expect(l.rayOpacity![0]).toBe(1);
+  expect(l.aimOpacity![0]).toBe(0);
+  expect(l.opacity).toBe(1);
+  // Et il s'éteint au pas voulu, sans annonce.
+  l = await at(first.on);
+  expect(l.on![0]).toBe(false);
+  expect(l.warn![0]).toBe(0);
+  expect(Math.min(l.sim[0]!.w, l.sim[0]!.h)).toBe(1024); // l'épaisseur de la bande mortelle (le portail est vertical : sa largeur)
+});
+
+test("un morceau à barre (`?module=laser-balayage`) : la barre est dessinée où la simulation la met, sa vitesse est celle de la simulation et ralentit aux extrémités", async ({ page }) => {
+  test.skip(!(await open(page, "?module=laser-balayage&variante=0&entree=arret&debug&accueil=0")), "pas de WebGL dans ce navigateur");
+  const bar = buildModule("laser-balayage", 0).level.laserBars[0]!;
+  await startClock(page);
+  const half = bar.cycle / 2;
+  const speeds: number[] = [];
+  for (const target of [half / 2, half, half + half / 2, 0]) {
+    const phase = (await lasers(page)).barPhases[0]!;
+    const wait = (target - (phase % bar.cycle) + bar.cycle) % bar.cycle;
+    await page.evaluate((n) => (window as unknown as { __jump: JL }).__jump.advance(n), wait);
+    await page.waitForFunction(
+      (w) => {
+        const l = (window as unknown as { __jump: JL }).__jump.lasers;
+        return !!l && l.barSpeed !== undefined && l.simBars[0] !== undefined && Math.abs(l.barSpeed[0]! - l.simBarSpeeds[0]!) < 1e-9 && Math.abs(l.barY![0]! - (l.simBars[0].y - w.gap) / w.unit) < 1e-6;
+      },
+      { gap: (T - 1024) / 2, unit: T },
+    );
+    const l = await lasers(page);
+    // Le dessin : la bande dessinée est la bande mortelle de la simulation (coin haut-gauche de la première tuile = la bande moins le décalage qui la centre).
+    expect(l.barX![0]).toBeCloseTo(l.simBars[0]!.x / T, 6);
+    expect(l.simBars[0]!.h).toBe(1024);
+    expect(l.simBars[0]!.w).toBe(bar.length * T);
+    speeds.push(l.barSpeed![0]!);
+  }
+  // Pleine vitesse au quart et aux trois quarts du cycle, presque à l'arrêt aux deux extrémités.
+  expect(speeds[0]).toBeGreaterThan(0.95);
+  expect(speeds[1]).toBeLessThan(0.1);
+  expect(speeds[2]).toBeGreaterThan(0.95);
+  expect(speeds[3]).toBeLessThan(0.1);
+});
+
+/** Un jour sans fichier figé dont le niveau (g19, v9, néon) a au moins deux morceaux à lasers. */
+function dayWithLasers(): string {
+  let day = parseDay(generatedDay())!;
+  for (let k = 0; k < 120; k++, day++) {
+    const d = dailyLevel(day);
+    if (d.pieces.filter((p) => laserModuleIds().has(p.id)).length >= 2) return d.date;
+  }
+  throw new Error("aucun jour généré avec deux morceaux à lasers");
+}
+
+test("niveau du jour de néon (v9) : la preuve de l'auteur, jouée pas à pas dans la page, traverse ses lasers et ses barres et arrive sans mourir", async ({ page }) => {
+  const date = dayWithLasers();
+  const daily = dailyLevel(parseDay(date)!);
+  test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
+  expect(daily.level.simVersion).toBe(9);
+  expect(daily.theme).toBe("neon");
+  const result = await page.evaluate((code) => {
+    const j = (window as unknown as { __jump: JL }).__jump;
+    j.manual(true);
+    const total = (j as unknown as { autoplay(code?: string): number }).autoplay(code);
+    let deaths = 0;
+    for (let t = 0; t < total + 5 && j.phase !== "finished"; t++) {
+      j.advance(1);
+      if (j.attempt.status === "mort") deaths++;
+    }
+    return { deaths, phase: j.phase, count: j.lasers?.count ?? 0, bars: j.lasers?.bars ?? 0 };
+  }, daily.code);
+  expect(result.count + result.bars).toBeGreaterThanOrEqual(2);
   expect(result.deaths).toBe(0);
   expect(["finished", "carnage"]).toContain(result.phase); // arrivée sans mort : l'écran d'arrivée passe par le carnage
 });

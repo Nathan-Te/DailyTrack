@@ -92,9 +92,9 @@ const events = (): AttemptEvents => ({ mushroom: -1, boost: 0, shake: -1, shatte
 describe("lot 24 — la version de la simulation", () => {
   it("la version 8 est celle des stalactites, le générateur g18", () => {
     expect(STALACTITE_VERSION).toBe(8);
-    expect(JUMP_SIM_VERSION).toBe(8);
+    expect(JUMP_SIM_VERSION).toBeGreaterThanOrEqual(8); // lot 25 : la version 9 (lasers) garde la 8
     expect(MUSHROOM_VERSION).toBe(7);
-    expect(JUMP_GENERATOR_VERSION).toBe(18);
+    expect(JUMP_GENERATOR_VERSION).toBeGreaterThanOrEqual(18); // lot 25 : g19 (lasers) garde g18
     expect(STALACTITE_GENERATOR).toBe(18);
     expect(room().simVersion).toBe(8);
   });
@@ -602,10 +602,10 @@ describe("lot 24 — les niveaux du jour", () => {
         expect(old.pieces.some((p) => ids.has(p.id)), `${old.date} v${version}`).toBe(false);
         expect(old.level.stalactites, `${old.date} v${version}`).toEqual([]);
       }
-      expect(dailyLevel(d, null, MUSHROOM_VERSION).id).toBe(`jour-${dailyLevel(d).date}-g${MUSHROOM_GENERATOR}`);
-      const L = dailyLevel(d);
+      expect(dailyLevel(d, null, MUSHROOM_VERSION).id).toBe(`jour-${dailyLevel(d, null, STALACTITE_VERSION).date}-g${MUSHROOM_GENERATOR}`);
+      const L = dailyLevel(d, null, STALACTITE_VERSION); // lot 25 : la référence v8 (g18)
       expect(L.level.simVersion).toBe(8);
-      expect(L.id).toBe(`jour-${L.date}-g${JUMP_GENERATOR_VERSION}`);
+      expect(L.id).toBe(`jour-${L.date}-g${STALACTITE_GENERATOR}`);
       expect(L.fallback, L.date).toBe(false);
       if (L.pieces.some((p) => ids.has(p.id))) {
         withStalactites++;
@@ -621,7 +621,7 @@ describe("lot 24 — les niveaux du jour", () => {
     let n = 0;
     for (let d = parseDay("2026-10-27")!; d < parseDay("2026-10-27")! + 90 && n < 6; d++) {
       if (jumpThemeForDay(d) !== "glace") continue;
-      const L = dailyLevel(d);
+      const L = dailyLevel(d, null, STALACTITE_VERSION); // lot 25 : la référence v8 (g18)
       if (!L.pieces.some((p) => ids.has(p.id))) continue;
       n++;
       expect(dailyProblems(L), L.date).toEqual([]);
@@ -640,11 +640,11 @@ describe("lot 24 — les niveaux du jour", () => {
   it("un jour à stalactites se fige et se relit (versions 8 et g18) ; une version incohérente est refusée", () => {
     const ids = stalactiteModuleIds();
     const day = parseDay("2026-12-08")!;
-    const L = dailyLevel(day);
+    const L = dailyLevel(day, null, STALACTITE_VERSION);
     expect(L.pieces.some((p) => ids.has(p.id))).toBe(true);
     const raw = JSON.parse(frozenJson(freezeLevel(L)));
     expect(raw.simVersion).toBe(8);
-    expect(raw.generatorVersion).toBe(18);
+    expect(raw.generatorVersion).toBe(STALACTITE_GENERATOR);
     const back = thawLevel(raw, day);
     expect(typeof back).not.toBe("string");
     if (typeof back === "string") return;

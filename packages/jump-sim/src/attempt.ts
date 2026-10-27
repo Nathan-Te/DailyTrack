@@ -26,6 +26,9 @@ import {
   isSpikeTile,
   mushroomPad,
   PRESS_HEIGHT_TILES,
+  laserBarBox,
+  laserBox,
+  laserOn,
   platformPos,
   pressBox,
   sawCenter,
@@ -111,8 +114,10 @@ export const DEATH_FALL = 3;
 export const DEATH_PRESS = 4;
 /** Lot 24 : touché par une stalactite qui tremble ou qui tombe. */
 export const DEATH_STALACTITE = 5;
+/** Lot 25 : touché par un rayon laser allumé (laser fixe allumé, ou barre coulissante). */
+export const DEATH_LASER = 6;
 /** Noms des causes de mort, pour l'affichage (indice = code). */
-export const DEATH_NAMES = ["aucune", "pic", "scie", "chute", "presse", "stalactite"] as const;
+export const DEATH_NAMES = ["aucune", "pic", "scie", "chute", "presse", "stalactite", "laser"] as const;
 
 /** Lot 24 : état d'une stalactite intacte (jamais déclenchée) et brisée ; un nombre > 0 = pas écoulés depuis son déclenchement. */
 export const STALACTITE_INTACT = 0;
@@ -313,21 +318,51 @@ const tileBox = (col: number, row: number): Box => ({ x: col * UNITS_PER_TILE, y
  */
 export function settleDynamic(level: Level, tiles: readonly number[], sections: readonly number[], time: number, alt: number, player: Readonly<PlayerState>): readonly number[] {
   if (level.blinks.length === 0 && level.alts.length === 0) return tiles;
-  let out = tiles;
-  const box = playerBox(player);
-  const apply = (col: number, row: number, want: boolean, on: number, off: number) => {
-    const k = row * level.width + col;
-    if (isSolidTile(out[k]!) === want) return;
-    if (want && boxesOverlap(box, tileBox(col, row))) return;
-    if (out === tiles) out = [...tiles];
-    (out as number[])[k] = want ? on : off;
-  };
-  for (const b of level.blinks) {
-    apply(b.col, b.row, blinkIsSolid(level.blinkCycles[b.section]!, b.group, sectionClock(level, sections, time, b.section)), TILE_BLINK_ON, TILE_BLINK_OFF);
+  // Lot 25 (optimisation, mêmes états) : l'état voulu de chaque groupe de clignotants ne dépend que de sa section, et celui des blocs alternés que de la parité : on les lit
+  // une fois par section (`mask`, un bit par groupe) et non une fois par bloc. Un tableau de tuiles dont on a vérifié qu'il est **déjà** celui que veulent `mask` et `alt` est
+  // retenu (`settledFor`) : le revoir avec les mêmes `mask` et `alt` ne change plus rien, quelle que soit la position du personnage, et ne coûte qu'une comparaison.
+  const cacheable = level.sections.length <= 14;
+  let mask = 0;
+  for (let i = 0; i < level.blinkCycles.length; i++) {
+    const cycle = level.blinkCycles[i];
+    if (!cycle) continue;
+    const phase = sectionClock(level, sections, time, i);
+    if (blinkIsSolid(cycle, 0, phase)) mask |= 1 << (2 * i);
+    if (blinkIsSolid(cycle, 1, phase)) mask |= 1 << (2 * i + 1);
   }
-  for (const a of level.alts) apply(a.col, a.row, a.set === alt, TILE_ALT_ON, TILE_ALT_OFF);
+  const key = mask * 2 + alt;
+  if (cacheable && settledFor.get(tiles) === key) return tiles;
+  let out = tiles;
+  let blocked = false;
+  const box = playerBox(player);
+  for (const b of level.blinks) {
+    const want = (mask >> (2 * b.section + b.group)) & 1;
+    const k = b.row * level.width + b.col;
+    if ((isSolidTile(out[k]!) ? 1 : 0) === want) continue;
+    if (want === 1 && boxesOverlap(box, tileBox(b.col, b.row))) {
+      blocked = true;
+      continue;
+    }
+    if (out === tiles) out = [...tiles];
+    (out as number[])[k] = want === 1 ? TILE_BLINK_ON : TILE_BLINK_OFF;
+  }
+  for (const a of level.alts) {
+    const want = a.set === alt;
+    const k = a.row * level.width + a.col;
+    if (isSolidTile(out[k]!) === want) continue;
+    if (want && boxesOverlap(box, tileBox(a.col, a.row))) {
+      blocked = true;
+      continue;
+    }
+    if (out === tiles) out = [...tiles];
+    (out as number[])[k] = want ? TILE_ALT_ON : TILE_ALT_OFF;
+  }
+  if (cacheable && !blocked) settledFor.set(out, key);
   return out;
 }
+
+/** Les tableaux de tuiles déjà vérifiés conformes à un `mask` de clignotants et à une parité (`settleDynamic`) : clé = `mask * 2 + alt`. */
+const settledFor = new WeakMap<readonly number[], number>();
 
 /**
  * Lot 12 : phase de chaque section dans cet état (pas écoulés depuis que le personnage y est entré, 0 avant), dans l'ordre de
@@ -414,6 +449,28 @@ export function pressBoxes(level: Level, state: Readonly<AttemptState>): Box[] {
   return level.presses.map((_, i) => pressAt(level, state.sections, state.time, i));
 }
 
+/** Lot 25 : le laser fixe `index` est-il allumé au chrono `time` d'un état de sections `sections` (la même lecture d'horloge que les scies) ? */
+export function laserIsOn(level: Level, sections: readonly number[], time: number, index: number): boolean {
+  const l = level.lasers[index]!;
+  return laserOn(l, sectionClock(level, sections, time, l.section));
+}
+
+/** Lot 25 : la bande mortelle de la barre coulissante `index` (unités) au chrono `time`. */
+export function laserBarAt(level: Level, sections: readonly number[], time: number, index: number): Box {
+  const b = level.laserBars[index]!;
+  return laserBarBox(b, sectionClock(level, sections, time, b.section));
+}
+
+/** Lot 25 : les bandes mortelles des rayons de ce niveau dans cet état (unités) : les lasers fixes allumés, puis toutes les barres (rendu, tests, solveur). */
+export function laserBoxes(level: Level, state: Readonly<AttemptState>): Box[] {
+  const out: Box[] = [];
+  level.lasers.forEach((l, i) => {
+    if (laserIsOn(level, state.sections, state.time, i)) out.push(laserBox(l));
+  });
+  level.laserBars.forEach((_, i) => out.push(laserBarAt(level, state.sections, state.time, i)));
+  return out;
+}
+
 /** Lot 13 : phase de la section de la zone de vent `index` dans cet état (0 avant l'entrée, et pour une zone hors section). */
 export function windPhase(level: Level, state: Readonly<AttemptState>, index: number): number {
   const w = level.winds[index]!;
@@ -446,6 +503,38 @@ export function playerBox(p: Readonly<PlayerState>): Box {
   return { x: p.x, y: p.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
 }
 
+/** Le rectangle (unités) qui contient tout le disque d'une scie sur tout son trajet : les nœuds du trajet élargis de son rayon. Calculé une fois par scie. */
+const sawReaches = new WeakMap<object, { x0: number; y0: number; x1: number; y1: number }>();
+/** `sawReach` de toutes les scies d'un niveau, dans l'ordre de `level.saws` (un seul accès par pas dans `deathAt`). */
+const levelReaches = new WeakMap<object, { x0: number; y0: number; x1: number; y1: number }[]>();
+function sawReachesOf(level: Level): { x0: number; y0: number; x1: number; y1: number }[] {
+  let r = levelReaches.get(level.saws);
+  if (!r) {
+    r = level.saws.map(sawReach);
+    levelReaches.set(level.saws, r);
+  }
+  return r;
+}
+
+export function sawReach(saw: Level["saws"][number]): { x0: number; y0: number; x1: number; y1: number } {
+  let r = sawReaches.get(saw);
+  if (!r) {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const n of saw.nodes) {
+      if (n.x < x0) x0 = n.x;
+      if (n.x > x1) x1 = n.x;
+      if (n.y < y0) y0 = n.y;
+      if (n.y > y1) y1 = n.y;
+    }
+    r = { x0: x0 - saw.radius, y0: y0 - saw.radius, x1: x1 + saw.radius, y1: y1 + saw.radius };
+    sawReaches.set(saw, r);
+  }
+  return r;
+}
+
 /** Ce qui tue le personnage dans cet état (`DEATH_*`), arrivée non comprise. */
 export function deathAt(level: Level, state: Readonly<AttemptState>): number {
   const p = state.player;
@@ -462,8 +551,12 @@ export function deathAt(level: Level, state: Readonly<AttemptState>): number {
       if (isSpikeTile(t) && boxesOverlap(box, spikeBox(t, c, r))) return DEATH_SPIKE;
     }
   }
+  const reaches = level.saws.length > 0 ? sawReachesOf(level) : null;
   for (let i = 0; i < level.saws.length; i++) {
     const saw = level.saws[i]!;
+    // Une scie dont tout le trajet (ses nœuds, élargis de son rayon) est loin de la boîte ne peut pas la toucher : le même verdict, sans calculer sa position.
+    const reach = reaches![i]!;
+    if (box.x >= reach.x1 || box.x + box.w <= reach.x0 || box.y >= reach.y1 || box.y + box.h <= reach.y0) continue;
     const at = sawCenter(saw, sawPhase(level, state, i));
     if (circleHitsBox(at.x, at.y, saw.radius, box)) return DEATH_SAW;
   }
@@ -483,13 +576,32 @@ export function deathAt(level: Level, state: Readonly<AttemptState>): number {
       if (h && boxesOverlap(box, h)) return DEATH_STALACTITE;
     }
   }
+  // Lot 25 : un rayon allumé tue au contact (se toucher par un bord ne compte pas) ; un laser éteint se traverse.
+  for (let i = 0; i < level.lasers.length; i++) {
+    if (laserIsOn(level, state.sections, state.time, i) && boxesOverlap(box, laserBox(level.lasers[i]!))) return DEATH_LASER;
+  }
+  for (let i = 0; i < level.laserBars.length; i++) {
+    const b = level.laserBars[i]!;
+    // Hors de la bande balayée par la barre, rien ne peut la toucher : on n'en calcule pas la position (le même verdict, moins cher).
+    if (b.axis === "h") {
+      const x0 = b.a.col * UNITS_PER_TILE;
+      if (box.x >= x0 + b.length * UNITS_PER_TILE || box.x + box.w <= x0) continue;
+    } else {
+      const y0 = b.a.row * UNITS_PER_TILE;
+      if (box.y >= y0 + b.length * UNITS_PER_TILE || box.y + box.h <= y0) continue;
+    }
+    if (boxesOverlap(box, laserBarAt(level, state.sections, state.time, i))) return DEATH_LASER;
+  }
   return DEATH_NONE;
 }
 
 /** Le personnage touche-t-il la tuile d'arrivée ? */
 export function reachesFinish(level: Level, p: Readonly<PlayerState>): boolean {
   const T = UNITS_PER_TILE;
-  return boxesOverlap(playerBox(p), { x: level.finish.col * T, y: level.finish.row * T, w: T, h: T });
+  // Le même test que `boxesOverlap(playerBox(p), tuile d'arrivée)`, sans allouer de boîtes (appelé à chaque pas de chaque rejeu).
+  const fx = level.finish.col * T;
+  const fy = level.finish.row * T;
+  return p.x < fx + T && fx < p.x + PLAYER_WIDTH && p.y < fy + T && fy < p.y + PLAYER_HEIGHT;
 }
 
 /** Grille que voient les collisions : celle du niveau, ou une vue sur la grille de l'essai (blocs friables tombés). */
@@ -669,12 +781,10 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
     const below = tileOf(player.y + PLAYER_HEIGHT);
     const mid = tileOf(player.x + idiv(PLAYER_WIDTH, 2));
     let hit = -1;
-    for (const c of [mid, c0, c1]) {
-      const k = cellIndex(level, c, below);
-      if (k >= 0 && tiles[k] === TILE_SPRING) {
-        hit = k;
-        break;
-      }
+    // Les colonnes à tester, dans cet ordre : le milieu, puis la première et la dernière que couvre le personnage (sans allouer de tableau à chaque pas).
+    for (let n = 0; n < 3 && hit < 0; n++) {
+      const k = cellIndex(level, n === 0 ? mid : n === 1 ? c0 : c1, below);
+      if (k >= 0 && tiles[k] === TILE_SPRING) hit = k;
     }
     if (hit >= 0) {
       const speed = params.springSpeed < MAX_SPEED ? params.springSpeed : MAX_SPEED;
@@ -696,24 +806,27 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
     }
   }
 
-  // ——— Contacts avec les blocs friables : posé dessus, ou poussé contre lui en l'air (glisse murale) ———
-  const touch = (c: number, r: number) => {
-    const k = cellIndex(level, c, r);
-    if (k < 0) return;
-    const i = level.crumbleIndex[k]!;
-    if (i < 0 || crumbles[i] !== CRUMBLE_INTACT) return;
-    if (crumbles === state.crumbles) crumbles = [...crumbles];
-    (crumbles as number[])[i] = params.crumbleDelay > 1 ? params.crumbleDelay : 1;
-  };
-  if (landed) {
-    const below = tileOf(player.y + PLAYER_HEIGHT);
-    for (let c = c0; c <= c1; c++) touch(c, below);
-  } else {
-    const dir = (input & INPUT_RIGHT ? 1 : 0) - (input & INPUT_LEFT ? 1 : 0);
-    const r0 = tileOf(player.y);
-    const r1 = tileOf(player.y + PLAYER_HEIGHT - 1);
-    if (dir > 0 && (player.x + PLAYER_WIDTH) % T === 0) for (let r = r0; r <= r1; r++) touch(tileOf(player.x + PLAYER_WIDTH), r);
-    if (dir < 0 && player.x % T === 0) for (let r = r0; r <= r1; r++) touch(tileOf(player.x) - 1, r);
+  // (Optimisation du lot 25 : sans bloc friable ce passage ne fait rien ; on ne crée alors ni la fonction `touch` ni ses variables, à chaque pas de chaque rejeu.)
+  if (level.crumbles.length > 0) {
+    // ——— Contacts avec les blocs friables : posé dessus, ou poussé contre lui en l'air (glisse murale) ———
+    const touch = (c: number, r: number) => {
+      const k = cellIndex(level, c, r);
+      if (k < 0) return;
+      const i = level.crumbleIndex[k]!;
+      if (i < 0 || crumbles[i] !== CRUMBLE_INTACT) return;
+      if (crumbles === state.crumbles) crumbles = [...crumbles];
+      (crumbles as number[])[i] = params.crumbleDelay > 1 ? params.crumbleDelay : 1;
+    };
+    if (landed) {
+      const below = tileOf(player.y + PLAYER_HEIGHT);
+      for (let c = c0; c <= c1; c++) touch(c, below);
+    } else {
+      const dir = (input & INPUT_RIGHT ? 1 : 0) - (input & INPUT_LEFT ? 1 : 0);
+      const r0 = tileOf(player.y);
+      const r1 = tileOf(player.y + PLAYER_HEIGHT - 1);
+      if (dir > 0 && (player.x + PLAYER_WIDTH) % T === 0) for (let r = r0; r <= r1; r++) touch(tileOf(player.x + PLAYER_WIDTH), r);
+      if (dir < 0 && player.x % T === 0) for (let r = r0; r <= r1; r++) touch(tileOf(player.x) - 1, r);
+    }
   }
 
   // ——— Chrono et sections : une section se met en marche au premier pas où le centre du personnage y entre ———
@@ -737,7 +850,25 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   // L'état des blocs clignotants et alternés pour le pas suivant (le personnage chevauche-t-il un bloc qui devient plein ? il reste absent).
   tiles = settleDynamic(level, tiles, sections, time, alt, player);
 
-  const next: AttemptState = { ...state, status: ATTEMPT_RUNNING, time, player, tiles, crumbles, sections, springCell, springTime };
+  // (Optimisation du lot 25 : les mêmes champs que `{ ...state, … }`, dans le même ordre, écrits un à un — la copie par étalement de cet objet était le point chaud des rejeux.)
+  const next: AttemptState = {
+    status: ATTEMPT_RUNNING,
+    time,
+    player,
+    tiles,
+    crumbles,
+    sections,
+    deathCause: state.deathCause,
+    deathX: state.deathX,
+    deathY: state.deathY,
+    deathTicks: state.deathTicks,
+    springCell,
+    springTime,
+    checkpoint: state.checkpoint,
+  };
+  if (state.alt !== undefined) next.alt = state.alt;
+  if (state.ride !== undefined) next.ride = state.ride;
+  if (state.stalactites !== undefined) next.stalactites = state.stalactites;
   if (level.alts.length > 0) next.alt = alt;
   // Lot 24 : les stalactites avancent, puis se déclenchent si le centre du personnage est dans leur zone (sa tuile : `col`, rangée du centre).
   if (level.stalactites.length > 0) next.stalactites = stepStalactites(level, state.stalactites!, tiles, col, tileOf(player.y + idiv(PLAYER_HEIGHT, 2)), true, events);

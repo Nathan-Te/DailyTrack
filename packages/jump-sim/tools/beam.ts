@@ -147,13 +147,16 @@ export function sectionClocks(level: Level): number[][] {
     ...level.platforms.filter((q) => q.section === i).map((q) => q.cycle),
     // Lot 22 : une presse a son cycle (la phase d'une presse décide du moment où il faut passer).
     ...level.presses.filter((q) => q.section === i).map((q) => q.cycle),
+    // Lot 25 : un laser fixe et une barre coulissante ont leur cycle (la phase d'un rayon décide du moment où il faut passer).
+    ...level.lasers.filter((q) => q.section === i).map((q) => q.cycle),
+    ...level.laserBars.filter((q) => q.section === i).map((q) => q.cycle),
   ]);
 }
 
 /** Lot 13 : vrai si le niveau a quelque chose qui change avec le temps ou les sauts (blocs clignotants ou alternés, rafales ; lot 15 : scies mobiles en v4). */
 export function isDynamicLevel(level: Level): boolean {
   // Lot 15 : à une seule horloge (v4), une scie mobile n'attend plus le joueur : il faut parfois attendre qu'elle passe.
-  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || level.platforms.length > 0 || level.presses.length > 0 || level.stalactites.length > 0 || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
+  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || level.platforms.length > 0 || level.presses.length > 0 || level.lasers.length > 0 || level.laserBars.length > 0 || level.stalactites.length > 0 || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
 }
 
 /** Les phases de chaque section modulo chacune de ses horloges (`shift` : grain, en puissance de 2). */
