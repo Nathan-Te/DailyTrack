@@ -326,8 +326,8 @@ describe("le workflow (ci.yml)", () => {
     expect(code).toMatch(/branches: \[main\]/);
   });
 
-  it("une poussée annule la CI de la précédente (jamais sur main), et la PR ne lance que Chromium", () => {
-    expect(code).toContain("cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}");
+  it("une poussée annule la CI de la précédente (jamais sur main, jamais celle du bouton « Mettre en production »), et la PR ne lance que Chromium", () => {
+    expect(code).toContain("cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.workflow == 'CI' }}");
     const pr = code.slice(code.indexOf("  e2e-pr:"), code.indexOf("  e2e:\n"));
     expect(pr).toContain("--project=chromium");
     expect(pr).toContain("--project=jump-chromium");

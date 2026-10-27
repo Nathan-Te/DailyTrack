@@ -10,11 +10,35 @@ name: CI
 #     voient que leurs zones) ; production.yml exige le run `push` de main vert, et le lot de mise en production répare ce qui est rouge.
 # Un `push` sur une autre branche ne lance rien : la PR (brouillon) le fait. Les statuts requis de `main` restent `test` et `e2e` (mêmes noms) : ils
 # tournent toujours, même pour une PR de documentation (c'est pourquoi pas de `paths-ignore` ici : un statut requis qui ne s'est pas rapporté bloque la fusion).
+# Lot R12 — « Mettre en production » APPELLE ce workflow (`workflow_call`, mode `complet`, sur le commit qu'il va déployer : entrée `ref`) : ses jobs
+# s'appellent alors « ci / … » et ne reçoivent AUCUN secret, aucun environnement, aucune fédération Google (production.yml ne leur en passe pas). La sortie
+# `echecs` (les tests e2e rouges) va dans le résumé du bouton. « Run workflow » à la main garde le mode `complet` ; le mode `pr` (les zones touchées par
+# rapport à `main`, comme une PR) ne sert qu'au commit des jours figés que le bouton verse dans `main` (production.yml, job `depot`).
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "complet (tout : unitaires, Essentiel et Régression, Firefox et WebKit) ou pr (les zones touchées par rapport à main, comme une PR)"
+        type: choice
+        options: [complet, pr]
+        default: complet
+  workflow_call:
+    inputs:
+      mode:
+        description: "complet (le seul mode du bouton « Mettre en production »)"
+        type: string
+        default: complet
+      ref:
+        description: "le commit à tester (celui que le bouton va déployer)"
+        type: string
+        default: ""
+    outputs:
+      echecs:
+        description: "les tests e2e rouges (JSON : « fichier › titre »)"
+        value: ${{ jobs.e2e.outputs.echecs }}
   # Garde-fou (retouche 29b) : la suite complète tourne chaque nuit sur `main` (03 h 17 UTC : loin d'un changement de jour, jamais sur
   # une heure pleine très chargée) ; à ce run, un test instable fait échouer le job pour qu'une instabilité qui revient se voie.
   schedule:
@@ -25,10 +49,11 @@ on:
 permissions:
   contents: read
 
-# Lot R10 : une nouvelle poussée annule le run de la précédente (jamais sur main : chaque fusion garde sa CI complète).
+# Lot R10 : une nouvelle poussée annule le run de la précédente (jamais sur main : chaque fusion garde sa CI complète). Lot R12 : jamais la CI appelée
+# par « Mettre en production » (`github.workflow` est alors celui du bouton : un autre groupe, rien ne l'annule).
 concurrency:
-  group: ci-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}-${{ inputs.mode }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.workflow == 'CI' }}
 
 jobs:
   # Lot R10 : les tests unitaires des ZONES TOUCHÉES (scripts/ci-zones.mjs : le graphe des imports, comme `vitest related`), répartis en parts de DURÉE
@@ -47,6 +72,8 @@ jobs:
       FICHIERS: ${{ matrix.fichiers }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -133,6 +160,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -142,9 +170,14 @@ jobs:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
           BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+          # Lot R12 : « Run workflow » en mode `pr` (le commit des jours figés) ; le bouton appelle en `complet`.
+          MODE_DEMANDE: ${{ inputs.mode }}
         run: |
           full=""
           if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ]; then full="--full"; fi
+          if [ "$EVENT" = workflow_dispatch ] && [ "$MODE_DEMANDE" = pr ]; then full=""; fi
+          # MESURE_R12 — TEMPORAIRE (lot R12, retiré avant la fin, comme MESURE_R13) : la PR lance une CI `complet` pour mesurer son mur après le cache des paquets.
+          if [ "$EVENT" = pull_request ]; then full="--full"; fi
           : > "$RUNNER_TEMP/files.txt"
           # Une base introuvable ou une différence illisible = le doute : la CI complète, jamais une CI vide.
           if [ -z "$full" ]; then
@@ -182,7 +215,7 @@ jobs:
     strategy:
       fail-fast: false
       # Lot R13 (docs/tests.md) : la matrice vient de `scope` (scripts/ci-zones.mjs, `matriceComplete`) — `main` : Chromium en 3 parts et DailyJump en 1, l'Essentiel
-      # seulement (`--essentiel`, `--grep-invert @regression`) ; `complet` et `nuit` : tout, Chromium en 6 parts. Firefox et WebKit : un job chacun, le petit
+      # seulement (`--essentiel`, `--grep-invert @regression`) ; `complet` et `nuit` : tout, Chromium en 8 parts (lot R12 ; 6 au lot R13). Firefox et WebKit : un job chacun, le petit
       # ensemble `@navigateurs` des deux jeux (rediffusion bit à bit, chargement, une partie ; `grep` de leurs projets Playwright). Avant le lot R13 : 17 jobs,
       # dont 6 de Firefox et WebKit pour des specs sautés aux trois quarts (sans WebGL).
       matrix: ${{ fromJSON(needs.scope.outputs.e2e_complet_matrice) }}
@@ -190,6 +223,8 @@ jobs:
       E2E_ALL_BROWSERS: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -200,20 +235,28 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browser }}
-      # apt : une connexion muette échoue au bout de 30 s et se retente 3 fois (le 26/10, WebKit a attendu 29 min sur `install-deps`, run 40399054124) ; un miroir lent mais
-      # vivant (≈ 50 ko/s ce jour-là) n'est jamais interrompu : on ne tue pas apt en cours de téléchargement (il garde le verrou dpkg, les essais suivants échouent), l'étape a 15 min.
-      - run: |
-          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
-          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx playwright install ${{ matrix.browser }}
         working-directory: apps/web
-        timeout-minutes: 15
         if: steps.browsers.outputs.cache-hit != 'true'
-      - run: |
-          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
-          npx playwright install-deps ${{ matrix.browser }}
-        working-directory: apps/web
+      # Lot R12 : les paquets système du navigateur SANS apt (le miroir d'apt prenait jusqu'à 10 min sur un runner sur cinq, lot R13). Clé : l'image du
+      # runner (elle change ≈ chaque semaine), la version de Playwright et le navigateur ; cache absent : apt une fois, et les paquets sont gardés.
+      # Choix (cache plutôt que l'image Docker de Playwright) et mesures : scripts/paquets-playwright.sh, docs/plateforme/lots/lot-R12-un-seul-bouton.md.
+      - name: Clé des paquets système
+        id: paquets
+        run: echo "cle=paquets-${{ runner.os }}-$ImageOS-$ImageVersion-pw$(node -p 'require("./node_modules/@playwright/test/package.json").version')-${{ matrix.browser }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: paquets-cache
+        with:
+          path: ~/paquets-playwright
+          key: ${{ steps.paquets.outputs.cle }}
+      - name: Paquets système de Playwright
+        run: bash scripts/paquets-playwright.sh ${{ matrix.browser }} "$HOME/paquets-playwright"
         timeout-minutes: 15
-        if: steps.browsers.outputs.cache-hit == 'true'
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        if: steps.paquets-cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/paquets-playwright
+          key: ${{ steps.paquets.outputs.cle }}
       - run: npm run build && npm run build:node -w @cdj/api
         if: matrix.suite != 'jump'
         env:
@@ -307,6 +350,8 @@ jobs:
       SPECS_JUMP: ${{ matrix.jump }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -317,20 +362,28 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
-      # apt : une connexion muette échoue au bout de 30 s et se retente 3 fois (le 26/10, WebKit a attendu 29 min sur `install-deps`, run 40399054124) ; un miroir lent mais
-      # vivant (≈ 50 ko/s ce jour-là) n'est jamais interrompu : on ne tue pas apt en cours de téléchargement (il garde le verrou dpkg, les essais suivants échouent), l'étape a 15 min.
-      - run: |
-          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
-          npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
         working-directory: apps/web
-        timeout-minutes: 15
         if: steps.browsers.outputs.cache-hit != 'true'
-      - run: |
-          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
-          npx playwright install-deps chromium
-        working-directory: apps/web
+      # Lot R12 : les paquets système du navigateur SANS apt (le miroir d'apt prenait jusqu'à 10 min sur un runner sur cinq, lot R13). Clé : l'image du
+      # runner (elle change ≈ chaque semaine), la version de Playwright et le navigateur ; cache absent : apt une fois, et les paquets sont gardés.
+      # Choix (cache plutôt que l'image Docker de Playwright) et mesures : scripts/paquets-playwright.sh, docs/plateforme/lots/lot-R12-un-seul-bouton.md.
+      - name: Clé des paquets système
+        id: paquets
+        run: echo "cle=paquets-${{ runner.os }}-$ImageOS-$ImageVersion-pw$(node -p 'require("./node_modules/@playwright/test/package.json").version')-chromium" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: paquets-cache
+        with:
+          path: ~/paquets-playwright
+          key: ${{ steps.paquets.outputs.cle }}
+      - name: Paquets système de Playwright
+        run: bash scripts/paquets-playwright.sh chromium "$HOME/paquets-playwright"
         timeout-minutes: 15
-        if: steps.browsers.outputs.cache-hit == 'true'
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        if: steps.paquets-cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/paquets-playwright
+          key: ${{ steps.paquets.outputs.cle }}
       # DailyTrack a besoin des deux jeux (e2e/deux-jeux.mjs) et du serveur ; DailyJump seul n'a besoin que de lui.
       - run: npm run build && npm run build:node -w @cdj/api
         if: matrix.web != ''
@@ -391,6 +444,8 @@ jobs:
     needs: [scope, e2e-parts, e2e-pr]
     if: always()
     runs-on: ubuntu-latest
+    outputs:
+      echecs: ${{ steps.resume.outputs.echecs }}
     env:
       RAPPORTS: ${{ needs.scope.outputs.mode != 'pr' || needs.scope.outputs.e2e_pr_actif == 'true' }}
       MODE: ${{ needs.scope.outputs.mode }}
@@ -405,6 +460,8 @@ jobs:
           echo "### e2e : aucun spec e2e lié aux fichiers de cette PR (documentation seule, ou rien que les tests unitaires ne couvrent) — verdict vert, rien à fusionner" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         if: env.RAPPORTS == 'true'
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         if: env.RAPPORTS == 'true'
         with:
@@ -439,6 +496,7 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
       - name: Résumé du run
+        id: resume
         if: env.RAPPORTS == 'true'
         run: |
           if [ ! -f apps/web/merged/report.json ]; then
@@ -449,8 +507,10 @@ jobs:
           # `nuit` — tout est bloquant, un instable aussi (c'est le but : voir une instabilité qui revient), une dette de plus de 14 jours aussi.
           # Une quarantaine qui ne respecte pas ses garde-fous fait échouer le run, quel que soit le mode.
           set +e
-          node scripts/e2e-summary.mjs apps/web/merged/report.json --mode "$MODE" --quarantaine e2e/quarantaine.json > summary.md
+          node scripts/e2e-summary.mjs apps/web/merged/report.json --mode "$MODE" --quarantaine e2e/quarantaine.json --echecs echecs.json > summary.md
           code=$?
+          # Lot R12 : les tests rouges, pour le résumé de « Mettre en production » (sortie `echecs` du workflow appelé).
+          echo "echecs=$(cat echecs.json 2>/dev/null || echo '[]')" >> "$GITHUB_OUTPUT"
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
           cat summary.md
           [ "$PARTS" = "success" ] || [ $code -ne 0 ] || { echo "::error::une part e2e a échoué sans test en échec (installation, construction, délai dépassé…) : voir le job"; code=1; }
@@ -472,6 +532,8 @@ jobs:
           - 8081:8080
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22

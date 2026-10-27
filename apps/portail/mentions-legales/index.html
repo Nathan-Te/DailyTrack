@@ -26,7 +26,7 @@
     <main class="mentions">
       <h1>Mentions légales et confidentialité</h1>
       <p class="reference"><strong>La version française fait foi</strong> (<span lang="en">the French version is the reference</span>) ; une traduction fidèle en anglais : <a href="../legal/" hreflang="en" lang="en">Legal notice and privacy</a>.</p>
-      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-24">24 octobre 2026</time>.</p>
+      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-27">27 octobre 2026</time>.</p>
 
       <section class="bref" aria-label="En bref">
         <ul>
@@ -94,6 +94,12 @@
           <p>Démarrage, erreurs, temps accepté (jour, temps), refus : jamais de pseudo, d'identifiant, d'adresse IP ni de rediffusion.</p>
           <p>But : savoir si le service marche.</p>
           <p class="duree">Durée : 30 jours (durée par défaut des journaux chez Google Cloud).</p>
+        </li>
+        <li data-tables="sauvegardes">
+          <h3>Les sauvegardes de la base</h3>
+          <p>Avant chaque mise à jour du site, une copie complète de la base (tout ce qui est décrit ci-dessus) est faite, dans un espace de stockage privé de Google Cloud (Belgique), lisible seulement par l'éditeur et par le compte qui la fait.</p>
+          <p>But : pouvoir réparer la base si une mise à jour l'abîmait.</p>
+          <p class="duree">Durée : chaque copie est effacée au bout de <span data-constante="SAUVEGARDE_JOURS" data-valeur="30">30</span> jours. Après une demande d'effacement, tes données disparaissent donc aussi des copies au plus tard dans ce délai.</p>
         </li>
         <li data-tables="circuits planning salon_circuits jump_levels meta">
           <h3>Et rien d'autre</h3>

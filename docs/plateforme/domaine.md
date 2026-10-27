@@ -105,12 +105,12 @@ GitHub → dépôt → **Settings** → **Secrets and variables** → **Actions*
 
 Les secrets ne changent pas (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT`). `VITE_API_URL` et `RECETTE_API_URL` ne servent plus aux jeux publiés (ils appellent `/api/` sur leur propre adresse) ; garde `VITE_API_URL` (le garde-fou « un aperçu ne vise jamais la production » la lit) ; `RECETTE_API_URL` n'est plus lue, tu peux la laisser.
 
-**Le jeton de robot (recommandé)** — pour que les jours figés entrent dans `main` tout seuls (étape 8) : GitHub → ton profil → **Settings** → **Developer settings** → **Fine-grained tokens** → **Generate new token** : nom `dailytrack-robot`, expiration 1 an, **Only select repositories** → `DailyTrack`, permissions **Contents : Read and write**, **Pull requests : Read and write**. Copie-le → dépôt → **Settings** → **Secrets and variables** → **Actions** → **Secrets** → **New repository secret** `ROBOT_TOKEN`.
-- Sans lui, tout marche quand même : la PR des jours figés est ouverte, sa CI lancée, et **tu la fusionnes** d'un clic (une fusion faite par le jeton du workflow ne lancerait pas la CI de `main`, et la mise en production suivante la refuserait).
+**Le jeton de robot (facultatif depuis le lot R12 : le workflow fusionne lui-même les jours figés)** — avec lui, la PR des jours figés lance sa CI comme une PR ordinaire : GitHub → ton profil → **Settings** → **Developer settings** → **Fine-grained tokens** → **Generate new token** : nom `dailytrack-robot`, expiration 1 an, **Only select repositories** → `DailyTrack`, permissions **Contents : Read and write**, **Pull requests : Read and write**. Copie-le → dépôt → **Settings** → **Secrets and variables** → **Actions** → **Secrets** → **New repository secret** `ROBOT_TOKEN`.
+- Sans lui, tout marche aussi (lot R12) : le workflow lance la CI de la PR des jours figés et la fusionne lui-même ; aucune mise en production n'exige plus le run `push` de `main`.
 
 **Deux réglages** : **Settings** → **General** → **Pull Requests** → coche **Allow auto-merge** ; **Settings** → **Actions** → **General** → **Workflow permissions** → coche **Allow GitHub Actions to create and approve pull requests** → **Save**.
 
-L'environnement **`production`** (toi comme relecteur, branche `main`) reste tel quel (`docs/plateforme/recette.md`, étape 4).
+L'environnement **`production`** : branche `main` seulement ; **lot R12 : sans relecteur** (le lancement du bouton sur `main` vaut validation : `docs/plateforme/mise-en-production.md`, annexe C).
 
 - **Tu dois voir** les deux variables `FIREBASE_SITE_*` à côté de `GCP_PROJECT_ID`.
 
@@ -144,15 +144,7 @@ node scripts/sonde-proxy.mjs "$DIRECT" https://recette.playdujour.com --trust-pr
 
 ## Étape 8 — « Mettre en production » (15 min)
 
-Onglet **Actions** → **Mettre en production** → **Run workflow** → **Branch : main**, laisse « commit » vide (le dernier de `main`) et « reference » vide → **Run workflow**.
-
-1. **`verifier`** — la CI complète du commit doit être verte (sinon : refus, avec le lien du run) ; le résumé liste **les PR et les commits** depuis la dernière mise en production, et **le code en production** (le commit de la dernière étiquette `prod-…`).
-2. **`figer`** — `freeze:days -- demain` **avec le code en production** : aujourd'hui et demain gardent le niveau que les joueurs voient déjà, même si le commit déployé change le générateur de DailyJump.
-3. **`serveur`** attend ton clic : **Review deployments** → coche **production** → **Approve and deploy**. *(Un seul clic : le site et la suite partent après.)*
-4. **`site`** — playdujour.com publié (avec les jours figés). **`verification`** — `smoke --lecture-seule` contre `https://playdujour.com/api/…` (des GET seulement, rien n'est écrit).
-5. **`etiquette`** — le commit reçoit `prod-AAAA-MM-JJ-HHMM` (heure de Paris), avec l'image du serveur et la version du site.
-6. **`depot`** — une PR « **Jours figés — prod-…** » : fusionnée toute seule quand sa CI est verte (avec `ROBOT_TOKEN`), sinon **à fusionner par toi**.
-7. **`resume`** — le tableau des étapes.
+Onglet **Actions** → **Mettre en production** → **Run workflow** → **Branch : main**, mode `production`, les autres champs vides → **Run workflow**. **Lot R12 : un seul clic, plus rien à valider ni à fusionner** — CI complète (relancée ou reprise), garde-fou des jours, répétition sur la recette, sauvegarde de la base, serveur et site, `smoke --lecture-seule`, étiquette `prod-…`, jours figés versés dans `main` par le workflow ; le détail et le résumé : `docs/plateforme/mise-en-production.md` (une page) et `docs/plateforme/lots/lot-R12-un-seul-bouton.md`.
 
 - **Tu dois voir** tout en vert, <https://playdujour.com/> avec les deux cartes, <https://playdujour.com/api/health> → `ok: true, db: "ok", salonOverride: false`, et l'étiquette dans **Code** → **Tags**.
 - **Ensuite, à chaque mise en production** : le même bouton. Une mise en production à la fois (une seconde attend la première).
@@ -203,8 +195,8 @@ Détail et seuils : `docs/plateforme/couts.md`, § 5. **Ordre de grandeur** : �
 | `www.playdujour.com` ne redirige pas | `www` ajouté sans « Rediriger » | étape 4.1, point 2 |
 | `/api/…` rend 404 sur playdujour.com | le renvoi vise un service absent | `GCP_SERVICE` / `RECETTE_GCP_SERVICE` ; le service existe dans `europe-west1` |
 | Des « Trop de requêtes » (429) pour tout le monde | `TRUST_PROXY` trop bas derrière Firebase | étape 7 |
-| « Mettre en production » refuse : « CI complète … pas verte » | le run `push` de `main` de ce commit est rouge ou en cours | attendre, ou réparer, fusionner, relancer |
+| « Mettre en production » : « ⛔ CI complète : rouge » | la CI complète que le bouton a lancée (lot R12) est rouge | la phrase du résumé : un lot de mise en production avec ce run |
 | « jour(s) figé(s) différent(s) » | un jour figé du commit diffère de celui du code en production | ne jamais réécrire un jour figé : enquêter (README du lot R4) |
-| La PR « Jours figés » ne se fusionne pas | pas de `ROBOT_TOKEN`, ou « Allow auto-merge » décoché | étape 5 ; ou fusionner à la main |
+| « ⛔ Jours figés : la protection de main refuse… » | la protection de `main` interdit au workflow de fusionner (lot R12) | README du lot R12, « Jours figés sans PR » ; ou fusionner la PR à la main |
 | « redirigé à de trop nombreuses reprises » sur `/track/` ou `/jump/` | une redirection `/track` → `/track/` dans `firebase.json` (corrigé après le lot R4) | aucune redirection de dossier dans `firebase.json` : Hosting ajoute le « / » lui-même |
 | L'aperçu d'une PR ne parle pas à sa révision | la PR ne touche pas le serveur (normal : recette par défaut), ou la recette n'est pas configurée | `docs/plateforme/recette.md` |
