@@ -1,6 +1,6 @@
 // Résumé d'un run e2e (retouche 29b) : lit le rapport JSON fusionné de Playwright et en tire un résumé Markdown où les tests INSTABLES
 // (échec puis réussite à la relance) sont nommés — jamais cachés. Utilisé par le job `e2e` de .github/workflows/ci.yml.
-//   node scripts/e2e-summary.mjs rapport.json [--mode pr|complet|nuit] [--quarantaine e2e/quarantaine.json] [--fail-on-flaky]
+//   node scripts/e2e-summary.mjs rapport.json [--mode pr|main|complet|nuit] [--quarantaine e2e/quarantaine.json] [--fail-on-flaky]
 //   → Markdown sur la sortie, annotations `::warning` pour chaque instable
 //   code de sortie : 1 s'il y a des échecs ; la nuit (`--mode nuit`, ou `--fail-on-flaky`), 1 aussi s'il y a des instables.
 // Lot R3 (plateforme) — quarantaine (scripts/e2e-quarantaine.mjs) : sur une PR (`--mode pr`), l'échec ou l'instabilité d'un test en quarantaine
@@ -51,7 +51,7 @@ export function chromiumSeconds(tests) {
 const mmss = (ms) => `${Math.floor(ms / 60000)} min ${String(Math.round((ms % 60000) / 1000)).padStart(2, "0")} s`;
 
 /**
- * `mode` : `pr` (la quarantaine n'est qu'un avertissement), `complet` (main, lancement manuel : tout est bloquant) ou `nuit` (tout est bloquant,
+ * `mode` : `pr` (la quarantaine n'est qu'un avertissement), `main` et `complet` (chaque fusion, lancement manuel : tout est bloquant) ou `nuit` (tout est bloquant,
  * un instable aussi, une dette expirée aussi). `quarantine` : le résultat de `loadQuarantine` (null = pas de quarantaine). `failOnFlaky` :
  * comme `nuit` pour les instables (ancien drapeau, gardé).
  */
@@ -110,8 +110,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const [, , path, ...flags] = process.argv;
   const opt = (name) => (flags.includes(name) ? flags[flags.indexOf(name) + 1] : undefined);
   const mode = opt("--mode") ?? "complet";
-  if (!path || !["pr", "complet", "nuit"].includes(mode)) {
-    console.error("usage : node scripts/e2e-summary.mjs rapport.json [--mode pr|complet|nuit] [--quarantaine e2e/quarantaine.json] [--fail-on-flaky]");
+  if (!path || !["pr", "main", "complet", "nuit"].includes(mode)) {
+    console.error("usage : node scripts/e2e-summary.mjs rapport.json [--mode pr|main|complet|nuit] [--quarantaine e2e/quarantaine.json] [--fail-on-flaky]");
     process.exit(2);
   }
   const qFile = opt("--quarantaine");

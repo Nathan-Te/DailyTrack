@@ -1,9 +1,21 @@
 {
   "_": "Lot R10 (plateforme) — la table spec → zones de la CI de PR courte (scripts/ci-zones.mjs, testée par apps/web/test/ciZones.test.ts). Une PR ne lance que les specs e2e (Chromium) dont une ZONE contient un fichier modifié, plus la fumée de chaque jeu touché ; tout tourne sur main (CI complète), la nuit et dans le lot de mise en production. Une zone = des motifs de chemins (`*` = un segment, `**` = tout) moins `sauf`. Un spec sans zone, une zone sans spec ou sans fichier, un nom inconnu : le test échoue. UN NOUVEAU SPEC SE DÉCLARE ICI (clé « jeu/fichier », au moins une zone) ; un fichier de jeu qu'aucune zone ne nomme ne lance que la fumée de son jeu. Les outils (captures-*, mesure-*) se sautent d'eux-mêmes hors CAPTURES / MESURE : ils n'ont pas de zone.",
   "fumee": {
-    "web": ["replay.spec.ts", "perf.spec.ts", "hud-compact.spec.ts", "cameras.spec.ts"],
+    "web": ["replay.spec.ts", "perf.spec.ts", "accueil.spec.ts"],
     "jump": ["smoke.spec.ts", "replay.spec.ts", "poids.spec.ts", "jour.spec.ts", "dangers.spec.ts"]
   },
+  "_regression": "Lot R13 (le tri des tests, docs/tests.md) : les specs tout entiers de la famille « Régression » (mises en page, écrans secondaires, effets, Salon détaillé). Ils ne tournent que dans la CI complète (nuit, « Run workflow ») — sauf modifiés par la PR. Un test « Régression » dans un autre spec porte l'étiquette `@regression` ; un test sans étiquette est « Essentiel » (PR de sa zone et chaque fusion dans main).",
+  "regression": [
+    "web/accessibilite.spec.ts", "web/admin.spec.ts", "web/air.spec.ts", "web/cameras.spec.ts", "web/decor.spec.ts", "web/demo.spec.ts",
+    "web/figures.spec.ts", "web/garage.spec.ts", "web/hud-compact.spec.ts", "web/identite-plateforme.spec.ts", "web/juice.spec.ts", "web/mobile.spec.ts",
+    "web/plein-ecran.spec.ts", "web/post.spec.ts", "web/qualite.spec.ts", "web/relief.spec.ts", "web/salon-serveur.spec.ts", "web/scene.spec.ts",
+    "web/socle.spec.ts", "web/thumbnails.spec.ts", "web/vie-ciel.spec.ts", "web/vitesse.spec.ts", "web/vitrine.spec.ts", "web/vitrine-voiture.spec.ts",
+    "jump/accessibilite.spec.ts", "jump/animation.spec.ts", "jump/carnage-lisible.spec.ts", "jump/fantome-premier.spec.ts", "jump/foret.spec.ts", "jump/hud-compact.spec.ts",
+    "jump/modules.spec.ts", "jump/plateformes.spec.ts", "jump/plein-ecran.spec.ts", "jump/sensations.spec.ts", "jump/surfaces.spec.ts", "jump/themes.spec.ts",
+    "jump/tout-le-monde.spec.ts", "jump/variete.spec.ts", "jump/voie-lente.spec.ts"
+  ],
+  "_regressionUnitaires": "Lot R13 : les fichiers de tests unitaires de la famille « Régression » (jeux de données fictives de la recette) : CI complète et main seulement, sauf modifiés.",
+  "regressionUnitaires": ["apps/api/test/portailDemo.test.ts", "apps/api/test/classementDemo.test.ts"],
   "zones": {
     "track-sim": { "globs": ["packages/sim/**"] },
     "track-coeur": { "globs": ["apps/web/src/main.ts", "apps/web/index.html", "apps/web/vite.config.ts", "apps/web/public/**", "apps/web/src/generationInit.ts", "apps/web/src/lancement.ts", "apps/web/src/nouveauDepart.ts"] },
@@ -72,13 +84,11 @@
     "web/futur.spec.ts": ["track-admin"],
     "web/garage.spec.ts": ["track-voiture", "api-track"],
     "web/ghost.spec.ts": ["track-sim", "track-salon"],
-    "web/glace.spec.ts": ["track-sim"],
     "web/graphismes.spec.ts": ["track-scene", "track-camera"],
     "web/hud-compact.spec.ts": ["track-hud", "ui", "track-coeur"],
     "web/identite-plateforme.spec.ts": ["track-profil", "profile-pkg", "api-coeur"],
     "web/juice.spec.ts": ["track-audio-fx", "track-sim"],
     "web/langue.spec.ts": ["track-i18n", "ui", "profile-pkg"],
-    "web/largeurs.spec.ts": ["track-sim", "track-scene"],
     "web/leaderboard.spec.ts": ["track-profil", "api-track", "api-coeur", "track-sim"],
     "web/mobile.spec.ts": ["track-hud", "ui", "track-coeur"],
     "web/nouveau-depart.spec.ts": ["portail", "profile-pkg", "api-coeur", "track-coeur", "jump-jour", "core-clock"],
@@ -131,7 +141,6 @@
     "jump/poids.spec.ts": ["jump-jour"],
     "jump/profil-commun.spec.ts": ["jump-classement", "api-jump", "api-coeur", "profile-pkg"],
     "jump/replay.spec.ts": ["jump-sim", "core-clock"],
-    "jump/semaine.spec.ts": ["jump-modules", "jump-jour"],
     "jump/sensations.spec.ts": ["jump-rendu", "jump-ui"],
     "jump/smoke.spec.ts": ["jump-jour"],
     "jump/surfaces.spec.ts": ["jump-sim", "jump-rendu"],

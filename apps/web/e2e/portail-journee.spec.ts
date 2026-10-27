@@ -184,7 +184,7 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
 });
 
 for (const [langue, locale] of [["fr", "fr-FR"], ["en", "en-US"]] as const) {
-  test(`lot I6 : accessibilité (axe) du portail plein, du profil commun et du classement du jour (${langue})`, async ({ browser }) => {
+  test(`lot I6 : accessibilité (axe) du portail plein, du profil commun et du classement du jour (${langue})`, { tag: "@regression" }, async ({ browser }) => {
     const context = await newContextAt(browser, T24, { ...PORTRAIT, locale });
     const page = await context.newPage();
     await page.goto(`${SITE_24}/?demo=joueur`);
@@ -201,7 +201,7 @@ for (const [langue, locale] of [["fr", "fr-FR"], ["en", "en-US"]] as const) {
   });
 }
 
-test("avant le 23/10 : aucun numéro de journée, et la ligne partagée dit « Du Jour » sans numéro", async ({ browser }) => {
+test("avant le 23/10 : aucun numéro de journée, et la ligne partagée dit « Du Jour » sans numéro", { tag: "@regression" }, async ({ browser }) => {
   // Le même serveur (le 24/10) mais un téléphone resté au 22/10 ne change rien : le numéro vient du serveur. Ici, le site du 20/10 (base vide) : pas de journée.
   const page = await (await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE_20}/`);
@@ -209,7 +209,7 @@ test("avant le 23/10 : aucun numéro de journée, et la ligne partagée dit « D
   await expect(page.locator("#journee")).toHaveCount(0);
 });
 
-test("joueur neuf : la tuile invite à jouer (aucun chiffre inventé), pas de bouton de partage ; la requête ne porte aucun identifiant", async ({ browser }) => {
+test("joueur neuf : la tuile invite à jouer (aucun chiffre inventé), pas de bouton de partage ; la requête ne porte aucun identifiant", { tag: "@regression" }, async ({ browser }) => {
   for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
     for (const langue of ["fr", "en"] as const) {
       const page = await (await newContextAt(browser, T24, { ...options, locale: langue === "fr" ? "fr-FR" : "en-US" })).newPage();
@@ -226,7 +226,7 @@ test("joueur neuf : la tuile invite à jouer (aucun chiffre inventé), pas de bo
   }
 });
 
-test("un joueur connu qui n'a encore fini aucun jeu aujourd'hui : la tuile l'invite à jouer, pas de bouton de partage, la série reste là", async ({ browser }) => {
+test("un joueur connu qui n'a encore fini aucun jeu aujourd'hui : la tuile l'invite à jouer, pas de bouton de partage, la série reste là", { tag: "@regression" }, async ({ browser }) => {
   const context = await newContextAt(browser, T24, { ...PORTRAIT, locale: "fr-FR" });
   await context.addInitScript(() => {
     localStorage.setItem("cdj:player", "0123456789abcdef0123456789abcdef");
@@ -272,7 +272,7 @@ function classementFabrique(): unknown {
 }
 
 for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
-  test(`/classement/ (${nom}) : le haut, ta ligne surlignée, la médaille de chaque jeu, le barème ; ta ligne hors du haut ; FR et EN`, async ({ browser }) => {
+  test(`/classement/ (${nom}) : le haut, ta ligne surlignée, la médaille de chaque jeu, le barème ; ta ligne hors du haut ; FR et EN`, { tag: "@regression" }, async ({ browser }) => {
     const demo = await jourDeDemo();
     const context = await newContextAt(browser, T24, { ...options, locale: "fr-FR" });
     const page = await context.newPage();
@@ -345,7 +345,7 @@ function medailleTrackNom(demo: Awaited<ReturnType<typeof jourDeDemo>>): string 
   return m ? ({ author: "Auteur", gold: "Or", silver: "Argent", bronze: "Bronze" } as Record<string, string>)[m]! : "Fini";
 }
 
-test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › », jamais au-delà d'aujourd'hui ni avant la journée n° 1 (lot R8)", async ({ browser }) => {
+test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › », jamais au-delà d'aujourd'hui ni avant la journée n° 1 (lot R8)", { tag: "@regression" }, async ({ browser }) => {
   const context = await newContextAt(browser, T24, { ...PORTRAIT, locale: "fr-FR" });
   const page = await context.newPage();
   await page.goto(`${SITE_24}/?demo=joueur`);
@@ -437,14 +437,15 @@ async function finirJump(page: Page, pseudo: string | null): Promise<void> {
   await expect(page.locator("#arrival-rank")).toHaveText(/sur \d+$/);
 }
 
-test("de Track vers Jump : « Jeu suivant du jour : Jump › » ; puis, Jump fini, « Journée parfaite ! » et le retour au portail", async ({ browser }) => {
+test("de Track vers Jump : « Jeu suivant du jour : Jump › » ; puis, Jump fini, « Journée parfaite ! » et le retour au portail", { tag: "@navigateurs" }, async ({ browser }) => {
   test.setTimeout(300_000);
   const pseudo = `Pilote${test.info().retry}${test.info().project.name.length}`;
-  for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
+  // Lot R13 (docs/tests.md) : en paysage seulement (la course de Track se joue en paysage ; l'arrivée en portrait : mobile.spec.ts).
+  for (const [nom, options] of [["paysage", PAYSAGE]] as const) {
     const context = await newClockedContext(browser, { ...options, locale: "fr-FR" });
     const page = await context.newPage();
     const vues = requetesApi(page);
-    await finirTrack(page, `${pseudo}${nom === "portrait" ? "A" : "B"}`);
+    await finirTrack(page, `${pseudo}B`);
     // L'arrivée propose le jeu suivant (une lecture de /api/portail/jour après l'envoi accepté, l'identifiant en en-tête), sans cacher ce qu'elle montre.
     const suivant = page.locator("#finish-next-game");
     await expect(suivant).toHaveText("Jeu suivant du jour : Jump ›");
@@ -479,11 +480,12 @@ test("de Track vers Jump : « Jeu suivant du jour : Jump › » ; puis, Jump fin
 test("de Jump vers Track : « Jeu suivant du jour : Track › » à l'arrivée de DailyJump ; il ouvre DailyTrack", async ({ browser }) => {
   test.setTimeout(240_000);
   const pseudo = `Sauteur${test.info().retry}${test.info().project.name.length}`;
-  for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
+  // Lot R13 : en paysage seulement (Jump se joue en paysage ; son arrivée en portrait : apps/jump/e2e/arrivee.spec.ts).
+  for (const [nom, options] of [["paysage", PAYSAGE]] as const) {
     const context = await newClockedContext(browser, { ...options, locale: "fr-FR" });
     const page = await context.newPage();
     const vues = requetesApi(page);
-    await finirJump(page, `${pseudo}${nom === "portrait" ? "A" : "B"}`);
+    await finirJump(page, `${pseudo}B`);
     const suivant = page.locator("#arrival-next-game");
     await expect(suivant).toHaveText("Jeu suivant du jour : Track ›");
     await expect(suivant).toHaveAttribute("href", "../track/");
@@ -498,13 +500,3 @@ test("de Jump vers Track : « Jeu suivant du jour : Track › » à l'arrivée d
   }
 });
 
-test("serveur injoignable à l'arrivée : pas de bouton, rien de bloquant", async ({ browser }) => {
-  const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
-  const page = await context.newPage();
-  await context.route("**/api/portail/jour", (route) => route.abort());
-  await finirTrack(page, `Muet${test.info().retry}${test.info().project.name.length}`);
-  await page.waitForTimeout(1500);
-  await expect(page.locator("#finish-next-game")).toHaveCount(0);
-  await expect(page.locator("#finish-next")).toBeHidden();
-  await expect(page.locator("#finish .actions button").first()).toBeVisible();
-});

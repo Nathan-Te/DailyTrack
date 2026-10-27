@@ -1,6 +1,6 @@
-export interface Table { fumee: Record<"web" | "jump", string[]>; zones: Record<string, { globs: string[]; sauf?: string[] }>; specs: Record<string, string[]>; compilees: Record<string, { globs: RegExp[]; sauf: RegExp[] }> }
+export interface Table { fumee: Record<"web" | "jump", string[]>; regression?: string[]; regressionUnitaires?: string[]; zones: Record<string, { globs: string[]; sauf?: string[] }>; specs: Record<string, string[]>; compilees: Record<string, { globs: RegExp[]; sauf: RegExp[] }> }
 export interface Graphe { noeuds: Map<string, { imports: Set<string>; cites: Set<string> }>; tests: string[]; atteint: Map<string, unknown> }
-export interface Choix { web: string[]; jump: string[]; raisons: string[]; reportes?: string[] }
+export interface Choix { web: string[]; jump: string[]; raisons: string[]; reportes?: string[]; regression?: string[] }
 export interface PartUnitaire { part: string; fichiers: string[]; secondes: number }
 export interface PartE2e { part: string; web: string[]; jump: string[]; secondes: number }
 export interface Decision {
@@ -34,7 +34,7 @@ export function graphe(racine?: string): Graphe;
 export function atteint(g: Graphe, test: string): { fichiers: Set<string>; citees: Set<string> };
 export function touche(g: Graphe, test: string, f: string): boolean;
 export function docsLusParLesTests(g: Graphe): Map<string, string[]>;
-export function testsPour(files: string[], g: Graphe, options?: { complet?: boolean }): { fichiers: string[]; tous: boolean; docsSeuls: boolean; raisons: string[] };
+export function testsPour(files: string[], g: Graphe, options?: { complet?: boolean; regression?: string[] }): { fichiers: string[]; tous: boolean; docsSeuls: boolean; raisons: string[] };
 export function dureesUnitaires(racine?: string): Record<string, number>;
 export function nombreDeParts(charge: number, cible: number, max: number): number;
 export function partsUnitaires(fichiers: string[], durees: Record<string, number>, options?: { max?: number; cible?: number }): PartUnitaire[];
@@ -43,3 +43,6 @@ export function decider(files: string[], options?: { mode?: string; racine?: str
 export function sorties(d: Decision): string;
 export function resume(d: Decision): string;
 export function dureesDepuisVitest(rapport: unknown, racine?: string): Record<string, number>;
+export const PARTS_COMPLETES: Record<"main" | "complet" | "nuit", { web: number; jump: number }>;
+export function matriceComplete(mode: string): { include: { suite: string; browser: string; shard: string; essentiel: boolean }[] };
+export function dureeE2e(racine: string, jeu: "web" | "jump", spec: string): number;

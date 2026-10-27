@@ -18,8 +18,13 @@ const projects: Project[] = [
     },
   },
 ];
+// Lot R13 (le tri des tests, docs/tests.md) : Firefox et WebKit ne lancent que le PETIT ENSEMBLE étiqueté `@navigateurs` (rediffusion bit à bit, chargement,
+// une partie de chaque jeu) ; Chromium porte tout le reste.
 if (process.env.E2E_ALL_BROWSERS) {
-  projects.push({ name: "firefox", use: { ...devices["Desktop Firefox"] } }, { name: "webkit", use: { ...devices["Desktop Safari"] } });
+  projects.push(
+    { name: "firefox", grep: /@navigateurs/, use: { ...devices["Desktop Firefox"] } },
+    { name: "webkit", grep: /@navigateurs/, use: { ...devices["Desktop Safari"] } },
+  );
 }
 
 // Horloge de test commune aux serveurs et aux navigateurs (e2e/fixtures.ts) : « maintenant » = midi UTC le 20/10/2026, puis le temps passe
@@ -34,8 +39,12 @@ process.env.LANCEMENT_PREMIER_JOUR = "2026-10-23";
 process.env.VITE_LANCEMENT_PREMIER_JOUR = "2026-10-23";
 const CI = !!process.env.CI;
 
+// Lot R13 : les outils (captures, mesures, planches) ne sont jamais dans la CI : ils ne sont même pas listés sans leur variable (`CAPTURES=1`, `MESURE=1`…).
+const OUTIL = ["CAPTURES", "MESURE", "PLANCHES", "COMPARER", "AVANT"].some((v) => process.env[v]);
+
 export default defineConfig({
   testDir: "e2e",
+  testIgnore: OUTIL ? [] : ["**/captures*.spec.ts", "**/mesure*.spec.ts"],
   timeout: 90_000,
   // CI : une seule relance, et une réussite à la relance est SIGNALÉE (« instable », voir scripts/flaky-report.mjs et le résumé du run), jamais cachée.
   retries: CI ? 1 : 0,

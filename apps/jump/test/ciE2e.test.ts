@@ -1,19 +1,24 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { assignParts, gameOf, specFiles, testList } from "../../../scripts/e2e-parts.mjs";
 import { chromiumSeconds, summarize } from "../../../scripts/e2e-summary.mjs";
+import { matriceComplete } from "../../../scripts/ci-zones.mjs";
 
 // Lot 3c : les e2e de DailyJump suivent les règles de CI de DailyTrack (matrice, rapport fusionné, une relance, instables nommés).
 // Ces tests gardent la plomberie : aucun spec de DailyJump oublié par les parts, outils sautés avec leur motif, config de CI.
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const durees = JSON.parse(read("../e2e/durees.json")).secondes as Record<string, number>;
 const ci = read("../../../.github/workflows/ci.yml");
-const JUMP_CHROMIUM_PARTS = [...ci.matchAll(/\{ suite: jump, shard: "\d+\/(\d+)", browser: chromium \}/g)].length;
+// Lot R13 : la matrice de la CI complète vient de scripts/ci-zones.mjs (`matriceComplete`).
+const JUMP_CHROMIUM_PARTS = matriceComplete("nuit").include.filter((x) => x.suite === "jump").length;
 
 describe("e2e de DailyJump dans la CI", () => {
-  it("la matrice a des parts DailyJump pour les trois navigateurs", () => {
-    for (const browser of ["chromium", "firefox", "webkit"]) expect(ci, browser).toMatch(new RegExp(`suite: jump, shard: "\\d+/\\d+", browser: ${browser}`));
+  it("la matrice a des parts DailyJump en Chromium ; Firefox et WebKit lancent le petit ensemble des deux jeux (lot R13)", () => {
     expect(JUMP_CHROMIUM_PARTS).toBeGreaterThanOrEqual(1);
+    for (const browser of ["firefox", "webkit"]) expect(matriceComplete("nuit").include, browser).toContainEqual({ suite: "navigateurs", browser, shard: "1/1", essentiel: false });
+    expect(ci).toContain("npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }}");
+    expect(read("../playwright.config.ts")).toMatch(/name: name\("firefox"\), grep: \/@navigateurs\//);
+    expect(read("../playwright.config.ts")).toMatch(/name: name\("webkit"\), grep: \/@navigateurs\//);
   });
 
   it("chaque spec de DailyJump est dans exactement une part Chromium", () => {
@@ -41,12 +46,11 @@ describe("e2e de DailyJump dans la CI", () => {
     expect(config).toContain('["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }]');
   });
 
-  it("les outils de mesure et de captures se sautent sans MESURE / CAPTURES, avec leur motif", () => {
-    for (const f of specFiles(gameOf("jump-chromium").dir)) {
-      const src = read(`../e2e/${f}`);
-      if (f.startsWith("mesure-")) expect(src, f).toMatch(/test\.skip\(!process\.env\.MESURE, "outil de mesure : MESURE=1"\)/);
-      if (src.includes("process.env.CAPTURES") && f.startsWith("captures")) expect(src, f).toMatch(/test\.skip\(.*CAPTURES.*"outil de captures?/);
-    }
+  it("les outils de mesure et de captures ne sont jamais dans la CI : ni dans les parts, ni listés sans leur variable (lot R13)", () => {
+    const outils = readdirSync(new URL("../e2e/", import.meta.url)).filter((f) => /^(captures|mesure)[-.].*\.spec\.ts$/.test(f));
+    expect(outils.length).toBeGreaterThan(0);
+    for (const f of outils) expect(specFiles(gameOf("jump-chromium").dir), f).not.toContain(f);
+    expect(read("../playwright.config.ts")).toContain('testIgnore: OUTIL ? [] : ["**/captures*.spec.ts", "**/mesure*.spec.ts"]');
     // Le test de captures de themes.spec.ts : sauté hors CAPTURES, motif clair.
     expect(read("../e2e/themes.spec.ts")).toMatch(/test\.skip\(!process\.env\.CAPTURES \|\| browserName !== "chromium", "outil de captures : CAPTURES=1, Chromium"\)/);
     // Aucune étape de la CI ne les active.

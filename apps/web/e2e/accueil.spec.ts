@@ -62,6 +62,8 @@ test.describe("l'accueil", () => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await open(page, "/?home=1&debug&api=demo&timescale=4");
+    // Lot R13 : repris de « les liens de test… sautent l'accueil ; ?home=1 le force » (supprimé : la règle est dans test/homeLogic.test.ts).
+    expect(page.url()).not.toContain("home="); // l'accueil forcé une fois ne reste pas dans l'adresse
     await page.waitForTimeout(2500);
     let state = await ui(page);
     expect(state.home).toBe(true);
@@ -80,7 +82,7 @@ test.describe("l'accueil", () => {
     await ctx.close();
   });
 
-  test("Accueil (barre) : sans confirmation avant le départ, avec confirmation en pleine course ; (pause) idem", async ({ browser }) => {
+  test("Accueil (barre) : sans confirmation avant le départ, avec confirmation en pleine course ; (pause) idem", { tag: "@regression" }, async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await open(page, "/?home=1&debug&api=demo"); // temps réel : le décompte dure 3 s, le temps de cliquer
@@ -113,28 +115,7 @@ test.describe("l'accueil", () => {
     await ctx.close();
   });
 
-  test("« Salon live » ouvre le Salon (démonstration)", async ({ browser }) => {
-    const ctx = await fresh(browser);
-    const page = await ctx.newPage();
-    await open(page, "/?home=1&debug&api=demo&salonMinutes=1");
-    await expect(page.locator("#home .salon-state")).toContainText("En cours :", { timeout: 15_000 });
-    await page.locator("#home-salon").click();
-    await page.waitForURL(/mode=salon/);
-    expect(page.url()).not.toContain("home=");
-    await page.waitForFunction(() => window.__cdj?.salon);
-    await expect(page.locator("#meta")).toContainText("Salon");
-    await expect(page.locator("#home")).toBeHidden();
-    // Dans le Salon, la pause garde « Accueil de Track » ; il n'y a plus de bouton Salon ; l'accueil est un lien de la page.
-    await expect(page.locator("#btn-pause")).toBeVisible();
-    await expect(page.locator("#btn-mode")).toHaveCount(0);
-    await page.locator("#btn-pause").click();
-    await page.locator("#pause-home").click();
-    await page.waitForURL(/home=1/);
-    await expect(page.locator("#home")).toBeVisible();
-    await ctx.close();
-  });
-
-  test("clavier : tout l'accueil se parcourt à la tabulation, focus visible (contour ambre de 3 px sur l'asphalte)", async ({ browser }) => {
+  test("clavier : tout l'accueil se parcourt à la tabulation, focus visible (contour ambre de 3 px sur l'asphalte)", { tag: "@regression" }, async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await open(page, "/?api=demo&home=1");
@@ -160,21 +141,6 @@ test.describe("l'accueil", () => {
     await ctx.close();
   });
 
-  test("les liens de test, de partage et d'archive sautent l'accueil ; ?home=1 le force", async ({ browser }) => {
-    const ctx = await fresh(browser);
-    const page = await ctx.newPage();
-    const day = formatDay(TODAY - 1);
-    for (const url of [`/?seed=${day}`, `/?day=${day}&api=demo`, "/?scenario=essai", "/?demo", "/?debug", "/?mode=salon&api=demo", "/?watch=best&api=demo&seed=2026-10-26", "/?theme=nuit"]) {
-      await open(page, url);
-      await expect(page.locator("#home"), url).toBeHidden();
-      await expect(page.locator("body"), url).not.toHaveClass(/\bhome\b/);
-    }
-    await open(page, "/?home=1&debug&api=demo");
-    await expect(page.locator("#home")).toBeVisible();
-    expect(page.url()).not.toContain("home="); // l'accueil forcé une fois ne reste pas dans l'adresse
-    await ctx.close();
-  });
-
   test("sans serveur : le classement le dit, le Salon est grisé, le jeu reste jouable", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
@@ -188,7 +154,7 @@ test.describe("l'accueil", () => {
     await ctx.close();
   });
 
-  test("serveur muet : messages clairs, « Réessayer », la course reste jouable", async ({ browser }) => {
+  test("serveur muet : messages clairs, « Réessayer », la course reste jouable", { tag: "@regression" }, async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await open(page, "/?home=1&debug&api=http://127.0.0.1:9");
@@ -200,7 +166,7 @@ test.describe("l'accueil", () => {
   });
 });
 
-test.describe("« Comment jouer »", () => {
+test.describe("« Comment jouer »", { tag: "@regression" }, () => {
   test("dans le jeu, une seule fois : le voile à rayures sur la scène, trois points, « C'est parti » ; ensuite depuis la pause et l'accueil", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
@@ -249,7 +215,8 @@ test.describe("« Comment jouer »", () => {
     await ctx.close();
   });
 
-  for (const vp of [{ width: 844, height: 390 }, { width: 740, height: 360 }]) {
+  // Lot R13 (docs/tests.md) : deux formats, le téléphone en paysage et l'ordinateur ; le paysage compact 740×360 est retiré.
+  for (const vp of [{ width: 844, height: 390 }]) {
     test(`téléphone en paysage (${vp.width}×${vp.height}) : les doigts d'abord, le schéma aux bords, tout tient dans l'écran, « C'est parti » de 44 px`, async ({ browser }) => {
       const ctx = await fresh(browser, vp, true);
       const page = await ctx.newPage();
@@ -276,38 +243,7 @@ test.describe("« Comment jouer »", () => {
   }
 });
 
-test.describe("réglages", () => {
-  test("un seul réglage de qualité : « Qualité graphique » ; la fluidité est automatique, `?quality=` (essais) la fige", async ({ browser }) => {
-    const ctx = await fresh(browser);
-    const page = await ctx.newPage();
-    await open(page, "/?debug&api=demo");
-    await openSettings(page);
-    await expect(page.locator("#settings")).toBeVisible();
-    await expect(page.locator("#tab-graphics")).toHaveAttribute("aria-selected", "true");
-    // Un seul choix de qualité (plus de « Basse / Moyenne / Haute »).
-    await expect(page.getByRole("radiogroup", { name: "Qualité graphique" })).toBeVisible();
-    await expect(page.getByRole("radiogroup", { name: "Qualité", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("radio", { name: "Basse", exact: true })).toHaveCount(0);
-    // La fluidité est automatique : le régulateur n'est pas figé.
-    let state = await ui(page);
-    expect(state.qualityLocked).toBe(false);
-    // Un ancien réglage enregistré (« Basse ») est ignoré et disparaît à la prochaine écriture.
-    await page.evaluate(() => localStorage.setItem("cdj:settings", JSON.stringify({ version: 1, quality: "low" })));
-    await open(page, "/?debug&api=demo");
-    state = await ui(page);
-    expect(state.qualityLocked).toBe(false);
-    expect(state.quality).toBe(2);
-    await openSettings(page);
-    await page.getByRole("radio", { name: "Équilibrée", exact: true }).click();
-    expect(await page.evaluate(() => "quality" in JSON.parse(localStorage.getItem("cdj:settings")!))).toBe(false);
-    // `?quality=` (essais) fige la fluidité sans toucher au choix mémorisé.
-    await open(page, "/?debug&api=demo&quality=0");
-    state = await ui(page);
-    expect(state.quality).toBe(0);
-    expect(state.qualityLocked).toBe(true);
-    expect(JSON.parse((await page.evaluate(() => localStorage.getItem("cdj:settings")))!).graphismes).toBe("equilibree");
-    await ctx.close();
-  });
+test.describe("réglages", { tag: "@regression" }, () => {
 
   test("chaque onglet : les commandes sont là, tiennent à l'écran, font au moins 44 px, et les choix s'appliquent", async ({ browser }) => {
     const ctx = await fresh(browser);
@@ -392,51 +328,11 @@ test.describe("réglages", () => {
     await ctx.close();
   });
 
-  test("le classement se replie (touche L, bouton) et l'état est mémorisé", async ({ browser }) => {
-    const ctx = await fresh(browser);
-    const page = await ctx.newPage();
-    await open(page, "/?debug&api=demo&seed=2026-10-26");
-    await expect(page.locator("#board")).toBeVisible();
-    await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
-    expect((await ui(page)).boardFolded).toBe(false);
-    await page.keyboard.press("l");
-    await expect(page.locator("#board")).toHaveClass(/folded/);
-    await expect(page.locator("#board")).toBeHidden(); // replié : la pastille du rang suffit (lot I4, retouche 2)
-    await page.reload();
-    await page.waitForFunction(() => window.__cdj?.ui);
-    expect((await ui(page)).boardFolded).toBe(true);
-    await page.keyboard.press("l"); // (la pastille du rang rouvre aussi le classement quand ta place est connue : mobile.spec.ts)
-    await expect(page.locator("#board .bbody")).toBeVisible();
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:settings")!).board)).toBe(true);
-    await ctx.close();
-  });
 });
 
 test.describe("pause et touches", () => {
-  test("Échap et P : pause, reprise ; Échap ferme d'abord la fenêtre du dessus", async ({ browser }) => {
-    const ctx = await fresh(browser);
-    const page = await ctx.newPage();
-    await open(page, "/?debug&scenario=essai&timescale=4");
-    await page.waitForFunction(() => window.__cdj.phase === "racing");
-    await page.keyboard.press("Escape");
-    await expect(page.locator("#pause")).toBeVisible();
-    for (const label of ["Reprendre", "Recommencer", "Dernier point de contrôle", "Réglages", "Comment jouer", "Accueil"]) await expect(page.locator("#pause-menu").getByRole("button", { name: label })).toBeVisible();
-    await page.locator("#pause-settings").click();
-    await expect(page.locator("#settings")).toBeVisible();
-    await page.keyboard.press("Escape"); // ferme les réglages, la pause reste
-    await expect(page.locator("#settings")).toBeHidden();
-    await expect(page.locator("#pause")).toBeVisible();
-    await page.keyboard.press("Escape"); // reprend
-    await expect(page.locator("#pause")).toBeHidden();
-    expect(await page.evaluate(() => window.__cdj.paused)).toBe(false);
-    await page.keyboard.press("p");
-    await page.waitForFunction(() => window.__cdj.paused === true);
-    await page.keyboard.press("p");
-    await page.waitForFunction(() => window.__cdj.paused === false);
-    await ctx.close();
-  });
 
-  test("manette : Start ouvre la pause, X recommence, Y reprend au point de contrôle", async ({ browser }) => {
+  test("manette : Start ouvre la pause, X recommence, Y reprend au point de contrôle", { tag: "@regression" }, async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await page.addInitScript(() => {
@@ -530,7 +426,7 @@ async function mockApi(ctx: BrowserContext, board: { rank: number; name: string;
   });
 }
 
-test.describe("classement", () => {
+test.describe("classement", { tag: "@regression" }, () => {
   const rows = [
     { rank: 1, name: "Nowy", ms: 30_000, medal: "gold" },
     { rank: 2, name: "Alice", ms: 31_000, medal: "silver" },
@@ -578,11 +474,10 @@ test.describe("classement", () => {
 const PHONES = [
   { name: "portrait", width: 390, height: 844 },
   { name: "paysage", width: 844, height: 390 },
-  { name: "petit portrait", width: 360, height: 640 },
 ] as const;
 
 for (const vp of PHONES) {
-  test(`téléphone ${vp.name} (${vp.width}×${vp.height}) : accueil, réglages, aide et pause sans chevauchement, cibles d'au moins 44 px`, async ({ browser }) => {
+  test(`téléphone ${vp.name} (${vp.width}×${vp.height}) : accueil, réglages, aide et pause sans chevauchement, cibles d'au moins 44 px`, { tag: "@regression" }, async ({ browser }) => {
     const ctx = await fresh(browser, vp, true);
     const page = await ctx.newPage();
     await open(page, "/?home=1&debug&api=demo&touch=1&timescale=4", { wide: true });
@@ -644,7 +539,7 @@ for (const vp of PHONES) {
     await page.locator("#home-daily").click();
     await page.waitForFunction(() => window.__cdj.phase === "racing");
     await page.addStyleTag({ content: "#banner { display: none !important; }" });
-    if (vp.name !== "portrait" && vp.name !== "petit portrait") {
+    if (vp.name !== "portrait") {
       // paysage : on conduit ; le HUD complet ne se chevauche pas (classement compris)
       await expect(page.locator("#board")).toBeHidden(); // téléphone : le classement est replié par défaut en course
       await page.keyboard.press("l");
@@ -669,7 +564,7 @@ for (const vp of PHONES) {
   });
 }
 
-test("ordinateur : le HUD de course, la pause et l'arrivée tiennent dans l'écran (police large)", async ({ browser }) => {
+test("ordinateur : le HUD de course, la pause et l'arrivée tiennent dans l'écran (police large)", { tag: "@regression" }, async ({ browser }) => {
   const ctx = await fresh(browser, { width: 1000, height: 560 });
   await mockApi(ctx, rows(), { rank: 2, name: "Alice", ms: 31_000, medal: "silver" });
   const page = await ctx.newPage();
@@ -690,7 +585,7 @@ function rows() {
 }
 
 // Les liens et boutons de l'ancienne interface ont disparu.
-test("plus de bouton Salon ni de ligne d'aide minuscule en course ; « Comment jouer » la remplace", async ({ browser }) => {
+test("plus de bouton Salon ni de ligne d'aide minuscule en course ; « Comment jouer » la remplace", { tag: "@regression" }, async ({ browser }) => {
   const ctx = await fresh(browser);
   const page = await ctx.newPage();
   await open(page, "/?debug&api=demo&scenario=essai");

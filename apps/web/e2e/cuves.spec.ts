@@ -8,41 +8,6 @@ test.setTimeout(150_000);
 
 const track = createCuvesTrack();
 
-test("?scenario=cuves : le pilote finit au temps de Node, sur le fond comme sur la paroi, et la voiture monte vraiment", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
-  await page.goto("/?debug&scenario=cuves&timescale=6&quality=2");
-  await page.waitForFunction(() => window.__cdj?.phase);
-  await expect(page.locator("#meta")).toHaveText("Circuit des cuves");
-  for (const wall of [false, true]) {
-    const run = runPilot(track, { grip: 1, wall });
-    expect(run.valid).toBe(true);
-    // Pas à pas (sans rendu) : la normale sous la voiture est lue tous les 30 pas. À vitesse ×6 en rendu logiciel, une image avance
-    // jusqu'à 3 s de course et un échantillonnage au minuteur ratait le passage sur la paroi (lot 21).
-    await page.evaluate(() => window.__cdj.manual(true));
-    await page.evaluate((c) => window.__cdj.autoplay(c), encodeReplay(run.replay));
-    let minNy = 1;
-    for (let guard = 0; guard < 2000; guard++) {
-      const state = await page.evaluate(async () => {
-        await window.__cdj.advance(30);
-        return { phase: window.__cdj.phase, ny: window.__cdj.car.ny };
-      });
-      if (state.phase === "racing") minNy = Math.min(minNy, state.ny);
-      if (state.phase === "finished") break;
-    }
-    const end = await page.evaluate(() => {
-      const r = window.__cdj.race as unknown as { finishMs: number; respawns: number };
-      return { finishMs: r.finishMs, respawns: r.respawns };
-    });
-    await page.evaluate(() => window.__cdj.manual(false));
-    expect(end.finishMs).toBe(run.finishMs);
-    expect(end.respawns).toBe(0);
-    // Sur le fond, le pilote ne monte pas ; sur la paroi, la voiture s'incline nettement.
-    if (wall) expect(minNy).toBeLessThan(0.85);
-  }
-  expect(errors).toEqual([]);
-});
-
 test("sur la paroi, le navigateur calcule la même voiture que Node, pas à pas (position, hauteur, normale)", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));

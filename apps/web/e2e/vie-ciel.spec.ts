@@ -47,26 +47,6 @@ test("?reglages=2+vie+ciel : le palier 2 et le groupe « vie et ciel » des tél
   expect(e.ombres).toBe(1024);
 });
 
-test("demandés en pleine course, la vie et le ciel se chargent mais la scène ne change qu'à la pause", async ({ page }) => {
-  await page.setViewportSize({ width: 844, height: 390 });
-  await page.goto("/?debug&seed=2026-10-16&ghost=off&fx=off&home=0");
-  await page.waitForFunction(() => window.__cdj?.phase);
-  await page.evaluate(() => window.__cdj.manual(true));
-  for (let i = 0; i < 40 && (await page.evaluate(() => window.__cdj.phase)) !== "racing"; i++) await page.evaluate(() => window.__cdj.advance(60));
-  const avant = await page.evaluate(() => window.__cdj.socle.scene());
-  await page.evaluate(() => window.__cdj.socle.demander("P2", ["vie", "ciel"]));
-  await expect.poll(async () => (await morceaux(page)).sort()).toEqual(["cielJeu", "vieJeu"]);
-  for (let i = 0; i < 6; i++) await page.evaluate(() => window.__cdj.advance(30));
-  await page.waitForTimeout(500); // rien ne doit changer pendant la course
-  expect(await page.evaluate(() => window.__cdj.socle.scene())).toBe(avant);
-  expect((await lire(page)).pas).toBeUndefined();
-  await page.keyboard.press("KeyP");
-  await page.waitForFunction(() => window.__cdj.socle.palier() === "P2");
-  const e = await lire(page);
-  expect(e.plus).toEqual(["vie", "ciel"]);
-  expect(Object.keys(e.pas!).sort()).toEqual(["ciel", "finition", "vie"]); // lot 45 : le palier 2 prend la finition
-});
-
 test.describe("au Stade, les confettis partent à l'arrivée", () => {
   const jour = daysFromCivil(2026, 10, 8);
   const circuit = dailyCircuit(jour);

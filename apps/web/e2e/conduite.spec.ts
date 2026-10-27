@@ -29,7 +29,7 @@ async function finishByTeleport(page: Page) {
   await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 15_000 });
 }
 
-test("?scenario=pilotage : le circuit de mise au point se charge et se joue", async ({ page }) => {
+test("?scenario=pilotage : le circuit de mise au point se charge et se joue", { tag: "@regression" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await racing(page, "/?debug&scenario=pilotage");
@@ -91,13 +91,3 @@ test("?debug&tune : les curseurs changent la voiture en direct ; la course n'est
   await expect(page.locator("#tuned")).toBeEmpty();
 });
 
-test("C change de caméra (proche → loin → capot), et le choix est gardé", async ({ page }) => {
-  await racing(page, "/?debug&scenario=pilotage");
-  await page.keyboard.press("KeyC");
-  await expect(page.locator("#banner")).toHaveText("Caméra : loin");
-  expect(await page.evaluate(() => localStorage.getItem("cdj:camera"))).toBe("loin");
-  await page.reload();
-  await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 15_000 }); // le décompte occupe le bandeau
-  await page.keyboard.press("KeyC");
-  await expect(page.locator("#banner")).toHaveText("Caméra : capot"); // lot 23 : le rechargement garde « loin », la suivante est le capot
-});

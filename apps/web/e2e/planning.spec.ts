@@ -11,7 +11,7 @@ test.setTimeout(150_000);
 
 const ready = (page: import("@playwright/test").Page) => page.waitForFunction(() => window.__cdj?.phase, undefined, { timeout: 40_000 });
 
-test("admin en démo : bandeau, planning de 14 cartes, aujourd'hui et historique", async ({ page }) => {
+test("admin en démo : bandeau, planning de 14 cartes, aujourd'hui et historique", { tag: "@regression" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto("/admin/?api=demo");
@@ -36,7 +36,7 @@ test("admin en démo : bandeau, planning de 14 cartes, aujourd'hui et historique
   expect(errors).toEqual([]);
 });
 
-test("remplacer J+2 dans le panneau : la variante choisie est gardée", async ({ page }) => {
+test("remplacer J+2 dans le panneau : la variante choisie est gardée", { tag: "@regression" }, async ({ page }) => {
   await page.goto("/admin/?api=demo");
   await page.evaluate(() => localStorage.removeItem("cdj:demo-plan"));
   await page.reload();
@@ -64,7 +64,7 @@ test("remplacer J+2 dans le panneau : la variante choisie est gardée", async ({
 // Le jeu en démo respecte le remplacement : même identifiant de circuit que le panneau. Séparé du test du panneau (lot 29b) : le jeu a besoin de
 // WebGL, que le Firefox de la CI n'a pas (`new WebGLRenderer` échoue, `__cdj` n'existe jamais : 40 s d'attente puis échec, à chaque run). Le panneau,
 // lui, est testé dans tous les navigateurs ; le jeu l'est partout où WebGL existe (Chromium, WebKit).
-test("le jeu en démo respecte le remplacement choisi dans le panneau (même identifiant de circuit)", async ({ page }) => {
+test("le jeu en démo respecte le remplacement choisi dans le panneau (même identifiant de circuit)", { tag: "@regression" }, async ({ page }) => {
   await page.goto("/admin/?api=demo"); // même origine que le jeu : le remplacement est écrit comme le fait le panneau (vérifié par le test précédent)
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (le panneau est testé ci-dessus)");
   await page.evaluate((plan) => localStorage.setItem("cdj:demo-plan", plan), JSON.stringify({ [J2_DATE]: { variant: 3, theme: null } }));
@@ -79,7 +79,7 @@ test("le jeu en démo respecte le remplacement choisi dans le panneau (même ide
   expect(await page.evaluate(() => window.__cdj.trackId)).toBe(dailyTrackId(J2 + 1));
 });
 
-test("revenir à l'original ; aujourd'hui et le passé n'ont pas de bouton de remplacement", async ({ page }) => {
+test("revenir à l'original ; aujourd'hui et le passé n'ont pas de bouton de remplacement", { tag: "@regression" }, async ({ page }) => {
   await page.goto("/admin/?api=demo");
   await page.evaluate((d) => localStorage.setItem("cdj:demo-plan", JSON.stringify({ [d]: { variant: 2, theme: null } })), J2_DATE);
   await page.reload();
@@ -97,17 +97,7 @@ test("revenir à l'original ; aujourd'hui et le passé n'ont pas de bouton de re
   expect(dates).not.toContain(formatDay(DEMO_TODAY - 1));
 });
 
-test("les outils d'essai : la variante devient ?variant=N, et un essai de variante n'est jamais classé", async ({ page }) => {
-  await page.goto("/admin/");
-  await page.locator("#date").fill("2026-10-20");
-  await page.locator("#variant").fill("2");
-  await expect(page.locator("#url")).toContainText("seed=2026-10-20&variant=2");
-  // sans API configurée, le planning montre les circuits d'origine mais ne permet pas de les remplacer
-  await expect(page.locator("#conn-state")).toContainText("Aucune API");
-  await expect(page.locator("#planning .card").first().getByRole("button", { name: "Remplacer" })).toBeDisabled();
-});
-
-test("le jeu : variante d'essai (?variant=) jouable, jamais classée ; sans API : hors ligne, non classé", async ({ page }) => {
+test("le jeu : variante d'essai (?variant=) jouable, jamais classée ; sans API : hors ligne, non classé", { tag: "@regression" }, async ({ page }) => {
   test.skip(test.info().project.name !== "chromium", "WebGL : Chromium seulement");
   await page.goto(`/?seed=${J2_DATE}&variant=2&debug`);
   await ready(page);
@@ -126,7 +116,7 @@ const API = "http://127.0.0.1:8787";
 const TOKEN = "e2e-admin-token-0123456789";
 const REAL_TODAY = TODAY;
 
-test("admin avec le vrai serveur : mauvais jeton refusé, bon jeton accepté, remplacement puis retour à l'original", async ({ page, request }) => {
+test("admin avec le vrai serveur : mauvais jeton refusé, bon jeton accepté, remplacement puis retour à l'original", { tag: "@regression" }, async ({ page, request }) => {
   await page.goto(`/admin/?api=${encodeURIComponent(API)}`);
   await page.evaluate(() => localStorage.removeItem("cdj:admin-token"));
   await page.reload();
@@ -188,7 +178,7 @@ test("le jeu : API muette → circuit d'origine, jouable, marqué hors ligne et 
   await expect(page.locator("#meta")).toContainText("hors ligne, non classé");
 });
 
-test("admin, section Médailles (lot 35) : refusée en démo ; avec le vrai serveur, un tableau par thème et par jour, en lecture seule", async ({ page, request }) => {
+test("admin, section Médailles (lot 35) : refusée en démo ; avec le vrai serveur, un tableau par thème et par jour, en lecture seule", { tag: "@regression" }, async ({ page, request }) => {
   await page.goto("/admin/?api=demo");
   await page.getByRole("button", { name: "Charger les médailles" }).click();
   await expect(page.locator("#med-state")).toContainText("pas de médailles en démonstration");

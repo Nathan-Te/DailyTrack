@@ -126,7 +126,7 @@ for (const [theme, mechanic, expected] of [
   ["nuit", "clignotant", ["blocApparait", "blocDisparait", "blocVacille", "metronome"]],
   ["neon", "alterne", ["bascule"]],
 ] as const) {
-  test(`niveau du jour ${theme} : sa rediffusion d'auteur finit au temps de l'auteur, avec ses blocs (${expected.join(", ")}) et aucune erreur de shader`, async ({ browser }) => {
+  test(`niveau du jour ${theme} : sa rediffusion d'auteur finit au temps de l'auteur, avec ses blocs (${expected.join(", ")}) et aucune erreur de shader`, { tag: "@regression" }, async ({ browser }) => {
     test.setTimeout(120_000);
     await atInstant(browser, FIXED_NOW, async (page) => {
       const errors = watchErrors(page);
@@ -239,7 +239,7 @@ test.describe("au doigt (téléphone en paysage)", () => {
   }
 });
 
-test("la jauge de la nuit (lot 18) : la face se vide sans clignoter, avec ou sans mouvement réduit ; le contour d'un bloc absent est pointillé", async ({ browser }) => {
+test("la jauge de la nuit (lot 18) : la face se vide sans clignoter, avec ou sans mouvement réduit ; le contour d'un bloc absent est pointillé", { tag: "@regression" }, async ({ browser }) => {
   for (const reduced of [true, false]) {
     const context = await browser.newContext({ reducedMotion: reduced ? "reduce" : "no-preference", viewport: { width: 900, height: 600 } });
     const page = await context.newPage();
@@ -287,9 +287,10 @@ test("la jauge de la nuit (lot 18) : la face se vide sans clignoter, avec ou san
   }
 });
 
-test("?debug&hitbox dessine l'état des blocs (plein, absent, jeu actif) sans erreur de shader, pour les deux mécaniques", async ({ page }) => {
+test("?debug&hitbox dessine l'état des blocs (plein, absent, jeu actif) sans erreur de shader, pour les deux mécaniques", { tag: "@regression" }, async ({ page }) => {
   const errors = watchErrors(page);
-  for (const id of ["nuit-opposition", "neon-couloir"]) {
+  // Lot R13 : un morceau au doigt (le néon) ; la nuit au doigt est retirée (même code des doigts, même solution posée).
+  for (const id of ["neon-couloir"]) {
     test.skip(!(await open(page, `/?module=${id}&variante=0&debug&hitbox`)), SKIP);
     await frames(page, 3);
     const b = (await J(page)).blocks!;
@@ -299,7 +300,7 @@ test("?debug&hitbox dessine l'état des blocs (plein, absent, jeu actif) sans er
   expect(errors).toEqual([]);
 });
 
-test("le métronome de la nuit bat sur les phases du cycle de la section ; `?metronome=off` le coupe sans couper les autres sons", async ({ page }) => {
+test("le métronome de la nuit bat sur les phases du cycle de la section ; `?metronome=off` le coupe sans couper les autres sons", { tag: "@regression" }, async ({ page }) => {
   for (const off of [false, true]) {
     test.skip(!(await open(page, `/?module=nuit-pont&variante=0&debug${off ? "&metronome=off" : ""}`)), SKIP);
     const run = await page.evaluate(() => {

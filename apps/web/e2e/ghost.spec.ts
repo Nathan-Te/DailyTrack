@@ -40,7 +40,7 @@ test.describe("fantôme (rendu 3D)", () => {
     expect(errors).toEqual([]);
   });
 
-  test("sans rediffusion enregistrée (ancien record), il n'y a pas de fantôme mais le jeu marche", async ({ page }) => {
+  test("sans rediffusion enregistrée (ancien record), il n'y a pas de fantôme mais le jeu marche", { tag: "@regression" }, async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("cdj:best:essai", JSON.stringify({ ms: 50_000, splits: [1, 2, 3] })));
     await page.goto("/?debug&scenario=essai");
     await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 15_000 });
@@ -48,30 +48,5 @@ test.describe("fantôme (rendu 3D)", () => {
   });
 });
 
-test.describe("enregistrement du record (rendu 3D)", () => {
-  test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
-
-  test("à l'arrivée, le temps est enregistré avec sa rediffusion", async ({ page }) => {
-    await page.goto("/?debug&scenario=essai");
-    await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 15_000 });
-    // On se téléporte juste avant la ligne d'arrivée : on teste l'enregistrement, pas la conduite
-    // (la rediffusion de cette course truquée n'est donc pas rejouable, seule sa présence compte).
-    await page.evaluate(() => {
-      const r = window.__cdj.race as unknown as { car: Record<string, number>; nextGate: number; track: { gates: { x: number; z: number }[] } };
-      r.nextGate = r.track.gates.length - 1;
-      const c = r.car;
-      c.x = -10 * 32 + 16;
-      c.z = 8 * 32 + 28;
-      c.y = 0;
-      c.yaw = Math.PI;
-      c.vx = 0;
-      c.vz = -40;
-    });
-    await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 15_000 });
-    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:best:essai")!));
-    expect(stored.ms).toBeGreaterThan(0);
-    expect(stored.simVersion).toBe(golden.simVersion);
-    expect(stored.replay).toMatch(/^[A-Za-z0-9_-]{10,}$/);
-    await expect(page.locator("#finish")).toBeVisible();
-  });
-});
+// Lot R13 : « à l'arrivée, le temps est enregistré avec sa rediffusion » est retiré (doublon) : watch.spec « écran d'arrivée : « Revoir le meilleur tour »
+// (sans API : ton record) ; la lecture finit sur ton temps » prouve que le record est enregistré avec une rediffusion rejouable.

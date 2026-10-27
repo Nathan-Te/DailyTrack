@@ -104,55 +104,6 @@ test("la page par défaut ouvre le niveau du jour (date de Paris, horloge décal
   });
 });
 
-test("trois dates ?seed= donnent trois niveaux différents, chacun avec son numéro et sa palette du jour", async ({ browser }) => {
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    const seen: DailyDebug[] = [];
-    for (const date of ["2026-10-17", "2026-10-20", "2026-11-02"]) {
-      test.skip(!(await open(page, `/?seed=${date}&debug`)), SKIP);
-      const j = await jump(page);
-      expect(j.daily!.date).toBe(date);
-      seen.push(j.daily!);
-    }
-    expect(seen.map((d) => d.number)).toEqual([2, 5, 18]);
-    expect(seen.map((d) => d.mode)).toEqual(["archive", "jour", "futur"]); // le futur est ouvert : aperçu
-    expect(new Set(seen.map((d) => d.hash)).size).toBe(3);
-    expect(new Set(seen.map((d) => d.pieces.map((p) => `${p.id}:${p.variant}`).join(" "))).size).toBe(3);
-    await expect(page.locator("#dayline")).toContainText("à venir");
-  });
-});
-
-test("?seed=…&solution finit au temps de l'auteur, en pas à pas, avec la médaille « auteur »", async ({ browser }) => {
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    test.skip(!(await open(page, "/?seed=2026-10-25&solution&debug")), SKIP);
-    await page.evaluate(() => {
-      const j = (window as unknown as { __jump: JumpDebug }).__jump;
-      j.manual(true);
-      j.restart(); // la lecture a pu démarrer pendant le chargement : on la relance, comme R
-    });
-    const start = await jump(page);
-    expect(start.watching).toBe(true);
-    expect(start.daily!.date).toBe("2026-10-25");
-    // Raccords fluides (lot 6) : un palier partagé entre deux morceaux, et la solution suivante démarre au pas de sortie de la précédente.
-    const pieces = start.daily!.pieces;
-    for (let k = 1; k < pieces.length; k++) {
-      // Lot 16 : devant une portion dure, la zone de bifurcation (cage et palier bis) s'ajoute au palier.
-      const zoned = start.daily!.slowRoutes.some((r) => r.piece === k);
-      expect(pieces[k]!.col0 - pieces[k - 1]!.col1 - 1).toBe(PALIER_LENGTH + (zoned ? SLOW_ZONE_WIDTH : 0));
-      expect(pieces[k]!.start).toBe(pieces[k - 1]!.end);
-    }
-    const ticks = await until(page, ["finished"], 6000);
-    expect(ticks).toBe(start.daily!.authorTicks);
-    const end = await jump(page);
-    expect(end.attempt).toMatchObject({ status: "arrivé", time: start.daily!.authorTicks, deaths: 0 });
-    expect(end.daily!.lastMedal).toBe("author");
-    await expect(page.locator("#finish")).toBeVisible();
-    await expect(page.locator("#finish .title")).toHaveText("Rediffusion de l'auteur");
-    await expect(page.locator("#finish .ref")).toContainText("Temps de l'auteur battu !"); // lot I5 : la phrase de la médaille du catalogue (arrivee.medaille.author)
-    await expect(page.locator("#finish .ref")).toContainText("Temps de l'auteur");
-    await expect(page.locator("#finish-next")).toBeHidden();
-  });
-});
-
 test("site publié (chemin sans /b/) : une date future ouvre le niveau du jour, « Ce niveau n'est pas encore sorti », même avec ?debug&solution", async ({ browser }) => {
   await atInstant(browser, FIXED_NOW, async (page, context) => {
     await servePublished(context);

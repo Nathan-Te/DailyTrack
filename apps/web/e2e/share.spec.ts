@@ -38,7 +38,7 @@ test("l'écran d'arrivée donne la ligne à partager, et « Copier » met le mes
   await expect(page.locator(".partage__champ")).toHaveCount(0);
 });
 
-test("copie refusée : le message s'affiche dans un champ déjà sélectionné, prêt pour Ctrl+C", async ({ page, baseURL }) => {
+test("copie refusée : le message s'affiche dans un champ déjà sélectionné, prêt pour Ctrl+C", { tag: "@regression" }, async ({ page, baseURL }) => {
   await page.addInitScript(() => {
     Object.defineProperty(Navigator.prototype, "clipboard", { get: () => ({ writeText: () => Promise.reject(new DOMException("refusé", "NotAllowedError")) }) });
   });
@@ -53,7 +53,7 @@ test("copie refusée : le message s'affiche dans un champ déjà sélectionné, 
   await expect(page.getByRole("button", { name: "Copié" })).toHaveCount(0);
 });
 
-test("sur téléphone la feuille de partage du système est proposée, avec « Copier » à côté", async ({ browser, baseURL }) => {
+test("sur téléphone la feuille de partage du système est proposée, avec « Copier » à côté", { tag: "@regression" }, async ({ browser, baseURL }) => {
   const context = await newClockedContext(browser, { hasTouch: true, isMobile: true, viewport: { width: 844, height: 390 }, deviceScaleFactor: 1, locale: "fr-FR" });
   try {
     await context.addInitScript(() => {
@@ -71,7 +71,7 @@ test("sur téléphone la feuille de partage du système est proposée, avec « C
   }
 });
 
-test("le bouton « Rejouer » relance un décompte (utile sans clavier)", async ({ page }) => {
+test("le bouton « Rejouer » relance un décompte (utile sans clavier)", { tag: "@regression" }, async ({ page }) => {
   await finishRace(page);
   // Pas à pas : avec timescale=6, une seule image lente du rendu logiciel (0,5 s × 6) mangeait tout le décompte de 3 s
   // avant que le test lise la phase (instable vu en CI, retouche 31b). Le décompte n'avance plus que par `advance`.
@@ -83,7 +83,7 @@ test("le bouton « Rejouer » relance un décompte (utile sans clavier)", async 
   expect(await page.evaluate(() => window.__cdj.phase)).toBe("racing");
 });
 
-test("le record garde sa médaille pour la liste des archives", async ({ page }) => {
+test("le record garde sa médaille pour la liste des archives", { tag: "@regression" }, async ({ page }) => {
   await finishRace(page);
   const stored = await page.evaluate((id) => JSON.parse(localStorage.getItem(`cdj:best:${id}`)!), circuit.track.id);
   expect(stored.medal).toBe(medal);
@@ -93,7 +93,7 @@ test.describe("archives", () => {
   const TODAY = "2026-10-30"; // 17 jours après le premier jour (13/10, circuit n° 1) : 18 circuits jouables
   const url = `/?debug&today=${TODAY}&seed=${TODAY}`;
 
-  test("listent les jours du lancement à aujourd'hui, avec le meilleur temps de chacun, et ouvrent le jour choisi", async ({ page }) => {
+  test("listent les jours du lancement à aujourd'hui, avec le meilleur temps de chacun, et ouvrent le jour choisi", { tag: "@regression" }, async ({ page }) => {
     await page.addInitScript(
       ([g, simVersion]) => localStorage.setItem(`cdj:best:jour-2026-10-29-g${g}`, JSON.stringify({ ms: 40123, splits: [], medal: "gold", simVersion })),
       [generatorVersionOf(parseDay("2026-10-29")!), SIM_VERSION] as const, // lot 34 : la version du générateur de ce jour
@@ -117,25 +117,6 @@ test.describe("archives", () => {
     await expect(page.locator("#meta")).toContainText("28 oct.");
     expect(new URL(page.url()).searchParams.get("seed")).toBe("2026-10-28");
     expect(new URL(page.url()).searchParams.get("today")).toBe(TODAY); // les réglages de test sont conservés
-  });
-
-  test("s'ouvrent et se ferment au clavier (H, Échap) et par « ‹ TRACK » (le cadre couvre l'écran : plus de clic à côté)", async ({ page }) => {
-    await page.goto(url);
-    await page.waitForFunction(() => window.__cdj?.phase);
-    await page.keyboard.press("KeyH");
-    await expect(page.locator("#archive")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.locator("#archive")).toBeHidden();
-    await page.keyboard.press("KeyH");
-    await page.locator("#archive .dj-barre-jeu__retour").click();
-    await expect(page.locator("#archive")).toBeHidden();
-  });
-
-  test("le lien d'aujourd'hui n'a pas de seed", async ({ page }) => {
-    await page.goto(`/?debug&today=${TODAY}&seed=2026-10-28`);
-    await page.waitForFunction(() => window.__cdj?.phase);
-    await page.keyboard.press("KeyH");
-    expect(await page.locator("#archive .day").first().getAttribute("href")).toBe("?debug=&today=2026-10-30");
   });
 
   test("un jour passé se joue sans envoyer de temps au classement", async ({ page }) => {

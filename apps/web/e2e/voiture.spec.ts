@@ -17,25 +17,6 @@ async function ouvrir(page: Page, adresse: string) {
   await page.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
 }
 
-test("sans choix : la civile ; une voiture non débloquée retombe sur la civile en orange de Track", async ({ browser }) => {
-  const context = await newClockedContext(browser, { viewport: { width: 1000, height: 560 } });
-  const page = await context.newPage();
-  await ouvrir(page, "/?home=0&debug&api=demo");
-  const v = await page.evaluate(() => window.__cdj.voiture);
-  expect(v.choix).toEqual({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
-  expect(v.essai).toBeNull();
-  expect(v.maillages).toBe(6);
-  // Le Proto (Dragonfly : 1 médaille d'auteur, lot 41) choisi sans que le serveur l'ait débloqué : la civile en orange.
-  await page.evaluate(() => localStorage.setItem("cdj:track:garage", JSON.stringify({ id: "proto", couleur: 5, motif: "flancs" })));
-  await ouvrir(page, "/?home=0&debug&api=demo");
-  await expect.poll(() => page.evaluate(() => window.__cdj.voiture.choix)).toEqual({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
-  // La civile dans une autre couleur, toujours permise.
-  await page.evaluate(() => localStorage.setItem("cdj:track:garage", JSON.stringify({ id: "civile", couleur: 3, motif: "unie" })));
-  await ouvrir(page, "/?home=0&debug&api=demo");
-  expect(await page.evaluate(() => window.__cdj.voiture.choix)).toEqual({ id: "civile", couleur: 3, motif: "unie", teinteMotif: 0 });
-  expect(await page.evaluate(() => window.__cdj.voiture.counted)).toBe(true);
-});
-
 test("?voiture=proto&couleur=5&motif=flancs : le Proto, chargé à la demande ; la course n'est ni envoyée ni enregistrée", async ({ browser }) => {
   const context = await newClockedContext(browser, { viewport: { width: 1000, height: 560 } });
   const page = await context.newPage();

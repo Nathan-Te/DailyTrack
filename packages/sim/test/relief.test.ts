@@ -19,6 +19,7 @@ import {
   parseToken,
   parseTrack,
   replayRace,
+  runPilot,
   stepRace,
   ReplayRecorder,
   trackWorld,
@@ -191,5 +192,15 @@ describe("scénario relief", () => {
     expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThanOrEqual(24);
     const open = track.blocks.filter((b) => b.open);
     expect(Math.min(...open.map((b) => b.y0)) - Math.min(...ys)).toBeGreaterThanOrEqual(6);
+  });
+
+  // Lot R13 (docs/tests.md) : repris de e2e/relief.spec.ts (« le pilote finit au temps de Node »), supprimé : le navigateur = Node est prouvé par replay.spec
+  // et daily.spec (circuits de référence, sauts compris) ; ici, la course du pilote elle-même.
+  it("le pilote le finit sans reprise ni chute, et franchit les deux sauts ; la rediffusion redonne exactement ce temps", () => {
+    const run = runPilot(track, { grip: 1 });
+    expect(run.valid).toBe(true);
+    expect(run.respawns).toBe(0);
+    expect(run.jumps).toHaveLength(2);
+    expect(replayRace(track, run.replay).finishMs).toBe(run.finishMs);
   });
 });

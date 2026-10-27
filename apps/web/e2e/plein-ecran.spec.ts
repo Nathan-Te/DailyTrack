@@ -94,9 +94,9 @@ for (const viewport of [
   });
 }
 
+// Lot R13 (docs/tests.md) : deux formats (téléphone en paysage, ordinateur) et le portrait là où l'écran s'y affiche ; 740×360 et 360×640 sont retirés.
 for (const viewport of [
   { width: 390, height: 844 },
-  { width: 360, height: 640 },
 ]) {
   test(`portrait ${viewport.width}×${viewport.height} : la caméra reste en vue (groupe de droite), le plein écran laisse la place à la bande (il reste dans la pause et sur l'accueil)`, async ({ browser }) => {
     const context = await telephone(browser, viewport);
@@ -163,16 +163,6 @@ test("caméra : chaque appui passe à la caméra suivante, comme la touche C ; l
   await context.close();
 });
 
-test("anglais : « Camera: close », « Full screen »", async ({ browser }) => {
-  const context = await telephone(browser, { width: 844, height: 390 }, "en-US");
-  const page = await enCourse(context);
-  await expect(page.locator("#btn-camera")).toHaveAttribute("aria-label", "Camera: close");
-  await page.locator("#btn-camera").click();
-  await expect(page.locator("#btn-camera")).toHaveAttribute("aria-label", "Camera: far");
-  await expect(page.locator("#btn-fullscreen")).toHaveAttribute("aria-label", "Full screen");
-  await context.close();
-});
-
 test("sans API plein écran ou en mode application : aucun bouton plein écran (ni en course, ni à l'accueil, ni dans la pause) ; la caméra reste", async ({ browser }) => {
   for (const cache of [sansPleinEcran, commeApplication]) {
     const context = await telephone(browser, { width: 844, height: 390 });
@@ -194,7 +184,6 @@ test("sans API plein écran ou en mode application : aucun bouton plein écran (
 
 for (const viewport of [
   { width: 844, height: 390 },
-  { width: 740, height: 360 },
 ]) {
   test(`accueil ${viewport.width}×${viewport.height} : le plein écran est dans la barre des jeux, à côté de la date ; il bascule`, async ({ browser }) => {
     const context = await telephone(browser, viewport);
@@ -243,8 +232,8 @@ test("axe : l'accueil avec son bouton plein écran, la course avec ses deux nouv
 });
 
 for (const [langue, locale, ligne, fermer] of [
+  // Lot R13 : le français seulement (l'anglais des mêmes clés : packages/ui/test/catalogues.test.ts et langue.spec.ts).
   ["fr", "fr-FR", "Pour jouer en plein écran : Partager › Sur l'écran d'accueil", "Fermer cette astuce"],
-  ["en", "en-US", "To play full screen: Share › Add to Home Screen", "Dismiss this tip"],
 ] as const) {
   test(`iPhone (${langue}) : pas de bouton plein écran ; la ligne « Partager › Sur l'écran d'accueil » s'affiche une fois, se ferme et ne revient pas`, async ({ browser }) => {
     const context = await newClockedContext(browser, { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, locale, userAgent: IPHONE_UA });

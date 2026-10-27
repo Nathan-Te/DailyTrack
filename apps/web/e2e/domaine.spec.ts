@@ -76,7 +76,7 @@ test("portail : une cartouche par jeu, le numéro du jour, un lien relatif", asy
   await expect(page).toHaveURL(`${SITE}/jump/`);
 });
 
-test("les deux jeux sous /track/ et /jump/ : ressources, niveaux figés, démonstration, serveur sous la même adresse", async ({ browser }) => {
+test("les deux jeux sous /track/ et /jump/ : ressources, niveaux figés, démonstration, serveur sous la même adresse", { tag: "@navigateurs" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser)).newPage();
   await page.goto(`${SITE}/`);
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : les jeux ne démarrent pas (portail testé à part)");
@@ -155,7 +155,7 @@ async function bigEnough(page: Page, selector: string): Promise<void> {
   expect(Math.round(box!.height * 60) / 60, selector).toBeGreaterThanOrEqual(44);
 }
 
-test("mentions légales : depuis le portail, au doigt en portrait ; retour au portail", async ({ browser }) => {
+test("mentions légales : depuis le portail, au doigt en portrait ; retour au portail", { tag: "@regression" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser, PORTRAIT)).newPage();
   await page.goto(`${SITE}/`);
   await bigEnough(page, "#mentions");
@@ -168,7 +168,7 @@ test("mentions légales : depuis le portail, au doigt en portrait ; retour au po
   await expect(page).toHaveURL(`${SITE}/`);
 });
 
-test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyTrack, au doigt en portrait", async ({ browser }) => {
+test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyTrack, au doigt en portrait", { tag: "@regression" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser, PORTRAIT)).newPage();
   await page.goto(`${SITE}/track/?home=1&debug&api=demo&touch=1`);
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (portail testé à part)");
@@ -194,7 +194,7 @@ test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyTra
   await mentionsShown(page);
 });
 
-test("mentions légales : depuis le menu ⏸ et les Réglages de Jump, au doigt en portrait", async ({ browser }) => {
+test("mentions légales : depuis le menu ⏸ et les Réglages de Jump, au doigt en portrait", { tag: "@regression" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser, PORTRAIT)).newPage();
   await page.goto(`${SITE}/jump/?debug&touch=1`);
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (portail testé à part)");
@@ -300,7 +300,7 @@ test("lot I6 : une adresse inconnue → la page 404 de la charte (deux langues, 
   expect(await api.json()).toEqual({ error: "not_found" });
 });
 
-test("lot I6 : mentions en anglais — le portail en EN ouvre /legal/, qui renvoie à la française (elle fait foi)", async ({ browser }) => {
+test("lot I6 : mentions en anglais — le portail en EN ouvre /legal/, qui renvoie à la française (elle fait foi)", { tag: "@regression" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser, { ...PORTRAIT, locale: "en-US" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("#mentions")).toHaveText("Legal notice and privacy");
@@ -320,7 +320,7 @@ test("lot I6 : mentions en anglais — le portail en EN ouvre /legal/, qui renvo
 });
 
 // ——— Lot I4 : les polices de Track sont celles du portail (un seul chemin sur le site : `/assets/…`) ———
-test("lot I4 : Track demande ses polices à /assets/, les mêmes fichiers que le portail, et le site n'en garde qu'un exemplaire", async ({ browser }) => {
+test("lot I4 : Track demande ses polices à /assets/, les mêmes fichiers que le portail, et le site n'en garde qu'un exemplaire", { tag: "@regression" }, async ({ browser }) => {
   const context = await newClockedContext(browser, { locale: "fr-FR" });
   const page = await context.newPage();
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (portail testé à part)");
