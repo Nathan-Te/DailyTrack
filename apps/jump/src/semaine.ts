@@ -81,6 +81,26 @@ function miniature(day: SemaineDay, repeated: ReadonlySet<string>): HTMLCanvasEl
     g.fillStyle = c.danger;
     g.fillRect(s.col * TILE, (s.row + 1) * TILE, TILE, TILE);
   }
+  // Lot 25 : un laser fixe : son rayon, fin, en danger ; une barre coulissante : son trajet en pointillé neutre (deux rails, une tuile sur deux) et sa position de départ en danger, fine.
+  for (const q of day.lasers ?? []) {
+    g.fillStyle = c.danger;
+    if (q.axis === "h") g.fillRect(q.col * TILE, q.row * TILE + TILE / 2 - 0.5, q.length * TILE, 1);
+    else g.fillRect(q.col * TILE + TILE / 2 - 0.5, q.row * TILE, 1, q.length * TILE);
+  }
+  for (const b of day.barres ?? []) {
+    g.fillStyle = c.plateforme;
+    const [c0, r0] = b.from;
+    const [c1, r1] = b.to;
+    if (b.axis === "h") {
+      for (const x of [c0, c0 + b.length]) for (let r = Math.min(r0, r1); r <= Math.max(r0, r1); r += 2) g.fillRect(x * TILE - 0.5, r * TILE, 1, TILE);
+      g.fillStyle = c.danger;
+      g.fillRect(c0 * TILE, r0 * TILE + TILE / 2 - 0.5, b.length * TILE, 1);
+    } else {
+      for (const y of [r0, r0 + b.length]) for (let col = Math.min(c0, c1); col <= Math.max(c0, c1); col += 2) g.fillRect(col * TILE, y * TILE - 0.5, TILE, 1);
+      g.fillStyle = c.danger;
+      g.fillRect(c0 * TILE + TILE / 2 - 0.5, r0 * TILE, 1, b.length * TILE);
+    }
+  }
   g.fillStyle = c.danger;
   for (const [col, r] of day.saws) g.fillRect(col * TILE - 1, r * TILE - 1, TILE + 2, TILE + 2);
   // Sous la miniature : les colonnes des morceaux qui reviennent dans la semaine.
@@ -112,7 +132,7 @@ export function mountSemaine(options: UrlChoices): SemaineView {
     el(
       "p",
       "lead",
-      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein). Depuis g16, des presses dans l'usine (en rouge : leur course à demi, leur position haute en plein). Depuis g17, des champignons dans la forêt (en crème, une tuile chacun, comme les autres mécaniques). Depuis g18, des stalactites dans la glace (leur zone de déclenchement en crème pâle, leur corps en crème, leur pointe en rouge).`,
+      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein). Depuis g16, des presses dans l'usine (en rouge : leur course à demi, leur position haute en plein). Depuis g17, des champignons dans la forêt (en crème, une tuile chacun, comme les autres mécaniques). Depuis g18, des stalactites dans la glace (leur zone de déclenchement en crème pâle, leur corps en crème, leur pointe en rouge). Depuis g19, des lasers dans le néon (un rayon fixe : un fin trait rouge ; une barre coulissante : son trajet en pointillé crème et sa position de départ en rouge).`,
     ),
   );
   const status = el("p", "count", "Calcul des niveaux…");

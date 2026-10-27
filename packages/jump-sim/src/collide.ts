@@ -47,15 +47,15 @@ export function sweep(level: Grid, pos: number, size: number, d: number, o: numb
   if (d === 0) return { pos, blocked: false };
   const o0 = tileOf(o);
   const o1 = tileOf(o + osize - 1);
-  const hit = (t: number) => (horizontal ? solidIn(level, t, t, o0, o1) : solidIn(level, o0, o1, t, t));
+  // (Optimisation du lot 25 : le test d'une tuile est écrit en ligne plutôt que dans une fonction créée à chaque appel ; mêmes résultats.)
   if (d > 0) {
     const first = tileOf(pos + size - 1) + 1;
     const last = tileOf(pos + size + d - 1);
-    for (let t = first; t <= last; t++) if (hit(t)) return { pos: t * UNITS_PER_TILE - size, blocked: true };
+    for (let t = first; t <= last; t++) if (horizontal ? solidIn(level, t, t, o0, o1) : solidIn(level, o0, o1, t, t)) return { pos: t * UNITS_PER_TILE - size, blocked: true };
   } else {
     const first = tileOf(pos) - 1;
     const last = tileOf(pos + d);
-    for (let t = first; t >= last; t--) if (hit(t)) return { pos: (t + 1) * UNITS_PER_TILE, blocked: true };
+    for (let t = first; t >= last; t--) if (horizontal ? solidIn(level, t, t, o0, o1) : solidIn(level, o0, o1, t, t)) return { pos: (t + 1) * UNITS_PER_TILE, blocked: true };
   }
   return { pos: pos + d, blocked: false };
 }

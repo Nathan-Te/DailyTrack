@@ -1,13 +1,14 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
-import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, circleHitsBox, initialAttempt, stepAttempt, type AttemptState, type Box } from "./attempt";
-import { JUMP_GENERATOR_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
-import { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
+import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, circleHitsBox, initialAttempt, sawReach, stepAttempt, type AttemptState, type Box } from "./attempt";
+import { JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
+import { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
 import { idiv } from "./idiv";
-import { TILE_EMPTY, TILE_SOLID, cycleMod, mushroomPad, parseLevel, platformPos, pressBox, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
+import { PRESS_HEIGHT_TILES, TILE_EMPTY, TILE_SOLID, cycleMod, laserBarBox, laserBox, mushroomPad, parseLevel, platformPos, pressBox, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
 import { FROZEN_BASE_IDS } from "./figes";
 import { platformProblems } from "./plateformes";
 import { mushroomPieceProblems } from "./champignonsPieces";
 import { mushroomProblems } from "./champignons";
+import { barCourse, laserProblems } from "./lasers";
 import { stalactiteProblems } from "./stalactites";
 import { stalactitePieceProblems } from "./stalactitesPieces";
 import { presseProblems } from "./presses";
@@ -20,7 +21,7 @@ import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpR
 import { SLOW_MAX_EXTRA, SLOW_MIN_EXIGENCE, SLOW_REACH_ROWS, SLOW_ZONE_WIDTH, carveSlowRoute, slowCostMin, slowGalleryRow, slowHeadroom, slowLedges, slowScript, type SlowRoute } from "./voies";
 
 // Lot 21 : le numéro et l'identifiant d'un niveau, ses médailles et les numéros de générateur de référence sont dans `jours.ts` ; réexportés ici.
-export { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
+export { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
 
 // Le niveau du jour (lot 5) : `dailyLevel(jour)` assemble des morceaux du catalogue (lot 4) qui **portent leur solution**, puis **rejoue** la
 // suite de ces solutions sur le niveau assemblé. Si elle arrive au bout sans mourir, le niveau est valide et ce rejeu donne le temps de
@@ -164,6 +165,13 @@ export const DAILY_MAX_ATTEMPTS = 40;
  * plus d'impasses (une composition qui n'aboutit pas ne coûte presque rien : aucun rejeu). Réglé par la mesure : secours 0 sur 365 dates.
  */
 export const DAILY_MAX_ATTEMPTS_V4 = 120;
+/**
+ * Lot 25 : **1 000 tentatives au plus pour les niveaux en version 9** (120 avant). À W = 4 le dernier jour d'une époque écarte les morceaux de six jours voisins : quelques jours
+ * très étroits (mesurés : le 06/05/2027 en forêt, 204 tentatives ; le 11/07/2027 en nuit, 798) n'ont de composition valide que très rarement. Une impasse ne coûte presque
+ * rien et un jour qui réussit en 120 tentatives s'arrête au même tirage qu'avant : seuls les jours qui tombaient au niveau de secours cherchent plus longtemps.
+ */
+export const DAILY_MAX_ATTEMPTS_LASERS = 1000;
+const maxAttemptsV4 = (simVersion: number): number => (simVersion >= LASER_VERSION ? DAILY_MAX_ATTEMPTS_LASERS : DAILY_MAX_ATTEMPTS_V4);
 /** Sels des graines : `mixSeed(jour, DAILY_SALT)`, et des groupes de repos. */
 const DAILY_SALT = 0x6a6f7572;
 
@@ -257,7 +265,17 @@ export function isRestedModule(id: string, day: number): boolean {
  * **Choisi par la mesure** (README du lot 19) : sous la règle bornée ci-dessous, W = 3 garde 0 secours sur 365 dates ; W = 4 en donne 6 à 12
  * sur 120 dates (même avec 150 tirages par jour), W = 5 davantage : le catalogue est trop mince.
  */
-export const VARIETY_DAYS = 3;
+export const VARIETY_DAYS = 4;
+/**
+ * Lot 25 : **W passe de 3 à 4 pour les niveaux en version 9 et suivants** (générateur g19) : la mesure directe du lot 24 (365 dates, 0 secours, aucun retour avant 4 jours)
+ * l'a montré tenable avec les 6 morceaux de la glace. Les références v4 à v8 (g14 à g18) gardent W = 3, au bit près (`varietyDays`).
+ */
+export const VARIETY_DAYS_BEFORE_LASERS = 3;
+
+/** Le délai de variété W d'un niveau de cette version de simulation (4 depuis la version 9, 3 avant). */
+export function varietyDays(simVersion = LASER_VERSION): number {
+  return simVersion >= LASER_VERSION ? VARIETY_DAYS : VARIETY_DAYS_BEFORE_LASERS;
+}
 /**
  * **Règle bornée : des époques de `VARIETY_EPOCH` jours**, alignées sur `VARIETY_ORIGIN`. Dans une époque, chaque jour écarte les morceaux
  * des jours qui le précèdent dans l'époque (à moins de `VARIETY_DAYS`) ; les `VARIETY_DAYS − 1` derniers jours d'une époque écartent **aussi**
@@ -287,29 +305,31 @@ export function varietyPosition(day: number): number {
  * époque, les premiers jours de la suivante à moins de `VARIETY_DAYS` jours. Toute paire de jours à moins de `VARIETY_DAYS` jours y est
  * couverte exactement une fois (par le plus tardif dans une époque, par celui de la première époque à travers une coupure).
  */
-export function varietyNeighbours(day: number): number[] {
+export function varietyNeighbours(day: number, simVersion = LASER_VERSION): number[] {
+  const W = varietyDays(simVersion);
   const pos = varietyPosition(day);
   const out: number[] = [];
-  for (let k = 1; k < VARIETY_DAYS; k++) {
+  for (let k = 1; k < W; k++) {
     if (k <= pos || (day - k < VARIETY_ORIGIN && day >= VARIETY_ORIGIN)) out.push(day - k);
   }
-  for (let k = 1; k < VARIETY_DAYS; k++) {
+  for (let k = 1; k < W; k++) {
     const q = pos + k;
-    if (q >= VARIETY_EPOCH && q - VARIETY_EPOCH < VARIETY_DAYS - 1) out.push(day + k);
+    if (q >= VARIETY_EPOCH && q - VARIETY_EPOCH < W - 1) out.push(day + k);
   }
   return out;
 }
 
 /** Les morceaux de base du niveau du jour `day` (son thème, v4) : le contenu figé avant `VARIETY_ORIGIN`, sinon celui que donne `dailyLevel`. */
-export function dailyBaseIds(day: number, simVersion = STALACTITE_VERSION): readonly string[] {
-  const frozen = day < VARIETY_ORIGIN ? VARIETY_FROZEN[formatDay(day)] : undefined;
+export function dailyBaseIds(day: number, simVersion = LASER_VERSION): readonly string[] {
+  // Lot 25 : la table des jours figés couvre les `VARIETY_DAYS − 1` jours d'avant l'origine (W = 4) ; une version à W = 3 (g14 à g18) n'en lit que les deux derniers, comme avant le lot.
+  const frozen = day < VARIETY_ORIGIN && VARIETY_ORIGIN - day < varietyDays(simVersion) ? VARIETY_FROZEN[formatDay(day)] : undefined;
   return frozen ?? dailyLevel(day, null, simVersion).pieces.map((p) => p.id);
 }
 
 /** Les morceaux de base que le niveau v4 du jour `day` ne peut pas poser (lot 19). */
-export function varietyExcluded(day: number, simVersion = STALACTITE_VERSION): Set<string> {
+export function varietyExcluded(day: number, simVersion = LASER_VERSION): Set<string> {
   const out = new Set<string>();
-  for (const d of varietyNeighbours(day)) for (const id of dailyBaseIds(d, simVersion)) out.add(id);
+  for (const d of varietyNeighbours(day, simVersion)) for (const id of dailyBaseIds(d, simVersion)) out.add(id);
   return out;
 }
 
@@ -407,6 +427,7 @@ let catalogV5: Choice[][] | null = null;
 let catalogV6: Choice[][] | null = null;
 let catalogV7: Choice[][] | null = null;
 let catalogV8: Choice[][] | null = null;
+let catalogV9: Choice[][] | null = null;
 
 /**
  * Lot 20 : les morceaux de base à plateformes mobiles (une ligne `plateforme` dans leur bloc annexe) : réservés aux niveaux en version 5. Les catalogues des
@@ -441,20 +462,36 @@ export function stalactiteModuleIds(): ReadonlySet<string> {
 }
 
 /**
+ * Lot 25 : les morceaux de base à lasers (étiquette `laser` : une ligne `laser` ou `barre` dans leur bloc annexe) : réservés aux niveaux en version 9. Les catalogues
+ * des versions 3 à 8 ne les connaissent pas (golden v3 à v8 au bit près).
+ */
+export function laserModuleIds(): ReadonlySet<string> {
+  return new Set(MODULES.filter((def) => def.tags.includes("laser")).map((def) => def.id));
+}
+
+/**
  * Par morceau (ordre du catalogue), ses variantes utilisables. Calculé une fois (déterministe). Lot 15 : en version 4, sans les variantes
  * refusées par la validation toutes phases (`PHASE_REFUSED`) ; lot 18 : ni celles dont une phase de clignotement dure moins de 1,5 s (`blinkTooFast`).
  */
 function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
   if (simVersion >= SINGLE_CLOCK_VERSION) {
     const usable = (list: Choice[]) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE }));
+    if (simVersion >= LASER_VERSION) {
+      catalogV9 ??= allChoices().map(usable).filter((list) => list.length > 0);
+      return catalogV9;
+    }
     if (simVersion >= STALACTITE_VERSION) {
-      catalogV8 ??= allChoices().map(usable).filter((list) => list.length > 0);
+      // Lot 25 : la référence v8 (g18) ne connaît pas les morceaux à lasers.
+      catalogV8 ??= allChoices()
+        .filter((list) => !laserModuleIds().has(list[0]!.id))
+        .map(usable)
+        .filter((list) => list.length > 0);
       return catalogV8;
     }
     if (simVersion >= MUSHROOM_VERSION) {
       // Lot 24 : la référence v7 (g17) ne connaît pas les morceaux à stalactites.
       catalogV7 ??= allChoices()
-        .filter((list) => !stalactiteModuleIds().has(list[0]!.id))
+        .filter((list) => !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id))
         .map(usable)
         .filter((list) => list.length > 0);
       return catalogV7;
@@ -462,7 +499,7 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
     if (simVersion >= PRESS_VERSION) {
       // Lot 23 : la référence v6 (g16) ne connaît pas les morceaux à champignons.
       catalogV6 ??= allChoices()
-        .filter((list) => !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id))
+        .filter((list) => !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id))
         .map(usable)
         .filter((list) => list.length > 0);
       return catalogV6;
@@ -470,21 +507,21 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
     if (simVersion >= PLATFORM_VERSION) {
       // Lot 22 : la référence v5 (g15) ne connaît pas les morceaux à presses (lot 23 : ni ceux à champignons).
       catalogV5 ??= allChoices()
-        .filter((list) => !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id))
+        .filter((list) => !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id))
         .map(usable)
         .filter((list) => list.length > 0);
       return catalogV5;
     }
     // Lot 20 : la référence v4 (g14) ne connaît pas les morceaux à plateformes (lot 22 : ni ceux à presses ; lot 23 : ni ceux à champignons).
     catalogV4 ??= allChoices()
-      .filter((list) => !platformModuleIds().has(list[0]!.id) && !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id))
+      .filter((list) => !platformModuleIds().has(list[0]!.id) && !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id))
       .map(usable)
       .filter((list) => list.length > 0);
     return catalogV4;
   }
   // Lots 17 et 18 : la référence v3 ne connaît pas les variantes ajoutées aux g12 et g13 (lot 20 : ni les morceaux à plateformes ; lot 22 : ni ceux à presses ; lot 23 : ni ceux à champignons).
   catalog ??= allChoices()
-    .filter((list) => !platformModuleIds().has(list[0]!.id) && !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id))
+    .filter((list) => !platformModuleIds().has(list[0]!.id) && !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id))
     .map((list) => list.filter((c) => !V4_ONLY_VARIANTS[c.id]?.includes(c.variant)))
     .filter((list) => list.length > 0);
   return catalog;
@@ -881,6 +918,21 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
         );
         continue;
       }
+      // Lot 25 : un laser fixe (sa première tuile, 4e mot) ou une barre coulissante (ses deux positions, mots 6 et 7), identifiant préfixé du morceau, décalés comme les points d'une scie.
+      if (words[0] === "laser" || words[0] === "barre") {
+        const first = words[0] === "laser" ? 3 : 5;
+        const last = words[0] === "laser" ? 3 : 6;
+        annex.push(
+          words
+            .map((w, i) => {
+              if (i === 1) return `${p.choice.id}/${w}`;
+              const m = i >= first && i <= last ? /^(\d+),(\d+)$/.exec(w) : null;
+              return m ? `${Number(m[1]) - built.lead + col},${Number(m[2]) + top}` : w;
+            })
+            .join(" "),
+        );
+        continue;
+      }
       if (words[0] !== "scie") continue;
       annex.push(
         words
@@ -1123,6 +1175,8 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   // Lot 24 : les règles des stalactites (zone dans le morceau et loin des paliers, un bloc plein pour la briser ; la course franche de chaque morceau).
   out.push(...stalactiteProblems(d.level));
   if (d.level.stalactites.length > 0) for (const p of pieces) out.push(...stalactitePieceProblems(p.id, p.variant));
+  // Lot 25 : les règles des lasers (dans leur morceau, rien d'autre dans leur course, pas de point de passage, une place sûre pour attendre, une barre qui ne coince pas).
+  out.push(...laserProblems(d.level));
   return out;
 }
 
@@ -1155,6 +1209,9 @@ export function respawnProblems(level: Level): string[] {
       if (boxesOverlapUnits(box, mushroomPad(m))) out.push(`${name} : le champignon (${m.col},${m.row}) touche le palier`);
     }
     for (const saw of level.saws) {
+      // (Optimisation du lot 25 : une scie dont tout le trajet est loin de la boîte ne peut pas y passer, à aucun pas : même verdict, sans parcourir son cycle.)
+      const reach = sawReach(saw);
+      if (!boxesOverlapUnits(box, { x: reach.x0, y: reach.y0, w: reach.x1 - reach.x0, h: reach.y1 - reach.y0 })) continue;
       const steps = saw.cycle === 0 ? 1 : saw.cycle;
       for (let t = 0; t < steps; t++) {
         const at = sawCenter(saw, t);
@@ -1166,6 +1223,10 @@ export function respawnProblems(level: Level): string[] {
     }
     // Lot 20 : ni une plateforme mobile, à aucun pas de son cycle (elle ne porte, ne cache ni ne pousse personne à la reprise).
     for (const plat of level.platforms) {
+      // (Optimisation du lot 25 : même principe, avec le rectangle que balaie la plateforme.)
+      const px0 = Math.min(plat.a.col, plat.b.col) * UNITS_PER_TILE;
+      const py0 = Math.min(plat.a.row, plat.b.row) * UNITS_PER_TILE;
+      if (!boxesOverlapUnits(box, { x: px0, y: py0, w: (Math.abs(plat.b.col - plat.a.col) + plat.width) * UNITS_PER_TILE, h: (Math.abs(plat.b.row - plat.a.row) + 1) * UNITS_PER_TILE })) continue;
       for (let t = 0; t < plat.cycle; t++) {
         const at = platformPos(plat, t);
         if (boxesOverlapUnits(box, { x: at.x, y: at.y, w: plat.width * UNITS_PER_TILE, h: UNITS_PER_TILE })) {
@@ -1176,9 +1237,24 @@ export function respawnProblems(level: Level): string[] {
     }
     // Lot 22 : ni une presse, à aucun pas de son cycle (le point reste sûr à toute phase : la presse n'y passe jamais).
     for (const press of level.presses) {
+      if (!boxesOverlapUnits(box, { x: press.col * UNITS_PER_TILE, y: press.row * UNITS_PER_TILE, w: press.width * UNITS_PER_TILE, h: (press.travel + PRESS_HEIGHT_TILES) * UNITS_PER_TILE })) continue;
       for (let t = 0; t < press.cycle; t++) {
         if (boxesOverlapUnits(box, pressBox(press, t))) {
           out.push(`${name} : la presse ${press.id} y passe (pas ${t} de son cycle)`);
+          break;
+        }
+      }
+    }
+    // Lot 25 : ni un rayon, à aucun pas (un laser fixe, allumé ou non ; une barre coulissante, sur tout son cycle) : le point reste sûr à toute phase.
+    for (const laser of level.lasers) {
+      if (boxesOverlapUnits(box, laserBox(laser))) out.push(`${name} : le laser ${laser.id} y passe`);
+    }
+    for (const bar of level.laserBars) {
+      const c = barCourse(bar);
+      if (!boxesOverlapUnits(box, { x: c.c0 * UNITS_PER_TILE, y: c.r0 * UNITS_PER_TILE, w: (c.c1 - c.c0 + 1) * UNITS_PER_TILE, h: (c.r1 - c.r0 + 1) * UNITS_PER_TILE })) continue;
+      for (let t = 0; t < bar.cycle; t++) {
+        if (boxesOverlapUnits(box, laserBarBox(bar, t))) {
+          out.push(`${name} : la barre ${bar.id} y passe (pas ${t} de son cycle)`);
           break;
         }
       }
@@ -1323,6 +1399,46 @@ function prove(picks: readonly { id: string; variant: number }[], id: string, th
   }
 }
 
+/** Lot 25 : un seul rejeu de la preuve sur le niveau à une seule horloge : ses états, ses statistiques de course (`runStatsOf`) et son temps. */
+interface ProofPlay {
+  states: AttemptState[];
+  palierTicks: number[];
+  longestRun: number;
+  time: number;
+}
+
+/**
+ * Joue les commandes de la preuve une fois et rend ce que `replayAttempt` (finie, sans mort, au temps `expected`) et `runStatsOf` rendaient séparément, ou `null` si le cas
+ * n'est pas l'ordinaire : une mort, l'arrivée avant le dernier pas ou pas du tout, un autre temps. L'appelant rejoue alors comme avant, avec les mêmes messages.
+ */
+function playProof(level: Level, paliers: readonly Palier[], inputs: readonly number[], expected: number): ProofPlay | null {
+  const joints = paliers.slice(1, -1);
+  const palierTicks = joints.map(() => 0);
+  const states: AttemptState[] = [];
+  let s = initialAttempt(level);
+  let run = 0;
+  let longestRun = 0;
+  for (let i = 0; i < inputs.length; i++) {
+    const bits = inputs[i]!;
+    s = stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
+    states.push(s);
+    if (s.status === ATTEMPT_DEAD) return null;
+    const quiet = s.player.ground === 1 && (bits & INPUT_JUMP) === 0;
+    if (quiet) {
+      const col = centerCol(s.player);
+      for (let k = 0; k < joints.length; k++) if (col >= joints[k]!.col0 && col <= joints[k]!.col1) palierTicks[k]!++;
+    }
+    run = quiet ? run + 1 : 0;
+    if (run > longestRun) longestRun = run;
+    if (s.status === ATTEMPT_FINISHED) {
+      if (i !== inputs.length - 1 || s.time !== expected) return null;
+      break;
+    }
+  }
+  if (s.status !== ATTEMPT_FINISHED) return null;
+  return { states, palierTicks, longestRun, time: s.time };
+}
+
 function proveOnce(picks: readonly { id: string; variant: number }[], id: string, theme: JumpThemeName, simVersion: number, extras: readonly number[]): { built: Built; problems: string[]; cheap: number[] } | string {
   let asm: Assembled;
   try {
@@ -1339,6 +1455,7 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
   let replay: JumpReplay = { simVersion: SECTION_CLOCK_VERSION, levelId: id, start, runs: toRuns(chain.inputs) };
   // La preuve : le rejeu, rien d'autre. Lot 19 (v4) : la preuve est le rejeu v4 ci-dessous ; l'état v3 d'où l'on tire les phases est celui de la
   // chaîne, qui vient de jouer exactement ces commandes depuis le départ (le rejeu v3 le referait au pas près ; la référence v3 le garde).
+  let fast: ProofPlay | null = null;
   let result = single ? { finished: chain.final.status === ATTEMPT_FINISHED, deaths: [] as unknown[], time: chain.final.time, final: chain.final } : replayAttempt(asm.level, replay, id);
   if (!result.finished) return "le rejeu n'arrive pas";
   if (result.deaths.length > 0) return `le rejeu meurt ${result.deaths.length} fois`;
@@ -1346,18 +1463,23 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     const v3Time = result.time;
     let ascii: string;
     try {
-      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= STALACTITE_VERSION ? STALACTITE_VERSION : simVersion >= MUSHROOM_VERSION ? MUSHROOM_VERSION : simVersion >= PRESS_VERSION ? PRESS_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
+      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= LASER_VERSION ? LASER_VERSION : simVersion >= STALACTITE_VERSION ? STALACTITE_VERSION : simVersion >= MUSHROOM_VERSION ? MUSHROOM_VERSION : simVersion >= PRESS_VERSION ? PRESS_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
       asm = { ...asm, ascii, level: parseLevel(ascii) };
     } catch (e) {
       return `horloge unique : ${(e as Error).message}`;
     }
     replay = { ...replay, simVersion: asm.level.simVersion };
-    result = replayAttempt(asm.level, replay, id);
-    if (!result.finished || result.deaths.length > 0 || result.time !== v3Time) return "horloge unique : la preuve ne passe plus sans attendre";
+    // Lot 25 (optimisation, mêmes résultats) : la preuve v4 et les statistiques de course jouent les mêmes commandes sur le même niveau : un seul rejeu les donne
+    // toutes deux. Il ne sert que dans le cas ordinaire (aucune mort, l'arrivée au tout dernier pas, au temps de la preuve v3) ; sinon on rejoue comme avant (messages inchangés).
+    fast = playProof(asm.level, asm.paliers, chain.inputs, v3Time);
+    if (!fast) {
+      result = replayAttempt(asm.level, replay, id);
+      if (!result.finished || result.deaths.length > 0 || result.time !== v3Time) return "horloge unique : la preuve ne passe plus sans attendre";
+    }
   }
-  const total = result.time;
+  const total = fast ? fast.time : result.time;
   // Lot 19 : les états du rejeu de la preuve, gardés pour la voie lente (un seul rejeu de plus pour la course au sol et les voies lentes).
-  const states: AttemptState[] = [];
+  const states: AttemptState[] = fast ? fast.states : [];
   const pieces = asm.pieces.map((p, k) => ({ ...p, start: chain.starts[k]!, end: k + 1 < asm.pieces.length ? chain.starts[k + 1]! : total }));
   const base: Built = {
     id,
@@ -1366,7 +1488,7 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     hash: textHash(asm.ascii),
     pieces,
     paliers: asm.paliers,
-    ...runStatsOf(asm.level, asm.paliers, chain.inputs, states),
+    ...(fast ? { palierTicks: fast.palierTicks, longestRun: fast.longestRun } : runStatsOf(asm.level, asm.paliers, chain.inputs, states)),
     replay,
     code: encodeReplay(replay),
     authorTicks: total,
@@ -1694,7 +1816,7 @@ const FALLBACK_FORET_V3: readonly { id: string; variant: number }[] = [
 ];
 
 /** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi ; lot 19 : celle de la forêt). */
-export function fallbackFor(theme: JumpThemeName, simVersion = STALACTITE_VERSION): readonly { id: string; variant: number }[] {
+export function fallbackFor(theme: JumpThemeName, simVersion = LASER_VERSION): readonly { id: string; variant: number }[] {
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "nuit") return FALLBACK_NUIT_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "foret") return FALLBACK_FORET_V3;
@@ -1716,7 +1838,7 @@ export function forgetDailyLevels(): void {
  * Lot 15 : `simVersion` 3 : le niveau g9 d'avant le lot, à l'identique (référence v3). Lot 20 : 4 : le niveau g14 d'avant les plateformes, à l'identique (référence v4) ;
  * 5 (défaut) : le niveau du générateur g15, en version 5.
  */
-export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = STALACTITE_VERSION): DailyLevel {
+export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = LASER_VERSION): DailyLevel {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
   const isForced = theme !== natural;
@@ -1766,9 +1888,10 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
     // rejoué à quelques pas près (les solutions sont mises bout à bout sans course entre deux) ; on prouve 2 à 3 tirages au lieu de 6 à 8, ce
     // qui paie les niveaux voisins que la règle de variété fait calculer (« une génération d'un niveau sous 2 s »).
     const excluded = varietyExcluded(day, simVersion);
-    for (let from = 0; from < DAILY_MAX_ATTEMPTS_V4 && !best; from += DAILY_DRAWS) {
+    const maxAttempts = maxAttemptsV4(simVersion);
+    for (let from = 0; from < maxAttempts && !best; from += DAILY_DRAWS) {
       const batch: { index: number; picks: Slot[]; estimate: number }[] = [];
-      for (let index = from; index < from + DAILY_DRAWS && index < DAILY_MAX_ATTEMPTS_V4; index++) {
+      for (let index = from; index < from + DAILY_DRAWS && index < maxAttempts; index++) {
         const picks = compose(day, new Rng(mixSeed(seed, index)), theme, simVersion, excluded);
         if (typeof picks === "string") attempts.push({ index, status: "impasse", reason: picks, pieces: [], ticks: 0, rate: 0, score: 0 });
         else batch.push({ index, picks, estimate: estimateScore(picks) });
@@ -1806,7 +1929,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 }
 
 /** Le niveau de secours d'une date (pour les tests et la mesure : il ne sert que si aucun tirage ne passe). */
-export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = STALACTITE_VERSION): DailyLevel | string {
+export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = LASER_VERSION): DailyLevel | string {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
   const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);

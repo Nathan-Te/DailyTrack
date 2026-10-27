@@ -1,0 +1,31 @@
+id: laser-allee
+intention: Longer une allée fermée par trois portails laser qui s'éteignent à tour de rôle : sauter les bornes, passer chaque rayon quand il est éteint, attendre entre deux portails sans jamais se presser.
+etiquettes: laser respiration
+famille: laser-allee
+theme: neon
+format: 3
+paliers: 9 9
+variante: on=90 s1=60 s2=0 s3=0
+variante: on=90 s1=100 s2=40 s3=0
+variante: on=150 s1=120 s2=60 s3=0
+variante: on=90 s1=20 s2=60 s3=100
+variante: on=120 s1=140 s2=80 s3=20
+variante: on=90 s1=90 s2=20 s3=40
+variante: on=120 s1=100 s2=0 s3=50
+grille:
+.#########################
+.#########################
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+...#......#.....#.....#...
+##########################
+##########################
+##########################
+
+laser un v 7,2 7 360 {on} {s1}
+laser deux v 13,2 7 360 {on} {s2}
+laser trois v 19,2 7 360 {on} {s3}

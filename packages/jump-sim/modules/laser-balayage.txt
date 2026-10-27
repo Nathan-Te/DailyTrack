@@ -1,0 +1,33 @@
+id: laser-balayage
+intention: Franchir une fosse dont le milieu est balayé de haut en bas par une barre laser : prendre son élan au bord, choisir le moment où la barre est basse ou haute, et passer entre deux de ses balayages.
+etiquettes: laser precision
+famille: laser-balayage
+theme: neon
+format: 3
+paliers: 9 9
+variante: cy=400 top=3 bot=7
+variante: cy=480 top=3 bot=7
+variante: cy=360 top=3 bot=6
+variante: cy=400 top=4 bot=6
+variante: cy=480 top=4 bot=7
+variante: cy=320 top=3 bot=6
+variante: cy=400 top=3 bot=6
+variante: cy=480 top=3 bot=6
+variante: cy=560 top=3 bot=8
+variante: cy=560 top=3 bot=7
+grille:
+..................
+..................
+..................
+..................
+..................
+..................
+..................
+..................
+..................
+######......######
+######......######
+######^^^^^^######
+##################
+
+barre balai h 4 {cy} 7,{top} 7,{bot}

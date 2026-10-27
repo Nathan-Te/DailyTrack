@@ -12,7 +12,7 @@ import { dayId } from "./jours";
 // `#arrival-medal`, `.archive`…), les textes le catalogue français. Les captures du lot 10 restent celles de son README (les nouvelles :
 // `e2e/captures.spec.ts`, lot I5).
 
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v8.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v9.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
 
 interface DayRecord {

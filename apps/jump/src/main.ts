@@ -41,6 +41,8 @@ import {
   MUSHROOM_NAMES,
   mushroomPad,
   pressBoxes,
+  laserBarAt,
+  laserBox,
   sectionClock,
   windActive,
   windPhase,
@@ -81,8 +83,9 @@ import type { WindStats } from "./windArt";
 import type { PlatformStats } from "./platformArt";
 import type { MushroomStats } from "./mushroomArt";
 import type { StalactiteStats } from "./stalactiteArt";
+import type { LaserStats } from "./laserArt";
 import type { PressStats } from "./pressArt";
-import { pressLook } from "./announce";
+import { laserBarLook, laserLook, pressLook } from "./announce";
 import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -274,6 +277,26 @@ export interface MushroomsDebug extends Partial<MushroomStats> {
 }
 
 /**
+ * Lot 25 : `__jump.lasers` — ce que le dessin a posé (rayon allumé, annonce, opacités, barres : position, vitesse, lueur) et ce que la simulation sait : les rayons fixes (boîte mortelle,
+ * allumés ou non, annonce) et les barres (boîte mortelle) à l'état courant.
+ */
+export interface LasersDebug extends Partial<LaserStats> {
+  /** Nombre de lasers fixes et de barres. */
+  count: number;
+  bars: number;
+  /** Par laser fixe : sa boîte mortelle (unités), la phase de sa section, allumé ou non dans la simulation, et l'annonce de la simulation (0 à 1). */
+  sim: { x: number; y: number; w: number; h: number }[];
+  phases: number[];
+  simOn: boolean[];
+  simWarn: number[];
+  /** Par barre : sa boîte mortelle à l'état courant (unités) et la phase de sa section. */
+  simBars: { x: number; y: number; w: number; h: number }[];
+  barPhases: number[];
+  /** Par barre : sa vitesse dans la simulation, en part de sa pointe (0 à 1). */
+  simBarSpeeds: number[];
+}
+
+/**
  * Lot 24 : `__jump.stalactites` — ce que le dessin a posé (âge dessiné, hauteur, balancement, gouttes, opacité) et ce que la simulation sait : la liste des stalactites (tuile du corps, zone
  * de déclenchement en colonnes) et leur état courant (`ages` : 0 intacte, âge > 0 déclenchée, −1 brisée).
  */
@@ -299,6 +322,8 @@ export interface JumpDebug {
   readonly mushrooms: MushroomsDebug | null;
   /** Lot 24 : les stalactites (null : le niveau n'en a pas). */
   readonly stalactites: StalactitesDebug | null;
+  /** Lot 25 : les lasers (null : le niveau n'en a pas). */
+  readonly lasers: LasersDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
   readonly wind: WindDebug | null;
   phase: Phase;
@@ -2298,6 +2323,26 @@ const info: JumpDebug = {
       ...(scene?.mushrooms ?? {}),
       count: level.mushrooms.length,
       list: level.mushrooms.map((m) => ({ col: m.col, row: m.row, dir: m.dir, name: MUSHROOM_NAMES[m.dir]!, pad: mushroomPad(m) })),
+    };
+  },
+  /** Lot 25 : les lasers (null sans eux) : ce que le dessin a posé, et l'état de la simulation. */
+  get lasers() {
+    if (level.lasers.length === 0 && level.laserBars.length === 0) return null;
+    const state = session.state;
+    const phases = level.lasers.map((l) => sectionClock(level, state.sections, state.time, l.section));
+    const looks = level.lasers.map((l, i) => laserLook(l, phases[i]!));
+    const barPhases = level.laserBars.map((b) => sectionClock(level, state.sections, state.time, b.section));
+    return {
+      ...(scene?.lasers ?? {}),
+      count: level.lasers.length,
+      bars: level.laserBars.length,
+      sim: level.lasers.map((l) => laserBox(l)),
+      phases,
+      simOn: looks.map((k) => k.on),
+      simWarn: looks.map((k) => k.warn),
+      simBars: level.laserBars.map((_, i) => laserBarAt(level, state.sections, state.time, i)),
+      barPhases,
+      simBarSpeeds: level.laserBars.map((b, i) => laserBarLook(b, barPhases[i]!).speed),
     };
   },
   /** Lot 24 : les stalactites (null sans elles) : ce que le dessin a posé, la liste de la simulation et l'état courant. */

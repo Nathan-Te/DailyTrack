@@ -17,6 +17,8 @@ import {
   PLATFORM_VERSION,
   MUSHROOM_GENERATOR,
   MUSHROOM_VERSION,
+  LASER_VERSION,
+  STALACTITE_GENERATOR,
   STALACTITE_VERSION,
   PRESS_GENERATOR,
   PRESS_VERSION,
@@ -100,7 +102,7 @@ describe("lot 15 — lecture d'un niveau v4 (bloc annexe)", () => {
 
   it("une phase n'existe qu'en version 4 ; une version inconnue est refusée", () => {
     expect(() => parseLevel(V4_ASCII.replace("version 4\n", ""))).toThrow(LevelError);
-    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 9"))).toThrow(/version/);
+    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 10"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 2"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 4\nversion 4"))).toThrow(/déjà/);
   });
@@ -171,16 +173,17 @@ describe("lot 15 — une seule horloge (v4)", () => {
 /** Les jours régénérés par le lot : de J+2 (la PR date du 21/10/2026) sur deux semaines. */
 const FIRST_REGENERATED = parseDay("2026-10-23")!;
 /** Lot 20 : la référence v4 (g14, `dailyLevel(jour, thème, 4)`) et le générateur en vigueur (g15, version 5) passent les mêmes vérifications. */
-// Lot 22 : la référence v5 (g15) passe aussi les mêmes vérifications ; lot 23 : la référence v6 (g16) aussi ; lot 24 : la référence v7 (g17) aussi, le générateur en vigueur est g18 (version 8).
+// Lot 22 : la référence v5 (g15) passe aussi les mêmes vérifications ; lot 23 : la référence v6 (g16) aussi ; lot 24 : la référence v7 (g17) aussi ; lot 25 : la référence v8 (g18) aussi, le générateur en vigueur est g19 (version 9).
 const GENERATORS = [
   { version: SINGLE_CLOCK_VERSION, generator: SINGLE_CLOCK_GENERATOR },
   { version: PLATFORM_VERSION, generator: PLATFORM_GENERATOR },
   { version: PRESS_VERSION, generator: PRESS_GENERATOR },
   { version: MUSHROOM_VERSION, generator: MUSHROOM_GENERATOR },
-  { version: STALACTITE_VERSION, generator: JUMP_GENERATOR_VERSION },
+  { version: STALACTITE_VERSION, generator: STALACTITE_GENERATOR },
+  { version: LASER_VERSION, generator: JUMP_GENERATOR_VERSION },
 ] as const;
 
-/** Les jours régénérés du générateur en vigueur (g18, version 8). */
+/** Les jours régénérés du générateur en vigueur (g19, version 9). */
 const REGENERATED: DailyLevel[] = Array.from({ length: 14 }, (_, k) => dailyLevel(FIRST_REGENERATED + k));
 
 for (const { version, generator } of GENERATORS) {
@@ -313,14 +316,16 @@ const GOLDEN_FILES = {
   [PRESS_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v6.json"),
   [MUSHROOM_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v7.json"),
   [STALACTITE_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v8.json"),
+  [LASER_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v9.json"),
 } as const;
 // Lot 18 (g13) : le 25/10 n'a plus de mort avant le premier point de passage parmi les 24 essais fictifs (la couverture « reprise au départ » du test
 // manquerait) ; le 31/10, une nuit aussi, en a 28. La couverture exigée ci-dessous ne change pas. Lot 19 (g14) : le 31/10 n'en a plus aucune ; le 09/11,
 // une nuit (46 blocs clignotants, 8 scies), en a 21 (mesuré sur les jours g14 du 27/10 au 19/11). Lot 20 : la journée de référence v5 est le 08/11 (une forêt à 2 plateformes : 63 reprises au départ, 40 sur un point parmi les essais fictifs).
 // Lot 22 : la journée de référence v6 est le 03/12 (une usine à deux presses, `presse-ilot` : des morts avant le premier point et sur un point parmi les 24 essais fictifs ; les 06/11 et 23/11 n'avaient pas de reprise au départ).
 // Lot 24 : la journée de référence v8 est le 08/12 (une glace à trois morceaux à stalactites, `stalactite-allee`, `stalactite-decroche` et `stalactite-sentier` : 21 reprises au départ, 48 sur un point et 7 morts par stalactite parmi les 24 essais fictifs). La v7 (g17, 28/11) est intacte.
+// Lot 25 : la journée de référence v9 est le 14/11 (un néon à trois morceaux à lasers : `laser-alterne-portes` et ses portails sur des blocs alternés, `laser-barre-sol` et `laser-balayage`, deux barres coulissantes).
 // Lot 23 : la journée de référence v7 est le 28/11 (une forêt à champignons de sol et de mur, un courant d'air et un puits en zigzag : 19 reprises au départ et 10 sur un point parmi les 24 essais fictifs). La v6 (g16, 03/12) est intacte.
-const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")!, [PRESS_VERSION]: parseDay("2026-12-03")!, [MUSHROOM_VERSION]: parseDay("2026-11-28")!, [STALACTITE_VERSION]: parseDay("2026-12-08")! } as const;
+const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")!, [PRESS_VERSION]: parseDay("2026-12-03")!, [MUSHROOM_VERSION]: parseDay("2026-11-28")!, [STALACTITE_VERSION]: parseDay("2026-12-08")!, [LASER_VERSION]: parseDay("2026-11-14")! } as const;
 
 interface GoldenV4 {
   jumpSimVersion: number;
@@ -331,7 +336,7 @@ interface GoldenV4 {
   replays: { name: string; code: string; hash: string; finished: boolean; ticks: number; time: number; deaths: number }[];
 }
 
-function goldenReplays(version: 4 | 5 | 6 | 7 | 8): GoldenV4["replays"] {
+function goldenReplays(version: 4 | 5 | 6 | 7 | 8 | 9): GoldenV4["replays"] {
   const L = dailyLevel(GOLDEN_DAYS[version], null, version);
   const codes: { name: string; code: string }[] = [{ name: "preuve de l'auteur", code: L.code }];
   const essais = demoAttempts(L.level, L.replay, 15, { attempts: 24, maxLives: 8 });
@@ -353,13 +358,13 @@ function goldenReplays(version: 4 | 5 | 6 | 7 | 8): GoldenV4["replays"] {
 }
 
 if (process.env.UPDATE_GOLDEN) {
-  const L = dailyLevel(GOLDEN_DAYS[STALACTITE_VERSION], null, STALACTITE_VERSION);
-  const golden: GoldenV4 = { jumpSimVersion: STALACTITE_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(STALACTITE_VERSION) };
-  writeFileSync(GOLDEN_FILES[STALACTITE_VERSION], JSON.stringify(golden, null, 2) + "\n");
+  const L = dailyLevel(GOLDEN_DAYS[LASER_VERSION], null, LASER_VERSION);
+  const golden: GoldenV4 = { jumpSimVersion: LASER_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(LASER_VERSION) };
+  writeFileSync(GOLDEN_FILES[LASER_VERSION], JSON.stringify(golden, null, 2) + "\n");
 }
 
-for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, PLATFORM_GENERATOR], [PRESS_VERSION, PRESS_GENERATOR], [MUSHROOM_VERSION, MUSHROOM_GENERATOR], [STALACTITE_VERSION, JUMP_GENERATOR_VERSION]] as const) {
-  describe(`lot 15/20/22/23/24 — déterminisme v${version} (fixtures/replay-golden-v${version}.json)`, () => {
+for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, PLATFORM_GENERATOR], [PRESS_VERSION, PRESS_GENERATOR], [MUSHROOM_VERSION, MUSHROOM_GENERATOR], [STALACTITE_VERSION, STALACTITE_GENERATOR], [LASER_VERSION, JUMP_GENERATOR_VERSION]] as const) {
+  describe(`lot 15/20/22/23/24/25 — déterminisme v${version} (fixtures/replay-golden-v${version}.json)`, () => {
     const golden = JSON.parse(readFileSync(GOLDEN_FILES[version], "utf8")) as GoldenV4;
     const day = GOLDEN_DAYS[version];
 

@@ -28,7 +28,7 @@ import { idiv } from "./idiv";
 //       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
 // Bloc annexe (une déclaration par ligne, `//` commente la ligne) :
-//   version <3|4|5|6|7|8>
+//   version <3|4|5|6|7|8|9>
 //       (lot 15) la version de la simulation du niveau (`Level.simVersion`) ; absente : 3. **En v3**, chaque section a son horloge, mise en
 //       marche la première fois que le personnage y entre (« phase » d'un élément = pas écoulés depuis, 0 avant) ; **en v4, une seule horloge** :
 //       la phase d'un élément vaut `t + phase de sa section` (`t` : le chrono de l'essai), dès avant le départ et sans jamais revenir à zéro.
@@ -65,6 +65,18 @@ import { idiv } from "./idiv";
 //       `STALACTITE_SHAKE_TICKS` pas (0,5 s, sans bouger), **tombe** en accélérant (`STALACTITE_DROP`, table entière) puis **se brise** au premier contact avec un bloc
 //       plein (ou en sortant de la grille) et disparaît. **Elle tue au contact tant qu'elle tremble ou tombe** (`DEATH_STALACTITE`) ; intacte ou brisée, elle ne tue pas.
 //       Elle n'est pas sur l'horloge : son état (`AttemptState.stalactites`) revient à intact à la reprise, comme les blocs friables. Rien n'est dans la grille.
+//   laser <id> <h|v> <col,rangée> <longueur> <cycle> <allumé> <décalage>
+//       (lot 25, version 9, thème néon) un **laser fixe** : un rayon horizontal (`h`) ou vertical (`v`) de `longueur` (1 à `LASER_MAX_LENGTH`) tuiles dont la première est
+//       `col,rangée`, **entre deux émetteurs posés sur des pleins** : les deux tuiles qui le bornent (avant la première, après la dernière) sont des blocs pleins `#`, les tuiles
+//       du rayon sont vides. Allumé ou éteint selon l'horloge de sa section (`f(t + phase)`, entière) : au chrono de section `p`, `q = (p + décalage) mod cycle`, il est
+//       **allumé pour `q < allumé`**. Chaque phase dure au moins `LASER_MIN_OFF` (1 s) éteinte et `LASER_MIN_ON` (0,75 s) allumée. **Allumé, le rayon tue au contact**
+//       (`DEATH_LASER`, une bande de `LASER_THICKNESS` au milieu de ses tuiles) ; éteint, on le traverse. Les émetteurs sont des pleins inoffensifs.
+//   barre <id> <h|v> <longueur> <cycle> <col,rangée> <col,rangée>
+//       (lot 25, version 9, thème néon) une **barre laser coulissante** : un rayon toujours allumé de `longueur` (2 à `LASER_BAR_MAX_LENGTH`) tuiles, horizontal (`h`) ou vertical
+//       (`v`), dont les deux émetteurs glissent **en parallèle** (le rayon reste parallèle à lui-même) perpendiculairement à sa longueur, d'une position à l'autre (le coin
+//       haut-gauche de sa première tuile : `col,rangée` du départ, puis de l'autre extrémité — même colonne pour `h`, même rangée pour `v`), en aller-retour de `cycle` pas (pair,
+//       `LASER_BAR_MIN_CYCLE` à `LASER_BAR_MAX_CYCLE`) : position = `f(phase)` entière, **ralentie aux deux extrémités** par `PLATFORM_EASE`, vitesse de pointe sous `MAX_LASER_STEP`.
+//       Toutes les tuiles de son trajet sont vides. **Seul le rayon tue** ; les émetteurs, dessinés aux deux bouts, ne bloquent ni ne tuent (aucun plein mobile).
 //   vent <col0>-<col1> <rang0>-<rang1> <haut|gauche|droite> <force> [rafale <cycle> <actif> <décalage>]
 //       (lot 13, thème forêt) une **zone de vent** : un rectangle de tuiles (bornes comprises), **traversable** (ce n'est pas un bloc), qui
 //       pousse le personnage tant que **le centre** de sa boîte y est, au sol comme en l'air. `haut` : une accélération verticale qui compense
@@ -406,6 +418,50 @@ export function stalactiteBox(s: Pick<Stalactite, "col" | "row">, offset: number
 }
 
 /**
+ * Lot 25 : lasers. L'épaisseur de la bande mortelle d'un rayon (unités : un quart de tuile, centrée sur la rangée ou la colonne de ses tuiles), la longueur d'un laser fixe
+ * (tuiles), ses durées minimales (pas : 0,75 s allumé, 1 s éteint) et son cycle maximal ; pour la barre coulissante : longueur, trajet (tuiles), cycle (pair) et déplacement
+ * maximal par pas à la pointe de sa vitesse (160 unités = 4,7 tuiles/s, moins de la moitié de la course à 11 tuiles/s et sous le plafond des plateformes, 256 : un rayon qui tue
+ * ne doit pas rattraper un joueur qui s'écarte).
+ */
+export const LASER_THICKNESS = 1024;
+export const LASER_MIN_LENGTH = 1;
+export const LASER_MAX_LENGTH = 12;
+export const LASER_MIN_ON = 90;
+export const LASER_MIN_OFF = 120;
+export const LASER_MAX_CYCLE = 1200;
+export const LASER_BAR_MIN_LENGTH = 2;
+export const LASER_BAR_MAX_LENGTH = 8;
+export const LASER_BAR_MAX_TRAVEL = 8;
+export const LASER_BAR_MIN_CYCLE = 240;
+export const LASER_BAR_MAX_CYCLE = 1200;
+export const MAX_LASER_STEP = 160;
+
+/** Lot 25 : un laser fixe (voir l'en-tête). `col`, `row` : la première tuile du rayon ; `on` : pas allumés par cycle ; `shift` : position dans le cycle à la phase 0. */
+export interface Laser {
+  id: string;
+  axis: "h" | "v";
+  col: number;
+  row: number;
+  length: number;
+  cycle: number;
+  on: number;
+  shift: number;
+  /** Section dont il suit l'horloge (indice dans `Level.sections`). */
+  section: number;
+}
+
+/** Lot 25 : une barre laser coulissante (voir l'en-tête). `a` et `b` : les deux positions extrêmes (coin haut-gauche de la première tuile du rayon). */
+export interface LaserBar {
+  id: string;
+  axis: "h" | "v";
+  length: number;
+  cycle: number;
+  a: Cell;
+  b: Cell;
+  section: number;
+}
+
+/**
  * Lot 22 : la **table de chute** d'une presse (entiers, 65 valeurs de 0 à 4 096) : `k²` pour `k` de 0 à 64, la chute libre — la presse part presque à
  * l'arrêt et frappe à pleine vitesse (127 sur 4 096 pour le dernier intervalle, soit 2 fois la moyenne). Écrite par `k * k` : aucun flottant,
  * `test/presses.test.ts` la compare à la formule. La remontée lit `PLATFORM_EASE` (démarrage doux, fin douce), à l'envers.
@@ -464,6 +520,10 @@ export interface Level {
   mushrooms: readonly Mushroom[];
   /** Lot 24 : stalactites (ordre du bloc annexe) ; vide sans stalactite. */
   stalactites: readonly Stalactite[];
+  /** Lot 25 : lasers fixes (ordre du bloc annexe) ; vide sans laser. Leurs tuiles sont vides dans `tiles` ; leurs émetteurs sont des blocs pleins. */
+  lasers: readonly Laser[];
+  /** Lot 25 : barres laser coulissantes (ordre du bloc annexe) ; vide sans barre. */
+  laserBars: readonly LaserBar[];
 }
 
 export class LevelError extends Error {
@@ -602,6 +662,8 @@ export function parseLevel(text: string): Level {
   const platformLines: { line: number; words: string[] }[] = [];
   const pressLines: { line: number; words: string[] }[] = [];
   const stalactiteLines: { line: number; words: string[] }[] = [];
+  const laserLines: { line: number; words: string[] }[] = [];
+  const barLines: { line: number; words: string[] }[] = [];
   for (let i = 0; i < annex.length; i++) {
     const raw = annex[i]!.trim();
     if (raw === "" || raw.startsWith("//")) continue;
@@ -631,7 +693,9 @@ export function parseLevel(text: string): Level {
     else if (words[0] === "plateforme") platformLines.push({ line: end + i + 1, words });
     else if (words[0] === "presse") pressLines.push({ line: end + i + 1, words });
     else if (words[0] === "stalactite") stalactiteLines.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme, presse, stalactite)`);
+    else if (words[0] === "laser") laserLines.push({ line: end + i + 1, words });
+    else if (words[0] === "barre") barLines.push({ line: end + i + 1, words });
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme, presse, stalactite, laser, barre)`);
   }
   if (simVersion < SINGLE_CLOCK_VERSION && sections.some((s) => s.phase !== 0)) throw new LevelError("Une phase de section n'existe qu'en version 4 (une seule horloge)");
   // ——— Lot 12 : les cycles des blocs clignotants, par section ———
@@ -806,7 +870,79 @@ export function parseLevel(text: string): Level {
     if (stalactites.some((q) => q.col === col)) throw new LevelError(`${where} : une autre stalactite pend déjà dans la colonne ${col}`);
     stalactites.push({ id, col, row, before, after });
   }
-  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites };
+  // ——— Lot 25 : les lasers fixes ———
+  const lasers: Laser[] = [];
+  for (const { line, words } of laserLines) {
+    const where = `Annexe, ligne ${line}`;
+    const usage = "« laser <id> <h|v> <col,rangée> <longueur> <cycle> <allumé> <décalage> » attendu";
+    if (words.length !== 8) throw new LevelError(`${where} : ${usage}`);
+    const [, id, axis, at] = words as [string, string, string, string];
+    if (lasers.some((q) => q.id === id)) throw new LevelError(`${where} : laser « ${id} » déjà déclaré`);
+    if (axis !== "h" && axis !== "v") throw new LevelError(`${where} : axe « ${axis} » inconnu (h, v)`);
+    const m = /^(\d+),(\d+)$/.exec(at);
+    if (!m || !words.slice(4).every((n) => /^\d+$/.test(n))) throw new LevelError(`${where} : ${usage}`);
+    const [length, cycle, on, shift] = words.slice(4).map(Number) as [number, number, number, number];
+    if (length < LASER_MIN_LENGTH || length > LASER_MAX_LENGTH) throw new LevelError(`${where} : longueur de ${LASER_MIN_LENGTH} à ${LASER_MAX_LENGTH} tuiles`);
+    if (cycle > LASER_MAX_CYCLE) throw new LevelError(`${where} : cycle de ${cycle} pas (au plus ${LASER_MAX_CYCLE})`);
+    if (on < LASER_MIN_ON) throw new LevelError(`${where} : allumé ${on} pas (au moins ${LASER_MIN_ON} : 0,75 s)`);
+    if (cycle - on < LASER_MIN_OFF) throw new LevelError(`${where} : éteint ${cycle - on} pas (au moins ${LASER_MIN_OFF} : 1 s)`);
+    if (shift >= cycle) throw new LevelError(`${where} : « décalage » vaut de 0 à cycle − 1 (${cycle - 1})`);
+    const col = Number(m[1]);
+    const row = Number(m[2]);
+    const c1 = axis === "h" ? col + length - 1 : col;
+    const r1 = axis === "v" ? row + length - 1 : row;
+    // Les deux émetteurs : les tuiles qui bornent le rayon, des blocs pleins (ils tiennent dans la grille).
+    const ca = axis === "h" ? col - 1 : col;
+    const ra = axis === "v" ? row - 1 : row;
+    const cb = axis === "h" ? c1 + 1 : col;
+    const rb = axis === "v" ? r1 + 1 : row;
+    if (ca < 0 || ra < 0 || cb >= width || rb >= height) throw new LevelError(`${where} : le laser et ses émetteurs sortent de la grille`);
+    if (tiles[ra * width + ca] !== TILE_SOLID || tiles[rb * width + cb] !== TILE_SOLID) throw new LevelError(`${where} : un émetteur doit être posé sur un bloc plein « # » (${ca},${ra}) et (${cb},${rb})`);
+    for (let r = row; r <= r1; r++) {
+      for (let c = col; c <= c1; c++) if (tiles[r * width + c] !== TILE_EMPTY) throw new LevelError(`${where} : la tuile (${c}, ${r}) du rayon n'est pas vide`);
+    }
+    const section = sections.findIndex((q) => col >= q.c0 && c1 <= q.c1);
+    if (section < 0) throw new LevelError(`${where} : le rayon (colonnes ${col}-${c1}) n'est pas dans une seule section`);
+    lasers.push({ id, axis, col, row, length, cycle, on, shift, section });
+  }
+  // ——— Lot 25 : les barres laser coulissantes ———
+  const laserBars: LaserBar[] = [];
+  for (const { line, words } of barLines) {
+    const where = `Annexe, ligne ${line}`;
+    const usage = "« barre <id> <h|v> <longueur> <cycle> <col,rangée> <col,rangée> » attendu";
+    if (words.length !== 7) throw new LevelError(`${where} : ${usage}`);
+    const [, id, axis, lengthText, cycleText] = words as [string, string, string, string, string];
+    if (laserBars.some((q) => q.id === id)) throw new LevelError(`${where} : barre « ${id} » déjà déclarée`);
+    if (axis !== "h" && axis !== "v") throw new LevelError(`${where} : axe « ${axis} » inconnu (h, v)`);
+    const length = /^\d+$/.test(lengthText) ? Number(lengthText) : -1;
+    if (length < LASER_BAR_MIN_LENGTH || length > LASER_BAR_MAX_LENGTH) throw new LevelError(`${where} : longueur de ${LASER_BAR_MIN_LENGTH} à ${LASER_BAR_MAX_LENGTH} tuiles`);
+    const cycle = /^\d+$/.test(cycleText) ? Number(cycleText) : -1;
+    if (cycle < LASER_BAR_MIN_CYCLE || cycle > LASER_BAR_MAX_CYCLE || cycle % 2 !== 0) throw new LevelError(`${where} : cycle pair de ${LASER_BAR_MIN_CYCLE} à ${LASER_BAR_MAX_CYCLE} pas`);
+    const cells: Cell[] = words.slice(5).map((word) => {
+      const m = /^(\d+),(\d+)$/.exec(word);
+      if (!m) throw new LevelError(`${where} : point « ${word} » (col,rangée) attendu`);
+      return { col: Number(m[1]), row: Number(m[2]) };
+    });
+    const [a, b] = cells as [Cell, Cell];
+    // Le rayon glisse perpendiculairement à sa longueur : un rayon horizontal monte et descend (même colonne), un rayon vertical va et vient (même rangée).
+    if (axis === "h" ? a.col !== b.col || a.row === b.row : a.row !== b.row || a.col === b.col) throw new LevelError(`${where} : deux points distincts sur ${axis === "h" ? "la même colonne" : "la même rangée"} attendus`);
+    const travel = axis === "h" ? Math.abs(b.row - a.row) : Math.abs(b.col - a.col);
+    if (travel > LASER_BAR_MAX_TRAVEL) throw new LevelError(`${where} : trajet de ${travel} tuiles (au plus ${LASER_BAR_MAX_TRAVEL})`);
+    const c0 = Math.min(a.col, b.col);
+    const c1 = Math.max(a.col, b.col) + (axis === "h" ? length - 1 : 0);
+    const r0 = Math.min(a.row, b.row);
+    const r1 = Math.max(a.row, b.row) + (axis === "v" ? length - 1 : 0);
+    if (c1 >= width || r1 >= height) throw new LevelError(`${where} : trajet hors de la grille`);
+    const section = sections.findIndex((q) => c0 >= q.c0 && c1 <= q.c1);
+    if (section < 0) throw new LevelError(`${where} : le trajet (colonnes ${c0}-${c1}) n'est pas dans une seule section`);
+    // La vitesse de pointe (table de ralenti : 96 / 4 096 de trajet par intervalle de `cycle / 128` pas) reste sous `MAX_LASER_STEP`.
+    if (idiv(travel * UNITS_PER_TILE * 3, cycle) + 1 > MAX_LASER_STEP) throw new LevelError(`${where} : trop rapide (${travel} tuiles en ${cycle} pas)`);
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) if (tiles[r * width + c] !== TILE_EMPTY) throw new LevelError(`${where} : la tuile (${c}, ${r}) de son trajet n'est pas vide`);
+    }
+    laserBars.push({ id, axis, length, cycle, a, b, section });
+  }
+  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites, lasers, laserBars };
 }
 
 /**
@@ -889,6 +1025,25 @@ export function platformEase(tri: number, half: number): number {
  * extrémités. Une phase négative (v4, l'affichage avant le départ) se lit dans le cycle.
  */
 export function platformPos(p: Platform, phase: number): Point {
+  // Lot 25 (optimisation, mêmes valeurs) : la position ne dépend que de la phase dans le cycle ; une table (construite une fois par plateforme, par la fonction ci-dessous)
+  // remplace le calcul à chaque pas de chaque rejeu.
+  let tab = platformTables.get(p);
+  if (!tab) {
+    tab = new Int32Array(p.cycle * 2);
+    for (let q = 0; q < p.cycle; q++) {
+      const at = platformPosRaw(p, q);
+      tab[2 * q] = at.x;
+      tab[2 * q + 1] = at.y;
+    }
+    platformTables.set(p, tab);
+  }
+  const q = cycleMod(phase, p.cycle);
+  return { x: tab[2 * q]!, y: tab[2 * q + 1]! };
+}
+
+const platformTables = new WeakMap<object, Int32Array>();
+
+function platformPosRaw(p: Platform, phase: number): Point {
   const half = idiv(p.cycle, 2);
   const q = cycleMod(phase, p.cycle);
   const e = platformEase(q <= half ? q : p.cycle - q, half);
@@ -936,6 +1091,44 @@ export function pressBox(p: Pick<Press, "col" | "row" | "travel" | "width" | "ho
   return { x: at.x, y: at.y, w: p.width * UNITS_PER_TILE, h: PRESS_HEIGHT_TILES * UNITS_PER_TILE };
 }
 
+/**
+ * Lot 25 : le laser fixe est-il allumé à la phase `phase` de sa section ? Pure, entière : `q = (phase + décalage) mod cycle`, allumé pour `q < allumé`. Une phase
+ * négative (v4+, l'affichage avant le départ) se lit dans le cycle.
+ */
+export function laserOn(l: Pick<Laser, "cycle" | "on" | "shift">, phase: number): boolean {
+  return cycleMod(phase + l.shift, l.cycle) < l.on;
+}
+
+/** Lot 25 : la bande mortelle d'un laser fixe (unités), quand il est allumé : `LASER_THICKNESS` au milieu de ses tuiles, sur toute leur longueur. */
+export function laserBox(l: Pick<Laser, "axis" | "col" | "row" | "length">): { x: number; y: number; w: number; h: number } {
+  const T = UNITS_PER_TILE;
+  const gap = idiv(T - LASER_THICKNESS, 2);
+  return l.axis === "h" ? { x: l.col * T, y: l.row * T + gap, w: l.length * T, h: LASER_THICKNESS } : { x: l.col * T + gap, y: l.row * T, w: LASER_THICKNESS, h: l.length * T };
+}
+
+/**
+ * Lot 25 : le coin haut-gauche de la première tuile du rayon d'une barre coulissante à la phase `phase` de sa section : `a` à la phase 0, `b` au demi-cycle, retour exact
+ * à chaque cycle, le ralenti de `PLATFORM_EASE` aux deux extrémités (la même lecture que `platformPos`). Une phase négative se lit dans le cycle.
+ */
+export function laserBarPos(p: Pick<LaserBar, "cycle" | "a" | "b" | "axis">, phase: number): Point {
+  const half = idiv(p.cycle, 2);
+  const q = cycleMod(phase, p.cycle);
+  const e = platformEase(q <= half ? q : p.cycle - q, half);
+  const T = UNITS_PER_TILE;
+  const x = p.a.col * T;
+  const y = p.a.row * T;
+  if (p.axis === "h") return { x, y: y + idiv((p.b.row - p.a.row) * T * e, PLATFORM_EASE_ONE) };
+  return { x: x + idiv((p.b.col - p.a.col) * T * e, PLATFORM_EASE_ONE), y };
+}
+
+/** Lot 25 : la bande mortelle d'une barre coulissante à la phase `phase` (unités) : toujours allumée, `LASER_THICKNESS` au milieu de ses tuiles. */
+export function laserBarBox(p: Pick<LaserBar, "cycle" | "a" | "b" | "axis" | "length">, phase: number): { x: number; y: number; w: number; h: number } {
+  const T = UNITS_PER_TILE;
+  const gap = idiv(T - LASER_THICKNESS, 2);
+  const at = laserBarPos(p, phase);
+  return p.axis === "h" ? { x: at.x, y: at.y + gap, w: p.length * T, h: LASER_THICKNESS } : { x: at.x + gap, y: at.y, w: LASER_THICKNESS, h: p.length * T };
+}
+
 /** Lot 15 : plus grand commun diviseur (entiers positifs). */
 function gcd(a: number, b: number): number {
   while (b !== 0) {
@@ -948,7 +1141,7 @@ function gcd(a: number, b: number): number {
 
 /**
  * Lot 15 : la **période** de la section `i` : le plus petit commun multiple des cycles de ce qui y tourne (scies mobiles, clignotants, rafales),
- * en pas (lot 20 : plateformes comprises ; lot 22 : presses) ; 0 si rien n'y tourne (l'horloge n'y change rien). Bornée par `MAX_PHASE` (au-delà : refusé, le générateur n'en produit pas).
+ * en pas (lot 20 : plateformes comprises ; lot 22 : presses ; lot 25 : lasers et barres) ; 0 si rien n'y tourne (l'horloge n'y change rien). Bornée par `MAX_PHASE` (au-delà : refusé, le générateur n'en produit pas).
  */
 export function sectionPeriod(level: Level, i: number): number {
   const cycles: number[] = [];
@@ -958,6 +1151,8 @@ export function sectionPeriod(level: Level, i: number): number {
   for (const w of level.winds) if (w.section === i && w.gust) cycles.push(w.gust.cycle);
   for (const q of level.platforms) if (q.section === i) cycles.push(q.cycle);
   for (const q of level.presses) if (q.section === i) cycles.push(q.cycle);
+  for (const q of level.lasers) if (q.section === i) cycles.push(q.cycle);
+  for (const q of level.laserBars) if (q.section === i) cycles.push(q.cycle);
   let l = 0;
   for (const c of cycles) {
     l = l === 0 ? c : idiv(l * c, gcd(l, c));

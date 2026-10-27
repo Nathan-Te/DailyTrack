@@ -6,7 +6,13 @@ import {
   PARASITE_CLOSED,
   PHASE_REFUSED,
   V4_ONLY_VARIANTS,
+  LASER_VERSION,
+  STALACTITE_VERSION,
   VARIETY_DAYS,
+  VARIETY_DAYS_BEFORE_LASERS,
+  varietyDays,
+  DAILY_MAX_ATTEMPTS_LASERS,
+  DAILY_MAX_ATTEMPTS_V4,
   VARIETY_EPOCH,
   VARIETY_FROZEN,
   VARIETY_ORIGIN,
@@ -28,6 +34,32 @@ import { figesPath, figesSource, frozenBaseIds } from "../tools/figes";
 
 const N = 365;
 const DAYS = Array.from({ length: N }, (_, k) => VARIETY_ORIGIN + k);
+
+describe("lot 25 — W = 4 depuis la version 9 (g19), W = 3 avant", () => {
+  it("la règle en vigueur est à 4 jours ; les références v4 à v8 gardent 3 (au bit près : les golden)", () => {
+    expect(VARIETY_DAYS).toBe(4);
+    expect(VARIETY_DAYS_BEFORE_LASERS).toBe(3);
+    expect(varietyDays()).toBe(4);
+    expect(varietyDays(LASER_VERSION)).toBe(4);
+    for (const v of [4, 5, 6, 7, STALACTITE_VERSION]) expect(varietyDays(v), `v${v}`).toBe(3);
+  });
+
+  it("un jour regarde 3 jours de chaque côté à W = 4 (au plus), 2 à W = 3 ; les jours d'une époque sont les mêmes", () => {
+    for (const d of DAYS.slice(0, 60)) {
+      const w4 = varietyNeighbours(d);
+      const w3 = varietyNeighbours(d, STALACTITE_VERSION);
+      for (const x of w3) expect(w4.includes(x), `${formatDay(d)} ← ${formatDay(x)}`).toBe(true);
+      expect(w4.length).toBeGreaterThanOrEqual(w3.length);
+      for (const x of w4) expect(Math.abs(x - d)).toBeLessThan(4);
+      for (const x of w3) expect(Math.abs(x - d)).toBeLessThan(3);
+    }
+  });
+
+  it("jusqu'à 1 000 tentatives par jour en v9 (120 avant : les jours qui réussissaient s'arrêtent au même tirage)", () => {
+    expect(DAILY_MAX_ATTEMPTS_V4).toBe(120);
+    expect(DAILY_MAX_ATTEMPTS_LASERS).toBe(1000);
+  });
+});
 
 describe("lot 19 — la règle bornée", () => {
   it("chaque paire de jours à moins de VARIETY_DAYS jours est couverte par l'un des deux, et un jour ne dépend que de son époque et des premiers jours de la suivante", () => {

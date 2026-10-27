@@ -7,6 +7,7 @@ import {
   CRUMBLE_GONE,
   CRUMBLE_INTACT,
   DEATH_FALL,
+  DEATH_LASER,
   DEATH_PRESS,
   DEATH_STALACTITE,
   DEATH_SAW,
@@ -66,7 +67,7 @@ import {
 //     met à souffler, et l'inverse ; la mort et l'arrivée ferment l'état), `rafale` (une rafale de la section courante part, position : le
 //     centre de la zone). Jamais gardés pour les autres vies du carnage.
 
-export type DeathCauseName = "pic" | "scie" | "chute" | "presse" | "stalactite";
+export type DeathCauseName = "pic" | "scie" | "chute" | "presse" | "stalactite" | "laser";
 
 /** D'où vient un événement : la partie (ou une lecture), le héros du carnage, une autre vie du carnage (filtrée). */
 export type EventSource = "jeu" | "heros" | "vie";
@@ -194,7 +195,7 @@ export interface EventInputs {
 const dirOf = (bits: number) => (bits & INPUT_RIGHT ? 1 : 0) - (bits & INPUT_LEFT ? 1 : 0);
 
 const T = UNITS_PER_TILE;
-const CAUSES: Record<number, DeathCauseName> = { [DEATH_SPIKE]: "pic", [DEATH_SAW]: "scie", [DEATH_FALL]: "chute", [DEATH_PRESS]: "presse", [DEATH_STALACTITE]: "stalactite" };
+const CAUSES: Record<number, DeathCauseName> = { [DEATH_SPIKE]: "pic", [DEATH_SAW]: "scie", [DEATH_FALL]: "chute", [DEATH_PRESS]: "presse", [DEATH_STALACTITE]: "stalactite", [DEATH_LASER]: "laser" };
 
 export function causeName(cause: number): DeathCauseName {
   return CAUSES[cause] ?? "pic";
