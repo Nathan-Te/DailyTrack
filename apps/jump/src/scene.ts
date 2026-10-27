@@ -55,6 +55,7 @@ import { createSawArt } from "./sawArt";
 import { createPlatformArt, type PlatformStats } from "./platformArt";
 import { createMushroomArt, type MushroomStats } from "./mushroomArt";
 import { createPressArt, type PressStats } from "./pressArt";
+import { createStalactiteArt, type StalactiteStats } from "./stalactiteArt";
 import { SLOW_DEBUG, SLOW_MARK, slowMarkQuads, type SlowDebugPath } from "./slowRoute";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
@@ -184,6 +185,8 @@ export interface JumpScene {
   readonly presses: PressStats | null;
   /** Lot 23 : les champignons à la dernière image (orientation dessinée, écrasement, dernier rebond renforcé ?) ; null : le niveau n'en a pas. */
   readonly mushrooms: MushroomStats | null;
+  /** Lot 24 : les stalactites à la dernière image (âge dessiné, hauteur, balancement, gouttes, opacité) ; null : le niveau n'en a pas. */
+  readonly stalactites: StalactiteStats | null;
   /** Lot 23 : un champignon vient de rebondir (indice dans `Level.mushrooms`, rebond renforcé ?) : il s'écrase puis revient. Aucune secousse de caméra. */
   bounceMushroom(index: number, boost: boolean): void;
   /**
@@ -431,6 +434,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
   const pressArt = createPressArt(world, level, { hazard: palette.hazard });
   // ——— Lot 23 : champignons rebonds (dôme violet, tourné vers où il lance, qui s'écrase au contact ; statique : jamais estompé dans le carnage) ———
   const mushroomArt = createMushroomArt(world, level);
+  // ——— Lot 24 : stalactites (pic de glace, pointe rouge ; tremble et laisse tomber de fines gouttes pendant 0,5 s, tombe, se brise ; estompée et intacte dans le carnage) ———
+  const stalactiteArt = createStalactiteArt(world, level, { hazard: palette.hazard });
 
   // ——— Arrivée : une tuile cerclée qui pulse, un mât et un grand drapeau en damier ———
   const finishCell = cellOrigin(level.finish);
@@ -722,6 +727,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     get mushrooms() {
       return mushroomArt ? mushroomArt.stats : null;
     },
+    get stalactites() {
+      return stalactiteArt ? stalactiteArt.stats : null;
+    },
     bounceMushroom(index, boost) {
       mushroomArt?.bounce(index, boost, lastClock);
     },
@@ -819,6 +827,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
       pressArt?.update(prev, state, alpha, fade, clock);
       // Lot 23 : champignons (écrasement au contact, retour tout droit sans mouvement).
       mushroomArt?.update(clock, animate);
+      // Lot 24 : stalactites (état de la simulation ; intactes et estompées dans le carnage).
+      stalactiteArt?.update(prev, state, alpha, fade, clock);
       // Lot 12 : blocs clignotants et alternés.
       dynamic?.update(state, clock, animate, { x: viewX, y: viewY, halfW: frame.halfW, halfH: frame.halfH }, fade);
       // Lot 13 : le vent (particules si les réglages en gardent et que le mouvement n'est pas réduit, sinon flèches fixes).

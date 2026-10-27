@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 7;
+export const JUMP_SIM_VERSION = 8;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -45,6 +45,13 @@ export const PRESS_VERSION = 6;
  * golden n'ont pas bougé. Les niveaux du jour depuis le générateur g17 sont en v7 ; les morceaux joués seuls restent en v3 (`MODULE_SIM_VERSION`).
  */
 export const MUSHROOM_VERSION = 7;
+/**
+ * Lot 24 : **version 8 = version 7 + stalactites** (`Level.stalactites`, annexe `stalactite`, thème glace). Une stalactite est accrochée à un plafond plein ; elle se déclenche
+ * quand le centre du personnage entre dans sa zone, tremble 0,5 s, tombe (table entière) et se brise au contact d'un plein ; elle tue au contact tant qu'elle tremble ou
+ * tombe. Son état (`AttemptState.stalactites`, absent sans stalactite) revient à intact à la reprise, comme les blocs friables ; elle n'est pas sur l'horloge. Un niveau
+ * sans stalactite se joue **exactement** comme en v3 à v7 : les golden n'ont pas bougé. Les niveaux du jour depuis le générateur g18 sont en v8 ; les morceaux seuls restent en v3.
+ */
+export const STALACTITE_VERSION = 8;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -65,9 +72,10 @@ export const MUSHROOM_VERSION = 7;
  * groupes ; tirages prouvés dans l'ordre de leur score estimé ; mutateurs de silhouette et 37 variantes ajoutées au bout de leurs morceaux) ;
  * 15 depuis le lot 20 (plateformes mobiles : niveaux en sim v5, morceaux à plateformes, règles de trajet) ;
  * 16 depuis le lot 22 (presses : niveaux en sim v6, morceaux de l'usine à presses, règles du générateur) ;
- * 17 depuis le lot 23 (champignons : niveaux en sim v7, morceaux de la forêt à champignons, règles du générateur).
+ * 17 depuis le lot 23 (champignons : niveaux en sim v7, morceaux de la forêt à champignons, règles du générateur) ;
+ * 18 depuis le lot 24 (stalactites : niveaux en sim v8, morceaux de la glace à stalactites, règles du générateur).
  */
-export const JUMP_GENERATOR_VERSION = 17;
+export const JUMP_GENERATOR_VERSION = 18;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

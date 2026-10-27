@@ -1,6 +1,6 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
 import * as sim from "../src/index";
-import { JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, MUSHROOM_VERSION, MODULES as ALL_MODULES, PLATFORM_GENERATOR, PLATFORM_VERSION, PRESS_GENERATOR, PRESS_VERSION, mushroomModuleIds, platformModuleIds, pressModuleIds, SINGLE_CLOCK_GENERATOR, SINGLE_CLOCK_VERSION, dailyLevel, jumpThemeForDay, type JumpThemeName } from "../src/index";
+import { JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, MUSHROOM_GENERATOR, MUSHROOM_VERSION, MODULES as ALL_MODULES, PLATFORM_GENERATOR, PLATFORM_VERSION, PRESS_GENERATOR, PRESS_VERSION, STALACTITE_VERSION, mushroomModuleIds, platformModuleIds, pressModuleIds, stalactiteModuleIds, SINGLE_CLOCK_GENERATOR, SINGLE_CLOCK_VERSION, dailyLevel, jumpThemeForDay, type JumpThemeName } from "../src/index";
 
 // `npm run variete:jump -w @cdj/jump-sim` (lot 19) — **répétition des morceaux de base** d'un jour à l'autre (toutes variantes confondues) :
 // morceaux de base disponibles par thème, fréquence de chacun (les dix plus fréquents), écart moyen et minimal entre deux apparitions du même
@@ -18,13 +18,16 @@ const G14 = opt("generateur") === "14";
 const G15 = opt("generateur") === "15";
 // Lot 23 : `--generateur=16` mesure la référence v6 (g16, sans champignons), le générateur en vigueur est g17 (version 7).
 const G16 = opt("generateur") === "16";
-const SIM_VERSION = G14 ? SINGLE_CLOCK_VERSION : G15 ? PLATFORM_VERSION : G16 ? PRESS_VERSION : MUSHROOM_VERSION;
-const GEN = G14 ? SINGLE_CLOCK_GENERATOR : G15 ? PLATFORM_GENERATOR : G16 ? PRESS_GENERATOR : JUMP_GENERATOR_VERSION;
+// Lot 24 : `--generateur=17` mesure la référence v7 (g17, sans stalactites), le générateur en vigueur est g18 (version 8).
+const G17 = opt("generateur") === "17";
+const SIM_VERSION = G14 ? SINGLE_CLOCK_VERSION : G15 ? PLATFORM_VERSION : G16 ? PRESS_VERSION : G17 ? MUSHROOM_VERSION : STALACTITE_VERSION;
+const GEN = G14 ? SINGLE_CLOCK_GENERATOR : G15 ? PLATFORM_GENERATOR : G16 ? PRESS_GENERATOR : G17 ? MUSHROOM_GENERATOR : JUMP_GENERATOR_VERSION;
 // Les morceaux que le générateur mesuré connaît (la référence g14 ne connaît pas ceux à plateformes, ni à presses, ni à champignons).
 const MODULES = ALL_MODULES.filter((def) => {
-  if (G14) return !platformModuleIds().has(def.id) && !pressModuleIds().has(def.id) && !mushroomModuleIds().has(def.id);
-  if (G15) return !pressModuleIds().has(def.id) && !mushroomModuleIds().has(def.id);
-  if (G16) return !mushroomModuleIds().has(def.id);
+  if (G14) return !platformModuleIds().has(def.id) && !pressModuleIds().has(def.id) && !mushroomModuleIds().has(def.id) && !stalactiteModuleIds().has(def.id);
+  if (G15) return !pressModuleIds().has(def.id) && !mushroomModuleIds().has(def.id) && !stalactiteModuleIds().has(def.id);
+  if (G16) return !mushroomModuleIds().has(def.id) && !stalactiteModuleIds().has(def.id);
+  if (G17) return !stalactiteModuleIds().has(def.id);
   return true;
 });
 const num = (v: number, k = 1) => v.toFixed(k).replace(".", ",");

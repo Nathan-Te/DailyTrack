@@ -1,0 +1,30 @@
+id: stalactite-allee
+intention: Marcher dans une allée de glace dont le plafond pend de longues stalactites : elles tremblent dès qu'on approche et ne tombent qu'une demi-seconde plus tard, il suffit de ne pas s'arrêter et de sauter trois petites bornes.
+etiquettes: stalactite respiration
+famille: stalactite-allee
+theme: glace
+format: 3
+paliers: 9 9
+repeter: e1 colonnes 12-12
+repeter: e2 colonnes 18-18
+variante: e1=1 e2=1
+variante: e1=3 e2=2
+variante: e1=0 e2=3
+variante: e1=2 e2=0
+grille:
+.#######################..
+.#######################..
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+........#......#.....#....
+##########################
+##########################
+##########################
+
+stalactite a 6,2 3 2
+stalactite b 13,2 3 2
+stalactite c 19,2 3 2

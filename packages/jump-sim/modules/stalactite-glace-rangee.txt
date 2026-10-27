@@ -1,0 +1,31 @@
+id: stalactite-glace-rangee
+intention: Glisser sans pouvoir s'arrêter sous une rangée de stalactites qui tremblent l'une après l'autre, en sautant deux bornes, puis sauter à temps deux nappes de pics au bout de la glace.
+etiquettes: stalactite glace precision
+famille: stalactite-glace-rangee
+theme: glace
+format: 3
+paliers: 9 9
+repeter: e colonnes 17-17
+repeter: p colonnes 22-22
+variante: e=1 p=1
+variante: e=3 p=1
+variante: e=2 p=2
+variante: e=1 p=2
+variante: e=4 p=1
+grille:
+.############################..
+.############################..
+.############################..
+...............................
+...............................
+...............................
+...............................
+...............................
+..........#...#......^^^...^^..
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
+###############################
+###############################
+
+stalactite a 8,3 3 2
+stalactite b 12,3 3 2
+stalactite c 16,3 3 2

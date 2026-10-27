@@ -1,5 +1,85 @@
 {
  "rule": 1,
- "catalog": "741638a5",
- "modules": {}
+ "catalog": "440a18d9",
+ "modules": {
+  "stalactite-glace-rangee": {
+   "0": {
+    "grid": "b42c7069",
+    "fast": 360,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "1": {
+    "grid": "556af129",
+    "fast": 382,
+    "costMin": 360,
+    "precise": [
+     112,
+     125
+    ],
+    "boxes": [
+     {
+      "c0": 10,
+      "c1": 12,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 11,
+      "c1": 13,
+      "r0": 4,
+      "r1": 8
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "3": {
+    "grid": "aacdd3a7",
+    "fast": 371,
+    "costMin": 360,
+    "precise": [
+     112,
+     123
+    ],
+    "boxes": [
+     {
+      "c0": 10,
+      "c1": 12,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 11,
+      "c1": 13,
+      "r0": 4,
+      "r1": 8
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "4": {
+    "grid": "24130e97",
+    "fast": 393,
+    "costMin": 360,
+    "precise": [
+     124
+    ],
+    "boxes": [
+     {
+      "c0": 11,
+      "c1": 13,
+      "r0": 4,
+      "r1": 8
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   }
+  }
+ }
 }

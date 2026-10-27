@@ -313,6 +313,12 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
       pool.emit({ x, y, count: e.boost ? 14 : 8, angle: a, spread: 0.9, vmin: 2, vmax: e.boost ? 7 : 5, life: 0.45, size: 0.1, gravity: -3, drag: 3, colors: colors.spore, jitter: 0.5 });
       break;
     }
+    case "stalactiteCasse":
+      // Lot 24 : des éclats de glace jaillissent du point d'impact ; **aucune secousse de caméra** (règle du lot 14 : une stalactite qui tombe n'est pas un moment fort) ni vibration. Le
+      // tremblement (`stalactiteTremble`) n'a pas de particules ici : ses fines gouttes de glace sont dessinées en continu par `stalactiteArt.ts`.
+      pool.emit({ x, y, count: 18, angle: UP, spread: 1.5, vmin: 3, vmax: 9, life: 0.6, size: 0.13, gravity: -14, drag: 1.5, colors: colors.frost, jitter: 0.6 });
+      pool.emit({ x, y, count: 6, angle: UP, spread: 1.6, vmin: 1, vmax: 3.5, life: 0.5, size: 0.2, gravity: -6, drag: 3, colors: colors.dust, jitter: 0.5 });
+      break;
     case "arrivee":
       pool.emit({ x, y: y + 1, count: 46, angle: UP, spread: 1.1, vmin: 6, vmax: 14, life: 1.7, size: 0.2, gravity: -16, drag: 1.6, colors: colors.confetti, jitter: 0.6 });
       break;
