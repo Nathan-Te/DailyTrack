@@ -1,8 +1,8 @@
 name: Deploy API
 # Déploie l'API (classement, planning, Salon) sur Google Cloud Run : image Docker → Artifact Registry → Cloud Run, puis contrôle de /api/health.
 # Lot R1 (plateforme) : un seul workflow, appelé par les autres, pour deux cibles entièrement séparées :
-#   - production : service `cdj-api`, base Turso des joueurs ; le job attend la validation de Nathan (environnement GitHub `production`).
-#     Appelé par production.yml (fusion dans main, après la recette) ; « Run workflow » ici redéploie à la main (validation demandée aussi).
+#   - production : service `cdj-api`, base Turso des joueurs ; environnement GitHub `production` (limité à main ; lot R12 : sans relecteur, le lancement
+#     du bouton « Mettre en production » vaut validation). Appelé par production.yml seulement.
 #   - recette    : service `cdj-api-recette`, base Turso de recette, ses propres secrets (Secret Manager). Appelé par recette.yml :
 #     une révision étiquetée SANS trafic par PR (`tag`), ou la révision qui reçoit le trafic de recette (fusion dans main, `tag` vide).
 # Lot R4 : la production n'est plus déployée par une fusion, mais par le bouton « Mettre en production » (production.yml), qui construit un
@@ -100,7 +100,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Production : le job attend la validation d'un relecteur de l'environnement `production` (Nathan). Recette : environnement sans règle.
+    # Production : environnement `production`, limité à main (lot R12 : plus de relecteur, le bouton lancé sur main vaut validation). Recette : sans règle.
     environment:
       name: ${{ inputs.target == 'production' && 'production' || 'recette' }}
       url: ${{ steps.result.outputs.url }}
@@ -142,7 +142,7 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      # Lot R6 : la validation de Nathan (environnement `production`) a pu durer : si le jour de bascule a commencé entre-temps, les jours conservés ne le seraient plus.
+      # Lot R6 : le run a pu durer (lot R12 : CI complète, répétition, sauvegarde) : si le jour de bascule a commencé entre-temps, les jours conservés ne le seraient plus.
       - name: Le jour de bascule n'a pas encore commencé
         if: ${{ inputs.bascule_le != '' }}
         run: node scripts/mise-en-production.mjs bascule-valide "$BASCULE"

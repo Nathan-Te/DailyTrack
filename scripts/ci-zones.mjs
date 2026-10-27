@@ -389,7 +389,8 @@ export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CI
  * Lot R13 (docs/tests.md) — la CI complète. `main` (chaque fusion) : l'Essentiel de tous les specs (sans la famille « Régression ») ; `complet` (« Run
  * workflow ») et `nuit` : tout. Chromium porte tout ; Firefox et WebKit, le petit ensemble `@navigateurs` des deux jeux (un job chacun).
  */
-export const PARTS_COMPLETES = { main: { web: 3, jump: 1 }, complet: { web: 6, jump: 1 }, nuit: { web: 6, jump: 1 } };
+// Lot R12 : `complet` et `nuit` repassent à 8 parts de Track (≈ 560 s de specs chacune au lieu de ≈ 745 s) : objectif ≤ 15 min de mur pour la CI que lance le bouton.
+export const PARTS_COMPLETES = { main: { web: 3, jump: 1 }, complet: { web: 8, jump: 1 }, nuit: { web: 8, jump: 1 } };
 
 /** La matrice des jobs `e2e-parts` d'un mode complet (une PR reçoit celle de `main` : le job y est sauté). */
 export function matriceComplete(mode) {

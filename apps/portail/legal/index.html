@@ -24,7 +24,7 @@
     <main class="mentions">
       <h1>Legal notice and privacy</h1>
       <p class="reference"><strong>The French version is the reference</strong> (<span lang="fr">la version française fait foi</span>): <a href="../mentions-legales/" hreflang="fr" lang="fr">Mentions légales et confidentialité</a>. This page is a faithful translation of it.</p>
-      <p class="doux">Du Jour (playdujour.com): DailyTrack and DailyJump. Last updated <time datetime="2026-10-24">October 24, 2026</time>.</p>
+      <p class="doux">Du Jour (playdujour.com): DailyTrack and DailyJump. Last updated <time datetime="2026-10-27">October 27, 2026</time>.</p>
 
       <section class="bref" aria-label="In short">
         <ul>
@@ -92,6 +92,12 @@
           <p>Start-up, errors, accepted time (day, time), refusals: never a nickname, an identifier, an IP address or a replay.</p>
           <p>Purpose: knowing whether the service works.</p>
           <p class="duree">Kept: 30 days (Google Cloud's default log retention).</p>
+        </li>
+        <li data-tables="sauvegardes">
+          <h3>Database backups</h3>
+          <p>Before each update of the site, a full copy of the database (everything described above) is made, in a private Google Cloud storage space (Belgium), readable only by the publisher and by the account that makes it.</p>
+          <p>Purpose: being able to repair the database if an update damaged it.</p>
+          <p class="duree">Kept: each copy is deleted after <span data-constante="SAUVEGARDE_JOURS" data-valeur="30">30</span> days. After an erasure request, your data therefore also disappears from the copies within that time at the latest.</p>
         </li>
         <li data-tables="circuits planning salon_circuits jump_levels meta">
           <h3>And nothing else</h3>

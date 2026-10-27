@@ -7,7 +7,7 @@
 // est un avertissement nommé, pas un verdict rouge ; en `complet` (main, lancement manuel) et `nuit`, il reste bloquant ; la nuit, une entrée
 // de plus de 14 jours fait échouer le run (« dette expirée »). Une quarantaine refusée (garde-fous) fait toujours échouer le run.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { MAX_DAYS, loadQuarantine, matches } from "./e2e-quarantaine.mjs";
 
 /** Parcourt les suites et rend les tests à plat : { file, title, project, status, attempts, errors }. */
@@ -111,12 +111,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const opt = (name) => (flags.includes(name) ? flags[flags.indexOf(name) + 1] : undefined);
   const mode = opt("--mode") ?? "complet";
   if (!path || !["pr", "main", "complet", "nuit"].includes(mode)) {
-    console.error("usage : node scripts/e2e-summary.mjs rapport.json [--mode pr|main|complet|nuit] [--quarantaine e2e/quarantaine.json] [--fail-on-flaky]");
+    console.error("usage : node scripts/e2e-summary.mjs rapport.json [--mode pr|main|complet|nuit] [--quarantaine e2e/quarantaine.json] [--fail-on-flaky] [--echecs echecs.json]");
     process.exit(2);
   }
   const qFile = opt("--quarantaine");
   const r = summarize(JSON.parse(readFileSync(path, "utf8")), { failOnFlaky: flags.includes("--fail-on-flaky"), mode, quarantine: qFile ? loadQuarantine(qFile) : null });
   console.log(r.markdown);
   for (const w of r.warnings) console.error(w);
+  // Lot R12 : les tests rouges (« fichier › titre »), en JSON, pour le résumé de « Mettre en production » (sortie `echecs` de ci.yml appelé).
+  if (opt("--echecs")) writeFileSync(opt("--echecs"), JSON.stringify(r.failed.map((t) => `${t.file} › ${t.title}`)));
   process.exit(r.exitCode);
 }
