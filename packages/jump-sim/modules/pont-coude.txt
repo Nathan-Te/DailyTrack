@@ -1,0 +1,26 @@
+id: pont-coude
+intention: Un pont qui tourne : on le longe, puis il se redresse en pilier qu'il faut escalader avant que l'extinction n'arrive, avant de sauter de son sommet vers l'autre rive.
+etiquettes: vertical precision pont
+famille: pont-coude
+theme: nuit
+format: 3
+paliers: 8 5
+variante: delai=180
+variante: delai=210
+variante: delai=165
+variante: delai=240
+grille:
+.......................
+.......................
+.......................
+.......................
+.......................
+.................######
+.................######
+.................######
+#####............######
+#####............######
+#####^^^^^^^^^^^^######
+#######################
+
+pont coude {delai} 2,8 6-12,8 12,7-5

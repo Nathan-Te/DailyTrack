@@ -28,3 +28,5 @@ export * from "./champignonsPieces";
 export * from "./stalactites";
 export * from "./stalactitesPieces";
 export * from "./lasers";
+export * from "./ponts";
+export * from "./pontsPieces";

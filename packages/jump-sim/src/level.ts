@@ -77,6 +77,14 @@ import { idiv } from "./idiv";
 //       haut-gauche de sa première tuile : `col,rangée` du départ, puis de l'autre extrémité — même colonne pour `h`, même rangée pour `v`), en aller-retour de `cycle` pas (pair,
 //       `LASER_BAR_MIN_CYCLE` à `LASER_BAR_MAX_CYCLE`) : position = `f(phase)` entière, **ralentie aux deux extrémités** par `PLATFORM_EASE`, vitesse de pointe sous `MAX_LASER_STEP`.
 //       Toutes les tuiles de son trajet sont vides. **Seul le rayon tue** ; les émetteurs, dessinés aux deux bouts, ne bloquent ni ne tuent (aucun plein mobile).
+//   pont <id> <délai> <col,rangée> <tuiles>…
+//       (lot 26, version 10, thème nuit) un **pont à interrupteur** : `col,rangée` est l'**interrupteur**, une tuile au sol (un bloc plein `#`) ; `tuiles` sont les tuiles du pont **dans
+//       l'ordre où il s'éteint**, en partant de l'interrupteur : `c,r` une tuile, `c0-c1,r` une rangée (de `c0` à `c1`, dans ce sens), `c,r0-r1` une colonne (de `r0` à `r1`) ; droit,
+//       en marches ou coudé selon ce qu'on écrit (au plus `BRIDGE_MAX_TILES`). Toutes sont **vides** dans la grille : éteint, le pont se traverse comme du vide. Quand le personnage
+//       **se pose** sur l'interrupteur (il y arrive au sol alors qu'il n'y était pas au pas d'avant), tout le pont s'allume : ses tuiles deviennent pleines. Après `délai` pas
+//       (`BRIDGE_MIN_DELAY` : 1 s au moins), elles s'éteignent **une à une** : la tuile de rang `k` reste pleine `délai + k × BRIDGE_STEP` pas depuis l'allumage. Se poser de nouveau
+//       sur l'interrupteur rallume tout le pont et relance le délai. Une tuile qui s'éteint sous le personnage le laisse tomber. Pas sur l'horloge : son état (`AttemptState.bridges`)
+//       revient à éteint à la reprise, comme les blocs friables.
 //   vent <col0>-<col1> <rang0>-<rang1> <haut|gauche|droite> <force> [rafale <cycle> <actif> <décalage>]
 //       (lot 13, thème forêt) une **zone de vent** : un rectangle de tuiles (bornes comprises), **traversable** (ce n'est pas un bloc), qui
 //       pousse le personnage tant que **le centre** de sa boîte y est, au sol comme en l'air. `haut` : une accélération verticale qui compense
@@ -111,11 +119,16 @@ export const TILE_BLINK_ON = 11;
 export const TILE_BLINK_OFF = 12;
 export const TILE_ALT_ON = 13;
 export const TILE_ALT_OFF = 14;
-export type Tile = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
+/**
+ * Lot 26 : une tuile de pont allumée (pleine). Éteinte, c'est `TILE_EMPTY` : dans `Level.tiles` (et pour le dessin des blocs) les tuiles d'un pont sont toujours vides ; `AttemptState.tiles`
+ * y met `TILE_BRIDGE_ON` tant que la tuile est allumée (`settleBridges`).
+ */
+export const TILE_BRIDGE_ON = 15;
+export type Tile = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 
 /** Vrai pour une tuile qui arrête le personnage : bloc plein, bloc friable (pas encore tombé), ressort, tapis, glace, bloc clignotant ou alterné présent. */
 export function isSolidTile(t: number): boolean {
-  return (t >= TILE_SOLID && t <= TILE_SPRING) || (t >= TILE_BELT_LEFT && t <= TILE_ICE) || t === TILE_BLINK_ON || t === TILE_ALT_ON;
+  return (t >= TILE_SOLID && t <= TILE_SPRING) || (t >= TILE_BELT_LEFT && t <= TILE_ICE) || t === TILE_BLINK_ON || t === TILE_ALT_ON || t === TILE_BRIDGE_ON;
 }
 
 /** Vrai pour un bloc clignotant ou alterné (présent ou absent). */
@@ -462,6 +475,37 @@ export interface LaserBar {
 }
 
 /**
+ * Lot 26 : ponts à interrupteur. Délai minimal avant la première extinction (pas : 1 s), pas entre deux extinctions (pas par tuile : 16 pas = 7,5 tuiles/s, soit 68 % de la
+ * vitesse de course de 11 tuiles/s — « environ 70 % », point de départ du lot, une constante de la simulation), longueur et délai maximaux.
+ */
+export const BRIDGE_MIN_DELAY = 120;
+export const BRIDGE_MAX_DELAY = 1200;
+export const BRIDGE_STEP = 16;
+export const BRIDGE_MAX_TILES = 24;
+
+/** Lot 26 : un pont à interrupteur (voir l'en-tête). `tiles` : dans l'ordre où le pont s'éteint, en partant de l'interrupteur ; `delay` : pas avant la première extinction. */
+export interface Bridge {
+  id: string;
+  switchCol: number;
+  switchRow: number;
+  delay: number;
+  tiles: readonly Cell[];
+}
+
+/**
+ * Lot 26 : la tuile de rang `k` d'un pont allumé depuis `age` pas est-elle pleine ? `age` : 1 au pas où il s'allume, 0 : éteint (jamais allumé, ou tout éteint). Pleine pour
+ * `age` de 1 à `délai + k × BRIDGE_STEP`. Pure, entière.
+ */
+export function bridgeTileLit(b: Pick<Bridge, "delay">, age: number, k: number): boolean {
+  return age > 0 && age <= b.delay + k * BRIDGE_STEP;
+}
+
+/** Lot 26 : l'âge à partir duquel tout le pont est éteint (la dernière tuile s'éteint juste après) : `délai + (longueur − 1) × BRIDGE_STEP`. */
+export function bridgeLastLit(b: Pick<Bridge, "delay" | "tiles">): number {
+  return b.delay + (b.tiles.length - 1) * BRIDGE_STEP;
+}
+
+/**
  * Lot 22 : la **table de chute** d'une presse (entiers, 65 valeurs de 0 à 4 096) : `k²` pour `k` de 0 à 64, la chute libre — la presse part presque à
  * l'arrêt et frappe à pleine vitesse (127 sur 4 096 pour le dernier intervalle, soit 2 fois la moyenne). Écrite par `k * k` : aucun flottant,
  * `test/presses.test.ts` la compare à la formule. La remontée lit `PLATFORM_EASE` (démarrage doux, fin douce), à l'envers.
@@ -524,6 +568,8 @@ export interface Level {
   lasers: readonly Laser[];
   /** Lot 25 : barres laser coulissantes (ordre du bloc annexe) ; vide sans barre. */
   laserBars: readonly LaserBar[];
+  /** Lot 26 : ponts à interrupteur (ordre du bloc annexe) ; vide sans pont. Leurs tuiles sont vides dans `tiles` ; leur interrupteur est un bloc plein. */
+  bridges: readonly Bridge[];
 }
 
 export class LevelError extends Error {
@@ -664,6 +710,7 @@ export function parseLevel(text: string): Level {
   const stalactiteLines: { line: number; words: string[] }[] = [];
   const laserLines: { line: number; words: string[] }[] = [];
   const barLines: { line: number; words: string[] }[] = [];
+  const bridgeLines: { line: number; words: string[] }[] = [];
   for (let i = 0; i < annex.length; i++) {
     const raw = annex[i]!.trim();
     if (raw === "" || raw.startsWith("//")) continue;
@@ -695,7 +742,8 @@ export function parseLevel(text: string): Level {
     else if (words[0] === "stalactite") stalactiteLines.push({ line: end + i + 1, words });
     else if (words[0] === "laser") laserLines.push({ line: end + i + 1, words });
     else if (words[0] === "barre") barLines.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme, presse, stalactite, laser, barre)`);
+    else if (words[0] === "pont") bridgeLines.push({ line: end + i + 1, words });
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme, presse, stalactite, laser, barre, pont)`);
   }
   if (simVersion < SINGLE_CLOCK_VERSION && sections.some((s) => s.phase !== 0)) throw new LevelError("Une phase de section n'existe qu'en version 4 (une seule horloge)");
   // ——— Lot 12 : les cycles des blocs clignotants, par section ———
@@ -942,7 +990,51 @@ export function parseLevel(text: string): Level {
     }
     laserBars.push({ id, axis, length, cycle, a, b, section });
   }
-  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites, lasers, laserBars };
+  // ——— Lot 26 : les ponts à interrupteur ———
+  const bridges: Bridge[] = [];
+  const bridgeCells = new Set<number>();
+  for (const { line, words } of bridgeLines) {
+    const where = `Annexe, ligne ${line}`;
+    const usage = "« pont <id> <délai> <col,rangée> <tuiles : c,r | c0-c1,r | c,r0-r1>… » attendu";
+    if (words.length < 5) throw new LevelError(`${where} : ${usage}`);
+    const [, id, delayText, at] = words as [string, string, string, string];
+    if (bridges.some((q) => q.id === id)) throw new LevelError(`${where} : pont « ${id} » déjà déclaré`);
+    const delay = /^\d+$/.test(delayText) ? Number(delayText) : -1;
+    if (delay < BRIDGE_MIN_DELAY || delay > BRIDGE_MAX_DELAY) throw new LevelError(`${where} : délai de ${BRIDGE_MIN_DELAY} à ${BRIDGE_MAX_DELAY} pas (au moins 1 s)`);
+    const sm = /^(\d+),(\d+)$/.exec(at);
+    if (!sm) throw new LevelError(`${where} : ${usage}`);
+    const switchCol = Number(sm[1]);
+    const switchRow = Number(sm[2]);
+    if (switchCol >= width || switchRow >= height) throw new LevelError(`${where} : l'interrupteur (${switchCol},${switchRow}) sort de la grille`);
+    if (tiles[switchRow * width + switchCol] !== TILE_SOLID) throw new LevelError(`${where} : l'interrupteur (${switchCol},${switchRow}) doit être un bloc plein « # »`);
+    const cells: Cell[] = [];
+    for (const word of words.slice(4)) {
+      const m = /^(\d+)(?:-(\d+))?,(\d+)(?:-(\d+))?$/.exec(word);
+      if (!m || (m[2] !== undefined && m[4] !== undefined)) throw new LevelError(`${where} : tuiles « ${word} » : ${usage}`);
+      const col = Number(m[1]);
+      const row = Number(m[3]);
+      if (m[2] !== undefined) {
+        const to = Number(m[2]);
+        const step = to >= col ? 1 : -1;
+        for (let c = col; c !== to + step; c += step) cells.push({ col: c, row });
+      } else if (m[4] !== undefined) {
+        const to = Number(m[4]);
+        const step = to >= row ? 1 : -1;
+        for (let r = row; r !== to + step; r += step) cells.push({ col, row: r });
+      } else cells.push({ col, row });
+    }
+    if (cells.length < 1 || cells.length > BRIDGE_MAX_TILES) throw new LevelError(`${where} : un pont a de 1 à ${BRIDGE_MAX_TILES} tuiles (${cells.length})`);
+    for (const c of cells) {
+      if (c.col >= width || c.row >= height) throw new LevelError(`${where} : la tuile (${c.col},${c.row}) du pont sort de la grille`);
+      const k = c.row * width + c.col;
+      if (tiles[k] !== TILE_EMPTY) throw new LevelError(`${where} : la tuile (${c.col},${c.row}) du pont n'est pas vide`);
+      if (bridgeCells.has(k)) throw new LevelError(`${where} : la tuile (${c.col},${c.row}) est déjà dans un pont`);
+      bridgeCells.add(k);
+    }
+    if (bridges.some((q) => q.switchCol === switchCol && q.switchRow === switchRow)) throw new LevelError(`${where} : l'interrupteur (${switchCol},${switchRow}) a déjà un pont`);
+    bridges.push({ id, switchCol, switchRow, delay, tiles: cells });
+  }
+  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites, lasers, laserBars, bridges };
 }
 
 /**

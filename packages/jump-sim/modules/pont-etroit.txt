@@ -1,0 +1,26 @@
+id: pont-etroit
+intention: Des îlots étroits qui montent et descendent au-dessus des pics : le pont ne dure qu'un peu plus d'une seconde après l'interrupteur, il faut enchaîner les sauts sans une hésitation.
+etiquettes: precision pont
+famille: pont-etroit
+theme: nuit
+format: 3
+paliers: 8 8
+variante: delai=170
+variante: delai=185
+variante: delai=200
+variante: delai=215
+grille:
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+#####.................####
+#####.................####
+#####^^^^^^^^^^^^^^^^^####
+##########################
+
+pont etroit {delai} 2,8 7,8 10,7 13,8 16,7 19,8

@@ -43,7 +43,9 @@ import {
   withSingleClock,
   SINGLE_CLOCK_VERSION,
   MUSHROOM_VERSION,
+  BRIDGE_VERSION,
   LASER_VERSION,
+  bridgeModuleIds,
   STALACTITE_VERSION,
   mushroomModuleIds,
   laserModuleIds,
@@ -110,8 +112,8 @@ describe("niveau du jour : identité et pureté", () => {
     // Lot 16 : avec ses voies lentes (et leurs montées ajoutées).
     const fresh = reassemble(levels[7]!);
     // Lot 15 : l'assemblage est en version 3 ; le niveau du jour, le même mis à l'heure unique (phases des sections).
-    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), LASER_VERSION)).toBe(levels[7]!.ascii);
-    expect(levels[7]!.level.simVersion).toBe(LASER_VERSION);
+    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), BRIDGE_VERSION)).toBe(levels[7]!.ascii);
+    expect(levels[7]!.level.simVersion).toBe(BRIDGE_VERSION);
   });
 
   it("trois dates voisines donnent trois niveaux différents", () => {
@@ -224,7 +226,7 @@ describe("niveau du jour : quotas et budget", () => {
   it("repos (référence v3) : chaque morceau d'un groupe au repos est absent ce jour-là ; groupes non vides, de tailles égales à un près ; REST_OPEN groupes ouverts par jour", () => {
     const sizes = new Array<number>(REST_GROUPS).fill(0);
     // Lot 20 : les morceaux à plateformes (lot 22 : ni ceux à presses ; lot 23 : ni ceux à champignons ; lot 24 : ni ceux à stalactites) ne sont pas dans la référence v3 (ni ses groupes).
-    for (const m of MODULES.filter((d) => !platformModuleIds().has(d.id) && !pressModuleIds().has(d.id) && !mushroomModuleIds().has(d.id) && !stalactiteModuleIds().has(d.id) && !laserModuleIds().has(d.id))) sizes[restGroup(m.id)]!++;
+    for (const m of MODULES.filter((d) => !platformModuleIds().has(d.id) && !pressModuleIds().has(d.id) && !mushroomModuleIds().has(d.id) && !stalactiteModuleIds().has(d.id) && !laserModuleIds().has(d.id) && !bridgeModuleIds().has(d.id))) sizes[restGroup(m.id)]!++;
     for (const n of sizes) expect(n).toBeGreaterThan(0);
     expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
     for (const L of levels) {

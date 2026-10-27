@@ -422,8 +422,8 @@ describe("galerie et adresses (lot 12)", () => {
       const natives = own.filter((m) => m.theme === theme);
       expect(natives.length, theme).toBeGreaterThanOrEqual(6);
       for (const m of natives) {
-        // Lot 25 : le néon a une seconde mécanique (les lasers), comme l'usine a les presses : un morceau natif porte l'étiquette de l'une ou de l'autre.
-        expect(theme === "neon" ? m.tags.includes(tag) || m.tags.includes("laser") : m.tags.includes(tag), m.id).toBe(true);
+        // Lot 25 : le néon a une seconde mécanique (les lasers), comme l'usine a les presses : un morceau natif porte l'étiquette de l'une ou de l'autre. Lot 26 : la nuit aussi (les ponts à interrupteur).
+        expect(theme === "neon" ? m.tags.includes(tag) || m.tags.includes("laser") : m.tags.includes(tag) || (theme === "nuit" && m.tags.includes("pont")), m.id).toBe(true);
         for (let v = 0; v < m.variants.length; v++) expect(moduleTheme(m.id, v), `${m.id} v${v}`).toBe(theme);
       }
       // Les morceaux ordinaires ne sont dans le filtre que par leurs variantes mutées, ouvertes elles aussi dans le thème.

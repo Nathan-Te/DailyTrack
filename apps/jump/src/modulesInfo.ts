@@ -45,6 +45,7 @@ export const TAG_LABELS: Record<ModuleTag, string> = {
   plateforme: "plateforme mobile",
   presse: "presse",
   laser: "laser",
+  pont: "pont",
   champignon: "champignon",
   stalactite: "stalactite",
 };

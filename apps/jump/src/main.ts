@@ -84,8 +84,10 @@ import type { PlatformStats } from "./platformArt";
 import type { MushroomStats } from "./mushroomArt";
 import type { StalactiteStats } from "./stalactiteArt";
 import type { LaserStats } from "./laserArt";
+import type { BridgeStats } from "./bridgeArt";
 import type { PressStats } from "./pressArt";
 import { laserBarLook, laserLook, pressLook } from "./announce";
+import { bridgeTileLooks } from "./bridge";
 import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -297,6 +299,22 @@ export interface LasersDebug extends Partial<LaserStats> {
 }
 
 /**
+ * Lot 26 : `__jump.bridges` — ce que le dessin a posé (tuiles pleines, pointillées, jauges, plaques d'interrupteur, opacité) et ce que la simulation sait : l'âge de chaque pont (0 éteint,
+ * sinon les pas depuis son allumage), la tuile de chaque rang (`simSolid`) et la jauge de la simulation (`simFills`, 0 à 1).
+ */
+export interface BridgesDebug extends Partial<BridgeStats> {
+  /** Nombre de ponts. */
+  count: number;
+  /** Par pont : son interrupteur (col, rangée), son délai (pas), le nombre de ses tuiles. */
+  list: { id: string; switchCol: number; switchRow: number; delay: number; tiles: number }[];
+  /** Par pont : l'âge dans la simulation (`AttemptState.bridges`). */
+  ages: number[];
+  /** Par tuile (ordre des ponts puis de leurs tuiles) : pleine dans la simulation ? et la jauge qu'elle impose (0 vide … 1 pleine). */
+  simSolid: boolean[];
+  simFills: number[];
+}
+
+/**
  * Lot 24 : `__jump.stalactites` — ce que le dessin a posé (âge dessiné, hauteur, balancement, gouttes, opacité) et ce que la simulation sait : la liste des stalactites (tuile du corps, zone
  * de déclenchement en colonnes) et leur état courant (`ages` : 0 intacte, âge > 0 déclenchée, −1 brisée).
  */
@@ -324,6 +342,8 @@ export interface JumpDebug {
   readonly stalactites: StalactitesDebug | null;
   /** Lot 25 : les lasers (null : le niveau n'en a pas). */
   readonly lasers: LasersDebug | null;
+  /** Lot 26 : les ponts à interrupteur (null : le niveau n'en a pas). */
+  readonly bridges: BridgesDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
   readonly wind: WindDebug | null;
   phase: Phase;
@@ -2343,6 +2363,20 @@ const info: JumpDebug = {
       simBars: level.laserBars.map((_, i) => laserBarAt(level, state.sections, state.time, i)),
       barPhases,
       simBarSpeeds: level.laserBars.map((b, i) => laserBarLook(b, barPhases[i]!).speed),
+    };
+  },
+  /** Lot 26 : les ponts à interrupteur (null sans eux) : ce que le dessin a posé, et l'état de la simulation. */
+  get bridges() {
+    if (level.bridges.length === 0) return null;
+    const state = session.state;
+    const looks = bridgeTileLooks(level, state);
+    return {
+      ...(scene?.bridges ?? {}),
+      count: level.bridges.length,
+      list: level.bridges.map((b) => ({ id: b.id, switchCol: b.switchCol, switchRow: b.switchRow, delay: b.delay, tiles: b.tiles.length })),
+      ages: level.bridges.map((_, i) => state.bridges?.[i] ?? 0),
+      simSolid: looks.map((k) => k.solid),
+      simFills: looks.map((k) => k.fill),
     };
   },
   /** Lot 24 : les stalactites (null sans elles) : ce que le dessin a posé, la liste de la simulation et l'état courant. */

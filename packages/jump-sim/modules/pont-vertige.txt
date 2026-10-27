@@ -1,0 +1,28 @@
+id: pont-vertige
+intention: Une longue montée de marches isolées dont la lumière s'éteint derrière soi : cinq sauts d'affilée vers la corniche, sans pouvoir reculer.
+etiquettes: vertical precision pont
+famille: pont-vertige
+theme: nuit
+format: 3
+paliers: 10 5
+variante: delai=150
+variante: delai=135
+variante: delai=165
+variante: delai=180
+grille:
+............................
+............................
+............................
+............................
+............................
+......................######
+......................######
+......................######
+......................######
+......................######
+#####.................######
+#####.................######
+#####^^^^^^^^^^^^^^^^^######
+############################
+
+pont vertige {delai} 2,10 6-7,9 9-10,8 12-13,7 15-16,6 18-19,5

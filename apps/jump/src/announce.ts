@@ -1,4 +1,4 @@
-import { TICK_RATE, cycleMod, laserBarPos, laserOn, pressPart, type BlinkCycle, type Gust, type Laser, type LaserBar, type Platform, type Press, platformPos } from "@cdj/jump-sim";
+import { BRIDGE_STEP, TICK_RATE, cycleMod, laserBarPos, laserOn, pressPart, type BlinkCycle, type Gust, type Laser, type LaserBar, type Platform, type Press, platformPos } from "@cdj/jump-sim";
 
 // L'annonce des éléments à horloge (lot 18) — **affichage seul**, logique pure et testée. Principe : un élément à horloge **annonce chacun de ses
 // changements d'état**, assez tôt, par un signe **continu et simple** (une jauge qui descend ou qui monte, une vitesse qui décroît) ; jamais de
@@ -73,6 +73,24 @@ export function blinkGauge(p: BlinkPhase, vanishTicks: number, appearTicks: numb
   }
   const w = announceWindow(appearTicks, p.length);
   return w > 0 && p.left <= w ? 1 - p.left / (w + 1) : 0;
+}
+
+// ——— Nuit : les ponts à interrupteur (lot 26) ———
+
+/** L'annonce de l'extinction d'une tuile de pont : 48 pas (0,4 s), constante de l'affichage (la tuile reste pleine jusqu'au pas où la simulation l'éteint). */
+export const BRIDGE_VANISH_TICKS = 48;
+
+/**
+ * Lot 26 : la jauge de la tuile de rang `k` d'un pont de délai `delay`, allumé depuis `age` pas (`AttemptState.bridges`, 0 : éteint). Même convention que `blinkGauge` : pleine (1) hors
+ * annonce, `restants / (w + 1)` pendant les `w` derniers pas où la tuile est pleine (`restants` vaut 1 au dernier pas plein), 0 dès qu'elle est éteinte (`bridgeTileLit` faux). L'annonce
+ * compte donc exactement `w` pas, tous strictement entre 0 et 1, strictement décroissants : une jauge qui se vide, jamais de clignotement. Pure.
+ */
+export function bridgeGauge(delay: number, k: number, age: number, wanted = BRIDGE_VANISH_TICKS): number {
+  const last = delay + k * BRIDGE_STEP;
+  if (age <= 0 || age > last) return 0;
+  const left = last - age + 1;
+  const w = announceWindow(wanted, last);
+  return w > 0 && left <= w ? left / (w + 1) : 1;
 }
 
 // ——— Forêt : le vent des rafales ———

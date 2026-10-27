@@ -13,6 +13,7 @@ import {
   MUSHROOM_UP_SPEED,
   TILE_ALT_OFF,
   TILE_ALT_ON,
+  TILE_BRIDGE_ON,
   TILE_BLINK_OFF,
   TILE_BLINK_ON,
   TILE_EMPTY,
@@ -22,6 +23,8 @@ import {
   TILE_SPIKE_UP,
   TILE_SPRING,
   blinkIsSolid,
+  bridgeLastLit,
+  bridgeTileLit,
   isSolidTile,
   isSpikeTile,
   mushroomPad,
@@ -36,6 +39,7 @@ import {
   stalactiteOffset,
   windBlows,
   windZoneAt,
+  type Bridge,
   type Level,
   type Point,
 } from "./level";
@@ -96,6 +100,12 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 // entier par stalactite, absent sans stalactite) : 0 intacte, `age` > 0 déclenchée depuis `age` pas (elle tremble pendant `STALACTITE_SHAKE_TICKS`, puis tombe selon `stalactiteOffset`),
 // −1 brisée. Elle se déclenche à la fin du pas où le centre du personnage est dans sa zone (colonnes, à hauteur de son corps ou plus bas) ; elle se brise au premier pas où son corps
 // chevauche un bloc plein ou sort de la grille ; elle tue (`DEATH_STALACTITE`) tant qu'elle est déclenchée et pas brisée. Hors horloge ; la reprise la remet intacte (`initialAttempt`).
+//
+// **Ponts à interrupteur (lot 26, niveaux de version 10 et morceaux seuls)** : un pont (`Level.bridges`) est une suite de tuiles vides reliée à un interrupteur (un plein). Son état
+// (`AttemptState.bridges`, un entier par pont, absent sans pont) : 0 éteint, `age` > 0 allumé depuis `age` pas. Le pas où le personnage **se pose** sur l'interrupteur (il y est au sol à la
+// fin du pas et n'y était pas au début) l'allume (âge 1) ou le rallume (âge 1 de nouveau) ; la tuile de rang `k` est pleine pour l'âge 1 à `délai + k × BRIDGE_STEP` (`bridgeTileLit`),
+// puis le pont est éteint (âge 0). Les tuiles pleines sont dans `tiles` (`TILE_BRIDGE_ON`, `settleBridges`, avec la même règle de sortie que les blocs clignotants : une tuile qui
+// devrait s'allumer pendant que la boîte du personnage la chevauche reste traversable jusqu'à ce qu'elle n'y soit plus). Hors horloge ; la reprise remet tout éteint (`initialAttempt`).
 //
 // Ordre d'un pas en course : minuteries des blocs friables (ceux qui arrivent à 0 tombent) → personnage (`stepPlayer`, sur la grille de
 // l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies) → points de passage ;
@@ -226,6 +236,11 @@ export interface AttemptState {
    * (`Level.stalactites`) — `STALACTITE_INTACT` (0), les pas écoulés depuis son déclenchement (> 0, voir `stalactiteOffset`) ou `STALACTITE_BROKEN` (−1).
    */
   stalactites?: readonly number[];
+  /**
+   * Lot 26, **seulement dans un niveau qui a des ponts à interrupteur** (absent sinon : les empreintes des autres niveaux ne changent pas) : une valeur par pont (`Level.bridges`) —
+   * 0 éteint, sinon les pas écoulés depuis son allumage (1 au pas où le personnage s'est posé sur l'interrupteur ; voir `bridgeTileLit`).
+   */
+  bridges?: readonly number[];
 }
 
 /** État au départ (et après chaque mort, et après « recommencer ») : rien n'a bougé. */
@@ -250,6 +265,7 @@ export function initialAttempt(level: Level): AttemptState {
     ...(level.alts.length > 0 ? { alt: 0 } : {}),
     ...(level.platforms.length > 0 ? { ride: -1 } : {}),
     ...(level.stalactites.length > 0 ? { stalactites: level.stalactites.map(() => STALACTITE_INTACT) } : {}),
+    ...(level.bridges.length > 0 ? { bridges: level.bridges.map(() => 0) } : {}),
   };
 }
 
@@ -654,6 +670,61 @@ function stepStalactites(level: Level, current: readonly number[], tiles: readon
   return out;
 }
 
+/** Lot 26 : le personnage `p` est-il posé sur l'interrupteur du pont `b` (au sol, la tuile sous ses pieds, par un bout au moins de sa largeur) ? */
+export function standsOnSwitch(b: Pick<Bridge, "switchCol" | "switchRow">, p: Readonly<PlayerState>): boolean {
+  return p.ground === 1 && tileOf(p.y + PLAYER_HEIGHT) === b.switchRow && tileOf(p.x) <= b.switchCol && b.switchCol <= tileOf(p.x + PLAYER_WIDTH - 1);
+}
+
+/**
+ * Lot 26 : les ponts au pas suivant. **Avance** ceux qui sont allumés (âge + 1, éteints une fois la dernière tuile éteinte), puis **allume ou rallume** tout pont dont le personnage
+ * vient de se poser sur l'interrupteur : `after` sur l'interrupteur, `before` pas (null : aucun allumage, pendant l'attente de la reprise). Rend `current` lui-même si rien ne change.
+ * `events` (facultatif) reçoit l'indice du premier pont allumé à ce pas.
+ */
+function stepBridges(level: Level, current: readonly number[], before: Readonly<PlayerState>, after: Readonly<PlayerState> | null, events: AttemptEvents | null): readonly number[] {
+  let out = current;
+  for (let i = 0; i < level.bridges.length; i++) {
+    const b = level.bridges[i]!;
+    const age = current[i]!;
+    let next = age > 0 ? (age >= bridgeLastLit(b) ? 0 : age + 1) : 0;
+    if (after && standsOnSwitch(b, after) && !standsOnSwitch(b, before)) {
+      next = 1;
+      if (events && events.bridge < 0) events.bridge = i;
+    }
+    if (next !== age) {
+      if (out === current) out = [...current];
+      (out as number[])[i] = next;
+    }
+  }
+  return out;
+}
+
+/**
+ * Lot 26 : l'état des tuiles des ponts pour le pas qui suit, `bridges` étant l'état des ponts, `player` le personnage. Une tuile qui doit être **éteinte** l'est tout de suite (le
+ * personnage qui marchait dessus tombe) ; une tuile qui doit être **pleine** le devient **sauf si la boîte du personnage la chevauche** : elle reste traversable jusqu'au premier état
+ * où elle n'y est plus (se toucher par un bord ne compte pas), comme les blocs clignotants. Rend `tiles` lui-même si rien ne change (sinon une copie).
+ */
+export function settleBridges(level: Level, tiles: readonly number[], bridges: readonly number[], player: Readonly<PlayerState>): readonly number[] {
+  let out = tiles;
+  let box: Box | null = null;
+  for (let i = 0; i < level.bridges.length; i++) {
+    const b = level.bridges[i]!;
+    const age = bridges[i]!;
+    for (let k = 0; k < b.tiles.length; k++) {
+      const cell = b.tiles[k]!;
+      const at = cell.row * level.width + cell.col;
+      const want = bridgeTileLit(b, age, k);
+      if ((out[at] === TILE_BRIDGE_ON) === want) continue;
+      if (want) {
+        if (!box) box = playerBox(player);
+        if (boxesOverlap(box, tileBox(cell.col, cell.row))) continue;
+      }
+      if (out === tiles) out = [...tiles];
+      (out as number[])[at] = want ? TILE_BRIDGE_ON : TILE_EMPTY;
+    }
+  }
+  return out;
+}
+
 /**
  * Lot 23 : ce qu'un pas a déclenché, rempli par `stepAttempt` si on le lui donne (outils, tests, affichage : jamais la simulation elle-même) — `mushroom` : l'indice dans
  * `Level.mushrooms` du champignon qui vient de rebondir (−1 : aucun), `boost` : 1 si le rebond est renforcé.
@@ -664,6 +735,8 @@ export interface AttemptEvents {
   /** Lot 24 : l'indice dans `Level.stalactites` de la stalactite déclenchée à ce pas (−1 : aucune) et de celle qui s'est brisée (−1 : aucune). */
   shake: number;
   shatter: number;
+  /** Lot 26 : l'indice dans `Level.bridges` du pont allumé (ou rallumé) à ce pas (−1 : aucun). */
+  bridge: number;
 }
 
 /**
@@ -678,6 +751,7 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
     events.boost = 0;
     events.shake = -1;
     events.shatter = -1;
+    events.bridge = -1;
   }
   if (state.status === ATTEMPT_FINISHED) return state as AttemptState;
   const single = level.simVersion >= SINGLE_CLOCK_VERSION;
@@ -687,8 +761,15 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
     const time = state.checkpoint >= 0 || single ? state.time + 1 : state.time;
     if (deathTicks < RESPAWN_TICKS) {
       // Lot 24 : une stalactite déclenchée continue de tomber pendant l'attente (affichage seulement : la reprise la remet intacte).
-      if (level.stalactites.length === 0) return { ...state, deathTicks, time };
-      return { ...state, deathTicks, time, stalactites: stepStalactites(level, state.stalactites!, state.tiles, 0, 0, false, events) };
+      if (level.stalactites.length === 0 && level.bridges.length === 0) return { ...state, deathTicks, time };
+      const waiting: AttemptState = { ...state, deathTicks, time };
+      if (level.stalactites.length > 0) waiting.stalactites = stepStalactites(level, state.stalactites!, state.tiles, 0, 0, false, events);
+      // Lot 26 : un pont allumé continue de s'éteindre pendant l'attente (affichage seulement : la reprise le remet éteint).
+      if (level.bridges.length > 0) {
+        waiting.bridges = stepBridges(level, state.bridges!, state.player, null, events);
+        waiting.tiles = settleBridges(level, state.tiles, waiting.bridges, state.player);
+      }
+      return waiting;
     }
     if (state.checkpoint >= 0 || single) {
       const back = state.checkpoint >= 0 ? checkpointAttempt(level, { ...state, time }) : respawnAttempt(level, { ...state, time });
@@ -869,9 +950,15 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   if (state.alt !== undefined) next.alt = state.alt;
   if (state.ride !== undefined) next.ride = state.ride;
   if (state.stalactites !== undefined) next.stalactites = state.stalactites;
+  if (state.bridges !== undefined) next.bridges = state.bridges;
   if (level.alts.length > 0) next.alt = alt;
   // Lot 24 : les stalactites avancent, puis se déclenchent si le centre du personnage est dans leur zone (sa tuile : `col`, rangée du centre).
   if (level.stalactites.length > 0) next.stalactites = stepStalactites(level, state.stalactites!, tiles, col, tileOf(player.y + idiv(PLAYER_HEIGHT, 2)), true, events);
+  // Lot 26 : les ponts avancent, puis s'allument (ou se rallument) si le personnage vient de se poser sur un interrupteur ; leurs tuiles pour le pas suivant.
+  if (level.bridges.length > 0) {
+    next.bridges = stepBridges(level, state.bridges!, state.player, player, events);
+    next.tiles = settleBridges(level, tiles, next.bridges, player);
+  }
   // Lot 20 : la plateforme qui porte le personnage (gardée pendant le coyote après avoir quitté son bord).
   if (hasPlatforms) next.ride = landedOn >= 0 ? landedOn : player.ground !== 1 && ride >= 0 && player.air <= params.coyote ? ride : -1;
   // ——— L'arrivée d'abord : elle l'emporte sur une mort au même pas ———

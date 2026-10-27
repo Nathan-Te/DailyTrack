@@ -88,7 +88,7 @@ function standingHazard(level: Level, col: number, floor: number): string | null
 }
 
 /** Une place pour attendre : un plein avec deux tuiles libres au-dessus et rien de mortel à aucun pas. Rend `null` si sûre, sinon pourquoi pas. */
-function refugeProblem(level: Level, col: number, floor: number): string | null {
+export function refugeProblem(level: Level, col: number, floor: number): string | null {
   if (!isSolidTile(tileOf(level, col, floor)) || tileOf(level, col, floor - 1) !== TILE_EMPTY || tileOf(level, col, floor - 2) !== TILE_EMPTY) return "ce n'est pas un sol dégagé";
   return standingHazard(level, col, floor);
 }

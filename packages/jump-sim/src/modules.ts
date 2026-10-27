@@ -55,6 +55,10 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //                                                 (première copie d'une plage répétée, ou dernière avec une apostrophe) ; ses deux émetteurs sont les `#` qui le bornent
 //   barre <id> <h|v> <long> <cycle> <c,r> <c,r>
 //                                                 (lot 25) une barre laser coulissante (syntaxe de `level.ts`) : ses deux positions extrêmes en coordonnées du gabarit
+//   pont <id> <délai> <c,r> <tuiles>…
+//                                                 (lot 26) un pont à interrupteur (syntaxe de `level.ts`) : l'interrupteur `c,r` (un `#` de la grille) puis les tuiles du pont
+//                                                 dans l'ordre où il s'éteint (`c,r`, `c0-c1,r`, `c,r0-r1`), en coordonnées du gabarit (première copie d'une plage répétée, ou
+//                                                 dernière avec une apostrophe) ; pas de section (hors horloge), `{param}` permis
 //   zone <mutateur> …                             et les zones de mutation (ci-dessous)
 //
 // **Mutateurs (lot 7).** Une transformation déclarative du **gabarit** (avant le déroulé des plages répétées : une zone posée sur une plage
@@ -116,7 +120,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse", "champignon", "stalactite", "laser"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse", "champignon", "stalactite", "laser", "pont"] as const;
 /** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13 ; lot 19, silhouette : `hausse`, `ecart`, `decale`, `echange`). */
 export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent", "hausse", "ecart", "decale", "echange"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
@@ -360,8 +364,8 @@ export function parseModule(text: string): ModuleDef {
     // Lot 22 : les presses sont la seconde mécanique de l'usine : un morceau `presse` est de l'usine, avec ou sans tapis.
     // Lot 23 : les champignons sont la seconde mécanique de la forêt : un morceau `champignon` est de la forêt, avec ou sans vent.
     // Lot 24 : les stalactites sont la seconde mécanique de la glace : un morceau `stalactite` est de la glace, avec ou sans glace au sol.
-    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse")) || (th === "foret" && tags.includes("champignon")) || (th === "glace" && tags.includes("stalactite")) || (th === "neon" && tags.includes("laser"));
-    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : th === "foret" ? " (ou « champignon »)" : th === "glace" ? " (ou « stalactite »)" : th === "neon" ? " (ou « laser »)" : ""} et « theme: ${th} » vont ensemble`));
+    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse")) || (th === "foret" && tags.includes("champignon")) || (th === "glace" && tags.includes("stalactite")) || (th === "neon" && tags.includes("laser")) || (th === "nuit" && tags.includes("pont"));
+    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : th === "foret" ? " (ou « champignon »)" : th === "glace" ? " (ou « stalactite »)" : th === "neon" ? " (ou « laser »)" : th === "nuit" ? " (ou « pont »)" : ""} et « theme: ${th} » vont ensemble`));
   }
   const optional = (k: string, value: string) => {
     const v = meta[k];
@@ -391,6 +395,8 @@ export function parseModule(text: string): ModuleDef {
   if (tags.includes("stalactite") !== annex.some((l) => l.startsWith("stalactite "))) throw new ModuleError(where("l'étiquette « stalactite » et une ligne « stalactite » du bloc annexe vont ensemble"));
   // Lot 25 : de même pour les lasers (une ligne « laser » ou « barre » du bloc annexe).
   if (tags.includes("laser") !== annex.some((l) => l.startsWith("laser ") || l.startsWith("barre "))) throw new ModuleError(where("l'étiquette « laser » et une ligne « laser » ou « barre » du bloc annexe vont ensemble"));
+  // Lot 26 : de même pour les ponts à interrupteur (une ligne « pont » du bloc annexe).
+  if (tags.includes("pont") !== annex.some((l) => l.startsWith("pont "))) throw new ModuleError(where("l'étiquette « pont » et une ligne « pont » du bloc annexe vont ensemble"));
   if (grid.length === 0) throw new ModuleError(where("grille vide"));
   // Lot 23 : l'étiquette `champignon` et des champignons dans la grille vont ensemble.
   if (tags.includes("champignon") !== grid.some((row) => /[mw()]/.test(row))) throw new ModuleError(where("l'étiquette « champignon » et des champignons « m w ( ) » dans la grille vont ensemble"));
@@ -707,6 +713,11 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
               for (const w of line.split(/\s+/).slice(5)) if (Number(/^(\d+)/.exec(w)?.[1] ?? -1) + 8 >= z.c0) fail(`${where} : une barre laser y passe`);
               continue;
             }
+            // Lot 26 : ni un pont (l'interrupteur en 4e mot, puis les tuiles : toute colonne citée).
+            if (line.startsWith("pont ")) {
+              for (const w of line.split(/\s+/).slice(3)) for (const n of w.split(",")[0]!.split("-")) if (Number(/^(\d+)/.exec(n)?.[1] ?? -1) >= z.c0) fail(`${where} : un pont y passe`);
+              continue;
+            }
             for (const w of line.split(/\s+/).slice(5)) {
               const c = Number(/^(\d+)/.exec(w)?.[1] ?? -1);
               if (c >= z.c0) fail(`${where} : une scie y passe`);
@@ -929,6 +940,28 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
       );
       continue;
     }
+    if (words[0] === "pont") {
+      // Lot 26 : un pont à interrupteur — l'interrupteur (4e mot) puis les tuiles : `c,r`, `c0-c1,r` ou `c,r0-r1`, chaque nombre traduit comme un point de scie (première copie d'une plage
+      // répétée, ou dernière avec une apostrophe).
+      const colOf = (n: string, q: string) => (q ? cols.last : cols.first)[Number(n)];
+      const rowOf = (n: string, q: string) => (q ? rows.last : rows.first)[Number(n)];
+      annex.push(
+        words
+          .map((w, k) => {
+            if (k < 3) return w;
+            const m = /^(\d+)('?)(?:-(\d+)('?))?,(\d+)('?)(?:-(\d+)('?))?$/.exec(w);
+            if (!m) return w;
+            const c0 = colOf(m[1]!, m[2]!);
+            const c1 = m[3] !== undefined ? colOf(m[3], m[4]!) : undefined;
+            const r0 = rowOf(m[5]!, m[6]!);
+            const r1 = m[7] !== undefined ? rowOf(m[7], m[8]!) : undefined;
+            if (c0 === undefined || r0 === undefined || c1 === undefined && m[3] !== undefined || r1 === undefined && m[7] !== undefined || c0 < 0 || r0 < 0) throw new ModuleError(where(`point ${w} hors de la grille ou retiré par la variante`));
+            return `${c0 + lead}${c1 !== undefined ? `-${c1 + lead}` : ""},${r0}${r1 !== undefined ? `-${r1}` : ""}`;
+          })
+          .join(" "),
+      );
+      continue;
+    }
     if (words[0] === "laser" || words[0] === "barre") {
       // Lot 25 : un laser fixe (`laser <id> <h|v> <c,r> …` : la première tuile du rayon, 4e mot) ou une barre coulissante (`barre <id> <h|v> <long> <cycle> <c,r> <c,r>` : ses deux
       // positions, mots 6 et 7) : les points traduits comme ceux d'une scie (première copie, ou dernière avec une apostrophe).
@@ -948,7 +981,7 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
       );
       continue;
     }
-    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent », « plateforme », « presse », « stalactite », « laser » et « barre » sont permis (« ${words[0]} »)`));
+    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent », « plateforme », « presse », « stalactite », « laser », « barre » et « pont » sont permis (« ${words[0]} »)`));
     annex.push(
       words
         .map((w, k) => {
@@ -1055,6 +1088,15 @@ export function palierProblems(m: BuiltModule): string[] {
       for (let t = 0; t < b.cycle; t++) {
         if (boxesOverlap(box, laserBarBox(b, t))) {
           out.push(`palier d'${name} : la barre ${b.id} y passe`);
+          break;
+        }
+      }
+    }
+    // Lot 26 : ni un pont (aucune de ses tuiles) ni un interrupteur : un palier est un rebord où l'on entre et repart, on n'y allume ni n'y éteint rien.
+    for (const br of L.bridges) {
+      for (const c of [{ col: br.switchCol, row: br.switchRow }, ...br.tiles]) {
+        if (boxesOverlap(box, { x: c.col * T, y: c.row * T, w: T, h: T })) {
+          out.push(`palier d'${name} : le pont ${br.id} y passe`);
           break;
         }
       }
