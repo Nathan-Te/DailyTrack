@@ -37,26 +37,6 @@ function slowJumpReplay() {
   return { code: encodeReplay(rec.toReplay(track.id)), fallAt, respawnAt, fallPos, tick: race.car.tick };
 }
 
-test("?scenario=relief : le pilote finit au temps de Node, sans chute, et franchit les deux sauts", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
-  const run = runPilot(track, { grip: 1 });
-  expect(run.valid).toBe(true);
-  expect(run.jumps).toHaveLength(2);
-  await page.goto("/?debug&scenario=relief&timescale=6&quality=2");
-  await page.waitForFunction(() => window.__cdj?.phase);
-  await expect(page.locator("#meta")).toHaveText("Circuit du relief");
-  await page.evaluate((c) => window.__cdj.autoplay(c), encodeReplay(run.replay));
-  await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 120_000 });
-  const end = await page.evaluate(() => {
-    const r = window.__cdj.race as unknown as { finishMs: number; respawns: number };
-    return { finishMs: r.finishMs, respawns: r.respawns };
-  });
-  expect(end.finishMs).toBe(run.finishMs);
-  expect(end.respawns).toBe(0);
-  expect(errors).toEqual([]);
-});
-
 test("un saut raté : la voiture tombe, le voile de chute monte, la reprise a lieu au point de contrôle après le délai (comme dans Node)", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));

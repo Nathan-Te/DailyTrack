@@ -10,18 +10,6 @@
     },
     {
       "jeu": "web",
-      "fichier": "admin.spec.ts",
-      "titre": "",
-      "navigateur": "webkit"
-    },
-    {
-      "jeu": "web",
-      "fichier": "figures.spec.ts",
-      "titre": "admin : « Une figure »",
-      "navigateur": "webkit"
-    },
-    {
-      "jeu": "web",
       "fichier": "salon.spec.ts",
       "titre": "fin de session : podium",
       "navigateur": "chromium"
@@ -48,6 +36,12 @@
       "jeu": "web",
       "fichier": "thumbnails.spec.ts",
       "titre": "l'ouverture des archives ne gèle pas l'interface",
+      "navigateur": "chromium"
+    },
+    {
+      "jeu": "web",
+      "fichier": "salon.spec.ts",
+      "titre": "le classement final reste 8 s",
       "navigateur": "chromium"
     }
   ]

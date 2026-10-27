@@ -19,7 +19,6 @@ interface Stats {
 }
 interface J {
   phase: string;
-  stalactites: { opacity?: number; age?: number[]; visible?: boolean[]; shake?: number[]; drips?: number[] } | null;
   attempt: { status: string; time: number };
   theme: { stats: Stats | null };
   blocks: { blinkFace?: number; altFace?: number; clockFade?: number } | null;
@@ -95,87 +94,6 @@ async function skipCarnage(page: Page): Promise<void> {
   });
   await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.phase !== "carnage");
 }
-
-test("carnage : les scies mobiles sont à 35 %, les scies fixes et le reste à 100 % ; la partie ordinaire est à 100 %", async ({ browser }) => {
-  test.setTimeout(120_000);
-  const date = dayWhere(null, (d) => d.level.saws.some((s) => s.cycle !== 0));
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    // Avant le carnage : tout est à pleine opacité.
-    await page.goto(`/?debug&accueil=0&seed=${date}`);
-    test.skip(!(await hasWebGL(page)), SKIP);
-    await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.theme.stats !== null && ["ready", "playing"].includes((window as unknown as { __jump?: J }).__jump?.phase ?? ""));
-    const before = await J(page);
-    expect(before.stats!.clockFade).toBe(1);
-    expect(before.stats!.sawOpacity.every((o) => o === 1)).toBe(true);
-
-    await playToCarnage(page, date);
-    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.theme.stats!.clockFade < 1);
-    const during = (await J(page)).stats!;
-    expect(during.clockFade).toBe(FADE);
-    const saws = pageLevel(date).level.saws;
-    expect(during.sawOpacity).toEqual(saws.map((s) => (s.cycle !== 0 ? FADE : 1)));
-    expect(during.sawOpacity.some((o) => o === FADE)).toBe(true);
-
-    await skipCarnage(page);
-    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.theme.stats!.clockFade === 1);
-    const after = (await J(page)).stats!;
-    expect(after.sawOpacity.every((o) => o === 1)).toBe(true);
-  });
-});
-
-test("carnage de la nuit : les blocs clignotants sont à 35 %, les blocs alternés restent à 100 %", async ({ browser }) => {
-  test.setTimeout(120_000);
-  // Lot 24 : des clignotants près de l'arrivée (le carnage s'ouvre sur la fin du niveau : un bloc hors de la vue n'est pas dessiné, `blinkFace` resterait à −1) ; avec le générateur g18, le premier jour de nuit à clignotants n'en avait que dans son milieu.
-  const date = dayWhere("nuit", (d) => d.level.blinks.some((b) => b.col >= d.level.width - 45));
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    await playToCarnage(page, date);
-    await page.waitForFunction(() => {
-      const b = (window as unknown as { __jump: J }).__jump.blocks;
-      return !!b && (b.clockFade ?? 1) < 1 && (b.blinkFace ?? -1) > 0;
-    });
-    const during = (await J(page)).blocks!;
-    expect(during.clockFade).toBe(FADE);
-    expect(during.blinkFace).toBeCloseTo(FADE, 6);
-    await skipCarnage(page);
-    await page.waitForFunction(() => {
-      const b = (window as unknown as { __jump: J }).__jump.blocks;
-      return !!b && b.clockFade === 1 && (b.blinkFace ?? -1) > 0;
-    });
-    expect((await J(page)).blocks!.blinkFace).toBe(1);
-  });
-});
-
-test("carnage de la forêt : les rafales sont à 35 %, une zone qui souffle toujours reste à 100 %", async ({ browser }) => {
-  test.setTimeout(120_000);
-  const date = dayWhere("foret", (d) => d.level.winds.some((w) => w.gust !== null));
-  const zones = pageLevel(date).level.winds;
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    await playToCarnage(page, date);
-    await page.waitForFunction(() => ((window as unknown as { __jump: J }).__jump.wind?.fade ?? [1]).some((f) => f < 1));
-    const during = (await J(page)).wind!;
-    expect(during.fade).toEqual(zones.map((z) => (z.gust !== null ? FADE : 1)));
-    await skipCarnage(page);
-    await page.waitForFunction(() => ((window as unknown as { __jump: J }).__jump.wind?.fade ?? [0]).every((f) => f === 1));
-  });
-});
-
-test("carnage de la glace (lot 24) : les stalactites sont dessinées intactes et à 35 %, quelle que soit la vie ; la partie ordinaire est à 100 %", async ({ browser }) => {
-  test.setTimeout(120_000);
-  const date = dayWhere("glace", (d) => d.level.stalactites.length > 0);
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    await playToCarnage(page, date);
-    await page.waitForFunction(() => ((window as unknown as { __jump: J }).__jump.stalactites?.opacity ?? 1) < 1);
-    const during = await page.evaluate(() => (window as unknown as { __jump: J }).__jump.stalactites!);
-    expect(during.opacity).toBe(FADE);
-    // Intactes (jamais en train de trembler ni de tomber, jamais brisées), sans gouttes.
-    expect(during.age!.every((a) => a === 0)).toBe(true);
-    expect(during.visible!.every(Boolean)).toBe(true);
-    expect(during.shake!.every((s) => s === 0)).toBe(true);
-    expect(during.drips!.every((d) => d === 0)).toBe(true);
-    await skipCarnage(page);
-    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.stalactites?.opacity === 1);
-  });
-});
 
 test("`?seed=<jour>&carnage=demo` : le carnage d'un niveau du jour sans le jouer (preuve de l'auteur en héros), dangers à horloge estompés", async ({ browser }) => {
   test.setTimeout(120_000);

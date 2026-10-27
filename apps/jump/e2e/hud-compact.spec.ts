@@ -25,11 +25,10 @@ const jump = (page: Page) => page.evaluate(() => (window as unknown as { __jump:
 const RIGHT = 2;
 const JUMP = 4;
 
+// Lot R13 (docs/tests.md) : deux formats (téléphone en paysage, ordinateur) et le portrait là où l'écran s'y affiche ; 740×360 et 360×640 sont retirés.
 const FORMATS = [
   { name: "paysage 844 × 390", viewport: { width: 844, height: 390 } },
-  { name: "paysage 740 × 360", viewport: { width: 740, height: 360 } },
   { name: "portrait 390 × 844", viewport: { width: 390, height: 844 } },
-  { name: "portrait 360 × 640", viewport: { width: 360, height: 640 } },
 ] as const;
 
 async function open(page: Page, extra = ""): Promise<boolean> {

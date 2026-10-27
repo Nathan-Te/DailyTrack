@@ -146,34 +146,7 @@ test("démo : finir le niveau → premier pseudo → rang et top 10 → Partager
   });
 });
 
-test("démo : serveur injoignable → « Classement indisponible, ton temps sera envoyé », puis envoi au retour du réseau", async ({ browser }) => {
-  test.setTimeout(120_000);
-  await atInstant(browser, FIXED_NOW, async (page, context) => {
-    await withName(context, "Pilote");
-    await page.goto("/?debug&api=demo&accueil=0");
-    test.skip(!(await hasWebGL(page)), SKIP);
-    await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: J }).__jump?.phase ?? ""));
-    await context.setOffline(true);
-    await playAuthor(page);
-    await rankStatus(page, "offline");
-    await expect(page.locator("#arrival-rank")).toHaveText("Classement indisponible, ton temps sera envoyé.");
-    let j = await jump(page);
-    expect(j.rank.pending).toMatchObject([{ date: "2026-10-30", tries: 1 }]);
-    // Le partage sans rang : la ligne d'avant le classement.
-    await page.locator("#arrival-share").click();
-    const offlineLine = await page.evaluate(() => (window as unknown as { __jump: J }).__jump.arrival.share);
-    expect(offlineLine).toMatch(/^Du Jour · Jump #15 — \d+,\d{3}\u00a0s — 🏆 — 0 💀\n/);
-    // Le réseau revient : l'envoi part, le rang s'affiche (le pseudo de la plateforme, repris tel quel).
-    await context.setOffline(false);
-    await rankStatus(page, "ranked");
-    await expect(page.locator("#arrival-rank")).toHaveText(/^2e sur \d+$/);
-    await expect(page.locator("#arrival .arrivee__classement li.ligne--moi .ligne__nom")).toHaveText("Pilote");
-    j = await jump(page);
-    expect(j.rank.pending).toEqual([]);
-  });
-});
-
-test("démo, au doigt en paysage : pseudo, rang, top 10, Partager ; cibles ≥ 44 px", async ({ browser }) => {
+test("démo, au doigt en paysage : pseudo, rang, top 10, Partager ; cibles ≥ 44 px", { tag: "@regression" }, async ({ browser }) => {
   test.setTimeout(120_000);
   const chromium = browser.browserType().name() === "chromium";
   const viewport = { width: 844, height: 390 };
@@ -219,7 +192,7 @@ test("démo, au doigt en paysage : pseudo, rang, top 10, Partager ; cibles ≥ 4
   );
 });
 
-test("démo : une archive montre son classement figé, rien n'est envoyé", async ({ browser }) => {
+test("démo : une archive montre son classement figé, rien n'est envoyé", { tag: "@regression" }, async ({ browser }) => {
   test.setTimeout(90_000);
   await atInstant(browser, FIXED_NOW, async (page) => {
     await page.goto("/?debug&api=demo&seed=2026-10-20");

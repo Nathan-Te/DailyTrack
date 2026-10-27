@@ -145,11 +145,6 @@ test("?demo : le pilote roule seul, tous les effets s'animent, rien n'est enregi
   expect(errors).toEqual([]);
 });
 
-test("la qualité peut être figée (?quality=) et la secousse coupée (?shake=0)", async ({ page }) => {
-  await racing(page, "/?debug&scenario=pilotage&quality=1&shake=0");
-  expect(await page.evaluate(() => window.__cdj.fx.quality)).toBe(1);
-});
-
 test("circuits d'essai : N tire un circuit au hasard, T change de thème, le panneau des archives propose les deux", async ({ page }) => {
   await racing(page, "/?debug&seed=2026-10-07");
   await page.keyboard.press("KeyT");

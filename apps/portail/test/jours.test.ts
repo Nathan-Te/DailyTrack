@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PREMIER_JOUR_TEXTE, premierJourDuJour } from "@cdj/core/lancement";
-import { circuitNumber, parseDay } from "@cdj/sim";
+import { circuitNumber, formatDay, parseDay } from "@cdj/sim";
 import { levelNumber } from "@cdj/jump-sim";
 import { PREMIER_JOUR_DU_JOUR, cartes, numeroDeJournee } from "../src/jours";
 
@@ -41,10 +41,10 @@ describe("portail : numéro de journée commun", () => {
 
 // Lot R8 : une seule source pour la date du lancement (`config/lancement.json`), lue par le serveur, le portail et les deux jeux.
 describe("date du lancement : une seule source", () => {
-  it("le fichier est une date valide, posée par le lot R8 (le lundi 26/10/2026) ; la surcharge ne vaut que si elle est une date", () => {
+  it("le fichier est une date valide (sa valeur n'est écrite dans aucun test) ; la surcharge ne vaut que si elle est une date", () => {
     expect(PREMIER_JOUR_TEXTE).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(parseDay(PREMIER_JOUR_TEXTE)).not.toBeNull();
-    expect(PREMIER_JOUR_TEXTE).toBe("2026-10-26");
+    expect(formatDay(parseDay(PREMIER_JOUR_TEXTE)!)).toBe(PREMIER_JOUR_TEXTE);
     expect(premierJourDuJour("2026-11-02")).toBe(parseDay("2026-11-02")!);
     expect(premierJourDuJour("demain")).toBe(parseDay(PREMIER_JOUR_TEXTE)!); // illisible : ignorée
     expect(premierJourDuJour("")).toBe(parseDay(PREMIER_JOUR_TEXTE)!);

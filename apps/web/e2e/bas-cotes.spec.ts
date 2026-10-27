@@ -7,7 +7,7 @@ test.setTimeout(150_000);
 
 const track = createBasCotesTrack();
 
-test("?scenario=bas-cotes : le pilote finit au temps de Node, et ses roues passent sur les vibreurs", async ({ page }) => {
+test("?scenario=bas-cotes : le pilote finit au temps de Node, et ses roues passent sur les vibreurs", { tag: "@regression" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto("/?debug&scenario=bas-cotes&timescale=6&quality=2");

@@ -5,9 +5,6 @@ import {
   FAST_PEAK,
   GENERATOR_VERSION,
   GENERATOR_BEFORE_34,
-  GENERATOR_BEFORE_48,
-  BASCULE_LOT_48,
-  BASCULE_LOT_34,
   daysFromCivil,
   figureByName,
   PALETTES,
@@ -57,7 +54,8 @@ const cellsOf = (k: Parameters<typeof isCurve>[0]) => (k === "grandL" || k === "
 const isTight = (k: Parameters<typeof isCurve>[0]) => isCurve(k) && !isWide(k);
 
 describe("circuit du jour : construction", () => {
-  it("est déterministe : même jour, même circuit, au caractère près", () => {
+  // Six générations (trois jours, deux fois) : ≈ 0,3 à 1 s chacune sur la CI (2 cœurs, tests en parallèle), le délai par défaut de 5 s ne suffit pas.
+  it("est déterministe : même jour, même circuit, au caractère près", { timeout: 60_000 }, () => {
     for (const day of [JOUR_TEST, JOUR_TEST + 1, JOUR_TEST + 400]) {
       const a = dailyCircuit(day);
       const b = dailyCircuit(day);
@@ -285,12 +283,11 @@ describe("palette et identifiant", () => {
 
   it("l'identifiant du circuit est une date et la version du générateur, accepté par les rediffusions", () => {
     const id = dailyTrackId(parseDay("2026-10-06")!);
-    // Lot 34 : la version est celle du jour (15 avant la bascule du 28/10/2026, la dernière ensuite).
+    // Lot R11 : la version est celle du registre des jours (15 jusqu'au 27/10/2026), la dernière pour un jour qu'il ne nomme pas.
     expect(id).toBe(`jour-2026-10-06-g${GENERATOR_BEFORE_34}`);
-    expect(dailyTrackId(parseDay("2026-10-27")!)).toBe(`jour-2026-10-27-g${GENERATOR_BEFORE_34}`);
-    expect(dailyTrackId(BASCULE_LOT_34)).toBe(`jour-2026-10-28-g${GENERATOR_BEFORE_48}`);
-    // Lot 48 : 16 jusqu'au 03/11/2026, la dernière version à partir du 04/11.
-    expect(dailyTrackId(BASCULE_LOT_48)).toBe(`jour-2026-11-04-g${GENERATOR_VERSION}`);
+    expect(dailyTrackId(parseDay("2026-10-26")!)).toBe(`jour-2026-10-26-g${GENERATOR_BEFORE_34}`);
+    expect(dailyTrackId(parseDay("2026-10-28")!)).toBe(`jour-2026-10-28-g${GENERATOR_VERSION}`);
+    expect(dailyTrackId(parseDay("2026-11-04")!)).toBe(`jour-2026-11-04-g${GENERATOR_VERSION}`);
     expect(id).toMatch(/^[a-z0-9_-]{1,32}$/);
     expect(formatDay(JOUR_TEST)).toBe("2026-10-06");
   });

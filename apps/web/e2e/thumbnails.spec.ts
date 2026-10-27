@@ -237,8 +237,8 @@ test("l'ouverture des archives ne gèle pas l'interface (processeur ×4 : la gé
   }
 });
 
+// Lot R13 (docs/tests.md) : deux formats (téléphone en paysage, ordinateur) et le portrait là où l'écran s'y affiche ; 740×360 et 360×640 sont retirés.
 for (const viewport of [
-  { name: "petit portrait", width: 360, height: 640 },
   { name: "portrait", width: 390, height: 844 },
   { name: "paysage", width: 844, height: 390 },
 ]) {

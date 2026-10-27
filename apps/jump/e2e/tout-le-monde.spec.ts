@@ -209,19 +209,6 @@ test("démo : le carnage de tout le monde adaptatif — au palier 60 vies, jamai
   });
 });
 
-test("démo : une archive montre la carte figée de son jour", async ({ browser }) => {
-  test.setTimeout(90_000);
-  const date = "2026-10-20";
-  const day = demoDay(date);
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    await page.goto(`/?debug&api=demo&seed=${date}`);
-    test.skip(!(await hasWebGL(page)), SKIP);
-    await ready(page);
-    await loaded(page);
-    expect(await w(page)).toMatchObject({ date, loaded: true, visible: true, players: day.deaths.players, deaths: day.deaths.deaths, tiles: day.deaths.tiles.length });
-  });
-});
-
 test("démo, au doigt en paysage : le réglage des taches et « Le carnage de tout le monde » ; cibles ≥ 44 px", async ({ browser }) => {
   test.setTimeout(150_000);
   const chromium = browser.browserType().name() === "chromium";

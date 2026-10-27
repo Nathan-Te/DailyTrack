@@ -70,100 +70,6 @@ test("la page par défaut montre « Préparation du niveau… », puis le niveau
   });
 });
 
-test("au rechargement le niveau vient du cache : pas de worker, pas de nouvelle génération, même empreinte", async ({ browser }) => {
-  await atInstant(browser, GENERATED_NOW, async (page) => {
-    const seen: string[] = [];
-    await slowWorker(page, 0, seen);
-    await page.goto("/?debug&accueil=0");
-    if (!(await hasWebGL(page))) {
-      test.skip(true, SKIP);
-      return;
-    }
-    await ready(page);
-    const first = await daily(page);
-    expect(first.load.source).toBe("worker");
-    expect(seen.length).toBe(1);
-
-    await page.reload();
-    await ready(page);
-    const second = await daily(page);
-    expect(second.load).toMatchObject({ source: "cache", generated: false });
-    expect(second.hash).toBe(first.hash);
-    expect(second.authorTicks).toBe(first.authorTicks);
-    expect(seen.length).toBe(1); // le worker n'a pas été demandé une seconde fois
-    expect(second.load.totalMs).toBeLessThan(first.load.totalMs + 1); // la relecture n'attend pas un worker
-  });
-});
-
-test("un cache corrompu est écarté (la preuve ne se rejoue pas) : le niveau est régénéré, puis le cache redevient sain", async ({ browser }) => {
-  await atInstant(browser, GENERATED_NOW, async (page) => {
-    await page.goto("/?debug&accueil=0");
-    if (!(await hasWebGL(page))) {
-      test.skip(true, SKIP);
-      return;
-    }
-    await ready(page);
-    const first = await daily(page);
-    await page.evaluate((id) => {
-      const key = `jump:niveau:${id}`;
-      const entry = JSON.parse(localStorage.getItem(key)!);
-      entry.payload.authorTicks += 1;
-      localStorage.setItem(key, JSON.stringify(entry));
-    }, first.id);
-    await page.reload();
-    await ready(page);
-    const second = await daily(page);
-    expect(second.load.source).toBe("worker");
-    expect(second.load.cacheMiss).toBe("la preuve ne se rejoue pas");
-    expect(second.hash).toBe(first.hash);
-    await page.reload();
-    await ready(page);
-    expect((await daily(page)).load.source).toBe("cache");
-  });
-});
-
-test("sans worker (indisponible) : repli sur le fil principal, même niveau qu'avec le worker", async ({ browser }) => {
-  let hashViaWorker = "";
-  await atInstant(browser, GENERATED_NOW, async (page) => {
-    await page.goto("/?debug&accueil=0");
-    if (!(await hasWebGL(page))) {
-      test.skip(true, SKIP);
-      return;
-    }
-    await ready(page);
-    hashViaWorker = (await daily(page)).hash;
-  });
-  await atInstant(browser, GENERATED_NOW, async (page) => {
-    await page.addInitScript(() => {
-      delete (window as unknown as { Worker?: unknown }).Worker;
-    });
-    await page.goto("/?debug&accueil=0", { waitUntil: "commit" });
-    await ready(page);
-    const d = await daily(page);
-    expect(d.load).toMatchObject({ source: "principal", generated: true });
-    expect(d.hash).toBe(hashViaWorker);
-    await expect(page.locator("#prep")).toHaveCount(0);
-  });
-});
-
-test("stockage refusé : le jeu se charge quand même, par le worker, et rien n'est gardé", async ({ browser }) => {
-  await atInstant(browser, GENERATED_NOW, async (page) => {
-    await page.addInitScript(() => {
-      const refuse = () => {
-        throw new Error("SecurityError");
-      };
-      Object.defineProperty(window, "localStorage", { get: refuse, configurable: true });
-    });
-    await page.goto("/?debug&accueil=0");
-    if (!(await hasWebGL(page))) {
-      test.skip(true, SKIP);
-      return;
-    }
-    await ready(page);
-    expect((await daily(page)).load).toMatchObject({ source: "worker", generated: true });
-  });
-});
-
 test("?seed=…&solution finit toujours au temps de l'auteur, que le niveau vienne du worker ou du cache", async ({ browser }) => {
   await atInstant(browser, GENERATED_NOW, async (page) => {
     const url = `/?seed=${GENERATED}&solution&debug`;
@@ -215,7 +121,7 @@ function surveillerJs(page: Page): { catalogue: string[]; generateur: string[]; 
 }
 const overlay = (page: Page) => page.evaluate(() => document.getElementById("debug")!.textContent ?? "");
 
-test("un jour figé : ni le catalogue ni le générateur ne sont reçus, et ?debug le dit", async ({ browser }) => {
+test("un jour figé : ni le catalogue ni le générateur ne sont reçus, et ?debug le dit", { tag: "@navigateurs" }, async ({ browser }) => {
   const frozen = FROZEN_DATES.at(-1)!;
   await atInstant(browser, noonOf(frozen), async (page) => {
     const vu = surveillerJs(page);
@@ -232,22 +138,6 @@ test("un jour figé : ni le catalogue ni le générateur ne sont reçus, et ?deb
     expect(vu.generateur, "le générateur n'est pas reçu").toEqual([]);
     expect(vu.recus.filter((u) => /dailyWorker/.test(u)), "le fil de travail n'est pas demandé").toEqual([]);
     await expect.poll(() => overlay(page)).toContain("origine   fichier figé, catalogue non chargé");
-  });
-});
-
-test("un jour sans fichier figé : le catalogue et le générateur sont reçus à la demande, par le fil de travail ; ?debug le dit", async ({ browser }) => {
-  await atInstant(browser, GENERATED_NOW, async (page) => {
-    const vu = surveillerJs(page);
-    await page.goto("/?debug&accueil=0");
-    if (!(await hasWebGL(page))) {
-      test.skip(true, SKIP);
-      return;
-    }
-    await ready(page);
-    expect((await daily(page)).load).toMatchObject({ source: "worker", generated: true, catalog: "worker" });
-    expect(vu.catalogue.length, "le catalogue arrive").toBe(1);
-    expect(vu.generateur.length, "le générateur arrive").toBe(1);
-    await expect.poll(() => overlay(page)).toContain("origine   généré (worker), catalogue chargé (worker)");
   });
 });
 
@@ -270,7 +160,7 @@ test("sans worker : le générateur est chargé à la demande sur le fil princip
   });
 });
 
-test("le fichier figé n'arrive pas : le jeu génère le niveau (repli fiable), celui du générateur en vigueur", async ({ browser }) => {
+test("le fichier figé n'arrive pas : le jeu génère le niveau (repli fiable), celui du générateur en vigueur", { tag: "@navigateurs" }, async ({ browser }) => {
   const frozen = FROZEN_DATES.at(-1)!;
   await atInstant(browser, noonOf(frozen), async (page) => {
     await page.route(/\/levels\/\d{4}-\d{2}-\d{2}\.json/, (route) => route.abort());

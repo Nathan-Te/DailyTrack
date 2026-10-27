@@ -13,7 +13,7 @@ const EXCLUS = new Set(["index", ...LOURDS]);
 
 const fichiers = readdirSync(SRC).filter((f) => f.endsWith(".ts")).map((f) => f.slice(0, -3));
 const imports = (nom: string): string[] =>
-  [...readFileSync(join(SRC, `${nom}.ts`), "utf8").matchAll(/^import\s+(?!type\b)[^;]*?from\s+"\.\/([^"]+)";/gms)].map((m) => m[1]!);
+  [...readFileSync(join(SRC, `${nom}.ts`), "utf8").matchAll(/^import\s+(?!type\b)[^;]*?from\s+"\.\/([^"]+)";/gms)].map((m) => m[1]!).filter((n) => !n.endsWith(".json")); // lot R11 : le registre des jours (données) n'est pas un module
 
 function atteints(depart: string): Set<string> {
   const vus = new Set<string>();

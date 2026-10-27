@@ -13,6 +13,16 @@ import {
   comparerEmpreintes,
   frozenOverlay,
   fusionnerEmpreintes,
+  estProtege,
+  fusionnerRegistre,
+  joursDuRegistre,
+  joursProteges,
+  joursRegeneres,
+  lireResultats,
+  niveauxAEffacer,
+  resumeProteges,
+  registreDesJours,
+  resumeRegistre,
   instantDeParis,
   inventaire,
   jourDeBascule,
@@ -171,7 +181,7 @@ describe("comparer les jours que sert la production et ceux que servira la const
     const bon = resumeBascule({ plan, comparaison: comparerEmpreintes(prod, prod, "2026-10-28", "2026-10-26") });
     expect(bon).toContain("jour de bascule : mercredi 2026-10-28");
     expect(bon).toContain("| DailyTrack | 2 (2026-10-26 → 2026-10-27) | 0 | 2 (2026-10-28 → 2026-10-29) | 2 | 0 |");
-    expect(bon).toContain("Aucun jour d'avant la bascule ne change");
+    expect(bon).toContain("Aucun jour protégé ne change");
     const cible = { track: prod.track, jump: { ...prod.jump, "2026-10-27": e("j27-g17", "zz") } };
     const mauvais = resumeBascule({ plan, comparaison: comparerEmpreintes(prod, cible, "2026-10-28", "2026-10-26"), simulee: true });
     expect(mauvais).toContain("répétition");
@@ -272,5 +282,209 @@ describe("les jours que la production sert hors du commit de son étiquette (jou
     writeFileSync(join(sortie, "2026-10-24.json"), "{\"v\":\"deja\"}");
     execFileSync("node", [CLI, "jours-servis", "prod-2026-10-25-0933", sortie, "--jusqua", "HEAD"], { cwd: depot, encoding: "utf8" });
     expect(readFileSync(join(sortie, "2026-10-24.json"), "utf8")).toBe("{\"v\":\"deja\"}");
+  });
+});
+
+describe("le registre des jours de Track (lot R11)", () => {
+  const initial = { format: 1, jusqua: "2026-10-26", plages: [{ du: "2026-09-01", au: "2026-10-26", g: 15, sim: 14 }] };
+  /** Ce que sert une production d'avant le registre (versions par date) jusqu'à la veille de la bascule : v15 puis v16 à partir du 28/10. */
+  const prod = (jusqua: string) => registreDesJours(Object.fromEntries(Array.from({ length: 80 }, (_, i) => ajouterJours("2026-09-01", i)).filter((d) => d <= jusqua).map((d) => [d, d < "2026-10-28" ? "15/14" : "16/14"])), jusqua);
+
+  it("se déplie en jours et se replie en plages de même version, sans perte", () => {
+    const jours = joursDuRegistre(initial);
+    expect(Object.keys(jours)).toHaveLength(56);
+    expect(jours["2026-09-01"]).toBe("15/14");
+    expect(jours["2026-10-26"]).toBe("15/14");
+    expect(jours["2026-10-27"]).toBeUndefined();
+    expect(registreDesJours(jours, "2026-10-26")).toEqual(initial);
+    expect(prod("2026-11-02").plages).toEqual([{ du: "2026-09-01", au: "2026-10-27", g: 15, sim: 14 }, { du: "2026-10-28", au: "2026-11-02", g: 16, sim: 14 }]);
+    expect(joursDuRegistre(prod("2026-11-02"))["2026-11-02"]).toBe("16/14");
+  });
+
+  it("ajoute les jours que la production sert au registre du dépôt (le jour de bascule et après n'y sont jamais)", () => {
+    const { fusion, conserves, ajoutes, conflits } = fusionnerRegistre(initial, prod("2026-10-29"));
+    expect(conflits).toEqual([]);
+    expect(conserves).toBe(56);
+    expect(ajoutes).toEqual(["2026-10-27", "2026-10-28", "2026-10-29"]);
+    expect(fusion.jusqua).toBe("2026-10-29");
+    expect(fusion.plages).toEqual([{ du: "2026-09-01", au: "2026-10-27", g: 15, sim: 14 }, { du: "2026-10-28", au: "2026-10-29", g: 16, sim: 14 }]);
+    // Idempotent : refaire la fusion (la PR « robot » après le déploiement) ne change rien.
+    expect(fusionnerRegistre(fusion, prod("2026-10-29")).fusion).toEqual(fusion);
+    expect(resumeRegistre(fusionnerRegistre(initial, prod("2026-10-29")))).toContain("✅ Aucun jour du registre ne change");
+  });
+
+  it("arrête la mise en production si un jour du dépôt ne s'accorde pas avec ce que la production sert", () => {
+    const autre = { ...initial, plages: [{ du: "2026-09-01", au: "2026-10-19", g: 15, sim: 14 }, { du: "2026-10-20", au: "2026-10-26", g: 16, sim: 14 }] };
+    const { conflits } = fusionnerRegistre(autre, prod("2026-10-29"));
+    expect(conflits.map((c: { date: string }) => c.date)).toEqual(["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25", "2026-10-26"]);
+    expect(conflits[0].raison).toContain("v16 (sim 14) dans le dépôt, v15 (sim 14) en production");
+    expect(resumeRegistre(fusionnerRegistre(autre, prod("2026-10-29")))).toContain("⛔ **La mise en production s'arrête**");
+    // La simulation compte aussi.
+    expect(fusionnerRegistre({ ...initial, plages: [{ du: "2026-09-01", au: "2026-10-26", g: 15, sim: 13 }] }, prod("2026-10-29")).conflits).toHaveLength(56);
+  });
+
+  it("refuse un registre du dépôt qui nomme des jours à partir de la bascule, ou un jour que la production ne sert pas", () => {
+    const loin = { ...initial, jusqua: "2026-11-05", plages: [{ du: "2026-09-01", au: "2026-10-27", g: 15, sim: 14 }, { du: "2026-10-28", au: "2026-11-05", g: 16, sim: 14 }] };
+    const c = fusionnerRegistre(loin, prod("2026-10-29")).conflits;
+    expect(c.map((x: { date: string }) => x.date)).toEqual(["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"]);
+    expect(c[0].raison).toContain("au-delà de la veille de la bascule (2026-10-29)");
+    const tard = registreDesJours({ "2026-09-10": "15/14", "2026-09-11": "15/14" }, "2026-09-11");
+    expect(fusionnerRegistre(initial, tard).conflits.some((x: { raison: string }) => x.raison.includes("absent de ce que la production sert"))).toBe(true);
+  });
+
+  describe("en ligne de commande (registre-fusion, jours-servis --registre)", () => {
+    const CLI = join(__dirname, "../../../scripts/mise-en-production.mjs");
+    const git = (cwd: string, ...args: string[]) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, encoding: "utf8" });
+
+    it("registre-fusion écrit le registre du dépôt en place, et s'arrête (code 1) sur une différence sans rien écrire", () => {
+      const dossier = mkdtempSync(join(tmpdir(), "registre-"));
+      const depot = join(dossier, "jours-track.json");
+      const servi = join(dossier, "prod.json");
+      const resume = join(dossier, "resume.md");
+      writeFileSync(depot, JSON.stringify(initial));
+      writeFileSync(servi, JSON.stringify(prod("2026-10-29")));
+      const out = execFileSync("node", [CLI, "registre-fusion", depot, servi, "--resume", resume], { encoding: "utf8" });
+      expect(out).toContain("3 jour(s) ajouté(s)");
+      expect(JSON.parse(readFileSync(depot, "utf8"))).toEqual(fusionnerRegistre(initial, prod("2026-10-29")).fusion);
+      expect(readFileSync(resume, "utf8")).toContain("Registre des jours de Track");
+      // Une production qui sert autre chose que le dépôt : arrêt, fichier intact.
+      const avant = readFileSync(depot, "utf8");
+      writeFileSync(servi, JSON.stringify({ ...prod("2026-10-29"), plages: [{ du: "2026-09-01", au: "2026-10-14", g: 15, sim: 14 }, { du: "2026-10-15", au: "2026-10-29", g: 16, sim: 14 }] }));
+      let code = 0;
+      try {
+        execFileSync("node", [CLI, "registre-fusion", depot, servi], { encoding: "utf8", stdio: "pipe" });
+      } catch (e) {
+        code = (e as { status: number }).status;
+      }
+      expect(code).toBe(1);
+      expect(readFileSync(depot, "utf8")).toBe(avant);
+    });
+
+    it("jours-servis remet le registre que la production sert : celui de la dernière PR « Jours figés », pas celui du commit de l'étiquette", () => {
+      const depot = mkdtempSync(join(tmpdir(), "servis-registre-"));
+      const chemin = "packages/sim/src/jours-track.json";
+      mkdirSync(join(depot, "packages/sim/src"), { recursive: true });
+      git(depot, "init", "-q", "-b", "main");
+      writeFileSync(join(depot, chemin), JSON.stringify(initial));
+      git(depot, "add", "-A");
+      git(depot, "commit", "-q", "-m", "code en production");
+      git(depot, "tag", "prod-2026-10-25-0933");
+      writeFileSync(join(depot, chemin), JSON.stringify(fusionnerRegistre(initial, prod("2026-10-29")).fusion));
+      git(depot, "add", "-A");
+      git(depot, "commit", "-q", "-m", "Jours figés de la mise en production prod-2026-10-25-0933 (code en production)");
+      writeFileSync(join(depot, chemin), JSON.stringify({ ...initial, jusqua: "2026-12-31" }));
+      git(depot, "add", "-A");
+      git(depot, "commit", "-q", "-m", "Lot 99 : un lot ne touche pas au registre");
+      // Le code en production (copie du commit de l'étiquette) : on lui remet le registre servi.
+      const prodCopie = mkdtempSync(join(tmpdir(), "prod-"));
+      mkdirSync(join(prodCopie, "packages/sim/src"), { recursive: true });
+      writeFileSync(join(prodCopie, chemin), JSON.stringify(initial));
+      const out = execFileSync("node", [CLI, "jours-servis", "prod-2026-10-25-0933", join(depot, "niveaux"), "--jusqua", "HEAD", "--registre", join(prodCopie, chemin)], { cwd: depot, encoding: "utf8" });
+      expect(out).toContain("registre des jours de Track servi par la production");
+      expect(JSON.parse(readFileSync(join(prodCopie, chemin), "utf8")).jusqua).toBe("2026-10-29");
+    });
+  });
+});
+
+describe("les jours protégés (lot R11, décision de Nathan) : d'avant le lancement, déjà figés, ou avec au moins un résultat", () => {
+  const PREMIER = "2026-10-26";
+  const empreintes = (jours: Record<string, string>) => Object.fromEntries(Object.entries(jours).map(([d, h]) => [d, { id: `jour-${d}-g${h === "a" ? 15 : 18}`, h, ok: true }]));
+  // 24 et 25/10 : avant le lancement ; 26/10 : déjà figé ; 27/10 : un résultat ; 28/10 : aucun résultat ; 29/10 : le jour de bascule.
+  const proteges = joursProteges({ premier: PREMIER, veille: "2026-10-28", figes: ["2026-10-26"], resultats: { "2026-10-27": 3, "2026-10-28": 0 } });
+
+  it("protège le jour avec un résultat, le jour déjà figé et tout jour d'avant le lancement ; pas le jour sans résultat", () => {
+    expect(proteges.jours).toEqual({ "2026-10-26": "déjà figé", "2026-10-27": "3 classé(s)" });
+    expect(estProtege(proteges, "2026-10-27")).toBe(true); // un résultat
+    expect(estProtege(proteges, "2026-10-26")).toBe(true); // déjà figé
+    expect(estProtege(proteges, "2026-10-01")).toBe(true); // avant le lancement
+    expect(estProtege(proteges, "2026-10-28")).toBe(false); // aucun résultat
+    expect(joursRegeneres(proteges, PREMIER, "2026-10-28")).toEqual(["2026-10-28"]);
+    expect(resumeProteges(proteges, PREMIER, "2026-10-28")).toContain("Sans aucun résultat, donc régénérés avec le nouveau code** (1, du 2026-10-26 à la veille de la bascule 2026-10-28) : 2026-10-28");
+    // Un résultat dans Track OU dans Jump suffit (le classement du jour compte les joueurs qui ont fini au moins un jeu) ; avant le lancement du serveur lu, rien n'est refusé.
+    expect(joursProteges({ premier: PREMIER, veille: "2026-10-26", resultats: { "2026-10-26": 1 } }).jours).toEqual({ "2026-10-26": "1 classé(s)" });
+  });
+
+  it("jour avec un résultat → protégé (une différence arrête) ; sans résultat → régénéré (il peut changer) ; d'avant le lancement → inchangé (une différence arrête)", () => {
+    const prod = { track: empreintes({ "2026-10-25": "a", "2026-10-27": "a", "2026-10-28": "a", "2026-10-29": "a" }), jump: empreintes({ "2026-10-25": "a", "2026-10-27": "a", "2026-10-28": "a", "2026-10-29": "a" }) };
+    // Le nouveau code change tout ce qu'il régénère : le jour sans résultat (28) et le jour de bascule (29), jamais les autres.
+    const cible = { track: empreintes({ "2026-10-25": "a", "2026-10-27": "a", "2026-10-28": "b", "2026-10-29": "b" }), jump: empreintes({ "2026-10-25": "a", "2026-10-27": "a", "2026-10-28": "b", "2026-10-29": "b" }) };
+    const ok = comparerEmpreintes(prod, cible, "2026-10-29", PREMIER, proteges);
+    expect(ok.ok).toBe(true);
+    expect(ok.jeux.track.conserves).toEqual(["2026-10-25", "2026-10-27"]); // d'avant le lancement et avec un résultat
+    expect(ok.jeux.track.sansResultat).toEqual(["2026-10-28"]);
+    expect(ok.jeux.track.regeneres).toEqual(["2026-10-28", "2026-10-29"]);
+    expect(ok.jeux.track.changes).toEqual(["2026-10-28", "2026-10-29"]);
+    expect(ok.jeux.jump.differences).toEqual([]);
+    expect(resumeBascule({ plan: { jourDeParis: "2026-10-27", bascule: "2026-10-29", veille: "2026-10-28", premier: PREMIER }, comparaison: ok })).toContain("sans aucun résultat");
+    // Le nouveau code change un jour avec un résultat : arrêt, jour en cause nommé.
+    const ko = comparerEmpreintes(prod, { ...cible, track: empreintes({ "2026-10-25": "a", "2026-10-27": "b", "2026-10-28": "b", "2026-10-29": "b" }) }, "2026-10-29", PREMIER, proteges);
+    expect(ko.ok).toBe(false);
+    expect(ko.jeux.track.differences.map((d: { date: string }) => d.date)).toEqual(["2026-10-27"]);
+    // … ou un jour d'avant le lancement (les jours d'avant le lancement « restent tels quels », même sans résultat).
+    const avant = comparerEmpreintes(prod, { ...cible, jump: empreintes({ "2026-10-25": "b", "2026-10-27": "a", "2026-10-28": "b", "2026-10-29": "b" }) }, "2026-10-29", PREMIER, proteges);
+    expect(avant.ok).toBe(false);
+    expect(avant.jeux.jump.differences.map((d: { date: string }) => d.date)).toEqual(["2026-10-25"]);
+    // Sans la liste des jours protégés (avant le lot R11) : tout jour d'avant la bascule compte, ceux d'avant le lancement non.
+    expect(comparerEmpreintes(prod, cible, "2026-10-29", PREMIER).jeux.track.differences.map((d: { date: string }) => d.date)).toEqual(["2026-10-28"]);
+  });
+
+  it("un jour régénéré par le nouveau code doit rester valide (jamais de circuit ou de niveau de secours), protégé ou non", () => {
+    const prod = { track: empreintes({ "2026-10-28": "a" }) };
+    const cible = { track: { "2026-10-28": { id: "x", h: "b", ok: false } } };
+    const r = comparerEmpreintes(prod, cible, "2026-10-29", PREMIER, proteges);
+    expect(r.ok).toBe(false);
+    expect(r.jeux.track.invalides).toEqual(["2026-10-28"]);
+  });
+
+  it("les empreintes du dépôt (jours-passes.json) ne gardent que les jours protégés du lancement à la veille ; les niveaux de Jump des jours sans résultat ne sont pas figés", () => {
+    const nouveau = { track: empreintes({ "2026-10-25": "a", "2026-10-26": "a", "2026-10-27": "a", "2026-10-28": "a" }), jump: empreintes({ "2026-10-27": "a", "2026-10-28": "a" }) };
+    const { fusion, ajoutes } = fusionnerEmpreintes({ track: {}, jump: {} }, nouveau, "2026-10-28", proteges);
+    expect(Object.keys(fusion.track)).toEqual(["2026-10-26", "2026-10-27"]);
+    expect(Object.keys(fusion.jump)).toEqual(["2026-10-27"]);
+    expect(ajoutes).toHaveLength(3);
+    expect(niveauxAEffacer(["2026-10-25.json", "2026-10-26.json", "2026-10-27.json", "2026-10-28.json", "notes.txt"], proteges)).toEqual(["2026-10-28.json"]);
+  });
+});
+
+describe("la lecture des résultats de la production (lecture seule)", () => {
+  const reponse = (status: number, corps: unknown, entetes: Record<string, string> = {}) => new Response(JSON.stringify(corps), { status, headers: entetes });
+  const sansAttente = () => Promise.resolve();
+
+  it("ne fait que des GET sans identifiant ni corps, un par jour, et lit le nombre de classés", async () => {
+    const appels: { url: string; init: RequestInit }[] = [];
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      appels.push({ url, init });
+      return reponse(200, { classes: url.endsWith("2026-10-27") ? 4 : 0 });
+    }) as unknown as typeof fetch;
+    const r = await lireResultats("https://playdujour.com/", ["2026-10-26", "2026-10-27"], { fetchImpl, attendre: sansAttente });
+    expect(r).toEqual({ "2026-10-26": 0, "2026-10-27": 4 });
+    expect(appels.map((a) => a.url)).toEqual(["https://playdujour.com/api/portail/classement?date=2026-10-26", "https://playdujour.com/api/portail/classement?date=2026-10-27"]);
+    for (const a of appels) {
+      expect(a.init.method).toBe("GET");
+      expect(a.init.body).toBeUndefined();
+      expect(JSON.stringify(a.init.headers).toLowerCase()).not.toContain("x-player-id");
+    }
+  });
+
+  it("attend la fenêtre quand le serveur limite les lectures (429), réessaie un serveur en panne, et traite un jour d'avant son lancement comme sans résultat", async () => {
+    const pas: number[] = [];
+    let n = 0;
+    const fetchImpl = (async (url: string) => {
+      n++;
+      if (url.endsWith("27") && n === 2) return reponse(429, { error: "rate_limited" }, { "Retry-After": "42" });
+      if (url.endsWith("28") && n === 4) return reponse(503, { error: "busy" });
+      if (url.endsWith("25")) return reponse(404, { error: "unknown_day" });
+      return reponse(200, { classes: 1 });
+    }) as unknown as typeof fetch;
+    const r = await lireResultats("https://x", ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-25"], { fetchImpl, attendre: async (ms) => void pas.push(ms) });
+    expect(r).toEqual({ "2026-10-26": 1, "2026-10-27": 1, "2026-10-28": 1, "2026-10-25": 0 });
+    expect(pas).toEqual([42_000, 2_000]);
+  });
+
+  it("s'arrête (la mise en production aussi) quand elle ne peut pas lire : serveur injoignable, route absente, réponse inattendue", async () => {
+    await expect(lireResultats("https://x", ["2026-10-26"], { fetchImpl: (async () => reponse(404, { error: "not_found" })) as unknown as typeof fetch, attendre: sansAttente })).rejects.toThrow("répond 404");
+    await expect(lireResultats("https://x", ["2026-10-26"], { fetchImpl: (async () => reponse(200, { autre: 1 })) as unknown as typeof fetch, attendre: sansAttente })).rejects.toThrow("réponse inattendue");
+    await expect(lireResultats("https://x", ["2026-10-26"], { fetchImpl: (async () => { throw new Error("ECONNREFUSED"); }) as unknown as typeof fetch, attendre: sansAttente, essais: 2 })).rejects.toThrow("ECONNREFUSED");
+    await expect(lireResultats("https://x", ["2026-10-26"], { fetchImpl: (async () => reponse(500, {})) as unknown as typeof fetch, attendre: sansAttente, essais: 2 })).rejects.toThrow("répond 500");
   });
 });

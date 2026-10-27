@@ -10,6 +10,7 @@ import {
   chargerTable,
   decider,
   docsLusParLesTests,
+  dureeE2e,
   dureesUnitaires,
   graphe,
   lister,
@@ -62,14 +63,27 @@ describe("la table spec → zones (e2e/zones.json)", () => {
     }
   });
 
-  it("la fumée de chaque jeu existe, est courte, et est liée à une zone du jeu", () => {
-    const durees = (jeu: string) => JSON.parse(read(`apps/${jeu}/e2e/durees.json`)).secondes as Record<string, number>;
+  it("la fumée de chaque jeu existe, est courte (ses tests « Essentiel » : la PR ne lance pas les autres), et est liée à une zone du jeu", () => {
+    const durees = (jeu: string) => JSON.parse(read(`apps/${jeu}/e2e/durees.json`)).essentiel as Record<string, number>;
     for (const jeu of ["web", "jump"] as const) {
       const specs = specsDuJeu(jeu, ROOT);
       const total = table.fumee[jeu].reduce((s, f) => s + (durees(jeu)[f] ?? 60), 0);
       for (const f of table.fumee[jeu]) expect(specs, `fumée ${jeu}`).toContain(f);
       expect(total, `fumée ${jeu} : ${total} s`).toBeLessThanOrEqual(120);
     }
+  });
+
+  it("lot R13 : la famille « Régression » nomme de vrais specs, jamais la fumée ; chaque spec a sa durée « Essentiel », sauf ceux de la liste", () => {
+    for (const jeu of ["web", "jump"] as const) {
+      const specs = specsDuJeu(jeu, ROOT);
+      const regression = (table.regression ?? []).filter((x) => x.startsWith(`${jeu}/`)).map((x) => x.slice(jeu.length + 1));
+      expect(regression.filter((s) => !specs.includes(s)), "specs « Régression » disparus").toEqual([]);
+      for (const f of table.fumee[jeu]) expect(regression, `fumée ${jeu}`).not.toContain(f);
+      const essentiel = JSON.parse(read(`apps/${jeu}/e2e/durees.json`)).essentiel as Record<string, number>;
+      expect(specs.filter((s) => !regression.includes(s) && !(s in essentiel)), `${jeu} : durée « essentiel » manquante (apps/${jeu}/e2e/durees.json)`).toEqual([]);
+      expect(Object.keys(essentiel).filter((s) => regression.includes(s) || !specs.includes(s)), `${jeu} : durée « essentiel » en trop`).toEqual([]);
+    }
+    for (const f of table.regressionUnitaires ?? []) expect(g.tests, f).toContain(f);
   });
 
   it("un fichier de code est dans les zones de son jeu : les motifs ne se trompent pas de jeu", () => {
@@ -90,15 +104,25 @@ describe("les specs e2e d'une PR", () => {
   it("une PR de DailyJump ne lance aucun spec de DailyTrack, et réciproquement", () => {
     const j = choix(["apps/jump/src/hud.ts", "packages/jump-sim/src/level.ts"]);
     expect(j.web).toEqual([]);
-    expect(j.jump).toEqual(expect.arrayContaining(["hud-compact.spec.ts", "dangers.spec.ts", "smoke.spec.ts"]));
+    expect(j.jump).toEqual(expect.arrayContaining(["mobile.spec.ts", "dangers.spec.ts", "smoke.spec.ts"]));
     const t = choix(["apps/web/src/salonMode.ts", "packages/sim/src/car.ts"]);
     expect(t.jump).toEqual([]);
-    expect(t.web).toEqual(expect.arrayContaining(["salon.spec.ts", "salon-serveur.spec.ts", "daily.spec.ts", "replay.spec.ts"]));
+    expect(t.web).toEqual(expect.arrayContaining(["salon.spec.ts", "watch-serveur.spec.ts", "daily.spec.ts", "replay.spec.ts"]));
+  });
+
+  it("lot R13 : un spec tout entier « Régression » ne tourne pas en PR, sauf s'il est modifié ; il est nommé dans le résumé", () => {
+    const r = choix(["apps/web/src/salonMode.ts"]);
+    expect(r.web).not.toContain("salon-serveur.spec.ts");
+    expect(r.regression).toContain("web/salon-serveur.spec.ts");
+    expect(choix(["apps/web/e2e/salon-serveur.spec.ts"]).web).toContain("salon-serveur.spec.ts");
+    const u = testsPour(["apps/api/src/portail.ts"], g, { regression: table.regressionUnitaires ?? [] });
+    expect(u.fichiers).not.toContain("apps/api/test/portailDemo.test.ts");
+    expect(testsPour(["apps/api/test/portailDemo.test.ts"], g, { regression: table.regressionUnitaires ?? [] }).fichiers).toContain("apps/api/test/portailDemo.test.ts");
   });
 
   it("un fichier ne lance que les specs de ses zones, plus la fumée de son jeu", () => {
     const r = choix(["apps/web/src/admin.ts"]);
-    expect(r.web).toEqual([...new Set([...table.fumee.web, "admin.spec.ts", "futur.spec.ts", "demo.spec.ts", "planning.spec.ts"])].sort());
+    expect(r.web).toEqual([...new Set([...table.fumee.web, "futur.spec.ts", "planning.spec.ts"])].sort()); // admin et demo : « Régression » (lot R13)
     expect(r.web).not.toContain("thumbnails.spec.ts");
   });
 
@@ -109,8 +133,8 @@ describe("les specs e2e d'une PR", () => {
 
   it("une zone partagée lance la fumée des deux jeux, et les specs de sa zone", () => {
     const r = choix(["packages/ui/src/index.ts"]);
-    expect(r.web).toEqual(expect.arrayContaining(["accessibilite.spec.ts", "portail.spec.ts", ...table.fumee.web]));
-    expect(r.jump).toEqual(expect.arrayContaining(["accessibilite.spec.ts", ...table.fumee.jump]));
+    expect(r.web).toEqual(expect.arrayContaining(["langue.spec.ts", "portail.spec.ts", ...table.fumee.web]));
+    expect(r.jump).toEqual(expect.arrayContaining(["langue.spec.ts", ...table.fumee.jump]));
   });
 
   it("un spec modifié se lance lui-même ; un outil (captures, mesure) ne se lance jamais", () => {
@@ -120,20 +144,23 @@ describe("les specs e2e d'une PR", () => {
 
   it("un utilitaire de test lance ses importeurs (la fumée s'il y en a trop) ; la configuration de Playwright lance la fumée", () => {
     const axe = choix(["apps/web/e2e/axe.ts"]).web;
-    expect(axe).toEqual(expect.arrayContaining(["accessibilite.spec.ts"]));
+    expect(axe).toEqual(expect.arrayContaining(["accessibilite.spec.ts"])); // un utilitaire modifié lance ses importeurs, « Régression » compris
     expect(axe.length).toBeLessThanOrEqual(12);
     expect(choix(["apps/web/e2e/fixtures.ts"])).toMatchObject({ web: [...table.fumee.web].sort() });
     expect(choix(["apps/jump/playwright.config.ts"])).toMatchObject({ web: [], jump: [...table.fumee.jump].sort() });
   });
 
-  it("le budget : une PR large reste dans ses 900 s de specs (fumée et specs modifiés en plus), les moins liés sont reportés et nommés", () => {
-    const duree = (jeu: "web" | "jump", s: string) => (JSON.parse(read(`apps/${jeu}/e2e/durees.json`)).secondes as Record<string, number>)[s] ?? 60;
-    const large = ["packages/sim/src/car.ts", "apps/web/src/scene/post.ts", "apps/web/src/hud.css", "apps/web/src/salonMode.ts", "apps/web/src/garage.ts", "packages/ui/src/index.ts"];
+  it("le budget : une PR large reste dans son budget de specs (fumée et specs modifiés en plus), les moins liés sont reportés et nommés", () => {
+    // Lot R13 : depuis le tri, l'Essentiel d'une PR large tient dans les 900 s (BUDGET_E2E_S) ; la règle se vérifie avec un budget plus petit.
+    const budget = 300;
+    const duree = (jeu: "web" | "jump", s: string) => dureeE2e(ROOT, jeu, s);
+    const large = ["packages/sim/src/car.ts", "apps/web/src/scene/post.ts", "apps/web/src/hud.css", "apps/web/src/salonMode.ts", "apps/web/src/garage.ts", "packages/ui/src/index.ts", "packages/profile/src/index.ts", "apps/api/src/server.ts", "packages/core/src/index.ts"];
     const sansBudget = specsPour(large, table, ROOT, { budget: Infinity });
-    const r = specsPour(large, table, ROOT);
+    const r = specsPour(large, table, ROOT, { budget });
+    expect(specsPour(large, table, ROOT).reportes, `l'Essentiel d'une PR large tient dans ${BUDGET_E2E_S} s`).toEqual([]);
     const fumee = new Set(table.fumee.web);
-    const horsFumee = r.web.filter((s) => !fumee.has(s));
-    expect(horsFumee.reduce((n, s) => n + duree("web", s), 0)).toBeLessThanOrEqual(BUDGET_E2E_S + Math.max(...horsFumee.map((s) => duree("web", s))));
+    const horsFumee = [...r.web.filter((s) => !fumee.has(s)).map((s) => duree("web", s)), ...r.jump.filter((s) => !table.fumee.jump.includes(s)).map((s) => duree("jump", s))];
+    expect(horsFumee.reduce((n, s) => n + s, 0)).toBeLessThanOrEqual(budget + Math.max(...horsFumee));
     expect(r.web.length).toBeLessThan(sansBudget.web.length);
     expect(r.reportes!.length).toBe(sansBudget.web.length + sansBudget.jump.length - r.web.length - r.jump.length);
     for (const nom of table.fumee.web) expect(r.web, "la fumée est toujours lancée").toContain(nom);
@@ -151,7 +178,7 @@ describe("les specs e2e d'une PR", () => {
   });
 
   it("le budget privilégie les specs les plus liés aux fichiers modifiés : deux fichiers de la même zone passent avant un seul", () => {
-    const r = specsPour(["apps/web/src/salonMode.ts", "apps/web/src/watch.ts", "packages/sim/src/car.ts"], table, ROOT, { budget: 400 });
+    const r = specsPour(["apps/web/src/salonMode.ts", "apps/web/src/watch.ts", "packages/sim/src/car.ts"], table, ROOT, { budget: 60 });
     const tous = specsPour(["apps/web/src/salonMode.ts", "apps/web/src/watch.ts", "packages/sim/src/car.ts"], table, ROOT, { budget: Infinity });
     expect(r.web).toContain("watch.spec.ts"); // track-salon deux fois (+ track-sim)
     expect(tous.web.length).toBeGreaterThan(r.web.length);
@@ -195,7 +222,6 @@ describe("les tests unitaires d'une PR (graphe des imports)", () => {
     const lus = docsLusParLesTests(g);
     // Les documents que des tests lisent vraiment (et qu'un changement de document peut donc rendre rouges).
     const attendu: Record<string, string> = {
-      "docs/plateforme/codes-erreur.md": "apps/api/test/codesErreur.test.ts",
       "docs/plateforme/effacement.md": "apps/portail/test/mentions.test.ts",
       "docs/plateforme/budgets.md": "apps/portail/test/budgets.test.ts",
       "docs/plateforme/traductions.md": "packages/ui/test/traductions.test.ts",
@@ -245,9 +271,9 @@ describe("les parts", () => {
 
 describe("la décision d'une PR", () => {
   it("docs seuls : ni vérification ni construction, ni spec ; les tests qui lisent le document, seuls", () => {
-    const d = decider(["docs/plateforme/codes-erreur.md"], { racine: ROOT });
+    const d = decider(["docs/plateforme/budgets.md"], { racine: ROOT });
     expect(d).toMatchObject({ docsSeuls: true, e2eParts: [] });
-    expect(d.unitParts.flatMap((p) => p.fichiers)).toContain("apps/api/test/codesErreur.test.ts");
+    expect(d.unitParts.flatMap((p) => p.fichiers)).toContain("apps/portail/test/budgets.test.ts");
     expect(d.unitParts.flatMap((p) => p.fichiers).length).toBeLessThanOrEqual(4);
     const out = sorties(d);
     expect(out).toContain("docs_seuls=true");

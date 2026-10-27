@@ -3,7 +3,7 @@ import { boxes, expectNoOverlap } from "./layout";
 
 // Lot I4b (charte rév. 8 § 9, règle de Nathan : « quand on entre dans un jeu, on y reste tant qu'on ne choisit pas de le quitter ») : tous les écrans de Track
 // sont posés sur la scène sous le voile à rayures (cadre commun de @cdj/ui), la barre des jeux en plaque crème ; un seul voile (l'écran du dessous s'efface) ;
-// Échap ou « ‹ TRACK » ferment l'écran du dessus. Formats : paysage 844 × 390 et 740 × 360 (le jeu), portrait 390 × 844, ordinateur 1280 × 720 ; police large
+// Échap ou « ‹ TRACK » ferment l'écran du dessus. Formats : paysage 844 × 390 (le jeu), portrait 390 × 844, ordinateur 1280 × 720 (lot R13 : 740 × 360 retiré) ; police large
 // de la CI imposée. Le jeu en démonstration (`?api=demo`). Le rendu 3D demande WebGL : Chromium seulement.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(150_000);
@@ -36,7 +36,6 @@ async function tientDansLEcran(page: Page, id: string, viewport: { width: number
 
 for (const vp of [
   { name: "paysage", width: 844, height: 390, touch: true },
-  { name: "paysage compact", width: 740, height: 360, touch: true },
   { name: "portrait", width: 390, height: 844, touch: true },
   { name: "ordinateur", width: 1280, height: 720, touch: false },
 ]) {

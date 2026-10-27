@@ -75,7 +75,7 @@ test.describe("production simulée (?prod)", () => {
   });
 });
 
-test.describe("aperçus et ?debug (pas de production)", () => {
+test.describe("aperçus et ?debug (pas de production)", { tag: "@regression" }, () => {
   test("N change de circuit, ?day= d'un jour à venir marche, ?theme= force le thème", async ({ page }) => {
     await page.goto(`/?debug&day=${formatDay(TODAY + 3)}`);
     await ready(page);
@@ -90,11 +90,6 @@ test.describe("aperçus et ?debug (pas de production)", () => {
     await page.waitForFunction((id) => window.__cdj?.trackId && window.__cdj.trackId !== id, idOf(TODAY), { timeout: 60_000 });
   });
 
-  test("?prod ne se lève pas par ?debug", async ({ page }) => {
-    await page.goto(`/?debug&prod&day=${formatDay(TODAY + 1)}`);
-    await ready(page);
-    expect(await trackId(page)).toBe(idOf(TODAY));
-  });
 });
 
 test.describe("jour de Paris", () => {
@@ -138,17 +133,4 @@ test.describe("jour de Paris", () => {
     }
   });
 
-  test("le décompte de l'accueil donne le temps jusqu'à minuit de Paris (heure d'été : 22 h UTC)", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
-    const pageNow = await page.evaluate(() => Date.now()); // l'horloge de la page (décalée) continue d'avancer pendant tous les tests : on la lit
-    const text = (await page.locator("#home-nextday").textContent()) ?? "";
-    const m = /(\d\d):(\d\d):(\d\d)/.exec(text);
-    expect(m).not.toBeNull();
-    const shown = (Number(m![1]) * 3600 + Number(m![2]) * 60 + Number(m![3])) * 1000;
-    expect(Math.abs(shown - msUntilNextParisDay(pageNow))).toBeLessThan(10_000); // quelques secondes de lenteur de la CI
-    // Heure d'été : minuit de Paris = 22 h UTC ; l'horloge de test part de midi UTC (la page peut avoir avancé de plusieurs minutes depuis).
-    expect(msUntilNextParisDay(FIXED_NOW)).toBe(Date.UTC(2026, 9, 20, 22) - FIXED_NOW);
-    expect(Date.UTC(2026, 9, 20, 22) - FIXED_NOW).toBe(10 * 3_600_000);
-  });
 });

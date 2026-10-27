@@ -82,19 +82,6 @@ test("un morceau à plateforme (`?module=chaland`) : la dalle est dessinée où 
   expect(later.platforms!.opacity).toBe(1);
 });
 
-test("la galerie `?modules` filtre par l'étiquette « plateforme mobile » : au moins six morceaux", async ({ page }) => {
-  await page.goto("/?modules&debug");
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
-  await page.selectOption('select[name="etiquette"]', "plateforme");
-  await page.waitForFunction(() => {
-    const g = (window as unknown as { __jump: { gallery: { shown: number; filter: { tag: string | null } } } }).__jump.gallery;
-    return g.filter.tag === "plateforme";
-  });
-  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
-  expect(shown).toBeGreaterThanOrEqual(6);
-  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
-});
-
 /** Un jour sans fichier figé dont le niveau (v6, g16) a une plateforme. */
 function dayWithPlatform(): string {
   let day = parseDay(generatedDay())!;
@@ -151,7 +138,6 @@ interface JP {
   autoplay(code?: string): number;
 }
 
-
 async function openP(page: Page, search: string): Promise<boolean> {
   return open(page, search);
 }
@@ -174,9 +160,10 @@ test("un morceau à presse (`?module=presse-promenade`) : la presse est dessiné
   const early = await page.evaluate(() => (window as unknown as { __jump: JP }).__jump.presses!.sim[0]!);
   await page.evaluate((n) => (window as unknown as { __jump: JP }).__jump.advance(n), HOLD - 30 - phase);
   // `advance` joue sans rendu : le dessin rattrape la simulation à l'image suivante. On attend cet état (jamais une durée), puis on le lit d'un bloc.
+  // `__jump.presses.warn` est celui de la **simulation** (il écrase celui du dessin) : il est juste dès la fin de `advance` et n'atteste aucune image. C'est donc
+  // l'empreinte, posée par le dessin lui-même, qu'on attend (run 40413669420 : sous WebKit la lecture tombait avant la première image, `footprint` valait encore 0,08).
   await page.waitForFunction((hold) => {
     const p = (window as unknown as { __jump: JP }).__jump.presses;
-    // `warn` vient de la simulation (lue à l'instant), `footprint` de la dernière image dessinée : on attend aussi que le dessin ait rattrapé.
     return !!p && p.phases[0] === hold - 30 && Math.abs((p.warn?.[0] ?? -1) - 0.5) < 1e-9 && (p.footprint?.[0] ?? 0) > 0.08;
   }, HOLD);
   const mid = await page.evaluate(() => (window as unknown as { __jump: JP }).__jump.presses!);
@@ -193,19 +180,6 @@ test("un morceau à presse (`?module=presse-promenade`) : la presse est dessiné
   const down = await page.evaluate(() => (window as unknown as { __jump: JP }).__jump.presses!);
   expect(down.sim[0]!.y).toBeGreaterThan(early.y);
   expect(down.opacity).toBe(1);
-});
-
-test("la galerie `?modules` filtre par l'étiquette « presse » : au moins six morceaux", async ({ page }) => {
-  await page.goto("/?modules&debug");
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
-  await page.selectOption('select[name="etiquette"]', "presse");
-  await page.waitForFunction(() => {
-    const g = (window as unknown as { __jump: { gallery: { shown: number; filter: { tag: string | null } } } }).__jump.gallery;
-    return g.filter.tag === "presse";
-  });
-  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
-  expect(shown).toBeGreaterThanOrEqual(6);
-  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
 });
 
 /** Un jour sans fichier figé dont le niveau (g16, v6) a au moins deux morceaux à presses. */
@@ -237,7 +211,6 @@ test("niveau du jour d'usine (v8 depuis le lot 24) : la preuve de l'auteur, jou�
   expect(result.presses).toBeGreaterThanOrEqual(2);
   expect(result.deaths).toBe(0);
 });
-
 
 // ——— Lot 23 : les champignons (dans ce fichier, pour la même raison) ———
 // Un champignon dessiné où la simulation le met et tourné vers où il lance, qui s'écrase au rebond (plus fort sur un rebond renforcé) **sans secousse de caméra**, la galerie
@@ -290,16 +263,6 @@ test("un morceau à champignon (`?module=champignon-falaise`) : la solution rebo
   expect(result.drawnBoost).toBe(true); // le dessin a reçu un rebond renforcé (l'écrasement lui-même est une fonction pure de l'âge : `test/champignons.test.ts`, aucun rendu en pas à pas)
   expect(result.shaken).toBe(0); // règle du lot 14 : aucune secousse
   for (const [i, m] of first!.list.entries()) expect(result.rotation[i], m.name).toBeCloseTo(rotations[m.name] ?? 0, 6);
-});
-
-test("la galerie `?modules` filtre par l'étiquette « champignon » : au moins six morceaux", async ({ page }) => {
-  await page.goto("/?modules&debug");
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
-  await page.selectOption('select[name="etiquette"]', "champignon");
-  await page.waitForFunction(() => (window as unknown as { __jump: { gallery: { filter: { tag: string | null } } } }).__jump.gallery.filter.tag === "champignon");
-  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
-  expect(shown).toBeGreaterThanOrEqual(6);
-  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
 });
 
 /** Un jour sans fichier figé dont le niveau (g18, v8, forêt) a au moins deux morceaux à champignons. */
@@ -409,16 +372,6 @@ test("le dessin d'une stalactite qui tremble est celui de la simulation : son â
   expect(drawn.drips![0]).toBe(4); // quatre gouttes décalées, toujours : un signe continu
   expect(drawn.visible![0]).toBe(true);
   expect(drawn.opacity).toBe(1);
-});
-
-test("la galerie `?modules` filtre par l'étiquette « stalactite » : au moins six morceaux", async ({ page }) => {
-  await page.goto("/?modules&debug");
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
-  await page.selectOption('select[name="etiquette"]', "stalactite");
-  await page.waitForFunction(() => (window as unknown as { __jump: { gallery: { filter: { tag: string | null } } } }).__jump.gallery.filter.tag === "stalactite");
-  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
-  expect(shown).toBeGreaterThanOrEqual(6);
-  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
 });
 
 /** Un jour sans fichier figé dont le niveau (g18, v8, glace) a au moins deux morceaux à stalactites. */

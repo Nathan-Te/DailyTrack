@@ -1,5 +1,5 @@
 import { expect, test, type Page, FIXED_NOW } from "./fixtures";
-import { THEMES, THEME_NAMES, createSurfacesTrack, dailyCircuit, parseDay } from "@cdj/sim";
+import { THEMES, createSurfacesTrack, dailyCircuit, parseDay } from "@cdj/sim";
 
 // Lot 8 : scénario `surfaces`, indicateur d'effets du HUD, thèmes forcés. Rendu 3D : Chromium seulement.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
@@ -34,7 +34,7 @@ async function placeOn(page: Page, index: number, extra: Record<string, number> 
   );
 }
 
-test("?scenario=surfaces : le circuit se charge, chaque revêtement et chaque effet s'affiche dans le HUD", async ({ page }) => {
+test("?scenario=surfaces : le circuit se charge, chaque revêtement et chaque effet s'affiche dans le HUD", { tag: "@regression" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await racing(page, "/?debug&scenario=surfaces&timescale=1");
@@ -64,11 +64,12 @@ test("?scenario=surfaces : le circuit se charge, chaque revêtement et chaque ef
   expect(errors).toEqual([]);
 });
 
-test("?seed=…&theme=… : chaque thème se charge et s'annonce dans l'en-tête, comme thème forcé et non classé", async ({ page }) => {
-  test.setTimeout(400_000); // huit chargements (lot 22) (circuit généré et validé dans le navigateur, rendu logiciel de la CI)
+// Lot R13 (docs/tests.md) : un thème forcé (la Banquise, celle du test suivant) au lieu des huit : chaque thème se charge sans erreur dans graphismes.spec
+// (« chaque thème a son ambiance sonore… »), son identifiant forcé = Node dans futur.spec (« ?theme= force le thème »).
+test("?seed=…&theme=… : un thème forcé se charge et s'annonce dans l'en-tête, comme thème forcé et non classé", { tag: "@regression" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
-  for (const name of THEME_NAMES) {
+  for (const name of ["banquise"] as const) {
     await racing(page, `/?debug&seed=2026-10-07&theme=${name}`);
     await expect(page.locator("#meta")).toContainText(THEMES[name].label);
     await expect(page.locator("#meta")).toContainText("thème forcé");
@@ -101,7 +102,7 @@ test("un thème forcé n'est jamais envoyé au classement, même avec une adress
   await expect(page.locator("#finish .online")).toContainText(/non classée/i);
 });
 
-test("sans thème forcé, l'en-tête donne le thème du jour (et plus la palette)", async ({ page }) => {
+test("sans thème forcé, l'en-tête donne le thème du jour (et plus la palette)", { tag: "@regression" }, async ({ page }) => {
   await racing(page, "/?debug&seed=2026-10-06");
   const c = dailyCircuit(parseDay("2026-10-06")!);
   await expect(page.locator("#meta")).toContainText(THEMES[c.theme].label);

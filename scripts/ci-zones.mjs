@@ -147,9 +147,14 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
     }
   }
   // Le budget : les specs de zones, les plus liés aux fichiers modifiés d'abord, à égalité les plus courts (le plus de couverture par seconde).
-  const duree = (jeu, spec) => JSON.parse(readFileSync(join(racine, E2E_DIRS[jeu], "durees.json"), "utf8")).secondes[spec] ?? 60;
+  const duree = (jeu, spec) => dureeE2e(racine, jeu, spec);
   const candidats = [];
   for (const jeu of ["web", "jump"]) for (const [nom, n] of liens[jeu]) if (!sur[jeu].has(nom)) candidats.push({ jeu, nom, n, s: duree(jeu, nom) });
+  // Lot R13 (docs/tests.md) : un spec de la famille « Régression » (`regression` de e2e/zones.json) ne tourne que dans la CI complète (main, nuit), sauf
+  // s'il est lui-même modifié par la PR (il est alors dans `sur`).
+  const regression = new Set(table.regression ?? []);
+  const enRegression = [];
+  for (const c of candidats.splice(0)) (regression.has(`${c.jeu}/${c.nom}`) ? enRegression : candidats).push(c);
   candidats.sort((a, b) => b.n - a.n || a.s - b.s || (a.nom < b.nom ? -1 : 1));
   const choix = { web: new Set(sur.web), jump: new Set(sur.jump) };
   const reportes = [];
@@ -159,7 +164,22 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
     else reportes.push(`${c.jeu}/${c.nom}`);
   }
   const trier = (s) => [...s].filter((x) => x).sort();
-  return { web: trier(choix.web), jump: trier(choix.jump), raisons: [...raisons].sort(), reportes: reportes.sort() };
+  return {
+    web: trier(choix.web),
+    jump: trier(choix.jump),
+    raisons: [...raisons].sort(),
+    reportes: reportes.sort(),
+    regression: enRegression.map((c) => `${c.jeu}/${c.nom}`).sort(),
+  };
+}
+
+/**
+ * Durée d'un spec dans la CI de PR (lot R13) : celle de ses tests « Essentiel » (`essentiel` de durees.json : les tests `@regression` ne tournent pas en
+ * PR) ; un spec tout entier « Régression » qui tourne (modifié par la PR) pèse son spec entier.
+ */
+export function dureeE2e(racine, jeu, spec) {
+  const d = JSON.parse(readFileSync(join(racine, E2E_DIRS[jeu], "durees.json"), "utf8"));
+  return d.essentiel?.[spec] ?? d.secondes[spec] ?? 60;
 }
 
 /** Les specs de la table pour des zones nommées à la main (`npm run verifier -- --zones=track-sim,jump-rendu`). */
@@ -309,7 +329,7 @@ const RACINE_TOUT = /^(package(-lock)?\.json|tsconfig(\.[\w-]+)?\.json|vitest\.c
  *  - un fichier de code lance les tests dont le graphe l'atteint (imports de proche en proche), ou qui le citent ;
  *  - configuration racine (package.json, verrou, tsconfig, vitest) : tous.
  */
-export function testsPour(files, g, { complet = false } = {}) {
+export function testsPour(files, g, { complet = false, regression = [] } = {}) {
   const f2 = files.map(norm).filter(Boolean);
   if (complet) return { fichiers: [...g.tests], tous: true, docsSeuls: false, raisons: ["CI complète"] };
   if (f2.length === 0) return { fichiers: [...g.tests], tous: true, docsSeuls: false, raisons: ["aucun fichier connu (doute : tout tourne)"] };
@@ -321,6 +341,8 @@ export function testsPour(files, g, { complet = false } = {}) {
     touches.forEach((t) => choix.add(t));
     if (touches.length) raisons.add(`${f} → ${touches.length} fichier(s) de tests`);
   }
+  // Lot R13 (docs/tests.md) : un fichier de la famille « Régression » ne tourne que dans la CI complète, sauf s'il est lui-même modifié.
+  for (const t of regression) if (choix.has(t) && !f2.includes(t)) (choix.delete(t), raisons.add(`${t} : régression (CI complète de main et nuit)`));
   return { fichiers: [...choix].sort(), tous: false, docsSeuls: f2.every(estDoc), raisons: [...raisons].sort() };
 }
 
@@ -346,7 +368,7 @@ export function partsUnitaires(fichiers, durees, { max = PARTS_UNITAIRES_MAX, ci
 
 /** Parts e2e : au plus `max` parts, chacune peut porter des specs des DEUX jeux (étapes successives du même job). */
 export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CIBLE_PART_E2E_S } = {}) {
-  const duree = (jeu, spec) => JSON.parse(readFileSync(join(racine, E2E_DIRS[jeu], "durees.json"), "utf8")).secondes[spec] ?? 60;
+  const duree = (jeu, spec) => dureeE2e(racine, jeu, spec);
   const items = [
     ...choix.web.map((s) => `web/${s}`),
     ...choix.jump.map((s) => `jump/${s}`),
@@ -363,12 +385,29 @@ export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CI
   }));
 }
 
+/**
+ * Lot R13 (docs/tests.md) — la CI complète. `main` (chaque fusion) : l'Essentiel de tous les specs (sans la famille « Régression ») ; `complet` (« Run
+ * workflow ») et `nuit` : tout. Chromium porte tout ; Firefox et WebKit, le petit ensemble `@navigateurs` des deux jeux (un job chacun).
+ */
+export const PARTS_COMPLETES = { main: { web: 3, jump: 1 }, complet: { web: 6, jump: 1 }, nuit: { web: 6, jump: 1 } };
+
+/** La matrice des jobs `e2e-parts` d'un mode complet (une PR reçoit celle de `main` : le job y est sauté). */
+export function matriceComplete(mode) {
+  const parts = PARTS_COMPLETES[mode] ?? PARTS_COMPLETES.main;
+  const essentiel = !(mode in PARTS_COMPLETES) || mode === "main";
+  const include = [];
+  for (let i = 1; i <= parts.web; i++) include.push({ suite: "web", browser: "chromium", shard: `${i}/${parts.web}`, essentiel });
+  for (let i = 1; i <= parts.jump; i++) include.push({ suite: "jump", browser: "chromium", shard: `${i}/${parts.jump}`, essentiel });
+  for (const browser of ["firefox", "webkit"]) include.push({ suite: "navigateurs", browser, shard: "1/1", essentiel: false });
+  return { include };
+}
+
 /** L'ensemble de la décision d'une PR, pour le workflow et pour `npm run verifier`. */
 export function decider(files, { mode = "pr", racine = ROOT } = {}) {
   const table = chargerTable(racine);
   const g = graphe(racine);
   const complet = mode !== "pr";
-  const unit = testsPour(files, g, { complet });
+  const unit = testsPour(files, g, { complet, regression: table.regressionUnitaires ?? [] });
   const durees = dureesUnitaires(racine);
   const unitParts = partsUnitaires(unit.fichiers, durees, complet ? { max: 3, cible: 270 } : {});
   const docsSeuls = !complet && unit.docsSeuls;
@@ -389,6 +428,7 @@ export function sorties(d) {
     `unit_matrice=${JSON.stringify(unitMatrice)}`,
     `e2e_pr_actif=${d.e2eParts.length > 0}`,
     `e2e_pr_matrice=${JSON.stringify(e2eMatrice)}`,
+    `e2e_complet_matrice=${JSON.stringify(matriceComplete(d.mode))}`,
   ].join("\n") + "\n";
 }
 
@@ -403,11 +443,15 @@ export function resume(d) {
     for (const s of d.e2e.jump) l.push(`  · jump/${s}`);
     for (const r of d.e2e.raisons.slice(0, 12)) l.push(`  ↳ ${r}`);
     if (d.e2e.reportes?.length) l.push(`Reportés à la CI complète de main (budget de ${BUDGET_E2E_S} s de specs atteint) : ${d.e2e.reportes.join(", ")}`);
+    if (d.e2e.regression?.length) l.push(`Régression (CI complète de main et nuit seulement, docs/tests.md) : ${d.e2e.regression.join(", ")}`);
   }
   return l.join("\n");
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
+
+/** Lot R13 : les tests d'API qui ne tournent que sur SQLite (`exclude` du projet libsql de vitest.config.ts : les jeux de données fictives de la recette). */
+export const SQLITE_SEULEMENT = /^apps\/api\/test\/(portailDemo|jumpHistory|classementDemo)\.test\.ts$/;
 
 /** Réécrit `scripts/unit-durees.json` depuis un rapport JSON de Vitest (durées locales × 0,5 ; apps/api/test ×2 : SQLite puis libSQL). */
 export function dureesDepuisVitest(rapport, racine = ROOT) {
@@ -415,7 +459,7 @@ export function dureesDepuisVitest(rapport, racine = ROOT) {
   for (const t of rapport.testResults) {
     const f = norm(t.name).replace(norm(racine) + "/", "");
     let s = ((t.endTime - t.startTime) / 1000) * 0.5;
-    if (f.startsWith("apps/api/test/")) s *= 2;
+    if (f.startsWith("apps/api/test/") && !SQLITE_SEULEMENT.test(f)) s *= 2;
     out[f] = Math.max(1, Math.round(s));
   }
   return Object.fromEntries(Object.keys(out).sort().map((k) => [k, out[k]]));

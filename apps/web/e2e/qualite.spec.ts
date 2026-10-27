@@ -1,14 +1,13 @@
 import { expect, newClockedContext, test, type Page } from "./fixtures";
 
 // Lot 45 : le palier 2 en jeu, la règle de qualité automatique et le réglage « Qualité graphique », dans le vrai jeu.
-//   - `?palier=2` donne le palier 2 (le pas « finition », chargé à la demande) ; aucun appel de rendu de plus que le palier 1, sur chaque thème ;
+//   - `?palier=2` donne le palier 2 (le pas « finition », chargé à la demande) ; aucun appel de rendu de plus que le palier 1 (la Nuit ; chaque thème : l'unitaire) ;
 //   - la règle : un navigateur piloté (et le rendu logiciel) part du palier 1 sans mesurer ; `?appareil=` et `?intervalles=` (recette et aperçus) imposent
 //     l'appareil et les médianes mesurées à l'accueil : on monte ou descend d'un palier, on remesure, on garde `cdj:qualite` ;
 //   - le réglage : « Économie » choisi en course attend la fin de la course (« appliqué à la fin de la course »), puis le palier 1 au retour à l'accueil.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(180_000);
 
-const THEMES = ["stade", "rallye", "banquise", "nuit", "campagne", "canyon", "col", "ville"] as const;
 const qualite = (page: Page) => page.evaluate(() => window.__cdj.qualite);
 const palier = (page: Page) => page.evaluate(() => [window.__cdj.socle.palier(), ...window.__cdj.socle.plus()].join("+"));
 /** Les morceaux de la finition et de la mesure chargés par la page. */
@@ -45,22 +44,20 @@ test("?palier=2 : le palier 2 (la finition, à la demande) ; sans paramètre, le
   expect(await page.evaluate(() => localStorage.getItem("cdj:qualite")), "l'adresse n'enregistre rien").toBeNull();
 });
 
-for (const theme of THEMES) {
-  test(`palier 2 : aucun appel de rendu de plus que le palier 1 — ${theme}`, async ({ page }) => {
-    await page.setViewportSize({ width: 640, height: 360 });
-    const base = `/?debug&home=0&seed=2026-10-14&theme=${theme}&ghost=off&fx=off&quality=2`;
-    const p1 = await appels(page, `${base}&palier=1`);
-    const p2 = await appels(page, `${base}&palier=2`);
-    expect(await palier(page)).toBe("P2");
-    expect(p2, `${theme} : palier 2 = palier 1`).toBe(p1);
-    if (theme === "stade" || theme === "nuit") {
-      // Avec la vie et le ciel (le palier 2 des téléphones) : la finition n'ajoute rien non plus.
-      const v1 = await appels(page, `${base}&reglages=1+vie+ciel`);
-      const v2 = await appels(page, `${base}&reglages=2+vie+ciel`);
-      expect(v2, `${theme} : vie et ciel, palier 2 = palier 1`).toBe(v1);
-    }
-  });
-}
+// Lot R13 (docs/tests.md) : un seul thème, la Nuit (le plus de calques allumés : lampadaires, halos, phares ; et la branche « vie et ciel »). Les huit thèmes sont
+// couverts par l'unitaire test/finitionJeu.test.ts « aucun appel de rendu de plus que le palier 1 : %s », et par vitrine.spec.ts (14 sujets, Régression).
+test("palier 2 : aucun appel de rendu de plus que le palier 1 — nuit", async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 360 });
+  const base = "/?debug&home=0&seed=2026-10-14&theme=nuit&ghost=off&fx=off&quality=2";
+  const p1 = await appels(page, `${base}&palier=1`);
+  const p2 = await appels(page, `${base}&palier=2`);
+  expect(await palier(page)).toBe("P2");
+  expect(p2, "nuit : palier 2 = palier 1").toBe(p1);
+  // Avec la vie et le ciel (le palier 2 des téléphones) : la finition n'ajoute rien non plus.
+  const v1 = await appels(page, `${base}&reglages=1+vie+ciel`);
+  const v2 = await appels(page, `${base}&reglages=2+vie+ciel`);
+  expect(v2, "nuit : vie et ciel, palier 2 = palier 1").toBe(v1);
+});
 
 // La mesure a lieu à l'accueil du circuit du jour (un jour passé n'a pas d'accueil) ; `quality=0` et un petit écran : en rendu logiciel, une mesure (121 images)
 // prend une dizaine de secondes au lieu d'une minute.

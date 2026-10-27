@@ -4,8 +4,8 @@ import { DEFAULT_CAR_PARAMS } from "./car";
 import { SIM_VERSION } from "./constants";
 import type { Replay } from "./replay";
 import { createTestTrack } from "./circuits";
-import { Rng, formatDay, mixSeed } from "@cdj/core";
-import { BASCULE_LOT_49, dailyTrackId, generatorVersionOf } from "./dailyId";
+import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
+import { dailyTrackId, generatorVersionOf } from "./dailyId";
 import { SALON_SEED_BASE } from "./salon";
 import { medalsFor, type Medals } from "./medals";
 import { MAX_BRAKING_ADD, secureBraking } from "./braking";
@@ -28,7 +28,7 @@ import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack
 // Lot 34 (générateur v16, à partir du 28/10/2026) : après une plaque, un super turbo ou une portion rapide, le virage suivant se freine
 // (`secureBraking`, braking.ts) ; au plus un virage-piège par circuit (passage signature, Ville). Les jours d'avant gardent la v15.
 // Lot 48 (générateur v17, à partir du 04/11/2026) : la Campagne roule sur l'herbe de course (`themeOfVersion`, themes.ts ; figures `since`).
-// Lot 49 (générateur v18, à partir de `BASCULE_LOT_49`) : les fiches d'identité des thèmes (favorites, vedettes à tour de rôle, interdits), les douze
+// Lot 49 (générateur v18) : les fiches d'identité des thèmes (favorites, vedettes à tour de rôle, interdits), les douze
 // nouvelles figures, et la variété garantie entre deux circuits consécutifs d'un même thème (`themeOccurrence`, `orderFigures`).
 
 export * from "./medals";
@@ -321,8 +321,8 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
 }
 
 /**
- * Lot 49 (v18) — **variété garantie**. `themeOccurrence(jour, thème)` = le numéro d'apparition du thème depuis la bascule du lot 49 (le nombre de jours
- * d'avant, depuis la bascule, qui ont ce thème : `themeForDay` jour après jour, quelques microsecondes ; rien n'est généré). Deux circuits consécutifs
+ * Lot 49 (v18) — **variété garantie**. `themeOccurrence(jour, thème)` = le numéro d'apparition du thème depuis l'ancre `ANCRE_V18` (le nombre de jours
+ * d'avant, depuis l'ancre, qui ont ce thème ; négatif avant elle : `themeForDay` jour après jour, quelques microsecondes ; rien n'est généré). Deux circuits consécutifs
  * d'un même thème ont deux numéros qui se suivent, d'où deux règles :
  * - **la vedette** (`vedetteOf`) : la `k`-ième apparition prend `vedettes[k mod n]` et s'interdit les autres vedettes du thème (n = 3 ou 4 : chaque
  *   vedette revient toutes les n apparitions, jamais deux de suite) ;
@@ -333,6 +333,8 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
  *   (il en existe toujours un : tout tournoi a un chemin qui passe par tous ses sommets, théorème de Rédei, construit par insertion).
  * Le Salon (graines au-delà de tous les jours) prend le numéro de sa session : ses thèmes changent de toute façon d'une session à l'autre.
  */
+/** Ancre du numéro d'apparition d'un thème (v18) : le 04/11/2026, où le lot 49 l'a défini. Ne bouge jamais : elle fixe le circuit de chaque jour de la v18. */
+export const ANCRE_V18 = daysFromCivil(2026, 11, 4);
 const occurrences = new Map<string, number>();
 export function themeOccurrence(day: number, theme: ThemeName): number {
   if (day >= SALON_SEED_BASE) return day - SALON_SEED_BASE;
@@ -340,7 +342,13 @@ export function themeOccurrence(day: number, theme: ThemeName): number {
   let k = occurrences.get(key);
   if (k === undefined) {
     k = 0;
-    for (let d = BASCULE_LOT_49; d < day; d++) if (themeForDay(d).name === theme) k++;
+    // L'ancre fait partie de la v18 (jamais une date de bascule) : avant elle, les apparitions se comptent à rebours (…, −2, −1) pour que deux circuits consécutifs
+    // d'un même thème gardent leur vedette, leur repos et leur ordre différents quel que soit le premier jour servi par la v18.
+    if (day >= ANCRE_V18) {
+      for (let d = ANCRE_V18; d < day; d++) if (themeForDay(d).name === theme) k++;
+    } else {
+      for (let d = day; d < ANCRE_V18; d++) if (themeForDay(d).name === theme) k--;
+    }
     if (occurrences.size > 512) occurrences.clear();
     occurrences.set(key, k);
   }
@@ -349,7 +357,7 @@ export function themeOccurrence(day: number, theme: ThemeName): number {
 /** La vedette d'une apparition du thème (lot 49), ou `null` pour un thème sans vedettes. */
 export function vedetteOf(theme: Theme, occurrence: number): string | null {
   const v = theme.figures.vedettes;
-  return v && v.length > 0 ? v[occurrence % v.length]! : null;
+  return v && v.length > 0 ? v[((occurrence % v.length) + v.length) % v.length]! : null;
 }
 const otherVedette = (f: Figure, theme: Theme, vedette: string | null) => !!vedette && f.name !== vedette && !!theme.figures.vedettes?.includes(f.name);
 /** Le sens fixe d'une paire de figures dans un thème (lot 49) : vrai si `a` peut précéder `b` dans un circuit d'apparition paire (et `b` précéder `a` dans un impair). */

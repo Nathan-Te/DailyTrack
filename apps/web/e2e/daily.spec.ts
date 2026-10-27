@@ -10,17 +10,19 @@ const golden = JSON.parse(readFileSync(new URL("../../../packages/sim/test/fixtu
   circuits: { date: string; number: number; attempt: number; spec: string; authorMs: number; palette: string; theme: string; trackId: string }[];
 };
 
-test("le navigateur régénère les circuits du jour de référence : même texte, même temps d'auteur, même palette", async ({ page }) => {
+test("le navigateur régénère les circuits du jour de référence : même texte, même temps d'auteur, même palette", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
   for (const expected of golden.circuits) {
-    const got = await page.evaluate((date) => window.__daily(date), expected.date);
+    // Lot R11 : chaque circuit de référence porte sa version (son identifiant) : les anciennes (v15, v16) ne sont plus celles du jour par défaut.
+    const generator = Number(/-g(\d+)/.exec(expected.trackId)?.[1]);
+    const got = await page.evaluate(([date, g]) => window.__daily(date, g), [expected.date, generator] as [string, number]);
     const { date, ...rest } = expected;
     expect(got, date).toEqual(rest);
   }
 });
 
-test("une date impossible est refusée", async ({ page }) => {
+test("une date impossible est refusée", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
   const error = await page.evaluate(() => {
@@ -38,8 +40,9 @@ test("une date impossible est refusée", async ({ page }) => {
 test.describe("jeu (rendu 3D)", () => {
   test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 
-  // Deux dates d'avant le lancement (13/10/2026 : pas de numéro) et une d'après (numéro affiché).
-  for (const date of ["2026-10-06", "2026-10-07", "2026-12-25"]) {
+  // Une date d'avant le lancement (13/10/2026 : pas de numéro) et une d'après (numéro affiché). Lot R13 : le 07/10 (deuxième date d'avant, mêmes
+  // vérifications) est retiré ; « trois dates, trois circuits » aussi (les identifiants de référence distincts : « au bit près » ci-dessous).
+  for (const date of ["2026-10-06", "2026-12-25"]) {
     test(`?seed=${date} : le circuit se charge, se joue, et affiche son titre et ses médailles`, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(String(e)));
@@ -71,25 +74,12 @@ test.describe("jeu (rendu 3D)", () => {
   // texte, tentative, temps de l'auteur, palette, thème, identifiant — les circuits de référence.
   test("le circuit calculé dans le fil de travail du jeu est celui de Node, au bit près", async ({ page }) => {
     test.setTimeout(240_000);
-    for (const expected of golden.circuits.filter((c) => ["2026-10-06", "2026-10-21", "2026-10-28", "2026-12-25"].includes(c.date))) {
+    for (const expected of golden.circuits.filter((c) => ["2026-10-06", "2026-10-21", "2026-11-05", "2026-12-25"].includes(c.date))) {
       await page.goto(`/?debug&seed=${expected.date}`);
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 60_000 });
       const got = await page.evaluate(() => window.__cdj.circuit);
       expect(got, expected.date).toMatchObject({ number: expected.number, attempt: expected.attempt, spec: expected.spec, authorMs: expected.authorMs, palette: expected.palette, theme: expected.theme, trackId: expected.trackId, fallback: false });
     }
-  });
-
-  test("trois dates donnent trois circuits différents", async ({ page }) => {
-    // Trois chargements de suite : en rendu logiciel un chargement (génération du circuit + construction de la scène) prend 20 à 40 s en CI.
-    test.setTimeout(240_000);
-    const ids = new Set<string>();
-    // Deux dates d'avant le lancement (13/10/2026 : pas de numéro) et une d'après (numéro affiché).
-  for (const date of ["2026-10-06", "2026-10-07", "2026-12-25"]) {
-      await page.goto(`/?debug&seed=${date}`);
-      await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 60_000 });
-      ids.add(await page.evaluate(() => (window.__cdj.race as { track: { id: string } }).track.id));
-    }
-    expect(ids.size).toBe(3);
   });
 
   test("une date invalide retombe sur le circuit d'aujourd'hui, en le disant", async ({ page }) => {
@@ -98,10 +88,4 @@ test.describe("jeu (rendu 3D)", () => {
     await expect(page.locator("#meta")).toContainText("date invalide");
   });
 
-  test("le circuit d'essai reste accessible avec ?scenario=essai", async ({ page }) => {
-    await page.goto("/?debug&scenario=essai");
-    await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
-    await expect(page.locator("#meta")).toHaveText("Circuit d'essai");
-    expect((await page.evaluate(() => (window.__cdj.race as { track: { id: string } }).track.id))).toBe("essai");
-  });
 });

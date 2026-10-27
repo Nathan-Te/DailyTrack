@@ -23,9 +23,9 @@ export const SIM_VERSION = 14;
  * Version du générateur de circuits du jour. À incrémenter dès que le circuit d'une date change
  * (règles de construction, pilote de validation, fenêtre de durée) : elle fait partie de l'identifiant du circuit,
  * donc les records et rediffusions d'un autre générateur ne se mélangent pas.
- * Lot 34 : **la dernière version**, celle des jours à partir de la bascule (`BASCULE_LOT_34`) et du Salon ; un jour garde la version
- * de son générateur (`generatorVersionOf`, dailyId.ts) : 15 avant le 28/10/2026, 16 ensuite (freinage possible après un boost), 17 à partir
- * du 04/11/2026 (lot 48 : l'herbe de course de la Campagne, `BASCULE_LOT_48`), 18 à partir du 04/11/2026 aussi (lot 49 : l'identité des
- * thèmes, `BASCULE_LOT_49` — la même date tant que le lot 48 n'est pas en production : la v17 ne sert alors à aucun jour).
+ * Lot R11 : **la dernière version**, celle des jours que le registre (`jours-track.json`, `generatorVersionOf`, dailyId.ts) ne nomme pas : les jours à partir du jour de
+ * bascule de la prochaine mise en production, et le Salon. **Changer le générateur = monter ce numéro, jamais écrire une date** : un jour déjà servi garde la version
+ * que le registre note (écrit par « Mettre en production »), et l'ancienne version reste dans le code tant qu'un jour du registre s'en sert. Historique : 15 (jusqu'au
+ * 27/10/2026), 16 (freinage possible après un boost, lot 34), 17 (herbe de course, lot 48), 18 (identité des thèmes, lot 49 ; la v17 n'a servi aucun jour).
  */
 export const GENERATOR_VERSION = 18;

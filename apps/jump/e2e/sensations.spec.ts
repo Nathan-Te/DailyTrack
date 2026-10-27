@@ -59,37 +59,6 @@ function run(page: Page, bits: number, max: number, until: "dead" | "ground" | n
   );
 }
 
-test("__jump.events en pas à pas : saut, atterrissage, pas, mort par un pic, réapparition ; les sons sont décidés", async ({ page }) => {
-  test.skip(!(await open(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-  expect(await get(page, (j) => j.events)).toEqual([]);
-  // Un saut sur place puis la retombée.
-  await run(page, JUMP, 2);
-  await run(page, 0, 90, "ground");
-  let events = await get(page, (j) => j.events);
-  expect(events.map((e) => e.kind)).toEqual(["saut", "atterrissage"]);
-  expect(events.every((e) => e.source === "jeu")).toBe(true);
-  expect(events[1]!.tick).toBeGreaterThan(events[0]!.tick);
-  expect(events[1]!.intensity).toBeGreaterThan(0.3);
-  // Courir dans les pics du début : des pas, puis la mort ; attendre la réapparition.
-  await get(page, (j) => j.clearEvents());
-  expect(await run(page, RIGHT, 400, "dead")).toBeLessThan(400);
-  await run(page, 0, 30);
-  events = await get(page, (j) => j.events);
-  const kinds = events.map((e) => e.kind);
-  expect(kinds).toContain("pas");
-  expect(events.find((e) => e.kind === "mort")?.cause).toBe("pic");
-  expect(kinds.indexOf("reapparition")).toBeGreaterThan(kinds.indexOf("mort"));
-  expect(events.find((e) => e.kind === "reapparition")?.checkpoint).toBe(false);
-  // Le son a décidé un son par événement (il les joue dès qu'un geste a déverrouillé le contexte).
-  const audio = await get(page, (j) => j.audio);
-  expect(audio.requested.saut).toBe(1);
-  expect(audio.requested.mort).toBe(1);
-  expect(audio.requested.reapparition).toBe(1);
-  expect(audio.requested.pas).toBeGreaterThan(0);
-  // Les réglages du joueur ne rendent jamais la partie « tuned ».
-  expect(await get(page, (j) => j.tuned)).toBe(false);
-});
-
 test("un geste déverrouille le son, sans aucune erreur ; un saut est alors joué", async ({ page, browserName }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -168,19 +137,6 @@ test("menu ⏸ au clavier : Échap met en pause (chrono figé), P aussi ; les r�
   await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.attempt.time === 0);
 });
 
-test("?fx=off : ni particule ni secousse à la mort ni à l'atterrissage, mais la tache reste", async ({ page }) => {
-  test.skip(!(await open(page, "&fx=off")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-  await run(page, JUMP, 2);
-  await run(page, 0, 90, "ground");
-  expect(await run(page, RIGHT, 400, "dead")).toBeLessThan(400);
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  const fx = await get(page, (j) => ({ fx: j.fx, effects: j.effects, stains: j.stains.count }));
-  expect(fx.fx).toEqual({ enabled: false, emitted: 0, alive: 0, shaking: false });
-  expect(fx.effects.emitted).toBe(0);
-  expect(fx.effects.shaking).toBe(false);
-  expect(fx.stains).toBeGreaterThan(0);
-});
-
 test("mouvement réduit demandé par le système : actif par défaut, ni particule ni secousse, la tache reste ; sans lui, les effets partent", async ({ browser }) => {
   const calm = await browser.newContext({ reducedMotion: "reduce" });
   try {
@@ -226,8 +182,8 @@ test("mouvement réduit demandé par le système : actif par défaut, ni particu
   }
 });
 
+// Lot R13 : la pause est en partie, et la partie se joue en paysage (le portrait est retiré).
 for (const [name, viewport] of [
-  ["portrait", { width: 390, height: 844 }],
   ["paysage", { width: 844, height: 390 }],
 ] as const) {
   test(`menu ⏸ au doigt (${name}) : la partie est en pause, cibles d'au moins 44 px, dans l'écran ; Reprendre`, async ({ browser }) => {

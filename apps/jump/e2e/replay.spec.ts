@@ -29,7 +29,7 @@ interface VerifyResult {
   lives: number;
 }
 
-test("le navigateur rejoue chaque rediffusion de référence et trouve exactement l'empreinte de Node", async ({ page }) => {
+test("le navigateur rejoue chaque rediffusion de référence et trouve exactement l'empreinte de Node", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
   expect(golden.replays.length).toBeGreaterThanOrEqual(12);
@@ -57,7 +57,7 @@ const goldenV4 = JSON.parse(readFileSync(new URL("../../../packages/jump-sim/tes
   replays: Fingerprinted[];
 };
 
-test("lot 15 : les rediffusions d'un niveau à une seule horloge (v4) donnent exactement l'empreinte de Node", async ({ page }) => {
+test("lot 15 : les rediffusions d'un niveau à une seule horloge (v4) donnent exactement l'empreinte de Node", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
   expect(goldenV4.replays.length).toBeGreaterThanOrEqual(8);
@@ -78,7 +78,7 @@ test("lot 15 : les rediffusions d'un niveau à une seule horloge (v4) donnent ex
   });
 });
 
-test("une rediffusion falsifiée ne donne pas la même empreinte (ou elle est refusée)", async ({ page }) => {
+test("une rediffusion falsifiée ne donne pas la même empreinte (ou elle est refusée)", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
   const code = golden.solution.code;

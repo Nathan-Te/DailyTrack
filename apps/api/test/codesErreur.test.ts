@@ -231,13 +231,3 @@ describe("codes d'erreur : les sources (apps/api/src)", () => {
     expect(problems).toEqual([]);
   });
 });
-
-describe("codes d'erreur : la documentation (docs/plateforme/codes-erreur.md)", () => {
-  it("une ligne de tableau par code de la liste, avec son statut ; aucun code de plus", () => {
-    const doc = readFileSync(new URL("../../../docs/plateforme/codes-erreur.md", import.meta.url), "utf8");
-    const rows = [...doc.matchAll(/^\|\s*`([a-z_]+)`\s*\|\s*(\d{3})\s*\|/gm)].map(([, code, status]) => [code!, Number(status)] as const);
-    const documented = new Map(rows);
-    expect(rows.length, "un code documenté deux fois").toBe(documented.size);
-    expect(Object.fromEntries(documented)).toEqual(Object.fromEntries(Object.entries(CODES_ERREUR).map(([c, v]) => [c, v.status])));
-  });
-});

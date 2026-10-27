@@ -26,7 +26,7 @@ declare global {
   interface Window {
     __verify: (code: string) => VerifyResult;
     /** Régénère le circuit du jour d'une date « AAAA-MM-JJ » (générateur + pilote de validation). */
-    __daily: (date: string) => DailyResult;
+    __daily: (date: string, generator?: number) => DailyResult;
   }
 }
 
@@ -42,10 +42,11 @@ window.__verify = (code) => {
   };
 };
 
-window.__daily = (date) => {
+// Lot R11 : `generator` impose la version du générateur (les circuits de référence d'une ancienne version : le registre des jours ne nomme que les jours protégés).
+window.__daily = (date, generator) => {
   const day = parseDay(date);
   if (day === null) throw new Error(`Date invalide : ${date}`);
-  const c = dailyCircuit(day);
+  const c = dailyCircuit(day, 0, null, generator);
   return { number: c.number, attempt: c.attempt, spec: c.spec, authorMs: c.authorMs, palette: c.palette, theme: c.theme, trackId: c.track.id };
 };
 

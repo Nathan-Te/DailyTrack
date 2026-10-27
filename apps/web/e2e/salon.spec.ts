@@ -39,7 +39,7 @@ const loaded = (page: Page) => page.waitForFunction(() => window.__cdj?.salon?.t
 const withRows = (page: Page, n: number) => page.waitForFunction((k) => (window.__cdj.salon!.board?.rows.length ?? 0) >= k, n, { timeout: 120_000, polling: 500 });
 const named = (page: Page) => page.addInitScript(() => localStorage.setItem("cdj:name", "Testeur"));
 
-test("on arrive en cours de session : compte à rebours, joueurs fictifs au classement, fantômes avec leur pseudo", async ({ page }) => {
+test("on arrive en cours de session : compte à rebours, joueurs fictifs au classement, fantômes avec leur pseudo", { tag: "@regression" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(salonUrl(START + 300_000));
@@ -115,7 +115,7 @@ test("ta course est rejouée et classée dans la session ; le Salon ne touche ni
   await page.waitForFunction(() => window.__cdj.salon!.ghosts!.names.includes("Toi"), undefined, { timeout: 30_000 });
 });
 
-test("finale (lot 31) : à fin − 15 s plus aucun départ, grand compte à rebours, classement affiché d'office ; la course en cours continue", async ({ page }) => {
+test("finale (lot 31) : à fin − 15 s plus aucun départ, grand compte à rebours, classement affiché d'office ; la course en cours continue", { tag: "@regression" }, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(salonUrl(START + 60_000));
   await loaded(page);
@@ -148,7 +148,7 @@ test("finale (lot 31) : à fin − 15 s plus aucun départ, grand compte à rebo
   await page.keyboard.up("ArrowUp");
 });
 
-test("fin de session : podium (trois premiers) sur l'ancien circuit, puis un autre circuit s'installe tout seul, sans gel ni calcul sur le fil principal", async ({ page }) => {
+test("fin de session : podium (trois premiers) sur l'ancien circuit, puis un autre circuit s'installe tout seul, sans gel ni calcul sur le fil principal", { tag: "@regression" }, async ({ page }) => {
   await page.addInitScript(() => {
     // Plus longue tâche du fil principal (outil de mesure : `PerformanceObserver` « longtask »).
     (window as unknown as { __long: { at: number; ms: number }[] }).__long = [];
@@ -234,7 +234,7 @@ const finishMs1 = runPilot(circuit1.track, { grip: 0.9 }).finishMs;
 const salonUrl1 = (at: number, extra = "") => `/?mode=salon&api=demo&debug&salonMinutes=1&salonAt=${at}${extra}`;
 const FINALE = 15_000;
 
-test("une course commencée avant la fin et finie avant l'heure pile est acceptée et compte (podium)", async ({ page }) => {
+test("une course commencée avant la fin et finie avant l'heure pile est acceptée et compte (podium)", { tag: "@regression" }, async ({ page }) => {
   await named(page);
   await page.goto(salonUrl(START + 300_000, "&timescale=4"));
   await loaded(page);
@@ -258,7 +258,7 @@ test("une course commencée avant la fin et finie avant l'heure pile est accept�
   expect(lien).toBe(`${new URL(page.url()).origin}/?mode=salon`);
 });
 
-test("une course non finie à l'heure pile est coupée pour tous et ne compte pas ; le circuit suivant s'installe après le classement final", async ({ page }) => {
+test("une course non finie à l'heure pile est coupée pour tous et ne compte pas ; le circuit suivant s'installe après le classement final", { tag: "@regression" }, async ({ page }) => {
   await named(page);
   await page.goto(salonUrl1(START1 + 20_000, "&timescale=4"));
   await loaded(page);
@@ -282,7 +282,7 @@ test("une course non finie à l'heure pile est coupée pour tous et ne compte pa
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("cdj:best:")))).toEqual([]);
 });
 
-test("le classement final reste 8 s sur l'ancien circuit, puis le circuit change au même instant pour deux navigateurs (heure du serveur, pas la fin de leur course)", async ({ browser }) => {
+test("le classement final reste 8 s sur l'ancien circuit, puis le circuit change au même instant pour deux navigateurs (heure du serveur, pas la fin de leur course)", { tag: "@regression" }, async ({ browser }) => {
   const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
   try {
     const pages = await Promise.all(contexts.map((c) => c.newPage()));
@@ -329,7 +329,12 @@ test("le classement final reste 8 s sur l'ancien circuit, puis le circuit change
       const margin = Math.max(...gaps) + 600;
       expect(firstSwitched[0] - SWITCH, "retard de la bascule").toBeLessThan(margin);
       // Entre la fin de session et la bascule : le classement final est affiché et l'identifiant du circuit n'a pas bougé ; il dure ≈ 8 s.
-      const entre = upToSwitch.slice(0, -1).filter(([now]) => now >= END1 + margin);
+      // On contrôle les images **après la première image qui suit la fin** (celle-ci peut encore montrer l'état d'avant : le contrôleur réagit à
+      // son propre tick) et non celles qui suivent `fin + écart maximal + 0,6 s` : sur la CI (deux pages en rendu logiciel) une image arrive toutes
+      // les 1,3 à 3 s ; une fenêtre de `margin` sur 8 s ne contenait alors parfois aucune image (run 40399054124, instable : « images pendant le
+      // classement final » = 0, 15 s pour noter 6 images au lieu de 11).
+      const apresFin = upToSwitch.slice(0, -1).filter(([now]) => now >= END1);
+      const entre = apresFin.slice(1);
       expect(entre.length, "images pendant le classement final").toBeGreaterThan(0);
       for (const [, , id, podium] of entre) {
         expect(id, "identifiant du circuit pendant le classement final").toBe(circuit1.id);
@@ -344,7 +349,7 @@ test("le classement final reste 8 s sur l'ancien circuit, puis le circuit change
   }
 });
 
-test("touche G : tous → premiers seulement → aucun ; Tab ouvre et ferme le classement", async ({ page }) => {
+test("touche G : tous → premiers seulement → aucun ; Tab ouvre et ferme le classement", { tag: "@regression" }, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(salonUrl(START + 300_000));
   await loaded(page);
@@ -367,7 +372,7 @@ test("touche G : tous → premiers seulement → aucun ; Tab ouvre et ferme le c
   expect(await page.evaluate(() => window.__cdj.salon!.ghostMode)).toBe("all");
 });
 
-test("sans API : message clair et circuit du jour", async ({ page }) => {
+test("sans API : message clair et circuit du jour", { tag: "@regression" }, async ({ page }) => {
   await page.goto("/?mode=salon&debug");
   await page.waitForFunction(() => window.__cdj?.phase, undefined, { timeout: 30_000 });
   expect(await page.evaluate(() => window.__cdj.salon)).toBeNull();
@@ -378,7 +383,7 @@ test("sans API : message clair et circuit du jour", async ({ page }) => {
   await expect(page.locator("#btn-mode")).toHaveCount(0); // plus de bouton Salon dans la barre (lot 29)
 });
 
-test("accueil ⇄ Salon : on passe de l'un à l'autre en gardant l'API, par l'accueil", async ({ page }) => {
+test("accueil ⇄ Salon : on passe de l'un à l'autre en gardant l'API, par l'accueil", { tag: "@regression" }, async ({ page }) => {
   await page.goto("/?api=demo&debug&home=1");
   await page.waitForFunction(() => window.__cdj?.phase, undefined, { timeout: 30_000 });
   await page.locator("#home-salon").click();
@@ -401,12 +406,12 @@ test("accueil ⇄ Salon : on passe de l'un à l'autre en gardant l'API, par l'ac
   await expect(page.locator("#pause-archive")).toBeHidden(); // pas d'archives dans le Salon
 });
 
+// Lot R13 (docs/tests.md) : le Salon est une course, elle se joue en paysage (en portrait, l'invitation à tourner le téléphone : tactile.spec.ts) ; portrait et
+// petit portrait retirés.
 for (const viewport of [
-  { name: "portrait", width: 390, height: 844 },
   { name: "paysage", width: 844, height: 390 },
-  { name: "petit portrait", width: 360, height: 640 },
 ]) {
-  test(`téléphone ${viewport.name} : le Salon (compte à rebours, menu, classement, podium) ne chevauche rien`, async ({ browser }) => {
+  test(`téléphone ${viewport.name} : le Salon (compte à rebours, menu, classement, podium) ne chevauche rien`, { tag: "@regression" }, async ({ browser }) => {
     const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
     const page = await context.newPage();
     await page.goto(salonUrl(START + 300_000, "&zones=1"));

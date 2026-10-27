@@ -53,7 +53,7 @@ test("chaque thème a son ambiance sonore, sa brume, ses panneaux ; aucune erreu
   expect(fogs.banquise!).toBeLessThan(fogs.stade!);
 });
 
-test("niveaux de qualité : ombres, halos, phares, décor dense et silhouettes proches se règlent", async ({ page }) => {
+test("niveaux de qualité : ombres, halos, phares, décor dense et silhouettes proches se règlent", { tag: "@regression" }, async ({ page }) => {
   for (const [name, dark] of [["nuit", true], ["stade", false]] as const) {
     const seen: Record<number, Awaited<ReturnType<typeof stats>>> = {};
     for (const q of [0, 1, 2]) {
@@ -85,7 +85,7 @@ function stats(page: Page) {
   return page.evaluate(() => window.__cdj.render);
 }
 
-test("l'ambiance du thème passe sous le volume général : coupée par M (muet), jamais plus forte que lui", async ({ page }) => {
+test("l'ambiance du thème passe sous le volume général : coupée par M (muet), jamais plus forte que lui", { tag: "@regression" }, async ({ page }) => {
   await open(page, `seed=${dayOf("campagne")}&quality=2`);
   await page.keyboard.press("KeyM");
   await page.evaluate(() => window.__cdj.advance(3));

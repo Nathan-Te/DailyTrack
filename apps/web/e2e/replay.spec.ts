@@ -11,7 +11,7 @@ const golden = JSON.parse(readFileSync(new URL("../../../packages/sim/test/fixtu
   final: Record<"x" | "y" | "z" | "yaw" | "vx" | "vy" | "vz", number>;
 };
 
-test("le navigateur rejoue la rediffusion de référence et trouve exactement le même résultat que Node", async ({ page }) => {
+test("le navigateur rejoue la rediffusion de référence et trouve exactement le même résultat que Node", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
   const result = await page.evaluate((code) => window.__verify(code), golden.code);
@@ -25,7 +25,7 @@ test("le navigateur rejoue la rediffusion de référence et trouve exactement le
   }
 });
 
-test("une rediffusion falsifiée ne donne pas le temps de la rediffusion de référence", async ({ page }) => {
+test("une rediffusion falsifiée ne donne pas le temps de la rediffusion de référence", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
   // On remplace un caractère au milieu : la commande change, la course aussi (ou la rediffusion est refusée).

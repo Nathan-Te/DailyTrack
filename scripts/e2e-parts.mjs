@@ -1,6 +1,7 @@
 // Répartition des specs e2e entre les parts de la CI, par DURÉE (retouche 31b). Utilisé par .github/workflows/ci.yml pour Chromium.
 //   node scripts/e2e-parts.mjs 3/8 chromium > liste.txt   → liste de tests pour `playwright test --test-list liste.txt`
 //   node scripts/e2e-parts.mjs 1/2 jump-chromium > liste.txt   → idem pour les specs de DailyJump (lot 3c)
+//   node scripts/e2e-parts.mjs 1/3 chromium --essentiel > liste.txt   → lot R13 : la CI de main (sans la famille « Régression », docs/tests.md)
 //
 // Pourquoi : `--shard` de Playwright coupe la liste des tests par NOMBRE, fichier par fichier, dans l'ordre alphabétique. Ajouter un spec
 // (le lot 31 en a ajouté onze) déplace toutes les frontières : la part 7 de Chromium s'est retrouvée vide, la part 8 a reçu les miniatures
@@ -24,10 +25,13 @@ const E2E_JUMP = join(ROOT, "apps/jump/e2e");
 export const gameOf = (project) => (project.startsWith("jump-") ? { dir: E2E_JUMP, name: "jump" } : { dir: E2E, name: "web" });
 export const DEFAULT_S = 60;
 
-/** Les specs du dossier e2e (noms relatifs au dossier, comme Playwright les écrit dans une liste de tests). */
+/** Lot R13 : un outil (captures, mesures) n'est jamais dans la CI (`testIgnore` des configurations de Playwright sans `CAPTURES`, `MESURE`…). */
+export const estOutil = (f) => /^(captures|mesure)[-.]/.test(f);
+
+/** Les specs du dossier e2e que la CI lance (noms relatifs au dossier, comme Playwright les écrit dans une liste de tests) : sans les outils. */
 export function specFiles(dir = E2E) {
   return readdirSync(dir)
-    .filter((f) => f.endsWith(".spec.ts"))
+    .filter((f) => f.endsWith(".spec.ts") && !estOutil(f))
     .sort();
 }
 
@@ -54,6 +58,21 @@ export function testList(files, project) {
   return files.map((f) => `[${project}] › ${f}`).join("\n") + "\n";
 }
 
+/**
+ * Lot R13 (docs/tests.md) : les durées d'un jeu — `secondes` (le spec entier) ou, pour la CI de PR et de main (`essentiel`), celles de ses tests sans
+ * l'étiquette `@regression` ; un spec de la liste `regression` de e2e/zones.json n'a alors aucune durée (il ne tourne pas).
+ */
+export function durees(dir = E2E, { essentiel = false } = {}) {
+  const d = JSON.parse(readFileSync(join(dir, "durees.json"), "utf8"));
+  return essentiel ? d.essentiel ?? {} : d.secondes;
+}
+
+/** Lot R13 : les specs tout entiers « Régression » d'un jeu (`web` | `jump`), d'après e2e/zones.json. */
+export function specsRegression(jeu) {
+  const t = JSON.parse(readFileSync(join(ROOT, "e2e/zones.json"), "utf8"));
+  return (t.regression ?? []).filter((s) => s.startsWith(`${jeu}/`)).map((s) => s.slice(jeu.length + 1));
+}
+
 function main(argv) {
   if (argv[0] === "liste") {
     // liste <projet-web> <jeu/fichier>… : le projet du jeu `jump` est `jump-<navigateur>`.
@@ -65,7 +84,8 @@ function main(argv) {
     process.stdout.write(lignes.join("\n") + "\n");
     return;
   }
-  const [spec, project = "chromium"] = argv;
+  const essentiel = argv.includes("--essentiel");
+  const [spec, project = "chromium"] = argv.filter((a) => !a.startsWith("--"));
   const m = /^(\d+)\/(\d+)$/.exec(spec ?? "");
   if (!m || +m[1] < 1 || +m[1] > +m[2]) {
     console.error("usage : node scripts/e2e-parts.mjs <part>/<total> [projet]");
@@ -73,8 +93,10 @@ function main(argv) {
   }
   const [current, total] = [+m[1], +m[2]];
   const game = gameOf(project);
-  const durations = JSON.parse(readFileSync(join(game.dir, "durees.json"), "utf8")).secondes;
-  const files = specFiles(game.dir);
+  const durations = durees(game.dir, { essentiel });
+  // `--essentiel` (CI de main, lot R13) : sans les specs tout entiers « Régression » ; les tests `@regression` des autres sont écartés par `--grep-invert`.
+  const regression = essentiel ? specsRegression(game.name) : [];
+  const files = specFiles(game.dir).filter((f) => !regression.includes(f));
   for (const f of files) if (!(f in durations)) console.error(`e2e-parts : ${f} absent de apps/${game.name}/e2e/durees.json, compté ${DEFAULT_S} s`);
   const parts = assignParts(files, durations, total);
   const part = parts[current - 1];
