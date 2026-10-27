@@ -3,7 +3,7 @@ import { SIM_VERSION, dailyCircuit, dailyTrackId, encodeReplay, etatGarage, form
 
 // Lot 51 : la voiture de chaque course — jointe à l'envoi, gardée avec le record, montrée au fantôme (le premier, ton record) et à la rediffusion regardée —, et le choix du
 // Garage gardé par le serveur (le même profil sur tous les appareils). Le jeu parle à une API simulée dans la page (`page.route`, aucune base partagée) pour les cas
-// ciblés (Régression : la nuit) ; deux tests sont Essentiels — la voiture jointe à l'envoi, et le scénario qui passe par le vrai serveur (SQLite en mémoire, port 8799 réservé à ce fichier) avec deux appareils. Le rendu 3D demande WebGL : Chromium seulement.
+// ciblés (Régression : la nuit) ; deux tests sont Essentiels — la voiture jointe à l'envoi, et le scénario qui passe par le vrai serveur (SQLite en mémoire, port 8801 réservé à ce fichier) avec deux appareils. Le rendu 3D demande WebGL : Chromium seulement.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(240_000);
 const expect = baseExpect.configure({ timeout: 30_000 });
@@ -134,7 +134,7 @@ test("le choix du serveur arrive avec le profil (aucune requête de plus), la vo
 });
 
 test("deux appareils, le même profil, le vrai serveur : la course garde sa voiture, le choix du Garage suit le joueur sur l'autre appareil", async ({ browser }) => {
-  const API = "http://127.0.0.1:8799";
+  const API = "http://127.0.0.1:8801";
   const GAME = `debug&timescale=6&api=${encodeURIComponent(API)}`;
   const mon = { id: "civile", couleur: 3, motif: "flancs", teinteMotif: 0 };
   const a = await (await newClockedContext(browser, { viewport: { width: 1100, height: 700 } })).newPage();
