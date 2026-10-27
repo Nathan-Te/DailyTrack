@@ -86,7 +86,7 @@ describe("circuits du jour de référence", () => {
       const day = parseDay(c.date)!;
       const g = versionOfEntry(golden, c.date);
       if (g === GENERATOR_VERSION) expect(generatorVersionOf(day), c.date).toBe(GENERATOR_VERSION);
-      else if (c.date <= "2026-10-26") expect(generatorVersionOf(day), c.date).toBe(g);
+      else if (c.date <= "2026-10-27") expect(generatorVersionOf(day), c.date).toBe(g);
     }
   });
 

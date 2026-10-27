@@ -26,7 +26,7 @@ function aVerifier(jours: string[], tout: boolean): string[] {
 }
 
 describe("jours passés (jours-passes.json)", () => {
-  it("ne garde que des jours protégés, jusqu'à la dernière mise en production (le 26/10, d'avant le lancement du 27/10, y est resté), les mêmes pour les deux jeux (un jour sans résultat n'y est pas : il est régénéré)", () => {
+  it("ne garde que des jours protégés, jusqu'à la dernière mise en production, les mêmes pour les deux jeux (un jour sans résultat n'y est pas : il est régénéré)", () => {
     for (const jeu of ["track", "jump"] as const) {
       const dates = Object.keys(gardees[jeu]).sort();
       expect(dates.length, jeu).toBeGreaterThan(0);

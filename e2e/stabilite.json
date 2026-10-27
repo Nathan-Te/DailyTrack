@@ -49,6 +49,18 @@
       "fichier": "thumbnails.spec.ts",
       "titre": "l'ouverture des archives ne gèle pas l'interface",
       "navigateur": "chromium"
+    },
+    {
+      "jeu": "web",
+      "fichier": "salon.spec.ts",
+      "titre": "le classement final reste 8 s",
+      "navigateur": "chromium"
+    },
+    {
+      "jeu": "jump",
+      "fichier": "plateformes.spec.ts",
+      "titre": "un morceau à presse",
+      "navigateur": "webkit"
     }
   ]
 }

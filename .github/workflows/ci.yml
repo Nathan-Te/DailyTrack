@@ -214,11 +214,19 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browser }}
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # apt : une connexion muette échoue au bout de 30 s et se retente 3 fois (le 26/10, WebKit a attendu 29 min sur `install-deps`, run 40399054124) ; un miroir lent mais
+      # vivant (≈ 50 ko/s ce jour-là) n'est jamais interrompu : on ne tue pas apt en cours de téléchargement (il garde le verrou dpkg, les essais suivants échouent), l'étape a 15 min.
+      - run: |
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
+          npx playwright install --with-deps ${{ matrix.browser }}
         working-directory: apps/web
+        timeout-minutes: 15
         if: steps.browsers.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps ${{ matrix.browser }}
+      - run: |
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
+          npx playwright install-deps ${{ matrix.browser }}
         working-directory: apps/web
+        timeout-minutes: 15
         if: steps.browsers.outputs.cache-hit == 'true'
       - run: npm run build && npm run build:node -w @cdj/api
         if: matrix.suite != 'jump'
@@ -301,11 +309,19 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
-      - run: npx playwright install --with-deps chromium
+      # apt : une connexion muette échoue au bout de 30 s et se retente 3 fois (le 26/10, WebKit a attendu 29 min sur `install-deps`, run 40399054124) ; un miroir lent mais
+      # vivant (≈ 50 ko/s ce jour-là) n'est jamais interrompu : on ne tue pas apt en cours de téléchargement (il garde le verrou dpkg, les essais suivants échouent), l'étape a 15 min.
+      - run: |
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
+          npx playwright install --with-deps chromium
         working-directory: apps/web
+        timeout-minutes: 15
         if: steps.browsers.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps chromium
+      - run: |
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
+          npx playwright install-deps chromium
         working-directory: apps/web
+        timeout-minutes: 15
         if: steps.browsers.outputs.cache-hit == 'true'
       # DailyTrack a besoin des deux jeux (e2e/deux-jeux.mjs) et du serveur ; DailyJump seul n'a besoin que de lui.
       - run: npm run build && npm run build:node -w @cdj/api

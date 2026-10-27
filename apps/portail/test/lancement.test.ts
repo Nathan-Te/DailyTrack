@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } fro
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { formatDay, parseDay } from "@cdj/core";
 
 // Lot R8 : le lancement public. La date (une seule source), le workflow « Lancement : remise à zéro » (ses gardes, simulés sans secrets : l'étape « Gardes »
 // est extraite du fichier et lancée par bash), et la liste de contrôle de Nathan.
@@ -60,11 +61,11 @@ function lancer(env: Record<string, string>) {
 }
 
 describe("la date du lancement", () => {
-  it("config/lancement.json : une seule clé, une date valide (la valeur posée par Nathan : le mardi 27/10/2026 ; lot R8 : le lundi 26/10)", () => {
+  it("config/lancement.json : une seule clé, une date valide (la source unique : sa valeur n'est écrite dans aucun test)", () => {
     const json = JSON.parse(readFileSync(join(ROOT, "config/lancement.json"), "utf8")) as Record<string, unknown>;
     expect(Object.keys(json)).toEqual(["premierJour"]);
-    expect(json.premierJour).toBe("2026-10-27");
-    expect(new Date(`${String(json.premierJour)}T12:00:00Z`).getUTCDay()).toBe(2); // un mardi (le lundi 26/10 du lot R8, déplacé par Nathan)
+    expect(String(json.premierJour)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(formatDay(parseDay(String(json.premierJour))!)).toBe(json.premierJour); // une date du calendrier, pas « 2026-02-30 »
   });
 
   it("le serveur la reçoit dans l'image et dans les chemins qui déclenchent la recette", () => {

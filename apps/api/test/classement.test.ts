@@ -86,7 +86,6 @@ function espion(t: TestApi) {
 describe("le numéro de journée commun", () => {
   it("la journée n° 1 est celle de config/lancement.json (la source unique, lot R8) ; avant, aucun numéro", () => {
     expect(PREMIER_JOUR_DU_JOUR).toBe(parseDay(PREMIER_JOUR_TEXTE));
-    expect(PREMIER_JOUR_DU_JOUR).toBe(daysFromCivil(2026, 10, 27)); // la valeur posée par Nathan (27/10 ; lot R8 : 26/10) ; il la déplace dans le fichier JSON, puis ici
     expect(numeroDeJournee(PREMIER_JOUR_DU_JOUR - 1)).toBeNull();
     expect(numeroDeJournee(PREMIER_JOUR_DU_JOUR)).toBe(1);
     expect(numeroDeJournee(PREMIER_JOUR_DU_JOUR + 41)).toBe(42);

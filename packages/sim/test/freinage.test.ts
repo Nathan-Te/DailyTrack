@@ -38,7 +38,7 @@ const circuit = (day: number) => {
 };
 
 describe("la version du générateur d'un jour (lot 34, registre du lot R11)", () => {
-  it("un jour du registre garde sa version (v15 jusqu'au 26/10/2026), un jour absent et le Salon prennent la dernière, une version imposée change l'identifiant", () => {
+  it("un jour du registre garde sa version (v15 jusqu'au 27/10/2026), un jour absent et le Salon prennent la dernière, une version imposée change l'identifiant", () => {
     expect(GENERATOR_BEFORE_34).toBe(15);
     expect(GENERATOR_VERSION).toBe(18); // lot 49 : l'identité des thèmes ; la v16 et la v17 ne restent dans le code que pour les jours que le registre leur donnerait
     expect(generatorVersionOf(PREMIER_JOUR)).toBe(15);

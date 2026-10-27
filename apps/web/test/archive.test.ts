@@ -100,7 +100,7 @@ describe("listDayBests", () => {
         [`cdj:best:jour-2026-10-07-g${G15}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
         [`cdj:best:jour-2026-10-08-g${G15}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION - 1 }), // ancienne physique
         "cdj:best:jour-2026-10-08-g99": JSON.stringify({ ms: 1, splits: [], simVersion: SIM_VERSION }), // autre générateur : autre circuit
-        // Lot R11 : un jour du registre (jusqu'au 26/10/2026) garde sa version, la v15 (la dernière version y serait un autre circuit) ; un jour que le registre ne nomme pas prend la dernière.
+        // Lot R11 : un jour du registre (jusqu'au 27/10/2026) garde sa version, la v15 (la dernière version y serait un autre circuit) ; un jour que le registre ne nomme pas prend la dernière.
         [`cdj:best:jour-2026-10-09-g${G}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
         // Hors du registre, la v16 d'avant n'est plus la version du jour : son record n'est pas celui du circuit d'aujourd'hui.
         [`cdj:best:jour-2026-10-29-g${G16}`]: JSON.stringify({ ms: 38000, splits: [], simVersion: SIM_VERSION }),
