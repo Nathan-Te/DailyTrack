@@ -1,0 +1,34 @@
+id: stalactite-sentier
+intention: Sauter de petits îlots de sol entre des nappes de pics, sous des stalactites basses : un grand saut frapperait leur pointe qui tremble, il faut sauter court, sans jamais s'arrêter.
+etiquettes: stalactite precision
+famille: stalactite-sentier
+theme: glace
+format: 3
+paliers: 9 9
+repeter: s1 colonnes 5-5
+repeter: s2 colonnes 10-10
+repeter: s3 colonnes 15-15
+repeter: s4 colonnes 20-20
+variante: s1=1 s2=1 s3=1 s4=1
+variante: s1=2 s2=1 s3=1 s4=1
+variante: s1=1 s2=2 s3=1 s4=1
+variante: s1=1 s2=1 s3=2 s4=1
+variante: s1=1 s2=1 s3=1 s4=2
+variante: s1=2 s2=1 s3=2 s4=1
+grille:
+.########################..
+.########################..
+.########################..
+.########################..
+...........................
+...........................
+...........................
+...........................
+....^^^..^^^..^^^..^^^.....
+###########################
+###########################
+###########################
+
+stalactite a 8,4 3 2
+stalactite b 13,4 3 2
+stalactite c 18,4 3 2

@@ -1,7 +1,7 @@
 import { formatDay, parseDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
 import type { DailyExigence, DailyLevel, DailyPiece } from "./daily";
-import { MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, levelNumber, type JumpMedals } from "./jours";
+import { MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, STALACTITE_GENERATOR, levelNumber, type JumpMedals } from "./jours";
 import { parseLevel } from "./level";
 import type { Palier } from "./modules";
 import { textHash } from "./texthash";
@@ -185,6 +185,8 @@ function thaw(raw: unknown, day: number, proofRequired: boolean): PublicDailyLev
   if ((f.simVersion >= PRESS_VERSION) !== (f.generatorVersion >= PRESS_GENERATOR)) return "versions incohérentes";
   // Lot 23 : la version 7 (champignons) est celle du générateur g17 et des suivants ; la version 6 celle de g16 seulement.
   if ((f.simVersion >= MUSHROOM_VERSION) !== (f.generatorVersion >= MUSHROOM_GENERATOR)) return "versions incohérentes";
+  // Lot 24 : la version 8 (stalactites) est celle du générateur g18 et des suivants ; la version 7 celle de g17 seulement.
+  if ((f.simVersion >= STALACTITE_VERSION) !== (f.generatorVersion >= STALACTITE_GENERATOR)) return "versions incohérentes";
   const id = `jour-${date}-g${f.generatorVersion}`;
   if (f.id !== id) return "autre identifiant";
   if (!isStrings(f.grille) || !isStrings(f.annexe) || typeof f.hash !== "string" || !isInt(f.auteur)) return "fichier incomplet";

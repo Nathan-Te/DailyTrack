@@ -25,3 +25,5 @@ export * from "./plateformes";
 export * from "./presses";
 export * from "./champignons";
 export * from "./champignonsPieces";
+export * from "./stalactites";
+export * from "./stalactitesPieces";

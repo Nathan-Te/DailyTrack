@@ -34,6 +34,8 @@ export type SoundId =
   | "reapparition"
   | "ressort"
   | "champignon"
+  | "stalactiteTremble"
+  | "stalactiteCasse"
   | "friableCraque"
   | "friableTombe"
   | "pointDePassage"
@@ -130,6 +132,8 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
       if (e.cause === "scie") base.push(tone("sawtooth", 1500, 0.12, 0.05, 0, 900));
       else if (e.cause === "chute") base.unshift(tone("sine", 900, 0.25, 0.07, 0, 300));
       else if (e.cause === "presse") base.unshift(tone("sine", 70, 0.2, 0.2, 0, 40));
+      // Lot 24 : une stalactite : le même « splat », avec un éclat clair de glace par-dessus.
+      else if (e.cause === "stalactite") base.push(noise(3600, 0.12, 0.09, 0, 2200, "bandpass", 2), tone("sine", 3100, 0.1, 0.04, 0.01, 2400));
       else base.push(noise(4200, 0.05, 0.07, 0, 2500, "highpass", 0.8));
       return spec("mort", 3, base);
     }
@@ -142,6 +146,12 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
     case "champignon":
       // Lot 23 : un « boup » rond et mou (pas le « boing » métallique du ressort) ; plus haut et plus long quand le rebond est renforcé.
       return spec("champignon", 2, e.boost ? [tone("sine", 190, 0.1, 0.17, 0, 520), tone("sine", 620, 0.22, 0.1, 0.05, 460), tone("triangle", 930, 0.16, 0.04, 0.06, 700)] : [tone("sine", 170, 0.09, 0.15, 0, 400), tone("sine", 470, 0.17, 0.09, 0.05, 360)]);
+    case "stalactiteTremble":
+      // Lot 24 : un craquement très fin, aigu, de la glace qui se fissure (à peine audible : le tremblement s'annonce surtout à l'œil).
+      return spec("stalactiteTremble", 1, [noise(5200, 0.16, 0.05, 0, 3600, "highpass", 2), tone("sine", 2300, 0.14, 0.03, 0.02, 2100)]);
+    case "stalactiteCasse":
+      // Lot 24 : la glace qui éclate : un souffle clair, deux tintements qui descendent, un éclat plus sourd.
+      return spec("stalactiteCasse", 2, [noise(4200, 0.18, 0.14, 0, 2600, "bandpass", 2), tone("triangle", 2600, 0.1, 0.06, 0, 1900), tone("sine", 3500, 0.12, 0.04, 0.03, 2800), noise(2000, 0.12, 0.08, 0.06, 1200, "bandpass", 3)]);
     case "friableCraque":
       // Craquement : deux grains secs.
       return spec("friableCraque", 1, [noise(2400, 0.04, 0.12, 0, 1500, "bandpass", 4), noise(1700, 0.05, 0.1, 0.05, 1100, "bandpass", 4)]);

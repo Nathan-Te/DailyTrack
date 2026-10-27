@@ -1,0 +1,29 @@
+id: stalactite-decroche
+intention: Franchir un puits de pics sous une stalactite basse : un saut assez haut pour passer la frôlerait, alors on la déclenche exprès, on recule pour la laisser tomber au fond du puits, puis on prend son élan.
+etiquettes: stalactite precision
+famille: stalactite-decroche
+theme: glace
+format: 3
+paliers: 9 9
+repeter: p colonnes 10-10
+repeter: d rangees 10-10
+variante: p=3 d=1
+variante: p=3 d=0
+variante: p=3 d=2
+variante: p=4 d=2
+grille:
+....#############..
+....#############..
+....#############..
+....#############..
+...................
+...................
+...................
+...................
+...................
+########....<######
+########....<######
+########^^^^<######
+###################
+
+stalactite a 10,4 4 1

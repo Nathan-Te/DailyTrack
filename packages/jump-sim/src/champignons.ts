@@ -194,7 +194,7 @@ export interface MushroomContact {
 /** Les rebonds d'une suite de commandes jouée depuis `start` (outils et tests : ce que fait vraiment une solution). S'arrête à la mort ou à l'arrivée. */
 export function mushroomContacts(level: Level, start: AttemptState, inputs: readonly number[]): MushroomContact[] {
   const out: MushroomContact[] = [];
-  const events: AttemptEvents = { mushroom: -1, boost: 0 };
+  const events: AttemptEvents = { mushroom: -1, boost: 0, shake: -1, shatter: -1 };
   let s = start;
   for (let t = 0; t < inputs.length; t++) {
     s = stepAttempt(s, inputs[t]!, level, DEFAULT_JUMP_PARAMS, events);
