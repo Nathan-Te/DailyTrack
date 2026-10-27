@@ -57,7 +57,8 @@ const cellsOf = (k: Parameters<typeof isCurve>[0]) => (k === "grandL" || k === "
 const isTight = (k: Parameters<typeof isCurve>[0]) => isCurve(k) && !isWide(k);
 
 describe("circuit du jour : construction", () => {
-  it("est déterministe : même jour, même circuit, au caractère près", () => {
+  // Six générations (trois jours, deux fois) : ≈ 0,3 à 1 s chacune sur la CI (2 cœurs, tests en parallèle), le délai par défaut de 5 s ne suffit pas.
+  it("est déterministe : même jour, même circuit, au caractère près", { timeout: 60_000 }, () => {
     for (const day of [JOUR_TEST, JOUR_TEST + 1, JOUR_TEST + 400]) {
       const a = dailyCircuit(day);
       const b = dailyCircuit(day);

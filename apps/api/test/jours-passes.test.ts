@@ -24,11 +24,11 @@ function aVerifier(jours: string[], tout: boolean): string[] {
 }
 
 describe("jours passés (jours-passes.json)", () => {
-  it("couvre chaque jour de la journée n° 1 à la dernière mise en production, sans trou, pour les deux jeux", () => {
+  it("couvre chaque jour de la journée n° 1 à la dernière mise en production, sans trou, pour les deux jeux (vide tant qu'aucune mise en production n'a fait de jour passé)", () => {
     for (const jeu of ["track", "jump"] as const) {
       const dates = Object.keys(gardees[jeu]).sort();
-      expect(dates.length, jeu).toBeGreaterThan(0);
-      expect(dates[0], jeu).toBe(formatDay(PREMIER_JOUR_DU_JOUR));
+      // Aucun jour n'est « passé » avant la première mise en production après le lancement : le fichier est vide. Ensuite, il commence à la journée n° 1 (config/lancement.json).
+      if (dates.length > 0) expect(dates[0], jeu).toBe(formatDay(PREMIER_JOUR_DU_JOUR));
       dates.forEach((d, i) => expect(parseDay(d), `${jeu} ${d}`).toBe(PREMIER_JOUR_DU_JOUR + i));
     }
     expect(Object.keys(gardees.track)).toEqual(Object.keys(gardees.jump));

@@ -329,7 +329,12 @@ test("le classement final reste 8 s sur l'ancien circuit, puis le circuit change
       const margin = Math.max(...gaps) + 600;
       expect(firstSwitched[0] - SWITCH, "retard de la bascule").toBeLessThan(margin);
       // Entre la fin de session et la bascule : le classement final est affiché et l'identifiant du circuit n'a pas bougé ; il dure ≈ 8 s.
-      const entre = upToSwitch.slice(0, -1).filter(([now]) => now >= END1 + margin);
+      // On contrôle les images **après la première image qui suit la fin** (celle-ci peut encore montrer l'état d'avant : le contrôleur réagit à
+      // son propre tick) et non celles qui suivent `fin + écart maximal + 0,6 s` : sur la CI (deux pages en rendu logiciel) une image arrive toutes
+      // les 1,3 à 3 s ; une fenêtre de `margin` sur 8 s ne contenait alors parfois aucune image (run 40399054124, instable : « images pendant le
+      // classement final » = 0, 15 s pour noter 6 images au lieu de 11).
+      const apresFin = upToSwitch.slice(0, -1).filter(([now]) => now >= END1);
+      const entre = apresFin.slice(1);
       expect(entre.length, "images pendant le classement final").toBeGreaterThan(0);
       for (const [, , id, podium] of entre) {
         expect(id, "identifiant du circuit pendant le classement final").toBe(circuit1.id);
