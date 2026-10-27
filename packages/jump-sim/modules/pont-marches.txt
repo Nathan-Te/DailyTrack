@@ -1,0 +1,26 @@
+id: pont-marches
+intention: Gravir un escalier de marches lumineuses au-dessus des pics : le pont s'allume quand on se pose sur l'interrupteur et s'éteint marche après marche derrière soi, il faut monter sans traîner.
+etiquettes: precision pont
+famille: pont-marches
+theme: nuit
+format: 3
+paliers: 8 4
+variante: delai=150
+variante: delai=135
+variante: delai=180
+variante: delai=165
+grille:
+..........................
+..........................
+..........................
+..........................
+.....................#####
+.....................#####
+.....................#####
+.....................#####
+#####................#####
+#####................#####
+#####^^^^^^^^^^^^^^^^#####
+##########################
+
+pont marches {delai} 2,8 7-8,7 10-11,6 13-14,5 16-17,4

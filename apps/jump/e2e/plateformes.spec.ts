@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
-import { buildModule, dailyLevel, laserModuleIds, moduleSolutions, mushroomModuleIds, pressModuleIds, stalactiteModuleIds } from "@cdj/jump-sim";
+import { bridgeModuleIds, buildModule, dailyLevel, jumpThemeForDay, laserModuleIds, moduleSolutions, mushroomModuleIds, pressModuleIds, stalactiteModuleIds } from "@cdj/jump-sim";
 import { generatedDay } from "./jours";
 import { hasWebGL } from "./phone";
 
@@ -93,7 +93,7 @@ test("niveau du jour (v8 depuis le lot 24) à plateformes : la preuve de l'auteu
   const date = dayWithPlatform();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(9); // lot 25 : le générateur en vigueur (g19) est en v9
+  expect(daily.level.simVersion).toBe(10); // lot 26 : le générateur en vigueur (g20) est en v10
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: J }).__jump;
     j.manual(true);
@@ -196,7 +196,7 @@ test("niveau du jour d'usine (v8 depuis le lot 24) : la preuve de l'auteur, jou�
   const date = dayWithPresses();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await openP(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(9); // lot 25 : le générateur en vigueur (g19) est en v9
+  expect(daily.level.simVersion).toBe(10); // lot 26 : le générateur en vigueur (g20) est en v10
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JP }).__jump;
     j.manual(true);
@@ -279,7 +279,7 @@ test("niveau du jour de forêt (v8 depuis le lot 24) : la preuve de l'auteur, jo
   const date = dayWithMushrooms();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(9);
+  expect(daily.level.simVersion).toBe(10);
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JM }).__jump;
     j.manual(true);
@@ -388,7 +388,7 @@ test("niveau du jour de glace (v8) : la preuve de l'auteur, jouée pas à pas da
   const date = dayWithStalactites();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(9);
+  expect(daily.level.simVersion).toBe(10);
   expect(daily.theme).toBe("glace");
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JS }).__jump;
@@ -558,7 +558,7 @@ test("niveau du jour de néon (v9) : la preuve de l'auteur, jouée pas à pas da
   const date = dayWithLasers();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(9);
+  expect(daily.level.simVersion).toBe(10);
   expect(daily.theme).toBe("neon");
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JL }).__jump;
@@ -574,4 +574,117 @@ test("niveau du jour de néon (v9) : la preuve de l'auteur, jouée pas à pas da
   expect(result.count + result.bars).toBeGreaterThanOrEqual(2);
   expect(result.deaths).toBe(0);
   expect(["finished", "carnage"]).toContain(result.phase); // arrivée sans mort : l'écran d'arrivée passe par le carnage
+});
+
+// ——— Lot 26 : les ponts à interrupteur (dans ce fichier, pour la même raison) ———
+// Éteint, un pont n'est qu'un contour pointillé ; le pas où le personnage se pose sur l'interrupteur, toutes ses tuiles sont pleines (dessinées comme la simulation les tient) ; chaque tuile se
+// vide comme une jauge pendant les 48 pas qui précèdent son extinction (vide pile au pas où la simulation l'éteint) ; la reprise le remet éteint. Tout se lit en pas à pas.
+
+interface BridgesDebug {
+  count: number;
+  list: { id: string; switchCol: number; switchRow: number; delay: number; tiles: number }[];
+  ages: number[];
+  simSolid: boolean[];
+  simFills: number[];
+  /** Ce que le dessin a posé. */
+  tiles?: number;
+  solid?: number;
+  dotted?: number;
+  draining?: number;
+  fills?: number[];
+  opacity?: number;
+}
+interface JB {
+  phase: string;
+  bridges: BridgesDebug | null;
+  attempt: { status: string; time: number };
+  manual(on: boolean): void;
+  advance(n: number): unknown;
+  input(bits: number | null): void;
+  restart(): void;
+  autoplay(code?: string): number;
+}
+const bridges = (page: Page) => page.evaluate(() => (window as unknown as { __jump: JB }).__jump.bridges!);
+
+test("un morceau à pont (`?module=pont-coude`) : pointillés éteint, plein dès la pose sur l'interrupteur, jauge qui se vide 48 pas avant chaque extinction, dessin = simulation", async ({ page }) => {
+  test.skip(!(await open(page, "?module=pont-coude&variante=0&entree=arret&debug&accueil=0")), "pas de WebGL dans ce navigateur");
+  const built = buildModule("pont-coude", 0).level.bridges[0]!;
+  const total = built.tiles.length;
+  // Éteint : toutes les tuiles pointillées (le dessin les attend), aucune pleine.
+  await page.waitForFunction((n) => ((window as unknown as { __jump: JB }).__jump.bridges?.dotted ?? 0) === n, total);
+  const off = await bridges(page);
+  expect(off).toMatchObject({ count: 1, ages: [0], tiles: total, solid: 0 });
+  expect(off.simSolid.every((v) => !v)).toBe(true);
+  // Le personnage court vers l'interrupteur ; le pas où il s'y pose, le pont est allumé (âge 1), puis il s'arrête.
+  const age = await page.evaluate(() => {
+    const j = (window as unknown as { __jump: JB }).__jump;
+    j.manual(true);
+    j.restart();
+    j.input(2);
+    for (let t = 0; t < 600 && (j.bridges?.ages[0] ?? 0) === 0; t++) j.advance(1);
+    const a = j.bridges!.ages[0]!;
+    j.input(0);
+    return a;
+  });
+  expect(age).toBe(1);
+  const lit = await bridges(page);
+  expect(lit.simSolid.every((v) => v)).toBe(true);
+  await page.waitForFunction((n) => ((window as unknown as { __jump: JB }).__jump.bridges?.solid ?? 0) === n, total);
+  // Âge 100 : les tuiles de rang 0 et 1 sont dans les 48 derniers pas (jauges 21/49 et 37/49), la suivante est encore pleine ; la jauge dessinée est celle de la simulation.
+  const sim = await page.evaluate((delay) => {
+    const j = (window as unknown as { __jump: JB }).__jump;
+    j.advance(delay - 20 - 1);
+    return { ages: j.bridges!.ages, fills: j.bridges!.simFills.slice(0, 3), status: j.attempt.status };
+  }, built.delay);
+  expect(sim.status).not.toBe("mort");
+  expect(sim.ages[0]).toBe(built.delay - 20);
+  expect(sim.fills[0]).toBeCloseTo(21 / 49, 9);
+  expect(sim.fills[1]).toBeCloseTo(37 / 49, 9);
+  expect(sim.fills[2]).toBe(1);
+  await page.waitForFunction(() => Math.abs(((window as unknown as { __jump: JB }).__jump.bridges?.fills?.[0] ?? 9) - 21 / 49) < 1e-9);
+  expect((await bridges(page)).fills!.slice(0, 3)).toEqual([sim.fills[0], sim.fills[1], 1]);
+  // Au pas de l'extinction de la tuile 0 (âge délai + 1) : elle est vide dans la simulation et pointillée à l'écran.
+  const gone = await page.evaluate(() => {
+    const j = (window as unknown as { __jump: JB }).__jump;
+    j.advance(21);
+    return { age: j.bridges!.ages[0], solid0: j.bridges!.simSolid[0], solid1: j.bridges!.simSolid[1] };
+  });
+  expect(gone).toEqual({ age: built.delay + 1, solid0: false, solid1: true });
+  await page.waitForFunction(() => ((window as unknown as { __jump: JB }).__jump.bridges?.dotted ?? 0) === 1);
+});
+
+/** Un jour de nuit sans fichier figé dont le niveau (g20, v10) a au moins deux morceaux à ponts. */
+function dayWithBridges(): string {
+  let day = parseDay(generatedDay())!;
+  for (let k = 0; k < 200; k++, day++) {
+    if (jumpThemeForDay(day) !== "nuit") continue;
+    const d = dailyLevel(day);
+    if (d.pieces.filter((p) => bridgeModuleIds().has(p.id)).length >= 2) return d.date;
+  }
+  throw new Error("aucun jour généré avec deux morceaux à ponts");
+}
+
+test("niveau du jour de nuit (v10) : la preuve de l'auteur, jouée pas à pas dans la page, allume ses ponts et arrive sans mourir", async ({ page }) => {
+  const date = dayWithBridges();
+  const daily = dailyLevel(parseDay(date)!);
+  test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
+  expect(daily.level.simVersion).toBe(10);
+  expect(daily.theme).toBe("nuit");
+  const result = await page.evaluate((code) => {
+    const j = (window as unknown as { __jump: JB }).__jump;
+    j.manual(true);
+    const total = j.autoplay(code);
+    let deaths = 0;
+    let lit = 0;
+    for (let t = 0; t < total + 5 && j.phase !== "finished"; t++) {
+      j.advance(1);
+      if (j.attempt.status === "mort") deaths++;
+      if (j.bridges?.ages.some((a) => a === 1)) lit++;
+    }
+    return { deaths, lit, phase: j.phase, count: j.bridges?.count ?? 0 };
+  }, daily.code);
+  expect(result.count).toBeGreaterThanOrEqual(2);
+  expect(result.lit).toBeGreaterThanOrEqual(2); // chaque pont est allumé au moins une fois par la preuve
+  expect(result.deaths).toBe(0);
+  expect(["finished", "carnage"]).toContain(result.phase);
 });

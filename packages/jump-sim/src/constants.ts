@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 9;
+export const JUMP_SIM_VERSION = 10;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -59,6 +59,14 @@ export const STALACTITE_VERSION = 8;
  * **exactement** comme en v3 à v8 : les golden n'ont pas bougé. Les niveaux du jour depuis le générateur g19 sont en v9 ; les morceaux seuls restent en v3.
  */
 export const LASER_VERSION = 9;
+/**
+ * Lot 26 : **version 10 = version 9 + ponts à interrupteur** (`Level.bridges`, annexe `pont`, thème nuit). Un **interrupteur** (un plein) est relié à un **pont**, une suite de tuiles
+ * éteintes (traversables) : quand le personnage se **pose** sur l'interrupteur, tout le pont s'allume (ses tuiles deviennent pleines) ; après un délai d'au moins 1 s, elles
+ * **s'éteignent une à une** dans l'ordre du pont, en partant de l'interrupteur, à `BRIDGE_STEP` pas par tuile (≈ 70 % de la vitesse de course) ; se poser de nouveau sur l'interrupteur
+ * rallume tout et relance le délai. Son état (`AttemptState.bridges`, absent sans pont) revient à éteint à la reprise, comme les blocs friables ; il n'est pas sur l'horloge. Un niveau
+ * sans pont se joue **exactement** comme en v3 à v9 : les golden n'ont pas bougé. Les niveaux du jour depuis le générateur g20 sont en v10 ; les morceaux seuls restent en v3.
+ */
+export const BRIDGE_VERSION = 10;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -81,9 +89,10 @@ export const LASER_VERSION = 9;
  * 16 depuis le lot 22 (presses : niveaux en sim v6, morceaux de l'usine à presses, règles du générateur) ;
  * 17 depuis le lot 23 (champignons : niveaux en sim v7, morceaux de la forêt à champignons, règles du générateur) ;
  * 18 depuis le lot 24 (stalactites : niveaux en sim v8, morceaux de la glace à stalactites, règles du générateur) ;
- * 19 depuis le lot 25 (lasers : niveaux en sim v9, morceaux du néon à lasers, règles du générateur ; variété `VARIETY_DAYS` = 4).
+ * 19 depuis le lot 25 (lasers : niveaux en sim v9, morceaux du néon à lasers, règles du générateur ; variété `VARIETY_DAYS` = 4) ;
+ * 20 depuis le lot 26 (ponts à interrupteur : niveaux en sim v10, morceaux de la nuit à ponts, règles du générateur ; équilibre des mécaniques de chaque thème).
  */
-export const JUMP_GENERATOR_VERSION = 19;
+export const JUMP_GENERATOR_VERSION = 20;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

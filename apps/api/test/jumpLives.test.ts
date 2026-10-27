@@ -45,8 +45,10 @@ beforeAll(() => {
   deaths = [];
   others = [];
   const seen = new Set<string>();
-  for (const a of demoAttempts(D.level, D.replay, 0x11fe, { attempts: 40, maxLives: 8 })) {
+  for (const a of demoAttempts(D.level, D.replay, 0x11fe, { attempts: 70, maxLives: 8 })) {
     for (const life of replayAttempt(D.level, a.replay, D.id).lives) {
+      // Lot 26 : une vie fictive qui attend longtemps (une horloge à aligner) alourdirait un lot de 25 au-delà des 5 minutes rejouées par lot : on garde les morts de moins de 15 s.
+      if (life.end === "mort" && life.ticks > 1800) continue;
       const code = encodeReplay(lifeReplay(a.replay, life));
       if (seen.has(code)) continue;
       seen.add(code);

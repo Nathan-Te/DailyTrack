@@ -57,6 +57,7 @@ import { createMushroomArt, type MushroomStats } from "./mushroomArt";
 import { createPressArt, type PressStats } from "./pressArt";
 import { createStalactiteArt, type StalactiteStats } from "./stalactiteArt";
 import { createLaserArt, type LaserStats } from "./laserArt";
+import { createBridgeArt, type BridgeStats } from "./bridgeArt";
 import { SLOW_DEBUG, SLOW_MARK, slowMarkQuads, type SlowDebugPath } from "./slowRoute";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
@@ -190,6 +191,8 @@ export interface JumpScene {
   readonly stalactites: StalactiteStats | null;
   /** Lot 25 : les lasers à la dernière image (rayon allumé, annonce, opacités, barres : position, vitesse, lueur) ; null : le niveau n'en a pas. */
   readonly lasers: LaserStats | null;
+  /** Lot 26 : les ponts à interrupteur à la dernière image (tuiles allumées ou pointillées, jauges, plaques d'interrupteur, opacité) ; null : le niveau n'en a pas. */
+  readonly bridges: BridgeStats | null;
   /** Lot 23 : un champignon vient de rebondir (indice dans `Level.mushrooms`, rebond renforcé ?) : il s'écrase puis revient. Aucune secousse de caméra. */
   bounceMushroom(index: number, boost: boolean): void;
   /**
@@ -441,6 +444,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
   const stalactiteArt = createStalactiteArt(world, level, { hazard: palette.hazard });
   // ——— Lot 25 : lasers (rayon rouge à cœur clair, visée neutre 0,5 s avant l'allumage, émetteurs du néon, barres coulissantes et leur trajet ; estompés dans le carnage) ———
   const laserArt = createLaserArt(world, level, { hazard: palette.hazard });
+  // ——— Lot 26 : ponts à interrupteur (contour pointillé éteint, face lumineuse allumée qui se vide en jauge avant de s'éteindre, plaque qui s'enfonce ; allumés et estompés dans le carnage) ———
+  const bridgeArt = createBridgeArt(world, level);
 
   // ——— Arrivée : une tuile cerclée qui pulse, un mât et un grand drapeau en damier ———
   const finishCell = cellOrigin(level.finish);
@@ -738,6 +743,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     get lasers() {
       return laserArt ? laserArt.stats : null;
     },
+    get bridges() {
+      return bridgeArt ? bridgeArt.stats : null;
+    },
     bounceMushroom(index, boost) {
       mushroomArt?.bounce(index, boost, lastClock);
     },
@@ -839,6 +847,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
       stalactiteArt?.update(prev, state, alpha, fade, clock);
       // Lot 25 : lasers (horloge de la simulation ; estompés dans le carnage comme les autres éléments à horloge).
       laserArt?.update(prev, state, alpha, fade);
+      // Lot 26 : ponts à interrupteur (état de la simulation ; allumés et estompés dans le carnage).
+      bridgeArt?.update(state, fade, clock, animate);
       // Lot 12 : blocs clignotants et alternés.
       dynamic?.update(state, clock, animate, { x: viewX, y: viewY, halfW: frame.halfW, halfH: frame.halfH }, fade);
       // Lot 13 : le vent (particules si les réglages en gardent et que le mouvement n'est pas réduit, sinon flèches fixes).

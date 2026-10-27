@@ -1,5 +1,6 @@
 import { Color, DynamicDrawUsage, InstancedMesh, Matrix4, MeshBasicMaterial, PlaneGeometry, Vector3, type Object3D } from "three";
 import { BLOCK_STYLE } from "./blocks";
+import { BRIDGE_LOOK } from "./bridge";
 import { SHAKES } from "./camera";
 import { MUSHROOM_DOWN, MUSHROOM_RIGHT, MUSHROOM_UP } from "@cdj/jump-sim";
 import { LASER_LOOK } from "./laser";
@@ -185,6 +186,8 @@ export interface FeelColors {
   spore: readonly number[];
   /** Lot 25 : étincelles d'un rayon laser (cyan du néon, blanc, rose pâle du rouge des dangers) : la mort au contact d'un rayon. */
   arc: readonly number[];
+  /** Lot 26 : les étincelles claires d'un pont qui s'allume. */
+  bridge: readonly number[];
 }
 
 export function feelColors(p: Palette): FeelColors {
@@ -202,6 +205,7 @@ export function feelColors(p: Palette): FeelColors {
     wind: [WIND_STYLE.leaf, WIND_STYLE.leafDark, WIND_STYLE.pollen],
     spore: [MUSHROOM_LOOK.cap, MUSHROOM_LOOK.capLight, MUSHROOM_LOOK.spot],
     arc: [LASER_LOOK.lens, 0xffffff, mixColor(p.hazard, 0xffffff, 0.7)],
+    bridge: [BRIDGE_LOOK.fill, BRIDGE_LOOK.edge, 0xffffff],
   };
 }
 
@@ -322,6 +326,10 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
       // tremblement (`stalactiteTremble`) n'a pas de particules ici : ses fines gouttes de glace sont dessinées en continu par `stalactiteArt.ts`.
       pool.emit({ x, y, count: 18, angle: UP, spread: 1.5, vmin: 3, vmax: 9, life: 0.6, size: 0.13, gravity: -14, drag: 1.5, colors: colors.frost, jitter: 0.6 });
       pool.emit({ x, y, count: 6, angle: UP, spread: 1.6, vmin: 1, vmax: 3.5, life: 0.5, size: 0.2, gravity: -6, drag: 3, colors: colors.dust, jitter: 0.5 });
+      break;
+    case "pontAllume":
+      // Lot 26 : des étincelles claires jaillissent de l'interrupteur et courent le long du pont ; **aucune secousse de caméra** ni vibration (règle du lot 14).
+      pool.emit({ x, y, count: 10, angle: UP, spread: 1.4, vmin: 2, vmax: 6, life: 0.5, size: 0.1, gravity: -6, drag: 2.5, colors: colors.bridge, jitter: 0.5 });
       break;
     case "arrivee":
       pool.emit({ x, y: y + 1, count: 46, angle: UP, spread: 1.1, vmin: 6, vmax: 14, life: 1.7, size: 0.2, gravity: -16, drag: 1.6, colors: colors.confetti, jitter: 0.6 });

@@ -13912,6 +13912,557 @@
     }
    ]
   },
+  "pont-clignotant-escalier": {
+   "variants": [
+    {
+     "grid": "c414af0f",
+     "arret": {
+      "code": "AQMhbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1lc2NhbGllcjowAOIEngQqxgG6A07yBw",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMhbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1lc2NhbGllcjowBNoCdsoBYCowlgUihgOaBw",
+      "ticks": 354,
+      "entryTick": 17,
+      "exitTick": 347,
+      "fastest": 330,
+      "gigue": [
+       1000,
+       985,
+       895
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 14
+     }
+    },
+    {
+     "grid": "ded5a429",
+     "arret": {
+      "code": "AQMhbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1lc2NhbGllcjoxAOIElgGCA3bqAWhpjgmaAQ",
+      "ticks": 375,
+      "entryTick": 0,
+      "exitTick": 368,
+      "fastest": 368,
+      "rapide": 358,
+      "gigue": [
+       1000,
+       865,
+       610
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 14
+     },
+     "elan": {
+      "code": "AQMhbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1lc2NhbGllcjoxBNIChgHKAYgBEjBWugF5LqICMIYJqgE",
+      "ticks": 368,
+      "entryTick": 17,
+      "exitTick": 362,
+      "fastest": 345,
+      "rapide": 334,
+      "gigue": [
+       940,
+       755,
+       500
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 5
+     }
+    },
+    {
+     "grid": "3f3af074",
+     "arret": {
+      "code": "AQMhbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1lc2NhbGllcjoyANIExgQqrgGqA1b6Bw",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       935
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 10
+     },
+     "elan": {
+      "code": "AQMhbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1lc2NhbGllcjoyBLoCbkqYAaoBEE7qAVnWAcIDLsoH",
+      "ticks": 360,
+      "entryTick": 17,
+      "exitTick": 353,
+      "fastest": 336,
+      "rapide": 334,
+      "gigue": [
+       1000,
+       945,
+       875
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    },
+    {
+     "grid": "a1448822",
+     "arret": {
+      "code": "AQMhbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1lc2NhbGllcjozAPIE9gQirgGyA06yBw",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMhbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1lc2NhbGllcjozBNoCfsoBaCowlgUq9gKSBw",
+      "ticks": 354,
+      "entryTick": 17,
+      "exitTick": 347,
+      "fastest": 330,
+      "gigue": [
+       995,
+       915,
+       865
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 15
+     }
+    }
+   ]
+  },
+  "pont-clignotant-relais": {
+   "variants": [
+    {
+     "grid": "106f22c3",
+     "arret": {
+      "code": "AQMfbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1yZWxhaXM6MACiBT76AjaSAy7KAlayCA",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       985,
+       930
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMfbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1yZWxhaXM6MATKBD6KA07CAy6yAk76Bw",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       985
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 5
+     }
+    },
+    {
+     "grid": "bc5fe8c9",
+     "arret": {
+      "code": "AQMfbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1yZWxhaXM6MQDCBDaCBS6SA74Bogk",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       935,
+       840
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMfbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1yZWxhaXM6MQTaAzaiBS6qA64Bigk",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       985,
+       865
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    },
+    {
+     "grid": "4fb33048",
+     "arret": {
+      "code": "AQMfbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1yZWxhaXM6MgCiBUaiBX6KA0bCCA",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMfbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1yZWxhaXM6MgTKBEaqBW6KA07CCA",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       970,
+       875
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 8
+     }
+    },
+    {
+     "grid": "c33944cf",
+     "arret": {
+      "code": "AQMfbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1yZWxhaXM6MwCiBT6KA0aKBJ4Dwgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 7
+     },
+     "elan": {
+      "code": "AQMfbW9kdWxlOnBvbnQtY2xpZ25vdGFudC1yZWxhaXM6MwTaAzbyBDbaA6YBigk",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       955
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    }
+   ]
+  },
+  "pont-coude": {
+   "variants": [
+    {
+     "grid": "ee129ec6",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnBvbnQtY291ZGU6MACKA9YEQK0BFlp2UnSiCA",
+      "ticks": 335,
+      "entryTick": 0,
+      "exitTick": 328,
+      "fastest": 328,
+      "rapide": 313,
+      "gigue": [
+       1000,
+       965,
+       870
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 14
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnBvbnQtY291ZGU6MASKAy66A4YB8gFGsgg",
+      "ticks": 297,
+      "entryTick": 17,
+      "exitTick": 290,
+      "fastest": 273,
+      "gigue": [
+       1000,
+       825,
+       640
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 5
+     }
+    },
+    {
+     "grid": "3db90c82",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnBvbnQtY291ZGU6MQCKA_YEMI0BDqICPJII",
+      "ticks": 324,
+      "entryTick": 0,
+      "exitTick": 317,
+      "fastest": 317,
+      "rapide": 313,
+      "gigue": [
+       995,
+       915,
+       805
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 7
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnBvbnQtY291ZGU6MQT6AkaqA4YBkgIusgg",
+      "ticks": 297,
+      "entryTick": 17,
+      "exitTick": 290,
+      "fastest": 273,
+      "gigue": [
+       1000,
+       840,
+       655
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 5
+     }
+    },
+    {
+     "grid": "ebbefa9d",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnBvbnQtY291ZGU6MgCyBC66A5wBmAGyAU2qCA",
+      "ticks": 332,
+      "entryTick": 0,
+      "exitTick": 325,
+      "fastest": 325,
+      "rapide": 313,
+      "gigue": [
+       1000,
+       1000,
+       955
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnBvbnQtY291ZGU6MgSyAj6qA6YBqgIuygg",
+      "ticks": 297,
+      "entryTick": 17,
+      "exitTick": 290,
+      "fastest": 273,
+      "gigue": [
+       980,
+       960,
+       910
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    },
+    {
+     "grid": "7128bc6d",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnBvbnQtY291ZGU6MwCCA44FGJUBDlqGATJkigg",
+      "ticks": 325,
+      "entryTick": 0,
+      "exitTick": 318,
+      "fastest": 318,
+      "rapide": 313,
+      "gigue": [
+       985,
+       870,
+       745
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 12
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnBvbnQtY291ZGU6MwS6AmaqA54B8gFOugg",
+      "ticks": 297,
+      "entryTick": 17,
+      "exitTick": 290,
+      "fastest": 273,
+      "gigue": [
+       1000,
+       880,
+       680
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 9
+     }
+    }
+   ]
+  },
+  "pont-etroit": {
+   "variants": [
+    {
+     "grid": "a90fd736",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnBvbnQtZXRyb2l0OjAAigM-2gM2mgMuigJ2ogc",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       1000,
+       875,
+       750
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnBvbnQtZXRyb2l0OjAEkgVGqgQuugI2ygc",
+      "ticks": 330,
+      "entryTick": 17,
+      "exitTick": 323,
+      "fastest": 306,
+      "gigue": [
+       1000,
+       985,
+       865
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    },
+    {
+     "grid": "77b6027e",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnBvbnQtZXRyb2l0OjEAggM-6gMuggMuogJOygc",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       1000,
+       900,
+       655
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnBvbnQtZXRyb2l0OjEEigU-ugQuugI2ygc",
+      "ticks": 330,
+      "entryTick": 17,
+      "exitTick": 323,
+      "fastest": 306,
+      "gigue": [
+       1000,
+       915,
+       880
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    },
+    {
+     "grid": "989b0904",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnBvbnQtZXRyb2l0OjIAigM-ygNGggMuqgIu4gc",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       795,
+       730,
+       660
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnBvbnQtZXRyb2l0OjIEkgU-ugQusgI2ygc",
+      "ticks": 330,
+      "entryTick": 17,
+      "exitTick": 323,
+      "fastest": 306,
+      "gigue": [
+       1000,
+       1000,
+       885
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    },
+    {
+     "grid": "7ebd238e",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnBvbnQtZXRyb2l0OjMAmgMu4gM28gIuqgI-2gc",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       850,
+       720,
+       685
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnBvbnQtZXRyb2l0OjMEggVGugQuugI2ygc",
+      "ticks": 330,
+      "entryTick": 17,
+      "exitTick": 323,
+      "fastest": 306,
+      "gigue": [
+       1000,
+       910,
+       875
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    }
+   ]
+  },
   "pont-friable": {
    "variants": [
     {
@@ -14110,6 +14661,418 @@
       "raccord": 1000,
       "exigence": 1,
       "press": 7
+     }
+    }
+   ]
+  },
+  "pont-ilots": {
+   "variants": [
+    {
+     "grid": "0c1c6bbe",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnBvbnQtaWxvdHM6MADaAzaqBFb6BFaKCA",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       945
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnBvbnQtaWxvdHM6MASSBUaSAzaaBEaSCA",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "a49592d2",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnBvbnQtaWxvdHM6MQDiAzayBGaiA94Cugc",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnBvbnQtaWxvdHM6MQSSBT7yAi7KBE6KCA",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "gigue": [
+       995,
+       955,
+       925
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    },
+    {
+     "grid": "146073e7",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnBvbnQtaWxvdHM6MgDaAzayBE7yBF6KCA",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       960
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnBvbnQtaWxvdHM6MgSSBUb6AjayBEaSCA",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "gigue": [
+       1000,
+       1000,
+       955
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "74f9c6e8",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnBvbnQtaWxvdHM6MwDaAza6BEbyBF6KCA",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnBvbnQtaWxvdHM6MwSSBU7yAi76A36aCA",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "gigue": [
+       1000,
+       1000,
+       950
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 5
+     }
+    }
+   ]
+  },
+  "pont-marches": {
+   "variants": [
+    {
+     "grid": "8a70df9e",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtbWFyY2hlczowAOIE3gQafooETooG",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtbWFyY2hlczowBIoBgAGaAogBkgHWAeoCrgUaXqIG",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "rapide": 306,
+      "gigue": [
+       1000,
+       1000,
+       920
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 11
+     }
+    },
+    {
+     "grid": "97e0b661",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtbWFyY2hlczoxAOIE3gQidooETooG",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       1000,
+       1000,
+       975
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtbWFyY2hlczoxBLICzgQqtgHyApYCggg",
+      "ticks": 346,
+      "entryTick": 17,
+      "exitTick": 339,
+      "fastest": 322,
+      "rapide": 306,
+      "gigue": [
+       1000,
+       1000,
+       770
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 22
+     }
+    },
+    {
+     "grid": "650f078d",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtbWFyY2hlczoyAOIE3gQafooETooG",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtbWFyY2hlczoyBIoBeJICgAG6Aa4BkgOWARrGAxpWygY",
+      "ticks": 371,
+      "entryTick": 17,
+      "exitTick": 364,
+      "fastest": 347,
+      "rapide": 306,
+      "gigue": [
+       1000,
+       1000,
+       910
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 10
+     }
+    },
+    {
+     "grid": "c02d6a6e",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtbWFyY2hlczozAOIE1gQqdooETooG",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtbWFyY2hlczozBJoClgUivgHKArYC8gc",
+      "ticks": 349,
+      "entryTick": 17,
+      "exitTick": 342,
+      "fastest": 325,
+      "rapide": 306,
+      "gigue": [
+       625,
+       575,
+       515
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 23
+     }
+    }
+   ]
+  },
+  "pont-vertige": {
+   "variants": [
+    {
+     "grid": "95110000",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtdmVydGlnZTowAPoEdtICrgHqAsYCygc",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 14
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtdmVydGlnZTowBMoC7gQargQqhgHiCA",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 16
+     }
+    },
+    {
+     "grid": "d3d9a60b",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtdmVydGlnZToxAOoEbroCtgHiAt4C4gc",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       975,
+       810
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtdmVydGlnZToxBMoC7gQapgQyhgHiCA",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 16
+     }
+    },
+    {
+     "grid": "0c26d024",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtdmVydGlnZToyAMIEjgGqAr4B-gIuogIuwgc",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       965,
+       845,
+       615
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtdmVydGlnZToyBMoC7gQapgQyhgHiCA",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 16
+     }
+    },
+    {
+     "grid": "23fd3fdb",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtdmVydGlnZTozAPoEfuoClgHCAt4C0gc",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 15
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtdmVydGlnZTozBMoC5gQipgQyhgHiCA",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 16
      }
     }
    ]

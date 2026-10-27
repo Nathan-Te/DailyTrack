@@ -36,6 +36,7 @@ export type SoundId =
   | "champignon"
   | "stalactiteTremble"
   | "stalactiteCasse"
+  | "pontAllume"
   | "friableCraque"
   | "friableTombe"
   | "pointDePassage"
@@ -154,6 +155,9 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
     case "stalactiteCasse":
       // Lot 24 : la glace qui éclate : un souffle clair, deux tintements qui descendent, un éclat plus sourd.
       return spec("stalactiteCasse", 2, [noise(4200, 0.18, 0.14, 0, 2600, "bandpass", 2), tone("triangle", 2600, 0.1, 0.06, 0, 1900), tone("sine", 3500, 0.12, 0.04, 0.03, 2800), noise(2000, 0.12, 0.08, 0.06, 1200, "bandpass", 3)]);
+    case "pontAllume":
+      // Lot 26 : un « clic » net suivi d'un petit arpège clair et montant (la lumière qui court le long du pont) ; discret, aucun son continu.
+      return spec("pontAllume", 2, [tone("square", 520, 0.03, 0.05, 0, 400), tone("sine", 880, 0.16, 0.07, 0.02, 1180), tone("sine", 1320, 0.2, 0.05, 0.07, 1760), tone("triangle", 1980, 0.18, 0.025, 0.12, 2400)]);
     case "friableCraque":
       // Craquement : deux grains secs.
       return spec("friableCraque", 1, [noise(2400, 0.04, 0.12, 0, 1500, "bandpass", 4), noise(1700, 0.05, 0.1, 0.05, 1100, "bandpass", 4)]);
