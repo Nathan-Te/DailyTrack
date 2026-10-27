@@ -8,6 +8,7 @@ import {
   CRUMBLE_INTACT,
   DEATH_FALL,
   DEATH_PRESS,
+  DEATH_STALACTITE,
   DEATH_SAW,
   DEATH_SPIKE,
   INPUT_LEFT,
@@ -22,6 +23,7 @@ import {
   groundTile,
   mushroomHit,
   mushroomPad,
+  stalactiteFloorRow,
   type AttemptState,
   type JumpMedal,
   type JumpParams,
@@ -46,6 +48,8 @@ import {
 //   - ressort : `springTime` / `springCell` changent ; friable : minuterie lancée (craque), bloc tombé (tombe).
 //   - champignon (lot 23) : `mushroomHit` de la simulation (la boîte du personnage commence à chevaucher le chapeau d'un champignon : exactement la condition du rebond) ;
 //     `boost` : le saut était tenu à ce pas (`held` = 1), donc le rebond est renforcé. Aucune secousse de caméra (règle du lot 14).
+//   - stalactite (lot 24) : `stalactiteTremble` quand l'état d'une stalactite passe de 0 (intacte) à un âge (elle est déclenchée), `stalactiteCasse` quand il passe d'un âge à −1 (elle se brise) ;
+//     lus sur deux états successifs (`AttemptState.stalactites`), sans état de plus. Aucune secousse de caméra (règle du lot 14), aucun n'est gardé pour les autres vies du carnage.
 //   - blocs (lot 12) : voir `blocks.ts` — `blocApparait` / `blocDisparait` (un par section et par sens, comparaison des grilles), `blocVacille` (le
 //     groupe plein d'une section passe sous 0,25 s avant de s'éteindre), `bascule` (la parité des alternés change, ou remise à A au point de
 //     passage), `metronome` (un des quatre temps du cycle de la section courante). Aucun n'est gardé pour les autres vies du carnage.
@@ -62,7 +66,7 @@ import {
 //     met à souffler, et l'inverse ; la mort et l'arrivée ferment l'état), `rafale` (une rafale de la section courante part, position : le
 //     centre de la zone). Jamais gardés pour les autres vies du carnage.
 
-export type DeathCauseName = "pic" | "scie" | "chute" | "presse";
+export type DeathCauseName = "pic" | "scie" | "chute" | "presse" | "stalactite";
 
 /** D'où vient un événement : la partie (ou une lecture), le héros du carnage, une autre vie du carnage (filtrée). */
 export type EventSource = "jeu" | "heros" | "vie";
@@ -92,6 +96,10 @@ export type GameEvent =
   | (Base & { kind: "arrivee" })
   /** Position : le haut de la tuile du ressort. */
   | (Base & { kind: "ressort" })
+  /** Lot 24 : une stalactite est déclenchée (elle se met à trembler). `index` : dans `Level.stalactites`. Position : le milieu de son corps. */
+  | (Base & { kind: "stalactiteTremble"; index: number })
+  /** Lot 24 : une stalactite se brise sur un plein. `index` : dans `Level.stalactites`. Position : le point d'impact, au sol. */
+  | (Base & { kind: "stalactiteCasse"; index: number })
   /**
    * Lot 23 : un champignon rebondit. `index` : dans `Level.mushrooms` ; `dir` : son orientation (`MUSHROOM_UP` …) ; `boost` : rebond renforcé (saut tenu au contact).
    * Position : le centre de son chapeau.
@@ -142,6 +150,8 @@ export const EVENT_KINDS: readonly GameEventKind[] = [
   "arrivee",
   "ressort",
   "champignon",
+  "stalactiteTremble",
+  "stalactiteCasse",
   "friableCraque",
   "friableTombe",
   "medaille",
@@ -184,7 +194,7 @@ export interface EventInputs {
 const dirOf = (bits: number) => (bits & INPUT_RIGHT ? 1 : 0) - (bits & INPUT_LEFT ? 1 : 0);
 
 const T = UNITS_PER_TILE;
-const CAUSES: Record<number, DeathCauseName> = { [DEATH_SPIKE]: "pic", [DEATH_SAW]: "scie", [DEATH_FALL]: "chute", [DEATH_PRESS]: "presse" };
+const CAUSES: Record<number, DeathCauseName> = { [DEATH_SPIKE]: "pic", [DEATH_SAW]: "scie", [DEATH_FALL]: "chute", [DEATH_PRESS]: "presse", [DEATH_STALACTITE]: "stalactite" };
 
 export function causeName(cause: number): DeathCauseName {
   return CAUSES[cause] ?? "pic";
@@ -196,6 +206,20 @@ const beltSide = (tile: number): number => (tile === TILE_BELT_LEFT ? -1 : tile 
 const centerX = (p: Readonly<PlayerState>) => (p.x + PLAYER_WIDTH / 2) / T;
 const centerY = (p: Readonly<PlayerState>) => (p.y + PLAYER_HEIGHT / 2) / T;
 const feetY = (p: Readonly<PlayerState>) => (p.y + PLAYER_HEIGHT) / T;
+
+/** Lot 24 : les stalactites déclenchées ou brisées entre deux états successifs (vide pour un niveau sans stalactite). */
+function stalactiteEvents(level: Level, prev: Readonly<AttemptState>, cur: Readonly<AttemptState>, tick: number, source: EventSource): GameEvent[] {
+  const out: GameEvent[] = [];
+  if (level.stalactites.length === 0 || !prev.stalactites || !cur.stalactites) return out;
+  for (let i = 0; i < level.stalactites.length; i++) {
+    const was = prev.stalactites[i]!;
+    const now = cur.stalactites[i]!;
+    const s = level.stalactites[i]!;
+    if (was === 0 && now > 0) out.push({ tick, source, kind: "stalactiteTremble", index: i, x: s.col + 0.5, y: s.row + 1 });
+    else if (was > 0 && now === -1) out.push({ tick, source, kind: "stalactiteCasse", index: i, x: s.col + 0.5, y: Math.max(stalactiteFloorRow(level, s), s.row + 2) });
+  }
+  return out;
+}
 
 /** Un saut a-t-il eu lieu pendant ce pas ? (voir l'en-tête) */
 export function jumpedBetween(prev: Readonly<PlayerState>, cur: Readonly<PlayerState>, params: Readonly<JumpParams>, spring: boolean): boolean {
@@ -228,6 +252,8 @@ export function eventsBetween(
   // Réapparition : depuis la mort, au départ (nouvel essai) ou sur un point de passage. Rien d'autre à comparer (le personnage a sauté).
   if (prev.status === ATTEMPT_DEAD) {
     if (cur.status !== ATTEMPT_DEAD) out.push({ ...at(c), kind: "reapparition", checkpoint: cur.status !== ATTEMPT_READY });
+    // Lot 24 : la stalactite qui vient de tuer continue de tomber pendant l'attente de la reprise : elle se brise à l'écran.
+    else out.push(...stalactiteEvents(level, prev, cur, tick, source));
     return out;
   }
   if (cur.status === ATTEMPT_READY || prev.status === ATTEMPT_FINISHED) return out; // le monde attend (ou la course est finie)
@@ -250,6 +276,7 @@ export function eventsBetween(
     const pad = mushroomPad(m);
     out.push({ tick, source, kind: "champignon", index: bounce, dir: m.dir, boost: c.held === 1, x: (pad.x + pad.w / 2) / T, y: (pad.y + pad.h / 2) / T });
   }
+  out.push(...stalactiteEvents(level, prev, cur, tick, source));
   if (p.ground === 0 && c.ground === 1) {
     const fall = Math.max(0, p.vy);
     const intensity = Math.min(1, params.fallSpeed > 0 ? fall / params.fallSpeed : 0);

@@ -1,0 +1,32 @@
+id: stalactite-glace-ilots
+intention: Enchaîner des îlots de glace au-dessus de pics : on ne s'arrête pas sur la glace, on saute avant son bord, et la stalactite qui pend au-dessus de chaque îlot tombe derrière soi.
+etiquettes: stalactite glace precision
+famille: stalactite-glace-ilots
+theme: glace
+format: 3
+paliers: 9 9
+repeter: g1 colonnes 4-4
+repeter: g2 colonnes 10-10
+repeter: g3 colonnes 16-16
+repeter: g4 colonnes 22-22
+variante: g1=1 g2=1 g3=1 g4=1
+variante: g1=2 g2=1 g3=1 g4=2
+variante: g1=1 g2=2 g3=2 g4=1
+variante: g1=2 g2=2 g3=1 g4=1
+grille:
+.###########################..
+.###########################..
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+###...~~~...~~~...~~~...######
+###^^^...^^^...^^^...^^^######
+##############################
+
+stalactite a 7,2 3 2
+stalactite b 13,2 3 2
+stalactite c 19,2 3 2

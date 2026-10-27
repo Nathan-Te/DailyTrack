@@ -6,7 +6,7 @@ import {
   DEATH_PRESS,
   DEFAULT_JUMP_PARAMS,
   INPUT_JUMP,
-  JUMP_GENERATOR_VERSION,
+  MUSHROOM_GENERATOR,
   MUSHROOM_VERSION,
   LevelError,
   MAX_PRESS_STEP,
@@ -91,7 +91,6 @@ describe("lot 22 — la version de la simulation", () => {
   it("la version 6 est celle des presses, le générateur g16 (lot 23 : la version 7 et g17 les gardent)", () => {
     expect(PRESS_VERSION).toBe(6);
     expect(MUSHROOM_VERSION).toBe(7);
-    expect(JUMP_GENERATOR_VERSION).toBe(17);
     expect(PRESS_GENERATOR).toBe(16);
     expect(press().simVersion).toBe(6);
   });
@@ -470,9 +469,9 @@ describe("lot 22 — les niveaux du jour", () => {
         expect(L.pieces.some((p) => pressModuleIds().has(p.id)), `${L.date} v${version}`).toBe(false);
         expect(L.level.presses, `${L.date} v${version}`).toEqual([]);
       }
-      const L = dailyLevel(d);
+      const L = dailyLevel(d, null, MUSHROOM_VERSION); // lot 24 : la référence v7 (g17)
       expect(L.level.simVersion).toBe(MUSHROOM_VERSION);
-      expect(L.id).toBe(`jour-${L.date}-g${JUMP_GENERATOR_VERSION}`);
+      expect(L.id).toBe(`jour-${L.date}-g${MUSHROOM_GENERATOR}`);
       expect(dailyLevel(d, null, PRESS_VERSION).id).toBe(`jour-${L.date}-g${PRESS_GENERATOR}`);
       expect(L.fallback, L.date).toBe(false);
       expect(dailyProblems(L), L.date).toEqual([]);
@@ -508,13 +507,13 @@ describe("lot 22 — un jour à presses se fige et se relit", () => {
     const start = parseDay("2026-10-27")!;
     let day: ReturnType<typeof dailyLevel> | undefined;
     for (let d = start; d < start + 60 && !day; d++) {
-      const L = dailyLevel(d);
+      const L = dailyLevel(d, null, MUSHROOM_VERSION);
       if (L.level.presses.length > 0) day = L;
     }
     expect(day, "un jour à presses sur 60").toBeDefined();
     const raw = JSON.parse(frozenJson(freezeLevel(day!)));
     expect(raw.simVersion).toBe(MUSHROOM_VERSION);
-    expect(raw.generatorVersion).toBe(JUMP_GENERATOR_VERSION);
+    expect(raw.generatorVersion).toBe(MUSHROOM_GENERATOR);
     const back = thawLevel(raw, day!.day);
     expect(typeof back).not.toBe("string");
     if (typeof back === "string") return;

@@ -28,7 +28,7 @@ import { idiv } from "./idiv";
 //       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
 // Bloc annexe (une déclaration par ligne, `//` commente la ligne) :
-//   version <3|4|5|6|7>
+//   version <3|4|5|6|7|8>
 //       (lot 15) la version de la simulation du niveau (`Level.simVersion`) ; absente : 3. **En v3**, chaque section a son horloge, mise en
 //       marche la première fois que le personnage y entre (« phase » d'un élément = pas écoulés depuis, 0 avant) ; **en v4, une seule horloge** :
 //       la phase d'un élément vaut `t + phase de sa section` (`t` : le chrono de l'essai), dès avant le départ et sans jamais revenir à zéro.
@@ -58,6 +58,13 @@ import { idiv } from "./idiv";
 //       `PRESS_RISE_FACTOR` fois la chute, table de ralenti `PLATFORM_EASE`). Position = `f(phase)` de sa section, **entière et pure**, exactement en haut à la
 //       phase 0 de chaque cycle. **Toute la presse tue au contact** (`DEATH_PRESS`) : on ne monte pas dessus, elle ne pousse ni n'écrase physiquement, elle
 //       n'est pas dans la grille (toute la colonne de sa course est vide). Le sol sous sa position basse est une règle du générateur (`presses.ts`).
+//   stalactite <id> <col,rangée> <avant> <après>
+//       (lot 24, version 8, thème glace) une **stalactite** : un pic de glace de `STALACTITE_TILES` (2) tuiles de haut accroché à un plafond plein (la tuile au-dessus de
+//       `col,rangée` est un bloc plein, les deux tuiles du corps sont vides). **Elle se déclenche** quand le centre du personnage entre dans sa **zone** : les colonnes
+//       `col − avant` à `col + après` (1 à `STALACTITE_MAX_REACH` de chaque côté), à hauteur de son corps ou plus bas. Déclenchée, elle **tremble**
+//       `STALACTITE_SHAKE_TICKS` pas (0,5 s, sans bouger), **tombe** en accélérant (`STALACTITE_DROP`, table entière) puis **se brise** au premier contact avec un bloc
+//       plein (ou en sortant de la grille) et disparaît. **Elle tue au contact tant qu'elle tremble ou tombe** (`DEATH_STALACTITE`) ; intacte ou brisée, elle ne tue pas.
+//       Elle n'est pas sur l'horloge : son état (`AttemptState.stalactites`) revient à intact à la reprise, comme les blocs friables. Rien n'est dans la grille.
 //   vent <col0>-<col1> <rang0>-<rang1> <haut|gauche|droite> <force> [rafale <cycle> <actif> <décalage>]
 //       (lot 13, thème forêt) une **zone de vent** : un rectangle de tuiles (bornes comprises), **traversable** (ce n'est pas un bloc), qui
 //       pousse le personnage tant que **le centre** de sa boîte y est, au sol comme en l'air. `haut` : une accélération verticale qui compense
@@ -350,6 +357,54 @@ export function mushroomPad(m: Mushroom): { x: number; y: number; w: number; h: 
   }
 }
 
+/** Lot 24 : hauteur du corps d'une stalactite (tuiles), retrait de chaque côté de sa boîte mortelle (unités : elle est plus étroite que la tuile) et portée maximale de la zone de chaque côté (colonnes). */
+export const STALACTITE_TILES = 2;
+export const STALACTITE_INSET = 1024;
+export const STALACTITE_MAX_REACH = 8;
+/** Lot 24 : le tremblement d'une stalactite déclenchée dure 60 pas (0,5 s) avant qu'elle ne tombe : le point de départ du lot, une constante de la simulation. */
+export const STALACTITE_SHAKE_TICKS = 60;
+/** Lot 24 : vitesse de chute maximale (unités/pas, un quart de tuile : le corps, haut de 2 tuiles, n'enjambe jamais un bloc ni le personnage entre deux pas). */
+export const STALACTITE_MAX_STEP = 1024;
+/** Lot 24 : accélération de la chute (unités/pas²). */
+export const STALACTITE_ACCEL = 24;
+/**
+ * Lot 24 : la **table de chute** d'une stalactite (entiers) : `STALACTITE_DROP[k]` = de combien elle est descendue (unités) `k` pas après le début de la chute. La vitesse
+ * du pas `i` est `min(i × STALACTITE_ACCEL, STALACTITE_MAX_STEP)` : elle part presque à l'arrêt et accélère jusqu'à 30 tuiles/s. Au-delà de la table, 1 024 par pas.
+ * Calculée par des additions d'entiers : aucun flottant.
+ */
+export const STALACTITE_DROP: readonly number[] = Object.freeze(
+  (() => {
+    const out = [0];
+    for (let i = 1; i * STALACTITE_ACCEL < STALACTITE_MAX_STEP + STALACTITE_ACCEL; i++) out.push(out[i - 1]! + Math.min(i * STALACTITE_ACCEL, STALACTITE_MAX_STEP));
+    return out;
+  })(),
+);
+
+/** Lot 24 : une stalactite (voir l'en-tête). `col`, `row` : la tuile de la pointe haute du corps (sous le plafond) ; zone de déclenchement : `col − before` à `col + after`. */
+export interface Stalactite {
+  id: string;
+  col: number;
+  row: number;
+  before: number;
+  after: number;
+}
+
+/**
+ * Lot 24 : de combien une stalactite d'âge `age` est descendue (unités). `age` : pas écoulés depuis son déclenchement (1 au pas du déclenchement). Elle ne bouge pas
+ * pendant les `STALACTITE_SHAKE_TICKS` premiers pas, puis tombe selon `STALACTITE_DROP`. Entière et pure.
+ */
+export function stalactiteOffset(age: number): number {
+  const k = age - STALACTITE_SHAKE_TICKS;
+  if (k <= 0) return 0;
+  const last = STALACTITE_DROP.length - 1;
+  return k <= last ? STALACTITE_DROP[k]! : STALACTITE_DROP[last]! + (k - last) * STALACTITE_MAX_STEP;
+}
+
+/** Lot 24 : la boîte mortelle d'une stalactite descendue de `offset` unités : le corps entier (2 tuiles de haut), retiré de `STALACTITE_INSET` de chaque côté. */
+export function stalactiteBox(s: Pick<Stalactite, "col" | "row">, offset: number): { x: number; y: number; w: number; h: number } {
+  return { x: s.col * UNITS_PER_TILE + STALACTITE_INSET, y: s.row * UNITS_PER_TILE + offset, w: UNITS_PER_TILE - 2 * STALACTITE_INSET, h: STALACTITE_TILES * UNITS_PER_TILE };
+}
+
 /**
  * Lot 22 : la **table de chute** d'une presse (entiers, 65 valeurs de 0 à 4 096) : `k²` pour `k` de 0 à 64, la chute libre — la presse part presque à
  * l'arrêt et frappe à pleine vitesse (127 sur 4 096 pour le dernier intervalle, soit 2 fois la moyenne). Écrite par `k * k` : aucun flottant,
@@ -407,6 +462,8 @@ export interface Level {
   presses: readonly Press[];
   /** Lot 23 : champignons (ordre de lecture de la grille) ; vide sans champignon. Leur tuile est vide dans `tiles`. */
   mushrooms: readonly Mushroom[];
+  /** Lot 24 : stalactites (ordre du bloc annexe) ; vide sans stalactite. */
+  stalactites: readonly Stalactite[];
 }
 
 export class LevelError extends Error {
@@ -544,6 +601,7 @@ export function parseLevel(text: string): Level {
   const windLines: { line: number; words: string[] }[] = [];
   const platformLines: { line: number; words: string[] }[] = [];
   const pressLines: { line: number; words: string[] }[] = [];
+  const stalactiteLines: { line: number; words: string[] }[] = [];
   for (let i = 0; i < annex.length; i++) {
     const raw = annex[i]!.trim();
     if (raw === "" || raw.startsWith("//")) continue;
@@ -572,7 +630,8 @@ export function parseLevel(text: string): Level {
     else if (words[0] === "vent") windLines.push({ line: end + i + 1, words });
     else if (words[0] === "plateforme") platformLines.push({ line: end + i + 1, words });
     else if (words[0] === "presse") pressLines.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme, presse)`);
+    else if (words[0] === "stalactite") stalactiteLines.push({ line: end + i + 1, words });
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme, presse, stalactite)`);
   }
   if (simVersion < SINGLE_CLOCK_VERSION && sections.some((s) => s.phase !== 0)) throw new LevelError("Une phase de section n'existe qu'en version 4 (une seule horloge)");
   // ——— Lot 12 : les cycles des blocs clignotants, par section ———
@@ -726,7 +785,28 @@ export function parseLevel(text: string): Level {
   }
   const clashing = presses.find((p, k) => presses.some((q, j) => j < k && p.col <= q.col + q.width - 1 && q.col <= p.col + p.width - 1 && p.row <= q.row + q.travel + PRESS_HEIGHT_TILES - 1 && q.row <= p.row + p.travel + PRESS_HEIGHT_TILES - 1));
   if (clashing) throw new LevelError(`Annexe : la course de la presse « ${clashing.id} » en recoupe une autre`);
-  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms };
+  // ——— Lot 24 : les stalactites ———
+  const stalactites: Stalactite[] = [];
+  for (const { line, words } of stalactiteLines) {
+    const where = `Annexe, ligne ${line}`;
+    const usage = "« stalactite <id> <col,rangée> <avant> <après> » attendu";
+    if (words.length !== 5) throw new LevelError(`${where} : ${usage}`);
+    const [, id, at, b, a] = words as [string, string, string, string, string];
+    const m = /^(\d+),(\d+)$/.exec(at);
+    if (!m || !/^\d+$/.test(b) || !/^\d+$/.test(a)) throw new LevelError(`${where} : ${usage}`);
+    if (stalactites.some((q) => q.id === id)) throw new LevelError(`${where} : stalactite « ${id} » déjà déclarée`);
+    const col = Number(m[1]);
+    const row = Number(m[2]);
+    const before = Number(b);
+    const after = Number(a);
+    if (before < 1 || before > STALACTITE_MAX_REACH || after < 1 || after > STALACTITE_MAX_REACH) throw new LevelError(`${where} : la zone vaut de 1 à ${STALACTITE_MAX_REACH} colonnes de chaque côté`);
+    if (col >= width || row < 1 || row + STALACTITE_TILES > height) throw new LevelError(`${where} : la stalactite (${col},${row}) sort de la grille`);
+    if (tiles[(row - 1) * width + col] !== TILE_SOLID) throw new LevelError(`${where} : la stalactite (${col},${row}) n'est pas accrochée à un bloc plein`);
+    for (let r = row; r < row + STALACTITE_TILES; r++) if (tiles[r * width + col] !== TILE_EMPTY) throw new LevelError(`${where} : le corps de la stalactite (${col},${r}) n'est pas vide`);
+    if (stalactites.some((q) => q.col === col)) throw new LevelError(`${where} : une autre stalactite pend déjà dans la colonne ${col}`);
+    stalactites.push({ id, col, row, before, after });
+  }
+  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites };
 }
 
 /**

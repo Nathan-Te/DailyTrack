@@ -27,6 +27,14 @@ export interface SemainePress {
   travel: number;
 }
 
+/** Lot 24 : une stalactite de la miniature : colonne, rangée de son corps, et sa zone de déclenchement (colonnes de chaque côté). */
+export interface SemaineStalactite {
+  col: number;
+  row: number;
+  before: number;
+  after: number;
+}
+
 /** Un jour de la semaine, tel que l'outil le montre. */
 export interface SemaineDay {
   date: string;
@@ -40,6 +48,8 @@ export interface SemaineDay {
   platforms?: SemainePlatform[];
   /** Lot 22 : les presses (colonne, rangée haute, largeur, course), pour la miniature ; absent des fichiers d'avant le lot. */
   presses?: SemainePress[];
+  /** Lot 24 : les stalactites (tuile du corps, zone), pour la miniature ; absent des fichiers d'avant le lot. */
+  stalactites?: SemaineStalactite[];
   pieces: SemainePiece[];
   fallback: boolean;
 }
@@ -56,8 +66,14 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
   const saws: [number, number][] = [];
   const platforms: SemainePlatform[] = [];
   const presses: SemainePress[] = [];
+  const stalactites: SemaineStalactite[] = [];
   for (const line of annex.split("\n")) {
     const words = line.trim().split(/\s+/);
+    if (words[0] === "stalactite") {
+      const at = /^(\d+),(\d+)$/.exec(words[2] ?? "");
+      if (at) stalactites.push({ col: Number(at[1]), row: Number(at[2]), before: Number(words[3]), after: Number(words[4]) });
+      continue;
+    }
     if (words[0] === "presse") {
       const at = /^(\d+),(\d+)$/.exec(words[3] ?? "");
       if (at) presses.push({ col: Number(at[1]), row: Number(at[2]), width: Number(words[2]), travel: Number(words[4]) });
@@ -81,6 +97,7 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
     saws,
     platforms,
     ...(presses.length > 0 ? { presses } : {}),
+    ...(stalactites.length > 0 ? { stalactites } : {}),
     pieces: d.pieces.map((p) => ({ id: p.id, variant: p.variant, col0: p.col0, col1: p.col1 })),
     fallback: d.fallback,
   };

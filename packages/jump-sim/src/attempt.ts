@@ -29,6 +29,8 @@ import {
   platformPos,
   pressBox,
   sawCenter,
+  stalactiteBox,
+  stalactiteOffset,
   windBlows,
   windZoneAt,
   type Level,
@@ -87,6 +89,11 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 // impulsion entière dans la direction du chapeau, renforcée (×1,3) si le saut est **tenu** à ce pas ; la vitesse parallèle à la surface du champignon est conservée. Sans
 // champignon, ces lignes ne calculent rien.
 //
+// **Stalactites (lot 24, niveaux de version 8 et morceaux seuls)** : une stalactite (`Level.stalactites`) est accrochée à un plafond plein. Son état (`AttemptState.stalactites`, un
+// entier par stalactite, absent sans stalactite) : 0 intacte, `age` > 0 déclenchée depuis `age` pas (elle tremble pendant `STALACTITE_SHAKE_TICKS`, puis tombe selon `stalactiteOffset`),
+// −1 brisée. Elle se déclenche à la fin du pas où le centre du personnage est dans sa zone (colonnes, à hauteur de son corps ou plus bas) ; elle se brise au premier pas où son corps
+// chevauche un bloc plein ou sort de la grille ; elle tue (`DEATH_STALACTITE`) tant qu'elle est déclenchée et pas brisée. Hors horloge ; la reprise la remet intacte (`initialAttempt`).
+//
 // Ordre d'un pas en course : minuteries des blocs friables (ceux qui arrivent à 0 tombent) → personnage (`stepPlayer`, sur la grille de
 // l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies) → points de passage ;
 // puis l'état des blocs clignotants et alternés pour le pas suivant (lot 12).
@@ -102,8 +109,14 @@ export const DEATH_SAW = 2;
 export const DEATH_FALL = 3;
 /** Lot 22 : écrasé par une presse (toute la presse tue au contact). */
 export const DEATH_PRESS = 4;
+/** Lot 24 : touché par une stalactite qui tremble ou qui tombe. */
+export const DEATH_STALACTITE = 5;
 /** Noms des causes de mort, pour l'affichage (indice = code). */
-export const DEATH_NAMES = ["aucune", "pic", "scie", "chute", "presse"] as const;
+export const DEATH_NAMES = ["aucune", "pic", "scie", "chute", "presse", "stalactite"] as const;
+
+/** Lot 24 : état d'une stalactite intacte (jamais déclenchée) et brisée ; un nombre > 0 = pas écoulés depuis son déclenchement. */
+export const STALACTITE_INTACT = 0;
+export const STALACTITE_BROKEN = -1;
 
 /** Pas entre la mort et le nouvel essai : 18 pas = 0,15 s (au plus 0,2 s, seed § 2). Les commandes y sont ignorées. */
 export const RESPAWN_TICKS = 18;
@@ -203,6 +216,11 @@ export interface AttemptState {
    * plateforme qui porte le personnage (−1 : aucune). Gardé pendant la tolérance de coyote après avoir quitté son bord (le saut y garde son élan).
    */
   ride?: number;
+  /**
+   * Lot 24, **seulement dans un niveau qui a des stalactites** (absent sinon : les empreintes des autres niveaux ne changent pas) : une valeur par stalactite
+   * (`Level.stalactites`) — `STALACTITE_INTACT` (0), les pas écoulés depuis son déclenchement (> 0, voir `stalactiteOffset`) ou `STALACTITE_BROKEN` (−1).
+   */
+  stalactites?: readonly number[];
 }
 
 /** État au départ (et après chaque mort, et après « recommencer ») : rien n'a bougé. */
@@ -222,7 +240,12 @@ export function initialAttempt(level: Level): AttemptState {
     springTime: 0,
     checkpoint: -1,
   };
-  return { ...base, ...(level.alts.length > 0 ? { alt: 0 } : {}), ...(level.platforms.length > 0 ? { ride: -1 } : {}) };
+  return {
+    ...base,
+    ...(level.alts.length > 0 ? { alt: 0 } : {}),
+    ...(level.platforms.length > 0 ? { ride: -1 } : {}),
+    ...(level.stalactites.length > 0 ? { stalactites: level.stalactites.map(() => STALACTITE_INTACT) } : {}),
+  };
 }
 
 /**
@@ -452,6 +475,14 @@ export function deathAt(level: Level, state: Readonly<AttemptState>): number {
     if (box.y >= (p.row + p.travel + PRESS_HEIGHT_TILES) * UNITS_PER_TILE || box.y + box.h <= p.row * UNITS_PER_TILE) continue;
     if (boxesOverlap(box, pressAt(level, state.sections, state.time, i))) return DEATH_PRESS;
   }
+  // Lot 24 : une stalactite qui tremble ou qui tombe tue au contact (intacte ou brisée, non).
+  const hanging = state.stalactites;
+  if (hanging) {
+    for (let i = 0; i < hanging.length; i++) {
+      const h = stalactiteHazard(level, i, hanging[i]!);
+      if (h && boxesOverlap(box, h)) return DEATH_STALACTITE;
+    }
+  }
   return DEATH_NONE;
 }
 
@@ -472,6 +503,45 @@ function cellIndex(level: Level, col: number, row: number): number {
   return row * level.width + col;
 }
 
+/** Lot 24 : la boîte mortelle de la stalactite `index` dans l'état `age` (voir `AttemptState.stalactites`), ou null si elle est intacte ou brisée (elle ne tue pas). */
+export function stalactiteHazard(level: Pick<Level, "stalactites">, index: number, age: number): Box | null {
+  return age > 0 ? stalactiteBox(level.stalactites[index]!, stalactiteOffset(age)) : null;
+}
+
+/**
+ * Lot 24 : les stalactites au pas suivant. **Avance** celles qui sont déclenchées (âge + 1) : brisées au premier pas où leur corps chevauche un bloc plein de `tiles` ou sort
+ * de la grille par le bas ; puis **déclenche** les intactes dont la zone contient le centre du personnage (`col`, `row` : sa tuile), qui commencent à l'âge 1. Rend `current` lui-même
+ * si rien ne change. `events` (facultatif) reçoit l'indice de la première stalactite déclenchée ou brisée à ce pas.
+ */
+function stepStalactites(level: Level, current: readonly number[], tiles: readonly number[], col: number, row: number, trigger: boolean, events: AttemptEvents | null): readonly number[] {
+  let out = current;
+  const set = (i: number, v: number) => {
+    if (out === current) out = [...current];
+    (out as number[])[i] = v;
+  };
+  for (let i = 0; i < level.stalactites.length; i++) {
+    const age = current[i]!;
+    if (age > 0) {
+      const next = age + 1;
+      const box = stalactiteBox(level.stalactites[i]!, stalactiteOffset(next));
+      let broken = box.y >= level.height * UNITS_PER_TILE;
+      if (!broken) {
+        const c = tileOf(box.x);
+        for (let r = tileOf(box.y); r <= tileOf(box.y + box.h - 1) && !broken; r++) if (r < level.height && isSolidTile(tiles[r * level.width + c]!)) broken = true;
+      }
+      set(i, broken ? STALACTITE_BROKEN : next);
+      if (broken && events && events.shatter < 0) events.shatter = i;
+    } else if (age === STALACTITE_INTACT && trigger) {
+      const s = level.stalactites[i]!;
+      if (col >= s.col - s.before && col <= s.col + s.after && row >= s.row) {
+        set(i, 1);
+        if (events && events.shake < 0) events.shake = i;
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * Lot 23 : ce qu'un pas a déclenché, rempli par `stepAttempt` si on le lui donne (outils, tests, affichage : jamais la simulation elle-même) — `mushroom` : l'indice dans
  * `Level.mushrooms` du champignon qui vient de rebondir (−1 : aucun), `boost` : 1 si le rebond est renforcé.
@@ -479,6 +549,9 @@ function cellIndex(level: Level, col: number, row: number): number {
 export interface AttemptEvents {
   mushroom: number;
   boost: number;
+  /** Lot 24 : l'indice dans `Level.stalactites` de la stalactite déclenchée à ce pas (−1 : aucune) et de celle qui s'est brisée (−1 : aucune). */
+  shake: number;
+  shatter: number;
 }
 
 /**
@@ -491,6 +564,8 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   if (events) {
     events.mushroom = -1;
     events.boost = 0;
+    events.shake = -1;
+    events.shatter = -1;
   }
   if (state.status === ATTEMPT_FINISHED) return state as AttemptState;
   const single = level.simVersion >= SINGLE_CLOCK_VERSION;
@@ -498,7 +573,11 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
     const deathTicks = state.deathTicks + 1;
     // Avec un point de passage (et toujours en v4, lot 15), l'essai continue : le chrono tourne pendant l'attente.
     const time = state.checkpoint >= 0 || single ? state.time + 1 : state.time;
-    if (deathTicks < RESPAWN_TICKS) return { ...state, deathTicks, time };
+    if (deathTicks < RESPAWN_TICKS) {
+      // Lot 24 : une stalactite déclenchée continue de tomber pendant l'attente (affichage seulement : la reprise la remet intacte).
+      if (level.stalactites.length === 0) return { ...state, deathTicks, time };
+      return { ...state, deathTicks, time, stalactites: stepStalactites(level, state.stalactites!, state.tiles, 0, 0, false, events) };
+    }
     if (state.checkpoint >= 0 || single) {
       const back = state.checkpoint >= 0 ? checkpointAttempt(level, { ...state, time }) : respawnAttempt(level, { ...state, time });
       if (jump) back.player = { ...back.player, held: 1 };
@@ -660,6 +739,8 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
 
   const next: AttemptState = { ...state, status: ATTEMPT_RUNNING, time, player, tiles, crumbles, sections, springCell, springTime };
   if (level.alts.length > 0) next.alt = alt;
+  // Lot 24 : les stalactites avancent, puis se déclenchent si le centre du personnage est dans leur zone (sa tuile : `col`, rangée du centre).
+  if (level.stalactites.length > 0) next.stalactites = stepStalactites(level, state.stalactites!, tiles, col, tileOf(player.y + idiv(PLAYER_HEIGHT, 2)), true, events);
   // Lot 20 : la plateforme qui porte le personnage (gardée pendant le coyote après avoir quitté son bord).
   if (hasPlatforms) next.ride = landedOn >= 0 ? landedOn : player.ground !== 1 && ride >= 0 && player.air <= params.coyote ? ride : -1;
   // ——— L'arrivée d'abord : elle l'emporte sur une mort au même pas ———

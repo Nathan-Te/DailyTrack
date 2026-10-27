@@ -22350,6 +22350,58 @@
     }
    ]
   },
+  "stalactite-allee": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-decroche": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-glace-ilots": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-glace-rangee": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-ilots": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-sentier": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
   "tapis-alternes": {
    "variants": [
     null,

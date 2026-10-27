@@ -689,7 +689,7 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
       expect(r.total).toBe(8_000);
     }
     expect(deaths).toBeGreaterThan(10);
-  });
+  }, 60_000); // lot 24 : 5 s ne suffisent plus quand la part de CI génère aussi les niveaux du jour (rouge à la CI en local sous charge, vert seul)
 
   it("lot 6 : départs aux raccords — en élan sur chaque palier partagé (position d'entrée au hasard dans un pas de course) et reprises sur chaque point de passage : même intégrité", () => {
     const keys = Object.keys(DEFAULT_JUMP_PARAMS) as JumpParamKey[];

@@ -1,0 +1,33 @@
+id: stalactite-ilots
+intention: Traverser des îlots suspendus au-dessus de pics, chacun sous une stalactite qu'on déclenche en s'élançant : l'île ne doit jamais servir de halte, la glace qui pend tombe dessus une seconde plus tard.
+etiquettes: stalactite precision
+famille: stalactite-ilots
+theme: glace
+format: 3
+paliers: 9 9
+repeter: g1 colonnes 4-4
+repeter: g2 colonnes 10-10
+repeter: g3 colonnes 16-16
+repeter: g4 colonnes 22-22
+variante: g1=1 g2=1 g3=1 g4=1
+variante: g1=2 g2=1 g3=2 g4=1
+variante: g1=1 g2=2 g3=1 g4=2
+variante: g1=2 g2=2 g3=2 g4=2
+variante: g1=3 g2=1 g3=2 g4=1
+grille:
+.###########################..
+.###########################..
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+###...###...###...###...######
+###^^^...^^^...^^^...^^^######
+##############################
+
+stalactite a 7,2 3 2
+stalactite b 13,2 3 2
+stalactite c 19,2 3 2
