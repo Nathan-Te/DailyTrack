@@ -142,7 +142,6 @@ jobs:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
           BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
-          MESURE_R13: main
         run: |
           full=""
           if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ]; then full="--full"; fi
@@ -153,8 +152,6 @@ jobs:
           fi
           # pr (filtré, Chromium, quarantaine non bloquante) | main (chaque fusion : l'Essentiel de tout, lot R13) | complet (« Run workflow ») | nuit.
           mode=pr; [ -n "$full" ] && mode=complet; [ "$EVENT" = push ] && [ "$REF" = refs/heads/main ] && mode=main; [ "$EVENT" = schedule ] && mode=nuit
-          # MESURE TEMPORAIRE DU LOT R13 (retirée avant la fin du lot) : la PR du lot mesure le mode `complet`, puis le mode `main`.
-          if [ -n "$MESURE_R13" ]; then mode="$MESURE_R13"; full="--full"; : > "$RUNNER_TEMP/files.txt"; fi
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           node scripts/ci-scope.mjs $full < "$RUNNER_TEMP/files.txt" | tee -a "$GITHUB_OUTPUT" > "$RUNNER_TEMP/scope.txt"
           node scripts/ci-zones.mjs --mode "$mode" < "$RUNNER_TEMP/files.txt" >> "$GITHUB_OUTPUT" 2> "$RUNNER_TEMP/zones.txt"

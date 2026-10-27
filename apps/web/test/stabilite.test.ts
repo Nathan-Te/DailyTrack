@@ -22,6 +22,8 @@ describe("preuves de stabilité", () => {
       expect(["chromium", "firefox", "webkit"], t.fichier).toContain(t.navigateur);
       expect(existsSync(path), t.fichier).toBe(true);
       if (t.titre) expect(readFileSync(path, "utf8"), `${t.fichier} › ${t.titre}`).toContain(t.titre);
+      // Lot R13 : Firefox et WebKit ne lancent que le petit ensemble `@navigateurs` ; une preuve sur l'un d'eux nomme un spec qui en a.
+      if (t.navigateur !== "chromium") expect(readFileSync(path, "utf8"), `${t.fichier} : aucun test @navigateurs`).toContain("@navigateurs");
     }
   });
 
