@@ -234,8 +234,9 @@ test("?touch=1 : sur ordinateur, la souris simule le doigt ; ?touch=0 coupe l'in
   await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
   expect(await page.evaluate(() => window.__cdj.touch)).toBe(false);
   await expect(page.locator("#touch")).toBeHidden();
-  // Ordinateur sans option : pas de tactile.
+  // Ordinateur sans option : pas de tactile. (`goto` rend la main avant que le module du jeu ait posé `__cdj` : on l'attend.)
   await page.goto("/?debug&scenario=plat");
+  await page.waitForFunction(() => window.__cdj?.touch !== undefined);
   expect(await page.evaluate(() => window.__cdj.touch)).toBe(false);
 });
 
@@ -797,6 +798,9 @@ test.describe("gyroscope", () => {
     await sonde(page, (i) => i.steer).toBe(0);
     await page.locator("body").tap({ position: { x: 425, y: 200 } }); // le premier toucher est le geste : la fenêtre du système (ici accordée)
     await expect(page.locator(".gyro-jauge--course")).toHaveAttribute("data-capteur", "ok");
+    // Le neutre est la première mesure reçue après l'autorisation : on attend qu'elle soit arrivée (à 30°) avant d'incliner. Le jeu écoute depuis
+    // « ok », donc avant cet écouteur-ci : quand il voit une mesure, le jeu l'a déjà prise (sans cette attente, une page lente prenait 65° pour neutre).
+    await page.evaluate(() => new Promise<void>((fin) => addEventListener("deviceorientation", () => fin(), { once: true })));
     await incliner(page, 30 + 35); // le neutre était la première mesure, à 30°
     await sonde(page, (i) => i.steer).toBeGreaterThan(40);
     await expect(page.locator("#touch")).toHaveAttribute("data-mode", "gyro");
