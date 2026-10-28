@@ -110,8 +110,8 @@ import { mountHowto } from "./howtoUi";
 import { mountSettings } from "./settingsUi";
 import { mountArchives, mountBoard, type BoardView } from "./screensUi";
 import { profilHref } from "./profilLien";
-import { boutonPleinEcran, el, icone, majPleinEcran, svg } from "@cdj/ui";
-import { chargerLangue, demarrerLangue, fNumero, fTicks, lier, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
+import { boutonPleinEcran, el, icone, majPleinEcran, modeApplication, reglerAideIphone, svg } from "@cdj/ui";
+import { aCle, chargerLangue, demarrerLangue, fNumero, fTicks, lier, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
 import { shareText } from "./share";
 import { sendShare } from "./clipboard";
 import { CarnageGovernor } from "./carnageGovernor";
@@ -134,7 +134,7 @@ import type { DeathMapData } from "./rankApi";
 import { Ranking, mayRank } from "./ranking";
 import { arrivalRankView, classesText, homeRankText, rowsOf } from "./rankView";
 import { DEMO_TODAY, DemoRankSource } from "./demoRank";
-import { BUILD_API_URL, BUILD_RESTRICTED, demoStorage } from "./storage";
+import { BUILD_API_URL, BUILD_RESTRICTED, demoStorage, gameStorage } from "./storage";
 import { BELT_EVERY, Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, beltSpark, feelColors, feelEvent, slideSpark } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu, type PauseView } from "./pauseMenu";
@@ -597,6 +597,13 @@ const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_L
 // Lot P1 (plateforme) : le classement du jour. Adresse du serveur : `?api=` (essais ; `demo` : la démonstration), sinon `VITE_API_URL` de la
 // construction (production pour `main`, recette pour un aperçu), sinon aucune : pas de classement, le jeu marche comme avant.
 const apiBase = rankApiBase(options.api, BUILD_API_URL, location.origin, BUILD_RESTRICTED);
+// Lot 53 : iPhone — le plein écran passe par l'écran d'accueil. L'aide du bouton « Plein écran » sait où est le profil (son code se copie) ; l'application ajoutée à l'écran
+// d'accueil a son propre stockage : au premier lancement sans profil, « Retrouver mon profil ». Tout est à la demande (rien dans le premier chargement).
+reglerAideIphone({ lienCode: () => profilHref(location.pathname), code: () => import("./retrouverJeu").then((m) => m.codeDeTransfert(gameStorage())) });
+{
+  const stockage = gameStorage();
+  if (modeApplication() && stockage && apiBase && apiBase !== "demo") void import("./retrouverJeu").then((m) => m.proposerRetrouver(apiBase, stockage, (code) => (aCle(`erreur.${code}`) ? t(`erreur.${code}`) : null)));
+}
 const demoRank = apiBase === "demo";
 /** La démonstration joue « son » aujourd'hui (`DEMO_TODAY`, celui du jeu de données) : toutes les dates du jeu sont décalées d'autant. */
 const dayShift = demoRank ? DEMO_TODAY - parisDay(Date.now()) : 0;
@@ -2723,7 +2730,7 @@ function syncMessage(): void {
 }
 const pauseButton = document.getElementById("pausebtn") as HTMLButtonElement;
 // Lot I7 : le plein écran reste en vue, juste après la pause (la plaque du HUD) ; caché s'il n'est pas possible. Même logique que l'accueil et la pause (socle).
-pauseButton.after(boutonPleinEcran({ t, id: "fullscreenbtn", classe: ["plaque", "plaque--bouton"] }));
+pauseButton.after(boutonPleinEcran({ t, id: "fullscreenbtn", classe: ["plaque", "plaque--bouton"], avantAide: () => setMenu(true) })); // lot 53 : sur iPhone il ouvre l'aide : la partie se met en pause
 onLangue(majPleinEcran);
 // Lot 27 (comme DailyTrack, à la même place : en haut à gauche, à côté de la pause, aux doigts seulement) : la plaque « dernier point de passage » (le drapeau) et la plaque
 // « recommencer à zéro ». Elles font ce que font R et Entrée ; le drapeau n'existe que dans un niveau de la version 11 (les anciens ne savent pas enregistrer une reprise).

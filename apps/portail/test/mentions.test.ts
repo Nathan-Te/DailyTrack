@@ -131,6 +131,16 @@ describe("page des mentions légales et de la confidentialité", () => {
     }
   });
 
+  // Lot 53 : « Retrouver mon profil » (l'application ajoutée à l'écran d'accueil de l'iPhone) garde une clé : nommée, dans les deux langues, et gardée par « Nouveau départ ».
+  it("lot 53 : cdj:retrouver:vu (« Retrouver mon profil » passé) est nommé dans les deux langues et gardé par le nouveau départ", () => {
+    const cle = /export const RETROUVER_VU_KEY = "([^"]+)"/.exec(readFileSync(join(ROOT, "packages/profile/src/retrouver.ts"), "utf8"))?.[1];
+    expect(cle).toBe("cdj:retrouver:vu");
+    for (const page of [PAGE, PAGE_EN]) expect(page).toContain(`<code>${cle}</code>`);
+    expect(PAGE).toContain("Retrouver mon profil");
+    expect(PAGE_EN).toContain("Get my profile back");
+    expect(readFileSync(join(ROOT, "packages/profile/src/generation.ts"), "utf8")).toContain(`"${cle}"`);
+  });
+
   // Suites de Track 2 : les deux clés que le Garage (lot 41) et la règle de qualité (lot 45) écrivent sont nommées, dans les deux langues. Les clés sont lues dans le source du jeu :
   // une clé renommée sans la page échoue ici.
   it("le Garage et la qualité graphique sont nommés (cdj:track:garage, cdj:qualite), avec ce qu'ils gardent", () => {

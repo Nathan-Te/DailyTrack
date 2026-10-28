@@ -7,6 +7,8 @@
 @import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 
 body {
+  /* Lot 53 : mode application (iPhone) : rien sous l'encoche, l'îlot ni la barre d'accueil. */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   font-size: var(--dj-taille-16);
   line-height: 1.5;
 }

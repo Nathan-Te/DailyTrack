@@ -16,8 +16,8 @@ import "./arrivee.css";
 import "./reglages.css";
 import "./tactile.css";
 import "./salon.css";
-import { appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, ajouterTextes, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
-import { boutonPleinEcran, el as elDuSocle, icone, majPleinEcran, nomMedaille, pleinEcranPossible, suivreDialogue } from "@cdj/ui";
+import { aCle, appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, ajouterTextes, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
+import { boutonPleinEcran, el as elDuSocle, icone, majPleinEcran, modeApplication, nomMedaille, pleinEcranBoutonVisible, reglerAideIphone, suivreDialogue } from "@cdj/ui";
 import { iconeDeTraces, iconeTrack } from "./icones";
 import { creerCadre, definirJour } from "./cadre";
 import { actionArrivee, autocollantMedaille, badgeEtEcart, creerArrivee, ligneNouvelleVoiture, ligneRang, tempsEnGrand, typeDeMedaille, type Arrivee } from "./arriveeUi";
@@ -140,6 +140,13 @@ followIdentityRevision(gameStorage(), formatDay(parisDay(Date.now())));
 // langue du joueur (les joueurs en français ne le téléchargent pas : budget de chargement).
 await chargerLangue();
 demarrerLangue();
+// Lot 53 : iPhone — le plein écran passe par l'écran d'accueil. L'aide du bouton « Plein écran » sait où est le profil (son code se copie) ; l'application ajoutée à l'écran
+// d'accueil a son propre stockage : au premier lancement sans profil, « Retrouver mon profil ». Tout est à la demande (rien dans le premier chargement).
+reglerAideIphone({ lienCode: () => profilHref(location.origin, location.pathname), code: () => import("./retrouverJeu").then((m) => m.codeDeTransfert(gameStorage())) });
+{
+  const base = apiBase();
+  if (modeApplication() && base && base !== DEMO_BASE) void import("./retrouverJeu").then((m) => m.proposerRetrouver(base, gameStorage(), (code) => (aCle(`erreur.${code}`) ? t(`erreur.${code}`) : null)));
+}
 
 const params = new URLSearchParams(location.search);
 // Lot 50 : le banc d'essai du rendu (`?banc`, `?banc=court` pour les essais) — recette et aperçus seulement, jamais en production. Un module à la demande qui prend
@@ -655,7 +662,7 @@ function renderObjective() {
   // Lot I7 : la caméra (celle de la touche C et de la pause, même fonction) et le plein écran restent en vue, à droite de la pause.
   bouton("btn-camera", icone("camera", { taille: 20 }), "course.camera.proche", () => cycleCamera(), false);
   $("btn-camera").removeAttribute("data-t-aria-label"); // son nom lu porte la caméra courante : `syncCameraButton`
-  menu.append(boutonPleinEcran({ t, id: "btn-fullscreen", classe: ["plaque", "plaque--bouton"] }));
+  menu.append(boutonPleinEcran({ t, id: "btn-fullscreen", classe: ["plaque", "plaque--bouton"], avantAide: () => setPaused(true) })); // lot 53 : sur iPhone il ouvre l'aide : la course se met en pause
   appliquerTextes(menu);
 })();
 onLangue(majPleinEcran);
@@ -668,7 +675,7 @@ const BANDE_MAX_PX = 300;
 const cameraBtn = $("btn-camera");
 let cameraShown = "";
 function syncCameraButton() {
-  const rangee = 1 + (document.body.classList.contains("touch") ? 2 : 0) + (pleinEcranPossible() ? 1 : 0) + 1; // pause, [point de contrôle, recommencer], caméra, [plein écran]
+  const rangee = 1 + (document.body.classList.contains("touch") ? 2 : 0) + (pleinEcranBoutonVisible() ? 1 : 0) + 1; // pause, [point de contrôle, recommencer], caméra, [plein écran]
   const dansLaRangee = 10 + rangee * 44 + (rangee - 1) * 6 <= innerWidth / 2 - BANDE_MAX_PX / 2 - 6;
   const key = `${cameraIndex}|${langueCourante()}|${dansLaRangee}`;
   if (key === cameraShown) return;

@@ -14,6 +14,8 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["apps/portail (aperçu)", "apps/portail/src/catalogueApercu.ts", "CATALOGUE_APERCU"],
   ["apps/web (aperçu)", "apps/web/src/catalogue.apercu.ts", "CATALOGUE_APERCU"],
   ["apps/jump (aperçu)", "apps/jump/src/catalogue.apercu.ts", "CATALOGUE_APERCU"],
+  // Lot 53 : l'aide du plein écran sur iPhone et « Retrouver mon profil » (chargés à la demande avec leurs deux écrans : hors du catalogue commun).
+  ["packages/ui (iPhone)", "packages/ui/src/catalogue.iphone.ts", "CATALOGUE_IPHONE"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
   ["apps/web (base)", "apps/web/src/catalogue.base.ts", "CATALOGUE_BASE"],
   ["apps/web (accueil)", "apps/web/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],
@@ -80,6 +82,7 @@ export const EXCLUSIONS: Record<string, string> = {
  * catalogues et hors tests. Le catalogue commun est lu par toutes les applications et par le socle (`packages/ui/src`, `packages/profile/src`).
  */
 export const SOURCES_DES_CLES: Record<string, string[]> = {
+  "packages/ui": ["packages/ui/src"],
   "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/ui"],
   "apps/web": ["apps/web/src", "apps/web/index.html"],
   "apps/jump": ["apps/jump/src", "apps/jump/index.html"],

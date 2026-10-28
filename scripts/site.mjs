@@ -132,7 +132,7 @@ export function poserOrigine(texte, origine) {
 
 /**
  * Le manifeste (pur, testé) : nom « Du Jour », couleurs de la charte (lues dans les jetons de @cdj/ui, jamais écrites ici), icônes 192 et 512
- * produites à la construction, affichage autonome, départ au portail. Pas de service worker (lot I6).
+ * produites à la construction, affichage autonome (`standalone` : iOS traite `fullscreen` comme `standalone`), départ au portail. Pas de service worker (lot I6).
  */
 export function manifeste(jetonsCss) {
   const jeton = (nom) => {
@@ -144,6 +144,8 @@ export function manifeste(jetonsCss) {
     name: "Du Jour",
     short_name: "Du Jour",
     lang: "fr",
+    // Lot 53 : l'identité de l'application (stable si le départ change) ; l'iPhone ouvre la page ajoutée à l'écran d'accueil, `start_url` vaut pour Android et l'ordinateur.
+    id: "/",
     start_url: "/",
     scope: "/",
     display: "standalone",
