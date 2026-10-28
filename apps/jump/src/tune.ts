@@ -209,7 +209,7 @@ export const CAMERA_SLIDERS: readonly CameraSlider[] = [
   { key: "appear", label: "Annonce : réapparition d'un bloc clignotant (le contour se remplit)", min: 0.1, max: 1.5, step: 0.05, unit: "s" },
   { key: "gustLead", label: "Annonce : début d'une rafale (les feuilles frémissent)", min: 0, max: 1.5, step: 0.05, unit: "s" },
   { key: "gustTail", label: "Annonce : fin d'une rafale (les feuilles ralentissent)", min: 0, max: 1.5, step: 0.05, unit: "s" },
-  { key: "pret", label: "« Prêt… » avant le départ (horloge unique, lot 15)", min: 0.1, max: 3, step: 0.05, unit: "s" },
+  { key: "pret", label: "Décompte « 3, 2, 1, Partez ! » avant le départ (lot 27)", min: 0.1, max: 3, step: 0.05, unit: "s" },
 ];
 
 const isShakeKey = (k: CameraSlider["key"]): k is ShakeKey => k in SHAKE_DEFAULTS;

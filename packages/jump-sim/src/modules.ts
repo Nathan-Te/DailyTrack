@@ -37,7 +37,9 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   clignote <cycle> <solide> <décalage>          (lot 12) le cycle des blocs clignotants `b` `d` du morceau (la section est implicite ; `{param}` permis)
 //   vent <c0>-<c1> <r0>-<r1> <sens> <force> [rafale <cycle> <actif> <décalage>]
 //                                                 (lot 13) une zone de vent (syntaxe de `level.ts`) ; colonnes et rangées du gabarit (de la
-//                                                 première copie de `c0`/`r0` à la dernière de `c1`/`r1`), section implicite, `{param}` permis
+//                                                 première copie de `c0`/`r0` à la dernière de `c1`/`r1`), section implicite, `{param}` permis ;
+//                                                 lot 27 : si la variante donne `cycle=0` (avec `rafale {cycle} …` au gabarit), la clause de rafale est
+//                                                 retirée et la zone souffle **en continu** (les variantes à vent continu du générateur g21)
 //   plateforme <id> <largeur> <h|v> <cycle> <c,r> <c,r>
 //                                                 (lot 20) une plateforme mobile (syntaxe de `level.ts`) : ses deux extrémités (coin haut-gauche), en
 //                                                 coordonnées du gabarit (la première copie d'une plage répétée, ou la dernière avec une apostrophe),
@@ -889,7 +891,9 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
       const r0 = rows.first[Number(rm[1])];
       const r1 = rows.last[Number(rm[2])];
       if ([c0, c1, r0, r1].some((v) => v === undefined || v < 0)) throw new ModuleError(where(`zone de vent « ${filled} » hors de la grille ou retirée par la variante`));
-      annex.push(["vent", `${c0! + lead}-${c1! + lead}`, `${r0}-${r1}`, ...words.slice(3)].join(" "));
+      // Lot 27 : `rafale 0 …` (un paramètre `cycle=0`) = le vent souffle en continu : la clause de rafale est retirée (les niveaux du jour g21 n'ont plus de rafales).
+      const rest = words[5] === "rafale" && words[6] === "0" ? words.slice(3, 5) : words.slice(3);
+      annex.push(["vent", `${c0! + lead}-${c1! + lead}`, `${r0}-${r1}`, ...rest].join(" "));
       continue;
     }
     if (words[0] === "plateforme") {

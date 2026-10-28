@@ -1,5 +1,5 @@
 id: champignon-tourbillon
-intention: Remonter un puits en deux étages : un courant d'air montant souffle par rafales dans le bas, puis les champignons de mur renvoient d'un côté à l'autre jusqu'au rebord, sous un plafond de champignons qui renvoie vers le bas tout rebond trop haut.
+intention: Remonter un puits en deux étages : un courant d'air montant souffle (par rafales jusqu'à g20, en continu depuis g21) dans le bas, puis les champignons de mur renvoient d'un côté à l'autre jusqu'au rebord, sous un plafond de champignons qui renvoie vers le bas tout rebond trop haut.
 etiquettes: champignon vertical vent
 famille: champignon-tourbillon
 theme: foret
@@ -13,6 +13,10 @@ variante: haut=0 bas=1 cycle=360 actif=240 decalage=150
 variante: haut=1 bas=1 cycle=420 actif=260 decalage=0
 variante: haut=2 bas=0 cycle=360 actif=220 decalage=200
 variante: haut=0 bas=2 cycle=300 actif=200 decalage=0
+variante: haut=0 bas=0 cycle=0 actif=0 decalage=0
+variante: haut=1 bas=0 cycle=0 actif=0 decalage=0
+variante: haut=0 bas=1 cycle=0 actif=0 decalage=0
+variante: haut=1 bas=1 cycle=0 actif=0 decalage=0
 grille:
 #.www.....
 #.........

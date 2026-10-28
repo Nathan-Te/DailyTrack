@@ -36,7 +36,14 @@ export const fr = {
   "arrivee.partage.ok": "Partagé",
   "arrivee.partage.copie": "Copié dans le presse-papiers",
   "arrivee.partage.echec": "Copie impossible : sélectionne le texte ci-dessous",
-  "arrivee.aideClavier": "R : rejouer",
+  "arrivee.aideClavier": "Entrée : rejouer",
+  // Lot 27 : l'autocollant du résultat, posé sur la scène pendant la rediffusion et le carnage
+  "resultat.aria": "Résultat de ton essai",
+  "resultat.classement": "Classement",
+  "resultat.suite": "Suite : {jeu} ›",
+  "resultat.record": "Nouveau record !",
+  "resultat.premier": "Premier temps du jour",
+  "resultat.ecart": "{ecart} vs ton record",
   // Une phrase selon le nombre de morts du jour (paliers : 0, 1 à 5, 6 à 20, 21 à 50, plus de 50 ; charte § 7, à relire par Nathan)
   "arrivee.phrase.zero": "Zéro mort. On va vérifier que tu n'as pas triché.",
   "arrivee.phrase.peu": { one: "Une seule mort. Les pics sont vexés.", other: "{morts} morts. Presque propre. Presque." },

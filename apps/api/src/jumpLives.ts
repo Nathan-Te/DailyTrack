@@ -23,6 +23,8 @@ import type { Platform, RequestInfo, Statement } from "./games";
 //   GET  /api/jump/day/<AAAA-MM-JJ>/deaths     la carte des morts du jour : tuiles les plus meurtrières, cause dominante, joueurs et morts
 //   GET  /api/jump/day/<AAAA-MM-JJ>/carnage    l'échantillon du carnage : ≈ 150 vies d'autres joueurs, au format de rediffusion
 //
+// **Lot 27 : une reprise volontaire au dernier point de passage (quatrième bit de la commande, niveaux en version 11) n'est pas une mort** : le rejeu (`checkLife`) clôt la vie en cours
+// par un « abandon » (`not_death`, jamais gardée) et en ouvre une autre : elle ne compte ni dans les morts ni dans les 30 par joueur et par jour.
 // **Décision de Nathan : au plus 30 morts par joueur et par jour** (`JUMP_LIVES_PER_DAY`). Seules les vies qui finissent par une mort comptent
 // (le jeu n'envoie qu'elles ; une vie dont le rejeu ne finit pas par une mort est écartée) ; au-delà de 30, les vies en trop sont refusées et
 // la réponse le dit. Chaque mort compte une fois : un joueur pèse donc au plus 30 morts dans la carte (voulu).

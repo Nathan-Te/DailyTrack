@@ -1,5 +1,5 @@
 id: champignon-rafale
-intention: Rebondir au bord d'une fosse que le champignon seul ne franchit pas et se laisser porter par la rafale qui souffle au-dessus : le champignon donne la hauteur, le souffle la distance.
+intention: Rebondir au bord d'une fosse que le champignon seul ne franchit pas et se laisser porter par le vent qui souffle au-dessus (par rafales jusqu'à g20, en continu depuis g21) : le champignon donne la hauteur, le souffle la distance.
 etiquettes: champignon precision vent
 famille: champignon-rafale
 theme: foret
@@ -12,6 +12,9 @@ variante: trou=2 cycle=360 actif=240 decalage=120
 variante: trou=1 cycle=360 actif=220 decalage=120
 variante: trou=0 cycle=240 actif=160 decalage=80
 variante: trou=2 cycle=300 actif=200 decalage=150
+variante: trou=0 cycle=0 actif=0 decalage=0
+variante: trou=1 cycle=0 actif=0 decalage=0
+variante: trou=2 cycle=0 actif=0 decalage=0
 grille:
 .......................
 .......................

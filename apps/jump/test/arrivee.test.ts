@@ -360,7 +360,7 @@ describe("l'accueil", () => {
     const text = HOWTO_POINTS.map((k) => CATALOGUE_JUMP.fr[k]).join(" ");
     for (const w of ["drapeau", "chrono", "mourir", "fanion", "Tiens le saut", "mur"]) expect(text).toContain(w);
     const commandes = [...COMMANDES.clavier, ...COMMANDES.manette, ...COMMANDES.tactile].map((k) => CATALOGUE_JUMP.fr[k]).join(" ");
-    for (const w of ["courir", "sauter", "recommencer", "pause", "fantôme", "Select", "Start", "SAUT"]) expect(commandes).toContain(w);
+    for (const w of ["courir", "sauter", "recommencer", "point de passage", "pause", "fantôme", "Entrée", "R :", "Y :", "X :", "Start", "SAUT"]) expect(commandes).toContain(w);
     const store = new MemStore();
     expect(helpSeen(store)).toBe(false);
     markHelpSeen(store);

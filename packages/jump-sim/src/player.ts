@@ -15,6 +15,13 @@ export const INPUT_RIGHT = 2;
 export const INPUT_JUMP = 4;
 /** Les trois bits ; toute autre valeur est refusée par `stepPlayer`. */
 export const INPUT_MASK = 7;
+/**
+ * Lot 27 (niveaux de version 11) : le quatrième bit d'une commande d'essai, **reprendre au dernier point de passage** (voir `stepAttempt`). Ce n'est pas une commande du personnage : `stepPlayer`
+ * ne connaît que les trois bits ci-dessus (et refuse le reste) ; `stepAttempt` retire ce bit avant de lui passer la commande.
+ */
+export const INPUT_RESPAWN = 8;
+/** Les quatre bits d'une commande d'essai d'un niveau de version 11. */
+export const INPUT_ATTEMPT_MASK = 15;
 
 // ——— Constantes (pas des réglages) ———
 

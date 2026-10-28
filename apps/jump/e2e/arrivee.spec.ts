@@ -12,7 +12,7 @@ import { dayId } from "./jours";
 // `#arrival-medal`, `.archive`…), les textes le catalogue français. Les captures du lot 10 restent celles de son README (les nouvelles :
 // `e2e/captures.spec.ts`, lot I5).
 
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v10.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v11.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
 
 interface DayRecord {
@@ -216,7 +216,8 @@ test("« Comment jouer » s'ouvre de lui-même à la première visite seulement,
     await expect(page.locator("#help .dialogue__titre")).toHaveText("COMMENT JOUER");
     await expect(page.locator("#help")).toContainText("Va jusqu'au drapeau");
     await expect(page.locator("#help")).toContainText("Contre un mur, saute");
-    await expect(page.locator("#help")).toContainText("R : recommencer");
+    await expect(page.locator("#help")).toContainText("Entrée : recommencer à zéro");
+    await expect(page.locator("#help")).toContainText("R : dernier point de passage");
     await page.locator("#help-close").click();
     await expect(page.locator("#help")).toBeHidden();
     await page.reload();

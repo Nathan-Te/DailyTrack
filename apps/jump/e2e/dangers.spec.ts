@@ -135,11 +135,11 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
   expect((await attempt(page)).deaths).toBe(2);
   expect(await untilRespawn(page)).toBeLessThanOrEqual(24);
 
-  // R pendant la course : nouvel essai, pas une mort.
+  // Entrée (recommencer à zéro, lot 27 ; R avant) pendant la course : nouvel essai, pas une mort.
   await jump(page, (j) => j.input(2));
   await step(page, 30);
   await jump(page, (j) => j.input(null));
-  await page.keyboard.press("KeyR");
+  await page.keyboard.press("Enter");
   await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.phase === "ready");
   expect((await attempt(page)).deaths).toBe(2);
 
@@ -176,7 +176,7 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
 
   // R relance un essai ; le bandeau s'en va, le meilleur temps reste.
   await jump(page, (j) => j.input(null));
-  await page.keyboard.press("KeyR");
+  await page.keyboard.press("Enter");
   await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.phase === "ready");
   await expect(page.locator("#finish")).toBeHidden();
   // Lot I5 : la bande ne montre plus le meilleur temps (l'écart au record le remplace, charte § 9) ; il reste celui de la session.
@@ -217,7 +217,7 @@ test("point de passage : l'atteindre, mourir après, reprendre dessus dans le m�
   expect(Math.floor(back.raw.player.x! / 4096)).toBe(51);
   // R oublie le point : départ, chrono à zéro.
   await jump(page, (j) => j.input(null));
-  await page.keyboard.press("KeyR");
+  await page.keyboard.press("Enter");
   await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.phase === "ready");
   const fresh = await attempt(page);
   expect(fresh.checkpoint).toBe(-1);

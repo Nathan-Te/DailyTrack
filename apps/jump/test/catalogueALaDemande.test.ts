@@ -34,7 +34,7 @@ class MemStore implements KeyValue {
   }
 }
 
-const GOLDEN = JSON.parse(readFileSync(join(import.meta.dirname, "../../../packages/jump-sim/test/fixtures/daily-golden-v10.json"), "utf8")) as {
+const GOLDEN = JSON.parse(readFileSync(join(import.meta.dirname, "../../../packages/jump-sim/test/fixtures/daily-golden-v11.json"), "utf8")) as {
   days: Record<string, { id: string; hash: string; code: string; authorTicks: number; medals: Record<string, number> }>;
 };
 const DATE = "2026-11-03";

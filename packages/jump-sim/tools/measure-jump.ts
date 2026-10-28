@@ -24,6 +24,7 @@ import {
   MUSHROOM_VERSION,
   STALACTITE_VERSION,
   BRIDGE_VERSION,
+  RESTART_VERSION,
   LASER_VERSION,
   PRESS_VERSION,
   SINGLE_CLOCK_VERSION,
@@ -51,8 +52,9 @@ const DAYS = arg ? Number(arg.slice(8)) : 120;
 // Lot 23 : `-- --generateur=16` mesure la référence v6 (g16, le catalogue sans champignons) ; sans option, le générateur en vigueur (g17).
 // Lot 24 : `-- --generateur=17` mesure la référence v7 (g17, le catalogue sans stalactites) ; sans option, le générateur en vigueur (g18).
 // Lot 26 : `-- --generateur=19` mesure la référence v9 (g19, sans ponts ni équilibre des mécaniques) ; sans option, le générateur en vigueur (g20).
+// Lot 27 : `-- --generateur=20` mesure la référence v10 (g20, mort avant le premier point = reprise au départ, forêt à rafales) ; sans option, le générateur en vigueur (g21).
 // Lot 25 : `-- --generateur=18` mesure la référence v8 (g18, le catalogue sans lasers, W = 3) ; sans option, le générateur en vigueur (g19).
-const SIM_VERSION = process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : process.argv.includes("--generateur=17") ? MUSHROOM_VERSION : process.argv.includes("--generateur=18") ? STALACTITE_VERSION : process.argv.includes("--generateur=19") ? LASER_VERSION : BRIDGE_VERSION;
+const SIM_VERSION = process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : process.argv.includes("--generateur=17") ? MUSHROOM_VERSION : process.argv.includes("--generateur=18") ? STALACTITE_VERSION : process.argv.includes("--generateur=19") ? LASER_VERSION : process.argv.includes("--generateur=20") ? BRIDGE_VERSION : RESTART_VERSION;
 const sec = (t: number) => (t / TICK_RATE).toFixed(2).replace(".", ",");
 const num = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 const stats = (xs: number[]) => ({ min: Math.min(...xs), mean: xs.reduce((a, b) => a + b, 0) / xs.length, max: Math.max(...xs) });
