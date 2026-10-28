@@ -195,7 +195,7 @@ export function mountHud(opts: { onRestart(): void; carnage: CarnageControls }):
     objectif.hidden = o === null;
     if (o === null) return;
     if (o === "battu") {
-      objectif.replaceChildren(medaille(traducteurDuSocle(), { type: "auteur", obtenue: true, jeu: "jump" }));
+      objectif.replaceChildren(medaille(traducteurDuSocle(), { type: "diamant", obtenue: true, jeu: "jump" }));
       objectif.setAttribute("aria-label", t("hud.objectif.auteurBattu"));
       return;
     }

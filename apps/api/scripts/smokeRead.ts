@@ -281,12 +281,12 @@ function estClassement(b: unknown, date: string): boolean {
     o.date === date &&
     typeof o.ouvert === "boolean" &&
     Number.isInteger(o.classes) &&
-    ["author", "gold", "silver", "bronze"].every((m) => Number.isInteger(o.bareme?.[m])) &&
+    typeof o.vue === "string" &&
     Array.isArray(o.jeux) &&
     o.jeux.length >= 2 &&
     Array.isArray(o.top) &&
     o.top.length <= 50 &&
-    o.top.every((l: any) => Number.isInteger(l.rang) && typeof l.pseudo === "string" && Number.isInteger(l.points) && typeof l.resultats === "object" && !("id" in l) && !("playerId" in l)) &&
+    o.top.every((l: any) => Number.isInteger(l.rang) && typeof l.pseudo === "string" && (l.tempsMs === null || Number.isInteger(l.tempsMs)) && typeof l.complet === "boolean" && typeof l.resultats === "object" && !("id" in l) && !("playerId" in l)) &&
     !("moi" in o)
   );
 }

@@ -60,9 +60,9 @@ describe("titres", () => {
   });
   it("médailles nommées dans la langue", () => {
     setLangue("en", { ecrire: false });
-    expect(["author", "gold", "silver", "bronze"].map((m) => medalWord(m as "author"))).toEqual(["Author", "Gold", "Silver", "Bronze"]);
+    expect(["author", "gold", "silver", "bronze"].map((m) => medalWord(m as "author"))).toEqual(["Diamond", "Gold", "Silver", "Bronze"]);
     setLangue("fr", { ecrire: false });
-    expect(["author", "gold", "silver", "bronze"].map((m) => medalWord(m as "author"))).toEqual(["Auteur", "Or", "Argent", "Bronze"]);
+    expect(["author", "gold", "silver", "bronze"].map((m) => medalWord(m as "author"))).toEqual(["Diamant", "Or", "Argent", "Bronze"]);
   });
   // Lot I5 : « temps restant » (`mmss`) est devenu `formatDecompte(ms, { heures: false })` du socle : tests repris dans packages/ui/test/formats.test.ts.
 });

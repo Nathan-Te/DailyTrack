@@ -79,9 +79,9 @@ export const refusedText = (): string => t("jour.refuse");
 export const newDayText = (): string => t("jour.nouveau");
 
 /** Les émojis des médailles : **seulement dans la ligne à partager** (charte § 6), jamais dans l'interface (les mêmes que ceux du portail). */
-export const MEDAL_ICON: Record<JumpMedal, string> = { author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" };
+export const MEDAL_ICON: Record<JumpMedal, string> = { author: "💎", gold: "🥇", silver: "🥈", bronze: "🥉" };
 /** La médaille de Jump vue par le socle (`medaille`, couleurs et noms communs aux jeux). */
-export const MEDAL_TYPE: Record<JumpMedal, TypeMedaille> = { author: "auteur", gold: "or", silver: "argent", bronze: "bronze" };
+export const MEDAL_TYPE: Record<JumpMedal, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
 /** Le nom d'une médaille dans la langue du joueur (« Or », « Gold »). */
 export const medalWord = (m: JumpMedal): string => nomMedaille(traducteurDuSocle(), MEDAL_TYPE[m]);
 const ORDER: readonly JumpMedal[] = ["bronze", "silver", "gold", "author"];

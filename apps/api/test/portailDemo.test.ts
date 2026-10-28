@@ -25,7 +25,7 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
     const as = { headers: { "X-Player-Id": DEMO_JOUEUR_ID } };
     let r = await t.call("GET", "/api/portail/jour", undefined, as);
     expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body.joueur).toEqual({ pseudo: "Démo", serie: 5, aProlonger: false, journeesParfaites: 2, aujourdhuiParfaite: false, points: 3, rangDuJour: 1, classesDuJour: 1 }); // lot I3 : l'or de Track = 3 points
+    expect(r.body.joueur).toEqual({ pseudo: "Démo", serie: 5, aProlonger: false, journeesParfaites: 2, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: 1, classesDuJour: 1 }); // lot A1 : Jump n'est pas fini, pas de temps cumulé
     expect(r.body.jeux[0].etat).toMatchObject({ statut: "fini", medaille: "gold", rang: 1 });
     expect(r.body.jeux[1].etat).toEqual({ statut: "en_cours", morts: DEMO_MORTS });
     expect(await t.db.first("SELECT demo FROM players WHERE id = ?", [DEMO_JOUEUR_ID])).toEqual({ demo: 1 });

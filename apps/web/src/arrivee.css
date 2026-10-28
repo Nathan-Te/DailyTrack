@@ -121,8 +121,8 @@ body.paused #pause {
   text-transform: uppercase;
 }
 .arrivee__badge--ok {
-  background: var(--dj-auteur);
-  color: var(--dj-auteur-texte);
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
 }
 .arrivee__ecart {
   font-family: var(--dj-police-chiffres);
@@ -130,7 +130,7 @@ body.paused #pause {
   font-size: var(--dj-taille-15);
 }
 .arrivee__ecart--devant {
-  color: var(--dj-auteur);
+  color: var(--dj-diamant);
 }
 .arrivee__ecart--derriere {
   color: var(--track-livree-texte);
@@ -155,9 +155,9 @@ body.paused #pause {
   padding: 8px 14px;
   color: var(--track-asphalte);
 }
-.arrivee__medaille-nom--auteur {
-  background: var(--dj-auteur);
-  color: var(--dj-auteur-texte);
+.arrivee__medaille-nom--diamant {
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
 }
 .arrivee__medaille-nom--or {
   background: var(--dj-or);
@@ -193,7 +193,7 @@ body.paused #pause {
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: var(--dj-auteur);
+  color: var(--dj-diamant);
 }
 .arrivee__auteur-valeur {
   font-size: var(--dj-taille-13);
@@ -250,7 +250,7 @@ body.paused #pause {
 }
 .arrivee__rang-gain {
   font-size: var(--dj-taille-13);
-  color: var(--dj-auteur);
+  color: var(--dj-diamant);
 }
 /* L'envoi, les erreurs et le pseudo. */
 .arrivee__classement .status {

@@ -8,7 +8,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "hud.pc.aria": "Checkpoint {pc} of {total}",
   "hud.ecart.aria": "Gap to your best: {ecart}",
   "hud.objectif.aria": "Target medal: {medaille}, {temps}",
-  "hud.objectif.auteurBattu": "Author beaten",
+  "hud.objectif.auteurBattu": "Diamond earned",
   "hud.mode.archive": "Archive",
   "hud.mode.essai": "Trial · {theme}",
   "hud.reglagesModifies": "tuned settings: nothing is saved",

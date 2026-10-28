@@ -83,7 +83,7 @@ describe("la ligne à partager", () => {
 
   it("chaque médaille a son icône ; sans médaille, le morceau est omis ; 0 mort s'écrit", () => {
     const base = { number: 5, date: "2026-10-20", ticks: 3000, deaths: 0, kind: "jour" } as const;
-    expect(shareLine({ ...base, medal: "author" })).toBe(`Du Jour · Jump #5 — 25,000${NB}s — 🏆 — 0 💀`);
+    expect(shareLine({ ...base, medal: "author" })).toBe(`Du Jour · Jump #5 — 25,000${NB}s — 💎 — 0 💀`);
     expect(shareLine({ ...base, medal: "silver" })).toContain("— 🥈 —");
     expect(shareLine({ ...base, medal: "bronze" })).toContain("— 🥉 —");
     expect(shareLine({ ...base, medal: null })).toBe(`Du Jour · Jump #5 — 25,000${NB}s — 0 💀`);
@@ -352,7 +352,7 @@ describe("l'accueil", () => {
     const t = medalThresholds(m, m.silver);
     expect(t.map((x) => x.medal)).toEqual(["author", "gold", "silver", "bronze"]);
     expect(t.map((x) => x.reached)).toEqual([false, false, true, true]);
-    expect(t[0]).toMatchObject({ label: "Auteur", time: `30,000${NB}s` });
+    expect(t[0]).toMatchObject({ label: "Diamant", time: `30,000${NB}s` });
     expect(medalThresholds(m, null).some((x) => x.reached)).toBe(false);
   });
 

@@ -31,8 +31,8 @@ export interface JoueurDuJour {
   aProlonger: boolean;
   journeesParfaites: number;
   aujourdhuiParfaite: boolean;
-  /** Lot I3 : ses points du jour (tous jeux), sa place et le nombre de classés du jour (`null` tant qu'il n'a fini aucun jeu aujourd'hui). */
-  points?: number;
+  /** Lot A1 : son temps cumulé du jour (la somme de ses temps prouvés, `null` tant qu'il n'a pas fini tous les jeux du jour), sa place et le nombre de classés du jour (`null` tant qu'il n'a fini aucun jeu aujourd'hui). */
+  cumulMs?: number | null;
   rangDuJour?: number | null;
   classesDuJour?: number | null;
 }

@@ -529,9 +529,9 @@ button.dj-barre-jeu__retour {
   --medaille: var(--dj-or);
   --medaille-texte: var(--dj-medaille-texte);
 }
-.dj-medaille--auteur {
-  --medaille: var(--dj-auteur);
-  --medaille-texte: var(--dj-auteur-texte);
+.dj-medaille--diamant {
+  --medaille: var(--dj-diamant);
+  --medaille-texte: var(--dj-diamant-texte);
 }
 .dj-medaille--argent {
   --medaille: var(--dj-argent);
@@ -539,7 +539,7 @@ button.dj-barre-jeu__retour {
 .dj-medaille--bronze {
   --medaille: var(--dj-bronze);
 }
-.dj-medaille--track:not(.dj-medaille--auteur) {
+.dj-medaille--track:not(.dj-medaille--diamant) {
   --medaille-texte: var(--track-asphalte);
 }
 /* Pastille : un rond de la couleur (vide si pas encore) et le nom. */

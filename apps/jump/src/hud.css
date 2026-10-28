@@ -164,7 +164,7 @@ body:has(#arrival:not([hidden])) :is(#hud-gauche, #chrono, #hud-droite, #dayline
   stroke-width: 2.5;
 }
 .pc__fanion {
-  fill: var(--dj-auteur);
+  fill: var(--dj-diamant);
   stroke: var(--dj-encre);
   stroke-width: 1.5;
 }
@@ -180,8 +180,8 @@ body:has(#arrival:not([hidden])) :is(#hud-gauche, #chrono, #hud-droite, #dayline
   font-variant-numeric: tabular-nums;
 }
 .bande .ecart[data-signe="moins"] {
-  background: var(--dj-auteur);
-  color: var(--dj-auteur-texte);
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
 }
 
 /* --- En haut à droite : l'objectif de médaille (pastille + seuil) et l'autocollant des morts ------------------------------------------------------------ */

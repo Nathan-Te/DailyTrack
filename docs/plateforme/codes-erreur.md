@@ -50,6 +50,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `invalid_code` | 400 | Admin, effacement : code de transfert mal formé ou abîmé (somme de contrôle). | `POST /api/admin/effacer` |
 | `unauthorized` | 401 | Admin : jeton manquant ou incorrect. | `/api/admin/*` |
 | `invalid_date` | 400 | Date illisible (`AAAA-MM-JJ` attendue). | `/api/day/<j>…` (lot I2 : un encodage illisible aussi, plus jamais 500), `/api/submit`, `/api/admin/planning/<j>`, `/api/jump/day/<j>…`, `/api/portail/classement?date=` (lot I3) |
+| `invalid_view` | 400 | Classement du jour du portail : `vue` n'est ni `cumul` ni le dossier d'un jeu qui existe ce jour-là (lot A1). | `GET /api/portail/classement?vue=` |
 | `unknown_day` | 404 | Ce jour n'a pas (encore) de circuit ou de niveau : futur, ou avant le premier jour du jeu. | `/api/day/<j>…`, `/api/submit`, `/api/jump/day/<j>…`, `/api/portail/classement?date=` (lot I3 : un jour futur, ou d'avant les jeux) |
 | `day_closed` | 409 | Envoi pour un jour dont le classement est figé (jour passé, après la grâce de 10 minutes). | `POST /api/submit`, `/api/jump/submit`, `/api/jump/lives` |
 | `day_started` | 409 | Admin, planning : ce jour a déjà commencé, son circuit ne peut plus être remplacé. | `PUT` / `DELETE /api/admin/planning/<j>` |

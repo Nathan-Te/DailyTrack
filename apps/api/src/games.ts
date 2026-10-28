@@ -120,6 +120,8 @@ export interface ProfilPortail {
  */
 export interface ClasseDuJour {
   playerId: string;
+  /** Lot A1 : son meilleur temps **rejoué par le serveur**, en millisecondes (la valeur que le jeu classe : DailyJump arrondit ses pas). */
+  tempsMs: number;
   /** La médaille de son essai classé (la lecture des seuils du jour est celle du jeu, comme dans `etat`), ou `null` : fini sans médaille. */
   medaille: MedaillePortail | null;
   /** L'horodatage (ms) de l'essai classé : l'ultime départage du classement du jour (le premier à avoir atteint son total). */

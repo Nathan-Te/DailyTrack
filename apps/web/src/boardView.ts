@@ -22,7 +22,7 @@ export interface BoardLine {
 }
 
 /** Les médailles du jeu (`author`…) et celles du socle (`auteur`…). */
-export const MEDAL_TYPE = { author: "auteur", gold: "or", silver: "argent", bronze: "bronze" } as const;
+export const MEDAL_TYPE = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" } as const;
 
 /** Les lignes à montrer : les premiers, puis « … » et ta ligne si tu es plus loin. Les pseudos en double sont suffixés (`Nom·2`). */
 export function dayLines(lb: Pick<Leaderboard, "top" | "me">): (BoardLine | "gap")[] {

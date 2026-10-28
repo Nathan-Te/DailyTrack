@@ -192,8 +192,8 @@ describe(`portail : GET /api/portail/jour avec un joueur (${TEST_DB})`, () => {
     const [cdj, jump] = r.body.jeux;
     expect(cdj.etat).toEqual({ statut: "fini", tempsMs: s.body.ms, medaille: medalFor(s.body.ms, medalsFor(circuitOf(TODAY).authorMs)), rang: 1, classes: 1 });
     expect(jump.etat).toEqual({ statut: "pas_joue" });
-    const pointsTrack = { author: 4, gold: 3, silver: 2, bronze: 1 }[cdj.etat.medaille as "gold"] ?? 0;
-    expect(r.body.joueur).toEqual({ pseudo: "Alice", serie: 1, aProlonger: false, journeesParfaites: 0, aujourdhuiParfaite: false, points: pointsTrack, rangDuJour: 1, classesDuJour: 1 });
+    // Lot A1 : un seul jeu fini, donc pas de temps cumulé ; sa place (sous « un jeu sur deux ») existe quand même.
+    expect(r.body.joueur).toEqual({ pseudo: "Alice", serie: 1, aProlonger: false, journeesParfaites: 0, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: 1, classesDuJour: 1 });
     expect(r.headers.get("cache-control")).toBe("private, no-cache");
     expect(r.headers.get("vary")).toContain("X-Player-Id");
     // DailyJump en cours : des morts envoyées (rejouées), aucun essai classé.
@@ -221,7 +221,7 @@ describe(`portail : GET /api/portail/jour avec un joueur (${TEST_DB})`, () => {
     const r = await t.call("GET", "/api/portail/jour", undefined, as(7));
     // Parfaites : hier, avant-hier, et le 15/10 (la veille du premier jour de Jump : Track seul existait) ; pas le 16 (Jump existait, pas fini).
     expect(formatDay(TODAY - 5)).toBe("2026-10-15");
-    expect(r.body.joueur).toEqual({ pseudo: "J0007", serie: 5, aProlonger: true, journeesParfaites: 3, aujourdhuiParfaite: false, points: 0, rangDuJour: null, classesDuJour: null });
+    expect(r.body.joueur).toEqual({ pseudo: "J0007", serie: 5, aProlonger: true, journeesParfaites: 3, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: null, classesDuJour: null });
     expect(r.body.jeux.map((j: { etat: { statut: string } }) => j.etat.statut)).toEqual(["pas_joue", "pas_joue"]);
   });
 

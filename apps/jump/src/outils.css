@@ -226,7 +226,7 @@ body.touch #tune .sprint .switch {
   background: repeating-linear-gradient(45deg, var(--dj-argent) 0 1px, transparent 1px 12px);
 }
 #zones .zone.right {
-  background: repeating-linear-gradient(-45deg, var(--dj-auteur) 0 1px, transparent 1px 12px);
+  background: repeating-linear-gradient(-45deg, var(--dj-diamant) 0 1px, transparent 1px 12px);
 }
 #zones .zone.jump {
   background: repeating-linear-gradient(45deg, var(--dj-or) 0 1px, transparent 1px 12px);
@@ -373,7 +373,7 @@ body.gallery > :not(#gallery) {
   color: var(--dj-argent);
 }
 #gallery .tag.long {
-  color: var(--dj-auteur);
+  color: var(--dj-diamant);
 }
 #gallery .variant {
   display: flex;

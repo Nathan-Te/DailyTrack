@@ -196,13 +196,14 @@ for (const n of SIZES) {
   const tas = process.memoryUsage().heapUsed - heapAvant;
   await mesureClassement(n, "classement, sans joueur : ensuite (en mémoire)", api, "/api/portail/classement");
   const moi = await mesureClassement(n, "classement, joueur du milieu : sa ligne (ses états + le classement gardé)", api, "/api/portail/classement", milieu);
-  const jour = await mesureClassement(n, "jour, joueur du milieu : points et place (classement gardé)", api, "/api/portail/jour", milieu);
+  await mesureClassement(n, "classement d'un jeu (vue Track), sans joueur : premier appel d'une autre vue (ses pseudos)", api, "/api/portail/classement?vue=track");
+  const jour = await mesureClassement(n, "jour, joueur du milieu : cumul et place (classement gardé)", api, "/api/portail/jour", milieu);
   // Une instance neuve : le calcul se refait (une fois par fenêtre et par instance), puis l'accueil du joueur du milieu.
   const autre = make();
   await autre.handle(new Request("http://api.test/api/health"));
   await mesureClassement(n, "jour, joueur du milieu : instance neuve (calcul compris)", autre, "/api/portail/jour", milieu);
   console.log(
-    `        contrôle : ${premier.classes} classés, haut ${premier.top.length}, sa ligne ${moi.moi?.rang}e sur ${moi.moi?.classes}, jour ${jour.joueur?.rangDuJour}e sur ${jour.joueur?.classesDuJour} (${jour.joueur?.points} points) ; mémoire de l'instance ≈ ${(tas / 1024 / 1024).toFixed(1)} Mo`,
+    `        contrôle : ${premier.classes} classés, haut ${premier.top.length}, sa ligne ${moi.moi?.rang}e sur ${moi.moi?.classes}, jour ${jour.joueur?.rangDuJour}e sur ${jour.joueur?.classesDuJour} (${jour.joueur?.cumulMs} ms cumulées) ; mémoire de l'instance ≈ ${(tas / 1024 / 1024).toFixed(1)} Mo`,
   );
 }
 console.log("\nRésumé du lot I3 (joueurs · lecture : instructions / lignes lues / écrites / ms) :");

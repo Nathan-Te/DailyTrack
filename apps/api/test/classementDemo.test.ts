@@ -25,14 +25,27 @@ describe(`joueurs de démonstration du classement du jour (${TEST_DB})`, () => {
     const r = await t.call("GET", "/api/portail/classement");
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(r.body.classes).toBe(20);
-    const lignes = r.body.top as { points: number; resultats: Record<string, { medaille: string | null } | null> }[];
-    // Variété : au moins trois totaux différents, au moins trois médailles différentes (hors « aucune »), des cases vides dans chaque jeu.
-    expect(new Set(lignes.map((l) => l.points)).size).toBeGreaterThanOrEqual(3);
+    const lignes = r.body.top as { tempsMs: number | null; complet: boolean; resultats: Record<string, { medaille: string | null } | null> }[];
+    // Variété : au moins trois temps cumulés différents, au moins deux médailles différentes (hors « aucune »), des cases vides dans chaque jeu.
+    expect(new Set(lignes.map((l) => l.tempsMs)).size).toBeGreaterThanOrEqual(3);
     const medailles = new Set(lignes.flatMap((l) => Object.values(l.resultats).map((x) => x?.medaille ?? null)));
     expect([...medailles].filter((m) => m !== null).length).toBeGreaterThanOrEqual(2);
     expect(lignes.some((l) => l.resultats.cdj === null)).toBe(true);
     expect(lignes.some((l) => l.resultats.jump === null)).toBe(true);
     expect(lignes.some((l) => l.resultats.cdj && l.resultats.jump)).toBe(true);
+    // Les trois cas du lot A1 : les deux jeux finis d'abord (cumul croissant), puis « un jeu sur deux » ; des égalités de temps au cumul et dans chaque jeu.
+    const complets = lignes.filter((l) => l.complet);
+    expect(complets.length).toBeGreaterThanOrEqual(5);
+    expect(lignes.length - complets.length).toBeGreaterThanOrEqual(3);
+    expect(lignes.map((l) => l.complet)).toEqual([...lignes.map((l) => l.complet)].sort((a, b) => Number(b) - Number(a)));
+    const temps = complets.map((l) => l.tempsMs as number);
+    expect(temps).toEqual([...temps].sort((a, b) => a - b));
+    expect(new Set(temps).size).toBeLessThan(temps.length);
+    for (const vue of ["track", "jump"]) {
+      const v = (await t.call("GET", `/api/portail/classement?vue=${vue}`)).body.top as { tempsMs: number }[];
+      expect(v.length).toBeGreaterThanOrEqual(10);
+      expect(new Set(v.map((l) => l.tempsMs)).size).toBeLessThan(v.length);
+    }
     // Trois jours : hier et avant-hier ont aussi leur classement.
     expect((await t.call("GET", `/api/portail/classement?date=2026-10-19`)).body.classes).toBeGreaterThanOrEqual(15);
     // Le script repasse (chaque jour) : les mêmes joueurs, sans doublon.

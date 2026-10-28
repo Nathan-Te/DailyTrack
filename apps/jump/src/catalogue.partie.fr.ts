@@ -9,7 +9,7 @@ export const fr = {
   "hud.pc.aria": "Point de passage {pc} sur {total}",
   "hud.ecart.aria": "Écart avec ton record : {ecart}",
   "hud.objectif.aria": "Médaille visée : {medaille}, {temps}",
-  "hud.objectif.auteurBattu": "Auteur battu",
+  "hud.objectif.auteurBattu": "Diamant obtenu",
   "hud.mode.archive": "Archive",
   "hud.mode.essai": "Essai · {theme}",
   "hud.reglagesModifies": "réglages modifiés : rien n'est enregistré",
