@@ -6,8 +6,8 @@ import { lier, lierMentions, onLangue, t } from "./i18n";
 // puis les actions rares — tout recommencer, le fantôme, le son, les réglages (l'écran Réglages, dans le cadre crème), « Comment jouer », le plein écran
 // (si le navigateur le permet), l'accueil de Jump, « ‹ DU JOUR » (le portail) et les mentions légales ; la version du jeu en petit. Ouverte, la partie est
 // en pause (aucun pas de simulation : le chrono est figé). Les réglages du joueur (son, sensations, fantôme du premier, taches) sont dans `settingsUi.ts`.
-// « Depuis le point de passage » de la maquette n'existe pas : la simulation n'a pas de retour volontaire au fanion (une mort volontaire changerait la
-// simulation et les rediffusions) — écart noté dans le README du lot.
+// Lot 27 : « Depuis le point de passage » existe (la reprise volontaire, quatrième bit de la commande, niveaux en version 11) ; elle n'est montrée que quand elle a un sens
+// (un point franchi, un niveau de la version 11). Comme DailyTrack, la touche R la fait et Entrée recommence à zéro.
 
 export interface PauseView {
   /** « Niveau n° 5 · Forêt » (vide pour un morceau ou un scénario). */
@@ -20,11 +20,15 @@ export interface PauseView {
   sound: boolean;
   /** « sim v3 · 2026-10-20 » (l'étiquette de version n'est plus dans le jeu qu'avec `?debug`). */
   version: string;
+  /** Lot 27 : la reprise au dernier point de passage a un sens (un point franchi, niveau en version 11). */
+  canResume: boolean;
 }
 
 export interface PauseMenuOptions {
   onResume(): void;
   onRestart(): void;
+  /** Lot 27 : « Depuis le point de passage » (reprise volontaire, le chrono continue). */
+  onRespawn?(): void;
   onGhost(): void;
   onSound(): void;
   onSettings(): void;
@@ -61,6 +65,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
     return b;
   };
   const restart = second("menu-restart", "pause.recommencer", () => opts.onRestart());
+  const respawn = second("menu-respawn", "pause.pointDePassage", () => opts.onRespawn?.());
   const ghost = second("menu-ghost", "pause.fantome.oui", () => opts.onGhost());
   const sound = second("menu-sound", "pause.son.oui", () => opts.onSound());
   const settings = second("menu-settings", "pause.reglages", () => opts.onSettings());
@@ -75,7 +80,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   // Lot R5 (plateforme) : la page « Mentions légales et confidentialité » du site (racine de playdujour.com) ; lot I6 : celle de la langue choisie.
   const mentions = lierMentions(lier(el("a", { classe: "pause__lien", attrs: { id: "menu-mentions", href: "../mentions-legales/" } }), "pause.mentions"));
   const version = el("span", { classe: "pause__version", attrs: { id: "menu-version" } });
-  const actions = el("div", { classe: "pause__actions" }, restart, ghost, sound, settings, help, full, home, portail);
+  const actions = el("div", { classe: "pause__actions" }, respawn, restart, ghost, sound, settings, help, full, home, portail);
   dialog.append(tete, replique, resume, actions, el("div", { classe: "pause__pied" }, mentions, version));
   document.body.append(root);
 
@@ -94,6 +99,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
     lier(sound, v.sound ? "pause.son.oui" : "pause.son.non");
     sound.setAttribute("aria-pressed", v.sound ? "true" : "false");
     version.textContent = v.version;
+    respawn.hidden = !v.canResume;
   };
   onLangue(() => {
     if (view) show(view);

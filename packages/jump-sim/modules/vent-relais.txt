@@ -1,5 +1,5 @@
 id: vent-relais
-intention: Un enchaînement : planer sur la colonne d'air au-dessus du gouffre, traverser le pont d'îlots contre le vent, puis attendre la rafale qui porte entre les deux scies.
+intention: Un enchaînement : planer sur la colonne d'air au-dessus du gouffre, traverser le pont d'îlots contre le vent, puis se laisser porter par le vent (une rafale à attendre jusqu'à g20, un souffle continu depuis g21) entre les deux scies.
 etiquettes: precision scie vent
 famille: vent-colonne
 theme: foret
@@ -12,6 +12,9 @@ repeter: pont colonnes 24-24
 repeter: pont colonnes 29-29
 variante: trou=1 pont=3 force=50 cycle=280 actif=150
 variante: trou=1 pont=3 force=40 cycle=280 actif=150
+variante: trou=1 pont=3 force=50 cycle=0 actif=0
+variante: trou=1 pont=3 force=40 cycle=0 actif=0
+variante: trou=2 pont=3 force=50 cycle=0 actif=0
 grille:
 ...................................................
 ...................................................

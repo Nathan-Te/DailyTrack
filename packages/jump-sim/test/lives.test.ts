@@ -37,11 +37,14 @@ function livesOf(level: Level, solution: JumpReplay, seed: number, attempts: num
 const DAILY = dailyLevel(daysFromCivil(2026, 10, 30));
 /** Lot 15 : le même jour en version 3 (g9, une horloge par section) : les règles d'en-tête d'avant valent toujours pour lui. */
 const DAILY_V3 = dailyLevel(daysFromCivil(2026, 10, 30), null, 3);
+/** Lot 27 : le même jour en version 10 (g20) : la reprise au départ, chrono qui continue, existe encore pour lui (la v11 recommence l'essai à zéro). */
+const DAILY_V10 = dailyLevel(daysFromCivil(2026, 10, 30), null, 10);
 
 describe("checkLife : les vies vécues sont acceptées, rejouées à l'identique", () => {
   for (const [name, level, solution, id] of [
     ["essai", ESSAI_LEVEL, ESSAI, "essai"],
     ["niveau du 30/10/2026", DAILY.level, DAILY.replay, DAILY.id],
+    ["niveau du 30/10/2026 en v10 (g20)", DAILY_V10.level, DAILY_V10.replay, DAILY_V10.id],
     ["niveau du 30/10/2026 en v3 (g9)", DAILY_V3.level, DAILY_V3.replay, DAILY_V3.id],
   ] as const) {
     it(name, () => {
@@ -114,16 +117,16 @@ describe("lifeStartProblem : un en-tête qu'aucune partie ne produit est refusé
   });
 });
 
-describe("lot 15 — lifeStartProblem d'un niveau à une seule horloge (v4)", () => {
-  const level = DAILY.level;
-  const lives = livesOf(level, DAILY.replay, 7, 30);
+describe("lot 15 — lifeStartProblem d'un niveau à une seule horloge (v4 à v10)", () => {
+  const level = DAILY_V10.level;
+  const lives = livesOf(level, DAILY_V10.replay, 7, 30);
 
   it("des vies reprennent au départ, chrono qui continue (mort avant le premier point) : leur en-tête passe et elles se rejouent", () => {
     const again = lives.filter((l) => l.life.start.checkpoint < 0 && l.life.start.time > 0);
     expect(again.length).toBeGreaterThan(0);
     for (const l of again) {
       expect(lifeStartProblem(level, l.life.start)).toBeNull();
-      expect(checkLife(level, l.replay, DAILY.id).ok).toBe(true);
+      expect(checkLife(level, l.replay, DAILY_V10.id).ok).toBe(true);
     }
   });
 
@@ -143,6 +146,30 @@ describe("lot 15 — lifeStartProblem d'un niveau à une seule horloge (v4)", ()
     const again = lives.find((l) => l.life.start.checkpoint < 0 && l.life.start.time > 0)!;
     const r = checkLife(DAILY_V3.level, { ...again.replay, simVersion: 3, levelId: DAILY_V3.id }, DAILY_V3.id);
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("lot 27 — lifeStartProblem d'un niveau en version 11 (un nouvel essai à zéro avant le premier point)", () => {
+  const level = DAILY.level;
+  const lives = livesOf(level, DAILY.replay, 7, 30);
+
+  it("plus aucune vie ne reprend au départ avec un chrono qui continue : toutes celles du départ commencent à zéro, et se rejouent", () => {
+    const fromStart = lives.filter((l) => l.life.start.checkpoint < 0);
+    expect(fromStart.length).toBeGreaterThan(0);
+    for (const l of fromStart) {
+      expect(l.life.start.time).toBe(0);
+      expect(checkLife(level, l.replay, DAILY.id).ok).toBe(true);
+    }
+    // Des morts avant le premier point : l'essai s'arrête là (la vie du départ finit par une mort).
+    expect(fromStart.some((l) => l.life.end === "mort")).toBe(true);
+  });
+
+  it("une vie « partie du départ avec un chrono qui continue » est refusée ; celles qui partent d'un point passent", () => {
+    expect(lifeStartProblem(level, { checkpoint: -1, held: 0, time: 0, sections: [], elan: 0 })).toBeNull();
+    expect(lifeStartProblem(level, { checkpoint: -1, held: 0, time: 500, sections: [], elan: 0 })).toMatch(/commence à zéro/);
+    const cp = lives.find((l) => l.life.start.checkpoint >= 0)!;
+    expect(lifeStartProblem(level, cp.life.start)).toBeNull();
+    expect(checkLife(level, cp.replay, DAILY.id).ok).toBe(true);
   });
 });
 

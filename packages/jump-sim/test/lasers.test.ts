@@ -93,8 +93,8 @@ describe("lot 25 — la version de la simulation", () => {
     expect(LASER_VERSION).toBe(9);
     expect(STALACTITE_VERSION).toBe(8);
     expect(LASER_GENERATOR).toBe(19);
-    expect(JUMP_SIM_VERSION).toBe(10);
-    expect(JUMP_GENERATOR_VERSION).toBe(20);
+    expect(JUMP_SIM_VERSION).toBe(11);
+    expect(JUMP_GENERATOR_VERSION).toBe(21);
     expect(gate().simVersion).toBe(9);
     expect(DEATH_LASER).toBe(6);
     expect(DEATH_NAMES[DEATH_LASER]).toBe("laser");

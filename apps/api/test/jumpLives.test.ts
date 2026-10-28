@@ -1,15 +1,21 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import {
+  DEFAULT_JUMP_PARAMS,
+  INPUT_RESPAWN,
   JUMP_GENERATOR_VERSION,
   JUMP_SIM_VERSION,
   dailyLevel,
   demoAttempts,
   encodeReplay,
+  fromRuns,
+  initialAttempt,
   lifeReplay,
   replayAttempt,
   sectionAt,
+  stepAttempt,
   tileOf,
+  toRuns,
   type DailyLevel,
   type JumpReplay,
 } from "@cdj/jump-sim";
@@ -186,6 +192,35 @@ describe(`POST /api/jump/lives (${TEST_DB})`, () => {
     expect([tooMany.status, tooMany.body.error]).toEqual([413, "too_many_lives"]);
     const empty = await t.call("POST", "/api/jump/lives", lot([]), as(7));
     expect(empty.status).toBe(400);
+  });
+
+  it("lot 27 : une reprise volontaire n'est pas une mort — le serveur la rejoue, ne la compte pas parmi les morts ni dans les 30, et la vie qu'elle clôt n'est « pas une mort »", async () => {
+    expect(D.level.simVersion).toBeGreaterThanOrEqual(11);
+    // La preuve de l'auteur avec, 40 pas après le premier point de passage, la reprise volontaire (quatrième bit de la commande).
+    const inputs = fromRuns(D.replay.runs);
+    let s = initialAttempt(D.level);
+    let k = -1;
+    for (let i = 0; i < inputs.length && k < 0; i++) {
+      s = stepAttempt(s, inputs[i]!, D.level, DEFAULT_JUMP_PARAMS);
+      if (s.checkpoint >= 0) k = i;
+    }
+    expect(k).toBeGreaterThan(0);
+    inputs[k + 40] = inputs[k + 40]! | INPUT_RESPAWN;
+    const replay: JumpReplay = { ...D.replay, runs: toRuns(inputs.slice(0, k + 60)) };
+    const r = replayAttempt(D.level, replay, D.id);
+    expect(r.deaths, "aucune mort : la reprise n'en est pas une").toHaveLength(0);
+    expect(r.lives.map((l) => l.end)).toEqual(["abandon", "abandon"]);
+    const t = await livesApi();
+    await known(t, 8);
+    const codes = r.lives.map((l) => encodeReplay(lifeReplay(replay, l)));
+    const sent = await t.call("POST", "/api/jump/lives", lot([...codes, ...deaths.slice(0, 3).map((d) => d.code)]), as(8));
+    expect(sent.status, JSON.stringify(sent.body)).toBe(200);
+    // Les deux vies de la reprise : valides (rejouées) mais pas des morts ; seules les trois vraies morts comptent, dans les 30.
+    expect(sent.body).toMatchObject({ accepted: 3, notDeath: 2, invalid: 0, overCap: 0, dayCount: 3, cap: JUMP_LIVES_PER_DAY });
+    expect(sent.body.results).toEqual(["not_death", "not_death", "ok", "ok", "ok"]);
+    // Un essai entier avec une reprise (la rediffusion de l'essai, pas une vie) n'est pas une vie : une seule vie par rediffusion.
+    const whole = await t.call("POST", "/api/jump/lives", lot([encodeReplay(replay)]), as(8));
+    expect(whole.body).toMatchObject({ accepted: 0, invalid: 1 });
   });
 
   it("une vie trop longue (plus de 2 minutes) n'est pas rejouée", async () => {

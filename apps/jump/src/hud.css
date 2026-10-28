@@ -553,6 +553,106 @@ body.touch .carnage__aide {
   }
 }
 
+/* --- Le résultat pendant la rediffusion et le carnage (lot 27) : un autocollant compact à gauche, sous le titre du carnage — l'arrivée est devant le héros (à droite), le carnage au milieu ---- */
+#resultat {
+  position: fixed;
+  z-index: var(--z-carnage);
+  left: max(12px, env(safe-area-inset-left));
+  top: calc(max(10px, env(safe-area-inset-top)) + 80px);
+  box-sizing: border-box;
+  width: 196px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px 8px 8px;
+  border-width: var(--dj-trait-fort);
+  box-shadow: 4px 4px 0 var(--dj-encre);
+  transform: rotate(-1.5deg);
+  font-family: var(--dj-police-texte);
+  font-weight: 700;
+  pointer-events: auto;
+}
+#resultat[hidden] {
+  display: none;
+}
+body.home-open #resultat,
+body.paused #resultat {
+  visibility: hidden;
+}
+.resultat__tete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+}
+.resultat__temps {
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.resultat__lignes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  font-size: var(--dj-taille-13);
+  line-height: 1.2;
+}
+.resultat__lignes [hidden] {
+  display: none;
+}
+.resultat__ecart {
+  font-size: var(--dj-taille-13);
+  line-height: 1.2;
+}
+.resultat__ecart[data-ton="mieux"]::before {
+  content: "▲ ";
+}
+.resultat__ecart[data-ton="pire"]::before {
+  content: "▼ ";
+}
+#resultat-rejouer {
+  min-height: var(--dj-cible);
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+}
+.resultat__rangee {
+  display: flex;
+  gap: 6px;
+}
+.resultat__rangee > * {
+  flex: 1;
+  min-width: 0;
+}
+.resultat__rangee .dj-bouton {
+  min-height: var(--dj-cible);
+  padding-inline: 6px;
+  font-size: var(--dj-taille-13);
+}
+.resultat__parfaite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: var(--dj-taille-12);
+  line-height: 1.2;
+}
+/* Téléphone en paysage bas (360 px de haut ou moins) : seuls le résultat et REJOUER tiennent entre le titre et la barre de lecture ; le classement et la suite sont à l'écran d'arrivée (« Fermer »). */
+@media (max-height: 380px) {
+  .resultat__rangee {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
+  #resultat {
+    top: calc(max(10px, env(safe-area-inset-top)) + 64px);
+  }
+}
+
 /* --- Le bandeau d'arrivée (morceaux, scénarios, lectures, essais) : une étiquette jaune au-dessus de la couche tactile ------------------------------------- */
 .bandeau {
   position: fixed;
@@ -610,8 +710,67 @@ body.touch .bandeau .hint {
   display: none;
 }
 body.paused #finish,
-body.paused #toast {
+body.paused #toast,
+body.paused #decompte,
+body.home-open #decompte {
   visibility: hidden;
+}
+
+/* --- Le décompte avant le départ (lot 27) : « 3, 2, 1, Partez ! », une annonce au premier tiers de l'écran — le personnage est au milieu, jamais couvert ; une étiquette jaune
+   de la charte (comme l'autocollant des morts), sans animation (rien ne clignote) ----------------------------------------------------------------------------------------- */
+#decompte {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: 50%;
+  top: 24%;
+  transform: translateX(-50%) rotate(-2deg);
+  min-width: 2.4em;
+  max-width: calc(100% - 24px);
+  padding: 4px 22px 2px;
+  text-align: center;
+  background: var(--jump-jaune);
+  color: var(--jump-encre);
+  border-width: var(--dj-trait-fort);
+  box-shadow: 4px 4px 0 var(--dj-encre);
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: 56px;
+  line-height: 1;
+  pointer-events: none;
+  contain: layout paint style;
+}
+#decompte.decompte--go {
+  font-size: 40px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+/* Téléphone en paysage (390 px de haut) : un peu plus petit, pour rester dans le premier tiers. */
+@media (max-height: 460px) {
+  #decompte {
+    top: 20%;
+    font-size: 44px;
+  }
+  #decompte.decompte--go {
+    font-size: 32px;
+  }
+}
+
+/* --- Les plaques d'action tactiles (lot 27, comme DailyTrack) : à côté de la pause, aux doigts seulement — le dernier point de passage (drapeau) et recommencer à zéro --- */
+#hud-gauche .plaque--action {
+  display: none;
+}
+body.touch #hud-gauche .plaque--action {
+  display: flex;
+}
+#hud-gauche .plaque--action[hidden] {
+  display: none;
+}
+/* Petit portrait (390 px) : la bande du centre prend la place, il n'en reste pas pour trois plaques — on joue en paysage (« Tourne ton téléphone ») ; le dernier point de passage
+   et « recommencer » sont alors dans la pause. */
+@media (orientation: portrait) and (max-width: 599px) {
+  body.touch #hud-gauche .plaque--action {
+    display: none;
+  }
 }
 /* Focus visible sur la scène sombre : contour ambre (charte § 10), le bouton de pause et ⚙ étant posés sur le niveau. */
 #hud-gauche :focus-visible {

@@ -1,5 +1,5 @@
 id: vent-rafale
-intention: Attendre la rafale au bord du gouffre, puis s'y lancer : elle porte assez loin, entre les deux scies, pour atteindre l'autre bord.
+intention: Se lancer du bord du gouffre : le vent porte assez loin, entre les deux scies, pour atteindre l'autre bord — par rafales (il fallait attendre la bonne) jusqu'au générateur g20, en continu depuis g21.
 etiquettes: scie precision vent
 famille: vent-rafale
 theme: foret
@@ -12,6 +12,8 @@ variante: trou=1 cycle=200 actif=130 decalage=100
 variante: trou=2 cycle=240 actif=120 decalage=130
 variante: trou=1 cycle=240 actif=125 decalage=130
 variante: trou=1 cycle=200 actif=115 decalage=100
+variante: trou=1 cycle=0 actif=0 decalage=0
+variante: trou=2 cycle=0 actif=0 decalage=0
 grille:
 ................
 ................

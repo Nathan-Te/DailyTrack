@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 10;
+export const JUMP_SIM_VERSION = 11;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -67,6 +67,16 @@ export const LASER_VERSION = 9;
  * sans pont se joue **exactement** comme en v3 à v9 : les golden n'ont pas bougé. Les niveaux du jour depuis le générateur g20 sont en v10 ; les morceaux seuls restent en v3.
  */
 export const BRIDGE_VERSION = 10;
+/**
+ * Lot 27 : **version 11 = version 10 + un nouvel essai à zéro avant le premier point de passage, et la reprise volontaire**. (1) Une mort **avant** le premier point de passage ne fait plus
+ * reprendre au départ avec un chrono qui continue (lot 15) : après l'attente (`RESPAWN_TICKS`, pendant laquelle le décor continue de tourner, ce qui masque le changement), l'essai **recommence à
+ * zéro** — chrono à 0, horloge des dangers à leur phase de départ, immédiatement, sans décompte. L'essai qui a fini par cette mort est clos (rediffusion, vie). Après le premier point, rien ne change :
+ * on reprend au dernier point et le chrono continue. (2) Une **commande de plus**, `INPUT_RESPAWN` (bit 8) : au pas où elle est donnée, un personnage vivant reprend **tout de suite** au dernier
+ * point de passage franchi, chrono qui continue (ce pas compris) ; sans point franchi elle est sans effet (le jeu fait alors « recommencer à zéro », qui n'est pas une commande). Ce n'est pas
+ * une mort. Dans une rediffusion de version 11, une série est codée `count × 16 + bits` (les rediffusions des versions d'avant gardent `count × 8 + bits`). Les niveaux du jour depuis le générateur g21 sont en v11 ;
+ * un niveau sans point de passage ni commande de reprise se joue comme avant, mais ses morts ne reprennent plus au départ : les golden v3 à v10 n'ont pas bougé.
+ */
+export const RESTART_VERSION = 11;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -90,9 +100,10 @@ export const BRIDGE_VERSION = 10;
  * 17 depuis le lot 23 (champignons : niveaux en sim v7, morceaux de la forêt à champignons, règles du générateur) ;
  * 18 depuis le lot 24 (stalactites : niveaux en sim v8, morceaux de la glace à stalactites, règles du générateur) ;
  * 19 depuis le lot 25 (lasers : niveaux en sim v9, morceaux du néon à lasers, règles du générateur ; variété `VARIETY_DAYS` = 4) ;
- * 20 depuis le lot 26 (ponts à interrupteur : niveaux en sim v10, morceaux de la nuit à ponts, règles du générateur ; équilibre des mécaniques de chaque thème).
+ * 20 depuis le lot 26 (ponts à interrupteur : niveaux en sim v10, morceaux de la nuit à ponts, règles du générateur ; équilibre des mécaniques de chaque thème) ;
+ * 21 depuis le lot 27 (niveaux en sim v11 : un nouvel essai à zéro avant le premier point de passage, reprise volontaire ; forêt : le vent souffle en continu, plus de rafales).
  */
-export const JUMP_GENERATOR_VERSION = 20;
+export const JUMP_GENERATOR_VERSION = 21;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

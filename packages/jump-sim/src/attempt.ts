@@ -1,4 +1,4 @@
-import { SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
+import { RESTART_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { boxHits, sweep, tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
 import {
@@ -43,7 +43,7 @@ import {
   type Level,
   type Point,
 } from "./level";
-import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED, PLAYER_HEIGHT, PLAYER_WIDTH, initialPlayer, stepPlayerJump, type JumpFlags, type JumpParams, type PlayerState, type WindPush } from "./player";
+import { COUNTER_CAP, INPUT_ATTEMPT_MASK, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RESPAWN, INPUT_RIGHT, MAX_SPEED, PLAYER_HEIGHT, PLAYER_WIDTH, initialPlayer, stepPlayerJump, type JumpFlags, type JumpParams, type PlayerState, type WindPush } from "./player";
 
 // Un essai (lot 2) : le personnage plus tout l'état dynamique du niveau (scies, sections en marche, blocs friables, ressort), un chrono
 // en pas, la mort et l'arrivée. `stepAttempt` est pur et avance d'un pas ; tout l'état est entier. Règles :
@@ -743,7 +743,11 @@ export interface AttemptEvents {
  * Un pas d'essai (1/120 s). Pur : `state` n'est pas modifié ; un état inchangé est rendu tel quel (même objet). `input` = bits `INPUT_*`.
  */
 export function stepAttempt(state: Readonly<AttemptState>, input: number, level: Level, params: Readonly<JumpParams>, events: AttemptEvents | null = null): AttemptState {
-  if (!Number.isInteger(input) || input < 0 || input > INPUT_MASK) throw new RangeError(`Commande invalide : ${input}`);
+  // Lot 27 (v11) : le quatrième bit, `INPUT_RESPAWN`, reprend tout de suite au dernier point de passage ; les trois autres sont la commande du personnage.
+  const restart = level.simVersion >= RESTART_VERSION;
+  if (!Number.isInteger(input) || input < 0 || input > (restart ? INPUT_ATTEMPT_MASK : INPUT_MASK)) throw new RangeError(`Commande invalide : ${input}`);
+  const resume = (input & INPUT_RESPAWN) !== 0;
+  input &= INPUT_MASK;
   const jump = input & INPUT_JUMP ? 1 : 0;
 
   if (events) {
@@ -771,15 +775,21 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
       }
       return waiting;
     }
-    if (state.checkpoint >= 0 || single) {
+    if (state.checkpoint >= 0 || (single && !restart)) {
       const back = state.checkpoint >= 0 ? checkpointAttempt(level, { ...state, time }) : respawnAttempt(level, { ...state, time });
       if (jump) back.player = { ...back.player, held: 1 };
       return back;
     }
-    // Nouvel essai : l'état initial exact. Le bouton de saut tenu à cet instant est noté comme tenu : il ne fera pas sauter tout seul.
+    // Nouvel essai : l'état initial exact (v3 ; lot 27, v11 : une mort avant le premier point de passage recommence l'essai à zéro, chrono et horloge compris). Le bouton de saut tenu à cet instant est noté comme tenu : il ne fera pas sauter tout seul.
     const fresh = initialAttempt(level);
     if (jump) fresh.player = { ...fresh.player, held: 1 };
     return fresh;
+  }
+  // Lot 27 (v11) : la reprise volontaire — tout de suite, au dernier point de passage franchi ; le chrono continue (ce pas compris). Sans point franchi, la commande est sans effet.
+  if (resume && state.checkpoint >= 0) {
+    const back = checkpointAttempt(level, { ...state, time: state.time + 1 });
+    if (jump) back.player = { ...back.player, held: 1 };
+    return back;
   }
   // v3 : le monde attend la première commande. v4 (lot 15) : le chrono part au premier pas, commandé ou non.
   if (state.status === ATTEMPT_READY && !single) {

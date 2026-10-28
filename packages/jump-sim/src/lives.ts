@@ -1,5 +1,5 @@
 import { RESPAWN_TICKS } from "./attempt";
-import { SINGLE_CLOCK_VERSION } from "./constants";
+import { RESTART_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import type { Level } from "./level";
@@ -19,6 +19,8 @@ import { JumpReplayError, replayAttempt, type JumpReplay, type LifeEnd, type Rep
 //     marche dans l'ordre du parcours (de gauche à droite) ; le chrono laisse au moins la mort et l'attente de la reprise après la dernière.
 // Lot 15, niveau en version 4 (une seule horloge) : aucune section dans l'en-tête ; départ `S` : chrono 0 (la première vie), ou une reprise au
 // départ après une mort sans point de passage (chrono d'au moins la mort et l'attente) ; point de passage : il existe, et le même chrono minimal.
+// Lot 27, niveau en version 11 : une mort avant le premier point recommence l'essai à zéro (la vie qui finit là est la dernière de son essai) ; une reprise volontaire au dernier point
+// ouvre une vie sur ce point, comme une mort (elle ne compte pas parmi les morts). Une vie partie du départ commence donc toujours à zéro.
 // Une vie s'arrête à sa fin : rien après sa mort (pas d'attente ni de vie suivante dans la même rediffusion).
 // Aucune version ne change : cette aide ne fait que lire `replayAttempt` et l'en-tête.
 
@@ -57,6 +59,8 @@ export function lifeStartProblem(level: Level, start: ReplayStart): string | nul
   if (level.simVersion >= SINGLE_CLOCK_VERSION) {
     if (start.sections.length !== 0) return "Un niveau à une seule horloge n'a pas de sections dans l'en-tête";
     if (start.checkpoint >= 0 && !level.checkpoints[start.checkpoint]) return `Point de passage ${start.checkpoint} absent de ce niveau`;
+    // Lot 27 (v11) : plus de reprise au départ avec un chrono qui continue : une vie partie du départ commence à zéro.
+    if (level.simVersion >= RESTART_VERSION && start.checkpoint < 0 && start.time !== 0) return "Une vie partie du départ commence à zéro (l'essai recommence à zéro)";
     if ((start.checkpoint >= 0 || start.time !== 0) && start.time < RESPAWN_TICKS + 1) return "Chrono trop court pour une reprise";
     return null;
   }

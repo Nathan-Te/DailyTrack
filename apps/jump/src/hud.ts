@@ -55,6 +55,11 @@ export interface Hud {
   hideFinish(): void;
   /** Message bref sous la bande (point de passage atteint, lecture…). */
   toast(text: string): void;
+  /**
+   * Lot 27 : le décompte avant le départ — `3`, `2`, `1` (affichés tant que le décompte dure), `"go"` (« Partez ! », un instant) ou `null` (rien). Le DOM n'est écrit que si
+   * l'état change. Texte lu à haute voix poliment (`aria-live`) ; jamais au centre du personnage (il est au premier tiers de l'écran).
+   */
+  decompte(etat: number | "go" | null): void;
   readonly finishShown: boolean;
 }
 
@@ -150,6 +155,9 @@ export function mountHud(opts: { onRestart(): void; carnage: CarnageControls }):
 
   const toastEl = $("#toast");
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  const decompteEl = $("#decompte");
+  let decompteEtat: number | "go" | null = null;
+  let decompteTimer: ReturnType<typeof setTimeout> | null = null;
   // Une clé par plaque : le DOM n'est écrit que si son texte change (fluidité, retouche du lot I4).
   let lastTime = "";
   let lastDeaths = -1;
@@ -258,6 +266,27 @@ export function mountHud(opts: { onRestart(): void; carnage: CarnageControls }):
       toastEl.classList.add("show");
       if (toastTimer) clearTimeout(toastTimer);
       toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1600);
+    },
+    decompte(etat) {
+      if (etat === decompteEtat) return;
+      decompteEtat = etat;
+      if (decompteTimer) clearTimeout(decompteTimer);
+      decompteTimer = null;
+      if (etat === null || etat === 0) {
+        decompteEl.hidden = true;
+        decompteEl.textContent = "";
+        decompteEtat = null;
+        return;
+      }
+      decompteEl.textContent = etat === "go" ? t("decompte.partez") : String(etat);
+      decompteEl.classList.toggle("decompte--go", etat === "go");
+      decompteEl.hidden = false;
+      // « Partez ! » ne reste qu'un instant (le chrono est parti) ; un chiffre reste tant que le décompte dure.
+      if (etat === "go")
+        decompteTimer = setTimeout(() => {
+          decompteEl.hidden = true;
+          decompteEtat = null;
+        }, 700);
     },
     hideFinish() {
       banner.hidden = true;

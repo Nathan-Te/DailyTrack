@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
+import { BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
 import { idiv } from "./idiv";
 import { jumpThemeForDay, type JumpThemeName } from "./themes";
 import type { SlowRoute } from "./voies";
@@ -19,9 +19,9 @@ export function levelNumber(day: number): number {
  * Identifiant du niveau d'une date : `jour-AAAA-MM-JJ-g<JUMP_GENERATOR_VERSION>` (identifiant des rediffusions et de la mémoire). Un thème
  * **forcé** (lot 11 : un autre que celui de la date) y ajoute `-t<thème>` : c'est un essai (`forcedTheme`), jamais enregistré.
  */
-export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = BRIDGE_VERSION): string {
+export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = RESTART_VERSION): string {
   const natural = jumpThemeForDay(day);
-  const g = simVersion >= BRIDGE_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= LASER_VERSION ? LASER_GENERATOR : simVersion >= STALACTITE_VERSION ? STALACTITE_GENERATOR : simVersion >= MUSHROOM_VERSION ? MUSHROOM_GENERATOR : simVersion >= PRESS_VERSION ? PRESS_GENERATOR : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
+  const g = simVersion >= RESTART_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= BRIDGE_VERSION ? BRIDGE_GENERATOR : simVersion >= LASER_VERSION ? LASER_GENERATOR : simVersion >= STALACTITE_VERSION ? STALACTITE_GENERATOR : simVersion >= MUSHROOM_VERSION ? MUSHROOM_GENERATOR : simVersion >= PRESS_VERSION ? PRESS_GENERATOR : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
   return `jour-${formatDay(day)}-g${g}${forced !== null && forced !== natural ? `-t${forced}` : ""}`;
 }
 
@@ -58,6 +58,11 @@ export const LASER_GENERATOR = 19;
  * à ponts, sans la règle d'équilibre des mécaniques). Les niveaux du jour depuis le générateur g20 (`BRIDGE_GENERATOR`) sont en version 10.
  */
 export const BRIDGE_GENERATOR = 20;
+/**
+ * Lot 27 : le dernier générateur des niveaux en version 10 est g20 : `dailyLevel(jour, thème, 10)` le rend encore, à l'identique (référence v10 : mort avant le premier point = reprise au départ,
+ * chrono qui continue ; forêt à rafales). Les niveaux du jour depuis le générateur g21 (`RESTART_GENERATOR`) sont en version 11.
+ */
+export const RESTART_GENERATOR = 21;
 
 /** Médailles : facteurs (en pour cent) du temps de l'auteur, arrondis au pas supérieur. À calibrer sur de vraies parties (seed § 5). */
 export const MEDAL_PERCENT = { gold: 110, silver: 130, bronze: 160 } as const;

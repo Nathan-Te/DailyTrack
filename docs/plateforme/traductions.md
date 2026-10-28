@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1034 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1044 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1087,7 +1087,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `arrivee.partage.ok` | Partagé | Shared |
 | `arrivee.partage.copie` | Copié dans le presse-papiers | Copied to the clipboard |
 | `arrivee.partage.echec` | Copie impossible : sélectionne le texte ci-dessous | Couldn't copy: select the text below |
-| `arrivee.aideClavier` | R : rejouer | R: play again |
+| `arrivee.aideClavier` | Entrée : rejouer | Enter: play again |
 | `arrivee.phrase.zero` | Zéro mort. On va vérifier que tu n'as pas triché. | Zero deaths. We'll be checking for cheats. |
 | `arrivee.phrase.peu` | one : Une seule mort. Les pics sont vexés. · other : {morts} morts. Presque propre. Presque. | one : One death. The spikes are offended. · other : {morts} deaths. Almost clean. Almost. |
 | `arrivee.phrase.moyen` | {morts} morts. Le niveau commence à te connaître. | {morts} deaths. The level is starting to know you. |
@@ -1170,16 +1170,18 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `commandes.clavier.courir` | ← → ou Q D : courir | ← → or A D: run |
 | `commandes.clavier.sauter` | Espace, ↑ ou Z : sauter | Space, ↑ or W: jump |
-| `commandes.clavier.recommencer` | R : recommencer | R: restart |
+| `commandes.clavier.reprendre` | R : dernier point de passage | R: last checkpoint |
+| `commandes.clavier.recommencer` | Entrée : recommencer à zéro | Enter: start over from zero |
 | `commandes.clavier.pause` | Échap ou P : pause | Esc or P: pause |
 | `commandes.clavier.fantome` | G : fantôme | G: ghost |
 | `commandes.manette.courir` | Stick ou croix : courir | Stick or D-pad: run |
 | `commandes.manette.sauter` | A ou B : sauter | A or B: jump |
-| `commandes.manette.recommencer` | Select : recommencer | Select: restart |
+| `commandes.manette.reprendre` | Y : dernier point de passage | Y: last checkpoint |
+| `commandes.manette.recommencer` | X : recommencer à zéro | X: start over from zero |
 | `commandes.manette.pause` | Start : pause | Start: pause |
 | `commandes.tactile.direction` | Gauche et droite : en bas à gauche | Left and right: bottom left |
 | `commandes.tactile.saut` | SAUT : en bas à droite | JUMP: bottom right |
-| `commandes.tactile.pause` | Pause en haut à gauche : recommencer, fantôme, son | Pause, top left: restart, ghost, sound |
+| `commandes.tactile.pause` | En haut à gauche : pause, dernier point de passage, recommencer | Top left: pause, last checkpoint, start over |
 
 ### Commandes tactiles (`tactile.*`, `apps/jump/src/catalogue.partie.*.ts`)
 
@@ -1189,6 +1191,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `tactile.droite` | Droite | Right |
 | `tactile.saut` | SAUT | JUMP |
 | `tactile.saut.aria` | Saut | Jump |
+| `tactile.pointDePassage` | Reprendre au dernier point de passage | Back to the last checkpoint |
+| `tactile.depart` | Recommencer à zéro | Start over from zero |
 | `tactile.zone.bande` | bande | band |
 
 ### Comment jouer (`aide.*`, `apps/jump/src/catalogue.partie.*.ts`)
@@ -1198,11 +1202,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.aria` | Comment jouer | How to play |
 | `aide.titre` | COMMENT JOUER | HOW TO PLAY |
 | `aide.point1` | Va jusqu'au drapeau. Le chrono part à ta première commande. | Get to the flag. The clock starts with your first move. |
-| `aide.point2` | Tu vas mourir. C'est gratuit : on repart aussitôt, depuis le dernier fanion. | You'll die. It's free: you're back at once, at the last checkpoint flag. |
+| `aide.point2` | Tu vas mourir. C'est gratuit : on repart aussitôt, depuis le dernier fanion — ou de zéro avant le premier. | You'll die. It's free: you're back at once, at the last checkpoint flag — or from zero before the first one. |
 | `aide.point3` | Tiens le saut pour monter plus haut. Contre un mur, saute : tu rebondis. | Hold jump to go higher. Against a wall, jump: you bounce off. |
 | `aide.parti` | C'est parti | Let's go |
 | `aide.schema.legende` | À gauche, la direction ; à droite, le saut. Le milieu de l'écran reste au jeu. | Left side: direction. Right side: jump. The middle of the screen belongs to the game. |
 | `aide.zone.libre` | le jeu | the game |
+
+### decompte (`decompte.*`, `apps/jump/src/catalogue.partie.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `decompte.partez` | Partez ! | Go! |
 
 ### Erreurs (`erreur.*`, `apps/jump/src/catalogue.base.*.ts`)
 
@@ -1247,8 +1257,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `toast.pointDePassage` | Point de passage | Checkpoint |
-| `toast.pret` | Prêt… | Ready… |
-| `toast.partez` | Partez ! | Go! |
 | `toast.finDemo` | Fin de la démonstration | End of the demo |
 | `toast.demoEssai` | Démonstration : seulement sur ?scenario=essai ou sur un niveau du jour | Demo: only on ?scenario=essai or on a daily level |
 | `toast.rediffAuteur` | Rediffusion de l'auteur | Author's replay |
@@ -1319,7 +1327,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.titre` | PAUSE | PAUSE |
 | `pause.etat` | {morts} · point {pc} | {morts} · checkpoint {pc} |
 | `pause.reprendre` | REPRENDRE | RESUME |
-| `pause.recommencer` | Tout recommencer | Start over |
+| `pause.recommencer` | Recommencer à zéro | Start over from zero |
+| `pause.pointDePassage` | Depuis le point de passage | From the checkpoint |
 | `pause.fantome.oui` | Fantôme : oui | Ghost: on |
 | `pause.fantome.non` | Fantôme : non | Ghost: off |
 | `pause.son.oui` | Son : oui | Sound: on |
@@ -1385,6 +1394,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.langue` | Langue | Language |
 | `reglages.profil` | Mon profil Du Jour | My Du Jour profile |
 | `reglages.mentions` | Mentions légales | Legal notice |
+
+### resultat (`resultat.*`, `apps/jump/src/catalogue.arrivee.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `resultat.aria` | Résultat de ton essai | Your result |
+| `resultat.classement` | Classement | Leaderboard |
+| `resultat.suite` | Suite : {jeu} › | Next: {jeu} › |
+| `resultat.record` | Nouveau record ! | New record! |
+| `resultat.premier` | Premier temps du jour | First time of the day |
+| `resultat.ecart` | {ecart} vs ton record | {ecart} vs your record |
 
 ### Thèmes (`theme.*`, `apps/jump/src/catalogue.base.*.ts`)
 
