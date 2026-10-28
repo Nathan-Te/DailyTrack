@@ -111,54 +111,10 @@ test("le jeu : variante d'essai (?variant=) jouable, jamais classée ; sans API 
   await expect(page.locator("#meta")).toContainText("hors ligne, non classé");
 });
 
-// --- Avec le vrai serveur (celui du conteneur Docker, base en mémoire, ADMIN_TOKEN fixé par playwright.config.ts) -----------
+// --- Avec le vrai serveur (celui du conteneur Docker, base en mémoire) ------------------------------------------------------
+// L'administration du planning et des médailles avec ce serveur passe par la session du panneau (connexion Google, vérificateur factice) : `admin-track.spec.ts`.
 const API = "http://127.0.0.1:8787";
-const TOKEN = "e2e-admin-token-0123456789";
 const REAL_TODAY = TODAY;
-
-test("admin avec le vrai serveur : mauvais jeton refusé, bon jeton accepté, remplacement puis retour à l'original", { tag: "@regression" }, async ({ page, request }) => {
-  await page.goto(`/admin/?api=${encodeURIComponent(API)}`);
-  await page.evaluate(() => localStorage.removeItem("cdj:admin-token"));
-  await page.reload();
-  await expect(page.locator("#token-form")).toBeVisible();
-  await page.locator("#token").fill("un-mauvais-jeton-0123456789");
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.locator("#conn-state")).toContainText("Jeton refusé");
-  await expect(page.locator("#token-form")).toBeVisible();
-
-  await page.locator("#token").fill(TOKEN);
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.locator("#conn-state")).toContainText("Connecté");
-  await expect(page.locator("#token-form")).toBeHidden();
-  await expect(page.locator("#demo-banner")).toBeHidden();
-  await expect(page.locator("#planning .card")).toHaveCount(14);
-  // le jeton survit au rechargement (gardé dans ce navigateur)
-  await page.reload();
-  await expect(page.locator("#conn-state")).toContainText("Connecté");
-
-  const date = formatDay(REAL_TODAY + 2);
-  const card = page.locator(`#planning .card[data-date="${date}"]`);
-  await card.getByRole("button", { name: "Remplacer" }).click();
-  const first = page.locator("#candidates .candidate").first();
-  await expect(first.locator("dl.stats")).toContainText("Temps du pilote", { timeout: 60_000 });
-  await first.getByRole("button", { name: "Choisir" }).click();
-  await first.getByRole("button", { name: "Confirmer" }).click();
-  await expect(card).toHaveAttribute("data-variant", "1", { timeout: 30_000 });
-  const overview = await request.get(`${API}/api/admin/overview`, { headers: { Authorization: `Bearer ${TOKEN}` } });
-  expect((await overview.json()).plan).toMatchObject([{ date, variant: 1, theme: null }]);
-
-  // aujourd'hui : refusé par le serveur, même avec le bon jeton
-  const refused = await request.put(`${API}/api/admin/planning/${formatDay(REAL_TODAY)}`, { headers: { Authorization: `Bearer ${TOKEN}` }, data: { variant: 1 } });
-  expect(refused.status()).toBe(409);
-  // sans jeton : refusé
-  expect((await request.put(`${API}/api/admin/planning/${date}`, { data: { variant: 2 } })).status()).toBe(401);
-
-  await card.getByRole("button", { name: "Remplacer" }).click();
-  await page.getByRole("button", { name: "Revenir à l'original" }).click();
-  await page.locator("#replace").getByRole("button", { name: "Confirmer" }).click();
-  await expect(card).toHaveAttribute("data-variant", "0", { timeout: 30_000 });
-  expect((await (await request.get(`${API}/api/admin/overview`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json()).plan).toEqual([]);
-});
 
 test("le jeu avec le vrai serveur : le circuit du jour vient du planning, course classable", async ({ page }) => {
   test.skip(test.info().project.name !== "chromium", "WebGL : Chromium seulement");
@@ -178,23 +134,8 @@ test("le jeu : API muette → circuit d'origine, jouable, marqué hors ligne et 
   await expect(page.locator("#meta")).toContainText("hors ligne, non classé");
 });
 
-test("admin, section Médailles (lot 35) : refusée en démo ; avec le vrai serveur, un tableau par thème et par jour, en lecture seule", { tag: "@regression" }, async ({ page, request }) => {
+test("admin, section Médailles (lot 35) : refusée en démonstration (le vrai serveur : `admin-track.spec.ts`, avec la session du panneau)", { tag: "@regression" }, async ({ page }) => {
   await page.goto("/admin/?api=demo");
   await page.getByRole("button", { name: "Charger les médailles" }).click();
   await expect(page.locator("#med-state")).toContainText("pas de médailles en démonstration");
-
-  await page.goto(`/admin/?api=${encodeURIComponent(API)}`);
-  await page.evaluate((t) => localStorage.setItem("cdj:admin-token", t), TOKEN);
-  await page.reload();
-  await expect(page.locator("#conn-state")).toContainText("Connecté");
-  const before = await (await request.get(`${API}/api/admin/overview`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json();
-  await page.getByRole("button", { name: "Charger les médailles" }).click();
-  await expect(page.locator("#med-state")).toContainText("jours");
-  await expect(page.locator("#med-themes tr").last()).toContainText("Tous");
-  await expect(page.locator("#med-days tr").first()).toContainText(`${formatDay(REAL_TODAY)} (en cours)`);
-  await expect(page.locator("#med-days tr")).toHaveCount(REAL_TODAY - PREMIER_JOUR + 1);
-  await expect(page.getByRole("button", { name: "Copier l'export (JSON)" })).toBeVisible();
-  // Rien n'a bougé côté serveur (planning, joueurs du jour).
-  const after = await (await request.get(`${API}/api/admin/overview`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json();
-  expect({ plan: after.plan, days: after.days }).toEqual({ plan: before.plan, days: before.days });
 });

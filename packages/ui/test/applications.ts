@@ -50,6 +50,7 @@ export const EXCLUSIONS: Record<string, string> = {
   // Lot I4 : les outils internes de Nathan restent en français (hors du périmètre de l'anglais, charte et lot I4 § 1).
   "apps/web/src/tune.ts": "outil de réglage de la conduite (`?debug&tune`) : outil interne, en français",
   "apps/web/src/admin.ts": "page d'administration (`/admin/`) : outil interne, en français",
+  "apps/web/src/adminAcces.ts": "porte de la page d'administration de Track (`/track/admin/`, connexion du panneau) : outil interne de l'éditeur, en français",
   "apps/web/src/adminBackend.ts": "page d'administration (`/admin/`) : outil interne, en français",
   "apps/web/src/adminLogic.ts": "page d'administration (`/admin/`) : outil interne, en français",
   "apps/web/src/adminPlan.ts": "planning de l'administration (lot 14) : outil interne, en français",
