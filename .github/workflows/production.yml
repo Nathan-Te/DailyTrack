@@ -383,7 +383,7 @@ jobs:
   # `smoke --lecture-seule` puis `smoke` complet (il crée des joueurs « Fumée » : la recette seulement, jamais la production). Une recette non configurée arrête :
   # sans répétition, rien ne part.
   recette-verification:
-    needs: [figer, recette-serveur, recette-site]
+    needs: [verifier, figer, recette-serveur, recette-site]
     if: ${{ !cancelled() && needs.figer.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
@@ -397,11 +397,28 @@ jobs:
         run: |
           [ "$SERVEUR" = success ] && [ "$SITE" = success ] || { echo "::error title=Répétition en échec::le déploiement de la recette a échoué (serveur : $SERVEUR, site : $SITE) — rien n'est parti en production"; exit 1; }
           [ "$SERVEUR_ON" = true ] || { echo "::error title=Répétition impossible::la recette n'est pas configurée (docs/plateforme/recette.md) : sans répétition, rien ne part en production"; exit 1; }
+      # Le smoke complet recalcule lui-même le circuit et le niveau du jour (`dailyCircuit` lit le registre de Track, le niveau de Jump vient des fichiers
+      # figés) : il doit tourner sur exactement ce que la recette a reçu — le commit déployé, ses jours figés et son registre (artefacts de `figer`, les
+      # mêmes commandes que deploy-api.yml). Sans eux, un jour figé par cette mise en production se recalculait avec le nouveau générateur (28/10/2026).
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.verifier.outputs.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: jours-figes
+          path: ${{ runner.temp }}/jours-figes
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: registre-track
+          path: ${{ runner.temp }}/registre-track
+      - name: Les jours figés et le registre que la recette a reçus
+        run: |
+          node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels
+          node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json"
       - name: Vérifier la recette (lecture seule, puis smoke complet)
         env:
           SITE_ON: ${{ needs.recette-site.outputs.enabled }}
@@ -535,7 +552,7 @@ jobs:
   # Lecture seule (`smoke --lecture-seule`, apps/api/scripts/smokeRead.ts : des GET seulement, aucun identifiant, rien n'est écrit) contre playdujour.com/api/ — le
   # chemin des joueurs (Firebase → Cloud Run). Un échec rend le run rouge ; le résumé donne le retour arrière.
   verification:
-    needs: [serveur, site]
+    needs: [verifier, serveur, site]
     if: ${{ !cancelled() && needs.serveur.result == 'success' && (needs.serveur.outputs.enabled == 'true' || needs.site.outputs.enabled == 'true') }}
     runs-on: ubuntu-latest
     permissions:
@@ -544,6 +561,8 @@ jobs:
       url: ${{ steps.smoke.outputs.url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.verifier.outputs.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -650,7 +669,13 @@ jobs:
           node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json" --resume "$GITHUB_STEP_SUMMARY"
           # Lot R6 : les empreintes des jours passés (jusqu'à la veille de la bascule) rejoignent le test `jours-passes.test.ts` : un jour passé ne change plus jamais.
           node scripts/mise-en-production.mjs empreintes-fusion apps/api/test/jours-passes.json "$RUNNER_TEMP/empreintes-jours/prod.json" --jusqua "$VEILLE" --proteges "$RUNNER_TEMP/registre-track/proteges.json"
-          if [ -z "$(git status --porcelain apps/jump/public/levels apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
+          # La démonstration de Jump (`?api=demo`, apps/jump/public/demo) rejoue les niveaux de ses jours, fichiers figés compris : un jour qu'elle couvre et que
+          # cette mise en production fige change de niveau, ses données se refont (déterministe, ≈ 1 min ; sans cela la CI de la PR échoue : « relancer jump:seed »).
+          if [ -n "$(git status --porcelain apps/jump/public/levels)" ]; then
+            npm ci --ignore-scripts --no-audit --no-fund > /dev/null
+            npm run jump:seed -w @cdj/api > /dev/null
+          fi
+          if [ -z "$(git status --porcelain apps/jump/public/levels apps/jump/public/demo apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
             echo "etat=rien" >> "$GITHUB_OUTPUT"
             echo "### ✅ Jours figés : déjà dans main, rien à ajouter" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -660,7 +685,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add apps/jump/public/levels apps/api/test/jours-passes.json packages/sim/src/jours-track.json
+          git add apps/jump/public/levels apps/jump/public/demo apps/api/test/jours-passes.json packages/sim/src/jours-track.json
           # « Jours figés de la mise en production » : le début du message est lu par `jours-servis` (les jours que la production sert).
           git commit -q -m "Jours figés de la mise en production $nom (code en production, freeze:days jusqu'à la veille de la bascule)"
           git push -q origin "$branch"

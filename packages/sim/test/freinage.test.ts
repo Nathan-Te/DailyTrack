@@ -4,6 +4,7 @@ import {
   GENERATOR_BEFORE_34,
   PREMIER_JOUR,
   parseDay,
+  formatDay,
   GENERATOR_VERSION,
   MAX_BRAKING_ADD,
   SIGNATURE_FIGURE,
@@ -24,7 +25,7 @@ import {
   turnReports,
   type DailyCircuit,
 } from "../src/index";
-import { JOUR_V16 } from "./helpers/versions";
+import { JOUR_V16, jourAbsentDuRegistre } from "./helpers/versions";
 
 // Lot 34 — freinage possible après un boost. Règles du générateur v16 (à partir du 28/10/2026), chacune comptée ici et mesurée par
 // `npm run measure:generator` (section 3 : virages-pièges et contacts du pilote « humain correct », v15 contre v16 ; README du lot).
@@ -45,8 +46,9 @@ describe("la version du générateur d'un jour (lot 34, registre du lot R11)", (
     expect(generatorVersionOf(parseDay("2026-10-26")!)).toBe(15);
     expect(dailyTrackId(parseDay("2026-10-26")!)).toBe("jour-2026-10-26-g15");
     // Absent du registre : la dernière version (la mise en production écrira ces jours-là, avec le code alors en production, jusqu'à la veille de sa bascule).
-    expect(generatorVersionOf(JOUR_V16)).toBe(GENERATOR_VERSION);
-    expect(dailyTrackId(JOUR_V16)).toBe("jour-2026-10-28-g18");
+    const absent = jourAbsentDuRegistre();
+    expect(generatorVersionOf(absent)).toBe(GENERATOR_VERSION);
+    expect(dailyTrackId(absent)).toBe(`jour-${formatDay(absent)}-g${GENERATOR_VERSION}`);
     expect(dailyTrackId(JOUR_V16, "ville", 2, 16)).toBe("jour-2026-10-28-g16-v2-ville");
     expect(salonCircuit(2_946_000).id).toBe("salon-2946000-g18");
   });
