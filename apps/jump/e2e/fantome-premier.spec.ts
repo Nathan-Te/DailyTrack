@@ -127,7 +127,9 @@ test("démo : le fantôme du premier est visible avec son pseudo, à côté du t
       const w = (window as unknown as { __jump: J }).__jump;
       w.manual(true);
       w.go(); // lot 15 : le jour de la démo est en v4 ; sans le départ, une partie des pas joués irait au « Prêt… » (selon la vitesse de la page)
-      w.input(1 << 1);
+      // Lot 27 (v11) : une mort avant le premier point remet le chrono à zéro ; courir à l'aveugle peut tuer. Immobile sur le départ (sûr à
+      // toute phase), le chrono part quand même : le fantôme avance avec lui.
+      w.input(0);
       w.advance(120);
       w.input(null);
     });
@@ -230,7 +232,8 @@ test("démo, au doigt en paysage : « Regarder le premier » à l'arrivée, Rég
       await loaded(page);
       const fingers = await Fingers.on(page);
       await play(page, slow.code, async () => {
-        await fingers.down(1, viewport.width * 0.2, viewport.height * 0.7);
+        // Lot 27 : l'autocollant du résultat est posé à gauche pendant le carnage ; le doigt qui le passe touche la scène, à droite du centre.
+        await fingers.down(1, viewport.width * 0.6, viewport.height * 0.5);
         await page.evaluate(() => (window as unknown as { __jump: J }).__jump.advance(1));
         await fingers.up(1);
       });
