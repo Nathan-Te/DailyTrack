@@ -154,13 +154,18 @@ export function texteProbleme(p: ProblemeNouveaute): string {
 }
 
 const JOUR = /^(\d{4})-(\d{2})-(\d{2})$/;
-/** Une date AAAA-MM-JJ qui existe au calendrier. */
+/** Une date AAAA-MM-JJ qui existe au calendrier (calcul des jours du mois : `core` n'utilise aucune API de date, test de pureté). */
 export function dateValide(s: unknown): s is string {
   if (typeof s !== "string") return false;
   const m = JOUR.exec(s);
   if (!m) return false;
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
-  return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
+  const annee = Number(m[1]);
+  const mois = Number(m[2]);
+  const jour = Number(m[3]);
+  if (mois < 1 || mois > 12 || jour < 1) return false;
+  const bissextile = (annee % 4 === 0 && annee % 100 !== 0) || annee % 400 === 0;
+  const jours = [31, bissextile ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mois - 1]!;
+  return jour <= jours;
 }
 
 /**
