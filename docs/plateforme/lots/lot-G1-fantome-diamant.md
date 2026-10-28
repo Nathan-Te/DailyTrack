@@ -44,7 +44,7 @@ Les textes `fantome.*`, l'icône et le bouton sont **hors** du portail (icône �
 
 ## 6. Vérifié / non vérifié
 **Vérifié** : tests unitaires de la trajectoire (échantillonnage, aller-retour, interpolation, refus des entrées mal formées) ; tests d'API sur SQLite et libSQL (refusé avant d'avoir fini, accepté après, libre un jour passé, ni entrées ni preuve ni `replay`, cache privé, dates et méthode, `codesErreur`) ; `productionSite.test.ts` (R9) ; cycle et déblocage (Track et Jump) ; `smoke` contre un serveur local (ligne Diamant) ; e2e étendus (**aucun spec nouveau**) : `plein-ecran`, `hud-compact`, `mobile` (Track) ; `plein-ecran`, `hud-compact`, `carnage`, `profil-commun` (Jump) — bouton visible, 44 px, sans chevauchement, hors zone centrale à 844 × 390 et 740 × 360, chaque appui passe au fantôme suivant, FR et EN ; captures paysage FR et EN (outils `captures-lot-g1`, `CAPTURES=1`).
-**Non vérifié** : le Diamant de Jump contre le **vrai** Turso (pas de `sqld` ici) ; le rendu sur un téléphone réel ; le coût réel des lectures du Diamant en production (modèle : +1 requête). `npm run verifier` : typecheck, unitaires (SQLite 164 fichiers, libSQL 39), e2e Track (26 specs) et e2e Jump (46 tests) verts, **sauf un** : `horloge.spec.ts` « mort avant le premier point de passage » (Jump) — **il échoue à l'identique sur `main` (`b4b765a`) sans ce lot** (vérifié en remettant l'arbre propre : le joueur qui tient l'entrée 3 000 pas ne meurt pas sur le niveau du 20/10/2026 : `deaths` 0 au lieu de 1) ; hors zone du lot, noté ici et laissé à Nathan (règle d'arrêt).
+**Non vérifié** : le Diamant de Jump contre le **vrai** Turso (pas de `sqld` ici) ; le rendu sur un téléphone réel ; le coût réel des lectures du Diamant en production (modèle : +1 requête). `npm run verifier` après fusion de `main` (lot 53 compris) : typecheck, unitaires (SQLite 164 fichiers, libSQL 39), e2e Track (26 specs) et e2e Jump (16 specs) **tous verts**. Avant la fusion, `horloge.spec.ts` « mort avant le premier point de passage » (Jump) échouait déjà sur `main` ; le lot 53 l'a corrigé.
 
 ## 7. Décisions laissées à Nathan
 1. Le fantôme Diamant de Track est la course du pilote, pas le seuil de la médaille (0,84 × pilote depuis le 28/10).
@@ -54,7 +54,7 @@ Les textes `fantome.*`, l'icône et le bouton sont **hors** du portail (icône �
 5. **« Revoir » le Diamant (Track) non fait** : le classement du jour de Track n'a pas de ligne « Diamant » à laquelle l'attacher. Un `?watch=diamant` (le lecteur existant, la course du pilote) coûterait ≈ 1 ko du premier chargement (reste 1 024 o sur les 2 048 autorisés) ; à décider.
 
 ## 8. CI
-Run de la PR (`e064b8b`) : https://github.com/Nathan-Te/DailyTrack/actions/runs/40770624941 — scope, zones, unit (4/4), api-image, e2e-pr (2/4, 3/4, 4/4) verts ; e2e-pr (1/4) rouge **seulement** pour `horloge.spec.ts` « mort avant le premier point de passage » (Jump), le même test que la CI de `main` (`b4b765a`, run 40746424026, job « e2e-parts (jump chromium 1/1) ») : échec déjà là, hors de ce lot (règle d'arrêt : noté, pas corrigé, à trancher par Nathan).
+Run de la PR : voir le résumé de `npm run attendre-ci` dans la PR (premier run, `e064b8b` : seul l'échec de `horloge.spec.ts`, déjà sur `main`, corrigé depuis par le lot 53).
 
 ## 9. Tickets à ouvrir
 - **Fantôme du premier** : le servir comme une **trajectoire** (≈ 2,4 ko, sans entrées, cache privé par jour) au lieu de la rediffusion complète, sur le modèle du Diamant ; moins lourd et sans aucune entrée sur le réseau. Format à décider avec le lot du classement.
