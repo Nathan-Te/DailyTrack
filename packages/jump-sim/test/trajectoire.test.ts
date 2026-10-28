@@ -91,4 +91,29 @@ describe("trajectoire du Diamant (lot G1)", () => {
     expect(x.x).toEqual([-1, 0]);
     expect(x.y).toEqual([2, -5 / 64]);
   });
+  it("étirée (lot G1) : même départ, même arrivée, mêmes positions vues plus lentement, finissant au chrono demandé", () => {
+    const cible = Math.ceil((NIVEAU.authorTicks * 105) / 100);
+    const etiree = decoderTrajectoire(encoderTrajectoire(echantillonnerTrajectoire(NIVEAU.level, NIVEAU.replay, cible)));
+    expect(trajectoireDuree(etiree)).toBeGreaterThanOrEqual(cible);
+    expect(trajectoireDuree(etiree)).toBeLessThan(cible + TRAJECTOIRE_PAS);
+    expect(etiree.x[0]).toBe(t.x[0]);
+    expect(etiree.y[0]).toBe(t.y[0]);
+    expect(etiree.x[etiree.x.length - 1]).toBe(t.x[t.x.length - 1]);
+    expect(etiree.y[etiree.y.length - 1]).toBe(t.y[t.y.length - 1]);
+    // au chrono k × t, la position étirée est celle d'origine au chrono t (à l'interpolation près : un échantillon de 4 pas, au plus 0,35 tuile de l'écart de la course)
+    const k = cible / NIVEAU.authorTicks;
+    for (const f of [0.1, 0.35, 0.5, 0.8]) {
+      const t0 = Math.floor(NIVEAU.authorTicks * f);
+      const origine = trajectoirePose(t, t0);
+      const vue = trajectoirePose(etiree, t0 * k);
+      expect(Math.hypot(vue.x - origine.x, vue.y - origine.y), `à ${f}`).toBeLessThan(0.35);
+    }
+    // ne dépasse jamais l'avance de l'original : à chaque chrono, le fantôme étiré n'a pas plus avancé que l'auteur
+    expect(trajectoirePose(etiree, NIVEAU.authorTicks * 0.5).x).toBeLessThanOrEqual(trajectoirePose(t, NIVEAU.authorTicks * 0.5).x + 1e-9);
+  });
+
+  it("un chrono cible plus court ou égal à celui de la rediffusion n'étire rien", () => {
+    expect(echantillonnerTrajectoire(NIVEAU.level, NIVEAU.replay, NIVEAU.authorTicks)).toEqual(pts);
+    expect(echantillonnerTrajectoire(NIVEAU.level, NIVEAU.replay, NIVEAU.authorTicks - 100)).toEqual(pts);
+  });
 });

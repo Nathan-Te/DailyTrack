@@ -26,7 +26,7 @@ let attendu: string;
 
 beforeAll(() => {
   D = dailyLevel(DAY);
-  attendu = encoderTrajectoire(echantillonnerTrajectoire(D.level, D.replay));
+  attendu = encoderTrajectoire(echantillonnerTrajectoire(D.level, D.replay, D.medals.author));
 }, 60_000);
 
 const as = (n: number) => ({ headers: { "X-Player-Id": playerId(n) } });
@@ -64,7 +64,7 @@ describe(`fantôme Diamant de Jump (${TEST_DB})`, () => {
     expect(ok.body).toEqual({
       date: DATE,
       levelId: D.id,
-      ticks: D.authorTicks,
+      ticks: D.medals.author,
       simVersion: JUMP_SIM_VERSION,
       generatorVersion: JUMP_GENERATOR_VERSION,
       trajectoire: attendu,
@@ -79,10 +79,25 @@ describe(`fantôme Diamant de Jump (${TEST_DB})`, () => {
     const r = await t.call("GET", route(), undefined, as(1));
     const traj = decoderTrajectoire(r.body.trajectoire);
     expect(traj.pas).toBe(TRAJECTOIRE_PAS);
-    expect(trajectoireDuree(traj)).toBeGreaterThanOrEqual(D.authorTicks);
-    expect(trajectoireDuree(traj)).toBeLessThan(D.authorTicks + TRAJECTOIRE_PAS);
+    // Lot G1 : le Diamant est le seuil de la médaille (105 % du temps de l'auteur depuis la bascule du 30/10) : la trajectoire de l'auteur y est étirée.
+    expect(D.medals.author).toBe(Math.ceil((D.authorTicks * 105) / 100));
+    expect(r.body.ticks).toBe(D.medals.author);
+    expect(trajectoireDuree(traj)).toBeGreaterThanOrEqual(D.medals.author);
+    expect(trajectoireDuree(traj)).toBeLessThan(D.medals.author + TRAJECTOIRE_PAS);
     // Une trajectoire de quelques ko, bornée.
     expect(r.body.trajectoire.length).toBeLessThan(8_000);
+  });
+
+  it("un jour d'avant la bascule du lot G1 : le Diamant est le temps exact de l'auteur, la trajectoire n'est pas étirée", async () => {
+    const jour = daysFromCivil(2026, 10, 29);
+    const avant = dailyLevel(jour);
+    expect(avant.medals.author).toBe(avant.authorTicks);
+    const t = await jumpApi();
+    t.clock.now = parisDayStart(jour + 1) + 12 * 3_600_000; // le lendemain : un jour passé, libre
+    const r = await t.call("GET", route(formatDay(jour)));
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.ticks).toBe(avant.authorTicks);
+    expect(r.body.trajectoire).toBe(encoderTrajectoire(echantillonnerTrajectoire(avant.level, avant.replay)));
   });
 
   it("ne contient ni les entrées ni la preuve de l'auteur", async () => {

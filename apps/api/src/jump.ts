@@ -747,10 +747,11 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
         const body: JumpDiamond = {
           date: d.date,
           levelId: d.id,
-          ticks: d.authorTicks,
+          // Lot G1 : le Diamant est le seuil de la médaille (le temps de l'auteur jusqu'à la bascule du lot G1, 105 % après) ; la trajectoire de l'auteur y est étirée.
+          ticks: d.medals.author,
           simVersion: JUMP_SIM_VERSION,
           generatorVersion: JUMP_GENERATOR_VERSION,
-          trajectoire: encoderTrajectoire(echantillonnerTrajectoire(d.level, d.replay)),
+          trajectoire: encoderTrajectoire(echantillonnerTrajectoire(d.level, d.replay, d.medals.author)),
         };
         if (diamants.size >= GHOST_CACHE_MAX && !diamants.has(day)) diamants.delete(diamants.keys().next().value!);
         diamants.set(day, { rule, body });

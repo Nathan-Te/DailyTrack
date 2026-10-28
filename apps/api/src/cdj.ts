@@ -2,6 +2,8 @@ import {
   GENERATOR_VERSION,
   MAX_VARIANT,
   BASCULE_LOT_35,
+  BASCULE_LOT_G1,
+  MEDAL_FACTORS_G1,
   MEDAL_FACTORS,
   MEDAL_FACTORS_35,
   MEDAL_PERCENTILES,
@@ -808,6 +810,9 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       /** Lot 35 : les facteurs à partir de la bascule (auteur en multiple du pilote, les autres de l'auteur). */
       factors35: MEDAL_FACTORS_35,
       bascule: formatDay(BASCULE_LOT_35),
+      /** Lot G1 : les facteurs assouplis (Diamant à 0,92 du pilote) et leur bascule. */
+      factorsG1: MEDAL_FACTORS_G1,
+      basculeG1: formatDay(BASCULE_LOT_G1),
       percentiles: MEDAL_PERCENTILES,
       demo: withDemo,
       days,

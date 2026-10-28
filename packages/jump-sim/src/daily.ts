@@ -1,7 +1,7 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, circleHitsBox, initialAttempt, sawReach, stepAttempt, type AttemptState, type Box } from "./attempt";
 import { BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
-import { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
+import { BASCULE_JUMP_G1, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
 import { idiv } from "./idiv";
 import { PRESS_HEIGHT_TILES, TILE_EMPTY, TILE_SOLID, cycleMod, laserBarBox, laserBox, mushroomPad, parseLevel, platformPos, pressBox, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
 import { FROZEN_BASE_IDS } from "./figes";
@@ -23,7 +23,7 @@ import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpR
 import { SLOW_MAX_EXTRA, SLOW_MIN_EXIGENCE, SLOW_REACH_ROWS, SLOW_ZONE_WIDTH, carveSlowRoute, slowCostMin, slowGalleryRow, slowHeadroom, slowLedges, slowScript, type SlowRoute } from "./voies";
 
 // Lot 21 : le numéro et l'identifiant d'un niveau, ses médailles et les numéros de générateur de référence sont dans `jours.ts` ; réexportés ici.
-export { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
+export { BASCULE_JUMP_G1, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
 
 // Le niveau du jour (lot 5) : `dailyLevel(jour)` assemble des morceaux du catalogue (lot 4) qui **portent leur solution**, puis **rejoue** la
 // suite de ces solutions sur le niveau assemblé. Si elle arrive au bout sans mourir, le niveau est valide et ce rejeu donne le temps de
@@ -2066,11 +2066,11 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
     attempts.sort((a, b) => a.index - b.index);
   }
   let out: DailyLevel;
-  if (best) out = { ...best.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: best.index, fallback: false };
+  if (best) out = { ...best.built, medals: medalsWithSlow(best.built.authorTicks, best.built.slowRoutes, day, simVersion), theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: best.index, fallback: false };
   else {
     const proof = prove(fallbackFor(theme, simVersion), id, theme, simVersion);
     if (typeof proof === "string" || proof.problems.length > 0) throw new Error(`Niveau de secours invalide : ${typeof proof === "string" ? proof : proof.problems.join(" ; ")}`);
-    out = { ...proof.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: -1, fallback: true };
+    out = { ...proof.built, medals: medalsWithSlow(proof.built.authorTicks, proof.built.slowRoutes, day, simVersion), theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: -1, fallback: true };
   }
   cache.set(key, out);
   return out;
@@ -2083,5 +2083,5 @@ export function fallbackLevel(day: number, forced: JumpThemeName | null = null, 
   const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);
   if (typeof proof === "string") return proof;
   if (proof.problems.length > 0) return proof.problems.join(" ; ");
-  return { ...proof.built, theme, forcedTheme: theme !== natural, day, date: formatDay(day), number: levelNumber(day), attempts: [], chosen: -1, fallback: true };
+  return { ...proof.built, medals: medalsWithSlow(proof.built.authorTicks, proof.built.slowRoutes, day, simVersion), theme, forcedTheme: theme !== natural, day, date: formatDay(day), number: levelNumber(day), attempts: [], chosen: -1, fallback: true };
 }

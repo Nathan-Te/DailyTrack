@@ -47,8 +47,12 @@ const dezigzag = (z: number): number => (z % 2 === 1 ? -(z + 1) / 2 : z / 2);
 /**
  * Rejoue la rediffusion `replay` sur `level` et rend ses positions échantillonnées, en 1/64 de tuile (`[x0, y0, x1, y1, …]`). Une rediffusion
  * qui s'arrête avant la fin garde sa dernière position ; au plus `TRAJECTOIRE_POINTS_MAX` points.
+ *
+ * `ticksCible` (lot G1) : **étire** la trajectoire dans le temps pour qu'elle finisse à ce chrono (≥ celui de la rediffusion) — le fantôme Diamant arrive au seuil de la
+ * médaille Diamant, pas au temps optimal de l'auteur. Affichage seulement : les positions sont celles de la rediffusion, vues plus lentement (interpolation linéaire entre
+ * deux échantillons d'origine). Sans `ticksCible` (ou égal au chrono de la rediffusion), la trajectoire est celle de la rediffusion, à l'identique.
  */
-export function echantillonnerTrajectoire(level: Level, replay: JumpReplay): number[] {
+export function echantillonnerTrajectoire(level: Level, replay: JumpReplay, ticksCible?: number): number[] {
   const runner = new ReplayRunner(level, replay);
   const pts: number[] = [arrondi(runner.state.player.x), arrondi(runner.state.player.y)];
   let dernier = 0;
@@ -60,7 +64,32 @@ export function echantillonnerTrajectoire(level: Level, replay: JumpReplay): num
     }
   }
   if (runner.tick !== dernier) pts.push(arrondi(runner.state.player.x), arrondi(runner.state.player.y));
-  return pts;
+  if (ticksCible === undefined || ticksCible <= runner.tick) return pts;
+  return etirer(pts, runner.tick, ticksCible);
+}
+
+/** Étire des points d'origine (un tous les `TRAJECTOIRE_PAS` pas, le dernier à `ticks`) pour qu'ils finissent à `cible` : mêmes positions, vues plus lentement. */
+function etirer(pts: readonly number[], ticks: number, cible: number): number[] {
+  const n = pts.length / 2;
+  if (n < 2) return [...pts];
+  const k = cible / ticks;
+  const sorties = Math.ceil(cible / TRAJECTOIRE_PAS) + 1;
+  if (sorties > TRAJECTOIRE_POINTS_MAX) throw new TrajectoireError("Trajectoire trop longue");
+  const out: number[] = [];
+  for (let j = 0; j < sorties; j++) {
+    const t = Math.min(j * TRAJECTOIRE_PAS, cible) / k; // chrono d'origine, fractionnaire
+    const f = t / TRAJECTOIRE_PAS;
+    const i = Math.min(Math.floor(f), n - 2);
+    // le dernier point d'origine est à `ticks`, pas forcément un multiple du pas
+    const t0 = i * TRAJECTOIRE_PAS;
+    const t1 = i + 1 === n - 1 ? ticks : (i + 1) * TRAJECTOIRE_PAS;
+    const u = t1 > t0 ? Math.min(1, Math.max(0, (t - t0) / (t1 - t0))) : 0;
+    out.push(Math.round(pts[2 * i]! + (pts[2 * i + 2]! - pts[2 * i]!) * u), Math.round(pts[2 * i + 1]! + (pts[2 * i + 3]! - pts[2 * i + 1]!) * u));
+  }
+  // la dernière position est celle de l'arrivée, exactement
+  out[2 * (sorties - 1)] = pts[2 * (n - 1)]!;
+  out[2 * (sorties - 1) + 1] = pts[2 * (n - 1) + 1]!;
+  return out;
 }
 
 /** Points (`[x0, y0, x1, y1, …]` en 1/64 de tuile) → texte base64url. */

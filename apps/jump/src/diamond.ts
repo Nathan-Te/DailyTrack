@@ -19,7 +19,7 @@ export const DIAMOND_GHOST_COLOR = 0x8dff80;
 export interface DiamondData {
   date: string;
   levelId: string;
-  /** Le temps de l'auteur, en pas. */
+  /** Le temps du Diamant (le seuil de la médaille : le temps de l'auteur jusqu'à la bascule du lot G1, 105 % après), en pas. */
   ticks: number;
   simVersion: number;
   generatorVersion: number;
@@ -30,7 +30,7 @@ export interface DiamondData {
 /** Un fantôme Diamant accepté. */
 export interface Diamond {
   traj: Trajectoire;
-  /** Le temps de l'auteur, en pas (ce que dure la trajectoire à un échantillon près). */
+  /** Le temps du Diamant, en pas (ce que dure la trajectoire à un échantillon près). */
   ticks: number;
 }
 
@@ -48,7 +48,7 @@ export function checkDiamond(data: unknown, levelId: string): { ok: true; diamon
   } catch (e) {
     return { ok: false, reason: e instanceof TrajectoireError ? e.message : "trajectoire illisible" };
   }
-  // La trajectoire dure le temps de l'auteur (à un échantillon près) : sinon ce n'est pas la sienne.
+  // La trajectoire dure le temps du Diamant (à un échantillon près) : sinon ce n'est pas la sienne.
   if (Math.abs(trajectoireDuree(traj) - d.ticks) > traj.pas) return { ok: false, reason: "trajectoire d'une autre durée" };
   return { ok: true, diamond: { traj, ticks: d.ticks } };
 }

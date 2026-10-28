@@ -10,7 +10,7 @@ Branche `ccr-1979a954-nmkwuq`, PR brouillon. Charte `docs/plateforme/identite.md
 | **Forme choisie** | la **rediffusion**, calculée dans la page (`CircuitData.diamant`, rejouée par `replayRace` comme tout fantôme) ; **aucune route** | une **trajectoire** : positions échantillonnées, **jamais** des entrées ; `GET /api/jump/fantome-diamant?date=` |
 | **Poids** | rien à transférer ; encodage de la rediffusion seulement quand on choisit le Diamant | 30 points/s, 1/64 de tuile, différences en varint signé + base64url : **≈ 2,4 ko pour 30 s** (< 8 000 car. testé) |
 
-Pourquoi pas une route pour Track : exposer la course du pilote par le serveur n'apprendrait rien que la page ne sache déjà calculer, et ajouterait une requête par joueur. **Écart à connaître (décision pour Nathan)** : depuis la bascule du 28/10/2026 (`BASCULE_LOT_35`) le seuil de la médaille Diamant de Track est 0,84 × le temps du pilote, alors que le fantôme est le pilote lui-même : le suivre ne donne donc pas la médaille. Avant le 28/10 les deux coïncidaient. Je n'y ai pas touché (le fantôme « Diamant » est le meilleur tour de référence, pas le seuil).
+Pourquoi pas une route pour Track : exposer la course du pilote par le serveur n'apprendrait rien que la page ne sache déjà calculer, et ajouterait une requête par joueur. Le fantôme de Track est le pilote (1,00) ; le Diamant de Jump est le seuil de la médaille (trajectoire étirée, § 10).
 
 ## 2. Déblocage et serveur (Jump)
 - Le **jour même** : il faut un joueur actif avec un **résultat classé** ce jour-là, sinon **`403 ghost_locked`** (liste unique `codesErreur.ts`, `codes-erreur.md`, catalogue commun : « Finis le niveau pour débloquer le fantôme Diamant. » / “Finish the level to unlock the Diamond ghost.”). Un **jour passé** est libre.
@@ -52,6 +52,13 @@ Les textes `fantome.*`, l'icône et le bouton sont **hors** du portail (icône �
 3. `JUMP_PLAYER` à 14 requêtes (plafond du test relevé de 13 à 14).
 4. Modification de `docs/plateforme/identite.md` (révision 12 et § 9, ligne fournie par la demande) ; à relire. Le fichier joint à la demande portait d'autres numéros de révision (10 et 11 : nouveautés et administration) que celui du dépôt : seule la ligne 12 et la phrase du § 9 ont été reprises.
 5. **« Revoir » le Diamant (Track) non fait** : le classement du jour de Track n'a pas de ligne « Diamant » à laquelle l'attacher. Un `?watch=diamant` (le lecteur existant, la course du pilote) coûterait ≈ 1 ko du premier chargement (reste 1 024 o sur les 2 048 autorisés) ; à décider.
+
+## 10. Médailles assouplies (demande de Nathan, 28/10 : « le Diamant est imprenable »)
+- **Track** : le Diamant passe de 0,84 à **0,92 × le temps du pilote** (choix de Nathan) ; or, argent et bronze gardent leurs écarts (×1,045, ×1,07, ×1,13 du Diamant) et montent d'autant : or 0,961, argent 0,984, bronze 1,040. À partir du **30/10/2026** (`BASCULE_LOT_G1`) ; les jours d'avant gardent leurs seuils. **À savoir** : la médiane des meilleurs temps du 22/10 était à 0,90 : à 0,92 le Diamant devient courant (cible du lot 35 : 5–10 %), et débloque plus vite les voitures du Garage ; un facteur à ajuster si besoin (`MEDAL_FACTORS_G1`).
+- **Jump** : le Diamant n'est plus le temps exact de l'auteur (la preuve, imbattable) mais **105 %** de ce temps ; or 115 %, argent 137 %, bronze 170 % (avant : 100, 110, 130, 160). Valeurs choisies sans données de joueurs Jump : à ajuster (`MEDAL_PERCENT_G1`). Même bascule (30/10, `BASCULE_JUMP_G1`) ; les références des versions d'avant (golden v3 à v10) et les niveaux figés gardent leurs seuils ; le golden v11 change **les médailles seulement** (4 dates sur 6 : niveau, preuve et empreinte identiques).
+- **Le fantôme Diamant de Jump finit au seuil** : le serveur étire la trajectoire de l'auteur jusqu'à ce temps (affichage seulement) ; suivre le fantôme jusqu'au bout mérite le Diamant. Aucune entrée n'est servie, toujours.
+- **Bascule** : le 30/10 suppose une mise en production au plus tard le 29/10 ; sinon la déplacer (les deux constantes) — le garde-fou de « Mettre en production » arrête un jour déjà joué dont les médailles changeraient.
+- Ces changements sont dans le même lot par décision de Nathan (« Hors périmètre » de la demande d'origine).
 
 ## 8. CI
 Run de la PR : voir le résumé de `npm run attendre-ci` dans la PR (premier run, `e064b8b` : seul l'échec de `horloge.spec.ts`, déjà sur `main`, corrigé depuis par le lot 53).

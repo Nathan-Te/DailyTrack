@@ -507,7 +507,7 @@ describe("niveaux figés : le chargement", () => {
     const cases: [unknown, string | RegExp][] = [
       [null, "fichier absent"],
       ["<!doctype html>", "fichier illisible"],
-      [{ ...frozenOf(DAY), auteur: 1 }, "médailles illisibles"],
+      [{ ...frozenOf(DAY), medailles: { ...frozenOf(DAY).medailles, author: frozenOf(DAY).auteur - 1 } }, "médailles illisibles"], // le Diamant n'est jamais sous le temps de l'auteur (lot G1 : au-dessus depuis la bascule)
       [{ ...frozenOf(DAY), simVersion: JUMP_SIM_VERSION + 1 }, /^autre physique/],
     ];
     for (const [file, why] of cases) {

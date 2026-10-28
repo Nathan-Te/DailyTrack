@@ -80,7 +80,30 @@ export type JumpMedal = keyof JumpMedals;
 /** Pas × pour cent ÷ 100, arrondi au pas supérieur (entiers seulement). */
 const ceilPercent = (ticks: number, percent: number): number => idiv(ticks * percent + 99, 100);
 
-export function jumpMedalsFor(authorTicks: number): JumpMedals {
+/**
+ * Lot G1 — **médailles assouplies** (demande de Nathan, 28/10/2026 : le Diamant, au temps exact de l'auteur, était imprenable) : à partir de `BASCULE_JUMP_G1`, le **seuil du
+ * Diamant est à 105 %** du temps de l'auteur (la preuve du niveau, que personne ne bat), l'or à 115 %, l'argent à 137 %, le bronze à 170 % ; les jours d'avant gardent leurs
+ * seuils (or 110 %, argent 130 %, bronze 160 %, Diamant = le temps de l'auteur). Le fantôme Diamant est la trajectoire de l'auteur **étirée jusqu'à ce seuil** (serveur,
+ * `apps/api/CLAUDE.md`) : suivre le fantôme, c'est mériter le Diamant.
+ */
+export const MEDAL_PERCENT_G1 = { author: 105, gold: 115, silver: 137, bronze: 170 } as const;
+
+/** Le **30/10/2026**, le premier jour qui commence après la mise en production du lot G1 (même date que `BASCULE_LOT_G1` de Track). Une mise en production plus tard la déplace. */
+export const BASCULE_JUMP_G1 = daysFromCivil(2026, 10, 30);
+
+/**
+ * Les médailles d'un niveau à partir du temps de l'auteur ; **toujours passer le jour** (sans lui, les seuils d'avant le lot G1). Les références des versions d'avant la 11
+ * (`dailyLevel(jour, thème, version)`) gardent leurs seuils : les nouveaux ne valent que pour la version en vigueur.
+ */
+export function jumpMedalsFor(authorTicks: number, day = 0, simVersion = RESTART_VERSION): JumpMedals {
+  if (day >= BASCULE_JUMP_G1 && simVersion >= RESTART_VERSION) {
+    return {
+      author: ceilPercent(authorTicks, MEDAL_PERCENT_G1.author),
+      gold: ceilPercent(authorTicks, MEDAL_PERCENT_G1.gold),
+      silver: ceilPercent(authorTicks, MEDAL_PERCENT_G1.silver),
+      bronze: ceilPercent(authorTicks, MEDAL_PERCENT_G1.bronze),
+    };
+  }
   return {
     author: authorTicks,
     gold: ceilPercent(authorTicks, MEDAL_PERCENT.gold),
@@ -106,8 +129,8 @@ export const SLOW_BRONZE_MARGIN = 110;
  * de n'importe quelle voie lente** (auteur + le plus petit surcoût − 1 pas) et **le bronze au-dessus du temps « toutes voies lentes »** avec
  * `SLOW_BRONZE_MARGIN` ; l'argent reste entre les deux. La calibration complète est pour le lot 17.
  */
-export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "fastTicks" | "slowTicks">[]): JumpMedals {
-  const m = jumpMedalsFor(author);
+export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "fastTicks" | "slowTicks">[], day = 0, simVersion = RESTART_VERSION): JumpMedals {
+  const m = jumpMedalsFor(author, day, simVersion);
   if (slow.length === 0) return m;
   const minExtra = slow.reduce((n, r) => (r.slowTicks - r.fastTicks < n ? r.slowTicks - r.fastTicks : n), slow[0]!.slowTicks - slow[0]!.fastTicks);
   const all = author + slow.reduce((n, r) => n + r.slowTicks - r.fastTicks, 0);
@@ -116,5 +139,5 @@ export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "f
   const bronzeMin = ceilPercent(all, SLOW_BRONZE_MARGIN);
   const bronze = m.bronze < bronzeMin ? bronzeMin : m.bronze;
   const silver = m.silver < gold ? gold : m.silver > bronze ? bronze : m.silver;
-  return { author, gold, silver, bronze };
+  return { author: m.author, gold, silver, bronze };
 }

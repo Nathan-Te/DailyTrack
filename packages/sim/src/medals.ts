@@ -23,6 +23,20 @@ export const MEDAL_FACTORS_35 = { author: 0.84, gold: 1.045, silver: 1.07, bronz
  */
 export const BASCULE_LOT_35 = daysFromCivil(2026, 10, 28);
 
+/**
+ * Lot G1 — **médailles assouplies** (demande de Nathan, 28/10/2026 : le Diamant était imprenable sur les cartes du jour) : le Diamant passe de 0,84 à **0,92** du temps du
+ * pilote, or, argent et bronze gardent leurs écarts (multiples du Diamant : ×1,045, ×1,07, ×1,13) donc montent d'autant (or 0,961, argent 0,984, bronze 1,040 du pilote :
+ * rouler comme le pilote, le fantôme Diamant, rapporte le bronze). À partir de `BASCULE_LOT_G1` seulement : les jours d'avant gardent leurs seuils.
+ */
+export const MEDAL_FACTORS_G1 = { author: 0.92, gold: 1.045, silver: 1.07, bronze: 1.13 } as const;
+
+/**
+ * Lot G1 — date de bascule des médailles assouplies : le **30/10/2026**, le premier jour qui commence après la mise en production du lot (au plus tôt le 29/10). Une mise en
+ * production après le 29/10 la déplace (cette constante, avec `BASCULE_JUMP_G1` de jump-sim) : le garde-fou de « Mettre en production » arrête sinon un jour déjà joué dont les
+ * médailles changeraient (empreinte des jours protégés).
+ */
+export const BASCULE_LOT_G1 = daysFromCivil(2026, 10, 30);
+
 export type Medal = "author" | "gold" | "silver" | "bronze";
 
 export interface Medals {
@@ -37,7 +51,7 @@ export interface Medals {
  * passer le jour** : sans lui (`day` = 0), ce sont les seuils d'avant le lot 35.
  */
 export function medalsFor(pilotMs: number, day = 0): Medals {
-  const f = day < BASCULE_LOT_35 ? { author: 1, ...MEDAL_FACTORS } : MEDAL_FACTORS_35;
+  const f = day < BASCULE_LOT_35 ? { author: 1, ...MEDAL_FACTORS } : day < BASCULE_LOT_G1 ? MEDAL_FACTORS_35 : MEDAL_FACTORS_G1;
   const author = Math.round(pilotMs * f.author);
   return {
     author,
