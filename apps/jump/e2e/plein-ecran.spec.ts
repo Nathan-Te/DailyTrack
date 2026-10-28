@@ -5,7 +5,7 @@ import { boxes, expectCentreLibre, expectNoOverlap, SURIMPRESSIONS } from "./lay
 import { hasWebGL } from "./phone";
 
 // Lot I7 (plateforme) : le plein écran revient en vue dans Jump (pas de bouton caméra : Jump n'a pas de choix de caméra).
-//   - en partie, en haut à gauche, juste après la pause (44 px, hors de la zone du personnage, rien ne se chevauche) ;
+//   - en partie, en haut à gauche, juste après la pause et ses actions (44 px, hors de la zone du personnage, rien ne se chevauche) ;
 //   - sur l'accueil : dans la barre des jeux, à côté de la date ; il bascule (`aria-pressed`, nom lu) et tente de verrouiller le paysage ;
 //   - caché quand l'API n'existe pas ou quand le site est déjà une application ; sur iPhone, une ligne « Partager › Sur l'écran d'accueil », une seule fois.
 const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1";
@@ -66,18 +66,23 @@ async function enPartie(context: BrowserContext, avecBouton = true): Promise<Pag
 for (const viewport of [
   { width: 844, height: 390 },
 ]) {
-  test(`paysage ${viewport.width}×${viewport.height} : en partie, le plein écran est juste après la pause, à 44 px, hors du centre, sans rien chevaucher ; il bascule`, async ({ browser }) => {
+  test(`paysage ${viewport.width}×${viewport.height} : en partie, le plein écran est juste après la pause et ses actions, à 44 px, hors du centre, sans rien chevaucher ; il bascule`, async ({ browser }) => {
     const context = await telephone(browser, viewport);
     await noterLesVerrous(context);
     try {
       const page = await enPartie(context);
       const pause = (await page.locator("#pausebtn").boundingBox())!;
       const plein = (await page.locator("#fullscreenbtn").boundingBox())!;
+      // Lot 27 : l'ordre de DailyTrack, pause · point de passage · recommencer · plein écran (aux doigts) : le plein écran suit la dernière
+      // plaque visible de la pause et de ses actions.
+      const avant = (await Promise.all(["#pausebtn", "#btn-respawn", "#btn-restart"].map((s) => page.locator(s).boundingBox())))
+        .filter((b): b is NonNullable<typeof b> => b !== null)
+        .reduce((a, b) => (b.x > a.x ? b : a));
       expect(plein.width, "44 px").toBeGreaterThanOrEqual(43.5);
       expect(plein.height, "44 px").toBeGreaterThanOrEqual(43.5);
       expect(Math.round(plein.y), "sur la ligne de la pause").toBe(Math.round(pause.y));
-      expect(plein.x, "juste à droite de la pause").toBeGreaterThanOrEqual(pause.x + pause.width);
-      expect(plein.x, "juste à droite de la pause").toBeLessThan(pause.x + pause.width + 16);
+      expect(plein.x, "juste après la pause et ses actions").toBeGreaterThanOrEqual(avant.x + avant.width);
+      expect(plein.x, "juste après la pause et ses actions").toBeLessThan(avant.x + avant.width + 16);
       const partie = await boxes(page, SURIMPRESSIONS.filter((s) => s !== "#dayline" && s !== "#toast" && s !== "#rotate"));
       expect(partie.map((b) => b.name)).toContain("#fullscreenbtn");
       expectNoOverlap(partie, viewport);

@@ -162,7 +162,8 @@ test("démo, au doigt en paysage : pseudo, rang, top 10, Partager ; cibles ≥ 4
       await page.locator("#home-play").tap();
       const fingers = await Fingers.on(page);
       await playAuthor(page, async () => {
-        await fingers.down(1, viewport.width * 0.2, viewport.height * 0.7);
+        // Lot 27 : l'autocollant du résultat est posé à gauche pendant le carnage ; le doigt qui le passe touche la scène, à droite du centre.
+        await fingers.down(1, viewport.width * 0.6, viewport.height * 0.5);
         await page.evaluate(() => (window as unknown as { __jump: J }).__jump.advance(1));
         await fingers.up(1);
       });
