@@ -49,4 +49,4 @@ Aucun écran, texte ni route publics ne change ; un joueur masqué ne voit aucun
 Retirer le jeton des outils de Track (autre lot) · ajouter une seconde adresse à la liste (`admin.md` § 5) · relire les deux pages de mentions légales (rubrique ajoutée).
 
 ## Runs de CI
-_(à compléter après la poussée)_
+CI de PR **verte** sur `be595b9` (6,4 min, 4 parts e2e et 4 parts unitaires) : https://github.com/Nathan-Te/DailyTrack/actions/runs/40624674187. En local : `npm test` complet (sqlite 4 108 tests, libsql 548), `npm run typecheck`, `npx tsc -p apps/portail`, e2e `admin-panneau`. Au premier passage, trois tests de durée du générateur (`packages/sim`) avaient échoué pendant une capture lancée en parallèle : relancés seuls et sans rien d'autre, ils passent.
