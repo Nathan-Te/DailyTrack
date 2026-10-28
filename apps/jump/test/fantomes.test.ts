@@ -6,6 +6,7 @@ import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, enc
 import { contrastRatio, hueDistance } from "../src/contrast";
 import { thawLevel } from "../src/frozen";
 import { DemoRankSource, DEMO_TODAY } from "../src/demoRank";
+import { DIAMOND_GHOST_COLOR } from "../src/diamond";
 import { FIRST_GHOST_COLOR, OWN_GHOST_COLOR, checkFirstGhost, firstGhostLabel, showFirstGhost, type FirstGhostData } from "../src/firstGhost";
 import { BLOCK_STYLE } from "../src/blocks";
 import { defaultSettings, parseSettings } from "../src/settings";
@@ -31,8 +32,8 @@ const data = (extra: Partial<FirstGhostData> = {}): FirstGhostData => ({
   ...extra,
 });
 
-describe("couleurs des deux fantômes (règle du lot 9)", () => {
-  const ghosts = [OWN_GHOST_COLOR, FIRST_GHOST_COLOR];
+describe("couleurs des trois fantômes (règle du lot 9, lot G1 : le Diamant)", () => {
+  const ghosts = [OWN_GHOST_COLOR, FIRST_GHOST_COLOR, DIAMOND_GHOST_COLOR];
   it("ni le rouge des dangers ni le jaune du personnage : teinte à au moins 30° de chacun", () => {
     for (const c of ghosts) {
       expect(hueDistance(c, HAZARD), c.toString(16)).toBeGreaterThanOrEqual(30);
@@ -41,6 +42,10 @@ describe("couleurs des deux fantômes (règle du lot 9)", () => {
   });
   it("deux couleurs bien distinctes : teintes à au moins 60° l'une de l'autre", () => {
     expect(hueDistance(OWN_GHOST_COLOR, FIRST_GHOST_COLOR)).toBeGreaterThanOrEqual(60);
+  });
+  it("lot G1 : le Diamant ne reprend ni le cyan du tien ni le mauve du premier (teinte à au moins 60° de chacun) : un vert menthe, sans dégradé", () => {
+    expect(hueDistance(DIAMOND_GHOST_COLOR, OWN_GHOST_COLOR)).toBeGreaterThanOrEqual(60);
+    expect(hueDistance(DIAMOND_GHOST_COLOR, FIRST_GHOST_COLOR)).toBeGreaterThanOrEqual(60);
   });
   it("lisibles : au moins 3:1 contre le ciel et chaque plan de chaque thème ; à 30° au moins des blocs clignotants et alternés", () => {
     for (const name of THEME_NAMES) {

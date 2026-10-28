@@ -28,6 +28,19 @@ body.paused #pause {
 .pause__menu .dj-bouton--track {
   width: 100%;
 }
+/* Lot G1 : le fantôme Diamant, grisé tant que le circuit du jour n'est pas fini. */
+.pause__verrou {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 2px;
+  color: var(--track-texte-doux);
+  font-size: var(--dj-taille-13);
+  font-style: italic;
+}
+.pause__verrou[hidden] {
+  display: none;
+}
 .pause__menu .lien {
   gap: 6px;
   justify-content: flex-start;

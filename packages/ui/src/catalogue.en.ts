@@ -98,6 +98,7 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "erreur.sim_version": "A new version of the game is out: reload the page.",
   "erreur.version": "A new version of the game is out: reload the page.",
   "erreur.no_ghost": "No ghost to show.",
+  "erreur.ghost_locked": "Finish the level to unlock the Diamond ghost.",
   "erreur.invalid_session": "Invalid Room session.",
   "erreur.unknown_session": "This Room session is over.",
   "erreur.session_future": "This Room session hasn't started yet.",

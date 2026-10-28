@@ -93,7 +93,8 @@ body:has(#arrival:not([hidden])) :is(#hud-gauche, #chrono, #hud-droite, #dayline
 }
 /* Petit portrait (360 px) : la bande du centre prend la place ; le plein écran reste dans la pause et sur l'accueil (on joue en paysage). */
 @media (orientation: portrait) and (max-width: 500px) {
-  #fullscreenbtn {
+  #fullscreenbtn,
+  #ghostbtn {
     display: none;
   }
 }

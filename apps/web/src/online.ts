@@ -8,7 +8,7 @@ import { listDayBests, type BestRun } from "./records";
 import { gameStorage } from "./storage";
 import { lireChoix, noterDeblocages } from "./voiture/choix";
 
-export type GhostMode = "mine" | "first" | "ahead" | "off";
+export type GhostMode = "mine" | "first" | "ahead" | "diamant" | "off";
 
 // Lot P0 (plateforme) : le pseudo (propriété du premier, suggestions) et « Changer mon code » sont ceux du module de profil commun.
 export { NAME_TAKEN_MESSAGE, type ChangeCodeResult, type RenameResult } from "@cdj/profile";
@@ -115,14 +115,18 @@ function ghostChoice(kind: "first" | "ahead", g: GhostData): GhostChoice {
   return { mode: kind, name: g.name, source: { ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, ...(voiture ? { voiture } : {}) } };
 }
 
-/** Modes de fantôme proposés, dans l'ordre où `G` les parcourt. */
-export function ghostModes(hasMine: boolean, online: boolean): GhostMode[] {
+/** Modes de fantôme proposés, dans l'ordre où `G` et le bouton les parcourent (lot G1 : le Diamant, quand il est débloqué, avant « aucun »). */
+export function ghostModes(hasMine: boolean, online: boolean, diamant = false): GhostMode[] {
   const modes: GhostMode[] = [];
   if (hasMine) modes.push("mine");
   if (online) modes.push("first", "ahead");
+  if (diamant) modes.push("diamant");
   modes.push("off");
   return modes;
 }
+
+/** Lot G1 : le fantôme Diamant est libre pour un jour passé ; le jour même (et un jour à venir d'essai), il se débloque en finissant le circuit (un meilleur temps existe). */
+export const diamantOuvert = (jour: number, aujourdhui: number, fini: boolean): boolean => jour < aujourdhui || fini;
 
 /** Mode suivant, en bouclant. */
 export function nextGhostMode(current: GhostMode, modes: GhostMode[]): GhostMode {

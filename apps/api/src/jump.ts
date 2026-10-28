@@ -7,6 +7,8 @@ import {
   TICK_RATE,
   dailyLevel,
   decodeReplay,
+  echantillonnerTrajectoire,
+  encoderTrajectoire,
   jumpMedalFor,
   levelNumber,
   parseLevel,
@@ -77,6 +79,9 @@ export const JUMP_GRACE_MS = 10 * 60_000;
 export const JUMP_BOARD_TOP = 10;
 /** Lectures de `/api/jump/*` par adresse et par fenêtre de débit (10 minutes) : un jeu en fait quelques-unes par partie. */
 export const JUMP_READS_PER_CLIENT = 120;
+/** Lot G1 : lectures du fantôme Diamant (une trajectoire de ≈ 2,5 ko) par adresse et par joueur et par fenêtre. */
+export const JUMP_DIAMOND_READS_PER_CLIENT = 60;
+export const JUMP_DIAMOND_PER_PLAYER = 30;
 /** Lot P2 : lectures du profil par joueur et par fenêtre (le jeu se synchronise au plus toutes les 30 s, et après chaque envoi accepté). */
 export const JUMP_ME_PER_PLAYER = 60;
 /** Lot P2 : fantômes du premier d'un jour passé gardés en mémoire (figés : le premier d'un jour fini ne change plus). */
@@ -197,6 +202,17 @@ export interface JumpBoard {
 }
 
 /** `GET /api/jump/day/<date>/ghost/first` (lot P2) : le meilleur essai du jour, tel que le serveur l'a rejoué et classé premier. */
+/** Lot G1 : ce que rend `GET /api/jump/fantome-diamant` — une trajectoire (positions échantillonnées, `jump-sim` : `decoderTrajectoire`), jamais des entrées. */
+export interface JumpDiamond {
+  date: string;
+  levelId: string;
+  /** Le temps de l'auteur du niveau, en pas (le temps du Diamant : la trajectoire dure autant). */
+  ticks: number;
+  simVersion: number;
+  generatorVersion: number;
+  trajectoire: string;
+}
+
 export interface JumpFirstGhost {
   date: string;
   levelId: string;
@@ -711,6 +727,52 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
    * des morts, en **une** requête ; avec `X-Player-Id` et pour le jour en cours, le profil DailyJump aussi (ses limites de débit, ses refus
    * rendus comme une valeur : `profileError`). Les mêmes fonctions que les routes séparées : mêmes réponses, mêmes lignes lues.
    */
+  /**
+   * Lot G1 : **le fantôme Diamant** (`GET /api/jump/fantome-diamant?date=`) : où était le personnage de l'auteur du niveau, 30 fois par seconde,
+   * **jamais ses commandes** : la preuve de l'auteur ne quitte pas le serveur (lot R9), la rendre donnerait le temps du Diamant. Le serveur la
+   * rejoue (`echantillonnerTrajectoire`, `@cdj/jump-sim`) et ne rend que des positions arrondies. **Déblocage** : un jour passé est libre ; le
+   * jour même (et la grâce qui suit minuit : le jour est encore ouvert), il faut avoir un résultat classé ce jour-là (n'importe quelle médaille) —
+   * sinon 403 `ghost_locked`. Gardé en mémoire par instance, par jour et par règle (versions et fichier figé).
+   */
+  const diamants = new Map<number, { rule: string; body: JumpDiamond }>();
+  const diamantsEnCours = new Map<number, Promise<JumpDiamond>>();
+  async function diamond(day: number): Promise<JumpDiamond> {
+    const rule = ruleOf(day);
+    const memo = diamants.get(day);
+    if (memo && memo.rule === rule) return memo.body;
+    let pending = diamantsEnCours.get(day);
+    if (!pending) {
+      pending = (async () => {
+        const d = jumpDailyOf(day, frozen);
+        const body: JumpDiamond = {
+          date: d.date,
+          levelId: d.id,
+          ticks: d.authorTicks,
+          simVersion: JUMP_SIM_VERSION,
+          generatorVersion: JUMP_GENERATOR_VERSION,
+          trajectoire: encoderTrajectoire(echantillonnerTrajectoire(d.level, d.replay)),
+        };
+        if (diamants.size >= GHOST_CACHE_MAX && !diamants.has(day)) diamants.delete(diamants.keys().next().value!);
+        diamants.set(day, { rule, body });
+        return body;
+      })().finally(() => diamantsEnCours.delete(day));
+      diamantsEnCours.set(day, pending);
+    }
+    return pending;
+  }
+
+  async function diamondGhost(day: number, me: string | null, info: RequestInfo): Promise<JumpDiamond> {
+    await platform.readHitAddress(info, "jdm", JUMP_DIAMOND_READS_PER_CLIENT);
+    if (isOpen(day)) {
+      if (me === null) throw new HttpError(403, "ghost_locked", "Finis le niveau pour débloquer le fantôme Diamant");
+      readHit(await hashKey("jdmp", me), JUMP_DIAMOND_PER_PLAYER);
+      await players.assertActive(me);
+      const row = await db.first<{ n: number }>("SELECT 1 AS n FROM jump_results WHERE day = ? AND player_id = ?", [day, me]);
+      if (!row) throw new HttpError(403, "ghost_locked", "Finis le niveau pour débloquer le fantôme Diamant");
+    }
+    return await diamond(day);
+  }
+
   async function bundle(day: number, req: Request, info: RequestInfo): Promise<WithHeaders> {
     const me = headerPlayer(req, false);
     const open = isOpen(day);
@@ -760,6 +822,14 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     if (path === "/api/jump/me") {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       return await myProfile(headerPlayer(req, true)!, info);
+    }
+    if (path === "/api/jump/fantome-diamant") {
+      if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+      const date = _url.searchParams.get("date");
+      if (date === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
+      const day = dayOf(date);
+      // Jamais en cache partagé : la réponse d'un jour ouvert n'est donnée qu'à qui a fini le niveau (`private` et `Vary: X-Player-Id`).
+      return new WithHeaders(await diamondGhost(day, headerPlayer(req, false), info), cacheHeaders({ open: isOpen(day), perPlayer: true }));
     }
     const m = /^\/api\/jump\/day\/([^/]+)(\/board|\/ghost\/first|\/deaths|\/carnage|\/bundle)?$/.exec(path);
     if (m) {

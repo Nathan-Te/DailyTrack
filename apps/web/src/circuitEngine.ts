@@ -23,6 +23,8 @@ export interface DailyCircuit {
   theme: ThemeName;
   forcedTheme: boolean;
   fallback: boolean;
+  /** Lot G1 : le fantôme Diamant (voir `CircuitData.diamant`). */
+  diamant?: CircuitData["diamant"];
 }
 
 export interface CircuitEngine {
@@ -43,7 +45,7 @@ async function fallbackTrack(): Promise<Track> {
 
 export async function dailyFromData(d: CircuitData): Promise<DailyCircuit> {
   const track = d.fallback || !d.spec ? await fallbackTrack() : parseTrack(d.id, d.spec);
-  return { day: d.day, date: d.date, number: d.number, attempt: d.attempt, variant: d.variant, spec: d.spec, figures: d.figures, track, authorMs: d.authorMs, medals: d.medals, palette: d.palette, theme: d.theme, forcedTheme: d.forcedTheme, fallback: d.fallback };
+  return { day: d.day, date: d.date, number: d.number, attempt: d.attempt, variant: d.variant, spec: d.spec, figures: d.figures, track, authorMs: d.authorMs, medals: d.medals, palette: d.palette, theme: d.theme, forcedTheme: d.forcedTheme, fallback: d.fallback, ...(d.diamant ? { diamant: d.diamant } : {}) };
 }
 
 /** Crée un moteur : un fil de travail démarré à la première demande, une demande à la fois (les suivantes attendent : l'interface reste fluide). */

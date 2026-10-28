@@ -1,4 +1,5 @@
-import { expect, test, newClockedContext, hasWebGL, type BrowserContext, type Page } from "./fixtures";
+import { SIM_VERSION, dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
+import { expect, test, newClockedContext, hasWebGL, TODAY, type BrowserContext, type Page } from "./fixtures";
 import { auditAxe } from "./axe";
 import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
 
@@ -8,6 +9,8 @@ import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
 //   - sur l'accueil : dans la barre des jeux, à côté de la date ; il bascule (`aria-pressed`, nom lu) et tente de verrouiller le paysage ;
 //   - caché quand l'API n'existe pas ou quand le site est déjà une application ; sur iPhone, une ligne « Partager › Sur l'écran d'accueil », une seule fois ;
 //   - le bouton caméra fait ce que fait la touche C, et son nom lu suit la caméra.
+//   - lot G1 (charte rév. 12) : le fantôme reste en vue ; `#btn-ghost`, 44 px, en tête du groupe de droite, devant l'objectif ; chaque appui passe au fantôme suivant (Aucun compris) ;
+//     le Diamant n'est dans le cycle qu'une fois le circuit fini.
 // Chromium seulement : le rendu 3D demande WebGL.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(150_000);
@@ -40,6 +43,15 @@ async function telephone(browser: Parameters<typeof newClockedContext>[0], viewp
   await context.addInitScript(() => localStorage.setItem("cdj:howto", "1"));
   return context;
 }
+
+// Lot G1 : un circuit fini aujourd'hui (le meilleur temps du pilote, gardé comme le jeu le garde) : le fantôme Diamant est débloqué.
+const circuit = dailyCircuit(TODAY);
+const pilote = runPilot(circuit.track, { grip: 0.9 });
+const record = (context: BrowserContext) =>
+  context.addInitScript(
+    ([id, replay, ms, simVersion]) => localStorage.setItem(`cdj:best:${id}`, JSON.stringify({ ms, splits: [9000, 18000, 27000], replay, simVersion })),
+    [circuit.track.id, encodeReplay(pilote.replay), pilote.finishMs, SIM_VERSION] as const,
+  );
 
 /** La course, au « PARTEZ ! » passé : hors ligne, pas à pas, la police large de la CI. */
 async function enCourse(context: BrowserContext): Promise<Page> {
@@ -86,7 +98,16 @@ for (const viewport of [
       expect(camera.x + camera.width, "devant l'objectif").toBeLessThanOrEqual(objectif.x + 1);
       await expect(page.locator("#hud-droite #btn-camera")).toHaveCount(1);
     } else await expect(page.locator("#menu #btn-camera")).toHaveCount(1);
-    const course = await boxes(page, ["#hud-centre", "#menu", "#btn-pause", "#btn-respawn", "#btn-restart", "#btn-camera", "#btn-fullscreen", "#medals", "#rang", "#speed", "#fx", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas"]);
+    // Lot G1 : le fantôme, 44 px, dans le groupe de droite devant l'objectif (et derrière la caméra quand elle y est : côte à côte).
+    const fantome = (await page.locator("#btn-ghost").boundingBox())!;
+    expect(fantome.width, "#btn-ghost : 44 px").toBeGreaterThanOrEqual(43.5);
+    expect(fantome.height, "#btn-ghost : 44 px").toBeGreaterThanOrEqual(43.5);
+    const objectifBox = (await page.locator("#medals").boundingBox())!;
+    expect(fantome.x, "le fantôme est en haut à droite").toBeGreaterThan(viewport.width / 2);
+    expect(fantome.x + fantome.width, "devant l'objectif").toBeLessThanOrEqual(objectifBox.x + 1);
+    await expect(page.locator("#hud-droite #btn-ghost")).toHaveCount(1);
+    if (!dansLaRangee) expect((await page.locator("#btn-camera").boundingBox())!.x, "la caméra et le fantôme côte à côte : la caméra d'abord").toBeLessThan(fantome.x);
+    const course = await boxes(page, ["#hud-centre", "#menu", "#btn-pause", "#btn-respawn", "#btn-restart", "#btn-camera", "#btn-fullscreen", "#btn-ghost", "#medals", "#rang", "#speed", "#fx", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas"]);
     // `#menu` contient ses boutons : on ne compare que les boutons entre eux.
     expectNoOverlap(course.filter((b) => b.name !== "#menu"), viewport);
     expectCentreLibre(course, viewport);
@@ -135,6 +156,47 @@ test("plein écran : le bouton de la course et celui de la pause basculent ensem
   await expect(page.locator("#pause-fullscreen")).toHaveText("Plein écran");
   await expect(bouton).toHaveAttribute("aria-pressed", "false");
   expect(await verrous(page), "sortir ne verrouille rien").toEqual(["landscape"]);
+  await context.close();
+});
+
+test("fantôme : chaque appui passe au fantôme suivant, Aucun compris ; le Diamant n'est dans le cycle qu'après avoir fini le circuit ; le nom lu suit", async ({ browser }) => {
+  // Avant d'avoir fini : pas de record, pas de classement, le Diamant est verrouillé : le cycle n'a que « aucun » (le Diamant est sauté).
+  const avant = await telephone(browser, { width: 844, height: 390 });
+  const p1 = await enCourse(avant);
+  const bouton1 = p1.locator("#btn-ghost");
+  await expect(bouton1).toHaveAttribute("aria-label", "Fantôme : ton record");
+  await bouton1.click();
+  await expect(bouton1).toHaveAttribute("aria-label", "Fantôme : aucun");
+  await bouton1.click();
+  await expect(bouton1).toHaveAttribute("aria-label", "Fantôme : aucun");
+  await avant.close();
+  // Après : ton record → Diamant → aucun → ton record (même ordre que `G` et que la pause).
+  const apres = await telephone(browser, { width: 844, height: 390 });
+  await record(apres);
+  const page = await enCourse(apres);
+  const bouton = page.locator("#btn-ghost");
+  await expect(bouton).toHaveAttribute("aria-label", "Fantôme : ton record");
+  await bouton.click();
+  await expect(bouton).toHaveAttribute("aria-label", "Fantôme : Diamant");
+  expect(await page.evaluate(() => (document.querySelector("#ghostinfo")?.textContent ?? ""))).toContain("Diamant"); // la plaque dit qui roule au prochain départ
+  await bouton.click();
+  await expect(bouton).toHaveAttribute("aria-label", "Fantôme : aucun");
+  await page.keyboard.press("KeyG"); // la touche et le bouton font le même cycle
+  await expect(bouton).toHaveAttribute("aria-label", "Fantôme : ton record");
+  // La pause porte la même entrée, sans la ligne grisée (le Diamant est débloqué).
+  await page.locator("#btn-pause").click();
+  await expect(page.locator("#pause-ghost")).toContainText("ton record");
+  await expect(page.locator("#pause-diamant")).toBeHidden();
+  await apres.close();
+});
+
+test("fantôme (anglais) : le nom lu est en anglais", async ({ browser }) => {
+  const context = await telephone(browser, { width: 844, height: 390 }, "en-US");
+  await record(context);
+  const page = await enCourse(context);
+  await expect(page.locator("#btn-ghost")).toHaveAttribute("aria-label", /^Ghost: /);
+  await page.locator("#btn-ghost").click();
+  await expect(page.locator("#btn-ghost")).toHaveAttribute("aria-label", "Ghost: Diamond");
   await context.close();
 });
 
@@ -209,6 +271,14 @@ for (const viewport of [
     expect(await verrous(page)).toEqual(["landscape"]);
     await bouton.click();
     await expect(bouton).toHaveAttribute("aria-pressed", "false");
+    // Lot G1 : l'accueil montre le fantôme choisi (un bouton de 44 px qui passe au suivant) et le Diamant grisé, avec comment le débloquer, tant que le circuit n'est pas fini.
+    const choix = page.locator("#home-ghost");
+    await expect(choix).toBeVisible();
+    await expect(choix).toContainText("Fantôme : ton record");
+    expect((await choix.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+    await expect(page.locator("#home .home-choix__verrou")).toContainText("Diamant · Finis le niveau pour le débloquer.");
+    await choix.click();
+    await expect(choix).toContainText("Fantôme : aucun"); // le Diamant est sauté : il est verrouillé
     // Les autres écrans (réglages, classement…) ont la barre sans le plein écran : on le règle avant de jouer, pas dans un sous-écran.
     await page.locator("#home-settings").click();
     await expect(page.locator("#settings")).toBeVisible();

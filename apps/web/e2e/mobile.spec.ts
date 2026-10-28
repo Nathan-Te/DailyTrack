@@ -69,7 +69,7 @@ for (const viewport of [
     expectNoOverlap(racingBoxes, viewport);
     if (paysage) expectCentreLibre(racingBoxes, viewport);
     expect((await page.locator("#hud-centre").boundingBox())!.height, "la bande fait 30 px de haut").toBeLessThanOrEqual(31);
-    for (const b of await page.locator("#menu button:visible, #btn-camera").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5); // pause, point de contrôle, recommencer, caméra, plein écran (caché en petit portrait : lot I7)
+    for (const b of await page.locator("#menu button:visible, #btn-camera, #btn-ghost:visible").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5); // pause, point de contrôle, recommencer, caméra, plein écran (caché en petit portrait : lot I7 ; le fantôme aussi : lot G1)
     await expect(page.locator("#meta")).toBeHidden(); // le titre du circuit ne s'affiche qu'au départ
     await expect(page.locator("#ghostinfo")).toBeHidden();
     // Le classement est replié sur téléphone ; la pastille du rang (« 3e ˅ ») l'ouvre, dans le coin du haut à droite, hors de la zone centrale.

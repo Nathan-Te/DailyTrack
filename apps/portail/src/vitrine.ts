@@ -27,6 +27,7 @@ import {
   barreJeu,
   barrePortail,
   bouton,
+  boutonFantome,
   boutonPleinEcran,
   cartouche,
   choixLangue,
@@ -133,6 +134,13 @@ function surIphone<T>(construire: () => T): T {
   }
 }
 
+/** Lot G1 : un bouton fantôme (en jeu son nom lu dit le fantôme choisi : « Fantôme : ton record »). */
+function fantome(t: T, classe: string[]): HTMLButtonElement {
+  const b = boutonFantome({ classe, onClick: () => undefined });
+  b.setAttribute("aria-label", t.t("erreur.ghost_locked"));
+  return b;
+}
+
 /** Lot I7 : le bouton plein écran (normal, en plein écran, sur asphalte, dans la barre des jeux) et l'astuce de l'iPhone. */
 function pleinEcran(t: T, jour: number): HTMLElement[] {
   // Les deux états côte à côte : le bouton réel, puis l'état « en plein écran » posé à la main (la vitrine ne bascule pas la page).
@@ -153,6 +161,8 @@ function pleinEcran(t: T, jour: number): HTMLElement[] {
     el("div", { classe: "vitrine-ligne" }, mettre(false, "dj-plein-ecran--barre"), mettre(true, "dj-plein-ecran--barre")),
     el("div", { classe: "vitrine-asphalte dj-sombre vitrine-ligne" }, mettre(false, "plaque-vitrine"), mettre(true, "plaque-vitrine")),
     barreJeu(t, { href: "../", jour, numero: 12, pleinEcran: true }),
+    // Lot G1 : le bouton fantôme (« passer au fantôme suivant »), seul et à côté du plein écran, sur crème et sur asphalte.
+    el("div", { classe: "vitrine-ligne" }, fantome(t, ["dj-plein-ecran--icone", "dj-plein-ecran--barre"]), el("span", { classe: "vitrine-asphalte dj-sombre vitrine-ligne" }, fantome(t, ["dj-plein-ecran--icone", "plaque-vitrine"]))),
     ...(astuce ? [astuce] : []),
   ];
 }

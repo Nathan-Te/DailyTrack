@@ -110,6 +110,7 @@ const fr = {
   "erreur.sim_version": "Une nouvelle version du jeu est disponible : recharge la page.",
   "erreur.version": "Une nouvelle version du jeu est disponible : recharge la page.",
   "erreur.no_ghost": "Pas de fantôme à montrer.",
+  "erreur.ghost_locked": "Finis le niveau pour débloquer le fantôme Diamant.",
   "erreur.invalid_session": "Session du Salon invalide.",
   "erreur.unknown_session": "Cette session du Salon est terminée.",
   "erreur.session_future": "Cette session du Salon n'a pas encore commencé.",

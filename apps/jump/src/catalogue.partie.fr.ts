@@ -36,8 +36,13 @@ export const fr = {
   "toast.premierIndisponible": "Fantôme du premier indisponible : à toi de jouer",
   "toast.rediffPremier": "Rediffusion de {nom}, premier du jour",
   "toast.rediffMeilleur": "Rediffusion de ton meilleur essai",
-  "toast.fantome.oui": "Fantôme : montré",
-  "toast.fantome.non": "Fantôme : caché",
+  // Lot G1 : le nom lu du fantôme choisi, les noms des choix et le Diamant verrouillé / débloqué ; le Diamant prend le nom de la médaille du socle.
+  "fantome.bouton": "Fantôme : {nom}",
+  "fantome.verrouille": "Finis le niveau pour le débloquer.",
+  "fantome.debloque": "Fantôme Diamant débloqué",
+  "fantome.nom.mien": "le tien",
+  "fantome.nom.premier": "le premier",
+  "fantome.nom.aucun": "aucun",
   // Le fantôme du premier (étiquette au-dessus de lui)
   "fantome.premier": "{nom} · {rang}",
   // Le bandeau d'arrivée (morceaux, scénarios, lectures, essais de thème)
@@ -70,8 +75,6 @@ export const fr = {
   "pause.reprendre": "REPRENDRE",
   "pause.recommencer": "Recommencer à zéro",
   "pause.pointDePassage": "Depuis le point de passage",
-  "pause.fantome.oui": "Fantôme : oui",
-  "pause.fantome.non": "Fantôme : non",
   "pause.son.oui": "Son : oui",
   "pause.son.non": "Son : non",
   "pause.reglages": "Réglages",
