@@ -378,7 +378,7 @@ function memoryStore(fail: "get" | "set" | null = null): KeyValue & { data: Map<
 describe("réglages du joueur", () => {
   it("défauts : tout actif, mouvement réduit selon le système", () => {
     // Lot I5 : `sound` (« Son : oui / non » de la pause), oui par défaut.
-    expect(defaultSettings()).toEqual({ volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: "normal", effects: "normal", reducedMotion: false, firstGhost: true, othersStains: true, sound: true });
+    expect(defaultSettings()).toEqual({ volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: "normal", effects: "normal", reducedMotion: false, firstGhost: true, othersStains: true, sound: true, buttonSize: "medium" });
     expect(defaultSettings(true).reducedMotion).toBe(true);
     // Lot 14 : le système demande un mouvement réduit → secousses Réduites par défaut.
     expect(defaultSettings(true).shake).toBe("reduit");
@@ -412,6 +412,17 @@ describe("réglages du joueur", () => {
     expect(parseSettings(JSON.stringify({ v: 1, shake: true })).shake).toBe("normal");
     expect(parseSettings(JSON.stringify({ v: 1, shake: "réduites" }), true).shake).toBe("reduit");
     expect(parseSettings(JSON.stringify({ v: 1, shake: "reduit" })).shake).toBe("reduit");
+  });
+
+  it("taille des boutons tactiles : « moyens » par défaut, les trois tailles mémorisées, une valeur inconnue reprend le défaut", () => {
+    expect(defaultSettings().buttonSize).toBe("medium");
+    for (const size of ["small", "medium", "large"] as const) {
+      const store = memoryStore();
+      expect(saveSettings(store, { ...defaultSettings(), buttonSize: size })).toBe(true);
+      expect(loadSettings(store).buttonSize).toBe(size);
+    }
+    expect(parseSettings(JSON.stringify({ v: 1, buttonSize: "énorme" })).buttonSize).toBe("medium");
+    expect(parseSettings(JSON.stringify({ v: 1, volume: 0.5 })).buttonSize).toBe("medium"); // un enregistrement d'avant
   });
 
   it("niveaux d'effets : ?fx=off et le mouvement réduit coupent particules et secousses ; les réglages ne concernent jamais la simulation", () => {

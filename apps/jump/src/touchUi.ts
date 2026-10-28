@@ -1,7 +1,7 @@
 import { el, svg } from "@cdj/ui";
 import type { Controls } from "./input";
 import { lier, t } from "./i18n";
-import { NO_INSETS, TouchPad, ZONE_SPANS, buttonRects, layoutFor, type Insets, type Zone } from "./touch";
+import { NO_INSETS, TouchPad, ZONES, buttonRects, layoutFor, zoneSpans, type ButtonSize, type Insets, type Zone } from "./touch";
 
 // Interface tactile (lot 1b) : la couche qui reçoit les doigts (pointer events, plusieurs à la fois), les boutons dessinés (sans effet sur le toucher)
 // et, avec `?zones=1`, le dessin des zones. Toute la décision (quelle zone, quelle direction) est dans `touch.ts`, pur et testé ; ici on ne fait que
@@ -18,6 +18,8 @@ export interface TouchUiOptions {
   zones: boolean;
   /** `?debug&tune` : un bouton ⚙ ouvre le panneau de réglages du personnage. */
   tune: boolean;
+  /** Taille des boutons dessinés (réglage du joueur). */
+  buttonSize: ButtonSize;
   onGear(): void;
 }
 
@@ -25,6 +27,8 @@ export interface TouchUi {
   readonly pad: TouchPad;
   /** Panneau ouvert : la couche ne capte plus rien et les doigts posés sont lâchés. */
   suspend(on: boolean): void;
+  /** Nouvelle taille des boutons (Réglages) : ils sont redessinés tout de suite, la frontière ← / → suit. */
+  setButtonSize(size: ButtonSize): void;
 }
 
 /** Une flèche des boutons de direction (la forme de la maquette). */
@@ -53,18 +57,19 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
   if (opts.forced) document.body.classList.add("touch-seen");
 
   let insets: Insets = { ...NO_INSETS };
-  const pad = new TouchPad(layoutFor(window.innerWidth, window.innerHeight, insets));
+  let size = opts.buttonSize;
+  const pad = new TouchPad(layoutFor(window.innerWidth, window.innerHeight, insets, size));
 
   // La couche qui reçoit les doigts : toute la page, sous les boutons du haut.
   const layer = el("div", { attrs: { id: "touch" } });
   const buttons = el("div", { attrs: { id: "tbuttons", "aria-hidden": "true" } });
   const visuals = new Map<Zone, HTMLElement>();
-  for (const s of ZONE_SPANS) {
-    const b = el("div", { classe: ["tbtn", `tbtn--${s.zone}`], attrs: { "data-zone": s.zone } });
-    if (s.zone === "jump") lier(b, "tactile.saut");
-    else b.append(fleche(FLECHES[s.zone]));
-    lier(b, LABEL[s.zone], undefined, "aria-label");
-    visuals.set(s.zone, b);
+  for (const zone of ZONES) {
+    const b = el("div", { classe: ["tbtn", `tbtn--${zone}`], attrs: { "data-zone": zone } });
+    if (zone === "jump") lier(b, "tactile.saut");
+    else b.append(fleche(FLECHES[zone]));
+    lier(b, LABEL[zone], undefined, "aria-label");
+    visuals.set(zone, b);
     buttons.append(b);
   }
 
@@ -96,7 +101,7 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
     const band = el("div", { classe: "zone band", texte: t("tactile.zone.bande") });
     band.style.cssText = `left:0;top:0;width:${l.width}px;height:${l.band}px`;
     zonesBox.append(band);
-    for (const s of ZONE_SPANS) {
+    for (const s of zoneSpans(l)) {
       const z = el("div", { classe: `zone ${s.zone}`, texte: t(LABEL[s.zone]) });
       z.style.cssText = `left:${s.x0 * l.width}px;top:${l.band}px;width:${(s.x1 - s.x0) * l.width}px;height:${l.height - l.band}px`;
       zonesBox.append(z);
@@ -106,7 +111,7 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
 
   const place = () => {
     insets = readInsets();
-    pad.layout = layoutFor(window.innerWidth, window.innerHeight, insets);
+    pad.layout = layoutFor(window.innerWidth, window.innerHeight, insets, size);
     document.documentElement.style.setProperty("--band", `${pad.layout.band}px`);
     for (const r of buttonRects(pad.layout)) {
       const v = visuals.get(r.zone)!;
@@ -180,6 +185,11 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
       suspended = on;
       document.body.classList.toggle("touch-suspended", on);
       release();
+    },
+    setButtonSize(next) {
+      if (next === size) return;
+      size = next;
+      relayout();
     },
   };
 }

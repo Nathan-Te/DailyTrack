@@ -4,15 +4,17 @@ import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
 // que le clavier et la manette (rien ne change dans la simulation).
 //
 // Disposition (paysage comme portrait) : une bande haute (lot I5 : la pause et la bande du HUD) exclue des zones de jeu ; sous elle, de bord à bord
-// et **sans trou** : [0, ¼[ = ←, [¼, ½[ = →, [½, 1] = saut. Les zones sont définies une fois par taille d'écran (`layoutFor`) ; les boutons dessinés
-// (`buttonRects`, lot I5 : aux bords de l'écran) sont plus petits et écartés des frontières, mais le toucher se décide par la zone, jamais par le bouton.
+// et **sans trou** : [0, frontière[ = ←, [frontière, ½[ = →, [½, 1] = saut. **La frontière ← / → est entre les deux flèches dessinées** (elle dépend de leur
+// taille et des zones sûres : `layoutFor`, `zoneSpans`) ; celle du saut reste à ½. Les boutons dessinés (`buttonRects`, aux bords de l'écran) ne sont qu'un
+// visuel : le toucher se décide par la zone, jamais par le bouton. Taille des boutons réglable (`ButtonSize`) : les zones ne changent pas, sauf la
+// frontière ← / → qui suit les flèches.
 //
 //   ┌──────────────────────────────────────┐
 //   │ ⏸  bande haute (pas de zone de jeu)  │
-//   ├───────────┬───────────┬──────────────┤
-//   │     ←     │     →     │     saut     │
-//   │  0 – ¼    │  ¼ – ½    │    ½ – 1     │
-//   └───────────┴───────────┴──────────────┘
+//   ├─────┬─────────────────┬──────────────┤
+//   │  ←  │        →        │     saut     │
+//   │     │ frontière – ½   │    ½ – 1     │
+//   └─────┴─────────────────┴──────────────┘
 
 export type Zone = "left" | "right" | "jump";
 /** Ce que touche un doigt : une zone de jeu, ou la bande haute (aucune commande). */
@@ -32,16 +34,24 @@ export const BAND_PX = 60;
 /** Cible tactile minimale (pixels CSS). */
 export const MIN_TARGET_PX = 44;
 
+/** Taille des boutons dessinés (réglage du joueur) : petits, moyens, grands. */
+export type ButtonSize = "small" | "medium" | "large";
+export const BUTTON_SIZES: readonly ButtonSize[] = ["small", "medium", "large"];
+
 export interface Layout {
   width: number;
   height: number;
   /** Ordonnée où finit la bande haute (zone sûre haute comprise) : au-dessous, les zones de jeu. */
   band: number;
   insets: Insets;
+  size: ButtonSize;
+  /** Abscisse (pixels CSS) de la frontière entre les zones ← et → : au milieu de l'écart entre les deux flèches dessinées. */
+  frontier: number;
 }
 
-export function layoutFor(width: number, height: number, insets: Insets = NO_INSETS): Layout {
-  return { width, height, band: BAND_PX + Math.max(insets.top, 0), insets };
+export function layoutFor(width: number, height: number, insets: Insets = NO_INSETS, size: ButtonSize = "medium"): Layout {
+  const band = BAND_PX + Math.max(insets.top, 0);
+  return { width, height, band, insets, size, frontier: metrics(width, height, band, insets, size).frontier };
 }
 
 /** Une zone active : tranche verticale de l'écran, en parts de la largeur. */
@@ -51,19 +61,24 @@ export interface ZoneSpan {
   x1: number;
 }
 
-/** Définition unique des zones : les tranches se touchent et couvrent [0, 1] de bord à bord. */
-export const ZONE_SPANS: readonly ZoneSpan[] = [
-  { zone: "left", x0: 0, x1: 0.25 },
-  { zone: "right", x0: 0.25, x1: 0.5 },
-  { zone: "jump", x0: 0.5, x1: 1 },
-];
+/** Les trois zones, de gauche à droite. */
+export const ZONES: readonly Zone[] = ["left", "right", "jump"];
+
+/** Définition unique des zones d'un écran : les tranches se touchent et couvrent [0, 1] de bord à bord (le saut commence toujours à ½). */
+export function zoneSpans(layout: Layout): ZoneSpan[] {
+  const f = layout.width > 0 ? Math.min(Math.max(layout.frontier / layout.width, 0), 0.5) : 0.25;
+  return [
+    { zone: "left", x0: 0, x1: f },
+    { zone: "right", x0: f, x1: 0.5 },
+    { zone: "jump", x0: 0.5, x1: 1 },
+  ];
+}
 
 /** Zone touchée en (x, y) ; hors de l'écran, la zone du bord. */
 export function zoneAt(layout: Layout, x: number, y: number): Hit {
   if (y < layout.band) return "band";
-  const f = layout.width > 0 ? x / layout.width : 0;
-  for (const s of ZONE_SPANS) if (f < s.x1) return s.zone;
-  return "jump";
+  if (x < layout.frontier) return "left";
+  return x < layout.width / 2 ? "right" : "jump";
 }
 
 /**
@@ -71,8 +86,7 @@ export function zoneAt(layout: Layout, x: number, y: number): Hit {
  * de cette moitié (→ à droite de la moitié, ← à gauche de l'écran), jamais pour le saut.
  */
 export function directionAt(layout: Layout, x: number): -1 | 1 {
-  const f = layout.width > 0 ? x / layout.width : 0;
-  return f < ZONE_SPANS[0]!.x1 ? -1 : 1;
+  return x < layout.frontier ? -1 : 1;
 }
 
 type Role = "dir" | "jump";
@@ -169,37 +183,68 @@ export interface ButtonRect {
 
 /** Marge entre un bouton dessiné et la frontière de sa zone (ou le bord de l'écran). */
 export const BUTTON_GAP_PX = 12;
+/** Écart des flèches au bord gauche de l'écran (hors zone sûre) : un pouce posé en bas à gauche les trouve sans chercher. */
+export const ARROWS_EDGE_PX = 24;
 /** Écart du bas : au-dessus de la bande de geste système (barre d'accueil de l'iPhone, retour d'Android). */
 export const BUTTON_BOTTOM_PX = 36;
-/** Lot I5 (charte rév. 7, maquette `jump-hud.html`) : les flèches font 76 px, le gros bouton jaune « SAUT » 110 × 92 px (moins si l'écran est petit). */
+/** Lot I5 (charte rév. 7, maquette `jump-hud.html`) : les flèches font 76 px, le gros bouton jaune « SAUT » 110 × 92 px (moins si l'écran est petit). Taille « moyens ». */
 export const DIR_BUTTON_PX = 76;
 export const JUMP_BUTTON_W = 110;
 export const JUMP_BUTTON_H = 92;
+/** Facteur de chaque taille, appliqué aux tailles ci-dessus (comme DailyTrack : 0,72 · 1 · 1,3). */
+export const SIZE_FACTOR: Readonly<Record<ButtonSize, number>> = { small: 0.72, medium: 1, large: 1.3 };
+/** Le personnage se tient dans [30 %, 70 %] de la largeur : une taille plus grande que « moyens » ne mord pas dessus plus que « moyens » ne le fait déjà. */
+const CENTRE_LIBRE_X = 0.3;
+
+interface Metrics {
+  dir: number;
+  jumpW: number;
+  jumpH: number;
+  /** Bord gauche de la flèche ←. */
+  leftX: number;
+  /** Bord droit de l'écran utile (zone sûre retirée) et bas des boutons. */
+  right: number;
+  bottom: number;
+  /** Frontière des zones ← / → : au milieu de l'écart entre les deux flèches. */
+  frontier: number;
+}
 
 /**
- * Boutons dessinés (pixels CSS). **Lot I5 : aux bords de l'écran**, jamais devant le personnage (charte rév. 7, § 9) : ← et → en bas à gauche, collés
- * de part et d'autre de la frontière ¼ (← au bord droit de sa zone, → au bord gauche de la sienne), le gros bouton « SAUT » en bas à droite contre le
- * bord. **Les zones ne changent pas** (lot 1b : [0, ¼[ = ←, [¼, ½[ = →, [½, 1] = saut, de bord à bord et sans trou) : chaque bouton reste dans sa zone,
- * à `BUTTON_GAP_PX` au moins de ses frontières et des zones sûres. N'est qu'un visuel : le toucher se décide par la zone, jamais par le bouton.
+ * Mesures des boutons. ← et → sont **calés contre le bord gauche** (`ARROWS_EDGE_PX`, zone sûre comprise), séparés de `2 × BUTTON_GAP_PX` (la frontière
+ * ← / → passe au milieu : `BUTTON_GAP_PX` de chaque côté) ; le gros « SAUT » est contre le bord droit. Chaque taille se réduit si l'écran manque de place :
+ * les flèches tiennent avant la moitié de l'écran (zone du saut) et sous la bande haute, jamais moins de la taille de `MIN_TARGET_PX` quand l'écran le permet.
  */
-export function buttonRects(layout: Layout): ButtonRect[] {
-  const { width, height, insets } = layout;
+function metrics(width: number, height: number, band: number, insets: Insets, size: ButtonSize): Metrics {
   const left = Math.max(insets.left, 0);
   const right = width - Math.max(insets.right, 0);
   // Au-dessus de la bande de geste : `BUTTON_BOTTOM_PX` depuis le bord, ou la zone sûre si elle est plus haute (elle contient déjà la barre d'accueil).
   const bottom = height - Math.max(insets.bottom, BUTTON_BOTTOM_PX);
-  const room = bottom - layout.band - BUTTON_GAP_PX;
-  const quarter = width * ZONE_SPANS[0]!.x1;
-  const half = width * ZONE_SPANS[1]!.x1;
-  // ← : au bord droit de sa zone [bord gauche, ¼[ ; → : au bord gauche de la sienne [¼, ½[.
-  const dir = Math.floor(Math.max(0, Math.min(DIR_BUTTON_PX, quarter - BUTTON_GAP_PX - (left + BUTTON_GAP_PX), half - BUTTON_GAP_PX - (quarter + BUTTON_GAP_PX), room * 0.5)));
-  const jumpW = Math.floor(Math.max(0, Math.min(JUMP_BUTTON_W, right - BUTTON_GAP_PX - (half + BUTTON_GAP_PX))));
-  const jumpH = Math.floor(Math.max(0, Math.min(JUMP_BUTTON_H, room * 0.6)));
-  const y = (h: number) => Math.round(bottom - h);
+  const room = bottom - band - BUTTON_GAP_PX;
+  const half = width / 2;
+  const leftX = left + ARROWS_EDGE_PX;
+  const k = SIZE_FACTOR[size];
+  // Deux flèches et leur écart tiennent entre le bord et la moitié de l'écran (à `BUTTON_GAP_PX` de la zone du saut).
+  const fit = Math.min((half - BUTTON_GAP_PX - leftX - 2 * BUTTON_GAP_PX) / 2, room * 0.5);
+  const medium = Math.min(DIR_BUTTON_PX, fit);
+  const centre = (CENTRE_LIBRE_X * width - leftX - 2 * BUTTON_GAP_PX) / 2;
+  const dir = Math.floor(Math.max(0, Math.min(Math.round(DIR_BUTTON_PX * k), fit, Math.max(medium, centre))));
+  const jumpW = Math.floor(Math.max(0, Math.min(Math.round(JUMP_BUTTON_W * k), right - BUTTON_GAP_PX - (half + BUTTON_GAP_PX))));
+  const jumpH = Math.floor(Math.max(0, Math.min(Math.round(JUMP_BUTTON_H * k), room * 0.6)));
+  return { dir, jumpW, jumpH, leftX, right, bottom, frontier: leftX + dir + BUTTON_GAP_PX };
+}
+
+/**
+ * Boutons dessinés (pixels CSS). **Aux bords de l'écran**, jamais devant le personnage (charte rév. 7, § 9) : ← et → en bas à gauche, le gros bouton
+ * « SAUT » en bas à droite contre le bord. Chaque bouton reste dans sa zone (`zoneSpans`), à `BUTTON_GAP_PX` au moins de ses frontières et des zones
+ * sûres. N'est qu'un visuel : le toucher se décide par la zone, jamais par le bouton.
+ */
+export function buttonRects(layout: Layout): ButtonRect[] {
+  const m = metrics(layout.width, layout.height, layout.band, layout.insets, layout.size);
+  const y = (h: number) => Math.round(m.bottom - h);
   return [
-    { zone: "left", x: Math.floor(quarter - BUTTON_GAP_PX - dir), y: y(dir), w: dir, h: dir },
-    { zone: "right", x: Math.ceil(quarter + BUTTON_GAP_PX), y: y(dir), w: dir, h: dir },
-    { zone: "jump", x: Math.floor(right - BUTTON_GAP_PX - jumpW), y: y(jumpH), w: jumpW, h: jumpH },
+    { zone: "left", x: m.leftX, y: y(m.dir), w: m.dir, h: m.dir },
+    { zone: "right", x: m.leftX + m.dir + 2 * BUTTON_GAP_PX, y: y(m.dir), w: m.dir, h: m.dir },
+    { zone: "jump", x: Math.floor(m.right - BUTTON_GAP_PX - m.jumpW), y: y(m.jumpH), w: m.jumpW, h: m.jumpH },
   ];
 }
 

@@ -7,12 +7,15 @@ import {
   BUTTON_GAP_PX,
   MIN_TARGET_PX,
   TouchPad,
-  ZONE_SPANS,
+  ARROWS_EDGE_PX,
+  BUTTON_SIZES,
+  ZONES,
   buttonRects,
   directionAt,
   layoutFor,
   wantsTouch,
   zoneAt,
+  zoneSpans,
   type Insets,
 } from "../src/touch";
 
@@ -34,11 +37,15 @@ const NOTCH: Insets = { top: 47, bottom: 34, left: 0, right: 0 };
 const NOTCH_LANDSCAPE: Insets = { top: 0, bottom: 21, left: 47, right: 47 };
 
 describe("zones", () => {
-  it("les tranches se touchent : de 0 à 1, sans trou ni recouvrement", () => {
-    expect(ZONE_SPANS[0]!.x0).toBe(0);
-    expect(ZONE_SPANS.at(-1)!.x1).toBe(1);
-    for (let i = 1; i < ZONE_SPANS.length; i++) expect(ZONE_SPANS[i]!.x0).toBe(ZONE_SPANS[i - 1]!.x1);
-    expect(ZONE_SPANS.map((s) => s.zone)).toEqual(["left", "right", "jump"]);
+  it.each(SCREENS)("%i × %i : les tranches se touchent, de 0 à 1, sans trou ni recouvrement, quelle que soit la taille des boutons", (w, h) => {
+    for (const size of BUTTON_SIZES) {
+      const spans = zoneSpans(layoutFor(w, h, undefined, size));
+      expect(spans.map((s) => s.zone)).toEqual(ZONES);
+      expect(spans[0]!.x0).toBe(0);
+      expect(spans.at(-1)!.x1).toBe(1);
+      for (let i = 1; i < spans.length; i++) expect(spans[i]!.x0).toBe(spans[i - 1]!.x1);
+      expect(spans[1]!.x1, "le saut commence toujours à la moitié").toBe(0.5);
+    }
   });
 
   it.each(SCREENS)("%i × %i : chaque point de l'écran est dans une et une seule zone, sans trou, bande haute exclue", (w, h) => {
@@ -50,9 +57,9 @@ describe("zones", () => {
       }
       for (const y of [-2, 0, 1, l.band - 1]) expect(zoneAt(l, x, y), `(${x}, ${y})`).toBe("band");
     }
-    // Les frontières : ¼ et ½ de la largeur appartiennent à la zone de droite.
-    expect(zoneAt(l, w / 4 - 0.01, h - 1)).toBe("left");
-    expect(zoneAt(l, w / 4, h - 1)).toBe("right");
+    // Les frontières : celle entre les flèches (au milieu de leur écart) et ½ de la largeur appartiennent à la zone de droite.
+    expect(zoneAt(l, l.frontier - 0.01, h - 1)).toBe("left");
+    expect(zoneAt(l, l.frontier, h - 1)).toBe("right");
     expect(zoneAt(l, w / 2 - 0.01, h - 1)).toBe("right");
     expect(zoneAt(l, w / 2, h - 1)).toBe("jump");
     // Hors de l'écran : la zone du bord.
@@ -70,8 +77,8 @@ describe("zones", () => {
   it("un doigt de direction hors de la moitié gauche compte pour la zone la plus proche de cette moitié", () => {
     const l = layoutFor(800, 400);
     expect(directionAt(l, -40)).toBe(-1);
-    expect(directionAt(l, 199)).toBe(-1);
-    expect(directionAt(l, 200)).toBe(1);
+    expect(directionAt(l, l.frontier - 1)).toBe(-1);
+    expect(directionAt(l, l.frontier)).toBe(1);
     expect(directionAt(l, 399)).toBe(1);
     expect(directionAt(l, 700)).toBe(1); // dans la moitié du saut : toujours →
     expect(directionAt(l, 5000)).toBe(1);
@@ -80,16 +87,17 @@ describe("zones", () => {
 
 describe("boutons dessinés", () => {
   const cases: [number, number, Insets | undefined][] = [...SCREENS.map(([w, h]) => [w, h, undefined] as [number, number, undefined]), [390, 844, NOTCH], [844, 390, NOTCH_LANDSCAPE]];
-  it.each(cases)("%i × %i : au moins 44 px, dans leur zone, écartés des frontières et des bords, sous la bande, sans se toucher", (w, h, insets) => {
-    const l = layoutFor(w, h, insets);
+  const withSizes = BUTTON_SIZES.flatMap((size) => cases.map(([w, h, insets]) => [size, w, h, insets] as const));
+  it.each(withSizes)("%s, %i × %i : au moins 44 px, dans leur zone, écartés des frontières et des bords, sous la bande, sans se toucher", (size, w, h, insets) => {
+    const l = layoutFor(w, h, insets, size);
     const rects = buttonRects(l);
     expect(rects.map((r) => r.zone)).toEqual(["left", "right", "jump"]);
     for (const r of rects) {
-      const span = ZONE_SPANS.find((s) => s.zone === r.zone)!;
+      const span = zoneSpans(l).find((s) => s.zone === r.zone)!;
       expect(r.w, `${r.zone} largeur`).toBeGreaterThanOrEqual(MIN_TARGET_PX);
       expect(r.h, `${r.zone} hauteur`).toBeGreaterThanOrEqual(MIN_TARGET_PX);
-      expect(r.x, `${r.zone} frontière gauche`).toBeGreaterThanOrEqual(span.x0 * w + BUTTON_GAP_PX);
-      expect(r.x + r.w, `${r.zone} frontière droite`).toBeLessThanOrEqual(span.x1 * w - BUTTON_GAP_PX);
+      expect(r.x, `${r.zone} frontière gauche`).toBeGreaterThanOrEqual(span.x0 * w + (r.zone === "left" ? 0 : BUTTON_GAP_PX) - 1e-6);
+      expect(r.x + r.w, `${r.zone} frontière droite`).toBeLessThanOrEqual(span.x1 * w - BUTTON_GAP_PX + 1e-6);
       expect(r.y, `${r.zone} sous la bande`).toBeGreaterThanOrEqual(l.band);
       expect(r.y + r.h, `${r.zone} dans l'écran`).toBeLessThanOrEqual(h - (insets?.bottom ?? 0));
       if (insets) {
@@ -102,21 +110,51 @@ describe("boutons dessinés", () => {
     for (let i = 1; i < rects.length; i++) expect(rects[i]!.x).toBeGreaterThan(rects[i - 1]!.x + rects[i - 1]!.w);
   });
 
-  // Lot I5 (charte rév. 7, § 9 ; maquette jump-hud.html) : les boutons aux bords — ← et → collés de part et d'autre de la frontière ¼ (en bas à gauche),
-  // le gros « SAUT » contre le bord droit — et **jamais devant le personnage** : aucun bouton dans la zone où il se tient (30 à 70 % de la largeur, 20 à
-  // 64 % de la hauteur : au sol il est 1,5 tuile sous le centre de l'image, vers 61 % ; e2e : `expectCentreLibre`). Les zones, elles, ne changent pas (tests « zones » ci-dessus).
-  it.each(cases)("%i × %i : aux bords, hors de la zone du personnage", (w, h, insets) => {
-    const l = layoutFor(w, h, insets);
+  // Lot I5 (charte rév. 7, § 9 ; maquette jump-hud.html) : les boutons aux bords — ← et → **calés contre le bord gauche** (en bas à gauche : `ARROWS_EDGE_PX`
+  // après la zone sûre), la frontière ← / → au milieu de leur écart ; le gros « SAUT » contre le bord droit — et **jamais devant le personnage** : aucun bouton
+  // dans la zone où il se tient (30 à 70 % de la largeur, 20 à 64 % de la hauteur : au sol il est 1,5 tuile sous le centre de l'image, vers 61 % ; e2e :
+  // `expectCentreLibre`). Les tailles « petits » et « moyens » ne mordent jamais sur cette zone ; « grands » ne la mord jamais plus que « moyens ».
+  it.each(withSizes)("%s, %i × %i : aux bords, hors de la zone du personnage", (size, w, h, insets) => {
+    const l = layoutFor(w, h, insets, size);
     const [left, right, jump] = buttonRects(l);
-    const q = w / 4;
-    expect(left!.x + left!.w).toBe(Math.floor(q - BUTTON_GAP_PX));
-    expect(right!.x).toBe(Math.ceil(q + BUTTON_GAP_PX));
+    expect(left!.x).toBe((insets?.left ?? 0) + ARROWS_EDGE_PX);
+    expect(right!.x).toBe(left!.x + left!.w + 2 * BUTTON_GAP_PX);
+    expect(l.frontier).toBe(left!.x + left!.w + BUTTON_GAP_PX);
     expect(jump!.x + jump!.w).toBeLessThanOrEqual(w - (insets?.right ?? 0) - BUTTON_GAP_PX);
     expect(jump!.x + jump!.w).toBeGreaterThan(w - (insets?.right ?? 0) - BUTTON_GAP_PX - 1);
     expect(jump!.w).toBeGreaterThanOrEqual(left!.w);
-    for (const r of [left!, right!, jump!]) {
-      const dehors = r.x + r.w <= w * 0.3 || r.x >= w * 0.7 || r.y + r.h <= h * 0.2 || r.y >= h * 0.64;
-      expect(dehors, `${r.zone} hors de la zone du personnage`).toBe(true);
+    const moyens = buttonRects(layoutFor(w, h, insets, "medium"));
+    for (const [i, r] of [left!, right!, jump!].entries()) {
+      const dehors = (b: { x: number; y: number; w: number; h: number }) => b.x + b.w <= w * 0.3 || b.x >= w * 0.7 || b.y + b.h <= h * 0.2 || b.y >= h * 0.64;
+      expect(dehors(r) || (size === "large" && r.x + r.w <= moyens[i]!.x + moyens[i]!.w), `${r.zone} hors de la zone du personnage`).toBe(true);
+    }
+  });
+
+  it.each(cases)("%i × %i : petits < moyens < grands, aussi grands que l'écran le permet (jamais moins de 44 px)", (w, h, insets) => {
+    const dir = (size: (typeof BUTTON_SIZES)[number]) => buttonRects(layoutFor(w, h, insets, size))[0]!.w;
+    const saut = (size: (typeof BUTTON_SIZES)[number]) => buttonRects(layoutFor(w, h, insets, size))[2]!.w;
+    expect(dir("small")).toBeLessThanOrEqual(dir("medium"));
+    expect(dir("medium")).toBeLessThanOrEqual(dir("large"));
+    expect(saut("small")).toBeLessThanOrEqual(saut("medium"));
+    expect(saut("medium")).toBeLessThanOrEqual(saut("large"));
+    expect(dir("small")).toBeGreaterThanOrEqual(MIN_TARGET_PX);
+  });
+
+  it("844 × 390 : les trois tailles ont leurs dimensions (flèches 55 · 76 · 99 px, saut 79 × 66 · 110 × 92 · 143 × 120 px)", () => {
+    const at = (size: (typeof BUTTON_SIZES)[number]) => buttonRects(layoutFor(844, 390, undefined, size));
+    expect(at("small").map((r) => [r.w, r.h])).toEqual([[55, 55], [55, 55], [79, 66]]);
+    expect(at("medium").map((r) => [r.w, r.h])).toEqual([[76, 76], [76, 76], [110, 92]]);
+    expect(at("large").map((r) => [r.w, r.h])).toEqual([[99, 99], [99, 99], [143, 120]]);
+  });
+
+  it("la frontière ← / → suit les flèches : plus grandes, elle recule vers la droite ; le doigt posé entre les deux flèches commande l'une ou l'autre", () => {
+    const petits = layoutFor(844, 390, undefined, "small");
+    const grands = layoutFor(844, 390, undefined, "large");
+    expect(grands.frontier).toBeGreaterThan(petits.frontier);
+    for (const l of [petits, grands]) {
+      const [left, right] = buttonRects(l);
+      expect(zoneAt(l, left!.x + left!.w + 1, l.height - 40)).toBe("left");
+      expect(zoneAt(l, right!.x - 1, l.height - 40)).toBe("right");
     }
   });
 });
@@ -139,13 +177,13 @@ describe("suivi des doigts", () => {
     const pad = new TouchPad(L);
     pad.down(1, ...left);
     expect(pad.direction).toBe(-1);
-    pad.move(1, 150, 300);
+    pad.move(1, L.frontier - 10, 300);
     expect(pad.direction).toBe(-1);
-    pad.move(1, 220, 300);
+    pad.move(1, L.frontier + 10, 300);
     expect(pad.direction).toBe(1);
     expect(pad.pressed("right")).toBe(true);
     expect(pad.pressed("left")).toBe(false);
-    pad.move(1, 90, 310);
+    pad.move(1, L.frontier - 20, 310);
     expect(pad.direction).toBe(-1);
     expect(pad.count).toBe(1);
     pad.up(1);

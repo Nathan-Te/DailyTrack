@@ -637,6 +637,10 @@ body.touch .arrivee__clavier {
   font-size: var(--dj-taille-14);
   font-weight: 600;
 }
+/* Taille des boutons : un réglage d'appareil tactile (`body.touch`, posé par `mountTouchUi`). */
+body:not(.touch) .reglages__ligne--tactile {
+  display: none;
+}
 .reglages__aide {
   font-size: var(--dj-taille-12);
   font-weight: 500;

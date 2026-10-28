@@ -1,5 +1,6 @@
 import type { KeyValue } from "./memory";
 import { storageKey } from "./storage";
+import { BUTTON_SIZES, type ButtonSize } from "./touch";
 
 // Réglages du joueur (lot 8) : son, vibrations, tremblement, effets visuels, mouvement réduit. Mémorisés sous `jump:settings`, lectures et
 // écritures **toujours protégées** (le jeu marche sans stockage). Ils ne touchent jamais à la simulation : une partie n'est jamais
@@ -31,10 +32,12 @@ export interface PlayerSettings {
   othersStains: boolean;
   /** Lot I5 : « Son : oui / non » de la pause (coupe tout le son sans toucher aux volumes ; oui par défaut). */
   sound: boolean;
+  /** Taille des boutons tactiles dessinés (petits, moyens, grands ; moyens par défaut) : seul le visuel change, les zones de toucher suivent les flèches. */
+  buttonSize: ButtonSize;
 }
 
 export function defaultSettings(systemReducedMotion = false): PlayerSettings {
-  return { volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: systemReducedMotion ? "reduit" : "normal", effects: "normal", reducedMotion: systemReducedMotion, firstGhost: true, othersStains: true, sound: true };
+  return { volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: systemReducedMotion ? "reduit" : "normal", effects: "normal", reducedMotion: systemReducedMotion, firstGhost: true, othersStains: true, sound: true, buttonSize: "medium" };
 }
 
 const unit = (v: unknown, d: number): number => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d);
@@ -65,6 +68,7 @@ export function parseSettings(raw: string | null, systemReducedMotion = false): 
     firstGhost: bool(o.firstGhost, d.firstGhost),
     othersStains: bool(o.othersStains, d.othersStains),
     sound: bool(o.sound, d.sound),
+    buttonSize: BUTTON_SIZES.includes(o.buttonSize as ButtonSize) ? (o.buttonSize as ButtonSize) : d.buttonSize,
   };
 }
 

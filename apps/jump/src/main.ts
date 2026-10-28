@@ -2621,6 +2621,7 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
   if (!levels.continuous) trail.clear();
   audio.setSettings(settings);
   if (changed === "othersStains") showOthers();
+  if (changed === "buttonSize") touchUi?.setButtonSize(settings.buttonSize);
   // Un aperçu, pour entendre le niveau choisi (au plus quatre fois par seconde pendant qu'on glisse le curseur).
   const now = performance.now();
   if ((changed === "volume" || changed === "sfx") && now - lastPreview > 250) {
@@ -2781,6 +2782,7 @@ if (touchOn) {
     forced: options.touch === "1",
     zones: options.zones,
     tune: options.tune,
+    buttonSize: settings.buttonSize,
     onGear: () => setPanel(true),
   });
 }
