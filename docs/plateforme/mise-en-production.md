@@ -83,6 +83,7 @@ gcloud iam service-accounts add-iam-policy-binding $SA --project=$PROJECT_ID --r
 gcloud iam workload-identity-pools providers describe github-repo --location=global --workload-identity-pool=github --format='value(attributeMapping)'
 ```
 
+- **Vérifier (une minute, sans mise en production)** : Actions › **« Sauvegarde : diagnostic »** › Run workflow (sur `main`). Il montre le sujet que GitHub présente à Google, puis teste un par un : la fédération prend le compte, le compte lit le jeton, le compte voit le bucket ; **chaque refus donne la commande exacte à lancer ici**. Le bouton fait le même contrôle avant de sauvegarder.
 - **Tu dois voir** `google.subject: assertion.sub` à la dernière commande (sinon la fédération ne reconnaît pas l'environnement : me le dire).
 - **GitHub** : Settings › Environments › **New environment** `sauvegarde` › *Deployment branches and tags* : **Selected** › `main` ; et l'environnement **`production`** : décoche **Required reviewers**, garde la branche `main`.
 - Le jeton expire dans un an : note la date ; le jour venu, le bouton s'arrête sur « Sauvegarde » et tu refais l'étape 3 (`gcloud secrets versions add` au lieu de `create`).

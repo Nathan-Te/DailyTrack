@@ -20,6 +20,7 @@ export const ECRITURES_PERMISES = {
   "recette-seed.yml": ["id-token"],
   "recette.yml": ["pull-requests", "id-token"],
   "retour-arriere.yml": ["contents", "id-token"],
+  "sauvegarde-diagnostic.yml": ["id-token"],
 };
 
 /** Ce qu'un `run:` ne doit jamais interpoler (contrôlé par l'auteur d'une PR, d'une branche ou d'un déclenchement manuel). */

@@ -1,0 +1,59 @@
+# « Sauvegarde : diagnostic » (lot de mise en production du 28/10/2026) — vérifier en une minute, sans CI ni déploiement, que le job `sauvegarde` de
+# « Mettre en production » a tous ses accès : la fédération prend le compte `cdj-sauvegarde`, ce compte lit le jeton Turso en lecture seule et voit le bucket.
+# Chaque refus dit lequel et donne la commande à lancer dans Cloud Shell (scripts/sauvegarde-acces.mjs, le même contrôle que le bouton). Rien n'est lu de la
+# base, rien n'est écrit ; la valeur du secret n'est jamais affichée. Installation : docs/plateforme/mise-en-production.md, annexe C.
+name: "Sauvegarde : diagnostic"
+
+on:
+  workflow_dispatch:
+    inputs:
+      cible:
+        description: "Le jeton à vérifier : production (cdj-turso-lecture) ou recette (cdj-recette-turso-lecture)"
+        type: choice
+        options: [production, recette]
+        default: production
+
+permissions:
+  contents: read
+
+jobs:
+  acces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Le même environnement que le job `sauvegarde` du bouton : c'est lui que la fédération reconnaît (limité à main).
+    environment: sauvegarde
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CIBLE: ${{ inputs.cible == 'recette' && 'recette' || 'production' }}
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      BUCKET: ${{ vars.SAUVEGARDE_BUCKET }}
+      SAUVEGARDE_SA: ${{ vars.GCP_SAUVEGARDE_SA }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+    steps:
+      - name: Configuration
+        id: cfg
+        run: |
+          [ -n "$GCP_PROJECT_ID" ] && [ -n "$WIF_PROVIDER" ] || { echo "::error title=Sauvegarde : diagnostic::fédération Google non configurée (GCP_PROJECT_ID, GCP_WORKLOAD_IDENTITY_PROVIDER)"; exit 1; }
+          if [ "$CIBLE" = production ]; then secret=cdj-turso-lecture; else secret=cdj-recette-turso-lecture; fi
+          {
+            echo "secret=$secret"
+            echo "bucket=${BUCKET:-${GCP_PROJECT_ID}-sauvegardes}"
+            echo "sa=${SAUVEGARDE_SA:-cdj-sauvegarde@${GCP_PROJECT_ID}.iam.gserviceaccount.com}"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ steps.cfg.outputs.sa }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Les accès de la sauvegarde
+        env:
+          SA: ${{ steps.cfg.outputs.sa }}
+          SECRET: ${{ steps.cfg.outputs.secret }}
+          BUCKET_CHOISI: ${{ steps.cfg.outputs.bucket }}
+        run: node scripts/sauvegarde-acces.mjs --projet "$GCP_PROJECT_ID" --sa "$SA" --secret "$SECRET" --bucket "$BUCKET_CHOISI" --resume "$GITHUB_STEP_SUMMARY"

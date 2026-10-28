@@ -486,6 +486,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Chaque accès vérifié un par un (fédération, secret, bucket) : un refus dit lequel et donne la commande à lancer (28/10/2026 : « PERMISSION_DENIED » seul).
+      - name: Les accès de la sauvegarde
+        env:
+          SA: ${{ steps.cfg.outputs.sa }}
+          SECRET: ${{ steps.cfg.outputs.secret }}
+          BUCKET_CHOISI: ${{ steps.cfg.outputs.bucket }}
+        run: node scripts/sauvegarde-acces.mjs --projet "$GCP_PROJECT_ID" --sa "$SA" --secret "$SECRET" --bucket "$BUCKET_CHOISI" --resume "$GITHUB_STEP_SUMMARY"
       - name: Lire la base (lecture seule), restaurer à blanc, compresser
         env:
           DB: ${{ steps.cfg.outputs.db }}
