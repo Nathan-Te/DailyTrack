@@ -67,10 +67,24 @@ done
 - **Tu dois voir** la liste `bindings:` avec ce compte et `roles/secretmanager.secretAccessor`.
 - **Ne donne pas** `secretAccessor` au compte de déploiement (`cdj-deploy@…`).
 
+### 3 ter. Le compte de déploiement doit pouvoir *voir que les secrets existent* (obligatoire)
+
+Le workflow ne monte un secret que s'il peut constater qu'il existe (Cloud Run refuse de déployer une référence à un secret introuvable). Sans ce droit, le déploiement réussit **mais le panneau reste désactivé** : la page dit « Le panneau n'est pas configuré sur ce serveur » et le journal du déploiement porte l'avertissement « le compte de déploiement n'a pas pu vérifier … (permission refusée ?) ». Le rôle `secretmanager.viewer` ne donne accès qu'aux **métadonnées** (nom, versions), **jamais à la valeur**.
+
+```bash
+for s in cdj-admin-emails cdj-admin-session-key cdj-recette-admin-emails cdj-recette-admin-session-key; do
+  gcloud secrets add-iam-policy-binding "$s" --project "$PROJET" \
+    --member="serviceAccount:cdj-deploy@${PROJET}.iam.gserviceaccount.com" --role=roles/secretmanager.viewer
+done
+```
+
+- **Tu dois voir** quatre fois la liste `bindings:` avec `cdj-deploy@…` et `roles/secretmanager.viewer`.
+- Ce n'est **pas** `secretAccessor` (celui-là reste réservé aux comptes d'exécution de l'étape 3 bis).
+
 ## 4. Déployer, puis le scénario de test (2 clics)
 
 1. Le workflow de déploiement ne monte les secrets que **s'ils existent** à ce moment-là : après les étapes 1 à 3, relance le déploiement de la **recette** (GitHub → **Actions** → « Recette » → **Run workflow**, ou la prochaine fusion dans `main`). Le résumé du déploiement dit « Panneau d'administration : secrets montés » (sinon : « désactivé » et le secret qui manque).
-   - Si le résumé avertit que le compte de déploiement « n'a pas pu vérifier » un secret (permission refusée) : donne-lui **seulement** la lecture des métadonnées, pas des valeurs : `gcloud secrets add-iam-policy-binding <secret> --project "$PROJET" --member="serviceAccount:cdj-deploy@${PROJET}.iam.gserviceaccount.com" --role=roles/secretmanager.viewer`.
+   - Si le résumé dit « permission refusée » : fais l'étape 3 ter (elle est **obligatoire**), puis relance le déploiement.
 2. Vérifie que le serveur voit sa configuration : `curl -s https://recette.playdujour.com/api/admin/config` → `{"actif":true,"clientId":"123456789012-….apps.googleusercontent.com","factice":false}`. (`"actif":false` : un secret manque, ou le déploiement date d'avant les secrets.)
 3. **Premier clic** — `https://recette.playdujour.com/admin/` › **Se connecter avec Google** (ton compte) : le **tableau de bord** affiche les chiffres de la recette et l'état du site au vert (API, base : « OK »).
 4. **Deuxième clic** — **Joueurs** › cherche « Démo » › ouvre la fiche › **Renommer** › confirme : **Journal** montre l'action ; rouvre le portail en joueur Démo (`https://recette.playdujour.com/?demo=joueur`) : le nouveau pseudo y est.
