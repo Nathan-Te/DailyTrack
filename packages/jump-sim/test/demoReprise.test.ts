@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ATTEMPT_DEAD,
   DEFAULT_JUMP_PARAMS,
-  RESTART_VERSION,
+  BRIDGE_VERSION,
   LASER_VERSION,
   STALACTITE_VERSION,
   SINGLE_CLOCK_VERSION,
@@ -25,7 +25,9 @@ import {
 
 const day = (date: string) => parseDay(date)!;
 /** v5 (g15) : deux jours à plateformes et à portions dures ; v4 (g14, la référence) : deux jours. */
-const V5 = ["2026-10-28", "2026-10-29", "2026-10-30"].map((d) => dailyLevel(day(d)));
+const V5 = ["2026-10-28", "2026-10-29", "2026-10-30"].map((d) => dailyLevel(day(d), null, BRIDGE_VERSION));
+/** v11 (g21, lot 27) : les mêmes jours, avec le niveau d'aujourd'hui. */
+const V11 = ["2026-10-28", "2026-10-29", "2026-10-30"].map((d) => dailyLevel(day(d)));
 const V4 = ["2026-11-03", "2026-11-09"].map((d) => dailyLevel(day(d), null, SINGLE_CLOCK_VERSION));
 
 const arrivalShare = (levels: readonly DailyLevel[], reprise: boolean, attempts: number): number => {
@@ -45,6 +47,13 @@ describe("la part des essais fictifs qui arrivent", () => {
     const after = arrivalShare(V5, true, 80);
     expect(after, `avant ${before.toFixed(2)}, après ${after.toFixed(2)}`).toBeGreaterThan(before + 0.12);
     expect(after).toBeGreaterThan(0.45);
+  }, 120_000);
+
+  it("v11 (g21, lot 27) : la reprise par phase améliore la part des essais qui arrivent (mesuré : ≈ 35 % → ≈ 45 % sur ces trois jours)", () => {
+    const before = arrivalShare(V11, false, 80);
+    const after = arrivalShare(V11, true, 80);
+    expect(after, `avant ${before.toFixed(2)}, après ${after.toFixed(2)}`).toBeGreaterThan(before + 0.08);
+    expect(after).toBeGreaterThan(0.4);
   }, 120_000);
 
   it("v4 : de même", () => {
@@ -118,6 +127,6 @@ describe("la reprise sur un point de passage", () => {
     const v3 = dailyLevel(day("2026-10-29"), null, 3);
     expect(reprise.resume(v3.level, { ...initialAttempt(v3.level), checkpoint: 0 })).toBeNull();
     expect(reprise.resume(d.level, { ...initialAttempt(d.level), checkpoint: -1 })).toBeNull();
-    expect(d.level.simVersion).toBe(RESTART_VERSION);
+    expect(d.level.simVersion).toBe(BRIDGE_VERSION);
   });
 });

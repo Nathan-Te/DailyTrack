@@ -67,6 +67,7 @@ Un **autocollant compact** (charte « Cartouches ») posé **à gauche, sous le 
 4. **Index du `CLAUDE.md` racine** (zone partagée, non touchée) : y ajouter « Ajustements (lot 27) » sous `packages/jump-sim/CLAUDE.md` et `apps/jump/CLAUDE.md`.
 5. `e2e/zones.json` (zone partagée) n'est pas touché : les tests de navigateur du lot sont dans `horloge.spec.ts` (déjà déclaré).
 6. Jours : g21 commence au jour de bascule de « Mettre en production » ; **aucun jour public ni figé touché** (`figes:jump -- --verifier` à jour). Démonstration `public/demo/` régénérée (`jump:seed`).
+7. **Joueurs fictifs** : `demoReprise.test.ts` garde ses jours de référence en g20 (`BRIDGE_VERSION`, chiffres inchangés) ; en g21 la reprise par phase fait passer les essais fictifs qui arrivent de ≈ 35 % à ≈ 45 % (test ajouté, seuil +8 points mesuré) : un peu moins qu'en g20 (+12), sans conséquence pour les joueurs (démonstration et recette seulement).
 
 ## Vérifié, non vérifié
 **Vérifié** : tests unitaires (jump-sim, apps/jump, apps/api sur SQLite), e2e Chromium des specs touchés, construction, typecheck, 365 dates sans secours, captures (paysage, portrait, ordinateur) regardées. **Non vérifié** : Firefox et WebKit (la CI complète de `main` ; le format ×16 des rediffusions v11 n'a pas de référence croisée entre navigateurs), le rendu sur un vrai téléphone, libSQL (la CI).
