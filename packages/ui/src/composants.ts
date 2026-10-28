@@ -12,8 +12,8 @@ import { astuceIphoneAPropos, basculerPleinEcran, pleinEcranActif, pleinEcranPos
 /** Le traducteur que reçoivent les composants : au moins le catalogue commun. */
 export type TraducteurCommun = Traducteur<CleCommune>;
 export type Jeu = "track" | "jump";
-export type TypeMedaille = "auteur" | "or" | "argent" | "bronze";
-export const MEDAILLES: readonly TypeMedaille[] = ["auteur", "or", "argent", "bronze"];
+export type TypeMedaille = "diamant" | "or" | "argent" | "bronze";
+export const MEDAILLES: readonly TypeMedaille[] = ["diamant", "or", "argent", "bronze"];
 
 /** Le logo `DU JOUR` : `grand` (barre du portail, sur son rectangle encre) ou `petit` (barre de retour des jeux, texte encre seul). */
 export function logo(t: TraducteurCommun, { taille = "grand" }: { taille?: "grand" | "petit" } = {}): HTMLElement {
@@ -338,7 +338,7 @@ function svgFermer(): SVGSVGElement {
   return svg("svg", { attrs: { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor", "stroke-width": 2.5, "stroke-linecap": "square", focusable: "false", "aria-hidden": "true" } }, svg("path", { attrs: { d: "M5 5l14 14M19 5 5 19" } }));
 }
 
-const NOM_MEDAILLE = { auteur: "medaille.auteur", or: "medaille.or", argent: "medaille.argent", bronze: "medaille.bronze" } as const;
+const NOM_MEDAILLE = { diamant: "medaille.diamant", or: "medaille.or", argent: "medaille.argent", bronze: "medaille.bronze" } as const;
 
 /** Le nom d'une médaille dans la langue. */
 export function nomMedaille(t: TraducteurCommun, type: TypeMedaille): string {

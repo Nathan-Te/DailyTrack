@@ -1,18 +1,22 @@
 import { baseApi, type Medaille } from "./jour";
 
-// Lot I3 : ce que la page `/classement/` lit du serveur (`GET /api/portail/classement?date=`, une requête par jour affiché) — pur, le réseau est passé :
-// testé dans `test/classement.test.ts`.
+// Lot I3, refait au lot A1 : ce que la page `/classement/` lit du serveur (`GET /api/portail/classement?date=&vue=`, une requête par jour et par vue
+// affichés) — pur, le réseau est passé : testé dans `test/classementVues.test.ts`.
 
-/** Ce qu'un joueur a fait dans un jeu : sa place et sa médaille (`medaille: null` : fini sans médaille) ; `null` dans `resultats` : pas fini. */
+/** Ce qu'un joueur a fait dans un jeu : sa place, son temps et sa médaille (`medaille: null` : fini sans médaille) ; `null` dans `resultats` : pas fini. */
 export interface ResultatClassement {
   rang: number;
+  tempsMs: number;
   medaille: Medaille | null;
 }
 
 export interface LigneClassement {
   rang: number;
   pseudo: string;
-  points: number;
+  /** Le temps de la vue : le cumul, ou le temps du jeu. `null` au cumul d'un joueur qui n'a pas fini tous les jeux. */
+  tempsMs: number | null;
+  /** A-t-il fini tous les jeux du jour ? (toujours vrai dans la vue d'un jeu) : faux = sous la séparation « Un jeu sur deux ». */
+  complet: boolean;
   /** Par code de jeu du registre du serveur. */
   resultats: Record<string, ResultatClassement | null>;
   /** Le haut du classement : cette ligne est la tienne (avec ton identifiant seulement). */
@@ -24,7 +28,8 @@ export interface Classement {
   journee: number | null;
   /** Le jour accepte encore des temps (aujourd'hui) : le classement bouge. */
   ouvert: boolean;
-  bareme: Record<Medaille, number>;
+  /** La vue rendue : `cumul`, ou le dossier d'un jeu sur le site (`track`, `jump`). */
+  vue: string;
   jeux: { jeu: string; site: string; nom: string }[];
   classes: number;
   top: LigneClassement[];
@@ -34,7 +39,7 @@ export interface Classement {
 
 export interface LectureClassement {
   classement: Classement | null;
-  /** Un code du serveur (`unknown_day`, `invalid_date`, `rate_limited`…), `reseau` ou `delai`. */
+  /** Un code du serveur (`unknown_day`, `invalid_date`, `invalid_view`, `rate_limited`…), `reseau` ou `delai`. */
   erreur: string | null;
 }
 
@@ -43,18 +48,21 @@ export const DELAI_CLASSEMENT_MS = 8000;
 
 const estClassement = (b: unknown): b is Classement => {
   const o = b as Partial<Classement> | null;
-  return !!o && typeof o.date === "string" && typeof o.ouvert === "boolean" && Array.isArray(o.top) && Array.isArray(o.jeux) && typeof o.bareme === "object" && o.bareme !== null;
+  return !!o && typeof o.date === "string" && typeof o.ouvert === "boolean" && Array.isArray(o.top) && Array.isArray(o.jeux) && typeof o.vue === "string";
 };
 
 /**
- * Lit le classement d'un jour (`date` : `AAAA-MM-JJ`, absent : aujourd'hui). L'identifiant secret part dans l'en-tête `X-Player-Id` (jamais dans l'adresse).
+ * Lit le classement d'un jour (`date` : `AAAA-MM-JJ`, absent : aujourd'hui) dans une vue (`cumul` ou le dossier d'un jeu). L'identifiant secret part dans l'en-tête `X-Player-Id` (jamais dans l'adresse).
  * Un joueur inconnu du serveur (404 `unknown_player`) ou au code révoqué (410) reçoit quand même le classement public (le corps le porte). Ne lève jamais.
  */
-export async function lireClassement(fetchImpl: typeof fetch, joueur: string | null, date: string | null, base = baseApi(), delaiMs = DELAI_CLASSEMENT_MS): Promise<LectureClassement> {
+export async function lireClassement(fetchImpl: typeof fetch, joueur: string | null, date: string | null, vue = "cumul", base = baseApi(), delaiMs = DELAI_CLASSEMENT_MS): Promise<LectureClassement> {
   const controle = new AbortController();
   const minuterie = setTimeout(() => controle.abort(), delaiMs);
   try {
-    const query = date ? `?date=${encodeURIComponent(date)}` : "";
+    const parametres = new URLSearchParams();
+    if (date) parametres.set("date", date);
+    if (vue !== "cumul") parametres.set("vue", vue);
+    const query = parametres.size > 0 ? `?${parametres}` : "";
     const res = await fetchImpl(`${base}/api/portail/classement${query}`, { headers: joueur ? { "X-Player-Id": joueur } : {}, cache: "no-store", signal: controle.signal });
     const corps = (await res.json().catch(() => null)) as (Partial<Classement> & { error?: unknown }) | null;
     const classement = estClassement(corps) ? corps : null;

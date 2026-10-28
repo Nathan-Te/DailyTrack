@@ -13,7 +13,7 @@ import { auditAxe } from "./axe";
 //   - le portail à partir du 23/10/2026 : « Journée n° 2 » à droite de la date, les deux tuiles (Série, Classement du jour), « Partager ma journée » et la
 //     ligne qu'il enverra (copie dans le presse-papiers quand `navigator.share` manque, texte exact), FR et EN ; **une seule requête** au chargement ;
 //   - un joueur neuf : la tuile invite à jouer, pas de bouton de partage ;
-//   - la page `/classement/` : le haut du classement, ta ligne surlignée (dans le haut, et hors du haut), la médaille de chaque jeu, le barème, un jour passé
+//   - la page `/classement/` : le haut du classement, ta ligne surlignée (dans le haut, et hors du haut), trois vues au chrono (Cumulé, Track, Jump), la médaille de chaque jeu, un jour passé
 //     (« ‹ Veille », « Lendemain › » jamais au-delà d'aujourd'hui) ;
 //   - « Jeu suivant du jour » à l'arrivée de chaque jeu, de Track vers Jump et de Jump vers Track, puis « Journée parfaite ! » (les vrais jeux, le vrai
 //     serveur, le site assemblé comme Firebase Hosting le sert) ;
@@ -103,11 +103,11 @@ async function sansFeuilleDePartage(context: BrowserContext): Promise<void> {
 }
 
 /** Ce que le serveur dit du joueur de démonstration à cet instant (la vérité des attentes ci-dessous). */
-async function jourDeDemo(): Promise<{ journee: number; joueur: { serie: number; points: number; rangDuJour: number | null; classesDuJour: number | null; aujourdhuiParfaite: boolean }; jeux: { etat: { statut: string; medaille?: string | null } }[] }> {
+async function jourDeDemo(): Promise<{ journee: number; joueur: { serie: number; cumulMs: number | null; rangDuJour: number | null; classesDuJour: number | null; aujourdhuiParfaite: boolean }; jeux: { etat: { statut: string; medaille?: string | null } }[] }> {
   const r = await fetch("http://127.0.0.1:8797/api/portail/jour", { headers: { "X-Player-Id": DEMO_ID } });
   return (await r.json()) as never;
 }
-const EMOJI: Record<string, string> = { author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" };
+const EMOJI: Record<string, string> = { author: "💎", gold: "🥇", silver: "🥈", bronze: "🥉" };
 const rangFr = (n: number) => (n === 1 ? "1er" : `${n}e`);
 const rangEn = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th"}`;
 
@@ -131,11 +131,13 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   const [d, j] = await Promise.all([page.locator("#date").boundingBox(), page.locator("#journee").boundingBox()]);
   expect(j!.x).toBeGreaterThan(d!.x + d!.width - 1);
   expect(Math.abs(j!.y + j!.height / 2 - (d!.y + d!.height / 2))).toBeLessThan(d!.height);
-  // Les deux tuiles côte à côte : Série et Classement du jour (sa place, ses points tous jeux).
+  // Les deux tuiles côte à côte : Série et Classement du jour (sa place, son temps cumulé).
   await expect(page.locator("#serie .dj-tuile__valeur")).toHaveText(`${demo.joueur.serie} jours`);
   await expect(page.locator("#classement .dj-tuile__legende")).toHaveText("Classement du jour");
   await expect(page.locator("#classement .dj-tuile__valeur")).toHaveText(rangFr(demo.joueur.rangDuJour!));
-  await expect(page.locator("#classement .dj-tuile__sous-texte")).toHaveText(`${demo.joueur.points} points, tous jeux`);
+  // Lot A1 : Track fini, Jump en cours → pas de temps cumulé, mais sa place et le jeu à finir pour l'avoir.
+  expect(demo.joueur.cumulMs).toBeNull();
+  await expect(page.locator("#classement .dj-tuile__sous-texte")).toHaveText("Finis Jump pour le cumul");
   const [a, b] = await Promise.all([page.locator("#serie").boundingBox(), page.locator("#classement").boundingBox()]);
   expect(Math.abs(a!.y - b!.y)).toBeLessThan(2);
   expect(b!.x).toBeGreaterThan(a!.x + a!.width - 1);
@@ -164,7 +166,7 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   await expect(page.locator("#date")).toHaveText("Saturday, October 24");
   await expect(page.locator("#classement .dj-tuile__legende")).toHaveText("Today's leaderboard");
   await expect(page.locator("#classement .dj-tuile__valeur")).toHaveText(rangEn(demo.joueur.rangDuJour!));
-  await expect(page.locator("#classement .dj-tuile__sous-texte")).toHaveText(`${demo.joueur.points} points, all games`);
+  await expect(page.locator("#classement .dj-tuile__sous-texte")).toHaveText("Finish Jump for the combined time");
   await expect(partager).toHaveText("Share my day");
   await expect(apercu).toHaveText(`${ligne}\n${SITE_24}/`);
   await capture(page, "portail-plein-portrait-en");
@@ -235,7 +237,7 @@ test("un joueur connu qui n'a encore fini aucun jeu aujourd'hui : la tuile l'inv
   // Réponse fabriquée : un joueur du serveur sans jeu fini aujourd'hui (rang et points : rien).
   await context.route("**/api/portail/jour", async (route) => {
     const vrai = (await (await route.fetch()).json()) as { jeux: Record<string, unknown>[] };
-    const corps = { ...vrai, jeux: vrai.jeux.map((j) => ({ ...j, etat: { statut: "pas_joue" } })), joueur: { pseudo: "Kiwi", serie: 3, aProlonger: true, journeesParfaites: 0, aujourdhuiParfaite: false, points: 0, rangDuJour: null, classesDuJour: null } };
+    const corps = { ...vrai, jeux: vrai.jeux.map((j) => ({ ...j, etat: { statut: "pas_joue" } })), joueur: { pseudo: "Kiwi", serie: 3, aProlonger: true, journeesParfaites: 0, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: null, classesDuJour: null } };
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(corps) });
   });
   const page = await context.newPage();
@@ -252,15 +254,15 @@ function classementFabrique(): unknown {
   const ligne = (i: number, moi = false) => ({
     rang: i,
     pseudo: moi ? "Démo" : `Joueur ${i}`,
-    points: Math.max(0, 7 - Math.floor(i / 9)),
-    resultats: { cdj: { rang: i, medaille: medailles[i % 5]! }, jump: i % 4 === 0 ? null : { rang: i + 1, medaille: medailles[(i + 2) % 5]! } },
-    ...(moi ? {} : {}),
+    tempsMs: i % 4 === 0 ? null : 60_000 + i * 1_000,
+    complet: i % 4 !== 0,
+    resultats: { cdj: { rang: i, tempsMs: 30_000 + i * 500, medaille: medailles[i % 5]! }, jump: i % 4 === 0 ? null : { rang: i + 1, tempsMs: 30_000 + i * 500, medaille: medailles[(i + 2) % 5]! } },
   });
   return {
     date: "2026-10-24",
     journee: 2,
     ouvert: true,
-    bareme: { author: 4, gold: 3, silver: 2, bronze: 1 },
+    vue: "cumul",
     jeux: [
       { jeu: "cdj", site: "track", nom: "Track" },
       { jeu: "jump", site: "jump", nom: "Jump" },
@@ -272,7 +274,7 @@ function classementFabrique(): unknown {
 }
 
 for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
-  test(`/classement/ (${nom}) : le haut, ta ligne surlignée, la médaille de chaque jeu, le barème ; ta ligne hors du haut ; FR et EN`, { tag: "@regression" }, async ({ browser }) => {
+  test(`/classement/ (${nom}) : le haut, ta ligne surlignée, la médaille de chaque jeu ; ta ligne hors du haut ; FR et EN`, { tag: "@regression" }, async ({ browser }) => {
     const demo = await jourDeDemo();
     const context = await newContextAt(browser, T24, { ...options, locale: "fr-FR" });
     const page = await context.newPage();
@@ -299,11 +301,10 @@ for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as c
     await expect(moi).toHaveAttribute("data-rang", String(demo.joueur.rangDuJour));
     await expect(moi.locator(".classement-pseudo")).toContainText("Démo");
     await expect(moi.locator(".classement-toi")).toHaveText("Toi");
-    await expect(moi.locator(".classement-points")).toHaveText(`${demo.joueur.points} pts`);
+    await expect(moi.locator(".classement-temps")).toContainText("pas fini"); // un seul jeu fini : pas de temps cumulé (lot A1)
     expect(await moi.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe("rgb(232, 178, 58)"); // --dj-moutarde
     await expect(moi.locator('[data-jeu="cdj"]')).toContainText(medailleTrackNom(demo));
     await expect(moi.locator('[data-jeu="jump"]')).toContainText("pas fini"); // Jump en cours : pas de médaille, dit en texte
-    await expect(page.locator("#bareme")).toHaveText("Points par jeu : auteur 4, or 3, argent 2, bronze 1, fini sans médaille 0.");
     // Chaque ligne dit le nom de ses médailles (la couleur seule ne porte rien) ; les cibles tactiles (précédent / suivant) font 44 px.
     const sansNom = await page.locator("#classement-liste .dj-medaille").evaluateAll((els) => els.filter((e) => !(e.getAttribute("aria-label") ?? "").includes(":")).length);
     expect(sansNom).toBe(0);
@@ -315,7 +316,6 @@ for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as c
     await page.locator('.dj-choix-langue [data-langue="en"]').click();
     await expect(page.locator("h1")).toHaveText("Today's leaderboard");
     await expect(page.locator("#classement-compte")).toHaveText(`${total} players ranked`);
-    await expect(page.locator("#bareme")).toHaveText("Points per game: author 4, gold 3, silver 2, bronze 1, finished with no medal 0.");
     await expect(moi.locator(".classement-toi")).toHaveText("You");
     await expect(page.locator("#veille")).toHaveText("‹ Previous day");
     await capture(page, `classement-${nom}-en`);
@@ -339,11 +339,69 @@ for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as c
   });
 }
 
-/** Le nom de la médaille de Track de la démonstration, tel que la page le dit (« Or », « Auteur »…, « Fini » sans médaille). */
+/** Le nom de la médaille de Track de la démonstration, tel que la page le dit (« Or », « Diamant »…, « Fini » sans médaille). */
 function medailleTrackNom(demo: Awaited<ReturnType<typeof jourDeDemo>>): string {
   const m = demo.jeux[0]!.etat.medaille ?? null;
-  return m ? ({ author: "Auteur", gold: "Or", silver: "Argent", bronze: "Bronze" } as Record<string, string>)[m]! : "Fini";
+  return m ? ({ author: "Diamant", gold: "Or", silver: "Argent", bronze: "Bronze" } as Record<string, string>)[m]! : "Fini";
 }
+
+/** Les pseudos d'une vue, dans l'ordre, tels que le serveur les rend (la vérité des attentes de la page). */
+async function ordreDuServeur(vue: string): Promise<string[]> {
+  const r = await fetch(`http://127.0.0.1:8797/api/portail/classement?vue=${vue}`);
+  return ((await r.json()) as { top: { pseudo: string }[] }).top.map((l) => l.pseudo);
+}
+const ordreDeLaPage = (page: Page) => page.locator("#classement-liste .classement-pseudo").evaluateAll((els) => els.map((e) => (e.firstChild?.textContent ?? "").trim()));
+
+test("/classement/ : les onglets Cumulé · Track · Jump changent l'ordre, la séparation « Un jeu sur deux » n'est qu'au cumul, la vue est dans l'adresse (?vue=) et un lien ouvre la bonne vue", async ({ browser }) => {
+  const [cumul, track, jump] = await Promise.all([ordreDuServeur("cumul"), ordreDuServeur("track"), ordreDuServeur("jump")]);
+  expect(cumul.length).toBeGreaterThanOrEqual(10);
+  expect(track).not.toEqual(cumul); // les vues classent autrement : c'est leur raison d'être
+  expect(jump).not.toEqual(track);
+  const context = await newContextAt(browser, T24, { ...PORTRAIT, locale: "fr-FR" });
+  const page = await context.newPage();
+  await page.goto(`${SITE_24}/?demo=joueur`);
+  await expect(page.locator("#classement .dj-tuile__valeur")).not.toHaveText("—");
+  await page.locator("#classement").click();
+  await expect(page).toHaveURL(`${SITE_24}/classement/`);
+  // Le cumul par défaut : trois onglets, celui du cumul choisi ; les joueurs qui ont tout fini d'abord, puis « Un jeu sur deux ».
+  const onglets = page.locator('[role="tab"]');
+  await expect(onglets).toHaveText(["Cumulé", "Track", "Jump"]);
+  await expect(page.locator("#vue-cumul")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#classement-liste li")).toHaveCount(cumul.length);
+  expect(await ordreDeLaPage(page)).toEqual(cumul);
+  await expect(page.locator("#classement-separation")).toHaveText("Un jeu sur deux");
+  await expect(page.locator("#classement-liste li").first().locator(".classement-temps")).not.toContainText("pas fini");
+  await capture(page, "classement-cumul-portrait-fr");
+  // Track : l'ordre du jeu, sans séparation, la vue est dans l'adresse.
+  await page.locator("#vue-track").click();
+  await expect(page).toHaveURL(`${SITE_24}/classement/?vue=track`);
+  await expect(page.locator("#vue-track")).toHaveAttribute("aria-selected", "true");
+  await expect.poll(() => ordreDeLaPage(page)).toEqual(track);
+  await expect(page.locator("#classement-separation")).toHaveCount(0);
+  await expect(page.locator("#vue-track")).toBeFocused();
+  await capture(page, "classement-track-portrait-fr");
+  // Jump au clavier (flèche droite), puis un lien direct vers cette vue.
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(`${SITE_24}/classement/?vue=jump`);
+  await expect.poll(() => ordreDeLaPage(page)).toEqual(jump);
+  await capture(page, "classement-jump-portrait-fr");
+  await page.goto(`${SITE_24}/classement/?vue=jump`);
+  await expect(page.locator("#vue-jump")).toHaveAttribute("aria-selected", "true");
+  await expect.poll(() => ordreDeLaPage(page)).toEqual(jump);
+  // La vue suit le jour passé, et le retour au cumul efface la vue de l'adresse.
+  await page.locator("#veille").click();
+  await expect(page).toHaveURL(`${SITE_24}/classement/?date=2026-10-23&vue=jump`);
+  await page.locator("#vue-cumul").click();
+  await expect(page).toHaveURL(`${SITE_24}/classement/?date=2026-10-23`);
+  // Une vue qui n'existe pas dans l'adresse : le cumul.
+  await page.goto(`${SITE_24}/classement/?vue=points`);
+  await expect(page.locator("#vue-cumul")).toHaveAttribute("aria-selected", "true");
+  // Anglais : les noms des onglets et de la séparation.
+  await page.locator('.dj-choix-langue [data-langue="en"]').click();
+  await expect(onglets).toHaveText(["Combined", "Track", "Jump"]);
+  await expect(page.locator("#classement-separation")).toHaveText("One game out of two");
+  await capture(page, "classement-cumul-portrait-en");
+});
 
 test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › », jamais au-delà d'aujourd'hui ni avant la journée n° 1 (lot R8)", { tag: "@regression" }, async ({ browser }) => {
   const context = await newContextAt(browser, T24, { ...PORTRAIT, locale: "fr-FR" });

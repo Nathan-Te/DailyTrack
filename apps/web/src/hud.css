@@ -253,8 +253,8 @@ body.en-course #lines {
   color: var(--track-asphalte);
 }
 .plaque--pc .ecart--devant {
-  background: var(--dj-auteur);
-  color: var(--dj-auteur-texte);
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
 }
 .plaque--pc .ecart--neutre {
   background: var(--track-route);
@@ -373,8 +373,8 @@ body.watch #btn-camera {
   border-radius: var(--dj-rayon-avatar);
   border: var(--dj-trait) solid var(--track-texte);
 }
-.pastille--auteur {
-  background: var(--dj-auteur);
+.pastille--diamant {
+  background: var(--dj-diamant);
 }
 .pastille--or {
   background: var(--dj-or);

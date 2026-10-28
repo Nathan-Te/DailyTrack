@@ -104,7 +104,7 @@ function erreur(t: T, r: { code: string }): string {
   return t.t(cleConnue(`erreur.${r.code}`) ?? "portail.horsLigne");
 }
 
-const MED = { author: "auteur", gold: "or", silver: "argent", bronze: "bronze" } as const;
+const MED = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" } as const;
 
 function blocJeu(t: T, j: ProfilJeu): HTMLElement | null {
   const carte = cartes(0).find((c) => c.jeu === j.jeu);

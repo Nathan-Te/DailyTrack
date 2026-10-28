@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1031 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1034 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -46,6 +46,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.name_forbidden` | Ce pseudo n'est pas permis. | That name isn't allowed. |
 | `erreur.name_taken` | Ce pseudo est déjà utilisé. C'est le tien ? Charge ton code. | That name is already taken. Is it yours? Load your code. |
 | `erreur.invalid_date` | Date invalide. | Invalid date. |
+| `erreur.invalid_view` | Cette vue du classement n'existe pas. | This leaderboard view does not exist. |
 | `erreur.unknown_day` | Ce jour n'a pas de classement. | This day has no leaderboard. |
 | `erreur.day_closed` | Ce jour est terminé : son classement est figé. | This day is over: its leaderboard is final. |
 | `erreur.day_started` | Ce jour a déjà commencé : il ne peut plus changer. | This day has already started: it can't change any more. |
@@ -107,7 +108,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `medaille.auteur` | Auteur | Author |
+| `medaille.diamant` | Diamant | Diamond |
 | `medaille.or` | Or | Gold |
 | `medaille.argent` | Argent | Silver |
 | `medaille.bronze` | Bronze | Bronze |
@@ -172,15 +173,16 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `classement.titre` | Classement du jour | Today's leaderboard |
-| `classement.description` | Le classement du jour de Du Jour : tes points sur tous les jeux, les médailles de chaque joueur. | Today's Du Jour leaderboard: your points across every game, and each player's medals. |
-| `classement.bareme` | Points par jeu : {auteur} {pa}, {or} {po}, {argent} {pg}, {bronze} {pb}, fini sans médaille {zero}. | Points per game: {auteur} {pa}, {or} {po}, {argent} {pg}, {bronze} {pb}, finished with no medal {zero}. |
-| `classement.egalite` | À égalité : la somme des places dans les jeux, puis le premier arrivé. | Tie: the sum of your places in the games, then whoever got there first. |
+| `classement.description` | Le classement du jour de Du Jour au chrono : le temps cumulé de tous les jeux, ou jeu par jeu, avec la médaille de chaque joueur. | Today's Du Jour leaderboard, against the clock: the combined time across every game, or game by game, with each player's medal. |
+| `classement.egalite` | Au chrono. À égalité : le premier arrivé à ce temps. | Against the clock. Tie: whoever got there first. |
+| `classement.vues.aria` | Vues du classement | Leaderboard views |
+| `classement.vue.cumul` | Cumulé | Combined |
+| `classement.separation` | Un jeu sur deux | One game out of two |
 | `classement.veille` | ‹ Veille | ‹ Previous day |
 | `classement.lendemain` | Lendemain › | Next day › |
 | `classement.veille.aria` | Voir le classement de la veille | See the previous day's leaderboard |
 | `classement.lendemain.aria` | Voir le classement du lendemain | See the next day's leaderboard |
 | `classement.classes` | one : {n} joueur classé · other : {n} joueurs classés | one : {n} player ranked · other : {n} players ranked |
-| `classement.pts` | one : {n} pt · other : {n} pts | one : {n} pt · other : {n} pts |
 | `classement.toi` | Toi | You |
 | `classement.pasFini` | pas fini | not finished |
 | `classement.vide` | Personne n'a encore fini de jeu ce jour-là. | Nobody has finished a game that day yet. |
@@ -217,7 +219,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.jouer.aria` | Jouer à {jeu} | Play {jeu} |
 | `portail.pied` | Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux. | A new day at midnight, Paris time. Your profile is the same in every game. |
 | `portail.mentions` | Mentions légales et confidentialité | Legal notice and privacy |
-| `portail.compte.legende` | Prochains jeux dans | Next games in |
+| `portail.compte.legende` | Prochains niveaux dans | Next levels in |
 | `portail.avancement` | one : {n} fini sur {total} · other : {n} finis sur {total} | one : {n} of {total} done · other : {n} of {total} done |
 | `portail.numeroTheme` | {numero} · {theme} | {numero} · {theme} |
 | `portail.statut.pasJoue` | Pas encore joué | Not played yet |
@@ -252,7 +254,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.jump.neon` | Néon | Neon |
 | `portail.journee` | Journée {numero} | Day {numero} |
 | `portail.classement.legende` | Classement du jour | Today's leaderboard |
-| `portail.classement.points` | one : {n} point, tous jeux · other : {n} points, tous jeux | one : {n} point, all games · other : {n} points, all games |
+| `portail.classement.cumul` | {temps} cumulés | {temps} combined |
+| `portail.classement.manque` | Finis {jeu} pour le cumul | Finish {jeu} for the combined time |
 | `portail.classement.inviter` | Finis un jeu pour entrer au classement | Finish a game to enter the leaderboard |
 | `portail.partager` | Partager ma journée | Share my day |
 | `portail.partage.apercu` | Ce que tu partages | What you're sharing |
@@ -333,7 +336,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.tuile.legende` | Série | Streak |
 | `vitrine.tuile.valeur` | one : {n} jour · other : {n} jours | one : {n} day · other : {n} days |
 | `vitrine.tuile.sous` | one : {n} journée parfaite · other : {n} journées parfaites | one : {n} perfect day · other : {n} perfect days |
-| `vitrine.afficheur.legende` | Prochains jeux dans | Next games in |
+| `vitrine.afficheur.legende` | Prochains niveaux dans | Next levels in |
 | `vitrine.contraste.texte` | Texte | Text |
 | `vitrine.contraste.fond` | Fond | Background |
 | `vitrine.contraste.rapport` | Rapport | Ratio |
@@ -676,12 +679,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `garage.tourner` | Glisse pour tourner autour | Drag to turn it around |
 | `garage.equitable` | Toutes les voitures roulent pareil : seul le style change. | Every car drives the same: only the look changes. |
 | `garage.horsLigne` | Hors connexion : tes voitures débloquées restent là ; la progression reviendra avec le réseau. | Offline: your unlocked cars stay here; progress comes back with the network. |
-| `garage.condition.or` | one : Décroche l'or (ou l'auteur) sur un circuit du jour. · other : Décroche l'or (ou l'auteur) sur {n} circuits du jour. | one : Get gold (or Author) on a daily track. · other : Get gold (or Author) on {n} daily tracks. |
+| `garage.condition.or` | one : Décroche l'or (ou le Diamant) sur un circuit du jour. · other : Décroche l'or (ou le Diamant) sur {n} circuits du jour. | one : Get gold (or Diamond) on a daily track. · other : Get gold (or Diamond) on {n} daily tracks. |
 | `garage.condition.jours` | one : Termine un circuit du jour. · other : Termine {n} circuits du jour. | one : Finish a daily track. · other : Finish {n} daily tracks. |
 | `garage.condition.auteur` | one : Bats le temps de l'auteur sur un circuit du jour. · other : Bats le temps de l'auteur sur {n} circuits du jour. | one : Beat the Author time on a daily track. · other : Beat the Author time on {n} daily tracks. |
 | `garage.progres.or` | one : {fait}/{n} médaille d'or · other : {fait}/{n} médailles d'or | one : {fait}/{n} gold medal · other : {fait}/{n} gold medals |
 | `garage.progres.jours` | one : {fait}/{n} jour · other : {fait}/{n} jours | one : {fait}/{n} day · other : {fait}/{n} days |
-| `garage.progres.auteur` | one : {fait}/{n} médaille d'auteur · other : {fait}/{n} médailles d'auteur | one : {fait}/{n} Author medal · other : {fait}/{n} Author medals |
+| `garage.progres.auteur` | one : {fait}/{n} médaille Diamant · other : {fait}/{n} médailles Diamant | one : {fait}/{n} Diamond medal · other : {fait}/{n} Diamond medals |
 
 ### Ligne à partager (`lignePartage.*`, `apps/web/src/catalogue.course.*.ts`)
 
@@ -1301,7 +1304,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.pc.aria` | Point de passage {pc} sur {total} | Checkpoint {pc} of {total} |
 | `hud.ecart.aria` | Écart avec ton record : {ecart} | Gap to your best: {ecart} |
 | `hud.objectif.aria` | Médaille visée : {medaille}, {temps} | Target medal: {medaille}, {temps} |
-| `hud.objectif.auteurBattu` | Auteur battu | Author beaten |
+| `hud.objectif.auteurBattu` | Diamant obtenu | Diamond earned |
 | `hud.mode.archive` | Archive | Archive |
 | `hud.mode.essai` | Essai · {theme} | Trial · {theme} |
 | `hud.reglagesModifies` | réglages modifiés : rien n'est enregistré | tuned settings: nothing is saved |

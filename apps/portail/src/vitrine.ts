@@ -66,7 +66,7 @@ const CLE_ETAT = { normal: "vitrine.etat.normal", survol: "vitrine.etat.survol",
 const CLE_BOUTON = { marque: "vitrine.bouton.marque", secondaire: "vitrine.bouton.secondaire", track: "vitrine.bouton.track", jump: "vitrine.bouton.jump" } as const;
 const CLE_ICONE = { chevron: "icone.chevron", flamme: "icone.flamme", crane: "icone.crane", drapeau: "icone.drapeau", horloge: "icone.horloge", profil: "icone.profil", pleinEcran: "pleinEcran.entrer", pleinEcranQuitter: "pleinEcran.quitter", camera: "icone.camera" } as const;
 /** Seuils de démonstration (ms) et médailles obtenues pour l'exemple. */
-const SEUILS = { auteur: 29_880, or: 31_500, argent: 34_000, bronze: 38_000 } as const;
+const SEUILS = { diamant: 29_880, or: 31_500, argent: 34_000, bronze: 38_000 } as const;
 
 function section(titre: string, id: string, ...contenu: HTMLElement[]): HTMLElement {
   return el("section", { classe: "vitrine-section", attrs: { id, "aria-labelledby": `${id}-titre` } }, el("h2", { classe: "vitrine-section__titre", attrs: { id: `${id}-titre` }, texte: titre }), ...contenu);
@@ -98,7 +98,7 @@ function medailles(t: T, jeu: Jeu | undefined): HTMLElement {
   return el(
     "div",
     { classe: "vitrine-medailles" },
-    el("div", { classe: "vitrine-grille vitrine-grille--4" }, ...MEDAILLES.map((m) => medaille(t, { type: m, obtenue: m !== "auteur", forme: "case", jeu, valeur: formatTemps(SEUILS[m], t.langue) }))),
+    el("div", { classe: "vitrine-grille vitrine-grille--4" }, ...MEDAILLES.map((m) => medaille(t, { type: m, obtenue: m !== "diamant", forme: "case", jeu, valeur: formatTemps(SEUILS[m], t.langue) }))),
     el("div", { classe: "vitrine-grille vitrine-grille--4" }, ...MEDAILLES.map((m) => medaille(t, { type: m, obtenue: false, forme: "case", jeu, valeur: formatTemps(SEUILS[m], t.langue) }))),
   );
 }

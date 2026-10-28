@@ -36,17 +36,18 @@ import {
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { avancement, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
-import { construireOptions } from "./partageDuJour";
+import { construireOptions, nomDuJeu } from "./partageDuJour";
+import { tuileDuClassement } from "./classementVues";
 import { envoyer, lienDuPortail, textePartage } from "./partage";
 import { stockageDuPortail } from "./stockage";
 
 // Le portail « Du Jour » (lot R4 ; lot I1 : passé au socle `@cdj/ui` ; lot I2 : l'accueil riche). Un joueur qui l'ouvre voit en trois secondes
 // ce qu'il lui reste à jouer, combien de temps il lui reste et où en est sa série :
-//   - le compte à rebours « Prochains jeux dans » calé sur l'**heure du serveur** (`maintenant`), pas sur l'horloge du téléphone ; à zéro, les
+//   - le compte à rebours « Prochains niveaux dans » calé sur l'**heure du serveur** (`maintenant`), pas sur l'horloge du téléphone ; à zéro, les
 //     données du nouveau jour sont relues **sans recharger la page** ;
 //   - une cartouche par jeu, affichée **tout de suite** (numéro du jour connu sans le serveur) ; le thème et le statut du joueur arrivent dans
 //     une **place réservée** (rien ne saute) : pas encore joué · en cours · fini (temps, médaille, rang) ;
-//   - la tuile Série (série tous jeux confondus, journées parfaites) et (lot I3) la tuile Classement du jour (sa place et ses points, tous jeux) qui mène à
+//   - la tuile Série (série tous jeux confondus, journées parfaites) et (lot I3) la tuile Classement du jour (sa place et son temps cumulé, lot A1) qui mène à
 //     `/classement/` ; le numéro de la journée commune (« Journée n° 12 ») à droite de la date ; le bouton « Partager ma journée » et sa ligne (`partage.ts`) ;
 //   - **une seule requête** à l'API au chargement (`GET /api/portail/jour`, `jour.ts`) ; sans identité, aucune donnée personnelle : la réponse
 //     publique et une phrase d'accueil ; serveur injoignable : rien de bloquant, un message discret du catalogue.
@@ -71,7 +72,7 @@ const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || c
 /** L'heure du serveur (celle du téléphone corrigée du décalage mesuré au chargement). */
 const maintenant = () => Date.now() + (lecture?.decalage ?? 0);
 
-const MEDAILLE: Record<string, TypeMedaille> = { author: "auteur", gold: "or", silver: "argent", bronze: "bronze" };
+const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
 const NOM_JEU = { track: "jeu.track.nom", jump: "jeu.jump.nom" } as const;
 
 /** Le nom traduit d'un thème (`portail.theme.<jeu>.<code>`), ou `null` s'il est inconnu du catalogue. */
@@ -142,20 +143,25 @@ function tuileSerie(t: T): HTMLElement | null {
 }
 
 /**
- * Lot I3 — la tuile Classement du jour : « 9e », « 38 points, tous jeux » ; elle mène à `/classement/`. Un joueur neuf, ou qui n'a encore fini aucun jeu
- * aujourd'hui, est invité à jouer (« Finis un jeu pour entrer au classement »), sans chiffre inventé. `null` : le serveur n'a pas répondu (la page du classement
+ * Lot I3, refait au lot A1 — la tuile Classement du jour : « 9e », « 1:42,315 cumulés » ; elle mène à `/classement/`. Avec un seul jeu fini : sa place et
+ * « Finis Jump pour le cumul » (le jeu manquant). Un joueur neuf, ou qui n'a encore fini aucun jeu aujourd'hui, est invité à jouer (« Finis un jeu pour
+ * entrer au classement »), sans chiffre inventé. `null` : le serveur n'a pas répondu (la page du classement
  * ne s'ouvrirait pas non plus).
  */
 function tuileClassement(t: T, neuf: boolean): HTMLElement | null {
   const joueur = lecture?.jour?.joueur;
-  const place = joueur && joueur.rangDuJour != null ? joueur : null;
+  const contenuTuile = tuileDuClassement(joueur, lecture?.jour?.jeux ?? []);
   // Le serveur n'a pas répondu (injoignable, délai) : pas de tuile, la page du classement ne s'ouvrirait pas non plus.
   if (lecture && !lecture.jour) return null;
   // Pendant le chargement, sa place est réservée (sauf pour un joueur neuf, qui n'attend rien du serveur).
-  if (!place && !neuf && !joueur) return lecture ? null : el("div", { classe: "portail-tuile-reservee", attrs: { "aria-hidden": "true" } });
-  const contenu = place
-    ? tuile({ legende: t.t("portail.classement.legende"), valeur: formatRang(place.rangDuJour!, langue), sousTexte: t.t("portail.classement.points", { n: place.points ?? 0 }) })
-    : tuile({ legende: t.t("portail.classement.legende"), valeur: "—", sousTexte: t.t("portail.classement.inviter") });
+  if (contenuTuile.type === "inviter" && !neuf && !joueur) return lecture ? null : el("div", { classe: "portail-tuile-reservee", attrs: { "aria-hidden": "true" } });
+  const legende = t.t("portail.classement.legende");
+  const contenu =
+    contenuTuile.type === "cumul"
+      ? tuile({ legende, valeur: formatRang(contenuTuile.rang, langue), sousTexte: t.t("portail.classement.cumul", { temps: formatTemps(contenuTuile.cumulMs, langue) }) })
+      : contenuTuile.type === "manque"
+        ? tuile({ legende, valeur: formatRang(contenuTuile.rang, langue), sousTexte: t.t("portail.classement.manque", { jeu: nomDuJeu(t, contenuTuile.jeu) }) })
+        : tuile({ legende, valeur: "—", sousTexte: t.t("portail.classement.inviter") });
   return el("a", { classe: "portail-tuile-lien", attrs: { id: "classement", href: "classement/", "data-cle": "classement" } }, contenu);
 }
 

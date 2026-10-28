@@ -42,7 +42,7 @@ test.describe("l'accueil", () => {
     // Les quatre médailles en cases, nommées, avec leur temps.
     const medals = page.locator("#home .home-medailles .dj-medaille--case");
     await expect(medals).toHaveCount(4);
-    for (const [i, name] of ["Auteur", "Or", "Argent", "Bronze"].entries()) await expect(medals.nth(i)).toContainText(name);
+    for (const [i, name] of ["Diamant", "Or", "Argent", "Bronze"].entries()) await expect(medals.nth(i)).toContainText(name);
     await expect(medals.nth(0)).toContainText(/\d,\d{3}\ss/); // lot I4 : le temps s'écrit avec l'espace insécable du socle (« 36,892\u00a0s »), `\s` la couvre
     await expect(page.locator("#home .board-card .row").first()).toBeVisible({ timeout: 15_000 }); // classement (de démonstration)
     await expect(page.locator("#home-daily")).toContainText("Courir");

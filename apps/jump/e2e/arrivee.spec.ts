@@ -192,7 +192,7 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     await page.locator("#arrival-home").click();
     await expect(page.locator("#home")).toBeVisible();
     await expect(page.locator("#arrival")).toBeHidden();
-    await expect(page.locator("#home-status")).toHaveText(`Auteur · Meilleur : ${time} · 0 mort`);
+    await expect(page.locator("#home-status")).toHaveText(`Diamant · Meilleur : ${time} · 0 mort`);
     await expect(page.locator("#home-record .tuile__valeur")).toHaveText(time);
     await expect(page.locator("#home-streak .tuile__valeur")).toHaveText("1 jour");
     await expect(page.locator("#home-play")).toHaveText("REJOUER");
@@ -200,7 +200,7 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     // Rechargée, la page s'ouvre sur l'accueil (sans l'aide, déjà vue) avec le même résultat ; Jouer repart d'un nouvel essai.
     await page.reload();
     await homeReady(page);
-    await expect(page.locator("#home-status")).toHaveText(`Auteur · Meilleur : ${time} · 0 mort`);
+    await expect(page.locator("#home-status")).toHaveText(`Diamant · Meilleur : ${time} · 0 mort`);
     await expect(page.locator("#help")).toBeHidden();
     await page.locator("#home-play").click();
     await expect(page.locator("#home")).toBeHidden();
@@ -344,7 +344,7 @@ for (const format of FORMATS) {
         expect(shared).toMatch(/^Du Jour · Jump #5 — \d+,\d{3}\u00a0s — 🏆 — 0 💀\nhttp:\/\/localhost:4174\/$/);
         await page.locator("#arrival-home").tap();
         await expect(page.locator("#home")).toBeVisible();
-        await expect(page.locator("#home-status")).toContainText("Auteur · Meilleur");
+        await expect(page.locator("#home-status")).toContainText("Diamant · Meilleur");
         // Rejouer depuis l'accueil, puis la pause (en haut à gauche) ramène à l'accueil.
         await page.locator("#home-play").tap();
         await expect(page.locator("#home")).toBeHidden();

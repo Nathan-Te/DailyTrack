@@ -262,8 +262,8 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
     const meta = extras?.meta.get(d.date);
     if (meta) {
       const m = medalsFor(meta.authorMs, parseDay(d.date) ?? 0);
-      const nom = (type: "auteur" | "or" | "argent" | "bronze") => nomMedaille(traducteurDuSocle(), type);
-      cell("sub", `${nom("auteur")} ${fTemps(m.author)}  ${nom("or")} ${fTemps(m.gold)}  ${nom("argent")} ${fTemps(m.silver)}  ${nom("bronze")} ${fTemps(m.bronze)}  · ${t("archives.pilotes", { n: meta.participants })}`, a);
+      const nom = (type: "diamant" | "or" | "argent" | "bronze") => nomMedaille(traducteurDuSocle(), type);
+      cell("sub", `${nom("diamant")} ${fTemps(m.author)}  ${nom("or")} ${fTemps(m.gold)}  ${nom("argent")} ${fTemps(m.silver)}  ${nom("bronze")} ${fTemps(m.bronze)}  · ${t("archives.pilotes", { n: meta.participants })}`, a);
     }
     list.append(a);
   }

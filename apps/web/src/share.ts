@@ -4,7 +4,7 @@ import { fNombre, fRang, fTemps, t } from "./i18n";
 // La ligne à partager (lot 6, repris au lot I4) : façon Wordle, dans la langue du joueur. **Les émojis ne vivent que dans ce texte à coller** (charte § 6),
 // jamais dans l'interface. Les mots viennent du catalogue (`partage.*`), le temps et le rang des formats du socle.
 
-export const MEDAL_ICON: Record<Medal, string> = { author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" };
+export const MEDAL_ICON: Record<Medal, string> = { author: "💎", gold: "🥇", silver: "🥈", bronze: "🥉" };
 
 export interface ShareResult {
   /** Numéro du circuit (« #142 ») ; ≤ 0 avant le lancement : on affiche alors la date. */

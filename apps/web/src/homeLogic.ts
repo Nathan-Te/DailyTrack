@@ -43,7 +43,7 @@ export function withoutHome(search: string): string {
 
 /** Le nom d'une médaille dans la langue du jeu (« Auteur », « Or »…) ; le nom est toujours écrit : la couleur seule ne porte pas l'information. */
 export function medalWord(m: Medal): string {
-  return nomMedaille(traducteurDuSocle(), m === "author" ? "auteur" : m === "gold" ? "or" : m === "silver" ? "argent" : "bronze");
+  return nomMedaille(traducteurDuSocle(), m === "author" ? "diamant" : m === "gold" ? "or" : m === "silver" ? "argent" : "bronze");
 }
 
 /** « Circuit du Jour n° 1 · mar. 13 oct. · Rallye » (le numéro manque pour les jours d'avant le premier) ; `long: false` sans « Circuit du Jour ». */

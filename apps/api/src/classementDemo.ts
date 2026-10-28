@@ -14,7 +14,7 @@ import { jumpDailyOf } from "./jump";
 // chaque course et de chaque essai, horloge injectée sur chaque jour) avec `demoPlayers: true`, une option que le serveur de production ne règle jamais.
 //
 // Leurs résultats sont variés : des niveaux de pilotage étalés dans Track, des essais plus ou moins réussis dans Jump, quelques joueurs qui n'ont fini
-// qu'un seul des deux jeux (le classement montre alors une case vide) ; trois jours (aujourd'hui, hier, avant-hier) pour que le choix d'un jour passé
+// qu'un seul des deux jeux (lot A1 : ils sont sous la séparation « Un jeu sur deux »), des égalités de temps ; trois jours (aujourd'hui, hier, avant-hier) pour que le choix d'un jour passé
 // montre un vrai classement. Comme « Démo », ils sont **effacés puis recréés** à chaque passage du script (route d'admin de la plateforme) : ce qu'on voit
 // ne dépend pas des passages précédents.
 
@@ -72,15 +72,18 @@ export async function seedClassementDemo(o: { db: SqlDb; frozen: Readonly<Record
     for (let p = 0; p < names.length; p++) {
       const name = names[p]!;
       const id = fictionalId(name);
-      // Quelques joueurs n'ont fini qu'un seul jeu (cases vides du classement), jamais aucun.
-      const sansJump = p % 5 === 3 || essais.length === 0;
-      const sansTrack = p % 7 === 5 && !sansJump;
+      // Lot A1 : le joueur d'indice 1 de chaque dizaine rejoue la course et l'essai du joueur d'indice 0 (`q`) : mêmes temps dans les deux jeux, donc
+      // des égalités au cumul et dans chaque jeu (le premier arrivé passe devant : `allowCopies` est vrai pour ces joueurs fictifs seulement).
+      const q = p % 10 === 1 ? p - 1 : p;
+      // Quelques joueurs n'ont fini qu'un seul jeu (le classement les met sous « Un jeu sur deux »), jamais aucun.
+      const sansJump = q % 5 === 3 || essais.length === 0;
+      const sansTrack = q % 7 === 5 && !sansJump;
       if (circuit && !sansTrack) {
-        const skill = ((p * 7 + 3) % names.length) / names.length;
+        const skill = ((q * 7 + 3) % names.length) / names.length;
         let run: { code: string; finishMs: number } | null = null;
         for (let attempt = 0; attempt < 4 && !run; attempt++) {
           const style = styleFor(Math.min(1, skill + attempt * 0.12));
-          run = runFictional(circuit.track, { ...style, wobble: style.wobble / (1 + attempt) }, mixSeed(day, 0xd0 + p * 31 + attempt));
+          run = runFictional(circuit.track, { ...style, wobble: style.wobble / (1 + attempt) }, mixSeed(day, 0xd0 + q * 31 + attempt));
         }
         if (run) {
           clock = parisDayStart(day) + 9 * 3_600_000 + (p + 1) * 60_000;
@@ -91,7 +94,7 @@ export async function seedClassementDemo(o: { db: SqlDb; frozen: Readonly<Record
       }
       if (level && !sansJump) {
         // Le joueur d'indice p prend l'essai de rang proportionnel (les meilleurs d'abord), pour étaler les temps et les médailles.
-        const pick = essais[Math.min(essais.length - 1, Math.floor((p / names.length) * essais.length))]!;
+        const pick = essais[Math.min(essais.length - 1, Math.floor((q / names.length) * essais.length))]!;
         clock = parisDayStart(day) + 10 * 3_600_000 + (p + 1) * 60_000;
         const r = await call("/api/jump/submit", { levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: encodeJump(pick.replay), name }, { "X-Player-Id": id });
         if (r.status === 200) report.jump++;

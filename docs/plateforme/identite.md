@@ -12,6 +12,8 @@ Révision 8 (après le lot I5) : « quand on entre dans un jeu, on y reste » �
 Révision 9 (après les lots I4b et I6) : la pause et « Comment jouer » sont des dialogues sans barre des jeux ; l'étiquette de Track n'a pas de coque (§ 9) ; vocabulaire anglais (§ 7).
 Révision 10 (lot de plateforme « suites de Track 2 », 24/10/2026) : écart accepté par Nathan le 23/10/2026 (README du lot 41, § 2, point 4) — le Garage de Track n'a pas de voile à rayures (§ 9).
 
+Révision 11 (demande de Nathan, 28/10/2026, lot A1) : la médaille « Auteur » devient « Diamant » / “Diamond”, couleur `--dj-diamant` (§ 3.2, § 6, § 7) ; « Prochains niveaux dans » (§ 7). (La demande l'appelait « révision 10 » : ce numéro était déjà pris par l'écart du Garage de Track.)
+
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
 Chaque règle porte sa raison. Une règle dont la raison ne s'applique plus se discute avec Nathan ; elle ne se contourne pas.
@@ -62,7 +64,7 @@ Toutes les couleurs passent par des **jetons** (`packages/ui`). Aucune couleur �
 
 | Jeton | Valeur | Texte dessus |
 |---|---|---|
-| `--dj-auteur` | `#2E9E5B` | `--dj-auteur-texte` (`#0E1F14`) |
+| `--dj-diamant` | `#4FC3DC` | `--dj-diamant-texte` (`#0B2530`) |
 | `--dj-or` | `#D9A21B` | `--dj-medaille-texte` (= `--dj-encre`) ou `#1E1B19` |
 | `--dj-argent` | `#A7A9AC` | `--dj-medaille-texte` ou `#1E1B19` |
 | `--dj-bronze` | `#C07A42` | `--dj-medaille-texte` ou `#1E1B19` |
@@ -134,16 +136,16 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 ## 6. Les icônes
 
 - SVG au **trait** de 2 à 2,5 px, extrémités carrées, couleur `currentColor` ; formes simples (chevron, flamme, crâne, drapeau, horloge).
-- **Aucun émoji dans l'interface.** Les émojis n'apparaissent que dans les **lignes à partager** (texte collé dans une messagerie), où ils sont la convention. Ligne de la journée : 🏆 🥇 🥈 🥉 (médailles, ceux des jeux), ✅ fini sans médaille, ⬜ pas fini, 🔥 série, ⭐ journée parfaite.
+- **Aucun émoji dans l'interface.** Les émojis n'apparaissent que dans les **lignes à partager** (texte collé dans une messagerie), où ils sont la convention. Ligne de la journée : 💎 🥇 🥈 🥉 (médailles, ceux des jeux), ✅ fini sans médaille, ⬜ pas fini, 🔥 série, ⭐ journée parfaite.
 - Une icône seule a toujours un `aria-label` ; une icône décorative est `aria-hidden`.
 
 ## 7. Les textes (le ton)
 
 - **Tutoiement** partout en français ; en anglais, ton direct et familier équivalent (« you »), sans traduction mot à mot.
-- **Du Jour** : chaleureux, simple, court. « Les jeux du jour », « Prochains jeux dans », « Partager ma journée ».
+- **Du Jour** : chaleureux, simple, court. « Les jeux du jour », « Prochains niveaux dans », « Partager ma journée ».
 - **Track** : sec, précis, les chiffres d'abord. « Courir », « Meilleur temps », « Fantôme à battre ».
 - **Jump** : drôle et un peu cruel, **une seule réplique par écran au plus**, liée au thème ou à la mécanique du jour (« Les tapis roulants ne t'attendront pas. La scie non plus. »). Les répliques vivent dans les catalogues de traduction, par thème, et existent dans les deux langues (adaptées, pas traduites littéralement).
-- **Vocabulaire anglais fixé** : « Pseudo » → “Name” ; « Classement » → “Leaderboard” partout (jeux et portail ; « Classement du jour » → “Today's leaderboard”) ; « Fini » → “Done” ; « Point de contrôle » / « point de passage » → “Checkpoint” (« PC » → “CP”) ; médaille « Auteur » → “Author” ; « Salon » → “Room” ; caméra « proche » → “Close” partout.
+- **Vocabulaire anglais fixé** : « Pseudo » → “Name” ; « Classement » → “Leaderboard” partout (jeux et portail ; « Classement du jour » → “Today's leaderboard”) ; « Fini » → “Done” ; « Point de contrôle » / « point de passage » → “Checkpoint” (« PC » → “CP”) ; médaille « Diamant » → “Diamond” ; « Salon » → “Room” ; caméra « proche » → “Close” partout.
 - Formats : `31,402 s` / `31.402 s` ; `14e` / `14th` ; « Mardi 20 octobre » / « Tuesday, October 20 » ; `n° 12` / `#12`.
 
 ## 8. Le mouvement
