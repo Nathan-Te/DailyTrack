@@ -10,7 +10,7 @@ import {
   stepAttempt,
   type AttemptState,
 } from "./attempt";
-import { JUMP_SIM_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE } from "./constants";
+import { ALT_KEPT_VERSION, JUMP_SIM_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE } from "./constants";
 import { idiv } from "./idiv";
 import type { Level } from "./level";
 import { DEFAULT_JUMP_PARAMS, INPUT_ATTEMPT_MASK, INPUT_MASK, INPUT_RESPAWN } from "./player";
@@ -57,6 +57,8 @@ const FLAG_HELD = 1;
 const FLAG_CHECKPOINT = 2;
 const FLAG_ELAN = 4;
 const FLAG_RESPAWN = 8;
+/** Lot 28 (v12) : au point de passage, les blocs alternés sont dans l'état B (sans le drapeau : A). */
+const FLAG_ALT = 16;
 
 /** Une série : `count` pas consécutifs avec les mêmes 3 bits de commande. */
 export interface InputRun {
@@ -79,6 +81,11 @@ export interface ReplayStart {
    * défaut) vers la droite ; 0 : à l'arrêt. Jamais sur un point de passage.
    */
   elan: number;
+  /**
+   * Lot 28 (version 12, seulement sur un point de passage d'un niveau à blocs alternés) : 1 si les blocs alternés sont dans l'état B au départ de la vie (la reprise garde l'état
+   * qu'avait le jeu) ; absent ou 0 : A. Jamais avant la version 12 (la reprise y remet A).
+   */
+  alt?: number;
 }
 
 export interface JumpReplay {
@@ -159,7 +166,9 @@ export function encodeReplay(replay: JumpReplay): string {
   const atCheckpoint = s.checkpoint >= 0;
   const respawn = !atCheckpoint && s.time > 0;
   if ((atCheckpoint || respawn) && s.elan) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
-  bytes.push((s.held ? FLAG_HELD : 0) | (atCheckpoint ? FLAG_CHECKPOINT : 0) | (s.elan ? FLAG_ELAN : 0) | (respawn ? FLAG_RESPAWN : 0));
+  if (s.alt !== undefined && s.alt !== 0 && s.alt !== 1) throw new JumpReplayError("format", "État des blocs alternés invalide");
+  if (s.alt === 1 && (!atCheckpoint || replay.simVersion < ALT_KEPT_VERSION)) throw new JumpReplayError("format", "État B des blocs alternés hors d'un point de passage de la version 12");
+  bytes.push((s.held ? FLAG_HELD : 0) | (atCheckpoint ? FLAG_CHECKPOINT : 0) | (s.elan ? FLAG_ELAN : 0) | (respawn ? FLAG_RESPAWN : 0) | (s.alt === 1 ? FLAG_ALT : 0));
   if (atCheckpoint) {
     pushVarint(bytes, s.checkpoint);
     pushVarint(bytes, s.time);
@@ -210,7 +219,8 @@ export function decodeReplay(code: string): JumpReplay {
   for (let i = 0; i < idLen; i++) levelId += String.fromCharCode(byte());
   checkLevelId(levelId);
   const flags = byte();
-  if (flags & ~(FLAG_HELD | FLAG_CHECKPOINT | FLAG_ELAN | FLAG_RESPAWN)) throw new JumpReplayError("format", "Drapeaux de départ inconnus");
+  if (flags & ~(FLAG_HELD | FLAG_CHECKPOINT | FLAG_ELAN | FLAG_RESPAWN | (simVersion >= ALT_KEPT_VERSION ? FLAG_ALT : 0))) throw new JumpReplayError("format", "Drapeaux de départ inconnus");
+  if (flags & FLAG_ALT && !(flags & FLAG_CHECKPOINT)) throw new JumpReplayError("format", "État des blocs alternés hors d'un point de passage");
   if (flags & (FLAG_CHECKPOINT | FLAG_RESPAWN) && flags & FLAG_ELAN) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
   if (flags & FLAG_CHECKPOINT && flags & FLAG_RESPAWN) throw new JumpReplayError("format", "Départ à la fois sur un point et au départ");
   const start: ReplayStart = { checkpoint: -1, held: flags & FLAG_HELD ? 1 : 0, time: 0, sections: [], elan: flags & FLAG_ELAN ? 1 : 0 };
@@ -231,6 +241,7 @@ export function decodeReplay(code: string): JumpReplay {
     start.time = time;
     start.sections = sections;
   }
+  if (flags & FLAG_ALT) start.alt = 1;
   if (flags & FLAG_RESPAWN) {
     const time = varint("Chrono");
     if (time < 1) throw new JumpReplayError("format", "Reprise au départ sans chrono");
@@ -275,7 +286,8 @@ export function replayStartState(level: Level, start: ReplayStart): AttemptState
   // v4 (lot 15) : aucune section dans l'état (une seule horloge).
   const sectionCount = level.simVersion >= SINGLE_CLOCK_VERSION ? 0 : level.sections.length;
   if (start.sections.length !== sectionCount) throw new JumpReplayError("level", "Nombre de sections différent de celui du niveau");
-  const s = checkpointAttempt(level, { ...initialAttempt(level), checkpoint: start.checkpoint, time: start.time, sections: start.sections });
+  const keepsAlt = level.simVersion >= ALT_KEPT_VERSION && level.alts.length > 0;
+  const s = checkpointAttempt(level, { ...initialAttempt(level), checkpoint: start.checkpoint, time: start.time, sections: start.sections, ...(keepsAlt ? { alt: start.alt === 1 ? 1 : 0 } : {}) });
   return start.held ? { ...s, player: { ...s.player, held: 1 } } : s;
 }
 
@@ -286,7 +298,10 @@ export function isResume(level: Pick<Level, "simVersion">, before: Readonly<Atte
 
 /** Le départ d'une vie, lu dans l'état de la réapparition. */
 function startOf(s: Readonly<AttemptState>): ReplayStart {
-  return { checkpoint: s.checkpoint, held: s.player.held, time: s.time, sections: [...s.sections], elan: 0 };
+  const start: ReplayStart = { checkpoint: s.checkpoint, held: s.player.held, time: s.time, sections: [...s.sections], elan: 0 };
+  // Lot 28 (v12) : la vie qui repart d'un point garde l'état B des blocs alternés (la reprise n'y touche pas) ; sans B, rien de plus dans l'en-tête.
+  if (s.alt === 1 && s.checkpoint >= 0) start.alt = 1;
+  return start;
 }
 
 export type LifeEnd = "mort" | "arrivée" | "abandon";
@@ -575,6 +590,8 @@ export function replayFingerprint(level: Level, replay: JumpReplay): { hash: str
     if (s.stalactites) for (const v of s.stalactites) h = fnv(h, v);
     // Lot 26 : l'état des ponts (absent sans pont : les empreintes des autres niveaux ne changent pas).
     if (s.bridges) for (const v of s.bridges) h = fnv(h, v);
+    // Lot 28 (version 12) : la parité des blocs alternés (A ou B), qui peut désormais passer une reprise ; avant, elle se déduisait du reste (les versions d'avant gardent leurs empreintes).
+    if (level.simVersion >= ALT_KEPT_VERSION && s.alt !== undefined) h = fnv(h, s.alt);
     if (s.status === ATTEMPT_DEAD && runner.prev.status !== ATTEMPT_DEAD) deaths++;
   }
   return { hash: h.toString(16).padStart(8, "0"), finished: runner.state.status === ATTEMPT_FINISHED, ticks: runner.tick, time: runner.state.time, deaths };

@@ -393,6 +393,77 @@ describe("dessin (dynamicArt)", () => {
     expect(d.stats.flash).toBe(0);
   });
 
+  it("lot 28 — l'état suivant se lit sur les blocs : repère en filigrane sur le jeu absent, pastille du prochain jeu sur le jeu plein", () => {
+    const { world, d } = build(level);
+    const view = { x: 0, y: 0, halfW: 5, halfH: 5 };
+    const markOf = (i: number) => world.children[i]!.children.find((c) => (c as Mesh).material !== undefined && c.position.z === 0.004) as Mesh;
+    const pipOf = (i: number) => world.children[i]!.children.find((c) => c.position.z === 0.005) as Mesh | undefined;
+    // A plein au départ : B (i = 6, 7) est absent et garde son repère en filigrane ; A (i = 4, 5) porte la pastille du jeu suivant (B : un petit losange).
+    let s = initialAttempt(level);
+    d.update(s, 1, true, view);
+    expect(d.stats).toMatchObject({ alt: 0, next: 1, marks: 2, pips: 2, ghosts: 0 });
+    expect(markOf(6).visible).toBe(true);
+    expect((markOf(6).material as MeshBasicMaterial).opacity).toBeLessThan(1);
+    expect((markOf(6).material as MeshBasicMaterial).opacity).toBeGreaterThan(0.3); // lisible : c'est le jeu qui apparaît au prochain saut
+    expect((markOf(4).material as MeshBasicMaterial).opacity).toBe(1);
+    expect(pipOf(4)!.visible).toBe(true);
+    expect(pipOf(6)!.visible).toBe(false);
+    expect(((pipOf(4)!.material) as MeshBasicMaterial).color.getHex()).toBe(BLOCK_STYLE.altB.edge); // A plein : le prochain jeu est B
+    expect(((pipOf(6)!.material) as MeshBasicMaterial).color.getHex()).toBe(BLOCK_STYLE.altA.edge);
+    expect(pipOf(0)).toBeUndefined(); // un clignotant n'en a pas
+    // Un saut : B plein, A absent ; la pastille de B annonce A.
+    s = step(step(s, INPUT_JUMP | INPUT_RIGHT), INPUT_RIGHT);
+    d.update(s, 2, true, view);
+    expect(d.stats).toMatchObject({ alt: 1, next: 0, marks: 2, pips: 2 });
+    expect(pipOf(6)!.visible).toBe(true);
+    expect(pipOf(4)!.visible).toBe(false);
+    expect(markOf(4).visible).toBe(true);
+    expect((markOf(4).material as MeshBasicMaterial).opacity).toBeLessThan(1);
+  });
+
+  it("lot 28 — la bascule se voit à chaque saut : le jeu qui disparaît laisse sa trace (face fantôme) le temps de l'éclat ; sans mouvement, l'état change net et le repère suffit", () => {
+    const { world, d } = build(level);
+    const view = { x: 0, y: 0, halfW: 5, halfH: 5 };
+    let s = initialAttempt(level);
+    s = step(step(s, INPUT_JUMP | INPUT_RIGHT), INPUT_RIGHT); // B plein, A vient de disparaître
+    const faceOf = (i: number) => world.children[i]!.children[0] as Mesh;
+    // Sans éclat : A absent, pas de face.
+    d.update(s, 1, true, view);
+    expect(faceOf(4).visible).toBe(false);
+    expect(d.stats.ghosts).toBe(0);
+    // L'éclat de la bascule : A laisse une face fantôme, plus pâle que la face pleine, qui s'éteint.
+    d.flash(0.8);
+    d.update(s, 1.01, true, view);
+    expect(d.stats.ghosts).toBe(2);
+    expect(faceOf(4).visible).toBe(true);
+    const opacity = (faceOf(4).material as MeshBasicMaterial).opacity;
+    expect(opacity).toBeGreaterThan(0.1);
+    expect(opacity).toBeLessThan(0.5);
+    for (let k = 0; k < 4; k++) d.update(s, 1.1 + k * 0.1, true, view); // l'éclat s'éteint en ≈ 0,25 s
+    expect(d.stats.ghosts).toBe(0);
+    expect(faceOf(4).visible).toBe(false);
+    // Sans mouvement : jamais de trace (l'éclat n'existe pas), mais l'état est net et les repères aussi.
+    d.flash(1);
+    d.update(s, 2.05, false, view);
+    expect(d.stats.ghosts).toBe(0);
+    expect(d.stats).toMatchObject({ alt: 1, next: 0, marks: 2, pips: 2 });
+  });
+
+  it("lot 28 — le dessin ne change jamais d'état tout seul : même état, mêmes repères, quelle que soit l'horloge ; un niveau sans alterné n'a ni repère ni pastille", () => {
+    const { d } = build(level);
+    const s = initialAttempt(level);
+    const seen = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      d.update(s, 1 + i * 0.07, true, { x: 0, y: 0, halfW: 5, halfH: 5 });
+      seen.add(`${d.stats.alt}/${d.stats.next}/${d.stats.marks}/${d.stats.pips}/${d.stats.solid}`);
+    }
+    expect(seen.size).toBe(1);
+    const blinkOnly = parseLevel(ROWS.map((r) => r.replace(/[AB]/g, ".")).join("\n") + "\n\nsection a 0-25\nclignote a 120 60 0\n");
+    const only = build(blinkOnly).d;
+    only.update(initialAttempt(blinkOnly), 1, true, { x: 0, y: 0, halfW: 5, halfH: 5 });
+    expect(only.stats).toMatchObject({ alt: -1, next: -1, marks: 0, pips: 0 });
+  });
+
   it("un bloc qui attend la sortie du personnage : contour épais, face absente (information de jeu, aussi sans mouvement)", () => {
     const { world, d } = build(level);
     // Le personnage dans la case du bloc alterné `B` (colonne 11), au pas de la bascule.
