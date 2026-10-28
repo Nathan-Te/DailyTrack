@@ -150,8 +150,8 @@ test("passage de minuit : la partie continue, « Nouveau niveau disponible », p
     expect(j.daily!.date).toBe("2026-10-20");
     expect(j.phase).toBe("playing");
     expect(j.player.x).toBeGreaterThan(x);
-    // « Recommencer » (R) ouvre le niveau du nouveau jour.
-    await Promise.all([page.waitForEvent("load"), page.keyboard.press("KeyR")]);
+    // « Recommencer » (Entrée ; R avant le lot 27) ouvre le niveau du nouveau jour.
+    await Promise.all([page.waitForEvent("load"), page.keyboard.press("Enter")]);
     await ready(page);
     j = await jump(page);
     expect(j.daily).toMatchObject({ date: "2026-10-21", today: "2026-10-21", number: 6, newDay: false });

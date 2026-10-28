@@ -10,11 +10,13 @@ import {
   DEFAULT_JUMP_PARAMS,
   ESSAI_LEVEL,
   ESSAI_SOLUTION_CODE,
-  INPUT_MASK,
+  INPUT_ATTEMPT_MASK,
+  INPUT_RESPAWN,
   JUMP_SIM_VERSION,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
   RESPAWN_TICKS,
+  RESTART_VERSION,
   SANDBOX_LEVEL,
   VENT_LEVEL,
   SPRINT_TRIAL_PARAMS,
@@ -88,7 +90,7 @@ import type { BridgeStats } from "./bridgeArt";
 import type { PressStats } from "./pressArt";
 import { laserBarLook, laserLook, pressLook } from "./announce";
 import { bridgeTileLooks } from "./bridge";
-import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
+import { JumpSession, decompteDigit, formatTicks, readyTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadCameraTune, loadTuned, mountTunePanel } from "./tune";
@@ -102,13 +104,14 @@ import { History, mayRecord, type DayRecord } from "./history";
 import { archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalText, recordTile, streakText, wantsHome } from "./homeLogic";
 import { mountHome, type Home, type HomeView } from "./home";
 import { mountArrival, type ArrivalView } from "./arrival";
+import { mountResult, resultGap, type ResultView } from "./resultat";
 import { definirJour } from "./cadre";
 import { mountHowto } from "./howtoUi";
 import { mountSettings } from "./settingsUi";
 import { mountArchives, mountBoard, type BoardView } from "./screensUi";
 import { profilHref } from "./profilLien";
-import { boutonPleinEcran, majPleinEcran } from "@cdj/ui";
-import { chargerLangue, demarrerLangue, fNumero, fTicks, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
+import { boutonPleinEcran, el, icone, majPleinEcran, svg } from "@cdj/ui";
+import { chargerLangue, demarrerLangue, fNumero, fTicks, lier, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
 import { shareText } from "./share";
 import { sendShare } from "./clipboard";
 import { CarnageGovernor } from "./carnageGovernor";
@@ -382,6 +385,8 @@ export interface JumpDebug {
   input(bits: number | null): void;
   /** Comme la touche R. */
   restart(): void;
+  /** Lot 27 : la touche R (reprise au dernier point de passage, sinon recommencer à zéro). */
+  respawn(): void;
   /** Redessine, relit les pixels de l'image et compte les couleurs : preuve qu'un rendu non vide est à l'écran. */
   probe(): { width: number; height: number; colors: number; background: number };
   /** Lot 3 : rediffusions du jour (meilleur essai, vies) ; exporter et importer en base64url. */
@@ -1244,7 +1249,7 @@ let carnageBurst: { pool: BurstPool; mesh: BurstMesh } | null = null;
 /** Zoom arrière du carnage : on voit plus large autour du héros. */
 const CARNAGE_ZOOM = 1.3;
 
-function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bits = 0, everyone: string | null = null, fromHome = false): boolean {
+function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bits = 0, everyone: string | null = null, fromHome = false, result: ResultView | null = null): boolean {
   if (!scene || carnage) return false;
   let run: Carnage;
   try {
@@ -1277,6 +1282,13 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
   // Lot 10 : « Revoir le carnage » (écran d'arrivée) le relance tel quel (le tien, pas celui de tout le monde).
   if (!demo && everyone === null) lastCarnage = { hero, others };
   arrival.hide();
+  // Lot 27 : le résultat reste affiché pendant la rediffusion et le carnage (celui de ton essai, pas la démonstration ni le carnage de tout le monde).
+  if (result && !demo && everyone === null && !fromHome) {
+    resultat.show(result);
+    resultat.setSuite(suiteDuJour);
+    refreshRank();
+    void loadSuite();
+  } else resultat.hide();
   carnageFilter.reset();
   audio.stopLoops();
   slideSide = 0;
@@ -1346,6 +1358,7 @@ function endCarnage(): void {
   const c = carnage;
   if (!c || !scene) return;
   carnage = null;
+  resultat.hide();
   c.crowd.dispose(scene.world);
   carnageBurst?.pool.clear();
   audio.stopLoops();
@@ -1495,8 +1508,9 @@ function onEvent(e: SessionEvent): void {
     // Lot I5 : l'écart signé au record, à ce point de passage (le temps du meilleur essai du jour au même point).
     const ref = recordSplits[e.index];
     hud.setProgress(e.index, level.checkpoints.length, ref === undefined || watching ? null : session.state.time - ref);
-  } else if (e.kind === "respawn") {
-    if (!e.checkpoint) hud.setProgress(-1, level.checkpoints.length, null);
+  } else if (e.kind === "respawn" || e.kind === "resume") {
+    // Lot 27 : « respawn » sans point = un nouvel essai à zéro (v11 : la mort avant le premier point), « resume » = la reprise volontaire au dernier point (le chrono continue).
+    if (e.kind === "respawn" && !e.checkpoint) hud.setProgress(-1, level.checkpoints.length, null);
     look = restLook();
     if (scene) camera = snapCamera(follow(session.state.player), scene.frame);
     stepper.reset();
@@ -1513,6 +1527,8 @@ function onEvent(e: SessionEvent): void {
     }
     // Lot I5 : à l'arrivée, l'écart avec le record d'avant (celui du début de l'essai).
     if (recordTime !== null) hud.setProgress(session.state.checkpoint, level.checkpoints.length, e.time - recordTime);
+    // Lot 27 : le résultat, calculé avant que le rejeu ne change le record (l'écart se lit contre celui d'avant) ; il reste affiché pendant la rediffusion et le carnage.
+    lastResult = resultViewOf(e.time, recordTime);
     // Lot 8 : la médaille obtenue sur le niveau du jour a sa phrase musicale (après la fanfare d'arrivée). Lot 10 : avec l'écran d'arrivée,
     // elle sonne à son ouverture, après le carnage, avec l'animation de la médaille.
     const medal = daily ? jumpMedalFor(session.state.time, daily.medals) : null;
@@ -1524,8 +1540,18 @@ function onEvent(e: SessionEvent): void {
     // Lot P3 : les vies du jour partent à l'arrivée (en arrière-plan).
     void livesSender.flush();
     // Le carnage démarre de lui-même ; sans essai enregistré (réglages modifiés), l'arrivée tout de suite.
-    if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits))) showFinish();
+    if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits, null, false, lastResult))) showFinish();
   }
+}
+
+/** Lot 27 : le résultat du dernier essai arrivé (l'autocollant du carnage, y compris « Revoir le carnage »). */
+let lastResult: ResultView | null = null;
+/** Lot 27 : ce que l'autocollant dit d'une arrivée au temps `time` (pas), `record` étant le record d'avant (ou `null`). */
+function resultViewOf(time: number, record: number | null): ResultView {
+  const medal = daily && !isTrial && !session.tuned ? jumpMedalFor(time, daily.medals) : null;
+  const deaths = session.attemptDeaths === 0 ? t("arrivee.sansFaute") : t("commun.morts", { n: session.attemptDeaths });
+  const canBoard = !!daily && !!choice && (choice.mode === "jour" || choice.mode === "archive") && ranking.enabled && !session.tuned && !isTrial;
+  return { time: fTicks(time), medal, deaths, gap: session.tuned ? null : resultGap(time, record), canBoard };
 }
 
 /** Lot 10 : la médaille de l'arrivée, à faire sonner à l'ouverture de l'écran d'arrivée (une seule fois). */
@@ -1617,22 +1643,24 @@ async function loadSuite(force = false): Promise<void> {
   if (lue === null) return; // injoignable, ou ce jeu n'est pas encore fini côté serveur : rien
   suiteDuJour = lue;
   if (arrival.shown) arrival.setSuite(lue);
+  if (resultat.shown) resultat.setSuite(lue);
 }
 
 /** Lot P1 : le classement de l'écran d'arrivée et le rang de l'accueil suivent l'état du classement. */
 function refreshRank(): void {
-  if (daily && choice && arrival.shown) {
-    arrival.setRank(
-      arrivalRankView({
-        enabled: ranking.enabled,
-        mode: choice.mode,
-        date: daily.date,
-        state: ranking.state,
-        pending: ranking.pendingFor(daily.date) !== null,
-        known: ranking.known(daily.date),
-        board: ranking.boards.get(daily.date) ?? null,
-      }),
-    );
+  if (daily && choice && (arrival.shown || resultat.shown)) {
+    const view = arrivalRankView({
+      enabled: ranking.enabled,
+      mode: choice.mode,
+      date: daily.date,
+      state: ranking.state,
+      pending: ranking.pendingFor(daily.date) !== null,
+      known: ranking.known(daily.date),
+      board: ranking.boards.get(daily.date) ?? null,
+    });
+    if (arrival.shown) arrival.setRank(view);
+    // Lot 27 : l'autocollant ne dit que la place ou l'envoi en cours ; un refus, une panne, le pseudo à choisir sont l'affaire de l'écran d'arrivée.
+    if (resultat.shown) resultat.setRank(view.shown && !view.askName && view.tone !== "warn" && view.status ? view.status : null);
   }
   if (home?.isOpen) home.update(homeView());
 }
@@ -1687,7 +1715,7 @@ function startEveryone(max = 0): boolean {
 /** Lot 10 : « Revoir le carnage » : le dernier carnage, tel quel ; l'écran d'arrivée revient à sa fin. */
 function replayCarnage(): void {
   if (!lastCarnage || carnage) return;
-  startCarnage(lastCarnage.hero, lastCarnage.others, false, lastBits);
+  startCarnage(lastCarnage.hero, lastCarnage.others, false, lastBits, null, false, lastResult);
 }
 
 /** Lot 10 : l'accueil. Sur la page du niveau du jour, il se pose sur la partie (en pause) ; ailleurs, on va à la page du niveau du jour. */
@@ -1757,9 +1785,10 @@ function stepOnce(): void {
   }
   // Lot 15 : le « Prêt… » d'un niveau à une seule horloge : l'horloge tourne, aucune commande n'est jouée (ni rediffusion consommée).
   if (session.ready) {
-    if (session.countdown === readyTicks()) hud.toast(t("toast.pret"));
+    // Lot 27 : le décompte « 3, 2, 1, Partez ! » (un chiffre par tiers du décompte), puis « Partez ! » quand le chrono part.
+    hud.decompte(decompteDigit(session.countdown, readyTicks()));
     const go = session.step(injected ?? controls.sample());
-    if (go) hud.toast(t("toast.partez"));
+    if (go) hud.decompte("go");
     return;
   }
   let bits = watching ? (watchInputs[watchIndex++] ?? 0) : (injected ?? controls.sample());
@@ -1767,6 +1796,11 @@ function stepOnce(): void {
   if (autoplayInputs && !watching) {
     bits = autoplayInputs[autoplayIndex++] ?? 0;
     if (autoplayIndex >= autoplayInputs.length) autoplayInputs = null;
+  }
+  // Lot 27 : une reprise volontaire demandée (touche R, Y, plaque, pause) se joue à ce pas : quatrième bit de la commande, enregistré dans la rediffusion.
+  if (resumePending) {
+    resumePending = false;
+    if (!watching && session.canResume) bits |= INPUT_RESPAWN;
   }
   const prevBits = lastBits;
   lastBits = bits;
@@ -1787,6 +1821,22 @@ function follow(s: PlayerState): Follow {
 
 let camera: CameraView = { x: 0, y: 0, ahead: 0 };
 
+/** Lot 27 : une reprise volontaire attend le prochain pas de simulation (elle s'y joue, avec son bit dans la commande). */
+let resumePending = false;
+/**
+ * Lot 27 : « reprendre au dernier point de passage » (touche R, Y à la manette, plaque tactile, pause) — comme DailyTrack. Un niveau en version 11 avec un point franchi : la reprise se
+ * joue au prochain pas (le chrono continue, ce n'est pas une mort). **Avant le premier point** (ou dans un niveau d'avant la version 11, qui ne sait pas enregistrer une reprise) :
+ * comme « recommencer à zéro ». Mort et en attente de la reprise automatique sur un point : rien (elle vient toute seule).
+ */
+function respawnRequest(): void {
+  if (!newDay && !carnage && !watching && session.canResume) {
+    resumePending = true;
+    return;
+  }
+  if (!newDay && !carnage && !watching && session.state.status === ATTEMPT_DEAD && session.state.checkpoint >= 0) return;
+  restart();
+}
+
 function restart(): void {
   // Passage de minuit (lot 5) : la partie en cours a continué ; « recommencer » ouvre le nouveau niveau du jour.
   if (newDay) {
@@ -1799,6 +1849,9 @@ function restart(): void {
     endCarnage();
   }
   session.restart();
+  resumePending = false;
+  hud.decompte(null);
+  resultat.hide();
   drainEssais();
   audio.stopLoops();
   slideSide = 0;
@@ -1855,6 +1908,8 @@ const arrival = mountArrival({
   onEveryone: () => void startEveryone(),
   onFirst: () => location.assign(location.pathname + watchFirstHref(choice?.mode === "archive" && daily ? daily.date : null, options)),
 });
+// Lot 27 : le résultat pendant la rediffusion et le carnage (un autocollant compact à gauche, sous le titre du carnage) ; REJOUER recommence à zéro, « Classement » ouvre l'écran du classement.
+const resultat = mountResult({ onReplay: () => controls.requestRestart(), onBoard: () => openBoard() });
 // Lot P1 : l'état du classement change (envoi, réponse, lecture) : l'écran d'arrivée et l'accueil suivent. Le réseau revient : ce qui attend repart.
 ranking.onChange(() => {
   refreshRank();
@@ -2123,10 +2178,12 @@ const info: JumpDebug = {
     return view();
   },
   input(bits: number | null) {
-    if (bits !== null && (!Number.isInteger(bits) || bits < 0 || bits > INPUT_MASK)) throw new RangeError(`Commande invalide : ${bits}`);
+    if (bits !== null && (!Number.isInteger(bits) || bits < 0 || bits > INPUT_ATTEMPT_MASK)) throw new RangeError(`Commande invalide : ${bits}`);
     injected = bits;
   },
   restart,
+  /** Lot 27 : « reprendre au dernier point de passage » (la touche R) : au prochain pas dans un niveau en version 11 avec un point franchi, sinon « recommencer à zéro ». */
+  respawn: respawnRequest,
   replays: {
     list() {
       const out: ReturnType<JumpDebug["replays"]["list"]> = [];
@@ -2579,6 +2636,12 @@ const menu = mountPauseMenu({
     controls.requestRestart();
     syncPause();
   },
+  // Lot 27 : « Depuis le point de passage » (la reprise volontaire, le chrono continue).
+  onRespawn: () => {
+    setMenu(false);
+    controls.requestRespawn();
+    syncPause();
+  },
   onGhost: () => toggleGhost(),
   onSound: () => {
     applySettings({ ...settings, sound: !settings.sound }, "sound");
@@ -2601,6 +2664,7 @@ function pauseView(): PauseView {
     ghost: ghostOn,
     sound: settings.sound,
     version: t("commun.version", { sim: JUMP_SIM_VERSION, jour: dayText }),
+    canResume: session.canResume,
   };
 }
 function setMenu(open: boolean): void {
@@ -2630,6 +2694,28 @@ const pauseButton = document.getElementById("pausebtn") as HTMLButtonElement;
 // Lot I7 : le plein écran reste en vue, juste après la pause (la plaque du HUD) ; caché s'il n'est pas possible. Même logique que l'accueil et la pause (socle).
 pauseButton.after(boutonPleinEcran({ t, id: "fullscreenbtn", classe: ["plaque", "plaque--bouton"] }));
 onLangue(majPleinEcran);
+// Lot 27 (comme DailyTrack, à la même place : en haut à gauche, à côté de la pause, aux doigts seulement) : la plaque « dernier point de passage » (le drapeau) et la plaque
+// « recommencer à zéro ». Elles font ce que font R et Entrée ; le drapeau n'existe que dans un niveau de la version 11 (les anciens ne savent pas enregistrer une reprise).
+{
+  const plaque = (id: string, icon: SVGSVGElement, cle: string, onClick: () => void): HTMLButtonElement => {
+    const b = el("button", { classe: "plaque plaque--bouton plaque--action", attrs: { id, type: "button" } }, icon) as HTMLButtonElement;
+    lier(b, cle, undefined, "aria-label");
+    b.addEventListener("click", () => {
+      b.blur();
+      onClick();
+    });
+    return b;
+  };
+  const recommencer = svg(
+    "svg",
+    { classe: ["dj-icone", "dj-icone--recommencer"], attrs: { viewBox: "0 0 24 24", width: 20, height: 20, fill: "none", stroke: "currentColor", "stroke-linecap": "square", "stroke-linejoin": "miter", focusable: "false", "aria-hidden": "true" } },
+    svg("path", { attrs: { d: "M20 12a8 8 0 1 1-2.6-5.9" } }),
+    svg("path", { attrs: { d: "M20 3v5h-5" } }),
+  );
+  const point = plaque("btn-respawn", icone("drapeau", { taille: 20 }), "tactile.pointDePassage", () => controls.requestRespawn());
+  point.hidden = level.simVersion < RESTART_VERSION;
+  pauseButton.after(point, plaque("btn-restart", recommencer, "tactile.depart", () => controls.requestRestart()));
+}
 pauseButton.addEventListener("click", () => {
   pauseButton.blur();
   setMenu(true);
@@ -2877,6 +2963,7 @@ if (!scene) {
     controls.pollPad();
     if (controls.takeMenu()) setMenu(!menuOpen);
     if (controls.takeRestart()) restart();
+    if (controls.takeRespawn()) respawnRequest();
     if (!manual && !panelOpen && !menuOpen && !homeOpen()) {
       const steps = stepper.advance(dt);
       for (let i = 0; i < steps; i++) stepOnce();

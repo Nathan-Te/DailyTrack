@@ -1,7 +1,7 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, circleHitsBox, initialAttempt, sawReach, stepAttempt, type AttemptState, type Box } from "./attempt";
-import { BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
-import { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
+import { BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
+import { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
 import { idiv } from "./idiv";
 import { PRESS_HEIGHT_TILES, TILE_EMPTY, TILE_SOLID, cycleMod, laserBarBox, laserBox, mushroomPad, parseLevel, platformPos, pressBox, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
 import { FROZEN_BASE_IDS } from "./figes";
@@ -23,7 +23,7 @@ import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpR
 import { SLOW_MAX_EXTRA, SLOW_MIN_EXIGENCE, SLOW_REACH_ROWS, SLOW_ZONE_WIDTH, carveSlowRoute, slowCostMin, slowGalleryRow, slowHeadroom, slowLedges, slowScript, type SlowRoute } from "./voies";
 
 // Lot 21 : le numéro et l'identifiant d'un niveau, ses médailles et les numéros de générateur de référence sont dans `jours.ts` ; réexportés ici.
-export { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
+export { MEDAL_PERCENT, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
 
 // Le niveau du jour (lot 5) : `dailyLevel(jour)` assemble des morceaux du catalogue (lot 4) qui **portent leur solution**, puis **rejoue** la
 // suite de ces solutions sur le niveau assemblé. Si elle arrive au bout sans mourir, le niveau est valide et ce rejeu donne le temps de
@@ -275,7 +275,7 @@ export const VARIETY_DAYS = 4;
 export const VARIETY_DAYS_BEFORE_LASERS = 3;
 
 /** Le délai de variété W d'un niveau de cette version de simulation (4 depuis la version 9, 3 avant). */
-export function varietyDays(simVersion = BRIDGE_VERSION): number {
+export function varietyDays(simVersion = RESTART_VERSION): number {
   return simVersion >= LASER_VERSION ? VARIETY_DAYS : VARIETY_DAYS_BEFORE_LASERS;
 }
 /**
@@ -307,7 +307,7 @@ export function varietyPosition(day: number): number {
  * époque, les premiers jours de la suivante à moins de `VARIETY_DAYS` jours. Toute paire de jours à moins de `VARIETY_DAYS` jours y est
  * couverte exactement une fois (par le plus tardif dans une époque, par celui de la première époque à travers une coupure).
  */
-export function varietyNeighbours(day: number, simVersion = BRIDGE_VERSION): number[] {
+export function varietyNeighbours(day: number, simVersion = RESTART_VERSION): number[] {
   const W = varietyDays(simVersion);
   const pos = varietyPosition(day);
   const out: number[] = [];
@@ -322,14 +322,14 @@ export function varietyNeighbours(day: number, simVersion = BRIDGE_VERSION): num
 }
 
 /** Les morceaux de base du niveau du jour `day` (son thème, v4) : le contenu figé avant `VARIETY_ORIGIN`, sinon celui que donne `dailyLevel`. */
-export function dailyBaseIds(day: number, simVersion = BRIDGE_VERSION): readonly string[] {
+export function dailyBaseIds(day: number, simVersion = RESTART_VERSION): readonly string[] {
   // Lot 25 : la table des jours figés couvre les `VARIETY_DAYS − 1` jours d'avant l'origine (W = 4) ; une version à W = 3 (g14 à g18) n'en lit que les deux derniers, comme avant le lot.
   const frozen = day < VARIETY_ORIGIN && VARIETY_ORIGIN - day < varietyDays(simVersion) ? VARIETY_FROZEN[formatDay(day)] : undefined;
   return frozen ?? dailyLevel(day, null, simVersion).pieces.map((p) => p.id);
 }
 
 /** Les morceaux de base que le niveau v4 du jour `day` ne peut pas poser (lot 19). */
-export function varietyExcluded(day: number, simVersion = BRIDGE_VERSION): Set<string> {
+export function varietyExcluded(day: number, simVersion = RESTART_VERSION): Set<string> {
   const out = new Set<string>();
   for (const d of varietyNeighbours(day, simVersion)) for (const id of dailyBaseIds(d, simVersion)) out.add(id);
   return out;
@@ -422,6 +422,43 @@ export function blinkTooFast(): Readonly<Record<string, readonly number[]>> {
   return out;
 }
 
+/**
+ * Lot 27 (g21) : les variantes **ajoutées** pour que le vent de la forêt souffle en continu (`cycle=0` : la clause de rafale est retirée), au bout de la liste de leur morceau (méthode
+ * du lot 17) ; les références v3 à v10 ne les connaissent pas (golden au bit près), le générateur g21 les pose. Leurs sœurs à rafales gardent leur texte, leurs solutions et leur place.
+ */
+export const V11_ONLY_VARIANTS: Readonly<Record<string, readonly number[]>> = Object.freeze({
+  // Vent continu (`cycle=0`) : le champignon donne la hauteur, le souffle (continu) la distance ; le puits où le courant montant souffle sans arrêt ; le relais dont le dernier souffle est continu.
+  "champignon-rafale": [6, 7, 8],
+  "champignon-tourbillon": [6, 7, 8, 9],
+  "vent-relais": [2, 3, 4],
+  // Le gouffre entre deux scies : le vent y porte en continu (le morceau demandait d'attendre la rafale jusqu'à g20).
+  "vent-rafale": [6, 7],
+});
+
+let gusty: Record<string, number[]> | null = null;
+
+/**
+ * Lot 27 (g21) : les variantes dont une zone de vent souffle **par rafales** — le générateur g21 ne les pose jamais (« le vent souffle en continu » ; un morceau dont toutes les
+ * variantes sont à rafales, comme `vent-rafale`, disparaît du catalogue g21) ; les références v3 à v10 les connaissent telles quelles. Calculée sur les textes des morceaux
+ * (aucun fichier à tenir à jour).
+ */
+export function gustyVariants(): Readonly<Record<string, readonly number[]>> {
+  if (gusty) return gusty;
+  const out: Record<string, number[]> = {};
+  for (const def of MODULES) {
+    for (let v = 0; v < def.variants.length; v++) {
+      const wind = def.tags.includes("vent") || (def.mutations[v] ?? []).some((m) => m.name === "vent");
+      if (wind && buildModule(def.id, v).level.winds.some((w) => w.gust !== null)) (out[def.id] ??= []).push(v);
+    }
+  }
+  gusty = out;
+  return out;
+}
+
+/** Lot 27 : cette variante existe-t-elle pour cette version de la simulation ? (g21 : ni rafale ; avant : pas les variantes à vent continu ajoutées.) */
+const knownTo = (c: Pick<Choice, "id" | "variant">, simVersion: number): boolean =>
+  simVersion >= RESTART_VERSION ? !gustyVariants()[c.id]?.includes(c.variant) : !V11_ONLY_VARIANTS[c.id]?.includes(c.variant);
+
 let catalogAll: Choice[][] | null = null;
 let catalog: Choice[][] | null = null;
 let catalogV4: Choice[][] | null = null;
@@ -431,6 +468,7 @@ let catalogV7: Choice[][] | null = null;
 let catalogV8: Choice[][] | null = null;
 let catalogV9: Choice[][] | null = null;
 let catalogV10: Choice[][] | null = null;
+let catalogV11: Choice[][] | null = null;
 
 /**
  * Lot 20 : les morceaux de base à plateformes mobiles (une ligne `plateforme` dans leur bloc annexe) : réservés aux niveaux en version 5. Les catalogues des
@@ -486,7 +524,11 @@ export function bridgeModuleIds(): ReadonlySet<string> {
  */
 function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
   if (simVersion >= SINGLE_CLOCK_VERSION) {
-    const usable = (list: Choice[]) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE }));
+    const usable = (list: Choice[]) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant) && knownTo(c, simVersion)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE }));
+    if (simVersion >= RESTART_VERSION) {
+      catalogV11 ??= allChoices().map(usable).filter((list) => list.length > 0);
+      return catalogV11;
+    }
     if (simVersion >= BRIDGE_VERSION) {
       catalogV10 ??= allChoices().map(usable).filter((list) => list.length > 0);
       return catalogV10;
@@ -541,7 +583,7 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
   // Lots 17 et 18 : la référence v3 ne connaît pas les variantes ajoutées aux g12 et g13 (lot 20 : ni les morceaux à plateformes ; lot 22 : ni ceux à presses ; lot 23 : ni ceux à champignons).
   catalog ??= allChoices()
     .filter((list) => !platformModuleIds().has(list[0]!.id) && !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id) && !bridgeModuleIds().has(list[0]!.id))
-    .map((list) => list.filter((c) => !V4_ONLY_VARIANTS[c.id]?.includes(c.variant)))
+    .map((list) => list.filter((c) => !V4_ONLY_VARIANTS[c.id]?.includes(c.variant) && knownTo(c, simVersion)))
     .filter((list) => list.length > 0);
   return catalog;
 }
@@ -1258,6 +1300,8 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   // Lot 26 : les règles des ponts (dans leur morceau, pas de point de passage dessus, un interrupteur sûr, un pont droit court ; la poursuite franche de chaque morceau).
   out.push(...bridgeProblems(d.level));
   if (d.level.bridges.length > 0) for (const p of pieces) out.push(...bridgePieceProblems(p.id, p.variant));
+  // Lot 27 (g21, niveaux en version 11) : le vent souffle en continu — aucune zone en rafales.
+  if (d.level.simVersion >= RESTART_VERSION && d.level.winds.some((w) => w.gust !== null)) out.push("une zone de vent en rafales (g21 : le vent souffle en continu)");
   // Lot 26 : l'équilibre des mécaniques de chaque thème (niveaux en version 10).
   if (d.theme !== undefined && d.level.simVersion >= BRIDGE_VERSION && mechanicOf(d.theme) !== null) {
     const els = pieces.filter((p) => isElementPiece(p.tags, d.theme!)).length;
@@ -1550,7 +1594,7 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     const v3Time = result.time;
     let ascii: string;
     try {
-      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= BRIDGE_VERSION ? BRIDGE_VERSION : simVersion >= LASER_VERSION ? LASER_VERSION : simVersion >= STALACTITE_VERSION ? STALACTITE_VERSION : simVersion >= MUSHROOM_VERSION ? MUSHROOM_VERSION : simVersion >= PRESS_VERSION ? PRESS_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
+      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= RESTART_VERSION ? RESTART_VERSION : simVersion >= BRIDGE_VERSION ? BRIDGE_VERSION : simVersion >= LASER_VERSION ? LASER_VERSION : simVersion >= STALACTITE_VERSION ? STALACTITE_VERSION : simVersion >= MUSHROOM_VERSION ? MUSHROOM_VERSION : simVersion >= PRESS_VERSION ? PRESS_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
       asm = { ...asm, ascii, level: parseLevel(ascii) };
     } catch (e) {
       return `horloge unique : ${(e as Error).message}`;
@@ -1845,19 +1889,35 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
   // Lot 13 : la forêt (courants d'air), choisie de même (`secours:modules -- --theme=foret`, 80 dates valides sur 80).
   // Lot 19 (g14) : rechoisie (`secours:modules -- --theme=foret`, 80 niveaux valides sur 80 dates) — l'ancienne (`FALLBACK_FORET_V3`) casse la règle
   // de la reprise près d'une voie lente (`slowRespawnProblems`).
+  // Lot 27 (g21) : rechoisie (`secours:modules -- --theme=foret`, 80 niveaux valides sur 80 dates) — l'ancienne (`FALLBACK_FORET_V10`) a `vent-rafale` et `vent-relais:1`, à rafales.
   foret: [
     { id: "tunnel-scies", variant: 1 },
-    { id: "vent-puits", variant: 0 },
-    { id: "vent-rafale", variant: 0 },
-    { id: "saut-plafond", variant: 4 },
-    { id: "tunnel", variant: 0 },
-    { id: "vent-relais", variant: 1 },
-    { id: "puits", variant: 0 },
-    { id: "scies-jumelles", variant: 4 },
-    { id: "ressort-mur", variant: 3 },
-    { id: "cheminee-pics", variant: 1 },
+    { id: "vent-pont", variant: 1 },
+    { id: "chute-pics", variant: 4 },
+    { id: "monte-charge", variant: 1 },
+    { id: "corniches", variant: 2 },
+    { id: "vent-colonne", variant: 0 },
+    { id: "marelle", variant: 0 },
+    { id: "escalier-friable", variant: 2 },
+    { id: "lucarne", variant: 1 },
+    { id: "iles-friables", variant: 1 },
+    { id: "vent-derive", variant: 3 },
   ],
 };
+
+/** Lot 27 : la suite de secours de la forêt de g14 à g20 (versions 4 à 10), gardée pour les références : elle a des rafales (`vent-rafale`, `vent-relais:1`). */
+const FALLBACK_FORET_V10: readonly { id: string; variant: number }[] = [
+  { id: "tunnel-scies", variant: 1 },
+  { id: "vent-puits", variant: 0 },
+  { id: "vent-rafale", variant: 0 },
+  { id: "saut-plafond", variant: 4 },
+  { id: "tunnel", variant: 0 },
+  { id: "vent-relais", variant: 1 },
+  { id: "puits", variant: 0 },
+  { id: "scies-jumelles", variant: 4 },
+  { id: "ressort-mur", variant: 3 },
+  { id: "cheminee-pics", variant: 1 },
+];
 
 /** Lot 16 : la suite de secours du néon d'avant (lot 12), gardée pour la référence v3 (`dailyLevel(jour, thème, 3)` ne change pas). */
 const FALLBACK_NEON_V3: readonly { id: string; variant: number }[] = [
@@ -1903,10 +1963,11 @@ const FALLBACK_FORET_V3: readonly { id: string; variant: number }[] = [
 ];
 
 /** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi ; lot 19 : celle de la forêt). */
-export function fallbackFor(theme: JumpThemeName, simVersion = BRIDGE_VERSION): readonly { id: string; variant: number }[] {
+export function fallbackFor(theme: JumpThemeName, simVersion = RESTART_VERSION): readonly { id: string; variant: number }[] {
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "nuit") return FALLBACK_NUIT_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "foret") return FALLBACK_FORET_V3;
+  if (simVersion < RESTART_VERSION && theme === "foret") return FALLBACK_FORET_V10;
   return FALLBACK_BY_THEME[theme] ?? FALLBACK_PIECES;
 }
 
@@ -1925,7 +1986,7 @@ export function forgetDailyLevels(): void {
  * Lot 15 : `simVersion` 3 : le niveau g9 d'avant le lot, à l'identique (référence v3). Lot 20 : 4 : le niveau g14 d'avant les plateformes, à l'identique (référence v4) ;
  * 5 (défaut) : le niveau du générateur g15, en version 5.
  */
-export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = BRIDGE_VERSION): DailyLevel {
+export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = RESTART_VERSION): DailyLevel {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
   const isForced = theme !== natural;
@@ -2016,7 +2077,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 }
 
 /** Le niveau de secours d'une date (pour les tests et la mesure : il ne sert que si aucun tirage ne passe). */
-export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = BRIDGE_VERSION): DailyLevel | string {
+export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = RESTART_VERSION): DailyLevel | string {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
   const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);

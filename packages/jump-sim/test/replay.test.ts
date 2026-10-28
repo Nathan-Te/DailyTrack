@@ -202,7 +202,7 @@ describe("format de la rediffusion", () => {
     const long: JumpReplay = { ...attemptReplay("essai", []), runs: [{ count: MAX_ATTEMPT_TICKS, bits: 0 }, { count: 1, bits: 2 }] };
     expect(() => encodeReplay(long)).toThrow(/trop longue/);
     // Fabriquée à la main (le codeur refuse de l'écrire) : en-tête, puis MAX_ATTEMPT_TICKS pas, puis un de plus.
-    const bytes = [JUMP_REPLAY_FORMAT, JUMP_SIM_VERSION, 5, ..."essai".split("").map((c) => c.charCodeAt(0)), 0];
+    const bytes = [JUMP_REPLAY_FORMAT, 3 /* version 3 : séries codées count × 8 + bits (lot 27 : count × 16 depuis la v11) */, 5, ..."essai".split("").map((c) => c.charCodeAt(0)), 0];
     pushVarint(bytes, MAX_ATTEMPT_TICKS * 8);
     expect(runsTicks(decodeReplay(toBase64Url(bytes)).runs)).toBe(MAX_ATTEMPT_TICKS);
     pushVarint(bytes, 1 * 8 + 2);

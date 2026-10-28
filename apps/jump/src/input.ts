@@ -1,7 +1,9 @@
 import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
 
 // Entrées de DailyJump : clavier (par `KeyboardEvent.code`, donc QZSD et WASD au même endroit) et manette, fusionnés en 3 bits par pas.
-// « Recommencer » (R, Select) n'est pas une commande de la simulation : c'est un événement de la session.
+// Lot 27 : les mêmes touches que DailyTrack (`apps/web/src/input.ts`) — **R : reprendre au dernier point de passage**, **Entrée : recommencer à zéro** ; à la manette Y et X ;
+// aux doigts, deux plaques à côté de la pause (touchUi.ts, main.ts). « Recommencer » n'est pas une commande de la simulation : c'est un événement de la session ; « reprendre au point de
+// passage » est enregistrée dans la rediffusion (quatrième bit, `INPUT_RESPAWN`, niveaux en version 11) et, avant le premier point, fait comme « recommencer ».
 // Lot 8 : le menu ⏸ (Échap ou P, Start à la manette) met la partie en pause ; menu ouvert, le clavier ne commande plus rien (les flèches et
 // Espace servent aux curseurs et aux boutons du menu).
 
@@ -10,12 +12,20 @@ export const KEYS = {
   left: ["ArrowLeft", "KeyA"],
   right: ["ArrowRight", "KeyD"],
   jump: ["Space", "ArrowUp", "KeyW"],
-  restart: ["KeyR"],
+  /** Lot 27 (comme DailyTrack) : reprendre au dernier point de passage. */
+  respawn: ["KeyR"],
+  /** Lot 27 (comme DailyTrack) : recommencer à zéro. Avant le lot 27 : R. */
+  restart: ["Enter"],
   /** Menu ⏸ (lot 8). */
   menu: ["Escape", "KeyP"],
 } as const;
 
-const GAME_CODES = new Set<string>([...KEYS.left, ...KEYS.right, ...KEYS.jump, ...KEYS.restart]);
+const GAME_CODES = new Set<string>([...KEYS.left, ...KEYS.right, ...KEYS.jump, ...KEYS.respawn, ...KEYS.restart]);
+
+/** Lot 27 : Entrée sur un bouton, un lien ou un champ est l'affaire de cet élément (il l'active), pas une commande de jeu. */
+function onControl(e: KeyboardEvent): boolean {
+  return typeof HTMLElement !== "undefined" && e.target instanceof HTMLElement && e.target.closest("button, a[href], input, select, textarea, [role=button]") !== null;
+}
 
 /**
  * Le bouton de saut entre deux pas : **aucun appui n'est perdu**. Un appui puis un relâchement entre deux pas compte pour un pas tenu ;
@@ -83,8 +93,10 @@ export function padDirection(pad: Pick<Gamepad, "axes" | "buttons">): number {
 
 /** A (0) ou B (1) = saut. */
 export const padJump = (pad: Pick<Gamepad, "buttons">): boolean => !!(pad.buttons[0]?.pressed || pad.buttons[1]?.pressed);
-/** Select (8) = recommencer (lot 8 : Start ouvre le menu). */
-export const padRestart = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[8]?.pressed;
+/** Lot 27 (comme DailyTrack) : X (2) = recommencer à zéro. Avant le lot 27 : Select (8). */
+export const padRestart = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[2]?.pressed;
+/** Lot 27 (comme DailyTrack) : Y (3) = reprendre au dernier point de passage. */
+export const padRespawn = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[3]?.pressed;
 /** Start (9) = menu ⏸ (lot 8). */
 export const padMenu = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[9]?.pressed;
 
@@ -99,8 +111,10 @@ export class Controls {
   private keyJump = false;
   private padJumpDown = false;
   private padRestartDown = false;
+  private padRespawnDown = false;
   private padMenuDown = false;
   private restartLatch = false;
+  private respawnLatch = false;
   private menuLatch = false;
   /** Menu ouvert : le clavier ne commande plus le personnage (lot 8). */
   private suspended = false;
@@ -115,10 +129,12 @@ export class Controls {
         return;
       }
       if (this.suspended) return; // menu ouvert : flèches et Espace vont au menu
+      if (e.code === "Enter" && onControl(e)) return; // lot 27 : Entrée active le bouton qui a le focus
       if (GAME_CODES.has(e.code)) e.preventDefault(); // Espace et flèches ne font pas défiler la page
       if (e.repeat) return;
       this.down.add(e.code);
       if ((KEYS.restart as readonly string[]).includes(e.code)) this.restartLatch = true;
+      if ((KEYS.respawn as readonly string[]).includes(e.code)) this.respawnLatch = true;
       this.syncJump();
     });
     target.addEventListener("keyup", (e) => {
@@ -153,6 +169,9 @@ export class Controls {
     const restart = pad ? padRestart(pad) : false;
     if (restart && !this.padRestartDown && !this.suspended) this.restartLatch = true;
     this.padRestartDown = restart;
+    const respawn = pad ? padRespawn(pad) : false;
+    if (respawn && !this.padRespawnDown && !this.suspended) this.respawnLatch = true;
+    this.padRespawnDown = respawn;
     const menu = pad ? padMenu(pad) : false;
     if (menu && !this.padMenuDown) this.menuLatch = true;
     this.padMenuDown = menu;
@@ -170,6 +189,7 @@ export class Controls {
     this.suspended = on;
     this.down.clear();
     this.restartLatch = false;
+    this.respawnLatch = false;
     this.syncJump();
     this.latch.reset();
   }
@@ -183,9 +203,14 @@ export class Controls {
     }
   }
 
-  /** Demande « recommencer » (bouton tactile) : même événement que la touche R. */
+  /** Demande « recommencer à zéro » (bouton tactile, pause, écran d'arrivée) : même événement que la touche Entrée. */
   requestRestart(): void {
     this.restartLatch = true;
+  }
+
+  /** Lot 27 : demande « reprendre au dernier point de passage » (bouton tactile, pause) : même événement que la touche R. */
+  requestRespawn(): void {
+    this.respawnLatch = true;
   }
 
   /** Les 3 bits du prochain pas de simulation. */
@@ -195,10 +220,17 @@ export class Controls {
     return directionBits(left, right) | (this.latch.sample() ? INPUT_JUMP : 0);
   }
 
-  /** Vrai une fois après un appui sur R (ou Select). */
+  /** Vrai une fois après un appui sur Entrée (ou X à la manette). */
   takeRestart(): boolean {
     const r = this.restartLatch;
     this.restartLatch = false;
+    return r;
+  }
+
+  /** Lot 27 : vrai une fois après un appui sur R (ou Y à la manette). */
+  takeRespawn(): boolean {
+    const r = this.respawnLatch;
+    this.respawnLatch = false;
     return r;
   }
 

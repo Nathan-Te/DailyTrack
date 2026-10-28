@@ -216,7 +216,8 @@ test("« Comment jouer » s'ouvre de lui-même à la première visite seulement,
     await expect(page.locator("#help .dialogue__titre")).toHaveText("COMMENT JOUER");
     await expect(page.locator("#help")).toContainText("Va jusqu'au drapeau");
     await expect(page.locator("#help")).toContainText("Contre un mur, saute");
-    await expect(page.locator("#help")).toContainText("R : recommencer");
+    await expect(page.locator("#help")).toContainText("Entrée : recommencer à zéro");
+    await expect(page.locator("#help")).toContainText("R : dernier point de passage");
     await page.locator("#help-close").click();
     await expect(page.locator("#help")).toBeHidden();
     await page.reload();

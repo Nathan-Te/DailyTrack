@@ -57,6 +57,7 @@ import {
   stepAttempt,
   type AttemptState,
   type Level,
+  V11_ONLY_VARIANTS,
 } from "../src/index";
 
 // Lot 23 : les champignons rebonds (sim v7, générateur g17). Les niveaux sont de petits textes écrits ici ; les morceaux du catalogue sont dans `foret.test.ts`.
@@ -390,7 +391,7 @@ describe("lot 23 — les morceaux à champignons du catalogue", () => {
     for (const d of MUSHROOM_MODULES) for (let v = 0; v < d.variants.length; v++) expect(buildModule(d.id, v).level.mushrooms.length, `${d.id} v${v}`).toBeGreaterThan(0);
   });
 
-  it("une respiration (note 2 au plus), deux morceaux avec des rafales, au moins deux portions dures dont `champignon-falaise`", () => {
+  it("une respiration (note 2 au plus), deux morceaux avec du vent (rafales jusqu'à g20, continu depuis g21), au moins deux portions dures dont `champignon-falaise`", () => {
     const rest = MUSHROOM_MODULES.filter((d) => d.tags.includes("respiration"));
     expect(rest.length).toBeGreaterThanOrEqual(1);
     for (const d of rest) for (let v = 0; v < d.variants.length; v++) expect(variantExigence(moduleSolutions(d.id, v)), `${d.id} v${v}`).toBeLessThanOrEqual(2);
@@ -399,7 +400,10 @@ describe("lot 23 — les morceaux à champignons du catalogue", () => {
     for (const d of gusts) {
       for (let v = 0; v < d.variants.length; v++) {
         const L = buildModule(d.id, v).level;
-        expect(L.winds.some((w) => w.gust !== null), `${d.id} v${v} : une rafale`).toBe(true);
+        // Lot 27 : les variantes ajoutées pour g21 (`V11_ONLY_VARIANTS`) soufflent en continu ; les autres gardent leur rafale (références v7 à v10 au bit près).
+        const continuous = V11_ONLY_VARIANTS[d.id]?.includes(v) ?? false;
+        expect(L.winds.length, `${d.id} v${v} : du vent`).toBeGreaterThan(0);
+        expect(L.winds.some((w) => w.gust !== null), `${d.id} v${v} : ${continuous ? "plus de rafale" : "une rafale"}`).toBe(!continuous);
         expect(L.mushrooms.length, `${d.id} v${v}`).toBeGreaterThan(0);
       }
     }

@@ -10,10 +10,10 @@ import {
   stepAttempt,
   type AttemptState,
 } from "./attempt";
-import { JUMP_SIM_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE } from "./constants";
+import { JUMP_SIM_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE } from "./constants";
 import { idiv } from "./idiv";
 import type { Level } from "./level";
-import { DEFAULT_JUMP_PARAMS, INPUT_MASK } from "./player";
+import { DEFAULT_JUMP_PARAMS, INPUT_ATTEMPT_MASK, INPUT_MASK, INPUT_RESPAWN } from "./player";
 
 // Rediffusions (lot 3). Un **essai** (du départ à l'arrivée, à une mort sans point de passage, ou à « recommencer ») est entièrement décrit
 // par les commandes du joueur, 3 bits par pas, rangées en séries `{ count, bits }`. Les reprises aux points de passage ne sont pas
@@ -31,7 +31,7 @@ import { DEFAULT_JUMP_PARAMS, INPUT_MASK } from "./player";
 //              bit 3 = reprise **au départ** (lot 15, v4 : après une mort sans point de passage, chrono qui continue)
 //   [point de passage] : indice du point (varint) · chrono au départ (varint) · nombre de sections (varint) · par section : début + 1 (varint, 0 = à l'arrêt)
 //   [reprise au départ] : chrono au départ (varint)
-//   séries : varint(count × 8 + bits), count ≥ 1
+//   séries : varint(count × 8 + bits), count ≥ 1 — **version 11 (lot 27) : varint(count × 16 + bits)**, le quatrième bit étant la reprise volontaire au dernier point de passage
 // Une série de moins de 16 pas tient dans un octet ; un essai de 25 s tient dans quelques centaines d'octets.
 //
 // L'essai commence au **premier pas commandé** (v3 : le monde attend le joueur, les pas d'attente au départ ne changent que l'état du bouton
@@ -101,6 +101,11 @@ export class JumpReplayError extends Error {
   }
 }
 
+/** Lot 27 : base du codage d'une série (`count × base + bits`) : 8 jusqu'à la version 10 (trois bits), 16 depuis la version 11 (le bit de reprise volontaire en plus). */
+const runBase = (simVersion: number): number => (simVersion >= RESTART_VERSION ? 16 : 8);
+/** Lot 27 : les bits permis d'une commande selon la version. */
+const runMask = (simVersion: number): number => (simVersion >= RESTART_VERSION ? INPUT_ATTEMPT_MASK : INPUT_MASK);
+
 /** Départ `S`, bouton relâché. */
 export const START_AT_SPAWN: ReplayStart = Object.freeze({ checkpoint: -1, held: 0, time: 0, sections: Object.freeze([]) as readonly number[], elan: 0 });
 
@@ -165,10 +170,10 @@ export function encodeReplay(replay: JumpReplay): string {
   let total = 0;
   for (const r of replay.runs) {
     if (!Number.isInteger(r.count) || r.count < 1) throw new JumpReplayError("format", "Série vide");
-    if (!Number.isInteger(r.bits) || r.bits < 0 || r.bits > INPUT_MASK) throw new JumpReplayError("format", `Commande invalide : ${r.bits}`);
+    if (!Number.isInteger(r.bits) || r.bits < 0 || r.bits > runMask(replay.simVersion)) throw new JumpReplayError("format", `Commande invalide : ${r.bits}`);
     total += r.count;
     if (total > MAX_ATTEMPT_TICKS) throw new JumpReplayError("length", `Rediffusion trop longue (plus de ${MAX_ATTEMPT_TICKS} pas)`);
-    pushVarint(bytes, r.count * 8 + r.bits);
+    pushVarint(bytes, r.count * runBase(replay.simVersion) + r.bits);
   }
   return toBase64Url(bytes);
 }
@@ -236,8 +241,9 @@ export function decodeReplay(code: string): JumpReplay {
   let total = 0;
   while (pos < bytes.length) {
     const v = varint("Série");
-    const bits = v % 8;
-    const count = idiv(v - bits, 8);
+    const base = runBase(simVersion);
+    const bits = v % base;
+    const count = idiv(v - bits, base);
     if (count < 1) throw new JumpReplayError("format", "Série vide");
     total += count;
     if (total > MAX_ATTEMPT_TICKS) throw new JumpReplayError("length", `Rediffusion trop longue (plus de ${MAX_ATTEMPT_TICKS} pas)`);
@@ -253,6 +259,8 @@ export function replayStartState(level: Level, start: ReplayStart): AttemptState
   if (start.checkpoint < 0 && start.time > 0) {
     // Lot 15 : une reprise au départ (v4 seulement : en v3 une mort sans point termine l'essai).
     if (level.simVersion < SINGLE_CLOCK_VERSION) throw new JumpReplayError("level", "Reprise au départ dans un niveau de version 3");
+    // Lot 27 : depuis la version 11, une mort avant le premier point de passage recommence l'essai à zéro : plus de reprise au départ, chrono qui continue.
+    if (level.simVersion >= RESTART_VERSION) throw new JumpReplayError("level", "Reprise au départ dans un niveau de version 11 (l'essai recommence à zéro)");
     if (start.elan || start.sections.length !== 0) throw new JumpReplayError("format", "Reprise au départ lancée ou avec des sections");
     const s = respawnAttempt(level, { ...initialAttempt(level), time: start.time });
     return start.held ? { ...s, player: { ...s.player, held: 1 } } : s;
@@ -269,6 +277,11 @@ export function replayStartState(level: Level, start: ReplayStart): AttemptState
   if (start.sections.length !== sectionCount) throw new JumpReplayError("level", "Nombre de sections différent de celui du niveau");
   const s = checkpointAttempt(level, { ...initialAttempt(level), checkpoint: start.checkpoint, time: start.time, sections: start.sections });
   return start.held ? { ...s, player: { ...s.player, held: 1 } } : s;
+}
+
+/** Lot 27 : ce pas est-il une reprise volontaire ? (v11, bit de reprise, personnage vivant, un point franchi : sinon la commande est sans effet.) */
+export function isResume(level: Pick<Level, "simVersion">, before: Readonly<AttemptState>, bits: number): boolean {
+  return level.simVersion >= RESTART_VERSION && (bits & INPUT_RESPAWN) !== 0 && before.status === ATTEMPT_RUNNING && before.checkpoint >= 0;
 }
 
 /** Le départ d'une vie, lu dans l'état de la réapparition. */
@@ -330,7 +343,8 @@ function prepare(level: Level, replay: JumpReplay, levelId?: string): AttemptSta
 /** L'essai (ou la vie) est-il fini à cet état ? Arrivée, ou mort sans point de passage pour reprendre (v3 ; en v4 on reprend au départ). */
 function ended(before: Readonly<AttemptState>, after: Readonly<AttemptState>, simVersion: number): boolean {
   if (after.status === ATTEMPT_FINISHED) return true;
-  return simVersion < SINGLE_CLOCK_VERSION && after.status === ATTEMPT_DEAD && before.status !== ATTEMPT_DEAD && after.checkpoint < 0;
+  // v3 et, depuis le lot 27, v11 : une mort sans point de passage termine l'essai (la v4 à v10 reprend au départ, chrono qui continue).
+  return (simVersion < SINGLE_CLOCK_VERSION || simVersion >= RESTART_VERSION) && after.status === ATTEMPT_DEAD && before.status !== ATTEMPT_DEAD && after.checkpoint < 0;
 }
 
 /**
@@ -351,6 +365,13 @@ export function replayAttempt(level: Level, replay: JumpReplay, levelId?: string
       const before = s;
       s = stepAttempt(before, run.bits, level, DEFAULT_JUMP_PARAMS);
       tick++;
+      // Lot 27 (v11) : une reprise volontaire au dernier point clôt la vie en cours (« abandon » : ce n'est pas une mort) et en ouvre une autre sur ce point, comme après une mort ;
+      // le pas de la reprise n'appartient à aucune des deux (comme l'attente qui suit une mort).
+      if (isResume(level, before, run.bits)) {
+        if (open && open.ticks > 0) lives.push({ index: lives.length, ...open, end: "abandon", death: null });
+        open = { start: startOf(s), startTick: tick, runs: [], ticks: 0 };
+        continue;
+      }
       if (open) {
         const last = open.runs[open.runs.length - 1];
         if (last && last.bits === run.bits) last.count++;

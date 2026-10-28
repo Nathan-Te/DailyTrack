@@ -13,8 +13,8 @@ export { HELP_SEEN_KEY, helpSeen, markHelpSeen } from "./homeLogic";
 export const HOWTO_POINTS = ["aide.point1", "aide.point2", "aide.point3"] as const;
 /** Les commandes, par appareil (« Comment jouer » au clavier, Réglages › Commandes). */
 export const COMMANDES = {
-  clavier: ["commandes.clavier.courir", "commandes.clavier.sauter", "commandes.clavier.recommencer", "commandes.clavier.pause", "commandes.clavier.fantome"],
-  manette: ["commandes.manette.courir", "commandes.manette.sauter", "commandes.manette.recommencer", "commandes.manette.pause"],
+  clavier: ["commandes.clavier.courir", "commandes.clavier.sauter", "commandes.clavier.reprendre", "commandes.clavier.recommencer", "commandes.clavier.pause", "commandes.clavier.fantome"],
+  manette: ["commandes.manette.courir", "commandes.manette.sauter", "commandes.manette.reprendre", "commandes.manette.recommencer", "commandes.manette.pause"],
   tactile: ["commandes.tactile.direction", "commandes.tactile.saut", "commandes.tactile.pause"],
 } as const;
 

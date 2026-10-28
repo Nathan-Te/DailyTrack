@@ -121,7 +121,7 @@ describe("lot 26 — la version de la simulation", () => {
   it("la version 10 est celle des ponts (lot 25 : la version 9 garde les lasers)", () => {
     expect(BRIDGE_VERSION).toBe(10);
     expect(LASER_VERSION).toBe(9);
-    expect(JUMP_SIM_VERSION).toBe(10);
+    expect(JUMP_SIM_VERSION).toBe(11); // lot 27 : la version 11 recommence l'essai à zéro avant le premier point de passage
     expect(room().simVersion).toBe(10);
   });
 });
@@ -583,9 +583,9 @@ describe("lot 26 — les sept morceaux de la nuit", () => {
 describe("lot 26 — les niveaux du jour de la nuit (g20, v10)", () => {
   it("la version 10 et g20 : l'identifiant, le figeage, la relecture ; une version incohérente est refusée", () => {
     expect(BRIDGE_GENERATOR).toBe(20);
-    expect(JUMP_GENERATOR_VERSION).toBe(BRIDGE_GENERATOR);
+    expect(JUMP_GENERATOR_VERSION).toBe(BRIDGE_GENERATOR + 1); // lot 27 : g21 (v11)
     const day = parseDay("2026-12-17")!;
-    const L = dailyLevel(day);
+    const L = dailyLevel(day, null, BRIDGE_VERSION);
     expect(L.level.simVersion).toBe(10);
     expect(L.id).toBe("jour-2026-12-17-g20");
     expect(L.level.bridges.length).toBeGreaterThanOrEqual(2);

@@ -18,6 +18,10 @@ import {
   MUSHROOM_GENERATOR,
   MUSHROOM_VERSION,
   BRIDGE_VERSION,
+  BRIDGE_GENERATOR,
+  RESTART_VERSION,
+  INPUT_RESPAWN,
+  toRuns,
   LASER_GENERATOR,
   LASER_VERSION,
   STALACTITE_GENERATOR,
@@ -104,7 +108,7 @@ describe("lot 15 — lecture d'un niveau v4 (bloc annexe)", () => {
 
   it("une phase n'existe qu'en version 4 ; une version inconnue est refusée", () => {
     expect(() => parseLevel(V4_ASCII.replace("version 4\n", ""))).toThrow(LevelError);
-    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 11"))).toThrow(/version/);
+    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 12"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 2"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 4\nversion 4"))).toThrow(/déjà/);
   });
@@ -183,10 +187,11 @@ const GENERATORS = [
   { version: MUSHROOM_VERSION, generator: MUSHROOM_GENERATOR },
   { version: STALACTITE_VERSION, generator: STALACTITE_GENERATOR },
   { version: LASER_VERSION, generator: LASER_GENERATOR },
-  { version: BRIDGE_VERSION, generator: JUMP_GENERATOR_VERSION },
+  { version: BRIDGE_VERSION, generator: BRIDGE_GENERATOR },
+  { version: RESTART_VERSION, generator: JUMP_GENERATOR_VERSION },
 ] as const;
 
-/** Les jours régénérés du générateur en vigueur (g20, version 10). */
+/** Les jours régénérés du générateur en vigueur (g21, version 11). */
 const REGENERATED: DailyLevel[] = Array.from({ length: 14 }, (_, k) => dailyLevel(FIRST_REGENERATED + k));
 
 for (const { version, generator } of GENERATORS) {
@@ -280,13 +285,16 @@ describe("lot 15 — validation toutes phases (modules/phases.json, src/phases.t
           expect(cycleMod(sectionPhases(lv, s)[k]!, period), where).toBe(ph.phase);
           const inputs = fromRuns(decodeReplay(ph.code!).runs);
           const last = k === L.pieces.length - 1;
+          // Lot 27 : devant une portion dure (zone de bifurcation), le mur de la zone suit le palier : le centre du personnage ne passe jamais son bord droit en courant tout droit — la
+          // sortie se lit alors à ce bord même (la rencontre avec le mur), pas une colonne plus loin.
+          const exitCol = !last && L.slowRoutes.some((r) => r.piece === k + 1) ? L.paliers[k + 1]!.col1 - 1 : last ? 0 : L.paliers[k + 1]!.col1;
           let out = false;
           for (let t = 0; t < inputs.length && !out; t++) {
             s = stepAttempt(s, inputs[t]!, lv, P);
             expect(s.status, where).not.toBe(ATTEMPT_DEAD);
             if (s.status === ATTEMPT_FINISHED) out = true;
-            else if (!last && centerCol(s.player) > L.paliers[k + 1]!.col1) {
-              expect(isCleanRun(s.player), where).toBe(true);
+            else if (!last && centerCol(s.player) > exitCol) {
+              if (exitCol === L.paliers[k + 1]!.col1) expect(isCleanRun(s.player), where).toBe(true);
               out = true;
             }
           }
@@ -321,16 +329,18 @@ const GOLDEN_FILES = {
   [STALACTITE_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v8.json"),
   [LASER_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v9.json"),
   [BRIDGE_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v10.json"),
+  [RESTART_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v11.json"),
 } as const;
 // Lot 18 (g13) : le 25/10 n'a plus de mort avant le premier point de passage parmi les 24 essais fictifs (la couverture « reprise au départ » du test
 // manquerait) ; le 31/10, une nuit aussi, en a 28. La couverture exigée ci-dessous ne change pas. Lot 19 (g14) : le 31/10 n'en a plus aucune ; le 09/11,
 // une nuit (46 blocs clignotants, 8 scies), en a 21 (mesuré sur les jours g14 du 27/10 au 19/11). Lot 20 : la journée de référence v5 est le 08/11 (une forêt à 2 plateformes : 63 reprises au départ, 40 sur un point parmi les essais fictifs).
 // Lot 22 : la journée de référence v6 est le 03/12 (une usine à deux presses, `presse-ilot` : des morts avant le premier point et sur un point parmi les 24 essais fictifs ; les 06/11 et 23/11 n'avaient pas de reprise au départ).
 // Lot 24 : la journée de référence v8 est le 08/12 (une glace à trois morceaux à stalactites, `stalactite-allee`, `stalactite-decroche` et `stalactite-sentier` : 21 reprises au départ, 48 sur un point et 7 morts par stalactite parmi les 24 essais fictifs). La v7 (g17, 28/11) est intacte.
+// Lot 27 : la journée de référence v11 est le 19/12 (un néon : des morts avant le premier point parmi les 24 essais fictifs, qui terminent désormais leur essai, des reprises sur un point, une reprise volontaire).
 // Lot 26 : la journée de référence v10 est le 17/12 (une nuit à deux morceaux à ponts et clignotants : `pont-clignotant-escalier` et `pont-clignotant-relais`).
 // Lot 25 : la journée de référence v9 est le 14/11 (un néon à trois morceaux à lasers : `laser-alterne-portes` et ses portails sur des blocs alternés, `laser-barre-sol` et `laser-balayage`, deux barres coulissantes).
 // Lot 23 : la journée de référence v7 est le 28/11 (une forêt à champignons de sol et de mur, un courant d'air et un puits en zigzag : 19 reprises au départ et 10 sur un point parmi les 24 essais fictifs). La v6 (g16, 03/12) est intacte.
-const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")!, [PRESS_VERSION]: parseDay("2026-12-03")!, [MUSHROOM_VERSION]: parseDay("2026-11-28")!, [STALACTITE_VERSION]: parseDay("2026-12-08")!, [LASER_VERSION]: parseDay("2026-11-14")!, [BRIDGE_VERSION]: parseDay("2026-12-17")! } as const;
+const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")!, [PRESS_VERSION]: parseDay("2026-12-03")!, [MUSHROOM_VERSION]: parseDay("2026-11-28")!, [STALACTITE_VERSION]: parseDay("2026-12-08")!, [LASER_VERSION]: parseDay("2026-11-14")!, [BRIDGE_VERSION]: parseDay("2026-12-17")!, [RESTART_VERSION]: parseDay("2026-12-19")! } as const;
 
 interface GoldenV4 {
   jumpSimVersion: number;
@@ -341,7 +351,7 @@ interface GoldenV4 {
   replays: { name: string; code: string; hash: string; finished: boolean; ticks: number; time: number; deaths: number }[];
 }
 
-function goldenReplays(version: 4 | 5 | 6 | 7 | 8 | 9 | 10): GoldenV4["replays"] {
+function goldenReplays(version: 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): GoldenV4["replays"] {
   const L = dailyLevel(GOLDEN_DAYS[version], null, version);
   const codes: { name: string; code: string }[] = [{ name: "preuve de l'auteur", code: L.code }];
   const essais = demoAttempts(L.level, L.replay, 15, { attempts: 24, maxLives: 8 });
@@ -352,6 +362,7 @@ function goldenReplays(version: 4 | 5 | 6 | 7 | 8 | 9 | 10): GoldenV4["replays"]
   for (const r of essais) {
     for (const life of replayAttempt(L.level, r.replay).lives) {
       const kind = life.start.checkpoint < 0 ? "start" : "point";
+      // v11 (lot 27) : plus de reprise au départ, chrono qui continue ; seules les reprises sur un point sont des vies à part.
       if (life.start.time === 0 || taken[kind] >= 3) continue;
       taken[kind]++;
       const at = kind === "start" ? "départ" : `point ${life.start.checkpoint}`;
@@ -359,17 +370,33 @@ function goldenReplays(version: 4 | 5 | 6 | 7 | 8 | 9 | 10): GoldenV4["replays"]
       lives++;
     }
   }
+  // Lot 27 (v11) : un essai avec une reprise volontaire au dernier point de passage, 40 pas après l'avoir franchi, puis la fin de la preuve de l'auteur d'où elle en était.
+  if (version >= RESTART_VERSION) codes.push({ name: "reprise volontaire au point 0 (preuve de l'auteur)", code: encodeReplay({ ...L.replay, runs: toRuns(withVoluntaryResume(L.level, fromRuns(L.replay.runs))) }) });
   return codes.map((c) => ({ ...c, ...replayFingerprint(L.level, decodeReplay(c.code)) }));
 }
 
-if (process.env.UPDATE_GOLDEN) {
-  const L = dailyLevel(GOLDEN_DAYS[BRIDGE_VERSION], null, BRIDGE_VERSION);
-  const golden: GoldenV4 = { jumpSimVersion: BRIDGE_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(BRIDGE_VERSION) };
-  writeFileSync(GOLDEN_FILES[BRIDGE_VERSION], JSON.stringify(golden, null, 2) + "\n");
+/** Les commandes de la preuve avec, 40 pas après le premier point de passage, la commande de reprise volontaire (lot 27). */
+function withVoluntaryResume(level: Level, inputs: readonly number[]): number[] {
+  let s = initialAttempt(level);
+  const out = [...inputs];
+  for (let i = 0; i < out.length; i++) {
+    s = stepAttempt(s, out[i]!, level, P);
+    if (s.checkpoint >= 0) {
+      out[i + 40] = out[i + 40]! | INPUT_RESPAWN;
+      break;
+    }
+  }
+  return out;
 }
 
-for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, PLATFORM_GENERATOR], [PRESS_VERSION, PRESS_GENERATOR], [MUSHROOM_VERSION, MUSHROOM_GENERATOR], [STALACTITE_VERSION, STALACTITE_GENERATOR], [LASER_VERSION, LASER_GENERATOR], [BRIDGE_VERSION, JUMP_GENERATOR_VERSION]] as const) {
-  describe(`lot 15/20/22/23/24/25/26 — déterminisme v${version} (fixtures/replay-golden-v${version}.json)`, () => {
+if (process.env.UPDATE_GOLDEN) {
+  const L = dailyLevel(GOLDEN_DAYS[RESTART_VERSION], null, RESTART_VERSION);
+  const golden: GoldenV4 = { jumpSimVersion: RESTART_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(RESTART_VERSION) };
+  writeFileSync(GOLDEN_FILES[RESTART_VERSION], JSON.stringify(golden, null, 2) + "\n");
+}
+
+for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, PLATFORM_GENERATOR], [PRESS_VERSION, PRESS_GENERATOR], [MUSHROOM_VERSION, MUSHROOM_GENERATOR], [STALACTITE_VERSION, STALACTITE_GENERATOR], [LASER_VERSION, LASER_GENERATOR], [BRIDGE_VERSION, BRIDGE_GENERATOR], [RESTART_VERSION, JUMP_GENERATOR_VERSION]] as const) {
+  describe(`lot 15/20/22/23/24/25/26/27 — déterminisme v${version} (fixtures/replay-golden-v${version}.json)`, () => {
     const golden = JSON.parse(readFileSync(GOLDEN_FILES[version], "utf8")) as GoldenV4;
     const day = GOLDEN_DAYS[version];
 
@@ -381,7 +408,13 @@ for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATO
       expect(goldenReplays(version)).toEqual(golden.replays);
       // La référence couvre des morts, des reprises au départ (chrono qui continue) et sur un point de passage.
       expect(golden.replays.some((r) => r.deaths >= 2)).toBe(true);
-      expect(golden.replays.some((r) => r.name.includes("reprise : départ"))).toBe(true);
+      if (version < RESTART_VERSION) expect(golden.replays.some((r) => r.name.includes("reprise : départ"))).toBe(true);
+      else {
+        // Lot 27 : plus de reprise au départ ; des essais clos par une mort avant le premier point, et une reprise volontaire (qui n'est pas une mort).
+        expect(golden.replays.some((r) => r.name.includes("reprise : départ"))).toBe(false);
+        expect(golden.replays.some((r) => r.name.includes("(mort)"))).toBe(true);
+        expect(golden.replays.some((r) => r.name.includes("reprise volontaire"))).toBe(true);
+      }
       expect(golden.replays.some((r) => r.name.includes("reprise : point"))).toBe(true);
     }, 60_000); // génération du jour, 24 essais fictifs et ~30 rejeux : ≈ 3 s seul, plus de 5 s sur le runner chargé de la CI
 

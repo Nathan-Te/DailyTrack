@@ -18,7 +18,7 @@ import {
 } from "@cdj/jump-sim";
 import { describe, expect, it } from "vitest";
 import { CAMERA, clampAxis, followCamera, snapCamera, type Frame } from "../src/camera";
-import { JumpLatch, directionBits, padDirection, padJump, padMenu, padRestart } from "../src/input";
+import { JumpLatch, directionBits, padDirection, padJump, padMenu, padRespawn, padRestart } from "../src/input";
 import { LOOK, animateLook, onStep, restLook, squashScale } from "../src/look";
 import { FixedStepper, MAX_STEPS_PER_FRAME, STEP_SECONDS } from "../src/loop";
 import { JumpSession, formatTicks } from "../src/session";
@@ -194,7 +194,7 @@ describe("bouton de saut entre deux pas", () => {
 describe("manette et directions", () => {
   const pad = (axes: number[], pressed: number[]) => ({ axes, buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressed.includes(i), value: pressed.includes(i) ? 1 : 0, touched: false })) });
 
-  it("stick avec zone morte, croix prioritaire, A/B saut, Select recommencer, Start ouvre le menu (lot 8)", () => {
+  it("stick avec zone morte, croix prioritaire, A/B saut, X recommencer, Y dernier point de passage, Start ouvre le menu (lots 8 et 27)", () => {
     expect(padDirection(pad([0.2], []))).toBe(0);
     expect(padDirection(pad([0.6], []))).toBe(1);
     expect(padDirection(pad([-0.6], []))).toBe(-1);
@@ -202,9 +202,15 @@ describe("manette et directions", () => {
     expect(padJump(pad([], [0]))).toBe(true);
     expect(padJump(pad([], [1]))).toBe(true);
     expect(padJump(pad([], [2]))).toBe(false);
-    // Lot 8 : Start ouvre le menu ⏸ (il recommençait aux lots 1 à 7), Select reste « recommencer ».
+    expect(padJump(pad([], [3]))).toBe(false);
+    // Lot 8 : Start ouvre le menu ⏸ (il recommençait aux lots 1 à 7). Lot 27 : comme DailyTrack, X (2) recommence à zéro et Y (3) reprend au dernier point de passage ;
+    // Select (8) ne recommence plus (DailyTrack en fait la caméra).
     expect(padRestart(pad([], [9]))).toBe(false);
-    expect(padRestart(pad([], [8]))).toBe(true);
+    expect(padRestart(pad([], [8]))).toBe(false);
+    expect(padRestart(pad([], [2]))).toBe(true);
+    expect(padRestart(pad([], [3]))).toBe(false);
+    expect(padRespawn(pad([], [3]))).toBe(true);
+    expect(padRespawn(pad([], [2]))).toBe(false);
     expect(padMenu(pad([], [9]))).toBe(true);
     expect(padMenu(pad([], [8]))).toBe(false);
   });

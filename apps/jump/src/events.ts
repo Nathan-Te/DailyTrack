@@ -22,6 +22,7 @@ import {
   TILE_ICE,
   UNITS_PER_TILE,
   groundTile,
+  isResume,
   mushroomHit,
   mushroomPad,
   stalactiteFloorRow,
@@ -267,6 +268,9 @@ export function eventsBetween(
   const p = prev.player;
   const c = cur.player;
   const at = (s: Readonly<PlayerState>) => ({ tick, source, x: centerX(s), y: centerY(s) });
+
+  // Lot 27 : la reprise volontaire au dernier point de passage (quatrième bit de la commande) : le personnage est reposé sur le point, comme après une mort — rien d'autre à comparer.
+  if (inputs && isResume(level, prev, inputs.bits)) return [{ ...at(c), kind: "reapparition", checkpoint: true }];
 
   // Réapparition : depuis la mort, au départ (nouvel essai) ou sur un point de passage. Rien d'autre à comparer (le personnage a sauté).
   if (prev.status === ATTEMPT_DEAD) {

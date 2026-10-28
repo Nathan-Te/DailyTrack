@@ -4,10 +4,12 @@ import {
   ATTEMPT_READY,
   ATTEMPT_RUNNING,
   INPUT_JUMP,
+  RESTART_VERSION,
   TICK_RATE,
   AttemptRecorder,
   initialAttempt,
   isDefaultJumpParams,
+  isResume,
   readyAttempt,
   singleClock,
   stepAttempt,
@@ -26,9 +28,19 @@ import {
 // pas, `START.pret` secondes), pendant lequel rien n'est joué ni enregistré mais où l'état montré est celui du chrono négatif (`readyAttempt` :
 // les dangers tournent déjà) ; au dernier pas du « Prêt… », le chrono part, que le joueur bouge ou non. La pause (aucun pas) fige tout.
 
-/** Lot 15 : durée du « Prêt… » avant le départ d'un niveau à une seule horloge, en secondes (réglable dans `?debug&tune`, jamais `tuned`). */
-export const START_DEFAULTS = { pret: 1 } as const;
+// Lot 27 : le « Prêt… » devient le **décompte « 3, 2, 1, Partez ! »** : `START.pret` en est la durée (les trois chiffres, 0,5 s chacun), 1,5 s par défaut ; « Partez ! » s'affiche au
+// départ du chrono. Il se joue au premier départ et à « recommencer à zéro » (touche Entrée, plaque, pause, écran d'arrivée), **jamais après une mort** (v11 : l'essai recommence à zéro
+// tout de suite, sans décompte ; avant le premier point comme après, un niveau d'avant la v11 reprend comme avant). Affichage seulement : la simulation ne change pas.
+
+/** Lot 15, lot 27 : durée du décompte avant le départ d'un niveau à une seule horloge, en secondes (réglable dans `?debug&tune`, jamais `tuned`). */
+export const START_DEFAULTS = { pret: 1.5 } as const;
 export const START: { pret: number } = { ...START_DEFAULTS };
+
+/** Lot 27 : le chiffre affiché du décompte (3, 2, 1) selon les pas qui restent sur `total` ; 0 : le décompte est fini ou n'a pas commencé. Trois tiers égaux, arrondis au pas. */
+export function decompteDigit(remaining: number, total: number): number {
+  if (remaining <= 0 || total <= 0) return 0;
+  return Math.min(3, Math.ceil((remaining * 3) / total));
+}
 
 /** Pas du « Prêt… » (au moins un). */
 export const readyTicks = (): number => Math.max(1, Math.round(START.pret * TICK_RATE));
@@ -38,6 +50,8 @@ export type SessionEvent =
   | { kind: "death"; cause: number; x: number; y: number }
   /** Retour en jeu après une mort : au départ (nouvel essai) ou sur un point de passage (le même essai continue, chrono compris). */
   | { kind: "respawn"; checkpoint: boolean }
+  /** Lot 27 : la reprise **volontaire** au dernier point de passage (quatrième bit de la commande) : le chrono continue ; ce n'est pas une mort. */
+  | { kind: "resume"; checkpoint: number }
   /** Point de passage atteint (lot 2b). */
   | { kind: "checkpoint"; index: number }
   | { kind: "finish"; time: number; best: boolean }
@@ -88,6 +102,11 @@ export class JumpSession {
     this.wasTuned = !isDefaultJumpParams(params);
     this.recorder = levelId ? new AttemptRecorder(levelId, level.simVersion) : null;
     this.startReady();
+  }
+
+  /** Lot 27 : peut-on reprendre au dernier point de passage ? (Niveau en version 11, personnage vivant, un point franchi ; sinon « reprendre » fait « recommencer à zéro ».) */
+  get canResume(): boolean {
+    return this.level.simVersion >= RESTART_VERSION && this.state.status === ATTEMPT_RUNNING && this.state.checkpoint >= 0 && this.countdown === 0 && this.recorder !== null;
   }
 
   /** Lot 15 : le « Prêt… » est-il en cours ? */
@@ -146,6 +165,11 @@ export class JumpSession {
     const s = this.state;
     const done = this.recorder?.step(before, input, s);
     if (done) this.closed.push({ essai: done, tuned: this.tuned });
+    // Lot 27 : la reprise volontaire (rien n'est compté comme mort ; pas d'interpolation depuis l'ancienne position).
+    if (isResume(this.level, before, input)) {
+      this.prev = s;
+      return { kind: "resume", checkpoint: s.checkpoint };
+    }
     if (s.status === ATTEMPT_DEAD && before.status !== ATTEMPT_DEAD) {
       this.deaths++;
       this.attemptDeaths++;

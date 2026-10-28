@@ -2526,7 +2526,10 @@
       }
      ],
      "ok": true
-    }
+    },
+    null,
+    null,
+    null
    ]
   },
   "champignon-tourbillon": {
@@ -3100,7 +3103,11 @@
       }
      ],
      "ok": true
-    }
+    },
+    null,
+    null,
+    null,
+    null
    ]
   },
   "champignon-zigzag": {
@@ -32021,7 +32028,10 @@
       }
      ],
      "ok": true
-    }
+    },
+    null,
+    null,
+    null
    ]
   }
  }

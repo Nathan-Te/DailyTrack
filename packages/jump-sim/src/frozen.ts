@@ -1,7 +1,7 @@
 import { formatDay, parseDay } from "@cdj/core";
-import { BRIDGE_VERSION, JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
+import { BRIDGE_VERSION, JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
 import type { DailyExigence, DailyLevel, DailyPiece } from "./daily";
-import { BRIDGE_GENERATOR, LASER_GENERATOR, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, STALACTITE_GENERATOR, levelNumber, type JumpMedals } from "./jours";
+import { BRIDGE_GENERATOR, LASER_GENERATOR, RESTART_GENERATOR, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, STALACTITE_GENERATOR, levelNumber, type JumpMedals } from "./jours";
 import { parseLevel } from "./level";
 import type { Palier } from "./modules";
 import { textHash } from "./texthash";
@@ -191,6 +191,8 @@ function thaw(raw: unknown, day: number, proofRequired: boolean): PublicDailyLev
   if ((f.simVersion >= LASER_VERSION) !== (f.generatorVersion >= LASER_GENERATOR)) return "versions incohérentes";
   // Lot 26 : la version 10 (ponts à interrupteur) est celle du générateur g20 et des suivants ; la version 9 celle de g19 seulement.
   if ((f.simVersion >= BRIDGE_VERSION) !== (f.generatorVersion >= BRIDGE_GENERATOR)) return "versions incohérentes";
+  // Lot 27 : la version 11 (nouvel essai à zéro, reprise volontaire) est celle du générateur g21 et des suivants ; la version 10 celle de g20 seulement.
+  if ((f.simVersion >= RESTART_VERSION) !== (f.generatorVersion >= RESTART_GENERATOR)) return "versions incohérentes";
   const id = `jour-${date}-g${f.generatorVersion}`;
   if (f.id !== id) return "autre identifiant";
   if (!isStrings(f.grille) || !isStrings(f.annexe) || typeof f.hash !== "string" || !isInt(f.auteur)) return "fichier incomplet";
