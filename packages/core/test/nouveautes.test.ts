@@ -128,3 +128,65 @@ describe("le message en direct : texte seul, 160 caractères, fin", () => {
     expect(messageActif(null, 0)).toBeNull();
   });
 });
+
+// --- Exporter et importer un changelog ---------------------------------------------------------------------------------------------------------
+import { EXPORT_NOUVEAUTES_MAX, EXPORT_OCTETS_MAX, FORMAT_EXPORT, VERSION_EXPORT, cleDeNouveaute, exporterNouveautes, lireExport, texteProblemeImport } from "../src/nouveautes";
+
+describe("exporter et importer un changelog", () => {
+  const A = { titre: { fr: "Le bouton caméra revient", en: "The camera button is back" }, date: "2026-10-28", statut: "publiee" as const, lignes: [{ zone: "track" as const, fr: "Le bouton revient.", en: "The button is back.", pr: 171 }, { zone: null, fr: "À retoucher", en: "" }] };
+  const B = { titre: { fr: "Jump passe de nuit", en: "Jump goes dark" }, date: "2026-10-29", lignes: [{ zone: "jump" as const, fr: "Le thème Nuit.", en: "The Night theme." }] };
+
+  it("un export est versionné et relu à l'identique ; l'import ne garde que ce qu'il sait lire (zone inconnue → à retoucher)", () => {
+    const texte = exporterNouveautes([A, B], "2026-10-28T10:00:00.000Z");
+    const o = JSON.parse(texte);
+    expect(o).toMatchObject({ format: FORMAT_EXPORT, version: VERSION_EXPORT, exporteLe: "2026-10-28T10:00:00.000Z" });
+    const r = lireExport(texte, "2026-11-01");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.nouveautes).toHaveLength(2);
+    expect(r.nouveautes[0]).toMatchObject({ titre: A.titre, date: "2026-10-28", statut: "publiee" });
+    expect(r.nouveautes[0]!.lignes).toEqual([{ zone: "track", fr: "Le bouton revient.", en: "The button is back.", pr: 171 }, { zone: null, fr: "À retoucher", en: "" }]);
+    expect(r.nouveautes[1]!.statut).toBe("brouillon");
+    expect(r.ignorees).toBe(0);
+  });
+
+  it("un fichier hostile reste une donnée : texte nettoyé, HTML jamais interprété, champs inconnus et numéros de PR absurdes écartés", () => {
+    const texte = JSON.stringify({
+      format: FORMAT_EXPORT,
+      version: 1,
+      nouveautes: [{ titre: { fr: "<img src=x onerror=alert(1)>\n\u0007Titre", en: "T" }, date: "pas une date", extra: "x", lignes: [{ zone: "admin", fr: "a\r\nb", en: "c", pr: -3 }, { zone: "jump", fr: "ok", en: "ok", pr: 1e9 }, { zone: "jump", fr: "ok", en: "ok", pr: "12" }] }, 42, null, []],
+    });
+    const r = lireExport(texte, "2026-11-01");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ignorees).toBe(3);
+    const n = r.nouveautes[0]!;
+    expect(n.titre.fr).toBe("<img src=x onerror=alert(1)> Titre"); // gardé comme du texte (les clients le posent en textContent), une ligne, sans contrôle
+    expect(n.date).toBe("2026-11-01"); // date invalide : remplacée par aujourd'hui
+    expect(n.lignes[0]).toEqual({ zone: null, fr: "a b", en: "c" });
+    expect(n.lignes.map((l) => l.pr)).toEqual([undefined, undefined, undefined]);
+    expect(JSON.stringify(n)).not.toContain("extra");
+  });
+
+  it("refus nommés : trop gros, illisible, pas notre format, version plus récente, vide, trop de nouveautés", () => {
+    const refus = (t: string) => {
+      const r = lireExport(t, "2026-11-01");
+      return r.ok ? null : r.probleme;
+    };
+    expect(refus("x".repeat(EXPORT_OCTETS_MAX + 1))).toBe("trop_gros");
+    expect(refus("{pas du json")).toBe("illisible");
+    expect(refus("[]")).toBe("format");
+    expect(refus(JSON.stringify({ format: "autre", version: 1, nouveautes: [{}] }))).toBe("format");
+    expect(refus(JSON.stringify({ format: FORMAT_EXPORT, nouveautes: [{}] }))).toBe("format");
+    expect(refus(JSON.stringify({ format: FORMAT_EXPORT, version: VERSION_EXPORT + 1, nouveautes: [{}] }))).toBe("version");
+    expect(refus(JSON.stringify({ format: FORMAT_EXPORT, version: 1, nouveautes: [] }))).toBe("vide");
+    expect(refus(JSON.stringify({ format: FORMAT_EXPORT, version: 1, nouveautes: [1, 2] }))).toBe("vide");
+    expect(refus(JSON.stringify({ format: FORMAT_EXPORT, version: 1, nouveautes: Array.from({ length: EXPORT_NOUVEAUTES_MAX + 1 }, () => ({})) }))).toBe("trop_nombreuses");
+    for (const p of ["trop_gros", "illisible", "format", "version", "vide", "trop_nombreuses"] as const) expect(texteProblemeImport(p).length).toBeGreaterThan(10);
+  });
+
+  it("la clé « déjà là » : même date et même titre français, sans casse ni espaces en trop", () => {
+    expect(cleDeNouveaute({ titre: { fr: "  Le bouton   caméra revient " }, date: "2026-10-28" })).toBe(cleDeNouveaute({ titre: { fr: "le bouton caméra revient" }, date: "2026-10-28" }));
+    expect(cleDeNouveaute({ titre: { fr: "a" }, date: "2026-10-28" })).not.toBe(cleDeNouveaute({ titre: { fr: "a" }, date: "2026-10-29" }));
+  });
+});
