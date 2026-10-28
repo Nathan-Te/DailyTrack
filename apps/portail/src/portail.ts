@@ -37,6 +37,7 @@ import {
   visibiliteDeLaPage,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
+import { LIEN_DISCORD, LIEN_KOFI } from "./liens";
 import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { dans, nonLue } from "./nouveautesDonnees";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
@@ -298,10 +299,25 @@ function rendre(): void {
       "footer",
       { classe: "portail-pied" },
       el("p", { texte: t.t("portail.pied") }),
+      el(
+        "div",
+        { classe: "portail-pied__liens" },
+        lienExterne(t.t("portail.discord"), LIEN_DISCORD, "discord"),
+        lienExterne(t.t("portail.kofi"), LIEN_KOFI, "kofi"),
+      ),
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue), hreflang: langue }, texte: t.t("portail.mentions") }),
     ),
   );
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
+}
+
+/** Un lien vers un autre site (Discord, Ko-fi) : bouton secondaire du socle, nouvel onglet, sans transmettre la page d'origine. */
+function lienExterne(texte: string, href: string, id: string): HTMLElement {
+  const a = bouton({ texte, variante: "secondaire", href });
+  a.id = id;
+  a.setAttribute("target", "_blank");
+  a.setAttribute("rel", "noopener noreferrer");
+  return a;
 }
 
 // --- Le compte à rebours (heure du serveur) -----------------------------------------------------------------------------------

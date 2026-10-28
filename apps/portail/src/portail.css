@@ -643,3 +643,11 @@
   background: var(--dj-moutarde);
   color: var(--dj-encre);
 }
+
+/* Le pied : les deux liens externes (Discord, Ko-fi) en boutons secondaires, côte à côte, à la ligne sur un petit écran. */
+.portail-pied__liens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+  margin: var(--dj-espace-4) 0 var(--dj-espace-2);
+}
