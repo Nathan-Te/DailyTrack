@@ -651,3 +651,29 @@
   gap: var(--dj-espace-4);
   margin: var(--dj-espace-4) 0 var(--dj-espace-2);
 }
+
+/* Le bouton Ko-fi : l'allure de celui de Ko-fi (bleu de leur charte, la tasse au cœur), fait ici — rien n'est chargé de leur site. Texte encre : le blanc d'origine ne passe pas le contraste. */
+.portail-kofi {
+  --kofi-bleu: #72a4f2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-7) 0 var(--dj-espace-4);
+  border-radius: 22px;
+  background: var(--kofi-bleu);
+  color: var(--dj-encre);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: transform var(--dj-duree-courte);
+}
+.portail-kofi:hover {
+  transform: translateY(-2px);
+}
+.portail-kofi__tasse {
+  display: block;
+  width: auto;
+  height: 24px;
+}

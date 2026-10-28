@@ -38,6 +38,7 @@ import {
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { LIEN_DISCORD, LIEN_KOFI } from "./liens";
+import tasseKofi from "./kofi-tasse.png";
 import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { dans, nonLue } from "./nouveautesDonnees";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
@@ -303,7 +304,7 @@ function rendre(): void {
         "div",
         { classe: "portail-pied__liens" },
         lienExterne(t.t("portail.discord"), LIEN_DISCORD, "discord"),
-        lienExterne(t.t("portail.kofi"), LIEN_KOFI, "kofi"),
+        lienKofi(t.t("portail.kofi")),
       ),
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue), hreflang: langue }, texte: t.t("portail.mentions") }),
     ),
@@ -317,6 +318,20 @@ function lienExterne(texte: string, href: string, id: string): HTMLElement {
   a.id = id;
   a.setAttribute("target", "_blank");
   a.setAttribute("rel", "noopener noreferrer");
+  return a;
+}
+
+/**
+ * Le bouton Ko-fi, à l'allure de celui que Ko-fi propose (bleu, la tasse au cœur), **sans rien charger de chez eux** : un lien, et la tasse est une copie hébergée sur le site (aucun script ni
+ * image de `ko-fi.com`). Le texte est encre sur le bleu (le blanc du bouton d'origine ne passe pas le contraste exigé par l'audit d'accessibilité).
+ */
+function lienKofi(texte: string): HTMLElement {
+  const a = el(
+    "a",
+    { classe: "portail-kofi", attrs: { id: "kofi", href: LIEN_KOFI, target: "_blank", rel: "noopener noreferrer" } },
+    el("img", { classe: "portail-kofi__tasse", attrs: { src: tasseKofi, alt: "", width: 30, height: 24 } }),
+    el("span", { texte }),
+  );
   return a;
 }
 

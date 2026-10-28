@@ -73,7 +73,7 @@ test("portail en français : barre, date, une cartouche par jeu (numéro du jour
   // Le pied : la communauté et le soutien de l'éditeur, de simples liens (aucun script ni bouton intégré de ces services), nouvel onglet sans transmettre la page.
   await expect(page.locator("#discord")).toHaveText("Rejoindre le Discord");
   await expect(page.locator("#discord")).toHaveAttribute("href", "https://discord.gg/2KZkUSpDej");
-  await expect(page.locator("#kofi")).toHaveText("M'offrir un Ko-fi");
+  await expect(page.locator("#kofi")).toHaveText("Me soutenir sur Ko-fi");
   await expect(page.locator("#kofi")).toHaveAttribute("href", "https://ko-fi.com/C7X829MCE1");
   for (const id of ["discord", "kofi"]) {
     await expect(page.locator(`#${id}`)).toHaveAttribute("target", "_blank");

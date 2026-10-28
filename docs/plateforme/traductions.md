@@ -252,7 +252,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.pied` | Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux. | A new day at midnight, Paris time. Your profile is the same in every game. |
 | `portail.mentions` | Mentions légales et confidentialité | Legal notice and privacy |
 | `portail.discord` | Rejoindre le Discord | Join the Discord |
-| `portail.kofi` | M'offrir un Ko-fi | Buy me a Ko-fi |
+| `portail.kofi` | Me soutenir sur Ko-fi | Support me on Ko-fi |
 | `portail.compte.legende` | Prochains niveaux dans | Next levels in |
 | `portail.avancement` | one : {n} fini sur {total} · other : {n} finis sur {total} | one : {n} of {total} done · other : {n} of {total} done |
 | `portail.numeroTheme` | {numero} · {theme} | {numero} · {theme} |
