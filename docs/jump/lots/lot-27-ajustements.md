@@ -58,7 +58,7 @@ Un **autocollant compact** (charte « Cartouches ») posé **à gauche, sous le 
 | **W = 4, 365 dates** (`variete:jump`) | 0 secours, écart min. 4 | **0 secours, écart min. 4**, 125 morceaux employés sur 125 |
 | génération à froid, 48 dates | 0,21 s · 0,74 s | **0,30 s · 0,67 s** (< 1,5 s) |
 | équilibre : jours à élément (forêt · usine · glace · nuit · néon) | 72 · 70 · 81 · 80 · 68 % (365 dates) | 81 · 56 · 83 · 81 · 61 % (120 dates : échantillon plus bruité, usine 56 % et néon 61 % comme en g20 sur 120) |
-| budget Jump (JS + CSS) · catalogue anglais | 358 034 o · 5 631 o | 361 447 o (+3 413, marge 17 043) · 5 753 o |
+| budget Jump (JS + CSS) · catalogue anglais | 358 034 o · 5 631 o | 361 468 o (+3 434, marge 17 022) · 5 781 o |
 
 ## Décisions laissées à Nathan
 1. **Durée du décompte** : Track a un décompte de **3 s** (3, 2, 1, PARTEZ !) ; la demande disait « environ 1,5 s » et « aligne sur Track s'il en a un » : j'ai gardé **1,5 s** et le **style** de Track (annonce au premier tiers, chiffres puis « Partez ! »). Une valeur (`START_DEFAULTS.pret`) pour passer à 3 s.
