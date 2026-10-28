@@ -1,0 +1,92 @@
+/* Lot 53 : l'aide du plein écran sur iPhone et « Retrouver mon profil » (aideIphone.ts, retrouver.ts). **Une feuille à part, chargée à la demande avec ces deux écrans** (importée par
+   eux : jamais dans `styles.css`, donc jamais dans le premier chargement d'un jeu ni du portail). */
+/* Un écran en surimpression : voile à rayures (motif net, ni flou ni transparence), un dialogue en plaque crème, **rien sous l'encoche ni la barre d'accueil**
+   (marges de sécurité) ; par-dessus toutes les couches des jeux. Le champ est à 16 px : iOS ne zoome pas la page à la saisie. */
+.dj-modale {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Track efface tout enfant de `body` hors de sa liste quand un écran est ouvert (`visibility: hidden`, interface.css de Track) : ces écrans-ci passent devant toujours. */
+  visibility: visible !important;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  background: repeating-linear-gradient(115deg, var(--dj-encre) 0 3px, transparent 3px 8px);
+  font-family: var(--dj-police-texte);
+}
+.dj-modale__dialogue {
+  box-sizing: border-box;
+  width: min(100%, 30rem);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--dj-espace-7);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  box-shadow: 4px 4px 0 var(--dj-encre);
+}
+.dj-modale__titre {
+  margin: 0 0 var(--dj-espace-3);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-22);
+  line-height: 1.1;
+}
+.dj-modale__texte {
+  margin: 0 0 var(--dj-espace-3);
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+}
+.dj-modale__partage {
+  display: inline-block;
+  vertical-align: -5px;
+  padding: 2px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+}
+.dj-modale__message {
+  min-height: 1.4em;
+  margin: 0 0 var(--dj-espace-3);
+  font-size: var(--dj-taille-14);
+  font-weight: 700;
+}
+.dj-modale__message:empty {
+  display: none;
+}
+.dj-modale__saisie {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  margin-bottom: var(--dj-espace-3);
+}
+.dj-modale__etiquette {
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.dj-modale__ligne,
+.dj-modale__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-3);
+  margin-bottom: var(--dj-espace-3);
+}
+.dj-modale__actions[hidden],
+.dj-modale__saisie[hidden] {
+  display: none;
+}
+.dj-modale__champ {
+  flex: 1 1 10rem;
+  min-width: 0;
+  min-height: var(--dj-cible);
+  box-sizing: border-box;
+  padding: 0 var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-16);
+}

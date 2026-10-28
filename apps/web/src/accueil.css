@@ -257,8 +257,8 @@ body.home #hud-droite {
 /* --- Le classement dans le coin de la course : une plaque compacte, repliable ----------------------------------------------------------------------- */
 #board {
   position: fixed;
-  right: 10px;
-  top: 56px; /* sous la pastille du rang (#rang) qui l'ouvre ; jamais au centre (charte rév. 7 : le centre reste libre) */
+  right: max(10px, var(--sure-droite));
+  top: calc(max(8px, var(--sure-haut)) + 48px); /* sous la pastille du rang (#rang) qui l'ouvre ; jamais au centre (charte rév. 7 : le centre reste libre) */
   z-index: var(--z-hud);
   width: min(240px, 28vw);
   pointer-events: none;

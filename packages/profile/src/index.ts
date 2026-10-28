@@ -11,3 +11,5 @@ export * from "./jeuSuivant";
 export * from "./apiAdresse";
 export * from "./generation";
 export * from "./annonce";
+// Lot 53 : `./retrouver` (« Retrouver mon profil ») n'est volontairement PAS ici : les applications l'importent par son chemin (`@cdj/profile/src/retrouver`) depuis un module chargé à la demande.
+// Dans ce fichier, l'empaqueteur le rangerait dans le morceau du profil que le premier chargement d'un jeu télécharge.

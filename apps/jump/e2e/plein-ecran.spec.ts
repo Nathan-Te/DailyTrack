@@ -150,7 +150,7 @@ for (const [langue, locale, ligne, fermer] of [
   // Lot R13 : le français seulement (l'anglais des mêmes clés : packages/ui/test/catalogues.test.ts et langue.spec.ts).
   ["fr", "fr-FR", "Pour jouer en plein écran : Partager › Sur l'écran d'accueil", "Fermer cette astuce"],
 ] as const) {
-  test(`iPhone (${langue}) : pas de bouton plein écran ; la ligne « Partager › Sur l'écran d'accueil » s'affiche une fois, se ferme et ne revient pas`, async ({ browser }) => {
+  test(`iPhone (${langue}) : le bouton plein écran ouvre l'aide (lot 53) ; la ligne « Partager › Sur l'écran d'accueil » s'affiche une fois, se ferme et ne revient pas`, async ({ browser }) => {
     const context = await telephone(browser, { width: 844, height: 390 }, { locale, userAgent: IPHONE_UA });
     try {
       await sansPleinEcran(context);
@@ -159,7 +159,11 @@ for (const [langue, locale, ligne, fermer] of [
       test.skip(!(await hasWebGL(page)), "WebGL indisponible");
       await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
       await expect(page.locator("#home")).toBeVisible();
-      await expect(page.locator("#home .dj-plein-ecran")).toBeHidden();
+      const bouton = page.locator("#home .dj-plein-ecran");
+      await expect(bouton).toBeVisible(); // lot 53 : il ouvre l'aide « Sur l'écran d'accueil » (le détail : apps/web/e2e/iphone.spec.ts)
+      await bouton.click();
+      await expect(page.getByRole("dialog", { name: "Jouer en plein écran" })).toBeVisible();
+      await page.keyboard.press("Escape");
       const astuce = page.locator("#home .dj-astuce");
       await expect(astuce).toBeVisible();
       await expect(astuce).toContainText(ligne);

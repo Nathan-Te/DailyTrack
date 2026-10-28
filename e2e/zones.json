@@ -58,6 +58,10 @@
     "ui": { "globs": ["packages/ui/**"] },
     "profile-pkg": { "globs": ["packages/profile/**"] },
     "core-clock": { "globs": ["packages/core/**", "packages/clock/**", "config/**"] },
+    "iphone": {
+      "_": "Lot 53 : les fichiers propres à l'iPhone et à l'application ajoutée à l'écran d'accueil (l'aide du plein écran, « Retrouver mon profil », la détection). Une zone étroite exprès : l'Essentiel de web/iphone.spec.ts (28 s) ne doit pas entrer dans toutes les PR qui touchent `packages/ui` ou `packages/profile` (le budget de 900 s d'une PR large n'a plus de marge : ciZones.test.ts) ; ses tests de mise en page sont `@regression`.",
+      "globs": ["packages/ui/src/aideIphone.ts", "packages/ui/src/composants.ts", "packages/ui/src/retrouver.ts", "packages/ui/src/modale.css", "packages/ui/src/catalogue.iphone.ts", "packages/ui/src/pleinEcran.ts", "packages/profile/src/retrouver.ts", "apps/web/src/retrouverJeu.ts", "apps/jump/src/retrouverJeu.ts", "apps/web/e2e/iphone.spec.ts"]
+    },
     "portail": { "globs": ["apps/portail/**", "scripts/site.mjs", "scripts/images-partage.mjs", "firebase.json"] },
     "api-coeur": {
       "globs": ["apps/api/**"],
@@ -93,6 +97,7 @@
     "web/graphismes.spec.ts": ["track-scene", "track-camera"],
     "web/hud-compact.spec.ts": ["track-hud", "ui", "track-coeur"],
     "web/identite-plateforme.spec.ts": ["track-profil", "profile-pkg", "api-coeur"],
+    "web/iphone.spec.ts": ["portail", "iphone"],
     "web/juice.spec.ts": ["track-audio-fx", "track-sim"],
     "web/langue.spec.ts": ["track-i18n", "ui", "profile-pkg"],
     "web/leaderboard.spec.ts": ["track-profil", "api-track", "api-coeur", "track-sim"],

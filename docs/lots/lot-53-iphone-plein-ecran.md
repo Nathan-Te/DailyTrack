@@ -1,0 +1,61 @@
+# Lot 53 — Du Jour sur iPhone : le plein écran par l'écran d'accueil
+
+Branche : `claude/lot-53-iphone-plein-ecran-hogsuj` (imposée par la session ; l'énoncé disait `lot-53-iphone-plein-ecran`). PR brouillon : voir le lien dans le message de fin.
+Consignes mises à jour : `CLAUDE.md` racine (« Du Jour sur iPhone »), `apps/web/CLAUDE.md` (« iPhone : le plein écran par l'écran d'accueil (lot 53) »), et en bref `packages/ui`, `packages/profile`, `apps/portail`, `apps/jump`.
+
+## Pourquoi le bouton manquait (le code qui le retirait)
+**C'était voulu** (lot I7). Sur iPhone — Safari, et Chrome qui y utilise le même WebKit — une page web **ne peut pas** passer en plein écran : l'API Fullscreen n'y est ouverte qu'aux vidéos (l'iPad, lui, l'a). `packages/ui/src/pleinEcran.ts` : `pleinEcranPossible()` vaut `!modeApplication() && document.fullscreenEnabled`, donc **faux sur iPhone** ; `boutonPleinEcran` (`composants.ts`) faisait `b.hidden = !pleinEcranPossible()`. Vérifié : Track (`main.ts` : plaque de la course et pause ; accueil par `barreJeu({ pleinEcran: true })`), Jump (`main.ts`, `pauseMenu.ts`, accueil) et le portail (qui n'a pas de bouton plein écran : la vitrine `/ui/` seule l'utilise) passent tous par ce seul composant.
+
+## Ce qu'iOS permet ou non
+| | iPhone |
+|---|---|
+| `requestFullscreen()` sur une page | **non** (vidéos seulement) ; l'iPad : oui |
+| Ajouter à l'écran d'accueil → ouverture sans barre de Safari | **oui** : `display: standalone` du manifeste (iOS traite `fullscreen` comme `standalone`) ou `apple-mobile-web-app-capable` ; barre d'état : `black-translucent` (la page passe dessous : marges de sécurité obligatoires) |
+| Verrouiller le paysage (`screen.orientation.lock`) | **non** pour une application web : l'invitation « tourne ton téléphone » existante sert (testée en mode application) |
+| Stockage de l'application | **séparé de Safari** : l'application arrive **sans profil** |
+| Un lien de Safari qui ouvre l'application | **non** (iOS n'envoie jamais un lien à l'application ajoutée) |
+| Lire le presse-papiers | **oui, au geste du joueur** (`navigator.clipboard.readText()` : iOS affiche « Coller ») |
+
+## Ce que le lot fait
+1. **L'aide, là où était le bouton** : sur iPhone (détection **de la fonction** : écran tactile sans API Fullscreen, hors application ; jamais le nom de l'appareil — Android, ordinateur et iPad gardent leur plein écran, inchangé) le bouton « Plein écran » est là et **ouvre l'aide** : « Pour jouer en plein écran : touche [icône Partager de Safari] puis « Sur l'écran d'accueil ». Ton profil se retrouve avec ton code de transfert. », **« Copier mon code »** (s'il y a un profil) et le lien « Voir mon code de transfert » (`../profil/?retour=…`). fr et en. En course, la partie se met en pause avant. **Une pastille** (la ligne d'une fois, fermée = mémorisée, `cdj:astuce:plein-ecran`) dans le **portail** (nouveau), l'accueil de Track et celui de Jump ; rien en mode application.
+2. **L'application web** : manifeste (`id: "/"` ajouté ; nom « Du Jour », icônes de la charte, `standalone`, départ au portail, couleurs des jetons) ; en-tête iOS sur toutes les pages d'entrée (portail, profil, classement, nouveautés, mentions FR et EN, 404, Track, Jump) : `viewport-fit=cover`, `apple-mobile-web-app-capable`, `…-status-bar-style` = `black-translucent`, `…-title` ; `apple-touch-icon` et manifeste étaient déjà sur le portail, Track et Jump (**Track ouvert directement** : même manifeste, `scope: "/"`). **Marges de sécurité** : Track n'en avait **aucune** dans son HUD (`hud.css` : pause, bande, objectif, rang, aide, bandeaux, vitesse, effets, classement, finale du Salon, outils) — corrigé par `--sure-haut/droite/bas/gauche` ; les écrans posés sur la scène (cadre), les commandes tactiles (sonde) et tout Jump les avaient déjà ; le portail et ses pages statiques les ont maintenant.
+3. **Le piège de l'identité** — voir ci-dessous.
+
+## L'identité : la solution retenue
+**Étudié** : (a) un lien qui transmet le code de Safari à l'application — impossible : iOS n'ouvre jamais l'application depuis un lien, et l'identifiant ne passe jamais dans une adresse (règle du lot 32) ; (b) le stockage partagé — non, il est séparé ; (c) **le presse-papiers** — oui : le joueur copie son code dans Safari, ouvre l'application, touche « Coller mon code » (iOS demande l'autorisation, au geste) ; (d) un **code d'appairage court** émis par le serveur (6 chiffres, quelques minutes) — la meilleure expérience mais un lot de plateforme (route, table, remise à zéro, effacement, mentions) : **proposé, non fait**.
+
+**Retenu (c)** : **« Retrouver mon profil »** au premier lancement de l'application, si aucun profil n'existe (`retrouverMonProfil`, `@cdj/ui/src/retrouver` ; `verifierRetrouver`, `@cdj/profile/src/retrouver`) : « Coller mon code » (le code `CDJ2` est repéré même entouré d'autres mots), ou le champ ; le profil est **lu sur le serveur** (`GET /api/portail/profil`, `X-Player-Id` en en-tête), **montré** (« Profil trouvé : Démo, 5 jours finis. »), puis **adopté après confirmation** (`writeIdentity` + révision d'identité : chaque jeu vide son cache à son prochain démarrage) et la page recharge ; « Ce n'est pas le mien » revient ; « Commencer sans profil » ne revient pas (`cdj:retrouver:vu`, réglage gardé, nommé dans les deux pages de mentions). Dans le portail, Track et Jump, ouverts directement. L'aide du plein écran donne l'autre moitié du chemin (« Copier mon code »).
+
+## Budget (décision de Nathan : relever)
+Mesuré contre `main` reconstruit à part, tout ce qui peut l'être étant **à la demande** (l'aide, « Retrouver mon profil », leur catalogue `catalogue.iphone.ts`, leur feuille `modale.css` : rien au premier chargement). Le piège : **un module à la demande qui importe un module du premier chargement fait éclater celui-ci en fichiers de plus** (la compression par fichier se perd : +1,4 ko mesurés avant de rendre ces modules autonomes ; comme au lot 52). Ce qui reste est du code qui doit rester : la détection, le bouton qui ouvre l'aide, la pastille du portail, les marges du HUD de Track, l'en-tête des pages.
+| | `main` | lot 53 | plafond | marge |
+|---|---|---|---|---|
+| Track JS + CSS (`track.jsCss`) | 292 223 | **293 581** (+1 358 : JS +1 259, CSS +99) | 292 624 → **294 000** | 419 |
+| Track JS (`track.js`) / hors three.js | 280 564 / 146 907 | 281 823 / 148 166 | 281 224 → **282 200** / 147 500 → **148 500** | 377 / 334 |
+| Portail, premier chargement | 30 646 | **32 210** (+1 564) | 30 720 → **32 768** | 558 |
+| Jump JS + CSS | — | 370 345 | 378 490 (inchangé) | 8 145 |
+
+**La règle dit de s'arrêter et de demander** : les trois plafonds de Track et celui du portail sont dépassés ; **Nathan a demandé de les relever** (28/10/2026) après ces mesures ; `perf.spec.ts`, `construction.test.ts` et `budgets.md` portent les nouvelles valeurs. Détail et le piège mesuré (un module à la demande qui importe un module du premier chargement : +0,8 ko devenaient +2,2 ko) : `docs/plateforme/budgets.md`, « Lot 53 ».
+
+## Fichiers hors zone (exception autorisée pour ce lot)
+- **`@cdj/ui`** : `src/pleinEcran.ts`, `composants.ts`, `icones.ts` (inchangé au final), `index.ts`, `aideIphone.ts`, `retrouver.ts`, `catalogue.iphone.ts`, `modale.css`, `css.d.ts` (nouveaux) ; `test/pleinEcran.test.ts`, `test/applications.ts`.
+- **`@cdj/profile`** : `src/retrouver.ts` (nouveau), `src/generation.ts` (clé gardée), `src/index.ts` (commentaire : `retrouver` n'y est pas) ; `test/retrouver.test.ts`.
+- **Portail** : `index.html`, `profil/`, `classement/`, `nouveautes/`, `mentions-legales/`, `legal/`, `404.html` (en-tête iOS) ; `src/portail.ts`, `src/retrouverPortail.ts` (nouveau), `src/portail.css`, `src/mentions.css`, `src/introuvable.css`, `src/vitrine.ts`, `src/catalogueVitrine.ts` ; `test/mentions.test.ts`.
+- **Site** : `scripts/site.mjs` (manifeste : `id`), `scripts/traductions.ts` ; `docs/plateforme/traductions.md` (régénéré), `docs/plateforme/budgets.md`, `CLAUDE.md` racine.
+- **Jump** : `index.html`, `src/main.ts`, `src/retrouverJeu.ts` (nouveau) — Jump n'a rien d'autre à changer : ses marges étaient déjà bonnes.
+- **Track (sa zone)** : `index.html`, `src/hud.css`, `accueil.css`, `salon.css`, `main.ts`, `retrouverJeu.ts` ; e2e `plein-ecran.spec.ts` (l'iPhone a maintenant son bouton), `iphone.spec.ts` (nouveau), `durees.json` ; `e2e/zones.json` (zone partagée : une ligne pour le nouveau spec, exigée par `ciZones.test.ts`).
+
+## Vérifié / pas vérifié
+**Vérifié** : typecheck ; unitaires `apps/web`, `apps/jump`, `apps/portail`, `packages/ui`, `packages/profile` (152 fichiers, 2 231 tests : détection par la fonction, code collé, vérification, adoption, mentions, budgets, zones de CI) ; `e2e/iphone.spec.ts` **17 tests verts sur WebKit** (`devices["iPhone 13"]` et `"iPhone 13 landscape"`, 50 s) **et sur Chromium** : le bouton « Plein écran » ouvre l'aide (portrait, paysage, anglais), la pastille du portail une seule fois, le manifeste valide et lié (Track et Jump ouverts directement), l'en-tête iOS de huit pages, **en mode application simulé** (`display-mode: standalone`, `navigator.standalone`, les `env(safe-area-inset-*)` remplacés par les marges d'un iPhone 13 dans les feuilles et scripts servis) **aucun bouton dans les marges de sécurité** (portail, accueil et course de Track — pause, caméra, HUD, commandes —, accueil de Jump, portrait et paysage), l'invitation « tourne ton téléphone » en mode application, « Retrouver mon profil » (sans profil seulement, code collé avec d'autres mots, refusé, profil trouvé sur le vrai serveur montré puis adopté, « Ce n'est pas le mien », « Commencer sans profil » qui ne revient pas, rien dans Safari ; Track et Jump ouverts directement) ; e2e voisins `perf`, `plein-ecran` (Track et Jump, mis à jour : l'iPhone a maintenant son bouton), `domaine`, `portail` (voir le message de fin). **Pas vérifié** : un vrai iPhone (la liste « À tester » plus bas) — surtout `navigator.clipboard.readText()` dans l'application, que le WebKit de Playwright n'a pas ; les marges réelles de l'encoche et de l'îlot (simulées par des valeurs) ; Chrome sur iPhone (même WebKit) ; la CI complète de `main` (Firefox, nuit).
+**Décisions pour Nathan** : (1) les plafonds relevés (fait) ; (2) un **code d'appairage court** émis par le serveur (6 chiffres, quelques minutes) donnerait un transfert sans presse-papiers : un lot de plateforme (route, table à vider à la remise à zéro, effacement, mentions) — proposé, non fait ; (3) `black-translucent` (la page passe sous la barre d'état, d'où les marges) plutôt que `default` : choisi pour gagner la hauteur, comme demandé ; (4) la zone de CI `iphone` est étroite exprès (le budget de 900 s d'une PR large n'avait plus de marge) : l'Essentiel du spec (5 tests, 28 s) ne tourne que quand un fichier de l'iPhone ou le portail change ; ses tests de mise en page sont `@regression` (la nuit).
+
+## Captures (profil `devices["iPhone 13"]`)
+`docs/lots/img/lot-53-*.png` : `portail-pastille-portrait`, `aide-portrait`, `aide-paysage`, `retrouver-portrait`, `application-portail-paysage` (à regénérer : `CAPTURES=1 npx playwright test iphone --project=chromium` dans `apps/web`).
+
+## À tester (sur un vrai iPhone, avec l'aperçu de la PR)
+1. Dans Safari, le bouton « Plein écran » (accueil de Track et de Jump, pause) ouvre l'aide ; « Copier mon code » copie.
+2. Ajoute le site à l'écran d'accueil, ouvre-le : plein écran, rien sous l'encoche ni la barre du bas, en paysage aussi.
+3. Au premier lancement, « Retrouver mon profil » : touche « Coller mon code » (ou colle dans le champ), vérifie le pseudo montré, reprends ce profil : pseudo et voitures sont là.
+
+## Liens
+Consignes : `CLAUDE.md`, `apps/web/CLAUDE.md`. Lots liés : I6 (manifeste, icônes), I7 (plein écran), 32 (identifiant jamais dans une adresse), P4 (révision d'identité), R8 (clés gardées). Budgets : `docs/plateforme/budgets.md`.
