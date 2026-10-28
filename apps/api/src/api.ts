@@ -7,6 +7,7 @@ import type { SqlDb } from "./db";
 import { CODES_ERREUR, ERREUR_INTERNE, corpsErreur } from "./codesErreur";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, RequestInfo } from "./games";
+import { createDiffusion } from "./diffusion";
 import { createIdentityRoutes } from "./identity";
 import { aNoter } from "./journaux";
 import { silentLog, type Logger } from "./log";
@@ -158,11 +159,14 @@ export function createApi(options: ApiOptions) {
     (req, info) => cdj.requireAdmin(req, info),
     () => portail.oublier(),
   );
+  // Lot N2 : les nouveautés et le message en direct (lectures publiques, routes d'administration).
+  const diffusion = createDiffusion(platform);
   // Lot I2 : le portail (accueil et profil commun), à partir de ce que chaque jeu déclare (crochet `portail`).
   const portail = createPortailRoutes(
     platform,
     instances.flatMap((g) => (g.instance.portail ? [{ code: g.code, portail: g.instance.portail }] : [])),
     options.premierJourDuJour,
+    diffusion,
   );
   // Lot R8 : la remise à zéro du lancement vide la base ; une instance qui voit la génération changer oublie sa mémoire (comme après un effacement).
   platform.onGenerationChange(() => {
@@ -181,6 +185,7 @@ export function createApi(options: ApiOptions) {
     allowedOrigins,
     revision: options.revision,
     oublier: () => portail.oublier(),
+    diffusion,
   });
   adminRef = admin;
   const salon = cdj.salon;
@@ -277,7 +282,7 @@ export function createApi(options: ApiOptions) {
       if (req.method !== "GET" && req.method !== "HEAD") await admin.entretien();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
-      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
+      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await portail.route(path, req, url, info));
       if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;

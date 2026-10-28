@@ -33,7 +33,7 @@ export async function cataloguesApplications(): Promise<[string, { fr: Catalogue
 }
 
 /** Les dossiers et fichiers soumis au refus des chaînes écrites en dur (chainesEnDur.test.ts). Lots I4, I5 : ajouter `apps/web/src`, `apps/jump/src`… */
-export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html"];
+export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html"];
 
 /** Ce qui n'est pas vérifié, chacun avec sa raison. */
 export const EXCLUSIONS: Record<string, string> = {
@@ -43,6 +43,8 @@ export const EXCLUSIONS: Record<string, string> = {
   // Lot N1 : le panneau d'administration de la plateforme (`/admin/`) est une page pour l'éditeur seul, en français, hors des catalogues des joueurs.
   "apps/portail/admin": "lot N1 : page du panneau d'administration (`/admin/`), outil interne de l'éditeur, en français seulement (hors des catalogues des joueurs)",
   "apps/portail/src/admin.ts": "lot N1 : le panneau d'administration, outil interne de l'éditeur, en français seulement",
+  "apps/portail/src/adminDiffusion.ts": "lot N2 : les rubriques Nouveautés et Message en direct du panneau d'administration, outil interne de l'éditeur, en français seulement",
+  "apps/portail/src/adminGithub.ts": "lot N2 : la lecture des PR par le panneau d'administration (messages d'erreur pour l'éditeur), en français seulement",
   "apps/portail/src/adminDonnees.ts": "lot N1 : les textes et formats du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/partage": "lot I6 : la source des images de partage (outil de construction, jamais servie) : seulement les noms de la marque",
   // Lot I4 : les outils internes de Nathan restent en français (hors du périmètre de l'anglais, charte et lot I4 § 1).
@@ -77,8 +79,8 @@ export const EXCLUSIONS: Record<string, string> = {
  * catalogues et hors tests. Le catalogue commun est lu par toutes les applications et par le socle (`packages/ui/src`, `packages/profile/src`).
  */
 export const SOURCES_DES_CLES: Record<string, string[]> = {
-  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/ui"],
+  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/ui"],
   "apps/web": ["apps/web/src", "apps/web/index.html"],
   "apps/jump": ["apps/jump/src", "apps/jump/index.html"],
-  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html"],
+  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html"],
 };

@@ -9,6 +9,8 @@ import { CATALOGUE_COMMUN_FR, bouton, el, logo, medaille, svg, traducteur, tuile
 import {
   ErreurAdmin,
   barres,
+  infobulle,
+  texteDeBarre,
   clientAdmin,
   heure,
   jourCourt,
@@ -25,6 +27,7 @@ import {
   type Tableau,
 } from "./adminDonnees";
 import { baseApi } from "./jour";
+import { remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
 
 // Lot N1 (plateforme) : le panneau d'administration — `/admin/`. Connexion avec le compte Google de l'éditeur (Google Identity Services, chargé ici et nulle part
 // ailleurs ; la CSP de `/admin/` est dans `firebase.json`), tableau de bord, joueurs (recherche, fiche, cinq actions confirmées), journal. Une page pour l'éditeur :
@@ -149,7 +152,7 @@ async function afficherConnexion(raison?: string): Promise<void> {
 }
 
 // --- Le panneau ----------------------------------------------------------------------------------------------------------------------
-type Vue = { vue: "tableau" } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
+type Vue = { vue: "tableau" } | { vue: "nouveautes" } | { vue: "message" } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
 
 function lireVue(): Vue {
   const [chemin = "", requete = ""] = location.hash.replace(/^#\/?/, "").split("?");
@@ -158,6 +161,8 @@ function lireVue(): Vue {
   if (morceaux[0] === "joueurs" && morceaux[1]) return { vue: "fiche", ref: decodeURIComponent(morceaux[1]) };
   if (morceaux[0] === "joueurs") return { vue: "joueurs", q: params.get("q") ?? "", filtre: params.get("filtre") === "masques" ? "masques" : "tous", page: Math.max(1, Number(params.get("page")) || 1) };
   if (morceaux[0] === "journal") return { vue: "journal" };
+  if (morceaux[0] === "nouveautes") return { vue: "nouveautes" };
+  if (morceaux[0] === "message") return { vue: "message" };
   return { vue: "tableau" };
 }
 const adresseJoueurs = (q: string, filtre: string, page: number) => {
@@ -171,6 +176,23 @@ const adresseJoueurs = (q: string, filtre: string, page: number) => {
 
 let contenu: HTMLElement;
 let menu: HTMLElement;
+/** L'étiquette `prod-…` de la mise en production en cours, lue du tableau de bord (Nouveautés en a besoin pour la fenêtre des PR). */
+let etiquetteEnCours: string | null | undefined;
+
+/** Ce que les rubriques Nouveautés et Message en direct reçoivent du panneau (`adminDiffusion.ts`). */
+const contexteDiffusion: Contexte = {
+  client,
+  confirmer: (o) => confirmer(o),
+  recharger: async (texte) => {
+    await afficherVue();
+    if (texte) (document.getElementById("nouveautes-message") ?? document.getElementById("message-retour"))?.replaceChildren(message("info", texte));
+  },
+  sessionExpiree: () => afficherConnexion("Session expirée : reconnecte-toi."),
+  etiquette: async () => {
+    if (etiquetteEnCours === undefined) etiquetteEnCours = (await client.tableau()).etat.version.etiquette;
+    return etiquetteEnCours;
+  },
+};
 let generation = 0;
 let ecoute = false;
 
@@ -220,7 +242,7 @@ async function afficherPanneau(): Promise<void> {
   await afficherVue();
 }
 
-/** Le menu : les entrées de N1, celles de N2 déjà posées mais éteintes (« bientôt »), Track (ses outils) et Jump (pas d'outil). */
+/** Le menu : les entrées de N1 et de N2 (Nouveautés, Message en direct), Track (ses outils) et Jump (pas d'outil). */
 function dessinerMenu(vue: Vue): void {
   const actif = vue.vue === "fiche" ? "joueurs" : vue.vue;
   const lien = (cle: string, texte: string, href: string) =>
@@ -233,8 +255,8 @@ function dessinerMenu(vue: Vue): void {
       { classe: "admin-menu__liste" },
       lien("tableau", "Tableau de bord", "#/tableau"),
       lien("joueurs", "Joueurs", "#/joueurs"),
-      eteint("nouveautes", "Nouveautés", "bientôt"),
-      eteint("message", "Message en direct", "bientôt"),
+      lien("nouveautes", "Nouveautés", "#/nouveautes"),
+      lien("message", "Message en direct", "#/message"),
       lien("journal", "Journal", "#/journal"),
       el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../track/admin/", "data-menu": "track" }, texte: "Track" }), el("span", { classe: "admin-menu__sous", texte: "outils : planning, médailles" })),
       eteint("jump", "Jump", "aucun outil"),
@@ -250,10 +272,20 @@ async function afficherVue(): Promise<void> {
   document.querySelector(".admin-menu-bouton")?.setAttribute("aria-expanded", "false");
   contenu.replaceChildren(el("p", { classe: "admin-message admin-message--info", attrs: { role: "status" }, texte: "Chargement…" }));
   try {
-    const noeud = await (vue.vue === "tableau" ? vueTableau() : vue.vue === "joueurs" ? vueJoueurs(vue) : vue.vue === "fiche" ? vueFiche(vue.ref) : vueJournal());
+    const noeud = await (vue.vue === "tableau"
+      ? vueTableau()
+      : vue.vue === "joueurs"
+        ? vueJoueurs(vue)
+        : vue.vue === "fiche"
+          ? vueFiche(vue.ref)
+          : vue.vue === "nouveautes"
+            ? vueNouveautes(contexteDiffusion)
+            : vue.vue === "message"
+              ? vueMessage(contexteDiffusion)
+              : vueJournal());
     if (courante !== generation) return; // une autre vue a été demandée entre-temps
     contenu.replaceChildren(...noeud);
-    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : "Joueurs"} · Administration · Du Jour`;
+    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : vue.vue === "nouveautes" ? "Nouveautés" : vue.vue === "message" ? "Message en direct" : "Joueurs"} · Administration · Du Jour`;
   } catch (e) {
     if (courante !== generation) return;
     if (e instanceof ErreurAdmin && e.statut === 401) {
@@ -274,29 +306,88 @@ function ligneEtat(nom: string, valeur: string, ok?: boolean | null, id?: string
   );
 }
 
-function courbe(tab: Tableau): SVGSVGElement {
+/**
+ * La courbe « joueurs par jour », interactive : survol de la souris, toucher du doigt et flèches du clavier (← → Début Fin) montrent le jour et son nombre de joueurs
+ * dans une infobulle dessinée dans le graphe et dans la ligne au-dessus. Chaque colonne est une zone (barre + blanc autour) pour qu'on n'ait pas à viser la barre.
+ * Un seul arrêt de tabulation (la dernière barre : aujourd'hui), les flèches font le reste. Texte posé en `textContent`, positions par attributs (CSP sans style en ligne).
+ */
+function courbe(tab: Tableau): HTMLElement {
   const L = 560;
   const H = 120;
   const { barres: bs, max } = barres(tab.courbe, L, H);
+  const consigne = "Survole, touche ou parcours les barres (← →) pour voir un jour.";
+  const lecture = el("p", { classe: "admin-courbe__lecture admin-aide", attrs: { id: "courbe-lecture" }, texte: consigne });
   const g = svg("svg", {
     classe: "admin-courbe",
     attrs: {
       viewBox: `0 0 ${L} ${H + 34}`,
-      role: "img",
+      role: "group",
       "aria-label": `Joueurs par jour sur ${tab.courbe.length} jours, du ${jourCourt(tab.courbe[0]!.date)} au ${jourCourt(tab.courbe.at(-1)!.date)} ; maximum ${max} ; aujourd'hui ${tab.chiffres.joueursAujourdhui}.`,
       id: "courbe",
     },
   });
   g.append(svg("line", { classe: "admin-courbe__base", attrs: { x1: 0, y1: H, x2: L, y2: H } }));
-  for (const b of bs) {
+  const rects = bs.map((b) => {
     const rect = svg("rect", { classe: ["admin-courbe__barre", b.aujourdhui && "admin-courbe__barre--jour"], attrs: { x: b.x, y: b.y, width: b.largeur, height: b.hauteur, "data-joueurs": b.joueurs, "data-date": b.date } });
-    rect.append(svg("title", { texte: `${jourCourt(b.date)} : ${b.joueurs} joueur${b.joueurs > 1 ? "s" : ""}` }));
     g.append(rect);
-  }
+    return rect;
+  });
   const etiquette = (x: number, anchor: string, texte: string) => svg("text", { classe: "admin-courbe__texte", attrs: { x, y: H + 22, "text-anchor": anchor }, texte });
   g.append(etiquette(0, "start", jourCourt(tab.courbe[0]!.date)), etiquette(L, "end", `${jourCourt(tab.courbe.at(-1)!.date)} (aujourd'hui)`));
   g.append(svg("text", { classe: "admin-courbe__texte", attrs: { x: 0, y: 12, "text-anchor": "start" }, texte: `max ${max}` }));
-  return g;
+
+  // L'infobulle (cachée tant qu'aucune barre n'est active), au-dessus des barres.
+  const bulleFond = svg("rect", { classe: "admin-courbe__bulle", attrs: { rx: 6, ry: 6 } });
+  const bulleTexte = svg("text", { classe: "admin-courbe__bulle-texte", attrs: { "text-anchor": "middle" } });
+  const bulle = svg("g", { classe: "admin-courbe__infobulle", attrs: { hidden: "", "aria-hidden": "true" } }, bulleFond, bulleTexte);
+  let actif = -1;
+  const montrer = (i: number): void => {
+    const b = bs[i];
+    if (!b) return;
+    actif = i;
+    rects.forEach((r, k) => r.classList.toggle("admin-courbe__barre--actif", k === i));
+    const t = texteDeBarre(b);
+    const info = infobulle(b, t, L, H + 34);
+    for (const [k, v] of Object.entries({ x: info.x, y: info.y, width: info.largeur, height: info.hauteur })) bulleFond.setAttribute(k, String(v));
+    bulleTexte.setAttribute("x", String(info.x + info.largeur / 2));
+    bulleTexte.setAttribute("y", String(info.y + 15));
+    bulleTexte.textContent = t;
+    bulle.removeAttribute("hidden");
+    lecture.textContent = t;
+  };
+  const effacer = (): void => {
+    actif = -1;
+    rects.forEach((r) => r.classList.remove("admin-courbe__barre--actif"));
+    bulle.setAttribute("hidden", "");
+    lecture.textContent = consigne;
+  };
+  // Les zones sensibles : une colonne entière par jour, transparente, au-dessus des barres.
+  const pas = bs.length > 1 ? bs[1]!.x - bs[0]!.x : L;
+  const zones = bs.map((b, i) => {
+    const zone = svg("rect", {
+      classe: "admin-courbe__zone",
+      attrs: { x: Math.round((b.x - (pas - b.largeur) / 2) * 100) / 100, y: 0, width: Math.round(pas * 100) / 100, height: H, tabindex: i === bs.length - 1 ? 0 : -1, role: "img", "aria-label": texteDeBarre(b), "data-i": i },
+    });
+    zone.addEventListener("pointerenter", () => montrer(i));
+    zone.addEventListener("pointerdown", () => montrer(i)); // le doigt : le jour reste affiché après le toucher
+    zone.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "mouse" && document.activeElement !== zone) effacer();
+    });
+    zone.addEventListener("focus", () => montrer(i));
+    zone.addEventListener("blur", () => {
+      if (actif === i) effacer();
+    });
+    zone.addEventListener("keydown", (e) => {
+      const vers = e.key === "ArrowRight" ? Math.min(zones.length - 1, i + 1) : e.key === "ArrowLeft" ? Math.max(0, i - 1) : e.key === "Home" ? 0 : e.key === "End" ? zones.length - 1 : -1;
+      if (vers < 0) return;
+      e.preventDefault();
+      zones.forEach((z, k) => z.setAttribute("tabindex", k === vers ? "0" : "-1"));
+      zones[vers]!.focus();
+    });
+    return zone;
+  });
+  g.append(...zones, bulle);
+  return el("div", { classe: "admin-courbe-bloc" }, lecture, g);
 }
 
 function ligneJournal(e: EntreeJournal): HTMLElement {
@@ -311,6 +402,12 @@ function ligneJournal(e: EntreeJournal): HTMLElement {
 
 async function vueTableau(): Promise<Node[]> {
   const tab = await client.tableau();
+  etiquetteEnCours = tab.etat.version.etiquette;
+  // Une fois la page dessinée : la ligne « PR depuis la dernière mise en production » (une requête à GitHub, jamais bloquante).
+  setTimeout(() => {
+    const valeur = document.querySelector<HTMLElement>('[data-etat="pr"] .admin-etat__valeur');
+    if (valeur) void remplirPrDuTableau(valeur, tab.etat.version.etiquette);
+  });
   const c = tab.chiffres;
   const e = tab.etat;
   const prets = e.joursPrets.map((j) => `${j.nom} : ${j.figes} figé${j.figes > 1 ? "s" : ""}${j.planifies !== undefined ? `, ${j.planifies} planifié${j.planifies > 1 ? "s" : ""}` : ""}`).join(" · ");
@@ -340,8 +437,8 @@ async function vueTableau(): Promise<Node[]> {
         ligneEtat("Jours prêts", prets || "—", undefined, "jours"),
         ligneEtat("Erreurs serveur (24 h)", String(e.erreurs24h.serveur), e.erreurs24h.serveur === 0, "erreurs"),
         ligneEtat("Rediffusions refusées (24 h)", String(e.erreurs24h.rediffusions), undefined, "refus"),
-        // La place des « PR depuis la dernière mise en production » (lot N2) : réservée, sans chiffre.
-        ligneEtat("PR depuis la dernière mise en production", e.prDepuisMiseEnProduction === null ? "— (bientôt)" : String(e.prDepuisMiseEnProduction), undefined, "pr"),
+        // Lot N2 : le nombre de PR fusionnées depuis la mise en production en cours, lu sur GitHub par le navigateur (comme « Nouveautés ») : rempli juste après le dessin, jamais bloquant.
+        ligneEtat("PR depuis la dernière mise en production", "Lecture de GitHub…", undefined, "pr"),
       ),
     ),
     el(

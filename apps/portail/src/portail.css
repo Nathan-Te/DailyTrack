@@ -515,3 +515,131 @@
   text-align: center;
   color: var(--dj-encre-douce);
 }
+
+/* --- Lot N2 : la ligne « Nouveautés » de l'accueil et la page /nouveautes/ ----------------------------------------------------------- */
+.portail-nouveautes {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: var(--dj-espace-2) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-creme-2);
+  color: var(--dj-encre);
+  text-decoration: none;
+  box-shadow: var(--dj-ombre-bouton);
+}
+.portail-nouveautes:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+.portail-nouveautes__texte {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.portail-nouveautes__legende {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.portail-nouveautes__titre {
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+  overflow-wrap: anywhere;
+}
+/* Le point « pas lu » : un disque terre plein, cerné d'encre (la couleur seule ne porte rien : « Nouveau » est dit au lecteur d'écran). */
+.portail-nouveautes__point {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 50%;
+  background: var(--dj-terre);
+}
+.nouveautes .dj-barre-jeu {
+  padding: 0;
+}
+.nouveautes-titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-32);
+  line-height: 1.1;
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+  padding-bottom: var(--dj-espace-2);
+}
+.nouveautes-etat {
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre-douce);
+}
+.nouveautes-date {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+}
+.nouveautes-date__jour {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre-douce);
+}
+.nouveautes-mise-a-jour {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  padding: var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.nouveautes-mise-a-jour__titre {
+  font-weight: 700;
+  font-size: var(--dj-taille-16);
+  overflow-wrap: anywhere;
+}
+.nouveautes-lignes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.nouveautes-ligne {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dj-espace-3);
+  font-size: var(--dj-taille-14);
+  line-height: 1.35;
+}
+.nouveautes-ligne__texte {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* L'étiquette de la zone : fond uni, texte de la paire déclarée (`PAIRES`) ; Track sur asphalte, Jump sur moutarde, Du Jour sur encre. */
+.nouveautes-zone {
+  flex: none;
+  min-width: 56px;
+  padding: 2px var(--dj-espace-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  font-size: var(--dj-taille-12);
+  font-weight: 800;
+  text-align: center;
+}
+.nouveautes-zone--dujour {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.nouveautes-zone--track {
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+}
+.nouveautes-zone--jump {
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+}

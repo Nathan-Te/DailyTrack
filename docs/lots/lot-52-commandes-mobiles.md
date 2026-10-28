@@ -23,7 +23,7 @@ Quatre façons de tourner sur téléphone en paysage, **toutes la même directio
 | Disposition inversée | Non | Oui / Non |
 
 ## Budget (détail : `budgets.md`)
-- **Premier chargement : +976 o** (290 217 → 291 193 o, `main` reconstruit à part), sous le +1 ko demandé ; marge 407 o.
+- **Premier chargement : +976 o** avant la fusion du lot N2 (290 217 → 291 193 o), sous le +1 ko demandé. Après la fusion de `main` (N2 avait pris 992 o, il restait 391 o de marge) : **+1 001 o** (291 209 → 292 210 o) ; **Nathan a relevé le plafond de 1 024 o** (JS + CSS 292 624 o, JS 281 224 o), marge 414 o.
 - **À la demande** : glissière 1 197 o, volant 1 784 o, gyroscope 4 515 o, réglages tactiles 843 o (+ feuilles 0,4 à 0,8 ko), gardés par `perf.spec.ts`.
 - Le piège rencontré : un module à la demande qui importe une valeur de `touch.ts` / `touchUi.ts` fait de ces deux fichiers des morceaux à part du premier chargement (+1 928 o au lieu de +976 o). Règle écrite dans `apps/web/CLAUDE.md`.
 

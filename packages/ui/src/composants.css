@@ -449,6 +449,65 @@ button.dj-barre-jeu__retour {
   cursor: pointer;
 }
 
+/* --- Message en direct (lot N2) : le bandeau --------------------------------------------------------------------------------- */
+/* Une ligne pleine largeur, fond uni, trait et ombre nette de la charte. Les jeux l'habillent à leurs couleurs par `--bandeau-fond`, `--bandeau-texte`, `--bandeau-bord`. */
+.dj-bandeau {
+  --bandeau-fond: var(--dj-papier);
+  --bandeau-texte: var(--dj-encre);
+  --bandeau-bord: var(--dj-encre);
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--dj-cible);
+  margin: 0;
+  padding: var(--dj-espace-2) 0 var(--dj-espace-2) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--bandeau-bord);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--bandeau-fond);
+  color: var(--bandeau-texte);
+  box-shadow: var(--dj-ombre-bouton);
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.dj-bandeau--important {
+  --bandeau-fond: var(--dj-moutarde);
+  --bandeau-texte: var(--dj-encre);
+}
+.dj-bandeau__etiquette {
+  flex: none;
+  padding: 2px var(--dj-espace-2);
+  border: var(--dj-trait) solid var(--bandeau-bord);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--bandeau-bord);
+  color: var(--bandeau-fond);
+  font-size: var(--dj-taille-12);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dj-bandeau__texte {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.dj-bandeau__fermer {
+  flex: none;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.dj-bandeau__fermer[hidden] {
+  display: none;
+}
+
 /* --- Choix de la langue, avatar ------------------------------------------------------------------------------------------------ */
 .dj-choix-langue {
   display: flex;

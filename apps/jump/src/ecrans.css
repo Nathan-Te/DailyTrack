@@ -735,3 +735,34 @@ body:not(.touch) .reglages__ligne--tactile {
   font-size: var(--dj-taille-12);
   font-weight: 600;
 }
+
+/* --- Le message en direct (lot N2) : le bandeau de `@cdj/ui`, aux couleurs de Jump -------------------------------------------------------------------- */
+/* Trois emplacements, un par écran où le bandeau a le droit d'être (accueil, arrivée, pause) : jamais pendant un niveau. Vides, ils n'occupent aucune place. Le bandeau est
+   posé dans la mise en page de l'écran (jamais par-dessus la scène : le personnage et les commandes tactiles restent libres). */
+.message-direct {
+  flex: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+.message-direct:empty {
+  display: none;
+}
+.message-direct--accueil {
+  max-width: 900px;
+  margin: 0 auto 10px;
+}
+/* « Information » : le jaune de l'étiquette Jump, l'encre (étiquette : encre sur jaune) ; « Important » : l'inverse, fond encre, texte papier, liseré jaune (étiquette : encre sur jaune). */
+.dj-bandeau.message-direct__bandeau {
+  --bandeau-fond: var(--jump-jaune);
+  --bandeau-texte: var(--jump-encre);
+  --bandeau-bord: var(--jump-encre);
+}
+.dj-bandeau--important.message-direct__bandeau {
+  --bandeau-fond: var(--jump-encre);
+  --bandeau-texte: var(--dj-papier);
+  --bandeau-bord: var(--jump-jaune);
+}
+/* Dans la pause, le fond est déjà jaune : « Information » y est une carte papier (encre sur papier). */
+.message-direct--pause .dj-bandeau.message-direct__bandeau:not(.dj-bandeau--important) {
+  --bandeau-fond: var(--jump-papier);
+}

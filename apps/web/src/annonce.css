@@ -1,0 +1,27 @@
+/* Lot N2 — le bandeau du message en direct, aux couleurs de Track (annonceUi.ts). Le socle (`.dj-bandeau`, composants.css) donne la forme ; ici seulement les couleurs (jetons) et la
+   place. Information : asphalte, texte clair, filet de livrée. Important : livrée claire, texte asphalte, l'étiquette « Important » en asphalte (paires déjà au contrôle des contrastes). */
+.dj-bandeau.annonce-track {
+  --bandeau-fond: var(--track-asphalte);
+  --bandeau-texte: var(--track-texte);
+  --bandeau-bord: var(--track-livree-texte);
+  flex: none;
+  max-width: var(--cadre-largeur);
+  margin-bottom: 8px;
+}
+.dj-bandeau.annonce-track.dj-bandeau--important {
+  --bandeau-fond: var(--track-livree-texte);
+  --bandeau-texte: var(--track-asphalte);
+  --bandeau-bord: var(--track-asphalte);
+}
+/* En pause : en tête du dialogue (fond asphalte), contre ses bords, devant la livrée du coin (sa croix reste visible). */
+.dialogue > .dj-bandeau.annonce-track {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  margin: 12px 16px 0;
+}
+@media (max-height: 520px) {
+  .cadre > .dj-bandeau.annonce-track {
+    margin-bottom: 6px;
+  }
+}

@@ -77,6 +77,8 @@ export interface Arrival {
   /** Lot I3 (plateforme) : « Jeu suivant du jour : Track › » ou « Journée parfaite ! » + « ‹ DU JOUR » (`null` : rien, le serveur n'a pas répondu). */
   setSuite(suite: Suite | null): void;
   readonly suite: Suite | null;
+  /** Lot N2 : l'emplacement du message en direct (en haut de l'arrivée) ; vide, il n'occupe aucune place. */
+  readonly hoteMessage: HTMLElement;
 }
 
 export function mountArrival(opts: ArrivalOptions): Arrival {
@@ -160,6 +162,9 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   // Lot I3 : la suite de la journée, **sous l'étiquette** (rempli une fois l'envoi accepté : `setSuite`).
   const suiteBox = el("div", { classe: "arrivee__suite", attrs: { id: "arrival-next", hidden: true } });
   cadre.pied.append(suiteBox);
+  // Lot N2 : le message en direct, tout en haut de ce qui défile (avant l'étiquette) ; vide, il n'occupe aucune place.
+  const hoteMessage = el("div", { classe: ["message-direct", "message-direct--arrivee"] });
+  cadre.defile.prepend(hoteMessage);
 
   // Le doigt qui passe le carnage peut se lever sur l'écran qui vient de s'ouvrir : son « clic » ne doit pas toucher un bouton. Un bouton ne
   // répond qu'à un appui commencé sur l'écran d'arrivée (ou au clavier, `detail` 0).
@@ -220,6 +225,7 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   });
 
   return {
+    hoteMessage,
     get suite() {
       return suiteShown;
     },

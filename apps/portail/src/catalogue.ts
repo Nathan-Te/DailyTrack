@@ -118,6 +118,20 @@ const fr = {
   "classement.chargement": "Chargement du classement…",
   "classement.ferme": "Jour terminé : ce classement est figé.",
   "classement.invite": "Finis un jeu pour entrer au classement.",
+  // Lot N2 : la ligne « Nouveautés » de l'accueil et la page /nouveautes/
+  "portail.nouveautes.legende": "Nouveautés · {date}",
+  "portail.nouveautes.nonLue": "Nouveau",
+  "nouveautes.titre": "Nouveautés",
+  "nouveautes.description": "Les nouveautés de Du Jour, de Track et de Jump : ce qui change, mise à jour par mise à jour.",
+  "nouveautes.zone.dujour": "Du Jour",
+  "nouveautes.zone.track": "Track",
+  "nouveautes.zone.jump": "Jump",
+  "nouveautes.plusAnciennes": "Plus anciennes",
+  "nouveautes.plusAnciennes.aria": "Voir les nouveautés plus anciennes",
+  "nouveautes.vide": "Rien à lire pour l'instant : les prochaines mises à jour s'afficheront ici.",
+  "nouveautes.chargement": "Chargement des nouveautés…",
+  "nouveautes.erreur": "Les nouveautés ne se chargent pas : réessaie dans un instant.",
+  "nouveautes.lignes.aria": "Ce qui change",
 } as const;
 
 const en: Catalogues<typeof fr>["en"] = {
@@ -226,6 +240,20 @@ const en: Catalogues<typeof fr>["en"] = {
   "classement.chargement": "Loading the leaderboard…",
   "classement.ferme": "Day over: this leaderboard is final.",
   "classement.invite": "Finish a game to enter the leaderboard.",
+  // Lot N2: the "What's new" line on the home page and the /nouveautes/ page
+  "portail.nouveautes.legende": "What's new · {date}",
+  "portail.nouveautes.nonLue": "New",
+  "nouveautes.titre": "What's new",
+  "nouveautes.description": "What's new in Du Jour, Track and Jump: what changes, update by update.",
+  "nouveautes.zone.dujour": "Du Jour",
+  "nouveautes.zone.track": "Track",
+  "nouveautes.zone.jump": "Jump",
+  "nouveautes.plusAnciennes": "Older",
+  "nouveautes.plusAnciennes.aria": "Show older updates",
+  "nouveautes.vide": "Nothing to read yet: the next updates will show up here.",
+  "nouveautes.chargement": "Loading updates…",
+  "nouveautes.erreur": "Updates won't load: try again in a moment.",
+  "nouveautes.lignes.aria": "What changes",
 } as const;
 
 export const CATALOGUE_PORTAIL = { fr, en } as const;

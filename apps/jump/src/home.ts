@@ -62,6 +62,8 @@ export interface Home {
   setCountdown(text: string): void;
   /** Remet le focus sur Jouer (fermeture d'un écran ouvert depuis l'accueil). */
   focus(): void;
+  /** Lot N2 : l'emplacement du message en direct (sous la barre des jeux) ; vide, il n'occupe aucune place. */
+  readonly hoteMessage: HTMLElement;
 }
 
 const BOUTON_JOUER: Record<EtatDuJour, string> = { pas_joue: "accueil.jouer", en_cours: "accueil.continuer", fini: "accueil.rejouer" };
@@ -146,7 +148,8 @@ export function mountHome(opts: HomeOptions): Home {
 
   const etiquette = el("main", { classe: "etiquette etiquette--accueil" }, el("div", { classe: "accueil__grille" }, gauche, droite));
   const coque = el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), etiquette);
-  root.append(plaque, el("div", { classe: "accueil__defile" }, coque));
+  const hoteMessage = el("div", { classe: ["message-direct", "message-direct--accueil"] });
+  root.append(plaque, hoteMessage, el("div", { classe: "accueil__defile" }, coque));
   document.body.append(root);
   suivreDialogue(root); // lot I6 : focus mis dedans à l'ouverture, rendu à la fermeture
   // Lot I6 : « JOUER » prend le focus, sauf si un dialogue posé au-dessus de l'accueil l'a (« Comment jouer » à la première visite).
@@ -198,6 +201,7 @@ export function mountHome(opts: HomeOptions): Home {
     if (ready) opts.onPlay();
   });
   const self: Home = {
+    hoteMessage,
     get isOpen() {
       return open;
     },

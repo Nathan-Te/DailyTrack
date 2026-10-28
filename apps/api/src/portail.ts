@@ -4,6 +4,7 @@ import { parisDayStart } from "@cdj/clock";
 import { WithHeaders } from "./cache";
 import { classerLaJournee, ligneDe, placer, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
 import { HttpError } from "./errors";
+import type { Diffusion } from "./diffusion";
 import type { EtatPortail, JourPortail, Platform, PortailDuJeu, RequestInfo } from "./games";
 
 // Le portail « Du Jour » (lot I2 de la plateforme, phase 3) : les lectures regroupées de la page d'accueil et du profil commun. Elles ne
@@ -13,6 +14,7 @@ import type { EtatPortail, JourPortail, Platform, PortailDuJeu, RequestInfo } fr
 //   GET /api/portail/jour     les jeux du jour (numéro, thème, seuils), l'heure du serveur et le prochain minuit de Paris ; avec `X-Player-Id`,
 //                             l'état du joueur dans chaque jeu, sa série tous jeux confondus et ses journées parfaites. **Une requête** au chargement.
 //   GET /api/portail/profil   (`X-Player-Id`) le profil commun : pseudo, série, journées parfaites, et par jeu jours finis, médailles, meilleure place.
+//   (lot N2) `jour` porte aussi `nouveaute` (la dernière publiée) et `annonce` (le message en direct) ; `GET /api/portail/nouveautes` et `GET /api/annonce` : `diffusion.ts`.
 //   GET /api/portail/classement?date=&vue=cumul|<jeu>   (lot I3, refait au lot A1) le classement du jour **au chrono** : les 50 premiers (pseudo, temps,
 //                             pastille de médaille par jeu) de la vue demandée — le cumul des jeux du jour (par défaut) ou un jeu (`vue` = son dossier
 //                             sur le site : `track`, `jump`) — et, avec `X-Player-Id`, ta ligne. Jours passés lisibles ; jours futurs refusés (`unknown_day`).
@@ -104,7 +106,7 @@ export function serieEtParfaites(today: number, jeux: readonly { premierJour: nu
   return { serie, aProlonger: !finiAujourdhui && serie > 0, journeesParfaites, aujourdhuiParfaite: parfaite(today) };
 }
 
-export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR) {
+export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion) {
   const { now, log, today, players, hashKey, readHit, playerIdOf } = platform;
 
   /** L'identifiant de l'en-tête `X-Player-Id` (jamais dans l'adresse), ou `null` sans en-tête. */
@@ -148,6 +150,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       maintenant: new Date(t).toISOString(),
       prochainJour: new Date(parisDayStart(day + 1)).toISOString(),
       jeux: await jeuxDuJour(day),
+      // Lot N2 : la dernière nouveauté publiée (la ligne de l'accueil) et le message en direct : **dans la même réponse** (la règle du lot I3 : une seule requête au chargement).
+      ...(diffusion ? await diffusion.pourLAccueil() : { nouveaute: null, annonce: null }),
     };
   }
 

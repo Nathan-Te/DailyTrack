@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./lancement": "./src/lancement.ts",
+    "./nouveautes": "./src/nouveautes.ts",
     "./testing": "./testing/purity.ts"
   }
 }
