@@ -203,6 +203,36 @@ describe("le garde-fou des jours (lot R6)", () => {
     expect(job("verifier")).toContain("mise-en-production.mjs inventaire");
   });
 
+  // 28/10/2026 : la répétition lançait le smoke complet depuis le dernier main, sans les jours figés ni le registre que « figer » venait de calculer.
+  // Le smoke recalcule le circuit et le niveau du jour : il refaisait un jour figé avec le nouveau générateur, et tout envoi était refusé (21 vérifications).
+  it("tout smoke complet tourne sur ce que le serveur visé a reçu : le commit déployé, ses jours figés et son registre, appliqués avant le smoke", () => {
+    const complets = (texte: string) => texte.split("\n").filter((l) => /npm run smoke -w @cdj\/api -- /.test(l) && !l.includes("--lecture-seule"));
+    const avec = ["jours-figes", "registre-track"];
+    // Les jobs, coupés à chaque nom de job (tirets compris) : `job()` ne coupe qu'aux noms sans tiret.
+    const debuts = [...prod.matchAll(/\n {2}([a-z-]+):\n/g)].map((m) => ({ nom: m[1]!, i: m.index! }));
+    const blocs = new Map(debuts.map((d, k) => [d.nom, prod.slice(d.i, debuts[k + 1]?.i)]));
+    const concernes = [...blocs.keys()].filter((n) => complets(blocs.get(n)!).length > 0);
+    expect(concernes).toEqual(["recette-verification"]);
+    for (const nom of concernes) {
+      const j = blocs.get(nom)!;
+      expect(j, nom).toContain("ref: ${{ needs.verifier.outputs.sha }}");
+      const smoke = j.indexOf(complets(j)[0]!);
+      for (const a of avec) expect(j.indexOf(`name: ${a}`), `${nom} : artefact ${a}`).toBeGreaterThan(0);
+      const figes = j.indexOf("mise-en-production.mjs jours-figes");
+      const registre = j.indexOf("mise-en-production.mjs registre-fusion");
+      expect(figes, `${nom} : jours figés appliqués avant le smoke`).toBeGreaterThan(0);
+      expect(registre, `${nom} : registre appliqué avant le smoke`).toBeGreaterThan(0);
+      expect(Math.max(figes, registre)).toBeLessThan(smoke);
+    }
+    // Le serveur de la recette (deploy-api.yml) : ses artefacts entrent dans l'image avant son propre smoke complet.
+    const deploy = yml("deploy-api.yml");
+    const smokeDeploy = deploy.indexOf(complets(deploy)[0]!);
+    expect(deploy.indexOf("mise-en-production.mjs jours-figes")).toBeLessThan(smokeDeploy);
+    expect(deploy.indexOf("mise-en-production.mjs registre-fusion")).toBeLessThan(smokeDeploy);
+    // La vérification de la production lit aussi le commit déployé (et non le dernier main).
+    expect(blocs.get("verification")).toContain("ref: ${{ needs.verifier.outputs.sha }}");
+  });
+
   it("lot R12 : la sauvegarde lit la base en lecture seule par un compte et un environnement à elle, et ne laisse ni artefact ni journal", () => {
     const s = job("sauvegarde");
     expect(s).toContain("environment: sauvegarde");
