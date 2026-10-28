@@ -3,6 +3,7 @@ import { parisDayStart } from "@cdj/clock";
 import { RefusGoogle, createGoogleVerifier, empreinte, lireListeAdresses, verificateurFactice, type Verificateur } from "./adminGoogle";
 import { SESSION_MS, cookieDe, cookieEfface, cookieOuvert, createSessions, type Session } from "./adminSession";
 import { WithHeaders } from "./cache";
+import type { Diffusion } from "./diffusion";
 import { HttpError } from "./errors";
 import type { GameInstance, Platform, RequestInfo, Statement } from "./games";
 import { ecrireJournal, createJournaux, JOURNAL_ADMIN_LIGNES, RETRAIT_REDIFFUSION_JOURS } from "./journaux";
@@ -21,6 +22,7 @@ import { isUniqueViolation, nameKey } from "./pseudos";
 //   GET    /api/admin/joueurs/<ref>           la fiche d'un joueur
 //   POST   /api/admin/joueurs/<ref>/renommer | masquer | retirer | supprimer   les actions (chacune confirmée, inscrite au journal)
 //   GET    /api/admin/journal                 les 200 dernières actions
+//   Lot N2 : /api/admin/nouveautes (GET, POST, …/<id>/depublier | supprimer) et /api/admin/message (GET, POST, …/retirer) — `diffusion.ts`
 //
 // Les routes d'administration de DailyTrack (`/api/admin/overview`, `planning`, `medailles`, `effacer`) restent à `cdj.ts` ; elles acceptent la session ou le jeton.
 //
@@ -77,6 +79,8 @@ export interface AdminDeps {
   revision?: string;
   /** Vide la mémoire de l'instance après une action (classements gardés du portail). */
   oublier: () => void;
+  /** Lot N2 : les nouveautés et le message en direct (leurs routes d'administration). */
+  diffusion: Diffusion;
 }
 
 type Corps = Record<string, unknown>;
@@ -442,7 +446,8 @@ export function createAdmin(deps: AdminDeps) {
     const reste = path.slice("/api/admin/".length);
     const joueur = /^joueurs\/([^/]+)(?:\/(renommer|masquer|retirer|supprimer))?$/.exec(reste);
     const miennes = ["config", "session", "tableau", "joueurs", "journal"];
-    if (!miennes.includes(reste) && !joueur) return undefined; // les outils de DailyTrack (overview, planning, medailles, effacer)
+    const diffuse = /^(?:nouveautes(?:\/[^/]+\/(?:depublier|supprimer))?|message(?:\/retirer)?)$/.test(reste);
+    if (!miennes.includes(reste) && !joueur && !diffuse) return undefined; // les outils de DailyTrack (overview, planning, medailles, effacer)
     if (reste === "config") {
       if (req.method !== "GET") return nonPermise("GET");
       await platform.readHitAddress(info, "admc", 120);
@@ -462,6 +467,9 @@ export function createAdmin(deps: AdminDeps) {
     const lecture = req.method === "GET";
     if (lecture) platform.readHit(await platform.hashKey("admr", s.id), LECTURES_PAR_SESSION);
     else await platform.hit(await platform.hashKey("admw", s.id), ACTIONS_PAR_SESSION);
+    if (diffuse) {
+      return await deps.diffusion.routeAdmin(reste, req, s.admin, () => platform.readJson(req));
+    }
     if (reste === "tableau") return lecture ? await tableau() : nonPermise("GET");
     if (reste === "journal") return lecture ? { lignes: await journaux.dernieres(JOURNAL_ADMIN_LIGNES), max: JOURNAL_ADMIN_LIGNES } : nonPermise("GET");
     if (reste === "joueurs") return lecture ? await chercher(url) : nonPermise("GET");

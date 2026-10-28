@@ -38,6 +38,8 @@ export const PAIRES: readonly PaireCouleurs[] = [
   { couleur: "dj-encre", fond: "dj-papier", taille: "normal", usage: "étiquette claire, champ" },
   { couleur: "dj-encre-douce", fond: "dj-papier", taille: "normal", usage: "numéro sur l'étiquette Jump" },
   { couleur: "dj-creme", fond: "dj-encre", taille: "normal", usage: "logo, choix de langue actif" },
+  { couleur: "dj-papier", fond: "dj-encre", taille: "normal", usage: "étiquette « Important » d'un message en direct (information)" },
+  { couleur: "dj-moutarde", fond: "dj-encre", taille: "normal", usage: "étiquette « Important » d'un message en direct" },
   { couleur: "dj-terre-texte", fond: "dj-terre", taille: "normal", usage: "bouton principal de marque" },
   { couleur: "dj-encre", fond: "dj-moutarde", taille: "normal", usage: "avatar, coque Jump" },
   { couleur: "dj-ambre", fond: "dj-ecran", taille: "normal", usage: "chiffres de l'afficheur" },

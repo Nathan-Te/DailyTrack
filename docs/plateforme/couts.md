@@ -193,3 +193,22 @@ Lecture :
 - ☐ `npm run measure:platform -w @cdj/api -- --jump … --track … --salon …` lancé une fois avec les vrais chiffres.
 - ☐ Le tableau du § 4 relu : chaque ligne acceptée ou corrigée (réponds dans la PR du lot P4 ou dans le prochain prompt).
 - ☐ Lot R4 : console Firebase → Hosting → Utilisation regardée une fois après la bascule ; conservation des versions limitée à 50 par site (`domaine.md`, « Le coût »).
+
+## 9. Le message en direct (lot N2)
+
+**Livraison sans serveur en direct** : le message actif est dans `GET /api/portail/jour` (au chargement du portail : aucune requête de plus) et `GET /api/annonce` le rend **seul**, avec `Cache-Control: public, max-age=0, s-maxage=30` : le cache de Firebase Hosting, partagé par toutes les pages ouvertes, le garde 30 s. **Une page ouverte et visible le relit toutes les 60 s** ; cachée, ou dans une course ou un niveau, elle ne lit rien. Un message arrive donc chez un joueur **au bout de 45 s en moyenne, 90 s au pire** (60 s de relecture + 30 s de cache) ; il s'éteint à son heure de fin même si le cache l'a encore (le client compare `fin` à l'heure du serveur).
+
+Mesure : `npm run measure:annonce -w @cdj/api` (28/10/2026, base en mémoire ; le cache est un **modèle** de celui de Hosting — pas une mesure de Hosting —, par point de présence du CDN : on ne sait pas combien servent la France, on montre 1, 3 et 10).
+
+**Une requête qui arrive à Cloud Run** : 1 instruction, **1 ligne lue** (l'index `annonces_by_fin`), 0 écrite, ≈ 0,8 ms, réponse ≈ 711 octets (corps et en-têtes).
+
+| pages ouvertes et visibles, 1 heure | requêtes Hosting | octets Hosting | Cloud Run **sans** cache | Cloud Run, 1 point | 3 points | 10 points (simulé / borne) | lignes Turso (3 points) |
+|---|---|---|---|---|---|---|---|
+| 100 | 6 000 | 3,7 Mo | 6 000 | 118 | 340 | 991 / 1 200 | 340 |
+| 1 000 | 60 000 | 37,2 Mo | 60 000 | 120 | 360 | 1 181 / 1 200 | 360 |
+| 10 000 | 600 000 | 372 Mo | 600 000 | 120 | 360 | 1 200 / 1 200 | 360 |
+
+- **Cloud Run et Turso ne le sentent pas** : jamais plus de 120 requêtes par heure et par point de présence, quel que soit le nombre de pages (≤ 1 200 par heure à 10 points : de l'ordre de 0,06 % de l'offre gratuite mensuelle de requêtes par heure de message), une ligne lue chacune. `platformBudget.ts` : `ANNONCE`, `annonceParHeure` (testé : `platformBudget.test.ts`).
+- **Le poids est celui de Hosting** : une requête par page et par minute, cache ou pas. **À 10 000 pages ouvertes pendant une heure : 372 Mo, soit plus que le transfert gratuit de Hosting (360 Mo par jour)** ; à 1 000 pages : 37 Mo par heure (10 % du jour). Au-delà de l'offre, le transfert de Hosting se paie au gigaoctet (tarif à lire dans la console, Facturation → Tarifs) : une heure à 10 000 pages ≈ 0,4 Go. **Décision laissée à Nathan** si le site atteint ce public : allonger la relecture (90 ou 120 s) ou retirer les en-têtes de sécurité de cette seule réponse (≈ 400 octets de ses 711). Aucun seuil n'est franchi aujourd'hui.
+- **Limites de débit** : 120 lectures par adresse et par fenêtre de 10 minutes (`ANNONCE_LECTURES_PAR_ADRESSE`, en mémoire : aucune écriture) ; une page qui relit chaque minute en fait 10.
+- **Portail** : la réponse publique de `GET /api/portail/jour` ajoute deux lectures indexées de 1 ligne (le message actif, la dernière nouveauté publiée) à chaque calcul (au plus un par minute et par point de présence : cache public de 60 s). **`GET /api/portail/nouveautes`** : cache public de 60 s, 21 lignes lues au plus (index `nouveautes_by_date`), jamais une table entière (test « coût » de `diffusion.test.ts`).

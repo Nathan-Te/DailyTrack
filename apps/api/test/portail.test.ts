@@ -124,6 +124,8 @@ describe(`portail : GET /api/portail/jour sans joueur (${TEST_DB})`, () => {
       generation: 0, // lot R8 : la génération de données (0 : base jamais remise à zéro)
       maintenant: new Date(NOON).toISOString(),
       prochainJour: "2026-10-20T22:00:00.000Z", // minuit de Paris (heure d'été : UTC+2)
+      nouveaute: null, // lot N2 : la dernière nouveauté publiée (aucune ici) et le message en direct (aucun), dans la même réponse
+      annonce: null,
       jeux: [
         { jeu: "cdj", site: "track", nom: "Track", premierJour: formatDay(PREMIER_JOUR), numero: circuitNumber(TODAY), theme: themeForDay(TODAY).name, seuils: { author: m.author, gold: m.gold, silver: m.silver, bronze: m.bronze } },
         {

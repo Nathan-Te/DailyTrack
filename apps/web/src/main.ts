@@ -86,6 +86,8 @@ import { loadArchiveExtras } from "./archiveExtras";
 import { DEMO_BASE, apiBase } from "./api";
 import { appliquerGeneration, lireSuite } from "@cdj/profile";
 import { elementsDeSuite } from "./jeuSuivant";
+import { annonceAutorisee, ecranAnnonce, type EcranAnnonce } from "./annonceEcran";
+import type { PiloteAnnonce } from "./annonceTrack";
 import { DEMO_TODAY } from "./demo";
 import { NO_PLAN, fetchDayPlan, fetchPlanning, loadDemoPlan, type PlanEntry } from "./planning";
 import { buildFlatArena } from "./arena";
@@ -2063,7 +2065,27 @@ function isFrozen(): boolean {
   return paused || homeOpen || garageOuvert() || !!pageFigures?.ouvert() || !hudArchive.hidden || !!settingsPanel?.isOpen() || howto.isOpen() || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
 }
 
+// Lot N2 : le message en direct (`annonceUi.ts`, chargé à la demande la première fois qu'il a le droit d'être là). Accueil, arrivée et pause seulement : pendant une course (décompte compris) et sur tout
+// autre écran la surveillance est suspendue (plus de minuterie ni de lecture du réseau) ; sans serveur, en démonstration, dans le Salon, un scénario ou une rediffusion : jamais chargé.
+const annonceBase = apiBase();
+const annonceOk = annonceAutorisee(annonceBase, DEMO_BASE, scenario !== "jour", watchWanted);
+let annonceVue: EcranAnnonce | null = null;
+let annonceDemandee = false;
+let annonce: PiloteAnnonce | null = null;
+function suivreAnnonce(): void {
+  const autre = garageOuvert() || !!pageFigures?.ouvert() || !hudArchive.hidden || !!settingsPanel?.isOpen() || howto.isOpen() || boardScreen.isOpen() || watchWait || !!watch;
+  const e = ecranAnnonce(autre, homeOpen, paused, phase === "finished");
+  if (e === annonceVue) return;
+  annonceVue = e;
+  if (annonce) annonce.ecran(e);
+  else if (e && !annonceDemandee) {
+    annonceDemandee = true;
+    void import("./annonceUi").then((m) => (annonce = m.demarrerAnnonce({ base: annonceBase!, stockage: gameStorage(), langue: langueCourante, surLangue: onLangue, traducteur: traducteurDuSocle })).ecran(annonceVue), () => undefined);
+  }
+}
+
 function frame(now: number) {
+  if (annonceOk) suivreAnnonce();
   salon?.tick(); // Salon : compte à rebours, fin de session, podium, bascule
   if (reconstructeur.enAttente()) void reconstructeur.essayer(); // un autre palier demandé : reconstruit à l'accueil, à la pause, à l'arrivée, au podium (jamais en course)
   suivrePost(); // lot 47 : la chaîne de post-traitement suit la scène (allumée ou éteinte à l'arrêt seulement)

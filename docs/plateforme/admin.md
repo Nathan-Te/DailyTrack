@@ -98,7 +98,9 @@ done
 - **Tout révoquer** (clé volée, doute) : une nouvelle version de `cdj-admin-session-key` + un redéploiement invalide **toutes** les sessions d'un coup. Le journal garde les empreintes d'avant (elles dépendent de la clé).
 - **Un jeton volé ne sert à rien tout seul** : la connexion exige un jeton Google *récent* émis pour *cet* identifiant client, et l'adresse doit figurer dans le secret.
 - **Les outils de Track** (`/track/admin/` : planning, médailles) acceptent ta session **ou** le jeton `ADMIN_TOKEN`, le temps de la transition. Retirer le jeton fera l'objet d'un autre lot, une fois la connexion Google éprouvée.
-- **Jump n'a pas d'outil d'administration** : l'entrée du menu est éteinte. « Nouveautés » et « Message en direct » arrivent au lot N2 (éteintes, « bientôt »).
+- **Jump n'a pas d'outil d'administration** : l'entrée du menu est éteinte. 
+- **Nouveautés** (lot N2, aucune étape de plus de ta part : tout passe par la même connexion) : à gauche les PR fusionnées depuis la dernière mise en production, lues sur l'API publique de GitHub **depuis ton navigateur** (limite : 60 lectures par heure ; au-delà le panneau le dit et tu écris à la main) ; coche une PR pour reprendre ses lignes « Pour les joueurs », complète l'anglais (sans lui, « Publier » reste grisé), regarde l'aperçu, puis « Publier » (ou « Garder en brouillon »). La liste du bas sert à modifier, dépublier ou supprimer.
+- **Message en direct** (lot N2) : un seul message actif, 160 caractères par langue, texte seul (ni lien ni HTML), où (Portail, Track, Jump), ton, jusqu'à quand (1 h, minuit de Paris, heure précise) ; « Mettre à jour » remplace le message, « Retirer maintenant » l'éteint. Les joueurs le voient en **45 s en moyenne, 90 s au pire** ; il ne s'affiche jamais pendant une course ou un niveau.
 
 ## 6. Ce qui se passe quand ça ne marche pas
 

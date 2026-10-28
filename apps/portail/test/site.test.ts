@@ -46,7 +46,8 @@ describe("firebase.json", () => {
     // Google Identity Services : exactement ce que Google documente, et rien de plus.
     expect(directives["script-src"]).toEqual(["'self'", "https://accounts.google.com/gsi/client"]);
     expect(directives["frame-src"]).toEqual(["https://accounts.google.com/gsi/"]);
-    expect(directives["connect-src"]).toEqual(["'self'", "https://accounts.google.com/gsi/"]);
+    // Lot N2 : le panneau lit les PR sur l'API publique de GitHub depuis le navigateur de l'éditeur : `api.github.com` en `connect-src`, ici et nulle part ailleurs (testé plus bas).
+    expect(directives["connect-src"]).toEqual(["'self'", "https://accounts.google.com/gsi/", "https://api.github.com"]);
     expect(directives["style-src"]).toEqual(["'self'", "https://accounts.google.com/gsi/style"]);
     expect(directives["default-src"]).toEqual(["'self'"]);
     expect(directives["frame-ancestors"]).toEqual(["'none'"]);
@@ -57,6 +58,8 @@ describe("firebase.json", () => {
     expect(directives["img-src"]).toEqual(["'self'", "data:"]);
     // Les autres règles du site n'autorisent aucun domaine de Google, et la page d'administration est la seule à en charger un.
     for (const h of headers.filter((x) => x.source !== "/admin/**")) for (const k of h.headers) expect(k.value, `${h.source ?? h.regex} ${k.key}`).not.toContain("google");
+    // Lot N2 : `api.github.com` n'est autorisé nulle part ailleurs que dans la CSP de `/admin/` (les pages des joueurs ne parlent à aucun tiers).
+    for (const h of headers.filter((x) => x.source !== "/admin/**")) for (const k of h.headers) expect(k.value, `${h.source ?? h.regex} ${k.key}`).not.toContain("github");
     const pages = ["index.html", "profil/index.html", "classement/index.html", "mentions-legales/index.html", "legal/index.html", "404.html"].map((f) => readFileSync(join(__dirname, "..", f), "utf8"));
     for (const html of pages) expect(html).not.toContain("accounts.google.com");
     const page = readFileSync(join(__dirname, "../admin/index.html"), "utf8");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLASSEMENT_JOUR, FREE_TIER, JUMP_PLAYER, PORTAIL_VISITOR, SALON_HALF_HOUR, TRACK_PLAYER, classementReadsPerDay, projectMonth } from "../scripts/platformBudget";
+import { ANNONCE, CLASSEMENT_JOUR, annonceParHeure, FREE_TIER, JUMP_PLAYER, PORTAIL_VISITOR, SALON_HALF_HOUR, TRACK_PLAYER, classementReadsPerDay, projectMonth } from "../scripts/platformBudget";
 
 // Lot P4 (plateforme) : `npm run measure:platform -w @cdj/api` projette le coût d'un mois à partir des joueurs par jour de chaque jeu. Calcul pur :
 // proportionnel aux joueurs, chaque jeu compté à part, l'offre gratuite et ce qui la dépasse.
@@ -55,5 +55,26 @@ describe("projection du mois (measure:platform)", () => {
     const p = projectMonth({ jump: 500, track: 100, salon: 5 });
     const worst = Math.max(...p.resources.map((r) => r.share));
     expect(p.headroom).toBeCloseTo(1 / worst, 9);
+  });
+});
+
+describe("lot N2 : le message en direct (measure:annonce)", () => {
+  it("le cache de Hosting borne ce qui arrive à Cloud Run : par point de présence, pas par page", () => {
+    expect(ANNONCE).toMatchObject({ relectureS: 60, sMaxageS: 30 });
+    // 100, 1 000 et 10 000 pages ouvertes, la France servie par 3 points de présence.
+    const cent = annonceParHeure(100, 3);
+    const mille = annonceParHeure(1000, 3);
+    const dixMille = annonceParHeure(10_000, 3);
+    expect([cent.hosting, mille.hosting, dixMille.hosting]).toEqual([6000, 60_000, 600_000]);
+    // 3 points × 120 fenêtres par heure : 360 requêtes au plus, quel que soit le nombre de pages.
+    expect([cent.cloudRun, mille.cloudRun, dixMille.cloudRun]).toEqual([360, 360, 360]);
+    // Sans le cache, chaque relecture irait jusqu'à Cloud Run.
+    expect(dixMille.cloudRunSansCache).toBe(600_000);
+    expect(dixMille.lignesLues).toBe(360);
+    expect(dixMille.octetsHosting).toBe(600_000 * ANNONCE.octetsParReponse);
+  });
+  it("peu de pages : pas plus de requêtes que de relectures (un point n'est pas rafraîchi s'il ne sert personne)", () => {
+    expect(annonceParHeure(1, 10).cloudRun).toBe(60);
+    expect(annonceParHeure(0, 10).cloudRun).toBe(0);
   });
 });

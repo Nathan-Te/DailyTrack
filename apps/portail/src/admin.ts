@@ -25,6 +25,7 @@ import {
   type Tableau,
 } from "./adminDonnees";
 import { baseApi } from "./jour";
+import { remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
 
 // Lot N1 (plateforme) : le panneau d'administration — `/admin/`. Connexion avec le compte Google de l'éditeur (Google Identity Services, chargé ici et nulle part
 // ailleurs ; la CSP de `/admin/` est dans `firebase.json`), tableau de bord, joueurs (recherche, fiche, cinq actions confirmées), journal. Une page pour l'éditeur :
@@ -149,7 +150,7 @@ async function afficherConnexion(raison?: string): Promise<void> {
 }
 
 // --- Le panneau ----------------------------------------------------------------------------------------------------------------------
-type Vue = { vue: "tableau" } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
+type Vue = { vue: "tableau" } | { vue: "nouveautes" } | { vue: "message" } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
 
 function lireVue(): Vue {
   const [chemin = "", requete = ""] = location.hash.replace(/^#\/?/, "").split("?");
@@ -158,6 +159,8 @@ function lireVue(): Vue {
   if (morceaux[0] === "joueurs" && morceaux[1]) return { vue: "fiche", ref: decodeURIComponent(morceaux[1]) };
   if (morceaux[0] === "joueurs") return { vue: "joueurs", q: params.get("q") ?? "", filtre: params.get("filtre") === "masques" ? "masques" : "tous", page: Math.max(1, Number(params.get("page")) || 1) };
   if (morceaux[0] === "journal") return { vue: "journal" };
+  if (morceaux[0] === "nouveautes") return { vue: "nouveautes" };
+  if (morceaux[0] === "message") return { vue: "message" };
   return { vue: "tableau" };
 }
 const adresseJoueurs = (q: string, filtre: string, page: number) => {
@@ -171,6 +174,23 @@ const adresseJoueurs = (q: string, filtre: string, page: number) => {
 
 let contenu: HTMLElement;
 let menu: HTMLElement;
+/** L'étiquette `prod-…` de la mise en production en cours, lue du tableau de bord (Nouveautés en a besoin pour la fenêtre des PR). */
+let etiquetteEnCours: string | null | undefined;
+
+/** Ce que les rubriques Nouveautés et Message en direct reçoivent du panneau (`adminDiffusion.ts`). */
+const contexteDiffusion: Contexte = {
+  client,
+  confirmer: (o) => confirmer(o),
+  recharger: async (texte) => {
+    await afficherVue();
+    if (texte) (document.getElementById("nouveautes-message") ?? document.getElementById("message-retour"))?.replaceChildren(message("info", texte));
+  },
+  sessionExpiree: () => afficherConnexion("Session expirée : reconnecte-toi."),
+  etiquette: async () => {
+    if (etiquetteEnCours === undefined) etiquetteEnCours = (await client.tableau()).etat.version.etiquette;
+    return etiquetteEnCours;
+  },
+};
 let generation = 0;
 let ecoute = false;
 
@@ -220,7 +240,7 @@ async function afficherPanneau(): Promise<void> {
   await afficherVue();
 }
 
-/** Le menu : les entrées de N1, celles de N2 déjà posées mais éteintes (« bientôt »), Track (ses outils) et Jump (pas d'outil). */
+/** Le menu : les entrées de N1 et de N2 (Nouveautés, Message en direct), Track (ses outils) et Jump (pas d'outil). */
 function dessinerMenu(vue: Vue): void {
   const actif = vue.vue === "fiche" ? "joueurs" : vue.vue;
   const lien = (cle: string, texte: string, href: string) =>
@@ -233,8 +253,8 @@ function dessinerMenu(vue: Vue): void {
       { classe: "admin-menu__liste" },
       lien("tableau", "Tableau de bord", "#/tableau"),
       lien("joueurs", "Joueurs", "#/joueurs"),
-      eteint("nouveautes", "Nouveautés", "bientôt"),
-      eteint("message", "Message en direct", "bientôt"),
+      lien("nouveautes", "Nouveautés", "#/nouveautes"),
+      lien("message", "Message en direct", "#/message"),
       lien("journal", "Journal", "#/journal"),
       el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../track/admin/", "data-menu": "track" }, texte: "Track" }), el("span", { classe: "admin-menu__sous", texte: "outils : planning, médailles" })),
       eteint("jump", "Jump", "aucun outil"),
@@ -250,10 +270,20 @@ async function afficherVue(): Promise<void> {
   document.querySelector(".admin-menu-bouton")?.setAttribute("aria-expanded", "false");
   contenu.replaceChildren(el("p", { classe: "admin-message admin-message--info", attrs: { role: "status" }, texte: "Chargement…" }));
   try {
-    const noeud = await (vue.vue === "tableau" ? vueTableau() : vue.vue === "joueurs" ? vueJoueurs(vue) : vue.vue === "fiche" ? vueFiche(vue.ref) : vueJournal());
+    const noeud = await (vue.vue === "tableau"
+      ? vueTableau()
+      : vue.vue === "joueurs"
+        ? vueJoueurs(vue)
+        : vue.vue === "fiche"
+          ? vueFiche(vue.ref)
+          : vue.vue === "nouveautes"
+            ? vueNouveautes(contexteDiffusion)
+            : vue.vue === "message"
+              ? vueMessage(contexteDiffusion)
+              : vueJournal());
     if (courante !== generation) return; // une autre vue a été demandée entre-temps
     contenu.replaceChildren(...noeud);
-    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : "Joueurs"} · Administration · Du Jour`;
+    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : vue.vue === "nouveautes" ? "Nouveautés" : vue.vue === "message" ? "Message en direct" : "Joueurs"} · Administration · Du Jour`;
   } catch (e) {
     if (courante !== generation) return;
     if (e instanceof ErreurAdmin && e.statut === 401) {
@@ -311,6 +341,12 @@ function ligneJournal(e: EntreeJournal): HTMLElement {
 
 async function vueTableau(): Promise<Node[]> {
   const tab = await client.tableau();
+  etiquetteEnCours = tab.etat.version.etiquette;
+  // Une fois la page dessinée : la ligne « PR depuis la dernière mise en production » (une requête à GitHub, jamais bloquante).
+  setTimeout(() => {
+    const valeur = document.querySelector<HTMLElement>('[data-etat="pr"] .admin-etat__valeur');
+    if (valeur) void remplirPrDuTableau(valeur, tab.etat.version.etiquette);
+  });
   const c = tab.chiffres;
   const e = tab.etat;
   const prets = e.joursPrets.map((j) => `${j.nom} : ${j.figes} figé${j.figes > 1 ? "s" : ""}${j.planifies !== undefined ? `, ${j.planifies} planifié${j.planifies > 1 ? "s" : ""}` : ""}`).join(" · ");
@@ -340,8 +376,8 @@ async function vueTableau(): Promise<Node[]> {
         ligneEtat("Jours prêts", prets || "—", undefined, "jours"),
         ligneEtat("Erreurs serveur (24 h)", String(e.erreurs24h.serveur), e.erreurs24h.serveur === 0, "erreurs"),
         ligneEtat("Rediffusions refusées (24 h)", String(e.erreurs24h.rediffusions), undefined, "refus"),
-        // La place des « PR depuis la dernière mise en production » (lot N2) : réservée, sans chiffre.
-        ligneEtat("PR depuis la dernière mise en production", e.prDepuisMiseEnProduction === null ? "— (bientôt)" : String(e.prDepuisMiseEnProduction), undefined, "pr"),
+        // Lot N2 : le nombre de PR fusionnées depuis la mise en production en cours, lu sur GitHub par le navigateur (comme « Nouveautés ») : rempli juste après le dessin, jamais bloquant.
+        ligneEtat("PR depuis la dernière mise en production", "Lecture de GitHub…", undefined, "pr"),
       ),
     ),
     el(

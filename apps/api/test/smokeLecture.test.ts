@@ -64,6 +64,8 @@ describe(`smoke --lecture-seule (${TEST_DB})`, () => {
       `/api/jump/day/${DATE}/bundle`,
       `/api/jump/day/${formatDay(DAY - 1)}/bundle`,
       "/api/portail/jour", // lot I2
+      "/api/annonce", // lot N2
+      "/api/portail/nouveautes", // lot N2
       "/api/portail/classement", // lot I3
     ]);
     expect(new Set(methods)).toEqual(new Set(["GET"]));

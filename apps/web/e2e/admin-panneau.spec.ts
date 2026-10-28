@@ -26,6 +26,7 @@ test.afterAll(async () => {
 test("connexion › tableau de bord › joueur › renommer › journal, sous la CSP de /admin/", async ({ browser }) => {
   const context = await newClockedContext(browser, { locale: "fr-FR", viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
+  await page.route("https://api.github.com/**", (route) => route.abort()); // la lecture de GitHub (lot N2) : coupée, la page le dit sans rien bloquer
   const violations: string[] = [];
   page.on("console", (m) => {
     if (/content security policy|csp/i.test(m.text())) violations.push(m.text());
@@ -70,12 +71,13 @@ test("connexion › tableau de bord › joueur › renommer › journal, sous la
   await expect(page.locator('[data-etat="base"]')).toContainText("OK");
   await expect(page.locator('[data-etat="version"]')).toContainText("prod-2026-10-19-1830 · 0123456");
   await expect(page.locator('[data-etat="erreurs"]')).toContainText("0");
-  await expect(page.locator('[data-etat="pr"]')).toContainText("bientôt"); // la place réservée du lot N2, sans chiffre
+  // Lot N2 : la ligne « PR depuis la dernière mise en production » est lue sur GitHub par le navigateur (ici coupé : « GitHub ne répond pas », jamais bloquant).
+  await expect(page.locator('[data-etat="pr"]')).toContainText("GitHub ne répond pas");
   await auditAxe(page, "panneau-tableau");
 
-  // --- Le menu : N2 déjà posé mais éteint, Track mène à ses outils, Jump n'a pas d'outil --------------------------------------
-  await expect(page.locator('[data-menu="nouveautes"]')).toHaveAttribute("aria-disabled", "true");
-  await expect(page.locator('[data-menu="message"]')).toHaveAttribute("aria-disabled", "true");
+  // --- Le menu : Nouveautés et Message en direct (lot N2), Track mène à ses outils, Jump n'a pas d'outil -----------------------
+  await expect(page.locator('[data-menu="nouveautes"]')).toHaveAttribute("href", "#/nouveautes");
+  await expect(page.locator('[data-menu="message"]')).toHaveAttribute("href", "#/message");
   await expect(page.locator('[data-menu="jump"]')).toHaveAttribute("aria-disabled", "true");
   await expect(page.locator('[data-menu="track"]')).toHaveAttribute("href", "../track/admin/");
 

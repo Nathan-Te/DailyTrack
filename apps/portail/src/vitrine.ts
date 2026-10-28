@@ -22,6 +22,7 @@ import {
   PAIRES,
   afficheur,
   astuceIphone,
+  bandeauAnnonce,
   avatar,
   barreJeu,
   barrePortail,
@@ -187,6 +188,13 @@ function bloc(l: Langue): HTMLElement {
       ),
     ),
     section(t.t("vitrine.section.pleinEcran"), `plein-ecran-${l}`, ...pleinEcran(t, jour)),
+    // Lot N2 : le message en direct, dans ses deux tons (la croix d'« Important » est montrée tout de suite : le délai de 10 s n'a pas de sens dans une vitrine).
+    section(
+      t.t("vitrine.section.bandeau"),
+      `bandeau-${l}`,
+      bandeauAnnonce(t, { texte: t.t("vitrine.bandeau.information"), ton: "information" }),
+      bandeauAnnonce(t, { texte: t.t("vitrine.bandeau.important"), ton: "important", fermableApresMs: 0 }),
+    ),
     section(
       t.t("vitrine.section.boutons"),
       `boutons-${l}`,

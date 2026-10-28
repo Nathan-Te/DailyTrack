@@ -399,8 +399,252 @@
   justify-content: flex-end;
   gap: var(--dj-espace-4);
 }
+/* --- Lot N2 : Nouveautés et Message en direct ------------------------------------------------------------------------------------- */
+.admin textarea,
+.admin input[type="date"],
+.admin input[type="datetime-local"],
+.admin select {
+  min-height: var(--dj-cible);
+  padding: var(--dj-espace-2) var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  box-sizing: border-box;
+}
+.admin textarea {
+  resize: vertical;
+}
+.admin input:disabled,
+.admin select:disabled {
+  background: var(--dj-creme-2);
+  color: var(--dj-encre-douce);
+}
+.admin-deux-colonnes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--dj-espace-6);
+  align-items: start;
+}
+.admin-colonne {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+  min-width: 0;
+}
+.admin-sous-titre {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-16);
+}
+.admin-prs,
+.admin-lignes,
+.admin-gestion,
+.admin-problemes,
+.admin-pr__lignes,
+.admin-apercu__lignes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-pr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  padding: var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+}
+.admin-pr--attente {
+  background: var(--dj-creme-2);
+}
+.admin-pr__tete {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dj-espace-3);
+}
+.admin-pr__tete input[type="checkbox"],
+.admin-case input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--dj-encre);
+}
+.admin-pr__titre {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+.admin-pr__marques {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-2);
+}
+.admin-pr__marques .admin-pastille,
+.admin-pr__lignes .admin-pastille {
+  margin: 0;
+}
+.admin-pr__lignes li,
+.admin-apercu__lignes li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dj-espace-3);
+  font-size: var(--dj-taille-13);
+  overflow-wrap: anywhere;
+}
+.admin-pastille--attente {
+  background: var(--dj-ambre);
+}
+.admin-case {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  font-weight: 600;
+}
+.admin-groupe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-2) var(--dj-espace-6);
+  margin: 0;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+}
+.admin-groupe legend {
+  padding: 0 var(--dj-espace-2);
+  font-weight: 800;
+}
+/* Une ligne de l'éditeur : zone, français, anglais, retirer. L'anglais manquant est cerné de terre (le texte, lui, le dit aussi en dessous). */
+.admin-ligne {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: var(--dj-espace-2);
+  align-items: center;
+}
+.admin-ligne .admin-aide {
+  grid-column: 1 / -1;
+}
+.admin .admin-manque {
+  border-color: var(--dj-terre);
+  border-width: var(--dj-trait-fort);
+}
+.admin-problemes {
+  padding-left: var(--dj-espace-5);
+  list-style: disc;
+  color: var(--dj-terre);
+  font-weight: 700;
+}
+.admin-problemes-zone {
+  min-height: var(--dj-espace-3);
+}
+.admin-zone {
+  flex: none;
+  min-width: 56px;
+  padding: 0 var(--dj-espace-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  background: var(--dj-papier);
+  font-size: var(--dj-taille-12);
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
+.admin-zone--dujour {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.admin-zone--track {
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+}
+.admin-zone--jump {
+  background: var(--dj-moutarde);
+}
+.admin-apercu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.admin-apercu__langues {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--dj-espace-4);
+}
+.admin-apercu__carte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  padding: var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-creme-2);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.admin-apercu__ligne-accueil {
+  margin: 0;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.admin-apercu__titre {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.admin-gestion__ligne {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto auto;
+  gap: var(--dj-espace-3);
+  align-items: center;
+  padding: var(--dj-espace-3) 0;
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+}
+.admin-gestion__titre {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+.admin-gestion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-2);
+}
+.admin-gestion .admin-pastille--masque {
+  margin: 0;
+}
+.admin-gestion__ligne .admin-aide {
+  grid-column: 2 / -1;
+}
 /* Téléphone : le menu est replié derrière un bouton ; les cartes prennent la largeur. */
 @media (max-width: 760px) {
+  .admin-deux-colonnes,
+  .admin-apercu__langues {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-ligne {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .admin-ligne select,
+  .admin-ligne input {
+    grid-column: 1 / -1;
+  }
+  .admin-gestion__ligne {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+  .admin-gestion__ligne .admin-pastille,
+  .admin-gestion__actions {
+    grid-column: 2;
+  }
   .admin-menu-bouton {
     display: inline-flex;
   }

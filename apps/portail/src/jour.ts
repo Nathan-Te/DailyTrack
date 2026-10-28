@@ -1,5 +1,5 @@
 import { parisDay, parisDayStart } from "@cdj/clock";
-import { generationDeReponse } from "@cdj/profile";
+import { annonceDe, generationDeReponse, type Annonce } from "@cdj/profile";
 
 // Lot I2 : ce que le portail lit du serveur (`GET /api/portail/jour`, une requête au chargement) et le compte à rebours. Pur (le réseau et
 // l'horloge sont passés) : testé dans `test/jour.test.ts`.
@@ -37,6 +37,15 @@ export interface JoueurDuJour {
   classesDuJour?: number | null;
 }
 
+/** Lot N2 : la dernière nouveauté publiée (la ligne de l'accueil). `publieLe` : l'instant de publication en ms (« lue sur cet appareil » se compare à lui). */
+export interface NouveauteAccueil {
+  id: number;
+  /** AAAA-MM-JJ. */
+  date: string;
+  titre: { fr: string; en: string };
+  publieLe: number;
+}
+
 export interface Jour {
   date: string;
   /** Lot I3 : le numéro de la journée commune (`null` avant la journée n° 1, `config/lancement.json`). */
@@ -47,6 +56,18 @@ export interface Jour {
   prochainJour: string;
   jeux: JeuDuJour[];
   joueur?: JoueurDuJour;
+  /** Lot N2 : la dernière nouveauté publiée (`null` : aucune, la ligne n'apparaît pas) et le message en direct (`null` : aucun) — dans la même réponse, jamais une requête de plus. */
+  nouveaute?: NouveauteAccueil | null;
+  annonce?: Annonce | null;
+}
+
+/** La nouveauté de l'accueil, lue avec prudence (une valeur illisible : aucune ligne). */
+export function nouveauteDe(brut: unknown): NouveauteAccueil | null {
+  const o = brut as Partial<NouveauteAccueil> | null;
+  if (!o || typeof o !== "object" || typeof o.id !== "number" || typeof o.date !== "string" || typeof o.publieLe !== "number") return null;
+  const t = o.titre as Partial<{ fr: unknown; en: unknown }> | undefined;
+  if (!t || typeof t.fr !== "string" || typeof t.en !== "string") return null;
+  return { id: o.id, date: o.date, titre: { fr: t.fr, en: t.en }, publieLe: o.publieLe };
 }
 
 /**
@@ -90,7 +111,7 @@ export async function lireJour(fetchImpl: typeof fetch, joueur: string | null, m
     const res = await fetchImpl(`${base}/api/portail/jour`, { headers: joueur ? { "X-Player-Id": joueur } : {}, cache: "no-store", signal: controle.signal });
     const recu = maintenant();
     const corps = (await res.json().catch(() => null)) as (Partial<Jour> & { error?: unknown }) | null;
-    const jour = estJour(corps) ? { date: corps.date, journee: corps.journee ?? null, generation: generationDeReponse(corps), maintenant: corps.maintenant, prochainJour: corps.prochainJour, jeux: corps.jeux, ...(res.ok && corps.joueur ? { joueur: corps.joueur } : {}) } : null;
+    const jour = estJour(corps) ? { date: corps.date, journee: corps.journee ?? null, generation: generationDeReponse(corps), maintenant: corps.maintenant, prochainJour: corps.prochainJour, jeux: corps.jeux, nouveaute: nouveauteDe(corps.nouveaute), annonce: annonceDe(corps.annonce), ...(res.ok && corps.joueur ? { joueur: corps.joueur } : {}) } : null;
     // L'heure du serveur au milieu de l'aller-retour, plus l'âge de la réponse si un cache partagé l'a gardée.
     const age = Number(res.headers.get("age") ?? 0);
     const decalage = jour ? Date.parse(jour.maintenant) + (Number.isFinite(age) ? age * 1000 : 0) - (envoi + recu) / 2 : 0;

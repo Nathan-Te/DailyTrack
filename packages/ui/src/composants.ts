@@ -334,6 +334,57 @@ export function avisNouveauDepart(t: TraducteurCommun, o: { onFermer?: () => voi
   return racine;
 }
 
+/** Le ton « Important » d'un message en direct ne se ferme qu'après 10 s d'affichage (lot N2). */
+export const BANDEAU_IMPORTANT_MS = 10_000;
+
+export interface OptionsBandeauAnnonce {
+  /** Le texte du message, **dans la langue** : posé en `textContent`, jamais interprété (c'est une donnée venue de l'administration). */
+  texte: string;
+  ton: "information" | "important";
+  /** Appelé quand le joueur ferme le bandeau (le bandeau s'enlève de lui-même). */
+  onFermer?: () => void;
+  /** Avant ce délai (ms) la croix n'existe pas : 10 s pour « Important », aucun pour « Information ». */
+  fermableApresMs?: number;
+  /** Une classe en plus : l'habillage aux couleurs du jeu (`--bandeau-fond`, `--bandeau-texte`, `--bandeau-bord`). */
+  classe?: string;
+}
+
+/**
+ * Lot N2 : le **message en direct** — une ligne, au-dessus de tout (portail) ou à l'accueil, à l'arrivée et en pause d'un jeu. `role="status"` : lu par le lecteur d'écran
+ * sans prendre le focus ; la croix a une cible de 44 px. Pas d'animation, pas de translucidité. « Important » porte une étiquette et ne se ferme qu'après 10 s.
+ * Aucun HTML : le texte est celui d'un éditeur, jamais une balise.
+ */
+export function bandeauAnnonce(t: TraducteurCommun, o: OptionsBandeauAnnonce): HTMLElement {
+  const important = o.ton === "important";
+  const etiquette = important ? el("span", { classe: "dj-bandeau__etiquette" }) : null;
+  const fermer = el("button", { classe: "dj-bandeau__fermer", attrs: { type: "button" } }, svgFermer());
+  const racine = el(
+    "div",
+    { classe: ["dj-bandeau", `dj-bandeau--${o.ton}`, o.classe], attrs: { role: "status", "aria-atomic": "true", "data-ton": o.ton } },
+    etiquette,
+    el("p", { classe: "dj-bandeau__texte", texte: o.texte }),
+    fermer,
+  );
+  const delai = o.fermableApresMs ?? (important ? BANDEAU_IMPORTANT_MS : 0);
+  if (delai > 0) {
+    fermer.hidden = true;
+    setTimeout(() => {
+      fermer.hidden = false;
+    }, delai);
+  }
+  fermer.addEventListener("click", () => {
+    racine.remove();
+    o.onFermer?.();
+  });
+  const maj = () => {
+    if (etiquette) etiquette.textContent = t.t("annonce.important");
+    fermer.setAttribute("aria-label", t.t("annonce.fermer"));
+  };
+  maj();
+  suivre(racine, maj);
+  return racine;
+}
+
 function svgFermer(): SVGSVGElement {
   return svg("svg", { attrs: { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor", "stroke-width": 2.5, "stroke-linecap": "square", focusable: "false", "aria-hidden": "true" } }, svg("path", { attrs: { d: "M5 5l14 14M19 5 5 19" } }));
 }

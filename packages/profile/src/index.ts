@@ -10,3 +10,4 @@ export * from "./langue";
 export * from "./jeuSuivant";
 export * from "./apiAdresse";
 export * from "./generation";
+export * from "./annonce";

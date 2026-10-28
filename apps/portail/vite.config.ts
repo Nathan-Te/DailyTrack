@@ -57,6 +57,8 @@ export default defineConfig({
         // Lot N1 : le panneau d'administration (`/admin/`), page privée en français, hors des catalogues des joueurs.
         admin: resolve(import.meta.dirname, "admin/index.html"),
         classement: resolve(import.meta.dirname, "classement/index.html"),
+        // Lot N2 : les nouveautés (`/nouveautes/`), ce qui change dans Du Jour, Track et Jump.
+        nouveautes: resolve(import.meta.dirname, "nouveautes/index.html"),
         ...(vitrine ? { vitrine: resolve(import.meta.dirname, "ui/index.html") } : {}),
       },
     },
