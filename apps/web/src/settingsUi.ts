@@ -13,8 +13,8 @@ import { langueCourante, lierMentions, onLangue, setLangue, t, traducteurDuSocle
 import { profilHref } from "./profilLien";
 import { DEFAULT_SETTINGS, GHOST_CHOICES, GHOST_KEY, SPEED_FEEL_CHOICES, SPEED_FEEL_KEY, type GameSettings } from "./settings";
 import { CHOIX_GRAPHISMES, type ChoixGraphismes, type NiveauQualite } from "./qualite";
-import { touchSettingsControls } from "./touchUi";
-import type { TouchPad } from "./touch";
+import { DEFAULT_TOUCH_SETTINGS, saveTouchSettings, type TouchPad } from "./touch";
+import { aligner, dir } from "./touchUi";
 
 export type SettingsTab = "graphics" | "sound" | "game" | "controls";
 
@@ -67,6 +67,8 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
   cadre.racine.classList.add("settings");
 
   let controls: Control[] = [];
+  /** Charge et monte les réglages tactiles (une fois par construction de l'écran) ; `null` quand c'est fait ou sans appareil tactile. */
+  let chargerTactile: (() => void) | null = null;
   let graphismesNote: HTMLElement;
   let tabButtons = new Map<SettingsTab, HTMLButtonElement>();
   let pages: Record<SettingsTab, HTMLElement>;
@@ -143,11 +145,21 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     };
     commands.append(reminder(t("reglages.clavier"), KEYBOARD_CONTROLS, !host.touch), reminder(t("reglages.manette"), GAMEPAD_CONTROLS, false));
     if (host.touch) {
-      const touch = touchSettingsControls(host.touch.pad, host.touch.changed);
-      controls.push(touch);
+      // Lot 52 : les réglages tactiles sont un morceau chargé à la demande (`touchReglages.ts`), à la première ouverture de l'onglet « Commandes » : ils n'ont rien à faire dans le premier chargement.
       const box = el("section", "reglages__tactile");
-      box.append(el("h2", "reglages__section", t("reglages.tactile.titre")), touch.box);
+      const liste = controls;
+      box.append(el("h2", "reglages__section", t("reglages.tactile.titre")));
       commands.append(box);
+      const { pad, changed } = host.touch;
+      chargerTactile = () => {
+        chargerTactile = null;
+        void import("./touchReglages").then((m) => {
+          const touch = m.touchSettingsControls(pad, changed, { dir, aligner, defauts: DEFAULT_TOUCH_SETTINGS, enregistrer: saveTouchSettings });
+          liste.push(touch);
+          box.append(touch.box);
+          touch.sync();
+        });
+      };
     } else {
       commands.append(el("p", "note", t("reglages.tactile.absent")));
     }
@@ -221,6 +233,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
       pages[i].hidden = i !== id;
     }
     cadre.corps.scrollTop = 0;
+    if (id === "controls") chargerTactile?.();
     sync();
   }
 

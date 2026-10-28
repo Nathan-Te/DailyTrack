@@ -1,0 +1,74 @@
+/* DailyTrack (lot 52) — la glissière : un rail asphalte au bord de l'écran, un curseur de livrée que le pouce fait glisser (maquettes docs/lots/lot-52-commandes/maquettes.html).
+   Chargée avec `steerSlider.ts` (à la demande). Position et taille viennent de `buttonRects` (touch.ts, la commande `steer`) ; le toucher passe au travers (tout est géré par
+   `#touch`). Valeurs : jetons de @cdj/ui seulement. */
+#touch .glissiere {
+  box-sizing: border-box;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 2px 2px 0 var(--dj-encre);
+}
+#touch .glissiere[hidden] {
+  display: none;
+}
+#touch .glissiere__rail {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 50%;
+  height: 8px;
+  margin-top: -4px;
+  box-sizing: border-box;
+  background: var(--track-piste);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 4px;
+}
+#touch .glissiere__graduation {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 12px;
+  margin: -6px 0 0 -1px;
+  background: var(--track-route);
+}
+#touch .glissiere__graduation--centre {
+  width: 4px;
+  height: 26px;
+  margin: -13px 0 0 -2px;
+  background: var(--track-livree);
+}
+#touch .glissiere__curseur {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 56px;
+  margin-left: -28px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--track-livree);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 2px 2px 0 var(--track-livree-ombre);
+  transition: left 0.12s ease-out;
+}
+#touch .glissiere__curseur i {
+  width: 3px;
+  height: 45%;
+  background: var(--track-asphalte);
+}
+/* Sous le doigt : le curseur le suit sans retard ; enfoncé et plus clair. */
+#touch .glissiere__curseur.on {
+  background: var(--track-livree-texte);
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: 1px 1px 0 var(--track-livree-ombre);
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  #touch .glissiere__curseur {
+    transition: none;
+  }
+}

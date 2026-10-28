@@ -1,0 +1,75 @@
+/* DailyTrack (lot 52) — le volant (maquettes docs/lots/lot-52-commandes/maquettes.html) : une jante claire, trois rayons, une marque de livrée en haut, un repère fixe et des graduations
+   jusqu'au butoir. Chargée avec `steerWheel.ts` (à la demande). Place et taille : `buttonRects` (touch.ts, la commande `steer`, un carré) ; le toucher passe au travers.
+   Valeurs : jetons de @cdj/ui seulement. */
+#touch .volant svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+#touch .volant[hidden] {
+  display: none;
+}
+/* La roue tourne autour de son centre ; au lâcher, un retour court qui amortit (0,18 s) ; sous le doigt, aucun retard. */
+#touch .volant__roue {
+  transform-origin: 80px 80px;
+  transition: transform 0.18s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+#touch .volant.on .volant__roue {
+  transition: none;
+}
+#touch .volant__graduation {
+  stroke: var(--track-route);
+  stroke-width: 2;
+}
+#touch .volant__butoir {
+  stroke: var(--track-texte);
+  stroke-width: 4;
+}
+#touch .volant__repere {
+  fill: var(--track-livree);
+  stroke: var(--dj-encre);
+  stroke-width: 2;
+}
+#touch .volant__rayon-bord {
+  stroke: var(--dj-encre);
+  stroke-width: 14;
+}
+#touch .volant__rayon {
+  stroke: var(--track-coque);
+  stroke-width: 8;
+}
+#touch .volant__jante-bord {
+  fill: none;
+  stroke: var(--dj-encre);
+  stroke-width: 22;
+}
+#touch .volant__jante {
+  fill: none;
+  stroke: var(--track-coque);
+  stroke-width: 16;
+}
+#touch .volant.on .volant__jante {
+  stroke: var(--track-texte-doux);
+}
+#touch .volant__marque {
+  fill: var(--track-livree);
+  stroke: var(--dj-encre);
+  stroke-width: 2;
+}
+#touch .volant__moyeu {
+  fill: var(--track-asphalte);
+  stroke: var(--dj-encre);
+  stroke-width: 3;
+}
+#touch .volant__moyeu-centre {
+  fill: var(--track-livree);
+}
+#touch .volant.on .volant__moyeu-centre {
+  fill: var(--track-livree-texte);
+}
+@media (prefers-reduced-motion: reduce) {
+  #touch .volant__roue {
+    transition: none;
+  }
+}

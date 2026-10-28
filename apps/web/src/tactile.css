@@ -33,23 +33,6 @@ body.touch #info {
 #touch [hidden] {
   display: none;
 }
-#touch .ring {
-  left: 0;
-  top: 0;
-  width: 96px;
-  height: 96px;
-  border-radius: var(--dj-rayon-avatar);
-  border: var(--dj-trait-fort) solid var(--track-texte);
-}
-#touch .knob {
-  left: 0;
-  top: 0;
-  width: 46px;
-  height: 46px;
-  border-radius: var(--dj-rayon-avatar);
-  background: var(--track-livree);
-  border: var(--dj-trait-fort) solid var(--dj-encre);
-}
 /* Les boutons dessinés sont placés et dimensionnés par `buttonRects` (touch.ts) ; leurs zones actives (`zoneSpans`) les épousent, de bord à bord et sur toute la hauteur. */
 #touch .tbtn {
   display: flex;
