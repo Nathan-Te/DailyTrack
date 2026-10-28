@@ -149,13 +149,18 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
           l.zone = (zone.value || null) as ZoneNouveaute | null;
           majVerification();
         });
-        const fr = el("input", { attrs: { type: "text", value: l.fr, maxlength: 400, "aria-label": `Français, ligne ${i + 1}`, "data-champ": "fr" } });
+        // Des zones de texte (plusieurs lignes visibles) : une ligne de nouveauté est une phrase, pas un mot. Entrée n'ajoute pas de retour à la ligne.
+        const fr = el("textarea", { attrs: { rows: 3, maxlength: 400, "aria-label": `Français, ligne ${i + 1}`, "data-champ": "fr" } });
+        fr.value = l.fr;
         fr.addEventListener("input", () => {
+          fr.value = fr.value.replace(/[\r\n]+/g, " ");
           l.fr = fr.value;
           majVerification();
         });
-        const en = el("input", { attrs: { type: "text", value: l.en, maxlength: 400, "aria-label": `Anglais, ligne ${i + 1}`, "data-champ": "en", lang: "en" } });
+        const en = el("textarea", { attrs: { rows: 3, maxlength: 400, "aria-label": `Anglais, ligne ${i + 1}`, "data-champ": "en", lang: "en" } });
+        en.value = l.en;
         en.addEventListener("input", () => {
+          en.value = en.value.replace(/[\r\n]+/g, " ");
           l.en = en.value;
           en.classList.toggle("admin-manque", l.fr.trim() !== "" && en.value.trim() === "");
           majVerification();
@@ -172,7 +177,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
             majPrs();
           },
         });
-        return el("li", { classe: "admin-ligne", attrs: { "data-index": String(i), ...(l.pr !== undefined ? { "data-pr": String(l.pr) } : {}) } }, zone, fr, en, retirer, l.pr !== undefined ? el("span", { classe: "admin-aide", texte: `PR ${l.pr}` }) : null);
+        return el("li", { classe: "admin-ligne", attrs: { "data-index": String(i), ...(l.pr !== undefined ? { "data-pr": String(l.pr) } : {}) } }, el("div", { classe: "admin-ligne__entete" }, zone, retirer), fr, en, l.pr !== undefined ? el("span", { classe: "admin-aide", texte: `PR ${l.pr}` }) : null);
       }),
     );
     if (brouillon.lignes.length === 0) ul.append(el("li", { classe: "admin-aide", texte: "Aucune ligne : coche une PR à gauche ou ajoute une ligne." }));
@@ -237,7 +242,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
         brouillon.lignes.push({ zone: null, fr: "", en: "" });
         majLignes();
         majVerification();
-        document.querySelector<HTMLInputElement>("#nouveautes-lignes li:last-child [data-champ=fr]")?.focus();
+        document.querySelector<HTMLTextAreaElement>("#nouveautes-lignes li:last-child [data-champ=fr]")?.focus();
       },
     });
     const vider = brouillon.id !== null || brouillon.lignes.length || brouillon.titreFr
