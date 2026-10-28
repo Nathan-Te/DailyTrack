@@ -24,6 +24,7 @@
     "figes:jump": "esbuild tools/figes.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figes.mjs --log-level=warning && node dist/figes.mjs",
     "variete:jump": "esbuild tools/variete.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/variete.mjs --log-level=warning && node dist/variete.mjs",
     "ponts:modules": "esbuild tools/ponts.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/ponts.mjs --log-level=warning && node dist/ponts.mjs",
+    "etats:modules": "esbuild tools/etats.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/etats.mjs --log-level=warning && node dist/etats.mjs",
     "rebonds:modules": "esbuild tools/rebonds.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/rebonds.mjs --log-level=warning && node dist/rebonds.mjs"
   }
 }

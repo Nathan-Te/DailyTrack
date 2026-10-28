@@ -44,6 +44,7 @@ import {
   SINGLE_CLOCK_VERSION,
   MUSHROOM_VERSION,
   RESTART_VERSION,
+  ALT_KEPT_VERSION,
   LASER_VERSION,
   bridgeModuleIds,
   STALACTITE_VERSION,
@@ -112,8 +113,8 @@ describe("niveau du jour : identité et pureté", () => {
     // Lot 16 : avec ses voies lentes (et leurs montées ajoutées).
     const fresh = reassemble(levels[7]!);
     // Lot 15 : l'assemblage est en version 3 ; le niveau du jour, le même mis à l'heure unique (phases des sections).
-    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), RESTART_VERSION)).toBe(levels[7]!.ascii);
-    expect(levels[7]!.level.simVersion).toBe(RESTART_VERSION);
+    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), ALT_KEPT_VERSION)).toBe(levels[7]!.ascii);
+    expect(levels[7]!.level.simVersion).toBe(ALT_KEPT_VERSION);
   });
 
   it("trois dates voisines donnent trois niveaux différents", () => {

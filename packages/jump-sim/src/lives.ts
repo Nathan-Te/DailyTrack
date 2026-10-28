@@ -1,5 +1,5 @@
 import { RESPAWN_TICKS } from "./attempt";
-import { RESTART_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
+import { ALT_KEPT_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import type { Level } from "./level";
@@ -56,6 +56,13 @@ export function sectionAt(level: Level, x: number): number {
 /** Ce qui ne va pas dans l'en-tête d'une vie pour ce niveau, ou `null` s'il est atteignable. */
 export function lifeStartProblem(level: Level, start: ReplayStart): string | null {
   if (start.elan) return "Une vie ne part jamais lancée";
+  // Lot 28 (v12) : une vie qui repart d'un point de passage garde l'état des blocs alternés ; B n'existe que dans un niveau qui en a, sur un point, depuis la version 12.
+  if (start.alt !== undefined && start.alt !== 0 && start.alt !== 1) return "État des blocs alternés invalide";
+  if (start.alt === 1) {
+    if (level.simVersion < ALT_KEPT_VERSION) return "Les blocs alternés ne gardent leur état qu'à partir de la version 12";
+    if (start.checkpoint < 0) return "Une vie partie du départ commence en A";
+    if (level.alts.length === 0) return "Ce niveau n'a pas de blocs alternés";
+  }
   if (level.simVersion >= SINGLE_CLOCK_VERSION) {
     if (start.sections.length !== 0) return "Un niveau à une seule horloge n'a pas de sections dans l'en-tête";
     if (start.checkpoint >= 0 && !level.checkpoints[start.checkpoint]) return `Point de passage ${start.checkpoint} absent de ce niveau`;

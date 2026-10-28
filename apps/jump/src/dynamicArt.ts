@@ -5,6 +5,9 @@ import { BLOCK_STYLE, blockLooks, type BlockLook } from "./blocks";
 // Le dessin des blocs clignotants (nuit) et alternés (néon), lot 12 — **affichage seul** : il ne lit que l'état de l'essai (`blockLooks`).
 //   - un bloc **plein** : une face colorée, un liseré clair, un repère (aucun pour un clignotant, une barre pour A, un losange pour B) ;
 //   - un bloc **absent** : seulement son contour, discret, pour qu'on sache où il reviendra (un clignotant : contour **pointillé**, lot 18) ;
+//   - lot 28, **l'état suivant des alternés se lit sur les blocs** : un bloc alterné absent garde son repère (barre pour A, losange pour B), en filigrane — c'est le jeu qui apparaîtra au prochain
+//     saut — et un bloc alterné plein porte, au coin, une pastille de la forme et de la couleur de ce prochain jeu ; à chaque bascule le jeu qui vient de disparaître laisse un instant sa trace
+//     (une face fantôme qui s'éteint avec l'éclat) : la bascule se voit à chaque saut, et jamais sans saut (le dessin ne change d'état que si la simulation le fait) ;
 //   - lot 18, l'annonce (`announce.ts`) : un clignotant plein qui va **s'éteindre** voit sa face **se vider comme une jauge qui descend** pendant ses
 //     0,6 dernières secondes (vide pile au pas de la disparition) ; absent, son contour pointillé **se remplit** pendant les 0,4 s avant son retour
 //     (plein pile au pas de la réapparition). Aucun clignotement, avec ou sans mouvement réduit : c'est une information de jeu ;
@@ -23,6 +26,9 @@ const LEVEL_LINE = 0.05;
 const REFILL_FACE = 0.4;
 const DOTTED_MIN = 0.4;
 const DOTTED_MAX = 0.9;
+/** Lot 28 : l'opacité du repère d'un bloc alterné absent (en filigrane) et de la face fantôme laissée par la bascule (à l'éclat plein). */
+const MARK_GHOST = 0.55;
+const GHOST_FACE = 0.45;
 
 /** Un cadre carré de côté `size` (tuiles) d'épaisseur `t`, en 8 triangles. */
 function frameGeometry(size: number, t: number): BufferGeometry {
@@ -109,6 +115,11 @@ export interface DynamicStats {
   /** Le jeu solide à la dernière image (0 : A, 1 : B ; −1 sans blocs alternés) et l'éclat en cours (0 à 1). */
   alt: number;
   flash: number;
+  /** Lot 28 : le jeu que le prochain saut rendra solide (0 : A, 1 : B ; −1 sans blocs alternés), les repères en filigrane des blocs alternés absents, les pastilles « prochain jeu » des blocs pleins, les faces fantômes de la dernière bascule. */
+  next: number;
+  marks: number;
+  pips: number;
+  ghosts: number;
 }
 
 export interface DynamicBlocks {
@@ -134,6 +145,10 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
   const lineGeo = new PlaneGeometry(FACE, LEVEL_LINE);
   const barGeo = new PlaneGeometry(0.46, 0.11);
   const diamond = diamondGeometry(0.17);
+  // Lot 28 : la pastille du prochain jeu, au coin d'un bloc alterné plein (une petite barre pour A, un petit losange pour B).
+  const pipBar = new PlaneGeometry(0.2, 0.06);
+  const pipDiamond = diamondGeometry(0.075);
+  const PIP = 0.32;
   const cells: { col: number; row: number; kind: "blink" | "A" | "B" }[] = [
     ...level.blinks.map((b) => ({ col: b.col, row: b.row, kind: "blink" as const })),
     ...level.alts.map((a) => ({ col: a.col, row: a.row, kind: a.set === 0 ? ("A" as const) : ("B" as const) })),
@@ -164,15 +179,24 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
       frameDash.visible = false;
       g.add(frameDash, line);
     }
+    // Lot 28 : le repère du jeu (un matériau à lui : en filigrane quand le bloc est absent) et la pastille du jeu suivant (la forme et la couleur de l'autre jeu).
     let mark: Mesh | null = null;
-    if (c.kind === "A") mark = new Mesh(barGeo, edgeMat);
-    else if (c.kind === "B") mark = new Mesh(diamond, edgeMat);
-    if (mark) {
+    let markMat: MeshBasicMaterial | null = null;
+    let pip: Mesh | null = null;
+    let pipMat: MeshBasicMaterial | null = null;
+    if (c.kind !== "blink") {
+      markMat = new MeshBasicMaterial({ color: style.edge, transparent: true, side: DoubleSide });
+      mark = new Mesh(c.kind === "A" ? barGeo : diamond, markMat);
       mark.position.z = 0.004;
-      g.add(mark);
+      const other = c.kind === "A" ? BLOCK_STYLE.altB : BLOCK_STYLE.altA;
+      pipMat = new MeshBasicMaterial({ color: other.edge, transparent: true, side: DoubleSide });
+      pip = new Mesh(c.kind === "A" ? pipDiamond : pipBar, pipMat);
+      pip.position.set(PIP, PIP, 0.005);
+      pip.visible = false;
+      g.add(mark, pip);
     }
     world.add(g);
-    return { g, face, faceMat, edgeMat, frameThin, frameThick, frameDash, line, mark, base: new Color(style.fill), edge: new Color(style.edge), kind: c.kind };
+    return { g, face, faceMat, edgeMat, frameThin, frameThick, frameDash, line, mark, markMat, pip, base: new Color(style.fill), edge: new Color(style.edge), kind: c.kind };
   });
 
   // ——— ?debug&hitbox : l'état solide (cadre vert) ou absent (croix rouge) de chaque bloc, et le jeu A ou B actif ———
@@ -202,7 +226,7 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
   const tmp = new Color();
   let flashAmount = 0;
   let lastClock = 0;
-  const stats: DynamicStats = { blinks: level.blinks.length, alts: level.alts.length, solid: 0, absent: 0, waiting: 0, draining: 0, refilling: 0, dotted: 0, fills: level.blinks.map(() => 0), levelLine: -1, thick: 0, clockFade: 1, blinkFace: -1, altFace: -1, alt: level.alts.length > 0 ? 0 : -1, flash: 0 };
+  const stats: DynamicStats = { blinks: level.blinks.length, alts: level.alts.length, solid: 0, absent: 0, waiting: 0, draining: 0, refilling: 0, dotted: 0, fills: level.blinks.map(() => 0), levelLine: -1, thick: 0, clockFade: 1, blinkFace: -1, altFace: -1, alt: level.alts.length > 0 ? 0 : -1, flash: 0, next: level.alts.length > 0 ? 1 : -1, marks: 0, pips: 0, ghosts: 0 };
 
   return {
     stats,
@@ -220,6 +244,8 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
       stats.blinkFace = stats.altFace = -1;
       stats.clockFade = fade;
       stats.alt = level.alts.length > 0 ? (state.alt ?? 0) : -1;
+      stats.next = level.alts.length > 0 ? 1 - (state.alt ?? 0) : -1;
+      stats.marks = stats.pips = stats.ghosts = 0;
       stats.flash = flashAmount;
       let nb = 0;
       let nc = 0;
@@ -264,6 +290,12 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
             lineOpacity = 0.7;
           }
         }
+        // La trace de la dernière bascule : le jeu qui vient de disparaître laisse une face fantôme qui s'éteint avec l'éclat (jamais sans mouvement : l'éclat est alors nul).
+        if (!isBlink && !look.solid && !look.waiting && flashAmount > 0.01) {
+          faceOpacity = GHOST_FACE * flashAmount;
+          height = 1;
+          stats.ghosts++;
+        }
         // Lot 17 : pendant le carnage, les clignotants (qui suivent l'horloge) sont estompés ; l'opacité de la face et du contour suit.
         if (isBlink) {
           faceOpacity *= fade;
@@ -292,7 +324,16 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
             if (stats.levelLine < 0) stats.levelLine = lineOpacity;
           }
         }
-        if (b.mark) b.mark.visible = look.solid;
+        // Lot 28 : le repère du jeu reste visible quand le bloc est absent (en filigrane : c'est le jeu qui apparaît au prochain saut) ; la pastille du jeu suivant marque les blocs pleins.
+        if (b.mark && b.markMat) {
+          b.mark.visible = true;
+          b.markMat.opacity = look.solid ? 1 : MARK_GHOST;
+          if (!look.solid) stats.marks++;
+        }
+        if (b.pip) {
+          b.pip.visible = look.solid;
+          if (look.solid) stats.pips++;
+        }
         // Éclat : les blocs alternés pleins tirent vers le blanc.
         tmp.copy(b.base);
         b.faceMat.color.copy(b.kind !== "blink" && look.solid && flashAmount > 0 ? tmp.lerp(white, 0.75 * flashAmount) : b.base);

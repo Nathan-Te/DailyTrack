@@ -1,5 +1,6 @@
 import { Rng } from "@cdj/core";
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, stepAttempt, type AttemptState } from "./attempt";
+import { hopToA } from "./alternes";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import { cycleMod, sectionPeriod, type Level } from "./level";
@@ -148,11 +149,15 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
     // Lot 21 : les commandes d'un morceau repris depuis l'arrêt (jouées après l'attente, avant de reprendre la preuve à `cursor`).
     let pending: readonly number[] = [];
     let played = 0;
+    // Lot 28 (v12) : repartant en B d'un point de passage, le joueur fictif saute d'abord une fois sur place (les alternés repassent en A) avant d'attendre et de jouer.
+    let prefix: readonly number[] = [];
+    let prefixPlayed = 0;
     let done: RecordedAttempt | null = null;
     for (;;) {
-      const inPending = wait === 0 && played < pending.length;
-      let bits = wait > 0 ? 0 : inPending ? pending[played]! : (plan.inputs[cursor] ?? 0);
-      if (wait === 0 && !inPending) {
+      const inPrefix = prefixPlayed < prefix.length;
+      const inPending = !inPrefix && wait === 0 && played < pending.length;
+      let bits = inPrefix ? prefix[prefixPlayed]! : wait > 0 ? 0 : inPending ? pending[played]! : (plan.inputs[cursor] ?? 0);
+      if (!inPrefix && wait === 0 && !inPending) {
         for (const [a, b, c] of cuts) {
           if (cursor < a || cursor >= b) continue;
           // Lot 16 (v4) : une faute ne fait jamais sauter sur le palier d'un point de passage : de là part la voie lente d'une portion dure
@@ -164,6 +169,10 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
       s = stepAttempt(before, bits, level, DEFAULT_JUMP_PARAMS);
       done = recorder.step(before, bits, s);
       if (done) break;
+      if (inPrefix) {
+        prefixPlayed++;
+        continue;
+      }
       if (wait > 0) {
         wait--;
         continue;
@@ -187,7 +196,11 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
         if (options.reprise) for (let i = cuts.length - 1; i >= 0; i--) if (cuts[i]![0] < cursor) cuts.splice(i, 1);
         pending = [];
         played = 0;
-        const again = options.reprise && calm ? options.reprise.resume(level, s) : null;
+        const hop = hopToA(level, s);
+        prefix = hop ? hop.inputs : [];
+        prefixPlayed = 0;
+        const from = hop ? hop.after : s;
+        const again = options.reprise && calm ? options.reprise.resume(level, from) : null;
         if (again) {
           pending = again.inputs;
           cursor = again.cursor;
@@ -195,7 +208,7 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
         } else {
           cursor = plan.resume[s.checkpoint] ?? 0;
           if (cursor < 0) cursor = 0;
-          if (level.simVersion >= SINGLE_CLOCK_VERSION) wait = alignWait(level, s, cursor);
+          if (level.simVersion >= SINGLE_CLOCK_VERSION) wait = alignWait(level, from, cursor);
         }
         since = 0;
         far = centerCol(s);

@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 11;
+export const JUMP_SIM_VERSION = 12;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -77,6 +77,14 @@ export const BRIDGE_VERSION = 10;
  * un niveau sans point de passage ni commande de reprise se joue comme avant, mais ses morts ne reprennent plus au départ : les golden v3 à v10 n'ont pas bougé.
  */
 export const RESTART_VERSION = 11;
+/**
+ * Lot 28 : **version 12 = version 11 + les blocs alternés gardent leur état à la reprise**. Dans un niveau à blocs alternés, la reprise sur un point de passage — après une mort ou par la
+ * reprise volontaire — **garde la parité** (A ou B) qu'avait le jeu au moment de la reprise, au lieu de la remettre à A (lot 15) : seul un nouvel essai à zéro (départ, mort avant le premier
+ * point, « recommencer ») la remet à A, et franchir un point de passage la remet toujours à A (lot 12). Une vie qui repart d'un point de passage porte donc cette parité dans son en-tête
+ * (`ReplayStart.alt`, drapeau de départ 16, seulement depuis la version 12). Un niveau sans bloc alterné se joue comme en v11 ; les golden v3 à v11 n'ont pas bougé. Les niveaux du jour
+ * depuis le générateur g22 sont en v12.
+ */
+export const ALT_KEPT_VERSION = 12;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -101,9 +109,10 @@ export const RESTART_VERSION = 11;
  * 18 depuis le lot 24 (stalactites : niveaux en sim v8, morceaux de la glace à stalactites, règles du générateur) ;
  * 19 depuis le lot 25 (lasers : niveaux en sim v9, morceaux du néon à lasers, règles du générateur ; variété `VARIETY_DAYS` = 4) ;
  * 20 depuis le lot 26 (ponts à interrupteur : niveaux en sim v10, morceaux de la nuit à ponts, règles du générateur ; équilibre des mécaniques de chaque thème) ;
- * 21 depuis le lot 27 (niveaux en sim v11 : un nouvel essai à zéro avant le premier point de passage, reprise volontaire ; forêt : le vent souffle en continu, plus de rafales).
+ * 21 depuis le lot 27 (niveaux en sim v11 : un nouvel essai à zéro avant le premier point de passage, reprise volontaire ; forêt : le vent souffle en continu, plus de rafales) ;
+ * 22 depuis le lot 28 (niveaux en sim v12 : les blocs alternés gardent leur état à la reprise ; chaque variante à alternés se reprend aussi depuis l'état B ; jamais d'alterné hors du néon).
  */
-export const JUMP_GENERATOR_VERSION = 21;
+export const JUMP_GENERATOR_VERSION = 22;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
-import { ATTEMPT_DEAD, DEFAULT_JUMP_PARAMS, INPUT_RIGHT, dailyLevel, initialAttempt, stepAttempt } from "@cdj/jump-sim";
+import { ATTEMPT_DEAD, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, attemptReplay, dailyLevel, encodeReplay, fromRuns, initialAttempt, jumpThemeForDay, stepAttempt } from "@cdj/jump-sim";
 import { FROZEN_DATES, generatedDay, pageLevel } from "./jours";
 import { hasWebGL } from "./phone";
 
@@ -29,7 +29,7 @@ const jump = (page: Page) =>
  * Un jour dont le niveau, de la version demandée, a au moins une scie mobile : de quoi voir un danger bouger avant le départ. La v4 (horloge unique, générateurs
  * g10 à g14) ne se génère plus depuis le lot 20 : on prend un jour **figé** en v4 ; la v9 (lasers, g19 ; v8 : stalactites, g18 ; v7 : champignons, g17 ; v6 : presses, g16 ; v5 : plateformes mobiles, g15) est celle d'un jour sans fichier figé.
  */
-function dayWithSaw(version: 4 | 11): string {
+function dayWithSaw(version: 4 | 12): string {
   const movingSaw = (date: string) => pageLevel(date).level.saws.some((s) => s.cycle > 0);
   if (version === 4) {
     const date = FROZEN_DATES.filter((d) => pageLevel(d).level.simVersion === 4).find(movingSaw);
@@ -48,7 +48,7 @@ async function open(page: Page, date: string): Promise<boolean> {
   return true;
 }
 
-for (const version of [4, 11] as const) test(`niveau v${version} : pendant le « Prêt… » les dangers bougent déjà, puis le chrono part à heure fixe sans commande ; « recommencer » relance le « Prêt… »`, async ({ page }) => {
+for (const version of [4, 12] as const) test(`niveau v${version} : pendant le « Prêt… » les dangers bougent déjà, puis le chrono part à heure fixe sans commande ; « recommencer » relance le « Prêt… »`, async ({ page }) => {
   const date = dayWithSaw(version);
   test.skip(!(await open(page, date)), "pas de WebGL dans ce navigateur");
   // Un « Prêt… » neuf : jusqu'à `manual(true)` la boucle tourne en temps réel et a pu en consommer une partie en se chargeant (WebKit : 20 pas).
@@ -87,7 +87,7 @@ for (const version of [4, 11] as const) test(`niveau v${version} : pendant le «
 });
 
 // Lot R13 : la pause sur le niveau du jour seulement (v8 depuis le lot 24) (la même règle qu'en v4 ; le « Prêt… » du v4 figé est vérifié plus haut).
-for (const version of [11] as const) test(`niveau v${version} : la pause fige tout, « Prêt… » compris ; le « Prêt… » reprend à la fermeture`, { tag: "@regression" }, async ({ page }) => {
+for (const version of [12] as const) test(`niveau v${version} : la pause fige tout, « Prêt… » compris ; le « Prêt… » reprend à la fermeture`, { tag: "@regression" }, async ({ page }) => {
   const date = dayWithSaw(version);
   test.skip(!(await open(page, date)), "pas de WebGL dans ce navigateur");
   // Un « Prêt… » neuf (la page a pu le consommer en se chargeant), puis la pause tout de suite, boucle en temps réel.
@@ -332,4 +332,106 @@ test("au doigt : le drapeau (dernier point de passage) et « recommencer » à c
   } finally {
     await context.close();
   }
+});
+
+// ——— Lot 28 — les blocs alternés gardent leur état à la reprise (niveau du jour généré : version 12) ———
+interface J28 extends J27 {
+  blocks: { alt: number; alts: number; blinks: number; next?: number; pips?: number; marks?: number; states: boolean[]; phases: number[] } | null;
+}
+
+/**
+ * Un jour généré du thème voulu où la preuve de l'auteur, puis (si `hop`) un saut juste après le premier point de passage et la course droite tenue, meurt avant le point suivant :
+ * les commandes de l'essai, jouées par `autoplay`. Avec le saut, les blocs alternés sont en B à la mort ; sans, A (une nuit : pas d'alternés).
+ */
+function dayDyingAfterFirstPoint(theme: "neon" | "nuit", hop: boolean): { date: string; code: string } {
+  let day = parseDay(generatedDay())!;
+  for (let k = 0; k < 60; k++, day++) {
+    if (jumpThemeForDay(day) !== theme) continue;
+    const L = dailyLevel(day);
+    const proof = fromRuns(L.replay.runs);
+    let s = initialAttempt(L.level);
+    const inputs: number[] = [];
+    for (let t = 0; t < proof.length && s.checkpoint < 0; t++) {
+      s = stepAttempt(s, proof[t]!, L.level, DEFAULT_JUMP_PARAMS);
+      inputs.push(proof[t]!);
+    }
+    if (s.checkpoint < 0) continue;
+    // Un saut en courant (il inverse les jeux), puis la droite tenue jusqu'à la mort.
+    for (let t = 0; t < 6 && hop; t++) {
+      s = stepAttempt(s, INPUT_RIGHT | INPUT_JUMP, L.level, DEFAULT_JUMP_PARAMS);
+      inputs.push(INPUT_RIGHT | INPUT_JUMP);
+    }
+    if (hop && (s.alt ?? 0) !== 1) continue;
+    for (let t = 0; t < 2500 && s.status !== ATTEMPT_DEAD && s.checkpoint === 0; t++) {
+      s = stepAttempt(s, INPUT_RIGHT, L.level, DEFAULT_JUMP_PARAMS);
+      inputs.push(INPUT_RIGHT);
+    }
+    if (s.status === ATTEMPT_DEAD && s.checkpoint === 0 && (!hop || s.alt === 1)) return { date: L.date, code: encodeReplay(attemptReplay(L.id, inputs, 0, 0, L.level.simVersion)) };
+  }
+  throw new Error(`aucun jour de ${theme} généré où l'on meurt après le premier point de passage`);
+}
+
+test("néon : un nombre impair de sauts, la mort : les blocs alternés restent dans leur état à la reprise (ni remise à A, ni bascule), et le repère annonce toujours le jeu suivant", { tag: "@regression" }, async ({ page }) => {
+  const { date, code } = dayDyingAfterFirstPoint("neon", true);
+  test.skip(!(await open27(page, "", date)), "pas de WebGL dans ce navigateur");
+  const frame = () => page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+  const read = () =>
+    page.evaluate(() => {
+      const j = (window as unknown as { __jump: J28 }).__jump;
+      return { status: j.attempt.status, checkpoint: j.attempt.checkpoint, alt: j.blocks!.alt, states: [...j.blocks!.states], next: j.blocks!.next, pips: j.blocks!.pips, simVersion: j.simVersion };
+    });
+  await page.evaluate((replay) => {
+    const j = (window as unknown as { __jump: J28 }).__jump;
+    j.manual(true);
+    j.restart();
+    j.advance(180); // le décompte
+    j.autoplay(replay);
+    let n = 0;
+    while (j.attempt.deaths === 0 && n++ < 6000) j.advance(1);
+  }, code);
+  await frame(); // le dessin lit l'état de la mort
+  const dead = await read();
+  await page.evaluate(() => {
+    const j = (window as unknown as { __jump: J28 }).__jump;
+    j.input(0);
+    j.advance(j.attempt.respawnTicks);
+  });
+  await frame();
+  const back = await read();
+  const r = { dead, back };
+  // Un saut : B plein ; le prochain saut rendrait A (le repère le dit), et la reprise n'y change rien.
+  expect(r.dead).toMatchObject({ status: "mort", checkpoint: 0, alt: 1, next: 0 });
+  expect(r.back).toMatchObject({ status: "course", checkpoint: 0, alt: 1, next: 0, simVersion: 12 });
+  expect(r.back.states, "les blocs sont dans le même état qu'à la mort").toEqual(r.dead.states);
+  expect(r.back.pips, "une pastille « jeu suivant » par bloc plein").toBe(r.dead.pips);
+  expect(r.back.pips).toBeGreaterThan(0);
+});
+
+test("nuit : aucun alterné ; les clignotants ne bougent pas à la reprise (l'horloge continue sans à-coup)", { tag: "@regression" }, async ({ page }) => {
+  const { date, code } = dayDyingAfterFirstPoint("nuit", false);
+  test.skip(!(await open27(page, "", date)), "pas de WebGL dans ce navigateur");
+  const r = await page.evaluate((replay) => {
+    const j = (window as unknown as { __jump: J28 }).__jump;
+    j.manual(true);
+    j.restart();
+    j.advance(180);
+    j.autoplay(replay);
+    let n = 0;
+    while (j.attempt.deaths === 0 && n++ < 6000) j.advance(1);
+    j.advance(1);
+    const dead = { time: j.attempt.time, phases: [...j.blocks!.phases], blinks: j.blocks!.blinks, alts: j.blocks!.alts, alt: j.blocks!.alt };
+    j.input(0);
+    j.advance(j.attempt.respawnTicks);
+    j.advance(1);
+    const back = { time: j.attempt.time, phases: [...j.blocks!.phases], status: j.attempt.status, checkpoint: j.attempt.checkpoint };
+    return { dead, back };
+  }, code);
+  expect(r.dead.alts, "pas de bloc alterné hors du néon").toBe(0);
+  expect(r.dead.alt).toBe(-1);
+  expect(r.dead.blinks).toBeGreaterThan(0);
+  expect(r.back).toMatchObject({ status: "course", checkpoint: 0 });
+  // Chaque horloge a avancé exactement du temps écoulé : la reprise ne la remet pas à zéro.
+  const elapsed = r.back.time - r.dead.time;
+  expect(elapsed).toBeGreaterThan(0);
+  r.dead.phases.forEach((p, i) => expect(r.back.phases[i], `section ${i}`).toBe(p + elapsed));
 });

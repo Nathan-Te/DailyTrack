@@ -1,4 +1,4 @@
-import { RESTART_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
+import { ALT_KEPT_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { boxHits, sweep, tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
 import {
@@ -305,7 +305,8 @@ export function respawnAttempt(level: Level, state: Readonly<AttemptState>): Att
 
 /**
  * Reprise au point de passage `state.checkpoint` (lot 2b) : le personnage posé sur ce point, à l'arrêt ; friables reposés ; sections du
- * point et d'après à l'arrêt (celles d'avant gardent leur cycle) ; le chrono continue (`time` inchangé ici).
+ * point et d'après à l'arrêt (celles d'avant gardent leur cycle) ; le chrono continue (`time` inchangé ici). Lot 28 (v12) : les blocs alternés gardent
+ * la parité de `state.alt`.
  */
 export function checkpointAttempt(level: Level, state: Readonly<AttemptState>): AttemptState {
   const cell = level.checkpoints[state.checkpoint]!;
@@ -319,7 +320,9 @@ export function checkpointAttempt(level: Level, state: Readonly<AttemptState>): 
     sections,
     checkpoint: state.checkpoint,
   };
-  // Lot 12 : les clignotants des sections d'avant ont gardé leur cycle ; les alternés repartent de A (état du point de passage).
+  // Lot 28 (v12) : les alternés **gardent leur état** à la reprise (A ou B, celui qu'avait le jeu à la mort ou à la reprise volontaire) ; seul un nouvel essai à zéro les remet à A.
+  if (level.simVersion >= ALT_KEPT_VERSION && level.alts.length > 0) back.alt = state.alt ?? 0;
+  // Lot 12 : les clignotants des sections d'avant ont gardé leur cycle ; les alternés repartent de A (état du point de passage) — avant la v12.
   return { ...back, tiles: settleDynamic(level, back.tiles, back.sections, back.time, back.alt ?? 0, back.player) };
 }
 

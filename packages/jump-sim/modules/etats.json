@@ -1,0 +1,3428 @@
+{
+ "rule": 1,
+ "perPeriod": 8,
+ "modules": {
+  "ascenseur": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "balancier": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "chaland": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "champignon-balade": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "champignon-chapelet": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "champignon-falaise": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "champignon-iles": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "champignon-rafale": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "champignon-tourbillon": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "champignon-zigzag": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "cheminee-pics": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "cheminee-quinconce": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "cheminee-scie": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "cheminee-vide": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "cheminee": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "chute-pics": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "corniches": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "demi-tour": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "descente-scies": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "descente": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "escalier-friable": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "escalier-scies": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "escalier": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "glace-cheminee": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "glace-corniches": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "glace-freinage": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "glace-mur": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "glace-promenade": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "glace-relais": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "glace-saut-haut": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "grande-scie": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "iles-friables": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "iles-scie": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "laser-allee": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "laser-alterne-balai": {
+   "variants": [
+    {
+     "grid": "28dde922",
+     "period": 400,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MAA0-BaaA3biAy7iAj6aBw",
+       "exitTick": 663,
+       "gigue": [
+        1000,
+        1000,
+        950
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 50,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MAA06BOaA3biAy7iAj6aBw",
+       "exitTick": 613,
+       "gigue": [
+        1000,
+        1000,
+        950
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 100,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MAA02BCaA3biAy7iAj6aBw",
+       "exitTick": 563,
+       "gigue": [
+        1000,
+        1000,
+        950
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 150,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MAA0yA2aA3biAy7iAj6aBw",
+       "exitTick": 513,
+       "gigue": [
+        1000,
+        1000,
+        950
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 200,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MAA0uAqaA3biAy7iAj6aBw",
+       "exitTick": 463,
+       "gigue": [
+        1000,
+        1000,
+        950
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 250,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MAA0qAeaA3biAy7iAj6aBw",
+       "exitTick": 413,
+       "gigue": [
+        1000,
+        1000,
+        950
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 300,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MAA0mASaA3biAy7iAj6aBw",
+       "exitTick": 363,
+       "gigue": [
+        1000,
+        1000,
+        950
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 350,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MAA0iBqaA3biAy7iAj6aBw",
+       "exitTick": 713,
+       "gigue": [
+        1000,
+        1000,
+        950
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "897f06ea",
+     "period": 480,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MQA0-BuiA3ayAy7aAjbSBw",
+       "exitTick": 743,
+       "gigue": [
+        1000,
+        995,
+        945
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 60,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MQA0mBiiA3ayAy7aAjbSBw",
+       "exitTick": 683,
+       "gigue": [
+        1000,
+        995,
+        945
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 120,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MQA0uBSiA3ayAy7aAjbSBw",
+       "exitTick": 623,
+       "gigue": [
+        1000,
+        995,
+        945
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 180,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MQA02BCiA3ayAy7aAjbSBw",
+       "exitTick": 563,
+       "gigue": [
+        1000,
+        995,
+        945
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 240,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MQA0-AyiA3ayAy7aAjbSBw",
+       "exitTick": 503,
+       "gigue": [
+        1000,
+        995,
+        945
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 300,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MQA0mAmiA3ayAy7aAjbSBw",
+       "exitTick": 443,
+       "gigue": [
+        1000,
+        995,
+        945
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 360,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MQA0uAWiA3ayAy7aAjbSBw",
+       "exitTick": 383,
+       "gigue": [
+        1000,
+        995,
+        945
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 420,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MQA02B-iA3ayAy7aAjbSBw",
+       "exitTick": 803,
+       "gigue": [
+        1000,
+        995,
+        945
+       ],
+       "exigence": 2
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "635316f7",
+     "period": 560,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MgA0-CCSAzaKBC7SAjbSBw",
+       "exitTick": 823,
+       "gigue": [
+        1000,
+        950,
+        875
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 70,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MgA0yBySAzaKBC7SAjbSBw",
+       "exitTick": 753,
+       "gigue": [
+        1000,
+        950,
+        875
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 140,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MgA0mBiSAzaKBC7SAjbSBw",
+       "exitTick": 683,
+       "gigue": [
+        1000,
+        950,
+        875
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 210,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MgA06BOSAzaKBC7SAjbSBw",
+       "exitTick": 613,
+       "gigue": [
+        1000,
+        950,
+        875
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 280,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MgA0uA-SAzaKBC7SAjbSBw",
+       "exitTick": 543,
+       "gigue": [
+        1000,
+        950,
+        875
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 350,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MgA0iAuSAzaKBC7SAjbSBw",
+       "exitTick": 473,
+       "gigue": [
+        1000,
+        950,
+        875
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 420,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MgA02AaSAzaKBC7SAjbSBw",
+       "exitTick": 403,
+       "gigue": [
+        1000,
+        950,
+        875
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 490,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MgA0qCWSAzaKBC7SAjbSBw",
+       "exitTick": 893,
+       "gigue": [
+        1000,
+        950,
+        875
+       ],
+       "exigence": 2
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "6ab48b09",
+     "period": 400,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MwA0-BaqBS7CAi6CAi7iBw",
+       "exitTick": 663,
+       "gigue": [
+        980,
+        745,
+        620
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 50,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MwA06BOqBS7CAi6CAi7iBw",
+       "exitTick": 613,
+       "gigue": [
+        980,
+        745,
+        620
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 100,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MwA02BCqBS7CAi6CAi7iBw",
+       "exitTick": 563,
+       "gigue": [
+        980,
+        745,
+        620
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 150,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MwA0yA2qBS7CAi6CAi7iBw",
+       "exitTick": 513,
+       "gigue": [
+        980,
+        745,
+        620
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 200,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MwA0uAqqBS7CAi6CAi7iBw",
+       "exitTick": 463,
+       "gigue": [
+        980,
+        745,
+        620
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 250,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MwA0qAeqBS7CAi6CAi7iBw",
+       "exitTick": 413,
+       "gigue": [
+        980,
+        745,
+        620
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 300,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MwA0mASqBS7CAi6CAi7iBw",
+       "exitTick": 363,
+       "gigue": [
+        980,
+        745,
+        620
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 350,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6MwA0iBqqBS7CAi6CAi7iBw",
+       "exitTick": 713,
+       "gigue": [
+        980,
+        745,
+        620
+       ],
+       "exigence": 4
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "1241d3f2",
+     "period": 480,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NAA0-BvCApYB8gMu-gI2sgc",
+       "exitTick": 743,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 60,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NAA0mBjCApYB8gMu-gI2sgc",
+       "exitTick": 683,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 120,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NAA0uBTCApYB8gMu-gI2sgc",
+       "exitTick": 623,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 180,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NAA02BDCApYB8gMu-gI2sgc",
+       "exitTick": 563,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 240,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NAA0-AzCApYB8gMu-gI2sgc",
+       "exitTick": 503,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 300,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NAA0mAnCApYB8gMu-gI2sgc",
+       "exitTick": 443,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 360,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NAA0uAXCApYB8gMu-gI2sgc",
+       "exitTick": 383,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 420,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NAA02B_CApYB8gMu-gI2sgc",
+       "exitTick": 803,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "669c1e72",
+     "period": 560,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NQA0-CCKAz66Ay6iAzbSBw",
+       "exitTick": 823,
+       "gigue": [
+        1000,
+        965,
+        860
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 70,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NQA0yByKAz66Ay6iAzbSBw",
+       "exitTick": 753,
+       "gigue": [
+        1000,
+        965,
+        860
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 140,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NQA0mBiKAz66Ay6iAzbSBw",
+       "exitTick": 683,
+       "gigue": [
+        1000,
+        965,
+        860
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 210,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NQA06BOKAz66Ay6iAzbSBw",
+       "exitTick": 613,
+       "gigue": [
+        1000,
+        965,
+        860
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 280,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NQA0uA-KAz66Ay6iAzbSBw",
+       "exitTick": 543,
+       "gigue": [
+        1000,
+        965,
+        860
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 350,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NQA0iAuKAz66Ay6iAzbSBw",
+       "exitTick": 473,
+       "gigue": [
+        1000,
+        965,
+        860
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 420,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NQA02AaKAz66Ay6iAzbSBw",
+       "exitTick": 403,
+       "gigue": [
+        1000,
+        965,
+        860
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 490,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NQA0qCWKAz66Ay6iAzbSBw",
+       "exitTick": 893,
+       "gigue": [
+        1000,
+        965,
+        860
+       ],
+       "exigence": 2
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "dd3b3062",
+     "period": 400,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NgA0-Ba6Ap4BggQusgIu8gc",
+       "exitTick": 663,
+       "gigue": [
+        865,
+        670,
+        515
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 50,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NgA06BO6Ap4BggQusgIu8gc",
+       "exitTick": 613,
+       "gigue": [
+        865,
+        670,
+        515
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 100,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NgA02BC6Ap4BggQusgIu8gc",
+       "exitTick": 563,
+       "gigue": [
+        865,
+        670,
+        515
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 150,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NgA0yA26Ap4BggQusgIu8gc",
+       "exitTick": 513,
+       "gigue": [
+        865,
+        670,
+        515
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 200,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NgA0uAq6Ap4BggQusgIu8gc",
+       "exitTick": 463,
+       "gigue": [
+        865,
+        670,
+        515
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 250,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NgA0qAe6Ap4BggQusgIu8gc",
+       "exitTick": 413,
+       "gigue": [
+        865,
+        670,
+        515
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 300,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NgA0mAS6Ap4BggQusgIu8gc",
+       "exitTick": 363,
+       "gigue": [
+        865,
+        670,
+        515
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 350,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NgA0iBq6Ap4BggQusgIu8gc",
+       "exitTick": 713,
+       "gigue": [
+        865,
+        670,
+        515
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "f14c890f",
+     "period": 480,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NwA0-BvSAn7CAy6SAzbSBw",
+       "exitTick": 743,
+       "gigue": [
+        1000,
+        975,
+        930
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 60,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NwA0mBjSAn7CAy6SAzbSBw",
+       "exitTick": 683,
+       "gigue": [
+        1000,
+        975,
+        930
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 120,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NwA0uBTSAn7CAy6SAzbSBw",
+       "exitTick": 623,
+       "gigue": [
+        1000,
+        975,
+        930
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 180,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NwA02BDSAn7CAy6SAzbSBw",
+       "exitTick": 563,
+       "gigue": [
+        1000,
+        975,
+        930
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 240,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NwA0-AzSAn7CAy6SAzbSBw",
+       "exitTick": 503,
+       "gigue": [
+        1000,
+        975,
+        930
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 300,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NwA0mAnSAn7CAy6SAzbSBw",
+       "exitTick": 443,
+       "gigue": [
+        1000,
+        975,
+        930
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 360,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NwA0uAXSAn7CAy6SAzbSBw",
+       "exitTick": 383,
+       "gigue": [
+        1000,
+        975,
+        930
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 420,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6NwA02B_SAn7CAy6SAzbSBw",
+       "exitTick": 803,
+       "gigue": [
+        1000,
+        975,
+        930
+       ],
+       "exigence": 2
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "36087a3c",
+     "period": 640,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OAA0-CXCAtYB2gM24gI2mgc",
+       "exitTick": 903,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 80,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OAA0-CDCAtYB2gM24gI2mgc",
+       "exitTick": 823,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 160,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OAA0-BvCAtYB2gM24gI2mgc",
+       "exitTick": 743,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 240,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OAA0-BbCAtYB2gM24gI2mgc",
+       "exitTick": 663,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 320,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OAA0-BHCAtYB2gM24gI2mgc",
+       "exitTick": 583,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 400,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OAA0-AzCAtYB2gM24gI2mgc",
+       "exitTick": 503,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 480,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OAA0-AfCAtYB2gM24gI2mgc",
+       "exitTick": 423,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 560,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OAA0-ALCAtYB2gM24gI2mgc",
+       "exitTick": 343,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "b90337d3",
+     "period": 520,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OQA0uB76AoYBygMu6gI2wgc",
+       "exitTick": 783,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 65,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OQA0sBr6AoYBygMu6gI2wgc",
+       "exitTick": 718,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 130,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OQA0qBb6AoYBygMu6gI2wgc",
+       "exitTick": 653,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 195,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OQA0oBL6AoYBygMu6gI2wgc",
+       "exitTick": 588,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 260,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OQA0mA76AoYBygMu6gI2wgc",
+       "exitTick": 523,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 325,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OQA0kAr6AoYBygMu6gI2wgc",
+       "exitTick": 458,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 390,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OQA0iAb6AoYBygMu6gI2wgc",
+       "exitTick": 393,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 455,
+       "code": "AQQcbW9kdWxlOmxhc2VyLWFsdGVybmUtYmFsYWk6OQA0wCL6AoYBygMu6gI2wgc",
+       "exitTick": 848,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "laser-alterne-portes": {
+   "variants": [
+    {
+     "grid": "6ace088e",
+     "period": 360,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjAANLgU0gMu6gLAA0FyLuoCLpIG",
+       "exitTick": 665,
+       "gigue": [
+        1000,
+        1000,
+        965
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 45,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjAANNAR0gMu6gLAA0FyLuoCLpIG",
+       "exitTick": 620,
+       "gigue": [
+        1000,
+        1000,
+        965
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 90,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjAANOgO0gMu6gLAA0FyLuoCLpIG",
+       "exitTick": 575,
+       "gigue": [
+        1000,
+        1000,
+        965
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 135,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjAANIAM0gMu6gLAA0FyLuoCLpIG",
+       "exitTick": 530,
+       "gigue": [
+        1000,
+        1000,
+        965
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 180,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjAANJgJ0gMu6gLAA0FyLuoCLpIG",
+       "exitTick": 485,
+       "gigue": [
+        1000,
+        1000,
+        965
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 225,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjAANLAG0gMu6gLAA0FyLuoCLpIG",
+       "exitTick": 440,
+       "gigue": [
+        1000,
+        1000,
+        965
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 270,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjAANMgD0gMu6gLAA0FyLuoCLpIG",
+       "exitTick": 395,
+       "gigue": [
+        1000,
+        1000,
+        965
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 315,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjAANKAX0gMu6gLAA0FyLuoCLpIG",
+       "exitTick": 710,
+       "gigue": [
+        1000,
+        1000,
+        965
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "f34a0a0a",
+     "period": 330,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjEANMgS4gNG4gJFQKIBIEUmgAHmBVI",
+       "exitTick": 578,
+       "gigue": [
+        790,
+        705,
+        650
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 41,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjEANIAQ4gNG4gJFQKIBIEUmgAHmBVI",
+       "exitTick": 537,
+       "gigue": [
+        790,
+        705,
+        650
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 82,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjEANLgN4gNG4gJFQKIBIEUmgAHmBVI",
+       "exitTick": 496,
+       "gigue": [
+        790,
+        705,
+        650
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 123,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjEANPAK4gNG4gJFQKIBIEUmgAHmBVI",
+       "exitTick": 455,
+       "gigue": [
+        790,
+        705,
+        650
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 165,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjEANKAI4gNG4gJFQKIBIEUmgAHmBVI",
+       "exitTick": 413,
+       "gigue": [
+        790,
+        705,
+        650
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 206,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjEANNgF4gNG4gJFQKIBIEUmgAHmBVI",
+       "exitTick": 372,
+       "gigue": [
+        790,
+        705,
+        650
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 247,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjEANJAD4gNG4gJFQKIBIEUmgAHmBVI",
+       "exitTick": 331,
+       "gigue": [
+        790,
+        715,
+        665
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 288,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjEANJgV4gNG4gJFQKIBIEUmgAHmBVI",
+       "exitTick": 620,
+       "gigue": [
+        790,
+        705,
+        650
+       ],
+       "exigence": 4
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "951d3bf2",
+     "period": 300,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjIANNgQsgNwCUpQ0gEuggUsMna6BQ",
+       "exitTick": 577,
+       "gigue": [
+        840,
+        795,
+        655
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 37,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjIANLAOsgNwCUpQ0gEuggUsMna6BQ",
+       "exitTick": 540,
+       "gigue": [
+        840,
+        795,
+        655
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 75,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjIANIAMsgNwCUpQ0gEuggUsMna6BQ",
+       "exitTick": 502,
+       "gigue": [
+        840,
+        795,
+        655
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 112,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjIANNgJsgNwCUpQ0gEuggUsMna6BQ",
+       "exitTick": 465,
+       "gigue": [
+        840,
+        795,
+        655
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 150,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjIANKgHsgNwCUpQ0gEuggUsMna6BQ",
+       "exitTick": 427,
+       "gigue": [
+        840,
+        795,
+        655
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 187,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjIANIAFsgNwCUpQ0gEuggUsMna6BQ",
+       "exitTick": 390,
+       "gigue": [
+        840,
+        795,
+        655
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 225,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjIANLAVsgNwCUpQ0gEuggUsMna6BQ",
+       "exitTick": 652,
+       "gigue": [
+        840,
+        795,
+        655
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 262,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjIANIgTsgNwCUpQ0gEuggUsMna6BQ",
+       "exitTick": 615,
+       "gigue": [
+        840,
+        795,
+        655
+       ],
+       "exigence": 4
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "89e42bcf",
+     "period": 420,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjMANJgYmgQYDCVYWhxdQg0uWCoZsgH2AcIG",
+       "exitTick": 686,
+       "gigue": [
+        945,
+        645,
+        570
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 52,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjMANPgUmgQYDCVYWhxdQg0uWCoZsgH2AcIG",
+       "exitTick": 634,
+       "gigue": [
+        945,
+        645,
+        570
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 105,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjMANNARmgQYDCVYWhxdQg0uWCoZsgH2AcIG",
+       "exitTick": 581,
+       "gigue": [
+        945,
+        645,
+        570
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 157,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjMANLAOmgQYDCVYWhxdQg0uWCoZsgH2AcIG",
+       "exitTick": 529,
+       "gigue": [
+        945,
+        645,
+        570
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 210,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjMANIgLmgQYDCVYWhxdQg0uWCoZsgH2AcIG",
+       "exitTick": 476,
+       "gigue": [
+        945,
+        645,
+        570
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 262,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjMANOgHmgQYDCVYWhxdQg0uWCoZsgH2AcIG",
+       "exitTick": 424,
+       "gigue": [
+        945,
+        645,
+        570
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 315,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjMANMAEmgQYDCVYWhxdQg0uWCoZsgH2AcIG",
+       "exitTick": 371,
+       "gigue": [
+        945,
+        645,
+        570
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 367,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjMANMAbmgQYDCVYWhxdQg0uWCoZsgH2AcIG",
+       "exitTick": 739,
+       "gigue": [
+        945,
+        645,
+        570
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "9ada18d0",
+     "period": 360,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjQANLgUqgM1FOICLtoCVroG",
+       "exitTick": 592,
+       "gigue": [
+        1000,
+        990,
+        920
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 45,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjQANNARqgM1FOICLtoCVroG",
+       "exitTick": 547,
+       "gigue": [
+        1000,
+        990,
+        920
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 90,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjQANOgOqgM1FOICLtoCVroG",
+       "exitTick": 502,
+       "gigue": [
+        1000,
+        990,
+        920
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 135,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjQANIAMqgM1FOICLtoCVroG",
+       "exitTick": 457,
+       "gigue": [
+        1000,
+        990,
+        920
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 180,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjQANJgJqgM1FOICLtoCVroG",
+       "exitTick": 412,
+       "gigue": [
+        1000,
+        990,
+        920
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 225,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjQANLAGqgM1FOICLtoCVroG",
+       "exitTick": 367,
+       "gigue": [
+        1000,
+        990,
+        920
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 270,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjQANMgDqgM1FOICLtoCVroG",
+       "exitTick": 322,
+       "gigue": [
+        1000,
+        990,
+        920
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 315,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjQANKAXqgM1FOICLtoCVroG",
+       "exitTick": 637,
+       "gigue": [
+        1000,
+        990,
+        920
+       ],
+       "exigence": 2
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "5ee5bf31",
+     "period": 300,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjUANNgQ0gMu4gKwA0lyLuICLqoG",
+       "exitTick": 605,
+       "gigue": [
+        1000,
+        1000,
+        960
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 37,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjUANLAO0gMu4gKwA0lyLuICLqoG",
+       "exitTick": 568,
+       "gigue": [
+        1000,
+        1000,
+        960
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 75,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjUANIAM0gMu4gKwA0lyLuICLqoG",
+       "exitTick": 530,
+       "gigue": [
+        1000,
+        1000,
+        960
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 112,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjUANNgJ0gMu4gKwA0lyLuICLqoG",
+       "exitTick": 493,
+       "gigue": [
+        1000,
+        1000,
+        960
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 150,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjUANKgH0gMu4gKwA0lyLuICLqoG",
+       "exitTick": 455,
+       "gigue": [
+        1000,
+        1000,
+        960
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 187,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjUANIAF0gMu4gKwA0lyLuICLqoG",
+       "exitTick": 418,
+       "gigue": [
+        1000,
+        1000,
+        960
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 225,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjUANLAV0gMu4gKwA0lyLuICLqoG",
+       "exitTick": 680,
+       "gigue": [
+        1000,
+        1000,
+        960
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 262,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjUANIgT0gMu4gKwA0lyLuICLqoG",
+       "exitTick": 643,
+       "gigue": [
+        1000,
+        1000,
+        960
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "cc6218e0",
+     "period": 390,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjYAigFusgWGAYIDhQJgugFh8gE0ugY",
+       "exitTick": 391,
+       "gigue": [
+        1000,
+        885,
+        740
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 48,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjYAsgEkHbICbqICLiowWcYBjAGFAZYDKk76Aw",
+       "exitTick": 320,
+       "gigue": [
+        815,
+        805,
+        635
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 97,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjYAcn6iAy7KAi7YAnaCBg",
+       "exitTick": 279,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 146,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjYA2gN-ugQukgc",
+       "exitTick": 257,
+       "gigue": [
+        1000,
+        1000,
+        985
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 195,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjYA2gN-ogNOigg",
+       "exitTick": 257,
+       "gigue": [
+        1000,
+        1000,
+        980
+       ],
+       "exigence": 1
+      },
+      {
+       "phase": 243,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjYANpoEqAYxsgM0YDVaMN4CtAOVAfIBNIIG",
+       "exitTick": 515,
+       "gigue": [
+        375,
+        240,
+        240
+       ],
+       "exigence": 0
+      },
+      {
+       "phase": 292,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjYAwgSWAWCRATaCA5ABkgEwsgOWAZEBMDFmlQHyATbCBQ",
+       "exitTick": 465,
+       "gigue": [
+        310,
+        240,
+        180
+       ],
+       "exigence": 0
+      },
+      {
+       "phase": 341,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjYAGNoEngHqAkbYAVaYAbYB5AVAggFGkgY",
+       "exitTick": 443,
+       "gigue": [
+        1000,
+        980,
+        935
+       ],
+       "exigence": 2
+      }
+     ],
+     "ok": false
+    },
+    {
+     "grid": "20773718",
+     "period": 300,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjcANNgQwgZQTnktqgJ22gU",
+       "exitTick": 551,
+       "gigue": [
+        785,
+        715,
+        745
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 37,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjcANLAOwgZQTnktqgJ22gU",
+       "exitTick": 514,
+       "gigue": [
+        785,
+        715,
+        745
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 75,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjcANIAMwgZQTnktqgJ22gU",
+       "exitTick": 476,
+       "gigue": [
+        785,
+        715,
+        745
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 112,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjcANNgJwgZQTnktqgJ22gU",
+       "exitTick": 439,
+       "gigue": [
+        785,
+        715,
+        745
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 150,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjcANKgHwgZQTnktqgJ22gU",
+       "exitTick": 401,
+       "gigue": [
+        785,
+        715,
+        745
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 187,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjcANIAFwgZQTnktqgJ22gU",
+       "exitTick": 364,
+       "gigue": [
+        785,
+        715,
+        745
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 225,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjcANLAVwgZQTnktqgJ22gU",
+       "exitTick": 626,
+       "gigue": [
+        785,
+        715,
+        745
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 262,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjcANIgTwgZQTnktqgJ22gU",
+       "exitTick": 589,
+       "gigue": [
+        785,
+        715,
+        745
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "af9d4524",
+     "period": 360,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjgANLgUogKAAeoBGDow-gHeAboI",
+       "exitTick": 616,
+       "gigue": [
+        810,
+        775,
+        790
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 45,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjgANNARogKAAeoBGDow-gHeAboI",
+       "exitTick": 571,
+       "gigue": [
+        810,
+        775,
+        790
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 90,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjgANOgOogKAAeoBGDow-gHeAboI",
+       "exitTick": 526,
+       "gigue": [
+        810,
+        775,
+        790
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 135,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjgANIAMogKAAeoBGDow-gHeAboI",
+       "exitTick": 481,
+       "gigue": [
+        810,
+        775,
+        790
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 180,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjgANJgJogKAAeoBGDow-gHeAboI",
+       "exitTick": 436,
+       "gigue": [
+        810,
+        775,
+        790
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 225,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjgANLAGogKAAeoBGDow-gHeAboI",
+       "exitTick": 391,
+       "gigue": [
+        810,
+        775,
+        790
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 270,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjgANMgDogKAAeoBGDow-gHeAboI",
+       "exitTick": 346,
+       "gigue": [
+        810,
+        775,
+        790
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 315,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjgANKAXogKAAeoBGDow-gHeAboI",
+       "exitTick": 661,
+       "gigue": [
+        810,
+        775,
+        790
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "bac9cc9a",
+     "period": 390,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjkANKgWugdGIvkBcjDaAS7KAi6yBQ",
+       "exitTick": 702,
+       "gigue": [
+        805,
+        640,
+        560
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 48,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjkANKgTugdGIvkBcjDaAS7KAi6yBQ",
+       "exitTick": 654,
+       "gigue": [
+        805,
+        640,
+        560
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 97,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjkANKAQugdGIvkBcjDaAS7KAi6yBQ",
+       "exitTick": 605,
+       "gigue": [
+        805,
+        640,
+        560
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 146,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjkANJgNugdGIvkBcjDaAS7KAi6yBQ",
+       "exitTick": 556,
+       "gigue": [
+        805,
+        640,
+        560
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 195,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjkANJAKugdGIvkBcjDaAS7KAi6yBQ",
+       "exitTick": 507,
+       "gigue": [
+        805,
+        640,
+        560
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 243,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjkANJAHugdGIvkBcjDaAS7KAi6yBQ",
+       "exitTick": 459,
+       "gigue": [
+        805,
+        640,
+        560
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 292,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjkANIgEugdGIvkBcjDaAS7KAi6yBQ",
+       "exitTick": 410,
+       "gigue": [
+        805,
+        640,
+        560
+       ],
+       "exigence": 5
+      },
+      {
+       "phase": 341,
+       "code": "AQQdbW9kdWxlOmxhc2VyLWFsdGVybmUtcG9ydGVzOjkANLAZugdGIvkBcjDaAS7KAi6yBQ",
+       "exitTick": 751,
+       "gigue": [
+        805,
+        640,
+        560
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "laser-balayage": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "laser-barre-sol": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "laser-cheminee": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "laser-serre": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "lucarne": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "marelle": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "monte-charge": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "mur-friable": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "mur-seul": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "mur-trous": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "navette": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "neon-cheminee": {
+   "variants": [
+    {
+     "grid": "211afd3c",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQWbW9kdWxlOm5lb24tY2hlbWluZWU6MAA0-AJewgHWBSL2AzCNAR4ZrgEiPGEaPQiyBQ",
+       "exitTick": 407,
+       "gigue": [
+        945,
+        770,
+        525
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "7dcaa336",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQWbW9kdWxlOm5lb24tY2hlbWluZWU6MQA0-AJmugGuBhqOBCIshQEqlgEiLF06LiGyBQ",
+       "exitTick": 420,
+       "gigue": [
+        1000,
+        995,
+        765
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "neon-couloir": {
+   "variants": [
+    {
+     "grid": "fcd1d948",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQVbW9kdWxlOm5lb24tY291bG9pcjowADT4AsIDRqoG",
+       "exitTick": 211,
+       "gigue": [
+        1000,
+        1000,
+        1000
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "745c2133",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQVbW9kdWxlOm5lb24tY291bG9pcjoxADT4AooCZpIELvICNqoF",
+       "exitTick": 299,
+       "gigue": [
+        1000,
+        1000,
+        980
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "d183c347",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQVbW9kdWxlOm5lb24tY291bG9pcjoyADT4ApIENtICNrIDLsoCNpoCLtIE",
+       "exitTick": 386,
+       "gigue": [
+        955,
+        760,
+        590
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "neon-pics": {
+   "variants": [
+    {
+     "grid": "466d6932",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQSbW9kdWxlOm5lb24tcGljczowADT4AoIDtgIi3gQaPvoCpgVK",
+       "exitTick": 361,
+       "gigue": [
+        780,
+        620,
+        565
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "ad440b88",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQSbW9kdWxlOm5lb24tcGljczoxADT4AvoCzgIiPqIF1gIahgVC",
+       "exitTick": 362,
+       "gigue": [
+        680,
+        625,
+        690
+       ],
+       "exigence": 4
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "cdfb172d",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQSbW9kdWxlOm5lb24tcGljczoyADT4AooDzgIivgQalgIavgVi",
+       "exitTick": 350,
+       "gigue": [
+        1000,
+        975,
+        840
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "f5cd3b29",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQSbW9kdWxlOm5lb24tcGljczozALIG1gQiNoIDpgVK",
+       "exitTick": 320,
+       "gigue": [
+        765,
+        740,
+        740
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "neon-relais": {
+   "variants": [
+    {
+     "grid": "f45e93f2",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQUbW9kdWxlOm5lb24tcmVsYWlzOjAANPgCggPmAzLWAjLWAxqmAiouigIuogIuogIuwgLmBzqeCFI",
+       "exitTick": 747,
+       "gigue": [
+        990,
+        855,
+        510
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "92fe0804",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQUbW9kdWxlOm5lb24tcmVsYWlzOjEAggLmAjJGugI2qgI2qgI2ogIuogIuwgK2AeoBtgIytgYyNvoE_gJi",
+       "exitTick": 683,
+       "gigue": [
+        840,
+        735,
+        535
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "b2242d35",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQUbW9kdWxlOm5lb24tcmVsYWlzOjIAigOOAiI2ogIu8gKmAiIumgI-ogI2sgI-6gLWAiL2BSKGCEI",
+       "exitTick": 671,
+       "gigue": [
+        905,
+        835,
+        560
+       ],
+       "exigence": 5
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "neon-respiration": {
+   "variants": [
+    {
+     "grid": "d17ad705",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQZbW9kdWxlOm5lb24tcmVzcGlyYXRpb246MAA0-AKiA9YFGi7KAjbCBQ",
+       "exitTick": 332,
+       "gigue": [
+        1000,
+        1000,
+        905
+       ],
+       "exigence": 2
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "0f395c50",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQZbW9kdWxlOm5lb24tcmVzcGlyYXRpb246MQA0-AKiA44GIi7CAl66BQ",
+       "exitTick": 343,
+       "gigue": [
+        1000,
+        1000,
+        980
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "ae4deeb5",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQZbW9kdWxlOm5lb24tcmVzcGlyYXRpb246MgA0-AKiA4YGKi66Al7CBQ",
+       "exitTick": 343,
+       "gigue": [
+        1000,
+        1000,
+        970
+       ],
+       "exigence": 1
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "neon-silence": {
+   "variants": [
+    {
+     "grid": "00edfcb4",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQVbW9kdWxlOm5lb24tc2lsZW5jZTowADT4AoIDngc63gZC",
+       "exitTick": 332,
+       "gigue": [
+        1000,
+        925,
+        820
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "d78772d8",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQVbW9kdWxlOm5lb24tc2lsZW5jZToxADT4AoID1ggytgZq",
+       "exitTick": 353,
+       "gigue": [
+        1000,
+        980,
+        825
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "6ea5fb5c",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQVbW9kdWxlOm5lb24tc2lsZW5jZToyADT4AvoClgoi3gZK",
+       "exitTick": 375,
+       "gigue": [
+        1000,
+        915,
+        745
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "nuit-cheminee": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "nuit-escalier": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "nuit-marelle": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "nuit-opposition": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "nuit-pont": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "nuit-portes": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "nuit-relais": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "paroi-friable": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pendule": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "petits-trous": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    {
+     "grid": "6a0bb9e7",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQVbW9kdWxlOnBldGl0cy10cm91czo1ADT4AtICLuICLsoGfooH",
+       "exitTick": 375,
+       "gigue": [
+        995,
+        885,
+        840
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    },
+    null,
+    null,
+    null
+   ]
+  },
+  "piliers-scie": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "piliers": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "plafond-pics": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "plongeon": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pont-clignotant-escalier": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pont-clignotant-relais": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pont-coude": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pont-etroit": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pont-friable": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pont-ilots": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pont-marches": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "pont-vertige": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "presse-couloir": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "presse-ilot": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "presse-marche": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "presse-promenade": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "presse-rythme": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "presse-tapis-contre": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "presse-tapis-lance": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "puits-descente": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "puits": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "quinconce": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "radeau": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "rebonds-doux": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "ressort-mur-iles": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "ressort-mur": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "ressort-plafond": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "ressort-scie": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "ressorts-escalier": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "ressorts-trous": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "saut-long": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "saut-plafond": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    {
+     "grid": "31c51e9b",
+     "period": 0,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQVbW9kdWxlOnNhdXQtcGxhZm9uZDo1ADT4AqoE7gUqzgdC",
+       "exitTick": 343,
+       "gigue": [
+        1000,
+        905,
+        800
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "scie-ronde": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "scie-sol": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "scies-jumelles": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-allee": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-decroche": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-glace-ilots": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-glace-rangee": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-ilots": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "stalactite-sentier": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "tapis-alternes": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "tapis-contraire": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "tapis-escalier": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "tapis-lance": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "tapis-mur": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "tapis-relais": {
+   "variants": [
+    null,
+    null
+   ]
+  },
+  "tapis-respiration": {
+   "variants": [
+    null,
+    null
+   ]
+  },
+  "tour-mobile": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "tremplin": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "tunnel-scies": {
+   "variants": [
+    null,
+    null
+   ]
+  },
+  "tunnel": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "va-et-vient": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-brise": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-colonne": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-derive": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-piliers": {
+   "variants": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-planeur": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-pont": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-puits": {
+   "variants": [
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-rafale": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "vent-relais": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  }
+ }
+}
