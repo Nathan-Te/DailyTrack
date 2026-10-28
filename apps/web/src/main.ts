@@ -108,7 +108,7 @@ import { formatDelta, formatTime } from "./format";
 import type { Leaderboard } from "./api";
 import { isValidName, normalizeName, setName, getName } from "./identity";
 import { Controls, isTyping } from "./input";
-import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
+import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch, type SteerMode } from "./touch";
 import { hintText, mountTouchUi } from "./touchUi";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import type { GhostEntry, NameLabel } from "./salonGhosts";
@@ -732,13 +732,16 @@ function updateInfo() {
 
 // --- État de la partie ----------------------------------------------------------------------
 type Phase = "countdown" | "racing" | "finished";
+/** Lot 52 : le décompte a commencé de compter (le mode de direction est chargé) : `touchPad.begin()` a été appelé pour cette course. */
+let touchBegun = false;
 
 // Commandes tactiles : appareil tactile (`pointer: coarse`) ou `?touch=1`. Mêmes axes que le clavier et la manette.
 const touchMode = wantsTouch(params, matchMedia("(pointer: coarse)").matches);
 const touchPad = touchMode ? new TouchPad(loadTouchSettings()) : null;
-// `?steer=boutons|glisser` force le mode de direction (essais et diagnostic) ; `?zones=1` dessine les zones actives.
-const steerParam = params.get("steer");
-if (touchPad && (steerParam === "boutons" || steerParam === "glisser")) touchPad.settings.steerMode = steerParam === "boutons" ? "buttons" : "drag";
+// `?steer=boutons|glissiere|volant|gyro` force le mode de direction (essais et diagnostic ; `glisser` : l'ancien nom de la glissière) ; `?zones=1` dessine les zones actives.
+const STEER_PARAMS: Record<string, SteerMode> = { boutons: "buttons", glissiere: "slider", glisser: "slider", volant: "wheel", gyro: "gyro" };
+const steerParam = STEER_PARAMS[params.get("steer") ?? ""];
+if (touchPad && steerParam) touchPad.settings.steerMode = steerParam;
 const controls = new Controls(window, touchPad);
 if (touchMode) document.body.classList.add("touch");
 let paused = false;
@@ -768,7 +771,7 @@ let pendingSeek: number | null = null;
 let touchUi: ReturnType<typeof mountTouchUi> | null = null;
 function mountDrivingTouch() {
   if (touchUi || !touchPad) return;
-  touchUi = mountTouchUi(touchPad, { showZones: params.get("zones") === "1" });
+  touchUi = mountTouchUi(touchPad, { showZones: params.get("zones") === "1", notice: (texte) => showAide(texte, 6), alerte: (texte) => showBanner(texte, 4, true) });
   touchUi.setPaused(paused);
 }
 if (!watchWanted) mountDrivingTouch();
@@ -792,6 +795,7 @@ function setPaused(value: boolean) {
   }
   if (value && (phase === "finished" || homeOpen || settingsPanel?.isOpen() || howto.isOpen())) return;
   paused = value;
+  if (paused) touchPad?.releaseAll(); // les doigts posés (le volant, une flèche) ne restent pas « posés » sous la fenêtre de pause, où ils se lèveraient sans que le jeu le sache
   document.body.classList.toggle("paused", paused);
   touchUi?.setPaused(paused);
   if (!paused) showPauseConfirm(false);
@@ -1268,6 +1272,7 @@ function startAttempt(force = false) {
     previous = session.previous;
     phase = "countdown";
     countdown = COUNTDOWN_S;
+    touchBegun = false;
     clearAide();
   } else {
     car = createCar();
@@ -2105,12 +2110,19 @@ function frame(now: number) {
 
   if (watchWait) {
     /* Salon, spectateur : on attend le premier temps de la session */
+  } else if (phase === "countdown" && touchUi?.loading()) {
+    /* lot 52 : le mode de direction choisi (glissière, volant, gyroscope) se charge, ou le joueur répond à l'autorisation du capteur : le décompte attend */
   } else if (phase === "countdown") {
+    if (!touchBegun) {
+      touchBegun = true;
+      touchPad?.begin(); // le gyroscope prend son neutre pendant le décompte
+    }
     countdown -= elapsed;
     if (countdown <= 0) {
       phase = "racing";
       accumulator = 0;
       const hadNotice = !!salonNoticePending;
+      touchPad?.go();
       showBanner(salonNoticePending || t("course.depart"), salonNoticePending ? 5 : 0.9, hadNotice);
       salonNoticePending = "";
       if (touchPad && !watch && !hadNotice) showAide(hintText(touchPad.settings), 6); // l'aide de départ : une ligne sous la bande, jusqu'au premier appui sur le gaz
@@ -2189,7 +2201,7 @@ function frame(now: number) {
   if (aideTimer > 0) {
     if (aideFraiche) aideFraiche = false;
     else aideTimer -= elapsed;
-    if (aideTimer <= 0 || (!frozen && !watch && input.throttle > 0)) clearAide();
+    if (aideTimer <= 0 || (!frozen && !watch && phase === "racing" && input.throttle > 0)) clearAide();
   }
   syncIntro();
   syncRang();

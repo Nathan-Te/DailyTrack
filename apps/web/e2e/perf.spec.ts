@@ -119,6 +119,25 @@ test("le Garage, à la demande : 10 ko au plus, rien dans le premier chargement"
   expect(garage.octets, "le Garage, à la demande (JS), compressé").toBeLessThan(10_000); // ≈ 8,3 ko après le lot 42
 });
 
+// Lot 52 : les trois modes de direction tactiles (glissière, volant, gyroscope) et les réglages tactiles de Réglages › Commandes, à la demande, hors du premier chargement : les
+// boutons, mode par défaut, restent dans le premier chargement (≤ +1 ko, ligne `track.jsCss`). Chaque mode : sa logique, son dessin, ses réglages, ses textes (fr + en) et sa feuille de
+// style (le CSS n'est pas dans cette mesure, comme celle du Garage : `steer*.css`, 0,4 à 0,8 ko compressés chacun). Plafonds = mesure + 20 %, arrondis à 100 o (docs/plateforme/budgets.md,
+// section « Lot 52 »).
+test("les modes de direction tactiles, à la demande : rien dans le premier chargement, un plafond chacun", () => {
+  const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
+  expect(premier.filter((f) => /^(steerSlider|steerWheel|steerGyro|steerMath|touchReglages)-/.test(f)), "aucun mode de direction dans le premier chargement").toEqual([]);
+  const mesure = (entree: RegExp, nom: string) => {
+    const m = aLaDemande(entree);
+    test.info().annotations.push({ type: "mesure", description: `${nom} à la demande : ${m.octets} o (${m.fichiers.join(", ")})` });
+    expect(m.fichiers.length, `${nom} : un morceau à part`).toBeGreaterThanOrEqual(1);
+    return m.octets;
+  };
+  expect(mesure(/^steerSlider-.*\.js$/, "glissière"), "la glissière, à la demande, compressée").toBeLessThan(1_500); // ≈ 1,2 ko au lot 52 (981 o + `steerMath` 216 o)
+  expect(mesure(/^steerWheel-.*\.js$/, "volant"), "le volant, à la demande, compressé").toBeLessThan(2_300); // ≈ 1,8 ko au lot 52 (1 568 o + `steerMath`)
+  expect(mesure(/^steerGyro-.*\.js$/, "gyroscope"), "le gyroscope, à la demande, compressé").toBeLessThan(5_400); // ≈ 4,5 ko au lot 52 (4 299 o + `steerMath`)
+  expect(mesure(/^touchReglages-.*\.js$/, "réglages tactiles"), "les réglages tactiles, à la demande, compressés").toBeLessThan(1_100); // ≈ 0,8 ko au lot 52 (843 o)
+});
+
 // Lot I4 : les polices. Au plus 150 ko (charte § 4), servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail : un joueur qui vient du portail les a
 // déjà en cache), et seules les deux faces du premier écran sont préchargées.
 test("les polices : au plus 150 ko, chemin du site partagé avec le portail, deux faces préchargées", () => {

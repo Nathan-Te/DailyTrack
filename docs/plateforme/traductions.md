@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1051 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1085 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -462,15 +462,21 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `tactile.direction.nom` | Direction | Steering |
-| `tactile.direction.aide` | Glisser le pouce, ou deux boutons ← →. | Slide your thumb, or two ← → buttons. |
-| `tactile.direction.glisser` | Glisser | Slide |
-| `tactile.direction.boutons` | Boutons ← → | ← → buttons |
-| `tactile.taille.nom` | Taille des boutons | Button size |
+| `tactile.direction.aide` | Boutons, glissière, volant ou gyroscope. | Buttons, slider, wheel or gyroscope. |
+| `tactile.direction.boutons` | Boutons | Buttons |
+| `tactile.direction.glissiere` | Glissière | Slider |
+| `tactile.direction.volant` | Volant | Wheel |
+| `tactile.direction.gyro` | Gyroscope | Gyroscope |
+| `tactile.inverse.nom` | Disposition inversée | Mirrored layout |
+| `tactile.inverse.aide` | Pédales à gauche, direction à droite. | Pedals on the left, steering on the right. |
+| `tactile.cote.gauche` | à gauche | on the left |
+| `tactile.cote.droite` | à droite | on the right |
+| `tactile.taille.nom` | Taille des commandes | Controls size |
 | `tactile.taille.small` | Petits | Small |
 | `tactile.taille.medium` | Moyens | Medium |
 | `tactile.taille.large` | Grands | Large |
 | `tactile.sensibilite.nom` | Sensibilité | Sensitivity |
-| `tactile.sensibilite.aide` | Glisser : plus c'est haut, moins il faut de mouvement. | Sliding: the higher it is, the less you need to move. |
+| `tactile.sensibilite.aide` | Plus c'est haut, moins il faut de mouvement. | The higher, the less movement it takes. |
 | `tactile.zoneMorte.nom` | Zone morte | Dead zone |
 | `tactile.accelerateur.nom` | Accélérateur | Throttle |
 | `tactile.accelerateur.aide` | Automatique : la voiture accélère seule, tu ne touches que le frein. | Automatic: the car accelerates by itself, you only touch the brake. |
@@ -480,16 +486,44 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `tactile.vibration.aide` | Au point de contrôle et aux chocs, si ton téléphone sait vibrer. | At checkpoints and on hits, if your phone can vibrate. |
 | `tactile.reinit` | Réglages tactiles par défaut | Default touch settings |
 | `tactile.indice` | {direction} · {pedales} | {direction} · {pedales} |
-| `tactile.indice.glisser` | Glisse à gauche pour tourner | Slide on the left to steer |
-| `tactile.indice.fleches` | ← → à gauche pour tourner | ← → on the left to steer |
-| `tactile.indice.pedales` | frein et gaz à droite | brake and gas on the right |
-| `tactile.indice.auto` | touche à droite pour freiner | touch on the right to brake |
+| `tactile.indice.fleches` | ← → {cote} pour tourner | ← → {cote} to steer |
+| `tactile.indice.pedales` | frein et gaz {cote} | brake and gas {cote} |
+| `tactile.indice.auto` | touche {cote} pour freiner | touch {cote} to brake |
 | `tactile.frein` | Frein | Brake |
 | `tactile.gaz` | Gaz | Gas |
 | `tactile.pointDeControle` | Recommencer au dernier point de contrôle | Restart from the last checkpoint |
 | `tactile.depart` | Recommencer depuis le départ | Restart from the start |
 | `tactile.rotation` | Tourne ton téléphone : on conduit mieux en paysage. | Turn your phone: it drives better in landscape. |
 | `tactile.rotation.ok` | Jouer quand même | Play anyway |
+| `tactile.indice.glissiere` | Glisse la glissière {cote} pour tourner | Slide the slider {cote} to steer |
+| `tactile.indice.volant` | Tourne le volant au doigt, {cote} | Turn the wheel with your finger, {cote} |
+| `tactile.angle.nom` | Angle maximal | Maximum angle |
+| `tactile.angle.aide` | Le volant s'arrête là : 90° ou 135°. C'est aussi sa sensibilité. | The wheel stops there: 90° or 135°. It is also its sensitivity. |
+| `tactile.indice.gyro` | Incline le téléphone pour tourner | Tilt the phone to steer |
+| `tactile.indice.gyroPedales` | frein {frein}, gaz {gaz} | brake {frein}, gas {gaz} |
+| `tactile.gyro.calage` | Gyroscope : tiens le téléphone droit… | Gyroscope: hold the phone upright… |
+| `tactile.gyro.jauge.calage` | Calage | Setting |
+| `tactile.gyro.jauge.pret` | Prêt | Ready |
+| `tactile.gyro.jauge.reglage` | Jauge d'inclinaison en course | Tilt gauge in a race |
+| `tactile.gyro.carte.attente` | Pour tourner en inclinant le téléphone, Track a besoin du capteur de mouvement. | To steer by tilting your phone, Track needs the motion sensor. |
+| `tactile.gyro.carte.attentePetit` | Rien n'est enregistré ni envoyé : le capteur ne sert qu'à tourner. | Nothing is stored or sent: the sensor is only used to steer. |
+| `tactile.gyro.carte.autoriser` | Autoriser le gyroscope | Allow the gyroscope |
+| `tactile.gyro.carte.demande` | En attente de ton autorisation… | Waiting for your permission… |
+| `tactile.gyro.carte.ok` | Gyroscope actif. Tiens le téléphone droit pendant le décompte : c'est ta position neutre. | Gyroscope on. Hold the phone upright during the countdown: that is your neutral position. |
+| `tactile.gyro.carte.okPetit` | Le neutre est repris à chaque course. Essaie ci-dessous. | The neutral is taken again each race. Try it below. |
+| `tactile.gyro.carte.refus` | Gyroscope refusé. Retour au mode {mode}. | Gyroscope refused. Back to {mode} mode. |
+| `tactile.gyro.carte.refusPetit` | Pour l'autoriser plus tard : réglages du téléphone, accès au mouvement et à l'orientation du navigateur, puis recharge la page. | To allow it later: phone settings, the browser's motion and orientation access, then reload the page. |
+| `tactile.gyro.carte.absent` | Ce téléphone n'a pas de capteur d'inclinaison utilisable. Retour au mode {mode}. | This phone has no usable tilt sensor. Back to {mode} mode. |
+| `tactile.gyro.carte.absentPetit` | Aucun mouvement reçu : le gyroscope est désactivé sur cet appareil ou absent. | No motion received: the gyroscope is disabled on this device or missing. |
+| `tactile.gyro.essai.nom` | Essai | Test |
+| `tactile.gyro.essai.aide` | Incline le téléphone : le curseur doit bouger. | Tilt the phone: the cursor should move. |
+| `tactile.gyro.sensibilite.aide` | Inclinaison pour braquer à fond : {deg}° | Tilt for full lock: {deg}° |
+| `tactile.gyro.filtre.nom` | Filtrage des tremblements | Tremor filtering |
+| `tactile.gyro.filtre.aide` | Léger : aucun retard perceptible. | Light: no perceptible lag. |
+| `tactile.gyro.recentrer` | Recentrer le gyroscope | Recentre the gyroscope |
+| `tactile.gyro.recentrer.aide` | Aussi dans la pause. Tiens le téléphone droit. | Also in the pause menu. Hold the phone upright. |
+| `tactile.gyro.recentrage` | Recentrage… tiens droit | Recentring… hold upright |
+| `tactile.gyro.recentre` | Gyroscope recentré | Gyroscope recentred |
 
 ### Comment jouer (`aide.*`, `apps/web/src/catalogue.reglages.*.ts`)
 
@@ -863,7 +897,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.clavier` | Clavier | Keyboard |
 | `reglages.manette` | Manette | Gamepad |
 | `reglages.tactile.titre` | Commandes tactiles | Touch controls |
-| `reglages.tactile.absent` | Sur un téléphone ou une tablette, les réglages des commandes tactiles (direction, sensibilité, taille des boutons, accélérateur automatique, vibration) apparaissent ici. | On a phone or a tablet, the touch controls settings (steering, sensitivity, button size, automatic throttle, vibration) show up here. |
+| `reglages.tactile.absent` | Sur un téléphone ou une tablette, les réglages des commandes tactiles (direction, taille, disposition, accélérateur automatique, vibration) apparaissent ici. | On a phone or a tablet, the touch controls settings (steering, size, layout, automatic throttle, vibration) show up here. |
 | `reglages.aide` | Comment jouer | How to play |
 | `reglages.langue.titre` | Langue | Language |
 | `reglages.profil` | Mon profil Du Jour | My Du Jour profile |

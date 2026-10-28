@@ -1,6 +1,8 @@
-import { expect, test, type Browser, type CDPSession, type Page } from "@playwright/test";
-import { createAutopilot, decodeReplay, parseTrack, replayRace, type RaceState } from "@cdj/sim";
+import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { createAutopilot, dailyCircuit, decodeReplay, parseTrack, replayRace, type RaceState } from "@cdj/sim";
 import { boxes, expectNoOverlap } from "./layout";
+import { fingersOf } from "./doigts";
+import { newClockedContext, TODAY } from "./fixtures";
 
 // Commandes tactiles (lot 10, refaites à la retouche 2 du lot I4 : boutons par défaut, aux bords de l'écran, zones de toucher qui épousent les boutons, plus de barre du
 // bas : caméra, graphismes et plein écran sont dans la pause, point de contrôle et recommencer en haut à gauche). Gestes synthétiques envoyés par le protocole du navigateur (`Input.dispatchTouchEvent`) :
@@ -24,14 +26,14 @@ const PHONES = [
 
 /**
  * Un téléphone. Depuis la retouche 18b, le défaut est à deux pédales, et depuis la retouche 2 du lot I4 aux boutons ← → ; la plupart de ces tests
- * conduisent au glissement avec l'accélérateur automatique, qu'on enregistre donc d'entrée (au premier chargement seulement : un rechargement
+ * conduisent à la glissière (lot 52 : l'ancien joystick) avec l'accélérateur automatique, qu'on enregistre donc d'entrée (au premier chargement seulement : un rechargement
  * garde ce que le joueur a choisi). `fresh` : aucun réglage enregistré, c'est le vrai défaut ; `stored` : un réglage précis.
  */
 async function phone(browser: Browser, p: (typeof PHONES)[number] | { viewport: { width: number; height: number } }, opts: { fresh?: boolean; stored?: object } = {}) {
   const context = await browser.newContext({ ...p, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   if (!opts.fresh) {
-    const stored = JSON.stringify(opts.stored ?? { steerMode: "drag", autoThrottle: true, version: 2 });
+    const stored = JSON.stringify(opts.stored ?? { steerMode: "slider", autoThrottle: true, version: 2 });
     await page.addInitScript((value) => {
       try {
         if (localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", value);
@@ -43,30 +45,6 @@ async function phone(browser: Browser, p: (typeof PHONES)[number] | { viewport: 
   return { context, page };
 }
 
-/** Doigts posés sur l'écran, envoyés au navigateur comme sur un écran tactile (plusieurs doigts à la fois). */
-class Fingers {
-  private readonly points = new Map<number, { x: number; y: number }>();
-  constructor(private readonly cdp: CDPSession) {}
-  private send(type: "touchStart" | "touchMove" | "touchEnd", points = this.points) {
-    return this.cdp.send("Input.dispatchTouchEvent", { type, touchPoints: [...points].map(([id, p]) => ({ id, x: p.x, y: p.y })) });
-  }
-  async down(id: number, x: number, y: number) {
-    this.points.set(id, { x, y });
-    await this.send("touchStart");
-  }
-  async move(id: number, x: number, y: number) {
-    this.points.set(id, { x, y });
-    await this.send("touchMove");
-  }
-  async up(id: number) {
-    // Pour `touchEnd`, le protocole attend le ou les doigts qu'on lève (et non ceux qui restent posés).
-    const lifted = new Map([[id, this.points.get(id)!]]);
-    this.points.delete(id);
-    await this.send("touchEnd", lifted);
-  }
-}
-
-const fingersOf = async (page: Page) => new Fingers(await page.context().newCDPSession(page));
 const racing = async (page: Page, url: string) => {
   await page.goto(url);
   await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
@@ -158,7 +136,7 @@ for (const p of PHONES) {
       await expect(page.locator("#page-controls")).toBeVisible(); // Réglages › Commandes (lot 29) ; on y arrive par la pause
       // La fenêtre figé la partie ; ses cibles font au moins 44 px.
       for (const b of await page.locator("#page-controls button:visible").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-      await page.getByRole("radio", { name: "Boutons ← →" }).click();
+      await page.getByRole("radio", { name: "Boutons" }).click();
       await page.getByRole("radio", { name: "Bouton gaz" }).click();
       await closeSettings(page);
       await expect(page.locator("#settings")).toBeHidden();
@@ -198,17 +176,16 @@ for (const p of PHONES) {
     });
 
     test("mise en page : paysage, rien ne se chevauche ; boutons de menu et d'action ≥ 44 px", { tag: "@regression" }, async ({ browser }) => {
-      const { context, page } = await phone(browser, p, { stored: { steerMode: "drag", autoThrottle: false, version: 2 } }); // joystick et deux pédales : tout est à l'écran
+      const { context, page } = await phone(browser, p, { stored: { steerMode: "slider", autoThrottle: false, version: 2 } }); // glissière et deux pédales : tout est à l'écran
       await racing(page, "/?debug&scenario=pilotage");
       await page.addStyleTag({ content: "* { font-family: 'DejaVu Sans', Verdana, sans-serif !important; }" });
       const f = await fingersOf(page);
-      await f.down(1, 100, 250); // le curseur du doigt est aussi à l'écran
+      await f.down(1, 100, 250); // le curseur de la glissière suit le doigt
       await f.move(1, 150, 250);
-      const names = ["#meta", "#timer", "#menu", "#speed", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas", "#touch .ring", "#touch .knob"];
+      const names = ["#meta", "#timer", "#menu", "#speed", "#touch .glissiere", "#touch .pedal-brake", "#touch .pedal-gas"];
       const list = await boxes(page, names);
-      expect(list.map((b) => b.name)).toEqual(expect.arrayContaining(["#timer", "#menu", "#touch .pedal-gas"]));
-      // Le curseur de glissement est volontairement sous le doigt, où il veut : on ne le compare pas aux autres.
-      expectNoOverlap(list.filter((b) => !b.name.startsWith("#touch .ring") && !b.name.startsWith("#touch .knob")), p.viewport);
+      expect(list.map((b) => b.name)).toEqual(expect.arrayContaining(["#timer", "#menu", "#touch .glissiere", "#touch .pedal-gas"]));
+      expectNoOverlap(list, p.viewport);
       await f.up(1);
       for (const sel of ["#menu button:visible"]) {
         for (const b of await page.locator(sel).all()) {
@@ -242,7 +219,7 @@ test("portrait : invitation à tourner le téléphone, qu'on peut écarter ; rie
 test("?touch=1 : sur ordinateur, la souris simule le doigt ; ?touch=0 coupe l'interface tactile", { tag: "@regression" }, async ({ page }) => {
   // Accélérateur automatique (le défaut est à deux pédales depuis la 18b) : sans doigt, plein gaz.
   await page.addInitScript(() => {
-    if (localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "drag", autoThrottle: true, version: 2 }));
+    if (localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "slider", autoThrottle: true, version: 2 }));
   });
   await racing(page, "/?debug&scenario=plat&touch=1");
   expect(await page.evaluate(() => window.__cdj.touch)).toBe(true);
@@ -262,7 +239,7 @@ test("?touch=1 : sur ordinateur, la souris simule le doigt ; ?touch=0 coupe l'in
   expect(await page.evaluate(() => window.__cdj.touch)).toBe(false);
 });
 
-test("on finit un tour au doigt : glissement pour tourner, accélérateur automatique", async ({ browser }) => {
+test("on finit un tour au doigt : glissière pour tourner, accélérateur automatique", async ({ browser }) => {
   // Deux grands virages (rayon 48 m) : pris à pleine vitesse, ils tiennent dans l'adhérence ; il faut les tourner au doigt.
   const spec = "S@start S S S L2 S S@cp S R2 S S S@finish";
   const track = parseTrack("test", spec);
@@ -275,8 +252,10 @@ test("on finit un tour au doigt : glissement pour tourner, accélérateur automa
   await page.evaluate(() => window.__cdj.advance(1));
   const f = await fingersOf(page);
   const drive = createAutopilot(track);
-  const X0 = 150;
-  const RANGE = 70;
+  // Lot 52 : la glissière est en position absolue (le curseur va sous le doigt) ; la course du pouce est celle du rail dessiné (demi-largeur moins 34 px).
+  const rail = (await page.locator("#touch .glissiere").boundingBox())!;
+  const X0 = rail.x + rail.width / 2;
+  const RANGE = rail.width / 2 - 34;
   const DEAD = 0.08;
   await f.down(1, X0, 250);
   let last = 0;
@@ -340,10 +319,12 @@ test("vibration au point de contrôle et au choc, désactivable", { tag: "@regre
 // qu'il annonce (et pas celle du voisin). Les zones tactiles sont des fractions de l'écran ; si le dessin ne les suit pas,
 // une partie du bouton déclenche le mauvais bouton (défaut vu sur téléphone en paysage).
 const COMBOS = [
-  { steerMode: "drag", autoThrottle: true },
+  { steerMode: "slider", autoThrottle: true },
+  { steerMode: "wheel", autoThrottle: false },
+  { steerMode: "buttons", autoThrottle: false, mirrored: true },
   { steerMode: "buttons", autoThrottle: true },
   { steerMode: "buttons", autoThrottle: false },
-  { steerMode: "drag", autoThrottle: false },
+  { steerMode: "slider", autoThrottle: false },
 ] as const;
 const SCREENS = [
   // Lot R13 : le téléphone en paysage seulement (en portrait, la course n'affiche que l'invitation à tourner le téléphone : test « portrait » ci-dessus).
@@ -588,3 +569,355 @@ for (const p of PHONES) {
     });
   });
 }
+
+// --- Lot 52 : glissière, volant, gyroscope -------------------------------------------------------------------------------------------------------------------------
+// Les quatre façons de tourner sur téléphone : Boutons (inchangé, ci-dessus), Glissière, Volant, Gyroscope. Chacune donne la même direction analogique (−64 à 64) : la simulation, la
+// rediffusion et le classement ne changent pas. Doigts : de vrais évènements tactiles (`Input.dispatchTouchEvent`, e2e/doigts.ts) ; capteur : des évènements `deviceorientation`
+// simulés par la page (un minuteur de 16 ms, comme un téléphone). Les calculs (doigt → direction, angle, calibrage, filtrage) sont des tests unitaires (`test/steer*.test.ts`) : ici, le
+// parcours du joueur dans le vrai jeu. **Famille « Régression »** : la CI de PR de Track n'a plus de marge dans son budget de 900 s de specs (`ciZones.test.ts` : moins de 3 s), et un
+// nouveau spec demanderait une ligne dans `e2e/zones.json` (zone de la plateforme) ; ces tests tournent la nuit et par « Run workflow » (ou `npm run verifier -- --regression`).
+const API = "http://127.0.0.1:8787";
+/** Un vrai départ (il y a un décompte, et « recommencer » en relance un), sur une ligne droite assez longue pour tout un test. */
+const LIGNE_DROITE = "S@start " + "S ".repeat(200) + "S@finish";
+const TELEPHONE = {
+  viewport: { width: 851, height: 393 },
+  deviceScaleFactor: 2.625,
+  userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+  isMobile: true,
+  hasTouch: true,
+} as const;
+
+const ouverts: BrowserContext[] = [];
+test.afterEach(async () => {
+  await Promise.all(ouverts.splice(0).map((c) => c.close().catch(() => undefined)));
+});
+
+type Reglage = { steerMode: string; autoThrottle?: boolean; wheelAngle?: number; mirrored?: boolean };
+
+/**
+ * `capteur` : « ok » (Android : aucune demande, le capteur répond), « muet » (aucun évènement), « ios » et « refuse » (iPhone : `requestPermission` n'aboutit qu'au geste du
+ * joueur, sinon elle est rejetée ; accordée dans le premier cas, refusée dans le second).
+ */
+async function telephone(browser: Browser, reglage: Reglage | null, capteur?: "ok" | "muet" | "ios" | "refuse") {
+  const context = await newClockedContext(browser, TELEPHONE);
+  ouverts.push(context);
+  const page = await context.newPage();
+  await page.addInitScript(
+    ({ reglage, capteur }) => {
+      // `cdj:touch` est écrit une fois, au premier chargement : un rechargement garde ce que le joueur a choisi.
+      if (reglage && localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", JSON.stringify({ autoThrottle: true, ...reglage, version: 2 }));
+      const w = window as unknown as { __gyro: { beta: number; gamma: number }; __angle: number };
+      w.__gyro = { beta: 0, gamma: -90 }; // paysage, haut du téléphone à gauche (angle 90), téléphone droit
+      w.__angle = 90;
+      Object.defineProperty(screen.orientation, "angle", { get: () => w.__angle, configurable: true });
+      // Comme Safari : la demande n'aboutit que pendant la seconde qui suit un vrai toucher (un clic), sinon elle est rejetée sans rien afficher.
+      let geste = false;
+      for (const e of ["touchend", "pointerup", "click"]) addEventListener(e, () => { geste = true; setTimeout(() => (geste = false), 1000); }, true);
+      const D = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> };
+      D.requestPermission = capteur === "ios" || capteur === "refuse" ? () => (geste ? Promise.resolve(capteur === "ios" ? "granted" : "denied") : Promise.reject(new DOMException("geste", "NotAllowedError"))) : undefined;
+      if (capteur === "ok" || capteur === "ios" || capteur === "refuse") setInterval(() => window.dispatchEvent(new DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: w.__gyro.beta, gamma: w.__gyro.gamma })), 16);
+    },
+    { reglage, capteur },
+  );
+  return { context, page };
+}
+/** Incline le « téléphone » de `deg` degrés vers la droite de l'écran, dans le paysage voulu (90 ou 270 : ce que dit `screen.orientation.angle`). */
+const incliner = (page: Page, deg: number, paysage: 90 | 270 = 90) =>
+  page.evaluate(([d, a]) => {
+    const w = window as unknown as { __gyro: { beta: number; gamma: number }; __angle: number };
+    w.__angle = a;
+    w.__gyro = a === 90 ? { beta: d, gamma: -90 } : { beta: -d, gamma: 90 };
+  }, [deg, paysage] as const);
+const sonde = (page: Page, lire: (i: { steer: number; throttle: number; brake: number }) => number) => expect.poll(async () => lire(await input(page)), { timeout: 8_000 });
+const boite = async (page: Page, selector: string) => {
+  const b = (await page.locator(selector).boundingBox())!;
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2, w: b.width, h: b.height };
+};
+
+test.describe("glissière", () => {
+  test("un pouce la fait glisser, la voiture tourne ; un ancien « joystick » est la glissière ; gaz et frein en même temps", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "drag", autoThrottle: false });
+    await racing(page, "/?debug&scenario=plat");
+    await expect(page.locator("#touch")).toHaveAttribute("data-mode", "slider"); // l'ancien choix « joystick » (drag) est devenu la glissière
+    const rail = await boite(page, "#touch .glissiere");
+    expect(rail.x - rail.w / 2).toBeLessThan(851 * 0.1); // au bord gauche, jamais devant la voiture
+    expect(rail.x + rail.w / 2).toBeLessThan(851 * 0.3);
+    const course = rail.w / 2 - 34;
+    const f = await fingersOf(page);
+    await f.down(1, rail.x, rail.y);
+    await sonde(page, (i) => i.steer).toBe(0);
+    await f.move(1, rail.x + course, rail.y - 150); // au bout du rail, et bien au-dessus : la hauteur ne compte pas, le doigt ne lâche pas
+    await sonde(page, (i) => i.steer).toBe(64);
+    await f.move(1, rail.x - course / 2, rail.y);
+    await sonde(page, (i) => i.steer).toBeLessThan(-20);
+    // plusieurs doigts : on dirige, on accélère, puis on freine, sans lâcher la glissière
+    const gas = await boite(page, "#touch .pedal-gas");
+    const brake = await boite(page, "#touch .pedal-brake");
+    await f.down(2, gas.x, gas.y);
+    await sonde(page, (i) => i.throttle).toBe(64);
+    await f.move(2, brake.x, brake.y);
+    await sonde(page, (i) => i.brake).toBe(64);
+    expect((await input(page)).steer).toBeLessThan(-20);
+    await f.up(2);
+    await f.up(1);
+    await sonde(page, (i) => i.steer).toBe(0); // au lâcher, retour au centre
+    await expect(page.locator("#touch .glissiere__curseur")).not.toHaveClass(/on/);
+  });
+});
+
+test.describe("volant", () => {
+  test("on le tourne au doigt, autour de son centre : butoir, doigt hors de la jante, retour au centre", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "wheel", autoThrottle: false });
+    await racing(page, "/?debug&scenario=plat");
+    const roue = await boite(page, "#touch .volant");
+    expect(roue.x - roue.w / 2).toBeLessThan(851 * 0.1);
+    expect(roue.x + roue.w / 2).toBeLessThan(851 * 0.3); // jamais devant la voiture
+    const sur = (deg: number, rayon: number) => ({ x: roue.x + rayon * Math.sin((deg * Math.PI) / 180), y: roue.y - rayon * Math.cos((deg * Math.PI) / 180) });
+    const f = await fingersOf(page);
+    // Pris à 3 h : pas de saut ; tourné de 45° vers le haut puis vers la droite : la direction suit l'angle balayé.
+    await f.down(1, sur(90, 50).x, sur(90, 50).y);
+    await sonde(page, (i) => i.steer).toBe(0);
+    for (const deg of [100, 120, 135]) await f.move(1, sur(deg, 50).x, sur(deg, 50).y); // 45° balayés
+    await sonde(page, (i) => i.steer).toBeGreaterThan(20);
+    await sonde(page, (i) => i.steer).toBeLessThan(44);
+    expect(await page.locator("#touch .volant__roue").evaluate((e) => (e as SVGElement).style.transform)).toMatch(/rotate\(4[0-9.]*deg\)/);
+    // Butoir à 90° : on balaie beaucoup plus, la direction reste 64 ; le doigt sort de la jante et de l'écran, elle ne lâche pas.
+    for (const deg of [150, 180, 210, 240]) await f.move(1, sur(deg, 400).x, Math.min(sur(deg, 400).y, 380));
+    await sonde(page, (i) => i.steer).toBe(64);
+    // Plusieurs doigts : le gaz en même temps que le volant.
+    const gas = await boite(page, "#touch .pedal-gas");
+    await f.down(2, gas.x, gas.y);
+    await sonde(page, (i) => i.throttle).toBe(64);
+    await sonde(page, (i) => i.steer).toBe(64);
+    await f.up(2);
+    await f.up(1);
+    await sonde(page, (i) => i.steer).toBe(0); // retour au centre
+    await expect(page.locator("#touch .volant")).not.toHaveClass(/on/);
+  });
+
+  test("aucun conflit avec la pause, le point de contrôle et recommencer ; la pause lève les doigts posés", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "wheel", autoThrottle: false });
+    await racing(page, "/?debug&spec=" + encodeURIComponent(LIGNE_DROITE)); // un vrai départ : « recommencer » relance un décompte
+    const roue = await boite(page, "#touch .volant");
+    const sur = (deg: number, rayon: number) => ({ x: roue.x + rayon * Math.sin((deg * Math.PI) / 180), y: roue.y - rayon * Math.cos((deg * Math.PI) / 180) });
+    const f = await fingersOf(page);
+    // Leurs boutons sont au-dessus de la zone du volant (le toucher d'un de ces points va au bouton, pas au volant), même quand la zone de direction passe derrière eux.
+    for (const nom of ["Pause", "Recommencer au dernier point de contrôle", "Recommencer depuis le départ"]) {
+      const c = (await page.getByRole("button", { name: nom }).boundingBox())!;
+      expect(await page.evaluate(([x, y]) => document.elementFromPoint(x!, y!)?.closest("button")?.getAttribute("aria-label"), [c.x + c.width / 2, c.y + c.height / 2] as const), nom).toBe(nom);
+    }
+    // La pause lève les doigts posés : un doigt tenu sur le volant au moment de la pause ne reste pas « posé » dessous.
+    await f.down(1, sur(0, 50).x, sur(0, 50).y);
+    for (const deg of [30, 60, 90]) await f.move(1, sur(deg, 50).x, sur(deg, 50).y);
+    await sonde(page, (i) => i.steer).toBeGreaterThan(30);
+    await page.getByRole("button", { name: "Pause" }).tap();
+    await expect(page.locator("#pause")).toBeVisible();
+    await page.locator("#pause-resume").tap();
+    await expect(page.locator("#pause")).toBeHidden();
+    await sonde(page, (i) => i.steer).toBe(0);
+    await f.up(1);
+    await page.getByRole("button", { name: "Recommencer depuis le départ" }).tap();
+    await page.waitForFunction(() => window.__cdj.phase === "countdown", undefined, { timeout: 5_000 });
+  });
+
+  test("butoir à 135° : la même course de doigt braque moins, jusqu'au bout", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "wheel", wheelAngle: 135 });
+    await racing(page, "/?debug&scenario=plat");
+    const roue = await boite(page, "#touch .volant");
+    const sur = (deg: number) => ({ x: roue.x + 50 * Math.sin((deg * Math.PI) / 180), y: roue.y - 50 * Math.cos((deg * Math.PI) / 180) });
+    const f = await fingersOf(page);
+    await f.down(1, sur(0).x, sur(0).y);
+    for (const deg of [30, 60, 90]) await f.move(1, sur(deg).x, sur(deg).y);
+    await sonde(page, (i) => i.steer).toBeGreaterThan(30); // 90° sur 135° : les deux tiers
+    await sonde(page, (i) => i.steer).toBeLessThan(50);
+    for (const deg of [120, 150, 180, 210]) await f.move(1, sur(deg).x, sur(deg).y);
+    await sonde(page, (i) => i.steer).toBe(64);
+    await f.up(1);
+  });
+});
+
+test.describe("gyroscope", () => {
+  test("incliner le téléphone tourne la voiture : calage au décompte, les deux paysages, « recentrer » depuis la pause", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "gyro" }, "ok");
+    await page.goto("/?debug&spec=" + encodeURIComponent(LIGNE_DROITE));
+    await page.waitForFunction(() => window.__cdj?.phase === "countdown", undefined, { timeout: 30_000 });
+    await page.waitForTimeout(400);
+    await incliner(page, 12); // le joueur tient le téléphone à 12° : c'est sa position neutre, prise à la fin du décompte
+    await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 20_000 });
+    await expect(page.locator(".gyro-jauge--course")).toBeVisible(); // la jauge d'inclinaison, à côté de la vitesse
+    await sonde(page, (i) => i.steer).toBe(0); // sans calage, 12° donneraient déjà un tiers de braquage
+    await incliner(page, 12 + 35);
+    await sonde(page, (i) => i.steer).toBe(64);
+    await incliner(page, 12 - 35);
+    await sonde(page, (i) => i.steer).toBe(-64);
+    await incliner(page, 12 + 17);
+    await sonde(page, (i) => i.steer).toBeGreaterThan(20);
+    await sonde(page, (i) => i.steer).toBeLessThan(44);
+    // L'autre paysage : la même pose réelle donne le même sens (gamma +90 et beta de signe contraire).
+    await incliner(page, 12 + 35, 270);
+    await sonde(page, (i) => i.steer).toBe(64);
+    await incliner(page, 12 - 35, 270);
+    await sonde(page, (i) => i.steer).toBe(-64);
+    // Les deux pouces restent libres pour les pédales : le frein à gauche, le gaz à droite (sans gaz automatique, deux pédales).
+    await incliner(page, 12);
+    await page.getByRole("button", { name: "Pause" }).tap();
+    await expect(page.locator("#pause-recentrer")).toBeVisible();
+    await incliner(page, 40); // le joueur repose le téléphone plus incliné, puis « Recentrer »
+    await page.locator("#pause-recentrer").tap();
+    await expect(page.locator("#pause-recentrer")).toBeDisabled(); // 1,5 s : le temps de reposer le téléphone
+    await expect(page.locator("#pause-recentrer")).toBeEnabled({ timeout: 5_000 });
+    await page.locator("#pause-resume").tap();
+    await sonde(page, (i) => i.steer).toBe(0); // 40° est devenu le « tout droit »
+    await incliner(page, 40 + 35);
+    await sonde(page, (i) => i.steer).toBe(64);
+  });
+
+  test("le frein à gauche et le gaz à droite se tiennent en même temps que l'inclinaison", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "gyro", autoThrottle: false }, "ok");
+    await racing(page, "/?debug&scenario=plat");
+    const frein = await boite(page, "#touch .pedal-brake");
+    const gaz = await boite(page, "#touch .pedal-gas");
+    expect(frein.x).toBeLessThan(851 * 0.3);
+    expect(gaz.x).toBeGreaterThan(851 * 0.7);
+    const f = await fingersOf(page);
+    await f.down(1, frein.x, frein.y);
+    await f.down(2, gaz.x, gaz.y);
+    await incliner(page, 30);
+    await sonde(page, (i) => i.brake).toBe(64);
+    await sonde(page, (i) => i.throttle).toBe(64);
+    await sonde(page, (i) => i.steer).toBeGreaterThan(20);
+  });
+
+  test("iPhone : la demande d'autorisation attend le premier toucher ; accordée, l'inclinaison tourne la voiture", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "gyro" }, "ios");
+    await racing(page, "/?debug&scenario=plat");
+    await expect(page.locator("#page-controls")).toHaveCount(1); // (le réglage n'est pas ouvert : la carte « Autoriser » est dans Réglages › Commandes)
+    await incliner(page, 30);
+    await expect(page.locator(".gyro-jauge--course")).toHaveAttribute("data-capteur", "attente"); // rien n'est autorisé : le capteur n'est pas écouté
+    await sonde(page, (i) => i.steer).toBe(0);
+    await page.locator("body").tap({ position: { x: 425, y: 200 } }); // le premier toucher est le geste : la fenêtre du système (ici accordée)
+    await expect(page.locator(".gyro-jauge--course")).toHaveAttribute("data-capteur", "ok");
+    await incliner(page, 30 + 35); // le neutre était la première mesure, à 30°
+    await sonde(page, (i) => i.steer).toBeGreaterThan(40);
+    await expect(page.locator("#touch")).toHaveAttribute("data-mode", "gyro");
+  });
+
+  test("autorisation refusée : un message clair, et le jeu reprend le mode d'avant", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "gyro" }, "refuse");
+    await racing(page, "/?debug&scenario=plat");
+    await expect(page.locator("#touch")).toHaveAttribute("data-mode", "gyro"); // en attente : sur iPhone, la demande se fait au geste du joueur
+    await page.locator("body").tap({ position: { x: 425, y: 200 } }); // le premier toucher est le geste
+    await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons", { timeout: 8_000 });
+    await expect(page.locator("#banner")).toContainText("Gyroscope refusé. Retour au mode Boutons."); // même avec le gaz automatique : le message ne s'efface pas à la première seconde
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!).steerMode)).toBe("buttons");
+    await expect(page.locator("#touch .steer-left")).toBeVisible(); // les flèches sont revenues
+    // Dans Réglages › Commandes, la carte dit pourquoi et comment l'autoriser plus tard.
+    await page.getByRole("button", { name: "Pause" }).tap();
+    await page.locator("#pause-settings").tap();
+    await page.getByRole("tab", { name: "Commandes" }).tap();
+    await expect(page.locator("#page-controls .gyro-carte--refus")).toContainText("Gyroscope refusé. Retour au mode Boutons.");
+    await expect(page.getByRole("radio", { name: "Boutons" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("capteur absent : le jeu le dit et reprend le mode d'avant, sans jamais rester sur un mode qui ne tourne pas", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, { steerMode: "gyro" }, "muet");
+    await racing(page, "/?debug&scenario=plat");
+    await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons");
+    await page.getByRole("button", { name: "Pause" }).tap();
+    await page.locator("#pause-settings").tap();
+    await page.getByRole("tab", { name: "Commandes" }).tap();
+    await expect(page.locator("#page-controls .gyro-carte--refus")).toContainText("Ce téléphone n'a pas de capteur d'inclinaison utilisable. Retour au mode Boutons.");
+  });
+});
+
+test.describe("modes chargés à la demande", () => {
+  test("les boutons ne chargent aucun mode ; la glissière, le volant et le gyroscope se chargent quand on les choisit", { tag: "@regression" }, async ({ browser }) => {
+    const { page } = await telephone(browser, null, "ok");
+    const chargees = new Set<string>();
+    page.on("request", (r) => {
+      const m = /\/assets\/(steer\w+)-[\w-]+\.js/.exec(r.url());
+      if (m) chargees.add(m[1]!);
+    });
+    await racing(page, "/?debug&scenario=plat");
+    await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons");
+    expect([...chargees]).toEqual([]); // par défaut : aucun module de direction dans le premier chargement
+    await page.getByRole("button", { name: "Pause" }).tap();
+    await page.locator("#pause-settings").tap();
+    await page.getByRole("tab", { name: "Commandes" }).tap();
+    await page.getByRole("radio", { name: "Volant" }).tap();
+    await expect(page.locator("#touch .volant")).toHaveCount(1);
+    expect([...chargees].sort()).toEqual(["steerMath", "steerWheel"]);
+    await expect(page.getByText("Angle maximal")).toBeVisible(); // les réglages du volant viennent avec lui
+    await page.getByRole("radio", { name: "Glissière" }).tap();
+    await expect(page.locator("#touch .glissiere")).toHaveCount(1);
+    await expect(page.locator("#touch .volant")).toHaveCount(0);
+    await page.getByRole("radio", { name: "Gyroscope" }).tap();
+    await expect(page.locator(".gyro-jauge--course")).toHaveCount(1);
+    await expect(page.locator("#page-controls .gyro-carte--ok")).toBeVisible({ timeout: 8_000 }); // Android : aucune demande, le capteur répond
+    expect([...chargees].sort()).toEqual(["steerGyro", "steerMath", "steerSlider", "steerWheel"]);
+    await page.getByRole("radio", { name: "Boutons" }).tap();
+    await expect(page.locator(".gyro-jauge--course")).toHaveCount(0);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!).steerMode)).toBe("buttons");
+    // L'inversion gauche / droite : les pédales passent à gauche, les flèches à droite.
+    await page.getByRole("radio", { name: "Oui" }).first().tap();
+    await expect.poll(async () => (await boite(page, "#touch .pedal-gas")).x).toBeLessThan(851 * 0.3);
+    expect((await boite(page, "#touch .steer-left")).x).toBeGreaterThan(851 * 0.7);
+  });
+});
+
+test.describe("une course au volant, rejouée par le serveur", () => {
+  test("jouée au volant, rejouée par le serveur : le même temps", { tag: "@regression" }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    const circuit = dailyCircuit(TODAY);
+    const { page } = await telephone(browser, { steerMode: "wheel", autoThrottle: false });
+    await page.goto(`/?debug&api=${encodeURIComponent(API)}`);
+    await page.waitForFunction(() => window.__cdj?.phase === "racing" || window.__cdj?.phase === "countdown", undefined, { timeout: 30_000 });
+    await page.evaluate(() => window.__cdj.manual(true));
+    await page.waitForFunction(() => window.__cdj.input !== undefined);
+    const roue = await boite(page, "#touch .volant");
+    const gaz = await boite(page, "#touch .pedal-gas");
+    const frein = await boite(page, "#touch .pedal-brake");
+    const sur = (deg: number) => ({ x: roue.x + 55 * Math.sin((deg * Math.PI) / 180), y: roue.y - 55 * Math.cos((deg * Math.PI) / 180) });
+    const f = await fingersOf(page);
+    const pilote = createAutopilot(circuit.track);
+    await f.down(1, sur(0).x, sur(0).y);
+    await f.down(2, gaz.x, gaz.y);
+    let angle = 0;
+    let freine = false;
+    for (let i = 0; i < 6000; i++) {
+      const s = await page.evaluate(async () => {
+        await window.__cdj.advance(10);
+        return { car: window.__cdj.car, phase: window.__cdj.phase };
+      });
+      if (s.phase === "finished") break;
+      if (s.phase !== "racing") continue; // décompte
+      // Ce que ferait un joueur : lire la route et tourner le volant (le doigt balaie l'angle voulu, 90° au butoir) ; le gaz tenu, le frein quand il le faut.
+      const veut = pilote({ car: s.car } as unknown as RaceState);
+      const v = veut.steer / 64;
+      const voulu = v === 0 ? 0 : Math.sign(v) * 90 * (0.06 + Math.abs(v) * (1 - 0.06));
+      if (Math.abs(voulu - angle) > 0.5) {
+        angle = voulu;
+        await f.move(1, sur(angle).x, sur(angle).y);
+      }
+      if (veut.brake > 0 !== freine) {
+        freine = veut.brake > 0;
+        if (freine) await f.down(3, frein.x, frein.y);
+        else await f.up(3);
+      }
+    }
+    await f.up(1);
+    await f.up(2);
+    expect(await page.evaluate(() => window.__cdj.phase)).toBe("finished");
+    const jour = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("cdj:best:")));
+    expect(jour.length).toBeGreaterThan(0);
+    const stocke = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)!), jour[0]!);
+    // La rediffusion enregistrée, jouée par la simulation, redonne le temps affiché : rien n'a changé dans le format des commandes.
+    expect(replayRace(circuit.track, decodeReplay(stocke.replay)).finishMs).toBe(stocke.ms);
+    // Premier temps : le jeu demande un pseudo, puis l'envoie ; le serveur le rejoue et retrouve exactement le même temps.
+    await page.locator("#finish .online input").fill("Volant");
+    await page.locator("#finish .online button[type=submit]").click();
+    await expect(page.locator("#finish .online .rank")).toHaveText("1er sur 1", { timeout: 20_000 });
+    const lb = await (await fetch(`${API}/api/day/${circuit.date}/leaderboard`)).json();
+    expect(lb.top.map((r: { name: string; ms: number }) => [r.name, r.ms])).toContainEqual(["Volant", stocke.ms]);
+  });
+});

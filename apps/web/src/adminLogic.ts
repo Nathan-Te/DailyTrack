@@ -48,7 +48,7 @@ export interface AdminState {
   /** Miniatures des archives : "" normales (3D inclinée), "top" d'aplomb, "2d" repli sans WebGL, "off" aucune. */
   thumbs: "" | "top" | "2d" | "off";
   /** Mode de direction tactile forcé ("" : celui des réglages). */
-  steer: "" | "boutons" | "glisser";
+  steer: "" | "boutons" | "glissiere" | "volant" | "gyro";
   /** Dessine les zones tactiles actives (`?zones=1`). */
   zones: boolean;
   /** Force l'écran d'accueil (`?home=1`, lot 29) : sans cela, `debug` et les liens directs le sautent. */
@@ -190,7 +190,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (typeof o.essaiQualite === "string" && (o.essaiQualite === "" || o.essaiQualite in ESSAIS_QUALITE)) s.essaiQualite = o.essaiQualite;
     if (o.camera === "" || o.camera === "proche" || o.camera === "loin" || o.camera === "capot") s.camera = o.camera;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
-    if (o.steer === "" || o.steer === "boutons" || o.steer === "glisser") s.steer = o.steer;
+    if (o.steer === "" || o.steer === "boutons" || o.steer === "glissiere" || o.steer === "volant" || o.steer === "gyro") s.steer = o.steer; // lot 52 : « glisser » (l'ancien joystick) est devenu la glissière
     if (o.touch === "" || o.touch === "1" || o.touch === "0") s.touch = o.touch;
     if (typeof o.figure === "string" && (o.figure === "" || (FIGURE_NAMES as readonly string[]).includes(o.figure))) s.figure = o.figure;
     if (typeof o.figureVariant === "string" && /^\d{0,2}$/.test(o.figureVariant)) s.figureVariant = o.figureVariant;
