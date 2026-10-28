@@ -38,6 +38,7 @@ import {
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { LIEN_DISCORD, LIEN_KOFI } from "./liens";
+import pictoDiscord from "./discord.svg?no-inline";
 import tasseKofi from "./kofi-tasse.png";
 import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { dans, nonLue } from "./nouveautesDonnees";
@@ -303,7 +304,7 @@ function rendre(): void {
       el(
         "div",
         { classe: "portail-pied__liens" },
-        lienExterne(t.t("portail.discord"), LIEN_DISCORD, "discord"),
+        lienDiscord(t.t("portail.discord")),
         lienKofi(t.t("portail.kofi")),
       ),
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue), hreflang: langue }, texte: t.t("portail.mentions") }),
@@ -312,13 +313,13 @@ function rendre(): void {
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
 }
 
-/** Un lien vers un autre site (Discord, Ko-fi) : bouton secondaire du socle, nouvel onglet, sans transmettre la page d'origine. */
-function lienExterne(texte: string, href: string, id: string): HTMLElement {
-  const a = bouton({ texte, variante: "secondaire", href });
-  a.id = id;
-  a.setAttribute("target", "_blank");
-  a.setAttribute("rel", "noopener noreferrer");
-  return a;
+/**
+ * Le bouton Discord, à l'allure de Discord (le bleu-violet de leur charte, leur pictogramme) : un lien, **pas le widget intégré** (une fenêtre de discord.com : cookies et traceurs
+ * tiers à chaque visite). Texte blanc : il passe le contraste exigé sur ce bleu.
+ */
+function lienDiscord(texte: string): HTMLElement {
+  const picto = el("img", { classe: "portail-discord__picto", attrs: { src: pictoDiscord, alt: "", width: 24, height: 24 } });
+  return el("a", { classe: "portail-discord", attrs: { id: "discord", href: LIEN_DISCORD, target: "_blank", rel: "noopener noreferrer" } }, picto, el("span", { texte }));
 }
 
 /**
