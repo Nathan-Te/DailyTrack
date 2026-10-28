@@ -119,10 +119,13 @@ const board = await call("GET", `/api/day/${date}/leaderboard?player=${player}`)
 check("classement du jour : le joueur y est", board.status === 200 && board.body.me?.name === NAME);
 const ghost = await call("GET", `/api/day/${date}/ghost?kind=first`);
 check("fantôme du premier servi", ghost.status === 200 && typeof ghost.body.replay === "string");
-// Lot R9 : le fantôme du premier est téléchargeable ; le renvoyer tel quel sous un autre identifiant est refusé (le joueur n'est même pas créé).
+// Lot R9 : une course classée (le fantôme du premier est téléchargeable) renvoyée telle quelle sous un autre identifiant est refusée (le joueur n'est même pas
+// créé). On renvoie la course que ce passage vient de classer, pas le premier de la base : sur la recette, le premier du jour peut venir d'un autre générateur
+// (servi avant que la mise en production fige ce jour avec le code en production) et serait refusé pour sa version avant la règle des copies (28/10/2026).
 const stranger = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
-const tghost = await fetch(`${base}/api/submit`, { method: "POST", headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) }, body: JSON.stringify({ name: `${NAME}Copie`, date, replay: ghost.body.replay }) });
-check("DailyTrack : le fantôme du premier renvoyé sous un autre identifiant est refusé (409 replay_copy)", tghost.status === 409 && ((await tghost.json()) as any).error === "replay_copy", String(tghost.status));
+const tghost = await fetch(`${base}/api/submit`, { method: "POST", headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) }, body: JSON.stringify({ name: `${NAME}Copie`, date, replay: encodeReplay(run.replay) }) });
+const tghostBody = (await tghost.json().catch(() => ({}))) as { error?: string };
+check("DailyTrack : une course classée renvoyée sous un autre identifiant est refusée (409 replay_copy)", tghost.status === 409 && tghostBody.error === "replay_copy", `${tghost.status} ${tghostBody.error ?? ""}`);
 
 const now = await call("GET", `/api/salon/now?player=${player}`);
 check("Salon : session en cours", now.status === 200 && Number.isInteger(now.body.session), `session ${now.body.session}`);
@@ -234,15 +237,15 @@ check(
     jghost.body.mine === (firstRow?.name === NAME),
   `${jghost.status} premier « ${String(jghost.body.name)} », ${String(jghost.body.ticks)} pas, ${jghost.ms} ms`,
 );
-// Lot R9 : le fantôme du premier est téléchargeable ; le renvoyer tel quel sous un autre identifiant est refusé.
+// Lot R9 : une course classée renvoyée sous un autre identifiant est refusée — l'essai que ce passage vient de classer, pas le premier de la base (voir DailyTrack).
 const jghostCopy = await fetch(`${base}/api/jump/submit`, {
   method: "POST",
   headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) },
-  body: JSON.stringify({ ...jbody, replay: jghost.body.replay, name: `${NAME}Copie` }),
+  body: JSON.stringify({ ...jbody, name: `${NAME}Copie` }),
 });
 const jghostCopyBody = (await jghostCopy.json().catch(() => ({}))) as { error?: string };
 // Le code d'erreur est dit en cas de refus (jamais d'identifiant) : un « 409 » seul ne disait pas lequel (recette, run 40625315531).
-check("DailyJump : le fantôme du premier renvoyé sous un autre identifiant est refusé (409 replay_copy)", jghostCopy.status === 409 && jghostCopyBody.error === "replay_copy", `${jghostCopy.status} ${jghostCopyBody.error ?? ""}`);
+check("DailyJump : une course classée renvoyée sous un autre identifiant est refusée (409 replay_copy)", jghostCopy.status === 409 && jghostCopyBody.error === "replay_copy", `${jghostCopy.status} ${jghostCopyBody.error ?? ""}`);
 const jme = await jcall("GET", "/api/jump/me");
 const meToday = Array.isArray(jme.body.days) ? jme.body.days.find((d: { date: string }) => d.date === date) : null;
 check(
