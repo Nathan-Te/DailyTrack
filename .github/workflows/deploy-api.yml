@@ -321,8 +321,8 @@ jobs:
             echo "virgules=$virgules"
           } >> "$GITHUB_OUTPUT"
           if [ -n "$manque$refuse" ]; then
-            echo "- Panneau d'administration : désactivé (secret(s) absent(s) :${manque}${refuse}) — voir docs/plateforme/admin.md." >> "$GITHUB_STEP_SUMMARY"
-            echo "::notice title=Panneau d'administration désactivé::secret(s) absent(s) :${manque}${refuse} (docs/plateforme/admin.md)"
+            echo "- Panneau d'administration : désactivé — secret(s) absent(s) :${manque:- aucun} ; secret(s) que le compte de déploiement ne peut pas voir :${refuse:- aucun} (docs/plateforme/admin.md, étapes 3 et 3 ter)." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Panneau d'administration désactivé::absent(s) :${manque:- aucun} ; illisible(s) par le compte de déploiement :${refuse:- aucun} (docs/plateforme/admin.md)"
           else
             echo "- Panneau d'administration : secrets montés." >> "$GITHUB_STEP_SUMMARY"
           fi
