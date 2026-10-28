@@ -30,8 +30,8 @@ test("le jeu pèse peu : budget de poids compressé", () => {
   // Lot I4 (budget de la phase 3) : premier chargement ≤ aujourd'hui + 20 ko de JS et de CSS compressés. « Aujourd'hui » = le lot R4 : 260,2 ko de JS (le « 259 ko » du lot)
   // et 3,8 ko de CSS, soit 264,1 ko ; le lot I4 ajoute le socle (@cdj/ui : composants, jetons), le catalogue français, la langue, les nouveaux écrans et leurs feuilles.
   // Les plafonds ne comptent plus la page d'admin (lot de plateforme « suites de Track », décision de Nathan du 22/10/2026) : −10 800 o chacun (admin-*.js, 10 882 o), la marge de Track reste la même.
-  expect(total + css, `JS ${total} + CSS ${css} compressés : ${JSON.stringify(gz)}`).toBeLessThan(264_100 + 27_500); // lot 43 : +15 000 o, décision de Nathan du 23/10/2026 (le palier 1 de la scène entre en jeu : docs/plateforme/budgets.md) ; lot 35 : +1 000 o autorisés par Nathan (la page d'admin « Médailles », alors comptée) ; lot I7 : +1 024 o autorisés par Nathan (le plein écran et la caméra en vue) ; lot 34 : +1 276 o autorisés par Nathan (freinage après les boosts, dans le générateur : docs/plateforme/budgets.md)
-  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(280_200); // lot 43 : +15 000 o, décision de Nathan du 23/10/2026 (le palier 1 de la scène) ; −10 800 o (page d'admin sortie du décompte) ; lot 35 : +1 000 o autorisés par Nathan ; lot 34 : +1 000 o autorisés par Nathan (freinage après les boosts) ; ≈ 271,5 ko au lot I4 (lot I4 : +11,3 ko, hors catalogue anglais et réglage de conduite) ; ≈ 260,2 ko au lot R4 (lot 30 : +5,4 ko, synchronisation du profil, pseudos réservés, code de transfert CDJ2, changer son code ; lot 29 : +8,7 ko, accueil, réglages à onglets, aide, profil, classement compact, trois bus sonores ; lot 28 : +3,1 ko ; lot 26 : +10 ko, le Salon ; lot 23 : +5,6 ko ; lot 20 : +7 ko, la bibliothèque de figures ; lot 18 : +5 ko, cuves ; lot 17 : +4 ko ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
+  expect(total + css, `JS ${total} + CSS ${css} compressés : ${JSON.stringify(gz)}`).toBeLessThan(264_100 + 28_524); // lot 52 : +1 024 o, décision de Nathan du 28/10/2026 (la fusion du lot N2 ne laissait que 391 o) ; lot 43 : +15 000 o, décision de Nathan du 23/10/2026 (le palier 1 de la scène entre en jeu : docs/plateforme/budgets.md) ; lot 35 : +1 000 o autorisés par Nathan (la page d'admin « Médailles », alors comptée) ; lot I7 : +1 024 o autorisés par Nathan (le plein écran et la caméra en vue) ; lot 34 : +1 276 o autorisés par Nathan (freinage après les boosts, dans le générateur : docs/plateforme/budgets.md)
+  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(281_224); // lot 52 : +1 024 o, décision de Nathan du 28/10/2026 ; lot 43 : +15 000 o, décision de Nathan du 23/10/2026 (le palier 1 de la scène) ; −10 800 o (page d'admin sortie du décompte) ; lot 35 : +1 000 o autorisés par Nathan ; lot 34 : +1 000 o autorisés par Nathan (freinage après les boosts) ; ≈ 271,5 ko au lot I4 (lot I4 : +11,3 ko, hors catalogue anglais et réglage de conduite) ; ≈ 260,2 ko au lot R4 (lot 30 : +5,4 ko, synchronisation du profil, pseudos réservés, code de transfert CDJ2, changer son code ; lot 29 : +8,7 ko, accueil, réglages à onglets, aide, profil, classement compact, trois bus sonores ; lot 28 : +3,1 ko ; lot 26 : +10 ko, le Salon ; lot 23 : +5,6 ko ; lot 20 : +7 ko, la bibliothèque de figures ; lot 18 : +5 ko, cuves ; lot 17 : +4 ko ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
   expect(horsThree, "le code du jeu et de la simulation, hors three.js").toBeLessThan(147_500); // lot 43 : +15 000 o, décision de Nathan du 23/10/2026 (le palier 1 de la scène) ; −10 800 o (page d'admin sortie du décompte) ; lot 35 : +1 000 o autorisés par Nathan ; lot 34 : +1 300 o autorisés par Nathan (freinage après les boosts) ; ≈ 138,7 ko au lot I4 (lot I4 : +15 ko) ; ≈ 123,7 ko au lot R4 (lot 30 : +4,1 ko ; lot 29 : +10 ko ; lot 28 : +3,1 ko ; lot 26 : +10 ko ; lot 23 : +5,6 ko ; lot 22 : +6 ko ; lot 20 : +7 ko ; lots 17 et 18 : +10 ko)
   expect(anglais, "le catalogue anglais, chargé à la demande").toBeLessThan(8_000); // ≈ 6,6 ko aujourd'hui
   // Le fil de travail des circuits (lots 13 et 36) ne se charge qu'à la demande du premier circuit : budget à part (une copie de sim : générateur et pilote). Il ne retarde pas le premier
@@ -117,6 +117,25 @@ test("le Garage, à la demande : 10 ko au plus, rien dans le premier chargement"
   test.info().annotations.push({ type: "mesure", description: `Garage à la demande (JS) : ${garage.octets} o (${garage.fichiers.join(", ")})` });
   expect(garage.fichiers.length, "le morceau du Garage est construit à part").toBeGreaterThanOrEqual(1);
   expect(garage.octets, "le Garage, à la demande (JS), compressé").toBeLessThan(10_000); // ≈ 8,3 ko après le lot 42
+});
+
+// Lot 52 : les trois modes de direction tactiles (glissière, volant, gyroscope) et les réglages tactiles de Réglages › Commandes, à la demande, hors du premier chargement : les
+// boutons, mode par défaut, restent dans le premier chargement (≤ +1 ko, ligne `track.jsCss`). Chaque mode : sa logique, son dessin, ses réglages, ses textes (fr + en) et sa feuille de
+// style (le CSS n'est pas dans cette mesure, comme celle du Garage : `steer*.css`, 0,4 à 0,8 ko compressés chacun). Plafonds = mesure + 20 %, arrondis à 100 o (docs/plateforme/budgets.md,
+// section « Lot 52 »).
+test("les modes de direction tactiles, à la demande : rien dans le premier chargement, un plafond chacun", () => {
+  const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
+  expect(premier.filter((f) => /^(steerSlider|steerWheel|steerGyro|steerMath|touchReglages)-/.test(f)), "aucun mode de direction dans le premier chargement").toEqual([]);
+  const mesure = (entree: RegExp, nom: string) => {
+    const m = aLaDemande(entree);
+    test.info().annotations.push({ type: "mesure", description: `${nom} à la demande : ${m.octets} o (${m.fichiers.join(", ")})` });
+    expect(m.fichiers.length, `${nom} : un morceau à part`).toBeGreaterThanOrEqual(1);
+    return m.octets;
+  };
+  expect(mesure(/^steerSlider-.*\.js$/, "glissière"), "la glissière, à la demande, compressée").toBeLessThan(1_500); // ≈ 1,2 ko au lot 52 (981 o + `steerMath` 216 o)
+  expect(mesure(/^steerWheel-.*\.js$/, "volant"), "le volant, à la demande, compressé").toBeLessThan(2_300); // ≈ 1,8 ko au lot 52 (1 568 o + `steerMath`)
+  expect(mesure(/^steerGyro-.*\.js$/, "gyroscope"), "le gyroscope, à la demande, compressé").toBeLessThan(5_400); // ≈ 4,5 ko au lot 52 (4 299 o + `steerMath`)
+  expect(mesure(/^touchReglages-.*\.js$/, "réglages tactiles"), "les réglages tactiles, à la demande, compressés").toBeLessThan(1_100); // ≈ 0,8 ko au lot 52 (843 o)
 });
 
 // Lot I4 : les polices. Au plus 150 ko (charte § 4), servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail : un joueur qui vient du portail les a

@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Lot 52 — Track : commandes mobiles (maquettes)</title>
+<!-- Planche de maquettes du lot 52 : référence, jamais construite ni servie (comme docs/plateforme/maquettes/cartouches/). Les jetons et les feuilles sont ceux de
+     @cdj/ui et de apps/web ; ouvrir le fichier depuis le dépôt (chemins relatifs). ?l=en pour l'anglais, ou le bouton FR / EN. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&amp;family=Archivo+Black&amp;family=JetBrains+Mono:wght@500;700&amp;family=Barlow+Condensed:ital,wght@0,600;1,700;1,800&amp;display=swap">
+<link rel="stylesheet" href="../../../packages/ui/src/styles.css">
+<link rel="stylesheet" href="../../../packages/ui/src/cadre.css">
+<link rel="stylesheet" href="../../../apps/web/src/interface.css">
+<link rel="stylesheet" href="../../../apps/web/src/reglages.css">
+<link rel="stylesheet" href="../../../apps/web/src/arrivee.css">
+<style>
+/* La planche n'est pas le jeu : on rend le défilement à la page (interface.css le coupe) et on garde les composants du jeu tels quels. */
+html, body { height: auto; overflow: auto; touch-action: auto; user-select: text; -webkit-user-select: text; background: var(--dj-creme); color: var(--dj-encre); }
+body { padding-block: 0 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-family: var(--dj-police-texte); }
+body > .page { visibility: visible !important; }
+.page { max-width: 1800px; margin: 0 auto; }
+header.planche { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 24px; padding: 28px 0 8px; border-bottom: 3px solid var(--dj-encre); }
+header.planche h1 { font-family: var(--dj-police-marque); font-size: 30px; line-height: 1; text-transform: uppercase; }
+header.planche p { max-width: 900px; font-size: 14px; color: var(--dj-encre-douce); }
+.langue { margin-left: auto; display: flex; border: 3px solid var(--dj-encre); border-radius: 3px; overflow: hidden; }
+.langue button { min-height: 44px; min-width: 56px; border: 0; background: var(--dj-papier); font-weight: 700; }
+.langue button[aria-pressed="true"] { background: var(--dj-encre); color: var(--dj-papier); }
+h2.section { margin: 40px 0 4px; font-family: var(--dj-police-marque); font-size: 22px; text-transform: uppercase; }
+h2.section small { display: block; margin-top: 4px; font-family: var(--dj-police-texte); font-size: 13px; font-weight: 400; text-transform: none; color: var(--dj-encre-douce); }
+.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(852px, 100%), 1fr)); gap: 28px 24px; margin-top: 16px; }
+.grille--moyenne { grid-template-columns: repeat(auto-fill, minmax(446px, 1fr)); }
+.grille--petite { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+figure { margin: 0; min-width: 0; overflow-x: auto; padding-bottom: 2px; }
+figcaption { max-width: 844px; margin-top: 8px; font-size: 13px; }
+figcaption b { font-family: var(--dj-police-marque); font-size: 14px; }
+figcaption ol { margin: 6px 0 0; padding-left: 20px; color: var(--dj-encre-douce); }
+.puce { display: inline-block; margin-left: 6px; padding: 1px 6px; border: 2px solid var(--dj-encre); border-radius: 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: var(--dj-moutarde); }
+.puce--inchange { background: var(--dj-papier); }
+.puce--nouveau { background: var(--dj-diamant); }
+
+/* --- Un écran de téléphone en paysage (844 × 390) ---------------------------------------------------------------------------------------------- */
+.ecran { position: relative; width: 844px; height: 390px; overflow: hidden; background: var(--track-asphalte); color: var(--track-texte); font-family: var(--dj-police-texte); border: 3px solid var(--dj-encre); border-radius: 22px; box-sizing: content-box; }
+.ecran--mini { width: 400px; height: 300px; border-radius: 14px; }
+.ecran > svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ecran .cadre { position: absolute; z-index: 1; padding: 10px; }
+.abs { position: absolute; }
+.pl { background: var(--track-asphalte); color: var(--track-texte); border: var(--dj-trait) solid var(--dj-encre); border-radius: var(--dj-rayon-bouton); box-shadow: 2px 2px 0 var(--dj-encre); }
+.btn44 { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 3px; box-shadow: none; }
+.bande { display: flex; align-items: stretch; height: 30px; border: 2px solid var(--dj-encre); border-radius: 2px; box-shadow: 2px 2px 0 var(--dj-encre); overflow: hidden; font-family: var(--track-police); font-style: italic; }
+.bande .chrono { position: relative; display: flex; align-items: center; background: var(--track-asphalte); padding: 0 14px 0 10px; font-weight: 800; font-size: 24px; font-variant-numeric: tabular-nums; }
+.bande .chrono::after { content: ""; position: absolute; right: -3px; top: 0; bottom: 0; width: 9px; background: repeating-linear-gradient(115deg, var(--track-livree) 0 3px, transparent 3px 5px); }
+.bande .pc { display: flex; align-items: center; padding: 0 7px; background: var(--track-texte); color: var(--track-asphalte); font-weight: 700; font-size: 16px; }
+.bande .ecart { display: flex; align-items: center; padding: 0 8px; background: var(--track-livree); color: var(--track-asphalte); font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
+.pastille { height: 30px; display: flex; align-items: center; gap: 5px; padding: 0 7px; font-size: 11px; font-weight: 700; font-family: var(--dj-police-chiffres); }
+.rang { height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 8px; font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 18px; }
+.ligne-aide { position: absolute; left: 50%; top: 48px; transform: translateX(-50%); padding: 2px 8px; font-size: 12px; font-weight: 600; color: var(--track-texte-doux); white-space: nowrap; }
+.vitesse { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); padding: 0 8px; font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 16px; line-height: 1.4; }
+.annonce { position: absolute; left: 50%; top: 26%; transform: translateX(-50%); font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 72px; line-height: 1; text-shadow: 4px 4px 0 var(--dj-encre); text-transform: uppercase; white-space: nowrap; }
+
+/* --- Commandes de course -------------------------------------------------------------------------------------------------------------------------- */
+.tbtn { position: absolute; display: flex; align-items: center; justify-content: center; font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; }
+.tbtn.gaz { background: var(--track-livree); color: var(--track-asphalte); box-shadow: 2px 2px 0 var(--track-livree-ombre); font-size: 22px; }
+.tbtn.on { background: var(--track-livree); color: var(--track-asphalte); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--dj-encre); }
+.tbtn.gaz.on { background: var(--track-livree-texte); box-shadow: 1px 1px 0 var(--track-livree-ombre); }
+/* glissière */
+.glis { position: absolute; }
+.glis .rail { position: absolute; left: 14px; right: 14px; top: 50%; height: 8px; margin-top: -4px; background: var(--track-piste); border: 2px solid var(--dj-encre); border-radius: 4px; }
+.glis .gr { position: absolute; top: 50%; width: 2px; height: 12px; margin: -6px 0 0 -1px; background: var(--track-route); }
+.glis .gr.c { height: 26px; margin-top: -13px; width: 4px; margin-left: -2px; background: var(--track-livree); }
+.glis .fl { position: absolute; top: 50%; margin-top: -8px; color: var(--track-texte-doux); }
+.glis .pouce { position: absolute; top: 6px; bottom: 6px; width: 56px; margin-left: -28px; display: flex; align-items: center; justify-content: center; gap: 4px; background: var(--track-livree); color: var(--track-asphalte); border: var(--dj-trait) solid var(--dj-encre); border-radius: var(--dj-rayon-bouton); box-shadow: 2px 2px 0 var(--track-livree-ombre); }
+.glis .pouce i { width: 3px; height: 22px; background: var(--track-asphalte); }
+.glis .pouce.on { background: var(--track-livree-texte); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--track-livree-ombre); }
+/* volant */
+.volant { position: absolute; }
+.volant svg { display: block; overflow: visible; }
+/* jauge d'inclinaison */
+.jauge { position: absolute; bottom: 8px; height: 26px; width: 96px; }
+.jauge .gr { position: absolute; top: 50%; width: 2px; height: 8px; margin: -4px 0 0 -1px; background: var(--track-route); }
+.jauge .gr.c { height: 16px; margin-top: -8px; background: var(--track-texte-doux); }
+.jauge .zm { position: absolute; top: 4px; bottom: 4px; background: var(--track-coque); }
+.jauge .cur { position: absolute; top: 3px; bottom: 3px; width: 6px; margin-left: -3px; background: var(--track-livree); border: 1px solid var(--dj-encre); }
+.jauge .etat { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; background: var(--track-asphalte); }
+/* doigt (annotation de la maquette : le vrai jeu ne dessine rien sous le doigt) */
+.doigt { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 3px solid var(--track-texte); border-radius: 50%; background: var(--track-texte); opacity: .55; pointer-events: none; z-index: 3; }
+.zone { position: absolute; border: 2px dashed var(--track-texte-doux); border-radius: 6px; pointer-events: none; font-size: 10px; font-weight: 700; color: var(--track-texte-doux); padding: 2px 5px; text-transform: uppercase; }
+.num { position: absolute; z-index: 4; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: var(--dj-moutarde); color: var(--dj-encre); border: 2px solid var(--dj-encre); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+/* --- Réglages et dialogues dans les cadres ----------------------------------------------------------------------------------------------------- */
+.ecran .etiquette { width: 100%; max-height: 100%; }
+.reglages__tabs { margin-bottom: 4px; }
+.ecran .reglage__titre, .large .reglage__titre { font-size: 14px; }
+.nouveau { display: inline-block; margin-left: 6px; padding: 0 5px; border: 2px solid var(--dj-encre); border-radius: 2px; background: var(--dj-diamant); color: var(--dj-diamant-texte); font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; vertical-align: middle; }
+.carte { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border: 2px solid var(--track-route); border-radius: 3px; background: var(--track-piste); font-size: 13px; }
+.carte svg { flex: none; }
+.carte p { margin: 0; }
+.carte .petit { margin-top: 4px; font-size: 12px; color: var(--track-texte-doux); }
+.carte--ok { border-color: var(--track-texte-doux); }
+.carte--refus { border-color: var(--track-livree); }
+.carte .dj-bouton { margin-top: 8px; min-height: 44px; }
+.essai { position: relative; height: 34px; border: 2px solid var(--track-route); border-radius: 3px; background: var(--track-piste); }
+.essai .gr { position: absolute; top: 50%; width: 2px; height: 10px; margin: -5px 0 0 -1px; background: var(--track-route); }
+.essai .gr.c { height: 20px; margin-top: -10px; background: var(--track-texte-doux); }
+.essai .zm { position: absolute; top: 5px; bottom: 5px; background: var(--track-coque); }
+.essai .cur { position: absolute; top: 4px; bottom: 4px; width: 8px; margin-left: -4px; background: var(--track-livree); border: 2px solid var(--dj-encre); }
+.essai small { position: absolute; right: 6px; top: -18px; font-family: var(--dj-police-chiffres); font-size: 11px; color: var(--track-texte-doux); }
+.systeme { position: absolute; left: 50%; top: 50%; width: 270px; transform: translate(-50%, -50%); padding: 16px 14px 0; background: var(--dj-papier); color: var(--dj-encre); border: 2px solid var(--dj-encre); border-radius: 14px; font-family: -apple-system, "Segoe UI", sans-serif; text-align: center; z-index: 5; }
+.systeme b { display: block; font-size: 15px; margin-bottom: 4px; }
+.systeme p { margin: 0 0 12px; font-size: 12px; color: var(--dj-encre-douce); }
+.systeme .deux { display: flex; margin: 0 -14px; border-top: 1px solid var(--dj-creme-2); }
+.systeme .deux span { flex: 1; padding: 11px 0; font-size: 15px; color: #1a62d6; }
+.systeme .deux span + span { border-left: 1px solid var(--dj-creme-2); font-weight: 700; }
+.voile-scene { position: absolute; inset: 0; background: var(--cadre-voile); z-index: 4; }
+.etat-btn { display: flex; flex-direction: column; gap: 4px; }
+.barre-progres { height: 6px; border: 2px solid var(--dj-encre); background: var(--track-piste); }
+.barre-progres i { display: block; height: 100%; width: 60%; background: var(--track-livree); }
+
+/* --- Tableaux et notes -------------------------------------------------------------------------------------------------------------------------------- */
+table.tab { width: 100%; max-width: 1100px; border-collapse: collapse; margin-top: 12px; font-size: 13px; background: var(--dj-papier); border: 2px solid var(--dj-encre); }
+table.tab th, table.tab td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--dj-creme-2); vertical-align: top; }
+table.tab th { background: var(--dj-encre); color: var(--dj-papier); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+ul.decisions { max-width: 1000px; margin: 12px 0 0; padding-left: 20px; font-size: 14px; }
+ul.decisions li { margin-bottom: 8px; }
+.cadran { display: block; background: var(--dj-papier); border: 2px solid var(--dj-encre); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="scene" viewBox="0 0 844 390" preserveAspectRatio="xMidYMid slice">
+    <rect width="844" height="390" fill="#141A33"/>
+    <path d="M0 160 L60 110 L130 150 L210 90 L300 150 L380 120 L460 160 L560 100 L660 150 L760 105 L844 140 L844 190 L0 190Z" fill="#1E2A5C"/>
+    <rect x="0" y="180" width="844" height="210" fill="#1A2350"/>
+    <path d="M400 180 L444 180 L780 390 L64 390 Z" fill="#2A3370"/>
+    <path d="M400 180 L405 180 L110 390 L64 390 Z" fill="#F4EFE6" opacity=".9"/>
+    <path d="M439 180 L444 180 L780 390 L734 390 Z" fill="#B3312A"/>
+    <path d="M420 195 L424 195 L426 225 L418 225 Z M416 260 L428 260 L432 320 L412 320 Z" fill="#8F9BD6"/>
+    <circle cx="520" cy="40" r="10" fill="#C9D3FF"/>
+    <g transform="translate(372 250)">
+      <rect x="0" y="30" width="100" height="70" fill="#7A5230"/>
+      <rect x="12" y="4" width="76" height="38" fill="#1F2B5C"/>
+      <rect x="30" y="0" width="8" height="100" fill="#B9C4F0" opacity=".6"/><rect x="62" y="0" width="8" height="100" fill="#B9C4F0" opacity=".6"/>
+      <rect x="-8" y="80" width="22" height="26" fill="#1E1B19"/>
+      <rect x="86" y="80" width="22" height="26" fill="#1E1B19"/>
+    </g>
+  </symbol>
+</svg>
+
+<div class="page" id="page"></div>
+
+<script>
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+// Textes (fr + en). Le jeu les mettra dans ses catalogues (`tactile.*`) ; ici, seulement de quoi lire la planche.
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+const L = {
+  fr: {
+    titre: "Lot 52 — Commandes mobiles de Track",
+    intro: "Quatre façons de tourner sur téléphone : Boutons (défaut, inchangé), Glissière, Volant, Gyroscope. Les pédales restent. Toutes donnent la même direction analogique (−64 à 64) : la simulation, la rediffusion et le classement ne changent pas. Téléphone en paysage 844 × 390, jetons et composants de @cdj/ui, charte « Cartouches ». Les points marqués ◆ sont des propositions à valider ou à corriger.",
+    s1: "1 · En course", s1d: "Le HUD compact et le centre libre ne bougent pas ; chaque mode ne dessine qu'au bord de l'écran, jamais devant la voiture (hors de 30–70 % de la largeur).",
+    s2: "2 · Le volant et la glissière, de près", s2d: "Comment le doigt devient une direction.",
+    s3: "3 · Réglages › Commandes", s3d: "Le choix du mode et les réglages propres à chacun ; l'écran défile (corps de l'étiquette), seuls les premiers réglages sont visibles sans défiler.",
+    s4: "4 · Le gyroscope : autorisation, calibrage, recentrage, paysages", s4d: "Aucune donnée du capteur n'est gardée ni envoyée : seul le réglage est gardé (cdj:touch).",
+    s5: "5 · Réglages par défaut proposés", s6: "6 · Décisions pour Nathan",
+    m_boutons: "Boutons", m_glissiere: "Glissière", m_volant: "Volant", m_gyro: "Gyroscope",
+    ped_frein: "Frein", ped_gaz: "Gaz",
+    aide_boutons: "← → à gauche pour tourner · frein et gaz à droite",
+    aide_glissiere: "Glisse la glissière pour tourner · frein et gaz à droite",
+    aide_volant: "Tourne le volant au doigt · frein et gaz à droite",
+    aide_gyro: "Incline le téléphone pour tourner · frein à gauche, gaz à droite",
+    aide_inv: "Tourne le volant à droite · frein et gaz à gauche",
+    vit: "187 km/h",
+    f_boutons: "Boutons (défaut, inchangé)", f_glis: "Glissière", f_vol: "Volant", f_gyro: "Gyroscope", f_vol_inv: "Volant, disposition inversée",
+    c_boutons: ["Les deux flèches et les deux pédales : exactement ce qui existe (lot I4).", "Tout est dans le premier chargement."],
+    c_glis: ["La glissière remplace le joystick : un rail au bord gauche (≤ 30 % de la largeur), un curseur de livrée que le pouce fait glisser ; la direction suit sa position. ◆ Position absolue : le curseur va sous le doigt, plus de point de pose.", "Tout le tiers gauche de l'écran est la zone de toucher : le pouce peut quitter le rail (en haut ou en bas) sans le lâcher.", "Au lâcher, le curseur revient au centre (0,12 s)."],
+    c_vol: ["Le volant (140 px, taille moyenne), au bord gauche, hors de la voiture et du centre. Un repère fixe en haut, une marque de livrée sur la jante.", "L'angle vient de la position du doigt autour du centre : ◆ le volant tourne de l'angle balayé par le doigt depuis la prise (pas de saut quand on le saisit à 3 h).", "Butoir à l'angle maximal (ici 90°, ou 135° : réglable) : le volant s'arrête, le point de prise suit le doigt, donc le retour est immédiat."],
+    c_gyro: ["On tourne en inclinant le téléphone comme un volant ; rien à toucher pour diriger. ◆ Un pouce par pédale : frein à gauche, gaz à droite.", "◆ Une petite jauge d'inclinaison à côté de la vitesse (hors du centre) : le curseur de livrée suit l'angle ; la zone morte est le gris. Désactivable.", "Les deux pouces restent libres pour les pédales."],
+    c_vol_inv: ["Disposition inversée (un réglage commun aux quatre modes) : pédales à gauche, direction à droite.", "Les zones de toucher suivent : direction dans le tiers droit, pédales à gauche."],
+    v_titre: "Le volant", v_repos: "Repos (0°)", v_45: "Tourné de 45°", v_butoir: "Butoir à 90°", v_butoir135: "Butoir à 135° (réglable)", v_hors: "Le doigt sort du volant : il tourne encore", v_retour: "Lâcher : retour au centre",
+    v_repos_d: "Direction 0.", v_45_d: "Direction +0,50 (90°) ou +0,33 (135°).", v_butoir_d: "Direction +1. Le doigt peut aller plus loin : le volant ne bouge plus.", v_butoir135_d: "Même arrêt, 45° plus loin : plus de tours de poignet, plus de précision.", v_hors_d: "Seul l'angle autour du centre compte, pas la distance : le doigt peut glisser hors de la jante.", v_retour_d: "0,18 s, ressort amorti : le retour est visible, la direction retombe à 0 tout de suite.",
+    g_titre: "La glissière", g_repos: "Repos", g_mi: "À moitié (−0,50)", g_plein: "À fond (+1)", g_zm: "Zone morte (8 %)",
+    g_repos_d: "Centre : repère de livrée.", g_mi_d: "Le curseur est sous le doigt.", g_plein_d: "Butée en bout de rail ; le doigt peut aller plus loin.", g_zm_d: "Autour du centre, la direction reste à 0 (réglable de 0 à 30 %).",
+    tailles: "Tailles : petite · moyenne · grande (comme les boutons)",
+    r_nom_dir: "Direction", r_aide_dir: "Boutons, glissière, volant ou gyroscope.",
+    r_taille: "Taille des commandes", r_taille_aide: "Boutons, glissière et volant.",
+    r_sens: "Sensibilité", r_sens_aide: "Plus c'est haut, moins il faut de mouvement.",
+    r_sens_gyro_aide: "Inclinaison pour braquer à fond : ",
+    r_zm: "Zone morte", r_angle: "Angle maximal", r_angle_aide: "Le volant s'arrête là : 90° ou 135°. C'est aussi sa sensibilité.",
+    r_filtre: "Filtrage des tremblements", r_filtre_aide: "Léger : aucun retard perceptible.",
+    r_jauge: "Jauge d'inclinaison en course", r_inv: "Disposition inversée", r_inv_aide: "Pédales à gauche, direction à droite (gyroscope : gaz à gauche, frein à droite).",
+    r_acc: "Accélérateur", r_acc_bouton: "Bouton gaz", r_acc_auto: "Automatique", r_vib: "Vibration",
+    r_reinit: "Réglages tactiles par défaut", r_oui: "Oui", r_non: "Non", r_recentrer: "Recentrer maintenant", r_recentrer_aide: "Aussi dans la pause. Tiens le téléphone droit.",
+    r_essai: "Essai", r_essai_aide: "Incline le téléphone : le curseur doit bouger.",
+    t_graph: "Graphismes", t_son: "Son", t_jeu: "Jeu", t_cmd: "Commandes", retour: "‹ TRACK",
+    r_titre: "Réglages", sf_a: "Réglages › Commandes, volant choisi : en haut de l'écran", sf_a2: "Le même, après avoir défilé : le choix du mode et les réglages du volant", sf_b: "Boutons", sf_c: "Glissière", sf_d: "Volant", sf_e: "Gyroscope",
+    sd_b: "Inchangé : taille, accélérateur, vibration. Plus la disposition inversée.", sd_c: "Reprend les réglages de l'ancien joystick (sensibilité, zone morte). Un ancien choix « joystick » devient « glissière » sans rien perdre.", sd_d: "Taille, angle maximal (90° ou 135°) et zone morte. Pas de curseur de sensibilité à part : l'angle maximal en tient lieu. ◆", sd_e: "Autorisation, essai en direct, sensibilité, zone morte, filtrage, jauge, recentrage.",
+    n_titre: "Nouveau",
+    a_titre: "Autorisation", a_1: "1 · À autoriser", a_2: "2 · Fenêtre du système (iPhone)", a_3: "3 · Accordé", a_4: "4 · Refusé : retour au mode précédent", a_5: "5 · Capteur absent",
+    a_1_txt: "Pour tourner en inclinant le téléphone, Track a besoin du capteur de mouvement.", a_1_petit: "Rien n'est enregistré ni envoyé : le capteur ne sert qu'à tourner.", a_1_btn: "Autoriser le gyroscope",
+    a_2_t: "« playdujour.com » souhaite accéder au mouvement et à l'orientation", a_2_p: "Fenêtre du système : le texte n'est pas celui du jeu.", a_2_non: "Refuser", a_2_oui: "Autoriser",
+    a_3_txt: "Gyroscope actif. Tiens le téléphone droit pendant le décompte : c'est ta position neutre.", a_3_petit: "Le neutre est repris à chaque course. Essaie ci-dessous.",
+    a_4_txt: "Gyroscope refusé. Retour au mode Volant.", a_4_petit: "Pour l'autoriser plus tard : réglages du téléphone, accès au mouvement et à l'orientation du navigateur, puis recharge la page.",
+    a_5_txt: "Ce téléphone n'a pas de capteur d'inclinaison utilisable. Retour au mode Volant.", a_5_petit: "Aucun mouvement reçu : le gyroscope est désactivé sur cet appareil ou absent.",
+    a_note: ["iPhone : la demande se fait au geste du joueur (toucher « Autoriser le gyroscope », ou « Courir » si le choix était déjà enregistré et l'autorisation perdue). Android : pas de demande, mais le jeu vérifie qu'un mouvement arrive dans la seconde.", "Refus, capteur absent ou silence : message clair, et le jeu reprend le mode précédent (celui d'avant le gyroscope ; Boutons s'il n'y en avait pas)."],
+    k_titre: "Calibrage au décompte", k_1: "Décompte : calage en cours", k_2: "« PARTEZ ! » : position neutre prise",
+    k_1_aide: "Gyroscope : tiens le téléphone droit…", k_2_aide: "Gyroscope calé", k_etat1: "Calage", k_etat2: "Prêt", k_depart: "Partez !",
+    k_notes: ["◆ Le neutre est la moyenne des 0,5 dernières secondes du décompte : on peut se rasseoir pendant « 3 » et « 2 », seul le moment juste avant « PARTEZ ! » compte.", "La jauge dit CALAGE puis rend la main : le jeu ne bouge pas sous le pouce."],
+    p_titre: "Pause : recentrer", p_pause: "Pause", p_reprendre: "Reprendre", p_recommencer: "Recommencer", p_pdc: "Dernier point de contrôle", p_camera: "Caméra : proche", p_reglages: "Réglages", p_recentrer: "Recentrer le gyroscope", p_enc: "Recentrage… tiens droit", p_fait: "Gyroscope recentré",
+    p_notes: ["◆ Un bouton dans la pause, seulement en mode gyroscope. Le neutre est pris 1,5 s après l'appui (le temps de reposer le téléphone), avec une barre de progression ; puis « recentré ».", "La reprise n'est pas touchée : au « Reprendre », la course repart avec ce neutre."],
+    pa_titre: "Les deux paysages", pa_1: "Paysage, haut du téléphone à gauche", pa_2: "Paysage, haut du téléphone à droite", pa_gauche: "gauche", pa_droite: "droite",
+    pa_note: "Le jeu lit screen.orientation.angle et tourne l'inclinaison avec l'écran : pencher vers la gauche de l'écran donne toujours « à gauche », quel que soit le paysage. L'angle est celui du plan de l'écran (comme un volant), tiré de la gravité donnée par l'événement d'orientation : pas de blocage près de la verticale. À plat, sans appui, il n'y a pas d'angle : la direction reste à 0.",
+    d_titre: "Réglage", d_defaut: "Défaut proposé", d_plage: "Plage", d_note: "Remarque",
+    d_rows: [
+      ["Mode de direction", "Boutons", "Boutons · Glissière · Volant · Gyroscope", "Défaut inchangé. Ancien « glissement » (cdj:touch : drag) devient Glissière."],
+      ["Taille des commandes", "Moyenne", "Petite · Moyenne · Grande", "Volant 112 / 140 / 182 px ; glissière 170 × 46 / 236 × 64 / 241 × 83 px (largeur plafonnée à 30 % de l'écran moins la marge : jamais devant la voiture)."],
+      ["Glissière : sensibilité", "×1", "×0,5 à ×2", "Plein braquage quand le curseur touche le bout du rail à ×1."],
+      ["Glissière : zone morte", "8 %", "0 à 30 %", "Repris de l'ancien joystick."],
+      ["Volant : angle maximal", "90°", "90° · 135°", "Plein braquage au butoir."],
+      ["Volant : zone morte", "6 %", "0 à 30 %", "En part de l'angle maximal (5° à 90°)."],
+      ["Gyroscope : sensibilité", "×1 (35°)", "×0,5 à ×2 (70° à 17°)", "Inclinaison qui donne le plein braquage ; affichée en degrés."],
+      ["Gyroscope : zone morte", "5 %", "0 à 30 %", "≈ 2° à ×1."],
+      ["Gyroscope : filtrage", "Léger (≈ 30 ms)", "—", "Pas de réglage : un lissage fixe, pas de retard perceptible."],
+      ["Gyroscope : jauge en course", "Oui", "Oui · Non", "Plaque à côté de la vitesse."],
+      ["Disposition inversée", "Non", "Oui · Non", "Pédales à gauche, direction à droite ; commun aux quatre modes."],
+      ["Accélérateur · Vibration", "Bouton gaz · Oui", "—", "Inchangés."],
+    ],
+    dec: [
+      "<b>Volant : prise relative.</b> Le volant tourne de l'angle que le doigt balaie depuis la prise (le butoir fait suivre le point de prise). L'autre choix, un angle absolu (le volant saute sous le doigt), est plus brutal à la prise.",
+      "<b>Volant : l'angle maximal est la sensibilité.</b> Un seul réglage (90° / 135°) au lieu de deux qui disent la même chose. Si tu veux un curseur de plus, c'est une ligne.",
+      "<b>Glissière : position absolue.</b> Le curseur va sous le doigt (zone = tout le tiers gauche), au lieu de se caler sur le point de pose comme le joystick.",
+      "<b>Gyroscope : pédales séparées</b> (frein sous le pouce gauche, gaz sous le droit). L'alternative est de garder les deux pédales à droite, un pouce pour tout.",
+      "<b>Jauge d'inclinaison en course</b>, à côté de la vitesse, désactivable : elle coûte une plaque de plus au HUD mais dit si le capteur répond.",
+      "<b>Recentrer : 1,5 s après l'appui</b> (le temps de reposer le téléphone) ; le neutre du décompte est la moyenne des 0,5 dernières secondes.",
+      "<b>Disposition inversée commune aux quatre modes</b>, plutôt qu'un réglage par mode.",
+      "<b>Retour au mode précédent</b> si le gyroscope est refusé ou absent ; Boutons si l'on n'avait jamais choisi autre chose.",
+    ],
+    budget: "Budget (estimation avant mesure) : les boutons restent dans le premier chargement (≤ +1 ko : le champ « mode », la lecture des réglages, le chargement du module choisi) ; la glissière, le volant et le gyroscope sont trois modules chargés à la demande, dont les chiffres seront dans budgets.md (lignes track.glissiere, track.volant, track.gyroscope).",
+  },
+  en: {
+    titre: "Lot 52 — Track mobile controls",
+    intro: "Four ways to steer on a phone: Buttons (default, unchanged), Slider, Wheel, Gyroscope. The pedals stay. All of them give the same analogue steering (−64 to 64): the simulation, replays and leaderboard do not change. Phone in landscape, 844 × 390, @cdj/ui tokens and components, “Cartouches” charter. Points marked ◆ are proposals to validate or correct.",
+    s1: "1 · In a race", s1d: "The compact HUD and the clear centre do not move; each mode only draws at the screen edge, never in front of the car (outside 30–70 % of the width).",
+    s2: "2 · The wheel and the slider, up close", s2d: "How a finger becomes a steering value.",
+    s3: "3 · Settings › Controls", s3d: "The mode choice and each mode's own settings; the screen scrolls (the label body), only the first settings show without scrolling.",
+    s4: "4 · The gyroscope: permission, calibration, recentring, landscapes", s4d: "No sensor data is kept or sent: only the setting is kept (cdj:touch).",
+    s5: "5 · Proposed default settings", s6: "6 · Decisions for Nathan",
+    m_boutons: "Buttons", m_glissiere: "Slider", m_volant: "Wheel", m_gyro: "Gyroscope",
+    ped_frein: "Brake", ped_gaz: "Gas",
+    aide_boutons: "← → on the left to steer · brake and gas on the right",
+    aide_glissiere: "Slide the slider to steer · brake and gas on the right",
+    aide_volant: "Turn the wheel with your finger · brake and gas on the right",
+    aide_gyro: "Tilt the phone to steer · brake on the left, gas on the right",
+    aide_inv: "Turn the wheel on the right · brake and gas on the left",
+    vit: "116 mph",
+    f_boutons: "Buttons (default, unchanged)", f_glis: "Slider", f_vol: "Wheel", f_gyro: "Gyroscope", f_vol_inv: "Wheel, mirrored layout",
+    c_boutons: ["The two arrows and the two pedals: exactly what exists today (lot I4).", "All in the first load."],
+    c_glis: ["The slider replaces the joystick: a rail on the left edge (≤ 30 % of the width), a livery thumb the finger drags; steering follows its position. ◆ Absolute position: the thumb goes under the finger, no more touch-down point.", "The whole left third of the screen is the touch zone: the finger can leave the rail (up or down) without letting go.", "On release the thumb returns to the centre (0.12 s)."],
+    c_vol: ["The wheel (140 px, medium size) on the left edge, away from the car and the centre. A fixed marker on top, a livery mark on the rim.", "The angle comes from the finger's position around the centre: ◆ the wheel turns by the angle the finger sweeps since the grab (no jump when grabbing it at 3 o'clock).", "A stop at the maximum angle (here 90°, or 135°: adjustable): the wheel stops, the grab point follows the finger, so coming back is immediate."],
+    c_gyro: ["You steer by tilting the phone like a wheel; nothing to touch to steer. ◆ One thumb per pedal: brake on the left, gas on the right.", "◆ A small tilt gauge next to the speed (outside the centre): the livery cursor follows the angle; the dead zone is the grey. Can be turned off.", "Both thumbs stay free for the pedals."],
+    c_vol_inv: ["Mirrored layout (one setting for all four modes): pedals on the left, steering on the right.", "The touch zones follow: steering in the right third, pedals on the left."],
+    v_titre: "The wheel", v_repos: "Rest (0°)", v_45: "Turned 45°", v_butoir: "Stop at 90°", v_butoir135: "Stop at 135° (adjustable)", v_hors: "The finger leaves the wheel: it still turns", v_retour: "Release: back to centre",
+    v_repos_d: "Steering 0.", v_45_d: "Steering +0.50 (90°) or +0.33 (135°).", v_butoir_d: "Steering +1. The finger can go further: the wheel no longer moves.", v_butoir135_d: "Same stop, 45° further: more wrist turn, more precision.", v_hors_d: "Only the angle around the centre counts, not the distance: the finger can slide off the rim.", v_retour_d: "0.18 s, damped spring: the return is visible, steering drops to 0 immediately.",
+    g_titre: "The slider", g_repos: "Rest", g_mi: "Half way (−0.50)", g_plein: "Full (+1)", g_zm: "Dead zone (8 %)",
+    g_repos_d: "Centre: livery mark.", g_mi_d: "The thumb is under the finger.", g_plein_d: "Stop at the end of the rail; the finger can go further.", g_zm_d: "Around the centre steering stays at 0 (adjustable from 0 to 30 %).",
+    tailles: "Sizes: small · medium · large (like the buttons)",
+    r_nom_dir: "Steering", r_aide_dir: "Buttons, slider, wheel or gyroscope.",
+    r_taille: "Controls size", r_taille_aide: "Buttons, slider and wheel.",
+    r_sens: "Sensitivity", r_sens_aide: "The higher, the less movement it takes.",
+    r_sens_gyro_aide: "Tilt for full lock: ",
+    r_zm: "Dead zone", r_angle: "Maximum angle", r_angle_aide: "The wheel stops there: 90° or 135°. It is also its sensitivity.",
+    r_filtre: "Tremor filtering", r_filtre_aide: "Light: no perceptible lag.",
+    r_jauge: "Tilt gauge in a race", r_inv: "Mirrored layout", r_inv_aide: "Pedals on the left, steering on the right (gyroscope: gas on the left, brake on the right).",
+    r_acc: "Throttle", r_acc_bouton: "Gas button", r_acc_auto: "Automatic", r_vib: "Vibration",
+    r_reinit: "Default touch settings", r_oui: "Yes", r_non: "No", r_recentrer: "Recentre now", r_recentrer_aide: "Also in the pause menu. Hold the phone upright.",
+    r_essai: "Test", r_essai_aide: "Tilt the phone: the cursor should move.",
+    t_graph: "Graphics", t_son: "Sound", t_jeu: "Game", t_cmd: "Controls", retour: "‹ TRACK",
+    r_titre: "Settings", sf_a: "Settings › Controls, wheel chosen: top of the screen", sf_a2: "The same, scrolled: the mode choice and the wheel settings", sf_b: "Buttons", sf_c: "Slider", sf_d: "Wheel", sf_e: "Gyroscope",
+    sd_b: "Unchanged: size, throttle, vibration. Plus the mirrored layout.", sd_c: "Takes over the old joystick settings (sensitivity, dead zone). A saved “joystick” choice becomes “slider” without losing anything.", sd_d: "Size, maximum angle (90° or 135°) and dead zone. No separate sensitivity slider: the maximum angle stands in for it. ◆", sd_e: "Permission, live test, sensitivity, dead zone, filtering, gauge, recentring.",
+    n_titre: "New",
+    a_titre: "Permission", a_1: "1 · To authorise", a_2: "2 · System prompt (iPhone)", a_3: "3 · Granted", a_4: "4 · Refused: back to the previous mode", a_5: "5 · No sensor",
+    a_1_txt: "To steer by tilting your phone, Track needs the motion sensor.", a_1_petit: "Nothing is stored or sent: the sensor is only used to steer.", a_1_btn: "Allow the gyroscope",
+    a_2_t: "“playdujour.com” would like to access motion and orientation", a_2_p: "System prompt: the text is not the game's.", a_2_non: "Don't allow", a_2_oui: "Allow",
+    a_3_txt: "Gyroscope on. Hold the phone upright during the countdown: that is your neutral position.", a_3_petit: "The neutral is taken again each race. Try it below.",
+    a_4_txt: "Gyroscope refused. Back to Wheel mode.", a_4_petit: "To allow it later: phone settings, the browser's motion and orientation access, then reload the page.",
+    a_5_txt: "This phone has no usable tilt sensor. Back to Wheel mode.", a_5_petit: "No motion received: the gyroscope is disabled on this device or missing.",
+    a_note: ["iPhone: the request is made on the player's gesture (tap “Allow the gyroscope”, or “Race” if the choice was already saved and the permission lost). Android: no prompt, but the game checks that motion arrives within a second.", "Refused, no sensor or silence: a clear message, and the game goes back to the previous mode (the one before the gyroscope; Buttons if there was none)."],
+    k_titre: "Calibration at the countdown", k_1: "Countdown: calibrating", k_2: "“GO!”: neutral position taken",
+    k_1_aide: "Gyroscope: hold the phone upright…", k_2_aide: "Gyroscope set", k_etat1: "Setting", k_etat2: "Ready", k_depart: "Go!",
+    k_notes: ["◆ The neutral is the average of the last 0.5 s of the countdown: you can settle during “3” and “2”, only the moment right before “GO!” counts.", "The gauge says SETTING then lets go: the game does not move under the thumb."],
+    p_titre: "Pause: recentre", p_pause: "Pause", p_reprendre: "Resume", p_recommencer: "Restart", p_pdc: "Last checkpoint", p_camera: "Camera: close", p_reglages: "Settings", p_recentrer: "Recentre the gyroscope", p_enc: "Recentring… hold upright", p_fait: "Gyroscope recentred",
+    p_notes: ["◆ A button in the pause menu, gyroscope mode only. The neutral is taken 1.5 s after the tap (time to put the phone back), with a progress bar; then “recentred”.", "Resuming is untouched: on “Resume” the race restarts with that neutral."],
+    pa_titre: "The two landscapes", pa_1: "Landscape, top of the phone on the left", pa_2: "Landscape, top of the phone on the right", pa_gauche: "left", pa_droite: "right",
+    pa_note: "The game reads screen.orientation.angle and turns the tilt with the screen: leaning towards the left of the screen always means “left”, in either landscape. The angle is the one in the plane of the screen (like a wheel), taken from the gravity given by the orientation event: no lock-up near upright. Flat, with no in-plane lean, there is no angle: steering stays at 0.",
+    d_titre: "Setting", d_defaut: "Proposed default", d_plage: "Range", d_note: "Note",
+    d_rows: [
+      ["Steering mode", "Buttons", "Buttons · Slider · Wheel · Gyroscope", "Default unchanged. The old “drag” (cdj:touch) becomes Slider."],
+      ["Controls size", "Medium", "Small · Medium · Large", "Wheel 112 / 140 / 182 px; slider 170 × 46 / 236 × 64 / 241 × 83 px (width capped at 30 % of the screen minus the margin: never in front of the car)."],
+      ["Slider: sensitivity", "×1", "×0.5 to ×2", "Full lock when the thumb reaches the end of the rail at ×1."],
+      ["Slider: dead zone", "8 %", "0 to 30 %", "Taken from the old joystick."],
+      ["Wheel: maximum angle", "90°", "90° · 135°", "Full lock at the stop."],
+      ["Wheel: dead zone", "6 %", "0 to 30 %", "As a share of the maximum angle (5° at 90°)."],
+      ["Gyroscope: sensitivity", "×1 (35°)", "×0.5 to ×2 (70° to 17°)", "Tilt that gives full lock; shown in degrees."],
+      ["Gyroscope: dead zone", "5 %", "0 to 30 %", "≈ 2° at ×1."],
+      ["Gyroscope: filtering", "Light (≈ 30 ms)", "—", "No setting: a fixed smoothing, no perceptible lag."],
+      ["Gyroscope: gauge in a race", "Yes", "Yes · No", "Plate next to the speed."],
+      ["Mirrored layout", "No", "Yes · No", "Pedals on the left, steering on the right; shared by the four modes."],
+      ["Throttle · Vibration", "Gas button · Yes", "—", "Unchanged."],
+    ],
+    dec: [
+      "<b>Wheel: relative grab.</b> The wheel turns by the angle the finger sweeps since the grab (the stop drags the grab point along). The other choice, an absolute angle (the wheel jumps under the finger), is harsher at the grab.",
+      "<b>Wheel: the maximum angle is the sensitivity.</b> One setting (90° / 135°) instead of two that say the same thing. A second slider is one line if you want it.",
+      "<b>Slider: absolute position.</b> The thumb goes under the finger (zone = the whole left third), instead of locking to the touch-down point like the joystick.",
+      "<b>Gyroscope: split pedals</b> (brake under the left thumb, gas under the right). The alternative is to keep both pedals on the right, one thumb for everything.",
+      "<b>Tilt gauge in a race</b>, next to the speed, can be turned off: it costs one more HUD plate but shows whether the sensor responds.",
+      "<b>Recentre: 1.5 s after the tap</b> (time to put the phone back); the countdown neutral is the average of the last 0.5 s.",
+      "<b>Mirrored layout shared by all four modes</b>, rather than one setting per mode.",
+      "<b>Back to the previous mode</b> if the gyroscope is refused or missing; Buttons if nothing else was ever chosen.",
+    ],
+    budget: "Budget (estimate before measuring): the buttons stay in the first load (≤ +1 kB: the “mode” field, reading the settings, loading the chosen module); the slider, wheel and gyroscope are three modules loaded on demand, whose figures will go into budgets.md (rows track.glissiere, track.volant, track.gyroscope).",
+  },
+};
+let lang = new URLSearchParams(location.search).get("l") === "en" ? "en" : "fr";
+const t = (k) => L[lang][k];
+const W = 844, H = 390;
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+// Briques
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+const ICONE_PAUSE = '<span style="display:flex;gap:4px"><i style="width:4px;height:14px;background:var(--track-texte)"></i><i style="width:4px;height:14px;background:var(--track-texte)"></i></span>';
+const ICONE_PC = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M4 17V2" stroke="currentColor" stroke-width="2"/><path d="M5 3h9l-2 3 2 3H5z" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+const ICONE_REC = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M15 9a6 6 0 1 1-2-4.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 1v4h-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+const ICONE_TELEPHONE = '<svg class="dj-icone" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="square" stroke-width="2.25"><rect x="13" y="6" width="14" height="24"/><path d="M18 26h4M30 12c4 2 6 5 6 8M36 20l-3-3M36 20l3-3"/></svg>';
+const fleche = (d) => `<svg aria-hidden="true" width="26" height="26" viewBox="0 0 30 30"><path d="${d}" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="square"/></svg>`;
+const style = (o) => Object.entries(o).map(([k, v]) => `${k}:${typeof v === "number" ? v + "px" : v}`).join(";");
+
+function hud({ aide = "", gauge = null, vitesse = true, annonce = "" } = {}) {
+  return `
+  <div class="abs" style="left:10px;top:8px;display:flex;gap:6px">
+    <span class="pl btn44">${ICONE_PAUSE}</span><span class="pl btn44">${ICONE_PC}</span><span class="pl btn44">${ICONE_REC}</span>
+  </div>
+  <div class="bande abs" style="left:50%;top:8px;transform:translateX(-50%)"><span class="chrono">0:09,192</span><span class="pc">PC 3/5</span><span class="ecart">+0,412</span></div>
+  <div class="abs" style="right:10px;top:8px;display:flex;align-items:center;gap:6px">
+    <span class="pl pastille"><i style="width:9px;height:9px;border-radius:50%;background:var(--dj-bronze)"></i>54,372</span>
+    <span class="pl rang">14e</span>
+  </div>
+  ${aide ? `<span class="pl ligne-aide">${aide}</span>` : ""}
+  ${annonce ? `<div class="annonce">${annonce}</div>` : ""}
+  ${vitesse ? `<span class="pl vitesse">${t("vit")}</span>` : ""}`;
+}
+
+/** Une pédale (position absolue dans l'écran). */
+const pedale = (nom, x, y, w, h, on) => `<div class="pl tbtn ${nom === "gaz" ? "gaz" : ""} ${on ? "on" : ""}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${t(nom === "gaz" ? "ped_gaz" : "ped_frein")}</div>`;
+
+/**
+ * Pédales selon la disposition : `droite` = frein 64×56 et gaz 84×84 groupés à droite (aujourd'hui) ; `gauche` = leur image dans un miroir ; `scindees` = frein à gauche (72×72),
+ * gaz à droite ; `scindees-inv` = gaz à gauche, frein à droite.
+ */
+function pedales(disp, { gaz = false, frein = false } = {}) {
+  const m = 12, g = 84, bw = 64, bh = 56, b2 = 72;
+  const bas = H - m;
+  if (disp === "droite") return pedale("gaz", W - m - g, bas - g, g, g, gaz) + pedale("frein", W - m - g - 8 - bw, bas - bh, bw, bh, frein);
+  if (disp === "gauche") return pedale("gaz", m, bas - g, g, g, gaz) + pedale("frein", m + g + 8, bas - bh, bw, bh, frein);
+  if (disp === "scindees") return pedale("frein", m, bas - b2, b2, b2, frein) + pedale("gaz", W - m - g, bas - g, g, g, gaz);
+  return pedale("gaz", m, bas - g, g, g, gaz) + pedale("frein", W - m - b2, bas - b2, b2, b2, frein);
+}
+
+function boutons(cote, { gauche = false, droite = false } = {}) {
+  const a = 72, m = 12, x0 = cote === "gauche" ? m : W - m - 2 * a - 8, y = H - m - a;
+  return `<div class="pl tbtn ${gauche ? "on" : ""}" style="left:${x0}px;top:${y}px;width:${a}px;height:${a}px">${fleche("M19 5 9 15l10 10")}</div>
+          <div class="pl tbtn ${droite ? "on" : ""}" style="left:${x0 + a + 8}px;top:${y}px;width:${a}px;height:${a}px">${fleche("M11 5l10 10-10 10")}</div>`;
+}
+
+/** Glissière : `pos` ∈ [-1, 1]. Taille moyenne : 236 × 64. */
+function glissiere(cote, pos, { on = false, w = 236, h = 64 } = {}) {
+  const x = cote === "gauche" ? 12 : W - 12 - w;
+  const y = H - 12 - h;
+  const ticks = Array.from({ length: 9 }, (_, i) => `<i class="gr ${i === 4 ? "c" : ""}" style="left:${14 + (i / 8) * (w - 28)}px"></i>`).join("");
+  const course = (w - 28) / 2 - 20;
+  const px = w / 2 + pos * course;
+  return `<div class="pl glis" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">
+    <span class="fl" style="left:5px">${fleche("M19 5 9 15l10 10").replace('width="26" height="26"', 'width="14" height="14"')}</span>
+    <span class="fl" style="right:5px">${fleche("M11 5l10 10-10 10").replace('width="26" height="26"', 'width="14" height="14"')}</span>
+    <div class="rail"></div>${ticks}
+    <div class="pouce ${on ? "on" : ""}" style="left:${px}px"><i></i><i></i><i></i></div>
+  </div>`;
+}
+
+/** Volant en SVG (viewBox 160). `deg` : rotation de la jante ; `max` : butoir marqué en dehors ; `size` : px. */
+function volantSvg(size, deg, { max = 90, on = false, trace = [] } = {}) {
+  const pol = (a, r) => [80 + r * Math.sin((a * Math.PI) / 180), 80 - r * Math.cos((a * Math.PI) / 180)];
+  let reperes = "";
+  for (let a = -max; a <= max; a += 15) {
+    const [x1, y1] = pol(a, 70), [x2, y2] = pol(a, a === -max || a === max ? 79 : 75);
+    const fort = a === -max || a === max;
+    reperes += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${fort ? "var(--track-texte)" : "var(--track-route)"}" stroke-width="${fort ? 4 : 2}"/>`;
+  }
+  const hubFill = on ? "var(--track-livree-texte)" : "var(--track-livree)";
+  const roue = (d, opacite = 1) => `<g transform="rotate(${d} 80 80)" opacity="${opacite}">
+      <g stroke-linecap="butt">
+        <line x1="80" y1="80" x2="22" y2="80" stroke="var(--dj-encre)" stroke-width="14"/><line x1="80" y1="80" x2="138" y2="80" stroke="var(--dj-encre)" stroke-width="14"/><line x1="80" y1="80" x2="80" y2="138" stroke="var(--dj-encre)" stroke-width="14"/>
+        <line x1="80" y1="80" x2="22" y2="80" stroke="var(--track-coque)" stroke-width="8"/><line x1="80" y1="80" x2="138" y2="80" stroke="var(--track-coque)" stroke-width="8"/><line x1="80" y1="80" x2="80" y2="138" stroke="var(--track-coque)" stroke-width="8"/>
+      </g>
+      <circle cx="80" cy="80" r="58" fill="none" stroke="var(--dj-encre)" stroke-width="22"/>
+      <circle cx="80" cy="80" r="58" fill="none" stroke="${on ? "var(--track-texte-doux)" : "var(--track-coque)"}" stroke-width="16"/>
+      <rect x="74" y="14" width="12" height="16" fill="var(--track-livree)" stroke="var(--dj-encre)" stroke-width="2"/>
+      <circle cx="80" cy="80" r="17" fill="var(--track-asphalte)" stroke="var(--dj-encre)" stroke-width="3"/>
+      <circle cx="80" cy="80" r="7" fill="${hubFill}"/>
+    </g>`;
+  const [ix, iy] = pol(0, 80);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 160 160" aria-hidden="true">
+    ${reperes}
+    <path d="M${ix - 7} ${iy - 6} L${ix + 7} ${iy - 6} L${ix} ${iy + 9} Z" fill="var(--track-livree)" stroke="var(--dj-encre)" stroke-width="2" transform="translate(0 6)"/>
+    ${trace.map((d, i) => `<rect x="74" y="14" width="12" height="16" fill="var(--track-livree)" opacity="${0.3 + 0.2 * i}" transform="rotate(${d} 80 80)"/>`).join("")}
+    ${roue(deg)}
+  </svg>`;
+}
+
+function volant(cote, deg, { on = false, max = 90, size = 140, trace = [] } = {}) {
+  const x = cote === "gauche" ? 12 : W - 12 - size;
+  const y = H - 12 - size;
+  return `<div class="volant" style="left:${x}px;top:${y}px">${volantSvg(size, deg, { on, max, trace })}</div>`;
+}
+
+/** Position du doigt sur la jante du volant (annotation). */
+function doigtVolant(cote, deg, size = 140, rayon = 58) {
+  const x0 = cote === "gauche" ? 12 : W - 12 - size, y0 = H - 12 - size, k = size / 160;
+  const a = ((deg + 0) * Math.PI) / 180; // la marque de livrée est en haut ; le doigt la tient
+  return `<div class="doigt" style="left:${x0 + (80 + rayon * Math.sin(a)) * k}px;top:${y0 + (80 - rayon * Math.cos(a)) * k}px"></div>`;
+}
+
+/** Jauge d'inclinaison à côté de la vitesse. `pos` ∈ [-1, 1] ; `etat` : texte à la place du curseur. */
+function jauge(pos, etat = "") {
+  const x = W / 2 - 50 - 8 - 96 + 0; // à gauche de la plaque de vitesse (≈ 100 px de large)
+  const zm = 5; // zone morte, en %
+  return `<div class="pl jauge" style="left:${x}px">
+    <i class="zm" style="left:${50 - zm / 2}%;width:${zm}%"></i>
+    ${Array.from({ length: 9 }, (_, i) => `<i class="gr ${i === 4 ? "c" : ""}" style="left:${6 + (i / 8) * 84}px"></i>`).join("")}
+    ${etat ? `<span class="etat">${etat}</span>` : `<i class="cur" style="left:${48 + pos * 38}px"></i>`}
+  </div>`;
+}
+
+const zone = (x, y, w, h, texte) => `<div class="zone" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${texte}</div>`;
+const num = (n, x, y) => `<span class="num" style="left:${x}px;top:${y}px">${n}</span>`;
+const doigt = (x, y) => `<div class="doigt" style="left:${x}px;top:${y}px"></div>`;
+
+function ecran(contenu, cls = "") {
+  return `<div class="ecran ${cls}"><svg class="scene" aria-hidden="true"><use href="#scene"/></svg>${contenu}</div>`;
+}
+function figure(titre, puce, ecranHtml, notes = []) {
+  return `<figure>${ecranHtml}<figcaption><b>${titre}</b>${puce ? ` <span class="puce ${puce[0]}">${puce[1]}</span>` : ""}${notes.length ? `<ol>${notes.map((n) => `<li>${n}</li>`).join("")}</ol>` : ""}</figcaption></figure>`;
+}
+const P_NOUVEAU = ["puce--nouveau", () => t("n_titre")];
+const puce = (p) => (p ? [p[0], typeof p[1] === "function" ? p[1]() : p[1]] : null);
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+// Réglages (réutilise les classes du jeu : .etiquette, .segment, .curseur, .reglage)
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+const seg = (options, actif) => `<div class="segment" role="radiogroup">${options.map(([k, l]) => `<button class="segment__bouton" type="button" role="radio" aria-checked="${k === actif}">${l}</button>`).join("")}</div>`;
+const curseur = (min, max, val, texte) => `<div class="curseur"><input type="range" min="${min}" max="${max}" value="${val}" step="any" tabindex="-1"><span class="curseur__valeur">${texte}</span></div>`;
+const ligne = (titre, ctrl, aide = "", nouveau = false) => `<div class="reglage"><div><div class="reglage__titre">${titre}${nouveau ? `<span class="nouveau">${t("n_titre")}</span>` : ""}</div>${aide ? `<div class="reglage__aide">${aide}</div>` : ""}</div><div>${ctrl}</div></div>`;
+const oui = (actif) => seg([[true, t("r_oui")], [false, t("r_non")]], actif);
+
+const MODES = () => [["boutons", t("m_boutons")], ["glissiere", t("m_glissiere")], ["volant", t("m_volant")], ["gyro", t("m_gyro")]];
+const TAILLES = () => [["s", lang === "fr" ? "Petits" : "Small"], ["m", lang === "fr" ? "Moyens" : "Medium"], ["l", lang === "fr" ? "Grands" : "Large"]];
+
+function essai(pos, texte) {
+  return `<div class="essai"><small>${texte}</small><i class="zm" style="left:47.5%;width:5%"></i>${Array.from({ length: 9 }, (_, i) => `<i class="gr ${i === 4 ? "c" : ""}" style="left:${(i / 8) * 100}%"></i>`).join("")}<i class="cur" style="left:${50 + pos * 46}%"></i></div>`;
+}
+function carteAutorisation(etat) {
+  if (etat === "a") return `<div class="carte">${ICONE_TELEPHONE}<div><p>${t("a_1_txt")}</p><p class="petit">${t("a_1_petit")}</p><button class="dj-bouton dj-bouton--track" type="button">${t("a_1_btn")}</button></div></div>`;
+  if (etat === "ok") return `<div class="carte carte--ok">${ICONE_TELEPHONE}<div><p>${t("a_3_txt")}</p><p class="petit">${t("a_3_petit")}</p></div></div>`;
+  if (etat === "refus") return `<div class="carte carte--refus">${ICONE_TELEPHONE}<div><p>${t("a_4_txt")}</p><p class="petit">${t("a_4_petit")}</p></div></div>`;
+  return `<div class="carte carte--refus">${ICONE_TELEPHONE}<div><p>${t("a_5_txt")}</p><p class="petit">${t("a_5_petit")}</p></div></div>`;
+}
+
+/** Les lignes de Réglages › Commandes pour un mode. */
+function reglagesMode(mode, { autorisation = "ok", modeChoisi = mode } = {}) {
+  const rows = [ligne(t("r_nom_dir"), seg(MODES(), modeChoisi), t("r_aide_dir"))];
+  if (mode === "boutons") rows.push(ligne(t("r_taille"), seg(TAILLES(), "m"), t("r_taille_aide")));
+  if (mode === "glissiere") rows.push(ligne(t("r_taille"), seg(TAILLES(), "m"), t("r_taille_aide")), ligne(t("r_sens"), curseur(0.5, 2, 1, "×1"), t("r_sens_aide")), ligne(t("r_zm"), curseur(0, 30, 8, "8 %")));
+  if (mode === "volant") rows.push(ligne(t("r_taille"), seg(TAILLES(), "m"), t("r_taille_aide")), ligne(t("r_angle"), seg([[90, "90°"], [135, "135°"]], 90), t("r_angle_aide"), true), ligne(t("r_zm"), curseur(0, 30, 6, "6 %")));
+  if (mode === "gyro") {
+    rows.push(`<div class="reglage" style="grid-template-columns:1fr">${carteAutorisation(autorisation === "ok" ? "ok" : autorisation)}</div>`);
+    if (autorisation === "ok") {
+      rows.push(
+        ligne(t("r_essai"), essai(0.35, "+12°"), t("r_essai_aide"), true),
+        ligne(t("r_sens"), curseur(0.5, 2, 1, "×1"), t("r_sens_gyro_aide") + "35°"),
+        ligne(t("r_zm"), curseur(0, 30, 5, "5 %")),
+        ligne(t("r_filtre"), `<span style="font-size:13px;color:var(--track-texte-doux)">≈ 30 ms</span>`, t("r_filtre_aide")),
+        ligne(t("r_jauge"), oui(true)),
+        ligne(t("r_recentrer"), `<button class="dj-bouton dj-bouton--secondaire" type="button">${t("r_recentrer")}</button>`, t("r_recentrer_aide")),
+      );
+    }
+  }
+  rows.push(ligne(t("r_inv"), oui(false), t("r_inv_aide"), true), ligne(t("r_acc"), seg([[false, t("r_acc_bouton")], [true, t("r_acc_auto")]], false)), ligne(t("r_vib"), oui(true)), `<button class="dj-bouton dj-bouton--secondaire" type="button" style="align-self:flex-start">${t("r_reinit")}</button>`);
+  return `<div class="reglages__tactile-liste">${rows.join("")}</div>`;
+}
+
+function cadreReglages(corps, { hauteur = null, decalage = 0 } = {}) {
+  return `<div class="etiquette dj-sombre" style="${hauteur ? `max-height:${hauteur}px` : ""}"><div class="etiquette__corps" style="overflow:hidden">
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:-${decalage}px">
+    <div class="etiquette__tete"><h1 class="etiquette__titre">${t("r_titre")}</h1></div>
+    <div class="segment reglages__tabs">${[["g", t("t_graph")], ["s", t("t_son")], ["j", t("t_jeu")], ["c", t("t_cmd")]].map(([k, l]) => `<button class="segment__bouton" type="button" role="tab" aria-selected="${k === "c"}">${l}</button>`).join("")}</div>
+    ${corps}</div></div></div>`;
+}
+function barreJeu() {
+  return `<div class="pl" style="background:var(--dj-creme);color:var(--dj-encre);display:flex;align-items:center;min-height:44px;padding:0 12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;width:100%;border-radius:3px">${t("retour")}</div>`;
+}
+function ecranReglages(corps, { decalage = 0 } = {}) {
+  return ecran(`<div class="cadre" style="justify-content:flex-start;gap:6px;padding:8px 10px">${barreJeu()}${cadreReglages(corps, { hauteur: 316, decalage })}</div>`);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+// Pause
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+function dialoguePause(etat) {
+  const recentrer = etat === "normal" ? `<button class="dj-bouton dj-bouton--secondaire" type="button" style="grid-column:1/-1;border-color:var(--track-livree-texte)">${ICONE_TELEPHONE.replace('width="40" height="40"', 'width="22" height="22"')}${t("p_recentrer")}<span class="nouveau">${t("n_titre")}</span></button>` :
+    etat === "cours" ? `<div style="grid-column:1/-1" class="etat-btn"><button class="dj-bouton dj-bouton--secondaire" type="button" disabled>${t("p_enc")}</button><div class="barre-progres"><i></i></div></div>` :
+    `<button class="dj-bouton dj-bouton--secondaire" type="button" style="grid-column:1/-1">✓ ${t("p_fait")}</button>`;
+  return `<div class="voile-scene"></div><section class="dialogue dj-sombre" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:410px;z-index:5;display:block;background:var(--track-asphalte);border:3px solid var(--dj-encre);border-radius:var(--dj-rayon-coque);box-shadow:var(--dj-ombre-cartouche);overflow:hidden">
+    <div class="dialogue__corps" style="padding:14px 16px;position:relative">
+      <h2 class="dialogue__titre" style="font-family:var(--track-police);font-style:italic;font-weight:800;text-transform:uppercase;font-size:32px;margin-bottom:8px">${t("p_pause")}</h2>
+      <div class="pause__menu" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+        <button class="dj-bouton dj-bouton--track" type="button" style="grid-column:1/-1;width:100%">${t("p_reprendre")}</button>
+        ${recentrer}
+        <button class="dj-bouton dj-bouton--secondaire" type="button">${t("p_recommencer")}</button>
+        <button class="dj-bouton dj-bouton--secondaire" type="button">${t("p_pdc")}</button>
+        <button class="dj-bouton dj-bouton--secondaire" type="button">${t("p_camera")}</button>
+        <button class="dj-bouton dj-bouton--secondaire" type="button">${t("p_reglages")}</button>
+      </div></div></section>`;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+// Planche
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+function section1() {
+  const bas = H - 12;
+  const f1 = ecran(hud({ aide: t("aide_boutons") }) + boutons("gauche") + pedales("droite"));
+  const f2 = ecran(
+    hud({ aide: t("aide_glissiere") }) + glissiere("gauche", -0.55, { on: true }) + pedales("droite", { gaz: true }) +
+      zone(0, 60, 253, 330, lang === "fr" ? "zone de toucher · tiers gauche" : "touch zone · left third") + doigt(98, bas - 32) + num(1, 12, bas - 70) + num(2, 130, 150) + num(3, 118, bas - 4),
+  );
+  const f3 = ecran(
+    hud({ aide: t("aide_volant") }) + volant("gauche", -62, { on: true }) + doigtVolant("gauche", -62) + pedales("droite", { gaz: true }) + num(1, 82, bas - 148) + num(2, 36, bas - 90) + num(3, 150, bas - 124),
+  );
+  const f4 = ecran(
+    hud({ aide: t("aide_gyro") }) + jauge(0.4) + pedales("scindees", { gaz: true }) + num(1, 106, bas - 100) + num(2, W / 2 - 140, bas - 40) + num(3, W - 60, bas - 100),
+  );
+  const f5 = ecran(hud({ aide: t("aide_inv") }) + volant("droite", 48, { on: true }) + doigtVolant("droite", 48) + pedales("gauche", { frein: true }) + num(1, 20, bas - 100) + num(2, W - 100, bas - 100));
+  return `<h2 class="section">${t("s1")}<small>${t("s1d")}</small></h2><div class="grille">
+    ${figure(t("f_boutons"), ["puce--inchange", lang === "fr" ? "inchangé" : "unchanged"], f1, t("c_boutons") ? L[lang].c_boutons : [])}
+    ${figure(t("f_glis"), puce(P_NOUVEAU), f2, L[lang].c_glis)}
+    ${figure(t("f_vol"), puce(P_NOUVEAU), f3, L[lang].c_vol)}
+    ${figure(t("f_gyro"), puce(P_NOUVEAU), f4, L[lang].c_gyro)}
+    ${figure(t("f_vol_inv"), puce(P_NOUVEAU), f5, L[lang].c_vol_inv)}
+  </div>`;
+}
+
+function mini(titre, desc, html) {
+  return `<figure><div class="ecran" style="width:230px;height:200px;border-radius:12px;background:var(--track-asphalte)"><div class="abs" style="left:0;top:0;width:844px;height:390px;transform-origin:0 0;transform:none">${html}</div></div><figcaption><b>${titre}</b><br>${desc}</figcaption></figure>`;
+}
+function section2() {
+  const roue = (deg, o = {}) => `<div class="ecran" style="width:230px;height:200px;border-radius:12px;position:relative"><div class="volant" style="left:35px;top:20px">${volantSvg(160, deg, o)}</div>${o.doigt ?? ""}</div>`;
+  const dg = (deg, size = 160, rayon = 58) => { const k = size / 160, a = (deg * Math.PI) / 180; return `<div class="doigt" style="left:${35 + (80 + rayon * Math.sin(a)) * k}px;top:${20 + (80 - rayon * Math.cos(a)) * k}px"></div>`; };
+  const fig = (titre, desc, el) => `<figure>${el}<figcaption><b>${titre}</b><br>${desc}</figcaption></figure>`;
+  const volants = [
+    fig(t("v_repos"), t("v_repos_d"), roue(0)),
+    fig(t("v_45"), t("v_45_d"), roue(45, { on: true, doigt: dg(45) })),
+    fig(t("v_butoir"), t("v_butoir_d"), roue(90, { on: true, max: 90, doigt: dg(90) })),
+    fig(t("v_butoir135"), t("v_butoir135_d"), roue(135, { on: true, max: 135, doigt: dg(135) })),
+    fig(t("v_hors"), t("v_hors_d"), roue(60, { on: true, doigt: dg(60, 160, 108) })),
+    fig(t("v_retour"), t("v_retour_d"), roue(0, { trace: [-60, -40, -20] })),
+  ].join("");
+  const rail = (pos, on, zm) => `<div class="ecran" style="width:300px;height:110px;border-radius:12px;position:relative"><div style="position:absolute;left:0;top:0;width:844px;height:390px;transform:translate(0,${-(H - 12 - 64 - 23)}px)">${glissiere("gauche", pos, { on })}</div>${zm ? `<i style="position:absolute;left:${12 + 118 - 14}px;top:21px;width:28px;height:64px;border:2px dashed var(--track-texte-doux)"></i>` : ""}</div>`;
+  const glis = [
+    fig(t("g_repos"), t("g_repos_d"), rail(0, false)),
+    fig(t("g_mi"), t("g_mi_d"), rail(-0.5, true)),
+    fig(t("g_plein"), t("g_plein_d"), rail(1, true)),
+    fig(t("g_zm"), t("g_zm_d"), rail(0.05, false, true)),
+  ].join("");
+  return `<h2 class="section">${t("s2")}<small>${t("s2d")}</small></h2>
+    <h3 style="margin:16px 0 0;font-family:var(--dj-police-marque)">${t("v_titre")}</h3><div class="grille grille--petite">${volants}</div>
+    <h3 style="margin:24px 0 0;font-family:var(--dj-police-marque)">${t("g_titre")}</h3><div class="grille grille--petite" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">${glis}</div>
+    <p style="margin-top:12px;font-size:13px;color:var(--dj-encre-douce)">${t("tailles")}</p>`;
+}
+
+function section3() {
+  const haut = figure(t("sf_a"), null, ecranReglages(reglagesMode("volant"))) + figure(t("sf_a2"), null, ecranReglages(reglagesMode("volant"), { decalage: 150 }));
+  const corps = (mode, titre, desc, opts) => `<figure><div class="etiquette dj-sombre large" style="max-width:640px"><div class="etiquette__corps"><div class="etiquette__tete"><h1 class="etiquette__titre" style="font-size:24px">${t("r_titre")}</h1></div>${reglagesMode(mode, opts)}</div></div><figcaption><b>${titre}</b><br>${desc}</figcaption></figure>`;
+  return `<h2 class="section">${t("s3")}<small>${t("s3d")}</small></h2>
+    <div class="grille">${haut}</div>
+    <div class="grille" style="grid-template-columns:repeat(auto-fill,minmax(640px,1fr));margin-top:28px">
+      ${corps("boutons", t("sf_b"), t("sd_b"))}${corps("glissiere", t("sf_c"), t("sd_c"))}${corps("volant", t("sf_d"), t("sd_d"))}${corps("gyro", t("sf_e"), t("sd_e"))}
+    </div>`;
+}
+
+function section4() {
+  const mini2 = (contenu) => `<div class="ecran ecran--mini" style="width:420px;height:auto;min-height:210px;border-radius:14px;padding:10px;background:var(--track-asphalte)"><div class="etiquette dj-sombre" style="position:relative;z-index:1"><div class="etiquette__corps" style="--corps-x:12px;--corps-y:10px;gap:8px"><div class="etiquette__tete"><h1 class="etiquette__titre" style="font-size:22px">${t("r_titre")}</h1></div>${contenu}</div></div></div>`;
+  const choisir = (actif) => ligne(t("r_nom_dir"), seg(MODES(), actif));
+  const a1 = figure(t("a_1"), null, mini2(choisir("gyro") + carteAutorisation("a")));
+  const a2 = figure(t("a_2"), null, `<div class="ecran ecran--mini" style="width:420px;height:240px">${`<svg class="scene" aria-hidden="true"><use href="#scene"/></svg>`}<div class="voile-scene"></div><div class="systeme"><b>${t("a_2_t")}</b><p>${t("a_2_p")}</p><div class="deux"><span>${t("a_2_non")}</span><span>${t("a_2_oui")}</span></div></div></div>`);
+  const a3 = figure(t("a_3"), null, mini2(choisir("gyro") + carteAutorisation("ok") + ligne(t("r_essai"), essai(0.35, "+12°"), t("r_essai_aide"))));
+  const a4 = figure(t("a_4"), null, mini2(choisir("volant") + carteAutorisation("refus")));
+  const a5 = figure(t("a_5"), null, mini2(choisir("volant") + carteAutorisation("absent")));
+  const bas = H - 12;
+  const k1 = figure(t("k_1"), null, ecran(hud({ aide: t("k_1_aide"), annonce: "2" }) + jauge(0, t("k_etat1")) + pedales("scindees")), L[lang].k_notes);
+  const k2 = figure(t("k_2"), null, ecran(hud({ aide: t("k_2_aide"), annonce: t("k_depart") }) + jauge(0, t("k_etat2")) + pedales("scindees")));
+  const p1 = figure(t("p_titre") + " — 1", null, ecran(dialoguePause("normal")), L[lang].p_notes);
+  const p2 = figure(t("p_titre") + " — 2", null, ecran(dialoguePause("cours")));
+  const p3 = figure(t("p_titre") + " — 3", null, ecran(dialoguePause("fait")));
+  // Un téléphone en paysage qu'on tourne comme un volant : `rot` < 0 = vers la gauche (sens inverse des aiguilles), `cam` = côté de la caméra frontale (le haut du téléphone).
+  const tel = (rot, cam, x) => `<g transform="translate(${x} 78) rotate(${rot})"><rect x="-62" y="-30" width="124" height="60" rx="9" fill="var(--track-asphalte)" stroke="var(--dj-encre)" stroke-width="3"/>
+      <rect x="-52" y="-22" width="104" height="44" rx="3" fill="var(--track-piste)"/>
+      <circle cx="${cam === "g" ? -57 : 57}" cy="0" r="3" fill="var(--track-texte-doux)"/>
+      <rect x="-20" y="12" width="40" height="5" fill="var(--track-coque)"/><rect x="${rot < 0 ? -22 : 14}" y="10" width="8" height="9" fill="var(--track-livree)"/>
+      <path d="M-8 -4 L0 -14 L8 -4" fill="none" stroke="var(--track-livree)" stroke-width="3"/></g>
+    <text x="${x}" y="150" text-anchor="middle" font-size="13" font-weight="700" fill="var(--dj-encre)">${rot < 0 ? "← " + t("pa_gauche") : t("pa_droite") + " →"}</text>`;
+  const cadran = (cam) => `<svg class="cadran" width="500" height="165" viewBox="0 0 500 165" aria-hidden="true">${tel(-18, cam, 100)}${tel(0, cam, 250).replace(/<text.*?<\/text>/, "")}${tel(18, cam, 400)}</svg>`;
+  const pa = `<div class="grille grille--moyenne" style="grid-template-columns:repeat(auto-fill,minmax(520px,1fr));max-width:1100px"><figure>${cadran("g")}<figcaption>${t("pa_1")}</figcaption></figure><figure>${cadran("d")}<figcaption>${t("pa_2")}</figcaption></figure></div><p style="max-width:850px;margin-top:10px;font-size:13px;color:var(--dj-encre-douce)">${t("pa_note")}</p>`;
+  return `<h2 class="section">${t("s4")}<small>${t("s4d")}</small></h2>
+    <h3 style="margin:16px 0 0;font-family:var(--dj-police-marque)">${t("a_titre")}</h3>
+    <div class="grille grille--moyenne">${a1}${a2}${a3}${a4}${a5}</div>
+    <ol style="max-width:900px;font-size:13px;color:var(--dj-encre-douce)">${L[lang].a_note.map((n) => `<li>${n}</li>`).join("")}</ol>
+    <h3 style="margin:24px 0 0;font-family:var(--dj-police-marque)">${t("k_titre")}</h3><div class="grille">${k1}${k2}</div>
+    <h3 style="margin:24px 0 0;font-family:var(--dj-police-marque)">${t("p_titre")}</h3><div class="grille">${p1}${p2}${p3}</div>
+    <h3 style="margin:24px 0 0;font-family:var(--dj-police-marque)">${t("pa_titre")}</h3>${pa}`;
+}
+
+function section5() {
+  return `<h2 class="section">${t("s5")}</h2><table class="tab"><thead><tr><th>${t("d_titre")}</th><th>${t("d_defaut")}</th><th>${t("d_plage")}</th><th>${t("d_note")}</th></tr></thead><tbody>${L[lang].d_rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    <p style="max-width:1000px;margin-top:12px;font-size:13px;color:var(--dj-encre-douce)">${t("budget")}</p>`;
+}
+function section6() {
+  return `<h2 class="section">${t("s6")}</h2><ul class="decisions">${L[lang].dec.map((d) => `<li>${d}</li>`).join("")}</ul>`;
+}
+
+function render() {
+  document.documentElement.lang = lang;
+  document.title = t("titre");
+  document.getElementById("page").innerHTML = `<header class="planche"><div><h1>${t("titre")}</h1><p>${t("intro")}</p></div>
+    <div class="langue" role="group" aria-label="Langue / Language"><button type="button" data-l="fr" aria-pressed="${lang === "fr"}">FR</button><button type="button" data-l="en" aria-pressed="${lang === "en"}">EN</button></div></header>
+    ${section1()}${section2()}${section3()}${section4()}${section5()}${section6()}`;
+  for (const b of document.querySelectorAll(".langue button")) b.addEventListener("click", () => { lang = b.dataset.l; render(); });
+}
+render();
+</script>
+</body>
+</html>

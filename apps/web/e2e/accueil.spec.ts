@@ -524,9 +524,9 @@ for (const vp of PHONES) {
     }
     await page.locator("#tab-controls").click();
     await expect(page.locator("#page-controls .reglages__tactile")).toBeVisible(); // les réglages tactiles sont dans Commandes
-    await page.getByRole("radio", { name: "Boutons ← →" }).click();
+    await page.getByRole("radio", { name: "Boutons" }).click();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!).steerMode)).toBe("buttons");
-    await page.getByRole("radio", { name: "Glisser" }).click();
+    await page.getByRole("radio", { name: "Glissière" }).click();
     await page.locator("#settings .dj-barre-jeu__retour").click();
     await expect(page.locator("#settings")).toBeHidden();
 

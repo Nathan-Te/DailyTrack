@@ -1,0 +1,139 @@
+/* DailyTrack (lot 52) — le gyroscope : la petite jauge d'inclinaison à côté de la vitesse (en course), la même dans Réglages › Commandes (essai en direct), les cartes
+   d'autorisation et le bouton « Recentrer » de la pause (maquettes docs/lots/lot-52-commandes/maquettes.html). Chargée avec `steerGyro.ts` (à la demande). Valeurs : jetons de @cdj/ui seulement. */
+.gyro-jauge {
+  position: relative;
+  box-sizing: border-box;
+  height: 26px;
+  background: var(--track-asphalte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+}
+.gyro-jauge[hidden] {
+  display: none;
+}
+/* En course : une plaque de 96 px à gauche de la vitesse, en bas au centre, hors de la zone centrale libre. */
+#touch .gyro-jauge--course {
+  bottom: 8px;
+  left: calc(50% - 154px);
+  width: 96px;
+  box-shadow: 2px 2px 0 var(--dj-encre);
+}
+.gyro-jauge--essai {
+  height: 34px;
+  background: var(--track-piste);
+  border-color: var(--track-route);
+}
+.gyro-jauge__zone {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background: var(--track-coque);
+}
+.gyro-jauge__graduation {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 8px;
+  margin: -4px 0 0 -1px;
+  background: var(--track-route);
+}
+.gyro-jauge__graduation--centre {
+  height: 16px;
+  margin-top: -8px;
+  background: var(--track-texte-doux);
+}
+.gyro-jauge__curseur {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 6px;
+  margin-left: -3px;
+  background: var(--track-livree);
+  border: 1px solid var(--dj-encre);
+}
+/* « Calage » et « Prêt » prennent la place du curseur. */
+.gyro-jauge__etat {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--track-asphalte);
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-13);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.gyro-jauge--texte .gyro-jauge__etat {
+  display: flex;
+}
+/* Les cartes d'état de Réglages › Commandes. */
+.reglage--pleine {
+  display: block;
+}
+.gyro-carte {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--track-piste);
+  border: var(--dj-trait) solid var(--track-route);
+  border-radius: var(--dj-rayon-bouton);
+  font-size: var(--dj-taille-13);
+}
+.gyro-carte svg {
+  flex: none;
+}
+.gyro-carte--ok {
+  border-color: var(--track-texte-doux);
+}
+.gyro-carte--refus {
+  border-color: var(--track-livree);
+}
+.gyro-carte__corps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.gyro-carte p {
+  margin: 0;
+}
+.gyro-carte__petit {
+  font-size: var(--dj-taille-12);
+  color: var(--track-texte-doux);
+}
+.gyro-carte .dj-bouton {
+  margin-top: 4px;
+}
+/* Le bouton de la pause : la barre de progression du recentrage (1,5 s). */
+.gyro-pause {
+  grid-column: 1 / -1;
+  position: relative;
+  overflow: hidden;
+}
+.gyro-recentrage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--track-livree);
+  animation: gyro-progres 1.5s linear forwards;
+}
+@keyframes gyro-progres {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gyro-recentrage::after {
+    animation: none;
+    width: 100%;
+  }
+}

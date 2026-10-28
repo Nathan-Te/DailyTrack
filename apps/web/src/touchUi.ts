@@ -1,17 +1,14 @@
 import { svg } from "@cdj/ui";
-import { el as makeEl, row, segmented, slider, type Control } from "./dom";
-import { fNombre, onLangue, t } from "./i18n";
+import { onLangue, t } from "./i18n";
 import { isTyping } from "./input";
 import {
   buttonRects,
   zoneAt,
   zoneSpans,
-  type ButtonSize,
   type Insets,
+  type SteerMode,
+  type Steerer,
   type Zone,
-  DEADZONE_RANGE,
-  DEFAULT_TOUCH_SETTINGS,
-  SENSITIVITY_RANGE,
   saveTouchSettings,
   type TouchPad,
   type TouchSettings,
@@ -25,6 +22,9 @@ import {
 export interface TouchHooks {
   /** `?zones=1` : dessine les zones actives et un point par doigt (diagnostic). */
   showZones?: boolean;
+  /** Lot 52 : l'aide d'une ligne sous la bande (le gyroscope : « tiens le téléphone droit… »), et un message court qui s'affiche quelques secondes (le gyroscope refusé : « Retour au mode … »). */
+  notice?(text: string): void;
+  alerte?(text: string): void;
 }
 
 export interface TouchUi {
@@ -32,6 +32,8 @@ export interface TouchUi {
   setPaused(paused: boolean): void;
   /** Redessine les aides (après un changement de réglage, d'écran ou de phase). */
   refresh(): void;
+  /** Lot 52 : vrai tant que le mode de direction choisi se charge (ou que le joueur répond à la demande d'autorisation) : le décompte attend. */
+  loading(): boolean;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""): HTMLElementTagNameMap[K] {
@@ -41,48 +43,130 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""):
   return e;
 }
 
-export function hintText(s: Readonly<TouchSettings>): string {
-  const direction = t(s.steerMode === "drag" ? "tactile.indice.glisser" : "tactile.indice.fleches");
-  const pedales = t(s.autoThrottle ? "tactile.indice.auto" : "tactile.indice.pedales");
-  return t("tactile.indice", { direction, pedales });
+// --- Les modes de direction chargés à la demande (lot 52) -------------------------------------------------------------------------------------------------
+// Les boutons restent dans le premier chargement ; la glissière, le volant et le gyroscope sont trois modules (logique, dessin, réglages, textes, feuille de style)
+// que `import()` charge quand le joueur les choisit, ou au chargement de la page s'il les a déjà choisis — **avant le décompte** (`loading`).
+
+export interface SteerMounted {
+  /** Replace les aides (après une mesure de l'écran ou un réglage). */
+  layout(): void;
+  render(): void;
+  unmount(): void;
+}
+export interface SteerRows {
+  nodes: HTMLElement[];
+  sync(): void;
+}
+export interface SteerIo {
+  /** L'aide d'une ligne sous la bande (comme l'aide des commandes). */
+  notice(text: string): void;
+  /** L'autorisation est refusée, ou le capteur est absent : le jeu reprend le mode d'avant et le dit. */
+  fail(raison: "refuse" | "absent"): void;
+}
+export interface SteerModule {
+  steerer: Steerer;
+  mount(host: HTMLElement): SteerMounted;
+  /** Les réglages propres au mode, lignes de Réglages › Commandes. */
+  rows(apply: (patch: Partial<TouchSettings>) => void): SteerRows;
+  /** Vrai pendant que le module attend le joueur (la fenêtre d'autorisation du système). */
+  loading?(): boolean;
+  /** L'aide d'une ligne du mode (et celle des pédales si elles changent) ; `cd`, `cp` : le côté de la direction, celui des pédales. */
+  hint?(s: Readonly<TouchSettings>, cd: string, cp: string): { direction: string; pedales?: string };
+  /** Le message et la carte du retour au mode d'avant. */
+  refusal?(raison: "refuse" | "absent", retour: SteerMode): { carte: HTMLElement; message: string };
+}
+export type SteerFactory = (pad: TouchPad, io: SteerIo) => SteerModule;
+
+const CHARGEURS: Record<Exclude<SteerMode, "buttons">, () => Promise<{ create: SteerFactory }>> = {
+  slider: () => import("./steerSlider"),
+  wheel: () => import("./steerWheel"),
+  gyro: () => import("./steerGyro"),
+};
+
+/** Le mode monté dans `#touch` (sauf les boutons, dessinés par `mountTouchUi`), et ce qu'il faut pour le changer. */
+export const dir = {
+  pad: null as TouchPad | null,
+  host: null as HTMLElement | null,
+  hooks: {} as TouchHooks,
+  courant: null as { mode: SteerMode; module: SteerModule; monte: SteerMounted } | null,
+  /** Le mode d'avant le gyroscope : celui qu'on reprend s'il est refusé (les boutons, faute d'autre). */
+  avant: "buttons" as SteerMode,
+  generation: 0,
+  charge: false,
+  /** Redessine les réglages du mode (appelé quand un module vient d'être monté ou démonté). */
+  surChangement: null as (() => void) | null,
+  /** La carte du dernier retour (affichée dans Réglages › Commandes jusqu'au prochain choix). */
+  carte: null as HTMLElement | null,
+  /** Redessine les boutons et les aides (`mountTouchUi`) : après un changement de mode que le joueur n'a pas fait lui-même (le gyroscope refusé). */
+  redessiner: null as (() => void) | null,
+};
+const prevenir = () => dir.surChangement?.();
+
+/** Met le mode monté d'accord avec les réglages : charge le module au besoin (`import()`), le monte, branche sa direction sur le pad. */
+export async function aligner(): Promise<void> {
+  const { pad, host } = dir;
+  if (!pad || !host) return;
+  const mode = pad.settings.steerMode;
+  const generation = ++dir.generation;
+  dir.charge = false; // un chargement abandonné (un autre choix est arrivé) ne retient pas le décompte : celui qui charge le remet à vrai
+  if (dir.courant && dir.courant.mode !== mode) {
+    dir.courant.monte.unmount();
+    dir.courant = null;
+    pad.steerer = null;
+  }
+  if (mode === "buttons" || dir.courant) {
+    dir.courant?.monte.layout();
+    dir.redessiner?.();
+    prevenir();
+    return;
+  }
+  dir.charge = true;
+  let module: SteerModule;
+  try {
+    module = (await CHARGEURS[mode]()).create(pad, { fail: (raison) => retourner(raison), notice: (texte) => dir.hooks.notice?.(texte) });
+  } catch {
+    // Hors ligne et le morceau n'est pas là : les boutons, qui sont toujours là.
+    if (generation === dir.generation) {
+      Object.assign(pad.settings, { steerMode: "buttons" });
+      saveTouchSettings(pad.settings);
+      void aligner();
+    }
+    return;
+  }
+  if (generation !== dir.generation) return; // un autre choix est arrivé pendant le chargement
+  dir.charge = false;
+  dir.courant = { mode, module, monte: module.mount(host) };
+  pad.steerer = module.steerer;
+  dir.redessiner?.();
+  prevenir();
 }
 
-/**
- * Réglages des commandes tactiles (mode de direction, taille des boutons, sensibilité, zone morte, accélérateur, vibration), appliqués tout de
- * suite et mémorisés (`cdj:touch`). Montés dans Réglages › Commandes ; `onChange` redessine les aides à l'écran.
- */
-export function touchSettingsControls(pad: TouchPad, onChange: () => void): Control {
-  const apply = (patch: Partial<TouchSettings>) => {
-    Object.assign(pad.settings, patch);
-    saveTouchSettings(pad.settings);
-    pad.releaseAll();
-    sync();
-    onChange();
-  };
-  const steerMode = segmented<TouchSettings["steerMode"]>([["buttons", t("tactile.direction.boutons")], ["drag", t("tactile.direction.glisser")]], () => pad.settings.steerMode, (v) => apply({ steerMode: v }), t("tactile.direction.nom"));
-  const sensitivity = slider(SENSITIVITY_RANGE, () => pad.settings.sensitivity, (v) => apply({ sensitivity: v }), (v) => `×${fNombre(v, 2)}`, t("tactile.sensibilite.nom"));
-  const deadzone = slider(DEADZONE_RANGE, () => pad.settings.deadzone, (v) => apply({ deadzone: v }), (v) => `${fNombre(Math.round(v * 100))} %`, t("tactile.zoneMorte.nom"));
-  const throttle = segmented<boolean>([[false, t("tactile.accelerateur.bouton")], [true, t("tactile.accelerateur.auto")]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }), t("tactile.accelerateur.nom"));
-  const size = segmented<ButtonSize>([["small", t("tactile.taille.small")], ["medium", t("tactile.taille.medium")], ["large", t("tactile.taille.large")]], () => pad.settings.buttonSize, (v) => apply({ buttonSize: v }), t("tactile.taille.nom"));
-  const vibration = segmented<boolean>([[true, t("reglages.oui")], [false, t("reglages.non")]], () => pad.settings.vibration, (v) => apply({ vibration: v }), t("tactile.vibration.nom"));
-  const reset = makeEl("button", "dj-bouton dj-bouton--secondaire", t("tactile.reinit"));
-  reset.type = "button";
-  reset.addEventListener("click", () => apply({ ...DEFAULT_TOUCH_SETTINGS }));
-  const box = makeEl("div", "reglages__tactile-liste");
-  box.append(
-    row(t("tactile.direction.nom"), steerMode.box, t("tactile.direction.aide")),
-    row(t("tactile.taille.nom"), size.box),
-    row(t("tactile.sensibilite.nom"), sensitivity.box, t("tactile.sensibilite.aide")),
-    row(t("tactile.zoneMorte.nom"), deadzone.box),
-    row(t("tactile.accelerateur.nom"), throttle.box, t("tactile.accelerateur.aide")),
-    row(t("tactile.vibration.nom"), vibration.box, t("tactile.vibration.aide")),
-    reset,
-  );
-  function sync() {
-    for (const c of [steerMode, size, sensitivity, deadzone, throttle, vibration]) c.sync();
+/** Le gyroscope est refusé ou absent : retour au mode d'avant, la carte dans Réglages › Commandes et le message en course. */
+function retourner(raison: "refuse" | "absent"): void {
+  const { pad } = dir;
+  const module = dir.courant?.module;
+  if (!pad || !module) return;
+  const retour = dir.avant === "gyro" ? "buttons" : dir.avant;
+  const r = module.refusal?.(raison, retour);
+  Object.assign(pad.settings, { steerMode: retour });
+  saveTouchSettings(pad.settings);
+  pad.releaseAll();
+  if (r) {
+    dir.carte = r.carte;
+    dir.hooks.alerte?.(r.message);
   }
-  sync();
-  return { box, sync };
+  void aligner();
+}
+
+export function hintText(s: Readonly<TouchSettings>): string {
+  const [g, d] = [t("tactile.cote.gauche"), t("tactile.cote.droite")];
+  const [cd, cp] = s.mirrored ? [d, g] : [g, d]; // le côté de la direction, celui des pédales
+  // Les boutons ici ; la glissière, le volant et le gyroscope disent leur propre aide (lot 52 : leurs textes viennent avec eux).
+  const m = dir.courant?.mode === s.steerMode ? dir.courant.module.hint?.(s, cd, cp) : undefined;
+  return t("tactile.indice", {
+    direction: m?.direction ?? t("tactile.indice.fleches", { cote: cd }),
+    pedales: m?.pedales ?? t(s.autoThrottle ? "tactile.indice.auto" : "tactile.indice.pedales", { cote: cp }),
+  });
 }
 
 /** Une flèche de direction de la maquette (trait de 4, extrémités carrées). */
@@ -106,8 +190,6 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   const rotate = document.getElementById("rotate")!;
 
   // --- Aides à l'écran (aucune ne reçoit de toucher : tout passe par `zone`) ------------------------
-  const ring = el("div", "ring");
-  const knob = el("div", "knob");
   const left = el("div", "tbtn pad steer-left");
   const right = el("div", "tbtn pad steer-right");
   left.append(fleche("M19 5 9 15l10 10"));
@@ -119,7 +201,12 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   const overlay = el("div", "zones");
   overlay.hidden = !hooks.showZones;
   const dots = new Map<number, HTMLElement>();
-  zone.replaceChildren(overlay, ring, knob, left, right, brake, gas);
+  zone.replaceChildren(overlay, left, right, brake, gas);
+  // Lot 52 : la glissière, le volant et le gyroscope dessinent dans `zone` quand leur module est chargé (`aligner`).
+  dir.pad = pad;
+  dir.host = zone;
+  dir.hooks = hooks;
+  void aligner();
 
   // Zones sûres (encoche, barre d'accueil) : lues par une sonde CSS `env(safe-area-inset-*)`.
   const probe = el("div", "safe-probe");
@@ -138,6 +225,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     pad.setGeometry(w, h, ins); // les zones de toucher épousent les boutons dessinés : même mesure, même définition (touch.ts)
     const rects = buttonRects(w, h, pad.settings, ins);
     for (const b of Object.values(buttonEls)) b.hidden = true;
+    dir.courant?.monte.layout();
     for (const r of rects) {
       const b = buttonEls[r.zone];
       if (!b) continue;
@@ -164,21 +252,16 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   // restent calés sur une largeur nulle).
   if (typeof ResizeObserver === "function") new ResizeObserver(() => layout()).observe(zone);
 
-  const put = (e: HTMLElement, x: number, y: number) => e.style.setProperty("transform", `translate(${x}px, ${y}px) translate(-50%, -50%)`);
-
   function render() {
     const s = pad.snapshot();
     zone.dataset.mode = pad.settings.steerMode;
     zone.dataset.throttle = pad.settings.autoThrottle ? "auto" : "manual";
+    zone.dataset.mirrored = String(pad.settings.mirrored);
     left.classList.toggle("on", s.left);
     right.classList.toggle("on", s.right);
     brake.classList.toggle("on", s.brake);
     gas.classList.toggle("on", s.gas);
-    ring.hidden = knob.hidden = !s.drag;
-    if (s.drag) {
-      put(ring, s.drag.originX, s.drag.originY);
-      put(knob, s.drag.x, s.drag.originY);
-    }
+    dir.courant?.monte.render();
   }
 
   // Un point par doigt (`?zones=1`), de la couleur de la zone touchée ; rouge si le doigt est tombé hors de la zone de jeu.
@@ -263,6 +346,10 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
 
   layout();
   render();
+  dir.redessiner = () => {
+    layout();
+    render();
+  };
   return {
     setPaused() {
       /* lot I4 : la pause est la plaque du HUD (#btn-pause, main.ts) ; rien à montrer ici */
@@ -271,5 +358,6 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
       layout();
       render();
     },
+    loading: () => dir.charge || !!dir.courant?.module.loading?.(),
   };
 }
