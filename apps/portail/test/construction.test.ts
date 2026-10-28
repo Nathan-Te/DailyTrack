@@ -129,6 +129,18 @@ describe("construction du portail", () => {
     expect(accueil).toContain("🥇");
   });
 
+  it("lot N2 : la page des nouveautés /nouveautes/ est dans la production comme dans la recette (balises de partage, aucune ressource extérieure) ; l'accueil connaît le bandeau du message en direct", () => {
+    for (const sortie of [sorties.production, sorties.recette]) {
+      const html = readFileSync(join(sortie, "nouveautes/index.html"), "utf8");
+      expect(html).toContain('<title data-t="nouveautes.titre">Nouveautés</title>');
+      expect(html).toContain('property="og:title"');
+      expect(html).toContain('content="Nouveautés — Du Jour"');
+      expect(html).toContain('name="twitter:card"');
+      expect(html).not.toMatch(/(?:src|href)="https?:/);
+      expect(html).toContain("__ORIGINE_DU_SITE__/nouveautes/"); // l'origine est posée à l'assemblage du site (scripts/site.mjs), pas à la construction : le jeton y est encore
+    }
+  });
+
   it("deploy-site.yml : --production pour la cible production, jamais pour la recette ni un aperçu", () => {
     const yml = readFileSync(join(ROOT, ".github/workflows/deploy-site.yml"), "utf8");
     expect(yml).toContain(`node scripts/site.mjs site --sortie site \${{ inputs.cible == 'production' && '--production' || '' }} --origine "\${{ steps.origine.outputs.origine }}"`);

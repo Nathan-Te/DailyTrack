@@ -31,6 +31,9 @@ export const CLES_GARDEES: readonly string[] = [
   "cdj:qualite",
   "cdj:settings",
   "cdj:astuce:plein-ecran",
+  // Lot N2 : le message en direct fermé sur cet appareil et la dernière nouveauté lue : du contenu de l'éditeur, pas une donnée de joueur (aucune raison de les rendre au « Nouveau départ »).
+  "cdj:annonce:fermee",
+  "cdj:nouveautes:lu",
   "cdj:tune",
   "cdj:admin",
   "cdj:admin-token",

@@ -10,11 +10,12 @@ import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
-import { NAME_KEY, appliquerGeneration, ecrireLangue, generationDeReponse, lireLangue, lireNouveauDepart, readIdentity, readPlayerId, type Langue } from "@cdj/profile";
+import { NAME_KEY, appliquerGeneration, ecrireLangue, generationDeReponse, lireLangue, lireNouveauDepart, readIdentity, readPlayerId, surveillerAnnonce, texteDeAnnonce, type Langue } from "@cdj/profile";
 import {
   CATALOGUE_COMMUN,
   afficheur,
   avisNouveauDepart,
+  bandeauAnnonce,
   barrePortail,
   bouton,
   cartouche,
@@ -22,6 +23,7 @@ import {
   etiquetteJump,
   etiquetteTrack,
   formatDate,
+  formatDateCourte,
   formatNombre,
   formatNumeroJour,
   formatRang,
@@ -32,9 +34,11 @@ import {
   tuile,
   type TypeMedaille,
   cheminMentions,
+  visibiliteDeLaPage,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
-import { avancement, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
+import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
+import { dans, nonLue } from "./nouveautesDonnees";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
 import { construireOptions, nomDuJeu } from "./partageDuJour";
 import { tuileDuClassement } from "./classementVues";
@@ -62,6 +66,13 @@ let lecture: Lecture | null = null;
 let chargement = false;
 /** Lot I3 : le message du dernier partage (« Ligne copiée… »), sous le bouton. */
 let messagePartage: string | null = null;
+
+// Lot N2 : le message en direct. Il arrive **dans la réponse de `GET /api/portail/jour`** (la seule requête du chargement : règle du lot I3) et est semé dans la surveillance ;
+// ensuite la page le relit toutes les 60 s, seulement visible (`GET /api/annonce`, partagée par le cache de Hosting). Fermé, il ne revient que si le message change.
+const surveillance = surveillerAnnonce({ base: baseApi(), ou: "portail", stockage, ...visibiliteDeLaPage(), surChangement: () => rendre() });
+let surveillanceActive = false;
+/** Le bandeau de l'écran, gardé tant que le message et la langue ne changent pas (le délai de 10 s de « Important » ne redémarre pas à chaque rendu). */
+let bandeauGarde: { id: number; langue: Langue; noeud: HTMLElement } | null = null;
 
 const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
 type T = ReturnType<typeof traduire>;
@@ -198,6 +209,34 @@ function message(t: T): string | null {
   return t.t(cleConnue(`erreur.${e}`) ?? "portail.horsLigne");
 }
 
+/** Le bandeau du message en direct, ou `null` (aucun message pour le portail, fini, ou fermé sur cet appareil). */
+function bandeau(t: T): HTMLElement | null {
+  const a = surveillance.courant();
+  if (!a) {
+    bandeauGarde = null;
+    return null;
+  }
+  if (!bandeauGarde || bandeauGarde.id !== a.id || bandeauGarde.langue !== langue) {
+    bandeauGarde = { id: a.id, langue, noeud: bandeauAnnonce(t, { texte: texteDeAnnonce(a, langue), ton: a.ton, onFermer: () => surveillance.fermer() }) };
+  }
+  return bandeauGarde.noeud;
+}
+
+/** La ligne « Nouveautés · 27 oct. » sous les tuiles : le titre de la dernière publiée, un point terre tant qu'elle n'est pas lue sur cet appareil. Aucune nouveauté : rien. */
+function ligneNouveautes(t: T): HTMLElement | null {
+  const n = lecture?.jour?.nouveaute;
+  if (!n) return null;
+  const jour = parseDay(n.date);
+  const date = jour === null ? n.date : formatDateCourte(jour, langue);
+  const point = nonLue(n, stockage);
+  return el(
+    "a",
+    { classe: "portail-nouveautes", attrs: { id: "nouveautes", href: "nouveautes/", "data-cle": "nouveautes", "data-non-lue": point ? "oui" : "non" } },
+    el("span", { classe: "portail-nouveautes__texte" }, el("span", { classe: "portail-nouveautes__legende", texte: t.t("portail.nouveautes.legende", { date }) }), el("span", { classe: "portail-nouveautes__titre", texte: dans(n.titre, langue) })),
+    point ? el("span", { classe: "portail-nouveautes__point", attrs: { id: "nouveautes-point" } }, el("span", { classe: "dj-cache", texte: t.t("portail.nouveautes.nonLue") })) : null,
+  );
+}
+
 function rendre(): void {
   const racine = document.getElementById("portail");
   if (!racine) return;
@@ -218,6 +257,7 @@ function rendre(): void {
   const journee = jour ? (jour.journee ?? null) : numeroDeJournee(day);
   const texteMessage = message(t);
   racine.replaceChildren(
+    ...[bandeau(t)].filter((e): e is HTMLElement => e !== null),
     el("h1", { classe: "dj-cache", texte: t.t("portail.titre") }),
     barrePortail(t, { langue, onLangue: changerLangue, pseudo: identite.exists ? identite.name : null, profil: "profil/" }),
     ...(nouveauDepart ? [avisNouveauDepart(t, { onFermer: () => (nouveauDepart = false) })] : []),
@@ -251,6 +291,7 @@ function rendre(): void {
     ),
     ...(neuf ? [el("p", { classe: "portail-accueil", attrs: { id: "accueil" }, texte: t.t("portail.accueil") })] : []),
     ...[el("div", { classe: "portail-tuiles" }, ...[neuf ? null : tuileSerie(t), tuileClassement(t, neuf)].filter((e): e is HTMLElement => e !== null))].filter((g) => g.childElementCount > 0),
+    ...[ligneNouveautes(t)].filter((e): e is HTMLElement => e !== null),
     ...[partage(t)].filter((e): e is HTMLElement => e !== null),
     ...(texteMessage ? [el("p", { classe: "portail-message", attrs: { id: "message", role: "status" }, texte: texteMessage })] : []),
     el(
@@ -314,6 +355,12 @@ async function charger(ancien: string | null, essai = 0): Promise<void> {
     if (stockage && pseudo && stockage.getItem(NAME_KEY) !== pseudo) stockage.setItem(NAME_KEY, pseudo);
   } catch {
     /* stockage refusé : l'avatar garde l'ancien pseudo */
+  }
+  // Lot N2 : le message de la réponse est semé (aucune requête de plus au chargement) ; la surveillance démarre une fois.
+  if (l.jour) surveillance.semer(l.jour.annonce ?? null, l.decalage);
+  if (!surveillanceActive) {
+    surveillanceActive = true;
+    surveillance.activer();
   }
   rendre();
   battre();

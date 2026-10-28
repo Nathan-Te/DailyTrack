@@ -24,6 +24,7 @@ import { fictionalId } from "../src/history";
 import { seedJumpDays } from "../src/jumpHistory";
 import { seedClassementDemo } from "../src/classementDemo";
 import { seedPortailDemo } from "../src/portailDemo";
+import { semerNouveautes } from "../src/diffusion";
 import { openLibsql } from "../src/libsql-open";
 
 const HOUR_MS = 3_600_000;
@@ -142,3 +143,8 @@ const demo = await seedPortailDemo({ db, frozen, today });
 console.log(
   `Joueur de démonstration « Démo » (portail, /?demo=joueur) : Garage ${demo.garage.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ") || "—"} ; Track ${demo.track.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ")} ; Jump ${demo.jump.map((j) => j.date).join(", ") || "—"} ; ${demo.morts} mort(s) aujourd'hui — ${((Date.now() - demoStarted) / 1000).toFixed(0)} s.`,
 );
+
+// Lot N2 : **deux nouveautés publiées et aucun message actif** (la ligne « Nouveautés » de l'accueil et la page /nouveautes/ ont de quoi s'afficher sur la recette). Dates d'avant tout vrai
+// contenu ; relancer ne crée aucun doublon et ne touche ni à une vraie nouveauté ni à un message en cours (un message de recette s'éteint tout seul).
+const nouveautes = await semerNouveautes(db, Date.now());
+console.log(`Nouveautés (lot N2) : ${nouveautes.creees} créée(s) sur 2 (aucun message en direct n'est posé).`);

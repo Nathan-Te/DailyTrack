@@ -214,6 +214,23 @@ export async function readOnlySmoke(base: string, fetchImpl: FetchFn, o: { expec
     portail,
     `journée ${String(p?.journee)} — ${jeux.map((j) => `${String(j.jeu)} n° ${String(j.numero)} (${String(j.theme)})`).join(", ")}`,
   );
+  // Lot N2 : le message en direct, **seul**, public et gardé 30 s par le cache partagé (`max-age=0, s-maxage=30`) ; la dernière nouveauté et le message sont aussi dans la réponse de l'accueil.
+  const annonce = await get("/api/annonce");
+  check(
+    "message en direct : `GET /api/annonce` rend `{ annonce, maintenant }`, public, `max-age=0, s-maxage=30`, sans identifiant",
+    annonce.status === 200 && !!annonce.body && "annonce" in annonce.body && typeof annonce.body.maintenant === "string" && /\bpublic\b/.test(annonce.headers.get("cache-control") ?? "") && /max-age=0/.test(annonce.headers.get("cache-control") ?? "") && /s-maxage=30\b/.test(annonce.headers.get("cache-control") ?? "") && !/x-player-id/i.test(annonce.headers.get("vary") ?? ""),
+    "/api/annonce",
+    annonce,
+    annonce.body?.annonce ? "un message actif" : "aucun message actif",
+  );
+  const nouveautes = await get("/api/portail/nouveautes");
+  check(
+    "nouveautés : `GET /api/portail/nouveautes` rend la première page (20 au plus), public, 60 s",
+    nouveautes.status === 200 && Array.isArray(nouveautes.body?.nouveautes) && nouveautes.body.nouveautes.length <= 20 && /\bpublic\b/.test(nouveautes.headers.get("cache-control") ?? "") && /max-age=60\b/.test(nouveautes.headers.get("cache-control") ?? ""),
+    "/api/portail/nouveautes",
+    nouveautes,
+    `${String(nouveautes.body?.nouveautes?.length)} nouveauté(s)`,
+  );
   // Lot I3 : le classement du jour tous jeux confondus (sans joueur : public, 30 s au plus, jamais d'identifiant dans la réponse).
   const classement = await get("/api/portail/classement");
   check(

@@ -138,6 +138,8 @@ import { BUILD_API_URL, BUILD_RESTRICTED, demoStorage } from "./storage";
 import { BELT_EVERY, Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, beltSpark, feelColors, feelEvent, slideSpark } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu, type PauseView } from "./pauseMenu";
+import { baseDuMessage, ecranDuMessage, type EcranMessage } from "./messageEnDirectLogic";
+import { monterMessageEnDirect, type MessageEnDirect } from "./messageEnDirect";
 
 // Lot 11 (partie jeu) : le **thème est une donnée du générateur** (`daily.theme`, celui de la date ou un thème **forcé** par `?theme=`, qui est alors un
 // **essai** : identifiant `…-t<thème>`, `DayMode` « essai », rien d'enregistré — ni mémoire du jour, ni historique, ni série, ni partage, bandeau
@@ -486,6 +488,8 @@ export interface JumpDebug {
   readonly history: DayRecord[];
   readonly streak: number;
   /** Lot 10 : l'écran d'arrivée (affiché, dernier texte partagé, message du partage). */
+  /** Lot N2 : le message en direct : `branche` (un serveur est configuré, hors démonstration), l'écran du moment, le message affichable (`id`, `ton`), le bandeau dessiné, les lectures du réseau lancées. */
+  readonly messageEnDirect: { branche: boolean; ecran: "accueil" | "arrivee" | "pause" | null; id: number | null; ton: string | null; dessine: boolean; lectures: number };
   readonly arrival: { shown: boolean; share: string; message: string; rank: { shown: boolean; status: string; rows: number } };
   /**
    * Lot P1 (plateforme) : le classement du jour — branché (`enabled`, `demo`), état de l'envoi (`state.status` : `idle`, `sending`, `ranked`,
@@ -723,6 +727,12 @@ const homeAtStart = homeHere && wantsHome(options);
 const homeTheme = themeByName(options.theme) ?? themeForDay(today);
 /** Vrai une fois le jeu entièrement prêt : avant, ouvrir ou fermer une fenêtre de l'accueil ne touche pas encore à la pause. */
 let gameReady = false;
+/**
+ * Lot N2 de la plateforme : le message en direct. Seulement à l'accueil, à l'arrivée et en pause, **jamais pendant un niveau** (`ecranDuMessage`) ; sans serveur ou en démonstration,
+ * rien (`baseDuMessage`). `syncMessage()` s'appelle à chaque changement d'écran (jamais à chaque image) : `suspendre()` arrête alors toute lecture du réseau.
+ */
+const baseMessage = baseDuMessage(apiBase);
+let messageEnDirect: MessageEnDirect | null = null;
 /**
  * Lot I5 : ce que l'accueil lit de la partie, rempli au fil du chargement (l'accueil s'ouvre avant que le niveau soit là) : les médailles du jour, le total des
  * morts de tout le monde (carte des morts du serveur), et si le carnage du jour peut se jouer (ton meilleur essai, la scène).
@@ -1282,6 +1292,7 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
   // Lot 10 : « Revoir le carnage » (écran d'arrivée) le relance tel quel (le tien, pas celui de tout le monde).
   if (!demo && everyone === null) lastCarnage = { hero, others };
   arrival.hide();
+  syncMessage(); // lot N2 : un carnage joue, plus de message ni de lecture
   // Lot 27 : le résultat reste affiché pendant la rediffusion et le carnage (celui de ton essai, pas la démonstration ni le carnage de tout le monde).
   if (result && !demo && everyone === null && !fromHome) {
     resultat.show(result);
@@ -1609,6 +1620,7 @@ function showFinish(): void {
     pendingMedal = null;
   }
   arrival.show(arrivalView());
+  syncMessage();
   // Lot P1 : le classement (jour : rang et top 10 après l'envoi ; archive : le classement figé de ce jour, rien n'est envoyé).
   refreshRank();
   // Lot P2 : le fantôme du premier ; « Regarder le premier » s'il y en a un. Lot P3 : la carte des morts ; « Le carnage de tout le monde »
@@ -1869,6 +1881,7 @@ function restart(): void {
   hud.hideFinish();
   hud.setProgress(session.state.checkpoint, level.checkpoints.length, null);
   arrival.hide();
+  syncMessage(); // lot N2 : un nouvel essai commence, plus de message ni de lecture
   if (scene) camera = snapCamera(follow(session.state.player), scene.frame);
   if (phase !== "loading" && phase !== "no-webgl") phase = phaseOf(session.state);
 }
@@ -2501,6 +2514,10 @@ const info: JumpDebug = {
   get streak() {
     return history.streak(gameDay());
   },
+  /** Lot N2 : le message en direct (écran, message affichable, bandeau dessiné, nombre de lectures du réseau) ; `null` : jamais monté (sans serveur, en démonstration, ou aucun écran du bandeau vu). */
+  get messageEnDirect() {
+    return { branche: baseMessage !== null, ...(messageEnDirect?.etat() ?? { ecran: null, id: null, ton: null, dessine: false, lectures: 0 }) };
+  },
   get arrival() {
     return { shown: arrival.shown, share: lastShare, message: arrival.message, rank: arrival.rank };
   },
@@ -2689,6 +2706,19 @@ function syncPause(): void {
   controls.setTouch(0, false);
   audio.setActive(!blocked && !panelOpen);
   stepper.reset();
+  syncMessage();
+}
+/** Lot N2 : l'écran du moment (accueil, arrivée, pause, ou rien : un niveau, un carnage) commande le message en direct. Sans effet avant que le jeu soit prêt. */
+function syncMessage(): void {
+  if (!gameReady || baseMessage === null) return;
+  const ecran: EcranMessage | null = ecranDuMessage({ accueil: home?.isOpen ?? false, pause: menuOpen, arrivee: arrival.shown, carnage: carnage !== null });
+  if (ecran === null && messageEnDirect === null) return; // jamais monté : rien à suspendre
+  messageEnDirect ??= monterMessageEnDirect({
+    base: baseMessage,
+    stockage: store,
+    hotes: { accueil: home?.hoteMessage ?? document.createElement("div"), arrivee: arrival.hoteMessage, pause: menu.hoteMessage },
+  });
+  messageEnDirect.montrer(ecran);
 }
 const pauseButton = document.getElementById("pausebtn") as HTMLButtonElement;
 // Lot I7 : le plein écran reste en vue, juste après la pause (la plaque du HUD) ; caché s'il n'est pas possible. Même logique que l'accueil et la pause (socle).

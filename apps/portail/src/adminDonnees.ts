@@ -1,3 +1,6 @@
+import type { OuMessage, TonMessage, ZoneNouveaute } from "@cdj/core/nouveautes";
+import { instantDeParis } from "./adminGithub";
+
 // Lot N1 : ce que le panneau d'administration lit et écrit (`/api/admin/*`, `apps/api/CLAUDE.md`, « Administration (lot N1) ») et les calculs purs de son
 // affichage (barres, formats). Aucune page ici : testé dans `test/admin.test.ts`. Outil interne de l'éditeur, en français seulement.
 
@@ -86,6 +89,59 @@ export interface Fiche {
   gardeJours: number;
 }
 
+// --- Lot N2 : nouveautés et message en direct ---------------------------------------------------------------------------------------------------
+export interface LigneAdmin {
+  zone: ZoneNouveaute | null;
+  fr: string;
+  en: string;
+  /** Le numéro de la PR d'où vient la ligne (pour ne pas la proposer deux fois). */
+  pr?: number;
+}
+
+export interface NouveauteAdmin {
+  id: number;
+  titre: { fr: string; en: string };
+  date: string;
+  lignes: LigneAdmin[];
+  statut: "brouillon" | "publiee";
+  creeLe: string;
+  modifieLe: string;
+  publieLe: string | null;
+}
+
+export interface AnnonceAdmin {
+  id: number;
+  fr: string;
+  en: string;
+  ou: OuMessage[];
+  ton: TonMessage;
+  /** Fin, en ms depuis 1970. */
+  fin: number;
+}
+
+export interface MessagesAdmin {
+  actif: AnnonceAdmin | null;
+  maintenant: number;
+  max: number;
+  passes: (AnnonceAdmin & { debut: number; retireLe: number | null })[];
+}
+
+export interface CorpsNouveaute {
+  id?: number;
+  titre: { fr: string; en: string };
+  date: string;
+  lignes: LigneAdmin[];
+  publier: boolean;
+}
+
+export interface CorpsMessage {
+  fr: string;
+  en: string;
+  ou: OuMessage[];
+  ton: TonMessage;
+  fin: number;
+}
+
 /** Une erreur du serveur : son statut et son code (un code de `apps/api/src/codesErreur.ts`, jamais un message). */
 export class ErreurAdmin extends Error {
   constructor(
@@ -140,6 +196,14 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
     retirer: (ref: string, jeu: string, date: string, motif: string) => appeler<{ retire: true }>("POST", `${joueur(ref)}/retirer`, { jeu, date, motif, confirmer: true }),
     supprimer: (ref: string, pseudo: string) => appeler<{ supprime: true }>("POST", `${joueur(ref)}/supprimer`, { pseudo, confirmer: true }),
     journal: () => appeler<{ lignes: EntreeJournal[]; max: number }>("GET", "/api/admin/journal"),
+    // Lot N2
+    nouveautes: () => appeler<{ nouveautes: NouveauteAdmin[]; max: number }>("GET", "/api/admin/nouveautes"),
+    enregistrerNouveaute: (c: CorpsNouveaute) => appeler<{ nouveaute: NouveauteAdmin }>("POST", "/api/admin/nouveautes", { ...c, confirmer: true }),
+    depublierNouveaute: (id: number) => appeler<{ nouveaute: NouveauteAdmin }>("POST", `/api/admin/nouveautes/${id}/depublier`, { confirmer: true }),
+    supprimerNouveaute: (id: number) => appeler<{ supprimee: true }>("POST", `/api/admin/nouveautes/${id}/supprimer`, { confirmer: true }),
+    message: () => appeler<MessagesAdmin>("GET", "/api/admin/message"),
+    mettreAJourMessage: (c: CorpsMessage) => appeler<{ actif: AnnonceAdmin | null }>("POST", "/api/admin/message", { ...c, confirmer: true }),
+    retirerMessage: () => appeler<{ actif: null }>("POST", "/api/admin/message/retirer", { confirmer: true }),
   };
 }
 export type ClientAdmin = ReturnType<typeof clientAdmin>;
@@ -159,6 +223,9 @@ export const TEXTES_ERREUR: Record<string, string> = {
   rate_limited: "Trop de requêtes : réessaie dans un moment.",
   reseau: "Le serveur ne répond pas.",
   not_found: "Fonction non disponible sur ce serveur.",
+  invalid_news: "La nouveauté est incomplète : elle n'est pas publiée.",
+  unknown_news: "Nouveauté introuvable (déjà supprimée ?).",
+  invalid_message: "Le message est refusé : texte, endroit, ton ou heure de fin incorrects.",
 };
 export const texteErreur = (e: unknown): string => (e instanceof ErreurAdmin ? (TEXTES_ERREUR[e.code] ?? `Erreur : ${e.code}.`) : "Erreur inattendue.");
 
@@ -216,7 +283,7 @@ export const rang = (n: number): string => (n === 1 ? "1er" : `${n}e`);
 const NOMS_MEDAILLE: Record<Medaille, string> = { author: "Diamant", gold: "Or", silver: "Argent", bronze: "Bronze" };
 export const nomMedaille = (m: Medaille): string => NOMS_MEDAILLE[m];
 
-const LIBELLES_CHAMP: Record<string, string> = { pseudo: "pseudo", masque: "masqué", jeu: "jeu", jour: "jour", tempsMs: "temps", retire: "retiré", motif: "motif", supprime: "supprimé" };
+const LIBELLES_CHAMP: Record<string, string> = { pseudo: "pseudo", masque: "masqué", jeu: "jeu", jour: "jour", tempsMs: "temps", retire: "retiré", motif: "motif", supprime: "supprimé", statut: "statut", titre: "titre", lignes: "lignes", fr: "texte", en: "anglais", ou: "où", ton: "ton", fin: "jusqu'à" };
 
 /** Un avant / après du journal en une ligne lisible (`pseudo : Bob`, `temps : 1:02,345 · jeu : DailyTrack`) ; jamais d'objet brut. */
 export function resumeJournal(v: Record<string, unknown> | null): string {
@@ -230,3 +297,24 @@ export function resumeJournal(v: Record<string, unknown> | null): string {
 
 /** Le nom d'une action du journal, tel que le serveur l'écrit, en début de phrase. */
 export const nomAction = (action: string): string => action.charAt(0).toUpperCase() + action.slice(1);
+
+// --- Lot N2 : le message en direct — l'heure de fin ----------------------------------------------------------------------------------------
+export type FinDuMessage = { mode: "1h" } | { mode: "minuit" } | { mode: "precise"; /** `AAAA-MM-JJTHH:MM`, l'heure de Paris (le champ `datetime-local`). */ valeur: string };
+
+/** L'heure de fin choisie (ms), ou `null` si l'heure précise est illisible. 1 h : dans une heure ; minuit : le prochain minuit **de Paris** ; précise : l'heure de Paris saisie. */
+export function finDuMessage(f: FinDuMessage, maintenant: number): number | null {
+  if (f.mode === "1h") return maintenant + 3_600_000;
+  if (f.mode === "minuit") {
+    // Le jour de Paris d'aujourd'hui, puis le lendemain à 00:00 de Paris.
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(maintenant)).map((x) => [x.type, Number(x.value)])) as Record<string, number>;
+    return instantDeParis(p.year!, p.month!, p.day! + 1, 0, 0);
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(f.valeur);
+  return m ? instantDeParis(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5])) : null;
+}
+
+/** `AAAA-MM-JJ` d'aujourd'hui à Paris (la date affichée d'une nouveauté par défaut). */
+export function aujourdhuiParis(maintenant: number): string {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(maintenant)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}

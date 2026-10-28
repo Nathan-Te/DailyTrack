@@ -43,6 +43,8 @@ export interface PauseMenu {
   update(view: PauseView): void;
   close(): void;
   readonly element: HTMLElement;
+  /** Lot N2 : l'emplacement du message en direct (en tête de la pause) ; vide, il n'occupe aucune place. */
+  readonly hoteMessage: HTMLElement;
 }
 
 export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
@@ -81,7 +83,8 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   const mentions = lierMentions(lier(el("a", { classe: "pause__lien", attrs: { id: "menu-mentions", href: "../mentions-legales/" } }), "pause.mentions"));
   const version = el("span", { classe: "pause__version", attrs: { id: "menu-version" } });
   const actions = el("div", { classe: "pause__actions" }, respawn, restart, ghost, sound, settings, help, full, home, portail);
-  dialog.append(tete, replique, resume, actions, el("div", { classe: "pause__pied" }, mentions, version));
+  const hoteMessage = el("div", { classe: ["message-direct", "message-direct--pause"] });
+  dialog.append(hoteMessage, tete, replique, resume, actions, el("div", { classe: "pause__pied" }, mentions, version));
   document.body.append(root);
 
   let open = false;
@@ -110,6 +113,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
       return open;
     },
     element: root,
+    hoteMessage,
     open(v) {
       show(v);
       if (open) return;

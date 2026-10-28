@@ -141,6 +141,33 @@ export const PLATFORM_SCHEMA: string[] = [
    )`,
   `CREATE INDEX IF NOT EXISTS resultats_retires_by_player ON resultats_retires (player_id)`,
   `CREATE INDEX IF NOT EXISTS resultats_retires_by_inputs ON resultats_retires (game, day, inputs_hash)`,
+  // --- Lot N2 : les nouveautés et le message en direct (`diffusion.ts`). **Réversible** : deux tables nouvelles, rien d'existant touché (l'ancien code les ignore) ; retour arrière :
+  // `DROP TABLE nouveautes` et `DROP TABLE annonces` (les index partent avec). Aucune donnée de joueur : ce que Nathan écrit pour les joueurs.
+  // Nouveauté : titre FR / EN, date affichée (AAAA-MM-JJ), lignes (JSON : zone, français, anglais, PR d'origine), statut (`brouillon` | `publiee`), dates.
+  `CREATE TABLE IF NOT EXISTS nouveautes (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     titre_fr TEXT NOT NULL,
+     titre_en TEXT NOT NULL,
+     date_affichee TEXT NOT NULL,
+     lignes TEXT NOT NULL,
+     statut TEXT NOT NULL,
+     cree_le INTEGER NOT NULL,
+     modifie_le INTEGER NOT NULL,
+     publie_le INTEGER
+   )`,
+  `CREATE INDEX IF NOT EXISTS nouveautes_by_date ON nouveautes (statut, date_affichee, id)`,
+  // Message en direct : textes FR / EN, où (`portail,track,jump`), ton, début, fin (il s'éteint seul), retrait (« Retirer maintenant » ou remplacé). Un seul actif : fin pas atteinte et pas retiré.
+  `CREATE TABLE IF NOT EXISTS annonces (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     texte_fr TEXT NOT NULL,
+     texte_en TEXT NOT NULL,
+     ou TEXT NOT NULL,
+     ton TEXT NOT NULL,
+     debut INTEGER NOT NULL,
+     fin INTEGER NOT NULL,
+     retire_le INTEGER
+   )`,
+  `CREATE INDEX IF NOT EXISTS annonces_by_fin ON annonces (fin)`,
 ];
 
 /** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */

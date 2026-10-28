@@ -2,9 +2,16 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1047 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1071 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
+
+### annonce (`annonce.*`, `packages/ui/src/catalogue.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `annonce.fermer` | Fermer le message | Dismiss the message |
+| `annonce.important` | Important | Important |
 
 ### Arrivée (`arrivee.*`, `packages/ui/src/catalogue.ts`)
 
@@ -39,6 +46,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.forbidden` | Action refusée. | Action refused. |
 | `erreur.invalid_action` | Cette action n'est pas valide. | That action isn't valid. |
 | `erreur.unknown_result` | Aucun résultat à ce jour-là. | No result on that day. |
+| `erreur.invalid_news` | Cette nouveauté n'est pas complète. | That update isn't complete. |
+| `erreur.unknown_news` | Cette nouveauté n'existe pas. | That update doesn't exist. |
+| `erreur.invalid_message` | Ce message n'est pas valide. | That message isn't valid. |
+| `erreur.invalid_cursor` | Cette page des nouveautés n'existe pas. | That page of updates doesn't exist. |
 | `erreur.invalid_player` | Identifiant de joueur invalide. | Invalid player ID. |
 | `erreur.unknown_player` | Ce profil n'a encore aucun résultat. | This profile has no results yet. |
 | `erreur.code_revoked` | Ce code n'est plus valide : il a été remplacé. Charge ton nouveau code. | This code is no longer valid: it was replaced. Load your new code. |
@@ -170,6 +181,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `apercu.titre` | Du Jour — les jeux du jour | Du Jour — today's games |
 | `apercu.description` | Chaque jour, un circuit Track et un niveau Jump, les mêmes pour tout le monde. Joue, compare, partage ta journée. | Every day, one Track circuit and one Jump level, the same for everyone. Play, compare, share your day. |
 | `apercu.image` | Le logo DU JOUR et deux cartouches posées sur l'étagère : Track et Jump. | The DU JOUR logo and two cartridges on the shelf: Track and Jump. |
+| `apercu.nouveautes.titre` | Nouveautés — Du Jour | What's new — Du Jour |
+| `apercu.nouveautes.description` | Ce qui change dans Du Jour, Track et Jump : les nouveautés, mise à jour par mise à jour, en français et en anglais. | What changes in Du Jour, Track and Jump: updates one by one, in French and in English. |
 
 ### Classement (`classement.*`, `apps/portail/src/catalogue.ts`)
 
@@ -201,6 +214,22 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `demo.texte` | Ce lien installe sur cet appareil le joueur « {nom} » de la recette, pour voir le portail plein. Il remplacera le profil de cet appareil ({actuel}), dans tous les jeux. | This link installs the test server's player "{nom}" on this device, to see the portal full. It will replace this device's profile ({actuel}), in every game. |
 | `demo.installer` | Installer le joueur de démonstration | Install the demo player |
 | `demo.annuler` | Garder mon profil | Keep my profile |
+
+### nouveautes (`nouveautes.*`, `apps/portail/src/catalogue.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `nouveautes.titre` | Nouveautés | What's new |
+| `nouveautes.description` | Les nouveautés de Du Jour, de Track et de Jump : ce qui change, mise à jour par mise à jour. | What's new in Du Jour, Track and Jump: what changes, update by update. |
+| `nouveautes.zone.dujour` | Du Jour | Du Jour |
+| `nouveautes.zone.track` | Track | Track |
+| `nouveautes.zone.jump` | Jump | Jump |
+| `nouveautes.plusAnciennes` | Plus anciennes | Older |
+| `nouveautes.plusAnciennes.aria` | Voir les nouveautés plus anciennes | Show older updates |
+| `nouveautes.vide` | Rien à lire pour l'instant : les prochaines mises à jour s'afficheront ici. | Nothing to read yet: the next updates will show up here. |
+| `nouveautes.chargement` | Chargement des nouveautés… | Loading updates… |
+| `nouveautes.erreur` | Les nouveautés ne se chargent pas : réessaie dans un instant. | Updates won't load: try again in a moment. |
+| `nouveautes.lignes.aria` | Ce qui change | What changes |
 
 ### Partage de la journée (`partage.*`, `apps/portail/src/catalogue.ts`)
 
@@ -265,6 +294,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.partage.partage` | Journée partagée. | Day shared. |
 | `portail.partage.copie` | Ligne copiée : colle-la où tu veux. | Line copied: paste it wherever you like. |
 | `portail.partage.pasDeCopie` | Copie impossible ici : sélectionne la ligne à la main. | Can't copy here: select the line by hand. |
+| `portail.nouveautes.legende` | Nouveautés · {date} | What's new · {date} |
+| `portail.nouveautes.nonLue` | Nouveau | New |
 
 ### Profil (`profil.*`, `apps/portail/src/catalogue.ts`)
 
@@ -314,6 +345,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.section.marque` | Logo et barres | Logo and bars |
 | `vitrine.section.boutons` | Boutons | Buttons |
 | `vitrine.section.pleinEcran` | Plein écran et astuce de l'iPhone | Full screen and iPhone tip |
+| `vitrine.section.bandeau` | Message en direct | Live message |
+| `vitrine.bandeau.information` | Maintenance ce soir à 22 h : le classement sera figé dix minutes. | Maintenance tonight at 10 pm: the leaderboard will freeze for ten minutes. |
+| `vitrine.bandeau.important` | Le serveur redémarre dans quelques instants. | The server restarts in a few moments. |
 | `vitrine.section.cartouches` | Cartouches | Cartridges |
 | `vitrine.section.cadre` | Écran posé sur la scène d'un jeu | Screen on a game's scene |
 | `vitrine.cadre.intro` | creerCadre : voile à rayures sur la scène, barre des jeux en plaque crème, l'étiquette du jeu, puis le pied (Track, puis Jump). | creerCadre: striped veil over the scene, game bar on a cream plate, the game's label, then the footer (Track, then Jump). |

@@ -15,3 +15,4 @@ export * from "./cadre";
 export * from "./mentions";
 export * from "./dialogue";
 export { el, svg } from "./dom";
+export * from "./visibilite";

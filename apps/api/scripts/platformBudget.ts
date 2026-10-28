@@ -96,6 +96,37 @@ export function classementReadsPerDay(players: number, c = CLASSEMENT_JOUR): num
   return Math.round(players * c.readPerPlayer * ((c.heuresActives * 3600) / c.windowS) * c.maxInstances);
 }
 
+/**
+ * **Le message en direct** (lot N2) : chaque page ouverte et **visible** relit `GET /api/annonce` toutes les 60 s (`ANNONCE_RELECTURE_MS`) ; la réponse est publique
+ * (`max-age=0, s-maxage=30`) : le cache de Firebase Hosting, partagé par toutes les pages ouvertes, ne laisse passer jusqu'à Cloud Run qu'**une requête par fenêtre de
+ * 30 s et par point de présence du CDN qui sert des pages**. Une requête qui arrive à Cloud Run : 1 instruction, **1 ligne lue** (l'index de `fin`), 0 écrite, quelques
+ * ms. `octetsParReponse` : le corps et les en-têtes, mesurés (`npm run measure:annonce -w @cdj/api`) ; c'est **Hosting**, pas Cloud Run, qui porte le poids quand les pages
+ * sont très nombreuses (transfert gratuit : 360 Mo par jour).
+ */
+export const ANNONCE = { relectureS: 60, sMaxageS: 30, octetsParReponse: 711, lignesParRequete: 1, billedSParRequete: 0.1 };
+
+export interface AnnonceParHeure {
+  pages: number;
+  /** Requêtes reçues par Hosting (une par page et par relecture). */
+  hosting: number;
+  /** Octets servis par Hosting. */
+  octetsHosting: number;
+  /** Requêtes qui arrivent à Cloud Run **sans** le cache de Hosting (pire cas : la même chose que `hosting`). */
+  cloudRunSansCache: number;
+  /** Requêtes qui arrivent à Cloud Run **avec** `s-maxage` (borne haute : chaque point de présence rafraîchit sa copie à chaque fenêtre). */
+  cloudRun: number;
+  /** Lignes lues dans Turso et secondes facturées (borne haute) par heure, avec le cache. */
+  lignesLues: number;
+  billedS: number;
+}
+
+/** Ce que coûtent `pages` pages ouvertes et visibles pendant une heure, quand le CDN sert la France par `pointsDePresence` points. */
+export function annonceParHeure(pages: number, pointsDePresence: number, c = ANNONCE): AnnonceParHeure {
+  const hosting = Math.round((pages * 3600) / c.relectureS);
+  const cloudRun = Math.min(hosting, Math.round(pointsDePresence * (3600 / c.sMaxageS)));
+  return { pages, hosting, octetsHosting: hosting * c.octetsParReponse, cloudRunSansCache: hosting, cloudRun, lignesLues: cloudRun * c.lignesParRequete, billedS: cloudRun * c.billedSParRequete };
+}
+
 export interface PlatformInput {
   /** Joueurs par jour de DailyJump, de DailyTrack (circuit du jour), et joueurs qui passent 30 minutes au Salon chaque jour. */
   jump: number;

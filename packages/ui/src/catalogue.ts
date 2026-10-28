@@ -58,6 +58,8 @@ const fr = {
   "pleinEcran.iphone": "Pour jouer en plein écran : Partager › Sur l'écran d'accueil",
   "pleinEcran.iphone.fermer": "Fermer cette astuce",
   // Lot R8 : le message montré une fois quand la remise à zéro du lancement a effacé les données de jeu de ce navigateur.
+  "annonce.fermer": "Fermer le message",
+  "annonce.important": "Important",
   "nouveauDepart.message": "Nouveau départ : tout le monde repart de zéro. Bonne chance !",
   "nouveauDepart.fermer": "Fermer ce message",
   // Codes d'erreur du serveur (apps/api/src/codesErreur.ts)
@@ -74,6 +76,10 @@ const fr = {
   "erreur.forbidden": "Action refusée.",
   "erreur.invalid_action": "Cette action n'est pas valide.",
   "erreur.unknown_result": "Aucun résultat à ce jour-là.",
+  "erreur.invalid_news": "Cette nouveauté n'est pas complète.",
+  "erreur.unknown_news": "Cette nouveauté n'existe pas.",
+  "erreur.invalid_message": "Ce message n'est pas valide.",
+  "erreur.invalid_cursor": "Cette page des nouveautés n'existe pas.",
   "erreur.invalid_player": "Identifiant de joueur invalide.",
   "erreur.unknown_player": "Ce profil n'a encore aucun résultat.",
   "erreur.code_revoked": "Ce code n'est plus valide : il a été remplacé. Charge ton nouveau code.",

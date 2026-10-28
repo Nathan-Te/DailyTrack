@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr" data-precharge-polices>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" data-jeton-content="dj-creme" />
+    <meta name="description" data-t-content="nouveautes.description" />
+    <!-- Lot I6 : aperçu de partage (scripts/site.mjs pose l'origine) ; l'image est celle du portail. -->
+    <meta property="og:type" content="website" /><!-- i18n-ok: valeur technique -->
+    <meta property="og:site_name" data-t-content="marque.nom" />
+    <meta property="og:locale" content="fr_FR" /><!-- i18n-ok: code de langue -->
+    <meta property="og:locale:alternate" content="en_GB" /><!-- i18n-ok: code de langue -->
+    <meta property="og:title" data-t-content="apercu.nouveautes.titre" />
+    <meta property="og:description" data-t-content="apercu.nouveautes.description" />
+    <meta property="og:url" content="__ORIGINE_DU_SITE__/nouveautes/" /><!-- i18n-ok: adresse -->
+    <meta property="og:image" content="__ORIGINE_DU_SITE__/partage/portail.png" /><!-- i18n-ok: adresse -->
+    <meta property="og:image:type" content="image/png" /><!-- i18n-ok: type de fichier -->
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" data-t-content="apercu.image" />
+    <meta name="twitter:card" content="summary_large_image" /><!-- i18n-ok: valeur technique -->
+    <link rel="apple-touch-icon" href="/partage/icone-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" data-icone-du-jour />
+    <title data-t="nouveautes.titre"></title>
+  </head>
+  <body>
+    <!-- Lot N2 : les nouveautés (ce qui change dans Du Jour, Track et Jump), par date, la plus récente en haut, 20 par page ; construit par src/nouveautesPage.ts avec les
+         composants de @cdj/ui ; textes des catalogues (pré-remplis en français à la construction). -->
+    <main id="nouveautes" class="portail nouveautes"></main>
+    <noscript>
+      <nav class="portail-sans-script">
+        <a href="../" data-t="marque.nom"></a>
+      </nav>
+    </noscript>
+    <script type="module" src="../src/nouveautesPage.ts"></script>
+  </body>
+</html>
