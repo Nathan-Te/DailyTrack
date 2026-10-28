@@ -117,11 +117,11 @@ async function reprise(repo, sha, token, sortie) {
   ecrire(sortie, ["reprise=false"]);
 }
 
-async function verdict(repo, sha, token, opt) {
+async function verdict(repo, sha, token, opt, drapeau) {
   const id = opt("--reprise") || opt("--run");
   // Le run du bouton (courant, ou un run de production.yml repris) : ses jobs de CI s'appellent « ci / … » ; un run de ci.yml repris : sans préfixe.
   const reprise = Boolean(opt("--reprise"));
-  const appele = !reprise || argv.includes("--appele");
+  const appele = !reprise || drapeau("--appele");
   const url = `https://github.com/${repo}/actions/runs/${id}`;
   let jobs = [];
   let v;
@@ -177,7 +177,7 @@ async function main(argv) {
     process.exit(2);
   }
   if (cmd === "reprise") return reprise(repo, sha, token, opt("--sortie"));
-  if (cmd === "verdict") process.exit(await verdict(repo, sha, token, opt));
+  if (cmd === "verdict") process.exit(await verdict(repo, sha, token, opt, (name) => argv.includes(name)));
   process.exit(await statuts(repo, sha, (rest[0] ?? "").split(",").filter(Boolean), token, Number(opt("--attente-max", "45"))));
 }
 

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { candidats, dureeMin, jobsDeCi, jugerJobs, jugerStatuts, resumeVerdict, type Job, type WorkflowRun } from "../../../scripts/ci-complete.mjs";
@@ -91,5 +92,27 @@ describe("production.yml : la CI d'abord, sans accès, et tout le reste en dépe
     expect(ci).toMatch(/workflow_call:\n\s+inputs:\n\s+mode:/);
     expect(ci).toContain("value: ${{ jobs.e2e.outputs.echecs }}");
     expect(ci).not.toMatch(/\$\{\{\s*secrets\./);
+  });
+});
+
+// Le 28/10/2026, la reprise d'une CI lancée par le bouton (`verdict --reprise <run> --appele`) s'arrêtait sur `argv is not defined` : la commande
+// elle-même n'était jamais lancée par un test. Ici, elle tourne pour de vrai, GitHub remplacé par une réponse écrite d'avance.
+describe("la commande `verdict` (reprise d'un run du bouton)", () => {
+  const lancer = (...args: string[]) => {
+    const jobs = [job("verifier"), ...COMPLET.map((n) => job(`ci / ${n}`)), job("figer", "failure")];
+    const faux = `globalThis.fetch = async () => new Response(${JSON.stringify(JSON.stringify({ total_count: jobs.length, jobs }))}, { status: 200, headers: { "content-type": "application/json" } });`;
+    return spawnSync(process.execPath, ["--import", `data:text/javascript,${encodeURIComponent(faux)}`, "scripts/ci-complete.mjs", "verdict", "x/y", SHA, ...args], {
+      cwd: new URL("../../..", import.meta.url).pathname,
+      env: { PATH: process.env.PATH ?? "", GITHUB_TOKEN: "jeton-de-test" },
+      encoding: "utf8",
+    });
+  };
+  it("un run du bouton repris (`--appele`) : ses jobs « ci / … » font le verdict, vert", () => {
+    const r = lancer("--reprise", "123", "--appele");
+    expect(r.stderr).not.toMatch(/Error/);
+    expect(r.status).toBe(0);
+  });
+  it("sans `--appele`, le même run n'a pas de CI à lui (les jobs n'ont pas le préfixe attendu) : rouge", () => {
+    expect(lancer("--reprise", "123").status).toBe(1);
   });
 });
