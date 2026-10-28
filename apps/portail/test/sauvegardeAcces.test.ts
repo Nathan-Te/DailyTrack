@@ -50,7 +50,7 @@ describe("les accès de la sauvegarde (diagnostic)", () => {
     expect(r.resume).toContain("La fédération ne prend pas le compte");
     expect(r.resume).toContain("iam.serviceAccounts.getAccessToken");
     expect(r.resume).toContain("roles/iam.workloadIdentityUser");
-    expect(r.resume).toContain("workloadIdentityPools/github/subject/repo:Nathan-Te/DailyTrack:environment:sauvegarde");
+    expect(r.resume).toContain("workloadIdentityPools/github/subject/repo:Nathan-Te@61011485/DailyTrack@1407318739:environment:sauvegarde");
     expect(r.resume).not.toContain("projects/123/");
   });
 

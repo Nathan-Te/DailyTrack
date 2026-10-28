@@ -53,7 +53,8 @@ try {
 } catch (e) {
   dire(`- Jeton de GitHub : illisible (${e instanceof Error ? e.message : String(e)})`);
 }
-const attendu = "repo:Nathan-Te/DailyTrack:environment:sauvegarde";
+// Le sujet que GitHub présente pour ce dépôt (avec les numéros du propriétaire et du dépôt), celui que l'annexe C nomme.
+const attendu = "repo:Nathan-Te@61011485/DailyTrack@1407318739:environment:sauvegarde";
 if (sub && sub !== attendu) dire(`  - ⚠️ ce n'est pas \`${attendu}\`, le sujet que la liaison de l'annexe C nomme : la liaison doit nommer celui-ci (commande ci-dessous).`);
 
 const liaisonFederation = `gcloud iam service-accounts add-iam-policy-binding ${sa} --project=${projet} --role=roles/iam.workloadIdentityUser --member="principal://iam.googleapis.com/projects/$(gcloud projects describe ${projet} --format='value(projectNumber)')/locations/global/workloadIdentityPools/${pool}/subject/${sub || attendu}"`;
