@@ -79,10 +79,11 @@ read -rs T && printf '%s' "$T" | gcloud secrets create cdj-recette-turso-lecture
 for s in cdj-turso-lecture cdj-recette-turso-lecture; do gcloud secrets add-iam-policy-binding $s --project=$PROJECT_ID --member=serviceAccount:$SA --role=roles/secretmanager.secretAccessor; done
 # 4. La fédération : seuls les jobs de l'environnement GitHub « sauvegarde » prennent ce compte
 gcloud iam service-accounts add-iam-policy-binding $SA --project=$PROJECT_ID --role=roles/iam.workloadIdentityUser \
-  --member="principal://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/subject/repo:Nathan-Te/DailyTrack:environment:sauvegarde"
+  --member="principal://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github/subject/repo:Nathan-Te@61011485/DailyTrack@1407318739:environment:sauvegarde"
 gcloud iam workload-identity-pools providers describe github-repo --location=global --workload-identity-pool=github --format='value(attributeMapping)'
 ```
 
+- **Le sujet que GitHub présente porte les numéros du propriétaire et du dépôt** (`repo:Nathan-Te@61011485/DailyTrack@1407318739:environment:sauvegarde`, lu par le diagnostic le 28/10/2026) : la forme sans numéros (`repo:Nathan-Te/DailyTrack:…`) ne correspond pas et la fédération refuse (« PERMISSION_DENIED »). Si le dépôt change de nom ou de propriétaire, le diagnostic donne le nouveau sujet et la commande.
 - **Vérifier (une minute, sans mise en production)** : Actions › **« Sauvegarde : diagnostic »** › Run workflow (sur `main`). Il montre le sujet que GitHub présente à Google, puis teste un par un : la fédération prend le compte, le compte lit le jeton, le compte voit le bucket ; **chaque refus donne la commande exacte à lancer ici**. Le bouton fait le même contrôle avant de sauvegarder.
 - **Tu dois voir** `google.subject: assertion.sub` à la dernière commande (sinon la fédération ne reconnaît pas l'environnement : me le dire).
 - **GitHub** : Settings › Environments › **New environment** `sauvegarde` › *Deployment branches and tags* : **Selected** › `main` ; et l'environnement **`production`** : décoche **Required reviewers**, garde la branche `main`.
