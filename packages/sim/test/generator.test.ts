@@ -27,6 +27,7 @@ import {
   replayRace,
   type DailyCircuit,
 } from "../src/index";
+import { jourAbsentDuRegistre } from "./helpers/versions";
 
 // Jours de test : ancrés sur le 06/10/2026, la date des essais des lots 4 à 8 (60 jours consécutifs validés par le pilote).
 // Ils ne suivent pas `PREMIER_JOUR`, qui ne change que la numérotation : les circuits testés restent les mêmes.
@@ -286,8 +287,7 @@ describe("palette et identifiant", () => {
     // Lot R11 : la version est celle du registre des jours (15 jusqu'au 27/10/2026), la dernière pour un jour qu'il ne nomme pas.
     expect(id).toBe(`jour-2026-10-06-g${GENERATOR_BEFORE_34}`);
     expect(dailyTrackId(parseDay("2026-10-26")!)).toBe(`jour-2026-10-26-g${GENERATOR_BEFORE_34}`);
-    expect(dailyTrackId(parseDay("2026-10-28")!)).toBe(`jour-2026-10-28-g${GENERATOR_VERSION}`);
-    expect(dailyTrackId(parseDay("2026-11-04")!)).toBe(`jour-2026-11-04-g${GENERATOR_VERSION}`);
+    for (const absent of [jourAbsentDuRegistre(), jourAbsentDuRegistre() + 7]) expect(dailyTrackId(absent)).toBe(`jour-${formatDay(absent)}-g${GENERATOR_VERSION}`);
     expect(id).toMatch(/^[a-z0-9_-]{1,32}$/);
     expect(formatDay(JOUR_TEST)).toBe("2026-10-06");
   });

@@ -231,6 +231,10 @@ describe("le garde-fou des jours (lot R6)", () => {
     expect(deploy.indexOf("mise-en-production.mjs registre-fusion")).toBeLessThan(smokeDeploy);
     // La vérification de la production lit aussi le commit déployé (et non le dernier main).
     expect(blocs.get("verification")).toContain("ref: ${{ needs.verifier.outputs.sha }}");
+    // La PR « Jours figés » refait la démonstration de Jump quand des niveaux s'y ajoutent (elle rejoue les jours figés : sinon sa CI échoue), et la verse.
+    const depot = blocs.get("depot")!;
+    expect(depot.indexOf("npm run jump:seed -w @cdj/api")).toBeGreaterThan(depot.indexOf("mise-en-production.mjs jours-figes"));
+    expect(depot).toContain("git add apps/jump/public/levels apps/jump/public/demo");
   });
 
   it("lot R12 : la sauvegarde lit la base en lecture seule par un compte et un environnement à elle, et ne laisse ni artefact ni journal", () => {

@@ -669,7 +669,13 @@ jobs:
           node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json" --resume "$GITHUB_STEP_SUMMARY"
           # Lot R6 : les empreintes des jours passés (jusqu'à la veille de la bascule) rejoignent le test `jours-passes.test.ts` : un jour passé ne change plus jamais.
           node scripts/mise-en-production.mjs empreintes-fusion apps/api/test/jours-passes.json "$RUNNER_TEMP/empreintes-jours/prod.json" --jusqua "$VEILLE" --proteges "$RUNNER_TEMP/registre-track/proteges.json"
-          if [ -z "$(git status --porcelain apps/jump/public/levels apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
+          # La démonstration de Jump (`?api=demo`, apps/jump/public/demo) rejoue les niveaux de ses jours, fichiers figés compris : un jour qu'elle couvre et que
+          # cette mise en production fige change de niveau, ses données se refont (déterministe, ≈ 1 min ; sans cela la CI de la PR échoue : « relancer jump:seed »).
+          if [ -n "$(git status --porcelain apps/jump/public/levels)" ]; then
+            npm ci --ignore-scripts --no-audit --no-fund > /dev/null
+            npm run jump:seed -w @cdj/api > /dev/null
+          fi
+          if [ -z "$(git status --porcelain apps/jump/public/levels apps/jump/public/demo apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
             echo "etat=rien" >> "$GITHUB_OUTPUT"
             echo "### ✅ Jours figés : déjà dans main, rien à ajouter" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -679,7 +685,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add apps/jump/public/levels apps/api/test/jours-passes.json packages/sim/src/jours-track.json
+          git add apps/jump/public/levels apps/jump/public/demo apps/api/test/jours-passes.json packages/sim/src/jours-track.json
           # « Jours figés de la mise en production » : le début du message est lu par `jours-servis` (les jours que la production sert).
           git commit -q -m "Jours figés de la mise en production $nom (code en production, freeze:days jusqu'à la veille de la bascule)"
           git push -q origin "$branch"

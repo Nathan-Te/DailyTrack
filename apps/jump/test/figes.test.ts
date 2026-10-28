@@ -2,7 +2,31 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PLATFORM_GENERATOR, PLATFORM_VERSION, PREMIER_JOUR_JUMP, SECTION_CLOCK_GENERATOR, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, decodeReplay, replayAttempt, type JumpReplay } from "@cdj/jump-sim";
+import {
+  BRIDGE_GENERATOR,
+  BRIDGE_VERSION,
+  JUMP_GENERATOR_VERSION,
+  JUMP_SIM_VERSION,
+  LASER_GENERATOR,
+  LASER_VERSION,
+  MUSHROOM_GENERATOR,
+  MUSHROOM_VERSION,
+  PLATFORM_GENERATOR,
+  PLATFORM_VERSION,
+  PREMIER_JOUR_JUMP,
+  PRESS_GENERATOR,
+  PRESS_VERSION,
+  RESTART_GENERATOR,
+  RESTART_VERSION,
+  SECTION_CLOCK_GENERATOR,
+  SECTION_CLOCK_VERSION,
+  SINGLE_CLOCK_VERSION,
+  STALACTITE_GENERATOR,
+  STALACTITE_VERSION,
+  decodeReplay,
+  replayAttempt,
+  type JumpReplay,
+} from "@cdj/jump-sim";
 import { thawLevel } from "../src/frozen";
 
 // Lot 11 : **les jours figés ne changent jamais**. Une mécanique s'ajoute (tapis, glace), le générateur passe en g6, mais chaque fichier de
@@ -19,6 +43,20 @@ describe("niveaux figés (public/levels)", () => {
     FILES.forEach((f, k) => expect(parseDay(f.replace(".json", "")), f).toBe(PREMIER_JOUR_JUMP + k));
   });
 
+  /** La version de la simulation d'un niveau du jour selon la version du générateur qui l'a fait. */
+  const simVersionDuGenerateur = (g: number): number => {
+    const seuils: readonly [number, number][] = [
+      [RESTART_GENERATOR, RESTART_VERSION],
+      [BRIDGE_GENERATOR, BRIDGE_VERSION],
+      [LASER_GENERATOR, LASER_VERSION],
+      [STALACTITE_GENERATOR, STALACTITE_VERSION],
+      [MUSHROOM_GENERATOR, MUSHROOM_VERSION],
+      [PRESS_GENERATOR, PRESS_VERSION],
+      [PLATFORM_GENERATOR, PLATFORM_VERSION],
+    ];
+    return seuils.find(([seuil]) => g >= seuil)?.[1] ?? (g > SECTION_CLOCK_GENERATOR ? SINGLE_CLOCK_VERSION : SECTION_CLOCK_VERSION);
+  };
+
   for (const file of FILES) {
     it(`${file} : se recharge et se rejoue avec le code actuel (qui joue les physiques v${SECTION_CLOCK_VERSION} à v${JUMP_SIM_VERSION}), sans toucher au fichier`, () => {
       const raw = JSON.parse(readFileSync(join(DIR, file), "utf8")) as { generatorVersion: number; simVersion: number };
@@ -28,8 +66,9 @@ describe("niveaux figés (public/levels)", () => {
       if (typeof level === "string") return;
       // Figé sous une version du générateur d'avant (ou la même), jamais d'après ; la physique est celle du niveau (lot 15), que le code joue.
       expect(raw.simVersion).toBe(level.level.simVersion);
-      // v3 jusqu'à g9, v4 de g10 à g14 (une seule horloge), v5 depuis g15 (plateformes mobiles, lot 20).
-      expect(raw.simVersion).toBe(raw.generatorVersion >= PLATFORM_GENERATOR ? PLATFORM_VERSION : raw.generatorVersion > SECTION_CLOCK_GENERATOR ? SINGLE_CLOCK_VERSION : SECTION_CLOCK_VERSION);
+      // v3 jusqu'à g9, v4 de g10 à g14 (une seule horloge), puis une version de plus par élément (v5 g15 plateformes … v11 g21 nouvel essai) : la table
+      // complète, celle de `thawLevel` (28/10/2026 : elle s'arrêtait à g15, le premier jour figé en g17 la faisait échouer).
+      expect(raw.simVersion).toBe(simVersionDuGenerateur(raw.generatorVersion));
       expect(raw.simVersion).toBeLessThanOrEqual(JUMP_SIM_VERSION);
       expect(raw.generatorVersion).toBeLessThanOrEqual(JUMP_GENERATOR_VERSION);
       // Un niveau figé est celui de son thème naturel, jamais un essai.
