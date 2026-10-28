@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1044 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1047 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -36,6 +36,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.internal` | Le serveur a eu un problème. Réessaie plus tard. | The server ran into a problem. Try again later. |
 | `erreur.db_unavailable` | Le serveur ne joint pas sa base de données. Réessaie plus tard. | The server can't reach its database. Try again later. |
 | `erreur.unauthorized` | Accès refusé. | Access denied. |
+| `erreur.forbidden` | Action refusée. | Action refused. |
+| `erreur.invalid_action` | Cette action n'est pas valide. | That action isn't valid. |
+| `erreur.unknown_result` | Aucun résultat à ce jour-là. | No result on that day. |
 | `erreur.invalid_player` | Identifiant de joueur invalide. | Invalid player ID. |
 | `erreur.unknown_player` | Ce profil n'a encore aucun résultat. | This profile has no results yet. |
 | `erreur.code_revoked` | Ce code n'est plus valide : il a été remplacé. Charge ton nouveau code. | This code is no longer valid: it was replaced. Load your new code. |

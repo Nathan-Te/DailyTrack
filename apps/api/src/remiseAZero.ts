@@ -27,6 +27,8 @@ export const TABLES_VIDEES: Readonly<Record<string, string>> = {
   jump_results: "DailyJump : meilleurs essais, rediffusions (fantômes), places finales",
   jump_lives: "DailyJump : vies de chaque joueur (morts)",
   jump_deaths: "DailyJump : cartes des morts et échantillons du carnage (aucun joueur n'y est nommé, mais ils viennent des vies)",
+  journal_admin: "panneau d'administration (lot N1) : le journal des actions, qui nomme des pseudos de joueurs",
+  resultats_retires: "panneau d'administration (lot N1) : les résultats retirés par l'administration, avec leur rediffusion gardée 30 jours",
 };
 
 /** Les tables gardées : aucune donnée de joueur (planning de l'administration, caches de niveaux déterministes, table de service). */
@@ -34,6 +36,8 @@ export const TABLES_GARDEES: Readonly<Record<string, string>> = {
   planning: "DailyTrack : planning des circuits (administration)",
   circuits: "DailyTrack : cache des circuits du jour (déterministe)",
   jump_levels: "DailyJump : cache des niveaux du jour (déterministe)",
+  admin_sessions: "panneau d'administration (lot N1) : sessions de l'administrateur (identifiant tiré au hasard et empreinte, aucun joueur)",
+  journal_erreurs: "panneau d'administration (lot N1) : codes et routes des erreurs serveur, gardés 14 jours (ni joueur, ni corps de requête)",
   meta: "table de service : empreinte du schéma (la génération de données y est écrite par la remise à zéro)",
 };
 

@@ -4,6 +4,7 @@
     "accessibilite.spec.ts": 189,
     "accueil.spec.ts": 289,
     "admin.spec.ts": 16,
+    "admin-panneau.spec.ts": 10,
     "adresses-joueur.spec.ts": 35,
     "air.spec.ts": 19,
     "bas-cotes.spec.ts": 23,
@@ -57,6 +58,7 @@
   },
   "essentiel": {
     "accueil.spec.ts": 47,
+    "admin-panneau.spec.ts": 10,
     "adresses-joueur.spec.ts": 35,
     "bas-cotes.spec.ts": 1,
     "conduite.spec.ts": 18,

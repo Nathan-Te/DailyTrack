@@ -48,7 +48,10 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `name_taken` | 409 | Pseudo déjà à un autre joueur ; `suggestions` libres jointes. | `PUT /api/player`, envois avec `name` (`GET /api/name` répond `available: false`) |
 | `name_required` | 400 | Premier envoi d'un joueur inconnu sans pseudo. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit` |
 | `invalid_code` | 400 | Admin, effacement : code de transfert mal formé ou abîmé (somme de contrôle). | `POST /api/admin/effacer` |
-| `unauthorized` | 401 | Admin : jeton manquant ou incorrect. | `/api/admin/*` |
+| `unauthorized` | 401 | Admin : jeton manquant ou incorrect (outils de DailyTrack), ou session du panneau absente, expirée, révoquée, ou connexion Google refusée (jamais dit pourquoi : adresse ou jeton). | `/api/admin/*` (lot N1 : `/api/admin/session`, `tableau`, `joueurs`, `journal`) |
+| `forbidden` | 403 | Panneau d'administration (lot N1) : une requête qui modifie quelque chose sans l'en-tête `X-Cdj-Admin: 1`, ou dont l'`Origin` n'est pas celle du site. | `POST` / `DELETE` de `/api/admin/session`, `POST /api/admin/joueurs/<ref>/…` |
+| `invalid_action` | 400 | Panneau d'administration (lot N1) : le corps d'une action est refusé (confirmation absente ou fausse, motif ou pseudo manquant, jeu ou jour illisible). | `POST /api/admin/joueurs/<ref>/…` |
+| `unknown_result` | 404 | Panneau d'administration (lot N1) : ce joueur n'a pas de résultat classé ce jour-là dans ce jeu. | `POST /api/admin/joueurs/<ref>/retirer` |
 | `invalid_date` | 400 | Date illisible (`AAAA-MM-JJ` attendue). | `/api/day/<j>…` (lot I2 : un encodage illisible aussi, plus jamais 500), `/api/submit`, `/api/admin/planning/<j>`, `/api/jump/day/<j>…`, `/api/portail/classement?date=` (lot I3) |
 | `invalid_view` | 400 | Classement du jour du portail : `vue` n'est ni `cumul` ni le dossier d'un jeu qui existe ce jour-là (lot A1). | `GET /api/portail/classement?vue=` |
 | `unknown_day` | 404 | Ce jour n'a pas (encore) de circuit ou de niveau : futur, ou avant le premier jour du jeu. | `/api/day/<j>…`, `/api/submit`, `/api/jump/day/<j>…`, `/api/portail/classement?date=` (lot I3 : un jour futur, ou d'avant les jeux) |

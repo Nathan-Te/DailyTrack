@@ -1,0 +1,466 @@
+/* Le panneau d'administration (lot N1) : la charte « Cartouches » — fonds unis, traits de 2 et 3 px, ombres nettes, aucun dégradé, aucune translucidité ; jetons de
+   @cdj/ui seulement. Ordinateur d'abord ; sur téléphone le menu est replié derrière un bouton. */
+.admin {
+  margin: 0;
+}
+.admin-racine {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.admin-sans-script {
+  padding: var(--dj-marge);
+}
+.admin-barre {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-5);
+  padding: var(--dj-espace-3) var(--dj-marge);
+  background: var(--dj-papier);
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.admin-barre__titre {
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-16);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.admin-barre > .dj-bouton:last-child {
+  margin-left: auto;
+}
+.admin-env {
+  padding: var(--dj-espace-1) var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  background: var(--dj-papier);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+  text-transform: uppercase;
+}
+.admin-env[data-env="production"] {
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+}
+.admin-env[data-env="recette"] {
+  background: var(--dj-moutarde);
+}
+.admin-menu-bouton {
+  display: none;
+}
+.admin-corps {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--dj-espace-8);
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--dj-espace-8) var(--dj-marge);
+}
+.admin-menu__liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-menu__entree {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: var(--dj-ombre-bouton);
+  box-sizing: border-box;
+}
+.admin-menu__entree[aria-current="page"] {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  box-shadow: none;
+}
+.admin-menu__entree--eteinte {
+  border-style: dashed;
+  background: var(--dj-creme);
+  color: var(--dj-encre-douce);
+  box-shadow: none;
+  font-weight: 400;
+}
+.admin-menu__note {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+.admin-menu__sous {
+  display: block;
+  margin: var(--dj-espace-1) 0 0 var(--dj-espace-3);
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+}
+.admin-contenu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-7);
+  min-width: 0;
+}
+.admin-contenu:focus {
+  outline: none;
+}
+.admin-titre-section {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-24);
+  line-height: 1.2;
+}
+.admin-titre-carte {
+  font-size: var(--dj-taille-16);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.admin-aide {
+  margin: 0;
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-14);
+}
+.admin-mono {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.admin-lien {
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+.admin-carte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+  padding: var(--dj-espace-7);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.admin-tuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--dj-espace-5);
+}
+.admin-message {
+  margin: 0;
+  padding: var(--dj-espace-4) var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  font-weight: 700;
+}
+.admin-message--erreur {
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+}
+.admin-message--info {
+  background: var(--dj-creme-2);
+}
+.admin-pastille {
+  display: inline-block;
+  padding: 0 var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+  line-height: 22px;
+  text-transform: uppercase;
+}
+.admin-pastille--ok {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.admin-pastille--probleme {
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+}
+.admin-pastille--masque {
+  background: var(--dj-moutarde);
+  margin-left: var(--dj-espace-4);
+  vertical-align: middle;
+}
+/* La courbe : des barres pleines, sans dégradé ; aujourd'hui en terre cuite. */
+.admin-courbe {
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+}
+.admin-courbe__base {
+  stroke: var(--dj-encre);
+  stroke-width: 2;
+}
+.admin-courbe__barre {
+  fill: var(--dj-encre);
+}
+.admin-courbe__barre--jour {
+  fill: var(--dj-terre);
+}
+.admin-courbe__texte {
+  fill: var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: 12px;
+}
+.admin-etat {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.admin-etat__ligne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--dj-espace-5);
+  padding: var(--dj-espace-3) 0;
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+}
+.admin-etat__ligne dt {
+  font-weight: 700;
+}
+.admin-etat__ligne dd {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-4);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.admin-etat__valeur {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+}
+.admin-journal__liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-journal__ligne {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--dj-espace-4);
+  padding-bottom: var(--dj-espace-3);
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+}
+.admin-journal__heure {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+}
+.admin-journal__action {
+  font-weight: 700;
+}
+.admin-journal__cible {
+  overflow-wrap: anywhere;
+}
+/* Formulaires. */
+.admin-formulaire,
+.admin-recherche,
+.admin-dialogue__forme {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+}
+.admin-recherche__ligne {
+  display: flex;
+  gap: var(--dj-espace-4);
+}
+.admin-recherche__ligne input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.admin-champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+}
+.admin label {
+  font-weight: 700;
+}
+.admin input[type="text"],
+.admin input[type="search"],
+.admin input[type="email"] {
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  box-sizing: border-box;
+}
+.admin-filtres {
+  display: flex;
+  gap: var(--dj-espace-3);
+}
+.admin-filtre {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-6);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.admin-filtre[aria-current="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+}
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-5);
+}
+/* Tableaux : ils défilent dans leur cadre, jamais la page. */
+.admin-defile {
+  overflow-x: auto;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.admin-table th,
+.admin-table td {
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+  text-align: left;
+  vertical-align: middle;
+}
+.admin-table thead th {
+  border-bottom: var(--dj-trait) solid var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  text-transform: uppercase;
+}
+.admin-table__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+  border-bottom: none;
+}
+/* Connexion. */
+.admin-connexion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dj-espace-6);
+  max-width: 440px;
+  margin: var(--dj-espace-9) auto;
+  padding: var(--dj-espace-8);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+  box-sizing: border-box;
+}
+.admin-google {
+  min-height: 44px;
+}
+/* Fenêtre de confirmation. */
+.admin-dialogue {
+  width: min(480px, calc(100vw - 2 * var(--dj-marge)));
+  padding: var(--dj-espace-8);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  box-shadow: var(--dj-ombre-cartouche);
+  box-sizing: border-box;
+}
+.admin-dialogue::backdrop {
+  background: var(--dj-encre);
+}
+.admin-dialogue__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dj-espace-4);
+}
+/* Téléphone : le menu est replié derrière un bouton ; les cartes prennent la largeur. */
+@media (max-width: 760px) {
+  .admin-menu-bouton {
+    display: inline-flex;
+  }
+  .admin-corps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--dj-espace-6);
+    padding: var(--dj-espace-6) var(--dj-marge);
+  }
+  .admin-menu {
+    display: none;
+  }
+  .admin-menu.est-ouvert {
+    display: block;
+  }
+  .admin-barre__titre {
+    display: none;
+  }
+  .admin-carte {
+    padding: var(--dj-espace-5);
+  }
+  .admin-etat__ligne,
+  .admin-journal__ligne {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--dj-espace-1);
+  }
+  /* La fiche d'un joueur : chaque résultat devient une petite carte (libellé + valeur), les actions dessous : rien ne sort du cadre. */
+  .admin-table--fiche thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .admin-table--fiche,
+  .admin-table--fiche tbody {
+    display: block;
+  }
+  .admin-table--fiche tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--dj-espace-2) var(--dj-espace-4);
+    padding: var(--dj-espace-4) 0;
+    border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+  }
+  .admin-table--fiche th,
+  .admin-table--fiche td {
+    display: block;
+    padding: 0;
+    border-bottom: none;
+  }
+  .admin-table--fiche th[data-label]::before,
+  .admin-table--fiche td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-family: var(--dj-police-chiffres);
+    font-size: var(--dj-taille-12);
+    text-transform: uppercase;
+    color: var(--dj-encre-douce);
+  }
+  .admin-table--fiche .admin-table__actions {
+    grid-column: 1 / -1;
+  }
+}

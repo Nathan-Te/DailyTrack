@@ -23,7 +23,7 @@ import { inputsHash, jumpInputs } from "./copies";
 import { WithHeaders, cacheHeaders } from "./cache";
 import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
-import type { GameDefinition, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
+import type { AdminDuJeu, GameDefinition, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { JUMP_LIVES_SCHEMA, createJumpLives } from "./jumpLives";
 
 // DailyJump (`jump`) au registre des jeux. Lot P0 de la plateforme : l'espace `/api/jump/` en lecture ; lot P1 : **le classement du jour
@@ -326,7 +326,7 @@ export function jumpDailyOf(day: number, frozen: Readonly<Record<string, unknown
 
 /** Rang d'un résultat : ceux qui ont un meilleur temps, puis à temps égal ceux qui l'ont envoyé avant, puis au même instant l'identifiant. */
 const RANK_SQL =
-  "SELECT COUNT(*) AS n FROM jump_results WHERE day = ? AND (ticks < ? OR (ticks = ? AND (submitted_at < ? OR (submitted_at = ? AND player_id < ?))))";
+  "SELECT COUNT(*) AS n FROM jump_results WHERE day = ? AND hidden = 0 AND (ticks < ? OR (ticks = ? AND (submitted_at < ? OR (submitted_at = ? AND player_id < ?))))";
 
 export function createJump(platform: Platform, options: JumpOptions): GameInstance {
   const { db, now, log, today, sinceMidnight, hashKey, hit, readHit, readJson, playerIdOf, players, limits } = platform;
@@ -516,6 +516,11 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   }
 
   async function participants(day: number): Promise<number> {
+    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE day = ? AND hidden = 0", [day]))?.n ?? 0;
+  }
+
+  /** Tous les essais classés d'un jour, masqués compris (le panneau d'administration compte l'activité réelle). */
+  async function participantsTous(day: number): Promise<number> {
     return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE day = ?", [day]))?.n ?? 0;
   }
 
@@ -543,6 +548,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       if (v.inputsHash === v.authorHash) throw new HttpError(409, "replay_copy", "Cet essai est la copie de la preuve de l'auteur du niveau");
       const copy = await db.first<{ n: number }>("SELECT 1 AS n FROM jump_results WHERE day = ? AND inputs_hash = ? AND player_id <> ? LIMIT 1", [v.day, v.inputsHash, playerId]);
       if (copy) throw new HttpError(409, "replay_copy", "Cet essai est la copie d'un autre");
+      // Lot N1 : un essai que l'administration a retiré ne revient pas tel quel.
+      if (await db.first("SELECT 1 AS n FROM resultats_retires WHERE game = 'jump' AND day = ? AND inputs_hash = ? LIMIT 1", [v.day, v.inputsHash])) throw new HttpError(409, "replay_copy", "Cet essai a été retiré par l'administration");
     }
 
     const t = now();
@@ -555,11 +562,11 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     const improved = !previous || v.ticks < previous.ticks;
     if (improved) {
       await db.run(
-        `INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at, inputs_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at, inputs_hash, hidden) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (day, player_id) DO UPDATE SET level_id = excluded.level_id, ticks = excluded.ticks, deaths = excluded.deaths, replay = excluded.replay,
            sim_version = excluded.sim_version, generator_version = excluded.generator_version, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash
          WHERE excluded.ticks < jump_results.ticks`,
-        [v.day, playerId, v.info.id, v.ticks, v.deaths, body.replay as string, JUMP_SIM_VERSION, JUMP_GENERATOR_VERSION, t, t, v.inputsHash],
+        [v.day, playerId, v.info.id, v.ticks, v.deaths, body.replay as string, JUMP_SIM_VERSION, JUMP_GENERATOR_VERSION, t, t, v.inputsHash, (known as { hidden: number } | null)?.hidden === 1 ? 1 : 0], // lot N1 : un joueur masqué reste masqué
       );
     }
     log("INFO", "DailyJump : essai du jour", { day: v.info.date, ticks: v.ticks, deaths: v.deaths, improved });
@@ -596,7 +603,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   /** Les 10 premiers d'un jour (la règle des égalités). */
   function topOf(day: number): Promise<{ ticks: number; deaths: number; name: string }[]> {
     return db.all<{ ticks: number; deaths: number; name: string }>(
-      "SELECT r.ticks AS ticks, r.deaths AS deaths, p.name AS name FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
+      "SELECT r.ticks AS ticks, r.deaths AS deaths, p.name AS name FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
       [day, JUMP_BOARD_TOP],
     );
   }
@@ -636,7 +643,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     let first = kept && now() - kept.at < CLOSED_GHOST_TTL_MS ? kept.first : undefined;
     if (first === undefined) {
       const row = await db.first<{ player_id: string; name: string; level_id: string; ticks: number; deaths: number; replay: string; sim_version: number; generator_version: number }>(
-        "SELECT r.player_id AS player_id, p.name AS name, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, r.replay AS replay, r.sim_version AS sim_version, r.generator_version AS generator_version FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT 1",
+        "SELECT r.player_id AS player_id, p.name AS name, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, r.replay AS replay, r.sim_version AS sim_version, r.generator_version AS generator_version FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT 1",
         [day],
       );
       // Lot 15 : les versions rendues sont celles du serveur qui sert le fantôme (comme `/carnage` et `/me`) : le code v4 rejoue à l'identique
@@ -808,9 +815,9 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     if (rows.some((r) => r.final_rank === null && r.day < closedBefore)) {
       const done = await db.all<{ day: number; final_rank: number; final_total: number }>(
         `UPDATE jump_results SET
-           final_rank = (SELECT COUNT(*) FROM jump_results x WHERE x.day = jump_results.day AND (x.ticks < jump_results.ticks OR (x.ticks = jump_results.ticks
+           final_rank = (SELECT COUNT(*) FROM jump_results x WHERE x.day = jump_results.day AND x.hidden = 0 AND (x.ticks < jump_results.ticks OR (x.ticks = jump_results.ticks
              AND (x.submitted_at < jump_results.submitted_at OR (x.submitted_at = jump_results.submitted_at AND x.player_id < jump_results.player_id))))) + 1,
-           final_total = (SELECT COUNT(*) FROM jump_results x WHERE x.day = jump_results.day)
+           final_total = (SELECT COUNT(*) FROM jump_results x WHERE x.day = jump_results.day AND x.hidden = 0) + jump_results.hidden
          WHERE player_id = ? AND final_rank IS NULL AND day < ? RETURNING day, final_rank, final_total`,
         [id, closedBefore],
       );
@@ -870,7 +877,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     // sur les seuils du niveau du jour (comme `etat`). Aucun calcul de niveau pour un jour sans classé.
     async classes(day) {
       const rows = await db.all<{ player_id: string; ticks: number; submitted_at: number }>(
-        "SELECT player_id, ticks, submitted_at FROM jump_results WHERE day = ? ORDER BY ticks ASC, submitted_at ASC, player_id ASC",
+        "SELECT player_id, ticks, submitted_at FROM jump_results WHERE day = ? AND hidden = 0 ORDER BY ticks ASC, submitted_at ASC, player_id ASC",
         [day],
       );
       if (rows.length === 0) return [];
@@ -879,9 +886,70 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     },
   };
 
+  // --- Lot N1 : ce que le panneau d'administration fait de DailyJump (`admin.ts`) -----------------------------------------------------
+  // Même principe que DailyTrack : « masquer » recopie `hidden` sur chaque essai classé du joueur, « retirer » sort la ligne de `jump_results` (la rediffusion va dans
+  // `resultats_retires`). Les places finales gardées des jours concernés sont oubliées. Le premier d'un jour fermé gardé en mémoire (`firstOfClosed`) est oublié par `onErased`.
+  const admin: AdminDuJeu = {
+    activite: [{ table: "jump_results", jour: "day", joueur: "player_id" }],
+    compteurs: async (day) => {
+      const [finis, vies] = await Promise.all([
+        participantsTous(day),
+        db.first<{ n: number }>("SELECT COALESCE(SUM(count), 0) AS n FROM jump_lives WHERE day = ?", [day]),
+      ]);
+      let morts = vies?.n ?? 0;
+      if (morts === 0) morts = (await db.first<{ n: number }>("SELECT deaths AS n FROM jump_deaths WHERE day = ?", [day]))?.n ?? 0; // un jour fini : les vies brutes sont oubliées, il reste le total figé
+      return { finis, morts };
+    },
+    joursPrets: async () => ({ figes: frozenDays.length }),
+    resultats: async (id, limite) => {
+      const [jours, rows] = await Promise.all([
+        db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE player_id = ?", [id]),
+        db.all<{ day: number; level_id: string; ticks: number; deaths: number; submitted_at: number; hidden: number; final_rank: number | null; final_total: number | null; l_id: string | null; medals: string | null }>(
+          "SELECT r.day AS day, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, r.submitted_at AS submitted_at, r.hidden AS hidden, r.final_rank AS final_rank, r.final_total AS final_total, l.level_id AS l_id, l.medals AS medals FROM jump_results r LEFT JOIN jump_levels l ON l.day = r.day WHERE r.player_id = ? ORDER BY r.day DESC LIMIT ?",
+          [id, limite],
+        ),
+      ]);
+      const liste = [];
+      for (const r of rows) {
+        let medaille: MedaillePortail | null = null;
+        if (r.medals !== null && r.l_id === r.level_id) {
+          try {
+            medaille = jumpMedalFor(r.ticks, JSON.parse(r.medals) as JumpMedals);
+          } catch {
+            medaille = null;
+          }
+        }
+        const rang = r.final_rank ?? (await rankOf(r.day, r.ticks, r.submitted_at, id)); // un jour fermé a sa place gardée
+        const classes = r.final_total ?? (await participants(r.day));
+        liste.push({ day: r.day, tempsMs: msOfTicks(r.ticks), morts: r.deaths, medaille, rang, classes: Math.max(classes + r.hidden, rang), envoyeA: r.submitted_at });
+      }
+      return { jours: jours?.n ?? 0, liste };
+    },
+    retirer: async (id, day) => {
+      const row = await db.first<{ ticks: number; replay: string; inputs_hash: string | null }>("SELECT ticks, replay, inputs_hash FROM jump_results WHERE day = ? AND player_id = ?", [day, id]);
+      if (!row) return null;
+      return {
+        tempsMs: msOfTicks(row.ticks),
+        replay: row.replay,
+        inputsHash: row.inputs_hash,
+        statements: [
+          { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day = ?", params: [day] },
+          { sql: "DELETE FROM jump_results WHERE day = ? AND player_id = ?", params: [day, id] },
+        ],
+      };
+    },
+    masquer: (id, masque): Statement[] => [
+      { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM jump_results WHERE player_id = ?)", params: [id] },
+      { sql: "UPDATE jump_results SET hidden = ? WHERE player_id = ?", params: [masque ? 1 : 0, id] },
+    ],
+    // Le lecteur existant (`?watch=first`, lot P2) ne montre que l'essai du premier du jour.
+    lienRediffusion: (date, rang) => (rang === 1 ? `/jump/?watch=first&seed=${date}` : null),
+  };
+
   return {
     route,
     portail,
+    admin,
     dailyLevel: getLevel,
     // Le registre : la validation d'un essai (le niveau du jour, les versions du code, le rejeu). Le temps rendu est celui du rejeu, en ms.
     validate: async (day, code) => {

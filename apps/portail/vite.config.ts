@@ -54,6 +54,8 @@ export default defineConfig({
         // Lot I6 : la page 404 (`dist/404.html`, servie par Hosting pour toute adresse inconnue).
         introuvable: resolve(import.meta.dirname, "404.html"),
         profil: resolve(import.meta.dirname, "profil/index.html"),
+        // Lot N1 : le panneau d'administration (`/admin/`), page privée en français, hors des catalogues des joueurs.
+        admin: resolve(import.meta.dirname, "admin/index.html"),
         classement: resolve(import.meta.dirname, "classement/index.html"),
         ...(vitrine ? { vitrine: resolve(import.meta.dirname, "ui/index.html") } : {}),
       },

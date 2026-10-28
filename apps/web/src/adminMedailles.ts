@@ -1,6 +1,6 @@
 import { THEMES, themeByName, type Medal } from "@cdj/sim";
 import { adminApiBase, apiCall } from "./api";
-import { loadToken } from "./adminBackend";
+import { adminHeaders, loadToken } from "./adminBackend";
 import { formatTime } from "./format";
 
 // Lot 35 — section « Médailles » de la page d'admin : l'outil de calibrage, en lecture seule. Elle lit `GET /api/admin/medailles` (jeton de
@@ -93,7 +93,7 @@ export function mountMedals(stateApi: () => string): void {
     const base = adminApiBase(stateApi());
     if (!base || base === "demo") return say("Demande le vrai serveur (recette ou production) : pas de médailles en démonstration.", true);
     say("Chargement…");
-    const r = await apiCall<unknown>(base, "GET", `/api/admin/medailles${$("med-demo").checked ? "?demo=1" : ""}`, undefined, 20_000, { Authorization: `Bearer ${loadToken()}` });
+    const r = await apiCall<unknown>(base, "GET", `/api/admin/medailles${$("med-demo").checked ? "?demo=1" : ""}`, undefined, 20_000, adminHeaders(loadToken()));
     if (!r.ok) return say(`Échec : ${r.status || "réseau"} · ${r.code} (jeton : en haut de la page).`, true);
     const report = parseMedalReport(r.data);
     if (!report) return say("Réponse illisible.", true);

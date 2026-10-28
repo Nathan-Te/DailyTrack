@@ -240,7 +240,9 @@ const jghostCopy = await fetch(`${base}/api/jump/submit`, {
   headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) },
   body: JSON.stringify({ ...jbody, replay: jghost.body.replay, name: `${NAME}Copie` }),
 });
-check("DailyJump : le fantôme du premier renvoyé sous un autre identifiant est refusé (409 replay_copy)", jghostCopy.status === 409 && ((await jghostCopy.json()) as any).error === "replay_copy", String(jghostCopy.status));
+const jghostCopyBody = (await jghostCopy.json().catch(() => ({}))) as { error?: string };
+// Le code d'erreur est dit en cas de refus (jamais d'identifiant) : un « 409 » seul ne disait pas lequel (recette, run 40625315531).
+check("DailyJump : le fantôme du premier renvoyé sous un autre identifiant est refusé (409 replay_copy)", jghostCopy.status === 409 && jghostCopyBody.error === "replay_copy", `${jghostCopy.status} ${jghostCopyBody.error ?? ""}`);
 const jme = await jcall("GET", "/api/jump/me");
 const meToday = Array.isArray(jme.body.days) ? jme.body.days.find((d: { date: string }) => d.date === date) : null;
 check(

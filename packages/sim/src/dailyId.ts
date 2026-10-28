@@ -46,6 +46,13 @@ export const generatorVersionOf = (day: number): number => {
   return plages.find((p) => day >= p.du && day <= p.au)?.g ?? GENERATOR_VERSION;
 };
 
+/** Lot N1 (panneau d'administration) : combien de jours le registre protège, et le dernier (AAAA-MM-JJ) ; lecture seule, rien à voir avec la simulation. */
+export function resumeRegistreTrack(): { jours: number; jusqua: string } {
+  let jours = 0;
+  for (const p of REGISTRE.plages) jours += Math.max(0, (parseDay(p.au) ?? 0) - (parseDay(p.du) ?? 0) + 1);
+  return { jours, jusqua: REGISTRE.jusqua };
+}
+
 /**
  * Identifiant du circuit d'un jour. La variante 0 (le circuit d'origine) n'a pas de suffixe : les circuits d'avant le lot 14
  * gardent leur identifiant (rediffusions et références inchangées) ; une variante n ≥ 1 ajoute `-v<n>`. Un thème imposé

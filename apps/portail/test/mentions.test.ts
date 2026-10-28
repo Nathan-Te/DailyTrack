@@ -12,6 +12,8 @@ import { CLOSED_GHOST_TTL_MS } from "../../api/src/jump";
 import { DEFAULT_LIMITS, RATE_KEEP_WINDOWS } from "../../api/src/platform";
 import { PRESENCE_KEEP_MS, SALON_SERVE_MS, THROTTLE_KEEP_MS } from "../../api/src/salon";
 import { SAUVEGARDE_JOURS } from "../../api/src/sauvegarde";
+import { SESSION_MS as ADMIN_SESSION_MS } from "../../api/src/adminSession";
+import { ERREURS_JOURS, JOURNAL_ADMIN_JOURS, RETRAIT_REDIFFUSION_JOURS } from "../../api/src/journaux";
 
 // Lot R5 (plateforme) : la page « Mentions légales et confidentialité » ne promet rien que le code ne fait pas. Chaque nombre ou durée tiré du
 // code porte `data-constante` et `data-valeur` : ils doivent être les constantes du serveur, et le texte affiché doit dire la même chose.
@@ -36,6 +38,11 @@ const CONSTANTES: Record<string, number> = {
   THROTTLE_KEEP_MS,
   // Lot R12 : les sauvegardes de la base (bucket privé, suppression automatique : config/sauvegarde-cycle.json).
   SAUVEGARDE_JOURS,
+  // Lot N1 : le panneau d'administration (session, journal, erreurs serveur, rediffusion d'un résultat retiré).
+  ADMIN_SESSION_MS,
+  JOURNAL_ADMIN_JOURS,
+  ERREURS_JOURS,
+  RETRAIT_REDIFFUSION_JOURS,
 };
 
 /** Ce qu'une valeur doit afficher : un nombre, ou une durée en mots (« 20 secondes », « 10 minutes », « 1 heure » ; en anglais « 20 seconds »…). */

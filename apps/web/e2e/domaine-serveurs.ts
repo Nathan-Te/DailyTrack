@@ -29,8 +29,8 @@ function fileFor(root: string, path: string): string | null {
   return existsSync(file) ? file : null;
 }
 
-function send(res: import("node:http").ServerResponse, file: string, status = 200): void {
-  res.writeHead(status, { "Content-Type": TYPES[extname(file)] ?? "application/octet-stream", "Cache-Control": "no-store" });
+function send(res: import("node:http").ServerResponse, file: string, status = 200, plus: Record<string, string> = {}): void {
+  res.writeHead(status, { "Content-Type": TYPES[extname(file)] ?? "application/octet-stream", "Cache-Control": "no-store", ...plus });
   createReadStream(file).pipe(res);
 }
 
@@ -41,8 +41,11 @@ function listen(server: Server, port: number): Promise<Server> {
   });
 }
 
-/** Le site (Firebase Hosting) sur `port`, `/api/**` renvoyé vers `apiPort`. */
-export function startSite(dir: string, port: number, apiPort: number): Promise<Server> {
+/**
+ * Le site (Firebase Hosting) sur `port`, `/api/**` renvoyé vers `apiPort`. Lot N1 : `entetes(chemin)` ajoute des en-têtes aux fichiers servis (le spec du panneau
+ * d'administration y met ceux de `firebase.json`, dont la CSP de `/admin/`, pour prouver que la page marche sous elle).
+ */
+export function startSite(dir: string, port: number, apiPort: number, entetes: (chemin: string) => Record<string, string> = () => ({})): Promise<Server> {
   return listen(
     createServer((req, res) => {
       const url = new URL(req.url ?? "/", "http://localhost");
@@ -64,11 +67,11 @@ export function startSite(dir: string, port: number, apiPort: number): Promise<S
       const file = fileFor(dir, path);
       if (!file) {
         const introuvable = join(dir, "404.html");
-        if (existsSync(introuvable)) send(res, introuvable, 404);
+        if (existsSync(introuvable)) send(res, introuvable, 404, entetes(path));
         else res.writeHead(404).end();
         return;
       }
-      send(res, file);
+      send(res, file, 200, entetes(path));
     }),
     port,
   );

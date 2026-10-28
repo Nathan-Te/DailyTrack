@@ -2,7 +2,7 @@ import { parisDay } from "@cdj/clock";
 import { CATALOGUE_COMMUN_FR } from "@cdj/ui";
 import { THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor, parseDay, themeForDay, type ThemeName } from "@cdj/sim";
 import { DEMO_BASE, adminApiBase, type ApiResult } from "./api";
-import { DemoAdmin, HttpAdmin, loadToken, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
+import { DemoAdmin, HttpAdmin, loadToken, memeOrigine, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel } from "./adminPlan";
 import { SURFACE_LABEL, circuitStats, cuvesText, effectsText, figuresText, reliefText, sidesText, widthsText } from "./circuitStats";
 import { formatTime } from "./format";
@@ -98,6 +98,8 @@ export function mountPlanning(stateApi: () => string): void {
   const computeBase = () => adminApiBase(stateApi());
   let base = computeBase(); // recalculée à chaque « Actualiser » : on peut changer l'adresse de l'API plus bas
   let token = loadToken();
+  /** Lot N1 : pas de jeton, mais une session du panneau de la plateforme (cookie `__session`, connexion Google sur `/admin/`) : les outils fonctionnent sans le jeton. */
+  let session = false;
   const backendFor = (): AdminBackend | null => (base === DEMO_BASE ? new DemoAdmin() : base ? new HttpAdmin(base, token) : null);
   let overview: AdminOverview | null = null;
   let generation = 0; // chaque rafraîchissement abandonne les miniatures du précédent
@@ -127,8 +129,20 @@ export function mountPlanning(stateApi: () => string): void {
       render();
       return;
     }
+    if (backend.kind === "api" && !token && memeOrigine(base)) {
+      // Lot N1 : sans jeton, la session du panneau suffit (connexion Google sur /admin/). Essai silencieux : un refus ramène au jeton.
+      const essai = await backend.overview();
+      session = essai.ok;
+      if (essai.ok) {
+        overview = essai.data;
+        status(`Connecté par la session du panneau d'administration : ${backend.label}. Aujourd'hui (Paris) : ${overview.today}.`);
+        showTokenForm(false);
+        render();
+        return;
+      }
+    }
     if (backend.kind === "api" && !token) {
-      status(`API : ${backend.label}. Saisis le jeton d'admin (variable ADMIN_TOKEN du serveur).`);
+      status(`API : ${backend.label}. Saisis le jeton d'admin (variable ADMIN_TOKEN du serveur), ou connecte-toi au panneau d'administration (/admin/).`);
       showTokenForm(true);
       overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
       render();
@@ -271,7 +285,7 @@ export function mountPlanning(stateApi: () => string): void {
     const list = $("planning");
     const o = overview!;
     const today = parseDay(o.today)!;
-    const canReplace = backendFor() !== null && !(backendFor()!.kind === "api" && !token);
+    const canReplace = backendFor() !== null && !(backendFor()!.kind === "api" && !token && !session);
     list.replaceChildren();
     for (const day of planningDays(today)) {
       const date = formatDay(day);

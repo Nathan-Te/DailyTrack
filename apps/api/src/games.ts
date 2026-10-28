@@ -156,6 +156,53 @@ export interface PortailDuJeu {
   classes(day: number): Promise<ClasseDuJour[]>;
 }
 
+// --- Lot N1 (plateforme) : ce que le panneau d'administration fait de chaque jeu ------------------------------------------------------
+// Comme le portail, le panneau ne connaît aucun jeu : chacun déclare par le crochet `admin` ce qu'il faut pour compter son activité, montrer les
+// résultats d'un joueur, **retirer** un résultat et **masquer** un joueur de ses classements (`admin.ts`, `adminJoueurs.ts`).
+
+/** Un résultat classé d'un joueur, vu par l'administration (la fiche d'un joueur). */
+export interface ResultatAdmin {
+  /** Le numéro du jour (jours depuis 1970). */
+  day: number;
+  tempsMs: number;
+  /** DailyJump : les morts de l'essai classé. */
+  morts?: number;
+  medaille: MedaillePortail | null;
+  /** Sa place et le nombre de classés de ce jour (ceux que les classements montrent : ni masqués ni retirés). */
+  rang: number;
+  classes: number;
+  /** L'instant (ms) du meilleur envoi. */
+  envoyeA: number;
+}
+
+/** Le résultat retiré : de quoi le garder 30 jours (`resultats_retires`) et les instructions qui le sortent des classements. */
+export interface RetraitAdmin {
+  /** Le temps rejoué par le serveur, en millisecondes : pour retrouver la trace. */
+  tempsMs: number;
+  replay: string;
+  inputsHash: string | null;
+  /** Retire la ligne du classement et oublie les places finales gardées de ce jour (elles sont recalculées sans lui). */
+  statements: Statement[];
+}
+
+/** Le crochet `admin` d'un jeu (lot N1). */
+export interface AdminDuJeu {
+  /** Les tables qui disent qu'un joueur a joué un jour (« joueur du jour » : au moins un résultat classé, Track ou Jump) : nom, colonne du jour, colonne du joueur. */
+  activite: readonly { table: string; jour: string; joueur: string }[];
+  /** Les chiffres d'un jour : les joueurs classés ; DailyJump ajoute les morts envoyées ce jour-là (ses vies, oubliées à la fin du jour). */
+  compteurs(day: number): Promise<{ finis: number; morts?: number }>;
+  /** Les jours prêts : ceux du registre figé, plus ceux que l'administration a planifiés d'avance (Track). */
+  joursPrets(): Promise<{ figes: number; planifies?: number }>;
+  /** Les résultats d'un joueur, du plus récent au plus ancien, au plus `limite` jours, et le nombre de jours joués. */
+  resultats(playerId: string, limite: number): Promise<{ jours: number; liste: ResultatAdmin[] }>;
+  /** Le résultat d'un joueur un jour, à retirer (`null` : il n'en a pas). */
+  retirer(playerId: string, day: number): Promise<RetraitAdmin | null>;
+  /** Les instructions qui masquent (ou démasquent) ce joueur de tous les classements du jeu. */
+  masquer(playerId: string, masque: boolean): Statement[];
+  /** Le lecteur existant du jeu pour cette rediffusion (adresse relative au site), s'il existe : DailyJump ne sait montrer que le premier du jour. */
+  lienRediffusion(date: string, rang: number): string | null;
+}
+
 /** Un jeu en marche, créé par la plateforme. */
 export interface GameInstance {
   /** Répond à une route du jeu (le corps d'une réponse 200), ou `undefined` si ce chemin n'est pas à lui. Lève `HttpError` pour un refus. */
@@ -184,6 +231,8 @@ export interface GameInstance {
   profile?(playerId: string): Promise<Record<string, unknown>>;
   /** Lot I2 : ce que le portail montre du jeu (`portail.ts`) ; un jeu sans ce crochet n'apparaît pas sur le portail. */
   portail?: PortailDuJeu;
+  /** Lot N1 : ce que le panneau d'administration fait du jeu (`admin.ts`) ; un jeu sans ce crochet n'y figure pas. */
+  admin?: AdminDuJeu;
   /** Tâche facultative (hors production), toutes les 15 s sous Node. */
   tick?(): Promise<void>;
 }

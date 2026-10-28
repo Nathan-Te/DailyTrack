@@ -302,13 +302,13 @@ export function createSalon(kit: SalonKit) {
     db.run("INSERT INTO salon_sessions (session, version) VALUES (?, 1) ON CONFLICT (session) DO UPDATE SET version = version + 1", [session]);
 
   async function participants(session: number): Promise<number> {
-    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs WHERE session = ?", [session]))?.n ?? 0;
+    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs WHERE session = ? AND hidden = 0", [session]))?.n ?? 0;
   }
 
   /** Place d'un temps : devant lui, ceux qui sont plus rapides, ou aussi rapides mais arrivés avant (puis, à égalité, par référence). */
   async function rankOf(session: number, ms: number, at: number, ref: string): Promise<number> {
     const row = await db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM salon_runs WHERE session = ? AND (ms < ? OR (ms = ? AND (submitted_at < ? OR (submitted_at = ? AND ref < ?))))",
+      "SELECT COUNT(*) AS n FROM salon_runs WHERE session = ? AND hidden = 0 AND (ms < ? OR (ms = ? AND (submitted_at < ? OR (submitted_at = ? AND ref < ?))))",
       [session, ms, ms, at, at, ref],
     );
     return (row?.n ?? 0) + 1;
@@ -320,7 +320,7 @@ export function createSalon(kit: SalonKit) {
       [session, playerId],
     );
     if (!own) return null;
-    const first = firstMs ?? (await db.first<{ ms: number }>(`SELECT ms FROM salon_runs WHERE session = ? ORDER BY ${ORDER} LIMIT 1`, [session]))?.ms ?? own.ms;
+    const first = firstMs ?? (await db.first<{ ms: number }>(`SELECT ms FROM salon_runs WHERE session = ? AND hidden = 0 ORDER BY ${ORDER} LIMIT 1`, [session]))?.ms ?? own.ms;
     return { rank: await rankOf(session, own.ms, own.submitted_at, own.ref), ref: own.ref, name: own.name, ms: own.ms, gap: own.ms - first, mine: true };
   }
 
@@ -332,14 +332,14 @@ export function createSalon(kit: SalonKit) {
       const me = playerId ? await myRow(session, playerId) : null;
       return { session, version, participants: count, players, rows: [], me, unchanged: true };
     }
-    const top = await db.all<{ ref: string; name: string; ms: number }>(`SELECT ref, name, ms FROM salon_runs WHERE session = ? ORDER BY ${ORDER} LIMIT ?`, [session, BOARD_ROWS]);
+    const top = await db.all<{ ref: string; name: string; ms: number }>(`SELECT ref, name, ms FROM salon_runs WHERE session = ? AND hidden = 0 ORDER BY ${ORDER} LIMIT ?`, [session, BOARD_ROWS]);
     const firstMs = top[0]?.ms ?? 0;
     const me = playerId ? await myRow(session, playerId, firstMs) : null;
     const rows: SalonRow[] = top.map((r, i) => ({ rank: i + 1, ref: r.ref, name: r.name, ms: r.ms, gap: r.ms - firstMs, ...(me && r.ref === me.ref ? { mine: true } : {}) }));
     if (me && me.rank > BOARD_ROWS) {
       for (const rank of [me.rank - 1, me.rank + 1]) {
         if (rank <= BOARD_ROWS || rank > count) continue;
-        const r = await db.first<{ ref: string; name: string; ms: number }>(`SELECT ref, name, ms FROM salon_runs WHERE session = ? ORDER BY ${ORDER} LIMIT 1 OFFSET ?`, [session, rank - 1]);
+        const r = await db.first<{ ref: string; name: string; ms: number }>(`SELECT ref, name, ms FROM salon_runs WHERE session = ? AND hidden = 0 ORDER BY ${ORDER} LIMIT 1 OFFSET ?`, [session, rank - 1]);
         if (r) rows.push({ rank, ref: r.ref, name: r.name, ms: r.ms, gap: r.ms - firstMs });
       }
       rows.push(me);
@@ -456,10 +456,10 @@ export function createSalon(kit: SalonKit) {
     const improved = !previous || result.finishMs < previous.ms;
     if (improved) {
       await db.run(
-        `INSERT INTO salon_runs (session, player_id, ref, name, ms, splits, replay, submitted_at, car) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO salon_runs (session, player_id, ref, name, ms, splits, replay, submitted_at, car, hidden) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (session, player_id) DO UPDATE SET name = excluded.name, ms = excluded.ms, splits = excluded.splits,
            replay = excluded.replay, submitted_at = excluded.submitted_at, car = excluded.car WHERE excluded.ms < salon_runs.ms`,
-        [session, playerId, ref, name, result.finishMs, JSON.stringify(result.splits), body.replay, at, car],
+        [session, playerId, ref, name, result.finishMs, JSON.stringify(result.splits), body.replay, at, car, known?.hidden === 1 ? 1 : 0], // lot N1 : un joueur masqué reste masqué
       );
       await bump(session);
     } else if (previous.name !== name) {

@@ -29,7 +29,10 @@ export const CODES_ERREUR = {
   name_taken: { status: 409, sens: "Pseudo déjà à un autre joueur ; la réponse porte des suggestions libres (`suggestions`)." },
   name_required: { status: 400, sens: "Premier envoi d'un joueur inconnu sans pseudo." },
   invalid_code: { status: 400, sens: "Admin, effacement : code de transfert mal formé ou abîmé (somme de contrôle)." },
-  unauthorized: { status: 401, sens: "Admin : jeton manquant ou incorrect." },
+  unauthorized: { status: 401, sens: "Admin : jeton manquant ou incorrect (outils de DailyTrack), ou session du panneau absente, expirée, révoquée, ou connexion Google refusée (jamais dit pourquoi : adresse ou jeton)." },
+  forbidden: { status: 403, sens: "Panneau d'administration (lot N1) : une requête qui modifie quelque chose sans l'en-tête X-Cdj-Admin: 1, ou dont l'Origin n'est pas celle du site." },
+  invalid_action: { status: 400, sens: "Panneau d'administration (lot N1) : le corps d'une action est refusé (confirmation absente ou fausse, motif ou pseudo manquant, jeu ou jour illisible)." },
+  unknown_result: { status: 404, sens: "Panneau d'administration (lot N1) : ce joueur n'a pas de résultat classé ce jour-là dans ce jeu." },
 
   // --- Jours, circuits et niveaux ----------------------------------------------------------------------------
   invalid_date: { status: 400, sens: "Date illisible (AAAA-MM-JJ attendue)." },
