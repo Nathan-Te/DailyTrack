@@ -67,6 +67,19 @@ test("connexion › tableau de bord › joueur › renommer › journal, sous la
   await expect(chiffres.locator(".dj-tuile").nth(1).locator(".dj-tuile__valeur")).toHaveText("1"); // Chloé, créée aujourd'hui
   await expect(chiffres.locator(".dj-tuile").nth(2).locator(".dj-tuile__valeur")).toHaveText("3"); // Track finis
   await expect(page.locator("#courbe .admin-courbe__barre")).toHaveCount(14);
+  // Lot N2 (retouche) : la courbe est interactive : le survol (et le clavier) montre le jour et ses joueurs dans une infobulle et dans la ligne au-dessus.
+  const zones = page.locator("#courbe .admin-courbe__zone");
+  await expect(zones).toHaveCount(14);
+  await zones.nth(13).hover();
+  await expect(page.locator("#courbe-lecture")).toContainText("(aujourd'hui) · 3 joueurs");
+  await expect(page.locator("#courbe .admin-courbe__infobulle")).toBeVisible();
+  await zones.nth(13).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator("#courbe-lecture")).toContainText("joueur");
+  await expect(page.locator("#courbe .admin-courbe__barre--actif")).toHaveCount(1);
+  await page.mouse.move(5, 5);
+  await page.locator("#courbe-lecture").click(); // le focus quitte la courbe : la consigne revient
+  await expect(page.locator("#courbe-lecture")).toContainText("Survole");
   await expect(page.locator('[data-etat="api"]')).toContainText("OK");
   await expect(page.locator('[data-etat="base"]')).toContainText("OK");
   await expect(page.locator('[data-etat="version"]')).toContainText("prod-2026-10-19-1830 · 0123456");

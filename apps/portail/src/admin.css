@@ -208,6 +208,47 @@
 .admin-courbe__barre--jour {
   fill: var(--dj-terre);
 }
+.admin-courbe-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+}
+.admin-courbe__lecture {
+  margin: 0;
+  min-height: 1.5em;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+}
+/* Interaction : colonne sensible transparente, barre active cernée de moutarde, infobulle en papier cerné d'encre (aplats, sans ombre floue). */
+.admin-courbe__zone {
+  fill: transparent;
+  cursor: pointer;
+  outline: none;
+}
+.admin-courbe__zone:focus-visible {
+  stroke: var(--dj-encre);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.admin-courbe__barre--actif {
+  stroke: var(--dj-moutarde);
+  stroke-width: var(--dj-trait-fort);
+}
+.admin-courbe__infobulle[hidden] {
+  display: none;
+}
+.admin-courbe__bulle {
+  fill: var(--dj-papier);
+  stroke: var(--dj-encre);
+  stroke-width: 2;
+}
+.admin-courbe__bulle-texte {
+  fill: var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: 12px;
+  pointer-events: none;
+}
 .admin-courbe__texte {
   fill: var(--dj-encre);
   font-family: var(--dj-police-chiffres);
@@ -523,12 +564,25 @@
   padding: 0 var(--dj-espace-2);
   font-weight: 800;
 }
-/* Une ligne de l'éditeur : zone, français, anglais, retirer. L'anglais manquant est cerné de terre (le texte, lui, le dit aussi en dessous). */
+/* Une ligne de l'éditeur : une fiche (zone et « Retirer » en tête, puis le français et l'anglais en zones de texte pleine largeur). L'anglais manquant est cerné de terre (le texte, lui, le dit aussi en dessous). */
 .admin-ligne {
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr) minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: var(--dj-espace-2);
+  padding: var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+}
+.admin-ligne__entete {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+}
+.admin-ligne textarea {
+  width: 100%;
+  min-height: 84px;
+  line-height: 1.35;
 }
 .admin-ligne .admin-aide {
   grid-column: 1 / -1;
@@ -630,13 +684,6 @@
   .admin-deux-colonnes,
   .admin-apercu__langues {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .admin-ligne {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .admin-ligne select,
-  .admin-ligne input {
-    grid-column: 1 / -1;
   }
   .admin-gestion__ligne {
     grid-template-columns: 56px minmax(0, 1fr);

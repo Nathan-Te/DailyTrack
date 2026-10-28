@@ -256,6 +256,32 @@ export function barres(courbe: readonly JourDeLaCourbe[], largeur: number, haute
   };
 }
 
+/** Ce que dit une barre : « 28/10 · 84 joueurs » (« aujourd'hui » pour la dernière). */
+export const texteDeBarre = (b: Pick<Barre, "date" | "joueurs" | "aujourdhui">): string =>
+  `${jourCourt(b.date)}${b.aujourdhui ? " (aujourd'hui)" : ""} · ${b.joueurs} joueur${b.joueurs > 1 ? "s" : ""}`;
+
+export interface Infobulle {
+  x: number;
+  y: number;
+  largeur: number;
+  hauteur: number;
+  texte: string;
+}
+
+/**
+ * L'infobulle d'une barre, dans les unités du dessin : au-dessus de la barre (sous elle si la barre touche le haut), centrée sur elle et **toujours dans le cadre**
+ * `largeurCadre` (elle ne dépasse ni à gauche ni à droite). `pasCaractere` : la largeur d'un caractère de la police des chiffres (≈ 7,2 pour 12 px).
+ */
+export function infobulle(b: Barre, texte: string, largeurCadre: number, hauteurCadre: number, pasCaractere = 7.2): Infobulle {
+  const hauteur = 22;
+  const largeur = Math.min(largeurCadre, Math.round((texte.length * pasCaractere + 16) * 100) / 100);
+  const centre = b.x + b.largeur / 2;
+  const x = Math.round(Math.min(Math.max(0, centre - largeur / 2), largeurCadre - largeur) * 100) / 100;
+  const dessus = b.y - hauteur - 4;
+  const y = dessus >= 0 ? dessus : Math.min(b.y + 4, hauteurCadre - hauteur);
+  return { x, y: Math.round(y * 100) / 100, largeur, hauteur, texte };
+}
+
 const PARIS = "Europe/Paris";
 const formatHeure = new Intl.DateTimeFormat("fr-FR", { timeZone: PARIS, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 const formatJour = new Intl.DateTimeFormat("fr-FR", { timeZone: PARIS, day: "numeric", month: "long", year: "numeric" });

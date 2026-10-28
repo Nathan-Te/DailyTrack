@@ -9,6 +9,8 @@ import { CATALOGUE_COMMUN_FR, bouton, el, logo, medaille, svg, traducteur, tuile
 import {
   ErreurAdmin,
   barres,
+  infobulle,
+  texteDeBarre,
   clientAdmin,
   heure,
   jourCourt,
@@ -304,29 +306,88 @@ function ligneEtat(nom: string, valeur: string, ok?: boolean | null, id?: string
   );
 }
 
-function courbe(tab: Tableau): SVGSVGElement {
+/**
+ * La courbe « joueurs par jour », interactive : survol de la souris, toucher du doigt et flèches du clavier (← → Début Fin) montrent le jour et son nombre de joueurs
+ * dans une infobulle dessinée dans le graphe et dans la ligne au-dessus. Chaque colonne est une zone (barre + blanc autour) pour qu'on n'ait pas à viser la barre.
+ * Un seul arrêt de tabulation (la dernière barre : aujourd'hui), les flèches font le reste. Texte posé en `textContent`, positions par attributs (CSP sans style en ligne).
+ */
+function courbe(tab: Tableau): HTMLElement {
   const L = 560;
   const H = 120;
   const { barres: bs, max } = barres(tab.courbe, L, H);
+  const consigne = "Survole, touche ou parcours les barres (← →) pour voir un jour.";
+  const lecture = el("p", { classe: "admin-courbe__lecture admin-aide", attrs: { id: "courbe-lecture" }, texte: consigne });
   const g = svg("svg", {
     classe: "admin-courbe",
     attrs: {
       viewBox: `0 0 ${L} ${H + 34}`,
-      role: "img",
+      role: "group",
       "aria-label": `Joueurs par jour sur ${tab.courbe.length} jours, du ${jourCourt(tab.courbe[0]!.date)} au ${jourCourt(tab.courbe.at(-1)!.date)} ; maximum ${max} ; aujourd'hui ${tab.chiffres.joueursAujourdhui}.`,
       id: "courbe",
     },
   });
   g.append(svg("line", { classe: "admin-courbe__base", attrs: { x1: 0, y1: H, x2: L, y2: H } }));
-  for (const b of bs) {
+  const rects = bs.map((b) => {
     const rect = svg("rect", { classe: ["admin-courbe__barre", b.aujourdhui && "admin-courbe__barre--jour"], attrs: { x: b.x, y: b.y, width: b.largeur, height: b.hauteur, "data-joueurs": b.joueurs, "data-date": b.date } });
-    rect.append(svg("title", { texte: `${jourCourt(b.date)} : ${b.joueurs} joueur${b.joueurs > 1 ? "s" : ""}` }));
     g.append(rect);
-  }
+    return rect;
+  });
   const etiquette = (x: number, anchor: string, texte: string) => svg("text", { classe: "admin-courbe__texte", attrs: { x, y: H + 22, "text-anchor": anchor }, texte });
   g.append(etiquette(0, "start", jourCourt(tab.courbe[0]!.date)), etiquette(L, "end", `${jourCourt(tab.courbe.at(-1)!.date)} (aujourd'hui)`));
   g.append(svg("text", { classe: "admin-courbe__texte", attrs: { x: 0, y: 12, "text-anchor": "start" }, texte: `max ${max}` }));
-  return g;
+
+  // L'infobulle (cachée tant qu'aucune barre n'est active), au-dessus des barres.
+  const bulleFond = svg("rect", { classe: "admin-courbe__bulle", attrs: { rx: 6, ry: 6 } });
+  const bulleTexte = svg("text", { classe: "admin-courbe__bulle-texte", attrs: { "text-anchor": "middle" } });
+  const bulle = svg("g", { classe: "admin-courbe__infobulle", attrs: { hidden: "", "aria-hidden": "true" } }, bulleFond, bulleTexte);
+  let actif = -1;
+  const montrer = (i: number): void => {
+    const b = bs[i];
+    if (!b) return;
+    actif = i;
+    rects.forEach((r, k) => r.classList.toggle("admin-courbe__barre--actif", k === i));
+    const t = texteDeBarre(b);
+    const info = infobulle(b, t, L, H + 34);
+    for (const [k, v] of Object.entries({ x: info.x, y: info.y, width: info.largeur, height: info.hauteur })) bulleFond.setAttribute(k, String(v));
+    bulleTexte.setAttribute("x", String(info.x + info.largeur / 2));
+    bulleTexte.setAttribute("y", String(info.y + 15));
+    bulleTexte.textContent = t;
+    bulle.removeAttribute("hidden");
+    lecture.textContent = t;
+  };
+  const effacer = (): void => {
+    actif = -1;
+    rects.forEach((r) => r.classList.remove("admin-courbe__barre--actif"));
+    bulle.setAttribute("hidden", "");
+    lecture.textContent = consigne;
+  };
+  // Les zones sensibles : une colonne entière par jour, transparente, au-dessus des barres.
+  const pas = bs.length > 1 ? bs[1]!.x - bs[0]!.x : L;
+  const zones = bs.map((b, i) => {
+    const zone = svg("rect", {
+      classe: "admin-courbe__zone",
+      attrs: { x: Math.round((b.x - (pas - b.largeur) / 2) * 100) / 100, y: 0, width: Math.round(pas * 100) / 100, height: H, tabindex: i === bs.length - 1 ? 0 : -1, role: "img", "aria-label": texteDeBarre(b), "data-i": i },
+    });
+    zone.addEventListener("pointerenter", () => montrer(i));
+    zone.addEventListener("pointerdown", () => montrer(i)); // le doigt : le jour reste affiché après le toucher
+    zone.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "mouse" && document.activeElement !== zone) effacer();
+    });
+    zone.addEventListener("focus", () => montrer(i));
+    zone.addEventListener("blur", () => {
+      if (actif === i) effacer();
+    });
+    zone.addEventListener("keydown", (e) => {
+      const vers = e.key === "ArrowRight" ? Math.min(zones.length - 1, i + 1) : e.key === "ArrowLeft" ? Math.max(0, i - 1) : e.key === "Home" ? 0 : e.key === "End" ? zones.length - 1 : -1;
+      if (vers < 0) return;
+      e.preventDefault();
+      zones.forEach((z, k) => z.setAttribute("tabindex", k === vers ? "0" : "-1"));
+      zones[vers]!.focus();
+    });
+    return zone;
+  });
+  g.append(...zones, bulle);
+  return el("div", { classe: "admin-courbe-bloc" }, lecture, g);
 }
 
 function ligneJournal(e: EntreeJournal): HTMLElement {

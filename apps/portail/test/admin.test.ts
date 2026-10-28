@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ErreurAdmin, barres, clientAdmin, heure, jourCourt, jourLong, nomAction, rang, resumeJournal, temps, texteErreur } from "../src/adminDonnees";
+import { ErreurAdmin, barres, clientAdmin, heure, infobulle, texteDeBarre, jourCourt, jourLong, nomAction, rang, resumeJournal, temps, texteErreur } from "../src/adminDonnees";
 
 // Lot N1 : le panneau d'administration — les calculs purs de son affichage et son client. La page elle-même est testée de bout en bout par
 // `apps/web/e2e/admin-panneau.spec.ts` (connexion, joueur, renommer, journal).
@@ -29,6 +29,40 @@ describe("la courbe « joueurs par jour » : des barres pleines", () => {
     expect(max).toBe(1);
     expect(bs.every((b) => b.hauteur === 0 && b.y === 30)).toBe(true);
     expect(barres([], 100, 50).barres).toEqual([]);
+  });
+});
+
+describe("la courbe : l'infobulle d'une barre", () => {
+  const { barres: bs } = barres(jours(Array.from({ length: 14 }, (_, i) => (i === 0 ? 3 : i === 13 ? 84 : i * 5))), 560, 120, 4);
+
+  it("le texte dit le jour, « aujourd'hui » pour la dernière, et le pluriel", () => {
+    expect(texteDeBarre({ date: "2026-10-28", joueurs: 84, aujourdhui: true })).toBe("28/10 (aujourd'hui) · 84 joueurs");
+    expect(texteDeBarre({ date: "2026-10-15", joueurs: 1, aujourdhui: false })).toBe("15/10 · 1 joueur");
+    expect(texteDeBarre({ date: "2026-10-15", joueurs: 0, aujourdhui: false })).toBe("15/10 · 0 joueur");
+  });
+
+  it("elle reste dans le cadre, à gauche comme à droite, au-dessus de la barre", () => {
+    for (const b of bs) {
+      const i = infobulle(b, texteDeBarre(b), 560, 154);
+      expect(i.x).toBeGreaterThanOrEqual(0);
+      expect(i.x + i.largeur).toBeLessThanOrEqual(560);
+      expect(i.y).toBeGreaterThanOrEqual(0);
+      expect(i.y + i.hauteur).toBeLessThanOrEqual(154);
+    }
+    const premiere = infobulle(bs[0]!, texteDeBarre(bs[0]!), 560, 154);
+    expect(premiere.x).toBe(0);
+    const derniere = infobulle(bs.at(-1)!, texteDeBarre(bs.at(-1)!), 560, 154);
+    expect(derniere.x + derniere.largeur).toBe(560);
+  });
+
+  it("une barre qui touche le haut reçoit l'infobulle sous son sommet, jamais hors du cadre", () => {
+    const haute = bs.at(-1)!; // la plus haute : y = 0
+    expect(haute.y).toBe(0);
+    const i = infobulle(haute, "28/10 (aujourd'hui) · 84 joueurs", 560, 154);
+    expect(i.y).toBeGreaterThanOrEqual(0);
+    expect(i.y + i.hauteur).toBeLessThanOrEqual(154);
+    const basse = infobulle(bs[0]!, "15/10 · 3 joueurs", 560, 154);
+    expect(basse.y + basse.hauteur).toBeLessThanOrEqual(bs[0]!.y); // au-dessus de la barre quand il y a de la place
   });
 });
 
