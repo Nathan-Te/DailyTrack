@@ -7,7 +7,7 @@ import { adminSettled, openAdmin } from "./adminPage";
 
 test("le menu construit l'adresse du jeu et la lance", async ({ page }) => {
   await openAdmin(page);
-  await expect(page.locator("h1")).toContainText("admin");
+  await expect(page.locator("#outils h1")).toContainText("Track");
   await expect(page.locator("#launch")).toHaveAttribute("href", "../");
   await page.locator("#theme").selectOption("nuit");
   await page.locator("#date").fill("2026-10-07");

@@ -29,7 +29,7 @@
       "sauf": ["apps/web/src/garage.css", "apps/web/src/salon.css"]
     },
     "track-salon": { "globs": ["apps/web/src/salon*.ts", "apps/web/src/salon.css", "apps/web/src/watch*.ts"] },
-    "track-admin": { "globs": ["apps/web/src/admin*.ts", "apps/web/src/planning.ts", "apps/web/src/access.ts", "apps/web/src/circuitStats.ts", "apps/web/admin/**"] },
+    "track-admin": { "globs": ["apps/web/src/admin*.ts", "apps/web/src/adminTrack.css", "apps/web/src/planning.ts", "apps/web/src/access.ts", "apps/web/src/circuitStats.ts", "apps/web/admin/**"] },
     "track-profil": {
       "globs": ["apps/web/src/profile*.ts", "apps/web/src/profil*.ts", "apps/web/src/identity.ts", "apps/web/src/transfer.ts", "apps/web/src/online.ts", "apps/web/src/api.ts", "apps/web/src/records.ts", "apps/web/src/session.ts", "apps/web/src/storage.ts", "apps/web/src/jeuSuivant.ts"],
       "sauf": ["apps/web/src/profilLien.ts"]
@@ -72,6 +72,7 @@
     "web/accueil.spec.ts": ["track-hud", "track-i18n", "ui", "track-archives"],
     "web/admin.spec.ts": ["track-admin"],
     "web/admin-panneau.spec.ts": ["portail", "api-admin"],
+    "web/admin-track.spec.ts": ["track-admin", "portail", "api-admin"],
     "web/diffusion.spec.ts": ["portail", "api-admin"],
     "web/adresses-joueur.spec.ts": ["track-profil", "profile-pkg", "api-track", "api-coeur"],
     "web/air.spec.ts": ["track-sim", "track-audio-fx"],

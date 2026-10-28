@@ -5,7 +5,7 @@ import { replaceProblem } from "./adminPlan";
 import { isReplaced, loadDemoPlan, parsePlanEntry, saveDemoPlan, type PlanEntry } from "./planning";
 import { gameStorage } from "./storage";
 
-// Ce que le panneau d'admin demande à un serveur (lot 14) : l'API réelle (jeton) ou, en `?api=demo`, un faux local qui garde
+// Ce que le panneau d'admin demande à un serveur (lot 14) : l'API réelle (session du panneau) ou, en `?api=demo`, un faux local qui garde
 // les remplacements dans ce navigateur seulement.
 
 export interface PlanRow extends PlanEntry {
@@ -45,40 +45,23 @@ const fail = (code: string, message: string, status = 0): ApiResult<never> => ({
 
 // --- API réelle -------------------------------------------------------------------------------------------------
 
-/** Clé du jeton d'admin dans ce navigateur : ne commence pas par `cdj:admin`… elle ne serait pas effacée avec les données du jeu. */
-export const TOKEN_KEY = "cdj:admin-token";
-
-export function loadToken(storage: Pick<Storage, "getItem"> | null = safeStorage()): string {
-  try {
-    return storage?.getItem(TOKEN_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-export function saveToken(token: string, storage: Pick<Storage, "setItem" | "removeItem"> | null = safeStorage()): void {
-  try {
-    if (token) storage?.setItem(TOKEN_KEY, token);
-    else storage?.removeItem(TOKEN_KEY);
-  } catch {
-    /* stockage indisponible : le jeton sera redemandé */
-  }
-}
-
-function safeStorage(): Storage | null {
-  try {
-    return gameStorage();
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Lot N1 : les outils d'administration de Track acceptent **le jeton ou la session du panneau de la plateforme** (`/admin/`, connexion Google ; cookie `__session`
- * HttpOnly posé par le serveur). Sans jeton, l'en-tête `X-Cdj-Admin: 1` est celui que le serveur exige d'une requête qui modifie quelque chose avec la session
- * (une lecture n'en a pas besoin, mais il ne gêne pas). Retirer le jeton fera l'objet d'un autre lot, une fois la connexion Google éprouvée.
+ * Les outils d'administration de Track s'ouvrent par **la session du panneau de la plateforme** (`/admin/`, connexion Google ; cookie `__session` HttpOnly posé par le
+ * serveur) : il n'y a plus de jeton à saisir ni à garder dans le navigateur (`adminAcces.ts`). L'en-tête `X-Cdj-Admin: 1` est celui que le serveur exige d'une requête qui
+ * modifie quelque chose avec la session (une lecture n'en a pas besoin, mais il ne gêne pas).
  */
-export const adminHeaders = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : { "X-Cdj-Admin": "1" });
+export const adminHeaders = (): Record<string, string> => ({ "X-Cdj-Admin": "1" });
+
+/** L'ancienne clé du jeton d'admin (avant la connexion Google) : plus lue, effacée à chaque ouverture de la page. */
+export const ANCIENNE_CLE_JETON = "cdj:admin-token";
+
+export function oublierAncienJeton(): void {
+  try {
+    gameStorage().removeItem(ANCIENNE_CLE_JETON);
+  } catch {
+    /* stockage indisponible : rien à oublier */
+  }
+}
 
 /** La session du panneau est un cookie : elle ne vaut que pour la même origine (jamais pour une API visée par `?api=`). */
 export function memeOrigine(base: string): boolean {
@@ -94,17 +77,14 @@ const ADMIN_TIMEOUT_MS = 20_000; // remplacer un circuit fait générer et valid
 export class HttpAdmin implements AdminBackend {
   readonly kind = "api" as const;
 
-  constructor(
-    private readonly base: string,
-    private readonly token: string,
-  ) {}
+  constructor(private readonly base: string) {}
 
   get label(): string {
     return this.base;
   }
 
   private call<T>(method: string, path: string, body?: unknown) {
-    return apiCall<T>(this.base, method, path, body, ADMIN_TIMEOUT_MS, adminHeaders(this.token));
+    return apiCall<T>(this.base, method, path, body, ADMIN_TIMEOUT_MS, adminHeaders());
   }
 
   async overview(): Promise<ApiResult<AdminOverview>> {

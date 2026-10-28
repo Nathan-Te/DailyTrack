@@ -10,6 +10,7 @@ import {
   ErreurAdmin,
   barres,
   infobulle,
+  retourAdmin,
   texteDeBarre,
   clientAdmin,
   heure,
@@ -110,6 +111,7 @@ async function afficherConnexion(raison?: string): Promise<void> {
     zoneMessage.replaceChildren();
     try {
       await client.connecter(credential);
+      if (revenir()) return;
       await afficherPanneau();
     } catch (e) {
       if (e instanceof ErreurAdmin && e.statut === 429) zoneMessage.replaceChildren(message("erreur", texteErreur(e)));
@@ -759,9 +761,18 @@ async function vueJournal(): Promise<Node[]> {
 }
 
 // --- Démarrage ---------------------------------------------------------------------------------------------------------------------------------
+/** Venu d'une page d'outils (`?retour=/track/admin/`) : une fois la session ouverte, on y retourne (liste fermée, `retourAdmin`). */
+function revenir(): boolean {
+  const chemin = retourAdmin(location.search);
+  if (!chemin) return false;
+  location.replace(chemin);
+  return true;
+}
+
 void (async () => {
   try {
     await client.session();
+    if (revenir()) return;
     await afficherPanneau();
   } catch {
     await afficherConnexion();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ErreurAdmin, barres, clientAdmin, heure, infobulle, texteDeBarre, jourCourt, jourLong, nomAction, rang, resumeJournal, temps, texteErreur } from "../src/adminDonnees";
+import { ErreurAdmin, barres, clientAdmin, heure, infobulle, retourAdmin, texteDeBarre, jourCourt, jourLong, nomAction, rang, resumeJournal, temps, texteErreur } from "../src/adminDonnees";
 
 // Lot N1 : le panneau d'administration — les calculs purs de son affichage et son client. La page elle-même est testée de bout en bout par
 // `apps/web/e2e/admin-panneau.spec.ts` (connexion, joueur, renommer, journal).
@@ -63,6 +63,19 @@ describe("la courbe : l'infobulle d'une barre", () => {
     expect(i.y + i.hauteur).toBeLessThanOrEqual(154);
     const basse = infobulle(bs[0]!, "15/10 · 3 joueurs", 560, 154);
     expect(basse.y + basse.hauteur).toBeLessThanOrEqual(bs[0]!.y); // au-dessus de la barre quand il y a de la place
+  });
+});
+
+describe("le retour après la connexion", () => {
+  it("seule la page d'outils de Track est un retour permis", () => {
+    expect(retourAdmin("?retour=%2Ftrack%2Fadmin%2F")).toBe("/track/admin/");
+    expect(retourAdmin("?retour=/track/admin/")).toBe("/track/admin/");
+  });
+  it("tout le reste est ignoré : adresse extérieure, schéma, //, encodages, autre chemin du site", () => {
+    for (const mauvais of ["https://evil.example/", "//evil.example/track/admin/", "javascript:alert(1)", "/track/admin", "/track/admin/?x=1", "/track/admin/%2e%2e/", "/jump/", "/admin/", "", "/track/admin/#x"]) {
+      expect(retourAdmin(`?retour=${encodeURIComponent(mauvais)}`), mauvais).toBeNull();
+    }
+    expect(retourAdmin("")).toBeNull();
   });
 });
 
