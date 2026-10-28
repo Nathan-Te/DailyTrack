@@ -176,7 +176,6 @@ jobs:
           full=""
           if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ]; then full="--full"; fi
           if [ "$EVENT" = workflow_dispatch ] && [ "$MODE_DEMANDE" = pr ]; then full=""; fi
-          full="--full" # TEMPORAIRE (lot de mise en production du 28/10/2026) : une CI complète de la branche ; retiré au commit suivant.
           : > "$RUNNER_TEMP/files.txt"
           # Une base introuvable ou une différence illisible = le doute : la CI complète, jamais une CI vide.
           if [ -z "$full" ]; then
