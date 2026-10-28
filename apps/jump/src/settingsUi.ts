@@ -4,6 +4,7 @@ import { creerCadre } from "./cadre";
 import { COMMANDES, listeCommandes } from "./howtoUi";
 import { langueCourante, lier, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
 import type { EffectsLevel, PlayerSettings } from "./settings";
+import { BUTTON_SIZES } from "./touch";
 
 // Les Réglages de Jump (lot 8 dans le menu ⏸ ; **lot I5 : un écran du cadre crème**, maquette `jump-reglages.html`) : « ‹ JUMP » ferme l'écran (retour à la
 // pause ou à l'accueil), l'étiquette jaune porte le son (trois curseurs), les sensations (vibrations, tremblement, mouvement réduit, effets visuels), le
@@ -105,6 +106,8 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
     section("reglages.taches", segment("othersStains", "reglages.taches", [{ valeur: true, cle: "commun.montrer" }, { valeur: false, cle: "commun.cacher" }], "reglages-taches"), aide("reglages.taches.aide")),
     section(
       "reglages.commandes",
+      // Réglage des boutons tactiles : seulement sur un appareil tactile (`body.touch`, ecrans.css).
+      el("div", { classe: ["reglages__ligne", "reglages__ligne--tactile"] }, lier(el("span", { classe: "reglages__nom" }), "reglages.taille"), segment("buttonSize", "reglages.taille", BUTTON_SIZES.map((v) => ({ valeur: v, cle: `reglages.taille.${v}` })))),
       el(
         "div",
         { classe: "reglages__commandes" },

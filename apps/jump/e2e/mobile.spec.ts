@@ -59,7 +59,7 @@ async function open(page: Page, extra: string): Promise<boolean> {
 
 for (const format of FORMATS) {
   const { width: W, height: H } = format.viewport;
-  // Points de pose (sous la bande haute) : ← dans le premier quart, → dans le deuxième, saut dans la moitié droite.
+  // Points de pose (sous la bande haute) : ← contre le bord gauche, → entre les flèches et la moitié (la frontière suit les flèches), saut dans la moitié droite.
   const at = { left: [W * 0.12, H * 0.75], right: [W * 0.37, H * 0.75], jump: [W * 0.75, H * 0.75], band: [W * 0.5, 20] } as const;
 
   test.describe(format.name, { tag: "@regression" }, () => {
@@ -262,6 +262,28 @@ test.describe("détection de l'écran tactile", () => {
       await page.touchscreen.tap(700, 300);
       await expect(page.locator(".tbtn")).toHaveCount(3);
       await expect(page.locator(".tbtn").first()).toBeVisible();
+    });
+  });
+
+  test("Réglages › Taille des boutons : les boutons changent tout de suite, la frontière ← / → les suit, le choix est gardé", async ({ browser }) => {
+    await withPhone(browser, LANDSCAPE, async (page) => {
+      test.skip(!(await open(page, "&touch=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
+      const largeur = async (sel: string) => (await page.locator(sel).boundingBox())!.width;
+      expect(await largeur(".tbtn--left")).toBe(76);
+      expect(await largeur(".tbtn--jump")).toBe(110);
+      await page.locator("#pausebtn").tap();
+      await page.locator("#menu-settings").tap();
+      const taille = (v: string) => page.locator(`#settings [data-setting="buttonSize"] [data-value="${v}"]`);
+      await expect(taille("medium")).toHaveAttribute("aria-pressed", "true");
+      await taille("large").tap();
+      await expect.poll(() => largeur(".tbtn--left")).toBe(99);
+      expect(await largeur(".tbtn--jump")).toBe(143);
+      await taille("small").tap();
+      await expect.poll(() => largeur(".tbtn--left")).toBe(55);
+      // Le choix est écrit pour le prochain chargement ; les zones de toucher suivent les flèches (le doigt entre les deux boutons).
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem("jump:settings") ?? "{}").buttonSize)).toBe("small");
+      const right = (await page.locator(".tbtn--right").boundingBox())!;
+      expect(right.x).toBe(24 + 55 + 24);
     });
   });
 
