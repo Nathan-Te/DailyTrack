@@ -54,7 +54,7 @@ Les textes `fantome.*`, l'icône et le bouton sont **hors** du portail (icône �
 5. **« Revoir » le Diamant (Track) non fait** : le classement du jour de Track n'a pas de ligne « Diamant » à laquelle l'attacher. Un `?watch=diamant` (le lecteur existant, la course du pilote) coûterait ≈ 1 ko du premier chargement (reste 1 024 o sur les 2 048 autorisés) ; à décider.
 
 ## 8. CI
-Run de la PR : voir le résumé de `npm run attendre-ci` dans la PR.
+Run de la PR (`e064b8b`) : https://github.com/Nathan-Te/DailyTrack/actions/runs/40770624941 — scope, zones, unit (4/4), api-image, e2e-pr (2/4, 3/4, 4/4) verts ; e2e-pr (1/4) rouge **seulement** pour `horloge.spec.ts` « mort avant le premier point de passage » (Jump), le même test que la CI de `main` (`b4b765a`, run 40746424026, job « e2e-parts (jump chromium 1/1) ») : échec déjà là, hors de ce lot (règle d'arrêt : noté, pas corrigé, à trancher par Nathan).
 
 ## 9. Tickets à ouvrir
 - **Fantôme du premier** : le servir comme une **trajectoire** (≈ 2,4 ko, sans entrées, cache privé par jour) au lieu de la rediffusion complète, sur le modèle du Diamant ; moins lourd et sans aucune entrée sur le réseau. Format à décider avec le lot du classement.
