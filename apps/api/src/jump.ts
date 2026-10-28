@@ -875,7 +875,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       );
       if (rows.length === 0) return [];
       const level = await getLevel(day);
-      return rows.map((r) => ({ playerId: r.player_id, medaille: jumpMedalFor(r.ticks, level.medals), at: r.submitted_at }));
+      return rows.map((r) => ({ playerId: r.player_id, tempsMs: msOfTicks(r.ticks), medaille: jumpMedalFor(r.ticks, level.medals), at: r.submitted_at }));
     },
   };
 

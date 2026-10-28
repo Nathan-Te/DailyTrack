@@ -2,7 +2,7 @@ import { formatDay, parseDay } from "@cdj/core";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "@cdj/core/lancement";
 import { parisDayStart } from "@cdj/clock";
 import { WithHeaders } from "./cache";
-import { BAREME_POINTS, classerLaJournee, placer, pointsDe, sommeDesRangs, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
+import { classerLaJournee, ligneDe, placer, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
 import { HttpError } from "./errors";
 import type { EtatPortail, JourPortail, Platform, PortailDuJeu, RequestInfo } from "./games";
 
@@ -13,11 +13,12 @@ import type { EtatPortail, JourPortail, Platform, PortailDuJeu, RequestInfo } fr
 //   GET /api/portail/jour     les jeux du jour (numéro, thème, seuils), l'heure du serveur et le prochain minuit de Paris ; avec `X-Player-Id`,
 //                             l'état du joueur dans chaque jeu, sa série tous jeux confondus et ses journées parfaites. **Une requête** au chargement.
 //   GET /api/portail/profil   (`X-Player-Id`) le profil commun : pseudo, série, journées parfaites, et par jeu jours finis, médailles, meilleure place.
-//   GET /api/portail/classement?date=   (lot I3) le classement du jour tous jeux confondus : les 50 premiers (pseudo, points, médaille par jeu) et,
-//                             avec `X-Player-Id`, ta ligne. Jours passés lisibles ; jours futurs refusés (`unknown_day`).
+//   GET /api/portail/classement?date=&vue=cumul|<jeu>   (lot I3, refait au lot A1) le classement du jour **au chrono** : les 50 premiers (pseudo, temps,
+//                             pastille de médaille par jeu) de la vue demandée — le cumul des jeux du jour (par défaut) ou un jeu (`vue` = son dossier
+//                             sur le site : `track`, `jump`) — et, avec `X-Player-Id`, ta ligne. Jours passés lisibles ; jours futurs refusés (`unknown_day`).
 //
-// **Lot I3 — la journée partagée** : le numéro de journée commun (`journee` : la journée n° 1 est le lancement public, `config/lancement.json`, lot R8) ; les **points du
-// jour** (barème : `classementDuJour.ts`) et le classement du jour tous jeux confondus. La route agrège sans connaître les jeux : chacun rend ses classés
+// **Lot I3 — la journée partagée** : le numéro de journée commun (`journee` : la journée n° 1 est le lancement public, `config/lancement.json`, lot R8) ; le
+// classement du jour (règle : `classementDuJour.ts`, plus de points depuis le lot A1). La route agrège sans connaître les jeux : chacun rend ses classés
 // du jour (`portail.classes`). Le classement du jour est **calculé au plus une fois par fenêtre** (`CLASSEMENT_FENETRE_MS`) **et par instance**, jamais à
 // chaque requête (une ligne lue par classé et par jeu) ; un jour fermé est figé, gardé plus longtemps. Ta propre ligne est exacte (tes états, lus à
 // l'instant) même quand le classement gardé date de quelques secondes.
@@ -171,15 +172,15 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     return row;
   }
 
-  // --- Lot I3 : les points et le classement du jour ---------------------------------------------------------------------------
+  // --- Lot I3, refait au lot A1 : le classement du jour au chrono ---------------------------------------------------------------
   /** Le jour accepte-t-il encore des temps (aujourd'hui, ou hier pendant la grâce) ? Sinon son classement est figé. */
   const jourOuvert = (day: number): boolean => day >= today() || (day === today() - 1 && platform.sinceMidnight() < CLASSEMENT_GRACE_MS);
 
-  /** Une entrée gardée : le classement, et les pseudos de son haut (lus au premier besoin, gardés avec lui : la page ne relit rien tant que la fenêtre dure). */
+  /** Une entrée gardée : le classement, et les pseudos du haut de chaque vue (lus au premier besoin, gardés avec lui : la page ne relit rien tant que la fenêtre dure). */
   interface Gardee {
     at: number;
     pending: Promise<ClassementDuJour>;
-    noms: Promise<Map<string, string>> | null;
+    noms: Map<string, Promise<Map<string, string>>>;
   }
   const classements = new Map<number, Gardee>();
   let calculs = 0;
@@ -196,7 +197,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const ouverts = jeux.filter((j) => j.portail.premierJour <= day);
     const pending = Promise.all(ouverts.map(async (j) => ({ jeu: j.code, classes: await j.portail.classes(day) }))).then(classerLaJournee);
     if (classements.size >= CLASSEMENT_JOURS_GARDES) for (const [d] of classements) if (d !== day) { classements.delete(d); break; }
-    const neuve: Gardee = { at: now(), pending, noms: null };
+    const neuve: Gardee = { at: now(), pending, noms: new Map() };
     classements.set(day, neuve);
     // Un calcul qui échoue n'est pas gardé : la requête suivante réessaie.
     pending.catch(() => {
@@ -206,10 +207,10 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   }
   const classementDe = (day: number): Promise<ClassementDuJour> => gardeeDe(day).pending;
 
-  /** Le bilan exact d'un joueur ce jour-là, à partir de ses états dans chaque jeu du jour (`ouverts`, dans l'ordre du classement). */
-  function bilanDe(etats: readonly EtatPortail[], classesParJeu: readonly number[]): { points: number; sommeRangs: number; resultats: (ResultatJeu | null)[]; fini: boolean } {
-    const resultats = etats.map<ResultatJeu | null>((e) => (e.statut === "fini" ? { rang: e.rang, medaille: e.medaille } : null));
-    return { points: resultats.reduce((s, r) => s + (r ? pointsDe(r.medaille) : 0), 0), sommeRangs: sommeDesRangs(resultats, classesParJeu), resultats, fini: resultats.some((r) => r !== null) };
+  /** Ce que le joueur a fait ce jour-là, à partir de ses états exacts dans chaque jeu du jour (`null` : rien fini). Son `at` ne sert à rien (`placer` le fait passer après les égaux). */
+  function bilanDe(id: string, etats: readonly EtatPortail[]): LigneDuJour | null {
+    const resultats = etats.map<ResultatJeu | null>((e) => (e.statut === "fini" ? { rang: e.rang, tempsMs: e.tempsMs, medaille: e.medaille, at: 0 } : null));
+    return resultats.some((r) => r !== null) ? ligneDe(id, resultats) : null;
   }
 
   /**
@@ -217,13 +218,13 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
    * place et ses classés sans les recompter (le coût d'une visite ne croît plus avec le nombre de joueurs) ; absent du classement (il vient de finir) : le jeu compte.
    */
   const etatsDe = (id: string, day: number, ouverts: readonly JeuPortail[], c?: ClassementDuJour) => {
-    const ligne = c && c.index.has(id) ? c.lignes[c.index.get(id)!]! : null;
+    const ligne = c && c.index.has(id) ? c.cumul[c.index.get(id)!]! : null;
     return Promise.all(ouverts.map((j, g) => j.portail.etat(id, day, ligne?.resultats[g] ? { rang: ligne.resultats[g]!.rang, classes: c!.classesParJeu[g]! } : undefined)));
   };
 
-  /** `{ jeu: { rang, medaille } | null }` : la médaille de chaque jeu du jour (`null` : pas fini). */
+  /** `{ jeu: { rang, tempsMs, medaille } | null }` : le résultat de chaque jeu du jour (`null` : pas fini). Jamais un identifiant. */
   const resultatsCorps = (jeuxDuJour: readonly string[], resultats: readonly (ResultatJeu | null)[]) =>
-    Object.fromEntries(jeuxDuJour.map((code, g) => [code, resultats[g] ? { rang: resultats[g]!.rang, medaille: resultats[g]!.medaille } : null]));
+    Object.fromEntries(jeuxDuJour.map((code, g) => [code, resultats[g] ? { rang: resultats[g]!.rang, tempsMs: resultats[g]!.tempsMs, medaille: resultats[g]!.medaille } : null]));
 
   async function jour(req: Request, info: RequestInfo): Promise<WithHeaders> {
     const id = joueurDe(req);
@@ -239,22 +240,22 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const row = await joueurConnu(id, publique);
     const ouverts = jeux.filter((j) => j.portail.premierJour <= day);
     // Lot I3 : le classement du jour gardé (calculé au plus une fois par fenêtre et par instance : jamais à chaque visite) donne sa place et ses classés ;
-    // ses points sont exacts (ses états à l'instant). Aucun jeu fini aujourd'hui : pas de rang.
+    // son cumul est exact (ses états à l'instant). Aucun jeu fini aujourd'hui : pas de rang.
     const c = await classementDe(day);
     const [etats, serie] = await Promise.all([etatsDe(id, day, ouverts, c), serieDe(id, day)]);
     const etatDe = new Map<string, EtatPortail>(ouverts.map((j, i) => [j.code, etats[i]!] as const));
-    let points = 0;
+    let cumulMs: number | null = null;
     let rangDuJour: number | null = null;
     let classesDuJour: number | null = null;
-    if (etats.some((e) => e.statut === "fini")) {
-      const bilan = bilanDe(etats, c.classesParJeu);
-      points = bilan.points;
-      ({ rang: rangDuJour, classes: classesDuJour } = placer(c, { id, points: bilan.points, sommeRangs: bilan.sommeRangs }));
+    const bilan = bilanDe(id, etats);
+    if (bilan) {
+      cumulMs = bilan.cumulMs;
+      ({ rang: rangDuJour, classes: classesDuJour } = placer(c, bilan));
     }
     const body = {
       ...publique,
       jeux: publique.jeux.map((j) => ({ ...j, etat: etatDe.get(j.jeu) ?? { statut: "pas_joue" } })),
-      joueur: { pseudo: row.name, ...serie, points, rangDuJour, classesDuJour },
+      joueur: { pseudo: row.name, ...serie, cumulMs, rangDuJour, classesDuJour },
     };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
@@ -266,7 +267,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     return new Map(rows.map((r) => [r.id, r.name]));
   }
 
-  /** `GET /api/portail/classement?date=` : les 50 premiers et, avec `X-Player-Id`, ta ligne (exacte). */
+  /** `GET /api/portail/classement?date=&vue=` : les 50 premiers de la vue (le cumul, ou un jeu) et, avec `X-Player-Id`, ta ligne (exacte). */
   async function classement(req: Request, url: URL, info: RequestInfo): Promise<WithHeaders> {
     const id = joueurDe(req);
     await limiter(info, id);
@@ -278,23 +279,40 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     // Lot R8 : depuis le lancement, les jours d'avant la journée n° 1 ne sont plus lisibles ; avant lui, rien n'est refusé (période d'essai).
     const avantLancement = premierJour <= aujourdhui && day < premierJour;
     if (day > aujourdhui || avantLancement || ouverts.length === 0) throw new HttpError(404, "unknown_day", "Ce classement n'existe pas (encore)");
+    // Lot A1 : la vue — le cumul (par défaut) ou un jeu qui existe ce jour-là, nommé par son dossier sur le site.
+    const vue = url.searchParams.get("vue") ?? "cumul";
+    const g = vue === "cumul" ? -1 : ouverts.findIndex((j) => j.portail.site === vue);
+    if (g < 0 && vue !== "cumul") throw new HttpError(400, "invalid_view", "Vue attendue : cumul ou le dossier d'un jeu de ce jour");
     const gardee = gardeeDe(day);
     const c = await gardee.pending;
-    const gardes = c.lignes.slice(0, CLASSEMENT_TOP);
-    // Les pseudos du haut sont lus une fois avec le classement (un changement de pseudo se voit à la fenêtre suivante, 45 s au plus).
-    const noms = await (gardee.noms ??= pseudosDe(gardes.map((l) => l.id)).catch((e) => {
-      gardee.noms = null;
-      throw e;
-    }));
-    const ligneCorps = (l: LigneDuJour, rang: number, pseudo: string) => ({ rang, pseudo, points: l.points, resultats: resultatsCorps(c.jeux, l.resultats) });
+    const liste = g < 0 ? c.cumul : c.parJeu[g]!;
+    const gardes = liste.slice(0, CLASSEMENT_TOP);
+    // Les pseudos du haut de la vue sont lus une fois avec le classement (un changement de pseudo se voit à la fenêtre suivante, 45 s au plus).
+    let nomsVue = gardee.noms.get(vue);
+    if (!nomsVue) {
+      nomsVue = pseudosDe(gardes.map((l) => l.id)).catch((e) => {
+        gardee.noms.delete(vue);
+        throw e;
+      });
+      gardee.noms.set(vue, nomsVue);
+    }
+    const noms = await nomsVue;
+    /** Une ligne : le temps de la vue (le cumul, ou le temps du jeu), si le joueur a tout fini (`complet` : toujours vrai dans la vue d'un jeu), et le résultat de chaque jeu. */
+    const ligneCorps = (l: LigneDuJour, rang: number, pseudo: string) => ({
+      rang,
+      pseudo,
+      tempsMs: g < 0 ? l.cumulMs : l.resultats[g]!.tempsMs,
+      complet: g < 0 ? l.complet : true,
+      resultats: resultatsCorps(c.jeux, l.resultats),
+    });
     const ouvert = jourOuvert(day);
     const publique = {
       date: formatDay(day),
       journee: numeroDeJournee(day, premierJour),
       ouvert,
-      bareme: BAREME_POINTS,
+      vue,
       jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom })),
-      classes: c.lignes.length,
+      classes: liste.length,
       top: gardes.map((l, i) => ligneCorps(l, i + 1, noms.get(l.id) ?? "?")),
     };
     if (!id) {
@@ -303,18 +321,12 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       return new WithHeaders(publique, { "Cache-Control": `public, max-age=${maxAge}`, Vary: "X-Player-Id" });
     }
     const row = await joueurConnu(id, publique);
+    // Ses états à l'instant (une ligne par jeu avec le classement gardé : rien à compter) donnent sa ligne exacte et sa place, même juste après son essai.
     let moi: (ReturnType<typeof ligneCorps> & { classes: number }) | null = null;
-    const gardeeIndex = c.index.get(id);
-    if (gardeeIndex !== undefined) {
-      // Dans le classement gardé : sa ligne en vient (rien à relire ; au plus quelques secondes de retard, comme tout le classement).
-      moi = { ...ligneCorps(c.lignes[gardeeIndex]!, gardeeIndex + 1, row.name), classes: c.lignes.length };
-    } else {
-      // Absent (il vient de finir, ou n'a rien fini) : ses états, lus à l'instant, donnent sa ligne exacte et sa place d'insertion.
-      const bilan = bilanDe(await etatsDe(id, day, ouverts, c), c.classesParJeu);
-      if (bilan.fini) {
-        const place = placer(c, { id, points: bilan.points, sommeRangs: bilan.sommeRangs });
-        moi = { ...ligneCorps({ id, points: bilan.points, sommeRangs: bilan.sommeRangs, at: 0, resultats: bilan.resultats }, place.rang, row.name), classes: place.classes };
-      }
+    const bilan = bilanDe(id, await etatsDe(id, day, ouverts, c));
+    if (bilan && (g < 0 || bilan.resultats[g])) {
+      const place = g < 0 ? placer(c, bilan) : { rang: bilan.resultats[g]!.rang, classes: Math.max(liste.length + (c.index.has(id) && c.cumul[c.index.get(id)!]!.resultats[g] ? 0 : 1), bilan.resultats[g]!.rang) };
+      moi = { ...ligneCorps(bilan, place.rang, row.name), classes: place.classes };
     }
     const body = { ...publique, top: publique.top.map((r, i) => (gardes[i]!.id === id ? { ...r, moi: true } : r)), moi };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });

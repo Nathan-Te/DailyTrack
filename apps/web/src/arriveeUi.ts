@@ -9,7 +9,7 @@ import { iconeTrack } from "./icones";
 // Le DOM seulement : main.ts calcule (médaille, record, envoi au classement) et remplit les zones. Les classes d'avant (`big`, `medal`, `record`, `online`,
 // `rank`, `share`, `actions`, `restart`, `#finish-next`) sont gardées : les tests et les outils les visent encore.
 
-const MEDAILLE_TYPE: Record<Medal, TypeMedaille> = { author: "auteur", gold: "or", silver: "argent", bronze: "bronze" };
+const MEDAILLE_TYPE: Record<Medal, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
 export const typeDeMedaille = (m: Medal): TypeMedaille => MEDAILLE_TYPE[m];
 
 export interface ZonesArrivee {

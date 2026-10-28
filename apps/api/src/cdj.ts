@@ -1014,7 +1014,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       const rows = await db.all<{ player_id: string; ms: number; submitted_at: number }>("SELECT player_id, ms, submitted_at FROM results WHERE day = ? ORDER BY ms ASC, submitted_at ASC", [day]);
       if (rows.length === 0) return [];
       const m = medalsFor((await getCircuit(day)).authorMs, day);
-      return rows.map((r) => ({ playerId: r.player_id, medaille: medalFor(r.ms, m) as Medal | null, at: r.submitted_at }));
+      return rows.map((r) => ({ playerId: r.player_id, tempsMs: r.ms, medaille: medalFor(r.ms, m) as Medal | null, at: r.submitted_at }));
     },
     // Le même calcul que `GET /api/me` (places des jours fermés gardées une fois calculées) : le profil commun dit la même chose que le jeu.
     async profil(id) {

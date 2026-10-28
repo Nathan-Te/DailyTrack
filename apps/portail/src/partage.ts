@@ -15,7 +15,7 @@ import type { Medaille } from "./jour";
 /** Les émojis de la ligne (charte § 6 : seulement ici). */
 export const EMOJIS = {
   // i18n-ok: émojis de la ligne à partager, les mêmes que ceux des jeux (MEDAL_ICON)
-  author: "🏆",
+  author: "💎",
   gold: "🥇",
   silver: "🥈",
   bronze: "🥉",

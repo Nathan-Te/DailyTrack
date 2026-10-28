@@ -22,7 +22,6 @@
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, decodeReplay, demoAttempts, encodeReplay as encodeJump, jumpMedalFor, lifeReplay, repriseParPhase, replayAttempt } from "@cdj/jump-sim";
-import { pointsDe } from "../src/classementDuJour";
 import { jumpDailyOf } from "../src/jump";
 import { DEMO_JOUEUR_ID } from "../src/portailDemo";
 import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, verifierVide } from "./smokeRead";
@@ -319,20 +318,24 @@ check(
     pjour.body.joueur?.aujourdhuiParfaite === true,
   `${pjour.status} Track ${String(etats.cdj?.statut)} (${String(etats.cdj?.rang)}e sur ${String(etats.cdj?.classes)}), Jump ${String(etats.jump?.statut)}, série ${String(pjour.body.joueur?.serie)}, ${pjour.ms} ms`,
 );
-// Lot I3 : les points du jour et le classement du jour (le joueur d'essai a fini les deux jeux : la somme des points de ses deux médailles, lot R9).
+// Lot I3, refait au lot A1 : le temps cumulé et le classement du jour (le joueur d'essai a fini les deux jeux : la somme de ses deux temps rejoués).
 check(
-  "portail : les points, la place et le nombre de classés du jour ; le numéro de journée commun",
-  pjour.status === 200 && pjour.body.joueur?.points === pointsDe(sub.body.medal ?? null) + pointsDe(jmedal) && pjour.body.joueur?.rangDuJour >= 1 && pjour.body.joueur?.classesDuJour >= pjour.body.joueur?.rangDuJour && (pjour.body.journee === null || pjour.body.journee >= 1),
-  `${String(pjour.body.joueur?.points)} points, ${String(pjour.body.joueur?.rangDuJour)}e sur ${String(pjour.body.joueur?.classesDuJour)}, journée ${String(pjour.body.journee)}`,
+  "portail : le temps cumulé, la place et le nombre de classés du jour ; le numéro de journée commun",
+  pjour.status === 200 &&
+    pjour.body.joueur?.cumulMs === (etats.cdj?.tempsMs ?? NaN) + (etats.jump?.tempsMs ?? NaN) &&
+    pjour.body.joueur?.rangDuJour >= 1 &&
+    pjour.body.joueur?.classesDuJour >= pjour.body.joueur?.rangDuJour &&
+    (pjour.body.journee === null || pjour.body.journee >= 1),
+  `${String(pjour.body.joueur?.cumulMs)} ms cumulées, ${String(pjour.body.joueur?.rangDuJour)}e sur ${String(pjour.body.joueur?.classesDuJour)}, journée ${String(pjour.body.journee)}`,
 );
 const pclass = await jcall("GET", "/api/portail/classement");
 check(
-  "portail : le classement du jour (barème, haut du classement, ta ligne avec ses médailles), jamais public avec ton identifiant",
+  "portail : le classement du jour au chrono (haut du classement, ta ligne avec ton cumul et tes médailles), jamais public avec ton identifiant",
   pclass.status === 200 &&
-    pclass.body.bareme?.author === 4 &&
+    pclass.body.vue === "cumul" &&
     Array.isArray(pclass.body.top) &&
     pclass.body.moi?.pseudo === NAME &&
-    pclass.body.moi?.points === pjour.body.joueur?.points &&
+    pclass.body.moi?.tempsMs === pjour.body.joueur?.cumulMs &&
     (pclass.body.moi?.resultats?.jump?.medaille ?? null) === jmedal &&
     /\bprivate\b/.test(pclass.headers.get("cache-control") ?? "") &&
     !JSON.stringify(pclass.body).includes(player),

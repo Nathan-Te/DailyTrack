@@ -33,6 +33,7 @@ export const CODES_ERREUR = {
 
   // --- Jours, circuits et niveaux ----------------------------------------------------------------------------
   invalid_date: { status: 400, sens: "Date illisible (AAAA-MM-JJ attendue)." },
+  invalid_view: { status: 400, sens: "Portail, classement du jour : `vue` n'est ni `cumul` ni le dossier d'un jeu qui existe ce jour-là (lot A1)." },
   unknown_day: { status: 404, sens: "Ce jour n'a pas (encore) de circuit ou de niveau : futur, ou avant le premier jour du jeu." },
   day_closed: { status: 409, sens: "Envoi pour un jour dont le classement est figé (jour passé, après la grâce de 10 minutes)." },
   day_started: { status: 409, sens: "Admin, planning : ce jour a déjà commencé, son circuit ne peut plus être remplacé." },

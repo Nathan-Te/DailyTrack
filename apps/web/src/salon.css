@@ -98,8 +98,8 @@ body.start-locked #btn-restart {
 .salon-arrivee__ligne.record {
   align-self: flex-start;
   padding: 3px 8px;
-  background: var(--dj-auteur);
-  color: var(--dj-auteur-texte);
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
   border-radius: var(--dj-rayon-etiquette);
   font-size: var(--dj-taille-12);
   font-weight: 700;

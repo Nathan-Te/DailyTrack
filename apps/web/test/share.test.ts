@@ -17,7 +17,7 @@ describe("shareLine (français)", () => {
 
   it("omet ce qu'on ne sait pas : pas de médaille, pas de classement", () => {
     expect(shareLine({ number: 3, date: "2026-10-08", ms: 61000, medal: null })).toBe("Du Jour · Track #3 — 1:01,000");
-    expect(shareLine({ number: 3, date: "2026-10-08", ms: 39188, medal: "author", rank: 1, participants: 1 })).toBe(`Du Jour · Track #3 — 39,188${NBSP}s — 🏆 — 1er/1`);
+    expect(shareLine({ number: 3, date: "2026-10-08", ms: 39188, medal: "author", rank: 1, participants: 1 })).toBe(`Du Jour · Track #3 — 39,188${NBSP}s — 💎 — 1er/1`);
     expect(shareLine({ number: 3, date: "2026-10-08", ms: 39188, medal: "bronze", rank: null, participants: null })).toBe(`Du Jour · Track #3 — 39,188${NBSP}s — 🥉`);
   });
 
@@ -38,12 +38,12 @@ describe("shareLine (anglais)", () => {
   it("la même ligne en anglais, mêmes émojis, rang et temps à l'anglaise", () => {
     expect(shareLine({ number: 142, date: "2027-02-24", ms: 47312, medal: "gold", rank: 23, participants: 812 })).toBe(`Du Jour · Track #142 — 47.312${NBSP}s — 🥇 — 23rd/812`);
     expect(shareLine({ number: 3, date: "2026-10-08", ms: 61000, medal: null })).toBe("Du Jour · Track #3 — 1:01.000");
-    expect(shareLine({ number: 3, date: "2026-10-08", ms: 39188, medal: "author", rank: 1, participants: 1 })).toBe(`Du Jour · Track #3 — 39.188${NBSP}s — 🏆 — 1st/1`);
+    expect(shareLine({ number: 3, date: "2026-10-08", ms: 39188, medal: "author", rank: 1, participants: 1 })).toBe(`Du Jour · Track #3 — 39.188${NBSP}s — 💎 — 1st/1`);
     expect(shareLine({ number: 0, date: "2026-10-05", ms: 40000, medal: null })).toBe(`Du Jour · Track 2026-10-05 — 40.000${NBSP}s`);
   });
 
   it("les émojis des médailles sont les mêmes dans les deux langues", () => {
-    expect(MEDAL_ICON).toEqual({ author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" });
+    expect(MEDAL_ICON).toEqual({ author: "💎", gold: "🥇", silver: "🥈", bronze: "🥉" });
   });
 });
 

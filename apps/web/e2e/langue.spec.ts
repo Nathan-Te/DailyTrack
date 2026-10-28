@@ -102,7 +102,7 @@ test("en anglais : le HUD, l'arrivée (médaille, rang, « Next game of the day 
   });
   const page = await ctx.newPage();
   await ouvrir(page, `/?debug&home=0&timescale=6&api=${encodeURIComponent(API)}`);
-  await expect(page.locator("#medals")).toHaveAttribute("aria-label", /Author/); // objectif : la médaille au-dessus de celle du record (ici un record à +0,8 s de l'auteur : or, donc l'auteur)
+  await expect(page.locator("#medals")).toHaveAttribute("aria-label", /Diamond/); // objectif : la médaille au-dessus de celle du record (ici un record à +0,8 s de l'auteur : or, donc l'auteur)
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
   await expect(page.locator("#splits .pc")).toContainText(/CP \d\/\d/, { timeout: 90_000 }); // « CP 1/3 » : point de contrôle
   await expect(page.locator("#splits .ecart")).toContainText(/^[+−]\d[.]\d{3}$/); // écart signé, virgule anglaise
@@ -113,7 +113,7 @@ test("en anglais : le HUD, l'arrivée (médaille, rang, « Next game of the day 
   await expect(page.locator("#finish-next-game")).toHaveText("Next game of the day: Jump ›");
   await expect(page.locator("#finish .restart")).toHaveText("Race again");
   await expect(page.locator("#finish .share")).toContainText(/Du Jour · Track #\d+ — \d+\.\d{3}\ss/); // « 39.331 s » : le point anglais, l'espace insécable du socle
-  await expect(page.locator("#finish .share")).toContainText(/🥇|🏆/);
+  await expect(page.locator("#finish .share")).toContainText(/🥇|💎/);
   await expect(page.locator("#finish .share")).toContainText("14th/212");
   await ctx.close();
 });

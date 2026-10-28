@@ -114,7 +114,7 @@ test("portail plein (joueur de démonstration) : compte à rebours, Track fini (
   expect(new URL(page.url()).search).toBe("");
   expect(await page.evaluate(() => [localStorage.getItem("cdj:player"), localStorage.getItem("cdj:name")])).toEqual([DEMO_ID, "Démo"]);
   // Le compte à rebours : minuit de Paris dans environ 10 h (l'horloge de test : midi UTC, 14 h à Paris).
-  await expect(page.locator("#compte .dj-afficheur__legende")).toHaveText("Prochains jeux dans");
+  await expect(page.locator("#compte .dj-afficheur__legende")).toHaveText("Prochains niveaux dans");
   await expect(page.locator("#compte .dj-afficheur__valeur")).toHaveText(/^(09|10):\d\d:\d\d$/);
   await expect(page.locator("#avancement")).toHaveText("1 fini sur 2");
   await expect(track.locator(".track-etiquette__numero")).toHaveText(/^n°\s8 · \S/);
@@ -142,7 +142,7 @@ test("portail plein (joueur de démonstration) : compte à rebours, Track fini (
   await expect(track.locator(".portail-statut__rang")).toHaveText("1st of 1");
   await expect(jump.locator(".portail-statut")).toHaveText("In progress · 12 deaths");
   await expect(page.locator("#serie .dj-tuile__valeur")).toHaveText("5 days");
-  await expect(page.locator("#compte .dj-afficheur__legende")).toHaveText("Next games in");
+  await expect(page.locator("#compte .dj-afficheur__legende")).toHaveText("Next levels in");
   await capture(page, "portail-plein-portrait-en");
   expect(vues).toHaveLength(1); // changer de langue ne relit rien
 

@@ -38,7 +38,7 @@ const fr = {
   "profil.aucun": "Pas encore de profil",
   "profil.ouvrir": "Ton profil",
   // Médailles (le nom est toujours écrit : la couleur seule ne porte pas l'information)
-  "medaille.auteur": "Auteur",
+  "medaille.diamant": "Diamant",
   "medaille.or": "Or",
   "medaille.argent": "Argent",
   "medaille.bronze": "Bronze",
@@ -81,6 +81,7 @@ const fr = {
   "erreur.name_forbidden": "Ce pseudo n'est pas permis.",
   "erreur.name_taken": "Ce pseudo est déjà utilisé. C'est le tien ? Charge ton code.",
   "erreur.invalid_date": "Date invalide.",
+  "erreur.invalid_view": "Cette vue du classement n'existe pas.",
   "erreur.unknown_day": "Ce jour n'a pas de classement.",
   "erreur.day_closed": "Ce jour est terminé : son classement est figé.",
   "erreur.day_started": "Ce jour a déjà commencé : il ne peut plus changer.",

@@ -13,6 +13,9 @@ export type T = ReturnType<typeof traduire>;
 /** Le nom traduit des jeux que le portail connaît (leur code au registre du serveur) ; un autre jeu garde le nom que le serveur déclare. */
 const NOM_JEU = { cdj: "jeu.track.nom", jump: "jeu.jump.nom" } as const;
 
+/** Le nom traduit d'un jeu du jour (celui du catalogue pour les jeux que le portail connaît, sinon celui que le serveur déclare). */
+export const nomDuJeu = (t: T, jeu: { jeu: string; nom?: string }): string => (jeu.jeu in NOM_JEU ? t.t(NOM_JEU[jeu.jeu as keyof typeof NOM_JEU]) : (jeu.nom ?? jeu.jeu));
+
 /**
  * Les options de la ligne de partage, ou `null` tant qu'aucun jeu n'est fini aujourd'hui (rien à partager) ou sans réponse du serveur sur le joueur.
  * Un jeu **fini** est classé au classement prouvé ; « en cours » compte comme pas fini.
@@ -21,7 +24,7 @@ export function construireOptions(t: T, jour: Jour, lien: string): OptionsPartag
   const joueur = jour.joueur;
   if (!joueur) return null;
   const jeux: JeuPartage[] = jour.jeux.map((j) => ({
-    nom: j.jeu in NOM_JEU ? t.t(NOM_JEU[j.jeu as keyof typeof NOM_JEU]) : (j.nom ?? j.jeu),
+    nom: nomDuJeu(t, j),
     statut: estFini(j.etat) ? { fini: true, medaille: j.etat.medaille } : { fini: false },
   }));
   if (!jeux.some((j) => j.statut.fini)) return null;
