@@ -129,6 +129,7 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
     // seule), l'échantillon du carnage à l'arrivée, le pseudo, l'envoi (qui rend le classement), puis, le serveur le connaissant enfin, son
     // profil (avec le jour : une seule lecture). Rien n'est relu à l'arrivée (moins de 3 minutes) ni après l'envoi.
     // Lot I3 : une requête de plus, « Jeu suivant du jour » (`GET /api/portail/jour`, après l'envoi accepté) : 6 requêtes.
+    // Lot N2 : une de plus, la lecture du message en direct quand l'écran d'arrivée s'affiche (`GET /api/annonce`, jamais pendant le niveau) : 7.
     expect(sent.sort()).toEqual(
       [
         "GET /api/jump/day/<jour>/bundle",
@@ -137,6 +138,7 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
         "POST /api/jump/submit",
         "GET /api/jump/day/<jour>/bundle",
         "GET /api/portail/jour",
+        "GET /api/annonce",
       ].sort(),
     );
     await expect(a.page.locator("#arrival-next-game")).toHaveText("Jeu suivant du jour : Track ›");

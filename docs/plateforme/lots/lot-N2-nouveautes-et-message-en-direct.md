@@ -31,4 +31,7 @@ Ligne « Nouveautés · date » sous les tuiles (point terre tant que non lue, `
 - [Jump] Le message en direct s'affiche à l'accueil, à l'arrivée et en pause, jamais pendant un niveau. // The live message shows on the home screen, the finish screen and the pause menu, never during a level.
 
 ## Vérifié / non vérifié
-À compléter en fin de lot (voir ci-dessous).
+**Vérifié** : tests unitaires (lecture d'une ligne « Pour les joueurs » bonne / mal formée / `rien`, publication refusée sans anglais, fin automatique du message, en-têtes de cache, migration réversible, surveillance, bandeau, deux jeux) ; `npm test` local (sqlite) vert après correction du test du portail ; un seul e2e (`diffusion.spec.ts` : publier un message › il apparaît au portail, axe) ; l'attente de requêtes de `jump/e2e/profil-commun.spec.ts` compte la lecture du message à l'arrivée (`GET /api/annonce`) ; golden inchangés ; budgets Track (+754 o, marge 391 o) et Jump (+1 890 o) tenus.
+**Non vérifié** : la lecture réelle de l'API de GitHub (simulée dans l'e2e par `page.route`) ; le coût réel à 10 000 pages (modèle et mesure d'une requête, voir `couts.md` § 9) ; la maquette `admin-et-nouveautes.html` (absente du dépôt) ; en local, `jump/e2e/profil-commun.spec.ts` échoue à l'étape 3 (synchronisation « offline »), **aussi sur `origin/main`** : propre à cet environnement, la CI fait foi.
+**Décision laissée à Nathan** : le transfert de Hosting à 10 000 pages (`couts.md` § 9).
+**CI** : voir les runs de la PR ; la CI de `main` / recette peut échouer sur les contrôles du Salon (créneau horaire), sans lien avec ce lot.
