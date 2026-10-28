@@ -113,7 +113,7 @@ test("en anglais : le HUD, l'arrivée (médaille, rang, « Next game of the day 
   await expect(page.locator("#finish-next-game")).toHaveText("Next game of the day: Jump ›");
   await expect(page.locator("#finish .restart")).toHaveText("Race again");
   await expect(page.locator("#finish .share")).toContainText(/Du Jour · Track #\d+ — \d+\.\d{3}\ss/); // « 39.331 s » : le point anglais, l'espace insécable du socle
-  await expect(page.locator("#finish .share")).toContainText(/🥇|🏆/);
+  await expect(page.locator("#finish .share")).toContainText(/🥇|💎/);
   await expect(page.locator("#finish .share")).toContainText("14th/212");
   await ctx.close();
 });

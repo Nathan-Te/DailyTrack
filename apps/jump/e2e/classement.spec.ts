@@ -129,7 +129,7 @@ test("démo : finir le niveau → premier pseudo → rang et top 10 → Partager
     await page.locator("#arrival-share").click();
     await expect(page.locator("#arrival .arrivee__message")).toHaveText("Copié dans le presse-papiers");
     const copied = await page.evaluate(() => (window as unknown as { __copied?: string }).__copied);
-    expect(copied).toMatch(new RegExp(`^Du Jour · Jump #15 — \\d+,\\d{3}\\u00a0s — 🏆 — 0 💀 — 2e/${participants}\\n`));
+    expect(copied).toMatch(new RegExp(`^Du Jour · Jump #15 — \\d+,\\d{3}\\u00a0s — 💎 — 0 💀 — 2e/${participants}\\n`));
     // Le lien est celui de la page, sans paramètre (lot 10) : la démonstration ne se partage pas.
     expect(copied).toMatch(/\nhttp:\/\/localhost:4174\/$/);
     if (process.env.CAPTURES) await page.screenshot({ path: `${process.env.CAPTURES}/p1-arrivee.png` });

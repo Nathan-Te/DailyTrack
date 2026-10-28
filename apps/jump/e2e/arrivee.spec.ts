@@ -171,7 +171,7 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     await page.locator("#arrival-share").click();
     await expect(page.locator("#arrival .arrivee__message")).toHaveText("Copié dans le presse-papiers");
     const copied = await page.evaluate(() => (window as unknown as { __copied?: string }).__copied);
-    expect(copied).toBe(`Du Jour · Jump #5 — ${time} — 🏆 — 0 💀\nhttp://localhost:4174/`);
+    expect(copied).toBe(`Du Jour · Jump #5 — ${time} — 💎 — 0 💀\nhttp://localhost:4174/`);
     expect((await jump(page)).arrival.share).toBe(copied);
 
     // Revoir le carnage : il repart, puis l'écran d'arrivée revient.
@@ -272,7 +272,7 @@ test("archives : la liste (n° 1 à hier), une archive se joue (mode archive) et
     await expect(page.locator("#arrival-medal")).toHaveAttribute("data-medal", "author");
     await page.locator("#arrival-share").click();
     const copied = await page.evaluate(() => (window as unknown as { __copied?: string }).__copied);
-    expect(copied).toMatch(/^Du Jour · Jump #3 \(archive\) — \d+,\d{3}\u00a0s — 🏆 — 0 💀\nhttp:\/\/localhost:4174\/\?seed=2026-10-18$/);
+    expect(copied).toMatch(/^Du Jour · Jump #3 \(archive\) — \d+,\d{3}\u00a0s — 💎 — 0 💀\nhttp:\/\/localhost:4174\/\?seed=2026-10-18$/);
     j = await jump(page);
     expect(j.history).toEqual(before);
     expect(j.streak).toBe(1);
@@ -341,7 +341,7 @@ for (const format of FORMATS) {
         await page.locator("#arrival-share").tap();
         await expect(page.locator("#arrival .arrivee__message")).toHaveText("Partagé");
         const shared = await page.evaluate(() => (window as unknown as { __shared?: string }).__shared);
-        expect(shared).toMatch(/^Du Jour · Jump #5 — \d+,\d{3}\u00a0s — 🏆 — 0 💀\nhttp:\/\/localhost:4174\/$/);
+        expect(shared).toMatch(/^Du Jour · Jump #5 — \d+,\d{3}\u00a0s — 💎 — 0 💀\nhttp:\/\/localhost:4174\/$/);
         await page.locator("#arrival-home").tap();
         await expect(page.locator("#home")).toBeVisible();
         await expect(page.locator("#home-status")).toContainText("Diamant · Meilleur");

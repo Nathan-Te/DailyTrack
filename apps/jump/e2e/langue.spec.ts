@@ -77,7 +77,7 @@ test("l'arrivée en anglais : « FINISH! », la phrase selon les morts, le parta
       await page.context().grantPermissions(["clipboard-read", "clipboard-write"]).catch(() => undefined);
       await page.locator("#arrival-share").click();
       const line = await page.evaluate(() => (window as unknown as { __jump: { arrival: { share: string } } }).__jump.arrival.share);
-      expect(line).toMatch(/^Du Jour · Jump #5 — \d+\.\d{3}\ss — 🏆 — 0 💀\n/);
+      expect(line).toMatch(/^Du Jour · Jump #5 — \d+\.\d{3}\ss — 💎 — 0 💀\n/);
     },
     { locale: "en-US" },
   );
