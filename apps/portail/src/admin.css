@@ -755,3 +755,16 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Échanger un changelog : le contenu d'un export est du texte à lire, en chasse fixe. */
+#export-texte,
+#import-texte {
+  width: 100%;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  line-height: 1.4;
+}
+.admin input[type="file"] {
+  font: inherit;
+  max-width: 100%;
+}

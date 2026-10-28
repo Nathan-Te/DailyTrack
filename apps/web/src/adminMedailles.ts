@@ -1,9 +1,9 @@
 import { THEMES, themeByName, type Medal } from "@cdj/sim";
 import { adminApiBase, apiCall } from "./api";
-import { adminHeaders, loadToken } from "./adminBackend";
+import { adminHeaders } from "./adminBackend";
 import { formatTime } from "./format";
 
-// Lot 35 — section « Médailles » de la page d'admin : l'outil de calibrage, en lecture seule. Elle lit `GET /api/admin/medailles` (jeton de
+// Lot 35 — section « Médailles » de la page d'admin : l'outil de calibrage, en lecture seule. Elle lit `GET /api/admin/medailles` (session du panneau de
 // l'admin, celui du planning) et remplit deux tableaux (par thème, par jour) dont les en-têtes et la légende sont dans le HTML (le JS de
 // l'admin compte dans le budget de Track) ; « Copier l'export » donne la réponse entière (JSON, sans identité) à coller dans la session de
 // calibrage. Aucune écriture : la route n'en fait pas, la page n'appelle rien d'autre. Toutes les données passent par `textContent`.
@@ -93,8 +93,8 @@ export function mountMedals(stateApi: () => string): void {
     const base = adminApiBase(stateApi());
     if (!base || base === "demo") return say("Demande le vrai serveur (recette ou production) : pas de médailles en démonstration.", true);
     say("Chargement…");
-    const r = await apiCall<unknown>(base, "GET", `/api/admin/medailles${$("med-demo").checked ? "?demo=1" : ""}`, undefined, 20_000, adminHeaders(loadToken()));
-    if (!r.ok) return say(`Échec : ${r.status || "réseau"} · ${r.code} (jeton : en haut de la page).`, true);
+    const r = await apiCall<unknown>(base, "GET", `/api/admin/medailles${$("med-demo").checked ? "?demo=1" : ""}`, undefined, 20_000, adminHeaders());
+    if (!r.ok) return say(`Échec : ${r.status || "réseau"} · ${r.code} (session : reconnecte-toi au panneau d'administration si elle a expiré).`, true);
     const report = parseMedalReport(r.data);
     if (!report) return say("Réponse illisible.", true);
     raw = JSON.stringify(r.data);

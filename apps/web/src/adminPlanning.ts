@@ -2,7 +2,8 @@ import { parisDay } from "@cdj/clock";
 import { CATALOGUE_COMMUN_FR } from "@cdj/ui";
 import { THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor, parseDay, themeForDay, type ThemeName } from "@cdj/sim";
 import { DEMO_BASE, adminApiBase, type ApiResult } from "./api";
-import { DemoAdmin, HttpAdmin, loadToken, memeOrigine, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
+import { isRestricted } from "./access";
+import { DemoAdmin, HttpAdmin, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel } from "./adminPlan";
 import { SURFACE_LABEL, circuitStats, cuvesText, effectsText, figuresText, reliefText, sidesText, widthsText } from "./circuitStats";
 import { formatTime } from "./format";
@@ -78,6 +79,7 @@ function thumbBox(): HTMLElement {
   const box = el("div", { className: "thumb" });
   box.dataset.state = "wait";
   box.setAttribute("role", "img");
+  box.setAttribute("aria-label", "Miniature du circuit");
   return box;
 }
 
@@ -94,13 +96,18 @@ export function planHref(date: string, e: PlanEntry, watch = false): string {
 
 // --- Page ----------------------------------------------------------------------------------------------------------------
 
-export function mountPlanning(stateApi: () => string): void {
-  const computeBase = () => adminApiBase(stateApi());
+/**
+ * `surRefus` : le serveur refuse une lecture (401, ou 404 quand rien d'autre ne l'authentifie) : la page revérifie la session, et si elle a expiré referme les outils et
+ * remontre la porte (`admin.ts` ; rend `true`). La page ne s'ouvre qu'avec la connexion Google du panneau (`adminAcces.ts`) ; plus de jeton ici.
+ */
+export function mountPlanning(stateApi: () => string, surRefus: () => Promise<boolean> = async () => false): void {
+  // Sur le site publié la démonstration n'existe pas (`adminAcces.ts`) : elle ne reste pas atteignable en changeant l'adresse de l'API plus bas.
+  const computeBase = () => {
+    const b = adminApiBase(stateApi());
+    return b === DEMO_BASE && isRestricted("", import.meta.env.VITE_PRODUCTION as string | undefined) ? "" : b;
+  };
   let base = computeBase(); // recalculée à chaque « Actualiser » : on peut changer l'adresse de l'API plus bas
-  let token = loadToken();
-  /** Lot N1 : pas de jeton, mais une session du panneau de la plateforme (cookie `__session`, connexion Google sur `/admin/`) : les outils fonctionnent sans le jeton. */
-  let session = false;
-  const backendFor = (): AdminBackend | null => (base === DEMO_BASE ? new DemoAdmin() : base ? new HttpAdmin(base, token) : null);
+  const backendFor = (): AdminBackend | null => (base === DEMO_BASE ? new DemoAdmin() : base ? new HttpAdmin(base) : null);
   let overview: AdminOverview | null = null;
   let generation = 0; // chaque rafraîchissement abandonne les miniatures du précédent
 
@@ -113,78 +120,32 @@ export function mountPlanning(stateApi: () => string): void {
     s.dataset.kind = kind;
   }
 
-  function showTokenForm(show: boolean) {
-    $("token-form").hidden = !show;
-    $("logout").hidden = show || base === DEMO_BASE || !base || !token;
-  }
-
   async function refresh(): Promise<void> {
     base = computeBase();
     const backend = backendFor();
     $("demo-banner").hidden = backend?.kind !== "demo";
+    const vide = () => {
+      overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
+      render();
+    };
     if (!backend) {
       status("Aucune API configurée : le planning montre les circuits d'origine, sans pouvoir les remplacer. Ouvre /admin/?api=demo pour essayer sans serveur, ou renseigne l'adresse de l'API plus bas (Outils).", "info");
-      showTokenForm(false);
-      overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
-      render();
-      return;
-    }
-    if (backend.kind === "api" && !token && memeOrigine(base)) {
-      // Lot N1 : sans jeton, la session du panneau suffit (connexion Google sur /admin/). Essai silencieux : un refus ramène au jeton.
-      const essai = await backend.overview();
-      session = essai.ok;
-      if (essai.ok) {
-        overview = essai.data;
-        status(`Connecté par la session du panneau d'administration : ${backend.label}. Aujourd'hui (Paris) : ${overview.today}.`);
-        showTokenForm(false);
-        render();
-        return;
-      }
-    }
-    if (backend.kind === "api" && !token) {
-      status(`API : ${backend.label}. Saisis le jeton d'admin (variable ADMIN_TOKEN du serveur), ou connecte-toi au panneau d'administration (/admin/).`);
-      showTokenForm(true);
-      overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
-      render();
+      vide();
       return;
     }
     status(`Connexion à ${backend.label}…`);
     const r = await backend.overview();
     if (!r.ok) {
-      if (r.status === 401) {
-        token = "";
-        saveToken("");
-        status("Jeton refusé. Saisis-le à nouveau.", "error");
-        showTokenForm(true);
-      } else if (r.status === 404 && r.code === "not_found") {
-        status("Cette API n'a pas d'admin : le serveur n'a pas de ADMIN_TOKEN (≥ 16 caractères).", "error");
-        showTokenForm(false);
-      } else {
-        status(`${texteErreur(r)}${r.status === 429 ? " (trop d'essais, attends un peu)" : ""}.`, "error");
-        showTokenForm(r.status === 429);
-      }
-      overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
-      render();
+      if ((r.status === 401 || (r.status === 404 && r.code === "not_found")) && (await surRefus())) return; // la session a expiré : la porte s'est refermée
+      status(r.status === 404 && r.code === "not_found" ? "Ce serveur n'a pas de panneau d'administration configuré." : `${texteErreur(r)}${r.status === 429 ? " (trop d'essais, attends un peu)" : ""}.`, "error");
+      vide();
       return;
     }
     overview = r.data;
-    status(`Connecté : ${backend.label}. Aujourd'hui (Paris) : ${overview.today}.`);
-    showTokenForm(false);
+    status(backend.kind === "demo" ? `Connecté : ${backend.label}. Aujourd'hui (Paris) : ${overview.today}.` : `Connecté par la session du panneau d'administration : ${backend.label}. Aujourd'hui (Paris) : ${overview.today}.`);
     render();
   }
 
-  $("token-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    token = $<HTMLInputElement>("token").value.trim();
-    $<HTMLInputElement>("token").value = "";
-    saveToken(token);
-    void refresh();
-  });
-  $("logout").addEventListener("click", () => {
-    token = "";
-    saveToken("");
-    void refresh();
-  });
   $("refresh").addEventListener("click", () => void refresh());
 
   // --- Rendu ------------------------------------------------------------------------------------------------------
@@ -285,7 +246,7 @@ export function mountPlanning(stateApi: () => string): void {
     const list = $("planning");
     const o = overview!;
     const today = parseDay(o.today)!;
-    const canReplace = backendFor() !== null && !(backendFor()!.kind === "api" && !token && !session);
+    const canReplace = backendFor() !== null;
     list.replaceChildren();
     for (const day of planningDays(today)) {
       const date = formatDay(day);

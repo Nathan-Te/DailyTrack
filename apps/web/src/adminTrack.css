@@ -1,0 +1,594 @@
+@import "../../../packages/ui/src/styles.css";
+@import "../../../packages/ui/src/polices/archivo-black-400.css";
+@import "../../../packages/ui/src/polices/archivo-400.css";
+@import "../../../packages/ui/src/polices/archivo-700.css";
+@import "../../../packages/ui/src/polices/jetbrains-mono-700.css";
+/* Les outils d'administration de Track : la même charte « Cartouches » que le panneau d'administration de la plateforme (`apps/portail/src/admin.css`) — fonds unis, traits de 2 et 3 px,
+   ombres nettes, aucun dégradé, aucune translucidité ; jetons de @cdj/ui seulement. La page est fermée tant que la session n'est pas ouverte (`adminAcces.ts`) : `#outils` est caché. */
+.admin {
+  margin: 0;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  line-height: 1.45;
+}
+[hidden] {
+  display: none !important;
+}
+.admin code,
+.admin kbd {
+  font-family: var(--dj-police-chiffres);
+  font-size: 0.92em;
+}
+.admin kbd {
+  padding: 0 var(--dj-espace-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  background: var(--dj-papier);
+  font-weight: 700;
+}
+
+/* La barre : la même que celle du panneau de la plateforme. */
+.admin-barre {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-5);
+  padding: var(--dj-espace-3) var(--dj-marge);
+  background: var(--dj-papier);
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.admin-barre__titre {
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-16);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.admin-barre > .dj-bouton:last-child {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.admin-barre__acces {
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  color: var(--dj-encre-douce);
+}
+.admin-env {
+  padding: var(--dj-espace-1) var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  background: var(--dj-papier);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+  text-transform: uppercase;
+}
+.admin-env[data-env="production"] {
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+}
+.admin-env[data-env="recette"] {
+  background: var(--dj-moutarde);
+}
+
+/* La mise en page : un menu à gauche, les cartes à droite ; sur téléphone, tout en colonne. */
+.admin-pleine,
+.admin-corps {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--dj-espace-8) var(--dj-marge);
+  box-sizing: border-box;
+}
+.admin-corps {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--dj-espace-8);
+}
+.admin-menu__liste {
+  position: sticky;
+  top: var(--dj-espace-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-menu__entree {
+  display: flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: var(--dj-ombre-bouton);
+  box-sizing: border-box;
+}
+.admin-menu__entree:hover {
+  background: var(--dj-creme-2);
+}
+.admin-menu__entree--retour {
+  border-style: dashed;
+  background: var(--dj-creme);
+  box-shadow: none;
+  font-weight: 400;
+}
+.admin-contenu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-7);
+  min-width: 0;
+}
+.admin-titre-section {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-24);
+  line-height: 1.2;
+}
+.admin-titre-carte {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-16);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.admin-sous-titre {
+  margin: var(--dj-espace-5) 0 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-15);
+}
+.admin-aide,
+.hint {
+  margin: 0;
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-13);
+}
+.admin-carte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+  padding: var(--dj-espace-7);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+  min-width: 0;
+}
+.admin-porte {
+  max-width: 560px;
+  margin: var(--dj-espace-9) auto;
+  align-items: flex-start;
+}
+.admin-bandeau {
+  padding: var(--dj-espace-5) var(--dj-espace-7);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-moutarde);
+}
+
+/* Boutons et champs : ceux du socle (`.dj-bouton`) pour les boutons posés par le code. */
+.admin button,
+.admin a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-7);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+  font: 700 var(--dj-taille-14) / 1.1 var(--dj-police-texte);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.admin button:hover,
+.admin a.btn:hover {
+  background: var(--dj-creme-2);
+}
+.admin button:active,
+.admin a.btn:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+.admin button:disabled {
+  border-style: dashed;
+  color: var(--dj-encre-douce);
+  box-shadow: none;
+  cursor: default;
+}
+.admin button.go,
+.admin a.go {
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+}
+.admin button.go:hover,
+.admin a.go:hover {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.admin button.danger {
+  background: var(--dj-papier);
+  color: var(--dj-terre);
+  border-color: var(--dj-terre);
+  box-shadow: 2px 2px 0 var(--dj-terre);
+}
+.admin a.btn.small,
+.admin button.small {
+  min-height: 36px;
+  padding: 0 var(--dj-espace-5);
+  font-size: var(--dj-taille-13);
+}
+.admin select,
+.admin input[type="text"],
+.admin input[type="date"],
+.admin input[type="number"],
+.admin input[type="password"] {
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  box-sizing: border-box;
+}
+.admin input[type="text"] {
+  flex: 1;
+  min-width: 220px;
+}
+.admin .admin-court {
+  flex: none;
+  min-width: 0;
+  width: 110px;
+}
+.admin input[type="checkbox"],
+.admin input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--dj-terre);
+}
+.admin :focus-visible {
+  outline: var(--dj-focus) solid var(--dj-encre);
+  outline-offset: var(--dj-focus-ecart);
+}
+.admin label {
+  font-weight: 700;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-3) var(--dj-espace-6);
+  padding: var(--dj-espace-2) 0;
+}
+.row > label.name {
+  min-width: 170px;
+}
+label.opt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  font-weight: 400;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-4);
+}
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+}
+.presets button {
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 56px;
+  text-align: left;
+}
+.presets button small {
+  display: block;
+  font-weight: 400;
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+}
+#url {
+  padding: var(--dj-espace-3) var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+  word-break: break-all;
+}
+#keys {
+  columns: 2;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+}
+#conn-state[data-kind="error"],
+#med-state[data-kind="error"],
+#replace-msg[data-kind="error"] {
+  color: var(--dj-terre);
+  font-weight: 700;
+}
+.admin table {
+  border-collapse: collapse;
+}
+.admin td {
+  padding: 2px var(--dj-espace-7) 2px 0;
+  vertical-align: top;
+}
+
+/* Planning : une carte par jour (miniature, titre, chiffres, actions). */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--dj-espace-7);
+}
+.card,
+.daycard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+}
+.daycard {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.daycard .thumb {
+  flex: 1 1 280px;
+}
+.daycard .statbox {
+  flex: 1 1 280px;
+  padding: var(--dj-espace-5) var(--dj-espace-6);
+}
+.thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  background: var(--dj-ecran);
+  color: var(--dj-ecran-texte);
+  font-size: var(--dj-taille-12);
+}
+.thumb[data-state="wait"]::after {
+  content: "génération…";
+}
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.card .body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  padding: var(--dj-espace-5) var(--dj-espace-6) var(--dj-espace-6);
+}
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--dj-espace-1) var(--dj-espace-4);
+}
+.title .rel {
+  font-family: var(--dj-police-marque);
+  color: var(--dj-terre);
+}
+.title .date,
+.title .num {
+  color: var(--dj-encre-douce);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+}
+.title .theme {
+  font-weight: 700;
+}
+.badge {
+  padding: 1px var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  background: var(--dj-moutarde);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+dl.stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--dj-espace-5);
+  margin: 0;
+  font-size: var(--dj-taille-13);
+}
+dl.stats dt {
+  color: var(--dj-encre-douce);
+}
+dl.stats dd {
+  margin: 0;
+}
+.figures {
+  display: flex;
+  gap: var(--dj-espace-8);
+  margin: var(--dj-espace-3) 0;
+}
+.fig .v {
+  display: block;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-22);
+  font-weight: 700;
+}
+.fig .k {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+}
+.hist .bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 64px;
+}
+.hist .bar {
+  flex: 1;
+  min-height: 3px;
+  background: var(--dj-encre);
+}
+.hist .axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--dj-encre-douce);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+}
+.hrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-1) var(--dj-espace-6);
+  padding: var(--dj-espace-3) 0;
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+}
+.hrow .num {
+  min-width: 34px;
+  color: var(--dj-encre-douce);
+}
+.hrow .date,
+.hrow .best {
+  font-family: var(--dj-police-chiffres);
+}
+.hrow .theme {
+  min-width: 80px;
+  font-weight: 700;
+}
+.hrow .used {
+  flex: 1;
+  color: var(--dj-encre-douce);
+}
+
+/* Remplacer un circuit : une feuille posée sur la page (voile plein, sans translucidité). */
+#replace {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow-y: auto;
+  padding: var(--dj-espace-7);
+  background: var(--dj-creme-2);
+}
+#replace .sheet {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--dj-espace-7);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+#replace .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+}
+#replace .head .h {
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-16);
+}
+.confirmhost {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-3);
+}
+.confirmhost .ask {
+  font-size: var(--dj-taille-13);
+}
+
+/* Médailles. */
+.medtable {
+  margin: var(--dj-espace-2) 0 var(--dj-espace-6);
+  overflow-x: auto;
+}
+.medtable table {
+  font-size: var(--dj-taille-12);
+  white-space: nowrap;
+}
+.medtable th {
+  padding: 2px var(--dj-espace-5) var(--dj-espace-1) 0;
+  color: var(--dj-encre-douce);
+  font-weight: 700;
+  text-align: left;
+}
+.medtable td {
+  font-family: var(--dj-police-chiffres);
+}
+/* Les cibles ne se lisent pas qu'à la couleur : dans / au-dessus / en dessous gardent leur mot dans la légende, et un trait de couleur sous le chiffre. */
+.medtable td[data-cible="in"],
+.cible-in {
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-decoration: underline solid var(--dj-encre);
+}
+.medtable td[data-cible="over"],
+.cible-over {
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-decoration: underline double var(--dj-encre);
+}
+.medtable td[data-cible="under"],
+.cible-under {
+  color: var(--dj-terre);
+  font-weight: 700;
+  text-decoration: underline dotted var(--dj-terre);
+}
+#med-out h3 {
+  margin: var(--dj-espace-5) 0 var(--dj-espace-1);
+  font-size: var(--dj-taille-14);
+}
+
+@media (max-width: 760px) {
+  .admin-corps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--dj-espace-5);
+  }
+  .admin-menu__liste {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .admin-menu__entree {
+    min-height: 40px;
+    padding: 0 var(--dj-espace-4);
+    box-shadow: none;
+  }
+  .admin-carte {
+    padding: var(--dj-espace-5);
+  }
+  .admin-barre {
+    flex-wrap: wrap;
+    gap: var(--dj-espace-3) var(--dj-espace-5);
+  }
+  .admin-barre__acces {
+    display: none;
+  }
+  #keys {
+    columns: 1;
+  }
+}

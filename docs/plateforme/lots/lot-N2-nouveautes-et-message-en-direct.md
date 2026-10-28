@@ -35,3 +35,8 @@ Ligne « Nouveautés · date » sous les tuiles (point terre tant que non lue, `
 **Non vérifié** : la lecture réelle de l'API de GitHub (simulée dans l'e2e par `page.route`) ; le coût réel à 10 000 pages (modèle et mesure d'une requête, voir `couts.md` § 9) ; la maquette `admin-et-nouveautes.html` (absente du dépôt) ; en local, `jump/e2e/profil-commun.spec.ts` échoue à l'étape 3 (synchronisation « offline »), **aussi sur `origin/main`** : propre à cet environnement, la CI fait foi.
 **Décision laissée à Nathan** : le transfert de Hosting à 10 000 pages (`couts.md` § 9).
 **CI** : voir les runs de la PR ; la CI de `main` / recette peut échouer sur les contrôles du Salon (créneau horaire), sans lien avec ce lot.
+
+## Retouches après la fusion (PR de suite)
+- Éditeur de nouveautés : une fiche par ligne, zones de texte pleine largeur ; courbe « joueurs par jour » interactive ; CI de `main` : `surfaces.spec.ts` tolère la lecture publique du message.
+- **Échanger un changelog** (export / import JSON versionné, import toujours en brouillon, doublons ignorés) pour préparer les nouveautés sur la recette et les reprendre en production : `apps/portail/CLAUDE.md`, `docs/plateforme/admin.md`.
+- `/track/admin/` ne s'ouvre qu'avec la connexion du panneau (plus de jeton) et suit la charte : `apps/web/CLAUDE.md`, « La porte de la page d'outils ».

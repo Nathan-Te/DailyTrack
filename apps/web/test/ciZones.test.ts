@@ -122,7 +122,7 @@ describe("les specs e2e d'une PR", () => {
 
   it("un fichier ne lance que les specs de ses zones, plus la fumée de son jeu", () => {
     const r = choix(["apps/web/src/admin.ts"]);
-    expect(r.web).toEqual([...new Set([...table.fumee.web, "futur.spec.ts", "planning.spec.ts"])].sort()); // admin et demo : « Régression » (lot R13)
+    expect(r.web).toEqual([...new Set([...table.fumee.web, "admin-track.spec.ts", "futur.spec.ts", "planning.spec.ts"])].sort()); // admin et demo : « Régression » (lot R13)
     expect(r.web).not.toContain("thumbnails.spec.ts");
   });
 

@@ -1,4 +1,4 @@
-import { NOM_DE_ZONE, ZONES_NOUVEAUTES, MESSAGE_MAX, longueur, nettoyerMessage, nettoyerNouveaute, problemesDeMessage, problemesDePublication, texteProbleme, texteProblemeMessage, type MessageContenu, type OuMessage, type TonMessage, type ZoneNouveaute } from "@cdj/core/nouveautes";
+import { NOM_DE_ZONE, ZONES_NOUVEAUTES, MESSAGE_MAX, cleDeNouveaute, exporterNouveautes, lireExport, longueur, nettoyerMessage, nettoyerNouveaute, problemesDeMessage, texteProblemeImport, problemesDePublication, texteProbleme, texteProblemeMessage, type MessageContenu, type OuMessage, type TonMessage, type ZoneNouveaute } from "@cdj/core/nouveautes";
 import { bouton, el } from "@cdj/ui";
 import {
   ErreurAdmin,
@@ -41,6 +41,16 @@ const titreCarte = (texte: string, id: string) => el("h2", { classe: "admin-titr
 const boutonEnvoi = (texte: string) => el("button", { classe: "dj-bouton dj-bouton--marque", attrs: { type: "submit" }, texte });
 const champ = (id: string, libelle: string, entree: HTMLElement, aide?: string) =>
   el("div", { classe: "admin-champ" }, el("label", { attrs: { for: id }, texte: libelle }), entree, aide ? el("p", { classe: "admin-aide", attrs: { id: `${id}-aide` }, texte: aide }) : null);
+
+/** Fait télécharger `texte` comme un fichier (lien temporaire vers un objet local : rien ne part sur le réseau). */
+function telecharger(nom: string, texte: string): void {
+  const url = URL.createObjectURL(new Blob([texte], { type: "application/json" }));
+  const a = el("a", { attrs: { href: url, download: nom } });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5_000);
+}
 
 /** Un 401 ramène à la connexion ; le reste se dit. */
 async function surErreur(ctx: Contexte, e: unknown, dire: (texte: string) => void): Promise<void> {
@@ -452,6 +462,100 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
       : p("Aucune nouveauté pour l'instant.", "admin-aide"),
   );
 
+  // --- Échanger un changelog : exporter, importer (préparer sur la recette, reprendre en production) ------------------------------------------------
+  const exportTexte = el("textarea", { attrs: { id: "export-texte", rows: 6, readonly: true, "aria-label": "Contenu de l'export", spellcheck: "false" } });
+  const exportActions = el("div", { classe: "admin-actions", attrs: { hidden: true } });
+  const montrerExport = (texte: string, nom: string, combien: string): void => {
+    exportTexte.value = texte;
+    exportTexte.hidden = false;
+    exportActions.hidden = false;
+    exportActions.replaceChildren(
+      bouton({ texte: "Télécharger le fichier", variante: "secondaire", onClick: () => telecharger(nom, texte) }),
+      bouton({
+        texte: "Copier",
+        variante: "secondaire",
+        onClick: () =>
+          navigator.clipboard.writeText(texte).then(
+            () => dire("info", "Export copié : colle-le dans « Importer » de l'autre panneau (recette ou production)."),
+            () => dire("erreur", "Copie refusée par le navigateur : sélectionne le texte et copie-le à la main."),
+          ),
+      }),
+    );
+    dire("info", `${combien} exportée${combien.startsWith("1 ") ? "" : "s"} (${texte.length} caractères). Rien n'est modifié ici.`);
+  };
+  const maintenantIso = () => new Date().toISOString();
+  const nomDeFichier = () => `nouveautes-${aujourdhuiParis(Date.now())}.json`;
+  const exporterEditeur = bouton({
+    texte: "Exporter le brouillon en cours",
+    variante: "secondaire",
+    onClick: () => {
+      const c = contenuDe(brouillon);
+      if (!c.titre.fr && !c.titre.en && c.lignes.length === 0) return dire("erreur", "L'éditeur est vide : rien à exporter.");
+      montrerExport(exporterNouveautes([{ ...c, lignes: brouillon.lignes.map((l, i) => ({ ...l, ...c.lignes[i]! })), statut: brouillon.publiee ? "publiee" : "brouillon" }], maintenantIso()), nomDeFichier(), "1 nouveauté");
+    },
+  });
+  exporterEditeur.id = "export-editeur";
+  const exporterTout = bouton({
+    texte: `Tout exporter (${liste.nouveautes.length})`,
+    variante: "secondaire",
+    desactive: liste.nouveautes.length === 0,
+    onClick: () => {
+      if (liste.nouveautes.length === 0) return;
+      montrerExport(exporterNouveautes(liste.nouveautes.map((n) => ({ titre: n.titre, date: n.date, lignes: n.lignes, statut: n.statut })), maintenantIso()), nomDeFichier(), `${liste.nouveautes.length} nouveauté${liste.nouveautes.length > 1 ? "s" : ""}`);
+    },
+  });
+  exporterTout.id = "export-tout";
+  const importTexte = el("textarea", { attrs: { id: "import-texte", rows: 6, "aria-label": "Export à importer (colle le texte ou choisis un fichier)", spellcheck: "false" } });
+  const fichier = el("input", { attrs: { id: "import-fichier", type: "file", accept: "application/json,.json", "aria-label": "Choisir un fichier d'export" } });
+  fichier.addEventListener("change", async () => {
+    const f = fichier.files?.[0];
+    if (!f) return;
+    if (f.size > 400_000) return dire("erreur", "Ce fichier est trop gros pour être un changelog.");
+    importTexte.value = await f.text();
+    dire("info", `Fichier « ${f.name} » chargé : vérifie-le puis clique sur « Importer en brouillons ».`);
+  });
+  const importer = bouton({
+    texte: "Importer en brouillons",
+    variante: "marque",
+    onClick: async () => {
+      const lu = lireExport(importTexte.value, aujourdhuiParis(Date.now()));
+      if (!lu.ok) return dire("erreur", texteProblemeImport(lu.probleme));
+      const connues = new Set(liste.nouveautes.map(cleDeNouveaute));
+      const nouvelles = lu.nouveautes.filter((n, i, tous) => !connues.has(cleDeNouveaute(n)) && tous.findIndex((x) => cleDeNouveaute(x) === cleDeNouveaute(n)) === i);
+      const dejaLa = lu.nouveautes.length - nouvelles.length;
+      if (nouvelles.length === 0) return dire("info", `Rien à importer : ${dejaLa === 1 ? "cette nouveauté est déjà" : `ces ${dejaLa} nouveautés sont déjà`} dans la liste (même date, même titre).`);
+      const v = await ctx.confirmer({
+        titre: "Importer des nouveautés",
+        texte: `${nouvelles.length} nouveauté${nouvelles.length > 1 ? "s" : ""} arrivent en brouillon : ${nouvelles.map((n) => `« ${n.titre.fr || "(sans titre)"} »`).join(", ")}.${dejaLa ? ` ${dejaLa} déjà présente${dejaLa > 1 ? "s" : ""} (ignorée${dejaLa > 1 ? "s" : ""}).` : ""} Rien n'est publié : tu les relis puis tu publies.`,
+        action: "Importer",
+      });
+      if (!v) return;
+      try {
+        for (const n of nouvelles) await ctx.client.enregistrerNouveaute({ titre: n.titre, date: n.date, lignes: n.lignes, publier: false });
+        importTexte.value = "";
+        await ctx.recharger(`${nouvelles.length} nouveauté${nouvelles.length > 1 ? "s" : ""} importée${nouvelles.length > 1 ? "s" : ""} en brouillon${dejaLa ? ` (${dejaLa} déjà présente${dejaLa > 1 ? "s" : ""})` : ""}${lu.ignorees ? `, ${lu.ignorees} entrée${lu.ignorees > 1 ? "s" : ""} illisible${lu.ignorees > 1 ? "s" : ""} ignorée${lu.ignorees > 1 ? "s" : ""}` : ""}. Relis-les ci-dessous, puis publie.`);
+      } catch (e) {
+        await surErreur(ctx, e, (t) => dire("erreur", t));
+      }
+    },
+  });
+  importer.id = "import-valider";
+  const echange = el(
+    "section",
+    { classe: "admin-carte", attrs: { "aria-labelledby": "titre-echange", id: "nouveautes-echange" } },
+    titreCarte("Échanger un changelog", "titre-echange"),
+    p("Prépare les nouveautés sur la recette (ou chez toi), exporte-les, puis importe-les ici en production : elles arrivent en brouillon, jamais publiées toutes seules. Le fichier est du texte (JSON) : relis-le avant de l'importer.", "admin-aide"),
+    el("h3", { classe: "admin-sous-titre", texte: "Exporter" }),
+    el("div", { classe: "admin-actions" }, exporterEditeur, exporterTout),
+    exportTexte,
+    exportActions,
+    el("h3", { classe: "admin-sous-titre", texte: "Importer" }),
+    champ("import-fichier", "Un fichier d'export", fichier),
+    champ("import-texte", "… ou colle son contenu", importTexte),
+    el("div", { classe: "admin-actions" }, importer),
+  );
+  exportTexte.hidden = true;
+
   dessinerEditeur();
   void chargerPrs();
   return [
@@ -460,6 +564,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
     zoneMessage,
     el("section", { classe: "admin-carte", attrs: { "aria-labelledby": "titre-redaction", id: "nouveautes-redaction" } }, titreCarte("Rédiger", "titre-redaction"), el("div", { classe: "admin-deux-colonnes" }, colonnePrs, colonneEditeur)),
     gestion,
+    echange,
   ];
 }
 

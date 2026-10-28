@@ -107,6 +107,27 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await expect(admin.locator("#nouveautes-message")).toContainText("publiée");
   await expect(admin.locator('#nouveautes-gestion [data-statut="publiee"]')).toHaveCount(1);
 
+  // --- Échanger un changelog : exporter, réimporter (déjà là), importer une autre nouveauté : elle arrive en brouillon, jamais publiée -----------------------
+  await admin.locator("#export-tout").click();
+  const exporte = await admin.locator("#export-texte").inputValue();
+  expect(JSON.parse(exporte)).toMatchObject({ format: "cdj-nouveautes", version: 1, nouveautes: [{ statut: "publiee", titre: { fr: "Le bouton caméra revient" } }] });
+  const [telechargement] = await Promise.all([admin.waitForEvent("download"), admin.getByRole("button", { name: "Télécharger le fichier" }).click()]);
+  expect(telechargement.suggestedFilename()).toMatch(/^nouveautes-\d{4}-\d\d-\d\d\.json$/);
+  await admin.locator("#import-texte").fill("pas du json");
+  await admin.locator("#import-valider").click();
+  await expect(admin.locator("#nouveautes-message")).toContainText("pas du JSON lisible");
+  await admin.locator("#import-texte").fill(exporte);
+  await admin.locator("#import-valider").click();
+  await expect(admin.locator("#nouveautes-message")).toContainText("déjà dans la liste");
+  const autre = JSON.parse(exporte);
+  autre.nouveautes[0].titre = { fr: "Une autre nouveauté", en: "Another update" };
+  await admin.locator("#import-texte").fill(JSON.stringify(autre));
+  await admin.locator("#import-valider").click();
+  await admin.getByRole("dialog").getByRole("button", { name: "Importer", exact: true }).click();
+  await expect(admin.locator("#nouveautes-message")).toContainText("importée en brouillon");
+  await expect(admin.locator('#nouveautes-gestion [data-statut="brouillon"]')).toHaveCount(1);
+  await expect(admin.locator('#nouveautes-gestion [data-statut="publiee"]')).toHaveCount(1); // rien n'a été publié par l'import
+
   // --- Le portail : la ligne « Nouveautés » avec son point, puis la page ----------------------------------------------------------------------------
   await portail.reload();
   const ligne = portail.locator("#nouveautes");

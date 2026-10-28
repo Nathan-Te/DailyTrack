@@ -206,6 +206,106 @@ export function nettoyerNouveaute(brut: unknown): NouveauteContenu {
   };
 }
 
+// --- Exporter et importer un changelog -------------------------------------------------------------------------------------------------------
+// Préparer les nouveautés à l'avance (sur la recette, ou chez soi) puis les reprendre en production : un fichier JSON versionné qui porte une ou plusieurs nouveautés. **Un import ne publie jamais** :
+// chaque nouveauté arrive en brouillon, à relire, puis à publier à la main. Tout ce qui vient du fichier est une donnée : lue prudemment (taille, forme, version), nettoyée comme une saisie
+// (`nettoyerNouveaute`), jamais interprétée. Pur : l'heure de l'export et « aujourd'hui » viennent de l'appelant.
+
+export const FORMAT_EXPORT = "cdj-nouveautes";
+export const VERSION_EXPORT = 1;
+/** Un fichier plus gros n'est pas un changelog : refusé sans être lu. */
+export const EXPORT_OCTETS_MAX = 200_000;
+export const EXPORT_NOUVEAUTES_MAX = 100;
+
+export interface LigneExportee extends LigneNouveaute {
+  /** Le numéro de la PR d'où vient la ligne. */
+  pr?: number;
+}
+export interface NouveauteExportee extends NouveauteContenu {
+  lignes: LigneExportee[];
+  statut: "brouillon" | "publiee";
+}
+
+/** Le fichier d'export : lisible (indenté), versionné, trié comme on le lui donne. `exporteLe` : l'instant de l'export (ISO), pour s'y retrouver. */
+export function exporterNouveautes(nouveautes: readonly { titre: { fr: string; en: string }; date: string; lignes: readonly { zone: ZoneNouveaute | null; fr: string; en: string; pr?: number }[]; statut?: "brouillon" | "publiee" }[], exporteLe: string): string {
+  return JSON.stringify(
+    {
+      format: FORMAT_EXPORT,
+      version: VERSION_EXPORT,
+      exporteLe,
+      nouveautes: nouveautes.map((n) => ({
+        titre: { fr: n.titre.fr, en: n.titre.en },
+        date: n.date,
+        statut: n.statut ?? "brouillon",
+        lignes: n.lignes.map((l) => ({ zone: l.zone, fr: l.fr, en: l.en, ...(Number.isInteger(l.pr) && (l.pr as number) > 0 ? { pr: l.pr } : {}) })),
+      })),
+    },
+    null,
+    2,
+  );
+}
+
+export type ProblemeImport = "trop_gros" | "illisible" | "format" | "version" | "vide" | "trop_nombreuses";
+export function texteProblemeImport(p: ProblemeImport): string {
+  switch (p) {
+    case "trop_gros":
+      return "Ce fichier est trop gros pour être un changelog.";
+    case "illisible":
+      return "Ce fichier n'est pas du JSON lisible.";
+    case "format":
+      return "Ce n'est pas un export de nouveautés de Du Jour.";
+    case "version":
+      return "Cet export vient d'une version plus récente du panneau : mets le panneau à jour.";
+    case "vide":
+      return "Aucune nouveauté dans ce fichier.";
+    case "trop_nombreuses":
+      return `Plus de ${EXPORT_NOUVEAUTES_MAX} nouveautés dans ce fichier : il n'est pas lu.`;
+  }
+}
+
+export type LectureExport = { ok: true; nouveautes: NouveauteExportee[]; ignorees: number } | { ok: false; probleme: ProblemeImport };
+
+/**
+ * Lit un export. `aujourdhui` remplace une date absente ou invalide. Une entrée qui n'est pas un objet est ignorée (comptée) ; les textes sont nettoyés comme une saisie ; le statut du fichier est
+ * gardé à titre d'information (l'import les met tous en brouillon).
+ */
+export function lireExport(texte: string, aujourdhui: string): LectureExport {
+  if (typeof texte !== "string" || texte.length > EXPORT_OCTETS_MAX) return { ok: false, probleme: "trop_gros" };
+  let brut: unknown;
+  try {
+    brut = JSON.parse(texte);
+  } catch {
+    return { ok: false, probleme: "illisible" };
+  }
+  const o = (brut && typeof brut === "object" && !Array.isArray(brut) ? brut : null) as Record<string, unknown> | null;
+  if (!o || o.format !== FORMAT_EXPORT) return { ok: false, probleme: "format" };
+  if (typeof o.version !== "number" || !Number.isInteger(o.version) || o.version < 1) return { ok: false, probleme: "format" };
+  if (o.version > VERSION_EXPORT) return { ok: false, probleme: "version" };
+  const liste = Array.isArray(o.nouveautes) ? o.nouveautes : [];
+  if (liste.length > EXPORT_NOUVEAUTES_MAX) return { ok: false, probleme: "trop_nombreuses" };
+  const nouveautes: NouveauteExportee[] = [];
+  let ignorees = 0;
+  for (const entree of liste) {
+    if (!entree || typeof entree !== "object" || Array.isArray(entree)) {
+      ignorees++;
+      continue;
+    }
+    const e = entree as Record<string, unknown>;
+    const propre = nettoyerNouveaute(e);
+    const lignesBrutes = Array.isArray(e.lignes) ? e.lignes : [];
+    const lignes = propre.lignes.map((l, i): LigneExportee => {
+      const pr = (lignesBrutes[i] as { pr?: unknown } | undefined)?.pr;
+      return Number.isInteger(pr) && (pr as number) > 0 && (pr as number) < 1_000_000 ? { ...l, pr: pr as number } : l;
+    });
+    nouveautes.push({ titre: propre.titre, date: dateValide(propre.date) ? propre.date : aujourdhui, lignes, statut: e.statut === "publiee" ? "publiee" : "brouillon" });
+  }
+  if (nouveautes.length === 0) return { ok: false, probleme: "vide" };
+  return { ok: true, nouveautes, ignorees };
+}
+
+/** La clé d'une nouveauté pour reconnaître « déjà là » à la réimportation : la date affichée et le titre français, sans casse ni espaces en trop. */
+export const cleDeNouveaute = (n: { titre: { fr: string }; date: string }): string => `${n.date}|${n.titre.fr.trim().toLowerCase().replace(/\s+/g, " ")}`;
+
 // --- Le message en direct --------------------------------------------------------------------------------------------------------------
 
 export interface MessageContenu {

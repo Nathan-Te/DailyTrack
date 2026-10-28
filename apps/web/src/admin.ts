@@ -1,7 +1,11 @@
 import { FIGURES, PREMIER_JOUR, THEMES, THEME_NAMES, formatDay } from "@cdj/sim";
 import { RANDOM_SPAN } from "./archive";
+import { LIEN_CONNEXION, TEXTES_ACCES, verifierAcces, type Acces } from "./adminAcces";
+import { oublierAncienJeton } from "./adminBackend";
 import { mountMedals } from "./adminMedailles";
 import { mountPlanning } from "./adminPlanning";
+import { adminApiBase } from "./api";
+import { isRestricted } from "./access";
 import { DEFAULT_ADMIN, PRESETS, buildQuery, gameHref, gameKeys, parseAdmin, type AdminState, type Scenario } from "./adminLogic";
 import { gameStorage, storageKeys } from "./storage";
 
@@ -187,5 +191,52 @@ function render() {
 
 render();
 renderKeys();
-mountPlanning(() => state.api);
-mountMedals(() => state.api);
+// --- La porte : rien n'est montré ni lu tant que le serveur n'a pas dit que la session du panneau d'administration (connexion Google) est ouverte ------------------
+oublierAncienJeton(); // l'ancien jeton saisi à la main n'a plus cours : on ne le garde pas dans ce navigateur
+const ENVIRONNEMENTS: Record<string, string> = { "playdujour.com": "production", "recette.playdujour.com": "recette" };
+const env = ENVIRONNEMENTS[location.hostname] ?? (/\.(web\.app|firebaseapp\.com)$/.test(location.hostname) ? "aperçu" : "local");
+$("barre-env").textContent = env;
+$("barre-env").dataset.env = env;
+const production = isRestricted("", import.meta.env.VITE_PRODUCTION as string | undefined);
+/** L'API de la page : la même règle que les outils (`adminApiBase`), sans la démonstration sur le site publié. */
+const baseDeLaPage = () => adminApiBase(state.api);
+const memeOrigine = (base: string) => {
+  try {
+    return new URL(base, location.href).origin === location.origin;
+  } catch {
+    return false;
+  }
+};
+
+function montrerPorte(acces: Extract<Acces, { ouvert: false }>) {
+  const texte = TEXTES_ACCES[acces.raison];
+  $("outils").hidden = true;
+  $("acces").hidden = false;
+  $("acces-titre").textContent = texte.titre;
+  $("acces-texte").textContent = texte.texte;
+  const lien = $<HTMLAnchorElement>("acces-connexion");
+  lien.hidden = !texte.connexion;
+  lien.href = LIEN_CONNEXION;
+  $("acces-attente").hidden = true;
+}
+
+let outilsMontes = false;
+function ouvrirOutils(acces: Extract<Acces, { ouvert: true }>) {
+  $("acces").hidden = true;
+  $("outils").hidden = false;
+  $("barre-acces").textContent = acces.mode === "session" ? "Connecté" : acces.mode === "demo" ? "Démonstration" : "Local";
+  if (outilsMontes) return;
+  outilsMontes = true;
+  mountPlanning(() => state.api, async () => {
+    const acces = await verifierAcces(baseDeLaPage(), { production, memeOrigine: memeOrigine(baseDeLaPage()) });
+    if (acces.ouvert) return false; // la session tient : c'est autre chose (le message d'erreur le dit)
+    montrerPorte(acces);
+    return true;
+  });
+  mountMedals(() => state.api);
+}
+
+void verifierAcces(baseDeLaPage(), { production, memeOrigine: memeOrigine(baseDeLaPage()) }).then((acces) => {
+  if (acces.ouvert) ouvrirOutils(acces);
+  else montrerPorte(acces);
+});

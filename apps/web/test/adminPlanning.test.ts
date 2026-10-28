@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { PREMIER_JOUR, dailyCircuit, createCuvesTrack, createLargeursTrack, createReliefTrack, createSurfacesTrack, formatDay, parseDay, themeForDay, THEME_NAMES } from "@cdj/sim";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel, replaceProblem } from "../src/adminPlan";
 import { circuitStats, cuvesText, effectsText, figuresText, reliefText, widthsText } from "../src/circuitStats";
-import { DemoAdmin, TOKEN_KEY, loadToken, parseOverview, saveToken } from "../src/adminBackend";
+import { ANCIENNE_CLE_JETON, DemoAdmin, adminHeaders, parseOverview } from "../src/adminBackend";
 import { DEMO_PLAN_KEY, NO_PLAN, isReplaced, loadDemoPlan, parseDemoPlan, parsePlanEntry, saveDemoPlan } from "../src/planning";
 import { DEFAULT_ADMIN, buildQuery, parseAdmin } from "../src/adminLogic";
 import { planHref } from "../src/adminPlanning";
@@ -140,13 +140,9 @@ describe("vue d'ensemble du serveur", () => {
     expect(o.days[0]).toMatchObject({ participants: 3, bestMs: 31_000 });
     expect(o.times).toEqual([31_000, 32_000]);
   });
-  it("jeton d'admin gardé à part des données du jeu", () => {
-    const store = memory();
-    saveToken("secret-secret-secret", store);
-    expect(loadToken(store)).toBe("secret-secret-secret");
-    saveToken("", store);
-    expect(loadToken(store)).toBe("");
-    expect(TOKEN_KEY.startsWith("cdj:admin")).toBe(true);
+  it("plus de jeton : la session du panneau seule, l'en-tête d'une écriture toujours posé ; l'ancienne clé a un nom connu (effacée à l'ouverture)", () => {
+    expect(adminHeaders()).toEqual({ "X-Cdj-Admin": "1" });
+    expect(ANCIENNE_CLE_JETON).toBe("cdj:admin-token");
   });
 });
 

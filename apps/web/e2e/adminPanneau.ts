@@ -3,7 +3,7 @@
 // (`apps/api/dist/server.mjs`, construit par `npm run build:node -w @cdj/api`) avec **le vérificateur factice** (local et CI seulement), une base SQLite de fichier que ce
 // module peuple de joueurs fictifs, l'horloge de test (20/10/2026) et les origines permises comme en production (`ALLOWED_ORIGINS` : la page).
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -41,11 +41,19 @@ export interface Panneau {
   arreter(): Promise<void>;
 }
 
-export async function demarrerPanneau(o: { portSite: number; portApi: number }): Promise<Panneau> {
+/**
+ * `track: true` : le site contient aussi Track (`apps/web/dist`, construit par `npm run build`) sous `/track/` : sa page d'outils (`/track/admin/`) est alors sur la même origine
+ * que l'API, comme en production (la session du panneau est un cookie : elle ne vaut que pour la même origine).
+ */
+export async function demarrerPanneau(o: { portSite: number; portApi: number; track?: boolean }): Promise<Panneau> {
   if (!existsSync(join(ROOT, "apps/api/dist/server.mjs"))) throw new Error("l'API n'est pas construite : npm run build:node -w @cdj/api");
   const dossier = mkdtempSync(join(tmpdir(), "panneau-"));
   // Le portail seul (la page `/admin/` n'a besoin ni de Track ni de Jump), dans un dossier à part.
   execFileSync("npx", ["vite", "build", "-c", "apps/portail/vite.config.ts", "--outDir", join(dossier, "site"), "--emptyOutDir", "--logLevel", "error"], { cwd: ROOT, stdio: "inherit", env: { ...process.env, PORTAIL_VITRINE: "0" } });
+  if (o.track) {
+    if (!existsSync(join(ROOT, "apps/web/dist/admin/index.html"))) throw new Error("Track n'est pas construit : npm run build");
+    cpSync(join(ROOT, "apps/web/dist"), join(dossier, "site", "track"), { recursive: true });
+  }
   const site = `http://localhost:${o.portSite}`;
   const base = join(dossier, "base.sqlite");
   const api = spawn("node", ["../api/dist/server.mjs"], {
