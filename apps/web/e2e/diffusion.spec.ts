@@ -2,6 +2,9 @@ import { expect, newClockedContext, test } from "./fixtures";
 import { auditAxe } from "./axe";
 import { ADRESSE_ADMIN, demarrerPanneau, type Panneau } from "./adminPanneau";
 
+/** Axe lit les couleurs **calculées** : une transition de couleur d'un bouton qui vient de s'activer fausserait le contraste (vu en CI, plus lente) — on attend qu'aucune animation ne tourne. */
+const apresTransitions = (page: import("@playwright/test").Page) => page.waitForFunction(() => document.getAnimations().length === 0);
+
 // Lot N2 (plateforme) : **un seul test dans le navigateur** (règle R13) — l'éditeur publie un message en direct depuis le panneau › il apparaît sur le portail (une seule requête au
 // chargement, rien relu avant 60 s), se ferme, ne revient que s'il change ; au passage la rédaction d'une nouveauté à partir d'une PR de GitHub (réponse de GitHub simulée : la CSP
 // de `/admin/` est celle de `firebase.json`, donc `api.github.com` y est vraiment autorisé) › la ligne « Nouveautés » avec son point › la page `/nouveautes/`. Tout le reste est testé en
@@ -97,6 +100,7 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await expect(admin.locator("#nouveautes-publier")).toBeEnabled();
   await admin.locator("#nouveautes-apercu-bouton").click();
   await expect(admin.locator('#nouveautes-apercu [data-langue="en"]')).toContainText("The camera button is back on screen on phones.");
+  await apresTransitions(admin);
   await auditAxe(admin, "panneau-nouveautes");
   await admin.locator("#nouveautes-publier").click();
   await admin.getByRole("dialog").getByRole("button", { name: "Publier", exact: true }).click();
@@ -113,6 +117,7 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await expect(portail.locator("article.nouveautes-mise-a-jour h3")).toHaveText("Le bouton caméra revient");
   await expect(portail.locator(".nouveautes-ligne")).toContainText("Track");
   await expect(portail.locator(".nouveautes-ligne")).toContainText("Le bouton caméra revient à l'écran sur téléphone.");
+  await apresTransitions(portail);
   await auditAxe(portail, "nouveautes");
   await portail.goBack();
   await expect(portail.locator("#nouveautes")).toBeVisible();
@@ -128,6 +133,7 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await expect(admin.locator("#message-problemes")).toContainText("ni lien ni HTML"); // texte seul
   await admin.locator("#message-fr").fill("Maintenance ce soir à 22 h : le classement sera figé dix minutes.");
   await expect(admin.locator("#message-envoyer")).toBeEnabled();
+  await apresTransitions(admin);
   await auditAxe(admin, "panneau-message");
   await admin.locator("#message-envoyer").click();
   await admin.getByRole("dialog").getByRole("button", { name: "Diffuser", exact: true }).click();
@@ -144,6 +150,7 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   expect(await portail.evaluate(() => document.activeElement === document.body || document.activeElement?.closest(".dj-bandeau") === null)).toBe(true);
   expect(requetes.filter((p) => p === "/api/portail/jour")).toHaveLength(1);
   expect(requetes).not.toContain("/api/annonce"); // le message est dans la réponse de l'accueil : aucune requête de plus au chargement
+  await apresTransitions(portail);
   await auditAxe(portail, "portail-bandeau");
 
   // `GET /api/annonce` seul : public, partagé 30 s par le cache de Hosting.
