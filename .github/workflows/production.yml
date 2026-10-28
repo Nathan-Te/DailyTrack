@@ -322,8 +322,12 @@ jobs:
           simulee=(); [ "$MODE" != repetition ] || simulee=(--simulee)
           node outils/scripts/mise-en-production.mjs comparer "$RUNNER_TEMP/empreintes/prod.json" "$RUNNER_TEMP/empreintes/cible.json" "$BASCULE" "${simulee[@]}" --proteges "$RUNNER_TEMP/registre-track/proteges.json" --instant "$INSTANT" --resume "$GITHUB_STEP_SUMMARY" --sortie "$GITHUB_OUTPUT" > /dev/null \
             || { echo "::error title=Mise en production arrêtée::un jour d'avant la bascule changerait (ou un jour régénéré n'est pas valide) : la liste est dans le résumé du run"; exit 1; }
+      # Le nouveau serveur de l'essai a les jours figés qu'il aura une fois déployé (la même commande que `deploy-api.yml`) : sans eux il régénère avec le
+      # nouveau générateur un jour que la production sert figé (ex. le jour même), l'ancien code lit alors des rediffusions d'une autre version (28/10/2026).
       - name: L'ancien code tourne-t-il sur la base migrée (le retour arrière) ?
-        run: node outils/scripts/base-migree.mjs cible prod --resume "$GITHUB_STEP_SUMMARY"
+        run: |
+          node outils/scripts/mise-en-production.mjs jours-figes prod/apps/jump/public/levels cible/apps/jump/public/levels
+          node outils/scripts/base-migree.mjs cible prod --resume "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: jours-figes
