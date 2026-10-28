@@ -225,8 +225,12 @@
   .accueil__titre {
     font-size: 48px;
   }
+  /* Lot 53 : sur iPhone la pastille « Sur l'écran d'accueil » s'ajoute au bouton plein écran de la barre (+ 8 px de marge) : on resserre la barre pour que « JOUER » reste dans l'écran à 844 × 390. */
   .accueil__barre {
-    margin-bottom: 6px;
+    margin-bottom: 2px;
+  }
+  .accueil__barre .dj-barre-jeu__droite {
+    margin: 1px 0 2px;
   }
   .etiquette--accueil {
     padding: 10px 12px;

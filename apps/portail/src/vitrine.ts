@@ -126,11 +126,13 @@ function cadreSurScene(t: T, jeu: Jeu, jour: number): HTMLElement {
 function surIphone<T>(construire: () => T): T {
   Object.defineProperty(navigator, "userAgent", { value: "iPhone", configurable: true });
   Object.defineProperty(document, "fullscreenEnabled", { value: false, configurable: true });
+  Object.defineProperty(navigator, "maxTouchPoints", { value: 5, configurable: true }); // lot 53 : l'iPhone est reconnu par la fonction (écran tactile, pas de plein écran de page)
   try {
     return construire();
   } finally {
     Reflect.deleteProperty(navigator, "userAgent");
     Reflect.deleteProperty(document, "fullscreenEnabled");
+    Reflect.deleteProperty(navigator, "maxTouchPoints");
   }
 }
 
@@ -157,8 +159,25 @@ function pleinEcran(t: T, jour: number): HTMLElement[] {
   const memoire = new Map<string, string>();
   const stockage = { getItem: (k: string) => memoire.get(k) ?? null, setItem: (k: string, v: string) => void memoire.set(k, v) };
   const astuce = surIphone(() => astuceIphone({ textes: () => ({ astuce: t.t("pleinEcran.iphone"), fermer: t.t("pleinEcran.iphone.fermer") }), stockage }));
+  // Lot 53 : l'aide que le bouton ouvre sur iPhone, et « Retrouver mon profil » (le premier lancement de l'application ajoutée à l'écran d'accueil) : deux écrans en
+  // surimpression, chargés à la demande ; ici le profil « trouvé » est fictif (rien ne part sur le réseau, rien n'est adopté).
+  const ouvrirAide = bouton({ texte: t.t("vitrine.pleinEcran.aide"), variante: "secondaire", onClick: () => void import("@cdj/ui/src/aideIphone").then((m) => m.aidePleinEcran()) });
+  const ouvrirRetrouver = bouton({
+    texte: t.t("vitrine.pleinEcran.retrouver"),
+    variante: "secondaire",
+    onClick: () =>
+      void import("@cdj/ui/src/retrouver").then((m) =>
+        m.retrouverMonProfil({
+          erreur: () => null,
+          verifier: async (saisi) => (saisi.trim() ? { ok: true, pseudo: "Nathan", jours: 12, adopter: () => true } : { ok: false, erreur: "vide" }),
+          onPasser: () => undefined,
+          onRetrouve: () => undefined,
+        }),
+      ),
+  });
   return [
     el("div", { classe: "vitrine-ligne" }, mettre(false, "dj-plein-ecran--barre"), mettre(true, "dj-plein-ecran--barre")),
+    el("div", { classe: "vitrine-ligne" }, ouvrirAide, ouvrirRetrouver),
     el("div", { classe: "vitrine-asphalte dj-sombre vitrine-ligne" }, mettre(false, "plaque-vitrine"), mettre(true, "plaque-vitrine")),
     barreJeu(t, { href: "../", jour, numero: 12, pleinEcran: true }),
     // Lot G1 : le bouton fantôme (« passer au fantôme suivant »), seul et à côté du plein écran, sur crème et sur asphalte.

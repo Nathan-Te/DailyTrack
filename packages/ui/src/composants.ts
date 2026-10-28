@@ -3,7 +3,7 @@ import { el, svg } from "./dom";
 import { formatDateCourte, formatNumeroJour, majuscule } from "./formats";
 import { LANGUES, type Langue, type Traducteur } from "./i18n";
 import { icone } from "./icones";
-import { astuceIphoneAPropos, basculerPleinEcran, pleinEcranActif, pleinEcranPossible, surChangementPleinEcran } from "./pleinEcran";
+import { astuceIphoneAPropos, basculerPleinEcran, pleinEcranActif, pleinEcranBoutonVisible, pleinEcranParEcranAccueil, reglagesAideIphone, surChangementPleinEcran } from "./pleinEcran";
 
 // Les composants de base de la charte « Cartouches » (lot I1) : des fonctions qui construisent des éléments du DOM portant les classes de
 // `composants.css` (états : survol, appui qui s'enfonce, focus, désactivé). Aucune couleur, police ni chaîne d'interface en dur : les styles
@@ -243,6 +243,9 @@ export interface OptionsBoutonPleinEcran {
   classe?: string | readonly (string | false | null | undefined)[];
   /** Un bouton à texte (la pause) au lieu de l'icône seule : le nom lu est alors le texte écrit, l'habillage celui de `classe`. */
   texte?: boolean;
+  /** Lot 53 : sur iPhone le bouton ouvre l'aide (pas de plein écran de page) ; appelé juste avant (en partie : le jeu se met en pause), `onFermer` à la fermeture de l'aide. */
+  avantAide?: () => void;
+  onFermerAide?: () => void;
 }
 
 /**
@@ -251,11 +254,19 @@ export interface OptionsBoutonPleinEcran {
  */
 export function boutonPleinEcran(o: OptionsBoutonPleinEcran): HTMLButtonElement {
   const b = el("button", { classe: ["dj-plein-ecran", !o.texte && "dj-plein-ecran--icone", ...(typeof o.classe === "string" ? [o.classe] : (o.classe ?? []))], attrs: { type: "button", id: o.id } });
-  b.hidden = !pleinEcranPossible();
   const maj = () => {
-    const actif = pleinEcranActif();
+    // Lot 53 : sur iPhone le bouton est là aussi — il ouvre l'aide « Sur l'écran d'accueil » (ce n'est pas un interrupteur : pas d'`aria-pressed`).
+    const aide = pleinEcranParEcranAccueil();
+    b.hidden = !pleinEcranBoutonVisible();
+    const actif = !aide && pleinEcranActif();
     const nom = o.t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer");
-    b.setAttribute("aria-pressed", String(actif));
+    if (aide) {
+      b.setAttribute("aria-haspopup", "dialog");
+      b.removeAttribute("aria-pressed");
+    } else {
+      b.removeAttribute("aria-haspopup");
+      b.setAttribute("aria-pressed", String(actif));
+    }
     if (o.texte) b.textContent = nom;
     else {
       b.setAttribute("aria-label", nom);
@@ -265,6 +276,17 @@ export function boutonPleinEcran(o: OptionsBoutonPleinEcran): HTMLButtonElement 
   maj();
   b.addEventListener("click", () => {
     b.blur();
+    if (pleinEcranParEcranAccueil()) {
+      o.avantAide?.();
+      // À la demande : l'aide ne pèse rien dans le premier chargement d'un jeu.
+      void (async () => {
+        // Ce que l'application a dit de son profil (`reglerAideIphone`) : lu ici, passé à l'aide (qui n'importe rien du premier chargement).
+        const reglages = reglagesAideIphone();
+        const [m, code] = await Promise.all([import("./aideIphone"), reglages?.code().catch(() => null) ?? null]);
+        m.aidePleinEcran({ lienCode: reglages?.lienCode(), code, onFermer: o.onFermerAide });
+      })();
+      return;
+    }
     void basculerPleinEcran();
   });
   suivre(b, maj);

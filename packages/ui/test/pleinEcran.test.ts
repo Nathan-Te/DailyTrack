@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { astuceIphoneAPropos, basculerPleinEcran, modeApplication, pleinEcranActif, pleinEcranPossible, surChangementPleinEcran } from "../src/pleinEcran";
+import { astuceIphoneAPropos, basculerPleinEcran, modeApplication, pleinEcranActif, pleinEcranBoutonVisible, pleinEcranParEcranAccueil, pleinEcranPossible, surChangementPleinEcran } from "../src/pleinEcran";
 
 // Lot I7 : la seule logique de plein écran de la plateforme, essayée sur des navigateurs fictifs (la page est remplacée par `vi.stubGlobal` : rien de réel).
 
 interface Options {
   enabled?: boolean;
-  standalone?: "media";
+  standalone?: "media" | "ios";
+  /** Un écran tactile (`pointer: coarse`) : l'iPhone. */
+  tactile?: boolean;
   ua?: string;
   verrou?: "ok" | "refuse" | "absent";
   requete?: "ok" | "refuse";
@@ -43,8 +45,8 @@ function navigateur(o: Options = {}) {
             },
           },
   });
-  vi.stubGlobal("matchMedia", (q: string) => ({ matches: o.standalone === "media" && q === "(display-mode: standalone)" }));
-  vi.stubGlobal("navigator", { userAgent: o.ua ?? "Mozilla/5.0 (Linux; Android 14)" });
+  vi.stubGlobal("matchMedia", (q: string) => ({ matches: (o.standalone === "media" && q === "(display-mode: standalone)") || (!!o.tactile && q === "(pointer: coarse)") }));
+  vi.stubGlobal("navigator", { userAgent: o.ua ?? "Mozilla/5.0 (Linux; Android 14)", maxTouchPoints: o.tactile ? 5 : 0, ...(o.standalone === "ios" ? { standalone: true } : {}) });
   return { journal, ecouteurs };
 }
 
@@ -118,18 +120,33 @@ describe("basculerPleinEcran", () => {
 });
 
 describe("iPhone", () => {
-  it("l'astuce n'a lieu d'être que sur un iPhone sans plein écran, hors du mode application", () => {
-    navigateur({ ua: IPHONE, enabled: false });
+  it("l'astuce et l'aide ont lieu d'être sur un écran tactile sans plein écran de page, hors du mode application — détecté par la fonction, pas par le nom", () => {
+    navigateur({ enabled: false, tactile: true }); // pas d'agent d'iPhone : la fonction seule décide
     expect(astuceIphoneAPropos()).toBe(true);
-    navigateur({ ua: IPHONE, enabled: false, standalone: "media" });
+    expect(pleinEcranParEcranAccueil()).toBe(true);
+    navigateur({ ua: IPHONE, enabled: false, tactile: true, standalone: "media" });
+    expect(astuceIphoneAPropos()).toBe(false);
+    navigateur({ ua: IPHONE, enabled: false, tactile: true, standalone: "ios" }); // Safari : `navigator.standalone`
     expect(astuceIphoneAPropos()).toBe(false);
     navigateur({ enabled: false }); // un ordinateur sans plein écran n'a rien à apprendre de l'écran d'accueil
     expect(astuceIphoneAPropos()).toBe(false);
-    navigateur({ ua: IPHONE, enabled: true }); // un iPhone (futur) qui sait le faire a le bouton
+    navigateur({ ua: IPHONE, enabled: true, tactile: true }); // un appareil qui sait le faire (iPad, Android) a le vrai plein écran
     expect(astuceIphoneAPropos()).toBe(false);
   });
-  it("mode application : display-mode standalone", () => {
+  it("le bouton « Plein écran » est montré s'il bascule le plein écran ou s'il ouvre l'aide ; pas en mode application, pas sur un ordinateur sans API", () => {
+    navigateur({ tactile: true });
+    expect([pleinEcranPossible(), pleinEcranBoutonVisible()]).toEqual([true, true]);
+    navigateur({ enabled: false, tactile: true });
+    expect([pleinEcranPossible(), pleinEcranBoutonVisible()]).toEqual([false, true]);
+    navigateur({ enabled: false, tactile: true, standalone: "media" });
+    expect(pleinEcranBoutonVisible()).toBe(false);
+    navigateur({ enabled: false });
+    expect(pleinEcranBoutonVisible()).toBe(false);
+  });
+  it("mode application : display-mode standalone, ou navigator.standalone (Safari)", () => {
     navigateur({ standalone: "media" });
+    expect(modeApplication()).toBe(true);
+    navigateur({ standalone: "ios" });
     expect(modeApplication()).toBe(true);
     navigateur();
     expect(modeApplication()).toBe(false);

@@ -1,3 +1,12 @@
+/* Lot 53 : les marges de sécurité (encoche, îlot, barre d'accueil de l'iPhone — surtout en mode application, où la barre d'état est translucide et la page passe dessous,
+   `viewport-fit=cover`) : **tout ce qui touche un bord de l'écran les respecte** (`max(<marge du jeu>, var(--sure-…))`), en portrait comme en paysage. Les commandes tactiles les
+   lisent par la sonde de `touchUi.ts`, les écrans posés sur la scène par le padding du cadre (`@cdj/ui`). */
+:root {
+  --sure-haut: env(safe-area-inset-top, 0px);
+  --sure-droite: env(safe-area-inset-right, 0px);
+  --sure-bas: env(safe-area-inset-bottom, 0px);
+  --sure-gauche: env(safe-area-inset-left, 0px);
+}
 /* Surimpressions de course de DailyTrack (lot I4) — variante A « Plaques en haut » (charte § 9 ; maquettes track-hud.html et track-hud-paysage.html) :
    pause à gauche, chronomètre au centre en haut, point de contrôle et écart juste dessous, objectif de médaille à droite ; le bas est laissé aux
    commandes tactiles (tactile.css). Chaque information est sur sa propre plaque asphalte NETTE (bordure encre, ombre décalée sans flou, jamais de
@@ -91,8 +100,8 @@
    quand la rangée toucherait la bande du centre, la caméra passe en tête du groupe de droite (`syncCameraButton`, main.ts). */
 #menu {
   position: fixed;
-  left: 10px;
-  top: 8px;
+  left: max(10px, var(--sure-gauche));
+  top: max(8px, var(--sure-haut));
   z-index: var(--z-menu);
   display: flex;
   gap: 6px;
@@ -152,7 +161,7 @@ body.touch #menu .plaque--action {
 #hud-centre {
   position: fixed;
   left: 50%;
-  top: 8px;
+  top: max(8px, var(--sure-haut));
   z-index: var(--z-hud);
   transform: translateX(-50%);
   display: flex;
@@ -267,7 +276,7 @@ body.en-course #lines {
 #aide {
   position: fixed;
   left: 50%;
-  top: 54px; /* sous les boutons de 44 px du haut (8 + 44 = 52) : aucune largeur de texte ne les touche */
+  top: calc(max(8px, var(--sure-haut)) + 46px); /* sous les boutons de 44 px du haut (8 + 44 = 52) : aucune largeur de texte ne les touche */
   z-index: var(--z-hud);
   transform: translateX(-50%);
   max-width: calc(100vw - 24px);
@@ -310,8 +319,8 @@ body.watch #btn-ghost {
 /* En haut à droite : l'objectif de médaille (pastille et seuil, sans le mot « Objectif ») et le rang du jour en pastille qui ouvre le classement. Le Salon montre son compte à rebours à la place de l'objectif. */
 #hud-droite {
   position: fixed;
-  right: 10px;
-  top: 8px;
+  right: max(10px, var(--sure-droite));
+  top: max(8px, var(--sure-haut));
   z-index: var(--z-hud);
   display: flex;
   align-items: center;
@@ -406,7 +415,7 @@ body.watch #btn-ghost {
   overflow-wrap: anywhere;
 }
 #banner.small {
-  top: 54px;
+  top: calc(max(8px, var(--sure-haut)) + 46px);
   padding: 2px 8px;
   font-family: var(--dj-police-texte);
   font-style: normal;
@@ -419,7 +428,7 @@ body.watch #btn-ghost {
 }
 #freeze {
   left: 50%;
-  top: 54px;
+  top: calc(max(8px, var(--sure-haut)) + 46px);
   transform: translateX(-50%);
   font-weight: 800;
   letter-spacing: 2px;
@@ -433,7 +442,7 @@ body.watch #btn-ghost {
 /* La vitesse : une petite plaque en bas au centre, entre les commandes (aux bords) ; les effets en cours (revêtement, turbo) sous la pause, à gauche. */
 #speed {
   left: 50%;
-  bottom: 8px;
+  bottom: max(8px, var(--sure-bas));
   transform: translateX(-50%);
   padding: 0 8px;
   font-family: var(--track-police);
@@ -453,8 +462,8 @@ body.watch #btn-ghost {
   color: var(--track-asphalte);
 }
 #fx {
-  left: 10px;
-  top: 58px;
+  left: max(10px, var(--sure-gauche));
+  top: calc(max(8px, var(--sure-haut)) + 50px);
   padding: 0 8px;
   font-family: var(--track-police);
   font-style: italic;
@@ -468,14 +477,14 @@ body.watch #btn-ghost {
   color: var(--track-livree-texte);
 }
 #info {
-  left: 16px;
-  bottom: 14px;
+  left: max(16px, var(--sure-gauche));
+  bottom: max(14px, var(--sure-bas));
   max-width: 78vw;
 }
 #helpchip {
   position: fixed;
-  left: 16px;
-  bottom: 14px;
+  left: max(16px, var(--sure-gauche));
+  bottom: max(14px, var(--sure-bas));
   z-index: var(--z-hud);
   min-height: 32px;
   padding: 0 12px;
@@ -492,7 +501,7 @@ body.watch #helpchip {
 }
 #tuned {
   left: 50%;
-  top: 80px;
+  top: calc(max(8px, var(--sure-haut)) + 72px);
   transform: translateX(-50%);
   font-size: var(--dj-taille-12);
   color: var(--dj-ambre);
@@ -554,16 +563,16 @@ body.no-splits #splits {
 /* Portrait (le jeu se joue en paysage : le téléphone qu'on tourne, ou « Jouer quand même ») : les trois boutons du haut prennent la première ligne, la bande passe dessous. */
 @media (orientation: portrait) and (max-width: 700px) {
   #hud-centre {
-    top: 58px;
+    top: calc(max(8px, var(--sure-haut)) + 50px);
   }
   #intro,
   #aide,
   #banner.small,
   #freeze {
-    top: 96px;
+    top: calc(max(8px, var(--sure-haut)) + 88px);
   }
   #fx {
-    top: 96px;
+    top: calc(max(8px, var(--sure-haut)) + 88px);
   }
   #banner {
     top: 30%;

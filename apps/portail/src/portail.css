@@ -9,7 +9,8 @@
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0 auto;
-  padding: var(--dj-espace-6) var(--dj-marge);
+  /* Lot 53 : en mode application (iPhone, barre d'état translucide) rien ne passe sous l'encoche, l'îlot ni la barre d'accueil. */
+  padding: max(var(--dj-espace-6), env(safe-area-inset-top, 0px)) max(var(--dj-marge), env(safe-area-inset-right, 0px)) max(var(--dj-espace-6), env(safe-area-inset-bottom, 0px)) max(var(--dj-marge), env(safe-area-inset-left, 0px));
 }
 /* La date à gauche et (lot I3) « Journée n° 12 » à droite, sur la même ligne, sous un seul trait (maquette portail.html). */
 .portail-date {

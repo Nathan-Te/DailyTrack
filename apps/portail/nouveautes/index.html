@@ -2,11 +2,16 @@
 <html lang="fr" data-precharge-polices>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- Lot 53 : application ajoutée à l'écran d'accueil (iPhone) ; marges de sécurité obligatoires (CLAUDE.md) -->
+    <meta name="mobile-web-app-capable" content="yes" /><!-- i18n-ok -->
+    <meta name="apple-mobile-web-app-capable" content="yes" /><!-- i18n-ok -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /><!-- i18n-ok -->
+    <meta name="apple-mobile-web-app-title" data-t-content="marque.nom" />
     <meta name="theme-color" data-jeton-content="dj-creme" />
     <meta name="description" data-t-content="nouveautes.description" />
     <!-- Lot I6 : aperçu de partage (scripts/site.mjs pose l'origine) ; l'image est celle du portail. -->
-    <meta property="og:type" content="website" /><!-- i18n-ok: valeur technique -->
+    <meta property="og:type" content="website" /><!-- i18n-ok -->
     <meta property="og:site_name" data-t-content="marque.nom" />
     <meta property="og:locale" content="fr_FR" /><!-- i18n-ok: code de langue -->
     <meta property="og:locale:alternate" content="en_GB" /><!-- i18n-ok: code de langue -->
@@ -18,7 +23,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" data-t-content="apercu.image" />
-    <meta name="twitter:card" content="summary_large_image" /><!-- i18n-ok: valeur technique -->
+    <meta name="twitter:card" content="summary_large_image" /><!-- i18n-ok -->
     <link rel="apple-touch-icon" href="/partage/icone-180.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" data-icone-du-jour />

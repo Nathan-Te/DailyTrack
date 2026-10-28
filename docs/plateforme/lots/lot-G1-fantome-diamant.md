@@ -32,13 +32,13 @@ Icône `fantome` au trait dans le socle (`iconeFantome`, `boutonFantome`), 44 px
 - Caché en petit portrait (comme le plein écran) et, pour Track, en spectateur. Centre libre, bande du haut inchangée.
 
 ## 5. Budgets (`docs/plateforme/budgets.md`, « Lot G1 »)
-| | avant (`main`) | après | plafond |
+| | avant (`main`, lot 53 compris) | après (fusion) | plafond |
 |---|---|---|---|
-| Track JS + CSS | 292 223 | 293 122 | 292 624 → **293 648** (+1 024, sur les 2 048 autorisés) |
-| Track JS / hors three.js | 280 564 / 146 907 | 281 356 / 147 699 | 281 224 → **282 248** / 147 500 → **148 524** |
-| Track anglais · fil des circuits | 7 935 · 29 422 | 7 991 · 29 810 | 8 000 · 30 000 (inchangés) |
-| Jump JS + CSS | 364 021 | 366 292 | 378 490 (inchangé, marge 12 198) |
-| Portail, premier chargement | 30 646 | 30 710 | 30 720 (inchangé, marge 10) |
+| Track JS + CSS | 293 581 | 294 480 | 294 000 → **295 024** (+1 024, sur les 2 048 autorisés) |
+| Track JS / hors three.js | 281 823 / 148 166 | 282 610 / 148 953 | 282 200 → **283 224** / 148 500 → **149 524** |
+| Track anglais · fil des circuits | 7 935 · 29 422 | 7 996 · 29 810 | 8 000 · 30 000 (inchangés) |
+| Jump JS + CSS | non remesuré (364 021 avant le lot 53) | 372 676 | 378 490 (inchangé, marge 5 814) |
+| Portail, premier chargement | 32 210 | 32 281 | 32 768 (inchangé, marge 487) |
 
 Les textes `fantome.*`, l'icône et le bouton sont **hors** du portail (icône à part de `TRACES`, bouton dans `fantome.ts`, textes dans les catalogues des jeux) : dans le socle commun, le portail dépassait son plafond (30 799). Track n'a pas eu besoin des 2 048 o entiers.
 

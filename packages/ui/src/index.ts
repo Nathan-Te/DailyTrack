@@ -12,6 +12,7 @@ export * from "./icones";
 export * from "./composants";
 export * from "./fantome";
 export * from "./pleinEcran";
+export type { ReglagesAideIphone } from "./pleinEcran";
 export * from "./cadre";
 export * from "./mentions";
 export * from "./dialogue";

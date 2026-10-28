@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1117 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1145 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -146,7 +146,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `nouveauDepart.message` | Nouveau départ : tout le monde repart de zéro. Bonne chance ! | Fresh start: everyone begins from zero. Good luck! |
 | `nouveauDepart.fermer` | Fermer ce message | Dismiss this message |
 
-### pleinEcran (`pleinEcran.*`, `packages/ui/src/catalogue.ts`)
+### pleinEcran (`pleinEcran.*`, `packages/ui/src/catalogue.ts`, `packages/ui/src/catalogue.iphone.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -154,6 +154,16 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pleinEcran.quitter` | Quitter le plein écran | Exit full screen |
 | `pleinEcran.iphone` | Pour jouer en plein écran : Partager › Sur l'écran d'accueil | To play full screen: Share › Add to Home Screen |
 | `pleinEcran.iphone.fermer` | Fermer cette astuce | Dismiss this tip |
+| `pleinEcran.aide.titre` | Jouer en plein écran | Play full screen |
+| `pleinEcran.aide.avant` | Pour jouer en plein écran : touche | To play full screen: tap |
+| `pleinEcran.aide.partager` | Partager | Share |
+| `pleinEcran.aide.apres` | puis « Sur l'écran d'accueil ». | then “Add to Home Screen”. |
+| `pleinEcran.aide.profil` | Ton profil se retrouve avec ton code de transfert. | You get your profile back with your transfer code. |
+| `pleinEcran.aide.copier` | Copier mon code | Copy my code |
+| `pleinEcran.aide.copie` | Code copié : colle-le dans l'application. | Code copied: paste it in the app. |
+| `pleinEcran.aide.pasDeCopie` | Copie impossible ici : ouvre ton profil pour copier ton code. | Can't copy here: open your profile to copy your code. |
+| `pleinEcran.aide.lien` | Voir mon code de transfert | See my transfer code |
+| `pleinEcran.aide.fermer` | Fermer | Close |
 
 ### Profil (`profil.*`, `packages/ui/src/catalogue.ts`)
 
@@ -172,6 +182,27 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `jump.replique.glace` | Ça glisse. Les pics, eux, ne bougent pas. | It's slippery. The spikes, sadly, aren't. |
 | `jump.replique.nuit` | Les plateformes clignotent. Toi, tu ne verras rien venir. | The platforms blink. You won't see it coming. |
 | `jump.replique.neon` | Une plateforme sur deux. Devine laquelle. | Every other platform is there. Guess which. |
+
+### retrouver (`retrouver.*`, `packages/ui/src/catalogue.iphone.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `retrouver.titre` | Retrouver mon profil | Get my profile back |
+| `retrouver.aide` | Cette application a son propre stockage : elle ne connaît pas encore ton profil. Dans Safari, copie ton code de transfert (Du Jour › Profil › Copier mon code), puis colle-le ici. | This app has its own storage: it doesn't know your profile yet. In Safari, copy your transfer code (Du Jour › Profile › Copy my code), then paste it here. |
+| `retrouver.coller` | Coller mon code | Paste my code |
+| `retrouver.champ` | Ou colle ton code ici | Or paste your code here |
+| `retrouver.verifier` | Vérifier | Check |
+| `retrouver.verification` | Vérification… | Checking… |
+| `retrouver.vide` | Colle d'abord ton code de transfert. | Paste your transfer code first. |
+| `retrouver.illisible` | Ce n'est pas un code de transfert valide : copie-le de nouveau, en entier. | That isn't a valid transfer code: copy it again, in full. |
+| `retrouver.deja` | C'est déjà le profil de cet appareil. | That is already this device's profile. |
+| `retrouver.presseVide` | Le presse-papiers est vide ou refusé : colle ton code dans le champ. | The clipboard is empty or was refused: paste your code in the field. |
+| `retrouver.horsLigne` | Le serveur est injoignable : réessaie dans un instant. | The server can't be reached: try again in a moment. |
+| `retrouver.trouve` | one : Profil trouvé : {nom}, {n} jour fini. · other : Profil trouvé : {nom}, {n} jours finis. | one : Profile found: {nom}, {n} day done. · other : Profile found: {nom}, {n} days done. |
+| `retrouver.confirmer` | Reprendre ce profil | Use this profile |
+| `retrouver.annuler` | Ce n'est pas le mien | That's not mine |
+| `retrouver.echec` | Impossible d'enregistrer le profil sur cet appareil. | Couldn't save the profile on this device. |
+| `retrouver.passer` | Commencer sans profil | Start without a profile |
 
 ## Portail Du Jour (accueil, profil commun, classement du jour, vitrine et démonstration de la recette)
 
@@ -348,6 +379,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.section.marque` | Logo et barres | Logo and bars |
 | `vitrine.section.boutons` | Boutons | Buttons |
 | `vitrine.section.pleinEcran` | Plein écran et astuce de l'iPhone | Full screen and iPhone tip |
+| `vitrine.pleinEcran.aide` | Ouvrir l'aide du plein écran | Open the full screen help |
+| `vitrine.pleinEcran.retrouver` | Ouvrir « Retrouver mon profil » | Open “Get my profile back” |
 | `vitrine.section.bandeau` | Message en direct | Live message |
 | `vitrine.bandeau.information` | Maintenance ce soir à 22 h : le classement sera figé dix minutes. | Maintenance tonight at 10 pm: the leaderboard will freeze for ten minutes. |
 | `vitrine.bandeau.important` | Le serveur redémarre dans quelques instants. | The server restarts in a few moments. |

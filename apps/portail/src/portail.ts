@@ -14,6 +14,7 @@ import { NAME_KEY, appliquerGeneration, ecrireLangue, generationDeReponse, lireL
 import {
   CATALOGUE_COMMUN,
   afficheur,
+  astuceIphone,
   avisNouveauDepart,
   bandeauAnnonce,
   barrePortail,
@@ -30,6 +31,7 @@ import {
   formatTemps,
   icone,
   medaille,
+  modeApplication,
   traducteur,
   tuile,
   type TypeMedaille,
@@ -264,6 +266,8 @@ function rendre(): void {
     el("h1", { classe: "dj-cache", texte: t.t("portail.titre") }),
     barrePortail(t, { langue, onLangue: changerLangue, pseudo: identite.exists ? identite.name : null, profil: "profil/" }),
     ...(nouveauDepart ? [avisNouveauDepart(t, { onFermer: () => (nouveauDepart = false) })] : []),
+    // Lot 53 : sur iPhone, hors du mode application, la ligne « Partager › Sur l'écran d'accueil » (une seule fois : fermée, elle ne revient pas).
+    ...[stockage ? astuceIphone({ textes: () => ({ astuce: t.t("pleinEcran.iphone"), fermer: t.t("pleinEcran.iphone.fermer") }), stockage }) : null].filter((e): e is HTMLElement => e !== null),
     el(
       "div",
       { classe: "portail-date" },
@@ -406,6 +410,22 @@ function changerLangue(l: Langue): void {
   document.querySelector<HTMLElement>(`.dj-choix-langue [data-langue="${l}"]`)?.focus();
 }
 
+/**
+ * Lot 53 : l'application ajoutée à l'écran d'accueil (iPhone) a son propre stockage : au premier lancement, sans profil, « Retrouver mon profil » (code de transfert collé).
+ * Le même écran, par `@cdj/ui` et `@cdj/profile`, dans Track et Jump ; **à la demande** (`retrouverPortail.ts` : rien dans le premier chargement du portail).
+ */
+function proposerRetrouver(): void {
+  if (!stockage || !modeApplication()) return;
+  const t = traduire(langue);
+  void import("./retrouverPortail").then((m) =>
+    m.proposerRetrouver(baseApi(), stockage, (code) => {
+      const cle = `erreur.${code}` as Parameters<typeof t.t>[0];
+      const texte = t.t(cle);
+      return texte !== cle ? texte : null;
+    }),
+  );
+}
+
 async function demarrer(): Promise<void> {
   // Recette et aperçus seulement : `/?demo=joueur` installe le joueur de démonstration (absent de la construction de production).
   if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).get("demo") === "joueur") {
@@ -415,6 +435,7 @@ async function demarrer(): Promise<void> {
   }
   rendre();
   battre();
+  proposerRetrouver();
   await charger(null);
 }
 

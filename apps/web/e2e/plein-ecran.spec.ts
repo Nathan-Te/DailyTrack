@@ -225,8 +225,8 @@ test("caméra : chaque appui passe à la caméra suivante, comme la touche C ; l
   await context.close();
 });
 
-test("sans API plein écran ou en mode application : aucun bouton plein écran (ni en course, ni à l'accueil, ni dans la pause) ; la caméra reste", async ({ browser }) => {
-  for (const cache of [sansPleinEcran, commeApplication]) {
+test("en mode application : aucun bouton plein écran (ni en course, ni à l'accueil, ni dans la pause) ; la caméra reste (lot 53 : sans API, sur iPhone, le bouton ouvre l'aide : e2e/iphone.spec.ts)", async ({ browser }) => {
+  for (const cache of [commeApplication]) {
     const context = await telephone(browser, { width: 844, height: 390 });
     await cache(context);
     const page = await enCourse(context);
@@ -305,7 +305,7 @@ for (const [langue, locale, ligne, fermer] of [
   // Lot R13 : le français seulement (l'anglais des mêmes clés : packages/ui/test/catalogues.test.ts et langue.spec.ts).
   ["fr", "fr-FR", "Pour jouer en plein écran : Partager › Sur l'écran d'accueil", "Fermer cette astuce"],
 ] as const) {
-  test(`iPhone (${langue}) : pas de bouton plein écran ; la ligne « Partager › Sur l'écran d'accueil » s'affiche une fois, se ferme et ne revient pas`, async ({ browser }) => {
+  test(`iPhone (${langue}) : le bouton plein écran ouvre l'aide (lot 53) ; la ligne « Partager › Sur l'écran d'accueil » s'affiche une fois, se ferme et ne revient pas`, async ({ browser }) => {
     const context = await newClockedContext(browser, { viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, locale, userAgent: IPHONE_UA });
     await context.addInitScript(() => localStorage.setItem("cdj:howto", "1"));
     await sansPleinEcran(context);
@@ -313,7 +313,11 @@ for (const [langue, locale, ligne, fermer] of [
     await page.goto("/?home=1&debug&api=demo");
     await page.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
     await expect(page.locator("#home")).toBeVisible();
-    await expect(page.locator("#home .dj-plein-ecran")).toBeHidden();
+    const bouton = page.locator("#home .dj-plein-ecran");
+    await expect(bouton).toBeVisible(); // lot 53 : il ouvre l'aide « Sur l'écran d'accueil » (le détail : e2e/iphone.spec.ts)
+    await bouton.click();
+    await expect(page.getByRole("dialog", { name: "Jouer en plein écran" })).toBeVisible();
+    await page.keyboard.press("Escape");
     const astuce = page.locator("#home .dj-astuce");
     await expect(astuce).toBeVisible();
     await expect(astuce).toContainText(ligne);

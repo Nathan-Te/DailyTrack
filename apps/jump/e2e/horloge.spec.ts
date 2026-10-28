@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
-import { dailyLevel } from "@cdj/jump-sim";
+import { ATTEMPT_DEAD, DEFAULT_JUMP_PARAMS, INPUT_RIGHT, dailyLevel, initialAttempt, stepAttempt } from "@cdj/jump-sim";
 import { FROZEN_DATES, generatedDay, pageLevel } from "./jours";
 import { hasWebGL } from "./phone";
 
@@ -148,8 +148,23 @@ const jump27 = (page: Page) =>
     return { phase: j.phase, simVersion: j.simVersion, pret: { ...j.pret }, attempt: { ...j.attempt, raw: undefined }, x: j.player.x };
   });
 
-async function open27(page: Page, extra = ""): Promise<boolean> {
-  await page.goto(`./?seed=${generatedDay()}&debug&accueil=0${extra}`);
+/**
+ * Le premier jour généré où courir à droite, sans sauter, tue avant le premier point de passage (le niveau de chaque jour est différent : le lendemain du
+ * dernier jour figé n'a pas toujours un danger sur le chemin droit ; les jours figés par la mise en production déplacent ce jour-là).
+ */
+function dayWhereRunningRightDies(): string {
+  let day = parseDay(generatedDay())!;
+  for (let k = 0; k < 30; k++, day++) {
+    const { level } = dailyLevel(day);
+    let s = initialAttempt(level);
+    for (let n = 0; n < 3000 && s.status !== ATTEMPT_DEAD; n++) s = stepAttempt(s, INPUT_RIGHT, level, DEFAULT_JUMP_PARAMS);
+    if (s.status === ATTEMPT_DEAD && s.checkpoint < 0) return dailyLevel(day).date;
+  }
+  throw new Error("aucun jour généré où courir à droite tue avant le premier point de passage");
+}
+
+async function open27(page: Page, extra = "", date = generatedDay()): Promise<boolean> {
+  await page.goto(`./?seed=${date}&debug&accueil=0${extra}`);
   if (!(await hasWebGL(page))) return false;
   await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: J27 }).__jump?.phase ?? ""));
   await page.addStyleTag({ content: "#debug, #stamp, #tuned { display: none !important; }" });
@@ -194,7 +209,7 @@ test("le décompte : 3, 2, 1, puis « Partez ! » ; 1,5 s ; au premier départ e
 });
 
 test("mort avant le premier point de passage : l'essai recommence à zéro tout de suite, sans décompte ; la mort est la sienne, l'essai d'avant est clos", async ({ page }) => {
-  test.skip(!(await open27(page)), "pas de WebGL dans ce navigateur");
+  test.skip(!(await open27(page, "", dayWhereRunningRightDies())), "pas de WebGL dans ce navigateur");
   const r = await page.evaluate(() => {
     const j = (window as unknown as { __jump: J27 }).__jump;
     j.manual(true);
