@@ -47,7 +47,7 @@ test("sans connexion rien ne s'ouvre › connexion au panneau et retour › plan
   await expect(lien).toHaveAttribute("href", "../../admin/?retour=%2Ftrack%2Fadmin%2F");
   expect(appelsAdmin).toEqual(["GET /api/admin/session"]);
   expect(await page.evaluate(() => localStorage.getItem("cdj:admin-token"))).toBeNull();
-  await auditAxe(page);
+  await auditAxe(page, "track-admin-porte");
 
   // L'ancien jeton gardé dans le navigateur n'ouvre rien et s'efface.
   await page.evaluate(() => localStorage.setItem("cdj:admin-token", "e2e-admin-token-0123456789"));
@@ -70,7 +70,7 @@ test("sans connexion rien ne s'ouvre › connexion au panneau et retour › plan
   await expect(page.locator("#conn-state")).toContainText("session du panneau d'administration");
   await expect(page.locator("#planning .card")).toHaveCount(14);
   await expect(page.locator("#token-form")).toHaveCount(0); // plus de jeton à saisir
-  await auditAxe(page);
+  await auditAxe(page, "track-admin-outils");
 
   // --- Remplacer un circuit à venir, puis revenir à l'original (écrit par la session : `X-Cdj-Admin` et l'origine du site) -----------
   const date = formatDay(TODAY + 2);
