@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="fr" data-precharge-polices>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="theme-color" data-jeton-content="dj-creme" />
+    <link rel="icon" data-icone-du-jour />
+    <title>Administration · Du Jour</title>
+  </head>
+  <body class="admin">
+    <!-- Lot N1 : le panneau d'administration de la plateforme (connexion avec le compte Google de l'éditeur, tableau de bord, joueurs, journal). Page privée,
+         en français seulement (hors des catalogues des joueurs), jamais indexée ; construite par src/admin.ts. La seule page du site qui charge un script
+         extérieur (Google Identity Services, autorisé par la CSP de /admin/ dans firebase.json) — chargé par admin.ts, jamais écrit ici. Ni script ni style en ligne. -->
+    <div id="admin" class="admin-racine"></div>
+    <noscript>
+      <p class="admin-sans-script">Le panneau d'administration a besoin de JavaScript.</p>
+    </noscript>
+    <script type="module" src="../src/admin.ts"></script>
+  </body>
+</html>

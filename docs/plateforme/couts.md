@@ -129,6 +129,64 @@ Le portail rend la **même adresse** en deux versions (publique et personnelle) 
 ## 7. La génération de données (lot R8)
 - Chaque instance du serveur lit `meta.generation` **au plus toutes les 30 s** (`GENERATION_TTL_MS`) : **une ligne lue**, aucune écriture, par instance et par fenêtre de 30 s d'activité (au pire 120 lignes par heure et par instance, 2 instances au plus) ; rien ne s'ajoute au nombre de requêtes de Cloud Run ni au joueur type de `platformBudget.ts`. La remise à zéro elle-même (une fois, le jour du partage) lit chaque table pour la compter (une ligne lue par table) et efface ce qu'elle contient : le coût d'un `DELETE` est proportionnel au nombre de lignes de la table (les joueurs de quelques jours : négligeable devant l'offre gratuite).
 
+## 8. Le panneau d'administration (lot N1)
+
+Un seul utilisateur (l'éditeur), quelques consultations par jour : le panneau ne pèse rien sur l'offre gratuite **s'il ne lit jamais une table entière** (testé : `admin.test.ts`, plans `EXPLAIN QUERY PLAN`). Mesure : `npm run measure:admin -w @cdj/api` (base libSQL fichier, 14 jours d'historique).
+
+**Réserve honnête : ce sont des *estimations* de lignes lues d'après les plans de requête, pas le « rows read » de Turso** (pas de `sqld` dans la session qui a fait le lot : à refaire sur la recette, `npm run measure:admin` contre `sqld`, avant de s'y fier). Les instructions, lignes rendues, durées et tailles sont mesurées.
+
+### 100 joueurs par jour et par jeu (14 jours d'historique)
+
+| appel | instructions | lignes rendues | lignes lues (estimées d'après les plans) | durée | réponse |
+|---|---|---|---|---|---|
+| tableau de bord, premier appel (calcul) | 10 | 21 | 3 105 | 8.3 ms | 1.0 ko |
+| tableau de bord, dans la minute (mémoire) | 2 | 1 | 0 | 1.3 ms | 1.0 ko |
+| tableau de bord, recalculé une minute plus tard (jours fermés gardés en mémoire) | 11 | 9 | 705 | 2.4 ms | 1.0 ko |
+| joueurs : premier passage après la mise à jour (références calculées, une fois) | 204 | 252 | 0 | 30.8 ms | 4.7 ko |
+| joueurs : la première page (sans critère) | 3 | 52 | 0 | 2.1 ms | 4.7 ko |
+| joueurs : début de pseudo | 3 | 12 | 11 | 1.4 ms | 1.1 ko |
+| joueurs : début de référence | 3 | 2 | 1 | 1.3 ms | 0.1 ko |
+| fiche d'un joueur (14 jours dans chaque jeu) | 37 | 47 | 1 415 | 5.6 ms | 2.3 ko |
+| action : masquer | 12 | 3 | 1 | 8.7 ms | 0.0 ko |
+| journal (200 dernières actions) | 2 | 2 | 0 | 1.2 ms | 0.2 ko |
+
+### 1 000 joueurs par jour et par jeu (14 jours d'historique)
+
+| appel | instructions | lignes rendues | lignes lues (estimées d'après les plans) | durée | réponse |
+|---|---|---|---|---|---|
+| tableau de bord, premier appel (calcul) | 10 | 22 | 31 050 | 23.5 ms | 1.2 ko |
+| tableau de bord, dans la minute (mémoire) | 2 | 2 | 0 | 1.4 ms | 1.2 ko |
+| tableau de bord, recalculé une minute plus tard (jours fermés gardés en mémoire) | 11 | 10 | 7 050 | 5.1 ms | 1.2 ko |
+| joueurs : premier passage après la mise à jour (références calculées, une fois) | 2013 | 2052 | 0 | 307.9 ms | 4.8 ko |
+| joueurs : la première page (sans critère) | 3 | 52 | 0 | 1.6 ms | 4.8 ko |
+| joueurs : début de pseudo | 3 | 52 | 111 | 4.8 ms | 4.8 ko |
+| joueurs : début de référence | 3 | 2 | 1 | 1 ms | 0.1 ko |
+| fiche d'un joueur (14 jours dans chaque jeu) | 37 | 47 | 14 015 | 6.9 ms | 2.3 ko |
+| action : masquer | 12 | 3 | 1 | 18.7 ms | 0.0 ko |
+| journal (200 dernières actions) | 2 | 3 | 0 | 1.1 ms | 0.3 ko |
+
+### 10 000 joueurs par jour et par jeu (14 jours d'historique)
+
+| appel | instructions | lignes rendues | lignes lues (estimées d'après les plans) | durée | réponse |
+|---|---|---|---|---|---|
+| tableau de bord, premier appel (calcul) | 10 | 23 | 310 500 | 209 ms | 1.4 ko |
+| tableau de bord, dans la minute (mémoire) | 2 | 3 | 0 | 1.6 ms | 1.4 ko |
+| tableau de bord, recalculé une minute plus tard (jours fermés gardés en mémoire) | 11 | 11 | 70 500 | 32.4 ms | 1.4 ko |
+| joueurs : premier passage après la mise à jour (références calculées, une fois) | 20103 | 20052 | 0 | 3193 ms | 4.8 ko |
+| joueurs : la première page (sans critère) | 3 | 52 | 0 | 5.8 ms | 4.8 ko |
+| joueurs : début de pseudo | 3 | 52 | 1 111 | 1.4 ms | 4.8 ko |
+| joueurs : début de référence | 3 | 2 | 1 | 1 ms | 0.1 ko |
+| fiche d'un joueur (14 jours dans chaque jeu) | 37 | 47 | 140 015 | 28.1 ms | 2.3 ko |
+| action : masquer | 12 | 3 | 1 | 111.9 ms | 0.0 ko |
+| journal (200 dernières actions) | 2 | 4 | 0 | 1.1 ms | 0.5 ko |
+
+Lecture :
+- **Tableau de bord** : calculé au plus une fois par minute et par instance ; le premier calcul lit ≈ 3 lignes par joueur du jour et par jour d'historique, le suivant (jours fermés gardés en mémoire) seulement aujourd'hui et hier. Hors des consultations, **0 ligne**.
+- **Écarter les masqués ne coûte rien** : les index `results_by_visible` / `jump_results_by_visible` portent `hidden` (les classements des jeux ne lisent pas plus de lignes qu'avant).
+- **Fiche d'un joueur : le poste cher** (≈ 14 lignes par jour joué et par millier de classés, à cause du rang de chaque résultat) — acceptable pour une consultation de l'éditeur (140 000 lignes à 10 000 joueurs par jour et par jeu ; à comparer au plafond de lignes lues de l'offre Turso, § 2), à surveiller si la fiche était un jour ouverte en boucle ; le rang gardé d'un jour fermé (`final_rank`) est déjà réutilisé.
+- **Premier passage après la mise à jour** : le calcul des références publiques des joueurs d'avant (`players.ref`) se fait **une fois** (≈ 2 instructions par joueur) ; ensuite 0.
+- Aucune écriture hors des actions de l'éditeur, de la session (1 ligne par connexion) et du journal des erreurs (borné à 60 écritures par minute et par instance).
+
 ## Checklist (une fois)
 - ☐ Budget `plateforme-5-euros` : 50 / 90 / 100 % réels + 100 % prévu, e-mail.
 - ☐ Turso : alerte d'usage activée, ou rappel « Usage chaque lundi » dans ton agenda.

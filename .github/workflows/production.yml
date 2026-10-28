@@ -506,6 +506,8 @@ jobs:
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
       registre_track: registre-track
+      # Lot N1 : l'étiquette prod-… (calculée au début du run) que le tableau de bord du panneau d'administration montre comme « version en production ».
+      etiquette: ${{ needs.verifier.outputs.etiquette }}
       # Le jour de bascule se re-vérifie juste avant de déployer (le run a pu durer : CI, répétition, sauvegarde).
       bascule_le: ${{ needs.verifier.outputs.bascule_le }}
     secrets: inherit

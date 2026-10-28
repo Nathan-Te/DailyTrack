@@ -31,6 +31,7 @@ import {
   ratiosOf,
   replayRace,
   replayTicks,
+  resumeRegistreTrack,
   themeByName,
   thresholdsOf,
   themeForDay,
@@ -49,7 +50,7 @@ import {
 import { inputsHash, trackInputs } from "./copies";
 import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
-import type { GameDefinition, GameInstance, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
+import type { AdminDuJeu, GameDefinition, GameInstance, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { DEFAULT_SALON_LIMITS, createSalon, salonSessionMs, type SalonLimits } from "./salon";
 
 // DailyTrack (`cdj`) au registre des jeux (lot P0 de la plateforme) : le classement du jour (lot 5), le planning et l'admin (lot 14), le Salon
@@ -173,6 +174,11 @@ export const CDJ_SCHEMA: string[] = [
 export interface CdjOptions {
   /** Jeton de l'admin (lot 14, `ADMIN_TOKEN`) ; absent ou trop court : l'admin est désactivé (les routes n'existent pas). */
   adminToken?: string;
+  /**
+   * Lot N1 : la requête porte-t-elle une session valide du panneau d'administration de la plateforme (cookie `__session`, `admin.ts`) ? Les outils de DailyTrack
+   * (`/track/admin/`) acceptent la session **ou** le jeton, le temps de la transition ; retirer le jeton fera l'objet d'un autre lot.
+   */
+  adminSession?: (req: Request) => Promise<boolean>;
   /** Durée d'une session du Salon en minutes (`SALON_MINUTES` : tests, essais locaux et recette seulement). */
   salonMinutes?: number;
   /** Limites de débit du Salon (voir `DEFAULT_SALON_LIMITS`). */
@@ -373,14 +379,14 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
 
   async function rankOf(day: number, ms: number, submittedAt: number): Promise<number> {
     const row = await db.first<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM results WHERE day = ? AND (ms < ? OR (ms = ? AND submitted_at < ?))",
+      "SELECT COUNT(*) AS n FROM results WHERE day = ? AND hidden = 0 AND (ms < ? OR (ms = ? AND submitted_at < ?))",
       [day, ms, ms, submittedAt],
     );
     return (row?.n ?? 0) + 1;
   }
 
   async function participants(day: number): Promise<number> {
-    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM results WHERE day = ?", [day]))?.n ?? 0;
+    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM results WHERE day = ? AND hidden = 0", [day]))?.n ?? 0;
   }
 
   // --- Routes -----------------------------------------------------------------------------------------------
@@ -433,6 +439,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       if (hash === circuit.authorHash) throw new HttpError(409, "replay_copy", "Cette course est la copie de celle de l'auteur du circuit");
       const same = await db.first<{ n: number }>("SELECT 1 AS n FROM results WHERE day = ? AND inputs_hash = ? AND player_id <> ? LIMIT 1", [day, hash, playerId]);
       if (same) throw new HttpError(409, "replay_copy", "Cette course est la copie d'une autre");
+      // Lot N1 : une course que l'administration a retirée ne revient pas telle quelle.
+      if (await db.first("SELECT 1 AS n FROM resultats_retires WHERE game = 'cdj' AND day = ? AND inputs_hash = ? LIMIT 1", [day, hash])) throw new HttpError(409, "replay_copy", "Cette course a été retirée par l'administration");
     }
 
     const t = now();
@@ -451,10 +459,10 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const car = coderVoiture(voitureAutorisee(body.voiture, pApres, ouvert));
     if (improved) {
       await db.run(
-        `INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, inputs_hash, car) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, inputs_hash, car, hidden) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (day, player_id) DO UPDATE SET ms = excluded.ms, splits = excluded.splits, replay = excluded.replay,
            respawns = excluded.respawns, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash, car = excluded.car WHERE excluded.ms < results.ms`,
-        [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t, hash, car],
+        [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t, hash, car, known?.hidden === 1 ? 1 : 0], // lot N1 : un joueur masqué reste masqué
       );
     }
     log("INFO", "temps du jour", { day: formatDay(day), ms: result.finishMs, improved });
@@ -584,8 +592,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     if (rows.some((r) => r.final_rank === null && r.day < closedBefore)) {
       const done = await db.all<{ day: number; final_rank: number; final_total: number }>(
         `UPDATE results SET
-           final_rank = (SELECT COUNT(*) FROM results x WHERE x.day = results.day AND (x.ms < results.ms OR (x.ms = results.ms AND x.submitted_at < results.submitted_at))) + 1,
-           final_total = (SELECT COUNT(*) FROM results x WHERE x.day = results.day)
+           final_rank = (SELECT COUNT(*) FROM results x WHERE x.day = results.day AND x.hidden = 0 AND (x.ms < results.ms OR (x.ms = results.ms AND x.submitted_at < results.submitted_at))) + 1,
+           final_total = (SELECT COUNT(*) FROM results x WHERE x.day = results.day AND x.hidden = 0) + results.hidden
          WHERE player_id = ? AND final_rank IS NULL AND day < ? RETURNING day, final_rank, final_total`,
         [id, closedBefore],
       );
@@ -688,6 +696,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
   }
 
   async function requireAdmin(req: Request, info: RequestInfo): Promise<void> {
+    // Lot N1 : une session du panneau suffit (les écritures exigent alors `X-Cdj-Admin` et l'`Origin` du site : 403 sinon) ; sans cookie, le jeton comme avant.
+    if (options.adminSession && req.headers.has("cookie") && (await options.adminSession(req))) return;
     if (!adminToken) throw new HttpError(404, "not_found", "Route inconnue"); // admin désactivé : la route n'existe pas
     // Lot R5 : chaque requête d'admin compte aussi sur l'adresse de connexion (une adresse inventée par un appel direct ne remet pas les
     // échecs à zéro) : au plus ADMIN_MAX_FAILURES × PEER_FACTOR requêtes par fenêtre et par adresse de connexion.
@@ -858,7 +868,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
 
     const medals = medalsFor((await getCircuit(day)).authorMs, day);
     const rows = await db.all<{ ms: number; name: string }>(
-      "SELECT r.ms AS ms, p.name AS name FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ms ASC, r.submitted_at ASC LIMIT ?",
+      "SELECT r.ms AS ms, p.name AS name FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ms ASC, r.submitted_at ASC LIMIT ?",
       [day, limit],
     );
     const top = rows.map((r, i) => ({ rank: i + 1, name: r.name, ms: r.ms, medal: medalFor(r.ms, medals) }));
@@ -885,7 +895,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       offset = rank - 2;
     }
     const row = await db.first<{ ms: number; splits: string; replay: string; name: string; car: string | null }>(
-      "SELECT r.ms AS ms, r.splits AS splits, r.replay AS replay, p.name AS name, r.car AS car FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ms ASC, r.submitted_at ASC LIMIT 1 OFFSET ?",
+      "SELECT r.ms AS ms, r.splits AS splits, r.replay AS replay, p.name AS name, r.car AS car FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ms ASC, r.submitted_at ASC LIMIT 1 OFFSET ?",
       [day, offset],
     );
     if (!row) throw new HttpError(404, "no_ghost", "Aucun temps enregistré pour ce jour");
@@ -1011,7 +1021,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     // Lot I3 : tous les classés du jour, dans l'ordre du classement (même tri que `rankOf` : temps, puis premier envoyé), médaille lue sur les
     // seuils du circuit en vigueur (comme `etat`). Une ligne par classé ; aucun calcul de circuit pour un jour sans classé.
     async classes(day) {
-      const rows = await db.all<{ player_id: string; ms: number; submitted_at: number }>("SELECT player_id, ms, submitted_at FROM results WHERE day = ? ORDER BY ms ASC, submitted_at ASC", [day]);
+      const rows = await db.all<{ player_id: string; ms: number; submitted_at: number }>("SELECT player_id, ms, submitted_at FROM results WHERE day = ? AND hidden = 0 ORDER BY ms ASC, submitted_at ASC", [day]);
       if (rows.length === 0) return [];
       const m = medalsFor((await getCircuit(day)).authorMs, day);
       return rows.map((r) => ({ playerId: r.player_id, tempsMs: r.ms, medaille: medalFor(r.ms, m) as Medal | null, at: r.submitted_at }));
@@ -1027,10 +1037,68 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     },
   };
 
+  // --- Lot N1 : ce que le panneau d'administration fait de DailyTrack (`admin.ts`) -------------------------------------------------------
+  // « Masquer » recopie la marque `hidden` sur chaque résultat du joueur (les classements écartent `hidden = 1` sans jointure) ; « retirer » sort la ligne de `results`
+  // (la rediffusion va dans `resultats_retires`, `admin.ts`). Dans les deux cas les places finales gardées des jours concernés sont oubliées : elles sont recalculées sans lui.
+  const admin: AdminDuJeu = {
+    activite: [{ table: "results", jour: "day", joueur: "player_id" }],
+    compteurs: async (day) => ({ finis: (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM results WHERE day = ?", [day]))?.n ?? 0 }),
+    joursPrets: async () => ({
+      figes: resumeRegistreTrack().jours,
+      planifies: (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM planning WHERE day > ?", [today()]))?.n ?? 0,
+    }),
+    resultats: async (id, limite) => {
+      const [jours, rows] = await Promise.all([
+        db.first<{ n: number }>("SELECT COUNT(*) AS n FROM results WHERE player_id = ?", [id]),
+        db.all<{ day: number; ms: number; submitted_at: number; hidden: number; author_ms: number | null; final_rank: number | null; final_total: number | null }>(
+          "SELECT r.day AS day, r.ms AS ms, r.submitted_at AS submitted_at, r.hidden AS hidden, c.author_ms AS author_ms, r.final_rank AS final_rank, r.final_total AS final_total FROM results r LEFT JOIN circuits c ON c.day = r.day WHERE r.player_id = ? ORDER BY r.day DESC LIMIT ?",
+          [id, limite],
+        ),
+      ]);
+      const liste = [];
+      for (const r of rows) {
+        // Un jour fermé a sa place gardée (calculée à la première lecture d'un profil) : la relire coûterait une ligne par classé et par jour ; sinon on compte.
+        const rang = r.final_rank ?? (await rankOf(r.day, r.ms, r.submitted_at));
+        const classes = r.final_total ?? (await participants(r.day));
+        liste.push({
+          day: r.day,
+          tempsMs: r.ms,
+          medaille: r.author_ms === null ? null : (medalFor(r.ms, medalsFor(r.author_ms, r.day)) as Medal | null),
+          rang,
+          classes: Math.max(classes + r.hidden, rang),
+          envoyeA: r.submitted_at,
+        });
+      }
+      return { jours: jours?.n ?? 0, liste };
+    },
+    retirer: async (id, day) => {
+      const row = await db.first<{ ms: number; replay: string; inputs_hash: string | null }>("SELECT ms, replay, inputs_hash FROM results WHERE day = ? AND player_id = ?", [day, id]);
+      if (!row) return null;
+      return {
+        tempsMs: row.ms,
+        replay: row.replay,
+        inputsHash: row.inputs_hash,
+        statements: [
+          { sql: "UPDATE results SET final_rank = NULL, final_total = NULL WHERE day = ?", params: [day] },
+          { sql: "DELETE FROM results WHERE day = ? AND player_id = ?", params: [day, id] },
+        ],
+      };
+    },
+    masquer: (id, masque): Statement[] => [
+      { sql: "UPDATE results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM results WHERE player_id = ?)", params: [id] },
+      { sql: "UPDATE results SET hidden = ? WHERE player_id = ?", params: [masque ? 1 : 0, id] },
+      // La version des sessions où il a couru avance : le Salon recharge son classement (la ligne de la session est créée si elle manque).
+      { sql: "INSERT INTO salon_sessions (session, version) SELECT DISTINCT session, 1 FROM salon_runs WHERE player_id = ? ON CONFLICT (session) DO UPDATE SET version = version + 1", params: [id] },
+      { sql: "UPDATE salon_runs SET hidden = ? WHERE player_id = ?", params: [masque ? 1 : 0, id] },
+    ],
+    lienRediffusion: () => null, // DailyTrack n'a de lecteur que pour son propre meilleur tour (`?watch=best`) : pas de lien vers la rediffusion d'un autre joueur
+  };
+
   return {
     route,
     salon,
     portail,
+    admin,
     dailyLevel: (day) => getCircuit(day),
     validate: async (day, code) => ({ ms: (await validateRun(day, code)).result.finishMs }),
     profile,

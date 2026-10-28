@@ -1,4 +1,5 @@
 import { parseDay } from "@cdj/core";
+import { lireListeAdresses } from "./adminGoogle";
 
 /**
  * Configuration du serveur Node d'après les variables d'environnement : pure et testée (`server.ts` ne fait que l'appliquer).
@@ -13,6 +14,9 @@ import { parseDay } from "@cdj/core";
  *   LANCEMENT_PREMIER_JOUR : lot R8 — AAAA-MM-JJ, déplace la journée n° 1 de la recette (essayer « Journée n° 1 » un autre jour) ; recette et local seulement, refusée en production
  *   PEER_FACTOR : lot R5 — l'adresse de connexion compte dans chaque limite par adresse à `limite × PEER_FACTOR` (0 à 100, défaut 10 ; 0 = coupé)
  *   GIT_SHA, K_REVISION, K_SERVICE : posées par le déploiement / Cloud Run
+ *   Lot N1 (panneau d'administration, `/admin/`) : ADMIN_GOOGLE_CLIENT_ID (identifiant client OAuth, public) · ADMIN_EMAILS (secret `cdj-admin-emails` : adresses permises) ·
+ *   ADMIN_SESSION_KEY (secret `cdj-admin-session-key`, 32 caractères au moins) · RELEASE_TAG (étiquette `prod-…` de la mise en production) ·
+ *   ADMIN_FAKE_VERIFIER=1 : vérificateur factice, **tests locaux et CI seulement — le serveur refuse de démarrer en production et en recette s'il la voit**
  *
  * Règle des noms de base (lot R1) : en `recette`, le nom de la base doit contenir « recette » ; en `production`, il ne doit pas le contenir.
  * Une protection de base contre l'erreur de branchement (le service de recette sur la base des joueurs, ou l'inverse).
@@ -44,6 +48,17 @@ export interface ServerConfig {
   revision?: string;
   /** Lot R8 : la journée n° 1 réglée par `LANCEMENT_PREMIER_JOUR` (jours depuis 1970) ; absent : la date de `config/lancement.json`. */
   premierJourDuJour?: number;
+  /** Lot N1 : le panneau d'administration (voir `ApiOptions.admin`). */
+  admin: {
+    clientId?: string;
+    emails: string[];
+    sessionKey?: string;
+    fakeVerifier: boolean;
+    releaseTag?: string;
+    commit?: string;
+    /** Ce que le journal de démarrage dit d'une configuration incomplète (jamais une valeur secrète, ni une adresse). */
+    avertissements: string[];
+  };
 }
 
 export class ConfigError extends Error {}
@@ -183,6 +198,28 @@ export function readConfig(env: Env): ServerConfig {
   const peer = env.PEER_FACTOR === undefined || env.PEER_FACTOR === "" ? 10 : Number(env.PEER_FACTOR);
   if (!Number.isInteger(peer) || peer < 0 || peer > 100) throw new ConfigError(`PEER_FACTOR : un entier de 0 (coupé) à 100 (reçu : ${env.PEER_FACTOR})`);
 
+  // Lot N1 : le vérificateur factice ne sert qu'en local et en CI. Le voir en production, en recette ou sur Cloud Run arrête le serveur (jamais un panneau ouvert à n'importe qui).
+  const fakeVerifier = /^(1|true)$/i.test(env.ADMIN_FAKE_VERIFIER?.trim() ?? "");
+  if (env.ADMIN_FAKE_VERIFIER?.trim() && !fakeVerifier && env.ADMIN_FAKE_VERIFIER.trim() !== "0") {
+    throw new ConfigError(`ADMIN_FAKE_VERIFIER : « 1 » attendu (ou rien), reçu « ${env.ADMIN_FAKE_VERIFIER} ».`);
+  }
+  if (fakeVerifier && (production || recette || environment !== "local" || onCloudRun)) {
+    throw new ConfigError("ADMIN_FAKE_VERIFIER est réglée alors que le serveur tourne en production ou en recette : ce vérificateur factice accepterait n'importe quelle connexion au panneau d'administration. Il sert aux essais locaux et à la CI, jamais en ligne. Supprime la variable.");
+  }
+  const avertissements: string[] = [];
+  const clientId = env.ADMIN_GOOGLE_CLIENT_ID?.trim() || undefined;
+  if (clientId && !/^[A-Za-z0-9._-]{8,120}\.apps\.googleusercontent\.com$/.test(clientId)) {
+    throw new ConfigError("ADMIN_GOOGLE_CLIENT_ID : un identifiant client Google (…apps.googleusercontent.com) attendu.");
+  }
+  const emails = lireListeAdresses(env.ADMIN_EMAILS);
+  const emailsBruts = (env.ADMIN_EMAILS ?? "").split(/[,;\s]+/).filter(Boolean).length;
+  if (emailsBruts > emails.length) avertissements.push(`ADMIN_EMAILS : ${emailsBruts - emails.length} entrée(s) ignorée(s), ce ne sont pas des adresses`);
+  const sessionKey = env.ADMIN_SESSION_KEY?.trim() || undefined;
+  if (sessionKey && sessionKey.length < 32) avertissements.push("ADMIN_SESSION_KEY trop courte (32 caractères au moins) : le panneau d'administration est désactivé");
+  if (emails.length > 0 && !clientId && !fakeVerifier) avertissements.push("ADMIN_EMAILS sans ADMIN_GOOGLE_CLIENT_ID : le panneau d'administration est désactivé");
+  const releaseTag = /^prod-\d{4}-\d{2}-\d{2}-\d{4}$/.test(env.RELEASE_TAG?.trim() ?? "") ? env.RELEASE_TAG!.trim() : undefined;
+  const commit = /^[0-9a-f]{7,40}$/.test(env.GIT_SHA?.trim() ?? "") ? env.GIT_SHA!.trim() : undefined;
+
   return {
     port,
     production,
@@ -198,5 +235,6 @@ export function readConfig(env: Env): ServerConfig {
     testClockOffsetMs,
     revision: env.K_REVISION ?? env.GIT_SHA,
     premierJourDuJour,
+    admin: { clientId, emails, sessionKey: sessionKey && sessionKey.length >= 32 ? sessionKey : undefined, fakeVerifier, releaseTag, commit, avertissements },
   };
 }

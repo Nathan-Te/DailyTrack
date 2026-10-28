@@ -26,12 +26,12 @@
     <main class="mentions">
       <h1>Mentions légales et confidentialité</h1>
       <p class="reference"><strong>La version française fait foi</strong> (<span lang="en">the French version is the reference</span>) ; une traduction fidèle en anglais : <a href="../legal/" hreflang="en" lang="en">Legal notice and privacy</a>.</p>
-      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-27">27 octobre 2026</time>.</p>
+      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-28">28 octobre 2026</time>.</p>
 
       <section class="bref" aria-label="En bref">
         <ul>
           <li>Pas de compte, pas d'e-mail, pas de mot de passe : ton profil est un identifiant tiré au hasard par ton navigateur, et un pseudo que tu choisis.</li>
-          <li>Pas de publicité, pas de mesure d'audience, aucun traceur ni cookie tiers : le site ne pose <strong>aucun cookie</strong>.</li>
+          <li>Pas de publicité, pas de mesure d'audience, aucun traceur ni cookie tiers : le site ne pose <strong>aucun cookie</strong> aux joueurs (seul le panneau d'administration de l'éditeur utilise un cookie de session, que les joueurs ne reçoivent jamais).</li>
           <li>Le serveur garde tes temps (pour les classements) ; tu peux tout faire effacer en écrivant à <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> avec ton code de transfert.</li>
         </ul>
       </section>
@@ -106,6 +106,12 @@
           <p>But : pouvoir réparer la base si une mise à jour l'abîmait.</p>
           <p class="duree">Durée : chaque copie est effacée au bout de <span data-constante="SAUVEGARDE_JOURS" data-valeur="30">30</span> jours. Après une demande d'effacement, tes données disparaissent donc aussi des copies au plus tard dans ce délai.</p>
         </li>
+        <li data-tables="admin_sessions journal_admin journal_erreurs resultats_retires">
+          <h3>L'administration du site</h3>
+          <p>Le panneau d'administration (accès réservé à l'éditeur, connexion avec son compte Google) garde : sa session (un identifiant tiré au hasard et une empreinte de son compte, jamais son adresse), le journal de ses actions (heure, action, pseudo du joueur concerné, ce qui a changé ; pour une suppression de profil, seulement le pseudo, jamais le contenu effacé), les erreurs du serveur (un code, la route, l'heure : ni joueur, ni adresse, ni contenu de requête) et les résultats qu'il a retirés d'un classement (le temps, le motif et la rediffusion). Les joueurs n'ont pas accès à ce panneau.</p>
+          <p>But : tenir le service (corriger un pseudo, retirer un résultat, suivre l'état du site) et pouvoir retrouver ce qui a été fait.</p>
+          <p class="duree">Durée : la session de l'éditeur dure <span data-constante="ADMIN_SESSION_MS" data-valeur="3600000">1 heure</span> ; son journal est gardé <span data-constante="JOURNAL_ADMIN_JOURS" data-valeur="365">365</span> jours ; les erreurs du serveur <span data-constante="ERREURS_JOURS" data-valeur="14">14</span> jours ; la rediffusion d'un résultat retiré <span data-constante="RETRAIT_REDIFFUSION_JOURS" data-valeur="30">30</span> jours (le temps et le motif restent ensuite avec le résultat retiré, jusqu'à ce que le profil soit effacé).</p>
+        </li>
         <li data-tables="circuits planning salon_circuits jump_levels meta">
           <h3>Et rien d'autre</h3>
           <p>Le reste de la base ne parle pas des joueurs : les circuits et niveaux du jour, le planning, la version de la base.</p>
@@ -119,6 +125,7 @@
         <li>Firebase Hosting se sert des adresses IP pour détecter les abus et les garde « quelques mois » (selon Google : <a href="https://firebase.google.com/support/privacy">firebase.google.com/support/privacy</a>).</li>
       </ul>
       <p>La base de données est chez Turso (société établie aux États-Unis), dans la région choisie à sa création.</p>
+      <p>La page de connexion du panneau d'administration, que les joueurs n'ont aucune raison d'ouvrir, charge le script de connexion de Google (Google Identity Services) : Google voit alors la visite de cette page. Aucune autre page du site ne charge de ressource extérieure.</p>
 
       <h3 id="navigateur">Ce que ton navigateur garde</h3>
       <p>Le jeu garde dans ton navigateur (stockage local, jamais un cookie) : ton profil (identifiant, pseudo), ta langue (français ou anglais, si tu l'as choisie, sur le portail ou dans un jeu : commune au portail et aux jeux), tes réglages (son, caméra, commandes), ta voiture de DailyTrack (le modèle, sa couleur, son motif et la couleur du motif, avec les voitures débloquées et celles que tu as déjà vues : <code>cdj:track:garage</code>), le palier graphique choisi pour ton appareil, avec la date de la dernière mesure de fluidité et son résultat (<code>cdj:qualite</code>), le fait d'avoir fermé l'astuce du plein écran sur iPhone, le numéro de la génération de données que ton navigateur a vue (<code>cdj:generation</code>) et, une fois, le fait qu'un message « Nouveau départ » doit s'afficher (<code>cdj:nouveau-depart</code>) — ils servent à repartir de zéro quand toutes les données du site sont remises à zéro —, tes records et ton historique, la mémoire de la partie du jour, les envois en attente quand tu es hors ligne, et pour DailyTrack les miniatures des circuits des archives. Clés <code>cdj:…</code> (DailyTrack et le profil commun) et <code>jump:…</code> (DailyJump).</p>

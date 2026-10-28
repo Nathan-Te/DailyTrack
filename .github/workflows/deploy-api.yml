@@ -22,6 +22,9 @@ name: Deploy API
 # Secrets GitHub : GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT (fédération d'identité, recommandé) ou GCP_SA_KEY (clé JSON).
 # Les secrets de l'API elle-même vivent dans Secret Manager, jamais ici ni dans le dépôt :
 #   production : cdj-turso-token, cdj-admin-token, cdj-rate-salt · recette : cdj-recette-turso-token, cdj-recette-admin-token, cdj-recette-rate-salt
+# Lot N1 (panneau d'administration, /admin/) — facultatifs : si le secret n'existe pas, le panneau n'existe pas (404), le déploiement réussit et le dit :
+#   production : cdj-admin-emails (les adresses permises), cdj-admin-session-key (32 caractères au moins) · recette : cdj-recette-admin-emails, cdj-recette-admin-session-key
+#   Variable du dépôt ADMIN_GOOGLE_CLIENT_ID : l'identifiant client OAuth de Google (public). Pas à pas : docs/plateforme/admin.md.
 on:
   workflow_call:
     inputs:
@@ -55,6 +58,10 @@ on:
         default: ""
       extra_origins:
         description: "lot R4 : origines permises en plus (recette : l'origine du canal d'aperçu de la PR), séparées par « ; »"
+        type: string
+        default: ""
+      etiquette:
+        description: "lot N1 : l'étiquette prod-AAAA-MM-JJ-HHMM de cette mise en production (production.yml), que le tableau de bord du panneau montre ; vide : aucune"
         type: string
         default: ""
       bascule_le:
@@ -134,6 +141,8 @@ jobs:
       EXTRA_ORIGINS: ${{ inputs.extra_origins }}
       JOURS_FIGES: ${{ inputs.jours_figes }}
       BASCULE: ${{ inputs.bascule_le }}
+      ETIQUETTE: ${{ inputs.etiquette }}
+      ADMIN_CLIENT_ID: ${{ vars.ADMIN_GOOGLE_CLIENT_ID }}
       WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
@@ -216,6 +225,17 @@ jobs:
           case "$trust" in [0-5]) ;; *) echo "::error::TRUST_PROXY / RECETTE_TRUST_PROXY : un nombre de proxys de 0 à 5, reçu « $trust »"; exit 1 ;; esac
           if [ -n "$TAG" ] && ! printf '%s' "$TAG" | grep -Eq '^b-[a-z0-9-]{1,22}$'; then echo "::error::étiquette invalide : « $TAG » (scripts/recette.mjs)"; exit 1; fi
           sha="$(git rev-parse HEAD)"
+          # Lot N1 : l'étiquette de la mise en production (affichée par le tableau de bord du panneau) et l'identifiant client Google : des formes strictes, ou rien.
+          release_tag=""
+          if [ -n "$ETIQUETTE" ]; then
+            printf '%s' "$ETIQUETTE" | grep -Eq '^prod-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4}$' || { echo "::error::étiquette de mise en production invalide : « $ETIQUETTE »"; exit 1; }
+            release_tag="$ETIQUETTE"
+          fi
+          client_id=""
+          if [ -n "$ADMIN_CLIENT_ID" ]; then
+            printf '%s' "$ADMIN_CLIENT_ID" | grep -Eq '^[A-Za-z0-9._-]{8,120}\.apps\.googleusercontent\.com$' || { echo "::error::ADMIN_GOOGLE_CLIENT_ID : un identifiant client Google (…apps.googleusercontent.com) attendu (docs/plateforme/admin.md, étape 2)"; exit 1; }
+            client_id="$ADMIN_CLIENT_ID"
+          fi
           # Une image avec des jours figés ajoutés n'est plus exactement le commit : son nom le dit (retour arrière : l'étiquette prod-… le note).
           image_tag="$sha"; [ -z "$JOURS_FIGES" ] || image_tag="${sha}-f${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           {
@@ -228,6 +248,8 @@ jobs:
             echo "origins=$origins"
             echo "trust=$trust"
             echo "sha=$sha"
+            echo "release_tag=$release_tag"
+            echo "client_id=$client_id"
           } >> "$GITHUB_OUTPUT"
           echo "Origines permises ($TARGET) : $origins · TRUST_PROXY=$trust" >> "$GITHUB_STEP_SUMMARY"
 
@@ -272,6 +294,40 @@ jobs:
       - name: Outils Google Cloud
         if: steps.cfg.outputs.enabled == 'true'
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      # Lot N1 : les deux secrets du panneau d'administration sont facultatifs. Absents (avant les étapes manuelles de docs/plateforme/admin.md), le déploiement ne les demande
+      # pas — Cloud Run refuserait de déployer une référence à un secret qui n'existe pas — et le panneau n'existe pas (404). Présents, ils sont montés comme variables.
+      # Un refus de permission (autre chose que « introuvable ») est signalé : le compte de déploiement doit pouvoir lire l'EXISTENCE du secret (pas sa valeur).
+      - name: Secrets du panneau d'administration
+        id: admin
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          if [ "$TARGET" = recette ]; then prefix=cdj-recette; else prefix=cdj; fi
+          lignes=""; virgules=""; manque=""; refuse=""
+          for paire in "ADMIN_EMAILS:${prefix}-admin-emails" "ADMIN_SESSION_KEY:${prefix}-admin-session-key"; do
+            variable="${paire%%:*}"; nom="${paire#*:}"
+            if erreur="$(gcloud secrets describe "$nom" --format='value(name)' 2>&1 >/dev/null)"; then
+              lignes="${lignes}${variable}=${nom}:latest"$'\n'
+              virgules="${virgules},${variable}=${nom}:latest"
+            elif printf '%s' "$erreur" | grep -Eqi 'not.?found|NOT_FOUND'; then
+              manque="$manque $nom"
+            else
+              refuse="$refuse $nom"
+            fi
+          done
+          {
+            echo "lignes<<FIN_DES_SECRETS"
+            printf '%s' "$lignes"
+            echo "FIN_DES_SECRETS"
+            echo "virgules=$virgules"
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "$manque$refuse" ]; then
+            echo "- Panneau d'administration : désactivé (secret(s) absent(s) :${manque}${refuse}) — voir docs/plateforme/admin.md." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Panneau d'administration désactivé::secret(s) absent(s) :${manque}${refuse} (docs/plateforme/admin.md)"
+          else
+            echo "- Panneau d'administration : secrets montés." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "$refuse" ]; then echo "::warning title=Secrets d'administration illisibles::le compte de déploiement n'a pas pu vérifier :${refuse} (permission refusée ?) : le panneau reste désactivé"; fi
+
       - name: Construire et pousser l'image
         if: steps.cfg.outputs.enabled == 'true'
         run: |
@@ -295,11 +351,15 @@ jobs:
             ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }}
             TRUST_PROXY=${{ steps.cfg.outputs.trust }}
             GIT_SHA=${{ steps.cfg.outputs.sha }}
+            RELEASE_TAG=${{ steps.cfg.outputs.release_tag }}
+            ADMIN_GOOGLE_CLIENT_ID=${{ steps.cfg.outputs.client_id }}
           # Secrets : Secret Manager → variables d'environnement du conteneur (jamais dans la configuration en clair, ni dans les journaux).
+          # Lot N1 : plus, s'ils existent, les deux secrets du panneau d'administration (étape « Secrets du panneau d'administration »).
           secrets: |
             TURSO_AUTH_TOKEN=cdj-turso-token:latest
             ADMIN_TOKEN=cdj-admin-token:latest
             RATE_SALT=cdj-rate-salt:latest
+            ${{ steps.admin.outputs.lignes }}
           # Bornes du coût : 2 instances au plus, 0 au repos (aucun coût sans joueurs). Une instance : 1 vCPU (le calcul est la ressource
           # qui compte : un rejeu fait 20–40 ms de calcul) et 512 Mo (mesuré dans l'image : 16 Mo au repos, 43 Mo après la génération d'un
           # circuit et deux rejeux ; le gratuit compte les Go-secondes à part et ne limite pas ici, donc la marge est gratuite). 40 requêtes
@@ -323,11 +383,15 @@ jobs:
       - name: Déployer sur Cloud Run (recette)
         id: deploy_recette
         if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'recette'
+        env:
+          ADMIN_SECRETS: ${{ steps.admin.outputs.virgules }} # lot N1 : « ,ADMIN_EMAILS=…,ADMIN_SESSION_KEY=… » si les secrets du panneau existent, sinon vide
         run: |
           service="${{ steps.cfg.outputs.service }}"
           region="${{ steps.cfg.outputs.region }}"
           suffix="r${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           envs="ENVIRONMENT=recette,TURSO_DATABASE_URL=${{ steps.cfg.outputs.db }},ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }},TRUST_PROXY=${{ steps.cfg.outputs.trust }},GIT_SHA=${{ steps.cfg.outputs.sha }}"
+          # Lot N1 : l'identifiant client Google du panneau d'administration (public) ; la recette n'a pas d'étiquette de mise en production.
+          if [ -n "${{ steps.cfg.outputs.client_id }}" ]; then envs="$envs,ADMIN_GOOGLE_CLIENT_ID=${{ steps.cfg.outputs.client_id }}"; fi
           if [ -n "$SALON_MINUTES_IN" ]; then envs="$envs,SALON_MINUTES=$SALON_MINUTES_IN"; fi
           if [ -n "$TEST_CLOCK_IN" ]; then envs="$envs,TEST_CLOCK_OFFSET_MS=$TEST_CLOCK_IN"; fi
           # Lot R8 : la recette peut essayer « Journée n° 1 » un autre jour que config/lancement.json (variable du dépôt RECETTE_PREMIER_JOUR, AAAA-MM-JJ) ;
@@ -352,7 +416,7 @@ jobs:
           gcloud run deploy "$service" --region "$region" --image "${{ steps.cfg.outputs.image }}" --quiet \
             --revision-suffix="$suffix" $traffic \
             --set-env-vars="$envs" \
-            --set-secrets=TURSO_AUTH_TOKEN=cdj-recette-turso-token:latest,ADMIN_TOKEN=cdj-recette-admin-token:latest,RATE_SALT=cdj-recette-rate-salt:latest \
+            --set-secrets="TURSO_AUTH_TOKEN=cdj-recette-turso-token:latest,ADMIN_TOKEN=cdj-recette-admin-token:latest,RATE_SALT=cdj-recette-rate-salt:latest${ADMIN_SECRETS}" \
             --allow-unauthenticated --min-instances=0 --max-instances=1 --cpu=1 --memory=512Mi --concurrency=40 --timeout=30 --port=8080 \
             --service-account="${{ steps.cfg.outputs.runtime_sa }}"
           revision="${service}-${suffix}"

@@ -1,5 +1,6 @@
 import { GENERATOR_VERSION, SIM_VERSION, formatDay } from "@cdj/sim";
 import { parisClockSource } from "@cdj/clock";
+import { createAdmin, type Admin, type AdminOptions } from "./admin";
 import type { CdjInstance, CdjOptions } from "./cdj";
 import { WithHeaders, mergeVary } from "./cache";
 import type { SqlDb } from "./db";
@@ -7,6 +8,7 @@ import { CODES_ERREUR, ERREUR_INTERNE, corpsErreur } from "./codesErreur";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, RequestInfo } from "./games";
 import { createIdentityRoutes } from "./identity";
+import { aNoter } from "./journaux";
 import { silentLog, type Logger } from "./log";
 import { DEFAULT_LIMITS, createPlatform } from "./platform";
 import { createPortailRoutes } from "./portail";
@@ -101,6 +103,12 @@ export interface ApiOptions {
    * (`config.ts`) le déplace sur la recette et en local ; la production le refuse.
    */
   premierJourDuJour?: number;
+  /**
+   * Lot N1 : le panneau d'administration de la plateforme (`/admin/`, `admin.ts`) : liste d'adresses (secret `cdj-admin-emails`), clé de session (secret
+   * `cdj-admin-session-key`), identifiant client Google (public), étiquette et commit de la mise en production. Absent ou incomplet : le panneau n'existe pas (404).
+   * `fakeVerifier` (tests et CI) est refusé au démarrage en production et en recette (`config.ts`).
+   */
+  admin?: AdminOptions;
 }
 
 export function createApi(options: ApiOptions) {
@@ -127,8 +135,16 @@ export function createApi(options: ApiOptions) {
     rotateStatements: (oldId, newId) => instances.flatMap((g) => g.instance.rotateStatements?.(oldId, newId) ?? []),
   });
   const ensureSchema = platform.ensureSchema;
+  let adminRef: Admin | null = null;
   const gameOptions: Record<string, unknown> = {
-    cdj: { adminToken: options.adminToken, salonMinutes: options.salonMinutes, salonLimits: options.salonLimits, demoPlayers: options.demoPlayers } satisfies CdjOptions,
+    cdj: {
+      adminToken: options.adminToken,
+      // Lot N1 : les outils de DailyTrack acceptent aussi la session du panneau (liée plus bas, une fois `admin` créé).
+      adminSession: (req) => (adminRef ? adminRef.sessionValide(req) : Promise.resolve(false)),
+      salonMinutes: options.salonMinutes,
+      salonLimits: options.salonLimits,
+      demoPlayers: options.demoPlayers,
+    } satisfies CdjOptions,
     jump: { frozen: options.jumpFrozen },
   };
   for (const g of options.games ?? GAMES) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });
@@ -153,6 +169,20 @@ export function createApi(options: ApiOptions) {
     for (const g of instances) g.instance.onErased?.();
     portail.oublier();
   });
+  // Lot N1 : le panneau d'administration (connexion Google, tableau de bord, joueurs, journal). Il existe toujours (le journal des erreurs et l'entretien servent
+  // même sans lui) ; sans configuration complète, ses routes répondent 404.
+  const admin = createAdmin({
+    platform,
+    options: options.admin ?? { emails: [] },
+    jeux: instances.flatMap((g) => {
+      const def = (options.games ?? GAMES).find((d) => d.code === g.code);
+      return def ? [{ code: g.code, name: def.name, instance: g.instance }] : [];
+    }),
+    allowedOrigins,
+    revision: options.revision,
+    oublier: () => portail.oublier(),
+  });
+  adminRef = admin;
   const salon = cdj.salon;
   const today = platform.today;
 
@@ -233,17 +263,21 @@ export function createApi(options: ApiOptions) {
 
   async function handle(req: Request, info: RequestInfo = {}): Promise<Response> {
     const reply = replier(req);
+    let path = "";
     try {
       if (req.method === "OPTIONS") return reply(204, null);
       const url = new URL(req.url);
-      const path = url.pathname.replace(/\/+$/, "");
+      path = url.pathname.replace(/\/+$/, "");
       if (path === "/api/health" && req.method === "GET") return await health(reply);
       if (path === "/api/sonde/entetes" && req.method === "GET" && options.environment === "recette") return reply(200, probeHeaders(req, info));
       await ensureSchema();
       await platform.generation(); // lot R8 : une ligne par instance et par 30 s ; une génération changée vide la mémoire de l'instance
+      // Lot N1 : les journaux et les rediffusions retirées passent leur durée (au plus une fois par heure et par instance). Jamais pendant une lecture : une lecture
+      // n'écrit rien (la vérification de la production, `smoke --lecture-seule`, le prouve).
+      if (req.method !== "GET" && req.method !== "HEAD") await admin.entretien();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
-      const common = (await identity.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
+      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
       if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;
@@ -254,10 +288,12 @@ export function createApi(options: ApiOptions) {
     } catch (e) {
       if (e instanceof HttpError) {
         if (e.status === 429 || e.status >= 500) log(e.status >= 500 ? "ERROR" : "WARNING", "refus", { status: e.status, code: e.code });
+        if (aNoter(e.status, e.code, path)) await admin.journaux.noter(e.code, path); // lot N1 : le tableau de bord compte les erreurs serveur et les rediffusions refusées
         // Lot I6 : le code et les détails seulement ; le texte de `HttpError` reste dans le code (pour qui le lit), jamais dans la réponse.
         return reply(e.status, { error: e.code, ...e.details }, e.headers);
       }
       log("ERROR", "erreur interne", { error: e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 300) : "inconnue" });
+      await admin.journaux.noter("internal", path);
       return reply(CODES_ERREUR.internal.status, ERREUR_INTERNE);
     }
   }

@@ -73,6 +73,22 @@ function safeStorage(): Storage | null {
   }
 }
 
+/**
+ * Lot N1 : les outils d'administration de Track acceptent **le jeton ou la session du panneau de la plateforme** (`/admin/`, connexion Google ; cookie `__session`
+ * HttpOnly posé par le serveur). Sans jeton, l'en-tête `X-Cdj-Admin: 1` est celui que le serveur exige d'une requête qui modifie quelque chose avec la session
+ * (une lecture n'en a pas besoin, mais il ne gêne pas). Retirer le jeton fera l'objet d'un autre lot, une fois la connexion Google éprouvée.
+ */
+export const adminHeaders = (token: string): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : { "X-Cdj-Admin": "1" });
+
+/** La session du panneau est un cookie : elle ne vaut que pour la même origine (jamais pour une API visée par `?api=`). */
+export function memeOrigine(base: string): boolean {
+  try {
+    return new URL(base, location.href).origin === location.origin;
+  } catch {
+    return false;
+  }
+}
+
 const ADMIN_TIMEOUT_MS = 20_000; // remplacer un circuit fait générer et valider un circuit côté serveur
 
 export class HttpAdmin implements AdminBackend {
@@ -88,7 +104,7 @@ export class HttpAdmin implements AdminBackend {
   }
 
   private call<T>(method: string, path: string, body?: unknown) {
-    return apiCall<T>(this.base, method, path, body, ADMIN_TIMEOUT_MS, { Authorization: `Bearer ${this.token}` });
+    return apiCall<T>(this.base, method, path, body, ADMIN_TIMEOUT_MS, adminHeaders(this.token));
   }
 
   async overview(): Promise<ApiResult<AdminOverview>> {

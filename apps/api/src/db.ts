@@ -48,6 +48,24 @@ export const MIGRATIONS: string[] = [
   "ALTER TABLE salon_runs ADD COLUMN car TEXT",
   "CREATE INDEX IF NOT EXISTS results_by_inputs ON results (day, inputs_hash)",
   "CREATE INDEX IF NOT EXISTS jump_results_by_inputs ON jump_results (day, inputs_hash)",
+  // Lot N1 (panneau d'administration). **Réversible** : des colonnes et des index ajoutés, aucune donnée réécrite ; l'ancien code les ignore. Retour arrière :
+  // `ALTER TABLE <table> DROP COLUMN <colonne>` et `DROP INDEX <index>` (SQLite 3.35+, libSQL), puis `DROP TABLE` des quatre tables de `PLATFORM_SCHEMA` (admin_sessions,
+  // journal_admin, journal_erreurs, resultats_retires) — voir docs/plateforme/lots/lot-N1-admin-connexion-tableau-joueurs.md.
+  //   `players.hidden` : 1 = masqué des classements (le joueur garde son profil) ; `results.hidden`, `jump_results.hidden`, `salon_runs.hidden` : la même marque, recopiée sur chaque
+  //   résultat pour que les classements l'écartent sans jointure (une ligne lue par classé, comme avant). `players.ref` : référence publique (12 premiers hexadécimaux du SHA-256 de
+  //   l'identifiant secret), seule façon de nommer un joueur dans le panneau — l'identifiant secret n'en sort jamais.
+  "ALTER TABLE players ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE players ADD COLUMN ref TEXT",
+  "ALTER TABLE results ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE jump_results ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE salon_runs ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0",
+  // Les classements écartent `hidden = 1` : ces index les servent **sans lire la table** (jour, masqué, temps, envoi, joueur), comme avant le lot pour les
+  // places et les nombres de classés (`results_by_time` et la clé primaire de `jump_results` ne portaient pas `hidden`).
+  "CREATE INDEX IF NOT EXISTS results_by_visible ON results (day, hidden, ms, submitted_at, player_id)",
+  "CREATE INDEX IF NOT EXISTS jump_results_by_visible ON jump_results (day, hidden, ticks, submitted_at, player_id)",
+  "CREATE INDEX IF NOT EXISTS players_by_ref ON players (ref)",
+  "CREATE INDEX IF NOT EXISTS players_by_created ON players (created_at)",
+  "CREATE INDEX IF NOT EXISTS players_masques ON players (hidden, name_key)",
 ];
 
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */
@@ -80,6 +98,49 @@ export const PLATFORM_SCHEMA: string[] = [
      count INTEGER NOT NULL,
      PRIMARY KEY (key, bucket)
    )`,
+  // --- Lot N1 : le panneau d'administration (`admin.ts`) -----------------------------------------------------------------------------
+  // Sessions : l'identifiant tiré au hasard et l'empreinte de l'administrateur (jamais son adresse) ; la déconnexion écrit `revoked_at`. Gardées un jour après leur fin.
+  `CREATE TABLE IF NOT EXISTS admin_sessions (
+     sid TEXT PRIMARY KEY,
+     admin TEXT NOT NULL,
+     created_at INTEGER NOT NULL,
+     expires_at INTEGER NOT NULL,
+     revoked_at INTEGER
+   )`,
+  // Le journal des actions : heure, administrateur (empreinte), action, cible (le pseudo, et la référence publique du joueur), avant / après. **Jamais le contenu effacé** : pour
+  // une suppression, seulement le pseudo. `AUTOINCREMENT` : l'ordre est celui des identifiants.
+  `CREATE TABLE IF NOT EXISTS journal_admin (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     at INTEGER NOT NULL,
+     admin TEXT NOT NULL,
+     action TEXT NOT NULL,
+     cible TEXT NOT NULL,
+     avant TEXT,
+     apres TEXT
+   )`,
+  // Les erreurs serveur et les rediffusions refusées (code, route, heure ; ni joueur, ni corps de requête), bornées en écriture et gardées 14 jours.
+  `CREATE TABLE IF NOT EXISTS journal_erreurs (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     at INTEGER NOT NULL,
+     code TEXT NOT NULL,
+     route TEXT NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS journal_erreurs_by_time ON journal_erreurs (at)`,
+  // Les résultats retirés par l'administration (retrait doux) : la rediffusion est gardée 30 jours pour vérification, puis effacée (`replay` vidé, la ligne reste avec son motif).
+  `CREATE TABLE IF NOT EXISTS resultats_retires (
+     game TEXT NOT NULL,
+     day INTEGER NOT NULL,
+     player_id TEXT NOT NULL,
+     temps_ms INTEGER NOT NULL,
+     replay TEXT NOT NULL,
+     inputs_hash TEXT,
+     removed_at INTEGER NOT NULL,
+     motif TEXT NOT NULL,
+     admin TEXT NOT NULL,
+     PRIMARY KEY (game, day, player_id)
+   )`,
+  `CREATE INDEX IF NOT EXISTS resultats_retires_by_player ON resultats_retires (player_id)`,
+  `CREATE INDEX IF NOT EXISTS resultats_retires_by_inputs ON resultats_retires (game, day, inputs_hash)`,
 ];
 
 /** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */

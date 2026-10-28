@@ -24,12 +24,12 @@
     <main class="mentions">
       <h1>Legal notice and privacy</h1>
       <p class="reference"><strong>The French version is the reference</strong> (<span lang="fr">la version française fait foi</span>): <a href="../mentions-legales/" hreflang="fr" lang="fr">Mentions légales et confidentialité</a>. This page is a faithful translation of it.</p>
-      <p class="doux">Du Jour (playdujour.com): DailyTrack and DailyJump. Last updated <time datetime="2026-10-27">October 27, 2026</time>.</p>
+      <p class="doux">Du Jour (playdujour.com): DailyTrack and DailyJump. Last updated <time datetime="2026-10-28">October 28, 2026</time>.</p>
 
       <section class="bref" aria-label="In short">
         <ul>
           <li>No account, no email, no password: your profile is an identifier drawn at random by your browser, plus a nickname you choose.</li>
-          <li>No ads, no audience measurement, no tracker or third-party cookie: the site sets <strong>no cookies at all</strong>.</li>
+          <li>No ads, no audience measurement, no tracker or third-party cookie: the site sets <strong>no cookies at all</strong> on players (only the publisher's administration panel uses a session cookie, which players never receive).</li>
           <li>The server keeps your times (for the leaderboards); you can have everything erased by writing to <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> with your transfer code.</li>
         </ul>
       </section>
@@ -104,6 +104,12 @@
           <p>Purpose: being able to repair the database if an update damaged it.</p>
           <p class="duree">Kept: each copy is deleted after <span data-constante="SAUVEGARDE_JOURS" data-valeur="30">30</span> days. After an erasure request, your data therefore also disappears from the copies within that time at the latest.</p>
         </li>
+        <li data-tables="admin_sessions journal_admin journal_erreurs resultats_retires">
+          <h3>Site administration</h3>
+          <p>The administration panel (access reserved to the publisher, signing in with their Google account) keeps: their session (a random identifier and a fingerprint of their account, never their address), the log of their actions (time, action, nickname of the player concerned, what changed; for a profile deletion, only the nickname, never the erased content), server errors (a code, the route, the time: no player, no address, no request content) and the results they removed from a ranking (the time, the reason and the replay). Players have no access to this panel.</p>
+          <p>Purpose: running the service (fixing a nickname, removing a result, following the state of the site) and being able to find what was done.</p>
+          <p class="duree">Kept: the publisher's session lasts <span data-constante="ADMIN_SESSION_MS" data-valeur="3600000">1 hour</span>; their log is kept <span data-constante="JOURNAL_ADMIN_JOURS" data-valeur="365">365</span> days; server errors <span data-constante="ERREURS_JOURS" data-valeur="14">14</span> days; the replay of a removed result <span data-constante="RETRAIT_REDIFFUSION_JOURS" data-valeur="30">30</span> days (the time and the reason then stay with the removed result, until the profile is erased).</p>
+        </li>
         <li data-tables="circuits planning salon_circuits jump_levels meta">
           <h3>And nothing else</h3>
           <p>The rest of the database is not about players: the daily tracks and levels, the schedule, the database version.</p>
@@ -117,6 +123,7 @@
         <li>Firebase Hosting uses IP addresses to detect abuse and keeps them “a few months” (according to Google: <a href="https://firebase.google.com/support/privacy">firebase.google.com/support/privacy</a>).</li>
       </ul>
       <p>The database is at Turso (a company established in the United States), in the region chosen when it was created.</p>
+      <p>The sign-in page of the administration panel, which players have no reason to open, loads Google's sign-in script (Google Identity Services): Google then sees the visit to that page. No other page of the site loads an external resource.</p>
 
       <h3 id="navigateur">What your browser keeps</h3>
       <p>The game keeps in your browser (local storage, never a cookie): your profile (identifier, nickname), your language (French or English, if you chose it, on the portal or in a game: shared by the portal and the games), your settings (sound, camera, controls), your DailyTrack car (the model, its colour, its pattern and the pattern colour, with the cars you have unlocked and the ones you have already seen: <code>cdj:track:garage</code>), the graphics tier chosen for your device, with the date of the last smoothness measurement and its result (<code>cdj:qualite</code>), whether you dismissed the full-screen tip on iPhone, the number of the data generation your browser has seen (<code>cdj:generation</code>) and, once, the fact that a “Fresh start” message is to be shown (<code>cdj:nouveau-depart</code>) — they let the site start from zero when all its data is reset —, your records and your history, the memory of the day's game, pending submissions when you are offline, and for DailyTrack the archive track thumbnails. Keys <code>cdj:…</code> (DailyTrack and the shared profile) and <code>jump:…</code> (DailyJump).</p>

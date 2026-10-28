@@ -15,6 +15,14 @@ export interface PlayerRow {
   name: string;
   name_key: string | null;
   rename_required: number;
+  /** Lot N1 : 1 = masqué des classements par l'administration (le joueur n'en voit aucune différence). */
+  hidden: number;
+}
+
+/** Lot N1 : la référence publique d'un joueur (12 premiers hexadécimaux du SHA-256 de son identifiant secret) : la seule façon de le nommer dans le panneau d'administration. */
+export const REF_LENGTH = 12;
+export async function refOfPlayer(id: string): Promise<string> {
+  return (await sha256Hex(id)).slice(0, REF_LENGTH);
 }
 
 /** Empreinte SHA-256 en hexadécimal (64 caractères) : un identifiant révoqué n'est gardé que sous cette forme. */
@@ -38,7 +46,7 @@ export interface PlayersOptions {
 export type Players = ReturnType<typeof createPlayers>;
 
 export function createPlayers({ db, now, demoPlayers, rotateStatements }: PlayersOptions) {
-  const find = (id: string) => db.first<PlayerRow>("SELECT id, name, name_key, rename_required FROM players WHERE id = ?", [id]);
+  const find = (id: string) => db.first<PlayerRow>("SELECT id, name, name_key, rename_required, hidden FROM players WHERE id = ?", [id]);
 
   /** Ce code a-t-il été remplacé (« Changer mon code ») ? */
   async function isRevoked(id: string): Promise<boolean> {
@@ -114,8 +122,8 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
         await db.run("UPDATE players SET name = ?, name_key = ?, rename_required = 0, updated_at = ? WHERE id = ?", [name, nameKey(name), t, playerId]);
       } else {
         await db.run(
-          "INSERT INTO players (id, name, created_at, updated_at, demo, name_key) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, name_key = excluded.name_key, updated_at = excluded.updated_at",
-          [playerId, name, t, t, demoPlayers ? 1 : 0, nameKey(name)],
+          "INSERT INTO players (id, name, created_at, updated_at, demo, name_key, ref) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, name_key = excluded.name_key, updated_at = excluded.updated_at",
+          [playerId, name, t, t, demoPlayers ? 1 : 0, nameKey(name), await refOfPlayer(playerId)],
         );
       }
     } catch (e) {
@@ -144,7 +152,8 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
     const statements = [
       { sql: "INSERT INTO revoked_codes (hash, successor, revoked_at) VALUES (?, ?, ?) ON CONFLICT (hash) DO UPDATE SET successor = excluded.successor, revoked_at = excluded.revoked_at", params: [oldHash, newHash, t] },
       ...(rotateStatements?.(oldId, newId) ?? []), // les lignes de chaque jeu (registre)
-      { sql: "UPDATE players SET id = ?, updated_at = ? WHERE id = ?", params: [newId, t, oldId] },
+      { sql: "UPDATE resultats_retires SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot N1 : les résultats retirés suivent le joueur
+      { sql: "UPDATE players SET id = ?, ref = ?, updated_at = ? WHERE id = ?", params: [newId, newHash.slice(0, REF_LENGTH), t, oldId] },
     ];
     if (db.batch) await db.batch(statements);
     else for (const s of statements) await db.run(s.sql, s.params);
@@ -163,6 +172,7 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       for (const r of rows) out.push({ sql: "DELETE FROM revoked_codes WHERE hash = ?", params: [r.hash] });
       successors = rows.map((r) => r.hash);
     }
+    out.push({ sql: "DELETE FROM resultats_retires WHERE player_id = ?", params: [id] }); // lot N1 : ses résultats retirés (rediffusions gardées 30 jours) partent aussi
     out.push({ sql: "DELETE FROM players WHERE id = ?", params: [id] });
     return out;
   }

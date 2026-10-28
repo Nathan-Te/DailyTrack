@@ -29,6 +29,10 @@ try {
 const tokenWarning = adminTokenWarning(config.adminToken);
 if (tokenWarning) consoleLog("WARNING", tokenWarning, { longueur: config.adminToken!.length });
 
+// Lot N1 : le panneau d'administration. Jamais l'adresse, ni la clé, ni l'identifiant client : seulement s'il est configuré, et ce qui manque.
+for (const a of config.admin.avertissements) consoleLog("WARNING", a);
+if (config.admin.fakeVerifier) consoleLog("WARNING", "ADMIN_FAKE_VERIFIER : vérificateur factice du panneau d'administration (tests et CI seulement, jamais en ligne)");
+
 if (config.salonMinutes !== undefined) {
   consoleLog("WARNING", "SALON_MINUTES : sessions du Salon raccourcies (tests et essais locaux seulement, jamais en production)", { salonMinutes: config.salonMinutes });
 }
@@ -74,6 +78,7 @@ const api = createApi({
   now,
   testClock: now !== undefined,
   revision: config.revision,
+  admin: config.admin,
   log: consoleLog,
 });
 
@@ -88,6 +93,7 @@ createNodeServer(api, { trustProxy: config.trustProxy }).listen(config.port, () 
     base: config.db.kind === "turso" ? "turso" : "sqlite",
     cors: config.allowedOrigins ? config.allowedOrigins.length : "*",
     admin: !!config.adminToken && config.adminToken.length >= 16,
+    panneau: config.admin.emails.length > 0 && !!config.admin.sessionKey && (!!config.admin.clientId || config.admin.fakeVerifier),
     jeux: api.games.map((g) => g.code).join(","),
     figesJump: Object.keys(jumpFrozen).length,
     startupMs: Math.round(process.uptime() * 1000),

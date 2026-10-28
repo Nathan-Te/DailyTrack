@@ -37,6 +37,35 @@ describe("firebase.json", () => {
     expect(headers.find((h) => h.source === "/track/admin/**")!.headers[0]).toEqual({ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" });
   });
 
+  it("lot N1 : /admin/ est en noindex et a sa propre CSP — le script de Google y est permis, nulle part ailleurs", () => {
+    const headers: Header[] = template.hosting.headers;
+    const admin = headers.find((h) => h.source === "/admin/**")!;
+    expect(admin.headers.find((x) => x.key === "X-Robots-Tag")).toEqual({ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" });
+    const csp = admin.headers.find((x) => x.key === "Content-Security-Policy")!.value;
+    const directives = Object.fromEntries(csp.split(";").map((d) => d.trim().split(/\s+/)).map(([nom, ...v]) => [nom!, v]));
+    // Google Identity Services : exactement ce que Google documente, et rien de plus.
+    expect(directives["script-src"]).toEqual(["'self'", "https://accounts.google.com/gsi/client"]);
+    expect(directives["frame-src"]).toEqual(["https://accounts.google.com/gsi/"]);
+    expect(directives["connect-src"]).toEqual(["'self'", "https://accounts.google.com/gsi/"]);
+    expect(directives["style-src"]).toEqual(["'self'", "https://accounts.google.com/gsi/style"]);
+    expect(directives["default-src"]).toEqual(["'self'"]);
+    expect(directives["frame-ancestors"]).toEqual(["'none'"]);
+    expect(directives["object-src"]).toEqual(["'none'"]);
+    expect(directives["base-uri"]).toEqual(["'self'"]);
+    // Ni script ni style en ligne, ni eval, ni joker.
+    expect(csp).not.toMatch(/unsafe-inline|unsafe-eval|\*|data:(?!\s*;|$)/);
+    expect(directives["img-src"]).toEqual(["'self'", "data:"]);
+    // Les autres règles du site n'autorisent aucun domaine de Google, et la page d'administration est la seule à en charger un.
+    for (const h of headers.filter((x) => x.source !== "/admin/**")) for (const k of h.headers) expect(k.value, `${h.source ?? h.regex} ${k.key}`).not.toContain("google");
+    const pages = ["index.html", "profil/index.html", "classement/index.html", "mentions-legales/index.html", "legal/index.html", "404.html"].map((f) => readFileSync(join(__dirname, "..", f), "utf8"));
+    for (const html of pages) expect(html).not.toContain("accounts.google.com");
+    const page = readFileSync(join(__dirname, "../admin/index.html"), "utf8");
+    expect(page).toContain('content="noindex');
+    expect(page).not.toMatch(/<script(?![^>]*\bsrc=)/); // aucun script en ligne
+    expect(page).not.toMatch(/<style\b|\sstyle="|\son[a-z]+=/); // aucun style ni gestionnaire en ligne
+    expect(page).not.toContain("accounts.google.com"); // le script de Google est chargé par admin.ts, jamais écrit dans la page
+  });
+
   it("lot R7 : la recette et les aperçus s'interdisent aux moteurs de recherche, la production non", () => {
     const find = (c: { hosting: { headers: Header[] } }) => c.hosting.headers.find((h) => h.headers.some((x) => x.key === "X-Robots-Tag") && h.source === "**");
     const recette = firebaseConfig(template, { site: "playdujour-recette", service: "cdj-api-recette", noindex: true });

@@ -64,12 +64,14 @@
       "sauf": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/src/jump*.ts", "apps/api/test/**", "apps/api/scripts/**", "apps/api/CLAUDE.md"]
     },
     "api-track": { "globs": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/scripts/measure-salon.ts", "apps/api/scripts/history-seed.ts"] },
-    "api-jump": { "globs": ["apps/api/src/jump*.ts", "apps/api/scripts/jump-*.ts"] }
+    "api-jump": { "globs": ["apps/api/src/jump*.ts", "apps/api/scripts/jump-*.ts"] },
+    "api-admin": { "globs": ["apps/api/src/admin*.ts", "apps/api/src/journaux.ts"] }
   },
   "specs": {
     "web/accessibilite.spec.ts": ["track-hud", "track-i18n", "ui"],
     "web/accueil.spec.ts": ["track-hud", "track-i18n", "ui", "track-archives"],
     "web/admin.spec.ts": ["track-admin"],
+    "web/admin-panneau.spec.ts": ["portail", "api-admin"],
     "web/adresses-joueur.spec.ts": ["track-profil", "profile-pkg", "api-track", "api-coeur"],
     "web/air.spec.ts": ["track-sim", "track-audio-fx"],
     "web/bas-cotes.spec.ts": ["track-sim", "track-scene"],
