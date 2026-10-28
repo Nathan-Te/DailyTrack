@@ -643,3 +643,62 @@
   background: var(--dj-moutarde);
   color: var(--dj-encre);
 }
+
+/* Le pied : les deux liens externes (Discord, Ko-fi) en boutons secondaires, côte à côte, à la ligne sur un petit écran. */
+.portail-pied__liens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+  margin: var(--dj-espace-4) 0 var(--dj-espace-2);
+}
+
+/* Le bouton Ko-fi : l'allure de celui de Ko-fi (bleu de leur charte, la tasse au cœur), fait ici — rien n'est chargé de leur site. Texte encre : le blanc d'origine ne passe pas le contraste. */
+.portail-kofi {
+  --kofi-bleu: #72a4f2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-7) 0 var(--dj-espace-4);
+  border-radius: 22px;
+  background: var(--kofi-bleu);
+  color: var(--dj-encre);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: transform var(--dj-duree-courte);
+}
+.portail-kofi:hover {
+  transform: translateY(-2px);
+}
+.portail-kofi__tasse {
+  display: block;
+  width: auto;
+  height: 24px;
+}
+
+/* Le bouton Discord : l'allure de Discord (le bleu-violet de leur charte, leur pictogramme), fait ici — rien n'est chargé de leur site. Texte blanc : 4,6:1 sur ce bleu. */
+.portail-discord {
+  --discord-bleu: #5865f2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-7) 0 var(--dj-espace-5);
+  border-radius: 22px;
+  background: var(--discord-bleu);
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: transform var(--dj-duree-courte);
+}
+.portail-discord:hover {
+  transform: translateY(-2px);
+}
+.portail-discord__picto {
+  display: block;
+  flex: none;
+}

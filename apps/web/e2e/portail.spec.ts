@@ -70,6 +70,16 @@ test("portail en français : barre, date, une cartouche par jeu (numéro du jour
   await expect(page.locator('[data-jeu="track"] a.dj-bouton')).toHaveAccessibleName("Jouer à Track");
   await expect(page.locator("#mentions")).toHaveText("Mentions légales et confidentialité");
   await expect(page.locator("#mentions")).toHaveAttribute("href", "mentions-legales/");
+  // Le pied : la communauté et le soutien de l'éditeur, de simples liens (aucun script ni bouton intégré de ces services), nouvel onglet sans transmettre la page.
+  await expect(page.locator("#discord")).toHaveText("Rejoindre le Discord");
+  await expect(page.locator("#discord")).toHaveAttribute("href", "https://discord.gg/2KZkUSpDej");
+  await expect(page.locator("#kofi")).toHaveText("Me soutenir sur Ko-fi");
+  await expect(page.locator("#kofi")).toHaveAttribute("href", "https://ko-fi.com/C7X829MCE1");
+  for (const id of ["discord", "kofi"]) {
+    await expect(page.locator(`#${id}`)).toHaveAttribute("target", "_blank");
+    await expect(page.locator(`#${id}`)).toHaveAttribute("rel", "noopener noreferrer");
+  }
+  expect(await page.evaluate(() => [...document.scripts].filter((s) => s.src && new URL(s.src).origin !== location.origin).length)).toBe(0);
   // Sans pseudo : l'icône profil (lot I2 : un lien vers le profil commun) ; les polices de la charte chargées (aucune police système).
   await expect(page.locator(".dj-avatar")).toHaveAccessibleName("Ton profil");
   await expect(page.locator(".dj-avatar")).toHaveAttribute("href", "profil/");
@@ -132,7 +142,7 @@ test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec u
   const page = await (await newClockedContext(browser, { viewport: { width: 1024, height: 768 }, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("#jeux .dj-cartouche")).toHaveCount(2);
-  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', ".dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-jeu="jump"] a.dj-bouton', "#mentions"]; // lot I3 : sans réponse du serveur (ici, aucun), la tuile « Classement du jour » n'est pas là
+  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', ".dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-jeu="jump"] a.dj-bouton', "#discord", "#kofi", "#mentions"]; // pied : Discord et Ko-fi (retouche) ; lot I3 : sans réponse du serveur (ici, aucun), la tuile « Classement du jour » n'est pas là
   for (const sel of attendus) {
     await page.keyboard.press("Tab");
     await expect(page.locator(sel), sel).toBeFocused();
@@ -144,7 +154,7 @@ test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec u
     expect(contour.largeur, sel).toBeGreaterThanOrEqual(3);
   }
   // Entrée sur le bouton d'un jeu : on y va (les jeux ne sont pas construits ici : la demande de la page suffit).
-  await page.keyboard.press("Shift+Tab");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+Tab"); // mentions › Ko-fi › Discord › le bouton de Jump
   const vers = page.waitForRequest((r) => r.isNavigationRequest() && r.url() === `${SITE}/jump/`);
   await page.keyboard.press("Enter");
   await vers;

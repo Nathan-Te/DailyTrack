@@ -16,6 +16,8 @@ const fr = {
   "portail.jouer.aria": "Jouer à {jeu}",
   "portail.pied": "Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux.",
   "portail.mentions": "Mentions légales et confidentialité",
+  "portail.discord": "Rejoindre le Discord",
+  "portail.kofi": "Me soutenir sur Ko-fi",
   // Lot I2 : l'accueil riche
   "portail.compte.legende": "Prochains niveaux dans",
   "portail.avancement": { one: "{n} fini sur {total}", other: "{n} finis sur {total}" },
@@ -144,6 +146,8 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.jouer.aria": "Play {jeu}",
   "portail.pied": "A new day at midnight, Paris time. Your profile is the same in every game.",
   "portail.mentions": "Legal notice and privacy",
+  "portail.discord": "Join the Discord",
+  "portail.kofi": "Support me on Ko-fi",
   "portail.compte.legende": "Next levels in",
   "portail.avancement": { one: "{n} of {total} done", other: "{n} of {total} done" },
   "portail.numeroTheme": "{numero} · {theme}",
