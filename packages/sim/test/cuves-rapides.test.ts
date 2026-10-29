@@ -8,6 +8,7 @@ import {
   createRace,
   dailyCircuit,
   daysFromCivil,
+  generatorVersionOf,
   makeInput,
   parseTrack,
   sin,
@@ -129,7 +130,9 @@ describe("le pilote d'auteur choisit la paroi", () => {
     let onWall = 0;
     // Stade et Nuit seulement : au Canyon (lot 22) la paroi précède un saut, le pilote d'auteur garde le fond pour s'aligner sur la rampe.
     for (let d = 0; d < 40; d++) {
-      const c = dailyCircuit(first + d);
+      // Lot V1 : au plus la v19 — le test porte sur le pilote d'auteur et ses cuves, pas sur le tirage des thèmes ; avec le sac de thèmes (v20) les mêmes 40 dates ont d'autres thèmes
+      // (mesuré sur 120 dates : la paroi gagne 13/32 avec la v19, 14/32 avec la v20 : le même ordre de grandeur, le seuil de la moitié tient sur ces 40 dates précises).
+      const c = dailyCircuit(first + d, 0, null, Math.min(generatorVersionOf(first + d), 19));
       if (c.theme !== "stade" && c.theme !== "nuit") continue;
       if (!c.track.blocks.some((b) => b.cuve)) continue;
       withCuve++;

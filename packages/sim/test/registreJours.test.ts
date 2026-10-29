@@ -81,20 +81,38 @@ describe("lot R11 : l'ancre de la rotation des vedettes (v18) ne dépend d'aucun
   it("les apparitions d'un thème se suivent (+1) de part et d'autre de l'ancre, négatives avant elle ; la vedette change à chaque apparition", () => {
     for (const name of THEME_NAMES) {
       const days: number[] = [];
-      for (let d = ANCRE_V18 - 60; d < ANCRE_V18 + 60; d++) if (themeForDay(d).name === name) days.push(d);
+      for (let d = ANCRE_V18 - 60; d < ANCRE_V18 + 60; d++) if (themeForDay(d, 18).name === name) days.push(d); // la v18 imposée : l'ancienne règle des thèmes (lot V1 : le sac est la v20)
       expect(days.some((d) => d < ANCRE_V18) && days.some((d) => d >= ANCRE_V18), name).toBe(true);
       const theme = themeOfVersion(THEMES[name], 18);
       let prev: string | null = null;
       days.forEach((d, i) => {
-        const k = themeOccurrence(d, name);
-        if (i > 0) expect(k, `${name} ${d}`).toBe(themeOccurrence(days[i - 1]!, name) + 1);
+        const k = themeOccurrence(d, name, 18);
+        if (i > 0) expect(k, `${name} ${d}`).toBe(themeOccurrence(days[i - 1]!, name, 18) + 1);
         const v = vedetteOf(theme, k);
         expect(v, `${name} ${d}`).not.toBeNull();
         if (prev !== null) expect(v, `${name} ${d} : deux apparitions de suite`).not.toBe(prev);
         prev = v;
       });
-      expect(themeOccurrence(days.find((d) => d >= ANCRE_V18)!, name)).toBeGreaterThanOrEqual(0);
-      expect(themeOccurrence(days[0]!, name)).toBeLessThan(0);
+      expect(themeOccurrence(days.find((d) => d >= ANCRE_V18)!, name, 18)).toBeGreaterThanOrEqual(0);
+      expect(themeOccurrence(days[0]!, name, 18)).toBeLessThan(0);
+    }
+  });
+
+  it("lot V1 (v20, le sac de thèmes) : après le dernier jour du registre, les apparitions d'un thème se suivent aussi (+1) et la vedette change à chaque apparition", () => {
+    const premier = parseDay(registre.jusqua)! + 1;
+    for (const name of THEME_NAMES) {
+      const days: number[] = [];
+      for (let d = premier; d < premier + 120; d++) if (themeForDay(d).name === name) days.push(d);
+      expect(days.length, name).toBeGreaterThanOrEqual(10);
+      const theme = themeOfVersion(THEMES[name], GENERATOR_VERSION);
+      let prev: string | null = null;
+      days.forEach((d, i) => {
+        const k = themeOccurrence(d, name);
+        if (i > 0) expect(k, `${name} ${d}`).toBe(themeOccurrence(days[i - 1]!, name) + 1);
+        const v = vedetteOf(theme, k);
+        if (prev !== null) expect(v, `${name} ${d} : deux apparitions de suite`).not.toBe(prev);
+        prev = v;
+      });
     }
   });
 

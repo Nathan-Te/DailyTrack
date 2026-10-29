@@ -6,7 +6,7 @@ import { parseLevel } from "./level";
 import type { Palier } from "./modules";
 import { textHash } from "./texthash";
 import { decodeReplay, encodeReplay, replayAttempt } from "./replay";
-import { jumpThemeForDay } from "./themes";
+import { jumpThemeOfGenerator } from "./themes";
 import type { SlowRoute } from "./voies";
 
 // Niveaux figés (lot 10 ; **une seule règle** depuis le lot P1 de la plateforme) : un fichier compact par date,
@@ -230,8 +230,8 @@ function thaw(raw: unknown, day: number, proofRequired: boolean): PublicDailyLev
     date,
     number: levelNumber(day),
     id,
-    // Lot 11 : un niveau figé est celui du thème naturel de sa date (jamais un essai).
-    theme: jumpThemeForDay(day),
+    // Lot 11 : un niveau figé est celui du thème naturel de sa date (jamais un essai). Lot V1 : le thème d'un jour figé suit la règle de son générateur (l'ancienne avant g23).
+    theme: jumpThemeOfGenerator(day, f.generatorVersion),
     forcedTheme: false,
     level,
     ascii,

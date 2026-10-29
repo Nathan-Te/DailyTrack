@@ -12,6 +12,7 @@ import {
   buildModuleDef,
   dailyLevel,
   dailyProblems,
+  jumpThemeAncien,
   jumpThemeForDay,
   moduleSolutions,
   variantExigence,
@@ -29,7 +30,7 @@ describe("les quatre autres thèmes inchangés", () => {
   it("usine, glace, nuit et néon : mêmes morceaux, même niveau, même temps de l'auteur, date par date (120 dates)", () => {
     let n = 0;
     for (let d = PREMIER_JOUR_JUMP; d < PREMIER_JOUR_JUMP + 120; d++) {
-      const theme = jumpThemeForDay(d);
+      const theme = jumpThemeAncien(d); // lot V1 : la référence est celle de l'ancienne règle des thèmes (v3)
       if (theme === "foret") continue;
       const ref = BEFORE[formatDay(d)];
       expect(ref, formatDay(d)).toBeDefined();
@@ -111,7 +112,8 @@ describe("niveau du jour en forêt", () => {
 
   it("aucun morceau d'une autre mécanique en forêt, et aucun vent hors de la forêt (thème forcé)", () => {
     for (const L of days) for (const p of L.pieces) expect(p.mechanic === null || p.mechanic === "vent", `${L.date} ${p.id}`).toBe(true);
-    const d = parseDay("2027-03-28")!;
+    let d = parseDay("2027-03-28")!; // lot V1 : le premier jour d'usine à partir de cette date (le sac de thèmes a changé le thème du 28/03)
+    while (jumpThemeForDay(d) !== "usine") d++;
     expect(jumpThemeForDay(d)).toBe("usine");
     expect(dailyLevel(d).level.winds.length).toBe(0);
     const forced = dailyLevel(d, "foret");

@@ -6,6 +6,7 @@ import {
   PREMIER_JOUR_JUMP,
   TICK_RATE,
   dailyLevel,
+  declareFrozenGenerators,
   decodeReplay,
   jumpMedalFor,
   levelNumber,
@@ -332,6 +333,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   const { db, now, log, today, sinceMidnight, hashKey, hit, readHit, readJson, playerIdOf, players, limits } = platform;
   const frozen = options.frozen ?? {};
   const frozenDays = Object.keys(frozen).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  // Lot V1 : le générateur de chaque fichier figé dit si le jour garde l'ancienne règle des thèmes (g22 et avant) et si le premier jour du sac doit éviter le thème de la veille.
+  declareFrozenGenerators(Object.fromEntries(frozenDays.map((d) => [d, (frozen[d] as { generatorVersion?: unknown } | undefined)?.generatorVersion as number])));
   /** Niveaux connus de cette instance : la règle, ce que rend `/api/jump/day`, le texte, et le niveau lu (au premier rejeu). */
   const levels = new Map<number, { rule: string; info: JumpDayInfo; ascii: string; level: Level | null; authorHash: string | null }>();
   /** Niveaux en cours de calcul : deux requêtes simultanées n'en font qu'un (≈ 0,2 s de génération). */

@@ -12,6 +12,7 @@ import {
   STALACTITE_SHAKE_TICKS,
   UNITS_PER_TILE,
   dailyLevel,
+  jumpThemeForDay,
   initialAttempt,
   parseLevel,
   stalactiteOffset,
@@ -357,7 +358,10 @@ describe("la galerie `?modules` et `?semaine`", () => {
   });
 
   it("la miniature de `?semaine` connaît les stalactites d'un jour de glace (tuile du corps et zone)", () => {
-    const L = dailyLevel(parseDay("2026-12-08")!);
+    // Lot V1 : le premier jour de glace à stalactites à partir du 08/12/2026 (le sac de thèmes a changé le thème de chaque date).
+    let jour = parseDay("2026-12-08")!;
+    while (jumpThemeForDay(jour) !== "glace" || dailyLevel(jour).level.stalactites.length < 2) jour++;
+    const L = dailyLevel(jour);
     expect(L.theme).toBe("glace");
     expect(L.level.stalactites.length).toBeGreaterThanOrEqual(2);
     const d = semaineDayOf(L);

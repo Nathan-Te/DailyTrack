@@ -1,7 +1,8 @@
+import "./figesDepot";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, jumpMedalsFor } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, jumpMedalsFor } from "@cdj/jump-sim";
 import { NAME_KEY, PLAYER_KEY, createIdentity, type ApiResult, type KeyValueStore, type NameCheck } from "@cdj/profile";
 import { DEMO_TODAY, DemoRankSource, demoBoard, type DemoDay } from "../src/demoRank";
 import { ordinal, rankApiBase, rankText, type JumpBoard, type JumpSubmitResult, type RankEntry, type RankSource } from "../src/rankApi";
@@ -433,9 +434,12 @@ describe("démonstration (?api=demo)", () => {
     expect(board).toMatchObject({ ok: true, data: { me: { name: "Moi", rank: today.participants + 1 }, open: true } });
     online = false;
     expect(await src.submit("p", "Moi", e, versions)).toMatchObject({ ok: false, status: 0 });
-    // Les médailles sont celles de `jumpMedalsFor(auteur)`, ajustées par les voies lentes du niveau (lot 16 : l'or ne dépasse jamais la voie rapide, le bronze couvre toutes les voies lentes) :
-    // l'auteur et l'argent sont ceux de la formule, l'or ne la dépasse pas, le bronze n'est pas en dessous.
-    const plain = jumpMedalsFor(today.medals.author, 11); // les jours de démonstration sont d'une version d'avant le lot G1 (Diamant = temps de l'auteur)
+    // Les médailles sont celles de `jumpMedalsFor(temps de l'auteur du niveau)`, ajustées par les voies lentes du niveau (lot 16 : l'or ne dépasse jamais la voie rapide, le bronze couvre toutes les voies lentes) :
+    // l'auteur (le Diamant, 105 % depuis le lot G1) et l'argent sont ceux de la formule, l'or ne la dépasse pas, le bronze n'est pas en dessous. Le niveau est celui que le jeu de données a joué (lot V1 :
+    // les niveaux figés du dépôt déclarés comme le fait le serveur, `figesDepot`).
+    const L = dailyLevel(DEMO_TODAY);
+    const plain = jumpMedalsFor(L.authorTicks, L.level.simVersion);
+    expect(today.levelId).toBe(L.id);
     expect(today.medals.author).toBe(plain.author);
     expect(today.medals.silver).toBe(plain.silver);
     expect(today.medals.gold).toBeLessThanOrEqual(plain.gold);

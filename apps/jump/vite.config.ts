@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "no
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
+import { JUMP_GENERATOR_SAC } from "../../packages/jump-sim/src/versionSac";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
 import { pagesDuSocle } from "../../packages/ui/outils/vite";
 import { CATALOGUE_APERCU } from "./src/catalogue.apercu";
@@ -27,6 +28,26 @@ function frozenDays(): string[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * Lot V1 : les dates des niveaux figés par un générateur d'avant le sac de thèmes (`generatorVersion` < 23), écrites dans le jeu à la construction. Leur thème garde l'ancienne
+ * règle et le premier jour du sac lit celui de la veille : `declareOldFrozenDays` (`@cdj/jump-sim`, `src/frozen.ts`). La liste ne grossit plus : les niveaux figés par un
+ * générateur du sac n'y sont pas.
+ */
+function frozenOldDays(): string[] {
+  const out: string[] = [];
+  try {
+    for (const f of readdirSync(new URL("./public/levels", import.meta.url)).sort()) {
+      const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+      if (date === undefined) continue;
+      const g = (JSON.parse(readFileSync(new URL(`./public/levels/${f}`, import.meta.url), "utf8")) as { generatorVersion?: unknown }).generatorVersion;
+      if (typeof g === "number" && g < JUMP_GENERATOR_SAC) out.push(date);
+    }
+  } catch {
+    // aucun niveau figé
+  }
+  return out;
 }
 
 /**
@@ -101,7 +122,7 @@ export default defineConfig({
       return fichier.endsWith(".woff2") ? `/${fichier}` : undefined;
     },
   },
-  define: { __JUMP_FROZEN_DAYS__: JSON.stringify(frozenDays()) },
+  define: { __JUMP_FROZEN_DAYS__: JSON.stringify(frozenDays()), __JUMP_FROZEN_OLD_DAYS__: JSON.stringify(frozenOldDays()) },
   build: {
     target: "es2022",
     rollupOptions: {

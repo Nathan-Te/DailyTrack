@@ -16,6 +16,7 @@ import {
   dailyLevelId,
   dailyProblems,
   fallbackLevel,
+  jumpThemeAncien,
   jumpThemeForDay,
   mechanicOf,
   moduleDef,
@@ -32,16 +33,17 @@ const lot9 = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures/themes-
 const DATES = Array.from({ length: 60 }, (_, k) => PREMIER_JOUR_JUMP + k);
 
 describe("jumpThemeForDay (socle)", () => {
-  it("donne, date par date, exactement les thèmes du lot 9 (400 dates, référence figée avant le changement)", () => {
+  it("l'ancienne règle (jumpThemeAncien) donne, date par date, exactement les thèmes du lot 9 (400 dates, référence figée avant le changement)", () => {
     const expected = lot9.names.split(" ");
     expect(expected).toHaveLength(400);
     expect(lot9.count).toBe(400);
-    for (let k = 0; k < 400; k++) expect(jumpThemeForDay(lot9.first + k), `jour ${lot9.first + k}`).toBe(expected[k]);
+    for (let k = 0; k < 400; k++) expect(jumpThemeAncien(lot9.first + k), `jour ${lot9.first + k}`).toBe(expected[k]); // lot V1 : l'ancienne règle, gardée pour les niveaux figés et les références d'avant la version 12
   });
 
-  it("jamais deux jours de suite le même thème, les cinq thèmes sortent", () => {
+  it("jamais deux jours de suite le même thème (l'ancienne règle comme le sac de thèmes du lot V1), les cinq thèmes sortent", () => {
     const seen = new Set<string>();
     for (let d = lot9.first; d < lot9.first + 400; d++) {
+      expect(jumpThemeAncien(d)).not.toBe(jumpThemeAncien(d + 1));
       expect(jumpThemeForDay(d)).not.toBe(jumpThemeForDay(d + 1));
       seen.add(jumpThemeForDay(d));
     }

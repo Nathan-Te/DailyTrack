@@ -583,7 +583,7 @@ describe("lot 26 — les sept morceaux de la nuit", () => {
 describe("lot 26 — les niveaux du jour de la nuit (g20, v10)", () => {
   it("la version 10 et g20 : l'identifiant, le figeage, la relecture ; une version incohérente est refusée", () => {
     expect(BRIDGE_GENERATOR).toBe(20);
-    expect(JUMP_GENERATOR_VERSION).toBe(BRIDGE_GENERATOR + 2); // lot 27 : g21 (v11) ; lot 28 : g22 (v12)
+    expect(JUMP_GENERATOR_VERSION).toBe(BRIDGE_GENERATOR + 3); // lot 27 : g21 (v11) ; lot 28 : g22 (v12) ; lot V1 : g23 (le sac de thèmes)
     const day = parseDay("2026-12-17")!;
     const L = dailyLevel(day, null, BRIDGE_VERSION);
     expect(L.level.simVersion).toBe(10);
@@ -691,7 +691,9 @@ describe("lot 26 — l'équilibre des mécaniques de chaque thème", () => {
   }, 240_000);
 
   it("la règle refuse un niveau qui la viole (dailyProblems)", () => {
-    const L = dailyLevel(parseDay("2026-12-17")!);
+    let jour = parseDay("2026-12-17")!; // lot V1 : un jour de nuit (l'élément du thème est le pont) ; le sac de thèmes a changé le thème du 17/12
+    while (jumpThemeForDay(jour) !== "nuit") jour++;
+    const L = dailyLevel(jour);
     const pieces = L.pieces.map((p) => ({ ...p, tags: p.tags.includes("pont") ? p.tags : [...p.tags, "pont" as const] }));
     expect(dailyProblems({ ...L, pieces }).join(" ")).toMatch(/morceaux à pont \(au plus 2\)/);
     const noOrigin = L.pieces.map((p) => ({ ...p, mechanic: null }));

@@ -203,6 +203,8 @@ describe("sauts et reliefs des circuits du jour (60 dates)", () => {
         expect(b.mark).not.toBe("start");
         expect(b.mark).not.toBe("finish");
         if (!parseToken(tokens[b.index]!).open) continue; // bas-côté vide d'un thème (Nuit) : à toute hauteur
+        // Lot V1 : « fil-du-rasoir » (lot 49, vedette de la Nuit) est une figure sans rebords à toute hauteur, par fiche : elle n'est pas une section du lot 17.
+        if (c.figures.some((f) => f.name === "fil-du-rasoir" && b.index >= f.from && b.index < f.to)) continue;
         sections++;
         expect(Math.min(b.y0, b.y0 + b.rise) - low, c.spec).toBeGreaterThanOrEqual(6);
         expect(["kick", "gap", "jump"]).not.toContain(b.kind);

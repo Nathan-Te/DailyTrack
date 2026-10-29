@@ -5,7 +5,7 @@ import { GENERATOR_VERSION, SIM_VERSION, dailyCircuit, generatorVersionOf, parse
 import { versionDeReference } from "./helpers/versions";
 
 // Circuits du jour de référence : le texte exact, le temps de l'auteur et la palette de quelques dates,
-// calculés par Node. Le test navigateur (apps/web/e2e/daily.spec.ts) régénère ces circuits dans Chromium,
+// calculés par Node. Lot V1 : un vecteur de plus (17/12/2026, un Stade) — avec le sac de thèmes, les dates d'avant ne couvraient plus les huit thèmes de la dernière version. Le test navigateur (apps/web/e2e/daily.spec.ts) régénère ces circuits dans Chromium,
 // Firefox et WebKit et doit retrouver exactement les mêmes : c'est ce qui garantit que tout le monde joue le
 // même circuit, avec les mêmes médailles, et que le serveur validera les courses sur le même circuit.
 //
@@ -17,7 +17,7 @@ import { versionDeReference } from "./helpers/versions";
 // 27/10/2026, v16 : du 28/10 au 03/11) sont les anciennes versions du générateur, gardées bit pour bit (texte, temps de l'auteur, identifiant) : **la régénération refuse de les
 // réécrire**. Les autres suivent la dernière version (v18 : herbe de course du lot 48 et identité des thèmes du lot 49).
 const FILE = join(import.meta.dirname, "fixtures/daily-golden.json");
-const DATES = ["2026-10-06", "2026-10-07", "2026-10-08", "2026-10-21", "2026-10-27", "2026-10-28", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-08", "2026-11-10", "2026-11-15", "2026-11-16", "2026-12-10", "2026-12-25", "2027-02-28", "2028-02-29", "2030-01-01"];
+const DATES = ["2026-10-06", "2026-10-07", "2026-10-08", "2026-10-21", "2026-10-27", "2026-10-28", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-08", "2026-11-10", "2026-11-15", "2026-11-16", "2026-12-10", "2026-12-17", "2026-12-25", "2027-02-28", "2028-02-29", "2030-01-01"];
 
 interface Entry {
   date: string;

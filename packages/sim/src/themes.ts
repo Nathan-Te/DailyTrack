@@ -1,4 +1,5 @@
-import { Rng, mixSeed } from "@cdj/core";
+import { Rng, mixSeed, themeDuSac, type ReglesSac } from "@cdj/core";
+import { GENERATOR_SAC_THEMES, generatorVersionOf } from "./dailyId";
 import type { BlockSurface, ShoulderKind, WidthLetter } from "./track";
 
 // Les thèmes du jour (lot 8). Le thème est tiré de la date (même graine que la palette avant le lot 8) ; il règle :
@@ -87,13 +88,33 @@ export const THEMES: Readonly<Record<ThemeName, Readonly<Theme>>> = {
   col: { name: "col", label: "Col alpin", palette: "alpin", shoulder: { kind: "snow", share: 60 }, bumpy: [0, 0], zones: { count: [0, 2], surfaces: [["ice", 1]] }, widths: { weights: { e: 2, n: 5, l: 3 }, changes: [1, 2] }, bankChance: 30, turboChance: 15, cut: false, relief: { hills: [3, 4], steep: 85 }, jumpChance: 25, openChance: 80, cuveChance: 0, signature: "switchbacks", figures: { favor: ["lacets", "demi-tour-large", "virage-descente", "descente-plaque", "colline-raide", "releve-contre", "esse-relevee", "plaque-epingle", "freinage-epingle"], ban: [...ICE, ...DIRT, ...CUVES] } },
   ville: { name: "ville", label: "Ville", palette: "ville", shoulder: { kind: "gravel", share: 0 }, bumpy: [0, 0], zones: null, widths: { weights: { e: 5, n: 5, l: 0 }, changes: [1, 2] }, bankChance: 0, turboChance: 20, cut: false, relief: { hills: [1, 2], steep: 30 }, jumpChance: 30, openChance: 0, cuveChance: 0, maxTight: 4, signature: "rightAngles", figures: { require: ["u-urbain", "freinage-epingle", "plaque-epingle", "turbo-epingle", "s-serre-large"], favor: ["chicane-angles", "u-urbain", "freinage-epingle", "plaque-epingle", "turbo-epingle", "s-serre-large", "pincement", "slalom-route", "virage-descente"], ban: [...ICE, ...DIRT, ...CUVES, "saut-etroit"] } },
 };
-/** Thème de la journée : tiré de la date (graine = jour UTC), identique pour tout le monde. */
-export function themeForDay(day: number): Theme {
-  return THEMES[THEME_NAMES[new Rng(mixSeed(day, 0x70a1)).int(THEME_NAMES.length)]!];
+/** Sel du tirage de l'ancienne règle des thèmes (celle des jours d'avant le sac, v19 et avant) et de celle du sac. */
+const SEL_THEMES = 0x70a1;
+
+/** Le thème que l'ancienne règle donne à un jour (v19 et avant) : tiré de la date seule, un tirage indépendant par jour (il pouvait répéter la veille). Ne change jamais. */
+export function themeAncien(day: number): Theme {
+  return THEMES[THEME_NAMES[new Rng(mixSeed(day, SEL_THEMES)).int(THEME_NAMES.length)]!];
 }
 
-export function paletteForDay(day: number): PaletteName {
-  return themeForDay(day).palette;
+/** Lot V1 : les règles du sac de thèmes de Track. Un jour est « ancien » quand le registre des jours (`generatorVersionOf`) lui donne une version d'avant le sac. */
+const REGLES_SAC: ReglesSac = {
+  n: THEME_NAMES.length,
+  sel: SEL_THEMES,
+  ancien: (day) => THEME_NAMES.indexOf(themeAncien(day).name),
+  estAncien: (day) => generatorVersionOf(day) < GENERATOR_SAC_THEMES,
+};
+
+/**
+ * Thème de la journée, identique pour tout le monde. **Lot V1 (générateur 20)** : le sac de thèmes — chaque thème une fois par cycle de huit jours, dans un ordre tiré de la
+ * graine, jamais deux jours de suite le même (`themeDuSac`, `@cdj/core`, règle commune aux deux jeux) ; un jour que le registre nomme avec une version d'avant garde l'ancienne
+ * règle (`themeAncien`), et le premier jour du sac lit le thème de la veille. `generator` : la version du jour (le registre par défaut ; un test ou une mesure peut l'imposer).
+ */
+export function themeForDay(day: number, generator = generatorVersionOf(day)): Theme {
+  return generator < GENERATOR_SAC_THEMES ? themeAncien(day) : THEMES[THEME_NAMES[themeDuSac(day, REGLES_SAC)]!];
+}
+
+export function paletteForDay(day: number, generator = generatorVersionOf(day)): PaletteName {
+  return themeForDay(day, generator).palette;
 }
 
 /** Thème demandé par un nom (`?theme=banquise`), ou `null`. */

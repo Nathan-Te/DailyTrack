@@ -151,7 +151,8 @@ describe("circuit du jour : construction", () => {
   it("recommence avec une graine voisine quand une tentative échoue : la première tentative n'est pas toujours retenue", () => {
     const attempts = DAYS.map((d) => circuit(d).attempt);
     expect(attempts.some((a) => a > 0)).toBe(true);
-    expect(Math.max(...attempts)).toBeLessThan(25);
+    // Lot V1 (v20) : avec le sac de thèmes, la Banquise du 02/12/2026 demande 51 tentatives (le budget de la v20 est de 120, `MAX_ATTEMPTS_SAC`) ; avant, aucun jour de la fenêtre ne passait 25.
+    expect(Math.max(...attempts)).toBeLessThan(60);
     // composeSpec est lui-même déterministe et peut échouer proprement (null) sans lever d'erreur.
     expect(composeSpec(JOUR_TEST, 0)).toBe(composeSpec(JOUR_TEST, 0));
   });

@@ -5,11 +5,11 @@ import { SIM_VERSION } from "./constants";
 import type { Replay } from "./replay";
 import { createTestTrack } from "./circuits";
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
-import { dailyTrackId, generatorVersionOf } from "./dailyId";
+import { GENERATOR_SAC_THEMES, dailyTrackId, generatorVersionOf } from "./dailyId";
 import { SALON_SEED_BASE } from "./salon";
 import { medalsFor, type Medals } from "./medals";
 import { MAX_BRAKING_ADD, secureBraking } from "./braking";
-import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
+import { MAX_TIGHT, maxTightOf, themeAncien, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
 import { themeOfVersion } from "./themesVersion";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
 import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
@@ -38,6 +38,13 @@ export * from "./dailyId";
 export const AUTHOR_MIN_MS = 30_000;
 export const AUTHOR_MAX_MS = 40_000;
 export const MAX_ATTEMPTS = 40;
+/**
+ * Lot V1 (v20) : le sac de thèmes donne à chaque date un thème que le tirage d'avant ne lui aurait pas donné ; mesuré sur 365 jours, un seul (Banquise, 02/12/2026) épuisait
+ * les 40 tentatives sans circuit valide. À partir de la v20 le budget est de 120 tentatives (comme celui de Jump, `DAILY_MAX_ATTEMPTS_V4`) ; **une ancienne version garde
+ * 40** : un jour qui a trouvé son circuit à la tentative k le trouve à la même, et un jour de secours d'une ancienne version ne change pas.
+ */
+export const MAX_ATTEMPTS_SAC = 120;
+const maxAttempts = (generator: number): number => (generator >= GENERATOR_SAC_THEMES ? MAX_ATTEMPTS_SAC : MAX_ATTEMPTS);
 /**
  * Vitesse que le pilote doit dépasser au moins une fois (lot 15) : 30 % au-dessus de la pointe du plat. Un circuit sans
  * portion rapide (descente, turbos, grande courbe prise à fond) est refusé, graine voisine.
@@ -336,18 +343,22 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
 /** Ancre du numéro d'apparition d'un thème (v18) : le 04/11/2026, où le lot 49 l'a défini. Ne bouge jamais : elle fixe le circuit de chaque jour de la v18. */
 export const ANCRE_V18 = daysFromCivil(2026, 11, 4);
 const occurrences = new Map<string, number>();
-export function themeOccurrence(day: number, theme: ThemeName): number {
+export function themeOccurrence(day: number, theme: ThemeName, generator = generatorVersionOf(day)): number {
   if (day >= SALON_SEED_BASE) return day - SALON_SEED_BASE;
-  const key = `${theme}:${day}`;
+  // Lot V1 : un jour d'avant le sac de thèmes compte les apparitions avec l'ancienne règle de tous les jours (comme toujours : son circuit ne change pas) ; un jour du sac
+  // les compte avec le thème que chaque jour a réellement servi (`themeForDay(d)`, qui lit la version de d dans le registre).
+  const ancien = generator < GENERATOR_SAC_THEMES;
+  const key = `${theme}:${day}:${ancien ? "a" : "s"}`;
   let k = occurrences.get(key);
   if (k === undefined) {
     k = 0;
+    const themeDe = (d: number): ThemeName => (ancien ? themeAncien(d) : themeForDay(d)).name;
     // L'ancre fait partie de la v18 (jamais une date de bascule) : avant elle, les apparitions se comptent à rebours (…, −2, −1) pour que deux circuits consécutifs
     // d'un même thème gardent leur vedette, leur repos et leur ordre différents quel que soit le premier jour servi par la v18.
     if (day >= ANCRE_V18) {
-      for (let d = ANCRE_V18; d < day; d++) if (themeForDay(d).name === theme) k++;
+      for (let d = ANCRE_V18; d < day; d++) if (themeDe(d) === theme) k++;
     } else {
-      for (let d = day; d < ANCRE_V18; d++) if (themeForDay(d).name === theme) k--;
+      for (let d = day; d < ANCRE_V18; d++) if (themeDe(d) === theme) k--;
     }
     if (occurrences.size > 512) occurrences.clear();
     occurrences.set(key, k);
@@ -435,14 +446,14 @@ const CONNECTORS: readonly (readonly string[])[] = [[], [], [], [], [], ["S"], [
  * figure deux fois. Chacune est posée dans un sens (miroir) et avec une variante tirés au sort, la première qui tient sur la grille
  * (sans croisement, sans dépasser les hauteurs permises, dans le budget de virages serrés) l'emporte.
  */
-export function composeFigures(day: number, attempt: number, themeAsked: Theme = themeForDay(day), variant = 0, generator = generatorVersionOf(day)): Composition | null {
+export function composeFigures(day: number, attempt: number, themeAsked?: Theme | null, variant = 0, generator = generatorVersionOf(day)): Composition | null {
   // Lot 34 (v16) : freinage possible après un boost (`secureBraking`, braking.ts) ; v15 : les règles d'avant, au tirage près.
   const rules34 = generator >= 16;
   // Lot 48 (v17) : le thème tel que cette version le connaît (la Campagne roule sur l'herbe de course) ; avant, le thème tel quel.
-  const theme = themeOfVersion(themeAsked, generator);
+  const theme = themeOfVersion(themeAsked ?? themeForDay(day, generator), generator);
   // Lot 49 (v18) : le numéro d'apparition du thème, sa vedette et le sens de l'ordre des figures ; un thème sans super turbo n'en pose aucun.
   const rules49 = generator >= 18;
-  const occurrence = rules49 ? themeOccurrence(day, theme.name) : 0;
+  const occurrence = rules49 ? themeOccurrence(day, theme.name, generator) : 0;
   const vedette = rules49 ? vedetteOf(theme, occurrence) : null;
   const order49: Order49 | null = rules49 ? { theme: theme.name, even: occurrence % 2 === 0 } : null;
   const noTurbo = rules49 && theme.turboChance === 0;
@@ -616,7 +627,7 @@ export function composeFigures(day: number, attempt: number, themeAsked: Theme =
 }
 
 /** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée (voir `composeFigures`). */
-export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0, generator = generatorVersionOf(day)): string | null {
+export function composeSpec(day: number, attempt: number, theme?: Theme | null, variant = 0, generator = generatorVersionOf(day)): string | null {
   return composeFigures(day, attempt, theme, variant, generator)?.spec ?? null;
 }
 
@@ -856,7 +867,7 @@ export interface GeneratedCircuit {
  * pointe suffisante). `null` si aucune des `MAX_ATTEMPTS` tentatives n'a abouti.
  */
 export function generateCircuit(seed: number, theme: Theme, variant: number, id: string, generator = generatorVersionOf(seed)): GeneratedCircuit | null {
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts(generator); attempt++) {
     const composed = composeFigures(seed, attempt, theme, variant, generator);
     if (!composed) continue;
     const { spec } = composed;
@@ -880,7 +891,7 @@ export function generateCircuit(seed: number, theme: Theme, variant: number, id:
  * celui du planning l'est (c'est le jeu qui sait d'où il vient).
  */
 export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null, generator = generatorVersionOf(day)): DailyCircuit {
-  const theme = (forced ? themeByName(forced) : null) ?? themeForDay(day);
+  const theme = (forced ? themeByName(forced) : null) ?? themeForDay(day, generator);
   const forcedTheme = !!forced && !!themeByName(forced);
   const id = dailyTrackId(day, forcedTheme ? theme.name : undefined, variant, generator);
   const found = generateCircuit(day, theme, variant, id, generator);

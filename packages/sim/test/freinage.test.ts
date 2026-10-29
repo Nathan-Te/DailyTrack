@@ -41,7 +41,7 @@ const circuit = (day: number) => {
 describe("la version du générateur d'un jour (lot 34, registre du lot R11)", () => {
   it("un jour du registre garde sa version (v15 jusqu'au 27/10/2026), un jour absent et le Salon prennent la dernière, une version imposée change l'identifiant", () => {
     expect(GENERATOR_BEFORE_34).toBe(15);
-    expect(GENERATOR_VERSION).toBe(19); // lot G1 (plateforme) : les circuits de la v18 (identité des thèmes, lot 49), seules les médailles changent ; la v16 et la v17 ne restent dans le code que pour les jours que le registre leur donnerait
+    expect(GENERATOR_VERSION).toBe(20); // lot V1 (plateforme) : le sac de thèmes (les circuits de la v19 ne changent que par leur thème) ; lot G1 : la v19 a les circuits de la v18 (identité des thèmes, lot 49), seules les médailles changent ; la v16 et la v17 ne restent dans le code que pour les jours que le registre leur donnerait
     expect(generatorVersionOf(PREMIER_JOUR)).toBe(15);
     expect(generatorVersionOf(parseDay("2026-10-26")!)).toBe(15);
     expect(dailyTrackId(parseDay("2026-10-26")!)).toBe("jour-2026-10-26-g15");
@@ -50,7 +50,7 @@ describe("la version du générateur d'un jour (lot 34, registre du lot R11)", (
     expect(generatorVersionOf(absent)).toBe(GENERATOR_VERSION);
     expect(dailyTrackId(absent)).toBe(`jour-${formatDay(absent)}-g${GENERATOR_VERSION}`);
     expect(dailyTrackId(JOUR_V16, "ville", 2, 16)).toBe("jour-2026-10-28-g16-v2-ville");
-    expect(salonCircuit(2_946_000).id).toBe("salon-2946000-g19");
+    expect(salonCircuit(2_946_000).id).toBe(`salon-2946000-g${GENERATOR_VERSION}`);
   });
 
   it("un jour du registre rejoue son circuit v15 même si l'on impose la dernière version (sinon ce ne serait pas le même jour)", () => {
