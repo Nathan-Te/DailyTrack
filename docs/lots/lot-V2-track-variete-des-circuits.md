@@ -60,7 +60,7 @@ Temps du pilote (celui des médailles) sur les 200 jours : **v20 30,4 – 39,9 s
 ## Vérifié / non vérifié
 - Vérifié en local : tests de `packages/sim` (tous), typecheck, construction, budgets, galerie dans Chromium (captures : `lot-V2/galerie-actuelle.png`, `lot-V2/galerie-nouvelle.png`), `npm run verifier`. `FAST=1 npm run measure:generator` tourne (sortie 0), mais ses tableaux de validation comparent encore les v15 et v16 : la validation de la v21 vient de `mesure-circuits` (200 jours, 0 secours) et des 3 × 365 jours.
 - **Non vérifié** : la conduite des circuits v21 à la main (à faire par Nathan : 2 ou 3 jours de la galerie avec `?seed=<date>`) ; Firefox et WebKit (CI).
-- **CI de PR verte** sur `6704535` : https://github.com/Nathan-Te/DailyTrack/actions/runs/40924913159 (5,9 min) ; `npm run verifier` vert en local (unitaires SQLite et libSQL, constructions, 28 specs e2e Chromium). `main` n'avait pas bougé depuis la base de la branche (36f44ab) : rien à fusionner.
+- **CI de PR verte** sur `fc61bee` : https://github.com/Nathan-Te/DailyTrack/actions/runs/40933578312 (5,7 min ; deux runs rouges avant, expliqués plus haut, § Garde-fous) ; `npm run verifier` vert en local (unitaires SQLite et libSQL, constructions, 28 specs e2e Chromium). `main` n'avait pas bougé depuis la base de la branche (36f44ab) : rien à fusionner.
 
 ## Décisions laissées à Nathan
 - Les blocs du lot V2b (`docs/track/blocs-proposes.md`) ; ils touchent presque tous le premier chargement, qui n'a plus que 51 o de marge : un relèvement sera nécessaire.
