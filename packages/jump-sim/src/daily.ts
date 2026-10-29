@@ -18,7 +18,7 @@ import { PHASE_REFUSED } from "./phases";
 import { ALT_B_REFUSED } from "./etats";
 import { PARASITE_CLOSED } from "./parasites";
 import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
-import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, jumpThemeForDay, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
+import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, auChangementDesJoursAnciens, jumpThemeOfSim, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
 import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpReplay } from "./replay";
 import { SLOW_MAX_EXTRA, SLOW_MIN_EXIGENCE, SLOW_REACH_ROWS, SLOW_ZONE_WIDTH, carveSlowRoute, slowCostMin, slowGalleryRow, slowHeadroom, slowLedges, slowScript, type SlowRoute } from "./voies";
@@ -1988,17 +1988,19 @@ const cache = new Map<string, DailyLevel>();
 export function forgetDailyLevels(): void {
   cache.clear();
 }
+// Lot V1 : le thème d'un jour dépend des niveaux figés déclarés (`declareOldFrozenDays`) ; un niveau gardé en mémoire avant une déclaration (et la variété de ses voisins) n'est plus le bon.
+auChangementDesJoursAnciens(forgetDailyLevels);
 
 /**
  * **Le niveau du jour** `day` (numéro de jour de `@cdj/core`, la date de Paris lue hors de la simulation). Pur et déterministe : même date,
  * même niveau, partout. Le résultat est gardé en mémoire (même objet pour une même date).
- * Lot 11 : le thème du jour (`jumpThemeForDay`) décide des morceaux permis et du quota de signature ; `forced` impose un autre thème : c'est
+ * Lot 11 : le thème du jour (`jumpThemeOfSim` : le sac de thèmes depuis g23, l'ancienne règle avant la version 12) décide des morceaux permis et du quota de signature ; `forced` impose un autre thème : c'est
  * un **essai** (`forcedTheme`, identifiant suffixé `-t<thème>`), jamais enregistré. Forcer le thème de la date donne le niveau de la date.
  * Lot 15 : `simVersion` 3 : le niveau g9 d'avant le lot, à l'identique (référence v3). Lot 20 : 4 : le niveau g14 d'avant les plateformes, à l'identique (référence v4) ;
  * 5 (défaut) : le niveau du générateur g15, en version 5.
  */
 export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = ALT_KEPT_VERSION): DailyLevel {
-  const natural = jumpThemeForDay(day);
+  const natural = jumpThemeOfSim(day, simVersion);
   const theme = forced ?? natural;
   const isForced = theme !== natural;
   const key = `${day}:${theme}:${simVersion}`;
@@ -2089,7 +2091,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 
 /** Le niveau de secours d'une date (pour les tests et la mesure : il ne sert que si aucun tirage ne passe). */
 export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = ALT_KEPT_VERSION): DailyLevel | string {
-  const natural = jumpThemeForDay(day);
+  const natural = jumpThemeOfSim(day, simVersion);
   const theme = forced ?? natural;
   const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);
   if (typeof proof === "string") return proof;

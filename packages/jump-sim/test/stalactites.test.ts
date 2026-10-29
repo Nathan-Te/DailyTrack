@@ -37,7 +37,7 @@ import {
   dailyProblems,
   freezeLevel,
   frozenJson,
-  jumpThemeForDay,
+  jumpThemeOfSim,
   respawnProblems,
   thawLevel,
   decodeReplay,
@@ -620,7 +620,7 @@ describe("lot 24 — les niveaux du jour", () => {
     const ids = stalactiteModuleIds();
     let n = 0;
     for (let d = parseDay("2026-10-27")!; d < parseDay("2026-10-27")! + 90 && n < 6; d++) {
-      if (jumpThemeForDay(d) !== "glace") continue;
+      if (jumpThemeOfSim(d, STALACTITE_VERSION) !== "glace") continue; // lot V1 : la v8, au thème de l'ancienne règle
       const L = dailyLevel(d, null, STALACTITE_VERSION); // lot 25 : la référence v8 (g18)
       if (!L.pieces.some((p) => ids.has(p.id))) continue;
       n++;

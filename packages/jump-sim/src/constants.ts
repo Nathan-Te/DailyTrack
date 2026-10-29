@@ -110,9 +110,11 @@ export const ALT_KEPT_VERSION = 12;
  * 19 depuis le lot 25 (lasers : niveaux en sim v9, morceaux du néon à lasers, règles du générateur ; variété `VARIETY_DAYS` = 4) ;
  * 20 depuis le lot 26 (ponts à interrupteur : niveaux en sim v10, morceaux de la nuit à ponts, règles du générateur ; équilibre des mécaniques de chaque thème) ;
  * 21 depuis le lot 27 (niveaux en sim v11 : un nouvel essai à zéro avant le premier point de passage, reprise volontaire ; forêt : le vent souffle en continu, plus de rafales) ;
- * 22 depuis le lot 28 (niveaux en sim v12 : les blocs alternés gardent leur état à la reprise ; chaque variante à alternés se reprend aussi depuis l'état B ; jamais d'alterné hors du néon).
+ * 22 depuis le lot 28 (niveaux en sim v12 : les blocs alternés gardent leur état à la reprise ; chaque variante à alternés se reprend aussi depuis l'état B ; jamais d'alterné hors du néon) ;
+ * 23 depuis le lot V1 de la plateforme (le sac de thèmes : jamais deux jours de suite le même thème, chaque thème une fois par cycle de cinq jours ; la physique, les morceaux et la
+ * simulation ne changent pas : `JUMP_SIM_VERSION` reste 12, un niveau g22 se rejoue tel quel et garde son thème de l'ancienne règle).
  */
-export const JUMP_GENERATOR_VERSION = 22;
+export const JUMP_GENERATOR_VERSION = 23;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

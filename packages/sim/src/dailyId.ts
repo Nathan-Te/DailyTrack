@@ -40,6 +40,13 @@ export const GENERATOR_BEFORE_48 = 16;
 /** v17 : l'herbe de course (lot 48) ; aucun jour n'a été servi avec elle tant que le registre ne la nomme pas. */
 export const GENERATOR_BEFORE_49 = 17;
 
+/**
+ * v20 (lot V1 de la plateforme) : **le sac de thèmes** — jamais deux jours de suite le même thème, chaque thème une fois par cycle de huit jours (`themeForDay`, themes.ts ;
+ * règle commune aux deux jeux : `sacThemes.ts` de `@cdj/core`). Les jours que le registre nomme avec une version plus ancienne gardent leur thème (l'ancienne règle, tirage
+ * indépendant par date) ; le premier jour du sac lit le thème de la veille dans le registre.
+ */
+export const GENERATOR_SAC_THEMES = 20;
+
 /** Version du générateur qui a fait (ou fera) le circuit de ce jour (ou de cette graine du Salon) : celle du registre pour un jour protégé, la dernière sinon. */
 export const generatorVersionOf = (day: number): number => {
   plages ??= REGISTRE.plages.map((p) => ({ du: parseDay(p.du) ?? 0, au: parseDay(p.au) ?? 0, g: p.g }));

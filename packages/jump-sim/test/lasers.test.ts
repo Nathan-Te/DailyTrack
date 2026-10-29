@@ -38,7 +38,7 @@ import {
   frozenJson,
   fromRuns,
   initialAttempt,
-  jumpThemeForDay,
+  jumpThemeOfSim,
   laserModuleIds,
   moduleSolutions,
   palierProblems,
@@ -94,7 +94,7 @@ describe("lot 25 — la version de la simulation", () => {
     expect(STALACTITE_VERSION).toBe(8);
     expect(LASER_GENERATOR).toBe(19);
     expect(JUMP_SIM_VERSION).toBe(12); // lot 28 : v12 et g22 (les alternés gardent leur état à la reprise)
-    expect(JUMP_GENERATOR_VERSION).toBe(22);
+    expect(JUMP_GENERATOR_VERSION).toBe(23); // lot V1 : g23 (le sac de thèmes)
     expect(gate().simVersion).toBe(9);
     expect(DEATH_LASER).toBe(6);
     expect(DEATH_NAMES[DEATH_LASER]).toBe("laser");
@@ -529,7 +529,7 @@ describe("lot 25 — les niveaux du jour", () => {
     let n = 0;
     let two = 0;
     for (let d = parseDay("2026-10-27")!; d < parseDay("2026-10-27")! + 120 && n < 10; d++) {
-      if (jumpThemeForDay(d) !== "neon") continue;
+      if (jumpThemeOfSim(d, LASER_VERSION) !== "neon") continue; // lot V1 : la v9, au thème de l'ancienne règle
       const L = dailyLevel(d, null, LASER_VERSION);
       const mine = L.pieces.filter((p) => ids.has(p.id));
       if (mine.length === 0) continue;

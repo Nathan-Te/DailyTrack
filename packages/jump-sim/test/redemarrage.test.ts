@@ -23,7 +23,7 @@ import {
   dailyProblems,
   fallbackFor,
   gustyVariants,
-  jumpThemeForDay,
+  jumpThemeOfSim,
   decodeReplay,
   encodeReplay,
   initialAttempt,
@@ -334,7 +334,7 @@ describe("lot 27 — les vies (checkLife) en version 11", () => {
 
 describe("lot 27 — forêt : le vent souffle en continu (g21)", () => {
   const from = daysFromCivil(2026, 10, 27);
-  const forestDays = Array.from({ length: 120 }, (_, k) => from + k).filter((d) => jumpThemeForDay(d) === "foret");
+  const forestDays = Array.from({ length: 120 }, (_, k) => from + k).filter((d) => jumpThemeOfSim(d, RESTART_VERSION) === "foret"); // lot V1 : les niveaux v11, au thème de l'ancienne règle
 
   it("plus aucune rafale dans les nouveaux niveaux de forêt : ni zone en rafale, ni secours, aucune règle enfreinte ; du vent, pourtant", () => {
     expect(forestDays.length).toBeGreaterThan(20);

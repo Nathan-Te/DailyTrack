@@ -29,7 +29,7 @@ export const PER_THEME = 60;
 export function themeDays(n: number): Map<ThemeName, number[]> {
   const out = new Map<ThemeName, number[]>(THEME_NAMES.map((t) => [t, []]));
   for (let d = ANCRE_V18; [...out.values()].some((l) => l.length < n); d++) {
-    const l = out.get(themeForDay(d).name)!;
+    const l = out.get(themeForDay(d, 18).name)!; // la v18 imposée : le thème de ses jours est celui de l'ancienne règle (lot V1 : la v20 a le sac de thèmes)
     if (l.length < n) l.push(d);
   }
   return out;
@@ -80,7 +80,7 @@ export function suiteIdentite(THEMES_DU_FICHIER: readonly ThemeName[]) {
     for (const theme of THEMES_DU_FICHIER) {
       const t = themeOfVersion(THEMES[theme], 18);
       for (const day of DAYS.get(theme)!) {
-        const k = themeOccurrence(day, theme);
+        const k = themeOccurrence(day, theme, 18);
         const figs = names(v18(day));
         expect(figs, formatDay(day)).toContain(vedetteOf(t, k));
         for (const autre of t.figures.vedettes!) if (autre !== vedetteOf(t, k)) expect(figs, formatDay(day)).not.toContain(autre);
@@ -94,7 +94,7 @@ export function suiteIdentite(THEMES_DU_FICHIER: readonly ThemeName[]) {
       for (let i = 1; i < days.length; i++) {
         const a = names(v18(days[i - 1]!));
         const b = names(v18(days[i]!));
-        expect(themeOccurrence(days[i]!, theme)).toBe(themeOccurrence(days[i - 1]!, theme) + 1);
+        expect(themeOccurrence(days[i]!, theme, 18)).toBe(themeOccurrence(days[i - 1]!, theme, 18) + 1);
         expect(enchainementsCommuns(a, b), `${formatDay(days[i - 1]!)} → ${formatDay(days[i]!)}`).toEqual([]);
       }
     }

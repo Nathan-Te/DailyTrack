@@ -103,7 +103,20 @@ describe(`effacement d'un joueur de DailyTrack (${TEST_DB})`, () => {
 });
 
 describe(`effacement d'un joueur de DailyJump (${TEST_DB})`, () => {
-  const JDAY = daysFromCivil(2026, 10, 20);
+  // Lot V1 : le premier jour, à partir du 20/10/2026, dont le niveau donne assez d'essais fictifs (le sac de thèmes a changé le thème de chaque date).
+  const JDAY = (() => {
+    for (let d = daysFromCivil(2026, 10, 20); ; d++) {
+      const L = dailyLevel(d);
+      let slow = false;
+      let morts = 0;
+      for (const a of demoAttempts(L.level, L.replay, 0x11fe, { attempts: 30, maxLives: 6 })) {
+        const r = replayAttempt(L.level, a.replay, L.id);
+        if (r.finished && r.time > L.authorTicks) slow = true;
+        for (const life of r.lives) if (life.end === "mort") morts++;
+      }
+      if (slow && morts >= 3) return d;
+    }
+  })();
   const JDATE = formatDay(JDAY);
   const JNOON = parisDayStart(JDAY) + 12 * 3_600_000;
   let D: DailyLevel;

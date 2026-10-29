@@ -1,7 +1,7 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { ALT_KEPT_VERSION, BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
 import { idiv } from "./idiv";
-import { jumpThemeForDay, type JumpThemeName } from "./themes";
+import { jumpThemeOfSim, type JumpThemeName } from "./themes";
 import type { SlowRoute } from "./voies";
 
 // Lot 21 : le numéro du niveau du jour, son identifiant et ses médailles (venus de `daily.ts`, le générateur, sans rien changer) : la page du jeu les lit au
@@ -20,7 +20,7 @@ export function levelNumber(day: number): number {
  * **forcé** (lot 11 : un autre que celui de la date) y ajoute `-t<thème>` : c'est un essai (`forcedTheme`), jamais enregistré.
  */
 export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = ALT_KEPT_VERSION): string {
-  const natural = jumpThemeForDay(day);
+  const natural = jumpThemeOfSim(day, simVersion);
   const g = simVersion >= ALT_KEPT_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= RESTART_VERSION ? RESTART_GENERATOR : simVersion >= BRIDGE_VERSION ? BRIDGE_GENERATOR : simVersion >= LASER_VERSION ? LASER_GENERATOR : simVersion >= STALACTITE_VERSION ? STALACTITE_GENERATOR : simVersion >= MUSHROOM_VERSION ? MUSHROOM_GENERATOR : simVersion >= PRESS_VERSION ? PRESS_GENERATOR : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
   return `jour-${formatDay(day)}-g${g}${forced !== null && forced !== natural ? `-t${forced}` : ""}`;
 }

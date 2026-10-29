@@ -38,7 +38,7 @@ import {
   frozenJson,
   fromRuns,
   initialAttempt,
-  jumpThemeForDay,
+  jumpThemeOfSim,
   moduleSolutions,
   moduleStart,
   mushroomContacts,
@@ -483,7 +483,7 @@ describe("lot 23 — les morceaux à champignons du catalogue", () => {
 
 describe("lot 23 — les niveaux du jour", () => {
   const forestDays: number[] = [];
-  for (let d = PREMIER_JOUR_JUMP; d < PREMIER_JOUR_JUMP + 90; d++) if (jumpThemeForDay(d) === "foret") forestDays.push(d);
+  for (let d = PREMIER_JOUR_JUMP; d < PREMIER_JOUR_JUMP + 90; d++) if (jumpThemeOfSim(d, MUSHROOM_VERSION) === "foret") forestDays.push(d); // lot V1 : ces niveaux sont ceux de la v7, au thème de l'ancienne règle
 
   it("les références v3 à v6 ne connaissent pas les morceaux à champignons ; le générateur en vigueur (g17, v7) les pose, et seulement dans la forêt", () => {
     const ids = mushroomModuleIds();

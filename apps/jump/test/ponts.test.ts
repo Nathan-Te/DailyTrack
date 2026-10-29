@@ -14,6 +14,7 @@ import {
   bridgeModuleIds,
   bridgeTileLit,
   dailyLevel,
+  jumpThemeForDay,
   initialAttempt,
   parseLevel,
   settleBridges,
@@ -262,7 +263,10 @@ describe("galerie, miniature de la semaine, thème", () => {
   });
 
   it("la miniature d'un jour de nuit à ponts liste l'interrupteur et les tuiles de chaque pont dans l'ordre", () => {
-    const L = dailyLevel(parseDay("2026-12-17")!);
+    // Lot V1 : le premier jour de nuit à ponts à partir du 17/12/2026 (le sac de thèmes a changé le thème de chaque date).
+    let jour = parseDay("2026-12-17")!;
+    while (jumpThemeForDay(jour) !== "nuit" || dailyLevel(jour).level.bridges.length === 0) jour++;
+    const L = dailyLevel(jour);
     const day = semaineDayOf(L);
     expect(day.ponts?.length).toBe(L.level.bridges.length);
     L.level.bridges.forEach((b, i) => {

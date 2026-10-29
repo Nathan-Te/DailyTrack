@@ -1,3 +1,4 @@
+import "./frozen";
 import { dailyLevel, type JumpThemeName } from "@cdj/jump-sim";
 import { toPayload, type DailyPayload } from "./dailyWork";
 

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { formatDay, parseDay } from "@cdj/core";
 import { randomBytes } from "node:crypto";
-import { dailyLevel, demoAttempts, encodeReplay, jumpMedalFor, repriseParPhase, replayAttempt, thawLevel, type DailyLevel, type JumpMedal } from "@cdj/jump-sim";
+import { dailyLevel, declareFrozenGenerators, demoAttempts, encodeReplay, jumpMedalFor, repriseParPhase, replayAttempt, thawLevel, type DailyLevel, type JumpMedal } from "@cdj/jump-sim";
 
 // Lot R5 (plateforme) : les jours figés (`public/levels/AAAA-MM-JJ.json`) changent à chaque mise en production (`freeze:days -- demain`). Un test
 // qui a besoin d'un niveau **généré** calcule un jour sans fichier figé ; un test qui rejoue le niveau d'une date prend **celui que la page
@@ -14,6 +14,10 @@ export const FROZEN_DATES: readonly string[] = readdirSync(LEVELS)
   .map((f) => /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1])
   .filter((d): d is string => !!d)
   .sort();
+
+// Lot V1 : la page déclare à la simulation les niveaux figés d'avant le sac de thèmes (le thème d'un jour figé, et le premier jour du sac qui lit celui de la veille) : les tests, qui
+// calculent des niveaux dans Node, font de même — sans cela le niveau d'un jour proche des fichiers figés ne serait pas celui que la page joue.
+declareFrozenGenerators(Object.fromEntries(FROZEN_DATES.map((d) => [d, (JSON.parse(readFileSync(new URL(`${d}.json`, LEVELS), "utf8")) as { generatorVersion: number }).generatorVersion])));
 
 /** Un jour sans fichier figé, où la page génère son niveau : le lendemain du dernier jour figé (ou `after` s'il n'y en a pas, ou s'il est plus tard). */
 export function generatedDay(after = "2026-10-20"): string {

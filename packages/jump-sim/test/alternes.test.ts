@@ -24,6 +24,7 @@ import {
   encodeReplay,
   hopToA,
   initialAttempt,
+  JUMP_GENERATOR_VERSION,
   jumpThemeForDay,
   lifeReplay,
   lifeStartProblem,
@@ -263,7 +264,7 @@ describe("lot 28 — un jour de néon g22 : les vies des essais fictifs repartan
   it("c'est un néon sans problème, à la version 12", () => {
     expect(jumpThemeForDay(day)).toBe("neon");
     expect(L.level.simVersion).toBe(ALT_KEPT_VERSION);
-    expect(L.id).toMatch(/-g22$/);
+    expect(L.id).toMatch(new RegExp(`-g${JUMP_GENERATOR_VERSION}$`)); // lot V1 : g23 (le sac de thèmes ; la physique et les morceaux de la g22)
     expect(dailyProblems(L)).toEqual([]);
     expect(L.level.alts.length).toBeGreaterThan(0);
   });

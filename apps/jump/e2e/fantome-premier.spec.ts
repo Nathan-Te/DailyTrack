@@ -90,10 +90,13 @@ async function play(page: Page, code: string, pass?: () => Promise<void>): Promi
 /** Un essai du jour de la démonstration plus lent que le premier (une perturbation de la preuve qui arrive). */
 function slowerRun(date: string): { code: string; ticks: number } {
   const d = pageLevel(date); // le niveau que la page joue (figé s'il l'est, sinon généré)
-  for (const a of demoAttempts(d.level, d.replay, 0xf1, { attempts: 40 })) {
-    if (a.end !== "arrivée") continue;
-    const r = replayAttempt(d.level, a.replay, d.id);
-    if (r.finished && r.time > d.authorTicks) return { code: encodeReplay(a.replay), ticks: r.time };
+  // Lot V1 : la graine d'origine ne donnait plus d'arrivée plus lente sur le niveau d'un jour au thème du sac ; on essaie les suivantes (sans rien relâcher : le même contrôle).
+  for (let seed = 0xf1; seed < 0xf1 + 8; seed++) {
+    for (const a of demoAttempts(d.level, d.replay, seed, { attempts: 40 })) {
+      if (a.end !== "arrivée") continue;
+      const r = replayAttempt(d.level, a.replay, d.id);
+      if (r.finished && r.time > d.authorTicks) return { code: encodeReplay(a.replay), ticks: r.time };
+    }
   }
   throw new Error("aucun essai plus lent");
 }

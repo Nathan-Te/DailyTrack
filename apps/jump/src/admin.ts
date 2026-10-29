@@ -1,3 +1,4 @@
+import "./frozen";
 import { parisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import { numeroDeJournee } from "@cdj/core/lancement";

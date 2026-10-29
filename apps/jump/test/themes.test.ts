@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { daysFromCivil } from "@cdj/core";
-import { DANGERS_LEVEL, ESSAI_LEVEL, JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, PREMIER_JOUR_JUMP, SANDBOX_LEVEL, TILE_SOLID, buildModule, dailyLevel, dailyLevelId, isSpikeTile, jumpThemeForDay, parseLevel, type Level } from "@cdj/jump-sim";
+import { DANGERS_LEVEL, ESSAI_LEVEL, JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, jumpThemeAncien, PREMIER_JOUR_JUMP, SANDBOX_LEVEL, TILE_SOLID, buildModule, dailyLevel, dailyLevelId, isSpikeTile, jumpThemeForDay, parseLevel, type Level } from "@cdj/jump-sim";
 import { describe, expect, it } from "vitest";
 import { AMBIENCES, AMBIENCE_HEADROOM, AmbientScheduler, ambiencePeak, ambienceTarget, quietestGameSoundPeak } from "../src/audioLogic";
 import { CORNERS, E, N, NE, NW, S, SE, SW, W, depthMap, neighbourMask, tileShape } from "../src/autotile";
@@ -54,15 +54,16 @@ describe("themeForDay", () => {
     expect(themeByName(null)).toBeNull();
   });
 
-  it("lot 11 : les noms et le tirage viennent de la simulation (400 dates du lot 9 : mêmes thèmes qu'avant)", () => {
+  it("lot 11 : les noms et le tirage viennent de la simulation (400 dates du lot 9 : l'ancienne règle garde ses thèmes, le jeu lit le sac)", () => {
     expect([...THEME_NAMES]).toEqual([...JUMP_THEME_NAMES]);
     expect(Object.keys(THEMES).sort()).toEqual([...JUMP_THEME_NAMES].sort());
     const lot9 = JSON.parse(readFileSync(join(import.meta.dirname, "../../../packages/jump-sim/test/fixtures/themes-lot9.json"), "utf8")) as { first: number; count: number; names: string };
     const names = lot9.names.split(" ");
     expect(names).toHaveLength(lot9.count);
     for (let i = 0; i < lot9.count; i++) {
-      expect(themeForDay(lot9.first + i).name, `jour ${lot9.first + i}`).toBe(names[i]);
+      // Lot V1 : le thème du jour est celui du sac de thèmes ; les thèmes du lot 9 sont ceux de l'ancienne règle (`jumpThemeAncien`, vérifiée par `packages/jump-sim/test/themes.test.ts`).
       expect(themeForDay(lot9.first + i).name).toBe(jumpThemeForDay(lot9.first + i));
+      expect(jumpThemeAncien(lot9.first + i), `jour ${lot9.first + i}`).toBe(names[i]);
     }
   });
 

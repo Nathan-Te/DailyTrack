@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { formatDay } from "@cdj/core";
-import { dailyLevel, thawLevel } from "@cdj/jump-sim";
+import { dailyLevel, declareFrozenGenerators, thawLevel } from "@cdj/jump-sim";
 import { dailyCircuit } from "@cdj/sim";
 
 // Lot R6 (le garde-fou des jours) : l'empreinte de ce que chaque jeu SERT pour un jour, calculée par le code d'une construction. Ce fichier ne dépend que des
@@ -34,8 +34,22 @@ export function empreinteTrack(day: number): EmpreinteJour {
   };
 }
 
+let dossierDeclare: string | null = null;
+/** Lot V1 : comme le serveur et le jeu, les niveaux figés de `dossier` sont déclarés à la simulation (le thème d'un jour figé d'avant le sac de thèmes, et celui du premier jour du sac, en dépendent). */
+function declarer(dossier: string): void {
+  if (dossierDeclare === dossier) return;
+  dossierDeclare = dossier;
+  const generateurs: Record<string, number> = {};
+  for (const f of readdirSync(dossier)) {
+    const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+    if (date) generateurs[date] = (JSON.parse(readFileSync(join(dossier, f), "utf8")) as { generatorVersion: number }).generatorVersion;
+  }
+  declareFrozenGenerators(generateurs);
+}
+
 /** L'empreinte du niveau de Jump qui est servi pour un jour : le fichier figé de `dossier` s'il se vérifie, sinon le niveau généré. */
 export function empreinteJump(day: number, dossier: string | null): EmpreinteJour {
+  if (dossier && existsSync(dossier)) declarer(dossier);
   const fichier = dossier ? join(dossier, `${formatDay(day)}.json`) : null;
   if (fichier && existsSync(fichier)) {
     const d = thawLevel(JSON.parse(readFileSync(fichier, "utf8")) as unknown, day);
