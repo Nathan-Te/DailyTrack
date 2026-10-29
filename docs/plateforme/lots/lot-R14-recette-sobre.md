@@ -54,4 +54,4 @@ Lignes lues par route, base de référence (300 joueurs, 14 jours), **à froid**
 ## Vérifié / non vérifié
 - **Vérifié en local** : typecheck ; tests d'API SQLite (588 + nouveaux) ; mesures ci-dessus ; `workflows.test.ts` ; contre-épreuve sans index.
 - **Non vérifié** : tout ce qui est chez Turso (usage réel, hypothèse du schéma relu à chaque instruction) ; les workflows modifiés n'ont pas tourné (je ne les lance pas) ; l'alerte Turso.
-- CI de la PR : voir le commentaire de fin de PR.
+- **CI de la PR (#193) verte** sur 899288e : https://github.com/Nathan-Te/DailyTrack/actions/runs/40964551220 (unitaires SQLite + libSQL, `api-image`, e2e des zones touchées).
