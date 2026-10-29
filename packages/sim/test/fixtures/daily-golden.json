@@ -106,8 +106,8 @@
       "date": "2026-11-10",
       "number": 29,
       "attempt": 0,
-      "spec": "S/n@start S/~v C S S/~r@cp R2/b S/o S/n>eo S/oo R2/o L2/o S/o S/~v S/e>n S T/~r S@cp S S S S S/~v S S L/~r S S/n>l S MR MR MR MR MR S K GD S S S D/~v D D L2/~r S U U U S S@finish",
-      "authorMs": 38817,
+      "spec": "S/l@start S C S S@cp L2/b S/~v S/l>n S/n>e S/o~r R2/o L2/o S/o S S/e>n S@cp P/~v D D D D/~r D D S S R3/~v S S/n>e S/~r ML ML ML ML ML S K GD S S S S/e>n~v S S/n>e R/~r S S S@finish",
+      "authorMs": 38088,
       "palette": "nuit",
       "theme": "nuit",
       "trackId": "jour-2026-11-10-g21"
@@ -146,8 +146,8 @@
       "date": "2026-12-17",
       "number": 66,
       "attempt": 0,
-      "spec": "S/l@start U U U L3/b D/~h D D S S/l>n S@cp MR/~r MR MR MR MR S/~h K/~r GD S@cp S/~h S L3/b~r K GD S S/~h@cp S T S S S S S L3/b~r S/~h@cp S B/~r S/~h S U2/~r S/~h D2 S S/~r@finish",
-      "authorMs": 36628,
+      "spec": "S/l@start U U U L2/b D/~h D D S S/l>n S@cp MR/~r MR MR MR MR S/~h K/~r GD S@cp S/~h S L3/b~r K GD S S/~h@cp S T S S S S S L3/b~r S/~h@cp S B/~r S/~h S U2/~r S/~h D2 S S/~r@finish",
+      "authorMs": 35945,
       "palette": "stade",
       "theme": "stade",
       "trackId": "jour-2026-12-17-g21"

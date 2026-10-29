@@ -80,14 +80,14 @@ export interface FicheBiome {
   pente?: number;
 }
 export const FICHES_V21: Readonly<Record<ThemeName, FicheBiome>> = {
-  // Le circuit de vitesse : les virages larges deviennent des courbes amples, souvent relevées ; peu de serrés.
-  stade: { rythme: RYTHME_DOMINANT.stade, poids: { banked: 1.5, rapide: 1.5, combo: 1.5 }, theme: { bankChance: 50 }, amplifier: 100 },
+  // Le circuit de vitesse : les virages larges deviennent des courbes amples (60 % : à 100 %, trop de circuits sortaient trop longs, mesuré), souvent relevées ; peu de serrés.
+  stade: { rythme: RYTHME_DOMINANT.stade, poids: { banked: 1.5, rapide: 1.5, combo: 1.5 }, theme: { bankChance: 50 }, amplifier: 60 },
   // La spéciale de terre : des virages qui changent de sens, des bosses et des sauts, aucune ligne droite libre de plus de trois blocs.
   rallye: { rythme: RYTHME_DOMINANT.rallye, poids: { technique: 1.5, saut: 1.5, tight: 0.5, rapide: 0.6 }, maxDroite: 3, alterner: true, favor: ["slalom-route", "s-serre-large", "bosses-terre"] },
   // La patinoire : la route large, des S larges en roue libre, un seul virage serré au plus, peu de relief.
   banquise: { rythme: RYTHME_DOMINANT.banquise, poids: { tight: 0.2, banked: 0.6, relief: 0.3 }, theme: { maxTight: 1, relief: { hills: [1, 2], steep: 10 } }, amplifier: 40, favor: ["slalom-glace", "slalom-route", "demi-tour-large"] },
   // La précision au-dessus du vide : des sauts et des combinaisons, de la route sans rebords (son bas-côté de vide, lot 21).
-  nuit: { rythme: RYTHME_DOMINANT.nuit, poids: { saut: 1.8, combo: 1.5, rapide: 0.7 }, favor: ["double-saut", "saut-virage"] },
+  nuit: { rythme: RYTHME_DOMINANT.nuit, poids: { saut: 1.4, combo: 1.2, rapide: 0.7 }, favor: ["double-saut", "saut-virage"] },
   // Les routes de campagne : étroites et vallonnées, des collines douces, des crêtes et des virages aveugles, des virages serrés au bout des petites routes.
   campagne: { rythme: RYTHME_DOMINANT.campagne, poids: { relief: 1.5, technique: 1.5, rapide: 0.6 }, theme: { relief: { hills: [3, 4], steep: 10 } }, favor: ["colline-douce", "crete-virage", "virage-aveugle"] },
   // Entre les parois : chaque virage large des figures devient serré (quatre au plus), aucune ligne droite libre de plus de trois blocs, le relief en marches (collines raides).

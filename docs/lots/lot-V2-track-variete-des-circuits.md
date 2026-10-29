@@ -16,17 +16,17 @@ Branche `claude/compassionate-thompson-p4w7fe`, PR brouillon. **Générateur 21*
 ## Chiffres avant (v20) → après (v21), 200 jours du 30/10/2026
 | mesure | v20 | v21 |
 |---|---:|---:|
-| circuits avec « boost → longue → serré » | 44 % | 11 % |
+| circuits avec « boost → longue → serré » | 44 % | 10 % |
 | ce motif, au plus par circuit | 3 | 1 |
 | jours de suite qui l'ont tous les deux | 40 | 0 |
 | suite de trois éléments la plus fréquente | boost → longue → large, 44 % | boost → saut → descente, 35 % |
 | « boost → longue » (deux éléments) | 89 % | 70 % |
 | distance des profils de deux jours qui se suivent (moyenne · plus faible) | 0,19 · 0,06 | 0,20 · 0,08 |
-| ressemblance du lot 49 de deux jours qui se suivent | 0,07 | 0,06 |
+| ressemblance du lot 49 de deux jours qui se suivent | 0,07 | 0,05 |
 | paires de biomes nettement distinctes (≥ 2 grandeurs à ≥ 1 écart-type) | 27 / 28 | 28 / 28 |
 | galerie, 30 jours du 29/10/2026 : jours avec le motif · paires de jours de suite | 14 · 6 | 4 · 0 |
 
-**Profils par biome (v20 → v21)** : Stade amples 24 → 55 % · Rallye changements de direction 2,5 → 4,1 · Banquise amples 0 → 13 %, serrés 12 → 8 % · Nuit motif 64 → 24 % · Campagne dénivelé 20 → 24 m · Canyon serrés 34 → 35 % (malgré le retrait des épingles à plaque) · Col dénivelé 18,5 → 26,5 m, pentes 13 → 30 % · Ville serrés 47 → 50 %. La distance moyenne entre biomes bouge peu (0,13 → 0,14) : elle moyenne seize grandeurs, la plupart communes ; le critère « nettement distincts » dit ce qui se voit.
+**Profils par biome (v20 → v21)** : Stade amples 24 → 43 % · Rallye changements de direction 2,5 → 4,1 · Banquise amples 0 → 13 %, serrés 12 → 8 % · Nuit motif 64 → 20 %, sans rebords 20 → 25 % · Campagne dénivelé 20 → 24 m · Canyon serrés 34 → 35 % (malgré le retrait des épingles à plaque) · Col dénivelé 18,5 → 26,5 m, pentes 13 → 30 % · Ville serrés 47 → 50 %. La distance moyenne entre biomes bouge peu (0,13 → 0,14) : elle moyenne seize grandeurs, la plupart communes ; le critère « nettement distincts » dit ce qui se voit.
 
 ## Fiches de biomes (une ligne chacune)
 - **Stade** — rapide : de grandes courbes amples et relevées, peu de serrés.
@@ -43,11 +43,11 @@ Branche `claude/compassionate-thompson-p4w7fe`, PR brouillon. **Générateur 21*
 - **Toute suite de trois éléments : dans 40 % des circuits au plus** sur 200 jours (`PLAFOND_SUITE_3`). Pourquoi 40 % : la v20 avait deux suites à 44 % ; en v21 la plus haute est à 35 %, « boost → saut → descente », le plancher du saut à plat (sa rampe a besoin d'une plaque, sa réception est une descente). Descendre plus bas demandait de refuser des circuits : essayé sur « longue → boost → longue » (la poussée dans une grande ligne droite), 27 jours sur 365 sans circuit valide (0 permis) ou aucun effet (1 permis) : retiré.
 
 ## Temps de l'auteur
-Temps du pilote (celui des médailles) sur les 200 jours : **v20 30,4 – 39,9 s** (P5 34,0, médiane 37,9) ; **v21 30,9 – 40,0 s** (P5 33,5, médiane 37,7) : dans la fenêtre 30–40 s et à ±10 % de la plage d'avant. Le temps de l'auteur affiché = 0,92 × pilote (lot G1, inchangé).
+Temps du pilote (celui des médailles) sur les 200 jours : **v20 30,4 – 39,9 s** (P5 34,0, médiane 37,9) ; **v21 30,9 – 40,0 s** (P5 33,1, médiane 37,8) : dans la fenêtre 30–40 s et à ±10 % de la plage d'avant. Le temps de l'auteur affiché = 0,92 × pilote (lot G1, inchangé).
 
 ## Garde-fous
-- **365 graines** : 365 sur 365 (`test/variete365.test.ts`, à partir du 01/01/2029) ; vérifié aussi à la main sur trois années (30/10/2026, 2028, 2029) : aucun circuit de secours. Tentatives par jour : 2,0 (v20) → 2,4–2,6 (v21).
-- **Génération** : moyenne 126 ms, pire 885 ms (v20 : 129 et 848) sur cette machine (`variete.md`) ; le test 365 garde les limites de `generator.test.ts` (moyenne < 0,8 s, pire < 3,5 s).
+- **365 graines** : 365 sur 365 (`test/variete365.test.ts`, à partir du 01/01/2029) ; vérifié aussi à la main sur trois années (30/10/2026, 2028, 2029) : aucun circuit de secours. Tentatives par jour : 1,8–2,3 (v20) → 2,0–2,7 (v21).
+- **Génération** : sur 200 jours, moyenne 128 ms, pire 455 ms (v20 : 130 et 827) en local ; sur trois années, pire jour 1 667 ms (v20 : 1 074). Le test 365 garde les limites de `generator.test.ts` (moyenne < 0,8 s, pire < 4,5 s). **Premier run de CI rouge** : avec la première version des fiches (Stade 100 % de courbes amples, Nuit sauts ×1,8), le pire jour du test valait 3 617 ms en CI (1 424 en local) et le test, qui recopiait à tort l'ancienne limite de 3,5 s, a échoué : les deux fiches sont adoucies (Stade 60 %, Nuit sauts ×1,4), pire jour 562 ms en local, et la limite est celle de `generator.test.ts`.
 - **Golden** : les vecteurs gelés (v15, v16) sont inchangés au bit près (la régénération refuse de les réécrire) ; les vecteurs de la dernière version (dates d'après le 04/11/2026) sont régénérés, comme à chaque version (`UPDATE_GOLDEN=1`). `jours-passes.test.ts` vert (aucun jour du registre ne change).
 - **Budgets** (contre `main` reconstruit à part, `node scripts/budgets.mjs`) : premier chargement **294 461 / 294 512 o** (+54 : l'entrée de la galerie ; marge 51 o) ; fil des circuits **29 459 / 30 000** (−352) et du Salon **31 605 / 32 000** (−386) : les phrases des figures (`intent`, lues par un test seulement) sortent dans `figureIntents.ts`, ce qui paie les rythmes, le motif et les fiches.
 

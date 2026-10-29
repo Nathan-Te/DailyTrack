@@ -23,8 +23,11 @@ describe("générateur v21 : 365 graines", () => {
     ms.sort((a, b) => a - b);
     const moyenne = ms.reduce((a, b) => a + b, 0) / ms.length;
     console.log(`v${GENERATOR_VERSION}, 365 graines : génération moyenne ${moyenne.toFixed(0)} ms, médiane ${ms[182]!.toFixed(0)} ms, pire ${ms[364]!.toFixed(0)} ms`);
-    // Mêmes limites que `generator.test.ts` (« construit vite ») : la CI (2 cœurs, tests en parallèle) va deux à trois fois moins vite que cette mesure.
+    // Mêmes limites que `generator.test.ts` (« construit vite » : moyenne < 0,8 s, pire < 4,5 s depuis le lot V1) : la CI (2 cœurs, tests en parallèle) va deux à trois fois
+    // moins vite qu'en local. Mesuré (lot V2) sur ces 365 jours : pire 562 ms en local ; la première version des fiches (Stade tout en courbes amples, Nuit très sautée)
+    // donnait 1 424 ms en local et 3 617 ms en CI (les circuits trop longs coûtaient des tentatives) : elles ont été adoucies. Sur trois années, le pire jour de la v21 vaut
+    // 1 667 ms en local (une Nuit de juin 2028, 48 tentatives), celui de la v20 1 074 ms.
     expect(moyenne).toBeLessThan(800);
-    expect(ms[364]!).toBeLessThan(3500);
+    expect(ms[364]!).toBeLessThan(4500);
   });
 });
