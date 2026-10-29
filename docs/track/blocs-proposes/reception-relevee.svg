@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="200" viewBox="0 0 480 200" role="img" aria-label="Saut avec réception en virage relevé">
+  <rect width="480" height="200" fill="#EDE3CF"/>
+  <rect x="8" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <rect x="248" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <text x="16" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de dessus</text>
+  <text x="256" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de côté</text>
+  <g transform="translate(0 18)">
+    <path d="M120 190 L120 140" fill="none" stroke="#5A524C" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt"/>  <path d="M120 140 L120 112" stroke="#5A524C" stroke-width="22" stroke-dasharray="3 5"/>  <path d="M120 112 L120 90 A50 50 0 0 0 70 40 L30 40" fill="none" stroke="#5A524C" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt"/>  <path d="M146 92 A76 76 0 0 0 70 16" fill="none" stroke="#C2401F" stroke-width="5"/>
+  </g>
+  <path d="M260 150 L320 150 L340 130 L340 170 L260 170 Z" fill="#5A524C" stroke="#2A1E16" stroke-width="2"/>  <path d="M380 160 L464 160 L464 170 L380 170 Z" fill="#5A524C" stroke="#2A1E16" stroke-width="2"/>  <path d="M342 126 C365 100 380 130 392 156" fill="none" stroke="#C2401F" stroke-width="2" stroke-dasharray="5 4"/>  <rect x="336" y="120" width="12" height="8" fill="#C2401F"/>
+</svg>

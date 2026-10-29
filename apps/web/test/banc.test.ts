@@ -82,10 +82,12 @@ describe("lot 50 : le banc d'essai", () => {
 
   it("recette et aperçus seulement : jamais en production, et le jeu ne démarre pas derrière lui", () => {
     const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
-    expect(main).toContain('if (params.has("banc") && !isRestricted(location.search)) {');
+    // Lot V2 : la galerie des circuits à venir (`?debug&galerie`) passe par la même porte et le même morceau.
+    expect(main).toContain('if ((params.has("banc") || params.has("galerie")) && !isRestricted(location.search)) {');
     expect(main).toContain('import("./banc/banc")');
     expect(isRestricted("?banc", "1")).toBe(true);
+    expect(isRestricted("?debug&galerie=30", "1")).toBe(true);
     // Rien d'écrit : ni stockage, ni serveur.
-    for (const f of ["banc.ts", "bancLogique.ts"]) expect(readFileSync(new URL(`../src/banc/${f}`, import.meta.url), "utf8"), f).not.toMatch(/setItem|fetch\(|sendBeacon/);
+    for (const f of ["banc/banc.ts", "banc/bancLogique.ts", "galerie/galerie.ts", "galerie/galerieLogique.ts"]) expect(readFileSync(new URL(`../src/${f}`, import.meta.url), "utf8"), f).not.toMatch(/setItem|fetch\(|sendBeacon/);
   });
 });

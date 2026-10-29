@@ -19,6 +19,8 @@ import {
   decodeReplay,
   encodeReplay,
   formatDay,
+  generatorVersionOf,
+  GENERATOR_RYTHMES,
   medalFor,
   medalsFor,
   paletteForDay,
@@ -206,11 +208,11 @@ describe("circuit du jour : largeurs de route et courbes amples (lot 12)", () =>
     }
   });
 
-  it("limite les virages serrés : deux au plus par circuit (quatre à Ville, lot 22), jamais deux de suite, jamais sur la route large", () => {
+  it("limite les virages serrés : deux au plus par circuit (quatre à Ville, lot 22 ; quatre au Canyon à partir de la v21, lot V2), jamais deux de suite, jamais sur la route large", () => {
     for (const day of DAYS) {
       const { track, spec, theme } = circuit(day);
       const tight = track.blocks.filter((b) => isTight(b.kind));
-      expect(tight.length, spec).toBeLessThanOrEqual(theme === "ville" ? 4 : 2);
+      expect(tight.length, spec).toBeLessThanOrEqual(theme === "ville" || (theme === "canyon" && generatorVersionOf(day) >= GENERATOR_RYTHMES) ? 4 : 2);
       for (const b of tight) {
         expect(b.w0, `${spec} @${b.index}`).toBeLessThan(26);
         const next = track.blocks[b.index + 1];

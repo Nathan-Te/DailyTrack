@@ -41,7 +41,7 @@ const circuit = (day: number) => {
 describe("la version du générateur d'un jour (lot 34, registre du lot R11)", () => {
   it("un jour du registre garde sa version (v15 jusqu'au 27/10/2026), un jour absent et le Salon prennent la dernière, une version imposée change l'identifiant", () => {
     expect(GENERATOR_BEFORE_34).toBe(15);
-    expect(GENERATOR_VERSION).toBe(20); // lot V1 (plateforme) : le sac de thèmes (les circuits de la v19 ne changent que par leur thème) ; lot G1 : la v19 a les circuits de la v18 (identité des thèmes, lot 49), seules les médailles changent ; la v16 et la v17 ne restent dans le code que pour les jours que le registre leur donnerait
+    expect(GENERATOR_VERSION).toBe(21); // lot V2 (Track) : rythmes, fiches de biomes, motif « boost → longue ligne droite → virage serré » plafonné ; lot V1 (plateforme) : le sac de thèmes (les circuits de la v19 ne changent que par leur thème) ; lot G1 : la v19 a les circuits de la v18 (identité des thèmes, lot 49), seules les médailles changent ; la v16 et la v17 ne restent dans le code que pour les jours que le registre leur donnerait
     expect(generatorVersionOf(PREMIER_JOUR)).toBe(15);
     expect(generatorVersionOf(parseDay("2026-10-26")!)).toBe(15);
     expect(dailyTrackId(parseDay("2026-10-26")!)).toBe("jour-2026-10-26-g15");

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="200" viewBox="0 0 480 200" role="img" aria-label="Chicane serrée">
+  <rect width="480" height="200" fill="#EDE3CF"/>
+  <rect x="8" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <rect x="248" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <text x="16" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de dessus</text>
+  <text x="256" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de côté</text>
+  <path d="M120 190 L120 140 C120 120 80 120 80 100 C80 80 120 80 120 60 L120 30" fill="none" stroke="#5A524C" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt"/>  <path d="M120 175 L120 140 C120 118 78 122 78 100 C78 78 122 82 122 60 L122 35" fill="none" stroke="#E8B23A" stroke-width="2" stroke-dasharray="5 4"/>  <path d="M114 48 L120 40 L126 48" fill="none" stroke="#E8B23A" stroke-width="3"/>
+  <path d="M260 150 L464 150 L464 170 L260 170 Z" fill="#5A524C" stroke="#2A1E16" stroke-width="2"/>  <rect x="294" y="142" width="12" height="8" fill="#C2401F"/>  <text x="300" y="120" font-family="sans-serif" font-size="12" fill="#6B5847">à plat</text>
+</svg>

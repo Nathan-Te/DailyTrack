@@ -30,4 +30,4 @@ export const SIM_VERSION = 14;
  * seuils changent, `GENERATOR_MEDAILLES_G1` de medals.ts), 20 (lot V1 de la plateforme : le sac de thèmes, jamais deux jours de suite le même thème ; les circuits ne changent que par leur
  * thème : `GENERATOR_SAC_THEMES`, dailyId.ts).
  */
-export const GENERATOR_VERSION = 20;
+export const GENERATOR_VERSION = 21;

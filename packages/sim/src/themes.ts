@@ -55,9 +55,10 @@ export interface Theme {
    * Figures (lot 20) : noms des figures favorites (poids ×4) et interdites du thème ; `require` (lot 21) : le circuit contient toujours
    * l'une d'elles (jamais au repos, comme la signature) — la règle propre du thème ; `requireAlso` (lot 48) : une seconde règle de même forme ;
    * `vedettes` (lot 49, v18) : les figures signatures de la fiche du thème, **une par circuit, à tour de rôle** (la `k`-ième apparition du thème
-   * prend `vedettes[k mod n]` et s'interdit les autres) : deux circuits consécutifs d'un même thème n'ont jamais la même (voir `themeOccurrence`, generator.ts).
+   * prend `vedettes[k mod n]` et s'interdit les autres) : deux circuits consécutifs d'un même thème n'ont jamais la même (voir `themeOccurrence`, generator.ts) ;
+   * `aussi` (lot V2, v21) : des figures propres à un autre thème (`only`) que celui-ci peut tirer aussi.
    */
-  figures: { favor: readonly string[]; ban: readonly string[]; require?: readonly string[]; requireAlso?: readonly string[]; vedettes?: readonly string[] };
+  figures: { favor: readonly string[]; ban: readonly string[]; require?: readonly string[]; requireAlso?: readonly string[]; vedettes?: readonly string[]; aussi?: readonly string[] };
   /**
    * Bas-côtés (lot 21) : revêtement de la bande au bord de la route (ou le vide) et part (%) des blocs qui peuvent en porter, posés par
    * séries de 3 à 6 blocs (voir `assignShoulders`, generator.ts).

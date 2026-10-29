@@ -1,3 +1,5 @@
+import type { FigureCategory } from "./figures";
+import { RYTHME_DOMINANT, type Rythme } from "./rythmes";
 import { THEMES, type Theme, type ThemeName } from "./themes";
 
 // Les thèmes tels que chaque version du générateur les connaît (lots 48 et 49) : à part de `themes.ts` (lot 49), qui est dans le premier chargement du jeu
@@ -36,12 +38,74 @@ const THEMES_49: Partial<Record<ThemeName, { zones?: Theme["zones"]; figures: { 
   nuit: { figures: { favor: ["fil-du-rasoir", "tremplin-releve", "reception-virage"], ban: [], vedettes: ["fil-du-rasoir", "tremplin-releve", "reception-virage"] } },
 };
 
-/** Le thème tel que le générateur `generator` le connaît (lot 48 : la Campagne roule sur l'herbe de course à partir de la v17 ; lot 49 : les fiches à partir de la v18). */
+/**
+ * Lot V2 (générateur v21) — ce que le poids d'une figure regarde : sa catégorie et ses drapeaux (`braking` : un freinage franc, `tight` : au moins un virage serré, `jump`,
+ * `relief`, `banked`, `turbo`). Le poids d'une figure est multiplié par celui de chaque étiquette qu'elle porte (rythme du jour, puis fiche du biome).
+ */
+export type Etiquette = FigureCategory | "braking" | "tight" | "jump" | "relief" | "banked" | "turbo";
+export type Poids = Partial<Record<Etiquette, number>>;
+
+/**
+ * Lot V2 (générateur v21) — **les rythmes** (`rythmeDuJour`, rythmes.ts) : ce que chacun fait aux poids des figures. Technique : virages et freinages courts, moins de boosts ;
+ * rapide : portions rapides et freinages francs (le seul rythme où le motif « boost → longue ligne droite → virage serré » est permis, une fois) ; vertical : le relief ;
+ * aérien : les sauts (le circuit en veut toujours un) ; mixte : les poids du biome seuls.
+ */
+export const POIDS_RYTHME: Readonly<Record<Rythme, Poids>> = {
+  technique: { technique: 2.5, tight: 1.5, rapide: 0.4, braking: 0.5, saut: 0.6, turbo: 0.5 },
+  rapide: { braking: 2, turbo: 1.5, rapide: 1.5, banked: 1.3, technique: 0.8 },
+  mixte: {},
+  vertical: { relief: 3, saut: 0.6, rapide: 0.6 },
+  aerien: { saut: 3, combo: 1.5, technique: 0.7 },
+};
+
+/**
+ * Lot V2 (générateur v21) — **la fiche de chaque biome** (`docs/track/biomes.md`, la même en mots) : les poids de ses figures, son rythme dominant (`RYTHME_DOMINANT`,
+ * rythmes.ts), son relief (`steep` : part des collines raides), et un ou deux traits de tracé : `maxDroite` (plus longue ligne droite libre, en blocs, hors du dégagement d'une poussée,
+ * d'un saut ou d'une cuve : `longestFreeStraight`), `maxTight` (virages serrés permis), `serrer` / `amplifier` / `alterner` (les virages larges des figures, `tournures`), `pente`
+ * (`reliefDuBiome`), des favorites de plus, `aussi` (des figures propres à un autre biome). **Un nouveau biome a sa fiche** (le type l'exige : `Record<ThemeName, …>`).
+ */
+export interface FicheBiome {
+  rythme: Rythme;
+  poids: Poids;
+  maxDroite?: number;
+  theme?: Partial<Pick<Theme, "maxTight" | "relief" | "bankChance" | "widths">>;
+  favor?: readonly string[];
+  /** Figures propres à un autre biome (`only`) que celui-ci tire aussi. */
+  aussi?: readonly string[];
+  /** Traits posés sur les virages larges ordinaires des figures (`tournures`, generator.ts) : part (%) qui deviennent serrés, amples ; virages qui alternent de sens. */
+  serrer?: number;
+  amplifier?: number;
+  alterner?: boolean;
+  /** Relief posé sur les droites ordinaires du circuit fini (`reliefDuBiome`, generator.ts) : part (%) qui deviennent des pentes (Col alpin). */
+  pente?: number;
+}
+export const FICHES_V21: Readonly<Record<ThemeName, FicheBiome>> = {
+  // Le circuit de vitesse : les virages larges deviennent des courbes amples (60 % : à 100 %, trop de circuits sortaient trop longs, mesuré), souvent relevées ; peu de serrés.
+  stade: { rythme: RYTHME_DOMINANT.stade, poids: { banked: 1.5, rapide: 1.5, combo: 1.5 }, theme: { bankChance: 50 }, amplifier: 60 },
+  // La spéciale de terre : des virages qui changent de sens, des bosses et des sauts, aucune ligne droite libre de plus de trois blocs.
+  rallye: { rythme: RYTHME_DOMINANT.rallye, poids: { technique: 1.5, saut: 1.5, tight: 0.5, rapide: 0.6 }, maxDroite: 3, alterner: true, favor: ["slalom-route", "s-serre-large", "bosses-terre"] },
+  // La patinoire : la route large, des S larges en roue libre, un seul virage serré au plus, peu de relief.
+  banquise: { rythme: RYTHME_DOMINANT.banquise, poids: { tight: 0.2, banked: 0.6, relief: 0.3 }, theme: { maxTight: 1, relief: { hills: [1, 2], steep: 10 } }, amplifier: 40, favor: ["slalom-glace", "slalom-route", "demi-tour-large"] },
+  // La précision au-dessus du vide : des sauts et des combinaisons, de la route sans rebords (son bas-côté de vide, lot 21).
+  nuit: { rythme: RYTHME_DOMINANT.nuit, poids: { saut: 1.4, combo: 1.2, rapide: 0.7 }, favor: ["double-saut", "saut-virage"] },
+  // Les routes de campagne : étroites et vallonnées, des collines douces, des crêtes et des virages aveugles, des virages serrés au bout des petites routes.
+  campagne: { rythme: RYTHME_DOMINANT.campagne, poids: { relief: 1.5, technique: 1.5, rapide: 0.6 }, theme: { relief: { hills: [3, 4], steep: 10 } }, favor: ["colline-douce", "crete-virage", "virage-aveugle"] },
+  // Entre les parois : chaque virage large des figures devient serré (quatre au plus), aucune ligne droite libre de plus de trois blocs, le relief en marches (collines raides).
+  canyon: { rythme: RYTHME_DOMINANT.canyon, poids: { tight: 2.5, technique: 1.8, rapide: 0.4, braking: 0.5 }, maxDroite: 3, theme: { maxTight: 4, relief: { hills: [1, 3], steep: 90 } }, favor: ["s-serre-large", "pincement", "colline-raide", "chicane-angles"], aussi: ["chicane-angles"], serrer: 100 },
+  // La descente en lacets : chaque droite libre devient une pente, des demi-tours dans la pente.
+  col: { rythme: RYTHME_DOMINANT.col, poids: { relief: 3, tight: 0.6, saut: 0.6 }, pente: 100, favor: ["virage-descente", "virage-aveugle", "demi-tour-large"] },
+  // Les angles droits : des virages larges qui deviennent serrés (40 %), des rues courtes (quatre blocs), peu de relief.
+  ville: { rythme: RYTHME_DOMINANT.ville, poids: { tight: 1.5, technique: 1.5, relief: 0.5, saut: 0.5, rapide: 0.6 }, maxDroite: 4, serrer: 40 },
+};
+
+/** Le thème tel que le générateur `generator` le connaît (lot 48 : la Campagne roule sur l'herbe de course à partir de la v17 ; lot 49 : les fiches à partir de la v18 ; lot V2 : la fiche du biome à partir de la v21). */
 export function themeOfVersion(theme: Theme, generator: number): Theme {
   const changes = generator >= 17 ? THEMES_48[theme.name] : undefined;
   const t = changes ? { ...theme, ...changes } : theme;
   const fiche = generator >= 18 ? THEMES_49[t.name] : undefined;
   if (!fiche) return t;
   const f = fiche.figures;
-  return { ...t, ...(fiche.zones ? { zones: fiche.zones } : {}), figures: { ...t.figures, favor: [...t.figures.favor, ...f.favor], ban: [...t.figures.ban, ...f.ban], vedettes: f.vedettes } };
+  const t49: Theme = { ...t, ...(fiche.zones ? { zones: fiche.zones } : {}), figures: { ...t.figures, favor: [...t.figures.favor, ...f.favor], ban: [...t.figures.ban, ...f.ban], vedettes: f.vedettes } };
+  const v21 = generator >= 21 ? FICHES_V21[t.name] : undefined;
+  return v21 ? { ...t49, ...v21.theme, figures: { ...t49.figures, favor: [...t49.figures.favor, ...(v21.favor ?? [])], ...(v21.aussi ? { aussi: v21.aussi } : {}) } } : t49;
 }

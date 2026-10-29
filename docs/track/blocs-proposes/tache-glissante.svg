@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="200" viewBox="0 0 480 200" role="img" aria-label="Portion à faible adhérence">
+  <rect width="480" height="200" fill="#EDE3CF"/>
+  <rect x="8" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <rect x="248" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <text x="16" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de dessus</text>
+  <text x="256" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de côté</text>
+  <path d="M120 190 L120 30" fill="none" stroke="#5A524C" stroke-width="40" stroke-linejoin="round" stroke-linecap="butt"/>  <ellipse cx="128" cy="100" rx="12" ry="34" fill="#4FC3DC"/>  <path d="M120 180 C112 130 104 110 106 40" fill="none" stroke="#E8B23A" stroke-width="2" stroke-dasharray="5 4"/>
+  <path d="M260 150 L464 150 L464 170 L260 170 Z" fill="#5A524C" stroke="#2A1E16" stroke-width="2"/>  <rect x="340" y="146" width="70" height="4" fill="#4FC3DC"/>  <rect x="294" y="142" width="12" height="8" fill="#C2401F"/>
+</svg>

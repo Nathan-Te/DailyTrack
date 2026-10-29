@@ -27,3 +27,5 @@ export * from "./braking";
 export * from "./medalStats";
 export * from "./garage";
 export * from "./ressemblance";
+export * from "./rythmes";
+export * from "./variete";

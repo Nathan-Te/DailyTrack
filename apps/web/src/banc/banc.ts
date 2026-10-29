@@ -10,6 +10,8 @@ import type { Appareil } from "../qualite";
 import { ChainePost, densiteDeRendu, fxaaVoulu, type ChronoPasses } from "../scene/post";
 import { POST_3 } from "../scene/themesPost";
 import type { TrackScene } from "../trackMesh";
+// Lot V2 : la galerie des circuits à venir (`?debug&galerie=30`) passe par ce morceau (voir `main.ts`).
+export { lancerGalerie } from "../galerie/galerie";
 import { BANC_DEBUT_S, BANC_JOUR, DUREES, VERSION_RAPPORT, configurations, plan, rapportValide, resumer, type ConfigBanc, type EnteteBanc, type MesureBanc, type ModeBanc, type RapportBanc, type ThemeBanc } from "./bancLogique";
 
 /**

@@ -1,0 +1,84 @@
+/* Lot V2 — la galerie des circuits à venir (`?debug&galerie=30`) : outil interne, jetons de la charte seulement. */
+.gal-page {
+  margin: 0;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  overflow: auto;
+  height: auto;
+  min-height: 100%;
+}
+.gal-tete h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+.gal-choix {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gal-bouton {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 2px solid var(--dj-encre);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gal-bouton[aria-pressed="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.gal-bouton:focus-visible {
+  outline: 3px solid var(--dj-terre);
+  outline-offset: 2px;
+}
+.gal-etat,
+.gal-legende {
+  margin: 8px 0;
+  color: var(--dj-encre-douce);
+}
+.gal-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.gal-carte {
+  background: var(--dj-papier);
+  border: 2px solid var(--dj-encre);
+  padding: 8px;
+}
+.gal-motif {
+  border-color: var(--dj-terre);
+}
+.gal-plan {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.gal-date {
+  margin: 8px 0 4px;
+  font-size: 16px;
+}
+.gal-infos {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  margin: 0;
+  font-size: 13px;
+}
+.gal-infos dt {
+  font-weight: 700;
+}
+.gal-infos dd {
+  margin: 0;
+}
+.gal-lien {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--dj-terre);
+  font-weight: 700;
+}
