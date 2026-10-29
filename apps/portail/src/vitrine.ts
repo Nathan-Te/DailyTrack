@@ -139,7 +139,7 @@ function surIphone<T>(construire: () => T): T {
 /** Lot G1 : un bouton fantôme (en jeu son nom lu dit le fantôme choisi : « Fantôme : ton record »). */
 function fantome(t: T, classe: string[]): HTMLButtonElement {
   const b = boutonFantome({ classe, onClick: () => undefined });
-  b.setAttribute("aria-label", t.t("erreur.ghost_locked"));
+  b.setAttribute("aria-label", t.t("vitrine.fantome"));
   return b;
 }
 

@@ -98,7 +98,7 @@ import { GameAudio } from "./audio";
 import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
 import { CAMERAS, HOOD_GHOST_CLEARANCE, HOOD_MAX_TILT, cameraIndexOf, nextCameraIndex } from "./cameras";
 import { createShadow, placeShadow, type CarModel, type WheelPose } from "./carMesh";
-import { TEINTE_DIAMANT, VoitureEnJeu, cleFantome } from "./voiture/enJeu";
+import { VoitureEnJeu } from "./voiture/enJeu";
 import { CHOIX_DEFAUT, choixDeLAdresse, lireChoix, voitureChoisie, voituresNouvelles, type ChoixVoiture } from "./voiture/choix";
 import type { GarageUi } from "./garage";
 import { chargerMateriaux2 } from "./voiture/modeles";
@@ -112,7 +112,7 @@ import { isValidName, normalizeName, setName, getName } from "./identity";
 import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch, type SteerMode } from "./touch";
 import { hintText, mountTouchUi } from "./touchUi";
-import { Online, diamantOuvert, ghostModes, nextGhostMode, type GhostMode } from "./online";
+import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import type { GhostEntry, NameLabel } from "./salonGhosts";
 import { ORBIT_MIN_DIST, clampOrbit, nextWatchCamera, orbitOffset, progressOf, seekTick, tickAt, unwatchHref, wantsWatch, watchHref, watchTitle, REWIND_TICKS, WATCH_SPEEDS, type WatchEntry, type WatchSpeed } from "./watch";
 import type { WatchUi } from "./watchUi";
@@ -462,24 +462,22 @@ ghostMesh.visible = false;
 view.scene.add(ghostMesh);
 // Lot 51 : le fantôme a la voiture de sa course (le modèle, en version simple), pas la tienne : la Sparrow en orange d'une course d'avant. Les autres modèles se chargent à la
 // demande (`voiture/fantomes.ts`) ; le fantôme par défaut, lui, est déjà là (`garage.fantome`, la civile).
-let fantomeId = cleFantome(CHOIX_DEFAUT.id);
-let fantomeVoulu = fantomeId;
+let fantomeId = CHOIX_DEFAUT.id;
+let fantomeVoulu = CHOIX_DEFAUT.id;
 const hoteFantome = {
   scene: () => view.scene,
   modele: () => ghostModel,
   defaut: garage.fantome,
   voulu: () => fantomeVoulu,
-  poser: (m: CarModel, cle: string) => {
+  poser: (m: CarModel, id: string) => {
     ghostModel = m;
     ghostMesh = m.group;
-    fantomeId = cle;
+    fantomeId = id;
   },
 };
-/** Lot G1 : le fantôme Diamant a sa teinte (la menthe glacée) ; les autres, celle de tous les fantômes. */
-function voitureDuFantome(c: ChoixVoiture | undefined, teinte?: number) {
-  const id = c?.id ?? CHOIX_DEFAUT.id;
-  fantomeVoulu = cleFantome(id, teinte);
-  if (fantomeVoulu !== fantomeId) void import("./voiture/fantomes").then((f) => f.poserFantome(hoteFantome, id, teinte)).catch(() => undefined); // hors ligne : le fantôme garde son modèle
+function voitureDuFantome(c: ChoixVoiture | undefined) {
+  fantomeVoulu = c?.id ?? CHOIX_DEFAUT.id;
+  if (fantomeVoulu !== fantomeId) void import("./voiture/fantomes").then((f) => f.poserFantome(hoteFantome, fantomeVoulu)).catch(() => undefined); // hors ligne : le fantôme garde son modèle
 }
 // Fantômes du Salon (lot 26) : plusieurs voitures translucides colorées, avec leur pseudo.
 const ghostField = salonMod && salon ? new salonMod.GhostField() : null;
@@ -836,25 +834,20 @@ function renderPause() {
   const ghostBtn = $("pause-ghost");
   ghostBtn.textContent = t("pause.fantome", { nom: ghostText(ghostTag) });
   ghostBtn.hidden = !track;
-  // Lot G1 : tant que le Diamant est verrouillé, sa ligne grisée dit comment le débloquer (le bouton le saute).
-  const verrou = $("pause-diamant");
-  verrou.hidden = !(diamantExiste() && !diamantDebloque());
-  if (!verrou.hidden) verrou.replaceChildren(makeEl("span", "pastille pastille--diamant"), ` ${nomMedaille(traducteurDuSocle(), "diamant")} · ${t("fantome.verrouille")}`);
   $("pause-camera").textContent = t(`course.camera.${CAMERAS[cameraIndex]!.name}`);
   syncSoundButton();
 }
 let best: BestRun | null = track && !salon ? loadBest(track.id) : null;
 // Fantôme affiché : son record par défaut (`G` pour passer au premier, au joueur devant, ou à aucun).
-let ghostMode = (params.get("ghost") === "off" || settings.ghost === "none" ? "off" : "mine") as GhostMode;
+let ghostMode: GhostMode = params.get("ghost") === "off" || settings.ghost === "none" ? "off" : "mine";
 let ghostSource: BestRun | null = ghostMode === "mine" ? best : null;
 /** Le fantôme choisi, sans texte : le nom s'écrit à l'affichage, dans la langue courante (`ghostText`). */
 type GhostTag = { mode: GhostMode; name?: string; custom?: string };
 let ghostTag: GhostTag = { mode: "mine" };
-const ghostText = (g: GhostTag): string =>
-  g.custom ?? (g.mode === "mine" ? t("course.fantome.tonRecord") : g.mode === "off" ? t("course.fantome.aucun") : g.mode === "diamant" ? nomMedaille(traducteurDuSocle(), "diamant") : t(g.mode === "first" ? "course.fantome.premier" : "course.fantome.devantToi", { nom: g.name ?? "" }));
+const ghostText = (g: GhostTag): string => g.custom ?? (g.mode === "mine" ? t("course.fantome.tonRecord") : g.mode === "off" ? t("course.fantome.aucun") : t(g.mode === "first" ? "course.fantome.premier" : "course.fantome.devantToi", { nom: g.name ?? "" }));
 let ghostBusy = false;
 let session: RunSession | null = track ? new RunSession(track, ghostSource, carParams) : null;
-voitureDuFantome(session?.ghost && ghostSource ? ghostSource.voiture : undefined, ghostMode === "diamant" ? TEINTE_DIAMANT : undefined); // lot 51 : le fantôme de ton record a la voiture de ce record (la Sparrow en orange d'un record d'avant)
+voitureDuFantome(session?.ghost && ghostSource ? ghostSource.voiture : undefined); // lot 51 : le fantôme de ton record a la voiture de ce record (la Sparrow en orange d'un record d'avant)
 // Vrai si cette tentative a roulé, ne serait-ce qu'un instant, avec des réglages modifiés : ni record, ni classement.
 let tunedRun = !isDefaultParams(carParams);
 // Le fantôme qui roule vraiment dans cette tentative, et celui choisi en cours de course (effectif au prochain départ).
@@ -1103,7 +1096,7 @@ const homeUi: HomeUi = mountHome($("home"), {
   openBoard: () => boardScreen.open(),
   openGarage: () => void ouvrirGarage(),
   garageNouveau: () => voituresNouvelles().length > 0,
-  ghost: () => (track && daily ? { nom: ghostText(ghostTag), verrou: diamantExiste() && !diamantDebloque() ? `${nomMedaille(traducteurDuSocle(), "diamant")} · ${t("fantome.verrouille")}` : null } : null),
+  ghost: () => (track && daily ? { nom: ghostText(ghostTag) } : null),
   cycleGhost: () => cycleGhost(),
 });
 // Le classement du jour en pleine page (lot I4) : ouvert depuis l'accueil, fermé par « ‹ TRACK » ou Échap.
@@ -1295,7 +1288,7 @@ function startAttempt(force = false) {
   if (track) {
     session = new RunSession(track, ghostSource, carParams);
     ghostField?.restart(track); // Salon : les fantômes des autres repartent avec toi
-    voitureDuFantome(session.ghost && ghostSource ? ghostSource.voiture : undefined, ghostMode === "diamant" ? TEINTE_DIAMANT : undefined); // lot 51 : la voiture de sa course
+    voitureDuFantome(session.ghost && ghostSource ? ghostSource.voiture : undefined); // lot 51 : la voiture de sa course
     activeGhost = session.ghost && ghostSource ? { tag: ghostTag, ms: ghostSource.ms } : null;
     pendingGhost = null;
     race = session.race;
@@ -1394,34 +1387,18 @@ function setGhost(mode: GhostMode, source: BestRun | null, tag: GhostTag | strin
   }
 }
 
-/**
- * Lot G1 : le fantôme Diamant du circuit du jour — la course du pilote automatique que la page calcule elle-même (`CircuitData.diamant`, rien n'est servi). Libre pour un jour passé ; le
- * jour même, débloqué en finissant le circuit (un meilleur temps existe). `null` : pas de Diamant (circuit d'essai, de secours) ou verrouillé.
- */
-const diamantExiste = () => !!daily?.diamant && !salon && !watch && !customTrack;
-const diamantDebloque = () => diamantExiste() && diamantOuvert(daily!.day, todayParis, !!best?.replay);
-function diamantSource(): BestRun | null {
-  const d = daily?.diamant;
-  if (!d || !daily || !diamantDebloque()) return null;
-  // La course du pilote, rejouée plus vite pour arriver au temps du Diamant (le seuil de la médaille) : la suivre jusqu'au bout, c'est le Diamant.
-  const cible = daily.medals.author;
-  const k = cible / d.ms;
-  return { ms: cible, splits: d.splits.map((s) => Math.round(s * k)), replay: encodeReplay(d.replay), simVersion: SIM_VERSION, vitesse: d.ms / cible };
-}
-
-/** `G` et le bouton fantôme : fantôme suivant (son record → le premier → le joueur devant → Diamant → aucun), en sautant ceux qui n'existent pas ou qui sont verrouillés. */
+/** `G` et le bouton fantôme (lot G1) : fantôme suivant (son record → le premier → le joueur devant → aucun), en sautant ceux qui n'existent pas. */
 async function cycleGhost() {
   if (!track || ghostBusy) return;
   ghostBusy = true;
   try {
-    const modes = ghostModes(!!best?.replay, online.enabled, diamantDebloque());
+    const modes = ghostModes(!!best?.replay, online.enabled);
     let mode = ghostMode;
     for (let i = 0; i < modes.length; i++) {
       mode = nextGhostMode(mode, modes);
       if (mode === "off") return setGhost("off", null, { mode: "off" });
       if (mode === "mine") return setGhost("mine", best, { mode: "mine" });
-      if (mode === "diamant") return setGhost("diamant", diamantSource(), { mode: "diamant" });
-      const choice = await online.remoteGhost(mode as "first" | "ahead");
+      const choice = await online.remoteGhost(mode);
       if (choice) return setGhost(choice.mode, choice.source, { mode: choice.mode, name: choice.name });
       showBanner(t(mode === "first" ? "course.fantome.pasDePremier" : "course.fantome.personneDevant"), 1.4, true);
     }
@@ -1771,8 +1748,6 @@ function finishRun() {
   else if (isRecord) zones.resultat.append(badgeEtEcart(previousBest ? { badge: t("arrivee.recordNouveau"), ton: "ok", ecartMs: ms - previousBest.ms } : { badge: t("arrivee.premierTemps"), ton: "ok" }));
   else zones.resultat.append(badgeEtEcart({ texte: t("arrivee.recordActuel", { temps: fTemps(best!.ms) }), ecartMs: ms - best!.ms }));
   zones.resultat.append(makeEl("div", "note", race.respawns > 0 ? t("arrivee.reprises", { n: race.respawns }) : t("arrivee.sansReprise")));
-  // Lot G1 : la première arrivée du jour débloque le fantôme Diamant.
-  if (counted && !previousBest && diamantDebloque() && daily!.day === todayParis) zones.resultat.append(makeEl("div", "note", t("fantome.debloque")));
   if (daily) zones.medaille.append(autocollantMedaille({ medal: medalFor(ms, daily.medals), bronzeMs: daily.medals.bronze, authorMs: daily.medals.author, ms }));
   else zones.medaille.hidden = true;
   const onlineBox = zones.classement;
@@ -2365,7 +2340,7 @@ function frame(now: number) {
   // Caméra poursuite : cap, hauteur et position suivent la voiture avec un léger retard ; le champ de vision
   // s'ouvre avec la vitesse (sensation de vitesse).
   syncCameraButton();
-syncGhostButton();
+  syncGhostButton();
   const rig = CAMERAS[cameraIndex]!;
   // Au-delà de la pointe du plat (lot 15) : champ de vision plus ouvert, caméra plus basse et plus en retard, petite vibration.
   const speedRatio = flatRatio(speed);

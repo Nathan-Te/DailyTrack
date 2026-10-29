@@ -1,5 +1,4 @@
 import { bouton, boutonPleinEcran, el, icone } from "@cdj/ui";
-import { remplirVerrou } from "./ghostUi";
 import { lier, lierMentions, onLangue, t } from "./i18n";
 
 // La pause (lot 8, **refaite au lot I5** : maquette `jump-pause.html`, charte rév. 7 § 9). Posée **sur la scène, sous le voile à rayures** (motif net, ni flou
@@ -17,10 +16,8 @@ export interface PauseView {
   etat: string;
   /** La réplique du thème (une seule par écran). */
   replique: string;
-  /** Lot G1 : le fantôme choisi, par son nom (« le tien », « le premier », « Diamant », « aucun ») : l'entrée dit « Fantôme : {nom} » et fait tourner le choix. */
+  /** Lot G1 : le fantôme choisi, par son nom (« le tien », « le premier », « aucun ») : l'entrée dit « Fantôme : {nom} » et fait tourner le choix. */
   fantome: string;
-  /** Lot G1 : le Diamant existe ici mais le niveau du jour n'est pas fini : la ligne grisée « Finis le niveau pour le débloquer ». */
-  diamantVerrou: boolean;
   sound: boolean;
   /** « sim v3 · 2026-10-20 » (l'étiquette de version n'est plus dans le jeu qu'avec `?debug`). */
   version: string;
@@ -74,7 +71,6 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   const respawn = second("menu-respawn", "pause.pointDePassage", () => opts.onRespawn?.());
   const ghost = second("menu-ghost", "fantome.bouton", () => opts.onGhost());
   delete ghost.dataset.t; // son texte porte le nom du choix : `show` l'écrit (et le redessine à chaque langue)
-  const diamant = el("p", { classe: "fantome-verrou", attrs: { id: "menu-diamant", hidden: true } });
   const sound = second("menu-sound", "pause.son.oui", () => opts.onSound());
   const settings = second("menu-settings", "pause.reglages", () => opts.onSettings());
   const help = second("menu-help", "pause.aide", () => opts.onHelp());
@@ -88,7 +84,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   // Lot R5 (plateforme) : la page « Mentions légales et confidentialité » du site (racine de playdujour.com) ; lot I6 : celle de la langue choisie.
   const mentions = lierMentions(lier(el("a", { classe: "pause__lien", attrs: { id: "menu-mentions", href: "../mentions-legales/" } }), "pause.mentions"));
   const version = el("span", { classe: "pause__version", attrs: { id: "menu-version" } });
-  const actions = el("div", { classe: "pause__actions" }, respawn, restart, ghost, diamant, sound, settings, help, full, home, portail);
+  const actions = el("div", { classe: "pause__actions" }, respawn, restart, ghost, sound, settings, help, full, home, portail);
   const hoteMessage = el("div", { classe: ["message-direct", "message-direct--pause"] });
   dialog.append(hoteMessage, tete, replique, resume, actions, el("div", { classe: "pause__pied" }, mentions, version));
   document.body.append(root);
@@ -104,8 +100,6 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
     replique.textContent = v.replique ? t("commun.citation", { texte: v.replique }) : "";
     replique.hidden = v.replique === "";
     ghost.textContent = t("fantome.bouton", { nom: v.fantome });
-    diamant.hidden = !v.diamantVerrou;
-    if (v.diamantVerrou) remplirVerrou(diamant);
     lier(sound, v.sound ? "pause.son.oui" : "pause.son.non");
     sound.setAttribute("aria-pressed", v.sound ? "true" : "false");
     version.textContent = v.version;

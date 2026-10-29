@@ -3,7 +3,6 @@ import { astuceIphone, avisNouveauDepart, bouton, el, icone, medaille, suivreDia
 import { barreDuJour, onJour } from "./cadre";
 import { MEDAL_TYPE } from "./dailyInfo";
 import type { EtatDuJour } from "./homeLogic";
-import { remplirVerrou } from "./ghostUi";
 import { fNombre, lier, onLangue, t, traducteurDuSocle } from "./i18n";
 import type { RankRowView } from "./rankView";
 
@@ -36,8 +35,8 @@ export interface HomeView {
   board: { rows: RankRowView[]; participants: number } | null;
   /** Lot P2 : le code de cet appareil a été remplacé ailleurs (le profil commun le dit). */
   revoked: boolean;
-  /** Lot G1 : le fantôme choisi (son nom) ; `verrou` : le Diamant existe ici mais le niveau du jour n'est pas fini (ligne grisée « Finis le niveau pour le débloquer »). */
-  fantome: { nom: string; verrou: boolean };
+  /** Lot G1 : le fantôme choisi (son nom). */
+  fantome: { nom: string };
 }
 
 export interface HomeOptions {
@@ -109,11 +108,10 @@ export function mountHome(opts: HomeOptions): Home {
     el("div", { classe: "tuile", attrs: { id: "home-record" } }, lier(el("span", { classe: "tuile__legende" }), "accueil.record.legende"), recordValeur, recordSous),
     el("div", { classe: "tuile tuile--encre", attrs: { id: "home-streak" } }, lier(el("span", { classe: "tuile__legende" }), "accueil.serie.legende"), serieValeur, serieSous),
   );
-  // Lot G1 : le fantôme choisi, comme un bouton (un toucher passe au suivant : le tien, le premier, le Diamant, aucun), et — grisée — la ligne du Diamant tant que le niveau n'est pas fini.
+  // Lot G1 : le fantôme choisi, comme un bouton (un toucher passe au suivant : le tien, le premier, aucun).
   const fantome = bouton({ texte: t("fantome.bouton", { nom: "" }), variante: "secondaire", onClick: () => opts.onGhost() }) as HTMLButtonElement;
   fantome.id = "home-ghost";
   fantome.classList.add("accueil__fantome");
-  const verrou = el("p", { classe: "fantome-verrou", attrs: { id: "home-diamant", hidden: true } });
   const status = el("p", { classe: "dj-cache", attrs: { id: "home-status", "aria-live": "off" } });
   const play = bouton({ texte: t("page.preparation"), variante: "jump", pleineLargeur: true, desactive: true }) as HTMLButtonElement;
   play.id = "home-play";
@@ -154,7 +152,7 @@ export function mountHome(opts: HomeOptions): Home {
   const countdown = el("span", { classe: "accueil__decompte", attrs: { id: "home-countdown", "aria-live": "off" } });
   const profil = el("a", { classe: "lien", attrs: { id: "home-profil", href: opts.profilHref } });
   lier(profil, "accueil.profil");
-  const droite = el("div", { classe: "accueil__droite" }, el("div", { classe: "accueil__fantomes" }, fantome, verrou), carnage, board, el("div", { classe: "accueil__pied" }, countdown, profil));
+  const droite = el("div", { classe: "accueil__droite" }, el("div", { classe: "accueil__fantomes" }, fantome), carnage, board, el("div", { classe: "accueil__pied" }, countdown, profil));
 
   const etiquette = el("main", { classe: "etiquette etiquette--accueil" }, el("div", { classe: "accueil__grille" }, gauche, droite));
   const coque = el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), etiquette);
@@ -185,8 +183,6 @@ export function mountHome(opts: HomeOptions): Home {
     serieSous.textContent = v.serie.sous;
     status.textContent = v.status;
     fantome.textContent = t("fantome.bouton", { nom: v.fantome.nom });
-    verrou.hidden = !v.fantome.verrou;
-    if (v.fantome.verrou) remplirVerrou(verrou);
     if (ready) lier(play, BOUTON_JOUER[v.etat]);
     play.dataset.etat = v.etat;
     rank.textContent = v.rank;

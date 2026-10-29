@@ -84,10 +84,6 @@ const ROUTES = [
   `/api/jump/day/${J}/deaths`,
   `/api/jump/day/${J}/carnage`,
   `/api/jump/day/${J}/bundle`,
-  "/api/jump/fantome-diamant", // lot G1 : la trajectoire de l'auteur (403 `ghost_locked` tant que le niveau du jour n'est pas fini)
-  `/api/jump/fantome-diamant?date=${J}`,
-  "/api/jump/fantome-diamant?date=2099-01-01",
-  "/api/jump/fantome-diamant?date=pas-une-date",
   "/api/jump/day/2099-01-01/board",
   "/api/jump/day/2026-10-01",
   "/api/jump/day/pas-une-date",
@@ -154,7 +150,7 @@ describe(`codes d'erreur : parcours des routes (${TEST_DB})`, () => {
     for (const code of [
       "not_found", "method_not_allowed", "invalid_json", "too_large", "invalid_player", "unknown_player", "invalid_name", "invalid_code",
       "unauthorized", "invalid_date", "unknown_day", "day_closed", "day_started", "too_far", "invalid_variant", "invalid_kind", "no_ghost",
-      "invalid_replay", "invalid_session", "unknown_session", "invalid_since", "too_many_refs", "invalid_ref", "invalid_level", "ghost_locked",
+      "invalid_replay", "invalid_session", "unknown_session", "invalid_since", "too_many_refs", "invalid_ref", "invalid_level",
     ] satisfies CodeErreur[]) {
       expect(seen.get(code) ?? 0, `code « ${code} » jamais rendu par le parcours`).toBeGreaterThan(0);
     }

@@ -13,10 +13,6 @@ import { PLAN_CIVILE } from "./modeleCivile";
 
 /** La teinte du fantôme de ton meilleur temps (le bleu froid du lot 9). */
 export const TEINTE_FANTOME = 0x57b4ff;
-/** Lot G1 : la teinte du fantôme Diamant (la menthe glacée : assez loin du bleu de tous les autres fantômes pour se reconnaître, jamais l'orange de la voiture). */
-export const TEINTE_DIAMANT = 0x3de8c8;
-/** La clé d'un fantôme posé : son modèle, et sa teinte quand elle n'est pas celle par défaut. */
-export const cleFantome = (id: string, teinte = TEINTE_FANTOME): string => (teinte === TEINTE_FANTOME ? id : `${id}@${teinte}`);
 
 export interface OptionsVoitureEnJeu {
   /** Le choix (relu à chaque `relire()`). */

@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1145 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1141 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -80,7 +80,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.sim_version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.no_ghost` | Pas de fantôme à montrer. | No ghost to show. |
-| `erreur.ghost_locked` | Finis le niveau pour débloquer le fantôme Diamant. | Finish the level to unlock the Diamond ghost. |
 | `erreur.invalid_session` | Session du Salon invalide. | Invalid Room session. |
 | `erreur.unknown_session` | Cette session du Salon est terminée. | This Room session is over. |
 | `erreur.session_future` | Cette session du Salon n'a pas encore commencé. | This Room session hasn't started yet. |
@@ -381,6 +380,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.section.pleinEcran` | Plein écran et astuce de l'iPhone | Full screen and iPhone tip |
 | `vitrine.pleinEcran.aide` | Ouvrir l'aide du plein écran | Open the full screen help |
 | `vitrine.pleinEcran.retrouver` | Ouvrir « Retrouver mon profil » | Open “Get my profile back” |
+| `vitrine.fantome` | Fantôme suivant | Next ghost |
 | `vitrine.section.bandeau` | Message en direct | Live message |
 | `vitrine.bandeau.information` | Maintenance ce soir à 22 h : le classement sera figé dix minutes. | Maintenance tonight at 10 pm: the leaderboard will freeze for ten minutes. |
 | `vitrine.bandeau.important` | Le serveur redémarre dans quelques instants. | The server restarts in a few moments. |
@@ -732,8 +732,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `fantome.bouton` | Fantôme : {nom} | Ghost: {nom} |
-| `fantome.verrouille` | Finis le niveau pour le débloquer. | Finish the level to unlock it. |
-| `fantome.debloque` | Fantôme Diamant débloqué | Diamond ghost unlocked |
 
 ### figures (`figures.*`, `apps/web/src/catalogue.course.*.ts`)
 
@@ -1345,8 +1343,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `fantome.bouton` | Fantôme : {nom} | Ghost: {nom} |
-| `fantome.verrouille` | Finis le niveau pour le débloquer. | Finish the level to unlock it. |
-| `fantome.debloque` | Fantôme Diamant débloqué | Diamond ghost unlocked |
 | `fantome.nom.mien` | le tien | yours |
 | `fantome.nom.premier` | le premier | first place |
 | `fantome.nom.aucun` | aucun | none |
@@ -1501,7 +1497,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.effets.aucun` | Aucun | None |
 | `reglages.effets.aide` | Les taches de peinture restent toujours. | Paint stains always stay. |
 | `reglages.premier` | Fantôme du premier | First place's ghost |
-| `reglages.premier.aide` | Le meilleur essai du jour, en mauve, avec son pseudo, à côté de ton fantôme (cyan). Le fantôme (le tien, le premier, le Diamant, aucun) : le bouton en haut à gauche, la pause, ou la touche G. | Today's best run, in purple, with its name, next to your own ghost (cyan). The ghost (yours, first place, Diamond, none): the button at the top left, the pause, or the G key. |
+| `reglages.premier.aide` | Le meilleur essai du jour, en mauve, avec son pseudo, à côté de ton fantôme (cyan). Le fantôme (le tien, le premier, aucun) : le bouton en haut à gauche, la pause, ou la touche G. | Today's best run, in purple, with its name, next to your own ghost (cyan). The ghost (yours, first place, none): the button at the top left, the pause, or the G key. |
 | `reglages.taches` | Taches de tout le monde | Everyone's stains |
 | `reglages.taches.aide` | Les morts des autres joueurs du jour, plus pâles et plus petites que les tiennes : on voit où le niveau tue. | Other players' deaths today, paler and smaller than yours: you can see where the level kills. |
 | `reglages.commandes` | Commandes | Controls |

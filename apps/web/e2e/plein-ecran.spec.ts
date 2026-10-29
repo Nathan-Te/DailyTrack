@@ -9,8 +9,7 @@ import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
 //   - sur l'accueil : dans la barre des jeux, à côté de la date ; il bascule (`aria-pressed`, nom lu) et tente de verrouiller le paysage ;
 //   - caché quand l'API n'existe pas ou quand le site est déjà une application ; sur iPhone, une ligne « Partager › Sur l'écran d'accueil », une seule fois ;
 //   - le bouton caméra fait ce que fait la touche C, et son nom lu suit la caméra.
-//   - lot G1 (charte rév. 12) : le fantôme reste en vue ; `#btn-ghost`, 44 px, en tête du groupe de droite, devant l'objectif ; chaque appui passe au fantôme suivant (Aucun compris) ;
-//     le Diamant n'est dans le cycle qu'une fois le circuit fini.
+//   - lot G1 (charte rév. 12) : le fantôme reste en vue ; `#btn-ghost`, 44 px, en tête du groupe de droite, devant l'objectif ; chaque appui passe au fantôme suivant (Aucun compris).
 // Chromium seulement : le rendu 3D demande WebGL.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(150_000);
@@ -44,7 +43,7 @@ async function telephone(browser: Parameters<typeof newClockedContext>[0], viewp
   return context;
 }
 
-// Lot G1 : un circuit fini aujourd'hui (le meilleur temps du pilote, gardé comme le jeu le garde) : le fantôme Diamant est débloqué.
+// Lot G1 : un circuit fini aujourd'hui (le meilleur temps du pilote, gardé comme le jeu le garde) : le fantôme de ton record existe.
 const circuit = dailyCircuit(TODAY);
 const pilote = runPilot(circuit.track, { grip: 0.9 });
 const record = (context: BrowserContext) =>
@@ -159,8 +158,8 @@ test("plein écran : le bouton de la course et celui de la pause basculent ensem
   await context.close();
 });
 
-test("fantôme : chaque appui passe au fantôme suivant, Aucun compris ; le Diamant n'est dans le cycle qu'après avoir fini le circuit ; le nom lu suit", async ({ browser }) => {
-  // Avant d'avoir fini : pas de record, pas de classement, le Diamant est verrouillé : le cycle n'a que « aucun » (le Diamant est sauté).
+test("fantôme : chaque appui passe au fantôme suivant, Aucun compris ; le nom lu suit", async ({ browser }) => {
+  // Avant d'avoir fini : pas de record, pas de classement : le cycle n'a que « aucun ».
   const avant = await telephone(browser, { width: 844, height: 390 });
   const p1 = await enCourse(avant);
   const bouton1 = p1.locator("#btn-ghost");
@@ -170,23 +169,19 @@ test("fantôme : chaque appui passe au fantôme suivant, Aucun compris ; le Diam
   await bouton1.click();
   await expect(bouton1).toHaveAttribute("aria-label", "Fantôme : aucun");
   await avant.close();
-  // Après : ton record → Diamant → aucun → ton record (même ordre que `G` et que la pause).
+  // Après : ton record → aucun → ton record (même ordre que `G` et que la pause).
   const apres = await telephone(browser, { width: 844, height: 390 });
   await record(apres);
   const page = await enCourse(apres);
   const bouton = page.locator("#btn-ghost");
   await expect(bouton).toHaveAttribute("aria-label", "Fantôme : ton record");
   await bouton.click();
-  await expect(bouton).toHaveAttribute("aria-label", "Fantôme : Diamant");
-  expect(await page.evaluate(() => (document.querySelector("#ghostinfo")?.textContent ?? ""))).toContain("Diamant"); // la plaque dit qui roule au prochain départ
-  await bouton.click();
   await expect(bouton).toHaveAttribute("aria-label", "Fantôme : aucun");
   await page.keyboard.press("KeyG"); // la touche et le bouton font le même cycle
   await expect(bouton).toHaveAttribute("aria-label", "Fantôme : ton record");
-  // La pause porte la même entrée, sans la ligne grisée (le Diamant est débloqué).
+  // La pause porte la même entrée.
   await page.locator("#btn-pause").click();
   await expect(page.locator("#pause-ghost")).toContainText("ton record");
-  await expect(page.locator("#pause-diamant")).toBeHidden();
   await apres.close();
 });
 
@@ -196,7 +191,7 @@ test("fantôme (anglais) : le nom lu est en anglais", async ({ browser }) => {
   const page = await enCourse(context);
   await expect(page.locator("#btn-ghost")).toHaveAttribute("aria-label", /^Ghost: /);
   await page.locator("#btn-ghost").click();
-  await expect(page.locator("#btn-ghost")).toHaveAttribute("aria-label", "Ghost: Diamond");
+  await expect(page.locator("#btn-ghost")).toHaveAttribute("aria-label", "Ghost: none");
   await context.close();
 });
 
@@ -271,14 +266,13 @@ for (const viewport of [
     expect(await verrous(page)).toEqual(["landscape"]);
     await bouton.click();
     await expect(bouton).toHaveAttribute("aria-pressed", "false");
-    // Lot G1 : l'accueil montre le fantôme choisi (un bouton de 44 px qui passe au suivant) et le Diamant grisé, avec comment le débloquer, tant que le circuit n'est pas fini.
+    // Lot G1 : l'accueil montre le fantôme choisi (un bouton de 44 px qui passe au suivant).
     const choix = page.locator("#home-ghost");
     await expect(choix).toBeVisible();
     await expect(choix).toContainText("Fantôme : ton record");
     expect((await choix.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-    await expect(page.locator("#home .home-choix__verrou")).toContainText("Diamant · Finis le niveau pour le débloquer.");
     await choix.click();
-    await expect(choix).toContainText("Fantôme : aucun"); // le Diamant est sauté : il est verrouillé
+    await expect(choix).toContainText("Fantôme : aucun");
     // Les autres écrans (réglages, classement…) ont la barre sans le plein écran : on le règle avant de jouer, pas dans un sous-écran.
     await page.locator("#home-settings").click();
     await expect(page.locator("#settings")).toBeVisible();

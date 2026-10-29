@@ -133,10 +133,9 @@ test("la pause : sur la scène sous le voile à rayures ; REPRENDRE, fantôme, s
       expect((await jump(page)).menu.open).toBe(true);
       await expect(page.locator("#menu .dialogue__titre")).toHaveText("PAUSE");
       await expect(page.locator("#menu-resume")).toBeFocused();
-      // Le fantôme et le son : des réglages mémorisés, le bouton dit le choix (lot G1 : « Fantôme : le tien », qui tourne ; sans serveur, ni premier ni Diamant : le tien ↔ aucun).
+      // Le fantôme et le son : des réglages mémorisés, le bouton dit le choix (lot G1 : « Fantôme : le tien », qui tourne ; sans serveur, pas de premier : le tien ↔ aucun).
       expect((await jump(page)).ghost.choice).toBe("mien");
       await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : le tien");
-      await expect(page.locator("#menu-diamant")).toBeVisible(); // lot G1 : le Diamant se calcule dans la page (niveau généré), même sans serveur : pas encore fini, la ligne le dit
       await page.locator("#menu-ghost").tap();
       expect((await jump(page)).ghost.choice).toBe("aucun");
       await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : aucun");

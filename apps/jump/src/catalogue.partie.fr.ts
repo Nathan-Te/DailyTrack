@@ -36,10 +36,8 @@ export const fr = {
   "toast.premierIndisponible": "Fantôme du premier indisponible : à toi de jouer",
   "toast.rediffPremier": "Rediffusion de {nom}, premier du jour",
   "toast.rediffMeilleur": "Rediffusion de ton meilleur essai",
-  // Lot G1 : le nom lu du fantôme choisi, les noms des choix et le Diamant verrouillé / débloqué ; le Diamant prend le nom de la médaille du socle.
+  // Lot G1 : le nom lu du fantôme choisi et les noms des choix.
   "fantome.bouton": "Fantôme : {nom}",
-  "fantome.verrouille": "Finis le niveau pour le débloquer.",
-  "fantome.debloque": "Fantôme Diamant débloqué",
   "fantome.nom.mien": "le tien",
   "fantome.nom.premier": "le premier",
   "fantome.nom.aucun": "aucun",

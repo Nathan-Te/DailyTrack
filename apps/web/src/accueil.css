@@ -110,7 +110,7 @@ body.home #hud-droite {
   border-bottom: 1px solid var(--track-coque);
   font-size: var(--dj-taille-13);
 }
-/* Lot G1 : le fantôme choisi (un bouton de 44 px qui passe au suivant) et, grisé, le Diamant tant que le circuit n'est pas fini. */
+/* Lot G1 : le fantôme choisi (un bouton de 44 px qui passe au suivant). */
 .home-choix {
   display: flex;
   align-items: center;
@@ -129,22 +129,11 @@ body.home #hud-droite {
   cursor: pointer;
   touch-action: manipulation;
 }
-.home-choix[hidden],
-.home-choix__verrou[hidden] {
+.home-choix[hidden] {
   display: none;
 }
 .home-choix:hover {
   color: var(--track-livree-texte);
-}
-.home-choix__verrou {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 0;
-  padding: 6px 0;
-  color: var(--track-texte-doux);
-  font-size: var(--dj-taille-13);
-  font-style: italic;
 }
 .home-fantome__legende {
   color: var(--track-texte-doux);

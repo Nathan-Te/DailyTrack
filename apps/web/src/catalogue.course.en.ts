@@ -49,8 +49,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "course.fantome.suivant": "{nom} (next start)",
   "course.fantome.annonce": "Ghost: {nom}",
   "fantome.bouton": "Ghost: {nom}",
-  "fantome.verrouille": "Finish the level to unlock it.",
-  "fantome.debloque": "Diamond ghost unlocked",
   "course.fantome.pasDePremier": "No leader yet",
   "course.fantome.personneDevant": "Nobody ahead of you",
   "course.depart": "GO!",

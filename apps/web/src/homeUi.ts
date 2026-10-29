@@ -54,8 +54,8 @@ export interface HomeHost {
   openGarage(): void;
   /** Lot 41 : une voiture débloquée attend d'être vue au Garage (la pastille « Nouveau »). */
   garageNouveau(): boolean;
-  /** Lot G1 : le fantôme choisi (son nom, dans la langue courante) et, tant que le Diamant est verrouillé, la ligne qui le dit ; `null` : pas de choix à montrer. */
-  ghost(): { nom: string; verrou: string | null } | null;
+  /** Lot G1 : le fantôme choisi (son nom, dans la langue courante) ; `null` : pas de choix à montrer. */
+  ghost(): { nom: string } | null;
   /** Lot G1 : passe au fantôme suivant (le même cycle que la touche G, le bouton en course et la pause). */
   cycleGhost(): Promise<void>;
 }
@@ -123,13 +123,11 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   const fantome = el("div", "home-fantome");
   fantome.hidden = true;
 
-  // --- Lot G1 : le fantôme choisi, qui se change d'un toucher ; le Diamant, grisé tant que le circuit n'est pas fini ---
+  // --- Lot G1 : le fantôme choisi, qui se change d'un toucher ---
   const choix = el("button", "home-choix");
   choix.type = "button";
   choix.id = "home-ghost";
   choix.hidden = true;
-  const verrou = el("p", "home-choix__verrou");
-  verrou.hidden = true;
   choix.addEventListener("click", () => void host.cycleGhost().then(() => renderGhostChoice()));
 
   // --- Classement du jour (section de l'accueil) ---
@@ -181,7 +179,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
 
   // Trois colonnes sur grand écran (le circuit et tes temps · le classement · le Salon et les liens), une seule sur téléphone : même ordre de lecture.
   const colA = el("div", "home-col home-col--a");
-  colA.append(apercu, mine, medailles, fantome, choix, verrou);
+  colA.append(apercu, mine, medailles, fantome, choix);
   const colB = el("div", "home-col home-col--b");
   colB.append(boardCard);
   const colC = el("div", "home-col home-col--c");
@@ -268,10 +266,8 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   function renderGhostChoice() {
     const g = host.ghost();
     choix.hidden = !g;
-    verrou.hidden = !g?.verrou;
     if (!g) return;
     choix.replaceChildren(iconeFantome(), el("span", "", t("fantome.bouton", { nom: g.nom })));
-    if (g.verrou) verrou.replaceChildren(el("span", "pastille pastille--diamant"), ` ${g.verrou}`);
   }
 
   /** Le fantôme à battre : le premier du classement (pseudo, temps, écart avec ton meilleur temps) — rien d'inventé sans palmares. */

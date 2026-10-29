@@ -68,9 +68,6 @@ export interface Arrival {
   setRank(view: RankView): void;
   /** Lot P1 : ce qui est affiché du classement (tests). */
   readonly rank: { shown: boolean; status: string; rows: number };
-  /** Lot G1 : « Fantôme Diamant débloqué » (la première arrivée du jour qui le débloque) ; caché sinon et à chaque nouvelle arrivée. */
-  setDebloque(on: boolean): void;
-  readonly debloque: boolean;
   /** Lot P2 : le nom du premier pour « Regarder le premier », ou `null` : caché (pas de premier, ou c'est toi). */
   setFirst(name: string | null): void;
   readonly first: string | null;
@@ -104,7 +101,6 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   const nextBox = el("span", { classe: "arrivee__prochaine" }, nextLabel, nextTime);
   const medalRow = el("div", { classe: "arrivee__medaille", attrs: { id: "arrival-medal" } }, medalSlot, medalText, nextBox);
   const best = el("p", { classe: "arrivee__meilleur" });
-  const debloque = el("p", { classe: "arrivee__debloque", attrs: { id: "arrival-diamant", role: "status", hidden: true } });
   const rankLine = el("div", { classe: "arrivee__rang" });
   const rankTitle = lier(el("span", { classe: "arrivee__rang-titre" }), "arrivee.classement");
   const rankStatus = el("span", { classe: "arrivee__rang-valeur", attrs: { id: "arrival-rank", role: "status" } });
@@ -162,7 +158,7 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   const countdown = el("p", { classe: "arrivee__decompte" });
   const hint = lier(el("p", { classe: "arrivee__clavier" }), "arrivee.aideClavier");
 
-  cadre.corps.append(titre, mode, tempsBloc, medalRow, best, debloque, rankLine, phrase, replay, duo, message, fallback, rankBox, autres, stats, countdown, hint);
+  cadre.corps.append(titre, mode, tempsBloc, medalRow, best, rankLine, phrase, replay, duo, message, fallback, rankBox, autres, stats, countdown, hint);
   // Lot I3 : la suite de la journée, **sous l'étiquette** (rempli une fois l'envoi accepté : `setSuite`).
   const suiteBox = el("div", { classe: "arrivee__suite", attrs: { id: "arrival-next", hidden: true } });
   cadre.pied.append(suiteBox);
@@ -196,12 +192,6 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   let firstName: string | null = null;
   let everyoneLabel: string | null = null;
   let suiteShown: Suite | null = null;
-  let debloqueOn = false;
-  /** Lot G1 : la ligne du déblocage (pastille du Diamant obtenue, puis le texte), dans la langue courante. */
-  const renderDebloque = () => {
-    debloque.hidden = !debloqueOn;
-    if (debloqueOn) debloque.replaceChildren(medaille(traducteurDuSocle(), { type: "diamant", obtenue: true, jeu: "jump" }), el("span", { texte: t("fantome.debloque") }));
-  };
   let view: ArrivalView | null = null;
 
   const render = (v: ArrivalView) => {
@@ -232,18 +222,10 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
     if (view && shown) render(view);
     if (firstName !== null) lier(first, "arrivee.premier", { nom: firstName });
     if (suiteShown) suiteBox.replaceChildren(...elementsDeSuite(suiteShown));
-    renderDebloque();
   });
 
   return {
     hoteMessage,
-    get debloque() {
-      return debloqueOn;
-    },
-    setDebloque(on) {
-      debloqueOn = on;
-      renderDebloque();
-    },
     get suite() {
       return suiteShown;
     },
@@ -319,8 +301,6 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
       fallback.hidden = true;
       root.hidden = false;
       armed = false;
-      debloqueOn = false;
-      renderDebloque();
       cadre.defile.scrollTop = 0;
       shown = true;
     },

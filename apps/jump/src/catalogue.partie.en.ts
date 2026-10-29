@@ -34,8 +34,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "toast.rediffPremier": "Replay of {nom}, today's first",
   "toast.rediffMeilleur": "Replay of your best run",
   "fantome.bouton": "Ghost: {nom}",
-  "fantome.verrouille": "Finish the level to unlock it.",
-  "fantome.debloque": "Diamond ghost unlocked",
   "fantome.nom.mien": "yours",
   "fantome.nom.premier": "first place",
   "fantome.nom.aucun": "none",

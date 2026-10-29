@@ -6,7 +6,7 @@
 import type { Object3D } from "three";
 import type { CarModel } from "../carMesh";
 import { VOITURE_DEFAUT, ficheVoiture } from "./catalogue";
-import { TEINTE_FANTOME, cleFantome } from "./enJeu";
+import { TEINTE_FANTOME } from "./enJeu";
 import { construireFantome, type PlanVoiture } from "./modele";
 import { PLAN_CIVILE } from "./modeleCivile";
 
@@ -52,10 +52,9 @@ export interface HoteFantome {
 }
 
 /** Pose le fantôme de cette voiture (position, orientation et visibilité repris) à la place du fantôme montré — sauf si, le temps du chargement, un autre modèle a été voulu. */
-export async function poserFantome(h: HoteFantome, id: string, teinte = TEINTE_FANTOME): Promise<void> {
-  const cle = cleFantome(id, teinte);
-  const m = cle === VOITURE_DEFAUT ? h.defaut : await fantomeDe(id, teinte);
-  if (h.voulu() !== cle) return void (m !== h.defaut && libererFantome(m));
+export async function poserFantome(h: HoteFantome, id: string): Promise<void> {
+  const m = id === VOITURE_DEFAUT ? h.defaut : await fantomeDe(id, TEINTE_FANTOME);
+  if (h.voulu() !== id) return void (m !== h.defaut && libererFantome(m));
   const ancien = h.modele();
   m.group.position.copy(ancien.group.position);
   m.group.rotation.copy(ancien.group.rotation);
@@ -63,5 +62,5 @@ export async function poserFantome(h: HoteFantome, id: string, teinte = TEINTE_F
   h.scene().remove(ancien.group);
   h.scene().add(m.group);
   if (ancien !== h.defaut) libererFantome(ancien);
-  h.poser(m, cle);
+  h.poser(m, id);
 }

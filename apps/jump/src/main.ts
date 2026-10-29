@@ -12,7 +12,6 @@ import {
   ESSAI_SOLUTION_CODE,
   INPUT_ATTEMPT_MASK,
   INPUT_RESPAWN,
-  JUMP_GENERATOR_VERSION,
   JUMP_SIM_VERSION,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
@@ -55,7 +54,6 @@ import {
   jumpThemeForDay,
   levelNumber,
   replayStartState,
-  trajectoirePose,
   type AttemptState,
   type DailyLevel,
   type PublicDailyLevel,
@@ -70,9 +68,7 @@ import { CrowdMesh, GhostMesh, StainLayer } from "./actors";
 import { Carnage, HERO, carnageLabel, waveAt, waveStarts } from "./carnage";
 import { Ghost, checkpointTimes } from "./ghost";
 import { DayMemory, browserStorage, clearAll, type RecordedEssai } from "./memory";
-import { GHOST_CHOICES, loadGhostChoice, nextChoice, saveGhostChoice, shown as ghostShown, startChoice, type GhostChoice } from "./ghostChoice";
-import { DIAMOND_GHOST_COLOR, DiamondReader, checkDiamond } from "./diamond";
-import { remplirVerrou } from "./ghostUi";
+import { loadGhostChoice, nextChoice, saveGhostChoice, shown as ghostShown, startChoice, type GhostChoice } from "./ghostChoice";
 import { stainFor } from "./stains";
 import { CARNAGE, followCamera, snapCamera, type CameraView, type Follow } from "./camera";
 import { Controls } from "./input";
@@ -115,8 +111,8 @@ import { mountHowto } from "./howtoUi";
 import { mountSettings } from "./settingsUi";
 import { mountArchives, mountBoard, type BoardView } from "./screensUi";
 import { profilHref } from "./profilLien";
-import { boutonFantome, boutonPleinEcran, el, icone, majPleinEcran, modeApplication, nomMedaille, reglerAideIphone, svg } from "@cdj/ui";
-import { aCle, chargerLangue, demarrerLangue, fNumero, fTicks, langueCourante, lier, nomTheme, onLangue, repliqueTheme, t, traducteurDuSocle } from "./i18n";
+import { boutonFantome, boutonPleinEcran, el, icone, majPleinEcran, modeApplication, reglerAideIphone, svg } from "@cdj/ui";
+import { aCle, chargerLangue, demarrerLangue, fNumero, fTicks, langueCourante, lier, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
 import { shareText } from "./share";
 import { sendShare } from "./clipboard";
 import { CarnageGovernor } from "./carnageGovernor";
@@ -442,26 +438,6 @@ export interface JumpDebug {
   };
   /** Lot P2 : les couleurs des deux fantômes. */
   readonly ghostColors: { own: number; first: number };
-  /**
-   * Lot G1 : le fantôme Diamant — l'état de sa lecture, verrouillé (niveau du jour pas fini), chargé, le choix courant et l'ordre du cycle, montré, dessiné, étiquette, temps de l'auteur,
-   * nombre de points, raison d'absence, où il est (tuiles) ; `inject` (outils : jamais en production) pose une trajectoire sans serveur.
-   */
-  readonly diamond: {
-    status: string;
-    locked: boolean;
-    loaded: boolean;
-    choice: GhostChoice;
-    choices: readonly GhostChoice[];
-    shown: boolean;
-    visible: boolean;
-    labelled: boolean;
-    ticks: number | null;
-    points: number;
-    miss: string;
-    x: number;
-    y: number;
-    inject?(trajectoire: string, ticks: number): boolean;
-  };
   /** Passe au fantôme suivant (comme G, le bouton de la partie, la pause ou l'accueil) ; rend le choix. */
   cycleGhost(): GhostChoice;
   /** Lot 3 : taches à l'écran. */
@@ -740,8 +716,6 @@ const ranking = new Ranking({
     }
     // Lot P3 : le joueur existe maintenant sur le serveur : ses vies en attente partent.
     livesSender.wake();
-    // Lot G1 : un résultat classé débloque le fantôme Diamant du jour.
-    void loadDiamond();
     // Lot I3 : l'envoi est accepté : la suite de la journée (une lecture de `GET /api/portail/jour`).
     void loadSuite(true);
   },
@@ -774,13 +748,12 @@ let messageEnDirect: MessageEnDirect | null = null;
 const accueilDonnees = { medals: null as DailyLevel["medals"] | null, morts: null as number | null, carnage: false };
 /** Lot I5 : le profil commun du portail (`/profil/?retour=/jump/`) : plus de profil dans le jeu. */
 const profil = profilHref(location.pathname);
-// Lot G1 (charte rév. 12) : **un seul fantôme choisi à la fois**, qui tourne (le tien → le premier → le Diamant → aucun) : touche G, bouton de la partie, entrée de la pause
-// et ligne de l'accueil font la même chose (`cycleGhost`). Mémorisé sous `jump:fantome` ; `?ghost=` l'impose au départ sans toucher à ce qui est mémorisé. Déclaré ici : l'accueil
-// s'ouvre avant que le niveau soit là. Le Diamant (`diamond`) n'existe qu'une fois le niveau connu.
+// Lot G1 (charte rév. 12) : **un seul fantôme choisi à la fois**, qui tourne (le tien → le premier → aucun) : touche G, bouton de la partie, entrée de la pause et ligne de
+// l'accueil font la même chose (`cycleGhost`). Mémorisé sous `jump:fantome` ; `?ghost=` l'impose au départ sans toucher à ce qui est mémorisé. Déclaré ici : l'accueil s'ouvre
+// avant que le niveau soit là.
 let ghostChoice: GhostChoice = startChoice(options.ghost, loadGhostChoice(store));
-let diamond: DiamondReader | null = null;
-/** Le nom d'un choix, dans la langue courante (le Diamant : le nom de la médaille du socle). */
-const ghostName = (c: GhostChoice): string => (c === "diamant" ? nomMedaille(traducteurDuSocle(), "diamant") : t(`fantome.nom.${c}`));
+/** Le nom d'un choix, dans la langue courante. */
+const ghostName = (c: GhostChoice): string => t(`fantome.nom.${c}`);
 // Lot I5 : la barre des jeux (date et numéro du niveau) ; le numéro du niveau du jour se calcule sans le niveau (`levelNumber`).
 definirJour(today, levelNumber(today));
 const syncIfReady = () => {
@@ -839,7 +812,7 @@ function homeView(): HomeView {
     carnage: accueilDonnees.morts === null ? null : { morts: accueilDonnees.morts, peut: accueilDonnees.carnage },
     board: ranking.enabled ? { rows: rowsOf(b).rows, participants: b?.participants ?? 0 } : null,
     revoked: jumpSync.state.status === "revoked",
-    fantome: { nom: ghostName(ghostChoice), verrou: diamondLocked() },
+    fantome: { nom: ghostName(ghostChoice) },
   };
 }
 
@@ -923,22 +896,6 @@ const firstDate = daily && choice && (choice.mode === "jour" || choice.mode === 
 let firstRemote = null as FirstGhost | null;
 /** Pourquoi il n'y en a pas (« no_ghost », « network », « autre version du jeu »…) : `__jump.firstGhost`. */
 let firstMiss = firstDate && rankSource ? "" : "aucun serveur";
-// Lot G1 : le fantôme Diamant du jour (ou de l'archive) : une trajectoire que le serveur rejoue et ne rend qu'à qui a fini le niveau (un jour passé est libre). Rien en démonstration,
-// sans serveur, ni pour un essai, un morceau, un scénario ou un jour à venir (`firstDate` est nul alors).
-diamond = new DiamondReader({
-  source: demoRank ? null : rankSource,
-  date: firstDate,
-  levelId,
-  free: choice?.mode === "archive",
-  playerId: ownId,
-  // La page a la preuve (niveau qu'elle a généré) : le Diamant se calcule ici, débloqué par l'arrivée sur cet appareil ; sinon (niveau figé publié), le serveur.
-  local: () => (daily?.replay ? { level: daily.level, replay: daily.replay, ticks: daily.medals.author } : null),
-  finished: () => memory.best !== null,
-});
-/** Le Diamant existe ici mais le niveau du jour n'est pas fini : « Finis le niveau pour le débloquer » (accueil, pause). */
-function diamondLocked(): boolean {
-  return diamond?.status === "locked" && choice?.mode === "jour";
-}
 /** Lot P3 : pourquoi la carte des morts n'est pas là (`__jump.othersStains`) ; déclaré ici : une lecture du jour peut arriver avant la scène. */
 let othersMiss = firstDate && rankSource ? "" : "aucun serveur";
 /** Lot P4 : vrai une fois le jeu monté (scène, taches, écran d'arrivée) : une lecture arrivée avant n'est appliquée qu'alors (`showDay`). */
@@ -1086,8 +1043,6 @@ refreshGhost();
 const ghostMesh = scene ? new GhostMesh(scene.world, OWN_GHOST_COLOR) : null;
 let firstGhost: Ghost | null = null;
 const firstGhostMesh = scene ? new GhostMesh(scene.world, FIRST_GHOST_COLOR) : null;
-/** Lot G1 : le fantôme Diamant (vert menthe, « Diamant » au-dessus de lui) : sa trajectoire interpolée, jamais simulée. */
-const diamondMesh = scene ? new GhostMesh(scene.world, DIAMOND_GHOST_COLOR) : null;
 /** Le fantôme du premier est-il voulu ? Le réglage du menu (« Fantôme du premier »), sauf `?ghost=off|best`. */
 const firstGhostOn = (): boolean => settings.firstGhost && !options.firstGhostOff;
 /**
@@ -1236,8 +1191,6 @@ function drainEssais(): RecordedEssai | null {
       refreshFirstGhost();
       // Lot P1 : un meilleur essai du niveau du jour part au classement (en arrière-plan ; la file garde le meilleur s'il n'y a pas de réseau).
       if (!e.tuned) offerBest();
-      // Lot G1 : la première arrivée du jour débloque le Diamant calculé dans la page (sans attendre le classement).
-      if (!e.tuned && !isTrial) void loadDiamond();
     }
   }
   // Le meilleur temps affiché est celui que le rejeu a recalculé.
@@ -1369,7 +1322,6 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
   hud.hideFinish();
   ghostMesh?.hide();
   firstGhostMesh?.hide();
-  diamondMesh?.hide();
   stains?.reset([]);
   showOthers();
   scene.zoom = CARNAGE_ZOOM;
@@ -1683,10 +1635,6 @@ function showFinish(): void {
     pendingMedal = null;
   }
   arrival.show(arrivalView());
-  if (diamantAAnnoncer) {
-    arrival.setDebloque(true);
-    diamantAAnnoncer = false;
-  }
   syncMessage();
   // Lot P1 : le classement (jour : rang et top 10 après l'envoi ; archive : le classement figé de ce jour, rien n'est envoyé).
   refreshRank();
@@ -2019,8 +1967,6 @@ const keptDay = firstDate ? reads.last(firstDate) : null;
 if (keptDay) showDay(keptDay.data);
 void refreshDay();
 void syncProfile();
-// Lot G1 : le Diamant d'une archive est libre ; celui du jour se tente quand on a déjà un meilleur essai (le serveur dit non tant qu'aucun résultat n'est classé).
-if (choice?.mode === "archive" || memory.best) void loadDiamond();
 // Lot P3 : les vies en attente (une autre page, une coupure) repartent.
 void livesSender.flush();
 
@@ -2363,38 +2309,6 @@ const info: JumpDebug = {
       status: g ? STATUS_NAMES[g.state.status]! : "aucun",
       x: p ? p.x / T : 0,
       y: p ? p.y / T : 0,
-    };
-  },
-  get diamond() {
-    const d = diamond?.diamond ?? null;
-    const p = d ? trajectoirePose(d.traj, Math.max(0, session.state.time - 1), 0) : null;
-    return {
-      status: diamond?.status ?? "off",
-      locked: diamondLocked(),
-      loaded: d !== null,
-      choice: ghostChoice,
-      choices: GHOST_CHOICES,
-      shown: ghostShown(ghostChoice, firstGhostOn()).diamond && d !== null && !watching,
-      visible: diamondMesh?.group.visible ?? false,
-      labelled: diamondMesh?.labelled ?? false,
-      ticks: d?.ticks ?? null,
-      points: d?.traj.x.length ?? 0,
-      miss: diamond?.miss ?? "aucun serveur",
-      x: p?.x ?? 0,
-      y: p?.y ?? 0,
-      // Outil d'essai (e2e, captures) : une trajectoire sans serveur. Fermé en production : rien dans l'adresse ne le lève.
-      ...(BUILD_RESTRICTED
-        ? {}
-        : {
-            inject(trajectoire: string, ticks: number): boolean {
-              const c = checkDiamond({ date: diamond?.date ?? "", levelId, ticks, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, trajectoire }, levelId);
-              if (!c.ok || !diamond) return false;
-              diamond.inject(c.diamond);
-              syncDiamondLabel();
-              syncGhostViews();
-              return true;
-            },
-          }),
     };
   },
   cycleGhost() {
@@ -2782,7 +2696,6 @@ function pauseView(): PauseView {
     etat: total > 0 ? t("pause.etat", { morts, pc: `${Math.max(0, cp + 1)}/${total}` }) : morts,
     replique: daily ? repliqueTheme(daily.theme) : "",
     fantome: ghostName(ghostChoice),
-    diamantVerrou: diamondLocked(),
     sound: settings.sound,
     version: t("commun.version", { sim: JUMP_SIM_VERSION, jour: dayText }),
     canResume: session.canResume,
@@ -2867,11 +2780,11 @@ onLangue(() => {
   updateOverlay();
 });
 
-// ——— Fantôme (lot G1) : le choix tourne (le tien → le premier → le Diamant → aucun), mémorisé sous `jump:fantome` ; touche G, bouton de la partie, pause et accueil ———
-/** Ce qui existe en ce moment : le premier (lu, et pas toi) et le Diamant (chargé : niveau du jour fini, ou archive) ; « le tien » et « aucun » existent toujours. */
-function ghostAvailability(): { premier: boolean; diamant: boolean } {
+// ——— Fantôme (lot G1) : le choix tourne (le tien → le premier → aucun), mémorisé sous `jump:fantome` ; touche G, bouton de la partie, pause et accueil ———
+/** Ce qui existe en ce moment : le premier (lu, et pas toi) ; « le tien » et « aucun » existent toujours. */
+function ghostAvailability(): { premier: boolean } {
   const own = memory.best ? { ticks: memory.best.time, code: memory.best.code } : null;
-  return { premier: !watching && firstRemote !== null && showFirstGhost(firstRemote, own), diamant: !watching && diamond?.status === "ready" };
+  return { premier: !watching && firstRemote !== null && showFirstGhost(firstRemote, own) };
 }
 /** Passe au fantôme suivant (Aucun compris), en sautant ceux qui n'existent pas ; rend le choix. Le fantôme choisi ne touche jamais la simulation du joueur. */
 function cycleGhost(): GhostChoice {
@@ -2899,33 +2812,7 @@ function syncGhostButton(): void {
   ghostButton.setAttribute("aria-label", t("fantome.bouton", { nom: ghostName(ghostChoice) }));
 }
 syncGhostButton();
-onLangue(() => {
-  syncGhostButton();
-  syncDiamondLabel();
-});
-/** L'étiquette « Diamant » au-dessus du fantôme (dessinée une fois, redessinée au changement de langue). */
-function syncDiamondLabel(): void {
-  diamondMesh?.setLabel(diamond?.diamond ? nomMedaille(traducteurDuSocle(), "diamant") : null, DIAMOND_GHOST_COLOR);
-}
-/**
- * Lit le Diamant (une lecture à la fois, gardée dès qu'elle a réussi). **Le jour même, la première lecture réussie est le déblocage** : si l'écran d'arrivée est ouvert, il dit « Fantôme
- * Diamant débloqué » ; un jour passé est libre (rien à annoncer). Ne bloque jamais, ne dit jamais d'erreur.
- */
-/** Lot G1 : le Diamant vient d'être débloqué alors que l'arrivée n'était pas encore ouverte (carnage) : elle le dira en s'ouvrant. */
-let diamantAAnnoncer = false;
-async function loadDiamond(): Promise<void> {
-  if (!diamond || diamond.status === "off") return;
-  const before = diamond.status;
-  const after = await diamond.load();
-  if (after !== "ready" || before === "ready") return;
-  syncDiamondLabel();
-  syncGhostViews();
-  // La ligne « Fantôme Diamant débloqué » : tout de suite si l'arrivée est ouverte, sinon à son ouverture (après le carnage).
-  if (choice?.mode === "jour") {
-    if (arrival.shown) arrival.setDebloque(true);
-    else diamantAAnnoncer = true;
-  }
-}
+onLangue(syncGhostButton);
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyG" && !e.repeat && !menuOpen && !homeOpen()) cycleGhost();
 });
@@ -3005,7 +2892,6 @@ function draw(alpha: number, dt: number): void {
   feelFrame(scene, sb, x, y, alive, dt, session.params.runSpeed);
   drawGhost(alpha);
   drawFirstGhost(alpha);
-  drawDiamond(alpha);
   // Mort : la caméra reste où l'on est mort (l'éclatement se voit) ; le nouvel essai la repose au départ.
   if (sb.status !== ATTEMPT_DEAD) {
     const f = follow(b);
@@ -3089,21 +2975,6 @@ function drawFirstGhost(alpha: number): void {
   const gs = g.state;
   if (gs.status === ATTEMPT_DEAD) firstGhostMesh.set(null, { x: gs.deathX / T, y: gs.deathY / T, dying: Math.min(1, gs.deathTicks / RESPAWN_TICKS) });
   else firstGhostMesh.set(poseBetween(g.prev.player, gs.player, alpha), null);
-}
-
-/**
- * Lot G1 : le fantôme Diamant, posé à l'endroit où était l'auteur au chrono de l'essai en cours (la trajectoire interpolée entre deux échantillons) : **rien n'est simulé** et
- * rien n'est écrit dans l'état du joueur. Le dernier pas joué est `time − 1` : on interpole de là au pas en cours, comme les autres fantômes.
- */
-function drawDiamond(alpha: number): void {
-  if (!diamondMesh) return;
-  const d = diamond?.diamond;
-  if (!d || !ghostShown(ghostChoice, firstGhostOn()).diamond || watching) {
-    diamondMesh.hide();
-    return;
-  }
-  const p = trajectoirePose(d.traj, Math.max(0, session.state.time - 1), alpha);
-  diamondMesh.set({ x: p.x, y: p.y }, null);
 }
 
 /** Le carnage : le héros (le personnage, avec ses yeux), la foule (un carré translucide par vie), le monde du héros, la caméra sur lui. */

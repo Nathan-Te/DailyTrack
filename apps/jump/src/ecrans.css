@@ -93,7 +93,7 @@
 .accueil__jouer {
   min-height: 60px;
 }
-/* Lot G1 : le fantôme choisi (un bouton : un toucher passe au suivant) et, grisée, la ligne du Diamant tant que le niveau du jour n'est pas fini. */
+/* Lot G1 : le fantôme choisi (un bouton : un toucher passe au suivant). */
 .accueil__fantomes {
   display: grid;
   gap: 6px;
@@ -101,18 +101,6 @@
 .accueil__fantome {
   width: 100%;
   padding: 0 6px;
-}
-.fantome-verrou {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: var(--dj-encre-douce);
-  font-size: var(--dj-taille-13);
-  font-weight: 600;
-}
-.pause__actions > .fantome-verrou {
-  grid-column: 1 / -1;
 }
 .accueil__actions {
   display: grid;
@@ -531,18 +519,6 @@
 .arrivee__meilleur {
   font-size: var(--dj-taille-13);
   font-weight: 700;
-}
-.arrivee__debloque {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font-size: var(--dj-taille-13);
-  font-weight: 700;
-}
-.arrivee__debloque[hidden],
-.fantome-verrou[hidden] {
-  display: none;
 }
 .arrivee__meilleur--record {
   align-self: flex-start;

@@ -55,7 +55,6 @@ export const CODES_ERREUR = {
   track_mismatch: { status: 409, sens: "DailyTrack : la rediffusion n'est pas celle du circuit de ce jour ou de cette session du Salon." },
   not_finished: { status: 422, sens: "La rediffusion, rejouée par le serveur, n'arrive pas au bout (ligne d'arrivée, fin du niveau)." },
   replay_copy: { status: 409, sens: "DailyTrack et DailyJump, classement du jour (lot R9) : les entrées de la rediffusion sont identiques à celles de l'auteur du niveau ou d'une course déjà classée d'un autre joueur ce jour-là (une copie)." },
-  ghost_locked: { status: 403, sens: "DailyJump (lot G1) : le fantôme Diamant du jour n'est rendu qu'à un joueur qui a fini le niveau du jour (un résultat classé, quelle que soit la médaille) ; les jours passés sont libres." },
   no_ghost: { status: 404, sens: "Pas de fantôme à rendre : personne de classé, pas de temps pour ce joueur, ou personne devant lui." },
   invalid_kind: { status: 400, sens: "DailyTrack : fantôme demandé avec un `kind` autre que first ou ahead." },
 

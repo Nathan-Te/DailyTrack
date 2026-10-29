@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PREMIER_JOUR, SIM_VERSION, dailyCircuit, dailyTrackId, decodeReplay, encodeReplay, replayRace } from "@cdj/sim";
+import { PREMIER_JOUR, dailyCircuit, dailyTrackId } from "@cdj/sim";
 import { computeDaily } from "../src/circuitCalc";
 import { createCircuitEngine, dailyFromData } from "../src/circuitEngine";
 import { figureLabel, scenarioTrack, SCENARIOS } from "../src/scenarios";
@@ -31,26 +31,10 @@ describe("computeDaily : les données qui voyagent entre le fil de travail et le
         authorMs: real.authorMs,
         medals: real.medals,
         figures: real.figures.map((f) => f.name),
-        // Lot G1 : le fantôme Diamant, la course du pilote que la page calcule elle-même.
-        diamant: { ms: real.authorMs, splits: replayRace(real.track, real.authorReplay).splits, replay: real.authorReplay },
       });
       expect(d.id).toBe(dailyTrackId(DAY, theme, variant));
     }
   }, 60_000);
-
-  it("portent le fantôme Diamant : la course du pilote, rejouée par la simulation au temps du pilote (ni plus, ni moins que ce qu'un visiteur calcule)", () => {
-    const real = dailyCircuit(DAY);
-    const { diamant } = computeDaily(DAY, null, 0);
-    expect(diamant).toBeDefined();
-    const r = replayRace(real.track, diamant!.replay);
-    expect(r.finished).toBe(true);
-    expect(r.finishMs).toBe(real.authorMs);
-    expect(diamant!.ms).toBe(real.authorMs);
-    expect(diamant!.replay.simVersion).toBe(SIM_VERSION);
-    expect(diamant!.splits).toEqual(r.splits);
-    // La page l'encode quand elle s'en sert (fantôme : `loadGhost`) : le texte se relit en la même rediffusion.
-    expect(decodeReplay(encodeReplay(diamant!.replay))).toEqual(diamant!.replay);
-  }, 30_000);
 
   it("survivent à la copie du fil de travail (JSON) et redonnent le même circuit", async () => {
     const real = dailyCircuit(DAY);

@@ -237,13 +237,6 @@ check(
     jghost.body.mine === (firstRow?.name === NAME),
   `${jghost.status} premier « ${String(jghost.body.name)} », ${String(jghost.body.ticks)} pas, ${jghost.ms} ms`,
 );
-// Lot G1 : le fantôme Diamant est débloqué par le résultat que ce passage vient de classer, et il est une trajectoire (jamais la preuve de l'auteur).
-const jdiamant = await jcall("GET", `/api/jump/fantome-diamant?date=${date}`);
-check(
-  "DailyJump : fantôme Diamant servi au joueur qui a fini le niveau (une trajectoire, ni entrées ni preuve)",
-  jdiamant.status === 200 && typeof jdiamant.body.trajectoire === "string" && jdiamant.body.replay === undefined && jdiamant.body.preuve === undefined,
-  `${jdiamant.status} ${jdiamant.ms} ms`,
-);
 // Lot R9 : une course classée renvoyée sous un autre identifiant est refusée — l'essai que ce passage vient de classer, pas le premier de la base (voir DailyTrack).
 const jghostCopy = await fetch(`${base}/api/jump/submit`, {
   method: "POST",

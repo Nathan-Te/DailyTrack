@@ -5,7 +5,7 @@ import { expect, test, newClockedContext, TODAY, type BrowserContext, type Page 
 
 // Captures du README du lot G1 (outil, pas un test) : `CAPTURES=1 npx playwright test captures-lot-g1 --project=chromium` (`OUT=…` change le dossier).
 // Chromium, **français et anglais**, paysage : la course avec le bouton fantôme (844 × 390 : caméra dans la rangée de gauche ; 740 × 360 : la caméra et le fantôme côte à côte à
-// droite, devant l'objectif), l'accueil avec le fantôme choisi et le Diamant grisé, et une course avec le fantôme Diamant (menthe glacée) dessiné à côté de la voiture.
+// droite, devant l'objectif) et l'accueil avec le fantôme choisi.
 test.skip(!process.env.CAPTURES, "outil de capture : CAPTURES=1");
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(300_000);
@@ -54,21 +54,6 @@ for (const l of LANGUES) {
       await context.close();
     });
   }
-
-  // Une archive (un jour passé, de jour : le Diamant est libre sans avoir fini le circuit) : la voiture du joueur reste au départ, le Diamant file devant elle.
-  test(`course avec le fantôme Diamant (${l.slug})`, async ({ browser }) => {
-    const context = await telephone(browser, { width: 844, height: 390 }, l.locale, false);
-    await context.route(/\/api\//, (route) => route.abort());
-    const page = await context.newPage();
-    await page.goto(`/?debug&home=0&fps=0&seed=${dailyCircuit(TODAY - 2).date}`); // le 18/10/2026 : le Rallye, en plein jour
-    await page.waitForFunction(() => window.__cdj?.phase);
-    await page.locator("#btn-ghost").click(); // aucun record : le Diamant est le seul fantôme du cycle
-    await expect(page.locator("#btn-ghost")).toHaveAttribute("aria-label", l.slug === "fr" ? "Fantôme : Diamant" : "Ghost: Diamond");
-    // En temps réel (en pas à pas, l'image de la scène est celle du décompte) : une fois « PARTEZ ! » passé, le Diamant est devant la voiture, qui n'a pas bougé.
-    await page.waitForFunction(() => (window.__cdj.car?.tick ?? 0) >= 40, undefined, { timeout: 90_000 });
-    await page.screenshot({ path: join(OUT, `lot-G1-track-diamant-${l.slug}.png`) });
-    await context.close();
-  });
 
   test(`accueil (${l.slug})`, async ({ browser }) => {
     const context = await telephone(browser, { width: 844, height: 390 }, l.locale, false);

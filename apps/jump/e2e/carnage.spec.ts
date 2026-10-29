@@ -189,7 +189,7 @@ test("en pas à pas : mourir, finir, carnage de ses propres vies ; au rechargeme
   await step(page, 1, 2);
   expect((await J(page)).ghost.enabled).toBe(false);
   await page.waitForFunction(() => !(window as unknown as { __jump: Jump }).__jump.ghost.visible);
-  // Lot G1 : le choix tourne (le tien → aucun sans premier ni Diamant) ; la touche G le dit par un message court.
+  // Lot G1 : le choix tourne (le tien → aucun sans premier) ; la touche G le dit par un message court.
   await expect(page.locator("#toast")).toHaveText("Fantôme : aucun");
   await page.reload();
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");

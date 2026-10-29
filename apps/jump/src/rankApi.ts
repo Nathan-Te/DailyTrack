@@ -2,7 +2,6 @@ import { ProfileClient, TIMEOUT_MS, apiFromAddress, call, type ApiResult, type F
 import type { JumpMedal } from "@cdj/jump-sim";
 import { fNombre, fRang, t } from "./i18n";
 import type { DayBundle } from "./dayReads";
-import type { DiamondData } from "./diamond";
 import type { FirstGhostData } from "./firstGhost";
 import type { JumpMe } from "./jumpProfile";
 import type { LifeVerdict } from "./livesQueue";
@@ -113,8 +112,6 @@ export interface RankSource extends ProfileApi {
   firstGhost?(date: string, playerId: string | null): Promise<ApiResult<FirstGhostData>>;
   /** Lot P2 : le profil DailyJump du joueur (`GET /api/jump/me`) ; la démonstration n'en a pas. */
   jumpMe?(playerId: string): Promise<ApiResult<JumpMe>>;
-  /** Lot G1 : le fantôme Diamant d'un jour (`GET /api/jump/fantome-diamant`) : une trajectoire, jamais des entrées. 403 `ghost_locked` : le niveau du jour n'est pas fini. La démonstration n'en a pas. */
-  diamond?(date: string, playerId: string | null): Promise<ApiResult<DiamondData>>;
   /** Lot P3 : un lot de vies du jour (`keepalive` : la page se cache, l'envoi doit survivre à sa fermeture). La démonstration n'envoie rien. */
   sendLives?(playerId: string, lot: LivesLot, options?: { keepalive?: boolean }): Promise<ApiResult<LivesResult>>;
   /** Lot P3 : la carte des morts d'un jour (figée pour une archive). */
@@ -150,10 +147,6 @@ export class HttpRankSource extends ProfileClient implements RankSource {
 
   jumpMe(playerId: string) {
     return this.call<JumpMe>("GET", "/api/jump/me", undefined, { "X-Player-Id": playerId });
-  }
-
-  diamond(date: string, playerId: string | null) {
-    return this.call<DiamondData>("GET", `/api/jump/fantome-diamant?date=${encodeURIComponent(date)}`, undefined, playerId ? { "X-Player-Id": playerId } : undefined);
   }
 
   sendLives(playerId: string, lot: LivesLot, options: { keepalive?: boolean } = {}) {
