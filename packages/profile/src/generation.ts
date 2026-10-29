@@ -39,6 +39,8 @@ export const CLES_GARDEES: readonly string[] = [
   "cdj:tune",
   "cdj:admin",
   "cdj:admin-token",
+  // La page d'outils de Jump (`/jump/admin/`) : ses choix d'essai, comme ceux de Track (`cdj:admin`).
+  "jump:admin",
   "jump:settings",
   "jump:camera",
   "jump:fantome",

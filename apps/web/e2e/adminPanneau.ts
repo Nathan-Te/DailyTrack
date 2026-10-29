@@ -43,9 +43,10 @@ export interface Panneau {
 
 /**
  * `track: true` : le site contient aussi Track (`apps/web/dist`, construit par `npm run build`) sous `/track/` : sa page d'outils (`/track/admin/`) est alors sur la même origine
- * que l'API, comme en production (la session du panneau est un cookie : elle ne vaut que pour la même origine).
+ * que l'API, comme en production (la session du panneau est un cookie : elle ne vaut que pour la même origine). `jump: true` : de même pour Jump (`apps/jump/dist`) sous `/jump/`, dont la
+ * page d'outils est `/jump/admin/`.
  */
-export async function demarrerPanneau(o: { portSite: number; portApi: number; track?: boolean }): Promise<Panneau> {
+export async function demarrerPanneau(o: { portSite: number; portApi: number; track?: boolean; jump?: boolean }): Promise<Panneau> {
   if (!existsSync(join(ROOT, "apps/api/dist/server.mjs"))) throw new Error("l'API n'est pas construite : npm run build:node -w @cdj/api");
   const dossier = mkdtempSync(join(tmpdir(), "panneau-"));
   // Le portail seul (la page `/admin/` n'a besoin ni de Track ni de Jump), dans un dossier à part.
@@ -53,6 +54,10 @@ export async function demarrerPanneau(o: { portSite: number; portApi: number; tr
   if (o.track) {
     if (!existsSync(join(ROOT, "apps/web/dist/admin/index.html"))) throw new Error("Track n'est pas construit : npm run build");
     cpSync(join(ROOT, "apps/web/dist"), join(dossier, "site", "track"), { recursive: true });
+  }
+  if (o.jump) {
+    if (!existsSync(join(ROOT, "apps/jump/dist/admin/index.html"))) throw new Error("Jump n'est pas construit : npm run build");
+    cpSync(join(ROOT, "apps/jump/dist"), join(dossier, "site", "jump"), { recursive: true });
   }
   const site = `http://localhost:${o.portSite}`;
   const base = join(dossier, "base.sqlite");

@@ -73,6 +73,11 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/jump/src/verify.ts": "page de vérification des rediffusions (`verify.html`, tests de navigateur) : aucun texte d'interface",
   "apps/jump/src/themes.ts": "noms internes des thèmes et des décors (`label` : outils `?debug`, galerie, tests) ; l'interface lit `theme.<code>` du catalogue",
   "apps/jump/src/audioLogic.ts": "noms internes des ambiances sonores (`__jump.theme.ambience` de `?debug`) : jamais affichés au joueur",
+  // La page d'outils de Jump (`/jump/admin/`) : sœur de celle de Track, outil interne de l'éditeur, en français.
+  "apps/jump/admin": "page d'outils de Jump (`/jump/admin/`) : outil interne de l'éditeur, en français seulement (hors des catalogues des joueurs)",
+  "apps/jump/src/admin.ts": "page d'outils de Jump (`/jump/admin/`) : outil interne de l'éditeur, en français",
+  "apps/jump/src/adminAcces.ts": "porte de la page d'outils de Jump (`/jump/admin/`, connexion du panneau) : outil interne de l'éditeur, en français",
+  "apps/jump/src/adminLogic.ts": "page d'outils de Jump (`/jump/admin/`) : outil interne, en français",
   // Lot 19 (Jump) : l'outil de la variété, en français comme la galerie.
   "apps/jump/src/semaine.ts": "outil de la variété (`?semaine=`, lot 19) : 7 niveaux du jour côte à côte et leurs morceaux de base, outil interne de Nathan, en français",
 };
