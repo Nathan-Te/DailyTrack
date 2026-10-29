@@ -48,7 +48,7 @@ for (const viewport of [
     await expect(page.locator("#aide")).toBeHidden();
     await page.keyboard.up("KeyW");
     // Pendant la partie, rien dans la zone centrale ; la bande fait 30 px ; le classement est replié.
-    const racing = await boxes(page, ["#hud-centre", "#menu", "#medals", "#rang", "#speed", "#fx", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas"]);
+    const racing = await boxes(page, ["#hud-centre", "#menu", "#btn-ghost", "#medals", "#rang", "#speed", "#fx", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas"]);
     expectNoOverlap(racing, viewport);
     expectCentreLibre(racing, viewport);
     expect((await page.locator("#hud-centre").boundingBox())!.height).toBeLessThanOrEqual(31);

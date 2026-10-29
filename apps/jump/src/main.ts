@@ -67,7 +67,8 @@ import {
 import { CrowdMesh, GhostMesh, StainLayer } from "./actors";
 import { Carnage, HERO, carnageLabel, waveAt, waveStarts } from "./carnage";
 import { Ghost, checkpointTimes } from "./ghost";
-import { DayMemory, browserStorage, clearAll, loadGhostSetting, saveGhostSetting, type RecordedEssai } from "./memory";
+import { DayMemory, browserStorage, clearAll, type RecordedEssai } from "./memory";
+import { loadGhostChoice, nextChoice, saveGhostChoice, shown as ghostShown, startChoice, type GhostChoice } from "./ghostChoice";
 import { stainFor } from "./stains";
 import { CARNAGE, followCamera, snapCamera, type CameraView, type Follow } from "./camera";
 import { Controls } from "./input";
@@ -110,8 +111,8 @@ import { mountHowto } from "./howtoUi";
 import { mountSettings } from "./settingsUi";
 import { mountArchives, mountBoard, type BoardView } from "./screensUi";
 import { profilHref } from "./profilLien";
-import { boutonPleinEcran, el, icone, majPleinEcran, modeApplication, reglerAideIphone, svg } from "@cdj/ui";
-import { aCle, chargerLangue, demarrerLangue, fNumero, fTicks, lier, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
+import { boutonFantome, boutonPleinEcran, el, icone, majPleinEcran, modeApplication, reglerAideIphone, svg } from "@cdj/ui";
+import { aCle, chargerLangue, demarrerLangue, fNumero, fTicks, langueCourante, lier, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
 import { shareText } from "./share";
 import { sendShare } from "./clipboard";
 import { CarnageGovernor } from "./carnageGovernor";
@@ -417,7 +418,7 @@ export interface JumpDebug {
   /** Lot 3 : stockage local (`jump:*`). */
   readonly storage: { clear(): number; size(): number; readonly memory: { best: number | null; lives: number; deaths: number; positions: { x: number; y: number }[] } };
   /** Lot 3 : fantôme (réglage, visible, où il en est). */
-  readonly ghost: { enabled: boolean; available: boolean; visible: boolean; tick: number; status: string; x: number; y: number };
+  readonly ghost: { enabled: boolean; choice: GhostChoice; available: boolean; visible: boolean; tick: number; status: string; x: number; y: number };
   /** Lot P2 : le fantôme du premier (date, réglage, chargé, montré, dessiné, étiquette, pseudo, temps rejoué, « c'est toi », raison d'absence). */
   readonly firstGhost: {
     date: string | null;
@@ -437,8 +438,8 @@ export interface JumpDebug {
   };
   /** Lot P2 : les couleurs des deux fantômes. */
   readonly ghostColors: { own: number; first: number };
-  /** Bascule le fantôme (comme G ou le bouton 👻). */
-  toggleGhost(): boolean;
+  /** Passe au fantôme suivant (comme G, le bouton de la partie, la pause ou l'accueil) ; rend le choix. */
+  cycleGhost(): GhostChoice;
   /** Lot 3 : taches à l'écran. */
   readonly stains: { count: number; discs: number; added: number };
   /**
@@ -747,6 +748,12 @@ let messageEnDirect: MessageEnDirect | null = null;
 const accueilDonnees = { medals: null as DailyLevel["medals"] | null, morts: null as number | null, carnage: false };
 /** Lot I5 : le profil commun du portail (`/profil/?retour=/jump/`) : plus de profil dans le jeu. */
 const profil = profilHref(location.pathname);
+// Lot G1 (charte rév. 12) : **un seul fantôme choisi à la fois**, qui tourne (le tien → le premier → aucun) : touche G, bouton de la partie, entrée de la pause et ligne de
+// l'accueil font la même chose (`cycleGhost`). Mémorisé sous `jump:fantome` ; `?ghost=` l'impose au départ sans toucher à ce qui est mémorisé. Déclaré ici : l'accueil s'ouvre
+// avant que le niveau soit là.
+let ghostChoice: GhostChoice = startChoice(options.ghost, loadGhostChoice(store));
+/** Le nom d'un choix, dans la langue courante. */
+const ghostName = (c: GhostChoice): string => t(`fantome.nom.${c}`);
 // Lot I5 : la barre des jeux (date et numéro du niveau) ; le numéro du niveau du jour se calcule sans le niveau (`levelNumber`).
 definirJour(today, levelNumber(today));
 const syncIfReady = () => {
@@ -765,6 +772,7 @@ const home: Home | null = homeHere
       onArchives: () => archivesUi.open(() => archiveDays(gameDay()).map((d) => archiveRow(d, themeForDay(d).name, history.forDate(formatDay(d))))),
       onBoard: () => openBoard(),
       onCarnage: () => carnageFromHome(),
+      onGhost: () => cycleGhost(),
       profilHref: profil,
       store,
       onChange: syncIfReady,
@@ -804,6 +812,7 @@ function homeView(): HomeView {
     carnage: accueilDonnees.morts === null ? null : { morts: accueilDonnees.morts, peut: accueilDonnees.carnage },
     board: ranking.enabled ? { rows: rowsOf(b).rows, participants: b?.participants ?? 0 } : null,
     revoked: jumpSync.state.status === "revoked",
+    fantome: { nom: ghostName(ghostChoice) },
   };
 }
 
@@ -1001,7 +1010,6 @@ try {
 const particleMesh = scene ? new ParticleMesh(particles, scene.world) : null;
 
 // ——— Lot 3 : fantôme, taches ———
-let ghostOn = !options.ghostOff && loadGhostSetting(store);
 let ghost: Ghost | null = null;
 /** Lot I5 : le record du jour (pas) et ses temps de passage : l'écart signé de la bande du HUD s'y compare. */
 let recordTime: number | null = null;
@@ -2067,7 +2075,7 @@ function updateOverlay(): void {
       : "",
     daily ? dailyOverlay() : "",
     originLine(loaded, modApi !== null),
-    `jour      meilleur ${memory.best ? formatTicks(memory.best.time) : "—"} · vies ${memory.lives.length} · taches ${stains?.count ?? 0}${ghost ? ` · fantôme ${ghostOn ? "montré" : "caché"}` : ""}`,
+    `jour      meilleur ${memory.best ? formatTicks(memory.best.time) : "—"} · vies ${memory.lives.length} · taches ${stains?.count ?? 0}${ghost ? ` · fantôme ${ghostChoice}` : ""}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -2293,7 +2301,8 @@ const info: JumpDebug = {
     const g = ghost;
     const p = g?.state.player;
     return {
-      enabled: ghostOn,
+      enabled: ghostChoice === "mien",
+      choice: ghostChoice,
       available: !!g,
       visible: ghostMesh?.group.visible ?? false,
       tick: g?.tick ?? 0,
@@ -2302,8 +2311,8 @@ const info: JumpDebug = {
       y: p ? p.y / T : 0,
     };
   },
-  toggleGhost() {
-    return toggleGhost();
+  cycleGhost() {
+    return cycleGhost();
   },
   get firstGhost() {
     const g = firstGhost;
@@ -2667,7 +2676,7 @@ const menu = mountPauseMenu({
     controls.requestRespawn();
     syncPause();
   },
-  onGhost: () => toggleGhost(),
+  onGhost: () => cycleGhost(),
   onSound: () => {
     applySettings({ ...settings, sound: !settings.sound }, "sound");
     settingsUi.set(settings);
@@ -2686,7 +2695,7 @@ function pauseView(): PauseView {
     niveau: daily ? (daily.number >= 1 ? t("accueil.niveau", { numero: fNumero(daily.number), theme: nomTheme(daily.theme) }) : nomTheme(daily.theme)) : "",
     etat: total > 0 ? t("pause.etat", { morts, pc: `${Math.max(0, cp + 1)}/${total}` }) : morts,
     replique: daily ? repliqueTheme(daily.theme) : "",
-    ghost: ghostOn,
+    fantome: ghostName(ghostChoice),
     sound: settings.sound,
     version: t("commun.version", { sim: JUMP_SIM_VERSION, jour: dayText }),
     canResume: session.canResume,
@@ -2771,16 +2780,41 @@ onLangue(() => {
   updateOverlay();
 });
 
-// ——— Fantôme : réglage mémorisé (`jump:fantome`), dans la pause et touche G ———
-function toggleGhost(): boolean {
-  ghostOn = !ghostOn;
-  saveGhostSetting(store, ghostOn);
-  if (menuOpen) menu.update(pauseView());
-  else hud.toast(t(ghostOn ? "toast.fantome.oui" : "toast.fantome.non"));
-  return ghostOn;
+// ——— Fantôme (lot G1) : le choix tourne (le tien → le premier → aucun), mémorisé sous `jump:fantome` ; touche G, bouton de la partie, pause et accueil ———
+/** Ce qui existe en ce moment : le premier (lu, et pas toi) ; « le tien » et « aucun » existent toujours. */
+function ghostAvailability(): { premier: boolean } {
+  const own = memory.best ? { ticks: memory.best.time, code: memory.best.code } : null;
+  return { premier: !watching && firstRemote !== null && showFirstGhost(firstRemote, own) };
 }
+/** Passe au fantôme suivant (Aucun compris), en sautant ceux qui n'existent pas ; rend le choix. Le fantôme choisi ne touche jamais la simulation du joueur. */
+function cycleGhost(): GhostChoice {
+  ghostChoice = nextChoice(ghostChoice, ghostAvailability());
+  saveGhostChoice(store, ghostChoice);
+  syncGhostViews();
+  if (!menuOpen && !home?.isOpen) hud.toast(t("fantome.bouton", { nom: ghostName(ghostChoice) }));
+  return ghostChoice;
+}
+/** Le bouton de la partie, la pause et l'accueil disent le choix courant (le DOM n'est écrit que si le texte change). */
+function syncGhostViews(): void {
+  syncGhostButton();
+  if (menuOpen) menu.update(pauseView());
+  if (home?.isOpen) home.update(homeView());
+}
+// Charte rév. 12 : le fantôme reste en vue en partie, comme le plein écran — 44 px, en haut à gauche juste après le plein écran (la bande du centre ne bouge pas). Son nom lu est
+// « Fantôme : {nom} » et suit chaque appui et la langue ; caché en petit portrait comme le plein écran (`hud.css`).
+const ghostButton = boutonFantome({ id: "ghostbtn", classe: ["plaque", "plaque--bouton"], onClick: () => cycleGhost() });
+document.getElementById("fullscreenbtn")!.after(ghostButton);
+let ghostButtonKey = "";
+function syncGhostButton(): void {
+  const key = `${ghostChoice}|${langueCourante()}`;
+  if (key === ghostButtonKey) return;
+  ghostButtonKey = key;
+  ghostButton.setAttribute("aria-label", t("fantome.bouton", { nom: ghostName(ghostChoice) }));
+}
+syncGhostButton();
+onLangue(syncGhostButton);
 window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyG" && !e.repeat && !menuOpen && !homeOpen()) toggleGhost();
+  if (e.code === "KeyG" && !e.repeat && !menuOpen && !homeOpen()) cycleGhost();
 });
 
 if (touchOn) {
@@ -2921,7 +2955,7 @@ function poseBetween(a: PlayerState, b: PlayerState, alpha: number): { x: number
 function drawGhost(alpha: number): void {
   if (!ghostMesh) return;
   const g = ghost;
-  if (!g || !ghostOn || watching) {
+  if (!g || !ghostShown(ghostChoice, firstGhostOn()).own || watching) {
     ghostMesh.hide();
     return;
   }
@@ -2934,7 +2968,7 @@ function drawGhost(alpha: number): void {
 function drawFirstGhost(alpha: number): void {
   if (!firstGhostMesh) return;
   const g = firstGhost;
-  if (!g || !firstGhostOn() || watching) {
+  if (!g || !ghostShown(ghostChoice, firstGhostOn()).first || watching) {
     firstGhostMesh.hide();
     return;
   }

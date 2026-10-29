@@ -1,6 +1,6 @@
 {
   "simVersion": 14,
-  "generatorVersion": 18,
+  "generatorVersion": 19,
   "circuits": [
     {
       "date": "2026-10-06",
@@ -80,7 +80,7 @@
       "authorMs": 35953,
       "palette": "campagne",
       "theme": "campagne",
-      "trackId": "jour-2026-11-04-g18"
+      "trackId": "jour-2026-11-04-g19"
     },
     {
       "date": "2026-11-05",
@@ -90,7 +90,7 @@
       "authorMs": 39123,
       "palette": "neige",
       "theme": "banquise",
-      "trackId": "jour-2026-11-05-g18"
+      "trackId": "jour-2026-11-05-g19"
     },
     {
       "date": "2026-11-08",
@@ -100,7 +100,7 @@
       "authorMs": 37386,
       "palette": "ville",
       "theme": "ville",
-      "trackId": "jour-2026-11-08-g18"
+      "trackId": "jour-2026-11-08-g19"
     },
     {
       "date": "2026-11-10",
@@ -110,7 +110,7 @@
       "authorMs": 33018,
       "palette": "stade",
       "theme": "stade",
-      "trackId": "jour-2026-11-10-g18"
+      "trackId": "jour-2026-11-10-g19"
     },
     {
       "date": "2026-11-15",
@@ -120,7 +120,7 @@
       "authorMs": 38907,
       "palette": "campagne",
       "theme": "campagne",
-      "trackId": "jour-2026-11-15-g18"
+      "trackId": "jour-2026-11-15-g19"
     },
     {
       "date": "2026-11-16",
@@ -130,7 +130,7 @@
       "authorMs": 39817,
       "palette": "canyon",
       "theme": "canyon",
-      "trackId": "jour-2026-11-16-g18"
+      "trackId": "jour-2026-11-16-g19"
     },
     {
       "date": "2026-12-10",
@@ -140,7 +140,7 @@
       "authorMs": 38220,
       "palette": "nuit",
       "theme": "nuit",
-      "trackId": "jour-2026-12-10-g18"
+      "trackId": "jour-2026-12-10-g19"
     },
     {
       "date": "2026-12-25",
@@ -150,7 +150,7 @@
       "authorMs": 33332,
       "palette": "alpin",
       "theme": "col",
-      "trackId": "jour-2026-12-25-g18"
+      "trackId": "jour-2026-12-25-g19"
     },
     {
       "date": "2027-02-28",
@@ -160,7 +160,7 @@
       "authorMs": 36898,
       "palette": "desert",
       "theme": "rallye",
-      "trackId": "jour-2027-02-28-g18"
+      "trackId": "jour-2027-02-28-g19"
     },
     {
       "date": "2028-02-29",
@@ -170,7 +170,7 @@
       "authorMs": 37155,
       "palette": "neige",
       "theme": "banquise",
-      "trackId": "jour-2028-02-29-g18"
+      "trackId": "jour-2028-02-29-g19"
     },
     {
       "date": "2030-01-01",
@@ -180,7 +180,7 @@
       "authorMs": 35171,
       "palette": "campagne",
       "theme": "campagne",
-      "trackId": "jour-2030-01-01-g18"
+      "trackId": "jour-2030-01-01-g19"
     }
   ]
 }

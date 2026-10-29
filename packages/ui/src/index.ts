@@ -10,6 +10,7 @@ export * from "./catalogue";
 export { CATALOGUE_COMMUN_EN } from "./catalogue.en";
 export * from "./icones";
 export * from "./composants";
+export * from "./fantome";
 export * from "./pleinEcran";
 export type { ReglagesAideIphone } from "./pleinEcran";
 export * from "./cadre";

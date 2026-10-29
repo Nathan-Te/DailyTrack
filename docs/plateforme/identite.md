@@ -14,6 +14,8 @@ Révision 10 (lot de plateforme « suites de Track 2 », 24/10/2026) : écart ac
 
 Révision 11 (demande de Nathan, 28/10/2026, lot A1) : la médaille « Auteur » devient « Diamant » / “Diamond”, couleur `--dj-diamant` (§ 3.2, § 6, § 7) ; « Prochains niveaux dans » (§ 7). (La demande l'appelait « révision 10 » : ce numéro était déjà pris par l'écart du Garage de Track.)
 
+Révision 12 (demande de Nathan, 28/10) : le fantôme sort de la pause et reste en vue en partie, comme le plein écran et la caméra de Track (§ 9).
+
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
 Chaque règle porte sa raison. Une règle dont la raison ne s'applique plus se discute avec Nathan ; elle ne se contourne pas.
@@ -169,7 +171,8 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
   - En haut à gauche : pause (44 px), et pour Track les deux actions de course (dernier point de contrôle, recommencer) en boutons de 44 px. En haut à droite : objectif de médaille (pastille + seuil, sans le mot « Objectif ») ; Track : le rang du jour en pastille qui s'ouvre au toucher ; Jump : l'autocollant des morts.
   - **Le centre de l'écran reste libre** pendant la partie : aucune plaque permanente, aucun panneau. Le titre du circuit ou du niveau ne s'affiche qu'au départ, quelques secondes. Une aide s'affiche en une ligne courte sous la bande, puis disparaît.
   - Commandes tactiles **aux bords** de l'écran (direction en bas à gauche, frein et gaz / saut en bas à droite), jamais devant le véhicule ou le personnage ; par défaut, les **boutons** (pas de joystick).
-  - Les actions rares (caméra, graphismes, plein écran, son, fantôme) vont dans la pause.
+  - Les actions rares (graphismes, son) vont dans la pause. **Restent en vue en partie** (demandes de Nathan) : le plein écran, la caméra de Track et **le fantôme** (un bouton de 44 px qui passe d'un fantôme au suivant, « Aucun » compris) ; ils restent aussi dans la pause.
+    - Place du bouton fantôme (lot G1) : Jump, en haut à gauche après le plein écran ; Track, dans le groupe de droite devant l'objectif de médaille (à 740 × 360, la caméra et le fantôme côte à côte). Nom lu « Fantôme : {nom} », mis à jour à chaque appui ; le centre reste libre, la bande du haut ne change pas.
   - Bordures de 2 px, ombre nette de 2 px. Maquettes : `track-hud-paysage.html` (compact, retenu), `jump-hud.html`.
 - **Quand on entre dans un jeu, on y reste tant qu'on ne choisit pas de le quitter** (règle de Nathan). **Tous les écrans d'un jeu** — accueil, « Comment jouer », pause, arrivée, carnage, classement du jeu, archives, réglages — sont **posés sur la scène du jeu** sous le voile à rayures : barre des jeux en plaque crème, étiquette du jeu dans sa coque ; l'écran du dessous s'efface pendant ce temps (un seul voile). « Jeu suivant du jour » et « ‹ DU JOUR » sont les seules portes de sortie, et ce sont des choix du joueur.
 - Exceptions : la **pause** et **« Comment jouer »** sont des **dialogues** posés sur le voile, sans barre des jeux (une seule façon de les fermer). L'étiquette de **Track** n'a pas de coque (place et poids) ; celle de **Jump** garde sa coque moutarde.

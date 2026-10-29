@@ -170,7 +170,7 @@ export function fromPayload(p: unknown, day: number, options: { proof: boolean; 
     replay,
     code: p.code,
     authorTicks: p.authorTicks,
-    medals: medalsWithSlow(p.authorTicks, p.slowRoutes),
+    medals: medalsWithSlow(p.authorTicks, p.slowRoutes, p.simVersion),
     exigence: p.exigence,
     attempts: p.attempts,
     chosen: p.chosen,

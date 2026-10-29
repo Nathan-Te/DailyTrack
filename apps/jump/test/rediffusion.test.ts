@@ -27,7 +27,8 @@ import { describe, expect, it } from "vitest";
 import { MAX_STAINS, StainLayer } from "../src/actors";
 import { CARNAGE_GRACE_TICKS, Carnage, HERO, carnageLabel, carnageSchedule, departures } from "../src/carnage";
 import { Ghost } from "../src/ghost";
-import { DayMemory, MAX_DEATHS, MAX_LIVES, clearAll, levelHash, loadGhostSetting, saveGhostSetting, type KeyValue } from "../src/memory";
+import { loadGhostChoice, saveGhostChoice } from "../src/ghostChoice";
+import { DayMemory, MAX_DEATHS, MAX_LIVES, clearAll, levelHash, type KeyValue } from "../src/memory";
 import { JumpSession } from "../src/session";
 import { STAIN_DISCS, STAIN_REACH, onSolidFace, stainFor } from "../src/stains";
 import { readFileSync } from "node:fs";
@@ -231,8 +232,8 @@ describe("mémoire du jour", () => {
       expect(m.recordDeath({ x: 1, y: 1, cause: 1 }, false)).toBe(true);
       expect(m.liveReplays().length).toBeGreaterThan(0);
       expect(m.storedSize()).toBe(0);
-      expect(loadGhostSetting(store)).toBe(true);
-      expect(() => saveGhostSetting(store, false)).not.toThrow();
+      expect(loadGhostChoice(store)).toBe("mien");
+      expect(() => saveGhostChoice(store, "aucun")).not.toThrow();
       expect(clearAll(store)).toBe(0);
     }
   });

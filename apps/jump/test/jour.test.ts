@@ -78,7 +78,7 @@ describe("la porte des jours futurs", () => {
 });
 
 describe("médailles et textes", () => {
-  const medals = jumpMedalsFor(3600);
+  const medals = jumpMedalsFor(3600, 11); // les seuils d'avant le lot G1 (le Diamant au temps de l'auteur) : des nombres ronds pour la logique des textes
   it("la prochaine médaille visée : bronze sans temps, puis argent, or, auteur ; rien une fois l'auteur battu", () => {
     expect(nextMedal(null, medals)).toEqual({ medal: "bronze", ticks: 5760 });
     expect(nextMedal(6000, medals)).toEqual({ medal: "bronze", ticks: 5760 });
@@ -110,7 +110,8 @@ describe("médailles et textes", () => {
   it("le niveau du jour d'une date : numéro, médailles entières, palette du jour", () => {
     const L = dailyLevel(day("2026-10-20"));
     expect(L.number).toBe(day("2026-10-20") - PREMIER_JOUR_JUMP + 1);
-    expect(L.medals.author).toBe(L.authorTicks);
+    expect(L.medals.author).toBe(jumpMedalsFor(L.authorTicks).author); // lot G1 : le Diamant à 105 % du temps de l'auteur
+    expect(L.medals.author).toBeGreaterThan(L.authorTicks);
     expect(paletteForDay(L.day).name).toBe(paletteForDay(day("2026-10-20")).name);
   }, 60_000); // lot 24 : 5 s ne suffisent plus quand la machine charge aussi le catalogue (mesuré : 6,7 s seul)
 });

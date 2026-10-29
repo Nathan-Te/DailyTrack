@@ -200,7 +200,7 @@ function thaw(raw: unknown, day: number, proofRequired: boolean): PublicDailyLev
   if (!isStrings(f.grille) || !isStrings(f.annexe) || typeof f.hash !== "string" || !isInt(f.auteur)) return "fichier incomplet";
   const proofGiven = f.preuve !== undefined;
   if (proofGiven ? typeof f.preuve !== "string" : proofRequired) return "fichier incomplet";
-  if (!isMedals(f.medailles) || f.medailles.author !== f.auteur) return "médailles illisibles";
+  if (!isMedals(f.medailles) || f.medailles.author < f.auteur) return "médailles illisibles"; // lot G1 : le Diamant est au temps de l'auteur, ou au-dessus depuis la bascule du lot G1
   if (!Array.isArray(f.morceaux) || !Array.isArray(f.paliers) || !Array.isArray(f.palierTicks) || !isInt(f.longestRun)) return "fichier incomplet";
   const ex = f.exigence as { sum?: unknown; rate?: unknown; thirds?: unknown } | undefined;
   if (!ex || !isInt(ex.sum) || !isInt(ex.rate) || !Array.isArray(ex.thirds) || ex.thirds.length !== 3) return "fichier incomplet";

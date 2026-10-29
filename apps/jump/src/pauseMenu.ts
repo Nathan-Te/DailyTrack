@@ -16,7 +16,8 @@ export interface PauseView {
   etat: string;
   /** La réplique du thème (une seule par écran). */
   replique: string;
-  ghost: boolean;
+  /** Lot G1 : le fantôme choisi, par son nom (« le tien », « le premier », « aucun ») : l'entrée dit « Fantôme : {nom} » et fait tourner le choix. */
+  fantome: string;
   sound: boolean;
   /** « sim v3 · 2026-10-20 » (l'étiquette de version n'est plus dans le jeu qu'avec `?debug`). */
   version: string;
@@ -68,7 +69,8 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   };
   const restart = second("menu-restart", "pause.recommencer", () => opts.onRestart());
   const respawn = second("menu-respawn", "pause.pointDePassage", () => opts.onRespawn?.());
-  const ghost = second("menu-ghost", "pause.fantome.oui", () => opts.onGhost());
+  const ghost = second("menu-ghost", "fantome.bouton", () => opts.onGhost());
+  delete ghost.dataset.t; // son texte porte le nom du choix : `show` l'écrit (et le redessine à chaque langue)
   const sound = second("menu-sound", "pause.son.oui", () => opts.onSound());
   const settings = second("menu-settings", "pause.reglages", () => opts.onSettings());
   const help = second("menu-help", "pause.aide", () => opts.onHelp());
@@ -97,8 +99,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
     etat.textContent = v.etat;
     replique.textContent = v.replique ? t("commun.citation", { texte: v.replique }) : "";
     replique.hidden = v.replique === "";
-    lier(ghost, v.ghost ? "pause.fantome.oui" : "pause.fantome.non");
-    ghost.setAttribute("aria-pressed", v.ghost ? "true" : "false");
+    ghost.textContent = t("fantome.bouton", { nom: v.fantome });
     lier(sound, v.sound ? "pause.son.oui" : "pause.son.non");
     sound.setAttribute("aria-pressed", v.sound ? "true" : "false");
     version.textContent = v.version;

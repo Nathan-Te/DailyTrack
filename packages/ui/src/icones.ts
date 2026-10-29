@@ -19,8 +19,12 @@ const TRACES: Record<NomIcone, readonly string[]> = {
   profil: ["M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", "M4 21c0-4 3.6-7 8-7s8 3 8 7"],
 };
 
-/** Une icône ; `label` : son nom lisible (icône seule), sinon décorative. */
-export function icone(nom: NomIcone, { label, taille = 20 }: { label?: string; taille?: number } = {}): SVGSVGElement {
+/** Lot G1 : le fantôme (silhouette à bas ondulé, deux yeux) — « passer au fantôme suivant ». À part de `TRACES` : le portail n'a pas de bouton fantôme et ne le paie pas (budget du premier chargement ; une entrée de `TRACES` serait toujours embarquée). */
+const TRACES_FANTOME = ["M5 21V11a7 7 0 0 1 14 0v10l-3-2-3 2-3-2-3 2z", "M9 11h1M14 11h1"];
+
+type OptionsIcone = { label?: string; taille?: number };
+
+function dessiner(nom: string, traces: readonly string[], { label, taille = 20 }: OptionsIcone): SVGSVGElement {
   return svg(
     "svg",
     {
@@ -37,6 +41,12 @@ export function icone(nom: NomIcone, { label, taille = 20 }: { label?: string; t
         ...(label ? { role: "img", "aria-label": label } : { "aria-hidden": "true" }),
       },
     },
-    ...TRACES[nom].map((d) => svg("path", { attrs: { d } })),
+    ...traces.map((d) => svg("path", { attrs: { d } })),
   );
 }
+
+/** Une icône ; `label` : son nom lisible (icône seule), sinon décorative. */
+export const icone = (nom: NomIcone, o: OptionsIcone = {}): SVGSVGElement => dessiner(nom, TRACES[nom], o);
+
+/** Lot G1 : l'icône du fantôme (voir `TRACES_FANTOME`). */
+export const iconeFantome = (o: OptionsIcone = {}): SVGSVGElement => dessiner("fantome", TRACES_FANTOME, o);

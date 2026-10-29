@@ -59,4 +59,4 @@ export function expectCentreLibre(list: Box[], viewport: { width: number; height
 }
 
 /** Ce qu'on voit pendant la partie (les surimpressions et les boutons tactiles). */
-export const SURIMPRESSIONS = ["#pausebtn", "#fullscreenbtn", "#modetag", "#chrono", "#objectif", "#morts", "#dayline", "#toast", "#daynote", ".tbtn", "#rotate"];
+export const SURIMPRESSIONS = ["#pausebtn", "#fullscreenbtn", "#ghostbtn", "#modetag", "#chrono", "#objectif", "#morts", "#dayline", "#toast", "#daynote", ".tbtn", "#rotate"];

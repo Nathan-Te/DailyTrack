@@ -25,7 +25,7 @@ export const fr = {
   "reglages.effets.aucun": "Aucun",
   "reglages.effets.aide": "Les taches de peinture restent toujours.",
   "reglages.premier": "Fantôme du premier",
-  "reglages.premier.aide": "Le meilleur essai du jour, en mauve, avec son pseudo, à côté de ton fantôme (cyan). Ton fantôme : la pause, ou la touche G.",
+  "reglages.premier.aide": "Le meilleur essai du jour, en mauve, avec son pseudo, à côté de ton fantôme (cyan). Le fantôme (le tien, le premier, aucun) : le bouton en haut à gauche, la pause, ou la touche G.",
   "reglages.taches": "Taches de tout le monde",
   "reglages.taches.aide": "Les morts des autres joueurs du jour, plus pâles et plus petites que les tiennes : on voit où le niveau tue.",
   "reglages.commandes": "Commandes",

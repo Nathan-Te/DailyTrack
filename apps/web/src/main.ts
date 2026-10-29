@@ -17,7 +17,7 @@ import "./reglages.css";
 import "./tactile.css";
 import "./salon.css";
 import { aCle, appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, ajouterTextes, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
-import { boutonPleinEcran, el as elDuSocle, icone, majPleinEcran, modeApplication, nomMedaille, pleinEcranBoutonVisible, reglerAideIphone, suivreDialogue } from "@cdj/ui";
+import { boutonFantome, boutonPleinEcran, el as elDuSocle, icone, majPleinEcran, modeApplication, nomMedaille, pleinEcranBoutonVisible, reglerAideIphone, suivreDialogue } from "@cdj/ui";
 import { iconeDeTraces, iconeTrack } from "./icones";
 import { creerCadre, definirJour } from "./cadre";
 import { actionArrivee, autocollantMedaille, badgeEtEcart, creerArrivee, ligneNouvelleVoiture, ligneRang, tempsEnGrand, typeDeMedaille, type Arrivee } from "./arriveeUi";
@@ -667,6 +667,19 @@ function renderObjective() {
 })();
 onLangue(majPleinEcran);
 
+// Lot G1 (charte rév. 12) : le fantôme reste en vue en partie. Un bouton de 44 px **en tête du groupe de droite, devant l'objectif de médaille** (la rangée de gauche est pleine) :
+// il passe au fantôme suivant comme la touche G et la pause (Aucun compris) ; son nom lu (« Fantôme : ton record ») suit le choix (`syncGhostButton`). La caméra, quand elle n'a
+// plus de place à gauche, se range devant lui (`syncCameraButton` : `prepend`).
+const ghostBtn = boutonFantome({ id: "btn-ghost", classe: ["plaque", "plaque--bouton"], onClick: () => ghostAction() });
+$("hud-droite").prepend(ghostBtn);
+let ghostShown = "";
+function syncGhostButton() {
+  const key = `${salon ? salon.ghostMode : `${ghostTag.mode}|${ghostTag.name ?? ""}|${ghostTag.custom ?? ""}`}|${langueCourante()}`;
+  if (key === ghostShown) return;
+  ghostShown = key;
+  ghostBtn.setAttribute("aria-label", t("fantome.bouton", { nom: salon ? t(`salon.fantomes.${salon.ghostMode}`) : ghostText(ghostTag) }));
+}
+
 /**
  * Le bouton caméra (lot I7) : son nom lu suit la caméra courante (touche C, pause, réglages, démo : une seule vérité, `cameraIndex`) ; il tient dans la rangée du haut à gauche
  * tant que celle-ci laisse la place à la bande du centre (`BANDE_MAX_PX`), sinon il passe en tête du groupe de droite. Appelé à chaque image : ne touche au DOM que si la clé change.
@@ -1083,6 +1096,8 @@ const homeUi: HomeUi = mountHome($("home"), {
   openBoard: () => boardScreen.open(),
   openGarage: () => void ouvrirGarage(),
   garageNouveau: () => voituresNouvelles().length > 0,
+  ghost: () => (track && daily ? { nom: ghostText(ghostTag) } : null),
+  cycleGhost: () => cycleGhost(),
 });
 // Le classement du jour en pleine page (lot I4) : ouvert depuis l'accueil, fermé par « ‹ TRACK » ou Échap.
 const boardScreen = mountBoardScreen({
@@ -1372,7 +1387,7 @@ function setGhost(mode: GhostMode, source: BestRun | null, tag: GhostTag | strin
   }
 }
 
-/** `G` : fantôme suivant (son record → le premier → le joueur devant → aucun), en sautant ceux qui n'existent pas. */
+/** `G` et le bouton fantôme (lot G1) : fantôme suivant (son record → le premier → le joueur devant → aucun), en sautant ceux qui n'existent pas. */
 async function cycleGhost() {
   if (!track || ghostBusy) return;
   ghostBusy = true;
@@ -1985,6 +2000,7 @@ try {
 // `?camera=proche|loin|capot` (lot 23) : impose la caméra au chargement, sans toucher au choix mémorisé.
 if (params.has("camera")) cameraIndex = cameraIndexOf(params.get("camera"));
 syncCameraButton();
+syncGhostButton();
 
 function cycleCamera() {
   if (watch) {
@@ -2324,6 +2340,7 @@ function frame(now: number) {
   // Caméra poursuite : cap, hauteur et position suivent la voiture avec un léger retard ; le champ de vision
   // s'ouvre avec la vitesse (sensation de vitesse).
   syncCameraButton();
+  syncGhostButton();
   const rig = CAMERAS[cameraIndex]!;
   // Au-delà de la pointe du plat (lot 15) : champ de vision plus ouvert, caméra plus basse et plus en retard, petite vibration.
   const speedRatio = flatRatio(speed);

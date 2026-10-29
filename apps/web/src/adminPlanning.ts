@@ -184,7 +184,7 @@ export function mountPlanning(stateApi: () => string, surRefus: () => Promise<bo
     if (c.figures && c.figures.length > 0) row("Figures", figuresText(c.figures));
     // Lot R11 : la version du générateur du jour (dans l'identifiant du circuit) vient du registre des jours (`generatorVersionOf`), jamais d'une date écrite ici.
     const g = Number(/-g(\d+)/.exec(c.track.id)?.[1] ?? 0);
-    row("Générateur", g >= 18 ? `v${g} · identité des thèmes (lot 49) et herbe de course (lot 48)` : g >= 17 ? `v${g} · herbe de course (lot 48)` : g >= 16 ? `v${g} · freinage après les boosts (lot 34)` : `v${g} · avant le lot 34`);
+    row("Générateur", g >= 19 ? `v${g} · médailles assouplies (lot G1), circuits de la v18` : g >= 18 ? `v${g} · identité des thèmes (lot 49) et herbe de course (lot 48)` : g >= 17 ? `v${g} · herbe de course (lot 48)` : g >= 16 ? `v${g} · freinage après les boosts (lot 34)` : `v${g} · avant le lot 34`);
     return dl;
   }
 

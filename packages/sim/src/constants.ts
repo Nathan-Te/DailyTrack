@@ -26,6 +26,7 @@ export const SIM_VERSION = 14;
  * Lot R11 : **la dernière version**, celle des jours que le registre (`jours-track.json`, `generatorVersionOf`, dailyId.ts) ne nomme pas : les jours à partir du jour de
  * bascule de la prochaine mise en production, et le Salon. **Changer le générateur = monter ce numéro, jamais écrire une date** : un jour déjà servi garde la version
  * que le registre note (écrit par « Mettre en production »), et l'ancienne version reste dans le code tant qu'un jour du registre s'en sert. Historique : 15 (jusqu'au
- * 27/10/2026), 16 (freinage possible après un boost, lot 34), 17 (herbe de course, lot 48), 18 (identité des thèmes, lot 49 ; la v17 n'a servi aucun jour).
+ * 27/10/2026), 16 (freinage possible après un boost, lot 34), 17 (herbe de course, lot 48), 18 (identité des thèmes, lot 49 ; la v17 n'a servi aucun jour), 19 (médailles assouplies du lot G1 de la plateforme : les circuits sont ceux de la v18, seuls leurs
+ * seuils changent, `GENERATOR_MEDAILLES_G1` de medals.ts).
  */
-export const GENERATOR_VERSION = 18;
+export const GENERATOR_VERSION = 19;

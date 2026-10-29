@@ -93,6 +93,15 @@
 .accueil__jouer {
   min-height: 60px;
 }
+/* Lot G1 : le fantôme choisi (un bouton : un toucher passe au suivant). */
+.accueil__fantomes {
+  display: grid;
+  gap: 6px;
+}
+.accueil__fantome {
+  width: 100%;
+  padding: 0 6px;
+}
 .accueil__actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

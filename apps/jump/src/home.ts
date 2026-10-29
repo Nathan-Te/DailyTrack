@@ -35,6 +35,8 @@ export interface HomeView {
   board: { rows: RankRowView[]; participants: number } | null;
   /** Lot P2 : le code de cet appareil a été remplacé ailleurs (le profil commun le dit). */
   revoked: boolean;
+  /** Lot G1 : le fantôme choisi (son nom). */
+  fantome: { nom: string };
 }
 
 export interface HomeOptions {
@@ -44,6 +46,8 @@ export interface HomeOptions {
   onArchives(): void;
   onBoard(): void;
   onCarnage(): void;
+  /** Lot G1 : un toucher sur le fantôme choisi passe au suivant (Aucun compris). */
+  onGhost(): void;
   /** `../profil/?retour=/jump/` : le profil commun. */
   profilHref: string;
   /** Lot I7 : le stockage où se souvenir que l'astuce de l'iPhone (plein écran) a été fermée. */
@@ -104,6 +108,10 @@ export function mountHome(opts: HomeOptions): Home {
     el("div", { classe: "tuile", attrs: { id: "home-record" } }, lier(el("span", { classe: "tuile__legende" }), "accueil.record.legende"), recordValeur, recordSous),
     el("div", { classe: "tuile tuile--encre", attrs: { id: "home-streak" } }, lier(el("span", { classe: "tuile__legende" }), "accueil.serie.legende"), serieValeur, serieSous),
   );
+  // Lot G1 : le fantôme choisi, comme un bouton (un toucher passe au suivant : le tien, le premier, aucun).
+  const fantome = bouton({ texte: t("fantome.bouton", { nom: "" }), variante: "secondaire", onClick: () => opts.onGhost() }) as HTMLButtonElement;
+  fantome.id = "home-ghost";
+  fantome.classList.add("accueil__fantome");
   const status = el("p", { classe: "dj-cache", attrs: { id: "home-status", "aria-live": "off" } });
   const play = bouton({ texte: t("page.preparation"), variante: "jump", pleineLargeur: true, desactive: true }) as HTMLButtonElement;
   play.id = "home-play";
@@ -144,7 +152,7 @@ export function mountHome(opts: HomeOptions): Home {
   const countdown = el("span", { classe: "accueil__decompte", attrs: { id: "home-countdown", "aria-live": "off" } });
   const profil = el("a", { classe: "lien", attrs: { id: "home-profil", href: opts.profilHref } });
   lier(profil, "accueil.profil");
-  const droite = el("div", { classe: "accueil__droite" }, carnage, board, el("div", { classe: "accueil__pied" }, countdown, profil));
+  const droite = el("div", { classe: "accueil__droite" }, el("div", { classe: "accueil__fantomes" }, fantome), carnage, board, el("div", { classe: "accueil__pied" }, countdown, profil));
 
   const etiquette = el("main", { classe: "etiquette etiquette--accueil" }, el("div", { classe: "accueil__grille" }, gauche, droite));
   const coque = el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), etiquette);
@@ -174,6 +182,7 @@ export function mountHome(opts: HomeOptions): Home {
     serieValeur.textContent = v.serie.valeur;
     serieSous.textContent = v.serie.sous;
     status.textContent = v.status;
+    fantome.textContent = t("fantome.bouton", { nom: v.fantome.nom });
     if (ready) lier(play, BOUTON_JOUER[v.etat]);
     play.dataset.etat = v.etat;
     rank.textContent = v.rank;

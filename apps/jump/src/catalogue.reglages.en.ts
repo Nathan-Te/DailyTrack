@@ -25,7 +25,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "reglages.effets.aucun": "None",
   "reglages.effets.aide": "Paint stains always stay.",
   "reglages.premier": "First place's ghost",
-  "reglages.premier.aide": "Today's best run, in purple, with its name, next to your own ghost (cyan). Your ghost: the pause, or the G key.",
+  "reglages.premier.aide": "Today's best run, in purple, with its name, next to your own ghost (cyan). The ghost (yours, first place, none): the button at the top left, the pause, or the G key.",
   "reglages.taches": "Everyone's stains",
   "reglages.taches.aide": "Other players' deaths today, paler and smaller than yours: you can see where the level kills.",
   "reglages.commandes": "Controls",

@@ -191,7 +191,7 @@ describe("lot 16 — médailles et temps de référence", () => {
   it("l'or n'est atteignable que par les voies rapides ; le bronze l'est en prenant toutes les voies lentes, avec une marge", () => {
     for (const L of DAYS) {
       const m = L.medals;
-      expect(m).toEqual(medalsWithSlow(L.authorTicks, L.slowRoutes));
+      expect(m).toEqual(medalsWithSlow(L.authorTicks, L.slowRoutes, L.level.simVersion));
       const extras = L.slowRoutes.map((r) => r.slowTicks - r.fastTicks);
       expect(L.slowTicks, L.date).toBe(L.authorTicks + extras.reduce((a, b) => a + b, 0));
       // Une seule voie lente prise (n'importe laquelle) : plus d'or.

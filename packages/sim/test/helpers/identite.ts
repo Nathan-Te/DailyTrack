@@ -41,7 +41,7 @@ export const v18 = (day: number) => {
   let c = circuits.get(day);
   if (!c) {
     const t0 = performance.now();
-    circuits.set(day, (c = dailyCircuit(day)));
+    circuits.set(day, (c = dailyCircuit(day, 0, null, 18))); // la v18 imposée : la v19 (lot G1) a les mêmes circuits, seules les médailles changent
     genMs.set(day, performance.now() - t0);
   }
   return c;

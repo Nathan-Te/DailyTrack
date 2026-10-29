@@ -19,7 +19,7 @@ interface J {
   attempt: { deaths: number; time: number; checkpoints: number };
   menu: { open: boolean };
   settings: { sound: boolean; firstGhost: boolean };
-  ghost: { enabled: boolean };
+  ghost: { enabled: boolean; choice: string };
 }
 const jump = (page: Page) => page.evaluate(() => (window as unknown as { __jump: J }).__jump);
 const RIGHT = 2;
@@ -133,11 +133,14 @@ test("la pause : sur la scène sous le voile à rayures ; REPRENDRE, fantôme, s
       expect((await jump(page)).menu.open).toBe(true);
       await expect(page.locator("#menu .dialogue__titre")).toHaveText("PAUSE");
       await expect(page.locator("#menu-resume")).toBeFocused();
-      // Le fantôme et le son : des réglages mémorisés, le bouton dit l'état.
-      const ghost = (await jump(page)).ghost.enabled;
+      // Le fantôme et le son : des réglages mémorisés, le bouton dit le choix (lot G1 : « Fantôme : le tien », qui tourne ; sans serveur, pas de premier : le tien ↔ aucun).
+      expect((await jump(page)).ghost.choice).toBe("mien");
+      await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : le tien");
       await page.locator("#menu-ghost").tap();
-      expect((await jump(page)).ghost.enabled).toBe(!ghost);
-      await expect(page.locator("#menu-ghost")).toHaveText(ghost ? "Fantôme : non" : "Fantôme : oui");
+      expect((await jump(page)).ghost.choice).toBe("aucun");
+      await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : aucun");
+      await page.locator("#menu-ghost").tap();
+      await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : le tien");
       await page.locator("#menu-sound").tap();
       expect((await jump(page)).settings.sound).toBe(false);
       await expect(page.locator("#menu-sound")).toHaveText("Son : non");

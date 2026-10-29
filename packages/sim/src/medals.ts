@@ -1,4 +1,5 @@
 import { daysFromCivil } from "@cdj/core";
+import { generatorVersionOf } from "./dailyId";
 
 // Les médailles (lots 4 et 35) : seuils d'un jour à partir du temps du pilote, et médaille d'un temps. Dans leur propre fichier (lot 36) : le jeu en a besoin
 // dès le premier écran, alors que le générateur (`generator.ts`) n'est calculé que dans un fil de travail.
@@ -23,6 +24,20 @@ export const MEDAL_FACTORS_35 = { author: 0.84, gold: 1.045, silver: 1.07, bronz
  */
 export const BASCULE_LOT_35 = daysFromCivil(2026, 10, 28);
 
+/**
+ * Lot G1 — **médailles assouplies** (demande de Nathan, 28/10/2026 : le Diamant était imprenable sur les cartes du jour) : le Diamant passe de 0,84 à **0,92** du temps du
+ * pilote, or, argent et bronze gardent leurs écarts (multiples du Diamant : ×1,045, ×1,07, ×1,13) donc montent d'autant (or 0,961, argent 0,984, bronze 1,040 du pilote :
+ * rouler comme le pilote rapporte le bronze). Pour les circuits du générateur `GENERATOR_MEDAILLES_G1` et suivants.
+ */
+export const MEDAL_FACTORS_G1 = { author: 0.92, gold: 1.045, silver: 1.07, bronze: 1.13 } as const;
+
+/**
+ * Lot G1 — **plus de date de bascule pour les médailles** : elles suivent la **version du générateur du jour** (`generatorVersionOf`, le registre des jours écrit par
+ * « Mettre en production »), comme le circuit. Un jour déjà servi garde sa version, donc ses seuils ; un jour que le registre ne nomme pas (le lendemain d'une mise en
+ * production et les suivants, le Salon) prend la dernière, donc les nouveaux seuils. **Recalibrer** = de nouveaux facteurs pour une nouvelle `GENERATOR_VERSION`, jamais une date.
+ */
+export const GENERATOR_MEDAILLES_G1 = 19;
+
 export type Medal = "author" | "gold" | "silver" | "bronze";
 
 export interface Medals {
@@ -33,11 +48,13 @@ export interface Medals {
 }
 
 /**
- * Seuils des médailles d'un jour (ou d'une graine du Salon) à partir du temps du pilote (`authorMs` des circuits, inchangé). **Toujours
- * passer le jour** : sans lui (`day` = 0), ce sont les seuils d'avant le lot 35.
+ * Seuils des médailles d'un jour (ou d'une graine du Salon) à partir du temps du pilote (`authorMs` des circuits, inchangé). **Toujours passer le jour** (sans lui : les
+ * seuils d'avant le lot 35) ; la version du
+ * générateur est celle du jour (`generatorVersionOf`), ou celle du circuit quand elle est imposée. Avant la v19 : les seuils du lot 35 à partir du 28/10/2026
+ * (`BASCULE_LOT_35`, l'ancienne date, qui ne bouge plus), ceux du lot 4 avant ; depuis la v19 : ceux du lot G1.
  */
-export function medalsFor(pilotMs: number, day = 0): Medals {
-  const f = day < BASCULE_LOT_35 ? { author: 1, ...MEDAL_FACTORS } : MEDAL_FACTORS_35;
+export function medalsFor(pilotMs: number, day = 0, generator = day > 0 ? generatorVersionOf(day) : 0): Medals {
+  const f = generator >= GENERATOR_MEDAILLES_G1 ? MEDAL_FACTORS_G1 : day < BASCULE_LOT_35 ? { author: 1, ...MEDAL_FACTORS } : MEDAL_FACTORS_35;
   const author = Math.round(pilotMs * f.author);
   return {
     author,

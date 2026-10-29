@@ -364,20 +364,3 @@ export function clearAll(store: KeyValue | null): number {
     return 0;
   }
 }
-
-/** Le fantôme est-il voulu ? Réglage mémorisé (`jump:fantome`), oui par défaut. */
-export function loadGhostSetting(store: KeyValue | null): boolean {
-  try {
-    return store?.getItem(storageKey("fantome")) !== "0";
-  } catch {
-    return true;
-  }
-}
-
-export function saveGhostSetting(store: KeyValue | null, on: boolean): void {
-  try {
-    store?.setItem(storageKey("fantome"), on ? "1" : "0");
-  } catch {
-    /* rien */
-  }
-}

@@ -4,6 +4,7 @@ import { FIXED_NOW, shiftDate } from "./clock";
 import { boxes, expectCentreLibre, expectNoOverlap, SURIMPRESSIONS } from "./layout";
 import { hasWebGL } from "./phone";
 
+// Lot G1 (charte rév. 12) : le fantôme reste en vue, comme le plein écran — un bouton de 44 px juste après lui, qui passe au fantôme suivant (Aucun compris).
 // Lot I7 (plateforme) : le plein écran revient en vue dans Jump (pas de bouton caméra : Jump n'a pas de choix de caméra).
 //   - en partie, en haut à gauche, juste après la pause et ses actions (44 px, hors de la zone du personnage, rien ne se chevauche) ;
 //   - sur l'accueil : dans la barre des jeux, à côté de la date ; il bascule (`aria-pressed`, nom lu) et tente de verrouiller le paysage ;
@@ -14,6 +15,7 @@ interface J {
   phase: string;
   manual(on: boolean): void;
   home: { ready: boolean };
+  ghost: { choice: string };
 }
 
 /** Les verrous d'orientation demandés sont notés dans `window.__verrous` (le verrou réel n'existe pas sur un ordinateur). */
@@ -182,3 +184,79 @@ for (const [langue, locale, ligne, fermer] of [
     }
   });
 }
+
+// --- Lot G1 : le bouton fantôme -------------------------------------------------------------------------------------------------------------------------------------------------------
+for (const viewport of [
+  { width: 844, height: 390 },
+  { width: 740, height: 360 },
+]) {
+  test(`paysage ${viewport.width}×${viewport.height} : le bouton fantôme est en vue, juste après le plein écran, à 44 px, hors du centre, sans rien chevaucher ; chaque appui passe au fantôme suivant`, async ({ browser }) => {
+    const context = await telephone(browser, viewport);
+    try {
+      const page = await enPartie(context, false);
+      const bouton = page.locator("#ghostbtn");
+      await expect(bouton).toBeVisible();
+      const pause = (await page.locator("#pausebtn").boundingBox())!;
+      const fantome = (await bouton.boundingBox())!;
+      // Après le plein écran quand il y en a un, sinon après la dernière plaque de la pause et de ses actions.
+      const precedents = (await Promise.all(["#pausebtn", "#btn-respawn", "#btn-restart", "#fullscreenbtn"].map(async (s) => ((await page.locator(s).isVisible()) ? page.locator(s).boundingBox() : null))))
+        .filter((b): b is NonNullable<typeof b> => b !== null)
+        .reduce((a, b) => (b.x > a.x ? b : a));
+      expect(fantome.width, "44 px").toBeGreaterThanOrEqual(43.5);
+      expect(fantome.height, "44 px").toBeGreaterThanOrEqual(43.5);
+      expect(Math.round(fantome.y), "sur la ligne de la pause").toBe(Math.round(pause.y));
+      expect(fantome.x, "juste après le plein écran").toBeGreaterThanOrEqual(precedents.x + precedents.width);
+      expect(fantome.x, "juste après le plein écran").toBeLessThan(precedents.x + precedents.width + 16);
+      const partie = await boxes(page, SURIMPRESSIONS.filter((s) => s !== "#dayline" && s !== "#toast" && s !== "#rotate"));
+      expect(partie.map((b) => b.name)).toContain("#ghostbtn");
+      expectNoOverlap(partie, viewport);
+      expectCentreLibre(await boxes(page, SURIMPRESSIONS), viewport);
+
+      // Le cycle : sans serveur ni premier, le tien ↔ aucun.
+      const j = (page: Page) => page.evaluate(() => (window as unknown as { __jump: J }).__jump.ghost.choice);
+      expect(await j(page)).toBe("mien");
+      await expect(bouton).toHaveAttribute("aria-label", "Fantôme : le tien");
+      await bouton.tap();
+      expect(await j(page)).toBe("aucun");
+      await expect(bouton).toHaveAttribute("aria-label", "Fantôme : aucun");
+      await bouton.tap();
+      expect(await j(page)).toBe("mien");
+      expect(await page.evaluate(() => localStorage.getItem("jump:fantome")), "mémorisé sous la clé d'avant le lot").toBe("1");
+      // La touche G fait la même chose que le bouton.
+      await page.keyboard.press("KeyG");
+      expect(await j(page)).toBe("aucun");
+      expect(await page.evaluate(() => localStorage.getItem("jump:fantome"))).toBe("0");
+      await expect(bouton).toHaveAttribute("aria-label", "Fantôme : aucun");
+      // La pause dit le même choix et le fait tourner de la même façon.
+      await page.locator("#pausebtn").tap();
+      await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : aucun");
+      await page.locator("#menu-ghost").tap();
+      await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : le tien");
+      expect(await j(page)).toBe("mien");
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("le bouton fantôme en anglais : « Ghost: yours » puis « Ghost: none » ; à l'accueil, un toucher sur le fantôme choisi le change", async ({ browser }) => {
+  const context = await telephone(browser, { width: 844, height: 390 }, { locale: "en-US" });
+  try {
+    const page = await context.newPage();
+    await page.goto("/?debug");
+    test.skip(!(await hasWebGL(page)), "WebGL indisponible");
+    await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
+    // L'accueil : le fantôme choisi est un bouton, un toucher passe au suivant.
+    const accueil = page.locator("#home-ghost");
+    await expect(accueil).toBeVisible();
+    await expect(accueil).toHaveText("Ghost: yours");
+    expect((await accueil.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+    await accueil.tap();
+    await expect(accueil).toHaveText("Ghost: none");
+    await expect(page.locator("#ghostbtn")).toHaveAttribute("aria-label", "Ghost: none");
+    await accueil.tap();
+    await expect(accueil).toHaveText("Ghost: yours");
+  } finally {
+    await context.close();
+  }
+});

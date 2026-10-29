@@ -3,7 +3,7 @@
 // quatre médailles en cases, le fantôme à battre, « Courir » ; puis le classement du jour (cinq lignes et la tienne), le Salon et les liens (archives,
 // réglages, aide, profil). Le DOM seulement : les données viennent de `HomeHost` (main.ts), la logique de homeLogic.ts, profile.ts et boardView.ts.
 import type { Medal } from "@cdj/sim";
-import { astuceIphone, bouton, formatDecompte, medaille } from "@cdj/ui";
+import { astuceIphone, bouton, formatDecompte, iconeFantome, medaille } from "@cdj/ui";
 import { avisDeNouveauDepart } from "./nouveauDepart";
 import type { ApiResult, Leaderboard } from "./api";
 import { boardTitle, dayLines, linesEls, MEDAL_TYPE } from "./boardView";
@@ -54,6 +54,10 @@ export interface HomeHost {
   openGarage(): void;
   /** Lot 41 : une voiture débloquée attend d'être vue au Garage (la pastille « Nouveau »). */
   garageNouveau(): boolean;
+  /** Lot G1 : le fantôme choisi (son nom, dans la langue courante) ; `null` : pas de choix à montrer. */
+  ghost(): { nom: string } | null;
+  /** Lot G1 : passe au fantôme suivant (le même cycle que la touche G, le bouton en course et la pause). */
+  cycleGhost(): Promise<void>;
 }
 
 export interface HomeUi {
@@ -119,6 +123,13 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   const fantome = el("div", "home-fantome");
   fantome.hidden = true;
 
+  // --- Lot G1 : le fantôme choisi, qui se change d'un toucher ---
+  const choix = el("button", "home-choix");
+  choix.type = "button";
+  choix.id = "home-ghost";
+  choix.hidden = true;
+  choix.addEventListener("click", () => void host.cycleGhost().then(() => renderGhostChoice()));
+
   // --- Classement du jour (section de l'accueil) ---
   const boardCard = el("section", "card board-card home-classement");
   const boardHead = el("div", "home-classement__tete");
@@ -168,7 +179,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
 
   // Trois colonnes sur grand écran (le circuit et tes temps · le classement · le Salon et les liens), une seule sur téléphone : même ordre de lecture.
   const colA = el("div", "home-col home-col--a");
-  colA.append(apercu, mine, medailles, fantome);
+  colA.append(apercu, mine, medailles, fantome, choix);
   const colB = el("div", "home-col home-col--b");
   colB.append(boardCard);
   const colC = el("div", "home-col home-col--c");
@@ -239,6 +250,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
     if (best && lastRank) renderRankText(lastRank.rank, lastRank.participants);
     playDaily.textContent = t(best ? "accueil.recourir" : "accueil.courir");
     renderGhost();
+    renderGhostChoice();
     renderPreview();
   }
 
@@ -249,6 +261,13 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
     const slot = mine.querySelector(".rank");
     if (!slot) return;
     slot.replaceChildren(el("span", "rang-grand", fRang(rank)), " ", el("span", "rang-sur", t("accueil.rang.sur", { total: fNombre(participants) })));
+  }
+
+  function renderGhostChoice() {
+    const g = host.ghost();
+    choix.hidden = !g;
+    if (!g) return;
+    choix.replaceChildren(iconeFantome(), el("span", "", t("fantome.bouton", { nom: g.nom })));
   }
 
   /** Le fantôme à battre : le premier du classement (pseudo, temps, écart avec ton meilleur temps) — rien d'inventé sans palmares. */

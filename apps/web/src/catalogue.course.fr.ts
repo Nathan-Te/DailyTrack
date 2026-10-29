@@ -51,6 +51,7 @@ export const fr = {
   "course.fantome.devantToi": "devant toi : {nom}",
   "course.fantome.suivant": "{nom} (au prochain départ)",
   "course.fantome.annonce": "Fantôme : {nom}",
+  "fantome.bouton": "Fantôme : {nom}",
   "course.fantome.pasDePremier": "Pas encore de premier",
   "course.fantome.personneDevant": "Personne devant toi",
   "course.depart": "PARTEZ !",

@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1139 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1141 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -380,6 +380,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.section.pleinEcran` | Plein écran et astuce de l'iPhone | Full screen and iPhone tip |
 | `vitrine.pleinEcran.aide` | Ouvrir l'aide du plein écran | Open the full screen help |
 | `vitrine.pleinEcran.retrouver` | Ouvrir « Retrouver mon profil » | Open “Get my profile back” |
+| `vitrine.fantome` | Fantôme suivant | Next ghost |
 | `vitrine.section.bandeau` | Message en direct | Live message |
 | `vitrine.bandeau.information` | Maintenance ce soir à 22 h : le classement sera figé dix minutes. | Maintenance tonight at 10 pm: the leaderboard will freeze for ten minutes. |
 | `vitrine.bandeau.important` | Le serveur redémarre dans quelques instants. | The server restarts in a few moments. |
@@ -725,6 +726,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.local.timeout` | Le serveur ne répond pas. | The server isn't answering. |
 | `erreur.local.http_error` | Le serveur a répondu par une erreur. | The server answered with an error. |
 | `erreur.local.inconnue` | Quelque chose n'a pas marché. | Something went wrong. |
+
+### Fantômes (`fantome.*`, `apps/web/src/catalogue.course.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `fantome.bouton` | Fantôme : {nom} | Ghost: {nom} |
 
 ### figures (`figures.*`, `apps/web/src/catalogue.course.*.ts`)
 
@@ -1335,6 +1342,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
+| `fantome.bouton` | Fantôme : {nom} | Ghost: {nom} |
+| `fantome.nom.mien` | le tien | yours |
+| `fantome.nom.premier` | le premier | first place |
+| `fantome.nom.aucun` | aucun | none |
 | `fantome.premier` | {nom} · {rang} | {nom} · {rang} |
 
 ### Jour (`jour.*`, `apps/jump/src/catalogue.partie.*.ts`)
@@ -1373,8 +1384,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `toast.premierIndisponible` | Fantôme du premier indisponible : à toi de jouer | First place's ghost unavailable: your turn |
 | `toast.rediffPremier` | Rediffusion de {nom}, premier du jour | Replay of {nom}, today's first |
 | `toast.rediffMeilleur` | Rediffusion de ton meilleur essai | Replay of your best run |
-| `toast.fantome.oui` | Fantôme : montré | Ghost: shown |
-| `toast.fantome.non` | Fantôme : caché | Ghost: hidden |
 
 ### Mots communs (`commun.*`, `apps/jump/src/catalogue.base.*.ts`)
 
@@ -1435,8 +1444,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.reprendre` | REPRENDRE | RESUME |
 | `pause.recommencer` | Recommencer à zéro | Start over from zero |
 | `pause.pointDePassage` | Depuis le point de passage | From the checkpoint |
-| `pause.fantome.oui` | Fantôme : oui | Ghost: on |
-| `pause.fantome.non` | Fantôme : non | Ghost: off |
 | `pause.son.oui` | Son : oui | Sound: on |
 | `pause.son.non` | Son : non | Sound: off |
 | `pause.reglages` | Réglages | Settings |
@@ -1490,7 +1497,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.effets.aucun` | Aucun | None |
 | `reglages.effets.aide` | Les taches de peinture restent toujours. | Paint stains always stay. |
 | `reglages.premier` | Fantôme du premier | First place's ghost |
-| `reglages.premier.aide` | Le meilleur essai du jour, en mauve, avec son pseudo, à côté de ton fantôme (cyan). Ton fantôme : la pause, ou la touche G. | Today's best run, in purple, with its name, next to your own ghost (cyan). Your ghost: the pause, or the G key. |
+| `reglages.premier.aide` | Le meilleur essai du jour, en mauve, avec son pseudo, à côté de ton fantôme (cyan). Le fantôme (le tien, le premier, aucun) : le bouton en haut à gauche, la pause, ou la touche G. | Today's best run, in purple, with its name, next to your own ghost (cyan). The ghost (yours, first place, none): the button at the top left, the pause, or the G key. |
 | `reglages.taches` | Taches de tout le monde | Everyone's stains |
 | `reglages.taches.aide` | Les morts des autres joueurs du jour, plus pâles et plus petites que les tiennes : on voit où le niveau tue. | Other players' deaths today, paler and smaller than yours: you can see where the level kills. |
 | `reglages.commandes` | Commandes | Controls |

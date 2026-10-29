@@ -108,7 +108,8 @@
 }
 /* Petit portrait (360 px) : pas de place pour cinq plaques ; le plein écran reste dans la pause et sur l'accueil, et les rangées se resserrent. */
 @media (orientation: portrait) and (max-width: 500px) {
-  #btn-fullscreen {
+  #btn-fullscreen,
+  #btn-ghost {
     display: none;
   }
   #menu,
@@ -310,7 +311,8 @@ body.watch #intro {
   display: flex;
 }
 body.watch #menu .plaque--action,
-body.watch #btn-camera {
+body.watch #btn-camera,
+body.watch #btn-ghost {
   display: none; /* pas de conduite en rediffusion : ni point de contrôle ni recommencer ; la caméra est dans la barre de lecture */
 }
 
