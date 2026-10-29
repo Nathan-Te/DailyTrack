@@ -21,7 +21,7 @@
 //   npm run smoke -w @cdj/api -- https://recette.playdujour.com --lecture-seule --environnement recette --par-hosting --joueur-demo   (lot I3 : le cache de Hosting)
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, decodeReplay, demoAttempts, encodeReplay as encodeJump, jumpMedalFor, lifeReplay, repriseParPhase, replayAttempt } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, declareFrozenGenerators, decodeReplay, demoAttempts, encodeReplay as encodeJump, jumpMedalFor, lifeReplay, repriseParPhase, replayAttempt } from "@cdj/jump-sim";
 import { jumpDailyOf } from "../src/jump";
 import { DEMO_JOUEUR_ID } from "../src/portailDemo";
 import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, verifierVide } from "./smokeRead";
@@ -139,6 +139,20 @@ check("Salon : temps accepté (circuit de la session généré à ce premier env
 const sboard = await call("GET", `/api/salon/${now.body.session}/board?player=${player}`);
 check("Salon : classement de la session", sboard.status === 200 && sboard.body.rows?.length >= 1 && sboard.body.me?.ms === srun.finishMs);
 
+const frozenFiles: Record<string, unknown> = {};
+try {
+  const dir = new URL("../../jump/public/levels/", import.meta.url);
+  for (const f of readdirSync(dir)) {
+    const d = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+    if (d) frozenFiles[d] = JSON.parse(readFileSync(new URL(f, dir), "utf8"));
+  }
+} catch {
+  /* sans le dépôt : le niveau généré (un jour figé ne serait alors pas le bon : le serveur le dirait, 409 version) */
+}
+// Lot V1 : comme le serveur et le jeu, le smoke déclare les niveaux figés d'avant le sac de thèmes (le thème d'un jour figé, et celui du premier jour du sac, en dépendent) :
+// sans cela le niveau « du jeu » calculé ici ne serait pas celui du serveur.
+declareFrozenGenerators(Object.fromEntries(Object.entries(frozenFiles).map(([d, f]) => [d, (f as { generatorVersion?: number }).generatorVersion as number])));
+
 // --- DailyJump (lot P0) : l'espace /api/jump/, en lecture seule --------------------------------------------------------------
 const jinfo = await call("GET", "/api/jump/info");
 check(
@@ -166,16 +180,6 @@ const jfuture = await call("GET", `/api/jump/day/${formatDay(day + 1)}`);
 check("DailyJump : demain est refusé", jfuture.status === 404);
 
 // --- DailyJump (lot P1) : un essai classé, rejoué par le serveur ------------------------------------------------------------------
-const frozenFiles: Record<string, unknown> = {};
-try {
-  const dir = new URL("../../jump/public/levels/", import.meta.url);
-  for (const f of readdirSync(dir)) {
-    const d = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
-    if (d) frozenFiles[d] = JSON.parse(readFileSync(new URL(f, dir), "utf8"));
-  }
-} catch {
-  /* sans le dépôt : le niveau généré (un jour figé ne serait alors pas le bon : le serveur le dirait, 409 version) */
-}
 const level = jumpDailyOf(day, frozenFiles);
 // Lot R9 : la preuve de l'auteur est refusée (copie) ; le joueur d'essai envoie **la plus rapide des courses fictives qui arrivent**, d'une graine tirée au hasard à chaque
 // passage (le smoke tourne aussi sur la recette : jamais les mêmes entrées qu'un passage précédent).
