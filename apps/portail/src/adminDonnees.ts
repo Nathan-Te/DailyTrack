@@ -346,10 +346,10 @@ export function aujourdhuiParis(maintenant: number): string {
 }
 
 /**
- * Où revenir après la connexion (`/admin/?retour=/track/admin/`) : **uniquement** la page d'outils de Track, jamais une adresse écrite par un tiers (un lien piégé ne doit
- * pas faire partir l'éditeur ailleurs une fois connecté). Une liste d'une seule entrée, comparée telle quelle : ni schéma, ni `//`, ni encodage, ni requête.
+ * Où revenir après la connexion (`/admin/?retour=/track/admin/`) : **uniquement** les pages d'outils de Track et de Jump, jamais une adresse écrite par un tiers (un lien piégé ne
+ * doit pas faire partir l'éditeur ailleurs une fois connecté). Une liste fermée de deux entrées, comparées telles quelles : ni schéma, ni `//`, ni encodage, ni requête.
  */
-export const RETOURS_PERMIS = ["/track/admin/"] as const;
+export const RETOURS_PERMIS = ["/track/admin/", "/jump/admin/"] as const;
 export function retourAdmin(search: string): string | null {
   const brut = new URLSearchParams(search).get("retour");
   return (RETOURS_PERMIS as readonly string[]).includes(brut ?? "") ? brut : null;

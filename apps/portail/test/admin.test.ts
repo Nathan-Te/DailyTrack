@@ -67,12 +67,14 @@ describe("la courbe : l'infobulle d'une barre", () => {
 });
 
 describe("le retour après la connexion", () => {
-  it("seule la page d'outils de Track est un retour permis", () => {
+  it("seules les pages d'outils de Track et de Jump sont des retours permis", () => {
     expect(retourAdmin("?retour=%2Ftrack%2Fadmin%2F")).toBe("/track/admin/");
     expect(retourAdmin("?retour=/track/admin/")).toBe("/track/admin/");
+    expect(retourAdmin("?retour=%2Fjump%2Fadmin%2F")).toBe("/jump/admin/");
+    expect(retourAdmin("?retour=/jump/admin/")).toBe("/jump/admin/");
   });
   it("tout le reste est ignoré : adresse extérieure, schéma, //, encodages, autre chemin du site", () => {
-    for (const mauvais of ["https://evil.example/", "//evil.example/track/admin/", "javascript:alert(1)", "/track/admin", "/track/admin/?x=1", "/track/admin/%2e%2e/", "/jump/", "/admin/", "", "/track/admin/#x"]) {
+    for (const mauvais of ["https://evil.example/", "//evil.example/track/admin/", "javascript:alert(1)", "/track/admin", "/track/admin/?x=1", "/track/admin/%2e%2e/", "/jump/", "/admin/", "", "/track/admin/#x", "/jump/admin", "/jump/admin/?x=1", "/jump/admin/%2e%2e/", "//evil.example/jump/admin/", "/jump/admin/#x"]) {
       expect(retourAdmin(`?retour=${encodeURIComponent(mauvais)}`), mauvais).toBeNull();
     }
     expect(retourAdmin("")).toBeNull();

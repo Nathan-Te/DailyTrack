@@ -55,6 +55,7 @@
       "globs": ["apps/jump/src/rank*.ts", "apps/jump/src/ranking.ts", "apps/jump/src/firstGhost.ts", "apps/jump/src/ghost.ts", "apps/jump/src/everyone.ts", "apps/jump/src/history.ts", "apps/jump/src/lives*.ts", "apps/jump/src/jumpProfile.ts", "apps/jump/src/demoRank.ts", "apps/jump/src/session.ts", "apps/jump/src/memory.ts", "apps/jump/src/events.ts", "apps/jump/src/storage.ts", "apps/jump/src/profilLien.ts", "apps/jump/src/jeuSuivant.ts"]
     },
     "jump-i18n": { "globs": ["apps/jump/src/catalogue*.ts", "apps/jump/src/i18n.ts"] },
+    "jump-admin": { "globs": ["apps/jump/src/admin*.ts", "apps/jump/admin/**"] },
     "ui": { "globs": ["packages/ui/**"] },
     "profile-pkg": { "globs": ["packages/profile/**"] },
     "core-clock": { "globs": ["packages/core/**", "packages/clock/**", "config/**"] },
@@ -77,6 +78,7 @@
     "web/admin.spec.ts": ["track-admin"],
     "web/admin-panneau.spec.ts": ["portail", "api-admin"],
     "web/admin-track.spec.ts": ["track-admin", "portail", "api-admin"],
+    "web/admin-jump.spec.ts": ["jump-admin", "portail", "api-admin"],
     "web/diffusion.spec.ts": ["portail", "api-admin"],
     "web/adresses-joueur.spec.ts": ["track-profil", "profile-pkg", "api-track", "api-coeur"],
     "web/air.spec.ts": ["track-sim", "track-audio-fx"],

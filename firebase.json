@@ -49,6 +49,15 @@
         ]
       },
       {
+        "source": "/jump/admin/**",
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex, nofollow, noarchive"
+          }
+        ]
+      },
+      {
         "source": "/admin/**",
         "headers": [
           {

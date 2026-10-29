@@ -33,8 +33,8 @@ describe("firebase.json", () => {
     expect(get("Content-Security-Policy")).toContain("frame-ancestors 'none'");
     expect(get("Content-Security-Policy")).toContain("object-src 'none'");
     for (const feature of ["camera", "microphone", "geolocation", "payment"]) expect(get("Permissions-Policy")).toContain(`${feature}=()`);
-    // la page d'administration de DailyTrack : jamais indexée (en plus de sa balise `noindex`)
-    expect(headers.find((h) => h.source === "/track/admin/**")!.headers[0]).toEqual({ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" });
+    // les pages d'outils de DailyTrack et de DailyJump : jamais indexées (en plus de sa balise `noindex`)
+    for (const page of ["/track/admin/**", "/jump/admin/**"]) expect(headers.find((h) => h.source === page)!.headers[0], page).toEqual({ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" });
   });
 
   it("lot N1 : /admin/ est en noindex et a sa propre CSP — le script de Google y est permis, nulle part ailleurs", () => {
@@ -108,7 +108,7 @@ describe("firebase.json", () => {
     const dir = headers.find((h) => h.regex)!;
     expect(cacheOf(dir)).toBe("no-cache");
     const re = new RegExp(dir.regex!);
-    for (const p of ["/", "/track/", "/jump/", "/track/admin/"]) expect(re.test(p), p).toBe(true);
+    for (const p of ["/", "/track/", "/jump/", "/track/admin/", "/jump/admin/"]) expect(re.test(p), p).toBe(true);
     for (const p of ["/track/assets/main-abc.js", "/jump/levels/2026-10-16.json", "/api/health"]) expect(re.test(p), p).toBe(false);
     // Aucune règle d'en-tête ne vise /api/** : les règles du serveur (lot P4) ne changent pas.
     expect(headers.every((h) => !(h.source ?? h.regex ?? "").includes("api"))).toBe(true);

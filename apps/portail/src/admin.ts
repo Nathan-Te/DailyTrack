@@ -244,13 +244,11 @@ async function afficherPanneau(): Promise<void> {
   await afficherVue();
 }
 
-/** Le menu : les entrées de N1 et de N2 (Nouveautés, Message en direct), Track (ses outils) et Jump (pas d'outil). */
+/** Le menu : les entrées de N1 et de N2 (Nouveautés, Message en direct), Track et Jump (leurs pages d'outils). */
 function dessinerMenu(vue: Vue): void {
   const actif = vue.vue === "fiche" ? "joueurs" : vue.vue;
   const lien = (cle: string, texte: string, href: string) =>
     el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href, "data-menu": cle, "aria-current": actif === cle ? "page" : null }, texte }));
-  const eteint = (cle: string, texte: string, note: string) =>
-    el("li", {}, el("span", { classe: "admin-menu__entree admin-menu__entree--eteinte", attrs: { "data-menu": cle, "aria-disabled": "true" } }, texte, el("span", { classe: "admin-menu__note", texte: note })));
   menu.replaceChildren(
     el(
       "ul",
@@ -261,7 +259,7 @@ function dessinerMenu(vue: Vue): void {
       lien("message", "Message en direct", "#/message"),
       lien("journal", "Journal", "#/journal"),
       el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../track/admin/", "data-menu": "track" }, texte: "Track" }), el("span", { classe: "admin-menu__sous", texte: "outils : planning, médailles" })),
-      eteint("jump", "Jump", "aucun outil"),
+      el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../jump/admin/", "data-menu": "jump" }, texte: "Jump" }), el("span", { classe: "admin-menu__sous", texte: "outils : calendrier, essais" })),
     ),
   );
 }

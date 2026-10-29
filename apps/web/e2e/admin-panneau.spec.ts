@@ -91,7 +91,7 @@ test("connexion › tableau de bord › joueur › renommer › journal, sous la
   // --- Le menu : Nouveautés et Message en direct (lot N2), Track mène à ses outils, Jump n'a pas d'outil -----------------------
   await expect(page.locator('[data-menu="nouveautes"]')).toHaveAttribute("href", "#/nouveautes");
   await expect(page.locator('[data-menu="message"]')).toHaveAttribute("href", "#/message");
-  await expect(page.locator('[data-menu="jump"]')).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator('[data-menu="jump"]')).toHaveAttribute("href", "../jump/admin/");
   await expect(page.locator('[data-menu="track"]')).toHaveAttribute("href", "../track/admin/");
 
   // --- Joueurs : chercher « Démo », ouvrir la fiche, renommer ---------------------------------------------------------------

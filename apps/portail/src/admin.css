@@ -84,18 +84,6 @@
   color: var(--dj-papier);
   box-shadow: none;
 }
-.admin-menu__entree--eteinte {
-  border-style: dashed;
-  background: var(--dj-creme);
-  color: var(--dj-encre-douce);
-  box-shadow: none;
-  font-weight: 400;
-}
-.admin-menu__note {
-  font-family: var(--dj-police-chiffres);
-  font-size: var(--dj-taille-12);
-  font-weight: 700;
-}
 .admin-menu__sous {
   display: block;
   margin: var(--dj-espace-1) 0 0 var(--dj-espace-3);

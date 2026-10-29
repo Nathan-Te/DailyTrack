@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <title>Administration · Jump · Du Jour</title>
+    <!-- Une seule feuille liée ici (et non importée par `admin.ts`) : `admin.css` (à côté de cette page, et non dans `src/` : `test/interface.test.ts` y compte les quatre feuilles du jeu) recopie le socle (jetons, polices) par `@import` ; la page d'outils a ainsi ses propres fichiers de
+         style et le premier chargement du jeu, qui partage le socle avec elle, garde le sien tel quel (budget de Jump, `e2e/poids.spec.ts`). -->
+    <link rel="stylesheet" href="./admin.css" />
+  </head>
+  <body class="admin admin-jump">
+    <!-- Les outils de Jump (calendrier des niveaux, outils de test, données locales). Page privée, jamais indexée, **fermée tant que la session du panneau d'administration
+         (connexion Google) n'est pas ouverte** : `src/adminAcces.ts` demande `GET /api/admin/session` avant de monter quoi que ce soit ; `#outils` est caché jusque-là.
+         Aucun style en ligne : tout est dans `admin.css` (charte « Cartouches », jetons de @cdj/ui). Sœur de `apps/web/admin/index.html` (/track/admin/). -->
+    <header class="admin-barre">
+      <span class="dj-logo dj-logo--petit">DU JOUR</span>
+      <span class="admin-barre__titre">Administration</span>
+      <span class="admin-env" id="barre-env">Local</span>
+      <span class="admin-barre__acces" id="barre-acces"></span>
+      <a class="dj-bouton dj-bouton--secondaire" id="barre-panneau" href="../../admin/">‹ Panneau</a>
+    </header>
+    <div class="admin-pleine">
+      <main class="admin-carte admin-porte" id="acces" aria-labelledby="acces-titre">
+        <h1 class="admin-titre-carte" id="acces-titre">Vérification de la connexion…</h1>
+        <p id="acces-texte" class="admin-aide" role="status">Un instant : on vérifie que tu es connecté au panneau d'administration.</p>
+        <a class="dj-bouton dj-bouton--marque" id="acces-connexion" href="../../admin/" hidden>Se connecter</a>
+      </main>
+    </div>
+    <div class="admin-corps" id="outils" hidden>
+      <nav class="admin-menu" aria-label="Sections de l'administration de Jump">
+        <ul class="admin-menu__liste">
+          <li><a class="admin-menu__entree" href="#sec-today">Aujourd'hui</a></li>
+          <li><a class="admin-menu__entree" href="#sec-calendrier">Calendrier</a></li>
+          <li><a class="admin-menu__entree" href="#sec-tools">Outils de test</a></li>
+          <li><a class="admin-menu__entree" href="#sec-local">Données locales</a></li>
+          <li><a class="admin-menu__entree admin-menu__entree--retour" href="../../admin/">‹ Panneau d'administration</a></li>
+        </ul>
+      </nav>
+      <main class="admin-contenu">
+        <h1 class="admin-titre-section">Jump</h1>
+        <p class="admin-aide">Calendrier des niveaux du jour et outils de test. Les choix des outils ne sont que des paramètres d'adresse : ils ne changent jamais la simulation, et une partie lancée avec eux n'est classée que si c'est le niveau du jour, sans réglage modifié.</p>
+
+        <div id="demo-banner" class="admin-bandeau" hidden><strong>Mode démonstration</strong> : pas de serveur. Le jeu en <code>?api=demo</code> lit ses données de démonstration, rien n'est envoyé nulle part.</div>
+
+        <section class="admin-carte" aria-label="Connexion au serveur">
+          <p id="conn-state" class="admin-aide" role="status">…</p>
+          <div class="actions"><button type="button" id="refresh">Actualiser</button></div>
+        </section>
+
+        <section class="admin-carte" id="sec-today">
+          <h2 class="admin-titre-carte">Aujourd'hui</h2>
+          <dl class="stats" id="daynow"></dl>
+          <div class="actions">
+            <a class="btn go" id="today-open" href="../">Ouvrir le niveau du jour</a>
+            <a class="btn" id="today-debug" href="../?debug">Avec les outils de test</a>
+          </div>
+        </section>
+
+        <section class="admin-carte" id="sec-calendrier">
+          <h2 class="admin-titre-carte">Calendrier · les niveaux autour d'aujourd'hui</h2>
+          <p class="admin-aide">Le numéro et le thème de chaque jour viennent du code du jeu (le même que celui du serveur). Un niveau « figé » est publié tel quel et ne change plus. Sur le site publié, le jeu refuse d'ouvrir un jour à venir.</p>
+          <div class="medtable"><table>
+            <thead><tr><th>Date</th><th>N°</th><th>Thème</th><th>État</th><th>Ouvrir</th></tr></thead>
+            <tbody id="calendrier"></tbody>
+          </table></div>
+        </section>
+
+        <section class="admin-carte" id="sec-tools">
+          <h2 class="admin-titre-carte">Outils de test</h2>
+          <h3 class="admin-sous-titre">Raccourcis</h3>
+          <div class="presets" id="presets"></div>
+          <h3 class="admin-sous-titre">Niveau</h3>
+          <div class="row" id="cibles" role="radiogroup" aria-label="Niveau à ouvrir"></div>
+          <div class="row" id="dayrow">
+            <label class="name" for="date" id="date-nom">Date</label>
+            <input type="date" id="date" />
+            <button type="button" id="today">Aujourd'hui</button>
+            <span class="hint" id="date-aide"></span>
+          </div>
+          <div class="row" id="themerow">
+            <label class="name" for="theme">Thème</label>
+            <select id="theme"></select>
+            <span class="hint">un thème forcé donne un autre niveau, jamais classé</span>
+          </div>
+          <div class="row" id="modulerow">
+            <label class="name" for="morceau">Morceau</label>
+            <select id="morceau"></select>
+            <label class="name" for="variante">Variante</label>
+            <input type="number" id="variante" min="0" max="9" placeholder="0" class="admin-court" />
+            <label class="name" for="entree">Entrée</label>
+            <select id="entree"><option value="">À l'arrêt</option><option value="elan">Lancée (couloir d'élan)</option></select>
+          </div>
+          <div class="row" id="generateurrow">
+            <label class="name" for="generateur">Générateur</label>
+            <select id="generateur"><option value="">En vigueur</option><option value="13">g13 (d'avant le lot 19, fichier)</option><option value="14">g14 (d'avant les plateformes mobiles)</option></select>
+          </div>
+          <div class="row" id="solutionrow"><label class="opt"><input type="checkbox" id="solution" /> Regarder la rediffusion de l'auteur (<code>&amp;solution</code>) ; fermé sur le site publié</label></div>
+
+          <h3 class="admin-sous-titre">Options</h3>
+          <div class="row"><label class="opt"><input type="checkbox" id="debug" /> Outils de test (<code>window.__jump</code>)</label></div>
+          <div class="row"><label class="opt"><input type="checkbox" id="tune" /> Panneau de réglages du personnage (rien n'est enregistré)</label></div>
+          <div class="row"><label class="opt"><input type="checkbox" id="sprint" /> Essai d'élan progressif (<code>sprint=1</code>, avec les réglages)</label></div>
+          <div class="row"><label class="opt"><input type="checkbox" id="hitbox" /> Boîtes de collision, surfaces et blocs dessinés</label></div>
+          <div class="row"><label class="opt"><input type="checkbox" id="piecesOff" /> Cacher les limites des morceaux (<code>pieces=off</code>)</label></div>
+          <div class="row"><label class="opt"><input type="checkbox" id="fxOff" /> Couper les effets (éclats, secousses, traînée)</label></div>
+          <div class="row"><label class="opt"><input type="checkbox" id="metronomeOff" /> Couper le métronome de la nuit</label></div>
+          <div class="row"><label class="opt"><input type="checkbox" id="zones" /> Afficher les zones tactiles</label></div>
+          <div class="row" id="carnagerow"><label class="opt"><input type="checkbox" id="carnageDemo" /> Carnage de démonstration tout de suite (<code>carnage=demo</code>) ; fermé sur le site publié</label></div>
+          <div class="row" id="archivesrow"><label class="opt"><input type="checkbox" id="archives" /> Ouvrir l'accueil sur la liste des archives</label></div>
+          <div class="row"><label class="name" for="touch">Commandes tactiles</label>
+            <select id="touch"><option value="">Selon l'appareil</option><option value="1">Forcées (la souris simule le doigt)</option><option value="0">Coupées</option></select></div>
+          <div class="row"><label class="name" for="ghost">Fantômes</label>
+            <select id="ghost"><option value="">Selon les réglages</option><option value="off">Aucun</option><option value="best">Le tien seulement</option><option value="first">Celui du premier seulement</option></select></div>
+          <div class="row" id="watchrow"><label class="name" for="watch">Lecture</label>
+            <select id="watch"><option value="">Partie normale</option><option value="best">Revoir mon meilleur essai</option><option value="first">Revoir l'essai du premier</option></select></div>
+          <div class="row" id="accueilrow"><label class="name" for="accueil">Accueil</label>
+            <select id="accueil"><option value="">Selon le lien</option><option value="0">Sauté (jouer tout de suite)</option><option value="1">Montré</option></select></div>
+          <div class="row"><label class="name" for="api">Adresse de l'API</label>
+            <input type="text" id="api" placeholder="https://… ou demo (classement de démonstration)" /></div>
+
+          <h3 class="admin-sous-titre">Lancer</h3>
+          <div id="url"></div>
+          <div class="actions">
+            <a class="btn go" id="launch" href="../">Lancer le jeu</a>
+            <button type="button" id="copy">Copier le lien</button>
+            <button type="button" id="reset">Réinitialiser les choix</button>
+          </div>
+        </section>
+
+        <section class="admin-carte" id="sec-local">
+          <h2 class="admin-titre-carte">Données locales (ce navigateur)</h2>
+          <p class="hint">Meilleurs essais, mémoire du jour, historique, réglages et fantôme sont gardés ici. Les effacer n'affecte pas le classement.</p>
+          <div id="keys"></div>
+          <div class="actions"><button type="button" class="danger" id="wipe">Effacer les données du jeu</button><span id="wiped" class="hint" role="status"></span></div>
+
+          <h3 class="admin-sous-titre">Touches du jeu</h3>
+          <table>
+            <tr><td><kbd>←</kbd> <kbd>→</kbd> / <kbd>Q</kbd> <kbd>D</kbd></td><td>courir</td></tr>
+            <tr><td><kbd>Espace</kbd> / <kbd>↑</kbd> / <kbd>W</kbd></td><td>sauter</td></tr>
+            <tr><td><kbd>R</kbd> · <kbd>Entrée</kbd></td><td>reprendre au point de passage · recommencer à zéro</td></tr>
+            <tr><td><kbd>G</kbd></td><td>fantôme suivant (le tien, le premier, aucun)</td></tr>
+            <tr><td><kbd>Échap</kbd> · <kbd>P</kbd></td><td>pause</td></tr>
+          </table>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="../src/admin.ts"></script>
+  </body>
+</html>
