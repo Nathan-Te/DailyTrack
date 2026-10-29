@@ -38,6 +38,10 @@ const ecartMax = (s: readonly string[]): number => {
 afterEach(() => declareOldFrozenDays([]));
 
 describe("le sac de thèmes de Jump (lot V1)", () => {
+  it("un sac demande au moins cinq thèmes (la jonction de cycles n'a pas toujours de solution sinon ; le code ne le vérifie pas à l'exécution)", () => {
+    expect(N).toBeGreaterThanOrEqual(5);
+  });
+
   it("le générateur g23 est celui du sac ; la simulation ne change pas", () => {
     expect(JUMP_GENERATOR_SAC).toBe(23);
     expect(JUMP_GENERATOR_VERSION).toBe(JUMP_GENERATOR_SAC);

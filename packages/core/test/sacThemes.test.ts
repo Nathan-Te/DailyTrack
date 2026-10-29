@@ -107,8 +107,4 @@ describe("le sac de thèmes (lot V1)", () => {
     const r = regles(5, SELS[0]!, DEPART);
     for (let j = DEPART - 100; j < DEPART; j++) expect(themeDuSac(j, r)).toBe(r.ancien(j));
   });
-
-  it("refuse moins de cinq thèmes (la jonction n'aurait pas toujours de solution)", () => {
-    expect(() => ordreDuCycle(0, 4, 1)).toThrow(RangeError);
-  });
 });

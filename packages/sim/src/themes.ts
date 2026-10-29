@@ -91,18 +91,14 @@ export const THEMES: Readonly<Record<ThemeName, Readonly<Theme>>> = {
 /** Sel du tirage de l'ancienne règle des thèmes (celle des jours d'avant le sac, v19 et avant) et de celle du sac. */
 const SEL_THEMES = 0x70a1;
 
-/** Le thème que l'ancienne règle donne à un jour (v19 et avant) : tiré de la date seule, un tirage indépendant par jour (il pouvait répéter la veille). Ne change jamais. */
-export function themeAncien(day: number): Theme {
-  return THEMES[THEME_NAMES[new Rng(mixSeed(day, SEL_THEMES)).int(THEME_NAMES.length)]!];
-}
+/** L'indice du thème que l'ancienne règle donne à un jour (v19 et avant) : tiré de la date seule, un tirage indépendant par jour (il pouvait répéter la veille). Ne change jamais. */
+const indexAncien = (day: number): number => new Rng(mixSeed(day, SEL_THEMES)).int(THEME_NAMES.length);
+
+/** Le thème que l'ancienne règle donne à un jour (v19 et avant) : c'est celui de tout jour déjà servi. Ne change jamais. */
+export const themeAncien = (day: number): Theme => THEMES[THEME_NAMES[indexAncien(day)]!];
 
 /** Lot V1 : les règles du sac de thèmes de Track. Un jour est « ancien » quand le registre des jours (`generatorVersionOf`) lui donne une version d'avant le sac. */
-const REGLES_SAC: ReglesSac = {
-  n: THEME_NAMES.length,
-  sel: SEL_THEMES,
-  ancien: (day) => THEME_NAMES.indexOf(themeAncien(day).name),
-  estAncien: (day) => generatorVersionOf(day) < GENERATOR_SAC_THEMES,
-};
+const REGLES_SAC: ReglesSac = { n: THEME_NAMES.length, sel: SEL_THEMES, ancien: indexAncien, estAncien: (day) => generatorVersionOf(day) < GENERATOR_SAC_THEMES };
 
 /**
  * Thème de la journée, identique pour tout le monde. **Lot V1 (générateur 20)** : le sac de thèmes — chaque thème une fois par cycle de huit jours, dans un ordre tiré de la

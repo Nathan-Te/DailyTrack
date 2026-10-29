@@ -92,6 +92,10 @@ describe("le sac de thèmes de Track (lot V1)", () => {
     });
   });
 
+  it("un sac demande au moins cinq thèmes (la jonction de cycles n'a pas toujours de solution sinon ; le code ne le vérifie pas à l'exécution)", () => {
+    expect(N).toBeGreaterThanOrEqual(5);
+  });
+
   it("le budget de tentatives : 120 pour la v20, 40 avant", () => {
     expect(MAX_ATTEMPTS).toBe(40);
     expect(MAX_ATTEMPTS_SAC).toBe(120);
