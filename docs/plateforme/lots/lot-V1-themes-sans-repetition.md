@@ -20,7 +20,6 @@ Track `GENERATOR_VERSION` 19 → **20** (`SIM_VERSION` 14), budget de tentatives
 | après, pire cas des 3n positions de la bascule | 0 / 0 / 15 | 0 / 0 / 9 |
 | après, jours déjà servis | inchangés | inchangés |
 Validité des 365 niveaux : Track 365/365 circuits validés par le pilote, Jump 365/365 preuves de l'auteur qui arrivent, 0 secours, 0 règle enfreinte.
-
 ## Les 30 prochains jours (avant → après, code en vigueur : registre / niveaux figés ; bascule en 10-29 sur l'aperçu)
 | date | Track avant | Track après | Jump avant | Jump après |
 |---|---|---|---|---|
@@ -57,4 +56,5 @@ Validité des 365 niveaux : Track 365/365 circuits validés par le pilote, Jump 
 
 ## Vérifié / non vérifié
 - **Jours servis inchangés** : 58 jours de Track (01/09→28/10) et 13 niveaux figés de Jump comparés à `main` (6791d73) : **0 différence** (id, thème, empreinte, temps, médailles) ; `jours-passes.test.ts` vert ; golden des anciennes versions inchangés (seuls les vecteurs de la dernière version, 17/12/2026 ajouté pour avoir les 8 thèmes, et `*-v12` de Jump sont régénérés). Le garde-fou de R6 lui-même (workflow) **n'a pas été lancé** (réservé à Nathan) ; simulation d'une mise en production : registre à g19 jusqu'au 03/11 → 04/11 change de thème sans répéter la veille.
-- Tests unitaires complets : 5 089 verts (un test libSQL expire à 5 s sous la charge de la suite complète, vert seul). e2e : `npm run verifier` sélectionne 28 specs ; lancés en local : voir le rapport. **Budgets** (contre `main` reconstruit) : Track +392 o, marge 497 → 105 o ; fils des miniatures +359 o (marge 189) et du Salon +368 o (**marge 9 o**), plafonds non relevés ; Jump +402 o (marge 5 513). CI de PR : à venir.
+- **CI de PR verte** ([run 40904646237](https://github.com/Nathan-Te/DailyTrack/actions/runs/40904646237), après deux rouges réparés : smoke et e2e de Jump qui lisaient l'ancien thème). Tests unitaires complets en local verts ; en CI un test de coût (`api.test.ts`, 195 ms pour 150) a expiré sous charge une fois (34 ms en local, avant comme après). Les 2 specs `@regression` et Firefox / WebKit **non lancés** (CI complète de `main`).
+- **À décider (Nathan)** : budget Track **+392 o** (marge 497 → 105 o), fil du Salon **marge 9 o**, plafonds non relevés ; limite du pire jour de génération 3 500 → **4 500 ms** (la Banquise du 02/12/2026 demande 51 tentatives : 1 496 → 2 206 ms en local, 3 605 en CI).
