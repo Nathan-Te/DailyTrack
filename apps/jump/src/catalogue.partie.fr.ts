@@ -6,6 +6,7 @@ export const fr = {
   // La bande et les plaques du haut
   "hud.aria": "Partie en cours",
   "hud.pause.aria": "Pause",
+  "hud.astuces": "R : point de passage · Entrée : recommencer · G : fantôme · P : pause",
   "hud.pc.aria": "Point de passage {pc} sur {total}",
   "hud.ecart.aria": "Écart avec ton record : {ecart}",
   "hud.objectif.aria": "Médaille visée : {medaille}, {temps}",

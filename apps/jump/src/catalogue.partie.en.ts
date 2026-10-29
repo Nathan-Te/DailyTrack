@@ -5,6 +5,7 @@ import type { fr } from "./catalogue.partie.fr";
 export const en: Catalogues<typeof fr>["en"] = {
   "hud.aria": "Game in progress",
   "hud.pause.aria": "Pause",
+  "hud.astuces": "R: checkpoint · Enter: restart · G: ghost · P: pause",
   "hud.pc.aria": "Checkpoint {pc} of {total}",
   "hud.ecart.aria": "Gap to your best: {ecart}",
   "hud.objectif.aria": "Target medal: {medaille}, {temps}",

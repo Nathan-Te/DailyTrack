@@ -592,6 +592,7 @@ test("plus de bouton Salon ni de ligne d'aide minuscule en course ; « Comment j
   await expect(page.locator("#btn-mode, #btn-archive, #btn-board, #pause-mode")).toHaveCount(0);
   await expect(page.locator("#info")).toHaveText("");
   await expect(page.locator("#helpchip")).toContainText("Comment jouer");
+  await expect(page.locator("#helpchip")).toContainText("Entrée : recommencer"); // le rappel des touches de base (R, Entrée, C, G, P), au clavier seulement
   const labels = await page.locator("#menu button:visible").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") || e.textContent));
   // Lot I4 (HUD « plaques en haut ») : la barre du haut n'a que la pause (ni point de contrôle ni recommencer : le clavier a ses touches) ; Accueil, Réglages, Fantôme et Son sont dans son menu.
   // Lot I7 : la caméra et le plein écran y sont aussi, toujours en vue (le plein écran seulement si le navigateur le permet : Chromium oui).

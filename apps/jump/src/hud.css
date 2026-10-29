@@ -23,12 +23,15 @@ body.carnage #hud-gauche,
 body.carnage #chrono,
 body.carnage #hud-droite,
 body.carnage #dayline,
-body.carnage #tbuttons {
+body.carnage #tbuttons,
+body.carnage #astuces,
+body.home-open #astuces,
+body.paused #astuces {
   visibility: hidden;
 }
 
 /* L'arrivée est posée sur la scène (lot I5, règle de Nathan : on reste dans le jeu) : les plaques et les boutons de la partie s'effacent dessous. */
-body:has(#arrival:not([hidden])) :is(#hud-gauche, #chrono, #hud-droite, #dayline, #toast, #daynote, #modname, #rotate, #tbuttons) {
+body:has(#arrival:not([hidden])) :is(#hud-gauche, #chrono, #hud-droite, #dayline, #toast, #daynote, #modname, #rotate, #tbuttons, #astuces) {
   visibility: hidden;
 }
 
@@ -280,6 +283,18 @@ body:has(#arrival:not([hidden])) :is(#hud-gauche, #chrono, #hud-droite, #dayline
 }
 #daynote.show {
   display: flex;
+}
+/* Le rappel des touches : une seule ligne, en bas à gauche, petite plaque papier (`plaque--petite`), au clavier seulement ; il ne reçoit aucun toucher. */
+#astuces {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: max(12px, env(safe-area-inset-left));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  max-width: calc(100% - 24px);
+  pointer-events: none;
+}
+body.touch #astuces {
+  display: none;
 }
 #modname {
   position: fixed;

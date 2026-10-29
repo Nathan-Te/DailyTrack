@@ -86,20 +86,23 @@
           <div class="pause__ligne" id="pause-info"></div>
           <div class="pause__menu" id="pause-menu">
             <button id="pause-resume" class="dj-bouton dj-bouton--track" type="button" data-t="pause.reprendre"></button>
-            <button id="pause-restart" class="dj-bouton dj-bouton--secondaire bouton--tete" type="button" data-t="pause.recommencer"></button>
-            <button id="pause-respawn" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.pointDeControle"></button>
-            <button id="pause-ghost" class="dj-bouton dj-bouton--secondaire" type="button"></button>
-            <button id="pause-sound" class="dj-bouton dj-bouton--secondaire" type="button"></button>
-            <button id="pause-camera" class="dj-bouton dj-bouton--secondaire" type="button"></button>
-            <span id="pause-fullscreen"></span><!-- lot I7 : remplacé au démarrage par le bouton plein écran du socle (main.ts) -->
-            <button id="pause-settings" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.reglages"></button>
-            <button id="pause-garage" class="dj-bouton dj-bouton--secondaire" type="button" data-t="garage.ouvrir"></button>
-            <button id="pause-howto" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.aide"></button>
-            <button id="pause-archive" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.archives"></button>
-            <button id="pause-home" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.accueil"></button>
+            <!-- Allégée (comme la pause de Jump) : Reprendre, puis deux colonnes d'actions. Caméra, Garage et Archives n'y sont plus : la caméra est un bouton de la
+                 partie (et la touche C), le Garage et les archives sont à l'accueil de Track. -->
+            <div class="pause__actions">
+              <button id="pause-restart" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.recommencer"></button>
+              <button id="pause-respawn" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.pointDeControle"></button>
+              <button id="pause-ghost" class="dj-bouton dj-bouton--secondaire" type="button"></button>
+              <button id="pause-sound" class="dj-bouton dj-bouton--secondaire" type="button"></button>
+              <button id="pause-settings" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.reglages"></button>
+              <button id="pause-howto" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.aide"></button>
+              <span id="pause-fullscreen"></span><!-- lot I7 : remplacé au démarrage par le bouton plein écran du socle (main.ts) -->
+              <button id="pause-home" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.accueil"></button>
+            </div>
             <!-- Lot I2 (plateforme) : le retour au portail « Du Jour » ; lot R5 : la page « Mentions légales et confidentialité » (racine de playdujour.com). -->
-            <a id="pause-portail" class="lien lien--portail" href="../" data-t-aria-label="barre.retour.aria"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M11 3 5 9l6 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" /></svg><span data-t="barre.retour"></span></a>
-            <a id="pause-mentions" class="lien" href="../mentions-legales/" data-mentions data-t="pause.mentions"></a>
+            <div class="pause__pied">
+              <a id="pause-portail" class="lien lien--portail" href="../" data-t-aria-label="barre.retour.aria"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M11 3 5 9l6 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" /></svg><span data-t="barre.retour"></span></a>
+              <a id="pause-mentions" class="lien" href="../mentions-legales/" data-mentions data-t="pause.mentions"></a>
+            </div>
           </div>
           <div class="pause__confirmation" id="pause-confirm" hidden>
             <p data-t="pause.quitter"></p>

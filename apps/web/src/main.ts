@@ -834,7 +834,6 @@ function renderPause() {
   const ghostBtn = $("pause-ghost");
   ghostBtn.textContent = t("pause.fantome", { nom: ghostText(ghostTag) });
   ghostBtn.hidden = !track;
-  $("pause-camera").textContent = t(`course.camera.${CAMERAS[cameraIndex]!.name}`);
   syncSoundButton();
 }
 let best: BestRun | null = track && !salon ? loadBest(track.id) : null;
@@ -960,7 +959,7 @@ function openSettings(tab?: SettingsTab) {
   settingsPanel!.open(tab);
 }
 
-// Pause : Reprendre, Recommencer, Dernier point de contrôle, Réglages, Comment jouer, Archives, Accueil (avec confirmation si une course est en cours).
+// Pause (allégée) : Reprendre, Recommencer, Dernier point de contrôle, Fantôme, Son, Réglages, Comment jouer, Plein écran, Accueil (avec confirmation si une course est en cours). La caméra est un bouton de la partie (et la touche C) ; le Garage et les archives sont à l'accueil.
 function showPauseConfirm(show: boolean) {
   $("pause-menu").hidden = show;
   $("pause-confirm").hidden = !show;
@@ -978,10 +977,6 @@ $("pause-ghost").addEventListener("click", () => {
   setTimeout(renderPause, 300); // le fantôme choisi s'écrit quand la réponse du serveur arrive
 });
 $("pause-sound").addEventListener("click", () => gameAudio.mute());
-$("pause-camera").addEventListener("click", () => {
-  cycleCamera();
-  renderPause();
-});
 // Lot I7 : le plein écran de la pause est le bouton du socle, en texte (même logique que celui du HUD et de l'accueil).
 $("pause-fullscreen").replaceWith(boutonPleinEcran({ t, id: "pause-fullscreen", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true }));
 $("pause-respawn").addEventListener("click", () => {
@@ -989,10 +984,7 @@ $("pause-respawn").addEventListener("click", () => {
   controls.requestRespawn();
 });
 $("pause-settings").addEventListener("click", () => openSettings());
-$("pause-garage").addEventListener("click", () => void ouvrirGarage());
 $("pause-howto").addEventListener("click", () => howto.open());
-$("pause-archive").addEventListener("click", () => openArchive());
-$("pause-archive").hidden = !!salon; // le Salon n'a pas d'archives
 $("pause-home").addEventListener("click", () => goHome());
 $("pause-stay").addEventListener("click", () => showPauseConfirm(false));
 $("pause-leave").addEventListener("click", () => leaveToHome());

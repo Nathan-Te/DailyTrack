@@ -101,20 +101,6 @@ test("ouvrir le Garage depuis l'accueil : voitures débloquées et verrouillées
   expect((await voiture(page)).choix).toEqual(choix);
 });
 
-test("dans la pause : « Garage » ouvre le Garage sur la scène, Échap le ferme et rend la pause", async ({ page }) => {
-  await accueil(page);
-  await page.locator("#home-daily").click();
-  await page.waitForFunction(() => window.__cdj.phase === "countdown" || window.__cdj.phase === "racing");
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#pause-garage")).toBeVisible();
-  await page.locator("#pause-garage").click();
-  await expect(page.locator("#garage")).toBeVisible({ timeout: PREMIERE_IMAGE });
-  await expect(page.locator("#pause")).toBeHidden(); // un seul voile : la pause s'efface sous le Garage
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#garage")).toBeHidden();
-  await expect(page.locator("#pause-resume")).toBeVisible();
-});
-
 test("le fantôme de ton record attend au départ, dans ta voiture : il n'est pas dessiné tant que le Garage est ouvert", async ({ page }) => {
   const circuit = dailyCircuit(TODAY);
   const run = runPilot(circuit.track, { grip: 0.9 });

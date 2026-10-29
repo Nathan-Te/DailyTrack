@@ -27,6 +27,26 @@ body.paused #pause {
 }
 .pause__menu .dj-bouton--track {
   width: 100%;
+  min-height: 52px;
+  font-size: var(--dj-taille-24);
+}
+/* Les actions en deux colonnes, comme la pause de Jump (portrait et paysage) ; un bouton seul sur sa dernière rangée (Fantôme caché au Salon, plein écran absent) la prend en entier. */
+.pause__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.pause__actions > .dj-bouton {
+  padding: 0 6px;
+}
+.pause__actions > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.pause__pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .pause__menu .lien {
   gap: 6px;
@@ -43,6 +63,7 @@ body.paused #pause {
   font-family: var(--dj-police-texte);
   font-size: var(--dj-taille-13);
   color: var(--track-texte-doux);
+  text-align: right;
 }
 .pause__confirmation p {
   margin: 0 0 10px;
@@ -52,15 +73,9 @@ body.paused #pause {
   flex-direction: column;
 }
 @media (max-height: 520px) {
-  /* Paysage : deux colonnes de boutons, le dialogue plus large. */
+  /* Paysage : le dialogue un peu plus large, le titre plus petit. */
   #pause .dialogue {
     width: min(620px, calc(100vw - 32px));
-  }
-  .pause__menu {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .pause__menu .dj-bouton--track {
-    grid-column: 1 / -1;
   }
   .dialogue__titre {
     font-size: var(--dj-taille-32);
