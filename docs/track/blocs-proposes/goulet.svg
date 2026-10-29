@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="200" viewBox="0 0 480 200" role="img" aria-label="Rétrécissement soudain">
+  <rect width="480" height="200" fill="#EDE3CF"/>
+  <rect x="8" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <rect x="248" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <text x="16" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de dessus</text>
+  <text x="256" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de côté</text>
+  <path d="M90 190 L90 110 L110 100 L110 60 L130 60 L130 100 L150 110 L150 190 Z" fill="#5A524C"/>  <path d="M110 30 L110 60 M130 30 L130 60" stroke="#5A524C" stroke-width="2"/>  <rect x="102" y="96" width="8" height="8" fill="#C2401F"/><rect x="130" y="96" width="8" height="8" fill="#C2401F"/>  <path d="M120 180 L120 40" fill="none" stroke="#E8B23A" stroke-width="2" stroke-dasharray="5 4"/>
+  <path d="M260 150 L464 150 L464 170 L260 170 Z" fill="#5A524C" stroke="#2A1E16" stroke-width="2"/>  <rect x="360" y="120" width="8" height="30" fill="#C2401F"/>  <rect x="314" y="142" width="12" height="8" fill="#C2401F"/>
+</svg>

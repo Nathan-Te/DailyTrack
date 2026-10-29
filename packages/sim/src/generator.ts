@@ -10,9 +10,11 @@ import { SALON_SEED_BASE } from "./salon";
 import { medalsFor, type Medals } from "./medals";
 import { MAX_BRAKING_ADD, secureBraking } from "./braking";
 import { MAX_TIGHT, maxTightOf, themeAncien, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
-import { themeOfVersion } from "./themesVersion";
+import { FICHES_V21, POIDS_RYTHME, themeOfVersion, type Etiquette, type Poids } from "./themesVersion";
+import { GENERATOR_RYTHMES, rythmeDuJour, type Rythme } from "./rythmes";
+import { motifsBoostSerre } from "./variete";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
-import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
+import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, turnsLeft, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
@@ -30,6 +32,8 @@ import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack
 // Lot 48 (générateur v17, à partir du 04/11/2026) : la Campagne roule sur l'herbe de course (`themeOfVersion`, themes.ts ; figures `since`).
 // Lot 49 (générateur v18) : les fiches d'identité des thèmes (favorites, vedettes à tour de rôle, interdits), les douze
 // nouvelles figures, et la variété garantie entre deux circuits consécutifs d'un même thème (`themeOccurrence`, `orderFigures`).
+// Lot V2 (générateur v21) : le rythme du jour (`rythmeDuJour`, rythmes.ts) et la fiche du biome (`FICHES_V21`, themesVersion.ts) multiplient les poids des figures ; le motif
+// « boost → longue ligne droite → virage serré » (`motifsBoostSerre`, variete.ts) n'est permis qu'un jour rapide, une fois ; une fiche peut plafonner la ligne droite libre.
 
 export * from "./medals";
 export * from "./dailyId";
@@ -225,26 +229,62 @@ function nameHash(name: string): number {
  */
 export const isRested = (name: string, day: number): boolean => nameHash(name) % 3 === (((day % 3) + 3) % 3);
 
-/** Poids d'une figure dans le tirage : favorite du thème ×4, super turbo et virages relevés selon les chances du thème. */
-function figureWeight(f: Figure, theme: Theme): number {
+/** Les étiquettes d'une figure (lot V2) : sa catégorie et ses drapeaux, ce que les poids du rythme et du biome regardent. */
+function etiquettes(f: Figure): Etiquette[] {
+  const out: Etiquette[] = [f.category];
+  if (f.braking) out.push("braking");
+  if (minTightTurns(f) > 0) out.push("tight");
+  if (f.jump) out.push("jump");
+  if (f.relief) out.push("relief");
+  if (f.banked) out.push("banked");
+  if (f.turbo) out.push("turbo");
+  return out;
+}
+/** Le multiplicateur d'une figure (lot V2, v21) : le produit des poids de ses étiquettes, pour chaque table donnée (rythme, biome). */
+function facteur(f: Figure, tables: readonly Poids[]): number {
+  let k = 1;
+  for (const e of etiquettes(f)) for (const t of tables) k *= t[e] ?? 1;
+  return k;
+}
+
+/** Poids d'une figure dans le tirage : favorite du thème ×4, super turbo et virages relevés selon les chances du thème ; lot V2 (v21) : × rythme et biome (`poids`). */
+function figureWeight(f: Figure, theme: Theme, poids?: readonly Poids[]): number {
   let w = f.weight ?? 10;
   if (theme.figures.favor.includes(f.name)) w *= FAVOR;
   // Lot 49 (v18, thèmes à vedettes) : un freinage franc est déjà exigé ; doublé en plus, il faisait revenir les mêmes plaques dans tous les thèmes.
   if (f.braking && !theme.figures.vedettes) w *= 2;
   if (f.turbo) w += Math.round(theme.turboChance / 3);
   if (f.banked) w += Math.round(theme.bankChance / 4);
-  return w;
+  return poids ? Math.max(1, Math.round(w * facteur(f, poids))) : w;
+}
+
+const motifFigures = new Map<string, boolean>();
+/** Lot V2 : vrai si chaque variante de la figure (les trois largeurs) fait le motif « boost → longue ligne droite → virage serré » (`turbo-epingle`, `plaque-epingle`). */
+export function toujoursMotif(f: Figure): boolean {
+  let v = motifFigures.get(f.name);
+  if (v === undefined) {
+    v = true;
+    for (let k = 0; k < f.variants && v; k++) for (const w of WIDTH_LETTERS) {
+      const b = buildFigure(f, true, w, k);
+      if (b && motifsBoostSerre(b) === 0) v = false;
+    }
+    motifFigures.set(f.name, v);
+  }
+  return v;
 }
 
 /** Une figure propre à des thèmes (`only`, lot 22) ne sort que chez eux. */
-const ownedBy = (f: Figure, theme: Theme): boolean => !f.only || f.only.includes(theme.name);
+const ownedBy = (f: Figure, theme: Theme): boolean => !f.only || f.only.includes(theme.name) || !!theme.figures.aussi?.includes(f.name);
 /** Une figure plus récente que le générateur (`since`, lot 48) n'existe pas pour lui : ses circuits ne changent pas. */
 const knownBy = (f: Figure, generator: number): boolean => f.since === undefined || generator >= f.since;
+
+/** Lot V2 : durée estimée (s) d'un freinage franc « court » (`plaque-virage`, `plaque-epingle`, `turbo-epingle` ; pas les turbos enchaînés ni la descente). */
+const BRAKING_SHORT = 6;
 
 const isFast = (f: Figure) => f.category === "rapide" || !!f.turbo;
 
 /** Figures d'un circuit, dans le désordre : signature, relief, saut, cuve, portion rapide, techniques, puis le reste au poids. */
-function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget: number, generator: number, vedette: string | null): Figure[] | null {
+function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget: number, generator: number, vedette: string | null, poids?: readonly Poids[], sansMotif = false, sansFreinage = false): Figure[] | null {
   const banned = new Set(theme.figures.ban);
   const signature = figureByName(SIGNATURE_FIGURE[theme.signature])!;
   const chosen: Figure[] = [signature];
@@ -253,8 +293,11 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   const requiredAlso = new Set(theme.figures.requireAlso ?? []);
   // Les figures obligatoires du thème (lot 21) ne sont jamais au repos, comme la signature.
   // Lot 49 (v18) : la vedette du jour n'est jamais au repos ; les autres vedettes du thème attendent leur tour (`vedetteOf`).
-  const usable = (f: Figure) => !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !otherVedette(f, theme, vedette);
-  const pool = FIGURES.filter((f) => usable(f) && (required.has(f.name) || requiredAlso.has(f.name) || f.name === vedette || !isRested(f.name, day)));
+  // Lot V2 (v21) : un jour où le motif « boost → longue ligne droite → virage serré » n'est pas permis, une figure qui le fait dans toutes ses variantes n'est pas tirée.
+  const usable = (f: Figure) => !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !otherVedette(f, theme, vedette) && !(sansMotif && toujoursMotif(f));
+  // Lot V2 (v21) : « plaque puis virage », la plus courte des portions rapides sans épingle, se repose aussi un jour de repos sur deux (sinon elle était de 53 % des circuits).
+  const reposPlus = (f: Figure) => generator >= GENERATOR_RYTHMES && f.name === "plaque-virage" && (((day % 2) + 2) % 2 === 1);
+  const pool = FIGURES.filter((f) => usable(f) && (required.has(f.name) || requiredAlso.has(f.name) || f.name === vedette || (!isRested(f.name, day) && !reposPlus(f))));
   // Lot 49 (v18) : sans super turbo, un thème n'a que trois ou quatre figures de freinage franc ou de portion rapide ; si toutes sont au repos ce jour-là,
   // on en prend une qui l'est (sinon aucune tentative du jour n'aboutit : mesuré au Rallye et à la Campagne).
   const rested = generator >= 18 ? FIGURES.filter((f) => usable(f) && !pool.includes(f)) : [];
@@ -269,9 +312,9 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   const pick = (pred: (f: Figure) => boolean, from = pool): Figure | null => {
     const list = from.filter((f) => allowed(f) && pred(f));
     if (list.length === 0) return null;
-    let roll = rng.int(list.reduce((sum, f) => sum + figureWeight(f, theme), 0));
+    let roll = rng.int(list.reduce((sum, f) => sum + figureWeight(f, theme, poids), 0));
     for (const f of list) {
-      const w = figureWeight(f, theme);
+      const w = figureWeight(f, theme, poids);
       if (roll < w) return f;
       roll -= w;
     }
@@ -304,8 +347,16 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   }
   // Un freinage franc (élan de plus de 60 m/s, puis un virage) : c'est ce qui fait lâcher l'accélérateur ; il fait aussi la portion rapide.
   // Lot 49 (v18) : de préférence une figure qui fait les deux (freinage franc et portion rapide) : une figure générique de moins par circuit.
-  if (generator >= 18 && !chosen.some((f) => f.braking) && !chosen.some(isFast)) add(pick((f) => !!f.braking && isFast(f))) || add(pick((f) => !!f.braking && isFast(f), rested));
-  while (chosen.filter((f) => f.braking).length < MIN_BRAKING) if (!add(pick((f) => !!f.braking)) && !add(pick((f) => !!f.braking, rested))) return null;
+  // Lot V2 (v21) : un jour sans épingle à plaque (le motif n'y est pas permis), si aucun freinage franc court n'est disponible ce jour-là (tous au repos), on en prend un au
+  // repos : il ne restait sinon que les turbos enchaînés ou la descente (8 s chacun) et le circuit sortait trop long (mesuré : jusqu'à 4 Stade sur 45 sans circuit valide).
+  // Seulement dans ce cas : le préférer toujours faisait de « plaque puis virage » la figure de 89 % des circuits.
+  if (generator >= GENERATOR_RYTHMES && !sansFreinage && !chosen.some((f) => f.braking)) {
+    const court = (f: Figure) => !!f.braking && isFast(f) && figureSeconds(f) <= BRAKING_SHORT;
+    if (!pool.some((f) => allowed(f) && court(f))) add(pick(court, rested));
+  }
+  if (generator >= 18 && !sansFreinage && !chosen.some((f) => f.braking) && !chosen.some(isFast)) add(pick((f) => !!f.braking && isFast(f))) || add(pick((f) => !!f.braking && isFast(f), rested));
+  // Lot V2 (v21) : un jour vertical ou aérien n'exige pas de freinage franc derrière une poussée (la descente, le saut font son moment fort) ; la portion rapide reste exigée.
+  while (!sansFreinage && chosen.filter((f) => f.braking).length < MIN_BRAKING) if (!add(pick((f) => !!f.braking)) && !add(pick((f) => !!f.braking, rested))) return null;
   if (!chosen.some(isFast) && !add(pick(isFast)) && !add(pick(isFast, rested))) return null;
   // Une figure favorite du thème (en plus de la signature), si elle tient dans le budget : c'est ce qui donne au thème sa couleur.
   const seconds = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
@@ -412,6 +463,29 @@ function orderFigures(rng: Rng, figures: Figure[], order49: Order49 | null): Fig
 /** Blocs droits ordinaires (ni effet, ni saut, ni relief, ni cuve ; revêtement, largeur et point de contrôle permis). */
 const isPlainStraight = (token: string) => /^S(\/[a-z>~]*)?(@cp)?$/.test(token);
 
+/**
+ * Lot V2 (v21) : plus longue ligne droite **libre** (blocs droits ordinaires) qui ne suit pas une plaque ni un super turbo — les droites de dégagement et de freinage
+ * derrière une poussée, un saut ou une cuve sont comptées à part (`secureBraking` et les figures les exigent). C'est elle qu'une fiche de biome plafonne (`maxDroite`).
+ */
+export function longestFreeStraight(tokens: readonly string[]): number {
+  let best = 0;
+  let run = 0;
+  let free = true;
+  for (const t of tokens) {
+    if (isPlainStraight(t)) {
+      run++;
+      continue;
+    }
+    // L'élan d'une rampe de saut n'est pas une ligne droite libre non plus.
+    if (free && !/^K/.test(t)) best = Math.max(best, run);
+    run = 0;
+    // Derrière une poussée, un vide ou une cuve, les droites sont le dégagement exigé (elles le restent à travers une pente de réception) ; un autre bloc les libère.
+    if (/^([PT]|G|V|ML|MR)/.test(t)) free = false;
+    else if (!/^[UD]\d?(\/|@|$)/.test(t)) free = true;
+  }
+  return free ? Math.max(best, run) : best;
+}
+
 /** Plus longue suite de droites ordinaires d'un circuit (blocs) : la « ligne droite sans figure » que le générateur plafonne à `MAX_PLAIN_STRAIGHT`. */
 export function longestPlainStraight(tokens: readonly string[]): number {
   let best = 0;
@@ -436,6 +510,75 @@ export const MAX_PLAIN_STRAIGHT = 6;
 /** Relève les virages larges et amples ordinaires d'une figure (`L2` → `L2/b`) : le virage relevé se prend sur une trajectoire plus serrée, donc plus lentement. */
 const bankTurns = (tokens: readonly string[]): string[] => tokens.map((t) => (/^[LR][23]$/.test(t) ? withMod(t, "b") : t));
 
+/**
+ * Lot V2 (v21) — **les traits de tracé d'une fiche de biome**, posés sur les virages larges (`L2`, `R2`, relevés compris ; ni en cuve, ni sur un revêtement) d'une figure :
+ * - **le virage qui suit une poussée** (le premier large derrière une plaque ou un super turbo, avec des droites ou des pentes entre eux) : large, ample ou relevé selon le jour
+ *   (`apresPoussee` = jour mod 3, le même dans tout le circuit, jamais le même deux jours de suite ; ample au lieu de relevé dans un biome sans virage relevé) — sinon chaque
+ *   circuit freinait de la même plaque vers le même virage large (mesuré : « boost → longue → large » dans 62 % des circuits) ;
+ * - `serrer` (% par virage non relevé) : il devient serré — jamais sur la route large, ni dans une figure qui change de largeur, ni à côté d'un autre serré ;
+ * - `amplifier` (% par virage) : il devient ample (rayon 80 m), relevé s'il l'était.
+ */
+function tournures(body: readonly string[], rng: Rng, fiche: (typeof FICHES_V21)[ThemeName], entry: WidthLetter, relevables: boolean, apresPoussee: number): string[] {
+  const out = [...body];
+  const tight = (t: string | undefined) => !!t && /^[LR](\/|@|$)/.test(t);
+  let poussee = false;
+  let apres = -1;
+  for (let i = 0; i < out.length; i++) {
+    const t = out[i]!;
+    if (/^[PT](\/|@|$)/.test(t)) poussee = true;
+    else if (/^[LR]2(\/b)?$/.test(t) && poussee) {
+      apres = i;
+      break;
+    } else if (!/^(S|U|D)/.test(t)) poussee = false;
+  }
+  if (apres >= 0) {
+    const d = out[apres]![0]!;
+    out[apres] = apresPoussee === 0 ? `${d}2` : apresPoussee === 1 || !relevables ? `${d}3` : `${d}2/b`;
+  }
+  const serrable = entry !== "l" && !out.some((t) => t.includes(">"));
+  for (let i = 0; i < out.length; i++) {
+    const m = /^([LR])2(\/b)?$/.exec(out[i]!);
+    if (i === apres || !m) continue;
+    if (fiche.serrer && !m[2] && serrable && !tight(out[i - 1]) && !tight(out[i + 1]) && rng.chance(fiche.serrer)) out[i] = m[1]!;
+    else if (fiche.amplifier && rng.chance(fiche.amplifier)) out[i] = `${m[1]}3${m[2] ?? ""}`;
+  }
+  return out;
+}
+
+/**
+ * Lot V2 (v21) — **le relief d'une fiche**, posé sur le circuit fini (avant les revêtements) : sur les droites ordinaires (`S`, sans repère) loin de toute poussée, rampe, vide,
+ * moteur coupé ou cuve (trois blocs de part et d'autre : l'élan d'un saut ne change pas) et hors des approches protégées d'un virage rapide (le freinage y est compté à plat),
+ * `pente` (% par droite) devient une pente, vers le bas tant que la route reste dans les hauteurs permises, sinon vers le haut (Col alpin). Une droite et une pente d'une cellule
+ * ont la même place sur la grille : rien ne se croise.
+ */
+function reliefDuBiome(tokens: string[], fiche: (typeof FICHES_V21)[ThemeName], rng: Rng, shielded: ReadonlySet<number>): void {
+  const n = tokens.length;
+  const libre = (i: number) => {
+    if (i < 1 || i >= n - 1 || tokens[i] !== "S" || shielded.has(i)) return false;
+    for (let k = Math.max(0, i - 3); k <= Math.min(n - 1, i + 3); k++) if (/^([PTKCV]|G|ML|MR)/.test(tokens[k]!)) return false;
+    return true;
+  };
+  const hauteurs = (): number[] => {
+    const out: number[] = [];
+    let y = 0;
+    for (const t of tokens) {
+      const p = parseToken(t);
+      y += exitDelta(p.kind, p.rise);
+      out.push(y);
+    }
+    return out;
+  };
+  for (let i = 1; i < n - 1; i++) {
+    if (!libre(i)) continue;
+    if (rng.chance(fiche.pente ?? 0)) {
+      const reste = hauteurs().slice(i);
+      if (Math.min(...reste) - LEVEL_STEP >= Y_MIN) tokens[i] = "D";
+      else if (Math.max(...reste) + LEVEL_STEP <= Y_MAX) tokens[i] = "U";
+    }
+  }
+}
+const LEVEL_STEP = 4;
+
 /** Liaisons entre deux figures : le plus souvent rien ou une droite ; parfois une plaque ou une bosse. */
 const CONNECTORS: readonly (readonly string[])[] = [[], [], [], [], [], ["S"], ["S", "P", "S", "S"], ["S", "B", "S"]];
 
@@ -457,6 +600,14 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   const vedette = rules49 ? vedetteOf(theme, occurrence) : null;
   const order49: Order49 | null = rules49 ? { theme: theme.name, even: occurrence % 2 === 0 } : null;
   const noTurbo = rules49 && theme.turboChance === 0;
+  // Lot V2 (v21) : le rythme du jour, les poids (rythme puis biome), le motif « boost → longue ligne droite → virage serré » (un jour rapide seulement, une fois) et la
+  // plus longue ligne droite libre de la fiche du biome.
+  const rules21 = generator >= GENERATOR_RYTHMES;
+  const rythme: Rythme | null = rules21 ? rythmeDuJour(day, generator, theme.name) : null;
+  const fiche = rules21 ? FICHES_V21[theme.name] : null;
+  const poids = rythme && fiche ? [POIDS_RYTHME[rythme], fiche.poids] : undefined;
+  const motifPermis = rythme === "rapide" ? 1 : 0;
+  const maxDroite = fiche?.maxDroite ?? Infinity;
   // Le tiers de figures au repos (`isRested`) : par la date avant la v18 ; à partir d'elle, par le numéro d'apparition, k + ⌊k / n⌋ (mod 3), n le nombre
   // de vedettes (3 ou 4) : il change d'une apparition à la suivante, et deux apparitions qui ont la même vedette (k et k + n) n'ont jamais le même repos.
   const restDay = rules49 ? occurrence + Math.floor(occurrence / (theme.figures.vedettes?.length ?? 3)) : day;
@@ -468,10 +619,13 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   // obligatoires d'un thème (saut, cuve, signature) pèsent lourd, et sept tirages sur dix donneraient un circuit trop long.
   // Un saut et une cuve, selon les chances du thème : tirés une fois pour toutes (les tirages de figures ne les écartent pas).
   const wants = { jump: rng.chance(theme.jumpChance), cuve: theme.cuveChance > 0 && rng.chance(theme.cuveChance) };
+  // Lot V2 (v21) : un jour aérien a toujours un saut ; un jour technique en tire deux fois moins (sauf thème qui en a toujours un).
+  if (rythme === "aerien") wants.jump = true;
+  else if (rythme === "technique" && theme.jumpChance < 100 && wants.jump) wants.jump = rng.chance(50);
   let picked: Figure[] | null = null;
   let best = -Infinity;
   for (let tries = 0; tries < SELECTION_TRIES; tries++) {
-    const candidate = selectFigures(rng, theme, restDay, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator, vedette);
+    const candidate = selectFigures(rng, theme, restDay, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator, vedette, poids, rules21 && motifPermis === 0, rythme === "vertical" || rythme === "aerien" || rythme === "technique");
     if (!candidate) continue;
     const seconds = candidate.reduce((sum, f) => sum + figureSeconds(f), 0);
     // Hors budget : on garde le plus court seulement faute de mieux ; dans le budget : celui où l'on lâche le plus le gaz (somme des `off` des figures).
@@ -511,24 +665,36 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
     // Une figure qui ne tient pas est remplacée par une autre de la même catégorie (même nature : saut, cuve, moteur coupé) ;
     // la signature, elle, ne se remplace pas : la tentative échoue et la graine voisine prend le relais.
     const alternatives = [order[i]!];
-    if (order[i]!.name !== signatureName && order[i]!.name !== vedette) {
+    // Lot V2 (v21) : la seconde règle propre du thème (`requireAlso` : l'herbe de course de la Campagne) ne se remplace pas non plus — la ligne droite libre plafonnée la faisait
+    // parfois remplacer par une figure sans herbe.
+    const obligatoire = rules21 && !!theme.figures.requireAlso?.includes(order[i]!.name);
+    if (order[i]!.name !== signatureName && order[i]!.name !== vedette && !obligatoire) {
       const f0 = order[i]!;
       const banned = new Set(theme.figures.ban);
       // Lot 49 (v18) : une remplaçante suit le sens permis avec la figure posée avant et celle qui suit (aucun enchaînement en commun avec la veille du thème).
       const prev = placed.length > 0 ? placed[placed.length - 1]!.name : null;
       const next = i + 1 < order.length ? order[i + 1]!.name : null;
       const keepsOrder = (f: Figure) => !order49 || ((prev === null || may(order49, prev, f.name)) && (next === null || may(order49, f.name, next)));
-      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !isRested(f.name, restDay) && !otherVedette(f, theme, vedette) && keepsOrder(f));
+      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !isRested(f.name, restDay) && !otherVedette(f, theme, vedette) && keepsOrder(f) && !(rules21 && motifPermis === 0 && toujoursMotif(f)));
       alternatives.push(...rng.shuffle(subs).slice(0, 3));
     }
     let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number; fix: ReturnType<typeof secureBraking> } | null = null;
     for (const figure of alternatives) {
       // Pas de liaison derrière une longue ligne droite (le dégagement d'une figure suffit), ni avant le premier.
-      const connector = i === 0 || trailingStraights(w.tokens) > 1 ? [] : [...CONNECTORS[rng.int(CONNECTORS.length)]!];
+      let connector = i === 0 || trailingStraights(w.tokens) > 1 ? [] : [...CONNECTORS[rng.int(CONNECTORS.length)]!];
+      // Lot V2 (v21) : la liaison à plaque n'existe qu'un jour rapide (mesuré : elle faisait une bonne part des « boost → longue ligne droite → virage » de tous les jours).
+      if (rules21 && rythme !== "rapide" && connector.includes("P")) connector = ["S"];
       const target = changeSlots.has(i) ? pickWidth(rng, weights, NEXT_WIDTHS[width]) : null;
       const variants = rng.shuffle(Array.from({ length: figure.variants }, (_, v) => v));
       const banked = rng.chance(theme.bankChance); // virages relevés dans cette figure (selon le thème), sauf si elle n'a pas de virage ordinaire
-      const mirrors = rng.chance(50) ? [true, false] : [false, true];
+      let mirrors = rng.chance(50) ? [true, false] : [false, true];
+      // Lot V2 (v21) : un biome qui alterne (Rallye) essaie d'abord le sens où le premier virage de la figure tourne à l'opposé du dernier virage posé.
+      if (fiche?.alterner) {
+        const last = [...w.tokens].reverse().map((t) => parseToken(t).kind).find(isCurve);
+        if (last) mirrors = turnsLeft(last) ? [false, true] : [true, false];
+      }
+      // Lot V2 (v21) : la signature et la vedette gardent leur dessin ; les autres figures prennent les traits du biome (`tournures`).
+      const traits = rules21 && fiche && figure.name !== signatureName && figure.name !== vedette && !figure.cuve;
       outer: for (const withChange of target ? [true, false] : [false]) {
         const entry = withChange ? target! : width;
         const prefix = withChange ? [transition(width, target!)] : [];
@@ -536,22 +702,32 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
           for (const left of mirrors) {
             const plain = buildFigure(figure, left, entry, v);
             if (!plain || (noTurbo && plain.some((t) => /^T(\/|@|$)/.test(t)))) continue;
-            const body = banked && !figure.cuve ? bankTurns(plain) : plain;
+            const banked_ = banked && !figure.cuve ? bankTurns(plain) : plain;
+            const shaped = traits ? tournures(banked_, rng, fiche!, entry, theme.bankChance > 0, (((day + variant) % 3) + 3) % 3) : banked_;
+            for (const body of shaped.join(" ") === banked_.join(" ") ? [banked_] : [shaped, banked_]) {
             // La droite d'amorce d'une figure est celle qui termine la précédente (ou le départ) : on ne la pose pas deux fois.
             const lead = connector.length === 0 && prefix.length === 0 && body[0] === "S" && /^S(\/[a-z]*)?(@start)?$/.test(w.tokens[w.tokens.length - 1] ?? "") ? 1 : 0;
             // Lot 49 (v18) : un saut en tête du circuit part de deux droites de plus (la voiture part de zéro).
             const runUp = rules49 && i === 0 && figure.jump ? ["S", "S"] : [];
             let tokens = [...(figure.jump || figure.cuve ? [] : connector), ...prefix, ...runUp, ...body.slice(lead)];
-            const fix = rules34 ? secureBraking(w.tokens, tokens, { escape: escapeKind, allowTrap: braking.kept === 0 && (theme.name === "ville" || figure.name === signatureName) }) : null;
+            let fix = rules34 ? secureBraking(w.tokens, tokens, { escape: escapeKind, allowTrap: braking.kept === 0 && (theme.name === "ville" || figure.name === signatureName) }) : null;
+            // Lot V2 (v21) : quand le motif « boost → longue ligne droite → virage serré » apparaît, il garde sa zone de freinage — jamais un virage-piège.
+            if (rules21 && fix && fix.kept > 0 && motifsBoostSerre([...w.tokens, ...fix.tokens]) > motifsBoostSerre(w.tokens)) fix = secureBraking(w.tokens, tokens, { escape: escapeKind, allowTrap: false });
             if (rules34 && !fix) continue;
             if (fix) tokens = fix.tokens;
             if (tightCount(tokens) > tightLeft || !fits(w.y, tokens)) continue;
+            // Lot V2 (v21) : le motif et la ligne droite libre, comptés sur le circuit tel qu'il serait avec cette figure.
+            if (rules21) {
+              const motif = motifsBoostSerre([...w.tokens, ...tokens]);
+              if (motif > motifPermis || longestFreeStraight([...w.tokens, ...tokens]) > maxDroite) continue;
+            }
             // Le premier relief d'un circuit fait au moins deux niveaux : c'est lui qui garantit le dénivelé minimal.
             if (figure.relief && !majorHill && hillRise(body) < MIN_RELIEF) continue;
             const before = w.tokens.length;
             if (!place(w, tokens)) continue;
             done = { figure, tokens, variant: v, left, before, fix };
             break outer;
+            }
           }
         }
       }
@@ -608,6 +784,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
     if (k > cpCount + 3) break;
   }
   for (const i of used2) w.tokens[i] = "S@cp";
+  if (fiche?.pente) reliefDuBiome(w.tokens, fiche, rng, shielded);
 
   // Zones de revêtement : des suites de 3 à 6 blocs d'un même revêtement (terre, glace, herbe) sur les blocs ordinaires, sauf autour
   // d'un moteur coupé (il veut deux droites ordinaires derrière lui).

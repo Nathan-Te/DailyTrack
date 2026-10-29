@@ -29,6 +29,7 @@
     "pseudos:migrate": "npm run pseudos:migrate -w @cdj/api --",
     "lancement:remise-a-zero": "npm run lancement:remise-a-zero -w @cdj/api --",
     "recette:seed": "esbuild apps/api/scripts/recette-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=apps/api/dist/recette-seed.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && NODE_NO_WARNINGS=1 node apps/api/dist/recette-seed.mjs",
+    "mesure-circuits": "esbuild packages/sim/scripts/mesure-circuits.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/mesure-circuits.mjs --log-level=warning && node node_modules/.cache/cdj/mesure-circuits.mjs",
     "mesure:themes": "esbuild scripts/mesure-themes.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/mesure-themes.mjs --log-level=warning && node node_modules/.cache/cdj/mesure-themes.mjs",
     "traductions": "esbuild scripts/traductions.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/traductions.mjs --log-level=warning && node node_modules/.cache/cdj/traductions.mjs",
     "verifier": "node scripts/verifier.mjs",

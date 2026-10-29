@@ -65,6 +65,7 @@ export const EXCLUSIONS: Record<string, string> = {
   // Lot 43 (Track) : le compteur d'images de `?debug` et les sponsors fictifs peints dans la scène.
   "apps/web/src/banc/banc.ts": "banc d'essai du rendu (`?banc`, lot 50) : outil interne de Nathan, en français, jamais en production ni montré à un joueur",
   "apps/web/src/banc/bancLogique.ts": "banc d'essai du rendu (`?banc`, lot 50) : libellés des mesures de l'outil interne, en français",
+  "apps/web/src/galerie": "galerie des circuits à venir (`?debug&galerie=30`, lot V2) : outil interne de Nathan, en français, jamais en production ni montré à un joueur",
   "apps/web/src/compteurImages.ts": "compteur d'images par seconde de `?debug` (lot 43) : outil interne de Nathan, des nombres et leurs unités, jamais montré à un joueur",
   "apps/web/src/scene/sponsors.ts": "sponsors fictifs de la scène (lot 43) : des noms propres inventés peints dans le décor 3D (une texture), pas du texte d'interface ; ils ne se traduisent pas",
   // Lot I5 : les outils internes de Jump restent en français (lot I5 § 2 : `?debug&tune` tel quel ; seul son habillage suit les jetons, outils.css).

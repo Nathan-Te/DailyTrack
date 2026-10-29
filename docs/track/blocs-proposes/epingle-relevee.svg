@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="200" viewBox="0 0 480 200" role="img" aria-label="Épingle relevée">
+  <rect width="480" height="200" fill="#EDE3CF"/>
+  <rect x="8" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <rect x="248" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <text x="16" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de dessus</text>
+  <text x="256" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de côté</text>
+  <g transform="translate(0 18)">
+    <path d="M80 190 L80 90 A40 40 0 0 1 160 90 L160 190" fill="none" stroke="#5A524C" stroke-width="24" stroke-linejoin="round" stroke-linecap="butt"/>  <path d="M58 90 A62 62 0 0 1 182 90" fill="none" stroke="#C2401F" stroke-width="6"/>  <path d="M84 180 L84 92 A36 36 0 0 1 156 92 L156 180" fill="none" stroke="#E8B23A" stroke-width="2" stroke-dasharray="5 4"/>
+  </g>
+  <path d="M270 170 L460 170 L460 110 L270 160 Z" fill="#5A524C" stroke="#2A1E16" stroke-width="2"/>  <text x="290" y="100" font-family="sans-serif" font-size="12" fill="#6B5847">le bord extérieur monte</text>  <rect x="354" y="136" width="12" height="8" fill="#C2401F"/>
+</svg>

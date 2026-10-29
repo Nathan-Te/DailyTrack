@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="200" viewBox="0 0 480 200" role="img" aria-label="Bosse qui fait décoller">
+  <rect width="480" height="200" fill="#EDE3CF"/>
+  <rect x="8" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <rect x="248" y="8" width="224" height="184" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"/>
+  <text x="16" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de dessus</text>
+  <text x="256" y="26" font-family="sans-serif" font-size="12" font-weight="700" fill="#2A1E16">vu de côté</text>
+  <path d="M120 190 L120 30" fill="none" stroke="#5A524C" stroke-width="22" stroke-linejoin="round" stroke-linecap="butt"/>  <rect x="100" y="95" width="40" height="18" fill="#E8B23A"/>
+  <path d="M260 160 L330 160 C350 160 360 120 380 120 C392 120 396 160 410 160 L464 160 L464 175 L260 175 Z" fill="#5A524C" stroke="#2A1E16" stroke-width="2"/>  <path d="M382 112 C410 70 440 120 460 150" fill="none" stroke="#C2401F" stroke-width="2" stroke-dasharray="5 4"/>  <rect x="376" y="110" width="12" height="8" fill="#C2401F"/>
+</svg>

@@ -151,10 +151,12 @@ reglerAideIphone({ lienCode: () => profilHref(location.origin, location.pathname
 const params = new URLSearchParams(location.search);
 // Lot 50 : le banc d'essai du rendu (`?banc`, `?banc=court` pour les essais) — recette et aperçus seulement, jamais en production. Un module à la demande qui prend
 // la page : le jeu ne démarre pas (aucune course, rien d'enregistré).
-if (params.has("banc") && !isRestricted(location.search)) {
+// Lot V2 : la galerie des circuits à venir (`?debug&galerie=30`) prend la page de la même façon (recette et aperçus seulement).
+if ((params.has("banc") || params.has("galerie")) && !isRestricted(location.search)) {
   // Le banc reçoit les modules du premier chargement d'ici : les importer de son côté les ferait sortir du morceau principal (+1,3 ko mesuré pour tous les joueurs).
+  // La galerie passe par le morceau du banc (`banc.ts` la réexporte) : le premier chargement ne connaît qu'un morceau de plus, pas deux.
   await import("./banc/banc").then((m) =>
-    m.lancerBanc(document.body, params.get("banc") === "court" ? "court" : "normal", {
+    params.has("galerie") ? m.lancerGalerie(params, parisDay) : m.lancerBanc(document.body, params.get("banc") === "court" ? "court" : "normal", {
       cameras: CAMERAS,
       t,
       lireQualite: () => gameStorage().getItem(QUALITE_KEY),

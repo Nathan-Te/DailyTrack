@@ -35,7 +35,10 @@ import {
   type DailyCircuit,
   type Figure,
   type WidthLetter,
+  toujoursMotif,
 } from "../src/index";
+import { FIGURE_INTENTS } from "../src/figureIntents";
+
 
 // Lot 20 : la bibliothèque de figures et le générateur qui les assemble.
 const JOUR_TEST = daysFromCivil(2026, 10, 6);
@@ -66,7 +69,7 @@ describe("bibliothèque de figures", () => {
     for (const f of FIGURES) {
       expect(f.name, f.name).toMatch(/^[a-z]+(-[a-z]+)*$/);
       expect(FIGURE_CATEGORIES).toContain(f.category);
-      expect(f.intent.length, f.name).toBeGreaterThan(20);
+      expect(FIGURE_INTENTS[f.name]?.length ?? 0, f.name).toBeGreaterThan(20); // lot V2 : les phrases sont dans `figureIntents.ts`
       expect(f.label.length).toBeGreaterThan(2);
       expect(f.variants, f.name).toBeGreaterThanOrEqual(1);
     }
@@ -355,8 +358,9 @@ describe("thèmes : figures favorites et interdites", () => {
       const theme = THEMES[name];
       const sig = SIGNATURE_FIGURE[theme.signature];
       const banned = new Set(theme.figures.ban);
-      const favorites = theme.figures.favor.filter((n) => n !== sig);
-      const others = FIGURE_NAMES.filter((n) => n !== sig && !banned.has(n) && !theme.figures.favor.includes(n) && !(figureByName(n)!.only && !figureByName(n)!.only!.includes(name)));
+      // Lot V2 (v21) : une figure qui fait toujours le motif « boost → longue ligne droite → virage serré » (`toujoursMotif`) ne sort qu'un jour rapide : elle n'est pas comptée.
+      const favorites = theme.figures.favor.filter((n) => n !== sig && !toujoursMotif(figureByName(n)!));
+      const others = FIGURE_NAMES.filter((n) => n !== sig && !banned.has(n) && !theme.figures.favor.includes(n) && !(figureByName(n)!.only && !figureByName(n)!.only!.includes(name)) && !toujoursMotif(figureByName(n)!));
       const mean = (xs: string[]) => xs.reduce((s, n) => s + count(n), 0) / xs.length;
       expect(mean(favorites), name).toBeGreaterThan(mean(others) * 1.3);
     });
