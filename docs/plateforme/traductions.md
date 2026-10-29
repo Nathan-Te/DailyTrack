@@ -655,7 +655,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.rang.salon.aria` | Classement de la session : {rang}, ouvrir ou fermer | Session leaderboard: {rang}, open or close |
 | `course.pause.aria` | Pause | Pause |
 | `course.fige` | FIGÉ | FROZEN |
-| `course.aide.puce` | Comment jouer · P : pause | How to play · P: pause |
+| `course.aide.puce` | Comment jouer · R : point de contrôle · Entrée : recommencer · C : caméra · G : fantôme · P : pause | How to play · R: checkpoint · Enter: restart · C: camera · G: ghost · P: pause |
 | `course.aide.titre` | Comment jouer | How to play |
 | `course.meta.jour` | Circuit {numero} · {date} · {theme} | Track {numero} · {date} · {theme} |
 | `course.meta.sansNumero` | Circuit du {date} · {theme} | Track of {date} · {theme} |
@@ -889,7 +889,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.son.coupe` | Son : coupé | Sound: off |
 | `pause.reglages` | Réglages | Settings |
 | `pause.aide` | Comment jouer | How to play |
-| `pause.archives` | Archives | Archives |
 | `pause.accueil` | Accueil de Track | Track home |
 | `pause.mentions` | Mentions légales et confidentialité | Legal notice and privacy |
 | `pause.quitter` | Quitter cette course ? Le tour en cours ne sera pas enregistré. | Leave this run? The lap in progress won't be saved. |
@@ -1424,6 +1423,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `hud.aria` | Partie en cours | Game in progress |
 | `hud.pause.aria` | Pause | Pause |
+| `hud.astuces` | R : point de passage · Entrée : recommencer · G : fantôme · P : pause | R: checkpoint · Enter: restart · G: ghost · P: pause |
 | `hud.pc.aria` | Point de passage {pc} sur {total} | Checkpoint {pc} of {total} |
 | `hud.ecart.aria` | Écart avec ton record : {ecart} | Gap to your best: {ecart} |
 | `hud.objectif.aria` | Médaille visée : {medaille}, {temps} | Target medal: {medaille}, {temps} |

@@ -63,11 +63,11 @@ const PHONES = [
   { name: "Android (Pixel 7)", viewport: { width: 851, height: 393 }, deviceScaleFactor: 2.625, userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36" },
 ] as const;
 
-// Retouche 2 du lot I4 : la barre du bas n'existe plus ; la caméra se change depuis la pause (`#pause-camera`), et plus aucun appui sur l'écran de jeu n'y touche.
+// Retouche 2 du lot I4 : la barre du bas n'existe plus ; la caméra se change par son bouton (`#btn-camera`, la pause allégée ne l'a plus), et plus aucun appui sur l'écran de jeu n'y touche.
 for (const p of PHONES) {
   // Lot R13 : un gabarit et un mode (le mode des pédales ne change rien à ce qui est vérifié ; l'iPhone sous Chromium n'en diffère que par la taille).
   for (const auto of [false as boolean]) {
-    test(`${p.name}, ${auto ? "gaz automatique" : "deux pédales"} — la caméra se change depuis la pause, et aucun appui sur l'écran ne la change (?zones=1)`, async ({ browser }) => {
+    test(`${p.name}, ${auto ? "gaz automatique" : "deux pédales"} — la caméra se change depuis son bouton, et aucun appui sur l'écran ne la change (?zones=1)`, async ({ browser }) => {
       const context = await browser.newContext({ ...p, isMobile: true, hasTouch: true });
       const page = await context.newPage();
       await page.addInitScript((a) => localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "buttons", autoThrottle: a, version: 2 })), auto);
@@ -78,10 +78,8 @@ for (const p of PHONES) {
       const H = p.viewport.height;
       await expect(page.locator("#tbar button")).toHaveCount(0); // plus de barre du bas : le bas de l'écran est aux commandes
 
-      // 1. la pause propose la caméra : trois appuis font le tour
-      await page.locator("#btn-pause").tap();
-      await expect(page.locator("#pause")).toBeVisible();
-      const btn = page.locator("#pause-camera");
+      // 1. le bouton caméra de la partie (plus de caméra dans la pause allégée) : trois appuis font le tour
+      const btn = page.locator("#btn-camera");
       await expect(btn).toBeVisible();
       expect((await btn.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
       const names: string[] = [(await camera(page)).name];
@@ -92,8 +90,6 @@ for (const p of PHONES) {
       }
       expect(names[0]).toBe(names[3]);
       expect(new Set(names).size).toBe(3);
-      await page.locator("#pause-resume").tap();
-      await expect(page.locator("#pause")).toBeHidden();
 
       // 2. des appuis sur tout l'écran de jeu (frontières entre zones, milieu libre, bords) : aucun ne change la caméra
       const before = (await camera(page)).name;

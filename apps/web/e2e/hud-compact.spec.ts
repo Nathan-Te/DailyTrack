@@ -65,14 +65,12 @@ for (const viewport of [
     }
     expect(ys.size, "les trois boutons sur la même ligne").toBe(1);
 
-    // La pause porte ce que la barre du bas portait : caméra, plein écran (si le navigateur le permet), réglages.
+    // La pause est allégée (comme celle de Jump) : Reprendre et huit actions au plus, en deux colonnes ; la caméra, le Garage et les archives n'y sont plus.
     await page.locator("#btn-pause").click();
     await expect(page.locator("#pause")).toBeVisible();
-    await expect(page.locator("#pause-camera")).toBeVisible();
-    const avant = await page.locator("#pause-camera").textContent();
-    await page.locator("#pause-camera").click();
-    await expect(page.locator("#pause-camera")).not.toHaveText(avant!);
     await expect(page.locator("#pause-settings")).toBeVisible();
+    await expect(page.locator("#pause-camera, #pause-garage, #pause-archive")).toHaveCount(0);
+    expect(await page.locator("#pause button:visible").count()).toBeLessThanOrEqual(9);
     for (const b of await page.locator("#pause button:visible").all()) expect((await b.boundingBox())!.height, `pause : ${await b.textContent()}`).toBeGreaterThanOrEqual(43.5);
     await context.close();
   });

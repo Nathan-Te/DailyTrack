@@ -488,8 +488,10 @@ body.watch #btn-ghost {
   z-index: var(--z-hud);
   min-height: 32px;
   padding: 0 12px;
+  max-width: calc(100vw - 2 * max(16px, var(--sure-gauche)));
   cursor: pointer;
   font-weight: 700;
+  text-align: left;
 }
 #helpchip:hover {
   color: var(--track-texte);

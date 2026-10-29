@@ -210,13 +210,10 @@ test("caméra : chaque appui passe à la caméra suivante, comme la touche C ; l
   await camera.click();
   await expect(camera).toHaveAttribute("aria-label", "Caméra : proche");
   expect(await memorisee()).toBe("proche");
-  // La pause montre la même caméra et la change avec le même résultat.
+  // La pause allégée n'a plus de bouton caméra : le bouton de la partie et la touche C restent.
   await page.locator("#btn-pause").click();
-  await expect(page.locator("#pause-camera")).toHaveText("Caméra : proche");
-  await page.locator("#pause-camera").click();
-  await expect(page.locator("#pause-camera")).toHaveText("Caméra : loin");
+  await expect(page.locator("#pause-camera")).toHaveCount(0);
   await page.locator("#pause-resume").click();
-  await expect(camera).toHaveAttribute("aria-label", "Caméra : loin");
   await context.close();
 });
 

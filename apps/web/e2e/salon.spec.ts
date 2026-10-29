@@ -403,7 +403,6 @@ test("accueil ⇄ Salon : on passe de l'un à l'autre en gardant l'API, par l'ac
   await loaded(page);
   await page.locator("#btn-pause").click(); // (la touche P pressée dès le chargement pouvait précéder l'écoute du clavier : le bouton attend qu'il soit actionnable)
   await expect(page.locator("#pause-home")).toBeVisible();
-  await expect(page.locator("#pause-archive")).toBeHidden(); // pas d'archives dans le Salon
 });
 
 // Lot R13 (docs/tests.md) : le Salon est une course, elle se joue en paysage (en portrait, l'invitation à tourner le téléphone : tactile.spec.ts) ; portrait et
