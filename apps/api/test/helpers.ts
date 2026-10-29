@@ -20,6 +20,7 @@ import { CODES_ERREUR, estCodeErreur } from "../src/codesErreur";
 import type { SqlDb } from "../src/db";
 import { openLibsql } from "../src/libsql-open";
 import { openSqlite } from "../src/node-sqlite";
+import { surveiller } from "./enregistreur";
 
 export const DAY_MS = 86_400_000;
 
@@ -39,8 +40,9 @@ if (libsqlDir) process.on("exit", () => rmSync(libsqlDir, { recursive: true, for
  * connexion et la perdre.
  */
 export async function openTestDb(): Promise<SqlDb & { close(): void }> {
-  if (TEST_DB === "sqlite") return openSqlite(":memory:");
-  return openLibsql({ url: `file:${join(libsqlDir, `t${libsqlCount++}.db`)}` });
+  const db = TEST_DB === "sqlite" ? openSqlite(":memory:") : await openLibsql({ url: `file:${join(libsqlDir, `t${libsqlCount++}.db`)}` });
+  // Lot R14 : chaque requête du serveur est examinée une fois par `EXPLAIN QUERY PLAN` (un parcours complet non justifié fait échouer le test : test/enregistreur.ts).
+  return surveiller(db);
 }
 /**
  * Jour de test : le 14/10/2026 (fixe : indépendant de `PREMIER_JOUR`, qui ne change que la numérotation). L'horloge de l'API est

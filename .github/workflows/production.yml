@@ -429,7 +429,7 @@ jobs:
           if [ "$SITE_ON" = true ]; then url="$SITE_URL"; else url="$API_URL"; echo "- Firebase non configuré : répétition contre l'adresse du service ($url)" >> "$GITHUB_STEP_SUMMARY"; fi
           origine="$(node scripts/domaine.mjs adresse recette)"
           npm run smoke -w @cdj/api -- "${url%/}" --lecture-seule --environnement recette --origin "$origine" --resume "$GITHUB_STEP_SUMMARY" --retour "Rien n'est parti en production : corriger par une PR, puis relancer le bouton."
-          npm run smoke -w @cdj/api -- "${url%/}" --origin "$origine"
+          npm run smoke -w @cdj/api -- "${url%/}" --distant --origin "$origine"
           echo "- ✅ Répétition sur la recette ($url) : lecture seule et smoke complet verts" >> "$GITHUB_STEP_SUMMARY"
 
   # 5. La sauvegarde de la base, avant tout déploiement (production : la base des joueurs ; essai : la base de recette). LECTURE SEULE : un jeton Turso
@@ -506,7 +506,7 @@ jobs:
           echo "::add-mask::$token"
           [ -n "$token" ] || { echo "::error::secret $SECRET vide"; exit 1; }
           npm ci -w @cdj/api --ignore-scripts
-          TURSO_DATABASE_URL="$DB" TURSO_AUTH_TOKEN="$token" npm run -s base:sauvegarde -w @cdj/api -- --cible "$CIBLE" --sortie "$RUNNER_TEMP/sauvegarde.sql.gz" | tee -a "$GITHUB_STEP_SUMMARY"
+          TURSO_DATABASE_URL="$DB" TURSO_AUTH_TOKEN="$token" npm run -s base:sauvegarde -w @cdj/api -- --distant --cible "$CIBLE" --sortie "$RUNNER_TEMP/sauvegarde.sql.gz" | tee -a "$GITHUB_STEP_SUMMARY"
           unset token
       - name: Déposer dans le bucket privé
         env:

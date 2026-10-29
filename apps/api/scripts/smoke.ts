@@ -25,6 +25,7 @@ import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, declareFrozenGene
 import { jumpDailyOf } from "../src/jump";
 import { DEMO_JOUEUR_ID } from "../src/portailDemo";
 import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, verifierVide } from "./smokeRead";
+import { exigerDistant } from "../src/distant";
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
 const option = (name: string): string | undefined => {
@@ -33,6 +34,8 @@ const option = (name: string): string | undefined => {
 };
 const origin = option("--origin");
 const readOnly = process.argv.includes("--lecture-seule");
+// Lot R14 : le mode complet écrit (des joueurs « Fumée » dans la base du serveur visé) : contre un serveur déployé, `--distant` le dit en clair. Le mode lecture seule n'écrit rien.
+if (!readOnly) exigerDistant(base, process.argv, "smoke crée des joueurs « Fumée » et leurs résultats dans la base du serveur visé.");
 
 // Lot P4 : la vérification en lecture seule (production comprise) : aucune écriture, puis la sortie.
 // Lot I3 : `--par-hosting` (à lancer sur l'adresse de Firebase Hosting, jamais sur Cloud Run en direct) ajoute la vérification du cache : le portail

@@ -22,10 +22,14 @@ import { ConfigError, recetteSeedTarget } from "../src/config";
 import type { SqlDb } from "../src/db";
 import { fictionalId } from "../src/history";
 import { seedJumpDays } from "../src/jumpHistory";
-import { seedClassementDemo } from "../src/classementDemo";
-import { seedPortailDemo } from "../src/portailDemo";
+import { CLASSEMENT_DEMO_JOURS, seedClassementDemo } from "../src/classementDemo";
+import { DEMO_JOUEUR_ID, seedPortailDemo } from "../src/portailDemo";
 import { semerNouveautes } from "../src/diffusion";
+import { ensureSchemaOn } from "../src/db";
+import { empreinteDuSeed, lireMarqueurs } from "../src/recetteSeed";
 import { openLibsql } from "../src/libsql-open";
+import { plusCouteuses, type ClientCompte } from "../src/comptage";
+import { estLocale, exigerDistant } from "../src/distant";
 
 const HOUR_MS = 3_600_000;
 
@@ -58,8 +62,25 @@ if (today === null || today === undefined) {
   process.exit(1);
 }
 
+// Lot R14 : une base distante (Turso) s'écrit en clair, avec `--distant`.
+if (target.kind === "turso") exigerDistant(target.url, process.argv, "recette:seed écrit des joueurs fictifs (des milliers de lignes lues, des centaines écrites).");
+
 // SQLite (`node:sqlite`, Node 22) n'est chargé que pour une base locale : contre Turso, le script tourne aussi sur un Node plus ancien.
-const db: SqlDb = target.kind === "turso" ? await openLibsql({ url: target.url, authToken: target.authToken }) : (await import("../src/node-sqlite")).openSqlite(target.path);
+// Lot R14 : `--mesure` (base **locale** `file:` seulement) compte les lignes lues et écrites de ce passage (`src/comptage.ts`) et les affiche à la fin.
+const mesure = process.argv.includes("--mesure");
+if (mesure && (target.kind !== "turso" || !estLocale(target.url))) {
+  console.error("recette:seed --mesure : une base libSQL locale (TURSO_DATABASE_URL=file:/chemin/recette.db) est nécessaire — jamais Turso.");
+  process.exit(1);
+}
+let compte: ClientCompte | null = null;
+let db: SqlDb;
+if (target.kind === "turso") {
+  if (mesure) {
+    const ouverte = await openLibsql({ url: target.url, authToken: target.authToken, comptage: true });
+    compte = ouverte.compte;
+    db = ouverte;
+  } else db = await openLibsql({ url: target.url, authToken: target.authToken });
+} else db = (await import("../src/node-sqlite")).openSqlite(target.path);
 console.log(`base de recette : ${target.kind === "turso" ? new URL(target.url.replace(/^libsql:/, "https:")).hostname : target.path} · ${days} jour(s) jusqu'au ${formatDay(today)}`);
 // La base répond-elle ? Sinon chaque course serait refusée (erreur 500) sans dire pourquoi.
 try {
@@ -68,6 +89,14 @@ try {
   console.error(`recette:seed : la base de recette ne répond pas (adresse ou jeton faux ?) — ${e instanceof Error ? e.message : String(e)}`);
   process.exit(1);
 }
+
+// Lot R14 : `recette:seed` n'écrit que ce qui manque (src/recetteSeed.ts). Un marqueur par segment (courses de Track d'un jour, essai de Jump du jour, classement d'un jour, « Démo » du
+// jour) dans `meta` ; un segment déjà fait, de la génération de données courante et du même contenu, est sauté. `--refaire` ignore les marqueurs (tout est rejoué, comme avant le lot).
+await ensureSchemaOn(db);
+const refaire = process.argv.includes("--refaire");
+const marqueurs = await lireMarqueurs(db);
+const aFaire = (segment: string, empreinte: string) => refaire || marqueurs.etat(segment, empreinte) !== "fait";
+let saut = 0;
 
 // Les niveaux figés de DailyJump du dépôt (les mêmes que ceux de l'image du serveur).
 const levelsDir = new URL("../../jump/public/levels/", import.meta.url);
@@ -88,6 +117,13 @@ const started = Date.now();
 let total = 0;
 for (let day = today - days + 1; day <= today && !demoSeulement; day++) {
   const date = formatDay(day);
+  const segment = `track:${date}`;
+  const empreinte = empreinteDuSeed();
+  if (!aFaire(segment, empreinte)) {
+    saut++;
+    console.log(`${date} : déjà fait (marqueur ${segment})`);
+    continue;
+  }
   const circuit = dailyCircuit(day);
   // Même tirage que l'historique de démonstration (graine propre au jour) : 8 à 15 pilotes, niveaux variés.
   const rng = new Rng(mixSeed(day, 0x11d3));
@@ -114,37 +150,83 @@ for (let day = today - days + 1; day <= today && !demoSeulement; day++) {
   }
   total += accepted;
   console.log(`${date} : ${accepted} pilote(s) classé(s)${refused ? `, ${refused} refus` : ""}`);
+  if (!refused) await marqueurs.poser(segment, empreinte);
 }
 console.log(`\n${total} temps envoyés par createApi (rejoués par le serveur) en ${((Date.now() - started) / 1000).toFixed(0)} s.`);
 
 // DailyJump : les joueurs fictifs du jour courant.
 const jumpStarted = Date.now();
-const jumps = await seedJumpDays({
-  db,
-  frozen,
-  days: demoSeulement ? [] : [today],
-  onDay: (d) => console.log(`DailyJump ${d.date} : ${d.accepted} joueur(s) classé(s), ${d.lives} vie(s) gardée(s) (morts rejouées)${d.refused || d.firstError ? `, ${d.refused} refus (${d.firstError}) — l'essai ne compte pas` : ""}`),
-});
-console.log(`${jumps} essais DailyJump envoyés par createApi (rejoués par le serveur) en ${((Date.now() - jumpStarted) / 1000).toFixed(0)} s.`);
+const dateDuJour = formatDay(today);
+const segmentJump = `jump:${dateDuJour}`;
+const empreinteJump = empreinteDuSeed(JSON.stringify(frozen[dateDuJour] ?? null));
+let jumps = 0;
+if (!demoSeulement) {
+  if (!aFaire(segmentJump, empreinteJump)) {
+    saut++;
+    console.log(`DailyJump ${dateDuJour} : déjà fait (marqueur ${segmentJump})`);
+  } else {
+    let refusJump = 0;
+    jumps = await seedJumpDays({
+      db,
+      frozen,
+      days: [today],
+      onDay: (d) => {
+        refusJump += d.refused;
+        console.log(`DailyJump ${d.date} : ${d.accepted} joueur(s) classé(s), ${d.lives} vie(s) gardée(s) (morts rejouées)${d.refused || d.firstError ? `, ${d.refused} refus (${d.firstError}) — l'essai ne compte pas` : ""}`);
+      },
+    });
+    if (!refusJump) await marqueurs.poser(segmentJump, empreinteJump);
+    console.log(`${jumps} essais DailyJump envoyés par createApi (rejoués par le serveur) en ${((Date.now() - jumpStarted) / 1000).toFixed(0)} s.`);
+  }
+}
 
 // Lot I3 : les joueurs du classement du jour (avant « Démo » : son rang du jour se lit parmi eux).
 // `--demo-seulement` les saute (les e2e du portail, en quelques secondes) sauf avec `--classement` (les e2e du classement du jour).
+// Lot R14 : jour par jour, et seulement ceux qui manquent. Les joueurs ne sont effacés puis recréés que si le contenu d'un jour déjà écrit a changé (versions, format).
 if (!demoSeulement || process.argv.includes("--classement")) {
   const classementStarted = Date.now();
-  const classement = await seedClassementDemo({ db, frozen, today });
-  console.log(
-    `Classement du jour (lot I3) : ${classement.joueurs} joueurs de démonstration (${classement.effaces} effacés puis recréés) — ${classement.track} course(s) Track, ${classement.jump} essai(s) Jump rejoués par le serveur en ${((Date.now() - classementStarted) / 1000).toFixed(0)} s${classement.refus.length ? `, ${classement.refus.length} refus (${classement.refus[0]}) — ne comptent pas` : ""}.`,
-  );
+  const fenetre = Array.from({ length: CLASSEMENT_DEMO_JOURS }, (_, i) => today - CLASSEMENT_DEMO_JOURS + 1 + i);
+  const empreinteDe = (d: number) => empreinteDuSeed(JSON.stringify(frozen[formatDay(d)] ?? null)); // propre au jour : la fenêtre glisse sans rien périmer
+  const manquants = fenetre.filter((d) => aFaire(`classement:${formatDay(d)}`, empreinteDe(d)));
+  const perimes = fenetre.some((d) => marqueurs.etat(`classement:${formatDay(d)}`, empreinteDe(d)) === "perime");
+  if (!manquants.length) {
+    saut++;
+    console.log("Classement du jour (lot I3) : déjà fait pour les trois jours");
+  } else {
+    const classement = await seedClassementDemo({ db, frozen, today, seulement: refaire || perimes ? undefined : manquants, repartir: refaire || perimes });
+    if (!classement.refus.length) for (const d of fenetre) await marqueurs.poser(`classement:${formatDay(d)}`, empreinteDe(d));
+    console.log(
+      `Classement du jour (lot I3) : ${classement.joueurs} joueurs de démonstration (${classement.effaces} effacés puis recréés ; jours écrits : ${(refaire || perimes ? fenetre : manquants).map(formatDay).join(", ")}) — ${classement.track} course(s) Track, ${classement.jump} essai(s) Jump rejoués par le serveur en ${((Date.now() - classementStarted) / 1000).toFixed(0)} s${classement.refus.length ? `, ${classement.refus.length} refus (${classement.refus[0]}) — ne comptent pas` : ""}.`,
+    );
+  }
 }
 
 // Lot I2 : le joueur de démonstration du portail (après les autres : son rang du jour se lit parmi eux).
-const demoStarted = Date.now();
-const demo = await seedPortailDemo({ db, frozen, today });
-console.log(
-  `Joueur de démonstration « Démo » (portail, /?demo=joueur) : Garage ${demo.garage.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ") || "—"} ; Track ${demo.track.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ")} ; Jump ${demo.jump.map((j) => j.date).join(", ") || "—"} ; ${demo.morts} mort(s) aujourd'hui — ${((Date.now() - demoStarted) / 1000).toFixed(0)} s.`,
-);
+// Lot R14 : une fois par jour (sa série de 5 jours dépend de la date : il est recréé quand le jour change, pas à chaque passage). S'il manque (profil supprimé depuis le panneau), il est recréé.
+const segmentDemo = `demo:${dateDuJour}`;
+const empreinteDemo = empreinteDuSeed(JSON.stringify(frozen[dateDuJour] ?? null));
+const demoPresent = marqueurs.etat(segmentDemo, empreinteDemo) === "fait" && !!(await db.first("SELECT 1 AS x FROM players WHERE id = ?", [DEMO_JOUEUR_ID]));
+if (!refaire && demoPresent) {
+  saut++;
+  console.log(`Joueur de démonstration « Démo » : déjà à jour pour ${dateDuJour} (marqueur ${segmentDemo})`);
+} else {
+  const demoStarted = Date.now();
+  const demo = await seedPortailDemo({ db, frozen, today });
+  await marqueurs.poser(segmentDemo, empreinteDemo);
+  console.log(
+    `Joueur de démonstration « Démo » (portail, /?demo=joueur) : Garage ${demo.garage.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ") || "—"} ; Track ${demo.track.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ")} ; Jump ${demo.jump.map((j) => j.date).join(", ") || "—"} ; ${demo.morts} mort(s) aujourd'hui — ${((Date.now() - demoStarted) / 1000).toFixed(0)} s.`,
+  );
+}
+if (saut) console.log(`\n${saut} segment(s) déjà faits, sautés (rien d'écrit pour eux ; --refaire pour tout rejouer).`);
 
 // Lot N2 : **deux nouveautés publiées et aucun message actif** (la ligne « Nouveautés » de l'accueil et la page /nouveautes/ ont de quoi s'afficher sur la recette). Dates d'avant tout vrai
 // contenu ; relancer ne crée aucun doublon et ne touche ni à une vraie nouveauté ni à un message en cours (un message de recette s'éteint tout seul).
 const nouveautes = await semerNouveautes(db, Date.now());
 console.log(`Nouveautés (lot N2) : ${nouveautes.creees} créée(s) sur 2 (aucun message en direct n'est posé).`);
+
+// Lot R14 : le bilan du passage (avec `--mesure`, base locale) — ce que Turso facturerait, en estimation basse (src/comptage.ts).
+if (compte) {
+  const c = compte.comptage;
+  console.log(`\nMESURE — ${c.instructions} instructions (dont ${c.enLot} en lot) · lignes lues ≈ ${compte.lues()} (parcourues ${c.parcourues} + renvoyées ${c.renvoyees}) · lignes écrites ${c.ecrites} (hors lots)`);
+  for (const l of plusCouteuses(c, 8)) console.log(`  ${String(l.parcourues + l.renvoyees).padStart(7)} lues · ${String(l.ecrites).padStart(5)} écrites · ${String(l.appels).padStart(5)} appels · ${l.sql.slice(0, 110)}`);
+}

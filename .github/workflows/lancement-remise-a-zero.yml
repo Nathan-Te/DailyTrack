@@ -146,7 +146,7 @@ jobs:
           echo "::add-mask::$token"
           [ -n "$token" ] || { echo "::error::secret $SECRET vide"; exit 1; }
           npm ci -w @cdj/api --ignore-scripts
-          args=(--cible "$CIBLE" --base "$BASE_SAISIE" --phrase "$PHRASE")
+          args=(--distant --cible "$CIBLE" --base "$BASE_SAISIE" --phrase "$PHRASE")
           [ "$SAUVEGARDE" != true ] || args+=(--sauvegarde-faite)
           [ "$CIBLE" != production ] || args+=(--lancement-url https://playdujour.com)
           [ "$A_BLANC" = true ] || args+=(--appliquer)

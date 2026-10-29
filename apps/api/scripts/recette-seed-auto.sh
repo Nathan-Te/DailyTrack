@@ -46,7 +46,7 @@ echo "::add-mask::$token"
 
 [ -d node_modules ] || npm ci -w @cdj/api --ignore-scripts
 started=$(date +%s)
-ENVIRONMENT=recette TURSO_DATABASE_URL="$RECETTE_DB" TURSO_AUTH_TOKEN="$token" npm run --silent recette:seed -- --days "$days" | tee /tmp/recette-seed.txt
+ENVIRONMENT=recette TURSO_DATABASE_URL="$RECETTE_DB" TURSO_AUTH_TOKEN="$token" npm run --silent recette:seed -- --distant --days "$days" | tee /tmp/recette-seed.txt
 unset token
 {
   echo "### Joueurs fictifs de la recette (\`recette:seed\`, $days jours, $(( $(date +%s) - started )) s)"

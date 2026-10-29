@@ -38,7 +38,16 @@ export interface ClassementDemoReport {
 }
 
 /** Crée (ou recrée) les joueurs du classement dans la base donnée, jusqu'au jour `today` (numéro de jour de Paris). */
-export async function seedClassementDemo(o: { db: SqlDb; frozen: Readonly<Record<string, unknown>>; today: number; jours?: number }): Promise<ClassementDemoReport> {
+export async function seedClassementDemo(o: {
+  db: SqlDb;
+  frozen: Readonly<Record<string, unknown>>;
+  today: number;
+  jours?: number;
+  /** Lot R14 : seulement ces jours (numéros de jours de Paris) parmi ceux de la fenêtre ; les autres sont déjà faits. Absent : toute la fenêtre. */
+  seulement?: readonly number[];
+  /** Lot R14 : effacer d'abord les joueurs (défaut : oui, comme avant). `recette:seed` ne le demande que pour refaire des jours dont le contenu a changé. */
+  repartir?: boolean;
+}): Promise<ClassementDemoReport> {
   let clock = parisDayStart(o.today) + 12 * 3_600_000;
   const api = createApi({ db: o.db, now: () => clock, demoPlayers: true, allowCopies: true, jumpFrozen: o.frozen, adminToken: ADMIN, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
   const call = async (path: string, body: unknown, headers: Record<string, string> = {}) => {
@@ -48,8 +57,8 @@ export async function seedClassementDemo(o: { db: SqlDb; frozen: Readonly<Record
   };
   const report: ClassementDemoReport = { joueurs: CLASSEMENT_DEMO_NOMS.length, effaces: 0, track: 0, jump: 0, refus: [] };
 
-  // 1. Repartir de zéro : effacés par la route d'admin (rien s'ils n'existent pas encore).
-  for (const name of CLASSEMENT_DEMO_NOMS) {
+  // 1. Repartir de zéro : effacés par la route d'admin (rien s'ils n'existent pas encore). Lot R14 : `repartir: false` les garde (un jour de plus à écrire seulement).
+  for (const name of o.repartir === false ? [] : CLASSEMENT_DEMO_NOMS) {
     const r = await call("/api/admin/effacer", { code: code(fictionalId(name)), confirmer: true }, { Authorization: `Bearer ${ADMIN}` });
     if (r.status === 200) report.effaces++;
     else if (r.body?.error !== "unknown_player") throw new Error(`joueurs du classement : effacement de ${name} refusé (${r.status} ${String(r.body?.error ?? "")})`);
@@ -57,6 +66,7 @@ export async function seedClassementDemo(o: { db: SqlDb; frozen: Readonly<Record
 
   const jours = o.jours ?? CLASSEMENT_DEMO_JOURS;
   for (let day = o.today - jours + 1; day <= o.today; day++) {
+    if (o.seulement && !o.seulement.includes(day)) continue;
     const rng = new Rng(mixSeed(day, 0xc1a5));
     const circuit = day >= PREMIER_JOUR ? dailyCircuit(day) : null;
     const level = day >= PREMIER_JOUR_JUMP ? jumpDailyOf(day, o.frozen) : null;

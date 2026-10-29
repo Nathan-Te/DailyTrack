@@ -12,6 +12,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { ConfigError, assertDatabaseMatches, databaseName } from "../src/config";
 import { identifiant, sauvegarder, type Lecteur, type ResultatLu } from "../src/sauvegarde";
+import { exigerDistant } from "../src/distant";
 
 const args = process.argv.slice(2);
 const value = (name: string): string => {
@@ -29,6 +30,7 @@ const url = process.env.TURSO_DATABASE_URL?.trim() ?? "";
 if (cible !== "production" && cible !== "recette") stop("--cible production|recette");
 if (!sortie.endsWith(".sql.gz")) stop("--sortie <fichier>.sql.gz");
 if (!url) stop("TURSO_DATABASE_URL manque");
+exigerDistant(url, args, "base:sauvegarde lit toutes les lignes de la base (elles comptent toutes dans le quota de lecture de Turso).");
 try {
   assertDatabaseMatches(cible, url);
 } catch (e) {
