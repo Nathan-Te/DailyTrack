@@ -58,7 +58,7 @@ Temps du pilote (celui des médailles) sur les 200 jours : **v20 30,4 – 39,9 s
 - Nouveaux : `variete.test.ts` (mesure, rythmes, plafonds sur 200 graines, zone de freinage), `variete365.test.ts`, `apps/web/test/galerie.test.ts`.
 
 ## Vérifié / non vérifié
-- Vérifié en local : tests de `packages/sim` (tous), typecheck, construction, budgets, galerie dans Chromium (captures : `lot-V2/galerie-actuelle.png`, `lot-V2/galerie-nouvelle.png`), `npm run verifier` (voir la PR), `FAST=1 npm run measure:generator`.
+- Vérifié en local : tests de `packages/sim` (tous), typecheck, construction, budgets, galerie dans Chromium (captures : `lot-V2/galerie-actuelle.png`, `lot-V2/galerie-nouvelle.png`), `npm run verifier` (voir la PR). `FAST=1 npm run measure:generator` tourne (sortie 0), mais ses tableaux de validation comparent encore les v15 et v16 : la validation de la v21 vient de `mesure-circuits` (200 jours, 0 secours) et des 3 × 365 jours.
 - **Non vérifié** : la conduite des circuits v21 à la main (à faire par Nathan : 2 ou 3 jours de la galerie avec `?seed=<date>`) ; Firefox et WebKit (CI).
 - Runs de CI : voir la PR.
 
