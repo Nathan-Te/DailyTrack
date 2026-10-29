@@ -16,6 +16,8 @@ import {
   PREMIER_JOUR_JUMP,
   PRESS_GENERATOR,
   PRESS_VERSION,
+  ALT_KEPT_GENERATOR,
+  ALT_KEPT_VERSION,
   RESTART_GENERATOR,
   RESTART_VERSION,
   SECTION_CLOCK_GENERATOR,
@@ -46,6 +48,7 @@ describe("niveaux figés (public/levels)", () => {
   /** La version de la simulation d'un niveau du jour selon la version du générateur qui l'a fait. */
   const simVersionDuGenerateur = (g: number): number => {
     const seuils: readonly [number, number][] = [
+      [ALT_KEPT_GENERATOR, ALT_KEPT_VERSION],
       [RESTART_GENERATOR, RESTART_VERSION],
       [BRIDGE_GENERATOR, BRIDGE_VERSION],
       [LASER_GENERATOR, LASER_VERSION],
@@ -66,7 +69,7 @@ describe("niveaux figés (public/levels)", () => {
       if (typeof level === "string") return;
       // Figé sous une version du générateur d'avant (ou la même), jamais d'après ; la physique est celle du niveau (lot 15), que le code joue.
       expect(raw.simVersion).toBe(level.level.simVersion);
-      // v3 jusqu'à g9, v4 de g10 à g14 (une seule horloge), puis une version de plus par élément (v5 g15 plateformes … v11 g21 nouvel essai) : la table
+      // v3 jusqu'à g9, v4 de g10 à g14 (une seule horloge), puis une version de plus par élément (v5 g15 plateformes … v11 g21 nouvel essai, v12 g22 alternés qui gardent leur état) : la table
       // complète, celle de `thawLevel` (28/10/2026 : elle s'arrêtait à g15, le premier jour figé en g17 la faisait échouer).
       expect(raw.simVersion).toBe(simVersionDuGenerateur(raw.generatorVersion));
       expect(raw.simVersion).toBeLessThanOrEqual(JUMP_SIM_VERSION);

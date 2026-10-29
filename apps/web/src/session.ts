@@ -22,6 +22,11 @@ export interface Ghost {
   player: ReplayPlayer;
   /** État au pas précédent, pour interpoler l'affichage. */
   previous: CarState;
+  /** Lot G1 : pas du fantôme par pas de la course (1 ; le fantôme Diamant de Track, plus : la course du pilote arrive au temps du Diamant). */
+  vitesse: number;
+  /** Pas du fantôme dus (`vitesse` par pas de la course) et pas faits. */
+  horloge: number;
+  pas: number;
 }
 
 /**
@@ -36,7 +41,8 @@ export function loadGhost(track: Track, best: BestRun | null): Ghost | null {
     const race = createRace(track);
     const previous = createCar();
     copyCar(race.car, previous);
-    return { race, player: new ReplayPlayer(replay), previous };
+    const vitesse = best.vitesse !== undefined && Number.isFinite(best.vitesse) && best.vitesse > 0 ? best.vitesse : 1;
+    return { race, player: new ReplayPlayer(replay), previous, vitesse, horloge: 0, pas: 0 };
   } catch {
     return null;
   }
@@ -69,9 +75,15 @@ export class RunSession {
     copyCar(this.race.car, this.previous);
     if (this.race.finishMs < 0) this.recorder.record(input);
     stepRace(this.race, input);
-    if (this.ghost) {
-      copyCar(this.ghost.race.car, this.ghost.previous);
-      stepRace(this.ghost.race, this.ghost.player.next());
+    const g = this.ghost;
+    if (g) {
+      // Le fantôme ne touche jamais la course du joueur : il a sa propre simulation, avancée de `vitesse` pas par pas (un, sauf le Diamant de Track).
+      g.horloge += g.vitesse;
+      while (g.pas < Math.floor(g.horloge + 1e-9)) {
+        copyCar(g.race.car, g.previous);
+        stepRace(g.race, g.player.next());
+        g.pas++;
+      }
     }
   }
 

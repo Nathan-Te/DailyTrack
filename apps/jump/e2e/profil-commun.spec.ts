@@ -130,7 +130,7 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
     // profil (avec le jour : une seule lecture). Rien n'est relu à l'arrivée (moins de 3 minutes) ni après l'envoi.
     // Lot I3 : une requête de plus, « Jeu suivant du jour » (`GET /api/portail/jour`, après l'envoi accepté) : 6 requêtes.
     // Lot N2 : une de plus, la lecture du message en direct quand l'écran d'arrivée s'affiche (`GET /api/annonce`, jamais pendant le niveau) : 7.
-    // Lot G1 : une de plus, le fantôme Diamant que l'envoi accepté débloque (`GET /api/jump/fantome-diamant`, une fois par jour : la trajectoire reste gardée) : 8.
+    // Lot G1 : aucune de plus — le niveau du jour généré par la page porte sa preuve : le fantôme Diamant s'y calcule, débloqué par l'arrivée, sans lecture du serveur : 7.
     expect(sent.sort()).toEqual(
       [
         "GET /api/jump/day/<jour>/bundle",
@@ -140,7 +140,6 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
         "GET /api/jump/day/<jour>/bundle",
         "GET /api/portail/jour",
         "GET /api/annonce",
-        "GET /api/jump/fantome-diamant",
       ].sort(),
     );
     await expect(a.page.locator("#arrival-next-game")).toHaveText("Jeu suivant du jour : Track ›");

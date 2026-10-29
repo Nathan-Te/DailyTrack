@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
+import { ALT_KEPT_VERSION, BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
 import { idiv } from "./idiv";
 import { jumpThemeForDay, type JumpThemeName } from "./themes";
 import type { SlowRoute } from "./voies";
@@ -19,9 +19,9 @@ export function levelNumber(day: number): number {
  * Identifiant du niveau d'une date : `jour-AAAA-MM-JJ-g<JUMP_GENERATOR_VERSION>` (identifiant des rediffusions et de la mémoire). Un thème
  * **forcé** (lot 11 : un autre que celui de la date) y ajoute `-t<thème>` : c'est un essai (`forcedTheme`), jamais enregistré.
  */
-export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = RESTART_VERSION): string {
+export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = ALT_KEPT_VERSION): string {
   const natural = jumpThemeForDay(day);
-  const g = simVersion >= RESTART_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= BRIDGE_VERSION ? BRIDGE_GENERATOR : simVersion >= LASER_VERSION ? LASER_GENERATOR : simVersion >= STALACTITE_VERSION ? STALACTITE_GENERATOR : simVersion >= MUSHROOM_VERSION ? MUSHROOM_GENERATOR : simVersion >= PRESS_VERSION ? PRESS_GENERATOR : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
+  const g = simVersion >= ALT_KEPT_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= RESTART_VERSION ? RESTART_GENERATOR : simVersion >= BRIDGE_VERSION ? BRIDGE_GENERATOR : simVersion >= LASER_VERSION ? LASER_GENERATOR : simVersion >= STALACTITE_VERSION ? STALACTITE_GENERATOR : simVersion >= MUSHROOM_VERSION ? MUSHROOM_GENERATOR : simVersion >= PRESS_VERSION ? PRESS_GENERATOR : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
   return `jour-${formatDay(day)}-g${g}${forced !== null && forced !== natural ? `-t${forced}` : ""}`;
 }
 
@@ -63,6 +63,11 @@ export const BRIDGE_GENERATOR = 20;
  * chrono qui continue ; forêt à rafales). Les niveaux du jour depuis le générateur g21 (`RESTART_GENERATOR`) sont en version 11.
  */
 export const RESTART_GENERATOR = 21;
+/**
+ * Lot 28 : le dernier générateur des niveaux en version 11 est g21 : `dailyLevel(jour, thème, 11)` le rend encore, à l'identique (référence v11 : les blocs alternés repartent de A à la reprise).
+ * Les niveaux du jour depuis le générateur g22 (`ALT_KEPT_GENERATOR`) sont en version 12.
+ */
+export const ALT_KEPT_GENERATOR = 22;
 
 /** Médailles : facteurs (en pour cent) du temps de l'auteur, arrondis au pas supérieur. À calibrer sur de vraies parties (seed § 5). */
 export const MEDAL_PERCENT = { gold: 110, silver: 130, bronze: 160 } as const;
@@ -81,34 +86,25 @@ export type JumpMedal = keyof JumpMedals;
 const ceilPercent = (ticks: number, percent: number): number => idiv(ticks * percent + 99, 100);
 
 /**
- * Lot G1 — **médailles assouplies** (demande de Nathan, 28/10/2026 : le Diamant, au temps exact de l'auteur, était imprenable) : à partir de `BASCULE_JUMP_G1`, le **seuil du
- * Diamant est à 105 %** du temps de l'auteur (la preuve du niveau, que personne ne bat), l'or à 115 %, l'argent à 137 %, le bronze à 170 % ; les jours d'avant gardent leurs
- * seuils (or 110 %, argent 130 %, bronze 160 %, Diamant = le temps de l'auteur). Le fantôme Diamant est la trajectoire de l'auteur **étirée jusqu'à ce seuil** (serveur,
- * `apps/api/CLAUDE.md`) : suivre le fantôme, c'est mériter le Diamant.
+ * Lot G1 — **médailles assouplies** (demande de Nathan, 28/10/2026 : le Diamant, au temps exact de l'auteur, était imprenable) : pour les niveaux de la version
+ * `MEDAILLES_ASSOUPLIES_VERSION` et suivantes, le **seuil du Diamant est à 105 %** du temps de l'auteur (la preuve du niveau, que personne ne bat), l'or à 115 %, l'argent
+ * à 137 %, le bronze à 170 % ; les versions d'avant gardent leurs seuils (or 110 %, argent 130 %, bronze 160 %, Diamant = le temps de l'auteur). **Aucune date** : un jour
+ * déjà servi garde ses médailles parce que « Mettre en production » le fige (fichier `levels/AAAA-MM-JJ.json`, `medailles`) avec le code alors en production ; les jours
+ * suivants prennent les nouvelles. Le fantôme Diamant est la trajectoire de l'auteur **étirée jusqu'à ce seuil** (serveur, `apps/api/CLAUDE.md`).
  */
 export const MEDAL_PERCENT_G1 = { author: 105, gold: 115, silver: 137, bronze: 170 } as const;
 
-/** Le **30/10/2026**, le premier jour qui commence après la mise en production du lot G1 (même date que `BASCULE_LOT_G1` de Track). Une mise en production plus tard la déplace. */
-export const BASCULE_JUMP_G1 = daysFromCivil(2026, 10, 30);
+/** Première version des niveaux aux médailles assouplies du lot G1 : la version 12 (lot 28 de DailyJump, pas encore servie au moment du lot). */
+export const MEDAILLES_ASSOUPLIES_VERSION = ALT_KEPT_VERSION;
 
-/**
- * Les médailles d'un niveau à partir du temps de l'auteur ; **toujours passer le jour** (sans lui, les seuils d'avant le lot G1). Les références des versions d'avant la 11
- * (`dailyLevel(jour, thème, version)`) gardent leurs seuils : les nouveaux ne valent que pour la version en vigueur.
- */
-export function jumpMedalsFor(authorTicks: number, day = 0, simVersion = RESTART_VERSION): JumpMedals {
-  if (day >= BASCULE_JUMP_G1 && simVersion >= RESTART_VERSION) {
-    return {
-      author: ceilPercent(authorTicks, MEDAL_PERCENT_G1.author),
-      gold: ceilPercent(authorTicks, MEDAL_PERCENT_G1.gold),
-      silver: ceilPercent(authorTicks, MEDAL_PERCENT_G1.silver),
-      bronze: ceilPercent(authorTicks, MEDAL_PERCENT_G1.bronze),
-    };
-  }
+/** Les médailles d'un niveau à partir du temps de l'auteur et de la version du niveau (les références des versions d'avant gardent leurs seuils). */
+export function jumpMedalsFor(authorTicks: number, simVersion = ALT_KEPT_VERSION): JumpMedals {
+  const p = simVersion >= MEDAILLES_ASSOUPLIES_VERSION ? MEDAL_PERCENT_G1 : { author: 100, ...MEDAL_PERCENT };
   return {
-    author: authorTicks,
-    gold: ceilPercent(authorTicks, MEDAL_PERCENT.gold),
-    silver: ceilPercent(authorTicks, MEDAL_PERCENT.silver),
-    bronze: ceilPercent(authorTicks, MEDAL_PERCENT.bronze),
+    author: p.author === 100 ? authorTicks : ceilPercent(authorTicks, p.author),
+    gold: ceilPercent(authorTicks, p.gold),
+    silver: ceilPercent(authorTicks, p.silver),
+    bronze: ceilPercent(authorTicks, p.bronze),
   };
 }
 
@@ -129,8 +125,8 @@ export const SLOW_BRONZE_MARGIN = 110;
  * de n'importe quelle voie lente** (auteur + le plus petit surcoût − 1 pas) et **le bronze au-dessus du temps « toutes voies lentes »** avec
  * `SLOW_BRONZE_MARGIN` ; l'argent reste entre les deux. La calibration complète est pour le lot 17.
  */
-export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "fastTicks" | "slowTicks">[], day = 0, simVersion = RESTART_VERSION): JumpMedals {
-  const m = jumpMedalsFor(author, day, simVersion);
+export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "fastTicks" | "slowTicks">[], simVersion = ALT_KEPT_VERSION): JumpMedals {
+  const m = jumpMedalsFor(author, simVersion);
   if (slow.length === 0) return m;
   const minExtra = slow.reduce((n, r) => (r.slowTicks - r.fastTicks < n ? r.slowTicks - r.fastTicks : n), slow[0]!.slowTicks - slow[0]!.fastTicks);
   const all = author + slow.reduce((n, r) => n + r.slowTicks - r.fastTicks, 0);

@@ -136,7 +136,7 @@ test("la pause : sur la scène sous le voile à rayures ; REPRENDRE, fantôme, s
       // Le fantôme et le son : des réglages mémorisés, le bouton dit le choix (lot G1 : « Fantôme : le tien », qui tourne ; sans serveur, ni premier ni Diamant : le tien ↔ aucun).
       expect((await jump(page)).ghost.choice).toBe("mien");
       await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : le tien");
-      await expect(page.locator("#menu-diamant")).toBeHidden(); // pas de serveur : pas de ligne « Finis le niveau pour le débloquer »
+      await expect(page.locator("#menu-diamant")).toBeVisible(); // lot G1 : le Diamant se calcule dans la page (niveau généré), même sans serveur : pas encore fini, la ligne le dit
       await page.locator("#menu-ghost").tap();
       expect((await jump(page)).ghost.choice).toBe("aucun");
       await expect(page.locator("#menu-ghost")).toHaveText("Fantôme : aucun");

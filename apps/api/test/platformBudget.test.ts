@@ -30,8 +30,8 @@ describe("projection du mois (measure:platform)", () => {
     expect(projectMonth({ jump: 1, track: 1, salon: 0 }).byGame.Portail!.requests).toBe(0);
   });
 
-  it("le joueur type de DailyJump : au plus 14 requêtes par jour (12 au lot P4 + « Jeu suivant du jour » du lot I3 + le fantôme Diamant du lot G1), hors pré-vols", () => {
-    expect(JUMP_PLAYER.requests).toBeLessThanOrEqual(14);
+  it("le joueur type de DailyJump : au plus 13 requêtes par jour (12 au lot P4 + « Jeu suivant du jour » du lot I3), hors pré-vols", () => {
+    expect(JUMP_PLAYER.requests).toBeLessThanOrEqual(13);
   });
 
   it("lot I3 : le classement du jour est une charge par instance (1,9 ligne lue par joueur du jour et par fenêtre de 45 s), pas par visiteur", () => {

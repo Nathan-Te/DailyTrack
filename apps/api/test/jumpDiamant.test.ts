@@ -88,18 +88,6 @@ describe(`fantôme Diamant de Jump (${TEST_DB})`, () => {
     expect(r.body.trajectoire.length).toBeLessThan(8_000);
   });
 
-  it("un jour d'avant la bascule du lot G1 : le Diamant est le temps exact de l'auteur, la trajectoire n'est pas étirée", async () => {
-    const jour = daysFromCivil(2026, 10, 29);
-    const avant = dailyLevel(jour);
-    expect(avant.medals.author).toBe(avant.authorTicks);
-    const t = await jumpApi();
-    t.clock.now = parisDayStart(jour + 1) + 12 * 3_600_000; // le lendemain : un jour passé, libre
-    const r = await t.call("GET", route(formatDay(jour)));
-    expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body.ticks).toBe(avant.authorTicks);
-    expect(r.body.trajectoire).toBe(encoderTrajectoire(echantillonnerTrajectoire(avant.level, avant.replay)));
-  });
-
   it("ne contient ni les entrées ni la preuve de l'auteur", async () => {
     const t = await jumpApi();
     await finish(t, 1);

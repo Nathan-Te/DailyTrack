@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { formatDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
+  ALT_B_REFUSED,
   MODULES,
   PARASITE_CLOSED,
   PHASE_REFUSED,
@@ -98,6 +99,9 @@ describe("lot 19 — la règle bornée", () => {
     for (const d of DAYS) {
       const L = dailyLevel(d);
       expect(L.fallback, formatDay(d)).toBe(false);
+      // Lot 28 (g22) : des blocs alternés dans le néon seulement ; jamais une variante qu'on ne peut pas reprendre en B.
+      expect(L.level.alts.length > 0, `${formatDay(d)} (${L.theme})`).toBe(L.theme === "neon");
+      for (const p of L.pieces) expect(ALT_B_REFUSED[p.id]?.includes(p.variant) ?? false, `${formatDay(d)} ${p.id}:${p.variant}`).toBe(false);
       expect(new Set(L.pieces.map((p) => p.id))).toEqual(ids.get(d));
       for (let j = 1; j < VARIETY_DAYS; j++) {
         const common = [...ids.get(d)!].filter((id) => ids.get(d - j)!.has(id));

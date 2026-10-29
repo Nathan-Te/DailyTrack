@@ -44,6 +44,7 @@ import {
   SINGLE_CLOCK_VERSION,
   MUSHROOM_VERSION,
   RESTART_VERSION,
+  ALT_KEPT_VERSION,
   LASER_VERSION,
   bridgeModuleIds,
   STALACTITE_VERSION,
@@ -63,7 +64,7 @@ import {
   fallbackLevel,
   isRestedModule,
   jumpMedalFor,
-  BASCULE_JUMP_G1,
+  MEDAILLES_ASSOUPLIES_VERSION,
   MEDAL_PERCENT_G1,
   jumpMedalsFor,
   medalsWithSlow,
@@ -114,8 +115,8 @@ describe("niveau du jour : identité et pureté", () => {
     // Lot 16 : avec ses voies lentes (et leurs montées ajoutées).
     const fresh = reassemble(levels[7]!);
     // Lot 15 : l'assemblage est en version 3 ; le niveau du jour, le même mis à l'heure unique (phases des sections).
-    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), RESTART_VERSION)).toBe(levels[7]!.ascii);
-    expect(levels[7]!.level.simVersion).toBe(RESTART_VERSION);
+    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), ALT_KEPT_VERSION)).toBe(levels[7]!.ascii);
+    expect(levels[7]!.level.simVersion).toBe(ALT_KEPT_VERSION);
   });
 
   it("trois dates voisines donnent trois niveaux différents", () => {
@@ -485,24 +486,25 @@ describe("médailles", () => {
     for (const L of levels) {
       const m = L.medals;
       // Lot 16 : celles du temps de l'auteur, ajustées au minimum aux voies lentes (`medalsWithSlow`, vérifié dans voies.test.ts).
-      expect(m).toEqual(medalsWithSlow(L.authorTicks, L.slowRoutes, L.day));
-      if (L.slowRoutes.length === 0) expect(m).toEqual(jumpMedalsFor(L.authorTicks, L.day));
+      expect(m).toEqual(medalsWithSlow(L.authorTicks, L.slowRoutes, L.level.simVersion));
+      if (L.slowRoutes.length === 0) expect(m).toEqual(jumpMedalsFor(L.authorTicks, L.level.simVersion));
       for (const v of Object.values(m)) expect(Number.isInteger(v)).toBe(true);
-      // lot G1 : le Diamant est au temps de l'auteur jusqu'à la bascule, à 105 % après
-      if (L.day < BASCULE_JUMP_G1) expect(m.author).toBe(L.authorTicks);
+      // lot G1 : le Diamant est au temps de l'auteur avant la version 12, à 105 % depuis
+      if (L.level.simVersion < MEDAILLES_ASSOUPLIES_VERSION) expect(m.author).toBe(L.authorTicks);
       else expect(m.author).toBe(Math.ceil((L.authorTicks * 105) / 100));
       expect(m.author).toBeLessThan(m.gold);
       expect(m.gold).toBeLessThan(m.silver);
       expect(m.silver).toBeLessThan(m.bronze);
-      const P = L.day < BASCULE_JUMP_G1 ? MEDAL_PERCENT : MEDAL_PERCENT_G1;
+      const P = L.level.simVersion < MEDAILLES_ASSOUPLIES_VERSION ? MEDAL_PERCENT : MEDAL_PERCENT_G1;
       expect(m.gold).toBeLessThanOrEqual(Math.ceil((L.authorTicks * P.gold) / 100));
       expect(m.silver).toBeGreaterThanOrEqual(Math.min(Math.ceil((L.authorTicks * P.silver) / 100), m.bronze));
       expect(m.bronze).toBeGreaterThanOrEqual(Math.ceil((L.authorTicks * P.bronze) / 100));
     }
   });
 
-  it("la médaille d'un temps : auteur, or, argent, bronze ou rien", () => {
-    const m = jumpMedalsFor(3600);
+  it("la médaille d'un temps : auteur, or, argent, bronze ou rien (seuils des versions d'avant la 12)", () => {
+    const v = MEDAILLES_ASSOUPLIES_VERSION - 1;
+    const m = jumpMedalsFor(3600, v);
     expect(m).toEqual({ author: 3600, gold: 3960, silver: 4680, bronze: 5760 });
     expect(jumpMedalFor(3500, m)).toBe("author");
     expect(jumpMedalFor(3600, m)).toBe("author");
@@ -511,20 +513,15 @@ describe("médailles", () => {
     expect(jumpMedalFor(4680, m)).toBe("silver");
     expect(jumpMedalFor(5760, m)).toBe("bronze");
     expect(jumpMedalFor(5761, m)).toBeNull();
-    expect(jumpMedalsFor(3001)).toEqual({ author: 3001, gold: 3302, silver: 3902, bronze: 4802 });
+    expect(jumpMedalsFor(3001, v)).toEqual({ author: 3001, gold: 3302, silver: 3902, bronze: 4802 });
   });
 
-  it("lot G1 : à partir de la bascule du 30/10/2026 le Diamant est à 105 % du temps de l'auteur (115, 137 et 170 % pour l'or, l'argent et le bronze) ; avant, rien ne change", () => {
-    expect(formatDay(BASCULE_JUMP_G1)).toBe("2026-10-30");
+  it("lot G1 : depuis la version 12, le Diamant est à 105 % du temps de l'auteur (115, 137 et 170 % pour l'or, l'argent et le bronze) ; aucune date", () => {
+    expect(MEDAILLES_ASSOUPLIES_VERSION).toBe(12);
     expect(MEDAL_PERCENT_G1).toEqual({ author: 105, gold: 115, silver: 137, bronze: 170 });
-    expect(jumpMedalsFor(3600, BASCULE_JUMP_G1)).toEqual({ author: 3780, gold: 4140, silver: 4932, bronze: 6120 });
-    expect(jumpMedalsFor(3600, BASCULE_JUMP_G1 + 200)).toEqual(jumpMedalsFor(3600, BASCULE_JUMP_G1));
-    expect(jumpMedalsFor(3600, BASCULE_JUMP_G1 - 1)).toEqual({ author: 3600, gold: 3960, silver: 4680, bronze: 5760 });
-    expect(jumpMedalsFor(3600, 0)).toEqual(jumpMedalsFor(3600, BASCULE_JUMP_G1 - 1));
-    // les références des versions d'avant (dailyLevel(jour, thème, version)) gardent leurs seuils, même après la bascule
-    expect(jumpMedalsFor(3600, BASCULE_JUMP_G1 + 5, RESTART_VERSION - 1)).toEqual({ author: 3600, gold: 3960, silver: 4680, bronze: 5760 });
-    // la médaille d'un temps : le Diamant s'obtient au seuil, qui est au-dessus du temps de l'auteur
-    const m = jumpMedalsFor(3600, BASCULE_JUMP_G1);
+    expect(jumpMedalsFor(3600)).toEqual({ author: 3780, gold: 4140, silver: 4932, bronze: 6120 });
+    expect(jumpMedalsFor(3600, MEDAILLES_ASSOUPLIES_VERSION)).toEqual(jumpMedalsFor(3600));
+    const m = jumpMedalsFor(3600);
     expect(jumpMedalFor(3780, m)).toBe("author");
     expect(jumpMedalFor(3781, m)).toBe("gold");
   });

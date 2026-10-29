@@ -869,7 +869,7 @@ export function generateCircuit(seed: number, theme: Theme, variant: number, id:
     const uncut = bestPilotRun(track, { cut: false, first });
     if (!uncut || uncut.finishMs < AUTHOR_MIN_MS || uncut.finishMs > AUTHOR_MAX_MS || uncut.maxSpeed < FAST_PEAK) continue;
     const pilot = withCut(track, uncut, AUTHOR_MIN_MS);
-    return { attempt, spec, figures: composed.figures, track, authorMs: pilot.finishMs, authorReplay: pilot.replay, medals: medalsFor(pilot.finishMs, seed) };
+    return { attempt, spec, figures: composed.figures, track, authorMs: pilot.finishMs, authorReplay: pilot.replay, medals: medalsFor(pilot.finishMs, seed, generator) };
   }
   return null;
 }
@@ -918,7 +918,7 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
     track: t,
     authorMs,
     authorReplay: pilot ? pilot.replay : { simVersion: SIM_VERSION, trackId: t.id, runs: [] },
-    medals: medalsFor(authorMs, day),
+    medals: medalsFor(authorMs, day, generator),
     palette: theme.palette,
     theme: theme.name,
     forcedTheme,

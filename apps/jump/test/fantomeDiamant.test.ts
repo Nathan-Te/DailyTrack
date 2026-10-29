@@ -229,3 +229,34 @@ describe("le client HTTP : l'identifiant dans l'en-tête, jamais dans l'adresse"
     expect(r).toMatchObject({ ok: false, status: 403, code: "ghost_locked" });
   });
 });
+
+describe("lot G1 (retour de Nathan) : le Diamant calculé dans la page, débloqué par l'arrivée sur cet appareil", () => {
+  const L = dailyLevel(daysFromCivil(2026, 11, 3));
+  const local = () => ({ level: L.level, replay: L.replay, ticks: L.medals.author });
+  it("sans arrivée, verrouillé sans requête ; dès l'arrivée locale, prêt sans serveur ni pseudo, et il finit au temps du Diamant", async () => {
+    let fini = false;
+    const src = source(() => locked());
+    const r = new DiamondReader({ source: src, date: L.date, levelId: L.id, free: false, playerId: () => null, local, finished: () => fini });
+    expect(r.status).toBe("locked");
+    expect(await r.load()).toBe("locked");
+    fini = true;
+    expect(await r.load()).toBe("ready");
+    expect(src.calls).toHaveLength(0); // aucune lecture : la page a tout
+    expect(r.diamond!.ticks).toBe(L.medals.author);
+    expect(L.medals.author).toBeGreaterThan(L.authorTicks); // le Diamant (105 %) au-dessus de la preuve : le fantôme est étiré jusqu'à lui
+    expect(r.diamond!.traj.x.length).toBe(Math.ceil(L.medals.author / r.diamond!.traj.pas) + 1);
+  });
+
+  it("même sans serveur (démonstration, pas d'API) ; un jour passé est libre", async () => {
+    const r = new DiamondReader({ source: null, date: L.date, levelId: L.id, free: true, playerId: () => null, local });
+    expect(r.status).toBe("locked");
+    expect(await r.load()).toBe("ready");
+  });
+
+  it("sans la preuve dans la page (niveau figé publié), on lit le serveur comme avant", async () => {
+    const src = source(() => locked());
+    const r = new DiamondReader({ source: src, date: L.date, levelId: L.id, free: false, playerId: () => "id-secret", local: () => null, finished: () => true });
+    expect(await r.load()).toBe("locked");
+    expect(src.calls).toHaveLength(1);
+  });
+});

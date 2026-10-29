@@ -153,7 +153,7 @@ describe("mémoire du jour", () => {
     // Ce que la version 2 a réellement écrit : la solution de l'essai codée avec `JUMP_SIM_VERSION` = 2, une vie, une mort.
     const V2_SOLUTION = "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw";
     // Lot 15 : le code est en v4, le niveau d'essai reste en v3 (sa version est celle de la mémoire).
-    expect(JUMP_SIM_VERSION).toBe(11);
+    expect(JUMP_SIM_VERSION).toBe(12);
     expect(ESSAI_LEVEL.simVersion).toBe(3);
     expect(decodeReplay(V2_SOLUTION).simVersion).toBe(2);
     const store = new MemStore();
@@ -727,7 +727,7 @@ describe("lot 27 — le décompte « 3, 2, 1, Partez ! »", () => {
     expect(v10.countdown).toBe(readyTicks());
   });
 
-  it("les versions : JUMP_SIM_VERSION est celle des niveaux de la version 11", () => {
-    expect(JUMP_SIM_VERSION).toBe(RESTART_VERSION);
+  it("les versions : JUMP_SIM_VERSION est celle des niveaux de la version 12 (lot 28 ; la 11 : lot 27)", () => {
+    expect(JUMP_SIM_VERSION).toBe(RESTART_VERSION + 1);
   });
 });

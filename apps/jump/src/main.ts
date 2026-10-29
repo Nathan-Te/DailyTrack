@@ -925,7 +925,16 @@ let firstRemote = null as FirstGhost | null;
 let firstMiss = firstDate && rankSource ? "" : "aucun serveur";
 // Lot G1 : le fantôme Diamant du jour (ou de l'archive) : une trajectoire que le serveur rejoue et ne rend qu'à qui a fini le niveau (un jour passé est libre). Rien en démonstration,
 // sans serveur, ni pour un essai, un morceau, un scénario ou un jour à venir (`firstDate` est nul alors).
-diamond = new DiamondReader({ source: demoRank ? null : rankSource, date: firstDate, levelId, free: choice?.mode === "archive", playerId: ownId });
+diamond = new DiamondReader({
+  source: demoRank ? null : rankSource,
+  date: firstDate,
+  levelId,
+  free: choice?.mode === "archive",
+  playerId: ownId,
+  // La page a la preuve (niveau qu'elle a généré) : le Diamant se calcule ici, débloqué par l'arrivée sur cet appareil ; sinon (niveau figé publié), le serveur.
+  local: () => (daily?.replay ? { level: daily.level, replay: daily.replay, ticks: daily.medals.author } : null),
+  finished: () => memory.best !== null,
+});
 /** Le Diamant existe ici mais le niveau du jour n'est pas fini : « Finis le niveau pour le débloquer » (accueil, pause). */
 function diamondLocked(): boolean {
   return diamond?.status === "locked" && choice?.mode === "jour";
@@ -1227,6 +1236,8 @@ function drainEssais(): RecordedEssai | null {
       refreshFirstGhost();
       // Lot P1 : un meilleur essai du niveau du jour part au classement (en arrière-plan ; la file garde le meilleur s'il n'y a pas de réseau).
       if (!e.tuned) offerBest();
+      // Lot G1 : la première arrivée du jour débloque le Diamant calculé dans la page (sans attendre le classement).
+      if (!e.tuned && !isTrial) void loadDiamond();
     }
   }
   // Le meilleur temps affiché est celui que le rejeu a recalculé.
@@ -1672,6 +1683,10 @@ function showFinish(): void {
     pendingMedal = null;
   }
   arrival.show(arrivalView());
+  if (diamantAAnnoncer) {
+    arrival.setDebloque(true);
+    diamantAAnnoncer = false;
+  }
   syncMessage();
   // Lot P1 : le classement (jour : rang et top 10 après l'envoi ; archive : le classement figé de ce jour, rien n'est envoyé).
   refreshRank();
@@ -2896,6 +2911,8 @@ function syncDiamondLabel(): void {
  * Lit le Diamant (une lecture à la fois, gardée dès qu'elle a réussi). **Le jour même, la première lecture réussie est le déblocage** : si l'écran d'arrivée est ouvert, il dit « Fantôme
  * Diamant débloqué » ; un jour passé est libre (rien à annoncer). Ne bloque jamais, ne dit jamais d'erreur.
  */
+/** Lot G1 : le Diamant vient d'être débloqué alors que l'arrivée n'était pas encore ouverte (carnage) : elle le dira en s'ouvrant. */
+let diamantAAnnoncer = false;
 async function loadDiamond(): Promise<void> {
   if (!diamond || diamond.status === "off") return;
   const before = diamond.status;
@@ -2903,7 +2920,11 @@ async function loadDiamond(): Promise<void> {
   if (after !== "ready" || before === "ready") return;
   syncDiamondLabel();
   syncGhostViews();
-  if (choice?.mode === "jour" && arrival.shown) arrival.setDebloque(true);
+  // La ligne « Fantôme Diamant débloqué » : tout de suite si l'arrivée est ouverte, sinon à son ouverture (après le carnage).
+  if (choice?.mode === "jour") {
+    if (arrival.shown) arrival.setDebloque(true);
+    else diamantAAnnoncer = true;
+  }
 }
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyG" && !e.repeat && !menuOpen && !homeOpen()) cycleGhost();

@@ -44,10 +44,9 @@ export interface UnitCost {
  * arrivées dont 2 envois, 1 pseudo, 50 morts dont 30 envoyées en 3 lots, le carnage de tout le monde regardé 2 fois, 30 jours d'historique.
  * Calcul : envois ≈ 50 ms, lecture regroupée ≈ 30 ms, lot de vies ≈ 60 ms. Facturé au plus : 12 requêtes × 100 ms (lot P4 : 1,9 s avec les 7
  * pré-vols, retirés au lot R5). **Lot I3** : une requête de plus, « Jeu suivant du jour » (`GET /api/portail/jour` après l'envoi accepté : 8 instructions,
- * ≈ 172 lignes lues avec 30 jours d'historique, 0 écrite) : 13 requêtes, 1 292 lignes lues. **Lot G1** : le fantôme Diamant — une requête de plus par joueur et par jour
- * (`GET /api/jump/fantome-diamant`, lue après l'envoi accepté : une ligne de `jump_results` par clé, 0 écrite ; la trajectoire est en mémoire de l'instance) : 14 requêtes, 1 293 lignes lues.
+ * ≈ 172 lignes lues avec 30 jours d'historique, 0 écrite) : 13 requêtes, 1 292 lignes lues.
  */
-export const JUMP_PLAYER: UnitCost = { requests: 14, read: 1293, written: 32, cpuS: 0.47, billedS: 1.3 };
+export const JUMP_PLAYER: UnitCost = { requests: 13, read: 1292, written: 32, cpuS: 0.47, billedS: 1.3 };
 /**
  * **DailyJump**, ce qui ne dépend pas d'un joueur, par jour (lot P3) : la carte recalculée au plus toutes les 3 min (480 fois au pire, une ligne lue
  * par joueur du jour), l'oubli de fin de jour (3 lignes lues et 1 écrite par joueur).

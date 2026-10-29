@@ -1,4 +1,4 @@
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, TrajectoireError, decoderTrajectoire, trajectoireDuree, type Trajectoire } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, TrajectoireError, decoderTrajectoire, echantillonnerTrajectoire, encoderTrajectoire, trajectoireDuree, type JumpReplay, type Level, type Trajectoire } from "@cdj/jump-sim";
 import type { ApiResult } from "@cdj/profile";
 import type { RankSource } from "./rankApi";
 
@@ -10,6 +10,8 @@ import type { RankSource } from "./rankApi";
 //   - **Déblocage** : un jour passé (archive) est libre ; le jour même, le serveur refuse (403 `ghost_locked`) tant que le joueur n'a pas un résultat classé
 //     — le jeu n'essaie donc qu'avec une identité, et retente après chaque envoi accepté. Un refus ou une panne n'est jamais une erreur affichée : « verrouillé »
 //     ou « indisponible », et le jeu continue.
+//   - **Calculé dans la page quand elle a la preuve** (le niveau du jour qu'elle a généré elle-même : rien de plus que ce qu'un visiteur calcule déjà) : débloqué
+//     dès l'arrivée **locale** du jour (pas besoin d'un résultat classé, ni d'un pseudo) ; sinon (niveau figé publié sans preuve, archive), la lecture du serveur.
 //   - **Jamais pour** une démonstration, un essai de thème forcé, un morceau, un scénario ou un jour à venir (même règle que le fantôme du premier : `date` nulle).
 
 /** La couleur du fantôme Diamant : un vert menthe vif (teinte ≈ 114°). Le tien est cyan clair (196°), le premier mauve (292°), le personnage jaune, les dangers rouges : celui-ci en est à ≥ 60° et se lit sur tous les ciels (`test/fantomes.test.ts`). La pastille du Diamant dans l'interface reste `--dj-diamant` (la médaille). */
@@ -66,6 +68,20 @@ export interface DiamondOptions {
   free: boolean;
   /** L'identifiant secret de la plateforme s'il existe (jamais créé ici). */
   playerId(): string | null;
+  /** Lot G1 : le niveau, la preuve de l'auteur et le temps du Diamant quand la page les a (niveau généré par elle) ; `null` : seul le serveur peut le rendre. */
+  local?(): { level: Level; replay: JumpReplay; ticks: number } | null;
+  /** Lot G1 : le niveau du jour est fini sur cet appareil (une arrivée enregistrée) : débloque le Diamant calculé dans la page. */
+  finished?(): boolean;
+}
+
+/** Le Diamant calculé dans la page : la trajectoire de la preuve, étirée jusqu'au temps du Diamant (comme le serveur), ou `null` si elle ne se lit pas. */
+export function diamondLocal(level: Level, replay: JumpReplay, ticks: number): Diamond | null {
+  try {
+    const traj = decoderTrajectoire(encoderTrajectoire(echantillonnerTrajectoire(level, replay, ticks)));
+    return Math.abs(trajectoireDuree(traj) - ticks) > traj.pas ? null : { traj, ticks };
+  } catch {
+    return null;
+  }
 }
 
 /** Le chargement du Diamant d'un niveau : une lecture à la fois, gardée en mémoire dès qu'elle a réussi ; un refus ou une panne se retente à l'appel suivant. */
@@ -77,7 +93,7 @@ export class DiamondReader {
   private pending: Promise<DiamondStatus> | null = null;
 
   constructor(private readonly o: DiamondOptions) {
-    const usable = o.date !== null && !!o.source?.diamond;
+    const usable = o.date !== null && (!!o.source?.diamond || !!o.local?.());
     this.status = usable ? "locked" : "off";
     this.miss = usable ? "" : "aucun serveur";
   }
@@ -102,6 +118,24 @@ export class DiamondReader {
 
   private async read(): Promise<DiamondStatus> {
     const { source, date, levelId, free } = this.o;
+    // Lot G1 : la page a la preuve (niveau généré par elle) : le Diamant se calcule ici, débloqué par l'arrivée locale (ou libre pour un jour passé).
+    const loc = this.o.local?.() ?? null;
+    if (loc) {
+      if (!free && !this.o.finished?.()) {
+        this.miss = "pas fini";
+        return (this.status = "locked");
+      }
+      const d = diamondLocal(loc.level, loc.replay, loc.ticks);
+      if (d) {
+        this.diamond = d;
+        this.miss = "";
+        return (this.status = "ready");
+      }
+    }
+    if (!source?.diamond) {
+      this.miss = "aucun serveur";
+      return (this.status = "missing");
+    }
     const id = this.o.playerId();
     // Le jour même, sans identité, le serveur ne peut que refuser : aucune requête.
     if (!free && id === null) {

@@ -13,6 +13,8 @@ export interface BestRun {
   medal?: Medal | null;
   /** Lot 51 : la voiture avec laquelle ce temps a été fait (modèle, couleur, motif, teinte du motif) — une donnée à part, jamais dans la rediffusion. Absente d'un record d'avant : la Sparrow en orange. */
   voiture?: ChoixVoiture;
+  /** Lot G1 : la vitesse de lecture du fantôme (1 par défaut) ; le fantôme Diamant est la course du pilote rejouée plus vite, pour arriver au temps du Diamant. Jamais enregistrée. */
+  vitesse?: number;
 }
 
 /** Meilleur temps local d'un jour, pour la liste des archives. */

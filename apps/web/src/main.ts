@@ -1402,7 +1402,11 @@ const diamantExiste = () => !!daily?.diamant && !salon && !watch && !customTrack
 const diamantDebloque = () => diamantExiste() && diamantOuvert(daily!.day, todayParis, !!best?.replay);
 function diamantSource(): BestRun | null {
   const d = daily?.diamant;
-  return d && diamantDebloque() ? { ms: d.ms, splits: d.splits, replay: encodeReplay(d.replay), simVersion: SIM_VERSION } : null;
+  if (!d || !daily || !diamantDebloque()) return null;
+  // La course du pilote, rejouée plus vite pour arriver au temps du Diamant (le seuil de la médaille) : la suivre jusqu'au bout, c'est le Diamant.
+  const cible = daily.medals.author;
+  const k = cible / d.ms;
+  return { ms: cible, splits: d.splits.map((s) => Math.round(s * k)), replay: encodeReplay(d.replay), simVersion: SIM_VERSION, vitesse: d.ms / cible };
 }
 
 /** `G` et le bouton fantôme : fantôme suivant (son record → le premier → le joueur devant → Diamant → aucun), en sautant ceux qui n'existent pas ou qui sont verrouillés. */

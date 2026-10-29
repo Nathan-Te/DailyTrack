@@ -435,7 +435,7 @@ describe("démonstration (?api=demo)", () => {
     expect(await src.submit("p", "Moi", e, versions)).toMatchObject({ ok: false, status: 0 });
     // Les médailles sont celles de `jumpMedalsFor(auteur)`, ajustées par les voies lentes du niveau (lot 16 : l'or ne dépasse jamais la voie rapide, le bronze couvre toutes les voies lentes) :
     // l'auteur et l'argent sont ceux de la formule, l'or ne la dépasse pas, le bronze n'est pas en dessous.
-    const plain = jumpMedalsFor(today.medals.author);
+    const plain = jumpMedalsFor(today.medals.author, 11); // les jours de démonstration sont d'une version d'avant le lot G1 (Diamant = temps de l'auteur)
     expect(today.medals.author).toBe(plain.author);
     expect(today.medals.silver).toBe(plain.silver);
     expect(today.medals.gold).toBeLessThanOrEqual(plain.gold);

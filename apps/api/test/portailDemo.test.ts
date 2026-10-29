@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
 import { decodeTransfer } from "@cdj/profile";
-import { BASCULE_LOT_35, dailyCircuit, medalFor, medalsFor, runPilot } from "@cdj/sim";
+import { BASCULE_LOT_35, GENERATOR_MEDAILLES_G1, dailyCircuit, generatorVersionOf, medalFor, medalsFor, runPilot } from "@cdj/sim";
 import { DEMO_GARAGE, DEMO_JOUEUR_CODE, DEMO_JOUEUR_ID, DEMO_MORTS, planGarage, seedPortailDemo } from "../src/portailDemo";
 import { makeApi, parisDayStart, TEST_DB } from "./helpers";
 
@@ -42,7 +42,7 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
     expect(r.body.jeux[1].etat).toEqual({ statut: "en_cours", morts: DEMO_MORTS });
   }, 120_000);
 
-  it("à partir de la bascule des médailles (28/10/2026, lot 35), le joueur est jugé avec les seuils du jour : le pilote n'atteint plus de médaille, il envoie sa course la plus rapide", async () => {
+  it("à partir de la bascule des médailles (28/10/2026, lot 35), le joueur est jugé avec les seuils du jour : le pilote n'atteint plus de médaille avec ceux du lot 35, une médaille sous l'or avec ceux du lot G1 ; il envoie sa course la plus rapide", async () => {
     const t = await makeApi({ seed: false });
     const today = BASCULE_LOT_35 + 2; // 30/10/2026 : les cinq jours courent du 26/10, avant puis après la bascule
     const report = await seedPortailDemo({ db: t.db, frozen, today });
@@ -53,7 +53,12 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
       // La médaille du rapport est celle des seuils du jour (celle que le serveur rejoue), jamais celle des seuils d'avant la bascule.
       expect(j.medal, j.date).toBe(medalFor(j.ms, medalsFor(circuit.authorMs, day)));
       if (day < BASCULE_LOT_35) expect(j.medal, `${j.date} : avant la bascule, une médaille`).not.toBeNull();
-      else {
+      else if (generatorVersionOf(day) >= GENERATOR_MEDAILLES_G1) {
+        // Lot G1 : un jour que le registre ne nomme pas prend la dernière version du générateur, donc les seuils assouplis : le pilote le plus rapide y prend une médaille,
+        // jamais l'or ni le Diamant (le Garage de « Démo » ne change pas : voir plus bas).
+        expect(j.medal, j.date).not.toBeNull();
+        expect(["gold", "author"], j.date).not.toContain(j.medal);
+      } else {
         // Les seuils du jour sont sous le temps du pilote : aucune médaille, et la course choisie est la plus rapide du pilote (et non la première qui était « en or » avec les anciens seuils).
         expect(medalsFor(circuit.authorMs, day).gold, j.date).toBeLessThan(runPilot(circuit.track, { grip: 1.5, look: 0.45 }).finishMs);
         expect(j.ms, `${j.date} : la course la plus rapide, pas celle de l'ancien réglage`).toBeLessThan(runPilot(circuit.track, { grip: 0.98 }).finishMs);
@@ -63,7 +68,7 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
     t.clock.now = parisDayStart(today) + 15 * 3_600_000;
     const r = await t.call("GET", "/api/portail/jour", undefined, { headers: { "X-Player-Id": DEMO_JOUEUR_ID } });
     expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body.jeux[0].etat).toMatchObject({ statut: "fini", medaille: null });
+    expect(r.body.jeux[0].etat).toMatchObject({ statut: "fini", medaille: report.track.at(-1)!.medal });
     expect(r.body.joueur).toMatchObject({ pseudo: "Démo", serie: 5 });
   }, 180_000);
 

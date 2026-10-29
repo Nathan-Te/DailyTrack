@@ -6,17 +6,18 @@ Branche `ccr-1979a954-nmkwuq`, PR brouillon. Charte `docs/plateforme/identite.md
 | | Track | Jump |
 |---|---|---|
 | **Source** | la course du **pilote automatique** (`runPilot`), temps de l'auteur du circuit | la rediffusion de **l'auteur** du niveau (la preuve du fichier figé) |
-| **Calculable par n'importe quel visiteur ?** | **Oui** : le circuit et le pilote se calculent dans le navigateur (fil de travail, `computeDaily`) ; Track n'a jamais servi la rediffusion de l'auteur | **Non** : la preuve ne quitte pas le serveur (lot R9) |
-| **Forme choisie** | la **rediffusion**, calculée dans la page (`CircuitData.diamant`, rejouée par `replayRace` comme tout fantôme) ; **aucune route** | une **trajectoire** : positions échantillonnées, **jamais** des entrées ; `GET /api/jump/fantome-diamant?date=` |
+| **Calculable par n'importe quel visiteur ?** | **Oui** : le circuit et le pilote se calculent dans le navigateur (fil de travail, `computeDaily`) ; Track n'a jamais servi la rediffusion de l'auteur | **Le niveau du jour généré par la page : oui** (sa preuve est dans le navigateur) ; **un niveau figé publié : non** (la preuve ne quitte pas le serveur, lot R9) |
+| **Forme choisie** | la **rediffusion** du pilote, calculée dans la page, **rejouée plus vite** pour arriver au temps du Diamant (`vitesse` ≈ 1,09) ; **aucune route** | une **trajectoire** (positions, **jamais** des entrées) **étirée** jusqu'au temps du Diamant ; calculée dans la page quand elle a la preuve, sinon `GET /api/jump/fantome-diamant?date=` |
 | **Poids** | rien à transférer ; encodage de la rediffusion seulement quand on choisit le Diamant | 30 points/s, 1/64 de tuile, différences en varint signé + base64url : **≈ 2,4 ko pour 30 s** (< 8 000 car. testé) |
 
-Pourquoi pas une route pour Track : exposer la course du pilote par le serveur n'apprendrait rien que la page ne sache déjà calculer, et ajouterait une requête par joueur. Le fantôme de Track est le pilote (1,00) ; le Diamant de Jump est le seuil de la médaille (trajectoire étirée, § 10).
+Pourquoi pas une route pour Track : exposer la course du pilote par le serveur n'apprendrait rien que la page ne sache déjà calculer. **Dans les deux jeux, le fantôme Diamant finit au seuil de la médaille Diamant** (retour de Nathan : « en finissant en même temps que lui, aucune médaille ») : le suivre jusqu'au bout, c'est le Diamant. Affichage seul : la course du joueur n'en voit rien.
 
 ## 2. Déblocage et serveur (Jump)
-- Le **jour même** : il faut un joueur actif avec un **résultat classé** ce jour-là, sinon **`403 ghost_locked`** (liste unique `codesErreur.ts`, `codes-erreur.md`, catalogue commun : « Finis le niveau pour débloquer le fantôme Diamant. » / “Finish the level to unlock the Diamond ghost.”). Un **jour passé** est libre.
+- **Dans la page (Jump et Track)** : débloqué **dès l'arrivée sur cet appareil** (un meilleur temps du jour), sans pseudo ni classement (retour de Nathan : le Diamant de Jump restait verrouillé après une arrivée non envoyée). Un jour passé est libre.
+- **Par le serveur (Jump, niveau figé sans preuve)** : le **jour même**, un joueur actif avec un **résultat classé** ce jour-là, sinon **`403 ghost_locked`** (liste unique `codesErreur.ts`, `codes-erreur.md`, catalogue commun : « Finis le niveau pour débloquer le fantôme Diamant. » / “Finish the level to unlock the Diamond ghost.”). Un **jour passé** est libre.
 - **Cache** : trajectoire calculée une fois par instance, jour et règle (version de simulation et de générateur), jamais écrite ; réponse `Cache-Control: private` + `Vary: X-Player-Id` le jour même. Lectures plafonnées par adresse et par joueur.
 - **Track** : même règle côté jeu (`diamantOuvert` : jour passé libre, jour même après un meilleur temps local) ; elle n'a pas de contrepartie serveur (rien n'est servi).
-- Coût : **+1 requête par joueur Jump et par jour** (`JUMP_PLAYER` 14 requêtes, 1 293 lignes lues ; `platformBudget.test.ts` passe de 13 à 14 — le cas du lot I3, le comptage est celui du nouvel appel). Track : 0.
+- Coût : **aucune requête de plus dans le cas courant** (le Diamant de Jump se calcule dans la page quand elle a généré le niveau du jour) ; la route ne sert qu'un niveau figé publié sans preuve (archive, ou le jour même après une mise en production ce jour-là). `JUMP_PLAYER` reste à 13. Track : 0.
 
 ## 3. Dans les jeux
 - **Choix « Diamant »** : pastille et teinte `--dj-diamant` (`#4FC3DC`). Teinte du fantôme : **Track** menthe `0x3de8c8` (la voiture fantôme, translucide, nette) ; **Jump** vert `0x8dff80` (le bleu Diamant à 190° était trop proche du cyan du fantôme de ton essai, 196°). Aucun dégradé.
@@ -34,34 +35,34 @@ Icône `fantome` au trait dans le socle (`iconeFantome`, `boutonFantome`), 44 px
 ## 5. Budgets (`docs/plateforme/budgets.md`, « Lot G1 »)
 | | avant (`main`, lot 53 compris) | après (fusion) | plafond |
 |---|---|---|---|
-| Track JS + CSS | 293 581 | 294 480 | 294 000 → **295 024** (+1 024, sur les 2 048 autorisés) |
-| Track JS / hors three.js | 281 823 / 148 166 | 282 610 / 148 953 | 282 200 → **283 224** / 148 500 → **149 524** |
-| Track anglais · fil des circuits | 7 935 · 29 422 | 7 996 · 29 810 | 8 000 · 30 000 (inchangés) |
-| Jump JS + CSS | non remesuré (364 021 avant le lot 53) | 372 676 | 378 490 (inchangé, marge 5 814) |
+| Track JS + CSS | 293 581 | 294 553 | 294 000 → **295 024** (+1 024, sur les 2 048 autorisés) |
+| Track JS / hors three.js | 281 823 / 148 166 | 282 683 / 149 026 | 282 200 → **283 224** / 148 500 → **149 524** |
+| Track anglais · fil des circuits | 7 935 · 29 422 | 7 993 · 29 833 | 8 000 · 30 000 (inchangés) |
+| Jump JS + CSS | 371 110 (lot 28 compris) | 374 103 | 378 490 (inchangé, marge 4 387) |
 | Portail, premier chargement | 32 210 | 32 281 | 32 768 (inchangé, marge 487) |
 
 Les textes `fantome.*`, l'icône et le bouton sont **hors** du portail (icône à part de `TRACES`, bouton dans `fantome.ts`, textes dans les catalogues des jeux) : dans le socle commun, le portail dépassait son plafond (30 799). Track n'a pas eu besoin des 2 048 o entiers.
 
 ## 6. Vérifié / non vérifié
 **Vérifié** : tests unitaires de la trajectoire (échantillonnage, aller-retour, interpolation, refus des entrées mal formées) ; tests d'API sur SQLite et libSQL (refusé avant d'avoir fini, accepté après, libre un jour passé, ni entrées ni preuve ni `replay`, cache privé, dates et méthode, `codesErreur`) ; `productionSite.test.ts` (R9) ; cycle et déblocage (Track et Jump) ; `smoke` contre un serveur local (ligne Diamant) ; e2e étendus (**aucun spec nouveau**) : `plein-ecran`, `hud-compact`, `mobile` (Track) ; `plein-ecran`, `hud-compact`, `carnage`, `profil-commun` (Jump) — bouton visible, 44 px, sans chevauchement, hors zone centrale à 844 × 390 et 740 × 360, chaque appui passe au fantôme suivant, FR et EN ; captures paysage FR et EN (outils `captures-lot-g1`, `CAPTURES=1`).
-**Non vérifié** : le Diamant de Jump contre le **vrai** Turso (pas de `sqld` ici) ; le rendu sur un téléphone réel ; le coût réel des lectures du Diamant en production (modèle : +1 requête). `npm run verifier` après fusion de `main` (lot 53 compris) : typecheck, unitaires (SQLite 164 fichiers, libSQL 39), e2e Track (26 specs) et e2e Jump (16 specs) **tous verts**. Avant la fusion, `horloge.spec.ts` « mort avant le premier point de passage » (Jump) échouait déjà sur `main` ; le lot 53 l'a corrigé.
+**Non vérifié** : le Diamant de Jump contre le **vrai** Turso (pas de `sqld` ici) ; le rendu sur un téléphone réel ; la répartition réelle des nouvelles médailles (aucun export de joueurs). **Reproduit puis corrigé** (29/10) : le Diamant de Jump restait verrouillé après une arrivée non classée (essai local refusé en 409 par le serveur de recette local) — il se débloque maintenant à l'arrivée ; la médaille de Track ratée en finissant avec le fantôme (le 29/10 avait les seuils du lot 35, fantôme = pilote) — le fantôme finit maintenant au seuil. `npm run verifier` (après fusion de `main`, lots 53 et 28 compris) : typecheck, unitaires (SQLite 228 fichiers, libSQL 40), e2e Track (31 specs) verts ; e2e Jump : deux attentes changées par le nouveau comportement (`hud-compact` : la ligne « Finis le niveau » existe sans serveur ; `profil-commun` : plus de lecture du Diamant), relancées vertes.
 
 ## 7. Décisions laissées à Nathan
-1. Le fantôme Diamant de Track est la course du pilote, pas le seuil de la médaille (0,84 × pilote depuis le 28/10).
+1. Le fantôme Diamant de Track est le pilote **accéléré** (≈ 1,09 ×) pour finir au seuil ; il roule donc un peu plus vite que ne le permet la physique (même trajectoire). Sinon : le retirer de Track.
 2. Teintes : menthe (Track) et vert (Jump), faute de pouvoir garder le bleu Diamant sans le confondre avec le fantôme de ton essai.
-3. `JUMP_PLAYER` à 14 requêtes (plafond du test relevé de 13 à 14).
+3. Le Diamant de Jump calculé dans la page : rien de plus que ce qu'un visiteur calcule déjà (la preuve du niveau généré est dans le navigateur) ; la route n'est plus qu'un repli.
 4. Modification de `docs/plateforme/identite.md` (révision 12 et § 9, ligne fournie par la demande) ; à relire. Le fichier joint à la demande portait d'autres numéros de révision (10 et 11 : nouveautés et administration) que celui du dépôt : seule la ligne 12 et la phrase du § 9 ont été reprises.
 5. **« Revoir » le Diamant (Track) non fait** : le classement du jour de Track n'a pas de ligne « Diamant » à laquelle l'attacher. Un `?watch=diamant` (le lecteur existant, la course du pilote) coûterait ≈ 1 ko du premier chargement (reste 1 024 o sur les 2 048 autorisés) ; à décider.
 
-## 10. Médailles assouplies (demande de Nathan, 28/10 : « le Diamant est imprenable »)
-- **Track** : le Diamant passe de 0,84 à **0,92 × le temps du pilote** (choix de Nathan) ; or, argent et bronze gardent leurs écarts (×1,045, ×1,07, ×1,13 du Diamant) et montent d'autant : or 0,961, argent 0,984, bronze 1,040. À partir du **30/10/2026** (`BASCULE_LOT_G1`) ; les jours d'avant gardent leurs seuils. **À savoir** : la médiane des meilleurs temps du 22/10 était à 0,90 : à 0,92 le Diamant devient courant (cible du lot 35 : 5–10 %), et débloque plus vite les voitures du Garage ; un facteur à ajuster si besoin (`MEDAL_FACTORS_G1`).
-- **Jump** : le Diamant n'est plus le temps exact de l'auteur (la preuve, imbattable) mais **105 %** de ce temps ; or 115 %, argent 137 %, bronze 170 % (avant : 100, 110, 130, 160). Valeurs choisies sans données de joueurs Jump : à ajuster (`MEDAL_PERCENT_G1`). Même bascule (30/10, `BASCULE_JUMP_G1`) ; les références des versions d'avant (golden v3 à v10) et les niveaux figés gardent leurs seuils ; le golden v11 change **les médailles seulement** (4 dates sur 6 : niveau, preuve et empreinte identiques).
-- **Le fantôme Diamant de Jump finit au seuil** : le serveur étire la trajectoire de l'auteur jusqu'à ce temps (affichage seulement) ; suivre le fantôme jusqu'au bout mérite le Diamant. Aucune entrée n'est servie, toujours.
-- **Bascule** : le 30/10 suppose une mise en production au plus tard le 29/10 ; sinon la déplacer (les deux constantes) — le garde-fou de « Mettre en production » arrête un jour déjà joué dont les médailles changeraient.
-- Ces changements sont dans le même lot par décision de Nathan (« Hors périmètre » de la demande d'origine).
+## 10. Médailles assouplies, sans date (demandes de Nathan des 28 et 29/10)
+- **Track** : le Diamant passe de 0,84 à **0,92 × le temps du pilote** ; or, argent et bronze gardent leurs écarts (×1,045, ×1,07, ×1,13 du Diamant) : or 0,961, argent 0,984, bronze 1,040 (rouler comme le pilote rapporte le bronze). **Liées à la version du générateur, v19** (`GENERATOR_MEDAILLES_G1` ; mêmes circuits que la v18, seuls l'identifiant `-g19` et les médailles changent : golden comparé, ids seulement).
+- **Jump** : le Diamant à **105 %** du temps de l'auteur (la preuve, que personne ne bat), or 115 %, argent 137 %, bronze 170 % (avant : 100, 110, 130, 160). **Liées à la version des niveaux, v12** (`MEDAILLES_ASSOUPLIES_VERSION`, celle du lot 28, pas encore servie) ; golden v12 : **les médailles seulement** changent (6 dates : niveau, preuve et empreinte identiques) ; v3 à v11 intacts.
+- **Aucune date dans le code** : à la mise en production, le registre des jours de Track et les niveaux figés de Jump gardent les médailles des jours servis ; **le lendemain** (jour de bascule) et les suivants prennent les nouvelles, tout seuls — comme les circuits et les niveaux. Recalibrer plus tard = de nouveaux facteurs pour une nouvelle version, jamais une date.
+- **À savoir** : la médiane des meilleurs temps de Track du 22/10 était à 0,90 du pilote : à 0,92 le Diamant devient courant (cible du lot 35 : 5–10 %) et débloque plus vite les voitures du Garage. Les pourcentages de Jump sont choisis sans données de joueurs. Deux constantes à ajuster (`MEDAL_FACTORS_G1`, `MEDAL_PERCENT_G1`).
+- Hors du périmètre d'origine, ajouté par décision de Nathan.
 
 ## 8. CI
-Run de la PR : voir le résumé de `npm run attendre-ci` dans la PR (premier run, `e064b8b` : seul l'échec de `horloge.spec.ts`, déjà sur `main`, corrigé depuis par le lot 53).
+Runs de la PR : voir le résumé de `npm run attendre-ci` dans la PR.
 
 ## 9. Tickets à ouvrir
 - **Fantôme du premier** : le servir comme une **trajectoire** (≈ 2,4 ko, sans entrées, cache privé par jour) au lieu de la rediffusion complète, sur le modèle du Diamant ; moins lourd et sans aucune entrée sur le réseau. Format à décider avec le lot du classement.
@@ -69,5 +70,7 @@ Run de la PR : voir le résumé de `npm run attendre-ci` dans la PR (premier run
 - Mémoriser le choix de fantôme de Track entre deux pages (aujourd'hui : la page).
 
 ## Pour les joueurs
-- [Track] Débloquez le fantôme Diamant en finissant le circuit. // Unlock the Diamond ghost by finishing the circuit.
-- [Jump] Débloquez le fantôme Diamant en finissant le niveau. // Unlock the Diamond ghost by finishing the level.
+- [Track] Débloquez le fantôme Diamant en finissant le circuit : il arrive au temps de la médaille Diamant. // Unlock the Diamond ghost by finishing the circuit: it finishes at the Diamond medal time.
+- [Jump] Débloquez le fantôme Diamant en finissant le niveau : il arrive au temps de la médaille Diamant. // Unlock the Diamond ghost by finishing the level: it finishes at the Diamond medal time.
+- [Track] Les médailles sont plus faciles à décrocher sur les nouveaux circuits. // Medals are easier to earn on new circuits.
+- [Jump] Les médailles sont plus faciles à décrocher sur les nouveaux niveaux. // Medals are easier to earn on new levels.

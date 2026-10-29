@@ -288,7 +288,7 @@ describe("l'accueil", () => {
     expect(homeStatus(rec("2026-10-20", 3769, { deaths: 47, medal: "gold" }))).toEqual({ played: true, finished: true, text: `Or · Meilleur : 31,408${NB}s · 47 morts` });
     expect(homeStatus(rec("2026-10-20", 9000, { deaths: 1, medal: null })).text).toBe("Meilleur : 1:15,000 · 1 mort"); // au-delà d'une minute : le format du socle (charte § 7)
     expect([etatDuJour(null), etatDuJour(rec("2026-10-20", null, { deaths: 1, attempts: 1 })), etatDuJour(rec("2026-10-20", 3769))]).toEqual(["pas_joue", "en_cours", "fini"]);
-    const m = jumpMedalsFor(3600);
+    const m = jumpMedalsFor(3600, 11); // seuils d'avant le lot G1 : le Diamant au temps de l'auteur
     expect(recordTile(null, m).valeur).toBe("Pas encore");
     expect(recordTile(null, m).sous).toMatch(/^Bronze à \d+,\d{3}\u00a0s$/);
     expect(recordTile(m.silver, m).sous).toMatch(/^Or à /);
@@ -348,7 +348,7 @@ describe("l'accueil", () => {
   });
 
   it("seuils des médailles, de l'auteur au bronze, et ceux qu'un temps tient", () => {
-    const m = jumpMedalsFor(3600);
+    const m = jumpMedalsFor(3600, 11); // seuils d'avant le lot G1 : le Diamant au temps de l'auteur
     const t = medalThresholds(m, m.silver);
     expect(t.map((x) => x.medal)).toEqual(["author", "gold", "silver", "bronze"]);
     expect(t.map((x) => x.reached)).toEqual([false, false, true, true]);
