@@ -9,7 +9,7 @@ la PR est une PR « plateforme » pour le job `zones`. Golden, rediffusions, cla
 | Étape | État |
 |---|---|
 | **A1 — maquettes des fantômes** (`lot-55/maquettes-fantomes.html`) | **validées par Nathan** (30/10/2026), ses cinq propositions acceptées |
-| **A2 à A5 — choix, course, serveur, chargement** | **faits** (voir ci-dessous) ; reste la CI verte de la PR |
+| **A2 à A5 — choix, course, serveur, chargement** | **faits** (voir ci-dessous) ; CI de la PR #198 au premier passage : tout vert (dont `e2e-pr` 1 à 4 et le spec `fantomes`) **sauf `unit (2/3)`** : `apps/api/test/jump.test.ts` « un seul calcul même si deux requêtes arrivent ensemble » a dépassé son délai de 5 s (run 41075203903, job 124129538621) — un test de Jump, hors de ce lot, sans rapport avec le diff ; relancé par cette poussée (règle d'arrêt : une relance, puis on le signale) |
 | **B1 — planche sonore** (`/track/vitrine/?planche=son`) | à faire (arrêt : Nathan écoute et choisit l'approche) |
 | B2 à B7 — boîte de vitesses, voix par voiture, le reste des sons, Salon, réglages, téléphone | après le choix de l'approche |
 
