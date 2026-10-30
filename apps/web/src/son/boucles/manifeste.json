@@ -1,0 +1,505 @@
+{
+  "sr": 22050,
+  "profils": {
+    "civile": [
+      {
+        "fichier": "civile-0.m4a",
+        "rpm": 900,
+        "debut": 0.533333,
+        "fin": 1.066667
+      },
+      {
+        "fichier": "civile-1.m4a",
+        "rpm": 1201.4,
+        "debut": 0.49941,
+        "fin": 0.998821
+      },
+      {
+        "fichier": "civile-2.m4a",
+        "rpm": 1604,
+        "debut": 0.448889,
+        "fin": 0.897778
+      },
+      {
+        "fichier": "civile-3.m4a",
+        "rpm": 2141.2,
+        "debut": 0.448345,
+        "fin": 0.896689
+      },
+      {
+        "fichier": "civile-4.m4a",
+        "rpm": 2858.3,
+        "debut": 0.461814,
+        "fin": 0.923628
+      },
+      {
+        "fichier": "civile-5.m4a",
+        "rpm": 3815.8,
+        "debut": 0.440272,
+        "fin": 0.880544
+      },
+      {
+        "fichier": "civile-6.m4a",
+        "rpm": 5093.6,
+        "debut": 0.447619,
+        "fin": 0.895238
+      },
+      {
+        "fichier": "civile-7.m4a",
+        "rpm": 6800,
+        "debut": 0.441179,
+        "fin": 0.882358
+      }
+    ],
+    "fourgon": [
+      {
+        "fichier": "fourgon-0.m4a",
+        "rpm": 780,
+        "debut": 0.461542,
+        "fin": 0.923084
+      },
+      {
+        "fichier": "fourgon-1.m4a",
+        "rpm": 1014.2,
+        "debut": 0.473288,
+        "fin": 0.946576
+      },
+      {
+        "fichier": "fourgon-2.m4a",
+        "rpm": 1318.6,
+        "debut": 0.455011,
+        "fin": 0.910023
+      },
+      {
+        "fichier": "fourgon-3.m4a",
+        "rpm": 1714.5,
+        "debut": 0.489932,
+        "fin": 0.979864
+      },
+      {
+        "fichier": "fourgon-4.m4a",
+        "rpm": 2229.1,
+        "debut": 0.48449,
+        "fin": 0.96898
+      },
+      {
+        "fichier": "fourgon-5.m4a",
+        "rpm": 2898.4,
+        "debut": 0.45542,
+        "fin": 0.910839
+      },
+      {
+        "fichier": "fourgon-6.m4a",
+        "rpm": 3768.5,
+        "debut": 0.445805,
+        "fin": 0.89161
+      },
+      {
+        "fichier": "fourgon-7.m4a",
+        "rpm": 4900,
+        "debut": 0.440816,
+        "fin": 0.881633
+      }
+    ],
+    "evolution": [
+      {
+        "fichier": "evolution-0.m4a",
+        "rpm": 850,
+        "debut": 0.564717,
+        "fin": 1.129433
+      },
+      {
+        "fichier": "evolution-1.m4a",
+        "rpm": 1162.4,
+        "debut": 0.51619,
+        "fin": 1.032381
+      },
+      {
+        "fichier": "evolution-2.m4a",
+        "rpm": 1589.5,
+        "debut": 0.452971,
+        "fin": 0.905941
+      },
+      {
+        "fichier": "evolution-3.m4a",
+        "rpm": 2173.5,
+        "debut": 0.441678,
+        "fin": 0.883356
+      },
+      {
+        "fichier": "evolution-4.m4a",
+        "rpm": 2972.1,
+        "debut": 0.444127,
+        "fin": 0.888254
+      },
+      {
+        "fichier": "evolution-5.m4a",
+        "rpm": 4064.1,
+        "debut": 0.442902,
+        "fin": 0.885805
+      },
+      {
+        "fichier": "evolution-6.m4a",
+        "rpm": 5557.7,
+        "debut": 0.453424,
+        "fin": 0.906848
+      },
+      {
+        "fichier": "evolution-7.m4a",
+        "rpm": 7600.3,
+        "debut": 0.442086,
+        "fin": 0.884172
+      }
+    ],
+    "rallye": [
+      {
+        "fichier": "rallye-0.m4a",
+        "rpm": 950,
+        "debut": 0.505261,
+        "fin": 1.010522
+      },
+      {
+        "fichier": "rallye-1.m4a",
+        "rpm": 1268.8,
+        "debut": 0.47288,
+        "fin": 0.94576
+      },
+      {
+        "fichier": "rallye-2.m4a",
+        "rpm": 1694.4,
+        "debut": 0.495737,
+        "fin": 0.991474
+      },
+      {
+        "fichier": "rallye-3.m4a",
+        "rpm": 2263,
+        "debut": 0.477234,
+        "fin": 0.954467
+      },
+      {
+        "fichier": "rallye-4.m4a",
+        "rpm": 3022.6,
+        "debut": 0.476417,
+        "fin": 0.952834
+      },
+      {
+        "fichier": "rallye-5.m4a",
+        "rpm": 4036.4,
+        "debut": 0.445941,
+        "fin": 0.891882
+      },
+      {
+        "fichier": "rallye-6.m4a",
+        "rpm": 5391.2,
+        "debut": 0.44517,
+        "fin": 0.89034
+      },
+      {
+        "fichier": "rallye-7.m4a",
+        "rpm": 7199.6,
+        "debut": 0.450023,
+        "fin": 0.900045
+      }
+    ],
+    "gt": [
+      {
+        "fichier": "gt-0.m4a",
+        "rpm": 800,
+        "debut": 0.449977,
+        "fin": 0.899955
+      },
+      {
+        "fichier": "gt-1.m4a",
+        "rpm": 1115.5,
+        "debut": 0.537868,
+        "fin": 1.075737
+      },
+      {
+        "fichier": "gt-2.m4a",
+        "rpm": 1555.6,
+        "debut": 0.462857,
+        "fin": 0.925714
+      },
+      {
+        "fichier": "gt-3.m4a",
+        "rpm": 2169.1,
+        "debut": 0.442585,
+        "fin": 0.88517
+      },
+      {
+        "fichier": "gt-4.m4a",
+        "rpm": 3024.6,
+        "debut": 0.4761,
+        "fin": 0.9522
+      },
+      {
+        "fichier": "gt-5.m4a",
+        "rpm": 4217.2,
+        "debut": 0.455283,
+        "fin": 0.910567
+      },
+      {
+        "fichier": "gt-6.m4a",
+        "rpm": 5880.6,
+        "debut": 0.448934,
+        "fin": 0.897868
+      },
+      {
+        "fichier": "gt-7.m4a",
+        "rpm": 8200.1,
+        "debut": 0.453651,
+        "fin": 0.907302
+      }
+    ],
+    "roadster": [
+      {
+        "fichier": "roadster-0.m4a",
+        "rpm": 1000,
+        "debut": 0.48,
+        "fin": 0.96
+      },
+      {
+        "fichier": "roadster-1.m4a",
+        "rpm": 1355.3,
+        "debut": 0.442721,
+        "fin": 0.885442
+      },
+      {
+        "fichier": "roadster-2.m4a",
+        "rpm": 1837,
+        "debut": 0.457279,
+        "fin": 0.914558
+      },
+      {
+        "fichier": "roadster-3.m4a",
+        "rpm": 2489.6,
+        "debut": 0.481995,
+        "fin": 0.963991
+      },
+      {
+        "fichier": "roadster-4.m4a",
+        "rpm": 3374,
+        "debut": 0.462358,
+        "fin": 0.924717
+      },
+      {
+        "fichier": "roadster-5.m4a",
+        "rpm": 4573.2,
+        "debut": 0.446077,
+        "fin": 0.892154
+      },
+      {
+        "fichier": "roadster-6.m4a",
+        "rpm": 6198,
+        "debut": 0.445306,
+        "fin": 0.890612
+      },
+      {
+        "fichier": "roadster-7.m4a",
+        "rpm": 8400,
+        "debut": 0.442857,
+        "fin": 0.885714
+      }
+    ],
+    "pickup": [
+      {
+        "fichier": "pickup-0.m4a",
+        "rpm": 600,
+        "debut": 0.6,
+        "fin": 1.2
+      },
+      {
+        "fichier": "pickup-1.m4a",
+        "rpm": 802.6,
+        "debut": 0.448526,
+        "fin": 0.897052
+      },
+      {
+        "fichier": "pickup-2.m4a",
+        "rpm": 1073.8,
+        "debut": 0.447029,
+        "fin": 0.894059
+      },
+      {
+        "fichier": "pickup-3.m4a",
+        "rpm": 1436.4,
+        "debut": 0.50127,
+        "fin": 1.00254
+      },
+      {
+        "fichier": "pickup-4.m4a",
+        "rpm": 1921.6,
+        "debut": 0.499592,
+        "fin": 0.999184
+      },
+      {
+        "fichier": "pickup-5.m4a",
+        "rpm": 2570.4,
+        "debut": 0.466848,
+        "fin": 0.933696
+      },
+      {
+        "fichier": "pickup-6.m4a",
+        "rpm": 3438.8,
+        "debut": 0.453651,
+        "fin": 0.907302
+      },
+      {
+        "fichier": "pickup-7.m4a",
+        "rpm": 4599.9,
+        "debut": 0.443492,
+        "fin": 0.886984
+      }
+    ],
+    "proto": [
+      {
+        "fichier": "proto-0.m4a",
+        "rpm": 3500,
+        "debut": 0.445714,
+        "fin": 0.891429
+      },
+      {
+        "fichier": "proto-1.m4a",
+        "rpm": 4094.8,
+        "debut": 0.468889,
+        "fin": 0.937778
+      },
+      {
+        "fichier": "proto-2.m4a",
+        "rpm": 4790.6,
+        "debut": 0.450884,
+        "fin": 0.901769
+      },
+      {
+        "fichier": "proto-3.m4a",
+        "rpm": 5604.8,
+        "debut": 0.449615,
+        "fin": 0.899229
+      },
+      {
+        "fichier": "proto-4.m4a",
+        "rpm": 6557.3,
+        "debut": 0.457506,
+        "fin": 0.915011
+      },
+      {
+        "fichier": "proto-5.m4a",
+        "rpm": 7671.1,
+        "debut": 0.453651,
+        "fin": 0.907302
+      },
+      {
+        "fichier": "proto-6.m4a",
+        "rpm": 8975,
+        "debut": 0.441224,
+        "fin": 0.882449
+      },
+      {
+        "fichier": "proto-7.m4a",
+        "rpm": 10500,
+        "debut": 0.445714,
+        "fin": 0.891429
+      }
+    ],
+    "muscle": [
+      {
+        "fichier": "muscle-0.m4a",
+        "rpm": 700,
+        "debut": 0.514286,
+        "fin": 1.028571
+      },
+      {
+        "fichier": "muscle-1.m4a",
+        "rpm": 942.1,
+        "debut": 0.509478,
+        "fin": 1.018957
+      },
+      {
+        "fichier": "muscle-2.m4a",
+        "rpm": 1268,
+        "debut": 0.473197,
+        "fin": 0.946395
+      },
+      {
+        "fichier": "muscle-3.m4a",
+        "rpm": 1706.6,
+        "debut": 0.4922,
+        "fin": 0.984399
+      },
+      {
+        "fichier": "muscle-4.m4a",
+        "rpm": 2296.9,
+        "debut": 0.470204,
+        "fin": 0.940408
+      },
+      {
+        "fichier": "muscle-5.m4a",
+        "rpm": 3091.4,
+        "debut": 0.465805,
+        "fin": 0.93161
+      },
+      {
+        "fichier": "muscle-6.m4a",
+        "rpm": 4160.8,
+        "debut": 0.461451,
+        "fin": 0.922902
+      },
+      {
+        "fichier": "muscle-7.m4a",
+        "rpm": 5599.7,
+        "debut": 0.450023,
+        "fin": 0.900045
+      }
+    ],
+    "monoplace": [
+      {
+        "fichier": "monoplace-0.m4a",
+        "rpm": 4200,
+        "debut": 0.457143,
+        "fin": 0.914286
+      },
+      {
+        "fichier": "monoplace-1.m4a",
+        "rpm": 4902.5,
+        "debut": 0.44059,
+        "fin": 0.881179
+      },
+      {
+        "fichier": "monoplace-2.m4a",
+        "rpm": 5722.6,
+        "debut": 0.440363,
+        "fin": 0.880726
+      },
+      {
+        "fichier": "monoplace-3.m4a",
+        "rpm": 6679.8,
+        "debut": 0.449116,
+        "fin": 0.898231
+      },
+      {
+        "fichier": "monoplace-4.m4a",
+        "rpm": 7796.6,
+        "debut": 0.446349,
+        "fin": 0.892698
+      },
+      {
+        "fichier": "monoplace-5.m4a",
+        "rpm": 9101.1,
+        "debut": 0.448299,
+        "fin": 0.896599
+      },
+      {
+        "fichier": "monoplace-6.m4a",
+        "rpm": 10623.2,
+        "debut": 0.440544,
+        "fin": 0.881088
+      },
+      {
+        "fichier": "monoplace-7.m4a",
+        "rpm": 12399.8,
+        "debut": 0.44517,
+        "fin": 0.89034
+      }
+    ]
+  }
+}

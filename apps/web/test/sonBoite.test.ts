@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DUREE_PASSAGE, boiteInitiale, pasBoite, regimeNormal, regimeRoue, type EtatBoite } from "../src/son/boite";
 import { ETAGEMENT, PROFILS, PROFILS_PLANCHE, frequenceAllumage, profilDe } from "../src/son/profils";
+import { MIX_SOL, appareilModeste } from "../src/son/extension";
+import manifeste from "../src/son/boucles/manifeste.json";
 import { Compteur } from "../src/son/moteur";
+import { VOITURES_SON } from "../src/son/profils";
+import { VOITURES_GARAGE } from "@cdj/sim";
 import { poidsFondu, vitesseLecture } from "../src/son/moteurEchantillons";
 import { DUREE_SCENARIO, MOMENTS, gazDe, voitureVirtuelle } from "../src/son/voitureVirtuelle";
 
@@ -44,7 +48,7 @@ describe("les profils", () => {
     expect(v8.timbre.grondement).toBeGreaterThan(mono.timbre.grondement);
   });
   it("un profil inconnu retombe sur la civile", () => {
-    expect(profilDe("rallye").id).toBe("civile");
+    expect(profilDe("inconnue").id).toBe("civile");
   });
   it("la fréquence d'allumage : 4 cylindres à 6 000 tr/min = 200 Hz, jamais négative", () => {
     expect(frequenceAllumage(6000, 4)).toBeCloseTo(200, 6);
@@ -295,6 +299,78 @@ describe("le son ne lit que l'état de la voiture", () => {
       for (const m of src.matchAll(/^import (?!type)[^;]*from "@cdj\/sim"/gm)) throw new Error(`${f} importe une valeur de la simulation : ${m[0]}`);
       expect(src, `${f} : pas de hasard non semé`).not.toMatch(/Math\.random/);
       expect(src, `${f} : pas d'horloge murale`).not.toMatch(/Date\.now|new Date\(/);
+    }
+  });
+});
+
+describe("les dix voitures ont chacune leur moteur", () => {
+  it("un profil par voiture du Garage, dans l'ordre du Garage", () => {
+    expect([...VOITURES_SON]).toEqual([...VOITURES_GARAGE]);
+    expect(Object.keys(PROFILS).sort()).toEqual([...VOITURES_GARAGE].sort());
+  });
+  for (const id of VOITURES_GARAGE) {
+    it(`${id} : profil valide, huit boucles en progression géométrique du ralenti au rouge, boîte qui monte les six rapports`, () => {
+      const p = profilDe(id);
+      expect(p.id).toBe(id);
+      expect(p.cylindres).toBeGreaterThanOrEqual(4);
+      expect(p.etalon.synthese).toBeGreaterThan(0.3);
+      expect(p.etalon.echantillons).toBeGreaterThan(1);
+      const boucles = (manifeste.profils as Record<string, { fichier: string; rpm: number; debut: number; fin: number }[]>)[id]!;
+      expect(boucles, `${id} : manifeste`).toHaveLength(8);
+      expect(boucles[0]!.rpm).toBeCloseTo(p.ralenti, -1);
+      expect(boucles[7]!.rpm).toBeCloseTo(p.rouge, -1);
+      for (let i = 1; i < 8; i++) {
+        const rapport = boucles[i]!.rpm / boucles[i - 1]!.rpm;
+        expect(rapport, `${id} : voisines`).toBeGreaterThan(1);
+        expect(rapport, `${id} : jamais plus de 1,45 entre deux voisines (vitesse de lecture bornée)`).toBeLessThan(1.45);
+      }
+      for (const b of boucles) {
+        expect(b.fin).toBeGreaterThan(b.debut);
+        expect(b.fin - b.debut, `${id} : une période d'au moins 0,4 s`).toBeGreaterThan(0.4);
+      }
+      // La boîte monte les six rapports avec ce profil sur une accélération à fond.
+      let e = boiteInitiale(p);
+      const vus = new Set<number>();
+      for (let t = 0; t < 14; t += 1 / 60) {
+        const f = voitureVirtuelle(3 + t);
+        e = pasBoite(e, p, f.speed, 1, 1 / 60, false);
+        vus.add(e.rapport);
+      }
+      expect(vus.size, `${id} : rapports parcourus`).toBeGreaterThanOrEqual(5);
+    });
+  }
+});
+
+describe("pneus, sol et appareil modeste", () => {
+  it("chaque revêtement a sa part de texture, positive et bornée", () => {
+    const surfaces = ["road", "dirt", "grass", "ice", "sand", "gravel", "snow", "kerb", "turf"] as const;
+    for (const s of surfaces) {
+      const m = MIX_SOL[s];
+      for (const v of Object.values(m)) {
+        expect(v).toBeGreaterThanOrEqual(0);
+        expect(v).toBeLessThanOrEqual(1.5);
+      }
+    }
+    expect(MIX_SOL.gravel.crepite).toBeGreaterThan(MIX_SOL.road.crepite);
+    expect(MIX_SOL.kerb.bande).toBeGreaterThan(MIX_SOL.road.bande);
+    expect(MIX_SOL.ice.crisse).toBeGreaterThan(MIX_SOL.dirt.crisse);
+  });
+  it("la version légère est pour un tactile qui a peu de cœurs ou peu de mémoire", () => {
+    expect(appareilModeste({ hardwareConcurrency: 4 }, true)).toBe(true);
+    expect(appareilModeste({ hardwareConcurrency: 8, deviceMemory: 2 }, true)).toBe(true);
+    expect(appareilModeste({ hardwareConcurrency: 8, deviceMemory: 8 }, true)).toBe(false);
+    expect(appareilModeste({ hardwareConcurrency: 2 }, false)).toBe(false);
+    expect(appareilModeste({}, true)).toBe(false);
+  });
+});
+
+describe("les fantômes sont muets", () => {
+  it("seuls main.ts et les réglages touchent au son : aucun module de fantômes, de Salon ou de rediffusion ne l'importe", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const dir = new URL("../src/", import.meta.url);
+    const autorises = new Set(["main.ts", "settingsUi.ts", "audio.ts", "audioLogic.ts"]);
+    for (const f of readdirSync(dir).filter((n) => n.endsWith(".ts") && !autorises.has(n))) {
+      expect(readFileSync(new URL(f, dir), "utf8"), `${f} n'importe pas le son`).not.toMatch(/from "\.\/audio"|GameAudio/);
     }
   });
 });

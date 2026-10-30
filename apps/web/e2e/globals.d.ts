@@ -188,7 +188,14 @@ interface CdjDebug {
   /** Air (lot 19) : indicateur « figé » allumé, dernière réception (force et qualité ∈ [0, 1]), part « en vol » de la caméra. */
   air: { frozen: boolean; lastLanding: { strength: number; quality: number }; cameraMix: number };
   /** Sons (lot 9) : derniers sons joués, contexte démarré, réglages. */
-  audio: { log: string[]; running: boolean; settings: { volume: number; last: number }; ambience: string | null };
+  audio: {
+    log: string[];
+    running: boolean;
+    settings: { volume: number; last: number };
+    ambience: string | null;
+    /** Lot 55 : le nouveau son (null tant qu'il n'est pas chargé) : la voiture qu'on entend, moteur prêt, version légère, compresseur, boîte virtuelle, nœuds, boucles qui jouent. */
+    ext: { voiture: string; pret: boolean; leger: boolean; compresseur: boolean; rapport: number; rpm: number; noeuds: number; brefs: number; sources: number; chargements: number; ponctuels: string[] } | null;
+  };
 }
 
 /** Outils de la vitrine de la scène (lot 38 et retouche 38b, `/track/vitrine/`, voir src/vitrine/vitrine.ts). */

@@ -49,7 +49,7 @@ export interface ProfilMoteur {
  * Les quatre profils de la planche (la planche écoute des types de moteur très différents ; les six autres suivent au choix de l'approche, voir le README du lot 55).
  * Sparrow : petit quatre-cylindres de compacte. Boar : V8 de muscle car. Sailfish : monoplace, haut régime et criarde. Pelican : vieux moteur fatigué de fourgonnette.
  */
-export const PROFILS: Partial<Record<IdVoiture, ProfilMoteur>> = {
+export const PROFILS: Record<IdVoiture, ProfilMoteur> = {
   civile: {
     id: "civile",
     cylindres: 4,
@@ -98,16 +98,91 @@ export const PROFILS: Partial<Record<IdVoiture, ProfilMoteur>> = {
     niveau: 0.95,
     etalon: { synthese: 0.55, echantillons: 1.9 },
   },
+  // Les six autres voitures du Garage (partie B du lot 55, après l'écoute de Nathan : B retenue). Chacune s'inspire d'un **type** de moteur, jamais d'un modèle précis.
+  evolution: {
+    id: "evolution",
+    cylindres: 4,
+    ralenti: 850,
+    rouge: 7600,
+    monte: 0.92,
+    descend: 0.42,
+    timbre: { pente: 1.1, harmoniques: 20, grondement: 0.15, rugosite: 0.12, souffle: 0.65, coupure: [1000, 4600], saturation: 0.45 },
+    petards: true,
+    niveau: 0.95,
+    etalon: { synthese: 0.6, echantillons: 1.89 },
+  },
+  rallye: {
+    id: "rallye",
+    cylindres: 4,
+    ralenti: 950,
+    rouge: 7200,
+    monte: 0.92,
+    descend: 0.42,
+    timbre: { pente: 1.15, harmoniques: 20, grondement: 0.2, rugosite: 0.14, souffle: 0.7, coupure: [1000, 4400], saturation: 0.5 },
+    petards: true,
+    niveau: 0.95,
+    etalon: { synthese: 0.6, echantillons: 1.84 },
+  },
+  gt: {
+    id: "gt",
+    cylindres: 6,
+    ralenti: 800,
+    rouge: 8200,
+    monte: 0.93,
+    descend: 0.42,
+    timbre: { pente: 1.2, harmoniques: 22, grondement: 0.1, rugosite: 0.05, souffle: 0.4, coupure: [1100, 5200], saturation: 0.3 },
+    petards: false,
+    niveau: 0.9,
+    etalon: { synthese: 0.7, echantillons: 1.93 },
+  },
+  roadster: {
+    id: "roadster",
+    cylindres: 4,
+    ralenti: 1000,
+    rouge: 8400,
+    monte: 0.93,
+    descend: 0.44,
+    timbre: { pente: 1.2, harmoniques: 20, grondement: 0.08, rugosite: 0.06, souffle: 0.45, coupure: [1100, 5200], saturation: 0.3 },
+    petards: false,
+    niveau: 0.85,
+    etalon: { synthese: 0.7, echantillons: 2.09 },
+  },
+  pickup: {
+    id: "pickup",
+    cylindres: 8,
+    ralenti: 600,
+    rouge: 4600,
+    monte: 0.9,
+    descend: 0.38,
+    timbre: { pente: 1.5, harmoniques: 14, grondement: 0.45, rugosite: 0.35, souffle: 0.6, coupure: [500, 2200], saturation: 0.5 },
+    petards: false,
+    niveau: 1,
+    etalon: { synthese: 0.5, echantillons: 1.6 },
+  },
+  proto: {
+    id: "proto",
+    cylindres: 6,
+    ralenti: 3500,
+    rouge: 10500,
+    monte: 0.94,
+    descend: 0.5,
+    timbre: { pente: 0.9, harmoniques: 24, grondement: 0.06, rugosite: 0.05, souffle: 0.4, coupure: [2000, 7600], saturation: 0.25 },
+    petards: false,
+    niveau: 0.85,
+    etalon: { synthese: 1, echantillons: 2.2 },
+  },
 };
 
-/** Les profils que la planche propose, dans l'ordre. */
+/** Les quatre profils des premiers essais (la planche et les tests lourds) : un petit moteur, un V8, une monoplace, un vieux moteur. */
 export const PROFILS_PLANCHE: readonly IdVoiture[] = ["civile", "muscle", "monoplace", "fourgon"];
+/** Les dix voitures du Garage, dans l'ordre du Garage : chacune a un profil et ses boucles. */
+export const VOITURES_SON: readonly IdVoiture[] = ["civile", "fourgon", "evolution", "rallye", "gt", "roadster", "pickup", "proto", "muscle", "monoplace"]; // = VOITURES_GARAGE (testé)
 
 /** Fréquence d'allumage (Hz) : le fondamental du son d'un moteur à 4 temps. */
 export function frequenceAllumage(rpm: number, cylindres: number): number {
   return ((rpm < 0 ? 0 : rpm) / 60) * (cylindres / 2);
 }
 
-export function profilDe(id: IdVoiture): ProfilMoteur {
-  return PROFILS[id] ?? PROFILS.civile!;
+export function profilDe(id: string): ProfilMoteur {
+  return (PROFILS as Record<string, ProfilMoteur | undefined>)[id] ?? PROFILS.civile;
 }

@@ -7,6 +7,8 @@ export interface EntreeMoteur extends Pick<EtatBoite, "rpm" | "charge" | "passag
   vitesse: number;
   gaz: number;
   enAir: boolean;
+  /** Le jeu est au silence (pause, arrivée, fenêtre ouverte, hors course) : le moteur se tait, puis ses boucles s'arrêtent. */
+  silence?: boolean;
   /** Instant (s) où régler les paramètres : par défaut l'horloge du contexte ; un rendu hors ligne donne le sien. */
   t?: number;
 }
@@ -15,6 +17,8 @@ export interface Moteur {
   readonly nom: string;
   /** Nombre de nœuds Web Audio créés (coût mesuré sur la planche). */
   readonly noeuds: number;
+  /** Boucles qui jouent en ce moment (moteurs à échantillons). */
+  readonly sources?: number;
   /** À appeler à chaque image. */
   maj(e: EntreeMoteur): void;
   /** Une pétarade à l'échappement (lever de pied à haut régime), pour les moteurs qui en ont. */

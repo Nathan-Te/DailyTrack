@@ -77,6 +77,24 @@ test("le son suit la voiture : chaque approche, chaque voiture, rendu hors ligne
   expect(erreurs).toEqual([]);
 });
 
+test("chacune des dix voitures construit son moteur (synthèse et boucles) et fait du bruit sans saturer", async ({ page }) => {
+  const erreurs = await ouvrir(page);
+  const voitures = ["civile", "fourgon", "evolution", "rallye", "gt", "roadster", "pickup", "proto", "muscle", "monoplace"];
+  for (const id of voitures) {
+    for (const approche of ["A", "B"] as const) {
+      const r = await page.evaluate(async ([a, v]) => {
+        const { module } = (await window.__vitrine!.son())!;
+        const r = await module.rendreHorsLigne(a as "A" | "B", v!, 8, false);
+        return { crete: r.crete, rms: r.rms, nonFinis: r.nonFinis, noeuds: r.noeuds };
+      }, [approche, id]);
+      expect(r.nonFinis, `${approche} · ${id}`).toBe(0);
+      expect(r.crete, `${approche} · ${id} : pas de saturation`).toBeLessThan(0.98);
+      expect(r.rms, `${approche} · ${id} : pas muet`).toBeGreaterThan(0.03);
+    }
+  }
+  expect(erreurs).toEqual([]);
+});
+
 test("aucun nœud audio ne fuit : tout ce qu'un moteur crée est détaché et arrêté", async ({ page }) => {
   const erreurs = await ouvrir(page);
   for (const approche of ["actuel", "A", "B"] as const) {
@@ -94,7 +112,7 @@ test("la planche s'ouvre sans erreur, les approches et les voitures se choisisse
   const erreurs = await ouvrir(page);
   await expect(page.locator("[data-approche]").first()).toBeVisible();
   await expect(page.locator(".segments [data-approche]")).toHaveCount(3);
-  await expect(page.locator(".segments [data-voiture]")).toHaveCount(4);
+  await expect(page.locator(".segments [data-voiture]")).toHaveCount(10);
   await expect(page.locator(".son-moment")).toHaveCount(11);
   // Rien des autres planches n'est montré.
   await expect(page.locator("#sections")).toBeHidden();

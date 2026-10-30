@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { mesureTrack } from "../../../scripts/budgets.mjs";
@@ -128,6 +128,26 @@ test("le choix des fantômes, à la demande : 6 ko au plus, rien dans le premier
   test.info().annotations.push({ type: "mesure", description: `choix des fantômes à la demande (JS) : ${fantomes.octets} o (${fantomes.fichiers.join(", ")})` });
   expect(fantomes.fichiers.length, "le morceau du choix des fantômes est construit à part").toBeGreaterThanOrEqual(1);
   expect(fantomes.octets, "le choix des fantômes, à la demande (JS), compressé").toBeLessThan(6_000);
+});
+
+// Lot 55 (partie B) : le nouveau son (moteur de la voiture, boîte virtuelle, dix profils, pneus, bruitages, compresseur), à la demande, au premier geste, hors du premier chargement : seul un
+// crochet reste dans `audio.ts` (≈ +370 o, ligne `track.jsCss`). Le code : 10 000 o au plus compressés (≈ 8,4 ko) ; les boucles de moteur ne sont **jamais** dans le premier chargement, et
+// **une voiture n'en charge que huit** (≈ 67 ko de fichiers AAC) : 80 ko au plus par voiture. Le « plafond de l'audio à la demande » est une proposition à Nathan (`budgets.md`, ligne à ajouter
+// par un lot de plateforme : le test qui la garde est dans `apps/portail`).
+test("le nouveau son, à la demande : 10 ko de code au plus, huit boucles (80 ko au plus) par voiture, rien dans le premier chargement", () => {
+  const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
+  expect(premier.filter((f) => /^extension-|\.m4a$/.test(f)), "rien du nouveau son dans le premier chargement").toEqual([]);
+  const son = aLaDemande(/^extension-.*\.js$/);
+  test.info().annotations.push({ type: "mesure", description: `nouveau son à la demande (JS) : ${son.octets} o (${son.fichiers.join(", ")})` });
+  expect(son.fichiers.length, "le morceau du nouveau son est construit à part").toBeGreaterThanOrEqual(1);
+  expect(son.octets, "le nouveau son, à la demande (JS), compressé").toBeLessThan(10_000);
+  const boucles = readdirSync(dist).filter((f) => /\.m4a$/.test(f));
+  for (const id of ["civile", "fourgon", "evolution", "rallye", "gt", "roadster", "pickup", "proto", "muscle", "monoplace"]) {
+    const siennes = boucles.filter((f) => f.startsWith(`${id}-`));
+    expect(siennes, `huit boucles pour ${id}`).toHaveLength(8);
+    const poids = siennes.reduce((n, f) => n + statSync(new URL(f, dist)).size, 0);
+    expect(poids, `les boucles de ${id}`).toBeLessThan(80_000);
+  }
 });
 
 // Lot 52 : les trois modes de direction tactiles (glissière, volant, gyroscope) et les réglages tactiles de Réglages › Commandes, à la demande, hors du premier chargement : les

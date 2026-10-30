@@ -1,6 +1,6 @@
 // Lot 55 (partie B) — la planche sonore de la vitrine (`/track/vitrine/?planche=son`, recette et aperçus seulement, chargée à la demande). Elle fait écouter **la même course**
 // (la voiture virtuelle : ralenti, coup de gaz à l'arrêt, accélération sur six rapports, lever de pied, freinage, terre en dérive, turbo, vibreur, saut) avec le moteur d'avant
-// et deux approches : A (synthèse) et B (échantillons rendus hors ligne), pour quatre voitures très différentes — et donne le coût de chacune.
+// et deux approches : A (synthèse) et B (échantillons rendus hors ligne), pour les dix voitures du Garage — et donne le coût de chacune.
 // Nathan écoute (téléphone et ordinateur, au casque) et choisit ; rien de ceci n'est dans le jeu. Outil interne, en français, exempté des catalogues (comme le reste de la vitrine).
 import { boiteInitiale, pasBoite, type EtatBoite } from "../son/boite";
 import { creerCoucheRoues, type CoucheRoues } from "../son/coucheRoues";
@@ -8,14 +8,14 @@ import { bruitBlanc, type EntreeMoteur, type Moteur } from "../son/moteur";
 import { creerActuel } from "../son/moteurActuel";
 import { chargerBoucles, creerEchantillons, type Boucle, type EntreeBoucle } from "../son/moteurEchantillons";
 import { creerSynthese } from "../son/moteurSynthese";
-import { PROFILS_PLANCHE, frequenceAllumage, profilDe, type ProfilMoteur } from "../son/profils";
+import { VOITURES_SON, frequenceAllumage, profilDe, type ProfilMoteur } from "../son/profils";
 import { DUREE_SCENARIO, MOMENTS, gazDe, voitureVirtuelle, type TrameVirtuelle } from "../son/voitureVirtuelle";
-import manifesteB from "../../vitrine/son/b/manifeste.json";
+import manifesteB from "../son/boucles/manifeste.json";
 
 /** Les fichiers audio de la planche : leurs adresses finales (Vite les copie avec une empreinte). */
-const FICHIERS = import.meta.glob("../../vitrine/son/**/*.m4a", { query: "?url", import: "default", eager: true }) as Record<string, string>;
+const FICHIERS = import.meta.glob("../son/boucles/*.m4a", { query: "?url", import: "default", eager: true }) as Record<string, string>;
 const urlDe = (rel: string): string => {
-  const u = FICHIERS[`../../vitrine/son/${rel}`];
+  const u = FICHIERS[`../son/boucles/${rel}`];
   if (!u) throw new Error(`fichier sonore absent : ${rel}`);
   return u;
 };
@@ -24,7 +24,18 @@ export type Approche = "actuel" | "A" | "B";
 const APPROCHES: readonly Approche[] = ["actuel", "A", "B"];
 const NOMS: Record<Approche, string> = { actuel: "Actuel (lot 9)", A: "A · Synthèse", B: "B · Échantillons rendus hors ligne" };
 
-const NOMS_VOITURES: Record<string, string> = { civile: "Sparrow · petit 4-cylindres", muscle: "Boar · V8", monoplace: "Sailfish · monoplace", fourgon: "Pelican · vieux moteur" };
+const NOMS_VOITURES: Record<string, string> = {
+  civile: "Sparrow · petit 4-cylindres",
+  fourgon: "Pelican · vieux moteur",
+  evolution: "Weasel · 4-cylindres turbo",
+  rallye: "Badger · rallye turbo",
+  gt: "Moray · 6-cylindres GT",
+  roadster: "Gecko · roadster vif",
+  pickup: "Armadillo · gros V8 lent",
+  proto: "Dragonfly · proto aigu",
+  muscle: "Boar · V8",
+  monoplace: "Sailfish · monoplace",
+};
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, texte?: string): HTMLElementTagNameMap[K] => {
   const e = document.createElement(tag);
@@ -58,7 +69,7 @@ interface Mesure {
 /** Les boucles de B pour une voiture (rendues pour elle par `outils/son/rendre-echantillons.mjs`). */
 function entreesDe(p: ProfilMoteur): EntreeBoucle[] {
   const liste = (manifesteB.profils as Record<string, { fichier: string; rpm: number; debut: number; fin: number }[]>)[p.id] ?? [];
-  return liste.map((b) => ({ url: urlDe(`b/${b.fichier}`), rpm: b.rpm, debut: b.debut, fin: b.fin }));
+  return liste.map((b) => ({ url: urlDe(b.fichier), rpm: b.rpm, debut: b.debut, fin: b.fin }));
 }
 
 /** Les boucles décodées, gardées par approche et par voiture (on ne recharge pas à chaque bascule). */
@@ -309,7 +320,7 @@ export async function monter(racine: HTMLElement, hote: HoteSon): Promise<Planch
   groupeVoitures.setAttribute("role", "group");
   groupeVoitures.setAttribute("aria-label", "Voiture");
   const boutonsVoiture = new Map<string, HTMLButtonElement>();
-  for (const id of PROFILS_PLANCHE) {
+  for (const id of VOITURES_SON) {
     const b = el("button", "segment", NOMS_VOITURES[id] ?? id);
     b.type = "button";
     b.dataset.voiture = id;

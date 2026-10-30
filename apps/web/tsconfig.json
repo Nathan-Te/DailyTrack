@@ -8,6 +8,6 @@
     "noEmit": false,
     "emitDeclarationOnly": true
   },
-  "include": ["src", "test", "outils", "vitrine/son/**/*.json"],
+  "include": ["src", "test", "outils", "src/son/boucles/*.json"],
   "references": [{ "path": "../../packages/sim" }, { "path": "../../packages/clock" }, { "path": "../../packages/profile" }, { "path": "../../packages/ui" }]
 }

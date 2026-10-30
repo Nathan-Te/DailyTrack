@@ -1,5 +1,5 @@
 // Lot 55 (partie B), approche B — rend **hors ligne** les boucles de moteur de chaque profil : `node --experimental-strip-types apps/web/outils/son/rendre-echantillons.mjs`
-// (Node 22 et ffmpeg ; sortie : `apps/web/vitrine/son/b/`, 6 boucles AAC mono 22,05 kHz par profil et `manifeste.json`). Le résultat est versé dans le dépôt : la
+// (Node 22 et ffmpeg ; sortie : `apps/web/src/son/boucles/`, 6 boucles AAC mono 22,05 kHz par profil et `manifeste.json`). Le résultat est versé dans le dépôt : la
 // planche (et, si Nathan choisit B, le jeu) n'a rien à rendre à l'exécution. Déterministe : mêmes graines, mêmes fichiers (à la version de l'encodeur près).
 //
 // Le modèle : à chaque allumage d'un cylindre, une impulsion de pression traverse l'échappement — une somme de **résonances amorties** (les modes du tuyau,
@@ -11,10 +11,10 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PROFILS, PROFILS_PLANCHE } from "../../src/son/profils.ts";
+import { PROFILS, VOITURES_SON } from "../../src/son/profils.ts";
 
 const SR = 22050;
-const SORTIE = fileURLToPath(new URL("../../vitrine/son/b/", import.meta.url));
+const SORTIE = fileURLToPath(new URL("../../src/son/boucles/", import.meta.url));
 /**
  * Les régimes de référence de chaque profil : **en progression géométrique** du ralenti au rouge (retouche après écoute de Nathan : avec des boucles réparties
  * linéairement, la première boucle était jouée jusqu'à 2,2 fois plus vite que son régime, donc « trop aiguë »). Huit boucles : deux voisines sont toujours à moins
@@ -33,6 +33,13 @@ const ECHAPPEMENT = {
   muscle: { modes: [72, 155, 310, 620], poids: [1, 0.9, 0.55, 0.3], amortissement: 0.026, bruit: 0.1, variation: 0.28, rate: 0, cliquetis: 0 },
   monoplace: { modes: [540, 1150, 2400, 4300], poids: [1, 0.7, 0.45, 0.25], amortissement: 0.006, bruit: 0.08, variation: 0.03, rate: 0, cliquetis: 0 },
   fourgon: { modes: [120, 260, 520], poids: [1, 0.7, 0.4], amortissement: 0.017, bruit: 0.3, variation: 0.38, rate: 0.045, cliquetis: 0.5 },
+  // Les six autres voitures du Garage (chacune un type de moteur, jamais un modèle précis).
+  evolution: { modes: [160, 350, 700, 1500], poids: [1, 0.8, 0.5, 0.3], amortissement: 0.011, bruit: 0.16, variation: 0.08, rate: 0, cliquetis: 0 },
+  rallye: { modes: [170, 380, 760, 1600], poids: [1, 0.85, 0.55, 0.35], amortissement: 0.01, bruit: 0.2, variation: 0.12, rate: 0.015, cliquetis: 0 },
+  gt: { modes: [110, 240, 480, 980], poids: [1, 0.8, 0.5, 0.28], amortissement: 0.018, bruit: 0.09, variation: 0.05, rate: 0, cliquetis: 0 },
+  roadster: { modes: [190, 420, 860, 1700], poids: [1, 0.75, 0.5, 0.3], amortissement: 0.009, bruit: 0.12, variation: 0.06, rate: 0, cliquetis: 0 },
+  pickup: { modes: [60, 130, 260, 520], poids: [1, 0.9, 0.55, 0.3], amortissement: 0.03, bruit: 0.12, variation: 0.3, rate: 0, cliquetis: 0 },
+  proto: { modes: [420, 900, 1900, 3600], poids: [1, 0.7, 0.45, 0.25], amortissement: 0.007, bruit: 0.09, variation: 0.04, rate: 0, cliquetis: 0 },
 };
 
 /** Générateur semé (mulberry32). */
@@ -156,7 +163,7 @@ mkdirSync(tmp, { recursive: true });
 mkdirSync(SORTIE, { recursive: true });
 const manifeste = { sr: SR, profils: {} };
 try {
-  PROFILS_PLANCHE.forEach((id, ip) => {
+  VOITURES_SON.forEach((id, ip) => {
     const p = PROFILS[id];
     const boucles = [];
     for (let i = 0; i < BOUCLES; i++) {

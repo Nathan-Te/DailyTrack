@@ -37,8 +37,16 @@ export function poidsFondu(refs: readonly number[], rpm: number): number[] {
 /** La vitesse de lecture d'une boucle jouée au régime `rpm` : bornée (au-delà, le timbre devient méconnaissable ; les boucles voisines sont à moins de 1,35 fois l'une de l'autre). */
 export const vitesseLecture = (rpm: number, ref: number): number => Math.min(1.45, Math.max(0.7, rpm / ref));
 
-export function creerEchantillons(ctx: BaseAudioContext, sortie: AudioNode, p: ProfilMoteur, boucles: readonly Boucle[], nom: string, etalon: number): Moteur {
+/** Options d'un lecteur : `leger` = la version de l'appareil modeste (une seule boucle à la fois, sans fondu long ni creux d'aigu) ; `silenceApres` = secondes de silence avant d'arrêter une boucle. */
+export interface OptionsLecteur {
+  leger?: boolean;
+  silenceApres?: number;
+}
+
+export function creerEchantillons(ctx: BaseAudioContext, sortie: AudioNode, p: ProfilMoteur, boucles: readonly Boucle[], nom: string, etalon: number, options: OptionsLecteur = {}): Moteur {
   const c = new Compteur();
+  const leger = options.leger === true;
+  const silenceApres = options.silenceApres ?? 0.4;
   const refs = boucles.map((b) => b.rpm);
   const sortieMoteur = c.nd(ctx.createGain());
   sortieMoteur.gain.value = p.niveau * etalon;
@@ -46,47 +54,90 @@ export function creerEchantillons(ctx: BaseAudioContext, sortie: AudioNode, p: P
   const lp = c.nd(ctx.createBiquadFilter());
   lp.type = "lowpass";
   lp.Q.value = 0.7;
-  // Un creux léger dans l'aigu (retouche après écoute : « un peu trop aigu parfois »).
-  const doux = c.nd(ctx.createBiquadFilter());
-  doux.type = "highshelf";
-  doux.frequency.value = 2800;
-  doux.gain.value = -4;
   const amp = c.nd(ctx.createGain());
   amp.gain.value = 0;
-  lp.connect(doux).connect(amp).connect(sortieMoteur);
+  if (leger) lp.connect(amp).connect(sortieMoteur);
+  else {
+    // Un creux léger dans l'aigu (retouche après écoute : « un peu trop aigu parfois »).
+    const doux = c.nd(ctx.createBiquadFilter());
+    doux.type = "highshelf";
+    doux.frequency.value = 2800;
+    doux.gain.value = -4;
+    lp.connect(doux).connect(amp).connect(sortieMoteur);
+  }
+  // Une voix = un gain permanent et, **seulement quand la boucle s'entend**, une source : au silence (pause, arrivée, boucle trop éloignée du régime) rien ne tourne.
   const voix = boucles.map((b) => {
-    const s = c.nd(ctx.createBufferSource());
-    s.buffer = b.buffer;
-    s.loop = true;
-    s.loopStart = b.debut;
-    s.loopEnd = b.fin;
     const g = c.nd(ctx.createGain());
     g.gain.value = 0;
-    s.connect(g).connect(lp);
-    s.start(0, b.debut);
-    return { s, g };
+    g.connect(lp);
+    return { b, g, s: null as AudioBufferSourceNode | null, muetDepuis: 0 };
   });
+  let actives = 0;
+  const allumer = (i: number, t: number) => {
+    const v = voix[i]!;
+    if (v.s) return;
+    const s = c.bref(ctx.createBufferSource());
+    s.buffer = v.b.buffer;
+    s.loop = true;
+    s.loopStart = v.b.debut;
+    s.loopEnd = v.b.fin;
+    s.connect(v.g);
+    s.start(t, v.b.debut + ((i * 0.137) % 1) * (v.b.fin - v.b.debut));
+    v.s = s;
+    actives++;
+  };
+  const eteindre = (i: number, t: number) => {
+    const v = voix[i]!;
+    if (!v.s) return;
+    try {
+      v.s.stop(t);
+    } catch {
+      /* déjà arrêtée */
+    }
+    v.s = null;
+    actives--;
+  };
   return {
     nom,
     get noeuds() {
       return c.n;
     },
+    /** Boucles qui jouent en ce moment (outil de test et de mesure). */
+    get sources() {
+      return actives;
+    },
     maj(e: EntreeMoteur) {
       const now = e.t ?? ctx.currentTime;
-      const k = 0.025;
-      const w = poidsFondu(refs, e.rpm);
+      const k = leger ? 0.06 : 0.025;
+      let w = poidsFondu(refs, e.rpm);
+      if (leger) {
+        // Appareil modeste : la seule boucle la plus proche du régime (pas de fondu entre deux, une source de moins).
+        const plus = w.indexOf(Math.max(...w));
+        w = w.map((_, i) => (i === plus ? 1 : 0));
+      }
+      // Au silence du jeu (pause, arrivée, fenêtre ouverte), toutes les boucles s'éteignent après `silenceApres` secondes.
       voix.forEach((v, i) => {
-        v.g.gain.setTargetAtTime(w[i]!, now, k);
-        if (w[i]! > 0.001) v.s.playbackRate.setTargetAtTime(vitesseLecture(e.rpm, refs[i]!), now, k);
+        const poids = e.silence ? 0 : w[i]!;
+        if (poids > 0.001) {
+          allumer(i, now);
+          v.muetDepuis = 0;
+          v.s!.playbackRate.setTargetAtTime(vitesseLecture(e.rpm, refs[i]!), now, k);
+        } else if (v.s) {
+          if (v.muetDepuis === 0) v.muetDepuis = now;
+          else if (now - v.muetDepuis > silenceApres) eteindre(i, now + 0.02);
+        }
+        v.g.gain.setTargetAtTime(poids, now, k);
       });
       const rn = regimeNormal(p, e.rpm);
       lp.frequency.setTargetAtTime(lerp(p.timbre.coupure[0] * 1.1, p.timbre.coupure[1] * 1.1, rn) * (0.3 + 0.7 * e.charge), now, k);
-      amp.gain.setTargetAtTime((0.14 + 0.7 * e.charge) * (0.55 + 0.45 * rn) * (e.enAir ? 0.85 : 1), now, k);
+      amp.gain.setTargetAtTime((0.14 + 0.7 * e.charge) * (0.55 + 0.45 * rn) * (e.enAir ? 0.85 : 1) * (e.silence ? 0 : 1), now, k);
     },
     petarade() {
-      /* les boucles n'ont pas de pétarade : elle viendrait de la couche d'effets */
+      /* les boucles n'ont pas de pétarade : elle vient de la couche des bruitages */
     },
     arreter() {
+      for (let i = 0; i < voix.length; i++) voix[i]!.s = null;
+      actives = 0;
       c.tout();
     },
   };
