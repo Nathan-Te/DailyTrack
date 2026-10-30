@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1148 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1185 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1549,3 +1549,77 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `theme.glace` | Glace | Ice |
 | `theme.nuit` | Nuit | Night |
 | `theme.neon` | Néon | Neon |
+
+## Tower
+
+### Chargement (`chargement.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `chargement.texte` | Chargement de la physique… | Loading the physics… |
+| `chargement.echec` | La physique n'a pas pu se charger. Recharge la page. | The physics couldn't load. Reload the page. |
+
+### Commandes tactiles (`commande.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `commande.gauche` | Gauche | Left |
+| `commande.droite` | Droite | Right |
+| `commande.tourner` | Tourner | Rotate |
+| `commande.descendre` | Descendre vite (maintenir) | Drop fast (hold) |
+
+### Fantômes (`fantome.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `fantome.bouton` | Fantôme : {nom} | Ghost: {nom} |
+| `fantome.aucun` | Aucun | None |
+| `fantome.meilleure` | Ma meilleure | My best |
+
+### Fin de partie (`fin.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `fin.aria` | Fin de la partie | End of the game |
+| `fin.eyebrow` | TOWER · Suite d'essai | TOWER · Practice run |
+| `fin.hauteurStable` | Hauteur stable | Stable height |
+| `fin.plusHaute` | Plus haute atteinte : {hauteur} (ne compte pas) | Highest reached: {hauteur} (doesn't count) |
+| `fin.vies` | Vies | Lives |
+| `fin.partie` | Ta partie | Your game |
+| `fin.posees` | Pièces posées | Pieces placed |
+| `fin.tombees` | Pièces tombées | Pieces fallen |
+| `fin.temps` | Temps | Time |
+| `fin.rejouer` | Rejouer | Play again |
+| `fin.phrase.pieces` | Les pièces respirent enfin. | The pieces can finally breathe. |
+| `fin.phrase.vies` | Les pièces ne t'en veulent pas. Presque pas. | The pieces don't hold it against you. Not much. |
+
+### Page (titre, chargement) (`page.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `page.titre` | Tower — Du Jour | Tower — Du Jour |
+| `page.sansWebgl` | Ton navigateur ne peut pas afficher Tower : WebGL est nécessaire. | Your browser can't show Tower: WebGL is required. |
+
+### Partie (surimpressions) (`hud.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `hud.aria` | Interface de la partie | Game interface |
+| `hud.pause` | Pause | Pause |
+| `hud.hauteur.aria` | Hauteur de la tour : {hauteur} | Tower height: {hauteur} |
+| `hud.pieces.aria` | Pièce {n} sur {total} | Piece {n} of {total} |
+| `hud.vies.aria` | one : {n} vie sur {total} · other : {n} vies sur {total} | one : {n} life out of {total} · other : {n} lives out of {total} |
+| `hud.suivante` | Suivante | Next |
+| `hud.suivante.aria` | Pièce suivante : {forme} | Next piece: {forme} |
+| `hud.commandes` | Commandes | Controls |
+
+### Pause (`pause.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `pause.aria` | Pause | Pause |
+| `pause.titre` | Pause | Pause |
+| `pause.etat` | Pièce {n} sur {total} · {hauteur} | Piece {n} of {total} · {hauteur} |
+| `pause.phrase` | Les pièces retiennent leur souffle. | The pieces are holding their breath. |
+| `pause.reprendre` | Reprendre | Resume |
+| `pause.recommencer` | Recommencer | Restart |

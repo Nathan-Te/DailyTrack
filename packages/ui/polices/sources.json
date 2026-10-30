@@ -78,5 +78,13 @@
     "licence": "lilita-one-OFL.txt",
     "octets": 10672,
     "sha256": "d2575d4fa3632580aafcbcdf6978b3b57e144b90cf5bd9c2c98194f28b869704"
+  },
+  {
+    "fichier": "rubik-mono-one-latin-400-normal.woff2",
+    "famille": "Rubik Mono One",
+    "paquet": "@fontsource/rubik-mono-one@5.3.0",
+    "licence": "rubik-mono-one-OFL.txt",
+    "octets": 12752,
+    "sha256": "4c1f9c2e5e3f867641f60becebfc11cd0e6ab02aa96bac88d750e37de8fce3c4"
   }
 ]

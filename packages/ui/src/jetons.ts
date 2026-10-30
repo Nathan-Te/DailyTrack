@@ -1,6 +1,6 @@
 // Les jetons de la charte « Cartouches » (docs/plateforme/identite.md, lot I0 ; lot I1 de la plateforme) : **la seule source** des couleurs,
 // rayons, épaisseurs, ombres, typographies, espacements et durées de l'interface. Le fichier `jetons.css` (propriétés `--dj-*`, `--track-*`,
-// `--jump-*`) en est **généré** (`cssDesJetons`) ; le test `packages/ui/test/jetons.test.ts` vérifie qu'il est à jour
+// `--jump-*`, `--tower-*`) en est **généré** (`cssDesJetons`) ; le test `packages/ui/test/jetons.test.ts` vérifie qu'il est à jour
 // (`MAJ_JETONS=1 npx vitest run packages/ui/test/jetons.test.ts` le réécrit). Aucune couleur, police ni durée en dur ailleurs.
 //
 // Une valeur qui commence par `--` est un renvoi vers un autre jeton (`--jump-papier` = `--dj-papier`) : en CSS `var(--…)`, en TypeScript la
@@ -46,6 +46,10 @@ export const COULEURS = {
   "jump-papier": "--dj-papier",
   "jump-encre": "--dj-encre",
   "jump-danger": "#D7263D",
+  // 3.5 Étiquette Tower (charte rév. 13)
+  "tower-menthe": "#9ED9BE",
+  "tower-coque": "#2F7D62",
+  "tower-bonus": "#5DBB63",
 } as const;
 
 /** Polices (charte § 4) : la famille, puis le repli générique pendant le chargement (`font-display: swap`). */
@@ -55,6 +59,7 @@ export const POLICES = {
   "dj-police-chiffres": "\"JetBrains Mono\", monospace",
   "track-police": "\"Barlow Condensed\", \"Archivo\", sans-serif",
   "jump-police": "\"Lilita One\", \"Archivo\", sans-serif",
+  "tower-police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
 } as const;
 
 /** Échelle typographique (charte § 4) : 12 · 13 · 15 · 22 · 24 · 32 · 38 · 64-72 px ; 10-11 px pour les seules légendes en capitales (700). */
@@ -105,6 +110,8 @@ export const OMBRES = {
   "track-epaisseur-courir": "0 4px 0 var(--track-livree-ombre)",
   "jump-epaisseur-jouer": "0 5px 0 var(--dj-terre)",
   "jump-ombre-titre": "4px 4px 0 var(--dj-papier)",
+  "tower-epaisseur-jouer": "0 5px 0 var(--tower-coque)",
+  "tower-ombre-titre": "4px 4px 0 var(--dj-papier)",
 } as const;
 
 /** Espacements (multiples de la maquette). */
@@ -144,12 +151,16 @@ type Familles = typeof JETONS;
 export type NomJeton = { [F in keyof Familles]: keyof Familles[F] }[keyof Familles] & string;
 export type NomCouleur = keyof typeof COULEURS;
 
-const TOUS: Record<string, string> = Object.assign({}, ...Object.values(JETONS));
+// Lue à la demande (`tous()`), pas au chargement du module : un `Object.assign({}, ...Object.values(JETONS))` en tête de module garde dans le JavaScript de chaque application,
+// même sans appel à `valeurJeton`, toute la table des jetons (le résultat de la décomposition `...` ne peut pas être écarté ; lot T1 : mesuré sur Track, +115 o par six jetons).
+let TOUS: Record<string, string> | undefined;
+const tous = (): Record<string, string> => (TOUS ??= Object.assign({}, ...Object.values(JETONS)));
 
 /** La valeur d'un jeton, renvois résolus (`jump-papier` → `#FFF6E0`). */
 export function valeurJeton(nom: NomJeton): string {
-  let v = TOUS[nom];
-  for (let i = 0; v !== undefined && v.startsWith("--") && i < 8; i++) v = TOUS[v.slice(2)];
+  const table = tous();
+  let v = table[nom];
+  for (let i = 0; v !== undefined && v.startsWith("--") && i < 8; i++) v = table[v.slice(2)];
   if (v === undefined) throw new Error(`jeton inconnu : ${nom}`);
   return v;
 }

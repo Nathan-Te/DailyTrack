@@ -20,6 +20,7 @@ export const POLICES = [
   { paquet: "jetbrains-mono", famille: "JetBrains Mono", version: "5.3.0", fichiers: ["500-normal", "700-normal"] },
   { paquet: "barlow-condensed", famille: "Barlow Condensed", version: "5.3.0", fichiers: ["600-normal", "700-italic", "800-italic"] },
   { paquet: "lilita-one", famille: "Lilita One", version: "5.3.0", fichiers: ["400-normal"] },
+  { paquet: "rubik-mono-one", famille: "Rubik Mono One", version: "5.3.0", fichiers: ["400-normal"] },
 ];
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);

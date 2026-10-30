@@ -26,6 +26,7 @@ import { CATALOGUE_ACCUEIL as JUMP_ACCUEIL } from "../apps/jump/src/catalogue.ac
 import { CATALOGUE_ARRIVEE as JUMP_ARRIVEE } from "../apps/jump/src/catalogue.arrivee";
 import { CATALOGUE_REGLAGES as JUMP_REGLAGES } from "../apps/jump/src/catalogue.reglages";
 import { CATALOGUE_APERCU as APERCU_JUMP } from "../apps/jump/src/catalogue.apercu";
+import { CATALOGUE_TOWER } from "../apps/tower/src/catalogue";
 
 type Bilingue = { fr: Catalogue; en: Catalogue };
 
@@ -50,6 +51,7 @@ export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingu
   ["apps/jump (accueil)", "apps/jump/src/catalogue.accueil.*.ts", JUMP_ACCUEIL as unknown as Bilingue],
   ["apps/jump (arrivée)", "apps/jump/src/catalogue.arrivee.*.ts", JUMP_ARRIVEE as unknown as Bilingue],
   ["apps/jump (réglages)", "apps/jump/src/catalogue.reglages.*.ts", JUMP_REGLAGES as unknown as Bilingue],
+  ["apps/tower", "apps/tower/src/catalogue.*.ts", CATALOGUE_TOWER as unknown as Bilingue],
 ];
 
 /** Le titre de chaque application dans le document. */
@@ -58,6 +60,7 @@ const APPLICATIONS: Record<string, string> = {
   "apps/portail": "Portail Du Jour (accueil, profil commun, classement du jour, vitrine et démonstration de la recette)",
   "apps/web": "Track",
   "apps/jump": "Jump",
+  "apps/tower": "Tower",
 };
 
 /** Le nom d'un écran (le premier mot de la clé) ; un mot inconnu s'écrit tel quel. */
@@ -70,6 +73,8 @@ const ECRANS: Record<string, string> = {
   bandeau: "Bandeaux",
   barre: "Barre des jeux",
   cadre: "Cadre des écrans",
+  chargement: "Chargement",
+  commande: "Commandes tactiles",
   carnage: "Carnage",
   classement: "Classement",
   commandes: "Commandes",
@@ -78,6 +83,7 @@ const ECRANS: Record<string, string> = {
   demo: "Démonstration (recette seulement)",
   erreur: "Erreurs",
   fantome: "Fantômes",
+  fin: "Fin de partie",
   hud: "Partie (surimpressions)",
   icone: "Icônes",
   jeu: "Noms des jeux",

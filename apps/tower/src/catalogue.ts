@@ -1,0 +1,6 @@
+import { CATALOGUE_EN } from "./catalogue.en";
+import { CATALOGUE_FR } from "./catalogue.fr";
+
+// Le catalogue de Tower dans les deux langues, réunies : **pour les tests et l'outil de relecture** (parité, clés lues, `npm run traductions`). Le jeu ne passe pas par là :
+// il charge le français et, seulement si besoin, l'anglais (i18n.ts).
+export const CATALOGUE_TOWER = { fr: CATALOGUE_FR, en: CATALOGUE_EN };

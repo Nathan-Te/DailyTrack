@@ -3,14 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="robots" content="noindex, nofollow" />
-    <title>Tower — essai de la physique</title>
+    <!-- Lot 53 : application ajoutée à l'écran d'accueil (iPhone) ; marges de sécurité obligatoires (CLAUDE.md) -->
+    <meta name="mobile-web-app-capable" content="yes" /><!-- i18n-ok -->
+    <meta name="apple-mobile-web-app-capable" content="yes" /><!-- i18n-ok -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /><!-- i18n-ok -->
+    <meta name="theme-color" data-jeton-content="tower-coque" />
+    <meta name="robots" content="noindex, nofollow" /><!-- i18n-ok -->
+    <link rel="icon" data-icone-du-jour />
+    <title data-t="page.titre"></title>
   </head>
   <body>
-    <canvas id="scene" aria-label="Tour de pièces empilées"></canvas>
-    <div id="hud" role="status" aria-live="off"></div>
-    <div id="commandes" hidden></div>
-    <aside id="reglages" hidden aria-label="Réglages de la physique"></aside>
+    <!-- Lot T1 : le HTML ne porte aucune chaîne d'interface. Le jeu construit son interface (HUD, pause, fin) en JavaScript, depuis les catalogues (`src/i18n.ts`).
+         `?scenario=banc` charge à la place la démonstration de la physique du lot T0 (`src/banc/demo.ts`, hors production). -->
+    <div id="tower"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

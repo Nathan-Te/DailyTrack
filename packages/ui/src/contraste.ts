@@ -68,6 +68,10 @@ export const PAIRES: readonly PaireCouleurs[] = [
   { couleur: "jump-jaune", fond: "jump-encre", taille: "normal", usage: "bouton principal Jump, autocollant" },
   { couleur: "dj-encre-douce", fond: "jump-jaune", taille: "normal", usage: "texte secondaire sur l'étiquette Jump" },
   { couleur: "dj-encre", fond: "jump-papier", taille: "normal", usage: "cadres Jump" },
+  // Lot T1 (charte rév. 13) : l'étiquette de Tower.
+  { couleur: "dj-encre", fond: "tower-menthe", taille: "normal", usage: "texte de l'étiquette Tower, pastille des paliers" },
+  { couleur: "tower-menthe", fond: "dj-encre", taille: "normal", usage: "bouton principal Tower, vies de la bande" },
+  { couleur: "dj-encre", fond: "tower-bonus", taille: "normal", usage: "pastille « Bonus » des paliers" },
 ];
 
 /** Le rapport d'une paire déclarée, et s'il passe son seuil. */

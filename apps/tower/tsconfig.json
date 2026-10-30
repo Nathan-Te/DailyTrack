@@ -1,13 +1,36 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM"],
-    "types": ["vite/client", "node"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "vite/client",
+      "node"
+    ],
     "outDir": "dist-types",
     "rootDir": ".",
     "noEmit": false,
     "emitDeclarationOnly": true
   },
-  "include": ["src"],
-  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/tower-sim" }]
+  "include": [
+    "src",
+    "test",
+    "rapierWasm.ts"
+  ],
+  "references": [
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/profile"
+    },
+    {
+      "path": "../../packages/tower-sim"
+    },
+    {
+      "path": "../../packages/ui"
+    }
+  ]
 }

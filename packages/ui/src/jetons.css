@@ -34,12 +34,16 @@
   --jump-papier: var(--dj-papier);
   --jump-encre: var(--dj-encre);
   --jump-danger: #D7263D;
+  --tower-menthe: #9ED9BE;
+  --tower-coque: #2F7D62;
+  --tower-bonus: #5DBB63;
   /* polices */
   --dj-police-marque: "Archivo Black", "Archivo", sans-serif;
   --dj-police-texte: "Archivo", sans-serif;
   --dj-police-chiffres: "JetBrains Mono", monospace;
   --track-police: "Barlow Condensed", "Archivo", sans-serif;
   --jump-police: "Lilita One", "Archivo", sans-serif;
+  --tower-police: "Rubik Mono One", "Archivo", sans-serif;
   /* tailles */
   --dj-taille-legende: 11px;
   --dj-taille-legende-petite: 10px;
@@ -78,6 +82,8 @@
   --track-epaisseur-courir: 0 4px 0 var(--track-livree-ombre);
   --jump-epaisseur-jouer: 0 5px 0 var(--dj-terre);
   --jump-ombre-titre: 4px 4px 0 var(--dj-papier);
+  --tower-epaisseur-jouer: 0 5px 0 var(--tower-coque);
+  --tower-ombre-titre: 4px 4px 0 var(--dj-papier);
   /* espaces */
   --dj-espace-1: 4px;
   --dj-espace-2: 6px;
