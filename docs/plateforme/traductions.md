@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1185 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1195 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -712,7 +712,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.fantome.suivant` | {nom} (au prochain départ) | {nom} (next start) |
 | `course.fantome.annonce` | Fantôme : {nom} | Ghost: {nom} |
 | `course.fantome.pasDePremier` | Pas encore de premier | No leader yet |
-| `course.fantome.personneDevant` | Personne devant toi | Nobody ahead of you |
 | `course.depart` | PARTEZ ! | GO! |
 | `course.arrivee` | ARRIVÉE | FINISH |
 | `course.portique.depart` | DÉPART | START |
@@ -743,6 +742,22 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.local.timeout` | Le serveur ne répond pas. | The server isn't answering. |
 | `erreur.local.http_error` | Le serveur a répondu par une erreur. | The server answered with an error. |
 | `erreur.local.inconnue` | Quelque chose n'a pas marché. | Something went wrong. |
+
+### fantomes (`fantomes.*`, `apps/web/src/catalogue.course.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `fantomes.compteur` | one : {n} fantôme sur {max} · other : {n} fantômes sur {max} | one : {n} ghost of {max} · other : {n} ghosts of {max} |
+| `fantomes.compteur.aria` | one : {n} fantôme choisi sur {max} · other : {n} fantômes choisis sur {max} | one : {n} ghost chosen of {max} · other : {n} ghosts chosen of {max} |
+| `fantomes.propose` | proposé | suggested |
+| `fantomes.toutDecocher` | Tout décocher | Untick all |
+| `fantomes.max` | 5 fantômes au maximum : décoches-en un pour en choisir un autre. | 5 ghosts at most: untick one to pick another. |
+| `fantomes.case.aria` | Fantôme de {nom} | {nom}'s ghost |
+| `fantomes.choisir` | Choisir mes fantômes ({n}) | Choose my ghosts ({n}) |
+| `fantomes.libelle` | ma sélection · {n} | my selection · {n} |
+| `fantomes.saute.mine` | Pas encore de record | No record yet |
+| `fantomes.saute.selection` | Aucun fantôme choisi | No ghost chosen |
+| `fantomes.manque` | Un fantôme n'a pas pu être chargé | A ghost could not be loaded |
 
 ### Fantômes (`fantome.*`, `apps/web/src/catalogue.course.*.ts`)
 

@@ -24,9 +24,13 @@
     },
     "track-voiture": { "globs": ["apps/web/src/voiture/**", "apps/web/src/carMesh.ts", "apps/web/src/carPose.ts", "apps/web/src/garage*.ts", "apps/web/src/garage.css"] },
     "track-vitrine": { "globs": ["apps/web/src/vitrine/**", "apps/web/vitrine/**", "apps/web/vite.vitrine.config.ts"] },
+    "track-fantomes": {
+      "_": "Lot 55 : le choix des fantômes dans le classement (cases, compteur, cycle du bouton). Une zone étroite exprès : l'Essentiel d'une PR qui ne touche que le HUD ou le Salon ne lance pas son spec.",
+      "globs": ["apps/web/src/fantomes*.ts", "apps/web/src/fantomes.css", "apps/web/src/catalogue.course.fantomes.*.ts"]
+    },
     "track-hud": {
       "globs": ["apps/web/src/*.css", "apps/web/src/home*.ts", "apps/web/src/howto*.ts", "apps/web/src/arriveeUi.ts", "apps/web/src/board*.ts", "apps/web/src/settings*.ts", "apps/web/src/cadre.ts", "apps/web/src/dom.ts", "apps/web/src/icones.ts", "apps/web/src/input.ts", "apps/web/src/touch*.ts", "apps/web/src/compteurImages.ts", "apps/web/src/format.ts", "apps/web/src/landing.ts", "apps/web/src/labels.ts"],
-      "sauf": ["apps/web/src/garage.css", "apps/web/src/salon.css"]
+      "sauf": ["apps/web/src/garage.css", "apps/web/src/salon.css", "apps/web/src/fantomes.css"]
     },
     "track-salon": { "globs": ["apps/web/src/salon*.ts", "apps/web/src/salon.css", "apps/web/src/watch*.ts"] },
     "track-admin": { "globs": ["apps/web/src/admin*.ts", "apps/web/src/adminTrack.css", "apps/web/src/planning.ts", "apps/web/src/access.ts", "apps/web/src/circuitStats.ts", "apps/web/admin/**"] },
@@ -104,6 +108,7 @@
     "web/juice.spec.ts": ["track-audio-fx", "track-sim"],
     "web/langue.spec.ts": ["track-i18n", "ui", "profile-pkg"],
     "web/leaderboard.spec.ts": ["track-profil", "api-track", "api-coeur", "track-sim"],
+    "web/fantomes.spec.ts": ["track-fantomes", "api-track"],
     "web/mobile.spec.ts": ["track-hud", "ui", "track-coeur"],
     "web/nouveau-depart.spec.ts": ["portail", "profile-pkg", "api-coeur", "track-coeur", "jump-jour", "core-clock"],
     "web/perf.spec.ts": ["track-coeur"],

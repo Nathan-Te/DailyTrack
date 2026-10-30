@@ -85,14 +85,17 @@ test("deux appareils, deux temps, un classement", async ({ browser }) => {
   await bob.waitForFunction(() => window.__cdj.phase === "racing"); // la course est lancée : le fantôme ne peut plus changer sur place
   expect(await bob.evaluate(() => window.__cdj.ghost !== null)).toBe(true);
 
-  // Un autre choix en pleine course est annoncé comme « au prochain départ » (et non plus ignoré en silence)…
+  // Un autre choix en pleine course est annoncé comme « au prochain départ » (et non plus ignoré en silence) : lot 55, après « le premier » vient « ma sélection » (les fantômes
+  // proposés tant que rien n'est choisi : le premier et celui devant toi, ici Alice dans les deux cas)…
   await bob.keyboard.press("KeyG");
   await expect(bob.locator("#ghostinfo")).toContainText("premier : Alice");
-  await expect(bob.locator("#ghostinfo")).toContainText("→ devant toi : Alice");
-  // …puis devient celui qui roule dès qu'on repart.
+  await expect(bob.locator("#ghostinfo")).toContainText("→ ma sélection · 1");
+  // …puis devient celui qui roule dès qu'on repart : Alice, dans le champ de fantômes choisis.
   await bob.keyboard.press("Enter");
-  await expect(bob.locator("#ghostinfo")).toContainText("devant toi : Alice");
+  await expect(bob.locator("#ghostinfo")).toContainText("vs ma sélection · 1");
   await expect(bob.locator("#ghostinfo")).not.toContainText("→");
+  await bob.waitForFunction(() => (window as unknown as { __cdjFantomes: { champ: number } }).__cdjFantomes?.champ === 1);
+  expect(await bob.evaluate(() => (window as unknown as { __cdjFantomes: { entrees: string[] } }).__cdjFantomes.entrees)).toEqual(["Alice"]);
 
   await alice.context().close();
   await bob.context().close();

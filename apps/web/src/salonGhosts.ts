@@ -23,6 +23,10 @@ export interface GhostEntry {
   replay: string;
   /** Lot 51 : la voiture de cette course (le modèle, en version simple, à la couleur de la place) ; absente : la Sparrow en orange. */
   voiture?: ChoixVoiture;
+  /** Lot 55 : la place (donc la couleur) que prend ce fantôme ; absente : la première libre (le Salon). Au jour, la teinte suit l'ordre du choix, comme dans le classement. */
+  slot?: number;
+  /** Lot 55 : ses temps intermédiaires, pour l'écart au fantôme le plus proche. */
+  splits?: number[];
 }
 
 interface Active {
@@ -185,30 +189,52 @@ export class GhostField {
     this.stats.rejected = 0;
     let others = 0;
     for (const entry of this.pending) {
-      const slot = entry.rank === null ? this.slots.length - 1 : others;
-      if (entry.rank !== null && others >= MAX_GHOSTS) continue;
-      try {
-        const replay = decodeReplay(entry.replay);
-        if (replay.trackId !== track.id || replay.simVersion !== SIM_VERSION) throw new Error("autre circuit ou autre version");
-        const race = createRace(track);
-        const previous = createCar();
-        const player = new ReplayPlayer(replay);
-        // Arrivée tardive (le classement s'est chargé après le départ) : le fantôme rattrape la course du joueur, pas par pas, pour être à sa place.
-        for (let t = 0; t < catchUpTicks && race.finishMs < 0; t++) {
-          copyCar(race.car, previous);
-          stepRace(race, player.next());
-        }
-        copyCar(race.car, previous);
-        this.active.push({ entry, slot, race, player, previous, finishedTicks: 0 });
-        this.poserVoiture(this.slots[slot]!, entry.voiture?.id ?? CHOIX_DEFAUT.id); // lot 51 : la voiture de sa course
-        if (entry.rank !== null) others++;
-        this.stats.loaded++;
-      } catch {
-        this.stats.rejected++;
-      }
+      if (entry.rank !== null && entry.slot === undefined && others >= MAX_GHOSTS) continue;
+      const slot = entry.rank === null ? this.slots.length - 1 : (entry.slot ?? others);
+      if (this.enroler(entry, slot, track, catchUpTicks) && entry.rank !== null) others++;
     }
     for (const s of this.slots) s.pose.reset();
     this.applyVisibility();
+  }
+
+  /**
+   * Lot 55 : un fantôme de plus **en cours de course** (sa rediffusion est arrivée après le départ) : il rejoint la course à la place où il devrait être, sans toucher aux autres
+   * (`catchUpTicks` : les pas déjà courus). Sans effet s'il est déjà là ou si sa place est prise.
+   */
+  ajouter(entry: GhostEntry, track: Track, catchUpTicks: number): boolean {
+    const slot = entry.slot ?? this.slots.findIndex((_, i) => i < MAX_GHOSTS && !this.active.some((a) => a.slot === i));
+    if (slot < 0 || slot >= MAX_GHOSTS || this.active.some((a) => a.entry.key === entry.key || a.slot === slot)) return false;
+    const ok = this.enroler(entry, slot, track, catchUpTicks);
+    if (ok) this.applyVisibility();
+    return ok;
+  }
+
+  /** Les fantômes en course (clé, temps intermédiaires, pseudo) : l'écart au plus proche et les tests. */
+  get entries(): readonly GhostEntry[] {
+    return this.active.map((a) => a.entry);
+  }
+
+  private enroler(entry: GhostEntry, slot: number, track: Track, catchUpTicks: number): boolean {
+    try {
+      const replay = decodeReplay(entry.replay);
+      if (replay.trackId !== track.id || replay.simVersion !== SIM_VERSION) throw new Error("autre circuit ou autre version");
+      const race = createRace(track);
+      const previous = createCar();
+      const player = new ReplayPlayer(replay);
+      // Arrivée tardive (le classement s'est chargé après le départ) : le fantôme rattrape la course du joueur, pas par pas, pour être à sa place.
+      for (let t = 0; t < catchUpTicks && race.finishMs < 0; t++) {
+        copyCar(race.car, previous);
+        stepRace(race, player.next());
+      }
+      copyCar(race.car, previous);
+      this.active.push({ entry, slot, race, player, previous, finishedTicks: 0 });
+      this.poserVoiture(this.slots[slot]!, entry.voiture?.id ?? CHOIX_DEFAUT.id); // lot 51 : la voiture de sa course
+      this.stats.loaded++;
+      return true;
+    } catch {
+      this.stats.rejected++;
+      return false;
+    }
   }
 
   /**

@@ -50,7 +50,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "course.fantome.annonce": "Ghost: {nom}",
   "fantome.bouton": "Ghost: {nom}",
   "course.fantome.pasDePremier": "No leader yet",
-  "course.fantome.personneDevant": "Nobody ahead of you",
   "course.depart": "GO!",
   "course.arrivee": "FINISH",
   "course.portique.depart": "START",

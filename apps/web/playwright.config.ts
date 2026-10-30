@@ -119,5 +119,12 @@ export default defineConfig({
       reuseExistingServer: false,
       env: { PORT: "8801", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS },
     },
+    {
+      // Lot 55 : réservé à e2e/fantomes.spec.ts (choisir ses fantômes dans le classement : trois joueurs classés, un quatrième qui coche). Un serveur par spec.
+      command: "node ../api/dist/server.mjs",
+      url: "http://127.0.0.1:8802/api/health",
+      reuseExistingServer: false,
+      env: { PORT: "8802", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS },
+    },
   ],
 });

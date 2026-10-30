@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANNONCE, CLASSEMENT_JOUR, annonceParHeure, FREE_TIER, JUMP_PLAYER, PORTAIL_VISITOR, SALON_HALF_HOUR, TRACK_PLAYER, classementReadsPerDay, projectMonth } from "../scripts/platformBudget";
+import { ANNONCE, CLASSEMENT_JOUR, annonceParHeure, FREE_TIER, JUMP_PLAYER, PORTAIL_VISITOR, SALON_HALF_HOUR, TRACK_FANTOMES_CHOISIS, TRACK_PLAYER, classementReadsPerDay, projectMonth } from "../scripts/platformBudget";
 
 // Lot P4 (plateforme) : `npm run measure:platform -w @cdj/api` projette le coût d'un mois à partir des joueurs par jour de chaque jeu. Calcul pur :
 // proportionnel aux joueurs, chaque jeu compté à part, l'offre gratuite et ce qui la dépasse.
@@ -28,6 +28,12 @@ describe("projection du mois (measure:platform)", () => {
     expect(PORTAIL_VISITOR.requests).toBe(3); // lot I3 : 2 chargements de l'accueil + la page du classement du jour
     expect(PORTAIL_VISITOR.written).toBe(0);
     expect(projectMonth({ jump: 1, track: 1, salon: 0 }).byGame.Portail!.requests).toBe(0);
+  });
+
+  it("lot 55 : choisir ses fantômes coûte au plus cinq lectures de rediffusion par page, aucune écriture, et ne change pas le joueur type de Track", () => {
+    expect(TRACK_FANTOMES_CHOISIS.maxParPage * TRACK_FANTOMES_CHOISIS.requestsParFantome).toBe(5);
+    expect(TRACK_FANTOMES_CHOISIS.written).toBe(0);
+    expect(TRACK_PLAYER.requests).toBe(16);
   });
 
   it("le joueur type de DailyJump : au plus 13 requêtes par jour (12 au lot P4 + « Jeu suivant du jour » du lot I3), hors pré-vols", () => {
