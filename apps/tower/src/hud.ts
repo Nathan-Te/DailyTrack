@@ -1,4 +1,4 @@
-import type { PieceKind, VuePartie } from "@cdj/tower-sim";
+import { DUREE_EFFET, type Effet, type PieceKind, type VuePartie } from "@cdj/tower-sim";
 import { boutonFantome, boutonPleinEcran, el, formatNombre, svg } from "@cdj/ui";
 import { apercuPiece, coeurs, majCoeurs } from "./composants";
 import { type Entrees, type Touche } from "./entrees";
@@ -21,6 +21,12 @@ export interface OptionsHud {
 
 export const formatHauteur = (mm: number): string => `${formatNombre(mm / 1000, langueCourante(), 3)} m`;
 
+/** Une hauteur de palier en mètres entiers : « 10 m » (espace insécable, comme `formatHauteur`). */
+export const formatPalier = (metres: number): string => `${formatNombre(metres, langueCourante(), 0)}\u00a0m`;
+
+/** Combien de temps l'annonce d'un palier reste à l'écran (ms) : une ligne courte, qui disparaît (charte § 9). */
+const ANNONCE_MS = 3600;
+
 export class Hud {
   readonly element: HTMLElement;
   private readonly hauteur = el("span", { classe: "bande__hauteur" });
@@ -29,10 +35,18 @@ export class Hud {
   private readonly viesBande: HTMLElement;
   private readonly suivante = el("div", { classe: "suivante", attrs: { role: "img" } });
   private readonly suivanteApercu = el("span", { classe: "suivante__piece" });
+  // Lot T2 : la plaque du prochain palier, au bord gauche à la hauteur du trait pointillé (« 10 m » puis l'effet, vert pour un bonus, encre pour un malus), et l'annonce d'un effet qui se déclenche.
+  private readonly palier = el("div", { classe: "palier", attrs: { role: "img", hidden: true } });
+  private readonly palierMetres = el("span", { classe: "palier__metres" });
+  private readonly palierSigne = el("span", { classe: "palier__signe", attrs: { "aria-hidden": "true" } });
+  private readonly palierEffet = el("span", { classe: "palier__nom" });
+  private readonly annonce = el("div", { classe: "annonce", attrs: { role: "status", "aria-live": "polite" } });
+  private minuteurAnnonce: ReturnType<typeof setTimeout> | null = null;
+  private palierY = NaN;
   readonly pause: HTMLButtonElement;
   readonly fantome: HTMLButtonElement;
   readonly plein: HTMLButtonElement;
-  private dernier = { hauteur: "", n: -1, vies: -1, suivante: "" as PieceKind | "" | null, nom: "" };
+  private dernier = { hauteur: "", n: -1, vies: -1, suivante: "" as PieceKind | "" | null, nom: "", palier: "" };
 
   constructor(private readonly o: OptionsHud) {
     this.pause = el("button", { classe: "plaque-bouton", attrs: { type: "button", id: "pause" } }, el("span", { classe: "pause-barres", attrs: { "aria-hidden": "true" } }, el("span"), el("span")));
@@ -52,7 +66,8 @@ export class Hud {
     this.suivante.append(el("span", { classe: "suivante__legende" }), this.suivanteApercu);
     const gauche = el("div", { classe: "hud__gauche" }, this.pause, this.plein, this.fantome);
     const droite = el("div", { classe: "hud__droite" }, this.suivante);
-    this.element = el("div", { classe: ["hud", o.tactile && "hud--tactile"], attrs: { role: "group" } }, gauche, bande, droite, this.commandes());
+    this.palier.append(this.palierMetres, el("span", { classe: "palier__pastille" }, this.palierSigne, this.palierEffet));
+    this.element = el("div", { classe: ["hud", o.tactile && "hud--tactile"], attrs: { role: "group" } }, gauche, bande, droite, this.palier, this.annonce, this.commandes());
     o.racine.append(this.element);
     this.traduire();
   }
@@ -81,7 +96,37 @@ export class Hud {
     for (const b of this.element.querySelectorAll<HTMLElement>("[data-cle]")) b.setAttribute("aria-label", t(b.dataset.cle!));
     for (const s of this.element.querySelectorAll<HTMLElement>("[data-cle-texte]")) s.textContent = t(s.dataset.cleTexte!);
     this.element.querySelector(".commandes")!.setAttribute("aria-label", t("hud.commandes"));
-    this.dernier = { hauteur: "", n: -1, vies: -1, suivante: "", nom: "" };
+    this.dernier = { hauteur: "", n: -1, vies: -1, suivante: "", nom: "", palier: "" };
+  }
+
+  /**
+   * Pose la plaque du prochain palier à `px` pixels du haut de l'écran (la hauteur du trait pointillé), sans sortir de la zone libre entre les boutons du haut et les commandes du bas
+   * (`min`, `max`). N'écrit que la variable CSS : la mise en page est dans `jeu.css`.
+   */
+  placerPalier(px: number, min: number, max: number): void {
+    const y = Math.round(Math.min(Math.max(px, min), max));
+    if (y === this.palierY) return;
+    this.palierY = y;
+    this.palier.style.setProperty("--palier-y", `${y}px`);
+  }
+
+  /** L'annonce d'un palier qui se déclenche : une ligne courte sous la bande, qui disparaît. */
+  annoncerPalier(metres: number, effet: Effet): void {
+    this.annoncerTexte(t(DUREE_EFFET[effet] > 1 ? "annonce.palier.trois" : "annonce.palier", { metres: formatPalier(metres), effet: t(`effet.${effet}`) }));
+  }
+
+  /** Une ligne d'aide sous la bande (même emplacement, même disparition). */
+  annoncerTexte(texte: string): void {
+    this.annonce.textContent = texte;
+    this.annonce.classList.add("annonce--visible");
+    if (this.minuteurAnnonce) clearTimeout(this.minuteurAnnonce);
+    this.minuteurAnnonce = setTimeout(() => this.cacherAnnonce(), ANNONCE_MS);
+  }
+
+  cacherAnnonce(): void {
+    if (this.minuteurAnnonce) clearTimeout(this.minuteurAnnonce);
+    this.minuteurAnnonce = null;
+    this.annonce.classList.remove("annonce--visible");
   }
 
   /** Met à jour ce qui a changé depuis l'image précédente (le DOM n'est touché que pour une valeur nouvelle). */
@@ -109,6 +154,20 @@ export class Hud {
       this.suivante.hidden = vue.suivante === null;
       this.suivanteApercu.replaceChildren(...(vue.suivante ? [apercuPiece(vue.suivante)] : []));
       if (vue.suivante) this.suivante.setAttribute("aria-label", t("hud.suivante.aria", { forme: vue.suivante }));
+    }
+    const p = vue.palier;
+    const clePalier = p ? `${p.metres}${p.effet}` : "";
+    if (clePalier !== d.palier) {
+      d.palier = clePalier;
+      this.palier.hidden = !p;
+      if (p) {
+        this.palier.classList.toggle("palier--bonus", p.bonus);
+        this.palier.classList.toggle("palier--malus", !p.bonus);
+        this.palierMetres.textContent = formatPalier(p.metres);
+        this.palierSigne.textContent = p.bonus ? "+" : "−";
+        this.palierEffet.textContent = t(`effet.${p.effet}`);
+        this.palier.setAttribute("aria-label", t("hud.palier.aria", { metres: formatPalier(p.metres), effet: t(`effet.${p.effet}`), type: t(p.bonus ? "palier.bonus" : "palier.malus") }));
+      }
     }
     if (nomFantome !== d.nom) {
       d.nom = nomFantome;

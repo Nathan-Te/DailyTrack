@@ -1,0 +1,110 @@
+{
+  "versions": {
+    "sim": 2,
+    "g": 1
+  },
+  "contenus": [
+    {
+      "date": "2026-11-02",
+      "empreinte": "8310f797ad5ca5a4"
+    },
+    {
+      "date": "2026-11-03",
+      "empreinte": "6c948980612a93a1"
+    },
+    {
+      "date": "2026-11-04",
+      "empreinte": "1064a290d11fa2b1"
+    },
+    {
+      "date": "2026-11-05",
+      "empreinte": "20179fa2ee802f0b"
+    },
+    {
+      "date": "2026-11-06",
+      "empreinte": "17fa6a967377eb57"
+    },
+    {
+      "date": "2026-11-07",
+      "empreinte": "9b36de47f5bda0c0"
+    },
+    {
+      "date": "2026-11-08",
+      "empreinte": "694ebe8e48ceb89b"
+    },
+    {
+      "date": "2026-11-09",
+      "empreinte": "cde0c70950411b9e"
+    },
+    {
+      "date": "2026-11-10",
+      "empreinte": "048699be56540c93"
+    },
+    {
+      "date": "2026-11-11",
+      "empreinte": "45d7150fb07affb4"
+    }
+  ],
+  "rediffusions": [
+    {
+      "nom": "essai",
+      "contenu": {
+        "scenario": "essai"
+      },
+      "code": "AQIAAQVlc3NhaRQEOAkEAQAMCCMADQgmBAEADAgeBAMACgghAA0IJwANCCcEAwAKCCQABAEBAAEBAQAKCCYABAEBAAEBAQAKCC0ABAEBAAoITQAEAQEACghvAA0IOwANCCcADQgnAA0IAg",
+      "resultat": {
+        "hauteurMm": 9002,
+        "vies": 0,
+        "ticks": 867,
+        "ticksGel": 1048,
+        "hauteurMaxMm": 19180,
+        "posees": 14,
+        "tombees": 9,
+        "motif": "vies"
+      },
+      "empreinteFinale": "126eeb9c3a6143aa",
+      "ticks": 867,
+      "paliers": 0
+    },
+    {
+      "nom": "jour-avec-paliers",
+      "contenu": {
+        "date": "2026-11-02"
+      },
+      "code": "AQIBAJeiARQEOAMABAIBAAoIJwQBAAwIIwQBAAwIIQANCCcEAQAMCB4EAQAMCCMABAEBAAoIJwQBAAwIIAANCCcEAQAMCBUADQgnBAMACggjAAQCAQAKCCcEAwAKCCEADQgmBAEADAgrAAQCAQAKCDoADQg4AA0ILQANCBg",
+      "resultat": {
+        "hauteurMm": 41951,
+        "vies": 0,
+        "ticks": 1020,
+        "ticksGel": 1240,
+        "hauteurMaxMm": 43786,
+        "posees": 19,
+        "tombees": 5,
+        "motif": "vies"
+      },
+      "empreinteFinale": "76ef612918933d80",
+      "ticks": 1020,
+      "paliers": 4
+    },
+    {
+      "nom": "zero-vie",
+      "contenu": {
+        "date": "2026-11-03"
+      },
+      "code": "AQIBAJiiARQEOAMCKAAGCCUCKAAGCCICKAAGCCM",
+      "resultat": {
+        "hauteurMm": 0,
+        "vies": 0,
+        "ticks": 244,
+        "ticksGel": 244,
+        "hauteurMaxMm": 0,
+        "posees": 0,
+        "tombees": 3,
+        "motif": "vies"
+      },
+      "empreinteFinale": "816bc75119e02ae5",
+      "ticks": 244,
+      "paliers": 0
+    }
+  ]
+}

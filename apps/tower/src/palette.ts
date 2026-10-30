@@ -24,3 +24,10 @@ export const SCENE = {
   encre: valeurJeton("dj-encre"),
   papier: valeurJeton("dj-papier"),
 } as const;
+
+/** Le halo d'une pièce qui porte un effet de palier (lot T2) : un liseré de couleur sous la bordure d'encre. Aplats, aucun dégradé ; le soin viendra au lot T5. */
+export const EFFET_HALO = {
+  lierre: "#5DBB63",
+  figee: "#7C8FA6",
+  glissante: "#9ED9BE",
+} as const;

@@ -270,12 +270,100 @@ body {
   box-shadow: 0 2px 0 var(--tower-coque);
 }
 
+/* Lot T2 — la plaque du prochain palier (maquettes : « 10 m » puis l'effet, au bord gauche) : posée à la hauteur du trait pointillé de la scène (la variable `--palier-y` vient du jeu,
+   bornée entre les boutons du haut et les commandes du bas). L'effet d'un bonus est sur le vert de Tower ; celui d'un malus sur l'encre, texte papier. Le signe + / − le dit aussi sans couleur. */
+.palier {
+  position: absolute;
+  left: var(--marge-g);
+  top: var(--palier-y, 122px);
+  transform: translateY(-50%);
+  display: flex;
+  align-items: stretch;
+  height: 26px;
+  box-sizing: border-box;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.palier[hidden] {
+  display: none;
+}
+.palier > * {
+  display: flex;
+  align-items: center;
+}
+.palier__metres {
+  padding: 0 6px;
+  background: var(--dj-papier);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.palier__pastille {
+  gap: 4px;
+  padding: 0 6px;
+  border-left: var(--dj-trait) solid var(--dj-encre);
+}
+.palier--bonus .palier__pastille {
+  background: var(--tower-bonus);
+  color: var(--dj-encre);
+}
+.palier--malus .palier__pastille {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+
+/* Lot T2 — l'annonce d'un effet qui se déclenche : une ligne courte sous la bande, qui disparaît (charte § 9). */
+.annonce {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--marge-h) + 38px);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  max-width: min(92vw, 440px);
+  padding: 5px 10px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s linear, visibility 0s linear 0.25s;
+}
+.annonce--visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.12s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .annonce,
+  .annonce--visible {
+    transition: none;
+  }
+}
+
 /* Portrait (rapport largeur / hauteur ≤ 1) : la bande reste en haut au centre ; pause, plein écran et fantôme passent sur une deuxième rangée à gauche, la pièce suivante à droite ;
    les commandes restent aux bords du bas (charte rév. 13, § 9). */
 @media (max-aspect-ratio: 1/1) {
   .hud__gauche,
   .hud__droite {
     top: calc(max(8px, env(safe-area-inset-top, 0px)) + 40px);
+  }
+  .annonce {
+    top: calc(max(8px, env(safe-area-inset-top, 0px)) + 40px + var(--dj-cible) + 10px);
   }
   .bande__hauteur {
     font-size: var(--dj-taille-13);

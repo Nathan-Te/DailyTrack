@@ -10,6 +10,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@cdj/clock": "*",
     "@cdj/core": "*",
     "@cdj/profile": "*",
     "@cdj/tower-sim": "*",

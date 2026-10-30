@@ -25,6 +25,19 @@ export const CATALOGUE_EN: Catalogue = {
   "fantome.aucun": "None",
   "fantome.meilleure": "My best",
 
+  "hud.palier.aria": "Next checkpoint at {metres}: {effet} ({type})",
+  "palier.bonus": "bonus",
+  "palier.malus": "penalty",
+  "effet.lierre": "Ivy",
+  "effet.figee": "Frozen piece",
+  "effet.petite": "Small piece",
+  "effet.geante": "Giant piece",
+  "effet.vent": "Gust of wind",
+  "effet.glissante": "Slippery piece",
+  "annonce.palier": "Checkpoint {metres} · {effet} on the next piece",
+  "annonce.palier.trois": "Checkpoint {metres} · {effet} on the next three pieces",
+  "jour.pasEncore": "That day isn't out yet: here is today's.",
+
   "pause.aria": "Pause",
   "pause.titre": "Pause",
   "pause.etat": "Piece {n} of {total} · {hauteur}",
@@ -34,6 +47,8 @@ export const CATALOGUE_EN: Catalogue = {
 
   "fin.aria": "End of the game",
   "fin.eyebrow": "TOWER · Practice run",
+  "fin.eyebrow.jour": "TOWER · {date}",
+  "fin.eyebrow.paliers": "TOWER · Checkpoints",
   "fin.hauteurStable": "Stable height",
   "fin.plusHaute": "Highest reached: {hauteur} (doesn't count)",
   "fin.vies": "Lives",

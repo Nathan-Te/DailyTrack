@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1185 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1199 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1552,6 +1552,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 ## Tower
 
+### annonce (`annonce.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `annonce.palier` | Palier {metres} · {effet} sur la pièce suivante | Checkpoint {metres} · {effet} on the next piece |
+| `annonce.palier.trois` | Palier {metres} · {effet} sur les trois pièces suivantes | Checkpoint {metres} · {effet} on the next three pieces |
+
 ### Chargement (`chargement.*`, `apps/tower/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -1568,6 +1575,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commande.tourner` | Tourner | Rotate |
 | `commande.descendre` | Descendre vite (maintenir) | Drop fast (hold) |
 
+### effet (`effet.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `effet.lierre` | Lierre | Ivy |
+| `effet.figee` | Pièce figée | Frozen piece |
+| `effet.petite` | Petite pièce | Small piece |
+| `effet.geante` | Pièce géante | Giant piece |
+| `effet.vent` | Coup de vent | Gust of wind |
+| `effet.glissante` | Pièce glissante | Slippery piece |
+
 ### Fantômes (`fantome.*`, `apps/tower/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -1582,6 +1600,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `fin.aria` | Fin de la partie | End of the game |
 | `fin.eyebrow` | TOWER · Suite d'essai | TOWER · Practice run |
+| `fin.eyebrow.jour` | TOWER · {date} | TOWER · {date} |
+| `fin.eyebrow.paliers` | TOWER · Paliers | TOWER · Checkpoints |
 | `fin.hauteurStable` | Hauteur stable | Stable height |
 | `fin.plusHaute` | Plus haute atteinte : {hauteur} (ne compte pas) | Highest reached: {hauteur} (doesn't count) |
 | `fin.vies` | Vies | Lives |
@@ -1593,12 +1613,25 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `fin.phrase.pieces` | Les pièces respirent enfin. | The pieces can finally breathe. |
 | `fin.phrase.vies` | Les pièces ne t'en veulent pas. Presque pas. | The pieces don't hold it against you. Not much. |
 
+### Jour (`jour.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `jour.pasEncore` | Ce jour n'est pas encore sorti : voici celui d'aujourd'hui. | That day isn't out yet: here is today's. |
+
 ### Page (titre, chargement) (`page.*`, `apps/tower/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
 | `page.titre` | Tower — Du Jour | Tower — Du Jour |
 | `page.sansWebgl` | Ton navigateur ne peut pas afficher Tower : WebGL est nécessaire. | Your browser can't show Tower: WebGL is required. |
+
+### palier (`palier.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `palier.bonus` | bonus | bonus |
+| `palier.malus` | malus | penalty |
 
 ### Partie (surimpressions) (`hud.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1612,6 +1645,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.suivante` | Suivante | Next |
 | `hud.suivante.aria` | Pièce suivante : {forme} | Next piece: {forme} |
 | `hud.commandes` | Commandes | Controls |
+| `hud.palier.aria` | Prochain palier à {metres} : {effet} ({type}) | Next checkpoint at {metres}: {effet} ({type}) |
 
 ### Pause (`pause.*`, `apps/tower/src/catalogue.*.ts`)
 

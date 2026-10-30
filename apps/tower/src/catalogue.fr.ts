@@ -25,6 +25,19 @@ export const CATALOGUE_FR: Catalogue = {
   "fantome.aucun": "Aucun",
   "fantome.meilleure": "Ma meilleure",
 
+  "hud.palier.aria": "Prochain palier à {metres} : {effet} ({type})",
+  "palier.bonus": "bonus",
+  "palier.malus": "malus",
+  "effet.lierre": "Lierre",
+  "effet.figee": "Pièce figée",
+  "effet.petite": "Petite pièce",
+  "effet.geante": "Pièce géante",
+  "effet.vent": "Coup de vent",
+  "effet.glissante": "Pièce glissante",
+  "annonce.palier": "Palier {metres} · {effet} sur la pièce suivante",
+  "annonce.palier.trois": "Palier {metres} · {effet} sur les trois pièces suivantes",
+  "jour.pasEncore": "Ce jour n'est pas encore sorti : voici celui d'aujourd'hui.",
+
   "pause.aria": "Pause",
   "pause.titre": "Pause",
   "pause.etat": "Pièce {n} sur {total} · {hauteur}",
@@ -34,6 +47,8 @@ export const CATALOGUE_FR: Catalogue = {
 
   "fin.aria": "Fin de la partie",
   "fin.eyebrow": "TOWER · Suite d'essai",
+  "fin.eyebrow.jour": "TOWER · {date}",
+  "fin.eyebrow.paliers": "TOWER · Paliers",
   "fin.hauteurStable": "Hauteur stable",
   "fin.plusHaute": "Plus haute atteinte : {hauteur} (ne compte pas)",
   "fin.vies": "Vies",

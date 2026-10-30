@@ -5,23 +5,27 @@ import "@cdj/ui/src/polices/archivo-600.css";
 import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "./jeu.css";
-import { empreinteVue, Partie, SCENARIO_ESSAI, TICKS_PAR_SECONDE, type Rapier, type VuePartie } from "@cdj/tower-sim";
-import { el } from "@cdj/ui";
+import { parisDay } from "@cdj/clock";
+import { empreinteVue, enregistrer, Partie, type Rapier, SCENARIO_ESSAI, type Scenario, scenarioPaliers, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
+import { el, formatDateCourte } from "@cdj/ui";
 import { Entrees } from "./entrees";
 import { texteDebug } from "./debug";
-import { fantomeDe, MemoireFantome } from "./fantomeLocal";
+import { fantomeDe, MemoireFantome, silhouetteDe } from "./fantomeLocal";
 import { monterFin } from "./fin";
 import { Hud } from "./hud";
-import { appliquerDocument, chargerLangue, t } from "./i18n";
+import { appliquerDocument, chargerLangue, langueCourante, t } from "./i18n";
+import { contenuDuJour } from "./jour";
 import { monterPause } from "./pause";
 import { Scene3D } from "./scene";
 import { monterTune, reglagesDeDepart } from "./tune";
-import { lireOptions, PRODUCTION } from "./urlOptions";
+import { choisirJour, lireOptions, PRODUCTION } from "./urlOptions";
 
-// Le jeu de Tower (lot T1) : une partie complète sur la suite fixe d'essai (`?scenario=essai`). Ce fichier assemble la simulation (`@cdj/tower-sim`, pas fixe de 60 Hz, commandes en
+// Le jeu de Tower (lots T1 et T2) : une partie complète sur le contenu d'un jour (`dailyTower`, ou le jour figé : `/tower/`, `?seed=AAAA-MM-JJ`), la suite fixe d'essai (`?scenario=essai`) ou la tour
+// des paliers (`?scenario=paliers&effet=…`). Lot T2 : chaque partie s'enregistre (une rediffusion), l'écran de fin garde celle de la meilleure partie de la session et le fantôme local en dérive.
+// Ce fichier assemble la simulation (`@cdj/tower-sim`, pas fixe de 60 Hz, commandes en
 // masque de bits par tick), la scène (Three.js orthographique), le HUD, la pause, l'écran de fin, les commandes (clavier et boutons) et le fantôme local. La boucle fait autant de
 // ticks que le temps écoulé en demande (au plus `TICKS_MAX` par image) et dessine entre le dernier tick et le suivant (`alpha`) : une image à 120 Hz ne saccade pas.
-// Pas de contenu du jour, de rediffusion ni de serveur (lots T2 à T4).
+// Pas de serveur (lot T4).
 
 const TICKS_MAX = 6;
 const options = lireOptions(location.search, PRODUCTION);
@@ -34,8 +38,12 @@ interface PorteDeTest {
   /** Avance de `n` ticks avec le masque `commandes` (les boutons ne sont pas lus), puis dessine. */
   avancer(n: number, commandes?: number): void;
   empreinte(): string;
-  /** Le nombre de pièces du fantôme posé derrière la tour. */
+  /** Le nombre de pièces du fantôme posé derrière la tour (la silhouette se calcule après la fin de la partie : tranche par tranche). */
   fantome(): number;
+  /** Le contenu joué. */
+  contenu(): Scenario;
+  /** La rediffusion (texte `base64url`) de la meilleure partie de la session, ou null. */
+  rediffusion(): string | null;
 }
 
 async function demarrer(): Promise<void> {
@@ -67,7 +75,23 @@ async function demarrer(): Promise<void> {
   const reglages = reglagesDeDepart();
   const tactile = options.tactile === "1" || (options.tactile !== "0" && matchMedia("(pointer: coarse)").matches);
   const entrees = new Entrees(() => reglages.entrees);
-  const scene = new Scene3D(racine, SCENARIO_ESSAI.plateformeDemi8);
+  // Le contenu : un jour (aujourd'hui, ou `?seed=` ; sur la production une date future est refusée), la suite d'essai, ou les paliers.
+  let contenu: Scenario;
+  let refuse = false;
+  let enTete: () => string;
+  if (options.scenario === "essai") {
+    contenu = SCENARIO_ESSAI;
+    enTete = () => t("fin.eyebrow");
+  } else if (options.scenario === "paliers") {
+    contenu = scenarioPaliers(options.effet);
+    enTete = () => t("fin.eyebrow.paliers");
+  } else {
+    const choix = choisirJour(options.seed, parisDay(Date.now()), PRODUCTION);
+    refuse = choix.refuse;
+    contenu = await contenuDuJour(choix.jour);
+    enTete = () => t("fin.eyebrow.jour", { date: formatDateCourte(choix.jour, langueCourante()) });
+  }
+  const scene = new Scene3D(racine, contenu.plateformeDemi8);
   const memoire = new MemoireFantome();
   let fantomeVoulu = true;
   let partie: Partie;
@@ -78,6 +102,19 @@ async function demarrer(): Promise<void> {
 
   const nomFantome = (): string => t(fantomeVoulu ? "fantome.meilleure" : "fantome.aucun");
   const poserFantome = (): void => scene.poserFantome(fantomeVoulu ? (memoire.get()?.pieces ?? null) : null);
+
+  /** Ce que la scène et le HUD montrent des paliers : le trait pointillé du prochain, les traînées d'un coup de vent sur la pièce active. */
+  let declenchesVus = 0;
+  function synchroPaliers(v: VuePartie): void {
+    scene.poserPalier(v.palier?.metres ?? null);
+    const active = v.active >= 0 ? v.pieces.find((p) => p.id === v.active) : undefined;
+    scene.poserVent(active?.effet === "vent" ? (contenu.ventSens === -1 ? -1 : 1) : 0);
+    if (v.declenches > declenchesVus && v.dernierEffet) {
+      const palier = contenu.paliers?.[v.declenches - 1];
+      if (palier) hud.annoncerPalier(palier.metres, v.dernierEffet);
+    }
+    declenchesVus = v.declenches;
+  }
 
   const hud = new Hud({
     racine,
@@ -91,7 +128,7 @@ async function demarrer(): Promise<void> {
       hud.maj(partie.vue(), nomFantome());
     },
   });
-  const fin = monterFin(racine, { onRejouer: () => nouvellePartie() });
+  const fin = monterFin(racine, { onRejouer: () => nouvellePartie(), eyebrow: enTete });
   const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie() });
   const debug = options.debug ? el("pre", { classe: "debug", attrs: { id: "debug" } }) : null;
   if (debug) racine.append(debug);
@@ -99,9 +136,11 @@ async function demarrer(): Promise<void> {
 
   function nouvellePartie(): void {
     partie?.dispose();
-    partie = new Partie(R, SCENARIO_ESSAI, { ...reglages.sim });
+    partie = new Partie(R, contenu, { ...reglages.sim });
     scene.vider();
     poserFantome();
+    hud.cacherAnnonce();
+    declenchesVus = 0;
     fin.cacher();
     menu.fermer();
     hud.cache = false;
@@ -110,6 +149,7 @@ async function demarrer(): Promise<void> {
     acc = 0;
     const v = partie.vue();
     scene.sync(v);
+    synchroPaliers(v);
     hud.maj(v, nomFantome());
     document.documentElement.dataset.phase = v.phase;
     dernier = performance.now();
@@ -135,7 +175,18 @@ async function demarrer(): Promise<void> {
   function terminer(): void {
     const r = partie.resultat()!;
     const v = partie.vue();
-    memoire.proposer(fantomeDe(v, r));
+    // La partie s'est enregistrée : si c'est la meilleure de la session, on garde SA REDIFFUSION, et la silhouette du fantôme est l'état final de cette partie rejouée.
+    const rediffusion = enregistrer(partie);
+    const f = fantomeDe(rediffusion, r);
+    if (memoire.proposer(f)) {
+      void silhouetteDe(R, contenu, rediffusion).then(
+        (pieces) => {
+          f.pieces = pieces;
+          if (memoire.get() === f) poserFantome();
+        },
+        () => undefined,
+      );
+    }
     hud.cache = true;
     fin.montrer(v, r, reglages.sim.vies);
   }
@@ -144,6 +195,7 @@ async function demarrer(): Promise<void> {
     partie.avancer(commandes);
     const v = partie.vue();
     scene.sync(v);
+    synchroPaliers(v);
     if (document.documentElement.dataset.phase !== v.phase) document.documentElement.dataset.phase = v.phase;
     if (v.phase === "fini" && !fin.ouverte) terminer();
   }
@@ -176,12 +228,14 @@ async function demarrer(): Promise<void> {
     }
     const vue = partie.vue();
     hud.maj(vue, nomFantome());
+    if (vue.palier) hud.placerPalier(scene.ecranY(vue.palier.metres), 100, window.innerHeight - 120);
     scene.dessiner(pause || manuel || partie.etape === "fini" ? 1 : acc, dt);
     if (debug && ++compteImages % 6 === 0) debug.textContent = texteDebug(vue);
     requestAnimationFrame(image);
   }
 
   nouvellePartie();
+  if (refuse) hud.annoncerTexte(t("jour.pasEncore"));
   if (!PRODUCTION) {
     const porte: PorteDeTest = {
       partie: () => partie,
@@ -195,7 +249,9 @@ async function demarrer(): Promise<void> {
         scene.dessiner(1, 0);
       },
       empreinte: () => empreinteVue(partie.vue()),
-      fantome: () => (fantomeVoulu ? (memoire.get()?.pieces.length ?? 0) : 0),
+      fantome: () => (fantomeVoulu ? (memoire.get()?.pieces?.length ?? 0) : 0),
+      contenu: () => contenu,
+      rediffusion: () => memoire.get()?.code ?? null,
     };
     (window as unknown as { __tower: PorteDeTest }).__tower = porte;
   }

@@ -31,20 +31,20 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 | `jump.polices` | Jump | polices | 153 600 | 94 212 | 94 212 | 59 388 | `apps/jump/e2e/poids.spec.ts` |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | 153 600 | — | 42 687 (portail ; Track 28 039, Jump 29 489) | 110 913 | `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts` |
 
-## Tower (lot T1) : le poids, le JavaScript et le `.wasm` à part
+## Tower (lots T1 et T2) : le poids, le JavaScript et le `.wasm` à part
 
 Mesuré par `node apps/tower/tools/poids.mjs` après `npm run build -w @cdj/tower` (octets **compressés** : gzip niveau 9 et brotli niveau 11 ; polices en octets de fichier). Tower est `off` et sa page n'est pas publiée en production ; **aucun test ne garde encore ces chiffres** et le tableau ci-dessus ne les compte pas (sa vérification suppose une clé de test par ligne) : le branchement à `scripts/budgets.mjs`, à un test et à la CI est un lot de la plateforme (lot T4). Décision de Nathan à la fin du lot T0 : **≈ 1 Mo compressé, chargé à la demande, accepté.**
 
 | Étape | Contenu | gzip (o) | brotli (o) |
 |---|---|---|---|
-| page | `index.html` + `main.js` (l'aiguillage) | 1 121 | 944 |
-| jeu | JavaScript (three.js, la simulation, l'interface) | 146 008 | 120 485 |
-| jeu | CSS (socle `@cdj/ui` et feuille du jeu) | 5 827 | 5 289 |
+| page | `index.html` + `main.js` (l'aiguillage) | 1 457 | 1 246 |
+| jeu | JavaScript (three.js, la simulation, l'interface ; lot T2 : le générateur, les paliers, la rediffusion) | 147 024 | 121 703 |
+| jeu | CSS (socle `@cdj/ui` et feuille du jeu) | 6 077 | 5 510 |
 | jeu | polices : Rubik Mono One, Archivo 400 · 600 · 700, JetBrains Mono 700 (`woff2`) | 77 688 | 77 688 |
 | physique, à la demande | **JavaScript** de Rapier (l'interface du moteur) | 34 906 | 28 639 |
 | physique, à la demande | **`rapier.wasm`** (le moteur, servi comme un fichier) | 923 731 | 681 486 |
-| anglais, à la demande | catalogue anglais | 2 422 | 2 101 |
-| **Total d'une première partie en français** | | **1 189 281** | **914 531** |
+| anglais, à la demande | catalogue anglais | 2 622 | 2 288 |
+| **Total d'une première partie en français** | | **1 190 883** (lot T1 : 1 189 281) | **916 272** (lot T1 : 914 531) |
 
 - **Le JavaScript du jeu (en dehors de Rapier) pèse 187 862 o gzip** (page, jeu, CSS, JavaScript de Rapier), **le `.wasm` 923 731 o** : 78 % du total est le moteur de physique.
 - **Le `.wasm` servi comme un fichier fait gagner 26 % (gzip) et 26 % (brotli)** : en base64 dans le JavaScript (`-compat` tel quel, `dist/rapier.mjs`), Rapier pesait **1 294 255 o gzip et 955 292 o brotli** (même méthode) ; servi à part : **958 637 o gzip** (JavaScript 34 906 + `.wasm` 923 731) et **710 125 o brotli** (28 639 + 681 486). Le binaire est le même (SHA-256 vérifié). Détail : `docs/tower/lots/lot-T1-partie.md`.

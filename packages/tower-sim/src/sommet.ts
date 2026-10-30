@@ -3,13 +3,27 @@
 import { cos, sin } from "../lab/a/trig";
 import type { PieceKind } from "../lab/interface";
 import { type Box8, pieceBoxes } from "../lab/pieces";
+import type { Taille } from "./paliers";
 
 const CACHE = new Map<string, Box8[]>();
-/** Les boîtes d'une pièce (huitièmes de case, autour du centre de masse), mémorisées : la forme ne change jamais. */
-export function boites(kind: PieceKind, rot: number): readonly Box8[] {
-  const cle = `${kind}${rot & 3}`;
+/**
+ * Les boîtes d'une pièce (huitièmes de mètre, autour du centre de masse), mémorisées : la forme ne change jamais. Lot T2 : `petite` est la moitié (toutes les valeurs des sept
+ * tétrominos sont paires : la moitié reste un entier du huitième), `geante` le double.
+ */
+export function boites(kind: PieceKind, rot: number, taille: Taille = "normale"): readonly Box8[] {
+  const cle = `${kind}${rot & 3}${taille}`;
   let b = CACHE.get(cle);
-  if (!b) CACHE.set(cle, (b = pieceBoxes(kind, rot & 3)));
+  if (!b) {
+    const base = pieceBoxes(kind, rot & 3);
+    if (taille === "geante") b = base.map((x) => ({ cx: x.cx * 2, cy: x.cy * 2, hw: x.hw * 2, hh: x.hh * 2 }));
+    else if (taille === "petite") {
+      b = base.map((x) => {
+        if ((x.cx | x.cy | x.hw | x.hh) & 1) throw new Error("pièce impossible à réduire de moitié sur la grille du huitième");
+        return { cx: x.cx / 2, cy: x.cy / 2, hw: x.hw / 2, hh: x.hh / 2 };
+      });
+    } else b = base;
+    CACHE.set(cle, b);
+  }
   return b;
 }
 
@@ -17,13 +31,17 @@ export function boites(kind: PieceKind, rot: number): readonly Box8[] {
 const BRADS_PAR_RADIAN = 166886.05;
 const Q16 = 65536;
 
-/** Ordonnée la plus haute de la pièce (mètres) : centre de masse en (x, y), angle `angle` (radians), formes de départ `kind` / `rot` (quarts de tour). */
-export function sommetPiece(kind: PieceKind, rot: number, y: number, angle: number): number {
+/** Sinus et cosinus d'un angle (radians) lus dans la table, sans transcendante : le même résultat sur Node et dans les navigateurs. */
+export function sinCos(angle: number): { s: number; c: number } {
   const a = Math.round(angle * BRADS_PAR_RADIAN);
-  const s = sin(a) / Q16;
-  const c = cos(a) / Q16;
+  return { s: sin(a) / Q16, c: cos(a) / Q16 };
+}
+
+/** Ordonnée la plus haute de la pièce (mètres) : centre de masse en (x, y), angle `angle` (radians), formes de départ `kind` / `rot` (quarts de tour) et `taille`. */
+export function sommetPiece(kind: PieceKind, rot: number, y: number, angle: number, taille: Taille = "normale"): number {
+  const { s, c } = sinCos(angle);
   let haut = -Infinity;
-  for (const b of boites(kind, rot)) {
+  for (const b of boites(kind, rot, taille)) {
     for (const sx of [-1, 1]) {
       for (const sy of [-1, 1]) {
         const xl = (b.cx + sx * b.hw) / 8;

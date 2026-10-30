@@ -281,8 +281,8 @@ describe("une partie scriptée", () => {
     return c;
   };
 
-  it(`TOWER_SIM_VERSION vaut 1 et l'empreinte de fin est celle de Node (le golden des quatre navigateurs viendra au lot T2)`, () => {
-    expect(TOWER_SIM_VERSION).toBe(1);
+  it(`TOWER_SIM_VERSION vaut 2 (les paliers, lot T2) mais une partie sans palier est celle du lot T1 : même empreinte de fin, celle de Node`, () => {
+    expect(TOWER_SIM_VERSION).toBe(2);
     const p = new Partie(R, SCENARIO_ESSAI);
     partieScriptee(p, SCRIPT);
     const r = p.resultat()!;
