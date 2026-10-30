@@ -17,7 +17,7 @@ import {
 import { GRACE_MS } from "../src/cdj";
 import { JUMP_GRACE_MS } from "../src/jump";
 import { GAMES } from "../src/registry";
-import { circuitOf, makeApi, parisDayStart, playerId, TEST_DB, type TestApi } from "./helpers";
+import { circuitOf, makeApi, ouvrirJeu, parisDayStart, playerId, TEST_DB, type TestApi } from "./helpers";
 
 // Lot I3 (plateforme, phase 3), refait au lot A1 : la journée partagée côté serveur — le numéro de journée commun, le classement du jour **au chrono**
 // (`GET /api/portail/classement?vue=cumul|track|jump`) et le cumul et la place du joueur dans `GET /api/portail/jour`. Les classés sont écrits directement
@@ -329,6 +329,7 @@ describe(`classement du jour : GET /api/portail/classement (${TEST_DB})`, () => 
     };
     const FAUX: GameDefinition<never> = { code: "lune", name: "Faux jeu", prefix: "/api/lune", tables: [], schema: [], versions: () => ({}), create: () => ({ route: async () => undefined, dailyLevel: async () => null, portail: faux }) };
     const t = await portailApi({ games: [...GAMES, FAUX] });
+    await ouvrirJeu(t, "lune", TODAY - 1);
     await joueur(t, 1, "Alice", { track: { ms: 30_000 }, jump: { ticks: 2_400 } }); // 30 000 + 20 000 + 1 800 = 51 800
     await joueur(t, 2, "Bruno", { track: { ms: 29_000 }, jump: { ticks: 2_400 } }); // 29 000 + 20 000 + 1 500 = 50 500
     const r = await t.call("GET", "/api/portail/classement");

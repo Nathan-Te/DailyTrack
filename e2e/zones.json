@@ -18,7 +18,7 @@
   "regressionUnitaires": ["apps/api/test/portailDemo.test.ts", "apps/api/test/classementDemo.test.ts"],
   "zones": {
     "track-sim": { "globs": ["packages/sim/**"] },
-    "track-coeur": { "globs": ["apps/web/src/main.ts", "apps/web/index.html", "apps/web/vite.config.ts", "apps/web/public/**", "apps/web/src/generationInit.ts", "apps/web/src/lancement.ts", "apps/web/src/nouveauDepart.ts"] },
+    "track-coeur": { "globs": ["apps/web/src/main.ts", "apps/web/index.html", "apps/web/vite.config.ts", "apps/web/public/**", "apps/web/src/generationInit.ts", "apps/web/src/lancement.ts", "apps/web/src/nouveauDepart.ts", "apps/web/src/interrupteur*.ts"] },
     "track-scene": {
       "globs": ["apps/web/src/scene/**", "apps/web/src/trackMesh.ts", "apps/web/src/trackProps.ts", "apps/web/src/meshKit.ts", "apps/web/src/halo.ts", "apps/web/src/decorPose.ts", "apps/web/src/signage.ts", "apps/web/src/qualite.ts", "apps/web/src/qualiteMesure.ts", "apps/web/src/feux.ts", "apps/web/src/arena.ts", "apps/web/outils/**"]
     },
@@ -43,7 +43,7 @@
     "jump-modules": { "globs": ["packages/jump-sim/modules/**", "packages/jump-sim/tools/**", "apps/jump/src/gallery.ts", "apps/jump/src/modulesInfo.ts", "apps/jump/src/semaine*.ts", "apps/jump/public/outils/**"] },
     "jump-niveaux": { "globs": ["apps/jump/public/levels/**", "apps/jump/public/demo/**", "apps/jump/tools/**"] },
     "jump-jour": {
-      "globs": ["apps/jump/src/daily*.ts", "apps/jump/src/dayReads.ts", "apps/jump/src/frozen.ts", "apps/jump/src/boot.ts", "apps/jump/src/loop.ts", "apps/jump/src/main.ts", "apps/jump/src/generationInit.ts", "apps/jump/src/lancement.ts", "apps/jump/index.html", "apps/jump/vite.config.ts"]
+      "globs": ["apps/jump/src/daily*.ts", "apps/jump/src/dayReads.ts", "apps/jump/src/frozen.ts", "apps/jump/src/boot.ts", "apps/jump/src/loop.ts", "apps/jump/src/main.ts", "apps/jump/src/generationInit.ts", "apps/jump/src/lancement.ts", "apps/jump/src/interrupteur*.ts", "apps/jump/index.html", "apps/jump/vite.config.ts"]
     },
     "jump-rendu": {
       "globs": ["apps/jump/src/look.ts", "apps/jump/src/palette.ts", "apps/jump/src/artKit.ts", "apps/jump/src/dynamicArt.ts", "apps/jump/src/decor.ts", "apps/jump/src/parallax.ts", "apps/jump/src/actors.ts", "apps/jump/src/fx.ts", "apps/jump/src/camera.ts", "apps/jump/src/scene.ts", "apps/jump/src/themes.ts", "apps/jump/src/tileArt.ts", "apps/jump/src/sawArt.ts", "apps/jump/src/surfaceArt.ts", "apps/jump/src/windArt.ts", "apps/jump/src/stains.ts", "apps/jump/src/othersStains.ts", "apps/jump/src/autotile.ts", "apps/jump/src/contrast.ts", "apps/jump/src/blocks.ts", "apps/jump/src/slowRoute.ts", "apps/jump/src/wind.ts", "apps/jump/src/windSafety.ts", "apps/jump/src/carnage*.ts", "apps/jump/src/feel.ts", "apps/jump/src/audio*.ts"]
@@ -70,7 +70,7 @@
     },
     "api-track": { "globs": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/scripts/measure-salon.ts", "apps/api/scripts/history-seed.ts"] },
     "api-jump": { "globs": ["apps/api/src/jump*.ts", "apps/api/scripts/jump-*.ts"] },
-    "api-admin": { "globs": ["apps/api/src/admin*.ts", "apps/api/src/journaux.ts", "apps/api/src/diffusion.ts", "packages/core/src/nouveautes.ts"] }
+    "api-admin": { "globs": ["apps/api/src/admin*.ts", "apps/api/src/journaux.ts", "apps/api/src/diffusion.ts", "apps/api/src/jeux.ts", "packages/core/src/nouveautes.ts", "packages/core/src/jeux.ts"] }
   },
   "specs": {
     "web/accessibilite.spec.ts": ["track-hud", "track-i18n", "ui"],
@@ -80,6 +80,7 @@
     "web/admin-track.spec.ts": ["track-admin", "portail", "api-admin"],
     "web/admin-jump.spec.ts": ["jump-admin", "portail", "api-admin"],
     "web/diffusion.spec.ts": ["portail", "api-admin"],
+    "web/jeux-interrupteur.spec.ts": ["portail", "api-admin", "track-coeur", "jump-jour"],
     "web/adresses-joueur.spec.ts": ["track-profil", "profile-pkg", "api-track", "api-coeur"],
     "web/air.spec.ts": ["track-sim", "track-audio-fx"],
     "web/bas-cotes.spec.ts": ["track-sim", "track-scene"],

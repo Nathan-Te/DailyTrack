@@ -68,6 +68,7 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "erreur.unknown_news": "That update doesn't exist.",
   "erreur.invalid_message": "That message isn't valid.",
   "erreur.invalid_cursor": "That page of updates doesn't exist.",
+  "erreur.game_unavailable": "This game isn't open yet. Come back soon!",
   "erreur.invalid_player": "Invalid player ID.",
   "erreur.unknown_player": "This profile has no results yet.",
   "erreur.code_revoked": "This code is no longer valid: it was replaced. Load your new code.",

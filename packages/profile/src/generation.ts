@@ -47,7 +47,10 @@ export const CLES_GARDEES: readonly string[] = [
   "jump:tune",
 ];
 
-const gardee = (key: string): boolean => key === GENERATION_KEY || key === NOUVEAU_DEPART_KEY || CLES_GARDEES.includes(key);
+/** Lot P : les clés d'aperçu (`cdj:apercu:<jeu>`) d'un appareil de test : un réglage de l'appareil, jamais une donnée de joueur. */
+const PREFIXE_APERCU = "cdj:apercu:";
+
+const gardee = (key: string): boolean => key === GENERATION_KEY || key === NOUVEAU_DEPART_KEY || key.startsWith(PREFIXE_APERCU) || CLES_GARDEES.includes(key);
 
 /** Les clés de données de jeu (hors réglages) d'un stockage. */
 export function clesDeDonnees(storage: Pick<ListableStore, "length" | "key">): string[] {

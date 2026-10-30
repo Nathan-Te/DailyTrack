@@ -12,6 +12,7 @@ import { CATALOGUE_PORTAIL } from "../apps/portail/src/catalogue";
 import { CATALOGUE_VITRINE } from "../apps/portail/src/catalogueVitrine";
 import { CATALOGUE_DEMO } from "../apps/portail/src/catalogueDemo";
 import { CATALOGUE_IPHONE } from "../packages/ui/src/catalogue.iphone";
+import { CATALOGUE_INTERRUPTEUR } from "../packages/ui/src/catalogue.interrupteur";
 import { CATALOGUE_APERCU as APERCU_PORTAIL } from "../apps/portail/src/catalogueApercu";
 import { CATALOGUE_BASE as TRACK_BASE } from "../apps/web/src/catalogue.base";
 import { CATALOGUE_ACCUEIL as TRACK_ACCUEIL } from "../apps/web/src/catalogue.accueil";
@@ -32,6 +33,7 @@ type Bilingue = { fr: Catalogue; en: Catalogue };
 export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingue][] = [
   ["packages/ui (commun)", "packages/ui/src/catalogue.ts", CATALOGUE_COMMUN as unknown as Bilingue],
   ["packages/ui (iPhone)", "packages/ui/src/catalogue.iphone.ts", CATALOGUE_IPHONE as unknown as Bilingue],
+  ["packages/ui (interrupteur)", "packages/ui/src/catalogue.interrupteur.ts", CATALOGUE_INTERRUPTEUR as unknown as Bilingue],
   ["apps/portail", "apps/portail/src/catalogue.ts", CATALOGUE_PORTAIL as unknown as Bilingue],
   ["apps/portail (aperçu)", "apps/portail/src/catalogueApercu.ts", APERCU_PORTAIL as unknown as Bilingue],
   ["apps/portail (vitrine)", "apps/portail/src/catalogueVitrine.ts", CATALOGUE_VITRINE as unknown as Bilingue],

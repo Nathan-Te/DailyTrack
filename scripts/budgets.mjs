@@ -64,11 +64,11 @@ export function mesureTrack(dist = join(ROOT, "apps/web/dist/assets")) {
 /** Jump : JS du premier chargement (hors catalogue anglais, `tune`, `verify`, et la page d'outils `admin-*` : jamais chargée par un joueur) + CSS (feuilles et style écrit dans la page). */
 export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
   const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
-  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-"].some((p) => f.startsWith(p));
+  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-"].some((p) => f.startsWith(p));
   const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
-  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
   return { js: total, css, jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
 }
 

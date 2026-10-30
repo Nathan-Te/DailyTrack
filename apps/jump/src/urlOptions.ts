@@ -146,6 +146,12 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: ["demo"],
   },
   {
+    name: "apercu",
+    description:
+      "Lot P (plateforme) : le lien d'aperçu d'un jeu pas encore ouvert (`?apercu=<clé>`, donné par l'administration). La page range la clé sur l'appareil, la retire aussitôt de l'adresse (`history.replaceState`) et l'envoie ensuite dans l'en-tête `X-Preview-Key`, jamais dans l'adresse d'une requête. Sans effet si le jeu est ouvert à tous ; ne désigne ni serveur ni niveau.",
+    values: [],
+  },
+  {
     name: "semaine",
     description:
       "Lot 19 : outil de la variété (en français, chargé à la demande, sans Three.js) : les 7 niveaux du jour à partir de cette date (AAAA-MM-JJ), côte à côte — pour chacun une miniature du niveau et la liste de ses morceaux de base ; un morceau présent dans plusieurs des 7 jours est surligné (en jaune, la miniature le marque aussi). Calculé par le générateur en vigueur (aucun fichier figé n'est lu). Exemple : `?semaine=2026-10-27`. Lot R9 : **absent de la production** (les sept niveaux suivants calculés dans le navigateur : outil réservé aux constructions hors production, avec `outils/`).",
@@ -219,6 +225,8 @@ export interface UrlChoices {
   archives: boolean;
   /** Lot P1 : `?api=` (adresse du serveur du classement, ou `demo`), sinon `null`. */
   api: string | null;
+  /** Lot P : `?apercu=` présent (un lien d'aperçu) : l'interrupteur des jeux attend la clé avant de laisser le jeu appeler le serveur. */
+  apercu: boolean;
 }
 
 /**
@@ -268,6 +276,7 @@ export function readUrlOptions(search: string, restricted = false): UrlChoices {
     home: params.get("accueil") === "1" ? true : params.get("accueil") === "0" ? false : null,
     archives: daily && params.has("archives"),
     api: params.get("api") || null,
+    apercu: params.has("apercu"),
   };
 }
 

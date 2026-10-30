@@ -27,6 +27,11 @@ export interface RequestInfo {
    * d'adresse inventée.
    */
   peerKey?: string;
+  /**
+   * Lot P (interrupteur des jeux) : vrai quand le jeu est en `preview` pour cette requête (clé d'aperçu valable, ou aperçu de PR) : tout ce que le jeu écrit est **rangé à part**
+   * (`hidden = 1` et `apercu = 1`, jamais lu par un classement public). Posé par `api.ts` ; absent partout ailleurs.
+   */
+  apercu?: boolean;
 }
 
 /** La plateforme, telle qu'un jeu la voit : écrite une fois pour tous les jeux. */
@@ -233,6 +238,13 @@ export interface GameInstance {
   portail?: PortailDuJeu;
   /** Lot N1 : ce que le panneau d'administration fait du jeu (`admin.ts`) ; un jeu sans ce crochet n'y figure pas. */
   admin?: AdminDuJeu;
+  /**
+   * Lot P : les écritures (`POST`/`PUT`/`DELETE`) permises pendant l'**aperçu** du jeu — celles qui rangent leurs résultats à part (`info.apercu`). Toute autre écriture d'un jeu en
+   * aperçu est refusée (404 `game_unavailable`) : un jeu n'y ajoute une route que s'il sait la ranger à part. Absent : aucune écriture en aperçu.
+   */
+  ecrituresApercu?: readonly string[];
+  /** Lot P : les instructions qui effacent les résultats rangés à part par l'aperçu (exécutées quand le jeu passe `on` : un résultat d'aperçu ne devient jamais public). */
+  viderApercu?(): Statement[];
   /** Tâche facultative (hors production), toutes les 15 s sous Node. */
   tick?(): Promise<void>;
 }

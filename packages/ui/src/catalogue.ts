@@ -80,6 +80,7 @@ const fr = {
   "erreur.unknown_news": "Cette nouveauté n'existe pas.",
   "erreur.invalid_message": "Ce message n'est pas valide.",
   "erreur.invalid_cursor": "Cette page des nouveautés n'existe pas.",
+  "erreur.game_unavailable": "Ce jeu n'est pas encore ouvert. Reviens bientôt !",
   "erreur.invalid_player": "Identifiant de joueur invalide.",
   "erreur.unknown_player": "Ce profil n'a encore aucun résultat.",
   "erreur.code_revoked": "Ce code n'est plus valide : il a été remplacé. Charge ton nouveau code.",

@@ -40,6 +40,7 @@ export const TABLES_GARDEES: Readonly<Record<string, string>> = {
   journal_erreurs: "panneau d'administration (lot N1) : codes et routes des erreurs serveur, gardés 14 jours (ni joueur, ni corps de requête)",
   nouveautes: "nouveautés écrites par l'administration pour les joueurs (lot N2 : textes de l'éditeur, aucun joueur)",
   annonces: "messages en direct de l'administration (lot N2 : textes de l'éditeur, aucun joueur)",
+  jeux: "interrupteur des jeux (lot P : état de chaque jeu, périodes de la journée et empreinte de la clé d'aperçu, aucun joueur)",
   meta: "table de service : empreinte du schéma (la génération de données y est écrite par la remise à zéro)",
 };
 

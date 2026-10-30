@@ -1,4 +1,5 @@
 import "./generationInit";
+import "./interrupteurInit";
 // Lot I4 : le socle `@cdj/ui` (jetons, base, composants), les 7 faces de polices de Track (hébergées, mêmes fichiers que le portail), puis les feuilles du jeu.
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/cadre.css";

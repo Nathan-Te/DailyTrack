@@ -5,6 +5,7 @@ import { WithHeaders } from "./cache";
 import { classerLaJournee, ligneDe, placer, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
 import { HttpError } from "./errors";
 import type { Diffusion } from "./diffusion";
+import type { Jeux } from "./jeux";
 import type { EtatPortail, JourPortail, Platform, PortailDuJeu, RequestInfo } from "./games";
 
 // Le portail « Du Jour » (lot I2 de la plateforme, phase 3) : les lectures regroupées de la page d'accueil et du profil commun. Elles ne
@@ -76,6 +77,13 @@ export interface JeuDuJour extends JourPortail {
   nom: string;
   /** Le premier jour du jeu (`AAAA-MM-JJ`). */
   premierJour: string;
+  /**
+   * Lot P : ce jeu **compte-t-il dans la journée d'aujourd'hui** (journée parfaite, série, ligne de partage, classement du jour) ? Faux le jour même de son activation : il compte à
+   * partir du premier jour entier où il est `on`. Il est quand même présent à l'accueil (jouable) ; un client qui compte « combien de jeux finis sur combien » ne compte que ceux-là.
+   */
+  compte: boolean;
+  /** Lot P : présent (et vrai) seulement sur un aperçu de PR, pour un jeu qui n'est pas encore `on` : le portail le montre avec le badge « Brouillon ». */
+  brouillon?: true;
 }
 
 /** Série et journées parfaites (voir l'en-tête du fichier). */
@@ -90,24 +98,38 @@ export interface Serie {
  * La série tous jeux confondus et les journées parfaites, à partir des jours finis de chaque jeu (numéros de jours de Paris). Pure (testée sur
  * les changements d'heure : un numéro de jour est un jour, quelle que soit sa durée).
  */
-export function serieEtParfaites(today: number, jeux: readonly { premierJour: number; finis: ReadonlySet<number> }[]): Serie {
-  const fini = (d: number) => jeux.some((j) => j.finis.has(d));
+export function serieEtParfaites(today: number, jeux: readonly { premierJour: number; finis: ReadonlySet<number>; compte?: (jour: number) => boolean }[]): Serie {
+  // Lot P : un jeu ne compte dans une journée que les jours où l'interrupteur le compte (`compte` : à partir du premier jour entier où il est `on`, plus après sa désactivation) ;
+  // un résultat d'un jour où il ne compte pas n'est ni un jour fini ni une journée parfaite. Sans `compte`, il compte dès son premier jour.
+  const compte = (j: (typeof jeux)[number], d: number) => j.premierJour <= d && (j.compte ? j.compte(d) : true);
+  const fini = (d: number) => jeux.some((j) => compte(j, d) && j.finis.has(d));
   const parfaite = (d: number) => {
-    const existants = jeux.filter((j) => j.premierJour <= d);
+    const existants = jeux.filter((j) => compte(j, d));
     return existants.length > 0 && existants.every((j) => j.finis.has(d));
   };
   const finiAujourdhui = fini(today);
   let serie = 0;
   for (let d = finiAujourdhui ? today : today - 1; fini(d); d--) serie++;
   const jours = new Set<number>();
-  for (const j of jeux) for (const d of j.finis) if (d <= today) jours.add(d);
+  for (const j of jeux) for (const d of j.finis) if (d <= today && compte(j, d)) jours.add(d);
   let journeesParfaites = 0;
   for (const d of jours) if (parfaite(d)) journeesParfaites++;
   return { serie, aProlonger: !finiAujourdhui && serie > 0, journeesParfaites, aujourdhuiParfaite: parfaite(today) };
 }
 
-export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion) {
+export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux) {
   const { now, log, today, players, hashKey, readHit, playerIdOf } = platform;
+
+  // --- Lot P : l'interrupteur des jeux ---------------------------------------------------------------------------------------------
+  // Deux questions distinctes : un jeu est-il **présent** à l'accueil (état `on`) et **compte-t-il** dans la journée à ce jour (`compteLe`, les périodes de `jeux.ts`) ? Sans interrupteur
+  // (outils, tests anciens), tout jeu est présent et compte dès son premier jour.
+  const surLeSite = (j: JeuPortail): boolean => (etats ? etats.etat(j.portail.site) === "on" : true);
+  const compte = (j: JeuPortail, day: number): boolean => j.portail.premierJour <= day && (etats ? etats.compteLe(j.portail.site, day) : true);
+  /** Les jeux qui comptent ce jour-là : ceux du cumul, du classement du jour, de la journée parfaite. */
+  const comptes = (day: number): JeuPortail[] => jeux.filter((j) => compte(j, day));
+  const charger = async (): Promise<void> => {
+    await etats?.charger();
+  };
 
   /** L'identifiant de l'en-tête `X-Player-Id` (jamais dans l'adresse), ou `null` sans en-tête. */
   function joueurDe(req: Request): string | null {
@@ -120,9 +142,12 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     if (id) readHit(await hashKey("ptlp", id), PORTAIL_READS_PER_PLAYER);
   }
 
-  /** Les jeux qui existent ce jour-là. Un jeu dont le niveau du jour est indisponible garde son numéro, sans thème ni seuils (rien de bloquant). */
-  async function jeuxDuJour(day: number): Promise<JeuDuJour[]> {
-    const ouverts = jeux.filter((j) => j.portail.premierJour <= day);
+  /**
+   * Les jeux que l'accueil montre ce jour-là : ceux qui sont `on` (lot P) et qui existent. `toutVoir` (aperçu de PR) montre aussi les jeux `off` et `preview`, marqués `brouillon`.
+   * Un jeu dont le niveau du jour est indisponible garde son numéro, sans thème ni seuils (rien de bloquant).
+   */
+  async function jeuxDuJour(day: number, toutVoir = false): Promise<JeuDuJour[]> {
+    const ouverts = jeux.filter((j) => j.portail.premierJour <= day && (toutVoir || surLeSite(j)));
     return Promise.all(
       ouverts.map(async (j) => {
         let jour: JourPortail;
@@ -132,13 +157,13 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
           log("WARNING", "portail : jour d'un jeu indisponible", { jeu: j.code, error: e instanceof HttpError ? e.code : "inconnue" });
           jour = { numero: day - j.portail.premierJour + 1, theme: null, seuils: null };
         }
-        return { jeu: j.code, site: j.portail.site, nom: j.portail.nom, premierJour: formatDay(j.portail.premierJour), ...jour };
+        return { jeu: j.code, site: j.portail.site, nom: j.portail.nom, premierJour: formatDay(j.portail.premierJour), compte: compte(j, day), ...(surLeSite(j) ? {} : { brouillon: true as const }), ...jour };
       }),
     );
   }
 
   /** La partie publique : les jeux du jour, l'heure du serveur, le prochain minuit de Paris (ISO, UTC). */
-  async function partiePublique(day: number) {
+  async function partiePublique(day: number, toutVoir = false) {
     const t = now();
     return {
       date: formatDay(day),
@@ -149,14 +174,14 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       generation: await platform.generation(),
       maintenant: new Date(t).toISOString(),
       prochainJour: new Date(parisDayStart(day + 1)).toISOString(),
-      jeux: await jeuxDuJour(day),
+      jeux: await jeuxDuJour(day, toutVoir),
       // Lot N2 : la dernière nouveauté publiée (la ligne de l'accueil) et le message en direct : **dans la même réponse** (la règle du lot I3 : une seule requête au chargement).
       ...(diffusion ? await diffusion.pourLAccueil() : { nouveaute: null, annonce: null }),
     };
   }
 
   async function serieDe(id: string, day: number): Promise<Serie> {
-    const finis = await Promise.all(jeux.map(async (j) => ({ premierJour: j.portail.premierJour, finis: new Set(await j.portail.joursFinis(id)) })));
+    const finis = await Promise.all(jeux.map(async (j) => ({ premierJour: j.portail.premierJour, finis: new Set(await j.portail.joursFinis(id)), compte: (d: number) => compte(j, d) })));
     return serieEtParfaites(day, finis);
   }
 
@@ -198,7 +223,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const duree = jourOuvert(day) ? CLASSEMENT_FENETRE_MS : CLASSEMENT_JOUR_FERME_MS;
     if (kept && now() - kept.at < duree) return kept;
     calculs++;
-    const ouverts = jeux.filter((j) => j.portail.premierJour <= day);
+    const ouverts = comptes(day);
     const pending = Promise.all(ouverts.map(async (j) => ({ jeu: j.code, classes: await j.portail.classes(day) }))).then(classerLaJournee);
     if (classements.size >= CLASSEMENT_JOURS_GARDES) for (const [d] of classements) if (d !== day) { classements.delete(d); break; }
     const neuve: Gardee = { at: now(), pending, noms: new Map() };
@@ -233,25 +258,32 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   async function jour(req: Request, info: RequestInfo): Promise<WithHeaders> {
     const id = joueurDe(req);
     await limiter(info, id);
+    await charger();
     const day = today();
-    const publique = await partiePublique(day);
+    // Lot P : un aperçu de PR (recette seulement) voit aussi les jeux qui ne sont pas encore `on`, marqués « Brouillon » ; sa réponse n'est jamais gardée par un cache partagé.
+    const toutVoir = etats?.apercuDePr(req) ?? false;
+    const publique = await partiePublique(day, toutVoir);
     if (!id) {
       // Publique : au plus 60 s, jamais au-delà du prochain minuit de Paris (le jour suivant n'est pas servi d'avance, l'ancien pas après).
       const restant = Math.floor((parisDayStart(day + 1) - now()) / 1000);
       const maxAge = Math.max(0, Math.min(PORTAIL_PUBLIC_MAX_S, restant));
-      return new WithHeaders(publique, { "Cache-Control": `public, max-age=${maxAge}`, Vary: "X-Player-Id" });
+      return new WithHeaders(publique, { "Cache-Control": toutVoir ? "no-store" : `public, max-age=${maxAge}`, Vary: "X-Player-Id" });
     }
     const row = await joueurConnu(id, publique);
-    const ouverts = jeux.filter((j) => j.portail.premierJour <= day);
+    const ouverts = comptes(day);
     // Lot I3 : le classement du jour gardé (calculé au plus une fois par fenêtre et par instance : jamais à chaque visite) donne sa place et ses classés ;
     // son cumul est exact (ses états à l'instant). Aucun jeu fini aujourd'hui : pas de rang.
     const c = await classementDe(day);
-    const [etats, serie] = await Promise.all([etatsDe(id, day, ouverts, c), serieDe(id, day)]);
-    const etatDe = new Map<string, EtatPortail>(ouverts.map((j, i) => [j.code, etats[i]!] as const));
+    const [etatsJoueur, serie] = await Promise.all([etatsDe(id, day, ouverts, c), serieDe(id, day)]);
+    const etatDe = new Map<string, EtatPortail>(ouverts.map((j, i) => [j.code, etatsJoueur[i]!] as const));
+    // Un jeu présent à l'accueil mais qui ne compte pas encore (activé aujourd'hui) a quand même son état : le joueur peut y jouer.
+    await Promise.all(
+      jeux.filter((j) => !etatDe.has(j.code) && publique.jeux.some((p) => p.jeu === j.code)).map(async (j) => etatDe.set(j.code, await j.portail.etat(id, day))),
+    );
     let cumulMs: number | null = null;
     let rangDuJour: number | null = null;
     let classesDuJour: number | null = null;
-    const bilan = bilanDe(id, etats);
+    const bilan = bilanDe(id, etatsJoueur);
     if (bilan) {
       cumulMs = bilan.cumulMs;
       ({ rang: rangDuJour, classes: classesDuJour } = placer(c, bilan));
@@ -275,11 +307,12 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   async function classement(req: Request, url: URL, info: RequestInfo): Promise<WithHeaders> {
     const id = joueurDe(req);
     await limiter(info, id);
+    await charger();
     const aujourdhui = today();
     const brut = url.searchParams.get("date");
     const day = brut === null ? aujourdhui : parseDay(brut);
     if (day === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
-    const ouverts = jeux.filter((j) => j.portail.premierJour <= day);
+    const ouverts = comptes(day);
     // Lot R8 : depuis le lancement, les jours d'avant la journée n° 1 ne sont plus lisibles ; avant lui, rien n'est refusé (période d'essai).
     const avantLancement = premierJour <= aujourdhui && day < premierJour;
     if (day > aujourdhui || avantLancement || ouverts.length === 0) throw new HttpError(404, "unknown_day", "Ce classement n'existe pas (encore)");
@@ -340,9 +373,11 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const id = joueurDe(req);
     if (!id) throw new HttpError(400, "invalid_player", "Identifiant de joueur manquant (en-tête X-Player-Id)");
     await limiter(info, id);
+    await charger();
     const row = await joueurConnu(id);
     const day = today();
-    const [serie, parJeu] = await Promise.all([serieDe(id, day), Promise.all(jeux.map(async (j) => ({ jeu: j.code, ...(await j.portail.profil(id)) })))]);
+    // Lot P : le profil commun ne liste que les jeux ouverts (`on`) ; un jeu désactivé y revient, résultats compris, à sa réactivation. La série, elle, suit les périodes de chaque jeu.
+    const [serie, parJeu] = await Promise.all([serieDe(id, day), Promise.all(jeux.filter(surLeSite).map(async (j) => ({ jeu: j.code, ...(await j.portail.profil(id)) })))]);
     const body = { pseudo: row.name, renameRequired: row.rename_required === 1, date: formatDay(day), ...serie, jeux: parJeu };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }

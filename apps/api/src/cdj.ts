@@ -447,7 +447,9 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
 
     const t = now();
     await players.save(playerId, name, known);
-    const previous = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ?", [day, playerId]);
+    // Lot P : pendant l'aperçu du jeu (`info.apercu`) le résultat est rangé à part (`apercu = 1`, `hidden = 1` : aucun classement public ne le lit) ; il ne remplace jamais un résultat public.
+    const apercu = info.apercu === true ? 1 : 0;
+    const previous = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ? AND apercu = ?", [day, playerId, apercu]);
     const improved = !previous || result.finishMs < previous.ms;
     // Lot 41 : le statut du Garage arrive avec la réponse (aucune requête de plus au jeu) ; `nouvelles` = les voitures que cette course débloque. Lot 51 : lu **avant**
     // l'écriture (la même requête qu'avant, un temps plus tôt) : la progression d'après se déduit de celle d'avant, le meilleur temps de ce jour remplacé par le nouveau ; elle
@@ -461,10 +463,10 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const car = coderVoiture(voitureAutorisee(body.voiture, pApres, ouvert));
     if (improved) {
       await db.run(
-        `INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, inputs_hash, car, hidden) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, inputs_hash, car, hidden, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (day, player_id) DO UPDATE SET ms = excluded.ms, splits = excluded.splits, replay = excluded.replay,
-           respawns = excluded.respawns, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash, car = excluded.car WHERE excluded.ms < results.ms`,
-        [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t, hash, car, known?.hidden === 1 ? 1 : 0], // lot N1 : un joueur masqué reste masqué
+           respawns = excluded.respawns, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash, car = excluded.car WHERE excluded.ms < results.ms AND results.apercu = excluded.apercu`,
+        [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t, hash, car, known?.hidden === 1 || apercu === 1 ? 1 : 0, apercu], // lot N1 : un joueur masqué reste masqué ; lot P : l'aperçu est masqué aussi
       );
     }
     log("INFO", "temps du jour", { day: formatDay(day), ms: result.finishMs, improved });
@@ -1106,6 +1108,9 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     admin,
     dailyLevel: (day) => getCircuit(day),
     validate: async (day, code) => ({ ms: (await validateRun(day, code)).result.finishMs }),
+    // Lot P (interrupteur des jeux) : en aperçu, seul l'envoi du circuit du jour range ses résultats à part ; ils sont effacés quand le jeu passe `on` (jamais publics).
+    ecrituresApercu: ["/api/submit"],
+    viderApercu: (): Statement[] => [{ sql: "DELETE FROM results WHERE apercu = 1" }],
     profile,
     // Pseudo changé : le Salon en cours montre le même pseudo.
     onRename: async (playerId, name) => {

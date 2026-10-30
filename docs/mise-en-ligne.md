@@ -202,6 +202,23 @@ Sur GitHub : dépôt `DailyTrack` → **Settings** → **Secrets and variables**
 
 ---
 
+## Publier un nouveau jeu — l'interrupteur des jeux (lot P)
+
+Un jeu fusionné sur `main` **ne devient jamais visible tout seul** : il naît `off`, et c'est toi qui décides, depuis l'administration (`/admin/` › **Jeux**), sans redéployer. Trois positions par jeu, avec confirmation :
+
+| État | Ce que voient les joueurs | Ce que fait l'API du jeu |
+|---|---|---|
+| **Off** (au départ) | rien à l'accueil ; `/<jeu>/` affiche « Bientôt » | refuse tout : `404 game_unavailable` |
+| **Aperçu** | rien à l'accueil ; `/<jeu>/` n'est jouable qu'**avec la clé d'aperçu** (bandeau « Aperçu ») | accepte seulement avec la clé ; ce qui est envoyé est rangé à part, jamais dans un classement public |
+| **On** | à l'accueil, jouable par tous | normal |
+
+**La marche à suivre** :
+1. **Off → Aperçu.** Fusionne le jeu et mets-le en production avec le bouton habituel (il reste invisible). Dans `/admin/` › Jeux, passe-le à **Aperçu**, puis **Générer une clé** : le lien `…/<jeu>/?apercu=<clé>` est montré **une seule fois** ; **Copier le lien** et ouvre-le **sur ton téléphone**. La page range la clé sur l'appareil puis la retire de l'adresse ; le jeu s'ouvre avec le bandeau « Aperçu ». Joue, envoie des temps : rien n'est public. Une clé perdue ou partagée par erreur : **Révoquer la clé** (elle cesse de marcher tout de suite), ou en générer une autre.
+2. **Aperçu → On.** Quand tu es content, passe-le à **On**. Le jeu apparaît à l'accueil et dans sa page pour tout le monde ; ses résultats d'aperçu sont effacés. **Il ne compte dans la journée** (journée parfaite, série, classement du jour, ligne à partager) **qu'à partir du premier jour entier** : le jour qui suit l'activation ; ça évite de changer la journée en cours de route. **« On » n'ajoute pas le jeu au classement cumulé** : c'est un réglage à part.
+3. **Revenir en arrière** : repasse-le à **Off** ou **Aperçu**. Il disparaît de l'accueil tout de suite et de la journée **dès le lendemain**, sans casser les séries acquises ; **rien n'est supprimé**, tout revient à la réactivation (compté à partir du lendemain).
+
+Les pages d'attente se rafraîchissent en une demi-minute au plus (cache de 30 s). Sur les **aperçus de PR** (recette seulement), tous les jeux se voient avec un badge « Brouillon » et se jouent sans clé : on teste un jeu en développement en deux clics. Détail technique : `apps/api/CLAUDE.md`, « Publication des jeux (lot P) ».
+
 ## Si ça ne marche pas
 
 | Symptôme | Cause probable | Quoi faire |

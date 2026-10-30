@@ -72,6 +72,6 @@ export function tuileDuClassement(joueur: JoueurDuJour | undefined, jeux: Jour["
   const rang = joueur?.rangDuJour;
   if (!joueur || rang == null) return { type: "inviter" };
   if (joueur.cumulMs != null) return { type: "cumul", rang, cumulMs: joueur.cumulMs };
-  const manquant = jeux.find((j) => j.etat?.statut !== "fini");
+  const manquant = jeux.find((j) => j.compte !== false && j.etat?.statut !== "fini"); // lot P : un jeu qui ne compte pas encore ne manque pas au cumul
   return manquant ? { type: "manque", rang, jeu: { jeu: manquant.jeu, nom: manquant.nom } } : { type: "inviter" };
 }
