@@ -15,6 +15,7 @@ Chaque test du dépôt est dans **une** famille. La famille décide **où** il t
 | Régression | 64 | 260 | 3 686 s | 2 | 7 | 68 s |
 | Outil | 42 | jamais en CI | — | — | — | — |
 | *Doublons supprimés* | 3 specs entiers | 138 tests | ≈ 1 330 s | — | 4 (tests de texte) | — |
+| *Tower, ajouté par le lot R15 (compté dans « Essentiel » ci-dessus)* | 3 specs, tous Essentiel | 9 tests (4 `determinisme`, 1 `partie`, 4 `poids`), dont 2 `@navigateurs` | 4 s (CI, run 41079254451) | 10 fichiers déjà comptés | — | — |
 
 *Un spec peut avoir des tests des deux familles (accueil : 4 Essentiel, 14 Régression) : il compte dans chacune. Tests unitaires : comptés au passage complet (`vitest run`) ; `inventaire-tests.mjs` en liste 2 806, les quatre fichiers qui créent leurs tests à l'exécution (`identite-a`, `identite-b`, `purete` ×2) n'y comptant que leurs `it(`.*
 
