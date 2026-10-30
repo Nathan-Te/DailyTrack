@@ -16,8 +16,8 @@ describe("jetons de la charte", () => {
 
   it("les couleurs de la charte (§ 3), au format #RRGGBB ou en renvoi vers un autre jeton", () => {
     for (const [nom, v] of Object.entries(COULEURS)) {
-      expect(nom, nom).toMatch(/^(dj|track|jump)-/);
-      expect(v, nom).toMatch(/^(#[0-9A-F]{6}|--(dj|track|jump)-[a-z0-9-]+)$/);
+      expect(nom, nom).toMatch(/^(dj|track|jump|tower)-/);
+      expect(v, nom).toMatch(/^(#[0-9A-F]{6}|--(dj|track|jump|tower)-[a-z0-9-]+)$/);
       expect(valeurJeton(nom as keyof typeof COULEURS), nom).toMatch(/^#[0-9A-F]{6}$/);
     }
     // Quelques valeurs de la charte, recopiées ici exprès : un jeton ne change pas sans que la charte change.
@@ -26,6 +26,9 @@ describe("jetons de la charte", () => {
     expect(valeurJeton("track-livree")).toBe("#E8552D");
     expect(valeurJeton("jump-jaune")).toBe("#FFD23F");
     expect(valeurJeton("jump-papier")).toBe("#FFF6E0");
+    expect(valeurJeton("tower-menthe")).toBe("#9ED9BE");
+    expect(valeurJeton("tower-coque")).toBe("#2F7D62");
+    expect(valeurJeton("tower-bonus")).toBe("#5DBB63");
     expect(varJeton("dj-encre")).toBe("var(--dj-encre)");
     expect(() => valeurJeton("dj-inconnu" as never)).toThrow(/inconnu/);
   });

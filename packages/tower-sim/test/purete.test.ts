@@ -5,3 +5,8 @@ import { describePurity } from "@cdj/core/testing";
 // qui utilisent Math.hypot, cos, sin sur les sorties flottantes : jamais dans un état). Le seul import extérieur permis ici : `@cdj/core`.
 describePurity("packages/tower-sim/lab", new URL("../lab", import.meta.url).pathname, { allowedImports: ["@cdj/core"] });
 describePurity("packages/tower-sim/lab/a", new URL("../lab/a", import.meta.url).pathname, { allowedImports: ["@cdj/core"] });
+// Lot T1 : la simulation de jeu (src/) et sa suite d'essai (scenarios/) suivent les mêmes interdits. Rapier est la seule dépendance externe permise (règle du lot T1 :
+// entrées entières ÷ 8, trigonométrie par la table) ; `rapier.ts` en est l'unique chargeur.
+const RAPIER = "@dimforge/rapier2d-deterministic-compat";
+describePurity("packages/tower-sim/src", new URL("../src", import.meta.url).pathname, { allowedImports: ["@cdj/core", RAPIER] });
+describePurity("packages/tower-sim/scenarios", new URL("../scenarios", import.meta.url).pathname, { allowedImports: ["@cdj/core"] });

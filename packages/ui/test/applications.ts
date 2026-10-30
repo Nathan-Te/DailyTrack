@@ -30,6 +30,8 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["apps/jump (accueil)", "apps/jump/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],
   ["apps/jump (arrivée)", "apps/jump/src/catalogue.arrivee.ts", "CATALOGUE_ARRIVEE"],
   ["apps/jump (réglages)", "apps/jump/src/catalogue.reglages.ts", "CATALOGUE_REGLAGES"],
+  // Lot T1 : Tower, un seul catalogue (fr + en réunis par apps/tower/src/catalogue.ts ; le jeu charge le français puis l'anglais à la demande).
+  ["apps/tower", "apps/tower/src/catalogue.ts", "CATALOGUE_TOWER"],
 ];
 
 export async function cataloguesApplications(): Promise<[string, { fr: Catalogue; en: Catalogue }][]> {
@@ -37,7 +39,7 @@ export async function cataloguesApplications(): Promise<[string, { fr: Catalogue
 }
 
 /** Les dossiers et fichiers soumis au refus des chaînes écrites en dur (chainesEnDur.test.ts). Lots I4, I5 : ajouter `apps/web/src`, `apps/jump/src`… */
-export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html"];
+export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"];
 
 /** Ce qui n'est pas vérifié, chacun avec sa raison. */
 export const EXCLUSIONS: Record<string, string> = {
@@ -82,6 +84,11 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/jump/src/admin.ts": "page d'outils de Jump (`/jump/admin/`) : outil interne de l'éditeur, en français",
   "apps/jump/src/adminAcces.ts": "porte de la page d'outils de Jump (`/jump/admin/`, connexion du panneau) : outil interne de l'éditeur, en français",
   "apps/jump/src/adminLogic.ts": "page d'outils de Jump (`/jump/admin/`) : outil interne, en français",
+  // Lot T1 : les outils de Nathan de Tower restent en français (`?debug&tune`, démonstration de la physique du lot T0).
+  "apps/tower/src/tune.ts": "outil de réglage de la sensation (`?debug&tune`, lot T1) : outil interne de Nathan, en français",
+  "apps/tower/src/debug.ts": "ligne d'état de `?debug` (lot T1) : outil interne de Nathan, en français, fermé en production",
+  "apps/tower/src/verify.ts": "page de vérification des moteurs de physique (`verify.html`, tests de navigateur) : aucun texte d'interface",
+  "apps/tower/src/banc": "démonstration de la physique (`?scenario=banc`, lot T0) : page d'essai interne, en français, jamais en production",
   // Lot 19 (Jump) : l'outil de la variété, en français comme la galerie.
   "apps/jump/src/semaine.ts": "outil de la variété (`?semaine=`, lot 19) : 7 niveaux du jour côte à côte et leurs morceaux de base, outil interne de Nathan, en français",
 };
@@ -95,5 +102,6 @@ export const SOURCES_DES_CLES: Record<string, string[]> = {
   "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/ui"],
   "apps/web": ["apps/web/src", "apps/web/index.html"],
   "apps/jump": ["apps/jump/src", "apps/jump/index.html"],
-  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html"],
+  "apps/tower": ["apps/tower/src", "apps/tower/index.html"],
+  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"],
 };

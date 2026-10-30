@@ -18,6 +18,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./lab/*": "./lab/*.ts"
+    "./rapier": "./src/rapier.ts",
+    "./lab/*": "./lab/*.ts",
+    "./scenarios/*": "./scenarios/*.ts"
   }
 }

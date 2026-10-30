@@ -30,6 +30,7 @@ describe("polices hébergées", () => {
       "Barlow Condensed 700-italic",
       "Barlow Condensed 800-italic",
       "Lilita One 400-normal",
+      "Rubik Mono One 400-normal",
     ]);
     for (const s of SOURCES) {
       const data = readFileSync(join(DIR, s.fichier));

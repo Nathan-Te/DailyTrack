@@ -16,6 +16,8 @@ Révision 11 (demande de Nathan, 28/10/2026, lot A1) : la médaille « Auteur »
 
 Révision 12 (demande de Nathan, 28/10) : le fantôme sort de la pause et reste en vue en partie, comme le plein écran et la caméra de Track (§ 9).
 
+Révision 13 (choix de Nathan, 30/10/2026, maquettes de Tower) : étiquette de Tower (§ 2, § 3.5, § 4, § 5, § 7) ; Tower se joue en paysage et en portrait (§ 9). Maquettes : `docs/tower/maquettes/`.
+
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
 Chaque règle porte sa raison. Une règle dont la raison ne s'applique plus se discute avec Nathan ; elle ne se contourne pas.
@@ -36,9 +38,9 @@ Raison : une seule image (la cartouche) relie la marque et les jeux, se comprend
 
 - **Logo** : le mot `DU JOUR` en Archivo Black, crème `--dj-creme` sur un rectangle `--dj-encre`, coins de 3 px, ombre nette décalée de 3 px vers le bas et la droite en `--dj-terre`. Marges internes : 7 px en haut, 11 px sur les côtés, 6 px en bas. Taille d'usage : 21 px dans la barre du portail, 14 px dans la barre de retour des jeux (sans rectangle : texte encre seul, précédé du chevron).
   Raison : l'étiquette tamponnée évoque un nom imprimé sur une boîte de jeu ; l'ombre terre cuite est la signature de couleur de la marque.
-- **Nom des jeux** : `TRACK` et `JUMP`, en capitales, chacun dans sa typographie (§ 4). Le nom complet en texte courant est « Track » et « Jump ». (Noms d'affichage provisoires : si Nathan en choisit d'autres, seuls les catalogues de traduction changent.)
-- **Dans les lignes à partager d'un jeu** : `Du Jour · Track #8`, `Du Jour · Jump #8` (même forme en français et en anglais).
-- **Titre de la plateforme dans le navigateur** : « Du Jour », puis « Track — Du Jour », « Jump — Du Jour ».
+- **Nom des jeux** : `TRACK` et `JUMP`, en capitales, chacun dans sa typographie (§ 4). Le nom complet en texte courant est « Track » et « Jump ». (Noms d'affichage provisoires : si Nathan en choisit d'autres, seuls les catalogues de traduction changent.) `TOWER`, en Rubik Mono One, et « Tower » en texte courant.
+- **Dans les lignes à partager d'un jeu** : `Du Jour · Track #8`, `Du Jour · Jump #8` (même forme en français et en anglais). Ligne à partager : `Du Jour · Tower #8`.
+- **Titre de la plateforme dans le navigateur** : « Du Jour », puis « Track — Du Jour », « Jump — Du Jour ». Titre dans le navigateur : « Tower — Du Jour ».
 
 ## 3. Les couleurs
 
@@ -98,6 +100,17 @@ Une médaille obtenue est un aplat de sa couleur ; une médaille pas encore obte
 
 Raison du rouge réservé : dans le jeu, rouge = ça tue. L'interface ne doit pas affaiblir ce signal.
 
+### 3.5 Étiquette Tower
+
+| Jeton | Valeur | Usage |
+|---|---|---|
+| `--tower-menthe` | `#9ED9BE` | fond de l'étiquette ; texte du bouton principal |
+| `--tower-coque` | `#2F7D62` | coque de la cartouche Tower ; épaisseur du bouton principal |
+| `--tower-bonus` | `#5DBB63` | pastille « Bonus » des paliers (texte encre) ; le malus est en encre, texte papier |
+| texte | `--dj-encre` | texte et bordures sur l'étiquette |
+
+Raison : la menthe et le vert sapin évoquent la boîte d'un jeu de construction et se distinguent nettement du jaune de Jump et de l'asphalte de Track. Bonus et malus diffèrent aussi par la clarté, et le mot est toujours écrit.
+
 ## 4. Les typographies
 
 | Rôle | Police | Graisses | Où |
@@ -107,6 +120,7 @@ Raison du rouge réservé : dans le jeu, rouge = ça tue. L'interface ne doit pa
 | Chiffres, dates, numéros du jour, temps | JetBrains Mono | 500, 700 | partout |
 | Voix de Track | Barlow Condensed | 600 droit, 700 et 800 italique | étiquette Track |
 | Voix de Jump | Lilita One | 400 | étiquette Jump |
+| Voix de Tower | Rubik Mono One | 400 | étiquette Tower |
 
 - **Hébergées sur le site** (fichiers `woff2`, sous-ensemble latin qui couvre le français), `font-display: swap`. Aucun appel à un service de polices externe : rapidité et confidentialité (rien n'est envoyé à un tiers).
 - Toutes sous licence SIL Open Font License ; les fichiers de licence accompagnent les polices.
@@ -115,7 +129,7 @@ Raison du rouge réservé : dans le jeu, rouge = ça tue. L'interface ne doit pa
 - Échelle : 12 · 13 · 14 · 15 · 16 · 21 · 22 · 24 · 32 · 38 · 64-72 px.
 - Espaces : les polices n'ont pas l'espace fine insécable (U+202F) ; les formats utilisent l'espace insécable (U+00A0) entre milliers et avant les unités. Pas de texte d'interface sous 12 px (sauf légendes en capitales de 10-11 px, graisse 700, contraste ≥ 4,5:1).
 
-Raison : Archivo Black donne le côté boîte de jeu imprimée ; la mono donne l'afficheur ; Barlow Condensed italique est tendue comme un chronométrage de course (Trackmania) ; Lilita One est ronde, lourde et drôle (Super Meat Boy, Mario).
+Raison : Archivo Black donne le côté boîte de jeu imprimée ; la mono donne l'afficheur ; Barlow Condensed italique est tendue comme un chronométrage de course (Trackmania) ; Lilita One est ronde, lourde et drôle (Super Meat Boy, Mario). Rubik Mono One : des lettres en forme de blocs, comme des pièces de construction.
 
 ## 5. Les formes
 
@@ -124,7 +138,8 @@ Raison : Archivo Black donne le côté boîte de jeu imprimée ; la mono donne l
   - principal de marque : fond `--dj-terre`, texte `--dj-terre-texte`, Archivo Black en capitales ;
   - secondaire : fond crème ou transparent, texte encre ;
   - principal Track : fond `--track-livree`, texte asphalte, Barlow Condensed 800 italique, épaisseur `0 4px 0 var(--track-livree-ombre)` ;
-  - principal Jump : fond encre, texte jaune, Lilita One, épaisseur `0 5px 0 var(--dj-terre)`.
+  - principal Jump : fond encre, texte jaune, Lilita One, épaisseur `0 5px 0 var(--dj-terre)` ;
+  - principal Tower : fond encre, texte `--tower-menthe`, Rubik Mono One, épaisseur `0 5px 0 var(--tower-coque)`.
 - **Tuile** : fond `--dj-creme-2`, bordure 2 px encre, coins 4 px ; légende en capitales 11 px `--dj-encre-douce`, valeur en Archivo Black 24 px.
 - **Afficheur encastré** (compte à rebours, futur chronomètre du portail) : fond `--dj-ecran`, coins 6 px, ombres internes opaques (`--dj-ecran-ombre` en haut, `--dj-ecran-reflet` en bas), chiffres JetBrains Mono 700 en `--dj-ambre`.
 - **États des boutons** : survol du bouton de marque = fond encre ; du secondaire = `--dj-creme-2` ; de « Courir » = `--track-livree-texte` ; du principal Jump = texte papier. **Désactivé** = aplat `--dj-creme-2`, texte `--dj-encre-douce`, bordure pointillée, sans ombre (jamais de transparence). Le bouton de marque ne se pose pas sur l'asphalte.
@@ -132,6 +147,7 @@ Raison : Archivo Black donne le côté boîte de jeu imprimée ; la mono donne l
 - **Coins** : jamais uniformes partout. 3 px (boutons, étiquettes), 4 px (tuiles), 6 px (afficheur), 12/3 px (coques), cercle (avatar uniquement).
 - **Bandes de livrée Track** : rayures obliques à 115°, 10-12 px d'orange pour 8-10 px de vide, sur le bord droit de l'étiquette.
 - **Jump** : bordures épaisses (3 px), petites inclinaisons (−2° à +6°) pour les autocollants et pastilles, texte à ombre nette papier sur le titre.
+- **Tower** : l'étiquette de Tower garde sa coque vert sapin ; son décor est une petite pile de pièces à yeux.
 
 Raison : les ombres nettes et les coques dissymétriques font « objet » ; le flou et la translucidité font « gabarit d'interface ».
 
@@ -147,6 +163,7 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - **Du Jour** : chaleureux, simple, court. « Les jeux du jour », « Prochains niveaux dans », « Partager ma journée ».
 - **Track** : sec, précis, les chiffres d'abord. « Courir », « Meilleur temps », « Fantôme à battre ».
 - **Jump** : drôle et un peu cruel, **une seule réplique par écran au plus**, liée au thème ou à la mécanique du jour (« Les tapis roulants ne t'attendront pas. La scie non plus. »). Les répliques vivent dans les catalogues de traduction, par thème, et existent dans les deux langues (adaptées, pas traduites littéralement).
+- **Tower** : tendre et inquiet — les pièces ont peur, le joueur les rassure. Une seule réplique par écran au plus, liée au palier ou au thème du jour (« Au palier de 20 m, le vent. Les pièces le savent. Elles ont peur. »).
 - **Vocabulaire anglais fixé** : « Pseudo » → “Name” ; « Classement » → “Leaderboard” partout (jeux et portail ; « Classement du jour » → “Today's leaderboard”) ; « Fini » → “Done” ; « Point de contrôle » / « point de passage » → “Checkpoint” (« PC » → “CP”) ; médaille « Diamant » → “Diamond” ; « Salon » → “Room” ; caméra « proche » → “Close” partout.
 - Formats : `31,402 s` / `31.402 s` ; `14e` / `14th` ; « Mardi 20 octobre » / « Tuesday, October 20 » ; `n° 12` / `#12`.
 
@@ -176,6 +193,19 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
   - Bordures de 2 px, ombre nette de 2 px. Maquettes : `track-hud-paysage.html` (compact, retenu), `jump-hud.html`.
 - **Quand on entre dans un jeu, on y reste tant qu'on ne choisit pas de le quitter** (règle de Nathan). **Tous les écrans d'un jeu** — accueil, « Comment jouer », pause, arrivée, carnage, classement du jeu, archives, réglages — sont **posés sur la scène du jeu** sous le voile à rayures : barre des jeux en plaque crème, étiquette du jeu dans sa coque ; l'écran du dessous s'efface pendant ce temps (un seul voile). « Jeu suivant du jour » et « ‹ DU JOUR » sont les seules portes de sortie, et ce sont des choix du joueur.
 - Exceptions : la **pause** et **« Comment jouer »** sont des **dialogues** posés sur le voile, sans barre des jeux (une seule façon de les fermer). L'étiquette de **Track** n'a pas de coque (place et poids) ; celle de **Jump** garde sa coque moutarde.
+- **Tower se joue aussi en portrait** (choix de Nathan, 30/10/2026).
+
+  Raison : la tour est verticale, et Tower n'est pas classé au temps ; voir un peu plus haut en portrait n'est pas un avantage décisif.
+
+  En portrait :
+  - la bande de 30 px reste en haut au centre ;
+  - pause, plein écran et fantôme passent sur une deuxième rangée, à gauche ;
+  - l'objectif de médaille et la pièce suivante vont à droite ;
+  - les commandes restent aux bords du bas, en boutons.
+
+  Le centre reste libre. Cet écart ne vaut que pour Tower.
+
+  Maquettes : `tower-hud-paysage.html`, `tower-hud-portrait.html`.
 - **Le cadre crème pleine page** est réservé aux écrans **Du Jour** : portail, profil commun, classement du jour, mentions légales.
 - **« Comment jouer »** : dans le jeu, trois points courts, schéma des commandes, « C'est parti » ; montré une seule fois au premier lancement, puis depuis la pause et l'accueil.
 - **Classements** (portail et jeux) : **ta ligne** sur fond `--dj-moutarde`, bordure 3 px encre et ombre nette ; visible même hors du haut, après « … », à sa vraie place. **Sur l'étiquette jaune de Jump**, ta ligne est en **encre** (texte jaune, ombre papier) : la moutarde ne s'y distinguerait pas.
