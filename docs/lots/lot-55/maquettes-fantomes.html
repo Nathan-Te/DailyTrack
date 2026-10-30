@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Lot 55 — Track : choisir ses fantômes (maquettes)</title>
+<!-- Planche de maquettes du lot 55 (partie A : choisir ses fantômes) : référence, jamais construite ni servie (comme docs/plateforme/maquettes/cartouches/). Les jetons et les feuilles sont ceux de
+     @cdj/ui et de apps/web ; ouvrir le fichier depuis le dépôt (chemins relatifs). ?l=en pour l'anglais, ou le bouton FR / EN. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&amp;family=Archivo+Black&amp;family=JetBrains+Mono:wght@500;700&amp;family=Barlow+Condensed:ital,wght@0,600;1,700;1,800&amp;display=swap">
+<link rel="stylesheet" href="../../../packages/ui/src/styles.css">
+<link rel="stylesheet" href="../../../packages/ui/src/cadre.css">
+<link rel="stylesheet" href="../../../apps/web/src/interface.css">
+<link rel="stylesheet" href="../../../apps/web/src/reglages.css">
+<link rel="stylesheet" href="../../../apps/web/src/arrivee.css">
+<style>
+/* La planche n'est pas le jeu : on rend le défilement à la page (interface.css le coupe) et on garde les composants du jeu tels quels. */
+html, body { height: auto; overflow: auto; touch-action: auto; user-select: text; -webkit-user-select: text; background: var(--dj-creme); color: var(--dj-encre); }
+body { padding-block: 0 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-family: var(--dj-police-texte); }
+body > .page { visibility: visible !important; }
+.page { max-width: 1800px; margin: 0 auto; }
+header.planche { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 24px; padding: 28px 0 8px; border-bottom: 3px solid var(--dj-encre); }
+header.planche h1 { font-family: var(--dj-police-marque); font-size: 30px; line-height: 1; text-transform: uppercase; }
+header.planche p { max-width: 900px; font-size: 14px; color: var(--dj-encre-douce); }
+.langue { margin-left: auto; display: flex; border: 3px solid var(--dj-encre); border-radius: 3px; overflow: hidden; }
+.langue button { min-height: 44px; min-width: 56px; border: 0; background: var(--dj-papier); font-weight: 700; }
+.langue button[aria-pressed="true"] { background: var(--dj-encre); color: var(--dj-papier); }
+h2.section { margin: 40px 0 4px; font-family: var(--dj-police-marque); font-size: 22px; text-transform: uppercase; }
+h2.section small { display: block; margin-top: 4px; font-family: var(--dj-police-texte); font-size: 13px; font-weight: 400; text-transform: none; color: var(--dj-encre-douce); }
+.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(852px, 100%), 1fr)); gap: 28px 24px; margin-top: 16px; }
+.grille--moyenne { grid-template-columns: repeat(auto-fill, minmax(446px, 1fr)); }
+.grille--petite { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+figure { margin: 0; min-width: 0; overflow-x: auto; padding-bottom: 2px; }
+figcaption { max-width: 844px; margin-top: 8px; font-size: 13px; }
+figcaption b { font-family: var(--dj-police-marque); font-size: 14px; }
+figcaption ol { margin: 6px 0 0; padding-left: 20px; color: var(--dj-encre-douce); }
+.puce { display: inline-block; margin-left: 6px; padding: 1px 6px; border: 2px solid var(--dj-encre); border-radius: 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: var(--dj-moutarde); }
+.puce--inchange { background: var(--dj-papier); }
+.puce--nouveau { background: var(--dj-diamant); }
+
+/* --- Un écran de téléphone en paysage (844 × 390) ---------------------------------------------------------------------------------------------- */
+.ecran { position: relative; width: 844px; height: 390px; overflow: hidden; background: var(--track-asphalte); color: var(--track-texte); font-family: var(--dj-police-texte); border: 3px solid var(--dj-encre); border-radius: 22px; box-sizing: content-box; }
+.ecran--mini { width: 400px; height: 300px; border-radius: 14px; }
+.ecran > svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ecran .cadre { position: absolute; z-index: 1; padding: 10px; }
+.abs { position: absolute; }
+.pl { background: var(--track-asphalte); color: var(--track-texte); border: var(--dj-trait) solid var(--dj-encre); border-radius: var(--dj-rayon-bouton); box-shadow: 2px 2px 0 var(--dj-encre); }
+.btn44 { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 3px; box-shadow: none; }
+.bande { display: flex; align-items: stretch; height: 30px; border: 2px solid var(--dj-encre); border-radius: 2px; box-shadow: 2px 2px 0 var(--dj-encre); overflow: hidden; font-family: var(--track-police); font-style: italic; }
+.bande .chrono { position: relative; display: flex; align-items: center; background: var(--track-asphalte); padding: 0 14px 0 10px; font-weight: 800; font-size: 24px; font-variant-numeric: tabular-nums; }
+.bande .chrono::after { content: ""; position: absolute; right: -3px; top: 0; bottom: 0; width: 9px; background: repeating-linear-gradient(115deg, var(--track-livree) 0 3px, transparent 3px 5px); }
+.bande .pc { display: flex; align-items: center; padding: 0 7px; background: var(--track-texte); color: var(--track-asphalte); font-weight: 700; font-size: 16px; }
+.bande .ecart { display: flex; align-items: center; padding: 0 8px; background: var(--track-livree); color: var(--track-asphalte); font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
+.pastille { height: 30px; display: flex; align-items: center; gap: 5px; padding: 0 7px; font-size: 11px; font-weight: 700; font-family: var(--dj-police-chiffres); }
+.rang { height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 8px; font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 18px; }
+.ligne-aide { position: absolute; left: 50%; top: 48px; transform: translateX(-50%); padding: 2px 8px; font-size: 12px; font-weight: 600; color: var(--track-texte-doux); white-space: nowrap; }
+.vitesse { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); padding: 0 8px; font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 16px; line-height: 1.4; }
+.annonce { position: absolute; left: 50%; top: 26%; transform: translateX(-50%); font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 72px; line-height: 1; text-shadow: 4px 4px 0 var(--dj-encre); text-transform: uppercase; white-space: nowrap; }
+
+/* --- Commandes de course -------------------------------------------------------------------------------------------------------------------------- */
+.tbtn { position: absolute; display: flex; align-items: center; justify-content: center; font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; }
+.tbtn.gaz { background: var(--track-livree); color: var(--track-asphalte); box-shadow: 2px 2px 0 var(--track-livree-ombre); font-size: 22px; }
+.tbtn.on { background: var(--track-livree); color: var(--track-asphalte); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--dj-encre); }
+.tbtn.gaz.on { background: var(--track-livree-texte); box-shadow: 1px 1px 0 var(--track-livree-ombre); }
+/* glissière */
+.glis { position: absolute; }
+.glis .rail { position: absolute; left: 14px; right: 14px; top: 50%; height: 8px; margin-top: -4px; background: var(--track-piste); border: 2px solid var(--dj-encre); border-radius: 4px; }
+.glis .gr { position: absolute; top: 50%; width: 2px; height: 12px; margin: -6px 0 0 -1px; background: var(--track-route); }
+.glis .gr.c { height: 26px; margin-top: -13px; width: 4px; margin-left: -2px; background: var(--track-livree); }
+.glis .fl { position: absolute; top: 50%; margin-top: -8px; color: var(--track-texte-doux); }
+.glis .pouce { position: absolute; top: 6px; bottom: 6px; width: 56px; margin-left: -28px; display: flex; align-items: center; justify-content: center; gap: 4px; background: var(--track-livree); color: var(--track-asphalte); border: var(--dj-trait) solid var(--dj-encre); border-radius: var(--dj-rayon-bouton); box-shadow: 2px 2px 0 var(--track-livree-ombre); }
+.glis .pouce i { width: 3px; height: 22px; background: var(--track-asphalte); }
+.glis .pouce.on { background: var(--track-livree-texte); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--track-livree-ombre); }
+/* volant */
+.volant { position: absolute; }
+.volant svg { display: block; overflow: visible; }
+/* jauge d'inclinaison */
+.jauge { position: absolute; bottom: 8px; height: 26px; width: 96px; }
+.jauge .gr { position: absolute; top: 50%; width: 2px; height: 8px; margin: -4px 0 0 -1px; background: var(--track-route); }
+.jauge .gr.c { height: 16px; margin-top: -8px; background: var(--track-texte-doux); }
+.jauge .zm { position: absolute; top: 4px; bottom: 4px; background: var(--track-coque); }
+.jauge .cur { position: absolute; top: 3px; bottom: 3px; width: 6px; margin-left: -3px; background: var(--track-livree); border: 1px solid var(--dj-encre); }
+.jauge .etat { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; background: var(--track-asphalte); }
+/* doigt (annotation de la maquette : le vrai jeu ne dessine rien sous le doigt) */
+.doigt { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 3px solid var(--track-texte); border-radius: 50%; background: var(--track-texte); opacity: .55; pointer-events: none; z-index: 3; }
+.zone { position: absolute; border: 2px dashed var(--track-texte-doux); border-radius: 6px; pointer-events: none; font-size: 10px; font-weight: 700; color: var(--track-texte-doux); padding: 2px 5px; text-transform: uppercase; }
+.num { position: absolute; z-index: 4; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: var(--dj-moutarde); color: var(--dj-encre); border: 2px solid var(--dj-encre); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+
+/* --- Réglages et dialogues dans les cadres ----------------------------------------------------------------------------------------------------- */
+.ecran .etiquette { width: 100%; max-height: 100%; }
+.reglages__tabs { margin-bottom: 4px; }
+.ecran .reglage__titre, .large .reglage__titre { font-size: 14px; }
+.nouveau { display: inline-block; margin-left: 6px; padding: 0 5px; border: 2px solid var(--dj-encre); border-radius: 2px; background: var(--dj-diamant); color: var(--dj-diamant-texte); font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; vertical-align: middle; }
+.carte { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border: 2px solid var(--track-route); border-radius: 3px; background: var(--track-piste); font-size: 13px; }
+.carte svg { flex: none; }
+.carte p { margin: 0; }
+.carte .petit { margin-top: 4px; font-size: 12px; color: var(--track-texte-doux); }
+.carte--ok { border-color: var(--track-texte-doux); }
+.carte--refus { border-color: var(--track-livree); }
+.carte .dj-bouton { margin-top: 8px; min-height: 44px; }
+.essai { position: relative; height: 34px; border: 2px solid var(--track-route); border-radius: 3px; background: var(--track-piste); }
+.essai .gr { position: absolute; top: 50%; width: 2px; height: 10px; margin: -5px 0 0 -1px; background: var(--track-route); }
+.essai .gr.c { height: 20px; margin-top: -10px; background: var(--track-texte-doux); }
+.essai .zm { position: absolute; top: 5px; bottom: 5px; background: var(--track-coque); }
+.essai .cur { position: absolute; top: 4px; bottom: 4px; width: 8px; margin-left: -4px; background: var(--track-livree); border: 2px solid var(--dj-encre); }
+.essai small { position: absolute; right: 6px; top: -18px; font-family: var(--dj-police-chiffres); font-size: 11px; color: var(--track-texte-doux); }
+.systeme { position: absolute; left: 50%; top: 50%; width: 270px; transform: translate(-50%, -50%); padding: 16px 14px 0; background: var(--dj-papier); color: var(--dj-encre); border: 2px solid var(--dj-encre); border-radius: 14px; font-family: -apple-system, "Segoe UI", sans-serif; text-align: center; z-index: 5; }
+.systeme b { display: block; font-size: 15px; margin-bottom: 4px; }
+.systeme p { margin: 0 0 12px; font-size: 12px; color: var(--dj-encre-douce); }
+.systeme .deux { display: flex; margin: 0 -14px; border-top: 1px solid var(--dj-creme-2); }
+.systeme .deux span { flex: 1; padding: 11px 0; font-size: 15px; color: #1a62d6; }
+.systeme .deux span + span { border-left: 1px solid var(--dj-creme-2); font-weight: 700; }
+.voile-scene { position: absolute; inset: 0; background: var(--cadre-voile); z-index: 4; }
+.etat-btn { display: flex; flex-direction: column; gap: 4px; }
+.barre-progres { height: 6px; border: 2px solid var(--dj-encre); background: var(--track-piste); }
+.barre-progres i { display: block; height: 100%; width: 60%; background: var(--track-livree); }
+
+/* --- Tableaux et notes -------------------------------------------------------------------------------------------------------------------------------- */
+table.tab { width: 100%; max-width: 1100px; border-collapse: collapse; margin-top: 12px; font-size: 13px; background: var(--dj-papier); border: 2px solid var(--dj-encre); }
+table.tab th, table.tab td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--dj-creme-2); vertical-align: top; }
+table.tab th { background: var(--dj-encre); color: var(--dj-papier); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+ul.decisions { max-width: 1000px; margin: 12px 0 0; padding-left: 20px; font-size: 14px; }
+ul.decisions li { margin-bottom: 8px; }
+.cadran { display: block; background: var(--dj-papier); border: 2px solid var(--dj-encre); }
+
+/* --- Lot 55 : fantômes choisis (ajouts à la planche) ------------------------------------------------------------------------------------------------ */
+.tg { flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; color: var(--track-texte-doux); }
+.tg > i { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--track-texte-doux); border-radius: 3px; }
+.tg[aria-pressed="true"] > i { border-color: var(--dj-encre); background: var(--teinte, var(--track-livree)); color: var(--dj-encre); box-shadow: 2px 2px 0 var(--dj-encre); }
+.tg[disabled] { opacity: .35; }
+.tg[disabled] > i { border-style: dashed; }
+.tg.defaut > i::after { content: ""; }
+.pt { flex: none; width: 10px; height: 10px; border: 2px solid var(--dj-encre); border-radius: 50%; background: var(--teinte); }
+.pt.vide { background: transparent; border-color: transparent; }
+.mots { flex: none; margin-left: 4px; padding: 0 5px; border: 2px solid var(--track-texte-doux); border-radius: 2px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--track-texte-doux); white-space: nowrap; }
+.mots.propose { border-color: var(--track-livree); color: var(--track-livree-texte); }
+.cpt { display: flex; align-items: center; gap: 8px; font-family: var(--dj-police-chiffres); font-size: 13px; font-weight: 700; }
+.cpt b { font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: 22px; }
+.cpt .barre { display: flex; gap: 3px; }
+.cpt .barre i { width: 14px; height: 10px; border: 2px solid var(--dj-encre); background: var(--track-piste); }
+.cpt .barre i.on { background: var(--teinte); }
+.ecran .lignes { gap: 0; }
+.ecran .ligne { min-height: 44px; }
+.ecran .cpt { min-height: 44px; }
+.ecran .cpt .dj-bouton { padding: 0 10px; min-height: 44px; font-size: 13px; }
+.ecran .ligne__temps { font-size: 18px; }
+.lien-bas { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; }
+.msg-max { margin: 4px 0 0; font-size: 12px; color: var(--track-livree-texte); font-weight: 700; }
+.choix-ligne { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border: 2px solid var(--track-route); border-radius: 3px; background: var(--track-piste); font-size: 14px; }
+.choix-ligne .pts { display: flex; gap: 4px; margin-left: auto; }
+.choix-ligne b { font-weight: 700; }
+/* Scène de course : fantômes */
+.fant { position: absolute; }
+.fant svg { display: block; overflow: visible; }
+.fant .nom { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); margin-bottom: 2px; white-space: nowrap; font-weight: 800; font-size: 12px; color: var(--teinte); text-shadow: 1px 1px 0 var(--dj-encre), -1px 1px 0 var(--dj-encre), 1px -1px 0 var(--dj-encre), -1px -1px 0 var(--dj-encre); }
+.fant .nom small { font-weight: 700; opacity: .85; }
+.cle { display: inline-block; min-width: 22px; padding: 0 5px; text-align: center; border: 2px solid var(--dj-encre); border-bottom-width: 4px; border-radius: 4px; background: var(--dj-papier); color: var(--dj-encre); font-family: var(--dj-police-chiffres); font-size: 12px; font-weight: 700; }
+.bfant { position: relative; }
+.bfant .badge { position: absolute; right: -5px; top: -5px; min-width: 16px; height: 16px; padding: 0 3px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--dj-encre); border-radius: 8px; background: var(--track-livree); color: var(--track-asphalte); font-size: 10px; font-weight: 800; line-height: 1; }
+.bfant .barre-oblique { position: absolute; left: 8px; right: 8px; top: 50%; height: 3px; background: var(--track-texte); transform: rotate(-35deg); box-shadow: 0 0 0 1px var(--track-asphalte); }
+.banniere { color: var(--track-texte); position: absolute; left: 50%; top: 46px; transform: translateX(-50%); padding: 2px 10px; background: var(--track-asphalte); border: 2px solid var(--dj-encre); border-radius: 2px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.etats { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch; }
+.etat { width: 190px; padding: 10px; border: 2px solid var(--dj-encre); background: var(--dj-papier); text-align: center; font-size: 13px; }
+.etat .fond { display: flex; justify-content: center; gap: 6px; padding: 10px 0; background: var(--track-asphalte); margin-bottom: 8px; border: 2px solid var(--dj-encre); }
+.etat b { display: block; font-family: var(--dj-police-marque); font-size: 14px; margin-bottom: 2px; }
+.etat small { display: block; color: var(--dj-encre-douce); }
+.fleche-etat { align-self: center; font-size: 20px; font-weight: 700; }
+.frise { position: relative; height: 164px; margin: 12px 0; max-width: 980px; background: var(--dj-papier); border: 2px solid var(--dj-encre); }
+.frise .ax { position: absolute; left: 160px; right: 20px; top: 124px; height: 2px; background: var(--dj-encre); }
+.frise .tk { position: absolute; top: 130px; font-size: 11px; transform: translateX(-50%); }
+.frise .bar { position: absolute; height: 16px; border: 2px solid var(--dj-encre); border-radius: 2px; font-size: 10px; font-weight: 700; line-height: 12px; padding: 0 4px; overflow: hidden; white-space: nowrap; }
+.frise .lg { position: absolute; left: 8px; width: 148px; font-size: 11px; font-weight: 700; }
+.frise .rep { position: absolute; top: 4px; bottom: 26px; width: 0; border-left: 3px dashed var(--dj-encre); }
+.frise .rep span { position: absolute; top: 0; left: 4px; font-size: 10px; font-weight: 700; white-space: nowrap; background: var(--dj-papier); }
+.grande { width: min(1280px, 100%); }
+.large-ecran { position: relative; width: 1280px; height: 720px; overflow: hidden; background: var(--track-asphalte); color: var(--track-texte); border: 3px solid var(--dj-encre); border-radius: 8px; box-sizing: content-box; font-family: var(--dj-police-texte); }
+.large-ecran > svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.large-ecran .cadre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; padding: 16px; }
+figure.large { overflow-x: auto; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="scene" viewBox="0 0 844 390" preserveAspectRatio="xMidYMid slice">
+    <rect width="844" height="390" fill="#141A33"/>
+    <path d="M0 160 L60 110 L130 150 L210 90 L300 150 L380 120 L460 160 L560 100 L660 150 L760 105 L844 140 L844 190 L0 190Z" fill="#1E2A5C"/>
+    <rect x="0" y="180" width="844" height="210" fill="#1A2350"/>
+    <path d="M400 180 L444 180 L780 390 L64 390 Z" fill="#2A3370"/>
+    <path d="M400 180 L405 180 L110 390 L64 390 Z" fill="#F4EFE6" opacity=".9"/>
+    <path d="M439 180 L444 180 L780 390 L734 390 Z" fill="#B3312A"/>
+    <path d="M420 195 L424 195 L426 225 L418 225 Z M416 260 L428 260 L432 320 L412 320 Z" fill="#8F9BD6"/>
+    <circle cx="520" cy="40" r="10" fill="#C9D3FF"/>
+  </symbol>
+  <!-- fantôme = icône du bouton (au trait) -->
+  <symbol id="ico-f" viewBox="0 0 20 20"><path d="M4 17V9a6 6 0 0 1 12 0v8l-2-1.6-2 1.6-2-1.6-2 1.6-2-1.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="8" cy="9" r="1.4" fill="currentColor"/><circle cx="12" cy="9" r="1.4" fill="currentColor"/></symbol>
+  <!-- voiture simple vue de derrière (version « fantôme » du lot 40/51 : un maillage, translucide) -->
+  <symbol id="voit" viewBox="0 0 100 60"><path d="M10 52 L14 30 Q18 16 34 14 L66 14 Q82 16 86 30 L90 52 Z" fill="var(--teinte)" fill-opacity=".62" stroke="var(--teinte)" stroke-width="2.5"/><path d="M26 28 Q30 20 38 19 L62 19 Q70 20 74 28 Z" fill="#0d1230" fill-opacity=".6"/><rect x="6" y="44" width="16" height="14" rx="2" fill="#0d1230" fill-opacity=".7"/><rect x="78" y="44" width="16" height="14" rx="2" fill="#0d1230" fill-opacity=".7"/><rect x="20" y="40" width="14" height="5" fill="var(--teinte)"/><rect x="66" y="40" width="14" height="5" fill="var(--teinte)"/></symbol>
+</svg>
+
+<div class="page" id="page"></div>
+
+<script>
+let lang = new URLSearchParams(location.search).get("l") === "en" ? "en" : "fr";
+const W = 844, H = 390;
+const TEINTES = { rose: "#ff4fa3", vert: "#3ddc84", jaune: "#ffd22e", violet: "#b084ff", cyan: "#2ee6d6" };
+const L = {
+  fr: {
+    titre: "Lot 55 — Track : choisir ses fantômes (maquettes)",
+    intro: "Partie A du lot 55. Cocher de 1 à 5 fantômes dans le classement du jour ; le bouton simple du jeu (touche G) fait défiler Rien → Le mien → Le premier → Ma sélection → Rien. Rien ne change dans la simulation, la rediffusion, le classement ni le Salon (qui garde son propre bouton à trois états). Téléphone en paysage 844 × 390 et ordinateur 1280 × 720 ; ce qui est NOUVEAU est repéré par la puce bleue.",
+    nouveau: "Nouveau", inchange: "Inchangé",
+    s1: "1 · Le classement : une case « fantôme » par ligne", s1d: "La case fait 44 × 44 px (cible tactile), à droite du temps. Le fantôme coché prend sa teinte : la même pastille de couleur se retrouve sur sa voiture et son pseudo en course. Ta ligne n'a pas de case : ton record a son propre mode (« Le mien »).",
+    s2: "2 · Les trois états du choix", s2d: "Proposé (rien choisi) → choisi → complet (5 sur 5).",
+    s3: "3 · Où le classement du jour se montre : accueil, arrivée, pause", s3d: "Mêmes lignes, même case. Le choix se rappelle à l'accueil sur une rangée (celle du lot G1, qui existe déjà : un toucher change le mode).",
+    s4: "4 · En course : jusqu'à cinq fantômes", s4d: "Chacun a la voiture de sa course (lot 51) en version simple, une teinte, son pseudo au-dessus. Ni collision, ni son fort. Le centre reste libre ; le HUD ne change pas, sauf une ligne d'écart (à valider).",
+    s5: "5 · Le bouton simple : Rien → Le mien → Le premier → Ma sélection", s5d: "Même bouton (44 px, en haut à droite, à côté de la caméra), même touche G, même entrée de la pause. Il dit le mode d'abord par une bannière d'une ligne (comme aujourd'hui), puis par son nom lu (aria-label) et son badge.",
+    s6: "6 · Chargement des rediffusions", s6d: "À la demande, en parallèle, avant le décompte. Un fantôme en retard rejoint la course à sa place (cas du Salon, déjà en place).",
+    s7: "7 · Décisions pour Nathan",
+    cl_titre: "Classement", cl_sous: "Cumul · Stade · 212 pilotes", cl_retour: "‹ TRACK",
+    fant_n: (n) => `${n} fantôme${n > 1 ? "s" : ""} sur 5`, tout_dec: "Tout décocher", choisis: "Mes fantômes",
+    propose: "proposé", toi: "toi", ton_record: "Ton record : bouton « Le mien »",
+    max: "5 fantômes au maximum : décoches-en un pour en choisir un autre.",
+    f1: "Page « Classement » · téléphone · rien choisi (les deux fantômes d'aujourd'hui sont proposés)", f2: "Page « Classement » · téléphone · le joueur a choisi trois fantômes", f3: "Page « Classement » · ordinateur · cinq sur cinq",
+    c1: ["Coché par défaut tant que le joueur n'a rien choisi : le premier et celui devant toi (aujourd'hui « Le premier » et « Devant toi »). Étiquette « proposé » : un premier toucher la fait disparaître et le choix devient le sien."],
+    c2: ["Le compteur « 3 fantômes sur 5 » est en haut du classement ; cinq cases-barres sont une jauge lisible sans la couleur. « Tout décocher » = aucun fantôme sélectionné (le mode Ma sélection disparaît du bouton).", "Le choix est gardé pour le jour (stockage du navigateur) et oublié au circuit suivant."],
+    c3: ["À 5 sur 5 les cases non cochées sont grisées (désactivées) et une ligne le dit. Un lecteur d'écran lit : « Fantôme de Mika, case, cochée ».", "Les pseudos identiques sont suffixés comme aujourd'hui (Nom·2). Un joueur masqué n'est jamais listé (hidden = 0)."],
+    accueil_t: "Accueil", accueil_n: ["Le classement de l'accueil (cinq lignes) porte les mêmes cases. La rangée « Fantôme : Ma sélection · 3 » (id existant `home-ghost`) montre les pastilles de teinte ; un toucher passe au mode suivant, « Tout le classement » ouvre la page ci-dessus."],
+    arrivee_t: "Arrivée", arrivee_n: ["L'arrivée ne montre aujourd'hui que ton rang. On ajoute une seule ligne : « Choisir mes fantômes (3) », qui ouvre la page Classement. Pas de liste sur l'arrivée (elle reste courte)."],
+    pause_t: "Pause", pause_n: ["En pause le jeu est gelé : le coin de classement (le même panneau qu'en course) devient cochable. Pendant la course il reste en lecture seule (aucune case ne risque un toucher en conduisant). Le bouton « Fantôme : … » de la pause fait défiler les modes."],
+    home_choix: "Fantôme : Ma sélection · 3", home_choix_aide: "Touche pour changer", home_cl: "Classement du jour", home_tout: "Tout le classement ›",
+    ecart_ligne: "Mika −0,41", course_t: "Cinq fantômes en course (844 × 390)", course_n: ["Cinq voitures en version simple, translucides, de cinq teintes (les couleurs du Salon, déjà testées pour se distinguer du bleu de ton fantôme et de l'orange de ta voiture). Le pseudo est un sprite à plat face à la caméra, masqué tout près et très loin (comme au Salon).", "Ils partent de la ligne avec toi et repartent à « Recommencer ». Aucun ne gêne : pas de collision, pas de son fort (voir la partie B : muets ou à peine audibles).", "Vitesse, bande du haut, boutons et centre : inchangés. Une seule ligne ajoutée (sous la bande, 3 s après un point de contrôle) : l'écart avec le fantôme le plus proche, en couleur."],
+    course_d: "Détail d'un fantôme", course_dn: ["Teinte du classement = teinte de la voiture = teinte du pseudo. La voiture est celle de sa course (une Sparrow orange pour une course d'avant le lot 51)."],
+    ban_rien: "Fantôme : aucun", ban_mien: "Fantôme : ton record", ban_premier: "Fantôme : premier · Mika", ban_sel: "Fantôme : ma sélection · 3",
+    et_rien: "Rien", et_mien: "Le mien", et_premier: "Le premier", et_sel: "Ma sélection",
+    et_rien_d: "Icône barrée", et_mien_d: "Ton record (par défaut aujourd'hui)", et_premier_d: "Le premier du classement", et_sel_d: "Badge = nombre coché",
+    saut_t: "Quand un mode est vide", saut_n: ["Pas encore de record : « Le mien » est sauté. Personne au classement : « Le premier » est sauté. Aucune case cochée : « Ma sélection » n'est pas proposée.", "Le bouton passe au mode suivant et le dit : « Pas encore de record · on passe à : Le premier »."],
+    saut_ban: "Pas encore de record · Le premier",
+    bouton_n: ["Le bouton reste dans la rangée du coin haut droit (44 px). Pas de mot sur le bouton lui-même (le centre et la bande restent libres) : le mode est dit par la bannière d'une ligne à chaque appui, et par le nom lu du bouton.", "Sur ordinateur la puce « Comment jouer … G : fantôme » existe déjà ; la touche G fait le même cycle.", "Le mode choisi est gardé d'une course à l'autre (`cdj:track:fantome`) ; défaut inchangé : Le mien (puis Rien s'il n'y a pas de record)."],
+    ch_titre: "Téléchargement des rediffusions avant le décompte", ch_rep: "PARTEZ !", ch_s: "Les 5 rediffusions, en parallèle", ch_t: "Cas normal : arrivées avant « PARTEZ ! »", ch_t2: "Cas d'une 4G lente : une arrivée après le départ",
+    ch_n: ["Poids et temps de chargement de cinq fantômes en 4G : mesurés pendant le lot (README), pas devinés ici. Les rediffusions sont déjà demandées par le Salon de la même façon (`/api/salon/<session>/ghosts?refs=…`).", "Proposition : un fantôme qui arrive après « PARTEZ ! » rejoint la course à la position où il devrait être (la rediffusion est rejouée en accéléré en silence ; un tour de 32 s se rejoue en ≈ 21 ms) et s'allume en fondu de 0,3 s ; au-delà de la moitié du tour, il attend la course suivante. C'est ce que fait déjà le Salon (« rattrapage »)."],
+    dec: [
+      "<b>Le serveur :</b> une route <code>GET /api/day/&lt;date&gt;/run/&lt;ref&gt;</code> (rediffusion d'une ligne) ; <code>ref</code> = empreinte publique de la course (SHA-256 de « jour + identifiant du joueur », tronquée), ajoutée aux lignes du classement ; <b>aucune colonne de plus</b> (l'empreinte se retrouve par l'index de temps du jour) ; jamais l'identifiant secret.",
+      "<b>Pause :</b> cocher dans le coin de classement en pause (proposé ici) ou seulement depuis la page « Classement » ? La première option ajoute une interaction à un panneau déjà là.",
+      "<b>Écart en course :</b> la ligne « écart avec le fantôme le plus proche » (3 s après un point de contrôle) — la gardes-tu ? Sinon, l'écart de la bande reste celui d'aujourd'hui (le premier fantôme de la liste).",
+      "<b>Fantôme en retard :</b> rejoindre à sa place (proposé) ou attendre la course suivante ?",
+      "<b>Le joueur devant :</b> il n'a plus de mode à lui dans le bouton (il est proposé coché dans la sélection, comme le premier). Le réglage « fantôme par défaut » de Réglages ne change pas.",
+      "<b>Salon :</b> inchangé (son bouton à trois états et ses fantômes automatiques).",
+    ],
+    vit: "187 km/h", p_pause: "Pause", p_reprendre: "Reprendre", p_recommencer: "Recommencer", p_pdc: "Dernier point de contrôle", p_son: "Son", p_reglages: "Réglages", p_fant: "Fantôme : ma sélection",
+    arr_titre: "Arrivée", arr_temps: "1:04,208", arr_rang: "Classement du jour", arr_rang_v: "14e sur 212", arr_lien: "Choisir mes fantômes (3)", arr_courir: "Rejouer",
+    cap_pc: "PC 3/5",
+  },
+  en: {
+    titre: "Lot 55 — Track: choosing your ghosts (mock-ups)",
+    intro: "Part A of lot 55. Tick 1 to 5 ghosts in the daily leaderboard; the game's simple button (G key) cycles None → Mine → First → My selection → None. Nothing changes in the simulation, replays, leaderboard or Salon (which keeps its own three-state button). Phone landscape 844 × 390 and desktop 1280 × 720; what is NEW carries the blue tag.",
+    nouveau: "New", inchange: "Unchanged",
+    s1: "1 · The leaderboard: one “ghost” checkbox per row", s1d: "The checkbox is 44 × 44 px (touch target), right of the time. A ticked ghost takes its tint: the same colour dot is on its car and name in the race. Your row has no checkbox: your record has its own mode (“Mine”).",
+    s2: "2 · The three states of the choice", s2d: "Suggested (nothing chosen) → chosen → full (5 of 5).",
+    s3: "3 · Where the daily leaderboard shows: home, finish, pause", s3d: "Same rows, same checkbox. The choice is recalled on the home screen in a row (the lot G1 row that already exists: a tap changes the mode).",
+    s4: "4 · In the race: up to five ghosts", s4d: "Each has the car from its own run (lot 51), simple version, a tint, its name above. No collision, no loud sound. The centre stays clear; the HUD is unchanged except one gap line (to validate).",
+    s5: "5 · The simple button: None → Mine → First → My selection", s5d: "Same button (44 px, top right, next to the camera), same G key, same pause entry. It states the mode first by a one-line banner (as today), then by its spoken name (aria-label) and its badge.",
+    s6: "6 · Loading the replays", s6d: "On demand, in parallel, before the countdown. A late ghost joins the race where it should be (the Salon case, already in place).",
+    s7: "7 · Decisions for Nathan",
+    cl_titre: "Leaderboard", cl_sous: "Stadium · 212 drivers", cl_retour: "‹ TRACK",
+    fant_n: (n) => `${n} ghost${n > 1 ? "s" : ""} of 5`, tout_dec: "Untick all", choisis: "My ghosts",
+    propose: "suggested", toi: "you", ton_record: "Your record: “Mine” button",
+    max: "5 ghosts at most: untick one to pick another.",
+    f1: "“Leaderboard” page · phone · nothing chosen (today's two ghosts are suggested)", f2: "“Leaderboard” page · phone · the player chose three ghosts", f3: "“Leaderboard” page · desktop · five of five",
+    c1: ["Ticked by default while the player has chosen nothing: the first and the one ahead of you (today's “First” and “Ahead of you”). “suggested” tag: a first tap removes it and the choice becomes theirs."],
+    c2: ["The “3 ghosts of 5” counter sits at the top of the leaderboard; five bar cells are a gauge readable without colour. “Untick all” = no ghost selected (the My selection mode disappears from the button).", "The choice is kept for the day (browser storage) and forgotten at the next circuit."],
+    c3: ["At 5 of 5 unticked boxes are greyed out (disabled) and a line says why. A screen reader says: “Mika's ghost, checkbox, checked”.", "Identical names are suffixed as today (Name·2). A hidden player is never listed (hidden = 0)."],
+    accueil_t: "Home", accueil_n: ["The home leaderboard (five rows) carries the same checkboxes. The “Ghost: My selection · 3” row (existing id `home-ghost`) shows the tint dots; a tap moves to the next mode, “Full leaderboard” opens the page above."],
+    arrivee_t: "Finish", arrivee_n: ["The finish screen only shows your rank today. One line is added: “Choose my ghosts (3)”, opening the Leaderboard page. No list on the finish screen (it stays short)."],
+    pause_t: "Pause", pause_n: ["While paused the game is frozen: the corner leaderboard (the same panel as in the race) becomes tickable. During the race it stays read-only (no checkbox risks a tap while driving). The pause “Ghost: …” button cycles the modes."],
+    home_choix: "Ghost: My selection · 3", home_choix_aide: "Tap to change", home_cl: "Daily leaderboard", home_tout: "Full leaderboard ›",
+    ecart_ligne: "Mika −0.41", course_t: "Five ghosts in the race (844 × 390)", course_n: ["Five simple-version cars, translucent, in five tints (the Salon colours, already tested to stand out from your blue ghost and your orange car). The name is a sprite flat to the camera, hidden very close and very far (as in the Salon).", "They start from the line with you and restart at “Restart”. None gets in the way: no collision, no loud sound (see part B: silent or barely audible).", "Speed, top band, buttons and centre: unchanged. One line added (under the band, 3 s after a checkpoint): the gap to the nearest ghost, in its colour."],
+    course_d: "One ghost, close up", course_dn: ["Leaderboard tint = car tint = name tint. The car is the one from its run (an orange Sparrow for a run from before lot 51)."],
+    ban_rien: "Ghost: none", ban_mien: "Ghost: your record", ban_premier: "Ghost: first · Mika", ban_sel: "Ghost: my selection · 3",
+    et_rien: "None", et_mien: "Mine", et_premier: "First", et_sel: "My selection",
+    et_rien_d: "Crossed-out icon", et_mien_d: "Your record (today's default)", et_premier_d: "The leaderboard's first", et_sel_d: "Badge = number ticked",
+    saut_t: "When a mode is empty", saut_n: ["No record yet: “Mine” is skipped. Nobody on the leaderboard: “First” is skipped. No box ticked: “My selection” is not offered.", "The button moves to the next mode and says so: “No record yet · switching to: First”."],
+    saut_ban: "No record yet · First",
+    bouton_n: ["The button stays in the top-right row (44 px). No word on the button itself (centre and band stay clear): the mode is said by a one-line banner at each press, and by the button's spoken name.", "On desktop the “How to play … G: ghost” chip already exists; the G key does the same cycle.", "The chosen mode is kept from one race to the next (`cdj:track:fantome`); default unchanged: Mine (then None if there is no record)."],
+    ch_titre: "Downloading replays before the countdown", ch_rep: "GO!", ch_s: "The 5 replays, in parallel", ch_t: "Normal case: arrived before “GO!”", ch_t2: "Slow 4G: one arrives after the start",
+    ch_n: ["Weight and load time of five ghosts on 4G: measured during the lot (README), not guessed here. The Salon already requests replays the same way (`/api/salon/<session>/ghosts?refs=…`).", "Proposal: a ghost that arrives after “GO!” joins the race at the position it should be at (its replay is replayed fast and silently; a 32 s lap replays in ≈ 21 ms) and fades in over 0.3 s; past half the lap it waits for the next race. This is what the Salon already does (“catch-up”)."],
+    dec: [
+      "<b>Server:</b> a <code>GET /api/day/&lt;date&gt;/run/&lt;ref&gt;</code> route (one leaderboard row's replay); <code>ref</code> = public fingerprint of the run (SHA-256 of “day + player id”, truncated), added to leaderboard rows; <b>no extra column</b> (the fingerprint is found through the day's time index); never the secret id.",
+      "<b>Pause:</b> tick in the corner leaderboard while paused (proposed here) or only from the “Leaderboard” page? The first adds an interaction to a panel that already exists.",
+      "<b>Gap in race:</b> the “gap to the nearest ghost” line (3 s after a checkpoint) — keep it? Otherwise the band's gap stays today's (the first ghost of the list).",
+      "<b>Late ghost:</b> join at its place (proposed) or wait for the next race?",
+      "<b>The player ahead:</b> no mode of its own in the button any more (it is suggested ticked in the selection, like the first). The “default ghost” setting in Settings does not change.",
+      "<b>Salon:</b> unchanged (its three-state button and its automatic ghosts).",
+    ],
+    vit: "116 mph", p_pause: "Pause", p_reprendre: "Resume", p_recommencer: "Restart", p_pdc: "Last checkpoint", p_son: "Sound", p_reglages: "Settings", p_fant: "Ghost: my selection",
+    arr_titre: "Finish", arr_temps: "1:04.208", arr_rang: "Daily leaderboard", arr_rang_v: "14th of 212", arr_lien: "Choose my ghosts (3)", arr_courir: "Race again",
+    cap_pc: "CP 3/5",
+  },
+};
+const t = (k) => L[lang][k];
+const NOMS = ["Mika", "Léa", "Tom", "Inès", "Raph", "Noa", "Sam", "Yan"];
+const TPS = ["1:02,41", "1:02,87", "1:03,02", "1:03,55", "1:03,90", "1:04,11", "1:04,20", "1:04,63"];
+const fmt = (s) => (lang === "en" ? s.replace(",", ".") : s);
+const ordre = [TEINTES.rose, TEINTES.vert, TEINTES.jaune, TEINTES.violet, TEINTES.cyan];
+
+const ico = (s = 20) => `<svg aria-hidden="true" width="${s}" height="${s}"><use href="#ico-f"/></svg>`;
+const case_ = (on, teinte, { dis = false } = {}) => `<button class="tg" type="button" aria-pressed="${on}" ${dis ? "disabled" : ""} ${on ? `style="--teinte:${teinte}"` : ""}><i>${ico(20)}</i></button>`;
+function ligne(rang, nom, ms, { on = false, teinte = "", dis = false, moi = false, propose = false } = {}) {
+  const fin = moi ? `<span class="mots" title="${t("ton_record")}">${t("toi")}</span>` : case_(on, teinte, { dis });
+  return `<div class="row ligne ${moi ? "ligne--moi me" : ""}"><span class="rank ligne__rang">${rang}</span><span class="pt ${on ? "" : "vide"}" style="--teinte:${teinte}"></span><span class="who ligne__nom">${nom}</span>${propose && on ? `<span class="mots propose">${t("propose")}</span>` : ""}<span class="time ligne__temps">${fmt(ms)}</span>${fin}</div>`;
+}
+function compteur(n, propose) {
+  const cases = [0, 1, 2, 3, 4].map((i) => `<i class="${i < n ? "on" : ""}" style="--teinte:${ordre[i]}"></i>`).join("");
+  return `<div class="cpt"><b>${t("fant_n")(n)}</b><span class="barre" aria-hidden="true">${cases}</span>${propose ? `<span class="mots propose">${t("propose")}</span>` : ""}<button class="dj-bouton dj-bouton--secondaire" type="button" style="min-height:44px;margin-left:8px">${t("tout_dec")}</button></div>`;
+}
+const barreJeu = (txt = t("cl_retour")) => `<div class="pl" style="background:var(--dj-creme);color:var(--dj-encre);display:flex;align-items:center;min-height:44px;padding:0 12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;width:100%;border-radius:3px">${txt}</div>`;
+function etiquette(titre, sous, corps, w = "100%", h = 316) {
+  return `<div class="etiquette dj-sombre" style="width:${w}"><div class="etiquette__corps" style="max-height:${h}px;overflow:hidden"><div class="etiquette__tete"><h1 class="etiquette__titre" style="font-size:22px">${titre}</h1>${sous ? `<p class="etiquette__sous-titre" style="margin:0">${sous}</p>` : ""}</div>${corps}</div></div>`;
+}
+const ecran = (contenu, cls = "") => `<div class="ecran ${cls}"><svg class="scene" aria-hidden="true"><use href="#scene"/></svg>${contenu}</div>`;
+const figure = (titre, puce, html, notes = []) => `<figure>${html}<figcaption><b>${titre}</b>${puce ? ` <span class="puce ${puce === "n" ? "puce--nouveau" : "puce--inchange"}">${puce === "n" ? t("nouveau") : t("inchange")}</span>` : ""}${notes.length ? `<ol>${notes.map((n) => `<li>${n}</li>`).join("")}</ol>` : ""}</figcaption></figure>`;
+
+// --- pages de classement ---------------------------------------------------------------------------------------------------------------------------------
+function lignesPage(etat) {
+  // etat : "propose" (le premier + celui devant toi), "choisi" (3), "plein" (5)
+  const cochés = etat === "propose" ? { 0: ordre[0], 2: ordre[1] } : etat === "choisi" ? { 0: ordre[0], 2: ordre[1], 5: ordre[2] } : { 0: ordre[0], 1: ordre[1], 2: ordre[2], 3: ordre[3], 5: ordre[4] };
+  const n = Object.keys(cochés).length;
+  const full = n >= 5;
+  const rows = [0, 1, 2].map((i) => ligne(i + 1, NOMS[i], TPS[i], { on: i in cochés, teinte: cochés[i], dis: full && !(i in cochés), propose: etat === "propose" }));
+  rows.push(ligne(4, "Toi", "1:03,55", { moi: true }));
+  rows.push(ligne(5, NOMS[3], TPS[3], { on: 3 in cochés, teinte: cochés[3], dis: full && !(3 in cochés) }));
+  return { html: rows.join(""), n, full };
+}
+function pagePhone(etat) {
+  const { html, n, full } = lignesPage(etat);
+  const corps = `${compteur(n, etat === "propose")}<div class="lignes rows" style="margin-top:2px">${html}</div>${full ? `<p class="msg-max">${t("max")}</p>` : ""}`;
+  return ecran(`<div class="cadre" style="justify-content:flex-start;gap:6px;padding:8px 10px">${barreJeu()}${etiquette(t("cl_titre"), "", corps, "100%", 336)}</div>`);
+}
+function pageOrdi() {
+  const { html, n } = lignesPage("plein");
+  const corps = `${compteur(n, false)}<div class="lignes rows" style="margin-top:6px">${html}</div><p class="msg-max">${t("max")}</p>`;
+  return `<figure class="large"><div class="large-ecran"><svg class="scene" aria-hidden="true"><use href="#scene"/></svg><div class="cadre" style="padding:16px"><div style="width:760px">${barreJeu()}</div>${etiquette(t("cl_titre"), t("cl_sous"), corps, "760px")}</div></div><figcaption><b>${t("f3")}</b> <span class="puce puce--nouveau">${t("nouveau")}</span></figcaption></figure>`;
+}
+
+// --- accueil, arrivée, pause ---------------------------------------------------------------------------------------------------------------------------------
+function accueil() {
+  const cochés = { 0: ordre[0], 2: ordre[1] };
+  const lignes = [0, 1, 2].map((i) => ligne(i + 1, NOMS[i], TPS[i], { on: i in cochés, teinte: cochés[i] })).join("");
+  const pts = Object.values({ ...cochés, 1: ordre[2] }).map((c) => `<span class="pt" style="--teinte:${c}"></span>`).join("");
+  const corps = `<div class="choix-ligne"><span style="color:var(--track-livree)">${ico(20)}</span><b>${t("home_choix")}</b><span class="pts">${pts}</span></div>
+    <div style="margin-top:8px;font-family:var(--dj-police-marque);font-size:14px;text-transform:uppercase">${t("home_cl")}</div><div class="lignes rows">${lignes}</div><div class="lien-bas"><span style="color:var(--track-texte-doux)">${t("home_choix_aide")}</span><span style="text-decoration:underline">${t("home_tout")}</span></div>`;
+  return ecran(`<div class="cadre" style="justify-content:flex-start;gap:6px;padding:8px 10px">${barreJeu("‹ DU JOUR")}${etiquette("Track", "", corps, "100%", 336)}</div>`);
+}
+function arrivee() {
+  const corps = `<div style="font-family:var(--track-police);font-style:italic;font-weight:800;font-size:44px;line-height:1">${t("arr_temps")}</div>
+    <div style="display:flex;gap:10px;align-items:baseline;margin:10px 0"><span style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--track-texte-doux)">${t("arr_rang")}</span><b style="font-family:var(--track-police);font-style:italic;font-size:22px">${t("arr_rang_v")}</b></div>
+    <button class="dj-bouton dj-bouton--secondaire" type="button" style="min-height:44px;gap:8px"><span style="color:var(--track-livree)">${ico(20)}</span>${t("arr_lien")}<span class="nouveau" style="margin-left:6px">${t("nouveau")}</span></button>
+    <div style="margin-top:10px"><button class="dj-bouton dj-bouton--track" type="button" style="min-height:44px">${t("arr_courir")}</button></div>`;
+  return ecran(`<div class="cadre" style="justify-content:flex-start;gap:6px;padding:8px 10px">${barreJeu("‹ TRACK")}${etiquette(t("arr_titre"), "", corps)}</div>`);
+}
+function pause() {
+  const coin = `<div class="plaque classement-coin pl" style="position:absolute;right:10px;top:60px;width:240px;z-index:6;padding:0 0 4px"><div class="cpt" style="padding:6px 8px;font-size:12px"><b style="font-size:16px">${t("fant_n")(3)}</b></div>${[0, 1, 2, 3].map((i) => ligne(i + 1, NOMS[i], TPS[i], { on: i === 0 || i === 2, teinte: ordre[[0, 0, 1, 0][i]] })).join("")}</div>`;
+  return ecran(`<div class="voile-scene"></div>
+    <section class="dialogue dj-sombre" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:400px;z-index:5;display:block;background:var(--track-asphalte);border:3px solid var(--dj-encre);border-radius:var(--dj-rayon-coque);box-shadow:var(--dj-ombre-cartouche);overflow:hidden"><div class="dialogue__corps" style="padding:12px 14px"><h2 class="dialogue__titre" style="font-family:var(--track-police);font-style:italic;font-weight:800;text-transform:uppercase;font-size:30px;margin-bottom:8px">${t("p_pause")}</h2>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"><button class="dj-bouton dj-bouton--track" type="button" style="grid-column:1/-1">${t("p_reprendre")}</button>
+      <button class="dj-bouton dj-bouton--secondaire" type="button">${t("p_recommencer")}</button><button class="dj-bouton dj-bouton--secondaire" type="button">${t("p_pdc")}</button>
+      <button class="dj-bouton dj-bouton--secondaire" type="button" style="gap:6px">${ico(18)}${t("p_fant")}</button><button class="dj-bouton dj-bouton--secondaire" type="button">${t("p_son")}</button></div></div></section>${coin}`);
+}
+
+// --- course ---------------------------------------------------------------------------------------------------------------------------------------------------------
+const ICONE_PAUSE = '<span style="display:flex;gap:4px"><i style="width:4px;height:14px;background:var(--track-texte)"></i><i style="width:4px;height:14px;background:var(--track-texte)"></i></span>';
+const ICONE_PC = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M4 17V2" stroke="currentColor" stroke-width="2"/><path d="M5 3h9l-2 3 2 3H5z" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+const ICONE_CAM = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20"><path d="M2 6h4l1.5-2h5L14 6h4v10H2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="11" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+function boutonFant(mode, n = 3) {
+  const badge = mode === "sel" ? `<span class="badge">${n}</span>` : mode === "premier" ? `<span class="badge">1</span>` : "";
+  const oblique = mode === "rien" ? '<span class="barre-oblique"></span>' : "";
+  return `<span class="pl btn44 bfant" style="${mode === "rien" ? "color:var(--track-texte-doux)" : ""}">${ico(22)}${badge}${oblique}</span>`;
+}
+function hudCourse({ mode = "sel", banniere = "", ecart = false } = {}) {
+  return `<div class="abs" style="left:10px;top:8px;display:flex;gap:6px"><span class="pl btn44">${ICONE_PAUSE}</span><span class="pl btn44">${ICONE_PC}</span></div>
+  <div class="bande abs" style="left:50%;top:8px;transform:translateX(-50%)"><span class="chrono">0:41,192</span><span class="pc">${t("cap_pc")}</span><span class="ecart">−0,412</span></div>
+  <div class="abs" style="right:10px;top:8px;display:flex;align-items:center;gap:6px"><span class="pl pastille"><i style="width:9px;height:9px;border-radius:50%;background:var(--dj-bronze)"></i>54,372</span><span class="pl rang">14e</span><span class="pl btn44">${ICONE_CAM}</span>${boutonFant(mode)}</div>
+  ${ecart ? `<span class="pl ligne-aide" style="color:${TEINTES.rose};border-color:var(--dj-encre)">${t("ecart_ligne")}</span>` : ""}
+  ${banniere ? `<div class="banniere">${banniere}</div>` : ""}
+  <span class="pl vitesse">${t("vit")}</span>`;
+}
+function voiture(x, y, w, teinte, nom, { sub = "" } = {}) {
+  return `<div class="fant" style="left:${x}px;top:${y}px;width:${w}px;--teinte:${teinte}"><span class="nom">${nom}${sub ? ` <small>${sub}</small>` : ""}</span><svg width="${w}" height="${w * 0.6}" viewBox="0 0 100 60"><use href="#voit"/></svg></div>`;
+}
+function course() {
+  const f = [
+    voiture(212, 236, 74, ordre[0], "1. Mika"),
+    voiture(318, 214, 54, ordre[1], "3. Tom"),
+    voiture(468, 226, 62, ordre[2], "6. Noa"),
+    voiture(520, 200, 40, ordre[3], "2. Léa"),
+    voiture(376, 196, 34, ordre[4], "9. Raph"),
+  ].join("");
+  // ta voiture au centre, pleine (orange), non étiquetée
+  const moi = `<div class="fant" style="left:366px;top:296px;width:112px;--teinte:#ff8a3d"><svg width="112" height="67" viewBox="0 0 100 60"><use href="#voit"/></svg></div>`;
+  return ecran(hudCourse({ mode: "sel", ecart: true }) + f + moi);
+}
+function detail() {
+  return `<div class="ecran ecran--mini" style="width:400px;height:260px"><svg class="scene" aria-hidden="true"><use href="#scene"/></svg>${voiture(130, 110, 150, ordre[0], "1. Mika", { sub: "1:02,41" })}
+    <div class="abs pl" style="left:10px;bottom:10px;display:flex;align-items:center;gap:8px;padding:6px 8px;font-size:12px"><span class="pt" style="--teinte:${ordre[0]}"></span>Mika · 1:02,41 · Sparrow</div></div>`;
+}
+function etats() {
+  const e = (cle, mode, ban) => `<div class="etat"><div class="fond">${boutonFant(mode)}</div><b>${t("et_" + cle)}</b><small>${t("et_" + cle + "_d")}</small><div class="banniere" style="position:static;transform:none;margin:8px auto 0;font-size:12px;display:inline-block">${ban}</div></div>`;
+  const fl = '<span class="fleche-etat" aria-hidden="true">→</span>';
+  return `<div class="etats">${e("rien", "rien", t("ban_rien"))}${fl}${e("mien", "mien", t("ban_mien"))}${fl}${e("premier", "premier", t("ban_premier"))}${fl}${e("sel", "sel", t("ban_sel"))}${fl}<span class="fleche-etat" style="font-size:13px">↺ ${t("et_rien")}</span></div>`;
+}
+function bouton() {
+  return `<div class="grille">${figure(t("s5").replace(/^5 · /, ""), "n", ecran(hudCourse({ mode: "sel", banniere: t("ban_sel") })) )}${figure(t("saut_t"), "n", ecran(hudCourse({ mode: "premier", banniere: t("saut_ban") })), L[lang].saut_n)}</div>
+    <h3 style="margin:20px 0 8px;font-family:var(--dj-police-marque)">${t("s5").replace(/^5 · /, "")}</h3>${etats()}<ol style="max-width:900px;font-size:13px;color:var(--dj-encre-douce);margin-top:12px">${L[lang].bouton_n.map((n) => `<li>${n}${n.includes("G") && lang ? "" : ""}</li>`).join("")}</ol><p style="margin-top:6px;font-size:13px">${lang === "fr" ? "Ordinateur : touche" : "Desktop: key"} <span class="cle">G</span></p>`;
+}
+
+// --- chargement ------------------------------------------------------------------------------------------------------------------------------------------------------
+function frise() {
+  const px = (s) => 160 + s * 80;
+  const bar = (y, a, b, c) => `<div class="bar" style="top:${y}px;left:${px(a)}px;width:${(b - a) * 80}px;background:${c}"></div>`;
+  const mk = (a, label) => `<div class="tk" style="left:${px(a)}px">${label}</div>`;
+  return `<div class="frise" role="img" aria-label="${t("ch_titre")}">
+    <div class="lg" style="top:6px">${t("ch_t")}</div>${bar(8, 0.5, 3.2, ordre[0])}${bar(26, 0.5, 4.1, ordre[1])}${bar(44, 0.5, 4.8, ordre[2])}
+    <div class="lg" style="top:66px">${t("ch_t2")}</div>${bar(82, 0.5, 4.2, ordre[3])}${bar(100, 0.5, 8.1, ordre[4])}
+    <div class="rep" style="left:${px(6)}px"><span>${t("ch_rep")}</span></div>
+    <div class="ax"></div>${mk(0.5, "0")}${mk(3, "3 s")}${mk(6, "6 s")}${mk(9, "9 s")}
+  </div>`;
+}
+
+function section(n, titre, desc, corps) { return `<h2 class="section">${titre}<small>${desc}</small></h2>${corps}`; }
+
+function render() {
+  document.documentElement.lang = lang;
+  document.title = t("titre");
+  const s1 = section(1, t("s1"), t("s1d"), `<div class="grille">${figure(t("f1"), "n", pagePhone("propose"), L[lang].c1)}${figure(t("f2"), "n", pagePhone("choisi"), L[lang].c2)}</div><div class="grille" style="margin-top:28px">${pageOrdi()}</div><ol style="max-width:900px;font-size:13px;color:var(--dj-encre-douce)">${L[lang].c3.map((n) => `<li>${n}</li>`).join("")}</ol>`);
+  const s2 = section(2, t("s2"), t("s2d"), `<div class="grille grille--moyenne">${[["propose", 2], ["choisi", 3], ["plein", 5]].map(([e, n]) => `<figure><div class="etiquette dj-sombre" style="width:480px"><div class="etiquette__corps" style="padding:8px 10px"><div class="etiquette__tete"><h1 class="etiquette__titre" style="font-size:18px">${t("cl_titre")}</h1></div>${compteur(n, e === "propose")}${e === "plein" ? `<p class="msg-max">${t("max")}</p>` : ""}</div></div></figure>`).join("")}</div>`);
+  const s3 = section(3, t("s3"), t("s3d"), `<div class="grille">${figure(t("accueil_t"), "n", accueil(), L[lang].accueil_n)}${figure(t("arrivee_t"), "n", arrivee(), L[lang].arrivee_n)}${figure(t("pause_t"), "n", pause(), L[lang].pause_n)}</div>`);
+  const s4 = section(4, t("s4"), t("s4d"), `<div class="grille">${figure(t("course_t"), "n", course(), L[lang].course_n)}${figure(t("course_d"), "n", detail(), L[lang].course_dn)}</div>`);
+  const s5 = section(5, t("s5"), t("s5d"), bouton());
+  const s6 = section(6, t("s6"), t("s6d"), `${frise()}<ol style="max-width:900px;font-size:13px;color:var(--dj-encre-douce)">${L[lang].ch_n.map((n) => `<li>${n}</li>`).join("")}</ol>`);
+  const s7 = `<h2 class="section">${t("s7")}</h2><ul class="decisions">${L[lang].dec.map((d) => `<li>${d}</li>`).join("")}</ul>`;
+  document.getElementById("page").innerHTML = `<header class="planche"><div><h1>${t("titre")}</h1><p>${t("intro")}</p></div>
+    <div class="langue" role="group" aria-label="Langue / Language"><button type="button" data-l="fr" aria-pressed="${lang === "fr"}">FR</button><button type="button" data-l="en" aria-pressed="${lang === "en"}">EN</button></div></header>${s1}${s2}${s3}${s4}${s5}${s6}${s7}`;
+  for (const b of document.querySelectorAll(".langue button")) b.addEventListener("click", () => { lang = b.dataset.l; render(); });
+}
+render();
+</script>
+</body>
+</html>
