@@ -1,0 +1,23 @@
+{
+  "name": "@cdj/tower-sim",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "dependencies": {
+    "@cdj/core": "*",
+    "@dimforge/rapier2d-deterministic-compat": "0.21.0"
+  },
+  "scripts": {
+    "trig:tower": "esbuild tools/trig.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/trig.mjs --log-level=warning && node dist/trig.mjs --ecrire",
+    "mesures:tower": "esbuild tools/mesures.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures.mjs --log-level=warning && node dist/mesures.mjs",
+    "calibrer:tower": "esbuild tools/calibrer-banc.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/calibrer.mjs --log-level=warning && node dist/calibrer.mjs",
+    "poids:tower": "esbuild tools/poids.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/poids.mjs --log-level=warning && node dist/poids.mjs"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./lab/*": "./lab/*.ts"
+  }
+}

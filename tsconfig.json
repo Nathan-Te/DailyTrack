@@ -14,6 +14,9 @@
       "path": "packages/jump-sim"
     },
     {
+      "path": "packages/tower-sim"
+    },
+    {
       "path": "packages/profile"
     },
     {
@@ -27,6 +30,9 @@
     },
     {
       "path": "apps/jump"
+    },
+    {
+      "path": "apps/tower"
     },
     {
       "path": "apps/jump/e2e"

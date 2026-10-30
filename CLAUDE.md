@@ -22,6 +22,8 @@ Monorepo de jeux web quotidiens (un niveau par jour, identique pour tous, classe
 | `config/` | `lancement.json` : la date du lancement public (lot R8), lue par le serveur, le portail et les jeux | **zone partagée** | ce fichier (« Date du lancement public ») |
 | `docs/` | `admin.md` (lot N1 : les étapes de Nathan pour le panneau d'administration), `tests.md` (lot R13 : l'inventaire des tests, leurs quatre familles), `orchestration.md` (synthèse DailyTrack, lots 0 à 31), `plateforme/mise-en-production.md` (lot R12 : le bouton « Mettre en production » en une page), `jump/synthese.md` (synthèse DailyJump), `plateforme/synthese.md` (synthèse de la plateforme, lot P4), `plateforme/lancement.md` (la liste de contrôle du lancement public, lot R8), `lots/` (README de lots DailyTrack), `jump/lots/`, `plateforme/` (recette, coûts, lots R, P et I ; phase 3 : `seed-phase-3.md`, charte `identite.md` et maquettes `maquettes/cartouches/`, `codes-erreur.md` ; lot I6 : `budgets.md`, la référence des budgets, et `traductions.md`, produit par `npm run traductions`) | — | — |
 
+**Tower** (3ᵉ jeu, en développement, `off` : essai de la physique du lot T0) : @docs/tower/consignes.md
+
 Les jeux ne s'importent jamais l'un l'autre. **Partir d'une synthèse** (`docs/orchestration.md`, `docs/jump/synthese.md`, `docs/plateforme/synthese.md`) et n'ouvrir un README de lot que pour un détail.
 
 ## Règles communes à tous les lots
