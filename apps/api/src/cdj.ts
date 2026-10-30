@@ -54,6 +54,7 @@ import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
 import type { AdminDuJeu, GameDefinition, GameInstance, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { DEFAULT_SALON_LIMITS, createSalon, salonSessionMs, type SalonLimits } from "./salon";
+import { REF_LENGTH } from "./players";
 
 // DailyTrack (`cdj`) au registre des jeux (lot P0 de la plateforme) : le classement du jour (lot 5), le planning et l'admin (lot 14), le Salon
 // (lot 27, `salon.ts`) et le contenu du profil (lot 30). **Aucune route ne change** : les chemins historiques (`/api/day`, `/api/submit`,
@@ -874,17 +875,36 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     if (count === 0) return { date: formatDay(day), participants: 0, top: [], me: null };
 
     const medals = medalsFor((await getCircuit(day)).authorMs, day);
-    const rows = await db.all<{ ms: number; name: string }>(
-      "SELECT r.ms AS ms, p.name AS name FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ms ASC, r.submitted_at ASC LIMIT ?",
+    const rows = await db.all<{ ms: number; name: string; ref: string | null }>(
+      "SELECT r.ms AS ms, p.name AS name, p.ref AS ref FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ms ASC, r.submitted_at ASC LIMIT ?",
       [day, limit],
     );
-    const top = rows.map((r, i) => ({ rank: i + 1, name: r.name, ms: r.ms, medal: medalFor(r.ms, medals) }));
+    // Lot 55 : `ref` = la référence publique du joueur (empreinte de son identifiant secret, déjà gardée : `players.ref`), qui désigne sa course du jour pour `GET /api/day/<date>/run/<ref>`.
+    // Un joueur sans référence (d'avant le lot N1, pas encore réparée) n'a pas de case « fantôme » ; l'identifiant secret ne sort jamais.
+    const top = rows.map((r, i) => ({ rank: i + 1, name: r.name, ms: r.ms, medal: medalFor(r.ms, medals), ...(r.ref ? { ref: r.ref } : {}) }));
     let mine: { rank: number; name: string; ms: number; medal: Medal | null } | null = null;
     if (me) {
       const own = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ?", [day, me]);
       if (own) mine = { rank: await rankOf(day, own.ms, own.submitted_at), name: (await playerName(me)) ?? "", ms: own.ms, medal: medalFor(own.ms, medals) };
     }
     return { date: formatDay(day), participants: count, top, me: mine };
+  }
+
+  /**
+   * Lot 55 : la rediffusion d'une ligne du classement, par la référence publique de son joueur (`ref` des lignes de `leaderboard` : 12 hexadécimaux de l'empreinte de
+   * l'identifiant secret, déjà gardée par la table `players`). Aucune donnée de plus, aucun identifiant secret ; `X-Player-Id` reste l'identité de celui qui lit et n'est pas utilisé ici.
+   * Une course masquée ou inconnue : 404 `no_ghost` (le jeu s'en passe).
+   */
+  async function runOf(date: string, refRaw: string): Promise<unknown> {
+    const day = dayOf(date);
+    const ref = refRaw.toLowerCase();
+    if (!new RegExp(`^[0-9a-f]{${REF_LENGTH}}$`).test(ref)) throw new HttpError(400, "invalid_ref", "Référence de course invalide");
+    const row = await db.first<{ ms: number; splits: string; replay: string; name: string; car: string | null; submitted_at: number }>(
+      "SELECT r.ms AS ms, r.splits AS splits, r.replay AS replay, p.name AS name, r.car AS car, r.submitted_at AS submitted_at FROM players p JOIN results r ON r.player_id = p.id AND r.day = ? WHERE p.ref = ? AND r.hidden = 0 LIMIT 1",
+      [day, ref],
+    );
+    if (!row) throw new HttpError(404, "no_ghost", "Aucune course pour cette référence");
+    return { ref, name: row.name, rank: await rankOf(day, row.ms, row.submitted_at), ms: row.ms, splits: JSON.parse(row.splits) as number[], replay: row.replay, simVersion: SIM_VERSION, voiture: decoderVoiture(row.car) };
   }
 
   async function ghost(date: string, req: Request, url: URL): Promise<unknown> {
@@ -978,6 +998,12 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
         return what === "board" ? await salon.boardRoute(key, req, url, info) : await salon.ghostsRoute(key, url, info);
       }
       throw new HttpError(404, "not_found", "Route inconnue");
+    }
+    const run = /^\/api\/day\/([^/]+)\/run\/([^/]+)$/.exec(path); // lot 55
+    if (run) {
+      if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+      await platform.readHitAddress(info, "run", BOARD_READS_PER_CLIENT);
+      return await runOf(decodeDate(run[1]!), run[2]!);
     }
     const m = /^\/api\/day\/([^/]+)(?:\/(leaderboard|ghost))?$/.exec(path);
     if (m) {

@@ -119,6 +119,17 @@ test("le Garage, à la demande : 10 ko au plus, rien dans le premier chargement"
   expect(garage.octets, "le Garage, à la demande (JS), compressé").toBeLessThan(10_000); // ≈ 8,3 ko après le lot 42
 });
 
+// Lot 55 : le choix des fantômes (cases du classement, compteur, rediffusions choisies, cycle du bouton), à la demande, hors du premier chargement. 6 000 o au plus (≈ 4,1 ko de JS
+// et 0,9 ko de feuille de style) : une ligne du tableau de `budgets.md` serait à ajouter par un lot de plateforme (le test qui la garde est dans `apps/portail`).
+test("le choix des fantômes, à la demande : 6 ko au plus, rien dans le premier chargement", () => {
+  const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
+  expect(premier.filter((f) => /^fantomesJeu-/.test(f)), "rien du choix des fantômes dans le premier chargement").toEqual([]);
+  const fantomes = aLaDemande(/^fantomesJeu-.*\.js$/);
+  test.info().annotations.push({ type: "mesure", description: `choix des fantômes à la demande (JS) : ${fantomes.octets} o (${fantomes.fichiers.join(", ")})` });
+  expect(fantomes.fichiers.length, "le morceau du choix des fantômes est construit à part").toBeGreaterThanOrEqual(1);
+  expect(fantomes.octets, "le choix des fantômes, à la demande (JS), compressé").toBeLessThan(6_000);
+});
+
 // Lot 52 : les trois modes de direction tactiles (glissière, volant, gyroscope) et les réglages tactiles de Réglages › Commandes, à la demande, hors du premier chargement : les
 // boutons, mode par défaut, restent dans le premier chargement (≤ +1 ko, ligne `track.jsCss`). Chaque mode : sa logique, son dessin, ses réglages, ses textes (fr + en) et sa feuille de
 // style (le CSS n'est pas dans cette mesure, comme celle du Garage : `steer*.css`, 0,4 à 0,8 ko compressés chacun). Plafonds = mesure + 20 %, arrondis à 100 o (docs/plateforme/budgets.md,

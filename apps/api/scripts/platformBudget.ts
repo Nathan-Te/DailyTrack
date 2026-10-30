@@ -67,6 +67,14 @@ export const JUMP_DAY = { rebuilds: 480, readPerPlayerPerRebuild: 1, readPerPlay
  */
 export const TRACK_PLAYER: UnitCost = { requests: 16, read: 1911, written: 45, cpuS: 0.52, billedS: 3.2 };
 /**
+ * **Lot 55 (choisir ses fantômes dans le classement)** : `GET /api/day/<date>/run/<ref>` (la rediffusion d'une ligne), **une requête par fantôme choisi et par page** (cinq au plus ; la page garde
+ * ce qu'elle a téléchargé : recommencer ne relit rien), **seulement pour un joueur qui coche des cases ou qui garde « Ma sélection »** — le joueur type de `TRACK_PLAYER` n'en fait aucune de
+ * plus (le premier et celui devant toi, proposés cochés, ne sont téléchargés qu'en passant en « Ma sélection »). Une requête : 2 instructions (la ligne de la course par `players_by_ref` puis la
+ * clé de `results`, puis le rang par l'index des temps du jour), ≈ 3 lignes lues + les entrées d'index avant la sienne (un fantôme est un bon temps : son rang est petit), **0 écrite**, aucun
+ * compteur en base (limite de lecture en mémoire, comme le classement). Poids : 3,6 à 7,4 ko par rediffusion (≈ 2 à 3 ko compressés), jamais plus de 38 ko pour cinq.
+ */
+export const TRACK_FANTOMES_CHOISIS = { maxParPage: 5, requestsParFantome: 1, readParFantome: 3, written: 0 } as const;
+/**
  * **Salon de DailyTrack**, 30 minutes d'un joueur (3 sessions ; `measure:budget` : 558 requêtes, 12 763 lignes lues à 10 présents — 63 025 à 50 —,
  * 265 écrites, 5,8 s de calcul, 97 vCPU-s au plus ; `measure:salon` : 0,64 ms de calcul par joueur et par seconde, une instance tient ≈ 770
  * joueurs à 50 %). (Lot P4 : 3 pré-vols en plus, retirés au lot R5.)

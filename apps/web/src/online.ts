@@ -8,7 +8,7 @@ import { listDayBests, type BestRun } from "./records";
 import { gameStorage } from "./storage";
 import { lireChoix, noterDeblocages } from "./voiture/choix";
 
-export type GhostMode = "mine" | "first" | "ahead" | "off";
+export type GhostMode = "mine" | "first" | "ahead" | "selection" | "off";
 
 // Lot P0 (plateforme) : le pseudo (propriété du premier, suggestions) et « Changer mon code » sont ceux du module de profil commun.
 export { NAME_TAKEN_MESSAGE, type ChangeCodeResult, type RenameResult } from "@cdj/profile";
@@ -115,17 +115,3 @@ function ghostChoice(kind: "first" | "ahead", g: GhostData): GhostChoice {
   return { mode: kind, name: g.name, source: { ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, ...(voiture ? { voiture } : {}) } };
 }
 
-/** Modes de fantôme proposés, dans l'ordre où `G` les parcourt. */
-export function ghostModes(hasMine: boolean, online: boolean): GhostMode[] {
-  const modes: GhostMode[] = [];
-  if (hasMine) modes.push("mine");
-  if (online) modes.push("first", "ahead");
-  modes.push("off");
-  return modes;
-}
-
-/** Mode suivant, en bouclant. */
-export function nextGhostMode(current: GhostMode, modes: GhostMode[]): GhostMode {
-  const i = modes.indexOf(current);
-  return modes[(i + 1) % modes.length]!;
-}
