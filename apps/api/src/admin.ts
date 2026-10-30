@@ -4,6 +4,7 @@ import { RefusGoogle, createGoogleVerifier, empreinte, lireListeAdresses, verifi
 import { SESSION_MS, cookieDe, cookieEfface, cookieOuvert, createSessions, type Session } from "./adminSession";
 import { WithHeaders } from "./cache";
 import type { Diffusion } from "./diffusion";
+import type { Jeux } from "./jeux";
 import { HttpError } from "./errors";
 import type { GameInstance, Platform, RequestInfo, Statement } from "./games";
 import { ecrireJournal, createJournaux, JOURNAL_ADMIN_LIGNES, RETRAIT_REDIFFUSION_JOURS } from "./journaux";
@@ -81,6 +82,8 @@ export interface AdminDeps {
   oublier: () => void;
   /** Lot N2 : les nouveautés et le message en direct (leurs routes d'administration). */
   diffusion: Diffusion;
+  /** Lot P : l'interrupteur des jeux (états, clé d'aperçu : ses routes d'administration). */
+  interrupteur: Jeux;
 }
 
 type Corps = Record<string, unknown>;
@@ -447,7 +450,8 @@ export function createAdmin(deps: AdminDeps) {
     const joueur = /^joueurs\/([^/]+)(?:\/(renommer|masquer|retirer|supprimer))?$/.exec(reste);
     const miennes = ["config", "session", "tableau", "joueurs", "journal"];
     const diffuse = /^(?:nouveautes(?:\/[^/]+\/(?:depublier|supprimer))?|message(?:\/retirer)?)$/.test(reste);
-    if (!miennes.includes(reste) && !joueur && !diffuse) return undefined; // les outils de DailyTrack (overview, planning, medailles, effacer)
+    const interrupteur = /^jeux(?:\/[^/]+\/(?:etat|cle|cle\/revoquer))?$/.test(reste); // lot P
+    if (!miennes.includes(reste) && !joueur && !diffuse && !interrupteur) return undefined; // les outils de DailyTrack (overview, planning, medailles, effacer)
     if (reste === "config") {
       if (req.method !== "GET") return nonPermise("GET");
       await platform.readHitAddress(info, "admc", 120);
@@ -469,6 +473,11 @@ export function createAdmin(deps: AdminDeps) {
     else await platform.hit(await platform.hashKey("admw", s.id), ACTIONS_PAR_SESSION);
     if (diffuse) {
       return await deps.diffusion.routeAdmin(reste, req, s.admin, () => platform.readJson(req));
+    }
+    if (interrupteur) {
+      const r = await deps.interrupteur.routeAdmin(reste, req, s.admin, () => platform.readJson(req));
+      if (req.method !== "GET") deps.oublier(); // l'accueil et le classement du jour gardés par cette instance repartent de l'état d'après
+      return r;
     }
     if (reste === "tableau") return lecture ? await tableau() : nonPermise("GET");
     if (reste === "journal") return lecture ? { lignes: await journaux.dernieres(JOURNAL_ADMIN_LIGNES), max: JOURNAL_ADMIN_LIGNES } : nonPermise("GET");

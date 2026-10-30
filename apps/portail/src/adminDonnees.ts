@@ -143,6 +143,18 @@ export interface CorpsMessage {
 }
 
 /** Une erreur du serveur : son statut et son code (un code de `apps/api/src/codesErreur.ts`, jamais un message). */
+/** Lot P (interrupteur des jeux) : un jeu vu par le panneau. `cle` : si une clé d'aperçu existe (jamais sa valeur : le serveur n'en garde que l'empreinte). */
+export interface JeuAdmin {
+  jeu: string;
+  nom: string;
+  etat: "off" | "preview" | "on";
+  /** Le premier jour entier où le jeu compte dans la journée (AAAA-MM-JJ), ou `null`. */
+  liveFrom: string | null;
+  periodes: { du: string; au: string | null }[];
+  cle: { presente: boolean; creeeLe: string | null };
+  modifieLe: string | null;
+}
+
 export class ErreurAdmin extends Error {
   constructor(
     readonly statut: number,
@@ -203,6 +215,11 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
     supprimerNouveaute: (id: number) => appeler<{ supprimee: true }>("POST", `/api/admin/nouveautes/${id}/supprimer`, { confirmer: true }),
     message: () => appeler<MessagesAdmin>("GET", "/api/admin/message"),
     mettreAJourMessage: (c: CorpsMessage) => appeler<{ actif: AnnonceAdmin | null }>("POST", "/api/admin/message", { ...c, confirmer: true }),
+    // Lot P
+    jeux: () => appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("GET", "/api/admin/jeux"),
+    changerEtatJeu: (jeu: string, etat: JeuAdmin["etat"]) => appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("POST", `/api/admin/jeux/${encodeURIComponent(jeu)}/etat`, { etat, confirmer: true }),
+    genererCleApercu: (jeu: string) => appeler<{ cle: string; jeu: string }>("POST", `/api/admin/jeux/${encodeURIComponent(jeu)}/cle`, { confirmer: true }),
+    revoquerCleApercu: (jeu: string) => appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("POST", `/api/admin/jeux/${encodeURIComponent(jeu)}/cle/revoquer`, { confirmer: true }),
     retirerMessage: () => appeler<{ actif: null }>("POST", "/api/admin/message/retirer", { confirmer: true }),
   };
 }
@@ -225,6 +242,7 @@ export const TEXTES_ERREUR: Record<string, string> = {
   not_found: "Fonction non disponible sur ce serveur.",
   invalid_news: "La nouveauté est incomplète : elle n'est pas publiée.",
   unknown_news: "Nouveauté introuvable (déjà supprimée ?).",
+  game_unavailable: "Ce jeu n'est pas ouvert au public.",
   invalid_message: "Le message est refusé : texte, endroit, ton ou heure de fin incorrects.",
 };
 export const texteErreur = (e: unknown): string => (e instanceof ErreurAdmin ? (TEXTES_ERREUR[e.code] ?? `Erreur : ${e.code}.`) : "Erreur inattendue.");
@@ -354,3 +372,17 @@ export function retourAdmin(search: string): string | null {
   const brut = new URLSearchParams(search).get("retour");
   return (RETOURS_PERMIS as readonly string[]).includes(brut ?? "") ? brut : null;
 }
+
+// --- Lot P : l'interrupteur des jeux ---------------------------------------------------------------------------------------------------
+export const NOMS_ETAT_JEU: Record<JeuAdmin["etat"], string> = { off: "Off", preview: "Aperçu", on: "On" };
+
+/** Ce que change un état, dit à Nathan avant qu'il confirme. */
+export function consequenceEtat(nom: string, de: JeuAdmin["etat"], vers: JeuAdmin["etat"], liveFrom: string | null): string {
+  if (vers === "on")
+    return `${nom} devient visible par tous : à l'accueil, jouable, son API s'ouvre. Il ne compte dans la journée (série, journée parfaite, classement du jour, partage) qu'à partir du premier jour entier${liveFrom ? ` (${liveFrom})` : " qui suit"}. Les résultats d'aperçu sont effacés.`;
+  if (vers === "preview") return `${nom} disparaît de l'accueil et de la journée dès le lendemain ; sa page n'est jouable qu'avec la clé d'aperçu (bandeau « Aperçu »). Les résultats déjà là restent en base.`;
+  return `${nom} disparaît de l'accueil, sa page affiche « Bientôt » et son API refuse tout${de === "on" ? " ; il sort de la journée dès le lendemain, sans casser les séries acquises" : ""}. Les résultats restent en base et reviennent à la réactivation.`;
+}
+
+/** Le lien d'aperçu d'un jeu : la clé est dans l'adresse **de ce lien seulement** (la page du jeu la range puis la retire de l'adresse ; elle ne va jamais à l'API par l'adresse). */
+export const lienApercu = (origine: string, jeu: string, cle: string): string => `${origine.replace(/\/+$/, "")}/${encodeURIComponent(jeu)}/?apercu=${encodeURIComponent(cle)}`;

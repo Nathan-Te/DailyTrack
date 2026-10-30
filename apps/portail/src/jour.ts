@@ -21,6 +21,13 @@ export interface JeuDuJour {
   theme: string | null;
   seuils: Record<Medaille, number> | null;
   premierJour: string;
+  /**
+   * Lot P (interrupteur des jeux) : ce jeu **compte-t-il dans la journée d'aujourd'hui** (journée parfaite, série, partage, classement du jour) ? Faux le jour même de son activation (il compte dès
+   * le lendemain) : il est quand même jouable. Absent (serveur plus ancien) : il compte.
+   */
+  compte?: boolean;
+  /** Lot P : présent seulement sur un aperçu de PR, pour un jeu pas encore `on` : le badge « Brouillon ». */
+  brouillon?: boolean;
   /** Avec un joueur seulement. */
   etat?: Etat;
 }
@@ -137,7 +144,11 @@ export function formatCompte(ms: number): string {
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
 
-/** Combien de jeux sont finis, sur combien (ceux que le portail montre). */
+/** Lot P : le jeu compte-t-il aujourd'hui dans la journée ? (Absent : oui.) */
+export const compteAujourdhui = (j: { compte?: boolean }): boolean => j.compte !== false;
+
+/** Combien de jeux sont finis, sur combien (ceux que le portail montre et qui comptent aujourd'hui : un jeu activé aujourd'hui est jouable mais ne compte que dès demain). */
 export function avancement(jeux: readonly JeuDuJour[]): { finis: number; total: number } {
-  return { finis: jeux.filter((j) => j.etat?.statut === "fini").length, total: jeux.length };
+  const comptes = jeux.filter(compteAujourdhui);
+  return { finis: comptes.filter((j) => j.etat?.statut === "fini").length, total: comptes.length };
 }

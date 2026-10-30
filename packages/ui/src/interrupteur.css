@@ -1,0 +1,48 @@
+/* Lot P (interrupteur des jeux) : la page « Bientôt » et le bandeau d'aperçu. Chargés à la demande avec `interrupteur.ts` (jamais dans le premier chargement d'un jeu). Le badge « Brouillon » du portail est dans portail.css. */
+.dj-bientot {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dj-espace-4);
+  box-sizing: border-box;
+  padding: max(var(--dj-espace-5), env(safe-area-inset-top)) max(var(--dj-espace-5), env(safe-area-inset-right)) max(var(--dj-espace-5), env(safe-area-inset-bottom)) max(var(--dj-espace-5), env(safe-area-inset-left));
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  text-align: center;
+}
+.dj-bientot__titre {
+  margin: 0;
+  font-size: var(--dj-taille-24);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dj-bientot__texte {
+  margin: 0;
+  max-width: 28ch;
+  font-size: var(--dj-taille-16);
+}
+.dj-apercu {
+  position: fixed;
+  top: max(0px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 2147482000;
+  transform: translateX(-50%);
+  padding: 2px var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-12);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.dj-apercu--brouillon {
+  background: var(--dj-papier);
+}

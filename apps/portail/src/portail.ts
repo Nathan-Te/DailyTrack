@@ -135,7 +135,10 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined): HTMLElement
         ? bouton({ texte: t.t("portail.continuer"), href: c.lien, variante: "marque", pleineLargeur: true, ariaLabel: t.t("portail.continuer.aria", { jeu: nom }) })
         : bouton({ texte: t.t("portail.jouer"), href: c.lien, variante: "marque", pleineLargeur: true, ariaLabel: t.t("portail.jouer.aria", { jeu: nom }) });
   action.setAttribute("data-cle", `jouer-${c.code}`);
-  return cartouche({ jeu: c.code, etiquette, action, attrs: { "data-jeu": c.code } });
+  const carte = cartouche({ jeu: c.code, etiquette, action, attrs: { "data-jeu": c.code } });
+  // Lot P : sur un aperçu de PR, un jeu pas encore `on` se montre avec le badge « Brouillon ».
+  if (jeu?.brouillon) carte.prepend(el("span", { classe: "dj-badge-brouillon", attrs: { "data-brouillon": "" }, texte: t.t("portail.brouillon") }));
+  return carte;
 }
 
 /** La tuile Série : flamme, « 5 jours », « 2 journées parfaites » ; à prolonger aujourd'hui ; journée parfaite du jour (sobre, sans animation). */

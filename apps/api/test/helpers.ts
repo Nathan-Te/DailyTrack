@@ -168,3 +168,13 @@ export async function seedSalonCircuit(db: SqlDb, session: number): Promise<void
   const c = salonCircuitOf(session);
   await db.run("INSERT OR IGNORE INTO salon_circuits (session, track_id, spec, created_at) VALUES (?, ?, ?, ?)", [session, c.id, c.spec, NOON]);
 }
+
+/**
+ * Lot P : ouvre un jeu à l'interrupteur (`on`, et il compte dans la journée à partir de `du`) — pour le faux jeu n° 3 des tests, absent de la table donc `off` (un nouveau jeu naît caché).
+ * Track et Jump y sont semés `on` par le schéma.
+ */
+export async function ouvrirJeu(t: { db: SqlDb }, site: string, du = 0): Promise<void> {
+  const { ensureSchemaOn } = await import("../src/db");
+  await ensureSchemaOn(t.db);
+  await t.db.run("INSERT OR REPLACE INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES (?, 'on', ?, ?, 0)", [site, du, JSON.stringify([[du, null]])]);
+}

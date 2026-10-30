@@ -18,7 +18,7 @@ export type Suite = { kind: "suivant"; jeu: string; nom: string; href: string } 
 export function suiteDuJour(corps: unknown, courant: string): Suite | null {
   const jeux = (corps as { jeux?: unknown } | null)?.jeux;
   if (!Array.isArray(jeux)) return null;
-  const lus = jeux.filter((j): j is { jeu: string; site?: unknown; nom?: unknown; etat?: { statut?: unknown } } => !!j && typeof (j as { jeu?: unknown }).jeu === "string");
+  const lus = jeux.filter((j): j is { jeu: string; site?: unknown; nom?: unknown; compte?: unknown; etat?: { statut?: unknown } } => !!j && typeof (j as { jeu?: unknown }).jeu === "string");
   const fini = (j: { etat?: { statut?: unknown } }) => j.etat?.statut === "fini";
   const moi = lus.find((j) => j.jeu === courant);
   if (!moi || !fini(moi)) return null;
@@ -26,7 +26,8 @@ export function suiteDuJour(corps: unknown, courant: string): Suite | null {
   // Le premier jeu du jour qui reste à jouer (dans l'ordre du serveur).
   const suivant = autres.find((j) => !fini(j) && typeof j.site === "string" && j.site !== "" && typeof j.nom === "string" && j.nom !== "");
   if (suivant) return { kind: "suivant", jeu: suivant.jeu, nom: suivant.nom as string, href: `../${encodeURIComponent(suivant.site as string)}/` };
-  return autres.every(fini) ? { kind: "parfaite", href: "../" } : null;
+  // Lot P : « Journée parfaite ! » ne demande que les jeux qui comptent aujourd'hui (un jeu activé aujourd'hui est jouable, mais ne compte que dès demain).
+  return autres.filter((j) => j.compte !== false).every(fini) ? { kind: "parfaite", href: "../" } : null;
 }
 
 /** Lit la suite de la journée (une requête) ; `null` sans réponse du serveur. Ne lève jamais. L'identifiant part en `X-Player-Id`, jamais dans l'adresse. */

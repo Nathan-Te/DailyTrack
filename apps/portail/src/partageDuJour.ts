@@ -23,7 +23,7 @@ export const nomDuJeu = (t: T, jeu: { jeu: string; nom?: string }): string => (j
 export function construireOptions(t: T, jour: Jour, lien: string): OptionsPartage | null {
   const joueur = jour.joueur;
   if (!joueur) return null;
-  const jeux: JeuPartage[] = jour.jeux.map((j) => ({
+  const jeux: JeuPartage[] = jour.jeux.filter((j) => j.compte !== false).map((j) => ({ // lot P : un jeu qui ne compte pas encore n'est pas dans la ligne à partager
     nom: nomDuJeu(t, j),
     statut: estFini(j.etat) ? { fini: true, medaille: j.etat.medaille } : { fini: false },
   }));

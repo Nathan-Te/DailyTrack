@@ -558,18 +558,20 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     const t = now();
     // Le joueur n'existe qu'après un essai valide (table `players` de la plateforme, comme DailyTrack).
     await players.save(playerId, name, known);
-    const previous = await db.first<{ ticks: number; deaths: number; submitted_at: number }>("SELECT ticks, deaths, submitted_at FROM jump_results WHERE day = ? AND player_id = ?", [
-      v.day,
-      playerId,
-    ]);
+    // Lot P : pendant l'aperçu du jeu (`info.apercu`) l'essai est rangé à part (`apercu = 1`, `hidden = 1` : aucun classement public ne le lit) ; il ne remplace jamais un essai public.
+    const apercu = info.apercu === true ? 1 : 0;
+    const previous = await db.first<{ ticks: number; deaths: number; submitted_at: number }>(
+      "SELECT ticks, deaths, submitted_at FROM jump_results WHERE day = ? AND player_id = ? AND apercu = ?",
+      [v.day, playerId, apercu],
+    );
     const improved = !previous || v.ticks < previous.ticks;
     if (improved) {
       await db.run(
-        `INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at, inputs_hash, hidden) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at, inputs_hash, hidden, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (day, player_id) DO UPDATE SET level_id = excluded.level_id, ticks = excluded.ticks, deaths = excluded.deaths, replay = excluded.replay,
            sim_version = excluded.sim_version, generator_version = excluded.generator_version, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash
-         WHERE excluded.ticks < jump_results.ticks`,
-        [v.day, playerId, v.info.id, v.ticks, v.deaths, body.replay as string, JUMP_SIM_VERSION, JUMP_GENERATOR_VERSION, t, t, v.inputsHash, (known as { hidden: number } | null)?.hidden === 1 ? 1 : 0], // lot N1 : un joueur masqué reste masqué
+         WHERE excluded.ticks < jump_results.ticks AND jump_results.apercu = excluded.apercu`,
+        [v.day, playerId, v.info.id, v.ticks, v.deaths, body.replay as string, JUMP_SIM_VERSION, JUMP_GENERATOR_VERSION, t, t, v.inputsHash, (known as { hidden: number } | null)?.hidden === 1 || apercu === 1 ? 1 : 0, apercu], // lot N1 : un joueur masqué reste masqué ; lot P : l'aperçu est masqué aussi
       );
     }
     log("INFO", "DailyJump : essai du jour", { day: v.info.date, ticks: v.ticks, deaths: v.deaths, improved });
@@ -954,6 +956,9 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     portail,
     admin,
     dailyLevel: getLevel,
+    // Lot P (interrupteur des jeux) : en aperçu, seul l'envoi d'un essai range ses résultats à part ; ils sont effacés quand le jeu passe `on` (jamais publics). Les vies (carte des morts) restent fermées.
+    ecrituresApercu: ["/api/jump/submit"],
+    viderApercu: (): Statement[] => [{ sql: "DELETE FROM jump_results WHERE apercu = 1" }],
     // Le registre : la validation d'un essai (le niveau du jour, les versions du code, le rejeu). Le temps rendu est celui du rejeu, en ms.
     validate: async (day, code) => {
       const level = await getLevel(day);

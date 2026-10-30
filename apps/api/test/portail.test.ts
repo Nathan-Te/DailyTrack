@@ -6,7 +6,7 @@ import type { GameDefinition, PortailDuJeu } from "../src/games";
 import { GRACE_MS } from "../src/cdj";
 import { PORTAIL_PUBLIC_MAX_S, PORTAIL_READS_PER_CLIENT, PREMIER_JOUR_DU_JOUR, serieEtParfaites } from "../src/portail";
 import { GAMES } from "../src/registry";
-import { circuitOf, makeApi, parisDay, parisDayStart, pilotReplay, playerId, TEST_DB } from "./helpers";
+import { circuitOf, makeApi, ouvrirJeu, parisDay, parisDayStart, pilotReplay, playerId, TEST_DB } from "./helpers";
 
 // Lot I2 (plateforme, phase 3) : le portail. La route regroupée `GET /api/portail/jour` (les jeux du jour ; avec `X-Player-Id`, l'état du joueur
 // dans chaque jeu, sa série tous jeux confondus et ses journées parfaites) et le profil commun `GET /api/portail/profil`. Chaque jeu déclare au
@@ -127,12 +127,13 @@ describe(`portail : GET /api/portail/jour sans joueur (${TEST_DB})`, () => {
       nouveaute: null, // lot N2 : la dernière nouveauté publiée (aucune ici) et le message en direct (aucun), dans la même réponse
       annonce: null,
       jeux: [
-        { jeu: "cdj", site: "track", nom: "Track", premierJour: formatDay(PREMIER_JOUR), numero: circuitNumber(TODAY), theme: themeForDay(TODAY).name, seuils: { author: m.author, gold: m.gold, silver: m.silver, bronze: m.bronze } },
+        { jeu: "cdj", site: "track", nom: "Track", premierJour: formatDay(PREMIER_JOUR), compte: true, numero: circuitNumber(TODAY), theme: themeForDay(TODAY).name, seuils: { author: m.author, gold: m.gold, silver: m.silver, bronze: m.bronze } },
         {
           jeu: "jump",
           site: "jump",
           nom: "Jump",
           premierJour: formatDay(PREMIER_JOUR_JUMP),
+          compte: true,
           numero: J.number,
           theme: J.theme,
           seuils: Object.fromEntries((["author", "gold", "silver", "bronze"] as const).map((k) => [k, Math.round((J.medals[k] * 1000) / TICK_RATE)])),
@@ -323,10 +324,11 @@ describe(`portail : un jeu n° 3 se déclare au registre, la route ne change pas
       create: () => ({ route: async () => undefined, dailyLevel: async () => null, portail: faux }),
     };
     const t = await portailApi({ games: [...GAMES, FAUX] });
+    await ouvrirJeu(t, "lune", premier);
     await historique(t, playerId(7), { track: [TODAY - 2, TODAY - 1, TODAY], jump: [TODAY - 2, TODAY - 1] });
     const pub = await t.call("GET", "/api/portail/jour");
     expect(pub.body.jeux.map((j: { jeu: string }) => j.jeu)).toEqual(["cdj", "jump", "lune"]);
-    expect(pub.body.jeux[2]).toEqual({ jeu: "lune", site: "lune", nom: "Lune", premierJour: formatDay(premier), numero: 2, theme: "lune", seuils: { author: 1000, gold: 2000, silver: 3000, bronze: 4000 } });
+    expect(pub.body.jeux[2]).toEqual({ jeu: "lune", site: "lune", nom: "Lune", premierJour: formatDay(premier), compte: true, numero: 2, theme: "lune", seuils: { author: 1000, gold: 2000, silver: 3000, bronze: 4000 } });
     const r = await t.call("GET", "/api/portail/jour", undefined, as(7));
     expect(r.body.jeux[2].etat).toMatchObject({ statut: "fini", tempsMs: 1500 });
     // Avant-hier : le faux jeu n'existait pas (Track et Jump suffisent) ; hier : les trois ; aujourd'hui : Jump manque.

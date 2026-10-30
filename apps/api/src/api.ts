@@ -8,6 +8,7 @@ import { CODES_ERREUR, ERREUR_INTERNE, corpsErreur } from "./codesErreur";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, RequestInfo } from "./games";
 import { createDiffusion } from "./diffusion";
+import { createJeux } from "./jeux";
 import { createIdentityRoutes } from "./identity";
 import { aNoter } from "./journaux";
 import { silentLog, type Logger } from "./log";
@@ -161,12 +162,18 @@ export function createApi(options: ApiOptions) {
   );
   // Lot N2 : les nouveautés et le message en direct (lectures publiques, routes d'administration).
   const diffusion = createDiffusion(platform);
+  // Lot P : l'interrupteur des jeux (état de chaque jeu, clé d'aperçu). Un jeu sans crochet `portail` est nommé par son code ; le portail et la garde lisent le même état.
+  const interrupteur = createJeux(
+    platform,
+    instances.map((g) => ({ code: g.code, site: g.instance.portail?.site ?? g.code, nom: g.instance.portail?.nom ?? g.code, viderApercu: g.instance.viderApercu?.bind(g.instance) })),
+  );
   // Lot I2 : le portail (accueil et profil commun), à partir de ce que chaque jeu déclare (crochet `portail`).
   const portail = createPortailRoutes(
     platform,
     instances.flatMap((g) => (g.instance.portail ? [{ code: g.code, portail: g.instance.portail }] : [])),
     options.premierJourDuJour,
     diffusion,
+    interrupteur,
   );
   // Lot R8 : la remise à zéro du lancement vide la base ; une instance qui voit la génération changer oublie sa mémoire (comme après un effacement).
   platform.onGenerationChange(() => {
@@ -186,6 +193,7 @@ export function createApi(options: ApiOptions) {
     revision: options.revision,
     oublier: () => portail.oublier(),
     diffusion,
+    interrupteur,
   });
   adminRef = admin;
   const salon = cdj.salon;
@@ -196,7 +204,7 @@ export function createApi(options: ApiOptions) {
   function corsFor(req: Request): Record<string, string> {
     const common = {
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Player-Id",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Player-Id, X-Preview-Key",
       "Access-Control-Max-Age": "86400",
     };
     if (!allowedOrigins) return { "Access-Control-Allow-Origin": allowOrigin, ...common };
@@ -282,11 +290,22 @@ export function createApi(options: ApiOptions) {
       if (req.method !== "GET" && req.method !== "HEAD") await admin.entretien();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
-      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await portail.route(path, req, url, info));
+      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await portail.route(path, req, url, info));
       if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;
-        const body = await g.instance.route(path, req, url, info);
+        // Lot P : l'interrupteur des jeux. Les outils d'administration de DailyTrack (`/api/admin/…`, leur propre porte) ne sont pas « le jeu » ; tout le reste l'est : un jeu `off` refuse
+        // (404 `game_unavailable`), un jeu en `preview` n'accepte que la clé d'aperçu et ne laisse écrire que ce qu'il range à part (`ecrituresApercu`).
+        let infoJeu = info;
+        if (!path.startsWith("/api/admin/")) {
+          const site = interrupteur.siteDe(g.code)!;
+          if ((await interrupteur.garde(site, req)) === "preview") {
+            const ecriture = req.method !== "GET" && req.method !== "HEAD";
+            if (ecriture && !g.instance.ecrituresApercu?.includes(path)) throw new HttpError(404, "game_unavailable", "Ce jeu n'accepte pas cette écriture pendant l'aperçu");
+            infoJeu = { ...info, apercu: true };
+          }
+        }
+        const body = await g.instance.route(path, req, url, infoJeu);
         if (body !== undefined) return answer(reply, body);
       }
       throw new HttpError(404, "not_found", "Route inconnue");

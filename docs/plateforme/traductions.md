@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1141 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1148 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -12,6 +12,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `annonce.fermer` | Fermer le message | Dismiss the message |
 | `annonce.important` | Important | Important |
+
+### Aperçu de partage (quand on colle le lien) (`apercu.*`, `packages/ui/src/catalogue.interrupteur.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `apercu.bandeau` | Aperçu — pas encore public | Preview — not public yet |
+| `apercu.brouillon` | Brouillon | Draft |
 
 ### Arrivée (`arrivee.*`, `packages/ui/src/catalogue.ts`)
 
@@ -28,6 +35,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `barre.retour` | DU JOUR | DU JOUR |
 | `barre.retour.aria` | Retour au portail Du Jour | Back to Du Jour |
 | `barre.jour` | {date} · {numero} | {date} · {numero} |
+
+### bientot (`bientot.*`, `packages/ui/src/catalogue.interrupteur.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `bientot.titre` | Bientôt | Coming soon |
+| `bientot.texte` | {nom} n'est pas encore ouvert. Reviens bientôt ! | {nom} isn't open yet. Come back soon! |
+| `bientot.retour` | ‹ Du Jour | ‹ Du Jour |
 
 ### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`)
 
@@ -50,6 +65,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.unknown_news` | Cette nouveauté n'existe pas. | That update doesn't exist. |
 | `erreur.invalid_message` | Ce message n'est pas valide. | That message isn't valid. |
 | `erreur.invalid_cursor` | Cette page des nouveautés n'existe pas. | That page of updates doesn't exist. |
+| `erreur.game_unavailable` | Ce jeu n'est pas encore ouvert. Reviens bientôt ! | This game isn't open yet. Come back soon! |
 | `erreur.invalid_player` | Identifiant de joueur invalide. | Invalid player ID. |
 | `erreur.unknown_player` | Ce profil n'a encore aucun résultat. | This profile has no results yet. |
 | `erreur.code_revoked` | Ce code n'est plus valide : il a été remplacé. Charge ton nouveau code. | This code is no longer valid: it was replaced. Load your new code. |
@@ -276,6 +292,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.titre` | Du Jour | Du Jour |
 | `portail.description` | Du Jour : un jeu par jour, le même pour tous. Track et Jump. | Du Jour: one game a day, the same for everyone. Track and Jump. |
 | `portail.jeux.titre` | Les jeux du jour | Today's games |
+| `portail.brouillon` | Brouillon | Draft |
 | `portail.track.accroche` | Un circuit par jour, le même pour tous. | One track a day, the same for everyone. |
 | `portail.jump.accroche` | Un niveau de plateforme par jour, le même pour tous. | One platform level a day, the same for everyone. |
 | `portail.jouer` | Jouer | Play |

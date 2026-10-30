@@ -130,8 +130,10 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
     // profil (avec le jour : une seule lecture). Rien n'est relu à l'arrivée (moins de 3 minutes) ni après l'envoi.
     // Lot I3 : une requête de plus, « Jeu suivant du jour » (`GET /api/portail/jour`, après l'envoi accepté) : 6 requêtes.
     // Lot N2 : une de plus, la lecture du message en direct quand l'écran d'arrivée s'affiche (`GET /api/annonce`, jamais pendant le niveau) : 7.
+    // Lot P : une de plus, l'état des jeux à l'ouverture (`GET /api/jeux`, l'interrupteur : « Bientôt » si le jeu n'est pas ouvert) : 8.
     expect(sent.sort()).toEqual(
       [
+        "GET /api/jeux",
         "GET /api/jump/day/<jour>/bundle",
         "GET /api/jump/day/<jour>/carnage",
         "GET /api/name",

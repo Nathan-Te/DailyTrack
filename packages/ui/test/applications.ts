@@ -16,6 +16,8 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["apps/jump (aperçu)", "apps/jump/src/catalogue.apercu.ts", "CATALOGUE_APERCU"],
   // Lot 53 : l'aide du plein écran sur iPhone et « Retrouver mon profil » (chargés à la demande avec leurs deux écrans : hors du catalogue commun).
   ["packages/ui (iPhone)", "packages/ui/src/catalogue.iphone.ts", "CATALOGUE_IPHONE"],
+  // Lot P : « Bientôt » et le bandeau d'aperçu de l'interrupteur des jeux (chargés à la demande avec leurs deux écrans).
+  ["packages/ui (interrupteur)", "packages/ui/src/catalogue.interrupteur.ts", "CATALOGUE_INTERRUPTEUR"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
   ["apps/web (base)", "apps/web/src/catalogue.base.ts", "CATALOGUE_BASE"],
   ["apps/web (accueil)", "apps/web/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],
@@ -46,6 +48,7 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/portail/admin": "lot N1 : page du panneau d'administration (`/admin/`), outil interne de l'éditeur, en français seulement (hors des catalogues des joueurs)",
   "apps/portail/src/admin.ts": "lot N1 : le panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminDiffusion.ts": "lot N2 : les rubriques Nouveautés et Message en direct du panneau d'administration, outil interne de l'éditeur, en français seulement",
+  "apps/portail/src/adminJeux.ts": "lot P : la rubrique Jeux (interrupteur et clé d'aperçu) du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminGithub.ts": "lot N2 : la lecture des PR par le panneau d'administration (messages d'erreur pour l'éditeur), en français seulement",
   "apps/portail/src/adminDonnees.ts": "lot N1 : les textes et formats du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/partage": "lot I6 : la source des images de partage (outil de construction, jamais servie) : seulement les noms de la marque",

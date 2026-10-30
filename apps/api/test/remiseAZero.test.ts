@@ -24,8 +24,8 @@ describe(`remise à zéro : la liste des tables (${TEST_DB})`, () => {
     expect([...plan.videes, ...plan.gardees].sort()).toEqual(tablesDuSchema().sort());
     expect(plan.videes.filter((t) => plan.gardees.includes(t))).toEqual([]);
     // Ce que Nathan a demandé de garder, et seulement cela — plus, depuis le lot N1, deux tables techniques du panneau d'administration qui ne nomment aucun joueur
-    // (les sessions de l'administrateur, les codes et routes des erreurs serveur) et, depuis le lot N2, les nouveautés et les messages en direct (des textes de l'éditeur, aucun joueur).
-    expect(plan.gardees.sort()).toEqual(["admin_sessions", "annonces", "circuits", "journal_erreurs", "jump_levels", "meta", "nouveautes", "planning"]);
+    // (les sessions de l'administrateur, les codes et routes des erreurs serveur), depuis le lot N2 les nouveautés et les messages en direct (des textes de l'éditeur, aucun joueur) et, depuis le lot P, l'interrupteur des jeux (états et périodes, aucun joueur).
+    expect(plan.gardees.sort()).toEqual(["admin_sessions", "annonces", "circuits", "jeux", "journal_erreurs", "jump_levels", "meta", "nouveautes", "planning"]);
     // Les tables des deux jeux et de la plateforme (identités, résultats, rediffusions, vies, Salon, débit) sont toutes vidées.
     for (const t of ["players", "revoked_codes", "rate", "results", "jump_results", "jump_lives", "jump_deaths", "salon_runs", "salon_sessions", "salon_presence", "salon_throttle", "journal_admin", "resultats_retires"]) {
       expect(plan.videes, t).toContain(t);

@@ -1,4 +1,5 @@
 import { PSEUDO_MIGRATION_ID, UNIQUE_NAME_INDEX, migratePseudos } from "./pseudos";
+import { JEUX_PUBLICS } from "@cdj/core/jeux";
 import { GAMES } from "./registry";
 
 /** Accès SQL minimal, satisfait par SQLite (Node) et par D1 (Cloudflare) : le cœur ne connaît que ceci. */
@@ -66,6 +67,11 @@ export const MIGRATIONS: string[] = [
   "CREATE INDEX IF NOT EXISTS players_by_ref ON players (ref)",
   "CREATE INDEX IF NOT EXISTS players_by_created ON players (created_at)",
   "CREATE INDEX IF NOT EXISTS players_masques ON players (hidden, name_key)",
+  // Lot P (l'interrupteur des jeux, `jeux.ts`). **Réversible** : une colonne ajoutée à deux tables (l'ancien code l'ignore) et une table nouvelle (`jeux`, dans `PLATFORM_SCHEMA`). Retour arrière :
+  // `ALTER TABLE results DROP COLUMN apercu`, `ALTER TABLE jump_results DROP COLUMN apercu` et `DROP TABLE jeux`. `apercu` = 1 : un résultat envoyé pendant l'aperçu d'un jeu (clé d'aperçu ou aperçu
+  // de PR) ; il est écrit `hidden = 1` (aucun classement public ne le lit) et effacé quand le jeu passe `on`.
+  "ALTER TABLE results ADD COLUMN apercu INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE jump_results ADD COLUMN apercu INTEGER NOT NULL DEFAULT 0",
 ];
 
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */
@@ -168,6 +174,18 @@ export const PLATFORM_SCHEMA: string[] = [
      retire_le INTEGER
    )`,
   `CREATE INDEX IF NOT EXISTS annonces_by_fin ON annonces (fin)`,
+  // --- Lot P : l'interrupteur des jeux (`jeux.ts`). **Réversible** : une table nouvelle, rien d'existant touché ; retour arrière : `DROP TABLE jeux`. Une ligne par jeu (son dossier sur le site) : l'état (`off` |
+  // `preview` | `on` ; **un jeu sans ligne vaut `off`**), `live_from` (le premier jour entier où le jeu compte dans la journée, jour de Paris en jours depuis 1970), les périodes (JSON `[[du, au|null], …]` : les
+  // jours où il compte, pour que le désactiver ne casse aucune série), l'**empreinte** SHA-256 de la clé d'aperçu (jamais la clé) et sa date. Aucune donnée de joueur : gardée par la remise à zéro.
+  `CREATE TABLE IF NOT EXISTS jeux (
+     jeu TEXT PRIMARY KEY,
+     etat TEXT NOT NULL,
+     live_from INTEGER,
+     periodes TEXT NOT NULL DEFAULT '[]',
+     cle_hash TEXT,
+     cle_creee_le INTEGER,
+     modifie_le INTEGER NOT NULL
+   )`,
 ];
 
 /** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */
@@ -215,6 +233,23 @@ export async function ensureSchemaOn(db: SqlDb): Promise<boolean> {
   if (migration.renamed.length) {
     await db.run("INSERT INTO meta (key, value) VALUES ('pseudo_migration', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [JSON.stringify(migration)]);
   }
+  await semerJeux(db);
   await db.run("INSERT INTO meta (key, value) VALUES ('schema', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [version]);
   return false;
+}
+
+/**
+ * Lot P (interrupteur des jeux) : Track et Jump étaient publics avant l'interrupteur, ils naissent `on` — **une seule fois** (`meta.jeux_semes`), jamais en écrasant un état choisi depuis
+ * (`INSERT OR IGNORE`) ni après une remise à zéro (la table `jeux` est gardée). Un jeu d'un lot suivant n'est pas dans `JEUX_PUBLICS` : sans ligne, il vaut `off`. Écrit au schéma, pas à une lecture.
+ */
+export async function semerJeux(db: SqlDb): Promise<void> {
+  // Pas de `try` : un échec ici doit empêcher de marquer le schéma à jour (la requête suivante réessaie) — sinon Track et Jump resteraient `off` en production.
+  if (await db.first("SELECT 1 AS ok FROM meta WHERE key = 'jeux_semes'")) return;
+  const t = Date.now();
+  const instructions: { sql: string; params?: SqlValue[] }[] = [
+    ...JEUX_PUBLICS.map((j) => ({ sql: "INSERT OR IGNORE INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES (?, 'on', 0, '[[0,null]]', ?)", params: [j, t] as SqlValue[] })),
+    { sql: "INSERT OR IGNORE INTO meta (key, value) VALUES ('jeux_semes', '1')" },
+  ];
+  if (db.batch) await db.batch(instructions);
+  else for (const s of instructions) await db.run(s.sql, s.params);
 }

@@ -29,6 +29,7 @@ import {
 } from "./adminDonnees";
 import { baseApi } from "./jour";
 import { remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
+import { vueJeux } from "./adminJeux";
 
 // Lot N1 (plateforme) : le panneau d'administration — `/admin/`. Connexion avec le compte Google de l'éditeur (Google Identity Services, chargé ici et nulle part
 // ailleurs ; la CSP de `/admin/` est dans `firebase.json`), tableau de bord, joueurs (recherche, fiche, cinq actions confirmées), journal. Une page pour l'éditeur :
@@ -154,7 +155,7 @@ async function afficherConnexion(raison?: string): Promise<void> {
 }
 
 // --- Le panneau ----------------------------------------------------------------------------------------------------------------------
-type Vue = { vue: "tableau" } | { vue: "nouveautes" } | { vue: "message" } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
+type Vue = { vue: "tableau" } | { vue: "nouveautes" } | { vue: "message" } | { vue: "jeux" } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
 
 function lireVue(): Vue {
   const [chemin = "", requete = ""] = location.hash.replace(/^#\/?/, "").split("?");
@@ -165,6 +166,7 @@ function lireVue(): Vue {
   if (morceaux[0] === "journal") return { vue: "journal" };
   if (morceaux[0] === "nouveautes") return { vue: "nouveautes" };
   if (morceaux[0] === "message") return { vue: "message" };
+  if (morceaux[0] === "jeux") return { vue: "jeux" };
   return { vue: "tableau" };
 }
 const adresseJoueurs = (q: string, filtre: string, page: number) => {
@@ -187,7 +189,7 @@ const contexteDiffusion: Contexte = {
   confirmer: (o) => confirmer(o),
   recharger: async (texte) => {
     await afficherVue();
-    if (texte) (document.getElementById("nouveautes-message") ?? document.getElementById("message-retour"))?.replaceChildren(message("info", texte));
+    if (texte) (document.getElementById("nouveautes-message") ?? document.getElementById("message-retour") ?? document.getElementById("jeux-retour"))?.replaceChildren(message("info", texte));
   },
   sessionExpiree: () => afficherConnexion("Session expirée : reconnecte-toi."),
   etiquette: async () => {
@@ -257,6 +259,7 @@ function dessinerMenu(vue: Vue): void {
       lien("joueurs", "Joueurs", "#/joueurs"),
       lien("nouveautes", "Nouveautés", "#/nouveautes"),
       lien("message", "Message en direct", "#/message"),
+      lien("jeux", "Jeux", "#/jeux"),
       lien("journal", "Journal", "#/journal"),
       el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../track/admin/", "data-menu": "track" }, texte: "Track" }), el("span", { classe: "admin-menu__sous", texte: "outils : planning, médailles" })),
       el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../jump/admin/", "data-menu": "jump" }, texte: "Jump" }), el("span", { classe: "admin-menu__sous", texte: "outils : calendrier, essais" })),
@@ -282,10 +285,12 @@ async function afficherVue(): Promise<void> {
             ? vueNouveautes(contexteDiffusion)
             : vue.vue === "message"
               ? vueMessage(contexteDiffusion)
-              : vueJournal());
+              : vue.vue === "jeux"
+                ? vueJeux(contexteDiffusion)
+                : vueJournal());
     if (courante !== generation) return; // une autre vue a été demandée entre-temps
     contenu.replaceChildren(...noeud);
-    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : vue.vue === "nouveautes" ? "Nouveautés" : vue.vue === "message" ? "Message en direct" : "Joueurs"} · Administration · Du Jour`;
+    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : vue.vue === "nouveautes" ? "Nouveautés" : vue.vue === "message" ? "Message en direct" : vue.vue === "jeux" ? "Jeux" : "Joueurs"} · Administration · Du Jour`;
   } catch (e) {
     if (courante !== generation) return;
     if (e instanceof ErreurAdmin && e.statut === 401) {

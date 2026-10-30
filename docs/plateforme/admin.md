@@ -120,3 +120,7 @@ done
 - **Masquer** un joueur : il disparaît de tous les classements (portail, jeux, Salon), garde son profil, **ne voit aucune différence**. **Retirer un résultat** : retrait doux avec un motif ; la rediffusion est gardée **30 jours** pour vérification, puis effacée. **Supprimer le profil** : irréversible, il faut retaper le pseudo ; même effacement que la procédure `docs/plateforme/effacement.md`. **Renommer** : mêmes règles de pseudo qu'à la création.
 - Chaque action est inscrite au **journal** (heure, empreinte de l'administrateur, action, cible, avant / après ; jamais ton adresse, jamais le contenu effacé), gardé **365 jours**. Les erreurs du serveur (code, route, heure) : **14 jours**. Tout est décrit dans les mentions légales.
 - Les définitions des chiffres du tableau de bord sont dans `apps/api/CLAUDE.md`, « Administration (lot N1) ».
+
+## Jeux : l'interrupteur (lot P)
+`/admin/` › **Jeux** : un interrupteur à trois positions par jeu (Off · Aperçu · On), chacune confirmée par une fenêtre qui dit ce qui va changer, et la **clé d'aperçu** (générer — le lien n'est montré qu'une fois —, copier le lien, révoquer). Chaque changement est au Journal. Mode d'emploi pour publier un nouveau jeu : `docs/mise-en-ligne.md`, « Publier un nouveau jeu ». Sur un aperçu de PR le panneau n'est pas utilisable (comme le reste) : à tester sur la recette.
+

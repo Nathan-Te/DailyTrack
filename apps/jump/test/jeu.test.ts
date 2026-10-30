@@ -50,7 +50,7 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, pieces: false, fx: true, ghostOff: false, firstGhostOff: false, ghost: null, carnageDemo: false, watchBest: false, watchFirst: false, gallery: false, semaine: null, semaineG13: false, semaineG14: false, module: null, daily: false, seed: null, solution: false, theme: null, metronome: true, home: null, archives: false, api: null };
+    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, pieces: false, fx: true, ghostOff: false, firstGhostOff: false, ghost: null, carnageDemo: false, watchBest: false, watchFirst: false, gallery: false, semaine: null, semaineG13: false, semaineG14: false, module: null, daily: false, seed: null, solution: false, theme: null, metronome: true, home: null, archives: false, api: null, apercu: false };
     // Lot 5 : sans paramètre, le niveau du jour.
     expect(readUrlOptions("")).toEqual({ ...none, scenario: null, daily: true });
     expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true, pieces: true });

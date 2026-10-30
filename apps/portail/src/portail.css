@@ -703,3 +703,18 @@
   display: block;
   flex: none;
 }
+
+/* Lot P : le badge d'une cartouche du portail pour un jeu pas encore `on` (aperçu de PR). */
+.dj-badge-brouillon {
+  display: inline-block;
+  padding: 1px var(--dj-espace-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-12);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+

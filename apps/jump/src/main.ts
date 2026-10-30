@@ -1,4 +1,5 @@
 import "./generationInit";
+import "./interrupteurInit";
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import {
