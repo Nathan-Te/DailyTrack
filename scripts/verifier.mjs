@@ -48,7 +48,8 @@ export function etapes(d, { sansE2e = false, extra = null, regression = false } 
   }
   const web = extra ? [...new Set([...d.e2e.web, ...extra.web])].sort() : d.e2e.web;
   const jump = extra ? [...new Set([...d.e2e.jump, ...extra.jump])].sort() : d.e2e.jump;
-  if (!d.docsSeuls && !sansE2e && (web.length || jump.length)) {
+  const tower = extra ? [...new Set([...d.e2e.tower, ...(extra.tower ?? [])])].sort() : d.e2e.tower;
+  if (!d.docsSeuls && !sansE2e && (web.length || jump.length || tower.length)) {
     // Lot R8 : comme la CI, les archives des jeux commencent au circuit n° 1 (les e2e tournent le 20/10/2026, avant la date du lancement public).
     out.push({ nom: "construction (jeux et serveur)", cmd: "npm", args: ["run", "build"], env: { VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13" } });
     if (web.length) out.push({ nom: "construction du serveur", cmd: "npm", args: ["run", "build:node", "-w", "@cdj/api"] });
@@ -56,6 +57,8 @@ export function etapes(d, { sansE2e = false, extra = null, regression = false } 
     const filtre = regression ? [] : ["--grep-invert=@regression"];
     if (web.length) out.push({ nom: `e2e DailyTrack (Chromium, ${web.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", "@cdj/web", "--", "--project=chromium", "--workers=1", ...filtre, ...web.map((s) => `e2e/${s}`)] });
     if (jump.length) out.push({ nom: `e2e DailyJump (Chromium, ${jump.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", "@cdj/jump", "--", "--project=chromium", "--workers=1", ...filtre, ...jump.map((s) => `e2e/${s}`)] });
+    // Lot R15 : Tower (3ᵉ jeu), mêmes règles.
+    if (tower.length) out.push({ nom: `e2e Tower (Chromium, ${tower.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", "@cdj/tower", "--", "--project=chromium", "--workers=1", ...filtre, ...tower.map((s) => `e2e/${s}`)] });
   }
   return out;
 }

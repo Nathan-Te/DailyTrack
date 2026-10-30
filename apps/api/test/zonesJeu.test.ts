@@ -52,6 +52,21 @@ describe("les zones", () => {
     expect(verifierZones({ etiquettes: ["jeu:jump"], fichiers }).ok).toBe(true);
   });
 
+  it("lot R15 : une PR Tower dans ses zones passe (jeu, simulation, serveur de Tower, documents)", () => {
+    const fichiers = ["apps/tower/src/jeu.ts", "apps/tower/e2e/durees.json", "apps/tower/e2e/poids.spec.ts", "packages/tower-sim/src/partie.ts", "packages/tower-sim/test/partie.test.ts", "apps/api/src/tower.ts", "apps/api/src/towerLives.ts", "apps/api/test/towerBoard.test.ts", "apps/api/scripts/tower-seed.ts", "docs/tower/lots/lot-T2.md", "docs/tower/consignes.md"];
+    expect(verifierZones({ etiquettes: ["jeu:tower"], fichiers })).toMatchObject({ ok: true, jeu: "tower" });
+    expect(jeuDeLaPr({ branche: "claude/lot-T2-tower-rejeu" }).jeu).toBe("tower");
+    expect(jeuDeLaPr({ branche: "claude/plateforme-tower-ci" }).jeu).toBeNull(); // un lot de la plateforme qui nomme Tower reste une PR de la plateforme
+    expect(jeuDeLaPr({ branche: "claude/lot-9-towers" }).jeu).toBeNull(); // faux ami
+  });
+
+  it("lot R15 : trois étiquettes de jeu ou deux : refus ; Tower ne touche ni Track ni Jump ni les zones partagées, et réciproquement", () => {
+    expect(jeuDeLaPr({ etiquettes: ["jeu:tower", "jeu:jump"] }).erreur).toContain("jeu:jump et jeu:tower");
+    expect(horsZones("tower", ["apps/web/src/main.ts", "apps/jump/src/main.ts", "packages/sim/src/car.ts", "docs/jump/synthese.md", "e2e/zones.json", "scripts/ci-zones.mjs", ".github/workflows/ci.yml"])).toHaveLength(7);
+    expect(horsZones("track", ["apps/tower/src/jeu.ts", "packages/tower-sim/src/partie.ts", "docs/tower/consignes.md"])).toHaveLength(3);
+    expect(horsZones("jump", ["apps/tower/src/jeu.ts", "apps/api/src/tower.ts"])).toHaveLength(2);
+  });
+
   it("les exceptions tolérées, et rien d'autre", () => {
     for (const jeu of JEUX) expect(horsZones(jeu, EXCEPTIONS), jeu).toEqual([]);
     expect(EXCEPTIONS.sort()).toEqual(["docs/plateforme/budgets.md", "docs/plateforme/traductions.md", "packages/ui/test/applications.ts"]);

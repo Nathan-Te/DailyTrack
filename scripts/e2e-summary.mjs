@@ -37,12 +37,12 @@ export function collectTests(report) {
   return out;
 }
 
-/** Secondes passées par fichier dans Chromium (tous essais), triées par nom. Les fichiers de DailyJump (projet `jump-chromium`, lot 3c) sont préfixés « jump/ ». */
+/** Secondes passées par fichier dans Chromium (tous essais), triées par nom. Les fichiers de DailyJump (projet `jump-chromium`, lot 3c) sont préfixés « jump/ », ceux de Tower (`tower-chromium`, lot R15) « tower/ ». */
 export function chromiumSeconds(tests) {
   const sum = {};
   for (const t of tests) {
-    if (t.project !== "chromium" && t.project !== "jump-chromium") continue;
-    const key = t.project === "jump-chromium" ? `jump/${t.file.split("/").pop()}` : t.file;
+    if (t.project !== "chromium" && t.project !== "jump-chromium" && t.project !== "tower-chromium") continue;
+    const key = t.project === "jump-chromium" ? `jump/${t.file.split("/").pop()}` : t.project === "tower-chromium" ? `tower/${t.file.split("/").pop()}` : t.file;
     sum[key] = (sum[key] ?? 0) + t.ms;
   }
   return Object.fromEntries(Object.keys(sum).sort().map((f) => [f, Math.round(sum[f] / 1000)]));
@@ -93,7 +93,7 @@ export function summarize(report, { failOnFlaky = false, mode = "complet", quara
   // Durées Chromium par fichier (retouche 31b) : de quoi tenir à jour apps/web/e2e/durees.json, qui compose les parts de la CI.
   const perFile = chromiumSeconds(tests);
   if (Object.keys(perFile).length) {
-    lines.push("", "<details><summary>Durées Chromium par fichier (s, essais ratés compris) — pour apps/web/e2e/durees.json (et, préfixés « jump/ », apps/jump/e2e/durees.json)</summary>", "", "```json");
+    lines.push("", "<details><summary>Durées Chromium par fichier (s, essais ratés compris) — pour apps/web/e2e/durees.json (et, préfixés « jump/ » ou « tower/ », apps/jump/e2e/durees.json et apps/tower/e2e/durees.json)</summary>", "", "```json");
     lines.push(JSON.stringify(perFile, null, 2), "```", "</details>");
   }
   const warnings = [

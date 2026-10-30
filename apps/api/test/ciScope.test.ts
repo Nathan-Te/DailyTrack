@@ -94,6 +94,17 @@ describe("portée d'une PR", () => {
     expect(s).toMatchObject({ track: false, jump: true, plateforme: false, full: false, server: false });
   });
 
+  it("lot R15 — Tower seul : ses e2e seulement, pas ceux de DailyTrack ni de DailyJump, ni l'image du serveur ; une zone partagée le lance aussi", () => {
+    const s = scopeOf(["apps/tower/src/jeu.ts", "packages/tower-sim/src/partie.ts", "docs/tower/consignes.md"]);
+    expect(s).toMatchObject({ track: false, jump: false, tower: true, plateforme: false, full: false, server: false });
+    expect(cats("apps/api/src/tower.ts")).toEqual(["plateforme", "tower"]);
+    expect(cats("apps/api/test/towerBoard.test.ts")).toEqual(["plateforme", "tower"]);
+    expect(scopeOf(["apps/web/src/hud.ts"])).toMatchObject({ tower: false });
+    expect(scopeOf(["apps/jump/src/hud.ts"])).toMatchObject({ tower: false });
+    expect(scopeOf(["packages/ui/src/socle.css"])).toMatchObject({ track: true, jump: true, tower: true });
+    expect(scopeOf([], {})).toMatchObject({ tower: true });
+  });
+
   it("DailyTrack seul : e2e de DailyTrack seulement", () => {
     expect(scopeOf(["apps/web/src/hud.ts"])).toMatchObject({ track: true, jump: false, server: false });
   });

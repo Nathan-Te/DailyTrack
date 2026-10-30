@@ -1,6 +1,7 @@
 // Répartition des specs e2e entre les parts de la CI, par DURÉE (retouche 31b). Utilisé par .github/workflows/ci.yml pour Chromium.
 //   node scripts/e2e-parts.mjs 3/8 chromium > liste.txt   → liste de tests pour `playwright test --test-list liste.txt`
 //   node scripts/e2e-parts.mjs 1/2 jump-chromium > liste.txt   → idem pour les specs de DailyJump (lot 3c)
+//   node scripts/e2e-parts.mjs 1/1 tower-chromium > liste.txt  → idem pour les specs de Tower (lot R15)
 //   node scripts/e2e-parts.mjs 1/3 chromium --essentiel > liste.txt   → lot R13 : la CI de main (sans la famille « Régression », docs/tests.md)
 //
 // Pourquoi : `--shard` de Playwright coupe la liste des tests par NOMBRE, fichier par fichier, dans l'ordre alphabétique. Ajouter un spec
@@ -22,7 +23,9 @@ const E2E = join(ROOT, "apps/web/e2e");
 // Lot 3c : DailyJump a ses specs et ses durées à lui (apps/jump/e2e/durees.json). Son projet Playwright de CI s'appelle `jump-<navigateur>`
 // (apps/jump/playwright.config.ts) : le préfixe du projet dit de quel jeu il s'agit.
 const E2E_JUMP = join(ROOT, "apps/jump/e2e");
-export const gameOf = (project) => (project.startsWith("jump-") ? { dir: E2E_JUMP, name: "jump" } : { dir: E2E, name: "web" });
+// Lot R15 : Tower a les siens (apps/tower/e2e/durees.json), son projet de CI s'appelle `tower-<navigateur>`.
+const E2E_TOWER = join(ROOT, "apps/tower/e2e");
+export const gameOf = (project) => (project.startsWith("jump-") ? { dir: E2E_JUMP, name: "jump" } : project.startsWith("tower-") ? { dir: E2E_TOWER, name: "tower" } : { dir: E2E, name: "web" });
 export const DEFAULT_S = 60;
 
 /** Lot R13 : un outil (captures, mesures) n'est jamais dans la CI (`testIgnore` des configurations de Playwright sans `CAPTURES`, `MESURE`…). */
@@ -67,7 +70,7 @@ export function durees(dir = E2E, { essentiel = false } = {}) {
   return essentiel ? d.essentiel ?? {} : d.secondes;
 }
 
-/** Lot R13 : les specs tout entiers « Régression » d'un jeu (`web` | `jump`), d'après e2e/zones.json. */
+/** Lot R13 : les specs tout entiers « Régression » d'un jeu (`web` | `jump` | `tower`), d'après e2e/zones.json. */
 export function specsRegression(jeu) {
   const t = JSON.parse(readFileSync(join(ROOT, "e2e/zones.json"), "utf8"));
   return (t.regression ?? []).filter((s) => s.startsWith(`${jeu}/`)).map((s) => s.slice(jeu.length + 1));
@@ -79,7 +82,7 @@ function main(argv) {
     const navigateur = argv[1] ?? "chromium";
     const lignes = argv.slice(2).filter(Boolean).map((x) => {
       const [jeu, fichier] = x.split("/");
-      return `[${jeu === "jump" ? `jump-${navigateur}` : navigateur}] › ${fichier}`;
+      return `[${jeu === "jump" || jeu === "tower" ? `${jeu}-${navigateur}` : navigateur}] › ${fichier}`;
     });
     process.stdout.write(lignes.join("\n") + "\n");
     return;
