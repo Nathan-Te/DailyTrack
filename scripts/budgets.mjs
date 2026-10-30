@@ -17,10 +17,10 @@ const gz = (f, level) => gzipSync(readFileSync(f), level === undefined ? {} : { 
  * **statiques** de chaque module (`from"./x.js"`, `import"./x.js"`). Un morceau chargé par `import()` (et les fils de travail) n'y est jamais, quel que soit son nom. Les noms sont
  * relatifs à `assets/` (`dist` = le dossier des fichiers construits, `index.html` est à côté).
  */
-export function graphePremierChargement(dist) {
+export function graphePremierChargement(dist, entrees = []) {
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const vus = new Set();
-  const file = [...html.matchAll(/(?:src|href)="\.\/assets\/([^"]+\.(?:js|css))"/g)].map((m) => m[1]);
+  const file = [...html.matchAll(/(?:src|href)="\.\/assets\/([^"]+\.(?:js|css))"/g)].map((m) => m[1]).concat(entrees);
   while (file.length) {
     const f = file.shift();
     if (vus.has(f)) continue;
@@ -72,6 +72,35 @@ export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
   return { js: total, css, jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
 }
 
+/**
+ * Tower (lot R15) — le premier chargement de **la page du jeu** (`/tower/`), mesuré comme Track (`graphePremierChargement`, gzip par défaut) : l'aiguillage `main-*.js` charge
+ * le jeu par `import()`, donc le graphe de `index.html` seul ne dirait rien (1 ko) ; on y ajoute le fichier du jeu (`jeu-*.js`) et ce qu'il importe statiquement, avec la feuille
+ * de chaque morceau (la feuille d'un morceau porte son nom : `jeu-*.css`). **Hors de la mesure, à la demande** : la physique (le JavaScript de Rapier et son `.wasm`, deux
+ * fichiers : `physique`), le catalogue anglais, l'aide de l'iPhone, la démonstration du banc (`demo-*`, `?scenario=banc`, jamais en production) et `verify`. Les chiffres vont dans
+ * `docs/plateforme/budgets.md` (lignes `tower.*`) ; `apps/tower/e2e/poids.spec.ts` les garde.
+ */
+export const LIGNES_TOWER = ["tower.jsCss", "tower.physique", "tower.anglais", "tower.polices"];
+export function mesureTower(dist = join(ROOT, "apps/tower/dist/assets")) {
+  const tous = readdirSync(dist);
+  const gz1 = (f) => gz(join(dist, f));
+  const jeu = tous.filter((f) => /^jeu-.*\.js$/.test(f));
+  const fichiers = graphePremierChargement(dist, jeu);
+  const css = tous.filter((c) => c.endsWith(".css") && fichiers.some((f) => f.endsWith(".js") && c.startsWith(`${f.replace(/-[\w-]{8}\.js$/, "")}-`)));
+  const js = fichiers.filter((f) => f.endsWith(".js"));
+  const somme = (liste) => liste.reduce((n, f) => n + gz1(f), 0);
+  const physique = tous.filter((f) => /^rapier-.*\.(js|wasm)$/.test(f));
+  return {
+    js: somme(js),
+    css: somme(css),
+    jsCss: somme(js) + somme(css),
+    physique: somme(physique),
+    physiqueWasm: somme(physique.filter((f) => f.endsWith(".wasm"))),
+    anglais: somme(tous.filter((f) => f.startsWith("catalogue.en-"))),
+    polices: polices(dist),
+    fichiers: [...js, ...css],
+  };
+}
+
 /** Les polices qu'une construction déclare (octets des fichiers woff2, déjà compressés), lues dans ses feuilles. */
 function polices(dist) {
   const faces = new Set();
@@ -110,5 +139,6 @@ const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(pro
 if (isMain) {
   for (const app of ["web", "jump"]) if (!existsSync(join(ROOT, "apps", app, "dist/index.html"))) throw new Error(`apps/${app} n'est pas construit : npm run build`);
   const { fichiers, gz: _tous, ...track } = mesureTrack();
-  console.log(JSON.stringify({ track, jump: mesureJump(), portail: mesurePortail() }, null, 2));
+  const { fichiers: _t, ...tower } = existsSync(join(ROOT, "apps/tower/dist/index.html")) ? mesureTower() : { fichiers: [] };
+  console.log(JSON.stringify({ track, jump: mesureJump(), tower, portail: mesurePortail() }, null, 2));
 }

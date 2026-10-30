@@ -1,7 +1,7 @@
-import { boites, type PieceKind, type VuePartie } from "@cdj/tower-sim";
+import { boites, type Effet, type PieceKind, type Taille, type VuePartie } from "@cdj/tower-sim";
 import { BufferAttribute, BufferGeometry, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, OrthographicCamera, PlaneGeometry, Scene, WebGLRenderer } from "three";
 import type { FantomePiece } from "./fantomeLocal";
-import { PIECE_COULEUR, SCENE } from "./palette";
+import { EFFET_HALO, PIECE_COULEUR, SCENE } from "./palette";
 
 // La scène de Tower (lot T1) : Three.js en projection orthographique, comme Jump — des aplats, aucun dégradé, aucune texture. Les pièces sont des boîtes de couleur bordées d'encre, avec
 // des yeux fixes (les yeux qui paniquent viendront au lot T5) ; le ciel, la mer, la plateforme et ses nuages viennent de la maquette `tower-hud-paysage.html`. 1 unité = 1 mètre.
@@ -42,7 +42,8 @@ interface Etat {
 interface Entree {
   groupe: Group;
   kind: PieceKind;
-  rot: number;
+  /** Ce qui change l'aspect d'une pièce (quarts de tour, taille, effet, corps fixe) : si la clé change, le groupe est reconstruit. */
+  cle: string;
   prev: Etat;
   cur: Etat;
   /** Une pièce tombée finit sa chute pour le décor (la simulation l'a retirée) : vitesses estimées au moment de la perte. */
@@ -72,10 +73,16 @@ function cercle(couleur: string, x: number, y: number, r: number, z: number): Me
   return m;
 }
 
-/** Une pièce : une bordure d'encre sous des boîtes de couleur, et ses yeux. */
-function construirePiece(kind: PieceKind, rot: number): Group {
+const HALO = 0.16;
+const cleDe = (p: { rot: number; taille: Taille; effet: Effet | null; fixe: boolean }): string => `${p.rot}${p.taille}${p.effet ?? ""}${p.fixe ? "f" : ""}`;
+
+/** Une pièce : une bordure d'encre sous des boîtes de couleur, et ses yeux (lot T2 : à sa taille, avec le liseré de son effet : lierre, pièce figée, pièce glissante). */
+function construirePiece(kind: PieceKind, rot: number, taille: Taille = "normale", effet: Effet | null = null, fixe = false): Group {
   const g = new Group();
-  const bs = boites(kind, rot);
+  const bs = boites(kind, rot, taille);
+  const echelle = taille === "petite" ? 0.55 : taille === "geante" ? 1.6 : 1;
+  const halo = fixe ? EFFET_HALO.figee : effet === "lierre" ? EFFET_HALO.lierre : effet === "figee" ? EFFET_HALO.figee : effet === "glissante" ? EFFET_HALO.glissante : null;
+  if (halo) for (const b of bs) g.add(rect(halo, b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 2 * (BORD + HALO), (2 * b.hh) / 8 + 2 * (BORD + HALO), -0.01));
   for (const b of bs) g.add(rect(SCENE.encre, b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 2 * BORD, (2 * b.hh) / 8 + 2 * BORD, 0));
   for (const b of bs) g.add(rect(PIECE_COULEUR[kind], b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 0.01, (2 * b.hh) / 8 + 0.01, 0.01));
   // Les yeux, dans la plus grande boîte, droits dans le repère de la pièce.
@@ -83,16 +90,16 @@ function construirePiece(kind: PieceKind, rot: number): Group {
   const ex = grande.cx / 8;
   const ey = grande.cy / 8;
   for (const s of [-1, 1]) {
-    g.add(cercle(SCENE.encre, ex + s * 0.17, ey, 0.21, 0.02));
-    g.add(cercle(SCENE.papier, ex + s * 0.17, ey, 0.18, 0.03));
-    g.add(cercle(SCENE.encre, ex + s * 0.17 + 0.02, ey - 0.04, 0.075, 0.04));
+    g.add(cercle(SCENE.encre, ex + s * 0.17 * echelle, ey, 0.21 * echelle, 0.02));
+    g.add(cercle(SCENE.papier, ex + s * 0.17 * echelle, ey, 0.18 * echelle, 0.03));
+    g.add(cercle(SCENE.encre, ex + s * 0.17 * echelle + 0.02 * echelle, ey - 0.04 * echelle, 0.075 * echelle, 0.04));
   }
   return g;
 }
 
 /** La silhouette d'une forme en pointillé (les arêtes extérieures de ses boîtes), en un seul maillage. */
-function pointilles(kind: PieceKind, rot: number): BufferGeometry {
-  const bs = boites(kind, rot).map((b) => ({ x0: (b.cx - b.hw) / 8, x1: (b.cx + b.hw) / 8, y0: (b.cy - b.hh) / 8, y1: (b.cy + b.hh) / 8 }));
+function pointilles(kind: PieceKind, rot: number, taille: Taille = "normale"): BufferGeometry {
+  const bs = boites(kind, rot, taille).map((b) => ({ x0: (b.cx - b.hw) / 8, x1: (b.cx + b.hw) / 8, y0: (b.cy - b.hh) / 8, y1: (b.cy + b.hh) / 8 }));
   const pos: number[] = [];
   const T = 0.09;
   const DASH = 0.3;
@@ -131,6 +138,11 @@ export class Scene3D {
   private readonly camera = new OrthographicCamera(-1, 1, 1, -1, -100, 100);
   private readonly pieces = new Map<number, Entree>();
   private readonly fantome = new Group();
+  /** Lot T2 : le trait pointillé du prochain palier (à la hauteur en mètres, posé sur le monde) et les traînées du coup de vent. */
+  private readonly palier = new Group();
+  private readonly trainees: Mesh[] = [];
+  private sensVent: -1 | 0 | 1 = 0;
+  private temps = 0;
   private yBas = BAS_MIN;
   private cibleHauteur = 0;
   private premier = true;
@@ -151,6 +163,7 @@ export class Scene3D {
     this.decor();
     this.fantome.position.z = -0.5;
     this.scene.add(this.fantome);
+    this.monterPalier();
     this.redimensionner();
   }
 
@@ -174,6 +187,42 @@ export class Scene3D {
     s.add(rect(SCENE.plateformeReflet, 0, -0.16, 2 * hw - 0.1, 0.25, -0.8));
   }
 
+  /** Le trait pointillé du palier (100 m de large : plus que n'importe quel écran) et les huit traînées du vent, cachés tant qu'ils ne servent pas. */
+  private monterPalier(): void {
+    const pos: number[] = [];
+    for (let x = -50; x < 50; x += 0.9) pos.push(x, -0.05, 0, x + 0.55, -0.05, 0, x + 0.55, 0.05, 0, x, -0.05, 0, x + 0.55, 0.05, 0, x, 0.05, 0);
+    const g = new BufferGeometry();
+    g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
+    this.palier.add(new Mesh(g, matiere(SCENE.papier)));
+    this.palier.position.z = -0.6;
+    this.palier.visible = false;
+    this.scene.add(this.palier);
+    for (let i = 0; i < 8; i++) {
+      const m = rect(SCENE.papier, 0, 0, 2.2 + (i % 3) * 0.7, 0.06, -0.4);
+      m.visible = false;
+      this.trainees.push(m);
+      this.scene.add(m);
+    }
+  }
+
+  /** Pose (ou retire, avec `null`) le trait pointillé du prochain palier, à `metres` mètres au-dessus de la plateforme. */
+  poserPalier(metres: number | null): void {
+    this.palier.visible = metres !== null;
+    if (metres !== null) this.palier.position.y = metres;
+  }
+
+  /** Le coup de vent : des traînées qui filent dans le sens du vent (−1 gauche, 1 droite), 0 : aucune. Affichage seulement. */
+  poserVent(sens: -1 | 0 | 1): void {
+    this.sensVent = sens;
+    for (const m of this.trainees) m.visible = sens !== 0;
+  }
+
+  /** L'ordonnée à l'écran (pixels CSS depuis le haut) d'une hauteur du monde, sur la vue courante : la plaque du palier s'y pose. */
+  ecranY(metres: number): number {
+    const hauteurPx = this.conteneur.clientHeight || window.innerHeight;
+    return ((this.yBas + this.H - metres) / this.H) * hauteurPx;
+  }
+
   /** Adapte le rendu à la taille de la fenêtre. */
   redimensionner(): void {
     const w = this.conteneur.clientWidth || window.innerWidth;
@@ -192,18 +241,18 @@ export class Scene3D {
     for (const p of vue.pieces) {
       let e = this.pieces.get(p.id);
       if (!e) {
-        e = { groupe: construirePiece(p.kind, p.rot), kind: p.kind, rot: p.rot, prev: { x: p.x, y: p.y, angle: p.angle }, cur: { x: p.x, y: p.y, angle: p.angle }, chute: null };
+        e = { groupe: construirePiece(p.kind, p.rot, p.taille, p.effet, p.fixe), kind: p.kind, cle: cleDe(p), prev: { x: p.x, y: p.y, angle: p.angle }, cur: { x: p.x, y: p.y, angle: p.angle }, chute: null };
         e.groupe.position.z = 1 + p.id * 0.05;
         this.scene.add(e.groupe);
         this.pieces.set(p.id, e);
       }
-      if (e.rot !== p.rot) {
+      if (e.cle !== cleDe(p)) {
         const z = e.groupe.position.z;
         this.scene.remove(e.groupe);
-        e.groupe = construirePiece(p.kind, p.rot);
+        e.groupe = construirePiece(p.kind, p.rot, p.taille, p.effet, p.fixe);
         e.groupe.position.z = z;
         this.scene.add(e.groupe);
-        e.rot = p.rot;
+        e.cle = cleDe(p);
       }
       if (p.etat === "abandonnee") {
         e.groupe.visible = false;
@@ -246,6 +295,14 @@ export class Scene3D {
     this.camera.bottom = this.yBas;
     this.camera.top = this.yBas + this.H;
     this.camera.updateProjectionMatrix();
+    this.temps += dt;
+    if (this.sensVent !== 0) {
+      const portee = 2 * this.W;
+      this.trainees.forEach((m, i) => {
+        const x = ((((i * 5.3 + this.temps * this.sensVent * (7 + (i % 3) * 2.5)) % portee) + portee) % portee) - portee / 2;
+        m.position.set(x, this.yBas + this.H * (0.12 + 0.1 * i), -0.4);
+      });
+    }
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -255,6 +312,8 @@ export class Scene3D {
     this.pieces.clear();
     this.premier = true;
     this.cibleHauteur = 0;
+    this.poserPalier(null);
+    this.poserVent(0);
   }
 
   /** Pose (ou retire, avec `null`) la silhouette en pointillé d'une partie précédente, derrière la tour. */
@@ -265,7 +324,7 @@ export class Scene3D {
     }
     if (!pieces) return;
     for (const p of pieces) {
-      const m = new Mesh(pointilles(p.kind, p.rot), matiere(SCENE.papier));
+      const m = new Mesh(pointilles(p.kind, p.rot, p.taille), matiere(SCENE.papier));
       m.position.set(p.x, p.y, 0);
       m.rotation.z = p.angle;
       this.fantome.add(m);

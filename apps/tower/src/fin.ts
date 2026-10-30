@@ -16,7 +16,7 @@ export interface Fin {
   traduire(): void;
 }
 
-export function monterFin(racine: HTMLElement, o: { onRejouer(): void }): Fin {
+export function monterFin(racine: HTMLElement, o: { onRejouer(): void; /** Le haut de l'écran : le contenu joué (« Suite d'essai », la date du jour, « Paliers »). */ eyebrow(): string }): Fin {
   const voile = el("div", { classe: "voile voile--fin", attrs: { id: "fin-ecran", hidden: true } });
   const coque = el("div", { classe: "coque", attrs: { role: "dialog", "aria-modal": "true" } });
   const eyebrow = el("span", { classe: "fin__eyebrow" });
@@ -56,7 +56,7 @@ export function monterFin(racine: HTMLElement, o: { onRejouer(): void }): Fin {
   let donnees: { vue: VuePartie; r: Resultat; vies: number } | null = null;
   const traduire = () => {
     coque.setAttribute("aria-label", t("fin.aria"));
-    eyebrow.textContent = t("fin.eyebrow");
+    eyebrow.textContent = o.eyebrow();
     legendeHauteur.textContent = t("fin.hauteurStable");
     legendeVies.textContent = t("fin.vies");
     legendePartie.textContent = t("fin.partie");

@@ -10,3 +10,5 @@ describePurity("packages/tower-sim/lab/a", new URL("../lab/a", import.meta.url).
 const RAPIER = "@dimforge/rapier2d-deterministic-compat";
 describePurity("packages/tower-sim/src", new URL("../src", import.meta.url).pathname, { allowedImports: ["@cdj/core", RAPIER] });
 describePurity("packages/tower-sim/scenarios", new URL("../scenarios", import.meta.url).pathname, { allowedImports: ["@cdj/core"] });
+// Lot T2 : le générateur du contenu du jour (src/generateur/) est pur : la graine vient du numéro de jour, jamais d'une horloge.
+describePurity("packages/tower-sim/src/generateur", new URL("../src/generateur", import.meta.url).pathname, { allowedImports: ["@cdj/core"] });

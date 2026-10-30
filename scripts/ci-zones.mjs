@@ -21,7 +21,9 @@ import { assignParts } from "./e2e-parts.mjs";
 import { categoriesOf } from "./ci-scope.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-export const E2E_DIRS = { web: "apps/web/e2e", jump: "apps/jump/e2e" };
+// Lot R15 : Tower est un jeu de la CI au même titre que Track (`web`) et Jump (`jump`) : ses specs (apps/tower/e2e), ses durées, ses zones, son projet Playwright `tower-<navigateur>`.
+export const E2E_DIRS = { web: "apps/web/e2e", jump: "apps/jump/e2e", tower: "apps/tower/e2e" };
+export const JEUX_E2E = /** @type {const} */ (["web", "jump", "tower"]);
 export const PARTS_E2E_MAX = 4;
 export const PARTS_UNITAIRES_MAX = 4;
 /** Durée visée d'une part (secondes de la CI) : au-delà, on ajoute une part (dans la limite du maximum). */
@@ -82,7 +84,7 @@ export function zonesDuFichier(fichier, table) {
   });
 }
 
-/** Les specs d'un jeu (`web` | `jump`) : noms de fichiers, sans les outils (captures, mesures : ils se sautent d'eux-mêmes). */
+/** Les specs d'un jeu (`web` | `jump` | `tower`) : noms de fichiers, sans les outils (captures, mesures : ils se sautent d'eux-mêmes). */
 export function specsDuJeu(jeu, racine = ROOT) {
   return lister(racine, E2E_DIRS[jeu], (f) => f.endsWith(".spec.ts") && f.split("/").length === 4)
     .map((f) => posix.basename(f))
@@ -102,10 +104,11 @@ export function importeursDe(jeu, utilitaire, racine = ROOT) {
  *  - un fichier dans une zone lance les specs de cette zone ; tout fichier de code (hors documents) lance la fumée de son jeu (zone partagée : des deux).
  */
 export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S } = {}) {
-  const sur = { web: new Set(), jump: new Set() }; // toujours lancés : fumée, specs modifiés, importeurs d'un utilitaire modifié
-  const liens = { web: new Map(), jump: new Map() }; // spec → nombre de couples (fichier modifié, zone) qui le lient à la PR
+  const parJeu = (f) => Object.fromEntries(JEUX_E2E.map((j) => [j, f(j)]));
+  const sur = parJeu(() => new Set()); // toujours lancés : fumée, specs modifiés, importeurs d'un utilitaire modifié
+  const liens = parJeu(() => new Map()); // spec → nombre de couples (fichier modifié, zone) qui le lient à la PR
   const raisons = new Set();
-  const tous = { web: specsDuJeu("web", racine), jump: specsDuJeu("jump", racine) };
+  const tous = parJeu((j) => specsDuJeu(j, racine));
   const fumee = (jeu, pourquoi) => {
     for (const s of table.fumee[jeu]) sur[jeu].add(s);
     raisons.add(`fumée ${jeu} (${pourquoi})`);
@@ -113,7 +116,7 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
   for (const brut of files) {
     const f = norm(brut);
     if (!f || estDoc(f)) continue;
-    const m = /^apps\/(web|jump)\/e2e\/([^/]+)$/.exec(f);
+    const m = /^apps\/(web|jump|tower)\/e2e\/([^/]+)$/.exec(f);
     if (m) {
       const jeu = m[1];
       const nom = m[2];
@@ -129,14 +132,16 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
       }
       continue;
     }
-    if (/^apps\/(web|jump)\/playwright\.config\.ts$/.test(f)) {
-      fumee(f.includes("/web/") ? "web" : "jump", "configuration de Playwright");
+    const config = /^apps\/(web|jump|tower)\/playwright\.config\.ts$/.exec(f);
+    if (config) {
+      fumee(config[1], "configuration de Playwright");
       continue;
     }
     // Un fichier de code : la fumée des jeux qu'il touche, et les specs de ses zones (une zone partagée — ui, profil, serveur — rejoint les deux jeux).
     const cats = categoriesOf(f);
     if (cats.includes("track")) fumee("web", f);
     if (cats.includes("jump")) fumee("jump", f);
+    if (cats.includes("tower")) fumee("tower", f);
     for (const z of zonesDuFichier(f, table)) {
       for (const [spec, zs] of Object.entries(table.specs)) {
         if (!zs.includes(z)) continue;
@@ -149,14 +154,14 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
   // Le budget : les specs de zones, les plus liés aux fichiers modifiés d'abord, à égalité les plus courts (le plus de couverture par seconde).
   const duree = (jeu, spec) => dureeE2e(racine, jeu, spec);
   const candidats = [];
-  for (const jeu of ["web", "jump"]) for (const [nom, n] of liens[jeu]) if (!sur[jeu].has(nom)) candidats.push({ jeu, nom, n, s: duree(jeu, nom) });
+  for (const jeu of JEUX_E2E) for (const [nom, n] of liens[jeu]) if (!sur[jeu].has(nom)) candidats.push({ jeu, nom, n, s: duree(jeu, nom) });
   // Lot R13 (docs/tests.md) : un spec de la famille « Régression » (`regression` de e2e/zones.json) ne tourne que dans la CI complète (main, nuit), sauf
   // s'il est lui-même modifié par la PR (il est alors dans `sur`).
   const regression = new Set(table.regression ?? []);
   const enRegression = [];
   for (const c of candidats.splice(0)) (regression.has(`${c.jeu}/${c.nom}`) ? enRegression : candidats).push(c);
   candidats.sort((a, b) => b.n - a.n || a.s - b.s || (a.nom < b.nom ? -1 : 1));
-  const choix = { web: new Set(sur.web), jump: new Set(sur.jump) };
+  const choix = parJeu((j) => new Set(sur[j]));
   const reportes = [];
   let total = 0;
   for (const c of candidats) {
@@ -167,6 +172,7 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
   return {
     web: trier(choix.web),
     jump: trier(choix.jump),
+    tower: trier(choix.tower),
     raisons: [...raisons].sort(),
     reportes: reportes.sort(),
     regression: enRegression.map((c) => `${c.jeu}/${c.nom}`).sort(),
@@ -184,14 +190,14 @@ export function dureeE2e(racine, jeu, spec) {
 
 /** Les specs de la table pour des zones nommées à la main (`npm run verifier -- --zones=track-sim,jump-rendu`). */
 export function specsDesZones(zones, table) {
-  const choix = { web: new Set(), jump: new Set() };
+  const choix = { web: new Set(), jump: new Set(), tower: new Set() };
   const inconnues = zones.filter((z) => !(z in table.compilees));
   for (const [spec, zs] of Object.entries(table.specs)) {
     if (!zs.some((z) => zones.includes(z))) continue;
     const [jeu, nom] = spec.split("/");
     choix[jeu].add(nom);
   }
-  return { web: [...choix.web].sort(), jump: [...choix.jump].sort(), inconnues };
+  return { web: [...choix.web].sort(), jump: [...choix.jump].sort(), tower: [...choix.tower].sort(), inconnues };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -372,6 +378,7 @@ export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CI
   const items = [
     ...choix.web.map((s) => `web/${s}`),
     ...choix.jump.map((s) => `jump/${s}`),
+    ...(choix.tower ?? []).map((s) => `tower/${s}`),
   ];
   if (items.length === 0) return [];
   const poids = Object.fromEntries(items.map((i) => { const [j, s] = i.split("/"); return [i, Math.max(1, duree(j, s))]; }));
@@ -381,6 +388,7 @@ export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CI
     part: `${i + 1}/${n}`,
     web: p.files.filter((x) => x.startsWith("web/")).map((x) => x.slice(4)),
     jump: p.files.filter((x) => x.startsWith("jump/")).map((x) => x.slice(5)),
+    tower: p.files.filter((x) => x.startsWith("tower/")).map((x) => x.slice(6)),
     secondes: Math.round(p.load),
   }));
 }
@@ -390,7 +398,8 @@ export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CI
  * workflow ») et `nuit` : tout. Chromium porte tout ; Firefox et WebKit, le petit ensemble `@navigateurs` des deux jeux (un job chacun).
  */
 // Lot R12 : `complet` et `nuit` repassent à 8 parts de Track (≈ 560 s de specs chacune au lieu de ≈ 745 s) : objectif ≤ 15 min de mur pour la CI que lance le bouton.
-export const PARTS_COMPLETES = { main: { web: 3, jump: 1 }, complet: { web: 8, jump: 1 }, nuit: { web: 8, jump: 1 } };
+// Lot R15 : Tower, 1 part de Chromium (quelques dizaines de secondes de specs : un job de plus en parallèle, pas de mur de plus).
+export const PARTS_COMPLETES = { main: { web: 3, jump: 1, tower: 1 }, complet: { web: 8, jump: 1, tower: 1 }, nuit: { web: 8, jump: 1, tower: 1 } };
 
 /** La matrice des jobs `e2e-parts` d'un mode complet (une PR reçoit celle de `main` : le job y est sauté). */
 export function matriceComplete(mode) {
@@ -399,6 +408,7 @@ export function matriceComplete(mode) {
   const include = [];
   for (let i = 1; i <= parts.web; i++) include.push({ suite: "web", browser: "chromium", shard: `${i}/${parts.web}`, essentiel });
   for (let i = 1; i <= parts.jump; i++) include.push({ suite: "jump", browser: "chromium", shard: `${i}/${parts.jump}`, essentiel });
+  for (let i = 1; i <= parts.tower; i++) include.push({ suite: "tower", browser: "chromium", shard: `${i}/${parts.tower}`, essentiel });
   for (const browser of ["firefox", "webkit"]) include.push({ suite: "navigateurs", browser, shard: "1/1", essentiel: false });
   return { include };
 }
@@ -412,7 +422,7 @@ export function decider(files, { mode = "pr", racine = ROOT } = {}) {
   const durees = dureesUnitaires(racine);
   const unitParts = partsUnitaires(unit.fichiers, durees, complet ? { max: 3, cible: 270 } : {});
   const docsSeuls = !complet && unit.docsSeuls;
-  const e2e = complet ? { web: [], jump: [], raisons: ["CI complète : matrice complète"] } : docsSeuls ? { web: [], jump: [], raisons: ["docs seuls"] } : specsPour(files, table, racine);
+  const e2e = complet ? { web: [], jump: [], tower: [], raisons: ["CI complète : matrice complète"] } : docsSeuls ? { web: [], jump: [], tower: [], raisons: ["docs seuls"] } : specsPour(files, table, racine);
   const e2eParts = complet ? [] : partsE2e(e2e, racine);
   // Hors docs seuls, une première part vérifie toujours (typecheck, portail, construction), même sans test unitaire à lancer.
   if (!docsSeuls && unitParts.length === 0) unitParts.push({ part: "1/1", fichiers: [], secondes: 0 });
@@ -422,7 +432,7 @@ export function decider(files, { mode = "pr", racine = ROOT } = {}) {
 /** Lignes `clé=valeur` pour $GITHUB_OUTPUT. */
 export function sorties(d) {
   const unitMatrice = { include: d.unitParts.map((p, i) => ({ part: p.part, fichiers: p.fichiers.join(" "), api: p.fichiers.some((f) => f.startsWith("apps/api/test/")), verif: !d.docsSeuls && i === 0 })) };
-  const e2eMatrice = { include: d.e2eParts.map((p) => ({ part: p.part, web: p.web.join(" "), jump: p.jump.join(" ") })) };
+  const e2eMatrice = { include: d.e2eParts.map((p) => ({ part: p.part, web: p.web.join(" "), jump: p.jump.join(" "), tower: p.tower.join(" ") })) };
   return [
     `docs_seuls=${d.docsSeuls}`,
     `unit_actif=${d.unitParts.length > 0}`,
@@ -439,9 +449,10 @@ export function resume(d) {
   l.push(`Tests unitaires : ${d.unit.fichiers.length} fichier(s)${d.unit.tous ? " (tous)" : ""}, ${d.unitParts.length} part(s) ${d.unitParts.map((p) => `${p.secondes} s`).join(" / ")}`);
   for (const r of d.unit.raisons.slice(0, 12)) l.push(`  · ${r}`);
   if (d.mode === "pr") {
-    l.push(`e2e (Chromium) : ${d.e2e.web.length} spec(s) DailyTrack, ${d.e2e.jump.length} spec(s) DailyJump, ${d.e2eParts.length} part(s) ${d.e2eParts.map((p) => `${p.secondes} s`).join(" / ")}`);
+    l.push(`e2e (Chromium) : ${d.e2e.web.length} spec(s) DailyTrack, ${d.e2e.jump.length} spec(s) DailyJump, ${d.e2e.tower.length} spec(s) Tower, ${d.e2eParts.length} part(s) ${d.e2eParts.map((p) => `${p.secondes} s`).join(" / ")}`);
     for (const s of d.e2e.web) l.push(`  · web/${s}`);
     for (const s of d.e2e.jump) l.push(`  · jump/${s}`);
+    for (const s of d.e2e.tower) l.push(`  · tower/${s}`);
     for (const r of d.e2e.raisons.slice(0, 12)) l.push(`  ↳ ${r}`);
     if (d.e2e.reportes?.length) l.push(`Reportés à la CI complète de main (budget de ${BUDGET_E2E_S} s de specs atteint) : ${d.e2e.reportes.join(", ")}`);
     if (d.e2e.regression?.length) l.push(`Régression (CI complète de main et nuit seulement, docs/tests.md) : ${d.e2e.regression.join(", ")}`);
