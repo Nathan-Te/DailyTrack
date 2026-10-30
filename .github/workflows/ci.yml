@@ -184,8 +184,6 @@ jobs:
           fi
           # pr (filtré, Chromium, quarantaine non bloquante) | main (chaque fusion : l'Essentiel de tout, lot R13) | complet (« Run workflow ») | nuit.
           mode=pr; [ -n "$full" ] && mode=complet; [ "$EVENT" = push ] && [ "$REF" = refs/heads/main ] && mode=main; [ "$EVENT" = schedule ] && mode=nuit
-          # FORÇAGE TEMPORAIRE (lot R15, comme au lot R13) : la PR joue UNE fois la CI de `main` ; retiré au commit suivant.
-          if [ "$EVENT" = pull_request ]; then mode=main; full="--full"; fi
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           node scripts/ci-scope.mjs $full < "$RUNNER_TEMP/files.txt" | tee -a "$GITHUB_OUTPUT" > "$RUNNER_TEMP/scope.txt"
           node scripts/ci-zones.mjs --mode "$mode" < "$RUNNER_TEMP/files.txt" >> "$GITHUB_OUTPUT" 2> "$RUNNER_TEMP/zones.txt"
