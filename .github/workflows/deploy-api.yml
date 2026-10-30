@@ -473,8 +473,15 @@ jobs:
           fi
           npm ci -w @cdj/api --ignore-scripts
           # Lot R4 : l'origine de la recette (toujours permise, scripts/domaine.mjs).
-          npm run smoke -w @cdj/api -- "${{ steps.result.outputs.url }}" --origin "$(node scripts/domaine.mjs adresse recette)"
-          echo "- Essai de bout en bout (\`npm run smoke\`) : réussi." >> "$GITHUB_STEP_SUMMARY"
+          # Lot R14 : le smoke complet écrit des joueurs « Fumée » dans la base de recette (commune à toutes les PR) : il ne tourne que pour la révision par défaut (fusion
+          # dans main, `--distant` dit en clair que la cible est distante). Une révision de PR (étiquette) n'est vérifiée qu'en lecture seule : des GET, rien d'écrit.
+          if [ -z "$TAG" ]; then
+            npm run smoke -w @cdj/api -- "${{ steps.result.outputs.url }}" --distant --origin "$(node scripts/domaine.mjs adresse recette)"
+            echo "- Essai de bout en bout (\`npm run smoke\`) : réussi." >> "$GITHUB_STEP_SUMMARY"
+          else
+            npm run smoke -w @cdj/api -- "${{ steps.result.outputs.url }}" --lecture-seule --environnement recette --origin "$(node scripts/domaine.mjs adresse recette)"
+            echo "- Vérification en lecture seule (\`smoke --lecture-seule\`) : réussie (le smoke complet n'écrit que sur la révision par défaut, lot R14)." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # Lot R5 — la faille d'adresse : depuis ce runner (adresse publique), des appels DIRECTS à la révision, chacun avec une adresse inventée
       # différente dans X-Forwarded-For, doivent être refusés (429) au plus tard après 40 × PEER_FACTOR (scripts/sonde-proxy.mjs faille).
