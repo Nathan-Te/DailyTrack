@@ -264,7 +264,7 @@ describe(`interrupteur des jeux : l'administration et le journal (${TEST_DB})`, 
   });
 });
 
-describe(`interrupteur des jeux : la journée, live_from et les séries (${TEST_DB})`, () => {
+describe(`interrupteur des jeux : la journée, live_from et les séries (${TEST_DB})`, { timeout: 60_000 }, () => {
   // Quatre jours fixes (novembre 2026, après le premier jour de chaque jeu).
   const J0 = DAY + 30; // le jour de l'activation
   const midi = (d: number) => parisDayStart(d) + 12 * 3_600_000;

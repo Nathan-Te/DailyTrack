@@ -98,8 +98,8 @@ test("un thème forcé n'est jamais envoyé au classement, même avec une adress
   });
   await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 15_000 });
   await page.waitForTimeout(800);
-  // Lot N2 : l'écran d'arrivée lit le message en direct (`GET /api/annonce`, public, ne classe rien) : seul ce qui touche au classement est interdit.
-  expect(calls.filter((chemin) => chemin !== "/api/annonce")).toEqual([]);
+  // Lot N2 : l'écran d'arrivée lit le message en direct (`GET /api/annonce`, public, ne classe rien) : seul ce qui touche au classement est interdit. Lot P : et l'état des jeux à l'ouverture (`GET /api/jeux`, l'interrupteur).
+  expect(calls.filter((chemin) => chemin !== "/api/annonce" && chemin !== "/api/jeux")).toEqual([]);
   await expect(page.locator("#finish .online")).toContainText(/non classée/i);
 });
 
