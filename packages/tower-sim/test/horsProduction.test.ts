@@ -14,9 +14,10 @@ describe("Tower hors production", () => {
   });
 
   it("la page d'essai se tait sur une construction de production", () => {
+    // Lot T1 : la page d'entrée est devenue le jeu ; le drapeau est dans `urlOptions.ts` (où ?scenario, ?debug et ?tune sont fermés : `apps/tower/test/urlOptions.test.ts`).
+    expect(lire("apps/tower/src/urlOptions.ts")).toContain('import.meta.env.VITE_PRODUCTION === "1"');
     const main = lire("apps/tower/src/main.ts");
-    expect(main).toContain('import.meta.env.VITE_PRODUCTION === "1"');
-    expect(main).toMatch(/if \(PRODUCTION\) \{\s*hud\.textContent = "Bientôt\."/);
+    expect(main).toMatch(/if \(PRODUCTION\) \{\s*document\.getElementById\("tower"\)!\.textContent = "Bientôt\."/);
   });
 
   it("Tower n'est ni dans le registre des jeux de l'API ni parmi les jeux publics : absent de la table `jeux`, son état est `off`", () => {
