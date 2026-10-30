@@ -16,6 +16,7 @@ import type { SqlDb } from "../src/db";
 import { openLibsql } from "../src/libsql-open";
 import { openSqlite } from "../src/node-sqlite";
 import { TABLES_GARDEES, TABLES_VIDEES, refusDesGardes, refusDuLancement, remiseAZero } from "../src/remiseAZero";
+import { exigerDistant } from "../src/distant";
 
 const args = process.argv.slice(2);
 const value = (name: string): string => {
@@ -33,6 +34,8 @@ const cible = value("cible");
 const turso = process.env.TURSO_DATABASE_URL?.trim();
 const location = turso || (process.env.DB_PATH ?? "./data/cdj.sqlite");
 const baseVisee = databaseName(location);
+
+if (turso) exigerDistant(turso, args, "La remise à zéro compte (et, avec --appliquer, efface) les lignes de toutes les tables des joueurs.");
 
 const refus = refusDesGardes({ cible, baseSaisie: value("base"), baseVisee, phrase: value("phrase"), sauvegardeFaite: has("sauvegarde-faite") });
 if (refus.length) stop(refus.join(" · "));

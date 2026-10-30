@@ -131,6 +131,8 @@ gcloud run services describe cdj-api-recette --region=europe-west1 --format='val
 
 ## Étape 7 — Les joueurs fictifs de la recette (5 min)
 
+> **Lot R14 : `recette:seed` n'écrit que ce qui manque, et seulement à la fusion dans `main`** (plus à chaque poussée de PR). Un marqueur par segment dans `meta` (`recette_seed:…`) saute ce qui est fait ; `--refaire` rejoue tout ; contre Turso `--distant` est exigé ; `--mesure` (base `file:` locale) compte les lignes. Voir `docs/plateforme/lots/lot-R14-recette-sobre.md`.
+>
 > **Depuis le lot P2, c'est automatique** : le workflow **« Recette — joueurs fictifs »** (`recette-seed.yml`) lance `recette:seed` chaque jour (00:17 UTC) et après chaque déploiement de recette, avec les accès du workflow « Recette » (aucun secret GitHub de plus). Il lui faut seulement **lire le jeton de la base de recette** dans Secret Manager — une commande, **une fois**, dans Cloud Shell :
 >
 > ```bash

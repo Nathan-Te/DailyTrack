@@ -186,7 +186,7 @@ describe("le garde-fou des jours (lot R6)", () => {
     // Le jour de bascule se re-vérifie au déploiement de la production seulement (la recette n'a pas de jour à protéger).
     expect(job("serveur")).toContain("bascule_le: ${{ needs.verifier.outputs.bascule_le }}");
     expect(job("recette-serveur")).not.toContain("bascule_le");
-    expect(job("recette-verification")).toContain("smoke -w @cdj/api -- \"${url%/}\" --origin \"$origine\""); // le smoke complet, recette seulement
+    expect(job("recette-verification")).toContain("smoke -w @cdj/api -- \"${url%/}\" --distant --origin \"$origine\""); // le smoke complet, recette seulement (lot R14 : `--distant` le dit en clair)
     expect(job("verification")).not.toMatch(/smoke -w @cdj\/api -- "\$\{url%\/\}" --origin/);
   });
 

@@ -13,9 +13,12 @@ import { ensureSchemaOn, type SqlDb } from "../src/db";
 import { openLibsql } from "../src/libsql-open";
 import { openSqlite } from "../src/node-sqlite";
 import { migratePseudos, type PseudoMigration } from "../src/pseudos";
+import { exigerDistant } from "../src/distant";
 
 const apply = process.argv.includes("--apply");
 const turso = process.env.TURSO_DATABASE_URL?.trim();
+
+if (turso) exigerDistant(turso, process.argv, "pseudos:migrate lit toute la table des joueurs (et, avec --apply, la réécrit).");
 
 let db: SqlDb & { close(): void };
 if (turso) {

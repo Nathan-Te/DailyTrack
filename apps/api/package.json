@@ -23,7 +23,9 @@
     "base:sauvegarde": "esbuild scripts/sauvegarde.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/sauvegarde.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && NODE_NO_WARNINGS=1 node dist/sauvegarde.mjs",
     "measure:annonce": "esbuild scripts/measure-annonce.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-annonce.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-annonce.mjs",
     "measure:admin": "esbuild scripts/measure-admin.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-admin.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-admin.mjs",
-    "measure:portail": "esbuild scripts/measure-portail.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-portail.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-portail.mjs"
+    "measure:portail": "esbuild scripts/measure-portail.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-portail.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-portail.mjs",
+    "plans": "esbuild scripts/plans.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/plans.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/plans.mjs",
+    "measure:lignes": "esbuild scripts/measure-lignes.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-lignes.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-lignes.mjs"
   },
   "dependencies": {
     "@cdj/clock": "*",

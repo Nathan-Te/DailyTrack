@@ -3,7 +3,7 @@ name: Recette
 # site de recette (recette.playdujour.com, Firebase Hosting), séparés de la production. Pas à pas : docs/plateforme/recette.md, docs/plateforme/domaine.md.
 #   - Fusion dans main (lot R4) : la recette prend `main` en entier — révision par défaut du serveur, joueurs fictifs (`recette:seed`), puis le
 #     site de recette (/api/** renvoyé vers cdj-api-recette). Plus aucun déploiement automatique de la production (bouton : production.yml).
-#   - PR qui touche le serveur (SERVER_PATHS) : révision `b-<branche>-<empreinte>` SANS trafic, contrôle de /api/health, `npm run smoke`, puis
+#   - PR qui touche le serveur (SERVER_PATHS) : révision `b-<branche>-<empreinte>` SANS trafic, contrôle de /api/health, `smoke --lecture-seule` (lot R14 : le smoke complet n'écrit que sur la révision par défaut), puis
 #     son canal d'aperçu Firebase (`pr-<n>`, site de recette) construit pour parler à CETTE révision par son adresse directe (l'origine du canal
 #     est ajoutée aux origines permises de la révision) ; commentaire « Recette » sur la PR. Les autres PR : apercu.yml (recette par défaut).
 #     Pourquoi une adresse directe et pas un renvoi épinglé : README du lot R4 (`pinTag` de Firebase est expérimental, suit la dernière révision
@@ -170,9 +170,11 @@ jobs:
 
   # Lot P2 : les joueurs fictifs de la recette (`recette:seed`), tout de suite après le déploiement d'une révision (recette-seed.yml : mêmes accès,
   # aucun secret GitHub de plus ; refuse la production). Il tourne aussi chaque jour, seul.
+  # Lot R14 : **seulement au déploiement de la recette par défaut** (fusion dans `main`), jamais à celui de la révision d'une PR ni d'un « Run workflow » sur une branche : la
+  # base de recette est commune, et un passage à chaque poussée de chaque PR a consommé 99 % du quota Turso du mois (docs/plateforme/lots/lot-R14-recette-sobre.md).
   seed:
     needs: [plan, deploy]
-    if: ${{ !cancelled() && needs.deploy.outputs.enabled == 'true' }}
+    if: ${{ !cancelled() && needs.plan.outputs.action == 'default' && needs.deploy.outputs.enabled == 'true' }}
     permissions:
       contents: read
       id-token: write
