@@ -208,9 +208,43 @@ interface VoitureDebug {
   mesurerColonne(col: string, palier: 1 | 2 | 3, largeur: number, hauteur: number, images: number): Promise<{ imageMs: number; sceneSeuleMs: number; appels: number; appelsScene: number }>;
 }
 
+/** Lot 55 : les outils de la planche « Son » (src/vitrine/son.ts). */
+type ApprocheSon = "actuel" | "A" | "B" | "C";
+interface MesureSon {
+  noeuds: number;
+  octets: number;
+  decodageMs: number;
+  memoire: number;
+  jsMs: number;
+  images: number;
+  charge: { moyenne: number; pic: number } | null;
+}
+interface SonDebug {
+  module: {
+    rendreHorsLigne(approche: ApprocheSon, voiture: string, secondes?: number, avecRoues?: boolean): Promise<{
+      sr: number;
+      crete: number;
+      rms: number;
+      nonFinis: number;
+      noeuds: number;
+      donnees: Float32Array;
+      fenetres: { t: number; rpm: number; attendu: number; trouve: number; rms: number; brillance: number }[];
+    }>;
+    verifierFuites(approche: ApprocheSon, voiture: string): Promise<{ crees: number; deconnectes: number; sourcesDemarrees: number; sourcesArretees: number }>;
+  };
+  planche: {
+    activer(): Promise<void>;
+    choisir(approche: ApprocheSon, voiture?: string): Promise<void>;
+    etat(): { actif: boolean; approche: ApprocheSon; voiture: string; rapport: number; rpm: number; vitesse: number; t: number; lecture: boolean; noeuds: number; mesures: Partial<Record<ApprocheSon, MesureSon>> };
+    aller(t: number): void;
+    mesurer(approche: ApprocheSon, images?: number, ms?: number): Promise<MesureSon>;
+    arreter(): void;
+  };
+}
+
 interface VitrineDebug {
   /** La planche : les paliers (retouche 38b, par défaut), les directions (lot 38, `?planche=directions`) ou la voiture (lot 40, `?planche=voiture`). */
-  planche: "paliers" | "directions" | "voiture";
+  planche: "paliers" | "directions" | "voiture" | "son";
   erreurs: string[];
   vues(): { sujet: string; variante: string; etat: string; constructionMs: number; appels: number; triangles: number; textures: number; cibles: number }[];
   construireTout(sujet?: string): Promise<void>;
@@ -243,6 +277,8 @@ interface VitrineDebug {
   };
   /** Lot 40 : la planche « Voiture » (`?planche=voiture`), une fois montée (sinon `null`). */
   voiture(): Promise<VoitureDebug | null>;
+  /** Lot 55 : la planche « Son » (`?planche=son`), une fois montée (sinon `null`). */
+  son(): Promise<SonDebug | null>;
 }
 
 interface Window {
