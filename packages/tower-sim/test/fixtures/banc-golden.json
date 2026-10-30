@@ -1,0 +1,271 @@
+{
+  "commandes": "af142d180251a33d",
+  "a": {
+    "banc": {
+      "empreinte": "cdc7da5a6b363f5d",
+      "traces": [
+        {
+          "tick": 300,
+          "empreinte": "5b7570757a21b1e1"
+        },
+        {
+          "tick": 600,
+          "empreinte": "fc34d543a69b3792"
+        },
+        {
+          "tick": 900,
+          "empreinte": "7175d3f2eb285b6a"
+        },
+        {
+          "tick": 1200,
+          "empreinte": "310286fde1e1d3ec"
+        },
+        {
+          "tick": 1500,
+          "empreinte": "85d980824063e9bb"
+        },
+        {
+          "tick": 1800,
+          "empreinte": "506ee7e07ece6cf1"
+        },
+        {
+          "tick": 2100,
+          "empreinte": "288d22d4955e2fc1"
+        },
+        {
+          "tick": 2400,
+          "empreinte": "62a775e24afd6cbc"
+        },
+        {
+          "tick": 2700,
+          "empreinte": "496374f5c15a4a9f"
+        },
+        {
+          "tick": 3000,
+          "empreinte": "9a1a5a06fc8a7f64"
+        },
+        {
+          "tick": 3300,
+          "empreinte": "cb5435f45ff54790"
+        },
+        {
+          "tick": 3600,
+          "empreinte": "3268ec89e901b527"
+        },
+        {
+          "tick": 3900,
+          "empreinte": "8472aba6500acc37"
+        },
+        {
+          "tick": 4200,
+          "empreinte": "8630a494652660ae"
+        },
+        {
+          "tick": 4500,
+          "empreinte": "e9ad10068324da45"
+        },
+        {
+          "tick": 4800,
+          "empreinte": "ef03c557138e4ac2"
+        },
+        {
+          "tick": 5100,
+          "empreinte": "99adf2365f237613"
+        },
+        {
+          "tick": 5400,
+          "empreinte": "4568ed21bd7c3f71"
+        },
+        {
+          "tick": 5700,
+          "empreinte": "f39e112413bcbf67"
+        },
+        {
+          "tick": 6000,
+          "empreinte": "386d2a6f408ce83d"
+        },
+        {
+          "tick": 6300,
+          "empreinte": "bb77278ff8f62dc0"
+        },
+        {
+          "tick": 6600,
+          "empreinte": "dc77095701bf0477"
+        },
+        {
+          "tick": 6900,
+          "empreinte": "a97491e80d4053b3"
+        },
+        {
+          "tick": 7200,
+          "empreinte": "cdc7da5a6b363f5d"
+        }
+      ],
+      "tombees": 21,
+      "ticks": 7200
+    },
+    "tour": {
+      "empreinte": "d82262defc81f6b9",
+      "traces": [
+        {
+          "tick": 300,
+          "empreinte": "5e3a0e687961fa4f"
+        },
+        {
+          "tick": 600,
+          "empreinte": "73e31d3d10d52cf8"
+        },
+        {
+          "tick": 900,
+          "empreinte": "0f57ae7e33202461"
+        },
+        {
+          "tick": 1200,
+          "empreinte": "675e75b3ce89275a"
+        },
+        {
+          "tick": 1500,
+          "empreinte": "f091b9a4371d6c33"
+        },
+        {
+          "tick": 1800,
+          "empreinte": "d82262defc81f6b9"
+        }
+      ]
+    }
+  },
+  "b": {
+    "banc": {
+      "empreinte": "cd5c8fa8c2168963",
+      "traces": [
+        {
+          "tick": 300,
+          "empreinte": "3f19a30546a727d5"
+        },
+        {
+          "tick": 600,
+          "empreinte": "19eaa977657317a6"
+        },
+        {
+          "tick": 900,
+          "empreinte": "18762d36100604a2"
+        },
+        {
+          "tick": 1200,
+          "empreinte": "532fdb1584d77138"
+        },
+        {
+          "tick": 1500,
+          "empreinte": "0e49f86a4669cdfb"
+        },
+        {
+          "tick": 1800,
+          "empreinte": "0d24d605503fb352"
+        },
+        {
+          "tick": 2100,
+          "empreinte": "46269e35670e0c6a"
+        },
+        {
+          "tick": 2400,
+          "empreinte": "eecf4f4c3206f0ea"
+        },
+        {
+          "tick": 2700,
+          "empreinte": "86f276f28f3dc44e"
+        },
+        {
+          "tick": 3000,
+          "empreinte": "8f868e7025000996"
+        },
+        {
+          "tick": 3300,
+          "empreinte": "0814879d19dbae3f"
+        },
+        {
+          "tick": 3600,
+          "empreinte": "66b472b6275aa9fe"
+        },
+        {
+          "tick": 3900,
+          "empreinte": "89e5fb1a231d6b63"
+        },
+        {
+          "tick": 4200,
+          "empreinte": "131177385df3498e"
+        },
+        {
+          "tick": 4500,
+          "empreinte": "bed96c7abee68255"
+        },
+        {
+          "tick": 4800,
+          "empreinte": "742e798d7fb36b34"
+        },
+        {
+          "tick": 5100,
+          "empreinte": "ead4c2b61c8000d3"
+        },
+        {
+          "tick": 5400,
+          "empreinte": "ba8bb6cdaa444851"
+        },
+        {
+          "tick": 5700,
+          "empreinte": "83f573fcac4c0e57"
+        },
+        {
+          "tick": 6000,
+          "empreinte": "1081409654eabffa"
+        },
+        {
+          "tick": 6300,
+          "empreinte": "b6a5394297e07877"
+        },
+        {
+          "tick": 6600,
+          "empreinte": "bb61822d5c35efcd"
+        },
+        {
+          "tick": 6900,
+          "empreinte": "a94d4fa27625108d"
+        },
+        {
+          "tick": 7200,
+          "empreinte": "cd5c8fa8c2168963"
+        }
+      ],
+      "tombees": 32,
+      "ticks": 7200
+    },
+    "tour": {
+      "empreinte": "075fc4523976a401",
+      "traces": [
+        {
+          "tick": 300,
+          "empreinte": "f51e29c0b3185f0b"
+        },
+        {
+          "tick": 600,
+          "empreinte": "03e5dc85e66b227c"
+        },
+        {
+          "tick": 900,
+          "empreinte": "8e7af8324eee20f9"
+        },
+        {
+          "tick": 1200,
+          "empreinte": "72e707cf2ffb144a"
+        },
+        {
+          "tick": 1500,
+          "empreinte": "c6f8d4fc02da5c97"
+        },
+        {
+          "tick": 1800,
+          "empreinte": "075fc4523976a401"
+        }
+      ]
+    }
+  }
+}

@@ -28,6 +28,12 @@ export const LAYOUT = [
   { from: "apps/jump/dist", to: "jump" },
 ];
 
+/**
+ * Lot T0 (Tower) : la page de démonstration de la physique (`/tower/`, apps/tower). **Recette et aperçus seulement, jamais en production** : Tower est `off` (règle
+ * R9 : ses options d'essai sont fermées). Facultative dans le site (un workflow qui ne construit pas Tower ne la publie pas) ; `--production` vérifie qu'elle est absente.
+ */
+export const ESSAI_TOWER = { from: "apps/tower/dist", to: "tower" };
+
 /** Région des renvois vers Cloud Run (prise en charge par Firebase Hosting, vérifié au lot R4). */
 export const REGION = "europe-west1";
 
@@ -231,6 +237,8 @@ export async function assembleSite(out, { production = false, origine } = {}) {
     mkdirSync(dest, { recursive: true });
     cpSync(join(ROOT, part.from), dest, { recursive: true });
   }
+  if (!production && existsSync(join(ROOT, ESSAI_TOWER.from, "index.html"))) cpSync(join(ROOT, ESSAI_TOWER.from), join(out, ESSAI_TOWER.to), { recursive: true });
+  if (production && existsSync(join(out, ESSAI_TOWER.to))) throw new Error(`l'essai de Tower (/${ESSAI_TOWER.to}/) ne doit pas être dans le site de production`);
   partagerPolices(out); // lots I4 et I5 : les polices de Track et de Jump sont celles du portail
   // Les niveaux figés de DailyJump (lot 10) doivent être dans le site publié, identiques : sinon un jour déjà joué changerait de niveau.
   const levels = join(ROOT, "apps/jump/public/levels");
