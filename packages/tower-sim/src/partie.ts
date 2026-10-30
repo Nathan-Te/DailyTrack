@@ -17,7 +17,7 @@
 //   - petite / géante : la pièce naît à la moitié / au double de sa taille (`boites(…, taille)`, des huitièmes entiers) ;
 //   - glissante : ses colliders ont un frottement de `FROTTEMENT_GLISSANT`, règle de combinaison « minimum » ;
 //   - coup de vent : tous les `VENT_PERIODE_TICKS` ticks la pièce active se décale d'un huitième de mètre dans le sens du jour, comme un ordre de déplacement (refusé si elle s'enfonçait) ;
-//   - pièce figée : « posée » = endormie, ou `FIGEE_TICKS` ticks après le lâcher ; elle devient alors un corps fixe ;
+//   - pièce figée : au premier contact après le lâcher (le même que celui du lierre) elle devient un corps fixe, là où elle est, quitte à flotter ; au plus tard `FIGEE_TICKS` ticks après le lâcher ;
 //   - lierre : au premier tick, après le lâcher, où un contact de Rapier est à moins de `DISTANCE_SOUDURE`, elle se soude (joint fixe) à chaque corps qu'elle touche.
 // Sans `scenario.paliers`, rien de tout cela ne s'exécute : la partie du lot T1 est inchangée.
 import type RAPIER from "@dimforge/rapier2d-deterministic-compat";
@@ -251,7 +251,11 @@ export class Partie {
     if (commandes & COMMANDE.TOURNER) this.tourner(p);
     if (p.effet === "vent" && ++p.vecu % VENT_PERIODE_TICKS === 0) this.deplacer(p, this.scenario.ventSens === -1 ? -1 : 1);
     const facteur = commandes & COMMANDE.DESCENDRE ? this.reglages.facteurDescente : 1;
-    const vy = (this.reglages.vitesseChute8 * facteur) / 8;
+    const normale = this.reglages.vitesseChute8 / 8;
+    let vy = normale * facteur;
+    // « Descendre » est un confort, jamais un effet physique (lot T2) : la descente rapide s'arrête à la marge de contact, la pièce finit sa course à la vitesse normale et
+    // lâche exactement comme une pièce sans accélération — elle se pose à la même vitesse, avec la même force.
+    if (facteur > 1 && this.touche(p, p.x, p.y - vy / TICKS_PAR_SECONDE, MARGE_CONTACT)) vy = normale;
     p.body!.setLinvel({ x: 0, y: -vy }, true);
     // Au pas qui vient la pièce descend de vy / 60 : si elle toucherait (à la marge près) la plateforme ou une pièce, elle lâche maintenant.
     if (this.touche(p, p.x, p.y - vy / TICKS_PAR_SECONDE, MARGE_CONTACT)) this.lacher(p);
@@ -276,6 +280,7 @@ export class Partie {
   }
 
   private lacher(p: Piece): void {
+    p.body!.setLinvel({ x: 0, y: -this.reglages.vitesseChute8 / 8 }, true); // jamais la vitesse d'une descente rapide : celle d'une chute normale
     p.body!.setGravityScale(1, true);
     p.etat = "libre";
     p.lacheTick = this.ticks;
@@ -413,7 +418,8 @@ export class Partie {
             p.stabilisee = v.x * v.x + v.y * v.y < VITESSE_CALME * VITESSE_CALME;
           }
         }
-        if (p.effet === "figee" && (p.endormie || this.ticks - p.lacheTick >= FIGEE_TICKS)) this.figer(p);
+        // Pièce figée : elle devient un corps fixe AU CONTACT (là où elle le touche, quitte à flotter) ; au plus tard `FIGEE_TICKS` ticks après le lâcher (un contact manqué).
+        if (p.effet === "figee" && !p.fixe && (this.ticks - p.lacheTick >= FIGEE_TICKS || this.voisinsEnContact(p).size > 0)) this.figer(p);
         else if (p.effet === "lierre" && !p.soudee) this.souder(p);
       }
     }
@@ -456,8 +462,8 @@ export class Partie {
     p.stabilisee = true;
   }
 
-  /** Lierre : au premier contact après le lâcher, un joint fixe relie la pièce à chaque corps qu'elle touche (la plateforme comprise), dans l'ordre des numéros de pièce. */
-  private souder(p: Piece): void {
+  /** Les corps que touche la pièce `p` à ce tick (un point de contact de Rapier à moins de `DISTANCE_SOUDURE`) : jamais la pièce active du joueur, ni une pièce retirée. La plateforme y est `null`. */
+  private voisinsEnContact(p: Piece): Map<number, Piece | null> {
     const body = p.body!;
     const touches = new Map<number, Piece | null>();
     for (let i = 0; i < body.numColliders(); i++) {
@@ -468,7 +474,7 @@ export class Partie {
         const b2 = c2.parent();
         if (!b2 || b2.handle === body.handle || touches.has(b2.handle)) continue;
         const q = this.parCorps.get(b2.handle);
-        if (q === undefined || (q !== null && q.etat !== "libre")) continue; // jamais la pièce active (la main du joueur), ni une pièce retirée
+        if (q === undefined || (q !== null && q.etat !== "libre")) continue;
         let proche = false;
         this.world.contactPair(c, c2, (m) => {
           for (let k = 0; k < m.numContacts(); k++) if (m.contactDist(k) <= DISTANCE_SOUDURE) proche = true;
@@ -476,6 +482,13 @@ export class Partie {
         if (proche) touches.set(b2.handle, q);
       }
     }
+    return touches;
+  }
+
+  /** Lierre : au premier contact après le lâcher, un joint fixe relie la pièce à chaque corps qu'elle touche (la plateforme comprise), dans l'ordre des numéros de pièce. */
+  private souder(p: Piece): void {
+    const body = p.body!;
+    const touches = this.voisinsEnContact(p);
     if (touches.size === 0) return;
     p.soudee = true;
     const ordre = [...touches.entries()].sort((a, b) => (a[1]?.id ?? -1) - (b[1]?.id ?? -1));
@@ -559,6 +572,12 @@ export class Partie {
       declenches: this.declenches,
       dernierEffet: this.dernierEffet,
     };
+  }
+
+  /** Pour les tests : la vitesse (m/s) du corps d'une pièce. Null si la pièce n'existe plus. */
+  vitesseDe(id: number): { x: number; y: number } | null {
+    const body = this.pieces[id]?.body;
+    return body ? { ...body.linvel() } : null;
   }
 
   /** Pour les tests : le frottement du premier collider d'une pièce et sa règle de combinaison (`min` : le plus faible des deux surfaces l'emporte). Null si la pièce n'existe plus. */

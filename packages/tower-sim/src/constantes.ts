@@ -3,9 +3,9 @@
 
 /**
  * Version de la simulation de jeu. Elle monte à tout changement de règle ou de réglage qui change une partie rejouée, et le golden (`test/fixtures/golden-tower.json`) ne
- * se régénère qu'avec elle. Version 2 (lot T2) : les paliers (lierre, pièce figée, petite, géante, coup de vent, glissante).
+ * se régénère qu'avec elle. Version 2 (lot T2) : les paliers (lierre, pièce figée, petite, géante, coup de vent, glissante). Version 3 (lot T2) : « descendre » n'a plus aucun effet physique (la pièce se pose à la vitesse d'une chute normale) et la pièce figée se fige au contact.
  */
-export const TOWER_SIM_VERSION = 2;
+export const TOWER_SIM_VERSION = 3;
 
 /** Pas fixe : 60 Hz (décision de Nathan après le lot T0). */
 export const TICKS_PAR_SECONDE = 60;
@@ -62,7 +62,7 @@ export const REGLAGES_DEFAUT: Readonly<Reglages> = { vitesseChute8: 20, facteurD
 export const VENT_PERIODE_TICKS = 10;
 /** Une pièce glissante a ce frottement (règle « minimum » de Rapier : celui de la pièce ou du support qui en a le moins) au lieu de `PHYSIQUE.frottement`. */
 export const FROTTEMENT_GLISSANT = 0.05;
-/** Pièce figée : elle est « posée » quand Rapier l'a endormie, ou au plus tard `FIGEE_TICKS` ticks (2 s) après qu'elle a lâché ; elle devient alors un corps fixe pour toujours. */
+/** Pièce figée : elle devient un corps fixe pour toujours AU CONTACT (le premier après le lâcher, voir `DISTANCE_SOUDURE`), quitte à flotter ; au plus tard `FIGEE_TICKS` ticks (2 s) après le lâcher si ce contact a été manqué. */
 export const FIGEE_TICKS = 120;
-/** Lierre : le « premier contact » est le premier tick, après le lâcher, où un point de contact de Rapier est à moins de 5 mm d'un autre corps (négatif : enfoncé). */
-export const DISTANCE_SOUDURE = 0.005;
+/** Le « premier contact » (lierre, pièce figée) : le premier tick, après le lâcher, où Rapier rapporte un point de contact à moins de 3 cm d'un autre corps. Mesuré : deux corps qui se touchent y sont rapportés à ≈ 1,7 cm (la marge de contact de Rapier), à 0 point de contact avant ; 5 mm ne voyait donc jamais le contact. */
+export const DISTANCE_SOUDURE = 0.03;

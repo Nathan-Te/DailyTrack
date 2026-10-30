@@ -170,7 +170,7 @@ describe("chaque effet", () => {
     p.dispose();
   });
 
-  it("pièce figée : posée (endormie, ou FIGEE_TICKS ticks après le lâcher) elle devient un corps fixe : plus rien ne la déplace, ce qu'on pose dessus repose dessus", () => {
+  it("pièce figée : elle devient un corps fixe AU CONTACT (quelques ticks après le lâcher), plus rien ne la déplace, ce qu'on pose dessus repose dessus", () => {
     const p = new Partie(R, FORME("figee"));
     let lache = -1;
     let fige = -1;
@@ -181,7 +181,8 @@ describe("chaque effet", () => {
       return fige >= 0;
     });
     expect(piece(p, PREMIERE + 2).effet).toBe("figee");
-    expect(fige - lache).toBeLessThanOrEqual(FIGEE_TICKS);
+    expect(fige - lache).toBeLessThanOrEqual(4); // au contact, pas deux secondes plus tard
+    expect(fige - lache).toBeLessThan(FIGEE_TICKS);
     const avant = { x: piece(p, PREMIERE + 2).x, y: piece(p, PREMIERE + 2).y, angle: piece(p, PREMIERE + 2).angle };
     jusqua(p, () => p.vue().pieces.length >= PREMIERE + 6); // d'autres pièces tombent dessus
     reposer(p, 240);
@@ -193,12 +194,33 @@ describe("chaque effet", () => {
     p.dispose();
   });
 
+  it("pièce figée : en porte-à-faux elle reste là où elle a touché, quitte à flotter ; la même pièce sans effet bascule et tombe", () => {
+    const cmd = (id: number, k: number): number => {
+      let c = COMMANDE.DESCENDRE;
+      if (id === PREMIERE + 1 && k < 40 && k % 2 === 0) c |= COMMANDE.GAUCHE; // le carré de remplissage part au loin
+      if (id === PREMIERE + 2 && k < 12 && k % 2 === 0) c |= COMMANDE.DROITE; // le bâton : le centre de masse dépasse du support
+      return c;
+    };
+    const sans = new Partie(R, FORME(null));
+    const figee = new Partie(R, FORME("figee"));
+    for (const p of [sans, figee]) {
+      jusqua(p, () => p.vue().active >= PREMIERE + 3, cmd);
+      reposer(p, 240);
+    }
+    expect(piece(sans, PREMIERE + 2).etat).toBe("perdue");
+    expect(piece(figee, PREMIERE + 2).etat).toBe("libre");
+    expect(piece(figee, PREMIERE + 2).fixe).toBe(true);
+    expect(Math.abs(piece(figee, PREMIERE + 2).angle)).toBeLessThan(0.01); // elle n'a pas pivoté : figée à plat, là où elle a touché
+    sans.dispose();
+    figee.dispose();
+  });
+
   it("lierre : la pièce suivante se soude, à son premier contact, aux corps qu'elle touche ; une pièce en porte-à-faux qui tombe sans lierre reste accrochée avec lui", () => {
-    // Le bâton (PREMIERE + 2) est posé à 2,5 m du centre de la tour : son centre de masse dépasse du support, il bascule — sauf s'il est soudé.
+    // Le bâton (PREMIERE + 2) est posé à 2 m du centre de la tour : son centre de masse dépasse du carré qui le porte, il bascule — sauf s'il est soudé (l'ensemble reste alors en équilibre sur le bâton de départ).
     const cmd = (id: number, k: number): number => {
       let c = COMMANDE.DESCENDRE;
       if (id === PREMIERE + 1 && k < 40 && k % 2 === 0) c |= COMMANDE.GAUCHE; // le carré de remplissage part au loin (il tombe à la mer)
-      if (id === PREMIERE + 2 && k < 12 && k % 2 === 0) c |= COMMANDE.DROITE;
+      if (id === PREMIERE + 2 && k < 8 && k % 2 === 0) c |= COMMANDE.DROITE;
       return c;
     };
     const sans = new Partie(R, FORME(null));
@@ -214,6 +236,20 @@ describe("chaque effet", () => {
     expect(piece(avec, PREMIERE + 3).soudee).toBe(false); // un effet = une pièce
     sans.dispose();
     avec.dispose();
+  });
+
+  it("lierre : la soudure se fait au PREMIER contact, quelques ticks après le lâcher", () => {
+    const p = new Partie(R, FORME("lierre"));
+    let lache = -1;
+    let soude = -1;
+    jusqua(p, () => {
+      const q = p.vue().pieces.find((x) => x.id === PREMIERE + 2);
+      if (q && q.etat === "libre" && lache < 0) lache = p.tick;
+      if (q?.soudee && soude < 0) soude = p.tick;
+      return soude >= 0;
+    });
+    expect(soude - lache).toBeLessThanOrEqual(4);
+    p.dispose();
   });
 
   it("lierre : la pièce n'est pas soudée tant qu'elle n'a rien touché", () => {
