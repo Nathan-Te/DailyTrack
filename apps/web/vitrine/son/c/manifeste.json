@@ -1,0 +1,12 @@
+{
+  "sr": 22050,
+  "note": "Les fractions placent chaque boucle sur la plage ralenti → rouge de la voiture écoutée (la hauteur des boucles croît de la première à la dernière, mesuré par auto-corrélation).",
+  "boucles": [
+    { "fichier": "boucle-0.m4a", "fraction": 0, "marge": 0.04 },
+    { "fichier": "boucle-1.m4a", "fraction": 0.2, "marge": 0.04 },
+    { "fichier": "boucle-2.m4a", "fraction": 0.4, "marge": 0.04 },
+    { "fichier": "boucle-3.m4a", "fraction": 0.6, "marge": 0.04 },
+    { "fichier": "boucle-4.m4a", "fraction": 0.8, "marge": 0.04 },
+    { "fichier": "boucle-5.m4a", "fraction": 1, "marge": 0.04 }
+  ]
+}

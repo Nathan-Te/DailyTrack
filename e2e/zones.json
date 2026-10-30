@@ -9,7 +9,7 @@
     "web/accessibilite.spec.ts", "web/admin.spec.ts", "web/air.spec.ts", "web/cameras.spec.ts", "web/decor.spec.ts", "web/demo.spec.ts",
     "web/figures.spec.ts", "web/garage.spec.ts", "web/hud-compact.spec.ts", "web/identite-plateforme.spec.ts", "web/juice.spec.ts", "web/mobile.spec.ts",
     "web/plein-ecran.spec.ts", "web/post.spec.ts", "web/qualite.spec.ts", "web/relief.spec.ts", "web/salon-serveur.spec.ts", "web/scene.spec.ts",
-    "web/socle.spec.ts", "web/thumbnails.spec.ts", "web/vie-ciel.spec.ts", "web/vitesse.spec.ts", "web/vitrine.spec.ts", "web/vitrine-voiture.spec.ts",
+    "web/socle.spec.ts", "web/thumbnails.spec.ts", "web/vie-ciel.spec.ts", "web/vitesse.spec.ts", "web/vitrine.spec.ts", "web/vitrine-voiture.spec.ts", "web/vitrine-son.spec.ts",
     "jump/accessibilite.spec.ts", "jump/animation.spec.ts", "jump/carnage-lisible.spec.ts", "jump/fantome-premier.spec.ts", "jump/foret.spec.ts", "jump/hud-compact.spec.ts",
     "jump/modules.spec.ts", "jump/plateformes.spec.ts", "jump/plein-ecran.spec.ts", "jump/sensations.spec.ts", "jump/surfaces.spec.ts", "jump/themes.spec.ts",
     "jump/tout-le-monde.spec.ts", "jump/variete.spec.ts", "jump/voie-lente.spec.ts"
@@ -20,9 +20,14 @@
     "track-sim": { "globs": ["packages/sim/**"] },
     "track-coeur": { "globs": ["apps/web/src/main.ts", "apps/web/index.html", "apps/web/vite.config.ts", "apps/web/public/**", "apps/web/src/generationInit.ts", "apps/web/src/lancement.ts", "apps/web/src/nouveauDepart.ts", "apps/web/src/interrupteur*.ts"] },
     "track-scene": {
-      "globs": ["apps/web/src/scene/**", "apps/web/src/trackMesh.ts", "apps/web/src/trackProps.ts", "apps/web/src/meshKit.ts", "apps/web/src/halo.ts", "apps/web/src/decorPose.ts", "apps/web/src/signage.ts", "apps/web/src/qualite.ts", "apps/web/src/qualiteMesure.ts", "apps/web/src/feux.ts", "apps/web/src/arena.ts", "apps/web/outils/**"]
+      "globs": ["apps/web/src/scene/**", "apps/web/src/trackMesh.ts", "apps/web/src/trackProps.ts", "apps/web/src/meshKit.ts", "apps/web/src/halo.ts", "apps/web/src/decorPose.ts", "apps/web/src/signage.ts", "apps/web/src/qualite.ts", "apps/web/src/qualiteMesure.ts", "apps/web/src/feux.ts", "apps/web/src/arena.ts", "apps/web/outils/**"],
+      "sauf": ["apps/web/outils/son/**"]
     },
     "track-voiture": { "globs": ["apps/web/src/voiture/**", "apps/web/src/carMesh.ts", "apps/web/src/carPose.ts", "apps/web/src/garage*.ts", "apps/web/src/garage.css"] },
+    "track-son": {
+      "_": "Lot 55 (partie B) : le nouveau son (profils de moteur, boîte virtuelle, moteurs, outil de rendu des échantillons). Zone étroite : seul le spec de la planche sonore la lance.",
+      "globs": ["apps/web/src/son/**", "apps/web/outils/son/**"]
+    },
     "track-vitrine": { "globs": ["apps/web/src/vitrine/**", "apps/web/vitrine/**", "apps/web/vite.vitrine.config.ts"] },
     "track-fantomes": {
       "_": "Lot 55 : le choix des fantômes dans le classement (cases, compteur, cycle du bouton). Une zone étroite exprès : l'Essentiel d'une PR qui ne touche que le HUD ou le Salon ne lance pas son spec.",
@@ -132,6 +137,7 @@
     "web/thumbnails.spec.ts": ["track-archives", "track-scene"],
     "web/vie-ciel.spec.ts": ["track-scene"],
     "web/vitesse.spec.ts": ["track-sim", "track-audio-fx"],
+    "web/vitrine-son.spec.ts": ["track-son", "track-vitrine"],
     "web/vitrine-voiture.spec.ts": ["track-voiture", "track-vitrine"],
     "web/vitrine.spec.ts": ["track-vitrine", "track-scene"],
     "web/voiture.spec.ts": ["track-voiture", "track-scene"],

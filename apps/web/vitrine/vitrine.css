@@ -486,3 +486,86 @@ body[data-planche="voiture"] .planche--voiture {
   max-width: 100%;
   margin-top: 12px;
 }
+
+/* Lot 55 — la planche « Son » : seule la planche sonore est montrée ; les autres planches n'ont pas son bloc. */
+body[data-planche="son"] .pour-paliers,
+body[data-planche="son"] .pour-voiture,
+body[data-planche="son"] .hors-voiture,
+body:not([data-planche="son"]) .pour-son {
+  display: none !important;
+}
+body[data-planche="son"] .planche--son {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.son-intro,
+.son-banc,
+.son-couts {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
+.son-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.son-moments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.son-moment {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 2px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.son-moments li.actif .son-moment {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.son-lecture {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: 8px 16px;
+  font-variant-numeric: tabular-nums;
+}
+.son-barre {
+  height: 14px;
+  border: 2px solid currentColor;
+}
+.son-barre__rempli {
+  height: 100%;
+  background: currentColor;
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+.son-manuel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+}
+.son-manuel[hidden] {
+  display: none;
+}
+.son-avis p {
+  max-width: 70ch;
+}
+@media (max-width: 700px) {
+  .son-lecture {
+    grid-template-columns: 1fr 1fr;
+  }
+  .son-barre {
+    grid-column: 1 / -1;
+  }
+}

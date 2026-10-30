@@ -1,6 +1,6 @@
 # Lot 55 — Track : choisir ses fantômes dans le classement, et refondre le son
 
-Branche `claude/practical-gauss-20xfi4` (nom imposé par la session ; le lot prévoyait `lot-55-fantomes-son`), partie de `main` à `e9436a9` (lot 51 fusionné). Zones : `apps/web/**`, `packages/sim/**`,
+Branche `claude/practical-gauss-20xfi4` (nom imposé par la session ; le lot prévoyait `lot-55-fantomes-son`) : la partie A (PR #198) est fusionnée ; la partie B repart de `main` (même nom de branche, nouvelle PR brouillon). Zones : `apps/web/**`, `packages/sim/**`,
 `cdj.ts` et `salon.ts`, leurs tests, `docs/lots/**`, la ligne de Track de `budgets.md`, `durees.json`, `applications.ts`, les clés de catalogue. Le nom de la branche ne porte ni `track` ni `jump` :
 la PR est une PR « plateforme » pour le job `zones`. Golden, rediffusions, classements et identifiants de circuit **inchangés** (le son et le choix des fantômes ne touchent jamais la simulation).
 
@@ -10,7 +10,7 @@ la PR est une PR « plateforme » pour le job `zones`. Golden, rediffusions, cla
 |---|---|
 | **A1 — maquettes des fantômes** (`lot-55/maquettes-fantomes.html`) | **validées par Nathan** (30/10/2026), ses cinq propositions acceptées |
 | **A2 à A5 — choix, course, serveur, chargement** | **faits** (voir ci-dessous) ; CI de la PR #198 au premier passage : tout vert (dont `e2e-pr` 1 à 4 et le spec `fantomes`) **sauf `unit (2/3)`** : `apps/api/test/jump.test.ts` « un seul calcul même si deux requêtes arrivent ensemble » a dépassé son délai de 5 s (run 41075203903, job 124129538621) — un test de Jump, hors de ce lot, sans rapport avec le diff ; relancé par cette poussée (règle d'arrêt : une relance, puis on le signale) |
-| **B1 — planche sonore** (`/track/vitrine/?planche=son`) | à faire (arrêt : Nathan écoute et choisit l'approche) |
+| **B1 — planche sonore** (`/track/vitrine/?planche=son`) | **faite — arrêt : Nathan écoute (téléphone et ordinateur, casque) et choisit l'approche** (voir « Partie B ») |
 | B2 à B7 — boîte de vitesses, voix par voiture, le reste des sons, Salon, réglages, téléphone | après le choix de l'approche |
 
 ## Partie A — choisir ses fantômes (faite)
@@ -36,4 +36,30 @@ la PR est une PR « plateforme » pour le job `zones`. Golden, rediffusions, cla
 - `apps/portail/mentions-legales/index.html` et `apps/portail/legal/index.html` : la clé `cdj:track:fantomes` est nommée (règle de fidélité du lot R5 : toute nouvelle donnée gardée). **Pas de test ajouté** dans `apps/portail/test/mentions.test.ts`.
 - `docs/plateforme/budgets.md` (les trois lignes de Track : la mesure, plafonds inchangés), `docs/plateforme/traductions.md` (régénéré), `e2e/zones.json` (le spec et `fantomes*.ts` dans la zone `track-hud`).
 - À proposer à un lot de plateforme : l'index du `CLAUDE.md` racine (« Fantômes choisis dans le classement (lot 55) » dans la liste de `apps/web/CLAUDE.md`), la ligne « choix des fantômes à la demande » de `budgets.md`, la route `run/<ref>` dans la colonne « routes » de `docs/plateforme/codes-erreur.md` (`invalid_ref`, `no_ghost`).
+
+## Partie B — refondre le son (B1 faite : la planche ; **arrêt, Nathan écoute**)
+
+**À écouter** : `<aperçu de la PR>/track/vitrine/?planche=son` (bouton « Activer le son », puis une approche, une voiture, un moment ; « Conduire à la main » pour la vitesse et le gaz). La planche joue **la même course** de voiture virtuelle (31 s : ralenti, coup de gaz à l'arrêt, six rapports à fond, lever de pied, freinage qui crisse, relance sur la terre en dérive, turbo, vibreur, saut et réception, arrêt) avec le moteur d'avant et les trois approches, pour quatre voitures très différentes (Sparrow 4-cylindres, Boar V8, Sailfish monoplace, Pelican vieux moteur). **Pneus, vent et bruitages sont les mêmes partout** (ceux du lot 9) : seule la voix du moteur change. Niveaux étalonnés à ±8 % entre les approches (`etalon` de `profils.ts`), crête ≤ 0,84.
+
+**Je n'ai pas d'oreilles.** Vérifié par des mesures (`e2e/vitrine-son.spec.ts`, rendu hors ligne du scénario entier) : la hauteur suit la fréquence d'allumage à quelques Hz près (à l'octave près pour un V8 : son demi-ordre fort) pour A et B, la brillance suit le régime pour C, rien ne sature ni n'est non fini, le niveau suit le gaz. **Non vérifié : que ça sonne bien** — c'est ton oreille.
+
+| | Actuel (lot 9) | **A · Synthèse** | **B · Échantillons rendus hors ligne** | **C · Enregistrements CC0** |
+|---|---|---|---|---|
+| Principe | 2 oscillateurs, 6 rapports fixes | onde riche à la fréquence d'allumage, 2ᵉ voix désaccordée, demi-ordre, saturation, filtre régime × charge, souffle, pétarade | modèle d'allumages et d'échappement (résonances amorties) **rendu par `outils/son/rendre-echantillons.mjs`** en 6 boucles AAC par voiture, fondues selon le régime | 6 boucles CC0 d'un seul moteur (OpenGameArt), mêmes fondus |
+| Code ajouté (JS gzip) | 3,8 ko (déjà là) | 2,2 ko (4 profils) | 2,1 ko | 2,1 ko (même lecteur que B) |
+| Fichiers | aucun | aucun | **≈ 39 ko par voiture** (à la demande, la voiture choisie) ; ≈ 0,4 Mo pour dix | 28,6 ko pour un moteur ; **dix voitures = dix jeux à trouver** |
+| Décodage / mémoire | — | — | ≈ 22 ms (×1), ≈ 55 ms (×4) / **0,47 Mo** | ≈ 20 ms / 0,72 Mo |
+| Nœuds du moteur | 4 | 16 | 15 | 15 (+ 10 pour les pneus, communs) |
+| JS par image | 0,01–0,02 ms | 0,02 ms | 0,015–0,02 ms | 0,014–0,02 ms (×4 : 0,03–0,07 ms pour tous) |
+| Licence | — | aucune | aucune | **CC0**, crédits dans `docs/credits.md` |
+
+*Charge du fil audio (le vrai coût sur un téléphone)* : **non mesurable ici** (le Chromium d'essai n'a pas l'API `renderCapacity`) ; la planche l'affiche sur Chrome (colonne « Charge du fil audio ») : **à lire sur ton téléphone**. Le calcul JS (réglages par image) est négligeable pour les trois : la différence se jouera sur le fil audio (16 nœuds de synthèse contre 6 lectures de boucles) et sur le poids.
+
+**Mon avis, sans avoir entendu** : *A* est la moins chère et la plus souple (une voiture = quelques nombres) mais risque un timbre « synthé » ; *B* donne plus de matière et des voix vraiment distinctes pour le même calcul et ≈ 40 ko par voiture sans licence, mais c'est un modèle, pas un enregistrement ; *C* est le plus réaliste **en principe**, mais ce qui existe en libre n'offre qu'un moteur (hauteur étroite, 60 → 76 Hz) : il faudrait dix enregistrements trouvés, licenciés et crédités. **Ma proposition** si l'oreille ne tranche pas : **B pour les moteurs** (chargés à la demande par voiture), **A pour tout ce qui réagit** (turbo, pneus, vent, bruitages), le tout derrière un petit compresseur doux.
+
+**Ce que ça veut dire pour le reste du lot (après ton choix)** — boîte virtuelle (`src/son/boite.ts`, faite et testée : six rapports, régime qui tombe au passage avec coupure de couple, emballement à l'arrêt, rétrogradage au freinage), profils des dix voitures (`profils.ts` : quatre faits, six à écrire), pneus et sol par revêtement, bruitages et décompte calé sur les feux du lot 43, fantômes muets ou presque, spectateur qui entend la voiture regardée, réglages, téléphone (premier geste, iPhone, coupure en arrière-plan), « Son » de `apps/web/CLAUDE.md`.
+
+**Inventaire des sons d'avant** (`audio.ts`, `audioLogic.ts` ; procéduraux, aucun fichier) : moteur (dent de scie + carré à l'octave, filtre, six rapports aux vitesses fixes `GEAR_SPEEDS`) ; crissement (`skidLevel`) ; roulement par revêtement (9 voix : route, terre, herbe, glace, sable, gravier, neige, vibreur, herbe de course) ; vent (`windGain`) ; **7 ambiances** (foule, brise, vent, vent chaud, grillons, rumeur de ville, bourdonnement) ; **11 ponctuels** : décompte 3-2-1 (carré, do 262 Hz), départ, point de contrôle, arrivée, médaille (arpège plus haut selon la médaille), impact, réception (selon force et qualité), turbo, coupure, chute, retour au point de contrôle. **Aucun son d'interface** (boutons, menus). Réglages : `cdj:audio` `{ volume, last, engine, effects, ambience }` (général, moteur, effets, ambiance, muet par M) — déjà les curseurs que le lot demande. Le son lit l'état de la voiture et ne le change jamais.
+
+**Fichiers hors zone** : `docs/credits.md` (les boucles CC0 de la planche) ; `e2e/zones.json` (zone `track-son`, `sauf` de `track-scene`, spec en « Régression » comme les autres planches de la vitrine : la nuit et `npm run verifier -- --regression`, pas en CI de PR). `apps/web/vitrine/son/LISEZMOI.md` : sources, licence, empreintes et conversion des boucles.
 

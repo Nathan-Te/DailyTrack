@@ -1,0 +1,157 @@
+{
+  "sr": 22050,
+  "profils": {
+    "civile": [
+      {
+        "fichier": "civile-0.m4a",
+        "rpm": 900,
+        "debut": 0.533333,
+        "fin": 1.066667
+      },
+      {
+        "fichier": "civile-1.m4a",
+        "rpm": 1962.1,
+        "debut": 0.428118,
+        "fin": 0.856236
+      },
+      {
+        "fichier": "civile-2.m4a",
+        "rpm": 3024,
+        "debut": 0.436508,
+        "fin": 0.873016
+      },
+      {
+        "fichier": "civile-3.m4a",
+        "rpm": 4204,
+        "debut": 0.428163,
+        "fin": 0.856327
+      },
+      {
+        "fichier": "civile-4.m4a",
+        "rpm": 5502.2,
+        "debut": 0.43619,
+        "fin": 0.872381
+      },
+      {
+        "fichier": "civile-5.m4a",
+        "rpm": 6799.9,
+        "debut": 0.423537,
+        "fin": 0.847075
+      }
+    ],
+    "muscle": [
+      {
+        "fichier": "muscle-0.m4a",
+        "rpm": 700,
+        "debut": 0.514286,
+        "fin": 1.028571
+      },
+      {
+        "fichier": "muscle-1.m4a",
+        "rpm": 1582.1,
+        "debut": 0.455102,
+        "fin": 0.910204
+      },
+      {
+        "fichier": "muscle-2.m4a",
+        "rpm": 2463.9,
+        "debut": 0.438322,
+        "fin": 0.876644
+      },
+      {
+        "fichier": "muscle-3.m4a",
+        "rpm": 3443.9,
+        "debut": 0.452971,
+        "fin": 0.905941
+      },
+      {
+        "fichier": "muscle-4.m4a",
+        "rpm": 4522.1,
+        "debut": 0.42458,
+        "fin": 0.849161
+      },
+      {
+        "fichier": "muscle-5.m4a",
+        "rpm": 5600,
+        "debut": 0.428571,
+        "fin": 0.857143
+      }
+    ],
+    "monoplace": [
+      {
+        "fichier": "monoplace-0.m4a",
+        "rpm": 4200,
+        "debut": 0.428571,
+        "fin": 0.857143
+      },
+      {
+        "fichier": "monoplace-1.m4a",
+        "rpm": 5676.3,
+        "debut": 0.422812,
+        "fin": 0.845624
+      },
+      {
+        "fichier": "monoplace-2.m4a",
+        "rpm": 7152.1,
+        "debut": 0.436236,
+        "fin": 0.872472
+      },
+      {
+        "fichier": "monoplace-3.m4a",
+        "rpm": 8791.6,
+        "debut": 0.423129,
+        "fin": 0.846259
+      },
+      {
+        "fichier": "monoplace-4.m4a",
+        "rpm": 10596.3,
+        "debut": 0.43034,
+        "fin": 0.86068
+      },
+      {
+        "fichier": "monoplace-5.m4a",
+        "rpm": 12400,
+        "debut": 0.425805,
+        "fin": 0.85161
+      }
+    ],
+    "fourgon": [
+      {
+        "fichier": "fourgon-0.m4a",
+        "rpm": 780,
+        "debut": 0.461542,
+        "fin": 0.923084
+      },
+      {
+        "fichier": "fourgon-1.m4a",
+        "rpm": 1521.6,
+        "debut": 0.473197,
+        "fin": 0.946395
+      },
+      {
+        "fichier": "fourgon-2.m4a",
+        "rpm": 2263.2,
+        "debut": 0.424172,
+        "fin": 0.848345
+      },
+      {
+        "fichier": "fourgon-3.m4a",
+        "rpm": 3087.2,
+        "debut": 0.427574,
+        "fin": 0.855147
+      },
+      {
+        "fichier": "fourgon-4.m4a",
+        "rpm": 3993.5,
+        "debut": 0.42068,
+        "fin": 0.841361
+      },
+      {
+        "fichier": "fourgon-5.m4a",
+        "rpm": 4900,
+        "debut": 0.440816,
+        "fin": 0.881633
+      }
+    ]
+  }
+}
