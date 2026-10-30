@@ -39,6 +39,8 @@ Voir `docs/tower/consignes.md`, « Les paliers ». En une ligne : **posée** (pi
 - **Zones partagées touchées** (imposées, additives) : `package-lock.json` (une ligne : `@cdj/clock`, déclaré dans `apps/tower/package.json` comme Jump pour lire le jour de Paris) et `docs/plateforme/traductions.md` (régénéré), `docs/plateforme/budgets.md` (section Tower : +1 602 o gzip). Ni `ci.yml`, ni `scripts/`, ni `e2e/zones.json`.
 - **Modification d'un test existant** : `partie.test.ts` attendait `TOWER_SIM_VERSION` = 1 ; il attend 2, **l'empreinte de fin du T1 est inchangée**. `partie.spec.ts` attend la silhouette du fantôme (calculée après la fin) avec `expect.poll` au lieu de la lire tout de suite.
 
+- **CI, premier passage** (run 41083857994) : tout vert sauf `unit (4/4)`, deux délais de 5 s dépassés **hors de la zone de Tower** (`apps/jump/test/surfaces.test.ts`, `apps/api/test/jump.test.ts`, générateur de Jump sous charge) ; la PR touche `package-lock.json`, donc toute la suite unitaire tourne. Relancé une fois par ce commit ; s'ils échouent encore, c'est à Nathan de trancher (règle d'arrêt, `CLAUDE.md`).
+
 ## Questions pour Nathan
 1. **L'équilibre.** Un joueur glouton (`tools/joueur.ts`, pas le bot du T3) monte à **44 m en 14 pièces** ; 40 carrés au centre font 78 m sans rien toucher. Les paliers de 40 à 60 m sont donc à portée vite : plateforme, vitesse de chute et formes seront à calibrer aux T3 et T5. Le calibrage des largeurs (5 à 8 m) vient avec.
 2. **Un seul effet à la fois, dans l'ordre** : deux paliers franchis d'un coup s'appliquent l'un après l'autre (le vent de trois pièces passe d'abord). Préfères-tu qu'ils se cumulent ?
