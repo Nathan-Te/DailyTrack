@@ -270,6 +270,49 @@ describe("la fin", () => {
   });
 });
 
+describe("« descendre » n'a aucun effet physique (lot T2)", () => {
+  /** Pose un carré sur la plateforme (ou sur un autre) en tenant `descendre` ou non ; rend la vitesse du carré au tick de son lâcher et sa position une fois posé. */
+  function poser(descendre: boolean): { vy: number; y: number; x: number } {
+    const p = new Partie(R, { nom: "carres", pieces: ["O", "O"], plateformeDemi8: 28 });
+    let vy = NaN;
+    for (let k = 0; k < 4000 && p.vue().posees === 0; k++) p.avancer(descendre ? COMMANDE.DESCENDRE : 0);
+    vy = p.vitesseDe(0)!.y;
+    for (let k = 0; k < 240; k++) p.avancer(0);
+    const q = p.vue().pieces[0]!;
+    const r = { vy, y: q.y, x: q.x };
+    p.dispose();
+    return r;
+  }
+
+  it("la pièce lâche à la vitesse d'une chute normale : celle d'une pièce sans accélération (2,5 m/s plus un pas de gravité), jamais celle de la descente rapide (10 m/s)", () => {
+    const lente = poser(false);
+    const rapide = poser(true);
+    expect(lente.vy).toBeLessThan(-2.4);
+    expect(lente.vy).toBeGreaterThan(-3.5);
+    expect(Math.abs(rapide.vy - lente.vy)).toBeLessThan(0.7); // le pas de gravité et la marge de contact diffèrent d'un cheveu, pas la vitesse d'impact
+    expect(rapide.vy).toBeGreaterThan(-3.5);
+  });
+
+  it("elle se pose au même endroit, sans s'enfoncer ni rebondir plus loin : la même position finale à un centimètre près", () => {
+    const lente = poser(false);
+    const rapide = poser(true);
+    expect(Math.abs(rapide.y - lente.y)).toBeLessThan(0.01);
+    expect(Math.abs(rapide.x - lente.x)).toBeLessThan(0.01);
+  });
+
+  it("la descente rapide ne dépasse jamais la marge de contact : à chaque tick la pièce reste au moins à la marge (3 cm) d'un autre corps jusqu'à son lâcher", () => {
+    const p = new Partie(R, { nom: "carres", pieces: ["O", "O"], plateformeDemi8: 28 });
+    let basMin = Infinity;
+    while (p.vue().posees === 0 && p.tick < 4000) {
+      p.avancer(COMMANDE.DESCENDRE);
+      const q = p.vue().pieces[0]!;
+      if (q.etat === "active") basMin = Math.min(basMin, q.y - 1); // le bas du carré (1 m de demi-hauteur) au-dessus de la plateforme
+    }
+    expect(basMin).toBeGreaterThanOrEqual(0.03 - 1e-6);
+    p.dispose();
+  });
+});
+
 describe("une partie scriptée", () => {
   /** Des commandes fixes, une fonction de (pièce, pas depuis son apparition) : tantôt à droite, tantôt à gauche, un quart de tour, la descente à la fin. */
   const SCRIPT = (id: number, k: number): number => {
@@ -281,23 +324,23 @@ describe("une partie scriptée", () => {
     return c;
   };
 
-  it(`TOWER_SIM_VERSION vaut 1 et l'empreinte de fin est celle de Node (le golden des quatre navigateurs viendra au lot T2)`, () => {
-    expect(TOWER_SIM_VERSION).toBe(1);
+  it(`TOWER_SIM_VERSION vaut 3 (lot T2) : la partie scriptée, qui descend vite, a une nouvelle empreinte de fin, celle de Node (version 1 : 42d2b82d50b261c2)`, () => {
+    expect(TOWER_SIM_VERSION).toBe(3);
     const p = new Partie(R, SCENARIO_ESSAI);
     partieScriptee(p, SCRIPT);
     const r = p.resultat()!;
     const e = empreinteVue(p.vue());
     expect({ empreinte: e, resultat: r }).toMatchInlineSnapshot(`
       {
-        "empreinte": "42d2b82d50b261c2",
+        "empreinte": "1e7e3a52a2102cf8",
         "resultat": {
-          "hauteurMaxMm": 2646,
-          "hauteurMm": 2000,
+          "hauteurMaxMm": 6252,
+          "hauteurMm": 6013,
           "motif": "vies",
-          "posees": 5,
-          "ticks": 495,
-          "ticksGel": 591,
-          "tombees": 3,
+          "posees": 10,
+          "ticks": 1046,
+          "ticksGel": 1105,
+          "tombees": 5,
           "vies": 0,
         },
       }

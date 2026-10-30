@@ -1,17 +1,54 @@
+import { parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
-import { lireOptions } from "../src/urlOptions";
+import { choisirJour, lireOptions } from "../src/urlOptions";
 
-// Lot T1 — règle R9 : `?scenario`, `?debug` et `?tune` ne servent à rien en production (`restreint`) ; l'interface tactile reste réglable (aucun effet sur une partie).
+// Lots T1 et T2 — règle R9 : `?scenario`, `?effet`, `?debug` et `?tune` ne servent à rien en production (`restreint`) ; l'interface tactile reste réglable (aucun effet sur une partie).
+// `?seed=` suit la règle de `?seed=` de Jump : sur la production une date FUTURE est refusée, ailleurs toutes les dates s'ouvrent.
+const J = (d: string): number => parseDay(d)!;
+
 describe("paramètres d'adresse de Tower", () => {
-  it("hors production : la suite d'essai par défaut, la démonstration du lot T0, les outils de Nathan", () => {
-    expect(lireOptions("", false)).toEqual({ scenario: "essai", debug: false, tune: false, tactile: null });
-    expect(lireOptions("?scenario=essai&debug&tune&tactile=1", false)).toEqual({ scenario: "essai", debug: true, tune: true, tactile: "1" });
+  it("hors production : le contenu du jour par défaut, la suite d'essai, les paliers, la démonstration du lot T0, les outils de Nathan", () => {
+    expect(lireOptions("", false)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, tactile: null });
+    expect(lireOptions("?scenario=essai&debug&tune&tactile=1", false)).toEqual({ scenario: "essai", seed: null, effet: "lierre", debug: true, tune: true, tactile: "1" });
     expect(lireOptions("?scenario=banc&engine=b", false).scenario).toBe("banc");
+    expect(lireOptions("?scenario=inconnu", false).scenario).toBe("jour");
     expect(lireOptions("?tune", false).tune).toBe(false); // `tune` ne va pas sans `debug`
     expect(lireOptions("?tactile=2", false).tactile).toBeNull();
   });
 
-  it("en production : ni scénario de démonstration, ni ?debug, ni ?tune", () => {
-    expect(lireOptions("?scenario=banc&debug&tune", true)).toEqual({ scenario: "essai", debug: false, tune: false, tactile: null });
+  it("?seed=AAAA-MM-JJ : une date lisible donne son numéro de jour, une date illisible n'ouvre rien d'autre que le jour courant", () => {
+    expect(lireOptions("?seed=2026-11-02", false).seed).toBe(J("2026-11-02"));
+    expect(lireOptions("?seed=2026-02-30", false).seed).toBeNull();
+    expect(lireOptions("?seed=demain", false).seed).toBeNull();
+    expect(lireOptions("?seed=2026-11-02&scenario=essai", false)).toMatchObject({ scenario: "essai", seed: J("2026-11-02") });
+  });
+
+  it("?scenario=paliers&effet=… : chacun des six effets, lierre par défaut, un effet inconnu retombe sur lierre", () => {
+    for (const e of ["lierre", "figee", "petite", "geante", "vent", "glissante"]) expect(lireOptions(`?scenario=paliers&effet=${e}`, false)).toMatchObject({ scenario: "paliers", effet: e });
+    expect(lireOptions("?scenario=paliers", false).effet).toBe("lierre");
+    expect(lireOptions("?scenario=paliers&effet=pluie", false).effet).toBe("lierre");
+  });
+
+  it("en production : ni scénario, ni effet, ni ?debug, ni ?tune ; seul ?seed= reste lu (sa date future est refusée par choisirJour)", () => {
+    expect(lireOptions("?scenario=banc&debug&tune", true)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, tactile: null });
+    expect(lireOptions("?scenario=paliers&effet=vent", true)).toMatchObject({ scenario: "jour", effet: "lierre" });
+    expect(lireOptions("?seed=2026-11-02", true).seed).toBe(J("2026-11-02"));
+  });
+});
+
+describe("choisirJour : le jour à jouer", () => {
+  const AUJOURDHUI = J("2026-11-02");
+  it("sans ?seed= : aujourd'hui", () => {
+    expect(choisirJour(null, AUJOURDHUI, false)).toEqual({ jour: AUJOURDHUI, refuse: false });
+    expect(choisirJour(null, AUJOURDHUI, true)).toEqual({ jour: AUJOURDHUI, refuse: false });
+  });
+  it("hors production (aperçu, local) : toutes les dates s'ouvrent, futures comprises", () => {
+    expect(choisirJour(J("2026-11-03"), AUJOURDHUI, false)).toEqual({ jour: J("2026-11-03"), refuse: false });
+    expect(choisirJour(J("2026-10-30"), AUJOURDHUI, false)).toEqual({ jour: J("2026-10-30"), refuse: false });
+  });
+  it("sur la production : une date passée s'ouvre (archive), une date future est refusée et c'est aujourd'hui qui s'ouvre", () => {
+    expect(choisirJour(J("2026-10-30"), AUJOURDHUI, true)).toEqual({ jour: J("2026-10-30"), refuse: false });
+    expect(choisirJour(AUJOURDHUI, AUJOURDHUI, true)).toEqual({ jour: AUJOURDHUI, refuse: false });
+    expect(choisirJour(J("2026-11-03"), AUJOURDHUI, true)).toEqual({ jour: AUJOURDHUI, refuse: true });
   });
 });

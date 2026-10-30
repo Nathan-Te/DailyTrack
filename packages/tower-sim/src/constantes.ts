@@ -1,8 +1,11 @@
 // Lot T1 — les constantes de la partie de Tower (la simulation de jeu, `src/`). La physique est celle de Rapier 2D déterministe (docs/tower/consignes.md) ;
 // tout ce qui entre dans le moteur est un ENTIER ÷ 8 (positions en huitièmes de mètre, vitesses en huitièmes de m/s), jamais le résultat d'une transcendante.
 
-/** Version de la simulation de jeu. Elle monte à tout changement de règle ou de réglage qui change une partie rejouée ; le golden viendra au lot T2. */
-export const TOWER_SIM_VERSION = 1;
+/**
+ * Version de la simulation de jeu. Elle monte à tout changement de règle ou de réglage qui change une partie rejouée, et le golden (`test/fixtures/golden-tower.json`) ne
+ * se régénère qu'avec elle. Version 2 (lot T2) : les paliers (lierre, pièce figée, petite, géante, coup de vent, glissante). Version 3 (lot T2) : « descendre » n'a plus aucun effet physique (la pièce se pose à la vitesse d'une chute normale) et la pièce figée se fige au contact.
+ */
+export const TOWER_SIM_VERSION = 3;
 
 /** Pas fixe : 60 Hz (décision de Nathan après le lot T0). */
 export const TICKS_PAR_SECONDE = 60;
@@ -14,6 +17,8 @@ export const TICKS_PAR_SECONDE = 60;
  * - `DESCENDRE` est un **niveau** : tant que le bit est levé, la chute est multipliée par `facteurDescente`.
  */
 export const COMMANDE = { GAUCHE: 1, DROITE: 2, TOURNER: 4, DESCENDRE: 8 } as const;
+/** Tous les bits de commande connus : un masque qui en porte un autre est refusé par une rediffusion (lot T2). */
+export const COMMANDES_CONNUES = COMMANDE.GAUCHE | COMMANDE.DROITE | COMMANDE.TOURNER | COMMANDE.DESCENDRE;
 
 /** Une demi-case, en huitièmes de mètre. */
 export const DEMI_CASE_8 = 4;
@@ -50,3 +55,14 @@ export interface Reglages {
 }
 
 export const REGLAGES_DEFAUT: Readonly<Reglages> = { vitesseChute8: 20, facteurDescente: 4, hauteurApparition8: 56, vies: 3 };
+
+// ---- Lot T2 : les paliers ----
+
+/** Un coup de vent pousse la pièce active d'un huitième de mètre (12,5 cm) tous les `VENT_PERIODE_TICKS` ticks : 0,75 m/s, une poussée constante en ENTIERS (pas de force flottante). */
+export const VENT_PERIODE_TICKS = 10;
+/** Une pièce glissante a ce frottement (règle « minimum » de Rapier : celui de la pièce ou du support qui en a le moins) au lieu de `PHYSIQUE.frottement`. */
+export const FROTTEMENT_GLISSANT = 0.05;
+/** Pièce figée : elle devient un corps fixe pour toujours AU CONTACT (le premier après le lâcher, voir `DISTANCE_SOUDURE`), quitte à flotter ; au plus tard `FIGEE_TICKS` ticks (2 s) après le lâcher si ce contact a été manqué. */
+export const FIGEE_TICKS = 120;
+/** Le « premier contact » (lierre, pièce figée) : le premier tick, après le lâcher, où Rapier rapporte un point de contact à moins de 3 cm d'un autre corps. Mesuré : deux corps qui se touchent y sont rapportés à ≈ 1,7 cm (la marge de contact de Rapier), à 0 point de contact avant ; 5 mm ne voyait donc jamais le contact. */
+export const DISTANCE_SOUDURE = 0.03;
