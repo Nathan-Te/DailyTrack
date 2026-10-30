@@ -1,7 +1,7 @@
 export const MAX_ENTRIES: number;
 export const MAX_DAYS: number;
 export const BROWSERS: string[];
-export const DEBT_DOCS: Record<"web" | "jump", string>;
+export const DEBT_DOCS: Record<"web" | "jump" | "tower", string>;
 export const QUARANTINE_FILE: string;
 export interface QuarantineEntry {
   test: string;

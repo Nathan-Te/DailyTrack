@@ -2,7 +2,8 @@
   "_": "Lot R10 (plateforme) — la table spec → zones de la CI de PR courte (scripts/ci-zones.mjs, testée par apps/web/test/ciZones.test.ts). Une PR ne lance que les specs e2e (Chromium) dont une ZONE contient un fichier modifié, plus la fumée de chaque jeu touché ; tout tourne sur main (CI complète), la nuit et dans le lot de mise en production. Une zone = des motifs de chemins (`*` = un segment, `**` = tout) moins `sauf`. Un spec sans zone, une zone sans spec ou sans fichier, un nom inconnu : le test échoue. UN NOUVEAU SPEC SE DÉCLARE ICI (clé « jeu/fichier », au moins une zone) ; un fichier de jeu qu'aucune zone ne nomme ne lance que la fumée de son jeu. Les outils (captures-*, mesure-*) se sautent d'eux-mêmes hors CAPTURES / MESURE : ils n'ont pas de zone.",
   "fumee": {
     "web": ["replay.spec.ts", "perf.spec.ts", "accueil.spec.ts"],
-    "jump": ["smoke.spec.ts", "replay.spec.ts", "poids.spec.ts", "jour.spec.ts", "dangers.spec.ts"]
+    "jump": ["smoke.spec.ts", "replay.spec.ts", "poids.spec.ts", "jour.spec.ts", "dangers.spec.ts"],
+    "tower": ["determinisme.spec.ts", "partie.spec.ts", "poids.spec.ts"]
   },
   "_regression": "Lot R13 (le tri des tests, docs/tests.md) : les specs tout entiers de la famille « Régression » (mises en page, écrans secondaires, effets, Salon détaillé). Ils ne tournent que dans la CI complète (nuit, « Run workflow ») — sauf modifiés par la PR. Un test « Régression » dans un autre spec porte l'étiquette `@regression` ; un test sans étiquette est « Essentiel » (PR de sa zone et chaque fusion dans main).",
   "regression": [
@@ -56,6 +57,13 @@
     },
     "jump-i18n": { "globs": ["apps/jump/src/catalogue*.ts", "apps/jump/src/i18n.ts"] },
     "jump-admin": { "globs": ["apps/jump/src/admin*.ts", "apps/jump/admin/**"] },
+    "tower-sim": { "_": "Lot R15 : Tower (3ᵉ jeu). La simulation (`packages/tower-sim`, dont le banc d'essai du lot T0 et les empreintes de Node).", "globs": ["packages/tower-sim/**"] },
+    "tower-jeu": {
+      "_": "Lot R15 : la page du jeu (`/tower/`) : la boucle, la scène, l'interface, les entrées, le chargement de Rapier.",
+      "globs": ["apps/tower/index.html", "apps/tower/vite.config.ts", "apps/tower/rapierWasm.ts", "apps/tower/src/*"],
+      "sauf": ["apps/tower/src/moteurs.ts", "apps/tower/src/verify.ts"]
+    },
+    "tower-banc": { "_": "Lot R15 : la démonstration de la physique du lot T0 (`?scenario=banc`) et la page de vérification sans rendu.", "globs": ["apps/tower/src/banc/**", "apps/tower/src/moteurs.ts", "apps/tower/src/verify.ts", "apps/tower/verify.html"] },
     "ui": { "globs": ["packages/ui/**"] },
     "profile-pkg": { "globs": ["packages/profile/**"] },
     "core-clock": { "globs": ["packages/core/**", "packages/clock/**", "config/**"] },
@@ -161,6 +169,9 @@
     "jump/themes.spec.ts": ["jump-rendu"],
     "jump/tout-le-monde.spec.ts": ["jump-classement", "api-jump"],
     "jump/variete.spec.ts": ["jump-modules", "jump-sim"],
-    "jump/voie-lente.spec.ts": ["jump-jour", "jump-sim"]
+    "jump/voie-lente.spec.ts": ["jump-jour", "jump-sim"],
+    "tower/determinisme.spec.ts": ["tower-sim", "tower-banc", "core-clock"],
+    "tower/partie.spec.ts": ["tower-sim", "tower-jeu", "ui"],
+    "tower/poids.spec.ts": ["tower-jeu", "ui"]
   }
 }

@@ -11,7 +11,7 @@
 //   - typecheck et tests unitaires : toujours tout (hors de ce script) ; e2e : les suites des catégories touchées ; api-image : si le serveur est touché (SERVER_PATHS, ou toute zone partagée / tout doute).
 import { touchesServer } from "./recette.mjs";
 
-export const CATEGORIES = ["track", "jump", "plateforme"];
+export const CATEGORIES = ["track", "jump", "tower", "plateforme"];
 
 // Dans l'ordre : la première règle qui reconnaît le fichier l'emporte. Les exceptions précèdent la règle générale de leur dossier.
 export const RULES = [
@@ -25,6 +25,10 @@ export const RULES = [
   { glob: "apps/api/test/jump*.test.ts", cats: ["jump", "plateforme"] },
   { glob: "apps/api/scripts/jump-*.ts", cats: ["jump", "plateforme"] },
   { glob: "apps/api/scripts/measure-jump.ts", cats: ["jump", "plateforme"] },
+  // Tower côté serveur (lot R15, aligné sur scripts/zones-jeu.mjs ; les routes viennent au lot T4) : tower*.ts, leurs tests, leurs scripts.
+  { glob: "apps/api/src/tower*.ts", cats: ["tower", "plateforme"] },
+  { glob: "apps/api/test/tower*.test.ts", cats: ["tower", "plateforme"] },
+  { glob: "apps/api/scripts/tower-*.ts", cats: ["tower", "plateforme"] },
   // DailyTrack côté serveur : son jeu (`cdj.ts` : jour, planning, classement) et son Salon, leurs tests, ses outils de mesure et d'historique.
   // `history.ts` n'y est pas : jumpHistory.ts l'importe (doute → les trois).
   { glob: "apps/api/src/cdj.ts", cats: ["track", "plateforme"] },
@@ -41,7 +45,7 @@ export const RULES = [
   // Lot I1 — le socle de l'interface (`packages/ui`) sert à toutes les applications : les trois (comme une zone partagée, explicitement). Le
   // portail (`apps/portail`) : ses tests unitaires (toujours lancés) et ses e2e, qui vivent dans la suite DailyTrack (apps/web/e2e :
   // portail.spec.ts, domaine.spec.ts, qui assemblent le site) → DailyTrack + plateforme ; il ne touche pas le serveur.
-  { glob: "packages/ui/**", cats: ["track", "jump", "plateforme"] },
+  { glob: "packages/ui/**", cats: ["track", "jump", "tower", "plateforme"] },
   { glob: "apps/portail/**", cats: ["track", "plateforme"] },
   { glob: "apps/web/**", cats: ["track"] },
   { glob: "packages/sim/**", cats: ["track"] },
@@ -52,6 +56,10 @@ export const RULES = [
   { glob: "apps/jump/**", cats: ["jump"] },
   { glob: "packages/jump-sim/**", cats: ["jump"] },
   { glob: "docs/jump/**", cats: ["jump"] },
+  // Lot R15 : Tower. Le jeu, sa simulation et ses documents ne lancent que les e2e de Tower (les tests unitaires, eux, suivent le graphe des imports).
+  { glob: "apps/tower/**", cats: ["tower"] },
+  { glob: "packages/tower-sim/**", cats: ["tower"] },
+  { glob: "docs/tower/**", cats: ["tower"] },
   { glob: "docs/plateforme/**", cats: ["plateforme"] },
   { glob: "docs/mise-en-ligne.md", cats: ["plateforme"] },
   { glob: "docs/securite-facturation.md", cats: ["plateforme"] },
@@ -88,6 +96,7 @@ export function scopeOf(files, { full = false } = {}) {
     full: all,
     track: cats.has("track"),
     jump: cats.has("jump"),
+    tower: cats.has("tower"),
     plateforme: cats.has("plateforme"),
     // Le serveur est touché par ses chemins (SERVER_PATHS) ou par toute zone partagée / tout doute (workflows, scripts de CI, configuration racine…).
     server: all || touchesServer(list) || list.some((f) => categoriesOf(f).length === CATEGORIES.length),

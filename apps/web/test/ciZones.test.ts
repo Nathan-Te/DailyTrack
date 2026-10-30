@@ -39,9 +39,9 @@ const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 
 describe("la table spec → zones (e2e/zones.json)", () => {
   it("chaque spec de chaque jeu a au moins une zone, et la table ne nomme aucun spec disparu (hors outils : captures et mesures se sautent d'eux-mêmes)", () => {
-    for (const jeu of ["web", "jump"] as const) {
+    for (const jeu of ["web", "jump", "tower"] as const) {
       const specs = specsDuJeu(jeu, ROOT);
-      expect(specs.length, jeu).toBeGreaterThan(10);
+      expect(specs.length, jeu).toBeGreaterThan(jeu === "tower" ? 1 : 10); // lot R15 : Tower (3ᵉ jeu) a peu de specs
       const sansZone = specs.filter((s) => (table.specs[`${jeu}/${s}`]?.length ?? 0) === 0);
       expect(sansZone, `spec(s) de ${jeu} sans zone : les déclarer dans e2e/zones.json`).toEqual([]);
       const disparus = Object.keys(table.specs).filter((k) => k.startsWith(`${jeu}/`) && !specs.includes(k.slice(jeu.length + 1)));
@@ -65,7 +65,7 @@ describe("la table spec → zones (e2e/zones.json)", () => {
 
   it("la fumée de chaque jeu existe, est courte (ses tests « Essentiel » : la PR ne lance pas les autres), et est liée à une zone du jeu", () => {
     const durees = (jeu: string) => JSON.parse(read(`apps/${jeu}/e2e/durees.json`)).essentiel as Record<string, number>;
-    for (const jeu of ["web", "jump"] as const) {
+    for (const jeu of ["web", "jump", "tower"] as const) {
       const specs = specsDuJeu(jeu, ROOT);
       const total = table.fumee[jeu].reduce((s, f) => s + (durees(jeu)[f] ?? 60), 0);
       for (const f of table.fumee[jeu]) expect(specs, `fumée ${jeu}`).toContain(f);
@@ -74,7 +74,7 @@ describe("la table spec → zones (e2e/zones.json)", () => {
   });
 
   it("lot R13 : la famille « Régression » nomme de vrais specs, jamais la fumée ; chaque spec a sa durée « Essentiel », sauf ceux de la liste", () => {
-    for (const jeu of ["web", "jump"] as const) {
+    for (const jeu of ["web", "jump", "tower"] as const) {
       const specs = specsDuJeu(jeu, ROOT);
       const regression = (table.regression ?? []).filter((x) => x.startsWith(`${jeu}/`)).map((x) => x.slice(jeu.length + 1));
       expect(regression.filter((s) => !specs.includes(s)), "specs « Régression » disparus").toEqual([]);
@@ -90,6 +90,10 @@ describe("la table spec → zones (e2e/zones.json)", () => {
     expect(zonesDuFichier("apps/web/src/salonMode.ts", table)).toEqual(["track-salon"]);
     expect(zonesDuFichier("apps/web/src/garage.css", table)).toEqual(["track-voiture"]);
     expect(zonesDuFichier("apps/jump/src/hud.ts", table)).toEqual(["jump-ui"]);
+    expect(zonesDuFichier("apps/tower/src/hud.ts", table)).toEqual(["tower-jeu"]); // lot R15
+    expect(zonesDuFichier("apps/tower/src/banc/demo.ts", table)).toEqual(["tower-banc"]);
+    expect(zonesDuFichier("apps/tower/src/moteurs.ts", table)).toEqual(["tower-banc"]);
+    expect(zonesDuFichier("packages/tower-sim/src/partie.ts", table)).toEqual(["tower-sim"]);
     expect(zonesDuFichier("packages/jump-sim/modules/x.json", table)).toEqual(["jump-modules"]);
     expect(zonesDuFichier("apps/api/src/cdj.ts", table)).toEqual(["api-track"]);
     expect(zonesDuFichier("apps/api/src/identity.ts", table)).toEqual(["api-coeur"]);
@@ -100,6 +104,28 @@ describe("la table spec → zones (e2e/zones.json)", () => {
 describe("les specs e2e d'une PR", () => {
   // Sans budget : la sélection par zones seule (le budget a ses propres tests plus bas).
   const choix = (files: string[]) => specsPour(files, table, ROOT, { budget: Infinity });
+
+  it("lot R15 : une PR de Tower ne lance que les specs de Tower (jamais ceux de Track ni de Jump), et elles seules", () => {
+    const r = choix(["apps/tower/src/hud.ts", "packages/tower-sim/src/partie.ts"]);
+    expect(r.web).toEqual([]);
+    expect(r.jump).toEqual([]);
+    expect(r.tower).toEqual(["determinisme.spec.ts", "partie.spec.ts", "poids.spec.ts"]);
+    // Ni une PR de Track, ni une PR de Jump, ni un document de Tower ne lancent Tower.
+    expect(choix(["apps/web/src/salonMode.ts", "packages/sim/src/car.ts"]).tower).toEqual([]);
+    expect(choix(["apps/jump/src/hud.ts", "packages/jump-sim/src/level.ts"]).tower).toEqual([]);
+    expect(choix(["docs/tower/consignes.md", "docs/tower/lots/lot-T1-partie.md"])).toMatchObject({ web: [], jump: [], tower: [] });
+    // Un fichier de Tower qu'aucune zone ne nomme ne lance que la fumée de Tower ; un spec modifié se lance lui-même.
+    expect(choix(["apps/tower/tools/poids.mjs"])).toMatchObject({ web: [], jump: [], tower: [...table.fumee.tower].sort() });
+    expect(choix(["apps/tower/e2e/partie.spec.ts"]).tower).toEqual(["partie.spec.ts"]);
+    expect(choix(["apps/tower/playwright.config.ts"])).toMatchObject({ web: [], jump: [], tower: [...table.fumee.tower].sort() });
+  });
+
+  it("lot R15 : une zone partagée (ui, profil, core, serveur, workflow) lance aussi la fumée de Tower", () => {
+    for (const f of ["packages/ui/src/index.ts", "packages/profile/src/index.ts", "packages/core/src/index.ts", "apps/api/src/server.ts", ".github/workflows/ci.yml"]) {
+      expect(choix([f]).tower, f).toEqual(expect.arrayContaining(table.fumee.tower));
+    }
+    expect(choix(["packages/ui/src/index.ts"]).tower).toContain("partie.spec.ts");
+  });
 
   it("une PR de DailyJump ne lance aucun spec de DailyTrack, et réciproquement", () => {
     const j = choix(["apps/jump/src/hud.ts", "packages/jump-sim/src/level.ts"]);
@@ -127,8 +153,9 @@ describe("les specs e2e d'une PR", () => {
   });
 
   it("un fichier de jeu qu'aucune zone ne nomme ne lance que la fumée de son jeu", () => {
-    expect(choix(["apps/web/src/nouveau-fichier.ts"])).toMatchObject({ web: [...table.fumee.web].sort(), jump: [] });
-    expect(choix(["apps/jump/src/nouveau-fichier.ts"])).toMatchObject({ web: [], jump: [...table.fumee.jump].sort() });
+    expect(choix(["apps/web/src/nouveau-fichier.ts"])).toMatchObject({ web: [...table.fumee.web].sort(), jump: [], tower: [] });
+    expect(choix(["apps/jump/src/nouveau-fichier.ts"])).toMatchObject({ web: [], jump: [...table.fumee.jump].sort(), tower: [] });
+    expect(choix(["apps/tower/src/nouveau-fichier.ts"])).toMatchObject({ web: [], jump: [], tower: [...table.fumee.tower].sort() }); // lot R15
   });
 
   it("une zone partagée lance la fumée des deux jeux, et les specs de sa zone", () => {
@@ -185,7 +212,7 @@ describe("les specs e2e d'une PR", () => {
   });
 
   it("les documents ne lancent aucun spec", () => {
-    expect(choix(["docs/plateforme/synthese.md", "apps/web/CLAUDE.md", "README.md"])).toMatchObject({ web: [], jump: [] });
+    expect(choix(["docs/plateforme/synthese.md", "apps/web/CLAUDE.md", "README.md"])).toMatchObject({ web: [], jump: [], tower: [] });
   });
 
   it("les zones nommées à la main (npm run verifier -- --zones=…) donnent les specs de la table, et signalent les noms inconnus", () => {
@@ -235,7 +262,7 @@ describe("les tests unitaires d'une PR (graphe des imports)", () => {
 
   it("un workflow lance les tests qui le lisent", () => {
     const r = testsPour([".github/workflows/ci.yml"], g).fichiers;
-    expect(r).toEqual(expect.arrayContaining(["apps/web/test/e2eParts.test.ts", "apps/jump/test/ciE2e.test.ts", "apps/web/test/ciZones.test.ts"]));
+    expect(r).toEqual(expect.arrayContaining(["apps/web/test/e2eParts.test.ts", "apps/jump/test/ciE2e.test.ts", "apps/tower/test/ciE2e.test.ts", "apps/web/test/ciZones.test.ts"]));
   });
 });
 
@@ -257,15 +284,17 @@ describe("les parts", () => {
     expect(parts).toHaveLength(Math.ceil(120 / CIBLE_PART_UNITAIRE_S));
   });
 
-  it("e2e : au plus 4 parts, chaque spec une seule fois, les deux jeux peuvent partager une part", () => {
+  it("e2e : au plus 4 parts, chaque spec une seule fois, les jeux peuvent partager une part", () => {
     const web = specsDuJeu("web", ROOT).slice(0, 25);
     const jump = specsDuJeu("jump", ROOT).slice(0, 10);
-    const parts = partsE2e({ web, jump }, ROOT);
+    const tower = specsDuJeu("tower", ROOT);
+    const parts = partsE2e({ web, jump, tower }, ROOT);
     expect(parts.length).toBeGreaterThan(0);
     expect(parts.length).toBeLessThanOrEqual(PARTS_E2E_MAX);
     expect(parts.flatMap((p) => p.web).sort()).toEqual([...web].sort());
     expect(parts.flatMap((p) => p.jump).sort()).toEqual([...jump].sort());
-    expect(partsE2e({ web: [], jump: [] }, ROOT)).toEqual([]);
+    expect(parts.flatMap((p) => p.tower).sort()).toEqual([...tower].sort()); // lot R15
+    expect(partsE2e({ web: [], jump: [], tower: [] }, ROOT)).toEqual([]);
   });
 });
 
@@ -295,6 +324,16 @@ describe("la décision d'une PR", () => {
     expect(d.e2e.web).toEqual([]);
     expect(d.e2eParts.length).toBeLessThanOrEqual(PARTS_E2E_MAX);
     expect(d.unitParts.length).toBeLessThanOrEqual(PARTS_UNITAIRES_MAX);
+  });
+
+  it("lot R15 : une PR de Tower seule : une CI courte (une part e2e de quelques dizaines de secondes, rien de Track ni de Jump)", () => {
+    const d = decider(["apps/tower/src/hud.ts", "apps/tower/src/jeu.ts"], { racine: ROOT });
+    expect(d.e2e).toMatchObject({ web: [], jump: [] });
+    expect(d.e2e.tower.length).toBeGreaterThan(0);
+    expect(d.e2eParts).toHaveLength(1);
+    expect(d.e2eParts[0]!.secondes).toBeLessThanOrEqual(120);
+    const m = JSON.parse(/e2e_pr_matrice=(.*)/.exec(sorties(d))![1]!);
+    expect(m.include[0]).toMatchObject({ web: "", jump: "", tower: "determinisme.spec.ts partie.spec.ts poids.spec.ts" });
   });
 
   it("CI complète (main, nuit) : tous les tests unitaires en 3 parts, aucune part e2e de PR (la matrice complète est celle du workflow)", () => {
@@ -331,6 +370,7 @@ describe("le workflow (ci.yml)", () => {
     const pr = code.slice(code.indexOf("  e2e-pr:"), code.indexOf("  e2e:\n"));
     expect(pr).toContain("--project=chromium");
     expect(pr).toContain("--project=jump-chromium");
+    expect(pr).toContain("--project=tower-chromium"); // lot R15
     expect(pr).not.toMatch(/firefox|webkit/);
     expect(existsSync(join(ROOT, "e2e/zones.json"))).toBe(true);
   });
