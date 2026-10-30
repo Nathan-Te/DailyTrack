@@ -14,6 +14,8 @@ export interface BoardRow {
   name: string;
   ms: number;
   medal: "author" | "gold" | "silver" | "bronze" | null;
+  /** Lot 55 : la référence publique de la course (12 hexadécimaux, jamais l'identifiant secret) : sa case « fantôme ». Absente d'un serveur plus ancien et de la démonstration. */
+  ref?: string;
 }
 
 export interface Leaderboard {

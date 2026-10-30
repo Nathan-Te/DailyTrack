@@ -8,34 +8,32 @@ la PR est une PR « plateforme » pour le job `zones`. Golden, rediffusions, cla
 
 | Étape | État |
 |---|---|
-| **A1 — maquettes des fantômes** (`lot-55/maquettes-fantomes.html`) | **faites, en attente de validation de Nathan (arrêt)** |
-| A2 à A5 — choix, course, serveur, chargement | à faire après validation |
-| **B1 — planche sonore** (`/track/vitrine/?planche=son`) | à faire après la partie A (arrêt : Nathan écoute et choisit l'approche) |
-| B2 à B7 — boîte de vitesses, voix par voiture, le reste des sons, Salon, réglages, téléphone | à faire après le choix de l'approche |
+| **A1 — maquettes des fantômes** (`lot-55/maquettes-fantomes.html`) | **validées par Nathan** (30/10/2026), ses cinq propositions acceptées |
+| **A2 à A5 — choix, course, serveur, chargement** | **faits** (voir ci-dessous) ; reste la CI verte de la PR |
+| **B1 — planche sonore** (`/track/vitrine/?planche=son`) | à faire (arrêt : Nathan écoute et choisit l'approche) |
+| B2 à B7 — boîte de vitesses, voix par voiture, le reste des sons, Salon, réglages, téléphone | après le choix de l'approche |
 
-## Ce que le code offre déjà (relevé avant les maquettes)
+## Partie A — choisir ses fantômes (faite)
 
-- **Le Salon a déjà tout pour plusieurs fantômes** : `GhostField` (`salonGhosts.ts`) — jusqu'à `MAX_GHOSTS = 5` autres joueurs plus ton tour, chacun d'une couleur (`GHOST_COLORS`), translucide, sans
-  collision, **pseudo au-dessus** (`createNameLabel`), la voiture de sa course (lot 51), et le **rattrapage** d'un fantôme arrivé après le départ (`catchUpTicks` : la rediffusion est rejouée en silence
-  jusqu'au pas courant). Le jour n'a aujourd'hui qu'**un** fantôme (`session.ghost`, `ghostSource` dans `main.ts`) ; la proposition est de **réutiliser `GhostField`** pour la sélection, sans toucher à
-  `session.ghost` (qui reste le fantôme de référence de l'écart du HUD).
-- **Le classement du jour** : `GET /api/day/<date>/leaderboard` (≤ 50 lignes ; `BoardRow` = rang, pseudo, temps, médaille : **aucun identifiant**) ; `GET /api/day/<date>/ghost?kind=first|ahead`.
-  Il n'existe pas de route « la rediffusion de cette ligne » : c'est la route du point 4 du lot. Les lignes sont montrées par `linesEls` (`boardView.ts`) à l'accueil (5 lignes), dans la page
-  « Classement » (`boardScreen.ts`, 50 lignes) et dans le coin de la course (`boardPanel.ts`). **L'arrivée ne montre que ton rang** (pas de liste) et **la pause n'a pas de classement**.
-- **Le cycle actuel** (`ghostModes`, `online.ts`) : ton record → le premier → le joueur devant → aucun ; touche G, `#btn-ghost`, `#pause-ghost`, `#home-ghost` (lot G1).
+**Ce qui est livré** (règles : `apps/web/CLAUDE.md`, « Fantômes choisis dans le classement (lot 55) » ; serveur : `apps/api/CLAUDE.md`, « Les fantômes choisis dans le classement (lot 55) »).
+- **Le choix** : une case de 44 px par ligne du classement (accueil, page « Classement », coin de la course **en pause**), compteur « 3 fantômes sur 5 », « Tout décocher », 5 au plus (les autres cases grisées et la raison dite), le premier et celui devant toi **proposés cochés** tant que rien n'est choisi, le lien « Choisir mes fantômes (3) » à l'arrivée, les pastilles de teinte dans la rangée de l'accueil. Ta ligne n'a pas de case. Cocher passe en « Ma sélection ».
+- **Le bouton** (touche G, `#btn-ghost`, pause, accueil) : **Rien → Le mien → Le premier → Ma sélection → Rien** ; saute ce qui n'existe pas et le dit (« Pas encore de record · Fantôme : … ») ; badge « 3 » / « 1 » et barre quand il est coupé ; mode gardé d'une course à l'autre (`cdj:track:fantomes`) ; défaut inchangé (« Le mien »).
+- **En course** : le champ de fantômes du Salon (`GhostField`) : chaque fantôme a **la voiture de sa course** (version simple), **la teinte de son rang dans le choix**, son pseudo au-dessus, aucune collision ni son ; ils partent avec toi et se recalent à « Recommencer » ; l'écart avec le plus proche s'écrit 3 s après un point de contrôle (« Mika −0,41 »).
+- **Serveur** : `ref` sur les lignes du classement (la référence publique `players.ref`) et `GET /api/day/<date>/run/<ref>` (lecture publique, `X-Player-Id` ignoré, 404 pour une course masquée), limite de lecture comme le classement. **Aucune donnée gardée de plus.**
+- **Écart avec la proposition validée** : la référence de course est **la référence publique du joueur** (`players.ref`, déjà gardée et indexée par le lot N1), **pas** un SHA-256 « jour + joueur » calculé à la lecture : même garantie (jamais l'identifiant secret), mais la ligne se retrouve par un index existant au lieu d'une recherche. Le jour est dans l'adresse de la route.
+- **Écart avec la proposition validée (2)** : un fantôme en retard rejoint la course **à sa place sans fondu de 0,3 s** (il apparaît directement : `GhostField` n'a pas de fondu, le Salon non plus) ; il attend la course suivante au-delà de la moitié de son tour.
+- **Le coin de la course en course** reste en lecture seule (pas de case en conduisant) ; les cases n'y sont qu'en pause.
 
-## A1 — Maquettes (arrêt)
+**Poids et temps de chargement** — poids : `runPilot` sur quatre jours et trois adhérences (38 à 40 s de course) : une rediffusion pèse **3,6 à 7,4 ko** en JSON (la route : rediffusion, temps intermédiaires, voiture), **≈ 2 à 3 ko compressés** ; cinq au plus **38 ko** (≈ 15 ko compressés). Temps : **mesuré** (`MESURE=1 npx playwright test mesure-lot55`, Chrome avec réseau émulé par DevTools, serveur d'essai **sans compression** : le pire cas ; **cinq rediffusions** de 3,8 à 4,1 ko, 20 ko en tout, demandées **en parallèle**) : **≈ 120 ms** en 4G courante (9 Mbit/s, 80 ms d'aller-retour) et **≈ 440 ms** en 4G lente (1,6 Mbit/s, 300 ms). Très sous les 3 s du décompte ; un retardataire rejoint la course à sa place (voir plus haut). Une page ne les télécharge qu'**une fois** (recommencer ne relit rien). Limite de la mesure : un réseau émulé sur la machine, pas un téléphone réel ; le serveur du test est local (≈ 20 ms par requête), celui de Cloud Run + Turso ajoute sa propre latence (une lecture indexée, mesurée au lot 5).
 
-`docs/lots/lot-55/maquettes-fantomes.html` (jetons et feuilles de `@cdj/ui` et de `apps/web`, ouvrir depuis le dépôt ; FR / EN par le bouton ou `?l=en`) : le classement avec une case par ligne
-(téléphone en paysage et ordinateur), le compteur « 3 fantômes sur 5 » et ses trois états, l'accueil / l'arrivée / la pause, la course à cinq fantômes (voiture simple, teinte, pseudo), le bouton
-simple et son cycle (dont le saut d'un mode vide), le chargement. **Décisions demandées à Nathan** (aussi au bas de la planche) :
+**Budget** : premier chargement **+290 o** (293 733 → 294 023 contre `main` après le lot T1 ; **aucun plafond relevé** : marges de 689 o pour `track.jsCss`, 714 o pour `track.js`, 771 o pour `track.horsThree`) ; **le choix des fantômes à la demande** : `fantomesJeu-*.js` ≈ 4,1 ko compressés + 0,9 ko de feuille (garde : `e2e/perf.spec.ts`, 6 ko ; **une ligne du tableau de `budgets.md` est à ajouter par un lot de plateforme** : le test qui la garde est dans `apps/portail`). Ce qui coûte au premier chargement : le cycle du bouton et le chargeur (`main.ts`), `data-ref` des lignes, le badge du bouton, l'écart au point de contrôle. L'ancien cycle (`ghostModes`, `nextGhostMode`, la branche « devant toi ») en est sorti. *(Avant la fusion de T1 la marge était de 52 o et le lot demandait 300 o de plafond : devenu inutile.)*
 
-1. **Serveur** : `GET /api/day/<date>/run/<ref>` ; `ref` = empreinte publique (SHA-256 de « jour + identifiant du joueur », tronquée), ajoutée aux lignes du classement, **aucune colonne de plus**.
-2. **Pause** : cocher dans le coin de classement quand le jeu est gelé (proposé), ou seulement depuis la page « Classement » ?
-3. **Écart en course** : garder la ligne « écart avec le fantôme le plus proche » (3 s après un point de contrôle) ?
-4. **Fantôme en retard** : rejoindre à sa place (proposé, comme le Salon) ou attendre la course suivante ?
-5. **Le joueur devant** n'a plus de mode à lui dans le bouton (proposé coché dans la sélection, comme le premier) — d'accord ?
+**Tests** : `apps/api/test/fantomesChoisis.test.ts` (6, SQLite **et** libSQL : `ref` publique sans identifiant secret, rediffusion, 400/404, masqué, aucune écriture) ; `apps/web/test/fantomesChoix.test.ts` (de 1 à 5, gardé pour le jour et oublié le lendemain, mémoire abîmée ou piégée, teintes = celles du Salon, le bouton fait défiler et saute un mode vide) ; `apps/web/test/fantomesJour.test.ts` (cinq fantômes en course, chacun avec sa voiture et sa teinte, recommencer recale tout le monde, le retardataire) ; e2e `fantomes.spec.ts` (serveur 8802 ; 2 tests : cocher trois fantômes en pause, les voir courir avec leur pseudo, recommencer, faire défiler le bouton et sauter « Le mien », garder le choix pour le jour puis l'oublier le lendemain ; tout décocher) ; outils hors CI `captures-lot55` (`docs/lots/lot-55/img/`) et `mesure-lot55` ; `leaderboard.spec.ts` et `adresses-joueur.spec.ts` suivent le nouveau cycle.
 
-## Fichiers hors zone
+## Fichiers hors zone (exceptions, listées pour Nathan)
 
-Aucun jusqu'ici (la route du point 4 est dans `cdj.ts`, zone de Track ; l'éventuelle ligne de `platformBudget` sera listée ici).
+- `apps/api/scripts/platformBudget.ts` et `apps/api/test/platformBudget.test.ts` : le coût d'un fantôme choisi (`TRACK_FANTOMES_CHOISIS`).
+- `apps/portail/mentions-legales/index.html` et `apps/portail/legal/index.html` : la clé `cdj:track:fantomes` est nommée (règle de fidélité du lot R5 : toute nouvelle donnée gardée). **Pas de test ajouté** dans `apps/portail/test/mentions.test.ts`.
+- `docs/plateforme/budgets.md` (les trois lignes de Track : la mesure, plafonds inchangés), `docs/plateforme/traductions.md` (régénéré), `e2e/zones.json` (le spec et `fantomes*.ts` dans la zone `track-hud`).
+- À proposer à un lot de plateforme : l'index du `CLAUDE.md` racine (« Fantômes choisis dans le classement (lot 55) » dans la liste de `apps/web/CLAUDE.md`), la ligne « choix des fantômes à la demande » de `budgets.md`, la route `run/<ref>` dans la colonne « routes » de `docs/plateforme/codes-erreur.md` (`invalid_ref`, `no_ghost`).
+

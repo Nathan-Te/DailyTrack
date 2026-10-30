@@ -1,0 +1,196 @@
+/* Lot 55 — choisir ses fantômes dans le classement : chargée avec `fantomesJeu.ts` (jamais au premier écran). Maquette : docs/lots/lot-55/maquettes-fantomes.html.
+   Jetons seulement ; la teinte d'un fantôme (`--teinte`) est posée par le jeu sur la case et la pastille. */
+
+/* --- La case « fantôme » d'une ligne du classement (cible de 44 px) --------------------------------------------------------------------------- */
+.tg {
+  flex: none;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--track-texte-doux);
+  cursor: pointer;
+}
+.tg__case {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--dj-trait) solid var(--track-texte-doux);
+  border-radius: 3px;
+}
+.tg[aria-pressed="true"] .tg__case {
+  background: var(--teinte);
+  border-color: var(--dj-encre);
+  color: var(--dj-encre);
+  box-shadow: 2px 2px 0 var(--dj-encre);
+}
+.tg:disabled {
+  cursor: default;
+}
+.tg:disabled .tg__case {
+  border-style: dashed;
+}
+.tg:focus-visible .tg__case {
+  outline: var(--dj-trait-fort) solid var(--dj-moutarde);
+  outline-offset: 2px;
+}
+.tg-pt {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 50%;
+  background: var(--teinte);
+}
+.tg-propose {
+  flex: none;
+  padding: 0 5px;
+  border: var(--dj-trait) solid var(--track-livree);
+  border-radius: 2px;
+  color: var(--track-livree-texte);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* --- Le compteur « 3 fantômes sur 5 » ------------------------------------------------------------------------------------------------------------- */
+.fantomes-compteur {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: var(--dj-cible);
+  padding: 0 4px;
+}
+.fantomes-compteur__n {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-21);
+}
+.fantomes-compteur__barre {
+  display: flex;
+  gap: 3px;
+}
+.fantomes-compteur__barre i {
+  width: 14px;
+  height: 10px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--track-piste);
+}
+.fantomes-compteur__barre i[data-teinte] {
+  background: var(--teinte);
+}
+.fantomes-compteur .lien {
+  min-height: var(--dj-cible);
+  margin-left: auto;
+}
+.fantomes-compteur__max {
+  flex-basis: 100%;
+  margin: 0 0 4px;
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  color: var(--track-livree-texte);
+}
+.fantomes-compteur__max[hidden] {
+  display: none;
+}
+
+/* --- L'arrivée et l'accueil --------------------------------------------------------------------------------------------------------------------------- */
+.fantomes-lien {
+  margin-top: 8px;
+  gap: 8px;
+}
+.fantomes-pastilles {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* --- Dans le coin de la course : les cases ne servent qu'en pause (le jeu est gelé) ; en course le classement reste en lecture seule --------------------------- */
+#board .tg,
+#board .fantomes-compteur,
+#board .tg-propose {
+  display: none;
+}
+body.paused #board .tg,
+body.paused #board .fantomes-compteur {
+  display: flex;
+}
+/* En pause le classement du coin reste en vue (maquette validée : le jeu est gelé, on y coche ses fantômes), même replié en course, et ses cases reçoivent les doigts. */
+body.paused #board {
+  visibility: visible;
+  z-index: calc(var(--z-pause) + 1); /* au-dessus du voile de la pause, qui reçoit sinon les doigts */
+}
+body.paused #board.folded {
+  display: block;
+}
+body.paused #board .tg,
+body.paused #board .fantomes-compteur .lien {
+  pointer-events: auto;
+}
+#board .fantomes-compteur {
+  min-height: 0;
+  padding: 0 4px 4px;
+}
+#board .fantomes-compteur__n {
+  font-size: var(--dj-taille-16);
+}
+#board .fantomes-compteur__barre {
+  display: none;
+}
+#board .fantomes-compteur .lien {
+  min-height: var(--dj-cible);
+}
+
+/* --- Le bouton fantôme de la partie : le nombre de fantômes en badge, une barre quand il est coupé ------------------------------------------------------------ */
+#btn-ghost {
+  position: relative;
+}
+#btn-ghost[data-badge]::after {
+  content: attr(data-badge);
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 8px;
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+#btn-ghost[data-mode="off"] {
+  color: var(--track-texte-doux);
+}
+#btn-ghost[data-mode="off"]::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: var(--dj-trait-fort);
+  background: var(--track-texte);
+  transform: rotate(-35deg);
+}
+
+/* Petit écran : le classement du coin, en pause, ne recouvre pas les boutons de la pause (le dialogue lui laisse sa colonne à droite). */
+@media (max-width: 900px), (max-height: 520px) {
+  body.paused:has(#board:not([hidden])) #pause {
+    padding-right: calc(min(240px, 28vw) + 24px);
+  }
+}

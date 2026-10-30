@@ -92,7 +92,7 @@ test("aucune adresse ne porte l'identifiant du joueur : course du jour, Salon, r
   // --- La course du jour : classement au chargement, l'envoi, puis les fantômes par la touche G (le premier, le joueur devant) -----------------
   await page.goto(`/?debug&timescale=6&api=${encodeURIComponent(API)}`);
   await page.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
-  const asked = (route: string) => watching.seen.some((s) => routeOf(s.url) === route);
+  const asked = (route: string) => watching.seen.some((s) => (route === "run" ? routeOf(s.url)?.startsWith("run/") : routeOf(s.url) === route));
   const id = await idOf(page);
   expect(id).toMatch(/^[0-9a-f]{32}$/);
   await page.evaluate((c) => window.__cdj.autoplay(c), slowCode);
@@ -101,10 +101,10 @@ test("aucune adresse ne porte l'identifiant du joueur : course du jour, Salon, r
   await page.locator("#finish .online button[type=submit]").click();
   await expect(page.locator("#finish .online .rank")).toHaveText("2e sur 2");
 
-  // G : fantôme suivant (le premier, puis le joueur devant : Alice est classée, c'est Bob). Une pression pendant qu'un changement de fantôme est
+  // G : fantôme suivant (le premier, puis — lot 55 — « ma sélection » : le premier et celui devant toi, ici Bob, lus par la référence publique de leur course). Une pression pendant qu'un changement de fantôme est
   // en cours est ignorée par le jeu : on appuie jusqu'à ce que la requête voulue soit partie. (Avant la course, le cycle de G relancerait la tentative
   // — `setGhost` hors course appelle `startAttempt` — et effacerait l'`autoplay`.)
-  for (const route of ["ghost?kind=first", "ghost?kind=ahead"]) {
+  for (const route of ["ghost?kind=first", "run"]) {
     await expect
       .poll(async () => (asked(route) ? true : (await page.keyboard.press("g"), asked(route))), { timeout: 60_000, intervals: [250, 500, 1000] })
       .toBe(true);
@@ -130,7 +130,14 @@ test("aucune adresse ne porte l'identifiant du joueur : course du jour, Salon, r
   expectNoIdInAddresses(seen, [id, bob], [page]);
   // Les routes de DailyTrack vues pendant le test portent bien l'identifiant dans l'en-tête (le test ne passe pas à vide).
   const api = seen.filter((s) => routeOf(s.url) !== null && s.method !== "OPTIONS");
-  for (const route of ["leaderboard", "ghost?kind=first", "ghost?kind=ahead", "submit", "salon/now", "salon/board"]) {
+  // Lot 55 : la rediffusion d'une ligne du classement se lit par la référence publique de sa course (`day/<date>/run/<12 hexadécimaux>`) : lecture publique, aucun X-Player-Id, jamais l'identifiant.
+  const courses = api.filter((s) => routeOf(s.url)?.startsWith("run/"));
+  expect(courses.length, "run/<ref> jamais demandée").toBeGreaterThan(0);
+  for (const c of courses) {
+    expect(routeOf(c.url), c.url).toMatch(/^run\/[0-9a-f]{12}$/);
+    expect(c.player, `${c.url} : ni identifiant ni X-Player-Id`).toBeUndefined();
+  }
+  for (const route of ["leaderboard", "ghost?kind=first", "submit", "salon/now", "salon/board"]) {
     const calls = api.filter((s) => routeOf(s.url) === route);
     expect(calls.length, `${route} jamais demandée`).toBeGreaterThan(0);
     expect(calls.some((s) => s.player === id), `${route} sans X-Player-Id`).toBe(true);

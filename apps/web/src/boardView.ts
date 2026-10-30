@@ -19,6 +19,8 @@ export interface BoardLine {
   me: boolean;
   /** Écart au premier (ms), s'il est connu (Salon). */
   gap?: number;
+  /** Lot 55 : la référence publique de la course (sa case « fantôme », posée à la demande par `fantomesJeu.ts`). */
+  ref?: string;
 }
 
 /** Les médailles du jeu (`author`…) et celles du socle (`auteur`…). */
@@ -34,7 +36,7 @@ export function dayLines(lb: Pick<Leaderboard, "top" | "me">): (BoardLine | "gap
   const lines: (BoardLine | "gap")[] = [];
   rows.forEach((r, i) => {
     if (extra && r === extra) lines.push("gap");
-    lines.push({ rank: r.rank, name: names[i]!, ms: r.ms, medal: r.medal, me: isMe(r) || r === extra });
+    lines.push({ rank: r.rank, name: names[i]!, ms: r.ms, medal: r.medal, me: isMe(r) || r === extra, ref: r.ref });
   });
   return lines;
 }
@@ -45,6 +47,7 @@ export function dayLines(lb: Pick<Leaderboard, "top" | "me">): (BoardLine | "gap
  */
 export function lineEl(l: BoardLine, { compact = false }: { compact?: boolean } = {}): HTMLElement {
   const d = el("div", l.me ? "row ligne ligne--moi me" : "row ligne");
+  if (l.ref) d.dataset.ref = l.ref;
   const who = el("span", "who ligne__nom", l.name);
   if (l.me) who.append(el("span", "you", t("palmares.toi")));
   d.append(el("span", "rank ligne__rang", String(l.rank)), who);

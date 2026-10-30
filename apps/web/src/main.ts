@@ -18,7 +18,7 @@ import "./reglages.css";
 import "./tactile.css";
 import "./salon.css";
 import { aCle, appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, ajouterTextes, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
-import { boutonFantome, boutonPleinEcran, el as elDuSocle, icone, majPleinEcran, modeApplication, nomMedaille, pleinEcranBoutonVisible, reglerAideIphone, suivreDialogue } from "@cdj/ui";
+import { boutonFantome, boutonPleinEcran, iconeFantome, el as elDuSocle, icone, majPleinEcran, modeApplication, nomMedaille, pleinEcranBoutonVisible, reglerAideIphone, suivreDialogue } from "@cdj/ui";
 import { iconeDeTraces, iconeTrack } from "./icones";
 import { creerCadre, definirJour } from "./cadre";
 import { actionArrivee, autocollantMedaille, badgeEtEcart, creerArrivee, ligneNouvelleVoiture, ligneRang, tempsEnGrand, typeDeMedaille, type Arrivee } from "./arriveeUi";
@@ -84,7 +84,7 @@ import { msUntilNextParisDay, parisDay } from "@cdj/clock";
 import { sharedCircuitEngine, type DailyCircuit } from "./circuitEngine";
 import { archiveDays, disposeArchive, mountArchive, nextTheme, randomSeedHref, themeHref, type ArchiveArgs, type ThumbSource } from "./archive";
 import { loadArchiveExtras } from "./archiveExtras";
-import { DEMO_BASE, apiBase } from "./api";
+import { DEMO_BASE, apiBase, apiCall, type GhostData } from "./api";
 import { appliquerGeneration, lireSuite } from "@cdj/profile";
 import { elementsDeSuite } from "./jeuSuivant";
 import { annonceAutorisee, ecranAnnonce, type EcranAnnonce } from "./annonceEcran";
@@ -113,8 +113,9 @@ import { isValidName, normalizeName, setName, getName } from "./identity";
 import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch, type SteerMode } from "./touch";
 import { hintText, mountTouchUi } from "./touchUi";
-import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
-import type { GhostEntry, NameLabel } from "./salonGhosts";
+import { Online, type GhostMode } from "./online";
+import type { GhostEntry, GhostField, NameLabel } from "./salonGhosts";
+import type { Fantomes, HoteFantomes } from "./fantomesJeu";
 import { ORBIT_MIN_DIST, clampOrbit, nextWatchCamera, orbitOffset, progressOf, seekTick, tickAt, unwatchHref, wantsWatch, watchHref, watchTitle, REWIND_TICKS, WATCH_SPEEDS, type WatchEntry, type WatchSpeed } from "./watch";
 import type { WatchUi } from "./watchUi";
 import type { CompteurImages } from "./compteurImages";
@@ -483,7 +484,8 @@ function voitureDuFantome(c: ChoixVoiture | undefined) {
   if (fantomeVoulu !== fantomeId) void import("./voiture/fantomes").then((f) => f.poserFantome(hoteFantome, fantomeVoulu)).catch(() => undefined); // hors ligne : le fantôme garde son modèle
 }
 // Fantômes du Salon (lot 26) : plusieurs voitures translucides colorées, avec leur pseudo.
-const ghostField = salonMod && salon ? new salonMod.GhostField() : null;
+// Lot 55 : au circuit du jour, le champ est créé à la demande par le choix des fantômes (`fantomesJeu.ts`, `installerChamp`) ; au Salon, c'est celui du Salon.
+let ghostField: GhostField | null = salonMod && salon ? new salonMod.GhostField() : null;
 if (ghostField) view.scene.add(ghostField.group);
 
 // --- Rendu, effets et sons (lot 9) : présentation seule, lecture seule de la simulation --------------------
@@ -681,6 +683,7 @@ function syncGhostButton() {
   if (key === ghostShown) return;
   ghostShown = key;
   ghostBtn.setAttribute("aria-label", t("fantome.bouton", { nom: salon ? t(`salon.fantomes.${salon.ghostMode}`) : ghostText(ghostTag) }));
+  fantomes?.bouton(ghostBtn, ghostTag); // lot 55 : le mode en badge sur le bouton (le dessin et le code sont à la demande)
 }
 
 /**
@@ -844,7 +847,7 @@ let best: BestRun | null = track && !salon ? loadBest(track.id) : null;
 let ghostMode: GhostMode = params.get("ghost") === "off" || settings.ghost === "none" ? "off" : "mine";
 let ghostSource: BestRun | null = ghostMode === "mine" ? best : null;
 /** Le fantôme choisi, sans texte : le nom s'écrit à l'affichage, dans la langue courante (`ghostText`). */
-type GhostTag = { mode: GhostMode; name?: string; custom?: string };
+type GhostTag = { mode: GhostMode; name?: string; custom?: string; n?: number };
 let ghostTag: GhostTag = { mode: "mine" };
 const ghostText = (g: GhostTag): string => g.custom ?? (g.mode === "mine" ? t("course.fantome.tonRecord") : g.mode === "off" ? t("course.fantome.aucun") : t(g.mode === "first" ? "course.fantome.premier" : "course.fantome.devantToi", { nom: g.name ?? "" }));
 let ghostBusy = false;
@@ -1284,7 +1287,7 @@ function startAttempt(force = false) {
     session = new RunSession(track, ghostSource, carParams);
     ghostField?.restart(track); // Salon : les fantômes des autres repartent avec toi
     voitureDuFantome(session.ghost && ghostSource ? ghostSource.voiture : undefined); // lot 51 : la voiture de sa course
-    activeGhost = session.ghost && ghostSource ? { tag: ghostTag, ms: ghostSource.ms } : null;
+    activeGhost = session.ghost && ghostSource ? { tag: ghostTag, ms: ghostSource.ms } : ghostMode === "selection" ? { tag: ghostTag, ms: null } : null; // lot 55 : « vs ma sélection · 3 »
     pendingGhost = null;
     race = session.race;
     car = race.car;
@@ -1366,40 +1369,59 @@ function updateGhostInfo() {
   if (el.textContent !== text) el.textContent = text;
 }
 
-/** Choisit le fantôme : `tag` dit lequel (son texte est écrit à l'affichage) ; une chaîne vient d'un appelant qui a déjà son texte (Salon, rediffusion). */
-function setGhost(mode: GhostMode, source: BestRun | null, tag: GhostTag | string) {
+/**
+ * Choisit le fantôme : `tag` dit lequel (son texte est écrit à l'affichage) ; une chaîne vient d'un appelant qui a déjà son texte (Salon, rediffusion). Lot 55 : `note` précède l'annonce
+ * (« Pas encore de record · … »), `quiet` la supprime (le mode gardé, remis au lancement), `sansDepart` ne relance pas la course (le fantôme rejoint celle en cours).
+ */
+function setGhost(mode: GhostMode, source: BestRun | null, tag: GhostTag | string, options: { note?: string; quiet?: boolean; sansDepart?: boolean } = {}) {
   const chosen: GhostTag = typeof tag === "string" ? { mode, custom: tag } : tag;
   ghostMode = mode;
   ghostSource = source;
   ghostTag = chosen;
+  if (options.sansDepart) return;
   if (phase === "racing") {
     pendingGhost = { tag: chosen, ms: source ? source.ms : null };
     updateGhostInfo();
-    showBanner(t("course.fantome.suivant", { nom: ghostText(chosen) }), 2, true);
-  } else {
-    startAttempt(); // pas de course en cours : on repart tout de suite avec le nouveau fantôme
-    showBanner(t("course.fantome.annonce", { nom: ghostText(chosen) }), 1.6, true);
-  }
+  } else startAttempt(); // pas de course en cours : on repart tout de suite avec le nouveau fantôme
+  if (!options.quiet) showBanner((options.note ? `${options.note} · ` : "") + t(phase === "racing" ? "course.fantome.suivant" : "course.fantome.annonce", { nom: ghostText(chosen) }), phase === "racing" ? 2 : 1.6, true);
 }
 
-/** `G` et le bouton fantôme (lot G1) : fantôme suivant (son record → le premier → le joueur devant → aucun), en sautant ceux qui n'existent pas. */
+/**
+ * `G` et le bouton fantôme (lot G1, refait au lot 55) : Rien → Le mien → Le premier → Ma sélection → Rien, en sautant ce qui n'existe pas. Le cycle est dans `fantomesJeu.ts` (à la demande :
+ * le premier appui charge le morceau, qui reste ensuite).
+ */
 async function cycleGhost() {
   if (!track || ghostBusy) return;
   ghostBusy = true;
   try {
-    const modes = ghostModes(!!best?.replay, online.enabled);
-    let mode = ghostMode;
-    for (let i = 0; i < modes.length; i++) {
-      mode = nextGhostMode(mode, modes);
-      if (mode === "off") return setGhost("off", null, { mode: "off" });
-      if (mode === "mine") return setGhost("mine", best, { mode: "mine" });
-      const choice = await online.remoteGhost(mode);
-      if (choice) return setGhost(choice.mode, choice.source, { mode: choice.mode, name: choice.name });
-      showBanner(t(mode === "first" ? "course.fantome.pasDePremier" : "course.fantome.personneDevant"), 1.4, true);
-    }
-  } finally {
-    ghostBusy = false;
+    await (await chargerFantomes()).cycler();
+  } catch {
+    /* morceau introuvable (hors ligne avant son premier chargement) : le jeu continue */
   }
+  ghostBusy = false;
+}
+
+/** Le choix des fantômes (lot 55), chargé à la demande : au lancement (après le premier écran) et au premier appui sur G. */
+let fantomes: Fantomes | null = null;
+let fantomesChargement: Promise<Fantomes> | null = null;
+function chargerFantomes(): Promise<Fantomes> {
+  return (fantomesChargement ??= import("./fantomesJeu").then((m) => {
+    const hote: HoteFantomes = {
+      date: daily!.date,
+      online,
+      outils: { el: makeEl, button, t, fEcart, onLangue, ajouterTextes, iconeFantome, lireChoix, run: (date, ref) => (apiBase() ? apiCall<GhostData>(apiBase()!, "GET", `/api/day/${date}/run/${ref}`) : null), stockage: gameStorage() },
+      installerChamp(champ) {
+        ghostField = champ;
+        view.scene.add(champ.group);
+      },
+      etat: () => ({ track, phase, ticks: race ? race.car.tick : 0, accueil: homeOpen, mode: ghostMode, best }),
+      setGhost,
+      banner: showBanner,
+      ouvrirClassement: () => boardScreen.open(),
+    };
+    fantomes = m.monter(hote);
+    return fantomes;
+  }));
 }
 
 // --- Classement -----------------------------------------------------------------------------
@@ -2203,6 +2225,8 @@ function frame(now: number) {
     if (race.splits.length > shownSplits) {
       shownSplits = race.splits.length;
       renderSplits(); // la plaque du point de contrôle porte l'écart : plus d'annonce par-dessus la route
+      const proche = !watch && fantomes ? fantomes.ecart(shownSplits, race.splits[shownSplits - 1]!) : null; // lot 55 : l'écart avec le fantôme choisi le plus proche, une ligne de 3 s
+      if (proche) showBanner(proche, 3, true);
       if (touchPad) vibrate(touchPad.settings, 25);
       effects.checkpoint(car.x, car.y, car.z);
       gameAudio.play("checkpoint");
@@ -2862,6 +2886,10 @@ if (homeOpen) {
 } else if (needsHowto() && !watchWanted) howto.open();
 void syncProfile(); // au lancement // première visite sans passer par l'accueil (lien direct) : l'aide d'abord
 renderer.setAnimationLoop(frame);
+// Lot 55 : le choix des fantômes se charge juste après le premier écran (jamais dans le premier chargement), puis remet le mode gardé d'une course à l'autre (`?ghost=` l'emporte).
+if (track && daily && !salon && !watch && online.enabled) {
+  setTimeout(() => void chargerFantomes().then((f) => void (params.has("ghost") || f.restaurer())).catch(() => 0), 1500);
+}
 
 // Accès de débogage pour les tests de navigateur (`?debug`) : état de la course, sans effet sur le jeu.
 if (params.has("debug")) {
