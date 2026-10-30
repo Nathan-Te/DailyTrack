@@ -6,11 +6,11 @@ import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "./jeu.css";
 import { parisDay } from "@cdj/clock";
-import { empreinteVue, enregistrer, Partie, type Rapier, SCENARIO_ESSAI, type Scenario, scenarioPaliers, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
+import { empreinteVue, Partie, type Rapier, SCENARIO_ESSAI, type Scenario, scenarioPaliers, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
 import { el, formatDateCourte } from "@cdj/ui";
 import { Entrees } from "./entrees";
 import { texteDebug } from "./debug";
-import { fantomeDe, MemoireFantome, silhouetteDe } from "./fantomeLocal";
+import { MemoireFantome } from "./fantomeLocal";
 import { monterFin } from "./fin";
 import { Hud } from "./hud";
 import { appliquerDocument, chargerLangue, langueCourante, t } from "./i18n";
@@ -175,18 +175,17 @@ async function demarrer(): Promise<void> {
   function terminer(): void {
     const r = partie.resultat()!;
     const v = partie.vue();
-    // La partie s'est enregistrée : si c'est la meilleure de la session, on garde SA REDIFFUSION, et la silhouette du fantôme est l'état final de cette partie rejouée.
-    const rediffusion = enregistrer(partie);
-    const f = fantomeDe(rediffusion, r);
-    if (memoire.proposer(f)) {
-      void silhouetteDe(R, contenu, rediffusion).then(
-        (pieces) => {
-          f.pieces = pieces;
-          if (memoire.get() === f) poserFantome();
-        },
-        () => undefined,
-      );
-    }
+    // La partie s'est enregistrée : si c'est la meilleure de la session, on garde SA REDIFFUSION, et la silhouette du fantôme est l'état final de cette partie rejouée. Tout cela est chargé
+    // à la demande (`fantomeRejeu`) : les commandes sont copiées tout de suite, la partie est détruite dès qu'on rejoue.
+    const commandes = [...partie.commandesJouees()];
+    const enreg = { commandesJouees: () => commandes, scenario: partie.scenario, reglages: { ...partie.reglages } };
+    void import("./fantomeRejeu").then(async (m) => {
+      const rediffusion = m.enregistrer(enreg);
+      const f = m.fantomeDe(rediffusion, r);
+      if (!memoire.proposer(f)) return;
+      f.pieces = await m.silhouetteDe(R, contenu, rediffusion);
+      if (memoire.get() === f) poserFantome();
+    }).catch(() => undefined);
     hud.cache = true;
     fin.montrer(v, r, reglages.sim.vies);
   }

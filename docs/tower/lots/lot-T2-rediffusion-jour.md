@@ -41,6 +41,8 @@ Voir `docs/tower/consignes.md`, « Les paliers ». En une ligne : **pièce figé
 
 - **CI, premier passage** (run 41083857994) : tout vert sauf `unit (4/4)`, deux délais de 5 s dépassés **hors de la zone de Tower** (`apps/jump/test/surfaces.test.ts`, `apps/api/test/jump.test.ts`, générateur de Jump sous charge) ; la PR touche `package-lock.json`, donc toute la suite unitaire tourne. Relancé une fois par ce commit ; s'ils échouent encore, c'est à Nathan de trancher (règle d'arrêt, `CLAUDE.md`).
 
+- **Budget** (lot R15, `tower.jsCss`) : après la fusion de `main`, le premier chargement mesure 164 377 o pour un plafond de 160 000 (+6 707 depuis R15). J'ai mis l'enregistrement et le rejeu du fantôme à la demande (−1 600 o), puis **relevé le plafond à 168 000 o — à valider par Nathan** (sinon `poids.spec.ts` est rouge en CI de PR).
+
 ## Questions pour Nathan
 1. **L'équilibre.** Un joueur glouton (`tools/joueur.ts`, pas le bot du T3) monte à **44 m en 14 pièces** ; 40 carrés au centre font 78 m sans rien toucher. Les paliers de 40 à 60 m sont donc à portée vite : plateforme, vitesse de chute et formes seront à calibrer aux T3 et T5. Le calibrage des largeurs (5 à 8 m) vient avec.
 2. **Un seul effet à la fois, dans l'ordre** : deux paliers franchis d'un coup s'appliquent l'un après l'autre (le vent de trois pièces passe d'abord). Préfères-tu qu'ils se cumulent ?

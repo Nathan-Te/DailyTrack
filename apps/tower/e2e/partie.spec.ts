@@ -85,7 +85,7 @@ test("une partie de la suite d'essai : clavier, HUD, vies perdues, écran de fin
   await expect(page.locator("#fin-tombees")).toHaveText("3");
   await expect(page.locator("#fin-rejouer")).toBeFocused();
   // La partie qui vient de finir est ta meilleure : on en garde la REDIFFUSION, et la silhouette du fantôme est l'état final de cette partie rejouée (calculée tranche par tranche, juste après la fin).
-  expect(await page.evaluate(() => window.__tower.rediffusion())).toMatch(/^[A-Za-z0-9_-]{20,}$/);
+  await expect.poll(() => page.evaluate(() => window.__tower.rediffusion())).toMatch(/^[A-Za-z0-9_-]{20,}$/);
   await expect.poll(() => page.evaluate(() => window.__tower.fantome())).toBeGreaterThan(0);
 
   // « Rejouer » : une nouvelle partie, le fantôme de la précédente est derrière la tour.
