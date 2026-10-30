@@ -380,7 +380,7 @@ export interface JumpDebug {
   /** Pas joués depuis le départ. */
   readonly ticks: number;
   /** Tactile (lot 1b) : interface active, doigts posés (rôle et position), commande qu'ils donnent, panneau de réglages ouvert (jeu en pause). */
-  readonly touch: { active: boolean; fingers: { id: number; role: string; x: number; y: number }[]; bits: number; paused: boolean; panelOpen: boolean; viewTiles: number };
+  readonly touch: { active: boolean; fingers: { id: number; zone: string; x: number; y: number }[]; bits: number; paused: boolean; panelOpen: boolean; viewTiles: number };
   /** Pas à pas : la boucle ne fait plus avancer la simulation, seul `advance` le fait (sans rendu). */
   manual(on: boolean): void;
   /** Joue `n` pas tout de suite (commande injectée, sinon clavier et manette) et renvoie le personnage. */
@@ -2824,6 +2824,7 @@ if (touchOn) {
     forced: options.touch === "1",
     zones: options.zones,
     tune: options.tune,
+    debug: options.debug,
     buttonSize: settings.buttonSize,
     onGear: () => setPanel(true),
   });
