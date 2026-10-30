@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Lot 55 (partie B) — la planche sonore de la vitrine (`/track/vitrine/?planche=son`) : le moteur d'avant et les approches A (synthèse), B (échantillons rendus hors ligne) et C
-// (enregistrements CC0), écoutés sur une même course de voiture virtuelle. Personne n'écoute en CI : ce qu'on vérifie, c'est que **le son suit la voiture** (régime et hauteur
-// d'après le rendu hors ligne du scénario), qu'il ne ssature pas, qu'il n'est ni muet ni cassé, qu'aucun nœud audio ne fuit, que la planche s'ouvre sans erreur et que ses
+// Lot 55 (partie B) — la planche sonore de la vitrine (`/track/vitrine/?planche=son`) : le moteur d'avant et les approches A (synthèse) et B (échantillons rendus hors ligne),
+// écoutés sur une même course de voiture virtuelle. Personne n'écoute en CI : ce qu'on vérifie, c'est que **le son suit la voiture** (régime et hauteur
+// d'après le rendu hors ligne du scénario), qu'il ne sature pas, qu'il n'est ni muet ni cassé, qu'aucun nœud audio ne fuit, que la planche s'ouvre sans erreur et que ses
 // commandes répondent. Chromium seulement (Web Audio et API de rendu hors ligne).
 test.skip(({ browserName }) => browserName !== "chromium", "planche sonore : Chromium seulement");
 test.setTimeout(240_000);
@@ -41,12 +41,11 @@ const correlation = (a: number[], b: number[]) => {
 test("le son suit la voiture : chaque approche, chaque voiture, rendu hors ligne du scénario entier", async ({ page }) => {
   const erreurs = await ouvrir(page);
   for (const voiture of VOITURES) {
-    // Le seul enregistrement (C) est un moteur de voiture ordinaire : on l'essaie sur la Sparrow ; A et B ont un profil par voiture.
-    for (const approche of (voiture === "civile" ? ["A", "B", "C"] : ["A", "B"]) as ("A" | "B" | "C")[]) {
+    for (const approche of ["A", "B"] as const) {
       const r = await page.evaluate(
         async ([a, v]) => {
           const { module } = (await window.__vitrine!.son())!;
-          const r = await module.rendreHorsLigne(a as "A" | "B" | "C", v as never, 31, false);
+          const r = await module.rendreHorsLigne(a as "A" | "B", v as never, 31, false);
           return { crete: r.crete, rms: r.rms, nonFinis: r.nonFinis, noeuds: r.noeuds, fenetres: r.fenetres };
         },
         [approche, voiture],
@@ -65,20 +64,14 @@ test("le son suit la voiture : chaque approche, chaque voiture, rendu hors ligne
         return f.reduce((s, x) => s + x.rms, 0) / f.length;
       };
       expect(niveau(3, 14), `${nom} : à fond plus fort qu'au ralenti`).toBeGreaterThan(niveau(0, 1.2) * 2);
-      if (approche === "C") {
-        // L'enregistrement n'a pas la hauteur du modèle : on vérifie que le son s'ouvre et s'accélère avec le régime (brillance).
-        const c = correlation(w.map((x) => x.rpm), w.map((x) => x.brillance));
-        expect(c, `${nom} : la brillance suit le régime`).toBeGreaterThan(0.45);
-      } else {
-        // La hauteur trouvée (produit harmonique) est celle de la fréquence d'allumage, à l'octave près (un gros moteur a un demi-ordre fort : l'estimateur peut
-        // tomber une octave plus bas, ce que l'oreille entend aussi), hors ralenti et passages de rapport où le régime change vite.
-        const stables = w.filter((x) => x.rpm > 1500);
-        const bons = stables.filter((x) => {
-          const d = Math.log2(x.trouve / x.attendu);
-          return Math.abs(d - Math.round(d)) < 0.13;
-        });
-        expect(bons.length / stables.length, `${nom} : la hauteur suit le régime (${stables.map((x) => `${x.t}:${x.trouve}/${Math.round(x.attendu)}`).join(" ")})`).toBeGreaterThan(0.7);
-      }
+      // La hauteur trouvée (produit harmonique) est celle de la fréquence d'allumage, à l'octave près (un gros moteur a un demi-ordre fort : l'estimateur peut
+      // tomber une octave plus bas, ce que l'oreille entend aussi), hors ralenti et passages de rapport où le régime change vite.
+      const stables = w.filter((x) => x.rpm > 1500);
+      const bons = stables.filter((x) => {
+        const d = Math.log2(x.trouve / x.attendu);
+        return Math.abs(d - Math.round(d)) < 0.13;
+      });
+      expect(bons.length / stables.length, `${nom} : la hauteur suit le régime (${stables.map((x) => `${x.t}:${x.trouve}/${Math.round(x.attendu)}`).join(" ")})`).toBeGreaterThan(0.7);
     }
   }
   expect(erreurs).toEqual([]);
@@ -86,7 +79,7 @@ test("le son suit la voiture : chaque approche, chaque voiture, rendu hors ligne
 
 test("aucun nœud audio ne fuit : tout ce qu'un moteur crée est détaché et arrêté", async ({ page }) => {
   const erreurs = await ouvrir(page);
-  for (const approche of ["actuel", "A", "B", "C"] as const) {
+  for (const approche of ["actuel", "A", "B"] as const) {
     const r = await page.evaluate(async (a) => (await window.__vitrine!.son())!.module.verifierFuites(a, "muscle"), approche);
     expect(r.crees, approche).toBeGreaterThan(5);
     // Chaque nœud créé est détaché (un `disconnect` au moins) ; chaque source démarrée est arrêtée.
@@ -100,7 +93,7 @@ test("la planche s'ouvre sans erreur, les approches et les voitures se choisisse
   await page.setViewportSize({ width: 1280, height: 900 });
   const erreurs = await ouvrir(page);
   await expect(page.locator("[data-approche]").first()).toBeVisible();
-  await expect(page.locator(".segments [data-approche]")).toHaveCount(4);
+  await expect(page.locator(".segments [data-approche]")).toHaveCount(3);
   await expect(page.locator(".segments [data-voiture]")).toHaveCount(4);
   await expect(page.locator(".son-moment")).toHaveCount(11);
   // Rien des autres planches n'est montré.
@@ -117,7 +110,7 @@ test("la planche s'ouvre sans erreur, les approches et les voitures se choisisse
     return e.t > 3.5 && e.rapport >= 1 && e.rpm > 1500;
   });
   // B puis C se chargent (fichiers décodés) et se mesurent.
-  for (const a of ["B", "C"] as const) {
+  for (const a of ["B"] as const) {
     await page.locator(`.segments [data-approche="${a}"]`).click();
     await page.waitForFunction(async (x) => {
       const e = (await window.__vitrine!.son())!.planche.etat();
@@ -132,7 +125,7 @@ test("la planche s'ouvre sans erreur, les approches et les voitures se choisisse
   const m = await page.evaluate(async () => (await window.__vitrine!.son())!.planche.mesurer("A", 240, 1200));
   expect(m.jsMs).toBeGreaterThan(0);
   expect(m.jsMs, "le calcul JS d'une image reste très en dessous d'une image (16 ms)").toBeLessThan(4);
-  await expect(page.locator(".son-couts tbody tr")).toHaveCount(4);
+  await expect(page.locator(".son-couts tbody tr")).toHaveCount(3);
   await expect(page.locator('.son-couts tr[data-ligne="B"] td').nth(1)).not.toHaveText("à écouter");
   // La conduite à la main.
   await page.getByRole("button", { name: "Conduire à la main" }).click();

@@ -39,10 +39,10 @@ export interface ProfilMoteur {
   /** Niveau relatif du moteur de cette voiture dans le mélange ∈ [0, 1] (un V8 de muscle car couvre plus que le quatre-cylindres d'une compacte). */
   niveau: number;
   /**
-   * Étalonnage de chaque approche : le facteur qui met le niveau efficace de l'accélération à fond au même endroit pour les trois (≈ 0,24 × `niveau`), mesuré par
+   * Étalonnage de chaque approche : le facteur qui met le niveau efficace de l'accélération à fond au même endroit pour les deux (≈ 0,24 × `niveau`), mesuré par
    * `rendreHorsLigne` sur la planche (une comparaison à l'oreille ne vaut rien si l'une des approches est plus forte). À refaire si un timbre change.
    */
-  etalon: { synthese: number; echantillons: number; enregistre: number };
+  etalon: { synthese: number; echantillons: number };
 }
 
 /**
@@ -60,7 +60,7 @@ export const PROFILS: Partial<Record<IdVoiture, ProfilMoteur>> = {
     timbre: { pente: 1.35, harmoniques: 18, grondement: 0.12, rugosite: 0.1, souffle: 0.5, coupure: [900, 4200], saturation: 0.35 },
     petards: false,
     niveau: 0.9,
-    etalon: { synthese: 0.67, echantillons: 1.9, enregistre: 0.9 },
+    etalon: { synthese: 0.67, echantillons: 1.8 },
   },
   muscle: {
     id: "muscle",
@@ -72,7 +72,7 @@ export const PROFILS: Partial<Record<IdVoiture, ProfilMoteur>> = {
     timbre: { pente: 1.05, harmoniques: 22, grondement: 0.55, rugosite: 0.3, souffle: 0.45, coupure: [650, 3000], saturation: 0.6 },
     petards: true,
     niveau: 1,
-    etalon: { synthese: 0.5, echantillons: 1.8, enregistre: 0.85 },
+    etalon: { synthese: 0.5, echantillons: 1.78 },
   },
   monoplace: {
     id: "monoplace",
@@ -84,7 +84,7 @@ export const PROFILS: Partial<Record<IdVoiture, ProfilMoteur>> = {
     timbre: { pente: 0.8, harmoniques: 26, grondement: 0.05, rugosite: 0.04, souffle: 0.35, coupure: [2400, 9000], saturation: 0.25 },
     petards: false,
     niveau: 0.8,
-    etalon: { synthese: 1.27, echantillons: 2.2, enregistre: 1.0 },
+    etalon: { synthese: 1.27, echantillons: 2.4 },
   },
   fourgon: {
     id: "fourgon",
@@ -96,7 +96,7 @@ export const PROFILS: Partial<Record<IdVoiture, ProfilMoteur>> = {
     timbre: { pente: 1.7, harmoniques: 12, grondement: 0.35, rugosite: 0.65, souffle: 0.7, coupure: [520, 2300], saturation: 0.45 },
     petards: true,
     niveau: 0.95,
-    etalon: { synthese: 0.55, echantillons: 1.7, enregistre: 0.9 },
+    etalon: { synthese: 0.55, echantillons: 1.9 },
   },
 };
 

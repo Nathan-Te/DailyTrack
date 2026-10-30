@@ -209,7 +209,7 @@ interface VoitureDebug {
 }
 
 /** Lot 55 : les outils de la planche « Son » (src/vitrine/son.ts). */
-type ApprocheSon = "actuel" | "A" | "B" | "C";
+type ApprocheSon = "actuel" | "A" | "B";
 interface MesureSon {
   noeuds: number;
   octets: number;

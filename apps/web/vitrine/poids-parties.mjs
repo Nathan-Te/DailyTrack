@@ -81,7 +81,7 @@ const PARTIES = [
   // --- Lot 55 (partie B) : le son. Chaque approche est mesurée avec ce qu'elle tire (la boîte de vitesses virtuelle et les profils, communs aux trois) ; la planche affiche ces chiffres.
   ["Son : le moteur d'avant (lot 9 : audio.ts et audioLogic.ts ; déjà dans le jeu)", null, ["GameAudio"], { entree: `import { GameAudio } from "../audio";` }],
   ["Son : approche A — synthèse (moteurSynthese, boîte virtuelle, profils)", null, ["creerSynthese", "pasBoite", "profilDe"], { entree: `import { creerSynthese } from "../son/moteurSynthese"; import { pasBoite } from "../son/boite"; import { profilDe } from "../son/profils";` }],
-  ["Son : approche B — échantillons (lecteur de boucles, chargeur, boîte virtuelle, profils ; sert aussi à C)", null, ["creerEchantillons", "chargerBoucles", "pasBoite", "profilDe"], { entree: `import { creerEchantillons, chargerBoucles } from "../son/moteurEchantillons"; import { pasBoite } from "../son/boite"; import { profilDe } from "../son/profils";` }],
+  ["Son : approche B — échantillons (lecteur de boucles, chargeur, boîte virtuelle, profils )", null, ["creerEchantillons", "chargerBoucles", "pasBoite", "profilDe"], { entree: `import { creerEchantillons, chargerBoucles } from "../son/moteurEchantillons"; import { pasBoite } from "../son/boite"; import { profilDe } from "../son/profils";` }],
   ["Son : couche des pneus, du sol et du vent, et bruitages (coucheRoues.ts, commune aux approches)", null, ["creerCoucheRoues"], { entree: `import { creerCoucheRoues } from "../son/coucheRoues";` }],
 ];
 

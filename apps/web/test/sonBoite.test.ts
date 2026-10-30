@@ -249,7 +249,8 @@ describe("les nœuds audio : aucun ne s'accumule", () => {
 });
 
 describe("le lecteur d'échantillons", () => {
-  const refs = [900, 2000, 3000, 4200, 5500, 6800];
+  // Les boucles sont en progression géométrique du ralenti au rouge, comme celles de l'outil de rendu.
+  const refs = Array.from({ length: 8 }, (_, i) => 900 * Math.pow(6800 / 900, i / 7));
   it("fond les deux boucles voisines à puissance égale, les autres à zéro", () => {
     for (let rpm = 600; rpm <= 7500; rpm += 111) {
       const w = poidsFondu(refs, rpm);
@@ -257,15 +258,31 @@ describe("le lecteur d'échantillons", () => {
       expect(w.filter((v) => v > 0).length).toBeLessThanOrEqual(2);
     }
     expect(poidsFondu(refs, 100)[0]).toBe(1);
-    expect(poidsFondu(refs, 99999)[5]).toBe(1);
-    expect(poidsFondu(refs, 2000)[1]).toBeCloseTo(1, 6);
+    expect(poidsFondu(refs, 99999)[7]).toBe(1);
+    expect(poidsFondu(refs, refs[3]!)[3]).toBeCloseTo(1, 6);
     expect(poidsFondu([], 3000)).toEqual([]);
   });
-  it("la vitesse de lecture suit le régime, bornée", () => {
+  it("au milieu de deux boucles (en rapport), les deux pèsent autant", () => {
+    const milieu = Math.sqrt(refs[2]! * refs[3]!);
+    const w = poidsFondu(refs, milieu);
+    expect(w[2]).toBeCloseTo(w[3]!, 6);
+  });
+  it("la vitesse de lecture reste entre 0,7 et 1,45 : jamais trop aiguë", () => {
     expect(vitesseLecture(3000, 3000)).toBe(1);
     expect(vitesseLecture(3300, 3000)).toBeCloseTo(1.1, 6);
-    expect(vitesseLecture(1, 3000)).toBe(0.4);
-    expect(vitesseLecture(99999, 3000)).toBe(2.6);
+    expect(vitesseLecture(1, 3000)).toBe(0.7);
+    expect(vitesseLecture(99999, 3000)).toBe(1.45);
+    // Entre deux boucles voisines, aucune des deux ne joue hors de la plage : le rapport entre voisines est < 1,45 et leurs poids sont non nuls seulement entre elles.
+    for (let rpm = 900; rpm <= 6800; rpm += 37) {
+      const w = poidsFondu(refs, rpm);
+      w.forEach((poids, i) => {
+        if (poids > 0) {
+          const v = rpm / refs[i]!;
+          expect(v).toBeGreaterThan(0.7);
+          expect(v).toBeLessThan(1.45);
+        }
+      });
+    }
   });
 });
 

@@ -1,5 +1,4 @@
-// Lot 55 (partie B) — approches B (échantillons **rendus hors ligne** par `outils/son/rendre-echantillons.mjs`, un jeu de boucles par voiture) et C (enregistrements
-// libres de droits, CC0). Même lecteur pour les deux : une échelle de boucles à des régimes de référence, jouées en boucle sans fin, **fondues de l'une à l'autre**
+// Lot 55 (partie B) — approche B : échantillons **rendus hors ligne** par `outils/son/rendre-echantillons.mjs`, un jeu de boucles par voiture. Le lecteur : une échelle de boucles à des régimes de référence, jouées en boucle sans fin, **fondues de l'une à l'autre**
 // selon le régime (puissance égale), et dont la vitesse de lecture suit le rapport régime ÷ régime de référence ; un filtre passe-bas ferme le son quand on
 // lève le pied ; la coupure de couple d'un passage de rapport baisse le niveau un instant. Les boucles se chargent à la demande, celles de la voiture seulement.
 import { regimeNormal } from "./boite";
@@ -28,14 +27,15 @@ export function poidsFondu(refs: readonly number[], rpm: number): number[] {
   }
   let i = 0;
   while (rpm >= refs[i + 1]!) i++;
-  const x = (rpm - refs[i]!) / (refs[i + 1]! - refs[i]!);
+  // Interpolation sur le logarithme du régime : les boucles sont en progression géométrique, l'oreille juge en rapports.
+  const x = Math.log(rpm / refs[i]!) / Math.log(refs[i + 1]! / refs[i]!);
   w[i] = Math.cos((x * Math.PI) / 2);
   w[i + 1] = Math.sin((x * Math.PI) / 2);
   return w;
 }
 
-/** La vitesse de lecture d'une boucle jouée au régime `rpm` : bornée (au-delà, le timbre devient méconnaissable). */
-export const vitesseLecture = (rpm: number, ref: number): number => Math.min(2.6, Math.max(0.4, rpm / ref));
+/** La vitesse de lecture d'une boucle jouée au régime `rpm` : bornée (au-delà, le timbre devient méconnaissable ; les boucles voisines sont à moins de 1,35 fois l'une de l'autre). */
+export const vitesseLecture = (rpm: number, ref: number): number => Math.min(1.45, Math.max(0.7, rpm / ref));
 
 export function creerEchantillons(ctx: BaseAudioContext, sortie: AudioNode, p: ProfilMoteur, boucles: readonly Boucle[], nom: string, etalon: number): Moteur {
   const c = new Compteur();
@@ -46,9 +46,14 @@ export function creerEchantillons(ctx: BaseAudioContext, sortie: AudioNode, p: P
   const lp = c.nd(ctx.createBiquadFilter());
   lp.type = "lowpass";
   lp.Q.value = 0.7;
+  // Un creux léger dans l'aigu (retouche après écoute : « un peu trop aigu parfois »).
+  const doux = c.nd(ctx.createBiquadFilter());
+  doux.type = "highshelf";
+  doux.frequency.value = 2800;
+  doux.gain.value = -4;
   const amp = c.nd(ctx.createGain());
   amp.gain.value = 0;
-  lp.connect(amp).connect(sortieMoteur);
+  lp.connect(doux).connect(amp).connect(sortieMoteur);
   const voix = boucles.map((b) => {
     const s = c.nd(ctx.createBufferSource());
     s.buffer = b.buffer;
@@ -75,7 +80,7 @@ export function creerEchantillons(ctx: BaseAudioContext, sortie: AudioNode, p: P
         if (w[i]! > 0.001) v.s.playbackRate.setTargetAtTime(vitesseLecture(e.rpm, refs[i]!), now, k);
       });
       const rn = regimeNormal(p, e.rpm);
-      lp.frequency.setTargetAtTime(lerp(p.timbre.coupure[0] * 1.6, p.timbre.coupure[1] * 1.6, rn) * (0.3 + 0.7 * e.charge), now, k);
+      lp.frequency.setTargetAtTime(lerp(p.timbre.coupure[0] * 1.1, p.timbre.coupure[1] * 1.1, rn) * (0.3 + 0.7 * e.charge), now, k);
       amp.gain.setTargetAtTime((0.14 + 0.7 * e.charge) * (0.55 + 0.45 * rn) * (e.enAir ? 0.85 : 1), now, k);
     },
     petarade() {

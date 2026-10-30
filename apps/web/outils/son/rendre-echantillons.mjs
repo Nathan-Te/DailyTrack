@@ -15,10 +15,14 @@ import { PROFILS, PROFILS_PLANCHE } from "../../src/son/profils.ts";
 
 const SR = 22050;
 const SORTIE = fileURLToPath(new URL("../../vitrine/son/b/", import.meta.url));
-/** Les régimes de référence de chaque profil, en fraction de la plage ralenti → rouge. */
-const FRACTIONS = [0, 0.18, 0.36, 0.56, 0.78, 1];
+/**
+ * Les régimes de référence de chaque profil : **en progression géométrique** du ralenti au rouge (retouche après écoute de Nathan : avec des boucles réparties
+ * linéairement, la première boucle était jouée jusqu'à 2,2 fois plus vite que son régime, donc « trop aiguë »). Huit boucles : deux voisines sont toujours à moins
+ * de 1,35 fois l'une de l'autre, la vitesse de lecture reste entre 0,75 et 1,35.
+ */
+const BOUCLES = 8;
 /** Durée minimale (s) d'une période de boucle : assez de cycles pour que la variation entre cylindres s'entende. */
-const PERIODE_MIN = 0.42;
+const PERIODE_MIN = 0.44;
 
 /**
  * Le caractère de l'échappement de chaque profil (ce que le synthé de l'approche A ne fait pas) : les fréquences des modes (Hz) et leur poids, la durée
@@ -87,9 +91,36 @@ function rendre(id, rpmVoulu, graine) {
   moy /= N;
   let s2 = 0;
   for (let i = 0; i < N; i++) {
-    x[i] = Math.tanh(1.6 * (x[i] - moy));
+    x[i] = Math.tanh(1.3 * (x[i] - moy));
     s2 += x[i] * x[i];
   }
+  // Le souffle de l'admission et du bloc : un bruit lissé (période = la boucle), plus fort avec le régime, et le passe-bas qui ôte l'aigu criard (un pôle, circulaire :
+  // la boucle reste sans raccord). La coupure suit celle du moteur (`timbre.coupure`), un peu plus haut : l'oreille veut de la matière, pas du sifflement.
+  const blanc = new Float32Array(N);
+  for (let i = 0; i < N; i++) blanc[i] = alea() * 2 - 1;
+  const bruit = new Float32Array(N);
+  const aBruit = 1 - Math.exp((-2 * Math.PI * (300 + 900 * rn)) / SR);
+  let lisse = blanc[N - 1];
+  for (let tour = 0; tour < 2; tour++) {
+    for (let i = 0; i < N; i++) {
+      lisse += aBruit * (blanc[i] - lisse);
+      if (tour === 1) bruit[i] = lisse;
+    }
+  }
+  let rb = 0;
+  for (const v of bruit) rb += v * v;
+  const niveauBruit = (0.1 + 0.18 * rn) * Math.sqrt(s2 / N) / Math.sqrt(rb / N + 1e-12);
+  const fc = (p.timbre.coupure[0] + rn * (p.timbre.coupure[1] - p.timbre.coupure[0])) * 1.5;
+  const ac = 1 - Math.exp((-2 * Math.PI * fc) / SR);
+  let y = x[N - 1];
+  for (let tour = 0; tour < 2; tour++) {
+    for (let i = 0; i < N; i++) {
+      y += ac * (x[i] + niveauBruit * bruit[i] * (tour === 1 ? 1 : 0) - y);
+      if (tour === 1) x[i] = y;
+    }
+  }
+  s2 = 0;
+  for (let i = 0; i < N; i++) s2 += x[i] * x[i];
   const g = 0.2 / Math.sqrt(s2 / N);
   let crete = 0;
   for (let i = 0; i < N; i++) {
@@ -128,17 +159,17 @@ try {
   PROFILS_PLANCHE.forEach((id, ip) => {
     const p = PROFILS[id];
     const boucles = [];
-    FRACTIONS.forEach((fr, i) => {
-      const voulu = p.ralenti + fr * (p.rouge - p.ralenti);
+    for (let i = 0; i < BOUCLES; i++) {
+      const voulu = p.ralenti * Math.pow(p.rouge / p.ralenti, i / (BOUCLES - 1));
       const { x, rpm, N } = rendre(id, voulu, 1000 * (ip + 1) + i);
       const wav = join(tmp, `${id}-${i}.wav`);
       const fichier = `${id}-${i}.m4a`;
       ecrireWav(wav, x);
-      execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", wav, "-ac", "1", "-ar", String(SR), "-c:a", "aac", "-b:a", "32k", join(SORTIE, fichier)]);
+      execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", wav, "-ac", "1", "-ar", String(SR), "-c:a", "aac", "-b:a", "40k", join(SORTIE, fichier)]);
       const L = N / SR;
       boucles.push({ fichier, rpm: Math.round(rpm * 10) / 10, debut: Math.round(L * 1e6) / 1e6, fin: Math.round(2 * L * 1e6) / 1e6 });
       console.log(`${fichier}  ${Math.round(rpm)} tr/min  boucle ${(L * 1000).toFixed(0)} ms`);
-    });
+    }
     manifeste.profils[id] = boucles;
   });
   writeFileSync(join(SORTIE, "manifeste.json"), `${JSON.stringify(manifeste, null, 2)}\n`);

@@ -1,4 +1,4 @@
-// Lot 55 (partie B) — ce que partagent les moteurs du son (synthèse, échantillons rendus hors ligne, enregistrements) : l'entrée, le contrat, un bruit blanc
+// Lot 55 (partie B) — ce que partagent les moteurs du son (synthèse, échantillons rendus hors ligne) : l'entrée, le contrat, un bruit blanc
 // semé. Module à la demande. Le son ne lit que l'état de la voiture : un moteur ne peut rien changer à une course.
 import type { EtatBoite } from "./boite";
 

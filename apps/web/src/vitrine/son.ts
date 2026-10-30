@@ -1,6 +1,6 @@
 // Lot 55 (partie B) — la planche sonore de la vitrine (`/track/vitrine/?planche=son`, recette et aperçus seulement, chargée à la demande). Elle fait écouter **la même course**
 // (la voiture virtuelle : ralenti, coup de gaz à l'arrêt, accélération sur six rapports, lever de pied, freinage, terre en dérive, turbo, vibreur, saut) avec le moteur d'avant
-// et les trois approches : A (synthèse), B (échantillons rendus hors ligne), C (enregistrements CC0), pour quatre voitures très différentes — et donne le coût de chacune.
+// et deux approches : A (synthèse) et B (échantillons rendus hors ligne), pour quatre voitures très différentes — et donne le coût de chacune.
 // Nathan écoute (téléphone et ordinateur, au casque) et choisit ; rien de ceci n'est dans le jeu. Outil interne, en français, exempté des catalogues (comme le reste de la vitrine).
 import { boiteInitiale, pasBoite, type EtatBoite } from "../son/boite";
 import { creerCoucheRoues, type CoucheRoues } from "../son/coucheRoues";
@@ -11,7 +11,6 @@ import { creerSynthese } from "../son/moteurSynthese";
 import { PROFILS_PLANCHE, frequenceAllumage, profilDe, type ProfilMoteur } from "../son/profils";
 import { DUREE_SCENARIO, MOMENTS, gazDe, voitureVirtuelle, type TrameVirtuelle } from "../son/voitureVirtuelle";
 import manifesteB from "../../vitrine/son/b/manifeste.json";
-import manifesteC from "../../vitrine/son/c/manifeste.json";
 
 /** Les fichiers audio de la planche : leurs adresses finales (Vite les copie avec une empreinte). */
 const FICHIERS = import.meta.glob("../../vitrine/son/**/*.m4a", { query: "?url", import: "default", eager: true }) as Record<string, string>;
@@ -21,9 +20,9 @@ const urlDe = (rel: string): string => {
   return u;
 };
 
-export type Approche = "actuel" | "A" | "B" | "C";
-const APPROCHES: readonly Approche[] = ["actuel", "A", "B", "C"];
-const NOMS: Record<Approche, string> = { actuel: "Actuel (lot 9)", A: "A · Synthèse", B: "B · Échantillons rendus hors ligne", C: "C · Enregistrements CC0" };
+export type Approche = "actuel" | "A" | "B";
+const APPROCHES: readonly Approche[] = ["actuel", "A", "B"];
+const NOMS: Record<Approche, string> = { actuel: "Actuel (lot 9)", A: "A · Synthèse", B: "B · Échantillons rendus hors ligne" };
 
 const NOMS_VOITURES: Record<string, string> = { civile: "Sparrow · petit 4-cylindres", muscle: "Boar · V8", monoplace: "Sailfish · monoplace", fourgon: "Pelican · vieux moteur" };
 
@@ -56,22 +55,19 @@ interface Mesure {
   charge: { moyenne: number; pic: number } | null;
 }
 
-/** Les boucles d'une approche pour une voiture (B : rendues pour elle ; C : les six enregistrements, replacés sur sa plage de régime). */
-function entreesDe(approche: "B" | "C", p: ProfilMoteur): EntreeBoucle[] {
-  if (approche === "B") {
-    const liste = (manifesteB.profils as Record<string, { fichier: string; rpm: number; debut: number; fin: number }[]>)[p.id] ?? [];
-    return liste.map((b) => ({ url: urlDe(`b/${b.fichier}`), rpm: b.rpm, debut: b.debut, fin: b.fin }));
-  }
-  return manifesteC.boucles.map((b) => ({ url: urlDe(`c/${b.fichier}`), rpm: p.ralenti + b.fraction * (p.rouge - p.ralenti), marge: b.marge }));
+/** Les boucles de B pour une voiture (rendues pour elle par `outils/son/rendre-echantillons.mjs`). */
+function entreesDe(p: ProfilMoteur): EntreeBoucle[] {
+  const liste = (manifesteB.profils as Record<string, { fichier: string; rpm: number; debut: number; fin: number }[]>)[p.id] ?? [];
+  return liste.map((b) => ({ url: urlDe(`b/${b.fichier}`), rpm: b.rpm, debut: b.debut, fin: b.fin }));
 }
 
 /** Les boucles décodées, gardées par approche et par voiture (on ne recharge pas à chaque bascule). */
 const cacheBoucles = new Map<string, Promise<{ boucles: Boucle[]; octets: number; decodageMs: number; memoire: number }>>();
-function boucles(ctx: BaseAudioContext, approche: "B" | "C", p: ProfilMoteur) {
-  const cle = `${approche}:${p.id}`;
+function boucles(ctx: BaseAudioContext, p: ProfilMoteur) {
+  const cle = p.id;
   let r = cacheBoucles.get(cle);
   if (!r) {
-    r = chargerBoucles(ctx, entreesDe(approche, p));
+    r = chargerBoucles(ctx, entreesDe(p));
     cacheBoucles.set(cle, r);
   }
   return r;
@@ -81,8 +77,8 @@ function boucles(ctx: BaseAudioContext, approche: "B" | "C", p: ProfilMoteur) {
 async function fabriquer(ctx: BaseAudioContext, sortie: AudioNode, bruit: AudioBuffer, approche: Approche, p: ProfilMoteur): Promise<{ moteur: Moteur; octets: number; decodageMs: number; memoire: number }> {
   if (approche === "actuel") return { moteur: creerActuel(ctx, sortie), octets: 0, decodageMs: 0, memoire: 0 };
   if (approche === "A") return { moteur: creerSynthese(ctx, sortie, p, bruit), octets: 0, decodageMs: 0, memoire: 0 };
-  const b = await boucles(ctx, approche, p);
-  return { moteur: creerEchantillons(ctx, sortie, p, b.boucles, NOMS[approche], approche === "B" ? p.etalon.echantillons : p.etalon.enregistre), octets: b.octets, decodageMs: b.decodageMs, memoire: b.memoire };
+  const b = await boucles(ctx, p);
+  return { moteur: creerEchantillons(ctx, sortie, p, b.boucles, NOMS[approche], p.etalon.echantillons), octets: b.octets, decodageMs: b.decodageMs, memoire: b.memoire };
 }
 
 // --- Le rendu hors ligne et l'analyse (tests et mesures) ----------------------------------------------------------------------------------------------
@@ -283,7 +279,7 @@ export async function monter(racine: HTMLElement, hote: HoteSon): Promise<Planch
   p1.append(
     "Une même course, jouée par une ",
     el("strong", undefined, "voiture virtuelle"),
-    " (ralenti, coup de gaz à l'arrêt, accélération sur six rapports, lever de pied, freinage, relance sur la terre en dérive, turbo, vibreur, saut), écoutée avec le moteur d'avant et avec trois approches. ",
+    " (ralenti, coup de gaz à l'arrêt, accélération sur six rapports, lever de pied, freinage, relance sur la terre en dérive, turbo, vibreur, saut), écoutée avec le moteur d'avant et avec deux approches. ",
     "Écoute au casque puis au haut-parleur, sur téléphone et sur ordinateur. Les pneus, le vent et les bruitages sont ",
     el("strong", undefined, "les mêmes"),
     " partout : seule la voix du moteur change. Touche une approche ou une voiture pendant que ça joue pour comparer sur le même instant.",
@@ -444,23 +440,14 @@ export async function monter(racine: HTMLElement, hote: HoteSon): Promise<Planch
       "Coût : aucun fichier, une douzaine de nœuds. Risque : un timbre « synthé » qu'aucun réglage ne fait tout à fait disparaître. Mon avis (sans l'avoir entendu) : la plus économique et la plus souple ; la crédibilité dépend de ton oreille.",
     ],
     B: [
-      "Échantillons rendus hors ligne par un outil du dépôt : un modèle d'allumages et d'échappement (résonances amorties par moteur) rendu en six boucles par voiture, jouées en boucle sans fin, fondues l'une dans l'autre selon le régime, accélérées ou ralenties pour suivre le régime exact.",
-      "Coût : ≈ 38 ko par voiture à télécharger (à la demande, la voiture choisie seulement), un décodage au chargement, très peu de calcul (lecture de six boucles). Aucune licence. Mon avis (sans l'avoir entendu) : plus de matière que la synthèse pour le même calcul, des voix vraiment distinctes ; mais rendu par modèle, pas enregistré.",
-    ],
-    C: [
-      "Enregistrements libres de droits (CC0) : six boucles de moteur d'une même voiture (OpenGameArt), replacées sur la plage de régime de la voiture écoutée et jouées comme en B.",
-      "Coût : ≈ 28 ko pour ce seul moteur ; il faudrait un jeu d'enregistrements par voiture (dix), qu'il faut trouver, licencier et créditer ; qualité des CC0 libres limitée (un seul moteur, hauteur étroite). Mon avis (sans l'avoir entendu) : le plus réaliste en principe, mais ce qui existe en libre n'offre pas dix voix ; on entend ici le plafond de l'approche avec une seule source.",
+      "Échantillons rendus hors ligne par un outil du dépôt : un modèle d'allumages et d'échappement (résonances amorties par moteur) rendu en huit boucles par voiture, jouées en boucle sans fin, fondues l'une dans l'autre selon le régime, accélérées ou ralenties pour suivre le régime exact.",
+      "Coût : ≈ 67 ko par voiture à télécharger (à la demande, la voiture choisie seulement), un décodage au chargement, très peu de calcul (lecture de six boucles). Aucune licence. Mon avis (sans l'avoir entendu) : plus de matière que la synthèse pour le même calcul, des voix vraiment distinctes ; mais rendu par modèle, pas enregistré.",
     ],
   };
   const majAvis = () => {
     avis.textContent = "";
     avis.append(el("h3", undefined, NOMS[approche]));
     for (const t of AVIS[approche]) avis.append(el("p", undefined, t));
-    if (approche === "C") {
-      const note = el("p", "note");
-      note.append("Sources, licence CC0 et empreintes : ", el("code", undefined, "apps/web/vitrine/son/LISEZMOI.md"), ".");
-      avis.append(note);
-    }
   };
 
   async function construire(): Promise<void> {
@@ -497,7 +484,7 @@ export async function monter(racine: HTMLElement, hote: HoteSon): Promise<Planch
     const parties = hote.parties();
     const poidsCode = (a: Approche): string => {
       if (!parties) return "…";
-      const cle = { actuel: "Son : le moteur d'avant", A: "Son : approche A", B: "Son : approche B", C: "Son : approche B" }[a];
+      const cle = { actuel: "Son : le moteur d'avant", A: "Son : approche A", B: "Son : approche B" }[a];
       const o = Object.entries(parties).find(([n]) => n.startsWith(cle))?.[1];
       return o === undefined ? "…" : a === "actuel" ? `${ko(o)} (déjà dans le jeu)` : ko(o);
     };
@@ -507,9 +494,9 @@ export async function monter(racine: HTMLElement, hote: HoteSon): Promise<Planch
       tr.dataset.ligne = a;
       tr.append(el("th", undefined, NOMS[a]));
       tr.append(el("td", undefined, poidsCode(a)));
-      tr.append(el("td", undefined, m ? (a === "B" || a === "C" ? ko(m.octets) : "aucun") : "à écouter"));
-      tr.append(el("td", undefined, m ? (a === "B" || a === "C" ? `${fmt(m.decodageMs)} ms` : "—") : "—"));
-      tr.append(el("td", undefined, m ? (a === "B" || a === "C" ? `${fmt(m.memoire / 1024)} ko` : "—") : "—"));
+      tr.append(el("td", undefined, m ? (a === "B" ? ko(m.octets) : "aucun") : "à écouter"));
+      tr.append(el("td", undefined, m ? (a === "B" ? `${fmt(m.decodageMs)} ms` : "—") : "—"));
+      tr.append(el("td", undefined, m ? (a === "B" ? `${fmt(m.memoire / 1024)} ko` : "—") : "—"));
       tr.append(el("td", undefined, m ? String(m.noeuds) : "—"));
       tr.append(el("td", undefined, m && m.images > 0 ? `${fmt(m.jsMs, 3)} ms` : "—"));
       tr.append(el("td", undefined, m?.charge ? `${fmt(m.charge.moyenne * 100, 1)} % (pic ${fmt(m.charge.pic * 100, 1)} %)` : "—"));
