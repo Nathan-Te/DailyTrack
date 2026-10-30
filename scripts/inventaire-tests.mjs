@@ -31,7 +31,7 @@ export function testsE2e(jeu) {
 
 /** Les familles des specs d'un jeu : `{ spec: { essentiel: n, regression: n, navigateurs: n, secondes, secondesEssentiel } }`. */
 export function specsParFamille(jeu, tests = testsE2e(jeu)) {
-  const nom = jeu === "web" ? "web" : "jump";
+  const nom = jeu;
   const regression = new Set((zones.regression ?? []).filter((s) => s.startsWith(`${nom}/`)).map((s) => s.slice(nom.length + 1)));
   const durees = JSON.parse(readFileSync(join(ROOT, "apps", jeu, "e2e/durees.json"), "utf8"));
   const par = {};
@@ -67,7 +67,7 @@ function main(argv) {
   const lignes = ["| Famille | Specs e2e (fichiers) | Tests e2e | Durée Chromium (s) | Fichiers unitaires | Tests unitaires | Durée unitaires (s) |", "|---|---|---|---|---|---|---|"];
   const tot = { Essentiel: [0, 0, 0, 0, 0, 0], Régression: [0, 0, 0, 0, 0, 0], Outil: [0, 0, 0, 0, 0, 0] };
   const detail = [];
-  for (const jeu of ["web", "jump"]) {
+  for (const jeu of ["web", "jump", "tower"]) {
     const par = specsParFamille(jeu);
     for (const [spec, p] of Object.entries(par).sort()) {
       const famille = p.entier ? "Régression" : p.regression ? `Essentiel (${p.essentiel}) + Régression (${p.regression})` : "Essentiel";

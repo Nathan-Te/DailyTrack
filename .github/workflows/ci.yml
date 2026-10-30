@@ -110,7 +110,7 @@ jobs:
           [ "${{ needs.zones.result }}" = success ] || { echo "::error::une PR de jeu sort de ses zones (job zones, docs/orchestration.md « Lots en parallèle »)"; exit 1; }
           [ "${{ needs.unit.result }}" != skipped ] || echo "### test : aucun test unitaire concerné (docs seuls) — verdict vert" | tee -a "$GITHUB_STEP_SUMMARY"
 
-  # Retouche du lot I6 — « Lots en parallèle » (docs/orchestration.md) : une PR de jeu (étiquette `jeu:track` / `jeu:jump`, ou `track` / `jump`
+  # Retouche du lot I6 — « Lots en parallèle » (docs/orchestration.md) : une PR de jeu (étiquette `jeu:track` / `jeu:jump` / `jeu:tower`, ou `track` / `jump` / `tower`
   # dans le nom de branche) ne change que les fichiers de ses zones ; une zone partagée = un lot de la plateforme (scripts/zones-jeu.mjs, testé).
   # Une PR de la plateforme n'a pas de garde ; hors PR (main, nuit, manuel), rien à garder. L'étiquette est lue à chaque run : posée après le
   # dernier push, elle compte au push suivant.
@@ -147,6 +147,7 @@ jobs:
     outputs:
       track: ${{ steps.scope.outputs.track }}
       jump: ${{ steps.scope.outputs.jump }}
+      tower: ${{ steps.scope.outputs.tower }}
       server: ${{ steps.scope.outputs.server }}
       full: ${{ steps.scope.outputs.full }}
       mode: ${{ steps.scope.outputs.mode }}
@@ -207,7 +208,7 @@ jobs:
   e2e-parts:
     needs: scope
     if: needs.scope.outputs.mode != 'pr'
-    name: e2e-parts (${{ matrix.suite == 'jump' && 'jump ' || '' }}${{ matrix.browser }}${{ matrix.suite == 'navigateurs' && ', petit ensemble' || format(' {0}', matrix.shard) }})
+    name: e2e-parts (${{ matrix.suite == 'jump' && 'jump ' || matrix.suite == 'tower' && 'tower ' || '' }}${{ matrix.browser }}${{ matrix.suite == 'navigateurs' && ', petit ensemble' || format(' {0}', matrix.shard) }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -260,7 +261,7 @@ jobs:
           path: ~/paquets-playwright
           key: ${{ steps.paquets.outputs.cle }}
       - run: npm run build && npm run build:node -w @cdj/api
-        if: matrix.suite != 'jump'
+        if: matrix.suite != 'jump' && matrix.suite != 'tower'
         env:
           # Lot R8 : les e2e tournent le 20/10/2026 (horloge maîtrisée) : les archives des jeux commencent au circuit n° 1, pas au lancement public.
           VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
@@ -269,9 +270,12 @@ jobs:
         env:
           # Lot R8 : les e2e tournent le 20/10/2026 (horloge maîtrisée) : les archives des jeux commencent au circuit n° 1, pas au lancement public.
           VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
+      # Lot R15 : Tower (3ᵉ jeu) n'a besoin que de lui (ni serveur ni autre jeu : ses specs servent `apps/tower/dist` par `vite preview`).
+      - run: npm run build -w @cdj/tower
+        if: matrix.suite == 'tower'
       - name: Nom de la part
         run: |
-          blob="$(echo '${{ matrix.suite == 'jump' && 'jump-' || '' }}${{ matrix.browser }}-${{ matrix.shard }}' | sed 's#/#sur#')"
+          blob="$(echo '${{ matrix.suite == 'jump' && 'jump-' || matrix.suite == 'tower' && 'tower-' || '' }}${{ matrix.browser }}-${{ matrix.shard }}' | sed 's#/#sur#')"
           # Lot R13 : `--essentiel` (CI de main) écarte les specs « Régression » ; `--grep-invert` les tests `@regression` des autres.
           if [ "${{ matrix.essentiel }}" = true ]; then echo "PARTS_OPT=--essentiel" >> "$GITHUB_ENV"; echo "PW_OPT=--grep-invert=@regression" >> "$GITHUB_ENV"; fi
           echo "blob=$blob" >> "$GITHUB_ENV"
@@ -281,7 +285,7 @@ jobs:
       # Le runner a 2 cœurs : deux pages en WebGL logiciel côte à côte s'y affament (miniatures + spectateur : × 3 à × 6 sur les durées),
       # et `--shard` (coupe au nombre de tests) changeait de voisins à chaque spec ajouté.
       - name: Tests e2e (${{ matrix.browser }}, part ${{ matrix.shard }})
-        if: matrix.suite != 'jump' && matrix.suite != 'navigateurs'
+        if: matrix.suite == 'web'
         run: |
           node scripts/e2e-parts.mjs ${{ matrix.shard }} chromium $PARTS_OPT > "$RUNNER_TEMP/part.txt"
           npm run e2e -w @cdj/web -- --project=chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt" $PW_OPT
@@ -296,6 +300,12 @@ jobs:
         env:
           E2E_BLOB_NAME: report-${{ matrix.browser }}-jump.zip
         run: npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }}
+      # Lot R15 : Tower entre dans le petit ensemble (`@navigateurs` : la rediffusion du banc, bit à bit, dans le navigateur ; sa configuration filtre Firefox et WebKit).
+      - name: Tests e2e Tower, petit ensemble (${{ matrix.browser }})
+        if: always() && matrix.suite == 'navigateurs'
+        env:
+          E2E_BLOB_NAME: report-${{ matrix.browser }}-tower.zip
+        run: npm run e2e -w @cdj/tower -- --project=tower-${{ matrix.browser }}
       # DailyJump (lot 3c) : mêmes règles que DailyTrack. Chromium : parts composées par durée (apps/jump/e2e/durees.json) et un test à la fois
       # (même runner à 2 cœurs, même rendu logiciel). Les outils de mesure et de captures (MESURE, CAPTURES) ne sont pas listés sans leur variable
       # (`testIgnore` des configurations de Playwright, lot R13) : ni l'une ni l'autre n'est définie ici.
@@ -304,11 +314,17 @@ jobs:
         run: |
           node scripts/e2e-parts.mjs ${{ matrix.shard }} jump-chromium $PARTS_OPT > "$RUNNER_TEMP/part.txt"
           npm run e2e -w @cdj/jump -- --project=jump-chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt" $PW_OPT
+      # Lot R15 : Tower (3ᵉ jeu), mêmes règles : Chromium en parts par durée (apps/tower/e2e/durees.json), un test à la fois.
+      - name: Tests e2e Tower (${{ matrix.browser }}, part ${{ matrix.shard }})
+        if: matrix.suite == 'tower'
+        run: |
+          node scripts/e2e-parts.mjs ${{ matrix.shard }} tower-chromium $PARTS_OPT > "$RUNNER_TEMP/part.txt"
+          npm run e2e -w @cdj/tower -- --project=tower-chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt" $PW_OPT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && matrix.suite != 'navigateurs'
         with:
           name: blob-${{ env.blob }}
-          path: ${{ matrix.suite == 'jump' && 'apps/jump' || 'apps/web' }}/blob-report/
+          path: ${{ matrix.suite == 'jump' && 'apps/jump' || matrix.suite == 'tower' && 'apps/tower' || 'apps/web' }}/blob-report/
           retention-days: 7
           if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -325,6 +341,13 @@ jobs:
           path: apps/jump/blob-report/
           retention-days: 7
           if-no-files-found: warn
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.suite == 'navigateurs'
+        with:
+          name: blob-${{ env.blob }}-tower
+          path: apps/tower/blob-report/
+          retention-days: 7
+          if-no-files-found: warn
       # Traces des essais ratés (même ceux d'un test réussi à la relance) : de quoi trouver la cause d'une instabilité.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
@@ -333,6 +356,7 @@ jobs:
           path: |
             apps/web/test-results/
             apps/jump/test-results/
+            apps/tower/test-results/
           retention-days: 7
           if-no-files-found: ignore
 
@@ -350,6 +374,7 @@ jobs:
     env:
       SPECS_WEB: ${{ matrix.web }}
       SPECS_JUMP: ${{ matrix.jump }}
+      SPECS_TOWER: ${{ matrix.tower }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -401,6 +426,9 @@ jobs:
         env:
           # Lot R8 : les e2e tournent le 20/10/2026 (horloge maîtrisée) : les archives des jeux commencent au circuit n° 1, pas au lancement public.
           VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
+      # Lot R15 : Tower (3ᵉ jeu) se construit seul (`npm run build` ci-dessus construit déjà les trois quand une part porte des specs de DailyTrack).
+      - run: npm run build -w @cdj/tower
+        if: matrix.web == '' && matrix.tower != ''
       - name: Tests e2e DailyTrack (Chromium)
         if: matrix.web != ''
         env:
@@ -416,6 +444,13 @@ jobs:
         run: |
           node scripts/e2e-parts.mjs liste chromium $(printf 'jump/%s ' $SPECS_JUMP) > "$RUNNER_TEMP/part-jump.txt"
           npm run e2e -w @cdj/jump -- --project=jump-chromium --workers=1 --test-list "$RUNNER_TEMP/part-jump.txt" --grep-invert=@regression
+      - name: Tests e2e Tower (Chromium)
+        if: always() && matrix.tower != ''
+        env:
+          E2E_BLOB_NAME: report-pr-tower-${{ strategy.job-index }}.zip
+        run: |
+          node scripts/e2e-parts.mjs liste chromium $(printf 'tower/%s ' $SPECS_TOWER) > "$RUNNER_TEMP/part-tower.txt"
+          npm run e2e -w @cdj/tower -- --project=tower-chromium --workers=1 --test-list "$RUNNER_TEMP/part-tower.txt" --grep-invert=@regression
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && matrix.web != ''
         with:
@@ -430,6 +465,13 @@ jobs:
           path: apps/jump/blob-report/
           retention-days: 7
           if-no-files-found: warn
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.tower != ''
+        with:
+          name: blob-pr-tower-${{ strategy.job-index }}
+          path: apps/tower/blob-report/
+          retention-days: 7
+          if-no-files-found: warn
       # Traces des essais ratés (même ceux d'un test réussi à la relance).
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
@@ -438,6 +480,7 @@ jobs:
           path: |
             apps/web/test-results/
             apps/jump/test-results/
+            apps/tower/test-results/
           retention-days: 7
           if-no-files-found: ignore
 

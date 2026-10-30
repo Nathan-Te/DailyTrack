@@ -1,8 +1,8 @@
-export interface Table { fumee: Record<"web" | "jump", string[]>; regression?: string[]; regressionUnitaires?: string[]; zones: Record<string, { globs: string[]; sauf?: string[] }>; specs: Record<string, string[]>; compilees: Record<string, { globs: RegExp[]; sauf: RegExp[] }> }
+export interface Table { fumee: Record<"web" | "jump" | "tower", string[]>; regression?: string[]; regressionUnitaires?: string[]; zones: Record<string, { globs: string[]; sauf?: string[] }>; specs: Record<string, string[]>; compilees: Record<string, { globs: RegExp[]; sauf: RegExp[] }> }
 export interface Graphe { noeuds: Map<string, { imports: Set<string>; cites: Set<string> }>; tests: string[]; atteint: Map<string, unknown> }
-export interface Choix { web: string[]; jump: string[]; raisons: string[]; reportes?: string[]; regression?: string[] }
+export interface Choix { web: string[]; jump: string[]; tower: string[]; raisons: string[]; reportes?: string[]; regression?: string[] }
 export interface PartUnitaire { part: string; fichiers: string[]; secondes: number }
-export interface PartE2e { part: string; web: string[]; jump: string[]; secondes: number }
+export interface PartE2e { part: string; web: string[]; jump: string[]; tower: string[]; secondes: number }
 export interface Decision {
   mode: string;
   docsSeuls: boolean;
@@ -11,7 +11,8 @@ export interface Decision {
   e2e: Choix;
   e2eParts: PartE2e[];
 }
-export const E2E_DIRS: { web: string; jump: string };
+export const E2E_DIRS: { web: string; jump: string; tower: string };
+export const JEUX_E2E: readonly ["web", "jump", "tower"];
 export const PARTS_E2E_MAX: number;
 export const PARTS_UNITAIRES_MAX: number;
 export const CIBLE_PART_E2E_S: number;
@@ -22,10 +23,10 @@ export const BUDGET_E2E_S: number;
 export function lister(racine: string, dir: string, filtre?: (f: string) => boolean): string[];
 export function chargerTable(racine?: string): Table;
 export function zonesDuFichier(fichier: string, table: Table): string[];
-export function specsDuJeu(jeu: "web" | "jump", racine?: string): string[];
-export function importeursDe(jeu: "web" | "jump", utilitaire: string, racine?: string): string[];
+export function specsDuJeu(jeu: "web" | "jump" | "tower", racine?: string): string[];
+export function importeursDe(jeu: "web" | "jump" | "tower", utilitaire: string, racine?: string): string[];
 export function specsPour(files: string[], table: Table, racine?: string, options?: { budget?: number }): Choix;
-export function specsDesZones(zones: string[], table: Table): { web: string[]; jump: string[]; inconnues: string[] };
+export function specsDesZones(zones: string[], table: Table): { web: string[]; jump: string[]; tower: string[]; inconnues: string[] };
 export function dossiersDeCode(racine?: string): string[];
 export function chemins(texte: string): string[];
 export function resoudre(racine: string, fichier: string, cite: string): string | null;
@@ -38,11 +39,11 @@ export function testsPour(files: string[], g: Graphe, options?: { complet?: bool
 export function dureesUnitaires(racine?: string): Record<string, number>;
 export function nombreDeParts(charge: number, cible: number, max: number): number;
 export function partsUnitaires(fichiers: string[], durees: Record<string, number>, options?: { max?: number; cible?: number }): PartUnitaire[];
-export function partsE2e(choix: { web: string[]; jump: string[] }, racine?: string, options?: { max?: number; cible?: number }): PartE2e[];
+export function partsE2e(choix: { web: string[]; jump: string[]; tower?: string[] }, racine?: string, options?: { max?: number; cible?: number }): PartE2e[];
 export function decider(files: string[], options?: { mode?: string; racine?: string }): Decision;
 export function sorties(d: Decision): string;
 export function resume(d: Decision): string;
 export function dureesDepuisVitest(rapport: unknown, racine?: string): Record<string, number>;
-export const PARTS_COMPLETES: Record<"main" | "complet" | "nuit", { web: number; jump: number }>;
+export const PARTS_COMPLETES: Record<"main" | "complet" | "nuit", { web: number; jump: number; tower: number }>;
 export function matriceComplete(mode: string): { include: { suite: string; browser: string; shard: string; essentiel: boolean }[] };
-export function dureeE2e(racine: string, jeu: "web" | "jump", spec: string): number;
+export function dureeE2e(racine: string, jeu: "web" | "jump" | "tower", spec: string): number;

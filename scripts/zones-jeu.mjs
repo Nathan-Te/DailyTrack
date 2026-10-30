@@ -4,13 +4,13 @@
 //   git diff --name-only origin/main...HEAD | node scripts/zones-jeu.mjs --etiquettes '["jeu:jump"]' --branche claude/lot-14-jump
 //
 // Règles :
-//   - le jeu d'une PR : l'étiquette `jeu:track` / `jeu:jump` (elle l'emporte), sinon un morceau du nom de branche (`track` / `jump`, coupé sur
+//   - le jeu d'une PR : l'étiquette `jeu:track` / `jeu:jump` / `jeu:tower` (elle l'emporte), sinon un morceau du nom de branche (`track` / `jump` / `tower`, coupé sur
 //     `/`, `-`, `_`) ; un morceau `plateforme` dans le nom de branche = une PR de la plateforme, même avec un nom de jeu ; deux étiquettes = refus (une PR de jeu ne sert qu'un jeu) ; deux jeux ou aucun dans le nom de branche = une PR de la
 //     plateforme, sans garde ;
 //   - une PR de jeu ne change que les fichiers de ses ZONES ou de ses EXCEPTIONS tolérées ; tout autre fichier fait échouer le job ;
 //   - le diff est pris depuis la base commune (`origin/main...HEAD`) : fusionner `main` dans la branche n'ajoute aucun fichier.
 
-export const JEUX = ["track", "jump"];
+export const JEUX = ["track", "jump", "tower"];
 
 // Les zones de chaque jeu. Dans `apps/api`, liste FERMÉE, fichier par fichier, alignée sur scripts/ci-scope.mjs (le test le vérifie) :
 // `history.ts` est importé par jumpHistory.ts et classementDemo.ts, `api.test.ts` et `classement.test.ts` passent par le cœur du serveur :
@@ -44,9 +44,18 @@ export const ZONES = {
     "apps/api/scripts/measure-jump.ts",
     "docs/jump/**",
   ],
+  // Lot R15 : Tower (3ᵉ jeu). Côté serveur, comme Jump : `tower*.ts` (les routes `/api/tower/` du lot T4), leurs tests et leurs outils, alignés sur scripts/ci-scope.mjs.
+  tower: [
+    "apps/tower/**",
+    "packages/tower-sim/**",
+    "apps/api/src/tower*.ts",
+    "apps/api/test/tower*.test.ts",
+    "apps/api/scripts/tower-*.ts",
+    "docs/tower/**",
+  ],
 };
 
-// Les exceptions tolérées, communes aux deux jeux : sa ligne de budgets.md, ses listes de packages/ui/test/applications.ts, et le relevé des
+// Les exceptions tolérées, communes aux jeux : sa ligne de budgets.md, ses listes de packages/ui/test/applications.ts, et le relevé des
 // traductions, régénéré par `npm run traductions` après tout changement de catalogue (ses clés de catalogue sont dans ses zones). Rien d'autre.
 export const EXCEPTIONS = ["docs/plateforme/budgets.md", "packages/ui/test/applications.ts", "docs/plateforme/traductions.md"];
 
@@ -68,7 +77,7 @@ function normaliser(chemin) {
  */
 export function jeuDeLaPr({ etiquettes = [], branche = "" } = {}) {
   const parEtiquette = JEUX.filter((j) => etiquettes.includes(`jeu:${j}`));
-  if (parEtiquette.length > 1) return { jeu: null, source: "étiquettes", erreur: "les deux étiquettes jeu:track et jeu:jump : une PR de jeu ne sert qu'un jeu" };
+  if (parEtiquette.length > 1) return { jeu: null, source: "étiquettes", erreur: `les étiquettes ${parEtiquette.map((j) => `jeu:${j}`).join(" et ")} : une PR de jeu ne sert qu'un jeu` };
   if (parEtiquette.length === 1) return { jeu: parEtiquette[0], source: `étiquette jeu:${parEtiquette[0]}` };
   const morceaux = String(branche).toLowerCase().split(/[/_-]+/);
   // Un lot de la plateforme qui parle d'un jeu dans son nom (`plateforme-suites-track-2`) reste une PR de la plateforme : le morceau `plateforme` l'emporte sur le nom de jeu

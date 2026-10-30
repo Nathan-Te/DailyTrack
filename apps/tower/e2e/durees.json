@@ -1,0 +1,13 @@
+{
+  "_": "Durée de chaque spec de Tower dans Chromium (s), un test à la fois : compose les parts de la CI (scripts/e2e-parts.mjs) et le budget de la CI de PR (scripts/ci-zones.mjs). Lot R15 : branchement de Tower à la CI ; durées remesurées sur la CI de PR du lot (run 41079254451, 30/10/2026 : 2 s, 1 s, 0 s, arrondies à 1 s au plus bas). `secondes` = le spec entier (CI complète : nuit et « Run workflow ») ; `essentiel` = ses tests sans l'étiquette @regression (CI de PR et de main) : aucun test de Tower n'est « Régression » pour l'instant, les deux colonnes sont égales. Un nouveau spec s'ajoute aux deux.",
+  "secondes": {
+    "determinisme.spec.ts": 2,
+    "partie.spec.ts": 1,
+    "poids.spec.ts": 1
+  },
+  "essentiel": {
+    "determinisme.spec.ts": 2,
+    "partie.spec.ts": 1,
+    "poids.spec.ts": 1
+  }
+}
