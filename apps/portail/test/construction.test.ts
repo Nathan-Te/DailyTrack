@@ -12,7 +12,7 @@ import { VITRINE, portailEnv } from "../../../scripts/site.mjs";
 //     déclarées par la page ≤ 150 ko, seules Archivo Black et Archivo 400 préchargées ;
 //   - la vitrine `/ui/` n'est jamais construite pour la production.
 // Les chiffres sont écrits dans la sortie du test (et recopiés dans le README du lot).
-export const BUDGET_PREMIER_CHARGEMENT = 32 * 1024; // lot 53 : 30 → 32 ko (+2 048 o), décision de Nathan du 28/10/2026 : la pastille de l'iPhone, « Retrouver mon profil » (à la demande), l'en-tête iOS, les marges de sécurité
+export const BUDGET_PREMIER_CHARGEMENT = 33_000; // lot S1 : 32 768 → 33 000 o (+232 o), décision de Nathan du 31/10/2026 : les boutons Discord / Ko-fi passent par le composant du socle (jetons de couleur, code) ; avant : 32 * 1024 ; lot 53 : 30 → 32 ko (+2 048 o), décision de Nathan du 28/10/2026 : la pastille de l'iPhone, « Retrouver mon profil » (à la demande), l'en-tête iOS, les marges de sécurité
 export const BUDGET_POLICES = 150 * 1024;
 
 const ROOT = join(__dirname, "../../..");

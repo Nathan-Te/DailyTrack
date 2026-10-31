@@ -28,8 +28,33 @@ declare global {
 async function jouerLeJour(page: import("@playwright/test").Page, adresse: string): Promise<void> {
   await page.addInitScript(() => localStorage.setItem("tower:aide:vu", "1"));
   await page.goto(adresse);
+  await verifierLiensCommunaute(page);
   await page.locator("#accueil-jouer").click();
   await page.waitForSelector("html[data-ready=true] .tower__scene");
+  await expect(page.locator("#communaute")).toBeHidden(); // lot S1 : jamais en partie
+}
+
+/** Lot S1 : Discord et Ko-fi sur l'accueil — deux plaques de 44 px en bas à gauche, en liens sortants, qui ne chevauchent ni JOUER ni « Comment jouer ». */
+async function verifierLiensCommunaute(page: import("@playwright/test").Page): Promise<void> {
+  await expect(page.locator("#communaute")).toBeVisible();
+  const rect = async (sel: string) => (await page.locator(sel).boundingBox())!;
+  const plaques = [await rect("#communaute-discord"), await rect("#communaute-kofi")];
+  const vue = page.viewportSize()!;
+  for (const b of plaques) {
+    expect(b.height).toBe(44);
+    expect(b.x).toBeLessThan(vue.width / 4);
+    expect(b.y).toBeGreaterThan(vue.height / 2);
+    for (const autre of [await rect("#accueil-jouer"), await rect("#accueil-aide")]) {
+      const recouvre = Math.min(b.x + b.width, autre.x + autre.width) - Math.max(b.x, autre.x) > 2 && Math.min(b.y + b.height, autre.y + autre.height) - Math.max(b.y, autre.y) > 2;
+      expect(recouvre).toBe(false);
+    }
+  }
+  for (const [id, href] of [["discord", "https://discord.gg/2KZkUSpDej"], ["kofi", "https://ko-fi.com/C7X829MCE1"]] as const) {
+    const lien = page.locator(`#communaute-${id}`);
+    await expect(lien).toHaveAttribute("href", href);
+    await expect(lien).toHaveAttribute("target", "_blank");
+    await expect(lien).toHaveAttribute("rel", "noopener noreferrer");
+  }
 }
 const GAUCHE = 1;
 const DESCENDRE = 8;

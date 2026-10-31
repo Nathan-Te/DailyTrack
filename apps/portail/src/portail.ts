@@ -42,9 +42,7 @@ import {
   visibiliteDeLaPage,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
-import { LIEN_DISCORD, LIEN_KOFI } from "./liens";
-import pictoDiscord from "./discord.svg?no-inline";
-import tasseKofi from "./kofi-tasse.png";
+import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { dans, nonLue } from "./nouveautesDonnees";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
@@ -334,28 +332,9 @@ function rendre(): void {
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
 }
 
-/**
- * Le bouton Discord, à l'allure de Discord (le bleu-violet de leur charte, leur pictogramme) : un lien, **pas le widget intégré** (une fenêtre de discord.com : cookies et traceurs
- * tiers à chaque visite). Texte blanc : il passe le contraste exigé sur ce bleu.
- */
-function lienDiscord(texte: string): HTMLElement {
-  const picto = el("img", { classe: "portail-discord__picto", attrs: { src: pictoDiscord, alt: "", width: 24, height: 24 } });
-  return el("a", { classe: "portail-discord", attrs: { id: "discord", href: LIEN_DISCORD, target: "_blank", rel: "noopener noreferrer" } }, picto, el("span", { texte }));
-}
-
-/**
- * Le bouton Ko-fi, à l'allure de celui que Ko-fi propose (bleu, la tasse au cœur), **sans rien charger de chez eux** : un lien, et la tasse est une copie hébergée sur le site (aucun script ni
- * image de `ko-fi.com`). Le texte est encre sur le bleu (le blanc du bouton d'origine ne passe pas le contraste exigé par l'audit d'accessibilité).
- */
-function lienKofi(texte: string): HTMLElement {
-  const a = el(
-    "a",
-    { classe: "portail-kofi", attrs: { id: "kofi", href: LIEN_KOFI, target: "_blank", rel: "noopener noreferrer" } },
-    el("img", { classe: "portail-kofi__tasse", attrs: { src: tasseKofi, alt: "", width: 30, height: 24 } }),
-    el("span", { texte }),
-  );
-  return a;
-}
+/** Les boutons Discord et Ko-fi du pied : le composant du socle (`lienCommunaute`, lot S1), le même aspect que sur l'accueil des jeux. */
+const lienDiscord = (texte: string): HTMLElement => lienCommunaute("discord", texte, "discord");
+const lienKofi = (texte: string): HTMLElement => lienCommunaute("kofi", texte, "kofi");
 
 // --- Le compte à rebours (heure du serveur) -----------------------------------------------------------------------------------
 let minuterie: ReturnType<typeof setTimeout> | null = null;
