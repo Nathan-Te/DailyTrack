@@ -12,6 +12,8 @@ import {
   PLATEFORME_BORNES,
   PLATEFORME_DEMI8_CHOIX,
   problemePaliers,
+  THEMES_TOWER,
+  themeDuJour,
   TOWER_GENERATOR_VERSION,
   VERSIONS_GENERATEUR,
 } from "../src";
@@ -29,19 +31,31 @@ describe("dailyTower : pure et versionnée", () => {
     expect(suites.size).toBe(60);
   });
 
-  it("le contenu nomme son jour, sa version, son thème : le port pour tous les jours", () => {
+  it("le contenu nomme son jour, sa version et son thème", () => {
     const c = dailyTower(PREMIER);
     expect(c.jour).toBe(PREMIER);
     expect(c.nom).toBe("2026-11-02");
     expect(c.g).toBe(TOWER_GENERATOR_VERSION);
-    expect(TOWER_GENERATOR_VERSION).toBe(1);
-    for (const j of JOURS) expect(dailyTower(j).theme).toBe("port");
+    expect(TOWER_GENERATOR_VERSION).toBe(2); // lot T3 : le thème entre dans le contenu
+    expect(THEMES_TOWER).toContain(c.theme);
+  });
+
+  it("la version 1 reste appelable et donne `port` pour tous les jours ; la version 2 n'en diffère QUE par la version et le thème (un thème n'a aucun effet physique)", () => {
+    expect(VERSIONS_GENERATEUR).toEqual([1, 2]);
+    for (const j of JOURS) {
+      const v1 = dailyTower(j, 1);
+      const v2 = dailyTower(j, 2);
+      expect(v1.theme).toBe("port");
+      expect(v1.g).toBe(1);
+      expect({ ...v2, g: 1, theme: "port" }).toEqual(v1);
+      expect(v2.theme).toBe(themeDuJour(j));
+    }
   });
 
   it("une version du générateur s'appelle par son numéro, la version courante par défaut ; une version inconnue ou un jour invalide est refusé", () => {
     expect(VERSIONS_GENERATEUR).toContain(TOWER_GENERATOR_VERSION);
-    for (const v of VERSIONS_GENERATEUR) expect(dailyTower(PREMIER, v)).toEqual({ ...dailyTower(PREMIER), g: v });
-    expect(dailyTower(PREMIER, 1)).toEqual(dailyTower(PREMIER));
+    for (const v of VERSIONS_GENERATEUR) expect(dailyTower(PREMIER, v)).toEqual({ ...dailyTower(PREMIER), g: v, theme: v === 1 ? "port" : dailyTower(PREMIER).theme });
+    expect(dailyTower(PREMIER, TOWER_GENERATOR_VERSION)).toEqual(dailyTower(PREMIER));
     expect(() => dailyTower(PREMIER, 0)).toThrow(ErreurGenerateur);
     expect(() => dailyTower(PREMIER, 99)).toThrow(/version de générateur inconnue/);
     expect(() => dailyTower(-1)).toThrow(ErreurGenerateur);

@@ -17,7 +17,8 @@
   "include": [
     "src",
     "test",
-    "rapierWasm.ts"
+    "rapierWasm.ts",
+    "preuves.ts"
   ],
   "references": [
     {

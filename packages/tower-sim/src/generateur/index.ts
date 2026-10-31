@@ -6,13 +6,14 @@
 import { formatDay } from "@cdj/core";
 import type { Scenario } from "../partie";
 import type { Palier } from "../paliers";
+import type { ThemeTower } from "../themes";
 import { dailyTowerV1 } from "./v1";
+import { dailyTowerV2 } from "./v2";
 
-/** Version courante du générateur du contenu du jour. */
-export const TOWER_GENERATOR_VERSION = 1;
+export type { ThemeTower };
 
-/** Le thème du jour. Un seul au lot T2 (`port`) ; les autres et le sac de thèmes viennent au lot T3. */
-export type ThemeTower = "port";
+/** Version courante du générateur du contenu du jour. Version 2 (lot T3) : le thème vient du sac de thèmes commun (`themes.ts`) ; la version 1 (tout `port`) reste appelable. */
+export const TOWER_GENERATOR_VERSION = 2;
 
 /** Le contenu d'un jour : un `Scenario` complet (pièces, plateforme, paliers, sens du vent) avec le jour, la version qui l'a produit et le thème. */
 export interface Contenu extends Scenario {
@@ -31,7 +32,7 @@ export class ErreurGenerateur extends Error {
 }
 
 /** Les générateurs par version. Une nouvelle version s'AJOUTE ; on ne retire une ancienne que lorsqu'aucun jour figé ne la nomme plus. */
-const GENERATEURS: Readonly<Record<number, (jour: number) => Contenu>> = { 1: dailyTowerV1 };
+const GENERATEURS: Readonly<Record<number, (jour: number) => Contenu>> = { 1: dailyTowerV1, 2: dailyTowerV2 };
 
 /** Les versions que `dailyTower` sait appeler. */
 export const VERSIONS_GENERATEUR: readonly number[] = Object.keys(GENERATEURS).map(Number);

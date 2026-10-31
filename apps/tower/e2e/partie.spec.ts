@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 // Lot T1 — LE test de navigateur du nouveau parcours (règle R13 : un unitaire d'abord, un seul e2e par parcours de joueur ; les règles de la partie sont dans
@@ -10,6 +11,9 @@ interface Porte {
   avancer(n: number, commandes?: number): void;
   fantome(): number;
   rediffusion(): string | null;
+  partie(): { resultat(): { hauteurMm: number } | null };
+  contenu(): { theme?: string };
+  medailles(): { medailles: { auteur: number; or: number; argent: number; bronze: number } | null; provisoire: boolean; enCalcul: boolean };
 }
 declare global {
   interface Window {
@@ -94,4 +98,49 @@ test("une partie de la suite d'essai : clavier, HUD, vies perdues, écran de fin
   await expect(page.locator(".bande__pieces")).toHaveText("1/40");
   expect(await page.evaluate(() => window.__tower.vue().vies)).toBe(3);
   expect(await page.evaluate(() => window.__tower.fantome())).toBeGreaterThan(0);
+});
+
+// Lot T3 — les médailles et le bot. Un jour PRÉPARÉ (deux sont dans `packages/tower-sim/test/fixtures/jours/`, préparés par `npm run preparer:tower` ; aucun n'est commité dans l'application) est
+// servi à la place de `jours/2026-11-06.json` : médailles du fichier, preuve de l'auteur (hors production, pour `&bot`), thème du jour (banquise).
+const JOUR_PREPARE = readFileSync(new URL("../../../packages/tower-sim/test/fixtures/jours/2026-11-06.json", import.meta.url), "utf8");
+const MEDAILLES = (JSON.parse(JOUR_PREPARE) as { medailles: { auteur: number; bronze: number } }).medailles;
+const DIAMANT = MEDAILLES.auteur;
+/** Un seuil en millimètres tel que le HUD l'écrit (« 23,090 m » en français, « 23.090 m » en anglais). */
+const seuil = (mm: number): RegExp => new RegExp(`${String(mm).slice(0, -3)}[,.]${String(mm).slice(-3)}`);
+
+test("un jour préparé : l'objectif de médaille dans le HUD, le thème du jour, puis le bloc « Médailles du jour » à la fin", async ({ page }) => {
+  await page.route("**/jours/2026-11-06.json", (r) => r.fulfill({ contentType: "application/json", body: JOUR_PREPARE }));
+  await page.goto("/?seed=2026-11-06&tactile=0");
+  await page.waitForSelector("html[data-ready=true]");
+  expect(await page.evaluate(() => window.__tower.contenu().theme)).toBe("banquise");
+  // L'objectif : la première médaille (Bronze) et son seuil en mètres, d'après le fichier, sans « Médailles en calcul… ».
+  await expect(page.locator(".objectif")).toBeVisible();
+  await expect(page.locator(".objectif")).toContainText(/Bronze/i);
+  await expect(page.locator(".objectif")).toContainText(seuil(MEDAILLES.bronze));
+  expect(await page.evaluate(() => window.__tower.medailles())).toMatchObject({ provisoire: false, enCalcul: false });
+  // Une partie menée au bout, au centre, tout droit : l'écran de fin porte le bloc des médailles (quatre cases) et la médaille obtenue.
+  await page.evaluate(() => {
+    const T = window.__tower;
+    T.manuel(true);
+    for (let i = 0; i < 40000 && T.vue().phase !== "fini"; i++) T.avancer(1, 8);
+  });
+  await expect(page.locator("#fin-ecran")).toBeVisible();
+  await expect(page.locator("#fin-medailles .dj-medaille")).toHaveCount(4);
+  await expect(page.locator("#fin-medailles-note")).toContainText(/encore|Diamant/i);
+});
+
+test("?bot : le bot rejoue la preuve du jour et finit exactement sur son Diamant", async ({ page }) => {
+  await page.route("**/jours/2026-11-06.json", (r) => r.fulfill({ contentType: "application/json", body: JOUR_PREPARE }));
+  await page.goto("/?seed=2026-11-06&bot&tactile=0");
+  await page.waitForSelector("html[data-ready=true]");
+  await page.waitForFunction(() => window.__tower.vue().phase === "jeu");
+  await page.evaluate(() => {
+    const T = window.__tower;
+    T.manuel(true);
+    for (let i = 0; i < 60000 && T.vue().phase !== "fini"; i++) T.avancer(1);
+  });
+  expect(await page.evaluate(() => window.__tower.partie().resultat()!.hauteurMm)).toBe(DIAMANT);
+  await expect(page.locator("#fin-ecran")).toBeVisible();
+  await expect(page.locator("#fin-medailles-session")).toContainText(/Diamant du jour|Today's Diamond/);
+  await expect(page.locator("#fin-medaille")).toHaveText(/Diamant/i);
 });

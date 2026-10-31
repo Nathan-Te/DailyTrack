@@ -12,3 +12,5 @@ describePurity("packages/tower-sim/src", new URL("../src", import.meta.url).path
 describePurity("packages/tower-sim/scenarios", new URL("../scenarios", import.meta.url).pathname, { allowedImports: ["@cdj/core"] });
 // Lot T2 : le générateur du contenu du jour (src/generateur/) est pur : la graine vient du numéro de jour, jamais d'une horloge.
 describePurity("packages/tower-sim/src/generateur", new URL("../src/generateur", import.meta.url).pathname, { allowedImports: ["@cdj/core"] });
+// Lot T3 : le bot (src/bot/) est pur lui aussi : aucun hasard, aucune horloge (ses essais sont ordonnés, sa preuve est la même d'un passage à l'autre).
+describePurity("packages/tower-sim/src/bot", new URL("../src/bot", import.meta.url).pathname, { allowedImports: ["@cdj/core"] });

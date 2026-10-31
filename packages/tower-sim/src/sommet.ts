@@ -56,3 +56,22 @@ export function sommetPiece(kind: PieceKind, rot: number, y: number, angle: numb
 
 /** Hauteur en millimètres entiers (arrondie au plus proche). */
 export const enMillimetres = (metres: number): number => Math.round(metres * 1000);
+
+/** Les abscisses extrêmes (mètres) de la pièce : centre de masse en (x, ·), angle `angle` (radians), formes de départ `kind` / `rot` et `taille`. Lot T3 : la largeur du sommet que mesure le bot. */
+export function etenduePiece(kind: PieceKind, rot: number, x: number, angle: number, taille: Taille = "normale"): { gauche: number; droite: number } {
+  const { s, c } = sinCos(angle);
+  let gauche = Infinity;
+  let droite = -Infinity;
+  for (const b of boites(kind, rot, taille)) {
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        const xl = (b.cx + sx * b.hw) / 8;
+        const yl = (b.cy + sy * b.hh) / 8;
+        const v = x + xl * c - yl * s;
+        if (v < gauche) gauche = v;
+        if (v > droite) droite = v;
+      }
+    }
+  }
+  return { gauche, droite };
+}

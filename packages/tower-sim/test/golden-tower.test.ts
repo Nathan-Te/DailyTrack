@@ -27,6 +27,7 @@ import { chargerRapier } from "../src/rapier";
 interface Golden {
   versions: { sim: number; g: number };
   contenus: { date: string; empreinte: string }[];
+  anciennes: { g: number; contenus: { date: string; empreinte: string }[] }[];
   rediffusions: { nom: string; contenu: { scenario: string } | { date: string }; code: string; resultat: unknown; empreinteFinale: string; ticks: number; paliers: number }[];
 }
 const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-tower.json", import.meta.url), "utf8")) as Golden;
@@ -48,6 +49,14 @@ describe("golden-tower.json", () => {
     for (const c of golden.contenus) expect(empreinteContenu(dailyTower(parseDay(c.date)!, golden.versions.g)), c.date).toBe(c.empreinte);
   });
 
+  it("lot T3 : la version 1 du générateur est inchangée (mêmes dix dates, mêmes empreintes que le golden du lot T2) et la version 2 ne diffère que par le thème", () => {
+    expect(golden.anciennes.map((a) => a.g)).toEqual([1]);
+    expect(golden.anciennes[0]!.contenus.map((c) => c.date)).toEqual(golden.contenus.map((c) => c.date));
+    for (const c of golden.anciennes[0]!.contenus) expect(empreinteContenu(dailyTower(parseDay(c.date)!, 1)), c.date).toBe(c.empreinte);
+    for (const c of golden.contenus) expect(empreinteContenu(dailyTower(parseDay(c.date)!, 2)), c.date).toBe(c.empreinte);
+    expect(new Set(golden.contenus.map((c) => dailyTower(parseDay(c.date)!, 2).theme)).size).toBeGreaterThanOrEqual(4);
+  });
+
   it("les dix dates couvrent les deux bornes d'un sac de sept, chaque bonus en premier palier, chaque malus en deuxième, les deux sens du vent et les quatre plateformes", () => {
     const cs = golden.contenus.map((c) => dailyTower(parseDay(c.date)!, golden.versions.g));
     expect(cs.some((c) => aDoublon(c.pieces))).toBe(true); // deux sacs qui se touchent sur la même pièce
@@ -63,7 +72,7 @@ describe("golden-tower.json", () => {
     expect(golden.rediffusions.map((r) => r.nom)).toEqual(["essai", "jour-avec-paliers", "zero-vie"]);
     const [essai, paliers, zero] = golden.rediffusions as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
     expect(decoderRediffusion(essai.code)).toMatchObject({ contenu: { scenario: "essai" }, g: 0, reglages: { vies: 9 } }); // l'en-tête garde des réglages non standard
-    expect(decoderRediffusion(paliers.code)).toMatchObject({ contenu: { jour: parseDay("2026-11-02") }, g: 1 });
+    expect(decoderRediffusion(paliers.code)).toMatchObject({ contenu: { jour: parseDay("2026-11-02") }, g: TOWER_GENERATOR_VERSION });
     expect(paliers.paliers).toBeGreaterThanOrEqual(3); // plusieurs effets s'appliquent : le lierre, la pièce géante, la pièce figée, le coup de vent
     expect(zero.resultat).toMatchObject({ vies: 0, tombees: 3, posees: 0, motif: "vies" });
   });

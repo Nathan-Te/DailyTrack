@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "jeu": "tower",
+  "date": "2026-11-06",
+  "g": 2,
+  "sim": 3,
+  "contenu": {
+    "pieces": "ZJOLTSIJZSILTOLJTOISZTSJZLOIJLSIOZTLSTIZ",
+    "plateformeDemi8": 20,
+    "paliers": [{"metres":10,"effet":"figee"},{"metres":20,"effet":"vent"},{"metres":30,"effet":"petite"},{"metres":40,"effet":"glissante"},{"metres":50,"effet":"lierre"},{"metres":60,"effet":"geante"}],
+    "ventSens": 1,
+    "theme": "banquise"
+  },
+  "medailles": { "auteur": 41982, "or": 37783, "argent": 31486, "bronze": 23090 },
+  "preuve": "AQMCAJuiARQEOAMMAQgpDAIKAQgtCgIIKwwDCgIIIgwDCgIIIgoCCCsMAQoBCCIMAwoBCH8MAQgjDAEJAQgoDAEIUwwBCQEIKAwDCCcMAwkFCJsCCQUIMgwBCQMIKgwBCQEINAkFCDQJCwirAQ"
+}

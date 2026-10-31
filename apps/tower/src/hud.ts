@@ -1,11 +1,12 @@
-import { DUREE_EFFET, type Effet, type PieceKind, type VuePartie } from "@cdj/tower-sim";
-import { boutonFantome, boutonPleinEcran, el, formatNombre, svg } from "@cdj/ui";
+import { DUREE_EFFET, type Effet, medailleVisee, type PieceKind, type VuePartie } from "@cdj/tower-sim";
+import { boutonFantome, boutonPleinEcran, el, formatNombre, nomMedaille, svg } from "@cdj/ui";
 import { apercuPiece, coeurs, majCoeurs } from "./composants";
 import { type Entrees, type Touche } from "./entrees";
 import { langueCourante, t, traducteurDuSocle } from "./i18n";
+import { type EtatMedailles, TYPE_MEDAILLE } from "./medailles";
 
 // Le HUD de la partie (lot T1) — maquettes `tower-hud-paysage.html` et `tower-hud-portrait.html`, charte rév. 13 § 9. Une bande de 30 px en haut au centre (hauteur · pièce n/40 ·
-// vies en cœurs) ; pause, plein écran et fantôme en vue ; à droite la plaque « Suivante » (l'objectif de médaille est caché : les médailles arrivent au lot T3) ; les commandes tactiles
+// vies en cœurs) ; pause, plein écran et fantôme en vue ; à droite la plaque « Suivante » et, au-dessus, l'objectif de médaille (lot T3 : la prochaine médaille et son seuil, ou « Médailles en calcul… ») ; les commandes tactiles
 // (boutons) aux bords du bas. **Le centre reste libre.** La disposition (paysage ou portrait) est celle du rapport largeur / hauteur de l'écran, décidée par la feuille `jeu.css`
 // (`max-aspect-ratio: 1/1`) : rien ici ne la calcule. Le HUD ne contient aucun texte écrit en dur : tout vient du catalogue.
 
@@ -33,6 +34,13 @@ export class Hud {
   private readonly pieces = el("span", { classe: "bande__pieces" });
   private readonly piecesTexte = el("span");
   private readonly viesBande: HTMLElement;
+  // Lot T3 : l'objectif de médaille (la prochaine médaille à atteindre et son seuil), au-dessus de « Suivante ».
+  private readonly objectif = el("div", { classe: "objectif", attrs: { role: "img", hidden: true } });
+  private readonly objectifPastille = el("span", { classe: "objectif__pastille", attrs: { "aria-hidden": "true" } });
+  private readonly objectifNom = el("span");
+  private readonly objectifValeur = el("span", { classe: "objectif__valeur" });
+  private readonly provisoire = el("span", { classe: "objectif__provisoire", attrs: { hidden: true } });
+  private ligne: string | null = null;
   private readonly suivante = el("div", { classe: "suivante", attrs: { role: "img" } });
   private readonly suivanteApercu = el("span", { classe: "suivante__piece" });
   // Lot T2 : la plaque du prochain palier, au bord gauche à la hauteur du trait pointillé (« 10 m » puis l'effet, vert pour un bonus, encre pour un malus), et l'annonce d'un effet qui se déclenche.
@@ -46,7 +54,7 @@ export class Hud {
   readonly pause: HTMLButtonElement;
   readonly fantome: HTMLButtonElement;
   readonly plein: HTMLButtonElement;
-  private dernier = { hauteur: "", n: -1, vies: -1, suivante: "" as PieceKind | "" | null, nom: "", palier: "" };
+  private dernier = { hauteur: "", n: -1, vies: -1, suivante: "" as PieceKind | "" | null, nom: "", palier: "", objectif: "" };
 
   constructor(private readonly o: OptionsHud) {
     this.pause = el("button", { classe: "plaque-bouton", attrs: { type: "button", id: "pause" } }, el("span", { classe: "pause-barres", attrs: { "aria-hidden": "true" } }, el("span"), el("span")));
@@ -65,7 +73,8 @@ export class Hud {
     const bande = el("div", { classe: "bande", attrs: { role: "group" } }, this.hauteur, this.pieces, this.viesBande);
     this.suivante.append(el("span", { classe: "suivante__legende" }), this.suivanteApercu);
     const gauche = el("div", { classe: "hud__gauche" }, this.pause, this.plein, this.fantome);
-    const droite = el("div", { classe: "hud__droite" }, this.suivante);
+    this.objectif.append(this.objectifPastille, this.objectifNom, this.objectifValeur);
+    const droite = el("div", { classe: "hud__droite" }, this.objectif, this.provisoire, this.suivante);
     this.palier.append(this.palierMetres, el("span", { classe: "palier__pastille" }, this.palierSigne, this.palierEffet));
     this.element = el("div", { classe: ["hud", o.tactile && "hud--tactile"], attrs: { role: "group" } }, gauche, bande, droite, this.palier, this.annonce, this.commandes());
     o.racine.append(this.element);
@@ -96,7 +105,9 @@ export class Hud {
     for (const b of this.element.querySelectorAll<HTMLElement>("[data-cle]")) b.setAttribute("aria-label", t(b.dataset.cle!));
     for (const s of this.element.querySelectorAll<HTMLElement>("[data-cle-texte]")) s.textContent = t(s.dataset.cleTexte!);
     this.element.querySelector(".commandes")!.setAttribute("aria-label", t("hud.commandes"));
-    this.dernier = { hauteur: "", n: -1, vies: -1, suivante: "", nom: "", palier: "" };
+    this.dernier = { hauteur: "", n: -1, vies: -1, suivante: "", nom: "", palier: "", objectif: "" };
+    this.provisoire.textContent = t("medailles.provisoire");
+    if (this.ligne !== null) this.annonce.textContent = this.ligne;
   }
 
   /**
@@ -126,7 +137,59 @@ export class Hud {
   cacherAnnonce(): void {
     if (this.minuteurAnnonce) clearTimeout(this.minuteurAnnonce);
     this.minuteurAnnonce = null;
+    if (this.ligne !== null) {
+      this.annonce.textContent = this.ligne; // la ligne fixe (« Le bot réfléchit… ») reprend la place
+      this.annonce.classList.add("annonce--visible");
+      return;
+    }
     this.annonce.classList.remove("annonce--visible");
+  }
+
+  /** Une ligne qui reste sous la bande tant qu'on ne la retire pas (`null`) : « Le bot réfléchit… » (`?bot`). */
+  fixerLigne(texte: string | null): void {
+    this.ligne = texte;
+    if (texte === null) {
+      this.cacherAnnonce();
+      return;
+    }
+    if (this.minuteurAnnonce) clearTimeout(this.minuteurAnnonce);
+    this.minuteurAnnonce = null;
+    this.annonce.textContent = texte;
+    this.annonce.classList.add("annonce--visible");
+  }
+
+  /**
+   * L'objectif de médaille : la prochaine médaille que la hauteur n'atteint pas encore et son seuil ; « Médailles en calcul… » tant que le bot calcule ; rien sans médailles (la suite d'essai,
+   * les paliers). Les médailles estimées sont marquées « provisoires ». N'écrit dans le DOM que ce qui change.
+   */
+  majObjectif(e: EtatMedailles, hauteurMm: number): void {
+    const visee = e.medailles ? medailleVisee(hauteurMm, e.medailles) : null;
+    const cle = e.enCalcul ? "calcul" : !e.medailles ? "" : visee ? `${visee.nom}${visee.seuil}${e.provisoire}` : `diamant${e.provisoire}`;
+    if (cle === this.dernier.objectif) return;
+    this.dernier.objectif = cle;
+    this.objectif.hidden = cle === "";
+    this.provisoire.hidden = cle === "" || cle === "calcul" || !e.provisoire;
+    if (cle === "") return;
+    const type = visee ? TYPE_MEDAILLE[visee.nom] : "diamant";
+    for (const c of ["bronze", "argent", "or", "diamant"]) this.objectif.classList.remove(`objectif--${c}`);
+    this.objectifPastille.hidden = cle === "calcul";
+    if (cle === "calcul") {
+      this.objectifNom.textContent = t("hud.objectif.calcul");
+      this.objectifValeur.textContent = "";
+      this.objectif.setAttribute("aria-label", t("hud.objectif.calcul"));
+      return;
+    }
+    this.objectif.classList.add(`objectif--${type}`);
+    const nom = nomMedaille(traducteurDuSocle(), type);
+    if (visee) {
+      this.objectifNom.textContent = nom;
+      this.objectifValeur.textContent = formatHauteur(visee.seuil);
+      this.objectif.setAttribute("aria-label", t("hud.objectif.aria", { medaille: nom, hauteur: formatHauteur(visee.seuil) }));
+    } else {
+      this.objectifNom.textContent = t("hud.objectif.diamant");
+      this.objectifValeur.textContent = "";
+      this.objectif.setAttribute("aria-label", t("hud.objectif.diamant"));
+    }
   }
 
   /** Met à jour ce qui a changé depuis l'image précédente (le DOM n'est touché que pour une valeur nouvelle). */
