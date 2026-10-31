@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 12;
+export const JUMP_SIM_VERSION = 13;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -85,6 +85,15 @@ export const RESTART_VERSION = 11;
  * depuis le générateur g22 sont en v12.
  */
 export const ALT_KEPT_VERSION = 12;
+/**
+ * Lot 30 : **version 13 = version 12 + le maintien minimal du saut**. Un saut relâché avant `JUMP_MIN_HOLD` pas (10, environ 83 ms) continue comme s'il avait été tenu 10 pas : tout appui de
+ * 1 à 10 pas donne exactement le même petit saut (celui d'un appui de 10 pas : hauteur et courbe inchangées) ; au-delà, la courbe est celle d'avant. Vaut pour tout saut qui part (sol, coyote,
+ * mural, tampon) ; un ressort ou un champignon ne se coupent pas. Retour des joueurs : le petit saut s'obtenait par un appui de 5 pas (42 ms) qu'on ne dose pas au clavier ou à la manette.
+ * Les niveaux du jour depuis le générateur g24 sont en v13 ; les golden et les rediffusions des versions 3 à 12 n'ont pas bougé (le champ `PlayerState.jumpAge` n'existe qu'avec un maintien).
+ */
+export const MIN_HOLD_VERSION = 13;
+/** Lot 30 : le maintien minimal du saut (pas) des niveaux de la version 13 et suivantes : 10 pas = 83 ms. Réglable pour essayer (`JumpParams.jumpMinHold`, `?debug&tune`). */
+export const JUMP_MIN_HOLD = 10;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -112,9 +121,10 @@ export const ALT_KEPT_VERSION = 12;
  * 21 depuis le lot 27 (niveaux en sim v11 : un nouvel essai à zéro avant le premier point de passage, reprise volontaire ; forêt : le vent souffle en continu, plus de rafales) ;
  * 22 depuis le lot 28 (niveaux en sim v12 : les blocs alternés gardent leur état à la reprise ; chaque variante à alternés se reprend aussi depuis l'état B ; jamais d'alterné hors du néon) ;
  * 23 depuis le lot V1 de la plateforme (le sac de thèmes : jamais deux jours de suite le même thème, chaque thème une fois par cycle de cinq jours ; la physique, les morceaux et la
- * simulation ne changent pas : `JUMP_SIM_VERSION` reste 12, un niveau g22 se rejoue tel quel et garde son thème de l'ancienne règle).
+ * simulation ne changent pas : `JUMP_SIM_VERSION` reste 12, un niveau g22 se rejoue tel quel et garde son thème de l'ancienne règle) ;
+ * 24 depuis le lot 30 (niveaux en sim v13 : le maintien minimal du saut ; appuis humains d'au moins 10 pas, durée d'appui tolérée à ±4 pas ; catalogue re-résolu).
  */
-export const JUMP_GENERATOR_VERSION = 23;
+export const JUMP_GENERATOR_VERSION = 24;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

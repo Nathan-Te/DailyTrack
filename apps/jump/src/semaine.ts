@@ -1,6 +1,6 @@
 import { BRIDGE_LOOK } from "./bridge";
 import { formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR, VARIETY_DAYS, dailyLevel } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, SINGLE_CLOCK_GENERATOR, VARIETY_DAYS, dailyLevel } from "@cdj/jump-sim";
 import { miniKind, repeatedPieces, semaineDayOf, semaineDays, semaineFromEntry, type MiniKind, type SemaineDay, type SemaineFile } from "./semaineInfo";
 import { themeByName } from "./themes";
 import { semaineHref, type UrlChoices } from "./urlOptions";
@@ -152,7 +152,6 @@ export function mountSemaine(options: UrlChoices): SemaineView {
   };
   const current = !options.semaineG13 && !options.semaineG14;
   if (!current) link("Voir avec le générateur en vigueur", false);
-  if (!options.semaineG14) link("Comparer avec le générateur g14", 14);
   if (!options.semaineG13) link("Comparer avec le générateur g13", 13);
   root.append(head);
   const list = el("ol", "jours");
@@ -211,11 +210,19 @@ export function mountSemaine(options: UrlChoices): SemaineView {
       });
     return view;
   }
-  // Un niveau à la fois, en rendant la main entre deux : la page montre l'avancement. Lot 20 : g14 = la référence v4 du générateur.
+  // Lot 30 : la référence g14 se recalculait avec le catalogue de solutions d'alors, que le jeu n'embarque plus (le catalogue a été re-résolu pour le maintien minimal du saut ;
+  // l'ancien vit dans `@cdj/jump-sim/src/legacy`, que lisent les tests et les outils). Le lien « Comparer avec le générateur g14 » a disparu ; l'adresse ancienne le dit.
+  if (options.semaineG14) {
+    status.textContent = "Le générateur g14 n'est plus recalculé dans le jeu depuis le lot 30 (son catalogue de solutions d'avant n'est plus embarqué). Générateur g13 : fichier ; générateur en vigueur : lien ci-dessus.";
+    view.ready = true;
+    if (options.debug) window.__jump = { phase: "ready", semaine: view } as unknown as Window["__jump"];
+    return view;
+  }
+  // Un niveau à la fois, en rendant la main entre deux : la page montre l'avancement.
   const days = semaineDays(from);
   const next = (k: number) => {
     if (k >= days.length) return finish();
-    view.days.push(semaineDayOf(dailyLevel(days[k]!, null, options.semaineG14 ? SINGLE_CLOCK_VERSION : undefined)));
+    view.days.push(semaineDayOf(dailyLevel(days[k]!)));
     show();
     setTimeout(() => next(k + 1), 0);
   };

@@ -1,5 +1,5 @@
 import { ATTEMPT_RUNNING, stepAttempt, type AttemptState } from "./attempt";
-import { ALT_KEPT_VERSION } from "./constants";
+import { ALT_KEPT_VERSION, JUMP_MIN_HOLD } from "./constants";
 import type { Level } from "./level";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP } from "./player";
 
@@ -7,8 +7,10 @@ import { DEFAULT_JUMP_PARAMS, INPUT_JUMP } from "./player";
 // un joueur qui repart en B sur le palier (un sol sûr à toute phase, au moins quatre rangées libres au-dessus) peut sauter une fois sur place — le saut qui part inverse les deux jeux
 // (`stepAttempt`) — puis retomber sur le palier, en A. C'est ce que fait un joueur fictif (`demo.ts`) et ce que la validation de l'état B (`etats:modules`) essaie d'abord.
 
-/** Pas où le bouton de saut est tenu pour sauter sur place (au moins `PRESS_MIN` = 5 pas : un appui plus court n'est pas jouable au clavier, lot 11). */
+/** Pas où le bouton de saut est tenu pour sauter sur place **dans un niveau sans maintien minimal** (versions 12 et avant ; au moins `PRESS_MIN_LEGACY` = 5 pas : un appui plus court n'est pas jouable au clavier, lot 11). */
 export const ALT_HOP_PRESS = 6;
+/** Lot 30 : le même, pour un niveau qui a le maintien minimal du saut (version 13, morceau joué seul) : `JUMP_MIN_HOLD` pas, l'appui humain le plus court (`PRESS_MIN`). */
+export const altHopPress = (level: Pick<Level, "minHold">): number => (level.minHold > 0 ? JUMP_MIN_HOLD : ALT_HOP_PRESS);
 /** Pas au plus pour retomber sur le palier après le saut (le saut dure ≈ 0,55 s). */
 export const ALT_HOP_LAND_MAX = 150;
 
@@ -30,7 +32,8 @@ export function hopInPlace(level: Level, state: Readonly<AttemptState>): { input
   const was = state.alt ?? 0;
   const inputs: number[] = [];
   let s: AttemptState = state as AttemptState;
-  for (let i = 0; i < ALT_HOP_PRESS; i++) {
+  const press = altHopPress(level);
+  for (let i = 0; i < press; i++) {
     s = stepAttempt(s, INPUT_JUMP, level, DEFAULT_JUMP_PARAMS);
     inputs.push(INPUT_JUMP);
   }

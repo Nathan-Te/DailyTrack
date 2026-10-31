@@ -6,7 +6,8 @@ import { START_AT_SPAWN, encodeReplay, replayStartState, toRuns } from "./replay
 import { MODULE_PACKED, MODULE_TEXTS } from "./catalog";
 import { textHash } from "./texthash";
 import { fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
-import { MODULE_ENTRIES, PALIER_LENGTH, SECTION_CLOCK_VERSION, UNITS_PER_TILE, type ModuleEntry } from "./constants";
+import { JUMP_MIN_HOLD, MODULE_ENTRIES, PALIER_LENGTH, SECTION_CLOCK_VERSION, UNITS_PER_TILE, type ModuleEntry } from "./constants";
+import { legacyCatalog } from "./legacyRegistry";
 import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
 import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, laserBarBox, laserBox, platformPos, pressBox, sawCenter, type Level } from "./level";
 
@@ -1001,6 +1002,8 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
         .join(" "),
     );
   }
+  // Lot 30 : un morceau joué seul a le maintien minimal du saut (il reste en version 3, une horloge par section : la ligne `maintien` le dit).
+  annex.push(`maintien ${JUMP_MIN_HOLD}`);
   const ascii = lines.join("\n") + "\n\n" + annex.join("\n") + "\n";
   let level: Level;
   try {
@@ -1190,9 +1193,9 @@ export interface ModuleSolutionsFile {
 
 /**
  * Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6) ;
- * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3.
+ * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3 ; 4 : appui d'au moins 5 pas (lot 11) ; 5 : appui d'au moins 10 pas et durée d'appui variée de ±4 pas (lot 30).
  */
-export const EXIGENCE_VERSION = 4;
+export const EXIGENCE_VERSION = 5;
 
 // ——— Jouable au clavier (lot 11, retouche) ———
 // La gigue (ci-dessus) décale des changements de commande mais ne dit pas **combien de temps un doigt peut tenir ou lâcher une touche** : une
@@ -1200,8 +1203,14 @@ export const EXIGENCE_VERSION = 4;
 // pratique 60 à 100 ms). Mesuré sur le catalogue du lot 11 : 81 solutions sur 580 avaient un appui d'un seul pas, 118 un relâchement d'un seul
 // pas entre deux appuis. Un petit saut est pourtant ce que les scies basses réclament : la hauteur d'un saut dépend de la durée de l'appui
 // (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,71 à 5 pas, 2,22 à 8 pas, 2,82 à 12 pas).
-/** Plus courte durée d'un appui de saut (pas) : 5 pas = 42 ms, un appui franc ; le plus petit saut qu'on puisse exiger fait 1,71 tuile. */
-export const PRESS_MIN = 5;
+/**
+ * Plus courte durée d'un appui de saut (pas) qu'une solution peut exiger. **Lot 30 : 10 pas (83 ms), le maintien minimal du saut** (`JUMP_MIN_HOLD`) : un tap volontaire dure 60 à 120 ms, et
+ * tout appui de 1 à 10 pas donne le même petit saut (le plus petit qu'on puisse exiger). Avant le lot (sans maintien minimal, catalogue d'avant) : `PRESS_MIN_LEGACY` = 5 pas = 42 ms, qui donnait
+ * un saut de 1,71 tuile et qu'un doigt ne dose pas.
+ */
+export const PRESS_MIN = JUMP_MIN_HOLD;
+/** La règle des appuis jusqu'à la version 12 (catalogue d'avant le lot 30) : 5 pas = 42 ms. */
+export const PRESS_MIN_LEGACY = 5;
 /** Plus court relâchement (pas) entre deux appuis de saut : 3 pas = 25 ms (un appui-relâchement complet d'au moins 8 pas, ≈ 15 par seconde). */
 export const RELEASE_MIN = 3;
 
@@ -1244,6 +1253,11 @@ export function shortestPress(inputs: readonly number[]): number {
 }
 /** Tirages par amplitude de gigue (±1, ±2, ±3 pas). */
 export const GIGUE_DRAWS = 200;
+/**
+ * Lot 30 : la **tolérance sur la durée d'un appui de saut**, ±4 pas (33 ms), qui s'ajoute à la gigue ±3 sur les instants (`jittered`, `tools/exigence.ts`) avec le même seuil de réussite que
+ * le lot 8c (`HUMAIN_MIN`) : au-dessus du maintien minimal, le doigt ne tient pas un bouton au pas près. Un saut dont la hauteur exige une durée d'appui exacte fait chuter le taux sous le seuil.
+ */
+export const HOLD_VARIATION = 4;
 /**
  * Positions d'entrée du test de raccord (lot 6) : de combien d'unités le centre du personnage a dépassé le bord droit du palier d'entrée
  * au pas où il le franchit. À pleine vitesse un pas fait `runSpeed` = 375 unités : l'entrée réelle tombe n'importe où dans [0, 375) ; on
@@ -1439,9 +1453,18 @@ export const MODULE_SOLUTIONS: CatalogFile = /* @__PURE__ */ unpackCatalog(MODUL
 export const MODULE_SIM_VERSION = SECTION_CLOCK_VERSION;
 
 /** Les solutions stockées d'un morceau (variante) : null si le catalogue n'en a pas (ou plus : grille ou version changée). */
-export function moduleSolutions(id: string, variant: number): CatalogVariant | null {
-  if (MODULE_SOLUTIONS.jumpSimVersion !== MODULE_SIM_VERSION) return null;
-  return MODULE_SOLUTIONS.modules[id]?.variants[variant] ?? null;
+export function moduleSolutions(id: string, variant: number, legacy = false): CatalogVariant | null {
+  const file = legacy ? legacyCatalog().solutions : MODULE_SOLUTIONS;
+  if (file.jumpSimVersion !== MODULE_SIM_VERSION) return null;
+  return file.modules[id]?.variants[variant] ?? null;
+}
+
+/**
+ * Lot 30 : le morceau joué seul **tel que le jouaient les solutions de l'ancien catalogue** (`legacy` : sans maintien minimal du saut, versions 3 à 12 du niveau du jour) ou tel
+ * qu'il se joue aujourd'hui (avec). Un niveau d'une version d'avant la 13 (`Level.minHold` à 0) prend les solutions d'avant (`moduleSolutions(…, true)`), un niveau de la 13 les nouvelles.
+ */
+export function soloLevel(m: Pick<BuiltModule, "level">, legacy: boolean): Level {
+  return legacy && m.level.minHold !== 0 ? { ...m.level, minHold: 0 } : m.level;
 }
 
 /** Lot 7b : une respiration n'est jamais exigeante — toute variante d'un morceau étiqueté `respiration` a une exigence de 2 au plus. */

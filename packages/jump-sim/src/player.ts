@@ -114,6 +114,11 @@ export interface JumpParams {
   windRise?: number;
   /** Vent latéral : vitesse de dérive, ajoutée à la vitesse visée dans le sens du vent, unités/pas (à force 100). */
   windDrift?: number;
+  // ——— Lot 30 : maintien minimal du saut ———
+  // Comme les réglages d'au-dessus, **absent de `DEFAULT_JUMP_PARAMS`** : absent = la valeur du niveau (`Level.minHold` : 0 avant la version 13,
+  // `JUMP_MIN_HOLD` depuis). Donné, il remplace celle du niveau (panneau `?debug&tune`, essais) et rend la partie `tuned`.
+  /** Pas pendant lesquels un saut ne peut pas être coupé : relâcher avant ce nombre de pas ne raccourcit pas le saut (0 : aucune règle). */
+  jumpMinHold?: number;
 }
 
 /**
@@ -147,7 +152,7 @@ export const DEFAULT_JUMP_PARAMS: Readonly<JumpParams> = Object.freeze({
 export const SPRINT_PARAM_KEYS = ["sprintMode", "sprintSpeed", "sprintDelay", "sprintAccel"] as const satisfies readonly (keyof JumpParams)[];
 export type SprintParamKey = (typeof SPRINT_PARAM_KEYS)[number];
 /** Les réglages qui ont un défaut (tous sauf l'essai d'élan). */
-export type JumpParamKey = Exclude<keyof JumpParams, SprintParamKey | SurfaceParamKey | WindParamKey>;
+export type JumpParamKey = Exclude<keyof JumpParams, SprintParamKey | SurfaceParamKey | WindParamKey | "jumpMinHold">;
 
 export const JUMP_PARAM_KEYS = Object.keys(DEFAULT_JUMP_PARAMS) as readonly JumpParamKey[];
 
@@ -203,7 +208,7 @@ export interface WindPush {
  * absent ou 0) ne change rien : ses autres réglages, sans effet, ne rendent pas la partie `tuned`.
  */
 export function isDefaultJumpParams(params: Readonly<JumpParams>): boolean {
-  return JUMP_PARAM_KEYS.every((k) => params[k] === DEFAULT_JUMP_PARAMS[k]) && !params.sprintMode && SURFACE_PARAM_KEYS.every((k) => surfaceParam(params, k) === SURFACE_DEFAULTS[k]) && WIND_PARAM_KEYS.every((k) => windParam(params, k) === WIND_DEFAULTS[k]);
+  return params.jumpMinHold === undefined && JUMP_PARAM_KEYS.every((k) => params[k] === DEFAULT_JUMP_PARAMS[k]) && !params.sprintMode && SURFACE_PARAM_KEYS.every((k) => surfaceParam(params, k) === SURFACE_DEFAULTS[k]) && WIND_PARAM_KEYS.every((k) => windParam(params, k) === WIND_DEFAULTS[k]);
 }
 
 /** Vitesse visée en élan (unités/pas) : `sprintSpeed`, jamais sous `runSpeed` ni au-dessus de `MAX_SPEED`. */
@@ -253,6 +258,11 @@ export interface PlayerState {
    * un mur ou à l'arrêt. Tant qu'il est là, la vitesse acquise sur le tapis n'est pas freinée en l'air.
    */
   carry?: number;
+  /**
+   * Lot 30, **seulement avec un maintien minimal** (`minHold` > 0 : niveaux de la version 13 et suivantes ; le champ est absent sinon, les empreintes d'avant
+   * ne changent pas) : pas écoulés depuis le départ du saut en cours (0 au pas où il part), plafonné à `COUNTER_CAP` ; présent tant que `jumping` vaut 1.
+   */
+  jumpAge?: number;
 }
 
 /** État au départ du niveau : la boîte centrée sur la tuile `S`, posée au bas de cette tuile. */
@@ -353,8 +363,10 @@ export interface JumpFlags {
  * Lot 19/20 : `platformVx` (0 : aucune plateforme, exactement les calculs d'avant) est la vitesse horizontale de la plateforme mobile qui portait le
  * personnage (unités/pas) : **un saut qui part (sol ou coyote, pas un saut mural) la lui laisse**, ajoutée à sa vitesse une fois le pas déplacé (ce pas-là
  * a déjà reçu le déplacement de la plateforme). Jamais sa vitesse verticale.
+ * Lot 30 : `minHold` (0 : aucune règle, exactement les calculs d'avant) est le **maintien minimal** : un saut (au sol, de coyote ou mural) ne peut pas être coupé
+ * avant d'avoir duré `minHold` pas ; relâché plus tôt, il continue comme s'il était tenu jusque-là, puis la coupe agit (si le bouton est encore relâché à ce pas).
  */
-export function stepPlayerJump(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>, flags: JumpFlags | null, wind: Readonly<WindPush> | null = null, platformVx = 0): PlayerState {
+export function stepPlayerJump(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>, flags: JumpFlags | null, wind: Readonly<WindPush> | null = null, platformVx = 0, minHold = 0): PlayerState {
   if (!Number.isInteger(input) || input < 0 || input > INPUT_MASK) throw new RangeError(`Commande invalide : ${input}`);
   const p = params;
   let dir = (input & INPUT_RIGHT ? 1 : 0) - (input & INPUT_LEFT ? 1 : 0); // gauche + droite = neutre
@@ -457,6 +469,9 @@ export function stepPlayerJump(state: Readonly<PlayerState>, input: number, leve
     }
   }
   if (jumped) jumping = 1;
+  // Lot 30 : l'âge du saut en cours (le pas où il part vaut 0) ; sans maintien minimal le champ n'existe pas.
+  let jumpAge = 0;
+  if (minHold > 0) jumpAge = jumped ? 0 : state.jumping === 1 ? Math.min((state.jumpAge ?? minHold) + 1, COUNTER_CAP) : 0;
   if (flags) {
     flags.jumped = jumped ? 1 : 0;
     flags.wall = wallJumped ? 1 : 0;
@@ -464,7 +479,7 @@ export function stepPlayerJump(state: Readonly<PlayerState>, input: number, leve
   const buffer = jumped ? 0 : pressed ? p.jumpBuffer : state.buffer > 0 ? state.buffer - 1 : 0;
 
   // ——— Coupe de saut : relâcher pendant la montée ———
-  if (jumping === 1 && jump === 0 && vy < -p.jumpCut) {
+  if (jumping === 1 && jump === 0 && jumpAge >= minHold && vy < -p.jumpCut) {
     vy = -p.jumpCut;
     jumping = 0;
   }
@@ -539,11 +554,13 @@ export function stepPlayerJump(state: Readonly<PlayerState>, input: number, leve
     else if (grounded) sprint = vx * dir === p.runSpeed || (sprint >= (p.sprintDelay ?? 0) && vx * dir > p.runSpeed) ? (sprint < COUNTER_CAP ? sprint + 1 : sprint) : 0;
     const withSprint: PlayerState = { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir, sprint };
     if (carry !== 0) withSprint.carry = carry;
+    if (minHold > 0 && jumping === 1) withSprint.jumpAge = jumpAge;
     return withSprint;
   }
   // (Optimisation du lot 25 : `carry` n'est ajouté que s'il est non nul, sans étaler un objet vide à chaque pas ; mêmes champs, même ordre.)
   const next: PlayerState = { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir };
   if (carry !== 0) next.carry = carry;
+  if (minHold > 0 && jumping === 1) next.jumpAge = jumpAge;
   return next;
 }
 

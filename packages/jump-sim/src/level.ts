@@ -1,4 +1,4 @@
-import { JUMP_SIM_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
+import { JUMP_MIN_HOLD, JUMP_SIM_VERSION, MIN_HOLD_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { idiv } from "./idiv";
 
 // Un niveau est une grille ASCII, une ligne de texte par rangée de tuiles, la rangée 0 en haut, suivie (après une ligne vide) d'un
@@ -28,6 +28,9 @@ import { idiv } from "./idiv";
 //       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
 // Bloc annexe (une déclaration par ligne, `//` commente la ligne) :
+//   maintien <pas>
+//       (lot 30) le maintien minimal du saut du niveau (0 à `MAX_MIN_HOLD`) ; absent : `JUMP_MIN_HOLD` (10) depuis la version 13, 0 avant. Les morceaux joués seuls le
+//       déclarent (ils restent en version 3 : une horloge par section) ; un niveau du jour n'a pas besoin de la ligne.
 //   version <3|4|5|6|7|8|9>
 //       (lot 15) la version de la simulation du niveau (`Level.simVersion`) ; absente : 3. **En v3**, chaque section a son horloge, mise en
 //       marche la première fois que le personnage y entre (« phase » d'un élément = pas écoulés depuis, 0 avant) ; **en v4, une seule horloge** :
@@ -195,6 +198,8 @@ export interface Section {
 
 /** Lot 15 : plus grand décalage d'une section (en pas) : le chrono plus la phase restent des entiers exacts. */
 export const MAX_PHASE = 1_000_000_000;
+/** Lot 30 : le plus grand maintien minimal déclarable (`maintien <n>`). */
+export const MAX_MIN_HOLD = 60;
 
 /** Lot 15 : `v mod n` toujours dans [0, n) (aussi pour `v` négatif : l'affichage avant le départ), entier, jamais −0. */
 export function cycleMod(v: number, n: number): number {
@@ -535,6 +540,11 @@ export interface Press {
 export interface Level {
   /** Lot 15 : la version de la simulation du niveau (3 : une horloge par section ; 4 : une seule horloge de course). */
   simVersion: number;
+  /**
+   * Lot 30 : le **maintien minimal du saut** du niveau (pas) : un saut relâché avant ce nombre de pas continue comme s'il était tenu jusque-là (`stepPlayerJump`).
+   * 0 avant la version 13 ; `JUMP_MIN_HOLD` depuis, sauf déclaration `maintien <n>` du bloc annexe (les morceaux joués seuls, qui restent en version 3).
+   */
+  minHold: number;
   width: number;
   height: number;
   /** Rangée par rangée, la rangée 0 en haut : `tiles[row * width + col]`, codes `TILE_*` (l'état initial des blocs friables). */
@@ -702,6 +712,7 @@ export function parseLevel(text: string): Level {
   const sections: Section[] = [];
   let simVersion = SECTION_CLOCK_VERSION;
   let versionLine = 0;
+  let holdDeclared = -1;
   const pending: { line: number; words: string[] }[] = [];
   const blinkLines: { line: number; words: string[] }[] = [];
   const windLines: { line: number; words: string[] }[] = [];
@@ -722,6 +733,11 @@ export function parseLevel(text: string): Level {
       if (versionLine) throw new LevelError(`${where} : version déjà déclarée`);
       versionLine = end + i + 1;
       simVersion = v;
+    } else if (words[0] === "maintien") {
+      const h = words.length === 2 && /^\d+$/.test(words[1]!) ? Number(words[1]) : -1;
+      if (h < 0 || h > MAX_MIN_HOLD) throw new LevelError(`${where} : « maintien <0 à ${MAX_MIN_HOLD}> » attendu`);
+      if (holdDeclared >= 0) throw new LevelError(`${where} : maintien déjà déclaré`);
+      holdDeclared = h;
     } else if (words[0] === "section") {
       const m = (words.length === 3 || (words.length === 5 && words[3] === "phase" && /^\d+$/.test(words[4]!))) ? /^(\d+)-(\d+)$/.exec(words[2]!) : null;
       if (!m) throw new LevelError(`${where} : « section <nom> <col0>-<col1> [phase <p>] » attendu`);
@@ -743,7 +759,7 @@ export function parseLevel(text: string): Level {
     else if (words[0] === "laser") laserLines.push({ line: end + i + 1, words });
     else if (words[0] === "barre") barLines.push({ line: end + i + 1, words });
     else if (words[0] === "pont") bridgeLines.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme, presse, stalactite, laser, barre, pont)`);
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, maintien, section, scie, clignote, vent, plateforme, presse, stalactite, laser, barre, pont)`);
   }
   if (simVersion < SINGLE_CLOCK_VERSION && sections.some((s) => s.phase !== 0)) throw new LevelError("Une phase de section n'existe qu'en version 4 (une seule horloge)");
   // ——— Lot 12 : les cycles des blocs clignotants, par section ———
@@ -1034,7 +1050,8 @@ export function parseLevel(text: string): Level {
     if (bridges.some((q) => q.switchCol === switchCol && q.switchRow === switchRow)) throw new LevelError(`${where} : l'interrupteur (${switchCol},${switchRow}) a déjà un pont`);
     bridges.push({ id, switchCol, switchRow, delay, tiles: cells });
   }
-  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites, lasers, laserBars, bridges };
+  const minHold = holdDeclared >= 0 ? holdDeclared : simVersion >= MIN_HOLD_VERSION ? JUMP_MIN_HOLD : 0;
+  return { simVersion, minHold, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites, lasers, laserBars, bridges };
 }
 
 /**
@@ -1262,14 +1279,19 @@ export function withSingleClock(ascii: string, phases: readonly number[], versio
   const cut = lines.indexOf("");
   if (cut < 0) throw new LevelError("Niveau sans bloc annexe : rien à mettre à l'heure");
   let k = 0;
-  const annex = lines.slice(cut + 1).map((line) => {
-    const words = line.trim().split(/\s+/);
-    if (words[0] === "version") throw new LevelError("Niveau déjà versionné");
-    if (words[0] !== "section") return line;
-    const p = phases[k++];
-    if (p === undefined) throw new LevelError("Une phase par section attendue");
-    return p === 0 ? line : `${line} phase ${p}`;
-  });
+  const annex = lines
+    .slice(cut + 1)
+    .map((line) => {
+      const words = line.trim().split(/\s+/);
+      if (words[0] === "version") throw new LevelError("Niveau déjà versionné");
+      // Lot 30 : le maintien minimal d'un niveau de la version 13 est celui de sa version : la ligne `maintien 10` (posée par l'assemblage pour jouer la preuve en version 3) n'a rien à y faire.
+      if (words[0] === "maintien" && version >= MIN_HOLD_VERSION && words[1] === String(JUMP_MIN_HOLD)) return null;
+      if (words[0] !== "section") return line;
+      const p = phases[k++];
+      if (p === undefined) throw new LevelError("Une phase par section attendue");
+      return p === 0 ? line : `${line} phase ${p}`;
+    })
+    .filter((line): line is string => line !== null);
   if (k !== phases.length) throw new LevelError("Une phase par section attendue");
   return [...lines.slice(0, cut), "", `version ${version}`, ...annex].join("\n");
 }
