@@ -41,7 +41,7 @@ async function verifierLiensCommunaute(page: import("@playwright/test").Page): P
   const plaques = [await rect("#communaute-discord"), await rect("#communaute-kofi")];
   const vue = page.viewportSize()!;
   for (const b of plaques) {
-    expect([b.width, b.height]).toEqual([44, 44]);
+    expect(b.height).toBe(44);
     expect(b.x).toBeLessThan(vue.width / 4);
     expect(b.y).toBeGreaterThan(vue.height / 2);
     for (const autre of [await rect("#accueil-jouer"), await rect("#accueil-aide")]) {

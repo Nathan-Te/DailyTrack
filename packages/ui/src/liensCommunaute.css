@@ -1,34 +1,54 @@
-/* Lot S1 : les liens de la communauté (Discord, Ko-fi) — deux plaques de 44 px en bas à gauche de l'accueil d'un jeu, sur la scène sous le voile (le bas à droite est la bande d'aide de la manette).
-   Jetons seulement. L'écran qui les porte leur réserve une bande en bas : rien ne passe dessous (le contenu défile s'il manque de place). */
+/* Lot S1 : les liens de la communauté (Discord, Ko-fi) — le même aspect dans le pied du portail et sur l'accueil des jeux. Jetons seulement. Sur l'accueil d'un jeu : en bas à gauche, sur la scène sous le
+   voile (le bas à droite est la bande d'aide de la manette) ; l'écran qui les porte leur réserve une bande en bas, rien ne passe dessous (le contenu défile s'il manque de place). */
+.dj-communaute__lien {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-7) 0 var(--dj-espace-4);
+  border-radius: 22px;
+  font-family: var(--dj-police-texte);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  line-height: 1.2;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: transform var(--dj-duree-courte);
+}
+.dj-communaute__lien:hover {
+  transform: translateY(-2px);
+}
+.dj-communaute__lien img {
+  display: block;
+  flex: none;
+  width: auto;
+  height: 24px;
+}
+.dj-communaute__lien--kofi {
+  background: var(--dj-kofi);
+  color: var(--dj-encre);
+}
+.dj-communaute__lien--discord {
+  background: var(--dj-discord);
+  color: var(--dj-blanc);
+  padding-left: var(--dj-espace-5);
+}
 .dj-communaute {
   position: fixed;
   z-index: 1;
   left: max(10px, env(safe-area-inset-left));
   bottom: max(10px, env(safe-area-inset-bottom));
   display: flex;
+  flex-wrap: wrap;
   gap: var(--dj-espace-3);
-}
-.dj-communaute a {
-  display: grid;
-  place-items: center;
-  box-sizing: border-box;
-  width: var(--dj-cible);
-  height: var(--dj-cible);
-  background: var(--dj-creme);
-  color: var(--dj-encre);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  box-shadow: var(--dj-ombre-bouton);
-}
-.dj-communaute svg {
-  width: 24px;
-  height: 24px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  max-width: calc(100vw - 20px);
 }
 :is(.cadre, .voile, .accueil):has(.dj-communaute) {
   padding-bottom: calc(max(10px, env(safe-area-inset-bottom)) + var(--dj-cible) + var(--dj-espace-3));
+}
+/* Étroit : les deux boutons passent sur deux lignes, la bande réservée double. */
+@media (max-width: 480px) {
+  :is(.cadre, .voile, .accueil):has(.dj-communaute) {
+    padding-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 2 * var(--dj-cible) + 2 * var(--dj-espace-3));
+  }
 }

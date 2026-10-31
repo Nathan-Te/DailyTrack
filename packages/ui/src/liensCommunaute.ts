@@ -1,41 +1,40 @@
 import "./liensCommunaute.css";
+import pictoDiscord from "./discord.svg?no-inline";
+import tasseKofi from "./kofi-tasse.png";
 
-// Lot S1 : les liens de la communauté (Discord, Ko-fi), **le seul composant et les seules adresses** de la plateforme : le pied du portail (`boutonCommunaute.ts`) et l'accueil de chaque jeu
-// (deux plaques de 44 px, icônes au trait, en bas à gauche). De simples liens : aucun script, bouton intégré ni image d'un service tiers (règle du site), nouvel onglet sans transmettre la
-// page d'origine, aucun paramètre qui identifie le joueur. **À la demande, et sans rien importer du reste du socle** : les textes lui sont donnés, déjà traduits.
+// Lot S1 : les liens de la communauté (Discord, Ko-fi), **le seul composant et les seules adresses** de la plateforme, avec **le même aspect partout** : celui des boutons du pied du portail (le bleu de Ko-fi
+// et sa tasse, le bleu-violet de Discord et son pictogramme, faits ici — rien n'est chargé de chez eux). De simples liens : aucun script, bouton ni widget intégré (cookies et traceurs tiers), nouvel onglet sans
+// transmettre la page d'origine, aucun paramètre qui identifie le joueur. Les textes sont donnés déjà traduits. Sur l'accueil d'un jeu : `liensCommunaute`, en bas à gauche ; dans le pied du portail : `lienCommunaute`.
 
 export const LIEN_DISCORD = "https://discord.gg/2KZkUSpDej";
 export const LIEN_KOFI = "https://ko-fi.com/C7X829MCE1";
 export type LienCommunaute = "discord" | "kofi";
 export const ADRESSES_COMMUNAUTE: Readonly<Record<LienCommunaute, string>> = { discord: LIEN_DISCORD, kofi: LIEN_KOFI };
 
-/** Les icônes au trait (24 × 24, `currentColor`) : une bulle de discussion, une tasse. */
-const TRACES: Readonly<Record<LienCommunaute, string>> = {
-  discord: "M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM9 11h.01M15 11h.01",
-  kofi: "M4 8h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 4v1.5M12 4v1.5",
-};
+/** Un bouton : le pictogramme (hébergé ici) et le nom. */
+export function lienCommunaute(type: LienCommunaute, texte: string, id: string): HTMLAnchorElement {
+  const a = document.createElement("a");
+  a.className = `dj-communaute__lien dj-communaute__lien--${type}`;
+  a.id = id;
+  a.href = ADRESSES_COMMUNAUTE[type];
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  const img = document.createElement("img");
+  img.alt = "";
+  img.src = type === "kofi" ? tasseKofi : pictoDiscord;
+  img.height = 24;
+  img.width = type === "kofi" ? 30 : 24;
+  const s = document.createElement("span");
+  s.textContent = texte;
+  a.append(img, s);
+  return a;
+}
 
-/** Les deux plaques en bas à gauche d'un écran d'accueil (le nom lu en `aria-label`) : l'appelant les pose dans l'écran, elles disparaissent avec lui. Au changement de langue il en refait un groupe. */
+/** Les deux boutons en bas à gauche d'un écran d'accueil : l'appelant les pose dans l'écran, ils disparaissent avec lui. Au changement de langue il en refait un groupe. */
 export function liensCommunaute(textes: Readonly<Record<LienCommunaute, string>>): HTMLElement {
   const g = document.createElement("div");
   g.className = "dj-communaute dj-sombre";
   g.id = "communaute";
-  for (const type of ["discord", "kofi"] as const) {
-    const a = document.createElement("a");
-    a.className = "dj-communaute__plaque";
-    a.id = `communaute-${type}`;
-    a.href = ADRESSES_COMMUNAUTE[type];
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.setAttribute("aria-label", textes[type]);
-    const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    s.setAttribute("viewBox", "0 0 24 24");
-    s.setAttribute("aria-hidden", "true");
-    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("d", TRACES[type]);
-    s.append(p);
-    a.append(s);
-    g.append(a);
-  }
+  g.append(lienCommunaute("discord", textes.discord, "communaute-discord"), lienCommunaute("kofi", textes.kofi, "communaute-kofi"));
   return g;
 }

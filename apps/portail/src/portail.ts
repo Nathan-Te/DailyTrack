@@ -39,9 +39,7 @@ import {
   visibiliteDeLaPage,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
-import { boutonCommunaute } from "@cdj/ui/src/boutonCommunaute";
-import pictoDiscord from "./discord.svg?no-inline";
-import tasseKofi from "./kofi-tasse.png";
+import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { dans, nonLue } from "./nouveautesDonnees";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
@@ -324,16 +322,9 @@ function rendre(): void {
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
 }
 
-/**
- * Les boutons Discord et Ko-fi du pied : le composant du socle (`boutonCommunaute`, lot S1 — les adresses n'y sont écrites qu'une fois), à l'allure des services (leur bleu, leur pictogramme ;
- * l'habillage est dans `portail.css`) : de simples liens, **ni widget ni script intégrés** (cookies et traceurs tiers). L'image est hébergée ici.
- */
-function lienDiscord(texte: string): HTMLElement {
-  return boutonCommunaute("discord", { texte, classe: "portail-discord", id: "discord", image: { src: pictoDiscord, classe: "portail-discord__picto", largeur: 24, hauteur: 24 } });
-}
-function lienKofi(texte: string): HTMLElement {
-  return boutonCommunaute("kofi", { texte, classe: "portail-kofi", id: "kofi", image: { src: tasseKofi, classe: "portail-kofi__tasse", largeur: 30, hauteur: 24 } });
-}
+/** Les boutons Discord et Ko-fi du pied : le composant du socle (`lienCommunaute`, lot S1), le même aspect que sur l'accueil des jeux. */
+const lienDiscord = (texte: string): HTMLElement => lienCommunaute("discord", texte, "discord");
+const lienKofi = (texte: string): HTMLElement => lienCommunaute("kofi", texte, "kofi");
 
 // --- Le compte à rebours (heure du serveur) -----------------------------------------------------------------------------------
 let minuterie: ReturnType<typeof setTimeout> | null = null;

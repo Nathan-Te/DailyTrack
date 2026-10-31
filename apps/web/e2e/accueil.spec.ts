@@ -52,10 +52,10 @@ test.describe("l'accueil", () => {
     // Plus de carte de profil sur l'accueil : un lien vers le profil commun du portail, avec le chemin de retour vers le jeu.
     await expect(page.locator("#home-profile")).toHaveAttribute("href", /profil\/\?retour=/);
     for (const label of ["Archives", "Réglages", "Comment jouer"]) await expect(page.locator("#home .links").getByRole("button", { name: new RegExp(label) })).toBeVisible();
-    // Lot S1 : Discord et Ko-fi, deux plaques de 44 px en bas à gauche, en liens sortants sans rien qui identifie le joueur ; elles ne chevauchent rien.
+    // Lot S1 : Discord et Ko-fi, deux boutons de 44 px de haut (l'aspect du portail) en bas à gauche, en liens sortants sans rien qui identifie le joueur ; elles ne chevauchent rien.
     const plaques = await boxes(page, ["#communaute-discord", "#communaute-kofi", "#home-daily", "#home-salon", "#home-portail", "#home .links"]);
     expect(plaques).toHaveLength(6);
-    for (const b of plaques.slice(0, 2)) expect([b.w, b.h]).toEqual([44, 44]);
+    for (const b of plaques.slice(0, 2)) expect(b.h).toBe(44);
     expect(plaques[0]!.x, "bas à gauche").toBeLessThan(DESKTOP.width / 4);
     expect(plaques[0]!.y).toBeGreaterThan(DESKTOP.height / 2);
     expectNoOverlap(plaques, DESKTOP);
@@ -65,8 +65,8 @@ test.describe("l'accueil", () => {
       await expect(lien).toHaveAttribute("target", "_blank");
       await expect(lien).toHaveAttribute("rel", "noopener noreferrer");
     }
-    await expect(page.locator("#communaute-discord")).toHaveAttribute("aria-label", "Rejoindre le Discord");
-    await expect(page.locator("#communaute-kofi")).toHaveAttribute("aria-label", "Soutenir sur Ko-fi");
+    await expect(page.locator("#communaute-discord")).toHaveText("Rejoindre le Discord");
+    await expect(page.locator("#communaute-kofi")).toHaveText("Soutenir sur Ko-fi");
     // Le HUD de course n'est pas là : on est à l'accueil.
     await expect(page.locator("#menu")).toBeHidden();
     await expect(page.locator("#speed")).toBeHidden();

@@ -140,7 +140,7 @@ for (const viewport of [
       await expect(page.locator("#communaute")).toBeVisible();
       const plaques = await boxes(page, ["#communaute-discord", "#communaute-kofi", "#home-play", "#home-ghost"]);
       expect(plaques).toHaveLength(4); // la rangée Archives / Comment jouer / Réglages défile au-dessus de la bande réservée aux plaques (la coque dépasse l'écran en 844 × 390)
-      for (const b of plaques.slice(0, 2)) expect([b.w, b.h]).toEqual([44, 44]);
+      for (const b of plaques.slice(0, 2)) expect(b.h).toBe(44);
       expect(plaques[0]!.x, "bas à gauche").toBeLessThan(viewport.width / 4);
       expectNoOverlap(plaques, viewport);
       for (const [id, href] of [["discord", "https://discord.gg/2KZkUSpDej"], ["kofi", "https://ko-fi.com/C7X829MCE1"]] as const) {

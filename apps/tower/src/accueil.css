@@ -387,7 +387,7 @@
   }
 }
 
-/* Lot S1 : l'accueil qui porte les plaques Discord / Ko-fi (liensCommunaute.css réserve une bande en bas, padding du voile) : c'est la colonne qui défile, dans ce qui reste, pour que le contenu ne passe jamais sous les plaques. */
+/* Lot S1 : l'accueil qui porte les boutons Discord / Ko-fi (liensCommunaute.css réserve une bande en bas, padding du voile) : c'est la colonne qui défile, dans ce qui reste, pour que le contenu ne passe jamais sous les boutons. */
 .voile--accueil:has(.dj-communaute) {
   overflow-y: hidden;
 }
