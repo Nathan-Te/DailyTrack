@@ -1464,7 +1464,7 @@ export function moduleSolutions(id: string, variant: number, legacy = false): Ca
  * qu'il se joue aujourd'hui (avec). Un niveau d'une version d'avant la 13 (`Level.minHold` à 0) prend les solutions d'avant (`moduleSolutions(…, true)`), un niveau de la 13 les nouvelles.
  */
 export function soloLevel(m: Pick<BuiltModule, "level">, legacy: boolean): Level {
-  return legacy && m.level.minHold !== 0 ? { ...m.level, minHold: 0 } : m.level;
+  return legacy && m.level.minHold !== 0 ? { ...m.level, minHold: 0, microMax: 0 } : m.level;
 }
 
 /** Lot 7b : une respiration n'est jamais exigeante — toute variante d'un morceau étiqueté `respiration` a une exigence de 2 au plus. */

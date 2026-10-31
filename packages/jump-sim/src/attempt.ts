@@ -838,7 +838,7 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
 
   // ——— Personnage ———
   const flags: JumpFlags | null = level.alts.length > 0 ? { jumped: 0, wall: 0 } : null;
-  let player = stepPlayerJump(from, input, gridOf(level, tiles), params, flags, level.winds.length > 0 ? windPush(level, state) : null, platformVx, params.jumpMinHold ?? level.minHold);
+  let player = stepPlayerJump(from, input, gridOf(level, tiles), params, flags, level.winds.length > 0 ? windPush(level, state) : null, platformVx, params.jumpMinHold ?? level.minHold, params.jumpMicroMax ?? level.microMax);
   // Se poser sur une plateforme : la plus haute dont le personnage était au-dessus (son pied au plus au niveau de son dessus au pas précédent) et que
   // son pied atteint ou dépasse maintenant, en recouvrement horizontal ; sans y entrer dans un plein (alors on la traverse).
   let landedOn = -1;

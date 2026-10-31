@@ -6,8 +6,8 @@ Versions : `JUMP_SIM_VERSION` **13** (`MIN_HOLD_VERSION` : v3 à v12 se jouent t
 
 `<aperçu>` = l'adresse de l'aperçu de la PR (`https://…--pr-<n>-<empreinte>.web.app/jump/`, lien commenté sur la PR) ; en local : `npm run dev:jump`. Le morceau choisi, **`vent-piliers` variante 1**, est celui qui exigeait le plus petit appui avant le lot (5 pas, notée 5, la plus dure des solutions à 5 pas qui existent encore) :
 
-1. **Taps normaux** : `<aperçu>?module=vent-piliers&variante=1&entree=arret` — joue le morceau seul dans la version 13. Tape le saut brièvement (60 à 120 ms) : un appui de 1 à 10 pas fait **le même petit saut** (2,53 tuiles), tenir plus longtemps monte plus haut. Le passage ne demande plus un appui au pas près.
-2. **Le réglage** : `<aperçu>?module=vent-piliers&variante=1&entree=arret&debug&tune` — section « Maintien du saut » du panneau : le curseur vaut 10 pas ; à **0** tu retrouves l'ancien comportement (le saut dépend de la durée exacte : un tap de 3 pas ne passe plus, celui de 5 pas à peine), à 20 le petit saut monte à ≈ 3,8 tuiles. La partie est alors « réglages modifiés » : **rien n'est enregistré ni envoyé**. Ramener le curseur à 10 retire le réglage.
+1. **Taps normaux** : `<aperçu>?module=vent-piliers&variante=1&entree=arret` — joue le morceau seul dans la version 13. Tape le saut brièvement (60 à 120 ms) : un appui de 5 à 10 pas fait **le même petit saut** (2,53 tuiles), tenir plus longtemps monte plus haut. Le passage ne demande plus un appui au pas près. **Micro-saut** : un effleurement de 33 ms ou moins (4 pas, une image à 60 Hz) coupe le saut comme avant (≈ 1 tuile).
+2. **Le réglage** : `<aperçu>?module=vent-piliers&variante=1&entree=arret&debug&tune` — section « Maintien du saut » du panneau : deux curseurs : le **maintien** (10 pas) et le **micro-saut** (4 pas). Maintien à **0** : l'ancien comportement (le saut dépend de la durée exacte) ; micro-saut à **0** : plus de micro-saut, tout appui bref est le petit saut ; maintien à 20 : le petit saut monte à ≈ 3,8 tuiles. La partie est alors « réglages modifiés » : **rien n'est enregistré ni envoyé**. Ramener le curseur à 10 retire le réglage.
 
 ## 1. Mesure d'abord (catalogue g23, avant tout changement)
 
@@ -26,7 +26,7 @@ Les morceaux concernés avant le lot : tous ceux dont le plus court appui valait
 
 ## 2. Le maintien minimal (sim v13)
 
-- `JUMP_MIN_HOLD` = **10 pas** (≈ 83 ms). Un saut (sol, coyote, tampon, **mural**) relâché avant 10 pas continue comme s'il était tenu 10 pas, puis la coupe agit si le bouton est encore relâché. Hauteurs : 1 pas **0,98** → 2,53 tuiles ; 5 pas 1,71 → 2,53 ; 10 pas 2,53 (inchangé) ; 12 pas 2,82, 16 pas 3,35, 24 pas 4,19 : **au-delà de 10 pas la courbe est celle d'avant, au bit près**. Le petit saut est donc plus haut qu'avant (2,53 contre 1,71 pour le plus petit appui admis jusqu'ici) : c'est le prix du « tout appui bref donne le même saut » et la raison de l'écart du catalogue (§ 4).
+- `JUMP_MIN_HOLD` = **10 pas** (≈ 83 ms). Un saut (sol, coyote, tampon, **mural**) relâché avant 10 pas continue comme s'il était tenu 10 pas, puis la coupe agit si le bouton est encore relâché. **Micro-saut (retour de Nathan sur l'aperçu)** : un appui de `JUMP_MICRO_MAX` = **4 pas ou moins** (33 ms) n'est pas prolongé et coupe le saut comme avant (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,55 à 4 pas ; `PlayerState.pressLen`). Hauteurs : 5 pas 1,71 → 2,53 ; 10 pas 2,53 (inchangé) ; 12 pas 2,82, 16 pas 3,35, 24 pas 4,19 : **au-delà de 10 pas la courbe est celle d'avant, au bit près**. Le petit saut est donc plus haut qu'avant (2,53 contre 1,71 pour le plus petit appui admis jusqu'ici) : c'est le prix du « tout appui bref donne le même saut » et la raison de l'écart du catalogue (§ 4).
 - `PlayerState.jumpAge` (absent sans maintien : les empreintes d'avant ne bougent pas), `Level.minHold` (0 avant la v13 ; ligne `maintien <n>` pour les morceaux joués seuls), `JumpParams.jumpMinHold` (absent des défauts, `?debug&tune` seulement : la partie devient `tuned`).
 - Tests : `maintien.test.ts` (appui de 1 à 10 pas = même trajectoire au bit près ; au-delà, la courbe d'avant ; mural, coyote, nouvel appui tenu ; niveaux v12 et v13 côte à côte), `golden*.test.ts` (**v3 à v12 intacts**, v13 nouvelle : `daily-golden-v13.json`, `replay-golden-v13.json`).
 
@@ -50,12 +50,13 @@ Les morceaux concernés avant le lot : tous ceux dont le plus court appui valait
 | W = 4, 365 dates | 0 secours, 0 retour avant 4 jours | **0 secours, 0 retour** (W = 5 : 614 retours, hors de portée comme avant) |
 | génération à froid, 48 dates | 0,22 · 0,60 s | **0,35 · 1,18 s** (< 1,5 s) |
 | jours avec l'élément du lot (forêt · usine · glace · nuit · néon) | 81 · 56 · 83 · 81 · 61 % | 71 · 84 · 67 · 78 · 71 % |
-| budget Jump (JS + CSS) | 372 941 o (`main`, mesuré) | **375 692 o (+2 751, marge 2 798)** |
+| budget Jump (JS + CSS) | 372 941 o (`main`, mesuré) | **376 010 o (+3 069, marge 2 480)** |
 
 **Les temps de l'auteur bougent à peine** (moyenne 29,53 → 29,51 s) : pas de recalibrage des médailles à proposer. Les 120 dates restent dans la cible (exigence par minute 426–562, hauteur ≤ 56, 8 à 12 morceaux).
 
 ## Décisions laissées à Nathan
 
+0. **Micro-saut ajouté après ton essai** : un appui de 4 pas ou moins redonne le saut bas d'avant ; **mais il ne reste aucun saut intermédiaire** (1,6 à 2,4 tuiles) pour un appui de 5 à 10 pas : entre le micro-saut (≤ 1,55) et le petit saut (2,53), seul un appui de 11 pas et plus monte plus haut. Les passages « un peu plus bas que 2,5 » restent donc fermés à un appui court. Si tu veux un petit saut plus bas (6 ou 7 pas ≈ 1,9–2,0 tuiles) en plus du micro-saut, c'est un autre `JUMP_MIN_HOLD` : tout le catalogue est à re-résoudre (≈ 1 h 30 de calcul, comme ce lot) ; les deux curseurs de `?debug&tune` servent à en juger au ressenti avant.
 1. **Le petit saut monte à 2,53 tuiles** : c'est la conséquence directe de « tout appui de 1 à 10 pas = le saut de 10 pas » (cahier des charges). Les passages à plafond bas (`tunnel`, `plafond-pics`, `saut-plafond`…) sont plus difficiles ou écartés. Si c'est trop haut, `JUMP_MIN_HOLD` est réglable : 8 donnerait 2,22 tuiles (un nouveau lot, solveur compris).
 2. **Variantes de remplacement** : je n'en ai ajouté aucune (`MAX_VARIANTS` reste 10, `tapis-relais` disparaît). Un lot « variantes plus tolérantes » peut les rendre ; l'usine perd son morceau de tapis le plus dur.
 3. **`?semaine=…&generateur=14`** ne recalcule plus g14 (poids) ; à rétablir par un fichier comme g13 si l'outil sert encore.

@@ -8,6 +8,7 @@ import {
   INPUT_JUMP,
   INPUT_RIGHT,
   HOLD_VARIATION,
+  JUMP_MICRO_MAX,
   PLAYER_WIDTH,
   RELEASE_MIN,
   RACCORD_POSITIONS,
@@ -214,7 +215,8 @@ function shiftedInstants(inputs: readonly number[], k: number, rng: Rng): number
  * puis rendue humaine (`humanized`).
  */
 export function jittered(inputs: readonly number[], k: number, rng: Rng): number[] {
-  return humanized(holdVaried(shiftedInstants(inputs, k, rng), rng));
+  // Un doigt qui vise un appui franc ne fait pas un micro-saut par accident : la gigue ne descend jamais sous `JUMP_MICRO_MAX + 1` pas (au-dessous, c'est le micro-saut voulu).
+  return humanized(holdVaried(shiftedInstants(inputs, k, rng), rng), JUMP_MICRO_MAX + 1);
 }
 
 /** La gigue d'avant le lot 30 (les instants seuls, sans variation de la durée des appuis) : de quoi comparer les deux mesures. */

@@ -88,12 +88,18 @@ export const ALT_KEPT_VERSION = 12;
 /**
  * Lot 30 : **version 13 = version 12 + le maintien minimal du saut**. Un saut relâché avant `JUMP_MIN_HOLD` pas (10, environ 83 ms) continue comme s'il avait été tenu 10 pas : tout appui de
  * 1 à 10 pas donne exactement le même petit saut (celui d'un appui de 10 pas : hauteur et courbe inchangées) ; au-delà, la courbe est celle d'avant. Vaut pour tout saut qui part (sol, coyote,
- * mural, tampon) ; un ressort ou un champignon ne se coupent pas. Retour des joueurs : le petit saut s'obtenait par un appui de 5 pas (42 ms) qu'on ne dose pas au clavier ou à la manette.
+ * mural, tampon) ; un ressort ou un champignon ne se coupent pas. Exception du micro-saut (`JUMP_MICRO_MAX`, plus bas). Retour des joueurs : le petit saut s'obtenait par un appui de 5 pas (42 ms) qu'on ne dose pas au clavier ou à la manette.
  * Les niveaux du jour depuis le générateur g24 sont en v13 ; les golden et les rediffusions des versions 3 à 12 n'ont pas bougé (le champ `PlayerState.jumpAge` n'existe qu'avec un maintien).
  */
 export const MIN_HOLD_VERSION = 13;
 /** Lot 30 : le maintien minimal du saut (pas) des niveaux de la version 13 et suivantes : 10 pas = 83 ms. Réglable pour essayer (`JumpParams.jumpMinHold`, `?debug&tune`). */
 export const JUMP_MIN_HOLD = 10;
+/**
+ * Lot 30 (retour de Nathan après l'essai de l'aperçu) : le **micro-saut reste possible**. Un appui de `JUMP_MICRO_MAX` pas ou moins (4 pas, 33 ms : un effleurement volontaire, une image à 60 Hz) n'est pas
+ * prolongé par le maintien minimal : le saut est coupé au relâchement comme avant la version 13 (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,55 à 4 pas). Du 5ᵉ au 10ᵉ pas, c'est le petit saut du maintien minimal (2,53
+ * tuiles) ; au-delà, la courbe d'avant. Le catalogue n'a aucun appui de moins de 10 pas : ses solutions sont inchangées. Réglable pour essayer (`JumpParams.jumpMicroMax`, `?debug&tune`).
+ */
+export const JUMP_MICRO_MAX = 4;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :

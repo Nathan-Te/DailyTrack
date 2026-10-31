@@ -1,4 +1,4 @@
-import { JUMP_MIN_HOLD, JUMP_SIM_VERSION, MIN_HOLD_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
+import { JUMP_MICRO_MAX, JUMP_MIN_HOLD, JUMP_SIM_VERSION, MIN_HOLD_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { idiv } from "./idiv";
 
 // Un niveau est une grille ASCII, une ligne de texte par rangée de tuiles, la rangée 0 en haut, suivie (après une ligne vide) d'un
@@ -545,6 +545,8 @@ export interface Level {
    * 0 avant la version 13 ; `JUMP_MIN_HOLD` depuis, sauf déclaration `maintien <n>` du bloc annexe (les morceaux joués seuls, qui restent en version 3).
    */
   minHold: number;
+  /** Lot 30 : le micro-saut du niveau (pas) : un appui de ce nombre de pas ou moins n'est pas prolongé par le maintien minimal. `JUMP_MICRO_MAX` avec un maintien, 0 sans. */
+  microMax: number;
   width: number;
   height: number;
   /** Rangée par rangée, la rangée 0 en haut : `tiles[row * width + col]`, codes `TILE_*` (l'état initial des blocs friables). */
@@ -1051,7 +1053,8 @@ export function parseLevel(text: string): Level {
     bridges.push({ id, switchCol, switchRow, delay, tiles: cells });
   }
   const minHold = holdDeclared >= 0 ? holdDeclared : simVersion >= MIN_HOLD_VERSION ? JUMP_MIN_HOLD : 0;
-  return { simVersion, minHold, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites, lasers, laserBars, bridges };
+  const microMax = minHold > 0 ? JUMP_MICRO_MAX : 0;
+  return { simVersion, minHold, microMax, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms, stalactites, lasers, laserBars, bridges };
 }
 
 /**
