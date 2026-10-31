@@ -28,7 +28,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
   const info = await jump(page);
   expect(info.phase).toBe("ready");
-  expect(info.simVersion).toBe(12); // lot 28 : les alternés gardent leur état à la reprise (v12) ; lot 27 : mort avant le premier point = essai à zéro (v11) ; lot 26 : ponts (v10) ; le code joue les niveaux v3, v4 (horloge unique), v5 (plateformes mobiles), v6 (presses), v7 (champignons), v8 (stalactites) et v9 (lasers)
+  expect(info.simVersion).toBe(13); // lot 28 : les alternés gardent leur état à la reprise (v12) ; lot 27 : mort avant le premier point = essai à zéro (v11) ; lot 26 : ponts (v10) ; le code joue les niveaux v3, v4 (horloge unique), v5 (plateformes mobiles), v6 (presses), v7 (champignons), v8 (stalactites) et v9 (lasers)
   expect(info.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
   const canvas = page.locator("canvas");

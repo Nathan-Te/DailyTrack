@@ -29,7 +29,7 @@ const jump = (page: Page) =>
  * Un jour dont le niveau, de la version demandée, a au moins une scie mobile : de quoi voir un danger bouger avant le départ. La v4 (horloge unique, générateurs
  * g10 à g14) ne se génère plus depuis le lot 20 : on prend un jour **figé** en v4 ; la v9 (lasers, g19 ; v8 : stalactites, g18 ; v7 : champignons, g17 ; v6 : presses, g16 ; v5 : plateformes mobiles, g15) est celle d'un jour sans fichier figé.
  */
-function dayWithSaw(version: 4 | 12): string {
+function dayWithSaw(version: 4 | 13): string {
   const movingSaw = (date: string) => pageLevel(date).level.saws.some((s) => s.cycle > 0);
   if (version === 4) {
     const date = FROZEN_DATES.filter((d) => pageLevel(d).level.simVersion === 4).find(movingSaw);
@@ -48,7 +48,7 @@ async function open(page: Page, date: string): Promise<boolean> {
   return true;
 }
 
-for (const version of [4, 12] as const) test(`niveau v${version} : pendant le « Prêt… » les dangers bougent déjà, puis le chrono part à heure fixe sans commande ; « recommencer » relance le « Prêt… »`, async ({ page }) => {
+for (const version of [4, 13] as const) test(`niveau v${version} : pendant le « Prêt… » les dangers bougent déjà, puis le chrono part à heure fixe sans commande ; « recommencer » relance le « Prêt… »`, async ({ page }) => {
   const date = dayWithSaw(version);
   test.skip(!(await open(page, date)), "pas de WebGL dans ce navigateur");
   // Un « Prêt… » neuf : jusqu'à `manual(true)` la boucle tourne en temps réel et a pu en consommer une partie en se chargeant (WebKit : 20 pas).
