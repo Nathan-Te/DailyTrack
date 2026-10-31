@@ -681,3 +681,7 @@
 .voile--classement {
   z-index: calc(var(--z-voile) + 1);
 }
+/* Un bouton du socle caché par `hidden` (Recharger, avant une nouvelle version) ne laisse aucune case vide. */
+.dj-bouton[hidden] {
+  display: none;
+}
