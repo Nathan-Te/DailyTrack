@@ -44,20 +44,17 @@ export function tirerPaliers(graine: number): Effet[] {
   throw new Error("aucun tirage de paliers ne respecte les règles"); // ne se produit pas : 36 mélanges sur 720 sont valides
 }
 
-export function dailyTowerV1(jour: number): Contenu {
-  const graine = mixSeed(jour, SEL_TOWER);
-  const pieces = suiteParSacs(new Rng(mixSeed(graine, SUJET_SACS)), NB_PIECES);
-  const plateformeDemi8 = new Rng(mixSeed(graine, SUJET_PLATEFORME)).pick(PLATEFORME_DEMI8_CHOIX);
+/** Lot T3b : le corps d'un contenu (suite, plateforme, paliers à ces hauteurs, vent) tiré d'une graine — partagé par les versions 1 et 3, qui ne diffèrent que par la graine, les hauteurs et le thème. */
+export function corpsDuJour(jour: number, graine: number, hauteurs: readonly number[]): Pick<Contenu, "nom" | "jour" | "pieces" | "plateformeDemi8" | "paliers" | "ventSens"> {
   const effets = tirerPaliers(mixSeed(graine, SUJET_PALIERS));
-  const ventSens = new Rng(mixSeed(graine, SUJET_VENT)).int(2) === 0 ? -1 : 1;
   return {
     nom: formatDay(jour),
     jour,
-    g: 1,
-    theme: "port",
-    pieces,
-    plateformeDemi8,
-    paliers: PALIERS_METRES.map((metres, i) => ({ metres, effet: effets[i]! })),
-    ventSens,
+    pieces: suiteParSacs(new Rng(mixSeed(graine, SUJET_SACS)), NB_PIECES),
+    plateformeDemi8: new Rng(mixSeed(graine, SUJET_PLATEFORME)).pick(PLATEFORME_DEMI8_CHOIX),
+    paliers: hauteurs.map((metres, i) => ({ metres, effet: effets[i]! })),
+    ventSens: new Rng(mixSeed(graine, SUJET_VENT)).int(2) === 0 ? -1 : 1,
   };
 }
+
+export const dailyTowerV1 = (jour: number): Contenu => ({ ...corpsDuJour(jour, mixSeed(jour, SEL_TOWER), PALIERS_METRES), g: 1, theme: "port" });

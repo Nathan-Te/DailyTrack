@@ -8,12 +8,16 @@
 //   ?scenario=banc            la démonstration de la physique du lot T0 (`&engine=a|b`, `&libre`) ; son panneau est `&debug&tune` — fermé en production
 //   ?bot                      (lot T3, avec le contenu d'un jour) REGARDER le bot de l'auteur jouer : il rejoue la preuve du fichier du jour si elle existe, sinon il la calcule dans un Web Worker et joue chaque
 //                             pièce dès qu'elle est décidée — fermé en production (la preuve de l'auteur n'y est pas publiée)
+//   ?tirage=0..3              (lot T3b) le tirage du contenu d'un jour SANS fichier (0 par défaut) : la préparation retient parfois un autre tirage que le 0 (voir `dailyTower`), qu'un jour sans fichier
+//                             ne connaît pas — fermé en production. Un fichier de jour, s'il existe, porte son propre tirage et l'emporte.
 //   ?theme=<nom>              (lot T3) force le thème (port, chantier, canyon, banquise, jungle, nuit), pour les essayer — fermé en production
 //   ?debug                    une ligne d'état (tick, phase, empreinte) et la porte `window.__tower` pour les tests
 //   ?debug&tune               + le panneau des réglages de sensation (curseurs)
 //   ?tactile=1 | 0            force l'interface tactile (boutons aux bords) ou la coupe ; sans lui, l'appareil décide (pointeur grossier)
+//   ?api=<adresse>            (lot T4) le serveur du classement, pour les essais : `https://…`, `/` (la même origine) ou la machine locale. R7 : sur la production il ne vise que `/`, la page
+//                             elle-même ou la machine locale (`apiFromAddress` de `@cdj/profile`) ; l'identifiant secret ne part jamais vers un serveur étranger. Sans lui : `VITE_API_URL`.
 import { parseDay } from "@cdj/core";
-import { EFFETS, type Effet, THEMES_TOWER, type ThemeTower } from "@cdj/tower-sim";
+import { EFFETS, type Effet, THEMES_TOWER, type ThemeTower, TIRAGES_MAX } from "@cdj/tower-sim";
 
 export type Scenario = "jour" | "essai" | "paliers" | "banc";
 export interface OptionsUrl {
@@ -26,9 +30,13 @@ export interface OptionsUrl {
   tune: boolean;
   /** `?bot` : regarder le bot jouer (contenu d'un jour seulement ; fermé en production). */
   bot: boolean;
+  /** `?tirage=` : le tirage d'un jour sans fichier (0 à TIRAGES_MAX − 1), 0 sinon. Fermé en production. */
+  tirage: number;
   /** `?theme=` : le thème forcé, ou null (celui du jour). Fermé en production. */
   theme: ThemeTower | null;
   tactile: "1" | "0" | null;
+  /** `?api=` lu tel quel (la règle R7 s'applique à `baseApi`, pas ici), ou null. */
+  api: string | null;
 }
 
 export const PRODUCTION = import.meta.env.VITE_PRODUCTION === "1";
@@ -39,6 +47,7 @@ export function lireOptions(search: string, restreint: boolean): OptionsUrl {
   const demande = q.get("scenario");
   const effet = q.get("effet");
   const theme = q.get("theme");
+  const tirage = Number(q.get("tirage"));
   const scenario = restreint ? "jour" : demande === "banc" || demande === "essai" || demande === "paliers" ? demande : "jour";
   return {
     scenario,
@@ -47,8 +56,10 @@ export function lireOptions(search: string, restreint: boolean): OptionsUrl {
     debug: !restreint && q.has("debug"),
     tune: !restreint && q.has("debug") && q.has("tune"),
     bot: !restreint && scenario === "jour" && q.has("bot"),
+    tirage: !restreint && tirage > 0 && tirage < TIRAGES_MAX ? Math.floor(tirage) : 0,
     theme: !restreint && (THEMES_TOWER as readonly string[]).includes(theme ?? "") ? (theme as ThemeTower) : null,
     tactile: tactile === "1" || tactile === "0" ? tactile : null,
+    api: q.get("api"),
   };
 }
 

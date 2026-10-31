@@ -50,7 +50,7 @@ Les morceaux concernés avant le lot : tous ceux dont le plus court appui valait
 | W = 4, 365 dates | 0 secours, 0 retour avant 4 jours | **0 secours, 0 retour** (W = 5 : 614 retours, hors de portée comme avant) |
 | génération à froid, 48 dates | 0,22 · 0,60 s | **0,35 · 1,18 s** (< 1,5 s) |
 | jours avec l'élément du lot (forêt · usine · glace · nuit · néon) | 81 · 56 · 83 · 81 · 61 % | 71 · 84 · 67 · 78 · 71 % |
-| budget Jump (JS + CSS) | 372 852 o (`main`, mesuré) | **375 582 o (+2 730, marge 2 908)** |
+| budget Jump (JS + CSS) | 372 941 o (`main`, mesuré) | **375 692 o (+2 751, marge 2 798)** |
 
 **Les temps de l'auteur bougent à peine** (moyenne 29,53 → 29,51 s) : pas de recalibrage des médailles à proposer. Les 120 dates restent dans la cible (exigence par minute 426–562, hauteur ≤ 56, 8 à 12 morceaux).
 

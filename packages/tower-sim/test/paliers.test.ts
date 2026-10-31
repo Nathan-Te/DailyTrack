@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { COMMANDE, DUREE_EFFET, EFFETS, type Effet, estBonus, FIGEE_TICKS, FROTTEMENT_GLISSANT, Partie, type PieceKind, problemePaliers, type Rapier, type Scenario, scenarioPaliers, TOUR_DEPART, VENT_PERIODE_TICKS, HAUTEUR_TOUR_DEPART_MM } from "../src";
+import { COMMANDE, DUREE_EFFET, EFFETS, type Effet, estBonus, FIGEE_TICKS, FROTTEMENT_GLISSANT, Partie, type PieceKind, problemePaliers, type Rapier, type Scenario, scenarioPaliers, TOUR_DEPART, VENT_PERIODE_TICKS, HAUTEUR_TOUR_DEPART_MM, HAUTEUR_TOUR_DEPART_V3_MM } from "../src";
 import { chargerRapier } from "../src/rapier";
 
 // Lot T2 — les paliers : la règle de déclenchement, puis UN test par effet (lierre, pièce figée, petite, géante, coup de vent, glissante). Node seulement (règle R13).
@@ -265,18 +265,19 @@ describe("le scénario des paliers (`?scenario=paliers&effet=…`)", () => {
   it("six effets, six scénarios : le premier palier est l'effet demandé, les cinq autres suivent, tous différents", () => {
     for (const e of EFFETS) {
       const s = scenarioPaliers(e);
-      expect(s.paliers![0]).toEqual({ metres: 10, effet: e });
+      expect(s.paliers![0]).toEqual({ metres: 8, effet: e });
       expect(new Set(s.paliers!.map((x) => x.effet)).size).toBe(6);
-      expect(s.paliers!.map((x) => x.metres)).toEqual([10, 20, 30, 40, 50, 60]);
+      expect(s.paliers!.map((x) => x.metres)).toEqual([8, 16, 24, 32, 40, 48]);
       expect(s.nom).toBe(`paliers-${e}`);
     }
   });
 
-  it("la tour de départ est à 9 m, endormie, et tient", () => {
+  it("la tour de départ du scénario est à 7 m (juste sous le palier de 8 m), endormie, et tient", () => {
     const p = new Partie(R, scenarioPaliers("vent"));
     for (let i = 0; i < 120; i++) p.avancer(0);
-    expect(p.vue().hauteurMm).toBeGreaterThan(8950);
-    expect(p.vue().hauteurMm).toBeLessThan(9050);
+    expect(p.vue().hauteurMm).toBeGreaterThan(HAUTEUR_TOUR_DEPART_V3_MM - 50);
+    expect(p.vue().hauteurMm).toBeLessThan(HAUTEUR_TOUR_DEPART_V3_MM + 50);
+    expect(p.vue().palier).toEqual({ metres: 8, effet: "vent", bonus: false });
     expect(p.vue().declenches).toBe(0);
     p.dispose();
   });

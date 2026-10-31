@@ -1,8 +1,10 @@
 import { DUREE_EFFET, type Effet, medailleVisee, type PieceKind, type VuePartie } from "@cdj/tower-sim";
-import { boutonFantome, boutonPleinEcran, el, formatNombre, nomMedaille, svg } from "@cdj/ui";
-import { apercuPiece, coeurs, majCoeurs } from "./composants";
+import { boutonFantome, boutonPleinEcran, el, nomMedaille, svg } from "@cdj/ui";
+import { apercuPiece } from "./apercuPiece";
+import { coeurs, majCoeurs } from "./composants";
 import { type Entrees, type Touche } from "./entrees";
-import { langueCourante, t, traducteurDuSocle } from "./i18n";
+import { formatHauteur, formatPalier } from "./formatHauteur";
+import { t, traducteurDuSocle } from "./i18n";
 import { type EtatMedailles, TYPE_MEDAILLE } from "./medailles";
 
 // Le HUD de la partie (lot T1) — maquettes `tower-hud-paysage.html` et `tower-hud-portrait.html`, charte rév. 13 § 9. Une bande de 30 px en haut au centre (hauteur · pièce n/40 ·
@@ -20,10 +22,7 @@ export interface OptionsHud {
   onFantome(): void;
 }
 
-export const formatHauteur = (mm: number): string => `${formatNombre(mm / 1000, langueCourante(), 3)} m`;
-
-/** Une hauteur de palier en mètres entiers : « 10 m » (espace insécable, comme `formatHauteur`). */
-export const formatPalier = (metres: number): string => `${formatNombre(metres, langueCourante(), 0)}\u00a0m`;
+export { formatHauteur, formatPalier };
 
 /** Combien de temps l'annonce d'un palier reste à l'écran (ms) : une ligne courte, qui disparaît (charte § 9). */
 const ANNONCE_MS = 3600;

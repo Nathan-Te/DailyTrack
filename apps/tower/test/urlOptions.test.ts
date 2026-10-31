@@ -8,8 +8,8 @@ const J = (d: string): number => parseDay(d)!;
 
 describe("paramètres d'adresse de Tower", () => {
   it("hors production : le contenu du jour par défaut, la suite d'essai, les paliers, la démonstration du lot T0, les outils de Nathan", () => {
-    expect(lireOptions("", false)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, theme: null, tactile: null });
-    expect(lireOptions("?scenario=essai&debug&tune&tactile=1", false)).toEqual({ scenario: "essai", seed: null, effet: "lierre", debug: true, tune: true, bot: false, theme: null, tactile: "1" });
+    expect(lireOptions("", false)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, tirage: 0, theme: null, tactile: null, api: null });
+    expect(lireOptions("?scenario=essai&debug&tune&tactile=1", false)).toEqual({ scenario: "essai", seed: null, effet: "lierre", debug: true, tune: true, bot: false, tirage: 0, theme: null, tactile: "1", api: null });
     expect(lireOptions("?scenario=banc&engine=b", false).scenario).toBe("banc");
     expect(lireOptions("?scenario=inconnu", false).scenario).toBe("jour");
     expect(lireOptions("?tune", false).tune).toBe(false); // `tune` ne va pas sans `debug`
@@ -30,7 +30,7 @@ describe("paramètres d'adresse de Tower", () => {
   });
 
   it("en production : ni scénario, ni effet, ni ?debug, ni ?tune ; seul ?seed= reste lu (sa date future est refusée par choisirJour)", () => {
-    expect(lireOptions("?scenario=banc&debug&tune&bot&theme=nuit", true)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, theme: null, tactile: null });
+    expect(lireOptions("?scenario=banc&debug&tune&bot&theme=nuit", true)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, tirage: 0, theme: null, tactile: null, api: null });
     expect(lireOptions("?scenario=paliers&effet=vent", true)).toMatchObject({ scenario: "jour", effet: "lierre" });
     expect(lireOptions("?seed=2026-11-02", true).seed).toBe(J("2026-11-02"));
   });
@@ -62,5 +62,24 @@ describe("choisirJour : le jour à jouer", () => {
     expect(choisirJour(J("2026-10-30"), AUJOURDHUI, true)).toEqual({ jour: J("2026-10-30"), refuse: false });
     expect(choisirJour(AUJOURDHUI, AUJOURDHUI, true)).toEqual({ jour: AUJOURDHUI, refuse: false });
     expect(choisirJour(J("2026-11-03"), AUJOURDHUI, true)).toEqual({ jour: AUJOURDHUI, refuse: true });
+  });
+});
+
+describe("lot T3b : ?tirage=", () => {
+  it("hors production : le tirage d'un jour sans fichier, de 0 à TIRAGES_MAX − 1 ; illisible ou hors bornes = 0", () => {
+    expect(lireOptions("", false).tirage).toBe(0);
+    for (const t of [1, 2, 3]) expect(lireOptions(`?seed=2026-11-17&tirage=${t}`, false)).toMatchObject({ tirage: t, seed: J("2026-11-17") });
+    for (const mauvais of ["0", "4", "99", "-1", "x", ""]) expect(lireOptions(`?tirage=${mauvais}`, false).tirage, mauvais).toBe(0);
+  });
+  it("en production (R9) : fermé — le contenu d'un jour est toujours le tirage 0 (ou celui de son fichier)", () => {
+    expect(lireOptions("?seed=2026-11-05&tirage=2", true).tirage).toBe(0);
+  });
+});
+
+describe("lot T4 : ?api=", () => {
+  it("l'adresse du serveur est lue telle quelle (la règle R7 s'applique à baseApi) ; en production elle est lue aussi, jamais crue", () => {
+    expect(lireOptions("?api=http://localhost:8791", false).api).toBe("http://localhost:8791");
+    expect(lireOptions("?api=/", true).api).toBe("/");
+    expect(lireOptions("", false).api).toBeNull();
   });
 });

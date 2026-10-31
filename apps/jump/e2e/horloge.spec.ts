@@ -87,7 +87,7 @@ for (const version of [4, 13] as const) test(`niveau v${version} : pendant le «
 });
 
 // Lot R13 : la pause sur le niveau du jour seulement (v8 depuis le lot 24) (la même règle qu'en v4 ; le « Prêt… » du v4 figé est vérifié plus haut).
-for (const version of [12] as const) test(`niveau v${version} : la pause fige tout, « Prêt… » compris ; le « Prêt… » reprend à la fermeture`, { tag: "@regression" }, async ({ page }) => {
+for (const version of [13] as const) test(`niveau v${version} : la pause fige tout, « Prêt… » compris ; le « Prêt… » reprend à la fermeture`, { tag: "@regression" }, async ({ page }) => {
   const date = dayWithSaw(version);
   test.skip(!(await open(page, date)), "pas de WebGL dans ce navigateur");
   // Un « Prêt… » neuf (la page a pu le consommer en se chargeant), puis la pause tout de suite, boucle en temps réel.

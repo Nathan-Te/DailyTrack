@@ -3,23 +3,29 @@ import {
   aireDuJour,
   COEFFICIENT_GEOMETRIQUE_PCT,
   dailyTower,
+  diamantDe,
   estimationGeometrique,
   medailleObtenue,
   medailleVisee,
   medaillesDe,
+  MEDAILLES_VERSION,
   NOMS_MEDAILLES,
+  PLAFOND_DIAMANT_MM,
   POURCENTAGES_MEDAILLES,
 } from "../src";
 
-// Lot T3 — les médailles : seuils en millimètres entiers (Or 90 %, Argent 75 %, Bronze 55 % du Diamant), médaille obtenue à chaque bord, repli géométrique.
+// Lot T3 — les médailles : seuils en millimètres entiers, médaille obtenue à chaque bord, repli géométrique. Lot T3b : Or 50 %, Argent 30 %, Bronze 15 % du Diamant (version 2 des médailles,
+// décision de Nathan ; à recalibrer au lot T5 sur des parties humaines), et le Diamant plafonné à 60 m.
 describe("medaillesDe : des entiers, tronqués vers zéro", () => {
-  it("les pourcentages du seed", () => {
-    expect(POURCENTAGES_MEDAILLES).toEqual({ or: 90, argent: 75, bronze: 55 });
-    expect(medaillesDe(50_000)).toEqual({ auteur: 50_000, or: 45_000, argent: 37_500, bronze: 27_500 });
+  it("lot T3b — les pourcentages calibrés (15, 30 et 50 %), version 2", () => {
+    expect(MEDAILLES_VERSION).toBe(2);
+    expect(POURCENTAGES_MEDAILLES).toEqual({ or: 50, argent: 30, bronze: 15 });
+    expect(medaillesDe(50_000)).toEqual({ auteur: 50_000, or: 25_000, argent: 15_000, bronze: 7_500 });
+    expect(medaillesDe(60_000)).toEqual({ auteur: 60_000, or: 30_000, argent: 18_000, bronze: 9_000 });
   });
   it("jamais de flottant : un Diamant qui ne se divise pas est tronqué", () => {
     const m = medaillesDe(48_273);
-    expect(m).toEqual({ auteur: 48_273, or: 43_445, argent: 36_204, bronze: 26_550 }); // 43 445,7 · 36 204,75 · 26 550,15
+    expect(m).toEqual({ auteur: 48_273, or: 24_136, argent: 14_481, bronze: 7_240 }); // 24 136,5 · 14 481,9 · 7 240,95
     for (const n of NOMS_MEDAILLES) expect(Number.isInteger(m[n])).toBe(true);
     expect(m.bronze).toBeLessThanOrEqual(m.argent);
     expect(m.argent).toBeLessThanOrEqual(m.or);
@@ -32,14 +38,14 @@ describe("medaillesDe : des entiers, tronqués vers zéro", () => {
 });
 
 describe("medailleObtenue : la plus haute dont la hauteur atteint le seuil (≥)", () => {
-  const m = medaillesDe(50_000); // bronze 27 500 · argent 37 500 · or 45 000 · diamant 50 000
+  const m = medaillesDe(50_000); // bronze 7 500 · argent 15 000 · or 25 000 · diamant 50 000
   it("à chaque bord : un millimètre de moins ne suffit pas, le seuil exact suffit", () => {
-    expect(medailleObtenue(27_499, m)).toBeNull();
-    expect(medailleObtenue(27_500, m)).toBe("bronze");
-    expect(medailleObtenue(37_499, m)).toBe("bronze");
-    expect(medailleObtenue(37_500, m)).toBe("argent");
-    expect(medailleObtenue(44_999, m)).toBe("argent");
-    expect(medailleObtenue(45_000, m)).toBe("or");
+    expect(medailleObtenue(7_499, m)).toBeNull();
+    expect(medailleObtenue(7_500, m)).toBe("bronze");
+    expect(medailleObtenue(14_999, m)).toBe("bronze");
+    expect(medailleObtenue(15_000, m)).toBe("argent");
+    expect(medailleObtenue(24_999, m)).toBe("argent");
+    expect(medailleObtenue(25_000, m)).toBe("or");
     expect(medailleObtenue(49_999, m)).toBe("or");
     expect(medailleObtenue(50_000, m)).toBe("auteur"); // le Diamant s'obtient à hauteur ÉGALE à celle du bot
     expect(medailleObtenue(80_000, m)).toBe("auteur");
@@ -50,11 +56,30 @@ describe("medailleObtenue : la plus haute dont la hauteur atteint le seuil (≥)
 describe("medailleVisee : la prochaine médaille et ce qu'il en reste", () => {
   const m = medaillesDe(50_000);
   it("de la première à la dernière, puis plus rien", () => {
-    expect(medailleVisee(0, m)).toEqual({ nom: "bronze", seuil: 27_500, reste: 27_500 });
-    expect(medailleVisee(27_500, m)).toEqual({ nom: "argent", seuil: 37_500, reste: 10_000 });
-    expect(medailleVisee(40_906, m)).toEqual({ nom: "or", seuil: 45_000, reste: 4_094 }); // « Or : encore 4,094 m »
-    expect(medailleVisee(45_000, m)).toEqual({ nom: "auteur", seuil: 50_000, reste: 5_000 });
+    expect(medailleVisee(0, m)).toEqual({ nom: "bronze", seuil: 7_500, reste: 7_500 });
+    expect(medailleVisee(7_500, m)).toEqual({ nom: "argent", seuil: 15_000, reste: 7_500 });
+    expect(medailleVisee(20_906, m)).toEqual({ nom: "or", seuil: 25_000, reste: 4_094 }); // « Or : encore 4,094 m »
+    expect(medailleVisee(25_000, m)).toEqual({ nom: "auteur", seuil: 50_000, reste: 25_000 });
     expect(medailleVisee(50_000, m)).toBeNull();
+  });
+});
+
+describe("lot T3b — le Diamant est plafonné à 60 m (générateur 3), la preuve reste la vraie partie du bot", () => {
+  it("min(hauteur du bot, plafond), aux bords", () => {
+    expect(PLAFOND_DIAMANT_MM).toBe(60_000);
+    expect(diamantDe(59_999)).toBe(59_999);
+    expect(diamantDe(60_000)).toBe(60_000);
+    expect(diamantDe(60_001)).toBe(60_000);
+    expect(diamantDe(103_400)).toBe(60_000);
+    expect(diamantDe(0)).toBe(0);
+  });
+  it("les générateurs 1 et 2 n'ont pas de plafond : leurs jours servis gardent leur Diamant", () => {
+    expect(diamantDe(103_400, 1)).toBe(103_400);
+    expect(diamantDe(103_400, 2)).toBe(103_400);
+    expect(diamantDe(103_400, 3)).toBe(60_000);
+  });
+  it("les médailles d'un Diamant plafonné se calculent sur le plafond (30 m, 18 m, 9 m)", () => {
+    expect(medaillesDe(diamantDe(103_400))).toEqual({ auteur: 60_000, or: 30_000, argent: 18_000, bronze: 9_000 });
   });
 });
 
@@ -68,6 +93,14 @@ describe("le repli géométrique : aire des pièces ÷ largeur de la plateforme 
     expect(estimationGeometrique({ pieces: c.pieces, plateformeDemi8: 20 }, 100).auteur).toBe(32_000);
     expect(estimationGeometrique({ pieces: c.pieces, plateformeDemi8: 32 }, 100).auteur).toBe(20_000);
     expect(estimationGeometrique({ pieces: c.pieces, plateformeDemi8: 20 }, 150).auteur).toBe(48_000);
+  });
+  it("lot T3b — l'estimation est plafonnée comme le Diamant (60 m) ; à 100 % elle ne dépasse jamais 32 m, le plafond ne joue pas dans la mesure du coefficient", () => {
+    const c = dailyTower(20_000);
+    const cinqMetres = { pieces: c.pieces, plateformeDemi8: 20 };
+    expect(estimationGeometrique(cinqMetres, 100).auteur).toBe(32_000);
+    expect(estimationGeometrique(cinqMetres, 187).auteur).toBe(59_840);
+    expect(estimationGeometrique(cinqMetres, 188).auteur).toBe(60_000); // 60 160 mm plafonnés
+    expect(estimationGeometrique(cinqMetres, 250)).toEqual(medaillesDe(60_000));
   });
   it("le coefficient par défaut est celui de la constante, et les médailles qui en viennent sont de vrais seuils", () => {
     const c = dailyTower(20_001);

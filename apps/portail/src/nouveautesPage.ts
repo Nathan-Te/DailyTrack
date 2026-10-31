@@ -15,6 +15,10 @@ import { CATALOGUE_PORTAIL } from "./catalogue";
 import { dans, lireNouveautes, noterNouveauteLue, parDate, type Nouveaute } from "./nouveautesDonnees";
 import { numeroDeJournee } from "./jours";
 import { stockageDuPortail } from "./stockage";
+import { activerManette } from "@cdj/ui/src/manetteLien";
+
+// Lot M1 : cette page se pilote à la manette (son action principale : une ligne de `manette.ts`, chargée avec le menu).
+activerManette(() => import("./manette").then((m) => m.pour("nouveautes")));
 
 // Lot N2 : la page des nouveautés (`/nouveautes/`), ouverte par la ligne « Nouveautés » de l'accueil. Les mises à jour **par date, la plus récente en haut**, chaque ligne avec
 // l'étiquette de sa zone (Du Jour, Track, Jump) ; **20 par page**, puis « Plus anciennes » (le curseur `avant` de `GET /api/portail/nouveautes`, cache public court). Français ou

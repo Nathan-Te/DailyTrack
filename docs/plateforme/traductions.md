@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1220 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1304 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -96,6 +96,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.sim_version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.no_ghost` | Pas de fantôme à montrer. | No ghost to show. |
+| `erreur.not_ranked` | Ce fantôme se débloque quand tu es classé ce jour-là. | This ghost unlocks once you are ranked that day. |
 | `erreur.invalid_session` | Session du Salon invalide. | Invalid Room session. |
 | `erreur.unknown_session` | Cette session du Salon est terminée. | This Room session is over. |
 | `erreur.session_future` | Cette session du Salon n'a pas encore commencé. | This Room session hasn't started yet. |
@@ -126,6 +127,16 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `langue.en.court` | EN | EN |
 | `langue.fr.nom` | Français | Français |
 | `langue.en.nom` | English | English |
+
+### manette (`manette.*`, `packages/ui/src/catalogue.manette.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `manette.valider` | Valider | Confirm |
+| `manette.retour` | Retour | Back |
+| `manette.onglets` | Onglets | Tabs |
+| `manette.aide.aria` | Aide de la manette : A valide, B revient, LB et RB changent d'onglet. | Gamepad help: A confirms, B goes back, LB and RB switch tabs. |
+| `manette.aide.aria.sans` | Aide de la manette : A valide, B revient. | Gamepad help: A confirms, B goes back. |
 
 ### Marque (`marque.*`, `packages/ui/src/catalogue.ts`)
 
@@ -1565,6 +1576,41 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 ## Tower
 
+### Accueil (`accueil.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `accueil.aria` | Accueil de Tower | Tower home |
+| `accueil.titre` | Tower | Tower |
+| `accueil.tour` | Tour n° {numero} · {theme} | Tower no. {numero} · {theme} |
+| `accueil.tourSansNumero` | Tour du jour · {theme} | Today's tower · {theme} |
+| `accueil.phrase.port` | « Au large, le vent se lève. Les pièces le savent. Elles ont peur. » | “Out at sea, the wind is rising. The pieces know. They're scared.” |
+| `accueil.phrase.chantier` | « Le contremaître est parti déjeuner. Les pièces te font confiance. Un peu. » | “The foreman went to lunch. The pieces trust you. A little.” |
+| `accueil.phrase.canyon` | « Le canyon retient son souffle. Les pièces aussi. » | “The canyon holds its breath. So do the pieces.” |
+| `accueil.phrase.banquise` | « La glace est lisse et les pièces glissent. Elles aimeraient que tu y penses. » | “The ice is smooth and the pieces slide. They'd like you to remember that.” |
+| `accueil.phrase.jungle` | « La jungle grimpe plus vite que toi. Les pièces s'y accrochent. » | “The jungle climbs faster than you do. The pieces cling on.” |
+| `accueil.phrase.nuit` | « Il fait nuit. Les pièces ne voient rien, mais elles sentent la tour penser à tomber. » | “It's night. The pieces can't see, but they can feel the tower thinking about falling.” |
+| `accueil.record` | Ton record | Your record |
+| `accueil.record.aucun` | Pas encore joué | Not played yet |
+| `accueil.record.sous` | {medaille} · {suivante} à {seuil} | {medaille} · {suivante} at {seuil} |
+| `accueil.record.sansMedaille` | {suivante} à {seuil} | {suivante} at {seuil} |
+| `accueil.serie` | Série Tower | Tower streak |
+| `accueil.serie.jours` | one : {n} jour · other : {n} jours | one : {n} day · other : {n} days |
+| `accueil.serie.medailles` | one : {n} médaille · other : {n} médailles | one : {n} medal · other : {n} medals |
+| `accueil.jouer` | Jouer | Play |
+| `accueil.attente` | Chargement de la tour… | Loading the tower… |
+| `accueil.aide` | Comment jouer | How to play |
+| `accueil.paliers` | Aujourd'hui · {pieces} pièces · plateforme {plateforme} | Today · {pieces} pieces · {plateforme} platform |
+| `accueil.paliers.aria` | Les paliers du jour | Today's milestones |
+| `accueil.plateforme.5` | très étroite | very narrow |
+| `accueil.plateforme.6` | étroite | narrow |
+| `accueil.plateforme.7` | moyenne | medium |
+| `accueil.plateforme.8` | large | wide |
+| `accueil.classement` | Classement du jour | Today's leaderboard |
+| `accueil.toutLeClassement` | Tout le classement › | Full leaderboard › |
+| `accueil.prochaine` | Prochaine tour dans | Next tower in |
+| `accueil.profil` | Mon profil Du Jour › | My Du Jour profile › |
+
 ### annonce (`annonce.*`, `apps/tower/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -1586,6 +1632,20 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `chargement.texte` | Chargement de la physique… | Loading the physics… |
 | `chargement.echec` | La physique n'a pas pu se charger. Recharge la page. | The physics couldn't load. Reload the page. |
 
+### Classement (`classement.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `classement.titre` | Classement | Leaderboard |
+| `classement.classes` | one : {total} classé · other : {total} classés | one : {total} ranked · other : {total} ranked |
+| `classement.toi` | Toi | You |
+| `classement.vies` | one : {n} vie · other : {n} vies | one : {n} life · other : {n} lives |
+| `classement.chargement` | Chargement du classement… | Loading the leaderboard… |
+| `classement.indisponible` | Classement indisponible : hors ligne. | Leaderboard unavailable: you're offline. |
+| `classement.vide` | Personne n'est encore classé. Sois le premier. | Nobody is ranked yet. Be the first. |
+| `classement.fermer` | Fermer | Close |
+| `classement.refuse` | Ta partie n'a pas pu être classée. | Your game couldn't be ranked. |
+
 ### Commandes tactiles (`commande.*`, `apps/tower/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -1594,6 +1654,21 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commande.droite` | Droite | Right |
 | `commande.tourner` | Tourner | Rotate |
 | `commande.descendre` | Descendre vite (maintenir) | Drop fast (hold) |
+
+### Comment jouer (`aide.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `aide.titre` | Comment jouer | How to play |
+| `aide.point1` | Pose les pièces une à une, le plus haut possible : la hauteur finale de la tour est ton score. | Stack the pieces one by one, as high as you can: the final height of the tower is your score. |
+| `aide.point2` | Une pièce qui tombe sous la plateforme te coûte une vie. Tu en as trois. | A piece that falls below the platform costs you a life. You have three. |
+| `aide.point3` | Tous les 8 mètres, un bonus ou un malus du jour s'applique à la pièce suivante. | Every 8 metres, a bonus or a penalty of the day applies to the next piece. |
+| `aide.commandes` | Commandes | Controls |
+| `aide.deplacer` | Déplacer | Move |
+| `aide.tourner` | Tourner | Rotate |
+| `aide.descendre` | Descendre vite | Drop fast |
+| `aide.espace` | Espace | Space |
+| `aide.ok` | C'est parti | Let's go |
 
 ### effet (`effet.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1613,6 +1688,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `fantome.bouton` | Fantôme : {nom} | Ghost: {nom} |
 | `fantome.aucun` | Aucun | None |
 | `fantome.meilleure` | Ma meilleure | My best |
+| `fantome.diamant` | Diamant | Diamond |
 
 ### Fin de partie (`fin.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1624,7 +1700,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `fin.medailles.encore` | {medaille} : encore {reste} | {medaille}: {reste} to go |
 | `fin.medailles.toutes` | Tu as le Diamant. | You got the Diamond. |
 | `fin.medailles.calcul` | Médailles en calcul… | Working out the medals… |
-| `fin.medailles.session` | Meilleure médaille de la session : {medaille} | Best medal this session: {medaille} |
+| `fin.medailles.session` | Meilleure médaille du jour : {medaille} | Best medal of the day: {medaille} |
 | `fin.aria` | Fin de la partie | End of the game |
 | `fin.eyebrow` | TOWER · Suite d'essai | TOWER · Practice run |
 | `fin.eyebrow.jour` | TOWER · {date} | TOWER · {date} |
@@ -1639,6 +1715,26 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `fin.rejouer` | Rejouer | Play again |
 | `fin.phrase.pieces` | Les pièces respirent enfin. | The pieces can finally breathe. |
 | `fin.phrase.vies` | Les pièces ne t'en veulent pas. Presque pas. | The pieces don't hold it against you. Not much. |
+| `fin.eyebrow.tour` | TOWER · Tour n° {numero} · {theme} | TOWER · Tower no. {numero} · {theme} |
+| `fin.classement` | Classement | Leaderboard |
+| `fin.voirClassement` | Classement | Leaderboard |
+| `fin.partager` | Partager | Share |
+| `fin.rang.sur` | sur {total} | of {total} |
+| `fin.rang.record` | sur {total} · nouveau record | of {total} · new record |
+| `fin.rang.pasMieux` | Pas mieux que ton record du jour. | Not better than your record of the day. |
+| `fin.rang.envoi` | Envoi de ta partie… | Sending your game… |
+| `fin.rang.horsLigne` | Hors ligne, non classé : ta partie sera envoyée. | Offline, not ranked: your game will be sent. |
+| `fin.rang.tropEnvois` | Trop d'envois : ta partie sera envoyée plus tard. | Too many sends: your game will be sent later. |
+| `fin.rang.version` | Une nouvelle version du jeu est disponible. | A new version of the game is out. |
+| `fin.rang.pseudo` | Choisis un pseudo pour entrer au classement. | Pick a name to join the leaderboard. |
+| `fin.recharger` | Recharger | Reload |
+| `fin.pseudo` | Ton pseudo | Your name |
+| `fin.pseudo.ok` | Valider | Confirm |
+| `fin.paliers` | Paliers franchis | Milestones passed |
+| `fin.paliers.aucun` | Aucun | None |
+| `fin.partage.copie` | Copié dans le presse-papiers. | Copied to the clipboard. |
+| `fin.partage.partage` | Partagé. | Shared. |
+| `fin.partage.echec` | Copie impossible : sélectionne le texte ci-dessous. | Couldn't copy: select the text below. |
 
 ### Jour (`jour.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1665,6 +1761,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `palier.bonus` | bonus | bonus |
 | `palier.malus` | malus | penalty |
+
+### Partage de la journée (`partage.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `partage.titre` | Du Jour · Tower #{numero} | Du Jour · Tower #{numero} |
+| `partage.titreSansNumero` | Du Jour · Tower · {date} | Du Jour · Tower · {date} |
 
 ### Partie (surimpressions) (`hud.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1693,3 +1796,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.phrase` | Les pièces retiennent leur souffle. | The pieces are holding their breath. |
 | `pause.reprendre` | Reprendre | Resume |
 | `pause.recommencer` | Recommencer | Restart |
+
+### Thèmes (`theme.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `theme.port` | Port | Harbour |
+| `theme.chantier` | Chantier | Building site |
+| `theme.canyon` | Canyon | Canyon |
+| `theme.banquise` | Banquise | Ice floe |
+| `theme.jungle` | Jungle | Jungle |
+| `theme.nuit` | Nuit | Night |

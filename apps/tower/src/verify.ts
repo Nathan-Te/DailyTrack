@@ -18,7 +18,7 @@ export interface Verification {
 /** Lot T2 : une rediffusion de référence à rejouer (le golden `golden-tower.json`) et ce que le navigateur en tire. */
 export interface Reference {
   nom: string;
-  contenu: { scenario: string } | { date: string };
+  contenu: { scenario: string } | { date: string; g: number; tirage?: number };
   code: string;
 }
 export interface RejeuReference {
@@ -50,7 +50,7 @@ window.__rejouer = async (references) => {
   const R = await (await import("@cdj/tower-sim/rapier")).chargerRapier();
   return references.map((ref) => {
     const t0 = performance.now();
-    const contenu = "scenario" in ref.contenu ? SCENARIO_ESSAI : dailyTower(parseDay(ref.contenu.date)!);
+    const contenu = "scenario" in ref.contenu ? SCENARIO_ESSAI : dailyTower(parseDay(ref.contenu.date)!, ref.contenu.g, ref.contenu.tirage ?? 0);
     const r = rejouerComplet(R, contenu, ref.code);
     return { nom: ref.nom, resultat: r.resultat, empreinteFinale: empreinteVue(r.vue), paliers: r.vue.declenches, ms: performance.now() - t0 };
   });

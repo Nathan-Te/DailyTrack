@@ -8,11 +8,12 @@
 // Fonctions PURES (aucune lecture de fichier : on leur passe le JSON) : l'outil d'écriture, le jeu et les tests les partagent.
 import { formatDay, parseDay } from "@cdj/core";
 import { PIECE_KINDS, type PieceKind } from "../lab/interface";
-import { type Contenu, dailyTower, TOWER_GENERATOR_VERSION, VERSIONS_GENERATEUR } from "./generateur";
+import { type Contenu, dailyTower, GENERATEUR_TIRAGE, TOWER_GENERATOR_VERSION, VERSIONS_GENERATEUR } from "./generateur";
 import { type Medailles } from "./medailles";
 import { EFFETS, type Effet } from "./paliers";
 import { THEMES_TOWER, type ThemeTower } from "./themes";
 import { TOWER_SIM_VERSION } from "./constantes";
+import { TIRAGES_MAX } from "./tirage";
 
 export const FORMAT_JOUR_FIGE = 1;
 
@@ -24,6 +25,8 @@ export interface JourFige {
   date: string;
   /** La version du générateur qui a produit ce jour. */
   g: number;
+  /** Lot T3b (générateur 3) : le tirage du contenu du jour (0 à TIRAGES_MAX − 1), celui que la préparation a retenu ; absent des fichiers des générateurs 1 et 2. */
+  tirage?: number;
   /** La version de la simulation sous laquelle il a été figé. */
   sim: number;
   contenu: {
@@ -40,14 +43,15 @@ export interface JourFige {
   preuve?: string;
 }
 
-/** Fige un jour : le contenu que le générateur de la version `g` (la courante par défaut) donne. */
-export function figerJour(jour: number, g: number = TOWER_GENERATOR_VERSION): JourFige {
-  const c = dailyTower(jour, g);
+/** Fige un jour : le contenu que le générateur de la version `g` (la courante par défaut) donne, au tirage `tirage` (0 par défaut ; les versions 1 et 2 n'en ont pas). */
+export function figerJour(jour: number, g: number = TOWER_GENERATOR_VERSION, tirage = 0): JourFige {
+  const c = dailyTower(jour, g, tirage);
   return {
     format: FORMAT_JOUR_FIGE,
     jeu: "tower",
     date: formatDay(jour),
     g,
+    ...(g >= GENERATEUR_TIRAGE ? { tirage } : {}),
     sim: TOWER_SIM_VERSION,
     contenu: { pieces: c.pieces.join(""), plateformeDemi8: c.plateformeDemi8, paliers: c.paliers.map((p) => ({ ...p })), ventSens: c.ventSens, theme: c.theme },
     medailles: null,
@@ -59,7 +63,7 @@ export function jsonJourFige(f: JourFige): string {
   const { contenu: c, medailles: m } = f;
   const medailles = m ? `{ "auteur": ${m.auteur}, "or": ${m.or}, "argent": ${m.argent}, "bronze": ${m.bronze} }` : "null";
   return (
-    `{\n  "format": ${f.format},\n  "jeu": "tower",\n  "date": ${JSON.stringify(f.date)},\n  "g": ${f.g},\n  "sim": ${f.sim},\n` +
+    `{\n  "format": ${f.format},\n  "jeu": "tower",\n  "date": ${JSON.stringify(f.date)},\n  "g": ${f.g},\n${f.g >= GENERATEUR_TIRAGE ? `  "tirage": ${f.tirage ?? 0},\n` : ""}  "sim": ${f.sim},\n` +
     `  "contenu": {\n    "pieces": ${JSON.stringify(c.pieces)},\n    "plateformeDemi8": ${c.plateformeDemi8},\n    "paliers": ${JSON.stringify(c.paliers)},\n    "ventSens": ${c.ventSens},\n    "theme": ${JSON.stringify(c.theme)}\n  },\n` +
     `  "medailles": ${medailles}${f.preuve === undefined ? "" : `,\n  "preuve": ${JSON.stringify(f.preuve)}`}\n}\n`
   );
@@ -91,6 +95,9 @@ export function lireJour(json: unknown, jour: number): JourLu | string {
   if (f.jeu !== "tower") return "ce n'est pas un jour de Tower";
   if (f.date !== formatDay(jour) || parseDay(f.date) !== jour) return "la date ne correspond pas";
   if (typeof f.g !== "number" || !VERSIONS_GENERATEUR.includes(f.g)) return `générateur inconnu : ${String(f.g)}`;
+  // Lot T3b : dès le générateur 3 le fichier nomme son tirage (0 à TIRAGES_MAX − 1) ; avant, il n'en a pas (le champ y est ignoré : le garde-fou voit un fichier qui ne se régénère pas).
+  const tirage = f.tirage!;
+  if (f.g >= GENERATEUR_TIRAGE && !(Number.isInteger(tirage) && tirage >= 0 && tirage < TIRAGES_MAX)) return "tirage illisible";
   if (f.sim !== TOWER_SIM_VERSION) return `simulation ${String(f.sim)} : ce code joue la ${TOWER_SIM_VERSION}`;
   const c = f.contenu;
   if (typeof c !== "object" || c === null) return "contenu manquant";
@@ -107,6 +114,7 @@ export function lireJour(json: unknown, jour: number): JourLu | string {
       nom: formatDay(jour),
       jour,
       g: f.g,
+      ...(f.g >= GENERATEUR_TIRAGE ? { tirage } : {}),
       theme: c.theme,
       pieces: [...c.pieces] as PieceKind[],
       plateformeDemi8: c.plateformeDemi8,

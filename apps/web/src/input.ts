@@ -1,4 +1,5 @@
 import { makeInput, type CarInput } from "@cdj/sim";
+import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
 import type { TouchPad } from "./touch";
 
 /** Axes bruts du joueur (flottants), avant quantification en commandes de simulation. */
@@ -110,7 +111,8 @@ export class Controls {
 
   poll(): ControlsState {
     const k = keyboardAxes(this.down);
-    const pad = navigator.getGamepads?.().find((p): p is Gamepad => !!p && p.connected);
+    // Lot M1 : un menu ouvert prend la manette (un appui ne sert jamais deux fois) ; `padPourLeJeu` rend la manette inchangée sans le module des menus.
+    const pad = padPourLeJeu(navigator.getGamepads?.().find((p): p is Gamepad => !!p && p.connected));
     const g = pad ? gamepadAxes(pad) : { steer: 0, throttle: 0, brake: 0 };
 
     // Manette : Y = dernier point de contrôle, X = depuis le départ, Start = pause (sur front montant). Avant le lot 29, Start recommençait :
