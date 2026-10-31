@@ -1,0 +1,53 @@
+# Lot de plateforme — La musique de Du Jour (Track, Jump, Tower)
+
+Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31/10/2026) : **un système de musique commun aux trois jeux, où il ajoute facilement des morceaux qui tournent selon le jeu.** Procédure de Nathan : **`docs/plateforme/musique.md`** ; règles : `packages/musique/CLAUDE.md`.
+
+## Livré
+- **`packages/musique` (`@cdj/musique`)** — le lecteur commun, **chargé à la demande au premier geste** : deux voix en flux (un élément `Audio` chacune, jamais un fichier en mémoire), tirage pondéré **sans répétition immédiate**, **fondu enchaîné** à puissance constante, compresseur doux, niveau de base sous les effets des jeux, **reprise du même morceau là où il en était** d'une page à l'autre, pause en arrière-plan, iPhone (`touchend`/`click`, `audioSession`). **Un jeu se branche en une ligne** : `brancherMusique("track", gameStorage)` (`@cdj/musique/branche`, 298 o).
+- **Ajouter un morceau** : `musique/pistes/` (la source), **`musique/musiques.json`** (la description), **`npm run musique`** : vérifie (licence, jeux, id, fichier, crédit, source ; **refuse** un morceau sans licence ou avec un jeu inconnu), prépare (**AAC 96 kbit/s**, −18 LUFS, `faststart`) avec ffmpeg, écrit `musique/servi/liste.json` et **les crédits des deux pages de mentions** ; `--verifier` (la CI) ; `--essai` (un morceau généré par le code, CC0). `musique/servi/` est commité (la CI n'a pas besoin de ffmpeg).
+- **Réglages communs** (`cdj:musique`, réglage gardé) : volume, « Couper la musique », « Morceau suivant », « En écoute : Titre — Artiste » et le crédit — **le même bloc** (`packages/ui/src/panneauMusique.ts`, fr + en) dans Track (Réglages › Son), Jump (Réglages › Son) et Tower (la pause). Caché tant qu'il n'y a rien à écouter.
+- **Site** : `/musique/` (`scripts/site.mjs`, `copierMusique` : seul le dossier préparé, jamais les sources), cache sans fin des `.m4a` (`firebase.json`), `vite.config.ts` des trois jeux : le plugin `musiqueServie` sert `/musique/` en développement et en aperçu local.
+- **Mentions légales** (`/mentions-legales/`, `/legal/`) : rubrique « La musique » et crédits générés ; date du 31/10/2026.
+
+## Fichiers touchés dans les jeux (rien d'autre n'a bougé)
+- **Track** : `apps/web/src/main.ts` (import, `brancherMusique`, `MUSIQUE_EN_COURSE`, `musique.baisser` à côté de `gameAudio.update`, `musique.sourdine` dans `syncSoundButton`, `musique` dans l'hôte des réglages), `apps/web/src/settingsUi.ts` (le bloc dans l'onglet Son), `vite.config.ts`, `package.json`, `tsconfig.json`.
+- **Jump** : `apps/jump/src/main.ts` (import, `brancherMusique`, `MUSIQUE_EN_NIVEAU`, `baisser` dans `syncPause`, `sourdine` au démarrage et dans `applySettings`), `apps/jump/src/settingsUi.ts` (le bloc dans la section Son), `vite.config.ts`, `package.json`, `tsconfig.json`.
+- **Tower** : `apps/tower/src/jeu.ts` (import, `brancherMusique`, `MUSIQUE_EN_PARTIE`, `baisser` à l'ouverture et à la reprise de la pause et à l'écran de fin), `apps/tower/src/pause.ts` (le bloc dans la pause), `vite.config.ts`, `package.json`, `tsconfig.json`.
+- **Plateforme** : `packages/ui` (panneau, feuille, catalogue ; `test/applications.ts`), `packages/profile/src/generation.ts` (`cdj:musique` gardée), `scripts/site.mjs`, `scripts/budgets.mjs`, `scripts/traductions.ts`, `scripts/unit-durees.json`, `firebase.json`, `package.json` + verrou, `tsconfig.json`, mentions, `docs/plateforme/budgets.md` et `traductions.md`, les `CLAUDE.md`.
+- **Le jeu n'est pas réécrit** : aucun jeu n'avait de musique ; les sons de Track (moteur, effets, ambiance) et de Jump (effets, ambiance) restent ceux des jeux, leurs volumes aussi (**pas de doublon** : la musique a son volume, commun ; le muet / « Son : non » d'un jeu la coupe sans toucher à son volume).
+
+## Mesures (`node scripts/budgets.mjs`, contre `main` reconstruit)
+| | Premier chargement | Limite |
+|---|---|---|
+| Track | **+319 o** (`track.jsCss` : 294 705, **7 o de marge**) | 500 o |
+| Jump | **+321 o** | 500 o |
+| Tower | **+326 o** | 500 o |
+| Portail | +10 o (la clé gardée de `@cdj/profile`) | — |
+| Lecteur + panneau, à la demande | **4 430 o** (ligne `musique.lecteur`, 8 000 o) | — |
+| Morceaux (non comptés) | AAC 96 kbit/s : ≈ 0,7 Mo par minute (le morceau d'essai : 73 698 o pour 6 s) | — |
+
+## Vérifié
+- `npx vitest run packages/musique` (59 tests) : la commande refuse licence manquante / non admise, jeu inconnu, id mal formé ou en double, fichier absent, champ inconnu ; liste par jeu ; **tirage jamais deux fois le même** (2 000 tirages, tous les hasards) ; **fondu** (courbes, deux voix, durée) ; **reprise** au changement de page (même morceau à la même position, autre morceau en fondu, reprise périmée) ; **démarrage au premier geste seulement** ; **pause en arrière-plan** et reprise ; **réglages communs relus** par les trois jeux ; baisse et sourdine ; **rien dans le premier chargement** (graphe statique des quatre applications) ; branchement ≤ 0,5 ko ; **crédits des mentions** (parité fr / en, à jour) ; liste préparée à jour ; site.
+- Tests unitaires d'`ui`, `profile`, `portail`, `web`, `jump`, `tower` (catalogues, chaînes en dur, clés lues, traductions, mentions, budgets, zones de CI) ; `npx tsc -b`.
+- **Vrai ffmpeg, vrai Chromium** (hors CI) : `npm run musique -- --essai` prépare un AAC 44,1 kHz stéréo ≈ 95 kbit/s ; dans Track et Jump (construits, `vite preview`) **aucune requête avant le premier clic, puis `liste.json` et le morceau en flux (`Range: bytes=0-`)**, aucune erreur de console ; Tower, sans morceau pour lui : seule la liste est lue ; le bloc de réglages s'affiche dans Track et Jump (captures regardées), le volume et « Couper » s'écrivent dans `cdj:musique`.
+
+## Non vérifié
+- **L'écoute elle-même** (le son qui sort, le fondu entendu) : aucun navigateur ici n'a de sortie audio. Le fondu, la reprise, la pause sont testés sur un contexte et des éléments audio fictifs ; le chemin réseau est vérifié en navigateur réel.
+- **iPhone, Safari, Firefox** : non essayés (le lecteur suit les règles de Track pour l'iPhone ; à essayer sur l'aperçu).
+- **Les e2e de la CI** (axe sur les réglages avec le bloc visible). Le bloc dans la pause de Tower a été vu (capture, morceau d'essai activé pour Tower puis retiré) : **en 844 × 390 la pause défile** (`overflow-y: auto`) quand un morceau existe pour Tower ; sans morceau le bloc est caché et la pause est celle d'avant.
+- **La préparation par la CI** : non faite (`musique/servi/` est commité).
+
+## Décisions laissées à Nathan
+1. **Par défaut : musique allumée, volume 40 %** (proposé) — ou éteinte au premier lancement ? (une constante : `VOLUME_PAR_DEFAUT` de `logique.ts`, `coupee` de `REGLAGES_DEFAUT`).
+2. **La baisse en jeu** : Track 35 % en course (pleine aux menus), Jump 60 % en niveau, Tower 60 % en partie (proposé ; constantes `MUSIQUE_EN_COURSE`, `MUSIQUE_EN_NIVEAU`, `MUSIQUE_EN_PARTIE`).
+3. **Le portail** : silence (proposé) ou une liste à lui (une ligne + des morceaux `portail`).
+4. **iPhone et interrupteur silence** : la musique passe quand l'interrupteur est sur silence, comme le son de Track. À inverser ? (retirer `audioSession` de `navigateur.ts`).
+5. **`tous` = Track, Jump, Tower** (pas le portail) ; licences admises : `mienne`, `CC0`, `CC-BY-4.0`, `achetee` — ajouter CC-BY-SA ?
+6. **Track n'a plus que 7 o de marge** : le prochain lot de Track en retire ailleurs, ou Nathan relève le plafond.
+7. Les sources (`musique/pistes/`) sont commitées : un wav ou un flac pèse lourd dans le dépôt — préférer un mp3 de bonne qualité, ou ajouter un stockage de fichiers volumineux.
+
+## À tester (aperçu de la PR)
+1. `npm run musique -- --essai` (ou ton propre morceau, `docs/plateforme/musique.md`) pour **Track seulement**.
+2. Portail, puis Track : la musique démarre au premier geste, plus basse en course.
+3. Jump, puis Tower : chacun sa liste (celle d'essai n'est que pour Track).
+4. Réglages : volume, « Morceau suivant », couper — le même réglage dans les trois jeux.

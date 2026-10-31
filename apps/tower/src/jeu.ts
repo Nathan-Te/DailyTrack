@@ -7,6 +7,7 @@ import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "./jeu.css";
 import { parisDay } from "@cdj/clock";
 import { empreinteVue, Partie, type Rapier, SCENARIO_ESSAI, type Scenario, scenarioPaliers, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
+import { brancherMusique } from "@cdj/musique/branche";
 import { el, formatDateCourte } from "@cdj/ui";
 import { Entrees } from "./entrees";
 import { texteDebug } from "./debug";
@@ -28,6 +29,16 @@ import { choisirJour, lireOptions, PRODUCTION } from "./urlOptions";
 // Pas de serveur (lot T4).
 
 const TICKS_MAX = 6;
+/** Niveau de la musique pendant une partie (1 dans la pause et à l'écran de fin). */
+const MUSIQUE_EN_PARTIE = 0.6;
+/** Le stockage de l'appareil, où la musique garde ses réglages communs à toute la plateforme (`cdj:musique`) ; refusé : sans mémoire. */
+const stockageMusique = (): Storage | null => {
+  try {
+    return localStorage;
+  } catch {
+    return null;
+  }
+};
 const options = lireOptions(location.search, PRODUCTION);
 
 interface PorteDeTest {
@@ -129,7 +140,10 @@ async function demarrer(): Promise<void> {
     },
   });
   const fin = monterFin(racine, { onRejouer: () => nouvellePartie(), eyebrow: enTete });
-  const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie() });
+  // Lot « musique » : la musique commune de la plateforme, branchée en une ligne (le lecteur se charge au premier geste : `docs/plateforme/musique.md`). Un peu plus basse pendant une partie (à décider par Nathan) ; ses réglages sont dans la pause.
+  const musique = brancherMusique("tower", stockageMusique);
+  const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie(), musique: () => musique.lecteur() });
+  musique.baisser(MUSIQUE_EN_PARTIE);
   const debug = options.debug ? el("pre", { classe: "debug", attrs: { id: "debug" } }) : null;
   if (debug) racine.append(debug);
   if (options.tune) monterTune(racine, reglages, () => nouvellePartie());
@@ -145,6 +159,7 @@ async function demarrer(): Promise<void> {
     menu.fermer();
     hud.cache = false;
     pause = false;
+    musique.baisser(MUSIQUE_EN_PARTIE);
     entrees.toutRelacher();
     acc = 0;
     const v = partie.vue();
@@ -161,6 +176,7 @@ async function demarrer(): Promise<void> {
     entrees.toutRelacher();
     hud.cache = true; // la maquette de la pause n'a pas de HUD : le voile est sur la scène seule
     menu.ouvrir(partie.vue());
+    musique.baisser(1);
   }
 
   function reprendre(): void {
@@ -170,6 +186,7 @@ async function demarrer(): Promise<void> {
     hud.cache = false;
     entrees.toutRelacher();
     dernier = performance.now();
+    musique.baisser(MUSIQUE_EN_PARTIE);
   }
 
   function terminer(): void {
@@ -187,6 +204,7 @@ async function demarrer(): Promise<void> {
       if (memoire.get() === f) poserFantome();
     }).catch(() => undefined);
     hud.cache = true;
+    musique.baisser(1);
     fin.montrer(v, r, reglages.sim.vies);
   }
 

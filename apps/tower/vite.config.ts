@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { defineConfig } from "vite";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
+import { musiqueServie } from "../../packages/musique/outils/vite";
 import { pagesDuSocle } from "../../packages/ui/outils/vite";
 import { CATALOGUE_FR } from "./src/catalogue.fr";
 import { rapierWasmServi } from "./rapierWasm";
@@ -17,7 +18,7 @@ export default defineConfig({
   base: "./",
   define: { __JOURS_FIGES__: JSON.stringify(joursFiges) },
   // Le titre de la page et la couleur de l'onglet sont posés dans le HTML à la construction (texte du catalogue français, jeton `tower-coque`) : `pagesDuSocle` de `@cdj/ui`.
-  plugins: [rapierWasmServi(), pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR } })],
+  plugins: [rapierWasmServi(), musiqueServie(), pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR } })],
   build: {
     target: "es2022",
     rollupOptions: { input: { main: "index.html", verify: "verify.html" } },

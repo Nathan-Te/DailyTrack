@@ -53,6 +53,8 @@ const ATTENDUS: Record<string, number> = {
   "jump.anglais": limite(POIDS, /"le catalogue anglais, chargé à la demande"\)\.toBeLessThan\(([\d_]+)\)/),
   "jump.polices": limite(POIDS, /toBeLessThanOrEqual\((\d+) \* 1024\)/) * 1024,
   "partage.image": POIDS_MAX,
+  // Lot « musique » : le lecteur et le panneau, à la demande ; la limite est celle de `packages/musique/test/poids.test.ts` (mesure sur le code lui-même).
+  "musique.lecteur": limite("packages/musique/test/poids.test.ts", /BUDGET_LECTEUR = ([\d_]+);/),
   ...Object.fromEntries((LIGNES_TOWER as string[]).map((cle) => [cle, lignes.get(cle)?.budget ?? Number.NaN])),
 };
 

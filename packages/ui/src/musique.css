@@ -1,0 +1,64 @@
+/* Lot « musique » : les réglages de la musique (panneauMusique.ts). **Une feuille à part, chargée à la demande avec le panneau** (importée par lui : jamais dans `styles.css`).
+   Le texte et les traits suivent la couleur du parent (`currentColor`) : le panneau se pose aussi bien sur l'asphalte de Track que sur le papier de Jump ou la menthe de Tower. */
+.dj-musique {
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--dj-espace-4);
+  margin: var(--dj-espace-4) 0;
+  padding: var(--dj-espace-5) 0 0;
+  border-top: var(--dj-trait) solid currentColor;
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  color: inherit;
+}
+.dj-musique[hidden] {
+  display: none;
+}
+.dj-musique__titre {
+  margin: 0;
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+}
+.dj-musique__ligne {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-4);
+  min-height: var(--dj-cible);
+}
+.dj-musique__nom {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dj-musique__curseur {
+  flex: 1 1 7rem;
+  min-width: 0;
+  min-height: var(--dj-cible);
+  accent-color: currentColor;
+}
+.dj-musique__valeur {
+  flex: 0 0 4ch;
+  text-align: right;
+  font-family: var(--dj-police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+.dj-musique__bouton {
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-5);
+  cursor: pointer;
+}
+/* Le bouton « couper » : enfoncé quand la musique est coupée (l'état se lit aussi dans `aria-pressed`). */
+.dj-musique__bouton[aria-pressed="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+  box-shadow: none;
+}
+.dj-musique__ecoute {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.dj-musique__credit {
+  margin: 0;
+  font-size: var(--dj-taille-13);
+  overflow-wrap: anywhere;
+}

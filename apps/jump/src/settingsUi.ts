@@ -1,3 +1,4 @@
+import type { ControleMusique } from "@cdj/ui/src/panneauMusique";
 import type { Langue } from "@cdj/ui";
 import { choixLangue, el, icone } from "@cdj/ui";
 import { creerCadre } from "./cadre";
@@ -15,6 +16,8 @@ import { BUTTON_SIZES } from "./touch";
 
 export interface SettingsUiOptions {
   settings: PlayerSettings;
+  /** Lot « musique » : le lecteur de la musique commune (il se charge s'il ne l'est pas : l'ouverture des Réglages est un geste). */
+  musique(): Promise<ControleMusique>;
   onChange(s: PlayerSettings, changed: keyof PlayerSettings): void;
   /** Le téléphone sait vibrer (`navigator.vibrate`) : sinon le réglage le dit. */
   canVibrate: boolean;
@@ -84,6 +87,12 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
 
   const lienFleche = (id: string, cle: string, href: string, classe: string) => el("a", { classe: ["reglages__lien", classe], attrs: { id, href } }, lier(el("span"), cle), icone("chevron", { taille: 16 }));
 
+  // Lot « musique » : le bloc commun (volume, couper, morceau suivant, en écoute), chargé à la première ouverture des Réglages avec le lecteur.
+  const placeMusique = el("div", { classe: "reglages__musique" });
+  let chargerMusique: (() => void) | null = () => {
+    chargerMusique = null;
+    void Promise.all([opts.musique(), import("@cdj/ui/src/panneauMusique")]).then(([lecteur, m]) => placeMusique.append(m.panneauMusique(lecteur)));
+  };
   const langue = el("div", { classe: "reglages__langue" });
   const majLangue = () => langue.replaceChildren(choixLangue(traducteurDuSocle(), { langue: langueCourante(), onChange: (l: Langue) => void setLangue(l) }));
   majLangue();
@@ -91,7 +100,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
 
   cadre.corps.append(
     lier(el("h1", { classe: "etiquette__titre" }), "reglages.titre"),
-    section("reglages.son", curseur("volume", "reglages.volume"), curseur("sfx", "reglages.effetsSonores"), curseur("ambience", "reglages.ambiance")),
+    section("reglages.son", curseur("volume", "reglages.volume"), curseur("sfx", "reglages.effetsSonores"), curseur("ambience", "reglages.ambiance"), placeMusique),
     section(
       "reglages.sensations",
       ouiNon("vibration", "reglages.vibrations"),
@@ -140,6 +149,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
     open() {
       if (open) return;
       open = true;
+      chargerMusique?.();
       cadre.racine.hidden = false;
       cadre.defile.scrollTop = 0;
       cadre.racine.querySelector<HTMLElement>(".dj-barre-jeu__retour")?.focus({ preventScroll: true });

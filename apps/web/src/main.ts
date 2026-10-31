@@ -132,6 +132,7 @@ import type { SerieMesures } from "./qualiteMesure";
 import type { PostJeu, RaisonCoupure } from "./scene/postJeu";
 import { chargerDecor, decorPret, instantsDecor } from "./scene/decor";
 import { etatFeux } from "./feux";
+import { brancherMusique } from "@cdj/musique/branche";
 import { gameStorage } from "./storage";
 import { followIdentityRevision } from "./transfer";
 
@@ -510,6 +511,10 @@ let feel = SPEED_FEEL_FACTOR[settings.speedFeel];
 const demo = params.has("demo");
 const tel = createTelemetry();
 const gameAudio = new GameAudio(() => syncSoundButton());
+// Lot « musique » : la musique commune de la plateforme, branchée en une ligne (le lecteur se charge au premier geste : `docs/plateforme/musique.md`). Pleine aux menus, plus basse en course (à décider par Nathan) ; le muet de Track la coupe aussi.
+const musique = brancherMusique("track", gameStorage);
+/** Niveau de la musique pendant une course (1 aux menus, à l'accueil, en pause) : la musique passe sous le moteur et les effets. */
+const MUSIQUE_EN_COURSE = 0.35;
 gameAudio.setAmbience(track ? ambienceFor(salon?.circuit.palette ?? daily?.palette ?? paletteEssai) : null); // ambiance du thème (lot 23)
 const wheelDroop: [number, number, number, number] = [0, 0, 0, 0];
 const WHEEL_F = [AXLE_FRONT, AXLE_FRONT, -AXLE_REAR, -AXLE_REAR];
@@ -925,6 +930,7 @@ settingsPanel = mountSettings(document.body, {
   apply: applySettings,
   audio: () => gameAudio.settings,
   setAudio: (a) => gameAudio.setSettings(a),
+  musique: () => musique.lecteur(),
   camera: () => CAMERAS[cameraIndex]!.name,
   setCamera: setCameraByName,
   touch: touchPad ? { pad: touchPad, changed: () => touchUi?.refresh() } : null,
@@ -1548,6 +1554,7 @@ function syncSoundButton() {
   const label = t(muted ? "pause.son.coupe" : "pause.son.actif");
   if (soundBtn.textContent !== label) soundBtn.textContent = label;
   soundBtn.setAttribute("aria-pressed", String(muted));
+  musique.sourdine(muted);
   if (settingsPanel?.isOpen()) settingsPanel.sync();
 }
 syncSoundButton();
@@ -2469,6 +2476,7 @@ function frame(now: number) {
     cut: car.cut > 0,
     active: phase === "racing" && !frozen && !manual,
   });
+  musique.baisser(phase === "racing" && !frozen && !manual ? MUSIQUE_EN_COURSE : 1);
   // Lignes de vitesse au-delà de 75 % de la pointe, éclair du point de contrôle.
   const lines = Math.min(0.6, speedLinesOpacity(speed, car.turbo > 0) * feel);
   hudLines.style.opacity = phase === "countdown" ? "0" : lines.toFixed(2);

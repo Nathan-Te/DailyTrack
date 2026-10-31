@@ -9,5 +9,5 @@
     "emitDeclarationOnly": true
   },
   "include": ["src", "test"],
-  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/jump-sim" }, { "path": "../../packages/clock" }, { "path": "../../packages/profile" }, { "path": "../../packages/ui" }]
+  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/jump-sim" }, { "path": "../../packages/clock" }, { "path": "../../packages/profile" }, { "path": "../../packages/musique" }, { "path": "../../packages/ui" }]
 }
