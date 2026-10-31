@@ -91,7 +91,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
   const placeMusique = el("div", { classe: "reglages__musique" });
   let chargerMusique: (() => void) | null = () => {
     chargerMusique = null;
-    void Promise.all([opts.musique(), import("@cdj/ui/src/panneauMusique")]).then(([lecteur, m]) => placeMusique.append(m.panneauMusique(lecteur)));
+    void import("@cdj/ui/src/panneauMusique").then((m) => m.monterPanneau(opts.musique, placeMusique), () => undefined);
   };
   const langue = el("div", { classe: "reglages__langue" });
   const majLangue = () => langue.replaceChildren(choixLangue(traducteurDuSocle(), { langue: langueCourante(), onChange: (l: Langue) => void setLangue(l) }));

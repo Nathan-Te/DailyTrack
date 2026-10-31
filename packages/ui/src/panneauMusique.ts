@@ -35,6 +35,11 @@ function noeud<K extends keyof HTMLElementTagNameMap>(balise: K, classe: string,
   return e;
 }
 
+/** Monte le bloc dans `place` : demande le lecteur (qui se charge au besoin) puis pose le panneau ; un échec (hors ligne, morceau introuvable) laisse la place vide, sans erreur. */
+export function monterPanneau(obtenir: () => Promise<ControleMusique>, place: HTMLElement): Promise<void> {
+  return obtenir().then((lecteur) => void place.append(panneauMusique(lecteur)), () => undefined);
+}
+
 /**
  * Le bloc des réglages de la musique. **Caché tant qu'il n'y a rien à écouter** dans ce jeu (liste vide, lecteur pas encore chargé) ; il se relit à chaque changement du lecteur.
  * `id` donne un préfixe aux identifiants (plusieurs blocs dans une page).

@@ -130,7 +130,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     sound.append(placeMusique);
     chargerMusique = () => {
       chargerMusique = null;
-      void Promise.all([host.musique(), import("@cdj/ui/src/panneauMusique")]).then(([lecteur, m]) => placeMusique.append(m.panneauMusique(lecteur)));
+      void import("@cdj/ui/src/panneauMusique").then((m) => m.monterPanneau(host.musique, placeMusique), () => undefined);
     };
 
     // --- Jeu ---

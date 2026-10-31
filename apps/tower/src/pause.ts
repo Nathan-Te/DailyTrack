@@ -37,7 +37,7 @@ export function monterPause(racine: HTMLElement, o: { onReprendre(): void; onRec
   // Lot « musique » : le bloc commun (volume, couper, morceau suivant, en écoute), monté à la première ouverture avec le lecteur.
   let chargerMusique: (() => void) | null = () => {
     chargerMusique = null;
-    void Promise.all([o.musique(), import("@cdj/ui/src/panneauMusique")]).then(([lecteur, m]) => placeMusique.append(m.panneauMusique(lecteur)));
+    void import("@cdj/ui/src/panneauMusique").then((m) => m.monterPanneau(o.musique, placeMusique), () => undefined);
   };
   const traduire = () => {
     dialogue.setAttribute("aria-label", t("pause.aria"));
