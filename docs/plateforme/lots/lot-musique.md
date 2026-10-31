@@ -19,17 +19,20 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 ## Mesures (`node scripts/budgets.mjs`, contre `main` reconstruit)
 | | Premier chargement | Limite |
 |---|---|---|
-| Track | **+319 o** (`track.jsCss` : 294 705, **7 o de marge**) | 500 o |
-| Jump | **+321 o** | 500 o |
-| Tower | **+326 o** | 500 o |
+| Track | **+303 o** (`track.jsCss` : 294 689, **23 o de marge**) | 500 o |
+| Jump | **+315 o** | 500 o |
+| Tower | **+318 o** | 500 o |
 | Portail | +10 o (la clé gardée de `@cdj/profile`) | — |
-| Lecteur + panneau, à la demande | **4 430 o** (ligne `musique.lecteur`, 8 000 o) | — |
+| Lecteur + panneau, à la demande | **4 458 o** (ligne `musique.lecteur`, 8 000 o) | — |
 | Morceaux (non comptés) | AAC 96 kbit/s : ≈ 0,7 Mo par minute (le morceau d'essai : 73 698 o pour 6 s) | — |
 
 ## Vérifié
 - `npx vitest run packages/musique` (59 tests) : la commande refuse licence manquante / non admise, jeu inconnu, id mal formé ou en double, fichier absent, champ inconnu ; liste par jeu ; **tirage jamais deux fois le même** (2 000 tirages, tous les hasards) ; **fondu** (courbes, deux voix, durée) ; **reprise** au changement de page (même morceau à la même position, autre morceau en fondu, reprise périmée) ; **démarrage au premier geste seulement** ; **pause en arrière-plan** et reprise ; **réglages communs relus** par les trois jeux ; baisse et sourdine ; **rien dans le premier chargement** (graphe statique des quatre applications) ; branchement ≤ 0,5 ko ; **crédits des mentions** (parité fr / en, à jour) ; liste préparée à jour ; site.
 - Tests unitaires d'`ui`, `profile`, `portail`, `web`, `jump`, `tower` (catalogues, chaînes en dur, clés lues, traductions, mentions, budgets, zones de CI) ; `npx tsc -b`.
 - **Vrai ffmpeg, vrai Chromium** (hors CI) : `npm run musique -- --essai` prépare un AAC 44,1 kHz stéréo ≈ 95 kbit/s ; dans Track et Jump (construits, `vite preview`) **aucune requête avant le premier clic, puis `liste.json` et le morceau en flux (`Range: bytes=0-`)**, aucune erreur de console ; Tower, sans morceau pour lui : seule la liste est lue ; le bloc de réglages s'affiche dans Track et Jump (captures regardées), le volume et « Couper » s'écrivent dans `cdj:musique`.
+
+## Un test rouge sans lien avec le lot (à signaler, non corrigé)
+- `apps/jump/e2e/profil-commun.spec.ts:99` (« deux appareils : finir → le code chargé sur l'autre… ») **échoue de la même façon sur `main` seul** (worktree propre, construit à part : `#arrival-rank` reste sur « Choisis ton pseudo pour entrer au classement » après la validation du pseudo, 30 s). Rejoué deux fois ici, deux fois sur `main`. Les 32 autres specs Jump de la sélection de la PR, les 22 de Track et les 3 de Tower passent.
 
 ## Non vérifié
 - **L'écoute elle-même** (le son qui sort, le fondu entendu) : aucun navigateur ici n'a de sortie audio. Le fondu, la reprise, la pause sont testés sur un contexte et des éléments audio fictifs ; le chemin réseau est vérifié en navigateur réel.
@@ -43,7 +46,7 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 3. **Le portail** : silence (proposé) ou une liste à lui (une ligne + des morceaux `portail`).
 4. **iPhone et interrupteur silence** : la musique passe quand l'interrupteur est sur silence, comme le son de Track. À inverser ? (retirer `audioSession` de `navigateur.ts`).
 5. **`tous` = Track, Jump, Tower** (pas le portail) ; licences admises : `mienne`, `CC0`, `CC-BY-4.0`, `achetee` — ajouter CC-BY-SA ?
-6. **Track n'a plus que 7 o de marge** : le prochain lot de Track en retire ailleurs, ou Nathan relève le plafond.
+6. **Track n'a plus que 23 o de marge** : le prochain lot de Track en retire ailleurs, ou Nathan relève le plafond.
 7. Les sources (`musique/pistes/`) sont commitées : un wav ou un flac pèse lourd dans le dépôt — préférer un mp3 de bonne qualité, ou ajouter un stockage de fichiers volumineux.
 
 ## À tester (aperçu de la PR)
