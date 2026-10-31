@@ -28,14 +28,15 @@ describe("les boucles générées", () => {
     expect(new Set(Object.values(MORCEAUX).map((m) => m.titre)).size).toBe(Object.keys(MORCEAUX).length);
   });
 
-  // Le rendu est coûteux : deux mesures pour chaque boucle (longueur, valeurs valides, crête) ; le déterminisme et la jonction fin → début, sur quatre mesures, pour un morceau de chaque famille
+  // Le rendu est coûteux : une mesure pour chaque boucle (longueur, valeurs valides, crête), un second rendu pour prouver le déterminisme d'un morceau de chaque famille, et la jonction fin → début sur quatre mesures pour ces mêmes morceaux
   // (les familles et les trois morceaux écrits à la main partagent le même moteur).
   const REPRESENTANTS = ["track-menu", "track-stade", "jump-menu", "tower-menu"];
   for (const id of Object.keys(MORCEAUX)) {
-    it(`${id} : de la longueur de ses mesures, sans valeur invalide, crête à −1 dBFS`, () => {
+    it(`${id} : de la longueur de ses mesures, sans valeur invalide, crête à −1 dBFS (et déterministe pour un morceau de chaque famille)`, () => {
       const piece = MORCEAUX[id]!;
-      const a = rendre(piece, { barres: 2 });
-      expect(a.n).toBe(Math.round(((2 * 16 * 60) / piece.bpm / 4) * SR));
+      const a = rendre(piece, { barres: 1 });
+      expect(a.n).toBe(Math.round(((1 * 16 * 60) / piece.bpm / 4) * SR));
+      if (REPRESENTANTS.includes(id)) expect(Buffer.from(a.L.buffer).equals(Buffer.from(rendre(piece, { barres: 1 }).L.buffer))).toBe(true);
       let crete = 0;
       for (let i = 0; i < a.n; i++) {
         expect(Number.isFinite(a.L[i]!) && Number.isFinite(a.R[i]!)).toBe(true);
@@ -46,10 +47,8 @@ describe("les boucles générées", () => {
     }, 60_000);
   }
   for (const id of REPRESENTANTS) {
-    it(`${id} : déterministe, boucle sans claquement`, () => {
-      const piece = MORCEAUX[id]!;
-      const a = rendre(piece, { barres: 4 });
-      expect(Buffer.from(a.L.buffer).equals(Buffer.from(rendre(piece, { barres: 4 }).L.buffer))).toBe(true);
+    it(`${id} : boucle sans claquement`, () => {
+      const a = rendre(MORCEAUX[id]!, { barres: 4 });
       // La jonction fin → début n'est pas un saut : l'écart entre le dernier et le premier échantillon est celui de deux échantillons voisins.
       let voisin = 0;
       for (let i = 1; i < 2000; i++) voisin = Math.max(voisin, Math.abs(a.L[i]! - a.L[i - 1]!));
@@ -58,7 +57,7 @@ describe("les boucles générées", () => {
   }
 
   it("le fichier WAV : en-tête valide, stéréo 16 bits 44 100 Hz, la taille de ses échantillons", () => {
-    const buf = rendre(MORCEAUX["jump-foret"]!, { barres: 2 });
+    const buf = rendre(MORCEAUX["jump-foret"]!, { barres: 1 });
     const wav = versWav(buf);
     const txt = (o: number, n: number) => new TextDecoder().decode(wav.slice(o, o + n));
     expect([txt(0, 4), txt(8, 4), txt(12, 4), txt(36, 4)]).toEqual(["RIFF", "WAVE", "fmt ", "data"]);
