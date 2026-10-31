@@ -17,7 +17,7 @@ interface Resultat {
   jour: number;
   texte: string;
   hauteurMm: number;
-  banque: number;
+  variante: number;
   secondes: number;
 }
 
@@ -28,7 +28,7 @@ if (!isMainThread) {
     if (jour === null) process.exit(0);
     const t0 = performance.now();
     const p = preparerJour(R, jour);
-    const r: Resultat = { jour, texte: jsonJourFige(p.fichier), hauteurMm: p.hauteurMm, banque: p.banque, secondes: (performance.now() - t0) / 1000 };
+    const r: Resultat = { jour, texte: jsonJourFige(p.fichier), hauteurMm: p.hauteurMm, variante: p.variante, secondes: (performance.now() - t0) / 1000 };
     parentPort!.postMessage(r);
   });
   parentPort!.postMessage("pret");
@@ -76,7 +76,7 @@ if (!isMainThread) {
           if (m !== "pret") {
             ecrire(dossier, m.jour, m.texte);
             ecrits++;
-            console.log(`  ${formatDay(m.jour)}  Diamant ${(m.hauteurMm / 1000).toFixed(3)} m${m.banque > 0 ? ` (arrêté après ${m.banque} pièces)` : ""}, ${m.secondes.toFixed(0)} s, ${m.texte.length} octets`);
+            console.log(`  ${formatDay(m.jour)}  Diamant ${(m.hauteurMm / 1000).toFixed(3)} m${m.variante > 0 ? ` (variante ${m.variante})` : ""}, ${m.secondes.toFixed(0)} s, ${m.texte.length} octets`);
           }
           donner();
         });

@@ -44,11 +44,11 @@ export function medailleVisee(hauteurMm: number, m: Medailles): { nom: NomMedail
 
 /**
  * Le repli (seed § 5) : l'estimation GÉOMÉTRIQUE du Diamant, sans bot — l'aire des pièces du jour divisée par la largeur de la plateforme, multipliée par un coefficient mesuré
- * contre le bot sur 30 jours (`npm run mesures-t3:tower`, rapport du lot T3 : la médiane du rapport bot / estimation est de 224 %, mais l'écart est très grand d'un jour à l'autre — onze jours sur trente à moins de 25 % :
+ * contre le bot sur 30 jours (`npm run mesures-t3:tower`, rapport du lot T3 : la médiane du rapport bot / estimation est de 195 %, mais l'écart est très grand d'un jour à l'autre — sept jours sur trente à moins de 25 % :
  * c'est un repli de dernier recours, d'où le mot « provisoires »). Entiers : l'aire en huitièmes de mètre carré, le résultat en millimètres. Le jeu marque ces médailles
  * « provisoires » ; seul un jour préparé (`bot/`) en a de fiables.
  */
-export const COEFFICIENT_GEOMETRIQUE_PCT = 224;
+export const COEFFICIENT_GEOMETRIQUE_PCT = 195;
 
 /** L'aire des pièces du jour, en huitièmes de mètre au carré (somme des boîtes, tailles normales). */
 export function aireDuJour(pieces: Contenu["pieces"]): number {

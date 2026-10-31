@@ -24,8 +24,12 @@ export const PENALITE_MOUVEMENT = 1_500;
 export const LARGEUR_PROFONDEUR_MM = 2500;
 export const LARGEUR_POIDS_PCT = 50;
 
-/** Le bot sait s'arrêter (voir `bot`) : il rejoue l'arrêt après ce nombre de pièces, les plus hautes d'abord. */
-export const BANQUES_ESSAYEES = 4;
+/**
+ * **La zone visible.** La caméra de Tower ne montre que `VUE_COURTE − MARGE_HAUT` = 19,5 − 13 = 6,5 m sous le sommet de la tour (paysage, `apps/tower/src/scene.ts` ; en portrait elle montre
+ * davantage). Le bot joue comme un joueur : **une pièce qui se pose plus bas que cela (au pied de la tour, sur la plateforme, hors de l'écran) est un coup interdit** ; jeter une pièce à
+ * la mer n'existe pas non plus. Écrite ici, car la simulation ne lit pas le jeu : un test la compare à la caméra (`apps/tower/test/`).
+ */
+export const PROFONDEUR_VISIBLE_MM = 6_500;
 
 /** Marge (mm) de la borne haute d'un coup : une pièce qui pivote peut lever son sommet de quelques centimètres avant de retomber. */
 export const MARGE_BORNE_MM = 300;

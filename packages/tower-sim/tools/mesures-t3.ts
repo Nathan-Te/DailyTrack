@@ -9,7 +9,7 @@ import { availableParallelism } from "node:os";
 import { isMainThread, parentPort, Worker } from "node:worker_threads";
 import { formatDay, mixSeed, parseDay } from "@cdj/core";
 import { COMMANDE, dailyTower, estimationGeometrique, Partie, type Rapier, rejouerComplet } from "../src";
-import { BUDGET_TICKS, bot, jouerBot, jouerBotRobuste, OPTIONS_BOT } from "../src/bot";
+import { bot, jouerBot, jouerBotRobuste, OPTIONS_BOT } from "../src/bot";
 import { chargerRapier } from "../src/rapier";
 import { chercher } from "./joueur";
 import { REGLAGES_DEFAUT } from "../src";
@@ -25,7 +25,6 @@ interface Mesure {
   posees: number;
   tombees: number;
   paliers: number;
-  banque: number;
   variante: number;
   secondes: number;
   /** Aire géométrique à 100 % (millimètres), pour le coefficient. */
@@ -36,7 +35,6 @@ function mesurer(R: Rapier, t: Tache): Mesure {
   const c = dailyTower(t.jour);
   const t0 = performance.now();
   let rediffusion;
-  let banque = 0;
   let variante = 0;
   if (t.genre === "glouton") {
     const p = chercher(R, c, REGLAGES_DEFAUT);
@@ -48,7 +46,6 @@ function mesurer(R: Rapier, t: Tache): Mesure {
         ? { ...OPTIONS_BOT, decalage: (n: number) => (mixSeed(t.jour, 0x1a7e + n) % 4 === 0 ? (mixSeed(t.jour, 0x2b + n) % 2 === 0 ? -1 : 1) : 0) }
         : OPTIONS_BOT;
     const r = t.genre === "bot" ? jouerBotRobuste(R, c) : jouerBot(R, c, options);
-    banque = r.banque;
     variante = "variante" in r ? (r as { variante: number }).variante : 0;
     const rj = rejouerComplet(R, c, r.rediffusion);
     rediffusion = { resultat: rj.resultat, vue: rj.vue };
@@ -64,7 +61,6 @@ function mesurer(R: Rapier, t: Tache): Mesure {
     posees: res.posees,
     tombees: res.tombees,
     paliers: vue.declenches,
-    banque,
     variante,
     secondes: (performance.now() - t0) / 1000,
     geoMm: estimationGeometrique(c, 100).auteur,
@@ -106,7 +102,7 @@ if (!isMainThread) {
   for (const j of coutJours) {
     const c = dailyTower(j);
     const suivi = new Partie(R, c);
-    const g = bot(R, c, { ...OPTIONS_BOT, plafondTicks: BUDGET_TICKS });
+    const g = bot(R, c, OPTIONS_BOT);
     const t0 = performance.now();
     let dernier = t0;
     let h = 0;
@@ -115,7 +111,7 @@ if (!isMainThread) {
       const n = g.next();
       const t = performance.now();
       if (n.done) {
-        variante = jouerBotRobuste(R, c, n.value).variante; // les reprises, si le réglage ordinaire donne moins de 30 m
+        variante = jouerBotRobuste(R, c, n.value!).variante; // les reprises, si le réglage ordinaire donne moins de 30 m
         break;
       }
       const tranche = Math.floor(h / 10_000) * 10;
@@ -170,7 +166,7 @@ if (!isMainThread) {
   console.log(`\n## La hauteur du bot (le Diamant), ${bots.length} jours`);
   console.log(`  médiane ${m(med(bots.map((x) => x.hauteurMm)))} m · minimum ${m(Math.min(...bots.map((x) => x.hauteurMm)))} m · maximum ${m(Math.max(...bots.map((x) => x.hauteurMm)))} m`);
   console.log(`  variantes de reprise utilisées (hauteur du réglage ordinaire < 30 m) : ${bots.filter((x) => x.variante > 0).length} jours sur ${bots.length}`);
-  console.log(`  pièces posées : médiane ${med(bots.map((x) => x.posees))} sur 40 ; pièces tombées : médiane ${med(bots.map((x) => x.tombees))}, ${bots.filter((x) => x.vies === 0).length} jours à 0 vie, ${bots.filter((x) => x.banque > 0).length} jours arrêtés par le bot`);
+  console.log(`  pièces posées : médiane ${med(bots.map((x) => x.posees))} sur 40 ; pièces tombées : médiane ${med(bots.map((x) => x.tombees))}, ${bots.filter((x) => x.vies === 0).length} jours à 0 vie`);
   console.log(`  paliers atteints : médiane ${med(bots.map((x) => x.paliers))} sur 6 ; plus haute tour atteinte (avant arrêt) : médiane ${m(med(bots.map((x) => x.hauteurMaxMm)))} m`);
   for (const l of [5, 6, 7, 8]) {
     const g = bots.filter((x) => x.plateforme === l);

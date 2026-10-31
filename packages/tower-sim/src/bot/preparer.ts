@@ -10,12 +10,12 @@ import { encoderRediffusion, rejouer } from "../rediffusion";
 import { type Compteurs, jouerBotRobuste } from "./bot";
 
 /** Le fichier d'un jour préparé : le jour figé (`figerJour`) avec ses médailles et la preuve du bot ; et ce que le calcul a coûté. */
-export function preparerJour(R: Rapier, jour: number, g: number = TOWER_GENERATOR_VERSION): { fichier: JourFige; hauteurMm: number; banque: number; variante: number; compteurs: Compteurs } {
+export function preparerJour(R: Rapier, jour: number, g: number = TOWER_GENERATOR_VERSION): { fichier: JourFige; hauteurMm: number; variante: number; compteurs: Compteurs } {
   const bot = jouerBotRobuste(R, dailyTower(jour, g));
   const fichier = figerJour(jour, g);
   fichier.medailles = medaillesDe(bot.resultat.hauteurMm);
   fichier.preuve = encoderRediffusion(bot.rediffusion);
-  return { fichier, hauteurMm: bot.resultat.hauteurMm, banque: bot.banque, variante: bot.variante, compteurs: { ...bot.compteurs, ticks: bot.ticksTotal } };
+  return { fichier, hauteurMm: bot.resultat.hauteurMm, variante: bot.variante, compteurs: { ...bot.compteurs, ticks: bot.ticksTotal } };
 }
 
 /**
