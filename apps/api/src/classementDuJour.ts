@@ -1,4 +1,4 @@
-import type { ClasseDuJour, MedaillePortail } from "./games";
+import type { ClasseDuJour, MedaillePortail, ScorePortail } from "./games";
 
 // Lot I3 (plateforme, phase 3), refait au lot A1 : le **classement du jour au chrono**, tous jeux confondus. Calcul pur (testé :
 // `test/classementDuJour.test.ts`) ; les routes et le cache sont dans `portail.ts`. Ce fichier ne connaît aucun jeu : il reçoit, pour chaque jeu qui
@@ -20,6 +20,8 @@ export interface ResultatJeu {
   medaille: MedaillePortail | null;
   /** L'horodatage (ms) de l'essai classé. */
   at: number;
+  /** Lot TP : le score en hauteur (un jeu classé à la hauteur : jamais dans le cumul, mais le résultat garde sa forme). */
+  score?: ScorePortail;
 }
 
 /** Un joueur classé du jour. `resultats[i]` : son résultat dans le jeu n° i de `ClassementDuJour.jeux`, `null` s'il ne l'a pas fini. */
@@ -49,6 +51,11 @@ export interface ClassementDuJour {
   cumul: LigneDuJour[];
   /** Identifiant → position dans `cumul`. */
   index: Map<string, number>;
+  /**
+   * Lot TP : les jeux classés à la **hauteur** (Tower), chacun avec ses classés dans l'ordre de son classement. Ils n'entrent ni dans `jeux`, ni dans `cumul` : le cumul au temps les ignore.
+   * Absent (jamais posé par `classerLaJournee`) pour un classement qui n'en a pas : `portail.ts` le pose.
+   */
+  hauteurs?: { jeu: string; classes: readonly ClasseDuJour[]; index: Map<string, number> }[];
 }
 
 /** Les champs dérivés d'une ligne, à partir de ses résultats. `at` : l'instant le plus tardif de ses essais classés. */
@@ -95,7 +102,7 @@ export function classerLaJournee(jeux: readonly { jeu: string; classes: readonly
         resultats = jeux.map(() => null);
         parJoueur.set(c.playerId, resultats);
       }
-      resultats[g] = { rang: i + 1, tempsMs: c.tempsMs, medaille: c.medaille, at: c.at };
+      resultats[g] = { rang: i + 1, tempsMs: c.tempsMs, medaille: c.medaille, at: c.at, ...(c.score ? { score: c.score } : {}) };
     });
   });
   const lignes = new Map([...parJoueur].map(([id, r]) => [id, ligneDe(id, r)] as const));

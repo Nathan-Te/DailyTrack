@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { GAMES } from "../src/registry";
 import { TOWER_GRACE_MS } from "../src/tower";
 import { GRACE_MS } from "../src/cdj";
-import { creerTablesTower, fixtureJour, towerGame } from "../scripts/tower-aide";
+import { creerTablesTower, fixtureJour, gamesAvecTower } from "../scripts/tower-aide";
 import { D, monterTower } from "../scripts/tower-test";
 import { DAY_MS, makeApi, ouvrirJeu } from "./helpers";
 
@@ -14,9 +14,9 @@ const jourMs = (jour: number, h = 12) => jour * DAY_MS + h * 3_600_000;
 const monter = (date: string, frozen: Record<string, unknown> = {}) => monterTower(date, { frozen });
 
 describe("Tower : le jour (lot T4)", () => {
-  it("la grâce après minuit est celle de DailyTrack, et rien d'un jeu inconnu n'est servi sans Tower au registre", () => {
+  it("la grâce après minuit est celle de DailyTrack, et Tower est au registre (lot TP)", () => {
     expect(TOWER_GRACE_MS).toBe(GRACE_MS);
-    expect(GAMES.map((g) => g.code)).not.toContain("tower"); // le registre l'inscrira un lot de la plateforme (cahier des charges)
+    expect(GAMES.map((g) => g.code)).toContain("tower"); // inscrit au registre par le lot TP
   });
 
   it("GET /api/tower/info : versions, jour de Paris, jours de l'image, environnement", async () => {
@@ -75,7 +75,7 @@ describe("Tower : le jour (lot T4)", () => {
   it("un fichier abîmé (preuve qui ne donne plus le Diamant écrit) est refusé : le jour est généré, la raison est journalisée sans donnée personnelle", async () => {
     const abime = { ...fixtureJour("2026-11-07"), medailles: { auteur: 59_000, or: 29_500, argent: 17_700, bronze: 8_850 } };
     const lignes: string[] = [];
-    const t = await makeApi({ seed: false, games: [...GAMES, towerGame({ frozen: { "2026-11-07": abime } })], log: (s, m, f) => lignes.push(JSON.stringify({ s, m, f })) });
+    const t = await makeApi({ seed: false, games: gamesAvecTower({ frozen: { "2026-11-07": abime } }), log: (s, m, f) => lignes.push(JSON.stringify({ s, m, f })) });
     await creerTablesTower(t.db);
     await ouvrirJeu(t, "tower");
     t.clock.now = jourMs(D("2026-11-10"));
@@ -110,13 +110,13 @@ describe("Tower : le jour (lot T4)", () => {
     expect(JSON.parse(ligne!.silhouette!).length).toBeGreaterThan(0);
     // Même base, nouvelle instance : aucun rejeu de la preuve (le journal ne dit pas « jour calculé »).
     const lignes: string[] = [];
-    const b = await makeApi({ seed: false, db: a.db, games: [...GAMES, towerGame({ frozen: f })], log: (_s, m) => lignes.push(m) });
+    const b = await makeApi({ seed: false, db: a.db, games: gamesAvecTower({ frozen: f }), log: (_s, m) => lignes.push(m) });
     await ouvrirJeu(b, "tower");
     b.clock.now = a.clock.now;
     expect((await b.call("GET", "/api/tower/day/2026-11-07")).status).toBe(200);
     expect(lignes).not.toContain("DailyTower : jour calculé");
     // Une règle différente (ici : le fichier n'est plus là) recalcule et réécrit la ligne.
-    const c = await makeApi({ seed: false, db: a.db, games: [...GAMES, towerGame({ frozen: {} })], log: (_s, m) => lignes.push(m) });
+    const c = await makeApi({ seed: false, db: a.db, games: gamesAvecTower({ frozen: {} }), log: (_s, m) => lignes.push(m) });
     await ouvrirJeu(c, "tower");
     c.clock.now = a.clock.now;
     expect((await c.call("GET", "/api/tower/day/2026-11-07")).body.source).toBe("genere");
@@ -125,7 +125,7 @@ describe("Tower : le jour (lot T4)", () => {
 
   it("deux requêtes en même temps ne font qu'un calcul", async () => {
     const lignes: string[] = [];
-    const t = await makeApi({ seed: false, games: [...GAMES, towerGame()], log: (_s, m) => lignes.push(m) });
+    const t = await makeApi({ seed: false, games: gamesAvecTower(), log: (_s, m) => lignes.push(m) });
     await creerTablesTower(t.db);
     await ouvrirJeu(t, "tower");
     t.clock.now = jourMs(D("2026-11-10"));

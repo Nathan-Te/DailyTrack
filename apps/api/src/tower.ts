@@ -11,6 +11,7 @@ import {
   medailleObtenue,
   type NomMedaille,
   numeroTower,
+  PREMIER_JOUR_TOWER,
   type Plage,
   REGLAGES_DEFAUT,
   type Rediffusion,
@@ -24,7 +25,7 @@ import {
 import { examinerJourPrepare } from "@cdj/tower-sim/bot";
 import { WithHeaders, cacheHeaders } from "./cache";
 import { HttpError } from "./errors";
-import type { GameDefinition, GameInstance, Platform, RequestInfo, Statement } from "./games";
+import type { AdminDuJeu, GameDefinition, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, ScorePortail, Statement } from "./games";
 import { inputsHash } from "./copies";
 import { sha256Hex } from "./players";
 import { type ExecuteurRejeu, UNITES_REJEU_TOWER, erreurDeRediffusion, executeurPrincipal, rejouerPourServeur } from "./towerRejeu";
@@ -584,8 +585,91 @@ export function createTower(platform: Platform, options: TowerOptions | undefine
     return undefined;
   }
 
+
+  // --- Lot TP : ce que le portail et le panneau d'administration font de Tower --------------------------------------------------
+  // Tower se classe à la **hauteur** (`classement: "hauteur"`) : le score est `{ unite: "mm", valeur, vies }` à côté de `tempsMs`, qui n'est ici que la durée de la partie (le dernier départage).
+  // Il compte dans la journée (série, journée parfaite, partage) mais jamais dans le cumul au temps : la place d'un jour vient de l'ordre du classement de Tower (hauteur, vies, ticks, envoi).
+  const msOfTicks = (ticks: number) => Math.round((ticks * 1000) / 60);
+  const scoreDe = (r: { hauteur_mm: number; vies: number }): ScorePortail => ({ unite: "mm", valeur: r.hauteur_mm, vies: r.vies });
+  const medaillePortail = (m: string | null): MedaillePortail | null => (m === "author" || m === "gold" || m === "silver" || m === "bronze" ? m : null);
+
+  const portail: PortailDuJeu = {
+    site: "tower",
+    nom: "Tower",
+    premierJour: PREMIER_JOUR_TOWER,
+    classement: "hauteur",
+    async jour(day) {
+      const n = await getNiveau(day);
+      return { numero: n.info.number ?? day - PREMIER_JOUR_TOWER + 1, theme: n.info.theme, seuils: par(n.medailles), unite: "mm" };
+    },
+    async etat(id, day, connu) {
+      const own = await db.first<{ hauteur_mm: number; vies: number; ticks: number; medal: string | null; submitted_at: number }>(
+        "SELECT hauteur_mm, vies, ticks, medal, submitted_at FROM tower_results WHERE day = ? AND player_id = ?",
+        [day, id],
+      );
+      if (!own) return { statut: "pas_joue" };
+      const [rang, classes] = await Promise.all([connu ? connu.rang : rankOf(day, own.hauteur_mm, own.vies, own.ticks, own.submitted_at, id), connu ? connu.classes : participants(day)]);
+      return { statut: "fini", tempsMs: msOfTicks(own.ticks), medaille: medaillePortail(own.medal), rang, classes: Math.max(classes, rang), score: scoreDe(own) };
+    },
+    joursFinis: async (id) => (await db.all<{ day: number }>("SELECT day FROM tower_results WHERE player_id = ?", [id])).map((r) => r.day),
+    async profil(id) {
+      const rows = await db.all<{ day: number; hauteur_mm: number; vies: number; ticks: number; medal: string | null; submitted_at: number }>(
+        "SELECT day, hauteur_mm, vies, ticks, medal, submitted_at FROM tower_results WHERE player_id = ?",
+        [id],
+      );
+      const medailles: Record<MedaillePortail, number> = { author: 0, gold: 0, silver: 0, bronze: 0 };
+      let meilleurRang: { date: string; rang: number; classes: number } | null = null;
+      for (const r of rows) {
+        const m = medaillePortail(r.medal);
+        if (m) medailles[m]++;
+        const [rang, classes] = await Promise.all([rankOf(r.day, r.hauteur_mm, r.vies, r.ticks, r.submitted_at, id), participants(r.day)]);
+        if (!meilleurRang || rang < meilleurRang.rang || (rang === meilleurRang.rang && classes > meilleurRang.classes)) meilleurRang = { date: formatDay(r.day), rang, classes: Math.max(classes, rang) };
+      }
+      return { joursFinis: rows.length, medailles, meilleurRang };
+    },
+    // Tous les classés du jour dans l'ordre du classement de Tower (un jour sans classé ne calcule rien : le fichier du jour n'est pas lu).
+    async classes(day) {
+      const rows = await db.all<{ player_id: string; hauteur_mm: number; vies: number; ticks: number; medal: string | null; submitted_at: number }>(
+        "SELECT player_id, hauteur_mm, vies, ticks, medal, submitted_at FROM tower_results WHERE day = ? AND hidden = 0 ORDER BY hauteur_mm DESC, vies DESC, ticks ASC, submitted_at ASC, player_id ASC",
+        [day],
+      );
+      return rows.map((r) => ({ playerId: r.player_id, tempsMs: msOfTicks(r.ticks), medaille: medaillePortail(r.medal), at: r.submitted_at, score: scoreDe(r) }));
+    },
+  };
+
+  const admin: AdminDuJeu = {
+    activite: [{ table: "tower_results", jour: "day", joueur: "player_id" }],
+    compteurs: async (day) => ({ finis: (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM tower_results WHERE day = ?", [day]))?.n ?? 0 }),
+    joursPrets: async () => ({ figes: frozenDays.length }),
+    resultats: async (id, limite) => {
+      const [jours, rows] = await Promise.all([
+        db.first<{ n: number }>("SELECT COUNT(*) AS n FROM tower_results WHERE player_id = ?", [id]),
+        db.all<{ day: number; hauteur_mm: number; vies: number; ticks: number; medal: string | null; submitted_at: number; hidden: number }>(
+          "SELECT day, hauteur_mm, vies, ticks, medal, submitted_at, hidden FROM tower_results WHERE player_id = ? ORDER BY day DESC LIMIT ?",
+          [id, limite],
+        ),
+      ]);
+      const liste = [];
+      for (const r of rows) {
+        const [rang, classes] = await Promise.all([rankOf(r.day, r.hauteur_mm, r.vies, r.ticks, r.submitted_at, id), participants(r.day)]);
+        liste.push({ day: r.day, tempsMs: msOfTicks(r.ticks), score: scoreDe(r), medaille: medaillePortail(r.medal), rang, classes: Math.max(classes + r.hidden, rang), envoyeA: r.submitted_at });
+      }
+      return { jours: jours?.n ?? 0, liste };
+    },
+    retirer: async (id, day) => {
+      const row = await db.first<{ ticks: number; replay: string; inputs_hash: string | null }>("SELECT ticks, replay, inputs_hash FROM tower_results WHERE day = ? AND player_id = ?", [day, id]);
+      if (!row) return null;
+      return { tempsMs: msOfTicks(row.ticks), replay: row.replay, inputsHash: row.inputs_hash, statements: [{ sql: "DELETE FROM tower_results WHERE day = ? AND player_id = ?", params: [day, id] }] };
+    },
+    masquer: (id, masque): Statement[] => [{ sql: "UPDATE tower_results SET hidden = ? WHERE player_id = ?", params: [masque ? 1 : 0, id] }],
+    // Tower n'a pas de lecteur d'une rediffusion d'un autre joueur.
+    lienRediffusion: () => null,
+  };
+
   return {
     route,
+    portail,
+    admin,
     dailyLevel: getInfo,
     // Lot P (interrupteur des jeux) : en aperçu, seul l'envoi d'une partie range ses résultats à part ; ils sont effacés quand le jeu passe `on` (jamais publics).
     ecrituresApercu: ["/api/tower/submit"],

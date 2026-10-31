@@ -9,7 +9,7 @@
  */
 
 /** Grandes tables : leur taille croît avec les joueurs ou les jours. Un parcours complet de l'une d'elles est refusé sauf justification. */
-export const GRANDES_TABLES = ["players", "results", "jump_results", "salon_runs", "jump_lives", "rate", "journal_admin", "journal_erreurs", "resultats_retires", "revoked_codes", "admin_sessions", "garage_choices"];
+export const GRANDES_TABLES = ["players", "results", "jump_results", "tower_results", "salon_runs", "jump_lives", "rate", "journal_admin", "journal_erreurs", "resultats_retires", "revoked_codes", "admin_sessions", "garage_choices"];
 
 /**
  * Parcours complets acceptés, un par (table, motif du texte de la requête), chacun avec sa raison. Tout autre `SCAN` d'une grande table échoue

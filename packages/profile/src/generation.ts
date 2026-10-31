@@ -15,13 +15,13 @@ export const NOUVEAU_DEPART_KEY = "cdj:nouveau-depart";
 /** La marque d'un navigateur démarré neuf. */
 export const NAVIGATEUR_NEUF = "neuf";
 
-/** Les préfixes des données de jeu : DailyTrack et la plateforme (`cdj:`), DailyJump (`jump:`). */
-export const PREFIXES_DE_JEU = ["cdj:", "jump:"] as const;
+/** Les préfixes des données de jeu : DailyTrack et la plateforme (`cdj:`), DailyJump (`jump:`), Tower (`tower:`, lot TP). */
+export const PREFIXES_DE_JEU = ["cdj:", "jump:", "tower:"] as const;
 
 /**
  * Ce qui **survit** à l'effacement : la langue commune, le son, les commandes (tactiles), les réglages d'affichage et de jeu, la qualité graphique,
  * la caméra, et les clés des outils d'essai et d'administration (jamais un profil). Les clés de la démonstration (`?api=demo`) ne sont pas gardées : elles ne
- * valent rien après une remise à zéro (et le portail de production ne doit contenir aucune trace de la démonstration : `construction.test.ts`). Tout le reste sous `cdj:` et `jump:` est effacé.
+ * valent rien après une remise à zéro (et le portail de production ne doit contenir aucune trace de la démonstration : `construction.test.ts`). Tout le reste sous `cdj:`, `jump:` et `tower:` est effacé.
  */
 export const CLES_GARDEES: readonly string[] = [
   "cdj:langue",
