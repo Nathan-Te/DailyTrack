@@ -39,24 +39,24 @@ describe("maintien minimal du saut (lot 30)", () => {
   const lv = room(40, 12);
   const start = standAt(lv, 4, 11);
 
-  it("la constante vaut 10 pas (83 ms) et la version 13", () => {
-    expect(HOLD).toBe(10);
+  it("la constante vaut 6 pas (50 ms) et la version 13", () => {
+    expect(HOLD).toBe(6);
     expect(MIN_HOLD_VERSION).toBe(13);
     expect(JUMP_SIM_VERSION).toBeGreaterThanOrEqual(13);
   });
 
-  it("tout appui de 1 à 10 pas donne exactement la même trajectoire, au bit près (sans micro-saut)", () => {
+  it("tout appui de 1 à 6 pas donne exactement la même trajectoire, au bit près (sans micro-saut)", () => {
     const ref = arc(lv, start, HOLD, HOLD);
     for (let press = 1; press <= HOLD; press++) expect(arc(lv, start, press, HOLD), `appui de ${press} pas`).toEqual(ref);
   });
 
-  it("le petit saut est celui qu'un appui de 10 pas donnait avant (hauteur et courbe inchangées)", () => {
+  it("le petit saut est celui qu'un appui de 6 pas donnait avant (hauteur et courbe inchangées)", () => {
     const sans = arc(lv, start, HOLD, 0);
     expect(arc(lv, start, 1, HOLD)).toEqual(sans);
     expect(arc(lv, start, 5, HOLD)).toEqual(sans);
   });
 
-  it("au-delà de 10 pas, la courbe est celle d'avant (la coupe agit au pas du relâchement)", () => {
+  it("au-delà de 6 pas, la courbe est celle d'avant (la coupe agit au pas du relâchement)", () => {
     for (const press of [11, 12, 15, 20, 30, 60]) expect(arc(lv, start, press, HOLD), `appui de ${press} pas`).toEqual(arc(lv, start, press, 0));
   });
 
@@ -106,9 +106,9 @@ describe("maintien minimal du saut (lot 30)", () => {
     }
   });
 
-  it("le saut mural et le saut de coyote sont aussi tenus jusqu'à 10 pas", () => {
+  it("le saut mural et le saut de coyote sont aussi tenus jusqu'à 6 pas", () => {
     const wall = level(["#.......", "#.......", "#.......", "#.......", "#.......", "#.......", "#.......", "#S.....F", "########"]);
-    // Contre le mur gauche, en l'air, en glissant : un saut mural court (1 pas) vaut le saut mural de 10 pas.
+    // Contre le mur gauche, en l'air, en glissant : un saut mural court (1 pas) vaut le saut mural de 6 pas.
     const hang = (n: number, hold: number) => {
       let s = floatAt(wall, T + 100, 3 * T, 0, 120);
       s = { ...s, wallSide: -1, wallAir: 0, x: T };
@@ -187,14 +187,14 @@ describe("maintien minimal et niveaux (lot 30)", () => {
     return ys;
   };
 
-  it("stepAttempt : v13, tout appui de 5 à 10 pas est le même saut, 1 à 4 pas le micro-saut d'avant ; v12 : le saut dépend de l'appui", () => {
+  it("stepAttempt : v13, tout appui de 5 à 6 pas est le même saut, 1 à 4 pas le micro-saut d'avant ; v12 : le saut dépend de l'appui", () => {
     const v13 = parseLevel(`${text}\n\nversion ${MIN_HOLD_VERSION}`);
     const v12 = parseLevel(`${text}\n\nversion 12`);
     const ref = run(v13, HOLD);
     for (let press = JUMP_MICRO_MAX + 1; press <= HOLD; press++) expect(run(v13, press), `appui de ${press}`).toEqual(ref);
     for (let press = 1; press <= JUMP_MICRO_MAX; press++) expect(run(v13, press), `micro-saut de ${press}`).toEqual(run(v12, press));
     expect(run(v12, 1)).not.toEqual(run(v12, HOLD));
-    // Même saut qu'un appui de 10 pas d'avant la version 13.
+    // Même saut qu'un appui de 6 pas d'avant la version 13.
     expect(run(v13, 6)).toEqual(run(v12, HOLD));
     expect(run(v13, 20)).toEqual(run(v12, 20));
   });

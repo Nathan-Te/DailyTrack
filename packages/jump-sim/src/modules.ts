@@ -1193,9 +1193,9 @@ export interface ModuleSolutionsFile {
 
 /**
  * Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6) ;
- * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3 ; 4 : appui d'au moins 5 pas (lot 11) ; 5 : appui d'au moins 10 pas et durée d'appui variée de ±4 pas (lot 30).
+ * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3 ; 4 : appui d'au moins 5 pas (lot 11) ; 5 : appui d'au moins 6 pas et durée d'appui variée de ±4 pas (lot 30).
  */
-export const EXIGENCE_VERSION = 5;
+export const EXIGENCE_VERSION = 6;
 
 // ——— Jouable au clavier (lot 11, retouche) ———
 // La gigue (ci-dessus) décale des changements de commande mais ne dit pas **combien de temps un doigt peut tenir ou lâcher une touche** : une
@@ -1204,8 +1204,8 @@ export const EXIGENCE_VERSION = 5;
 // pas entre deux appuis. Un petit saut est pourtant ce que les scies basses réclament : la hauteur d'un saut dépend de la durée de l'appui
 // (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,71 à 5 pas, 2,22 à 8 pas, 2,82 à 12 pas).
 /**
- * Plus courte durée d'un appui de saut (pas) qu'une solution peut exiger. **Lot 30 : 10 pas (83 ms), le maintien minimal du saut** (`JUMP_MIN_HOLD`) : un tap volontaire dure 60 à 120 ms, et
- * tout appui de 1 à 10 pas donne le même petit saut (le plus petit qu'on puisse exiger). Avant le lot (sans maintien minimal, catalogue d'avant) : `PRESS_MIN_LEGACY` = 5 pas = 42 ms, qui donnait
+ * Plus courte durée d'un appui de saut (pas) qu'une solution peut exiger. **Lot 30 : 6 pas (50 ms), le maintien minimal du saut** (`JUMP_MIN_HOLD`) : un tap volontaire dure 60 à 120 ms, et
+ * tout appui de 5 à 6 pas donne le même petit saut (en deçà, le micro-saut) (le plus petit qu'on puisse exiger). Avant le lot (sans maintien minimal, catalogue d'avant) : `PRESS_MIN_LEGACY` = 5 pas = 42 ms, qui donnait
  * un saut de 1,71 tuile et qu'un doigt ne dose pas.
  */
 export const PRESS_MIN = JUMP_MIN_HOLD;

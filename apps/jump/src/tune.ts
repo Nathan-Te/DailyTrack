@@ -561,7 +561,7 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   holdTitle.textContent = "Maintien du saut";
   const holdNote = document.createElement("small");
   holdNote.className = "hint";
-  holdNote.textContent = "Un saut relâché avant ce nombre de pas continue comme s'il était tenu jusque-là (10 pas depuis la version 13 des niveaux), sauf le micro-saut : un appui de 4 pas ou moins coupe le saut comme avant. Modifié, la partie n'est jamais enregistrée ni envoyée.";
+  holdNote.textContent = "Un saut relâché avant ce nombre de pas continue comme s'il était tenu jusque-là (6 pas depuis la version 13 des niveaux), sauf le micro-saut : un appui de 4 pas ou moins coupe le saut comme avant. Modifié, la partie n'est jamais enregistrée ni envoyée.";
   holdBox.append(holdTitle, holdNote);
   for (const s of HOLD_SLIDERS) addSlider(holdBox, s, holdRows);
   body.append(holdBox);

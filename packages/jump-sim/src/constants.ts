@@ -86,18 +86,18 @@ export const RESTART_VERSION = 11;
  */
 export const ALT_KEPT_VERSION = 12;
 /**
- * Lot 30 : **version 13 = version 12 + le maintien minimal du saut**. Un saut relâché avant `JUMP_MIN_HOLD` pas (10, environ 83 ms) continue comme s'il avait été tenu 10 pas : tout appui de
- * 1 à 10 pas donne exactement le même petit saut (celui d'un appui de 10 pas : hauteur et courbe inchangées) ; au-delà, la courbe est celle d'avant. Vaut pour tout saut qui part (sol, coyote,
+ * Lot 30 : **version 13 = version 12 + le maintien minimal du saut**. Un saut relâché avant `JUMP_MIN_HOLD` pas (6, environ 50 ms) continue comme s'il avait été tenu 6 pas : tout appui de
+ * 5 à 6 pas donne exactement le même petit saut (celui d'un appui de 6 pas : 1,89 tuile, hauteur et courbe inchangées) ; au-delà, la courbe est celle d'avant. Vaut pour tout saut qui part (sol, coyote,
  * mural, tampon) ; un ressort ou un champignon ne se coupent pas. Exception du micro-saut (`JUMP_MICRO_MAX`, plus bas). Retour des joueurs : le petit saut s'obtenait par un appui de 5 pas (42 ms) qu'on ne dose pas au clavier ou à la manette.
  * Les niveaux du jour depuis le générateur g24 sont en v13 ; les golden et les rediffusions des versions 3 à 12 n'ont pas bougé (le champ `PlayerState.jumpAge` n'existe qu'avec un maintien).
  */
 export const MIN_HOLD_VERSION = 13;
-/** Lot 30 : le maintien minimal du saut (pas) des niveaux de la version 13 et suivantes : 10 pas = 83 ms. Réglable pour essayer (`JumpParams.jumpMinHold`, `?debug&tune`). */
-export const JUMP_MIN_HOLD = 10;
+/** Lot 30 : le maintien minimal du saut (pas) des niveaux de la version 13 et suivantes : 6 pas = 50 ms. Réglable pour essayer (`JumpParams.jumpMinHold`, `?debug&tune`). */
+export const JUMP_MIN_HOLD = 6;
 /**
  * Lot 30 (retour de Nathan après l'essai de l'aperçu) : le **micro-saut reste possible**. Un appui de `JUMP_MICRO_MAX` pas ou moins (4 pas, 33 ms : un effleurement volontaire, une image à 60 Hz) n'est pas
- * prolongé par le maintien minimal : le saut est coupé au relâchement comme avant la version 13 (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,55 à 4 pas). Du 5ᵉ au 10ᵉ pas, c'est le petit saut du maintien minimal (2,53
- * tuiles) ; au-delà, la courbe d'avant. Le catalogue n'a aucun appui de moins de 10 pas : ses solutions sont inchangées. Réglable pour essayer (`JumpParams.jumpMicroMax`, `?debug&tune`).
+ * prolongé par le maintien minimal : le saut est coupé au relâchement comme avant la version 13 (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,55 à 4 pas). Les 5ᵉ et 6ᵉ pas, c'est le petit saut du maintien minimal (1,89
+ * tuile) ; au-delà, la courbe d'avant. Le catalogue n'a aucun appui de moins de 6 pas : aucune solution n'exige de micro-saut. Réglable pour essayer (`JumpParams.jumpMicroMax`, `?debug&tune`).
  */
 export const JUMP_MICRO_MAX = 4;
 
@@ -128,7 +128,7 @@ export const JUMP_MICRO_MAX = 4;
  * 22 depuis le lot 28 (niveaux en sim v12 : les blocs alternés gardent leur état à la reprise ; chaque variante à alternés se reprend aussi depuis l'état B ; jamais d'alterné hors du néon) ;
  * 23 depuis le lot V1 de la plateforme (le sac de thèmes : jamais deux jours de suite le même thème, chaque thème une fois par cycle de cinq jours ; la physique, les morceaux et la
  * simulation ne changent pas : `JUMP_SIM_VERSION` reste 12, un niveau g22 se rejoue tel quel et garde son thème de l'ancienne règle) ;
- * 24 depuis le lot 30 (niveaux en sim v13 : le maintien minimal du saut ; appuis humains d'au moins 10 pas, durée d'appui tolérée à ±4 pas ; catalogue re-résolu).
+ * 24 depuis le lot 30 (niveaux en sim v13 : le maintien minimal du saut ; appuis humains d'au moins 6 pas, durée d'appui tolérée à ±4 pas ; catalogue re-résolu).
  */
 export const JUMP_GENERATOR_VERSION = 24;
 

@@ -18,21 +18,21 @@ import { appuis, humanized, jittered } from "../tools/exigence";
 import { readSolutions } from "../tools/files";
 
 // Retouche du lot 11 : **jouable au clavier**. Une solution ne peut pas exiger un appui de saut plus court que `PRESS_MIN` pas (un doigt tient
-// une touche au moins ≈ 40 ms ; lot 30 : 10 pas, 83 ms, le maintien minimal du saut) ni un relâchement plus court que `RELEASE_MIN` pas entre deux appuis ; la gigue de la mesure
+// une touche au moins ≈ 40 ms ; lot 30 : 6 pas, 50 ms, le maintien minimal du saut) ni un relâchement plus court que `RELEASE_MIN` pas entre deux appuis ; la gigue de la mesure
 // d'exigence respecte le relâchement minimal (lot 30 : plus de prolongation des appuis courts, la physique le fait : tout appui de 1 à 10 pas est le même petit saut).
 
 const run = (bits: number, n: number): number[] => Array.from({ length: n }, () => bits);
 
 describe("pressProblems : la façon de tenir le bouton de saut", () => {
-  it("constantes : appui de 10 pas (83 ms) au moins (5 pas jusqu'au lot 30), relâchement de 3 pas (25 ms) au moins", () => {
-    expect(PRESS_MIN).toBe(10);
+  it("constantes : appui de 6 pas (50 ms) au moins (5 pas jusqu'au lot 30), relâchement de 3 pas (25 ms) au moins", () => {
+    expect(PRESS_MIN).toBe(6);
     expect(PRESS_MIN_LEGACY).toBe(5);
     expect(RELEASE_MIN).toBe(3);
   });
 
-  it("un appui d'un seul pas, ou de neuf, est refusé ; dix passent", () => {
+  it("un appui d'un seul pas, ou de cinq, est refusé ; six passent", () => {
     expect(pressProblems([...run(R, 10), ...run(R | J, 1), ...run(R, 10)])).toMatch(/appui de saut de 1 pas/);
-    expect(pressProblems([...run(R | J, PRESS_MIN - 1), ...run(R, 10)])).toMatch(/appui de saut de 9 pas/);
+    expect(pressProblems([...run(R | J, PRESS_MIN - 1), ...run(R, 10)])).toMatch(/appui de saut de 5 pas/);
     expect(pressProblems([...run(R | J, PRESS_MIN), ...run(R, 10)])).toBeNull();
     expect(pressProblems([...run(R, 10), ...run(R | J, 30), ...run(R, 10)])).toBeNull();
   });

@@ -91,17 +91,18 @@ describe("variation de la durée d'un appui (lot 30)", () => {
 });
 
 describe("la règle des appuis humains (lot 30)", () => {
-  it("un appui de moins de 10 pas est refusé, 10 pas passent", () => {
+  it("un appui de moins de 6 pas est refusé, 6 pas passent", () => {
     expect(PRESS_MIN).toBe(JUMP_MIN_HOLD);
     const press = (n: number) => [INPUT_RIGHT, ...new Array<number>(n).fill(INPUT_JUMP), INPUT_RIGHT, INPUT_RIGHT, INPUT_RIGHT];
-    expect(pressProblems(press(9))).toMatch(/appui de saut de 9 pas \(au moins 10\)/);
-    expect(pressProblems(press(5))).not.toBeNull();
+    expect(pressProblems(press(5))).toMatch(/appui de saut de 5 pas \(au moins 6\)/);
+    expect(pressProblems(press(1))).not.toBeNull();
+    expect(pressProblems(press(6))).toBeNull();
     expect(pressProblems(press(10))).toBeNull();
     expect(pressProblems(press(24))).toBeNull();
-    expect(shortestPress(press(10))).toBe(10);
+    expect(shortestPress(press(6))).toBe(6);
   });
 
-  it("chaque solution gardée du catalogue tient la règle : appuis d'au moins 10 pas, relâchements d'au moins 3", () => {
+  it("chaque solution gardée du catalogue tient la règle : appuis d'au moins 6 pas, relâchements d'au moins 3", () => {
     let n = 0;
     for (const def of MODULES)
       def.variants.forEach((_, v) => {
