@@ -18,6 +18,8 @@ Révision 12 (demande de Nathan, 28/10) : le fantôme sort de la pause et reste 
 
 Révision 13 (choix de Nathan, 30/10/2026, maquettes de Tower) : étiquette de Tower (§ 2, § 3.5, § 4, § 5, § 7) ; Tower se joue en paysage et en portrait (§ 9). Maquettes : `docs/tower/maquettes/`.
 
+Révision 14 (demande de Nathan, 31/10/2026, lot M1) : navigation à la manette dans tous les menus, bande d'aide de la manette, commandes réglables par jeu (§ 10 ; maquette `manette-et-commandes.html`). (La demande l'appelait « révision 13 » : ce numéro était déjà pris par les maquettes de Tower.)
+
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
 Chaque règle porte sa raison. Une règle dont la raison ne s'applique plus se discute avec Nathan ; elle ne se contourne pas.
@@ -217,6 +219,9 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - Cibles tactiles de 44 px minimum.
 - **Focus visible** : contour 3 px `--dj-encre` décalé de 2 px sur fond clair ; contour 3 px `--dj-ambre` sur fond sombre (asphalte, afficheur).
 - Vrais éléments (`button`, `a`, `input` + `label`) ; langue du document (`lang`) suivie au changement de langue.
+- **Manette** : tout ce qui se fait au doigt ou à la souris se fait aussi à la manette. Croix ou stick gauche : le focus va à l'élément le plus proche dans la direction ; **A** valide ; **B** revient (ferme le dialogue, ou page précédente) ; **LB / RB** changent d'onglet ; **Start** met en pause en partie. Le focus démarre sur l'action principale de l'écran. À la manette, l'anneau de focus gagne un liseré `--dj-moutarde` intérieur (visible de loin).
+- **Bande d'aide de la manette** : en bas à droite, fond encre, texte papier, lettres des boutons dans des cercles dessinés (A / B type Xbox, croix / rond dessinés type PlayStation selon la manette branchée), jamais d'émoji ; affichée seulement quand la dernière entrée vient d'une manette, et jamais pendant une partie.
+- **Commandes réglables** (Réglages › Commandes de chaque jeu) : onglets Clavier · Manette · Tactile ; deux touches par action au clavier, une à la manette ; une touche déjà prise est échangée ; **Échap** (clavier) et **Start** (manette) restent fixes ; « Rétablir les touches d'origine ». Les aides du jeu et « Comment jouer » affichent les touches choisies, avec le nom de la touche selon la disposition du clavier.
 
 ## 11. Ce qui est interdit (le « générique »)
 

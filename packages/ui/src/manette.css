@@ -1,0 +1,72 @@
+/* Lot M1 (plateforme) : la manette dans les menus (manette.ts). **Une feuille à part, chargée à la demande avec le module** (jamais dans `styles.css` : rien au premier
+   chargement d'un jeu ni du portail). Charte : docs/plateforme/identite.md § 10 (« Manette », « Bande d'aide de la manette »). */
+
+/* À la manette, l'anneau de focus gagne un liseré moutarde intérieur (visible de loin). Un écran qui reçoit le focus pour être annoncé n'est pas encadré. */
+html[data-entree="manette"] :focus:not([role="dialog"][tabindex="-1"]) {
+  outline: var(--dj-focus) solid var(--dj-encre);
+  outline-offset: var(--dj-focus-ecart);
+  box-shadow: inset 0 0 0 var(--dj-trait) var(--dj-moutarde);
+}
+html[data-entree="manette"] .dj-sombre :focus:not([role="dialog"][tabindex="-1"]),
+html[data-entree="manette"] .dj-sombre:focus:not([role="dialog"][tabindex="-1"]) {
+  outline-color: var(--dj-ambre);
+}
+
+/* La bande d'aide : en bas à droite, fond encre, texte papier, lettres des boutons dans des cercles dessinés. Jamais pendant une partie (le module la cache hors menu).
+   Track efface les enfants de `body` quand un écran est ouvert : elle passe devant toujours, et respecte les marges de sécurité. */
+.dj-manette-aide {
+  position: fixed;
+  right: max(var(--dj-espace-7), env(safe-area-inset-right));
+  bottom: max(var(--dj-espace-7), env(safe-area-inset-bottom));
+  z-index: 200;
+  visibility: visible !important;
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  box-sizing: border-box;
+  max-width: calc(100vw - 2 * var(--dj-espace-7));
+  padding: var(--dj-espace-2) var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  box-shadow: var(--dj-ombre-bouton);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+.dj-manette-aide[hidden] {
+  display: none;
+}
+.dj-manette-aide__groupe {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  white-space: nowrap;
+}
+.dj-manette-aide__sep {
+  color: var(--dj-ecran-texte);
+}
+.dj-manette-aide__touche {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 22px;
+  height: 22px;
+  border: var(--dj-trait) solid var(--dj-papier);
+  color: var(--dj-papier);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-12);
+  line-height: 1;
+}
+.dj-manette-aide__rond {
+  border-radius: var(--dj-rayon-avatar);
+}
+.dj-manette-aide__pilule {
+  padding: 0 var(--dj-espace-2);
+  border-radius: var(--dj-rayon-tuile);
+}

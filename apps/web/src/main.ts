@@ -1,5 +1,6 @@
 import "./generationInit";
 import "./interrupteurInit";
+import { activerManette } from "@cdj/ui/src/manetteLien"; // lot M1 : les menus à la manette (chargés à la première manette)
 // Lot I4 : le socle `@cdj/ui` (jetons, base, composants), les 7 faces de polices de Track (hébergées, mêmes fichiers que le portail), puis les feuilles du jeu.
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/cadre.css";
@@ -138,6 +139,7 @@ import { followIdentityRevision } from "./transfer";
 // Lot P4 (plateforme) : un code chargé dans un autre jeu de la plateforme (DailyJump) depuis la dernière visite : le cache des records de
 // l'ancienne identité est vidé, comme quand le code est chargé ici (`applyIdentity`). Avant toute lecture des records. Sinon, rien ne change.
 followIdentityRevision(gameStorage(), formatDay(parisDay(Date.now())));
+activerManette(() => import("./manette"));
 // Lot I4 : la langue de la plateforme (`cdj:langue`) pour `<html lang>`, le titre et les textes du HTML. L'anglais est un fichier à part, chargé ici s'il est la
 // langue du joueur (les joueurs en français ne le téléchargent pas : budget de chargement).
 await chargerLangue();
@@ -1784,7 +1786,7 @@ function finishRun() {
     if (canNativeShare()) actionArrivee(zones, { texte: t("partage.partager"), onClick: async () => void (currentShare() && (await nativeShare({ text: shareLine(currentShare()!), url: shareLink() }))) });
     actionArrivee(zones, { texte: t("partage.copier"), id: "finish-copy", onClick: async (b) => void (currentShare() && (await copyShare(b, shareLine(currentShare()!), shareLink()))) });
   }
-  actionArrivee(zones, { texte: t("arrivee.accueil"), onClick: () => goHome() });
+  actionArrivee(zones, { texte: t("arrivee.accueil"), id: "finish-home", onClick: () => goHome() });
   zones.indice.textContent = t("arrivee.indice");
   // Lot I3 de la plateforme : « Jeu suivant du jour », sous l'étiquette (rempli quand le classement est connu).
   finishNext = zones.suite;

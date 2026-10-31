@@ -1,4 +1,5 @@
 import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
+import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
 
 // Entrées de DailyJump : clavier (par `KeyboardEvent.code`, donc QZSD et WASD au même endroit) et manette, fusionnés en 3 bits par pas.
 // Lot 27 : les mêmes touches que DailyTrack (`apps/web/src/input.ts`) — **R : reprendre au dernier point de passage**, **Entrée : recommencer à zéro** ; à la manette Y et X ;
@@ -159,7 +160,8 @@ export class Controls {
 
   /** Lit la manette (une fois par image : elle ne prévient pas). */
   pollPad(): void {
-    const pad = navigator.getGamepads?.().find((p): p is Gamepad => !!p && p.connected);
+    // Lot M1 : un menu ouvert prend la manette (un appui ne sert jamais deux fois : le A qui ferme la pause ne fait pas sauter) ; Start reste au jeu.
+    const pad = padPourLeJeu(navigator.getGamepads?.().find((p): p is Gamepad => !!p && p.connected));
     this.padDir = pad ? padDirection(pad) : 0;
     const jump = pad ? padJump(pad) : false;
     if (jump !== this.padJumpDown) {
