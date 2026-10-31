@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1315 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1356 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -43,6 +43,35 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `bientot.titre` | Bientôt | Coming soon |
 | `bientot.texte` | {nom} n'est pas encore ouvert. Reviens bientôt ! | {nom} isn't open yet. Come back soon! |
 | `bientot.retour` | ‹ Du Jour | ‹ Du Jour |
+
+### Commandes (`commandes.*`, `packages/ui/src/catalogue.commandes.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `commandes.onglets` | Types de commandes | Control types |
+| `commandes.onglet.clavier` | Clavier | Keyboard |
+| `commandes.onglet.manette` | Manette | Gamepad |
+| `commandes.onglet.tactile` | Tactile | Touch |
+| `commandes.touche.vide` | Aucune | None |
+| `commandes.touche.changer` | {action} : changer la touche {numero}, actuellement {touche} | {action}: change key {numero}, currently {touche} |
+| `commandes.liaison.changer` | {action} : changer le bouton, actuellement {touche} | {action}: change the button, currently {touche} |
+| `commandes.attente` | Appuie sur une touche… | Press a key… |
+| `commandes.attente.manette` | Appuie sur un bouton… | Press a button… |
+| `commandes.attente.aide` | Échap annule. | Esc cancels. |
+| `commandes.touche.echap` | Échap | Esc |
+| `commandes.fixe.echap` | Pause et retour | Pause and back |
+| `commandes.fixe.start` | Pause | Pause |
+| `commandes.fixe.b` | Retour dans les menus | Back in menus |
+| `commandes.fixe.label` | Fixe | Fixed |
+| `commandes.refus.fixe` | {touche} est fixe : elle ne peut pas être changée. | {touche} is fixed: it can't be changed. |
+| `commandes.refus.invalide` | Cette touche ne peut pas servir. | This key can't be used. |
+| `commandes.echange` | {touche} était sur « {action} » : les deux touches sont échangées. | {touche} was on “{action}”: the two keys are swapped. |
+| `commandes.echange.manette` | {touche} était sur « {action} » : les deux boutons sont échangés. | {touche} was on “{action}”: the two buttons are swapped. |
+| `commandes.perdue` | Touche échangée | Key swapped |
+| `commandes.change` | {action} : {touche} | {action}: {touche} |
+| `commandes.retablir` | Rétablir les touches d'origine | Restore default controls |
+| `commandes.retabli` | Les touches d'origine sont rétablies. | Default controls restored. |
+| `commandes.tactile.absent` | Les réglages des commandes tactiles apparaissent ici sur un téléphone ou une tablette. | Touch control settings appear here on a phone or tablet. |
 
 ### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`)
 
@@ -155,6 +184,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `medaille.bronze` | Bronze | Bronze |
 | `medaille.obtenue` | {medaille} : obtenue | {medaille}: earned |
 | `medaille.pasEncore` | {medaille} : pas encore | {medaille}: not yet |
+
+### Musique (`musique.*`, `packages/ui/src/catalogue.musique.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `musique.titre` | Musique | Music |
+| `musique.volume` | Volume de la musique | Music volume |
+| `musique.valeur` | {n} % | {n}% |
+| `musique.couper` | Couper la musique | Mute the music |
+| `musique.suivant` | Morceau suivant | Next track |
+| `musique.enEcoute` | En écoute : {titre} — {artiste} | Now playing: {titre} — {artiste} |
 
 ### Noms des jeux (`jeu.*`, `packages/ui/src/catalogue.ts`)
 
@@ -541,7 +581,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `arrivee.revoir` | Revoir le tour | Watch the lap |
 | `arrivee.revoir.aria` | Revoir le tour : le meilleur du jour | Watch the lap: today's best |
 | `arrivee.accueil` | Accueil de Track | Track home |
-| `arrivee.indice` | Entrée : rejouer · P : pause | Enter: race again · P: pause |
+| `arrivee.indice` | {recommencer} : rejouer · {pause} : pause | {recommencer}: race again · {pause}: pause |
 | `arrivee.legendeSuite` | Il te reste aujourd'hui | Still to play today |
 | `arrivee.sansServeur` | Course non classée : ce jeu n'est pas relié à un serveur. Ton record reste sur cet appareil. | Run not ranked: this game isn't linked to a server. Your record stays on this device. |
 | `arrivee.horsLigne` | Hors ligne : course non classée. Ton record reste sur cet appareil. | Offline: run not ranked. Your record stays on this device. |
@@ -564,6 +604,24 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `cadre.retourTrack` | Retour à l'accueil de Track | Back to Track home |
+
+### Commandes (`commandes.*`, `apps/web/src/catalogue.reglages.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `commandes.action.gauche` | Tourner à gauche | Steer left |
+| `commandes.action.droite` | Tourner à droite | Steer right |
+| `commandes.action.accelerer` | Accélérer | Accelerate |
+| `commandes.action.freiner` | Freiner | Brake |
+| `commandes.action.point` | Dernier point de contrôle | Last checkpoint |
+| `commandes.action.recommencer` | Recommencer depuis le départ | Restart from the start |
+| `commandes.action.camera` | Changer de caméra | Change camera |
+| `commandes.action.pause` | Pause | Pause |
+| `commandes.action.classement` | Classement | Leaderboard |
+| `commandes.action.fantome` | Changer de fantôme | Change ghost |
+| `commandes.action.son` | Couper le son | Mute |
+| `commandes.manette.tourner` | Tourner | Steer |
+| `commandes.fixe.stick` | Stick · croix | Stick · D-pad |
 
 ### Commandes tactiles (`tactile.*`, `apps/web/src/catalogue.reglages.*.ts`)
 
@@ -644,17 +702,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.point.tourner.doigts` | Tourne avec ← → en bas à gauche. | Steer with ← → at the bottom left. |
 | `aide.point.pedales.doigts` | Gaz et frein en bas à droite. | Gas and brake at the bottom right. |
 | `aide.point.but` | Passe tous les points de contrôle, bats ton record. | Hit every checkpoint, beat your record. |
-| `aide.point.tourner.clavier` | Tourne avec ← → (ou Q D). | Steer with ← → (or A D). |
-| `aide.point.pedales.clavier` | Accélère avec ↑ (ou Z), freine avec ↓ (ou S) ; Espace pour déraper. | Accelerate with ↑ (or W), brake with ↓ (or S); Space to drift. |
+| `aide.point.tourner.clavier` | Tourne avec {gauche} · {droite}. | Steer with {gauche} · {droite}. |
+| `aide.point.pedales.clavier` | Accélère avec {accelerer}, freine avec {freiner} (dérapage en virage). | Accelerate with {accelerer}, brake with {freiner} (drift in turns). |
 | `aide.zone.frein` | Frein | Brake |
 | `aide.zone.gaz` | Gaz | Gas |
-| `aide.touche.espace` | Espace | Space |
-| `aide.touche.entree` | Entrée | Enter |
 | `aide.touche.echap` | Échap | Esc |
 | `aide.touche.stickGauche` | Stick gauche | Left stick |
 | `aide.touche.croix` | Croix | D-pad |
-| `aide.touche.vue` | Vue | View |
-| `aide.clavier.deplacer` | Accélérer, tourner à gauche, freiner / reculer, tourner à droite (aussi W A S D et les flèches) | Accelerate, steer left, brake / reverse, steer right (W A S D and the arrow keys work too) |
+| `aide.clavier.deplacer` | Accélérer, tourner à gauche, freiner / reculer, tourner à droite | Accelerate, steer left, brake / reverse, steer right |
 | `aide.clavier.frein` | Freiner — en tournant, la voiture dérape | Brake — while steering, the car drifts |
 | `aide.clavier.pointDeControle` | Retour au dernier point de contrôle (le chrono continue) | Back to the last checkpoint (the clock keeps running) |
 | `aide.clavier.depart` | Recommencer depuis le départ | Restart from the start |
@@ -693,7 +748,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.rang.salon.aria` | Classement de la session : {rang}, ouvrir ou fermer | Session leaderboard: {rang}, open or close |
 | `course.pause.aria` | Pause | Pause |
 | `course.fige` | FIGÉ | FROZEN |
-| `course.aide.puce` | Comment jouer · R : point de contrôle · Entrée : recommencer · C : caméra · G : fantôme · P : pause | How to play · R: checkpoint · Enter: restart · C: camera · G: ghost · P: pause |
+| `course.aide.puce` | Comment jouer · {point} : point de contrôle · {recommencer} : recommencer · {camera} : caméra · {fantome} : fantôme · {pause} : pause | How to play · {point}: checkpoint · {recommencer}: restart · {camera}: camera · {fantome}: ghost · {pause}: pause |
 | `course.aide.titre` | Comment jouer | How to play |
 | `course.meta.jour` | Circuit {numero} · {date} · {theme} | Track {numero} · {date} · {theme} |
 | `course.meta.sansNumero` | Circuit du {date} · {theme} | Track of {date} · {theme} |
@@ -739,7 +794,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.portique.arrivee` | ARRIVÉE | FINISH |
 | `course.chute` | Chute ! | Fall! |
 | `course.chronoTourne.tactile` | Le chrono tourne : GAZ, en bas à droite | The clock is running: GAS, bottom right |
-| `course.chronoTourne.clavier` | Le chrono tourne : ↑ ou Z pour accélérer | The clock is running: ↑ or W to accelerate |
+| `course.chronoTourne.clavier` | Le chrono tourne : {accelerer} pour accélérer | The clock is running: {accelerer} to accelerate |
 | `course.camera.proche` | Caméra : proche | Camera: close |
 | `course.camera.loin` | Caméra : loin | Camera: far |
 | `course.camera.capot` | Caméra : capot | Camera: hood |
@@ -998,14 +1053,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.ombres.nom` | Ombres | Shadows |
 | `reglages.ombres.aide` | Ombres portées de la voiture (le jeu les retire seul si ça ralentit). | The car's cast shadow (the game drops it by itself if it starts to lag). |
 | `reglages.son.muet.nom` | Muet | Mute |
-| `reglages.son.muet.aide` | La touche M fait de même. | The M key does the same. |
+| `reglages.son.muet.aide` | La touche {son} fait de même. | The {son} key does the same. |
 | `reglages.son.avec` | Son | Sound |
 | `reglages.son.volume` | Volume général | Master volume |
 | `reglages.son.moteur` | Moteur | Engine |
 | `reglages.son.effets.nom` | Effets | Effects |
 | `reglages.son.effets.aide` | Crissements, roulement, vent, bruitages. | Skids, rolling, wind, sound effects. |
 | `reglages.camera.nom` | Caméra par défaut | Default camera |
-| `reglages.camera.aide` | Au départ ; la touche C ou le bouton caméra la change aussi. | At the start; the C key or the camera button changes it too. |
+| `reglages.camera.aide` | Au départ ; la touche {camera} ou le bouton caméra la change aussi. | At the start; the {camera} key or the camera button changes it too. |
 | `reglages.camera.proche` | Proche | Close |
 | `reglages.camera.loin` | Loin | Far |
 | `reglages.camera.capot` | Capot | Hood |
@@ -1016,14 +1071,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.fantome.ahead` | Le joueur devant | The driver ahead |
 | `reglages.fantome.none` | Aucun | None |
 | `reglages.classement.nom` | Classement en course | Leaderboard in the race |
-| `reglages.classement.aide` | Affiché dans un coin ; la touche L le replie. | Shown in a corner; the L key folds it. |
+| `reglages.classement.aide` | Affiché dans un coin ; la touche {classement} le replie. | Shown in a corner; the {classement} key folds it. |
 | `reglages.temps.nom` | Temps intermédiaires | Split times |
 | `reglages.temps.aide` | Ton temps à chaque point de contrôle, comparé au fantôme. | Your time at each checkpoint, against the ghost. |
 | `reglages.unite.nom` | Unité de vitesse | Speed unit |
-| `reglages.clavier` | Clavier | Keyboard |
-| `reglages.manette` | Manette | Gamepad |
-| `reglages.tactile.titre` | Commandes tactiles | Touch controls |
-| `reglages.tactile.absent` | Sur un téléphone ou une tablette, les réglages des commandes tactiles (direction, taille, disposition, accélérateur automatique, vibration) apparaissent ici. | On a phone or a tablet, the touch controls settings (steering, size, layout, automatic throttle, vibration) show up here. |
 | `reglages.aide` | Comment jouer | How to play |
 | `reglages.langue.titre` | Langue | Language |
 | `reglages.profil` | Mon profil Du Jour | My Du Jour profile |
@@ -1048,11 +1099,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `revoir.cameras.loin` | loin | far |
 | `revoir.cameras.capot` | capot | hood |
 | `revoir.cameras.libre` | libre | free |
-| `revoir.touches` | Espace ou P : pause · ← : retour 5 s · → : avance 5 s · 1 2 3 4 : vitesse ¼ ½ 1 2 · C : caméra (libre : glisser, molette) · Entrée : depuis le début | Space or P: pause · ←: back 5 s · →: forward 5 s · 1 2 3 4: speed ¼ ½ 1 2 · C: camera (free: drag, wheel) · Enter: from the start |
+| `revoir.touches` | Espace ou {pause} : pause · ← : retour 5 s · → : avance 5 s · 1 2 3 4 : vitesse ¼ ½ 1 2 · {camera} : caméra (libre : glisser, molette) · {recommencer} : depuis le début | Space or {pause}: pause · ←: back 5 s · →: forward 5 s · 1 2 3 4: speed ¼ ½ 1 2 · {camera}: camera (free: drag, wheel) · {recommencer}: from the start |
 | `revoir.arrivee.titre` | Rediffusion | Replay |
 | `revoir.arrivee.rejouer` | Rejouer la rediffusion | Watch the replay again |
 | `revoir.arrivee.courir` | Courir contre ce fantôme | Race this ghost |
-| `revoir.arrivee.aide` | Entrée : rejouer la rediffusion | Enter: watch the replay again |
+| `revoir.arrivee.aide` | {recommencer} : rejouer la rediffusion | {recommencer}: watch the replay again |
 | `revoir.arrivee.temps` | Temps de la rediffusion | Replay time |
 | `revoir.illisible` | Rediffusion illisible : course normale | Replay unreadable: normal race |
 | `revoir.aucune` | Aucun tour à revoir : course normale | No lap to watch: normal race |
@@ -1105,7 +1156,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `salon.arrivee.rejouer` | Rejouer | Race again |
 | `salon.arrivee.revoir` | Revoir le meilleur tour | Watch the best lap |
 | `salon.arrivee.accueil` | Accueil de Track | Track home |
-| `salon.arrivee.aide` | Entrée : rejouer · Tab : classement | Enter: race again · Tab: leaderboard |
+| `salon.arrivee.aide` | {recommencer} : rejouer · Tab : classement | {recommencer}: race again · Tab: leaderboard |
 | `salon.arrivee.terminee` | Session terminée | Session over |
 | `salon.arrivee.nonCompte` | Session terminée : tour non compté | Session over: lap not counted |
 
@@ -1250,7 +1301,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `arrivee.partage.ok` | Partagé | Shared |
 | `arrivee.partage.copie` | Copié dans le presse-papiers | Copied to the clipboard |
 | `arrivee.partage.echec` | Copie impossible : sélectionne le texte ci-dessous | Couldn't copy: select the text below |
-| `arrivee.aideClavier` | Entrée : rejouer | Enter: play again |
+| `arrivee.aideClavier` | {recommencer} : rejouer | {recommencer}: play again |
 | `arrivee.phrase.zero` | Zéro mort. On va vérifier que tu n'as pas triché. | Zero deaths. We'll be checking for cheats. |
 | `arrivee.phrase.peu` | one : Une seule mort. Les pics sont vexés. · other : {morts} morts. Presque propre. Presque. | one : One death. The spikes are offended. · other : {morts} deaths. Almost clean. Almost. |
 | `arrivee.phrase.moyen` | {morts} morts. Le niveau commence à te connaître. | {morts} deaths. The level is starting to know you. |
@@ -1282,7 +1333,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `bandeau.mortsEssai` | {n} dans cet essai | {n} in this run |
 | `bandeau.recommencer` | Recommencer | Restart |
 | `bandeau.suivant` | Morceau suivant | Next piece |
-| `bandeau.aide` | R, ou touche le bandeau | R, or tap the banner |
+| `bandeau.aide` | {recommencer}, ou touche le bandeau | {recommencer}, or tap the banner |
 
 ### Cadre des écrans (`cadre.*`, `apps/jump/src/catalogue.base.*.ts`)
 
@@ -1331,16 +1382,24 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `commandes.clavier.courir` | ← → ou Q D : courir | ← → or A D: run |
-| `commandes.clavier.sauter` | Espace, ↑ ou Z : sauter | Space, ↑ or W: jump |
-| `commandes.clavier.reprendre` | R : dernier point de passage | R: last checkpoint |
-| `commandes.clavier.recommencer` | Entrée : recommencer à zéro | Enter: start over from zero |
-| `commandes.clavier.pause` | Échap ou P : pause | Esc or P: pause |
-| `commandes.clavier.fantome` | G : fantôme | G: ghost |
-| `commandes.manette.courir` | Stick ou croix : courir | Stick or D-pad: run |
-| `commandes.manette.sauter` | A ou B : sauter | A or B: jump |
-| `commandes.manette.reprendre` | Y : dernier point de passage | Y: last checkpoint |
-| `commandes.manette.recommencer` | X : recommencer à zéro | X: start over from zero |
+| `commandes.clavier.courir` | {gauche} · {droite} : courir | {gauche} · {droite}: run |
+| `commandes.clavier.sauter` | {sauter} : sauter | {sauter}: jump |
+| `commandes.clavier.reprendre` | {reprendre} : dernier point de passage | {reprendre}: last checkpoint |
+| `commandes.clavier.recommencer` | {recommencer} : recommencer à zéro | {recommencer}: start over from zero |
+| `commandes.clavier.pause` | Échap ou {pause} : pause | Esc or {pause}: pause |
+| `commandes.clavier.fantome` | {fantome} : fantôme | {fantome}: ghost |
+| `commandes.manette.courir` | Courir | Run |
+| `commandes.fixe.stick` | Stick · croix | Stick · D-pad |
+| `commandes.action.gauche` | Aller à gauche | Move left |
+| `commandes.action.droite` | Aller à droite | Move right |
+| `commandes.action.sauter` | Sauter | Jump |
+| `commandes.action.reprendre` | Dernier point de passage | Last checkpoint |
+| `commandes.action.recommencer` | Recommencer à zéro | Start over from zero |
+| `commandes.action.pause` | Pause | Pause |
+| `commandes.action.fantome` | Fantôme suivant | Next ghost |
+| `commandes.manette.sauter` | {m_sauter} : sauter | {m_sauter}: jump |
+| `commandes.manette.reprendre` | {m_reprendre} : dernier point de passage | {m_reprendre}: last checkpoint |
+| `commandes.manette.recommencer` | {m_recommencer} : recommencer à zéro | {m_recommencer}: start over from zero |
 | `commandes.manette.pause` | Start : pause | Start: pause |
 | `commandes.tactile.direction` | Gauche et droite : en bas à gauche | Left and right: bottom left |
 | `commandes.tactile.saut` | SAUT : en bas à droite | JUMP: bottom right |
@@ -1474,7 +1533,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `hud.aria` | Partie en cours | Game in progress |
 | `hud.pause.aria` | Pause | Pause |
-| `hud.astuces` | R : point de passage · Entrée : recommencer · G : fantôme · P : pause | R: checkpoint · Enter: restart · G: ghost · P: pause |
+| `hud.astuces` | {reprendre} : point de passage · {recommencer} : recommencer · {fantome} : fantôme · {pause} : pause | {reprendre}: checkpoint · {recommencer}: restart · {fantome}: ghost · {pause}: pause |
 | `hud.pc.aria` | Point de passage {pc} sur {total} | Checkpoint {pc} of {total} |
 | `hud.ecart.aria` | Écart avec ton record : {ecart} | Gap to your best: {ecart} |
 | `hud.objectif.aria` | Médaille visée : {medaille}, {temps} | Target medal: {medaille}, {temps} |
@@ -1552,9 +1611,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.taches` | Taches de tout le monde | Everyone's stains |
 | `reglages.taches.aide` | Les morts des autres joueurs du jour, plus pâles et plus petites que les tiennes : on voit où le niveau tue. | Other players' deaths today, paler and smaller than yours: you can see where the level kills. |
 | `reglages.commandes` | Commandes | Controls |
-| `reglages.clavier` | Clavier | Keyboard |
-| `reglages.manette` | Manette | Gamepad |
-| `reglages.tactile` | Tactile | Touch |
 | `reglages.taille` | Taille des boutons | Button size |
 | `reglages.taille.small` | Petits | Small |
 | `reglages.taille.medium` | Moyens | Medium |

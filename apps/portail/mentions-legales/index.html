@@ -31,7 +31,7 @@
     <main class="mentions">
       <h1>Mentions légales et confidentialité</h1>
       <p class="reference"><strong>La version française fait foi</strong> (<span lang="en">the French version is the reference</span>) ; une traduction fidèle en anglais : <a href="../legal/" hreflang="en" lang="en">Legal notice and privacy</a>.</p>
-      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-28">28 octobre 2026</time>.</p>
+      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-31">31 octobre 2026</time>.</p>
 
       <section class="bref" aria-label="En bref">
         <ul>
@@ -135,8 +135,37 @@
       <h3 id="liens-externes">Liens vers d'autres sites</h3>
       <p>Le pied du portail propose deux liens : le serveur Discord de Du Jour et la page Ko-fi de l'éditeur (un soutien, toujours volontaire). Ce sont de simples liens : le site ne charge ni script, ni bouton, ni image depuis ces services (la tasse du bouton Ko-fi et le pictogramme du bouton Discord sont des copies hébergées sur le site), et ne leur envoie rien. Tu ne quittes Du Jour que si tu cliques ; Discord et Ko-fi appliquent alors leurs propres règles (compte, cookies, paiement), sur lesquelles nous n'avons pas de prise.</p>
 
+      <h3 id="musique">La musique</h3>
+      <p>Les jeux de Du Jour jouent de la musique. Les morceaux sont des fichiers hébergés sur le site (aucun service de musique extérieur, aucun script extérieur) ; ils ne sont <strong>téléchargés qu'après ton premier geste</strong> dans la page (un toucher, un clic, une touche), jamais avant. Le site ne garde ni n'envoie rien de ce que tu écoutes. Ton volume de musique et le choix de la couper sont gardés dans ton navigateur, avec tes réglages (<code>cdj:musique</code>) ; la position du morceau en cours est gardée le temps de ta visite dans l'onglet, pour que la page suivante reprenne au même endroit (<code>cdj:musique:reprise</code>, stockage de l'onglet, effacé quand tu le fermes). Les morceaux sont diffusés avec l'accord de leurs auteurs ; voici les crédits :</p>
+      <!-- musique:debut -->
+      <ul data-credits-musique>
+        <li data-piste="track-menu">« Pole position » — Du Jour (généré par le code)</li>
+        <li data-piste="track-nuit">« Périphérique » — Du Jour (généré par le code)</li>
+        <li data-piste="jump-foret">« Sous les feuilles » — Du Jour (généré par le code)</li>
+        <li data-piste="track-stade">« Tribune » — Du Jour (généré par le code)</li>
+        <li data-piste="track-rallye">« Spéciale » — Du Jour (généré par le code)</li>
+        <li data-piste="track-banquise">« Verglas » — Du Jour (généré par le code)</li>
+        <li data-piste="track-campagne">« Chemin de terre » — Du Jour (généré par le code)</li>
+        <li data-piste="track-canyon">« Mirage » — Du Jour (généré par le code)</li>
+        <li data-piste="track-col">« Lacets » — Du Jour (généré par le code)</li>
+        <li data-piste="track-ville">« Heure de pointe » — Du Jour (généré par le code)</li>
+        <li data-piste="jump-menu">« Écran titre » — Du Jour (généré par le code)</li>
+        <li data-piste="jump-usine">« Chaîne de montage » — Du Jour (généré par le code)</li>
+        <li data-piste="jump-glace">« Neige molle » — Du Jour (généré par le code)</li>
+        <li data-piste="jump-nuit">« Ruelle » — Du Jour (généré par le code)</li>
+        <li data-piste="jump-neon">« Autoroute 84 » — Du Jour (généré par le code)</li>
+        <li data-piste="tower-menu">« Premier étage » — Du Jour (généré par le code)</li>
+        <li data-piste="tower-port">« Marée basse » — Du Jour (généré par le code)</li>
+        <li data-piste="tower-chantier">« Échafaudage » — Du Jour (généré par le code)</li>
+        <li data-piste="tower-canyon">« Terre rouge » — Du Jour (généré par le code)</li>
+        <li data-piste="tower-banquise">« Cristaux » — Du Jour (généré par le code)</li>
+        <li data-piste="tower-jungle">« Canopée » — Du Jour (généré par le code)</li>
+        <li data-piste="tower-nuit">« Veilleuse » — Du Jour (généré par le code)</li>
+      </ul>
+      <!-- musique:fin -->
+
       <h3 id="navigateur">Ce que ton navigateur garde</h3>
-      <p>Le jeu garde dans ton navigateur (stockage local, jamais un cookie) : ton profil (identifiant, pseudo), ta langue (français ou anglais, si tu l'as choisie, sur le portail ou dans un jeu : commune au portail et aux jeux), tes réglages (son, caméra, commandes), ta voiture de DailyTrack (le modèle, sa couleur, son motif et la couleur du motif, avec les voitures débloquées et celles que tu as déjà vues : <code>cdj:track:garage</code>), les fantômes que tu as cochés dans le classement du jour (la référence publique de leur course, leur pseudo et leur place, oubliés dès le circuit suivant) et le dernier fantôme choisi au bouton (<code>cdj:track:fantomes</code>), le palier graphique choisi pour ton appareil, avec la date de la dernière mesure de fluidité et son résultat (<code>cdj:qualite</code>), le fait d'avoir fermé l'astuce du plein écran sur iPhone, le fait d'avoir passé « Retrouver mon profil » à l'ouverture de l'application ajoutée à l'écran d'accueil (<code>cdj:retrouver:vu</code> ; ton code de transfert n'est lu dans le presse-papiers que lorsque tu touches « Coller mon code »), le dernier message en direct que tu as fermé (<code>cdj:annonce:fermee</code>) et la dernière nouveauté que tu as lue (<code>cdj:nouveautes:lu</code>), si tu as reçu un lien d'aperçu d'un jeu pas encore ouvert, la clé d'aperçu de cet appareil (<code>cdj:apercu:&lt;jeu&gt;</code>), le numéro de la génération de données que ton navigateur a vue (<code>cdj:generation</code>) et, une fois, le fait qu'un message « Nouveau départ » doit s'afficher (<code>cdj:nouveau-depart</code>) — ils servent à repartir de zéro quand toutes les données du site sont remises à zéro —, tes records et ton historique, la mémoire de la partie du jour, les envois en attente quand tu es hors ligne, et pour DailyTrack les miniatures des circuits des archives. Clés <code>cdj:…</code> (DailyTrack et le profil commun), <code>jump:…</code> (DailyJump) et <code>tower:…</code> (Tower : tes meilleures parties avec leur rediffusion, <code>tower:records</code>, et le fait d'avoir lu « Comment jouer », <code>tower:aide:vu</code>).</p>
+      <p>Le jeu garde dans ton navigateur (stockage local, jamais un cookie) : ton profil (identifiant, pseudo), ta langue (français ou anglais, si tu l'as choisie, sur le portail ou dans un jeu : commune au portail et aux jeux), tes réglages (son, musique, caméra, commandes), ta voiture de DailyTrack (le modèle, sa couleur, son motif et la couleur du motif, avec les voitures débloquées et celles que tu as déjà vues : <code>cdj:track:garage</code>), les fantômes que tu as cochés dans le classement du jour (la référence publique de leur course, leur pseudo et leur place, oubliés dès le circuit suivant) et le dernier fantôme choisi au bouton (<code>cdj:track:fantomes</code>), le palier graphique choisi pour ton appareil, avec la date de la dernière mesure de fluidité et son résultat (<code>cdj:qualite</code>), le fait d'avoir fermé l'astuce du plein écran sur iPhone, le fait d'avoir passé « Retrouver mon profil » à l'ouverture de l'application ajoutée à l'écran d'accueil (<code>cdj:retrouver:vu</code> ; ton code de transfert n'est lu dans le presse-papiers que lorsque tu touches « Coller mon code »), le dernier message en direct que tu as fermé (<code>cdj:annonce:fermee</code>) et la dernière nouveauté que tu as lue (<code>cdj:nouveautes:lu</code>), si tu as reçu un lien d'aperçu d'un jeu pas encore ouvert, la clé d'aperçu de cet appareil (<code>cdj:apercu:&lt;jeu&gt;</code>), le numéro de la génération de données que ton navigateur a vue (<code>cdj:generation</code>) et, une fois, le fait qu'un message « Nouveau départ » doit s'afficher (<code>cdj:nouveau-depart</code>) — ils servent à repartir de zéro quand toutes les données du site sont remises à zéro —, tes records et ton historique, la mémoire de la partie du jour, les envois en attente quand tu es hors ligne, et pour DailyTrack les miniatures des circuits des archives. Clés <code>cdj:…</code> (DailyTrack et le profil commun), <code>jump:…</code> (DailyJump) et <code>tower:…</code> (Tower : tes meilleures parties avec leur rediffusion, <code>tower:records</code>, et le fait d'avoir lu « Comment jouer », <code>tower:aide:vu</code>).</p>
       <p>Ce stockage est <strong>strictement nécessaire</strong> au jeu que tu demandes (sans lui, ni profil, ni réglages, ni records) : il est donc permis sans demander ton consentement, et le site n'affiche pas de bandeau (article 82 de la loi Informatique et Libertés : traceurs « strictement nécessaires à la fourniture d'un service de communication en ligne à la demande expresse de l'utilisateur » ; <a href="https://www.cnil.fr/sites/cnil/files/atoms/files/lignes_directrices_de_la_cnil_sur_les_cookies_et_autres_traceurs.pdf">lignes directrices de la CNIL</a>, délibération n° 2020-091 du 17 septembre 2020, qui couvrent aussi le stockage local). <strong>Aucun traceur ni cookie tiers, aucune publicité, aucune mesure d'audience</strong> aujourd'hui. Tu peux tout effacer à tout moment en effaçant les données du site playdujour.com dans ton navigateur.</p>
 
       <h3 id="base-legale">Base légale</h3>

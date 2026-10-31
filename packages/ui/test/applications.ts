@@ -18,8 +18,12 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["packages/ui (iPhone)", "packages/ui/src/catalogue.iphone.ts", "CATALOGUE_IPHONE"],
   // Lot M1 : la bande d'aide de la manette (chargée à la demande avec le module des menus à la manette).
   ["packages/ui (manette)", "packages/ui/src/catalogue.manette.ts", "CATALOGUE_MANETTE"],
+  // Lot M2 : l'écran Réglages › Commandes (chargé à la demande avec l'écran).
+  ["packages/ui (commandes)", "packages/ui/src/catalogue.commandes.ts", "CATALOGUE_COMMANDES"],
   // Lot P : « Bientôt » et le bandeau d'aperçu de l'interrupteur des jeux (chargés à la demande avec leurs deux écrans).
   ["packages/ui (interrupteur)", "packages/ui/src/catalogue.interrupteur.ts", "CATALOGUE_INTERRUPTEUR"],
+  // Lot « musique » : les réglages de la musique, communs à Track, Jump et Tower (chargés à la demande avec leur panneau).
+  ["packages/ui (musique)", "packages/ui/src/catalogue.musique.ts", "CATALOGUE_MUSIQUE"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
   ["apps/web (base)", "apps/web/src/catalogue.base.ts", "CATALOGUE_BASE"],
   ["apps/web (accueil)", "apps/web/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],

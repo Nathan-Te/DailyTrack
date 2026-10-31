@@ -5,7 +5,7 @@ import type { fr } from "./catalogue.partie.fr";
 export const en: Catalogues<typeof fr>["en"] = {
   "hud.aria": "Game in progress",
   "hud.pause.aria": "Pause",
-  "hud.astuces": "R: checkpoint · Enter: restart · G: ghost · P: pause",
+  "hud.astuces": "{reprendre}: checkpoint · {recommencer}: restart · {fantome}: ghost · {pause}: pause",
   "hud.pc.aria": "Checkpoint {pc} of {total}",
   "hud.ecart.aria": "Gap to your best: {ecart}",
   "hud.objectif.aria": "Target medal: {medaille}, {temps}",
@@ -60,7 +60,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "bandeau.mortsEssai": "{n} in this run",
   "bandeau.recommencer": "Restart",
   "bandeau.suivant": "Next piece",
-  "bandeau.aide": "R, or tap the banner",
+  "bandeau.aide": "{recommencer}, or tap the banner",
   "pause.aria": "Pause",
   "pause.titre": "PAUSE",
   "pause.etat": "{morts} · checkpoint {pc}",

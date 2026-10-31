@@ -13,7 +13,9 @@ import { CATALOGUE_VITRINE } from "../apps/portail/src/catalogueVitrine";
 import { CATALOGUE_DEMO } from "../apps/portail/src/catalogueDemo";
 import { CATALOGUE_IPHONE } from "../packages/ui/src/catalogue.iphone";
 import { CATALOGUE_MANETTE } from "../packages/ui/src/catalogue.manette";
+import { CATALOGUE_COMMANDES } from "../packages/ui/src/catalogue.commandes";
 import { CATALOGUE_INTERRUPTEUR } from "../packages/ui/src/catalogue.interrupteur";
+import { CATALOGUE_MUSIQUE } from "../packages/ui/src/catalogue.musique";
 import { CATALOGUE_APERCU as APERCU_PORTAIL } from "../apps/portail/src/catalogueApercu";
 import { CATALOGUE_BASE as TRACK_BASE } from "../apps/web/src/catalogue.base";
 import { CATALOGUE_ACCUEIL as TRACK_ACCUEIL } from "../apps/web/src/catalogue.accueil";
@@ -36,7 +38,9 @@ export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingu
   ["packages/ui (commun)", "packages/ui/src/catalogue.ts", CATALOGUE_COMMUN as unknown as Bilingue],
   ["packages/ui (iPhone)", "packages/ui/src/catalogue.iphone.ts", CATALOGUE_IPHONE as unknown as Bilingue],
   ["packages/ui (manette)", "packages/ui/src/catalogue.manette.ts", CATALOGUE_MANETTE as unknown as Bilingue],
+  ["packages/ui (commandes)", "packages/ui/src/catalogue.commandes.ts", CATALOGUE_COMMANDES as unknown as Bilingue],
   ["packages/ui (interrupteur)", "packages/ui/src/catalogue.interrupteur.ts", CATALOGUE_INTERRUPTEUR as unknown as Bilingue],
+  ["packages/ui (musique)", "packages/ui/src/catalogue.musique.ts", CATALOGUE_MUSIQUE as unknown as Bilingue],
   ["apps/portail", "apps/portail/src/catalogue.ts", CATALOGUE_PORTAIL as unknown as Bilingue],
   ["apps/portail (aperçu)", "apps/portail/src/catalogueApercu.ts", APERCU_PORTAIL as unknown as Bilingue],
   ["apps/portail (vitrine)", "apps/portail/src/catalogueVitrine.ts", CATALOGUE_VITRINE as unknown as Bilingue],
@@ -96,6 +100,7 @@ const ECRANS: Record<string, string> = {
   marque: "Marque",
   medaille: "Médailles",
   miniature: "Miniatures",
+  musique: "Musique",
   outil: "Outils",
   page: "Page (titre, chargement)",
   palmares: "Palmarès",

@@ -36,7 +36,7 @@ export const fr = {
   "arrivee.partage.ok": "Partagé",
   "arrivee.partage.copie": "Copié dans le presse-papiers",
   "arrivee.partage.echec": "Copie impossible : sélectionne le texte ci-dessous",
-  "arrivee.aideClavier": "Entrée : rejouer",
+  "arrivee.aideClavier": "{recommencer} : rejouer",
   // Lot 27 : l'autocollant du résultat, posé sur la scène pendant la rediffusion et le carnage
   "resultat.aria": "Résultat de ton essai",
   "resultat.classement": "Classement",

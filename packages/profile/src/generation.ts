@@ -26,6 +26,8 @@ export const PREFIXES_DE_JEU = ["cdj:", "jump:", "tower:"] as const;
 export const CLES_GARDEES: readonly string[] = [
   "cdj:langue",
   "cdj:audio",
+  // Lot « musique » : le volume de la musique et le choix de la couper (communs à toute la plateforme) : un réglage de l'appareil, pas une donnée de joueur. (La reprise du morceau est dans le stockage de l'onglet, pas ici.)
+  "cdj:musique",
   "cdj:touch",
   "cdj:camera",
   "cdj:qualite",

@@ -1,5 +1,7 @@
 import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
+import { BOUTON_FIXE, TOUCHE_FIXE } from "@cdj/ui/src/commandes";
 import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
+import { commandes } from "./commandes";
 
 // Entrées de DailyJump : clavier (par `KeyboardEvent.code`, donc QZSD et WASD au même endroit) et manette, fusionnés en 3 bits par pas.
 // Lot 27 : les mêmes touches que DailyTrack (`apps/web/src/input.ts`) — **R : reprendre au dernier point de passage**, **Entrée : recommencer à zéro** ; à la manette Y et X ;
@@ -8,20 +10,8 @@ import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
 // Lot 8 : le menu ⏸ (Échap ou P, Start à la manette) met la partie en pause ; menu ouvert, le clavier ne commande plus rien (les flèches et
 // Espace servent aux curseurs et aux boutons du menu).
 
-/** Touches physiques. `KeyA` = Q et `KeyW` = Z sur un clavier AZERTY. */
-export const KEYS = {
-  left: ["ArrowLeft", "KeyA"],
-  right: ["ArrowRight", "KeyD"],
-  jump: ["Space", "ArrowUp", "KeyW"],
-  /** Lot 27 (comme DailyTrack) : reprendre au dernier point de passage. */
-  respawn: ["KeyR"],
-  /** Lot 27 (comme DailyTrack) : recommencer à zéro. Avant le lot 27 : R. */
-  restart: ["Enter"],
-  /** Menu ⏸ (lot 8). */
-  menu: ["Escape", "KeyP"],
-} as const;
-
-const GAME_CODES = new Set<string>([...KEYS.left, ...KEYS.right, ...KEYS.jump, ...KEYS.respawn, ...KEYS.restart]);
+/** Menu ⏸ (lot 8) : Échap est fixe (`TOUCHE_FIXE`), P (ou la touche choisie) est l'action « pause » (lot M2). */
+const estMenu = (code: string): boolean => code === TOUCHE_FIXE || commandes.actionDeTouche(code) === "pause";
 
 /** Lot 27 : Entrée sur un bouton, un lien ou un champ est l'affaire de cet élément (il l'active), pas une commande de jeu. */
 function onControl(e: KeyboardEvent): boolean {
@@ -92,15 +82,6 @@ export function padDirection(pad: Pick<Gamepad, "axes" | "buttons">): number {
   return x > STICK_DEADZONE ? 1 : x < -STICK_DEADZONE ? -1 : 0;
 }
 
-/** A (0) ou B (1) = saut. */
-export const padJump = (pad: Pick<Gamepad, "buttons">): boolean => !!(pad.buttons[0]?.pressed || pad.buttons[1]?.pressed);
-/** Lot 27 (comme DailyTrack) : X (2) = recommencer à zéro. Avant le lot 27 : Select (8). */
-export const padRestart = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[2]?.pressed;
-/** Lot 27 (comme DailyTrack) : Y (3) = reprendre au dernier point de passage. */
-export const padRespawn = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[3]?.pressed;
-/** Start (9) = menu ⏸ (lot 8). */
-export const padMenu = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[9]?.pressed;
-
 /** Bits de direction : gauche + droite ensemble = neutre (la simulation le fait aussi). */
 export function directionBits(left: boolean, right: boolean): number {
   return (left ? INPUT_LEFT : 0) | (right ? INPUT_RIGHT : 0);
@@ -125,17 +106,18 @@ export class Controls {
 
   constructor(target: Window = window) {
     target.addEventListener("keydown", (e) => {
-      if ((KEYS.menu as readonly string[]).includes(e.code)) {
+      if (estMenu(e.code)) {
         if (!e.repeat) this.menuLatch = true;
         return;
       }
       if (this.suspended) return; // menu ouvert : flèches et Espace vont au menu
       if (e.code === "Enter" && onControl(e)) return; // lot 27 : Entrée active le bouton qui a le focus
-      if (GAME_CODES.has(e.code)) e.preventDefault(); // Espace et flèches ne font pas défiler la page
+      if (commandes.actionDeTouche(e.code) !== null) e.preventDefault(); // Espace et flèches ne font pas défiler la page
       if (e.repeat) return;
       this.down.add(e.code);
-      if ((KEYS.restart as readonly string[]).includes(e.code)) this.restartLatch = true;
-      if ((KEYS.respawn as readonly string[]).includes(e.code)) this.respawnLatch = true;
+      const action = commandes.actionDeTouche(e.code);
+      if (action === "recommencer") this.restartLatch = true;
+      if (action === "reprendre") this.respawnLatch = true;
       this.syncJump();
     });
     target.addEventListener("keyup", (e) => {
@@ -148,12 +130,12 @@ export class Controls {
     });
   }
 
-  private has(codes: readonly string[]): boolean {
-    return codes.some((c) => this.down.has(c));
+  private has(id: string): boolean {
+    return commandes.enfoncee(id, this.down);
   }
 
   private syncJump(): void {
-    this.keyJump = this.has(KEYS.jump);
+    this.keyJump = this.has("sauter");
     if (this.keyJump || this.padJumpDown || this.touchJump) this.latch.press();
     else this.latch.release();
   }
@@ -163,18 +145,18 @@ export class Controls {
     // Lot M1 : un menu ouvert prend la manette (un appui ne sert jamais deux fois : le A qui ferme la pause ne fait pas sauter) ; Start reste au jeu.
     const pad = padPourLeJeu(navigator.getGamepads?.().find((p): p is Gamepad => !!p && p.connected));
     this.padDir = pad ? padDirection(pad) : 0;
-    const jump = pad ? padJump(pad) : false;
+    const jump = pad ? commandes.enfonceeManette("sauter", pad) : false;
     if (jump !== this.padJumpDown) {
       this.padJumpDown = jump;
       this.syncJump();
     }
-    const restart = pad ? padRestart(pad) : false;
+    const restart = pad ? commandes.enfonceeManette("recommencer", pad) : false;
     if (restart && !this.padRestartDown && !this.suspended) this.restartLatch = true;
     this.padRestartDown = restart;
-    const respawn = pad ? padRespawn(pad) : false;
+    const respawn = pad ? commandes.enfonceeManette("reprendre", pad) : false;
     if (respawn && !this.padRespawnDown && !this.suspended) this.respawnLatch = true;
     this.padRespawnDown = respawn;
-    const menu = pad ? padMenu(pad) : false;
+    const menu = !!pad && !!pad.buttons[BOUTON_FIXE]?.pressed; // Start : fixe
     if (menu && !this.padMenuDown) this.menuLatch = true;
     this.padMenuDown = menu;
   }
@@ -217,8 +199,8 @@ export class Controls {
 
   /** Les 3 bits du prochain pas de simulation. */
   sample(): number {
-    const left = this.has(KEYS.left) || this.padDir < 0 || this.touchDir < 0;
-    const right = this.has(KEYS.right) || this.padDir > 0 || this.touchDir > 0;
+    const left = this.has("gauche") || this.padDir < 0 || this.touchDir < 0;
+    const right = this.has("droite") || this.padDir > 0 || this.touchDir > 0;
     return directionBits(left, right) | (this.latch.sample() ? INPUT_JUMP : 0);
   }
 

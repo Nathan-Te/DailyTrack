@@ -57,7 +57,14 @@ export const langueCourante = (): Langue => langue;
 
 /** Le texte d'une clé dans la langue courante, paramètres remplacés (`{n}` choisit aussi la forme plurielle). Une clé absente rend la clé. */
 export function t(cle: string, params?: Parametres): string {
-  return traducteurCourant.t(cle, params);
+  // Lot M2 : les aides citent les touches CHOISIES (`{sauter}`) : le jeu fournit leurs noms (`definirParametresCommuns`), lus à chaque appel.
+  return traducteurCourant.t(cle, paramsCommuns && /^(commandes\.|aide\.|hud\.astuces|bandeau\.aide|arrivee\.aideClavier)/.test(cle) ? { ...paramsCommuns(), ...params } : params);
+}
+
+let paramsCommuns: (() => Parametres) | null = null;
+/** Lot M2 : les paramètres que les clés d'aide reçoivent en plus de ceux de l'appelant : les touches CHOISIES (`commandes.ts` les fournit ; i18n n'importe pas les commandes : le Node des e2e charge ce module). */
+export function definirParametresCommuns(f: () => Parametres): void {
+  paramsCommuns = f;
 }
 
 /** La clé existe-t-elle (jeu ou catalogue commun) ? Sert aux codes d'erreur venus du serveur. */

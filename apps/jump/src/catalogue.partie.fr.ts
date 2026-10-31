@@ -6,7 +6,7 @@ export const fr = {
   // La bande et les plaques du haut
   "hud.aria": "Partie en cours",
   "hud.pause.aria": "Pause",
-  "hud.astuces": "R : point de passage · Entrée : recommencer · G : fantôme · P : pause",
+  "hud.astuces": "{reprendre} : point de passage · {recommencer} : recommencer · {fantome} : fantôme · {pause} : pause",
   "hud.pc.aria": "Point de passage {pc} sur {total}",
   "hud.ecart.aria": "Écart avec ton record : {ecart}",
   "hud.objectif.aria": "Médaille visée : {medaille}, {temps}",
@@ -66,7 +66,7 @@ export const fr = {
   "bandeau.mortsEssai": "{n} dans cet essai",
   "bandeau.recommencer": "Recommencer",
   "bandeau.suivant": "Morceau suivant",
-  "bandeau.aide": "R, ou touche le bandeau",
+  "bandeau.aide": "{recommencer}, ou touche le bandeau",
   // La pause (posée sur la scène, sous le voile à rayures : maquette jump-pause.html)
   "pause.aria": "Pause",
   "pause.titre": "PAUSE",
