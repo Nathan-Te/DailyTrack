@@ -1,3 +1,4 @@
+import type { JumpThemeName } from "./themes";
 import type { CatalogFile } from "./modules";
 
 // Lot 30 : le catalogue **d'avant le maintien minimal du saut** (solutions des versions 3 à 12 de la simulation, générateurs g3 à g23). Le jeu ne l'embarque pas : le catalogue en
@@ -10,6 +11,8 @@ export interface LegacyCatalog {
   phaseRefused: Readonly<Record<string, readonly number[]>>;
   altBRefused: Readonly<Record<string, readonly number[]>>;
   parasiteClosed: Readonly<Record<string, readonly number[]>>;
+  /** Les suites de secours d'avant la version 13. */
+  fallbackFor(theme: JumpThemeName, simVersion: number): readonly { id: string; variant: number }[];
 }
 
 let registered: LegacyCatalog | null = null;

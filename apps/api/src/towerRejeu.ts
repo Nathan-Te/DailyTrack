@@ -27,6 +27,8 @@ export interface DemandeRejeu {
 
 /** Ce qui exécute un rejeu : le fil principal, ou le fil de calcul. Lève `ErreurRediffusion` pour une rediffusion refusée par le rejeu. */
 export interface ExecuteurRejeu {
+  /** Lot TP : où le rejeu se calcule (`fil` : le fil de calcul ; `principal` : le repli) — écrit au journal avec chaque partie, pour vérifier l'image construite. */
+  nom?: "fil" | "principal";
   rejouer(d: DemandeRejeu): Promise<Resultat>;
   /** Arrête le fil de calcul, s'il y en a un (tests, arrêt propre). */
   fermer?(): Promise<void>;
@@ -36,6 +38,7 @@ export interface ExecuteurRejeu {
 export function executeurPrincipal(): ExecuteurRejeu {
   let pret: Promise<Rapier> | null = null;
   return {
+    nom: "principal" as const,
     async rejouer(d) {
       pret ??= import("@cdj/tower-sim/rapier").then((m) => m.chargerRapier());
       const R = await pret;

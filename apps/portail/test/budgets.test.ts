@@ -32,7 +32,7 @@ const POIDS = "apps/jump/e2e/poids.spec.ts";
 const POIDS_TOWER = "apps/tower/e2e/poids.spec.ts";
 const ATTENDUS: Record<string, number> = {
   // (lus dans le source : importer construction.test.ts lancerait ses constructions)
-  "portail.premier": limite(CONSTRUCTION, /BUDGET_PREMIER_CHARGEMENT = (\d+) \* 1024;/) * 1024,
+  "portail.premier": limite(CONSTRUCTION, /BUDGET_PREMIER_CHARGEMENT = ([\d_]+);/), // lot S1 : en octets (33 000)
   "portail.polices": limite(CONSTRUCTION, /BUDGET_POLICES = (\d+) \* 1024;/) * 1024,
   "track.jsCss": limite(PERF, /toBeLessThan\(([\d_]+) \+ ([\d_]+)\)/),
   "track.js": limite(PERF, /JS compressé : \$\{JSON\.stringify\(gz\)\}`\)\.toBeLessThan\(([\d_]+)\)/),

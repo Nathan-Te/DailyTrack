@@ -58,7 +58,7 @@ Morceaux concernés avant le lot : tous ceux dont le plus court appui valait 5 o
 | W = 4, 365 dates | 0 secours, 0 retour | **0 secours, 0 retour** (W = 5 : hors de portée comme avant) |
 | génération à froid, 48 dates | 0,22 · 0,60 s | **0,26 · 0,60 s** (< 1,5 s) |
 | jours avec l'élément du lot (forêt · usine · glace · nuit · néon) | 81 · 56 · 83 · 81 · 61 % | 71 · 84 · 67 · 78 · 71 % |
-| budget Jump (JS + CSS) | 375 639 o (`main`, mesuré) | **378 479 o (+2 840, marge 11 o sur 378 490)** |
+| budget Jump (JS + CSS) | 375 905 o (`main`, mesuré) | **378 225 o (+2 320, marge 265 o sur 378 490)** |
 
 **Les temps de l'auteur ne bougent pas** (moyenne 29,53 → 29,46 s) : pas de recalibrage des médailles à proposer. Le niveau et la preuve du jour ne dépendent pas du micro-saut (`daily-golden-v13.json` identique avec ou sans) ; seuls les essais fictifs de la démo ont changé (`replay-golden-v13.json`, `public/demo/` régénérés).
 

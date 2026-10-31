@@ -75,6 +75,7 @@ export function executeurFil(fichier: string | URL, options: { fileMax?: number;
   }
 
   return {
+    nom: "fil" as const,
     rejouer(d) {
       // `enCours` ne compte pas dans la file : celle-ci ne garde que les rejeux qui attendent.
       if (file.length >= fileMax) return Promise.reject(occupe());

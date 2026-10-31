@@ -22,7 +22,7 @@ async function lot(db: SqlDb, statements: { sql: string; params: SqlValue[] }[])
 }
 
 /** Écrit la base de référence jusqu'à `today` (numéro de jour de Paris, compris). Rend le nombre de lignes écrites par table. */
-export async function construireBaseDeReference(db: SqlDb, today: number): Promise<{ players: number; results: number; jump_results: number }> {
+export async function construireBaseDeReference(db: SqlDb, today: number): Promise<{ players: number; results: number; jump_results: number; tower_results: number }> {
   await ensureSchemaOn(db);
   const t0 = parisDayStart(today - REFERENCE.jours);
   const joueurs: { sql: string; params: SqlValue[] }[] = [];
@@ -36,6 +36,7 @@ export async function construireBaseDeReference(db: SqlDb, today: number): Promi
   await lot(db, joueurs);
   const track: { sql: string; params: SqlValue[] }[] = [];
   const jump: { sql: string; params: SqlValue[] }[] = [];
+  const tower: { sql: string; params: SqlValue[] }[] = []; // lot TP : Tower, le 3ᵉ jeu (classé à la hauteur)
   for (let d = 0; d < REFERENCE.jours; d++) {
     const day = today - d;
     const debut = parisDayStart(day);
@@ -46,6 +47,12 @@ export async function construireBaseDeReference(db: SqlDb, today: number): Promi
         sql: "INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, car) VALUES (?, ?, ?, '[]', 'x', 0, ?, NULL)",
         params: [day, referenceId(n), 60_000 + ((n * 7919 + d * 104729) % 40_000), t],
       });
+      if ((n + 3 * d) % REFERENCE.participation !== 0) {
+        tower.push({
+          sql: "INSERT INTO tower_results (day, player_id, tirage, hauteur_mm, hauteur_max_mm, vies, ticks, medal, replay, sim_version, generator_version, first_at, submitted_at, inputs_hash) VALUES (?, ?, 0, ?, ?, ?, ?, NULL, 'x', 3, 3, ?, ?, ?)",
+          params: [day, referenceId(n), 8000 + ((n * 4421 + d * 6469) % 30_000), 40_000, (n + d) % 4, 3000 + ((n * 131 + d * 17) % 3000), t, t, `h${n}-${d}`],
+        });
+      }
       if ((n + 2 * d) % REFERENCE.participation === 0) continue;
       jump.push({
         sql: "INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at) VALUES (?, ?, 'x', ?, ?, 'x', 1, 1, ?, ?)",
@@ -55,7 +62,10 @@ export async function construireBaseDeReference(db: SqlDb, today: number): Promi
   }
   await lot(db, track);
   await lot(db, jump);
-  return { players: joueurs.length, results: track.length, jump_results: jump.length };
+  await lot(db, tower);
+  // Lot TP : Tower est ouvert (`on` depuis toujours) dans la référence : le portail le compte comme les deux autres jeux.
+  await db.run("INSERT OR REPLACE INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES ('tower', 'on', 0, '[[0,null]]', 0)");
+  return { players: joueurs.length, results: track.length, jump_results: jump.length, tower_results: tower.length };
 }
 
 export const REFERENCE_AUJOURDHUI = daysFromCivil(2026, 10, 20);

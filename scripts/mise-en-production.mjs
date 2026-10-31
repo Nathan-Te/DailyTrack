@@ -195,13 +195,15 @@ export const nomDuJour = (date) => {
 export function comparerEmpreintes(prod, cible, bascule, premier = "0000-00-00", proteges = null) {
   const jeux = {};
   for (const jeu of new Set([...Object.keys(prod), ...Object.keys(cible)].filter((k) => !["version", "du", "au"].includes(k)))) {
+    // Lot TP : un jeu que le code en production ne connaît pas encore (la première mise en production de Tower) n'a rien servi : aucun jour à conserver, tous sont régénérés par la construction.
+    const absentEnProd = !(jeu in prod);
     const p = prod[jeu] ?? {};
     const c = cible[jeu] ?? {};
     // Lot R11 : avec la liste des jours protégés, les jours d'avant le lancement comptent aussi (ils « restent tels quels »), et un jour sans aucun résultat n'est pas protégé.
     const dates = [...new Set([...Object.keys(p), ...Object.keys(c)])].filter((d) => proteges || d >= premier).sort();
     const r = { conserves: [], differences: [], regeneres: [], valides: 0, invalides: [], changes: [], sansResultat: [] };
     for (const date of dates) {
-      if (date < bascule && (!proteges || estProtege(proteges, date))) {
+      if (date < bascule && !absentEnProd && (!proteges || estProtege(proteges, date))) {
         if (!p[date] || !c[date]) r.differences.push({ date, prod: p[date]?.id ?? null, cible: c[date]?.id ?? null, raison: !p[date] ? "absent de la production" : "absent de la construction" });
         else if (p[date].h !== c[date].h) r.differences.push({ date, prod: p[date].id, cible: c[date].id, raison: p[date].id !== c[date].id ? "autre identifiant" : "autre contenu, même identifiant" });
         else r.conserves.push(date);
@@ -218,7 +220,7 @@ export function comparerEmpreintes(prod, cible, bascule, premier = "0000-00-00",
   return { bascule, jeux, ok: Object.values(jeux).every((j) => j.differences.length === 0 && j.invalides.length === 0) };
 }
 
-const NOMS_JEUX = { track: "DailyTrack", jump: "DailyJump" };
+const NOMS_JEUX = { track: "DailyTrack", jump: "DailyJump", tower: "Tower" };
 
 /** Lot R12 : la ligne courte d'un jeu pour le haut du résumé du bouton (« 12 conservés, 14 régénérés dont 3 changent »). */
 export function ligneJours(r) {
@@ -260,7 +262,7 @@ export function fusionnerEmpreintes(existant, nouveau, jusqua = "9999-12-31", pr
   const out = JSON.parse(JSON.stringify(existant));
   const conflits = [];
   const ajoutes = [];
-  for (const jeu of ["track", "jump"]) {
+  for (const jeu of ["track", "jump", "tower"]) {
     out[jeu] ??= {};
     for (const [date, e] of Object.entries(nouveau[jeu] ?? {})) {
       if (proteges && (date < proteges.premier || !estProtege(proteges, date))) continue; // lot R11 : seuls les jours protégés du lancement à la veille de la bascule sont « passés » : un jour sans résultat est régénéré
@@ -312,11 +314,12 @@ export const joursRegeneres = (proteges, du, au) => {
 export async function lireResultats(origine, jours, { fetchImpl = fetch, attendre = (ms) => new Promise((r) => setTimeout(r, ms)), essais = 6 } = {}) {
   const base = origine.replace(/\/+$/, "");
   const resultats = {};
-  for (const date of jours) {
+  /** Une lecture (avec ses nouvelles tentatives) : le corps JSON, ou `null` pour un jour inconnu du serveur. */
+  const lire = async (date, vue) => {
     for (let essai = 1; ; essai++) {
       let res;
       try {
-        res = await fetchImpl(`${base}/api/portail/classement?date=${date}`, { method: "GET", headers: { Accept: "application/json" } });
+        res = await fetchImpl(`${base}/api/portail/classement?date=${date}${vue ? `&vue=${vue}` : ""}`, { method: "GET", headers: { Accept: "application/json" } });
       } catch (e) {
         if (essai >= essais) throw new Error(`lecture des résultats du ${date} impossible (${e instanceof Error ? e.message : e})`);
         await attendre(2000 * essai);
@@ -325,13 +328,9 @@ export async function lireResultats(origine, jours, { fetchImpl = fetch, attendr
       if (res.status === 200) {
         const corps = await res.json();
         if (!Number.isInteger(corps?.classes)) throw new Error(`lecture des résultats du ${date} : réponse inattendue (pas de nombre de classés)`);
-        resultats[date] = corps.classes;
-        break;
+        return corps;
       }
-      if (res.status === 404 && (await res.json().catch(() => null))?.error === "unknown_day") {
-        resultats[date] = 0;
-        break;
-      }
+      if (res.status === 404 && (await res.json().catch(() => null))?.error === "unknown_day") return null;
       if ((res.status === 429 || res.status >= 500) && essai < essais) {
         const apres = Number(res.headers?.get?.("Retry-After"));
         await attendre(res.status === 429 && Number.isFinite(apres) && apres > 0 ? apres * 1000 : 2000 * essai);
@@ -339,8 +338,113 @@ export async function lireResultats(origine, jours, { fetchImpl = fetch, attendr
       }
       throw new Error(`lecture des résultats du ${date} : le serveur répond ${res.status}`);
     }
+  };
+  for (const date of jours) {
+    const corps = await lire(date);
+    if (corps === null) {
+      resultats[date] = 0;
+      continue;
+    }
+    let classes = corps.classes;
+    // Lot TP : un jeu classé à la hauteur (Tower, `unite` dans `jeux`) n'est jamais dans le cumul au temps : ses classés se lisent dans sa propre vue. Un jour où seul Tower a un
+    // résultat est un jour joué, donc protégé.
+    for (const jeu of Array.isArray(corps.jeux) ? corps.jeux : []) {
+      if (!jeu?.unite || typeof jeu.site !== "string" || !/^[a-z0-9-]+$/.test(jeu.site)) continue;
+      const v = await lire(date, jeu.site);
+      classes += v?.classes ?? 0;
+    }
+    resultats[date] = classes;
   }
   return resultats;
+}
+
+// ——— Lot TP : les jours de Tower préparés par « Mettre en production » —————————————————————————————————————————————————————————————
+
+/**
+ * **Combien de jours après le jour de bascule les jours de Tower sont préparés** : la fenêtre va de la veille de la bascule (aujourd'hui, à Paris) à `bascule + 14`, soit 16 jours :
+ * une mise en production au moins tous les quinze jours suffit. Au-delà, un jour n'a pas de fichier préparé et Tower le sert avec l'estimation géométrique de ses médailles
+ * (« provisoire ») : le résumé du run dit jusqu'où les jours sont couverts.
+ */
+export const TOWER_JOURS_APRES_BASCULE = 14;
+/** Où sont les jours de Tower dans le dépôt, l'image du serveur et le site. */
+export const TOWER_DOSSIER = "apps/tower/public/jours";
+
+/** Les versions de Tower d'un état du code (`texts` : `{ chemin: texte }`), pour savoir si un jour préparé est à refaire : `{ sim, g }` (`null` : Tower n'existe pas dans ce code). */
+export function versionsTower(texts) {
+  const lire = (nom, fichier) => {
+    const m = new RegExp(`export const ${nom}\\s*=\\s*(\\d+)`).exec(texts[fichier] ?? "");
+    return m ? Number(m[1]) : null;
+  };
+  return { sim: lire("TOWER_SIM_VERSION", "packages/tower-sim/src/constantes.ts"), g: lire("TOWER_GENERATOR_VERSION", "packages/tower-sim/src/generateur/index.ts") };
+}
+
+/**
+ * **Ce que la mise en production fait des jours de Tower** (règle R11 appliquée à Tower, décision de Nathan) — sur la fenêtre de la veille de la bascule à `bascule + 14` :
+ *   - un jour **protégé** (d'avant le lancement, déjà figé, ou avec un résultat de Tower ou d'un autre jeu) ne change jamais : son fichier, s'il existe, reste tel quel ; sans fichier on ne
+ *     lui en crée pas (ce qu'il a servi, ce qu'il servira, ne bouge pas) ;
+ *   - un jour **sans résultat** dont le fichier est de la version du code déployé (`g`, `sim`) est gardé tel quel ; sans fichier, ou avec un fichier d'une autre version, il est
+ *     (re)préparé avec le code déployé (le fichier d'une autre version est supprimé avant : l'outil de préparation refuse toujours d'écraser une autre version).
+ * `fichiers` : `{ AAAA-MM-JJ: { g, sim } }` des fichiers du dépôt construit ; `versions` : `{ sim, g }` du code déployé ; `proteges` : `joursProteges`. Rend le plan : les jours (et leur sort),
+ * ceux à préparer (regroupés en plages consécutives pour l'outil), ceux à supprimer, et la couverture.
+ */
+export function planTower({ veille, bascule, proteges, fichiers = {}, versions }) {
+  const au = ajouterJours(bascule, TOWER_JOURS_APRES_BASCULE);
+  const jours = [];
+  const aPreparer = [];
+  const aSupprimer = [];
+  for (let d = veille; d <= au; d = ajouterJours(d, 1)) {
+    const f = fichiers[d];
+    let action;
+    if (proteges && estProtege(proteges, d)) action = f ? "garde-protege" : "protege-sans-fichier";
+    else if (!f) action = "prepare";
+    else if (f.g === versions.g && f.sim === versions.sim) action = "garde";
+    else action = "reprepare";
+    if (action === "prepare" || action === "reprepare") aPreparer.push(d);
+    if (action === "reprepare") aSupprimer.push(d);
+    jours.push({ date: d, action });
+  }
+  const plages = [];
+  for (const d of aPreparer) {
+    const derniere = plages.at(-1);
+    if (derniere && ajouterJours(derniere[1], 1) === d) derniere[1] = d;
+    else plages.push([d, d]);
+  }
+  return { format: 1, du: veille, au, versions, jours, aPreparer, aSupprimer, plages };
+}
+
+/**
+ * Ce que « poser » les jours de Tower d'une construction fait dans un dossier (`apps/tower/public/jours` du commit déployé, de l'image, du site ou de `main`) : `artefact` et `existants` sont
+ * `{ nom de fichier: contenu }`. Un fichier absent s'ajoute ; identique, rien ; différent, il n'est remplacé que si le plan le **refait** (jour sans résultat d'une autre version, `aSupprimer`) —
+ * sinon c'est un conflit : un jour de Tower figé ne change jamais.
+ */
+export function joursTowerAPoser(artefact, existants, plan) {
+  const ajouts = [];
+  const remplaces = [];
+  const conflits = [];
+  for (const [nom, contenu] of Object.entries(artefact)) {
+    if (!/^\d{4}-\d{2}-\d{2}\.json$/.test(nom)) continue;
+    if (!(nom in existants)) ajouts.push(nom);
+    else if (existants[nom] !== contenu) (plan.aSupprimer.includes(nom.slice(0, 10)) ? remplaces : conflits).push(nom);
+  }
+  return { ajouts: ajouts.sort(), remplaces: remplaces.sort(), conflits: conflits.sort() };
+}
+
+/** Le résumé du run : les jours de Tower conservés, préparés, refaits, jusqu'où ils sont couverts, et le temps de la préparation mesuré sur le runner. */
+export function resumeTower(plan, mesure = null) {
+  const n = (a) => plan.jours.filter((j) => j.action === a).map((j) => j.date);
+  const protegesGardes = n("garde-protege");
+  const gardes = n("garde");
+  const prepares = n("prepare");
+  const refaits = n("reprepare");
+  const sansFichier = n("protege-sans-fichier");
+  const l = ["### Tower : les jours préparés", ""];
+  l.push(`- Fenêtre : **${plan.du} → ${plan.au}** (la veille de la bascule jusqu'à J+${TOWER_JOURS_APRES_BASCULE}), code déployé : simulation v${plan.versions.sim}, générateur g${plan.versions.g}.`);
+  l.push(`- Conservés tels quels : ${protegesGardes.length + gardes.length} (${protegesGardes.length} protégé${protegesGardes.length > 1 ? "s" : ""}, ${gardes.length} sans résultat mais déjà à la version du code)${protegesGardes.length + gardes.length ? ` — ${[...protegesGardes, ...gardes].sort().join(", ")}` : ""}.`);
+  l.push(`- Préparés : ${prepares.length}${prepares.length ? ` (${plage(prepares)})` : ""} ; refaits (autre version, sans résultat) : ${refaits.length}${refaits.length ? ` (${refaits.join(", ")})` : ""}.`);
+  if (sansFichier.length) l.push(`- Protégés sans fichier préparé : ${sansFichier.join(", ")} — ils gardent ce qu'ils ont servi (rien n'est créé pour eux).`);
+  if (mesure) l.push(`- Temps : ${mesure.jours} jour${mesure.jours > 1 ? "s" : ""} préparé${mesure.jours > 1 ? "s" : ""} en **${Math.floor(mesure.secondes / 60)} min ${Math.round(mesure.secondes % 60)} s** sur ${mesure.fils} fil${mesure.fils > 1 ? "s" : ""} (le runner de la mise en production).`);
+  l.push(`- **Jours couverts : ${plan.du} → ${plan.au}** (${plan.jours.length} jours). À partir du ${ajouterJours(plan.au, 1)}, un jour n'a pas de fichier préparé tant qu'une autre mise en production n'a pas eu lieu : Tower le sert avec l'estimation géométrique de ses médailles (« provisoire »). **Prochaine mise en production au plus tard le ${plan.au}.**`);
+  return l.join("\n") + "\n";
 }
 
 /**
@@ -423,6 +527,8 @@ export const niveauxAEffacer = (fichiers, proteges) => fichiers.filter((f) => /^
 const VERSIONS = [
   { nom: "JUMP_SIM_VERSION", fichier: "packages/jump-sim/src/constants.ts", jeu: "Jump" },
   { nom: "JUMP_GENERATOR_VERSION", fichier: "packages/jump-sim/src/constants.ts", jeu: "Jump" },
+  { nom: "TOWER_SIM_VERSION", fichier: "packages/tower-sim/src/constantes.ts", jeu: "Tower" },
+  { nom: "TOWER_GENERATOR_VERSION", fichier: "packages/tower-sim/src/generateur/index.ts", jeu: "Tower" },
   { nom: "SIM_VERSION", fichier: "packages/sim/src/constants.ts", jeu: "Track" },
   { nom: "GENERATOR_VERSION", fichier: "packages/sim/src/constants.ts", jeu: "Track" },
 ];
@@ -610,6 +716,13 @@ if (isMain) {
       execFileSync(join(depot, "node_modules/.bin/esbuild"), ["scripts/empreintes-jours.ts", "--bundle", "--platform=node", "--format=esm", "--target=node22", "--outfile=dist/empreintes-jours.mjs", "--log-level=warning"], { cwd: api, stdio: "inherit" });
       const donnees = ["--du", "--au", "--niveaux", "--sortie", "--jeux"].flatMap((o) => (opt(o) ? [o, o === "--niveaux" || o === "--sortie" ? resolve(opt(o)) : opt(o)] : []));
       execFileSync(process.execPath, ["dist/empreintes-jours.mjs", ...donnees], { cwd: api, stdio: "inherit", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
+      // Lot TP : les jours de Tower — seulement si ce code a le jeu (le code en production n'a pas Tower avant sa première mise en production : la clé `tower` manque alors, et
+      // `comparerEmpreintes` n'a rien à conserver pour lui).
+      if (opt("--tower") && existsSync(join(depot, "packages/tower-sim"))) {
+        copyFileSync(join(ici, "empreintes-tower.ts"), join(dossier, "empreintes-tower.ts"));
+        execFileSync(join(depot, "node_modules/.bin/esbuild"), ["scripts/empreintes-tower.ts", "--bundle", "--platform=node", "--format=esm", "--target=node22", "--outfile=dist/empreintes-tower.mjs", "--log-level=warning"], { cwd: api, stdio: "inherit" });
+        execFileSync(process.execPath, ["dist/empreintes-tower.mjs", "--du", opt("--du"), "--au", opt("--au"), "--jours", resolve(opt("--tower")), "--sortie", resolve(opt("--sortie"))], { cwd: api, stdio: "inherit", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
+      } else if (opt("--tower")) console.log("Tower : absent de ce code, aucune empreinte (rien à conserver pour lui)");
     } else if (cmd === "proteges") {
       // Les jours à partir du lancement (`--premier`) jusqu'à la veille de la bascule : déjà figés (registre de Track, niveaux de Jump du dépôt visé) ou avec un résultat en production.
       const cible = resolve(opt("--cible"));
@@ -668,6 +781,60 @@ if (isMain) {
       process.stdout.write(text);
       if (conflits.length) process.exit(1);
       writeFileSync(a, JSON.stringify(fusion, null, 1) + "\n");
+    } else if (cmd === "tower-plan") {
+      // Le plan des jours de Tower : lit le dépôt construit (`--cible`), les jours protégés (`--proteges`) et la fenêtre (`--veille`, `--bascule`).
+      const cible = resolve(opt("--cible"));
+      const dossier = join(cible, TOWER_DOSSIER);
+      const fichiers = {};
+      if (existsSync(dossier)) {
+        for (const f of readdirSync(dossier)) {
+          const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+          if (!date) continue;
+          try {
+            const j = JSON.parse(readFileSync(join(dossier, f), "utf8"));
+            fichiers[date] = { g: j.g, sim: j.sim };
+          } catch {
+            fichiers[date] = { g: null, sim: null }; // illisible : à refaire s'il n'est pas protégé
+          }
+        }
+      }
+      const texts = {};
+      for (const f of ["packages/tower-sim/src/constantes.ts", "packages/tower-sim/src/generateur/index.ts"]) texts[f] = existsSync(join(cible, f)) ? readFileSync(join(cible, f), "utf8") : "";
+      const versions = versionsTower(texts);
+      if (versions.sim === null || versions.g === null) throw new Error("le commit déployé n'a pas les versions de Tower (packages/tower-sim)");
+      const proteges = JSON.parse(readFileSync(opt("--proteges"), "utf8"));
+      const plan = planTower({ veille: opt("--veille"), bascule: opt("--bascule"), proteges, fichiers, versions });
+      writeFileSync(resolve(opt("--sortie")), JSON.stringify(plan, null, 1) + "\n");
+      const text = resumeTower(plan);
+      if (opt("--resume")) appendFileSync(opt("--resume"), text);
+      process.stdout.write(text);
+      if (opt("--github-sortie")) appendFileSync(opt("--github-sortie"), `tower_plages=${plan.plages.map(([du, au]) => `${du}:${au}`).join(" ")}\ntower_a_preparer=${plan.aPreparer.length}\ntower_au=${plan.au}\n`);
+    } else if (cmd === "tower-nettoyer") {
+      // Retire du dossier (`a`) les fichiers d'une autre version que le plan refait : l'outil de préparation n'écrase jamais un fichier d'une autre version.
+      const plan = JSON.parse(readFileSync(opt("--plan"), "utf8"));
+      for (const d of plan.aSupprimer) rmSync(join(a, `${d}.json`), { force: true });
+      console.log(plan.aSupprimer.length ? `fichiers de Tower d'une autre version retirés : ${plan.aSupprimer.join(" ")}` : "aucun fichier de Tower à retirer");
+    } else if (cmd === "tower-poser") {
+      // `a` : l'artefact `jours-tower` (plan.json et jours/*.json) ; `b` : le dossier des jours de Tower du dépôt visé.
+      const plan = JSON.parse(readFileSync(join(a, "plan.json"), "utf8"));
+      const dossierArtefact = join(a, "jours");
+      const artefact = read(dossierArtefact);
+      const existants = read(b);
+      const { ajouts, remplaces, conflits } = joursTowerAPoser(artefact, existants, plan);
+      if (conflits.length) throw new Error(`jour(s) de Tower différent(s) entre la préparation et le commit déployé : ${conflits.join(", ")} (un jour figé ne change jamais)`);
+      mkdirSync(b, { recursive: true });
+      for (const f of [...ajouts, ...remplaces]) writeFileSync(join(b, f), artefact[f]);
+      console.log(ajouts.length || remplaces.length ? `jours de Tower posés : ${ajouts.length} ajouté(s), ${remplaces.length} refait(s)` : "aucun jour de Tower à poser");
+    } else if (cmd === "tower-resume") {
+      const plan = JSON.parse(readFileSync(opt("--plan"), "utf8"));
+      const text = resumeTower(plan, { jours: plan.aPreparer.length, secondes: Number(opt("--secondes") ?? 0), fils: Number(opt("--fils") ?? 1) });
+      if (opt("--resume")) appendFileSync(opt("--resume"), text);
+      // Lot TP : la ligne courte du haut du résumé du bouton.
+      if (opt("--github-sortie")) {
+        const n = (act) => plan.jours.filter((j) => j.action === act).length;
+        appendFileSync(opt("--github-sortie"), `tower_ligne=${n("garde") + n("garde-protege")} conservé(s), ${n("prepare")} préparé(s), ${n("reprepare")} refait(s), couvert jusqu'au ${plan.au}\n`);
+      }
+      process.stdout.write(text);
     } else if (cmd === "bascule-valide") {
       const ms = opt("--maintenant") ? Date.parse(opt("--maintenant")) : Date.now();
       if (basculeCommencee(a, ms)) throw new Error(`le jour de bascule (${a}) a déjà commencé à Paris (nous sommes le ${jourDeParis(ms)}) : la mise en production aurait changé un jour que les joueurs ont ouvert. Relancer « Mettre en production » (le jour de bascule se recalcule au clic).`);

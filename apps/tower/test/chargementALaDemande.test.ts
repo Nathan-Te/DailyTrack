@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 const SRC = join(__dirname, "../src");
 const AU_DEMARRAGE = ["main.ts"];
 /** Les modules de la partie : chargés avec le jeu, jamais avec l'accueil. */
-const DU_JEU = ["jeu.ts", "scene.ts", "hud.ts", "fin.ts", "pause.ts", "entrees.ts", "apercuPiece.ts", "fantomeRejeu.ts", "fantomeLocal.ts", "tune.ts", "debug.ts", "botDemande.ts", "botWorker.ts", "jour.ts", "preparation.ts", "palettes.ts", "commentJouer.ts", "partageDom.ts", "moteurs.ts"];
+const DU_JEU = ["jeu.ts", "scene.ts", "hud.ts", "fin.ts", "pause.ts", "entrees.ts", "apercuPiece.ts", "fantomeRejeu.ts", "fantomeLocal.ts", "tune.ts", "debug.ts", "botDemande.ts", "botWorker.ts", "jour.ts", "preparation.ts", "palettes.ts", "commentJouer.ts", "partageDom.ts", "moteurs.ts", "jeuSuivant.ts", "interrupteur.ts"];
 
 function statiques(fichier: string): string[] {
   const code = readFileSync(join(SRC, fichier), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");

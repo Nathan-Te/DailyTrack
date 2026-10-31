@@ -255,7 +255,7 @@ export function createAdmin(deps: AdminDeps) {
       resultats: r.liste.map((x) => {
         derniere = Math.max(derniere, x.envoyeA);
         const date = formatDay(x.day);
-        return { date, tempsMs: x.tempsMs, morts: x.morts ?? null, medaille: x.medaille, rang: x.rang, classes: x.classes, envoyeA: new Date(x.envoyeA).toISOString(), rediffusion: g.instance.admin!.lienRediffusion(date, x.rang) };
+        return { date, tempsMs: x.tempsMs, ...(x.score ? { score: x.score } : {}), morts: x.morts ?? null, medaille: x.medaille, rang: x.rang, classes: x.classes, envoyeA: new Date(x.envoyeA).toISOString(), rediffusion: g.instance.admin!.lienRediffusion(date, x.rang) };
       }),
     }));
     return {
@@ -412,6 +412,7 @@ export function createAdmin(deps: AdminDeps) {
         nouveauxProfils: nouveaux?.n ?? 0,
         track: { finis: compte("cdj")?.finis ?? 0 },
         jump: { finis: compte("jump")?.finis ?? 0, morts: compte("jump")?.morts ?? 0 },
+        ...(compte("tower") ? { tower: { finis: compte("tower")!.finis } } : {}),
       },
       courbe,
       etat: {

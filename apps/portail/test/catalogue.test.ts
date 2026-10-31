@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { THEME_NAMES } from "@cdj/sim";
 import { JUMP_THEME_NAMES } from "@cdj/jump-sim";
+import { THEMES_TOWER } from "@cdj/tower-sim";
 import { CATALOGUE_COMMUN } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "../src/catalogue";
 import { DEMO_JOUEUR } from "../src/demo";
@@ -17,6 +18,8 @@ describe("portail : thèmes et répliques", () => {
   it("les thèmes de Track et de Jump sont ceux des jeux, ni plus ni moins", () => {
     expect(suffixes("portail.theme.cdj.")).toEqual([...THEME_NAMES].sort());
     expect(suffixes("portail.theme.jump.")).toEqual([...JUMP_THEME_NAMES].sort());
+    // Lot TP : les six thèmes de Tower.
+    expect(suffixes("portail.theme.tower.")).toEqual([...THEMES_TOWER].sort());
   });
 
   it("une réplique de Jump par thème (une seule phrase courte, sans émoji), dans le catalogue commun et nulle part ailleurs", () => {

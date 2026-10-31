@@ -176,13 +176,13 @@ describe(`message en direct (${TEST_DB})`, () => {
     expect(un.status, JSON.stringify(un.body)).toBe(200);
     const id1 = un.body.actif.id as number;
     t.clock.now = NOON + 5 * MIN;
-    const deux = await adm("POST", "/api/admin/message", message({ fr: "Retour à la normale.", en: "Back to normal.", ou: ["jump"], ton: "important" }));
+    const deux = await adm("POST", "/api/admin/message", message({ fr: "Retour à la normale.", en: "Back to normal.", ou: ["jump", "tower"], ton: "important" }));
     const id2 = deux.body.actif.id as number;
     expect(id2).toBeGreaterThan(id1);
     const nb = await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM annonces WHERE retire_le IS NULL AND fin > ?", [t.clock.now]);
     expect(nb!.n).toBe(1);
     const lu = (await t.call("GET", "/api/annonce")).body.annonce;
-    expect(lu).toEqual({ id: id2, fr: "Retour à la normale.", en: "Back to normal.", ou: ["jump"], ton: "important", fin: NOON + 60 * MIN });
+    expect(lu).toEqual({ id: id2, fr: "Retour à la normale.", en: "Back to normal.", ou: ["jump", "tower"], ton: "important", fin: NOON + 60 * MIN });
     const etat = (await adm("GET", "/api/admin/message")).body;
     expect(etat.actif.id).toBe(id2);
     expect(etat.passes.map((p: { id: number }) => p.id)).toEqual([id1]);

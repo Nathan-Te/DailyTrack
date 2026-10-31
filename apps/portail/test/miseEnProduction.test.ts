@@ -32,6 +32,11 @@ import {
   lotDe,
   nomDuJour,
   planDesJours,
+  planTower,
+  joursTowerAPoser,
+  resumeTower,
+  versionsTower,
+  TOWER_JOURS_APRES_BASCULE,
   prodTag,
   resumeBascule,
   routesDe,
@@ -496,5 +501,100 @@ describe("la ligne des jours d'un jeu (résumé du bouton)", () => {
   it("conservés, régénérés, qui changent ; un problème est dit", () => {
     expect(ligneJours(r({ conserves: ["a", "b"], regeneres: ["c"], changes: [] }))).toBe("2 conservés, 1 régénéré (0 change)");
     expect(ligneJours(r({ conserves: ["a"], regeneres: ["c", "d"], changes: ["c", "d"], differences: [{ date: "a" }] }))).toBe("1 conservé, 2 régénérés (2 changent), ⛔ 1 en différence, 0 invalide");
+  });
+});
+
+// Lot TP : les jours de Tower. Un jeu classé à la hauteur n'est pas dans le cumul au temps : ses classés se lisent dans sa vue, sinon un jour joué seulement à Tower ne serait pas protégé.
+describe("Tower : la lecture des résultats, les jours préparés et le premier déploiement", () => {
+  const reponse = (status: number, corps: unknown) => new Response(JSON.stringify(corps), { status });
+  const sansAttente = () => Promise.resolve();
+
+  it("lireResultats ajoute les classés de la vue d'un jeu à la hauteur ; la vue se lit en GET sans identifiant", async () => {
+    const urls: string[] = [];
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      urls.push(url);
+      expect(init.method).toBe("GET");
+      if (url.includes("vue=tower")) return reponse(200, { classes: 3, jeux: [] });
+      return reponse(200, { classes: 0, jeux: [{ jeu: "cdj", site: "track" }, { jeu: "tower", site: "tower", unite: "mm" }] });
+    }) as unknown as typeof fetch;
+    const r = await lireResultats("https://playdujour.com", ["2026-11-10"], { fetchImpl, attendre: sansAttente });
+    expect(r).toEqual({ "2026-11-10": 3 });
+    expect(urls).toEqual(["https://playdujour.com/api/portail/classement?date=2026-11-10", "https://playdujour.com/api/portail/classement?date=2026-11-10&vue=tower"]);
+    // Un site qui n'a pas la forme d'un dossier n'est jamais lu (la réponse d'un serveur n'écrit pas une adresse).
+    const sûr = (async (url: string) => { urls.push(url); return reponse(200, { classes: 1, jeux: [{ site: "../x", unite: "mm" }] }); }) as unknown as typeof fetch;
+    urls.length = 0;
+    expect(await lireResultats("https://x", ["2026-11-10"], { fetchImpl: sûr, attendre: sansAttente })).toEqual({ "2026-11-10": 1 });
+    expect(urls).toHaveLength(1);
+  });
+
+  const proteges = { format: 1, premier: "2026-10-26", veille: "2026-11-09", jours: { "2026-11-09": "2 classé(s)" }, resultats: {} };
+  const versions = { sim: 3, g: 3 };
+
+  it("versionsTower lit les deux constantes ; Tower absent d'un code : null", () => {
+    expect(versionsTower({ "packages/tower-sim/src/constantes.ts": "export const TOWER_SIM_VERSION = 3;", "packages/tower-sim/src/generateur/index.ts": "export const TOWER_GENERATOR_VERSION = 4;" })).toEqual({ sim: 3, g: 4 });
+    expect(versionsTower({})).toEqual({ sim: null, g: null });
+  });
+
+  it("planTower : un jour protégé ne change jamais ; un jour sans résultat est préparé s'il n'a pas de fichier ou refait s'il est d'une autre version, gardé sinon ; la fenêtre va de la veille à J+14", () => {
+    const fichiers = {
+      "2026-11-09": { g: 2, sim: 3 }, // protégé, d'une autre version : on n'y touche pas
+      "2026-11-10": { g: 3, sim: 3 }, // à la version du code : gardé
+      "2026-11-11": { g: 2, sim: 3 }, // autre version, sans résultat : refait
+    };
+    const plan = planTower({ veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers, versions });
+    expect(plan.du).toBe("2026-11-09");
+    expect(plan.au).toBe("2026-11-24");
+    expect(plan.jours).toHaveLength(16);
+    expect(TOWER_JOURS_APRES_BASCULE).toBe(14);
+    const action = (d: string) => plan.jours.find((j: { date: string }) => j.date === d).action;
+    expect(action("2026-11-09")).toBe("garde-protege");
+    expect(action("2026-11-10")).toBe("garde");
+    expect(action("2026-11-11")).toBe("reprepare");
+    expect(action("2026-11-12")).toBe("prepare");
+    expect(plan.aSupprimer).toEqual(["2026-11-11"]);
+    expect(plan.plages).toEqual([["2026-11-11", "2026-11-24"]]);
+    // Un jour protégé sans fichier n'en reçoit pas : on ne crée rien pour lui.
+    const sans = planTower({ veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: {}, versions });
+    expect(sans.jours[0]).toEqual({ date: "2026-11-09", action: "protege-sans-fichier" });
+    expect(sans.plages).toEqual([["2026-11-10", "2026-11-24"]]);
+    // Des plages séparées quand un jour gardé coupe la fenêtre.
+    const coupe = planTower({ veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: { "2026-11-12": { g: 3, sim: 3 } }, versions });
+    expect(coupe.plages).toEqual([["2026-11-10", "2026-11-11"], ["2026-11-13", "2026-11-24"]]);
+  });
+
+  it("le résumé dit ce qui est conservé, préparé, refait, jusqu'où les jours sont couverts et le temps mesuré", () => {
+    const plan = planTower({ veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: { "2026-11-10": { g: 3, sim: 3 }, "2026-11-11": { g: 2, sim: 3 } }, versions });
+    const texte = resumeTower(plan, { jours: plan.aPreparer.length, secondes: 289, fils: 4 });
+    expect(texte).toContain("2026-11-09 → 2026-11-24");
+    expect(texte).toContain("Préparés : 13");
+    expect(texte).toContain("refaits (autre version, sans résultat) : 1 (2026-11-11)");
+    expect(texte).toContain("4 min 49 s");
+    expect(texte).toContain("Jours couverts : 2026-11-09 → 2026-11-24");
+    expect(texte).toContain("Prochaine mise en production au plus tard le 2026-11-24");
+    expect(texte).toContain("estimation géométrique");
+  });
+
+  it("première mise en production de Tower : le code en production n'a pas le jeu, aucun jour n'est en « différence », tous sont régénérés ; ensuite la comparaison joue", () => {
+    const e = (h: string) => ({ id: "x", h, ok: true });
+    const cible = { track: { "2026-11-08": e("a") }, jump: { "2026-11-08": e("a") }, tower: { "2026-11-08": e("t"), "2026-11-09": e("t") } };
+    const prod = { track: { "2026-11-08": e("a") }, jump: { "2026-11-08": e("a") } };
+    const c = comparerEmpreintes(prod, cible, "2026-11-10", "2026-10-26", { format: 1, premier: "2026-10-26", veille: "2026-11-09", jours: { "2026-11-08": "x" }, resultats: {} });
+    expect(c.jeux.tower.differences).toEqual([]);
+    expect(c.jeux.tower.regeneres).toEqual(["2026-11-08", "2026-11-09"]);
+    expect(c.ok).toBe(true);
+    // Une fois Tower en production, un jour protégé qui change arrête.
+    const apres = comparerEmpreintes({ ...prod, tower: { "2026-11-08": e("t") } }, { ...cible, tower: { "2026-11-08": e("autre") } }, "2026-11-10", "2026-10-26", { format: 1, premier: "2026-10-26", veille: "2026-11-09", jours: { "2026-11-08": "x" }, resultats: {} });
+    expect(apres.ok).toBe(false);
+    expect(apres.jeux.tower.differences[0].date).toBe("2026-11-08");
+    // Les empreintes passées gardées dans le dépôt portent aussi Tower.
+    const { fusion } = fusionnerEmpreintes({ track: {}, jump: {} }, { tower: { "2026-11-08": e("t") } }, "2026-11-09", { format: 1, premier: "2026-10-26", veille: "2026-11-09", jours: { "2026-11-08": "x" }, resultats: {} });
+    expect(Object.keys(fusion.tower)).toEqual(["2026-11-08"]);
+  });
+
+  it("joursTowerAPoser : ajoute ce qui manque, ne remplace que les jours refaits par le plan, refuse tout autre changement", () => {
+    const plan = { aSupprimer: ["2026-11-11"] };
+    const artefact = { "2026-11-10.json": "A", "2026-11-11.json": "B2", "2026-11-12.json": "C", "notes.txt": "x" };
+    expect(joursTowerAPoser(artefact, { "2026-11-10.json": "A", "2026-11-11.json": "B1" }, plan)).toEqual({ ajouts: ["2026-11-12.json"], remplaces: ["2026-11-11.json"], conflits: [] });
+    expect(joursTowerAPoser({ "2026-11-10.json": "A2" }, { "2026-11-10.json": "A" }, plan).conflits).toEqual(["2026-11-10.json"]);
   });
 });

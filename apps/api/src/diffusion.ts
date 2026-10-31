@@ -1,5 +1,6 @@
 import {
   MESSAGE_MAX,
+  OU_MESSAGE,
   nettoyerMessage,
   nettoyerNouveaute,
   messageActif,
@@ -135,7 +136,7 @@ const pourAdmin = (r: LigneSql): NouveauteAdmin => ({
   publieLe: r.publie_le === null ? null : new Date(r.publie_le).toISOString(),
 });
 
-const ouDe = (brut: string): OuMessage[] => brut.split(",").filter((x): x is OuMessage => x === "portail" || x === "track" || x === "jump");
+const ouDe = (brut: string): OuMessage[] => brut.split(",").filter((x): x is OuMessage => (OU_MESSAGE as readonly string[]).includes(x));
 const annonceDe = (r: AnnonceSql): AnnonceRendue => ({ id: r.id, fr: r.texte_fr, en: r.texte_en, ou: ouDe(r.ou), ton: r.ton === "important" ? "important" : "information", fin: r.fin });
 
 export function createDiffusion(platform: Platform) {

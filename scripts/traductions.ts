@@ -15,6 +15,7 @@ import { CATALOGUE_IPHONE } from "../packages/ui/src/catalogue.iphone";
 import { CATALOGUE_MANETTE } from "../packages/ui/src/catalogue.manette";
 import { CATALOGUE_COMMANDES } from "../packages/ui/src/catalogue.commandes";
 import { CATALOGUE_INTERRUPTEUR } from "../packages/ui/src/catalogue.interrupteur";
+import { CATALOGUE_COMMUNAUTE } from "../packages/ui/src/catalogue.communaute";
 import { CATALOGUE_MUSIQUE } from "../packages/ui/src/catalogue.musique";
 import { CATALOGUE_APERCU as APERCU_PORTAIL } from "../apps/portail/src/catalogueApercu";
 import { CATALOGUE_BASE as TRACK_BASE } from "../apps/web/src/catalogue.base";
@@ -41,6 +42,7 @@ export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingu
   ["packages/ui (commandes)", "packages/ui/src/catalogue.commandes.ts", CATALOGUE_COMMANDES as unknown as Bilingue],
   ["packages/ui (interrupteur)", "packages/ui/src/catalogue.interrupteur.ts", CATALOGUE_INTERRUPTEUR as unknown as Bilingue],
   ["packages/ui (musique)", "packages/ui/src/catalogue.musique.ts", CATALOGUE_MUSIQUE as unknown as Bilingue],
+  ["packages/ui (communauté)", "packages/ui/src/catalogue.communaute.ts", CATALOGUE_COMMUNAUTE as unknown as Bilingue],
   ["apps/portail", "apps/portail/src/catalogue.ts", CATALOGUE_PORTAIL as unknown as Bilingue],
   ["apps/portail (aperçu)", "apps/portail/src/catalogueApercu.ts", APERCU_PORTAIL as unknown as Bilingue],
   ["apps/portail (vitrine)", "apps/portail/src/catalogueVitrine.ts", CATALOGUE_VITRINE as unknown as Bilingue],
@@ -97,6 +99,7 @@ const ECRANS: Record<string, string> = {
   jump: "Répliques de Jump (portail et jeu)",
   langue: "Langue",
   lignePartage: "Ligne à partager",
+  communaute: "Communauté (Discord, Ko-fi)",
   marque: "Marque",
   medaille: "Médailles",
   miniature: "Miniatures",

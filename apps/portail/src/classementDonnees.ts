@@ -1,4 +1,4 @@
-import { baseApi, type Medaille } from "./jour";
+import { baseApi, type Medaille, type ScoreHauteur } from "./jour";
 
 // Lot I3, refait au lot A1 : ce que la page `/classement/` lit du serveur (`GET /api/portail/classement?date=&vue=`, une requête par jour et par vue
 // affichés) — pur, le réseau est passé : testé dans `test/classementVues.test.ts`.
@@ -8,6 +8,8 @@ export interface ResultatClassement {
   rang: number;
   tempsMs: number;
   medaille: Medaille | null;
+  /** Lot TP : le score d'un jeu à la hauteur (`tempsMs` est alors la durée de la partie). */
+  score?: ScoreHauteur | null;
 }
 
 export interface LigneClassement {
@@ -15,6 +17,8 @@ export interface LigneClassement {
   pseudo: string;
   /** Le temps de la vue : le cumul, ou le temps du jeu. `null` au cumul d'un joueur qui n'a pas fini tous les jeux. */
   tempsMs: number | null;
+  /** Lot TP : dans la vue d'un jeu à la hauteur, le score de la ligne (la hauteur classe, `tempsMs` est la durée de la partie). */
+  score?: ScoreHauteur | null;
   /** A-t-il fini tous les jeux du jour ? (toujours vrai dans la vue d'un jeu) : faux = sous la séparation « Un jeu sur deux ». */
   complet: boolean;
   /** Par code de jeu du registre du serveur. */
@@ -30,7 +34,10 @@ export interface Classement {
   ouvert: boolean;
   /** La vue rendue : `cumul`, ou le dossier d'un jeu sur le site (`track`, `jump`). */
   vue: string;
-  jeux: { jeu: string; site: string; nom: string }[];
+  /** Lot TP : `"mm"` dans la vue d'un jeu classé à la hauteur. */
+  unite?: "mm";
+  /** `unite` : le jeu est classé à la hauteur (absent : au temps) ; il a son onglet mais n'est jamais dans le cumul. */
+  jeux: { jeu: string; site: string; nom: string; unite?: "mm" }[];
   classes: number;
   top: LigneClassement[];
   /** Ta ligne (avec ton identifiant), même hors du haut ; `null` : tu n'as fini aucun jeu ce jour-là. */

@@ -11,7 +11,7 @@ import { astuceIphoneAPropos, basculerPleinEcran, pleinEcranActif, pleinEcranBou
 
 /** Le traducteur que reçoivent les composants : au moins le catalogue commun. */
 export type TraducteurCommun = Traducteur<CleCommune>;
-export type Jeu = "track" | "jump";
+export type Jeu = "track" | "jump" | "tower";
 export type TypeMedaille = "diamant" | "or" | "argent" | "bronze";
 export const MEDAILLES: readonly TypeMedaille[] = ["diamant", "or", "argent", "bronze"];
 
@@ -87,6 +87,39 @@ export function etiquetteTrack(o: OptionsEtiquette): HTMLElement {
     el("div", { classe: "track-etiquette__tete" }, el(o.niveau ?? "h2", { classe: "track-etiquette__titre", texte: o.titre }), o.numero ? el("span", { classe: "track-etiquette__numero", texte: o.numero }) : null),
     o.texte ? el("p", { classe: "track-etiquette__texte", texte: o.texte }) : null,
     o.suite ? el("div", { classe: "track-etiquette__suite" }, o.suite) : null,
+  );
+}
+
+/** Lot TP : les pièces à yeux de l'étiquette Tower (une petite pile qui a peur) : décoratif, couleurs des jetons. */
+function dessinTower(): SVGSVGElement {
+  const piece = (tag: "rect" | "path", n: string, attrs: Record<string, string | number>) => svg(tag, { classe: `tower-dessin__piece tower-dessin__piece--${n}`, attrs });
+  const oeil = (cx: number) => svg("circle", { classe: "tower-dessin__oeil", attrs: { cx, cy: 37, r: 3.5 } });
+  return svg(
+    "svg",
+    { classe: "tower-etiquette__dessin", attrs: { viewBox: "0 0 62 64", width: 62, height: 64, "aria-hidden": "true", focusable: "false" } },
+    svg("rect", { classe: "tower-dessin__sol", attrs: { x: 0, y: 58, width: 62, height: 6 } }),
+    piece("rect", "a", { x: 8, y: 44, width: 44, height: 14 }),
+    piece("rect", "b", { x: 12, y: 30, width: 22, height: 14 }),
+    piece("path", "c", { d: "M34 44V30h11v-11h11v25z" }),
+    piece("path", "d", { d: "M14 30V16h11V5h11v11h-11v14z" }),
+    oeil(18),
+    oeil(27),
+  );
+}
+
+/** L'étiquette Tower : menthe, nom en Rubik Mono One, bordure épaisse, pièces à yeux empilées (charte rév. 13, § 3.5). */
+export function etiquetteTower(o: OptionsEtiquette): HTMLElement {
+  return el(
+    "div",
+    { classe: ["dj-etiquette", "tower-etiquette"] },
+    el(
+      "div",
+      { classe: "tower-etiquette__corps" },
+      el("div", { classe: "tower-etiquette__tete" }, el(o.niveau ?? "h2", { classe: "tower-etiquette__titre", texte: o.titre }), o.numero ? el("span", { classe: "tower-etiquette__numero", texte: o.numero }) : null),
+      o.texte ? el("p", { classe: "tower-etiquette__texte", texte: o.texte }) : null,
+      o.suite ? el("div", { classe: "tower-etiquette__suite" }, o.suite) : null,
+    ),
+    dessinTower(),
   );
 }
 

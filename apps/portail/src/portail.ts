@@ -7,6 +7,7 @@ import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
+import "@cdj/ui/src/polices/rubik-mono-one-400.css";
 import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
@@ -22,9 +23,11 @@ import {
   cartouche,
   el,
   etiquetteJump,
+  etiquetteTower,
   etiquetteTrack,
   formatDate,
   formatDateCourte,
+  formatHauteur,
   formatNombre,
   formatNumeroJour,
   formatRang,
@@ -39,9 +42,7 @@ import {
   visibiliteDeLaPage,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
-import { LIEN_DISCORD, LIEN_KOFI } from "./liens";
-import pictoDiscord from "./discord.svg?no-inline";
-import tasseKofi from "./kofi-tasse.png";
+import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { dans, nonLue } from "./nouveautesDonnees";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
@@ -93,7 +94,7 @@ const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || c
 const maintenant = () => Date.now() + (lecture?.decalage ?? 0);
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
-const NOM_JEU = { track: "jeu.track.nom", jump: "jeu.jump.nom" } as const;
+const NOM_JEU = { track: "jeu.track.nom", jump: "jeu.jump.nom", tower: "jeu.tower.nom" } as const;
 
 /** Le nom traduit d'un thème (`portail.theme.<jeu>.<code>`), ou `null` s'il est inconnu du catalogue. */
 function nomTheme(t: T, jeu: string, theme: string | null): string | null {
@@ -109,8 +110,14 @@ function statut(t: T, c: CarteJeu, etat: Etat | undefined): HTMLElement {
   else if (etat?.statut === "en_cours") contenu.push(ligne(etat.morts !== undefined ? t.t("portail.statut.enCoursMorts", { n: etat.morts }) : t.t("portail.statut.enCours")));
   else if (etat?.statut === "fini") {
     const type = etat.medaille ? MEDAILLE[etat.medaille] : undefined;
+    // Lot TP : un jeu à la hauteur (Tower) montre sa hauteur et ses vies à la place du temps (la durée de sa partie n'est pas son score).
+    const score = etat.score;
     contenu.push(
-      ligne(el("span", { classe: "portail-pastille-fini", texte: t.t("portail.statut.fini") }), el("span", { classe: "portail-statut__temps", texte: formatTemps(etat.tempsMs, langue) })),
+      ligne(
+        el("span", { classe: "portail-pastille-fini", texte: t.t("portail.statut.fini") }),
+        el("span", { classe: "portail-statut__temps", texte: score ? formatHauteur(score.valeur, langue) : formatTemps(etat.tempsMs, langue) }),
+        score ? el("span", { classe: "portail-statut__vies", texte: t.t("portail.statut.vies", { n: score.vies }) }) : null,
+      ),
       ligne(
         type ? medaille(t, { type, obtenue: true, jeu: c.code }) : null,
         el("span", { classe: "portail-statut__rang", texte: t.t("portail.statut.rang", { rang: formatRang(etat.rang, langue), classes: formatNombre(etat.classes, langue) }) }),
@@ -129,8 +136,9 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined): HTMLElement
   // Jump : la réplique du thème du jour (une seule par écran ; lot I5 : catalogue commun de @cdj/ui, la même que dans le jeu) ; tant que le thème n'est pas connu
   // (ou sans serveur), l'accroche du jeu.
   const replique = c.code === "jump" && jeu?.theme ? cleConnue(`jump.replique.${jeu.theme}`) : null;
-  const texte = c.code === "track" ? t.t("portail.track.accroche") : t.t(replique ?? "portail.jump.accroche");
-  const etiquette = c.code === "track" ? etiquetteTrack({ titre: t.t("jeu.track.titre"), numero: numeroTheme, texte, suite }) : etiquetteJump({ titre: t.t("jeu.jump.titre"), numero: numeroTheme, texte, suite });
+  const texte = c.code === "track" ? t.t("portail.track.accroche") : c.code === "tower" ? t.t("portail.tower.accroche") : t.t(replique ?? "portail.jump.accroche");
+  const fabrique = c.code === "track" ? etiquetteTrack : c.code === "tower" ? etiquetteTower : etiquetteJump;
+  const etiquette = fabrique({ titre: c.code === "tower" ? t.t("jeu.tower.nom").toUpperCase() : t.t(c.code === "track" ? "jeu.track.titre" : "jeu.jump.titre"), numero: numeroTheme, texte, suite });
   const nom = t.t(NOM_JEU[c.code]);
   const action =
     etat?.statut === "fini"
@@ -324,28 +332,9 @@ function rendre(): void {
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
 }
 
-/**
- * Le bouton Discord, à l'allure de Discord (le bleu-violet de leur charte, leur pictogramme) : un lien, **pas le widget intégré** (une fenêtre de discord.com : cookies et traceurs
- * tiers à chaque visite). Texte blanc : il passe le contraste exigé sur ce bleu.
- */
-function lienDiscord(texte: string): HTMLElement {
-  const picto = el("img", { classe: "portail-discord__picto", attrs: { src: pictoDiscord, alt: "", width: 24, height: 24 } });
-  return el("a", { classe: "portail-discord", attrs: { id: "discord", href: LIEN_DISCORD, target: "_blank", rel: "noopener noreferrer" } }, picto, el("span", { texte }));
-}
-
-/**
- * Le bouton Ko-fi, à l'allure de celui que Ko-fi propose (bleu, la tasse au cœur), **sans rien charger de chez eux** : un lien, et la tasse est une copie hébergée sur le site (aucun script ni
- * image de `ko-fi.com`). Le texte est encre sur le bleu (le blanc du bouton d'origine ne passe pas le contraste exigé par l'audit d'accessibilité).
- */
-function lienKofi(texte: string): HTMLElement {
-  const a = el(
-    "a",
-    { classe: "portail-kofi", attrs: { id: "kofi", href: LIEN_KOFI, target: "_blank", rel: "noopener noreferrer" } },
-    el("img", { classe: "portail-kofi__tasse", attrs: { src: tasseKofi, alt: "", width: 30, height: 24 } }),
-    el("span", { texte }),
-  );
-  return a;
-}
+/** Les boutons Discord et Ko-fi du pied : le composant du socle (`lienCommunaute`, lot S1), le même aspect que sur l'accueil des jeux. */
+const lienDiscord = (texte: string): HTMLElement => lienCommunaute("discord", texte, "discord");
+const lienKofi = (texte: string): HTMLElement => lienCommunaute("kofi", texte, "kofi");
 
 // --- Le compte à rebours (heure du serveur) -----------------------------------------------------------------------------------
 let minuterie: ReturnType<typeof setTimeout> | null = null;

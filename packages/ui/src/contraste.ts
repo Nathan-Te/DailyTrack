@@ -41,6 +41,8 @@ export const PAIRES: readonly PaireCouleurs[] = [
   { couleur: "dj-papier", fond: "dj-encre", taille: "normal", usage: "étiquette « Important » d'un message en direct (information)" },
   { couleur: "dj-moutarde", fond: "dj-encre", taille: "normal", usage: "étiquette « Important » d'un message en direct" },
   { couleur: "dj-terre-texte", fond: "dj-terre", taille: "normal", usage: "bouton principal de marque" },
+  { couleur: "dj-encre", fond: "dj-kofi", taille: "normal", usage: "bouton Ko-fi" },
+  { couleur: "dj-blanc", fond: "dj-discord", taille: "normal", usage: "bouton Discord" },
   { couleur: "dj-encre", fond: "dj-moutarde", taille: "normal", usage: "avatar, coque Jump" },
   { couleur: "dj-ambre", fond: "dj-ecran", taille: "normal", usage: "chiffres de l'afficheur" },
   { couleur: "dj-ecran-texte", fond: "dj-ecran", taille: "normal", usage: "légende de l'afficheur" },

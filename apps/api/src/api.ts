@@ -14,6 +14,8 @@ import { aNoter } from "./journaux";
 import { silentLog, type Logger } from "./log";
 import { DEFAULT_LIMITS, createPlatform } from "./platform";
 import { createPortailRoutes } from "./portail";
+import type { TowerOptions } from "./tower";
+import type { ExecuteurRejeu } from "./towerRejeu";
 import { GAMES } from "./registry";
 import { salonSessionMs, type SalonLimits } from "./salon";
 
@@ -95,6 +97,10 @@ export interface ApiOptions {
   environment?: string;
   /** Lot P0 : les niveaux figés de DailyJump inclus dans l'image (date → contenu du fichier), lus à la construction. */
   jumpFrozen?: Readonly<Record<string, unknown>>;
+  /** Lot TP : les jours de Tower (préparés ou figés) inclus dans l'image (date → contenu du fichier, preuve comprise : elle reste dans l'image), lus à la construction. */
+  towerFrozen?: Readonly<Record<string, unknown>>;
+  /** Lot TP : ce qui exécute les rejeux de Tower (le fil de calcul, `executeurFil`) ; absent : le fil principal (repli). */
+  towerExecuteur?: ExecuteurRejeu;
   /**
    * Lot I2 : le registre des jeux (`GAMES` par défaut). **Tests seulement** (un faux jeu n° 3 prouve que le portail ne change pas) : `server.ts`
    * ne le règle jamais. Un faux jeu n'a pas de tables (le schéma est celui de `GAMES`).
@@ -148,6 +154,7 @@ export function createApi(options: ApiOptions) {
       demoPlayers: options.demoPlayers,
     } satisfies CdjOptions,
     jump: { frozen: options.jumpFrozen },
+    tower: { frozen: options.towerFrozen, executeur: options.towerExecuteur } satisfies TowerOptions,
   };
   for (const g of options.games ?? GAMES) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });
   const byPrefix = [...instances].sort((a, b) => b.prefix.length - a.prefix.length);

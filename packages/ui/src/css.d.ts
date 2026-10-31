@@ -5,3 +5,12 @@ declare module "*.css?url" {
   const adresse: string;
   export default adresse;
 }
+// Lot S1 : les images des boutons Discord et Ko-fi (`liensCommunaute.ts`), servies comme des fichiers du site.
+declare module "*.svg?no-inline" {
+  const adresse: string;
+  export default adresse;
+}
+declare module "*.png" {
+  const adresse: string;
+  export default adresse;
+}

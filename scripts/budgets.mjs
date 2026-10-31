@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import { mesureTower as mesureTowerDetail } from "../apps/tower/tools/mesure.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const gz = (f, level) => gzipSync(readFileSync(f), level === undefined ? {} : { level }).length;
@@ -65,40 +66,35 @@ export function mesureTrack(dist = join(ROOT, "apps/web/dist/assets")) {
 export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
   const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
   // Lot « musique » : le lecteur (`demarrage-`) et le panneau des réglages (`panneauMusique-`) sont chargés à la demande, au premier geste : ligne `musique.lecteur`. Lot M1 : `manette-` aussi ; lot M2 : `commandesEcran-` (l'écran Commandes).
-  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-"].some((p) => f.startsWith(p));
+  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-"].some((p) => f.startsWith(p));
   const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
-  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-") && !f.startsWith("manette-") && !f.startsWith("commandes-") && !f.startsWith("panneauMusique-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-") && !f.startsWith("manette-") && !f.startsWith("commandes-") && !f.startsWith("panneauMusique-") && !f.startsWith("liensCommunauteJeu-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
   return { js: total, css, jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
 }
 
 /**
- * Tower (lot R15) — le premier chargement de **la page du jeu** (`/tower/`), mesuré comme Track (`graphePremierChargement`, gzip par défaut) : l'aiguillage `main-*.js` charge
- * le jeu par `import()`, donc le graphe de `index.html` seul ne dirait rien (1 ko) ; on y ajoute le fichier du jeu (`jeu-*.js`) et ce qu'il importe statiquement, avec la feuille
- * de chaque morceau (la feuille d'un morceau porte son nom : `jeu-*.css`). **Hors de la mesure, à la demande** : la physique (le JavaScript de Rapier et son `.wasm`, deux
- * fichiers : `physique`), le catalogue anglais, l'aide de l'iPhone, la démonstration du banc (`demo-*`, `?scenario=banc`, jamais en production) et `verify`. Les chiffres vont dans
- * `docs/plateforme/budgets.md` (lignes `tower.*`) ; `apps/tower/e2e/poids.spec.ts` les garde.
+ * Tower (lots R15 et TP) — **le premier chargement est l'accueil seul** (`/tower/`, lot T4 : l'interface du socle, l'identité, la lecture du serveur, le catalogue français et le contenu du jour
+ * que l'accueil charge dès qu'il est dessiné ; ni Three.js, ni la partie, ni Rapier) ; le jeu (la scène, la partie, le HUD, l'arrivée) est **à la demande** : `tower.jeu`. Le détail du graphe
+ * d'imports est dans `apps/tower/tools/mesure.mjs` (`detail`) ; ici les nombres que garde `apps/tower/e2e/poids.spec.ts`. Hors de la mesure, à la demande : la physique (le JavaScript de
+ * Rapier et son `.wasm` : `physique`), le catalogue anglais, l'aide de l'iPhone, l'interrupteur, la démonstration du banc (jamais en production). Les chiffres vont dans
+ * `docs/plateforme/budgets.md` (lignes `tower.*`).
  */
-export const LIGNES_TOWER = ["tower.jsCss", "tower.physique", "tower.anglais", "tower.polices"];
+export const LIGNES_TOWER = ["tower.jsCss", "tower.jeu", "tower.physique", "tower.anglais", "tower.polices"];
 export function mesureTower(dist = join(ROOT, "apps/tower/dist/assets")) {
-  const tous = readdirSync(dist);
-  const gz1 = (f) => gz(join(dist, f));
-  const jeu = tous.filter((f) => /^jeu-.*\.js$/.test(f));
-  const fichiers = graphePremierChargement(dist, jeu);
-  const css = tous.filter((c) => c.endsWith(".css") && fichiers.some((f) => f.endsWith(".js") && c.startsWith(`${f.replace(/-[\w-]{8}\.js$/, "")}-`)));
-  const js = fichiers.filter((f) => f.endsWith(".js"));
-  const somme = (liste) => liste.reduce((n, f) => n + gz1(f), 0);
-  const physique = tous.filter((f) => /^rapier-.*\.(js|wasm)$/.test(f));
+  const detail = mesureTowerDetail(dist);
   return {
-    js: somme(js),
-    css: somme(css),
-    jsCss: somme(js) + somme(css),
-    physique: somme(physique),
-    physiqueWasm: somme(physique.filter((f) => f.endsWith(".wasm"))),
-    anglais: somme(tous.filter((f) => f.startsWith("catalogue.en-"))),
+    js: detail.accueil.js,
+    css: detail.accueil.css,
+    jsCss: detail.accueil.total,
+    jeu: detail.jeu.total,
+    physique: detail.physique,
+    physiqueWasm: detail.physiqueWasm,
+    anglais: detail.anglais,
     polices: polices(dist),
-    fichiers: [...js, ...css],
+    fichiers: detail.accueil.fichiers,
+    detail,
   };
 }
 
