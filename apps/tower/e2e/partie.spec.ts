@@ -8,8 +8,11 @@ import { expect, test } from "@playwright/test";
 interface Porte {
   vue(): { phase: string; numero: number; vies: number; hauteurMm: number; tombees: number; pieces: { x: number; rot: number; etat: string }[]; active: number };
   manuel(oui?: boolean): void;
+  recommencer(): void;
+  commandesBot(): number;
   avancer(n: number, commandes?: number): void;
   fantome(): number;
+  etatFantome(): { etat: string; meilleure: boolean; diamant: boolean };
   rediffusion(): string | null;
   partie(): { resultat(): { hauteurMm: number } | null };
   contenu(): { theme?: string };
@@ -19,6 +22,14 @@ declare global {
   interface Window {
     __tower: Porte;
   }
+}
+
+/** Ouvre le jeu d'un jour par l'accueil : l'aide « Comment jouer » est déjà vue (sinon elle s'ouvre au premier lancement), puis JOUER (le jeu et la physique se chargent à la demande). */
+async function jouerLeJour(page: import("@playwright/test").Page, adresse: string): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem("tower:aide:vu", "1"));
+  await page.goto(adresse);
+  await page.locator("#accueil-jouer").click();
+  await page.waitForSelector("html[data-ready=true] .tower__scene");
 }
 const GAUCHE = 1;
 const DESCENDRE = 8;
@@ -90,7 +101,7 @@ test("une partie de la suite d'essai : clavier, HUD, vies perdues, écran de fin
   await expect(page.locator("#fin-rejouer")).toBeFocused();
   // La partie qui vient de finir est ta meilleure : on en garde la REDIFFUSION, et la silhouette du fantôme est l'état final de cette partie rejouée (calculée tranche par tranche, juste après la fin).
   await expect.poll(() => page.evaluate(() => window.__tower.rediffusion())).toMatch(/^[A-Za-z0-9_-]{20,}$/);
-  await expect.poll(() => page.evaluate(() => window.__tower.fantome())).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.__tower.etatFantome().meilleure)).toBe(true);
 
   // « Rejouer » : une nouvelle partie, le fantôme de la précédente est derrière la tour.
   await page.locator("#fin-rejouer").click();
@@ -110,8 +121,7 @@ const seuil = (mm: number): RegExp => new RegExp(`${String(mm).slice(0, -3)}[,.]
 
 test("un jour préparé : l'objectif de médaille dans le HUD, le thème du jour, puis le bloc « Médailles du jour » à la fin", async ({ page }) => {
   await page.route("**/jours/2026-11-06.json", (r) => r.fulfill({ contentType: "application/json", body: JOUR_PREPARE }));
-  await page.goto("/?seed=2026-11-06&tactile=0");
-  await page.waitForSelector("html[data-ready=true]");
+  await jouerLeJour(page, "/?seed=2026-11-06&tactile=0");
   expect(await page.evaluate(() => window.__tower.contenu().theme)).toBe("banquise");
   // L'objectif : la première médaille (Bronze) et son seuil en mètres, d'après le fichier, sans « Médailles en calcul… ».
   await expect(page.locator(".objectif")).toBeVisible();
@@ -131,12 +141,13 @@ test("un jour préparé : l'objectif de médaille dans le HUD, le thème du jour
 
 test("?bot : le bot rejoue la preuve du jour et finit exactement sur son Diamant", async ({ page }) => {
   await page.route("**/jours/2026-11-06.json", (r) => r.fulfill({ contentType: "application/json", body: JOUR_PREPARE }));
-  await page.goto("/?seed=2026-11-06&bot&tactile=0");
-  await page.waitForSelector("html[data-ready=true]");
+  await jouerLeJour(page, "/?seed=2026-11-06&bot&tactile=0");
   await page.waitForFunction(() => window.__tower.vue().phase === "jeu");
+  await page.waitForFunction(() => window.__tower.commandesBot() > 0); // la preuve du bot arrive par un morceau chargé à la demande : le test avance seulement quand elle est là
   await page.evaluate(() => {
     const T = window.__tower;
     T.manuel(true);
+    T.recommencer();
     for (let i = 0; i < 60000 && T.vue().phase !== "fini"; i++) T.avancer(1);
   });
   expect(await page.evaluate(() => window.__tower.partie().resultat()!.hauteurMm)).toBe(DIAMANT);

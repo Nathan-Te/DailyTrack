@@ -16,6 +16,7 @@ export {
   type Reglages,
   VENT_PERIODE_TICKS,
 } from "./constantes";
+export { numeroTower, PREMIER_JOUR_TOWER } from "./calendrier";
 export { empreinteContenu, empreinteVue } from "./empreinte";
 export { type Contenu, dailyTower, dateDuContenu, ErreurGenerateur, GENERATEUR_TIRAGE, type ThemeTower, TOWER_GENERATOR_VERSION, VERSIONS_GENERATEUR } from "./generateur";
 export { aDoublon, aEcartMaximal, NB_PIECES, PLATEFORME_BORNES, PLATEFORME_DEMI8_CHOIX, suiteParSacs, tirerPaliers } from "./generateur/v1";
@@ -68,4 +69,4 @@ export {
 export { boites, sinCos, sommetPiece } from "./sommet";
 export { PIECE_KINDS, type PieceKind } from "../lab/interface";
 export { SCENARIO_ESSAI } from "../scenarios/essai";
-export { HAUTEUR_TOUR_DEPART_MM, scenarioPaliers, TOUR_DEPART } from "../scenarios/paliers";
+export { HAUTEUR_TOUR_DEPART_MM, HAUTEUR_TOUR_DEPART_V3_MM, scenarioPaliers, TOUR_DEPART, TOUR_DEPART_V3 } from "../scenarios/paliers";

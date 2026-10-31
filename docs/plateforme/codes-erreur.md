@@ -73,6 +73,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `replay_copy` | 409 | Les entrées de la rediffusion sont identiques à celles de l'auteur du niveau ou d'une course déjà classée d'un autre joueur ce jour-là (une copie) : classements du jour seulement (lot R9). | `POST /api/submit`, `POST /api/jump/submit` |
 | `no_ghost` | 404 | Pas de fantôme : personne de classé, pas de temps pour ce joueur, ou personne devant lui. | `GET /api/day/<j>/ghost`, `GET /api/jump/day/<j>/ghost/first` |
 | `invalid_kind` | 400 | DailyTrack : fantôme demandé avec un `kind` autre que `first` ou `ahead`. | `GET /api/day/<j>/ghost` |
+| `not_ranked` | 403 | Tower (lot T4) : la tour du Diamant ne se rend qu'à un joueur classé ce jour-là (règle G1 : on la débloque en finissant). | `GET /api/tower/day/<j>/diamant` |
 | `invalid_session` | 400 | Salon : numéro de session (ou adresse) illisible. | `/api/salon/<n>/board`, `/ghosts`, `/submit` |
 | `unknown_session` | 404 | Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée). | `GET /api/salon/<n>/board`, `/ghosts` |
 | `session_future` | 409 | Salon : envoi pour une session qui n'a pas commencé. | `POST /api/salon/<n>/submit` |

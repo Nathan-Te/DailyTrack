@@ -1,20 +1,13 @@
 import { lireLangue } from "@cdj/profile";
 import { CATALOGUE_COMMUN_FR, traducteur, type Catalogue, type Langue, type Parametres, type Traducteur } from "@cdj/ui";
 import { CATALOGUE_FR } from "./catalogue.fr";
+import { gameStorage } from "./stockage";
 
 // La langue de Tower (lot T1), sur le patron de Jump et de Track : celle de la plateforme (`cdj:langue`, lue par `lireLangue` de `@cdj/profile` ; le jeu ne la change pas
 // au lot T1, il n'a pas de Réglages), les catalogues du jeu puis le catalogue commun de `@cdj/ui`. L'anglais est un autre fichier, chargé à la demande
 // (`chargerLangue`) : il ne pèse pas sur le premier chargement des joueurs en français. Tout texte passe par `t()`.
 
-function stockage(): Pick<Storage, "getItem"> | null {
-  try {
-    return localStorage;
-  } catch {
-    return null; // stockage refusé : la langue du navigateur
-  }
-}
-
-let langue: Langue = lireLangue(stockage(), typeof navigator === "undefined" ? [] : navigator.languages).langue;
+let langue: Langue = lireLangue(gameStorage(), typeof navigator === "undefined" ? [] : navigator.languages).langue; // stockage refusé : la langue du navigateur
 let anglais: Catalogue | null = null;
 let communAnglais: Catalogue | null = null;
 
