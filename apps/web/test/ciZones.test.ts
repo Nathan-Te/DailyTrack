@@ -109,7 +109,7 @@ describe("les specs e2e d'une PR", () => {
     const r = choix(["apps/tower/src/hud.ts", "packages/tower-sim/src/partie.ts"]);
     expect(r.web).toEqual([]);
     expect(r.jump).toEqual([]);
-    expect(r.tower).toEqual(["determinisme.spec.ts", "partie.spec.ts", "poids.spec.ts"]);
+    expect(r.tower).toEqual(["classement.spec.ts", "determinisme.spec.ts", "partie.spec.ts", "poids.spec.ts"]); // lot T4 : le classement (le vrai serveur) est un parcours de joueur du jeu
     // Ni une PR de Track, ni une PR de Jump, ni un document de Tower ne lancent Tower.
     expect(choix(["apps/web/src/salonMode.ts", "packages/sim/src/car.ts"]).tower).toEqual([]);
     expect(choix(["apps/jump/src/hud.ts", "packages/jump-sim/src/level.ts"]).tower).toEqual([]);
@@ -155,7 +155,7 @@ describe("les specs e2e d'une PR", () => {
   it("un fichier de jeu qu'aucune zone ne nomme ne lance que la fumée de son jeu", () => {
     expect(choix(["apps/web/src/nouveau-fichier.ts"])).toMatchObject({ web: [...table.fumee.web].sort(), jump: [], tower: [] });
     expect(choix(["apps/jump/src/nouveau-fichier.ts"])).toMatchObject({ web: [], jump: [...table.fumee.jump].sort(), tower: [] });
-    expect(choix(["apps/tower/src/nouveau-fichier.ts"])).toMatchObject({ web: [], jump: [], tower: [...table.fumee.tower].sort() }); // lot R15
+    expect(choix(["apps/tower/src/nouveau-fichier.ts"]).tower).toEqual(expect.arrayContaining([...table.fumee.tower])); // lot R15 (src/* est une zone : lot T4, elle lance aussi le classement)
   });
 
   it("une zone partagée lance la fumée des deux jeux, et les specs de sa zone", () => {
@@ -333,7 +333,7 @@ describe("la décision d'une PR", () => {
     expect(d.e2eParts).toHaveLength(1);
     expect(d.e2eParts[0]!.secondes).toBeLessThanOrEqual(120);
     const m = JSON.parse(/e2e_pr_matrice=(.*)/.exec(sorties(d))![1]!);
-    expect(m.include[0]).toMatchObject({ web: "", jump: "", tower: "determinisme.spec.ts partie.spec.ts poids.spec.ts" });
+    expect(m.include[0]).toMatchObject({ web: "", jump: "", tower: "classement.spec.ts determinisme.spec.ts partie.spec.ts poids.spec.ts" });
   });
 
   it("CI complète (main, nuit) : tous les tests unitaires en 3 parts, aucune part e2e de PR (la matrice complète est celle du workflow)", () => {

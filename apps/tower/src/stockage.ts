@@ -13,6 +13,9 @@ export const STORAGE_PREFIX = "tower:";
 /** Nom complet d'une clé de stockage local : `storageKey("records")` → `tower:records`. */
 export const storageKey = (name: string): string => `${STORAGE_PREFIX}${name}`;
 
+/** La dernière révision d'identité de la plateforme que Tower a vue (`identityRevisionSeen` de `@cdj/profile`, lot P4) : `<jeu>:identite:vue`. */
+export const CLE_IDENTITE_VUE = storageKey("identite:vue");
+
 /** Préfixe physique du développement local (le même que les autres jeux : `apercu:tower:*`). */
 export const PREVIEW_PREFIX = "apercu:";
 

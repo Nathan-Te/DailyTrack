@@ -72,6 +72,15 @@ function ecrire(stockage: Magasin, records: Records): void {
   }
 }
 
+/** Efface les records du navigateur (ils appartenaient à l'ancienne identité : un code a été chargé ailleurs). */
+export function effacerRecords(stockage: Magasin & Partial<Pick<Storage, "removeItem">>): void {
+  try {
+    stockage?.removeItem?.(CLE_RECORDS);
+  } catch {
+    /* stockage refusé : rien à effacer */
+  }
+}
+
 /** La partie `b` bat-elle `a` ? Hauteur, puis vies, puis moins de temps (le départage du classement). */
 export function bat(a: Pick<Record1, "hauteurMm" | "vies" | "ticks"> | null | undefined, b: Pick<Record1, "hauteurMm" | "vies" | "ticks">): boolean {
   if (!a) return true;

@@ -1,5 +1,7 @@
+import { identityRevisionSeen, noteIdentityChange } from "@cdj/profile";
 import { describe, expect, it } from "vitest";
-import { bat, CLE_RECORDS, enAttente, JOURS_GARDES, lireRecords, noterEnvoye, proposerRecord, serieLocale } from "../src/records";
+import { bat, CLE_RECORDS, effacerRecords, enAttente, JOURS_GARDES, lireRecords, noterEnvoye, proposerRecord, serieLocale } from "../src/records";
+import { CLE_IDENTITE_VUE } from "../src/stockage";
 
 // Lot T4 — les records gardés dans le navigateur : par jour, la meilleure partie (hauteur, vies, temps, médaille, rediffusion).
 function magasin(brut?: string): Pick<Storage, "getItem" | "setItem"> & { valeur(): string | null } {
@@ -73,5 +75,20 @@ describe("les records de Tower", () => {
     expect(serieLocale(r, 6, dateDe)).toBe(3);
     expect(serieLocale(r, 8, dateDe)).toBe(1);
     expect(serieLocale(r, 9, dateDe)).toBe(0);
+  });
+
+  it("révision d'identité de la plateforme (lot P4) : un code chargé dans un autre jeu depuis la dernière visite fait effacer les records ; une rotation ou une première visite non", () => {
+    const m = new Map<string, string>();
+    const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+    expect(CLE_IDENTITE_VUE).toBe("tower:identite:vue");
+    expect(identityRevisionSeen(s, CLE_IDENTITE_VUE)).toBe("aucun"); // première visite : rien n'est effacé
+    proposerRecord(s, "2026-11-05", partie(12_000));
+    noteIdentityChange(s, "rotation");
+    expect(identityRevisionSeen(s, CLE_IDENTITE_VUE)).toBe("aucun"); // même profil
+    expect(Object.keys(lireRecords(s))).toHaveLength(1);
+    noteIdentityChange(s, "code"); // un code chargé dans Jump ou Track
+    if (identityRevisionSeen(s, CLE_IDENTITE_VUE) === "code") effacerRecords(s);
+    expect(lireRecords(s)).toEqual({});
+    expect(m.has(CLE_RECORDS)).toBe(false);
   });
 });

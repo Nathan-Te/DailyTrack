@@ -56,35 +56,42 @@ async function appareil(browser: Browser, adresse = `/?api=${API}&tactile=0`, ai
   return { context, page };
 }
 
-/** JOUER, puis une partie menée au bout, tout droit (les pièces tombent au centre) : toujours la même suite de commandes. */
-async function jouerUnePartie(page: Page): Promise<void> {
+/**
+ * Une suite de commandes propre à l'essai : `v` pas sans commande, puis tout droit. La base du serveur d'essai garde les joueurs d'un essai raté : un essai relancé (retries de la CI) qui rejouerait la
+ * même suite serait refusé comme une copie. Deux joueurs d'un même essai qui prennent la même `v` jouent, eux, exactement la même suite : c'est la copie.
+ */
+const variante = (): number => 1 + Math.floor(Math.random() * 400);
+
+/** JOUER, puis une partie menée au bout, tout droit (les pièces tombent au centre), après `v` pas sans commande. */
+async function jouerUnePartie(page: Page, v: number): Promise<void> {
   await page.locator("#accueil-jouer").click();
   await page.waitForSelector("html[data-ready=true] .tower__scene");
   await page.evaluate(
-    ([commande]) => {
+    ([commande, attente]) => {
       const T = window.__tower;
       T.manuel(true);
-      T.recommencer(); // aucun tick de la boucle temps réel n'a été joué : la suite de commandes est toujours la même
+      T.recommencer(); // aucun tick de la boucle temps réel n'a été joué : la suite de commandes ne dépend que de `v`
+      T.avancer(attente!, 0);
       for (let i = 0; i < 40000 && T.vue().phase !== "fini"; i++) T.avancer(1, commande!);
     },
-    [DESCENDRE],
+    [DESCENDRE, v],
   );
   await expect(page.locator("#fin-ecran")).toBeVisible();
 }
 
 /** Le premier envoi : le serveur ne connaît pas encore le joueur, le formulaire du pseudo s'ouvre (pseudo propre à l'essai : la base est la même d'un essai à l'autre). */
-async function choisirPseudo(page: Page, base: string): Promise<void> {
-  const pseudo = `${base}${test.info().retry}`;
+async function choisirPseudo(page: Page, base: string, v: number): Promise<void> {
+  const pseudo = `${base}${v}x${test.info().retry}`;
   await expect(page.locator("#fin-pseudo")).toBeVisible();
   await page.locator("#fin-pseudo").fill(pseudo);
   await page.locator("#fin-pseudo-ok").click();
 }
 
 test("une partie scriptée est envoyée, rejouée par le serveur et classée ; le Diamant se débloque une fois classé", async ({ browser, request }) => {
+  const v = variante();
   const { context, page } = await appareil(browser);
-  // L'accueil : personne n'est encore classé, la scène n'est pas chargée (le décor est un aplat du thème), les paliers du jour sont écrits avec leur mot.
-  await expect(page.locator("#accueil-classement li")).toHaveCount(0);
-  await expect(page.locator(".accueil__message")).toContainText(/Personne n'est encore classé/);
+  // L'accueil : le classement du jour, la scène n'est pas chargée (le décor est un aplat du thème), les paliers du jour sont écrits avec leur mot.
+  await expect(page.locator(".accueil__tuile--classement .legende")).toContainText(/Classement du jour/);
   await expect(page.locator("#accueil-paliers li")).toHaveCount(6);
   await expect(page.locator("#accueil-paliers li").first()).toContainText(/bonus/i);
   await expect(page.locator(".tower__scene")).toHaveCount(0);
@@ -92,23 +99,22 @@ test("une partie scriptée est envoyée, rejouée par le serveur et classée ; l
   await expect(page.locator(".accueil__tour")).toContainText(/Tour n° 5 · Banquise/); // PREMIER_JOUR_TOWER provisoire : le 02/11/2026
   expect(await page.evaluate(() => (window as unknown as { __tower?: unknown }).__tower)).toBeUndefined();
 
-  await jouerUnePartie(page);
+  await jouerUnePartie(page, v);
   // Pas encore classé : le Diamant n'est pas offert, et le serveur le refuse (403).
   expect((await page.evaluate(() => window.__tower.etatFantome())).diamant).toBe(false);
   const inconnu = await request.get(`${API}/api/tower/day/${JOUR}/diamant`, { headers: { "X-Player-Id": "0123456789abcdef0123456789abcdef" } });
   expect(inconnu.status()).toBe(403);
   expect((await inconnu.json()).error).toBe("not_ranked");
 
-  await choisirPseudo(page, "Pistache");
-  await expect(page.locator("#fin-rang")).toHaveText(/^1(er|st)$/);
+  await choisirPseudo(page, "Pistache", v);
+  await expect(page.locator("#fin-rang")).toHaveText(/^\d+(er|e|st|nd|rd|th)$/);
   await expect(page.locator("#fin-rang-statut")).toContainText(/nouveau record/);
-  expect(await page.evaluate(() => window.__tower.envoi())).toMatchObject({ statut: "ranked", rang: 1 });
+  expect(await page.evaluate(() => window.__tower.envoi())).toMatchObject({ statut: "ranked" });
   await expect(page.locator("#fin-posees")).toContainText("/40");
   await expect(page.locator("#fin-paliers")).not.toBeEmpty();
 
   // Le classement du jour en dialogue : ta ligne en moutarde.
   await page.locator("#fin-voir-classement").click();
-  await expect(page.locator("#classement-liste li")).toHaveCount(1);
   await expect(page.locator("#classement-liste .rang--moi")).toBeVisible();
   await page.locator("#classement-fermer").click();
 
@@ -139,9 +145,17 @@ test("une partie scriptée est envoyée, rejouée par le serveur et classée ; l
 });
 
 test("une copie est refusée : la même suite de commandes qu'un autre joueur ne se classe pas", async ({ browser }) => {
+  const v = variante();
+  // Le premier joueur est classé.
+  const premier = await appareil(browser);
+  await jouerUnePartie(premier.page, v);
+  await choisirPseudo(premier.page, "Kiwi", v);
+  await expect(premier.page.locator("#fin-rang-statut")).toContainText(/nouveau record/);
+  await premier.context.close();
+  // Le second joue exactement la même suite : le serveur la rejoue, reconnaît les mêmes entrées et la refuse.
   const { context, page } = await appareil(browser);
-  await jouerUnePartie(page);
-  await choisirPseudo(page, "Kiwi");
+  await jouerUnePartie(page, v);
+  await choisirPseudo(page, "Mangue", v);
   await expect(page.locator("#fin-rang-statut")).toContainText(/copie|copy/i);
   expect(await page.evaluate(() => window.__tower.envoi())).toMatchObject({ statut: "refused", code: "replay_copy" });
   await context.close();
@@ -150,7 +164,7 @@ test("une copie est refusée : la même suite de commandes qu'un autre joueur ne
 test("sans serveur : la partie reste jouable et l'arrivée dit « hors ligne, non classé » ; le record est gardé pour être envoyé", async ({ browser }) => {
   const { context, page } = await appareil(browser, "/?api=http://127.0.0.1:9&tactile=0");
   await expect(page.locator(".accueil__message")).toContainText(/hors ligne|offline/i);
-  await jouerUnePartie(page);
+  await jouerUnePartie(page, variante());
   await expect(page.locator("#fin-rang-statut")).toContainText(/Hors ligne, non classé/);
   expect((await page.evaluate(() => JSON.parse(localStorage.getItem("tower:records")!))).jours[JOUR].e).toBe(0);
   await expect(page.locator("#fin-rejouer")).toBeVisible();

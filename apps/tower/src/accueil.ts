@@ -8,7 +8,7 @@ import "./base.css";
 import "./accueil.css";
 import { msUntilNextParisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
-import { readPlayerId } from "@cdj/profile";
+import { identityRevisionSeen, readPlayerId } from "@cdj/profile";
 import { barreJeu, el, formatDecompte, formatNombre, nomMedaille, type TraducteurCommun } from "@cdj/ui";
 import type { ClassementTower, MoiTower } from "./apiTower";
 import { monterClassement } from "./classementUi";
@@ -18,11 +18,11 @@ import { appliquerDocument, chargerLangue, langueCourante, t, traducteurDuSocle 
 import { lignesDeLAccueil, nombreDeClasses } from "./classementUi";
 import { hoteMessage, monterMessage, type MessageDirect } from "./messageDirect";
 import { TYPE_MEDAILLE } from "./medailles";
-import { chargerPalette, poserPalette } from "./palette";
+import { chargerPalette, paletteCourante, poserPalette } from "./palette";
 import type { Preparation } from "./preparation";
-import { lireRecords, serieLocale } from "./records";
+import { effacerRecords, lireRecords, serieLocale } from "./records";
 import { creerSession, type Session } from "./session";
-import { gameStorage } from "./stockage";
+import { CLE_IDENTITE_VUE, gameStorage } from "./stockage";
 import type { OptionsUrl } from "./urlOptions";
 
 // L'accueil de Tower (lot T4) — maquette `docs/tower/maquettes/tower-accueil.html` : l'étiquette menthe dans sa coque, sur la scène, sous le voile à rayures ; à gauche le titre, « Tour n° N · Thème »,
@@ -73,6 +73,13 @@ export async function demarrerAccueil(options: OptionsUrl): Promise<void> {
   const session = creerSession(options);
   const etat: Etat = { options, session, racine, preparation: null, classement: null, moi: null, classementIndisponible: false };
   const stockage = gameStorage();
+  // Révision d'identité de la plateforme (lot P4) : un code chargé dans un autre jeu depuis la dernière visite change le profil de ce navigateur ; les records gardés ici appartenaient à
+  // l'ancien. Rotation, création ou première visite : même profil, rien n'est effacé (`identityRevisionSeen` note la révision comme vue dans tous les cas).
+  try {
+    if (stockage && identityRevisionSeen(stockage, CLE_IDENTITE_VUE) === "code") effacerRecords(stockage);
+  } catch {
+    /* stockage refusé : rien à comparer */
+  }
 
   // --- Le squelette, dessiné tout de suite (le contenu du jour arrive juste après) ---
   const fond = el("div", { classe: "accueil__fond", attrs: { "aria-hidden": "true" } }, el("div", { classe: "accueil__sol" }));
@@ -108,6 +115,13 @@ export async function demarrerAccueil(options: OptionsUrl): Promise<void> {
 
   const coque = el("main", { classe: "coque coque--accueil", attrs: { role: "dialog", "aria-modal": "true", "aria-label": t("accueil.aria") } }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), el("div", { classe: "etiquette-tower etiquette-tower--accueil" }, gauche, droite));
   const voile = el("div", { classe: "voile voile--accueil", attrs: { id: "accueil-ecran" } }, el("div", { classe: "accueil__colonne" }, barre, coque));
+  /** Le décor sous le voile : un aplat du thème (le ciel, le sol), posé depuis la palette courante — le port tant que le thème du jour n'est pas connu. Jamais un écran blanc. */
+  function habillerFond(): void {
+    const palette = paletteCourante();
+    fond.style.setProperty("--accueil-ciel", palette.ciel);
+    fond.style.setProperty("--accueil-sol", palette.sol);
+  }
+  habillerFond();
   racine.append(fond, voile);
   document.documentElement.dataset.ready = "true";
 
@@ -228,9 +242,7 @@ export async function demarrerAccueil(options: OptionsUrl): Promise<void> {
 
   async function habiller(p: Preparation): Promise<void> {
     const m = await import("./preparation");
-    const palette = (await import("./palette")).paletteCourante();
-    fond.style.setProperty("--accueil-ciel", palette.ciel);
-    fond.style.setProperty("--accueil-sol", palette.sol);
+    habillerFond();
     dessin.replaceChildren(petiteTour());
     majBarre(p.numero);
     const theme = t(`theme.${p.theme}`);
