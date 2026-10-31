@@ -1,0 +1,102 @@
+/* Lot M2 (plateforme) : l'écran Réglages › Commandes (commandesEcran.ts). **Une feuille à part, chargée à la demande avec l'écran.** Jetons seulement. Charte § 10, maquette
+   manette-et-commandes.html (planches 2 et 3). Les marges de sécurité sont celles du cadre qui l'accueille. */
+.dj-commandes {
+  display: grid;
+  gap: var(--dj-espace-4);
+}
+.dj-commandes__onglets {
+  display: flex;
+  gap: var(--dj-espace-2);
+}
+.dj-commandes__onglet {
+  flex: 1 1 0;
+  min-height: var(--dj-cible);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: 700 var(--dj-taille-14) var(--dj-police-texte);
+  cursor: pointer;
+}
+.dj-commandes .dj-commandes__onglet[aria-selected="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  border-color: var(--dj-moutarde);
+  box-shadow: inset 0 0 0 var(--dj-trait) var(--dj-encre);
+}
+.dj-commandes__liste {
+  display: grid;
+  gap: var(--dj-espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dj-commande {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  padding: var(--dj-espace-2) var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  color: var(--dj-encre); /* l'écran peut être posé sur une étiquette sombre (Track) : les lignes sont toujours claires */
+  font: 600 var(--dj-taille-14) var(--dj-police-texte);
+}
+.dj-commande .dj-commande__nom,
+.dj-commande .dj-commande__nom > * {
+  color: var(--dj-encre);
+}
+.dj-commande--perdue {
+  background: var(--dj-moutarde);
+}
+.dj-commande--fixe {
+  background: var(--dj-creme-2);
+}
+.dj-commande__nom {
+  display: grid;
+  gap: var(--dj-espace-1);
+}
+.dj-commande__note {
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+.dj-commande__touches {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--dj-espace-2);
+}
+.dj-commande__touche {
+  min-width: var(--dj-cible);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+  font: 700 var(--dj-taille-14) var(--dj-police-chiffres);
+  cursor: pointer;
+}
+.dj-commande__touche--attente {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.dj-commande__touche--fixe {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  box-shadow: none;
+  cursor: default;
+}
+.dj-commandes__etat {
+  margin: 0;
+  min-height: 1.2em;
+  font: 600 var(--dj-taille-13) var(--dj-police-texte);
+}
+.dj-commandes__pied {
+  display: flex;
+  justify-content: flex-start;
+}

@@ -3,8 +3,9 @@
 // un bouton « C'est parti ». Montrée une seule fois (le jeu gelé dessous), puis accessible depuis la pause, l'accueil et les réglages. Les textes viennent du catalogue
 // (`aide.*`) : la fenêtre se redessine au changement de langue.
 import { bouton, icone, suivreDialogue, svg, type NomIcone } from "@cdj/ui";
+import { commandes } from "./commandes";
 import { el } from "./dom";
-import { HOWTO_POINTS, KEYBOARD_BASICS, type Control, type Device } from "./howto";
+import { HOWTO_POINTS, keyboardBasics, type Control, type Device } from "./howto";
 import { ICONES_TRACK, iconeTrack, type IconeTrack } from "./icones";
 import { aCle, onLangue, t } from "./i18n";
 
@@ -104,7 +105,7 @@ export function mountHowto(root: HTMLElement, device: Device, hooks: { onSeen?: 
     });
     const aside = el("div", "aide__schema");
     if (device === "touch") aside.append(touchDiagram(), el("p", "aide__legende", t("aide.schema.legende")));
-    else aside.append(controlsTable(KEYBOARD_BASICS));
+    else aside.append(controlsTable(keyboardBasics()));
     const grille = el("div", "aide");
     grille.append(points, aside);
     done = bouton({ texte: t("aide.parti"), variante: "track", pleineLargeur: true, onClick: close });
@@ -115,11 +116,13 @@ export function mountHowto(root: HTMLElement, device: Device, hooks: { onSeen?: 
   root.append(racine);
   suivreDialogue(racine, { focusInitial: () => done }); // lot I6 : focus rendu à la fermeture (au bouton qui l'a ouverte)
   // La langue change : la fenêtre se redessine (ouverte ou non), le focus reste sur le bouton de fin.
-  onLangue(() => {
+  const redessiner = () => {
     const had = done !== null && document.activeElement === done;
     render();
     if (had) done?.focus({ preventScroll: true });
-  });
+  };
+  onLangue(redessiner);
+  commandes.surChangement(redessiner); // lot M2 : l'aide montre toujours les touches choisies
 
   return {
     open(cb) {

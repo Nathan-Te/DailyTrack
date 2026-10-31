@@ -8,6 +8,7 @@ import { CATALOGUE_BASE } from "../src/catalogue.base";
 import { fr as GARAGE_FR } from "../src/catalogue.base.garage.fr";
 import { fr as FIGURES_FR } from "../src/catalogue.course.figures.fr";
 import { fr as FANTOMES_FR } from "../src/catalogue.course.fantomes.fr";
+import { fr as COMMANDES_FR } from "../src/catalogue.reglages.commandes";
 import { fr as GLISSIERE_FR } from "../src/catalogue.reglages.glissiere";
 import { fr as GYROSCOPE_FR } from "../src/catalogue.reglages.gyroscope";
 import { fr as VOLANT_FR } from "../src/catalogue.reglages.volant";
@@ -23,7 +24,7 @@ const sources = readdirSync(SRC).filter((f) => f.endsWith(".ts") && !f.startsWit
 const code = sources.map((f) => readFileSync(join(SRC, f), "utf8")).join("\n") + readFileSync(join(__dirname, "../index.html"), "utf8");
 // Lot I6 : les balises de partage de `index.html` lisent le catalogue de l'aperçu (construction seulement).
 // Lot 41 : les textes du Garage sont chargés avec lui (`catalogue.base.garage.*.ts`, réunis à la zone « base » pour les tests).
-const connues = new Set([...Object.keys(CATALOGUE_TRACK.fr), ...Object.keys(CATALOGUE_BASE.fr), ...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_APERCU.fr), ...Object.keys(FIGURES_FR), ...Object.keys(FANTOMES_FR), ...Object.keys(GLISSIERE_FR), ...Object.keys(VOLANT_FR), ...Object.keys(GYROSCOPE_FR)]);
+const connues = new Set([...Object.keys(CATALOGUE_TRACK.fr), ...Object.keys(CATALOGUE_BASE.fr), ...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_APERCU.fr), ...Object.keys(FIGURES_FR), ...Object.keys(COMMANDES_FR), ...Object.keys(FANTOMES_FR), ...Object.keys(GLISSIERE_FR), ...Object.keys(VOLANT_FR), ...Object.keys(GYROSCOPE_FR)]);
 // Lot 49 : la page des nouvelles figures, chargée avec les scénarios (`catalogue.course.figures.*.ts`).
 
 describe("catalogue de DailyTrack", () => {
@@ -56,6 +57,11 @@ describe("catalogue de DailyTrack", () => {
     for (const cle of [...Object.keys(GLISSIERE_FR), ...Object.keys(VOLANT_FR), ...Object.keys(GYROSCOPE_FR)]) expect(CATALOGUE_TRACK.fr[cle], cle).toBeUndefined();
     expect(new Set([...Object.keys(GLISSIERE_FR), ...Object.keys(VOLANT_FR), ...Object.keys(GYROSCOPE_FR)]).size).toBe(Object.keys(GLISSIERE_FR).length + Object.keys(VOLANT_FR).length + Object.keys(GYROSCOPE_FR).length);
     expect(CATALOGUE_TRACK.fr["tactile.indice.fleches"]).toBeTruthy(); // les boutons, mode par défaut : leur aide est au premier écran
+  });
+
+  it("lot M2 : les noms des actions de Réglages › Commandes ne sont pas dans le premier chargement (ils viennent avec l'écran), et pas en double", () => {
+    for (const cle of Object.keys(COMMANDES_FR)) expect(CATALOGUE_TRACK.fr[cle], cle).toBeUndefined();
+    expect(Object.keys(COMMANDES_FR).filter((k) => k.startsWith("commandes.action.")).length).toBe(11);
   });
 
   it("les huit thèmes du jeu sont traduits (mêmes noms que le portail)", () => {

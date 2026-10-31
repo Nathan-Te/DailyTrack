@@ -1,6 +1,7 @@
 import type { Langue } from "@cdj/ui";
 import { choixLangue, el, icone } from "@cdj/ui";
 import { creerCadre } from "./cadre";
+import { cleAction, commandes } from "./commandes";
 import { COMMANDES, listeCommandes } from "./howtoUi";
 import { langueCourante, lier, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
 import type { EffectsLevel, PlayerSettings } from "./settings";
@@ -84,10 +85,37 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
 
   const lienFleche = (id: string, cle: string, href: string, classe: string) => el("a", { classe: ["reglages__lien", classe], attrs: { id, href } }, lier(el("span"), cle), icone("chevron", { taille: 16 }));
 
+  // Onglet « Tactile » : la taille des boutons (appareil tactile seulement, `body.touch`) et le rappel des gestes — les réglages tactiles existants, rien de neuf.
+  const tactile = el(
+    "div",
+    { classe: "reglages__tactile" },
+    el("div", { classe: ["reglages__ligne", "reglages__ligne--tactile"] }, lier(el("span", { classe: "reglages__nom" }), "reglages.taille"), segment("buttonSize", "reglages.taille", BUTTON_SIZES.map((v) => ({ valeur: v, cle: `reglages.taille.${v}` })))),
+    listeCommandes(COMMANDES.tactile),
+  );
+  const hoteCommandes = el("div", { classe: "reglages__commandes", attrs: { id: "settings-commandes" } });
+  let ecranCommandes: { maj(): void; annuler(): void } | null = null;
+  const monterCommandes = () => {
+    if (ecranCommandes) return;
+    ecranCommandes = { maj() {}, annuler() {} }; // un seul chargement
+    void import("@cdj/ui/src/commandesEcran").then((m) => {
+      const ecran = m.ecranCommandes({
+        commandes,
+        t,
+        cleAction,
+        ongletInitial: document.body.classList.contains("touch") ? "tactile" : "clavier", // sur un appareil tactile, ce sont les réglages tactiles qu'on vient chercher
+        fixesManette: () => [{ nom: t("commandes.manette.courir"), touche: t("commandes.fixe.stick") }],
+        tactile: () => tactile,
+      });
+      ecranCommandes = ecran;
+      hoteCommandes.replaceChildren(ecran.racine);
+    });
+  };
+
   const langue = el("div", { classe: "reglages__langue" });
   const majLangue = () => langue.replaceChildren(choixLangue(traducteurDuSocle(), { langue: langueCourante(), onChange: (l: Langue) => void setLangue(l) }));
   majLangue();
   onLangue(majLangue);
+  onLangue(() => ecranCommandes?.maj());
 
   cadre.corps.append(
     lier(el("h1", { classe: "etiquette__titre" }), "reglages.titre"),
@@ -106,15 +134,8 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
     section("reglages.taches", segment("othersStains", "reglages.taches", [{ valeur: true, cle: "commun.montrer" }, { valeur: false, cle: "commun.cacher" }], "reglages-taches"), aide("reglages.taches.aide")),
     section(
       "reglages.commandes",
-      // Réglage des boutons tactiles : seulement sur un appareil tactile (`body.touch`, ecrans.css).
-      el("div", { classe: ["reglages__ligne", "reglages__ligne--tactile"] }, lier(el("span", { classe: "reglages__nom" }), "reglages.taille"), segment("buttonSize", "reglages.taille", BUTTON_SIZES.map((v) => ({ valeur: v, cle: `reglages.taille.${v}` })))),
-      el(
-        "div",
-        { classe: "reglages__commandes" },
-        el("div", {}, lier(el("h3", { classe: "reglages__appareil" }), "reglages.clavier"), listeCommandes(COMMANDES.clavier)),
-        el("div", {}, lier(el("h3", { classe: "reglages__appareil" }), "reglages.manette"), listeCommandes(COMMANDES.manette)),
-        el("div", {}, lier(el("h3", { classe: "reglages__appareil" }), "reglages.tactile"), listeCommandes(COMMANDES.tactile)),
-      ),
+      // Lot M2 : Réglages › Commandes = l'écran partagé du socle (onglets Clavier · Manette · Tactile), chargé à la première ouverture ; l'onglet Tactile reprend les réglages tactiles d'avant.
+      hoteCommandes,
     ),
     el("section", { classe: "reglages__section reglages__section--ligne" }, lier(el("h2", { classe: "reglages__titre" }), "reglages.langue"), langue),
     // Lot I5 : plus de profil dans le jeu — le profil commun du portail ; lot R5 : les mentions légales du site.
@@ -127,7 +148,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
   window.addEventListener(
     "keydown",
     (e) => {
-      if (e.code !== "Escape" || !open) return;
+      if (e.code !== "Escape" || !open || document.documentElement.dataset.capture) return; // lot M2 : Échap annule l'attente d'une touche, il ne ferme pas l'écran
       self.close();
       e.stopImmediatePropagation();
     },
@@ -141,12 +162,14 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
       if (open) return;
       open = true;
       cadre.racine.hidden = false;
+      monterCommandes();
       cadre.defile.scrollTop = 0;
       cadre.racine.querySelector<HTMLElement>(".dj-barre-jeu__retour")?.focus({ preventScroll: true });
       opts.onToggle?.(true);
     },
     close() {
       if (!open) return;
+      ecranCommandes?.annuler();
       open = false;
       cadre.racine.hidden = true;
       opts.onToggle?.(false);
