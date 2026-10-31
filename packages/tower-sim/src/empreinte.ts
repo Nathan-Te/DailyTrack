@@ -22,11 +22,12 @@ export function empreinteVue(v: VuePartie): string {
   return h.hex();
 }
 
-/** Lot T2 : l'empreinte du contenu d'un jour (jour, version, thème, suite de pièces, plateforme, paliers, sens du vent) : le golden du générateur. */
+/** Lot T2 : l'empreinte du contenu d'un jour (jour, version, tirage dès la version 3, thème, suite de pièces, plateforme, paliers, sens du vent) : le golden du générateur. */
 export function empreinteContenu(c: Contenu): string {
   const h = new Hasher();
   h.int(c.jour);
   h.int(c.g);
+  if (c.g >= 3) h.int(c.tirage ?? 0); // lot T3b : le tirage entre dans l'empreinte des versions qui le connaissent ; celles des versions 1 et 2 ne changent pas
   for (let i = 0; i < c.theme.length; i++) h.byte(c.theme.charCodeAt(i));
   h.int(c.plateformeDemi8);
   h.int(c.ventSens);

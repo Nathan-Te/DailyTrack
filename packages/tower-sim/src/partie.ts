@@ -72,6 +72,8 @@ export interface Scenario {
   jour?: number;
   /** La version du générateur qui a produit le contenu du jour ; absente d'un scénario nommé. */
   g?: number;
+  /** Lot T3b (générateur 3) : le tirage du contenu du jour (0, 1, 2…) ; absent d'un scénario nommé et des générateurs 1 et 2 (= 0). */
+  tirage?: number;
 }
 
 export type Phase = "jeu" | "stabilisation" | "fini";

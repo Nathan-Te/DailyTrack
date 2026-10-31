@@ -2,7 +2,7 @@ import { decoderRediffusion, type Scenario } from "@cdj/tower-sim";
 import type { MessageBot } from "./botWorker";
 
 // Le client du Web Worker du bot (lot T3) — **chargé à la demande, hors production seulement** (`jeu.ts` : `if (!PRODUCTION)`). Une demande = un calcul du jour ; les messages du worker sont rendus
-// tels quels (une pièce décidée, la fin, l'échec).
+// tels quels (la fin avec la partie retenue, ou l'échec).
 export interface DemandeBot {
   arreter(): void;
 }
@@ -11,7 +11,7 @@ export function demanderBot(contenu: Scenario, surMessage: (m: MessageBot) => vo
   const w = new Worker(new URL("./botWorker.ts", import.meta.url), { type: "module" });
   w.onmessage = (e: MessageEvent<MessageBot>) => {
     surMessage(e.data);
-    if (e.data.genre !== "piece") w.terminate();
+    w.terminate();
   };
   w.onerror = () => {
     surMessage({ genre: "echec" });
