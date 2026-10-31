@@ -6,3 +6,4 @@
 - **Voiture** : modèle low-poly **original** construit en code (`apps/web/src/carMesh.ts`) ; aucun modèle ni forme de véhicule existant n'a été repris.
 - **Bibliothèques** : [Three.js](https://threejs.org) (licence MIT), Vite, Vitest, Playwright (outils de développement).
 - **Police** : celle du système (aucune police chargée).
+- **Ambiances** (lot 56) : des sons de fond **rendus par du code du dépôt** au chargement du thème (`apps/web/src/son/ambiance/`) : bruit filtré, notes, cloches, voix de foule synthétiques ; **aucun enregistrement, aucun fichier, aucune source tierce**, rien à créditer. (Les ambiances du lot 23, procédurales aussi, sont retirées.)

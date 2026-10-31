@@ -10,7 +10,7 @@
     "web/accessibilite.spec.ts", "web/admin.spec.ts", "web/air.spec.ts", "web/cameras.spec.ts", "web/decor.spec.ts", "web/demo.spec.ts",
     "web/figures.spec.ts", "web/garage.spec.ts", "web/hud-compact.spec.ts", "web/identite-plateforme.spec.ts", "web/juice.spec.ts", "web/mobile.spec.ts",
     "web/plein-ecran.spec.ts", "web/post.spec.ts", "web/qualite.spec.ts", "web/relief.spec.ts", "web/salon-serveur.spec.ts", "web/scene.spec.ts",
-    "web/socle.spec.ts", "web/thumbnails.spec.ts", "web/vie-ciel.spec.ts", "web/vitesse.spec.ts", "web/vitrine.spec.ts", "web/vitrine-voiture.spec.ts", "web/vitrine-son.spec.ts", "web/son-jeu.spec.ts",
+    "web/socle.spec.ts", "web/thumbnails.spec.ts", "web/vie-ciel.spec.ts", "web/vitesse.spec.ts", "web/vitrine.spec.ts", "web/vitrine-voiture.spec.ts", "web/vitrine-son.spec.ts", "web/vitrine-ambiances.spec.ts", "web/son-jeu.spec.ts",
     "jump/accessibilite.spec.ts", "jump/animation.spec.ts", "jump/carnage-lisible.spec.ts", "jump/fantome-premier.spec.ts", "jump/foret.spec.ts", "jump/hud-compact.spec.ts",
     "jump/modules.spec.ts", "jump/plateformes.spec.ts", "jump/plein-ecran.spec.ts", "jump/sensations.spec.ts", "jump/surfaces.spec.ts", "jump/themes.spec.ts",
     "jump/tout-le-monde.spec.ts", "jump/variete.spec.ts", "jump/voie-lente.spec.ts"
@@ -150,6 +150,7 @@
     "web/vie-ciel.spec.ts": ["track-scene"],
     "web/vitesse.spec.ts": ["track-sim", "track-audio-fx"],
     "web/vitrine-son.spec.ts": ["track-son", "track-vitrine"],
+    "web/vitrine-ambiances.spec.ts": ["track-son", "track-vitrine"],
     "web/son-jeu.spec.ts": ["track-son", "track-audio"],
     "web/vitrine-voiture.spec.ts": ["track-voiture", "track-vitrine"],
     "web/vitrine.spec.ts": ["track-vitrine", "track-scene"],

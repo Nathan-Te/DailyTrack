@@ -106,7 +106,6 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     const vol = reg(slider(range, () => host.audio().volume, (v) => host.setAudio(withVolume(host.audio(), v)), pct, t("reglages.son.volume")));
     const engine = reg(slider(range, () => host.audio().engine, (v) => host.setAudio({ ...host.audio(), engine: v }), pct, t("reglages.son.moteur")));
     const effects = reg(slider(range, () => host.audio().effects, (v) => host.setAudio({ ...host.audio(), effects: v }), pct, t("reglages.son.effets.nom")));
-    const ambience = reg(slider(range, () => host.audio().ambience, (v) => host.setAudio({ ...host.audio(), ambience: v }), pct, t("reglages.son.ambiance.nom")));
     const mute = reg(
       segmented<boolean>([[false, t("reglages.son.avec")], [true, t("reglages.son.muet.nom")]], () => host.audio().volume <= 0, (v) => {
         const a = host.audio();
@@ -119,7 +118,6 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
       row(t("reglages.son.volume"), vol.box),
       row(t("reglages.son.moteur"), engine.box),
       row(t("reglages.son.effets.nom"), effects.box, t("reglages.son.effets.aide")),
-      row(t("reglages.son.ambiance.nom"), ambience.box, t("reglages.son.ambiance.aide")),
     );
 
     // --- Jeu ---

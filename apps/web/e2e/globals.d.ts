@@ -192,7 +192,6 @@ interface CdjDebug {
     log: string[];
     running: boolean;
     settings: { volume: number; last: number };
-    ambience: string | null;
     /** Lot 55 : le nouveau son (null tant qu'il n'est pas chargé) : la voiture qu'on entend, moteur prêt, version légère, compresseur, boîte virtuelle, nœuds, boucles qui jouent. */
     ext: { voiture: string; pret: boolean; leger: boolean; compresseur: boolean; rapport: number; rpm: number; noeuds: number; brefs: number; sources: number; chargements: number; ponctuels: string[] } | null;
   };
@@ -249,9 +248,44 @@ interface SonDebug {
   };
 }
 
+/** Lot 56 : la planche « Ambiances » (`?planche=ambiances`), ses outils de rendu hors ligne et sa planche. */
+interface AnalyseAmbiance {
+  theme: string;
+  renduMs: number;
+  memoire: number;
+  lit: { secondes: number; rms: number; crete: number; nonFinis: number; correlation: number; bandes: number[]; couture: { saut: number; ratio: number } };
+  local: { rms: number; crete: number; secondes: number; couture: { saut: number; ratio: number } } | null;
+  banque: { secondes: number; groupes: Record<string, { n: number; dureeMin: number; dureeMax: number; crete: number }> };
+  flux: { nom: string; ecart: readonly [number, number]; pasDeGroupe: boolean }[];
+  reactions: string[];
+  deuxLectures: boolean;
+}
+
+interface AmbiancesDebug {
+  module: {
+    analyserTheme(theme: string): Promise<AnalyseAmbiance>;
+    rendreAmbianceHorsLigne(
+      theme: string,
+      secondes: number,
+      vitesse?: number | "scenario",
+      decor?: { cote: number; proche: number } | null | "virtuel",
+      graine?: number,
+      reactions?: readonly { t: number; nom: "checkpoint" | "finish" }[],
+    ): Promise<{ theme: string; secondes: number; canaux: Float32Array[]; crete: number; rms: number; nonFinis: number; noeuds: number; brefs: number; evenements: string[]; joues: number; renduMs: number; memoire: number }>;
+    verifierFuitesAmbiance(theme: string): Promise<{ crees: number; deconnectes: number; sourcesDemarrees: number; sourcesArretees: number; brefsApresArret: number }>;
+    verifierRecommencements(theme: string, fois?: number): Promise<{ noeuds: number[]; brefsApresArret: number[] }>;
+  };
+  planche: {
+    activer(): Promise<void>;
+    choisir(theme: string): Promise<void>;
+    etat(): { actif: boolean; theme: string; mode: "seule" | "course"; vitesse: number; t: number; ambiance: { theme: string; noeuds: number; brefs: number; joues: number } | null; rendus: Record<string, { renduMs: number; memoire: number }> };
+    arreter(): void;
+  };
+}
+
 interface VitrineDebug {
   /** La planche : les paliers (retouche 38b, par défaut), les directions (lot 38, `?planche=directions`) ou la voiture (lot 40, `?planche=voiture`). */
-  planche: "paliers" | "directions" | "voiture" | "son";
+  planche: "paliers" | "directions" | "voiture" | "son" | "ambiances";
   erreurs: string[];
   vues(): { sujet: string; variante: string; etat: string; constructionMs: number; appels: number; triangles: number; textures: number; cibles: number }[];
   construireTout(sujet?: string): Promise<void>;
@@ -286,6 +320,8 @@ interface VitrineDebug {
   voiture(): Promise<VoitureDebug | null>;
   /** Lot 55 : la planche « Son » (`?planche=son`), une fois montée (sinon `null`). */
   son(): Promise<SonDebug | null>;
+  /** Lot 56 : la planche « Ambiances » (`?planche=ambiances`), une fois montée (sinon `null`). */
+  ambiances(): Promise<AmbiancesDebug | null>;
 }
 
 interface Window {
