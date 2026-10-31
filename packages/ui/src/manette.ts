@@ -148,6 +148,8 @@ export function demarrerManette(options: OptionsManette, brancher?: Branchement)
       else courant.stepUp();
       courant.dispatchEvent(new Event("input", { bubbles: true }));
       courant.dispatchEvent(new Event("change", { bubbles: true }));
+      // Un écran peut lâcher le focus au `change` (Track : `input.blur()` pour rendre le clavier au jeu) : le curseur réglé à la manette le garde.
+      if (courant.isConnected && document.activeElement !== courant) courant.focus({ preventScroll: true });
       return;
     }
     const autres = cibles(p).filter((c) => c !== courant && !courant.contains(c) && !c.contains(courant));
