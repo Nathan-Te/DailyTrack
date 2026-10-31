@@ -1,5 +1,5 @@
 import { formatDay } from "@cdj/core";
-import { type Contenu, dailyTower, lireJour, type Medailles } from "@cdj/tower-sim";
+import { type Contenu, dailyTower, lireJour, type Medailles, TOWER_GENERATOR_VERSION } from "@cdj/tower-sim";
 
 // Le contenu d'un jour pour le jeu (lot T2) : le jour FIGÉ s'il existe (`jours/AAAA-MM-JJ.json`, écrit par `npm run figer:tower -w @cdj/tower-sim`, jamais à la main), sinon le
 // générateur avec la version courante. La liste des dates figées publiées est écrite à la construction (`vite.config.ts`, d'après `public/jours/`) : une date qui n'y est pas ne
@@ -37,7 +37,7 @@ async function lireFichier(jour: number, base: string, delai = 4000): Promise<Jo
   }
 }
 
-/** Le jour `jour` : le jour figé s'il existe, sinon `dailyTower` avec la version courante (sans médailles : le jeu les estime ou les calcule). */
-export async function chargerJour(jour: number, base: string = document.baseURI): Promise<JourDuJeu> {
-  return (await lireFichier(jour, base)) ?? { contenu: dailyTower(jour), medailles: null, preuve: null };
+/** Le jour `jour` : le jour figé s'il existe (il porte son tirage), sinon `dailyTower` avec la version courante au tirage `tirage` (0, ou `?tirage=` hors production ; sans médailles : le jeu les estime ou les calcule). */
+export async function chargerJour(jour: number, tirage = 0, base: string = document.baseURI): Promise<JourDuJeu> {
+  return (await lireFichier(jour, base)) ?? { contenu: dailyTower(jour, TOWER_GENERATOR_VERSION, tirage), medailles: null, preuve: null };
 }

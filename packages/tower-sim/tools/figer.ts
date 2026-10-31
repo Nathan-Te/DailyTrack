@@ -33,7 +33,7 @@ for (let jour = du; jour <= au; jour++) {
   if (existsSync(fichier)) {
     const relu = lireJourFige(JSON.parse(readFileSync(fichier, "utf8")) as unknown, jour);
     if (typeof relu === "string") casses.push(`${date} : ${relu}`);
-    else if (empreinteContenu(relu) !== empreinteContenu(dailyTower(jour, relu.g))) casses.push(`${date} : ne se régénère pas à l'identique avec g${relu.g}`);
+    else if (empreinteContenu(relu) !== empreinteContenu(dailyTower(jour, relu.g, relu.tirage ?? 0))) casses.push(`${date} : ne se régénère pas à l'identique avec g${relu.g}`);
     else gardes++;
     continue;
   }

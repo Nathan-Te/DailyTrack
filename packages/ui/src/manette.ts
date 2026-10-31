@@ -12,7 +12,7 @@ import {
   type Genre,
   type Rect,
 } from "./manetteLogique";
-import "./manette.css";
+import feuille from "./manette.css?url";
 
 // Lot M1 (plateforme) : **les menus à la manette — la seule logique de toute la plateforme** (portail, Track, Jump, Tower). Un module **à la demande** : il n'est
 // chargé qu'à la première manette (`activerManette`, `manetteLien.ts`), donc zéro octet et zéro lecture sans manette. Il n'importe rien du reste du socle (ni `dom`,
@@ -73,6 +73,11 @@ const rectDe = (e: Element): Rect => {
 
 /** `brancher` : où poser le filtre que les jeux appliquent à la manette qu'ils lisent (absent : Tower, qui ne lit pas la manette en partie). */
 export function demarrerManette(options: OptionsManette, brancher?: Branchement): void {
+  // La feuille est un fichier du site (jamais de style en ligne) posé par le module : l'`import()` du premier chargement n'a ainsi aucune dépendance à précharger (quelques octets de moins).
+  const lien = document.createElement("link");
+  lien.rel = "stylesheet";
+  lien.href = feuille;
+  document.head.append(lien);
   const suivi = new SuiviBoutons();
   const repetiteur = new Repetiteur();
   const racine = document.documentElement;
