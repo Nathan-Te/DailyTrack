@@ -127,6 +127,8 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   }
   habillerFond();
   racine.append(fond, voile);
+  // Lot S1 : Discord et Ko-fi, deux plaques discrètes en bas à gauche de l'accueil (à la demande ; elles sont dans l'écran d'accueil, donc jamais en partie).
+  void import("@cdj/ui/src/liensCommunauteJeu").then((m) => coque.append(m.liensCommunaute()));
   document.documentElement.dataset.ready = "true";
 
   // Le message en direct (accueil et arrivée) : un seul bandeau, jamais pendant une partie.

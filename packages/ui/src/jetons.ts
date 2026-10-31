@@ -17,6 +17,9 @@ export const COULEURS = {
   "dj-terre": "#C2401F",
   "dj-terre-texte": "#FFF4E0",
   "dj-moutarde": "#E8B23A",
+  "dj-kofi": "#72A4F2", // lot S1 : le bleu du bouton Ko-fi (portail et accueil des jeux)
+  "dj-discord": "#5865F2", // lot S1 : le bleu-violet du bouton Discord
+  "dj-blanc": "#FFFFFF", // lot S1 : le texte du bouton Discord
   "dj-ecran": "#3A2C20",
   "dj-ambre": "#F2B544",
   "dj-ecran-texte": "#E9DCC2",

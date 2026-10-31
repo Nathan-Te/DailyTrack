@@ -1,0 +1,29 @@
+/* Lot S1 : les liens de la communauté (Discord, Ko-fi) — le même aspect dans le pied du portail et sur l'accueil des jeux. Jetons seulement. Sur l'accueil d'un jeu : en bas à gauche, sur la scène sous le
+   voile (le bas à droite est la bande d'aide de la manette) ; l'écran qui les porte leur réserve une bande en bas, rien ne passe dessous (le contenu défile s'il manque de place). */
+.dj-communaute__lien {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-7) 0 var(--dj-espace-4);
+  border-radius: 22px;
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: transform var(--dj-duree-courte);
+}
+.dj-communaute__lien:hover {
+  transform: translateY(-2px);
+}
+.dj-communaute__lien img {
+  display: block;
+}
+.dj-communaute__lien--kofi {
+  background: var(--dj-kofi);
+  color: var(--dj-encre);
+}
+.dj-communaute__lien--discord {
+  background: var(--dj-discord);
+  color: var(--dj-blanc);
+}

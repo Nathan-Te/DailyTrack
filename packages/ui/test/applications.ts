@@ -24,6 +24,8 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["packages/ui (interrupteur)", "packages/ui/src/catalogue.interrupteur.ts", "CATALOGUE_INTERRUPTEUR"],
   // Lot « musique » : les réglages de la musique, communs à Track, Jump et Tower (chargés à la demande avec leur panneau).
   ["packages/ui (musique)", "packages/ui/src/catalogue.musique.ts", "CATALOGUE_MUSIQUE"],
+  // Lot S1 : les noms des boutons Discord et Ko-fi de l'accueil des jeux (à la demande avec leur groupe).
+  ["packages/ui (communauté)", "packages/ui/src/catalogue.communaute.ts", "CATALOGUE_COMMUNAUTE"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
   ["apps/web (base)", "apps/web/src/catalogue.base.ts", "CATALOGUE_BASE"],
   ["apps/web (accueil)", "apps/web/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],

@@ -40,15 +40,15 @@ Groupe 1 — **parties d'essai** (s'appliquent à la partie suivante) ; groupe 2
 
 Bloc copié (exemple, une ligne) : `{"delaiTicks":10,"cadenceTicks":3,"vitesseChute8":20,"facteurDescente":4,"hauteurApparition8":56,"physique":{"frottement":0.6,…},"plateformeDemi8":28,"plateformeForcee":false,"rendu":{…},"essai":false}`.
 
-## Poids (gzip, `node apps/tower/tools/mesure.mjs`, contre `main` reconstruit à part)
+## Poids (gzip, `node apps/tower/tools/mesure.mjs`, contre `main` reconstruit à part, après la fusion de `main`)
 | Ligne | Avant | Après | Plafond |
 |---|---|---|---|
-| `tower.jsCss` (l'accueil) | 36 817 | **36 800** | 39 000 |
-| `tower.jeu` | 150 305 | **161 585** (+11 280) | 164 000 (marge 2 415) |
-| `tower.anglais` | 2 795 | 4 027 | 8 000 |
+| `tower.jsCss` (l'accueil) | 37 006 | **37 011** (+5, bruit de construction) | 39 000 (marge 1 989) |
+| `tower.jeu` | 150 804 | **161 613** (+10 809) | 164 000 (marge 2 387) |
+| `tower.anglais` | 3 990 | 4 029 | 8 000 |
 | `tower.physique`, `tower.polices` | — | inchangés | |
 
-L'accueil ne grossit pas : les textes français que seul le jeu lit sont à part (`catalogue.jeu.fr.ts`), les réglages d'essai et les tailles d'essai sont hors de `constantes.ts` / `sommet.ts` (`physique.ts`, `echelles.ts`). L'outil `?debug&tune` (≈ 1 900 o) est importé **dans** le jeu : un `import()` de plus l'aurait séparé en un morceau et fait grossir l'accueil de 16 o (liste des morceaux préchargés).
+L'accueil ne grossit pas, à 5 o près (bruit) : les textes français que seul le jeu lit sont à part (`catalogue.jeu.fr.ts`), les réglages d'essai et les tailles d'essai sont hors de `constantes.ts` / `sommet.ts` (`physique.ts`, `echelles.ts`). L'outil `?debug&tune` (≈ 1 900 o) est importé **dans** le jeu : un `import()` de plus l'aurait séparé en un morceau et fait grossir l'accueil de 16 o (liste des morceaux préchargés).
 
 ## Vérifié
 - Tests unitaires (Vitest, sans navigateur) : `tower-sim` 236 (dont `essai.test.ts` : défauts = constantes, partie identique au bit près sans option, chaque réglage change la partie, vent, tailles, `effetSuivant` = l'effet réel des six effets) ; `apps/tower` : panique (bornes, états, hystérésis, analyseur), expression, événements (vues écrites à la main **et** vraie partie Rapier), sons (faux `AudioContext` : chaque événement joue son son, **rien avant le premier geste**, cris bornés), secousse + `prefers-reduced-motion`, décor devant la mer (ordre des profondeurs, un seul plouf, gerbe plafonnée), hasard d'affichage séparé de la simulation, curseurs (chaque curseur du groupe 1 empêche le classement ; le groupe 2 non). Golden de `tower-sim` et déterminisme : verts.
@@ -66,7 +66,7 @@ L'accueil ne grossit pas : les textes français que seul le jeu lit sont à part
 2. Les expressions **figée** (yeux fermés), **lierre** (soulagé) et **glissante** (inquiète) sont des propositions : à confirmer en jouant.
 3. Les **cris de panique** : gardés discrets (0,5, un toutes les 3 s au plus) ; à zéro si tu n'en veux pas.
 4. L'outil `?debug&tune` pèse 1 900 o dans `tower.jeu` ; je peux le séparer (`import()`) au prix de +16 o dans l'accueil — à toi de dire si 16 o de l'accueil valent 1 900 o du jeu.
-5. La marge de `tower.jeu` est de 2 415 o : le lot T5b ou les maquettes d'archives devront la relever ou alléger.
+5. La marge de `tower.jeu` est de 2 387 o : le lot T5b ou les maquettes d'archives devront la relever ou alléger.
 
 ## Liens de test (aperçu de la PR)
 - Jouer avec le son : `/tower/?seed=2026-11-05` (les yeux suivent la pièce, puis paniquent quand la tour tangue ; une pièce qui tombe : sifflement, plouf, secousse ; provoque un effondrement).

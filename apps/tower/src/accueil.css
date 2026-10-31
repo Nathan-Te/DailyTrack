@@ -386,3 +386,17 @@
     transform: none;
   }
 }
+
+/* Lot S1 : l'accueil qui porte les boutons Discord / Ko-fi (liensCommunaute.css réserve une bande en bas, padding du voile) : c'est la colonne qui défile, dans ce qui reste, pour que le contenu ne passe jamais sous les boutons. */
+.voile--accueil:has(.dj-communaute) {
+  overflow-y: hidden;
+}
+.voile--accueil:has(.dj-communaute) > .accueil__colonne {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.voile--accueil:has(.dj-communaute) > .accueil__colonne::-webkit-scrollbar {
+  display: none;
+}
