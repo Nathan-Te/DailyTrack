@@ -164,7 +164,13 @@ export async function creerExtension(h: HoteSon): Promise<ExtensionSon> {
     lent.frequency.value = 0.27;
     rafale = c.nd(ctx.createGain());
     rafale.gain.value = 0.25;
-    lent.connect(rafale).connect(vent.g.gain);
+    // Le balancement se règle sur un étage à part (0,75 ± 0,25) placé après le volume du vent : branché sur le gain du vent
+    // lui-même (base 0), il donnait un souffle constant même voiture arrêtée, dans les menus.
+    const etage = c.nd(ctx.createGain());
+    etage.gain.value = 0.75;
+    vent.g.disconnect();
+    vent.g.connect(etage).connect(bus.effects);
+    lent.connect(rafale).connect(etage.gain);
     lent.start();
   }
 
@@ -357,7 +363,6 @@ export async function creerExtension(h: HoteSon): Promise<ExtensionSon> {
       sifflet.o.frequency.setTargetAtTime(voix.skidFreq * 0.9, t, k);
       sifflet.g.gain.setTargetAtTime(derape * 0.035 * mix.crisse, t, k);
     }
-    if (rafale) rafale.gain.setTargetAtTime(0.25, t, 0.5);
     if (moteur) {
       moteur.maj({ rpm: boite.rpm, charge: boite.charge, passage: boite.passage, sens: boite.sens, rapport: boite.rapport, vitesse: f.speed, gaz, enAir: !f.grounded, silence: !on });
       return true;
