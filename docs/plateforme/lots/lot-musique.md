@@ -12,7 +12,7 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 ## Retour de Nathan (31/10/2026) : un morceau par menu et par thème
 - **Les scènes** (`scenes` d'un morceau : `menu`, `theme:<code>`) : chaque jeu annonce où il en est (`musique.scene(…)`) ; la musique choisit les morceaux de la scène, sinon ceux qui passent partout, sinon le silence, et passe en fondu (2 s), en gardant le morceau en cours s'il y passe aussi. **Extensible** : un thème ou un jeu de plus = une ligne de `packages/musique/src/scenes.ts` (le test de chaque jeu échoue sinon). Track : 8 thèmes, Jump : 5, Tower : `port`. Détail : `docs/plateforme/musique.md`.
 - **Sources hors du dépôt** (les boucles Ovani pèsent 25 Mo) : `musique/pistes/*` est ignoré par git, seul le morceau préparé (AAC 96 kbit/s, ≈ 1,4 Mo pour 2 minutes) est commité ; `liste.json` garde l'empreinte de chaque source ; la CI vérifie sans les sources.
-- **Budget** (après la fusion de `main`, qui a retiré l'ambiance de Track au lot 56 : −1 023 o) : le branchement avec les scènes pèse Track +382 o, Jump +355 o, Tower +366 o ; **Track a 967 o de marge sans relever son plafond** (le relèvement de +1 000 o accordé par Nathan n'a pas servi) ; **Tower avait 44 o de marge sur `main` : son plafond passe de 168 000 à 168 500 o** (à confirmer par Nathan).
+- **Budget** (après la fusion de `main`, qui a retiré l'ambiance de Track au lot 56 : −1 023 o) : le branchement avec les scènes pèse Track +364 o, Jump +362 o, Tower +366 o ; **Track a 875 o de marge sans relever son plafond** (le relèvement de +1 000 o accordé par Nathan n'a pas servi) ; **Tower avait 44 o de marge sur `main` : son plafond passe de 168 000 à 168 500 o** (à confirmer par Nathan).
 - **Une boucle générée par le code pour chaque scène** (`musique/generateur/`, `docs/plateforme/musique.md`) : 22 boucles (Track : électro moderne ; Jump : chiptune rétro ; Tower : calme), 51 à 82 s chacune, 16,6 Mo en AAC, −18 LUFS, boucle sans coupure ; Nathan les remplace à la main par ses Ovani Sound en gardant `jeux` et `scenes` de l'entrée. Vérifié sans les entendre : niveau (moyenne −18,4 à −19,9 dB, crête −3,7 à −11,1 dB), jonction de boucle, déterminisme, une boucle par scène ; **dans Chromium** (trois boucles, première étape) chaque scène joue son morceau et l'usine de Jump restait silencieuse.
 
 ## Fichiers touchés dans les jeux (rien d'autre n'a bougé)
@@ -25,8 +25,8 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 ## Mesures (`node scripts/budgets.mjs`, contre `main` reconstruit)
 | | Premier chargement | Limite |
 |---|---|---|
-| Track | **+382 o** (`track.jsCss` : 293 745, 967 o de marge) | 500 o |
-| Jump | **+355 o** | 500 o |
+| Track | **+364 o** (`track.jsCss` : 293 837, 875 o de marge) | 500 o |
+| Jump | **+362 o** | 500 o |
 | Tower | **+366 o** (plafond relevé de 168 000 à 168 500 o, à confirmer) | 500 o |
 | Portail | +10 o (la clé gardée de `@cdj/profile`) | — |
 | Lecteur + panneau, à la demande | **4 458 o** (ligne `musique.lecteur`, 8 000 o) | — |
@@ -53,7 +53,7 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 3. **Le portail** : silence (proposé) ou une liste à lui (une ligne + des morceaux `portail`).
 4. **iPhone et interrupteur silence** : la musique passe quand l'interrupteur est sur silence, comme le son de Track. À inverser ? (retirer `audioSession` de `navigateur.ts`).
 5. **`tous` = Track, Jump, Tower** (pas le portail) ; licences admises : `mienne`, `CC0`, `CC-BY-4.0`, `achetee` — ajouter CC-BY-SA ?
-6. **Tower** : son plafond de premier chargement passe de 168 000 à 168 500 o (le branchement pèse +366 o, `main` n'avait que 44 o de marge) — à confirmer. Track garde 967 o de marge sans toucher à son plafond.
+6. **Tower** : son plafond de premier chargement passe de 168 000 à 168 500 o (le branchement pèse +366 o, `main` n'avait que 44 o de marge) — à confirmer. Track garde 875 o de marge sans toucher à son plafond.
 7. Les sources (`musique/pistes/`) sont commitées : un wav ou un flac pèse lourd dans le dépôt — préférer un mp3 de bonne qualité, ou ajouter un stockage de fichiers volumineux.
 
 ## À tester (aperçu de la PR)

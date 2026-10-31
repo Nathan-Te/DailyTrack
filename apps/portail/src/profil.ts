@@ -49,6 +49,10 @@ import { baseApi } from "./jour";
 import { cartes } from "./jours";
 import { lireRetour } from "./retour";
 import { stockageDuPortail } from "./stockage";
+import { activerManette } from "@cdj/ui/src/manetteLien";
+
+// Lot M1 : cette page se pilote à la manette (son action principale : une ligne de `manette.ts`, chargée avec le menu).
+activerManette(() => import("./manette").then((m) => m.pour("profil")));
 
 // Lot I2 : le profil commun (`/profil/`), ouvert par l'avatar du portail. **Le même profil** que Réglages › Profil des jeux : même stockage
 // (`cdj:player`, `cdj:name`, même origine), mêmes routes et mêmes refus (`PUT /api/player` pour le pseudo ; un code chargé est lu sur le

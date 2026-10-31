@@ -1,5 +1,6 @@
 import "./generationInit";
 import "./interrupteurInit";
+import { activerManette } from "@cdj/ui/src/manetteLien"; // lot M1 : les menus à la manette (chargés à la première manette)
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import {
@@ -143,6 +144,8 @@ import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSet
 import { mountPauseMenu, type PauseView } from "./pauseMenu";
 import { baseDuMessage, ecranDuMessage, type EcranMessage } from "./messageEnDirectLogic";
 import { monterMessageEnDirect, type MessageEnDirect } from "./messageEnDirect";
+
+activerManette(() => import("./manette"));
 
 // Lot 11 (partie jeu) : le **thème est une donnée du générateur** (`daily.theme`, celui de la date ou un thème **forcé** par `?theme=`, qui est alors un
 // **essai** : identifiant `…-t<thème>`, `DayMode` « essai », rien d'enregistré — ni mémoire du jour, ni historique, ni série, ni partage, bandeau
