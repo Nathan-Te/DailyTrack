@@ -57,6 +57,29 @@ describe("la séparation « Un jeu sur deux »", () => {
   });
 });
 
+describe("un jeu classé à la hauteur (lot TP)", () => {
+  const jeux = [
+    { jeu: "cdj", site: "track", nom: "Track" },
+    { jeu: "jump", site: "jump", nom: "Jump" },
+    { jeu: "tower", site: "tower", nom: "Tower", unite: "mm" as const },
+  ];
+  it("a son onglet après ceux des jeux au temps ; la vue `tower` se garde dans l'adresse", () => {
+    expect(onglets(jeux).map((o) => o.vue)).toEqual([VUE_CUMUL, "track", "jump", "tower"]);
+    expect(vueDeLAdresse("?vue=tower")).toBe("tower");
+    expect(adresseDeVue("https://playdujour.com/classement/", { date: null, vue: "tower" }).search).toBe("?vue=tower");
+  });
+  it("n'est jamais « le jeu à finir pour le cumul »", () => {
+    const j = (jeu: string, unite?: "mm"): Jour["jeux"][number] => ({ jeu, numero: 1, theme: null, seuils: null, premierJour: "2026-10-13", ...(unite ? { unite } : {}), etat: { statut: "pas_joue" } });
+    const joueur = { pseudo: "A", serie: 0, aProlonger: false, journeesParfaites: 0, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: 14, classesDuJour: 40 };
+    // Track fini, Jump pas fini, Tower pas fini : on dit Jump (Tower n'est pas dans le cumul).
+    const tous = [{ ...j("cdj"), etat: { statut: "fini" as const, tempsMs: 1, medaille: null, rang: 1, classes: 1 } }, j("jump"), j("tower", "mm")];
+    expect(tuileDuClassement(joueur, tous)).toMatchObject({ type: "manque", jeu: { jeu: "jump" } });
+    // Les deux jeux au temps finis mais pas Tower : plus rien ne manque au cumul.
+    const finis = tous.map((x) => (x.jeu === "tower" ? x : { ...x, etat: { statut: "fini" as const, tempsMs: 1, medaille: null, rang: 1, classes: 1 } }));
+    expect(tuileDuClassement(joueur, finis)).toEqual({ type: "inviter" });
+  });
+});
+
 describe("la tuile « Classement du jour » de l'accueil", () => {
   const jeux = (...statuts: ("fini" | "pas_joue" | "en_cours")[]): Jour["jeux"] =>
     JEUX.map((j, i) => ({

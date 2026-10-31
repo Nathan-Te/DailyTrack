@@ -1,6 +1,6 @@
 // `npm run measure:platform -w @cdj/api -- --jump 800 --track 300 --salon 40` (lot P4 de la plateforme) : le coût projeté d'un mois à partir
 // du nombre **réel** de joueurs par jour de chaque jeu, saisi à la main (`--jump` : DailyJump ; `--track` : circuit du jour de DailyTrack ;
-// `--salon` : joueurs qui passent 30 minutes au Salon par jour ; lot I2 : `--portail` : visiteurs du portail par jour). Les coûts unitaires viennent des mesures des lots P1 à P4 et de DailyTrack
+// `--salon` : joueurs qui passent 30 minutes au Salon par jour ; lot I2 : `--portail` : visiteurs du portail par jour ; lot TP : `--tower` : joueurs de Tower par jour). Les coûts unitaires viennent des mesures des lots P1 à P4 et de DailyTrack
 // (`scripts/platformBudget.ts` dit d'où vient chaque chiffre). Rien n'est lu ni écrit : un calcul. Seuils et décisions : docs/plateforme/couts.md.
 import { FREE_TIER, projectMonth } from "./platformBudget";
 
@@ -13,11 +13,11 @@ const arg = (name: string, fallback: number): number => {
   }
   return v;
 };
-const input = { jump: arg("jump", 0), track: arg("track", 0), salon: arg("salon", 0), portail: arg("portail", 0) };
+const input = { jump: arg("jump", 0), track: arg("track", 0), salon: arg("salon", 0), portail: arg("portail", 0), tower: arg("tower", 0) };
 const fr = (n: number, d = 0) => n.toLocaleString("fr-FR", { maximumFractionDigits: d, minimumFractionDigits: d });
 const p = projectMonth(input);
 
-console.log(`Mois projeté (30 jours) : DailyJump ${fr(input.jump)} joueurs/jour · DailyTrack ${fr(input.track)} · Salon ${fr(input.salon)} (30 min chacun) · Portail ${fr(input.portail)} visiteurs\n`);
+console.log(`Mois projeté (30 jours) : DailyJump ${fr(input.jump)} joueurs/jour · DailyTrack ${fr(input.track)} · Salon ${fr(input.salon)} (30 min chacun) · Tower ${fr(input.tower)} · Portail ${fr(input.portail)} visiteurs\n`);
 for (const r of p.resources) {
   const bar = "█".repeat(Math.min(20, Math.round(r.share * 20))).padEnd(20, "·");
   const over = r.overUsd === null ? (r.share > 1 ? "  → au-delà : offre payante de Turso" : "") : r.overUsd > 0 ? `  → au-delà : ≈ ${fr(r.overUsd, 2)} $` : "";

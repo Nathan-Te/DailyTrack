@@ -1,5 +1,5 @@
 import type { Classement, LigneClassement } from "./classementDonnees";
-import type { Jour, JoueurDuJour } from "./jour";
+import { estHauteur, type Jour, type JoueurDuJour } from "./jour";
 
 // Lot A1 : la logique pure du classement du jour au chrono — les onglets (Cumulé · un jeu par jeu du jour), la vue gardée dans l'adresse (`?vue=`), la
 // séparation « Un jeu sur deux » et ce que dit la tuile de l'accueil. Sans DOM, testée dans `test/classementVues.test.ts`.
@@ -31,7 +31,7 @@ export interface Onglet {
   nom?: string;
 }
 
-/** Les onglets d'un jour : Cumulé, puis un par jeu qui existe ce jour-là, dans l'ordre du registre (Track, Jump). */
+/** Les onglets d'un jour : Cumulé, puis un par jeu qui existe ce jour-là, dans l'ordre du registre (Track, Jump, Tower : lot TP). */
 export function onglets(jeux: readonly { jeu: string; site: string; nom: string }[]): Onglet[] {
   return [{ vue: VUE_CUMUL }, ...jeux.map((j) => ({ vue: j.site, jeu: j.jeu, nom: j.nom }))];
 }
@@ -72,6 +72,6 @@ export function tuileDuClassement(joueur: JoueurDuJour | undefined, jeux: Jour["
   const rang = joueur?.rangDuJour;
   if (!joueur || rang == null) return { type: "inviter" };
   if (joueur.cumulMs != null) return { type: "cumul", rang, cumulMs: joueur.cumulMs };
-  const manquant = jeux.find((j) => j.compte !== false && j.etat?.statut !== "fini"); // lot P : un jeu qui ne compte pas encore ne manque pas au cumul
+  const manquant = jeux.find((j) => j.compte !== false && !estHauteur(j) && j.etat?.statut !== "fini"); // lot P : un jeu qui ne compte pas encore ne manque pas au cumul ; lot TP : un jeu à la hauteur n'est jamais dans le cumul
   return manquant ? { type: "manque", rang, jeu: { jeu: manquant.jeu, nom: manquant.nom } } : { type: "inviter" };
 }

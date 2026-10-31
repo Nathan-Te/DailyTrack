@@ -67,6 +67,16 @@ export const JUMP_DAY = { rebuilds: 480, readPerPlayerPerRebuild: 1, readPerPlay
  */
 export const TRACK_PLAYER: UnitCost = { requests: 16, read: 1911, written: 45, cpuS: 0.52, billedS: 3.2 };
 /**
+ * **Tower** (lot TP), un joueur type d'une journée : 2 chargements de l'accueil (`GET /api/tower/day/<date>` puis `…/board` avec sa ligne : 2 requêtes chacun), 2 envois de partie
+ * (le rejeu côté serveur), le fantôme Diamant (`…/diamant`, 1), le profil (`GET /api/tower/me`, 1) et « Jeu suivant du jour » (`GET /api/portail/jour`, 1) : **10 requêtes** (comme les autres
+ * jeux, aucune requête OPTIONS : même adresse). Lignes lues, **mesurées sur la base de référence** (`npm run measure:lignes -w @cdj/api`, 300 joueurs, 14 jours, base libSQL locale comptée,
+ * estimation basse — **pas sur un `sqld` ni sur Turso : l'environnement du lot n'a pas Docker**, à remesurer par `npm run measure:tower -w @cdj/api` sur un `sqld` local) : jour ≈ 7 (relu en base), classement
+ * avec ta ligne 53 à 59, envoi amélioré ≈ 69 (dont les 50 lignes du classement rendu), profil 10 à 16, portail ≈ 434 à froid : 2 × (7 + 59) + 2 × 69 + 1 + 16 + 434 ≈ **720**. Écrites : 2 par envoi
+ * (la partie, `tower_levels` au premier du jour) plus les compteurs de débit : ≈ 10. Calcul : un rejeu mesuré à 0,28 s (partie complète de 40 pièces, `scripts/tower-mesure.ts`) × 2 +
+ * 8 requêtes ordinaires → 0,75 s ; facturé au plus 10 × 100 ms + les rejeux arrondis au-delà (2 × 0,3 s) = 1,6 s. Le rejeu est le poids de Tower : `UNITES_REJEU_TOWER` = 30 unités du plafond global.
+ */
+export const TOWER_PLAYER: UnitCost = { requests: 10, read: 720, written: 10, cpuS: 0.75, billedS: 1.6 };
+/**
  * **Lot 55 (choisir ses fantômes dans le classement)** : `GET /api/day/<date>/run/<ref>` (la rediffusion d'une ligne), **une requête par fantôme choisi et par page** (cinq au plus ; la page garde
  * ce qu'elle a téléchargé : recommencer ne relit rien), **seulement pour un joueur qui coche des cases ou qui garde « Ma sélection »** — le joueur type de `TRACK_PLAYER` n'en fait aucune de
  * plus (le premier et celui devant toi, proposés cochés, ne sont téléchargés qu'en passant en « Ma sélection »). Une requête : 2 instructions (la ligne de la course par `players_by_ref` puis la
@@ -142,6 +152,8 @@ export interface PlatformInput {
   salon: number;
   /** Lot I2 : visiteurs du portail par jour (0 par défaut). */
   portail?: number;
+  /** Lot TP : joueurs de Tower par jour (0 par défaut). */
+  tower?: number;
   days?: number;
 }
 
@@ -170,6 +182,12 @@ export function projectMonth(input: PlatformInput): { resources: Resource[]; byG
       read: input.track * TRACK_PLAYER.read,
       written: input.track * TRACK_PLAYER.written,
       billedS: input.track * TRACK_PLAYER.billedS,
+    },
+    Tower: {
+      requests: (input.tower ?? 0) * TOWER_PLAYER.requests,
+      read: (input.tower ?? 0) * TOWER_PLAYER.read,
+      written: (input.tower ?? 0) * TOWER_PLAYER.written,
+      billedS: (input.tower ?? 0) * TOWER_PLAYER.billedS,
     },
     Salon: {
       requests: input.salon * SALON_HALF_HOUR.requests,

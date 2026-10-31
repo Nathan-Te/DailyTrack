@@ -15,7 +15,7 @@ export const LIGNES_MAX = 30;
 
 /** Le message en direct : 160 caractères au plus, texte seul. */
 export const MESSAGE_MAX = 160;
-export const OU_MESSAGE = ["portail", "track", "jump"] as const;
+export const OU_MESSAGE = ["portail", "track", "jump", "tower"] as const;
 export type OuMessage = (typeof OU_MESSAGE)[number];
 export const TONS_MESSAGE = ["information", "important"] as const;
 export type TonMessage = (typeof TONS_MESSAGE)[number];

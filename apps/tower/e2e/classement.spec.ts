@@ -29,8 +29,10 @@ declare global {
 }
 
 /** Un appareil neuf : l'horloge du serveur, le fichier du jour préparé, l'aide « Comment jouer » déjà vue (elle a son propre test). */
-async function appareil(browser: Browser, adresse = `/?api=${API}&tactile=0`, aideVue = true): Promise<{ context: BrowserContext; page: Page }> {
+async function appareil(browser: Browser, adresse = `/?api=${API}&tactile=0`, aideVue = true, coupure = false): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({ baseURL: "http://localhost:4175", locale: "fr-FR", permissions: ["clipboard-read", "clipboard-write"] });
+  // Lot TP : un serveur injoignable ferait dire « Bientôt » (Tower n'est pas un jeu déjà public) ; « hors ligne » = l'interrupteur répond (le jeu est ouvert) mais les routes du jeu sont coupées.
+  if (coupure) await context.route("**/api/tower/**", (r) => r.abort());
   const decalage = Date.UTC(2026, 10, 6, 12) - Date.now();
   await context.addInitScript(
     ({ decalage, aideVue }) => {
@@ -162,7 +164,7 @@ test("une copie est refusée : la même suite de commandes qu'un autre joueur ne
 });
 
 test("sans serveur : la partie reste jouable et l'arrivée dit « hors ligne, non classé » ; le record est gardé pour être envoyé", async ({ browser }) => {
-  const { context, page } = await appareil(browser, "/?api=http://127.0.0.1:9&tactile=0");
+  const { context, page } = await appareil(browser, `/?api=${API}&tactile=0`, true, true);
   await expect(page.locator(".accueil__message")).toContainText(/hors ligne|offline/i);
   await jouerUnePartie(page, variante());
   await expect(page.locator("#fin-rang-statut")).toContainText(/Hors ligne, non classé/);

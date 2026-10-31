@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1345 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1356 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -118,10 +118,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.invalid_level` | Niveau invalide. | Invalid level. |
 | `erreur.circuit_unavailable` | Le circuit n'est pas disponible pour l'instant. Réessaie dans un moment. | The track isn't available right now. Try again in a moment. |
 | `erreur.level_unavailable` | Le niveau n'est pas disponible pour l'instant. Réessaie dans un moment. | The level isn't available right now. Try again in a moment. |
-| `erreur.invalid_replay` | Cette course est illisible : elle n'a pas été comptée. | This run couldn't be read: it wasn't counted. |
-| `erreur.not_finished` | Cette course ne va pas jusqu'à l'arrivée. | This run doesn't reach the finish. |
-| `erreur.replay_copy` | Cette course est la copie d'une autre. | This run is a copy of another one. |
-| `erreur.track_mismatch` | Cette course n'est pas sur le bon circuit. | This run isn't on the right track. |
+| `erreur.invalid_replay` | Cette partie est illisible : elle n'a pas été comptée. | This game couldn't be read: it wasn't counted. |
+| `erreur.not_finished` | Cette partie n'est pas allée jusqu'au bout. | This game wasn't played to the end. |
+| `erreur.replay_copy` | Cette partie est la copie d'une autre. | This game is a copy of another one. |
+| `erreur.track_mismatch` | Cette partie n'est pas celle du bon jour. | This game isn't the right one for this day. |
 | `erreur.sim_version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.no_ghost` | Pas de fantôme à montrer. | No ghost to show. |
@@ -204,6 +204,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `jeu.track.titre` | TRACK | TRACK |
 | `jeu.jump.nom` | Jump | Jump |
 | `jeu.jump.titre` | JUMP | JUMP |
+| `jeu.tower.nom` | Tower | Tower |
 
 ### nouveauDepart (`nouveauDepart.*`, `packages/ui/src/catalogue.ts`)
 
@@ -289,6 +290,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.titre` | Classement du jour | Today's leaderboard |
 | `classement.description` | Le classement du jour de Du Jour au chrono : le temps cumulé de tous les jeux, ou jeu par jeu, avec la médaille de chaque joueur. | Today's Du Jour leaderboard, against the clock: the combined time across every game, or game by game, with each player's medal. |
 | `classement.egalite` | Au chrono. À égalité : le premier arrivé à ce temps. | Against the clock. Tie: whoever got there first. |
+| `classement.egaliteHauteur` | À la hauteur. À égalité : plus de vies, puis plus vite. | By height. Tie: more lives, then faster. |
 | `classement.vues.aria` | Vues du classement | Leaderboard views |
 | `classement.vue.cumul` | Cumulé | Combined |
 | `classement.separation` | Un jeu sur deux | One game out of two |
@@ -346,6 +348,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.brouillon` | Brouillon | Draft |
 | `portail.track.accroche` | Un circuit par jour, le même pour tous. | One track a day, the same for everyone. |
 | `portail.jump.accroche` | Un niveau de plateforme par jour, le même pour tous. | One platform level a day, the same for everyone. |
+| `portail.tower.accroche` | Une tour par jour, les mêmes pièces pour tous. | One tower a day, the same pieces for everyone. |
 | `portail.jouer` | Jouer | Play |
 | `portail.jouer.aria` | Jouer à {jeu} | Play {jeu} |
 | `portail.pied` | Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux. | A new day at midnight, Paris time. Your profile is the same in every game. |
@@ -359,6 +362,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.statut.enCours` | En cours | In progress |
 | `portail.statut.enCoursMorts` | one : En cours · {n} mort · other : En cours · {n} morts | one : In progress · {n} death · other : In progress · {n} deaths |
 | `portail.statut.fini` | Fini | Done |
+| `portail.statut.vies` | one : {n} vie · other : {n} vies | one : {n} life · other : {n} lives |
 | `portail.statut.rang` | {rang} sur {classes} | {rang} of {classes} |
 | `portail.continuer` | Continuer | Continue |
 | `portail.continuer.aria` | Continuer {jeu} | Continue {jeu} |
@@ -385,6 +389,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.jump.glace` | Glace | Ice |
 | `portail.theme.jump.nuit` | Nuit | Night |
 | `portail.theme.jump.neon` | Néon | Neon |
+| `portail.theme.tower.port` | Port | Harbour |
+| `portail.theme.tower.chantier` | Chantier | Building site |
+| `portail.theme.tower.canyon` | Canyon | Canyon |
+| `portail.theme.tower.banquise` | Banquise | Ice floe |
+| `portail.theme.tower.jungle` | Jungle | Jungle |
+| `portail.theme.tower.nuit` | Nuit | Night |
 | `portail.journee` | Journée {numero} | Day {numero} |
 | `portail.classement.legende` | Classement du jour | Today's leaderboard |
 | `portail.classement.cumul` | {temps} cumulés | {temps} combined |
@@ -1852,6 +1862,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.phrase` | Les pièces retiennent leur souffle. | The pieces are holding their breath. |
 | `pause.reprendre` | Reprendre | Resume |
 | `pause.recommencer` | Recommencer | Restart |
+
+### suite (`suite.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `suite.legende` | Il te reste aujourd'hui | Still to play today |
 
 ### Thèmes (`theme.*`, `apps/tower/src/catalogue.*.ts`)
 

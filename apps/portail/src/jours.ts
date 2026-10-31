@@ -22,19 +22,23 @@ export const numeroDeJournee = (day: number): number | null => numero(day, PREMI
 
 export interface CarteJeu {
   /** Le code du jeu (son dossier sur le site : `/track/`, `/jump/`). */
-  code: "track" | "jump";
+  code: "track" | "jump" | "tower";
   /** Lot I2 : son code au registre du serveur (`GET /api/portail/jour`). */
-  jeu: "cdj" | "jump";
+  jeu: "cdj" | "jump" | "tower";
   /** Lien relatif à la page du portail. */
   lien: string;
   /** Numéro du jour (≤ 0 avant le premier : la cartouche ne l'affiche pas). */
   numero: number;
 }
 
-/** Les cartouches du portail pour un jour de Paris (`parisDay`). Pure. */
+/**
+ * Les cartouches du portail pour un jour de Paris (`parisDay`). Pure. Lot TP : Tower n'a **pas de numéro local** (`numero: 0`, donc rien avant la réponse du serveur) : il est
+ * `off` tant que Nathan ne l'a pas activé, et la liste des jeux du serveur fait seule foi de sa présence et de son numéro.
+ */
 export function cartes(day: number): CarteJeu[] {
   return [
     { code: "track", jeu: "cdj", lien: "track/", numero: day - PREMIER_JOUR_TRACK + 1 },
     { code: "jump", jeu: "jump", lien: "jump/", numero: day - PREMIER_JOUR_JUMP + 1 },
+    { code: "tower", jeu: "tower", lien: "tower/", numero: 0 },
   ];
 }

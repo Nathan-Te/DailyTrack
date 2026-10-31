@@ -17,6 +17,8 @@ export const SERVER_PATHS = [
   "packages/clock/**",
   "packages/jump-sim/**",
   "packages/profile/**",
+  "packages/tower-sim/**", // lot TP : le serveur rejoue les parties de Tower
+  "apps/tower/public/jours/**", // lot TP : les jours de Tower préparés (preuve comprise) entrent dans l'image
   "apps/jump/public/levels/**",
   "config/**", // lot R8 : la date du lancement (config/lancement.json) est lue par le serveur
   "package.json",

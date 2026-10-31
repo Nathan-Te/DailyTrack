@@ -88,6 +88,16 @@ export interface Platform {
 /** Les médailles, communes à tous les jeux (les codes des réponses existantes). */
 export type MedaillePortail = "author" | "gold" | "silver" | "bronze";
 
+/**
+ * Lot TP : le **score en hauteur** d'un jeu qui ne se classe pas au chrono (Tower). Un score est un objet à côté des champs existants : un jeu au temps ne le pose jamais, ses réponses ne
+ * changent donc pas d'un octet. `valeur` : la hauteur stable, en millimètres entiers ; `vies` : les vies restantes (le premier départage, le temps de la partie, `tempsMs`, le second).
+ */
+export interface ScorePortail {
+  unite: "mm";
+  valeur: number;
+  vies: number;
+}
+
 /** Ce que le portail affiche d'un jeu pour un jour, sans joueur (réponse publique). */
 export interface JourPortail {
   /** Numéro du jour dans ce jeu (n° 1 au premier jour). */
@@ -96,6 +106,8 @@ export interface JourPortail {
   theme: string | null;
   /** Seuils de médailles du jour, **en millisecondes** (le temps de l'auteur, puis or, argent, bronze), ou `null` s'ils ne sont pas connus. */
   seuils: Record<MedaillePortail, number> | null;
+  /** Lot TP : l'unité des `seuils` quand ce n'est pas la milliseconde (`mm` : Tower). Absente pour un jeu au temps (sa réponse ne change pas). */
+  unite?: "mm";
 }
 
 /**
@@ -108,7 +120,7 @@ export interface JourPortail {
 export type EtatPortail =
   | { statut: "pas_joue" }
   | { statut: "en_cours"; morts?: number }
-  | { statut: "fini"; tempsMs: number; medaille: MedaillePortail | null; rang: number; classes: number };
+  | { statut: "fini"; tempsMs: number; medaille: MedaillePortail | null; rang: number; classes: number; score?: ScorePortail };
 
 /** Les statistiques d'un jeu pour le profil commun (`GET /api/portail/profil`). */
 export interface ProfilPortail {
@@ -131,6 +143,8 @@ export interface ClasseDuJour {
   medaille: MedaillePortail | null;
   /** L'horodatage (ms) de l'essai classé : l'ultime départage du classement du jour (le premier à avoir atteint son total). */
   at: number;
+  /** Lot TP : le score en hauteur d'un jeu qui ne se classe pas au chrono (alors `tempsMs` est la durée de la partie, le dernier départage). */
+  score?: ScorePortail;
 }
 
 /** Le crochet `portail` d'un jeu (lot I2). */
@@ -141,6 +155,11 @@ export interface PortailDuJeu {
   nom: string;
   /** Le premier jour du jeu (numéro de jour) : avant, le jeu n'existe pas (ni cartouche, ni compte dans les journées parfaites). */
   premierJour: number;
+  /**
+   * Lot TP : comment le jeu se classe. `temps` (défaut : Track, Jump) — il entre dans le cumul au chrono du classement du jour ; `hauteur` (Tower) — **il n'entre jamais dans le cumul au temps**,
+   * il a sa propre vue (son dossier sur le site), classée par son crochet (`classes`, dans l'ordre de son classement), et compte quand même dans la journée (série, journée parfaite, partage).
+   */
+  classement?: "temps" | "hauteur";
   /** Numéro, thème et seuils du jour (le niveau du jour, calculé une fois et gardé, comme pour ses routes). */
   jour(day: number): Promise<JourPortail>;
   /**
@@ -170,6 +189,8 @@ export interface ResultatAdmin {
   /** Le numéro du jour (jours depuis 1970). */
   day: number;
   tempsMs: number;
+  /** Lot TP : le score en hauteur (Tower) ; alors `tempsMs` est la durée de la partie. */
+  score?: ScorePortail;
   /** DailyJump : les morts de l'essai classé. */
   morts?: number;
   medaille: MedaillePortail | null;

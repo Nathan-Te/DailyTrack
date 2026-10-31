@@ -10,7 +10,7 @@ import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { formatDay, parseDay } from "@cdj/core";
 import { ecrireLangue, lireLangue, readPlayerId, type Langue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatNombre, formatTemps, medaille, traducteur, type TypeMedaille } from "@cdj/ui";
+import { CATALOGUE_COMMUN, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatHauteur, formatNombre, formatTemps, medaille, traducteur, type TypeMedaille } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { lireClassement, type Classement, type LectureClassement, type LigneClassement, type ResultatClassement } from "./classementDonnees";
 import { VUE_CUMUL, aSeparation, adresseDeVue, ongletVoisin, onglets, vueDeLAdresse } from "./classementVues";
@@ -37,7 +37,7 @@ const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || c
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
 /** Les jeux que la page sait habiller (leur code au registre du serveur) ; un autre jeu garde le nom que le serveur déclare. */
-const JEUX = { cdj: { cle: "jeu.track.nom", cadre: "track" }, jump: { cle: "jeu.jump.nom", cadre: "jump" } } as const;
+const JEUX = { cdj: { cle: "jeu.track.nom", cadre: "track" }, jump: { cle: "jeu.jump.nom", cadre: "jump" }, tower: { cle: "jeu.tower.nom", cadre: "tower" } } as const;
 
 /** Le jour affiché (`AAAA-MM-JJ`, `null` : aujourd'hui, celui du serveur) et aujourd'hui tel que le serveur l'a dit (ou l'horloge locale). */
 let jourAffiche: string | null = new URLSearchParams(location.search).get("date");
@@ -53,6 +53,7 @@ const nomDuJeu = (t: T, jeu: { jeu: string; nom: string }): string => (jeu.jeu i
  * nom), « Fini » sans médaille, ou « — » (pas fini : le texte masqué le dit aux lecteurs d'écran).
  */
 function caseDeJeu(t: T, jeu: { jeu: string; nom: string }, r: ResultatClassement | null, avecTemps: boolean): HTMLElement {
+  // Lot TP : pour un jeu à la hauteur, la case dit les vies restantes (la hauteur est la valeur de la ligne) ; jamais le temps.
   const cadre = jeu.jeu in JEUX ? JEUX[jeu.jeu as keyof typeof JEUX].cadre : undefined;
   let contenu: HTMLElement;
   if (r === null) contenu = el("span", { classe: "classement-jeu__vide" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: t.t("classement.pasFini") }));
@@ -62,7 +63,8 @@ function caseDeJeu(t: T, jeu: { jeu: string; nom: string }, r: ResultatClassemen
     "span",
     { classe: "classement-jeu", attrs: { "data-jeu": jeu.jeu } },
     el("span", { classe: "classement-jeu__nom", texte: nomDuJeu(t, jeu) }),
-    avecTemps && r !== null ? el("span", { classe: "classement-jeu__temps", texte: formatTemps(r.tempsMs, langue) }) : null,
+    avecTemps && r !== null && !r.score ? el("span", { classe: "classement-jeu__temps", texte: formatTemps(r.tempsMs, langue) }) : null,
+    r?.score ? el("span", { classe: "classement-jeu__vies", texte: t.t("portail.statut.vies", { n: r.score.vies }) }) : null,
     contenu,
   );
 }
@@ -70,7 +72,8 @@ function caseDeJeu(t: T, jeu: { jeu: string; nom: string }, r: ResultatClassemen
 /** Une ligne : la place, le pseudo, le temps de la vue (« — » au cumul d'un joueur qui n'a pas tout fini) ; dessous le résultat de chaque jeu. */
 function ligne(t: T, c: Classement, l: LigneClassement, moi: boolean): HTMLElement {
   const cumul = c.vue === VUE_CUMUL;
-  const jeux = cumul ? c.jeux : c.jeux.filter((j) => j.site === c.vue);
+  // Lot TP : le cumul ne montre que les jeux au temps (un jeu à la hauteur n'y entre jamais).
+  const jeux = cumul ? c.jeux.filter((j) => !j.unite) : c.jeux.filter((j) => j.site === c.vue);
   return el(
     "li",
     { classe: ["classement-ligne", moi && "classement-ligne--moi"], attrs: { "data-rang": String(l.rang), ...(moi ? { "data-moi": "oui", "aria-current": "true" } : {}) } },
@@ -79,7 +82,9 @@ function ligne(t: T, c: Classement, l: LigneClassement, moi: boolean): HTMLEleme
       { classe: "classement-ligne__tete" },
       el("span", { classe: "classement-rang", texte: formatNombre(l.rang, langue) }),
       el("span", { classe: "classement-pseudo" }, l.pseudo, moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
-      l.tempsMs === null
+      l.score
+        ? el("span", { classe: "classement-temps classement-hauteur", texte: formatHauteur(l.score.valeur, langue) })
+        : l.tempsMs === null
         ? el("span", { classe: "classement-temps" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: t.t("classement.pasFini") }))
         : el("span", { classe: "classement-temps", texte: formatTemps(l.tempsMs, langue) }),
     ),
@@ -185,7 +190,7 @@ function rendre(): void {
     navigation,
     barreDesVues(t, c),
     etat ? el("p", { classe: "classement-etat", attrs: { id: "classement-etat", role: "status" }, texte: etat }) : null,
-    c ? el("p", { classe: "classement-egalite", texte: t.t("classement.egalite") }) : null,
+    c ? el("p", { classe: "classement-egalite", texte: t.t(c.unite === "mm" ? "classement.egaliteHauteur" : "classement.egalite") }) : null,
     c
       ? el(
           "p",

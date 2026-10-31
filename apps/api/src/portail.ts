@@ -6,7 +6,7 @@ import { classerLaJournee, ligneDe, placer, type ClassementDuJour, type LigneDuJ
 import { HttpError } from "./errors";
 import type { Diffusion } from "./diffusion";
 import type { Jeux } from "./jeux";
-import type { EtatPortail, JourPortail, Platform, PortailDuJeu, RequestInfo } from "./games";
+import type { ClasseDuJour, EtatPortail, JourPortail, MedaillePortail, Platform, PortailDuJeu, RequestInfo, ScorePortail } from "./games";
 
 // Le portail « Du Jour » (lot I2 de la plateforme, phase 3) : les lectures regroupées de la page d'accueil et du profil commun. Elles ne
 // connaissent aucun jeu : chacun déclare au registre ce que le portail montre de lui (crochet `portail`, `games.ts`). Ajouter le jeu n° 3 ne
@@ -127,6 +127,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   const compte = (j: JeuPortail, day: number): boolean => j.portail.premierJour <= day && (etats ? etats.compteLe(j.portail.site, day) : true);
   /** Les jeux qui comptent ce jour-là : ceux du cumul, du classement du jour, de la journée parfaite. */
   const comptes = (day: number): JeuPortail[] => jeux.filter((j) => compte(j, day));
+  /** Lot TP : un jeu classé à la hauteur (Tower) a sa vue ; il n'entre jamais dans le cumul au temps. */
+  const estHauteur = (j: JeuPortail): boolean => j.portail.classement === "hauteur";
   const charger = async (): Promise<void> => {
     await etats?.charger();
   };
@@ -224,7 +226,13 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     if (kept && now() - kept.at < duree) return kept;
     calculs++;
     const ouverts = comptes(day);
-    const pending = Promise.all(ouverts.map(async (j) => ({ jeu: j.code, classes: await j.portail.classes(day) }))).then(classerLaJournee);
+    // Lot TP : le cumul au temps ne lit que les jeux au temps ; un jeu classé à la hauteur rend ses classés à part (sa vue).
+    const pending = Promise.all(ouverts.map(async (j) => ({ jeu: j.code, hauteur: estHauteur(j), classes: await j.portail.classes(day) }))).then((tous) => {
+      const c = classerLaJournee(tous.filter((t) => !t.hauteur));
+      const hauteurs = tous.filter((t) => t.hauteur);
+      if (hauteurs.length > 0) c.hauteurs = hauteurs.map((t) => ({ jeu: t.jeu, classes: t.classes, index: new Map(t.classes.map((x, i) => [x.playerId, i] as const)) }));
+      return c;
+    });
     if (classements.size >= CLASSEMENT_JOURS_GARDES) for (const [d] of classements) if (d !== day) { classements.delete(d); break; }
     const neuve: Gardee = { at: now(), pending, noms: new Map() };
     classements.set(day, neuve);
@@ -237,8 +245,11 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   const classementDe = (day: number): Promise<ClassementDuJour> => gardeeDe(day).pending;
 
   /** Ce que le joueur a fait ce jour-là, à partir de ses états exacts dans chaque jeu du jour (`null` : rien fini). Son `at` ne sert à rien (`placer` le fait passer après les égaux). */
-  function bilanDe(id: string, etats: readonly EtatPortail[]): LigneDuJour | null {
-    const resultats = etats.map<ResultatJeu | null>((e) => (e.statut === "fini" ? { rang: e.rang, tempsMs: e.tempsMs, medaille: e.medaille, at: 0 } : null));
+  function bilanDe(id: string, etats: readonly EtatPortail[], ouverts: readonly JeuPortail[]): LigneDuJour | null {
+    // Lot TP : seuls les jeux au temps entrent dans le cumul.
+    const resultats = etats
+      .filter((_, i) => !estHauteur(ouverts[i]!))
+      .map<ResultatJeu | null>((e) => (e.statut === "fini" ? { rang: e.rang, tempsMs: e.tempsMs, medaille: e.medaille, at: 0 } : null));
     return resultats.some((r) => r !== null) ? ligneDe(id, resultats) : null;
   }
 
@@ -248,7 +259,18 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
    */
   const etatsDe = (id: string, day: number, ouverts: readonly JeuPortail[], c?: ClassementDuJour) => {
     const ligne = c && c.index.has(id) ? c.cumul[c.index.get(id)!]! : null;
-    return Promise.all(ouverts.map((j, g) => j.portail.etat(id, day, ligne?.resultats[g] ? { rang: ligne.resultats[g]!.rang, classes: c!.classesParJeu[g]! } : undefined)));
+    return Promise.all(
+      ouverts.map((j) => {
+        // Lot TP : un jeu à la hauteur prend sa place dans la liste gardée de sa vue ; un jeu au temps, dans le cumul gardé (par son code : `jeux` du classement ne compte que les jeux au temps).
+        if (estHauteur(j)) {
+          const h = c?.hauteurs?.find((x) => x.jeu === j.code);
+          const i = h?.index.get(id);
+          return j.portail.etat(id, day, h && i !== undefined ? { rang: i + 1, classes: h.classes.length } : undefined);
+        }
+        const g = c ? c.jeux.indexOf(j.code) : -1;
+        return j.portail.etat(id, day, ligne && g >= 0 && ligne.resultats[g] ? { rang: ligne.resultats[g]!.rang, classes: c!.classesParJeu[g]! } : undefined);
+      }),
+    );
   };
 
   /** `{ jeu: { rang, tempsMs, medaille } | null }` : le résultat de chaque jeu du jour (`null` : pas fini). Jamais un identifiant. */
@@ -283,7 +305,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     let cumulMs: number | null = null;
     let rangDuJour: number | null = null;
     let classesDuJour: number | null = null;
-    const bilan = bilanDe(id, etatsJoueur);
+    const bilan = bilanDe(id, etatsJoueur, ouverts);
     if (bilan) {
       cumulMs = bilan.cumulMs;
       ({ rang: rangDuJour, classes: classesDuJour } = placer(c, bilan));
@@ -317,17 +339,22 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const avantLancement = premierJour <= aujourdhui && day < premierJour;
     if (day > aujourdhui || avantLancement || ouverts.length === 0) throw new HttpError(404, "unknown_day", "Ce classement n'existe pas (encore)");
     // Lot A1 : la vue — le cumul (par défaut) ou un jeu qui existe ce jour-là, nommé par son dossier sur le site.
+    // Lot TP : un jeu classé à la hauteur a sa vue (`hauteurs`), un jeu au temps la sienne (`parJeu`) ; le cumul ne compte que les jeux au temps.
     const vue = url.searchParams.get("vue") ?? "cumul";
-    const g = vue === "cumul" ? -1 : ouverts.findIndex((j) => j.portail.site === vue);
-    if (g < 0 && vue !== "cumul") throw new HttpError(400, "invalid_view", "Vue attendue : cumul ou le dossier d'un jeu de ce jour");
+    const jeuVue = vue === "cumul" ? undefined : ouverts.find((j) => j.portail.site === vue);
+    if (vue !== "cumul" && !jeuVue) throw new HttpError(400, "invalid_view", "Vue attendue : cumul ou le dossier d'un jeu de ce jour");
     const gardee = gardeeDe(day);
     const c = await gardee.pending;
-    const liste = g < 0 ? c.cumul : c.parJeu[g]!;
+    const hauteur = jeuVue && estHauteur(jeuVue) ? c.hauteurs?.find((h) => h.jeu === jeuVue.code) : undefined;
+    const g = vue === "cumul" || hauteur ? -1 : c.jeux.indexOf(jeuVue!.code);
+    // Les ids du haut de la vue : une ligne de classement au temps, ou un classé à la hauteur.
+    const liste = hauteur ? hauteur.classes : g < 0 ? c.cumul : c.parJeu[g]!;
     const gardes = liste.slice(0, CLASSEMENT_TOP);
+    const idDe = (x: LigneDuJour | ClasseDuJour): string => ("playerId" in x ? x.playerId : x.id);
     // Les pseudos du haut de la vue sont lus une fois avec le classement (un changement de pseudo se voit à la fenêtre suivante, 45 s au plus).
     let nomsVue = gardee.noms.get(vue);
     if (!nomsVue) {
-      nomsVue = pseudosDe(gardes.map((l) => l.id)).catch((e) => {
+      nomsVue = pseudosDe(gardes.map(idDe)).catch((e) => {
         gardee.noms.delete(vue);
         throw e;
       });
@@ -342,15 +369,25 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       complet: g < 0 ? l.complet : true,
       resultats: resultatsCorps(c.jeux, l.resultats),
     });
+    /** Lot TP : une ligne de la vue d'un jeu à la hauteur — son score (hauteur et vies) à côté de la durée de la partie. */
+    const ligneHauteur = (x: { tempsMs: number; medaille: MedaillePortail | null; score?: ScorePortail }, rang: number, pseudo: string) => ({
+      rang,
+      pseudo,
+      tempsMs: x.tempsMs,
+      complet: true,
+      score: x.score ?? null,
+      resultats: { [jeuVue!.code]: { rang, tempsMs: x.tempsMs, medaille: x.medaille, score: x.score ?? null } },
+    });
     const ouvert = jourOuvert(day);
     const publique = {
       date: formatDay(day),
       journee: numeroDeJournee(day, premierJour),
       ouvert,
       vue,
-      jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom })),
+      jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: "mm" as const } : {}) })),
       classes: liste.length,
-      top: gardes.map((l, i) => ligneCorps(l, i + 1, noms.get(l.id) ?? "?")),
+      top: hauteur ? hauteur.classes.slice(0, CLASSEMENT_TOP).map((x, i) => ligneHauteur(x, i + 1, noms.get(x.playerId) ?? "?")) : (gardes as LigneDuJour[]).map((l, i) => ligneCorps(l, i + 1, noms.get(l.id) ?? "?")),
+      ...(hauteur ? { unite: "mm" as const } : {}),
     };
     if (!id) {
       const restant = Math.floor((parisDayStart(aujourdhui + 1) - now()) / 1000);
@@ -359,13 +396,19 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     }
     const row = await joueurConnu(id, publique);
     // Ses états à l'instant (une ligne par jeu avec le classement gardé : rien à compter) donnent sa ligne exacte et sa place, même juste après son essai.
-    let moi: (ReturnType<typeof ligneCorps> & { classes: number }) | null = null;
-    const bilan = bilanDe(id, await etatsDe(id, day, ouverts, c));
-    if (bilan && (g < 0 || bilan.resultats[g])) {
-      const place = g < 0 ? placer(c, bilan) : { rang: bilan.resultats[g]!.rang, classes: Math.max(liste.length + (c.index.has(id) && c.cumul[c.index.get(id)!]!.resultats[g] ? 0 : 1), bilan.resultats[g]!.rang) };
-      moi = { ...ligneCorps(bilan, place.rang, row.name), classes: place.classes };
+    const etatsMoi = await etatsDe(id, day, ouverts, c);
+    let moi: Record<string, unknown> | null = null;
+    if (hauteur) {
+      const e = etatsMoi[ouverts.indexOf(jeuVue!)]!;
+      if (e.statut === "fini") moi = { ...ligneHauteur(e, e.rang, row.name), classes: Math.max(hauteur.classes.length + (hauteur.index.has(id) ? 0 : 1), e.rang) };
+    } else {
+      const bilan = bilanDe(id, etatsMoi, ouverts);
+      if (bilan && (g < 0 || bilan.resultats[g])) {
+        const place = g < 0 ? placer(c, bilan) : { rang: bilan.resultats[g]!.rang, classes: Math.max(liste.length + (c.index.has(id) && c.cumul[c.index.get(id)!]!.resultats[g] ? 0 : 1), bilan.resultats[g]!.rang) };
+        moi = { ...ligneCorps(bilan, place.rang, row.name), classes: place.classes };
+      }
     }
-    const body = { ...publique, top: publique.top.map((r, i) => (gardes[i]!.id === id ? { ...r, moi: true } : r)), moi };
+    const body = { ...publique, top: publique.top.map((r, i) => (idDe(gardes[i]!) === id ? { ...r, moi: true } : r)), moi };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
 
