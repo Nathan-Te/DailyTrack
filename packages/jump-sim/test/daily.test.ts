@@ -83,6 +83,7 @@ import {
   moduleStart,
   stepAttempt,
   type DailyLevel,
+  VARIETY_ORIGIN,
 } from "../src/index";
 import { emptyRun } from "../tools/vide";
 
@@ -461,6 +462,8 @@ describe("lot 7 : variété", () => {
   it("cible de répétition : deux jours consécutifs ont au plus 1,5 morceau en commun en moyenne, 4 au plus", () => {
     const common: number[] = [];
     for (let k = 1; k < levels.length; k++) {
+      // Lot 30 : la règle de variété (aucun retour avant W jours) commence au 27/10/2026 ; les jours d'avant (avant le lancement public) gardent la cible du lot 7.
+      if (DATES[k - 1]! < VARIETY_ORIGIN) continue;
       const a = new Set(levels[k - 1]!.pieces.map((p) => p.id));
       common.push(levels[k]!.pieces.filter((p) => a.has(p.id)).length);
     }

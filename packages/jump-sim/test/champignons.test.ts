@@ -407,9 +407,9 @@ describe("lot 23 — les morceaux à champignons du catalogue", () => {
         expect(L.mushrooms.length, `${d.id} v${v}`).toBeGreaterThan(0);
       }
     }
-    const hard = MUSHROOM_MODULES.filter((d) => d.variants.some((_, v) => variantExigence(moduleSolutions(d.id, v)) >= SLOW_MIN_EXIGENCE));
+    const hard = MUSHROOM_MODULES.filter((d) => d.variants.some((_, v) => variantUsable(d.id, v) && variantExigence(moduleSolutions(d.id, v)) >= SLOW_MIN_EXIGENCE));
     expect(hard.length).toBeGreaterThanOrEqual(2);
-    expect(hard.map((d) => d.id)).toContain("champignon-falaise");
+    // Lot 30 : `champignon-falaise` n'avait que des variantes notées 4 ou 5 ; avec le maintien minimal à 6 pas (petit saut plus bas) ses solutions se re-résolvent plus facilement (note 3 au plus) : il n'est plus une portion dure.
   });
 
   it("chaque variante passe les règles : posée sur du plein, rien de mortel dans les 0,3 premières secondes d'un rebond, aucun point de passage dans sa trajectoire, paliers", () => {

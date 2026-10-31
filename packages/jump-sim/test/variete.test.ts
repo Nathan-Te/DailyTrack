@@ -180,9 +180,9 @@ describe("lot 19 — les variantes ajoutées", () => {
       const rest = def.mutations[v]!.filter((m) => m.name !== "echange");
       const origin = def.variants.findIndex((vals, k) => k !== v && JSON.stringify(vals) === JSON.stringify(def.variants[v]) && JSON.stringify(def.mutations[k]) === JSON.stringify(rest));
       expect(origin, `${def.id} v${v} : variante d'origine`).toBeGreaterThanOrEqual(0);
-      // Lot 30 : les solutions sont re-résolues une à une (la variante échangée peut tomber sur une autre solution que son origine) : à une note près, plus identique.
+      // Lot 30 : les solutions sont re-résolues une à une (la variante échangée peut tomber sur une autre solution que son origine) : à deux notes près (une au premier essai du lot, deux avec le maintien à 6 pas), plus identique.
       if (!variantUsable(def.id, v) || !variantUsable(def.id, origin)) continue;
-      expect(Math.abs(variantExigence(moduleSolutions(def.id, v)) - variantExigence(moduleSolutions(def.id, origin))), `${def.id} v${v}`).toBeLessThanOrEqual(1);
+      expect(Math.abs(variantExigence(moduleSolutions(def.id, v)) - variantExigence(moduleSolutions(def.id, origin))), `${def.id} v${v}`).toBeLessThanOrEqual(2);
     }
   });
 });
