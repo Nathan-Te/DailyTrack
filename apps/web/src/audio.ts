@@ -48,8 +48,8 @@ export class GameAudio {
   readonly log: OneShot[] = [];
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  /** Trois voix (lot 29) : moteur, effets, ambiance — chacune son niveau, avant le volume général (l'ambiance : lot 56, aucune source tant qu'elle n'est pas branchée). */
-  private bus: { engine: GainNode; effects: GainNode; ambience: GainNode } | null = null;
+  /** Deux voix (lot 29) : moteur et effets — chacune son niveau, avant le volume général. */
+  private bus: { engine: GainNode; effects: GainNode } | null = null;
   private engine: { o1: OscillatorNode; o2: OscillatorNode; lp: BiquadFilterNode; gain: GainNode } | null = null;
   private skid: { f: BiquadFilterNode; gain: GainNode } | null = null;
   private roll: { f: BiquadFilterNode; gain: GainNode } | null = null;
@@ -118,7 +118,6 @@ export class GameAudio {
     this.master.gain.setTargetAtTime(this.settings.volume, t, 0.04);
     this.bus.engine.gain.setTargetAtTime(this.settings.engine, t, 0.04);
     this.bus.effects.gain.setTargetAtTime(this.settings.effects, t, 0.04);
-    this.bus.ambience.gain.setTargetAtTime(this.settings.ambience, t, 0.04);
   }
 
   /** Crée le contexte (une fois), ou le réveille. Sans Web Audio, ne fait rien. */
@@ -148,7 +147,7 @@ export class GameAudio {
         g.connect(this.master!);
         return g;
       };
-      this.bus = { engine: voice(this.settings.engine), effects: voice(this.settings.effects), ambience: voice(this.settings.ambience) };
+      this.bus = { engine: voice(this.settings.engine), effects: voice(this.settings.effects) };
       // Bruit blanc de 2 s, lu en boucle par le crissement, le roulement et le vent.
       this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const data = this.noise.getChannelData(0);

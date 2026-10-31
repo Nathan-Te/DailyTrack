@@ -85,7 +85,7 @@ function boucles(ctx: BaseAudioContext, p: ProfilMoteur) {
 }
 
 /** Fabrique le moteur d'une approche (les boucles de B et C sont chargées avant). */
-export async function fabriquer(ctx: BaseAudioContext, sortie: AudioNode, bruit: AudioBuffer, approche: Approche, p: ProfilMoteur): Promise<{ moteur: Moteur; octets: number; decodageMs: number; memoire: number }> {
+async function fabriquer(ctx: BaseAudioContext, sortie: AudioNode, bruit: AudioBuffer, approche: Approche, p: ProfilMoteur): Promise<{ moteur: Moteur; octets: number; decodageMs: number; memoire: number }> {
   if (approche === "actuel") return { moteur: creerActuel(ctx, sortie), octets: 0, decodageMs: 0, memoire: 0 };
   if (approche === "A") return { moteur: creerSynthese(ctx, sortie, p, bruit), octets: 0, decodageMs: 0, memoire: 0 };
   const b = await boucles(ctx, p);

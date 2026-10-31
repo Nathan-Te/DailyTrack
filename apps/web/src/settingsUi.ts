@@ -212,7 +212,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
       variante: "secondaire",
       onClick: () => {
         host.apply({ ...DEFAULT_SETTINGS });
-        host.setAudio({ ...host.audio(), engine: 1, effects: 1, ambience: 1 });
+        host.setAudio({ ...host.audio(), engine: 1, effects: 1 });
       },
     });
     reset.id = "settings-reset";

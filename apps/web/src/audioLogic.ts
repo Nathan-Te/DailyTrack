@@ -86,13 +86,12 @@ export interface AudioSettings {
   volume: number;
   /** Dernier volume non nul, que la touche M rétablit. */
   last: number;
-  /** Niveaux des trois voix (lot 29), ∈ [0, 1], appliqués avant le volume général : moteur, effets (crissement, roulement, vent, bruitages), ambiance (lot 56 : le curseur est retiré tant que la nouvelle ambiance n'est pas là ; la valeur et le bus restent). */
+  /** Niveaux des deux voix (lot 29), ∈ [0, 1], appliqués avant le volume général : moteur, effets (crissement, roulement, vent, bruitages). */
   engine: number;
   effects: number;
-  ambience: number;
 }
 
-export const DEFAULT_AUDIO: Readonly<AudioSettings> = { volume: 0.55, last: 0.55, engine: 1, effects: 1, ambience: 1 };
+export const DEFAULT_AUDIO: Readonly<AudioSettings> = { volume: 0.55, last: 0.55, engine: 1, effects: 1 };
 
 const unit = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : null);
 
@@ -106,7 +105,6 @@ export function parseAudioSettings(raw: string | null): AudioSettings {
     else if (s.volume > 0) s.last = s.volume;
     s.engine = unit(o.engine) ?? s.engine;
     s.effects = unit(o.effects) ?? s.effects;
-    s.ambience = unit(o.ambience) ?? s.ambience;
   } catch {
     /* réglages illisibles : valeurs par défaut */
   }

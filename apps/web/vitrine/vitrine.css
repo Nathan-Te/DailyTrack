@@ -494,14 +494,6 @@ body[data-planche="son"] .hors-voiture,
 body:not([data-planche="son"]) .pour-son {
   display: none !important;
 }
-body[data-planche="ambiances"] .pour-paliers,
-body[data-planche="ambiances"] .pour-voiture,
-body[data-planche="ambiances"] .pour-son,
-body[data-planche="ambiances"] .hors-voiture,
-body:not([data-planche="ambiances"]) .pour-ambiances {
-  display: none !important;
-}
-body[data-planche="ambiances"] .planche--ambiances,
 body[data-planche="son"] .planche--son {
   background: var(--dj-encre);
   color: var(--dj-papier);
