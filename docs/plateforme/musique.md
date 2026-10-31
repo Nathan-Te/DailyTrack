@@ -95,6 +95,20 @@ Tu n'as rien à envoyer à GitHub. Deux façons :
 
 Une fois préparé, un morceau n'a plus besoin de sa source : on peut changer son titre, ses jeux, ses scènes ou son poids en éditant `musiques.json` et en relançant `npm run musique` (la liste garde l'empreinte de la source). Il faut la source pour le **re**convertir (autre débit, autre volume cible).
 
+## Les boucles générées par le code (premier essai)
+
+Pour les menus et les thèmes qu'aucun morceau acheté ne couvre : `musique/generateur/` est un petit synthétiseur (aucune dépendance, **déterministe** : les mêmes notes donnent les mêmes fichiers) qui écrit les boucles note par note. **Trois sont livrées pour qu'on les écoute** :
+
+| Morceau | Où | Style |
+|---|---|---|
+| « Pole position » (`track-menu`, 112 BPM, la mineur) | Track, accueil | électro moderne, tranquille : nappes, arpège, basse syncopée, kick en 4 temps, mélodie à l'écho |
+| « Périphérique » (`track-nuit`, 128 BPM, mi mineur) | Track, thème Nuit | électro nerveuse à la Trackmania : basse sur les contretemps, arpège qui rebondit, accords piqués, montée avant le « drop », mélodie sombre |
+| « Sous les feuilles » (`jump-foret`, 140 BPM, do majeur) | Jump, thème Forêt | chiptune rétro : deux canaux carrés, basse triangle, canal de bruit, un écho court |
+
+Chaque boucle fait 32 mesures (55 à 69 s) ; son début et sa fin sont des nappes, sans percussions, pour que le fondu de 3 s du lecteur (entre la fin et le début d'un morceau seul) se fonde sans à-coup. **Les écouter sur l'aperçu** : Track — l'accueil joue le menu ; pour la Nuit ouvrez `…/track/?debug&theme=nuit&variant=1` ; Jump — `…/jump/?theme=foret&seed=<un jour passé>` (un thème sans morceau, comme l'usine, reste silencieux).
+
+**Changer une boucle** : éditer ses notes dans `musique/generateur/morceaux.mjs` (tempo, accords, motifs, niveaux), puis `npm run musique:generer` (rend les `.wav` dans `musique/pistes/`, ignorés par git) et `npm run musique` (les prépare), et commiter `musique/servi/`. **En ajouter une** : un objet de plus dans `MORCEAUX` (même forme que les trois autres), son entrée dans `musique/musiques.json` (licence `mienne`, ses scènes). Ce sont des synthés programmés : propres et cohérents, **pas une production de studio** — le but est de combler les thèmes sans morceau acheté et de juger du style à l'oreille.
+
 ## Le droit d'usage — la règle
 
 Seuls des morceaux que tu as **le droit de diffuser** : les tiens, **CC0**, **CC-BY** (avec le crédit exigé), ou sous **licence achetée**. La commande **refuse** un morceau sans licence, et refuse CC0, CC-BY ou achetée **sans `source`**. Les crédits sont publiés tout seuls dans les mentions légales, et le joueur les voit dans les réglages (« En écoute : Titre — Artiste » et le crédit dessous). Une licence qui interdit l'usage commercial, la modification ou un format (CC-BY-NC, CC-BY-ND) **n'est pas admise** : ne la contourne pas, demande-moi un autre morceau.

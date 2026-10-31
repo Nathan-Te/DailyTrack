@@ -35,7 +35,8 @@
     "verifier": "node scripts/verifier.mjs",
     "attendre-ci": "node scripts/attendre-ci.mjs",
     "mesure-ci": "node scripts/mesure-ci.mjs",
-    "musique": "esbuild scripts/musique.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/musique.mjs --log-level=warning && node node_modules/.cache/cdj/musique.mjs"
+    "musique": "esbuild scripts/musique.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/musique.mjs --log-level=warning && node node_modules/.cache/cdj/musique.mjs",
+    "musique:generer": "node musique/generateur/rendre.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

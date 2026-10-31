@@ -1,5 +1,57 @@
 {
   "version": 1,
   "debit": "96k",
-  "pistes": []
+  "pistes": [
+    {
+      "id": "track-menu",
+      "titre": "Pole position",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Pole position » — Du Jour (généré par le code)",
+      "fichier": "track-menu-02565e64.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "sha": "96fe9eebe9a39b734d164b0e86181e4d168045ff9756e77721db081414037eda",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 68.6
+    },
+    {
+      "id": "track-nuit",
+      "titre": "Périphérique",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Périphérique » — Du Jour (généré par le code)",
+      "fichier": "track-nuit-3d61fd23.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "sha": "264d7e49a934c110c13012fd5dca833d0517e2c929a718738ebe6b0b80396994",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 60
+    },
+    {
+      "id": "jump-foret",
+      "titre": "Sous les feuilles",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Sous les feuilles » — Du Jour (généré par le code)",
+      "fichier": "jump-foret-eaf34fff.m4a",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:foret"
+      ],
+      "sha": "7dc77b3246cc9922eb704389aeec85d1488d81f90f05a37d4b50955129a66b29",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 54.9
+    }
+  ]
 }

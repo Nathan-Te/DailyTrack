@@ -1,3 +1,46 @@
 {
-  "pistes": []
+  "pistes": [
+    {
+      "id": "track-menu",
+      "titre": "Pole position",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-menu.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-nuit",
+      "titre": "Périphérique",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-nuit.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "jump-foret",
+      "titre": "Sous les feuilles",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "jump-foret.wav",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:foret"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    }
+  ]
 }
