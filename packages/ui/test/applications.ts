@@ -93,6 +93,7 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/jump/src/adminLogic.ts": "page d'outils de Jump (`/jump/admin/`) : outil interne, en français",
   // Lot T1 : les outils de Nathan de Tower restent en français (`?debug&tune`, démonstration de la physique du lot T0).
   "apps/tower/src/tune.ts": "outil de réglage de la sensation (`?debug&tune`, lot T1) : outil interne de Nathan, en français",
+  "apps/tower/src/curseurs.ts": "les curseurs de `?debug&tune` (lot T5) : noms, unités et bloc JSON de l'outil de Nathan, en français, fermé en production",
   "apps/tower/src/debug.ts": "ligne d'état de `?debug` (lot T1) : outil interne de Nathan, en français, fermé en production",
   "apps/tower/src/verify.ts": "page de vérification des moteurs de physique (`verify.html`, tests de navigateur) : aucun texte d'interface",
   "apps/tower/src/banc": "démonstration de la physique (`?scenario=banc`, lot T0) : page d'essai interne, en français, jamais en production",

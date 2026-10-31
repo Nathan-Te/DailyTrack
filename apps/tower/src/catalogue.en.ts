@@ -52,6 +52,7 @@ export const CATALOGUE_EN: Catalogue = {
   "fin.medailles.toutes": "You got the Diamond.",
   "fin.medailles.calcul": "Working out the medals…",
   "fin.medailles.session": "Best medal of the day: {medaille}",
+  "fin.essai": "Test settings: run not ranked.",
 
   "pause.aria": "Pause",
   "pause.titre": "Pause",
@@ -59,6 +60,8 @@ export const CATALOGUE_EN: Catalogue = {
   "pause.phrase": "The pieces are holding their breath.",
   "pause.reprendre": "Resume",
   "pause.recommencer": "Restart",
+  "pause.sons": "Sounds",
+  "pause.sons.volume": "Volume",
 
   "fin.aria": "End of the game",
   "fin.eyebrow": "TOWER · Practice run",

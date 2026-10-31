@@ -1,30 +1,37 @@
 import "./jeu.css";
+import { installerCataloguesDuJeu } from "./catalogue.jeu.fr";
 import { readPlayerId } from "@cdj/profile";
-import { empreinteVue, medailleObtenue, medaillesDe, Partie, REGLAGES_DEFAUT, type Rapier, type Scenario, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
+import { empreinteVue, medailleObtenue, medaillesDe, Partie, type Rapier, type Scenario, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
 import { el, formatDateCourte, nomMedaille } from "@cdj/ui";
 import { monterClassement } from "./classementUi";
 import { texteDebug } from "./debug";
 import { Entrees } from "./entrees";
-import { peutClasser } from "./envoi";
+import { evenementsDeFin, type EvenementJeu, Observateur } from "./evenements";
 import { cleNomFantome, type EtatFantome, etatInitial, etatValide, suivant } from "./fantomeEtat";
 import { type FantomePiece, MemoireFantome } from "./fantomeLocal";
 import type { Musique } from "@cdj/musique/branche";
 import { monterFin, type VueEnvoi } from "./fin";
 import { formatHauteur } from "./formatHauteur";
+import { hasardAffichage } from "./hasardAffichage";
 import { Hud } from "./hud";
 import { appliquerDocument, chargerLangue, langueCourante, t, traducteurDuSocle } from "./i18n";
 import { type EtatMedailles, SANS_MEDAILLES, TYPE_MEDAILLE } from "./medailles";
 import { hoteMessage, type MessageDirect, monterMessage } from "./messageDirect";
 import { chargerPalette, poserPalette } from "./palette";
+import { AnalyseurPanique } from "./panique";
 import { monterPause } from "./pause";
 import { textePartage } from "./partage";
 import type { Preparation } from "./preparation";
 import { lireRecords, proposerRecord } from "./records";
+import { ecrireSons, lireSons, type ReglagesSons } from "./reglagesSons";
 import { Scene3D } from "./scene";
 import { chargerSuite } from "./jeuSuivant";
 import { creerSession, type Session, suivreGeneration } from "./session";
 import { gameStorage } from "./stockage";
-import { monterTune, reglagesDeDepart } from "./tune";
+import { classablePourReglages } from "./classable";
+import { reglagesDeDepart, reglagesEssai } from "./reglagesEssai";
+import { Sons } from "./sons";
+import { monterTune } from "./tune";
 import { type OptionsUrl, PRODUCTION } from "./urlOptions";
 
 // Le jeu de Tower (lots T1 à T4), **chargé à la demande** derrière l'accueil (`accueil.ts`) : la scène (Three.js), la partie, le HUD, la pause et l'arrivée. Une partie complète sur le contenu d'un jour
@@ -81,10 +88,20 @@ interface PorteDeTest {
   commandesBot(): number;
   /** L'état de l'envoi au serveur (lot T4). */
   envoi(): { statut: string; code: string; rang: number | null };
+  /** Lot T5 : cette partie est-elle une partie d'ESSAI (un réglage de `?debug&tune` diffère) ? Une telle partie n'est jamais classée. */
+  essai(): boolean;
+  /** Lot T5 : la partie peut-elle être envoyée au classement ? */
+  classable(): boolean;
+  /** Lot T5 : les réglages de sensation en vigueur. */
+  reglages(): ReturnType<typeof reglagesDeDepart>;
+  /** Lot T5 : les sons (le contexte est-il créé, et ce qui a été joué) et les événements du dernier tick. */
+  sons(): { pret: boolean; joues: readonly string[] };
+  evenements(): readonly EvenementJeu[];
 }
 
 /** Les outils d'essai (`?scenario=essai|paliers`) : pas d'accueil, la partie tout de suite, comme avant le lot T4. */
 export async function demarrerScenario(options: OptionsUrl, musique: Musique): Promise<void> {
+  installerCataloguesDuJeu();
   await chargerLangue();
   appliquerDocument();
   const racine = document.getElementById("tower")!;
@@ -103,6 +120,7 @@ export async function demarrerScenario(options: OptionsUrl, musique: Musique): P
 
 export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   const { options, session, preparation, musique } = ctx;
+  installerCataloguesDuJeu(); // les textes que seul le jeu lit (lot T5), hors du premier chargement
   await chargerLangue();
   appliquerDocument();
   const racine = document.getElementById("tower")!;
@@ -153,7 +171,19 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   let botComplet = false;
   let botAttend = false;
 
-  const scene = new Scene3D(racine, contenu.plateformeDemi8);
+  // Lot T5 : le hasard d'AFFICHAGE (clignements, gouttes, secousses, variations des sons) n'est jamais celui de la simulation ; chaque usage a sa graine.
+  const hasardScene = hasardAffichage(0x70e7);
+  const hasardSon = hasardAffichage(0x5017);
+  const scene = new Scene3D(racine, contenu.plateformeDemi8, { hasard: hasardScene, rendu: () => reglages.rendu });
+  const stockageSons = stockage;
+  let reglagesSons: ReglagesSons = lireSons(stockageSons);
+  const sons = new Sons({ reglages: () => reglagesSons, volumes: () => reglages.rendu.volumes, hasard: hasardSon });
+  sons.brancher();
+  let ventEnCours = false;
+  let derniersEvenements: readonly EvenementJeu[] = [];
+  let analyseur = new AnalyseurPanique(contenu.plateformeDemi8, undefined, () => reglages.rendu.panique);
+  const observateur = new Observateur();
+  scene.surPlouf = (x, taille) => void sons.jouer({ genre: "plouf", x, taille });
   const memoire = new MemoireFantome();
   let etatFantome: EtatFantome = "aucun";
   let diamantPieces: FantomePiece[] | null = null;
@@ -166,12 +196,13 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   let acc = 0;
   let dernier = performance.now();
 
-  // Ce qui peut être classé : le contenu du jour d'aujourd'hui, joué normalement (ni le bot, ni des réglages de sensation modifiés, ni un tirage ou un thème forcés).
-  const reglagesModifies = JSON.stringify(reglages.sim) !== JSON.stringify(REGLAGES_DEFAUT);
-  const classable =
-    date !== null &&
-    peutClasser({ scenario: options.scenario, jour: preparation.jour ?? -1, aujourdhui: session.aujourdhui, bot: options.bot, reglagesModifies, tireForce: options.tirage !== 0 || options.theme !== null }) &&
-    jourLu !== null;
+  // Ce qui peut être classé : le contenu du jour d'aujourd'hui, joué normalement (ni le bot, ni des réglages de sensation modifiés, ni un tirage ou un thème forcés). Lot T5 : **relu à chaque partie**
+  // (les curseurs de `?debug&tune` bougent en cours de route) : toute partie jouée avec un réglage d'essai (`reglagesEssai` : entrées, simulation, physique, largeur de plateforme) n'est jamais classée.
+  const classableAvec = (): boolean =>
+    date !== null && classablePourReglages({ scenario: options.scenario, jour: preparation.jour ?? -1, aujourdhui: session.aujourdhui, bot: options.bot, tireForce: options.tirage !== 0 || options.theme !== null }, reglages) && jourLu !== null;
+  let classable = classableAvec();
+  /** Cette partie a des réglages d'essai : ni classement, ni record, ni fantôme. */
+  let essai = false;
 
   // Hors production seulement : le bot de l'auteur. Sa preuve est dans le fichier du jour, ou son Web Worker la calcule (une minute) ; les deux modules sont chargés à la demande, et la constante de
   // construction `import.meta.env.VITE_PRODUCTION` (écrite en clair ici pour que la construction retire tout ce bloc, et avec lui le worker, du jeu publié) le ferme en production.
@@ -305,12 +336,27 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     if (rep && fin.ouverte) void lireLaSuite(true);
   });
   // Lot « musique » : la scène est le thème de la partie (celui de la palette, `preparation.theme` : `?theme=`, sinon celui du jour ; la suite d'essai et les paliers gardent le port) ; un peu plus basse pendant une partie, ses réglages sont dans la pause.
-  const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie(), musique: () => musique.lecteur() });
+  const menu = monterPause(racine, {
+    onReprendre: () => reprendre(),
+    onRecommencer: () => nouvellePartie(),
+    musique: () => musique.lecteur(),
+    // Lot T5 : les effets sonores ont leur case et leur volume dans la pause (la musique, son bloc commun juste dessous).
+    sons: {
+      lire: () => reglagesSons,
+      ecrire: (r) => {
+        reglagesSons = r;
+        ecrireSons(stockageSons, r);
+        sons.souffle(ventEnCours && !pause);
+      },
+    },
+  });
   musique.scene(`theme:${preparation.theme}`);
   musique.baisser(MUSIQUE_EN_PARTIE);
   const debug = options.debug ? el("pre", { classe: "debug", attrs: { id: "debug" } }) : null;
   if (debug) racine.append(debug);
-  if (options.tune) monterTune(racine, reglages, () => nouvellePartie());
+  // Lot T5 : l'outil de réglage (`?debug&tune`, fermé en production : `options.tune` est faux). Il est importé statiquement, DANS le jeu : un `import()` de plus l'aurait séparé en un morceau à part et
+  // fait grossir le premier chargement (la liste des morceaux préchargés de `main` : +16 o, mesuré) ; son poids est dans `tower.jeu`.
+  if (options.tune) monterTune(racine, reglages, { demiJour: contenu.plateformeDemi8, onRecommencer: () => nouvellePartie() });
 
   /** Le classement du jour en dialogue : la réponse du dernier envoi, sinon une lecture du serveur. */
   let dialogueClassement: ReturnType<typeof monterClassement> | null = null;
@@ -337,9 +383,30 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     fin.majPartage(envoye === "echec" ? t("fin.partage.echec") : t(envoye === "partage" ? "fin.partage.partage" : "fin.partage.copie"), envoye === "echec" ? texte : null);
   }
 
+  /** Lot T5 : réagit à un événement de la partie — le son, la secousse, le clignement des vies. Affichage seulement : rien n'en retourne dans la simulation. */
+  function reagir(ev: EvenementJeu): void {
+    sons.jouer(ev);
+    if (ev.genre === "ventDebut") ventEnCours = true;
+    else if (ev.genre === "ventFin") ventEnCours = false;
+    else if (ev.genre === "perte") {
+      scene.secouer(ev.cascade >= 1);
+      hud.clignerVies();
+    } else if (ev.genre === "effondrement" && ev.force === 2) scene.secouer(true);
+  }
+
   function nouvellePartie(): void {
     partie?.dispose();
-    partie = new Partie(R, contenu, { ...reglages.sim });
+    // Lot T5 : les réglages d'essai de `?debug&tune` (physique, largeur de plateforme forcée) s'appliquent à la partie qui commence ; une partie qui en a est marquée « d'essai » et jamais classée.
+    classable = classableAvec();
+    essai = reglagesEssai(reglages);
+    const scenario: Scenario = reglages.plateformeDemi8 !== null ? { ...contenu, plateformeDemi8: reglages.plateformeDemi8 } : contenu;
+    partie = new Partie(R, scenario, { ...reglages.sim }, { physique: { ...reglages.physique } });
+    scene.poserPlateforme(scenario.plateformeDemi8);
+    scene.poserEchelles(partie.taillesDEssai);
+    analyseur = new AnalyseurPanique(scenario.plateformeDemi8, partie.taillesDEssai, () => reglages.rendu.panique);
+    observateur.reinitialiser();
+    ventEnCours = false;
+    sons.souffle(false);
     scene.vider();
     etatFantome = etatInitial(dispo());
     poserFantome();
@@ -359,6 +426,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     rediffusionPrete = false;
     const v = partie.vue();
     scene.sync(v);
+    scene.poserPanique(analyseur.analyser(v));
+    observateur.observer(v);
     synchroPaliers(v);
     hud.maj(v, nomFantome());
     hud.majObjectif(medailles, v.hauteurMm);
@@ -371,6 +440,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     pause = true;
     entrees.toutRelacher();
     hud.cache = true; // la maquette de la pause n'a pas de HUD : le voile est sur la scène seule
+    sons.souffle(false); // le souffle du vent se tait pendant la pause
     musique.baisser(1);
     menu.ouvrir(partie.vue());
   }
@@ -380,6 +450,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     pause = false;
     menu.fermer();
     musique.baisser(MUSIQUE_EN_PARTIE);
+    sons.souffle(ventEnCours);
     hud.cache = false;
     entrees.toutRelacher();
     dernier = performance.now();
@@ -394,7 +465,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     // l'état final de cette partie rejouée. Tout cela est chargé à la demande (`fantomeRejeu`) : les commandes sont copiées tout de suite, la partie est détruite dès qu'on rejoue.
     const commandes = [...partie.commandesJouees()];
     const enreg = { commandesJouees: () => commandes, scenario: partie.scenario, reglages: { ...partie.reglages } };
-    if (!options.bot) {
+    // Lot T5 : une partie d'essai (réglages de `?debug&tune`) n'a ni record, ni fantôme, ni envoi : sa rediffusion ne se rejouerait pas aux réglages normaux.
+    if (!options.bot && !essai) {
       void import("./fantomeRejeu")
         .then(async (m) => {
           const rediffusion = m.enregistrer(enreg);
@@ -419,6 +491,9 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     const meilleure = !options.bot && classable ? (record && record.hauteurMm > r.hauteurMm ? record.medaille : obtenue) : null;
     if (meilleure) lignes.push(t("fin.medailles.session", { medaille: nomMedaille(traducteurDuSocle(), TYPE_MEDAILLE[meilleure]) }));
     if (options.bot && diamantBot !== null) lignes.push(t("bot.diamant", { hauteur: formatHauteur(diamantBot) }));
+    if (essai) lignes.push(t("fin.essai"));
+    // Lot T5 : la fin de partie sonne, puis une courte fanfare pour la médaille obtenue.
+    for (const ev of evenementsDeFin(r.motif, obtenue)) sons.jouer(ev);
     const franchis = (contenu.paliers ?? []).slice(0, v.declenches).map((p) => p.metres);
     fin.montrer({ vue: v, r, vies: reglages.sim.vies, medailles, note: lignes.length > 0 ? lignes.join(" · ") : null, franchis, classable, jour: preparation.jour, numero: preparation.numero });
     // Le classement : « envoi en cours » tout de suite pour une partie qui peut être classée (le record s'enregistre juste après) ; sans serveur « hors ligne, non classé ».
@@ -432,6 +507,10 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     partie.avancer(commandes);
     const v = partie.vue();
     scene.sync(v);
+    // Lot T5 : la vue de la partie, lue (jamais écrite) par l'affichage : la panique des yeux, puis les événements (sons, secousse, clignement des vies).
+    scene.poserPanique(analyseur.analyser(v));
+    derniersEvenements = observateur.observer(v, analyseur.nouveauxAffoles);
+    for (const ev of derniersEvenements) reagir(ev);
     synchroPaliers(v);
     if (document.documentElement.dataset.phase !== v.phase) document.documentElement.dataset.phase = v.phase;
     if (v.phase === "fini" && !fin.ouverte) terminer();
@@ -446,6 +525,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     else ouvrirPause();
   });
   document.addEventListener("visibilitychange", () => {
+    sons.surVisibilite(document.hidden);
     if (document.hidden) ouvrirPause();
   });
   window.addEventListener("resize", () => scene.redimensionner());
@@ -516,6 +596,11 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
       diamantBot: () => diamantBot,
       commandesBot: () => fileBot.length,
       envoi: () => ({ statut: session.envoi.state.statut, code: session.envoi.state.code, rang: date ? (session.envoi.resultats.get(date)?.rank ?? null) : null }),
+      essai: () => essai,
+      classable: () => classable,
+      reglages: () => reglages,
+      sons: () => ({ pret: sons.pret, joues: sons.joues }),
+      evenements: () => derniersEvenements,
     };
     (window as unknown as { __tower: PorteDeTest }).__tower = porte;
   }

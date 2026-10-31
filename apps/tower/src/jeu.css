@@ -120,6 +120,21 @@
   padding: 0 8px;
   background: var(--dj-encre);
 }
+/* Lot T5 : les vies clignotent une fois quand une pièce est perdue (un seul clignement ; coupé avec `prefers-reduced-motion`). */
+.bande__vies--clignote {
+  animation: vies-clignote 0.6s ease-out 1;
+}
+@keyframes vies-clignote {
+  0% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0.1;
+  }
+  55% {
+    opacity: 1;
+  }
+}
 .coeurs {
   display: inline-flex;
   align-items: center;
@@ -150,6 +165,44 @@
 }
 .suivante[hidden] {
   display: none;
+}
+/* Lot T5 : l'effet qui attend la prochaine pièce — un liseré (vert pour un bonus, encre épais pour un malus) et une petite icône au trait dans sa pastille. Le mot « bonus » ou « malus » est dans l'étiquette
+   de la plaque : la couleur ne porte jamais seule le sens. */
+.suivante--bonus {
+  border-color: var(--tower-bonus);
+  box-shadow: 0 0 0 var(--dj-trait) var(--dj-encre), var(--dj-ombre-bouton);
+}
+.suivante--malus {
+  border-width: var(--dj-trait-fort);
+}
+.suivante__effet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 22px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+}
+.suivante__effet[hidden] {
+  display: none;
+}
+.suivante--bonus .suivante__effet {
+  background: var(--tower-bonus);
+  color: var(--dj-encre);
+}
+.suivante--malus .suivante__effet {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.effet-icone {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 .suivante__legende,
 .legende {
@@ -345,6 +398,32 @@
   font-size: var(--dj-taille-13);
   line-height: 1.35;
 }
+/* Lot T5 : les effets sonores dans la pause (une case « Sons », un volume). */
+.pause__sons {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--dj-cible);
+}
+.pause__sons-case {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--dj-cible);
+  font: 700 var(--dj-taille-14) var(--dj-police-texte);
+  cursor: pointer;
+}
+.pause__sons input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--dj-encre);
+}
+.pause__sons input[type="range"] {
+  width: 100%;
+  min-height: var(--dj-cible);
+  accent-color: var(--dj-encre);
+}
 .pause__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -485,6 +564,30 @@
   box-shadow: var(--dj-ombre-bouton);
   font-size: var(--dj-taille-12);
 }
+.tune__titre {
+  cursor: pointer;
+  min-height: 28px;
+}
+.tune__groupe {
+  margin: 4px 0 0;
+  font: 700 var(--dj-taille-12) var(--dj-police-texte);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.tune__essai {
+  margin: 0;
+  padding: 4px 8px;
+  background: var(--dj-encre);
+  color: var(--tower-menthe);
+  font-weight: 700;
+}
+.tune__essai[hidden] {
+  display: none;
+}
+.tune__boutons {
+  display: grid;
+  gap: 6px;
+}
 .tune__ligne {
   display: grid;
   grid-template-columns: 9em 1fr 5.5em;
@@ -512,6 +615,9 @@
   user-select: text;
 }
 @media (prefers-reduced-motion: reduce) {
+  .bande__vies--clignote {
+    animation: none;
+  }
   .plaque-bouton,
   .commande,
   .bouton-jouer {

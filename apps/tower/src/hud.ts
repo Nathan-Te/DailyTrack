@@ -1,9 +1,10 @@
-import { DUREE_EFFET, type Effet, medailleVisee, type PieceKind, type VuePartie } from "@cdj/tower-sim";
+import { DUREE_EFFET, type Effet, estBonus, medailleVisee, type PieceKind, type VuePartie } from "@cdj/tower-sim";
 import { boutonFantome, boutonPleinEcran, el, nomMedaille, svg } from "@cdj/ui";
 import { apercuPiece } from "./apercuPiece";
 import { coeurs, majCoeurs } from "./composants";
 import { type Entrees, type Touche } from "./entrees";
 import { formatHauteur, formatPalier } from "./formatHauteur";
+import { iconeEffet } from "./iconesEffet";
 import { t, traducteurDuSocle } from "./i18n";
 import { type EtatMedailles, TYPE_MEDAILLE } from "./medailles";
 
@@ -42,6 +43,9 @@ export class Hud {
   private ligne: string | null = null;
   private readonly suivante = el("div", { classe: "suivante", attrs: { role: "img" } });
   private readonly suivanteApercu = el("span", { classe: "suivante__piece" });
+  // Lot T5 : l'effet qui attend la prochaine pièce — un liseré (vert pour un bonus, encre pour un malus, comme la plaque du palier) et une petite icône au trait.
+  private readonly suivanteEffet = el("span", { classe: "suivante__effet", attrs: { hidden: true } });
+  private minuteurVies: ReturnType<typeof setTimeout> | null = null;
   // Lot T2 : la plaque du prochain palier, au bord gauche à la hauteur du trait pointillé (« 10 m » puis l'effet, vert pour un bonus, encre pour un malus), et l'annonce d'un effet qui se déclenche.
   private readonly palier = el("div", { classe: "palier", attrs: { role: "img", hidden: true } });
   private readonly palierMetres = el("span", { classe: "palier__metres" });
@@ -53,7 +57,7 @@ export class Hud {
   readonly pause: HTMLButtonElement;
   readonly fantome: HTMLButtonElement;
   readonly plein: HTMLButtonElement;
-  private dernier = { hauteur: "", n: -1, vies: -1, suivante: "" as PieceKind | "" | null, nom: "", palier: "", objectif: "" };
+  private dernier = { hauteur: "", n: -1, vies: -1, suivante: "" as PieceKind | "" | null, nom: "", palier: "", objectif: "", effet: "" };
 
   constructor(private readonly o: OptionsHud) {
     this.pause = el("button", { classe: "plaque-bouton", attrs: { type: "button", id: "pause" } }, el("span", { classe: "pause-barres", attrs: { "aria-hidden": "true" } }, el("span"), el("span")));
@@ -70,7 +74,7 @@ export class Hud {
     this.viesBande = coeurs(o.vies, o.vies, "");
     this.viesBande.classList.add("bande__vies");
     const bande = el("div", { classe: "bande", attrs: { role: "group" } }, this.hauteur, this.pieces, this.viesBande);
-    this.suivante.append(el("span", { classe: "suivante__legende" }), this.suivanteApercu);
+    this.suivante.append(el("span", { classe: "suivante__legende" }), this.suivanteApercu, this.suivanteEffet);
     const gauche = el("div", { classe: "hud__gauche" }, this.pause, this.plein, this.fantome);
     this.objectif.append(this.objectifPastille, this.objectifNom, this.objectifValeur);
     const droite = el("div", { classe: "hud__droite" }, this.objectif, this.provisoire, this.suivante);
@@ -104,7 +108,7 @@ export class Hud {
     for (const b of this.element.querySelectorAll<HTMLElement>("[data-cle]")) b.setAttribute("aria-label", t(b.dataset.cle!));
     for (const s of this.element.querySelectorAll<HTMLElement>("[data-cle-texte]")) s.textContent = t(s.dataset.cleTexte!);
     this.element.querySelector(".commandes")!.setAttribute("aria-label", t("hud.commandes"));
-    this.dernier = { hauteur: "", n: -1, vies: -1, suivante: "", nom: "", palier: "", objectif: "" };
+    this.dernier = { hauteur: "", n: -1, vies: -1, suivante: "", nom: "", palier: "", objectif: "", effet: "" };
     this.provisoire.textContent = t("medailles.provisoire");
     if (this.ligne !== null) this.annonce.textContent = this.ligne;
   }
@@ -215,7 +219,12 @@ export class Hud {
       d.suivante = vue.suivante;
       this.suivante.hidden = vue.suivante === null;
       this.suivanteApercu.replaceChildren(...(vue.suivante ? [apercuPiece(vue.suivante)] : []));
-      if (vue.suivante) this.suivante.setAttribute("aria-label", t("hud.suivante.aria", { forme: vue.suivante }));
+      d.effet = "?"; // l'étiquette de la plaque dépend aussi de l'effet : relue ci-dessous
+    }
+    const cleEffet = vue.effetSuivant ?? "";
+    if (cleEffet !== d.effet) {
+      d.effet = cleEffet;
+      this.majEffetSuivant(vue);
     }
     const p = vue.palier;
     const clePalier = p ? `${p.metres}${p.effet}` : "";
@@ -235,6 +244,27 @@ export class Hud {
       d.nom = nomFantome;
       this.fantome.setAttribute("aria-label", t("fantome.bouton", { nom: nomFantome }));
     }
+  }
+
+  /** La plaque « Suivante » : la forme qui vient, et l'effet qui l'attend (liseré et icône au trait ; un bonus se lit « bonus », un malus « malus », jamais la couleur seule). */
+  private majEffetSuivant(vue: VuePartie): void {
+    const effet = vue.effetSuivant;
+    this.suivante.classList.toggle("suivante--bonus", effet !== null && estBonus(effet));
+    this.suivante.classList.toggle("suivante--malus", effet !== null && !estBonus(effet));
+    this.suivanteEffet.hidden = effet === null;
+    this.suivanteEffet.replaceChildren(...(effet ? [iconeEffet(effet)] : []));
+    if (!vue.suivante) return;
+    const forme = t("hud.suivante.aria", { forme: vue.suivante });
+    this.suivante.setAttribute("aria-label", effet ? `${forme} · ${t(`effet.${effet}`)} (${t(estBonus(effet) ? "palier.bonus" : "palier.malus")})` : forme);
+  }
+
+  /** Les vies clignotent une fois (une pièce vient d'être perdue). Aucun mouvement : un clignement de couleur, et la feuille le retire avec `prefers-reduced-motion`. */
+  clignerVies(): void {
+    this.viesBande.classList.remove("bande__vies--clignote");
+    void this.viesBande.offsetWidth; // relance l'animation d'une feuille de style déjà jouée
+    this.viesBande.classList.add("bande__vies--clignote");
+    if (this.minuteurVies) clearTimeout(this.minuteurVies);
+    this.minuteurVies = setTimeout(() => this.viesBande.classList.remove("bande__vies--clignote"), 900);
   }
 
   /** Caché pendant l'écran de fin (la partie n'est plus à l'écran). */

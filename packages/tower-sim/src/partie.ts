@@ -14,7 +14,7 @@
 //
 // Lot T2 — les paliers. Quand la hauteur stable franchit un palier (`scenario.paliers`), son effet entre dans une file ; chaque pièce qui naît prend l'effet en cours (ou, s'il n'y
 // en a pas, le suivant de la file) : un effet couvre `DUREE_EFFET` pièces (trois pour le coup de vent, une pour les autres), puis le suivant commence — « l'un après l'autre ».
-//   - petite / géante : la pièce naît à la moitié / au double de sa taille (`boites(…, taille)`, des huitièmes entiers) ;
+//   - petite / géante : la pièce naît à la moitié / au double de sa taille (`boitesE(…, taille)`, des huitièmes entiers) ;
 //   - glissante : ses colliders ont un frottement de `FROTTEMENT_GLISSANT`, règle de combinaison « minimum » ;
 //   - coup de vent : tous les `VENT_PERIODE_TICKS` ticks la pièce active se décale d'un huitième de mètre dans le sens du jour, comme un ordre de déplacement (refusé si elle s'enfonçait) ;
 //   - pièce figée : au premier contact après le lâcher (le même que celui du lierre) elle devient un corps fixe, là où elle est, quitte à flotter ; au plus tard `FIGEE_TICKS` ticks après le lâcher ;
@@ -26,11 +26,8 @@ import {
   COMMANDE,
   COMMANDES_CONNUES,
   DEMI_CASE_8,
-  DISTANCE_SOUDURE,
   FIGEE_TICKS,
-  FROTTEMENT_GLISSANT,
   LIMITE_X8,
-  MARGE_CONTACT,
   MARGE_REFUS,
   NIVEAU_PLATEFORME,
   PHYSIQUE,
@@ -38,12 +35,13 @@ import {
   type Reglages,
   STABILISATION_MAX_TICKS,
   TICKS_PAR_SECONDE,
-  VENT_PERIODE_TICKS,
   VITESSE_CALME,
 } from "./constantes";
+import { physiqueEstDEssai, physiqueResolue, type ReglagesPhysique } from "./physique";
 import { DUREE_EFFET, type Effet, estBonus, type Palier, type Taille } from "./paliers";
 import type { Rapier } from "./rapier";
-import { boites, enMillimetres, etenduePiece, sinCos, sommetPiece } from "./sommet";
+import { boitesE, type Echelles, etenduePieceE, sommetPieceE } from "./echelles";
+import { enMillimetres, sinCos } from "./sommet";
 
 /** Une pièce posée d'avance (une tour de départ, `?scenario=paliers`) : forme, quarts de tour, position du centre de masse en huitièmes de mètre. */
 export interface PieceDepart {
@@ -120,6 +118,8 @@ export interface VuePartie {
   palier: { metres: number; effet: Effet; bonus: boolean } | null;
   declenches: number;
   dernierEffet: Effet | null;
+  /** Lot T5 : l'effet qui attend la prochaine pièce à naître (celle de la plaque « Suivante »), ou null. Affichage seulement : jamais haché ni rejoué. */
+  effetSuivant: Effet | null;
 }
 
 /** Le résultat figé. Le score est `hauteurMm` ; départage : `vies` (plus = mieux), puis `ticks` (moins = mieux). */
@@ -192,20 +192,26 @@ export class Partie {
   /** Pièce par corps (poignée de Rapier) ; la plateforme (corps fixe, créé seulement avec des paliers) y est `null`. */
   private parCorps = new Map<number, Piece | null>();
   private retenue = false;
+  /** Lot T5 : les réglages d'essai de la physique (les défauts, sauf demande) et les tailles d'essai qui en découlent. */
+  private readonly physique: ReglagesPhysique;
+  private readonly echelles: Echelles;
 
   /**
-   * `options.stabilisationMaxTicks` : seulement pour les tests (l'attente maximale de stabilisation, `STABILISATION_MAX_TICKS` par défaut). `depuis` : la partie à copier
+   * `options.stabilisationMaxTicks` : seulement pour les tests (l'attente maximale de stabilisation, `STABILISATION_MAX_TICKS` par défaut). `options.physique` (lot T5) : les réglages d'ESSAI de
+   * `?debug&tune` (frottement, rebond, vent, tailles, seuils de contact) ; absents, la partie est exactement celle des lots précédents. `depuis` : la partie à copier
    * (lot T3, voir `cloner`) ; le monde de Rapier est alors restauré d'un instantané au lieu d'être construit.
    */
   constructor(
     R: Rapier,
     readonly scenario: Scenario,
     readonly reglages: Readonly<Reglages> = REGLAGES_DEFAUT,
-    private readonly options: { stabilisationMaxTicks?: number } = {},
+    private readonly options: { stabilisationMaxTicks?: number; physique?: Partial<ReglagesPhysique> } = {},
     depuis?: Partie,
   ) {
     this.R = R;
     this.vies = reglages.vies;
+    this.physique = physiqueResolue(options.physique);
+    this.echelles = { petite4: this.physique.echellePetite4, geante4: this.physique.echelleGeante4 };
     if (depuis) {
       this.world = R.World.restoreSnapshot(depuis.world.takeSnapshot());
       this.copierEtat(depuis);
@@ -214,7 +220,7 @@ export class Partie {
     const world = new R.World({ x: 0, y: -PHYSIQUE.gravite });
     world.timestep = 1 / TICKS_PAR_SECONDE;
     world.integrationParameters.numSolverIterations = PHYSIQUE.iterations;
-    const plateforme = R.ColliderDesc.cuboid(scenario.plateformeDemi8 / 8, 0.5).setFriction(PHYSIQUE.frottement).setRestitution(PHYSIQUE.rebond);
+    const plateforme = R.ColliderDesc.cuboid(scenario.plateformeDemi8 / 8, 0.5).setFriction(this.physique.frottement).setRestitution(this.physique.rebond);
     if (scenario.paliers && scenario.paliers.length > 0) {
       // Avec des paliers, la plateforme est un corps fixe : le lierre peut s'y souder (un joint relie deux corps).
       const corps = world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(0, -0.5 + NIVEAU_PLATEFORME));
@@ -290,7 +296,7 @@ export class Partie {
     let d = -Infinity;
     for (const p of this.pieces) {
       if (p.etat !== "libre" || p.sommet < seuil) continue;
-      const e = etenduePiece(p.kind, p.rot, p.x, p.angle, p.taille);
+      const e = etenduePieceE(p.kind, p.rot, p.x, p.angle, p.taille, this.echelles);
       if (e.gauche < g) g = e.gauche;
       if (e.droite > d) d = e.droite;
     }
@@ -319,6 +325,16 @@ export class Partie {
 
   get tick(): number {
     return this.ticks;
+  }
+
+  /** Lot T5 : cette partie a-t-elle des réglages d'ESSAI de physique (`?debug&tune`) ? Une telle partie n'est jamais classée (le serveur la rejouerait avec les réglages normaux). */
+  get physiqueDEssai(): boolean {
+    return physiqueEstDEssai(this.physique);
+  }
+
+  /** Lot T5 : les tailles d'essai (pour le rendu : le jeu dessine les pièces à la taille que la physique leur donne). */
+  get taillesDEssai(): Readonly<Echelles> {
+    return this.echelles;
   }
 
   get etape(): Phase {
@@ -352,16 +368,16 @@ export class Partie {
     if (commandes & COMMANDE.GAUCHE) this.deplacer(p, -DEMI_CASE_8);
     if (commandes & COMMANDE.DROITE) this.deplacer(p, DEMI_CASE_8);
     if (commandes & COMMANDE.TOURNER) this.tourner(p);
-    if (p.effet === "vent" && ++p.vecu % VENT_PERIODE_TICKS === 0) this.deplacer(p, this.scenario.ventSens === -1 ? -1 : 1);
+    if (p.effet === "vent" && ++p.vecu % this.physique.ventPeriodeTicks === 0) this.deplacer(p, (this.scenario.ventSens === -1 ? -1 : 1) * this.physique.ventPas8);
     const facteur = commandes & COMMANDE.DESCENDRE ? this.reglages.facteurDescente : 1;
     const normale = this.reglages.vitesseChute8 / 8;
     let vy = normale * facteur;
     // « Descendre » est un confort, jamais un effet physique (lot T2) : la descente rapide s'arrête à la marge de contact, la pièce finit sa course à la vitesse normale et
     // lâche exactement comme une pièce sans accélération — elle se pose à la même vitesse, avec la même force.
-    if (facteur > 1 && this.touche(p, p.x, p.y - vy / TICKS_PAR_SECONDE, MARGE_CONTACT)) vy = normale;
+    if (facteur > 1 && this.touche(p, p.x, p.y - vy / TICKS_PAR_SECONDE, this.physique.margeContact)) vy = normale;
     p.body!.setLinvel({ x: 0, y: -vy }, true);
     // Au pas qui vient la pièce descend de vy / 60 : si elle toucherait (à la marge près) la plateforme ou une pièce, elle lâche maintenant.
-    if (this.touche(p, p.x, p.y - vy / TICKS_PAR_SECONDE, MARGE_CONTACT)) this.lacher(p);
+    if (this.touche(p, p.x, p.y - vy / TICKS_PAR_SECONDE, this.physique.margeContact)) this.lacher(p);
   }
 
   private deplacer(p: Piece, delta8: number): void {
@@ -376,7 +392,7 @@ export class Partie {
   /** Un quart de tour dans le sens des aiguilles d'une montre, autour du centre de masse ; refusé s'il entre dans une pièce. */
   private tourner(p: Piece): void {
     const rot = (p.rot + 3) & 3;
-    if (this.toucheBoites(boites(p.kind, rot, p.taille), p.body!, p.x, p.y, -MARGE_REFUS)) return;
+    if (this.toucheBoites(boitesE(p.kind, rot, p.taille, this.echelles), p.body!, p.x, p.y, -MARGE_REFUS)) return;
     this.retirerCorps(p);
     p.rot = rot;
     p.body = this.creerCorps(p);
@@ -392,7 +408,7 @@ export class Partie {
   }
 
   private touche(p: Piece, x: number, y: number, marge: number): boolean {
-    return this.toucheBoites(boites(p.kind, p.rot, p.taille), p.body!, x, y, marge);
+    return this.toucheBoites(boitesE(p.kind, p.rot, p.taille, this.echelles), p.body!, x, y, marge);
   }
 
   /** Une boîte de la forme, agrandie de `marge` (réduite si négative), recouvre-t-elle un autre corps que `corps` ? */
@@ -421,10 +437,10 @@ export class Partie {
   private creerCorps(p: Piece): RAPIER.RigidBody {
     const R = this.R;
     const body = this.world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(p.x, p.y).setGravityScale(p.etat === "active" ? 0 : 1));
-    for (const b of boites(p.kind, p.rot, p.taille)) {
-      const collider = R.ColliderDesc.cuboid(b.hw / 8, b.hh / 8).setTranslation(b.cx / 8, b.cy / 8).setDensity(1).setRestitution(PHYSIQUE.rebond);
-      if (p.effet === "glissante") collider.setFriction(FROTTEMENT_GLISSANT).setFrictionCombineRule(R.CoefficientCombineRule.Min);
-      else collider.setFriction(PHYSIQUE.frottement);
+    for (const b of boitesE(p.kind, p.rot, p.taille, this.echelles)) {
+      const collider = R.ColliderDesc.cuboid(b.hw / 8, b.hh / 8).setTranslation(b.cx / 8, b.cy / 8).setDensity(1).setRestitution(this.physique.rebond);
+      if (p.effet === "glissante") collider.setFriction(this.physique.frottementGlissant).setFrictionCombineRule(R.CoefficientCombineRule.Min);
+      else collider.setFriction(this.physique.frottement);
       this.world.createCollider(collider, body);
     }
     this.parCorps.set(body.handle, p);
@@ -443,7 +459,7 @@ export class Partie {
     const kind = this.scenario.pieces[this.distribuees]!;
     const effet = this.effetDeLaPiece();
     const taille: Taille = effet === "petite" ? "petite" : effet === "geante" ? "geante" : "normale";
-    const bs = boites(kind, 0, taille);
+    const bs = boitesE(kind, 0, taille, this.echelles);
     let bas8 = 0;
     let gauche8 = Infinity;
     let droite8 = -Infinity;
@@ -484,7 +500,7 @@ export class Partie {
       id: this.pieces.length, kind: d.kind, rot: d.rot & 3, etat: "libre", body: null, x8: d.x8, x: d.x8 / 8, y: d.y8 / 8, angle: 0, endormie: false, sommet: 0, stabilisee: true,
       taille: "normale", effet: null, lacheTick: -1, vecu: 0, soudee: false, fixe: false,
     };
-    p.sommet = sommetPiece(p.kind, p.rot, p.y, 0);
+    p.sommet = sommetPieceE(p.kind, p.rot, p.y, 0, "normale", this.echelles);
     p.body = this.creerCorps(p);
     p.body.sleep();
     this.pieces.push(p);
@@ -511,7 +527,7 @@ export class Partie {
       p.x = t.x;
       p.y = t.y;
       p.angle = p.body.rotation();
-      p.sommet = sommetPiece(p.kind, p.rot, p.y, p.angle, p.taille);
+      p.sommet = sommetPieceE(p.kind, p.rot, p.y, p.angle, p.taille, this.echelles);
       if (p.y < NIVEAU_PLATEFORME) this.perdre(p);
       else {
         if (!p.stabilisee) {
@@ -580,7 +596,7 @@ export class Partie {
         if (q === undefined || (q !== null && q.etat !== "libre")) continue;
         let proche = false;
         this.world.contactPair(c, c2, (m) => {
-          for (let k = 0; k < m.numContacts(); k++) if (m.contactDist(k) <= DISTANCE_SOUDURE) proche = true;
+          for (let k = 0; k < m.numContacts(); k++) if (m.contactDist(k) <= this.physique.distanceSoudure) proche = true;
         });
         if (proche) touches.set(b2.handle, q);
       }
@@ -674,7 +690,14 @@ export class Partie {
       palier: paliers && this.prochainPalier < paliers.length ? { metres: paliers[this.prochainPalier]!.metres, effet: paliers[this.prochainPalier]!.effet, bonus: estBonus(paliers[this.prochainPalier]!.effet) } : null,
       declenches: this.declenches,
       dernierEffet: this.dernierEffet,
+      effetSuivant: this.effetSuivant(),
     };
+  }
+
+  /** Lot T5 : l'effet que prendra la pièce qui naîtra après celle en main (celui qui est en cours, sinon le prochain de la file) : la plaque « Suivante » le montre. Lecture seule (rien n'est consommé). */
+  private effetSuivant(): Effet | null {
+    if (this.courant) return this.courant.effet;
+    return this.file.length > 0 ? this.file[0]! : null;
   }
 
   /** Pour les tests : la vitesse (m/s) du corps d'une pièce. Null si la pièce n'existe plus. */
