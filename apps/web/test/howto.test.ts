@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATALOGUE_TRACK } from "../src/catalogue";
-import { GAMEPAD_CONTROLS, HOWTO_POINTS, KEYBOARD_BASICS, KEYBOARD_CONTROLS, type Control } from "../src/howto";
+import { HOWTO_POINTS, gamepadControls, keyboardBasics, keyboardControls, type Control } from "../src/howto";
 
 // « Comment jouer » dans le jeu (retouche du lot I4, charte rév. 7) : trois points courts par appareil, les textes viennent du catalogue (fr + en).
 const texte = (langue: "fr" | "en", cle: string): string | undefined => {
@@ -31,8 +31,15 @@ describe("l'aide « Comment jouer »", () => {
   });
 
   it("les listes de commandes ne citent que des clés du catalogue (touches et actions)", () => {
-    for (const k of [...cles(KEYBOARD_CONTROLS), ...cles(GAMEPAD_CONTROLS), ...cles(KEYBOARD_BASICS)])
+    for (const k of [...cles(keyboardControls()), ...cles(gamepadControls()), ...cles(keyboardBasics())])
       for (const langue of ["fr", "en"] as const) expect(texte(langue, k), `${langue} ${k}`).toBeTruthy();
+  });
+
+  it("les listes de commandes montrent les touches CHOISIES (lot M2), nommées selon la disposition du clavier", () => {
+    const origine = keyboardControls().map((c) => c.keys.join(" "));
+    expect(origine[0]).toBe("↑ ← ↓ →");
+    expect(gamepadControls().find((c) => c.does === "aide.manette.accelerer")?.keys).toEqual(["RT"]);
+    expect(gamepadControls().find((c) => c.does === "aide.manette.depart")?.keys).toEqual(["X"]);
   });
 
   it("le bouton de fin et la légende du schéma sont traduits", () => {

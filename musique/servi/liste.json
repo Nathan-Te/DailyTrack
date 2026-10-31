@@ -1,0 +1,380 @@
+{
+  "version": 1,
+  "debit": "96k",
+  "pistes": [
+    {
+      "id": "track-menu",
+      "titre": "Pole position",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Pole position » — Du Jour (généré par le code)",
+      "fichier": "track-menu-02565e64.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "sha": "96fe9eebe9a39b734d164b0e86181e4d168045ff9756e77721db081414037eda",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 68.6
+    },
+    {
+      "id": "track-nuit",
+      "titre": "Périphérique",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Périphérique » — Du Jour (généré par le code)",
+      "fichier": "track-nuit-3d61fd23.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "sha": "264d7e49a934c110c13012fd5dca833d0517e2c929a718738ebe6b0b80396994",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 60
+    },
+    {
+      "id": "jump-foret",
+      "titre": "Sous les feuilles",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Sous les feuilles » — Du Jour (généré par le code)",
+      "fichier": "jump-foret-eaf34fff.m4a",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:foret"
+      ],
+      "sha": "7dc77b3246cc9922eb704389aeec85d1488d81f90f05a37d4b50955129a66b29",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 54.9
+    },
+    {
+      "id": "track-stade",
+      "titre": "Tribune",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Tribune » — Du Jour (généré par le code)",
+      "fichier": "track-stade-d6f3ab43.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:stade"
+      ],
+      "sha": "69b1dc9e506ebcb73bbce6d7ed2a2e4f6bc07ae015399dd78067705c1d2867b8",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 58.2
+    },
+    {
+      "id": "track-rallye",
+      "titre": "Spéciale",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Spéciale » — Du Jour (généré par le code)",
+      "fichier": "track-rallye-1a6fc663.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:rallye"
+      ],
+      "sha": "6fab40968b04f30105e910d17e4a8bef576708b75381d95b537fbb112f90af58",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 54.9
+    },
+    {
+      "id": "track-banquise",
+      "titre": "Verglas",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Verglas » — Du Jour (généré par le code)",
+      "fichier": "track-banquise-ad359fc9.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:banquise"
+      ],
+      "sha": "02e76a067a639c9ff8510e34d21963c5db7da4f7b67e0c5d735d715f6ade07d0",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 65.1
+    },
+    {
+      "id": "track-campagne",
+      "titre": "Chemin de terre",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Chemin de terre » — Du Jour (généré par le code)",
+      "fichier": "track-campagne-8320aaa8.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:campagne"
+      ],
+      "sha": "627507c548bcb6b9f80716645f5ec34e18c89b6cc4c8e0f837a447dfa8713e6c",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 69.8
+    },
+    {
+      "id": "track-canyon",
+      "titre": "Mirage",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Mirage » — Du Jour (généré par le code)",
+      "fichier": "track-canyon-b33f11a2.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:canyon"
+      ],
+      "sha": "e8dc44fc5e2c6c50b44952c3073a9bf5557185964fc04532191af1238cd2bff8",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 61.9
+    },
+    {
+      "id": "track-col",
+      "titre": "Lacets",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Lacets » — Du Jour (généré par le code)",
+      "fichier": "track-col-5d40fccb.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:col"
+      ],
+      "sha": "876e8f065847c7ab83734da77c5a188a7ee7d58d71070be0e318685669dded34",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 61
+    },
+    {
+      "id": "track-ville",
+      "titre": "Heure de pointe",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Heure de pointe » — Du Jour (généré par le code)",
+      "fichier": "track-ville-945ec93b.m4a",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:ville"
+      ],
+      "sha": "d9103e0368a091e800dac365032e1c707f9b43f61424c71c0f75c7f769209379",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 65.1
+    },
+    {
+      "id": "jump-menu",
+      "titre": "Écran titre",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Écran titre » — Du Jour (généré par le code)",
+      "fichier": "jump-menu-ff92018e.m4a",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "sha": "e022decfb823a98cd4dde526423543569985d96f177970ccff83acc513f5bf06",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 60
+    },
+    {
+      "id": "jump-usine",
+      "titre": "Chaîne de montage",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Chaîne de montage » — Du Jour (généré par le code)",
+      "fichier": "jump-usine-62e2cf92.m4a",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:usine"
+      ],
+      "sha": "67e9c9c9e32a078b3e1e2678cf44655d4d1c3c7fc3e94ac9ae7ef5e0e46b1efc",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 51.2
+    },
+    {
+      "id": "jump-glace",
+      "titre": "Neige molle",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Neige molle » — Du Jour (généré par le code)",
+      "fichier": "jump-glace-c2bfdffd.m4a",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:glace"
+      ],
+      "sha": "2fb90d5be2ad62fe657852703bf0717736fe7a4d647899d5cc892db2c26f0d43",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 68.6
+    },
+    {
+      "id": "jump-nuit",
+      "titre": "Ruelle",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Ruelle » — Du Jour (généré par le code)",
+      "fichier": "jump-nuit-58b775f6.m4a",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "sha": "76bddc2adf877d452194644a07c4c10b7e30b6acc1dd9c049e64bcb8c234c410",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 61.9
+    },
+    {
+      "id": "jump-neon",
+      "titre": "Autoroute 84",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Autoroute 84 » — Du Jour (généré par le code)",
+      "fichier": "jump-neon-8846b539.m4a",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:neon"
+      ],
+      "sha": "7938cc9f03af81ccbe7bb2804942a6f0d201fe0a98fe96e49b2aea40fdd41d73",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 51.2
+    },
+    {
+      "id": "tower-menu",
+      "titre": "Premier étage",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Premier étage » — Du Jour (généré par le code)",
+      "fichier": "tower-menu-86c12dfb.m4a",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "sha": "ded1921150ce5816ebe2b0d307d9cc781314f22158a5ecbeaf8dca900f758917",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 65.5
+    },
+    {
+      "id": "tower-port",
+      "titre": "Marée basse",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Marée basse » — Du Jour (généré par le code)",
+      "fichier": "tower-port-2b837a28.m4a",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:port"
+      ],
+      "sha": "34b0bda8df3325ad623748b1419d993401e8d51f059ab451e277812f50f7a589",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 62.7
+    },
+    {
+      "id": "tower-chantier",
+      "titre": "Échafaudage",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Échafaudage » — Du Jour (généré par le code)",
+      "fichier": "tower-chantier-2bcf3233.m4a",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:chantier"
+      ],
+      "sha": "bd0060171a16b4edbc15cec51a6fc94127e5cb5c1d635a96e9f0c8db0fded065",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 57.6
+    },
+    {
+      "id": "tower-canyon",
+      "titre": "Terre rouge",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Terre rouge » — Du Jour (généré par le code)",
+      "fichier": "tower-canyon-3c655203.m4a",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:canyon"
+      ],
+      "sha": "7b841b024af0c92b72d4534a1ceec071388f9e7c1cee48c9b8269923c72dfeff",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 72
+    },
+    {
+      "id": "tower-banquise",
+      "titre": "Cristaux",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Cristaux » — Du Jour (généré par le code)",
+      "fichier": "tower-banquise-05fe21b8.m4a",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:banquise"
+      ],
+      "sha": "554734a31708b6663f74876cb3600f6cd51247fb054d6c33e3f3889a32d0ff2b",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 75.8
+    },
+    {
+      "id": "tower-jungle",
+      "titre": "Canopée",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Canopée » — Du Jour (généré par le code)",
+      "fichier": "tower-jungle-96a0ca7d.m4a",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:jungle"
+      ],
+      "sha": "3b900d22d1acb287901f5a1d2515aaad9b6515b1d63ad070b86ead7450b23381",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 60
+    },
+    {
+      "id": "tower-nuit",
+      "titre": "Veilleuse",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Veilleuse » — Du Jour (généré par le code)",
+      "fichier": "tower-nuit-679b691b.m4a",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "sha": "41cfab43509504785c121d84428630191338c746899b8f558e2e2b225e526489",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 82.3
+    }
+  ]
+}

@@ -34,7 +34,8 @@ import { STAIN_DISCS, STAIN_REACH, onSolidFace, stainFor } from "../src/stains";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ATTEMPT_READY, ATTEMPT_RUNNING, INPUT_JUMP, INPUT_RESPAWN, RESPAWN_TICKS, RESTART_VERSION, BRIDGE_VERSION, TICK_RATE, parseLevel } from "@cdj/jump-sim";
-import { Controls, KEYS, padRespawn, padRestart } from "../src/input";
+import { commandes } from "../src/commandes";
+import { Controls } from "../src/input";
 import { START, START_DEFAULTS, decompteDigit, readyTicks } from "../src/session";
 import "./francais";
 
@@ -528,21 +529,19 @@ scie s1 o 120 aller-retour 14,2 18,2
 
 describe("lot 27 — les mêmes touches que DailyTrack", () => {
   it("R reprend au dernier point de passage, Entrée recommence à zéro ; à la manette Y et X ; Start la pause", () => {
-    expect(KEYS.respawn).toEqual(["KeyR"]);
-    expect(KEYS.restart).toEqual(["Enter"]);
-    const pad = (pressed: number[]) => ({ buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressed.includes(i), value: 0, touched: false })) });
-    expect(padRespawn(pad([3]))).toBe(true);
-    expect(padRestart(pad([2]))).toBe(true);
+    expect(commandes.touches("reprendre")).toEqual(["KeyR"]);
+    expect(commandes.touches("recommencer")).toEqual(["Enter"]);
+    const pad = (pressed: number[]) => ({ axes: [], buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressed.includes(i), value: 0, touched: false })) });
+    expect(commandes.enfonceeManette("reprendre", pad([3]))).toBe(true);
+    expect(commandes.enfonceeManette("recommencer", pad([2]))).toBe(true);
   });
 
   it("parité avec DailyTrack : les touches et boutons de `apps/web/src/input.ts` sont les mêmes (R, Entrée, Y = bouton 3, X = bouton 2)", () => {
     // Lecture seule : DailyTrack n'est pas modifié ; si ses touches changent, ce test dit qu'il faut aligner Jump (ou l'inverse).
-    const track = readFileSync(join(import.meta.dirname, "../../web/src/input.ts"), "utf8");
-    expect(track).toMatch(/respawn: \["KeyR"\]/);
-    expect(track).toMatch(/restart: \["Enter"\]/);
-    expect(track).toMatch(/padRespawn = [^;]*buttons\[3\]/);
-    expect(track).toMatch(/padRestart = [^;]*buttons\[2\]/);
-    expect(track).toMatch(/pause: \["KeyP"\]/);
+    const track = readFileSync(join(import.meta.dirname, "../../web/src/commandes.ts"), "utf8");
+    expect(track).toMatch(/id: "point"[^}]*clavier: \["KeyR"\][^}]*manette: "b3"/);
+    expect(track).toMatch(/id: "recommencer"[^}]*clavier: \["Enter"\][^}]*manette: "b2"/);
+    expect(track).toMatch(/id: "pause"[^}]*clavier: \["KeyP"\]/);
   });
 
   const key = (target: EventTarget, code: string, extra: Record<string, unknown> = {}) => {

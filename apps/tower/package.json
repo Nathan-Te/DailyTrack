@@ -12,6 +12,7 @@
   "dependencies": {
     "@cdj/clock": "*",
     "@cdj/core": "*",
+    "@cdj/musique": "*",
     "@cdj/profile": "*",
     "@cdj/tower-sim": "*",
     "@cdj/ui": "*",

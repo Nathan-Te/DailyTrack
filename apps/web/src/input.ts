@@ -1,5 +1,7 @@
 import { makeInput, type CarInput } from "@cdj/sim";
+import { BOUTON_FIXE, liaisonTenue } from "@cdj/ui/src/commandes";
 import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
+import { commandes } from "./commandes";
 import type { TouchPad } from "./touch";
 
 /** Axes bruts du joueur (flottants), avant quantification en commandes de simulation. */
@@ -9,17 +11,7 @@ export interface Axes {
   brake: number; // [0, 1]
 }
 
-// `event.code` désigne la touche physique : KeyW/KeyA/KeyS/KeyD sont aussi ZQSD sur un clavier AZERTY.
-const KEYS = {
-  throttle: ["ArrowUp", "KeyW"],
-  brake: ["ArrowDown", "KeyS", "Space"], // Espace : frein pour drifter
-  left: ["ArrowLeft", "KeyA"],
-  right: ["ArrowRight", "KeyD"],
-  respawn: ["KeyR"], // dernier point de contrôle
-  restart: ["Enter"], // depuis le départ
-  camera: ["KeyC"], // caméra proche / loin
-  pause: ["KeyP"],
-};
+// Lot M2 : les touches viennent des commandes (`commandes.ts`, réglables) ; `event.code` désigne la touche physique : KeyW/KeyA/KeyS/KeyD sont aussi ZQSD sur un clavier AZERTY.
 
 /** Vrai si la touche est tapée dans un champ de saisie (le pseudo). */
 export function isTyping(e: Event): boolean {
@@ -27,13 +19,11 @@ export function isTyping(e: Event): boolean {
   return t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
 }
 
-const anyDown = (down: ReadonlySet<string>, codes: readonly string[]) => codes.some((c) => down.has(c));
-
 export function keyboardAxes(down: ReadonlySet<string>): Axes {
   return {
-    steer: (anyDown(down, KEYS.right) ? 1 : 0) - (anyDown(down, KEYS.left) ? 1 : 0),
-    throttle: anyDown(down, KEYS.throttle) ? 1 : 0,
-    brake: anyDown(down, KEYS.brake) ? 1 : 0,
+    steer: (commandes.enfoncee("droite", down) ? 1 : 0) - (commandes.enfoncee("gauche", down) ? 1 : 0),
+    throttle: commandes.enfoncee("accelerer", down) ? 1 : 0,
+    brake: commandes.enfoncee("freiner", down) ? 1 : 0,
   };
 }
 
@@ -48,15 +38,22 @@ function deadzone(v: number): number {
 /** Gâchette enfoncée au-delà de ce seuil = appuyée : accélérateur et frein sont tout-ou-rien. */
 const TRIGGER_ON = 0.3;
 
-/** Manette « standard » : stick gauche (analogique) ou croix pour tourner, RT/A accélère, LT/B freine. */
+/** Une action tenue à la manette : un bouton (une gâchette compte dès `TRIGGER_ON`) ou un axe au-delà de son seuil (lot M2 : le bouton est celui que le joueur a choisi). */
+function padTenu(id: string, pad: Pick<Gamepad, "axes" | "buttons">): boolean {
+  const l = commandes.liaison(id);
+  if (!l) return false;
+  return l[0] === "b" ? (pad.buttons[Number(l.slice(1))]?.value ?? 0) > TRIGGER_ON : liaisonTenue(l, pad);
+}
+
+/** Manette « standard » : stick gauche (analogique) ou croix pour tourner (fixes) ; l'accélérateur et le frein sont les boutons choisis (d'origine RT et LT). */
 export function gamepadAxes(pad: Pick<Gamepad, "axes" | "buttons">): Axes {
   const btn = (i: number) => pad.buttons[i]?.value ?? 0;
   const dpad = btn(15) - btn(14);
   const stick = deadzone(pad.axes[0] ?? 0);
   return {
     steer: Math.abs(dpad) > Math.abs(stick) ? dpad : stick,
-    throttle: Math.max(btn(7), btn(0)) > TRIGGER_ON ? 1 : 0,
-    brake: Math.max(btn(6), btn(1)) > TRIGGER_ON ? 1 : 0,
+    throttle: padTenu("accelerer", pad) ? 1 : 0,
+    brake: padTenu("freiner", pad) ? 1 : 0,
   };
 }
 
@@ -89,12 +86,13 @@ export class Controls {
   ) {
     target.addEventListener("keydown", (e) => {
       if (e.repeat || isTyping(e)) return; // on tape son pseudo : les touches ne sont pas des commandes
-      if (Object.values(KEYS).some((codes) => codes.includes(e.code))) e.preventDefault();
+      const action = commandes.actionDeTouche(e.code);
+      if (action !== null && ["gauche", "droite", "accelerer", "freiner", "point", "recommencer", "camera", "pause"].includes(action)) e.preventDefault();
       this.down.add(e.code);
-      if (KEYS.respawn.includes(e.code)) this.respawnLatch = true;
-      if (KEYS.restart.includes(e.code)) this.restartLatch = true;
-      if (KEYS.camera.includes(e.code)) this.cameraLatch = true;
-      if (KEYS.pause.includes(e.code)) this.pauseLatch = true;
+      if (action === "point") this.respawnLatch = true;
+      if (action === "recommencer") this.restartLatch = true;
+      if (action === "camera") this.cameraLatch = true;
+      if (action === "pause") this.pauseLatch = true;
     });
     target.addEventListener("keyup", (e) => this.down.delete(e.code));
     target.addEventListener("blur", () => this.down.clear());
@@ -117,9 +115,9 @@ export class Controls {
 
     // Manette : Y = dernier point de contrôle, X = depuis le départ, Start = pause (sur front montant). Avant le lot 29, Start recommençait :
     // il ouvre maintenant le menu de pause, qui propose « Recommencer ».
-    const padRespawn = !!pad && (pad.buttons[3]?.pressed ?? false);
-    const padRestart = !!pad && (pad.buttons[2]?.pressed ?? false);
-    const padPause = !!pad && (pad.buttons[9]?.pressed ?? false);
+    const padRespawn = !!pad && commandes.enfonceeManette("point", pad);
+    const padRestart = !!pad && commandes.enfonceeManette("recommencer", pad);
+    const padPause = !!pad && (pad.buttons[BOUTON_FIXE]?.pressed ?? false); // Start : fixe
     if (padRespawn && !this.padRespawnHeld) this.respawnLatch = true;
     if (padRestart && !this.padRestartHeld) this.restartLatch = true;
     if (padPause && !this.padPauseHeld) this.pauseLatch = true;
@@ -127,7 +125,7 @@ export class Controls {
     this.padRestartHeld = padRestart;
     this.padPauseHeld = padPause;
     // Vue/Select (bouton 8) : caméra suivante.
-    const padCamera = !!pad && (pad.buttons[8]?.pressed ?? false);
+    const padCamera = !!pad && commandes.enfonceeManette("camera", pad);
     if (padCamera && !this.padCameraHeld) this.cameraLatch = true;
     this.padCameraHeld = padCamera;
 

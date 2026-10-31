@@ -1,3 +1,5 @@
+import { commandes } from "./commandes";
+import { langueCourante } from "./i18n";
 import { gameStorage } from "./storage";
 
 // « Comment jouer » (lot 29, refait à la retouche du lot I4 : un dialogue dans le jeu, charte rév. 7) : le contenu de l'aide, par appareil, et le souvenir de l'avoir vue. Logique pure ; le DOM est dans howtoUi.ts. Lot I4 : aucun texte ici,
@@ -43,27 +45,37 @@ export interface Control {
   does: string;
 }
 
-export const KEYBOARD_CONTROLS: Control[] = [
-  { keys: ["Z", "Q", "S", "D"], does: "aide.clavier.deplacer" },
-  { keys: ["aide.touche.espace"], does: "aide.clavier.frein" },
-  { keys: ["R"], does: "aide.clavier.pointDeControle" },
-  { keys: ["aide.touche.entree"], does: "aide.clavier.depart" },
-  { keys: ["C"], does: "aide.clavier.camera" },
-  { keys: ["P", "aide.touche.echap"], does: "aide.clavier.pause" },
-  { keys: ["L"], does: "aide.clavier.classement" },
-  { keys: ["G"], does: "aide.clavier.fantome" },
-  { keys: ["M"], does: "aide.clavier.son" },
-];
+/** Les noms des touches d'une action (selon la disposition du clavier), ceux que le joueur a CHOISIS (lot M2) : `commandes.ts`. */
+const touches = (id: string): string[] => commandes.nomsTouches(id, langueCourante());
+const bouton = (id: string): string => commandes.nomLiaison(id, langueCourante());
 
-export const GAMEPAD_CONTROLS: Control[] = [
-  { keys: ["aide.touche.stickGauche", "aide.touche.croix"], does: "aide.manette.tourner" },
-  { keys: ["RT", "A"], does: "aide.manette.accelerer" },
-  { keys: ["LT", "B"], does: "aide.manette.freiner" },
-  { keys: ["Y"], does: "aide.manette.pointDeControle" },
-  { keys: ["X"], does: "aide.manette.depart" },
-  { keys: ["Start"], does: "aide.manette.pause" },
-  { keys: ["aide.touche.vue"], does: "aide.manette.camera" },
-];
+/** Au clavier : une ligne par action de course (les touches choisies, le texte du catalogue). Relue à chaque dessin. */
+export function keyboardControls(): Control[] {
+  return [
+    { keys: [touches("accelerer")[0], touches("gauche")[0], touches("freiner")[0], touches("droite")[0]].filter((k): k is string => !!k), does: "aide.clavier.deplacer" },
+    { keys: touches("freiner"), does: "aide.clavier.frein" },
+    { keys: touches("point"), does: "aide.clavier.pointDeControle" },
+    { keys: touches("recommencer"), does: "aide.clavier.depart" },
+    { keys: touches("camera"), does: "aide.clavier.camera" },
+    { keys: [...touches("pause"), "aide.touche.echap"], does: "aide.clavier.pause" },
+    { keys: touches("classement"), does: "aide.clavier.classement" },
+    { keys: touches("fantome"), does: "aide.clavier.fantome" },
+    { keys: touches("son"), does: "aide.clavier.son" },
+  ];
+}
+
+/** À la manette : le stick et la croix tournent (fixes) ; les autres boutons sont ceux choisis. Start (pause) est fixe. */
+export function gamepadControls(): Control[] {
+  return [
+    { keys: ["aide.touche.stickGauche", "aide.touche.croix"], does: "aide.manette.tourner" },
+    { keys: [bouton("accelerer")], does: "aide.manette.accelerer" },
+    { keys: [bouton("freiner")], does: "aide.manette.freiner" },
+    { keys: [bouton("point")], does: "aide.manette.pointDeControle" },
+    { keys: [bouton("recommencer")], does: "aide.manette.depart" },
+    { keys: ["Start"], does: "aide.manette.pause" },
+    { keys: [bouton("camera")], does: "aide.manette.camera" },
+  ];
+}
 
 /** Les trois points de l'aide de départ (clés du catalogue), selon l'appareil : tourner, gaz et frein, le but. Courts : l'aide tient dans un dialogue de téléphone en paysage. */
 export const HOWTO_POINTS: Record<Device, readonly string[]> = {
@@ -72,8 +84,10 @@ export const HOWTO_POINTS: Record<Device, readonly string[]> = {
 };
 
 /** Au clavier, sous les trois points : les touches des actions de course (pointer, recommencer, pause) ; le déplacement est dans les points. */
-export const KEYBOARD_BASICS: Control[] = [
-  { keys: ["R"], does: "aide.clavier.pointDeControle" },
-  { keys: ["aide.touche.entree"], does: "aide.clavier.depart" },
-  { keys: ["P", "aide.touche.echap"], does: "aide.clavier.pause" },
-];
+export function keyboardBasics(): Control[] {
+  return [
+    { keys: touches("point"), does: "aide.clavier.pointDeControle" },
+    { keys: touches("recommencer"), does: "aide.clavier.depart" },
+    { keys: [...touches("pause"), "aide.touche.echap"], does: "aide.clavier.pause" },
+  ];
+}

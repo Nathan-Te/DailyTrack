@@ -3,7 +3,7 @@
 // production). Octets compressés (gzip, niveau par défaut de zlib pour les jeux, 9 pour le portail : la méthode de chaque test, inchangée).
 //   npm run build && node scripts/budgets.mjs        → les chiffres, à recopier dans docs/plateforme/budgets.md
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,14 +61,15 @@ export function mesureTrack(dist = join(ROOT, "apps/web/dist/assets")) {
   };
 }
 
-/** Jump : JS du premier chargement (hors catalogue anglais, `tune`, `verify`, le menu à la manette `manette-*` (lot M1 : à la première manette) et la page d'outils `admin-*` : jamais chargée par un joueur) + CSS (feuilles et style écrit dans la page). */
+/** Jump : JS du premier chargement (hors catalogue anglais, `tune`, `verify`, le menu à la manette `manette-*` (lot M1 : à la première manette), l'écran des commandes `commandesEcran-*` et sa feuille `commandes-*.css` (lot M2 : à la première ouverture de Réglages › Commandes) et la page d'outils `admin-*` : jamais chargée par un joueur) + CSS (feuilles et style écrit dans la page). */
 export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
   const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
-  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-"].some((p) => f.startsWith(p));
+  // Lot « musique » : le lecteur (`demarrage-`) et le panneau des réglages (`panneauMusique-`) sont chargés à la demande, au premier geste : ligne `musique.lecteur`. Lot M1 : `manette-` aussi ; lot M2 : `commandesEcran-` (l'écran Commandes).
+  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-"].some((p) => f.startsWith(p));
   const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
-  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-") && !f.startsWith("manette-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-") && !f.startsWith("manette-") && !f.startsWith("commandes-") && !f.startsWith("panneauMusique-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
   return { js: total, css, jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
 }
 
@@ -99,6 +100,19 @@ export function mesureTower(dist = join(ROOT, "apps/tower/dist/assets")) {
     polices: polices(dist),
     fichiers: [...js, ...css],
   };
+}
+
+/**
+ * Lot « musique » : le lecteur et le panneau des réglages, **à la demande** (chargés au premier geste, jamais dans le premier chargement d'un jeu), mesurés dans la construction d'un jeu
+ * (le même morceau pour les trois : `demarrage-*.js`, `panneauMusique-*.js` et sa feuille). Le poids des morceaux eux-mêmes (non comptés dans les jeux) se lit dans `musique/servi/`.
+ */
+export function mesureMusique(dist = join(ROOT, "apps/web/dist/assets"), servi = join(ROOT, "musique/servi")) {
+  const tous = readdirSync(dist);
+  const somme = (liste) => liste.reduce((n, f) => n + gz(join(dist, f)), 0);
+  const lecteur = tous.filter((f) => /^demarrage-.*\.js$/.test(f));
+  const panneau = tous.filter((f) => f.startsWith("panneauMusique-"));
+  const morceaux = existsSync(servi) ? readdirSync(servi).filter((f) => f.endsWith(".m4a")) : [];
+  return { lecteur: somme(lecteur), panneau: somme(panneau), jsCss: somme(lecteur) + somme(panneau), morceaux: morceaux.length, octetsMorceaux: morceaux.reduce((n, f) => n + statSync(join(servi, f)).size, 0) };
 }
 
 /** Les polices qu'une construction déclare (octets des fichiers woff2, déjà compressés), lues dans ses feuilles. */
@@ -140,5 +154,5 @@ if (isMain) {
   for (const app of ["web", "jump"]) if (!existsSync(join(ROOT, "apps", app, "dist/index.html"))) throw new Error(`apps/${app} n'est pas construit : npm run build`);
   const { fichiers, gz: _tous, ...track } = mesureTrack();
   const { fichiers: _t, ...tower } = existsSync(join(ROOT, "apps/tower/dist/index.html")) ? mesureTower() : { fichiers: [] };
-  console.log(JSON.stringify({ track, jump: mesureJump(), tower, portail: mesurePortail() }, null, 2));
+  console.log(JSON.stringify({ track, jump: mesureJump(), tower, portail: mesurePortail(), musique: mesureMusique() }, null, 2));
 }

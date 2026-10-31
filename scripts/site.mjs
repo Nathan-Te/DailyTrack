@@ -34,6 +34,23 @@ export const LAYOUT = [
  */
 export const ESSAI_TOWER = { from: "apps/tower/dist", to: "tower" };
 
+/**
+ * Lot « musique » : les morceaux préparés (`npm run musique`) sont servis à `/musique/` (fichiers statiques, cache sans fin : `firebase.json`), à la racine du site comme `/api/` :
+ * les trois jeux et le portail lisent `/musique/liste.json`. **Jamais les sources** (`musique/pistes/`) : seul le dossier préparé est copié.
+ */
+export const MUSIQUE = { from: "musique/servi", to: "musique" };
+
+/** Copie la musique préparée dans le site et vérifie que chaque morceau de `liste.json` y est. Rend le nombre de morceaux. */
+export function copierMusique(out, source = join(ROOT, MUSIQUE.from)) {
+  const dest = join(out, MUSIQUE.to);
+  mkdirSync(dest, { recursive: true });
+  if (!existsSync(join(source, "liste.json"))) throw new Error(`${MUSIQUE.from}/liste.json absent : npm run musique`);
+  cpSync(source, dest, { recursive: true });
+  const liste = JSON.parse(readFileSync(join(dest, "liste.json"), "utf8"));
+  for (const p of liste.pistes ?? []) if (!existsSync(join(dest, p.fichier))) throw new Error(`musique : le fichier ${p.fichier} (${p.id}) n'est pas dans le site : npm run musique`);
+  return (liste.pistes ?? []).length;
+}
+
 /** Région des renvois vers Cloud Run (prise en charge par Firebase Hosting, vérifié au lot R4). */
 export const REGION = "europe-west1";
 
@@ -240,6 +257,7 @@ export async function assembleSite(out, { production = false, origine } = {}) {
   if (!production && existsSync(join(ROOT, ESSAI_TOWER.from, "index.html"))) cpSync(join(ROOT, ESSAI_TOWER.from), join(out, ESSAI_TOWER.to), { recursive: true });
   if (production && existsSync(join(out, ESSAI_TOWER.to))) throw new Error(`l'essai de Tower (/${ESSAI_TOWER.to}/) ne doit pas être dans le site de production`);
   partagerPolices(out); // lots I4 et I5 : les polices de Track et de Jump sont celles du portail
+  const morceaux = copierMusique(out); // lot « musique » : `/musique/` (liste et fichiers préparés), jamais les sources
   // Les niveaux figés de DailyJump (lot 10) doivent être dans le site publié, identiques : sinon un jour déjà joué changerait de niveau.
   const levels = join(ROOT, "apps/jump/public/levels");
   const files = existsSync(levels) ? readdirSync(levels).filter((f) => f.endsWith(".json")) : [];
@@ -270,7 +288,7 @@ export async function assembleSite(out, { production = false, origine } = {}) {
   if (!existsSync(join(out, "404.html"))) throw new Error("page 404 absente du site (apps/portail/404.html)");
   // Lot R7 : la production s'indexe (le portail et les jeux) ; la recette et les aperçus s'interdisent à tous les robots.
   writeFileSync(join(out, "robots.txt"), robots({ production }));
-  return { niveaux: files.length, images, origine: origineSite };
+  return { niveaux: files.length, images, origine: origineSite, morceaux };
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
@@ -280,8 +298,8 @@ if (isMain) {
     if (cmd === "site") {
       const out = resolve(option(argv, "--sortie", "site"));
       const production = argv.includes("--production");
-      const { niveaux, images, origine } = await assembleSite(out, { production, origine: option(argv, "--origine") });
-      console.log(`site assemblé dans ${out} : portail, /track/, /jump/${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s)`);
+      const { niveaux, images, origine, morceaux } = await assembleSite(out, { production, origine: option(argv, "--origine") });
+      console.log(`site assemblé dans ${out} : portail, /track/, /jump/${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
       console.log(`aperçus de partage : ${origine} ; images ${images.map((i) => `${i.nom}.png ${(i.octets / 1024).toFixed(1)} ko`).join(", ")}`);
     } else if (cmd === "firebase") {
       const template = JSON.parse(readFileSync(join(ROOT, "firebase.json"), "utf8"));

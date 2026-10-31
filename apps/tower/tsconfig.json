@@ -28,6 +28,9 @@
       "path": "../../packages/core"
     },
     {
+      "path": "../../packages/musique"
+    },
+    {
       "path": "../../packages/profile"
     },
     {

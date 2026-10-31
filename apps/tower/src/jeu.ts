@@ -8,6 +8,7 @@ import { Entrees } from "./entrees";
 import { peutClasser } from "./envoi";
 import { cleNomFantome, type EtatFantome, etatInitial, etatValide, suivant } from "./fantomeEtat";
 import { type FantomePiece, MemoireFantome } from "./fantomeLocal";
+import type { Musique } from "@cdj/musique/branche";
 import { monterFin, type VueEnvoi } from "./fin";
 import { formatHauteur } from "./formatHauteur";
 import { Hud } from "./hud";
@@ -47,7 +48,12 @@ export interface ContexteJeu {
   rapier: Promise<Rapier>;
   /** Le joueur est-il déjà classé aujourd'hui (le Diamant est débloqué) ? Lu par l'accueil. */
   dejaClasse?: boolean;
+  /** La musique commune (lot « musique »), branchée une seule fois dans `main.ts` : l'accueil joue la scène `menu`, le jeu celle du thème. */
+  musique: Musique;
 }
+
+/** Niveau de la musique pendant une partie (1 dans la pause et à l'écran de fin) : à décider par Nathan. */
+const MUSIQUE_EN_PARTIE = 0.6;
 
 interface PorteDeTest {
   partie(): Partie;
@@ -77,7 +83,7 @@ interface PorteDeTest {
 }
 
 /** Les outils d'essai (`?scenario=essai|paliers`) : pas d'accueil, la partie tout de suite, comme avant le lot T4. */
-export async function demarrerScenario(options: OptionsUrl): Promise<void> {
+export async function demarrerScenario(options: OptionsUrl, musique: Musique): Promise<void> {
   await chargerLangue();
   appliquerDocument();
   const racine = document.getElementById("tower")!;
@@ -87,7 +93,7 @@ export async function demarrerScenario(options: OptionsUrl): Promise<void> {
     const rapier = import("@cdj/tower-sim/rapier").then((m) => m.chargerRapier());
     const preparation = await (await import("./preparation")).preparerScenario(options);
     message.remove();
-    await demarrerJeu({ options, session: creerSession(options), preparation, rapier });
+    await demarrerJeu({ options, session: creerSession(options), preparation, rapier, musique });
   } catch {
     message.textContent = t("chargement.echec");
     document.documentElement.dataset.ready = "true";
@@ -95,7 +101,7 @@ export async function demarrerScenario(options: OptionsUrl): Promise<void> {
 }
 
 export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
-  const { options, session, preparation } = ctx;
+  const { options, session, preparation, musique } = ctx;
   await chargerLangue();
   appliquerDocument();
   const racine = document.getElementById("tower")!;
@@ -286,7 +292,10 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
       hud.maj(partie.vue(), nomFantome());
     }
   });
-  const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie() });
+  // Lot « musique » : la scène est le thème de la partie (celui de la palette, `preparation.theme` : `?theme=`, sinon celui du jour ; la suite d'essai et les paliers gardent le port) ; un peu plus basse pendant une partie, ses réglages sont dans la pause.
+  const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie(), musique: () => musique.lecteur() });
+  musique.scene(`theme:${preparation.theme}`);
+  musique.baisser(MUSIQUE_EN_PARTIE);
   const debug = options.debug ? el("pre", { classe: "debug", attrs: { id: "debug" } }) : null;
   if (debug) racine.append(debug);
   if (options.tune) monterTune(racine, reglages, () => nouvellePartie());
@@ -326,6 +335,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     fin.cacher();
     dialogueClassement?.fermer();
     menu.fermer();
+    musique.baisser(MUSIQUE_EN_PARTIE);
     message2?.montrer(null);
     hud.cache = false;
     pause = false;
@@ -348,6 +358,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     pause = true;
     entrees.toutRelacher();
     hud.cache = true; // la maquette de la pause n'a pas de HUD : le voile est sur la scène seule
+    musique.baisser(1);
     menu.ouvrir(partie.vue());
   }
 
@@ -355,6 +366,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     if (!pause) return;
     pause = false;
     menu.fermer();
+    musique.baisser(MUSIQUE_EN_PARTIE);
     hud.cache = false;
     entrees.toutRelacher();
     dernier = performance.now();
@@ -363,6 +375,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   function terminer(): void {
     const r = partie.resultat()!;
     const v = partie.vue();
+    musique.baisser(1);
     const obtenue = medailles.medailles ? medailleObtenue(r.hauteurMm, medailles.medailles) : null;
     // La partie s'est enregistrée : sa rediffusion est gardée comme record du jour si elle bat le précédent (et part au serveur, qui la rejoue) ; si c'est la meilleure du fantôme, la silhouette est
     // l'état final de cette partie rejouée. Tout cela est chargé à la demande (`fantomeRejeu`) : les commandes sont copiées tout de suite, la partie est détruite dès qu'on rejoue.

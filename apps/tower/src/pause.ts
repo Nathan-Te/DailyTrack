@@ -1,5 +1,6 @@
 import type { VuePartie } from "@cdj/tower-sim";
 import { bouton, boutonPleinEcran, el, suivreDialogue } from "@cdj/ui";
+import type { ControleMusique } from "@cdj/ui/src/panneauMusique";
 import { boutonJouer } from "./composants";
 import { formatHauteur } from "./hud";
 import { t, traducteurDuSocle } from "./i18n";
@@ -15,7 +16,7 @@ export interface Pause {
   traduire(): void;
 }
 
-export function monterPause(racine: HTMLElement, o: { onReprendre(): void; onRecommencer(): void }): Pause {
+export function monterPause(racine: HTMLElement, o: { onReprendre(): void; onRecommencer(): void; /** Lot « musique » : le lecteur commun, chargé à la première ouverture de la pause. */ musique(): Promise<ControleMusique> }): Pause {
   const voile = el("div", { classe: "voile voile--pause", attrs: { id: "pause-ecran", hidden: true } });
   const dialogue = el("section", { classe: "dialogue", attrs: { role: "dialog", "aria-modal": "true" } });
   const titre = el("h2", { classe: "dialogue__titre" });
@@ -25,13 +26,19 @@ export function monterPause(racine: HTMLElement, o: { onReprendre(): void; onRec
   const recommencer = bouton({ texte: "", variante: "secondaire", onClick: () => o.onRecommencer() }) as HTMLButtonElement;
   recommencer.id = "pause-recommencer";
   const plein = boutonPleinEcran({ t: (c) => traducteurDuSocle().t(c as never), id: "pause-plein-ecran", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true });
-  dialogue.append(el("div", { classe: "pause__tete" }, titre, etat), replique, reprendre, el("div", { classe: "pause__actions" }, recommencer, plein));
+  const placeMusique = el("div", { classe: "pause__musique" });
+  dialogue.append(el("div", { classe: "pause__tete" }, titre, etat), replique, reprendre, el("div", { classe: "pause__actions" }, recommencer, plein), placeMusique);
   voile.append(dialogue);
   racine.append(voile);
   suivreDialogue(voile, { focusInitial: () => reprendre });
 
   let ouverte = false;
   let derniere: VuePartie | null = null;
+  // Lot « musique » : le bloc commun (volume, couper, morceau suivant, en écoute), monté à la première ouverture avec le lecteur.
+  let chargerMusique: (() => void) | null = () => {
+    chargerMusique = null;
+    void import("@cdj/ui/src/panneauMusique").then((m) => m.monterPanneau(o.musique, placeMusique), () => undefined);
+  };
   const traduire = () => {
     dialogue.setAttribute("aria-label", t("pause.aria"));
     titre.textContent = t("pause.titre");
@@ -50,6 +57,7 @@ export function monterPause(racine: HTMLElement, o: { onReprendre(): void; onRec
       if (ouverte) return;
       ouverte = true;
       voile.hidden = false;
+      chargerMusique?.();
       dialogue.scrollTop = 0;
     },
     fermer() {
