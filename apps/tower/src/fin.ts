@@ -1,27 +1,76 @@
 import type { Resultat, VuePartie } from "@cdj/tower-sim";
 import { medailleObtenue, medailleVisee, NOMS_MEDAILLES, TICKS_PAR_SECONDE } from "@cdj/tower-sim";
-import { el, formatTemps, medaille, nomMedaille, suivreDialogue } from "@cdj/ui";
+import { barreJeu, el, formatNombre, formatRang, formatTemps, medaille, nomMedaille, suivreDialogue, type TraducteurCommun } from "@cdj/ui";
+import { type EnvoiTower } from "./apiTower";
 import { boutonJouer, coeurs, petiteTour } from "./composants";
-import { formatHauteur } from "./hud";
+import type { EtatEnvoi } from "./envoi";
+import { formatHauteur, formatPalier } from "./formatHauteur";
 import { langueCourante, t, traducteurDuSocle } from "./i18n";
 import { type EtatMedailles, SANS_MEDAILLES, TYPE_MEDAILLE } from "./medailles";
 
-// L'écran de fin de Tower (lots T1 et T3) — **réduit** de la maquette `tower-arrivee.html` à ce qui existe : la hauteur stable, la plus haute atteinte (qui ne compte pas), les vies, la médaille
-// obtenue et le bloc « Médailles du jour » (lot T3 : les quatre médailles, celle obtenue en aplat, les autres en contour, et « Or : encore 4,094 m »), « Ta partie » (pièces posées et tombées, temps)
-// et « Rejouer ». Ni classement, ni partage, ni message en direct, ni « Jeu suivant du jour » : ces parties **ne sont pas dans le DOM** (aucune place vide) ; elles arrivent au lot T4. Posé sur la scène, sous le voile à rayures, dans la coque vert sapin de l'étiquette de Tower.
+// L'écran d'arrivée de Tower (lots T1, T3 et T4) — maquette `tower-arrivee.html` : la barre « ‹ DU JOUR » avec la date et le numéro ; la hauteur stable, la plus haute atteinte (qui ne compte pas), la
+// médaille obtenue et les vies, le CLASSEMENT (lot T4 : « 31e sur 96 · nouveau record », ce que le serveur a REJOUÉ ; « hors ligne, non classé » sans serveur ; le formulaire du pseudo au premier envoi), REJOUER,
+// Partager (la ligne `Du Jour · Tower #12 — 42,7 m — <médaille> — <cœurs>` : `partage.ts`) et Classement (le classement du jour en dialogue) ; à droite le bloc « Médailles du jour » (« Or : encore 4,094 m »), « Ta
+// partie » (pièces posées et tombées, paliers franchis, temps) et le message en direct. « Jeu suivant du jour » n'est **pas dans le DOM** (aucune place vide) : c'est le crochet `portail` de la plateforme
+// (lot suivant) qui le branchera. Posé sur la scène, sous le voile à rayures, dans la coque vert sapin de l'étiquette de Tower.
+
+/** Ce que l'arrivée montre d'une partie finie. */
+export interface DonneesFin {
+  vue: VuePartie;
+  r: Resultat;
+  /** Les vies au départ (3). */
+  vies: number;
+  medailles?: EtatMedailles;
+  /** Une ligne sous les médailles (la meilleure de la session, le Diamant du bot), déjà écrite. */
+  note?: string | null;
+  /** Les hauteurs (m) des paliers franchis pendant la partie. */
+  franchis?: number[];
+  /** La partie peut être classée (le jour d'aujourd'hui, le jeu normal) : sinon le bloc « Classement » n'est pas dans le DOM. */
+  classable?: boolean;
+  /** Le jour joué et son numéro : la barre « ‹ DU JOUR », la date et le numéro. */
+  jour?: number | null;
+  numero?: number | null;
+}
+
+/** L'état de l'envoi tel que l'arrivée l'affiche. */
+export interface VueEnvoi {
+  etat: EtatEnvoi;
+  /** Ce que le serveur a rejoué pour cette partie, s'il a répondu. */
+  reponse: EnvoiTower | null;
+  /** Cette partie bat le record du navigateur (même avant que le serveur ait répondu). */
+  nouveauRecord: boolean;
+  /** Cette partie ne bat pas le record du jour : rien n'est envoyé. */
+  pasMieux: boolean;
+}
 
 export interface Fin {
   readonly ouverte: boolean;
-  /** `note` : une ligne sous les médailles (la meilleure de la session, le Diamant du bot), déjà écrite. */
-  montrer(vue: VuePartie, r: Resultat, vies: number, medailles?: EtatMedailles, note?: string | null): void;
+  readonly hoteMessage: HTMLElement;
+  montrer(d: DonneesFin): void;
+  /** Le classement : l'état de l'envoi, la réponse du serveur, le formulaire du pseudo. */
+  majEnvoi(v: VueEnvoi): void;
+  /** Le résultat du partage (« Copié dans le presse-papiers »), et le texte à sélectionner si rien n'a marché. */
+  majPartage(message: string, secours: string | null): void;
   /** Les médailles ont fini de se calculer (le bot, hors production) pendant que l'écran est ouvert. */
   majMedailles(medailles: EtatMedailles): void;
   cacher(): void;
   traduire(): void;
 }
 
-export function monterFin(racine: HTMLElement, o: { onRejouer(): void; /** Le haut de l'écran : le contenu joué (« Suite d'essai », la date du jour, « Paliers »). */ eyebrow(): string }): Fin {
+export interface OptionsFin {
+  onRejouer(): void;
+  /** Le haut de l'écran : le contenu joué (« Suite d'essai », la date du jour, « Paliers »). */
+  eyebrow(): string;
+  onPartager(): void;
+  onClassement(): void;
+  /** Le pseudo choisi dans le formulaire du premier envoi. */
+  onPseudo(nom: string): void;
+  onRecharger(): void;
+}
+
+export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
   const voile = el("div", { classe: "voile voile--fin", attrs: { id: "fin-ecran", hidden: true } });
+  const barre = el("div", { classe: "accueil__barre fin__barre" });
   const coque = el("div", { classe: "coque", attrs: { role: "dialog", "aria-modal": "true" } });
   const eyebrow = el("span", { classe: "fin__eyebrow" });
   const legendeHauteur = el("span", { classe: "legende" });
@@ -40,7 +89,29 @@ export function monterFin(racine: HTMLElement, o: { onRejouer(): void; /** Le ha
   const noteMedailles = el("p", { classe: "fin__medailles-note", attrs: { id: "fin-medailles-note" } });
   const noteSession = el("p", { classe: "fin__medailles-note", attrs: { id: "fin-medailles-session", hidden: true } });
   const tuileMedailles = el("div", { classe: "fin__tuile fin__tuile--medailles", attrs: { id: "fin-medailles", hidden: true } }, legendeMedailles, grilleMedailles, noteMedailles, noteSession);
+  // Lot T4 : le classement du jour — ce que le serveur a rejoué (rang, « nouveau record »), l'attente, « hors ligne, non classé », le formulaire du pseudo.
+  const legendeRang = el("span", { classe: "legende" });
+  const rangValeur = el("span", { classe: "fin__rang-valeur", attrs: { id: "fin-rang" } });
+  const rangSous = el("span", { classe: "fin__rang-sous", attrs: { id: "fin-rang-statut", role: "status" } });
+  const recharger = el("button", { classe: "dj-bouton dj-bouton--secondaire fin__recharger", attrs: { type: "button", id: "fin-recharger", hidden: true } });
+  const champ = el("input", { classe: "champ", attrs: { id: "fin-pseudo", type: "text", maxlength: 20, autocomplete: "off" } });
+  const pseudoOk = el("button", { classe: "bouton-jouer bouton-jouer--petit", attrs: { type: "submit", id: "fin-pseudo-ok" } });
+  const pseudoErreur = el("div", { classe: "fin__erreur", attrs: { role: "alert" } });
+  const suggestions = el("div", { classe: "fin__suggestions" });
+  const formulaire = el("form", { classe: "fin__pseudo", attrs: { hidden: true } }, champ, pseudoOk, pseudoErreur, suggestions);
+  const tuileRang = el("div", { classe: "fin__tuile fin__tuile--rang", attrs: { id: "fin-classement", hidden: true } }, legendeRang, rangValeur, rangSous, recharger, formulaire);
+  recharger.addEventListener("click", () => o.onRecharger());
+  formulaire.addEventListener("submit", (e) => {
+    e.preventDefault();
+    o.onPseudo(champ.value);
+  });
   const rejouer = boutonJouer("", () => o.onRejouer(), "fin-rejouer");
+  const partager = el("button", { classe: "dj-bouton dj-bouton--secondaire", attrs: { type: "button", id: "fin-partager" } });
+  const classement = el("button", { classe: "dj-bouton dj-bouton--secondaire", attrs: { type: "button", id: "fin-voir-classement", hidden: true } });
+  partager.addEventListener("click", () => o.onPartager());
+  classement.addEventListener("click", () => o.onClassement());
+  const retourPartage = el("p", { classe: "fin__partage", attrs: { role: "status", id: "fin-partage-message" } });
+  const secours = el("textarea", { classe: "champ fin__secours", attrs: { readonly: true, rows: 3, hidden: true, id: "fin-partage-texte" } });
   const legendePartie = el("span", { classe: "legende" });
   const ligne = (id: string) => {
     const nom = el("span");
@@ -49,24 +120,84 @@ export function monterFin(racine: HTMLElement, o: { onRejouer(): void; /** Le ha
   };
   const posees = ligne("fin-posees");
   const tombees = ligne("fin-tombees");
+  const franchis = ligne("fin-paliers");
   const temps = ligne("fin-temps");
+  const hoteMessage = el("div", { classe: "message-direct message-direct--fin" });
   const gauche = el(
     "div",
     { classe: "fin__gauche" },
     eyebrow,
     el("div", { classe: "fin__score" }, el("div", { classe: "fin__score-texte" }, legendeHauteur, hauteur, plusHaute), petiteTour()),
     replique,
-    el("div", { classe: "fin__rang" }, tuileMedaille, tuileVies),
+    el("div", { classe: "fin__rang" }, tuileMedaille, tuileVies, tuileRang),
     rejouer,
+    el("div", { classe: "fin__actions" }, partager, classement),
+    retourPartage,
+    secours,
   );
-  const droite = el("div", { classe: "fin__droite" }, tuileMedailles, el("div", { classe: "fin__tuile fin__tuile--partie" }, legendePartie, posees.racine, tombees.racine, temps.racine));
+  const droite = el("div", { classe: "fin__droite" }, tuileMedailles, el("div", { classe: "fin__tuile fin__tuile--partie" }, legendePartie, posees.racine, tombees.racine, franchis.racine, temps.racine), hoteMessage);
   coque.append(el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), el("main", { classe: "etiquette-tower" }, gauche, droite));
-  voile.append(coque);
+  voile.append(el("div", { classe: "accueil__colonne" }, barre, coque));
   racine.append(voile);
   suivreDialogue(voile, { focusInitial: () => rejouer });
 
   let ouverte = false;
-  let donnees: { vue: VuePartie; r: Resultat; vies: number; medailles: EtatMedailles; session: string | null } | null = null;
+  let donnees: DonneesFin | null = null;
+  let envoi: VueEnvoi | null = null;
+  const communs = (): TraducteurCommun => traducteurDuSocle() as unknown as TraducteurCommun;
+  /** Le texte d'un code d'erreur : le catalogue commun, sinon une phrase générale. */
+  const texteErreur = (code: string): string => {
+    const cle = `erreur.${code}`;
+    const texte = traducteurDuSocle().t(cle as never);
+    return texte === cle ? t("classement.refuse") : texte;
+  };
+  const dessinerEnvoi = (): void => {
+    const d = donnees;
+    tuileRang.hidden = !d?.classable;
+    classement.hidden = !d?.classable;
+    if (!d?.classable) return;
+    legendeRang.textContent = t("fin.classement");
+    classement.textContent = t("fin.voirClassement");
+    recharger.hidden = true;
+    formulaire.hidden = true;
+    const e = envoi?.etat ?? { statut: "idle", code: "", suggestions: [] };
+    const rep = envoi?.reponse ?? null;
+    rangValeur.textContent = "—";
+    if (envoi?.pasMieux) {
+      if (rep) rangValeur.textContent = formatRang(rep.rank, langueCourante());
+      rangSous.textContent = t("fin.rang.pasMieux");
+    } else if (rep && e.statut !== "name" && e.statut !== "version" && e.statut !== "revoked") {
+      rangValeur.textContent = formatRang(rep.rank, langueCourante());
+      rangSous.textContent = t(rep.improved ? "fin.rang.record" : "fin.rang.sur", { total: formatNombre(rep.participants, langueCourante()) });
+    } else if (e.statut === "sending") {
+      rangSous.textContent = t("fin.rang.envoi");
+    } else if (e.statut === "version") {
+      rangSous.textContent = t("fin.rang.version");
+      recharger.hidden = false;
+      recharger.textContent = t("fin.recharger");
+    } else if (e.statut === "name") {
+      rangSous.textContent = t("fin.rang.pseudo");
+      formulaire.hidden = false;
+      champ.placeholder = t("fin.pseudo");
+      champ.setAttribute("aria-label", t("fin.pseudo"));
+      pseudoOk.textContent = t("fin.pseudo.ok");
+      pseudoErreur.textContent = e.code ? texteErreur(e.code) : "";
+      suggestions.replaceChildren(
+        ...e.suggestions.map((nom) => {
+          const b = el("button", { classe: "dj-bouton dj-bouton--secondaire fin__suggestion", attrs: { type: "button" }, texte: nom });
+          b.addEventListener("click", () => {
+            champ.value = nom;
+            o.onPseudo(nom);
+          });
+          return b;
+        }),
+      );
+    } else if (e.statut === "revoked" || e.statut === "refused") {
+      rangSous.textContent = texteErreur(e.code);
+    } else if (e.statut === "offline" || e.statut === "off" || e.statut === "idle") {
+      rangSous.textContent = t(e.code === "trop_envois" ? "fin.rang.tropEnvois" : "fin.rang.horsLigne");
+    }
+  };
   const traduire = () => {
     coque.setAttribute("aria-label", t("fin.aria"));
     eyebrow.textContent = o.eyebrow();
@@ -75,10 +206,16 @@ export function monterFin(racine: HTMLElement, o: { onRejouer(): void; /** Le ha
     legendePartie.textContent = t("fin.partie");
     posees.nom.textContent = t("fin.posees");
     tombees.nom.textContent = t("fin.tombees");
+    franchis.nom.textContent = t("fin.paliers");
     temps.nom.textContent = t("fin.temps");
     rejouer.textContent = t("fin.rejouer");
+    partager.textContent = t("fin.partager");
     if (!donnees) return;
-    const { vue, r, vies, medailles, session } = donnees;
+    const { vue, r, vies } = donnees;
+    const session = donnees.note ?? null;
+    const medailles = donnees.medailles ?? SANS_MEDAILLES;
+    barre.replaceChildren(barreJeu(communs(), { href: "../", jour: donnees.jour ?? 0, ...(donnees.numero ? { numero: donnees.numero } : {}) }));
+    barre.hidden = donnees.jour == null;
     legendeMedaille.textContent = t("fin.medaille");
     legendeMedailles.textContent = t("fin.medailles");
     tuileMedaille.hidden = tuileMedailles.hidden = !medailles.medailles && !medailles.enCalcul;
@@ -105,17 +242,36 @@ export function monterFin(racine: HTMLElement, o: { onRejouer(): void; /** Le ha
     viesHote.replaceChildren(coeurs(vies, r.vies, t("hud.vies.aria", { n: r.vies, total: vies })));
     posees.valeur.textContent = `${r.posees}/${vue.total}`;
     tombees.valeur.textContent = String(r.tombees);
+    const liste = donnees.franchis ?? [];
+    franchis.valeur.textContent = liste.length === 0 ? t("fin.paliers.aucun") : liste.map((m) => formatPalier(m)).join(" · ");
     temps.valeur.textContent = formatTemps((r.ticks * 1000) / TICKS_PAR_SECONDE, langueCourante());
+    dessinerEnvoi();
   };
   return {
     get ouverte() {
       return ouverte;
     },
-    montrer(vue, r, vies, medailles = SANS_MEDAILLES, session = null) {
-      donnees = { vue, r, vies, medailles, session };
+    hoteMessage,
+    montrer(d) {
+      donnees = d;
+      envoi = null;
+      retourPartage.textContent = "";
+      secours.hidden = true;
       traduire();
       ouverte = true;
       voile.hidden = false;
+    },
+    majEnvoi(v) {
+      envoi = v;
+      dessinerEnvoi();
+    },
+    majPartage(message, texte) {
+      retourPartage.textContent = message;
+      secours.hidden = texte === null;
+      if (texte !== null) {
+        secours.value = texte;
+        secours.select();
+      }
     },
     majMedailles(medailles) {
       if (!donnees) return;

@@ -3,10 +3,10 @@
 // production » est un lot de la plateforme (T4).
 import { empreinteContenu } from "../empreinte";
 import { dailyTower, GENERATEUR_TIRAGE, TOWER_GENERATOR_VERSION } from "../generateur";
-import { figerJour, type JourFige, lireJour } from "../jours";
+import { figerJour, type JourFige, type JourLu, lireJour } from "../jours";
 import { diamantDe, medaillesDe } from "../medailles";
 import type { Rapier } from "../rapier";
-import { encoderRediffusion, rejouer } from "../rediffusion";
+import { encoderRediffusion, type Rejeu, rejouerComplet } from "../rediffusion";
 import { choisirTirage, dansLaPlage, type Essai, TIRAGES_MAX } from "../tirage";
 import { type Compteurs, jouerBotRobuste, type ResultatRobuste } from "./bot";
 
@@ -50,20 +50,27 @@ export function preparerJour(
 /**
  * Le garde-fou d'un fichier de jour préparé (le texte JSON déjà lu) : il se relit, son contenu est exactement celui que la version `g` du générateur produit AU TIRAGE écrit, il a ses
  * médailles et sa preuve, et **la preuve rejouée donne la hauteur du bot, dont le Diamant écrit est `min(cette hauteur, plafond)`** (lot T3b ; avant le générateur 3, exactement cette hauteur).
- * Rend le motif du refus, ou null. Ne relance pas le bot (trop long) : il rejoue seulement sa preuve.
+ * Rend le motif du refus, ou le jour lu et le rejeu de sa preuve (lot T4 : le serveur en tire la silhouette du Diamant sans rejouer deux fois). Ne relance pas le bot (trop long) : il rejoue
+ * seulement sa preuve.
  */
-export function verifierJourPrepare(R: Rapier, json: unknown, jour: number): string | null {
+export function examinerJourPrepare(R: Rapier, json: unknown, jour: number): string | { lu: JourLu & { medailles: NonNullable<JourLu["medailles"]>; preuve: string }; rejeu: Rejeu } {
   const lu = lireJour(json, jour);
   if (typeof lu === "string") return lu;
   if (empreinteContenu(lu.contenu) !== empreinteContenu(dailyTower(jour, lu.contenu.g, lu.contenu.tirage ?? 0))) return `ne se régénère pas à l'identique avec g${lu.contenu.g}`;
   if (!lu.medailles) return "pas de médailles";
   if (!lu.preuve) return "pas de preuve";
   try {
-    const hauteurMm = rejouer(R, lu.contenu, lu.preuve).hauteurMm;
-    const diamant = diamantDe(hauteurMm, lu.contenu.g);
-    if (diamant !== lu.medailles.auteur) return `la preuve rejouée donne ${hauteurMm} mm (Diamant ${diamant} mm), le Diamant écrit est ${lu.medailles.auteur} mm`;
+    const rejeu = rejouerComplet(R, lu.contenu, lu.preuve);
+    const diamant = diamantDe(rejeu.resultat.hauteurMm, lu.contenu.g);
+    if (diamant !== lu.medailles.auteur) return `la preuve rejouée donne ${rejeu.resultat.hauteurMm} mm (Diamant ${diamant} mm), le Diamant écrit est ${lu.medailles.auteur} mm`;
+    return { lu: { ...lu, medailles: lu.medailles, preuve: lu.preuve }, rejeu };
   } catch (e) {
     return `la preuve ne se rejoue pas : ${e instanceof Error ? e.message : String(e)}`;
   }
-  return null;
+}
+
+/** Le garde-fou d'un fichier de jour préparé : le motif du refus, ou null (voir `examinerJourPrepare`). */
+export function verifierJourPrepare(R: Rapier, json: unknown, jour: number): string | null {
+  const r = examinerJourPrepare(R, json, jour);
+  return typeof r === "string" ? r : null;
 }

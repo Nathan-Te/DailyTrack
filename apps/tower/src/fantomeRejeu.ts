@@ -1,4 +1,4 @@
-import { encoderRediffusion, enregistrer, type Partie, type Rapier, type Rediffusion, rejouerParTranches, type Scenario } from "@cdj/tower-sim";
+import { decoderRediffusion, encoderRediffusion, enregistrer, type Partie, type Rapier, type Rediffusion, rejouerParTranches, type Scenario } from "@cdj/tower-sim";
 import type { Fantome, FantomePiece } from "./fantomeLocal";
 
 // Le rejeu du fantôme local (lot T2) — **chargé à la demande** (`import()` à la fin d'une partie) : l'enregistrement, l'encodage et le rejeu de la rediffusion n'ont aucune raison de peser
@@ -9,6 +9,9 @@ export type Enregistrement = Pick<Partie, "commandesJouees" | "scenario" | "regl
 
 /** L'enregistrement d'une partie finie (`enregistrer` de `@cdj/tower-sim`), pour que `jeu.ts` n'importe rien d'autre que ce module à la demande. */
 export { enregistrer };
+
+/** Relit une rediffusion gardée dans le navigateur (`tower:records`) : lève `ErreurRediffusion` si elle ne se relit plus (autre version, texte abîmé) — l'appelant l'ignore. */
+export const lireRediffusion = (texte: string): Rediffusion => decoderRediffusion(texte);
 
 /** Le fantôme d'une partie finie : sa rediffusion ; la silhouette viendra de `silhouetteDe`. */
 export function fantomeDe(rediffusion: Rediffusion, resultat: { hauteurMm: number; vies: number; ticks: number }): Fantome {

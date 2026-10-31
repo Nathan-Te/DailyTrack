@@ -24,6 +24,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./rapier": "./src/rapier.ts",
+    "./calendrier": "./src/calendrier.ts",
     "./lab/*": "./lab/*.ts",
     "./scenarios/*": "./scenarios/*.ts",
     "./bot": "./src/bot/index.ts"

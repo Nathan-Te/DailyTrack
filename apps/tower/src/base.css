@@ -1,0 +1,227 @@
+/* Tower (lots T1 à T4) : la base, chargée avec l'accueil (premier chargement) — variables, fond de page, voile à rayures, dialogue, bouton principal, coque et étiquette. Ce qui sert la partie seule
+   (HUD, pause, arrivée, scène) est dans `jeu.css`, chargée avec le jeu, à la demande. Tout vient des jetons de @cdj/ui (couleurs, polices, ombres nettes) : aucune couleur en dur, aucune ombre floue,
+   aucun dégradé (seul le motif du voile à rayures). */
+:root {
+  --voile-rayures: repeating-linear-gradient(115deg, var(--dj-encre) 0 3px, transparent 3px 8px);
+  --z-hud: 10;
+  --z-voile: 30;
+  --marge-g: max(12px, env(safe-area-inset-left, 0px));
+  --marge-d: max(12px, env(safe-area-inset-right, 0px));
+  --marge-h: max(8px, env(safe-area-inset-top, 0px));
+  --marge-b: max(14px, env(safe-area-inset-bottom, 0px));
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--tower-menthe);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+#tower {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+.tower__message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dj-espace-7);
+  font-family: var(--tower-police);
+  font-size: var(--dj-taille-16);
+  text-align: center;
+}
+.legende {
+  font-size: var(--dj-taille-legende);
+}
+.piece-encre {
+  fill: var(--dj-encre);
+}
+.voile {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-voile);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+  background: var(--voile-rayures);
+  touch-action: none;
+}
+.voile[hidden] {
+  display: none;
+}
+.dialogue {
+  box-sizing: border-box;
+  width: min(460px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  padding: 14px 16px;
+  background: var(--tower-menthe);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: 5px 5px 0 var(--dj-encre);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.dialogue > * {
+  flex-shrink: 0;
+}
+.dialogue__titre {
+  margin: 0;
+  font-family: var(--tower-police);
+  font-weight: 400;
+  font-size: 44px;
+  line-height: 0.95;
+  text-shadow: var(--tower-ombre-titre);
+}
+.bouton-jouer {
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 0 var(--dj-espace-7);
+  border: 0;
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-encre);
+  color: var(--tower-menthe);
+  font-family: var(--tower-police);
+  font-size: var(--dj-taille-24);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  box-shadow: var(--tower-epaisseur-jouer);
+  cursor: pointer;
+}
+.bouton-jouer:active {
+  transform: translate(0, var(--dj-enfonce));
+  box-shadow: 0 3px 0 var(--tower-coque);
+}
+.bouton-jouer:hover {
+  color: var(--dj-papier);
+}
+.coque {
+  box-sizing: border-box;
+  width: min(900px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 0 12px 12px;
+  background: var(--tower-coque);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: 6px 6px 0 var(--dj-encre);
+  touch-action: pan-y;
+}
+.coque__stries {
+  height: 14px;
+  margin: 0 var(--dj-stries-retrait);
+  background: repeating-linear-gradient(90deg, var(--dj-encre) 0 3px, transparent 3px 8px);
+}
+.etiquette-tower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 22px;
+  padding: 16px 18px;
+  background: var(--tower-menthe);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+}
+.petite-tour .tour-piece {
+  stroke: var(--dj-encre);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.petite-tour .tour-sol {
+  fill: var(--dj-encre);
+}
+.petite-tour .oeil {
+  fill: var(--dj-papier);
+  stroke: var(--dj-encre);
+  stroke-width: 2;
+}
+.petite-tour .oeil-pupille {
+  fill: none;
+  stroke: var(--dj-encre);
+  stroke-width: 2.5;
+}
+.fin__tuile {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--dj-papier);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.legende--papier {
+  color: var(--dj-papier);
+}
+/* --- Lot T4 : de quoi s'écrire dans l'accueil, les dialogues et l'arrivée --------------------------------------------------------------------------- */
+.bouton-jouer--petit {
+  min-height: var(--dj-cible);
+  font-size: var(--dj-taille-15);
+  letter-spacing: 1px;
+}
+.bouton-jouer:disabled {
+  cursor: progress;
+}
+.champ {
+  box-sizing: border-box;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.champ:focus-visible {
+  outline: var(--dj-trait-fort) solid var(--dj-encre);
+  outline-offset: 2px;
+}
+/* Le message en direct : rien tant qu'il est vide (aucune place), aux couleurs de Tower quand il y en a un. */
+.message-direct:empty {
+  display: none;
+}
+.dj-bandeau.message-direct__bandeau {
+  --bandeau-fond: var(--dj-encre);
+  --bandeau-texte: var(--dj-papier);
+  --bandeau-bord: var(--dj-encre);
+}
+.dj-bandeau--important.message-direct__bandeau {
+  --bandeau-fond: var(--dj-moutarde);
+  --bandeau-texte: var(--dj-encre);
+}
+/* Les petits textes d'étiquette partagés. */
+.legende--papier {
+  color: var(--dj-papier);
+}
+@media (max-width: 700px) {
+  .etiquette-tower {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-height: 520px) {
+  .dialogue {
+    padding: 10px 14px;
+  }
+  .dialogue__titre {
+    font-size: var(--dj-taille-32);
+  }
+  .etiquette-tower {
+    padding: 10px 14px;
+    gap: 16px;
+  }
+}
