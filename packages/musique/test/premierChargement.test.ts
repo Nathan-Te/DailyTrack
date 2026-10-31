@@ -43,7 +43,7 @@ function atteints(entree: string): Set<string> {
 const INTERDITS = ["packages/musique/src/lecteur.ts", "packages/musique/src/logique.ts", "packages/musique/src/navigateur.ts", "packages/musique/src/demarrage.ts", "packages/musique/src/index.ts", "packages/ui/src/panneauMusique.ts", "packages/ui/src/catalogue.musique.ts"];
 
 describe("rien de la musique dans le premier chargement", () => {
-  for (const [nom, entree] of [["Track", "apps/web/src/main.ts"], ["Jump", "apps/jump/src/main.ts"], ["Tower", "apps/tower/src/jeu.ts"], ["portail", "apps/portail/src/portail.ts"]] as const) {
+  for (const [nom, entree] of [["Track", "apps/web/src/main.ts"], ["Jump", "apps/jump/src/main.ts"], ["Tower", "apps/tower/src/main.ts"], ["portail", "apps/portail/src/portail.ts"]] as const) {
     it(`${nom} : le graphe statique de ${entree} n'atteint ni le lecteur, ni sa logique, ni le panneau`, () => {
       const vus = [...atteints(entree)].map((f) => f.slice(ROOT.length + 1));
       expect(vus.length).toBeGreaterThan(3);
@@ -60,7 +60,7 @@ describe("rien de la musique dans le premier chargement", () => {
   });
 
   it("chaque jeu se branche en une ligne, par `@cdj/musique/branche`, jamais par l'index du paquet", () => {
-    for (const [fichierJeu, jeu] of [["apps/web/src/main.ts", "track"], ["apps/jump/src/main.ts", "jump"], ["apps/tower/src/jeu.ts", "tower"]] as const) {
+    for (const [fichierJeu, jeu] of [["apps/web/src/main.ts", "track"], ["apps/jump/src/main.ts", "jump"], ["apps/tower/src/main.ts", "tower"]] as const) {
       const code = readFileSync(join(ROOT, fichierJeu), "utf8");
       expect(code, fichierJeu).toContain('from "@cdj/musique/branche"');
       expect(code, fichierJeu).toMatch(new RegExp(`brancherMusique\\("${jeu}"`));

@@ -78,7 +78,7 @@ Chaque jeu dit à la musique **où il en est** : `menu` tant que son accueil est
 |---|---|
 | Track | `menu` · `theme:stade` · `theme:rallye` · `theme:banquise` · `theme:nuit` · `theme:campagne` · `theme:canyon` · `theme:col` · `theme:ville` |
 | Jump | `menu` · `theme:foret` · `theme:usine` · `theme:glace` · `theme:nuit` · `theme:neon` |
-| Tower | `menu` (prête pour son futur accueil) · `theme:port` · `theme:chantier` · `theme:canyon` · `theme:banquise` · `theme:jungle` · `theme:nuit` |
+| Tower | `menu` (l'accueil, depuis le lot T4) · `theme:port` · `theme:chantier` · `theme:canyon` · `theme:banquise` · `theme:jungle` · `theme:nuit` |
 | Portail | `menu` (le portail n'est pas branché) |
 
 **Comment la musique choisit** : (1) les morceaux **qui nomment la scène** ; (2) à défaut, ceux **sans `scenes`** (ils passent partout) ; (3) à défaut, **le silence** — le jeu ne joue pas la musique d'un niveau à son accueil. Si le morceau en cours passe aussi dans la nouvelle scène, il **continue sans coupure**. D'une page à l'autre, la reprise ne ramène que le morceau de la scène d'arrivée. Un scénario d'essai n'a pas de scène : tous les morceaux du jeu.

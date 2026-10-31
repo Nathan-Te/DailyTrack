@@ -1,0 +1,388 @@
+/* L'accueil de Tower (lot T4) — maquette `docs/tower/maquettes/tower-accueil.html` : l'étiquette menthe dans sa coque vert sapin, sur la scène, sous le voile à rayures ; la barre « ‹ DU JOUR » en
+   plaque crème au-dessus. Premier chargement : aucune scène — le décor est un aplat du thème (ciel et sol, posés par `accueil.ts` depuis la palette), jamais un écran blanc. Jetons seulement. */
+.accueil__fond {
+  position: absolute;
+  inset: 0;
+  background: var(--accueil-ciel, var(--dj-creme));
+}
+.accueil__sol {
+  position: absolute;
+  inset: auto 0 0;
+  height: 7.4%;
+  background: var(--accueil-sol, var(--dj-creme-2));
+}
+.voile--accueil,
+.voile--fin {
+  overflow-y: auto;
+  align-items: flex-start;
+  touch-action: pan-y;
+}
+.accueil__colonne {
+  box-sizing: border-box;
+  width: min(900px, 100%);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--dj-espace-3);
+  margin: 0 auto;
+}
+.accueil__colonne > * {
+  flex-shrink: 0;
+}
+/* La barre des jeux en plaque crème (« ‹ DU JOUR », date et numéro de la tour). */
+.accueil__barre > .dj-barre-jeu {
+  box-sizing: border-box;
+  padding: 0 var(--dj-espace-5);
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.accueil__barre[hidden] {
+  display: none;
+}
+.coque--accueil {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+}
+.etiquette-tower--accueil {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+}
+.accueil__gauche,
+.accueil__droite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+  min-width: 0;
+}
+.accueil__droite {
+  gap: var(--dj-espace-4);
+}
+.accueil__tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+}
+.accueil__titres {
+  display: flex;
+  flex-direction: column;
+}
+.accueil__titre {
+  margin: 0;
+  font-family: var(--tower-police);
+  font-weight: 400;
+  font-size: 62px;
+  line-height: 0.95;
+  text-shadow: var(--tower-ombre-titre);
+}
+.accueil__tour {
+  font-family: var(--tower-police);
+  font-size: var(--dj-taille-15);
+}
+.accueil__dessin {
+  flex: none;
+  display: inline-flex;
+}
+.accueil__replique {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.accueil__tuiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dj-espace-4);
+}
+.accueil__tuile {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-1);
+  padding: var(--dj-espace-3) var(--dj-espace-5);
+  background: var(--dj-papier);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.accueil__tuile--serie {
+  background: var(--dj-encre);
+  color: var(--tower-menthe);
+  transform: rotate(-1.5deg);
+}
+.accueil__tuile--serie .legende,
+.accueil__tuile--serie .accueil__sous {
+  color: var(--dj-papier);
+}
+.accueil__tuile[hidden] {
+  display: none;
+}
+.accueil__valeur {
+  font-family: var(--tower-police);
+  font-size: 22px;
+  line-height: 1.3;
+}
+.accueil__sous {
+  font-size: var(--dj-taille-12);
+  min-height: 1em;
+}
+.accueil__jouer {
+  height: 64px;
+  font-size: 28px;
+}
+.accueil__attente {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+.accueil__attente:empty {
+  display: none;
+}
+.accueil__aide {
+  min-height: var(--dj-cible);
+}
+/* Les paliers du jour : « 8 m · Lierre · BONUS » — le mot est toujours écrit, la couleur ne le porte pas seule. */
+.accueil__paliers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.accueil__palier {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 58px;
+  align-items: center;
+  min-height: 26px;
+  font-size: var(--dj-taille-13);
+}
+.accueil__metres {
+  font-family: var(--dj-police-chiffres);
+}
+.accueil__etiquette {
+  justify-self: end;
+  padding: 1px 5px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.accueil__palier--bonus .accueil__etiquette {
+  background: var(--tower-bonus);
+}
+.accueil__palier--malus .accueil__etiquette {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+/* Le classement : une ligne `rang · pseudo · vies · hauteur` ; ta ligne en moutarde. */
+.rangs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rang {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 54px 92px;
+  align-items: center;
+  min-height: 28px;
+  font-size: var(--dj-taille-13);
+  border-bottom: 1px solid var(--dj-creme-2);
+}
+.rang__n {
+  font-family: var(--dj-police-chiffres);
+}
+.rang__nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rang__hauteur {
+  font-family: var(--tower-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-13);
+  text-align: right;
+  white-space: nowrap;
+}
+.rang--trou {
+  display: block;
+  min-height: 0;
+  border-bottom: 0;
+  color: var(--dj-encre);
+}
+.rang--moi {
+  min-height: 30px;
+  margin: 0 -6px;
+  padding: 0 6px;
+  background: var(--dj-moutarde);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  box-shadow: 2px 2px 0 var(--dj-encre);
+  font-weight: 700;
+}
+.accueil__message {
+  margin: 0;
+  font-size: var(--dj-taille-13);
+}
+.accueil__message[hidden] {
+  display: none;
+}
+.accueil__lien {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dj-encre);
+  font: inherit;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.accueil__lien[hidden] {
+  display: none;
+}
+.accueil__pied {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+}
+.accueil__decompte {
+  font-family: var(--dj-police-chiffres);
+}
+.accueil__profil {
+  text-decoration: none;
+}
+/* Le classement en dialogue (« Tout le classement ›») : la liste des 50 premiers, défilante. */
+.dialogue--classement {
+  width: min(560px, 100%);
+}
+.classement__tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--dj-espace-5);
+}
+.classement__sous {
+  font-family: var(--tower-police);
+  font-size: var(--dj-taille-13);
+}
+.classement__message {
+  margin: 0;
+  font-size: var(--dj-taille-13);
+}
+.classement__message[hidden] {
+  display: none;
+}
+.dialogue--classement .rang {
+  min-height: 36px;
+  padding: 0 var(--dj-espace-2);
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+}
+.dialogue--classement .rang--moi {
+  min-height: 40px;
+  margin: 2px 0;
+  background: var(--dj-moutarde);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.dialogue--classement .rang--trou {
+  background: transparent;
+  border: 0;
+  text-align: center;
+}
+/* « Comment jouer » : trois points et le schéma des commandes. */
+.dialogue--aide {
+  width: min(520px, 100%);
+}
+.aide__points {
+  margin: 0;
+  padding-left: var(--dj-espace-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  font-size: var(--dj-taille-15);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.aide__schema {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  padding: var(--dj-espace-3) var(--dj-espace-5);
+  background: var(--dj-papier);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.aide__commande {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-4);
+  min-height: 32px;
+  font-size: var(--dj-taille-13);
+}
+.aide__touches {
+  flex: none;
+  min-width: 96px;
+  display: inline-flex;
+  gap: var(--dj-espace-2);
+}
+.touche {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 0 var(--dj-espace-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  box-shadow: 0 2px 0 var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+}
+.aide__icone {
+  fill: none;
+  stroke: var(--dj-encre);
+  stroke-width: 4;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+@media (max-width: 700px) {
+  .etiquette-tower--accueil {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .accueil__titre {
+    font-size: 48px;
+  }
+}
+@media (max-height: 520px) {
+  .accueil__jouer {
+    height: 52px;
+    font-size: var(--dj-taille-21);
+  }
+  .accueil__titre {
+    font-size: 44px;
+  }
+  .accueil__replique {
+    font-size: var(--dj-taille-15);
+  }
+  .accueil__colonne {
+    justify-content: flex-start;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .accueil__tuile--serie {
+    transform: none;
+  }
+}

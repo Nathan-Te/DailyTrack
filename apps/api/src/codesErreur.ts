@@ -59,6 +59,9 @@ export const CODES_ERREUR = {
   no_ghost: { status: 404, sens: "Pas de fantôme à rendre : personne de classé, pas de temps pour ce joueur, ou personne devant lui." },
   invalid_kind: { status: 400, sens: "DailyTrack : fantôme demandé avec un `kind` autre que first ou ahead." },
 
+  // --- Tower (lot T4) -----------------------------------------------------------------------------------------------
+  not_ranked: { status: 403, sens: "Tower (lot T4) : la tour du Diamant ne se rend qu'à un joueur classé ce jour-là (règle G1 : on la débloque en finissant)." },
+
   // --- Salon (DailyTrack) ----------------------------------------------------------------------------------------
   invalid_session: { status: 400, sens: "Salon : numéro de session (ou adresse) illisible." },
   unknown_session: { status: 404, sens: "Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée)." },

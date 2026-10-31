@@ -88,10 +88,11 @@
     "portail": { "globs": ["apps/portail/**", "scripts/site.mjs", "scripts/images-partage.mjs", "firebase.json"] },
     "api-coeur": {
       "globs": ["apps/api/**"],
-      "sauf": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/src/jump*.ts", "apps/api/test/**", "apps/api/scripts/**", "apps/api/CLAUDE.md"]
+      "sauf": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/src/jump*.ts", "apps/api/src/tower*.ts", "apps/api/test/**", "apps/api/scripts/**", "apps/api/CLAUDE.md"]
     },
     "api-track": { "globs": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/scripts/measure-salon.ts", "apps/api/scripts/history-seed.ts"] },
     "api-jump": { "globs": ["apps/api/src/jump*.ts", "apps/api/scripts/jump-*.ts"] },
+    "api-tower": { "_": "Lot T4 : le serveur de Tower (routes, rejeu, fil de calcul) et son serveur d'essai, que lance le spec classement.", "globs": ["apps/api/src/tower*.ts", "apps/api/scripts/tower-*.ts"] },
     "api-admin": { "globs": ["apps/api/src/admin*.ts", "apps/api/src/journaux.ts", "apps/api/src/diffusion.ts", "apps/api/src/jeux.ts", "packages/core/src/nouveautes.ts", "packages/core/src/jeux.ts"] }
   },
   "specs": {
@@ -190,6 +191,7 @@
     "jump/voie-lente.spec.ts": ["jump-jour", "jump-sim"],
     "tower/determinisme.spec.ts": ["tower-sim", "tower-banc", "core-clock"],
     "tower/partie.spec.ts": ["tower-sim", "tower-jeu", "ui"],
+    "tower/classement.spec.ts": ["tower-sim", "tower-jeu", "api-tower"],
     "tower/poids.spec.ts": ["tower-jeu", "ui"]
   }
 }
