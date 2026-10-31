@@ -48,8 +48,8 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 - **La préparation par la CI** : non faite (`musique/servi/` est commité).
 
 ## Décisions laissées à Nathan
-1. **Par défaut : musique allumée, volume 40 %** (proposé) — ou éteinte au premier lancement ? (une constante : `VOLUME_PAR_DEFAUT` de `logique.ts`, `coupee` de `REGLAGES_DEFAUT`).
-2. **La baisse en jeu** : Track 35 % en course (pleine aux menus), Jump 60 % en niveau, Tower 60 % en partie (proposé ; constantes `MUSIQUE_EN_COURSE`, `MUSIQUE_EN_NIVEAU`, `MUSIQUE_EN_PARTIE`).
+1. **Par défaut : musique allumée, volume 80 %** (le curseur est quadratique ; proposé) — ou éteinte au premier lancement ? (une constante : `VOLUME_PAR_DEFAUT` de `logique.ts`, `coupee` de `REGLAGES_DEFAUT`).
+2. **La baisse en jeu** : Track 70 % en course (pleine aux menus), Jump 60 % en niveau, Tower 60 % en partie (proposé ; constantes `MUSIQUE_EN_COURSE`, `MUSIQUE_EN_NIVEAU`, `MUSIQUE_EN_PARTIE`).
 3. **Le portail** : silence (proposé) ou une liste à lui (une ligne + des morceaux `portail`).
 4. **iPhone et interrupteur silence** : la musique passe quand l'interrupteur est sur silence, comme le son de Track. À inverser ? (retirer `audioSession` de `navigateur.ts`).
 5. **`tous` = Track, Jump, Tower** (pas le portail) ; licences admises : `mienne`, `CC0`, `CC-BY-4.0`, `achetee` — ajouter CC-BY-SA ?

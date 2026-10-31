@@ -11,12 +11,15 @@ export const FONDU_SAUT_S = 1.2;
 export const FONDU_ENTREE_S = 1.5;
 /** Durée du fondu quand le jeu change de scène (de l'accueil à un niveau, d'un thème à l'autre). */
 export const FONDU_SCENE_S = 2;
-/** Niveau de base : la musique passe sous les moteurs et les effets des jeux ; le volume du joueur s'y applique. */
-export const NIVEAU_DE_BASE = 0.5;
+/**
+ * Niveau de base : le morceau tel qu'il est préparé (−18 LUFS) quand le volume du joueur est à 100 % et que le jeu ne baisse rien. **Mesuré au lot « musique » (31/10/2026) : à 0,5, avec 40 % de
+ * volume (au carré) et 35 % en course, la musique sortait à ≈ −49 dBFS en course de Track, contre ≈ −22 dBFS pour le moteur : on ne l'entendait pas.** Un compresseur doux est sur la sortie.
+ */
+export const NIVEAU_DE_BASE = 1;
 /** Une reprise plus vieille que ça (ms) n'en est pas une : on repart d'un morceau tiré au sort. */
 export const VALIDITE_REPRISE_MS = 5 * 60_000;
-/** Volume par défaut (musique allumée, modérée). */
-export const VOLUME_PAR_DEFAUT = 0.4;
+/** Volume par défaut (musique allumée) : le curseur est quadratique, 0,8 vaut 0,64 du niveau de base (−3,9 dB). */
+export const VOLUME_PAR_DEFAUT = 0.8;
 
 export const REGLAGES_DEFAUT: Readonly<Reglages> = { volume: VOLUME_PAR_DEFAUT, coupee: false };
 export const CLE_REGLAGES = "cdj:musique";

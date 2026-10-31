@@ -511,10 +511,10 @@ let feel = SPEED_FEEL_FACTOR[settings.speedFeel];
 const demo = params.has("demo");
 const tel = createTelemetry();
 const gameAudio = new GameAudio(() => syncSoundButton());
-// Lot « musique » : la musique commune de la plateforme, branchée en une ligne (le lecteur se charge au premier geste : `docs/plateforme/musique.md`). Pleine aux menus, plus basse en course (à décider par Nathan) ; le muet de Track la coupe aussi.
+// Lot « musique » : la musique commune de la plateforme, branchée en une ligne (le lecteur se charge au premier geste : `docs/plateforme/musique.md`). Pleine aux menus, un peu plus basse en course (0,7 : mesuré, la musique passe juste sous le moteur ; à décider par Nathan) ; le muet de Track la coupe aussi.
 const musique = brancherMusique("track", gameStorage);
 /** Niveau de la musique pendant une course (1 aux menus, à l'accueil, en pause) : la musique passe sous le moteur et les effets. */
-const MUSIQUE_EN_COURSE = 0.35;
+const MUSIQUE_EN_COURSE = 0.7;
 /** Le thème du circuit en cours (le Salon en change) ; un scénario d'essai n'en a pas. */
 let themeMusique: string | null = salon?.circuit.theme ?? daily?.theme ?? null;
 /** La scène de la musique : l'accueil (`menu`), sinon le thème du circuit (`theme:<code>`) ; un morceau est réservé à une scène dans `musique/musiques.json`. */

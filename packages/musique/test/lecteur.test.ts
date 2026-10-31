@@ -251,14 +251,14 @@ describe("les réglages communs aux trois jeux", () => {
   });
 
   it("par défaut : allumée, à un volume modéré ; une valeur illisible retrouve le défaut", () => {
-    expect(lireReglages(null)).toEqual({ volume: 0.4, coupee: false });
-    expect(lireReglages("pas du json")).toEqual({ volume: 0.4, coupee: false });
+    expect(lireReglages(null)).toEqual({ volume: 0.8, coupee: false });
+    expect(lireReglages("pas du json")).toEqual({ volume: 0.8, coupee: false });
     expect(lireReglages(JSON.stringify({ volume: 9, coupee: "oui" }))).toEqual({ volume: 1, coupee: false });
   });
 
-  it("le niveau final : coupée ou en sourdine = 0 ; la baisse du jeu et le volume s'appliquent ; le niveau de base reste sous 1", () => {
+  it("le niveau final : coupée ou en sourdine = 0 ; la baisse du jeu et le volume s'appliquent ; le niveau ne dépasse jamais celui du morceau préparé", () => {
     const r = { volume: 1, coupee: false };
-    expect(niveauFinal({ reglages: r, baisse: 1, sourdine: false })).toBeLessThanOrEqual(0.5);
+    expect(niveauFinal({ reglages: r, baisse: 1, sourdine: false })).toBeLessThanOrEqual(1);
     expect(niveauFinal({ reglages: r, baisse: 0.4, sourdine: false })).toBeCloseTo(0.4 * niveauFinal({ reglages: r, baisse: 1, sourdine: false }), 9);
     expect(niveauFinal({ reglages: { volume: 1, coupee: true }, baisse: 1, sourdine: false })).toBe(0);
     expect(niveauFinal({ reglages: r, baisse: 1, sourdine: true })).toBe(0);
@@ -277,7 +277,7 @@ describe("les réglages communs aux trois jeux", () => {
     l.sourdine(false);
     l.baisser(1);
     expect(cible()).toBeCloseTo(plein, 9);
-    expect(l.reglages()).toEqual({ volume: 0.4, coupee: false });
+    expect(l.reglages()).toEqual({ volume: 0.8, coupee: false });
   });
 
   it("un compresseur est sur le chemin de sortie, et le bus ne passe qu'une fois par lui", async () => {
