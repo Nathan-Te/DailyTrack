@@ -8,9 +8,8 @@ import { creerCadre } from "./cadre";
 import { el, row, segmented, slider, type Control } from "./dom";
 import type { ControleMusique } from "@cdj/ui/src/panneauMusique";
 import { withVolume, type AudioSettings } from "./audioLogic";
-import { GAMEPAD_CONTROLS, KEYBOARD_CONTROLS } from "./howto";
-import { controlsTable } from "./howtoUi";
-import { langueCourante, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
+import { cleAction, commandes } from "./commandes";
+import { ajouterTextes, langueCourante, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
 import { profilHref } from "./profilLien";
 import { DEFAULT_SETTINGS, GHOST_CHOICES, GHOST_KEY, SPEED_FEEL_CHOICES, SPEED_FEEL_KEY, type GameSettings } from "./settings";
 import { CHOIX_GRAPHISMES, type ChoixGraphismes, type NiveauQualite } from "./qualite";
@@ -74,6 +73,9 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
   let chargerTactile: (() => void) | null = null;
   /** Lot « musique » : le bloc commun de la musique (réglages communs aux trois jeux), monté à la première ouverture de l'onglet Son : lecteur et panneau se chargent à ce moment-là. */
   let chargerMusique: (() => void) | null = null;
+  /** Lot M2 : charge l'écran des commandes (une fois par construction de l'écran). */
+  let chargerCommandes: (() => void) | null = null;
+  let ecranCommandes: { racine: HTMLElement; detruire(): void; annuler(): void } | null = null;
   let graphismesNote: HTMLElement;
   let tabButtons = new Map<SettingsTab, HTMLButtonElement>();
   let pages: Record<SettingsTab, HTMLElement>;
@@ -144,21 +146,17 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
       row(t("reglages.unite.nom"), unit.box),
     );
 
-    // --- Commandes ---
+    // --- Commandes (lot M2) : l'écran partagé du socle (Clavier · Manette · Tactile), chargé à la première ouverture de l'onglet ; l'onglet Tactile reprend les réglages tactiles d'avant ---
     const commands = el("div", "reglages__page");
-    const reminder = (title: string, list: typeof KEYBOARD_CONTROLS, open: boolean) => {
-      const d = el("details", "repli");
-      d.open = open;
-      d.append(el("summary", "", title), controlsTable(list));
-      return d;
-    };
-    commands.append(reminder(t("reglages.clavier"), KEYBOARD_CONTROLS, !host.touch), reminder(t("reglages.manette"), GAMEPAD_CONTROLS, false));
+    const hote = el("div", "reglages__commandes");
+    hote.id = "settings-commandes";
+    commands.append(hote);
+    let tactile: HTMLElement | null = null;
     if (host.touch) {
-      // Lot 52 : les réglages tactiles sont un morceau chargé à la demande (`touchReglages.ts`), à la première ouverture de l'onglet « Commandes » : ils n'ont rien à faire dans le premier chargement.
+      // Lot 52 : les réglages tactiles sont un morceau chargé à la demande (`touchReglages.ts`), à la première ouverture de l'onglet « Tactile » : ils n'ont rien à faire dans le premier chargement.
       const box = el("section", "reglages__tactile");
       const liste = controls;
-      box.append(el("h2", "reglages__section", t("reglages.tactile.titre")));
-      commands.append(box);
+      tactile = box;
       const { pad, changed } = host.touch;
       chargerTactile = () => {
         chargerTactile = null;
@@ -169,9 +167,27 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
           touch.sync();
         });
       };
-    } else {
-      commands.append(el("p", "note", t("reglages.tactile.absent")));
     }
+    ecranCommandes?.detruire();
+    ecranCommandes = null;
+    chargerCommandes = () => {
+      chargerCommandes = null;
+      void Promise.all([import("@cdj/ui/src/commandesEcran"), import("./catalogue.reglages.commandes")]).then(([m, noms]) => {
+        ajouterTextes(noms); // les noms des actions : avec l'écran, pas au premier écran
+        ecranCommandes = m.ecranCommandes({
+          commandes,
+          t,
+          cleAction,
+          ongletInitial: host.touch ? "tactile" : "clavier", // sur un appareil tactile, ce sont les réglages tactiles qu'on vient chercher
+          fixesManette: () => [{ nom: t("commandes.manette.tourner"), touche: t("commandes.fixe.stick") }],
+          tactile: () => {
+            chargerTactile?.();
+            return tactile;
+          },
+        });
+        hote.replaceChildren(ecranCommandes.racine);
+      });
+    };
     const howto = bouton({ texte: t("reglages.aide"), variante: "secondaire", onClick: () => host.openHowto() });
     howto.id = "settings-howto";
     commands.append(howto);
@@ -242,7 +258,8 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
       pages[i].hidden = i !== id;
     }
     cadre.corps.scrollTop = 0;
-    if (id === "controls") chargerTactile?.();
+    if (id === "controls") chargerCommandes?.();
+    else ecranCommandes?.annuler();
     if (id === "sound") chargerMusique?.();
     sync();
   }

@@ -10,7 +10,8 @@ import { HISTORY_KEY, HISTORY_MAX, History, mayRecord, mergeDay, readHistory, st
 import { PALIERS_MORTS, archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalThresholds, palierMorts, recordTile, streakText, wantsHome } from "../src/homeLogic";
 import { COMMANDES, HOWTO_POINTS } from "../src/howtoUi";
 import { CATALOGUE_JUMP } from "../src/catalogue";
-import { setLangue, chargerLangue } from "../src/i18n";
+import "../src/commandes"; // lot M2 : les aides citent les touches choisies (le crochet de `t`)
+import { setLangue, chargerLangue, t as traduire } from "../src/i18n";
 import { DayMemory, type KeyValue } from "../src/memory";
 import { shareLine, shareText, shareUrl } from "../src/share";
 import { readUrlOptions, archiveHref, dailyHref, homeHref } from "../src/urlOptions";
@@ -359,7 +360,7 @@ describe("l'accueil", () => {
   it("« Comment jouer » (lot I5 : trois points courts, dans le jeu) et les commandes ; vu une seule fois", () => {
     const text = HOWTO_POINTS.map((k) => CATALOGUE_JUMP.fr[k]).join(" ");
     for (const w of ["drapeau", "chrono", "mourir", "fanion", "Tiens le saut", "mur"]) expect(text).toContain(w);
-    const commandes = [...COMMANDES.clavier, ...COMMANDES.manette, ...COMMANDES.tactile].map((k) => CATALOGUE_JUMP.fr[k]).join(" ");
+    const commandes = [...COMMANDES.clavier, ...COMMANDES.manette, ...COMMANDES.tactile].map((k) => traduire(k)).join(" "); // les touches choisies (lot M2), ici celles d'origine
     for (const w of ["courir", "sauter", "recommencer", "point de passage", "pause", "fantôme", "Entrée", "R :", "Y :", "X :", "Start", "SAUT"]) expect(commandes).toContain(w);
     const store = new MemStore();
     expect(helpSeen(store)).toBe(false);

@@ -38,7 +38,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "arrivee.partage.ok": "Shared",
   "arrivee.partage.copie": "Copied to the clipboard",
   "arrivee.partage.echec": "Couldn't copy: select the text below",
-  "arrivee.aideClavier": "Enter: play again",
+  "arrivee.aideClavier": "{recommencer}: play again",
   // Lot 27: the result sticker, laid over the scene during the replay and the carnage
   "resultat.aria": "Your result",
   "resultat.classement": "Leaderboard",

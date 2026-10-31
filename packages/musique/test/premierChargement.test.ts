@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { JUMP_THEME_NAMES } from "@cdj/jump-sim";
 import { describe, expect, it } from "vitest";
+import { SCENES } from "../src/scenes";
 
 // « Rien dans le premier chargement d'aucun jeu » : depuis l'entrée de chaque application, en ne suivant que les imports statiques (pas `import()`, pas `import type`), on n'atteint
 // jamais le lecteur, sa logique, le panneau ni le catalogue de la musique — seulement `@cdj/musique/branche`, qui n'importe que des types.
@@ -66,5 +68,19 @@ describe("rien de la musique dans le premier chargement", () => {
       expect(code, fichierJeu).toMatch(new RegExp(`brancherMusique\\("${jeu}"`));
       expect(code, fichierJeu).not.toMatch(/from "@cdj\/musique"/);
     }
+  });
+});
+
+// Lot « musique » : les scènes de la musique de Jump sont **ses thèmes** : un thème ajouté à Jump sans sa ligne de `SCENES` fait échouer ce test. (Il vit ici, avec le test du premier chargement,
+// et non dans un fichier à part de `apps/jump/test/` : une PR de Jump ne doit pas gagner une seconde de tests de plus, `apps/web/test/ciZones.test.ts`. Track et Tower ont le leur,
+// `apps/web|tower/test/musiqueScenes.test.ts`.)
+describe("la musique de Jump : une scène par thème", () => {
+  it("les scènes connues de Jump sont `menu` et un `theme:<code>` par thème de niveaux", () => {
+    expect([...SCENES.jump]).toEqual(["menu", ...JUMP_THEME_NAMES.map((n) => `theme:${n}`)]);
+  });
+
+  it("main.ts annonce `menu` à l'accueil et `theme:<thème du niveau>` sinon (à chaque changement d'écran : `syncPause`)", () => {
+    const code = readFileSync(join(ROOT, "apps/jump/src/main.ts"), "utf8");
+    expect(code).toMatch(/musique\.scene\(homeOpen\(\) \? "menu" : `theme:\$\{theme\.name\}`\)/);
   });
 });

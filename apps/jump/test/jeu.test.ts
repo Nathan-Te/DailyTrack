@@ -18,7 +18,8 @@ import {
 } from "@cdj/jump-sim";
 import { describe, expect, it } from "vitest";
 import { CAMERA, clampAxis, followCamera, snapCamera, type Frame } from "../src/camera";
-import { JumpLatch, directionBits, padDirection, padJump, padMenu, padRespawn, padRestart } from "../src/input";
+import { commandes } from "../src/commandes";
+import { JumpLatch, directionBits, padDirection } from "../src/input";
 import { LOOK, animateLook, onStep, restLook, squashScale } from "../src/look";
 import { FixedStepper, MAX_STEPS_PER_FRAME, STEP_SECONDS } from "../src/loop";
 import { JumpSession, formatTicks } from "../src/session";
@@ -199,20 +200,18 @@ describe("manette et directions", () => {
     expect(padDirection(pad([0.6], []))).toBe(1);
     expect(padDirection(pad([-0.6], []))).toBe(-1);
     expect(padDirection(pad([0.9], [14]))).toBe(-1);
-    expect(padJump(pad([], [0]))).toBe(true);
-    expect(padJump(pad([], [1]))).toBe(true);
-    expect(padJump(pad([], [2]))).toBe(false);
-    expect(padJump(pad([], [3]))).toBe(false);
-    // Lot 8 : Start ouvre le menu ⏸ (il recommençait aux lots 1 à 7). Lot 27 : comme DailyTrack, X (2) recommence à zéro et Y (3) reprend au dernier point de passage ;
-    // Select (8) ne recommence plus (DailyTrack en fait la caméra).
-    expect(padRestart(pad([], [9]))).toBe(false);
-    expect(padRestart(pad([], [8]))).toBe(false);
-    expect(padRestart(pad([], [2]))).toBe(true);
-    expect(padRestart(pad([], [3]))).toBe(false);
-    expect(padRespawn(pad([], [3]))).toBe(true);
-    expect(padRespawn(pad([], [2]))).toBe(false);
-    expect(padMenu(pad([], [9]))).toBe(true);
-    expect(padMenu(pad([], [8]))).toBe(false);
+    // Lot M2 : les boutons viennent des commandes (d'origine : A saute, B reste « retour » dans les menus et ne saute plus, X recommence, Y reprend ; Start est fixe).
+    const tenu = (id: string, p: number[]) => commandes.enfonceeManette(id, pad([], p));
+    expect(tenu("sauter", [0])).toBe(true);
+    expect(tenu("sauter", [1])).toBe(false);
+    expect(tenu("sauter", [3])).toBe(false);
+    // Lot 8 : Start ouvre le menu ⏸ (fixe, `input.ts`). Lot 27 : comme DailyTrack, X (2) recommence à zéro et Y (3) reprend au dernier point de passage ; Select (8) ne recommence plus.
+    expect(tenu("recommencer", [9])).toBe(false);
+    expect(tenu("recommencer", [8])).toBe(false);
+    expect(tenu("recommencer", [2])).toBe(true);
+    expect(tenu("recommencer", [3])).toBe(false);
+    expect(tenu("reprendre", [3])).toBe(true);
+    expect(tenu("reprendre", [2])).toBe(false);
   });
 
   it("gauche + droite = les deux bits (la simulation les neutralise)", () => {

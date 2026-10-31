@@ -111,6 +111,7 @@ import { createTelemetry, readTelemetry } from "./telemetry";
 import { formatDelta, formatTime } from "./format";
 import type { Leaderboard } from "./api";
 import { isValidName, normalizeName, setName, getName } from "./identity";
+import { commandes } from "./commandes";
 import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch, type SteerMode } from "./touch";
 import { hintText, mountTouchUi } from "./touchUi";
@@ -1542,16 +1543,17 @@ window.addEventListener("keydown", (e) => {
     const digit = ["Digit1", "Digit2", "Digit3", "Digit4"].indexOf(e.code);
     if (digit >= 0) watch.speed = WATCH_SPEEDS[digit]!;
   }
-  if (e.code === "KeyG" && !watch) ghostAction();
+  const action = commandes.actionDeTouche(e.code); // lot M2 : les touches de G, M et L sont les actions « fantôme », « son » et « classement » (réglables)
+  if (action === "fantome" && !watch) ghostAction();
   if (e.code === "Tab" && salon) {
     e.preventDefault();
     setBoardVisible(!boardOpen());
   }
-  if (e.code === "KeyM") gameAudio.mute();
+  if (action === "son") gameAudio.mute();
   // N et T (circuit au hasard, thème suivant) sont des outils d'essai : aperçus et `?debug` seulement, jamais en production (lot 31).
   if (e.code === "KeyN" && track && scenario === "jour" && trialKeysAllowed(restricted)) location.assign(randomSeedHref(location.search)); // circuit au hasard (essai, jamais classé)
   if (e.code === "KeyT" && track && scenario === "jour" && trialKeysAllowed(restricted)) location.assign(themeHref(location.search, nextTheme(forcedTheme?.name ?? null))); // thème suivant
-  if (e.code === "KeyL") setBoardVisible(!boardOpen());
+  if (action === "classement") setBoardVisible(!boardOpen());
   if (e.code === "KeyH" && !salon) (hudArchive.hidden ? openArchive : closeArchive)();
 });
 

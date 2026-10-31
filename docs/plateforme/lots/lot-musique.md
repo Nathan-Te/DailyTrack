@@ -12,7 +12,7 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 ## Retour de Nathan (31/10/2026) : un morceau par menu et par thème
 - **Les scènes** (`scenes` d'un morceau : `menu`, `theme:<code>`) : chaque jeu annonce où il en est (`musique.scene(…)`) ; la musique choisit les morceaux de la scène, sinon ceux qui passent partout, sinon le silence, et passe en fondu (2 s), en gardant le morceau en cours s'il y passe aussi. **Extensible** : un thème ou un jeu de plus = une ligne de `packages/musique/src/scenes.ts` (le test de chaque jeu échoue sinon). Track : 8 thèmes, Jump : 5, Tower : `port`. Détail : `docs/plateforme/musique.md`.
 - **Sources hors du dépôt** (les boucles Ovani pèsent 25 Mo) : `musique/pistes/*` est ignoré par git, seul le morceau préparé (AAC 96 kbit/s, ≈ 1,4 Mo pour 2 minutes) est commité ; `liste.json` garde l'empreinte de chaque source ; la CI vérifie sans les sources.
-- **Budget** (après la fusion de `main`, qui a retiré l'ambiance de Track au lot 56 : −1 023 o) : le branchement avec les scènes pèse Track +360 o, Jump +356 o, Tower +233 o (accueil) ; **Track a 859 o de marge sans relever son plafond** (le relèvement de +1 000 o accordé par Nathan n'a pas servi) ; **Tower avait 44 o de marge sur `main` : son plafond passe de 168 000 à 168 500 o** (à confirmer par Nathan).
+- **Budget** (après la fusion de `main`, qui a retiré l'ambiance de Track au lot 56 : −1 023 o) : le branchement avec les scènes pèse Track +363 o, Jump +348 o, Tower +238 o (accueil) ; **le lot M2 ne laissait à Track que 73 o : son plafond est relevé de +1 000 o (295 736 → 296 736), le relèvement que Nathan a accordé pour la musique le 31/10/2026 ; marge 710 o.** Aucun plafond de Tower ni de Jump n'est relevé.
 - **Une boucle générée par le code pour chaque scène** (`musique/generateur/`, `docs/plateforme/musique.md`) : 22 boucles (Track : électro moderne ; Jump : chiptune rétro ; Tower : calme), 51 à 82 s chacune, 16,6 Mo en AAC, −18 LUFS, boucle sans coupure ; Nathan les remplace à la main par ses Ovani Sound en gardant `jeux` et `scenes` de l'entrée. Vérifié sans les entendre : niveau (moyenne −18,4 à −19,9 dB, crête −3,7 à −11,1 dB), jonction de boucle, déterminisme, une boucle par scène ; **dans Chromium** (trois boucles, première étape) chaque scène joue son morceau et l'usine de Jump restait silencieuse.
 
 ## Fichiers touchés dans les jeux (rien d'autre n'a bougé)
@@ -25,9 +25,9 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 ## Mesures (`node scripts/budgets.mjs`, contre `main` reconstruit)
 | | Premier chargement | Limite |
 |---|---|---|
-| Track | **+364 o** (`track.jsCss` : 293 837, 875 o de marge) | 500 o |
+| Track | **+363 o** (`track.jsCss` : 296 026, plafond relevé de 1 000 o, 710 o de marge) | 500 o |
 | Jump | **+362 o** | 500 o |
-| Tower | **+233 o** à l'accueil (premier chargement, plafond 39 000 o inchangé), +204 o au jeu | 500 o |
+| Tower | **+238 o** à l'accueil (premier chargement, plafond 39 000 o inchangé), +196 o au jeu | 500 o |
 | Portail | +10 o (la clé gardée de `@cdj/profile`) | — |
 | Lecteur + panneau, à la demande | **4 458 o** (ligne `musique.lecteur`, 8 000 o) | — |
 | Morceaux (non comptés) | AAC 96 kbit/s : ≈ 0,7 Mo par minute (le morceau d'essai : 73 698 o pour 6 s) | — |
@@ -53,7 +53,7 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 3. **Le portail** : silence (proposé) ou une liste à lui (une ligne + des morceaux `portail`).
 4. **iPhone et interrupteur silence** : la musique passe quand l'interrupteur est sur silence, comme le son de Track. À inverser ? (retirer `audioSession` de `navigateur.ts`).
 5. **`tous` = Track, Jump, Tower** (pas le portail) ; licences admises : `mienne`, `CC0`, `CC-BY-4.0`, `achetee` — ajouter CC-BY-SA ?
-6. **Tower** : après la fusion du lot T4 (l'accueil devient le premier chargement, le jeu est à la demande), aucun plafond n'est relevé : le branchement pèse +233 o dans l'accueil (35 588 o sur 39 000) et +204 o dans le jeu (149 217 o sur 164 000).
+6. **Tower** : après la fusion du lot T4 (l'accueil devient le premier chargement, le jeu est à la demande), aucun plafond n'est relevé : le branchement pèse +238 o dans l'accueil (35 593 o sur 39 000) et +196 o dans le jeu (149 209 o sur 164 000).
 7. Les sources (`musique/pistes/`) sont commitées : un wav ou un flac pèse lourd dans le dépôt — préférer un mp3 de bonne qualité, ou ajouter un stockage de fichiers volumineux.
 
 ## À tester (aperçu de la PR)

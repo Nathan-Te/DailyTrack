@@ -73,6 +73,7 @@ import { DayMemory, browserStorage, clearAll, type RecordedEssai } from "./memor
 import { loadGhostChoice, nextChoice, saveGhostChoice, shown as ghostShown, startChoice, type GhostChoice } from "./ghostChoice";
 import { stainFor } from "./stains";
 import { CARNAGE, followCamera, snapCamera, type CameraView, type Follow } from "./camera";
+import { commandes } from "./commandes";
 import { Controls } from "./input";
 import { animateLook, motionOf, onSkid, onStep, restLook, stridePhase, type FeetPose, type Look } from "./look";
 import { BurstMesh, BurstPool, Shake } from "./fx";
@@ -2828,7 +2829,7 @@ function syncGhostButton(): void {
 syncGhostButton();
 onLangue(syncGhostButton);
 window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyG" && !e.repeat && !menuOpen && !homeOpen()) cycleGhost();
+  if (commandes.actionDeTouche(e.code) === "fantome" && !e.repeat && !menuOpen && !homeOpen()) cycleGhost();
 });
 
 if (touchOn) {

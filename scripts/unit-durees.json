@@ -55,7 +55,6 @@
   "apps/jump/test/lectures.test.ts": 1,
   "apps/jump/test/mesures.test.ts": 2,
   "apps/jump/test/morceaux.test.ts": 1,
-  "apps/jump/test/musiqueScenes.test.ts": 1,
   "apps/jump/test/niveau.test.ts": 3,
   "apps/jump/test/palette.test.ts": 1,
   "apps/jump/test/productionSite.test.ts": 8,

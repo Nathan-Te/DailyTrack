@@ -4,7 +4,7 @@ import type { JeuMusique } from "./types";
 // `musique/musiques.json` connaît : un morceau qui nomme une scène inconnue (une faute de frappe) est refusé au lieu de ne jamais jouer.
 //
 // **Ajouter un thème ou un jeu** : une ligne ici (le code du thème tel que le jeu l'annonce au lecteur : `musique.scene("theme:<code>")`). Le test de chaque jeu compare cette liste à ses
-// thèmes (`apps/*/test/musiqueScenes.test.ts`) : un thème ajouté dans un jeu sans ligne ici fait échouer ce test — rien ne reste silencieux. Aucun import d'un jeu ici : les jeux ne
+// thèmes (`apps/web|tower/test/musiqueScenes.test.ts` et `packages/musique/test/premierChargement.test.ts` (Jump)) : un thème ajouté dans un jeu sans ligne ici fait échouer ce test — rien ne reste silencieux. Aucun import d'un jeu ici : les jeux ne
 // s'importent jamais, et ce fichier n'est lu que par Node (la commande, les tests), jamais par un jeu.
 
 /** Le format d'une scène : un mot, ou un mot, deux-points et un code (`menu`, `theme:nuit`). */
