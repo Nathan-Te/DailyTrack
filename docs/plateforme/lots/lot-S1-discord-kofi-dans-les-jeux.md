@@ -14,7 +14,7 @@
 
 ## Budgets
 Track `jsCss` 296 275 / 296 736 · Jump `jsCss` 375 905 / 378 490 (**`liensCommunauteJeu-*` exclu de `mesureJump` et de `poids.spec.ts`, comme `manette-*` : à confirmer par Nathan**) · Tower ≈ +245 o.
-**Portail : 32 897 / 32 768 o — DÉPASSE de 129 o** (la marge de `main` était de 13 o ; le déplacement des boutons dans le socle ajoute trois jetons de couleur et du code). Décision de Nathan : relever le plafond du portail d'environ 200 o, ou laisser le portail garder son propre code et ses couleurs (les jeux reprennent alors le même aspect sans passer par le portail).
+**Portail : 32 897 / 33 000 o** : plafond relevé de 232 o (32 768 → 33 000) par Nathan le 31/10/2026 (option A) ; la marge de `main` n'était que de 13 o.
 
 ## Vérifié / non vérifié
 - Vérifié en local : typecheck, vitest `packages/ui` `apps/portail` `apps/tower` (verts), e2e Chromium ciblés (Track `accueil`, Jump `plein-ecran`, Tower `partie` et `classement`), absence de chevauchement à 844 × 390, 740 × 360 et 390 × 844 pour les trois jeux (mesure par script, zones défilantes tenues en compte).
