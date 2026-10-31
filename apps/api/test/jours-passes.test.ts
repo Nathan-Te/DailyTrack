@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
 import { generatorVersionOf, type RegistreJoursTrack } from "@cdj/sim";
 import { empreinteJump, empreinteTrack } from "../scripts/empreintes";
+import { empreinteTower } from "../scripts/empreintes-tower";
 
 // Lot R6 (le garde-fou des jours) : **un jour passé ne change jamais**. `jours-passes.json` garde, pour chaque jour de la journée n° 1 jusqu'à la veille du jour de bascule
 // de la dernière mise en production, l'empreinte de ce que chaque jeu a servi ce jour-là (`scripts/empreintes.ts`). Elle est ajoutée par « Mettre en production » (la PR
@@ -16,7 +17,8 @@ import { empreinteJump, empreinteTrack } from "../scripts/empreintes";
 
 const NIVEAUX = join(__dirname, "../../jump/public/levels");
 type Jours = Record<string, { id: string; h: string }>;
-const gardees = JSON.parse(readFileSync(join(__dirname, "jours-passes.json"), "utf8")) as { track: Jours; jump: Jours };
+const TOWER_JOURS = join(__dirname, "../../tower/public/jours");
+const gardees = JSON.parse(readFileSync(join(__dirname, "jours-passes.json"), "utf8")) as { track: Jours; jump: Jours; tower?: Jours };
 const registre = JSON.parse(readFileSync(join(__dirname, "../../../packages/sim/src/jours-track.json"), "utf8")) as RegistreJoursTrack;
 
 /** Les jours à recalculer : tout pour Jump (un fichier figé se relit vite), pour Track les 30 derniers et un sur dix avant (le générateur coûte ≈ 0,3 s par jour). */
@@ -62,4 +64,24 @@ describe("jours passés (jours-passes.json)", () => {
       expect(e, `Jump ${date} a changé : figer le jour avec le code en production (freeze:days) avant de changer une version`).toMatchObject({ id: gardees.jump[date]!.id, h: gardees.jump[date]!.h });
     }
   }, 120_000);
+
+  // Lot TP : Tower. Un jour protégé de Tower (d'avant le lancement, déjà figé ou avec un résultat) garde son empreinte ; vide tant qu'aucune mise en production n'a protégé un jour de Tower.
+  it("Tower : le jour servi de chaque jour passé gardé est celui qui a été servi (fichier du jour qui se relit, sinon le générateur courant)", () => {
+    for (const date of Object.keys(gardees.tower ?? {}).sort()) {
+      const e = empreinteTower(parseDay(date)!, TOWER_JOURS);
+      expect(e.ok, `Tower ${date} : fichier du jour abîmé`).toBe(true);
+      expect(e, `Tower ${date} a changé : un jour passé ne change jamais — son fichier préparé le fige (apps/tower/public/jours), monter TOWER_GENERATOR_VERSION ne change que les jours sans fichier ni résultat`).toMatchObject({ id: gardees.tower![date]!.id, h: gardees.tower![date]!.h });
+    }
+  });
+
+  it("Tower : l'empreinte d'un jour dépend du fichier qui le sert et ne change pas d'un appel à l'autre", () => {
+    const fixtures = join(__dirname, "../../../packages/tower-sim/test/fixtures/jours");
+    for (const date of ["2026-11-06", "2026-11-07", "2026-11-08", "2026-11-17"]) {
+      const a = empreinteTower(parseDay(date)!, fixtures);
+      expect(a.ok, date).toBe(true);
+      expect(empreinteTower(parseDay(date)!, fixtures)).toEqual(a);
+      // Sans fichier, le jour est généré (autre empreinte : médailles estimées).
+      expect(empreinteTower(parseDay(date)!, null).h, date).not.toBe(a.h);
+    }
+  });
 });

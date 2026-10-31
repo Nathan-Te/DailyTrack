@@ -148,6 +148,31 @@ export async function readOnlySmoke(base: string, fetchImpl: FetchFn, o: { expec
     board,
     `${String(board.body?.participants)} classé(s)`,
   );
+
+  // Lot TP : Tower. Un nouveau jeu naît `off` : l'API répond alors `404 game_unavailable` (le bon état, Tower n'est pas encore public). Ouvert, il répond avec ses versions, son jour (médailles en mm,
+  // jamais la preuve de l'auteur) et son classement.
+  const tower = await get("/api/tower/info");
+  const towerFerme = tower.status === 404 && tower.body?.error === "game_unavailable";
+  check(
+    "Tower : /api/tower/info répond (jeu ouvert) ou dit « jeu fermé » (404 game_unavailable : Tower naît `off`)",
+    towerFerme || (tower.status === 200 && Number.isInteger(tower.body?.simVersion) && Number.isInteger(tower.body?.generatorVersion) && tower.body?.today === date),
+    "/api/tower/info",
+    tower,
+    towerFerme ? "fermé (off ou aperçu)" : `simulation v${String(tower.body?.simVersion)}, générateur v${String(tower.body?.generatorVersion)}, ${(tower.body?.frozenDays ?? []).length} jour(s) de l'image`,
+  );
+  if (tower.status === 200) {
+    const tday = await get(`/api/tower/day/${date}`);
+    const m = tday.body?.medals;
+    check(
+      "Tower : jour (médailles en mm croissantes), jamais la preuve de l'auteur",
+      tday.status === 200 && typeof tday.body?.empreinte === "string" && !!m && m.author >= m.gold && m.gold >= m.silver && m.silver >= m.bronze && m.bronze > 0 && !JSON.stringify(tday.body).includes("preuve"),
+      `/api/tower/day/${date}`,
+      tday,
+      `${String(tday.body?.source)}, tirage ${String(tday.body?.tirage)}, Diamant ${String(m?.author)} mm`,
+    );
+    const tboard = await get(`/api/tower/day/${date}/board`);
+    check("Tower : classement du jour, jamais en cache partagé", tboard.status === 200 && tboard.body?.date === date && Array.isArray(tboard.body?.top) && tboard.body?.me === null && personal(tboard.headers), `/api/tower/day/${date}/board`, tboard, `${String(tboard.body?.participants)} classé(s)`);
+  }
   const ghost = await get(`${dayRoute}/ghost/first`);
   check(
     "DailyJump : fantôme du premier (ou 404 no_ghost sans classé)",

@@ -15,9 +15,12 @@ COPY packages/clock/package.json packages/clock/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/jump-sim/package.json packages/jump-sim/
+COPY packages/tower-sim/package.json packages/tower-sim/
 COPY packages/profile/package.json packages/profile/
 # DailyJump (lot 0) : le jeu lui-même n'entre pas dans l'image, mais le verrou (package-lock.json) liste son espace de travail.
 COPY apps/jump/package.json apps/jump/
+# Tower (lot TP) : de même, le verrou liste l'espace de travail du jeu.
+COPY apps/tower/package.json apps/tower/
 # Seulement ce dont l'API a besoin (pas Three.js, pas Playwright) : une construction rapide.
 RUN npm ci -w @cdj/api --ignore-scripts
 COPY packages/core packages/core
@@ -28,6 +31,9 @@ COPY packages/clock packages/clock
 # copié pour que l'image suive l'espace de travail de la plateforme).
 COPY packages/jump-sim packages/jump-sim
 COPY packages/profile packages/profile
+# Lot TP : la simulation de Tower (le serveur rejoue les parties, par la même règle que le jeu), son bot (la preuve des jours préparés) et les jours préparés (preuve comprise : elle reste dans l'image).
+COPY packages/tower-sim packages/tower-sim
+COPY apps/tower/public/jours apps/tower/public/jours
 COPY apps/jump/public/levels apps/jump/public/levels
 # Lot R8 : la date du lancement public (config/lancement.json), lue par le serveur (journée n° 1) et entrée dans le paquet.
 COPY config config
@@ -37,6 +43,8 @@ RUN npm run build:node -w @cdj/api
 FROM node:22-slim
 WORKDIR /app
 COPY --from=build /app/apps/api/dist/server.mjs ./server.mjs
+# Lot TP : le fil de calcul des rejeux de Tower (chargé par server.mjs s'il est là).
+COPY --from=build /app/apps/api/dist/tower-fil.mjs ./tower-fil.mjs
 # Un seul fichier JavaScript : pas de node_modules à charger au réveil. Pas de variable GIT_SHA ici : le déploiement la pose.
 ENV NODE_ENV=production NODE_NO_WARNINGS=1 PORT=8080 DB_PATH=/data/cdj.sqlite
 RUN mkdir /data && chown node:node /data

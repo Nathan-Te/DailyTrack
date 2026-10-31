@@ -247,6 +247,8 @@ jobs:
     outputs:
       jours_track: ${{ steps.empreintes.outputs.jours_track }}
       jours_jump: ${{ steps.empreintes.outputs.jours_jump }}
+      jours_tower: ${{ steps.empreintes.outputs.jours_tower }}
+      tower_ligne: ${{ steps.tower.outputs.tower_ligne }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -317,11 +319,38 @@ jobs:
           (cd cible && npm ci --ignore-scripts)
           # Les jours d'avant le lancement « restent tels quels » : la comparaison part du plus ancien niveau figé de Jump (lot R11), pas de la journée n° 1.
           PREMIER="$(jq -r .debut "$RUNNER_TEMP/registre-track/proteges.json")"
-          node outils/scripts/mise-en-production.mjs empreintes prod --du "$PREMIER" --au "$DERNIER" --niveaux prod/apps/jump/public/levels --sortie "$RUNNER_TEMP/empreintes/prod.json"
-          node outils/scripts/mise-en-production.mjs empreintes cible --du "$PREMIER" --au "$DERNIER" --niveaux "$RUNNER_TEMP/cible-levels" --sortie "$RUNNER_TEMP/empreintes/cible.json"
+          node outils/scripts/mise-en-production.mjs empreintes prod --du "$PREMIER" --au "$DERNIER" --niveaux prod/apps/jump/public/levels --tower prod/apps/tower/public/jours --sortie "$RUNNER_TEMP/empreintes/prod.json"
+          node outils/scripts/mise-en-production.mjs empreintes cible --du "$PREMIER" --au "$DERNIER" --niveaux "$RUNNER_TEMP/cible-levels" --tower cible/apps/tower/public/jours --sortie "$RUNNER_TEMP/empreintes/cible.json"
           simulee=(); [ "$MODE" != repetition ] || simulee=(--simulee)
           node outils/scripts/mise-en-production.mjs comparer "$RUNNER_TEMP/empreintes/prod.json" "$RUNNER_TEMP/empreintes/cible.json" "$BASCULE" "${simulee[@]}" --proteges "$RUNNER_TEMP/registre-track/proteges.json" --instant "$INSTANT" --resume "$GITHUB_STEP_SUMMARY" --sortie "$GITHUB_OUTPUT" > /dev/null \
             || { echo "::error title=Mise en production arrêtée::un jour d'avant la bascule changerait (ou un jour régénéré n'est pas valide) : la liste est dans le résumé du run"; exit 1; }
+      # Lot TP — les jours de Tower. Les médailles de Tower viennent d'un bot (≈ 45 s par jour, `npm run preparer:tower`) : un jour doit être préparé AVANT d'être servi. Règle des jours (R11) :
+      # un jour protégé (d'avant le lancement, déjà figé, ou avec un résultat de Tower ou d'un autre jeu) ne change jamais ; un jour sans résultat est préparé, ou refait avec le code déployé si sa
+      # version (g, sim) diffère, ou gardé s'il est déjà à la version du code. Fenêtre : de la veille de la bascule à J+14 (une mise en production tous les quinze jours au plus ; au-delà,
+      # les jours sans fichier passent à l'estimation géométrique « provisoire » : le résumé le dit). Le code de préparation est celui du commit DÉPLOYÉ (`cible`), jamais celui de la production.
+      - name: Les jours de Tower (plan, préparation avec le code déployé, vérification)
+        id: tower
+        env:
+          VEILLE: ${{ needs.verifier.outputs.veille }}
+          BASCULE: ${{ needs.verifier.outputs.bascule_le }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tower-artefact/jours"
+          plan="$RUNNER_TEMP/tower-artefact/plan.json"
+          node outils/scripts/mise-en-production.mjs tower-plan --cible cible --proteges "$RUNNER_TEMP/registre-track/proteges.json" --veille "$VEILLE" --bascule "$BASCULE" --sortie "$plan" --github-sortie "$GITHUB_OUTPUT" > /dev/null
+          plages="$(jq -r '.plages | map(.[0] + ":" + .[1]) | join(" ")' "$plan")"
+          node outils/scripts/mise-en-production.mjs tower-nettoyer cible/apps/tower/public/jours --plan "$plan"
+          mkdir -p cible/apps/tower/public/jours
+          debut="$(date +%s)"
+          for plage in $plages; do
+            du="${plage%%:*}"; au="${plage##*:}"
+            (cd cible && npm run preparer:tower -w @cdj/tower-sim -- --du "$du" --au "$au" --dossier="$GITHUB_WORKSPACE/cible/apps/tower/public/jours")
+          done
+          secondes=$(( $(date +%s) - debut ))
+          # Chaque fichier (ceux de la fenêtre comme ceux du dépôt) se relit, se régénère à l'identique et sa preuve rejouée redonne son Diamant (garde-fou du lot T3).
+          (cd cible && npx vitest run --project sqlite packages/tower-sim/test/jours.test.ts)
+          cp cible/apps/tower/public/jours/*.json "$RUNNER_TEMP/tower-artefact/jours/" 2>/dev/null || true
+          node outils/scripts/mise-en-production.mjs tower-resume --plan "$plan" --secondes "$secondes" --fils "$(nproc)" --resume "$GITHUB_STEP_SUMMARY" --github-sortie "$GITHUB_OUTPUT" > /dev/null
       # Le nouveau serveur de l'essai a les jours figés qu'il aura une fois déployé (la même commande que `deploy-api.yml`) : sans eux il régénère avec le
       # nouveau générateur un jour que la production sert figé (ex. le jour même), l'ancien code lit alors des rediffusions d'une autre version (28/10/2026).
       - name: L'ancien code tourne-t-il sur la base migrée (le retour arrière) ?
@@ -339,6 +368,13 @@ jobs:
         with:
           name: registre-track
           path: ${{ runner.temp }}/registre-track
+          retention-days: 30
+          if-no-files-found: error
+      # Lot TP : les jours de Tower (conservés, préparés, refaits) et le plan qui les nomme : ils rejoignent le serveur (preuve comprise : elle reste dans l'image), le site (sans la preuve) et le dépôt.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: jours-tower
+          path: ${{ runner.temp }}/tower-artefact
           retention-days: 30
           if-no-files-found: error
       # Les empreintes des jours passés (jusqu'à la veille de la bascule) entrent dans le dépôt avec les jours figés (apps/api/test/jours-passes.json).
@@ -362,6 +398,7 @@ jobs:
       target: recette
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
+      jours_tower: jours-tower
       registre_track: registre-track
     secrets: inherit
 
@@ -377,6 +414,7 @@ jobs:
       api: /
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
+      jours_tower: jours-tower
       registre_track: registre-track
     secrets: inherit
 
@@ -415,9 +453,14 @@ jobs:
         with:
           name: registre-track
           path: ${{ runner.temp }}/registre-track
-      - name: Les jours figés et le registre que la recette a reçus
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: jours-tower
+          path: ${{ runner.temp }}/jours-tower
+      - name: Les jours figés, les jours de Tower et le registre que la recette a reçus
         run: |
           node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels
+          node scripts/mise-en-production.mjs tower-poser "$RUNNER_TEMP/jours-tower" apps/tower/public/jours
           node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json"
       - name: Vérifier la recette (lecture seule, puis smoke complet)
         env:
@@ -533,6 +576,7 @@ jobs:
       target: production
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
+      jours_tower: jours-tower
       registre_track: registre-track
       # Lot N1 : l'étiquette prod-… (calculée au début du run) que le tableau de bord du panneau d'administration montre comme « version en production ».
       etiquette: ${{ needs.verifier.outputs.etiquette }}
@@ -552,6 +596,7 @@ jobs:
       api: /
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
+      jours_tower: jours-tower
       registre_track: registre-track
       bascule_le: ${{ needs.verifier.outputs.bascule_le }}
     secrets: inherit
@@ -664,6 +709,10 @@ jobs:
           path: ${{ runner.temp }}/empreintes-jours
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
+          name: jours-tower
+          path: ${{ runner.temp }}/jours-tower
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
           name: registre-track
           path: ${{ runner.temp }}/registre-track
       - name: Les jours figés dans main
@@ -672,6 +721,8 @@ jobs:
           VEILLE: ${{ needs.verifier.outputs.veille }}
         run: |
           node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels
+          # Lot TP : les jours de Tower (préparés ou refaits avec le code déployé, preuve comprise : le dépôt est privé du serveur, le site publié la perd) rejoignent le dépôt.
+          node scripts/mise-en-production.mjs tower-poser "$RUNNER_TEMP/jours-tower" apps/tower/public/jours
           # Lot R11 : le registre des jours de Track (jusqu'à la veille de la bascule) rejoint le dépôt avec les niveaux figés de Jump ; les jours d'avant ne changent jamais.
           node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json" --resume "$GITHUB_STEP_SUMMARY"
           # Lot R6 : les empreintes des jours passés (jusqu'à la veille de la bascule) rejoignent le test `jours-passes.test.ts` : un jour passé ne change plus jamais.
@@ -682,7 +733,7 @@ jobs:
             npm ci --ignore-scripts --no-audit --no-fund > /dev/null
             npm run jump:seed -w @cdj/api > /dev/null
           fi
-          if [ -z "$(git status --porcelain apps/jump/public/levels apps/jump/public/demo apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
+          if [ -z "$(git status --porcelain apps/jump/public/levels apps/jump/public/demo apps/tower/public/jours apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
             echo "etat=rien" >> "$GITHUB_OUTPUT"
             echo "### ✅ Jours figés : déjà dans main, rien à ajouter" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -692,7 +743,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add apps/jump/public/levels apps/jump/public/demo apps/api/test/jours-passes.json packages/sim/src/jours-track.json
+          git add apps/jump/public/levels apps/jump/public/demo apps/tower/public/jours apps/api/test/jours-passes.json packages/sim/src/jours-track.json
           # « Jours figés de la mise en production » : le début du message est lu par `jours-servis` (les jours que la production sert).
           git commit -q -m "Jours figés de la mise en production $nom (code en production, freeze:days jusqu'à la veille de la bascule)"
           git push -q origin "$branch"

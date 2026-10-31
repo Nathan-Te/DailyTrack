@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { COMMANDE, type Contenu, encoderRediffusion, enregistrer, Partie, type Rapier, REGLAGES_DEFAUT, type Reglages } from "@cdj/tower-sim";
 import type { GameDefinition, Platform } from "../src/games";
+import { GAMES } from "../src/registry";
 import type { SqlDb } from "../src/db";
 import { TOWER_GAME, TOWER_SCHEMA, type TowerOptions } from "../src/tower";
 
@@ -8,11 +9,16 @@ import { TOWER_GAME, TOWER_SCHEMA, type TowerOptions } from "../src/tower";
 // (rapides à construire, pas des parties « intelligentes » : on veut des rediffusions valides et différentes, pas des tours hautes).
 
 /**
- * Tower enveloppé avec ses options, pour l'option `games` de `createApi` (`[...GAMES, towerGame({ frozen })]`) : `createApi` ne passe d'options qu'aux jeux qu'il connaît, et Tower n'est pas encore
- * inscrit au registre (cahier des charges du lot T4). Les options de l'enveloppe l'emportent.
+ * Le registre avec Tower enveloppé de ses options (`games` de `createApi`) : depuis le lot TP Tower est au registre, et `createApi` lui passe `towerFrozen` / `towerExecuteur` ; cette aide remplace
+ * seulement sa définition par une enveloppe qui impose les options d'un test (elles l'emportent).
  */
 export function towerGame(options: TowerOptions = {}): GameDefinition<never> {
   return { ...TOWER_GAME, create: (platform: Platform) => TOWER_GAME.create(platform, options) } as unknown as GameDefinition<never>;
+}
+
+/** Le registre complet dont la définition de Tower est celle de `towerGame(options)`. */
+export function gamesAvecTower(options: TowerOptions = {}): readonly GameDefinition<never>[] {
+  return GAMES.map((g) => (g.code === "tower" ? towerGame(options) : g));
 }
 
 /** Les tables de Tower, créées sur la base (`IF NOT EXISTS`) : `ensureSchema` ne crée que celles du registre. */

@@ -4,10 +4,8 @@ import { langueCourante, traducteurDuSocle } from "./i18n";
 
 // Le message en direct de Tower (lot T4) : le composant commun (`bandeauAnnonce` de `@cdj/ui`, la surveillance de `@cdj/profile`), posé sur l'accueil et sur l'arrivée — jamais pendant une
 // partie. Aux couleurs de Tower (`accueil.css`, `.message-direct__bandeau`). Il ne prend **jamais le focus** (`role="status"`). Le texte est une donnée : `textContent`, jamais du HTML.
-//
-// **Destination provisoire** : les messages ont un « endroit » (`portail`, `track`, `jump`) et Tower n'en a pas encore — l'ajouter est un lot de la plateforme (`OuAnnonce` de `@cdj/profile`,
-// la table `annonces`, le panneau d'administration). En attendant Tower lit les messages destinés au `portail` (les annonces qui concernent tout Du Jour) ; voir le rapport du lot T4.
-export const OU_TOWER: OuAnnonce = "portail";
+// Lot TP : Tower a sa destination propre, `tower` (`OuAnnonce` de `@cdj/profile`, la table `annonces`, la case « Tower » du panneau d'administration).
+export const OU_TOWER: OuAnnonce = "tower";
 
 export type EcranMessage = "accueil" | "arrivee";
 

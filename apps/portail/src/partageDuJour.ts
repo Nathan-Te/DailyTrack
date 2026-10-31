@@ -11,7 +11,7 @@ export const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGU
 export type T = ReturnType<typeof traduire>;
 
 /** Le nom traduit des jeux que le portail connaît (leur code au registre du serveur) ; un autre jeu garde le nom que le serveur déclare. */
-const NOM_JEU = { cdj: "jeu.track.nom", jump: "jeu.jump.nom" } as const;
+const NOM_JEU = { cdj: "jeu.track.nom", jump: "jeu.jump.nom", tower: "jeu.tower.nom" } as const;
 
 /** Le nom traduit d'un jeu du jour (celui du catalogue pour les jeux que le portail connaît, sinon celui que le serveur déclare). */
 export const nomDuJeu = (t: T, jeu: { jeu: string; nom?: string }): string => (jeu.jeu in NOM_JEU ? t.t(NOM_JEU[jeu.jeu as keyof typeof NOM_JEU]) : (jeu.nom ?? jeu.jeu));

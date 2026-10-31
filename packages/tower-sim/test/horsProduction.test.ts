@@ -1,27 +1,24 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// Lot T0 : Tower naît `off` et sa page d'essai n'est JAMAIS publiée en production (règle R9 : les options d'essai sont fermées). Deux gardes : l'assemblage du site
-// (scripts/site.mjs) ne copie `apps/tower/dist` que hors production et refuse de la voir dans un site de production ; la page elle-même se tait sur une construction de
-// production (`VITE_PRODUCTION=1`). Tower n'est ni dans le registre des jeux ni dans la liste des jeux publics : son état est donc `off`.
+// Lot TP (remplace les gardes du lot T0) : Tower naît `off` et reste fermé tant que Nathan ne l'a pas ouvert (interrupteur du lot P), mais il est désormais **publié avec le site**, production comprise :
+// la page dit « Bientôt » tant que le jeu est `off`, ses options d'essai sont fermées (règle R9, `urlOptions.ts`) et **la preuve de l'auteur n'est jamais publiée** (`scripts/site.mjs` la revérifie).
 const lire = (chemin: string): string => readFileSync(new URL(`../../../${chemin}`, import.meta.url), "utf8");
 
-describe("Tower hors production", () => {
-  it("scripts/site.mjs ne publie l'essai que hors production, et le vérifie", () => {
+describe("Tower sur la plateforme, fermé en production", () => {
+  it("scripts/site.mjs publie Tower et vérifie qu'aucune preuve n'est publiée en production", () => {
     const site = lire("scripts/site.mjs");
-    expect(site).toMatch(/if \(!production && existsSync\(join\(ROOT, ESSAI_TOWER\.from/);
-    expect(site).toMatch(/if \(production && existsSync\(join\(out, ESSAI_TOWER\.to\)\)\) throw/);
+    expect(site).toContain('export const TOWER_SITE = { from: "apps/tower/dist", to: "tower" }');
+    expect(site).toMatch(/cpSync\(join\(ROOT, TOWER_SITE\.from\), join\(out, TOWER_SITE\.to\)/);
+    expect(site).toMatch(/if \(production\) \{[\s\S]*fichiersAvecPreuveTower\(out\)/);
   });
 
-  it("la page d'essai se tait sur une construction de production", () => {
-    // Lot T1 : la page d'entrée est devenue le jeu ; le drapeau est dans `urlOptions.ts` (où ?scenario, ?debug et ?tune sont fermés : `apps/tower/test/urlOptions.test.ts`).
+  it("les options d'essai restent fermées sur une construction de production (`?scenario`, `?debug`, `?tune`)", () => {
     expect(lire("apps/tower/src/urlOptions.ts")).toContain('import.meta.env.VITE_PRODUCTION === "1"');
-    const main = lire("apps/tower/src/main.ts");
-    expect(main).toMatch(/if \(PRODUCTION\) \{\s*document\.getElementById\("tower"\)!\.textContent = "Bientôt\."/);
   });
 
-  it("Tower n'est ni dans le registre des jeux de l'API ni parmi les jeux publics : absent de la table `jeux`, son état est `off`", () => {
-    expect(lire("apps/api/src/registry.ts").toLowerCase()).not.toContain("tower");
+  it("Tower est au registre des jeux de l'API mais pas parmi les jeux publics : absent de la table `jeux`, son état est `off`", () => {
+    expect(lire("apps/api/src/registry.ts")).toContain("TOWER_GAME");
     expect(lire("packages/core/src/jeux.ts").toLowerCase()).not.toContain("tower");
   });
 });

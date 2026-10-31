@@ -18,7 +18,7 @@ curl -sS -X POST https://playdujour.com/api/admin/effacer \
   -d "{\"code\":\"$CODE\"}"
 ```
 
-- **Tu dois voir** `{"essai":true,"pseudo":"…","tempsDailyTrack":12,"coursesSalon":0,"essaisDailyJump":4,"viesDailyJump":30}` : le pseudo et ce qui serait effacé. Vérifie que le pseudo est bien celui que le joueur dit avoir.
+- **Tu dois voir** `{"essai":true,"pseudo":"…","tempsDailyTrack":12,"coursesSalon":0,"essaisDailyJump":4,"viesDailyJump":30,"partiesDailyTower":2}` : le pseudo et ce qui serait effacé. Vérifie que le pseudo est bien celui que le joueur dit avoir.
 - `404 unknown_player` : aucun profil sur le serveur pour ce code (le joueur n'a jamais envoyé de temps) — rien à effacer chez nous ; dis-lui d'effacer les données du site dans son navigateur.
 - `410 code_revoked` : le code a été remplacé (« Changer mon code ») ; demande-lui le code **actuel**.
 - `400 invalid_code` : code mal copié. `401` : jeton faux (10 échecs en 10 minutes bloquent l'adresse).
@@ -34,7 +34,7 @@ unset ADMIN_TOKEN CODE
 ```
 
 - **Tu dois voir** `{"efface":true,"pseudo":"…",…}`. Relancer la même commande rend alors `404` : il n'y a plus rien.
-- Ce qui est effacé, **en une transaction** : le joueur (identifiant secret et pseudo — **le pseudo est libéré**), ses anciens codes remplacés, ses temps et rediffusions de DailyTrack et de DailyJump (tous les jours), ses courses du Salon en cours, **son choix de voiture** (lot 51 : la voiture et sa personnalisation, gardées par joueur ; la voiture de chaque course s'efface avec la course), sa présence au Salon, ses vies de DailyJump pas encore oubliées.
+- Ce qui est effacé, **en une transaction** : le joueur (identifiant secret et pseudo — **le pseudo est libéré**), ses anciens codes remplacés, ses temps et rediffusions de DailyTrack et de DailyJump, et ses parties de Tower (hauteur, rediffusion ; tous les jours), ses courses du Salon en cours, **son choix de voiture** (lot 51 : la voiture et sa personnalisation, gardées par joueur ; la voiture de chaque course s'efface avec la course), sa présence au Salon, ses vies de DailyJump pas encore oubliées.
 - **Classements des jours passés** : sa ligne est **retirée** (les suivants montent d'une place ; les places finales gardées sont recalculées à la prochaine lecture du profil des autres) ; son fantôme de premier n'est plus servi : c'est le suivant qui devient le premier.
 - **Depuis le lot N1, le panneau d'administration** (`/admin/` › Joueurs › fiche › « Supprimer le profil », `docs/plateforme/admin.md`) fait la même chose **sans le code de transfert**, à partir du pseudo : même effacement (profil, temps et rediffusions, morts, courses du Salon, choix du Garage, codes remplacés, **et les résultats retirés** gardés 30 jours), en une transaction, après avoir retapé le pseudo. **Ce qu'il garde** : une ligne de son journal (`journal_admin`, 365 jours : heure, empreinte de l'administrateur, « supprimer le profil », le pseudo et la référence publique, des nombres de lignes — jamais le contenu effacé). Les mentions légales le disent.
 - **Ce qui reste** (sans aucun lien avec lui) : la carte des morts et l'échantillon du carnage figés des jours passés (des cases comptées et des rediffusions de vies sans identifiant ni pseudo), et les compteurs de débit (empreintes, effacés d'eux-mêmes en moins d'une heure).

@@ -31,6 +31,16 @@ Tout arrêt avant l'étape 5 laisse la production intacte.
 | sauvegarde | faire l'annexe C (une fois), puis rappuyer |
 | vérification après déploiement | « Retour arrière » (annexe B) |
 
+### Les jours de Tower (lot TP)
+
+Les médailles de Tower viennent d'un bot (≈ 45 s par jour) : **un jour de Tower doit être préparé avant d'être servi**. Le bouton le fait pour toi, dans l'étape « garde-fou des jours » (job `figer`, avec le code **déployé**, jamais celui de la production). Règle des jours (R11) :
+
+- **Un jour protégé ne change jamais** : d'avant le lancement, déjà figé, ou avec au moins un résultat (Tower, Track ou Jump). Son fichier, s'il existe, reste tel quel ; sans fichier on ne lui en crée pas.
+- **Un jour sans résultat** est **préparé** s'il n'a pas de fichier, **refait** si son fichier est d'une autre version (simulation ou générateur) que le code déployé, **gardé** sinon.
+- **La fenêtre** va de la veille de la bascule à **J+14** (16 jours) : **une mise en production au moins tous les quinze jours suffit**. Au-delà, un jour n'a plus de fichier préparé et Tower le sert avec l'estimation géométrique de ses médailles (« provisoire »). Le résumé du run le dit : une ligne **Jours de Tower** en haut (« 3 conservés, 14 préparés, 0 refaits, couvert jusqu'au 2026-11-24 ») et, dans le job `figer`, le détail, **les jours couverts**, le **temps de la préparation mesuré sur le runner** et la **date de la prochaine mise en production au plus tard**.
+- Les fichiers (preuve comprise) vont dans l'image du serveur, qui la rejoue ; le site publié **la perd** (vérifié par `scripts/site.mjs` : aucune `preuve` dans un fichier publié) ; ils sont versés dans `main` par la PR « Jours figés ». La répétition sur la recette (mode `essai` ou `repetition`) montre les mêmes lignes.
+- Tower reste **`off`** tant que tu ne l'as pas passé en aperçu ou en `on` dans `/admin/` › Jeux : préparer ses jours ne l'ouvre pas.
+
 **Après le ✅** (5 minutes) : ouvre le portail, Track et Jump (les liens du résumé), lance une course et un niveau ; puis dis aux joueurs ce qui change **à partir du jour de bascule** (cinq lignes, ton de la charte : « ce qui est joué ne bouge pas : tes temps, tes fantômes et tes archives restent comme ils étaient »).
 
 **Pour essayer sans rien risquer** : le même bouton en mode **`essai`** fait tout contre la recette (sauvegarde de la recette comprise) et verse les jours figés dans `main` s'il est lancé sur `main`. Il peut tourner sur une autre branche (la branche `essai/ci-rouge` montre un arrêt sur une CI rouge).

@@ -103,6 +103,7 @@ export const CATALOGUE_EN: Catalogue = {
   "accueil.serie.medailles": { one: "{n} medal", other: "{n} medals" },
   "accueil.jouer": "Play",
   "accueil.attente": "Loading the tower…",
+  "suite.legende": "Still to play today",
   "accueil.aide": "How to play",
   "accueil.paliers": "Today · {pieces} pieces · {plateforme} platform",
   "accueil.paliers.aria": "Today's milestones",

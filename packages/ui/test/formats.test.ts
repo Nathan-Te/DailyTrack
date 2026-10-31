@@ -1,6 +1,6 @@
 import { daysFromCivil } from "@cdj/core";
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateCourte, formatDecompte, formatNombre, formatNumeroJour, formatRang, formatTemps, majuscule } from "../src/formats";
+import { formatDate, formatDateCourte, formatDecompte, formatHauteur, formatNombre, formatNumeroJour, formatRang, formatTemps, majuscule } from "../src/formats";
 
 // Lot I1 (charte § 7) : les formats par langue, avec Intl. Espace insécable (U+00A0) entre un nombre et son unité.
 const NB = " ";
@@ -46,6 +46,22 @@ describe("formats par langue", () => {
 });
 
 // Lot I5 : la durée d'un décompte (Jump : prochain niveau ; Track : prochain circuit et Salon, à la place de `hhmmss` et `mmss`, tests repris tels quels).
+describe("formatHauteur (lot TP)", () => {
+  it("une hauteur en millimètres, arrondie au dixième de mètre : virgule en français, point en anglais, espace insécable avant l'unité", () => {
+    expect(formatHauteur(42_700, "fr")).toBe("42,7\u00a0m");
+    expect(formatHauteur(42_700, "en")).toBe("42.7\u00a0m");
+    expect(formatHauteur(42_749, "fr")).toBe("42,7\u00a0m");
+    expect(formatHauteur(42_750, "fr")).toBe("42,8\u00a0m");
+    expect(formatHauteur(30_000, "fr")).toBe("30,0\u00a0m");
+    expect(formatHauteur(0, "en")).toBe("0.0\u00a0m");
+    expect(formatHauteur(-50, "en")).toBe("0.0\u00a0m");
+  });
+  it("au-delà de mille mètres, le séparateur de milliers de la langue (jamais l'espace fine U+202F)", () => {
+    expect(formatHauteur(1_234_500, "fr")).toBe("1\u00a0234,5\u00a0m");
+    expect(formatHauteur(1_234_500, "en")).toBe("1,234.5\u00a0m");
+  });
+});
+
 describe("formatDecompte", () => {
   it("heures, minutes, secondes sur deux chiffres, arrondi à la seconde supérieure, jamais négatif", () => {
     expect(formatDecompte(0)).toBe("00:00:00");

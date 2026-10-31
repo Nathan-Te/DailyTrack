@@ -15,8 +15,7 @@ import { ensureSchemaOn } from "../src/db";
 import { consoleLog } from "../src/log";
 import { createNodeServer } from "../src/node-server";
 import { openSqlite } from "../src/node-sqlite";
-import { GAMES } from "../src/registry";
-import { creerTablesTower, towerGame } from "./tower-aide";
+import { creerTablesTower, gamesAvecTower } from "./tower-aide";
 
 if (process.env.NODE_ENV === "production" || process.env.K_SERVICE) {
   console.error("tower-serveur-essai : réservé aux tests et aux essais locaux");
@@ -51,7 +50,7 @@ const api = createApi({
   allowOrigin: "*",
   allowCopies: process.env.TOWER_COPIES === "1",
   adminToken: process.env.ADMIN_TOKEN,
-  games: [...GAMES, towerGame({ frozen })],
+  games: gamesAvecTower({ frozen }),
   log: consoleLog,
 });
 await ensureSchemaOn(db);

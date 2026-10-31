@@ -50,7 +50,7 @@ describe(`effacement d'un joueur de DailyTrack (${TEST_DB})`, () => {
     expect((await t.call("GET", "/api/admin/effacer", undefined, { headers: admin })).status).toBe(405);
     const dry = await erase(t, { code: code(alice) });
     expect(dry.status).toBe(200);
-    expect(dry.body).toEqual({ essai: true, pseudo: "Alice", tempsDailyTrack: 1, coursesSalon: 0, essaisDailyJump: 0, viesDailyJump: 0 });
+    expect(dry.body).toEqual({ essai: true, pseudo: "Alice", tempsDailyTrack: 1, coursesSalon: 0, essaisDailyJump: 0, viesDailyJump: 0, partiesDailyTower: 0 });
     expect(await t.db.first("SELECT 1 AS x FROM players WHERE id = ?", [alice])).not.toBeNull();
     // Sans jeton configuré : la route n'existe pas.
     const off = await makeApi({ seed: false });
@@ -155,7 +155,7 @@ describe(`effacement d'un joueur de DailyJump (${TEST_DB})`, () => {
     expect((await t.call("GET", `/api/jump/day/${JDATE}/ghost/first`)).body.name).toBe("Alice");
 
     const dry = await erase(t, { code: code(alice) });
-    expect(dry.body).toEqual({ essai: true, pseudo: "Alice", tempsDailyTrack: 0, coursesSalon: 0, essaisDailyJump: 1, viesDailyJump: deaths.length });
+    expect(dry.body).toEqual({ essai: true, pseudo: "Alice", tempsDailyTrack: 0, coursesSalon: 0, essaisDailyJump: 1, viesDailyJump: deaths.length, partiesDailyTower: 0 });
     expect((await erase(t, { code: code(alice), confirmer: true })).body).toMatchObject({ efface: true, essaisDailyJump: 1, viesDailyJump: deaths.length });
 
     expect(await t.db.first("SELECT 1 AS x FROM jump_results WHERE player_id = ?", [alice])).toBeNull();

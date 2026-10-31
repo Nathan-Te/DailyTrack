@@ -83,7 +83,9 @@ export function resumeDuBouton({ mode, needs, jobs = [], runUrl, ref = "refs/hea
   l.push(`- **Ce qui part** : ${v.nb_pr ?? "?"} PR${v.prs ? ` (${v.prs})` : ""} — le détail (« Ce qui part ») est dans le job « verifier »`);
   if (v.bascule_le) l.push(`- **Jour de bascule** : ${v.bascule_le} (les jours protégés d'avant restent ceux de la production)`);
   const f = o("figer");
-  if (f.jours_track || f.jours_jump) l.push(`- **Jours** : Track ${f.jours_track ?? "?"} · Jump ${f.jours_jump ?? "?"}`);
+  if (f.jours_track || f.jours_jump) l.push(`- **Jours** : Track ${f.jours_track ?? "?"} · Jump ${f.jours_jump ?? "?"}${f.jours_tower ? ` · Tower ${f.jours_tower}` : ""}`);
+  // Lot TP : les jours de Tower préparés (conservés, préparés, refaits) et jusqu'où ils sont couverts.
+  if (f.tower_ligne) l.push(`- **Jours de Tower** : ${f.tower_ligne}`);
   if (mode !== "repetition") {
     const s = o("sauvegarde").fichier;
     l.push(`- **Sauvegarde** : ${res("sauvegarde") === "success" && s ? `\`${s}\` (30 jours ; restauration : annexe C de docs/plateforme/mise-en-production.md)` : ref !== "refs/heads/main" ? "aucune (essai hors de main)" : "non faite"}`);
