@@ -23,6 +23,9 @@
       "path": "packages/ui"
     },
     {
+      "path": "packages/musique"
+    },
+    {
       "path": "apps/web"
     },
     {

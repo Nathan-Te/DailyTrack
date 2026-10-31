@@ -6,6 +6,7 @@ import { bouton, choixLangue, icone } from "@cdj/ui";
 import { CAMERA_NAMES } from "./cameras";
 import { creerCadre } from "./cadre";
 import { el, row, segmented, slider, type Control } from "./dom";
+import type { ControleMusique } from "@cdj/ui/src/panneauMusique";
 import { withVolume, type AudioSettings } from "./audioLogic";
 import { cleAction, commandes } from "./commandes";
 import { ajouterTextes, langueCourante, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
@@ -31,6 +32,8 @@ export interface SettingsHost {
   /** Son : réglages en cours et changement (enregistré et appliqué par `GameAudio`). */
   audio(): AudioSettings;
   setAudio(s: AudioSettings): void;
+  /** Lot « musique » : le lecteur de la musique commune (il se charge s'il ne l'est pas : l'onglet Son est un geste). */
+  musique(): Promise<ControleMusique>;
   /** Caméra par défaut (la touche C la change aussi). */
   camera(): string;
   setCamera(name: string): void;
@@ -68,6 +71,8 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
   let controls: Control[] = [];
   /** Charge et monte les réglages tactiles (une fois par construction de l'écran) ; `null` quand c'est fait ou sans appareil tactile. */
   let chargerTactile: (() => void) | null = null;
+  /** Lot « musique » : le bloc commun de la musique (réglages communs aux trois jeux), monté à la première ouverture de l'onglet Son : lecteur et panneau se chargent à ce moment-là. */
+  let chargerMusique: (() => void) | null = null;
   /** Lot M2 : charge l'écran des commandes (une fois par construction de l'écran). */
   let chargerCommandes: (() => void) | null = null;
   let ecranCommandes: { racine: HTMLElement; detruire(): void; annuler(): void } | null = null;
@@ -121,6 +126,12 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
       row(t("reglages.son.moteur"), engine.box),
       row(t("reglages.son.effets.nom"), effects.box, t("reglages.son.effets.aide")),
     );
+    const placeMusique = el("div", "reglages__musique");
+    sound.append(placeMusique);
+    chargerMusique = () => {
+      chargerMusique = null;
+      void import("@cdj/ui/src/panneauMusique").then((m) => m.monterPanneau(host.musique, placeMusique), () => undefined);
+    };
 
     // --- Jeu ---
     const camera = reg(segmented(CAMERA_NAMES.map((n) => [n, t(`reglages.camera.${n}`)] as const), () => host.camera() as (typeof CAMERA_NAMES)[number], (v) => host.setCamera(v), t("reglages.camera.nom")));
@@ -249,6 +260,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     cadre.corps.scrollTop = 0;
     if (id === "controls") chargerCommandes?.();
     else ecranCommandes?.annuler();
+    if (id === "sound") chargerMusique?.();
     sync();
   }
 

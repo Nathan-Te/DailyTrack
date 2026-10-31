@@ -9,5 +9,5 @@
     "emitDeclarationOnly": true
   },
   "include": ["src", "test", "outils", "src/son/boucles/*.json"],
-  "references": [{ "path": "../../packages/sim" }, { "path": "../../packages/clock" }, { "path": "../../packages/profile" }, { "path": "../../packages/ui" }]
+  "references": [{ "path": "../../packages/sim" }, { "path": "../../packages/clock" }, { "path": "../../packages/profile" }, { "path": "../../packages/musique" }, { "path": "../../packages/ui" }]
 }

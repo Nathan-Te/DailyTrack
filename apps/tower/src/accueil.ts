@@ -9,6 +9,7 @@ import "./accueil.css";
 import { msUntilNextParisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import { identityRevisionSeen, readPlayerId } from "@cdj/profile";
+import type { Musique } from "@cdj/musique/branche";
 import { barreJeu, el, formatDecompte, formatNombre, nomMedaille, type TraducteurCommun } from "@cdj/ui";
 import type { ClassementTower, MoiTower } from "./apiTower";
 import { monterClassement } from "./classementUi";
@@ -66,7 +67,9 @@ function precharger(): Prechargement {
 
 const communs = (): TraducteurCommun => traducteurDuSocle() as unknown as TraducteurCommun;
 
-export async function demarrerAccueil(options: OptionsUrl): Promise<void> {
+export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Promise<void> {
+  musique.scene("menu"); // lot « musique » : l'accueil joue la boucle du menu (le jeu annonce ensuite la scène de son thème)
+  musique.baisser(1);
   await chargerLangue();
   appliquerDocument();
   const racine = document.getElementById("tower")!;
@@ -229,7 +232,7 @@ export async function demarrerAccueil(options: OptionsUrl): Promise<void> {
       message?.montrer(null);
       voile.remove();
       fond.remove();
-      await mod.demarrerJeu({ options, session, preparation: p, rapier: pre.rapier, dejaClasse: etat.classement?.me != null });
+      await mod.demarrerJeu({ options, session, preparation: p, rapier: pre.rapier, dejaClasse: etat.classement?.me != null, musique });
     } catch {
       // Un morceau n'a pas pu se charger : on le dit, on le redemande au prochain appui.
       clearTimeout(lent);

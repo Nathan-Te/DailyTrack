@@ -138,6 +138,7 @@ import type { DeathMapData } from "./rankApi";
 import { Ranking, mayRank } from "./ranking";
 import { arrivalRankView, classesText, homeRankText, rowsOf } from "./rankView";
 import { DEMO_TODAY, DemoRankSource } from "./demoRank";
+import { brancherMusique } from "@cdj/musique/branche";
 import { BUILD_API_URL, BUILD_RESTRICTED, demoStorage, gameStorage } from "./storage";
 import { BELT_EVERY, Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, beltSpark, feelColors, feelEvent, slideSpark } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
@@ -987,6 +988,11 @@ const trail = new Trail();
 const blink = new Blink();
 const vibrator = new Vibrator(typeof navigator.vibrate === "function" ? (p) => navigator.vibrate(p) : null);
 const audio = new JumpAudio(settings);
+// Lot « musique » : la musique commune de la plateforme, branchée en une ligne (le lecteur se charge au premier geste : `docs/plateforme/musique.md`). Un peu plus basse pendant un niveau (à décider par Nathan) ; « Son : non » la coupe aussi.
+const musique = brancherMusique("jump", gameStorage);
+/** Niveau de la musique pendant un niveau (1 à l'accueil, en pause et dans les écrans). */
+const MUSIQUE_EN_NIVEAU = 0.6;
+musique.sourdine(settings.sound === false);
 // Lot 9 : l'ambiance du thème, sur le bus « ambiance » (elle démarre au premier geste, comme le reste du son).
 audio.setAmbience(AMBIENCES[theme.ambience], textSeed(`${levelId}:${theme.name}:ambiance`));
 const eventLog = new EventLog(200);
@@ -2641,6 +2647,7 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
   }
   if (!levels.continuous) trail.clear();
   audio.setSettings(settings);
+  musique.sourdine(settings.sound === false);
   if (changed === "othersStains") showOthers();
   if (changed === "buttonSize") touchUi?.setButtonSize(settings.buttonSize);
   // Un aperçu, pour entendre le niveau choisi (au plus quatre fois par seconde pendant qu'on glisse le curseur).
@@ -2655,6 +2662,7 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
 // commandes, langue, « Mon profil Du Jour › » (le profil commun du portail : plus de profil dans le jeu) et les mentions légales.
 const settingsUi = mountSettings({
   settings,
+  musique: () => musique.lecteur(),
   canVibrate: typeof navigator.vibrate === "function",
   onChange: applySettings,
   profilHref: profil,
@@ -2727,6 +2735,8 @@ function syncPause(): void {
   touchUi?.suspend(blocked || panelOpen);
   controls.setTouch(0, false);
   audio.setActive(!blocked && !panelOpen);
+  musique.baisser(blocked || panelOpen ? 1 : MUSIQUE_EN_NIVEAU);
+  musique.scene(homeOpen() ? "menu" : `theme:${theme.name}`); // la musique de l'accueil, ou celle du thème du niveau
   stepper.reset();
   syncMessage();
 }

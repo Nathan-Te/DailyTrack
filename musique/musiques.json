@@ -1,0 +1,312 @@
+{
+  "pistes": [
+    {
+      "id": "track-menu",
+      "titre": "Pole position",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-menu.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-nuit",
+      "titre": "Périphérique",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-nuit.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "jump-foret",
+      "titre": "Sous les feuilles",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "jump-foret.wav",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:foret"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-stade",
+      "titre": "Tribune",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-stade.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:stade"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-rallye",
+      "titre": "Spéciale",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-rallye.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:rallye"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-banquise",
+      "titre": "Verglas",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-banquise.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:banquise"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-campagne",
+      "titre": "Chemin de terre",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-campagne.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:campagne"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-canyon",
+      "titre": "Mirage",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-canyon.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:canyon"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-col",
+      "titre": "Lacets",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-col.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:col"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "track-ville",
+      "titre": "Heure de pointe",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "track-ville.wav",
+      "jeux": [
+        "track"
+      ],
+      "scenes": [
+        "theme:ville"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "jump-menu",
+      "titre": "Écran titre",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "jump-menu.wav",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "jump-usine",
+      "titre": "Chaîne de montage",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "jump-usine.wav",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:usine"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "jump-glace",
+      "titre": "Neige molle",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "jump-glace.wav",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:glace"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "jump-nuit",
+      "titre": "Ruelle",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "jump-nuit.wav",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "jump-neon",
+      "titre": "Autoroute 84",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "jump-neon.wav",
+      "jeux": [
+        "jump"
+      ],
+      "scenes": [
+        "theme:neon"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "tower-menu",
+      "titre": "Premier étage",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "tower-menu.wav",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "tower-port",
+      "titre": "Marée basse",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "tower-port.wav",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:port"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "tower-chantier",
+      "titre": "Échafaudage",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "tower-chantier.wav",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:chantier"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "tower-canyon",
+      "titre": "Terre rouge",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "tower-canyon.wav",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:canyon"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "tower-banquise",
+      "titre": "Cristaux",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "tower-banquise.wav",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:banquise"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "tower-jungle",
+      "titre": "Canopée",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "tower-jungle.wav",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:jungle"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "tower-nuit",
+      "titre": "Veilleuse",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "tower-nuit.wav",
+      "jeux": [
+        "tower"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    }
+  ]
+}
