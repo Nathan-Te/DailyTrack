@@ -17,6 +17,11 @@ interface Resultat {
   jour: number;
   texte: string;
   hauteurMm: number;
+  diamantMm: number;
+  tirage: number;
+  dedans: boolean;
+  /** Un essai par tirage joué : (tirage, hauteur du bot en mm, variante de reprise). */
+  essais: { tirage: number; hauteurMm: number; variante: number }[];
   variante: number;
   secondes: number;
 }
@@ -28,7 +33,7 @@ if (!isMainThread) {
     if (jour === null) process.exit(0);
     const t0 = performance.now();
     const p = preparerJour(R, jour);
-    const r: Resultat = { jour, texte: jsonJourFige(p.fichier), hauteurMm: p.hauteurMm, variante: p.variante, secondes: (performance.now() - t0) / 1000 };
+    const r: Resultat = { jour, texte: jsonJourFige(p.fichier), hauteurMm: p.hauteurMm, diamantMm: p.diamantMm, tirage: p.tirage, dedans: p.dedans, essais: p.essais.map(({ tirage, hauteurMm, variante }) => ({ tirage, hauteurMm, variante })), variante: p.variante, secondes: (performance.now() - t0) / 1000 };
     parentPort!.postMessage(r);
   });
   parentPort!.postMessage("pret");
@@ -76,7 +81,10 @@ if (!isMainThread) {
           if (m !== "pret") {
             ecrire(dossier, m.jour, m.texte);
             ecrits++;
-            console.log(`  ${formatDay(m.jour)}  Diamant ${(m.hauteurMm / 1000).toFixed(3)} m${m.variante > 0 ? ` (variante ${m.variante})` : ""}, ${m.secondes.toFixed(0)} s, ${m.texte.length} octets`);
+            const essais = m.essais.map((e) => `t${e.tirage} ${(e.hauteurMm / 1000).toFixed(1)} m`).join(", ");
+            console.log(
+              `  ${formatDay(m.jour)}  tirage ${m.tirage}${m.dedans ? "" : " (HORS PLAGE : le plus proche)"}  Diamant ${(m.diamantMm / 1000).toFixed(3)} m (bot ${(m.hauteurMm / 1000).toFixed(3)} m)${m.variante > 0 ? `, variante ${m.variante}` : ""}  [${essais}], ${m.secondes.toFixed(0)} s, ${m.texte.length} octets`,
+            );
           }
           donner();
         });

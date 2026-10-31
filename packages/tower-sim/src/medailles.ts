@@ -2,11 +2,23 @@
 // en millimètres ENTIERS**, par `idiv` (division tronquée vers zéro) : aucun flottant, le même seuil partout. Dans les données la clé du Diamant est `auteur` (comme dans les autres jeux).
 import { idiv } from "../lab/a/fixe";
 import { boites } from "./sommet";
-import type { Contenu } from "./generateur";
+import { type Contenu, GENERATEUR_TIRAGE, TOWER_GENERATOR_VERSION } from "./generateur";
 
-/** Les pourcentages du Diamant, et leur version : un recalibrage monte `MEDAILLES_VERSION` et ne touche que les jours préparés après lui (un jour préparé garde ses seuils écrits). */
-export const MEDAILLES_VERSION = 1;
-export const POURCENTAGES_MEDAILLES = { or: 90, argent: 75, bronze: 55 } as const;
+/**
+ * Les pourcentages du Diamant, et leur version : un recalibrage monte `MEDAILLES_VERSION` et ne touche que les jours préparés après lui (un jour préparé garde ses seuils écrits).
+ * Version 2 (lot T3b, décision de Nathan) : Bronze 15 %, Argent 30 %, Or 50 % — au lot T3 les joueurs simulés étaient à 16–19 % du Diamant (médiane), le Bronze à 55 % était hors de portée.
+ * **Ces pourcentages seront recalibrés au lot T5, sur des parties humaines** (les joueurs simulés ne sont qu'une première approximation).
+ */
+export const MEDAILLES_VERSION = 2;
+export const POURCENTAGES_MEDAILLES = { or: 50, argent: 30, bronze: 15 } as const;
+
+/** Le plafond du Diamant (lot T3b, générateur 3) : 60 m. Diamant = min(hauteur du bot, plafond) ; la preuve reste la vraie partie du bot (elle peut finir plus haut). */
+export const PLAFOND_DIAMANT_MM = 60_000;
+
+/** Le Diamant d'après la hauteur stable du bot : plafonné dès le générateur 3 (les versions 1 et 2 n'ont pas de plafond : leurs jours servis gardent leur Diamant). */
+export function diamantDe(hauteurBotMm: number, g: number = TOWER_GENERATOR_VERSION): number {
+  return g >= GENERATEUR_TIRAGE ? Math.min(hauteurBotMm, PLAFOND_DIAMANT_MM) : hauteurBotMm;
+}
 
 /** Du moins précieux au plus précieux. */
 export const NOMS_MEDAILLES = ["bronze", "argent", "or", "auteur"] as const;
@@ -57,8 +69,8 @@ export function aireDuJour(pieces: Contenu["pieces"]): number {
   return aire;
 }
 
+/** Les médailles provisoires d'un jour sans fichier préparé : l'estimation, plafonnée comme le Diamant (lot T3b ; à 100 % elle ne dépasse jamais 32 m, le plafond ne joue que pour un coefficient plus grand). */
 export function estimationGeometrique(c: Pick<Contenu, "pieces" | "plateformeDemi8">, coefficientPct: number = COEFFICIENT_GEOMETRIQUE_PCT): Medailles {
   // aire (huitièmes²) / largeur (huitièmes) = hauteur en huitièmes de mètre ; × 125 = millimètres.
-  const mm = idiv(aireDuJour(c.pieces) * 125 * coefficientPct, 2 * c.plateformeDemi8 * 100);
-  return medaillesDe(mm);
+  return medaillesDe(diamantDe(idiv(aireDuJour(c.pieces) * 125 * coefficientPct, 2 * c.plateformeDemi8 * 100)));
 }

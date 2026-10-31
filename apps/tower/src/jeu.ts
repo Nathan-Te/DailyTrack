@@ -6,7 +6,7 @@ import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "./jeu.css";
 import { parisDay } from "@cdj/clock";
-import { type Contenu, empreinteVue, estimationGeometrique, medailleObtenue, medaillesDe, Partie, type Rapier, SCENARIO_ESSAI, type Scenario, scenarioPaliers, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
+import { type Contenu, empreinteVue, estimationGeometrique, medailleObtenue, medaillesDe, Partie, type Rapier, type Scenario, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
 import { el, formatDateCourte, nomMedaille } from "@cdj/ui";
 import { Entrees } from "./entrees";
 import { texteDebug } from "./debug";
@@ -92,15 +92,15 @@ async function demarrer(): Promise<void> {
   let enTete: () => string;
   let jourLu: JourDuJeu | null = null;
   if (options.scenario === "essai") {
-    contenu = SCENARIO_ESSAI;
+    contenu = (await import("@cdj/tower-sim/scenarios/outils")).SCENARIO_ESSAI; // les scénarios d'essai sont des outils (fermés en production) : à la demande, hors du premier chargement (lot T3b)
     enTete = () => t("fin.eyebrow");
   } else if (options.scenario === "paliers") {
-    contenu = scenarioPaliers(options.effet);
+    contenu = (await import("@cdj/tower-sim/scenarios/outils")).scenarioPaliers(options.effet);
     enTete = () => t("fin.eyebrow.paliers");
   } else {
     const choix = choisirJour(options.seed, parisDay(Date.now()), PRODUCTION);
     refuse = choix.refuse;
-    jourLu = await chargerJour(choix.jour);
+    jourLu = await chargerJour(choix.jour, options.tirage);
     contenu = jourLu.contenu;
     enTete = () => t("fin.eyebrow.jour", { date: formatDateCourte(choix.jour, langueCourante()) });
   }
@@ -131,25 +131,25 @@ async function demarrer(): Promise<void> {
   // Hors production seulement : le bot de l'auteur. Sa preuve est dans le fichier du jour, ou son Web Worker la calcule (une minute) en rendant les pièces à mesure ; les deux modules sont
   // chargés à la demande, et la constante de construction `import.meta.env.VITE_PRODUCTION` (écrite en clair ici pour que la construction retire tout ce bloc, et avec lui le worker, du jeu publié) le ferme en production.
   if (import.meta.env.VITE_PRODUCTION !== "1" && jourLu) {
-    const aCalculer = jourLu.medailles === null || (options.bot && jourLu.preuve === null);
-    if (options.bot && jourLu.preuve !== null) {
+    const lu = jourLu;
+    const sansMedailles = lu.medailles === null;
+    /** `&bot` : les commandes d'une preuve (celle du fichier, ou la partie retenue que rend le worker) rejoignent la file du bot. */
+    const jouer = (preuve: string): void => void import("./botDemande").then((m) => fileBot.push(...m.masquesDePreuve(preuve)));
+    if (options.bot && lu.preuve !== null) {
       botComplet = true;
-      diamantBot = jourLu.medailles?.auteur ?? null;
-      const preuve = jourLu.preuve;
-      void import("./botDemande").then((m) => fileBot.push(...m.masquesDePreuve(preuve)));
+      diamantBot = lu.medailles?.auteur ?? null;
+      jouer(lu.preuve);
     }
-    if (aCalculer) {
+    if (sansMedailles || (options.bot && lu.preuve === null)) {
       void import("./botDemande").then((m) =>
         m.demanderBot(contenu, (msg) => {
-          if (msg.genre === "piece") {
-            if (options.bot) fileBot.push(...msg.masques);
-            return;
-          }
+          // Lot T3b : le worker rend la partie RETENUE d'un coup (la variante qui donne le Diamant), pas le réglage ordinaire pièce par pièce : `&bot` la joue ensuite.
           botComplet = true;
           if (msg.genre === "fin") {
             diamantBot = msg.hauteurMm;
-            if (jourLu!.medailles === null) medailles = { medailles: medaillesDe(msg.hauteurMm), provisoire: false, enCalcul: false };
-          } else if (jourLu!.medailles === null) {
+            if (options.bot) jouer(msg.preuve);
+            if (sansMedailles) medailles = { medailles: medaillesDe(msg.hauteurMm), provisoire: false, enCalcul: false };
+          } else if (sansMedailles) {
             medailles = SANS_MEDAILLES;
             hud.annoncerTexte(t("chargement.echec"));
           }

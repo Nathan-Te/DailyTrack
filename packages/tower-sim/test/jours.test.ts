@@ -12,12 +12,44 @@ const JOUR = parseDay("2026-11-02")!;
 const clone = (f: JourFige): JourFige => JSON.parse(jsonJourFige(f)) as JourFige;
 
 describe("le format d'un jour figé", () => {
-  it("garde le format, g, sim, le contenu du jour et un champ medailles à null (le lot T3 le remplira)", () => {
+  it("garde le format, g, le tirage, sim, le contenu du jour et un champ medailles à null (le lot T3 le remplira)", () => {
     const f = figerJour(JOUR);
-    expect(f).toMatchObject({ format: FORMAT_JOUR_FIGE, jeu: "tower", date: "2026-11-02", g: TOWER_GENERATOR_VERSION, sim: TOWER_SIM_VERSION, medailles: null });
+    expect(f).toMatchObject({ format: FORMAT_JOUR_FIGE, jeu: "tower", date: "2026-11-02", g: TOWER_GENERATOR_VERSION, tirage: 0, sim: TOWER_SIM_VERSION, medailles: null });
     expect(f.contenu.pieces).toHaveLength(40);
     expect(f.contenu.paliers).toHaveLength(6);
-    expect(Object.keys(f)).toEqual(["format", "jeu", "date", "g", "sim", "contenu", "medailles"]);
+    expect(Object.keys(f)).toEqual(["format", "jeu", "date", "g", "tirage", "sim", "contenu", "medailles"]);
+  });
+
+  it("lot T3b — les fichiers des générateurs 1 et 2 n'ont pas de champ tirage : leur texte ne change pas", () => {
+    for (const g of [1, 2]) {
+      const f = figerJour(JOUR, g);
+      expect(Object.keys(f)).toEqual(["format", "jeu", "date", "g", "sim", "contenu", "medailles"]);
+      expect(jsonJourFige(f)).not.toContain("tirage");
+      expect(jsonJourFige(f).startsWith(`{\n  "format": 1,\n  "jeu": "tower",\n  "date": "2026-11-02",\n  "g": ${g},\n  "sim": ${TOWER_SIM_VERSION},\n`)).toBe(true);
+      expect(lireJourFige(clone(f), JOUR)).toEqual(dailyTower(JOUR, g));
+    }
+    expect(() => figerJour(JOUR, 2, 1)).toThrow(/tirage invalide/);
+  });
+
+  it("lot T3b — le tirage est lu DANS le fichier (le contenu relu est celui de ce tirage), et un tirage illisible est refusé", () => {
+    for (const t of [0, 1, 2, 3]) {
+      const f = figerJour(JOUR, 3, t);
+      expect(f.tirage).toBe(t);
+      const texte = jsonJourFige(f);
+      expect(texte).toContain(`"tirage": ${t},`);
+      const relu = lireJourFige(JSON.parse(texte) as unknown, JOUR);
+      expect(relu).toEqual(dailyTower(JOUR, 3, t));
+      expect(empreinteContenu(relu as ReturnType<typeof dailyTower>)).toBe(empreinteContenu(dailyTower(JOUR, 3, t)));
+    }
+    expect(empreinteContenu(dailyTower(JOUR, 3, 1))).not.toBe(empreinteContenu(dailyTower(JOUR, 3, 0)));
+    const modifie = (tirage: unknown): unknown => ({ ...JSON.parse(jsonJourFige(figerJour(JOUR))), tirage });
+    for (const mauvais of [4, 99, -1, 1.5, "1", null]) expect(lireJourFige(modifie(mauvais), JOUR), String(mauvais)).toMatch(/tirage/);
+    const sans = JSON.parse(jsonJourFige(figerJour(JOUR))) as Record<string, unknown>;
+    delete sans.tirage;
+    expect(lireJourFige(sans, JOUR)).toMatch(/tirage/); // dès le générateur 3, le fichier nomme son tirage
+    const ancien = JSON.parse(jsonJourFige(figerJour(JOUR, 2))) as Record<string, unknown>;
+    ancien.tirage = 1;
+    expect(lireJourFige(ancien, JOUR)).toEqual(dailyTower(JOUR, 2)); // les générateurs 1 et 2 n'ont pas de tirage : le champ est ignoré (le contenu relu n'en a pas)
   });
 
   it("le texte est stable, lisible, JSON valide, et se relit en exactement le contenu du générateur", () => {
@@ -88,8 +120,9 @@ describe("le garde-fou : chaque fichier figé ou préparé présent se régénè
         expect(typeof lu, `${nom} : ${String(lu)}`).toBe("object");
         if (typeof lu === "string") continue;
         expect(formatDay(lu.contenu.jour)).toBe(date);
-        expect(empreinteContenu(lu.contenu), `${nom} ne se régénère plus à l'identique avec g${lu.contenu.g} : un jour figé ne change jamais`).toBe(empreinteContenu(dailyTower(jour, lu.contenu.g)));
-        expect(brut, `${nom} n'est pas le texte canonique`).toBe(jsonJourFige({ ...figerJour(jour, lu.contenu.g), medailles: lu.medailles, ...(lu.preuve === null ? {} : { preuve: lu.preuve }) }));
+        const tirage = lu.contenu.tirage ?? 0;
+        expect(empreinteContenu(lu.contenu), `${nom} ne se régénère plus à l'identique avec g${lu.contenu.g} : un jour figé ne change jamais`).toBe(empreinteContenu(dailyTower(jour, lu.contenu.g, tirage)));
+        expect(brut, `${nom} n'est pas le texte canonique`).toBe(jsonJourFige({ ...figerJour(jour, lu.contenu.g, tirage), medailles: lu.medailles, ...(lu.preuve === null ? {} : { preuve: lu.preuve }) }));
         if (lu.preuve !== null) expect(verifierJourPrepare(R, JSON.parse(brut) as unknown, jour), nom).toBeNull();
       }
     });
@@ -100,6 +133,6 @@ describe("le garde-fou : chaque fichier figé ou préparé présent se régénè
     f.contenu.pieces = f.contenu.pieces.slice(1) + f.contenu.pieces[0];
     const lu = lireJourFige(f, JOUR);
     expect(typeof lu).toBe("object");
-    if (typeof lu !== "string") expect(empreinteContenu(lu)).not.toBe(empreinteContenu(dailyTower(JOUR, lu.g)));
+    if (typeof lu !== "string") expect(empreinteContenu(lu)).not.toBe(empreinteContenu(dailyTower(JOUR, lu.g, lu.tirage ?? 0)));
   });
 });

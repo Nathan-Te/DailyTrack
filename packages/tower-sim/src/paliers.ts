@@ -1,4 +1,4 @@
-// Lot T2 — les paliers de Tower : tous les 10 m de hauteur stable, un bonus ou un malus du jour (docs/tower/seed.md § 3). Ce fichier ne contient que des données et des
+// Lot T2 — les paliers de Tower : tous les 10 m de hauteur stable (lot T3b, générateur 3 : tous les 8 m), un bonus ou un malus du jour (docs/tower/seed.md § 3). Ce fichier ne contient que des données et des
 // règles de tirage ; l'application des effets est dans `partie.ts`.
 
 /** Les six effets du premier jalon. */
@@ -17,8 +17,11 @@ export interface Palier {
   effet: Effet;
 }
 
-/** Un palier tous les 10 m, de 10 m à 60 m : six paliers, donc les six effets exactement une fois chacun. */
+/** Générateurs 1 et 2 : un palier tous les 10 m, de 10 m à 60 m (six paliers, donc les six effets exactement une fois chacun). Ne change plus : des jours servis le nomment. */
 export const PALIERS_METRES: readonly number[] = [10, 20, 30, 40, 50, 60];
+
+/** Générateur 3 (lot T3b) : un palier tous les 8 m, de 8 m à 48 m — le joueur médian (9 à 14 m) en voyait un seul avec 10 m. Toujours six paliers, les six effets une fois chacun. */
+export const PALIERS_METRES_V3: readonly number[] = [8, 16, 24, 32, 40, 48];
 
 /** La taille d'une pièce : demi-taille (petite pièce), taille normale, double taille (pièce géante). */
 export type Taille = "petite" | "normale" | "geante";
