@@ -10,15 +10,25 @@ const { rendre, versWav, SR } = (await import(/* @vite-ignore */ join(RACINE, "m
   versWav(b: Tampon): Uint8Array;
   SR: number;
 };
-const { MORCEAUX } = (await import(/* @vite-ignore */ join(RACINE, "musique/generateur/morceaux.mjs"))) as { MORCEAUX: Record<string, { id: string; bpm: number; barres: number }> };
+const { MORCEAUX } = (await import(/* @vite-ignore */ join(RACINE, "musique/generateur/morceaux.mjs"))) as {
+  MORCEAUX: Record<string, { id: string; bpm: number; barres: number; jeu: string; scenes: string[]; titre: string }>;
+};
+const { SCENES } = await import("../src/scenes");
 
 describe("les boucles générées", () => {
-  it("trois morceaux : le menu de Track, le thème Nuit de Track, la forêt de Jump ; 32 mesures chacun", () => {
-    expect(Object.keys(MORCEAUX).sort()).toEqual(["jump-foret", "track-menu", "track-nuit"]);
-    for (const m of Object.values(MORCEAUX)) expect(m.barres, m.id).toBe(32);
+  it("une boucle pour chaque scène de Track, de Jump et de Tower (le menu et chaque thème), un nombre de mesures multiple de huit", () => {
+    const jouees = new Set(Object.values(MORCEAUX).flatMap((m) => m.scenes.map((s) => `${m.jeu}/${s}`)));
+    for (const jeu of ["track", "jump", "tower"] as const) for (const scene of SCENES[jeu]) expect(jouees.has(`${jeu}/${scene}`), `${jeu}/${scene}`).toBe(true);
+    // Et rien qui ne soit une scène d'un jeu : le test des scènes inconnues est dans `description.test.ts`, ici on garde la liste juste.
+    for (const m of Object.values(MORCEAUX)) {
+      expect(m.barres % 8, m.id).toBe(0);
+      expect(m.titre.length, m.id).toBeGreaterThan(0);
+      for (const s of m.scenes) expect(SCENES[m.jeu as "track"], `${m.id} : ${s}`).toContain(s);
+    }
+    expect(new Set(Object.values(MORCEAUX).map((m) => m.titre)).size).toBe(Object.keys(MORCEAUX).length);
   });
 
-  for (const id of ["track-menu", "track-nuit", "jump-foret"]) {
+  for (const id of Object.keys(MORCEAUX)) {
     it(`${id} : déterministe, de la longueur de ses mesures, sans valeur invalide, crête à −1 dBFS, boucle sans claquement`, () => {
       const piece = MORCEAUX[id]!;
       const a = rendre(piece, { barres: 4 });
@@ -49,14 +59,12 @@ describe("les boucles générées", () => {
     expect(wav.length).toBe(44 + buf.n * 4);
   });
 
-  it("les morceaux de musiques.json qui en viennent portent leurs scènes (menu et thèmes), jeux et licence « mienne »", async () => {
+  it("musiques.json couvre chaque scène (menu et thèmes) : un morceau généré ou, une fois remplacé à la main, un morceau acheté", async () => {
     const { readFileSync } = await import("node:fs");
     const d = JSON.parse(readFileSync(join(RACINE, "musique/musiques.json"), "utf8")) as { pistes: { id: string; jeux: string[]; scenes?: string[]; licence: string }[] };
-    const attendu: Record<string, [string[], string[]]> = { "track-menu": [["track"], ["menu"]], "track-nuit": [["track"], ["theme:nuit"]], "jump-foret": [["jump"], ["theme:foret"]] };
-    for (const [id, [jeux, scenes]] of Object.entries(attendu)) {
-      const p = d.pistes.find((x) => x.id === id);
-      expect(p, id).toBeDefined();
-      expect([p!.jeux, p!.scenes, p!.licence]).toEqual([jeux, scenes, "mienne"]);
-    }
+    for (const jeu of ["track", "jump", "tower"] as const)
+      for (const scene of SCENES[jeu]) expect(d.pistes.some((p) => p.jeux.includes(jeu) && p.scenes?.includes(scene)), `${jeu}/${scene}`).toBe(true);
+    // Chaque entrée générée porte les mêmes jeux et scènes que sa fiche (tant qu'elle n'a pas été remplacée : sa source dit alors autre chose).
+    for (const p of d.pistes.filter((x) => MORCEAUX[x.id] && x.licence === "mienne")) expect([p.jeux, p.scenes], p.id).toEqual([[MORCEAUX[p.id]!.jeu], MORCEAUX[p.id]!.scenes]);
   });
 });

@@ -1,6 +1,7 @@
-// Les boucles générées par le code (lot « musique », premier essai) : trois morceaux écrits note par note, rendus par `moteur.mjs`. Chacun fait 32 mesures et **se replie en boucle** ; son
+// Les boucles générées par le code (lot « musique ») : trois morceaux écrits note par note (les autres : `catalogue.mjs` et `modeles.mjs`), rendus par `moteur.mjs`. Chacun fait 32 mesures et **se replie en boucle** ; son
 // début et sa fin sont des nappes (pas de percussions) pour que le fondu de 3 s du lecteur, entre la fin et le début, se fonde sans à-coup.
 // Changer une note ou une graine change le fichier : relancer `npm run musique:generer` puis `npm run musique`.
+import { GENEREES } from "./catalogue.mjs";
 import { batterie, hz, montee, note } from "./moteur.mjs";
 
 const PAS_PAR_BARRE = 16;
@@ -225,4 +226,16 @@ export const jumpForet = {
   },
 };
 
-export const MORCEAUX = { [trackMenu.id]: trackMenu, [trackNuit.id]: trackNuit, [jumpForet.id]: jumpForet };
+// Les trois premiers (écrits note par note) portent eux aussi leur place et leur titre, comme les fiches du catalogue.
+trackMenu.jeu = "track";
+trackMenu.scenes = ["menu"];
+trackMenu.titre = "Pole position";
+trackNuit.jeu = "track";
+trackNuit.scenes = ["theme:nuit"];
+trackNuit.titre = "Périphérique";
+jumpForet.jeu = "jump";
+jumpForet.scenes = ["theme:foret"];
+jumpForet.titre = "Sous les feuilles";
+
+/** Toutes les boucles générées, par identifiant : les trois écrites à la main, puis une fiche par scène (`catalogue.mjs`). */
+export const MORCEAUX = Object.fromEntries([trackMenu, trackNuit, jumpForet, ...GENEREES].map((m) => [m.id, m]));
