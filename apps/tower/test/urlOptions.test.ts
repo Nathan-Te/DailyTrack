@@ -8,8 +8,8 @@ const J = (d: string): number => parseDay(d)!;
 
 describe("paramètres d'adresse de Tower", () => {
   it("hors production : le contenu du jour par défaut, la suite d'essai, les paliers, la démonstration du lot T0, les outils de Nathan", () => {
-    expect(lireOptions("", false)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, tactile: null });
-    expect(lireOptions("?scenario=essai&debug&tune&tactile=1", false)).toEqual({ scenario: "essai", seed: null, effet: "lierre", debug: true, tune: true, tactile: "1" });
+    expect(lireOptions("", false)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, tirage: 0, theme: null, tactile: null });
+    expect(lireOptions("?scenario=essai&debug&tune&tactile=1", false)).toEqual({ scenario: "essai", seed: null, effet: "lierre", debug: true, tune: true, bot: false, tirage: 0, theme: null, tactile: "1" });
     expect(lireOptions("?scenario=banc&engine=b", false).scenario).toBe("banc");
     expect(lireOptions("?scenario=inconnu", false).scenario).toBe("jour");
     expect(lireOptions("?tune", false).tune).toBe(false); // `tune` ne va pas sans `debug`
@@ -30,9 +30,21 @@ describe("paramètres d'adresse de Tower", () => {
   });
 
   it("en production : ni scénario, ni effet, ni ?debug, ni ?tune ; seul ?seed= reste lu (sa date future est refusée par choisirJour)", () => {
-    expect(lireOptions("?scenario=banc&debug&tune", true)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, tactile: null });
+    expect(lireOptions("?scenario=banc&debug&tune&bot&theme=nuit", true)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, tirage: 0, theme: null, tactile: null });
     expect(lireOptions("?scenario=paliers&effet=vent", true)).toMatchObject({ scenario: "jour", effet: "lierre" });
     expect(lireOptions("?seed=2026-11-02", true).seed).toBe(J("2026-11-02"));
+  });
+});
+
+describe("lot T3 : ?bot et ?theme=", () => {
+  it("hors production : ?bot regarde le bot (le contenu d'un jour seulement), ?theme= force un des six thèmes", () => {
+    expect(lireOptions("?seed=2026-11-05&bot", false)).toMatchObject({ bot: true, scenario: "jour", seed: J("2026-11-05") });
+    expect(lireOptions("?scenario=essai&bot", false).bot).toBe(false);
+    for (const th of ["port", "chantier", "canyon", "banquise", "jungle", "nuit"]) expect(lireOptions(`?theme=${th}`, false).theme).toBe(th);
+    expect(lireOptions("?theme=volcan", false).theme).toBeNull();
+  });
+  it("en production (R9) : ni ?bot, ni ?theme= — la preuve de l'auteur n'y est pas publiée", () => {
+    expect(lireOptions("?seed=2026-11-05&bot&theme=banquise", true)).toMatchObject({ bot: false, theme: null });
   });
 });
 
@@ -50,5 +62,16 @@ describe("choisirJour : le jour à jouer", () => {
     expect(choisirJour(J("2026-10-30"), AUJOURDHUI, true)).toEqual({ jour: J("2026-10-30"), refuse: false });
     expect(choisirJour(AUJOURDHUI, AUJOURDHUI, true)).toEqual({ jour: AUJOURDHUI, refuse: false });
     expect(choisirJour(J("2026-11-03"), AUJOURDHUI, true)).toEqual({ jour: AUJOURDHUI, refuse: true });
+  });
+});
+
+describe("lot T3b : ?tirage=", () => {
+  it("hors production : le tirage d'un jour sans fichier, de 0 à TIRAGES_MAX − 1 ; illisible ou hors bornes = 0", () => {
+    expect(lireOptions("", false).tirage).toBe(0);
+    for (const t of [1, 2, 3]) expect(lireOptions(`?seed=2026-11-17&tirage=${t}`, false)).toMatchObject({ tirage: t, seed: J("2026-11-17") });
+    for (const mauvais of ["0", "4", "99", "-1", "x", ""]) expect(lireOptions(`?tirage=${mauvais}`, false).tirage, mauvais).toBe(0);
+  });
+  it("en production (R9) : fermé — le contenu d'un jour est toujours le tirage 0 (ou celui de son fichier)", () => {
+    expect(lireOptions("?seed=2026-11-05&tirage=2", true).tirage).toBe(0);
   });
 });

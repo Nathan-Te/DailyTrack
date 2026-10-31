@@ -37,12 +37,12 @@ export class Fingers {
    * machine chargée (CI : 2 cœurs, 2 workers), lire l'état tout de suite lisait l'ancien doigt (lot 2). On attend donc deux images de la
    * page : les événements de pointeur d'une image passent avant ses `requestAnimationFrame`.
    */
-  private async send(type: "touchStart" | "touchMove" | "touchEnd", all: Map<number, { x: number; y: number }>) {
+  private async send(type: "touchStart" | "touchMove" | "touchEnd" | "touchCancel", all: Map<number, { x: number; y: number }>) {
     await this.cdp!.send("Input.dispatchTouchEvent", { type, touchPoints: [...all].map(([id, p]) => ({ id, x: p.x, y: p.y })) });
     await this.page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
   }
 
-  private async synthetic(type: "pointerdown" | "pointermove" | "pointerup", id: number, x: number, y: number) {
+  private async synthetic(type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel", id: number, x: number, y: number) {
     await this.page.evaluate(
       ([t, i, px, py]) => {
         const layer = document.getElementById("touch")!;
@@ -69,5 +69,13 @@ export class Fingers {
     this.points.delete(id);
     if (this.cdp) await this.send("touchEnd", new Map([[id, p]])); // pour touchEnd, le protocole attend le doigt qu'on lève
     else await this.synthetic("pointerup", id, p.x, p.y);
+  }
+
+  /** Le système annule tous les doigts posés (centre de contrôle, notification, appel) : `pointercancel` et `touchcancel` (Chromium), `pointercancel` seul ailleurs. */
+  async cancel() {
+    const poses = [...this.points];
+    this.points.clear();
+    if (this.cdp) await this.send("touchCancel", new Map()); // pour touchCancel, le protocole n'attend aucun point
+    else for (const [id, p] of poses) await this.synthetic("pointercancel", id, p.x, p.y);
   }
 }

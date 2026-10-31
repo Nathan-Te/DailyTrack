@@ -43,7 +43,7 @@ import {
 } from "./constantes";
 import { DUREE_EFFET, type Effet, estBonus, type Palier, type Taille } from "./paliers";
 import type { Rapier } from "./rapier";
-import { boites, enMillimetres, sinCos, sommetPiece } from "./sommet";
+import { boites, enMillimetres, etenduePiece, sinCos, sommetPiece } from "./sommet";
 
 /** Une pièce posée d'avance (une tour de départ, `?scenario=paliers`) : forme, quarts de tour, position du centre de masse en huitièmes de mètre. */
 export interface PieceDepart {
@@ -72,6 +72,8 @@ export interface Scenario {
   jour?: number;
   /** La version du générateur qui a produit le contenu du jour ; absente d'un scénario nommé. */
   g?: number;
+  /** Lot T3b (générateur 3) : le tirage du contenu du jour (0, 1, 2…) ; absent d'un scénario nommé et des générateurs 1 et 2 (= 0). */
+  tirage?: number;
 }
 
 export type Phase = "jeu" | "stabilisation" | "fini";
@@ -166,7 +168,7 @@ interface Piece {
 export class Partie {
   private readonly R: Rapier;
   private readonly world: RAPIER.World;
-  private readonly pieces: Piece[] = [];
+  private pieces: Piece[] = [];
   private active: Piece | null = null;
   private ticks = 0;
   private phase: Phase = "jeu";
@@ -180,25 +182,35 @@ export class Partie {
   private ticksFin = 0;
   private figee: Resultat | null = null;
   // Lot T2
-  private readonly journal: number[] = [];
+  private journal: number[] = [];
   /** Les effets déclenchés qui attendent leur pièce, l'effet en cours (et ce qu'il lui reste de pièces), le prochain palier, le nombre de paliers déclenchés. */
-  private readonly file: Effet[] = [];
+  private file: Effet[] = [];
   private courant: { effet: Effet; restant: number } | null = null;
   private prochainPalier = 0;
   private declenches = 0;
   private dernierEffet: Effet | null = null;
   /** Pièce par corps (poignée de Rapier) ; la plateforme (corps fixe, créé seulement avec des paliers) y est `null`. */
-  private readonly parCorps = new Map<number, Piece | null>();
+  private parCorps = new Map<number, Piece | null>();
+  private retenue = false;
 
-  /** `options.stabilisationMaxTicks` : seulement pour les tests (l'attente maximale de stabilisation, `STABILISATION_MAX_TICKS` par défaut). */
+  /**
+   * `options.stabilisationMaxTicks` : seulement pour les tests (l'attente maximale de stabilisation, `STABILISATION_MAX_TICKS` par défaut). `depuis` : la partie à copier
+   * (lot T3, voir `cloner`) ; le monde de Rapier est alors restauré d'un instantané au lieu d'être construit.
+   */
   constructor(
     R: Rapier,
     readonly scenario: Scenario,
     readonly reglages: Readonly<Reglages> = REGLAGES_DEFAUT,
     private readonly options: { stabilisationMaxTicks?: number } = {},
+    depuis?: Partie,
   ) {
     this.R = R;
     this.vies = reglages.vies;
+    if (depuis) {
+      this.world = R.World.restoreSnapshot(depuis.world.takeSnapshot());
+      this.copierEtat(depuis);
+      return;
+    }
     const world = new R.World({ x: 0, y: -PHYSIQUE.gravite });
     world.timestep = 1 / TICKS_PAR_SECONDE;
     world.integrationParameters.numSolverIterations = PHYSIQUE.iterations;
@@ -212,6 +224,97 @@ export class Partie {
     this.world = world;
     for (const d of scenario.depart ?? []) this.poserDepart(d);
     this.apparaitre();
+  }
+
+  /**
+   * Lot T3 — une copie indépendante de la partie, à l'état exact d'un instantané du monde de Rapier (les poignées des corps sont conservées) : le bot en essaie des coups sans
+   * toucher à la vraie partie. Les deux avancent ensuite à l'identique pour les mêmes commandes. À libérer par `dispose`.
+   */
+  cloner(): Partie {
+    return new Partie(this.R, this.scenario, this.reglages, this.options, this);
+  }
+
+  private copierEtat(s: Partie): void {
+    const corps = (h: number): RAPIER.RigidBody => this.world.getRigidBody(h);
+    const mapa = new Map<Piece, Piece>();
+    this.pieces = s.pieces.map((p) => {
+      const q: Piece = { ...p, body: p.body ? corps(p.body.handle) : null };
+      mapa.set(p, q);
+      return q;
+    });
+    this.active = s.active ? mapa.get(s.active)! : null;
+    this.ticks = s.ticks;
+    this.phase = s.phase;
+    this.distribuees = s.distribuees;
+    this.vies = s.vies;
+    this.posees = s.posees;
+    this.tombees = s.tombees;
+    this.hauteurMm = s.hauteurMm;
+    this.hauteurMaxMm = s.hauteurMaxMm;
+    this.motif = s.motif;
+    this.ticksFin = s.ticksFin;
+    this.figee = s.figee;
+    this.journal = [...s.journal];
+    this.file = [...s.file];
+    this.courant = s.courant ? { ...s.courant } : null;
+    this.prochainPalier = s.prochainPalier;
+    this.declenches = s.declenches;
+    this.dernierEffet = s.dernierEffet;
+    this.parCorps = new Map();
+    for (const [h, p] of s.parCorps) this.parCorps.set(h, p ? mapa.get(p)! : null);
+  }
+
+  /** Lot T3 — deux lectures à coût nul, que le bot fait à chaque tick : les pièces tombées, et la pièce active (−1 : aucune). */
+  get nbTombees(): number {
+    return this.tombees;
+  }
+
+  get idActive(): number {
+    return this.active ? this.active.id : -1;
+  }
+
+  /** Lot T3 — lecture légère pour le bot (sans construire une `VuePartie` à chaque tick). `sommetMm` : le point le plus haut d'une pièce libre, qu'elle soit calme ou non. */
+  lecture(): { active: number; tombees: number; vies: number; hauteurMm: number; sommetMm: number; phase: Phase } {
+    let h = 0;
+    for (const p of this.pieces) if (p.etat === "libre" && p.sommet > h) h = p.sommet;
+    return { active: this.active ? this.active.id : -1, tombees: this.tombees, vies: this.vies, hauteurMm: this.hauteurMm, sommetMm: enMillimetres(h), phase: this.phase };
+  }
+
+  /** Lot T3 : la largeur (millimètres) de ce qui est dans les `profondeurMm` du haut de la tour : l'écart entre le bord gauche et le bord droit des pièces libres dont le sommet y est. */
+  largeurSommetMm(profondeurMm: number): number {
+    let haut = -Infinity;
+    for (const p of this.pieces) if (p.etat === "libre" && p.sommet > haut) haut = p.sommet;
+    if (haut === -Infinity) return 0;
+    const seuil = haut - profondeurMm / 1000;
+    let g = Infinity;
+    let d = -Infinity;
+    for (const p of this.pieces) {
+      if (p.etat !== "libre" || p.sommet < seuil) continue;
+      const e = etenduePiece(p.kind, p.rot, p.x, p.angle, p.taille);
+      if (e.gauche < g) g = e.gauche;
+      if (e.droite > d) d = e.droite;
+    }
+    return enMillimetres(d - g);
+  }
+
+  /** Lot T3 : combien de pièces libres bougent encore (ni endormies, ni figées, ni plus lentes que `vitesse` en m/s) ? */
+  agitees(vitesse: number): number {
+    let n = 0;
+    const v2 = vitesse * vitesse;
+    for (const p of this.pieces) {
+      if (p.etat !== "libre" || p.fixe || !p.body || p.body.isSleeping()) continue;
+      const v = p.body.linvel();
+      if (v.x * v.x + v.y * v.y > v2) n++;
+    }
+    return n;
+  }
+
+  /**
+   * Lot T3 — pour les COPIES du bot seulement : la pièce active reste où elle est (elle n'est plus pilotée, donc ne tombe plus), de sorte qu'un essai peut laisser la tour se
+   * stabiliser longtemps sans que la pièce suivante vienne la heurter. Jamais utilisé par le jeu ni par un rejeu.
+   */
+  retenir(oui: boolean): void {
+    this.retenue = oui;
   }
 
   get tick(): number {
@@ -237,7 +340,7 @@ export class Partie {
     if (this.phase === "fini") return;
     this.ticks++;
     if (this.phase === "jeu") this.journal.push(commandes & COMMANDES_CONNUES);
-    if (this.phase === "jeu" && this.active) this.piloter(commandes | 0);
+    if (this.phase === "jeu" && this.active && !this.retenue) this.piloter(commandes | 0);
     this.world.step();
     this.apresPas();
   }

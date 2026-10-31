@@ -17,10 +17,29 @@ export {
   VENT_PERIODE_TICKS,
 } from "./constantes";
 export { empreinteContenu, empreinteVue } from "./empreinte";
-export { type Contenu, dailyTower, dateDuContenu, ErreurGenerateur, type ThemeTower, TOWER_GENERATOR_VERSION, VERSIONS_GENERATEUR } from "./generateur";
+export { type Contenu, dailyTower, dateDuContenu, ErreurGenerateur, GENERATEUR_TIRAGE, type ThemeTower, TOWER_GENERATOR_VERSION, VERSIONS_GENERATEUR } from "./generateur";
 export { aDoublon, aEcartMaximal, NB_PIECES, PLATEFORME_BORNES, PLATEFORME_DEMI8_CHOIX, suiteParSacs, tirerPaliers } from "./generateur/v1";
-export { DUREE_EFFET, EFFETS, type Effet, estBonus, PALIERS_METRES, type Palier, problemePaliers, type Taille } from "./paliers";
-export { figerJour, FORMAT_JOUR_FIGE, type JourFige, jsonJourFige, lireJourFige } from "./jours";
+export { DUREE_EFFET, EFFETS, type Effet, estBonus, PALIERS_METRES, PALIERS_METRES_V3, type Palier, problemePaliers, type Taille } from "./paliers";
+export { figerJour, FORMAT_JOUR_FIGE, type JourFige, type JourLu, jsonJourFige, lireJour, lireJourFige } from "./jours";
+// Lot T3 — les médailles et les thèmes. Le bot (`@cdj/tower-sim/bot`) n'est pas réexporté ici : il se charge à la demande.
+export {
+  aireDuJour,
+  COEFFICIENT_GEOMETRIQUE_PCT,
+  diamantDe,
+  estimationGeometrique,
+  type Medailles,
+  medailleObtenue,
+  medailleVisee,
+  medaillesDe,
+  MEDAILLES_VERSION,
+  type NomMedaille,
+  NOMS_MEDAILLES,
+  PLAFOND_DIAMANT_MM,
+  POURCENTAGES_MEDAILLES,
+} from "./medailles";
+// Lot T3b — le tirage du contenu du jour : la plage du Diamant, le nombre d'essais, la règle de choix.
+export { choisirTirage, dansLaPlage, ecartALaPlage, type Essai, PLAGE_DIAMANT_MM, TIRAGES_MAX } from "./tirage";
+export { REGLES_THEMES, THEMES_TOWER, themeDuJour } from "./themes";
 export { type EtatPiece, Partie, type PieceDepart, type Phase, type Resultat, type Scenario, type VuePartie, type VuePiece } from "./partie";
 // Le chargeur de Rapier (`@cdj/tower-sim/rapier`) n'est pas réexporté ici : le jeu le charge à la demande (un import dynamique), hors du premier chargement.
 export type { Rapier } from "./rapier";

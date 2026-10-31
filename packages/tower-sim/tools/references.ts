@@ -1,7 +1,9 @@
 // Lot T2 — le golden de Tower (`test/fixtures/golden-tower.json`) : l'empreinte de `dailyTower` sur dix dates et trois rediffusions de référence, avec leur `Resultat` et l'empreinte
 // de l'état final. **On ne le régénère jamais sans monter la version concernée** (`TOWER_SIM_VERSION` pour une rediffusion, `TOWER_GENERATOR_VERSION` pour le contenu du jour).
-//   npm run golden:tower -w @cdj/tower-sim                recalcule les empreintes et les résultats des rediffusions GARDÉES (leurs codes ne changent pas)
-//   npm run golden:tower -w @cdj/tower-sim -- --chercher   refait aussi les trois parties (≈ 3 min) : un joueur glouton les cherche, sur la simulation du code courant
+//   npm run golden:tower -w @cdj/tower-sim                recalcule les empreintes du générateur courant et VÉRIFIE les rediffusions gardées (leurs codes ne changent jamais ; un résultat qui change arrête l'outil)
+//   npm run golden:tower -w @cdj/tower-sim -- --chercher   cherche aussi les parties ABSENTES du golden (≈ 1 min chacune) : un joueur glouton les joue, sur la simulation du code courant
+// Lot T3b : le générateur 3 s'ajoute (empreintes du tirage 0 sur dix dates, quelques tirages 1 à 3, deux rediffusions en plus) ; les versions 1 et 2 passent sous `anciennes`, intactes ; les trois
+// rediffusions du lot T2 sont gardées telles quelles (elles nomment leur version de générateur, g = 2).
 // Les parties sont des rediffusions ordinaires, enregistrées sur le jeu : ce joueur n'est PAS le bot de l'auteur (lot T3), seulement de quoi produire des fixtures — pour chaque pièce il
 // essaie une douzaine de placements en rejouant le début de la partie, et garde celui qui perd le moins de vies puis monte le plus haut.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -36,8 +38,8 @@ interface GoldenContenu {
 }
 interface GoldenRediffusion {
   nom: string;
-  /** Ce que la rediffusion rejoue : un scénario nommé (`essai`) ou un jour (AAAA-MM-JJ). */
-  contenu: { scenario: string } | { date: string };
+  /** Ce que la rediffusion rejoue : un scénario nommé (`essai`) ou un jour (AAAA-MM-JJ) avec la version du générateur (`g`) et, dès la version 3, le tirage (0 par défaut). */
+  contenu: { scenario: string } | { date: string; g: number; tirage?: number };
   /** La rediffusion encodée (base64url) : la preuve, telle que le serveur la recevrait. */
   code: string;
   resultat: unknown;
@@ -49,6 +51,10 @@ interface GoldenRediffusion {
 interface GoldenTower {
   versions: { sim: number; g: number };
   contenus: GoldenContenu[];
+  /** Lot T3b : quelques contenus à un tirage non nul (le tirage 0 est dans `contenus`). */
+  tirages?: (GoldenContenu & { tirage: number })[];
+  /** Lot T3 : les mêmes dates sous la version 1 du générateur (tout `port`), qui reste appelable et ne change jamais. */
+  anciennes?: { g: number; contenus: GoldenContenu[] }[];
   rediffusions: GoldenRediffusion[];
 }
 
@@ -57,7 +63,7 @@ interface GoldenTower {
 const PREMIER = parseDay("2026-11-02")!;
 
 /** Dix dates : les trois dates à essayer à la main, puis de quoi couvrir les deux bornes d'un sac de sept, chaque bonus en premier palier, chaque malus en deuxième, les deux sens du vent et les quatre plateformes. */
-export function choisirDates(): number[] {
+export function choisirDates(g: number = TOWER_GENERATOR_VERSION): number[] {
   const choisies: number[] = [PREMIER, PREMIER + 1, PREMIER + 2];
   const exigences: ((c: Contenu) => boolean)[] = [
     (c) => aDoublon(c.pieces),
@@ -68,15 +74,16 @@ export function choisirDates(): number[] {
     (c) => c.ventSens === 1,
     ...[20, 24, 28, 32].map((w) => (c: Contenu) => c.plateformeDemi8 === w),
   ];
-  const satisfaite = (e: (c: Contenu) => boolean) => choisies.some((j) => e(dailyTower(j)));
+  const satisfaite = (e: (c: Contenu) => boolean) => choisies.some((j) => e(dailyTower(j, g)));
   for (let j = PREMIER + 3; choisies.length < 10 && j < PREMIER + 400; j++) {
-    if (exigences.some((e) => !satisfaite(e) && e(dailyTower(j)))) choisies.push(j);
+    if (exigences.some((e) => !satisfaite(e) && e(dailyTower(j, g)))) choisies.push(j);
   }
   for (let j = PREMIER + 3; choisies.length < 10; j++) if (!choisies.includes(j)) choisies.push(j);
   return choisies.sort((a, b) => a - b);
 }
 
 import { chercher, perdreTout } from "./joueur";
+import { decoderRediffusion } from "../src";
 
 function enGolden(R: Rapier, nom: string, contenu: Scenario, code: string, id: GoldenRediffusion["contenu"]): GoldenRediffusion {
   const r = rejouerComplet(R, contenu, code);
@@ -96,30 +103,55 @@ if (!chercherParties && !ancien) throw new Error("pas de golden à recalculer : 
 
 const dates = choisirDates();
 const contenus: GoldenContenu[] = dates.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyTower(j)) }));
-const contenuDe = (id: GoldenRediffusion["contenu"]): Scenario => ("scenario" in id ? SCENARIO_ESSAI : dailyTower(parseDay(id.date)!));
+// Lot T3b : le tirage 0 est dans `contenus` ; quelques tirages 1 à 3 en plus (le tirage est dans l'empreinte dès la version 3).
+const tirages = [
+  { jour: dates[0]!, tirage: 1 },
+  { jour: dates[0]!, tirage: 2 },
+  { jour: dates[1]!, tirage: 3 },
+  { jour: dates[2]!, tirage: 1 },
+  { jour: dates[5]!, tirage: 2 },
+  { jour: dates[9]!, tirage: 3 },
+].map(({ jour, tirage }) => ({ date: formatDay(jour), tirage, empreinte: empreinteContenu(dailyTower(jour, TOWER_GENERATOR_VERSION, tirage)) }));
+// Les versions passées du générateur : leurs empreintes ne changent JAMAIS (une version passée gardée dans le golden est reprise telle quelle, sinon calculée une fois). Lot T3 : la version 1.
+const anciennes: NonNullable<GoldenTower["anciennes"]> = [...(ancien?.anciennes ?? [])];
+if (ancien && ancien.versions.g < TOWER_GENERATOR_VERSION && !anciennes.some((a) => a.g === ancien.versions.g)) anciennes.push({ g: ancien.versions.g, contenus: ancien.contenus });
+for (const a of anciennes) {
+  const recalcul = a.contenus.map((c) => empreinteContenu(dailyTower(parseDay(c.date)!, a.g)));
+  if (recalcul.some((e, i) => e !== a.contenus[i]!.empreinte)) throw new Error(`le générateur g${a.g} ne donne plus ses empreintes : une version passée ne change jamais`);
+}
+const contenuDe = (id: GoldenRediffusion["contenu"]): Scenario => ("scenario" in id ? SCENARIO_ESSAI : dailyTower(parseDay(id.date)!, id.g, id.tirage ?? 0));
 
 const rediffusions: GoldenRediffusion[] = [];
 const sources: { nom: string; id: GoldenRediffusion["contenu"]; trouver(): Partie }[] = [
   // Neuf vies (un réglage du joueur, dans l'en-tête de la rediffusion) : la partie va jusqu'au bout des 40 pièces.
   { nom: "essai", id: { scenario: "essai" }, trouver: () => chercher(R, SCENARIO_ESSAI, { ...REGLAGES_DEFAUT, vies: 9 }) },
-  { nom: "jour-avec-paliers", id: { date: "2026-11-02" }, trouver: () => chercher(R, dailyTower(PREMIER), REGLAGES_DEFAUT) },
-  { nom: "zero-vie", id: { date: "2026-11-03" }, trouver: () => perdreTout(R, dailyTower(PREMIER + 1)) },
+  // Les deux parties du lot T2 sont sur le contenu de la version 2 du générateur (paliers tous les 10 m) : elles le nomment, et restent rejouables tant qu'un fichier la nomme.
+  { nom: "jour-avec-paliers", id: { date: "2026-11-02", g: 2 }, trouver: () => chercher(R, dailyTower(PREMIER, 2), REGLAGES_DEFAUT) },
+  { nom: "zero-vie", id: { date: "2026-11-03", g: 2 }, trouver: () => perdreTout(R, dailyTower(PREMIER + 1, 2)) },
+  // Lot T3b : un jour de la version 3 (paliers tous les 8 m, tirage 0) et un tirage non nul (le genre 2 de la rediffusion).
+  { nom: "jour-v3", id: { date: "2026-11-02", g: 3 }, trouver: () => chercher(R, dailyTower(PREMIER, 3), REGLAGES_DEFAUT) },
+  { nom: "tirage-v3", id: { date: "2026-11-02", g: 3, tirage: 2 }, trouver: () => chercher(R, dailyTower(PREMIER, 3, 2), REGLAGES_DEFAUT) },
 ];
 for (const s of sources) {
   const contenu = contenuDe(s.id);
+  const gardee = ancien?.rediffusions.find((r) => r.nom === s.nom);
   let code: string;
-  if (chercherParties) {
+  if (gardee) {
+    // Une partie gardée ne change JAMAIS : son code reste, et son résultat doit être exactement celui du golden (sinon une version a bougé sans être montée).
+    code = gardee.code;
+  } else if (chercherParties) {
     const p = s.trouver();
     code = encoderRediffusion(enregistrer(p));
     p.dispose();
-  } else {
-    code = ancien!.rediffusions.find((r) => r.nom === s.nom)!.code;
-  }
+  } else throw new Error(`la rediffusion « ${s.nom} » n'est pas dans le golden : lancer avec --chercher`);
   const g = enGolden(R, s.nom, contenu, code, s.id);
-  console.log(`${s.nom} : ${(g.resultat as { hauteurMm: number }).hauteurMm} mm, ${g.paliers} palier(s), ${g.ticks} ticks, ${code.length} caractères`);
+  if (gardee && (JSON.stringify(g.resultat) !== JSON.stringify(gardee.resultat) || g.empreinteFinale !== gardee.empreinteFinale)) {
+    throw new Error(`« ${s.nom} » ne donne plus le résultat du golden : monter TOWER_SIM_VERSION avant de le régénérer`);
+  }
+  console.log(`${s.nom} : ${(g.resultat as { hauteurMm: number }).hauteurMm} mm, ${g.paliers} palier(s), ${g.ticks} ticks, ${code.length} caractères${gardee ? " (gardée)" : ""}`);
   rediffusions.push(g);
 }
 
-const golden: GoldenTower = { versions: { sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION }, contenus, rediffusions };
+const golden: GoldenTower = { versions: { sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION }, contenus, tirages, anciennes, rediffusions };
 writeFileSync(FICHIER, `${JSON.stringify(golden, null, 2)}\n`);
 console.log(`golden-tower.json écrit : ${contenus.length} contenus, ${rediffusions.length} rediffusions.`);

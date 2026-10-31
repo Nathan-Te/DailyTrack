@@ -13,8 +13,8 @@ export const FORMAT_SCENE = /^[a-z0-9]+(:[a-z0-9-]+)?$/;
 export const SCENES: Readonly<Record<JeuMusique, readonly string[]>> = {
   track: ["menu", "theme:stade", "theme:rallye", "theme:banquise", "theme:nuit", "theme:campagne", "theme:canyon", "theme:col", "theme:ville"],
   jump: ["menu", "theme:foret", "theme:usine", "theme:glace", "theme:nuit", "theme:neon"],
-  // Tower n'a pas encore d'accueil : « menu » est prêt pour quand il en aura un.
-  tower: ["menu", "theme:port"],
+  // Tower n'a pas encore d'accueil : « menu » est prêt pour quand il en aura un. Ses thèmes : `THEMES_TOWER` de `@cdj/tower-sim` (lot T3).
+  tower: ["menu", "theme:port", "theme:chantier", "theme:canyon", "theme:banquise", "theme:jungle", "theme:nuit"],
   portail: ["menu"],
 };
 

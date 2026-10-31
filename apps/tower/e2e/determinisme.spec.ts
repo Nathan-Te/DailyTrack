@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 // `npm test`) pour le moteur A (entiers) et le moteur B (Rapier déterministe, WebAssembly) : le banc d'essai (40 pièces et un effondrement) et la tour propre pendant 30 s,
 // avec une empreinte intermédiaire toutes les 5 s. Chaque navigateur (Chromium, Firefox, WebKit) les rejoue sur `verify.html` et doit trouver exactement les mêmes.
 // Un moteur qui diffère n'est pas une erreur du lot : c'est un résultat (le message nomme le premier pas où l'empreinte s'écarte).
-// Lot T2 : le même principe pour les TROIS rediffusions de référence du jeu (`golden-tower.json` : le scénario d'essai, un jour avec paliers, une partie à 0 vie) — décodées, rejouées avec
+// Lot T2 : le même principe pour les rediffusions de référence du jeu (`golden-tower.json` : le scénario d'essai, un jour avec paliers, une partie à 0 vie et, lot T3b, un jour et un tirage de la version 3 du générateur) — décodées, rejouées avec
 // `rejouerComplet` et le Rapier du navigateur, leur Resultat et l'empreinte de leur état final sont ceux de Node. Un seul test de plus (règle R13).
 
 interface Trace {
@@ -30,7 +30,7 @@ function premierEcart(a: Trace[], b: Trace[]): number | null {
 }
 
 interface GoldenTower {
-  rediffusions: { nom: string; contenu: { scenario: string } | { date: string }; code: string; resultat: unknown; empreinteFinale: string; paliers: number }[];
+  rediffusions: { nom: string; contenu: { scenario: string } | { date: string; g: number; tirage?: number }; code: string; resultat: unknown; empreinteFinale: string; paliers: number }[];
 }
 const goldenTower = JSON.parse(readFileSync(new URL("../../../packages/tower-sim/test/fixtures/golden-tower.json", import.meta.url), "utf8")) as GoldenTower;
 

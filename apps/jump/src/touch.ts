@@ -5,7 +5,7 @@ import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
 //
 // Disposition (paysage comme portrait) : une bande haute (lot I5 : la pause et la bande du HUD) exclue des zones de jeu ; sous elle, de bord à bord
 // et **sans trou** : [0, frontière[ = ←, [frontière, ½[ = →, [½, 1] = saut. **La frontière ← / → est entre les deux flèches dessinées** (elle dépend de leur
-// taille et des zones sûres : `layoutFor`, `zoneSpans`) ; celle du saut reste à ½. Les boutons dessinés (`buttonRects`, aux bords de l'écran) ne sont qu'un
+// taille et des zones sûres : `layoutFor`, `zoneSpans`) ; celle du saut reste à ½. **Lot 29 : l'état se déduit des doigts posés et de leur position** (voir `TouchPad`). Les boutons dessinés (`buttonRects`, aux bords de l'écran) ne sont qu'un
 // visuel : le toucher se décide par la zone, jamais par le bouton. Taille des boutons réglable (`ButtonSize`) : les zones ne changent pas, sauf la
 // frontière ← / → qui suit les flèches.
 //
@@ -17,8 +17,8 @@ import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
 //   └─────┴─────────────────┴──────────────┘
 
 export type Zone = "left" | "right" | "jump";
-/** Ce que touche un doigt : une zone de jeu, ou la bande haute (aucune commande). */
-export type Hit = Zone | "band";
+/** Ce que touche un doigt : une zone de jeu, la bande haute ou l'extérieur de l'écran (lot 29 : ni l'une ni l'autre ne commande rien). */
+export type Hit = Zone | "band" | "out";
 
 export interface Insets {
   left: number;
@@ -74,49 +74,68 @@ export function zoneSpans(layout: Layout): ZoneSpan[] {
   ];
 }
 
-/** Zone touchée en (x, y) ; hors de l'écran, la zone du bord. */
+/** Zone touchée en (x, y) ; hors de l'écran (doigt sorti par un bord, capture du pointeur), `out` : plus aucune commande. */
 export function zoneAt(layout: Layout, x: number, y: number): Hit {
+  if (x < 0 || x > layout.width || y < 0 || y > layout.height) return "out";
   if (y < layout.band) return "band";
   if (x < layout.frontier) return "left";
   return x < layout.width / 2 ? "right" : "jump";
 }
 
-/**
- * Direction d'un doigt de direction, d'après son abscisse seule : un doigt qui sort de la moitié gauche compte pour la zone **la plus proche**
- * de cette moitié (→ à droite de la moitié, ← à gauche de l'écran), jamais pour le saut.
- */
-export function directionAt(layout: Layout, x: number): -1 | 1 {
-  return x < layout.frontier ? -1 : 1;
-}
+/** Durée (ms) pendant laquelle un événement de souris suivant un toucher est tenu pour son écho (événements de compatibilité du navigateur). */
+export const MOUSE_ECHO_MS = 1000;
 
-type Role = "dir" | "jump";
+/** Vrai pour un événement de souris qui n'est que l'écho d'un toucher récent : il n'enfonce rien une seconde fois. `lastTouchAt` : `null` si aucun toucher. */
+export function isMouseEcho(pointerType: string, now: number, lastTouchAt: number | null): boolean {
+  return pointerType === "mouse" && lastTouchAt !== null && now - lastTouchAt >= 0 && now - lastTouchAt < MOUSE_ECHO_MS;
+}
 
 interface Finger {
-  role: Role;
   x: number;
   y: number;
-  /** Ordre de pose : parmi plusieurs doigts de direction, le plus récent l'emporte. */
+  /** Ce que le doigt touche **maintenant** : recalculé à chaque déplacement et à chaque nouvel écran, jamais gardé de la pose. */
+  hit: Hit;
+  /** Ordre d'entrée dans la zone actuelle : parmi plusieurs doigts de direction, le plus récent l'emporte. */
   seq: number;
+  /** Doigt (ou stylet) : le système tient la liste des touchers posés, de quoi corriger un lever perdu (`reconcile`) ; la souris, non. */
+  touch: boolean;
 }
 
 /**
- * Suivi des doigts. Un doigt prend son rôle à la pose, d'après la zone touchée : direction (← ou →, glissable de l'une à l'autre sans
- * lever) ou saut (suit son propre doigt) ; la bande haute n'en donne aucun. Seul le lever (ou l'annulation) arrête une commande.
+ * Suivi des doigts (lot 29). **L'état de chaque commande se déduit des doigts actuellement posés et de leur position**, recalculée à chaque déplacement :
+ * un doigt qui sort d'une zone la relâche, un doigt qui entre dans une autre l'enfonce (← et → se suivent sans lever, le saut aussi). Aucun compteur
+ * « appuyé / relâché » par bouton : il suffit qu'un doigt disparaisse de la liste (lever, annulation, perte de capture, focus, visibilité, rotation,
+ * `reconcile`) pour que sa commande s'arrête. La bande haute et l'extérieur de l'écran ne commandent rien, mais le doigt reste suivi.
  */
 export class TouchPad {
   private readonly fingers = new Map<number, Finger>();
   private seq = 0;
+  private current: Layout;
 
-  constructor(public layout: Layout) {}
+  constructor(layout: Layout) {
+    this.current = layout;
+  }
 
-  /** Pose un doigt. Rend ce qu'il touche (`band` : ignoré). */
-  down(id: number, x: number, y: number): Hit {
-    const hit = zoneAt(this.layout, x, y);
-    if (hit === "band") {
-      this.fingers.delete(id);
-      return hit;
-    }
-    this.fingers.set(id, { role: hit === "jump" ? "jump" : "dir", x, y, seq: this.seq++ });
+  get layout(): Layout {
+    return this.current;
+  }
+
+  /** Nouvel écran (taille, zone sûre, taille des boutons) : ce que touche chaque doigt est recalculé. */
+  set layout(next: Layout) {
+    this.current = next;
+    for (const f of this.fingers.values()) this.enter(f, zoneAt(next, f.x, f.y));
+  }
+
+  private enter(f: Finger, hit: Hit): void {
+    if (hit === f.hit) return;
+    f.hit = hit;
+    f.seq = this.seq++;
+  }
+
+  /** Pose un doigt. Rend ce qu'il touche (`band`, `out` : aucune commande). Un identifiant déjà connu (lever perdu, identifiant réutilisé) est remplacé. */
+  down(id: number, x: number, y: number, touch = true): Hit {
+    const hit = zoneAt(this.current, x, y);
+    this.fingers.set(id, { x, y, hit, seq: this.seq++, touch });
     return hit;
   }
 
@@ -125,32 +144,68 @@ export class TouchPad {
     if (!f) return;
     f.x = x;
     f.y = y;
+    this.enter(f, zoneAt(this.current, x, y));
   }
 
-  /** Lève (ou annule) un doigt. */
-  up(id: number): void {
-    this.fingers.delete(id);
+  /** Lève (ou annule) un doigt. Rend vrai s'il était suivi. */
+  up(id: number): boolean {
+    return this.fingers.delete(id);
   }
 
-  /** Plus aucun doigt (fenêtre perdue, panneau ouvert, nouvelle taille d'écran). */
+  has(id: number): boolean {
+    return this.fingers.has(id);
+  }
+
+  /** Plus aucun doigt (fenêtre perdue, page cachée, rotation, panneau ouvert, nouvelle taille d'écran). */
   releaseAll(): void {
     this.fingers.clear();
+  }
+
+  /**
+   * Accord avec la liste des touchers que le système dit posés (`TouchEvent.touches`) : s'il en compte **moins** que de doigts tactiles suivis, un
+   * lever s'est perdu ; on garde pour chaque toucher le doigt suivi le plus proche et on lâche les autres. S'il en compte autant ou plus (un doigt
+   * sur un bouton hors de la couche), on ne peut rien conclure : rien n'est lâché. Rend le nombre de doigts lâchés.
+   */
+  reconcile(points: readonly { x: number; y: number }[]): number {
+    const tactiles = [...this.fingers].filter(([, f]) => f.touch);
+    if (points.length >= tactiles.length) return 0;
+    const gardes = new Set<number>();
+    for (const p of points) {
+      let best: number | null = null;
+      let bestD = Infinity;
+      for (const [id, f] of tactiles) {
+        if (gardes.has(id)) continue;
+        const d = (f.x - p.x) ** 2 + (f.y - p.y) ** 2;
+        if (d < bestD) {
+          best = id;
+          bestD = d;
+        }
+      }
+      if (best !== null) gardes.add(best);
+    }
+    let laches = 0;
+    for (const [id] of tactiles) {
+      if (gardes.has(id)) continue;
+      this.fingers.delete(id);
+      laches++;
+    }
+    return laches;
   }
 
   get count(): number {
     return this.fingers.size;
   }
 
-  /** −1 gauche, 0 neutre, 1 droite : le doigt de direction posé en dernier décide. */
+  /** −1 gauche, 0 neutre, 1 droite : parmi les doigts dans une zone de direction, le dernier entré décide. */
   get direction(): -1 | 0 | 1 {
     let best: Finger | null = null;
-    for (const f of this.fingers.values()) if (f.role === "dir" && (!best || f.seq > best.seq)) best = f;
-    return best ? directionAt(this.layout, best.x) : 0;
+    for (const f of this.fingers.values()) if ((f.hit === "left" || f.hit === "right") && (!best || f.seq > best.seq)) best = f;
+    return best ? (best.hit === "left" ? -1 : 1) : 0;
   }
 
-  /** Vrai tant qu'un doigt de saut est posé. */
+  /** Vrai tant qu'un doigt est dans la zone du saut. */
   get jump(): boolean {
-    for (const f of this.fingers.values()) if (f.role === "jump") return true;
+    for (const f of this.fingers.values()) if (f.hit === "jump") return true;
     return false;
   }
 
@@ -167,9 +222,9 @@ export class TouchPad {
     return zone === "left" ? d < 0 : d > 0;
   }
 
-  /** Doigts posés, pour `?zones=1` et les tests. */
-  list(): { id: number; role: Role; x: number; y: number }[] {
-    return [...this.fingers].map(([id, f]) => ({ id, role: f.role, x: f.x, y: f.y }));
+  /** Doigts posés et ce qu'ils touchent, pour `?zones=1`, `?debug` et les tests. */
+  list(): { id: number; zone: Hit; x: number; y: number }[] {
+    return [...this.fingers].map(([id, f]) => ({ id, zone: f.hit, x: f.x, y: f.y }));
   }
 }
 

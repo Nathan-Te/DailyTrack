@@ -77,6 +77,7 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/web/src/scene/sponsors.ts": "sponsors fictifs de la scène (lot 43) : des noms propres inventés peints dans le décor 3D (une texture), pas du texte d'interface ; ils ne se traduisent pas",
   // Lot I5 : les outils internes de Jump restent en français (lot I5 § 2 : `?debug&tune` tel quel ; seul son habillage suit les jetons, outils.css).
   "apps/jump/src/tune.ts": "outil de réglage du personnage (`?debug&tune`) : outil interne de Nathan, en français",
+  "apps/jump/src/touchDebug.ts": "ligne de vérification des commandes tactiles (`?debug`, lot 29) : outil interne de Nathan, en français",
   "apps/jump/src/gallery.ts": "galerie des morceaux (`?modules`, lot 4) : outil interne de conception des niveaux, en français",
   "apps/jump/src/verify.ts": "page de vérification des rediffusions (`verify.html`, tests de navigateur) : aucun texte d'interface",
   "apps/jump/src/themes.ts": "noms internes des thèmes et des décors (`label` : outils `?debug`, galerie, tests) ; l'interface lit `theme.<code>` du catalogue",

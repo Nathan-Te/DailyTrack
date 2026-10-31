@@ -38,6 +38,21 @@ export const CATALOGUE_FR: Catalogue = {
   "annonce.palier.trois": "Palier {metres} · {effet} sur les trois pièces suivantes",
   "jour.pasEncore": "Ce jour n'est pas encore sorti : voici celui d'aujourd'hui.",
 
+  "hud.objectif.aria": "Prochaine médaille : {medaille}, à {hauteur}",
+  "hud.objectif.calcul": "Médailles en calcul…",
+  "hud.objectif.diamant": "Diamant battu",
+  "medailles.provisoire": "Médailles provisoires",
+  "bot.reflechit": "Le bot réfléchit…",
+  "bot.diamant": "Diamant du jour : {hauteur}",
+
+  "fin.medailles": "Médailles du jour",
+  "fin.medaille": "Médaille",
+  "fin.medaille.aucune": "Aucune",
+  "fin.medailles.encore": "{medaille} : encore {reste}",
+  "fin.medailles.toutes": "Tu as le Diamant.",
+  "fin.medailles.calcul": "Médailles en calcul…",
+  "fin.medailles.session": "Meilleure médaille de la session : {medaille}",
+
   "pause.aria": "Pause",
   "pause.titre": "Pause",
   "pause.etat": "Pièce {n} sur {total} · {hauteur}",

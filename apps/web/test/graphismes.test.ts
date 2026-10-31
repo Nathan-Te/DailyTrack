@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CELL, THEME_NAMES, THEMES, blockHalfWidth, dailyCircuit, daysFromCivil, parseTrack, themeForDay, type ThemeName } from "@cdj/sim";
+import { CELL, THEME_NAMES, blockHalfWidth, dailyCircuit, daysFromCivil, parseTrack, themeForDay } from "@cdj/sim";
 import { CAMERAS, CAMERA_NAMES, cameraIndexOf, nextCameraIndex } from "../src/cameras";
-import { AMBIENCE, AMBIENCE_KINDS, ambienceFor, ambienceLevel } from "../src/audioLogic";
 import { hazardOf, signsFor } from "../src/signage";
 import { LOOKS, PALETTE_DEFS } from "../src/trackMesh";
 import { signStyleOf } from "../src/trackProps";
@@ -34,32 +33,6 @@ describe("caméras (lot 23)", () => {
       expect(c.mount).toBeUndefined();
       expect(c.back).toBeGreaterThan(3);
       expect(c.height).toBeGreaterThan(hood.mount!.y);
-    }
-  });
-});
-
-describe("ambiances sonores par thème (lot 23)", () => {
-  it("chaque palette a son ambiance, et les huit thèmes en couvrent six types différents", () => {
-    const kinds = new Set<string>();
-    for (const name of THEME_NAMES) kinds.add(ambienceFor(THEMES[name as ThemeName].palette));
-    expect([...kinds].sort()).toEqual(["city", "crickets", "crowd", "hotwind", "hum", "breeze", "wind"].sort());
-    expect(ambienceFor("stade")).toBe("crowd");
-    expect(ambienceFor("neige")).toBe("wind");
-    expect(ambienceFor("alpin")).toBe("wind");
-    expect(ambienceFor("campagne")).toBe("crickets");
-    expect(ambienceFor("ville")).toBe("city");
-    expect(ambienceFor("canyon")).toBe("hotwind");
-    expect(ambienceFor("nuit")).toBe("hum");
-  });
-  it("chaque recette produit du son (bruit ou notes), discret, et la vitesse la couvre peu à peu", () => {
-    for (const kind of AMBIENCE_KINDS) {
-      const r = AMBIENCE[kind];
-      expect(r.noise || r.tones?.length).toBeTruthy();
-      expect(r.level).toBeGreaterThan(0);
-      expect(r.level).toBeLessThanOrEqual(0.2);
-      expect(ambienceLevel(kind, 0)).toBe(r.level);
-      expect(ambienceLevel(kind, 48)).toBeLessThan(ambienceLevel(kind, 10));
-      expect(ambienceLevel(kind, 90)).toBeGreaterThan(0);
     }
   });
 });

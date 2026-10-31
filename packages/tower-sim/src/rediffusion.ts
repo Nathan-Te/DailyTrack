@@ -4,6 +4,7 @@
 //
 // **Format** (octets, puis base64url sans remplissage) :
 //   [format = 1] [version de la simulation] [version du générateur] [genre de contenu : 0 = jour, 1 = scénario nommé]
+//   (lot T3b) genre 2 = jour avec TIRAGE : le numéro de jour puis le tirage (1 à TIRAGES_MAX − 1) ; le tirage 0 s'écrit toujours en genre 0 (les rediffusions d'avant ne changent pas)
 //   jour : numéro de jour civil (entier de longueur variable) · scénario : [longueur 1 à 32] puis ses caractères ASCII `[a-z0-9:_-]`
 //   [vitesseChute8] [facteurDescente] [hauteurApparition8] [vies]  (les `Reglages`, chacun un entier de longueur variable)
 //   puis par plage de ticks consécutifs aux mêmes commandes : [masque, 1 octet] [nombre de ticks ≥ 1, entier de longueur variable].
@@ -13,9 +14,10 @@
 // Une rediffusion qui s'arrête avant la fin de la partie est refusée (`inachevee`), qui en porte après (`surplus`) aussi : une partie n'a qu'une rediffusion.
 import { CodecError, fromBase64Url, pushVarint, readVarint, toBase64Url } from "@cdj/core";
 import { COMMANDES_CONNUES, type Reglages, STABILISATION_MAX_TICKS, TOWER_SIM_VERSION } from "./constantes";
-import { VERSIONS_GENERATEUR } from "./generateur";
+import { GENERATEUR_TIRAGE, VERSIONS_GENERATEUR } from "./generateur";
 import { Partie, type Resultat, type Scenario, type VuePartie } from "./partie";
 import type { Rapier } from "./rapier";
+import { TIRAGES_MAX } from "./tirage";
 
 /**
  * **La borne de ticks d'une rediffusion** (phase de jeu seulement, hors stabilisation) — elle plafonne le coût d'un rejeu sur le serveur. Déduite des règles : 40 pièces ;
@@ -69,7 +71,7 @@ export function reglagesValides(r: Reglages): boolean {
 }
 
 /** Le contenu que nomme une rediffusion : un jour (numéro de jour civil) ou un scénario nommé. */
-export type IdContenu = { jour: number } | { scenario: string };
+export type IdContenu = { jour: number; tirage?: number } | { scenario: string };
 
 /** Une plage de ticks consécutifs aux mêmes commandes. */
 export interface Plage {
@@ -97,8 +99,8 @@ export function ticksRediffusion(r: Pick<Rediffusion, "plages">): number {
 }
 
 /** L'identifiant de contenu d'une partie : le jour d'un contenu du jour, sinon le nom du scénario. */
-export function idDuContenu(c: Pick<Scenario, "nom" | "jour">): IdContenu {
-  return c.jour !== undefined ? { jour: c.jour } : { scenario: c.nom };
+export function idDuContenu(c: Pick<Scenario, "nom" | "jour" | "tirage">): IdContenu {
+  return c.jour !== undefined ? (c.tirage ? { jour: c.jour, tirage: c.tirage } : { jour: c.jour }) : { scenario: c.nom };
 }
 
 /** Construit la rediffusion d'une partie jouée (finie ou non : une partie inachevée donne une rediffusion qui sera refusée `inachevee`). */
@@ -118,8 +120,12 @@ export function encoderRediffusion(r: Rediffusion): string {
   const bytes: number[] = [FORMAT_REDIFFUSION, r.sim, r.g];
   if ("jour" in r.contenu) {
     if (!Number.isInteger(r.contenu.jour) || r.contenu.jour < 0) throw new ErreurRediffusion("format_illisible", "jour invalide");
-    bytes.push(0);
+    // Lot T3b : le tirage 0 s'écrit comme avant (genre 0) ; un tirage n ≥ 1 est le genre 2 (jour, puis tirage) — une seule forme canonique, les rediffusions d'avant ne changent pas.
+    const tirage = r.contenu.tirage ?? 0;
+    if (!Number.isInteger(tirage) || tirage < 0 || tirage >= TIRAGES_MAX) throw new ErreurRediffusion("format_illisible", "tirage invalide");
+    bytes.push(tirage === 0 ? 0 : 2);
     pushVarint(bytes, r.contenu.jour);
+    if (tirage > 0) pushVarint(bytes, tirage);
   } else {
     if (!NOM_SCENARIO.test(r.contenu.scenario)) throw new ErreurRediffusion("format_illisible", "nom de scénario invalide");
     bytes.push(1, r.contenu.scenario.length);
@@ -166,7 +172,12 @@ export function decoderRediffusion(code: string): Rediffusion {
   const genre = octet();
   let contenu: IdContenu;
   if (genre === 0) contenu = { jour: entier() };
-  else if (genre === 1) {
+  else if (genre === 2) {
+    const jour = entier();
+    const tirage = entier();
+    if (tirage < 1 || tirage >= TIRAGES_MAX) throw new ErreurRediffusion("format_illisible", "tirage invalide");
+    contenu = { jour, tirage };
+  } else if (genre === 1) {
     const n = octet();
     let nom = "";
     for (let i = 0; i < n; i++) nom += String.fromCharCode(octet());
@@ -176,7 +187,7 @@ export function decoderRediffusion(code: string): Rediffusion {
   const reglages: Reglages = { vitesseChute8: entier(), facteurDescente: entier(), hauteurApparition8: entier(), vies: entier() };
   // Les versions d'abord : une rediffusion d'une autre version se refuse sans autre analyse (ses plages n'auraient pas le même sens).
   if (sim !== TOWER_SIM_VERSION) throw new ErreurRediffusion("version_inconnue", `simulation ${sim}`);
-  if (genre === 0 ? !VERSIONS_GENERATEUR.includes(g) : g !== 0) throw new ErreurRediffusion("version_inconnue", `générateur ${g}`);
+  if (genre === 1 ? g !== 0 : !VERSIONS_GENERATEUR.includes(g) || (genre === 2 && g < GENERATEUR_TIRAGE)) throw new ErreurRediffusion("version_inconnue", `générateur ${g}`);
   if (!reglagesValides(reglages)) throw new ErreurRediffusion("reglages_invalides");
   const plages: Plage[] = [];
   let total = 0;
@@ -213,7 +224,7 @@ export function* rejouerParTranches(R: Rapier, contenu: Scenario, rediffusion: R
   const r = typeof rediffusion === "string" ? decoderRediffusion(rediffusion) : rediffusion;
   if (r.sim !== TOWER_SIM_VERSION) throw new ErreurRediffusion("version_inconnue", `simulation ${r.sim}`);
   const id = idDuContenu(contenu);
-  const memeContenu = "jour" in r.contenu ? "jour" in id && id.jour === r.contenu.jour : "scenario" in id && id.scenario === r.contenu.scenario;
+  const memeContenu = "jour" in r.contenu ? "jour" in id && id.jour === r.contenu.jour && (id.tirage ?? 0) === (r.contenu.tirage ?? 0) : "scenario" in id && id.scenario === r.contenu.scenario;
   if (!memeContenu || r.g !== (contenu.g ?? 0)) throw new ErreurRediffusion("contenu_different");
   if (!reglagesValides(r.reglages)) throw new ErreurRediffusion("reglages_invalides");
   if (ticksRediffusion(r) > MAX_TICKS_JEU) throw new ErreurRediffusion("trop_longue", `plus de ${MAX_TICKS_JEU} ticks`);

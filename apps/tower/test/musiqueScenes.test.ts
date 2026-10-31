@@ -1,20 +1,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { dailyTower } from "@cdj/tower-sim";
+import { THEMES_TOWER } from "@cdj/tower-sim";
 import { SCENES } from "@cdj/musique";
 import { describe, expect, it } from "vitest";
 
-// Lot « musique » : les scènes de la musique de Tower (`packages/musique/src/scenes.ts`) : `menu` (prêt pour son accueil) et le thème du contenu du jour. Un thème de plus (lot T3) fait
-// échouer ce test jusqu'à sa ligne de `SCENES` ; `jeu.ts` annonce la scène du thème.
+// Lot « musique » : les scènes de la musique de Tower (`packages/musique/src/scenes.ts`) : `menu` (prêt pour son accueil) et **un thème de niveaux chacun** (`THEMES_TOWER`, lot T3). Un
+// thème ajouté à Tower sans sa ligne de `SCENES` fait échouer ce test ; `jeu.ts` annonce le thème de la partie (celui de la palette).
 describe("la musique de Tower : une scène par thème", () => {
-  it("les scènes connues de Tower sont `menu` et le thème du contenu du jour", () => {
-    expect([...SCENES.tower]).toEqual(["menu", `theme:${dailyTower(20_000).theme}`]);
+  it("les scènes connues de Tower sont `menu` et un `theme:<code>` par thème", () => {
+    expect([...SCENES.tower]).toEqual(["menu", ...THEMES_TOWER.map((n) => `theme:${n}`)]);
   });
 
-  it("jeu.ts annonce la scène du thème, celle que la liste connaît", () => {
+  it("jeu.ts annonce `theme:<thème de la partie>` : celui de `?theme=`, sinon du contenu du jour, sinon le port (comme la palette)", () => {
     const code = readFileSync(join(__dirname, "../src/jeu.ts"), "utf8");
-    expect(code).toMatch(/const THEME_MUSIQUE = "(\w+)"/);
-    expect(`theme:${/const THEME_MUSIQUE = "(\w+)"/.exec(code)![1]}`).toBe(`theme:${dailyTower(20_000).theme}`);
-    expect(code).toContain("musique.scene(`theme:${THEME_MUSIQUE}`)");
+    expect(code).toContain('musique.scene(`theme:${options.theme ?? (contenu as Partial<Contenu>).theme ?? "port"}`)');
+    expect(code).toContain('chargerPalette(options.theme ?? (contenu as Partial<Contenu>).theme ?? "port")'); // la même règle que la palette
   });
 });

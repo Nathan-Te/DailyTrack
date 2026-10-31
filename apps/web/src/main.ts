@@ -96,7 +96,7 @@ import { createThumbnailService, type ThumbJob } from "./thumbnails";
 import { releaseThumbnailRenderer, renderThumbnail, sharedRenderer, type ThumbnailOptions } from "./thumbnail";
 import { canNativeShare, copyShare, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
-import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
+import { landingQuality, volumeIcon } from "./audioLogic";
 import { CAMERAS, HOOD_GHOST_CLEARANCE, HOOD_MAX_TILT, cameraIndexOf, nextCameraIndex } from "./cameras";
 import { createShadow, placeShadow, type CarModel, type WheelPose } from "./carMesh";
 import { VoitureEnJeu } from "./voiture/enJeu";
@@ -520,7 +520,6 @@ let themeMusique: string | null = salon?.circuit.theme ?? daily?.theme ?? null;
 /** La scène de la musique : l'accueil (`menu`), sinon le thème du circuit (`theme:<code>`) ; un morceau est réservé à une scène dans `musique/musiques.json`. */
 const syncMusique = () => musique.scene(homeOpen ? "menu" : themeMusique && `theme:${themeMusique}`);
 syncMusique();
-gameAudio.setAmbience(track ? ambienceFor(salon?.circuit.palette ?? daily?.palette ?? paletteEssai) : null); // ambiance du thème (lot 23)
 const wheelDroop: [number, number, number, number] = [0, 0, 0, 0];
 const WHEEL_F = [AXLE_FRONT, AXLE_FRONT, -AXLE_REAR, -AXLE_REAR];
 const WHEEL_L = [HALF_TRACK, -HALF_TRACK, HALF_TRACK, -HALF_TRACK];
@@ -2797,7 +2796,6 @@ function swapSalonCircuit(c: LoadedSalonCircuit) {
   adopterScene(next);
   suivreDecor(c.palette);
   track = c.track;
-  gameAudio.setAmbience(ambienceFor(c.palette));
   themeMusique = c.theme;
   syncMusique();
   $("meta").textContent = salon!.title();
@@ -3052,7 +3050,7 @@ if (params.has("debug")) {
       },
       /** Sons : derniers sons joués, contexte démarré, réglages. */
       get audio() {
-        return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings, ambience: gameAudio.ambienceKind, ext: gameAudio.ext?.etat() ?? null };
+        return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings, ext: gameAudio.ext?.etat() ?? null };
       },
       /** Dessine tout de suite la miniature d'un jour (outil de test : cadrage, vues, repli 2D) ; adresse de l'image. */
       async thumbnail(date: string, options: ThumbnailOptions & { theme?: string } = {}) {

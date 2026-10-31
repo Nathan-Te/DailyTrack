@@ -1,48 +1,172 @@
 {
   "versions": {
     "sim": 3,
-    "g": 1
+    "g": 3
   },
   "contenus": [
     {
       "date": "2026-11-02",
-      "empreinte": "8310f797ad5ca5a4"
+      "empreinte": "537ec8e91b7337c6"
     },
     {
       "date": "2026-11-03",
-      "empreinte": "6c948980612a93a1"
+      "empreinte": "2045d361d8285eda"
     },
     {
       "date": "2026-11-04",
-      "empreinte": "1064a290d11fa2b1"
+      "empreinte": "e7e931fb8806cbba"
     },
     {
       "date": "2026-11-05",
-      "empreinte": "20179fa2ee802f0b"
+      "empreinte": "f9e1d50d2038b7ce"
     },
     {
       "date": "2026-11-06",
-      "empreinte": "17fa6a967377eb57"
+      "empreinte": "304b45121b01345f"
     },
     {
       "date": "2026-11-07",
-      "empreinte": "9b36de47f5bda0c0"
+      "empreinte": "bf34865fc016e1c8"
     },
     {
       "date": "2026-11-08",
-      "empreinte": "694ebe8e48ceb89b"
+      "empreinte": "e01ec6ba0d6630f9"
     },
     {
       "date": "2026-11-09",
-      "empreinte": "cde0c70950411b9e"
+      "empreinte": "69da9e45164c1d3e"
     },
     {
       "date": "2026-11-10",
-      "empreinte": "048699be56540c93"
+      "empreinte": "6167b61b783bd45c"
     },
     {
       "date": "2026-11-11",
-      "empreinte": "45d7150fb07affb4"
+      "empreinte": "b66ae73962771860"
+    }
+  ],
+  "tirages": [
+    {
+      "date": "2026-11-02",
+      "tirage": 1,
+      "empreinte": "1e4564e753240d2c"
+    },
+    {
+      "date": "2026-11-02",
+      "tirage": 2,
+      "empreinte": "28c23d8e338b80b7"
+    },
+    {
+      "date": "2026-11-03",
+      "tirage": 3,
+      "empreinte": "54e0f5006cbe88c9"
+    },
+    {
+      "date": "2026-11-04",
+      "tirage": 1,
+      "empreinte": "16c01897f8d3c15e"
+    },
+    {
+      "date": "2026-11-07",
+      "tirage": 2,
+      "empreinte": "e47c272f83180324"
+    },
+    {
+      "date": "2026-11-11",
+      "tirage": 3,
+      "empreinte": "9764c03906c7c784"
+    }
+  ],
+  "anciennes": [
+    {
+      "g": 1,
+      "contenus": [
+        {
+          "date": "2026-11-02",
+          "empreinte": "8310f797ad5ca5a4"
+        },
+        {
+          "date": "2026-11-03",
+          "empreinte": "6c948980612a93a1"
+        },
+        {
+          "date": "2026-11-04",
+          "empreinte": "1064a290d11fa2b1"
+        },
+        {
+          "date": "2026-11-05",
+          "empreinte": "20179fa2ee802f0b"
+        },
+        {
+          "date": "2026-11-06",
+          "empreinte": "17fa6a967377eb57"
+        },
+        {
+          "date": "2026-11-07",
+          "empreinte": "9b36de47f5bda0c0"
+        },
+        {
+          "date": "2026-11-08",
+          "empreinte": "694ebe8e48ceb89b"
+        },
+        {
+          "date": "2026-11-09",
+          "empreinte": "cde0c70950411b9e"
+        },
+        {
+          "date": "2026-11-10",
+          "empreinte": "048699be56540c93"
+        },
+        {
+          "date": "2026-11-11",
+          "empreinte": "45d7150fb07affb4"
+        }
+      ]
+    },
+    {
+      "g": 2,
+      "contenus": [
+        {
+          "date": "2026-11-02",
+          "empreinte": "66abbf90ff0d0c11"
+        },
+        {
+          "date": "2026-11-03",
+          "empreinte": "261b16e0aecfd439"
+        },
+        {
+          "date": "2026-11-04",
+          "empreinte": "bfe486ec3c620867"
+        },
+        {
+          "date": "2026-11-05",
+          "empreinte": "20de7c95f53a0376"
+        },
+        {
+          "date": "2026-11-06",
+          "empreinte": "e85837288d8c32b9"
+        },
+        {
+          "date": "2026-11-07",
+          "empreinte": "972d6eb39f916c28"
+        },
+        {
+          "date": "2026-11-08",
+          "empreinte": "9e030ea7acfdf9ce"
+        },
+        {
+          "date": "2026-11-09",
+          "empreinte": "012d62f9151e1486"
+        },
+        {
+          "date": "2026-11-10",
+          "empreinte": "8937a21d8bcd6352"
+        },
+        {
+          "date": "2026-11-11",
+          "empreinte": "15eaa7ea5d9a2dd5"
+        }
+      ]
     }
   ],
   "rediffusions": [
@@ -69,9 +193,10 @@
     {
       "nom": "jour-avec-paliers",
       "contenu": {
-        "date": "2026-11-02"
+        "date": "2026-11-02",
+        "g": 2
       },
-      "code": "AQMBAJeiARQEOAMADQgpBAMACggjBAMACggmAA0IKAQBAAwIHwQBAAwIJQAEAQEACggpBAEADAgiAA0IKAQBAAwIFgQBAAwIJQQDAAoIJgANCCkEAQAMCCYEAQAMCCMABAIBAAoIKgQDAAoIIwQBAAwIIAAEAQEACggoBAIAAgEBAAoIJQAEAQEAAQEBAAoIKQQBAAwIIwAEAQEAAQEBAAoIKAANCCkADQgqAA0IKAANCCoEAQAMCCAEAQAMCB8ABAEBAAEBAQABAQEACgjmAQ",
+      "code": "AQMCAJeiARQEOAMADQgpBAMACggjBAMACggmAA0IKAQBAAwIHwQBAAwIJQAEAQEACggpBAEADAgiAA0IKAQBAAwIFgQBAAwIJQQDAAoIJgANCCkEAQAMCCYEAQAMCCMABAIBAAoIKgQDAAoIIwQBAAwIIAAEAQEACggoBAIAAgEBAAoIJQAEAQEAAQEBAAoIKQQBAAwIIwAEAQEAAQEBAAoIKAANCCkADQgqAA0IKAANCCoEAQAMCCAEAQAMCB8ABAEBAAEBAQABAQEACgjmAQ",
       "resultat": {
         "hauteurMm": 37978,
         "vies": 0,
@@ -89,9 +214,10 @@
     {
       "nom": "zero-vie",
       "contenu": {
-        "date": "2026-11-03"
+        "date": "2026-11-03",
+        "g": 2
       },
-      "code": "AQMBAJiiARQEOAMCKAAGCCUCKAAGCCICKAAGCCM",
+      "code": "AQMCAJiiARQEOAMCKAAGCCUCKAAGCCICKAAGCCM",
       "resultat": {
         "hauteurMm": 0,
         "vies": 0,
@@ -105,6 +231,49 @@
       "empreinteFinale": "816bc75119e02ae5",
       "ticks": 244,
       "paliers": 0
+    },
+    {
+      "nom": "jour-v3",
+      "contenu": {
+        "date": "2026-11-02",
+        "g": 3
+      },
+      "code": "AQMDAJeiARQEOAMABAEBAAoIJwANCCkEAwAKCCMABAIBAAoIJwQDAAoIJgQBAAwIIwQBAAwIIAQDAAoIIwQDAAoIIwAEAgEAAQIBAAoIKAQDAAoIJgQBAAwIIAANCCkABAEBAAoIKQAEAQEACggqBAMACggjAAQCAQABAgEACggnAAQCAQABAgEAAQIBAAoIKQAEAQEACggoAA0INQAEAgEAAQIBAAECAQAKCDQADQh_",
+      "resultat": {
+        "hauteurMm": 30111,
+        "vies": 0,
+        "ticks": 1266,
+        "ticksGel": 1510,
+        "hauteurMaxMm": 45630,
+        "posees": 21,
+        "tombees": 11,
+        "motif": "vies"
+      },
+      "empreinteFinale": "784c9c4369ab23f0",
+      "ticks": 1266,
+      "paliers": 5
+    },
+    {
+      "nom": "tirage-v3",
+      "contenu": {
+        "date": "2026-11-02",
+        "g": 3,
+        "tirage": 2
+      },
+      "code": "AQMDApeiAQIUBDgDAAQBAQAKCCcABAIBAAECAQAKCCgABAIBAAoILQANCCwEAgALCCYEAwAKCCQEAQAMCCIADQgoBAEADAgkAA0IKgANCCgADQgB",
+      "resultat": {
+        "hauteurMm": 23424,
+        "vies": 0,
+        "ticks": 599,
+        "ticksGel": 671,
+        "hauteurMaxMm": 23581,
+        "posees": 11,
+        "tombees": 4,
+        "motif": "vies"
+      },
+      "empreinteFinale": "cd05db559c205568",
+      "ticks": 599,
+      "paliers": 2
     }
   ]
 }

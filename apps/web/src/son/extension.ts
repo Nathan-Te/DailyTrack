@@ -22,7 +22,7 @@ export interface HoteSon {
   /** Le gain général : l'extension y insère un compresseur doux avant la sortie. */
   master: GainNode;
   destination: AudioNode;
-  bus: { engine: GainNode; effects: GainNode; ambience: GainNode };
+  bus: { engine: GainNode; effects: GainNode };
   bruit: AudioBuffer;
   outils: { rollVoice: typeof rollVoice; skidLevel: typeof skidLevel; windGain: typeof windGain; landingSound: typeof landingSound; noteFreq: (n: number) => number };
   /** `true` / `false` : la version imposée (`?son=leger|complet`) ; `null` : on décide selon l'appareil. */

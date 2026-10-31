@@ -1,6 +1,7 @@
 import { parseDay, pushVarint, toBase64Url } from "@cdj/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  TOWER_GENERATOR_VERSION,
   type CodeRefusTower,
   COMMANDE,
   type Contenu,
@@ -25,6 +26,7 @@ import {
   SCENARIO_ESSAI,
   ticksRediffusion,
   TICKS_PAR_SECONDE,
+  TIRAGES_MAX,
   TOWER_SIM_VERSION,
 } from "../src";
 import { chargerRapier } from "../src/rapier";
@@ -62,10 +64,13 @@ function jouerScripte(contenu: Scenario, reglages = REGLAGES_DEFAUT): Partie {
 }
 
 /** Fabrique le texte d'une rediffusion à la main (octet par octet) pour provoquer chaque refus. */
-function octets(o: { format?: number; sim?: number; g?: number; genre?: number; jour?: number; nom?: string; reglages?: number[]; plages?: [number, number][] }): string {
+function octets(o: { format?: number; sim?: number; g?: number; genre?: number; jour?: number; tirage?: number; nom?: string; reglages?: number[]; plages?: [number, number][] }): string {
   const b: number[] = [o.format ?? FORMAT_REDIFFUSION, o.sim ?? TOWER_SIM_VERSION, o.g ?? 1, o.genre ?? 0];
   if ((o.genre ?? 0) === 0) pushVarint(b, o.jour ?? JOUR);
-  else {
+  else if (o.genre === 2) {
+    pushVarint(b, o.jour ?? JOUR);
+    pushVarint(b, o.tirage ?? 1);
+  } else {
     b.push((o.nom ?? "essai").length);
     for (const c of o.nom ?? "essai") b.push(c.charCodeAt(0));
   }
@@ -111,7 +116,7 @@ describe("l'enregistrement et le rejeu", () => {
   it("l'en-tête dit le format, TOWER_SIM_VERSION, TOWER_GENERATOR_VERSION, le jour (ou le scénario) et les réglages", () => {
     const jouee = jouerScripte(contenuDuJour, { ...REGLAGES_DEFAUT, vies: 5 });
     const d = decoderRediffusion(encoderRediffusion(enregistrer(jouee)));
-    expect(d).toMatchObject({ sim: TOWER_SIM_VERSION, g: 1, contenu: { jour: JOUR }, reglages: { vitesseChute8: 20, facteurDescente: 4, hauteurApparition8: 56, vies: 5 } });
+    expect(d).toMatchObject({ sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION, contenu: { jour: JOUR }, reglages: { vitesseChute8: 20, facteurDescente: 4, hauteurApparition8: 56, vies: 5 } });
     jouee.dispose();
     const e = jouerScripte(SCENARIO_ESSAI);
     expect(decoderRediffusion(encoderRediffusion(enregistrer(e)))).toMatchObject({ sim: TOWER_SIM_VERSION, g: 0, contenu: { scenario: "essai" } });
@@ -157,8 +162,52 @@ describe("l'enregistrement et le rejeu", () => {
   });
 });
 
+describe("lot T3b — le tirage du contenu dans la rediffusion", () => {
+  it("un tirage n ≥ 1 s'écrit en genre 2 et se rejoue au bit près ; le tirage 0 garde l'ancienne forme (genre 0), octet pour octet", () => {
+    const c0 = dailyTower(JOUR, 3, 0);
+    const c2 = dailyTower(JOUR, 3, 2);
+    expect(c2.tirage).toBe(2);
+    const jouee = jouerScripte(c2);
+    const rec = enregistrer(jouee);
+    expect(rec.contenu).toEqual({ jour: JOUR, tirage: 2 });
+    const code = encoderRediffusion(rec);
+    expect(decoderRediffusion(code)).toEqual(rec);
+    expect(encoderRediffusion(decoderRediffusion(code))).toBe(code);
+    expect(rejouerComplet(R, c2, code).resultat).toEqual(jouee.resultat());
+    jouee.dispose();
+    const jouee0 = jouerScripte(c0);
+    const rec0 = enregistrer(jouee0);
+    expect(rec0.contenu).toEqual({ jour: JOUR }); // le tirage 0 n'est pas nommé
+    const octets0 = Array.from(Buffer.from(encoderRediffusion(rec0), "base64url"));
+    expect(octets0.slice(0, 4)).toEqual([FORMAT_REDIFFUSION, TOWER_SIM_VERSION, 3, 0]);
+    jouee0.dispose();
+  });
+
+  it("une rediffusion d'un tirage ne se rejoue que sur ce tirage (contenu_different sur un autre tirage du même jour)", () => {
+    const jouee = jouerScripte(dailyTower(JOUR, 3, 1));
+    const rec = enregistrer(jouee);
+    expect(refus(() => rejouer(R, dailyTower(JOUR, 3, 0), rec))).toBe("contenu_different");
+    expect(refus(() => rejouer(R, dailyTower(JOUR, 3, 2), rec))).toBe("contenu_different");
+    expect(() => rejouer(R, dailyTower(JOUR, 3, 1), rec)).not.toThrow();
+    jouee.dispose();
+    const jouee0 = jouerScripte(dailyTower(JOUR, 3, 0));
+    expect(refus(() => rejouer(R, dailyTower(JOUR, 3, 1), enregistrer(jouee0)))).toBe("contenu_different");
+    jouee0.dispose();
+  });
+
+  it("une rediffusion de la version 2 du générateur se rejoue toujours, sur le contenu de la version 2", () => {
+    const c = dailyTower(JOUR, 2);
+    const jouee = jouerScripte(c);
+    const code = encoderRediffusion(enregistrer(jouee));
+    expect(decoderRediffusion(code)).toMatchObject({ g: 2, contenu: { jour: JOUR } });
+    expect(rejouer(R, c, code)).toEqual(jouee.resultat());
+    expect(refus(() => rejouer(R, dailyTower(JOUR), code))).toBe("contenu_different");
+    jouee.dispose();
+  });
+});
+
 describe("les refus : un code d'erreur propre à Tower pour chaque cas", () => {
-  const bonne = encoderRediffusion({ sim: TOWER_SIM_VERSION, g: 1, contenu: { jour: JOUR }, reglages: { ...REGLAGES_DEFAUT }, plages: [{ masque: 0, ticks: 10 }] });
+  const bonne = encoderRediffusion({ sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION, contenu: { jour: JOUR }, reglages: { ...REGLAGES_DEFAUT }, plages: [{ masque: 0, ticks: 10 }] });
 
   it("version inconnue : une autre version de la simulation, un générateur inconnu, ou un générateur sur un scénario nommé", () => {
     expect(() => decoderRediffusion(bonne)).not.toThrow();
@@ -176,7 +225,7 @@ describe("les refus : un code d'erreur propre à Tower pour chaque cas", () => {
     expect(refus(() => decoderRediffusion("A"))).toBe("format_illisible"); // longueur invalide
     expect(refus(() => decoderRediffusion(""))).toBe("format_illisible");
     expect(refus(() => decoderRediffusion(bonne.slice(0, 6)))).toBe("format_illisible"); // l'en-tête est coupé
-    expect(refus(() => decoderRediffusion(octets({ genre: 2 })))).toBe("format_illisible");
+    expect(refus(() => decoderRediffusion(octets({ genre: 3 })))).toBe("format_illisible");
     expect(refus(() => decoderRediffusion(octets({ genre: 1, nom: "Essai !" })))).toBe("format_illisible");
     expect(refus(() => decoderRediffusion(octets({ plages: [[0, 0]] })))).toBe("format_illisible");
     expect(refus(() => decoderRediffusion(toBase64Url([1, TOWER_SIM_VERSION, 1, 0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01])))).toBe("format_illisible"); // entier trop long
@@ -213,12 +262,24 @@ describe("les refus : un code d'erreur propre à Tower pour chaque cas", () => {
     jouee.dispose();
   });
 
+  it("lot T3b — le tirage : refus d'un tirage 0 en genre 2 (forme canonique), d'un tirage hors des TIRAGES_MAX, d'un tirage sur un générateur qui n'en a pas ; l'encodeur refuse aussi", () => {
+    expect(() => decoderRediffusion(octets({ genre: 2, g: 3, tirage: 1 }))).not.toThrow();
+    expect(() => decoderRediffusion(octets({ genre: 2, g: 3, tirage: TIRAGES_MAX - 1 }))).not.toThrow();
+    expect(refus(() => decoderRediffusion(octets({ genre: 2, g: 3, tirage: 0 })))).toBe("format_illisible");
+    expect(refus(() => decoderRediffusion(octets({ genre: 2, g: 3, tirage: TIRAGES_MAX })))).toBe("format_illisible");
+    expect(refus(() => decoderRediffusion(octets({ genre: 2, g: 2, tirage: 1 })))).toBe("version_inconnue");
+    expect(refus(() => decoderRediffusion(octets({ genre: 2, g: 1, tirage: 1 })))).toBe("version_inconnue");
+    const rec = { sim: TOWER_SIM_VERSION, g: 3, reglages: { ...REGLAGES_DEFAUT }, plages: [{ masque: 0, ticks: 10 }] };
+    expect(refus(() => encoderRediffusion({ ...rec, contenu: { jour: JOUR, tirage: TIRAGES_MAX } }))).toBe("format_illisible");
+    expect(refus(() => encoderRediffusion({ ...rec, contenu: { jour: JOUR, tirage: -1 } }))).toBe("format_illisible");
+  });
+
   it("contenu différent : un autre jour, un autre scénario, ou une autre version du générateur que celui sur lequel on la rejoue", () => {
     const jouee = jouerScripte(contenuDuJour);
     const rec = enregistrer(jouee);
     expect(refus(() => rejouer(R, dailyTower(JOUR + 1), rec))).toBe("contenu_different");
     expect(refus(() => rejouer(R, SCENARIO_ESSAI, rec))).toBe("contenu_different");
-    expect(refus(() => rejouer(R, { ...contenuDuJour, g: 2 }, rec))).toBe("contenu_different");
+    expect(refus(() => rejouer(R, { ...contenuDuJour, g: TOWER_GENERATOR_VERSION + 1 }, rec))).toBe("contenu_different");
     const e = jouerScripte(SCENARIO_ESSAI);
     expect(refus(() => rejouer(R, contenuDuJour, enregistrer(e)))).toBe("contenu_different");
     expect(refus(() => rejouer(R, { ...SCENARIO_ESSAI, nom: "autre" }, enregistrer(e)))).toBe("contenu_different");

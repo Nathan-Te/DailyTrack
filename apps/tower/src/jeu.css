@@ -694,3 +694,85 @@ body {
     transition: none;
   }
 }
+
+/* --- Lot T3 : l'objectif de médaille (au-dessus de « Suivante ») et le bloc « Médailles du jour » de l'écran de fin ------------------------------------------------ */
+.objectif {
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 2px;
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.objectif[hidden] {
+  display: none;
+}
+.objectif__pastille {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--medaille);
+  border: 1.5px solid var(--dj-encre);
+}
+.objectif__pastille[hidden] {
+  display: none;
+}
+.objectif__valeur {
+  font-family: var(--dj-police-chiffres);
+}
+.objectif__provisoire {
+  align-self: flex-end;
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 700;
+  color: var(--dj-encre);
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+  padding: 0 4px;
+}
+.objectif__provisoire[hidden] {
+  display: none;
+}
+.objectif--bronze { --medaille: var(--dj-bronze); }
+.objectif--argent { --medaille: var(--dj-argent); }
+.objectif--or { --medaille: var(--dj-or); }
+.objectif--diamant { --medaille: var(--dj-diamant); }
+.fin__tuile--medaille {
+  align-self: flex-start;
+}
+.fin__medaille-nom {
+  font-family: var(--tower-police);
+  font-size: var(--dj-taille-21);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.fin__medailles-grille {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.fin__medailles-note {
+  margin: 0;
+  font-size: var(--dj-taille-legende);
+}
+.fin__medailles-note b {
+  font-family: var(--dj-police-chiffres);
+}
+.fin__medailles-note[hidden],
+.fin__tuile[hidden] {
+  display: none;
+}
+.fin__rang {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+.fin__rang > .fin__tuile {
+  align-self: stretch;
+}

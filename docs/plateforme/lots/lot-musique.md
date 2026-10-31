@@ -12,7 +12,7 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 ## Retour de Nathan (31/10/2026) : un morceau par menu et par thème
 - **Les scènes** (`scenes` d'un morceau : `menu`, `theme:<code>`) : chaque jeu annonce où il en est (`musique.scene(…)`) ; la musique choisit les morceaux de la scène, sinon ceux qui passent partout, sinon le silence, et passe en fondu (2 s), en gardant le morceau en cours s'il y passe aussi. **Extensible** : un thème ou un jeu de plus = une ligne de `packages/musique/src/scenes.ts` (le test de chaque jeu échoue sinon). Track : 8 thèmes, Jump : 5, Tower : `port`. Détail : `docs/plateforme/musique.md`.
 - **Sources hors du dépôt** (les boucles Ovani pèsent 25 Mo) : `musique/pistes/*` est ignoré par git, seul le morceau préparé (AAC 96 kbit/s, ≈ 1,4 Mo pour 2 minutes) est commité ; `liste.json` garde l'empreinte de chaque source ; la CI vérifie sans les sources.
-- **Budget de Track relevé de +1 000 o** (décision de Nathan) : le branchement avec les scènes pèse +355 o (Jump +353, Tower +356 : toujours sous 0,5 ko) ; Track a 971 o de marge.
+- **Budget** (après la fusion de `main`, qui a retiré l'ambiance de Track au lot 56 : −1 023 o) : le branchement avec les scènes pèse Track +382 o, Jump +355 o, Tower +366 o ; **Track a 967 o de marge sans relever son plafond** (le relèvement de +1 000 o accordé par Nathan n'a pas servi) ; **Tower avait 44 o de marge sur `main` : son plafond passe de 168 000 à 168 500 o** (à confirmer par Nathan).
 - **Trois boucles générées par le code, à écouter** (`musique/generateur/`, `docs/plateforme/musique.md`) : « Pole position » (menu de Track, 112 BPM, électro moderne), « Périphérique » (thème Nuit de Track, 128 BPM, électro nerveuse), « Sous les feuilles » (thème Forêt de Jump, 140 BPM, chiptune rétro). 32 mesures chacune (55 à 69 s), ≈ 0,7 à 0,9 Mo en AAC, −18 LUFS, boucle sans coupure. Vérifié sans les entendre : niveau, jonction de boucle, structure au spectre ; **dans Chromium, chaque scène joue son morceau** (menu de Track, Nuit de Track, forêt de Jump) et l'usine de Jump reste silencieuse.
 
 ## Fichiers touchés dans les jeux (rien d'autre n'a bougé)
@@ -25,9 +25,9 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 ## Mesures (`node scripts/budgets.mjs`, contre `main` reconstruit)
 | | Premier chargement | Limite |
 |---|---|---|
-| Track | **+303 o** (`track.jsCss` : 294 689, **23 o de marge**) | 500 o |
-| Jump | **+315 o** | 500 o |
-| Tower | **+318 o** | 500 o |
+| Track | **+382 o** (`track.jsCss` : 293 745, 967 o de marge) | 500 o |
+| Jump | **+355 o** | 500 o |
+| Tower | **+366 o** (plafond relevé de 168 000 à 168 500 o, à confirmer) | 500 o |
 | Portail | +10 o (la clé gardée de `@cdj/profile`) | — |
 | Lecteur + panneau, à la demande | **4 458 o** (ligne `musique.lecteur`, 8 000 o) | — |
 | Morceaux (non comptés) | AAC 96 kbit/s : ≈ 0,7 Mo par minute (le morceau d'essai : 73 698 o pour 6 s) | — |
@@ -53,7 +53,7 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 3. **Le portail** : silence (proposé) ou une liste à lui (une ligne + des morceaux `portail`).
 4. **iPhone et interrupteur silence** : la musique passe quand l'interrupteur est sur silence, comme le son de Track. À inverser ? (retirer `audioSession` de `navigateur.ts`).
 5. **`tous` = Track, Jump, Tower** (pas le portail) ; licences admises : `mienne`, `CC0`, `CC-BY-4.0`, `achetee` — ajouter CC-BY-SA ?
-6. **Track n'a plus que 23 o de marge** : le prochain lot de Track en retire ailleurs, ou Nathan relève le plafond.
+6. **Tower** : son plafond de premier chargement passe de 168 000 à 168 500 o (le branchement pèse +366 o, `main` n'avait que 44 o de marge) — à confirmer. Track garde 967 o de marge sans toucher à son plafond.
 7. Les sources (`musique/pistes/`) sont commitées : un wav ou un flac pèse lourd dans le dépôt — préférer un mp3 de bonne qualité, ou ajouter un stockage de fichiers volumineux.
 
 ## À tester (aperçu de la PR)

@@ -60,10 +60,10 @@ describe("réglages du jeu (lot 29)", () => {
   });
 });
 
-describe("son : trois voix et volume général", () => {
+describe("son : deux voix et volume général", () => {
   it("anciens réglages (volume, dernier volume) lus avec les voix à plein niveau", () => {
     expect(parseAudioSettings('{"volume":0.25,"last":0.25}')).toEqual({ ...DEFAULT_AUDIO, volume: 0.25, last: 0.25 });
-    expect(parseAudioSettings('{"engine":0.3,"effects":9,"ambience":-2}')).toMatchObject({ engine: 0.3, effects: 1, ambience: 0 });
+    expect(parseAudioSettings('{"engine":0.3,"effects":9,"ambience":-2}')).toMatchObject({ engine: 0.3, effects: 1 });
   });
   it("muet et cran suivant gardent les voix", () => {
     const s = { ...DEFAULT_AUDIO, engine: 0.4 };

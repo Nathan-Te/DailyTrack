@@ -49,8 +49,6 @@ export const fr = {
   "reglages.son.moteur": "Moteur",
   "reglages.son.effets.nom": "Effets",
   "reglages.son.effets.aide": "Crissements, roulement, vent, bruitages.",
-  "reglages.son.ambiance.nom": "Ambiance",
-  "reglages.son.ambiance.aide": "Le fond sonore du thème du jour.",
   // Jeu
   "reglages.camera.nom": "Caméra par défaut",
   "reglages.camera.aide": "Au départ ; la touche C ou le bouton caméra la change aussi.",

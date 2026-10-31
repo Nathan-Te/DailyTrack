@@ -38,6 +38,21 @@ export const CATALOGUE_EN: Catalogue = {
   "annonce.palier.trois": "Checkpoint {metres} · {effet} on the next three pieces",
   "jour.pasEncore": "That day isn't out yet: here is today's.",
 
+  "hud.objectif.aria": "Next medal: {medaille}, at {hauteur}",
+  "hud.objectif.calcul": "Working out the medals…",
+  "hud.objectif.diamant": "Diamond beaten",
+  "medailles.provisoire": "Provisional medals",
+  "bot.reflechit": "The bot is thinking…",
+  "bot.diamant": "Today's Diamond: {hauteur}",
+
+  "fin.medailles": "Today's medals",
+  "fin.medaille": "Medal",
+  "fin.medaille.aucune": "None",
+  "fin.medailles.encore": "{medaille}: {reste} to go",
+  "fin.medailles.toutes": "You got the Diamond.",
+  "fin.medailles.calcul": "Working out the medals…",
+  "fin.medailles.session": "Best medal this session: {medaille}",
+
   "pause.aria": "Pause",
   "pause.titre": "Pause",
   "pause.etat": "Piece {n} of {total} · {hauteur}",

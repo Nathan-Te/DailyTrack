@@ -17,12 +17,15 @@
     "poids:tower": "esbuild tools/poids.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/poids.mjs --log-level=warning && node dist/poids.mjs",
     "golden:tower": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs",
     "figer:tower": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
-    "mesures-t2:tower": "esbuild tools/mesures-t2.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures-t2.mjs --log-level=warning && node dist/mesures-t2.mjs"
+    "mesures-t2:tower": "esbuild tools/mesures-t2.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures-t2.mjs --log-level=warning && node dist/mesures-t2.mjs",
+    "preparer:tower": "esbuild tools/preparer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/preparer.mjs --log-level=warning && node dist/preparer.mjs",
+    "mesures-t3:tower": "esbuild tools/mesures-t3.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures-t3.mjs --log-level=warning && node dist/mesures-t3.mjs"
   },
   "exports": {
     ".": "./src/index.ts",
     "./rapier": "./src/rapier.ts",
     "./lab/*": "./lab/*.ts",
-    "./scenarios/*": "./scenarios/*.ts"
+    "./scenarios/*": "./scenarios/*.ts",
+    "./bot": "./src/bot/index.ts"
   }
 }

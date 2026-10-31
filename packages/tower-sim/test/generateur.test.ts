@@ -8,10 +8,15 @@ import {
   ErreurGenerateur,
   estBonus,
   NB_PIECES,
+  PALIERS_METRES,
+  PALIERS_METRES_V3,
   PIECE_KINDS,
   PLATEFORME_BORNES,
   PLATEFORME_DEMI8_CHOIX,
   problemePaliers,
+  THEMES_TOWER,
+  themeDuJour,
+  TIRAGES_MAX,
   TOWER_GENERATOR_VERSION,
   VERSIONS_GENERATEUR,
 } from "../src";
@@ -29,23 +34,71 @@ describe("dailyTower : pure et versionnée", () => {
     expect(suites.size).toBe(60);
   });
 
-  it("le contenu nomme son jour, sa version, son thème : le port pour tous les jours", () => {
+  it("le contenu nomme son jour, sa version et son thème", () => {
     const c = dailyTower(PREMIER);
     expect(c.jour).toBe(PREMIER);
     expect(c.nom).toBe("2026-11-02");
     expect(c.g).toBe(TOWER_GENERATOR_VERSION);
-    expect(TOWER_GENERATOR_VERSION).toBe(1);
-    for (const j of JOURS) expect(dailyTower(j).theme).toBe("port");
+    expect(TOWER_GENERATOR_VERSION).toBe(3); // lot T3 : le thème entre dans le contenu ; lot T3b : le tirage, les paliers tous les 8 m
+    expect(THEMES_TOWER).toContain(c.theme);
+  });
+
+  it("la version 1 reste appelable et donne `port` pour tous les jours ; la version 2 n'en diffère QUE par la version et le thème (un thème n'a aucun effet physique)", () => {
+    expect(VERSIONS_GENERATEUR).toEqual([1, 2, 3]);
+    for (const j of JOURS) {
+      const v1 = dailyTower(j, 1);
+      const v2 = dailyTower(j, 2);
+      expect(v1.theme).toBe("port");
+      expect(v1.g).toBe(1);
+      expect({ ...v2, g: 1, theme: "port" }).toEqual(v1);
+      expect(v2.theme).toBe(themeDuJour(j));
+      // Lot T3b : les versions 1 et 2 n'ont ni tirage ni paliers à 8 m (leurs jours servis ne changent jamais).
+      expect(v1).not.toHaveProperty("tirage");
+      expect(v2).not.toHaveProperty("tirage");
+      expect(v1.paliers.map((p) => p.metres)).toEqual([...PALIERS_METRES]);
+      expect(v2.paliers.map((p) => p.metres)).toEqual([10, 20, 30, 40, 50, 60]);
+    }
   });
 
   it("une version du générateur s'appelle par son numéro, la version courante par défaut ; une version inconnue ou un jour invalide est refusé", () => {
     expect(VERSIONS_GENERATEUR).toContain(TOWER_GENERATOR_VERSION);
-    for (const v of VERSIONS_GENERATEUR) expect(dailyTower(PREMIER, v)).toEqual({ ...dailyTower(PREMIER), g: v });
-    expect(dailyTower(PREMIER, 1)).toEqual(dailyTower(PREMIER));
+    for (const v of [1, 2]) expect(dailyTower(PREMIER, v)).toEqual({ ...dailyTower(PREMIER, 2), g: v, theme: v === 1 ? "port" : dailyTower(PREMIER, 2).theme });
+    expect(dailyTower(PREMIER, TOWER_GENERATOR_VERSION)).toEqual(dailyTower(PREMIER));
     expect(() => dailyTower(PREMIER, 0)).toThrow(ErreurGenerateur);
     expect(() => dailyTower(PREMIER, 99)).toThrow(/version de générateur inconnue/);
     expect(() => dailyTower(-1)).toThrow(ErreurGenerateur);
     expect(() => dailyTower(1.5)).toThrow(ErreurGenerateur);
+  });
+
+  it("lot T3b — le tirage : déterministe, le tirage 0 est par défaut, chaque tirage donne un autre contenu, le thème du jour reste le même, et les versions 1 et 2 refusent un tirage", () => {
+    expect(dailyTower(PREMIER)).toEqual(dailyTower(PREMIER, 3, 0));
+    for (let t = 0; t < TIRAGES_MAX; t++) {
+      expect(dailyTower(PREMIER, 3, t)).toEqual(dailyTower(PREMIER, 3, t)); // pur
+      expect(dailyTower(PREMIER, 3, t).tirage).toBe(t);
+      expect(dailyTower(PREMIER, 3, t).theme).toBe(themeDuJour(PREMIER)); // le sac de thèmes ne dépend pas du tirage
+    }
+    for (const j of JOURS.slice(0, 60)) {
+      const suites = new Set(Array.from({ length: TIRAGES_MAX }, (_, t) => dailyTower(j, 3, t).pieces.join("")));
+      expect(suites.size).toBe(TIRAGES_MAX); // quatre tirages, quatre suites
+    }
+    // « Pas de cas particulier » : le tirage 0 de la version 3 n'est PAS le contenu de la version 2 (sa graine est décalée comme celle des autres tirages).
+    expect(JOURS.slice(0, 60).filter((j) => dailyTower(j, 3, 0).pieces.join("") === dailyTower(j, 2).pieces.join("")).length).toBe(0);
+    for (const v of [1, 2]) expect(() => dailyTower(PREMIER, v, 1)).toThrow(/tirage invalide/);
+    expect(() => dailyTower(PREMIER, 3, -1)).toThrow(ErreurGenerateur);
+    expect(() => dailyTower(PREMIER, 3, 1.5)).toThrow(ErreurGenerateur);
+  });
+
+  it("chaque tirage respecte les mêmes règles que le contenu d'origine (sacs de sept, plateforme, paliers, vent)", () => {
+    for (const j of JOURS.slice(0, 120)) {
+      for (let t = 0; t < TIRAGES_MAX; t++) {
+        const c = dailyTower(j, 3, t);
+        expect(c.pieces).toHaveLength(NB_PIECES);
+        expect(PLATEFORME_DEMI8_CHOIX).toContain(c.plateformeDemi8);
+        expect(problemePaliers(c.paliers.map((p) => p.effet))).toBeNull();
+        expect([-1, 1]).toContain(c.ventSens);
+        expect(aDoublon(c.pieces) ? c.pieces.some((k, i, a) => i > 0 && k === a[i - 1] && i % 7 !== 0) : false).toBe(false);
+      }
+    }
   });
 
   it("la version 1 est figée : ces trois jours donnent toujours ces suites (une évolution du générateur est une version 2 à côté, jamais un changement de celle-ci)", () => {
@@ -107,11 +160,15 @@ describe("la plateforme", () => {
 });
 
 describe("les paliers du jour", () => {
-  it("six paliers, de 10 m en 10 m jusqu'à 60 m, les six effets du seed chacun une fois", () => {
+  it("lot T3b — six paliers, de 8 m en 8 m jusqu'à 48 m (générateur 3, tous les tirages), les six effets du seed chacun une fois ; les versions 1 et 2 gardent 10 m à 60 m", () => {
+    expect(PALIERS_METRES_V3).toEqual([8, 16, 24, 32, 40, 48]);
     for (const j of JOURS) {
-      const { paliers } = dailyTower(j);
-      expect(paliers.map((p) => p.metres)).toEqual([10, 20, 30, 40, 50, 60]);
-      expect([...paliers.map((p) => p.effet)].sort()).toEqual([...EFFETS].sort());
+      for (const t of [0, 1, 2, 3]) {
+        const { paliers } = dailyTower(j, 3, t);
+        expect(paliers.map((p) => p.metres)).toEqual([8, 16, 24, 32, 40, 48]);
+        expect([...paliers.map((p) => p.effet)].sort()).toEqual([...EFFETS].sort());
+      }
+      expect(dailyTower(j, 2).paliers.map((p) => p.metres)).toEqual([10, 20, 30, 40, 50, 60]);
     }
   });
 

@@ -6,16 +6,18 @@ import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "./jeu.css";
 import { parisDay } from "@cdj/clock";
-import { empreinteVue, Partie, type Rapier, SCENARIO_ESSAI, type Scenario, scenarioPaliers, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
+import { type Contenu, empreinteVue, estimationGeometrique, medailleObtenue, medaillesDe, Partie, type Rapier, type Scenario, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
 import { brancherMusique } from "@cdj/musique/branche";
-import { el, formatDateCourte } from "@cdj/ui";
+import { el, formatDateCourte, nomMedaille } from "@cdj/ui";
 import { Entrees } from "./entrees";
 import { texteDebug } from "./debug";
 import { MemoireFantome } from "./fantomeLocal";
 import { monterFin } from "./fin";
-import { Hud } from "./hud";
-import { appliquerDocument, chargerLangue, langueCourante, t } from "./i18n";
-import { contenuDuJour } from "./jour";
+import { formatHauteur, Hud } from "./hud";
+import { appliquerDocument, chargerLangue, langueCourante, t, traducteurDuSocle } from "./i18n";
+import { chargerJour, type JourDuJeu } from "./jour";
+import { type EtatMedailles, MemoireMedaille, SANS_MEDAILLES, TYPE_MEDAILLE } from "./medailles";
+import { chargerPalette, poserPalette } from "./palette";
 import { monterPause } from "./pause";
 import { Scene3D } from "./scene";
 import { monterTune, reglagesDeDepart } from "./tune";
@@ -27,12 +29,14 @@ import { choisirJour, lireOptions, PRODUCTION } from "./urlOptions";
 // masque de bits par tick), la scène (Three.js orthographique), le HUD, la pause, l'écran de fin, les commandes (clavier et boutons) et le fantôme local. La boucle fait autant de
 // ticks que le temps écoulé en demande (au plus `TICKS_MAX` par image) et dessine entre le dernier tick et le suivant (`alpha`) : une image à 120 Hz ne saccade pas.
 // Pas de serveur (lot T4).
+//
+// Lot T3 — les médailles et les thèmes. Le thème du jour (ou `?theme=`) pose la palette de la scène avant qu'elle soit construite. Les médailles viennent du fichier du jour préparé (le bot de
+// l'auteur), de l'estimation géométrique (production sans fichier : provisoires) ou du calcul du bot dans un Web Worker (hors production sans fichier : « Médailles en calcul… », `botDemande.ts`,
+// jamais chargé en production). `?bot` : regarder le bot jouer — la file de ses commandes vient de la preuve du fichier, ou du worker pièce par pièce ; sans commande en attente la partie attend.
 
 const TICKS_MAX = 6;
 /** Niveau de la musique pendant une partie (1 dans la pause et à l'écran de fin). */
 const MUSIQUE_EN_PARTIE = 0.6;
-/** Le thème de Tower (un seul pour l'instant : `theme: "port"` du contenu du jour, `jours.ts`) : la scène de la musique. Un accueil viendra avec sa scène `menu`. */
-const THEME_MUSIQUE = "port";
 /** Le stockage de l'appareil, où la musique garde ses réglages communs à toute la plateforme (`cdj:musique`) ; refusé : sans mémoire. */
 const stockageMusique = (): Storage | null => {
   try {
@@ -57,6 +61,11 @@ interface PorteDeTest {
   contenu(): Scenario;
   /** La rediffusion (texte `base64url`) de la meilleure partie de la session, ou null. */
   rediffusion(): string | null;
+  /** Les médailles du jour (lot T3) et ce que le bot a rendu (Diamant en mm, ou null tant qu'il calcule). */
+  medailles(): EtatMedailles;
+  diamantBot(): number | null;
+  /** Le nombre de commandes que le bot a rendues (`?bot`). */
+  commandesBot(): number;
 }
 
 async function demarrer(): Promise<void> {
@@ -92,18 +101,35 @@ async function demarrer(): Promise<void> {
   let contenu: Scenario;
   let refuse = false;
   let enTete: () => string;
+  let jourLu: JourDuJeu | null = null;
   if (options.scenario === "essai") {
-    contenu = SCENARIO_ESSAI;
+    contenu = (await import("@cdj/tower-sim/scenarios/outils")).SCENARIO_ESSAI; // les scénarios d'essai sont des outils (fermés en production) : à la demande, hors du premier chargement (lot T3b)
     enTete = () => t("fin.eyebrow");
   } else if (options.scenario === "paliers") {
-    contenu = scenarioPaliers(options.effet);
+    contenu = (await import("@cdj/tower-sim/scenarios/outils")).scenarioPaliers(options.effet);
     enTete = () => t("fin.eyebrow.paliers");
   } else {
     const choix = choisirJour(options.seed, parisDay(Date.now()), PRODUCTION);
     refuse = choix.refuse;
-    contenu = await contenuDuJour(choix.jour);
+    jourLu = await chargerJour(choix.jour, options.tirage);
+    contenu = jourLu.contenu;
     enTete = () => t("fin.eyebrow.jour", { date: formatDateCourte(choix.jour, langueCourante()) });
   }
+  // Le thème : `?theme=` (hors production), sinon celui du jour ; la suite d'essai et les paliers gardent le port. La palette est posée avant la scène et le HUD.
+  poserPalette(await chargerPalette(options.theme ?? (contenu as Partial<Contenu>).theme ?? "port"));
+  // Les médailles (lot T3) : le fichier du jour préparé, sinon l'estimation (production, provisoire) ou le calcul du bot (hors production). Aucune pour la suite d'essai et les paliers.
+  let medailles: EtatMedailles = SANS_MEDAILLES;
+  if (jourLu?.medailles) medailles = { medailles: jourLu.medailles, provisoire: false, enCalcul: false };
+  else if (jourLu && PRODUCTION) medailles = { medailles: estimationGeometrique(jourLu.contenu), provisoire: true, enCalcul: false };
+  else if (jourLu) medailles = { medailles: null, provisoire: false, enCalcul: true };
+  const memoireMedaille = new MemoireMedaille();
+  /** `?bot` : les commandes du bot, un masque par tick ; `diamantBot` : sa hauteur, connue quand il a fini. */
+  const fileBot: number[] = [];
+  let indexBot = 0;
+  let diamantBot: number | null = null;
+  let botComplet = false;
+  let botAttend = false;
+
   const scene = new Scene3D(racine, contenu.plateformeDemi8);
   const memoire = new MemoireFantome();
   let fantomeVoulu = true;
@@ -112,6 +138,37 @@ async function demarrer(): Promise<void> {
   let manuel = false;
   let acc = 0;
   let dernier = performance.now();
+
+  // Hors production seulement : le bot de l'auteur. Sa preuve est dans le fichier du jour, ou son Web Worker la calcule (une minute) en rendant les pièces à mesure ; les deux modules sont
+  // chargés à la demande, et la constante de construction `import.meta.env.VITE_PRODUCTION` (écrite en clair ici pour que la construction retire tout ce bloc, et avec lui le worker, du jeu publié) le ferme en production.
+  if (import.meta.env.VITE_PRODUCTION !== "1" && jourLu) {
+    const lu = jourLu;
+    const sansMedailles = lu.medailles === null;
+    /** `&bot` : les commandes d'une preuve (celle du fichier, ou la partie retenue que rend le worker) rejoignent la file du bot. */
+    const jouer = (preuve: string): void => void import("./botDemande").then((m) => fileBot.push(...m.masquesDePreuve(preuve)));
+    if (options.bot && lu.preuve !== null) {
+      botComplet = true;
+      diamantBot = lu.medailles?.auteur ?? null;
+      jouer(lu.preuve);
+    }
+    if (sansMedailles || (options.bot && lu.preuve === null)) {
+      void import("./botDemande").then((m) =>
+        m.demanderBot(contenu, (msg) => {
+          // Lot T3b : le worker rend la partie RETENUE d'un coup (la variante qui donne le Diamant), pas le réglage ordinaire pièce par pièce : `&bot` la joue ensuite.
+          botComplet = true;
+          if (msg.genre === "fin") {
+            diamantBot = msg.hauteurMm;
+            if (options.bot) jouer(msg.preuve);
+            if (sansMedailles) medailles = { medailles: medaillesDe(msg.hauteurMm), provisoire: false, enCalcul: false };
+          } else if (sansMedailles) {
+            medailles = SANS_MEDAILLES;
+            hud.annoncerTexte(t("chargement.echec"));
+          }
+          fin.majMedailles(medailles);
+        }),
+      );
+    }
+  }
 
   const nomFantome = (): string => t(fantomeVoulu ? "fantome.meilleure" : "fantome.aucun");
   const poserFantome = (): void => scene.poserFantome(fantomeVoulu ? (memoire.get()?.pieces ?? null) : null);
@@ -146,7 +203,8 @@ async function demarrer(): Promise<void> {
   const musique = brancherMusique("tower", stockageMusique);
   const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie(), musique: () => musique.lecteur() });
   musique.baisser(MUSIQUE_EN_PARTIE);
-  musique.scene(`theme:${THEME_MUSIQUE}`);
+  // La scène de la musique : le thème de la partie (celui de la palette : `?theme=`, sinon celui du jour ; la suite d'essai et les paliers gardent le port). Un accueil viendra avec sa scène `menu`.
+  musique.scene(`theme:${options.theme ?? (contenu as Partial<Contenu>).theme ?? "port"}`);
   const debug = options.debug ? el("pre", { classe: "debug", attrs: { id: "debug" } }) : null;
   if (debug) racine.append(debug);
   if (options.tune) monterTune(racine, reglages, () => nouvellePartie());
@@ -165,10 +223,12 @@ async function demarrer(): Promise<void> {
     musique.baisser(MUSIQUE_EN_PARTIE);
     entrees.toutRelacher();
     acc = 0;
+    indexBot = 0;
     const v = partie.vue();
     scene.sync(v);
     synchroPaliers(v);
     hud.maj(v, nomFantome());
+    hud.majObjectif(medailles, v.hauteurMm);
     document.documentElement.dataset.phase = v.phase;
     dernier = performance.now();
   }
@@ -197,9 +257,10 @@ async function demarrer(): Promise<void> {
     const v = partie.vue();
     // La partie s'est enregistrée : si c'est la meilleure de la session, on garde SA REDIFFUSION, et la silhouette du fantôme est l'état final de cette partie rejouée. Tout cela est chargé
     // à la demande (`fantomeRejeu`) : les commandes sont copiées tout de suite, la partie est détruite dès qu'on rejoue.
+    if (!options.bot && medailles.medailles) memoireMedaille.proposer(medailleObtenue(r.hauteurMm, medailles.medailles));
     const commandes = [...partie.commandesJouees()];
     const enreg = { commandesJouees: () => commandes, scenario: partie.scenario, reglages: { ...partie.reglages } };
-    void import("./fantomeRejeu").then(async (m) => {
+    if (!options.bot) void import("./fantomeRejeu").then(async (m) => {
       const rediffusion = m.enregistrer(enreg);
       const f = m.fantomeDe(rediffusion, r);
       if (!memoire.proposer(f)) return;
@@ -208,7 +269,11 @@ async function demarrer(): Promise<void> {
     }).catch(() => undefined);
     hud.cache = true;
     musique.baisser(1);
-    fin.montrer(v, r, reglages.sim.vies);
+    const meilleure = memoireMedaille.get();
+    const lignes: string[] = [];
+    if (meilleure) lignes.push(t("fin.medailles.session", { medaille: nomMedaille(traducteurDuSocle(), TYPE_MEDAILLE[meilleure]) }));
+    if (options.bot && diamantBot !== null) lignes.push(t("bot.diamant", { hauteur: formatHauteur(diamantBot) }));
+    fin.montrer(v, r, reglages.sim.vies, medailles, lignes.length > 0 ? lignes.join(" · ") : null);
   }
 
   function tick(commandes: number): void {
@@ -232,6 +297,13 @@ async function demarrer(): Promise<void> {
   });
   window.addEventListener("resize", () => scene.redimensionner());
 
+  /** La commande du prochain tick : les touches du joueur, ou (`?bot`) la suivante du bot — −1 s'il n'a pas encore décidé. Hors de la phase de jeu (la stabilisation) aucune commande n'est lue. */
+  function commandeSuivante(): number {
+    if (!options.bot) return entrees.lire();
+    if (partie.etape !== "jeu") return 0;
+    return indexBot < fileBot.length ? fileBot[indexBot++]! : -1;
+  }
+
   let compteImages = 0;
   function image(maintenant: number): void {
     const dt = Math.min(0.1, (maintenant - dernier) / 1000);
@@ -240,14 +312,27 @@ async function demarrer(): Promise<void> {
       acc += dt * TICKS_PAR_SECONDE;
       let n = 0;
       while (acc >= 1 && n < TICKS_MAX) {
-        tick(entrees.lire());
+        const c = commandeSuivante();
+        if (c < 0) {
+          acc = 0; // le bot n'a pas encore décidé : la partie attend
+          break;
+        }
+        tick(c);
         acc -= 1;
         n++;
+      }
+      if (options.bot) {
+        const attend = indexBot >= fileBot.length && partie.etape === "jeu" && !botComplet;
+        if (attend !== botAttend) {
+          botAttend = attend;
+          hud.fixerLigne(attend ? t("bot.reflechit") : null);
+        }
       }
       if (n === TICKS_MAX) acc = 0;
     }
     const vue = partie.vue();
     hud.maj(vue, nomFantome());
+    hud.majObjectif(medailles, vue.hauteurMm);
     if (vue.palier) hud.placerPalier(scene.ecranY(vue.palier.metres), 100, window.innerHeight - 120);
     scene.dessiner(pause || manuel || partie.etape === "fini" ? 1 : acc, dt);
     if (debug && ++compteImages % 6 === 0) debug.textContent = texteDebug(vue);
@@ -263,8 +348,8 @@ async function demarrer(): Promise<void> {
       manuel: (oui = true) => {
         manuel = oui;
       },
-      avancer: (n, commandes = 0) => {
-        for (let i = 0; i < n && partie.etape !== "fini"; i++) tick(commandes);
+      avancer: (n, commandes) => {
+        for (let i = 0; i < n && partie.etape !== "fini"; i++) tick(commandes ?? (options.bot ? Math.max(0, commandeSuivante()) : 0));
         hud.maj(partie.vue(), nomFantome());
         scene.dessiner(1, 0);
       },
@@ -272,6 +357,9 @@ async function demarrer(): Promise<void> {
       fantome: () => (fantomeVoulu ? (memoire.get()?.pieces?.length ?? 0) : 0),
       contenu: () => contenu,
       rediffusion: () => memoire.get()?.code ?? null,
+      medailles: () => medailles,
+      diamantBot: () => diamantBot,
+      commandesBot: () => fileBot.length,
     };
     (window as unknown as { __tower: PorteDeTest }).__tower = porte;
   }
