@@ -49,7 +49,7 @@ const ATTENDUS: Record<string, number> = {
   "track.qualiteMesure": limite(PERF, /"la mesure de la règle de qualité, à la demande"\)\.toBeLessThan\(([\d_]+)\)/),
   "track.garage": limite(PERF, /"le Garage, à la demande \(JS\), compressé"\)\.toBeLessThan\(([\d_]+)\)/),
   "track.polices": limite(PERF, /toBeLessThanOrEqual\((\d+) \* 1024\)/) * 1024,
-  "jump.jsCss": limite(POIDS, /const AVANT = ([\d_]+) \+ ([\d_]+);/) + 20_000,
+  "jump.jsCss": limite(POIDS, /const AVANT = ([\d_]+) \+ ([\d_]+);/) + 23_000, // lot 30 : plafond relevé de +3 000 (PLAFOND_RELEVE)
   "jump.anglais": limite(POIDS, /"le catalogue anglais, chargé à la demande"\)\.toBeLessThan\(([\d_]+)\)/),
   "jump.polices": limite(POIDS, /toBeLessThanOrEqual\((\d+) \* 1024\)/) * 1024,
   "partage.image": POIDS_MAX,
@@ -62,7 +62,7 @@ describe("lot I6 : docs/plateforme/budgets.md, la référence des budgets", () =
   it("chaque budget du tableau est la limite que son test impose", () => {
     expect([...lignes.keys()].sort()).toEqual(Object.keys(ATTENDUS).sort());
     for (const [cle, attendu] of Object.entries(ATTENDUS)) expect(lignes.get(cle)?.budget, cle).toBe(attendu);
-    expect(lire(POIDS)).toContain("AVANT + 20_000");
+    expect(lire(POIDS)).toContain("AVANT + PLAFOND_RELEVE");
     expect(lire(POIDS_TOWER), "le test de Tower lit ses limites dans budgets.md").toContain("docs/plateforme/budgets.md");
     for (const cle of LIGNES_TOWER as string[]) expect(lire(POIDS_TOWER), `${cle} : lue par le test de Tower`).toContain(`"${cle}"`);
   });

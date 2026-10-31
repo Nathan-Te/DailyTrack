@@ -10,6 +10,8 @@ import { expect, test } from "@playwright/test";
 // de travail du générateur et la galerie) + 5 624 o de CSS (la feuille écrite dans `index.html`), soit **358 490 o**. (Le « 355 ko » du lot R4 comptait la même chose
 // avant les lots P3 et P4.)
 const AVANT = 352_866 + 5_624;
+// Lot 30 : plafond relevé de +3 000 o (20 000 → 23 000) par Nathan le 31/10/2026 : `main` mesurait déjà 379 481 o ici (`interrupteur-*` compté par ce spec, pas par `scripts/budgets.mjs`), le lot ajoute 722 o.
+const PLAFOND_RELEVE = 23_000;
 const dist = new URL("../dist/assets/", import.meta.url);
 const gz = (f: string) => gzipSync(readFileSync(new URL(f, dist))).length;
 
@@ -25,7 +27,7 @@ test("le premier chargement : JS + CSS ≤ avant + 20 ko compressés ; le catalo
   const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
   const styleDansLaPage = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]!).length, 0);
   test.info().annotations.push({ type: "mesure", description: `JS ${total} + CSS ${css + styleDansLaPage} = ${total + css + styleDansLaPage} o (avant : ${AVANT} o, +${total + css + styleDansLaPage - AVANT} o)` });
-  expect(total + css + styleDansLaPage, `JS ${total} + CSS ${css} : ${JSON.stringify(poids)}`).toBeLessThanOrEqual(AVANT + 20_000);
+  expect(total + css + styleDansLaPage, `JS ${total} + CSS ${css} : ${JSON.stringify(poids)}`).toBeLessThanOrEqual(AVANT + PLAFOND_RELEVE);
   const anglais = Object.entries(poids).find(([f]) => f.startsWith("catalogue.en-"))?.[1] ?? 0;
   expect(anglais, "le catalogue anglais existe, à part").toBeGreaterThan(1_000);
   expect(anglais, "le catalogue anglais, chargé à la demande").toBeLessThan(8_000);
