@@ -8,6 +8,8 @@ import { expect, test } from "@playwright/test";
 interface Porte {
   vue(): { phase: string; numero: number; vies: number; hauteurMm: number; tombees: number; pieces: { x: number; rot: number; etat: string }[]; active: number };
   manuel(oui?: boolean): void;
+  recommencer(): void;
+  commandesBot(): number;
   avancer(n: number, commandes?: number): void;
   fantome(): number;
   etatFantome(): { etat: string; meilleure: boolean; diamant: boolean };
@@ -141,9 +143,11 @@ test("?bot : le bot rejoue la preuve du jour et finit exactement sur son Diamant
   await page.route("**/jours/2026-11-06.json", (r) => r.fulfill({ contentType: "application/json", body: JOUR_PREPARE }));
   await jouerLeJour(page, "/?seed=2026-11-06&bot&tactile=0");
   await page.waitForFunction(() => window.__tower.vue().phase === "jeu");
+  await page.waitForFunction(() => window.__tower.commandesBot() > 0); // la preuve du bot arrive par un morceau chargé à la demande : le test avance seulement quand elle est là
   await page.evaluate(() => {
     const T = window.__tower;
     T.manuel(true);
+    T.recommencer();
     for (let i = 0; i < 60000 && T.vue().phase !== "fini"; i++) T.avancer(1);
   });
   expect(await page.evaluate(() => window.__tower.partie().resultat()!.hauteurMm)).toBe(DIAMANT);
