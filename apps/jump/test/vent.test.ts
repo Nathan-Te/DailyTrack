@@ -15,6 +15,7 @@ import {
   windBlows,
   type AttemptState,
   type Level,
+  variantUsable,
 } from "@cdj/jump-sim";
 import { Group } from "three";
 import { describe, expect, it } from "vitest";
@@ -261,6 +262,8 @@ describe("règle : jamais poussé vers un danger qu'on ne voit pas", () => {
       for (let v = 0; v < def.variants.length; v++) {
         const m = buildModuleDef(def, v);
         if (m.level.winds.length === 0) continue;
+        // Lot 30 : les variantes écartées du catalogue (sans solution qui tienne la règle des appuis) n'ont rien à vérifier.
+        if (!variantUsable(def.id, v)) continue;
         const sol = moduleSolutions(def.id, v);
         for (const entry of MODULE_ENTRIES) {
           const s = sol?.[entry];

@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { useLegacyCatalog } from "../../../packages/jump-sim/src/legacy";
 import { seedJumpDemo } from "../src/jumpHistory";
 import { openSqlite } from "../src/node-sqlite";
 
@@ -11,6 +12,9 @@ if (process.env.DB_PATH || process.env.NODE_ENV === "production" || process.env.
   console.error("jump:seed refuse de tourner avec DB_PATH, TURSO_DATABASE_URL ou NODE_ENV=production : il fabrique sa propre base de démonstration.");
   process.exit(1);
 }
+
+// Lot 30 : les jours figés d'avant la version 13 se jouent (joueurs fictifs) avec les solutions d'avant le maintien minimal du saut : outil seulement, le serveur ne les charge pas.
+useLegacyCatalog();
 
 const root = join(import.meta.dirname, "..", "..", "jump", "public");
 const frozen: Record<string, unknown> = {};

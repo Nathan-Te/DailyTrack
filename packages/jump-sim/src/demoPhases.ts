@@ -3,6 +3,7 @@ import { SINGLE_CLOCK_VERSION } from "./constants";
 import type { DailyLevel } from "./daily";
 import type { DemoReprise } from "./demo";
 import { idiv } from "./idiv";
+import { hasLegacyCatalog } from "./legacyRegistry";
 import { cycleMod, sectionPeriod, type Level } from "./level";
 import { buildModule, centerCol, isCleanRun, moduleSolutions, moduleStart, soloLevel } from "./modules";
 import { DEFAULT_JUMP_PARAMS, INPUT_RIGHT } from "./player";
@@ -47,6 +48,8 @@ function restartOf(daily: DailyLevel, k: number): Restart | null {
   const piece = daily.pieces[k]!;
   const level = daily.level;
   const legacy = level.minHold === 0;
+  // Lot 30 : un niveau d'avant la version 13 (jour figé) se reprend avec les solutions d'avant, que le jeu n'embarque pas (`src/legacy/`, chargé par les tests et les outils) : sans elles, le joueur fictif n'a pas de reprise.
+  if (legacy && !hasLegacyCatalog()) return null;
   const solutions = moduleSolutions(piece.id, piece.variant, legacy);
   if (!solutions) return null;
   const hard = daily.slowRoutes.some((r) => r.piece === k);

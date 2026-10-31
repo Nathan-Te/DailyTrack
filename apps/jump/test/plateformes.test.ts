@@ -1,3 +1,4 @@
+import { useLegacyCatalog } from "../../../packages/jump-sim/src/legacy";
 import { INPUT_RIGHT, TICK_RATE, UNITS_PER_TILE, buildModule, initialAttempt, parseLevel, platformAt, platformPos, stepAttempt, dailyLevel, DEFAULT_JUMP_PARAMS, type AttemptState } from "@cdj/jump-sim";
 import { Group, LineDashedMaterial, Mesh, MeshBasicMaterial } from "three";
 import { parseDay } from "@cdj/core";
@@ -169,6 +170,8 @@ describe("dans la galerie et l'outil de la variété", () => {
     // Un jour qui contient des morceaux à plateformes (le 28/10/2026 : va-et-vient et monte-charge, trois plateformes) ; un seul niveau est généré,
     // le test reste court même quand tous les fichiers de test tournent ensemble.
     // Lot 22 : le niveau g15 (référence v5, `dailyLevel(jour, thème, 5)`), le générateur en vigueur (g16) a d'autres morceaux ce jour-là.
+    // Lot 30 : un niveau d'une version d'avant la 13 se régénère avec le catalogue d'avant (hors du jeu).
+    useLegacyCatalog();
     const day = dailyLevel(parseDay("2026-10-28")!, null, 5);
     expect(day.level.platforms.length).toBeGreaterThan(0);
     const info = semaineDayOf(day);
