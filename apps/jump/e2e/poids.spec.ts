@@ -9,9 +9,9 @@ import { expect, test } from "@playwright/test";
 // « Avant » = `main` au début du lot I5 (4c57c67), mesuré de la même façon : 352 866 o de JS (les neuf fichiers de la construction, hors `verify.html`, dont le fil
 // de travail du générateur et la galerie) + 5 624 o de CSS (la feuille écrite dans `index.html`), soit **358 490 o**. (Le « 355 ko » du lot R4 comptait la même chose
 // avant les lots P3 et P4.)
-const AVANT = 352_866 + 5_624;
-// Lot 30 : plafond relevé de +3 000 o (20 000 → 23 000) par Nathan le 31/10/2026 : `main` mesurait déjà 379 481 o ici (`interrupteur-*` compté par ce spec, pas par `scripts/budgets.mjs`), le lot ajoute 722 o.
-const PLAFOND_RELEVE = 23_000;
+// Lot 30 : le CSS « avant » compte 3 000 o de plus (5 624 + 3 000) : plafond du premier chargement relevé de 378 490 à 381 490 o (décision de Nathan, 31/10/2026) ; `main` mesurait déjà 379 481 o ici
+// (ce spec compte `interrupteur-*`, pas `scripts/budgets.mjs`), le lot en ajoute 722. Ce n'est pas une nouvelle mesure de l'état d'avant : seul le plafond bouge.
+const AVANT = 352_866 + 8_624;
 const dist = new URL("../dist/assets/", import.meta.url);
 const gz = (f: string) => gzipSync(readFileSync(new URL(f, dist))).length;
 
@@ -27,7 +27,7 @@ test("le premier chargement : JS + CSS ≤ avant + 20 ko compressés ; le catalo
   const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
   const styleDansLaPage = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]!).length, 0);
   test.info().annotations.push({ type: "mesure", description: `JS ${total} + CSS ${css + styleDansLaPage} = ${total + css + styleDansLaPage} o (avant : ${AVANT} o, +${total + css + styleDansLaPage - AVANT} o)` });
-  expect(total + css + styleDansLaPage, `JS ${total} + CSS ${css} : ${JSON.stringify(poids)}`).toBeLessThanOrEqual(AVANT + PLAFOND_RELEVE);
+  expect(total + css + styleDansLaPage, `JS ${total} + CSS ${css} : ${JSON.stringify(poids)}`).toBeLessThanOrEqual(AVANT + 20_000);
   const anglais = Object.entries(poids).find(([f]) => f.startsWith("catalogue.en-"))?.[1] ?? 0;
   expect(anglais, "le catalogue anglais existe, à part").toBeGreaterThan(1_000);
   expect(anglais, "le catalogue anglais, chargé à la demande").toBeLessThan(8_000);

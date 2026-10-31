@@ -61,7 +61,7 @@ Morceaux concernés avant le lot : tous ceux dont le plus court appui valait 5 o
 | budget Jump (JS + CSS) | 377 503 o (`main`, `scripts/budgets.mjs`) | **378 225 o (+722, marge 3 265 o sur 381 490)** — pour que le gain vienne de ce lot, les anciennes suites de secours (v3 à v12) quittent le jeu avec l'ancien catalogue (`src/legacy/secours.ts`) |
 | même budget, mesuré par `apps/jump/e2e/poids.spec.ts` | 379 481 o (`main`, **déjà au-dessus du plafond de 991 o**) | 380 203 o (+722) |
 
-**Budget Jump relevé par Nathan (31/10/2026) : 378 490 → 381 490 o** (`apps/jump/e2e/poids.spec.ts`, `PLAFOND_RELEVE`). `poids.spec.ts` compte `interrupteur-*` (≈ 1 980 o) que `scripts/budgets.mjs` exclut : `main` mesurait déjà 379 481 o par le spec, ce lot 380 203 o (+722).
+**Budget Jump relevé par Nathan (31/10/2026) : 378 490 → 381 490 o** (`apps/jump/e2e/poids.spec.ts` : le CSS « avant » +3 000 o). `poids.spec.ts` compte `interrupteur-*` (≈ 1 980 o) que `scripts/budgets.mjs` exclut : `main` mesurait déjà 379 481 o par le spec, ce lot 380 203 o (+722).
 
 **Les temps de l'auteur ne bougent pas** (moyenne 29,53 → 29,46 s) : pas de recalibrage des médailles à proposer. Le niveau et la preuve du jour ne dépendent pas du micro-saut (`daily-golden-v13.json` identique avec ou sans) ; seuls les essais fictifs de la démo ont changé (`replay-golden-v13.json`, `public/demo/` régénérés).
 
