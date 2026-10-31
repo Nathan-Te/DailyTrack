@@ -59,6 +59,7 @@ describe(`smoke --lecture-seule (${TEST_DB})`, () => {
       "/api/jump/info",
       `/api/jump/day/${DATE}`,
       `/api/jump/day/${DATE}/board`,
+      "/api/tower/info", // lot TP : Tower, fermé (404 game_unavailable) tant qu'il est `off`
       `/api/jump/day/${DATE}/ghost/first`,
       `/api/jump/day/${DATE}/deaths`,
       `/api/jump/day/${DATE}/bundle`,
