@@ -177,7 +177,7 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   // `GET /api/annonce` seul : public, partagé 30 s par le cache de Hosting.
   const seule = await fetch("http://127.0.0.1:8812/api/annonce");
   expect(seule.headers.get("cache-control")).toBe("public, max-age=0, s-maxage=30");
-  expect((await seule.json()).annonce).toMatchObject({ ou: ["portail", "track", "jump"], ton: "information" });
+  expect((await seule.json()).annonce).toMatchObject({ ou: ["portail", "track", "jump", "tower"], ton: "information" });
 
   // --- Fermé, il ne revient pas au rechargement ; il revient quand le message change -----------------------------------------------------------------
   await bandeau.getByRole("button", { name: "Fermer le message" }).click();
