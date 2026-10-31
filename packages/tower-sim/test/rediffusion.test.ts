@@ -1,6 +1,7 @@
 import { parseDay, pushVarint, toBase64Url } from "@cdj/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  TOWER_GENERATOR_VERSION,
   type CodeRefusTower,
   COMMANDE,
   type Contenu,
@@ -111,7 +112,7 @@ describe("l'enregistrement et le rejeu", () => {
   it("l'en-tête dit le format, TOWER_SIM_VERSION, TOWER_GENERATOR_VERSION, le jour (ou le scénario) et les réglages", () => {
     const jouee = jouerScripte(contenuDuJour, { ...REGLAGES_DEFAUT, vies: 5 });
     const d = decoderRediffusion(encoderRediffusion(enregistrer(jouee)));
-    expect(d).toMatchObject({ sim: TOWER_SIM_VERSION, g: 1, contenu: { jour: JOUR }, reglages: { vitesseChute8: 20, facteurDescente: 4, hauteurApparition8: 56, vies: 5 } });
+    expect(d).toMatchObject({ sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION, contenu: { jour: JOUR }, reglages: { vitesseChute8: 20, facteurDescente: 4, hauteurApparition8: 56, vies: 5 } });
     jouee.dispose();
     const e = jouerScripte(SCENARIO_ESSAI);
     expect(decoderRediffusion(encoderRediffusion(enregistrer(e)))).toMatchObject({ sim: TOWER_SIM_VERSION, g: 0, contenu: { scenario: "essai" } });
@@ -158,7 +159,7 @@ describe("l'enregistrement et le rejeu", () => {
 });
 
 describe("les refus : un code d'erreur propre à Tower pour chaque cas", () => {
-  const bonne = encoderRediffusion({ sim: TOWER_SIM_VERSION, g: 1, contenu: { jour: JOUR }, reglages: { ...REGLAGES_DEFAUT }, plages: [{ masque: 0, ticks: 10 }] });
+  const bonne = encoderRediffusion({ sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION, contenu: { jour: JOUR }, reglages: { ...REGLAGES_DEFAUT }, plages: [{ masque: 0, ticks: 10 }] });
 
   it("version inconnue : une autre version de la simulation, un générateur inconnu, ou un générateur sur un scénario nommé", () => {
     expect(() => decoderRediffusion(bonne)).not.toThrow();
@@ -218,7 +219,7 @@ describe("les refus : un code d'erreur propre à Tower pour chaque cas", () => {
     const rec = enregistrer(jouee);
     expect(refus(() => rejouer(R, dailyTower(JOUR + 1), rec))).toBe("contenu_different");
     expect(refus(() => rejouer(R, SCENARIO_ESSAI, rec))).toBe("contenu_different");
-    expect(refus(() => rejouer(R, { ...contenuDuJour, g: 2 }, rec))).toBe("contenu_different");
+    expect(refus(() => rejouer(R, { ...contenuDuJour, g: TOWER_GENERATOR_VERSION + 1 }, rec))).toBe("contenu_different");
     const e = jouerScripte(SCENARIO_ESSAI);
     expect(refus(() => rejouer(R, contenuDuJour, enregistrer(e)))).toBe("contenu_different");
     expect(refus(() => rejouer(R, { ...SCENARIO_ESSAI, nom: "autre" }, enregistrer(e)))).toBe("contenu_different");

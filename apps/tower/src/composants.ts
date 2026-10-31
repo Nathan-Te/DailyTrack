@@ -1,6 +1,6 @@
 import { boites, type PieceKind } from "@cdj/tower-sim";
 import { el, svg } from "@cdj/ui";
-import { PIECE_COULEUR } from "./palette";
+import { paletteCourante } from "./palette";
 
 // Les petits morceaux d'interface propres à Tower (lot T1), tous construits par `el` / `svg` (jamais `innerHTML`) : les cœurs des vies, l'aperçu de la pièce suivante, la petite pile de
 // pièces à yeux de l'étiquette, le bouton principal de Tower (fond encre, texte menthe, Rubik Mono One, épaisseur coque : charte rév. 13, § 5).
@@ -43,7 +43,7 @@ export function apercuPiece(kind: PieceKind, largeur = 42, hauteur = 28): SVGSVG
   }
   const m = 0.12;
   const encre = bs.map((b) => svg("rect", { classe: "piece-encre", attrs: { x: (b.cx - b.hw) / 8 - m, y: -((b.cy + b.hh) / 8) - m, width: (2 * b.hw) / 8 + 2 * m, height: (2 * b.hh) / 8 + 2 * m } }));
-  const couleur = bs.map((b) => svg("rect", { attrs: { x: (b.cx - b.hw) / 8, y: -((b.cy + b.hh) / 8), width: (2 * b.hw) / 8 + 0.02, height: (2 * b.hh) / 8 + 0.02, fill: PIECE_COULEUR[kind] } }));
+  const couleur = bs.map((b) => svg("rect", { attrs: { x: (b.cx - b.hw) / 8, y: -((b.cy + b.hh) / 8), width: (2 * b.hw) / 8 + 0.02, height: (2 * b.hh) / 8 + 0.02, fill: paletteCourante().pieces[kind] } }));
   return svg(
     "svg",
     { classe: "apercu-piece", attrs: { viewBox: `${x0 - m * 2} ${-y1 - m * 2} ${x1 - x0 + m * 4} ${y1 - y0 + m * 4}`, width: largeur, height: hauteur, "aria-hidden": "true", preserveAspectRatio: "xMidYMid meet" } },
@@ -54,7 +54,7 @@ export function apercuPiece(kind: PieceKind, largeur = 42, hauteur = 28): SVGSVG
 
 /** La petite pile de pièces à yeux de l'étiquette (charte rév. 13 § 5), décorative : la tour de la maquette `tower-arrivee.html` en dessin fixe. */
 export function petiteTour(taille = 92): SVGSVGElement {
-  const piece = (kind: PieceKind, d: string) => svg("path", { attrs: { d, fill: PIECE_COULEUR[kind] }, classe: "tour-piece" });
+  const piece = (kind: PieceKind, d: string) => svg("path", { attrs: { d, fill: paletteCourante().pieces[kind] }, classe: "tour-piece" });
   const oeil = (cx: number, cy: number) => [svg("circle", { classe: "oeil", attrs: { cx, cy, r: 6 } }), svg("path", { classe: "oeil-pupille", attrs: { d: `M${cx - 5} ${cy - 1}h10` } })];
   return svg(
     "svg",

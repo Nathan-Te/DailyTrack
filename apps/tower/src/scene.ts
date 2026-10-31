@@ -1,7 +1,7 @@
 import { boites, type Effet, type PieceKind, type Taille, type VuePartie } from "@cdj/tower-sim";
 import { BufferAttribute, BufferGeometry, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, OrthographicCamera, PlaneGeometry, Scene, WebGLRenderer } from "three";
 import type { FantomePiece } from "./fantomeLocal";
-import { EFFET_HALO, PIECE_COULEUR, SCENE } from "./palette";
+import { EFFET_HALO, paletteCourante, SCENE } from "./palette";
 
 // La scène de Tower (lot T1) : Three.js en projection orthographique, comme Jump — des aplats, aucun dégradé, aucune texture. Les pièces sont des boîtes de couleur bordées d'encre, avec
 // des yeux fixes (les yeux qui paniquent viendront au lot T5) ; le ciel, la mer, la plateforme et ses nuages viennent de la maquette `tower-hud-paysage.html`. 1 unité = 1 mètre.
@@ -84,7 +84,7 @@ function construirePiece(kind: PieceKind, rot: number, taille: Taille = "normale
   const halo = fixe ? EFFET_HALO.figee : effet === "lierre" ? EFFET_HALO.lierre : effet === "figee" ? EFFET_HALO.figee : effet === "glissante" ? EFFET_HALO.glissante : null;
   if (halo) for (const b of bs) g.add(rect(halo, b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 2 * (BORD + HALO), (2 * b.hh) / 8 + 2 * (BORD + HALO), -0.01));
   for (const b of bs) g.add(rect(SCENE.encre, b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 2 * BORD, (2 * b.hh) / 8 + 2 * BORD, 0));
-  for (const b of bs) g.add(rect(PIECE_COULEUR[kind], b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 0.01, (2 * b.hh) / 8 + 0.01, 0.01));
+  for (const b of bs) g.add(rect(paletteCourante().pieces[kind], b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 0.01, (2 * b.hh) / 8 + 0.01, 0.01));
   // Les yeux, dans la plus grande boîte, droits dans le repère de la pièce.
   const grande = bs.reduce((a, b) => (Math.min(b.hw, b.hh) > Math.min(a.hw, a.hh) ? b : a));
   const ex = grande.cx / 8;
@@ -154,7 +154,7 @@ export class Scene3D {
     private readonly plateformeDemi8: number,
   ) {
     this.renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    this.renderer.setClearColor(new Color(SCENE.ciel));
+    this.renderer.setClearColor(new Color(paletteCourante().ciel));
     this.canvas = this.renderer.domElement;
     this.canvas.className = "tower__scene";
     this.canvas.setAttribute("aria-hidden", "true");
@@ -170,21 +170,16 @@ export class Scene3D {
   /** Le ciel (le fond), les nuages, la mer, la plateforme et son pilier. */
   private decor(): void {
     const s = this.scene;
-    // Des nuages en pixels, comme la maquette (90 × 14 px et 44 × 12 px à 20 px par mètre), semés à la main : aucun hasard.
-    for (let i = 0; i < 46; i++) {
-      const y = 4 + i * 8.5 + ((i * 7) % 5);
-      const x = ((i * 37) % 47) - 23;
-      s.add(rect(SCENE.nuage, x, y, 4.5, 0.7, -9));
-      s.add(rect(SCENE.nuage, x + 1, y + 0.6, 2.2, 0.6, -9));
-    }
-    s.add(rect(SCENE.mer, 0, NIVEAU_MER - 60, 400, 120, -8));
-    for (const [x, y, l] of [[-9, -2.2, 1.5], [-5, -2.7, 2], [3, -2.3, 1.3], [8, -2.8, 1.7], [-14, -3.1, 1.6], [13, -2.4, 1.4]] as const) s.add(rect(SCENE.vague, x, y, l, 0.1, -7));
+    const P = paletteCourante();
+    for (const [x, y, w, h] of P.formes) s.add(rect(P.decor, x, y, w, h, -9));
+    s.add(rect(P.sol, 0, NIVEAU_MER - 60, 400, 120, -8));
+    for (const [x, y, l] of [[-9, -2.2, 1.5], [-5, -2.7, 2], [3, -2.3, 1.3], [8, -2.8, 1.7], [-14, -3.1, 1.6], [13, -2.4, 1.4]] as const) s.add(rect(P.vague, x, y, l, 0.1, -7));
     const hw = this.plateformeDemi8 / 8;
     s.add(rect(SCENE.encre, 0, -1.2 - 0.6, 3 + 2 * BORD, 1.2 + 2 * BORD, -2));
-    s.add(rect(SCENE.pilier, 0, -1.2 - 0.6, 3, 1.2, -1.9));
+    s.add(rect(P.pilier, 0, -1.2 - 0.6, 3, 1.2, -1.9));
     s.add(rect(SCENE.encre, 0, -0.6, 2 * hw + 2 * BORD, 1.2 + 2 * BORD, -1));
-    s.add(rect(SCENE.plateforme, 0, -0.6, 2 * hw, 1.2, -0.9));
-    s.add(rect(SCENE.plateformeReflet, 0, -0.16, 2 * hw - 0.1, 0.25, -0.8));
+    s.add(rect(P.plateforme, 0, -0.6, 2 * hw, 1.2, -0.9));
+    s.add(rect(P.plateformeReflet, 0, -0.16, 2 * hw - 0.1, 0.25, -0.8));
   }
 
   /** Le trait pointillé du palier (100 m de large : plus que n'importe quel écran) et les huit traînées du vent, cachés tant qu'ils ne servent pas. */

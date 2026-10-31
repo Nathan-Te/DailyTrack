@@ -49,6 +49,8 @@ interface GoldenRediffusion {
 interface GoldenTower {
   versions: { sim: number; g: number };
   contenus: GoldenContenu[];
+  /** Lot T3 : les mêmes dates sous la version 1 du générateur (tout `port`), qui reste appelable et ne change jamais. */
+  anciennes?: { g: number; contenus: GoldenContenu[] }[];
   rediffusions: GoldenRediffusion[];
 }
 
@@ -77,6 +79,7 @@ export function choisirDates(): number[] {
 }
 
 import { chercher, perdreTout } from "./joueur";
+import { decoderRediffusion } from "../src";
 
 function enGolden(R: Rapier, nom: string, contenu: Scenario, code: string, id: GoldenRediffusion["contenu"]): GoldenRediffusion {
   const r = rejouerComplet(R, contenu, code);
@@ -96,6 +99,13 @@ if (!chercherParties && !ancien) throw new Error("pas de golden à recalculer : 
 
 const dates = choisirDates();
 const contenus: GoldenContenu[] = dates.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyTower(j)) }));
+// Les versions passées du générateur : leurs empreintes ne changent JAMAIS (une version passée gardée dans le golden est reprise telle quelle, sinon calculée une fois). Lot T3 : la version 1.
+const anciennes: NonNullable<GoldenTower["anciennes"]> = [...(ancien?.anciennes ?? [])];
+if (ancien && ancien.versions.g < TOWER_GENERATOR_VERSION && !anciennes.some((a) => a.g === ancien.versions.g)) anciennes.push({ g: ancien.versions.g, contenus: ancien.contenus });
+for (const a of anciennes) {
+  const recalcul = a.contenus.map((c) => empreinteContenu(dailyTower(parseDay(c.date)!, a.g)));
+  if (recalcul.some((e, i) => e !== a.contenus[i]!.empreinte)) throw new Error(`le générateur g${a.g} ne donne plus ses empreintes : une version passée ne change jamais`);
+}
 const contenuDe = (id: GoldenRediffusion["contenu"]): Scenario => ("scenario" in id ? SCENARIO_ESSAI : dailyTower(parseDay(id.date)!));
 
 const rediffusions: GoldenRediffusion[] = [];
@@ -113,13 +123,15 @@ for (const s of sources) {
     code = encoderRediffusion(enregistrer(p));
     p.dispose();
   } else {
-    code = ancien!.rediffusions.find((r) => r.nom === s.nom)!.code;
+    // La partie gardée : ses commandes ne changent pas ; seule la version du générateur écrite dans son en-tête suit le code (un thème n'a aucun effet physique : le résultat est le même).
+    const garde = decoderRediffusion(ancien!.rediffusions.find((r) => r.nom === s.nom)!.code);
+    code = encoderRediffusion({ ...garde, g: "jour" in garde.contenu ? TOWER_GENERATOR_VERSION : garde.g });
   }
   const g = enGolden(R, s.nom, contenu, code, s.id);
   console.log(`${s.nom} : ${(g.resultat as { hauteurMm: number }).hauteurMm} mm, ${g.paliers} palier(s), ${g.ticks} ticks, ${code.length} caractères`);
   rediffusions.push(g);
 }
 
-const golden: GoldenTower = { versions: { sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION }, contenus, rediffusions };
+const golden: GoldenTower = { versions: { sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION }, contenus, anciennes, rediffusions };
 writeFileSync(FICHIER, `${JSON.stringify(golden, null, 2)}\n`);
 console.log(`golden-tower.json écrit : ${contenus.length} contenus, ${rediffusions.length} rediffusions.`);

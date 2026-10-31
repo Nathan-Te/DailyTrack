@@ -20,7 +20,22 @@ export { empreinteContenu, empreinteVue } from "./empreinte";
 export { type Contenu, dailyTower, dateDuContenu, ErreurGenerateur, type ThemeTower, TOWER_GENERATOR_VERSION, VERSIONS_GENERATEUR } from "./generateur";
 export { aDoublon, aEcartMaximal, NB_PIECES, PLATEFORME_BORNES, PLATEFORME_DEMI8_CHOIX, suiteParSacs, tirerPaliers } from "./generateur/v1";
 export { DUREE_EFFET, EFFETS, type Effet, estBonus, PALIERS_METRES, type Palier, problemePaliers, type Taille } from "./paliers";
-export { figerJour, FORMAT_JOUR_FIGE, type JourFige, jsonJourFige, lireJourFige } from "./jours";
+export { figerJour, FORMAT_JOUR_FIGE, type JourFige, type JourLu, jsonJourFige, lireJour, lireJourFige } from "./jours";
+// Lot T3 — les médailles et les thèmes. Le bot (`@cdj/tower-sim/bot`) n'est pas réexporté ici : il se charge à la demande.
+export {
+  aireDuJour,
+  COEFFICIENT_GEOMETRIQUE_PCT,
+  estimationGeometrique,
+  type Medailles,
+  medailleObtenue,
+  medailleVisee,
+  medaillesDe,
+  MEDAILLES_VERSION,
+  type NomMedaille,
+  NOMS_MEDAILLES,
+  POURCENTAGES_MEDAILLES,
+} from "./medailles";
+export { REGLES_THEMES, THEMES_TOWER, themeDuJour } from "./themes";
 export { type EtatPiece, Partie, type PieceDepart, type Phase, type Resultat, type Scenario, type VuePartie, type VuePiece } from "./partie";
 // Le chargeur de Rapier (`@cdj/tower-sim/rapier`) n'est pas réexporté ici : le jeu le charge à la demande (un import dynamique), hors du premier chargement.
 export type { Rapier } from "./rapier";

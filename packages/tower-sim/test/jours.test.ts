@@ -1,7 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { formatDay, parseDay } from "@cdj/core";
-import { describe, expect, it } from "vitest";
-import { dailyTower, empreinteContenu, figerJour, FORMAT_JOUR_FIGE, type JourFige, jsonJourFige, lireJourFige, TOWER_GENERATOR_VERSION, TOWER_SIM_VERSION } from "../src";
+import { beforeAll, describe, expect, it } from "vitest";
+import { dailyTower, empreinteContenu, figerJour, FORMAT_JOUR_FIGE, type JourFige, jsonJourFige, lireJour, lireJourFige, type Rapier, TOWER_GENERATOR_VERSION, TOWER_SIM_VERSION } from "../src";
+import { verifierJourPrepare } from "../src/bot";
+import { chargerRapier } from "../src/rapier";
 
 // Lot T2 — les jours figés : le format d'un fichier, sa relecture (rien n'est cru sur parole) et le garde-fou — chaque fichier figé présent dans le dépôt se régénère à l'identique
 // avec sa version `g`. L'écriture (`npm run figer:tower`) est tools/figer.ts ; le branchement à « Mettre en production » est un lot de plateforme (T4).
@@ -59,28 +61,39 @@ describe("la relecture refuse ce qui n'est pas un jour de Tower valide", () => {
     refuse((f) => (f.contenu.plateformeDemi8 = 3), /plateforme/);
     refuse((f) => (f.contenu.plateformeDemi8 = 24.5), /plateforme/);
     refuse((f) => ((f.contenu as unknown as { ventSens: number }).ventSens = 0), /vent/);
-    refuse((f) => ((f.contenu as unknown as { theme: string }).theme = "nuit"), /thème/);
+    refuse((f) => ((f.contenu as unknown as { theme: string }).theme = "volcan"), /thème/);
     refuse((f) => ((f.contenu as unknown as { paliers: unknown }).paliers = [{ metres: 10, effet: "pluie" }]), /paliers/);
     refuse((f) => ((f.contenu as unknown as { paliers: unknown }).paliers = "x"), /paliers/);
     refuse((f) => ((f as unknown as { contenu: unknown }).contenu = undefined), /contenu/);
   });
 });
 
-describe("le garde-fou : chaque fichier figé présent se régénère à l'identique avec sa version g", () => {
-  const fichiers = existsSync(DOSSIER) ? readdirSync(DOSSIER).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)) : [];
-  it(`les ${fichiers.length} fichier(s) de apps/tower/public/jours/ se relisent et se régénèrent`, () => {
-    for (const nom of fichiers) {
-      const date = nom.slice(0, 10);
-      const jour = parseDay(date)!;
-      const brut = readFileSync(DOSSIER + nom, "utf8");
-      const lu = lireJourFige(JSON.parse(brut) as unknown, jour);
-      expect(typeof lu, `${nom} : ${String(lu)}`).toBe("object");
-      if (typeof lu === "string") continue;
-      expect(formatDay(lu.jour)).toBe(date);
-      expect(empreinteContenu(lu), `${nom} ne se régénère plus à l'identique avec g${lu.g} : un jour figé ne change jamais`).toBe(empreinteContenu(dailyTower(jour, lu.g)));
-      expect(brut, `${nom} n'est pas le texte canonique`).toBe(jsonJourFige(figerJour(jour, lu.g)));
-    }
-  });
+// Lot T3 : le garde-fou couvre aussi les jours PRÉPARÉS (médailles et preuve) — ceux de apps/tower/public/jours/ (aucun commité au lot T3) et deux de test/fixtures/jours/ (préparés par
+// `npm run preparer:tower`). Chaque fichier se relit, se régénère à l'identique avec sa version g, et SA PREUVE REJOUÉE DONNE EXACTEMENT LE DIAMANT ÉCRIT.
+const FIXTURES = new URL("./fixtures/jours/", import.meta.url).pathname;
+let R: Rapier;
+beforeAll(async () => {
+  R = await chargerRapier();
+});
+
+describe("le garde-fou : chaque fichier figé ou préparé présent se régénère à l'identique avec sa version g, et sa preuve redonne son Diamant", () => {
+  for (const dossier of [DOSSIER, FIXTURES]) {
+    const fichiers = existsSync(dossier) ? readdirSync(dossier).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)) : [];
+    it(`les ${fichiers.length} fichier(s) de ${dossier.includes("fixtures") ? "test/fixtures/jours/" : "apps/tower/public/jours/"} se relisent et se régénèrent`, () => {
+      for (const nom of fichiers) {
+        const date = nom.slice(0, 10);
+        const jour = parseDay(date)!;
+        const brut = readFileSync(dossier + nom, "utf8");
+        const lu = lireJour(JSON.parse(brut) as unknown, jour);
+        expect(typeof lu, `${nom} : ${String(lu)}`).toBe("object");
+        if (typeof lu === "string") continue;
+        expect(formatDay(lu.contenu.jour)).toBe(date);
+        expect(empreinteContenu(lu.contenu), `${nom} ne se régénère plus à l'identique avec g${lu.contenu.g} : un jour figé ne change jamais`).toBe(empreinteContenu(dailyTower(jour, lu.contenu.g)));
+        expect(brut, `${nom} n'est pas le texte canonique`).toBe(jsonJourFige({ ...figerJour(jour, lu.contenu.g), medailles: lu.medailles, ...(lu.preuve === null ? {} : { preuve: lu.preuve }) }));
+        if (lu.preuve !== null) expect(verifierJourPrepare(R, JSON.parse(brut) as unknown, jour), nom).toBeNull();
+      }
+    });
+  }
 
   it("le garde-fou voit un fichier modifié à la main", () => {
     const f = clone(figerJour(JOUR));
