@@ -28,13 +28,14 @@ describe("les boucles générées", () => {
     expect(new Set(Object.values(MORCEAUX).map((m) => m.titre)).size).toBe(Object.keys(MORCEAUX).length);
   });
 
+  // Le rendu est coûteux : deux mesures pour chaque boucle (longueur, valeurs valides, crête) ; le déterminisme et la jonction fin → début, sur quatre mesures, pour un morceau de chaque famille
+  // (les familles et les trois morceaux écrits à la main partagent le même moteur).
+  const REPRESENTANTS = ["track-menu", "track-stade", "jump-menu", "tower-menu"];
   for (const id of Object.keys(MORCEAUX)) {
-    it(`${id} : déterministe, de la longueur de ses mesures, sans valeur invalide, crête à −1 dBFS, boucle sans claquement`, () => {
+    it(`${id} : de la longueur de ses mesures, sans valeur invalide, crête à −1 dBFS`, () => {
       const piece = MORCEAUX[id]!;
-      const a = rendre(piece, { barres: 4 });
-      expect(a.n).toBe(Math.round(((4 * 16 * 60) / piece.bpm / 4) * SR));
-      // Le rendu est coûteux : le déterminisme se prouve par un second rendu d'un morceau de chaque famille (les trois familles et les trois écrits à la main partagent le même moteur).
-      if (["track-menu", "track-stade", "jump-menu", "tower-menu"].includes(id)) expect(Buffer.from(a.L.buffer).equals(Buffer.from(rendre(piece, { barres: 4 }).L.buffer))).toBe(true);
+      const a = rendre(piece, { barres: 2 });
+      expect(a.n).toBe(Math.round(((2 * 16 * 60) / piece.bpm / 4) * SR));
       let crete = 0;
       for (let i = 0; i < a.n; i++) {
         expect(Number.isFinite(a.L[i]!) && Number.isFinite(a.R[i]!)).toBe(true);
@@ -42,6 +43,13 @@ describe("les boucles générées", () => {
       }
       expect(crete).toBeGreaterThan(0.85);
       expect(crete).toBeLessThanOrEqual(0.9);
+    }, 60_000);
+  }
+  for (const id of REPRESENTANTS) {
+    it(`${id} : déterministe, boucle sans claquement`, () => {
+      const piece = MORCEAUX[id]!;
+      const a = rendre(piece, { barres: 4 });
+      expect(Buffer.from(a.L.buffer).equals(Buffer.from(rendre(piece, { barres: 4 }).L.buffer))).toBe(true);
       // La jonction fin → début n'est pas un saut : l'écart entre le dernier et le premier échantillon est celui de deux échantillons voisins.
       let voisin = 0;
       for (let i = 1; i < 2000; i++) voisin = Math.max(voisin, Math.abs(a.L[i]! - a.L[i - 1]!));

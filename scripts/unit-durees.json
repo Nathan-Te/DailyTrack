@@ -188,7 +188,7 @@
   "packages/jump-sim/test/voies.test.ts": 105,
   "packages/musique/test/branche.test.ts": 1,
   "packages/musique/test/description.test.ts": 1,
-  "packages/musique/test/generateur.test.ts": 50,
+  "packages/musique/test/generateur.test.ts": 30,
   "packages/musique/test/lecteur.test.ts": 1,
   "packages/musique/test/poids.test.ts": 1,
   "packages/musique/test/preparation.test.ts": 1,
