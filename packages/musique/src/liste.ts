@@ -10,9 +10,10 @@ function piste(p: unknown): PisteServie | null {
   const jeux = Array.isArray(o.jeux) ? o.jeux.filter((j): j is JeuMusique => (JEUX_MUSIQUE as readonly string[]).includes(j as string)) : [];
   if (typeof o.id !== "string" || typeof o.titre !== "string" || typeof o.artiste !== "string" || typeof o.credit !== "string") return null;
   if (typeof o.fichier !== "string" || !FICHIER.test(o.fichier) || jeux.length === 0) return null;
+  const scenes = Array.isArray(o.scenes) ? o.scenes.filter((s): s is string => typeof s === "string" && /^[a-z0-9]+(:[a-z0-9-]+)?$/.test(s)) : [];
   const nombre = (v: unknown, defaut: number) => (typeof v === "number" && Number.isFinite(v) ? v : defaut);
   const poids = nombre(o.poids, 1);
-  return { id: o.id, titre: o.titre, artiste: o.artiste, credit: o.credit, fichier: o.fichier, jeux, poids: poids > 0 ? poids : 1, volumeDb: nombre(o.volumeDb, 0), duree: nombre(o.duree, 0) };
+  return { id: o.id, titre: o.titre, artiste: o.artiste, credit: o.credit, fichier: o.fichier, jeux, scenes, sha: typeof o.sha === "string" ? o.sha : "", poids: poids > 0 ? poids : 1, volumeDb: nombre(o.volumeDb, 0), duree: nombre(o.duree, 0) };
 }
 
 /** La liste servie, ou `null` si ce n'en est pas une. Les morceaux illisibles sont écartés. */

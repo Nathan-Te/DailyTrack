@@ -6,6 +6,8 @@ import type { JeuMusique } from "./types";
 // musique (`baisser(0.4)` en course), la couper avec son propre son (`sourdine(true)`) et ouvrir les réglages (`reglages` : le lecteur, chargé s'il ne l'est pas encore).
 
 export interface Musique {
+  /** Où en est le jeu : `menu` (l'accueil) ou `theme:<code>` (un niveau de ce thème) ; `null` : nulle part en particulier. La musique suit en fondu (`docs/plateforme/musique.md`). */
+  scene(nom: string | null): void;
   /** Le niveau demandé par le jeu, de 0 à 1 (1 : pleine). Garde la dernière valeur jusqu'au chargement du lecteur. */
   baisser(niveau: number): void;
   /** Le son du jeu est coupé : la musique aussi. */
@@ -17,7 +19,7 @@ export interface Musique {
 const GESTES = ["pointerdown", "keydown", "touchend", "click"];
 
 export function brancherMusique(jeu: JeuMusique, stockage?: () => StockageMin | null): Musique {
-  const q = { baisse: 1, sourdine: false };
+  const q = { baisse: 1, sourdine: false, scene: null as string | null };
   let l: Lecteur | undefined;
   let p: Promise<Lecteur> | undefined;
   const charger = () => (p ??= import("./demarrage").then((m) => (l = m.demarrer(jeu, stockage?.() ?? null, q))));
@@ -29,6 +31,7 @@ export function brancherMusique(jeu: JeuMusique, stockage?: () => StockageMin | 
   return {
     baisser: (n) => ((q.baisse = n), l?.baisser(n)),
     sourdine: (s) => ((q.sourdine = s), l?.sourdine(s)),
+    scene: (n) => ((q.scene = n), l?.scene(n)),
     lecteur: charger,
   };
 }

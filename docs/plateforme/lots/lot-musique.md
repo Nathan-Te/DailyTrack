@@ -9,6 +9,12 @@ Branche `ccr-940b060e-42wk5d` (désignée par la session). Demande de Nathan (31
 - **Site** : `/musique/` (`scripts/site.mjs`, `copierMusique` : seul le dossier préparé, jamais les sources), cache sans fin des `.m4a` (`firebase.json`), `vite.config.ts` des trois jeux : le plugin `musiqueServie` sert `/musique/` en développement et en aperçu local.
 - **Mentions légales** (`/mentions-legales/`, `/legal/`) : rubrique « La musique » et crédits générés ; date du 31/10/2026.
 
+## Retour de Nathan (31/10/2026) : un morceau par menu et par thème
+- **Les scènes** (`scenes` d'un morceau : `menu`, `theme:<code>`) : chaque jeu annonce où il en est (`musique.scene(…)`) ; la musique choisit les morceaux de la scène, sinon ceux qui passent partout, sinon le silence, et passe en fondu (2 s), en gardant le morceau en cours s'il y passe aussi. **Extensible** : un thème ou un jeu de plus = une ligne de `packages/musique/src/scenes.ts` (le test de chaque jeu échoue sinon). Track : 8 thèmes, Jump : 5, Tower : `port`. Détail : `docs/plateforme/musique.md`.
+- **Sources hors du dépôt** (les boucles Ovani pèsent 25 Mo) : `musique/pistes/*` est ignoré par git, seul le morceau préparé (AAC 96 kbit/s, ≈ 1,4 Mo pour 2 minutes) est commité ; `liste.json` garde l'empreinte de chaque source ; la CI vérifie sans les sources.
+- **Budget de Track relevé de +1 000 o** (décision de Nathan) : le branchement avec les scènes pèse +355 o (Jump +353, Tower +356 : toujours sous 0,5 ko) ; Track a 971 o de marge.
+- **Prochaine étape** : un premier lot de boucles générées par le code (menu de Track, thème Nuit de Track, thème Forêt de Jump), à écouter à côté d'un morceau Ovani.
+
 ## Fichiers touchés dans les jeux (rien d'autre n'a bougé)
 - **Track** : `apps/web/src/main.ts` (import, `brancherMusique`, `MUSIQUE_EN_COURSE`, `musique.baisser` à côté de `gameAudio.update`, `musique.sourdine` dans `syncSoundButton`, `musique` dans l'hôte des réglages), `apps/web/src/settingsUi.ts` (le bloc dans l'onglet Son), `vite.config.ts`, `package.json`, `tsconfig.json`.
 - **Jump** : `apps/jump/src/main.ts` (import, `brancherMusique`, `MUSIQUE_EN_NIVEAU`, `baisser` dans `syncPause`, `sourdine` au démarrage et dans `applySettings`), `apps/jump/src/settingsUi.ts` (le bloc dans la section Son), `vite.config.ts`, `package.json`, `tsconfig.json`.

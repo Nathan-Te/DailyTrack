@@ -65,6 +65,8 @@ export interface InfoPreparee {
   fichier: string;
   /** Durée en secondes. */
   duree: number;
+  /** L'empreinte (SHA-256) du fichier source : les sources ne sont pas dans le dépôt, la liste la garde. */
+  sha: string;
 }
 
 /** La liste servie au jeu, à partir de la description (vérifiée) et de ce que la préparation a rendu pour chaque morceau (par id). */
@@ -79,6 +81,8 @@ export function construireListe(desc: Description, infos: ReadonlyMap<string, In
       credit: creditDe(p),
       fichier: info.fichier,
       jeux: resoudreJeux(p.jeux),
+      scenes: [...(p.scenes ?? [])],
+      sha: info.sha,
       poids: p.poids ?? 1,
       volumeDb: p.volumeDb ?? 0,
       duree: Math.round(info.duree * 10) / 10,
@@ -114,16 +118,30 @@ export function injecterCredits(html: string, bloc: string): string {
   return html.slice(0, a) + bloc + html.slice(b + MARQUE_FIN.length);
 }
 
-/** Dit ce qui n'est pas à jour entre la description, les fichiers préparés et la liste servie (vide : tout est à jour). `lireSource` rend l'empreinte du fichier source. */
-export function ecartsAvecLaListe(desc: Description, listeActuelle: ListeServie | null, empreinteDe: (fichier: string) => string, servis: ReadonlySet<string>): string[] {
+/**
+ * Dit ce qui n'est pas à jour entre la description, les fichiers préparés et la liste servie (vide : tout est à jour). `shaDe` rend l'empreinte de la source d'un morceau : celle du
+ * fichier s'il est là, sinon celle que la liste a gardée (les sources ne sont pas commitées : la CI ne les a pas).
+ */
+export function ecartsAvecLaListe(desc: Description, listeActuelle: ListeServie | null, shaDe: (p: Description["pistes"][number]) => string | null, servis: ReadonlySet<string>): string[] {
   const ecarts: string[] = [];
   const parId = new Map((listeActuelle?.pistes ?? []).map((p) => [p.id, p] as const));
   for (const p of desc.pistes) {
-    const attendu = nomServi(p.id, empreinteDe(p.fichier));
     const actuel = parId.get(p.id);
-    if (!actuel) ecarts.push(`« ${p.id} » n'est pas dans la liste servie`);
-    else if (actuel.fichier !== attendu) ecarts.push(`« ${p.id} » : la source ou la préparation a changé depuis la dernière préparation`);
+    const sha = shaDe(p);
+    if (!actuel) {
+      ecarts.push(`« ${p.id} » n'est pas dans la liste servie`);
+      continue;
+    }
+    if (!sha) {
+      ecarts.push(`« ${p.id} » : ni la source ni son empreinte ne sont connues`);
+      continue;
+    }
+    const attendu = nomServi(p.id, sha);
+    if (actuel.fichier !== attendu) ecarts.push(`« ${p.id} » : la source ou la préparation a changé depuis la dernière préparation`);
     if (!servis.has(attendu)) ecarts.push(`« ${p.id} » : le fichier préparé ${attendu} manque`);
+    const voulu = construireListe({ pistes: [p] }, new Map([[p.id, { fichier: actuel.fichier, duree: actuel.duree, sha }]])).pistes[0]!;
+    const cles = ["titre", "artiste", "credit", "jeux", "scenes", "poids", "volumeDb", "sha"] as const;
+    if (cles.some((k) => JSON.stringify(voulu[k]) !== JSON.stringify(actuel[k]))) ecarts.push(`« ${p.id} » : sa description (titre, jeux, scènes, licence…) n'est plus celle de la liste : relance \`npm run musique\``);
   }
   for (const id of parId.keys()) if (!desc.pistes.some((p) => p.id === id)) ecarts.push(`« ${id} » est dans la liste servie mais plus dans musiques.json`);
   return ecarts;

@@ -515,6 +515,11 @@ const gameAudio = new GameAudio(() => syncSoundButton());
 const musique = brancherMusique("track", gameStorage);
 /** Niveau de la musique pendant une course (1 aux menus, à l'accueil, en pause) : la musique passe sous le moteur et les effets. */
 const MUSIQUE_EN_COURSE = 0.35;
+/** Le thème du circuit en cours (le Salon en change) ; un scénario d'essai n'en a pas. */
+let themeMusique: string | null = salon?.circuit.theme ?? daily?.theme ?? null;
+/** La scène de la musique : l'accueil (`menu`), sinon le thème du circuit (`theme:<code>`) ; un morceau est réservé à une scène dans `musique/musiques.json`. */
+const syncMusique = () => musique.scene(homeOpen ? "menu" : themeMusique && `theme:${themeMusique}`);
+syncMusique();
 gameAudio.setAmbience(track ? ambienceFor(salon?.circuit.palette ?? daily?.palette ?? paletteEssai) : null); // ambiance du thème (lot 23)
 const wheelDroop: [number, number, number, number] = [0, 0, 0, 0];
 const WHEEL_F = [AXLE_FRONT, AXLE_FRONT, -AXLE_REAR, -AXLE_REAR];
@@ -1028,6 +1033,7 @@ function leaveToHome() {
   showPauseConfirm(false);
   startAttempt(); // la voiture revient au départ, le décompte attendra le bouton « Circuit du jour »
   homeOpen = true;
+  syncMusique();
   garage.relire(); // le choix de voiture (Garage) est relu à l'accueil
   syncSceneQuality();
   homeUi.open();
@@ -1036,6 +1042,7 @@ function leaveToHome() {
 
 function playDaily() {
   homeOpen = false;
+  syncMusique();
   syncSceneQuality();
   homeUi.close();
   startAttempt();
@@ -2791,6 +2798,8 @@ function swapSalonCircuit(c: LoadedSalonCircuit) {
   suivreDecor(c.palette);
   track = c.track;
   gameAudio.setAmbience(ambienceFor(c.palette));
+  themeMusique = c.theme;
+  syncMusique();
   $("meta").textContent = salon!.title();
   best = null;
   ghostSource = null;

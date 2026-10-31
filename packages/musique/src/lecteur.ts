@@ -4,6 +4,7 @@ import {
   CLE_REPRISE,
   FONDU_ENTREE_S,
   FONDU_S,
+  FONDU_SCENE_S,
   FONDU_SAUT_S,
   courbeFondu,
   departDeLaPage,
@@ -14,6 +15,7 @@ import {
   lireReglages,
   lireReprise,
   niveauFinal,
+  pistesDeLaScene,
 } from "./logique";
 import type { JeuMusique, PisteServie, Reglages } from "./types";
 
@@ -107,6 +109,9 @@ export interface EtatLecteur {
   baisse: number;
   sourdine: boolean;
   enPause: boolean;
+  /** La scène annoncée par le jeu. */
+  scene: string | null;
+  /** Les morceaux de la scène (ceux qui peuvent jouer maintenant). */
   pistes: string[];
 }
 
@@ -128,6 +133,8 @@ export interface Lecteur {
   reglages(): Reglages;
   regler(patch: Partial<Reglages>): void;
   baisser(niveau: number): void;
+  /** La scène du jeu (`menu`, `theme:nuit`…) ; `null` : aucune (tous les morceaux du jeu). Un changement fait passer, en fondu, à un morceau de la nouvelle scène (s'il y en a un) ; le morceau en cours est gardé s'il y passe aussi. */
+  scene(nom: string | null): void;
   /** Il y a quelque chose à écouter dans ce jeu : la liste est chargée, elle n'est pas vide et le contexte existe. */
   actif(): boolean;
   sourdine(coupe: boolean): void;
@@ -143,7 +150,9 @@ export function creerLecteur(d: Dependances): Lecteur {
   let reglages = lireReglages(lire(d.stockage, CLE_REGLAGES));
   let baisse = 1;
   let sourdine = false;
-  let pistes: PisteServie[] = [];
+  /** Tous les morceaux du jeu ; `candidats()` en tire ceux de la scène. */
+  let toutes: PisteServie[] = [];
+  let scene: string | null = null;
   let ctx: ContexteAudio | null = null;
   let bus: GainAudio | null = null;
   let voix: Voix[] = [];
@@ -160,6 +169,7 @@ export function creerLecteur(d: Dependances): Lecteur {
 
   const prevenir = () => abonnes.forEach((f) => f());
   const voixActive = (): Voix | undefined => voix[active];
+  const candidats = (): PisteServie[] => pistesDeLaScene(toutes, scene);
 
   function lire(s: StockageMin | null, cle: string): string | null {
     try {
@@ -216,7 +226,7 @@ export function creerLecteur(d: Dependances): Lecteur {
   function enchainer(duree: number): void {
     if (fondu || !ctx || arrete) return;
     const courant = voixActive();
-    const suivant = choisirSuivante(pistes, courant?.piste?.id ?? precedent, d.hasard);
+    const suivant = choisirSuivante(candidats(), courant?.piste?.id ?? precedent, d.hasard);
     if (!suivant) return;
     fondu = true;
     const id = ++fonduId;
@@ -241,6 +251,39 @@ export function creerLecteur(d: Dependances): Lecteur {
     });
     noterReprise(true);
     prevenir();
+  }
+
+  /** Le morceau en cours sort en fondu et rien ne le remplace (la scène n'a aucun morceau). */
+  function faireSilence(duree: number): void {
+    const courant = voixActive();
+    if (!ctx || !courant?.piste) return;
+    fonduId++;
+    fondu = false;
+    precedent = courant.piste.id;
+    const t = ctx.currentTime;
+    courant.gain.gain.cancelScheduledValues(t);
+    courant.gain.gain.setValueCurveAtTime(courbeFondu().sortie, t, duree);
+    const g = courant.genre;
+    d.planifier(duree * 1000 + 50, () => {
+      if (courant.genre === g) {
+        courant.el.pause();
+        courant.piste = null;
+        prevenir();
+      }
+    });
+    prevenir();
+  }
+
+  /** La scène a changé : on garde le morceau en cours s'il y passe aussi, sinon on passe en fondu à un morceau de la scène (ou au silence). */
+  function appliquerScene(): void {
+    if (!ctx || arrete || enPause || toutes.length === 0) return;
+    const c = candidats();
+    const v = voixActive();
+    if (v?.piste && c.some((p) => p.id === v.piste!.id)) return;
+    if (c.length === 0) return faireSilence(FONDU_SCENE_S);
+    fondu = false;
+    fonduId++;
+    enchainer(FONDU_SCENE_S);
   }
 
   /** `timeupdate` de la voix active : la fin approche (fondu) ; la position est notée. */
@@ -286,6 +329,7 @@ export function creerLecteur(d: Dependances): Lecteur {
       // Le fondu qui était en cours quand l'onglet est parti n'a plus de sens : l'autre voix reste en pause, sortie.
       fondu = false;
       fonduId++;
+      appliquerScene();
     }
     prevenir();
   }
@@ -298,8 +342,8 @@ export function creerLecteur(d: Dependances): Lecteur {
       liste = null;
     }
     if (arrete || !liste) return;
-    pistes = pistesDuJeu(liste, d.jeu);
-    if (pistes.length === 0) return;
+    toutes = pistesDuJeu(liste, d.jeu);
+    if (toutes.length === 0) return;
     const c = d.creerContexte();
     if (!c) return;
     ctx = c;
@@ -333,7 +377,7 @@ export function creerLecteur(d: Dependances): Lecteur {
     appliquerNiveau();
     for (const g of GESTES) retraits.push(d.ecouter("fenetre", g, reveiller));
     desabonner.push(d.ecouter("document", "visibilitychange", arrierePlan), d.ecouter("fenetre", "pagehide", () => noterReprise(true)));
-    const choix = departDeLaPage(pistes, lireReprise(lire(d.session, CLE_REPRISE)), d.maintenant(), d.hasard);
+    const choix = departDeLaPage(candidats(), lireReprise(lire(d.session, CLE_REPRISE)), d.maintenant(), d.hasard);
     if (choix) {
       const v = lancer(choix.piste, choix.depart, FONDU_ENTREE_S);
       if (v) active = voix.indexOf(v);
@@ -348,7 +392,7 @@ export function creerLecteur(d: Dependances): Lecteur {
       const v = voixActive();
       return {
         jeu: d.jeu,
-        active: pistes.length > 0 && ctx !== null,
+        active: toutes.length > 0 && ctx !== null,
         joue: ctx?.state === "running" && !!v && !v.el.paused,
         enCours: v?.piste ? { id: v.piste.id, titre: v.piste.titre, artiste: v.piste.artiste, credit: v.piste.credit } : null,
         precedent,
@@ -356,7 +400,8 @@ export function creerLecteur(d: Dependances): Lecteur {
         baisse,
         sourdine,
         enPause,
-        pistes: pistes.map((p) => p.id),
+        scene,
+        pistes: candidats().map((p) => p.id),
       };
     },
     enCours: () => voixActive()?.piste ?? null,
@@ -374,7 +419,12 @@ export function creerLecteur(d: Dependances): Lecteur {
       baisse = b;
       appliquerNiveau();
     },
-    actif: () => pistes.length > 0 && ctx !== null,
+    actif: () => toutes.length > 0 && ctx !== null,
+    scene(nom) {
+      if (nom === scene) return;
+      scene = nom;
+      appliquerScene();
+    },
     sourdine(coupe) {
       if (coupe === sourdine) return;
       sourdine = coupe;

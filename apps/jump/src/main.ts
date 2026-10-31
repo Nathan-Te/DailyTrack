@@ -2732,6 +2732,7 @@ function syncPause(): void {
   controls.setTouch(0, false);
   audio.setActive(!blocked && !panelOpen);
   musique.baisser(blocked || panelOpen ? 1 : MUSIQUE_EN_NIVEAU);
+  musique.scene(homeOpen() ? "menu" : `theme:${theme.name}`); // la musique de l'accueil, ou celle du thème du niveau
   stepper.reset();
   syncMessage();
 }

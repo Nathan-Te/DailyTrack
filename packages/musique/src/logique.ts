@@ -9,6 +9,8 @@ export const FONDU_S = 3;
 export const FONDU_SAUT_S = 1.2;
 /** Durée d'un fondu d'entrée au démarrage ou après un changement de page (secondes). */
 export const FONDU_ENTREE_S = 1.5;
+/** Durée du fondu quand le jeu change de scène (de l'accueil à un niveau, d'un thème à l'autre). */
+export const FONDU_SCENE_S = 2;
 /** Niveau de base : la musique passe sous les moteurs et les effets des jeux ; le volume du joueur s'y applique. */
 export const NIVEAU_DE_BASE = 0.5;
 /** Une reprise plus vieille que ça (ms) n'en est pas une : on repart d'un morceau tiré au sort. */
@@ -20,6 +22,16 @@ export const REGLAGES_DEFAUT: Readonly<Reglages> = { volume: VOLUME_PAR_DEFAUT, 
 export const CLE_REGLAGES = "cdj:musique";
 /** La reprise est gardée dans le stockage de **l'onglet** (jamais dans celui de l'appareil) : elle ne vaut que pour la navigation en cours. */
 export const CLE_REPRISE = "cdj:musique:reprise";
+
+/**
+ * Les morceaux d'une scène (le jeu a déjà été choisi) : ceux qui la nomment ; sinon ceux qui passent partout (aucune scène) ; sinon **aucun** (le silence : un jeu qui n'a rien pour son
+ * menu ne joue pas la musique d'un niveau). **Pas de scène** (le jeu n'en annonce pas : un scénario d'essai) : tous les morceaux du jeu.
+ */
+export function pistesDeLaScene(pistes: readonly PisteServie[], scene: string | null): PisteServie[] {
+  if (scene === null) return [...pistes];
+  const exactes = pistes.filter((p) => p.scenes.includes(scene));
+  return exactes.length > 0 ? exactes : pistes.filter((p) => p.scenes.length === 0);
+}
 
 /**
  * Le morceau suivant : un tirage pondéré (`poids`) parmi les morceaux **sauf le précédent**, donc jamais deux fois le même d'affilée. Un seul morceau : il revient.

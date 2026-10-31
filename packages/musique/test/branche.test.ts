@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Le branchement d'un jeu : il n'écoute que le premier geste ; rien n'est chargé ni demandé avant. Le lecteur (`demarrage.ts`) est remplacé par un faux qui compte.
-const demarrer = vi.fn((_jeu: string, _stockage: unknown, init: { baisse: number; sourdine: boolean }) => ({ baisser: vi.fn(), sourdine: vi.fn(), init }));
+const demarrer = vi.fn((_jeu: string, _stockage: unknown, init: { baisse: number; sourdine: boolean; scene: string | null }) => ({ baisser: vi.fn(), sourdine: vi.fn(), scene: vi.fn(), init }));
 vi.mock("../src/demarrage", () => ({ demarrer }));
 
 const ecouteurs = new Map<string, (() => void)[]>();
@@ -39,12 +39,15 @@ describe("brancherMusique : la musique ne démarre qu'au premier geste", () => {
     const m = brancherMusique("track");
     m.baisser(0.4);
     m.sourdine(true);
+    m.scene("theme:nuit");
     geste("pointerdown");
     await vi.waitFor(() => expect(demarrer).toHaveBeenCalled());
-    expect(demarrer.mock.calls[0]![2]).toEqual({ baisse: 0.4, sourdine: true });
+    expect(demarrer.mock.calls[0]![2]).toEqual({ baisse: 0.4, sourdine: true, scene: "theme:nuit" });
     const lecteur = demarrer.mock.results[0]!.value as { baisser: ReturnType<typeof vi.fn> };
     m.baisser(1);
     expect(lecteur.baisser).toHaveBeenCalledWith(1);
+    m.scene("menu");
+    expect((lecteur as unknown as { scene: ReturnType<typeof vi.fn> }).scene).toHaveBeenCalledWith("menu");
   });
 
   it("ouvrir les réglages (`lecteur()`) charge le lecteur s'il ne l'est pas, sans en créer un second", async () => {

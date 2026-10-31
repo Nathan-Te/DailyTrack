@@ -46,7 +46,7 @@ describe("la préparation des morceaux (npm run musique)", () => {
 
   const desc = verifierDescription({ pistes: [{ id: "un", titre: "Un", artiste: "A", fichier: "un.mp3", jeux: ["tous"], licence: "mienne", poids: 2, volumeDb: -1.5 }, { id: "deux", titre: "Deux", artiste: "B", fichier: "deux.mp3", jeux: ["portail"], licence: "CC-BY-4.0", credit: "Deux par B (CC BY 4.0)", source: "https://exemple.org" }] }, { fichierExiste: () => true });
   it("la liste servie : jeux résolus, crédit toujours écrit, poids et correction repris, relisible par le jeu", () => {
-    const infos = new Map([["un", { fichier: "un-11111111.m4a", duree: 100.04 }], ["deux", { fichier: "deux-22222222.m4a", duree: 50 }]]);
+    const infos = new Map([["un", { fichier: "un-11111111.m4a", duree: 100.04, sha: "a".repeat(64) }], ["deux", { fichier: "deux-22222222.m4a", duree: 50, sha: "b".repeat(64) }]]);
     const l = construireListe({ pistes: desc.pistes }, infos);
     expect(l.pistes[0]).toMatchObject({ jeux: ["track", "jump", "tower"], credit: "« Un » — A", poids: 2, volumeDb: -1.5, duree: 100 });
     expect(l.pistes[1]).toMatchObject({ jeux: ["portail"], credit: "Deux par B (CC BY 4.0)" });
@@ -54,21 +54,27 @@ describe("la préparation des morceaux (npm run musique)", () => {
     expect(() => construireListe({ pistes: desc.pistes }, new Map())).toThrow();
   });
 
-  it("à jour ou pas : la source changée, un fichier préparé qui manque, un morceau retiré sont dits", () => {
-    const infos = new Map([["un", { fichier: nomServi("un", "E1"), duree: 1 }], ["deux", { fichier: nomServi("deux", "E2"), duree: 1 }]]);
+  it("à jour ou pas : la source changée, un fichier préparé qui manque, un morceau retiré, une description changée sont dits", () => {
+    const infos = new Map([["un", { fichier: nomServi("un", "E1"), duree: 1, sha: "E1" }], ["deux", { fichier: nomServi("deux", "E2"), duree: 1, sha: "E2" }]]);
     const l = construireListe({ pistes: desc.pistes }, infos);
-    const e = (f: string) => (f === "un.mp3" ? "E1" : "E2");
+    const e = (p: { id: string }) => (p.id === "un" ? "E1" : "E2");
     const tous = new Set<string>([...infos.values()].map((i) => i.fichier));
     expect(ecartsAvecLaListe({ pistes: desc.pistes }, l, e, tous)).toEqual([]);
     expect(ecartsAvecLaListe({ pistes: desc.pistes }, l, () => "autre", tous).filter((x) => x.includes("a changé")).length).toBe(2);
     expect(ecartsAvecLaListe({ pistes: desc.pistes }, l, e, new Set()).filter((x) => x.includes("manque")).length).toBe(2);
     expect(ecartsAvecLaListe({ pistes: desc.pistes.slice(0, 1) }, l, e, tous).join()).toContain("plus dans musiques.json");
     expect(ecartsAvecLaListe({ pistes: desc.pistes }, null, e, tous).length).toBeGreaterThan(0);
+    // Une scène ajoutée dans musiques.json sans relancer la commande : la liste n'est plus à jour.
+    const avecScene = { pistes: [{ ...desc.pistes[0]!, scenes: ["menu"] }, desc.pistes[1]!] };
+    expect(ecartsAvecLaListe(avecScene, l, e, tous).join()).toContain("sa description");
+    // Sans la source (elle n'est pas dans le dépôt) : l'empreinte gardée par la liste suffit ; ni l'une ni l'autre : dit.
+    expect(ecartsAvecLaListe({ pistes: desc.pistes }, l, (p) => l.pistes.find((x) => x.id === p.id)!.sha, tous)).toEqual([]);
+    expect(ecartsAvecLaListe({ pistes: desc.pistes }, l, () => null, tous).join()).toContain("ni la source ni son empreinte");
   });
 });
 
 describe("les crédits des mentions légales", () => {
-  const l = construireListe({ pistes: verifierDescription({ pistes: [{ id: "un", titre: "Un <b>", artiste: "A & B", fichier: "un.mp3", jeux: ["track"], licence: "mienne" }] }, { fichierExiste: () => true }).pistes }, new Map([["un", { fichier: "un-1.m4a", duree: 1 }]]));
+  const l = construireListe({ pistes: verifierDescription({ pistes: [{ id: "un", titre: "Un <b>", artiste: "A & B", fichier: "un.mp3", jeux: ["track"], licence: "mienne" }] }, { fichierExiste: () => true }).pistes }, new Map([["un", { fichier: "un-1.m4a", duree: 1, sha: "c".repeat(64) }]]));
 
   it("le même nombre d'éléments de liste dans les deux langues, le texte du crédit échappé (jamais du HTML), et une phrase sans morceau", () => {
     const fr = blocCredits(l, "fr");
@@ -122,13 +128,15 @@ describe("les crédits des mentions légales", () => {
 
 describe("l'état du dépôt : ce que la CI vérifie (équivalent de `npm run musique -- --verifier`)", () => {
   const description = JSON.parse(readFileSync(join(ROOT, "musique/musiques.json"), "utf8"));
-  const v = verifierDescription(description, { fichierExiste: (f) => existsSync(join(ROOT, "musique/pistes", f)) });
+  // Les sources ne sont pas commitées (une boucle fait souvent 25 Mo) : un morceau déjà préparé n'a pas besoin de la sienne.
+  const liste0 = lireListe(JSON.parse(readFileSync(join(ROOT, "musique/servi/liste.json"), "utf8")))!;
+  const v = verifierDescription(description, { fichierExiste: (f, id) => existsSync(join(ROOT, "musique/pistes", f)) || liste0.pistes.some((p) => p.id === id && p.sha !== "") });
   const liste = lireListe(JSON.parse(readFileSync(join(ROOT, "musique/servi/liste.json"), "utf8")))!;
 
   it("musiques.json est valide (licence, jeux, fichiers) et la liste servie est à jour", () => {
     expect(v.erreurs).toEqual([]);
     const servis = new Set(readdirSync(join(ROOT, "musique/servi")).filter((f) => f.endsWith(".m4a")));
-    const e = (f: string) => empreinte(readFileSync(join(ROOT, "musique/pistes", f)));
+    const e = (p: { id: string; fichier: string }) => (existsSync(join(ROOT, "musique/pistes", p.fichier)) ? empreinte(readFileSync(join(ROOT, "musique/pistes", p.fichier))) : (liste.pistes.find((x) => x.id === p.id)?.sha ?? null));
     expect(ecartsAvecLaListe({ pistes: v.pistes }, liste, e, servis), "lance `npm run musique` puis ajoute le résultat au commit").toEqual([]);
   });
 

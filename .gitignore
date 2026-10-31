@@ -17,3 +17,7 @@ apps/portail/dist-redirection/
 site/
 .firebase-deploy/
 .firebase/
+
+# Lot « musique » : les sources des morceaux (souvent 25 Mo la boucle) restent sur l'ordinateur de Nathan ; seul le dossier préparé (`musique/servi/`, de l'AAC léger) est commité.
+musique/pistes/*
+!musique/pistes/LISEZMOI.md

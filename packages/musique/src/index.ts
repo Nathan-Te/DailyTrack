@@ -3,6 +3,7 @@
 // `npm run musique`) et aux tests.
 export * from "./types";
 export * from "./description";
+export * from "./scenes";
 export * from "./liste";
 export * from "./logique";
 export * from "./lecteur";

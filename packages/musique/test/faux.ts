@@ -100,7 +100,7 @@ export class StockageMemoire implements StockageMin {
   }
 }
 
-export const piste = (id: string, o: Partial<PisteServie> = {}): PisteServie => ({ id, titre: `Titre ${id}`, artiste: "Artiste", credit: `« Titre ${id} » — Artiste`, fichier: `${id}-abcd1234.m4a`, jeux: ["track", "jump", "tower"], poids: 1, volumeDb: 0, duree: 120, ...o });
+export const piste = (id: string, o: Partial<PisteServie> = {}): PisteServie => ({ id, titre: `Titre ${id}`, artiste: "Artiste", credit: `« Titre ${id} » — Artiste`, fichier: `${id}-abcd1234.m4a`, jeux: ["track", "jump", "tower"], scenes: [], sha: "0".repeat(64), poids: 1, volumeDb: 0, duree: 120, ...o });
 export const liste = (...pistes: PisteServie[]): ListeServie => ({ version: 1, debit: "96k", pistes });
 
 export interface Banc {

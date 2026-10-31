@@ -31,6 +31,8 @@ import { choisirJour, lireOptions, PRODUCTION } from "./urlOptions";
 const TICKS_MAX = 6;
 /** Niveau de la musique pendant une partie (1 dans la pause et à l'écran de fin). */
 const MUSIQUE_EN_PARTIE = 0.6;
+/** Le thème de Tower (un seul pour l'instant : `theme: "port"` du contenu du jour, `jours.ts`) : la scène de la musique. Un accueil viendra avec sa scène `menu`. */
+const THEME_MUSIQUE = "port";
 /** Le stockage de l'appareil, où la musique garde ses réglages communs à toute la plateforme (`cdj:musique`) ; refusé : sans mémoire. */
 const stockageMusique = (): Storage | null => {
   try {
@@ -144,6 +146,7 @@ async function demarrer(): Promise<void> {
   const musique = brancherMusique("tower", stockageMusique);
   const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie(), musique: () => musique.lecteur() });
   musique.baisser(MUSIQUE_EN_PARTIE);
+  musique.scene(`theme:${THEME_MUSIQUE}`);
   const debug = options.debug ? el("pre", { classe: "debug", attrs: { id: "debug" } }) : null;
   if (debug) racine.append(debug);
   if (options.tune) monterTune(racine, reglages, () => nouvellePartie());

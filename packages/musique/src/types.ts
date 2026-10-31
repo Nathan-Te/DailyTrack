@@ -21,6 +21,11 @@ export interface PisteDescription {
   fichier: string;
   /** Où il passe : un ou plusieurs jeux (`track`, `jump`, `tower`, `portail`), ou `tous`. */
   jeux: string[];
+  /**
+   * Quand il passe, dans ces jeux : `menu` (l'accueil du jeu), `theme:<code>` (un thème de niveaux : `theme:nuit`…). **Absent : le morceau passe partout** dans ses jeux (là où aucun morceau
+   * n'est réservé à la scène). Les scènes connues de chaque jeu sont dans `scenes.ts`.
+   */
+  scenes?: string[];
   licence: Licence;
   /** Le texte de crédit exigé (obligatoire en CC-BY-4.0). Sinon, « Titre — Artiste » est écrit à sa place. */
   credit?: string;
@@ -46,6 +51,10 @@ export interface PisteServie {
   /** Le fichier préparé, relatif au dossier `/musique/` du site : `<id>-<empreinte>.m4a` (l'empreinte permet un cache sans fin). */
   fichier: string;
   jeux: JeuMusique[];
+  /** Les scènes où il passe (`menu`, `theme:nuit`…) ; vide : partout dans ses jeux. */
+  scenes: string[];
+  /** L'empreinte (SHA-256) du fichier source : les sources ne sont pas dans le dépôt, c'est elle qui dit à quelle source le fichier préparé correspond. */
+  sha: string;
   poids: number;
   /** Correction de volume en dB. */
   volumeDb: number;

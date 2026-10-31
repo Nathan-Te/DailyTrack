@@ -1,12 +1,12 @@
 # La musique de Du Jour — ajouter un morceau en 3 étapes
 
-La plateforme a **un seul lecteur de musique, commun à Track, Jump et Tower** (le portail peut s'y brancher : voir « Le portail »). Chaque jeu joue **sa liste**, mélangée, jamais deux fois le même morceau d'affilée, avec un fondu entre deux morceaux. Ajouter un morceau ne demande **aucun code**.
+La plateforme a **un seul lecteur de musique, commun à Track, Jump et Tower** (le portail peut s'y brancher : voir « Le portail »). Chaque jeu joue **sa liste**, mélangée, jamais deux fois le même morceau d'affilée, avec un fondu entre deux morceaux — et un morceau peut être **réservé à une scène** : l'accueil d'un jeu, ou un thème de niveaux. Ajouter un morceau ne demande **aucun code**.
 
 > **Demander à un agent, en une phrase** : « Ajoute le morceau `mon-fichier.mp3` (titre *…*, artiste *…*, licence *…*) à la musique de Track et Jump, en suivant `docs/plateforme/musique.md`. »
 
 ## Les 3 étapes
 
-**1. Dépose le fichier** dans `musique/pistes/` (mp3, wav, flac, ogg, m4a, aac ou opus ; n'importe quel débit : il est converti).
+**1. Dépose le fichier** dans `musique/pistes/` **sur ton ordinateur** (mp3, wav, flac, ogg, m4a, aac ou opus ; n'importe quel débit : il est converti). **Les sources ne sont pas dans le dépôt** (`musique/pistes/` est ignoré par git : une boucle de 25 Mo ne doit pas y entrer) : seul le morceau préparé, léger, est commité (`musique/servi/`, ≈ 1,4 Mo pour 2 minutes). Une session d'agent n'a donc pas tes sources : voir « Si tes fichiers sont lourds » plus bas.
 
 **2. Décris-le** dans `musique/musiques.json` (une entrée de plus dans `pistes`) :
 
@@ -20,6 +20,16 @@ La plateforme a **un seul lecteur de musique, commun à Track, Jump et Tower** (
       "fichier": "premier-jour.mp3",
       "jeux": ["track", "jump"],
       "licence": "mienne"
+    },
+    {
+      "id": "menu-track",
+      "titre": "Sur la grille",
+      "artiste": "Nathan",
+      "fichier": "menu-track.wav",
+      "jeux": ["track"],
+      "scenes": ["menu"],
+      "licence": "achetee",
+      "source": "Humble Bundle OvaniSound, facture du 12/06/2026"
     },
     {
       "id": "lumieres-du-port",
@@ -43,6 +53,7 @@ La plateforme a **un seul lecteur de musique, commun à Track, Jump et Tower** (
 | `titre`, `artiste` | oui | ce que le joueur lit (« En écoute : Titre — Artiste ») |
 | `fichier` | oui | le nom du fichier dans `musique/pistes/` |
 | `jeux` | oui | où il passe : `track`, `jump`, `tower`, `portail`, ou `tous` (= Track, Jump et Tower, **pas** le portail) |
+| `scenes` | non | **quand** il passe, dans ces jeux : `menu` (l'accueil), `theme:<code>` (un thème de niveaux : `theme:nuit`, `theme:foret`…). Absent : il passe partout dans ses jeux (là où rien n'est réservé à la scène). Plusieurs scènes : `["theme:nuit", "theme:neon"]`. Les codes sont dans le tableau « Les scènes de chaque jeu » ci-dessous ; une faute de frappe est refusée |
 | `licence` | oui | `mienne` (c'est à toi), `CC0`, `CC-BY-4.0` ou `achetee` — **rien d'autre n'est publié** |
 | `credit` | en `CC-BY-4.0` | le texte exact que l'auteur exige ; sinon « Titre — Artiste » est écrit à sa place |
 | `source` | en `CC0`, `CC-BY-4.0`, `achetee` | l'adresse du morceau, ou la référence de l'achat : la preuve que tu as le droit |
@@ -58,6 +69,31 @@ La plateforme a **un seul lecteur de musique, commun à Track, Jump et Tower** (
 `npm run musique -- --verifier` fait seulement la vérification (c'est ce que fait la CI : elle échoue si ce qui est préparé n'est pas à jour). `npm run musique -- --essai` ajoute **un morceau d'essai généré par le code** (CC0, 6 secondes, pour Track) : tout le chemin se voit sans morceau à soi ; pour le retirer, efface son entrée de `musiques.json` et relance la commande.
 
 **Il manque `ffmpeg` ?** C'est l'outil de conversion. Une ligne : Windows `winget install Gyan.FFmpeg` · Mac `brew install ffmpeg` · Linux `sudo apt install ffmpeg`. Ou, sans rien installer, demande à un agent de lancer la commande dans une session (il l'a).
+
+## Les scènes de chaque jeu : un morceau par menu et par thème
+
+Chaque jeu dit à la musique **où il en est** : `menu` tant que son accueil est ouvert, puis `theme:<code>` du niveau qu'on joue. La musique passe de l'une à l'autre **en fondu** (2 s).
+
+| Jeu | Scènes |
+|---|---|
+| Track | `menu` · `theme:stade` · `theme:rallye` · `theme:banquise` · `theme:nuit` · `theme:campagne` · `theme:canyon` · `theme:col` · `theme:ville` |
+| Jump | `menu` · `theme:foret` · `theme:usine` · `theme:glace` · `theme:nuit` · `theme:neon` |
+| Tower | `menu` (prête pour son futur accueil) · `theme:port` |
+| Portail | `menu` (le portail n'est pas branché) |
+
+**Comment la musique choisit** : (1) les morceaux **qui nomment la scène** ; (2) à défaut, ceux **sans `scenes`** (ils passent partout) ; (3) à défaut, **le silence** — le jeu ne joue pas la musique d'un niveau à son accueil. Si le morceau en cours passe aussi dans la nouvelle scène, il **continue sans coupure**. D'une page à l'autre, la reprise ne ramène que le morceau de la scène d'arrivée. Un scénario d'essai n'a pas de scène : tous les morceaux du jeu.
+
+Un morceau nommé pour plusieurs scènes (`["theme:nuit", "theme:neon"]`) ou plusieurs jeux (`"jeux": ["track", "jump"]` avec `theme:nuit`, qui existe dans les deux) sert à tout ça : de quoi partager un morceau là où il n'y a pas de quoi en avoir un chacun.
+
+**Un thème ou un jeu de plus** : une ligne dans `packages/musique/src/scenes.ts`, puis tes morceaux avec ce code. Le test de chaque jeu compare cette liste à ses thèmes : **un thème ajouté dans un jeu sans sa ligne fait échouer le test** (rien ne reste silencieux). Un nouveau jeu (comme Tower l'a fait) : son nom dans `JEUX_MUSIQUE`, sa ligne de `brancherMusique`, ses scènes — `packages/musique/CLAUDE.md`, « Ajouter un jeu à la musique ».
+
+## Si tes fichiers sont lourds (les boucles de 25 Mo)
+
+Tu n'as rien à envoyer à GitHub. Deux façons :
+- **Tu lances la commande chez toi** : `npm run musique` convertit chaque source (25 Mo → ≈ 1,4 Mo), écrit la liste et les crédits ; tu commites seulement `musique/musiques.json`, `musique/servi/` et les mentions légales.
+- **Tu me donnes les fichiers dans la session** (ou un lien de téléchargement que tu as le droit de partager) : je les mets dans `musique/pistes/`, je lance la commande et je commite seulement le résultat.
+
+Une fois préparé, un morceau n'a plus besoin de sa source : on peut changer son titre, ses jeux, ses scènes ou son poids en éditant `musiques.json` et en relançant `npm run musique` (la liste garde l'empreinte de la source). Il faut la source pour le **re**convertir (autre débit, autre volume cible).
 
 ## Le droit d'usage — la règle
 
@@ -78,7 +114,7 @@ Le portail **n'est pas branché** : il reste silencieux (décision à prendre : 
 
 ## Hébergement et poids
 
-Les morceaux sont des **fichiers statiques** servis à `/musique/` (site Firebase, comme `/api/`), nommés `<id>-<empreinte>.m4a` : le nom change quand le fichier change, donc **cache sans fin** (`firebase.json`, `Cache-Control: immutable`). Lus **en flux** (le navigateur demande des morceaux du fichier, jamais tout en mémoire). Ils ne sont **pas comptés dans le poids des jeux** : voir `docs/plateforme/budgets.md`, « La musique » (≈ 0,7 Mo par minute).
+Les morceaux préparés sont des **fichiers statiques** servis à `/musique/` (site Firebase, comme `/api/`), nommés `<id>-<empreinte>.m4a` : le nom change quand le fichier change, donc **cache sans fin** (`firebase.json`, `Cache-Control: immutable`). Lus **en flux** (le navigateur demande des morceaux du fichier, jamais tout en mémoire). Ils ne sont **pas comptés dans le poids des jeux** : voir `docs/plateforme/budgets.md`, « La musique » (≈ 0,7 Mo par minute).
 
 ## Si ça ne joue pas
 

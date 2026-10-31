@@ -49,21 +49,29 @@ if (process.argv.includes("--essai") && !verifierSeulement) {
 }
 
 const brut = JSON.parse(readFileSync(DESCRIPTION, "utf8")) as unknown;
-const v = verifierDescription(brut, { fichierExiste: (f) => existsSync(join(PISTES, f)) });
+const listeAvant = existsSync(join(SERVI, "liste.json")) ? lireListe(JSON.parse(readFileSync(join(SERVI, "liste.json"), "utf8"))) : null;
+// Les sources (souvent 25 Mo la boucle) ne sont pas dans le dépôt : un morceau déjà préparé n'a pas besoin de la sienne pour qu'on change sa description ou ses scènes.
+const dejaPrepare = (id: string, f: string): boolean => (listeAvant?.pistes.some((p) => p.id === id && p.sha !== "") ?? false) && f !== "";
+const v = verifierDescription(brut, { fichierExiste: (f, id) => existsSync(join(PISTES, f)) || dejaPrepare(id, f) });
 if (v.erreurs.length > 0) echec(["musiques.json : à corriger avant de continuer.", ...v.erreurs.map((e) => `  • ${e}`)]);
 const description = { pistes: v.pistes };
 
 const empreintes = new Map<string, string>();
-const empreinteDe = (fichier: string): string => {
-  let e = empreintes.get(fichier);
-  if (!e) empreintes.set(fichier, (e = empreinte(readFileSync(join(PISTES, fichier)))));
-  return e;
+/** L'empreinte de la source d'un morceau : celle du fichier s'il est là, sinon celle que la liste a gardée (`null` : inconnue). */
+const shaDe = (p: { id: string; fichier: string }): string | null => {
+  if (existsSync(join(PISTES, p.fichier))) {
+    let e = empreintes.get(p.fichier);
+    if (!e) empreintes.set(p.fichier, (e = empreinte(readFileSync(join(PISTES, p.fichier)))));
+    return e;
+  }
+  const gardee = listeAvant?.pistes.find((x) => x.id === p.id)?.sha;
+  return gardee ? gardee : null;
 };
-const listeActuelle = existsSync(join(SERVI, "liste.json")) ? lireListe(JSON.parse(readFileSync(join(SERVI, "liste.json"), "utf8"))) : null;
+const listeActuelle = listeAvant;
 const servis = new Set(existsSync(SERVI) ? readdirSync(SERVI).filter((f) => f.endsWith(".m4a")) : []);
 
 if (verifierSeulement) {
-  const ecarts = ecartsAvecLaListe(description, listeActuelle, empreinteDe, servis);
+  const ecarts = ecartsAvecLaListe(description, listeActuelle, shaDe, servis);
   if (ecarts.length > 0) echec(["Les morceaux préparés ne sont pas à jour : lance `npm run musique` puis ajoute le résultat au commit.", ...ecarts.map((e) => `  • ${e}`)]);
   console.log(`musique : ${description.pistes.length} morceau(x) vérifié(s), tout est à jour.`);
   process.exit(0);
@@ -90,10 +98,13 @@ function duree(fichier: string): number {
 mkdirSync(SERVI, { recursive: true });
 const infos = new Map<string, InfoPreparee>();
 for (const p of description.pistes) {
-  const nom = nomServi(p.id, empreinteDe(p.fichier));
+  const sha = shaDe(p);
+  if (!sha) echec([`« ${p.id} » : la source « musique/pistes/${p.fichier} » est absente et la liste n'en garde aucune empreinte : dépose le fichier.`]);
+  const nom = nomServi(p.id, sha!);
   const sortie = join(SERVI, nom);
   if (!existsSync(sortie)) {
     const source = join(PISTES, p.fichier);
+    if (!existsSync(source)) echec([`« ${p.id} » : le fichier préparé ${nom} manque et la source « musique/pistes/${p.fichier} » n'est pas là : dépose-la pour le préparer.`]);
     console.log(`musique : préparation de « ${p.id} »…`);
     const mesure = ffmpeg(argsMesure(source));
     const m = mesure.ok ? lireMesure(mesure.erreur) : null;
@@ -104,7 +115,7 @@ for (const p of description.pistes) {
       echec([`« ${p.id} » : la conversion a échoué.`, enc.erreur.split("\n").slice(-6).join("\n")]);
     }
   }
-  infos.set(p.id, { fichier: nom, duree: duree(sortie) });
+  infos.set(p.id, { fichier: nom, duree: listeAvant?.pistes.find((x) => x.id === p.id && x.fichier === nom)?.duree || duree(sortie), sha: sha! });
 }
 // Les fichiers préparés d'un morceau retiré ou changé ne restent pas.
 const voulus = new Set([...infos.values()].map((i) => i.fichier));

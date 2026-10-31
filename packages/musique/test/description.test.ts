@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { creditDe, resoudreJeux, verifierDescription } from "../src/description";
+import { FORMAT_SCENE, SCENES } from "../src/scenes";
 import { pistesDuJeu } from "../src/liste";
 import { liste, piste } from "./faux";
 
@@ -67,5 +68,26 @@ describe("la liste par jeu", () => {
     expect(pistesDuJeu(l, "jump").map((p) => p.id)).toEqual(["b", "c"]);
     expect(pistesDuJeu(l, "tower").map((p) => p.id)).toEqual(["b", "c"]);
     expect(pistesDuJeu(l, "portail").map((p) => p.id)).toEqual(["d"]);
+  });
+});
+
+describe("les scènes d'un morceau (menu, un thème de niveaux)", () => {
+  const avec = (scenes: unknown, jeux: string[] = ["track"]) => erreursDe({ ...bon, jeux, scenes });
+  it("accepte menu et les thèmes connus du jeu, refuse une faute de frappe, une scène d'un autre jeu, un format invalide ou une liste vide", () => {
+    expect(avec(["menu", "theme:nuit"])).toBe("");
+    expect(avec(["theme:nuit"], ["jump"])).toBe("");
+    expect(avec(["theme:foret"], ["track"])).toContain("n'existe dans aucun de ses jeux");
+    expect(avec(["theme:foret"], ["track", "jump"])).toBe(""); // la forêt existe dans Jump, un des deux jeux du morceau
+    expect(avec(["theme:nnuit"])).toContain("n'existe dans aucun");
+    expect(avec(["Theme Nuit"])).toContain("n'est pas une scène");
+    expect(avec([])).toContain("au moins une scène");
+    expect(avec("menu")).toContain("une liste");
+  });
+
+  it("chaque scène connue a le bon format, et chaque jeu a au moins « menu »", () => {
+    for (const [jeu, scenes] of Object.entries(SCENES)) {
+      expect(scenes, jeu).toContain("menu");
+      for (const s of scenes) expect(FORMAT_SCENE.test(s), `${jeu} : ${s}`).toBe(true);
+    }
   });
 });

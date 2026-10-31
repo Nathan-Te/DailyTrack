@@ -9,6 +9,7 @@ let lecteur: Lecteur | null = null;
 export interface Initial {
   baisse: number;
   sourdine: boolean;
+  scene: string | null;
 }
 
 /** Crée le lecteur de la page (une seule fois) et lui donne ce que le jeu a déjà demandé. */
@@ -16,6 +17,7 @@ export function demarrer(jeu: JeuMusique, stockage: StockageMin | null, initial:
   lecteur ??= creerLecteur(depsNavigateur(jeu, stockage));
   lecteur.baisser(initial.baisse);
   lecteur.sourdine(initial.sourdine);
+  lecteur.scene(initial.scene);
   return lecteur;
 }
 

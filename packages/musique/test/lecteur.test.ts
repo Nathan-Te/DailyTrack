@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { creerLecteur } from "../src/lecteur";
 import type { PisteServie } from "../src/types";
-import { CLE_REGLAGES, CLE_REPRISE, FONDU_S, choisirSuivante, courbeFondu, departDeLaPage, ecrireReprise, lireReglages, niveauFinal, VALIDITE_REPRISE_MS } from "../src/logique";
+import { CLE_REGLAGES, CLE_REPRISE, FONDU_S, FONDU_SCENE_S, pistesDeLaScene, choisirSuivante, courbeFondu, departDeLaPage, ecrireReprise, lireReglages, niveauFinal, VALIDITE_REPRISE_MS } from "../src/logique";
 import { banc, liste, piste, StockageMemoire, type Banc } from "./faux";
 
 const DEUX = liste(piste("a"), piste("b"), piste("c"));
@@ -288,5 +288,108 @@ describe("les réglages communs aux trois jeux", () => {
     await b.pret();
     expect(b.ctx.gains[0]!.vers).toEqual([comp]);
     expect(comp.vers).toEqual([b.ctx.destination]);
+  });
+});
+
+describe("les scènes : un morceau par menu et par thème", () => {
+  const L = liste(
+    piste("accueil", { scenes: ["menu"] }),
+    piste("nuit", { scenes: ["theme:nuit"] }),
+    piste("stade", { scenes: ["theme:stade"] }),
+    piste("partout"),
+    piste("deux", { scenes: ["theme:nuit", "theme:stade"] }),
+  );
+
+  it("les morceaux d'une scène : ceux qui la nomment, sinon ceux qui passent partout, sinon aucun ; sans scène : tous", () => {
+    const ids = (s: string | null) => pistesDeLaScene(L.pistes, s).map((p) => p.id);
+    expect(ids("menu")).toEqual(["accueil"]);
+    expect(ids("theme:nuit")).toEqual(["nuit", "deux"]);
+    expect(ids("theme:ville")).toEqual(["partout"]); // aucun morceau pour la ville : celui qui passe partout
+    expect(ids(null)).toEqual(["accueil", "nuit", "stade", "partout", "deux"]);
+    expect(pistesDeLaScene(liste(piste("a", { scenes: ["menu"] })).pistes, "theme:nuit")).toEqual([]); // rien pour le thème, rien qui passe partout : le silence
+  });
+
+  it("le jeu annonce la scène avant le premier geste : le lecteur démarre sur un morceau de cette scène, et jamais un autre", async () => {
+    for (const [sceneJeu, attendu] of [["menu", ["accueil"]], ["theme:stade", ["stade", "deux"]]] as const) {
+      const b = banc("track", L);
+      const l = creerLecteur(b.deps);
+      l.scene(sceneJeu); // dit tout de suite, avant que la liste soit chargée
+      await b.pret();
+      expect(attendu, sceneJeu).toContain(l.enCours()!.id);
+      expect(l.etat().scene).toBe(sceneJeu);
+    }
+  });
+
+  it("changer de scène : fondu vers un morceau de la nouvelle scène ; si le morceau en cours y passe aussi, il continue", async () => {
+    const b = banc("track", L, { hasard: [0, 0, 0] });
+    const l = creerLecteur(b.deps);
+    l.scene("menu");
+    await b.pret();
+    expect(l.enCours()!.id).toBe("accueil");
+    l.scene("theme:nuit");
+    expect(["nuit", "deux"]).toContain(l.enCours()!.id);
+    expect(b.ctx.gains.filter((g) => g.gain.courbes().length > 0).length).toBe(2); // un fondu sortant, un fondu entrant
+    expect(b.ctx.gains.flatMap((g) => g.gain.courbes()).map((c) => c[3])).toContain(FONDU_SCENE_S);
+    // « deux » passe dans la nuit et dans le stade : en passant de l'un à l'autre il continue sans coupure.
+    if (l.enCours()!.id !== "deux") l.suivante();
+    for (let i = 0; i < 6 && l.enCours()!.id !== "deux"; i++) l.suivante();
+    if (l.enCours()!.id === "deux") {
+      const lectures = b.elements.map((e) => e.lectures).join();
+      l.scene("theme:stade");
+      expect(l.enCours()!.id).toBe("deux");
+      expect(b.elements.map((e) => e.lectures).join()).toBe(lectures);
+    }
+  });
+
+  it("une scène sans aucun morceau : le morceau en cours sort en fondu puis se tait ; la scène suivante relance", async () => {
+    const b = banc("track", liste(piste("accueil", { scenes: ["menu"] })));
+    const l = creerLecteur(b.deps);
+    l.scene("menu");
+    await b.pret();
+    expect(l.enCours()?.id).toBe("accueil");
+    l.scene("theme:nuit");
+    b.attente.filter((a) => a.ms > 1000).forEach((a) => a.fn());
+    expect(l.enCours()).toBeNull();
+    expect(b.elements.every((e) => e.paused)).toBe(true);
+    l.scene("menu");
+    expect(l.enCours()?.id).toBe("accueil");
+  });
+
+  it("la reprise d'une page à l'autre ne reprend que le morceau de la scène : l'accueil d'un jeu ne rejoue pas la musique d'un niveau", async () => {
+    const session = new StockageMemoire(new Map([[CLE_REPRISE, ecrireReprise({ id: "nuit", t: 30, at: 999_500 })]]));
+    const b = banc("track", L, { session, maintenant: 1_000_000 });
+    const l = creerLecteur(b.deps);
+    l.scene("menu");
+    await b.pret();
+    expect(l.enCours()!.id).toBe("accueil");
+    const session2 = new StockageMemoire(new Map([[CLE_REPRISE, ecrireReprise({ id: "nuit", t: 30, at: 999_500 })]]));
+    const b2 = banc("track", L, { session: session2, maintenant: 1_000_000 });
+    const l2 = creerLecteur(b2.deps);
+    l2.scene("theme:nuit");
+    await b2.pret();
+    expect(l2.enCours()!.id).toBe("nuit");
+    expect(b2.elements[0]!.currentTime).toBe(30);
+  });
+
+  it("sans scène annoncée (un scénario d'essai) : tous les morceaux du jeu", async () => {
+    const b = banc("track", L);
+    const l = creerLecteur(b.deps);
+    await b.pret();
+    expect(l.etat().pistes.length).toBe(5);
+    expect(l.etat().scene).toBeNull();
+  });
+
+  it("un changement de scène pendant la pause attend le retour de l'onglet", async () => {
+    const b = banc("track", L);
+    const l = creerLecteur(b.deps);
+    l.scene("menu");
+    await b.pret();
+    b.etat.cachee = true;
+    b.emettre("document", "visibilitychange");
+    l.scene("theme:stade");
+    expect(l.enCours()!.id).toBe("accueil");
+    b.etat.cachee = false;
+    b.emettre("document", "visibilitychange");
+    expect(["stade", "deux"]).toContain(l.enCours()!.id);
   });
 });
