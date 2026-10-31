@@ -22,7 +22,10 @@
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, declareFrozenGenerators, decodeReplay, demoAttempts, encodeReplay as encodeJump, jumpMedalFor, lifeReplay, repriseParPhase, replayAttempt } from "@cdj/jump-sim";
+import { dailyTower, PREMIER_JOUR_TOWER } from "@cdj/tower-sim";
+import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { jumpDailyOf } from "../src/jump";
+import { jouerScripte } from "./tower-aide";
 import { DEMO_JOUEUR_ID } from "../src/portailDemo";
 import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, verifierVide } from "./smokeRead";
 import { exigerDistant } from "../src/distant";
@@ -315,6 +318,50 @@ check(
     /x-player-id/i.test(jbundle.headers.get("vary") ?? ""),
   `${jbundle.status} ${String(bundleBody.board?.participants)} classé(s), Cache-Control « ${String(jbundle.headers.get("cache-control"))} »`,
 );
+
+// --- Lot TP : Tower, le jeu classé à la hauteur -------------------------------------------------------------------------------------------
+// Tower naît `off` (404 `game_unavailable`). Hors production (recette, serveur local), le smoke l'ouvre **comme un aperçu de PR** (l'hôte d'un canal d'aperçu, jamais accepté par la
+// production) : sa partie est rangée à part (`apercu = 1`, `hidden = 1`), jamais dans un classement public. Contre la production (l'image de la CI lancée en local), on vérifie seulement que
+// le jeu est fermé. **Jamais la preuve de l'auteur** : la partie jouée est une partie scriptée de `tower-aide.ts`, sans intelligence.
+const environnement = typeof where?.body?.environment === "string" ? where.body.environment : "local";
+const entetesTower: Record<string, string> = environnement === "production" ? {} : { "X-Forwarded-Host": "recette--pr-1-abcdef0.web.app" };
+const tcall = async (method: string, path: string, body?: unknown, avecJoueur = false) => {
+  const res = await fetch(base + path, {
+    method,
+    headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(origin ? { Origin: origin } : {}), ...entetesTower, ...(avecJoueur ? { "X-Player-Id": player } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return { status: res.status, body: (await res.json()) as any, headers: res.headers };
+};
+const tinfo = await tcall("GET", "/api/tower/info");
+if (environnement === "production") {
+  check("Tower : fermé (`off`) sur un serveur de production : 404 game_unavailable", tinfo.status === 404 && tinfo.body.error === "game_unavailable", `${tinfo.status} ${String(tinfo.body.error)}`);
+} else {
+  check("Tower : /api/tower/info (versions, jour de Paris, environnement)", tinfo.status === 200 && tinfo.body.today === date && Number.isInteger(tinfo.body.simVersion) && Number.isInteger(tinfo.body.generatorVersion), `simulation v${String(tinfo.body.simVersion)}, générateur v${String(tinfo.body.generatorVersion)}, ${tinfo.body.frozenDays?.length ?? 0} jour(s) préparé(s)`);
+  const tday = await tcall("GET", `/api/tower/day/${date}`);
+  const tm = tday.body.medals;
+  check("Tower : jour (médailles en mm, source), jamais la preuve de l'auteur", tday.status === 200 && tm?.author >= tm?.gold && tm?.gold >= tm?.silver && tm?.silver >= tm?.bronze && tm?.bronze > 0 && !JSON.stringify(tday.body).includes("preuve"), `${String(tday.body.source)}, tirage ${String(tday.body.tirage)}, Diamant ${String(tm?.author)} mm`);
+  const R = await chargerRapier();
+  const contenu = dailyTower(day, tday.body.generatorVersion, tday.body.tirage);
+  const { partie, code: tcode } = jouerScripte(R, contenu);
+  const local = partie.resultat()!;
+  partie.dispose();
+  const tbody = { replay: tcode, name: NAME };
+  const tsub = await tcall("POST", "/api/tower/submit", tbody, true);
+  check("Tower : une partie scriptée est rejouée par le serveur, qui garde son résultat", tsub.status === 200 && tsub.body.accepted === true && tsub.body.resultat?.hauteurMm === local.hauteurMm && tsub.body.resultat?.vies === local.vies && tsub.body.resultat?.ticks === local.ticks, `${tsub.status} ${String(tsub.body.resultat?.hauteurMm)} mm (local ${local.hauteurMm} mm), ${String(tsub.body.resultat?.vies)} vie(s)`);
+  const tmal = await tcall("POST", "/api/tower/submit", { replay: "pas-une-rediffusion", name: NAME }, true);
+  check("Tower : une rediffusion illisible est refusée (400 invalid_replay)", tmal.status === 400 && tmal.body.error === "invalid_replay", `${tmal.status} ${String(tmal.body.error)}`);
+  const tme = await tcall("GET", "/api/tower/me", undefined, true);
+  check("Tower : le profil rend la partie du jour du joueur d'essai", tme.status === 200 && tme.body.days?.some((d: { date: string; hauteurMm: number }) => d.date === date && d.hauteurMm === local.hauteurMm), `${tme.status} ${tme.body.days?.length ?? 0} jour(s)`);
+  const tboard = await tcall("GET", `/api/tower/day/${date}/board`, undefined, true);
+  check("Tower : classement du jour, ta ligne (ton identifiant n'y est jamais)", tboard.status === 200 && tboard.body.me?.name === NAME && !JSON.stringify(tboard.body).includes(player) && /\bprivate\b/.test(tboard.headers.get("cache-control") ?? ""), `${tboard.status} ${String(tboard.body.participants)} classé(s)`);
+  const tportail = await tcall("GET", "/api/portail/jour", undefined, true);
+  const tcartouche = tportail.body.jeux?.find((j: { jeu: string }) => j.jeu === "tower");
+  // Avant sa première tour (`PREMIER_JOUR_TOWER`), le jeu n'existe pas dans la journée du portail : rien à lire.
+  if (day >= PREMIER_JOUR_TOWER) {
+    check("Tower : la journée du portail le liste (unité mm) avec ton score ; le cumul au temps ne le compte pas", !!tcartouche && tcartouche.unite === "mm" && tcartouche.etat?.statut === "fini" && tcartouche.etat?.score?.valeur === local.hauteurMm, `${tportail.status} ${String(tcartouche?.etat?.statut)}`);
+  } else check("Tower : avant sa première tour, absent de la journée du portail", tportail.status === 200 && !tcartouche, `${tportail.status}`);
+}
 
 // --- Lot I2 : le portail (la route regroupée de l'accueil et le profil commun) ---------------------------------------------------------
 const pjour = await jcall("GET", "/api/portail/jour");

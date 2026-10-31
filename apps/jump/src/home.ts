@@ -159,10 +159,10 @@ export function mountHome(opts: HomeOptions): Home {
   const hoteMessage = el("div", { classe: ["message-direct", "message-direct--accueil"] });
   root.append(plaque, hoteMessage, el("div", { classe: "accueil__defile" }, coque));
   // Lot S1 : Discord et Ko-fi, deux plaques discrètes en bas à gauche de l'accueil (à la demande ; jamais en partie : elles sont dans l'écran d'accueil).
-  void import("@cdj/ui/src/liensCommunaute").then((m) => {
+  void import("@cdj/ui/src/liensCommunauteJeu").then((m) => {
     const poser = () => {
       root.querySelector("#communaute")?.remove();
-      root.append(m.liensCommunaute({ discord: t("communaute.discord"), kofi: t("communaute.kofi") }));
+      root.append(m.liensCommunaute());
     };
     poser();
     onLangue(poser);

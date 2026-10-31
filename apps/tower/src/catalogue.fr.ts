@@ -103,6 +103,7 @@ export const CATALOGUE_FR: Catalogue = {
   "accueil.serie.medailles": { one: "{n} médaille", other: "{n} médailles" },
   "accueil.jouer": "Jouer",
   "accueil.attente": "Chargement de la tour…",
+  "suite.legende": "Il te reste aujourd'hui",
   "accueil.aide": "Comment jouer",
   "accueil.paliers": "Aujourd'hui · {pieces} pièces · plateforme {plateforme}",
   "accueil.paliers.aria": "Les paliers du jour",

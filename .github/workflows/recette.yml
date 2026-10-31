@@ -26,6 +26,8 @@ on:
       - "packages/clock/**"
       - "packages/jump-sim/**"
       - "packages/profile/**"
+      - "packages/tower-sim/**"
+      - "apps/tower/public/jours/**"
       - "apps/jump/public/levels/**"
       - "config/**"
       - "package.json"

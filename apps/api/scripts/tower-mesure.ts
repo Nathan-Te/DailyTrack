@@ -12,9 +12,8 @@ import { createApi } from "../src/api";
 import { ensureSchemaOn } from "../src/db";
 import { openLibsql } from "../src/libsql-open";
 import { silentLog } from "../src/log";
-import { GAMES } from "../src/registry";
 import { UNITES_REJEU_TOWER } from "../src/towerRejeu";
-import { creerTablesTower, fixtureJour, jouerScripte, towerGame } from "./tower-aide";
+import { creerTablesTower, fixtureJour, jouerScripte, gamesAvecTower } from "./tower-aide";
 
 const mediane = (v: number[]): number => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
 console.log(`Machine : ${cpus()[0]?.model ?? "?"} (${cpus().length} cœurs), Node ${process.version}\n`);
@@ -74,7 +73,7 @@ try {
   await creerTablesTower(db);
   await db.run("INSERT OR REPLACE INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES ('tower', 'on', 0, '[[0,null]]', 0)");
   const horloge = { now: jour * 86_400_000 + 12 * 3_600_000 };
-  const nouvelle = () => createApi({ db, now: () => horloge.now, log: silentLog, allowCopies: true, games: [...GAMES, towerGame({ frozen })], environment: "local" });
+  const nouvelle = () => createApi({ db, now: () => horloge.now, log: silentLog, allowCopies: true, games: gamesAvecTower({ frozen }), environment: "local" });
   const id = (n: number) => n.toString(16).padStart(32, "0");
 
   // 300 joueurs, chacun avec une partie ce jour-là (lignes synthétiques : le classement a une taille réaliste).

@@ -105,9 +105,9 @@ describe("une nouveauté : ce qui bloque la publication", () => {
 
 describe("le message en direct : texte seul, 160 caractères, fin", () => {
   const maintenant = 1_000_000;
-  const bon = nettoyerMessage({ fr: "Bonjour", en: "Hello", ou: ["portail", "jump", "ailleurs"], ton: "important", fin: maintenant + 3_600_000 });
+  const bon = nettoyerMessage({ fr: "Bonjour", en: "Hello", ou: ["portail", "jump", "tower", "ailleurs"], ton: "important", fin: maintenant + 3_600_000 });
   it("un message valide ; les endroits inconnus sont ignorés", () => {
-    expect(bon.ou).toEqual(["portail", "jump"]);
+    expect(bon.ou).toEqual(["portail", "jump", "tower"]);
     expect(problemesDeMessage(bon, maintenant)).toEqual([]);
   });
   it(`${MESSAGE_MAX} caractères au plus, un émoji compte pour un`, () => {

@@ -307,6 +307,7 @@ describe(`panneau : tableau de bord (${TEST_DB})`, () => {
       nouveauxProfils: 2, // Chloé et Eve, créées aujourd'hui (heure de Paris)
       track: { finis: 2 },
       jump: { finis: 3, morts: 8 },
+      tower: { finis: 0 }, // lot TP : Tower est au registre, personne n'y a joué
     });
     const courbe = r.body.courbe as { date: string; joueurs: number }[];
     expect(courbe).toHaveLength(14);
@@ -339,6 +340,7 @@ describe(`panneau : tableau de bord (${TEST_DB})`, () => {
     expect(etat.joursPrets).toEqual([
       { jeu: "cdj", nom: "DailyTrack", figes: resumeRegistreTrack().jours, planifies: 1 },
       { jeu: "jump", nom: "DailyJump", figes: 0 },
+      { jeu: "tower", nom: "Tower", figes: 0 },
     ]);
     expect(etat.erreurs24h).toEqual({ serveur: 0, rediffusions: 0 });
     expect(etat.prDepuisMiseEnProduction).toBeNull(); // la place des « PR depuis la dernière mise en production » (lot N2) : aucun chiffre

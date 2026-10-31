@@ -191,6 +191,18 @@ body {
   outline: var(--dj-trait-fort) solid var(--dj-encre);
   outline-offset: 2px;
 }
+/* Lot TP : « Jeu suivant du jour » (accueil et arrivée) : rien tant qu'il n'y a rien à proposer, sinon la légende et un bouton de 44 px. */
+.suite-du-jour {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2, 8px);
+}
+.suite-du-jour[hidden] {
+  display: none;
+}
+.suite-du-jour__parfaite {
+  font-weight: 700;
+}
 /* Le message en direct : rien tant qu'il est vide (aucune place), aux couleurs de Tower quand il y en a un. */
 .message-direct:empty {
   display: none;

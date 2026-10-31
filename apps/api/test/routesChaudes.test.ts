@@ -39,7 +39,7 @@ describe.skipIf(TEST_DB === "libsql")("routes chaudes : lignes lues sur la base 
 
   it("toutes les routes répondent 200", () => {
     expect(mesures.map((m) => [m.route, m.statut])).toEqual(mesures.map((m) => [m.route, 200]));
-    expect(mesures.length).toBeGreaterThanOrEqual(9);
+    expect(mesures.length).toBeGreaterThanOrEqual(12);
   });
 
   it("aucune route chaude ne parcourt une table ni ne dépasse son plafond de lignes lues", () => {

@@ -2,10 +2,13 @@ import { formatDay } from "@cdj/core";
 import { parisDayStart } from "@cdj/clock";
 import { dailyCircuit, encodeReplay as encodeTrack, runPilot } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, encodeReplay as encodeJump, replayAttempt } from "@cdj/jump-sim";
+import { dailyTower, TOWER_GENERATOR_VERSION } from "@cdj/tower-sim";
+import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { createApi } from "../src/api";
 import type { ClientCompte, Comptage } from "../src/comptage";
 import type { SqlDb } from "../src/db";
 import { referenceId } from "./baseDeReference";
+import { jouerScripte } from "./tower-aide";
 
 /**
  * Lot R14 — les routes les plus appelées, mesurées en lignes lues sur la base de référence (`baseDeReference.ts`, base libSQL locale comptée).
@@ -47,6 +50,8 @@ export const ROUTES_CHAUDES: RouteSpec[] = [
   { nom: "Track classement du jour", methode: "GET", chemin: (d) => `/api/day/${d}/leaderboard`, joueur: 5 },
   { nom: "Track profil /api/me", methode: "GET", chemin: () => "/api/me", joueur: 5 },
   { nom: "Jump bundle du jour", methode: "GET", chemin: (d) => `/api/jump/day/${d}/bundle`, joueur: 5 },
+  { nom: "Tower classement du jour", methode: "GET", chemin: (d) => `/api/tower/day/${d}/board`, joueur: 5 },
+  { nom: "Tower profil /api/tower/me", methode: "GET", chemin: () => "/api/tower/me", joueur: 5 },
   { nom: "message en direct", methode: "GET", chemin: () => "/api/annonce" },
   {
     nom: "Track envoi d'un résultat",
@@ -75,11 +80,28 @@ export const ROUTES_CHAUDES: RouteSpec[] = [
       throw new Error("aucun essai fictif plus lent que l'auteur");
     },
   },
+  {
+    nom: "Tower envoi d'une partie",
+    methode: "POST",
+    chemin: () => "/api/tower/submit",
+    joueur: "ffffffffffffffffffffffffffff0003",
+    corps: (today) => ({ ...tourDuJour(today), name: "Nouveau bâtisseur" }),
+  },
 ];
+
+/** Une partie scriptée de Tower (rejouable, sans intelligence : une rediffusion valide), préparée hors mesure. Rapier est chargé à la demande. */
+let rapierMesure: Awaited<ReturnType<typeof chargerRapier>> | null = null;
+function tourDuJour(today: number): { replay: string } {
+  if (!rapierMesure) throw new Error("Rapier n'est pas chargé (appeler preparerTower avant)");
+  const { partie, code } = jouerScripte(rapierMesure, dailyTower(today, TOWER_GENERATOR_VERSION, 0));
+  partie.dispose();
+  return { replay: code };
+}
 
 export async function mesurerRoutes(db: SqlDb, compte: ClientCompte, today: number): Promise<MesureRoute[]> {
   const date = formatDay(today);
   const clock = parisDayStart(today) + 12 * 3_600_000;
+  rapierMesure ??= await chargerRapier();
   // Production : rien n'est permis de plus qu'au serveur réel (`allowCopies` faux : la vérification des copies fait partie du coût d'un envoi).
   const neuve = () => createApi({ db, now: () => clock, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
   const appel = async (api: ReturnType<typeof createApi>, r: RouteSpec) => {
@@ -91,7 +113,7 @@ export async function mesurerRoutes(db: SqlDb, compte: ClientCompte, today: numb
   };
   // Les circuits et niveaux du jour se calculent à la première requête du jour, puis restent en base : ce n'est pas le coût d'une route.
   const chaud = neuve();
-  for (const chemin of [`/api/day/${date}`, `/api/jump/day/${date}`]) await chaud.handle(new Request(`http://mesure.local${chemin}`), { clientKey: "198.51.100.7" }).then((r) => r.text());
+  for (const chemin of [`/api/day/${date}`, `/api/jump/day/${date}`, `/api/tower/day/${date}`]) await chaud.handle(new Request(`http://mesure.local${chemin}`), { clientKey: "198.51.100.7" }).then((r) => r.text());
   const corps = new Map(ROUTES_CHAUDES.map((r) => [r.nom, r.corps ? r.corps(today) : undefined])); // préparés hors mesure (calcul de rediffusions)
   const sortie: MesureRoute[] = [];
   for (const r of ROUTES_CHAUDES) {

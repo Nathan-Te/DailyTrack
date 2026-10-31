@@ -1,4 +1,5 @@
 import "./liensCommunaute.css";
+import { el } from "./dom";
 import pictoDiscord from "./discord.svg?no-inline";
 import tasseKofi from "./kofi-tasse.png";
 
@@ -13,28 +14,10 @@ export const ADRESSES_COMMUNAUTE: Readonly<Record<LienCommunaute, string>> = { d
 
 /** Un bouton : le pictogramme (hébergé ici) et le nom. */
 export function lienCommunaute(type: LienCommunaute, texte: string, id: string): HTMLAnchorElement {
-  const a = document.createElement("a");
-  a.className = `dj-communaute__lien dj-communaute__lien--${type}`;
-  a.id = id;
-  a.href = ADRESSES_COMMUNAUTE[type];
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  const img = document.createElement("img");
-  img.alt = "";
-  img.src = type === "kofi" ? tasseKofi : pictoDiscord;
-  img.height = 24;
-  img.width = type === "kofi" ? 30 : 24;
-  const s = document.createElement("span");
-  s.textContent = texte;
-  a.append(img, s);
-  return a;
-}
-
-/** Les deux boutons en bas à gauche d'un écran d'accueil : l'appelant les pose dans l'écran, ils disparaissent avec lui. Au changement de langue il en refait un groupe. */
-export function liensCommunaute(textes: Readonly<Record<LienCommunaute, string>>): HTMLElement {
-  const g = document.createElement("div");
-  g.className = "dj-communaute dj-sombre";
-  g.id = "communaute";
-  g.append(lienCommunaute("discord", textes.discord, "communaute-discord"), lienCommunaute("kofi", textes.kofi, "communaute-kofi"));
-  return g;
+  return el(
+    "a",
+    { classe: `dj-communaute__lien dj-communaute__lien--${type}`, attrs: { id, href: ADRESSES_COMMUNAUTE[type], target: "_blank", rel: "noopener noreferrer" } },
+    el("img", { attrs: { alt: "", src: type === "kofi" ? tasseKofi : pictoDiscord, height: 24, width: type === "kofi" ? 30 : 24 } }),
+    el("span", { texte }),
+  );
 }

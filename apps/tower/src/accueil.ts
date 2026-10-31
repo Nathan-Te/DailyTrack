@@ -22,7 +22,7 @@ import { TYPE_MEDAILLE } from "./medailles";
 import { chargerPalette, paletteCourante, poserPalette } from "./palette";
 import type { Preparation } from "./preparation";
 import { effacerRecords, lireRecords, serieLocale } from "./records";
-import { creerSession, type Session } from "./session";
+import { creerSession, type Session, suivreGeneration } from "./session";
 import { CLE_IDENTITE_VUE, gameStorage } from "./stockage";
 import type { OptionsUrl } from "./urlOptions";
 
@@ -101,7 +101,8 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   const jouer = el("button", { classe: "bouton-jouer accueil__jouer", attrs: { type: "button", id: "accueil-jouer" }, texte: t("accueil.jouer") });
   const attente = el("p", { classe: "accueil__attente", attrs: { role: "status", id: "accueil-attente" } });
   const aide = el("button", { classe: "dj-bouton dj-bouton--secondaire accueil__aide", attrs: { type: "button", id: "accueil-aide" }, texte: t("accueil.aide") });
-  const gauche = el("div", { classe: "accueil__gauche" }, hoteAccueil, el("div", { classe: "accueil__tete" }, el("div", { classe: "accueil__titres" }, titre, tour), dessin), replique, el("div", { classe: "accueil__tuiles" }, tuileRecord, tuileSerie), jouer, attente, aide);
+  const hoteDeSuite = el("div", { classe: "suite-du-jour", attrs: { hidden: true } }); // rempli par `jeuSuivant.ts`, chargé à la demande (lot TP)
+  const gauche = el("div", { classe: "accueil__gauche" }, hoteAccueil, el("div", { classe: "accueil__tete" }, el("div", { classe: "accueil__titres" }, titre, tour), dessin), replique, el("div", { classe: "accueil__tuiles" }, tuileRecord, tuileSerie), jouer, attente, aide, hoteDeSuite);
 
   const paliersTitre = el("span", { classe: "legende" });
   const paliersListe = el("ul", { classe: "accueil__paliers", attrs: { id: "accueil-paliers" } });
@@ -127,7 +128,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   habillerFond();
   racine.append(fond, voile);
   // Lot S1 : Discord et Ko-fi, deux plaques discrètes en bas à gauche de l'accueil (à la demande ; elles sont dans l'écran d'accueil, donc jamais en partie).
-  void import("@cdj/ui/src/liensCommunaute").then((m) => coque.append(m.liensCommunaute({ discord: t("communaute.discord"), kofi: t("communaute.kofi") })));
+  void import("@cdj/ui/src/liensCommunauteJeu").then((m) => coque.append(m.liensCommunaute()));
   document.documentElement.dataset.ready = "true";
 
   // Le message en direct (accueil et arrivée) : un seul bandeau, jamais pendant une partie.
@@ -185,11 +186,22 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
     }
     const pid = readPlayerId(stockage ?? { getItem: () => null });
     const [b, m] = await Promise.all([session.source.board(dateAujourdhui, pid), pid ? session.source.towerMe(pid) : Promise.resolve(null)]);
-    if (b.ok) etat.classement = b.data;
-    else etat.classementIndisponible = true;
-    if (m?.ok) etat.moi = m.data;
+    if (b.ok) {
+      suivreGeneration(b.data);
+      etat.classement = b.data;
+    } else etat.classementIndisponible = true;
+    if (m?.ok) {
+      suivreGeneration(m.data);
+      etat.moi = m.data;
+    }
     dessinerClassement();
     dessinerSerie();
+    // Lot TP : déjà classé aujourd'hui, il reste peut-être un autre jeu du jour : « Jeu suivant du jour » (module du jeu, chargé seulement alors).
+    if (b.ok && b.data.me && pid) {
+      const m2 = await import("./jeuSuivant");
+      const suite = await m2.chargerSuite(session.base, pid);
+      if (suite) m2.poserSuite(hoteDeSuite, suite);
+    }
   };
   void lectures();
   // Ce qui attendait d'être envoyé (une partie jouée hors ligne) repart ; sans identité encore, rien à envoyer.

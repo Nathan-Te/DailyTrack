@@ -4,7 +4,7 @@ import { CATALOGUE_COMMUN } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "../src/catalogue";
 import { EMOJIS, lienDuPortail, lignePartage, morceauDeJeu, textePartage, type JeuPartage, type OptionsPartage, type StatutPartage } from "../src/partage";
 import { construireOptions } from "../src/partageDuJour";
-import type { Etat, Jour } from "../src/jour";
+import { avancement, estHauteur, type Etat, type JeuDuJour, type Jour, type Medaille } from "../src/jour";
 
 // Lot I3 : la ligne de partage de la journée — pour chaque combinaison de statuts (pas joué, en cours, fini avec chaque médaille, fini sans médaille),
 // avec et sans série, journée parfaite, avant et après le 23/10, en français et en anglais. Les émojis sont ceux des jeux ; rien d'identifiant.
@@ -119,5 +119,55 @@ describe("la ligne de partage depuis la réponse du serveur", () => {
     expect(fr.titre).toBe("Du Jour #7");
     expect(en.titre).toBe("Du Jour #7");
     expect(fr.jeux.map((j) => j.nom)).toEqual(["Track", "Jump"]);
+  });
+});
+
+// --- Lot TP : Tower, un jeu classé à la hauteur, dans la même ligne -------------------------------------------------------------------------
+describe("la ligne de partage avec Tower (lot TP)", () => {
+  const seuils = { author: 60_000, gold: 30_000, silver: 18_000, bronze: 9_000 };
+  const finiTower = (medaille: Medaille | null): Etat => ({ statut: "fini", tempsMs: 112_000, medaille, rang: 2, classes: 9, score: { unite: "mm", valeur: 42_700, vies: 2 } });
+  const avecTower = (tower: Etat, extra: Partial<JeuDuJour> = {}, joueur: Partial<NonNullable<Jour["joueur"]>> = {}): Jour => {
+    const base = jour(5, [finiEtat("gold"), finiEtat("silver")], joueur);
+    return { ...base, jeux: [...base.jeux, { jeu: "tower", site: "tower", nom: "Tower", unite: "mm", numero: 3, theme: "port", seuils, premierJour: "2026-11-02", etat: tower, ...extra }] };
+  };
+  for (const langue of ["fr", "en"] as const) {
+    const t = traducteur(langue, CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
+    const texte = (j: Jour) => textePartage(construireOptions(t, j, LIEN)!);
+
+    it(`(${langue}) chaque médaille de Tower a son émoji ; fini sans médaille : ✅ ; pas joué ou en cours : ⬜`, () => {
+      for (const [medaille, emoji] of [["author", "💎"], ["gold", "🥇"], ["silver", "🥈"], ["bronze", "🥉"], [null, "✅"]] as const) {
+        expect(texte(avecTower(finiTower(medaille))), String(medaille)).toBe(`Du Jour #5 — Track 🥇 · Jump 🥈 · Tower ${emoji} — 🔥 5\nhttps://playdujour.com/`);
+      }
+      expect(texte(avecTower(pasJoue))).toContain("Tower ⬜");
+      expect(texte(avecTower({ statut: "en_cours" }))).toContain("Tower ⬜");
+    });
+
+    it(`(${langue}) rien d'identifiant ni de score : ni la hauteur, ni les vies, ni le pseudo`, () => {
+      const ligne = texte(avecTower(finiTower("gold"), {}, { pseudo: "Alice-Secrète" }));
+      expect(ligne).not.toMatch(/42|vie|life|Alice/);
+    });
+
+    it(`(${langue}) Tower qui ne compte pas encore (activé aujourd'hui) n'entre pas dans la ligne`, () => {
+      expect(texte(avecTower(finiTower("gold"), { compte: false }))).toBe("Du Jour #5 — Track 🥇 · Jump 🥈 — 🔥 5\nhttps://playdujour.com/");
+    });
+  }
+
+  it("Tower seul fini : la ligne existe (un jeu fini suffit) ; Tower seul qui ne compte pas : rien à partager", () => {
+    const base = jour(5, [pasJoue, pasJoue]);
+    const seul: Jour = { ...base, jeux: [...base.jeux, { jeu: "tower", site: "tower", nom: "Tower", unite: "mm", numero: 3, theme: null, seuils, premierJour: "2026-11-02", etat: finiTower("bronze") }] };
+    const t = traducteur("fr", CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
+    expect(textePartage(construireOptions(t, seul, LIEN)!)).toBe("Du Jour #5 — Track ⬜ · Jump ⬜ · Tower 🥉 — 🔥 5\nhttps://playdujour.com/");
+    const ignore: Jour = { ...seul, jeux: seul.jeux.map((j) => (j.jeu === "tower" ? { ...j, compte: false } : j)) };
+    expect(construireOptions(t, ignore, LIEN)).toBeNull();
+  });
+});
+
+describe("jeux à la hauteur et jeux au temps ensemble (lot TP)", () => {
+  it("« n finis sur m » compte Tower seulement s'il compte aujourd'hui", () => {
+    const j = (jeu: string, compte: boolean | undefined, fini: boolean, unite?: "mm"): JeuDuJour => ({ jeu, numero: 1, theme: null, seuils: null, premierJour: "x", compte, ...(unite ? { unite } : {}), etat: fini ? { statut: "fini", tempsMs: 1, medaille: null, rang: 1, classes: 1 } : { statut: "pas_joue" } });
+    expect(avancement([j("cdj", true, true), j("jump", true, false), j("tower", true, true, "mm")])).toEqual({ finis: 2, total: 3 });
+    expect(avancement([j("cdj", true, true), j("jump", true, false), j("tower", false, true, "mm")])).toEqual({ finis: 1, total: 2 });
+    expect(estHauteur(j("tower", true, true, "mm"))).toBe(true);
+    expect(estHauteur(j("cdj", true, true))).toBe(false);
   });
 });

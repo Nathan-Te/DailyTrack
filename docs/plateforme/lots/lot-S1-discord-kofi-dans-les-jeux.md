@@ -12,8 +12,9 @@
 - **Manette** : ce sont des liens dans le dialogue d'accueil, donc joignables au focus ; l'action principale reste JOUER / COURIR.
 - Captures : `docs/plateforme/lots/img/lot-S1-{track,jump}-{844x390,390x844}.png` (Tower aussi vérifié, non copié).
 
-## Budgets (mesurés contre `main` reconstruit à part)
-Track `jsCss` +161 o (296 187 / 296 736) · Jump `jsCss` +187 o (375 826 / 378 490) **parce que `liensCommunaute-*` (≈ 0,9 ko, à la demande) est exclu de `mesureJump` et de `poids.spec.ts`, comme `manette-*` : à confirmer par Nathan** (sans l'exclusion, le test dépasse son plafond) · Tower `jsCss` +245 o · portail +489 o (32 139 / 32 768) · anglais +34 à +40 o par jeu. Lignes de `budgets.md` mises à jour (Track, Jump, portail).
+## Budgets
+Track `jsCss` 296 275 / 296 736 · Jump `jsCss` 375 905 / 378 490 (**`liensCommunauteJeu-*` exclu de `mesureJump` et de `poids.spec.ts`, comme `manette-*` : à confirmer par Nathan**) · Tower ≈ +245 o.
+**Portail : 32 897 / 32 768 o — DÉPASSE de 129 o** (la marge de `main` était de 13 o ; le déplacement des boutons dans le socle ajoute trois jetons de couleur et du code). Décision de Nathan : relever le plafond du portail d'environ 200 o, ou laisser le portail garder son propre code et ses couleurs (les jeux reprennent alors le même aspect sans passer par le portail).
 
 ## Vérifié / non vérifié
 - Vérifié en local : typecheck, vitest `packages/ui` `apps/portail` `apps/tower` (verts), e2e Chromium ciblés (Track `accueil`, Jump `plein-ecran`, Tower `partie` et `classement`), absence de chevauchement à 844 × 390, 740 × 360 et 390 × 844 pour les trois jeux (mesure par script, zones défilantes tenues en compte).

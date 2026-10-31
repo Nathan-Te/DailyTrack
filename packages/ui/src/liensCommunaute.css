@@ -7,10 +7,8 @@
   min-height: var(--dj-cible);
   padding: 0 var(--dj-espace-7) 0 var(--dj-espace-4);
   border-radius: 22px;
-  font-family: var(--dj-police-texte);
   font-weight: 700;
   font-size: var(--dj-taille-14);
-  line-height: 1.2;
   text-decoration: none;
   box-sizing: border-box;
   transition: transform var(--dj-duree-courte);
@@ -20,9 +18,6 @@
 }
 .dj-communaute__lien img {
   display: block;
-  flex: none;
-  width: auto;
-  height: 24px;
 }
 .dj-communaute__lien--kofi {
   background: var(--dj-kofi);
@@ -31,24 +26,4 @@
 .dj-communaute__lien--discord {
   background: var(--dj-discord);
   color: var(--dj-blanc);
-  padding-left: var(--dj-espace-5);
-}
-.dj-communaute {
-  position: fixed;
-  z-index: 1;
-  left: max(10px, env(safe-area-inset-left));
-  bottom: max(10px, env(safe-area-inset-bottom));
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--dj-espace-3);
-  max-width: calc(100vw - 20px);
-}
-:is(.cadre, .voile, .accueil):has(.dj-communaute) {
-  padding-bottom: calc(max(10px, env(safe-area-inset-bottom)) + var(--dj-cible) + var(--dj-espace-3));
-}
-/* Étroit : les deux boutons passent sur deux lignes, la bande réservée double. */
-@media (max-width: 480px) {
-  :is(.cadre, .voile, .accueil):has(.dj-communaute) {
-    padding-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 2 * var(--dj-cible) + 2 * var(--dj-espace-3));
-  }
 }

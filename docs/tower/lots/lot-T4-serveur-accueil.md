@@ -38,7 +38,7 @@ Lignes lues = estimation basse du moteur local (`src/comptage.ts`) ; **non mesur
 - Accueil : **pas de « Archives » ni de « Réglages »** (ils n'existent pas) ; décor = aplat du thème (ciel, sol) au lieu du dessin de la tour ; coque centrée.
 - Arrivée : **« Jeu suivant du jour » absent du DOM** (crochet `portail`, plateforme) ; une ligne « Paliers franchis » en plus du modèle de la maquette, comme demandé ; le bloc « Classement » devient un formulaire de pseudo au premier envoi.
 
-## Cahier des charges du lot de plateforme (liste exacte)
+## Cahier des charges du lot de plateforme (liste exacte) — **réalisé par le lot TP** (`docs/plateforme/lots/lot-TP-tower-sur-la-plateforme.md`)
 1. `apps/api/src/registry.ts` : `import { TOWER_GAME } from "./tower"` et `GAMES = [CDJ_GAME, JUMP_GAME, TOWER_GAME]`. **Ne se fait qu'avec 2 et 3** (sinon `remiseAZero.test.ts` et `apps/portail/test/mentions.test.ts` échouent).
 2. `apps/api/src/remiseAZero.ts` : `TABLES_VIDEES.tower_results`, `TABLES_GARDEES.tower_levels`.
 3. Mentions : `apps/portail/mentions-legales/index.html` **et** `apps/portail/legal/index.html` (`data-tables="tower_levels tower_results"`, ce que Tower garde — hauteur, vies, temps, médaille, rediffusion, empreinte des entrées —, les clés `tower:records`, `tower:aide:vu`, `tower:identite:vue`, `apercu:tower:*`, `cdj:apercu:tower`) ; `docs/plateforme/effacement.md` (`partiesDailyTower`).

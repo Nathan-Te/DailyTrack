@@ -30,6 +30,9 @@ import { empreinteDuSeed, lireMarqueurs } from "../src/recetteSeed";
 import { openLibsql } from "../src/libsql-open";
 import { plusCouteuses, type ClientCompte } from "../src/comptage";
 import { estLocale, exigerDistant } from "../src/distant";
+import { dailyTower, PREMIER_JOUR_TOWER, TOWER_GENERATOR_VERSION, TOWER_SIM_VERSION } from "@cdj/tower-sim";
+import { chargerRapier } from "@cdj/tower-sim/rapier";
+import { jouerScripte, type Placement } from "./tower-aide";
 
 const HOUR_MS = 3_600_000;
 
@@ -177,6 +180,53 @@ if (!demoSeulement) {
     });
     if (!refusJump) await marqueurs.poser(segmentJump, empreinteJump);
     console.log(`${jumps} essais DailyJump envoyés par createApi (rejoués par le serveur) en ${((Date.now() - jumpStarted) / 1000).toFixed(0)} s.`);
+  }
+}
+
+// Lot TP : Tower, le 3ᵉ jeu. Des joueurs « Démo … » envoient de **vraies parties scriptées** (rejouées par le serveur, par le vrai `createApi`) sur le jour courant, pour que l'onglet « Tower » du
+// classement et la cartouche aient de quoi s'afficher. **Seulement si Tower est `on` sur cette recette** : l'interrupteur est à Nathan (`/admin/` › Jeux), le seed ne le change jamais ; `off` ou
+// `preview` (les parties d'un aperçu sont rangées à part, jamais publiques) : sauté, dit en clair. Un marqueur par jour, comme les autres segments (lot R14).
+if (!demoSeulement && today >= PREMIER_JOUR_TOWER) {
+  const segmentTower = `tower:${dateDuJour}`;
+  const empreinteTower = empreinteDuSeed(`tower s${TOWER_SIM_VERSION} g${TOWER_GENERATOR_VERSION}`);
+  if (!aFaire(segmentTower, empreinteTower)) {
+    saut++;
+    console.log(`Tower ${dateDuJour} : déjà fait (marqueur ${segmentTower})`);
+  } else {
+    clock = parisDayStart(today) + 12 * HOUR_MS;
+    const get = async (chemin: string) => {
+      const res = await api.handle(new Request(`http://recette.local${chemin}`));
+      return { status: res.status, body: (await res.json()) as Record<string, any> };
+    };
+    const jourTower = await get(`/api/tower/day/${dateDuJour}`);
+    if (jourTower.status !== 200) {
+      console.log(`Tower ${dateDuJour} : sauté (${jourTower.status} ${String(jourTower.body.error ?? "")} — Tower n'est pas \`on\` sur cette recette ; l'interrupteur est à l'éditeur)`);
+    } else {
+      const towerStarted = Date.now();
+      const R = await chargerRapier();
+      const contenu = dailyTower(today, jourTower.body.generatorVersion, jourTower.body.tirage);
+      const noms = new Rng(mixSeed(today, 0x70e3)).shuffle(FICTIONAL_NAMES).slice(0, 8);
+      let acceptes = 0;
+      let refusTower = 0;
+      for (let i = 0; i < noms.length; i++) {
+        // Des parties différentes (rotations et décalages tirés du joueur), jamais « intelligentes » : de vraies rediffusions de hauteurs variées.
+        const choix: Placement[] = Array.from({ length: 40 }, (_, k) => ({ rot: (i + k) % 4, dx: ((i * 3 + k * 2) % 5) - 2 }));
+        const { partie, code } = jouerScripte(R, contenu, choix);
+        partie.dispose();
+        clock = parisDayStart(today) + 12 * HOUR_MS + (i + 1) * 1000;
+        const res = await api.handle(
+          new Request("http://recette.local/api/tower/submit", { method: "POST", headers: { "Content-Type": "application/json", "X-Player-Id": fictionalId(noms[i]!) }, body: JSON.stringify({ replay: code, name: noms[i] }) }),
+        );
+        const corps = (await res.json()) as Record<string, unknown>;
+        if (res.status === 200) acceptes++;
+        else {
+          refusTower++;
+          if (refusTower === 1) console.log(`  Tower ${dateDuJour} : refus du serveur (${res.status} ${String(corps.error ?? "")}) — la partie ne compte pas`);
+        }
+      }
+      if (!refusTower) await marqueurs.poser(segmentTower, empreinteTower);
+      console.log(`Tower ${dateDuJour} : ${acceptes} joueur(s) classé(s) (parties scriptées rejouées par le serveur) en ${((Date.now() - towerStarted) / 1000).toFixed(0)} s${refusTower ? `, ${refusTower} refus` : ""}.`);
+    }
   }
 }
 

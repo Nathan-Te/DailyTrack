@@ -95,8 +95,10 @@ describe("portée d'une PR", () => {
   });
 
   it("lot R15 — Tower seul : ses e2e seulement, pas ceux de DailyTrack ni de DailyJump, ni l'image du serveur ; une zone partagée le lance aussi", () => {
-    const s = scopeOf(["apps/tower/src/jeu.ts", "packages/tower-sim/src/partie.ts", "docs/tower/consignes.md"]);
+    const s = scopeOf(["apps/tower/src/jeu.ts", "docs/tower/consignes.md"]);
     expect(s).toMatchObject({ track: false, jump: false, tower: true, plateforme: false, full: false, server: false });
+    // Lot TP : la simulation de Tower (et ses jours préparés) entrent dans l'image du serveur, qui rejoue les parties : une PR qui y touche reconstruit l'image.
+    expect(scopeOf(["packages/tower-sim/src/partie.ts"])).toMatchObject({ track: false, jump: false, tower: true, plateforme: false, server: true });
     expect(cats("apps/api/src/tower.ts")).toEqual(["plateforme", "tower"]);
     expect(cats("apps/api/test/towerBoard.test.ts")).toEqual(["plateforme", "tower"]);
     expect(scopeOf(["apps/web/src/hud.ts"])).toMatchObject({ tower: false });

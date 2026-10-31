@@ -192,10 +192,10 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   const depart = avisDeNouveauDepart();
   cadre.corps.append(tete, ...(depart ? [depart] : []), ...(astuce ? [astuce] : []), grille, touchNote, nextDay, actions);
   // Lot S1 : Discord et Ko-fi, deux plaques discrètes en bas à gauche de l'accueil (à la demande ; jamais en course : elles sont dans l'écran d'accueil).
-  void import("@cdj/ui/src/liensCommunaute").then((m) => {
+  void import("@cdj/ui/src/liensCommunauteJeu").then((m) => {
     const poser = () => {
       root.querySelector("#communaute")?.remove();
-      root.append(m.liensCommunaute({ discord: t("communaute.discord"), kofi: t("communaute.kofi") }));
+      root.append(m.liensCommunaute());
     };
     poser();
     onLangue(poser);

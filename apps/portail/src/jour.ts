@@ -6,10 +6,18 @@ import { annonceDe, generationDeReponse, type Annonce } from "@cdj/profile";
 
 export type Medaille = "author" | "gold" | "silver" | "bronze";
 
+/** Lot TP : le score d'un jeu classé à la hauteur (Tower) : la hauteur en millimètres entiers et les vies restantes. */
+export interface ScoreHauteur {
+  unite: "mm";
+  valeur: number;
+  vies: number;
+}
+
 export type Etat =
   | { statut: "pas_joue" }
   | { statut: "en_cours"; morts?: number }
-  | { statut: "fini"; tempsMs: number; medaille: Medaille | null; rang: number; classes: number };
+  /** `tempsMs` : le temps du jeu (au chrono) ou, pour un jeu à la hauteur, la durée de la partie ; `score` n'existe que pour un jeu à la hauteur. */
+  | { statut: "fini"; tempsMs: number; medaille: Medaille | null; rang: number; classes: number; score?: ScoreHauteur };
 
 export interface JeuDuJour {
   /** Le code du jeu au registre du serveur (`cdj`, `jump`). */
@@ -18,6 +26,8 @@ export interface JeuDuJour {
   site?: string;
   nom?: string;
   numero: number;
+  /** Lot TP : `"mm"` pour un jeu classé à la hauteur (Tower : seuils en millimètres, score `{ valeur, vies }`) ; absent pour un jeu au temps. */
+  unite?: "mm";
   theme: string | null;
   seuils: Record<Medaille, number> | null;
   premierJour: string;
@@ -143,6 +153,9 @@ export function formatCompte(ms: number): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
+
+/** Lot TP : le jeu est-il classé à la hauteur (et non au chrono) ? Il n'entre jamais dans le cumul au temps. */
+export const estHauteur = (j: { unite?: string }): boolean => j.unite === "mm";
 
 /** Lot P : le jeu compte-t-il aujourd'hui dans la journée ? (Absent : oui.) */
 export const compteAujourdhui = (j: { compte?: boolean }): boolean => j.compte !== false;

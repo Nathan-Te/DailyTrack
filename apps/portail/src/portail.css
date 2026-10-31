@@ -104,13 +104,19 @@
 }
 /* Le numéro et le thème du jour sous le nom du jeu (une ligne à eux : le thème arrive sans faire passer le numéro à la ligne). */
 .portail-etagere .track-etiquette__tete,
-.portail-etagere .jump-etiquette__tete {
+.portail-etagere .jump-etiquette__tete,
+.portail-etagere .tower-etiquette__tete {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
 }
 /* Jump : la réplique du thème (deux lignes réservées). */
 .portail-etagere .jump-etiquette__texte {
+  min-height: calc(2 * 1.3em);
+  line-height: 1.3;
+}
+/* Tower : l'accroche réserve deux lignes (comme la réplique de Jump), la cartouche ne saute pas quand le thème arrive. */
+.portail-etagere .tower-etiquette__texte {
   min-height: calc(2 * 1.3em);
   line-height: 1.3;
 }
@@ -136,6 +142,9 @@
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   font-size: var(--dj-taille-15);
+}
+.portail-statut__vies {
+  font-variant-numeric: tabular-nums;
 }
 .portail-statut__rang {
   font-variant-numeric: tabular-nums;
@@ -504,6 +513,7 @@
 .classement-jeu__fini {
   font-weight: 600;
 }
+.classement-jeu__vies,
 .classement-jeu__temps {
   font-family: var(--dj-police-chiffres);
   font-weight: 700;
