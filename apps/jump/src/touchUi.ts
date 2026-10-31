@@ -1,7 +1,8 @@
 import { el, svg } from "@cdj/ui";
 import type { Controls } from "./input";
 import { lier, t } from "./i18n";
-import { NO_INSETS, TouchPad, ZONES, buttonRects, layoutFor, zoneSpans, type ButtonSize, type Insets, type Zone } from "./touch";
+import { NO_INSETS, TouchPad, ZONES, buttonRects, isMouseEcho, layoutFor, zoneSpans, type ButtonSize, type Insets, type Zone } from "./touch";
+import { touchDebugLine, type ReleaseReason } from "./touchDebug";
 
 // Interface tactile (lot 1b) : la couche qui reçoit les doigts (pointer events, plusieurs à la fois), les boutons dessinés (sans effet sur le toucher)
 // et, avec `?zones=1`, le dessin des zones. Toute la décision (quelle zone, quelle direction) est dans `touch.ts`, pur et testé ; ici on ne fait que
@@ -9,6 +10,12 @@ import { NO_INSETS, TouchPad, ZONES, buttonRects, layoutFor, zoneSpans, type But
 // à gauche, le gros bouton jaune « SAUT » en bas à droite), jamais devant le personnage ; **mêmes zones et même comportement** qu'au lot 1b. La bande
 // haute n'a plus de boutons à elle : la pause (en haut à gauche, `#pausebtn`) y est pour tout le monde, et recommencer, le fantôme et le plein écran
 // sont dans la pause. `?debug&tune` garde son bouton ⚙ (`#gear`, outil interne) à côté de la pause.
+//
+// **Lot 29 — commandes tactiles fiables.** Qu'aucune touche ne reste tenue sans doigt dessus : l'état se déduit des doigts posés (`TouchPad`), et ces doigts
+// sont **tenus à jour par plusieurs voies** pour qu'un événement perdu n'en laisse aucun fantôme — lever et annulation écoutés sur la fenêtre (pas
+// seulement sur la couche : un doigt qui finit sa course sur un bouton du haut n'y arrive pas), perte de capture, liste des touchers du système
+// (`touchstart`…`touchcancel`, `reconcile`), puis tout lâché au focus perdu, à la visibilité changée, à `pagehide`, à la rotation, au redimensionnement ;
+// les événements de souris qui suivent un toucher sont ignorés. `?debug` : une ligne (`#touchdebug`) dit les doigts posés et les touches tenues.
 
 export interface TouchUiOptions {
   controls: Controls;
@@ -18,6 +25,8 @@ export interface TouchUiOptions {
   zones: boolean;
   /** `?debug&tune` : un bouton ⚙ ouvre le panneau de réglages du personnage. */
   tune: boolean;
+  /** `?debug` : une ligne dit les doigts posés et les touches tenues (lot 29). */
+  debug: boolean;
   /** Taille des boutons dessinés (réglage du joueur). */
   buttonSize: ButtonSize;
   onGear(): void;
@@ -120,8 +129,19 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
     drawZones();
   };
 
+  // Lot 29, `?debug` : les doigts que le jeu croit posés et les touches qu'il tient ; mise à jour à chaque changement, pas à chaque image.
+  const debugBox = opts.debug ? el("div", { attrs: { id: "touchdebug", "aria-hidden": "true" } }) : null;
+  if (debugBox) document.body.append(debugBox);
+  let lastRelease: ReleaseReason | null = null;
+  const drawDebug = () => {
+    if (!debugBox) return;
+    const line = touchDebugLine(pad.count, pad.bits, lastRelease);
+    if (debugBox.textContent !== line) debugBox.textContent = line;
+  };
+
   const sync = () => {
     controls.setTouch(pad.direction, pad.jump);
+    drawDebug();
     for (const [zone, v] of visuals) v.classList.toggle("down", pad.pressed(zone));
     if (zonesBox) {
       const live = new Set(pad.list().map((f) => f.id));
@@ -129,7 +149,7 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
       for (const f of pad.list()) {
         let d = dots.get(f.id);
         if (!d) {
-          d = el("div", { classe: `dot ${f.role}` });
+          d = el("div", { classe: `dot ${f.zone}` });
           zonesBox.append(d);
           dots.set(f.id, d);
         }
@@ -139,44 +159,100 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
   };
 
   let suspended = false;
-  const release = () => {
+  /** Lâche tout d'office (et se souvient pourquoi, pour `?debug`). */
+  const release = (reason: ReleaseReason) => {
+    if (pad.count > 0) lastRelease = reason;
     pad.releaseAll();
+    sync();
+  };
+
+  // Le dernier toucher du système : un événement de souris qui le suit de près n'est que son écho (événements de compatibilité).
+  let lastTouchAt: number | null = null;
+  const noteTouch = (e: PointerEvent) => {
+    if (e.pointerType !== "mouse") lastTouchAt = performance.now();
+  };
+  const lift = (id: number, reason: ReleaseReason | null = null) => {
+    if (!pad.up(id)) return;
+    if (reason) lastRelease = reason;
     sync();
   };
 
   layer.addEventListener("pointerdown", (e) => {
     if (suspended || (e.pointerType === "mouse" && e.button !== 0)) return;
     e.preventDefault();
+    noteTouch(e);
+    if (isMouseEcho(e.pointerType, performance.now(), lastTouchAt)) {
+      lastRelease = "souris ignorée";
+      drawDebug();
+      return;
+    }
     if (e.pointerType !== "mouse") document.body.classList.add("touch-seen");
     try {
       layer.setPointerCapture(e.pointerId); // le doigt qui sort de l'écran reste suivi jusqu'au lever
     } catch {
       /* pointeur déjà fini (événement rejoué) : sans importance */
     }
-    if (pad.down(e.pointerId, e.clientX, e.clientY) !== "band") rotate.classList.add("gone");
+    if (pad.down(e.pointerId, e.clientX, e.clientY, e.pointerType === "touch") !== "band") rotate.classList.add("gone");
     sync();
   });
-  layer.addEventListener("pointermove", (e) => {
+  // Déplacement, lever et annulation s'écoutent sur la fenêtre, en capture : le doigt qui perd sa capture ou finit sur un autre élément (un bouton du haut)
+  // ne laisse jamais sa commande tenue. Seuls les doigts connus comptent (`pad.has`).
+  window.addEventListener(
+    "pointermove",
+    (e) => {
+      if (suspended || !pad.has(e.pointerId)) return;
+      noteTouch(e);
+      if (e.pointerType === "mouse" && e.buttons === 0) lift(e.pointerId); // le bouton a été lâché hors de la page
+      else (pad.move(e.pointerId, e.clientX, e.clientY), sync());
+    },
+    true,
+  );
+  window.addEventListener(
+    "pointerup",
+    (e) => {
+      noteTouch(e);
+      lift(e.pointerId);
+    },
+    true,
+  );
+  window.addEventListener(
+    "pointercancel",
+    (e) => {
+      noteTouch(e);
+      lift(e.pointerId, "annulation");
+    },
+    true,
+  );
+  // Capture perdue : le doigt ne nous parle plus. Mais l'événement peut arriver après la pose du doigt suivant, qui réutilise le même identifiant (DailyTrack
+  // l'a mesuré) : tant que la couche tient à nouveau ce pointeur, il ne dit rien du nouveau doigt.
+  layer.addEventListener("lostpointercapture", (e) => {
+    if (!layer.hasPointerCapture(e.pointerId)) lift(e.pointerId, "perte de capture");
+  });
+  // La liste des touchers que le système dit posés fait foi : moins de touchers que de doigts suivis = un lever s'est perdu (`pad.reconcile`).
+  // `touchcancel` (geste du système : centre de contrôle, notification, appel) vide la liste.
+  const reconcile = (e: TouchEvent) => {
+    lastTouchAt = performance.now();
     if (suspended) return;
-    pad.move(e.pointerId, e.clientX, e.clientY);
-    sync();
-  });
-  const lift = (e: PointerEvent) => {
-    pad.up(e.pointerId);
-    sync();
+    if (pad.reconcile(Array.from(e.touches, (t) => ({ x: t.clientX, y: t.clientY }))) > 0) {
+      lastRelease = e.type === "touchcancel" ? "annulation" : "toucher perdu";
+      sync();
+    }
   };
-  layer.addEventListener("pointerup", lift);
-  layer.addEventListener("pointercancel", lift);
+  for (const type of ["touchstart", "touchmove", "touchend", "touchcancel"] as const) window.addEventListener(type, reconcile, { capture: true, passive: true });
   // Pas de menu contextuel (appui long) ni de zoom par pincement (Safari iOS ne respecte pas `user-scalable=no`).
   for (const type of ["contextmenu", "gesturestart", "gesturechange", "dblclick"]) document.addEventListener(type, (e) => e.preventDefault());
-  window.addEventListener("blur", release);
-  document.addEventListener("visibilitychange", () => document.hidden && release());
-  const relayout = () => {
+  // Tout lâcher quand le jeu ne voit plus la main : focus perdu, page cachée ou revenue, quittée, retournée, redimensionnée.
+  window.addEventListener("blur", () => release("focus"));
+  document.addEventListener("visibilitychange", () => release("visibilité"));
+  window.addEventListener("pagehide", () => release("pagehide"));
+  window.addEventListener("pageshow", () => release("pagehide"));
+  document.addEventListener("freeze", () => release("pagehide"));
+  const relayout = (reason: ReleaseReason) => {
     place();
-    release();
+    release(reason);
   };
-  window.addEventListener("resize", relayout);
-  window.addEventListener("orientationchange", relayout);
+  window.addEventListener("resize", () => relayout("rotation"));
+  window.addEventListener("orientationchange", () => relayout("rotation"));
   place();
 
   return {
@@ -184,12 +260,12 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
     suspend(on) {
       suspended = on;
       document.body.classList.toggle("touch-suspended", on);
-      release();
+      release("panneau");
     },
     setButtonSize(next) {
       if (next === size) return;
       size = next;
-      relayout();
+      relayout("rotation");
     },
   };
 }
