@@ -1,3 +1,4 @@
+import "./legacy";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseDay } from "@cdj/core";

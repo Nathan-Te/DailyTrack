@@ -32,3 +32,4 @@ export * from "./stalactitesPieces";
 export * from "./lasers";
 export * from "./ponts";
 export * from "./pontsPieces";
+export * from "./usable";

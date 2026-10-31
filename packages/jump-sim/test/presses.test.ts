@@ -1,3 +1,4 @@
+import "./legacy";
 import { Rng, parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -53,6 +54,7 @@ import {
   variantExigence,
   type AttemptState,
   type Level,
+  variantUsable,
 } from "../src/index";
 
 // Lot 22 : les presses (sim v6, générateur g16). Les niveaux sont de petits textes écrits ici.
@@ -406,6 +408,7 @@ describe("lot 22 — les morceaux à presses de l'usine", () => {
         expect(m.level.presses.length, label).toBeGreaterThan(0);
         expect(palierProblems(m), label).toEqual([]);
         expect(presseProblems(m.level), label).toEqual([]);
+        if (!variantUsable(def.id, v)) continue;
         const sol = moduleSolutions(def.id, v)!;
         if (PHASE_REFUSED[def.id]?.includes(v) || PARASITE_CLOSED[def.id]?.includes(v)) continue;
         variants++;
@@ -429,7 +432,7 @@ describe("lot 22 — les morceaux à presses de l'usine", () => {
         }
       }
     }
-    const usable = (id: string, v: number) => !PHASE_REFUSED[id]?.includes(v) && !PARASITE_CLOSED[id]?.includes(v);
+    const usable = (id: string, v: number) => variantUsable(id, v) && !PHASE_REFUSED[id]?.includes(v) && !PARASITE_CLOSED[id]?.includes(v);
     const hard = PRESS_MODULES.filter((def) => def.variants.some((_, v) => usable(def.id, v) && variantExigence(moduleSolutions(def.id, v)) >= 4));
     expect(hard.length, "portions dures").toBeGreaterThanOrEqual(2);
     expect(PRESS_MODULES.filter((m) => m.tags.includes("tapis")).length, "presses et tapis").toBeGreaterThanOrEqual(2);

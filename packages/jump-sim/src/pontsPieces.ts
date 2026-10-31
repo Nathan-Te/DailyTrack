@@ -1,4 +1,4 @@
-import { buildModule, moduleSolutions } from "./modules";
+import { buildModule, moduleSolutions, soloLevel } from "./modules";
 import { MODULE_ENTRIES } from "./constants";
 import { bridgeChaseProblems, bridgeNeededProblems } from "./ponts";
 import { decodeReplay } from "./replay";
@@ -10,19 +10,21 @@ import { decodeReplay } from "./replay";
 const memo = new Map<string, readonly string[]>();
 
 /** Ce que la règle de la poursuite franche dit de la variante `variant` du morceau `id` (vide : conforme, ou sans pont). Gardé en mémoire (fonction pure). */
-export function bridgePieceProblems(id: string, variant: number): readonly string[] {
-  const key = `${id}:${variant}`;
+/** Lot 30 : `legacy` rejoue les solutions d'avant le maintien minimal sur le morceau seul sans maintien (niveaux d'avant la version 13). */
+export function bridgePieceProblems(id: string, variant: number, legacy = false): readonly string[] {
+  const key = `${id}:${variant}:${legacy ? 1 : 0}`;
   let found = memo.get(key);
   if (found === undefined) {
     const m = buildModule(id, variant);
+    const level = soloLevel(m, legacy);
     const out: string[] = [];
-    const sol = moduleSolutions(id, variant);
-    if (m.level.bridges.length > 0 && sol) {
+    const sol = moduleSolutions(id, variant, legacy);
+    if (level.bridges.length > 0 && sol) {
       for (const entry of MODULE_ENTRIES) {
         const s = sol[entry];
         if (!s) continue;
         const replay = decodeReplay(s.code);
-        for (const p of [...bridgeChaseProblems(m.level, replay, m.levelId, s.ticks), ...bridgeNeededProblems(m.level, replay, m.levelId)]) out.push(`${id} v${variant} (${entry}) : ${p}`);
+        for (const p of [...bridgeChaseProblems(level, replay, m.levelId, s.ticks), ...bridgeNeededProblems(level, replay, m.levelId)]) out.push(`${id} v${variant} (${entry}) : ${p}`);
       }
     }
     found = out;

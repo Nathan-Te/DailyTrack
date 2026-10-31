@@ -3,8 +3,9 @@ import { SINGLE_CLOCK_VERSION } from "./constants";
 import type { DailyLevel } from "./daily";
 import type { DemoReprise } from "./demo";
 import { idiv } from "./idiv";
+import { hasLegacyCatalog } from "./legacyRegistry";
 import { cycleMod, sectionPeriod, type Level } from "./level";
-import { buildModule, centerCol, isCleanRun, moduleSolutions, moduleStart } from "./modules";
+import { buildModule, centerCol, isCleanRun, moduleSolutions, moduleStart, soloLevel } from "./modules";
 import { DEFAULT_JUMP_PARAMS, INPUT_RIGHT } from "./player";
 import { decodeReplay, fromRuns } from "./replay";
 
@@ -46,7 +47,10 @@ interface Restart {
 function restartOf(daily: DailyLevel, k: number): Restart | null {
   const piece = daily.pieces[k]!;
   const level = daily.level;
-  const solutions = moduleSolutions(piece.id, piece.variant);
+  const legacy = level.minHold === 0;
+  // Lot 30 : un niveau d'avant la version 13 (jour figé) se reprend avec les solutions d'avant, que le jeu n'embarque pas (`src/legacy/`, chargé par les tests et les outils) : sans elles, le joueur fictif n'a pas de reprise.
+  if (legacy && !hasLegacyCatalog()) return null;
+  const solutions = moduleSolutions(piece.id, piece.variant, legacy);
   if (!solutions) return null;
   const hard = daily.slowRoutes.some((r) => r.piece === k);
   if (hard) {
@@ -66,10 +70,10 @@ function restartOf(daily: DailyLevel, k: number): Restart | null {
   if (!solution) return null;
   const inputs = fromRuns(decodeReplay(solution.code).runs).slice(0, solution.exitTick);
   const built = buildModule(piece.id, piece.variant);
-  let s = moduleStart(built, "arret");
+  let s = moduleStart({ ...built, level: soloLevel(built, legacy) }, "arret");
   let clockStart = -1;
   for (const bits of inputs) {
-    s = stepAttempt(s, bits, built.level, DEFAULT_JUMP_PARAMS);
+    s = stepAttempt(s, bits, soloLevel(built, legacy), DEFAULT_JUMP_PARAMS);
     if (s.status === ATTEMPT_DEAD) return null;
     if (clockStart < 0 && (s.sections[0] ?? -1) >= 0) clockStart = s.sections[0]!;
   }

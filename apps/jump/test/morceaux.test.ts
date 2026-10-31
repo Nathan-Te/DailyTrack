@@ -11,6 +11,7 @@ import {
   replayAttempt,
   runAttempt,
   type AttemptState,
+  variantUsable,
 } from "@cdj/jump-sim";
 import { DayMemory, type KeyValue } from "../src/memory";
 import { LAUNCH_TILES, galleryFamilies, galleryOrder, launchTicks, matchesFilter, nextModule, referenceTicks, solutionReplay } from "../src/modulesInfo";
@@ -44,6 +45,8 @@ describe("galerie", () => {
     for (const m of order) {
       expect(m.variants.length).toBe(MODULES.find((d) => d.id === m.id)!.variants.length);
       for (const v of m.variants) {
+        // Lot 30 : une variante dont la solution (maintien minimal du saut) ne tient pas la règle des appuis est dans la galerie sans solution ou notée 0 : écartée du générateur.
+        if (!variantUsable(m.id, v.index)) continue;
         expect(v.exigence).toBeGreaterThanOrEqual(1);
         expect(v.ticks.arret).toBeGreaterThan(0);
         expect(v.ticks.elan).toBeGreaterThan(0);
@@ -66,19 +69,19 @@ describe("galerie", () => {
   });
 
   it("en élan, le temps de référence compte le couloir de lancement : droite tenue depuis l'arrêt jusqu'au départ du morceau", () => {
-    const t = launchTicks("tunnel", 0);
+    const t = launchTicks("tunnel", 4);
     expect(t).toBeGreaterThan(20);
     expect(t).toBeLessThan(80);
-    const run = buildModule("tunnel", 0, { lancement: LAUNCH_TILES });
+    const run = buildModule("tunnel", 4, { lancement: LAUNCH_TILES });
     const s: AttemptState = runAttempt(initialAttempt(run.level), new Array(t).fill(INPUT_RIGHT), run.level, DEFAULT_JUMP_PARAMS);
     expect(s.player.vx).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
-    expect(referenceTicks("tunnel", 0, "elan")).toBe(moduleSolutions("tunnel", 0)!.elan!.ticks + t);
-    expect(referenceTicks("tunnel", 0, "arret")).toBe(moduleSolutions("tunnel", 0)!.arret!.ticks);
+    expect(referenceTicks("tunnel", 4, "elan")).toBe(moduleSolutions("tunnel", 4)!.elan!.ticks + t);
+    expect(referenceTicks("tunnel", 4, "arret")).toBe(moduleSolutions("tunnel", 4)!.arret!.ticks);
     // Et en pratique : droite tenue sur le couloir, puis la solution en élan, finit le morceau à peu près au temps de référence.
-    const elan = fromRuns(solutionReplay("tunnel", 0, "elan")!.runs);
+    const elan = fromRuns(solutionReplay("tunnel", 4, "elan")!.runs);
     const done = runAttempt(initialAttempt(run.level), [...new Array(t).fill(INPUT_RIGHT), ...elan, ...new Array(60).fill(INPUT_RIGHT)], run.level, DEFAULT_JUMP_PARAMS);
     expect(done.status).toBe(ATTEMPT_FINISHED);
-    expect(Math.abs(done.time - referenceTicks("tunnel", 0, "elan")!)).toBeLessThanOrEqual(2);
+    expect(Math.abs(done.time - referenceTicks("tunnel", 4, "elan")!)).toBeLessThanOrEqual(2);
   });
 });
 

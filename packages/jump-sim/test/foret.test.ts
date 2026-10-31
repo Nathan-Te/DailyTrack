@@ -1,3 +1,4 @@
+import "./legacy";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatDay, parseDay } from "@cdj/core";
@@ -17,8 +18,7 @@ import {
   moduleSolutions,
   variantExigence,
   variantTheme,
-  type DailyLevel,
-} from "../src/index";
+  type DailyLevel, variantUsable } from "../src/index";
 
 // Lot 13 — la forêt et ses courants d'air dans le générateur : morceaux `theme: foret` (étiquette `vent`), mutateur `+vent:<sens>` réservé à
 // la forêt, quota de signature, et **les quatre autres thèmes gardent exactement leurs niveaux** (référence prise avec le code d'avant le
@@ -62,14 +62,15 @@ describe("morceaux de la forêt", () => {
       for (let v = 0; v < d.variants.length; v++) {
         const m = buildModuleDef(d, v);
         expect(m.level.winds.length, `${d.id} v${v}`).toBeGreaterThan(0);
-        expect(variantExigence(moduleSolutions(d.id, v)), `${d.id} v${v}`).toBeGreaterThan(0);
+        // Lot 30 : une variante dont la solution (maintien minimal du saut) n'est pas jouable est écartée du catalogue.
+        if (variantUsable(d.id, v)) expect(variantExigence(moduleSolutions(d.id, v)), `${d.id} v${v}`).toBeGreaterThan(0);
       }
     }
   });
 
   it("la respiration de la forêt n'est jamais exigeante (2 au plus)", () => {
     for (const d of forest.filter((x) => x.tags.includes("respiration"))) {
-      for (let v = 0; v < d.variants.length; v++) expect(variantExigence(moduleSolutions(d.id, v)), `${d.id} v${v}`).toBeLessThanOrEqual(MAX_REST_EXIGENCE);
+      for (let v = 0; v < d.variants.length; v++) if (variantUsable(d.id, v)) expect(variantExigence(moduleSolutions(d.id, v)), `${d.id} v${v}`).toBeLessThanOrEqual(MAX_REST_EXIGENCE);
     }
   });
 

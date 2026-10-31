@@ -50,6 +50,7 @@ import {
   replayAttempt,
   stepAttempt,
   variantExigence,
+  variantUsable,
   type BuiltModule,
   type ModuleSolution,
   type ModuleSolutionsFile,
@@ -103,7 +104,7 @@ function staleReason(file: ModuleSolutionsFile, built: BuiltModule): string | nu
   const v = file.modules[built.id]?.variants[built.variant];
   if (!v) return `« ${built.id} » variante ${built.variant} sans solution : ${STALE}`;
   if (v.grid !== built.hash) return `grille de « ${built.id} » variante ${built.variant} modifiée (${v.grid} ≠ ${built.hash}) : ${STALE}`;
-  for (const e of MODULE_ENTRIES) if (!v[e]) return `« ${built.id} » variante ${built.variant}, entrée ${e} : aucune solution : ${STALE}`;
+  // Lot 30 : une entrée sans solution est un résultat (le solveur n'a rien trouvé qui tienne la règle des appuis : la variante est écartée du catalogue), pas un fichier périmé.
   return null;
 }
 
@@ -223,6 +224,8 @@ describe("le catalogue", () => {
     expect(rest.length).toBeGreaterThanOrEqual(4);
     for (const m of rest) {
       m.variants.forEach((_, v) => {
+        // Lot 30 : une variante dont la solution (re-résolue pour le maintien minimal) dépasse 2 est écartée du catalogue (`restUsable`), jamais la règle relâchée.
+        if (!variantUsable(m.id, v)) return;
         const sol = moduleSolutions(m.id, v);
         expect(sol, `${m.id} v${v} a ses solutions`).not.toBeNull();
         for (const e of ["arret", "elan"] as const) expect(sol![e]!.exigence, `${m.id} v${v} ${e}`).toBeLessThanOrEqual(MAX_REST_EXIGENCE);
@@ -310,8 +313,10 @@ describe("les solutions stockées", () => {
         expect(staleReason(FULL, m)).toBeNull();
         for (const entry of MODULE_ENTRIES) {
           // Lot 15 : le jeu n'embarque que la rediffusion et ses pas ; la mesure complète est dans `solutions.json`.
-          const sol = FULL.modules[def.id]!.variants[v]![entry]!;
+          const sol = FULL.modules[def.id]!.variants[v]![entry];
           const where = `${def.id} v${v} ${entry}`;
+          // Lot 30 : une variante sans solution (la règle des appuis la ferme) n'en a rien à vérifier.
+          if (!sol) continue;
           const replay = decodeReplay(sol.code);
           expect(replay.start.elan, where).toBe(entry === "elan" ? 1 : 0);
           const r = replayAttempt(m.level, replay, m.levelId);
@@ -342,7 +347,8 @@ describe("les solutions stockées", () => {
           expect(s.player.vx, where).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
           expect(s.player.y + PLAYER_HEIGHT, where).toBe(m.exitRow * T);
           expect(isCleanRun(s.player), where).toBe(true);
-          // Durée entre l'entrée et la sortie : de 1 à 6 s (5 à 8 s pour un enchaînement long) ; pas plus de 2 % au-dessus de la plus rapide.
+          // Durée entre l'entrée et la sortie : de 1 à 6 s (5 à 8 s pour un enchaînement long) ; pas plus de 2 % au-dessus de la plus rapide. (Lot 30 : pour les variantes utilisables ; les autres sont écartées.)
+          if (!variantUsable(def.id, v)) continue;
           const ticks = sol.exitTick - sol.entryTick;
           expect(ticks, where).toBeGreaterThanOrEqual(def.long ? LONG_MIN_TICKS : MODULE_MIN_TICKS);
           expect(ticks, where).toBeLessThanOrEqual(def.long ? LONG_MAX_TICKS : MODULE_MAX_TICKS);
@@ -361,6 +367,7 @@ describe("les solutions stockées", () => {
     const all: { where: string; sol: ModuleSolution }[] = [];
     for (const def of MODULES) {
       def.variants.forEach((_, v) => {
+        if (!variantUsable(def.id, v)) return;
         for (const e of MODULE_ENTRIES) all.push({ where: `${def.id} v${v} ${e}`, sol: FULL.modules[def.id]!.variants[v]![e]! });
       });
     }
@@ -375,7 +382,7 @@ describe("les solutions stockées", () => {
 
   it("les exigences du catalogue vont de 1 à 5", () => {
     const seen = new Set<number>();
-    for (const def of MODULES) def.variants.forEach((_, v) => seen.add(variantExigence(moduleSolutions(def.id, v))));
+    for (const def of MODULES) def.variants.forEach((_, v) => variantUsable(def.id, v) && seen.add(variantExigence(moduleSolutions(def.id, v))));
     expect([...seen].sort()).toEqual([1, 2, 3, 4, 5]);
   });
 
@@ -648,6 +655,7 @@ describe("règle des plats (lot 7)", () => {
   it("les respirations ne sont plus des courses à plat : chacune a au moins trois sauts à faire (trous, bosses, corniches, ressorts)", () => {
     for (const def of MODULES.filter((d) => d.tags.includes("respiration"))) {
       for (let v = 0; v < def.variants.length; v++) {
+        if (!variantUsable(def.id, v)) continue;
         // Lot 12 : les sols de nuit et de néon (et d'une variante mutée) sont des blocs clignotants ou alternés, pas des `#` (lot 20 : une plateforme mobile n'est pas un plat non plus) : on compte alors les **sauts** de chaque solution
         // stockée (fronts montants du bouton de saut), aux deux entrées. Les autres : les plats, comme avant.
         if (def.theme === "nuit" || def.theme === "neon" || def.tags.includes("plateforme") || def.mutations[v]!.some((m) => m.name === "clignotant" || m.name === "alterne")) {
@@ -680,6 +688,7 @@ describe("familles et enchaînements longs (lot 7)", () => {
     expect(longs.length).toBeGreaterThanOrEqual(8);
     for (const def of MODULES) {
       for (let v = 0; v < def.variants.length; v++) {
+        if (!variantUsable(def.id, v)) continue;
         for (const e of MODULE_ENTRIES) {
           const sol = moduleSolutions(def.id, v)![e]!;
           const ticks = sol.exitTick - sol.entryTick;

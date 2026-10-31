@@ -93,7 +93,7 @@ test("niveau du jour (v8 depuis le lot 24) à plateformes : la preuve de l'auteu
   const date = dayWithPlatform();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(12); // lot 28 : le générateur en vigueur (g22) est en v12
+  expect(daily.level.simVersion).toBe(13); // lot 30 : le générateur en vigueur (g24) est en v13
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: J }).__jump;
     j.manual(true);
@@ -196,7 +196,7 @@ test("niveau du jour d'usine (v8 depuis le lot 24) : la preuve de l'auteur, jou�
   const date = dayWithPresses();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await openP(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(12); // lot 28 : le générateur en vigueur (g22) est en v12
+  expect(daily.level.simVersion).toBe(13); // lot 30 : le générateur en vigueur (g24) est en v13
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JP }).__jump;
     j.manual(true);
@@ -279,7 +279,7 @@ test("niveau du jour de forêt (v8 depuis le lot 24) : la preuve de l'auteur, jo
   const date = dayWithMushrooms();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(12);
+  expect(daily.level.simVersion).toBe(13);
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JM }).__jump;
     j.manual(true);
@@ -388,7 +388,7 @@ test("niveau du jour de glace (v8) : la preuve de l'auteur, jouée pas à pas da
   const date = dayWithStalactites();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(12);
+  expect(daily.level.simVersion).toBe(13);
   expect(daily.theme).toBe("glace");
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JS }).__jump;
@@ -558,7 +558,7 @@ test("niveau du jour de néon (v9) : la preuve de l'auteur, jouée pas à pas da
   const date = dayWithLasers();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(12);
+  expect(daily.level.simVersion).toBe(13);
   expect(daily.theme).toBe("neon");
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JL }).__jump;
@@ -668,7 +668,7 @@ test("niveau du jour de nuit (v10) : la preuve de l'auteur, jouée pas à pas da
   const date = dayWithBridges();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(12);
+  expect(daily.level.simVersion).toBe(13);
   expect(daily.theme).toBe("nuit");
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JB }).__jump;

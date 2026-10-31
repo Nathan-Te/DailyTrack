@@ -1,3 +1,4 @@
+import "./legacy";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -44,7 +45,8 @@ describe("le sac de thèmes de Jump (lot V1)", () => {
 
   it("le générateur g23 est celui du sac ; la simulation ne change pas", () => {
     expect(JUMP_GENERATOR_SAC).toBe(23);
-    expect(JUMP_GENERATOR_VERSION).toBe(JUMP_GENERATOR_SAC);
+    // Lot 30 : g24 (le maintien minimal du saut) suit ; g23 reste le dernier générateur de la version 12 (`THEME_BAG_GENERATOR`).
+    expect(JUMP_GENERATOR_VERSION).toBeGreaterThanOrEqual(JUMP_GENERATOR_SAC);
   });
 
   it("365 jours : 0 répétition d'un jour à l'autre, 0 alternance A B A, les cinq thèmes, aucun ne tarde plus de 2n − 1 jours", () => {

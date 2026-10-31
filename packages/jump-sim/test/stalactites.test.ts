@@ -1,3 +1,4 @@
+import "./legacy";
 import { Rng, parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -57,6 +58,7 @@ import {
   type AttemptEvents,
   type AttemptState,
   type Level,
+  variantUsable,
 } from "../src/index";
 
 // Lot 24 : les stalactites (sim v8, générateur g18). Les niveaux sont de petits textes écrits ici.
@@ -494,7 +496,7 @@ describe("lot 24 — règles du générateur", () => {
 // ——— Les morceaux du catalogue ———
 
 const STALACTITE_MODULES = MODULES.filter((m) => m.tags.includes("stalactite"));
-const usable = (id: string, v: number) => !PHASE_REFUSED[id]?.includes(v) && !PARASITE_CLOSED[id]?.includes(v);
+const usable = (id: string, v: number) => variantUsable(id, v) && !PHASE_REFUSED[id]?.includes(v) && !PARASITE_CLOSED[id]?.includes(v);
 const bitsOf = (id: string, v: number, entry: "arret" | "elan") => fromRuns(decodeReplay(moduleSolutions(id, v)![entry]!.code).runs);
 
 /** Joue la solution d'un morceau seul (comme le solveur : l'entrée « élan » part à la vitesse de course) ; rend les états après chaque pas. */
@@ -528,6 +530,7 @@ describe("lot 24 — les morceaux du catalogue", () => {
         expect(palierProblems(m), label).toEqual([]);
         expect(stalactiteProblems(m.level), label).toEqual([]);
         expect(stalactiteRunProblems(m.level), label).toEqual([]);
+        if (!variantUsable(def.id, v)) continue;
         const sol = moduleSolutions(def.id, v)!;
         for (const entry of ["arret", "elan"] as const) expect(sol[entry]!.exigence, `${label} ${entry}`).toBeGreaterThanOrEqual(1);
         if (usable(def.id, v)) variants++;
@@ -541,6 +544,7 @@ describe("lot 24 — les morceaux du catalogue", () => {
     expect(rest.length).toBeGreaterThanOrEqual(1);
     for (const def of rest) {
       for (let v = 0; v < def.variants.length; v++) {
+        if (!variantUsable(def.id, v)) continue;
         expect(variantExigence(moduleSolutions(def.id, v)), `${def.id} v${v}`).toBeLessThanOrEqual(2);
         for (const entry of ["arret", "elan"] as const) {
           const bits = bitsOf(def.id, v, entry);
@@ -558,6 +562,7 @@ describe("lot 24 — les morceaux du catalogue", () => {
   it("la solution de chaque variante déclenche vraiment au moins une stalactite et arrive sans mourir, aux deux entrées", () => {
     for (const def of STALACTITE_MODULES) {
       for (let v = 0; v < def.variants.length; v++) {
+      if (!variantUsable(def.id, v)) continue;
         for (const entry of ["arret", "elan"] as const) {
           const { states } = playSolution(def.id, v, entry);
           const label = `${def.id} v${v} ${entry}`;
@@ -571,6 +576,7 @@ describe("lot 24 — les morceaux du catalogue", () => {
   it("« stalactite-decroche » : la solution passe là où la stalactite pendait, une fois tombée (sans elle, le saut la frôlerait : il faut la déclencher, reculer et attendre)", () => {
     const def = MODULES.find((m) => m.id === "stalactite-decroche")!;
     for (let v = 0; v < def.variants.length; v++) {
+      if (!variantUsable(def.id, v)) continue;
       for (const entry of ["arret", "elan"] as const) {
         const { level, states } = playSolution(def.id, v, entry);
         const hanging = stalactiteBox(level.stalactites[0]!, 0);

@@ -18,6 +18,8 @@ import {
   PRESS_VERSION,
   ALT_KEPT_GENERATOR,
   ALT_KEPT_VERSION,
+  MIN_HOLD_GENERATOR,
+  MIN_HOLD_VERSION,
   RESTART_GENERATOR,
   RESTART_VERSION,
   SECTION_CLOCK_GENERATOR,
@@ -48,6 +50,7 @@ describe("niveaux figés (public/levels)", () => {
   /** La version de la simulation d'un niveau du jour selon la version du générateur qui l'a fait. */
   const simVersionDuGenerateur = (g: number): number => {
     const seuils: readonly [number, number][] = [
+      [MIN_HOLD_GENERATOR, MIN_HOLD_VERSION],
       [ALT_KEPT_GENERATOR, ALT_KEPT_VERSION],
       [RESTART_GENERATOR, RESTART_VERSION],
       [BRIDGE_GENERATOR, BRIDGE_VERSION],

@@ -1,3 +1,4 @@
+import "./legacy";
 import { Rng } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
@@ -57,8 +58,7 @@ import {
   stepAttempt,
   type AttemptState,
   type Level,
-  V11_ONLY_VARIANTS,
-} from "../src/index";
+  V11_ONLY_VARIANTS, variantUsable } from "../src/index";
 
 // Lot 23 : les champignons rebonds (sim v7, générateur g17). Les niveaux sont de petits textes écrits ici ; les morceaux du catalogue sont dans `foret.test.ts`.
 
@@ -394,7 +394,7 @@ describe("lot 23 — les morceaux à champignons du catalogue", () => {
   it("une respiration (note 2 au plus), deux morceaux avec du vent (rafales jusqu'à g20, continu depuis g21), au moins deux portions dures dont `champignon-falaise`", () => {
     const rest = MUSHROOM_MODULES.filter((d) => d.tags.includes("respiration"));
     expect(rest.length).toBeGreaterThanOrEqual(1);
-    for (const d of rest) for (let v = 0; v < d.variants.length; v++) expect(variantExigence(moduleSolutions(d.id, v)), `${d.id} v${v}`).toBeLessThanOrEqual(2);
+    for (const d of rest) for (let v = 0; v < d.variants.length; v++) if (variantUsable(d.id, v)) expect(variantExigence(moduleSolutions(d.id, v)), `${d.id} v${v}`).toBeLessThanOrEqual(2);
     const gusts = MUSHROOM_MODULES.filter((d) => d.tags.includes("vent"));
     expect(gusts.length).toBeGreaterThanOrEqual(2);
     for (const d of gusts) {
@@ -420,7 +420,8 @@ describe("lot 23 — les morceaux à champignons du catalogue", () => {
         expect(mushroomSweepProblems(m.level), `${d.id} v${v}`).toEqual([]);
         expect(mushroomPieceProblems(d.id, v), `${d.id} v${v}`).toEqual([]);
         expect(palierProblems(m), `${d.id} v${v}`).toEqual([]);
-        // Une variante a une solution à chaque entrée, jouable (note ≥ 1).
+        // Une variante utilisable a une solution à chaque entrée, jouable (note ≥ 1) ; lot 30 : les autres sont écartées du catalogue (maintien minimal du saut).
+        if (!variantUsable(d.id, v)) continue;
         const sol = moduleSolutions(d.id, v)!;
         for (const e of ["arret", "elan"] as const) expect(sol[e]!.exigence, `${d.id} v${v} ${e}`).toBeGreaterThanOrEqual(1);
       }
@@ -430,6 +431,7 @@ describe("lot 23 — les morceaux à champignons du catalogue", () => {
   it("les solutions gardées rebondissent vraiment : chaque entrée de chaque variante compte au moins un rebond", () => {
     for (const d of MUSHROOM_MODULES) {
       for (let v = 0; v < d.variants.length; v++) {
+        if (!variantUsable(d.id, v)) continue;
         const m = buildModule(d.id, v);
         for (const e of ["arret", "elan"] as const) {
           const bits = fromRuns(decodeReplay(moduleSolutions(d.id, v)![e]!.code).runs);
