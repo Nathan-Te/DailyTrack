@@ -37,11 +37,11 @@ export function sinCos(angle: number): { s: number; c: number } {
   return { s: sin(a) / Q16, c: cos(a) / Q16 };
 }
 
-/** Ordonnée la plus haute de la pièce (mètres) : centre de masse en (x, y), angle `angle` (radians), formes de départ `kind` / `rot` (quarts de tour) et `taille`. */
-export function sommetPiece(kind: PieceKind, rot: number, y: number, angle: number, taille: Taille = "normale"): number {
+/** Ordonnée la plus haute d'un ensemble de boîtes : centre de masse à l'ordonnée `y`, angle `angle` (radians). */
+export function sommetDeBoites(bs: readonly Box8[], y: number, angle: number): number {
   const { s, c } = sinCos(angle);
   let haut = -Infinity;
-  for (const b of boites(kind, rot, taille)) {
+  for (const b of bs) {
     for (const sx of [-1, 1]) {
       for (const sy of [-1, 1]) {
         const xl = (b.cx + sx * b.hw) / 8;
@@ -54,15 +54,18 @@ export function sommetPiece(kind: PieceKind, rot: number, y: number, angle: numb
   return y + haut;
 }
 
+/** Ordonnée la plus haute de la pièce (mètres) : centre de masse en (x, y), angle `angle` (radians), formes de départ `kind` / `rot` (quarts de tour) et `taille`. */
+export const sommetPiece = (kind: PieceKind, rot: number, y: number, angle: number, taille: Taille = "normale"): number => sommetDeBoites(boites(kind, rot, taille), y, angle);
+
 /** Hauteur en millimètres entiers (arrondie au plus proche). */
 export const enMillimetres = (metres: number): number => Math.round(metres * 1000);
 
-/** Les abscisses extrêmes (mètres) de la pièce : centre de masse en (x, ·), angle `angle` (radians), formes de départ `kind` / `rot` et `taille`. Lot T3 : la largeur du sommet que mesure le bot. */
-export function etenduePiece(kind: PieceKind, rot: number, x: number, angle: number, taille: Taille = "normale"): { gauche: number; droite: number } {
+/** Les abscisses extrêmes (mètres) d'un ensemble de boîtes : centre de masse en (x, ·), angle `angle`. Lot T3 : la largeur du sommet que mesure le bot. */
+export function etendueDeBoites(bs: readonly Box8[], x: number, angle: number): { gauche: number; droite: number } {
   const { s, c } = sinCos(angle);
   let gauche = Infinity;
   let droite = -Infinity;
-  for (const b of boites(kind, rot, taille)) {
+  for (const b of bs) {
     for (const sx of [-1, 1]) {
       for (const sy of [-1, 1]) {
         const xl = (b.cx + sx * b.hw) / 8;
@@ -75,3 +78,6 @@ export function etenduePiece(kind: PieceKind, rot: number, x: number, angle: num
   }
   return { gauche, droite };
 }
+
+/** Les abscisses extrêmes (mètres) de la pièce : centre de masse en (x, ·), angle `angle` (radians), formes de départ `kind` / `rot` et `taille`. */
+export const etenduePiece = (kind: PieceKind, rot: number, x: number, angle: number, taille: Taille = "normale"): { gauche: number; droite: number } => etendueDeBoites(boites(kind, rot, taille), x, angle);

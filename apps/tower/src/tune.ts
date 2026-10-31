@@ -1,65 +1,106 @@
-import { type Reglages, REGLAGES_DEFAUT } from "@cdj/tower-sim";
 import { el } from "@cdj/ui";
-import { ENTREES_DEFAUT, type ReglagesEntrees } from "./entrees";
+import { blocJson, CURSEURS, type Curseur } from "./curseurs";
+import { reglagesDeDepart, type ReglagesTune, reglagesEssai } from "./reglagesEssai";
 
-// Les réglages de sensation (`?debug&tune`, lot T1) — l'outil de Nathan, en français, comme `?debug&tune` de Track et de Jump. Les curseurs sont à Nathan : les valeurs de départ
-// ci-dessous sont **provisoires** (un point de départ jouable, pas un réglage « au ressenti »). Les délais de répétition s'appliquent tout de suite ; la vitesse de chute, le facteur de
-// descente et la hauteur d'apparition font partie des réglages de la simulation (`Reglages` de `@cdj/tower-sim`) : ils s'appliquent à la **partie suivante** (« Recommencer »). La ligne du
-// bas se copie telle quelle pour dire à quelles valeurs la sensation est bonne. Rien n'est gardé dans le navigateur.
+// Les réglages de sensation (`?debug&tune`, lots T1 et T5) — l'outil de Nathan, en français, comme `?debug&tune` de Track et de Jump. **Chargé à la demande, seulement avec `?debug&tune`.** Les curseurs
+// sont à Nathan : les valeurs de départ sont **provisoires**. Deux groupes (`curseurs.ts`) : la sensation et la physique (une partie qui en change un est une partie d'ESSAI : marquée « réglage d'essai »,
+// jamais envoyée au classement ; ces valeurs s'appliquent à la partie suivante, « Recommencer »), puis le rendu et le son (immédiats, aucun effet sur la partie). Le bouton « Copier les valeurs » met
+// un seul bloc JSON dans le presse-papiers (à coller dans le prompt du lot T5b). Rien n'est gardé dans le navigateur.
 
-export interface ReglagesTune {
-  entrees: ReglagesEntrees;
-  sim: Reglages;
+export { reglagesDeDepart, type ReglagesTune };
+
+const nombre = (v: number, c: Curseur): string => (c.decimales !== undefined ? v.toFixed(c.decimales) : Number.isInteger(v) ? String(v) : v.toFixed(c.unite === "ms" ? 0 : 3).replace(/\.?0+$/, ""));
+
+export interface OptionsTune {
+  /** La demi-largeur de la plateforme du jour (huitièmes de mètre) : la valeur de départ du curseur de largeur. */
+  demiJour: number;
+  onRecommencer(): void;
+  /** Une valeur du second groupe (ou une valeur quelconque) vient de changer. */
+  onChange?(): void;
 }
 
-interface Curseur {
-  nom: string;
-  min: number;
-  max: number;
-  pas: number;
-  unite: string;
-  lire(r: ReglagesTune): number;
-  ecrire(r: ReglagesTune, v: number): void;
-}
-
-const MS = 1000 / 60;
-const CURSEURS: Curseur[] = [
-  { nom: "Délai avant répétition", min: 50, max: 500, pas: 1000 / 60, unite: "ms", lire: (r) => r.entrees.delaiTicks * MS, ecrire: (r, v) => (r.entrees.delaiTicks = Math.round(v / MS)) },
-  { nom: "Cadence de répétition", min: 17, max: 300, pas: 1000 / 60, unite: "ms", lire: (r) => r.entrees.cadenceTicks * MS, ecrire: (r, v) => (r.entrees.cadenceTicks = Math.max(1, Math.round(v / MS))) },
-  { nom: "Vitesse de chute", min: 0.5, max: 8, pas: 0.125, unite: "m/s", lire: (r) => r.sim.vitesseChute8 / 8, ecrire: (r, v) => (r.sim.vitesseChute8 = Math.round(v * 8)) },
-  { nom: "Facteur de descente", min: 1, max: 12, pas: 1, unite: "×", lire: (r) => r.sim.facteurDescente, ecrire: (r, v) => (r.sim.facteurDescente = Math.round(v)) },
-  { nom: "Hauteur d'apparition", min: 2, max: 14, pas: 0.5, unite: "m", lire: (r) => r.sim.hauteurApparition8 / 8, ecrire: (r, v) => (r.sim.hauteurApparition8 = Math.round(v * 8)) },
-];
-
-export function reglagesDeDepart(): ReglagesTune {
-  return { entrees: { ...ENTREES_DEFAUT }, sim: { ...REGLAGES_DEFAUT } };
-}
-
-export function monterTune(racine: HTMLElement, r: ReglagesTune, onRecommencer: () => void): void {
-  const resume = el("pre", { classe: "tune__resume" });
-  const maj = () => {
-    resume.textContent = JSON.stringify({ delaiTicks: r.entrees.delaiTicks, cadenceTicks: r.entrees.cadenceTicks, vitesseChute8: r.sim.vitesseChute8, facteurDescente: r.sim.facteurDescente, hauteurApparition8: r.sim.hauteurApparition8 });
+export function monterTune(racine: HTMLElement, r: ReglagesTune, o: OptionsTune): void {
+  const resume = el("pre", { classe: "tune__resume", attrs: { id: "tune-resume" } });
+  const essai = el("p", { classe: "tune__essai", attrs: { id: "tune-essai", role: "status" } });
+  const maj = (): void => {
+    resume.textContent = blocJson(r, o.demiJour);
+    const e = reglagesEssai(r);
+    essai.hidden = !e;
+    essai.textContent = e ? "Réglage d'essai : cette partie ne sera pas classée." : "";
+    o.onChange?.();
   };
-  const lignes = CURSEURS.map((c) => {
+  const ligne = (nom: string, min: number, max: number, pas: number, lire: () => number, ecrire: (v: number) => void, montrer: (v: number) => string, id: string): HTMLElement => {
     const valeur = el("output", { classe: "tune__valeur" });
-    const champ = el("input", { attrs: { type: "range", min: c.min, max: c.max, step: c.pas, value: c.lire(r), "aria-label": c.nom } });
-    const montrer = () => {
-      const v = c.lire(r);
-      valeur.textContent = `${Number.isInteger(v) ? v : v.toFixed(c.unite === "ms" ? 0 : 3).replace(/\.?0+$/, "")} ${c.unite}`;
-    };
+    const champ = el("input", { attrs: { type: "range", min, max, step: pas, value: lire(), "aria-label": nom, id } }) as HTMLInputElement;
+    const afficher = (): void => void (valeur.textContent = montrer(lire()));
     champ.addEventListener("input", () => {
-      c.ecrire(r, Number(champ.value));
-      montrer();
+      ecrire(Number(champ.value));
+      afficher();
       maj();
     });
-    montrer();
-    return el("label", { classe: "tune__ligne" }, el("span", { texte: c.nom }), champ, valeur);
+    afficher();
+    return el("label", { classe: "tune__ligne" }, el("span", { texte: nom }), champ, valeur);
+  };
+  const dePanneau = (c: Curseur): HTMLElement => ligne(c.nom, c.min, c.max, c.pas, () => c.lire(r), (v) => c.ecrire(r, v), (v) => `${nombre(v, c)} ${c.unite}`.trim(), `tune-${c.cle}`);
+  // La largeur de la plateforme : une valeur forcée pour essayer, sans toucher au générateur (le contenu du jour garde la sienne).
+  const largeur = ligne(
+    "Largeur de la plateforme",
+    12,
+    40,
+    1,
+    () => r.plateformeDemi8 ?? o.demiJour,
+    (v) => (r.plateformeDemi8 = v === o.demiJour ? null : Math.round(v)),
+    (v) => `${(v / 4).toFixed(2).replace(/\.?0+$/, "")} m${r.plateformeDemi8 === null ? " (jour)" : ""}`,
+    "tune-plateformeDemi8",
+  );
+  const g1 = CURSEURS.filter((c) => c.groupe === 1).map(dePanneau);
+  const g2 = CURSEURS.filter((c) => c.groupe === 2).map(dePanneau);
+  const bouton = (texte: string, id: string, fn: () => void): HTMLButtonElement => {
+    const b = el("button", { classe: "tune__bouton", attrs: { type: "button", id }, texte }) as HTMLButtonElement;
+    b.addEventListener("click", () => {
+      b.blur();
+      fn();
+    });
+    return b;
+  };
+  const retour = el("span", { classe: "tune__retour", attrs: { role: "status", "aria-live": "polite" } });
+  const copier = bouton("Copier les valeurs", "tune-copier", () => {
+    const texte = blocJson(r, o.demiJour);
+    const fini = (ok: boolean): void => void (retour.textContent = ok ? "Copié." : "Copie impossible : sélectionne le texte du bas.");
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(texte).then(() => fini(true), () => fini(false));
+    else fini(false);
   });
-  const recommencer = el("button", { classe: "tune__bouton", attrs: { type: "button" }, texte: "Recommencer avec ces réglages" });
-  recommencer.addEventListener("click", () => {
-    recommencer.blur();
-    onRecommencer();
+  const recommencer = bouton("Recommencer avec ces réglages", "tune-recommencer", () => o.onRecommencer());
+  const reinit = bouton("Réinitialiser", "tune-reinit", () => {
+    const d = reglagesDeDepart();
+    r.entrees = d.entrees;
+    r.sim = d.sim;
+    r.physique = d.physique;
+    r.plateformeDemi8 = d.plateformeDemi8;
+    r.rendu = d.rendu;
+    for (const c of racine.querySelectorAll<HTMLInputElement>(".tune input[type=range]")) {
+      const cle = c.id.replace(/^tune-/, "");
+      const cur = CURSEURS.find((x) => x.cle === cle);
+      c.value = String(cur ? cur.lire(r) : cle === "plateformeDemi8" ? o.demiJour : c.value);
+      c.dispatchEvent(new Event("input"));
+    }
+    maj();
   });
   maj();
-  racine.append(el("aside", { classe: "tune", attrs: { id: "tune", "aria-label": "Réglages de sensation" } }, el("strong", { texte: "Sensation (valeurs provisoires)" }), ...lignes, recommencer, resume));
+  racine.append(
+    el(
+      "details",
+      { classe: "tune", attrs: { id: "tune", ...(typeof window !== "undefined" && window.innerHeight > 520 ? { open: true } : {}), "aria-label": "Réglages de sensation" } }, // fermé sur un petit écran (844 × 390) : le panneau couvre la tour
+      el("summary", { classe: "tune__titre" }, el("strong", { texte: "Sensation (valeurs provisoires)" })),
+      el("h3", { classe: "tune__groupe", texte: "Sensation et physique : parties d'essai" }),
+      ...g1,
+      largeur,
+      el("h3", { classe: "tune__groupe", texte: "Rendu et son : sans effet sur la partie" }),
+      ...g2,
+      essai,
+      el("div", { classe: "tune__boutons" }, recommencer, copier, reinit),
+      retour,
+      resume,
+    ),
+  );
 }
