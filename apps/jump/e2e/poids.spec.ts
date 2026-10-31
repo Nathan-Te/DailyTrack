@@ -18,9 +18,10 @@ test("le premier chargement : JS + CSS ≤ avant + 20 ko compressés ; le catalo
   const poids = Object.fromEntries(js.map((f) => [f, gz(f)]));
   // À la demande : le catalogue anglais (un joueur en anglais), la page `verify.html` (tests de navigateur), la page d'outils `/jump/admin/` (`admin-*` : jamais chargée par un joueur). (`tune.ts` reste dans le fichier principal,
   // comme avant le lot : s'il en sortait un jour, il ne compterait pas.)
-  const aLaDemande = (f: string) => f.startsWith("catalogue.en-") || f.startsWith("tune-") || f.startsWith("verify-") || f.startsWith("admin-");
+  // Lot M1 : le menu à la manette (`manette-*.js` et sa feuille), chargé à la première manette seulement, est à la demande comme le catalogue anglais.
+  const aLaDemande = (f: string) => f.startsWith("catalogue.en-") || f.startsWith("tune-") || f.startsWith("verify-") || f.startsWith("admin-") || f.startsWith("manette-");
   const total = Object.entries(poids).reduce((n, [f, o]) => n + (aLaDemande(f) ? 0 : o), 0);
-  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-")).reduce((n, f) => n + gz(f), 0);
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("manette-")).reduce((n, f) => n + gz(f), 0);
   const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
   const styleDansLaPage = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]!).length, 0);
   test.info().annotations.push({ type: "mesure", description: `JS ${total} + CSS ${css + styleDansLaPage} = ${total + css + styleDansLaPage} o (avant : ${AVANT} o, +${total + css + styleDansLaPage - AVANT} o)` });

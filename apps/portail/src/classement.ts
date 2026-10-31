@@ -16,6 +16,10 @@ import { lireClassement, type Classement, type LectureClassement, type LigneClas
 import { VUE_CUMUL, aSeparation, adresseDeVue, ongletVoisin, onglets, vueDeLAdresse } from "./classementVues";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "./jours";
 import { stockageDuPortail } from "./stockage";
+import { activerManette } from "@cdj/ui/src/manetteLien";
+
+// Lot M1 : cette page se pilote à la manette (son action principale : une ligne de `manette.ts`, chargée avec le menu).
+activerManette(() => import("./manette").then((m) => m.pour("classement")));
 
 // Lot I3, refait au lot A1 : le classement du jour **au chrono** (`/classement/`), ouvert par la tuile « Classement du jour » du portail. Trois vues en onglets —
 // Cumulé (par défaut), Track, Jump — gardées dans l'adresse (`?vue=`) ; le haut du classement (50), **ta ligne surlignée même hors du haut**, le temps de la vue
