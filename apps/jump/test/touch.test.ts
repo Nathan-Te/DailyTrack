@@ -1,4 +1,5 @@
 import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
+import { touchDebugLine } from "../src/touchDebug";
 import { describe, expect, it } from "vitest";
 import { VIEW_MIN_WIDTH_TILES, VIEW_TILES_DESKTOP, VIEW_TILES_PHONE, viewHeightTiles } from "../src/camera";
 import { Controls } from "../src/input";
@@ -11,7 +12,8 @@ import {
   BUTTON_SIZES,
   ZONES,
   buttonRects,
-  directionAt,
+  isMouseEcho,
+  MOUSE_ECHO_MS,
   layoutFor,
   wantsTouch,
   zoneAt,
@@ -50,21 +52,23 @@ describe("zones", () => {
 
   it.each(SCREENS)("%i × %i : chaque point de l'écran est dans une et une seule zone, sans trou, bande haute exclue", (w, h) => {
     const l = layoutFor(w, h);
-    for (let x = -3; x <= w + 3; x += 1) {
-      for (const y of [l.band, l.band + 1, Math.round(h / 2), h - 1, h + 3]) {
+    for (let x = 0; x <= w; x += 1) {
+      for (const y of [l.band, l.band + 1, Math.round(h / 2), h - 1, h]) {
         const z = zoneAt(l, x, y);
         expect(["left", "right", "jump"], `(${x}, ${y})`).toContain(z);
       }
-      for (const y of [-2, 0, 1, l.band - 1]) expect(zoneAt(l, x, y), `(${x}, ${y})`).toBe("band");
+      for (const y of [0, 1, l.band - 1]) expect(zoneAt(l, x, y), `(${x}, ${y})`).toBe("band");
     }
     // Les frontières : celle entre les flèches (au milieu de leur écart) et ½ de la largeur appartiennent à la zone de droite.
     expect(zoneAt(l, l.frontier - 0.01, h - 1)).toBe("left");
     expect(zoneAt(l, l.frontier, h - 1)).toBe("right");
     expect(zoneAt(l, w / 2 - 0.01, h - 1)).toBe("right");
     expect(zoneAt(l, w / 2, h - 1)).toBe("jump");
-    // Hors de l'écran : la zone du bord.
-    expect(zoneAt(l, -50, h - 1)).toBe("left");
-    expect(zoneAt(l, w + 50, h - 1)).toBe("jump");
+  });
+
+  it("lot 29 : hors de l'écran, un doigt ne touche aucune zone (`out`), même s'il y est arrivé par une zone", () => {
+    const l = layoutFor(800, 400);
+    for (const [x, y] of [[-1, 300], [-50, 300], [801, 300], [5000, 300], [100, -1], [100, 401], [100, 9000]] as const) expect(zoneAt(l, x, y), `(${x}, ${y})`).toBe("out");
   });
 
   it("la bande haute tient compte de la zone sûre (encoche)", () => {
@@ -72,16 +76,6 @@ describe("zones", () => {
     expect(l.band).toBe(BAND_PX + 47);
     expect(zoneAt(l, 50, l.band - 1)).toBe("band");
     expect(zoneAt(l, 50, l.band)).toBe("left");
-  });
-
-  it("un doigt de direction hors de la moitié gauche compte pour la zone la plus proche de cette moitié", () => {
-    const l = layoutFor(800, 400);
-    expect(directionAt(l, -40)).toBe(-1);
-    expect(directionAt(l, l.frontier - 1)).toBe(-1);
-    expect(directionAt(l, l.frontier)).toBe(1);
-    expect(directionAt(l, 399)).toBe(1);
-    expect(directionAt(l, 700)).toBe(1); // dans la moitié du saut : toujours →
-    expect(directionAt(l, 5000)).toBe(1);
   });
 });
 
@@ -159,54 +153,93 @@ describe("boutons dessinés", () => {
   });
 });
 
-describe("suivi des doigts", () => {
+describe("suivi des doigts (lot 29 : l'état se déduit des doigts posés et de leur position)", () => {
   const L = layoutFor(800, 400);
   const left = [50, 300] as const;
   const right = [300, 300] as const;
   const jump = [600, 300] as const;
+  const band = [100, 10] as const;
+  const outside = [-30, 300] as const;
+  /** Aucune commande tenue, aucun doigt : l'état de repos. */
+  const rest = (pad: TouchPad) => {
+    expect(pad.bits).toBe(0);
+    expect(pad.count).toBe(0);
+  };
 
   it("← puis lever : direction gauche, puis neutre", () => {
     const pad = new TouchPad(L);
     expect(pad.down(1, ...left)).toBe("left");
     expect(pad.bits).toBe(INPUT_LEFT);
-    pad.up(1);
-    expect(pad.bits).toBe(0);
+    expect(pad.up(1)).toBe(true);
+    rest(pad);
   });
 
-  it("glisser de ← à → sans lever change aussitôt de direction, et inversement", () => {
+  it("glisser de ← à → sans lever : ← se relâche, → s'enfonce aussitôt, et inversement ; lever arrête tout", () => {
     const pad = new TouchPad(L);
     pad.down(1, ...left);
-    expect(pad.direction).toBe(-1);
     pad.move(1, L.frontier - 10, 300);
-    expect(pad.direction).toBe(-1);
+    expect(pad.bits).toBe(INPUT_LEFT);
     pad.move(1, L.frontier + 10, 300);
-    expect(pad.direction).toBe(1);
+    expect(pad.bits).toBe(INPUT_RIGHT);
     expect(pad.pressed("right")).toBe(true);
     expect(pad.pressed("left")).toBe(false);
     pad.move(1, L.frontier - 20, 310);
-    expect(pad.direction).toBe(-1);
+    expect(pad.bits).toBe(INPUT_LEFT);
     expect(pad.count).toBe(1);
+    pad.move(1, L.frontier + 20, 310);
     pad.up(1);
-    expect(pad.direction).toBe(0);
+    rest(pad);
   });
 
-  it("un doigt qui sort de la moitié gauche compte pour la zone la plus proche, et seul le lever l'arrête", () => {
+  it("glisser de → au saut : → se relâche, le saut s'enfonce ; de ← jusqu'au saut sans lever, puis lever : rien n'est tenu", () => {
     const pad = new TouchPad(L);
-    pad.down(1, ...right);
-    pad.move(1, 700, 300); // dans la moitié du saut
-    expect(pad.direction).toBe(1);
-    expect(pad.jump).toBe(false);
-    pad.move(1, 5000, 9000); // très loin, hors de l'écran
-    expect(pad.direction).toBe(1);
-    pad.move(1, 700, 10); // et même dans la bande haute
-    expect(pad.direction).toBe(1);
-    pad.move(1, -200, 300); // par la gauche
-    expect(pad.direction).toBe(-1);
-    pad.up(1);
+    pad.down(1, ...left);
+    pad.move(1, ...right);
+    expect(pad.bits).toBe(INPUT_RIGHT);
+    pad.move(1, ...jump);
+    expect(pad.bits).toBe(INPUT_JUMP);
     expect(pad.direction).toBe(0);
+    pad.move(1, ...left); // et le saut, qui avait suivi son doigt, repart en ←
+    expect(pad.bits).toBe(INPUT_LEFT);
+    pad.move(1, ...jump);
+    pad.up(1);
+    rest(pad);
   });
 
-  it("deux doigts : la direction d'un côté, le saut de l'autre, chacun indépendant", () => {
+  it("un doigt qui sort d'un bouton le relâche : par la bande haute, par un bord de l'écran, ou loin dehors", () => {
+    for (const start of [left, right, jump] as const) {
+      for (const away of [band, outside, [900, 300], [300, 450], [5000, 9000]] as const) {
+        const pad = new TouchPad(L);
+        pad.down(1, start[0], start[1]);
+        expect(pad.bits).not.toBe(0);
+        pad.move(1, away[0], away[1]);
+        expect(pad.bits, `${start} → ${away}`).toBe(0);
+        expect(pad.count, "le doigt reste suivi").toBe(1);
+        pad.up(1);
+        rest(pad);
+      }
+    }
+  });
+
+  it("un doigt qui revient d'en dehors ou de la bande haute dans une zone l'enfonce (il est suivi tant qu'il est posé)", () => {
+    const pad = new TouchPad(L);
+    expect(pad.down(1, ...band)).toBe("band");
+    expect(pad.count).toBe(1);
+    expect(pad.bits).toBe(0);
+    pad.move(1, ...right);
+    expect(pad.bits).toBe(INPUT_RIGHT);
+    pad.move(1, ...outside);
+    expect(pad.bits).toBe(0);
+    pad.move(1, ...left);
+    expect(pad.bits).toBe(INPUT_LEFT);
+    pad.up(1);
+    rest(pad);
+    // Un doigt posé hors de l'écran ne commande rien.
+    expect(pad.down(2, ...outside)).toBe("out");
+    expect(pad.bits).toBe(0);
+  });
+
+  it("deux doigts : la direction d'un côté, le saut de l'autre, chacun indépendant ; lever l'un puis l'autre", () => {
     const pad = new TouchPad(L);
     pad.down(1, ...right);
     pad.down(2, ...jump);
@@ -217,59 +250,126 @@ describe("suivi des doigts", () => {
     pad.up(1); // la direction se lâche, le saut reste
     expect(pad.bits).toBe(INPUT_JUMP);
     pad.up(3);
-    expect(pad.bits).toBe(0);
+    rest(pad);
   });
 
-  it("le doigt de saut suit son propre doigt : il reste un saut même s'il glisse sur la moitié gauche", () => {
-    const pad = new TouchPad(L);
-    pad.down(1, ...jump);
-    pad.move(1, 40, 300);
-    expect(pad.jump).toBe(true);
-    expect(pad.direction).toBe(0);
-    pad.up(1);
-    expect(pad.jump).toBe(false);
+  it("deux doigts, l'un levé puis l'autre : levés dans n'importe quel ordre, rien ne reste tenu", () => {
+    for (const order of [[1, 2], [2, 1]] as const) {
+      const pad = new TouchPad(L);
+      pad.down(1, ...left);
+      pad.down(2, ...right);
+      pad.move(1, ...jump); // le premier glisse jusqu'au saut
+      expect(pad.bits).toBe(INPUT_RIGHT | INPUT_JUMP);
+      pad.up(order[0]);
+      pad.up(order[1]);
+      rest(pad);
+    }
   });
 
-  it("plusieurs doigts de direction : le plus récent l'emporte, le précédent revient quand il est levé", () => {
+  it("plusieurs doigts de direction : le dernier entré dans sa zone l'emporte, le précédent revient quand il est levé", () => {
     const pad = new TouchPad(L);
     pad.down(1, ...left);
     pad.down(2, ...right);
     expect(pad.direction).toBe(1);
     pad.up(2);
     expect(pad.direction).toBe(-1);
-  });
-
-  it("un doigt posé dans la bande haute (ou hors zone) ne commande rien, même s'il glisse ensuite dans le jeu", () => {
-    const pad = new TouchPad(L);
-    expect(pad.down(1, 100, 10)).toBe("band");
-    expect(pad.count).toBe(0);
-    pad.move(1, 100, 300);
-    expect(pad.bits).toBe(0);
-    pad.move(1, 600, 300);
-    expect(pad.bits).toBe(0);
+    // Le doigt 1 entre dans → après que le doigt 3 est posé en ← : c'est lui le dernier entré.
+    pad.down(3, ...left);
+    pad.move(1, ...right);
+    expect(pad.direction).toBe(1);
     pad.up(1);
-    // Un doigt inconnu qu'on lève ou déplace est sans effet.
-    pad.up(99);
-    pad.move(99, 1, 1);
-    expect(pad.bits).toBe(0);
+    expect(pad.direction).toBe(-1);
   });
 
-  it("un doigt posé hors de l'écran compte pour la zone du bord ; releaseAll lâche tout", () => {
+  it("un identifiant réutilisé (lever perdu) remplace l'ancien doigt au lieu de s'ajouter", () => {
     const pad = new TouchPad(L);
-    pad.down(1, -20, 300);
-    pad.down(2, 900, 300);
+    pad.down(7, ...left);
+    pad.down(7, ...jump);
+    expect(pad.count).toBe(1);
+    expect(pad.bits).toBe(INPUT_JUMP);
+    pad.up(7);
+    rest(pad);
+    // Un doigt inconnu qu'on lève ou déplace est sans effet.
+    expect(pad.up(99)).toBe(false);
+    pad.move(99, 1, 1);
+    rest(pad);
+  });
+
+  it("releaseAll lâche tout (annulation, focus, visibilité, pagehide, rotation)", () => {
+    const pad = new TouchPad(L);
+    pad.down(1, ...left);
+    pad.down(2, ...jump);
     expect(pad.bits).toBe(INPUT_LEFT | INPUT_JUMP);
     pad.releaseAll();
-    expect(pad.bits).toBe(0);
-    expect(pad.count).toBe(0);
+    rest(pad);
   });
 
-  it("un nouvel écran (rotation) change les zones sans casser le suivi", () => {
+  it("un nouvel écran (rotation) recalcule ce que touche chaque doigt, sans le garder de la pose", () => {
     const pad = new TouchPad(layoutFor(844, 390));
     pad.down(1, 300, 300); // zone → en paysage (300 / 844 = 0,36)
-    expect(pad.direction).toBe(1);
+    expect(pad.bits).toBe(INPUT_RIGHT);
     pad.layout = layoutFor(390, 844);
-    expect(pad.direction).toBe(1); // 300 / 390 : désormais dans la moitié du saut, toujours →
+    expect(pad.bits).toBe(INPUT_JUMP); // 300 / 390 : désormais dans la moitié du saut
+    pad.layout = layoutFor(390, 280); // et un écran trop bas pour que le doigt y soit : dehors
+    expect(pad.bits).toBe(0);
+    expect(pad.count).toBe(1);
+  });
+
+  describe("reconcile : la liste des touchers du système fait foi", () => {
+    it("aucun toucher posé : tous les doigts tactiles sont lâchés (un lever s'est perdu)", () => {
+      const pad = new TouchPad(L);
+      pad.down(1, ...left);
+      pad.down(2, ...jump);
+      expect(pad.reconcile([])).toBe(2);
+      rest(pad);
+    });
+
+    it("un toucher de moins : le doigt le plus éloigné des touchers restants est lâché, l'autre reste", () => {
+      const pad = new TouchPad(L);
+      pad.down(1, ...left);
+      pad.down(2, ...jump);
+      expect(pad.reconcile([{ x: jump[0] + 2, y: jump[1] - 1 }])).toBe(1);
+      expect(pad.bits).toBe(INPUT_JUMP);
+      expect(pad.count).toBe(1);
+      pad.down(3, ...left);
+      expect(pad.reconcile([{ x: left[0], y: left[1] }])).toBe(1); // le saut a perdu son lever
+      expect(pad.bits).toBe(INPUT_LEFT);
+    });
+
+    it("autant de touchers (ou plus : un doigt sur un bouton du haut) que de doigts suivis : rien n'est lâché", () => {
+      const pad = new TouchPad(L);
+      pad.down(1, ...left);
+      expect(pad.reconcile([{ x: 400, y: 200 }])).toBe(0);
+      expect(pad.reconcile([{ x: 50, y: 300 }, { x: 60, y: 20 }])).toBe(0);
+      expect(pad.bits).toBe(INPUT_LEFT);
+    });
+
+    it("la souris n'est pas un toucher : elle n'est jamais lâchée par la liste des touchers", () => {
+      const pad = new TouchPad(L);
+      pad.down(1, ...left, false);
+      expect(pad.reconcile([])).toBe(0);
+      expect(pad.bits).toBe(INPUT_LEFT);
+    });
+  });
+});
+
+describe("événements de souris émulés après un toucher", () => {
+  it("une souris qui suit un toucher de moins d'une seconde est un écho ; plus tard, ou sans toucher avant, c'est une vraie souris", () => {
+    expect(isMouseEcho("mouse", 1000, 900)).toBe(true);
+    expect(isMouseEcho("mouse", 1000 + MOUSE_ECHO_MS - 101, 900)).toBe(true);
+    expect(isMouseEcho("mouse", 900 + MOUSE_ECHO_MS, 900)).toBe(false);
+    expect(isMouseEcho("mouse", 1000, null)).toBe(false);
+    expect(isMouseEcho("touch", 1000, 900)).toBe(false);
+    expect(isMouseEcho("pen", 1000, 900)).toBe(false);
+  });
+});
+
+describe("ligne de vérification de ?debug", () => {
+  it("dit les doigts posés et les touches tenues", () => {
+    expect(touchDebugLine(0, 0, null)).toBe("doigts 0 · aucune touche tenue");
+    expect(touchDebugLine(1, INPUT_LEFT, null)).toBe("doigts 1 · ← tenue");
+    expect(touchDebugLine(2, INPUT_RIGHT | INPUT_JUMP, null)).toBe("doigts 2 · → et SAUT tenues");
+    expect(touchDebugLine(0, 0, "annulation")).toBe("doigts 0 · aucune touche tenue · dernier relâchement : annulation");
   });
 });
 

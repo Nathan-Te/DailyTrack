@@ -1,7 +1,8 @@
 // La vitrine de la scène (`/track/vitrine/`, recette et aperçus seulement : jamais construite en production). Deux planches :
 //   - **les paliers** (retouche 38b, par défaut) : au-dessus du mélange recommandé du lot 38, les paliers de qualité 1, 2 et 3 et une colonne « à la
 //     carte » (un palier et des pas cochés), avec la vue en mouvement par thème et le coût de chaque palier et de chaque pas ;
-//   - **la voiture** (lot 40, `?planche=voiture`). Lot 44 : la planche des directions du lot 38 est partie avec les directions (capture dans le README du lot 44).
+//   - **la voiture** (lot 40, `?planche=voiture`). Lot 44 : la planche des directions du lot 38 est partie avec les directions (capture dans le README du lot 44) ;
+//   - **le son** (lot 55, `?planche=son`) : le moteur d'avant et trois approches, sur une même course de voiture virtuelle.
 // Une section par élément et par thème ; dans chaque section, les mêmes éléments vus par chaque colonne, côte à côte, dans la même scène et le même
 // cadrage, avec leur coût. Outil interne de Nathan : en français, exempté des catalogues (comme l'admin).
 import "@cdj/ui/src/styles.css";
@@ -27,9 +28,9 @@ import { MESURES_PALIERS } from "./mesuresPaliers";
 import type { Bout } from "./parcours";
 import type { VueMouvement } from "./mouvement";
 
-type Planche = "paliers" | "voiture";
+type Planche = "paliers" | "voiture" | "son";
 const params = new URLSearchParams(location.search);
-const planche: Planche = params.get("planche") === "voiture" ? "voiture" : "paliers";
+const planche: Planche = params.get("planche") === "voiture" ? "voiture" : params.get("planche") === "son" ? "son" : "paliers";
 document.body.dataset.planche = planche;
 
 /** Les réglages de la colonne « à la carte » et de la vue en mouvement (`?reglages=2+halo`, par défaut le palier 2). */
@@ -552,6 +553,14 @@ const planVoiture =
     : null;
 planVoiture?.catch((e) => erreurs.push(`planche voiture : ${String(e)}`));
 
+// --- La planche « Son » (lot 55, chargée à la demande) ---------------------------------------------------------------------------------------
+
+const planSon =
+  planche === "son"
+    ? import("./son").then(async (m) => ({ module: m, planche: await m.monter(document.getElementById("son")!, { erreurs, parties: () => parties }) }))
+    : null;
+planSon?.catch((e) => erreurs.push(`planche son : ${String(e)}`));
+
 // Outils des tests (e2e/vitrine.spec.ts, e2e/voiture.spec.ts) et des mesures (e2e/mesure-lot38b.spec.ts, mesure-lot40-vitrine).
 declare global {
   interface Window {
@@ -575,6 +584,8 @@ declare global {
       };
       /** Lot 40 : la planche « Voiture » (`?planche=voiture`), une fois montée. */
       voiture(): Promise<typeof import("./voiture") | null>;
+      /** Lot 55 : la planche « Son » (`?planche=son`), une fois montée : ses outils de rendu hors ligne et l'écoute. */
+      son(): Promise<{ module: typeof import("./son"); planche: import("./son").PlancheSon } | null>;
     };
   }
 }
@@ -634,4 +645,5 @@ window.__vitrine = {
     },
   },
   voiture: () => planVoiture ?? Promise.resolve(null),
+  son: () => planSon ?? Promise.resolve(null),
 };

@@ -49,6 +49,8 @@ export interface AdminState {
   thumbs: "" | "top" | "2d" | "off";
   /** Mode de direction tactile forcé ("" : celui des réglages). */
   steer: "" | "boutons" | "glissiere" | "volant" | "gyro";
+  /** Lot 55 : la version du son du jeu (`?son=leger|complet`) : "" selon l'appareil ; « légère » = une boucle de moteur à la fois, sans compresseur. */
+  son: "" | "leger" | "complet";
   /** Dessine les zones tactiles actives (`?zones=1`). */
   zones: boolean;
   /** Force l'écran d'accueil (`?home=1`, lot 29) : sans cela, `debug` et les liens directs le sautent. */
@@ -103,6 +105,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   touch: "",
   thumbs: "",
   steer: "",
+  son: "",
   zones: false,
   home: false,
   howto: false,
@@ -156,6 +159,7 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.touch !== "") p.set("touch", s.touch);
   if (s.thumbs !== "") p.set("thumbs", s.thumbs);
   if (s.steer !== "") p.set("steer", s.steer);
+  if (s.son !== "") p.set("son", s.son);
   if (s.zones) p.set("zones", "1");
   if (s.home) p.set("home", "1");
   if (s.howto) p.set("howto", "1");
@@ -191,6 +195,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.camera === "" || o.camera === "proche" || o.camera === "loin" || o.camera === "capot") s.camera = o.camera;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
     if (o.steer === "" || o.steer === "boutons" || o.steer === "glissiere" || o.steer === "volant" || o.steer === "gyro") s.steer = o.steer; // lot 52 : « glisser » (l'ancien joystick) est devenu la glissière
+    if (o.son === "" || o.son === "leger" || o.son === "complet") s.son = o.son;
     if (o.touch === "" || o.touch === "1" || o.touch === "0") s.touch = o.touch;
     if (typeof o.figure === "string" && (o.figure === "" || (FIGURE_NAMES as readonly string[]).includes(o.figure))) s.figure = o.figure;
     if (typeof o.figureVariant === "string" && /^\d{0,2}$/.test(o.figureVariant)) s.figureVariant = o.figureVariant;
