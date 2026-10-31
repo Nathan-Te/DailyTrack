@@ -97,10 +97,11 @@ const nomOnglet = (t: T, o: { jeu?: string; nom?: string }): string => (o.jeu ? 
 
 /**
  * Les onglets (rôle `tablist`, un seul dans l'ordre de tabulation, flèches pour passer de l'un à l'autre) : Cumulé, puis un jeu par jeu du jour. Avant la
- * réponse du serveur : Cumulé, Track, Jump (les jeux que la page sait habiller).
+ * réponse du serveur : Cumulé, Track, Jump. Tower n'y est jamais d'avance (lot TP) : il n'est dans le classement du jour qu'à partir de son premier jour entier
+ * `on`, et un onglet dessiné puis retiré à la réponse clignoterait ; il apparaît avec la réponse du serveur, quand il est là.
  */
 function barreDesVues(t: T, c: Classement | null): HTMLElement {
-  const liste = c ? onglets(c.jeux) : onglets(Object.entries(JEUX).map(([jeu, j]) => ({ jeu, site: j.cadre, nom: jeu })));
+  const liste = c ? onglets(c.jeux) : onglets(Object.entries(JEUX).filter(([jeu]) => jeu !== "tower").map(([jeu, j]) => ({ jeu, site: j.cadre, nom: jeu })));
   const actif = liste.some((o) => o.vue === vueAffichee) ? vueAffichee : VUE_CUMUL;
   const barre = el("div", { classe: "classement-vues", attrs: { role: "tablist", "aria-label": t.t("classement.vues.aria") } });
   const boutons = liste.map((o) => {
