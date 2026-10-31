@@ -131,6 +131,32 @@ test("le clavier commande le personnage ; un appui bref entre deux pas n'est pas
   expect((await advance(page, null, 1)).vy).toBeLessThan(0);
 });
 
+test("Réglages › Commandes : Sauter sur Z, puis Z saute en partie et « Comment jouer » dit Z (lot M2)", async ({ page }) => {
+  await openSandbox(page);
+  await page.evaluate(() => localStorage.removeItem("cdj:commandes:jump"));
+  await page.locator("#pausebtn").click();
+  await page.locator("#menu-settings").click();
+  // La case de la première touche de « Sauter » attend la nouvelle touche ; KeyZ (la touche physique : Z sur un AZERTY, Z sur un QWERTZ) la remplace.
+  await page.locator('#settings-commandes [data-focus="k:sauter:0"]').click();
+  await expect(page.locator("#settings-commandes .dj-commande__touche--attente")).toContainText("…");
+  await page.keyboard.press("KeyZ");
+  await expect(page.locator('#settings-commandes [data-action="sauter"]')).toContainText("Z");
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:commandes:jump")!).clavier.sauter[0])).toBe("KeyZ");
+  // Retour à la partie (Échap ferme Réglages puis la pause), pas à pas : Z fait sauter, comme l'Espace avant.
+  await page.keyboard.press("Escape");
+  await page.locator("#menu-resume").click();
+  await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.manual(true));
+  await advance(page, null, 60);
+  await page.keyboard.press("KeyZ");
+  const p = await advance(page, null, 1);
+  expect(p.ground).toBe(false);
+  expect(p.vy).toBeLessThan(0);
+  // « Comment jouer » dit la touche choisie.
+  await expect(page.locator('[data-t="commandes.clavier.sauter"]')).toContainText("Z");
+  await expect(page.locator('[data-t="commandes.clavier.sauter"]')).not.toContainText("{");
+  await page.evaluate(() => localStorage.removeItem("cdj:commandes:jump"));
+});
+
 test("?debug&tune : un curseur par réglage, un réglage modifié marque la partie, « Réinitialiser » l'enlève", { tag: "@regression" }, async ({ page }) => {
   await openSandbox(page, "&tune");
   await page.evaluate(() => localStorage.removeItem("jump:tune"));

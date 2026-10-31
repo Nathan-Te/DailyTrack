@@ -296,6 +296,11 @@ export function demarrerManette(options: OptionsManette, brancher?: Branchement)
     genre = genreDeManette(pad.id);
     const etat = etatDe(pad);
     const presses = suivi.mettreAJour(etat.boutons);
+    // Lot M2 : l'écran des commandes attend un bouton à choisir : le menu n'écoute rien (ni B qui revient, ni A qui valide) et le jeu ne le lira pas non plus.
+    if (racine.dataset.capture === "commande") {
+      etat.boutons.forEach((e, i) => e && i !== BOUTON.START && suivi.consommer(i));
+      return;
+    }
     const direction = directionDe(etat);
     const actif = presses.length > 0 || direction !== null;
     const premiere = actif && !entreeManette;
