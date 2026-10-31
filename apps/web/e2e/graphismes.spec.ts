@@ -12,7 +12,6 @@ function dayOf(name: ThemeName): string {
   return formatDay(d);
 }
 
-const AMBIENCE: Record<ThemeName, string> = { stade: "crowd", rallye: "breeze", banquise: "wind", nuit: "hum", campagne: "crickets", canyon: "hotwind", col: "wind", ville: "city" };
 const DARK: ThemeName[] = ["nuit"];
 
 async function open(page: Page, query: string) {
@@ -34,12 +33,10 @@ async function open(page: Page, query: string) {
   return errors;
 }
 
-test("chaque thème a son ambiance sonore, sa brume, ses panneaux ; aucune erreur de page", async ({ page }) => {
+test("chaque thème a sa brume, ses panneaux ; aucune erreur de page", async ({ page }) => {
   const fogs: Record<string, number> = {};
   for (const name of THEME_NAMES) {
     const errors = await open(page, `seed=${dayOf(name)}&quality=2`);
-    const audio = await page.evaluate(() => window.__cdj.audio);
-    expect(audio.ambience, `ambiance de ${name}`).toBe(AMBIENCE[name]);
     const r = await page.evaluate(() => window.__cdj.render);
     expect(r.signs, `panneaux de ${name}`).toBeGreaterThan(0);
     expect(r.fog, `brume de ${name}`).not.toBeNull();
@@ -85,11 +82,10 @@ function stats(page: Page) {
   return page.evaluate(() => window.__cdj.render);
 }
 
-test("l'ambiance du thème passe sous le volume général : coupée par M (muet), jamais plus forte que lui", { tag: "@regression" }, async ({ page }) => {
+test("la touche M coupe le son : le volume général passe à zéro", { tag: "@regression" }, async ({ page }) => {
   await open(page, `seed=${dayOf("campagne")}&quality=2`);
   await page.keyboard.press("KeyM");
   await page.evaluate(() => window.__cdj.advance(3));
   const audio = await page.evaluate(() => window.__cdj.audio);
   expect(audio.settings.volume).toBe(0);
-  expect(audio.ambience).toBe("crickets"); // l'ambiance existe toujours, c'est le volume général qui la couvre
 });

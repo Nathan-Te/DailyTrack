@@ -44,8 +44,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "reglages.son.moteur": "Engine",
   "reglages.son.effets.nom": "Effects",
   "reglages.son.effets.aide": "Skids, rolling, wind, sound effects.",
-  "reglages.son.ambiance.nom": "Ambience",
-  "reglages.son.ambiance.aide": "The background sound of today's theme.",
   "reglages.camera.nom": "Default camera",
   "reglages.camera.aide": "At the start; the C key or the camera button changes it too.",
   "reglages.camera.proche": "Close",

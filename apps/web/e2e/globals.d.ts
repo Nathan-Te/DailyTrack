@@ -192,7 +192,6 @@ interface CdjDebug {
     log: string[];
     running: boolean;
     settings: { volume: number; last: number };
-    ambience: string | null;
     /** Lot 55 : le nouveau son (null tant qu'il n'est pas chargé) : la voiture qu'on entend, moteur prêt, version légère, compresseur, boîte virtuelle, nœuds, boucles qui jouent. */
     ext: { voiture: string; pret: boolean; leger: boolean; compresseur: boolean; rapport: number; rpm: number; noeuds: number; brefs: number; sources: number; chargements: number; ponctuels: string[] } | null;
   };

@@ -1,7 +1,5 @@
 import type { SurfaceKind } from "@cdj/sim";
 import {
-  AMBIENCE,
-  ambienceLevel,
   rollVoice,
   engineSound,
   landingSound,
@@ -11,7 +9,6 @@ import {
   skidLevel,
   toggleMute,
   windGain,
-  type AmbienceKind,
   type AudioSettings,
 } from "./audioLogic";
 import { gameStorage } from "./storage";
@@ -51,15 +48,12 @@ export class GameAudio {
   readonly log: OneShot[] = [];
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  /** Trois voix (lot 29) : moteur, effets, ambiance — chacune son niveau, avant le volume général. */
-  private bus: { engine: GainNode; effects: GainNode; ambience: GainNode } | null = null;
+  /** Deux voix (lot 29) : moteur et effets — chacune son niveau, avant le volume général. */
+  private bus: { engine: GainNode; effects: GainNode } | null = null;
   private engine: { o1: OscillatorNode; o2: OscillatorNode; lp: BiquadFilterNode; gain: GainNode } | null = null;
   private skid: { f: BiquadFilterNode; gain: GainNode } | null = null;
   private roll: { f: BiquadFilterNode; gain: GainNode } | null = null;
   private wind: GainNode | null = null;
-  /** Ambiance du thème (lot 23) : son niveau, ses nœuds (arrêtés au changement). */
-  private ambience: { kind: AmbienceKind; gain: GainNode; stop: () => void } | null = null;
-  private ambienceWanted: AmbienceKind | null = null;
   private noise: AudioBuffer | null = null;
   private wasBoost = false;
   private wasCut = false;
@@ -124,7 +118,6 @@ export class GameAudio {
     this.master.gain.setTargetAtTime(this.settings.volume, t, 0.04);
     this.bus.engine.gain.setTargetAtTime(this.settings.engine, t, 0.04);
     this.bus.effects.gain.setTargetAtTime(this.settings.effects, t, 0.04);
-    this.bus.ambience.gain.setTargetAtTime(this.settings.ambience, t, 0.04);
   }
 
   /** Crée le contexte (une fois), ou le réveille. Sans Web Audio, ne fait rien. */
@@ -154,13 +147,12 @@ export class GameAudio {
         g.connect(this.master!);
         return g;
       };
-      this.bus = { engine: voice(this.settings.engine), effects: voice(this.settings.effects), ambience: voice(this.settings.ambience) };
+      this.bus = { engine: voice(this.settings.engine), effects: voice(this.settings.effects) };
       // Bruit blanc de 2 s, lu en boucle par le crissement, le roulement et le vent.
       this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
       this.buildEngine(ctx);
-      this.buildAmbience();
       void ctx.resume();
       void import("./son/extension")
         .then((m) => m.creerExtension({ ctx, master: this.master!, destination: ctx.destination, bus: this.bus!, bruit: this.noise!, outils: { rollVoice, skidLevel, windGain, landingSound, noteFreq }, leger: LEGER[new URLSearchParams(location.search).get("son") ?? ""] ?? null }))
@@ -174,119 +166,6 @@ export class GameAudio {
       this.ctx = null;
       return false;
     }
-  }
-
-  /** Ambiance voulue (null : aucune). Si le contexte n'existe pas encore (avant le premier geste), elle se lance avec lui. */
-  setAmbience(kind: AmbienceKind | null) {
-    this.ambienceWanted = kind;
-    this.buildAmbience();
-  }
-
-  /** Nom de l'ambiance en cours (outil de test). */
-  get ambienceKind(): AmbienceKind | null {
-    return this.ambienceWanted;
-  }
-
-  private buildAmbience() {
-    const ctx = this.ctx;
-    if (!ctx || !this.master || !this.noise) return;
-    if (this.ambience?.kind === this.ambienceWanted) return;
-    this.ambience?.stop();
-    this.ambience = null;
-    const kind = this.ambienceWanted;
-    if (!kind) return;
-    const recipe = AMBIENCE[kind];
-    const out = ctx.createGain();
-    out.gain.value = 0;
-    out.connect(this.bus!.ambience);
-    const nodes: (AudioScheduledSourceNode | AudioNode)[] = [out];
-    const sources: AudioScheduledSourceNode[] = [];
-    const mix = ctx.createGain(); // somme du bruit et des notes
-    mix.connect(out);
-    nodes.push(mix);
-    let swayTarget: AudioParam | null = null;
-    let swayScale = 0;
-    if (recipe.noise) {
-      const src = ctx.createBufferSource();
-      src.buffer = this.noise;
-      src.loop = true;
-      src.start();
-      sources.push(src);
-      const f = ctx.createBiquadFilter();
-      f.type = recipe.noise.type;
-      f.frequency.value = recipe.noise.freq;
-      f.Q.value = recipe.noise.q;
-      src.connect(f).connect(mix);
-      nodes.push(f);
-      swayTarget = f.frequency;
-      swayScale = recipe.noise.freq * (recipe.sway?.depth ?? 0);
-    }
-    for (const t of recipe.tones ?? []) {
-      const o = ctx.createOscillator();
-      o.type = t.type;
-      o.frequency.value = t.freq;
-      const g = ctx.createGain();
-      g.gain.value = t.gain;
-      o.connect(g);
-      if (t.tremolo) {
-        // grillons : le gain bat très vite entre 0 et sa valeur
-        const trem = ctx.createGain();
-        trem.gain.value = 0;
-        const lfo = ctx.createOscillator();
-        lfo.frequency.value = t.tremolo;
-        const depth = ctx.createGain();
-        depth.gain.value = 0.5;
-        lfo.connect(depth).connect(trem.gain);
-        const bias = ctx.createConstantSource();
-        bias.offset.value = 0.5;
-        bias.connect(trem.gain);
-        bias.start();
-        lfo.start();
-        sources.push(lfo, bias);
-        g.connect(trem).connect(mix);
-        nodes.push(trem, depth);
-      } else {
-        g.connect(mix);
-      }
-      o.start();
-      sources.push(o);
-      nodes.push(g);
-    }
-    if (recipe.sway) {
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = recipe.sway.rate;
-      const depth = ctx.createGain();
-      if (swayTarget) {
-        depth.gain.value = swayScale;
-        lfo.connect(depth).connect(swayTarget);
-      } else {
-        depth.gain.value = recipe.sway.depth * 0.5;
-        const bias = ctx.createConstantSource();
-        bias.offset.value = 1;
-        mix.gain.value = 0;
-        lfo.connect(depth).connect(mix.gain);
-        bias.connect(mix.gain);
-        bias.start();
-        sources.push(bias);
-      }
-      lfo.start();
-      sources.push(lfo);
-      nodes.push(depth);
-    }
-    this.ambience = {
-      kind,
-      gain: out,
-      stop: () => {
-        for (const s of sources) {
-          try {
-            s.stop();
-          } catch {
-            /* déjà arrêté */
-          }
-        }
-        for (const n of nodes) n.disconnect();
-      },
-    };
   }
 
   private loopNoise(ctx: AudioContext): AudioBufferSourceNode {
@@ -358,7 +237,6 @@ export class GameAudio {
         this.ancienCoupe = true;
         for (const g of [this.engine.gain, this.skid.gain, this.roll.gain, this.wind]) g.gain.setTargetAtTime(0, t, 0.1);
       }
-      if (this.ambience) this.ambience.gain.gain.setTargetAtTime(on ? ambienceLevel(this.ambience.kind, f.speed) : 0, t, 0.25);
       this.bonus(f);
       return;
     }
@@ -376,8 +254,6 @@ export class GameAudio {
     this.roll.f.frequency.setTargetAtTime(voice.rollFreq * (0.6 + 0.6 * speedRatio), t, k);
     this.roll.gain.gain.setTargetAtTime(on && f.grounded ? voice.rollGain * speedRatio : 0, t, k);
     this.wind.gain.setTargetAtTime(on ? windGain(f.speed) : 0, t, k);
-    if (this.ambience) this.ambience.gain.gain.setTargetAtTime(on ? ambienceLevel(this.ambience.kind, f.speed) : 0, t, 0.25);
-
     this.bonus(f);
   }
 

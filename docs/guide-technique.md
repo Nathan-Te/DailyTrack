@@ -47,7 +47,7 @@ Règle de dépendance : `web → sim`, `api → sim`, **jamais** `sim → autre 
 
 - **Boucle et course** : `main.ts` (pas fixe + rendu interpolé, HUD, menus), `session.ts` (`RunSession` : course + enregistrement + fantôme), `verify.html` (rejeu sans rendu pour les tests de navigateur).
 - **Rendu** : `trackMesh.ts` (+ `meshKit.ts`, `trackProps.ts`, `signage.ts`, `halo.ts`), `carMesh.ts`, `carPose.ts`, `cameras.ts` (proche, loin, capot), `fx.ts`, `speedFeel.ts`, `landing.ts`, `thumbnail*.ts` (miniatures en fil de travail).
-- **Son** : `audio.ts` + `audioLogic.ts` (Web Audio procédural, 3 bus moteur / effets / ambiance).
+- **Son** : `audio.ts` + `audioLogic.ts` (Web Audio procédural, 2 bus moteur / effets).
 - **Entrées** : `input.ts` (clavier, manette, tactile fusionnés), `touch.ts` / `touchUi.ts`.
 - **Réseau et données** : `api.ts`, `online.ts`, `identity.ts`, `planning.ts`, `salonMode.ts` / `salonApi.ts` / `salonGhosts.ts` / `salonUi.ts`, `demo.ts` / `salonDemo.ts` (serveurs simulés dans le navigateur), `transfer.ts` (code de transfert), `records.ts`, `settings.ts`.
 - **Interface** (lot 29) : accueil (`homeUi.ts` + `homeLogic.ts`), pause, Réglages à onglets (`settingsUi.ts`), « Comment jouer », profil, `watch*.ts` (revoir le meilleur tour), `share.ts`, `archive.ts`, page `/admin/`.
