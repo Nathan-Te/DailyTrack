@@ -497,7 +497,7 @@ export function createTower(platform: Platform, options: TowerOptions | undefine
         [day, playerId, niveau.contenu.tirage ?? 0, res.hauteurMm, res.hauteurMaxMm, res.vies, res.ticks, medalNew, body.replay as string, TOWER_SIM_VERSION, niveau.contenu.g, t, t, hash, known?.hidden === 1 || apercu === 1 ? 1 : 0, apercu], // lot N1 : un joueur masqué reste masqué ; lot P : l'aperçu est masqué aussi
       );
     }
-    log("INFO", "DailyTower : partie du jour", { day: formatDay(day), hauteurMm: res.hauteurMm, vies: res.vies, improved });
+    log("INFO", "DailyTower : partie du jour", { day: formatDay(day), hauteurMm: res.hauteurMm, vies: res.vies, improved, executeur: executeur.nom ?? "inconnu" });
     const best = improved ? { hauteurMm: res.hauteurMm, vies: res.vies, ticks: res.ticks, medal: medalNew, at: t } : { hauteurMm: prev!.hauteur_mm, vies: prev!.vies, ticks: prev!.ticks, medal: (prev!.medal as MedailleTower | null) ?? null, at: prev!.submitted_at };
     const [rank, b] = await Promise.all([rankOf(day, best.hauteurMm, best.vies, best.ticks, best.at, playerId), board(day, playerId)]);
     return {

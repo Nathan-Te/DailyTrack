@@ -11,6 +11,7 @@
     "measure:generator": "esbuild scripts/measure-generator.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-generator.mjs && node dist/measure-generator.mjs",
     "measure:salon": "esbuild scripts/measure-salon.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-salon.mjs && NODE_NO_WARNINGS=1 node dist/measure-salon.mjs",
     "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/smoke.mjs --log-level=warning && node dist/smoke.mjs",
+    "measure:tower": "esbuild scripts/tower-mesure.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/tower-mesure.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && NODE_NO_WARNINGS=1 node dist/tower-mesure.mjs",
     "measure:jump-api": "esbuild scripts/measure-jump.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-jump.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-jump.mjs",
     "measure:budget": "esbuild scripts/measure-budget.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-budget.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-budget.mjs",
     "history:seed": "esbuild scripts/history-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/history-seed.mjs && node dist/history-seed.mjs",
@@ -32,6 +33,7 @@
     "@cdj/core": "*",
     "@cdj/jump-sim": "*",
     "@cdj/sim": "*",
+    "@cdj/tower-sim": "*",
     "@libsql/client": "^0.18.0"
   },
   "devDependencies": {

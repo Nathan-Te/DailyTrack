@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { formatDay } from "@cdj/core";
 import { createApi } from "./api";
@@ -8,6 +8,7 @@ import { consoleLog } from "./log";
 import { createNodeServer } from "./node-server";
 import { openSqlite } from "./node-sqlite";
 import { REPLAYS_PER_MINUTE } from "./platform";
+import { executeurFil } from "./towerFil";
 
 // Point d'entrée du serveur Node : conteneur Cloud Run (Turso) ou Docker / poste local (SQLite). Variables : voir `config.ts`.
 // **Aucune tâche de fond** n'est indispensable (Cloud Run éteint le conteneur sans requête, et n'alloue du calcul que pendant une requête) :
@@ -63,10 +64,25 @@ if (config.db.kind === "turso") {
 declare const __JUMP_FROZEN_LEVELS__: Record<string, unknown> | undefined;
 const jumpFrozen = typeof __JUMP_FROZEN_LEVELS__ === "undefined" ? {} : __JUMP_FROZEN_LEVELS__;
 
+/** Lot TP : les jours de Tower (préparés ou figés), preuve comprise : elle reste dans l'image du serveur, qui la rejoue (jamais publiée). */
+declare const __TOWER_JOURS__: Record<string, unknown> | undefined;
+const towerFrozen = typeof __TOWER_JOURS__ === "undefined" ? {} : __TOWER_JOURS__;
+
+/**
+ * Lot TP : les rejeux de Tower passent par **un fil de calcul** (`tower-fil.mjs`, la seconde entrée de `build-node.mjs`, posée à côté de `server.mjs` dans l'image) ; sans ce fichier (développement,
+ * tests) le fil principal rejoue (repli). Une ligne de journal au démarrage dit lequel : sans donnée personnelle.
+ */
+const towerFilFichier = new URL("./tower-fil.mjs", import.meta.url);
+const towerFil = existsSync(towerFilFichier);
+const towerExecuteur = towerFil ? executeurFil(towerFilFichier) : undefined;
+consoleLog("INFO", towerFil ? "Tower : les rejeux passent par le fil de calcul" : "Tower : les rejeux passent par le fil principal (repli, pas de tower-fil.mjs)", { fil: towerFil });
+
 const api = createApi({
   db,
   environment: config.environment,
   jumpFrozen,
+  towerFrozen,
+  towerExecuteur,
   allowOrigin: config.allowOrigin ?? "*",
   allowedOrigins: config.allowedOrigins,
   rateSalt: config.rateSalt,
@@ -96,6 +112,7 @@ createNodeServer(api, { trustProxy: config.trustProxy }).listen(config.port, () 
     panneau: config.admin.emails.length > 0 && !!config.admin.sessionKey && (!!config.admin.clientId || config.admin.fakeVerifier),
     jeux: api.games.map((g) => g.code).join(","),
     figesJump: Object.keys(jumpFrozen).length,
+    joursTower: Object.keys(towerFrozen).length,
     startupMs: Math.round(process.uptime() * 1000),
   });
 });
