@@ -20,7 +20,8 @@ import { textePartage } from "./partage";
 import type { Preparation } from "./preparation";
 import { lireRecords, proposerRecord } from "./records";
 import { Scene3D } from "./scene";
-import { creerSession, type Session } from "./session";
+import { chargerSuite } from "./jeuSuivant";
+import { creerSession, type Session, suivreGeneration } from "./session";
 import { gameStorage } from "./stockage";
 import { monterTune, reglagesDeDepart } from "./tune";
 import { type OptionsUrl, PRODUCTION } from "./urlOptions";
@@ -277,6 +278,16 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     onPseudo: (nom) => void session.envoi.choisirPseudo(nom),
     onRecharger: () => location.reload(),
   });
+  // Lot TP : « Jeu suivant du jour » à l'arrivée : une lecture de `GET /api/portail/jour` (au plus une par 10 s) une fois le classement connu du serveur ; serveur injoignable ou aucune identité : rien.
+  let suiteLue = 0;
+  const lireLaSuite = async (force: boolean): Promise<void> => {
+    if (!classable || !session.base || (!force && Date.now() - suiteLue < 10_000)) return;
+    const id = readPlayerId(stockage ?? { getItem: () => null });
+    if (!id) return;
+    suiteLue = Date.now();
+    const suite = await chargerSuite(session.base, id);
+    if (suite) fin.majSuite(suite);
+  };
   const message2: MessageDirect | null = session.base ? monterMessage({ base: session.base, stockage, hotes: { accueil: hoteMessage(), arrivee: fin.hoteMessage } }) : null;
   session.envoi.surChangement(() => {
     if (fin.ouverte && rediffusionPrete) fin.majEnvoi(vueEnvoi());
@@ -285,6 +296,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
       classe = true; // classé : le Diamant est débloqué pour la partie suivante
       hud.maj(partie.vue(), nomFantome());
     }
+    if (rep && fin.ouverte) void lireLaSuite(true);
   });
   const menu = monterPause(racine, { onReprendre: () => reprendre(), onRecommencer: () => nouvellePartie() });
   const debug = options.debug ? el("pre", { classe: "debug", attrs: { id: "debug" } }) : null;
@@ -300,6 +312,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     dialogueClassement.ouvrir(null, "chargement");
     if (!session.source || !date) return dialogueClassement.ouvrir(null, "indisponible");
     const r = await session.source.board(date, readPlayerId(stockage ?? { getItem: () => null }));
+    if (r.ok) suivreGeneration(r.data);
     dialogueClassement.ouvrir(r.ok ? r.data : null, r.ok ? "ok" : "indisponible");
   }
 
@@ -398,6 +411,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     // Le classement : « envoi en cours » tout de suite pour une partie qui peut être classée (le record s'enregistre juste après) ; sans serveur « hors ligne, non classé ».
     if (classable) fin.majEnvoi({ etat: session.source ? { statut: "sending", code: "", suggestions: [] } : session.envoi.state, reponse: date ? (session.envoi.resultats.get(date) ?? null) : null, nouveauRecord: false, pasMieux: false });
     message2?.montrer("arrivee");
+    // Déjà classé plus tôt dans la journée (cette partie ne bat pas le record) : le serveur connaît le résultat, la suite peut se lire tout de suite.
+    if (classe) void lireLaSuite(false);
   }
 
   function tick(commandes: number): void {

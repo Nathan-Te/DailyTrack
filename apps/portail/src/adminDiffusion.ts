@@ -1,4 +1,4 @@
-import { NOM_DE_ZONE, ZONES_NOUVEAUTES, MESSAGE_MAX, cleDeNouveaute, exporterNouveautes, lireExport, longueur, nettoyerMessage, nettoyerNouveaute, problemesDeMessage, texteProblemeImport, problemesDePublication, texteProbleme, texteProblemeMessage, type MessageContenu, type OuMessage, type TonMessage, type ZoneNouveaute } from "@cdj/core/nouveautes";
+import { NOM_DE_ZONE, ZONES_NOUVEAUTES, MESSAGE_MAX, OU_MESSAGE, cleDeNouveaute, exporterNouveautes, lireExport, longueur, nettoyerMessage, nettoyerNouveaute, problemesDeMessage, texteProblemeImport, problemesDePublication, texteProbleme, texteProblemeMessage, type MessageContenu, type OuMessage, type TonMessage, type ZoneNouveaute } from "@cdj/core/nouveautes";
 import { bouton, el } from "@cdj/ui";
 import {
   ErreurAdmin,
@@ -571,14 +571,14 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
 // =================================================================================================================================================
 // Message en direct
 // =================================================================================================================================================
-const NOMS_OU: Record<OuMessage, string> = { portail: "Portail", track: "Track", jump: "Jump" };
+const NOMS_OU: Record<OuMessage, string> = { portail: "Portail", track: "Track", jump: "Jump", tower: "Tower" };
 const NOMS_TON: Record<TonMessage, string> = { information: "Information", important: "Important" };
 
 /** Une ligne qui dit où et jusqu'à quand (« Portail, Track · Important · jusqu'au 28/10, 22:00 »). */
 const resume = (m: Pick<AnnonceAdmin, "ou" | "ton" | "fin">) => `${m.ou.map((o) => NOMS_OU[o]).join(", ")} · ${NOMS_TON[m.ton]} · jusqu'au ${heure(new Date(m.fin).toISOString())}`;
 
 /** L'état du formulaire, gardé en mémoire de la page. */
-const saisie: { fr: string; en: string; ou: OuMessage[]; ton: TonMessage; mode: FinDuMessage["mode"]; precise: string } = { fr: "", en: "", ou: ["portail", "track", "jump"], ton: "information", mode: "1h", precise: "" };
+const saisie: { fr: string; en: string; ou: OuMessage[]; ton: TonMessage; mode: FinDuMessage["mode"]; precise: string } = { fr: "", en: "", ou: [...OU_MESSAGE], ton: "information", mode: "1h", precise: "" };
 
 export async function vueMessage(ctx: Contexte): Promise<Node[]> {
   const etat: MessagesAdmin = await ctx.client.message();
@@ -619,10 +619,10 @@ export async function vueMessage(ctx: Contexte): Promise<Node[]> {
   const compteEn = el("p", { classe: "admin-aide", attrs: { id: "message-en-compte" } });
   const problemesZone = el("div", { attrs: { id: "message-problemes", role: "status", "aria-live": "polite" } });
 
-  const ouCases = (["portail", "track", "jump"] as const).map((o) => {
+  const ouCases = OU_MESSAGE.map((o) => {
     const c = el("input", { attrs: { type: "checkbox", id: `message-ou-${o}`, checked: saisie.ou.includes(o), "data-ou": o } });
     c.addEventListener("change", () => {
-      saisie.ou = (["portail", "track", "jump"] as const).filter((x) => (x === o ? c.checked : saisie.ou.includes(x)));
+      saisie.ou = OU_MESSAGE.filter((x) => (x === o ? c.checked : saisie.ou.includes(x)));
       verifier();
     });
     return el("label", { classe: "admin-case" }, c, el("span", { texte: NOMS_OU[o] }));

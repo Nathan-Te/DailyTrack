@@ -159,6 +159,9 @@
 .dj-cartouche--jump {
   background: var(--dj-moutarde);
 }
+.dj-cartouche--tower {
+  background: var(--tower-coque);
+}
 /* Stries de préhension : bande de 12 px, traits de 3 px tous les 8 px, en retrait de 40 px (un motif, pas un dégradé de fond). */
 .dj-cartouche__stries {
   height: 12px;
@@ -237,12 +240,14 @@
   padding: var(--dj-espace-3) var(--dj-espace-5);
   min-height: 92px;
 }
-.jump-etiquette__corps {
+.jump-etiquette__corps,
+.tower-etiquette__corps {
   display: flex;
   flex-direction: column;
   gap: var(--dj-espace-1);
 }
-.jump-etiquette__tete {
+.jump-etiquette__tete,
+.tower-etiquette__tete {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -260,11 +265,13 @@
   font-size: var(--dj-taille-12);
   color: var(--dj-encre-douce);
 }
-.jump-etiquette__texte {
+.jump-etiquette__texte,
+.tower-etiquette__texte {
   font-size: var(--dj-taille-13);
   font-weight: 600;
 }
-.jump-etiquette__dessin {
+.jump-etiquette__dessin,
+.tower-etiquette__dessin {
   flex: none;
 }
 .jump-dessin__sol,
@@ -284,6 +291,54 @@
   stroke: var(--jump-encre);
   stroke-width: 2;
   stroke-dasharray: 2 3;
+}
+
+/* Lot TP : l'étiquette Tower (maquette tower-etagere.html, piste B) — menthe, bordure épaisse, Rubik Mono One, pièces à yeux. */
+.tower-etiquette {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+  background: var(--tower-menthe);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  padding: var(--dj-espace-3) var(--dj-espace-5);
+  min-height: 92px;
+}
+.tower-etiquette__titre {
+  font-family: var(--tower-police);
+  font-weight: 400;
+  font-size: 27px;
+  line-height: 1;
+}
+.tower-etiquette__numero {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+}
+.tower-dessin__sol {
+  fill: var(--dj-encre);
+}
+.tower-dessin__piece {
+  stroke: var(--dj-encre);
+  stroke-width: 2;
+}
+.tower-dessin__piece--a {
+  fill: var(--dj-diamant);
+}
+.tower-dessin__piece--b {
+  fill: var(--jump-jaune);
+}
+.tower-dessin__piece--c {
+  fill: var(--dj-terre);
+}
+.tower-dessin__piece--d {
+  fill: var(--dj-moutarde);
+}
+.tower-dessin__oeil {
+  fill: var(--dj-papier);
+  stroke: var(--dj-encre);
+  stroke-width: 1.5;
 }
 
 /* --- Tuile, afficheur ------------------------------------------------------------------------------------------------------- */

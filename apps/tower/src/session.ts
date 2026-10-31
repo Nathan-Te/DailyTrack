@@ -1,6 +1,6 @@
 import { parisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
-import { createIdentity, type Identity } from "@cdj/profile";
+import { appliquerGeneration, createIdentity, generationDeReponse, type Identity } from "@cdj/profile";
 import { baseApi, HttpTowerSource, type SourceTower } from "./apiTower";
 import { Envoi } from "./envoi";
 import { BUILD_API_URL, gameStorage } from "./stockage";
@@ -39,4 +39,17 @@ export function creerSession(options: OptionsUrl): Session {
   });
   const tactile = options.tactile === "1" || (options.tactile !== "0" && matchMedia("(pointer: coarse)").matches);
   return { aujourdhui, base, source, identity, envoi, tactile };
+}
+
+/**
+ * Lot R8 (branché à Tower par le lot TP) : le serveur annonce sa génération de données (`generation` du classement et de `me`). Une génération plus récente efface les données de jeu de
+ * ce navigateur (« Nouveau départ ») : la page est alors rechargée. Ne lève jamais ; sans stockage ou sans génération dans la réponse, rien ne se passe.
+ */
+export function suivreGeneration(corps: unknown): void {
+  try {
+    const store = gameStorage();
+    if (store && appliquerGeneration(store, generationDeReponse(corps)) === "efface") location.reload();
+  } catch {
+    /* rien ne s'efface */
+  }
 }

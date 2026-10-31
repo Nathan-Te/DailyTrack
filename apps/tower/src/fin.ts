@@ -1,11 +1,13 @@
 import type { Resultat, VuePartie } from "@cdj/tower-sim";
 import { medailleObtenue, medailleVisee, NOMS_MEDAILLES, TICKS_PAR_SECONDE } from "@cdj/tower-sim";
+import type { Suite } from "@cdj/profile";
 import { barreJeu, el, formatNombre, formatRang, formatTemps, medaille, nomMedaille, suivreDialogue, type TraducteurCommun } from "@cdj/ui";
 import { type EnvoiTower } from "./apiTower";
 import { boutonJouer, coeurs, petiteTour } from "./composants";
 import type { EtatEnvoi } from "./envoi";
 import { formatHauteur, formatPalier } from "./formatHauteur";
 import { langueCourante, t, traducteurDuSocle } from "./i18n";
+import { hoteSuite, poserSuite } from "./jeuSuivant";
 import { type EtatMedailles, SANS_MEDAILLES, TYPE_MEDAILLE } from "./medailles";
 
 // L'écran d'arrivée de Tower (lots T1, T3 et T4) — maquette `tower-arrivee.html` : la barre « ‹ DU JOUR » avec la date et le numéro ; la hauteur stable, la plus haute atteinte (qui ne compte pas), la
@@ -46,6 +48,8 @@ export interface VueEnvoi {
 export interface Fin {
   readonly ouverte: boolean;
   readonly hoteMessage: HTMLElement;
+  /** Lot TP : « Jeu suivant du jour » (ou la journée parfaite) ; `null` : rien à proposer, l'emplacement reste caché. */
+  majSuite(suite: Suite | null): void;
   montrer(d: DonneesFin): void;
   /** Le classement : l'état de l'envoi, la réponse du serveur, le formulaire du pseudo. */
   majEnvoi(v: VueEnvoi): void;
@@ -123,6 +127,7 @@ export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
   const franchis = ligne("fin-paliers");
   const temps = ligne("fin-temps");
   const hoteMessage = el("div", { classe: "message-direct message-direct--fin" });
+  const suiteHote = hoteSuite();
   const gauche = el(
     "div",
     { classe: "fin__gauche" },
@@ -134,6 +139,7 @@ export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
     el("div", { classe: "fin__actions" }, partager, classement),
     retourPartage,
     secours,
+    suiteHote,
   );
   const droite = el("div", { classe: "fin__droite" }, tuileMedailles, el("div", { classe: "fin__tuile fin__tuile--partie" }, legendePartie, posees.racine, tombees.racine, franchis.racine, temps.racine), hoteMessage);
   coque.append(el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), el("main", { classe: "etiquette-tower" }, gauche, droite));
@@ -252,6 +258,9 @@ export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
       return ouverte;
     },
     hoteMessage,
+    majSuite(suite) {
+      poserSuite(suiteHote, suite);
+    },
     montrer(d) {
       donnees = d;
       envoi = null;

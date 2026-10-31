@@ -14,6 +14,8 @@
 //   ?debug                    une ligne d'état (tick, phase, empreinte) et la porte `window.__tower` pour les tests
 //   ?debug&tune               + le panneau des réglages de sensation (curseurs)
 //   ?tactile=1 | 0            force l'interface tactile (boutons aux bords) ou la coupe ; sans lui, l'appareil décide (pointeur grossier)
+//   ?apercu=<clé>             (lot TP) le lien d'aperçu d'un jeu pas encore ouvert : la page range la clé sur l'appareil (`cdj:apercu:tower`), la retire aussitôt de l'adresse et l'envoie dans l'en-tête
+//                             `X-Preview-Key` (jamais dans l'adresse d'une requête). Sans effet si le jeu est ouvert à tous ; ne désigne ni serveur ni jour. Ouvert aussi en production.
 //   ?api=<adresse>            (lot T4) le serveur du classement, pour les essais : `https://…`, `/` (la même origine) ou la machine locale. R7 : sur la production il ne vise que `/`, la page
 //                             elle-même ou la machine locale (`apiFromAddress` de `@cdj/profile`) ; l'identifiant secret ne part jamais vers un serveur étranger. Sans lui : `VITE_API_URL`.
 import { parseDay } from "@cdj/core";
@@ -35,6 +37,8 @@ export interface OptionsUrl {
   /** `?theme=` : le thème forcé, ou null (celui du jour). Fermé en production. */
   theme: ThemeTower | null;
   tactile: "1" | "0" | null;
+  /** `?apercu=` présent (un lien d'aperçu) : l'interrupteur des jeux attend la clé avant de laisser le jeu appeler le serveur. */
+  apercu: boolean;
   /** `?api=` lu tel quel (la règle R7 s'applique à `baseApi`, pas ici), ou null. */
   api: string | null;
 }
@@ -59,6 +63,7 @@ export function lireOptions(search: string, restreint: boolean): OptionsUrl {
     tirage: !restreint && tirage > 0 && tirage < TIRAGES_MAX ? Math.floor(tirage) : 0,
     theme: !restreint && (THEMES_TOWER as readonly string[]).includes(theme ?? "") ? (theme as ThemeTower) : null,
     tactile: tactile === "1" || tactile === "0" ? tactile : null,
+    apercu: q.has("apercu"),
     api: q.get("api"),
   };
 }

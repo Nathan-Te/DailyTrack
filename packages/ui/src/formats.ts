@@ -77,6 +77,15 @@ export function formatDateCourte(jour: number, langue: Langue, { capitale = fals
   return capitale ? majuscule(texte, langue) : texte;
 }
 
+/**
+ * Lot TP : une hauteur de Tower en millimètres entiers, arrondie au dixième de mètre : `42,7 m` / `42.7 m` (la même arrondie que la ligne à partager du jeu). Négatif ramené à zéro.
+ * L'espace avant l'unité est insécable.
+ */
+export function formatHauteur(mm: number, langue: Langue): string {
+  const dixiemes = Math.max(0, Math.round(mm / 100));
+  return `${nombres(langue, 1).format(dixiemes / 10).replace(/\u202f/g, INSECABLE)}${INSECABLE}m`;
+}
+
 /** Le numéro du jour d'un jeu : `n° 12` / `#12`. */
 export function formatNumeroJour(n: number, langue: Langue): string {
   return langue === "fr" ? `n°${INSECABLE}${n}` : `#${n}`;
