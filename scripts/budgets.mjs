@@ -65,11 +65,11 @@ export function mesureTrack(dist = join(ROOT, "apps/web/dist/assets")) {
 export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
   const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
   // Lot « musique » : le lecteur (`demarrage-`) et le panneau des réglages (`panneauMusique-`) sont chargés à la demande, au premier geste : ligne `musique.lecteur`. Lot M1 : `manette-` aussi ; lot M2 : `commandesEcran-` (l'écran Commandes).
-  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-"].some((p) => f.startsWith(p));
+  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunaute-"].some((p) => f.startsWith(p));
   const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
-  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-") && !f.startsWith("manette-") && !f.startsWith("commandes-") && !f.startsWith("panneauMusique-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-") && !f.startsWith("manette-") && !f.startsWith("commandes-") && !f.startsWith("panneauMusique-") && !f.startsWith("liensCommunaute-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
   return { js: total, css, jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
 }
 

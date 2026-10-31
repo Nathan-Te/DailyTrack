@@ -13,6 +13,8 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "jeu.jump.titre": "JUMP",
   "barre.retour": "DU JOUR",
   "barre.retour.aria": "Back to Du Jour",
+  "communaute.discord": "Join the Discord",
+  "communaute.kofi": "Support on Ko-fi",
   "barre.jour": "{date} · {numero}",
   "arrivee.jeuSuivant": "Next game of the day: {jeu} ›",
   "arrivee.jeuSuivant.aria": "Next game of the day: {jeu}, to play",

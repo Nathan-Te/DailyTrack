@@ -39,7 +39,7 @@ import {
   visibiliteDeLaPage,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
-import { LIEN_DISCORD, LIEN_KOFI } from "./liens";
+import { boutonCommunaute } from "@cdj/ui/src/boutonCommunaute";
 import pictoDiscord from "./discord.svg?no-inline";
 import tasseKofi from "./kofi-tasse.png";
 import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
@@ -325,26 +325,14 @@ function rendre(): void {
 }
 
 /**
- * Le bouton Discord, à l'allure de Discord (le bleu-violet de leur charte, leur pictogramme) : un lien, **pas le widget intégré** (une fenêtre de discord.com : cookies et traceurs
- * tiers à chaque visite). Texte blanc : il passe le contraste exigé sur ce bleu.
+ * Les boutons Discord et Ko-fi du pied : le composant du socle (`boutonCommunaute`, lot S1 — les adresses n'y sont écrites qu'une fois), à l'allure des services (leur bleu, leur pictogramme ;
+ * l'habillage est dans `portail.css`) : de simples liens, **ni widget ni script intégrés** (cookies et traceurs tiers). L'image est hébergée ici.
  */
 function lienDiscord(texte: string): HTMLElement {
-  const picto = el("img", { classe: "portail-discord__picto", attrs: { src: pictoDiscord, alt: "", width: 24, height: 24 } });
-  return el("a", { classe: "portail-discord", attrs: { id: "discord", href: LIEN_DISCORD, target: "_blank", rel: "noopener noreferrer" } }, picto, el("span", { texte }));
+  return boutonCommunaute("discord", { texte, classe: "portail-discord", id: "discord", image: { src: pictoDiscord, classe: "portail-discord__picto", largeur: 24, hauteur: 24 } });
 }
-
-/**
- * Le bouton Ko-fi, à l'allure de celui que Ko-fi propose (bleu, la tasse au cœur), **sans rien charger de chez eux** : un lien, et la tasse est une copie hébergée sur le site (aucun script ni
- * image de `ko-fi.com`). Le texte est encre sur le bleu (le blanc du bouton d'origine ne passe pas le contraste exigé par l'audit d'accessibilité).
- */
 function lienKofi(texte: string): HTMLElement {
-  const a = el(
-    "a",
-    { classe: "portail-kofi", attrs: { id: "kofi", href: LIEN_KOFI, target: "_blank", rel: "noopener noreferrer" } },
-    el("img", { classe: "portail-kofi__tasse", attrs: { src: tasseKofi, alt: "", width: 30, height: 24 } }),
-    el("span", { texte }),
-  );
-  return a;
+  return boutonCommunaute("kofi", { texte, classe: "portail-kofi", id: "kofi", image: { src: tasseKofi, classe: "portail-kofi__tasse", largeur: 30, hauteur: 24 } });
 }
 
 // --- Le compte à rebours (heure du serveur) -----------------------------------------------------------------------------------

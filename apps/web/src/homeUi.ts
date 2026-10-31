@@ -191,6 +191,15 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   // Lot R8 : « Nouveau départ… », une fois, après la remise à zéro du lancement.
   const depart = avisDeNouveauDepart();
   cadre.corps.append(tete, ...(depart ? [depart] : []), ...(astuce ? [astuce] : []), grille, touchNote, nextDay, actions);
+  // Lot S1 : Discord et Ko-fi, deux plaques discrètes en bas à gauche de l'accueil (à la demande ; jamais en course : elles sont dans l'écran d'accueil).
+  void import("@cdj/ui/src/liensCommunaute").then((m) => {
+    const poser = () => {
+      root.querySelector("#communaute")?.remove();
+      root.append(m.liensCommunaute({ discord: t("communaute.discord"), kofi: t("communaute.kofi") }));
+    };
+    poser();
+    onLangue(poser);
+  });
 
   // --- Rendu ---
   function renderTexts() {

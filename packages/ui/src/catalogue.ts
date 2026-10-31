@@ -15,6 +15,8 @@ const fr = {
   // Barres
   "barre.retour": "DU JOUR",
   "barre.retour.aria": "Retour au portail Du Jour",
+  "communaute.discord": "Rejoindre le Discord",
+  "communaute.kofi": "Soutenir sur Ko-fi",
   "barre.jour": "{date} · {numero}",
   // Lot I3 : l'écran d'arrivée d'un jeu propose le jeu suivant du jour (ou fête la journée parfaite). Clés prêtes pour les lots I4 et I5.
   "arrivee.jeuSuivant": "Jeu suivant du jour : {jeu} ›",

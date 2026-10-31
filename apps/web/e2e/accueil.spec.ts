@@ -52,6 +52,21 @@ test.describe("l'accueil", () => {
     // Plus de carte de profil sur l'accueil : un lien vers le profil commun du portail, avec le chemin de retour vers le jeu.
     await expect(page.locator("#home-profile")).toHaveAttribute("href", /profil\/\?retour=/);
     for (const label of ["Archives", "Réglages", "Comment jouer"]) await expect(page.locator("#home .links").getByRole("button", { name: new RegExp(label) })).toBeVisible();
+    // Lot S1 : Discord et Ko-fi, deux plaques de 44 px en bas à gauche, en liens sortants sans rien qui identifie le joueur ; elles ne chevauchent rien.
+    const plaques = await boxes(page, ["#communaute-discord", "#communaute-kofi", "#home-daily", "#home-salon", "#home-portail", "#home .links"]);
+    expect(plaques).toHaveLength(6);
+    for (const b of plaques.slice(0, 2)) expect([b.w, b.h]).toEqual([44, 44]);
+    expect(plaques[0]!.x, "bas à gauche").toBeLessThan(DESKTOP.width / 4);
+    expect(plaques[0]!.y).toBeGreaterThan(DESKTOP.height / 2);
+    expectNoOverlap(plaques, DESKTOP);
+    for (const [id, href] of [["discord", "https://discord.gg/2KZkUSpDej"], ["kofi", "https://ko-fi.com/C7X829MCE1"]] as const) {
+      const lien = page.locator(`#communaute-${id}`);
+      await expect(lien).toHaveAttribute("href", href);
+      await expect(lien).toHaveAttribute("target", "_blank");
+      await expect(lien).toHaveAttribute("rel", "noopener noreferrer");
+    }
+    await expect(page.locator("#communaute-discord")).toHaveAttribute("aria-label", "Rejoindre le Discord");
+    await expect(page.locator("#communaute-kofi")).toHaveAttribute("aria-label", "Soutenir sur Ko-fi");
     // Le HUD de course n'est pas là : on est à l'accueil.
     await expect(page.locator("#menu")).toBeHidden();
     await expect(page.locator("#speed")).toBeHidden();
@@ -71,6 +86,7 @@ test.describe("l'accueil", () => {
     expect(await page.evaluate(() => (window.__cdj.race as { car: { tick: number } }).car.tick)).toBe(0); // rien n'a bougé derrière l'accueil
     await page.locator("#home-daily").click();
     await expect(page.locator("#home")).toBeHidden();
+    await expect(page.locator("#communaute")).toBeHidden(); // lot S1 : jamais en partie
     state = await ui(page);
     expect(state.home).toBe(false);
     await expect(page.locator("#menu")).toBeVisible();

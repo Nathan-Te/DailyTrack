@@ -173,6 +173,9 @@ Tower est un jeu de la CI au même titre que Track et Jump (`CLAUDE.md` racine, 
 - **Budgets** (`docs/plateforme/budgets.md`, mesure `apps/tower/tools/mesure.mjs`, gardés par `poids.spec.ts`) : **`tower.jsCss` = l'accueil seul : 35 355 o, plafond 39 000 o** ; **`tower.jeu` = le jeu à la demande : 149 013 o, plafond 164 000 o** (ligne de la section Tower) ; `tower.physique` inchangé. Un poids changé = la ligne remesurée ; un budget ne se relève qu'avec Nathan.
 - **Commandes** : `npm run build -w @cdj/tower && npm run e2e -w @cdj/tower` lance aussi le **vrai serveur** (le `webServer` de `playwright.config.ts` construit et lance `apps/api/scripts/tower-serveur-essai.ts` sur le port 8791, jour du serveur 06/11/2026) ; `classement.spec.ts` : une partie scriptée envoyée et classée, une copie refusée, le fantôme Diamant débloqué après le classement, « hors ligne, non classé », « Comment jouer ».
 
+## Discord et Ko-fi sur l'accueil (lot S1)
+`accueil.ts` pose, à la demande, les deux plaques de `@cdj/ui` **dans la coque de l'accueil** (donc joignables à la manette, jamais en partie), en bas à gauche ; `accueil.css` fait défiler la colonne dans ce que la bande réservée laisse. Aucune adresse ici : `packages/ui/CLAUDE.md`. Vérifié dans `e2e/partie.spec.ts` (`jouerLeJour` : présentes, 44 px, sans chevauchement, absentes une fois la partie lancée).
+
 ## Cahier des charges du lot de plateforme qui suit le lot T4
 **Liste exacte des fichiers et des changements attendus : `docs/tower/lots/lot-T4-serveur-accueil.md`, § « Cahier des charges du lot de plateforme »** (le registre, la remise à zéro, les mentions légales, l'image du serveur et son fil de calcul, les crochets `portail` et `admin`, le portail, la journée, la série, « Jeu suivant du jour », « Mettre en production », `site.mjs`, la recette, la fumée, l'interrupteur, la mesure du budget). **Rien de tout cela n'est fait au lot T4** : Tower reste `off`, absent du registre.
 

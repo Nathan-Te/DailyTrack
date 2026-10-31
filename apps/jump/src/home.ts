@@ -158,6 +158,15 @@ export function mountHome(opts: HomeOptions): Home {
   const coque = el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), etiquette);
   const hoteMessage = el("div", { classe: ["message-direct", "message-direct--accueil"] });
   root.append(plaque, hoteMessage, el("div", { classe: "accueil__defile" }, coque));
+  // Lot S1 : Discord et Ko-fi, deux plaques discrètes en bas à gauche de l'accueil (à la demande ; jamais en partie : elles sont dans l'écran d'accueil).
+  void import("@cdj/ui/src/liensCommunaute").then((m) => {
+    const poser = () => {
+      root.querySelector("#communaute")?.remove();
+      root.append(m.liensCommunaute({ discord: t("communaute.discord"), kofi: t("communaute.kofi") }));
+    };
+    poser();
+    onLangue(poser);
+  });
   document.body.append(root);
   suivreDialogue(root); // lot I6 : focus mis dedans à l'ouverture, rendu à la fermeture
   // Lot I6 : « JOUER » prend le focus, sauf si un dialogue posé au-dessus de l'accueil l'a (« Comment jouer » à la première visite).

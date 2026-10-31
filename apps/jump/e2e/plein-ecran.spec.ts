@@ -136,12 +136,28 @@ for (const viewport of [
       expect(barre[2]!.h).toBeGreaterThanOrEqual(43.5);
       expect(barre[2]!.x, "côté droit, après la date").toBeGreaterThan(barre[1]!.x);
       await expect(bouton).toHaveAttribute("aria-pressed", "false");
+      // Lot S1 : Discord et Ko-fi, deux plaques de 44 px en bas à gauche, en liens sortants ; elles ne chevauchent ni JOUER, ni la coque, ni les autres boutons ; jamais en partie.
+      await expect(page.locator("#communaute")).toBeVisible();
+      const plaques = await boxes(page, ["#communaute-discord", "#communaute-kofi", "#home-play", "#home-ghost"]);
+      expect(plaques).toHaveLength(4); // la rangée Archives / Comment jouer / Réglages défile au-dessus de la bande réservée aux plaques (la coque dépasse l'écran en 844 × 390)
+      for (const b of plaques.slice(0, 2)) expect([b.w, b.h]).toEqual([44, 44]);
+      expect(plaques[0]!.x, "bas à gauche").toBeLessThan(viewport.width / 4);
+      expectNoOverlap(plaques, viewport);
+      for (const [id, href] of [["discord", "https://discord.gg/2KZkUSpDej"], ["kofi", "https://ko-fi.com/C7X829MCE1"]] as const) {
+        const lien = page.locator(`#communaute-${id}`);
+        await expect(lien).toHaveAttribute("href", href);
+        await expect(lien).toHaveAttribute("target", "_blank");
+        await expect(lien).toHaveAttribute("rel", "noopener noreferrer");
+      }
       await bouton.click();
       await expect(bouton).toHaveAttribute("aria-pressed", "true");
       await expect(bouton).toHaveAttribute("aria-label", "Quitter le plein écran");
       expect(await verrous(page)).toEqual(["landscape"]);
       await bouton.click();
       await expect(bouton).toHaveAttribute("aria-pressed", "false");
+      await page.locator("#home-play").click();
+      await expect(page.locator("#home")).toBeHidden();
+      await expect(page.locator("#communaute")).toBeHidden();
     } finally {
       await context.close();
     }
