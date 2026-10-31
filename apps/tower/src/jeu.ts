@@ -21,6 +21,9 @@ import { monterPause } from "./pause";
 import { Scene3D } from "./scene";
 import { monterTune, reglagesDeDepart } from "./tune";
 import { choisirJour, lireOptions, PRODUCTION } from "./urlOptions";
+// Lot M1 : les menus à la manette, chargés à la première manette (`manette.ts` démarre le moteur en se chargeant : Tower ne lit pas la manette en partie, donc pas de filtre,
+// et le moindre octet compte dans son budget).
+addEventListener("gamepadconnected", () => import("./manette"), { once: true });
 
 // Le jeu de Tower (lots T1 et T2) : une partie complète sur le contenu d'un jour (`dailyTower`, ou le jour figé : `/tower/`, `?seed=AAAA-MM-JJ`), la suite fixe d'essai (`?scenario=essai`) ou la tour
 // des paliers (`?scenario=paliers&effet=…`). Lot T2 : chaque partie s'enregistre (une rediffusion), l'écran de fin garde celle de la meilleure partie de la session et le fantôme local en dérive.

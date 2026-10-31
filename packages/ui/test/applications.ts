@@ -16,6 +16,8 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["apps/jump (aperçu)", "apps/jump/src/catalogue.apercu.ts", "CATALOGUE_APERCU"],
   // Lot 53 : l'aide du plein écran sur iPhone et « Retrouver mon profil » (chargés à la demande avec leurs deux écrans : hors du catalogue commun).
   ["packages/ui (iPhone)", "packages/ui/src/catalogue.iphone.ts", "CATALOGUE_IPHONE"],
+  // Lot M1 : la bande d'aide de la manette (chargée à la demande avec le module des menus à la manette).
+  ["packages/ui (manette)", "packages/ui/src/catalogue.manette.ts", "CATALOGUE_MANETTE"],
   // Lot P : « Bientôt » et le bandeau d'aperçu de l'interrupteur des jeux (chargés à la demande avec leurs deux écrans).
   ["packages/ui (interrupteur)", "packages/ui/src/catalogue.interrupteur.ts", "CATALOGUE_INTERRUPTEUR"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).

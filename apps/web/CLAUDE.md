@@ -353,3 +353,6 @@ README : `docs/plateforme/lots/lot-G1-fantome-diamant.md` ; charte `docs/platefo
 - **Accueil et pause** : l'accueil montre le fantôme choisi dans une rangée (`#home-ghost`, un toucher le change) ; la pause garde son entrée (`#pause-ghost`).
 - **Budget** : plafonds relevés de 1 024 o (`e2e/perf.spec.ts`, `docs/plateforme/budgets.md`, « Lot G1 »). Captures `CAPTURES=1 npx playwright test captures-lot-g1 --project=chromium`.
 
+
+## Les menus à la manette (lot M1)
+README : `docs/plateforme/lots/lot-M1-manette-dans-les-menus.md` ; moteur : `packages/ui/CLAUDE.md`, « La manette dans les menus ». **Tout écran de Track se pilote à la manette ; il déclare son action principale ; un appui ne sert jamais deux fois.** `src/manette.ts` (chargé à la première manette par `main.ts`) : `ECRANS_MANETTE`, **une ligne par écran** (`#home` → `#home-daily`, `#pause` → `#pause-resume`, `#finish` → le bouton principal, B → `#finish-home`…) ; un nouvel écran s'y ajoute (`test/manette.test.ts`). En partie la manette est celle du jeu (`Controls.poll` lit `padPourLeJeu(pad)`) : un menu ouvert la lui cache, sauf Start (la pause, comme avant le lot). Test navigateur : `e2e/manette.spec.ts` (Régression, ports 4199 et 8819 réservés).

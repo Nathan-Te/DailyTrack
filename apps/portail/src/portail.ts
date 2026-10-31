@@ -49,6 +49,10 @@ import { construireOptions, nomDuJeu } from "./partageDuJour";
 import { tuileDuClassement } from "./classementVues";
 import { envoyer, lienDuPortail, textePartage } from "./partage";
 import { stockageDuPortail } from "./stockage";
+import { activerManette } from "@cdj/ui/src/manetteLien";
+
+// Lot M1 : cette page se pilote à la manette (son action principale : une ligne de `manette.ts`, chargée avec le menu).
+activerManette(() => import("./manette").then((m) => m.pour("accueil")));
 
 // Le portail « Du Jour » (lot R4 ; lot I1 : passé au socle `@cdj/ui` ; lot I2 : l'accueil riche). Un joueur qui l'ouvre voit en trois secondes
 // ce qu'il lui reste à jouer, combien de temps il lui reste et où en est sa série :
