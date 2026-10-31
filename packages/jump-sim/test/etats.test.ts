@@ -1,10 +1,12 @@
+import "./legacy";
+import { legacyCatalog } from "../src/legacyRegistry";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { daysFromCivil } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
   ALT_B_REFUSED,
-  ALT_KEPT_VERSION,
+  MIN_HOLD_VERSION,
   ATTEMPT_DEAD,
   ATTEMPT_FINISHED,
   DEFAULT_JUMP_PARAMS,
@@ -68,8 +70,8 @@ describe("lot 28 — modules/etats.json et src/etats.ts", () => {
         expect(ALT_B_REFUSED[def.id]?.includes(v) ?? false, `${def.id} v${v}`).toBe(!entry!.ok);
       });
     }
-    // Les huit morceaux du néon et les deux morceaux génériques à `+alterne` : 40 variantes.
-    expect(withAlts).toBeGreaterThanOrEqual(40);
+    // Les huit morceaux du néon et les deux morceaux génériques à `+alterne` : 40 variantes au lot 28 ; lot 30 : 37 (trois sont écartées par la règle des appuis de 10 pas).
+    expect(withAlts).toBeGreaterThanOrEqual(35);
   });
 
   it("chaque solution gardée, rejouée sur le morceau aux jeux échangés (= l'état B du morceau), arrive à la sortie, sans mort, jouable au clavier, et ne reste pas plus de 12 s sur le palier", () => {
@@ -93,9 +95,10 @@ describe("lot 28 — modules/etats.json et src/etats.ts", () => {
     expect(checked).toBeGreaterThan(60);
   });
 
-  it("la variante refusée est écartée du catalogue g22 mais garde sa place (les références d'avant la connaissent)", () => {
+  it("une variante refusée est écartée du catalogue g22 et suivants mais garde sa place (les références d'avant la connaissent) ; la liste d'avant (legacy) garde `laser-alterne-portes` v6", () => {
+    // Lot 30 : avec le maintien minimal, plus aucune variante n'est refusée à la reprise en B (la liste est vide) ; celle du catalogue d'avant est dans `src/legacy/refuses.ts`.
+    expect(legacyCatalog().altBRefused).toEqual({ "laser-alterne-portes": [6] });
     const refused = Object.entries(ALT_B_REFUSED);
-    expect(refused.length).toBeGreaterThan(0);
     for (const [id, variants] of refused) {
       const def = MODULES.find((d) => d.id === id)!;
       for (const v of variants) expect(def.variants.length, `${id} v${v}`).toBeGreaterThan(v);
@@ -103,7 +106,7 @@ describe("lot 28 — modules/etats.json et src/etats.ts", () => {
     // Aucun des jours g22 sur 60 dates ne la pose.
     const from = daysFromCivil(2026, 10, 28);
     for (let k = 0; k < 60; k++) {
-      const L = dailyLevel(from + k, null, ALT_KEPT_VERSION);
+      const L = dailyLevel(from + k, null, MIN_HOLD_VERSION);
       for (const p of L.pieces) expect(ALT_B_REFUSED[p.id]?.includes(p.variant) ?? false, `${L.date} ${p.id}:${p.variant}`).toBe(false);
     }
   }, 120_000);
@@ -126,7 +129,7 @@ describe("lot 28 — sur les jours de néon g22, la reprise en B traverse chaque
     const from = daysFromCivil(2026, 10, 28);
     for (let d = 0; d < 40; d++) {
       if (jumpThemeForDay(from + d) !== "neon") continue;
-      const L = dailyLevel(from + d, null, ALT_KEPT_VERSION);
+      const L = dailyLevel(from + d, null, MIN_HOLD_VERSION);
       const lv = L.level;
       expect(dailyProblems(L), L.date).toEqual([]);
       L.pieces.forEach((p, k) => {

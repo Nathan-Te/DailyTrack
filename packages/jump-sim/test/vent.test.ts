@@ -1,3 +1,4 @@
+import "./legacy";
 import { describe, expect, it } from "vitest";
 import { Rng } from "@cdj/core";
 import {

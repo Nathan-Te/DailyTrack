@@ -5,6 +5,7 @@ import {
   INPUT_RIGHT as R,
   MODULES,
   PRESS_MIN,
+  PRESS_MIN_LEGACY,
   RELEASE_MIN,
   decodeReplay,
   fromRuns,
@@ -13,24 +14,25 @@ import {
   shortestPress,
   variantExigence,
 } from "../src/index";
-import { humanized, jittered } from "../tools/exigence";
+import { appuis, humanized, jittered } from "../tools/exigence";
 import { readSolutions } from "../tools/files";
 
 // Retouche du lot 11 : **jouable au clavier**. Une solution ne peut pas exiger un appui de saut plus court que `PRESS_MIN` pas (un doigt tient
-// une touche au moins ≈ 40 ms) ni un relâchement plus court que `RELEASE_MIN` pas entre deux appuis ; la gigue de la mesure d'exigence
-// respecte les mêmes limites (un décalage ne fabrique pas un appui d'un pas).
+// une touche au moins ≈ 40 ms ; lot 30 : 10 pas, 83 ms, le maintien minimal du saut) ni un relâchement plus court que `RELEASE_MIN` pas entre deux appuis ; la gigue de la mesure
+// d'exigence respecte le relâchement minimal (lot 30 : plus de prolongation des appuis courts, la physique le fait : tout appui de 1 à 10 pas est le même petit saut).
 
 const run = (bits: number, n: number): number[] => Array.from({ length: n }, () => bits);
 
 describe("pressProblems : la façon de tenir le bouton de saut", () => {
-  it("constantes : appui de 5 pas (42 ms) au moins, relâchement de 3 pas (25 ms) au moins", () => {
-    expect(PRESS_MIN).toBe(5);
+  it("constantes : appui de 10 pas (83 ms) au moins (5 pas jusqu'au lot 30), relâchement de 3 pas (25 ms) au moins", () => {
+    expect(PRESS_MIN).toBe(10);
+    expect(PRESS_MIN_LEGACY).toBe(5);
     expect(RELEASE_MIN).toBe(3);
   });
 
-  it("un appui d'un seul pas, ou de quatre, est refusé ; cinq passent", () => {
+  it("un appui d'un seul pas, ou de neuf, est refusé ; dix passent", () => {
     expect(pressProblems([...run(R, 10), ...run(R | J, 1), ...run(R, 10)])).toMatch(/appui de saut de 1 pas/);
-    expect(pressProblems([...run(R | J, PRESS_MIN - 1), ...run(R, 10)])).toMatch(/appui de saut de 4 pas/);
+    expect(pressProblems([...run(R | J, PRESS_MIN - 1), ...run(R, 10)])).toMatch(/appui de saut de 9 pas/);
     expect(pressProblems([...run(R | J, PRESS_MIN), ...run(R, 10)])).toBeNull();
     expect(pressProblems([...run(R, 10), ...run(R | J, 30), ...run(R, 10)])).toBeNull();
   });
@@ -46,20 +48,20 @@ describe("pressProblems : la façon de tenir le bouton de saut", () => {
     expect(pressProblems(run(R | J, 2))).toBeNull();
     expect(pressProblems(run(R, 40))).toBeNull();
     expect(shortestPress(run(R, 40))).toBe(0);
-    expect(shortestPress([...run(R | J, 9), ...run(R, 3), ...run(R | J, 6), ...run(R, 2)])).toBe(6);
+    expect(shortestPress([...run(R | J, 19), ...run(R, 3), ...run(R | J, 16), ...run(R, 2)])).toBe(16);
   });
 });
 
 describe("la gigue respecte ce qu'un doigt peut faire", () => {
-  it("humanized : prolonge un appui trop court, retarde un second appui trop proche, laisse intact ce qui est humain", () => {
-    const ok = [...run(R, 6), ...run(R | J, 8), ...run(R, 6), ...run(R | J, 7), ...run(R, 6)];
+  it("humanized : retarde un second appui trop proche, laisse intact ce qui est humain ; n'allonge plus les appuis courts (la physique le fait), sauf à le demander", () => {
+    const ok = [...run(R, 6), ...run(R | J, 18), ...run(R, 6), ...run(R | J, 17), ...run(R, 6)];
     expect(humanized(ok)).toEqual(ok);
     const short = [...run(R, 6), ...run(R | J, 2), ...run(R, 20)];
     const h = humanized(short);
-    expect(h).toHaveLength(short.length);
-    expect(pressProblems(h)).toBeNull();
-    expect(h.slice(6, 6 + PRESS_MIN).every((b) => (b & J) !== 0)).toBe(true);
-    const close = [...run(R | J, 8), ...run(R, 1), ...run(R | J, 9), ...run(R, 20)];
+    expect(h).toEqual(short);
+    expect(h.slice(6, 6 + PRESS_MIN_LEGACY).every((b) => (b & J) !== 0)).toBe(false);
+    expect(humanized(short, PRESS_MIN_LEGACY).slice(6, 6 + PRESS_MIN_LEGACY).every((b) => (b & J) !== 0)).toBe(true);
+    const close = [...run(R | J, 18), ...run(R, 1), ...run(R | J, 19), ...run(R, 20)];
     const c = humanized(close);
     expect(pressProblems(c)).toBeNull();
     expect(c).toHaveLength(close.length);
@@ -67,10 +69,18 @@ describe("la gigue respecte ce qu'un doigt peut faire", () => {
     expect(c.every((b) => (b & R) !== 0)).toBe(true);
   });
 
-  it("jittered : toujours humain, quelle que soit l'amplitude, sur des milliers de tirages", () => {
+  it("jittered : un relâchement d'au moins RELEASE_MIN pas et un appui d'au moins un pas, quelle que soit l'amplitude, sur des milliers de tirages", () => {
     const rng = new Rng(11);
-    const base = [...run(R, 12), ...run(R | J, 6), ...run(R, 8), ...run(R | J, 9), ...run(R, 4), ...run(R | J, 5), ...run(R, 30)];
-    for (let k = 1; k <= 3; k++) for (let d = 0; d < 1000; d++) expect(pressProblems(jittered(base, k, rng)), `±${k}, tirage ${d}`).toBeNull();
+    const base = [...run(R, 12), ...run(R | J, 16), ...run(R, 8), ...run(R | J, 19), ...run(R, 4), ...run(R | J, 15), ...run(R, 30)];
+    for (let k = 1; k <= 3; k++)
+      for (let d = 0; d < 1000; d++) {
+        const list = appuis(jittered(base, k, rng));
+        expect(list.length, `±${k}, tirage ${d}`).toBe(3);
+        list.forEach((a, i) => {
+          expect(a.to - a.from, `±${k}, tirage ${d}`).toBeGreaterThanOrEqual(1);
+          if (i > 0) expect(a.from - list[i - 1]!.to, `±${k}, tirage ${d}`).toBeGreaterThanOrEqual(RELEASE_MIN);
+        });
+      }
   });
 });
 

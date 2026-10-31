@@ -1,3 +1,4 @@
+import "./legacy";
 import { readFileSync } from "node:fs";
 import { formatDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
@@ -26,6 +27,7 @@ import {
   varietyExcluded,
   varietyNeighbours,
   varietyPosition,
+  variantUsable,
 } from "../src/index";
 import { figesPath, figesSource, frozenBaseIds } from "../tools/figes";
 
@@ -162,6 +164,8 @@ describe("lot 19 — les variantes ajoutées", () => {
     for (const name of ["hausse", "ecart", "decale", "echange"]) expect(added.some(({ def, v }) => def.mutations[v]!.some((m) => m.name === name)), name).toBe(true);
     for (const { def, v } of added) {
       const where = `${def.id} v${v}`;
+      // Lot 30 : une variante ajoutée dont la solution (re-résolue pour le maintien minimal) ne tient pas les règles est écartée de la version 13.
+      if (!variantUsable(def.id, v)) continue;
       expect(variantExigence(moduleSolutions(def.id, v)), where).toBeGreaterThanOrEqual(1);
       expect(PHASE_REFUSED[def.id]?.includes(v) ?? false, where).toBe(false);
       expect(PARASITE_CLOSED[def.id]?.includes(v) ?? false, where).toBe(false);
@@ -176,7 +180,9 @@ describe("lot 19 — les variantes ajoutées", () => {
       const rest = def.mutations[v]!.filter((m) => m.name !== "echange");
       const origin = def.variants.findIndex((vals, k) => k !== v && JSON.stringify(vals) === JSON.stringify(def.variants[v]) && JSON.stringify(def.mutations[k]) === JSON.stringify(rest));
       expect(origin, `${def.id} v${v} : variante d'origine`).toBeGreaterThanOrEqual(0);
-      expect(variantExigence(moduleSolutions(def.id, v)), `${def.id} v${v}`).toBe(variantExigence(moduleSolutions(def.id, origin)));
+      // Lot 30 : les solutions sont re-résolues une à une (la variante échangée peut tomber sur une autre solution que son origine) : à une note près, plus identique.
+      if (!variantUsable(def.id, v) || !variantUsable(def.id, origin)) continue;
+      expect(Math.abs(variantExigence(moduleSolutions(def.id, v)) - variantExigence(moduleSolutions(def.id, origin))), `${def.id} v${v}`).toBeLessThanOrEqual(1);
     }
   });
 });

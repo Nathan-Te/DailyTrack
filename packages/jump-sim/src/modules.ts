@@ -2,7 +2,7 @@ import { ATTEMPT_DEAD, ATTEMPT_FINISHED, boxesOverlap, circleHitsBox, stepAttemp
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
-import { START_AT_SPAWN, encodeReplay, replayStartState, toRuns } from "./replay";
+import { START_AT_SPAWN, decodeReplay, encodeReplay, fromRuns, replayStartState, toRuns } from "./replay";
 import { MODULE_PACKED, MODULE_TEXTS } from "./catalog";
 import { textHash } from "./texthash";
 import { fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
@@ -1469,6 +1469,34 @@ export function soloLevel(m: Pick<BuiltModule, "level">, legacy: boolean): Level
 
 /** Lot 7b : une respiration n'est jamais exigeante — toute variante d'un morceau étiqueté `respiration` a une exigence de 2 au plus. */
 export const MAX_REST_EXIGENCE = 2;
+
+/** Nombre d'appuis de saut (fronts montants du bouton) d'une rediffusion de solution. */
+export function pressCount(code: string): number {
+  const bits = fromRuns(decodeReplay(code).runs);
+  return bits.filter((b, t) => (b & INPUT_JUMP) !== 0 && (t === 0 || (bits[t - 1]! & INPUT_JUMP) === 0)).length;
+}
+
+/**
+ * Lot 30 : les règles du catalogue qui se lisent sur les solutions — la durée d'un morceau (lot 7) et celles des **respirations** (lot 7b : exigence de 2 au plus aux deux entrées ; lot 7 : jamais une course à plat, au moins trois sauts à faire —
+ * pour les sols dynamiques de la nuit et du néon, d'une variante mutée ou d'une plateforme, comptés sur les appuis de la solution ; pour les autres, sur les plats, que lit `tools/plats.ts`). Avec le
+ * maintien minimal le petit saut est plus haut : des solutions nécessitent moins de sauts ou plus d'exigence. Une variante qui ne tient plus la règle est **écartée** du catalogue de la version 13
+ * (elle garde son texte et sa place), jamais la règle relâchée.
+ */
+export function restUsable(def: Pick<ModuleDef, "tags" | "theme" | "mutations" | "long">, variant: number, sol: CatalogVariant): boolean {
+  // Lot 7 : la durée entre l'entrée et la sortie, 1 à 6 s (5 à 8 s pour un enchaînement long), à chaque entrée — plus lente avec un petit saut plus haut, une solution peut sortir de la plage.
+  const [lo, hi] = def.long ? [LONG_MIN_TICKS, LONG_MAX_TICKS] : [MODULE_MIN_TICKS, MODULE_MAX_TICKS];
+  for (const e of [sol.arret!, sol.elan!]) {
+    const ticks = e.exitTick - e.entryTick;
+    if (ticks < lo || ticks > hi) return false;
+  }
+  if (!def.tags.includes("respiration")) return true;
+  if (variantExigence(sol) > MAX_REST_EXIGENCE) return false;
+  // Au moins trois sauts à faire : sur les appuis de la solution pour les sols dynamiques (nuit, néon, plateforme, variante mutée) et les morceaux à stalactites ou à ponts (leurs tests le comptaient déjà) ; pour les autres,
+  // sur les plats (`tools/plats.ts`, la grille seule).
+  const dynamic = def.theme === "nuit" || def.theme === "neon" || def.tags.includes("plateforme") || def.tags.includes("stalactite") || def.tags.includes("pont") || (def.mutations[variant] ?? []).some((m) => m.name === "clignotant" || m.name === "alterne");
+  if (!dynamic) return true;
+  return pressCount(sol.arret!.code) >= 3 && pressCount(sol.elan!.code) >= 3;
+}
 
 /** Exigence d'une variante : la plus haute de ses deux solutions (0 s'il en manque une). */
 export function variantExigence(s: CatalogVariant | null): number {

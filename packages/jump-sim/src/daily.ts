@@ -18,6 +18,7 @@ import { PHASE_REFUSED } from "./phases";
 import { ALT_B_REFUSED } from "./etats";
 import { PARASITE_CLOSED } from "./parasites";
 import { legacyCatalog } from "./legacyRegistry";
+import { variantUsable } from "./usable";
 import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, soloLevel, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
 import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, auChangementDesJoursAnciens, jumpThemeOfSim, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
@@ -618,7 +619,7 @@ function allChoices(legacy = false): Choice[][] {
     def.variants.flatMap((_, variant) => {
       const s = moduleSolutions(def.id, variant, legacy);
       const exigence = variantExigence(s);
-      if (!s?.arret || !s.elan || exigence < 1) return [];
+      if (!s?.arret || !s.elan || exigence < 1 || (!legacy && !variantUsable(def.id, variant))) return [];
       const b = buildModule(def.id, variant);
       const span = (x: { entryTick: number; exitTick: number }) => x.exitTick - x.entryTick;
       const theme = variantTheme(def, variant);
@@ -1323,15 +1324,15 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   out.push(...presseProblems(d.level));
   // Lot 23 : les règles des champignons (posés sur du plein, ni départ ni point de passage dans leur section ; la trajectoire des 0,3 premières secondes de chaque morceau).
   out.push(...mushroomProblems(d.level));
-  if (d.level.mushrooms.length > 0) for (const p of pieces) out.push(...mushroomPieceProblems(p.id, p.variant));
+  if (d.level.mushrooms.length > 0) for (const p of pieces) out.push(...mushroomPieceProblems(p.id, p.variant, d.level.minHold === 0));
   // Lot 24 : les règles des stalactites (zone dans le morceau et loin des paliers, un bloc plein pour la briser ; la course franche de chaque morceau).
   out.push(...stalactiteProblems(d.level));
-  if (d.level.stalactites.length > 0) for (const p of pieces) out.push(...stalactitePieceProblems(p.id, p.variant));
+  if (d.level.stalactites.length > 0) for (const p of pieces) out.push(...stalactitePieceProblems(p.id, p.variant, d.level.minHold === 0));
   // Lot 25 : les règles des lasers (dans leur morceau, rien d'autre dans leur course, pas de point de passage, une place sûre pour attendre, une barre qui ne coince pas).
   out.push(...laserProblems(d.level));
   // Lot 26 : les règles des ponts (dans leur morceau, pas de point de passage dessus, un interrupteur sûr, un pont droit court ; la poursuite franche de chaque morceau).
   out.push(...bridgeProblems(d.level));
-  if (d.level.bridges.length > 0) for (const p of pieces) out.push(...bridgePieceProblems(p.id, p.variant));
+  if (d.level.bridges.length > 0) for (const p of pieces) out.push(...bridgePieceProblems(p.id, p.variant, d.level.minHold === 0));
   // Lot 27 (g21, niveaux en version 11) : le vent souffle en continu — aucune zone en rafales.
   if (d.level.simVersion >= RESTART_VERSION && d.level.winds.some((w) => w.gust !== null)) out.push("une zone de vent en rafales (g21 : le vent souffle en continu)");
   // Lot 28 (g22, niveaux en version 12) : les blocs alternés ne sont posés que dans le néon (aucun morceau ni mutateur ne les met ailleurs).
@@ -1996,8 +1997,78 @@ const FALLBACK_FORET_V3: readonly { id: string; variant: number }[] = [
   { id: "quinconce", variant: 3 },
 ];
 
+/**
+ * Lot 30 (g24) : les suites de secours de chaque thème, **rechoisies** pour le catalogue re-résolu (`secours:modules`, 80 niveaux valides sur 80 dates sauf l'usine, 78 sur 80 : les deux
+ * autres dates tombent sur un tirage sans solution). Les anciennes (`FALLBACK_BY_THEME`) gardent la référence v12 et celles d'avant, au bit près : plusieurs de leurs morceaux n'ont plus de solution.
+ */
+export const FALLBACK_V13: Readonly<Record<JumpThemeName, readonly { id: string; variant: number }[]>> = {
+  foret: [
+    { id: "scies-jumelles", variant: 5 },
+    { id: "cheminee", variant: 3 },
+    { id: "tremplin", variant: 1 },
+    { id: "vent-derive", variant: 3 },
+    { id: "descente-scies", variant: 8 },
+    { id: "champignon-falaise", variant: 0 },
+    { id: "rebonds-doux", variant: 3 },
+    { id: "pendule", variant: 6 },
+    { id: "balancier", variant: 0 },
+    { id: "mur-seul", variant: 6 },
+    { id: "champignon-chapelet", variant: 2 },
+  ],
+  usine: [
+    { id: "pendule", variant: 0 },
+    { id: "puits-descente", variant: 2 },
+    { id: "piliers-scie", variant: 0 },
+    { id: "radeau", variant: 0 },
+    { id: "tapis-escalier", variant: 0 },
+    { id: "presse-couloir", variant: 5 },
+    { id: "presse-marche", variant: 0 },
+    { id: "mur-seul", variant: 6 },
+    { id: "quinconce", variant: 6 },
+    { id: "ressorts-escalier", variant: 2 },
+  ],
+  glace: [
+    { id: "stalactite-glace-ilots", variant: 0 },
+    { id: "escalier-scies", variant: 0 },
+    { id: "glace-relais", variant: 0 },
+    { id: "petits-trous", variant: 2 },
+    { id: "demi-tour", variant: 1 },
+    { id: "glace-freinage", variant: 3 },
+    { id: "grande-scie", variant: 2 },
+    { id: "mur-friable", variant: 0 },
+    { id: "pendule", variant: 4 },
+    { id: "navette", variant: 0 },
+  ],
+  nuit: [
+    { id: "pont-clignotant-escalier", variant: 0 },
+    { id: "nuit-escalier", variant: 4 },
+    { id: "scie-sol", variant: 0 },
+    { id: "tour-mobile", variant: 1 },
+    { id: "puits-descente", variant: 2 },
+    { id: "nuit-marelle", variant: 5 },
+    { id: "cheminee-pics", variant: 1 },
+    { id: "paroi-friable", variant: 3 },
+    { id: "nuit-pont", variant: 8 },
+    { id: "chaland", variant: 1 },
+    { id: "monte-charge", variant: 1 },
+  ],
+  neon: [
+    { id: "laser-alterne-balai", variant: 2 },
+    { id: "piliers", variant: 0 },
+    { id: "mur-seul", variant: 0 },
+    { id: "iles-scie", variant: 5 },
+    { id: "puits-descente", variant: 2 },
+    { id: "neon-respiration", variant: 2 },
+    { id: "va-et-vient", variant: 0 },
+    { id: "tunnel-scies", variant: 0 },
+    { id: "tour-mobile", variant: 0 },
+    { id: "laser-balayage", variant: 5 },
+  ],
+};
+
 /** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi ; lot 19 : celle de la forêt). */
 export function fallbackFor(theme: JumpThemeName, simVersion = MIN_HOLD_VERSION): readonly { id: string; variant: number }[] {
+  if (simVersion >= MIN_HOLD_VERSION) return FALLBACK_V13[theme];
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "nuit") return FALLBACK_NUIT_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "foret") return FALLBACK_FORET_V3;

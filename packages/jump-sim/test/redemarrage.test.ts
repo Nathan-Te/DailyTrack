@@ -1,3 +1,4 @@
+import "./legacy";
 import { daysFromCivil } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {

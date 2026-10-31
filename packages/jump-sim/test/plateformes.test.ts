@@ -1,3 +1,4 @@
+import "./legacy";
 import { Rng, parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -50,6 +51,7 @@ import {
   stepPlayerJump,
   type AttemptState,
   type Level,
+  variantUsable,
 } from "../src/index";
 
 // Lot 20 : plateformes mobiles (sim v5). Les niveaux sont de petits textes écrits ici.
@@ -563,6 +565,7 @@ describe("lot 20 — les morceaux à plateformes du catalogue", () => {
         expect(m.level.platforms.length, label).toBeGreaterThan(0);
         expect(palierProblems(m), label).toEqual([]);
         expect(platformProblems(m.level), label).toEqual([]);
+        if (!variantUsable(def.id, v)) continue;
         const sol = moduleSolutions(def.id, v)!;
         for (const entry of ["arret", "elan"] as const) expect(sol[entry]!.exigence, `${label} ${entry}`).toBeGreaterThanOrEqual(1);
         expect(variantExigence(sol), label).toBeGreaterThanOrEqual(1);

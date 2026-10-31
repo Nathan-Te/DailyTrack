@@ -26,6 +26,7 @@ import {
   BRIDGE_VERSION,
   RESTART_VERSION,
   ALT_KEPT_VERSION,
+  MIN_HOLD_VERSION,
   LASER_VERSION,
   PRESS_VERSION,
   SINGLE_CLOCK_VERSION,
@@ -38,6 +39,7 @@ import {
   isElementPiece,
   isOriginPiece,
 } from "../src/index";
+import { useLegacyCatalog } from "../src/legacy";
 import { emptyRun, secs, tiles } from "./vide";
 
 // `npm run measure:jump -w @cdj/jump-sim` — mesures du niveau du jour (lot 5) sur 120 dates à partir de `PREMIER_JOUR_JUMP` : taux de
@@ -56,7 +58,9 @@ const DAYS = arg ? Number(arg.slice(8)) : 120;
 // Lot 27 : `-- --generateur=20` mesure la référence v10 (g20, mort avant le premier point = reprise au départ, forêt à rafales) ; sans option, le générateur en vigueur (g21).
 // Lot 25 : `-- --generateur=18` mesure la référence v8 (g18, le catalogue sans lasers, W = 3) ; sans option, le générateur en vigueur (g19).
 // Lot 28 : `-- --generateur=21` mesure la référence v11 (g21, les alternés repartent de A à la reprise) ; sans option, le générateur en vigueur (g22).
-const SIM_VERSION = process.argv.includes("--generateur=21") ? RESTART_VERSION : process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : process.argv.includes("--generateur=17") ? MUSHROOM_VERSION : process.argv.includes("--generateur=18") ? STALACTITE_VERSION : process.argv.includes("--generateur=19") ? LASER_VERSION : process.argv.includes("--generateur=20") ? BRIDGE_VERSION : ALT_KEPT_VERSION;
+const SIM_VERSION = process.argv.includes("--generateur=23") ? ALT_KEPT_VERSION : process.argv.includes("--generateur=21") ? RESTART_VERSION : process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : process.argv.includes("--generateur=17") ? MUSHROOM_VERSION : process.argv.includes("--generateur=18") ? STALACTITE_VERSION : process.argv.includes("--generateur=19") ? LASER_VERSION : process.argv.includes("--generateur=20") ? BRIDGE_VERSION : MIN_HOLD_VERSION;
+// Lot 30 : `-- --generateur=23` mesure la référence v12 (g23, avant le maintien minimal du saut) ; sans option, le générateur en vigueur (g24). Les références d'avant lisent le catalogue d'avant.
+if (SIM_VERSION < MIN_HOLD_VERSION) useLegacyCatalog();
 const sec = (t: number) => (t / TICK_RATE).toFixed(2).replace(".", ",");
 const num = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 const stats = (xs: number[]) => ({ min: Math.min(...xs), mean: xs.reduce((a, b) => a + b, 0) / xs.length, max: Math.max(...xs) });

@@ -6,4 +6,4 @@
  * l'état B (celui que la reprise garde depuis la version 12), n'a pas de solution jouable par un humain, à l'une des phases essayées de leur horloge. Le générateur g22 ne les pose jamais
  * (`daily.ts`) ; le détail est dans `modules/etats.json`.
  */
-export const ALT_B_REFUSED: Readonly<Record<string, readonly number[]>> = {"laser-alterne-portes":[6]};
+export const ALT_B_REFUSED: Readonly<Record<string, readonly number[]>> = {};

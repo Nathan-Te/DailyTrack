@@ -1,3 +1,4 @@
+import "./legacy";
 import { Rng, parseDay, formatDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -58,6 +59,7 @@ import {
   stepAttempt,
   type AttemptState,
   type Level,
+  variantUsable,
 } from "../src/index";
 
 // Lot 25 : les lasers (sim v9, générateur g19). Les niveaux sont de petits textes écrits ici.
@@ -93,8 +95,8 @@ describe("lot 25 — la version de la simulation", () => {
     expect(LASER_VERSION).toBe(9);
     expect(STALACTITE_VERSION).toBe(8);
     expect(LASER_GENERATOR).toBe(19);
-    expect(JUMP_SIM_VERSION).toBe(12); // lot 28 : v12 et g22 (les alternés gardent leur état à la reprise)
-    expect(JUMP_GENERATOR_VERSION).toBe(23); // lot V1 : g23 (le sac de thèmes)
+    expect(JUMP_SIM_VERSION).toBe(13); // lot 30 : v13 et g24 (le maintien minimal du saut) ; lot 28 : v12 et g22 (les alternés gardent leur état à la reprise)
+    expect(JUMP_GENERATOR_VERSION).toBe(24); // lot 30 : g24 ; lot V1 : g23 (le sac de thèmes)
     expect(gate().simVersion).toBe(9);
     expect(DEATH_LASER).toBe(6);
     expect(DEATH_NAMES[DEATH_LASER]).toBe("laser");
@@ -403,7 +405,7 @@ describe("lot 25 — règles du générateur", () => {
 // ——— Les morceaux du catalogue ———
 
 const LASER_MODULES = MODULES.filter((m) => m.tags.includes("laser"));
-const usable = (id: string, v: number) => !PHASE_REFUSED[id]?.includes(v) && !PARASITE_CLOSED[id]?.includes(v);
+const usable = (id: string, v: number) => variantUsable(id, v) && !PHASE_REFUSED[id]?.includes(v) && !PARASITE_CLOSED[id]?.includes(v);
 const bitsOf = (id: string, v: number, entry: "arret" | "elan") => fromRuns(decodeReplay(moduleSolutions(id, v)![entry]!.code).runs);
 
 /** Joue la solution d'un morceau seul (comme le solveur : l'entrée « élan » part à la vitesse de course) ; rend les états après chaque pas. */
@@ -436,6 +438,7 @@ describe("lot 25 — les morceaux du catalogue", () => {
         expect(m.level.lasers.length + m.level.laserBars.length, label).toBeGreaterThan(0);
         expect(palierProblems(m), label).toEqual([]);
         expect(laserProblems(m.level), label).toEqual([]);
+        if (!variantUsable(def.id, v)) continue;
         const sol = moduleSolutions(def.id, v)!;
         for (const entry of ["arret", "elan"] as const) expect(sol[entry]!.exigence, `${label} ${entry}`).toBeGreaterThanOrEqual(1);
         if (usable(def.id, v)) variants++;

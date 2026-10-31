@@ -1,3 +1,4 @@
+import "./legacy";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -24,6 +25,7 @@ import {
   variantExigence,
   variantTheme,
   type JumpThemeName,
+  variantUsable,
 } from "../src/index";
 
 // Lot 11 — le thème est une donnée du générateur : il décide des morceaux permis et du quota de signature (la mécanique de son thème) ; lot 12 :
@@ -78,7 +80,7 @@ describe("morceaux d'un thème", () => {
       expect(own.some((m) => m.long), `${theme} : enchaînement long`).toBe(true);
       const rest = own.filter((m) => m.tags.includes("respiration"));
       expect(rest.length, `${theme} : respiration`).toBeGreaterThanOrEqual(1);
-      for (const m of rest) for (let v = 0; v < m.variants.length; v++) expect(variantExigence(moduleSolutions(m.id, v)), `${m.id} v${v}`).toBeLessThanOrEqual(2);
+      for (const m of rest) for (let v = 0; v < m.variants.length; v++) if (variantUsable(m.id, v)) expect(variantExigence(moduleSolutions(m.id, v)), `${m.id} v${v}`).toBeLessThanOrEqual(2);
     }
   });
 
