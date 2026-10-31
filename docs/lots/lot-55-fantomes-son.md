@@ -1,6 +1,6 @@
 # Lot 55 — Track : choisir ses fantômes dans le classement, et refondre le son
 
-Branche `claude/practical-gauss-20xfi4` (nom imposé par la session ; le lot prévoyait `lot-55-fantomes-son`), partie de `main` à `e9436a9` (lot 51 fusionné). Zones : `apps/web/**`, `packages/sim/**`,
+Branche `claude/practical-gauss-20xfi4` (nom imposé par la session ; le lot prévoyait `lot-55-fantomes-son`) : la partie A (PR #198) est fusionnée ; la partie B repart de `main` (même nom de branche, nouvelle PR brouillon). Zones : `apps/web/**`, `packages/sim/**`,
 `cdj.ts` et `salon.ts`, leurs tests, `docs/lots/**`, la ligne de Track de `budgets.md`, `durees.json`, `applications.ts`, les clés de catalogue. Le nom de la branche ne porte ni `track` ni `jump` :
 la PR est une PR « plateforme » pour le job `zones`. Golden, rediffusions, classements et identifiants de circuit **inchangés** (le son et le choix des fantômes ne touchent jamais la simulation).
 
@@ -10,8 +10,8 @@ la PR est une PR « plateforme » pour le job `zones`. Golden, rediffusions, cla
 |---|---|
 | **A1 — maquettes des fantômes** (`lot-55/maquettes-fantomes.html`) | **validées par Nathan** (30/10/2026), ses cinq propositions acceptées |
 | **A2 à A5 — choix, course, serveur, chargement** | **faits** (voir ci-dessous) ; CI de la PR #198 au premier passage : tout vert (dont `e2e-pr` 1 à 4 et le spec `fantomes`) **sauf `unit (2/3)`** : `apps/api/test/jump.test.ts` « un seul calcul même si deux requêtes arrivent ensemble » a dépassé son délai de 5 s (run 41075203903, job 124129538621) — un test de Jump, hors de ce lot, sans rapport avec le diff ; relancé par cette poussée (règle d'arrêt : une relance, puis on le signale) |
-| **B1 — planche sonore** (`/track/vitrine/?planche=son`) | à faire (arrêt : Nathan écoute et choisit l'approche) |
-| B2 à B7 — boîte de vitesses, voix par voiture, le reste des sons, Salon, réglages, téléphone | après le choix de l'approche |
+| **B1 — planche sonore** (`/track/vitrine/?planche=son`) | **faite**, écoutée par Nathan : **B retenue** (A « moyen », C écartée), retouche de B validée (« top »)  |
+| **B2 à B7 — boîte de vitesses, dix voix, pneus et bruitages, spectateur, réglages, téléphone** | **faits dans le jeu** (voir « Le son dans le jeu ») ; à écouter |
 
 ## Partie A — choisir ses fantômes (faite)
 
@@ -36,4 +36,45 @@ la PR est une PR « plateforme » pour le job `zones`. Golden, rediffusions, cla
 - `apps/portail/mentions-legales/index.html` et `apps/portail/legal/index.html` : la clé `cdj:track:fantomes` est nommée (règle de fidélité du lot R5 : toute nouvelle donnée gardée). **Pas de test ajouté** dans `apps/portail/test/mentions.test.ts`.
 - `docs/plateforme/budgets.md` (les trois lignes de Track : la mesure, plafonds inchangés), `docs/plateforme/traductions.md` (régénéré), `e2e/zones.json` (le spec et `fantomes*.ts` dans la zone `track-hud`).
 - À proposer à un lot de plateforme : l'index du `CLAUDE.md` racine (« Fantômes choisis dans le classement (lot 55) » dans la liste de `apps/web/CLAUDE.md`), la ligne « choix des fantômes à la demande » de `budgets.md`, la route `run/<ref>` dans la colonne « routes » de `docs/plateforme/codes-erreur.md` (`invalid_ref`, `no_ghost`).
+
+## Partie B — refondre le son (B1 faite et écoutée ; retouche de B à réécouter)
+
+**À écouter** : `<aperçu de la PR>/track/vitrine/?planche=son` (bouton « Activer le son », puis une approche, une voiture, un moment ; « Conduire à la main » pour la vitesse et le gaz). La planche joue **la même course** de voiture virtuelle (31 s : ralenti, coup de gaz à l'arrêt, six rapports à fond, lever de pied, freinage qui crisse, relance sur la terre en dérive, turbo, vibreur, saut et réception, arrêt) avec le moteur d'avant, **A (synthèse)** et **B (échantillons rendus hors ligne)**, pour quatre voitures très différentes (Sparrow 4-cylindres, Boar V8, Sailfish monoplace, Pelican vieux moteur). Pneus, vent et bruitages sont ceux du lot 9 partout : seule la voix du moteur change. Niveaux étalonnés à ±8 % (`etalon` de `profils.ts`).
+
+**Retour de Nathan (30/10/2026)** : *C* « ne fait que du bruit, comme une télé qui grésille » → **écartée** (mesure : 96 à 100 % de l'énergie des six boucles CC0 est sous 150 Hz, un grondement sourd ; elles sont retirées du dépôt). *B* « pas mal, un peu trop aigu parfois, une petite passe de qualité serait parfait ». *A* « moyen ».
+
+**Ce que sont A et B (les deux sont de moi : du code que j'ai écrit, aucun modèle d'IA audio, aucun enregistrement)** — **A** calcule le son **en direct dans le navigateur** : des oscillateurs dont la fréquence suit le régime, un filtre, du bruit. **B** calcule le son **à l'avance** avec un programme de Node (`outils/son/rendre-echantillons.mjs`) : il simule chaque allumage et la résonance de l'échappement (plusieurs modes amortis, un moteur différent par voiture, des cylindres inégaux, des ratés pour le vieux moteur), écrit des boucles, les compresse en AAC ; le jeu ne fait que **les rejouer, les fondre l'une dans l'autre et les accélérer** selon le régime. Même auteur, deux moments de calcul : B a plus de matière parce que le modèle est plus riche que ce qu'un oscillateur temps réel peut faire à bas prix.
+
+**Retouche de B (à réécouter)** — cause probable du « trop aigu » : les six boucles étaient réparties **linéairement** en régime, donc la première (ralenti) était jouée jusqu'à **2,2 fois plus vite** que son régime. Maintenant : **huit boucles en progression géométrique** (voisines à moins de 1,35 fois l'une de l'autre), vitesse de lecture bornée à **0,7–1,45**, fondu sur le logarithme du régime ; un passe-bas dans le rendu (coupure du moteur × 1,5), un souffle d'admission et du bloc ajouté, une saturation plus douce, un creux de 4 dB au-dessus de 2,8 kHz à la lecture, filtre de lecture moins ouvert (× 1,1 au lieu de × 1,6), AAC à 40 kbit/s (moins de « grésillement » de codec). Je ne sais pas **quelle voiture** sonnait trop aiguë : dis-le moi et j'ajuste son profil seul.
+
+| | Actuel (lot 9) | **A · Synthèse** | **B · Échantillons rendus hors ligne** |
+|---|---|---|---|
+| Code ajouté (JS gzip) | 3,8 ko (déjà là) | 2,2 ko (4 profils) | 2,1 ko |
+| Fichiers | aucun | aucun | **≈ 67 ko par voiture** (huit boucles ; à la demande, la voiture choisie) ; ≈ 0,7 Mo pour dix |
+| Décodage / mémoire | — | — | ≈ 25 ms (×1), ≈ 55 ms (×4) / ≈ 0,5 Mo |
+| Nœuds du moteur | 4 | 16 | 16 (+ 10 pour les pneus, communs) |
+| JS par image | 0,01–0,02 ms | 0,02 ms | 0,015–0,02 ms (×4 : 0,03–0,07 ms pour tous) |
+
+*Charge du fil audio* (le vrai coût sur un téléphone) : non mesurable ici (pas d'API `renderCapacity` dans le Chromium d'essai) ; la planche l'affiche sur Chrome. **Mesuré** (`e2e/vitrine-son.spec.ts`, rendu hors ligne du scénario entier) : la hauteur suit la fréquence d'allumage à quelques Hz près (à l'octave près pour un V8), rien ne ssature, le niveau suit le gaz, aucun nœud ne fuit. **Non vérifié : que ça sonne bien.**
+
+**Décision (Nathan, 30/10/2026) : B pour les moteurs, A pour ce qui réagit.** Les pneus, le sol et les bruitages restent de la synthèse (refaite, voir plus bas) ; la planche garde A et B pour comparer.
+
+**Inventaire des sons d'avant** (`audio.ts`, `audioLogic.ts` ; procéduraux, aucun fichier) : moteur (dent de scie + carré à l'octave, filtre, six rapports aux vitesses fixes `GEAR_SPEEDS`) ; crissement (`skidLevel`) ; roulement par revêtement (9 voix) ; vent (`windGain`) ; **7 ambiances** (foule, brise, vent, vent chaud, grillons, rumeur de ville, bourdonnement) ; **11 ponctuels** : décompte 3-2-1 (carré, do 262 Hz), départ, point de contrôle, arrivée, médaille, impact, réception (selon force et qualité), turbo, coupure, chute, retour au point de contrôle. **Aucun son d'interface.** Réglages : `cdj:audio` `{ volume, last, engine, effects, ambience }` (déjà général, moteur, effets, ambiance, muet par M). Le son lit l'état de la voiture et ne le change jamais.
+
+**Fichiers hors zone** : `docs/credits.md` (aucune source tierce : l'essai CC0 est retiré) ; `e2e/zones.json` (zone `track-son`, `sauf` de `track-scene`, spec en « Régression » comme les autres planches de la vitrine). `apps/web/vitrine/son/LISEZMOI.md` : ce que sont les fichiers et l'essai écarté.
+
+## Le son dans le jeu (B2 à B7)
+**Ce qui change à l'oreille** : chaque voiture a **son moteur** (dix profils : petit 4-cylindres, fourgon fatigué, turbo, rallye, GT 6-cylindres, roadster, gros V8 lent, proto aigu, V8, monoplace), avec de **vraies vitesses** (six rapports, le régime tombe au passage et le couple est coupé 0,2 s, il s'emballe à l'arrêt, il retombe au lever de pied, pétarade pour les moteurs qui en ont) ; **les pneus et le sol par revêtement** (roulement, crépitement du gravier et de la terre, bandes rugueuses du vibreur, crissement avec son sifflement, vent à rafales) ; **un décompte calé sur les feux** (trois bips égaux, un par feu, puis un « go » plus haut), des **cloches** aux points de contrôle, une fanfare à l'arrivée, des **médailles** qui montent (le Diamant scintille), un impact et une réception plus nets ; **un petit compresseur doux** ; un **tic** sur les boutons. **Les fantômes restent muets** ; le spectateur entend la voiture qu'il regarde ; les curseurs général / moteur / effets / ambiance et la touche M existaient (`cdj:audio`, aucune clé de plus).
+
+**Comment** (règles : `apps/web/CLAUDE.md`, « Son (lot 55, partie B) ») — `audio.ts` garde un crochet (**+367 o** au premier chargement, plafonds inchangés : marges 326 / 351 / 408 o) ; tout le reste est `src/son/extension.ts`, chargé au premier geste (≈ 8,4 ko de code compressé) ; **une voiture ne charge que ses huit boucles** (≈ 67 ko, à la demande). Tant qu'il n'est pas prêt (hors ligne, premier instant), le moteur du lot 9 joue, puis se tait.
+
+**Téléphone** — le contexte attend un geste qui se termine (`touchend`, `click`) et `navigator.audioSession` passe en lecture (iPhone : l'interrupteur de sonnerie ne coupe plus le jeu) ; en arrière-plan il se suspend et reprend au retour ; **les boucles ne tournent que si elles s'entendent** (au silence, pause ou arrivée, toutes s'arrêtent après 0,4 s) ; **appareil modeste** (tactile et ≤ 4 cœurs ou ≤ 2 Go) : **une seule boucle à la fois, pas de compresseur, pneus simplifiés, pas de tic** ; `?son=leger|complet` (option de `/admin/`) pour essayer l'une ou l'autre sur n'importe quel appareil.
+
+**Tests** — `test/sonBoite.test.ts` (53 : boîte, **dix profils** et leurs boucles, nœuds qui se détachent, lecteur, fantômes muets, le son ne lit que l'état) ; `e2e/son-jeu.spec.ts` (le moteur de la voiture affichée est prêt et tourne, se tait en pause, la version légère, le changement de voiture, l'arrière-plan, **aucun nœud ne s'accumule après des redémarrages**) et `e2e/vitrine-son.spec.ts` (la planche ; **les dix voitures** rendues hors ligne) — Régression (`npm run verifier -- --regression`) ; `e2e/perf.spec.ts` (code ≤ 10 ko, huit boucles par voiture ≤ 80 ko, rien dans le premier chargement). Golden et rediffusions inchangés (`packages/sim` n'a pas bougé : 2 039 tests verts en local).
+
+**Budget** : premier chargement 294 385 / 282 460 / 148 803 o (marges 326 / 351 / 408 o ; `budgets.md` à jour). **À proposer à un lot de plateforme** : une ligne « son à la demande » du tableau de `budgets.md` (code ≤ 10 ko, ≤ 80 ko de boucles par voiture : à valider par Nathan) et, dans l'index du `CLAUDE.md` racine, la rubrique « Son (lot 55) » de `apps/web/CLAUDE.md`.
+
+**Non vérifié** : que ça sonne bien dans le jeu (aucune oreille ici), la charge du fil audio sur un vrai téléphone (l'API `renderCapacity` manque au Chromium d'essai : la planche l'affiche sur Chrome), iPhone et Safari (jamais essayés), Firefox et WebKit. **À éprouver sur ton téléphone** : démarrage du son au premier toucher, l'interrupteur de sonnerie de l'iPhone, une longue partie (la chaleur, les craquements), la version légère (`?son=leger`).
+
+**Fichiers hors zone en plus** : `docs/credits.md`, `e2e/zones.json` (zones `track-son` et `track-audio`), `docs/plateforme/budgets.md` (les trois lignes de Track).
 

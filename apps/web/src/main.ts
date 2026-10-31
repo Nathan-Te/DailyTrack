@@ -443,6 +443,7 @@ const garage = new VoitureEnJeu({
     view.scene.add(voiture.group);
     carModel = voiture;
     carMesh = voiture.group;
+    gameAudio.setVoiture(garage.affichee.id); // lot 55 : le moteur qu'on entend est celui de la voiture qu'on voit
     castShadows(carMesh);
     (view as Partial<TrackScene>).reflets?.(renderer, carMesh); // lot 45 : les reflets ciblés du palier 2 (la voiture et le métal des portiques)
   },
@@ -3034,7 +3035,7 @@ if (params.has("debug")) {
       },
       /** Sons : derniers sons joués, contexte démarré, réglages. */
       get audio() {
-        return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings, ambience: gameAudio.ambienceKind };
+        return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings, ambience: gameAudio.ambienceKind, ext: gameAudio.ext?.etat() ?? null };
       },
       /** Dessine tout de suite la miniature d'un jour (outil de test : cadrage, vues, repli 2D) ; adresse de l'image. */
       async thumbnail(date: string, options: ThumbnailOptions & { theme?: string } = {}) {

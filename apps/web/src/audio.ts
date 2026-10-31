@@ -15,12 +15,15 @@ import {
   type AudioSettings,
 } from "./audioLogic";
 import { gameStorage } from "./storage";
+import type { ExtensionSon } from "./son/extension";
 
 // Sons procéduraux (Web Audio, lot 9) : aucun fichier, donc rien à créditer ni à télécharger (voir docs/credits.md).
 // Le contexte audio ne démarre qu'au premier geste du joueur (règle des navigateurs). Le son ne lit que l'état de la
 // voiture : il ne peut rien changer au résultat d'une course.
 
 const KEY = "cdj:audio";
+/** `?son=leger|complet` : impose la version légère ou complète du nouveau son (sinon, selon l'appareil). */
+const LEGER: Record<string, boolean | undefined> = { leger: true, complet: false };
 
 /** Ce que le son lit à chaque image. */
 export interface AudioFrame {
@@ -61,6 +64,10 @@ export class GameAudio {
   private wasBoost = false;
   private wasCut = false;
   private listeners: (() => void)[] = [];
+  /** Lot 55 : le nouveau son (moteur de la voiture, pneus, bruitages), chargé à la demande au premier geste ; tant qu'il n'est pas prêt, le moteur du lot 9 joue. */
+  ext: ExtensionSon | null = null;
+  private voitureId = "civile";
+  private ancienCoupe = false;
 
   constructor(private readonly onChange: (s: AudioSettings) => void = () => undefined) {
     let raw: string | null = null;
@@ -71,13 +78,10 @@ export class GameAudio {
     }
     this.settings = parseAudioSettings(raw);
     // Premier geste du joueur : on peut enfin démarrer le son.
-    const start = () => {
-      this.ensure();
-      for (const off of this.listeners) off();
-      this.listeners = [];
-    };
-    for (const type of ["pointerdown", "keydown", "touchstart"]) {
-      window.addEventListener(type, start, { once: true });
+    // Les écouteurs restent jusqu'à ce que le contexte joue vraiment : sur iPhone seul un geste qui se termine (touchend, click) le réveille.
+    const start = () => this.ensure();
+    for (const type of ["pointerdown", "keydown", "touchstart", "touchend", "click"]) {
+      window.addEventListener(type, start);
       this.listeners.push(() => window.removeEventListener(type, start));
     }
     document.addEventListener("visibilitychange", () => {
@@ -134,6 +138,13 @@ export class GameAudio {
     try {
       const ctx = new Ctor();
       this.ctx = ctx;
+      ctx.onstatechange = () => {
+        if (ctx.state !== "running") return;
+        for (const off of this.listeners) off();
+        this.listeners = [];
+      };
+      const session = (navigator as { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = "playback"; // iPhone : le son passe aussi quand l'interrupteur est sur silence
       this.master = ctx.createGain();
       this.master.gain.value = this.settings.volume;
       this.master.connect(ctx.destination);
@@ -151,6 +162,13 @@ export class GameAudio {
       this.buildEngine(ctx);
       this.buildAmbience();
       void ctx.resume();
+      void import("./son/extension")
+        .then((m) => m.creerExtension({ ctx, master: this.master!, destination: ctx.destination, bus: this.bus!, bruit: this.noise!, outils: { rollVoice, skidLevel, windGain, landingSound, noteFreq }, leger: LEGER[new URLSearchParams(location.search).get("son") ?? ""] ?? null }))
+        .then((e) => {
+          this.ext = e;
+          e.voiture(this.voitureId);
+        })
+        .catch(() => undefined);
       return true;
     } catch {
       this.ctx = null;
@@ -321,6 +339,12 @@ export class GameAudio {
     this.wind = windG;
   }
 
+  /** La voiture qu'on voit (son moteur). */
+  setVoiture(id: string) {
+    this.voitureId = id;
+    this.ext?.voiture(id);
+  }
+
   /** À appeler à chaque image : règle moteur, crissement, roulement et vent d'après `f`. */
   update(f: AudioFrame) {
     const ctx = this.ctx;
@@ -328,6 +352,16 @@ export class GameAudio {
     const t = ctx.currentTime;
     const k = 0.05; // constante de temps de lissage (s)
     const on = f.active;
+    if (this.ext?.maj(f)) {
+      // Le nouveau son joue le moteur et les pneus : ceux du lot 9 se taisent (une fois), l'ambiance et les bruitages continuent.
+      if (!this.ancienCoupe) {
+        this.ancienCoupe = true;
+        for (const g of [this.engine.gain, this.skid.gain, this.roll.gain, this.wind]) g.gain.setTargetAtTime(0, t, 0.1);
+      }
+      if (this.ambience) this.ambience.gain.gain.setTargetAtTime(on ? ambienceLevel(this.ambience.kind, f.speed) : 0, t, 0.25);
+      this.bonus(f);
+      return;
+    }
     const e = engineSound(f.speed, f.cut ? 0 : f.throttle);
     this.engine.o1.frequency.setTargetAtTime(e.freq, t, k);
     this.engine.o2.frequency.setTargetAtTime(e.freq * 0.5, t, k);
@@ -344,6 +378,11 @@ export class GameAudio {
     this.wind.gain.setTargetAtTime(on ? windGain(f.speed) : 0, t, k);
     if (this.ambience) this.ambience.gain.gain.setTargetAtTime(on ? ambienceLevel(this.ambience.kind, f.speed) : 0, t, 0.25);
 
+    this.bonus(f);
+  }
+
+  /** Le turbo et la coupure : un bruitage au front montant. */
+  private bonus(f: AudioFrame) {
     const boosted = f.boost || f.turbo;
     if (boosted && !this.wasBoost) this.play("turbo");
     this.wasBoost = boosted;
@@ -392,6 +431,7 @@ export class GameAudio {
     this.log.push(what);
     if (this.log.length > 24) this.log.shift();
     if (!this.ensure() || !this.running) return;
+    if (this.ext?.ponctuel(what, n, quality)) return;
     switch (what) {
       case "countdown":
         this.tone(noteFreq(-9), 0.16, "square", 0.12);

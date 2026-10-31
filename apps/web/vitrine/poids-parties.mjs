@@ -78,6 +78,11 @@ const PARTIES = [
   ["Voiture : modèle H (la monoplace, lot 42 ; son plan, sans l'atelier)", null, ["PLAN_H"], { entree: `import { PLAN_H } from "../voiture/modeleH";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree", "surfaces", "nuanceurLivree", "details", "atelier"] }],
   ["Voiture : modèle I (la fourgonnette, lot 42 ; son plan, sans l'atelier)", null, ["PLAN_I"], { entree: `import { PLAN_I } from "../voiture/modeleI";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree", "surfaces", "nuanceurLivree", "details", "atelier"] }],
   ["Voiture : matériaux des paliers 2 et 3 (materiaux2.ts, à la demande ; MeshPhysicalMaterial compté à part, dans three.js)", null, ["MATERIAUX_2"], { entree: `import { MATERIAUX_2 } from "../voiture/materiaux2";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree", "surfaces", "nuanceurLivree"] }],
+  // --- Lot 55 (partie B) : le son. Chaque approche est mesurée avec ce qu'elle tire (la boîte de vitesses virtuelle et les profils, communs aux trois) ; la planche affiche ces chiffres.
+  ["Son : le moteur d'avant (lot 9 : audio.ts et audioLogic.ts ; déjà dans le jeu)", null, ["GameAudio"], { entree: `import { GameAudio } from "../audio";` }],
+  ["Son : approche A — synthèse (moteurSynthese, boîte virtuelle, profils)", null, ["creerSynthese", "pasBoite", "profilDe"], { entree: `import { creerSynthese } from "../son/moteurSynthese"; import { pasBoite } from "../son/boite"; import { profilDe } from "../son/profils";` }],
+  ["Son : approche B — échantillons (lecteur de boucles, chargeur, boîte virtuelle, profils )", null, ["creerEchantillons", "chargerBoucles", "pasBoite", "profilDe"], { entree: `import { creerEchantillons, chargerBoucles } from "../son/moteurEchantillons"; import { pasBoite } from "../son/boite"; import { profilDe } from "../son/profils";` }],
+  ["Son : couche des pneus, du sol et du vent, et bruitages (coucheRoues.ts, commune aux approches)", null, ["creerCoucheRoues"], { entree: `import { creerCoucheRoues } from "../son/coucheRoues";` }],
 ];
 
 /** Un module vide qui exporte les mêmes noms (le palier 1 mesuré sans les modules des pas). */

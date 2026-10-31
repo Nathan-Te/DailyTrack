@@ -102,6 +102,7 @@ $<HTMLSelectElement>("couleur").addEventListener("change", (e) => set({ couleur:
 $<HTMLSelectElement>("motif").addEventListener("change", (e) => set({ motif: (e.target as HTMLSelectElement).value as AdminState["motif"] }));
 $<HTMLSelectElement>("teinte").addEventListener("change", (e) => set({ teinte: (e.target as HTMLSelectElement).value }));
 $<HTMLSelectElement>("steer").addEventListener("change", (e) => set({ steer: (e.target as HTMLSelectElement).value as AdminState["steer"] }));
+$<HTMLSelectElement>("son").addEventListener("change", (e) => set({ son: (e.target as HTMLSelectElement).value as AdminState["son"] }));
 $<HTMLSelectElement>("touch").addEventListener("change", (e) => set({ touch: (e.target as HTMLSelectElement).value as AdminState["touch"] }));
 $<HTMLSelectElement>("thumbs").addEventListener("change", (e) => set({ thumbs: (e.target as HTMLSelectElement).value as AdminState["thumbs"] }));
 $<HTMLInputElement>("timescale").addEventListener("input", (e) => set({ timescale: (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 2) }));
@@ -180,6 +181,7 @@ function render() {
   $<HTMLSelectElement>("touch").value = state.touch;
   $<HTMLSelectElement>("thumbs").value = state.thumbs;
   $<HTMLSelectElement>("steer").value = state.steer;
+  $<HTMLSelectElement>("son").value = state.son;
   $<HTMLInputElement>("timescale").value = state.timescale;
   $<HTMLInputElement>("api").value = state.api;
   $<HTMLInputElement>("salonminutes").value = state.salonMinutes;
