@@ -17,8 +17,8 @@ import { hasWebGL } from "./phone";
 const GENERATED = generatedDay();
 const GENERATED_NOW = noonOf(GENERATED);
 
-/** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v12.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+/** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim` en vigueur (v13 ; lot 31 : le test lisait encore la v12, g23, alors que la page sert g24 puis g25). */
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v13.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 interface Load {
   source: string;
