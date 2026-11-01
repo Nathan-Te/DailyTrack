@@ -598,3 +598,23 @@ describe("Tower : la lecture des résultats, les jours préparés et le premier 
     expect(joursTowerAPoser({ "2026-11-10.json": "A2" }, { "2026-11-10.json": "A" }, plan).conflits).toEqual(["2026-11-10.json"]);
   });
 });
+
+// Mise en production du 01/11/2026 (run 41351231877) : le script d'empreintes est COPIÉ dans le code en production (`empreintes <dépôt>`), qui peut être plus ancien que
+// lui. Il importait par son nom `declareFrozenGenerators` (lot V1), que le code en production n'avait pas : esbuild refusait de le compiler (« No matching export ») et le
+// garde-fou des jours arrêtait tout. Ce test le compile contre un `@cdj/jump-sim` réduit à ce qu'avait le code d'avant le lot V1 (`dailyLevel`, `thawLevel`).
+describe("le script d'empreintes se compile dans un code plus ancien que lui", () => {
+  it("contre un @cdj/jump-sim sans declareFrozenGenerators (code d'avant le lot V1) : compilé, sans avertissement", async () => {
+    const { build } = await import("esbuild");
+    const ancien = { name: "jump-sim-ancien", setup(b: { onResolve: Function; onLoad: Function }) {
+      b.onResolve({ filter: /^@cdj\/jump-sim$/ }, () => ({ path: "jump-sim-ancien", namespace: "ancien" }));
+      b.onLoad({ filter: /.*/, namespace: "ancien" }, () => ({ contents: "export function dailyLevel() {}\nexport function thawLevel() {}\n", loader: "js" }));
+    } };
+    const r = await build({
+      entryPoints: [join(__dirname, "../../api/scripts/empreintes-jours.ts")],
+      bundle: true, write: false, platform: "node", format: "esm", target: "node22", logLevel: "silent",
+      external: ["@cdj/core", "@cdj/sim"], plugins: [ancien as never],
+    });
+    expect(r.errors).toEqual([]);
+    expect(r.warnings.map((w) => w.text)).toEqual([]);
+  });
+});
