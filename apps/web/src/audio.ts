@@ -306,7 +306,9 @@ export class GameAudio {
   play(what: OneShot, n = 1, quality = 1) {
     this.log.push(what);
     if (this.log.length > 24) this.log.shift();
-    if (!this.ensure() || !this.running) return;
+    // Seul un geste du joueur crée le contexte (constructeur) : un son du jeu avant lui (le décompte d'un lien direct) ne le crée pas — sinon un navigateur qui permet
+    // la lecture automatique (Chromium piloté) faisait tourner le son avant tout geste, selon l'instant du premier bip (CI complète du 01/11/2026, juice.spec).
+    if (!this.ctx || !this.ensure() || !this.running) return;
     if (this.ext?.ponctuel(what, n, quality)) return;
     switch (what) {
       case "countdown":
