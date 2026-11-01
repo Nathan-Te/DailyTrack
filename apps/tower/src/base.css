@@ -166,6 +166,28 @@ body {
 .legende--papier {
   color: var(--dj-papier);
 }
+/* Une touche du clavier (« Comment jouer », l'aide en partie, Réglages › Commandes) ; lot T7 : `--manette` est un bouton de manette, rond. */
+.touche {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  box-sizing: border-box;
+  padding: 0 var(--dj-espace-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  box-shadow: 0 2px 0 var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+}
+.touche--manette {
+  min-width: 28px;
+  border-radius: 14px;
+  box-shadow: 0 2px 0 var(--dj-encre);
+}
 /* --- Lot T4 : de quoi s'écrire dans l'accueil, les dialogues et l'arrivée --------------------------------------------------------------------------- */
 .bouton-jouer--petit {
   min-height: var(--dj-cible);

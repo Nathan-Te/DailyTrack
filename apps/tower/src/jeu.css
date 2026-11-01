@@ -38,6 +38,22 @@
   cursor: pointer;
   touch-action: manipulation;
 }
+/* Lot T7 : la plaque « Archive » à côté des boutons du haut (une tour passée, jouée hors classement). */
+.plaque-mode {
+  align-self: center;
+  box-sizing: border-box;
+  padding: 4px 10px;
+  background: var(--dj-encre);
+  color: var(--tower-menthe);
+  border-radius: var(--dj-rayon-bouton);
+  font-family: var(--tower-police);
+  font-size: var(--dj-taille-13);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.plaque-mode[hidden] {
+  display: none;
+}
 .plaque-bouton:active,
 .plaque-bouton.est-appuye {
   transform: translate(var(--dj-enfonce), var(--dj-enfonce));
@@ -357,6 +373,57 @@
     transition: none;
   }
 }
+/* Lot T7 — l'aide des commandes : une ligne sous la bande, comme l'annonce (qui descend d'un cran tant que l'aide est là). Pas d'interaction : le centre reste libre. */
+.aide-ligne {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--marge-h) + 38px);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(96vw, 700px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 5px;
+  padding: 4px 8px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  pointer-events: none;
+  z-index: var(--z-hud);
+}
+.aide-ligne .touche {
+  min-width: 22px;
+  min-height: 22px;
+  font-size: var(--dj-taille-11, 11px);
+}
+.aide-ligne[hidden] {
+  display: none;
+}
+.aide-ligne__touches {
+  display: inline-flex;
+  gap: 3px;
+}
+.aide-ligne:not([hidden]) ~ .annonce {
+  top: calc(var(--marge-h) + 38px + 40px);
+}
+@media (max-aspect-ratio: 1/1) {
+  /* Sous la plaque « Suivante » (à droite, haute d'une centaine de pixels), qu'elle ne doit pas recouvrir. */
+  .aide-ligne {
+    top: calc(max(8px, env(safe-area-inset-top, 0px)) + 156px);
+  }
+  .aide-ligne:not([hidden]) ~ .annonce {
+    top: calc(max(8px, env(safe-area-inset-top, 0px)) + 156px + 56px);
+  }
+}
 /* Portrait (rapport largeur / hauteur ≤ 1) : la bande reste en haut au centre ; pause, plein écran et fantôme passent sur une deuxième rangée à gauche, la pièce suivante à droite ;
    les commandes restent aux bords du bas (charte rév. 13, § 9). */
 @media (max-aspect-ratio: 1/1) {
@@ -423,6 +490,18 @@
   width: 100%;
   min-height: var(--dj-cible);
   accent-color: var(--dj-encre);
+}
+.pause__pied {
+  display: flex;
+  justify-content: center;
+}
+.pause__lien {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
 }
 .pause__actions {
   display: grid;
@@ -759,6 +838,9 @@
 }
 .fin__actions > * {
   min-height: var(--dj-cible);
+}
+#fin-accueil {
+  grid-column: 1 / -1;
 }
 .fin__actions > [hidden] {
   display: none;

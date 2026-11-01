@@ -13,6 +13,7 @@ import type { Musique } from "@cdj/musique/branche";
 import { barreJeu, el, formatDecompte, formatNombre, nomMedaille, type TraducteurCommun } from "@cdj/ui";
 import type { ClassementTower, MoiTower } from "./apiTower";
 import { monterClassement } from "./classementUi";
+import { estArchive } from "./jourPasse";
 import { petiteTour } from "./composants";
 import { formatHauteur, formatPalier } from "./formatHauteur";
 import { appliquerDocument, chargerLangue, langueCourante, t, traducteurDuSocle } from "./i18n";
@@ -24,7 +25,7 @@ import type { Preparation } from "./preparation";
 import { effacerRecords, lireRecords, serieLocale } from "./records";
 import { creerSession, type Session, suivreGeneration } from "./session";
 import { CLE_IDENTITE_VUE, gameStorage } from "./stockage";
-import type { OptionsUrl } from "./urlOptions";
+import { choisirJour, type OptionsUrl, PRODUCTION } from "./urlOptions";
 
 // L'accueil de Tower (lot T4) — maquette `docs/tower/maquettes/tower-accueil.html` : l'étiquette menthe dans sa coque, sur la scène, sous le voile à rayures ; à gauche le titre, « Tour n° N · Thème »,
 // la réplique du thème, ton record et ta série, JOUER et « Comment jouer » ; à droite les paliers du jour (le mot « bonus » ou « malus » toujours écrit), le classement du jour (les trois premiers, « … »,
@@ -34,7 +35,8 @@ import type { OptionsUrl } from "./urlOptions";
 // générateur, les paliers) est un morceau à part chargé dès que la page est dessinée ; le jeu (la scène, la partie, le HUD, la fin) et Rapier se PRÉCHARGENT dès que l'accueil est affiché. JOUER attend
 // ce qui manque, avec une ligne d'attente. Le décor sous le voile est un aplat du thème (CSS) tant que la scène n'est pas là : jamais d'écran blanc.
 //
-// Écart à la maquette : pas de boutons « Archives » ni « Réglages » (ils n'existent pas encore). Le serveur est facultatif : sans lui (ou hors ligne) tout est lu du navigateur et le classement dit
+// Lot T7 : les boutons « Archives » et « Réglages » de la maquette (retirés au lot T4) sont là — leurs écrans sont à la demande (`archives.ts`, `reglages.ts`) ; l'accueil est centré dans la
+// fenêtre (`accueil.css`) ; une tour passée (`?seed=` d'un jour passé, ouverte depuis les Archives) le dit : « Archive : cette tour n'est pas classée ». Le serveur est facultatif : sans lui (ou hors ligne) tout est lu du navigateur et le classement dit
 // qu'il est indisponible.
 
 const MESSAGE_HORS_LIGNE = "classement.indisponible";
@@ -101,8 +103,15 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   const jouer = el("button", { classe: "bouton-jouer accueil__jouer", attrs: { type: "button", id: "accueil-jouer" }, texte: t("accueil.jouer") });
   const attente = el("p", { classe: "accueil__attente", attrs: { role: "status", id: "accueil-attente" } });
   const aide = el("button", { classe: "dj-bouton dj-bouton--secondaire accueil__aide", attrs: { type: "button", id: "accueil-aide" }, texte: t("accueil.aide") });
+  const archives = el("button", { classe: "dj-bouton dj-bouton--secondaire accueil__aide", attrs: { type: "button", id: "accueil-archives" }, texte: t("accueil.archives") });
+  const reglages = el("button", { classe: "dj-bouton dj-bouton--secondaire accueil__aide", attrs: { type: "button", id: "accueil-reglages" }, texte: t("accueil.reglages") });
+  const secondaires = el("div", { classe: "accueil__secondaires" }, aide, archives, reglages);
+  // Une tour passée (ouverte depuis les Archives) : une ligne le dit, avec le retour à la tour du jour.
+  const choix = choisirJour(options.seed, session.aujourdhui, PRODUCTION);
+  const archive = options.scenario === "jour" && estArchive(choix.jour, session.aujourdhui);
+  const noteArchive = el("p", { classe: "accueil__archive", attrs: { role: "status", id: "accueil-archive", hidden: !archive } }, el("span", { texte: t("accueil.archive.note") }), el("a", { classe: "accueil__lien", attrs: { href: location.pathname, id: "accueil-archive-retour" }, texte: t("accueil.archive.retour") }));
   const hoteDeSuite = el("div", { classe: "suite-du-jour", attrs: { hidden: true } }); // rempli par `jeuSuivant.ts`, chargé à la demande (lot TP)
-  const gauche = el("div", { classe: "accueil__gauche" }, hoteAccueil, el("div", { classe: "accueil__tete" }, el("div", { classe: "accueil__titres" }, titre, tour), dessin), replique, el("div", { classe: "accueil__tuiles" }, tuileRecord, tuileSerie), jouer, attente, aide, hoteDeSuite);
+  const gauche = el("div", { classe: "accueil__gauche" }, hoteAccueil, el("div", { classe: "accueil__tete" }, el("div", { classe: "accueil__titres" }, titre, tour), dessin), replique, el("div", { classe: "accueil__tuiles" }, tuileRecord, tuileSerie), noteArchive, jouer, attente, secondaires, hoteDeSuite);
 
   const paliersTitre = el("span", { classe: "legende" });
   const paliersListe = el("ul", { classe: "accueil__paliers", attrs: { id: "accueil-paliers" } });
@@ -148,9 +157,10 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   const minuteur = setInterval(majDecompte, 1000);
 
   const records = lireRecords(stockage);
-  const dateAujourdhui = formatDay(session.aujourdhui);
+  /** Le jour dont l'accueil montre le classement : celui de la tour affichée (aujourd'hui, ou une archive). */
+  const dateDuJour = formatDay(choix.jour);
   const majBarre = (numero: number | null): void => {
-    barre.replaceChildren(barreJeu(communs(), { href: "../", jour: session.aujourdhui, ...(numero !== null ? { numero } : {}) }));
+    barre.replaceChildren(barreJeu(communs(), { href: "../", jour: choix.jour, ...(numero !== null ? { numero } : {}) })); // la date de la tour affichée (aujourd'hui, ou une archive)
   };
   majBarre(null);
 
@@ -185,7 +195,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
       return dessinerClassement();
     }
     const pid = readPlayerId(stockage ?? { getItem: () => null });
-    const [b, m] = await Promise.all([session.source.board(dateAujourdhui, pid), pid ? session.source.towerMe(pid) : Promise.resolve(null)]);
+    const [b, m] = await Promise.all([session.source.board(dateDuJour, pid), pid ? session.source.towerMe(pid) : Promise.resolve(null)]);
     if (b.ok) {
       suivreGeneration(b.data);
       etat.classement = b.data;
@@ -197,7 +207,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
     dessinerClassement();
     dessinerSerie();
     // Lot TP : déjà classé aujourd'hui, il reste peut-être un autre jeu du jour : « Jeu suivant du jour » (module du jeu, chargé seulement alors).
-    if (b.ok && b.data.me && pid) {
+    if (b.ok && b.data.me && pid && !archive) {
       const m2 = await import("./jeuSuivant");
       const suite = await m2.chargerSuite(session.base, pid);
       if (suite) m2.poserSuite(hoteDeSuite, suite);
@@ -229,6 +239,38 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   toutLeClassement.addEventListener("click", () => {
     dialogueClassement ??= monterClassement(racine);
     dialogueClassement.ouvrir(etat.classement, etat.classement ? "ok" : "indisponible");
+  });
+
+  // --- Lot T7 : Réglages et Archives, deux écrans à la demande (rien au premier chargement) ---
+  const jourBarre = (): { jour: number; numero: number | null } => ({ jour: etat.preparation?.jour ?? session.aujourdhui, numero: etat.preparation?.numero ?? null });
+  let reglagesMontes: Awaited<ReturnType<typeof import("./reglages").monterReglages>> | null = null;
+  reglages.addEventListener("click", async () => {
+    const [m, sonsM, joueurM] = await Promise.all([import("./reglages"), import("./reglagesSons"), import("./reglagesJoueur")]);
+    reglagesMontes ??= m.monterReglages(racine, {
+      jour: jourBarre,
+      musique: () => musique.lecteur(),
+      sons: { lire: () => sonsM.lireSons(stockage), ecrire: (r) => sonsM.ecrireSons(stockage, r) },
+      reglages: { lire: () => joueurM.lireReglagesJoueur(stockage), ecrire: (r) => joueurM.ecrireReglagesJoueur(stockage, r) },
+      tactile: session.tactile,
+      profilHref: "../profil/?retour=/tower/",
+    });
+    reglagesMontes.ouvrir();
+  });
+  let archivesMontees: Awaited<ReturnType<typeof import("./archives").monterArchives>> | null = null;
+  archives.addEventListener("click", async () => {
+    const m = await import("./archives");
+    archivesMontees ??= m.monterArchives(racine, {
+      aujourdhui: session.aujourdhui,
+      jour: jourBarre,
+      stockage,
+      jours: async () => {
+        if (etat.moi) return etat.moi.days;
+        const pid = readPlayerId(stockage ?? { getItem: () => null });
+        const r = session.source && pid ? await session.source.towerMe(pid) : null;
+        return r?.ok ? r.data.days : [];
+      },
+    });
+    archivesMontees.ouvrir();
   });
 
   // --- JOUER : attend ce qui manque (le contenu, le jeu, la physique), puis lance la partie ---

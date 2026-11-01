@@ -33,8 +33,14 @@ export async function chargerLangue(): Promise<void> {
 
 export const langueCourante = (): Langue => langue;
 
+let paramsCommuns: (() => Parametres) | null = null;
+/** Lot T7 (règle M2) : les clés d'aide reçoivent en plus les touches CHOISIES (`{tourner}`) ; `commandes.ts` les fournit (i18n n'importe pas les commandes). */
+export function definirParametresCommuns(f: () => Parametres): void {
+  paramsCommuns = f;
+}
+
 /** Le texte d'une clé dans la langue courante, paramètres remplacés (`{n}` choisit aussi la forme plurielle). */
-export const t = (cle: string, params?: Parametres): string => courant.t(cle, params);
+export const t = (cle: string, params?: Parametres): string => courant.t(cle, paramsCommuns && /^(commandes\.|aide\.)/.test(cle) ? { ...paramsCommuns(), ...params } : params);
 
 /** Le traducteur à passer aux composants du socle (`boutonPleinEcran`…). */
 export const traducteurDuSocle = (): Traducteur<never> => courant as Traducteur<never>;

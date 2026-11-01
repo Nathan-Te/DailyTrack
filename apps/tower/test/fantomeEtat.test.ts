@@ -44,3 +44,13 @@ describe("la séquence du fantôme", () => {
     expect(["aucun", "meilleure", "diamant"].map((e) => cleNomFantome(e as never))).toEqual(["fantome.aucun", "fantome.meilleure", "fantome.diamant"]);
   });
 });
+
+describe("le fantôme au départ (Réglages › Affichage, lot T7)", () => {
+  it("« Ma meilleure » par défaut si elle existe ; « Aucun » si le joueur ne la veut pas au départ ; jamais une meilleure qui n'existe pas", () => {
+    expect(etatInitial({ meilleure: true, diamant: true })).toBe("meilleure");
+    expect(etatInitial({ meilleure: true, diamant: true }, "meilleure")).toBe("meilleure");
+    expect(etatInitial({ meilleure: true, diamant: true }, "aucun")).toBe("aucun");
+    expect(etatInitial({ meilleure: false, diamant: true }, "meilleure")).toBe("aucun");
+  });
+});
+

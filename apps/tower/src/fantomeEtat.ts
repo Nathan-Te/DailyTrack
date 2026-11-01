@@ -23,9 +23,9 @@ export function suivant(etat: EtatFantome, dispo: DisponiblesFantome): EtatFanto
   return "aucun";
 }
 
-/** L'état de départ d'une partie : « Ma meilleure » si elle existe, sinon « Aucun ». */
-export function etatInitial(dispo: DisponiblesFantome): EtatFantome {
-  return dispo.meilleure ? "meilleure" : "aucun";
+/** L'état de départ d'une partie : « Ma meilleure » si elle existe (et si le joueur la veut au départ : Réglages › Affichage, lot T7), sinon « Aucun ». */
+export function etatInitial(dispo: DisponiblesFantome, depart: "aucun" | "meilleure" = "meilleure"): EtatFantome {
+  return depart === "meilleure" && dispo.meilleure ? "meilleure" : "aucun";
 }
 
 /** Un état qui n'est plus disponible (le Diamant d'un autre jour, une meilleure effacée) retombe sur « Aucun ». */

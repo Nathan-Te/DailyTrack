@@ -180,3 +180,37 @@ test("?bot : le bot rejoue la preuve du jour et finit exactement sur son Diamant
   await expect(page.locator("#fin-medailles-session")).toContainText(/Diamant du jour|Today's Diamond/);
   await expect(page.locator("#fin-medaille")).toHaveText(/Diamant/i);
 });
+
+// Lot T7 (règle M2, comme le test de Jump) — LE test de navigateur du nouveau parcours : Réglages › Commandes, « Tourner » sur Z, et la nouvelle touche agit en partie ; l'aide et « Comment jouer » citent Z.
+// Tout le reste (actions, touches d'origine, mêmes bits et même rediffusion, manette, stockage, archives…) est testé sans navigateur (`apps/tower/test`).
+test("Réglages › Commandes : Tourner sur Z, puis Z fait tourner la pièce en partie, et l'aide dit Z (lot T7)", async ({ page }) => {
+  await page.goto("/?scenario=essai&tactile=0");
+  await page.waitForSelector("html[data-ready=true] .tower__scene");
+  await page.evaluate(() => localStorage.removeItem("cdj:commandes:tower"));
+  // Au départ, l'aide des commandes est une ligne sous la bande ; elle cite les touches (« tourner »).
+  await expect(page.locator(".aide-ligne")).toContainText(/tourner/i);
+  // La pause (P), puis Réglages › Commandes : la case de la première touche de « Tourner » attend la nouvelle touche ; KeyZ (la touche physique) la remplace.
+  await page.keyboard.press("KeyP");
+  await page.locator("#pause-reglages").click();
+  await expect(page.locator("#reglages-ecran")).toBeVisible();
+  await page.locator('#reglages-commandes [data-focus="k:tourner:0"]').click();
+  await expect(page.locator("#reglages-commandes .dj-commande__touche--attente")).toContainText("…");
+  await page.keyboard.press("KeyZ");
+  await expect(page.locator('#reglages-commandes [data-action="tourner"]')).toContainText("Z");
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:commandes:tower")!).clavier.tourner[0])).toBe("KeyZ");
+  // « Comment jouer », ouvert depuis la pause, dit Z : le schéma est redessiné avec les touches choisies.
+  await page.keyboard.press("Escape"); // ferme Réglages, la pause reste
+  await expect(page.locator("#reglages-ecran")).toBeHidden();
+  await expect(page.locator("#pause-ecran")).toBeVisible();
+  await page.locator("#pause-aide").click();
+  await expect(page.locator("#aide-ecran .aide__schema")).toContainText("Z");
+  await page.locator("#aide-ok").click();
+  // Retour à la partie : Z fait tourner la pièce, comme ↑ avant ; la ligne d'aide dit Z.
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pause-ecran")).toBeHidden();
+  await expect(page.locator(".aide-ligne")).toContainText("Z");
+  const rot = await page.evaluate(() => window.__tower.vue().pieces[0]!.rot);
+  await page.keyboard.press("KeyZ");
+  await page.waitForFunction((avant) => window.__tower.vue().pieces[0]!.rot !== avant, rot);
+  await page.evaluate(() => localStorage.removeItem("cdj:commandes:tower"));
+});

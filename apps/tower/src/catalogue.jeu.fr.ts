@@ -7,6 +7,15 @@ export const CATALOGUE_JEU_FR = {
   "pause.sons": "Sons",
   "pause.sons.volume": "Volume",
   "fin.essai": "Réglage d'essai : partie non classée.",
+
+  // Lot T7 : la pause complète, l'aide des commandes, les Réglages, les Archives, l'accueil de Tower depuis la partie.
+  "pause.aide": "Comment jouer",
+  "pause.reglages": "Réglages",
+  "jeu.accueil": "Accueil de Tower",
+  "pause.mentions": "Mentions légales",
+  "fin.archive": "Archive : partie non classée.",
+  "hud.archive": "Archive",
+  "aide.ligne": "{gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {pause} pause",
 };
 
 /** Ajoute les textes du jeu au catalogue français (le traducteur lit ce même objet : rien à reconstruire). */

@@ -3,9 +3,14 @@ import { installerCataloguesDuJeu } from "./catalogue.jeu.fr";
 import { readPlayerId } from "@cdj/profile";
 import { empreinteVue, medailleObtenue, medaillesDe, Partie, type Rapier, type Scenario, TICKS_PAR_SECONDE, type VuePartie } from "@cdj/tower-sim";
 import { el, formatDateCourte, nomMedaille } from "@cdj/ui";
+import { BOUTON_FIXE, TOUCHE_FIXE } from "@cdj/ui/src/commandes";
+import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
+import type { Entree } from "./aideLigne";
+import { adresseAccueil, estArchive } from "./jourPasse";
+import { commandes } from "./commandes";
 import { monterClassement } from "./classementUi";
 import { texteDebug } from "./debug";
-import { Entrees } from "./entrees";
+import { Entrees, padActif } from "./entrees";
 import { evenementsDeFin, type EvenementJeu, Observateur } from "./evenements";
 import { cleNomFantome, type EtatFantome, etatInitial, etatValide, suivant } from "./fantomeEtat";
 import { type FantomePiece, MemoireFantome } from "./fantomeLocal";
@@ -24,6 +29,7 @@ import { textePartage } from "./partage";
 import type { Preparation } from "./preparation";
 import { lireRecords, proposerRecord } from "./records";
 import { ecrireSons, lireSons, type ReglagesSons } from "./reglagesSons";
+import { ecrireReglagesJoueur, facteurDe, lireReglagesJoueur, type ReglagesJoueur } from "./reglagesJoueur";
 import { Scene3D } from "./scene";
 import { chargerSuite } from "./jeuSuivant";
 import { creerSession, type Session, suivreGeneration } from "./session";
@@ -46,6 +52,8 @@ import { type OptionsUrl, PRODUCTION } from "./urlOptions";
 // Lot T4 — le fantôme a trois états (Aucun, Ma meilleure, Diamant : `fantomeEtat.ts`) ; « Ma meilleure » vient de la rediffusion gardée dans le navigateur, « Diamant » du serveur, une fois classé.
 
 const TICKS_MAX = 6;
+/** Les pièces qu'on joue avec l'aide des commandes affichée : à la quatrième, elle disparaît. */
+const PIECES_AIDE = 3;
 
 /** Ce que l'accueil donne au jeu. */
 export interface ContexteJeu {
@@ -148,6 +156,12 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
 
   const stockage = gameStorage();
   const reglages = reglagesDeDepart();
+  // Lot T7 : les réglages d'affichage du joueur (Réglages › Affichage, `tower:reglages`) : le fantôme au départ, les secousses, la panique des yeux. **Affichage seulement** : rien ne retourne dans la simulation.
+  let reglagesJ: ReglagesJoueur = lireReglagesJoueur(stockage);
+  /** Le gain de la panique des yeux : le curseur de `?debug&tune` fois le choix du joueur (Réglages › Affichage). */
+  const gainYeux = (): number => reglages.rendu.panique * facteurDe(reglagesJ.yeux);
+  /** Les réglages de rendu de `?debug&tune` avec les choix du joueur (secousses, yeux) : relus à chaque image par la scène. */
+  const renduEffectif = (): typeof reglages.rendu => ({ ...reglages.rendu, secousse: reglages.rendu.secousse * facteurDe(reglagesJ.secousses), panique: gainYeux() });
   const { tactile } = session;
   const entrees = new Entrees(() => reglages.entrees);
   const contenu = preparation.contenu;
@@ -174,14 +188,14 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   // Lot T5 : le hasard d'AFFICHAGE (clignements, gouttes, secousses, variations des sons) n'est jamais celui de la simulation ; chaque usage a sa graine.
   const hasardScene = hasardAffichage(0x70e7);
   const hasardSon = hasardAffichage(0x5017);
-  const scene = new Scene3D(racine, contenu.plateformeDemi8, { hasard: hasardScene, rendu: () => reglages.rendu });
+  const scene = new Scene3D(racine, contenu.plateformeDemi8, { hasard: hasardScene, rendu: renduEffectif });
   const stockageSons = stockage;
   let reglagesSons: ReglagesSons = lireSons(stockageSons);
   const sons = new Sons({ reglages: () => reglagesSons, volumes: () => reglages.rendu.volumes, hasard: hasardSon });
   sons.brancher();
   let ventEnCours = false;
   let derniersEvenements: readonly EvenementJeu[] = [];
-  let analyseur = new AnalyseurPanique(contenu.plateformeDemi8, undefined, () => reglages.rendu.panique);
+  let analyseur = new AnalyseurPanique(contenu.plateformeDemi8, undefined, gainYeux);
   const observateur = new Observateur();
   scene.surPlouf = (x, taille) => void sons.jouer({ genre: "plouf", x, taille });
   const memoire = new MemoireFantome();
@@ -266,7 +280,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
           if (!memoire.proposer(f)) return;
           f.pieces = await m.silhouetteDe(R, contenu, rediffusion);
           if (memoire.get() === f) {
-            if (etatFantome === "aucun" && partie.etape === "jeu" && partie.vue().numero <= 1) etatFantome = "meilleure";
+            if (etatFantome === "aucun" && reglagesJ.fantome === "meilleure" && partie.etape === "jeu" && partie.vue().numero <= 1) etatFantome = "meilleure";
             poserFantome();
             hud.maj(partie.vue(), nomFantome());
           }
@@ -294,13 +308,18 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     tactile,
     vies: reglages.sim.vies,
     onPause: () => ouvrirPause(),
-    onFantome: () => {
-      etatFantome = suivant(etatFantome, dispo());
-      if (etatFantome === "diamant" && !diamantPieces) void chargerDiamant();
-      poserFantome();
-      hud.maj(partie.vue(), nomFantome());
-    },
+    onFantome: () => changerFantome(),
   });
+  /** Le bouton fantôme (et la touche choisie pour « fantôme ») : Aucun → Ma meilleure → Diamant → Aucun. */
+  function changerFantome(): void {
+    etatFantome = suivant(etatFantome, dispo());
+    if (etatFantome === "diamant" && !diamantPieces) void chargerDiamant();
+    poserFantome();
+    hud.maj(partie.vue(), nomFantome());
+  }
+  // Lot T7 : une tour passée (ouverte depuis les Archives) se joue en archive : jamais classée, jamais envoyée ; une plaque le dit en partie.
+  const archive = options.scenario === "jour" && estArchive(preparation.jour, session.aujourdhui);
+  hud.majArchive(archive);
 
   // --- L'envoi au serveur et l'arrivée ---
   /** Le dernier record proposé : cette partie bat-elle celui du navigateur ? */
@@ -312,6 +331,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     onRejouer: () => nouvellePartie(),
     onPartager: () => void partager(),
     onClassement: () => void ouvrirClassement(),
+    onAccueil: () => allerAccueil(),
     onPseudo: (nom) => void session.envoi.choisirPseudo(nom),
     onRecharger: () => location.reload(),
   });
@@ -325,7 +345,6 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     const suite = await chargerSuite(session.base, id);
     if (suite) fin.majSuite(suite);
   };
-  const message2: MessageDirect | null = session.base ? monterMessage({ base: session.base, stockage, hotes: { accueil: hoteMessage(), arrivee: fin.hoteMessage } }) : null;
   session.envoi.surChangement(() => {
     if (fin.ouverte && rediffusionPrete) fin.majEnvoi(vueEnvoi());
     const rep = date ? session.envoi.resultats.get(date) : undefined;
@@ -339,17 +358,54 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   const menu = monterPause(racine, {
     onReprendre: () => reprendre(),
     onRecommencer: () => nouvellePartie(),
+    onAccueil: () => allerAccueil(),
+    onAide: () => void ouvrirAide(),
+    onReglages: () => void ouvrirReglages(),
     musique: () => musique.lecteur(),
-    // Lot T5 : les effets sonores ont leur case et leur volume dans la pause (la musique, son bloc commun juste dessous).
-    sons: {
-      lire: () => reglagesSons,
-      ecrire: (r) => {
-        reglagesSons = r;
-        ecrireSons(stockageSons, r);
-        sons.souffle(ventEnCours && !pause);
-      },
-    },
+    // Lot T5 : les effets sonores ont leur case et leur volume dans la pause (la musique, son bloc commun juste dessous) ; lot T7 : et dans Réglages › Son.
+    sons: { lire: () => reglagesSons, ecrire: (r) => appliquerSons(r) },
   });
+  // Le message en direct : l'accueil, l'arrivée et (lot T7) la pause ; jamais pendant une partie.
+  const message2: MessageDirect | null = session.base ? monterMessage({ base: session.base, stockage, hotes: { accueil: hoteMessage(), arrivee: fin.hoteMessage, pause: menu.hoteMessage } }) : null;
+  function appliquerSons(r: ReglagesSons): void {
+    reglagesSons = r;
+    ecrireSons(stockageSons, r);
+    sons.souffle(ventEnCours && !pause);
+    menu.relireSons();
+    reglagesMontes?.relireSons();
+  }
+  // Lot T7 : « Comment jouer » et Réglages depuis la pause — des modules à la demande, posés sur la pause (qui reste ouverte dessous).
+  let aideMontee: Awaited<ReturnType<typeof import("./commentJouer").monterAide>> | null = null;
+  async function ouvrirAide(): Promise<void> {
+    const m = await import("./commentJouer");
+    aideMontee ??= m.monterAide(racine, { tactile });
+    aideMontee.ouvrir();
+  }
+  let reglagesMontes: Awaited<ReturnType<typeof import("./reglages").monterReglages>> | null = null;
+  async function ouvrirReglages(): Promise<void> {
+    const m = await import("./reglages");
+    reglagesMontes ??= m.monterReglages(racine, {
+      jour: () => ({ jour: preparation.jour ?? session.aujourdhui, numero: preparation.numero }),
+      musique: () => musique.lecteur(),
+      sons: { lire: () => reglagesSons, ecrire: (r) => appliquerSons(r) },
+      reglages: {
+        lire: () => reglagesJ,
+        ecrire: (r) => {
+          reglagesJ = r;
+          ecrireReglagesJoueur(stockage, r);
+        },
+      },
+      tactile,
+      profilHref: "../profil/?retour=/tower/",
+    });
+    reglagesMontes.ouvrir();
+  }
+  /** Un écran posé sur la pause est ouvert : Échap, P et Start lui appartiennent. */
+  const ecranOuvert = (): boolean => (aideMontee?.ouverte ?? false) || (reglagesMontes?.ouvert ?? false) || (dialogueClassement?.ouvert ?? false);
+  /** « Accueil de Tower » : la page de l'accueil. **La partie en cours est abandonnée, jamais envoyée** : seul `terminer()` (la fin d'une partie) propose un record et envoie. */
+  function allerAccueil(): void {
+    location.assign(adresseAccueil(location.pathname, location.search));
+  }
   musique.scene(`theme:${preparation.theme}`);
   musique.baisser(MUSIQUE_EN_PARTIE);
   const debug = options.debug ? el("pre", { classe: "debug", attrs: { id: "debug" } }) : null;
@@ -403,12 +459,12 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     partie = new Partie(R, scenario, { ...reglages.sim }, { physique: { ...reglages.physique } });
     scene.poserPlateforme(scenario.plateformeDemi8);
     scene.poserEchelles(partie.taillesDEssai);
-    analyseur = new AnalyseurPanique(scenario.plateformeDemi8, partie.taillesDEssai, () => reglages.rendu.panique);
+    analyseur = new AnalyseurPanique(scenario.plateformeDemi8, partie.taillesDEssai, gainYeux);
     observateur.reinitialiser();
     ventEnCours = false;
     sons.souffle(false);
     scene.vider();
-    etatFantome = etatInitial(dispo());
+    etatFantome = etatInitial(dispo(), reglagesJ.fantome);
     poserFantome();
     hud.cacherAnnonce();
     declenchesVus = 0;
@@ -443,12 +499,14 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     sons.souffle(false); // le souffle du vent se tait pendant la pause
     musique.baisser(1);
     menu.ouvrir(partie.vue());
+    message2?.montrer("pause");
   }
 
   function reprendre(): void {
     if (!pause) return;
     pause = false;
     menu.fermer();
+    message2?.montrer(null);
     musique.baisser(MUSIQUE_EN_PARTIE);
     sons.souffle(ventEnCours);
     hud.cache = false;
@@ -463,8 +521,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     const obtenue = medailles.medailles ? medailleObtenue(r.hauteurMm, medailles.medailles) : null;
     // La partie s'est enregistrée : sa rediffusion est gardée comme record du jour si elle bat le précédent (et part au serveur, qui la rejoue) ; si c'est la meilleure du fantôme, la silhouette est
     // l'état final de cette partie rejouée. Tout cela est chargé à la demande (`fantomeRejeu`) : les commandes sont copiées tout de suite, la partie est détruite dès qu'on rejoue.
-    const commandes = [...partie.commandesJouees()];
-    const enreg = { commandesJouees: () => commandes, scenario: partie.scenario, reglages: { ...partie.reglages } };
+    const masques = [...partie.commandesJouees()];
+    const enreg = { commandesJouees: () => masques, scenario: partie.scenario, reglages: { ...partie.reglages } };
     // Lot T5 : une partie d'essai (réglages de `?debug&tune`) n'a ni record, ni fantôme, ni envoi : sa rediffusion ne se rejouerait pas aux réglages normaux.
     if (!options.bot && !essai) {
       void import("./fantomeRejeu")
@@ -492,6 +550,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     if (meilleure) lignes.push(t("fin.medailles.session", { medaille: nomMedaille(traducteurDuSocle(), TYPE_MEDAILLE[meilleure]) }));
     if (options.bot && diamantBot !== null) lignes.push(t("bot.diamant", { hauteur: formatHauteur(diamantBot) }));
     if (essai) lignes.push(t("fin.essai"));
+    if (archive) lignes.push(t("fin.archive"));
     // Lot T5 : la fin de partie sonne, puis une courte fanfare pour la médaille obtenue.
     for (const ev of evenementsDeFin(r.motif, obtenue)) sons.jouer(ev);
     const franchis = (contenu.paliers ?? []).slice(0, v.declenches).map((p) => p.metres);
@@ -516,13 +575,69 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     if (v.phase === "fini" && !fin.ouverte) terminer();
   }
 
-  // Le clavier : ← → ↑ X ↓ Espace ; Échap ou P ouvre et ferme la pause. Un écran ouvert (pause, fin) prend le clavier.
-  entrees.brancherClavier(window, () => !pause && !fin.ouverte && !(dialogueClassement?.ouvert ?? false));
-  window.addEventListener("keydown", (e) => {
-    if (e.code !== "Escape" && e.code !== "KeyP") return;
-    if (dialogueClassement?.ouvert) return;
+  // Lot T7 (règle M2) : **aucune touche n'est écrite ici** — le clavier passe par `commandes` (les touches d'origine : ← A / → D, ↑ W X, ↓ S Espace, P, G, Entrée ; ou celles que le joueur a choisies dans
+  // Réglages › Commandes) ; Échap est fixe. Un écran ouvert (pause, fin, aide, réglages) prend le clavier.
+  /** La dernière entrée du joueur : elle décide de ce que l'aide dessine (touches ou boutons de manette) ; au tactile elle ne s'affiche pas. */
+  let entree: Entree = tactile ? "tactile" : "clavier";
+  const enJeu = (): boolean => !pause && !fin.ouverte && !ecranOuvert() && partie.etape !== "fini";
+  entrees.brancherClavier(window, () => enJeu(), commandes);
+  /** Échap et la touche « pause » ouvrent et ferment la pause ; Start fait de même à la manette. Un écran posé sur la pause (réglages, aide, classement) garde ces touches pour lui. */
+  function basculerPause(): void {
+    if (ecranOuvert()) return;
     if (pause) reprendre();
     else ouvrirPause();
+  }
+  /** Entrée vaut « recommencer » seulement hors d'un bouton, d'un lien ou d'un champ : sur eux, c'est eux qu'elle active. */
+  const surControle = (e: KeyboardEvent): boolean => e.target instanceof HTMLElement && e.target.closest("button, a[href], input, select, textarea, [role=button]") !== null;
+  window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    entree = "clavier";
+    if (document.documentElement.dataset.capture) return; // Réglages › Commandes attend une touche : elle n'agit pas sur le jeu
+    const action = e.code === TOUCHE_FIXE ? "pause" : commandes.actionDeTouche(e.code);
+    if (action === "pause") {
+      if (!e.repeat) basculerPause();
+    } else if (action === "recommencer" && !e.repeat && enJeu() && !surControle(e)) {
+      nouvellePartie();
+    } else if (action === "fantome" && !e.repeat && enJeu()) {
+      changerFantome();
+    }
+  });
+  window.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch") entree = "tactile";
+  });
+  // La manette : lue à chaque image par `padPourLeJeu` (un menu ouvert la cache, sauf Start : un appui ne sert jamais deux fois). Gauche et droite répètent comme au clavier (`entrees.lire`).
+  let startTenu = false;
+  let recommencerTenu = false;
+  let fantomeTenu = false;
+  function lireManette(): void {
+    if (options.bot || typeof navigator === "undefined" || !navigator.getGamepads) return;
+    const pad = padPourLeJeu(navigator.getGamepads().find((p): p is Gamepad => !!p && p.connected));
+    if (pad && padActif(pad)) entree = "manette";
+    const start = !!pad?.buttons[BOUTON_FIXE]?.pressed;
+    if (start && !startTenu) basculerPause();
+    startTenu = start;
+    const recommencer = !!pad && commandes.enfonceeManette("recommencer", pad);
+    const fantome = !!pad && commandes.enfonceeManette("fantome", pad);
+    const jouable = enJeu();
+    if (jouable && recommencer && !recommencerTenu) nouvellePartie();
+    else if (jouable && fantome && !fantomeTenu) changerFantome();
+    recommencerTenu = recommencer;
+    fantomeTenu = fantome;
+    entrees.lirePad(jouable ? pad : undefined, commandes);
+  }
+  // L'aide des commandes : au départ d'une partie, une ligne sous la bande ; elle disparaît après quelques pièces (`aideLigne.ts`, chargée à la demande : un appareil tactile ne la montre jamais). Redessinée si
+  // l'entrée ou les touches changent.
+  let aideCle = "";
+  function majAideLigne(): void {
+    const visible = !options.bot && !pause && !fin.ouverte && entree !== "tactile" && partie.vue().numero <= PIECES_AIDE;
+    const cle = visible ? entree : "";
+    if (cle === aideCle) return;
+    aideCle = cle;
+    if (!visible) return hud.majAide(null);
+    void import("./aideLigne").then((m) => aideCle === entree && hud.majAide(m.noeudsAide(commandes, entree as "clavier" | "manette", langueCourante())));
+  }
+  commandes.surChangement(() => {
+    aideCle = "?";
   });
   document.addEventListener("visibilitychange", () => {
     sons.surVisibilite(document.hidden);
@@ -541,6 +656,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   function image(maintenant: number): void {
     const dt = Math.min(0.1, (maintenant - dernier) / 1000);
     dernier = maintenant;
+    lireManette();
+    majAideLigne();
     if (!pause && !manuel && partie.etape !== "fini") {
       acc += dt * TICKS_PAR_SECONDE;
       let n = 0;
