@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "jeu": "tower",
+  "date": "2026-11-13",
+  "g": 3,
+  "tirage": 0,
+  "sim": 4,
+  "contenu": {
+    "pieces": "TISJLZOOZSJTILOLIJZSTTOSIJLZLSIJTZOZJISL",
+    "plateformeDemi8": 32,
+    "paliers": [{"metres":8,"effet":"petite"},{"metres":16,"effet":"glissante"},{"metres":24,"effet":"figee"},{"metres":32,"effet":"vent"},{"metres":40,"effet":"lierre"},{"metres":48,"effet":"geante"}],
+    "ventSens": -1,
+    "theme": "canyon"
+  },
+  "medailles": { "auteur": 41426, "or": 20713, "argent": 12427, "bronze": 6213 },
+  "preuve": "AQQDAKKiARQEOAMMAQgpDAEJAQgiDAEJAQgoDAMJAwgqDAMIJwwBCgIIQgkCCCoJAQgsCQIIKgkCCCoMAQoBCCwMAggqDAEJAQgiDAEJAwgmCQUIKAwDCQMIJAkCCCoMAQkCCCcJBAgpDAEJBAglDAEJAwgnDAEJAwgkCQQIJwkCCCkJAwgoCQEIKgwDCQMIIgkDCCgMAQkCCCcMAQkDCCcMAQkECCMMAQkBCCkJBQg5DAEJAwhhCQMILAkFCGw"
+}

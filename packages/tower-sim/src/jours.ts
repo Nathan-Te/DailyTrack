@@ -12,7 +12,7 @@ import { type Contenu, dailyTower, GENERATEUR_TIRAGE, TOWER_GENERATOR_VERSION, V
 import { type Medailles } from "./medailles";
 import { EFFETS, type Effet } from "./paliers";
 import { THEMES_TOWER, type ThemeTower } from "./themes";
-import { TOWER_SIM_VERSION } from "./constantes";
+import { TOWER_SIM_VERSION, VERSIONS_SIM_JOUABLES } from "./constantes";
 import { TIRAGES_MAX } from "./tirage";
 
 export const FORMAT_JOUR_FIGE = 1;
@@ -44,7 +44,7 @@ export interface JourFige {
 }
 
 /** Fige un jour : le contenu que le générateur de la version `g` (la courante par défaut) donne, au tirage `tirage` (0 par défaut ; les versions 1 et 2 n'en ont pas). */
-export function figerJour(jour: number, g: number = TOWER_GENERATOR_VERSION, tirage = 0): JourFige {
+export function figerJour(jour: number, g: number = TOWER_GENERATOR_VERSION, tirage = 0, sim: number = TOWER_SIM_VERSION): JourFige {
   const c = dailyTower(jour, g, tirage);
   return {
     format: FORMAT_JOUR_FIGE,
@@ -52,7 +52,7 @@ export function figerJour(jour: number, g: number = TOWER_GENERATOR_VERSION, tir
     date: formatDay(jour),
     g,
     ...(g >= GENERATEUR_TIRAGE ? { tirage } : {}),
-    sim: TOWER_SIM_VERSION,
+    sim,
     contenu: { pieces: c.pieces.join(""), plateformeDemi8: c.plateformeDemi8, paliers: c.paliers.map((p) => ({ ...p })), ventSens: c.ventSens, theme: c.theme },
     medailles: null,
   };
@@ -98,7 +98,8 @@ export function lireJour(json: unknown, jour: number): JourLu | string {
   // Lot T3b : dès le générateur 3 le fichier nomme son tirage (0 à TIRAGES_MAX − 1) ; avant, il n'en a pas (le champ y est ignoré : le garde-fou voit un fichier qui ne se régénère pas).
   const tirage = f.tirage!;
   if (f.g >= GENERATEUR_TIRAGE && !(Number.isInteger(tirage) && tirage >= 0 && tirage < TIRAGES_MAX)) return "tirage illisible";
-  if (f.sim !== TOWER_SIM_VERSION) return `simulation ${String(f.sim)} : ce code joue la ${TOWER_SIM_VERSION}`;
+  // Lot T6 : un jour figé sous la simulation 3 reste lisible (sa preuve se rejoue en version 3) ; une version que ce code ne joue pas est refusée.
+  if (typeof f.sim !== "number" || !VERSIONS_SIM_JOUABLES.includes(f.sim)) return `simulation ${String(f.sim)} : ce code joue les versions ${VERSIONS_SIM_JOUABLES.join(" et ")}`;
   const c = f.contenu;
   if (typeof c !== "object" || c === null) return "contenu manquant";
   if (typeof c.pieces !== "string" || c.pieces.length === 0 || ![...c.pieces].every((k) => (PIECE_KINDS as readonly string[]).includes(k))) return "suite de pièces illisible";

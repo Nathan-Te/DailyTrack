@@ -154,7 +154,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   const jourLu = preparation.jourLu;
   const date = preparation.date;
   const enTete = (): string =>
-    options.scenario === "essai"
+    options.scenario === "essai" || options.scenario === "alignement"
       ? t("fin.eyebrow")
       : options.scenario === "paliers"
         ? t("fin.eyebrow.paliers")
@@ -175,6 +175,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   const hasardScene = hasardAffichage(0x70e7);
   const hasardSon = hasardAffichage(0x5017);
   const scene = new Scene3D(racine, contenu.plateformeDemi8, { hasard: hasardScene, rendu: () => reglages.rendu });
+  scene.viseeActive = options.visee; // lot T6 : allumée par défaut (`?visee=0` l'éteint ; le réglage des Réglages viendra au lot T7)
   const stockageSons = stockage;
   let reglagesSons: ReglagesSons = lireSons(stockageSons);
   const sons = new Sons({ reglages: () => reglagesSons, volumes: () => reglages.rendu.volumes, hasard: hasardSon });
@@ -266,7 +267,6 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
           if (!memoire.proposer(f)) return;
           f.pieces = await m.silhouetteDe(R, contenu, rediffusion);
           if (memoire.get() === f) {
-            if (etatFantome === "aucun" && partie.etape === "jeu" && partie.vue().numero <= 1) etatFantome = "meilleure";
             poserFantome();
             hud.maj(partie.vue(), nomFantome());
           }
@@ -408,7 +408,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     ventEnCours = false;
     sons.souffle(false);
     scene.vider();
-    etatFantome = etatInitial(dispo());
+    etatFantome = etatInitial();
     poserFantome();
     hud.cacherAnnonce();
     declenchesVus = 0;
@@ -464,7 +464,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     // La partie s'est enregistrée : sa rediffusion est gardée comme record du jour si elle bat le précédent (et part au serveur, qui la rejoue) ; si c'est la meilleure du fantôme, la silhouette est
     // l'état final de cette partie rejouée. Tout cela est chargé à la demande (`fantomeRejeu`) : les commandes sont copiées tout de suite, la partie est détruite dès qu'on rejoue.
     const commandes = [...partie.commandesJouees()];
-    const enreg = { commandesJouees: () => commandes, scenario: partie.scenario, reglages: { ...partie.reglages } };
+    const enreg = { commandesJouees: () => commandes, scenario: partie.scenario, reglages: { ...partie.reglages }, version: partie.version };
     // Lot T5 : une partie d'essai (réglages de `?debug&tune`) n'a ni record, ni fantôme, ni envoi : sa rediffusion ne se rejouerait pas aux réglages normaux.
     if (!options.bot && !essai) {
       void import("./fantomeRejeu")
@@ -567,6 +567,9 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     hud.maj(vue, nomFantome());
     hud.majObjectif(medailles, vue.hauteurMm);
     if (vue.palier) hud.placerPalier(scene.ecranY(vue.palier.metres), 100, window.innerHeight - 120);
+    // Lot T6 : la visée, une lecture du monde entre deux ticks (jamais pendant un pas) ; rien en pause ni une fois la partie finie.
+    const active = vue.active >= 0 ? vue.pieces[vue.active] : undefined;
+    scene.poserVisee(options.visee && !pause && partie.etape === "jeu" && active ? partie.visee() : null, active?.kind ?? null, active?.rot ?? 0, active?.taille ?? "normale");
     scene.dessiner(pause || manuel || partie.etape === "fini" ? 1 : acc, dt);
     if (debug && ++compteImages % 6 === 0) debug.textContent = texteDebug(vue);
     requestAnimationFrame(image);

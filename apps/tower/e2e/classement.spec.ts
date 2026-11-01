@@ -126,10 +126,12 @@ test("une partie scriptée est envoyée, rejouée par le serveur et classée ; l
   const ligne = (await page.evaluate(() => navigator.clipboard.readText())).split("\n")[0]!;
   expect(ligne).toMatch(/^Du Jour · Tower #5 — \d+,\d m( — \S+)? — (❤️|\u{1F5A4}){3}$/u);
 
-  // Le Diamant est débloqué : Rejouer, le fantôme passe de « Ma meilleure » au Diamant (la silhouette vient du serveur).
+  // Le Diamant est débloqué : Rejouer, le fantôme est éteint (lot T6), puis le bouton passe d'« Aucun » à « Ma meilleure » puis au Diamant (la silhouette vient du serveur).
   await page.locator("#fin-rejouer").click();
   await expect(page.locator("#fin-ecran")).toBeHidden();
-  await expect.poll(() => page.evaluate(() => window.__tower.etatFantome())).toMatchObject({ etat: "meilleure", meilleure: true, diamant: true });
+  await expect.poll(() => page.evaluate(() => window.__tower.etatFantome())).toMatchObject({ etat: "aucun", meilleure: true, diamant: true });
+  await page.locator("#fantome").click();
+  await expect.poll(() => page.evaluate(() => window.__tower.etatFantome().etat)).toBe("meilleure");
   await page.locator("#fantome").click();
   await expect.poll(() => page.evaluate(() => window.__tower.etatFantome().etat)).toBe("diamant");
   await expect(page.locator("#fantome")).toHaveAttribute("aria-label", /Diamant/);

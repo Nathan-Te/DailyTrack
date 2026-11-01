@@ -30,6 +30,8 @@ function premierEcart(a: Trace[], b: Trace[]): number | null {
 }
 
 interface GoldenTower {
+  /** Lot T6 : les rediffusions de la simulation 3, gardées telles quelles : le navigateur les rejoue aussi (la version 3 reste jouable au bit près). */
+  anciennesSim?: { sim: number; rediffusions: GoldenTower["rediffusions"] }[];
   rediffusions: { nom: string; contenu: { scenario: string } | { date: string; g: number; tirage?: number }; code: string; resultat: unknown; empreinteFinale: string; paliers: number }[];
 }
 const goldenTower = JSON.parse(readFileSync(new URL("../../../packages/tower-sim/test/fixtures/golden-tower.json", import.meta.url), "utf8")) as GoldenTower;
@@ -72,13 +74,14 @@ test("la page de démonstration charge le moteur B (Rapier) à la demande et le 
   await page.waitForFunction(() => /pièces 1/.test(document.getElementById("hud")!.textContent ?? ""));
 });
 
-test("les trois rediffusions de référence se rejouent dans le navigateur au bit près : Resultat et état final de Node", { tag: "@navigateurs" }, async ({ page }, info) => {
+test("les rediffusions de référence (simulations 3 et 4) se rejouent dans le navigateur au bit près : Resultat et état final de Node", { tag: "@navigateurs" }, async ({ page }, info) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
-  const refs = goldenTower.rediffusions.map((r) => ({ nom: r.nom, contenu: r.contenu, code: r.code }));
+  const toutes = [...(goldenTower.anciennesSim ?? []).flatMap((a) => a.rediffusions.map((r) => ({ ...r, nom: `s${a.sim}-${r.nom}` }))), ...goldenTower.rediffusions];
+  const refs = toutes.map((r) => ({ nom: r.nom, contenu: r.contenu, code: r.code }));
   const rejeux = await page.evaluate((r) => (window as unknown as { __rejouer(r: unknown): Promise<{ nom: string; resultat: unknown; empreinteFinale: string; paliers: number; ms: number }[]> }).__rejouer(r), refs);
   info.annotations.push({ type: "durée", description: rejeux.map((r) => `${r.nom} ${Math.round(r.ms)} ms`).join(", ") });
   expect(rejeux.map((r) => ({ nom: r.nom, resultat: r.resultat, empreinteFinale: r.empreinteFinale, paliers: r.paliers }))).toEqual(
-    goldenTower.rediffusions.map((r) => ({ nom: r.nom, resultat: r.resultat, empreinteFinale: r.empreinteFinale, paliers: r.paliers })),
+    toutes.map((r) => ({ nom: r.nom, resultat: r.resultat, empreinteFinale: r.empreinteFinale, paliers: r.paliers })),
   );
 });

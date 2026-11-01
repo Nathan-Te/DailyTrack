@@ -1,9 +1,11 @@
-import { boites, boitesE, type Echelles, type Effet, type PieceKind, type Taille, type VuePartie, type VuePiece } from "@cdj/tower-sim";
-import { BufferAttribute, BufferGeometry, Color, Group, Mesh, OrthographicCamera, Scene, WebGLRenderer } from "three";
+import { boitesE, type Echelles, type Effet, type PieceKind, type Taille, type Visee, type VuePartie, type VuePiece } from "@cdj/tower-sim";
+import { BufferAttribute, BufferGeometry, Color, Group, Mesh, OrthographicCamera, PlaneGeometry, Scene, WebGLRenderer } from "three";
+import { contourDe, enQuads } from "./contour";
+import { BORD, couchesDe } from "./dessinPiece";
 import { avancerChute, type ChuteDecor, commencerChute, rayonDePiece } from "./chute";
 import { Clignotement, expressionDe, type Genre, regardVers } from "./expression";
 import type { FantomePiece } from "./fantomeLocal";
-import { matiere, rect } from "./formes";
+import { matiere, matiereTransparente, rect } from "./formes";
 import { Gerbe, VIE_ONDE } from "./gerbe";
 import { graineDePiece, hasardAffichage } from "./hasardAffichage";
 import { mouvementReduit } from "./mouvement";
@@ -34,7 +36,8 @@ export const BAS_MIN = -2.75;
 export const BAS_MIN_PORTRAIT = -7.2;
 /** Vitesse de la caméra (par seconde) : elle rattrape son but, sans à-coup. */
 const SUIVI = 2.5;
-const BORD = 0.07;
+/** Le plan unité des traits de la visée (partagé). */
+const plan1 = new PlaneGeometry(1, 1);
 const G = 9.81;
 
 /** Le bas de la vue pour une tour de `hauteur` mètres, sur une vue de `H` mètres de haut (`portrait` : plus haute que large). */
@@ -71,7 +74,6 @@ interface Entree {
   penche: number;
 }
 
-const HALO = 0.16;
 const cleDe = (p: { rot: number; taille: Taille; effet: Effet | null; fixe: boolean }): string => `${p.rot}${p.taille}${p.effet ?? ""}${p.fixe ? "f" : ""}`;
 
 /** Au-delà de cette distance (m) la pièce active n'attire plus le regard des pièces posées. */
@@ -88,7 +90,7 @@ export function genreDe(p: Pick<VuePiece, "etat" | "fixe" | "soudee" | "effet">)
   return "normal";
 }
 
-/** Une pièce : une bordure d'encre sous des boîtes de couleur, et ses yeux (lot T2 : à sa taille, avec le liseré de son effet : lierre, pièce figée, pièce glissante ; lot T5 : des yeux vivants). */
+/** Une pièce : l'encre de sa forme sous sa couleur en retrait, et ses yeux (lot T2 : à sa taille, avec le liseré de son effet : lierre, pièce figée, pièce glissante ; lot T5 : des yeux vivants). */
 function construirePiece(kind: PieceKind, rot: number, taille: Taille, effet: Effet | null, fixe: boolean, echelles: Echelles | undefined, phase: number): { groupe: Group; yeux: Yeux; rayon: number } {
   const g = new Group();
   const bs = boitesE(kind, rot, taille, echelles);
@@ -96,47 +98,15 @@ function construirePiece(kind: PieceKind, rot: number, taille: Taille, effet: Ef
   // Les yeux suivent la taille de la pièce (la moitié : 0,55 ; le double : 1,6 ; une taille d'essai : à proportion).
   const echelle = taille === "petite" ? (1.1 * e4.petite4) / 4 : taille === "geante" ? (0.8 * e4.geante4) / 4 : 1;
   const halo = fixe ? EFFET_HALO.figee : effet === "lierre" ? EFFET_HALO.lierre : effet === "figee" ? EFFET_HALO.figee : effet === "glissante" ? EFFET_HALO.glissante : null;
-  if (halo) for (const b of bs) g.add(rect(halo, b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 2 * (BORD + HALO), (2 * b.hh) / 8 + 2 * (BORD + HALO), -0.01));
-  for (const b of bs) g.add(rect(SCENE.encre, b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 2 * BORD, (2 * b.hh) / 8 + 2 * BORD, 0));
-  for (const b of bs) g.add(rect(paletteCourante().pieces[kind], b.cx / 8, b.cy / 8, (2 * b.hw) / 8 + 0.01, (2 * b.hh) / 8 + 0.01, 0.01));
+  // Lot T6 : le dessin est le collider — l'encre est la forme physique, le liseré d'un effet puis la couleur de la pièce sont EN RETRAIT, tous à l'intérieur (`dessinPiece.ts`).
+  const couches = couchesDe(bs, halo !== null);
+  for (const r of couches.encre) g.add(rect(SCENE.encre, r.cx, r.cy, r.w, r.h, 0));
+  if (halo) for (const r of couches.lisere) g.add(rect(halo, r.cx, r.cy, r.w, r.h, 0.005));
+  for (const r of couches.couleur) g.add(rect(paletteCourante().pieces[kind], r.cx, r.cy, r.w, r.h, 0.01));
   // Les yeux, dans la plus grande boîte, droits dans le repère de la pièce.
   const grande = bs.reduce((a, b) => (Math.min(b.hw, b.hh) > Math.min(a.hw, a.hh) ? b : a));
   const yeux = new Yeux(g, grande.cx / 8, grande.cy / 8, echelle, phase);
   return { groupe: g, yeux, rayon: rayonDePiece(bs) };
-}
-
-/** La silhouette d'une forme en pointillé (les arêtes extérieures de ses boîtes), en un seul maillage. */
-function pointilles(kind: PieceKind, rot: number, taille: Taille = "normale"): BufferGeometry {
-  const bs = boites(kind, rot, taille).map((b) => ({ x0: (b.cx - b.hw) / 8, x1: (b.cx + b.hw) / 8, y0: (b.cy - b.hh) / 8, y1: (b.cy + b.hh) / 8 }));
-  const pos: number[] = [];
-  const T = 0.09;
-  const DASH = 0.3;
-  const PAS = 0.52;
-  const dedans = (x: number, y: number, sauf: number): boolean => bs.some((b, i) => i !== sauf && x > b.x0 + 0.02 && x < b.x1 - 0.02 && y > b.y0 + 0.02 && y < b.y1 - 0.02);
-  const quad = (x0: number, y0: number, x1: number, y1: number) => pos.push(x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y0, 0, x1, y1, 0, x0, y1, 0);
-  bs.forEach((b, i) => {
-    for (const y of [b.y0, b.y1]) {
-      for (let x = b.x0; x < b.x1 - 0.05; x += PAS) {
-        const fin = Math.min(x + DASH, b.x1);
-        const cx = (x + fin) / 2;
-        // Un tiret posé contre une autre boîte de la pièce (arête partagée) n'est pas sur la silhouette.
-        if (dedans(cx, y + (y === b.y0 ? 0.05 : -0.05), i) && dedans(cx, y + (y === b.y0 ? -0.05 : 0.05), i)) continue;
-        if (dedans(cx, y + (y === b.y0 ? 0.05 : -0.05), i) || dedans(cx, y + (y === b.y0 ? -0.05 : 0.05), i)) continue;
-        quad(x, y - T / 2, fin, y + T / 2);
-      }
-    }
-    for (const x of [b.x0, b.x1]) {
-      for (let y = b.y0; y < b.y1 - 0.05; y += PAS) {
-        const fin = Math.min(y + DASH, b.y1);
-        const cy = (y + fin) / 2;
-        if (dedans(x + 0.05, cy, i) || dedans(x - 0.05, cy, i)) continue;
-        quad(x - T / 2, y, x + T / 2, fin);
-      }
-    }
-  });
-  const g = new BufferGeometry();
-  g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
-  return g;
 }
 
 /** Les options de la scène : le hasard d'affichage et les réglages de rendu lus à chaque image (les curseurs de `?debug&tune` s'appliquent tout de suite). */
@@ -155,6 +125,14 @@ export class Scene3D {
   private readonly camera = new OrthographicCamera(-1, 1, 1, -1, -100, 100);
   private readonly pieces = new Map<number, Entree>();
   private readonly fantome = new Group();
+  /** Lot T6 : la visée (deux traits et le contour de l'arrivée), posée par `poserVisee`, allumée par défaut (`viseeActive`). */
+  private readonly viseeGroupe = new Group();
+  private readonly traitsVisee: Mesh[] = [];
+  private visee: Visee | null = null;
+  private viseePiece: { kind: PieceKind; rot: number; taille: Taille } | null = null;
+  private viseeCle = "";
+  private readonly arriveeGroupe = new Group();
+  viseeActive = true;
   /** Lot T2 : le trait pointillé du prochain palier (à la hauteur en mètres, posé sur le monde) et les traînées du coup de vent. */
   private readonly palier = new Group();
   private readonly trainees: Mesh[] = [];
@@ -198,6 +176,13 @@ export class Scene3D {
     this.decor();
     this.fantome.position.z = -0.5;
     this.scene.add(this.fantome);
+    this.viseeGroupe.add(this.arriveeGroupe);
+    for (let i = 0; i < 2; i++) {
+      const m = new Mesh(plan1, matiereTransparente(SCENE.encre, 0.35));
+      this.traitsVisee.push(m);
+      this.viseeGroupe.add(m);
+    }
+    this.scene.add(this.viseeGroupe);
     this.monterPalier();
     this.redimensionner();
   }
@@ -221,11 +206,12 @@ export class Scene3D {
     const hw = this.plateformeDemi8 / 8;
     const P = paletteCourante();
     const p = this.plateforme;
-    p.add(rect(SCENE.encre, 0, -1.2 - 0.6, 3 + 2 * BORD, 1.2 + 2 * BORD, Z.pilier));
-    p.add(rect(P.pilier, 0, -1.2 - 0.6, 3, 1.2, Z.pilier + 0.1));
-    p.add(rect(SCENE.encre, 0, -0.6, 2 * hw + 2 * BORD, 1.2 + 2 * BORD, Z.plateforme));
-    p.add(rect(P.plateforme, 0, -0.6, 2 * hw, 1.2, Z.plateforme + 0.1));
-    p.add(rect(P.plateformeReflet, 0, -0.16, 2 * hw - 0.1, 0.25, Z.plateforme + 0.2));
+    // Lot T6 : comme les pièces, l'encre est la forme elle-même (le dessus de la plateforme est exactement à y = 0, celui du collider : les pièces y reposent sans s'enfoncer dans un trait), la couleur est en retrait.
+    p.add(rect(SCENE.encre, 0, -1.2 - 0.6, 3, 1.2, Z.pilier));
+    p.add(rect(P.pilier, 0, -1.2 - 0.6, 3 - 2 * BORD, 1.2 - 2 * BORD, Z.pilier + 0.1));
+    p.add(rect(SCENE.encre, 0, -0.6, 2 * hw, 1.2, Z.plateforme));
+    p.add(rect(P.plateforme, 0, -0.6, 2 * hw - 2 * BORD, 1.2 - 2 * BORD, Z.plateforme + 0.1));
+    p.add(rect(P.plateformeReflet, 0, -0.16 - BORD / 2, 2 * hw - 0.1 - 2 * BORD, 0.25 - BORD / 2, Z.plateforme + 0.2));
   }
 
   /** Lot T5 : une plateforme d'une autre largeur (un réglage d'essai de `?debug&tune` : la largeur forcée, sans toucher au générateur). */
@@ -394,6 +380,7 @@ export class Scene3D {
     }
     this.gerbe.avancer(dt);
     this.dessinerGerbe();
+    this.dessinerVisee();
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -410,6 +397,45 @@ export class Scene3D {
     e.regard.x += (v.x - e.regard.x) * k;
     e.regard.y += (v.y - e.regard.y) * k;
     e.yeux.appliquer(expressionDe({ niveau, genre: genreDe(e.vue), regard: e.regard, clignement: e.clignement.valeur(this.temps, niveau), t: this.temps }), this.temps);
+  }
+
+  /** La visée de l'image : deux traits translucides depuis le bas de la pièce en main (à sa position interpolée) et le contour de l'arrivée, reconstruit seulement quand la forme change. */
+  private dessinerVisee(): void {
+    const v = this.visee;
+    const g = this.viseeGroupe;
+    g.visible = this.viseeActive && v !== null && this.viseePiece !== null;
+    if (!g.visible || !v || !this.viseePiece) return;
+    let dy = 0;
+    for (const e of this.pieces.values()) if (e.vue.etat === "active") dy = e.groupe.position.y - e.cur.y;
+    v.traits.forEach((t, i) => {
+      const m = this.traitsVisee[i]!;
+      const haut = t.yHaut + dy;
+      const bas = t.yBas ?? this.yBas - 1;
+      m.visible = haut > bas;
+      m.position.set(t.x, (haut + bas) / 2, Z.visee);
+      m.scale.set(0.05, Math.max(0.001, haut - bas), 1);
+    });
+    const cle = `${this.viseePiece.kind}${this.viseePiece.rot}${this.viseePiece.taille}${paletteCourante().pieces[this.viseePiece.kind]}`;
+    if (cle !== this.viseeCle) {
+      this.viseeCle = cle;
+      for (const c of [...this.arriveeGroupe.children]) {
+        this.arriveeGroupe.remove(c);
+        if ((c as Mesh).geometry !== plan1) (c as Mesh).geometry.dispose();
+      }
+      const { kind, rot, taille } = this.viseePiece;
+      const bs = boitesE(kind, rot, taille, this.echelles);
+      for (const r of couchesDe(bs, false).couleur) {
+        const m = new Mesh(plan1, matiereTransparente(paletteCourante().pieces[kind], 0.22));
+        m.position.set(r.cx, r.cy, 0);
+        m.scale.set(r.w, r.h, 1);
+        this.arriveeGroupe.add(m);
+      }
+      const contour = new BufferGeometry();
+      contour.setAttribute("position", new BufferAttribute(new Float32Array(enQuads(contourDe([{ kind, rot, taille, x: 0, y: 0, angle: 0 }]), 0.05)), 3));
+      this.arriveeGroupe.add(new Mesh(contour, matiereTransparente(SCENE.encre, 0.45)));
+    }
+    this.arriveeGroupe.visible = v.arrivee !== null;
+    if (v.arrivee) this.arriveeGroupe.position.set(v.arrivee.x, v.arrivee.y, Z.visee);
   }
 
   /** La gerbe : un petit nombre de rectangles plats, repris d'une image à l'autre (aucune allocation par image). */
@@ -450,21 +476,29 @@ export class Scene3D {
     this.poserVent(0);
   }
 
-  /** Pose (ou retire, avec `null`) la silhouette en pointillé d'une partie précédente, derrière la tour. */
+  /**
+   * Pose (ou retire, avec `null`) la silhouette d'une partie précédente, derrière la tour (lot T6) : UN seul contour de la silhouette de la tour, en trait fin (`contour.ts`), et non plus
+   * chaque pièce en pointillé — la lecture de la tour en cours reste nette.
+   */
   poserFantome(pieces: readonly FantomePiece[] | null): void {
     for (const c of [...this.fantome.children]) {
       this.fantome.remove(c);
       (c as Mesh).geometry.dispose();
     }
-    if (!pieces) return;
-    for (const p of pieces) {
-      const m = new Mesh(pointilles(p.kind, p.rot, p.taille), matiere(SCENE.papier));
-      m.position.set(p.x, p.y, 0);
-      m.rotation.z = p.angle;
-      this.fantome.add(m);
-    }
+    if (!pieces || pieces.length === 0) return;
+    const g = new BufferGeometry();
+    g.setAttribute("position", new BufferAttribute(new Float32Array(enQuads(contourDe(pieces), 0.06)), 3));
+    this.fantome.add(new Mesh(g, matiere(SCENE.papier)));
   }
 
+  /**
+   * La visée (lot T6) : deux traits fins verticaux depuis les bords de la pièce en main jusqu'à la première surface, et le contour de l'endroit où elle touchera en premier. Affichage seul : `visee`
+   * vient de `Partie.visee()` (une lecture du monde, entre deux ticks). `null` : rien. Aplats et traits, couleur de la pièce ; discrets (translucides).
+   */
+  poserVisee(visee: Visee | null, kind: PieceKind | null, rot: number, taille: Taille): void {
+    this.visee = visee;
+    this.viseePiece = kind === null ? null : { kind, rot, taille };
+  }
   /** Les mètres visibles (pour les tests et `?debug`). */
   get vue(): { W: number; H: number; bas: number } {
     return { W: this.W, H: this.H, bas: this.yBas };

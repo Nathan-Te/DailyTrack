@@ -19,6 +19,7 @@
     "figer:tower": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
     "mesures-t2:tower": "esbuild tools/mesures-t2.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures-t2.mjs --log-level=warning && node dist/mesures-t2.mjs",
     "preparer:tower": "esbuild tools/preparer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/preparer.mjs --log-level=warning && node dist/preparer.mjs",
+    "alignement:tower": "esbuild tools/alignement.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/alignement.mjs --log-level=warning && node dist/alignement.mjs",
     "mesures-t3:tower": "esbuild tools/mesures-t3.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures-t3.mjs --log-level=warning && node dist/mesures-t3.mjs"
   },
   "exports": {

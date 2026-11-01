@@ -85,7 +85,8 @@ describe("la relecture refuse ce qui n'est pas un jour de Tower valide", () => {
     refuse(() => undefined, /date/, JOUR + 1); // le fichier d'un autre jour
     refuse((f) => (f.date = "2026-02-30"), /date/);
     refuse((f) => (f.g = 99), /générateur inconnu/);
-    refuse((f) => (f.sim = TOWER_SIM_VERSION - 1), /simulation/);
+    refuse((f) => (f.sim = 2), /simulation/);
+    refuse((f) => (f.sim = TOWER_SIM_VERSION + 1), /simulation/);
   });
   it("contenu : suite, plateforme, vent, thème, paliers", () => {
     refuse((f) => (f.contenu.pieces = ""), /pièces/);
@@ -122,7 +123,8 @@ describe("le garde-fou : chaque fichier figé ou préparé présent se régénè
         expect(formatDay(lu.contenu.jour)).toBe(date);
         const tirage = lu.contenu.tirage ?? 0;
         expect(empreinteContenu(lu.contenu), `${nom} ne se régénère plus à l'identique avec g${lu.contenu.g} : un jour figé ne change jamais`).toBe(empreinteContenu(dailyTower(jour, lu.contenu.g, tirage)));
-        expect(brut, `${nom} n'est pas le texte canonique`).toBe(jsonJourFige({ ...figerJour(jour, lu.contenu.g, tirage), medailles: lu.medailles, ...(lu.preuve === null ? {} : { preuve: lu.preuve }) }));
+        const sim = (JSON.parse(brut) as { sim: number }).sim; // lot T6 : un jour figé sous la simulation 3 reste valide (sa preuve se rejoue en version 3)
+        expect(brut, `${nom} n'est pas le texte canonique`).toBe(jsonJourFige({ ...figerJour(jour, lu.contenu.g, tirage, sim), medailles: lu.medailles, ...(lu.preuve === null ? {} : { preuve: lu.preuve }) }));
         if (lu.preuve !== null) expect(verifierJourPrepare(R, JSON.parse(brut) as unknown, jour), nom).toBeNull();
       }
     });

@@ -14,6 +14,7 @@ export {
   TICKS_PAR_SECONDE,
   TOWER_SIM_VERSION,
   type Reglages,
+  VERSIONS_SIM_JOUABLES,
   VENT_PERIODE_TICKS,
 } from "./constantes";
 export { PHYSIQUE_REGLEE_DEFAUT, physiqueEstDEssai, physiqueResolue, type ReglagesPhysique } from "./physique";
@@ -42,7 +43,10 @@ export {
 // Lot T3b — le tirage du contenu du jour : la plage du Diamant, le nombre d'essais, la règle de choix.
 export { choisirTirage, dansLaPlage, ecartALaPlage, type Essai, PLAGE_DIAMANT_MM, TIRAGES_MAX } from "./tirage";
 export { REGLES_THEMES, THEMES_TOWER, themeDuJour } from "./themes";
-export { type EtatPiece, Partie, type PieceDepart, type Phase, type Resultat, type Scenario, type VuePartie, type VuePiece } from "./partie";
+export { type EtatPiece, Partie, type PieceDepart, type Phase, type Resultat, type Scenario, type Visee, type VuePartie, type VuePiece } from "./partie";
+// Lot T6 : la grille de la pièce active (boîte englobante, pivot) et les paramètres de contact de la version 4.
+export { cadreDe, type Cadre, departGauche8, PAS_GRILLE_8, pivoter } from "./grille";
+export { CONTACT_V3, CONTACT_V4, DECALAGES_SECOURS, MARGE_LATERALE, type ParamsContact, ROTATION_SECOURS } from "./contact";
 // Le chargeur de Rapier (`@cdj/tower-sim/rapier`) n'est pas réexporté ici : le jeu le charge à la demande (un import dynamique), hors du premier chargement.
 export type { Rapier } from "./rapier";
 export {
@@ -71,4 +75,10 @@ export { boitesE, type Echelles } from "./echelles";
 export { boites, etenduePiece, sinCos, sommetPiece } from "./sommet";
 export { PIECE_KINDS, type PieceKind } from "../lab/interface";
 export { SCENARIO_ESSAI } from "../scenarios/essai";
+export { SCENARIO_ALIGNEMENT } from "../scenarios/alignement";
+import { SCENARIO_ALIGNEMENT as ALIGNEMENT } from "../scenarios/alignement";
+import { SCENARIO_ESSAI as ESSAI } from "../scenarios/essai";
+import type { Scenario as ScenarioNomme } from "./partie";
+/** Lot T6 : un scénario nommé d'une rediffusion (`essai`, `alignement`), pour les outils et les tests qui rejouent une partie de référence ; undefined s'il est inconnu. */
+export const scenarioNomme = (nom: string): ScenarioNomme | undefined => (nom === ESSAI.nom ? ESSAI : nom === ALIGNEMENT.nom ? ALIGNEMENT : undefined);
 export { HAUTEUR_TOUR_DEPART_MM, HAUTEUR_TOUR_DEPART_V3_MM, scenarioPaliers, TOUR_DEPART, TOUR_DEPART_V3 } from "../scenarios/paliers";

@@ -128,11 +128,15 @@ test("une partie de la suite d'essai : clavier, HUD, vies perdues, écran de fin
   await expect.poll(() => page.evaluate(() => window.__tower.rediffusion())).toMatch(/^[A-Za-z0-9_-]{20,}$/);
   await expect.poll(() => page.evaluate(() => window.__tower.etatFantome().meilleure)).toBe(true);
 
-  // « Rejouer » : une nouvelle partie, le fantôme de la précédente est derrière la tour.
+  // « Rejouer » : une nouvelle partie. Lot T6 : le fantôme de la précédente est ÉTEINT par défaut (rien derrière la tour) ; le bouton le rallume, en un seul contour.
   await page.locator("#fin-rejouer").click();
   await expect(page.locator("#fin-ecran")).toBeHidden();
   await expect(page.locator(".bande__pieces")).toHaveText("1/40");
   expect(await page.evaluate(() => window.__tower.vue().vies)).toBe(3);
+  expect(await page.evaluate(() => window.__tower.etatFantome())).toMatchObject({ etat: "aucun", meilleure: true });
+  expect(await page.evaluate(() => window.__tower.fantome())).toBe(0);
+  await page.locator("#fantome").click();
+  await expect.poll(() => page.evaluate(() => window.__tower.etatFantome().etat)).toBe("meilleure");
   expect(await page.evaluate(() => window.__tower.fantome())).toBeGreaterThan(0);
 });
 
