@@ -488,7 +488,8 @@ body.watch #btn-ghost {
   z-index: var(--z-hud);
   min-height: 32px;
   padding: 0 12px;
-  max-width: calc(100vw - 2 * max(16px, var(--sure-gauche)));
+  /* La moitié gauche seulement : la plaque de vitesse est au centre, en bas (le rappel des touches passe à la ligne plutôt que de passer dessous). */
+  max-width: calc(50vw - max(16px, var(--sure-gauche)) - 72px);
   cursor: pointer;
   font-weight: 700;
   text-align: left;
