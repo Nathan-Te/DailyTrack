@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { formatDay } from "@cdj/core";
-import { dailyLevel, declareFrozenGenerators, thawLevel } from "@cdj/jump-sim";
+import * as jumpSim from "@cdj/jump-sim";
+import { dailyLevel, thawLevel } from "@cdj/jump-sim";
 import { dailyCircuit } from "@cdj/sim";
 
 // Lot R6 (le garde-fou des jours) : l'empreinte de ce que chaque jeu SERT pour un jour, calculée par le code d'une construction. Ce fichier ne dépend que des
@@ -34,10 +35,15 @@ export function empreinteTrack(day: number): EmpreinteJour {
   };
 }
 
+// Ce fichier est COPIÉ dans le code en production, qui peut être plus ancien que lui : il n'importe par son nom aucune fonction plus récente que ce code. Le lot V1 a ajouté
+// `declareFrozenGenerators` ; un code d'avant le lot V1 ne l'a pas (mise en production du 01/11/2026 arrêtée : « No matching export ») et n'en a pas besoin — ses thèmes ne
+// dépendent d'aucune déclaration —, donc l'empreinte reste exactement ce que ce code sert. Test : `apps/portail/test/miseEnProduction.test.ts` (compilé contre un code sans elle).
+const declareFrozenGenerators = Reflect.get(jumpSim, "declareFrozenGenerators") as ((generateurs: Record<string, number>) => void) | undefined;
+
 let dossierDeclare: string | null = null;
 /** Lot V1 : comme le serveur et le jeu, les niveaux figés de `dossier` sont déclarés à la simulation (le thème d'un jour figé d'avant le sac de thèmes, et celui du premier jour du sac, en dépendent). */
 function declarer(dossier: string): void {
-  if (dossierDeclare === dossier) return;
+  if (dossierDeclare === dossier || !declareFrozenGenerators) return;
   dossierDeclare = dossier;
   const generateurs: Record<string, number> = {};
   for (const f of readdirSync(dossier)) {
