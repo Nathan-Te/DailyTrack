@@ -204,6 +204,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   let classable = classableAvec();
   /** Cette partie a des réglages d'essai : ni classement, ni record, ni fantôme. */
   let essai = false;
+  /** Lot T6 : `&bot` joue la preuve du fichier du jour avec la version de simulation qu'elle nomme (un jour préparé en simulation 3 se rejoue en version 3), jamais avec la version courante. */
+  const versionDuBot = import.meta.env.VITE_PRODUCTION !== "1" && options.bot && jourLu?.preuve ? jourLu.sim : undefined;
 
   // Hors production seulement : le bot de l'auteur. Sa preuve est dans le fichier du jour, ou son Web Worker la calcule (une minute) ; les deux modules sont chargés à la demande, et la constante de
   // construction `import.meta.env.VITE_PRODUCTION` (écrite en clair ici pour que la construction retire tout ce bloc, et avec lui le worker, du jeu publié) le ferme en production.
@@ -400,7 +402,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     classable = classableAvec();
     essai = reglagesEssai(reglages);
     const scenario: Scenario = reglages.plateformeDemi8 !== null ? { ...contenu, plateformeDemi8: reglages.plateformeDemi8 } : contenu;
-    partie = new Partie(R, scenario, { ...reglages.sim }, { physique: { ...reglages.physique } });
+    partie = new Partie(R, scenario, { ...reglages.sim }, { physique: { ...reglages.physique }, version: versionDuBot });
     scene.poserPlateforme(scenario.plateformeDemi8);
     scene.poserEchelles(partie.taillesDEssai);
     analyseur = new AnalyseurPanique(scenario.plateformeDemi8, partie.taillesDEssai, () => reglages.rendu.panique);

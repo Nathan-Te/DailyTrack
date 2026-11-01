@@ -84,7 +84,9 @@ async function jouerUnePartie(page: Page, v: number): Promise<void> {
 /** Le premier envoi : le serveur ne connaît pas encore le joueur, le formulaire du pseudo s'ouvre (pseudo propre à l'essai : la base est la même d'un essai à l'autre). */
 async function choisirPseudo(page: Page, base: string, v: number): Promise<void> {
   const pseudo = `${base}${v}x${test.info().retry}`;
-  await expect(page.locator("#fin-pseudo")).toBeVisible();
+  // Mesuré (lot T6, sur `main` comme sur la branche : 3 échecs sur 6) : après la fin de la partie la page peut rester occupée 5 à 16 s (rendu logiciel, une image par tick de la boucle du test) avant
+  // d'envoyer ; le serveur, lui, répond en 7 ms. On attend l'ÉTAT (le formulaire du pseudo), plus longtemps ; l'assertion ne change pas.
+  await expect(page.locator("#fin-pseudo")).toBeVisible({ timeout: 40_000 });
   await page.locator("#fin-pseudo").fill(pseudo);
   await page.locator("#fin-pseudo-ok").click();
 }

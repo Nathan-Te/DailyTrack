@@ -74,6 +74,8 @@ export interface JourLu {
   contenu: Contenu;
   medailles: Medailles | null;
   preuve: string | null;
+  /** Lot T6 : la version de simulation du fichier (3 ou 4) : sa preuve se rejoue par cette version. */
+  sim: number;
 }
 
 /** Les médailles d'un fichier : quatre entiers positifs dans l'ordre (Bronze ≤ Argent ≤ Or ≤ Diamant), ou le motif du refus. */
@@ -124,6 +126,7 @@ export function lireJour(json: unknown, jour: number): JourLu | string {
     },
     medailles,
     preuve: f.preuve ?? null,
+    sim: f.sim,
   };
 }
 
