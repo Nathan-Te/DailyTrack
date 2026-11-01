@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { FIXED_NOW, atInstant } from "./clock";
 import { Fingers, hasWebGL } from "./phone";
@@ -16,6 +17,8 @@ interface J {
   home: { ready: boolean; open: boolean };
   arrival: { shown: boolean; share: string; rank: { shown: boolean; status: string; rows: number } };
   rank: { enabled: boolean; demo: boolean; state: { status: string; message: string }; pending: { date: string; tries: number }[]; known: { rank: number; participants: number } | null };
+  carnage: { state: { active: boolean; heroTicks: number; tick: number; course: { nom: string; speed: number; deaths: number; paused: boolean; barre: boolean } | null } };
+  openBoard(): void;
   manual(on: boolean): void;
   advance(n: number): unknown;
   input(bits: number | null): void;
@@ -209,5 +212,123 @@ test("démo : une archive montre son classement figé, rien n'est envoyé", { ta
     const j = await jump(page);
     expect(j.rank.pending).toEqual([]);
     expect(j.rank.state.status).toBe("idle");
+  });
+});
+
+// Lot 31 : « Voir le carnage » de l'accueil (présent après une partie finie, à chaque retour sur l'accueil ce jour-là) et « Voir la course du n° 1 » du classement
+// (l'essai du premier lu jusqu'à l'arrivée, avec pause, ×2 et sortie ; absent sans classé).
+test("démo : « Voir le carnage » est sur l'accueil après une partie finie, et à chaque retour ce jour-là", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await atInstant(browser, FIXED_NOW, async (page, context) => {
+    await withName(context, "Témoin");
+    await page.goto("/?debug&api=demo");
+    test.skip(!(await hasWebGL(page)), SKIP);
+    await homeReady(page);
+    if (await page.locator("#help").isVisible()) await page.locator("#help-close").click();
+    // Avant de finir : le carnage du jour (les morts de tout le monde) est là, mais pas le bouton (il n'y a pas encore ton essai à voir).
+    await expect(page.locator("#home-deaths")).toBeVisible();
+    await expect(page.locator("#home-carnage")).toBeHidden();
+    await page.locator("#home-play").click();
+    await playAuthor(page);
+    await page.locator("#arrival-home").click();
+    await expect(page.locator("#home-carnage")).toBeVisible();
+    await expect(page.locator("#home-carnage")).toHaveText("Voir le carnage");
+    // Il lance ton carnage, puis on revient à l'accueil, où il est toujours.
+    await page.locator("#home-carnage").click();
+    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.carnage.state.active);
+    await page.locator("#carnage-close").click();
+    await expect(page.locator("#home-carnage")).toBeVisible();
+    // Et après un rechargement (la mémoire du jour est gardée).
+    await page.reload();
+    await homeReady(page);
+    await expect(page.locator("#home-carnage")).toBeVisible();
+  });
+});
+
+test("démo : « Voir la course du n° 1 » lit l'essai du premier jusqu'à l'arrivée, avec pause, ×2 et sortie ; l'archive l'a aussi", async ({ browser }) => {
+  test.setTimeout(150_000);
+  await atInstant(browser, FIXED_NOW, async (page, context) => {
+    await withName(context, "Témoin");
+    await page.goto("/?debug&api=demo&accueil=0");
+    test.skip(!(await hasWebGL(page)), SKIP);
+    await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: J }).__jump?.phase ?? ""));
+    await playAuthor(page);
+    await page.locator("#arrival-board").click();
+    const bouton = page.locator("#board-course");
+    await expect(bouton).toBeVisible();
+    await expect(bouton).toHaveText("Voir la course du n° 1");
+    await bouton.click();
+    // La barre du carnage devient celle de la course : titre, pseudo · morts, chrono, vitesse.
+    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.carnage.state.course?.barre === true);
+    await expect(page.locator("#leaderboard")).toBeHidden();
+    await expect(page.locator("#carnage .carnage__titre")).toHaveText("COURSE DU N° 1");
+    const nom = await page.evaluate(() => (window as unknown as { __jump: J }).__jump.carnage.state.course!.nom);
+    await expect(page.locator("#carnage .count")).toContainText(nom);
+    await expect(page.locator("#carnage-prev")).toBeHidden();
+    if (process.env.CAPTURES) await page.screenshot({ path: `${process.env.CAPTURES}/lot31-course.png` });
+    const etat = () => page.evaluate(() => (window as unknown as { __jump: J }).__jump.carnage.state);
+    // Pause : plus rien n'avance. ×2 : deux fois plus de pas par pas du jeu. Une commande ne passe pas la course.
+    await page.evaluate(() => (window as unknown as { __jump: J }).__jump.manual(true));
+    await page.locator("#carnage-pause").click();
+    expect((await etat()).course!.paused).toBe(true);
+    const t0 = (await etat()).tick;
+    await page.evaluate(() => (window as unknown as { __jump: J }).__jump.advance(30));
+    expect((await etat()).tick).toBe(t0);
+    await page.locator("#carnage-pause").click();
+    expect((await etat()).course!.paused).toBe(false);
+    await page.evaluate(() => {
+      const j = (window as unknown as { __jump: J }).__jump;
+      j.input(2);
+      j.advance(1);
+      j.input(null);
+    });
+    expect((await etat()).active).toBe(true);
+    const t1 = (await etat()).tick;
+    await page.evaluate(() => (window as unknown as { __jump: J }).__jump.advance(60));
+    expect((await etat()).tick - t1).toBe(60);
+    await page.locator("#course-vitesse").click();
+    expect((await etat()).course!.speed).toBe(2);
+    await expect(page.locator("#course-vitesse")).toHaveText("×2");
+    const t2 = (await etat()).tick;
+    await page.evaluate(() => (window as unknown as { __jump: J }).__jump.advance(60));
+    expect((await etat()).tick - t2).toBe(120);
+    // Jusqu'à l'arrivée du premier (au chrono enregistré), puis retour au classement.
+    const fin = await page.evaluate(() => {
+      const j = (window as unknown as { __jump: J }).__jump;
+      const total = j.carnage.state.heroTicks;
+      for (let i = 0; i < total && j.carnage.state.active; i++) j.advance(1);
+      return { total, active: j.carnage.state.active };
+    });
+    expect(fin.active).toBe(false);
+    // Le chrono du héros est celui du premier du jour, tel que le classement le donne (le fichier de la démonstration).
+    const index = JSON.parse(readFileSync(new URL("../public/demo/index.json", import.meta.url), "utf8")) as { days: { date: string; firstTicks: number }[] };
+    expect(fin.total).toBe(index.days.find((d) => d.date === "2026-10-30")!.firstTicks);
+    await expect(page.locator("#leaderboard")).toBeVisible();
+    await expect(page.locator("#carnage")).toBeHidden();
+    // Quitter à mi-course : retour au classement aussi.
+    await page.locator("#board-course").click();
+    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.carnage.state.course?.barre === true);
+    await page.locator("#carnage-close").click();
+    await expect(page.locator("#leaderboard")).toBeVisible();
+    expect((await etat()).active).toBe(false);
+  });
+  await atInstant(browser, FIXED_NOW, async (page) => {
+    await page.goto("/?debug&api=demo&seed=2026-10-20");
+    await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: J }).__jump?.phase ?? ""));
+    await playAuthor(page);
+    await page.locator("#arrival-board").click();
+    await expect(page.locator("#board-course")).toBeVisible();
+  });
+});
+
+test("sans serveur, pas de classé : « Voir la course du n° 1 » est absent du classement", async ({ browser }) => {
+  test.setTimeout(60_000);
+  await atInstant(browser, FIXED_NOW, async (page) => {
+    await page.goto("/?debug&accueil=0");
+    test.skip(!(await hasWebGL(page)), SKIP);
+    await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: J }).__jump?.phase ?? ""));
+    await page.evaluate(() => (window as unknown as { __jump: J }).__jump.openBoard());
+    await expect(page.locator("#leaderboard")).toBeVisible();
+    await expect(page.locator("#board-course")).toBeHidden();
   });
 });

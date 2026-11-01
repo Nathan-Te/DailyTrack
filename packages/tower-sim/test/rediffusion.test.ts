@@ -16,6 +16,7 @@ import {
   MAX_TICKS_REJEU,
   NB_PIECES,
   Partie,
+  type PieceKind,
   type Rapier,
   type Rediffusion,
   REGLAGES_DEFAUT,
@@ -28,6 +29,7 @@ import {
   TICKS_PAR_SECONDE,
   TIRAGES_MAX,
   TOWER_SIM_VERSION,
+  VERSIONS_SIM_JOUABLES,
 } from "../src";
 import { chargerRapier } from "../src/rapier";
 
@@ -203,6 +205,63 @@ describe("lot T3b — le tirage du contenu dans la rediffusion", () => {
     expect(rejouer(R, c, code)).toEqual(jouee.resultat());
     expect(refus(() => rejouer(R, dailyTower(JOUR), code))).toBe("contenu_different");
     jouee.dispose();
+  });
+});
+
+describe("lot T6 — deux versions de la simulation, la 3 reste rejouable telle quelle", () => {
+  const contenu: Scenario = { nom: "essai", pieces: [..."OOIJL"] as PieceKind[], plateformeDemi8: 28 };
+  // Les mêmes commandes, jouées par la version 3 puis par la 4 : deux parties différentes, chacune se rejoue par sa version.
+  const jouerV = (version: number): Partie => {
+    const p = new Partie(R, contenu, REGLAGES_DEFAUT, { version });
+    let id = -1;
+    let k = 0;
+    while (p.etape !== "fini" && p.tick < 6000) {
+      const v = p.vue();
+      if (v.active !== id) {
+        id = v.active;
+        k = 0;
+      }
+      const c = v.active >= 0 ? ((k > 6 && k < 14 && k % 2 === 0 ? COMMANDE.DROITE : 0) | (k === 2 ? COMMANDE.TOURNER : 0) | COMMANDE.DESCENDRE) : 0;
+      k++;
+      p.avancer(c);
+    }
+    return p;
+  };
+
+  it("la rediffusion nomme la version de la partie qui l'a jouée (3 ou 4), et le rejeu la joue avec cette version, au bit près", () => {
+    for (const version of [3, 4]) {
+      const p = jouerV(version);
+      const r = enregistrer(p);
+      expect(r.sim).toBe(version);
+      const code = encoderRediffusion(r);
+      expect(decoderRediffusion(code).sim).toBe(version);
+      const rejeu = rejouerComplet(R, contenu, code);
+      expect(rejeu.resultat).toEqual(p.resultat());
+      expect(empreinteVue(rejeu.vue)).toBe(empreinteVue(p.vue()));
+      p.dispose();
+    }
+  });
+
+  it("les deux versions donnent des parties différentes pour les mêmes commandes (la 4 pivote autour de la grille) : la version est bien lue dans l'en-tête, pas devinée", () => {
+    const a = jouerV(3);
+    const b = jouerV(4);
+    expect(empreinteVue(a.vue())).not.toBe(empreinteVue(b.vue()));
+    a.dispose();
+    b.dispose();
+  });
+
+  it("une version que ce code ne joue pas (2, 5) est refusée à la lecture comme au rejeu ; les versions 3 et 4 sont acceptées", () => {
+    for (const sim of VERSIONS_SIM_JOUABLES) expect(() => decoderRediffusion(octets({ sim, genre: 1, g: 0 }))).not.toThrow();
+    for (const sim of [2, 5]) {
+      expect(refus(() => decoderRediffusion(octets({ sim, genre: 1, g: 0 })))).toBe("version_inconnue");
+      expect(refus(() => rejouerComplet(R, contenu, { sim, g: 0, contenu: { scenario: "essai" }, reglages: { ...REGLAGES_DEFAUT }, plages: [{ masque: 0, ticks: 1 }] }))).toBe("version_inconnue");
+    }
+    expect(VERSIONS_SIM_JOUABLES).toEqual([3, 4]);
+    expect(TOWER_SIM_VERSION).toBe(4);
+  });
+
+  it("une partie sans version donnée est jouée en version courante (4)", () => {
+    expect(new Partie(R, contenu).version).toBe(TOWER_SIM_VERSION);
   });
 });
 

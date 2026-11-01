@@ -6,7 +6,7 @@ import { dailyTower, GENERATEUR_TIRAGE, TOWER_GENERATOR_VERSION } from "../gener
 import { figerJour, type JourFige, type JourLu, lireJour } from "../jours";
 import { diamantDe, medaillesDe } from "../medailles";
 import type { Rapier } from "../rapier";
-import { encoderRediffusion, type Rejeu, rejouerComplet } from "../rediffusion";
+import { decoderRediffusion, encoderRediffusion, type Rejeu, rejouerComplet } from "../rediffusion";
 import { choisirTirage, dansLaPlage, type Essai, TIRAGES_MAX } from "../tirage";
 import { type Compteurs, jouerBotRobuste, type ResultatRobuste } from "./bot";
 
@@ -60,6 +60,10 @@ export function examinerJourPrepare(R: Rapier, json: unknown, jour: number): str
   if (!lu.medailles) return "pas de médailles";
   if (!lu.preuve) return "pas de preuve";
   try {
+    // Lot T6 : la preuve est rejouée par la version de simulation qu'elle nomme ; elle doit être celle du fichier.
+    const simPreuve = decoderRediffusion(lu.preuve).sim;
+    const simFichier = (json as { sim?: number }).sim;
+    if (simPreuve !== simFichier) return `la preuve est d'une autre simulation (${simPreuve}) que le fichier (${String(simFichier)})`;
     const rejeu = rejouerComplet(R, lu.contenu, lu.preuve);
     const diamant = diamantDe(rejeu.resultat.hauteurMm, lu.contenu.g);
     if (diamant !== lu.medailles.auteur) return `la preuve rejouée donne ${rejeu.resultat.hauteurMm} mm (Diamant ${diamant} mm), le Diamant écrit est ${lu.medailles.auteur} mm`;

@@ -6,11 +6,16 @@ mutateurs: patrouille denivele
 format: 3
 paliers: 17 6
 repeter: haut rangees 10-10
-variante: haut=2 cycle=540
-variante: haut=2 cycle=600
-variante: haut=2 cycle=660
-variante: haut=2 cycle=600 +denivele:3
-variante: haut=2 cycle=780 +denivele:3
+variante: haut=2 rail=4 cycle=540
+variante: haut=2 rail=4 cycle=600
+variante: haut=2 rail=4 cycle=660
+variante: haut=2 rail=4 cycle=600 +denivele:3
+variante: haut=2 rail=4 cycle=780 +denivele:3
+variante: haut=2 rail=3 cycle=600
+variante: haut=2 rail=5 cycle=660
+variante: haut=2 rail=3 cycle=300 +denivele:3
+variante: haut=2 rail=5 cycle=300 +patrouille
+variante: haut=2 rail=3 cycle=300 +patrouille
 grille:
 ###..........
 ###..........
@@ -33,6 +38,6 @@ grille:
 #############
 #############
 
-scie va-et-vient o {cycle} aller-retour 4,2 4,8
+scie va-et-vient o {cycle} aller-retour {rail},2 {rail},8
 zone patrouille o 300 aller-retour 8,4 12,4
 zone denivele 10-12

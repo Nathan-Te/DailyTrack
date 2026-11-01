@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "jeu": "tower",
+  "date": "2026-11-05",
+  "g": 3,
+  "tirage": 0,
+  "sim": 4,
+  "contenu": {
+    "pieces": "IJLTOZSZIJOLTSLZOSJTISOTJZILIZSOTJLOJSTZ",
+    "plateformeDemi8": 24,
+    "paliers": [{"metres":8,"effet":"petite"},{"metres":16,"effet":"vent"},{"metres":24,"effet":"figee"},{"metres":32,"effet":"geante"},{"metres":40,"effet":"lierre"},{"metres":48,"effet":"glissante"}],
+    "ventSens": 1,
+    "theme": "port"
+  },
+  "medailles": { "auteur": 55837, "or": 27918, "argent": 16751, "bronze": 8375 },
+  "preuve": "AQQDAJqiARQEOAMMAQkBCCIMAwkBCCYMAwkBCCYMAwkBCIABDAEIKQkCCDEMAQkCCCEMAwkDCCQKAQgsDAMJAQgmDAEKAQhVDAMJAQgjCgMIKgoBCC0MAQoCCCUMAQoCCC0KAggrCgIILAoCCCsKAggsDAEKAQgmDAEKAQhRDAEIIQkBCCoMAQkBCCAMAQhCDAEJAggmCgEITQwBCgUIPgwBCgQINwwDCgMISQ"
+}

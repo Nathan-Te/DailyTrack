@@ -478,6 +478,8 @@ export interface JumpDebug {
   /** Lot 8 : le menu ⏸ (ouvert : la partie est en pause). */
   readonly menu: { open: boolean };
   setMenu(open: boolean): void;
+  /** Lot 31 (tests) : ouvre l'écran du classement du jour du jeu. */
+  openBoard(): void;
   /**
    * Temps de fil principal (ms), mesuré sur les 600 dernières images : par image (moyenne, 95e centile), et séparément la simulation **par
    * pas** et le dessin **par image** (le rendu logiciel fait peu d'images, donc beaucoup de pas par image : ces deux-là se comparent).
@@ -586,6 +588,8 @@ export interface CarnageView {
   label: string;
   /** Lot P4 : le carnage de tout le monde s'adapte à l'appareil (palier, vies montrées au plus, part des particules, fenêtres mesurées). */
   governor?: { level: number; maxLives: number; particles: number; windows: { work: number; interval: number; level: number }[] } | null;
+  /** Lot 31 : la course du n° 1 en cours (pseudo, vitesse, morts du héros, pause, barre chargée), sinon `null`. */
+  course?: { nom: string; speed: number; deaths: number; paused: boolean; barre: boolean } | null;
 }
 
 declare global {
@@ -769,7 +773,7 @@ const syncIfReady = () => {
 const howto = mountHowto(touchOn ? "touch" : "keys", { onChange: syncIfReady });
 // Lot I5 : les archives et le classement du jour du jeu, deux écrans du cadre crème ouverts depuis l'accueil (« ‹ JUMP » les ferme).
 const archivesUi = mountArchives({ href: (date) => archiveHref(date, options), onToggle: () => (syncIfReady(), home?.focus()) });
-const boardUi = mountBoard({ onToggle: () => (syncIfReady(), home?.focus()) });
+const boardUi = mountBoard({ onToggle: () => (syncIfReady(), home?.focus()), onCourse: () => courseDuPremier() });
 const home: Home | null = homeHere
   ? mountHome({
       onPlay: () => playFromHome(),
@@ -1265,6 +1269,16 @@ interface CarnageRun {
   paused: boolean;
   /** Lot I5 : lancé depuis l'accueil (« Voir le carnage ») : on y revient à la fin. */
   fromHome: boolean;
+  /** Lot 31 : la course du n° 1 (le héros est l'essai du premier, seul) : son pseudo, la durée de son essai, ses morts, la vitesse, d'où l'on vient ; la barre est celle de `course.ts`. */
+  course: CourseRun | null;
+}
+interface CourseRun {
+  nom: string;
+  ticks: number;
+  deaths: number;
+  speed: 1 | 2;
+  from: "home" | "arrival" | "autre";
+  ui: import("./course").CourseUi | null;
 }
 let carnage: CarnageRun | null = null;
 /** Lot P4 (`__jump.carnage.govern(palier)`, mesure et tests) : le palier imposé aux carnages de tout le monde, ou `null` (l'appareil décide). */
@@ -1285,7 +1299,7 @@ let carnageBurst: { pool: BurstPool; mesh: BurstMesh } | null = null;
 /** Zoom arrière du carnage : on voit plus large autour du héros. */
 const CARNAGE_ZOOM = 1.3;
 
-function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bits = 0, everyone: string | null = null, fromHome = false, result: ResultView | null = null): boolean {
+function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bits = 0, everyone: string | null = null, fromHome = false, result: ResultView | null = null, course: Pick<CourseRun, "nom" | "ticks" | "from"> | null = null): boolean {
   if (!scene || carnage) return false;
   let run: Carnage;
   try {
@@ -1313,10 +1327,11 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
     starts: waveStarts(run.lives.map((l) => l.depart)),
     paused: false,
     fromHome,
+    course: course ? { ...course, deaths: 0, speed: 1, ui: null } : null,
   };
   applyGovernor(carnage);
   // Lot 10 : « Revoir le carnage » (écran d'arrivée) le relance tel quel (le tien, pas celui de tout le monde).
-  if (!demo && everyone === null) lastCarnage = { hero, others };
+  if (!demo && everyone === null && !course) lastCarnage = { hero, others };
   arrival.hide();
   syncMessage(); // lot N2 : un carnage joue, plus de message ni de lecture
   // Lot 27 : le résultat reste affiché pendant la rediffusion et le carnage (celui de ton essai, pas la démonstration ni le carnage de tout le monde).
@@ -1347,6 +1362,11 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
 
 /** Lot I5 : la barre du carnage (titre en autocollant, compteur, « Vague 3 / 12 », lecture ou pause). */
 function showCarnageBar(c: CarnageRun): void {
+  if (c.course) {
+    // Lot 31 : la barre de la course est celle de `course.ts` (chargée à la demande) ; avant qu'elle soit là, rien.
+    c.course.ui?.update({ ticks: c.run.hero.state.time, total: c.course.ticks, morts: c.course.deaths, paused: c.paused, speed: c.course.speed });
+    return;
+  }
   hud.carnage({ label: c.everyone ?? carnageLabel(c.run.total, c.run.arrivals), wave: waveAt(c.starts, c.run.tick), paused: c.paused });
 }
 
@@ -1401,6 +1421,7 @@ function endCarnage(): void {
   audio.stopLoops();
   slideSide = 0;
   hud.carnage(null);
+  c.course?.ui?.hide();
   stains?.reset(storedStains());
   showOthers();
   scene.zoom = 1;
@@ -1409,6 +1430,13 @@ function endCarnage(): void {
   if (c.demo) {
     restart();
     hud.toast(t("toast.finDemo"));
+  } else if (c.course) {
+    // Lot 31 : retour au classement, sur l'écran d'où l'on est parti (accueil, arrivée) ou sur la scène.
+    phase = phaseOf(session.state);
+    camera = snapCamera(follow(session.state.player), scene.frame);
+    if (c.course.from === "home") goHome();
+    else if (c.course.from === "arrival") showFinish();
+    openBoard();
   } else if (c.fromHome) {
     phase = phaseOf(session.state);
     camera = snapCamera(follow(session.state.player), scene.frame);
@@ -1426,7 +1454,8 @@ function stepCarnage(): void {
   const bits = injected ?? controls.sample();
   const pressed = bits & ~c.prevBits;
   c.prevBits = bits;
-  if (pressed) {
+  // Lot 31 : la course du n° 1 ne se passe pas d'une commande (pause, vitesse et retour sont ses boutons et ses touches).
+  if (pressed && !c.course) {
     c.run.stop();
     endCarnage();
     return;
@@ -1438,6 +1467,7 @@ function stepCarnage(): void {
   for (const e of c.run.step()) {
     // Les taches : toutes les morts (elles portent une information, jamais filtrées).
     if (e.kind === "death") stains?.add(stainFor(level, e.x, e.y));
+    if (c.course && e.life === HERO && e.kind === "death") c.course.deaths++;
     // Les autres vies : seulement leurs morts et leurs arrivées, au débit plafonné (le héros a tous ses événements, plus bas).
     if (e.life === HERO || e.kind === "depart") continue;
     const ev: GameEvent =
@@ -1819,6 +1849,7 @@ let autoplayIndex = 0;
 function stepOnce(): void {
   if (carnage) {
     stepCarnage();
+    if (carnage?.course?.speed === 2) stepCarnage(); // lot 31 : la course du n° 1 en ×2
     return;
   }
   // Lot 15 : le « Prêt… » d'un niveau à une seule horloge : l'horloge tourne, aucune commande n'est jouée (ni rediffusion consommée).
@@ -2266,6 +2297,7 @@ const info: JumpDebug = {
         tick: c.run.tick,
         heroTicks: c.run.heroTicks,
         label: c.everyone ?? carnageLabel(c.run.total, c.run.arrivals),
+        course: c.course ? { nom: c.course.nom, speed: c.course.speed, deaths: c.course.deaths, paused: c.paused, barre: c.course.ui !== null } : null,
         governor: c.governor ? { level: c.governor.level, maxLives: c.governor.maxLives, particles: c.governor.particles, windows: [...c.governor.windows] } : null,
       };
     },
@@ -2576,6 +2608,9 @@ const info: JumpDebug = {
   get pret() {
     return { ticks: session.countdown, total: readyTicks(), level: level.simVersion };
   },
+  openBoard() {
+    openBoard();
+  },
   setMenu(open: boolean) {
     setMenu(open);
   },
@@ -2852,7 +2887,7 @@ function boardView(): BoardView {
   const { rows, gap } = rowsOf(b);
   const theme = nomTheme(daily?.theme ?? homeTheme.name);
   const message = !ranking.enabled ? t("classement.sansServeur") : b === null ? t(entry?.status === "loading" || !entry ? "rang.chargement" : "rang.indisponible") : rows.length === 0 ? t("classement.vide") : "";
-  return { subtitle: b ? t("classement.sousTitre", { theme, classes: classesText(b.participants) }) : theme, rows, gap, message };
+  return { subtitle: b ? t("classement.sousTitre", { theme, classes: classesText(b.participants) }) : theme, rows, gap, message, course: !carnage && firstRemote !== null && firstDate !== null && b !== null && rows.length > 0 ? firstRemote.name : null };
 }
 function openBoard(): void {
   boardUi.open(boardView());
@@ -2865,6 +2900,43 @@ function carnageFromHome(): void {
   home?.close();
   syncPause();
   startCarnage(best, memory.liveReplays(memory.best.essai), false, lastBits, null, true);
+}
+
+/**
+ * Lot 31 : « Voir la course du n° 1 » (le classement, sur la scène : on reste dans le jeu) : l'essai du premier du jour (la rediffusion déjà servie pour son fantôme,
+ * `firstRemote`, validée et jouée dans la version de simulation du niveau), seul, avec ses morts et ses reprises, caméra sur son personnage ; la barre du carnage devient celle de la course
+ * (`course.ts`, à la demande : pseudo, chrono, morts, pause, ×1 / ×2, retour au classement). Rien n'est enregistré ni envoyé. Sans premier, rien.
+ */
+function courseDuPremier(): void {
+  const f = firstRemote;
+  if (!f || carnage || !scene || !firstDate) return;
+  const from = home?.isOpen ? "home" : arrival.shown ? "arrival" : "autre";
+  boardUi.close();
+  home?.close();
+  syncPause();
+  if (!startCarnage(f.replay, [], false, lastBits, null, false, null, { nom: f.name, ticks: f.ticks, from })) return;
+  const c = carnage!;
+  void import("./course").then((m) => {
+    if (carnage !== c || !c.course) return;
+    c.course.ui = m.montrerCourse({
+      nom: c.course.nom,
+      actionDeTouche: (code) => commandes.actionDeTouche(code),
+      onToggle: () => {
+        c.paused = !c.paused;
+        stepper.reset();
+        showCarnageBar(c);
+      },
+      onSpeed: () => {
+        c.course!.speed = c.course!.speed === 1 ? 2 : 1;
+        showCarnageBar(c);
+      },
+      onQuit: () => {
+        c.run.stop();
+        endCarnage();
+      },
+    });
+    showCarnageBar(c);
+  });
 }
 
 // La page se ferme (ou passe en arrière-plan) : l'essai en cours est clos comme un abandon, ses vies sont gardées.

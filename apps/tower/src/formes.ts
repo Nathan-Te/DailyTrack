@@ -23,3 +23,12 @@ export function cercle(couleur: string, x: number, y: number, r: number, z: numb
   m.scale.set(r, r, 1);
   return m;
 }
+
+/** Lot T6 : une matière translucide (la visée : discrète, on voit la scène à travers). Partagée par couleur et opacité. */
+const translucides = new Map<string, MeshBasicMaterial>();
+export function matiereTransparente(couleur: string, opacite: number): MeshBasicMaterial {
+  const cle = `${couleur}/${opacite}`;
+  let m = translucides.get(cle);
+  if (!m) translucides.set(cle, (m = new MeshBasicMaterial({ color: new Color(couleur), transparent: true, opacity: opacite, depthWrite: false })));
+  return m;
+}

@@ -17,5 +17,5 @@ activerManette(() => import("./manette"));
 const musique = () => brancherMusique("tower", gameStorage);
 const options = lireOptions(location.search, PRODUCTION);
 if (options.scenario === "banc") void import("./banc/demo");
-else if (options.scenario === "essai" || options.scenario === "paliers") void pret.then(() => import("./jeu")).then((m) => m.demarrerScenario(options, musique()));
+else if (options.scenario === "essai" || options.scenario === "paliers" || options.scenario === "alignement") void pret.then(() => import("./jeu")).then((m) => m.demarrerScenario(options, musique()));
 else void pret.then(() => demarrerAccueil(options, musique()));

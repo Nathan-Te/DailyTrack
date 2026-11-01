@@ -215,16 +215,17 @@ describe("chaque effet", () => {
     figee.dispose();
   });
 
-  it("lierre : la pièce suivante se soude, à son premier contact, aux corps qu'elle touche ; une pièce en porte-à-faux qui tombe sans lierre reste accrochée avec lui", () => {
+  // Lot T6 : le même scénario dans les deux simulations. En version 4 le bâton se pose plus juste (pièce en main sans contact, contacts plus raides) : il lui faut un surplomb d'une demi-case de moins pour basculer sans lierre.
+  it.each([[3, 8], [4, 6]] as const)("lierre (simulation %i) : la pièce suivante se soude, à son premier contact, aux corps qu'elle touche ; une pièce en porte-à-faux qui tombe sans lierre reste accrochée avec lui", (version, ticksDroite) => {
     // Le bâton (PREMIERE + 2) est posé à 2 m du centre de la tour : son centre de masse dépasse du carré qui le porte, il bascule — sauf s'il est soudé (l'ensemble reste alors en équilibre sur le bâton de départ).
     const cmd = (id: number, k: number): number => {
       let c = COMMANDE.DESCENDRE;
       if (id === PREMIERE + 1 && k < 40 && k % 2 === 0) c |= COMMANDE.GAUCHE; // le carré de remplissage part au loin (il tombe à la mer)
-      if (id === PREMIERE + 2 && k < 8 && k % 2 === 0) c |= COMMANDE.DROITE;
+      if (id === PREMIERE + 2 && k < ticksDroite && k % 2 === 0) c |= COMMANDE.DROITE;
       return c;
     };
-    const sans = new Partie(R, FORME(null));
-    const avec = new Partie(R, FORME("lierre"));
+    const sans = new Partie(R, FORME(null), undefined, { version });
+    const avec = new Partie(R, FORME("lierre"), undefined, { version });
     for (const p of [sans, avec]) {
       jusqua(p, () => p.vue().active >= PREMIERE + 3, cmd);
       reposer(p, 240);

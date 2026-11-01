@@ -15,7 +15,7 @@ export type Niveau = "normal" | "reduit" | "aucun";
 export type FantomeDepart = "aucun" | "meilleure";
 
 export interface ReglagesJoueur {
-  /** Le fantôme posé au départ d'une partie (`meilleure` s'il existe, comme avant le lot T7). */
+  /** Le fantôme posé au départ d'une partie (`aucun` par défaut, lot T6 ; `meilleure` si le joueur la veut). */
   fantome: FantomeDepart;
   /** Les secousses de la caméra (une pièce perdue) : normales, réduites ou aucune — en plus de `prefers-reduced-motion`, qui les coupe déjà. */
   secousses: Niveau;
@@ -24,7 +24,7 @@ export interface ReglagesJoueur {
   /** La visée (lot T6 : la grille et la ligne de chute) : branchée à la fusion du lot T6 (`visee` n'a pas encore de lecteur). */
   visee: boolean;
 }
-export const REGLAGES_JOUEUR_DEFAUT: Readonly<ReglagesJoueur> = { fantome: "meilleure", secousses: "normal", yeux: "normal", visee: true };
+export const REGLAGES_JOUEUR_DEFAUT: Readonly<ReglagesJoueur> = { fantome: "aucun", secousses: "normal", yeux: "normal", visee: true };
 
 /** Le facteur d'un niveau (1, 0,5 ou 0) : celui qui multiplie la secousse et le gain de la panique. */
 export const facteurDe = (n: Niveau): number => (n === "normal" ? 1 : n === "reduit" ? 0.5 : 0);
@@ -39,7 +39,7 @@ export function lireReglagesJoueur(s: Lecture): ReglagesJoueur {
   try {
     const o = JSON.parse(s?.getItem(CLE_REGLAGES) ?? "null") as Partial<Record<keyof ReglagesJoueur | "v", unknown>> | null;
     if (o?.v !== VERSION_REGLAGES) return { ...REGLAGES_JOUEUR_DEFAUT };
-    return { fantome: o.fantome === "aucun" ? "aucun" : "meilleure", secousses: niveau(o.secousses), yeux: niveau(o.yeux), visee: o.visee !== false };
+    return { fantome: o.fantome === "meilleure" ? "meilleure" : "aucun", secousses: niveau(o.secousses), yeux: niveau(o.yeux), visee: o.visee !== false };
   } catch {
     return { ...REGLAGES_JOUEUR_DEFAUT };
   }

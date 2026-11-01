@@ -96,7 +96,7 @@ describe("lot 25 — la version de la simulation", () => {
     expect(STALACTITE_VERSION).toBe(8);
     expect(LASER_GENERATOR).toBe(19);
     expect(JUMP_SIM_VERSION).toBe(13); // lot 30 : v13 et g24 (le maintien minimal du saut) ; lot 28 : v12 et g22 (les alternés gardent leur état à la reprise)
-    expect(JUMP_GENERATOR_VERSION).toBe(24); // lot 30 : g24 ; lot V1 : g23 (le sac de thèmes)
+    expect(JUMP_GENERATOR_VERSION).toBe(25); // lot 31 : g25 ; lot 30 : g24 ; lot V1 : g23 (le sac de thèmes)
     expect(gate().simVersion).toBe(9);
     expect(DEATH_LASER).toBe(6);
     expect(DEATH_NAMES[DEATH_LASER]).toBe("laser");

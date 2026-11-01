@@ -168,7 +168,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   const jourLu = preparation.jourLu;
   const date = preparation.date;
   const enTete = (): string =>
-    options.scenario === "essai"
+    options.scenario === "essai" || options.scenario === "alignement"
       ? t("fin.eyebrow")
       : options.scenario === "paliers"
         ? t("fin.eyebrow.paliers")
@@ -189,6 +189,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   const hasardScene = hasardAffichage(0x70e7);
   const hasardSon = hasardAffichage(0x5017);
   const scene = new Scene3D(racine, contenu.plateformeDemi8, { hasard: hasardScene, rendu: renduEffectif });
+  scene.viseeActive = options.visee && reglagesJ.visee; // lot T6 : allumée par défaut (`?visee=0` l'éteint) ; lot T7 : et le réglage « Visée » d'Affichage
   const stockageSons = stockage;
   let reglagesSons: ReglagesSons = lireSons(stockageSons);
   const sons = new Sons({ reglages: () => reglagesSons, volumes: () => reglages.rendu.volumes, hasard: hasardSon });
@@ -217,6 +218,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   let classable = classableAvec();
   /** Cette partie a des réglages d'essai : ni classement, ni record, ni fantôme. */
   let essai = false;
+  /** Lot T6 : `&bot` joue la preuve du fichier du jour avec la version de simulation qu'elle nomme (un jour préparé en simulation 3 se rejoue en version 3), jamais avec la version courante. */
+  const versionDuBot = import.meta.env.VITE_PRODUCTION !== "1" && options.bot && jourLu?.preuve ? jourLu.sim : undefined;
 
   // Hors production seulement : le bot de l'auteur. Sa preuve est dans le fichier du jour, ou son Web Worker la calcule (une minute) ; les deux modules sont chargés à la demande, et la constante de
   // construction `import.meta.env.VITE_PRODUCTION` (écrite en clair ici pour que la construction retire tout ce bloc, et avec lui le worker, du jeu publié) le ferme en production.
@@ -393,6 +396,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
         ecrire: (r) => {
           reglagesJ = r;
           ecrireReglagesJoueur(stockage, r);
+          scene.viseeActive = options.visee && r.visee; // la visée change tout de suite
         },
       },
       tactile,
@@ -456,7 +460,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     classable = classableAvec();
     essai = reglagesEssai(reglages);
     const scenario: Scenario = reglages.plateformeDemi8 !== null ? { ...contenu, plateformeDemi8: reglages.plateformeDemi8 } : contenu;
-    partie = new Partie(R, scenario, { ...reglages.sim }, { physique: { ...reglages.physique } });
+    partie = new Partie(R, scenario, { ...reglages.sim }, { physique: { ...reglages.physique }, version: versionDuBot });
     scene.poserPlateforme(scenario.plateformeDemi8);
     scene.poserEchelles(partie.taillesDEssai);
     analyseur = new AnalyseurPanique(scenario.plateformeDemi8, partie.taillesDEssai, gainYeux);
@@ -522,7 +526,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     // La partie s'est enregistrée : sa rediffusion est gardée comme record du jour si elle bat le précédent (et part au serveur, qui la rejoue) ; si c'est la meilleure du fantôme, la silhouette est
     // l'état final de cette partie rejouée. Tout cela est chargé à la demande (`fantomeRejeu`) : les commandes sont copiées tout de suite, la partie est détruite dès qu'on rejoue.
     const masques = [...partie.commandesJouees()];
-    const enreg = { commandesJouees: () => masques, scenario: partie.scenario, reglages: { ...partie.reglages } };
+    const enreg = { commandesJouees: () => masques, scenario: partie.scenario, reglages: { ...partie.reglages }, version: partie.version };
     // Lot T5 : une partie d'essai (réglages de `?debug&tune`) n'a ni record, ni fantôme, ni envoi : sa rediffusion ne se rejouerait pas aux réglages normaux.
     if (!options.bot && !essai) {
       void import("./fantomeRejeu")
@@ -684,6 +688,9 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     hud.maj(vue, nomFantome());
     hud.majObjectif(medailles, vue.hauteurMm);
     if (vue.palier) hud.placerPalier(scene.ecranY(vue.palier.metres), 100, window.innerHeight - 120);
+    // Lot T6 : la visée, une lecture du monde entre deux ticks (jamais pendant un pas) ; rien en pause ni une fois la partie finie.
+    const active = vue.active >= 0 ? vue.pieces[vue.active] : undefined;
+    scene.poserVisee(options.visee && !pause && partie.etape === "jeu" && active ? partie.visee() : null, active?.kind ?? null, active?.rot ?? 0, active?.taille ?? "normale");
     scene.dessiner(pause || manuel || partie.etape === "fini" ? 1 : acc, dt);
     if (debug && ++compteImages % 6 === 0) debug.textContent = texteDebug(vue);
     requestAnimationFrame(image);

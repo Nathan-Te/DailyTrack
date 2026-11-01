@@ -1,6 +1,6 @@
 {
   "versions": {
-    "sim": 3,
+    "sim": 4,
     "g": 3
   },
   "contenus": [
@@ -169,111 +169,222 @@
       ]
     }
   ],
+  "anciennesSim": [
+    {
+      "sim": 3,
+      "rediffusions": [
+        {
+          "nom": "essai",
+          "contenu": {
+            "scenario": "essai"
+          },
+          "code": "AQMAAQVlc3NhaRQEOAkEAQAMCCMABAEBAAoIJwQBAAwIIAQDAAoIIwAEAgEACggnAA0IKQQBAAwIIwANCCkABAEBAAoIKQAEAgEACggwAAQBAQAKCCgABAIBAAoINAANCCgADQgpBAEADAgoBAEADAghAAQCAQABAgEAAQIBAAoISwANCHY",
+          "resultat": {
+            "hauteurMm": 5000,
+            "vies": 0,
+            "ticks": 1077,
+            "ticksGel": 1143,
+            "hauteurMaxMm": 31912,
+            "posees": 17,
+            "tombees": 13,
+            "motif": "vies"
+          },
+          "empreinteFinale": "6bdaf6d2031e3d27",
+          "ticks": 1077,
+          "paliers": 0
+        },
+        {
+          "nom": "jour-avec-paliers",
+          "contenu": {
+            "date": "2026-11-02",
+            "g": 2
+          },
+          "code": "AQMCAJeiARQEOAMADQgpBAMACggjBAMACggmAA0IKAQBAAwIHwQBAAwIJQAEAQEACggpBAEADAgiAA0IKAQBAAwIFgQBAAwIJQQDAAoIJgANCCkEAQAMCCYEAQAMCCMABAIBAAoIKgQDAAoIIwQBAAwIIAAEAQEACggoBAIAAgEBAAoIJQAEAQEAAQEBAAoIKQQBAAwIIwAEAQEAAQEBAAoIKAANCCkADQgqAA0IKAANCCoEAQAMCCAEAQAMCB8ABAEBAAEBAQABAQEACgjmAQ",
+          "resultat": {
+            "hauteurMm": 37978,
+            "vies": 0,
+            "ticks": 1720,
+            "ticksGel": 1846,
+            "hauteurMaxMm": 76864,
+            "posees": 29,
+            "tombees": 17,
+            "motif": "vies"
+          },
+          "empreinteFinale": "42b1b91a21e39353",
+          "ticks": 1720,
+          "paliers": 6
+        },
+        {
+          "nom": "zero-vie",
+          "contenu": {
+            "date": "2026-11-03",
+            "g": 2
+          },
+          "code": "AQMCAJiiARQEOAMCKAAGCCUCKAAGCCICKAAGCCM",
+          "resultat": {
+            "hauteurMm": 0,
+            "vies": 0,
+            "ticks": 244,
+            "ticksGel": 244,
+            "hauteurMaxMm": 0,
+            "posees": 0,
+            "tombees": 3,
+            "motif": "vies"
+          },
+          "empreinteFinale": "816bc75119e02ae5",
+          "ticks": 244,
+          "paliers": 0
+        },
+        {
+          "nom": "jour-v3",
+          "contenu": {
+            "date": "2026-11-02",
+            "g": 3
+          },
+          "code": "AQMDAJeiARQEOAMABAEBAAoIJwANCCkEAwAKCCMABAIBAAoIJwQDAAoIJgQBAAwIIwQBAAwIIAQDAAoIIwQDAAoIIwAEAgEAAQIBAAoIKAQDAAoIJgQBAAwIIAANCCkABAEBAAoIKQAEAQEACggqBAMACggjAAQCAQABAgEACggnAAQCAQABAgEAAQIBAAoIKQAEAQEACggoAA0INQAEAgEAAQIBAAECAQAKCDQADQh_",
+          "resultat": {
+            "hauteurMm": 30111,
+            "vies": 0,
+            "ticks": 1266,
+            "ticksGel": 1510,
+            "hauteurMaxMm": 45630,
+            "posees": 21,
+            "tombees": 11,
+            "motif": "vies"
+          },
+          "empreinteFinale": "784c9c4369ab23f0",
+          "ticks": 1266,
+          "paliers": 5
+        },
+        {
+          "nom": "tirage-v3",
+          "contenu": {
+            "date": "2026-11-02",
+            "g": 3,
+            "tirage": 2
+          },
+          "code": "AQMDApeiAQIUBDgDAAQBAQAKCCcABAIBAAECAQAKCCgABAIBAAoILQANCCwEAgALCCYEAwAKCCQEAQAMCCIADQgoBAEADAgkAA0IKgANCCgADQgB",
+          "resultat": {
+            "hauteurMm": 23424,
+            "vies": 0,
+            "ticks": 599,
+            "ticksGel": 671,
+            "hauteurMaxMm": 23581,
+            "posees": 11,
+            "tombees": 4,
+            "motif": "vies"
+          },
+          "empreinteFinale": "cd05db559c205568",
+          "ticks": 599,
+          "paliers": 2
+        }
+      ]
+    }
+  ],
   "rediffusions": [
     {
       "nom": "essai",
       "contenu": {
         "scenario": "essai"
       },
-      "code": "AQMAAQVlc3NhaRQEOAkEAQAMCCMABAEBAAoIJwQBAAwIIAQDAAoIIwAEAgEACggnAA0IKQQBAAwIIwANCCkABAEBAAoIKQAEAgEACggwAAQBAQAKCCgABAIBAAoINAANCCgADQgpBAEADAgoBAEADAghAAQCAQABAgEAAQIBAAoISwANCHY",
+      "code": "AQQAAQVlc3NhaRQEOAkEAQAMCCYABAEBAAoIJwQBAAwIIAQBAAwIJgANCCkABAEBAAoIJwQBAAwIJgQBAAwIJgQBAAwIJgQCAAsIKQANCCkADQgpAA0IKAQBAAwIHwANCCgEAQAMCB8ADQgoBAEADAglBAIAAgEBAAoIKQAEAQEACggpAAQBAQABAQEACggoBAEADAgnAAQCAQABAgEACgjwAQ",
       "resultat": {
-        "hauteurMm": 5000,
+        "hauteurMm": 3088,
         "vies": 0,
-        "ticks": 1077,
-        "ticksGel": 1143,
-        "hauteurMaxMm": 31912,
-        "posees": 17,
-        "tombees": 13,
+        "ticks": 1399,
+        "ticksGel": 1573,
+        "hauteurMaxMm": 52046,
+        "posees": 22,
+        "tombees": 19,
         "motif": "vies"
       },
-      "empreinteFinale": "6bdaf6d2031e3d27",
-      "ticks": 1077,
+      "empreinteFinale": "26b5f0de621d85fc",
+      "ticks": 1399,
+      "paliers": 0
+    },
+    {
+      "nom": "alignement",
+      "contenu": {
+        "scenario": "alignement"
+      },
+      "code": "AQQAAQphbGlnbmVtZW50FAQ4CQAEAQEACggnAAQBAQABAQEACggoAAQCAQAKCCcADQgwBAIAAgEBAAoIKQQCAAsIKwQCAAsIKgANCCoABAEBAAoIKAANCCgABAEBAAoIKQAEAQEACggp",
+      "resultat": {
+        "hauteurMm": 8037,
+        "vies": 2,
+        "ticks": 668,
+        "ticksGel": 968,
+        "hauteurMaxMm": 21077,
+        "posees": 12,
+        "tombees": 7,
+        "motif": "pieces"
+      },
+      "empreinteFinale": "8ada55cf8947b60a",
+      "ticks": 668,
       "paliers": 0
     },
     {
       "nom": "jour-avec-paliers",
       "contenu": {
         "date": "2026-11-02",
-        "g": 2
+        "g": 3
       },
-      "code": "AQMCAJeiARQEOAMADQgpBAMACggjBAMACggmAA0IKAQBAAwIHwQBAAwIJQAEAQEACggpBAEADAgiAA0IKAQBAAwIFgQBAAwIJQQDAAoIJgANCCkEAQAMCCYEAQAMCCMABAIBAAoIKgQDAAoIIwQBAAwIIAAEAQEACggoBAIAAgEBAAoIJQAEAQEAAQEBAAoIKQQBAAwIIwAEAQEAAQEBAAoIKAANCCkADQgqAA0IKAANCCoEAQAMCCAEAQAMCB8ABAEBAAEBAQABAQEACgjmAQ",
+      "code": "AQQDAJeiARQEOAMABAEBAAoIJwANCCkEAQAMCCYABAEBAAoIJwQBAAwIJgQDAAoIJQQBAAwIIAQDAAoIJQQDAAoIJQANCCoEAgACAQEACggoBAEADAggAA0IKQANCCkADQgW",
       "resultat": {
-        "hauteurMm": 37978,
+        "hauteurMm": 37082,
         "vies": 0,
-        "ticks": 1720,
-        "ticksGel": 1846,
-        "hauteurMaxMm": 76864,
-        "posees": 29,
-        "tombees": 17,
+        "ticks": 757,
+        "ticksGel": 1057,
+        "hauteurMaxMm": 37082,
+        "posees": 14,
+        "tombees": 4,
         "motif": "vies"
       },
-      "empreinteFinale": "42b1b91a21e39353",
-      "ticks": 1720,
-      "paliers": 6
+      "empreinteFinale": "5742d9b39f609b1b",
+      "ticks": 757,
+      "paliers": 4
     },
     {
       "nom": "zero-vie",
       "contenu": {
         "date": "2026-11-03",
-        "g": 2
+        "g": 3
       },
-      "code": "AQMCAJiiARQEOAMCKAAGCCUCKAAGCCICKAAGCCM",
+      "code": "AQQDAJiiARQEOAMCKAAGCCMCKAAGCCMCKAAGCCU",
       "resultat": {
         "hauteurMm": 0,
         "vies": 0,
-        "ticks": 244,
-        "ticksGel": 244,
+        "ticks": 245,
+        "ticksGel": 245,
         "hauteurMaxMm": 0,
         "posees": 0,
         "tombees": 3,
         "motif": "vies"
       },
-      "empreinteFinale": "816bc75119e02ae5",
-      "ticks": 244,
+      "empreinteFinale": "11e3da7b1def03cf",
+      "ticks": 245,
       "paliers": 0
     },
     {
-      "nom": "jour-v3",
-      "contenu": {
-        "date": "2026-11-02",
-        "g": 3
-      },
-      "code": "AQMDAJeiARQEOAMABAEBAAoIJwANCCkEAwAKCCMABAIBAAoIJwQDAAoIJgQBAAwIIwQBAAwIIAQDAAoIIwQDAAoIIwAEAgEAAQIBAAoIKAQDAAoIJgQBAAwIIAANCCkABAEBAAoIKQAEAQEACggqBAMACggjAAQCAQABAgEACggnAAQCAQABAgEAAQIBAAoIKQAEAQEACggoAA0INQAEAgEAAQIBAAECAQAKCDQADQh_",
-      "resultat": {
-        "hauteurMm": 30111,
-        "vies": 0,
-        "ticks": 1266,
-        "ticksGel": 1510,
-        "hauteurMaxMm": 45630,
-        "posees": 21,
-        "tombees": 11,
-        "motif": "vies"
-      },
-      "empreinteFinale": "784c9c4369ab23f0",
-      "ticks": 1266,
-      "paliers": 5
-    },
-    {
-      "nom": "tirage-v3",
+      "nom": "tirage",
       "contenu": {
         "date": "2026-11-02",
         "g": 3,
         "tirage": 2
       },
-      "code": "AQMDApeiAQIUBDgDAAQBAQAKCCcABAIBAAECAQAKCCgABAIBAAoILQANCCwEAgALCCYEAwAKCCQEAQAMCCIADQgoBAEADAgkAA0IKgANCCgADQgB",
+      "code": "AQQDApeiAQIUBDgDAA0IKQANCCkEAQAMCCYADQgpBAMACggmBAEADAgrBAEADAgfAA0IKAQBAAwIJQQBAAwIJQAEAQEACggpAAQCAQAKCCkABAEBAAEBAQAKCCoABAIBAAoILwAEAQEACggsAAQBAQABAQEACggnAAQCAQABAgEACggpAA0INgANCFQ",
       "resultat": {
-        "hauteurMm": 23424,
+        "hauteurMm": 18176,
         "vies": 0,
-        "ticks": 599,
-        "ticksGel": 671,
-        "hauteurMaxMm": 23581,
-        "posees": 11,
-        "tombees": 4,
+        "ticks": 1087,
+        "ticksGel": 1387,
+        "hauteurMaxMm": 33254,
+        "posees": 18,
+        "tombees": 13,
         "motif": "vies"
       },
-      "empreinteFinale": "cd05db559c205568",
-      "ticks": 599,
-      "paliers": 2
+      "empreinteFinale": "0158790337b79fbb",
+      "ticks": 1087,
+      "paliers": 4
     }
   ]
 }

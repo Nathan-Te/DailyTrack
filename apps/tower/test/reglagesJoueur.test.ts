@@ -14,7 +14,7 @@ describe("les réglages d'affichage du joueur", () => {
 
   it("sans stockage, ou rien d'écrit : les défauts", () => {
     expect(lireReglagesJoueur(null)).toEqual(REGLAGES_JOUEUR_DEFAUT);
-    expect(lireReglagesJoueur(magasin())).toEqual({ fantome: "meilleure", secousses: "normal", yeux: "normal", visee: true });
+    expect(lireReglagesJoueur(magasin())).toEqual({ fantome: "aucun", secousses: "normal", yeux: "normal", visee: true });
   });
 
   it("abîmé, d'un autre format ou qui lève : les défauts, sans erreur", () => {
@@ -27,12 +27,12 @@ describe("les réglages d'affichage du joueur", () => {
 
   it("une valeur invalide reprend son défaut, les autres champs restent", () => {
     const brut = JSON.stringify({ v: VERSION_REGLAGES, fantome: "diamant", secousses: "reduit", yeux: "énorme", visee: "oui" });
-    expect(lireReglagesJoueur(magasin(brut))).toEqual({ fantome: "meilleure", secousses: "reduit", yeux: "normal", visee: true });
+    expect(lireReglagesJoueur(magasin(brut))).toEqual({ fantome: "aucun", secousses: "reduit", yeux: "normal", visee: true });
   });
 
   it("ce qui est écrit est relu", () => {
     const s = magasin();
-    const r = { fantome: "aucun", secousses: "aucun", yeux: "reduit", visee: false } as const;
+    const r = { fantome: "meilleure", secousses: "aucun", yeux: "reduit", visee: false } as const;
     ecrireReglagesJoueur(s, r);
     expect(lireReglagesJoueur(s)).toEqual(r);
   });

@@ -11,6 +11,9 @@ variante: large=1 cycle=660
 variante: large=1 cycle=540
 variante: large=1 cycle=840 +sol-friable
 variante: large=1 cycle=480
+variante: large=1 cycle=600
+variante: large=1 cycle=720
+variante: large=1 cycle=900
 grille:
 ..######################################......
 ..######################################......

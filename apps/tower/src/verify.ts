@@ -1,5 +1,5 @@
 import { parseDay } from "@cdj/core";
-import { dailyTower, empreinteVue, rejouerComplet, type Resultat, SCENARIO_ESSAI } from "@cdj/tower-sim";
+import { dailyTower, empreinteVue, rejouerComplet, type Resultat, scenarioNomme } from "@cdj/tower-sim";
 import { rejouerBanc, rejouerTour, type ResultatBanc } from "@cdj/tower-sim/lab/banc";
 import { DEFAULT_CONFIG } from "@cdj/tower-sim/lab/interface";
 import { charger, type NomMoteur } from "./moteurs";
@@ -50,7 +50,7 @@ window.__rejouer = async (references) => {
   const R = await (await import("@cdj/tower-sim/rapier")).chargerRapier();
   return references.map((ref) => {
     const t0 = performance.now();
-    const contenu = "scenario" in ref.contenu ? SCENARIO_ESSAI : dailyTower(parseDay(ref.contenu.date)!, ref.contenu.g, ref.contenu.tirage ?? 0);
+    const contenu = "scenario" in ref.contenu ? scenarioNomme(ref.contenu.scenario)! : dailyTower(parseDay(ref.contenu.date)!, ref.contenu.g, ref.contenu.tirage ?? 0);
     const r = rejouerComplet(R, contenu, ref.code);
     return { nom: ref.nom, resultat: r.resultat, empreinteFinale: empreinteVue(r.vue), paliers: r.vue.declenches, ms: performance.now() - t0 };
   });

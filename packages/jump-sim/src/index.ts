@@ -33,3 +33,4 @@ export * from "./lasers";
 export * from "./ponts";
 export * from "./pontsPieces";
 export * from "./usable";
+export * from "./lame";

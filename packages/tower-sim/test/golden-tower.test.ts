@@ -12,7 +12,7 @@ import {
   rejouerComplet,
   type Rapier,
   type Scenario,
-  SCENARIO_ESSAI,
+  scenarioNomme,
   TOWER_GENERATOR_VERSION,
   TOWER_SIM_VERSION,
 } from "../src";
@@ -29,6 +29,8 @@ interface Golden {
   contenus: { date: string; empreinte: string }[];
   tirages: { date: string; tirage: number; empreinte: string }[];
   anciennes: { g: number; contenus: { date: string; empreinte: string }[] }[];
+  /** Lot T6 : les rediffusions de la simulation 3, gardées telles quelles. */
+  anciennesSim: { sim: number; rediffusions: Golden["rediffusions"] }[];
   rediffusions: { nom: string; contenu: { scenario: string } | { date: string; g: number; tirage?: number }; code: string; resultat: unknown; empreinteFinale: string; ticks: number; paliers: number }[];
 }
 const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-tower.json", import.meta.url), "utf8")) as Golden;
@@ -38,7 +40,7 @@ beforeAll(async () => {
   R = await chargerRapier();
 });
 
-const contenuDe = (c: Golden["rediffusions"][number]["contenu"]): Scenario => ("scenario" in c ? SCENARIO_ESSAI : dailyTower(parseDay(c.date)!, c.g, c.tirage ?? 0));
+const contenuDe = (c: Golden["rediffusions"][number]["contenu"]): Scenario => ("scenario" in c ? scenarioNomme(c.scenario)! : dailyTower(parseDay(c.date)!, c.g, c.tirage ?? 0));
 
 describe("golden-tower.json", () => {
   it("les versions du golden sont celles du code : sinon il faut le régénérer EN MONTANT la version (jamais l'inverse)", () => {
@@ -85,66 +87,35 @@ describe("golden-tower.json", () => {
     expect(new Set(cs.map((c) => c.plateformeDemi8))).toEqual(new Set([20, 24, 28, 32]));
   });
 
-  it("cinq rediffusions de référence : les trois du lot T2 (scénario d'essai à neuf vies, un jour avec paliers, une partie à 0 vie — elles nomment la version 2 du générateur et restent rejouables) et, lot T3b, un jour et un tirage de la version 3", () => {
-    expect(golden.rediffusions.map((r) => r.nom)).toEqual(["essai", "jour-avec-paliers", "zero-vie", "jour-v3", "tirage-v3"]);
-    const [essai, paliers, zero, v3, tirage] = golden.rediffusions as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
-    expect(decoderRediffusion(essai.code)).toMatchObject({ contenu: { scenario: "essai" }, g: 0, reglages: { vies: 9 } }); // l'en-tête garde des réglages non standard
-    expect(decoderRediffusion(paliers.code)).toMatchObject({ contenu: { jour: parseDay("2026-11-02") }, g: 2 });
-    expect(paliers.paliers).toBeGreaterThanOrEqual(3); // plusieurs effets s'appliquent : le lierre, la pièce géante, la pièce figée, le coup de vent
-    expect(zero.resultat).toMatchObject({ vies: 0, tombees: 3, posees: 0, motif: "vies" });
-    expect(decoderRediffusion(v3.code)).toMatchObject({ contenu: { jour: parseDay("2026-11-02") }, g: 3 });
-    expect(decoderRediffusion(tirage.code)).toMatchObject({ contenu: { jour: parseDay("2026-11-02"), tirage: 2 }, g: 3 });
-    expect(v3.paliers).toBeGreaterThanOrEqual(2); // les paliers tous les 8 m se déclenchent
+  it("lot T6 — cinq rediffusions de référence de la SIMULATION 4 : le scénario d'essai à neuf vies, la suite d'alignement (des quarts de tour et des pièces posées les unes contre les autres), un jour avec paliers, une partie à 0 vie et un tirage non nul", () => {
+    expect(golden.rediffusions.map((r) => r.nom)).toEqual(["essai", "alignement", "jour-avec-paliers", "zero-vie", "tirage"]);
+    const [essai, alignement, paliers, zero, tirage] = golden.rediffusions as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
+    expect(decoderRediffusion(essai.code)).toMatchObject({ sim: 4, contenu: { scenario: "essai" }, g: 0, reglages: { vies: 9 } });
+    expect(decoderRediffusion(alignement.code)).toMatchObject({ sim: 4, contenu: { scenario: "alignement" }, g: 0 });
+    expect(decoderRediffusion(paliers.code)).toMatchObject({ sim: 4, contenu: { jour: parseDay("2026-11-02") }, g: 3 });
+    expect(decoderRediffusion(tirage.code)).toMatchObject({ sim: 4, contenu: { jour: parseDay("2026-11-02"), tirage: 2 }, g: 3 });
+    expect(paliers.paliers).toBeGreaterThanOrEqual(3);
     expect(tirage.paliers).toBeGreaterThanOrEqual(2);
+    expect(zero.resultat).toMatchObject({ vies: 0, tombees: 3, posees: 0, motif: "vies" });
+    expect(golden.rediffusions.every((r) => decoderRediffusion(r.code).sim === TOWER_SIM_VERSION)).toBe(true);
   });
 
-  it("lot T3b : les trois rediffusions du lot T2 sont GARDÉES telles quelles (résultats, empreintes finales, ticks) — l'ancienne règle des paliers (tous les 10 m) reste rejouable", () => {
-    const [essai, paliers, zero] = golden.rediffusions as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
+  it("lot T6 — la SIMULATION 3 reste rejouable telle quelle : ses cinq rediffusions (lots T2 et T3b) sont GARDÉES (codes, résultats, empreintes finales, ticks) et rejouées par la version qu'elles nomment", () => {
+    expect(golden.anciennesSim.map((a) => a.sim)).toEqual([3]);
+    const v3 = golden.anciennesSim[0]!.rediffusions;
+    expect(v3.map((r) => r.nom)).toEqual(["essai", "jour-avec-paliers", "zero-vie", "jour-v3", "tirage-v3"]);
+    const [essai, paliers, zero] = v3 as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
     expect([essai.empreinteFinale, paliers.empreinteFinale, zero.empreinteFinale]).toEqual(["6bdaf6d2031e3d27", "42b1b91a21e39353", "816bc75119e02ae5"]);
     expect([essai.ticks, paliers.ticks, zero.ticks]).toEqual([1077, 1720, 244]);
     expect([essai.code.length, paliers.code.length, zero.code.length]).toEqual([179, 278, 39]);
     expect([essai, paliers, zero].map((r) => (r.resultat as { hauteurMm: number }).hauteurMm)).toEqual([5000, 37_978, 0]);
     expect(paliers.contenu).toEqual({ date: "2026-11-02", g: 2 });
     expect(zero.contenu).toEqual({ date: "2026-11-03", g: 2 });
-    expect(dailyTower(parseDay("2026-11-02")!, 2).paliers.map((p) => p.metres)).toEqual([10, 20, 30, 40, 50, 60]); // ce que la partie du lot T2 a joué
+    expect(dailyTower(parseDay("2026-11-02")!, 2).paliers.map((p) => p.metres)).toEqual([10, 20, 30, 40, 50, 60]);
+    for (const r of v3) expect(decoderRediffusion(r.code).sim, r.nom).toBe(3);
   });
 
-  it("les dix dates couvrent les deux bornes d'un sac de sept, chaque bonus en premier palier, chaque malus en deuxième, les deux sens du vent et les quatre plateformes", () => {
-    const cs = golden.contenus.map((c) => dailyTower(parseDay(c.date)!, golden.versions.g));
-    expect(cs.some((c) => aDoublon(c.pieces))).toBe(true); // deux sacs qui se touchent sur la même pièce
-    expect(cs.some((c) => !aDoublon(c.pieces))).toBe(true);
-    expect(cs.some((c) => aEcartMaximal(c.pieces))).toBe(true); // 13 pièces d'écart : le premier d'un sac, le dernier du suivant
-    expect(new Set(cs.map((c) => c.paliers[0]!.effet))).toEqual(new Set(["lierre", "figee", "petite"]));
-    expect(new Set(cs.map((c) => c.paliers[1]!.effet))).toEqual(new Set(["geante", "vent", "glissante"]));
-    expect(new Set(cs.map((c) => c.ventSens))).toEqual(new Set([-1, 1]));
-    expect(new Set(cs.map((c) => c.plateformeDemi8))).toEqual(new Set([20, 24, 28, 32]));
-  });
-
-  it("cinq rediffusions de référence : les trois du lot T2 (scénario d'essai à neuf vies, un jour avec paliers, une partie à 0 vie — elles nomment la version 2 du générateur et restent rejouables) et, lot T3b, un jour et un tirage de la version 3", () => {
-    expect(golden.rediffusions.map((r) => r.nom)).toEqual(["essai", "jour-avec-paliers", "zero-vie", "jour-v3", "tirage-v3"]);
-    const [essai, paliers, zero, v3, tirage] = golden.rediffusions as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
-    expect(decoderRediffusion(essai.code)).toMatchObject({ contenu: { scenario: "essai" }, g: 0, reglages: { vies: 9 } }); // l'en-tête garde des réglages non standard
-    expect(decoderRediffusion(paliers.code)).toMatchObject({ contenu: { jour: parseDay("2026-11-02") }, g: 2 });
-    expect(paliers.paliers).toBeGreaterThanOrEqual(3); // plusieurs effets s'appliquent : le lierre, la pièce géante, la pièce figée, le coup de vent
-    expect(zero.resultat).toMatchObject({ vies: 0, tombees: 3, posees: 0, motif: "vies" });
-    expect(decoderRediffusion(v3.code)).toMatchObject({ contenu: { jour: parseDay("2026-11-02") }, g: 3 });
-    expect(decoderRediffusion(tirage.code)).toMatchObject({ contenu: { jour: parseDay("2026-11-02"), tirage: 2 }, g: 3 });
-    expect(v3.paliers).toBeGreaterThanOrEqual(2); // les paliers tous les 8 m se déclenchent
-    expect(tirage.paliers).toBeGreaterThanOrEqual(2);
-  });
-
-  it("lot T3b : les trois rediffusions du lot T2 sont GARDÉES telles quelles (codes, résultats, empreintes finales) — l'ancienne règle des paliers reste rejouable", () => {
-    const garde: Record<string, { code: string; hauteurMm: number; empreinteFinale: string }> = {
-      essai: { code: golden.rediffusions[0]!.code, hauteurMm: (golden.rediffusions[0]!.resultat as { hauteurMm: number }).hauteurMm, empreinteFinale: golden.rediffusions[0]!.empreinteFinale },
-    };
-    expect(Object.keys(garde)).toEqual(["essai"]);
-    expect(golden.rediffusions[1]!.contenu).toEqual({ date: "2026-11-02", g: 2 });
-    expect(golden.rediffusions[2]!.contenu).toEqual({ date: "2026-11-03", g: 2 });
-    expect((golden.rediffusions[1]!.resultat as { hauteurMm: number }).hauteurMm).toBe(37_978);
-    expect(golden.rediffusions[1]!.empreinteFinale).toBe("42b1b91a21e39353");
-  });
-
-  for (const ref of golden.rediffusions) {
+  for (const ref of [...golden.anciennesSim.flatMap((a) => a.rediffusions.map((r) => ({ ...r, nom: `simulation ${a.sim} : ${r.nom}` }))), ...golden.rediffusions]) {
     it(`${ref.nom} : le code se décode, se réencode à l'identique, et se rejoue au bit près (Resultat et état final)`, () => {
       expect(encoderRediffusion(decoderRediffusion(ref.code))).toBe(ref.code);
       const r = rejouerComplet(R, contenuDe(ref.contenu), ref.code);

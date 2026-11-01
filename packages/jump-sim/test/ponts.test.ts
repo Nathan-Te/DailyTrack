@@ -594,7 +594,7 @@ describe("lot 26 — les sept morceaux de la nuit", () => {
 describe("lot 26 — les niveaux du jour de la nuit (g20, v10)", () => {
   it("la version 10 et g20 : l'identifiant, le figeage, la relecture ; une version incohérente est refusée", () => {
     expect(BRIDGE_GENERATOR).toBe(20);
-    expect(JUMP_GENERATOR_VERSION).toBe(BRIDGE_GENERATOR + 4); // lot 27 : g21 (v11) ; lot 28 : g22 (v12) ; lot V1 : g23 (le sac de thèmes) ; lot 30 : g24 (v13, le maintien minimal du saut)
+    expect(JUMP_GENERATOR_VERSION).toBe(BRIDGE_GENERATOR + 5); // lot 31 : g25 (la place autour de la lame, la portion dure à la pire phase, v13) ; lot 27 : g21 (v11) ; lot 28 : g22 (v12) ; lot V1 : g23 (le sac de thèmes) ; lot 30 : g24 (v13, le maintien minimal du saut)
     const day = parseDay("2026-12-17")!;
     const L = dailyLevel(day, null, BRIDGE_VERSION);
     expect(L.level.simVersion).toBe(10);

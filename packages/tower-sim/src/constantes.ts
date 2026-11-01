@@ -4,8 +4,12 @@
 /**
  * Version de la simulation de jeu. Elle monte à tout changement de règle ou de réglage qui change une partie rejouée, et le golden (`test/fixtures/golden-tower.json`) ne
  * se régénère qu'avec elle. Version 2 (lot T2) : les paliers (lierre, pièce figée, petite, géante, coup de vent, glissante). Version 3 (lot T2) : « descendre » n'a plus aucun effet physique (la pièce se pose à la vitesse d'une chute normale) et la pièce figée se fige au contact.
+ * **Version 4 (lot T6) : la grille et la pose juste** — la pièce active est pilotée par sa boîte englobante (ses bords restent sur la grille des demi-cases), le quart de tour pivote autour d'un point
+ * de la grille avec un décalage de secours, la pièce ne lâche plus le long d'un voisin collé, et les paramètres de contact de Rapier changent (`contact.ts`). La version 3 reste rejouable telle quelle.
  */
-export const TOWER_SIM_VERSION = 3;
+export const TOWER_SIM_VERSION = 4;
+/** Les versions de la simulation que ce code sait jouer (lot T6 : la 3 reste rejouable au bit près, la 4 est celle des parties nouvelles). */
+export const VERSIONS_SIM_JOUABLES: readonly number[] = [3, 4];
 
 /** Pas fixe : 60 Hz (décision de Nathan après le lot T0). */
 export const TICKS_PAR_SECONDE = 60;

@@ -28,9 +28,9 @@ describe("la séquence du fantôme", () => {
     expect(suivant("diamant", { meilleure: false, diamant: false })).toBe("aucun");
   });
 
-  it("l'état de départ : Ma meilleure si elle existe, sinon Aucun (jamais le Diamant sans qu'on le choisisse)", () => {
-    expect(etatInitial(tout)).toBe("meilleure");
-    expect(etatInitial({ meilleure: false, diamant: true })).toBe("aucun");
+  it("l'état de départ : le fantôme est éteint par défaut (lot T6) — Aucun, même quand ta meilleure partie existe ; on le choisit avec le bouton", () => {
+    expect(etatInitial()).toBe("aucun");
+    expect(suivant(etatInitial(), tout)).toBe("meilleure"); // un appui sur le bouton le rallume
   });
 
   it("un état qui n'est plus disponible retombe sur Aucun", () => {
@@ -45,12 +45,11 @@ describe("la séquence du fantôme", () => {
   });
 });
 
-describe("le fantôme au départ (Réglages › Affichage, lot T7)", () => {
-  it("« Ma meilleure » par défaut si elle existe ; « Aucun » si le joueur ne la veut pas au départ ; jamais une meilleure qui n'existe pas", () => {
-    expect(etatInitial({ meilleure: true, diamant: true })).toBe("meilleure");
-    expect(etatInitial({ meilleure: true, diamant: true }, "meilleure")).toBe("meilleure");
+describe("le fantôme au départ (Réglages › Affichage, lots T6 et T7)", () => {
+  it("« Aucun » par défaut (lot T6) ; « Ma meilleure » seulement si le joueur la veut au départ ET qu'elle existe", () => {
+    expect(etatInitial({ meilleure: true, diamant: true })).toBe("aucun");
     expect(etatInitial({ meilleure: true, diamant: true }, "aucun")).toBe("aucun");
+    expect(etatInitial({ meilleure: true, diamant: true }, "meilleure")).toBe("meilleure");
     expect(etatInitial({ meilleure: false, diamant: true }, "meilleure")).toBe("aucun");
   });
 });
-
