@@ -1,4 +1,4 @@
-import { buildModule } from "./modules";
+import { buildModule, soloLevel } from "./modules";
 import { stalactiteRunProblems } from "./stalactites";
 
 // Lot 24 : la règle de la course franche (`stalactiteRunProblems`) simule le jeu (quelques centaines de pas par stalactite) mais ne dépend que de la grille d'un morceau (la zone reste dans
@@ -8,11 +8,12 @@ import { stalactiteRunProblems } from "./stalactites";
 const memo = new Map<string, readonly string[]>();
 
 /** Ce que la règle de la course franche dit de la variante `variant` du morceau `id` (vide : conforme). Gardé en mémoire (fonction pure). */
-export function stalactitePieceProblems(id: string, variant: number): readonly string[] {
-  const key = `${id}:${variant}`;
+/** Lot 30 : `legacy` joue le morceau seul sans maintien minimal (niveaux d'avant la version 13). */
+export function stalactitePieceProblems(id: string, variant: number, legacy = false): readonly string[] {
+  const key = `${id}:${variant}:${legacy ? 1 : 0}`;
   let found = memo.get(key);
   if (found === undefined) {
-    found = stalactiteRunProblems(buildModule(id, variant).level).map((p) => `${id} v${variant} : ${p}`);
+    found = stalactiteRunProblems(soloLevel(buildModule(id, variant), legacy)).map((p) => `${id} v${variant} : ${p}`);
     memo.set(key, found);
   }
   return found;

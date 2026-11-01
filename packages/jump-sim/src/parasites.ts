@@ -2,4 +2,4 @@
 // Variantes fermées : une voie parasite (un détour qui contourne le passage dur pour moins que le coût minimal d'une voie lente) ; le
 // générateur v4 (g11) ne les pose plus. Détail : `modules/voies.json`, `docs/jump/lots/lot-16-seconde-voie.md`.
 
-export const PARASITE_CLOSED: Readonly<Record<string, readonly number[]>> = {};
+export const PARASITE_CLOSED: Readonly<Record<string, readonly number[]>> = {"chaland":[1,3],"monte-charge":[1],"nuit-cheminee":[7]};

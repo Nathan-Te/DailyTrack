@@ -7,8 +7,9 @@ import {
   GIGUE_DRAWS,
   INPUT_JUMP,
   INPUT_RIGHT,
+  HOLD_VARIATION,
+  JUMP_MICRO_MAX,
   PLAYER_WIDTH,
-  PRESS_MIN,
   RELEASE_MIN,
   RACCORD_POSITIONS,
   RACCORD_TAIL,
@@ -95,6 +96,22 @@ export function fromCore(m: BuiltModule, entry: ModuleEntry, cur: readonly numbe
   return typeof moduleSpan(m, entry, full) === "string" ? null : { core, full };
 }
 
+/** Les appuis de saut d'une suite de commandes : début et fin (exclue) de chaque série du bit de saut (lot 30). */
+export function appuis(inputs: readonly number[]): { from: number; to: number }[] {
+  const out: { from: number; to: number }[] = [];
+  let from = -1;
+  inputs.forEach((bits, t) => {
+    const on = (bits & INPUT_JUMP) !== 0;
+    if (on && from < 0) from = t;
+    if (!on && from >= 0) {
+      out.push({ from, to: t });
+      from = -1;
+    }
+  });
+  if (from >= 0) out.push({ from, to: inputs.length });
+  return out;
+}
+
 /** Fins de séries (pas où la commande change), sans la fin de la suite. */
 function boundaries(inputs: readonly number[]): { runs: number[]; ends: number[] } {
   const runs = toRuns(inputs);
@@ -120,11 +137,11 @@ function rebuild(bits: readonly number[], ends: readonly number[], total: number
 }
 
 /**
- * Lot 11 : ce qu'un doigt peut réellement faire. Un appui plus court que `PRESS_MIN` pas est prolongé jusque-là ; un relâchement de moins de
- * `RELEASE_MIN` pas entre deux appuis retarde le second appui (qui garde sa fin, ou `PRESS_MIN` pas au moins). Sans cela, la gigue
- * fabriquait des appuis d'un pas qu'aucun joueur ne produit, et ne punissait pas les solutions qui en exigent.
+ * Lot 11 : ce qu'un doigt peut réellement faire. Un relâchement de moins de `RELEASE_MIN` pas entre deux appuis retarde le second appui (qui garde sa
+ * fin). **Lot 30 : plus de prolongation des appuis courts** — le maintien minimal du saut (`JUMP_MIN_HOLD`, dans la simulation) fait de tout appui de 1 à 10 pas le même
+ * petit saut : la gigue n'a plus besoin d'allonger un appui d'un pas, la physique le fait. `pressMin` (0 par défaut) permet de retrouver la règle d'avant (5) pour comparer.
  */
-export function humanized(inputs: readonly number[]): number[] {
+export function humanized(inputs: readonly number[], pressMin = 0): number[] {
   const out = [...inputs];
   const n = out.length;
   const jump = (t: number) => (out[t]! & INPUT_JUMP) !== 0;
@@ -143,8 +160,8 @@ export function humanized(inputs: readonly number[]): number[] {
     }
     let e = t;
     while (e < n && jump(e)) e++;
-    if (e - t < PRESS_MIN) {
-      for (; e < Math.min(n, t + PRESS_MIN); e++) out[e] = out[e]! | INPUT_JUMP;
+    if (e - t < pressMin) {
+      for (; e < Math.min(n, t + pressMin); e++) out[e] = out[e]! | INPUT_JUMP;
       while (e < n && jump(e)) e++;
     }
     release = e;
@@ -153,8 +170,33 @@ export function humanized(inputs: readonly number[]): number[] {
   return out;
 }
 
-/** La solution, chaque changement de commande décalé de −k à +k pas (au moins un pas par commande), puis rendue humaine (`humanized`). */
-export function jittered(inputs: readonly number[], k: number, rng: Rng): number[] {
+/**
+ * Lot 30 : la **durée de chaque appui de saut varie** de −`HOLD_VARIATION` à +`HOLD_VARIATION` pas (4), tirée au hasard pour chaque appui : le doigt ne tient pas le bouton au pas
+ * près. Un appui raccourci garde au moins un pas (sous le maintien minimal, il vaut de toute façon le petit saut : la variation ne compte qu'**au-dessus du minimum**) ; un appui allongé
+ * s'arrête avant le prochain appui moins `RELEASE_MIN` pas. L'appui qui va jusqu'à la fin des commandes n'est pas touché (il se prolonge dans le jeu).
+ */
+export function holdVaried(inputs: readonly number[], rng: Rng, spread = HOLD_VARIATION): number[] {
+  const out = [...inputs];
+  const n = out.length;
+  const starts: number[] = [];
+  for (let t = 0; t < n; t++) if ((out[t]! & INPUT_JUMP) !== 0 && (t === 0 || (out[t - 1]! & INPUT_JUMP) === 0)) starts.push(t);
+  for (let i = 0; i < starts.length; i++) {
+    const a = starts[i]!;
+    let b = a;
+    while (b < n && (out[b]! & INPUT_JUMP) !== 0) b++;
+    if (b >= n) continue;
+    const d = rng.int(2 * spread + 1) - spread;
+    if (d === 0) continue;
+    const limit = i + 1 < starts.length ? starts[i + 1]! - RELEASE_MIN : n;
+    const end = Math.max(a + 1, Math.min(b + d, limit));
+    if (end < b) for (let t = end; t < b; t++) out[t] = out[t]! & ~INPUT_JUMP;
+    else for (let t = b; t < end; t++) out[t] = out[t]! | INPUT_JUMP;
+  }
+  return out;
+}
+
+/** Les instants de la solution décalés de −k à +k pas (au moins un pas par commande), rien d'autre : la gigue du lot 8c, avant d'être rendue humaine. */
+function shiftedInstants(inputs: readonly number[], k: number, rng: Rng): number[] {
   const { runs, ends } = boundaries(inputs);
   const shifted: number[] = [];
   let prev = 0;
@@ -165,7 +207,21 @@ export function jittered(inputs: readonly number[], k: number, rng: Rng): number
     prev = v;
   }
   const total = Math.max(inputs.length, prev + 1);
-  return humanized(rebuild(runs, shifted, total));
+  return rebuild(runs, shifted, total);
+}
+
+/**
+ * La solution, chaque changement de commande décalé de −k à +k pas (au moins un pas par commande), la durée de chaque appui de saut variée de ±`HOLD_VARIATION` pas (lot 30),
+ * puis rendue humaine (`humanized`).
+ */
+export function jittered(inputs: readonly number[], k: number, rng: Rng): number[] {
+  // Un doigt qui vise un appui franc ne fait pas un micro-saut par accident : la gigue ne descend jamais sous `JUMP_MICRO_MAX + 1` pas (au-dessous, c'est le micro-saut voulu).
+  return humanized(holdVaried(shiftedInstants(inputs, k, rng), rng), JUMP_MICRO_MAX + 1);
+}
+
+/** La gigue d'avant le lot 30 (les instants seuls, sans variation de la durée des appuis) : de quoi comparer les deux mesures. */
+export function jitteredInstants(inputs: readonly number[], k: number, rng: Rng): number[] {
+  return humanized(shiftedInstants(inputs, k, rng));
 }
 
 export interface Margins {

@@ -369,5 +369,5 @@ describe("la galerie `?modules` et `?semaine`", () => {
     L.level.stalactites.forEach((s, i) => expect(d.stalactites![i]).toEqual({ col: s.col, row: s.row, before: s.before, after: s.after }));
     // Un jour sans stalactite n'a pas le champ.
     expect(semaineDayOf(dailyLevel(parseDay("2026-10-27")!)).stalactites).toBeUndefined();
-  });
+  }, 30_000); // cherche un jour de glace par génération à froid : ≈ 2 s seul, plus de 5 s sur un cœur de CI chargé
 });

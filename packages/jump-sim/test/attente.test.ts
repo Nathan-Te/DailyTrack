@@ -1,3 +1,5 @@
+import "./legacy";
+import { legacyCatalog } from "../src/legacyRegistry";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseDay } from "@cdj/core";
@@ -21,6 +23,7 @@ import {
   moduleSpan,
   sectionPeriod,
   variantExigence,
+  variantUsable,
 } from "../src/index";
 import { PHASE_WAIT_MAX, phaseOk, phaseWait, phasesOf, singleClockModule, variantOk, waitOf, type PhaseResult, type PhasesFile } from "../tools/phasesFile";
 
@@ -91,13 +94,17 @@ describe("lots 17 à 19 — les variantes ajoutées (V4_ONLY_VARIANTS)", () => {
   it("les trois du lot 17 sont là (les autres sont les remplaçantes de nuit du lot 18, `rythme.test.ts`), ajoutées au bout de la liste du morceau, et leurs jumelles refusées restent refusées", () => {
     for (const lot17 of [{ id: "scie-sol", variant: 6 }, { id: "cheminee-scie", variant: 4 }, { id: "nuit-opposition", variant: 5 }]) expect(added).toContainEqual(lot17);
     for (const [id, list] of Object.entries(V4_ONLY_VARIANTS)) expect(MODULES.find((d) => d.id === id)!.variants.length, id).toBe(Math.max(...list) + 1);
-    expect(PHASE_REFUSED["scie-sol"]).toEqual([3]);
-    expect(PHASE_REFUSED["cheminee-scie"]).toEqual([3]);
-    expect(PHASE_REFUSED["nuit-opposition"]).toEqual([4]);
+    // Lot 30 : la liste de refus d'aujourd'hui est celle du catalogue re-résolu ; celle d'avant (versions 3 à 12) est gardée dans `src/legacy/refuses.ts`.
+    const legacy = legacyCatalog().phaseRefused;
+    expect(legacy["scie-sol"]).toEqual([3]);
+    expect(legacy["cheminee-scie"]).toEqual([3]);
+    expect(legacy["nuit-opposition"]).toEqual([4]);
   });
 
   for (const { id, variant } of added) {
     it(`${id} v${variant} : hors de PHASE_REFUSED, toutes les phases ont une solution jouable qui attend au plus 12 s, rejouée dans le morceau`, () => {
+      // Lot 30 : une variante ajoutée que le catalogue re-résolu n'a plus (aucune solution qui tienne la règle des appuis de 10 pas) ou refusée toutes phases est écartée de la version 13.
+      if (!variantUsable(id, variant) || PHASE_REFUSED[id]?.includes(variant)) return;
       expect(PHASE_REFUSED[id]?.includes(variant) ?? false).toBe(false);
       const s = moduleSolutions(id, variant);
       expect(s?.arret && s.elan && variantExigence(s) >= 1, "solutions jouables aux deux entrées").toBeTruthy();

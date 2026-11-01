@@ -2,11 +2,12 @@ import { ATTEMPT_DEAD, ATTEMPT_FINISHED, boxesOverlap, circleHitsBox, stepAttemp
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
-import { START_AT_SPAWN, encodeReplay, replayStartState, toRuns } from "./replay";
+import { START_AT_SPAWN, decodeReplay, encodeReplay, fromRuns, replayStartState, toRuns } from "./replay";
 import { MODULE_PACKED, MODULE_TEXTS } from "./catalog";
 import { textHash } from "./texthash";
 import { fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
-import { MODULE_ENTRIES, PALIER_LENGTH, SECTION_CLOCK_VERSION, UNITS_PER_TILE, type ModuleEntry } from "./constants";
+import { JUMP_MIN_HOLD, MODULE_ENTRIES, PALIER_LENGTH, SECTION_CLOCK_VERSION, UNITS_PER_TILE, type ModuleEntry } from "./constants";
+import { legacyCatalog } from "./legacyRegistry";
 import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
 import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, laserBarBox, laserBox, platformPos, pressBox, sawCenter, type Level } from "./level";
 
@@ -1001,6 +1002,8 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
         .join(" "),
     );
   }
+  // Lot 30 : un morceau joué seul a le maintien minimal du saut (il reste en version 3, une horloge par section : la ligne `maintien` le dit).
+  annex.push(`maintien ${JUMP_MIN_HOLD}`);
   const ascii = lines.join("\n") + "\n\n" + annex.join("\n") + "\n";
   let level: Level;
   try {
@@ -1190,9 +1193,9 @@ export interface ModuleSolutionsFile {
 
 /**
  * Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6) ;
- * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3.
+ * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3 ; 4 : appui d'au moins 5 pas (lot 11) ; 5 : appui d'au moins 6 pas et durée d'appui variée de ±4 pas (lot 30).
  */
-export const EXIGENCE_VERSION = 4;
+export const EXIGENCE_VERSION = 6;
 
 // ——— Jouable au clavier (lot 11, retouche) ———
 // La gigue (ci-dessus) décale des changements de commande mais ne dit pas **combien de temps un doigt peut tenir ou lâcher une touche** : une
@@ -1200,8 +1203,14 @@ export const EXIGENCE_VERSION = 4;
 // pratique 60 à 100 ms). Mesuré sur le catalogue du lot 11 : 81 solutions sur 580 avaient un appui d'un seul pas, 118 un relâchement d'un seul
 // pas entre deux appuis. Un petit saut est pourtant ce que les scies basses réclament : la hauteur d'un saut dépend de la durée de l'appui
 // (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,71 à 5 pas, 2,22 à 8 pas, 2,82 à 12 pas).
-/** Plus courte durée d'un appui de saut (pas) : 5 pas = 42 ms, un appui franc ; le plus petit saut qu'on puisse exiger fait 1,71 tuile. */
-export const PRESS_MIN = 5;
+/**
+ * Plus courte durée d'un appui de saut (pas) qu'une solution peut exiger. **Lot 30 : 6 pas (50 ms), le maintien minimal du saut** (`JUMP_MIN_HOLD`) : un tap volontaire dure 60 à 120 ms, et
+ * tout appui de 5 à 6 pas donne le même petit saut (en deçà, le micro-saut) (le plus petit qu'on puisse exiger). Avant le lot (sans maintien minimal, catalogue d'avant) : `PRESS_MIN_LEGACY` = 5 pas = 42 ms, qui donnait
+ * un saut de 1,71 tuile et qu'un doigt ne dose pas.
+ */
+export const PRESS_MIN = JUMP_MIN_HOLD;
+/** La règle des appuis jusqu'à la version 12 (catalogue d'avant le lot 30) : 5 pas = 42 ms. */
+export const PRESS_MIN_LEGACY = 5;
 /** Plus court relâchement (pas) entre deux appuis de saut : 3 pas = 25 ms (un appui-relâchement complet d'au moins 8 pas, ≈ 15 par seconde). */
 export const RELEASE_MIN = 3;
 
@@ -1244,6 +1253,11 @@ export function shortestPress(inputs: readonly number[]): number {
 }
 /** Tirages par amplitude de gigue (±1, ±2, ±3 pas). */
 export const GIGUE_DRAWS = 200;
+/**
+ * Lot 30 : la **tolérance sur la durée d'un appui de saut**, ±4 pas (33 ms), qui s'ajoute à la gigue ±3 sur les instants (`jittered`, `tools/exigence.ts`) avec le même seuil de réussite que
+ * le lot 8c (`HUMAIN_MIN`) : au-dessus du maintien minimal, le doigt ne tient pas un bouton au pas près. Un saut dont la hauteur exige une durée d'appui exacte fait chuter le taux sous le seuil.
+ */
+export const HOLD_VARIATION = 4;
 /**
  * Positions d'entrée du test de raccord (lot 6) : de combien d'unités le centre du personnage a dépassé le bord droit du palier d'entrée
  * au pas où il le franchit. À pleine vitesse un pas fait `runSpeed` = 375 unités : l'entrée réelle tombe n'importe où dans [0, 375) ; on
@@ -1439,13 +1453,50 @@ export const MODULE_SOLUTIONS: CatalogFile = /* @__PURE__ */ unpackCatalog(MODUL
 export const MODULE_SIM_VERSION = SECTION_CLOCK_VERSION;
 
 /** Les solutions stockées d'un morceau (variante) : null si le catalogue n'en a pas (ou plus : grille ou version changée). */
-export function moduleSolutions(id: string, variant: number): CatalogVariant | null {
-  if (MODULE_SOLUTIONS.jumpSimVersion !== MODULE_SIM_VERSION) return null;
-  return MODULE_SOLUTIONS.modules[id]?.variants[variant] ?? null;
+export function moduleSolutions(id: string, variant: number, legacy = false): CatalogVariant | null {
+  const file = legacy ? legacyCatalog().solutions : MODULE_SOLUTIONS;
+  if (file.jumpSimVersion !== MODULE_SIM_VERSION) return null;
+  return file.modules[id]?.variants[variant] ?? null;
+}
+
+/**
+ * Lot 30 : le morceau joué seul **tel que le jouaient les solutions de l'ancien catalogue** (`legacy` : sans maintien minimal du saut, versions 3 à 12 du niveau du jour) ou tel
+ * qu'il se joue aujourd'hui (avec). Un niveau d'une version d'avant la 13 (`Level.minHold` à 0) prend les solutions d'avant (`moduleSolutions(…, true)`), un niveau de la 13 les nouvelles.
+ */
+export function soloLevel(m: Pick<BuiltModule, "level">, legacy: boolean): Level {
+  return legacy && m.level.minHold !== 0 ? { ...m.level, minHold: 0, microMax: 0 } : m.level;
 }
 
 /** Lot 7b : une respiration n'est jamais exigeante — toute variante d'un morceau étiqueté `respiration` a une exigence de 2 au plus. */
 export const MAX_REST_EXIGENCE = 2;
+
+/** Nombre d'appuis de saut (fronts montants du bouton) d'une rediffusion de solution. */
+export function pressCount(code: string): number {
+  const bits = fromRuns(decodeReplay(code).runs);
+  return bits.filter((b, t) => (b & INPUT_JUMP) !== 0 && (t === 0 || (bits[t - 1]! & INPUT_JUMP) === 0)).length;
+}
+
+/**
+ * Lot 30 : les règles du catalogue qui se lisent sur les solutions — la durée d'un morceau (lot 7) et celles des **respirations** (lot 7b : exigence de 2 au plus aux deux entrées ; lot 7 : jamais une course à plat, au moins trois sauts à faire —
+ * pour les sols dynamiques de la nuit et du néon, d'une variante mutée ou d'une plateforme, comptés sur les appuis de la solution ; pour les autres, sur les plats, que lit `tools/plats.ts`). Avec le
+ * maintien minimal le petit saut est plus haut : des solutions nécessitent moins de sauts ou plus d'exigence. Une variante qui ne tient plus la règle est **écartée** du catalogue de la version 13
+ * (elle garde son texte et sa place), jamais la règle relâchée.
+ */
+export function restUsable(def: Pick<ModuleDef, "tags" | "theme" | "mutations" | "long">, variant: number, sol: CatalogVariant): boolean {
+  // Lot 7 : la durée entre l'entrée et la sortie, 1 à 6 s (5 à 8 s pour un enchaînement long), à chaque entrée — plus lente avec un petit saut plus haut, une solution peut sortir de la plage.
+  const [lo, hi] = def.long ? [LONG_MIN_TICKS, LONG_MAX_TICKS] : [MODULE_MIN_TICKS, MODULE_MAX_TICKS];
+  for (const e of [sol.arret!, sol.elan!]) {
+    const ticks = e.exitTick - e.entryTick;
+    if (ticks < lo || ticks > hi) return false;
+  }
+  if (!def.tags.includes("respiration")) return true;
+  if (variantExigence(sol) > MAX_REST_EXIGENCE) return false;
+  // Au moins trois sauts à faire : sur les appuis de la solution pour les sols dynamiques (nuit, néon, plateforme, variante mutée) et les morceaux à stalactites ou à ponts (leurs tests le comptaient déjà) ; pour les autres,
+  // sur les plats (`tools/plats.ts`, la grille seule).
+  const dynamic = def.theme === "nuit" || def.theme === "neon" || def.tags.includes("plateforme") || def.tags.includes("stalactite") || def.tags.includes("pont") || (def.mutations[variant] ?? []).some((m) => m.name === "clignotant" || m.name === "alterne");
+  if (!dynamic) return true;
+  return pressCount(sol.arret!.code) >= 3 && pressCount(sol.elan!.code) >= 3;
+}
 
 /** Exigence d'une variante : la plus haute de ses deux solutions (0 s'il en manque une). */
 export function variantExigence(s: CatalogVariant | null): number {

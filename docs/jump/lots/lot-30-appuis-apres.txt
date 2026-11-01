@@ -1,0 +1,60 @@
+solutions gardées (arrêt + élan, exigence ≥ 1) : 1359 ; appuis de saut : 4710 ; moins de 6 pas : 0 (0 %)
+durée d'appui (pas) : nombre — 6:923  7:256  8:436  9:99  10:82  11:88  12:171  13:77  14:76  15:97  16:138  17:81  18:165  19:87  20:101  21:68  22:69  23:77  24:89  25:56  26:74  27:33  28:48  29:36  30:26  31:21  32:16  33:12  34:16  35:11  36:29  37:13  38:14  39:6  40:12  41:10  42:36  43:15  44:15  45:7  46:14  47:17  48:62  49:21  50:14  51:9  52:31  53:19  54:45  55:21  56:24  57:11  58:10  59:8  60:30  61:16  62:7  63:7  64:16  65:12  66:12  67:7  68:15  69:7  70:9  71:15  72:20  73:9  74:15  75:10  76:15  77:10  78:17  79:7  80:27  81:9  82:5  83:5  84:28  85:6  86:6  87:5  88:6  89:3  90:13  91:4  92:8  93:4  94:4  95:2  96:11  97:6  98:3  99:2  100:6  101:2  102:6  103:4  104:7  105:2  106:5  107:9  108:14  109:2  110:2  111:8  112:17  113:4  114:8  115:4  116:10  117:2  118:2  119:7  120:20  121:4  122:6  123:5  124:11  125:1  126:9  127:6  128:5  131:4  132:11  133:1  136:5  137:3  138:6  139:2  140:1  142:2  143:4  144:18  145:2  148:3  150:2  151:1  152:1  154:2  156:1  158:1  160:1  161:3  162:2  166:1  167:1  168:4  169:1  170:2  171:1  183:1  184:1  192:2  193:1  194:1  196:1  200:1  204:1  205:2  206:2  210:2  216:1  222:1  228:2  236:1  240:5  254:1  292:2  300:3
+variantes avec un saut : 681 ; avec un appui < 6 pas : 0 ; dont la durée ne tolère pas ±4 pas : 151
+plus court appui par solution : 0:45  6:602  7:113  8:129  9:25  10:16  11:25  12:43  13:18  14:13  15:17  16:18  17:12  18:36  19:14  20:18  21:12  22:7  23:15  24:14  25:6  26:11  27:3  28:8  29:1  30:2  31:3  32:2  34:3  35:2  36:2  37:1  38:2  40:3  42:8  43:2  44:1  45:1  46:6  47:3  48:6  52:2  53:1  54:3  55:1  56:3  57:3  58:2  59:1  60:6  61:1  62:1  64:3  65:2  66:1  67:2  69:1  71:2  73:1  76:2  77:2  78:2  79:1  80:3  81:1  82:1  84:1  87:1  88:1  90:3  92:1  93:2  94:1  96:3  97:1  99:1  102:2  104:1  105:1  106:2  107:4  120:1  144:1  152:1  192:2  210:2  222:1  228:2  236:1  240:5  292:2
+morceau : variantes à appui court / à durée intolérante / plus court appui
+  balancier : courtes - · intolérantes 4 · min 6
+  chaland : courtes - · intolérantes 1,2,3,4 · min 6
+  champignon-rafale : courtes - · intolérantes 4,5 · min 6
+  champignon-tourbillon : courtes - · intolérantes 5,8 · min 6
+  cheminee-quinconce : courtes - · intolérantes 0 · min 6
+  chute-pics : courtes - · intolérantes 0 · min 6
+  escalier-friable : courtes - · intolérantes 0,1,2,3 · min 6
+  grande-scie : courtes - · intolérantes 0,1,2,3,4,5 · min 6
+  iles-scie : courtes - · intolérantes 0,2,3 · min 6
+  laser-alterne-balai : courtes - · intolérantes 0,3,5,6,7,8,9 · min 6
+  laser-alterne-portes : courtes - · intolérantes 0,5 · min 6
+  laser-balayage : courtes - · intolérantes 0,3,4,5 · min 6
+  laser-barre-sol : courtes - · intolérantes 3 · min 6
+  laser-cheminee : courtes - · intolérantes 0,1,3,4,5,6,7,8,9 · min 6
+  laser-serre : courtes - · intolérantes 3,6,8,9 · min 6
+  lucarne : courtes - · intolérantes 0,1,2,4 · min 6
+  navette : courtes - · intolérantes 3 · min 6
+  nuit-cheminee : courtes - · intolérantes 3,7 · min 6
+  nuit-escalier : courtes - · intolérantes 3,4,7 · min 6
+  nuit-marelle : courtes - · intolérantes 0 · min 6
+  nuit-opposition : courtes - · intolérantes 2,6 · min 6
+  nuit-relais : courtes - · intolérantes 0 · min 6
+  paroi-friable : courtes - · intolérantes 1 · min 6
+  pendule : courtes - · intolérantes 0,1,6 · min 6
+  piliers : courtes - · intolérantes 1,2 · min 6
+  piliers-scie : courtes - · intolérantes 0,2,3,4,5 · min 6
+  plafond-pics : courtes - · intolérantes 0,2,4 · min 6
+  plongeon : courtes - · intolérantes 4 · min 6
+  pont-clignotant-escalier : courtes - · intolérantes 1 · min 6
+  pont-clignotant-relais : courtes - · intolérantes 1 · min 6
+  pont-coude : courtes - · intolérantes 0,1,2,3 · min 6
+  pont-etroit : courtes - · intolérantes 0 · min 6
+  pont-vertige : courtes - · intolérantes 0,3 · min 6
+  presse-couloir : courtes - · intolérantes 0,1,2,3,4,5,6 · min 6
+  presse-ilot : courtes - · intolérantes 2 · min 6
+  presse-rythme : courtes - · intolérantes 2,3,4,5,6,7 · min 6
+  presse-tapis-contre : courtes - · intolérantes 1,4 · min 6
+  quinconce : courtes - · intolérantes 0 · min 6
+  ressort-mur : courtes - · intolérantes 0,2,3,4 · min 6
+  ressort-mur-iles : courtes - · intolérantes 0,2 · min 6
+  ressort-plafond : courtes - · intolérantes 1,3 · min 6
+  stalactite-glace-rangee : courtes - · intolérantes 0,1,2,3,4 · min 6
+  stalactite-sentier : courtes - · intolérantes 0,2,3,4 · min 6
+  tapis-contraire : courtes - · intolérantes 0,1,2,3 · min 6
+  tapis-lance : courtes - · intolérantes 0,2,3 · min 6
+  vent-brise : courtes - · intolérantes 2 · min 6
+  vent-colonne : courtes - · intolérantes 4 · min 6
+  vent-piliers : courtes - · intolérantes 2,3 · min 6
+  vent-pont : courtes - · intolérantes 2,5 · min 6
+  vent-relais : courtes - · intolérantes 0,1,2,3,4 · min 6
+  escalier-scies : courtes - · intolérantes 1,4 · min 12
+  mur-seul : courtes - · intolérantes 1,6,8 · min 12
+  tour-mobile : courtes - · intolérantes 0,1 · min 12
+  escalier : courtes - · intolérantes 0,1,3 · min 13
+phases.json : 2480 reprises, dont 0 avec un appui < 6 pas ; plus court appui : 0:104  6:1245  7:206  8:232  9:71  10:38  11:43  12:44  13:53  14:26  15:16  16:16  17:24  18:16  19:1  20:9  26:17  27:8  29:2  31:8  34:8  36:8  40:8  42:16  43:8  44:10  46:40  48:16  52:8  60:24  66:8  69:8  71:16  76:8  78:16  79:8  80:3  84:8  96:16  97:8  106:16  240:40

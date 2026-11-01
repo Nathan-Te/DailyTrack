@@ -10,6 +10,7 @@ variante: cycle=300
 variante: cycle=285
 variante: cycle=270
 variante: cycle=300 +plafond
+variante: cycle=278
 grille:
 ............................................................
 ............................................................

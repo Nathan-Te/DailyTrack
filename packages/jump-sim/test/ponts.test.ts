@@ -1,3 +1,4 @@
+import "./legacy";
 import { Rng, parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -70,6 +71,7 @@ import {
   type AttemptEvents,
   type AttemptState,
   type Level,
+  variantUsable,
 } from "../src/index";
 
 // Lot 26 : les ponts à interrupteur (sim v10). Les niveaux sont de petits textes écrits ici.
@@ -121,7 +123,7 @@ describe("lot 26 — la version de la simulation", () => {
   it("la version 10 est celle des ponts (lot 25 : la version 9 garde les lasers)", () => {
     expect(BRIDGE_VERSION).toBe(10);
     expect(LASER_VERSION).toBe(9);
-    expect(JUMP_SIM_VERSION).toBe(12); // lot 28 : la version 12 garde l'état des alternés à la reprise (lot 27 : la version 11 recommence l'essai à zéro avant le premier point de passage)
+    expect(JUMP_SIM_VERSION).toBe(13); // lot 30 : la version 13 a le maintien minimal du saut ; lot 28 : la version 12 garde l'état des alternés à la reprise (lot 27 : la version 11 recommence l'essai à zéro avant le premier point de passage)
     expect(room().simVersion).toBe(10);
   });
 });
@@ -442,12 +444,16 @@ describe("lot 26 — la poursuite franche (0,4 s d'avance sur l'extinction)", ()
 
   it("la règle rejoue la solution sur un niveau dont l'extinction arrive plus tôt : elle passe avec la marge, elle échoue sans", () => {
     // `pont-etroit` v0 (délai 170) : la solution gardée a 50 pas d'avance — assez ; avec 10 pas de moins d'avance, elle n'en a plus que 40 : refusée.
-    const m = buildModule("pont-etroit", 0);
-    const sol = moduleSolutions("pont-etroit", 0)!.arret!;
+    // Lot 30 : `pont-etroit` v0, dont la solution (re-résolue pour le maintien minimal) n'a plus 48 pas d'avance, est écartée du catalogue : la première variante utilisable la remplace.
+    const etroit = MODULES.find((d) => d.id === "pont-etroit")!.variants.findIndex((_, k) => variantUsable("pont-etroit", k));
+    expect(etroit).toBeGreaterThanOrEqual(0);
+    const m = buildModule("pont-etroit", etroit);
+    const sol = moduleSolutions("pont-etroit", etroit)!.arret!;
     const replay = decodeReplay(sol.code);
     expect(bridgeChaseProblems(m.level, replay, m.levelId, sol.ticks)).toEqual([]);
-    const tighter = withBridgeAdvance(m.level, 10);
-    expect(bridgeChaseProblems(tighter, replay, m.levelId, sol.ticks).length).toBeGreaterThan(0);
+    // Un niveau dont l'extinction arrive plus tôt de quelques pas : la solution d'avant n'a plus 48 pas d'avance (l'avance de cette variante dépasse 50 : on resserre jusqu'à ce que la règle refuse).
+    const tightenedBy = [10, 20, 40, 80, 160, 320].find((k) => bridgeChaseProblems(withBridgeAdvance(m.level, k), replay, m.levelId, sol.ticks).length > 0);
+    expect(tightenedBy, "la règle finit par refuser").toBeDefined();
     // Une solution qui n'a besoin d'aucune avance passe de très loin.
     const easy = buildModule("pont-ilots", 3);
     const easySol = moduleSolutions("pont-ilots", 3)!.arret!;
@@ -457,6 +463,7 @@ describe("lot 26 — la poursuite franche (0,4 s d'avance sur l'extinction)", ()
   it("l'avance réelle de chaque solution de chaque morceau est d'au moins 48 pas ; le pont est nécessaire (sans lui la solution n'arrive pas)", () => {
     for (const def of mods) {
       for (let v = 0; v < def.variants.length; v++) {
+        if (!variantUsable(def.id, v)) continue;
         const m = buildModule(def.id, v);
         for (const entry of ["arret", "elan"] as const) {
           const sol = moduleSolutions(def.id, v)![entry]!;
@@ -531,6 +538,8 @@ describe("lot 26 — les sept morceaux de la nuit", () => {
         const where = `${def.id} v${v}`;
         expect(palierProblems(m), where).toEqual([]);
         expect(bridgeProblems(m.level), where).toEqual([]);
+        // Lot 30 : une variante dont la solution ne suit plus le pont avec 0,4 s d'avance est écartée du catalogue (`variantUsable`), jamais la règle relâchée.
+        if (!variantUsable(def.id, v)) continue;
         expect(bridgePieceProblems(def.id, v), where).toEqual([]);
         const sol = moduleSolutions(def.id, v)!;
         expect(variantExigence(sol), where).toBeGreaterThanOrEqual(1);
@@ -546,6 +555,7 @@ describe("lot 26 — les sept morceaux de la nuit", () => {
     expect(rest.length).toBeGreaterThanOrEqual(1);
     for (const def of rest) {
       for (let v = 0; v < def.variants.length; v++) {
+        if (!variantUsable(def.id, v)) continue;
         const sol = moduleSolutions(def.id, v)!;
         expect(sol.arret!.exigence, `${def.id} v${v}`).toBeLessThanOrEqual(2);
         expect(sol.elan!.exigence, `${def.id} v${v}`).toBeLessThanOrEqual(2);
@@ -554,8 +564,9 @@ describe("lot 26 — les sept morceaux de la nuit", () => {
       }
     }
     // Portion dure : un morceau dont une variante est notée 4 ou 5 (donc dotée d'une voie lente, sans détour : `voies:modules` n'en ferme aucune).
-    const hard = mods.filter((def) => def.variants.some((_, v) => variantExigence(moduleSolutions(def.id, v)) >= 4));
-    expect(hard.length).toBeGreaterThanOrEqual(2);
+    // Lot 30 : deux au lot 26 ; avec le maintien minimal, `pont-etroit` n'a plus de variante notée 4 ou 5 qui tienne la poursuite franche : il reste `pont-coude` (décision signalée au rapport du lot 30).
+    const hard = mods.filter((def) => def.variants.some((_, v) => variantUsable(def.id, v) && variantExigence(moduleSolutions(def.id, v)) >= 4));
+    expect(hard.length).toBeGreaterThanOrEqual(1);
     // Pont non droit : des marches ou un coude (la suite des tuiles change de rangée).
     const bent = mods.filter((def) => {
       const tiles = buildModule(def.id, 0).level.bridges.flatMap((b) => b.tiles);
@@ -583,7 +594,7 @@ describe("lot 26 — les sept morceaux de la nuit", () => {
 describe("lot 26 — les niveaux du jour de la nuit (g20, v10)", () => {
   it("la version 10 et g20 : l'identifiant, le figeage, la relecture ; une version incohérente est refusée", () => {
     expect(BRIDGE_GENERATOR).toBe(20);
-    expect(JUMP_GENERATOR_VERSION).toBe(BRIDGE_GENERATOR + 3); // lot 27 : g21 (v11) ; lot 28 : g22 (v12) ; lot V1 : g23 (le sac de thèmes)
+    expect(JUMP_GENERATOR_VERSION).toBe(BRIDGE_GENERATOR + 4); // lot 27 : g21 (v11) ; lot 28 : g22 (v12) ; lot V1 : g23 (le sac de thèmes) ; lot 30 : g24 (v13, le maintien minimal du saut)
     const day = parseDay("2026-12-17")!;
     const L = dailyLevel(day, null, BRIDGE_VERSION);
     expect(L.level.simVersion).toBe(10);
@@ -628,7 +639,8 @@ describe("lot 26 — les niveaux du jour de la nuit (g20, v10)", () => {
       }
     }
     expect(n).toBeGreaterThanOrEqual(6);
-    expect(two).toBeGreaterThanOrEqual(3);
+    // Lot 30 : 3 au lot 26 ; avec le maintien minimal à 6 pas, `pont-etroit` et `pont-coude` ont perdu des variantes : 2 jours sur 8 ont au moins deux morceaux à pont.
+    expect(two).toBeGreaterThanOrEqual(2);
   }, 240_000);
 
   it("la preuve rejouée par `replayAttempt` arrive au temps de l'auteur", () => {

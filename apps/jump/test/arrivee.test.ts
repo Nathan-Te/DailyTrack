@@ -2,6 +2,7 @@ import { msUntilNextParisDay, parisDay } from "@cdj/clock";
 import { daysFromCivil, formatDay, parseDay } from "@cdj/core";
 import { premierJourDuJour } from "@cdj/core/lancement";
 import { PREMIER_JOUR_ARCHIVES } from "../src/lancement";
+import { useLegacyCatalog } from "../../../packages/jump-sim/src/legacy";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, dailyLevel, jumpMedalsFor, textHash, type DailyLevel } from "@cdj/jump-sim";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadDaily, type LoaderOptions } from "../src/dailyLoader";
@@ -493,6 +494,8 @@ describe("niveaux figés : le chargement", () => {
     // valide en réécrivant l'identifiant de la preuve, ce qu'un vrai fichier ancien porterait. Lot 15 : à partir du niveau v3 de la date (les
     // générateurs jusqu'à g9 faisaient des niveaux v3).
     if (JUMP_GENERATOR_VERSION < 2) return;
+    // Lot 30 : le catalogue d'avant le maintien minimal du saut n'est plus dans le jeu ; ce test le charge pour fabriquer son niveau v3.
+    useLegacyCatalog();
     const f = JSON.parse(frozenJson(freezeLevel(dailyLevel(DAY, null, 3)))) as FrozenLevel;
     expect(f.simVersion).toBe(3);
     const { decodeReplay, encodeReplay } = await import("@cdj/jump-sim");

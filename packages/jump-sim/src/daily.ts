@@ -1,7 +1,7 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, circleHitsBox, initialAttempt, sawReach, stepAttempt, type AttemptState, type Box } from "./attempt";
-import { ALT_KEPT_VERSION, BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
-import { ALT_KEPT_GENERATOR, MEDAILLES_ASSOUPLIES_VERSION, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
+import { ALT_KEPT_VERSION, BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, JUMP_MIN_HOLD, MIN_HOLD_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
+import { ALT_KEPT_GENERATOR, MIN_HOLD_GENERATOR, THEME_BAG_GENERATOR, MEDAILLES_ASSOUPLIES_VERSION, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
 import { idiv } from "./idiv";
 import { PRESS_HEIGHT_TILES, TILE_EMPTY, TILE_SOLID, cycleMod, laserBarBox, laserBox, mushroomPad, parseLevel, platformPos, pressBox, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
 import { FROZEN_BASE_IDS } from "./figes";
@@ -17,14 +17,16 @@ import { presseProblems } from "./presses";
 import { PHASE_REFUSED } from "./phases";
 import { ALT_B_REFUSED } from "./etats";
 import { PARASITE_CLOSED } from "./parasites";
-import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
+import { legacyCatalog } from "./legacyRegistry";
+import { variantUsable } from "./usable";
+import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, soloLevel, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
 import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, auChangementDesJoursAnciens, jumpThemeOfSim, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
 import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpReplay } from "./replay";
 import { SLOW_MAX_EXTRA, SLOW_MIN_EXIGENCE, SLOW_REACH_ROWS, SLOW_ZONE_WIDTH, carveSlowRoute, slowCostMin, slowGalleryRow, slowHeadroom, slowLedges, slowScript, type SlowRoute } from "./voies";
 
 // Lot 21 : le numéro et l'identifiant d'un niveau, ses médailles et les numéros de générateur de référence sont dans `jours.ts` ; réexportés ici.
-export { ALT_KEPT_GENERATOR, MEDAILLES_ASSOUPLIES_VERSION, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
+export { ALT_KEPT_GENERATOR, MIN_HOLD_GENERATOR, THEME_BAG_GENERATOR, MEDAILLES_ASSOUPLIES_VERSION, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
 
 // Le niveau du jour (lot 5) : `dailyLevel(jour)` assemble des morceaux du catalogue (lot 4) qui **portent leur solution**, puis **rejoue** la
 // suite de ces solutions sur le niveau assemblé. Si elle arrive au bout sans mourir, le niveau est valide et ce rejeu donne le temps de
@@ -276,7 +278,7 @@ export const VARIETY_DAYS = 4;
 export const VARIETY_DAYS_BEFORE_LASERS = 3;
 
 /** Le délai de variété W d'un niveau de cette version de simulation (4 depuis la version 9, 3 avant). */
-export function varietyDays(simVersion = ALT_KEPT_VERSION): number {
+export function varietyDays(simVersion = MIN_HOLD_VERSION): number {
   return simVersion >= LASER_VERSION ? VARIETY_DAYS : VARIETY_DAYS_BEFORE_LASERS;
 }
 /**
@@ -308,7 +310,7 @@ export function varietyPosition(day: number): number {
  * époque, les premiers jours de la suivante à moins de `VARIETY_DAYS` jours. Toute paire de jours à moins de `VARIETY_DAYS` jours y est
  * couverte exactement une fois (par le plus tardif dans une époque, par celui de la première époque à travers une coupure).
  */
-export function varietyNeighbours(day: number, simVersion = ALT_KEPT_VERSION): number[] {
+export function varietyNeighbours(day: number, simVersion = MIN_HOLD_VERSION): number[] {
   const W = varietyDays(simVersion);
   const pos = varietyPosition(day);
   const out: number[] = [];
@@ -323,14 +325,14 @@ export function varietyNeighbours(day: number, simVersion = ALT_KEPT_VERSION): n
 }
 
 /** Les morceaux de base du niveau du jour `day` (son thème, v4) : le contenu figé avant `VARIETY_ORIGIN`, sinon celui que donne `dailyLevel`. */
-export function dailyBaseIds(day: number, simVersion = ALT_KEPT_VERSION): readonly string[] {
+export function dailyBaseIds(day: number, simVersion = MIN_HOLD_VERSION): readonly string[] {
   // Lot 25 : la table des jours figés couvre les `VARIETY_DAYS − 1` jours d'avant l'origine (W = 4) ; une version à W = 3 (g14 à g18) n'en lit que les deux derniers, comme avant le lot.
   const frozen = day < VARIETY_ORIGIN && VARIETY_ORIGIN - day < varietyDays(simVersion) ? VARIETY_FROZEN[formatDay(day)] : undefined;
   return frozen ?? dailyLevel(day, null, simVersion).pieces.map((p) => p.id);
 }
 
 /** Les morceaux de base que le niveau v4 du jour `day` ne peut pas poser (lot 19). */
-export function varietyExcluded(day: number, simVersion = ALT_KEPT_VERSION): Set<string> {
+export function varietyExcluded(day: number, simVersion = MIN_HOLD_VERSION): Set<string> {
   const out = new Set<string>();
   for (const d of varietyNeighbours(day, simVersion)) for (const id of dailyBaseIds(d, simVersion)) out.add(id);
   return out;
@@ -471,6 +473,8 @@ let catalogV9: Choice[][] | null = null;
 let catalogV10: Choice[][] | null = null;
 let catalogV11: Choice[][] | null = null;
 let catalogV12: Choice[][] | null = null;
+let catalogV13: Choice[][] | null = null;
+let catalogAllLegacy: Choice[][] | null = null;
 
 /**
  * Lot 20 : les morceaux de base à plateformes mobiles (une ligne `plateforme` dans leur bloc annexe) : réservés aux niveaux en version 5. Les catalogues des
@@ -525,26 +529,37 @@ export function bridgeModuleIds(): ReadonlySet<string> {
  * refusées par la validation toutes phases (`PHASE_REFUSED`) ; lot 18 : ni celles dont une phase de clignotement dure moins de 1,5 s (`blinkTooFast`).
  */
 function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
+  // Lot 30 : depuis la version 13 le catalogue est celui qui a été re-résolu pour le maintien minimal du saut ; avant, celui d'avant (`src/legacy`, chargé par les tests et les outils).
+  const legacy = simVersion < MIN_HOLD_VERSION;
+  const refused = legacy ? { phase: legacyCatalog().phaseRefused, altB: legacyCatalog().altBRefused, parasite: legacyCatalog().parasiteClosed } : { phase: PHASE_REFUSED, altB: ALT_B_REFUSED, parasite: PARASITE_CLOSED };
+  const everything = () => allChoices(legacy);
   if (simVersion >= SINGLE_CLOCK_VERSION) {
-    const usable = (list: Choice[]) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant) && knownTo(c, simVersion)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE }));
+    const usable = (list: Choice[]) => list.filter((c) => !refused.phase[c.id]?.includes(c.variant) && !refused.parasite[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant) && knownTo(c, simVersion)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE }));
+    if (simVersion >= MIN_HOLD_VERSION) {
+      // Lot 30 (g24) : le catalogue re-résolu pour le maintien minimal (mêmes règles que g22 et g23 ; les variantes sans solution, refusées par la règle des appuis, n'y sont pas).
+      catalogV13 ??= everything()
+        .map((list) => usable(list).filter((c) => !refused.altB[c.id]?.includes(c.variant)))
+        .filter((list) => list.length > 0);
+      return catalogV13;
+    }
     if (simVersion >= ALT_KEPT_VERSION) {
       // Lot 28 (g22) : en plus, jamais une variante à blocs alternés qu'on ne peut pas reprendre depuis l'état B (`ALT_B_REFUSED`, `npm run etats:modules`).
-      catalogV12 ??= allChoices()
-        .map((list) => usable(list).filter((c) => !ALT_B_REFUSED[c.id]?.includes(c.variant)))
+      catalogV12 ??= everything()
+        .map((list) => usable(list).filter((c) => !refused.altB[c.id]?.includes(c.variant)))
         .filter((list) => list.length > 0);
       return catalogV12;
     }
     if (simVersion >= RESTART_VERSION) {
-      catalogV11 ??= allChoices().map(usable).filter((list) => list.length > 0);
+      catalogV11 ??= everything().map(usable).filter((list) => list.length > 0);
       return catalogV11;
     }
     if (simVersion >= BRIDGE_VERSION) {
-      catalogV10 ??= allChoices().map(usable).filter((list) => list.length > 0);
+      catalogV10 ??= everything().map(usable).filter((list) => list.length > 0);
       return catalogV10;
     }
     if (simVersion >= LASER_VERSION) {
       // Lot 26 : la référence v9 (g19) ne connaît pas les morceaux à ponts.
-      catalogV9 ??= allChoices()
+      catalogV9 ??= everything()
         .filter((list) => !bridgeModuleIds().has(list[0]!.id))
         .map(usable)
         .filter((list) => list.length > 0);
@@ -552,7 +567,7 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
     }
     if (simVersion >= STALACTITE_VERSION) {
       // Lot 25 : la référence v8 (g18) ne connaît pas les morceaux à lasers.
-      catalogV8 ??= allChoices()
+      catalogV8 ??= everything()
         .filter((list) => !laserModuleIds().has(list[0]!.id) && !bridgeModuleIds().has(list[0]!.id))
         .map(usable)
         .filter((list) => list.length > 0);
@@ -560,7 +575,7 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
     }
     if (simVersion >= MUSHROOM_VERSION) {
       // Lot 24 : la référence v7 (g17) ne connaît pas les morceaux à stalactites.
-      catalogV7 ??= allChoices()
+      catalogV7 ??= everything()
         .filter((list) => !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id) && !bridgeModuleIds().has(list[0]!.id))
         .map(usable)
         .filter((list) => list.length > 0);
@@ -568,7 +583,7 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
     }
     if (simVersion >= PRESS_VERSION) {
       // Lot 23 : la référence v6 (g16) ne connaît pas les morceaux à champignons.
-      catalogV6 ??= allChoices()
+      catalogV6 ??= everything()
         .filter((list) => !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id) && !bridgeModuleIds().has(list[0]!.id))
         .map(usable)
         .filter((list) => list.length > 0);
@@ -576,21 +591,21 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
     }
     if (simVersion >= PLATFORM_VERSION) {
       // Lot 22 : la référence v5 (g15) ne connaît pas les morceaux à presses (lot 23 : ni ceux à champignons).
-      catalogV5 ??= allChoices()
+      catalogV5 ??= everything()
         .filter((list) => !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id) && !bridgeModuleIds().has(list[0]!.id))
         .map(usable)
         .filter((list) => list.length > 0);
       return catalogV5;
     }
     // Lot 20 : la référence v4 (g14) ne connaît pas les morceaux à plateformes (lot 22 : ni ceux à presses ; lot 23 : ni ceux à champignons).
-    catalogV4 ??= allChoices()
+    catalogV4 ??= everything()
       .filter((list) => !platformModuleIds().has(list[0]!.id) && !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id) && !bridgeModuleIds().has(list[0]!.id))
       .map(usable)
       .filter((list) => list.length > 0);
     return catalogV4;
   }
   // Lots 17 et 18 : la référence v3 ne connaît pas les variantes ajoutées aux g12 et g13 (lot 20 : ni les morceaux à plateformes ; lot 22 : ni ceux à presses ; lot 23 : ni ceux à champignons).
-  catalog ??= allChoices()
+  catalog ??= everything()
     .filter((list) => !platformModuleIds().has(list[0]!.id) && !pressModuleIds().has(list[0]!.id) && !mushroomModuleIds().has(list[0]!.id) && !stalactiteModuleIds().has(list[0]!.id) && !laserModuleIds().has(list[0]!.id) && !bridgeModuleIds().has(list[0]!.id))
     .map((list) => list.filter((c) => !V4_ONLY_VARIANTS[c.id]?.includes(c.variant) && knownTo(c, simVersion)))
     .filter((list) => list.length > 0);
@@ -598,20 +613,22 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
 }
 
 /** Toutes les variantes utilisables (solutions jouables aux deux entrées), sans filtre de version. */
-function allChoices(): Choice[][] {
-  if (catalogAll) return catalogAll;
-  catalogAll = MODULES.map((def) =>
+function allChoices(legacy = false): Choice[][] {
+  if (legacy ? catalogAllLegacy : catalogAll) return (legacy ? catalogAllLegacy : catalogAll)!;
+  const built = MODULES.map((def) =>
     def.variants.flatMap((_, variant) => {
-      const s = moduleSolutions(def.id, variant);
+      const s = moduleSolutions(def.id, variant, legacy);
       const exigence = variantExigence(s);
-      if (!s?.arret || !s.elan || exigence < 1) return [];
+      if (!s?.arret || !s.elan || exigence < 1 || (!legacy && !variantUsable(def.id, variant))) return [];
       const b = buildModule(def.id, variant);
       const span = (x: { entryTick: number; exitTick: number }) => x.exitTick - x.entryTick;
       const theme = variantTheme(def, variant);
       return [{ id: def.id, variant, tags: def.tags, theme, mechanic: theme === null ? null : mechanicOf(theme), family: def.family, long: def.long, exigence, arret: span(s.arret), elan: span(s.elan), height: b.height, width: b.width, entryRow: b.entryRow, exitRow: b.exitRow, hard: false }];
     }),
   ).filter((list) => list.length > 0);
-  return catalogAll;
+  if (legacy) catalogAllLegacy = built;
+  else catalogAll = built;
+  return built;
 }
 
 const has = (c: { tags: readonly ModuleTag[] }, tag: ModuleTag) => c.tags.includes(tag);
@@ -940,11 +957,17 @@ export interface Assembled {
 export interface AssembleOptions {
   slow?: boolean;
   extras?: readonly number[];
+  /**
+   * Lot 30 : la version de la simulation du niveau assemblé (la dernière par défaut). Depuis la version 13 le niveau a le maintien minimal du saut (ligne `maintien` du bloc
+   * annexe) et les morceaux sont ceux du catalogue re-résolu ; avant, les solutions d'avant.
+   */
+  simVersion?: number;
 }
 
 /** Assemble une suite de morceaux en un niveau (grille + bloc annexe). */
 export function assemble(picks: readonly { id: string; variant: number }[], options: AssembleOptions = {}): Assembled {
-  const all = allChoices().flat();
+  const hold = (options.simVersion ?? MIN_HOLD_VERSION) >= MIN_HOLD_VERSION;
+  const all = allChoices(!hold).flat();
   const full: Slot[] = picks.map((p, k) => {
     const choice = all.find((c) => c.id === p.id && c.variant === p.variant);
     if (!choice) throw new RangeError(`Morceau « ${p.id} », variante ${p.variant} : pas de solution utilisable`);
@@ -1147,6 +1170,7 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
     const kept = carved.filter((c) => !walls.some((w) => w.col === c.col && w.row === c.row));
     slow.push({ piece: k, zone, entryRow: piece.entryRow, galleryRow, extra, carved: kept, walls });
   });
+  if (hold) annex.push(`maintien ${JUMP_MIN_HOLD}`);
   const ascii = rows.map((r) => r.join("")).join("\n") + "\n\n" + annex.join("\n") + "\n";
   return { level: parseLevel(ascii), ascii, pieces, paliers, slow };
 }
@@ -1159,7 +1183,7 @@ export function reassemble(d: Pick<DailyLevel, "pieces" | "slowRoutes" | "level"
   const extras = d.pieces.map((_, k) => d.slowRoutes.find((r) => r.piece === k)?.extra ?? 0);
   return assemble(
     d.pieces.map((p) => ({ id: p.id, variant: p.variant })),
-    { slow: d.level.simVersion >= SINGLE_CLOCK_VERSION, extras },
+    { slow: d.level.simVersion >= SINGLE_CLOCK_VERSION, extras, simVersion: d.level.simVersion },
   );
 }
 
@@ -1182,7 +1206,7 @@ function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[]; f
   let s: AttemptState = initialAttempt(level);
   for (let k = 0; k < asm.pieces.length; k++) {
     const piece = asm.pieces[k]!;
-    const sol = moduleSolutions(piece.id, piece.variant)?.[piece.entry];
+    const sol = moduleSolutions(piece.id, piece.variant, level.minHold === 0)?.[piece.entry];
     if (!sol) return `${piece.id}:${piece.variant} sans solution`;
     const commands = fromRuns(decodeReplay(sol.code).runs);
     const last = k === asm.pieces.length - 1;
@@ -1300,15 +1324,15 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   out.push(...presseProblems(d.level));
   // Lot 23 : les règles des champignons (posés sur du plein, ni départ ni point de passage dans leur section ; la trajectoire des 0,3 premières secondes de chaque morceau).
   out.push(...mushroomProblems(d.level));
-  if (d.level.mushrooms.length > 0) for (const p of pieces) out.push(...mushroomPieceProblems(p.id, p.variant));
+  if (d.level.mushrooms.length > 0) for (const p of pieces) out.push(...mushroomPieceProblems(p.id, p.variant, d.level.minHold === 0));
   // Lot 24 : les règles des stalactites (zone dans le morceau et loin des paliers, un bloc plein pour la briser ; la course franche de chaque morceau).
   out.push(...stalactiteProblems(d.level));
-  if (d.level.stalactites.length > 0) for (const p of pieces) out.push(...stalactitePieceProblems(p.id, p.variant));
+  if (d.level.stalactites.length > 0) for (const p of pieces) out.push(...stalactitePieceProblems(p.id, p.variant, d.level.minHold === 0));
   // Lot 25 : les règles des lasers (dans leur morceau, rien d'autre dans leur course, pas de point de passage, une place sûre pour attendre, une barre qui ne coince pas).
   out.push(...laserProblems(d.level));
   // Lot 26 : les règles des ponts (dans leur morceau, pas de point de passage dessus, un interrupteur sûr, un pont droit court ; la poursuite franche de chaque morceau).
   out.push(...bridgeProblems(d.level));
-  if (d.level.bridges.length > 0) for (const p of pieces) out.push(...bridgePieceProblems(p.id, p.variant));
+  if (d.level.bridges.length > 0) for (const p of pieces) out.push(...bridgePieceProblems(p.id, p.variant, d.level.minHold === 0));
   // Lot 27 (g21, niveaux en version 11) : le vent souffle en continu — aucune zone en rafales.
   if (d.level.simVersion >= RESTART_VERSION && d.level.winds.some((w) => w.gust !== null)) out.push("une zone de vent en rafales (g21 : le vent souffle en continu)");
   // Lot 28 (g22, niveaux en version 12) : les blocs alternés ne sont posés que dans le néon (aucun morceau ni mutateur ne les met ailleurs).
@@ -1584,7 +1608,7 @@ function playProof(level: Level, paliers: readonly Palier[], inputs: readonly nu
 function proveOnce(picks: readonly { id: string; variant: number }[], id: string, theme: JumpThemeName, simVersion: number, extras: readonly number[]): { built: Built; problems: string[]; cheap: number[] } | string {
   let asm: Assembled;
   try {
-    asm = assemble(picks, { slow: simVersion >= SINGLE_CLOCK_VERSION, extras });
+    asm = assemble(picks, { slow: simVersion >= SINGLE_CLOCK_VERSION, extras, simVersion });
   } catch (e) {
     return `assemblage : ${(e as Error).message}`;
   }
@@ -1605,7 +1629,7 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     const v3Time = result.time;
     let ascii: string;
     try {
-      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= ALT_KEPT_VERSION ? ALT_KEPT_VERSION : simVersion >= RESTART_VERSION ? RESTART_VERSION : simVersion >= BRIDGE_VERSION ? BRIDGE_VERSION : simVersion >= LASER_VERSION ? LASER_VERSION : simVersion >= STALACTITE_VERSION ? STALACTITE_VERSION : simVersion >= MUSHROOM_VERSION ? MUSHROOM_VERSION : simVersion >= PRESS_VERSION ? PRESS_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
+      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= MIN_HOLD_VERSION ? MIN_HOLD_VERSION : simVersion >= ALT_KEPT_VERSION ? ALT_KEPT_VERSION : simVersion >= RESTART_VERSION ? RESTART_VERSION : simVersion >= BRIDGE_VERSION ? BRIDGE_VERSION : simVersion >= LASER_VERSION ? LASER_VERSION : simVersion >= STALACTITE_VERSION ? STALACTITE_VERSION : simVersion >= MUSHROOM_VERSION ? MUSHROOM_VERSION : simVersion >= PRESS_VERSION ? PRESS_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
       asm = { ...asm, ascii, level: parseLevel(ascii) };
     } catch (e) {
       return `horloge unique : ${(e as Error).message}`;
@@ -1725,11 +1749,11 @@ export function slowRespawnProblems(asm: Pick<Assembled, "level" | "slow" | "pal
   for (let k = 1; k < pieces.length - 1; k++) {
     if (!hard.has(k + 1) && !(zoneOf.get(k)?.walls.length ?? 0)) continue;
     const p = pieces[k]!;
-    const sol = moduleSolutions(p.id, p.variant)?.arret;
+    const sol = moduleSolutions(p.id, p.variant, lv.minHold === 0)?.arret;
     if (!sol) continue;
     const m = buildModule(p.id, p.variant);
     const own = fromRuns(decodeReplay(sol.code).runs);
-    const e = replayAttempt(m.level, decodeReplay(sol.code)).final.sections[0] ?? 0;
+    const e = replayAttempt(soloLevel(m, lv.minHold === 0), decodeReplay(sol.code)).final.sections[0] ?? 0;
     const period = sectionPeriod(lv, k);
     const time = 5000 + (period === 0 ? 0 : cycleMod(-e - (lv.sections[k]?.phase ?? 0) - 5000, period));
     let s = checkpointAttempt(lv, { ...initialAttempt(lv), checkpoint: k - 1, time });
@@ -1825,161 +1849,80 @@ export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "pa
 }
 
 /**
- * Le niveau de secours : une suite fixe de variantes, choisie parmi les tirages valides de 400 dates (celle qui tombe le plus près du centre
- * de la cible : 30,13 s, exigence 497 ; lot 7), qui tient toutes les règles. Il ignore le repos. Assemblé et validé comme les autres (test) ; la
- * mesure (`measure:jump`) montre qu'il ne sert jamais. Lot 11 : un thème à mécanique a le sien (il doit tenir le quota de signature).
+ * Lot 30 (g24) : les suites de secours de chaque thème, **rechoisies** pour le catalogue re-résolu (`secours:modules`, maintien minimal à 6 pas : 80 niveaux valides sur 80 dates par thème, 79 pour l’usine). Les anciennes (`FALLBACK_BY_THEME`) gardent la référence v12 et celles d'avant, au bit près : plusieurs de leurs morceaux n'ont plus de solution.
  */
-export const FALLBACK_PIECES: readonly { id: string; variant: number }[] = [
-  { id: "cheminee-vide", variant: 1 },
-  { id: "pont-friable", variant: 3 },
-  { id: "escalier-scies", variant: 0 },
-  { id: "descente", variant: 2 },
-  { id: "mur-friable", variant: 1 },
-  { id: "piliers-scie", variant: 1 },
-  { id: "puits", variant: 1 },
-  { id: "ascenseur", variant: 5 },
-  { id: "chute-pics", variant: 0 },
-  { id: "iles-friables", variant: 1 },
-];
-
-/** Lot 11 : les suites de secours des thèmes à mécanique (remplies avec le catalogue : voir `fallbackFor`). */
-export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly { id: string; variant: number }[]>>> = {
-  // Choisies, comme `FALLBACK_PIECES`, parmi les tirages valides (80 dates, thème forcé) : celle qui tombe le plus près du centre.
+export const FALLBACK_V13: Readonly<Record<JumpThemeName, readonly { id: string; variant: number }[]>> = {
+  foret: [
+    { id: "plafond-pics", variant: 0 },
+    { id: "monte-charge", variant: 0 },
+    { id: "tour-mobile", variant: 2 },
+    { id: "ressort-scie", variant: 1 },
+    { id: "ressort-mur-iles", variant: 1 },
+    { id: "corniches", variant: 4 },
+    { id: "vent-pont", variant: 5 },
+    { id: "mur-seul", variant: 7 },
+    { id: "puits", variant: 5 },
+    { id: "navette", variant: 2 },
+    { id: "saut-plafond", variant: 2 },
+  ],
   usine: [
-    { id: "cheminee", variant: 1 },
-    { id: "tapis-alternes", variant: 0 },
-    { id: "tapis-escalier", variant: 2 },
-    { id: "mur-trous", variant: 3 },
-    { id: "tunnel", variant: 0 },
-    { id: "descente-scies", variant: 1 },
-    { id: "escalier-friable", variant: 2 },
-    { id: "tapis-mur", variant: 3 },
-    { id: "saut-long", variant: 2 },
-    { id: "pendule", variant: 3 },
-    { id: "tapis-lance", variant: 3 },
+    { id: "ressort-scie", variant: 1 },
+    { id: "quinconce", variant: 2 },
+    { id: "descente-scies", variant: 2 },
+    { id: "tapis-mur", variant: 1 },
+    { id: "tapis-respiration", variant: 1 },
+    { id: "tapis-escalier", variant: 0 },
+    { id: "saut-plafond", variant: 0 },
+    { id: "escalier-scies", variant: 1 },
+    { id: "grande-scie", variant: 0 },
+    { id: "tapis-contraire", variant: 3 },
   ],
   glace: [
-    { id: "pendule", variant: 2 },
-    { id: "ressorts-trous", variant: 0 },
-    { id: "mur-trous", variant: 2 },
-    { id: "petits-trous", variant: 1 },
+    { id: "cheminee", variant: 1 },
+    { id: "paroi-friable", variant: 3 },
     { id: "glace-relais", variant: 0 },
-    { id: "glace-cheminee", variant: 0 },
-    { id: "chute-pics", variant: 2 },
-    { id: "iles-friables", variant: 1 },
-    { id: "cheminee", variant: 0 },
+    { id: "escalier", variant: 2 },
+    { id: "stalactite-decroche", variant: 2 },
+    { id: "plongeon", variant: 2 },
+    { id: "marelle", variant: 3 },
+    { id: "grande-scie", variant: 2 },
+    { id: "puits", variant: 0 },
+    { id: "glace-cheminee", variant: 1 },
+    { id: "scies-jumelles", variant: 2 },
   ],
-  // Lot 12 : choisies par `npm run secours:modules -w @cdj/jump-sim` parmi les tirages valides de 80 dates (thème forcé), les plus proches du centre.
-  // Lot 18 (g13) : rechoisie (`secours:modules -- --theme=nuit`, 80 niveaux valides sur 80 dates) — l'ancienne (`FALLBACK_NUIT_V3`) pose des phases de moins de 1,5 s.
   nuit: [
-    { id: "nuit-cheminee", variant: 5 },
-    { id: "cheminee-pics", variant: 0 },
-    { id: "ressort-mur", variant: 1 },
-    { id: "scie-ronde", variant: 0 },
-    { id: "nuit-opposition", variant: 7 },
-    { id: "puits-descente", variant: 2 },
-    { id: "nuit-marelle", variant: 4 },
-    { id: "piliers", variant: 3 },
-    { id: "escalier-friable", variant: 2 },
-    { id: "mur-seul", variant: 5 },
-    { id: "pendule", variant: 5 },
+    { id: "navette", variant: 0 },
+    { id: "scie-sol", variant: 6 },
+    { id: "descente-scies", variant: 8 },
+    { id: "nuit-pont", variant: 6 },
+    { id: "rebonds-doux", variant: 0 },
+    { id: "saut-long", variant: 7 },
+    { id: "marelle", variant: 3 },
+    { id: "nuit-cheminee", variant: 4 },
+    { id: "pont-clignotant-escalier", variant: 3 },
+    { id: "grande-scie", variant: 1 },
+    { id: "mur-seul", variant: 1 },
   ],
-  // Lot 16 : l'ancienne suite dépassait 56 rangées avec la galerie de ses voies lentes ; rechoisie (`secours:modules -- --theme=neon`).
   neon: [
-    { id: "neon-pics", variant: 2 },
-    { id: "mur-trous", variant: 4 },
-    { id: "cheminee-scie", variant: 2 },
-    { id: "petits-trous", variant: 1 },
-    { id: "neon-cheminee", variant: 0 },
-    { id: "saut-long", variant: 3 },
-    { id: "descente-scies", variant: 0 },
-    { id: "cheminee-vide", variant: 3 },
-    { id: "grande-scie", variant: 4 },
-    { id: "neon-couloir", variant: 2 },
-  ],
-  // Lot 13 : la forêt (courants d'air), choisie de même (`secours:modules -- --theme=foret`, 80 dates valides sur 80).
-  // Lot 19 (g14) : rechoisie (`secours:modules -- --theme=foret`, 80 niveaux valides sur 80 dates) — l'ancienne (`FALLBACK_FORET_V3`) casse la règle
-  // de la reprise près d'une voie lente (`slowRespawnProblems`).
-  // Lot 27 (g21) : rechoisie (`secours:modules -- --theme=foret`, 80 niveaux valides sur 80 dates) — l'ancienne (`FALLBACK_FORET_V10`) a `vent-rafale` et `vent-relais:1`, à rafales.
-  foret: [
-    { id: "tunnel-scies", variant: 1 },
-    { id: "vent-pont", variant: 1 },
-    { id: "chute-pics", variant: 4 },
-    { id: "monte-charge", variant: 1 },
-    { id: "corniches", variant: 2 },
-    { id: "vent-colonne", variant: 0 },
-    { id: "marelle", variant: 0 },
-    { id: "escalier-friable", variant: 2 },
-    { id: "lucarne", variant: 1 },
-    { id: "iles-friables", variant: 1 },
-    { id: "vent-derive", variant: 3 },
+    { id: "neon-couloir", variant: 0 },
+    { id: "ressort-plafond", variant: 4 },
+    { id: "monte-charge", variant: 0 },
+    { id: "iles-scie", variant: 5 },
+    { id: "neon-pics", variant: 1 },
+    { id: "mur-trous", variant: 1 },
+    { id: "tunnel", variant: 5 },
+    { id: "plafond-pics", variant: 1 },
+    { id: "chaland", variant: 2 },
+    { id: "cheminee-scie", variant: 3 },
+    { id: "saut-long", variant: 6 },
+    { id: "neon-silence", variant: 2 },
   ],
 };
 
-/** Lot 27 : la suite de secours de la forêt de g14 à g20 (versions 4 à 10), gardée pour les références : elle a des rafales (`vent-rafale`, `vent-relais:1`). */
-const FALLBACK_FORET_V10: readonly { id: string; variant: number }[] = [
-  { id: "tunnel-scies", variant: 1 },
-  { id: "vent-puits", variant: 0 },
-  { id: "vent-rafale", variant: 0 },
-  { id: "saut-plafond", variant: 4 },
-  { id: "tunnel", variant: 0 },
-  { id: "vent-relais", variant: 1 },
-  { id: "puits", variant: 0 },
-  { id: "scies-jumelles", variant: 4 },
-  { id: "ressort-mur", variant: 3 },
-  { id: "cheminee-pics", variant: 1 },
-];
-
-/** Lot 16 : la suite de secours du néon d'avant (lot 12), gardée pour la référence v3 (`dailyLevel(jour, thème, 3)` ne change pas). */
-const FALLBACK_NEON_V3: readonly { id: string; variant: number }[] = [
-  { id: "neon-cheminee", variant: 1 },
-  { id: "ressort-scie", variant: 1 },
-  { id: "paroi-friable", variant: 2 },
-  { id: "escalier-scies", variant: 0 },
-  { id: "puits", variant: 2 },
-  { id: "petits-trous", variant: 5 },
-  { id: "piliers-scie", variant: 5 },
-  { id: "demi-tour", variant: 3 },
-  { id: "pont-friable", variant: 4 },
-  { id: "neon-couloir", variant: 2 },
-];
-
-/** Lot 18 : la suite de secours de la nuit d'avant (g9 à g12), gardée pour la référence v3 : certaines de ses variantes ont des phases de moins de 1,5 s. */
-const FALLBACK_NUIT_V3: readonly { id: string; variant: number }[] = [
-  { id: "mur-seul", variant: 0 },
-  { id: "grande-scie", variant: 3 },
-  { id: "puits-descente", variant: 1 },
-  { id: "marelle", variant: 5 },
-  { id: "nuit-marelle", variant: 0 },
-  { id: "nuit-escalier", variant: 1 },
-  { id: "piliers", variant: 1 },
-  { id: "cheminee-quinconce", variant: 1 },
-  { id: "plongeon", variant: 1 },
-  { id: "nuit-portes", variant: 0 },
-];
-
-/** Lot 19 : la suite de secours de la forêt d'avant (g9 à g13), gardée pour la référence v3. */
-const FALLBACK_FORET_V3: readonly { id: string; variant: number }[] = [
-  { id: "scie-sol", variant: 1 },
-  { id: "tremplin", variant: 1 },
-  { id: "demi-tour", variant: 0 },
-  { id: "mur-friable", variant: 3 },
-  { id: "ressort-mur-iles", variant: 3 },
-  { id: "corniches", variant: 4 },
-  { id: "vent-piliers", variant: 1 },
-  { id: "chute-pics", variant: 0 },
-  { id: "ressort-scie", variant: 2 },
-  { id: "lucarne", variant: 3 },
-  { id: "quinconce", variant: 3 },
-];
-
 /** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi ; lot 19 : celle de la forêt). */
-export function fallbackFor(theme: JumpThemeName, simVersion = ALT_KEPT_VERSION): readonly { id: string; variant: number }[] {
-  if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
-  if (simVersion < SINGLE_CLOCK_VERSION && theme === "nuit") return FALLBACK_NUIT_V3;
-  if (simVersion < SINGLE_CLOCK_VERSION && theme === "foret") return FALLBACK_FORET_V3;
-  if (simVersion < RESTART_VERSION && theme === "foret") return FALLBACK_FORET_V10;
-  return FALLBACK_BY_THEME[theme] ?? FALLBACK_PIECES;
+export function fallbackFor(theme: JumpThemeName, simVersion = MIN_HOLD_VERSION): readonly { id: string; variant: number }[] {
+  if (simVersion >= MIN_HOLD_VERSION) return FALLBACK_V13[theme];
+  return legacyCatalog().fallbackFor(theme, simVersion);
 }
 
 const cache = new Map<string, DailyLevel>();
@@ -1999,7 +1942,7 @@ auChangementDesJoursAnciens(forgetDailyLevels);
  * Lot 15 : `simVersion` 3 : le niveau g9 d'avant le lot, à l'identique (référence v3). Lot 20 : 4 : le niveau g14 d'avant les plateformes, à l'identique (référence v4) ;
  * 5 (défaut) : le niveau du générateur g15, en version 5.
  */
-export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = ALT_KEPT_VERSION): DailyLevel {
+export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = MIN_HOLD_VERSION): DailyLevel {
   const natural = jumpThemeOfSim(day, simVersion);
   const theme = forced ?? natural;
   const isForced = theme !== natural;
@@ -2090,7 +2033,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 }
 
 /** Le niveau de secours d'une date (pour les tests et la mesure : il ne sert que si aucun tirage ne passe). */
-export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = ALT_KEPT_VERSION): DailyLevel | string {
+export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = MIN_HOLD_VERSION): DailyLevel | string {
   const natural = jumpThemeOfSim(day, simVersion);
   const theme = forced ?? natural;
   const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);

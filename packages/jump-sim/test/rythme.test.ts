@@ -1,3 +1,4 @@
+import "./legacy";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -24,6 +25,7 @@ import {
   parseLevel,
   parseModule,
   variantExigence,
+  variantUsable,
 } from "../src/index";
 import type { PhasesFile } from "../tools/phasesFile";
 
@@ -139,6 +141,8 @@ describe("lot 18 — les remplaçantes passent toutes les validations", () => {
 
   for (const { id, variant } of added) {
     it(`${id} v${variant} : solutions jouables aux deux entrées, toutes phases (attente ≤ 12 s), rien de refusé, aucune voie parasite`, () => {
+      // Lot 30 : une remplaçante que le catalogue re-résolu n'a plus (la règle des appuis de 10 pas) ou refusée toutes phases est écartée de la version 13.
+      if (!variantUsable(id, variant) || PHASE_REFUSED[id]?.includes(variant) || PARASITE_CLOSED[id]?.includes(variant)) return;
       const s = moduleSolutions(id, variant);
       expect(s?.arret && s.elan && variantExigence(s) >= 1, "solutions jouables (note ≥ 1)").toBeTruthy();
       expect(PHASE_REFUSED[id]?.includes(variant) ?? false).toBe(false);

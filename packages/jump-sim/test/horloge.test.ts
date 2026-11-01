@@ -1,3 +1,5 @@
+import "./legacy";
+import { legacyCatalog } from "../src/legacyRegistry";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatDay, parseDay } from "@cdj/core";
@@ -22,6 +24,8 @@ import {
   RESTART_VERSION,
   RESTART_GENERATOR,
   ALT_KEPT_VERSION,
+  MIN_HOLD_VERSION,
+  THEME_BAG_GENERATOR,
   INPUT_RESPAWN,
   toRuns,
   LASER_GENERATOR,
@@ -110,7 +114,7 @@ describe("lot 15 — lecture d'un niveau v4 (bloc annexe)", () => {
 
   it("une phase n'existe qu'en version 4 ; une version inconnue est refusée", () => {
     expect(() => parseLevel(V4_ASCII.replace("version 4\n", ""))).toThrow(LevelError);
-    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 13"))).toThrow(/version/);
+    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 14"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 2"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 4\nversion 4"))).toThrow(/déjà/);
   });
@@ -191,10 +195,11 @@ const GENERATORS = [
   { version: LASER_VERSION, generator: LASER_GENERATOR },
   { version: BRIDGE_VERSION, generator: BRIDGE_GENERATOR },
   { version: RESTART_VERSION, generator: RESTART_GENERATOR },
-  { version: ALT_KEPT_VERSION, generator: JUMP_GENERATOR_VERSION },
+  { version: ALT_KEPT_VERSION, generator: THEME_BAG_GENERATOR },
+  { version: MIN_HOLD_VERSION, generator: JUMP_GENERATOR_VERSION },
 ] as const;
 
-/** Les jours régénérés du générateur en vigueur (g22, version 12). */
+/** Les jours régénérés du générateur en vigueur (g24, version 13). */
 const REGENERATED: DailyLevel[] = Array.from({ length: 14 }, (_, k) => dailyLevel(FIRST_REGENERATED + k));
 
 for (const { version, generator } of GENERATORS) {
@@ -208,7 +213,9 @@ for (const { version, generator } of GENERATORS) {
         expect(L.fallback, L.date).toBe(false);
         expect(dailyProblems(L), L.date).toEqual([]);
         expect(respawnProblems(L.level), L.date).toEqual([]);
-        for (const p of L.pieces) expect(PHASE_REFUSED[p.id]?.includes(p.variant) ?? false, `${L.date} ${p.id}:${p.variant}`).toBe(false);
+        // Lot 30 : les niveaux d'avant la version 13 se jouent avec le catalogue d'avant, donc avec ses refus.
+        const refused = version < MIN_HOLD_VERSION ? legacyCatalog().phaseRefused : PHASE_REFUSED;
+        for (const p of L.pieces) expect(refused[p.id]?.includes(p.variant) ?? false, `${L.date} ${p.id}:${p.variant}`).toBe(false);
       }
     });
 
@@ -334,18 +341,20 @@ const GOLDEN_FILES = {
   [BRIDGE_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v10.json"),
   [RESTART_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v11.json"),
   [ALT_KEPT_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v12.json"),
+  [MIN_HOLD_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v13.json"),
 } as const;
 // Lot 18 (g13) : le 25/10 n'a plus de mort avant le premier point de passage parmi les 24 essais fictifs (la couverture « reprise au départ » du test
 // manquerait) ; le 31/10, une nuit aussi, en a 28. La couverture exigée ci-dessous ne change pas. Lot 19 (g14) : le 31/10 n'en a plus aucune ; le 09/11,
 // une nuit (46 blocs clignotants, 8 scies), en a 21 (mesuré sur les jours g14 du 27/10 au 19/11). Lot 20 : la journée de référence v5 est le 08/11 (une forêt à 2 plateformes : 63 reprises au départ, 40 sur un point parmi les essais fictifs).
 // Lot 22 : la journée de référence v6 est le 03/12 (une usine à deux presses, `presse-ilot` : des morts avant le premier point et sur un point parmi les 24 essais fictifs ; les 06/11 et 23/11 n'avaient pas de reprise au départ).
 // Lot 24 : la journée de référence v8 est le 08/12 (une glace à trois morceaux à stalactites, `stalactite-allee`, `stalactite-decroche` et `stalactite-sentier` : 21 reprises au départ, 48 sur un point et 7 morts par stalactite parmi les 24 essais fictifs). La v7 (g17, 28/11) est intacte.
+// Lot 30 : la journée de référence v13 est le 13/12 (un néon ; les 06/12 et 19/12 n’ont plus d’essai fictif clos par une mort avant le premier point avec les solutions re-résolues).
 // Lot 28 : la journée de référence v12 est le 19/12 aussi (le même néon : 91 reprises sur un point parmi les 24 essais fictifs, dont 49 en B, l'état que la reprise garde depuis la v12).
 // Lot 27 : la journée de référence v11 est le 19/12 (un néon : des morts avant le premier point parmi les 24 essais fictifs, qui terminent désormais leur essai, des reprises sur un point, une reprise volontaire).
 // Lot 26 : la journée de référence v10 est le 17/12 (une nuit à deux morceaux à ponts et clignotants : `pont-clignotant-escalier` et `pont-clignotant-relais`).
 // Lot 25 : la journée de référence v9 est le 14/11 (un néon à trois morceaux à lasers : `laser-alterne-portes` et ses portails sur des blocs alternés, `laser-barre-sol` et `laser-balayage`, deux barres coulissantes).
 // Lot 23 : la journée de référence v7 est le 28/11 (une forêt à champignons de sol et de mur, un courant d'air et un puits en zigzag : 19 reprises au départ et 10 sur un point parmi les 24 essais fictifs). La v6 (g16, 03/12) est intacte.
-const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")!, [PRESS_VERSION]: parseDay("2026-12-03")!, [MUSHROOM_VERSION]: parseDay("2026-11-28")!, [STALACTITE_VERSION]: parseDay("2026-12-08")!, [LASER_VERSION]: parseDay("2026-11-14")!, [BRIDGE_VERSION]: parseDay("2026-12-17")!, [RESTART_VERSION]: parseDay("2026-12-19")!, [ALT_KEPT_VERSION]: parseDay("2026-12-19")! } as const;
+const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")!, [PRESS_VERSION]: parseDay("2026-12-03")!, [MUSHROOM_VERSION]: parseDay("2026-11-28")!, [STALACTITE_VERSION]: parseDay("2026-12-08")!, [LASER_VERSION]: parseDay("2026-11-14")!, [BRIDGE_VERSION]: parseDay("2026-12-17")!, [RESTART_VERSION]: parseDay("2026-12-19")!, [ALT_KEPT_VERSION]: parseDay("2026-12-19")!, [MIN_HOLD_VERSION]: parseDay("2026-12-13")! } as const;
 
 interface GoldenV4 {
   jumpSimVersion: number;
@@ -356,7 +365,7 @@ interface GoldenV4 {
   replays: { name: string; code: string; hash: string; finished: boolean; ticks: number; time: number; deaths: number }[];
 }
 
-function goldenReplays(version: 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): GoldenV4["replays"] {
+function goldenReplays(version: 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13): GoldenV4["replays"] {
   const L = dailyLevel(GOLDEN_DAYS[version], null, version);
   const codes: { name: string; code: string }[] = [{ name: "preuve de l'auteur", code: L.code }];
   const essais = demoAttempts(L.level, L.replay, 15, { attempts: 24, maxLives: 8 });
@@ -396,12 +405,12 @@ function withVoluntaryResume(level: Level, inputs: readonly number[]): number[] 
 }
 
 if (process.env.UPDATE_GOLDEN) {
-  const L = dailyLevel(GOLDEN_DAYS[ALT_KEPT_VERSION], null, ALT_KEPT_VERSION);
-  const golden: GoldenV4 = { jumpSimVersion: ALT_KEPT_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(ALT_KEPT_VERSION) };
-  writeFileSync(GOLDEN_FILES[ALT_KEPT_VERSION], JSON.stringify(golden, null, 2) + "\n");
+  const L = dailyLevel(GOLDEN_DAYS[MIN_HOLD_VERSION], null, MIN_HOLD_VERSION);
+  const golden: GoldenV4 = { jumpSimVersion: MIN_HOLD_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(MIN_HOLD_VERSION) };
+  writeFileSync(GOLDEN_FILES[MIN_HOLD_VERSION], JSON.stringify(golden, null, 2) + "\n");
 }
 
-for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, PLATFORM_GENERATOR], [PRESS_VERSION, PRESS_GENERATOR], [MUSHROOM_VERSION, MUSHROOM_GENERATOR], [STALACTITE_VERSION, STALACTITE_GENERATOR], [LASER_VERSION, LASER_GENERATOR], [BRIDGE_VERSION, BRIDGE_GENERATOR], [RESTART_VERSION, RESTART_GENERATOR], [ALT_KEPT_VERSION, JUMP_GENERATOR_VERSION]] as const) {
+for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, PLATFORM_GENERATOR], [PRESS_VERSION, PRESS_GENERATOR], [MUSHROOM_VERSION, MUSHROOM_GENERATOR], [STALACTITE_VERSION, STALACTITE_GENERATOR], [LASER_VERSION, LASER_GENERATOR], [BRIDGE_VERSION, BRIDGE_GENERATOR], [RESTART_VERSION, RESTART_GENERATOR], [ALT_KEPT_VERSION, THEME_BAG_GENERATOR], [MIN_HOLD_VERSION, JUMP_GENERATOR_VERSION]] as const) {
   describe(`lot 15/20/22/23/24/25/26/27 — déterminisme v${version} (fixtures/replay-golden-v${version}.json)`, () => {
     const golden = JSON.parse(readFileSync(GOLDEN_FILES[version], "utf8")) as GoldenV4;
     const day = GOLDEN_DAYS[version];

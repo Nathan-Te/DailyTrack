@@ -1,5 +1,7 @@
 import {
   DEFAULT_JUMP_PARAMS,
+  JUMP_MICRO_MAX,
+  JUMP_MIN_HOLD,
   JUMP_PARAM_KEYS,
   MAX_SPEED,
   SPRINT_PARAM_KEYS,
@@ -55,6 +57,8 @@ export type SprintSlider = TuneSlider<Exclude<SprintParamKey, "sprintMode">>;
 export type SurfaceSlider = TuneSlider<SurfaceParamKey>;
 /** Lot 13 : les curseurs du vent (section à part, valeurs par défaut `WIND_DEFAULTS`). */
 export type WindSlider = TuneSlider<WindParamKey>;
+/** Lot 30 : le curseur du maintien minimal du saut (section à part ; absent = la valeur du niveau, `JUMP_MIN_HOLD` pour un niveau de la version 13). */
+export type HoldSlider = TuneSlider<"jumpMinHold" | "jumpMicroMax">;
 
 const T = UNITS_PER_TILE;
 const R = TICK_RATE;
@@ -176,8 +180,56 @@ export const WIND_SLIDERS: readonly WindSlider[] = [
   },
 ];
 
+// Lot 30 : « Maintien du saut ». Comme le vent, le réglage est **optionnel** (absent de `DEFAULT_JUMP_PARAMS`) : le curseur montre `JUMP_MIN_HOLD` tant qu'il est absent, la valeur n'est écrite qu'au
+// premier mouvement du curseur, et revenir à `JUMP_MIN_HOLD` le retire ; dès qu'il est donné la partie est `tuned` (`isDefaultJumpParams`) : rien n'est enregistré ni envoyé.
+/** Lot 30 : la valeur du maintien minimal du curseur (le réglage donné, sinon celui des niveaux de la version 13). */
+export const holdValue = (p: Readonly<JumpParams>): number => p.jumpMinHold ?? JUMP_MIN_HOLD;
+/** Lot 30 : la valeur du micro-saut du curseur (le réglage donné, sinon celui des niveaux de la version 13). */
+export const microValue = (p: Readonly<JumpParams>): number => p.jumpMicroMax ?? JUMP_MICRO_MAX;
+/** Lot 30 : la valeur d'un curseur de la section « Maintien du saut ». */
+export const holdSliderValue = (p: Readonly<JumpParams>, key: HoldSlider["key"]): number => (key === "jumpMinHold" ? holdValue(p) : microValue(p));
+
+/** Lot 30 : la hauteur (tuiles) du petit saut quand l'appui dure `hold` pas : la montée à pleine impulsion pendant `hold` pas, puis la coupe de saut. */
+export function smallJumpHeight(p: Readonly<JumpParams>, hold: number): number {
+  let h = 0;
+  let vy = p.jumpSpeed;
+  for (let k = 0; k < hold && vy > 0; k++) {
+    h += vy;
+    vy -= p.gravity;
+  }
+  return (h + (vy > p.jumpCut ? jumpHeight(p.jumpCut, p.gravity) * T : jumpHeight(Math.max(vy, 0), p.gravity) * T)) / T;
+}
+
+export const HOLD_SLIDERS: readonly HoldSlider[] = [
+  {
+    key: "jumpMinHold",
+    label: "Maintien minimal du saut",
+    unit: "ticks",
+    min: 0,
+    max: 30,
+    hint: (p) =>
+      holdValue(p) === 0
+        ? "aucun maintien : le saut dépend de la durée exacte de l'appui (version 12 et avant)"
+        : `tout appui de ${microValue(p) + 1} à ${holdValue(p)} pas donne le même petit saut, ≈ ${num(smallJumpHeight(p, holdValue(p)), 2)} tuiles (un appui de 5 pas donnait ≈ ${num(smallJumpHeight(p, 5), 2)} tuiles avant le lot)`,
+  },
+  {
+    key: "jumpMicroMax",
+    label: "Micro-saut : appui de ce nombre de pas ou moins",
+    unit: "ticks",
+    min: 0,
+    max: 10,
+    hint: (p) =>
+      microValue(p) === 0
+        ? "aucun micro-saut : tout appui bref donne le petit saut"
+        : `un appui de 1 à ${microValue(p)} pas coupe le saut au relâchement, comme avant : de ≈ ${num(smallJumpHeight(p, 1), 2)} tuile (1 pas) à ≈ ${num(smallJumpHeight(p, microValue(p)), 2)} tuile (${microValue(p)} pas)`,
+  },
+];
+
 /** Combien de réglages du vent diffèrent de leur défaut. */
 export const windsChanged = (p: Readonly<JumpParams>): number => WIND_PARAM_KEYS.filter((k) => windValue(p, k) !== WIND_DEFAULTS[k]).length;
+
+/** Lot 30 : 1 si le maintien minimal diffère de celui des niveaux de la version 13, sinon 0. */
+export const holdChanged = (p: Readonly<JumpParams>): number => (holdValue(p) !== JUMP_MIN_HOLD ? 1 : 0) + (microValue(p) !== JUMP_MICRO_MAX ? 1 : 0);
 
 export const TUNE_STORAGE_KEY = storageKey("tune");
 
@@ -261,6 +313,8 @@ export function paramsJson(params: Readonly<JumpParams>): string {
   if (params.sprintMode) for (const k of SPRINT_PARAM_KEYS) if (params[k] !== undefined) keys.push(k);
   for (const k of SURFACE_PARAM_KEYS) if (params[k] !== undefined && params[k] !== SURFACE_DEFAULTS[k]) keys.push(k);
   for (const k of WIND_PARAM_KEYS) if (params[k] !== undefined && params[k] !== WIND_DEFAULTS[k]) keys.push(k);
+  if (params.jumpMinHold !== undefined && params.jumpMinHold !== JUMP_MIN_HOLD) keys.push("jumpMinHold");
+  if (params.jumpMicroMax !== undefined && params.jumpMicroMax !== JUMP_MICRO_MAX) keys.push("jumpMicroMax");
   return JSON.stringify(params, keys, 2);
 }
 
@@ -280,6 +334,8 @@ export function resetParams(params: JumpParams): void {
   for (const k of SPRINT_PARAM_KEYS) delete params[k];
   for (const k of SURFACE_PARAM_KEYS) delete params[k];
   for (const k of WIND_PARAM_KEYS) delete params[k];
+  delete params.jumpMinHold;
+  delete params.jumpMicroMax;
 }
 
 /** Lit des réglages gardés : seules les clés connues, entières et dans les bornes de leur curseur, sont reprises. */
@@ -288,7 +344,7 @@ export function parseTuned(text: string | null): JumpParams {
   if (!text) return params;
   try {
     const saved = JSON.parse(text) as Partial<Record<keyof JumpParams, unknown>>;
-    for (const s of [...TUNE_SLIDERS, ...SPRINT_SLIDERS, ...SURFACE_SLIDERS, ...WIND_SLIDERS]) {
+    for (const s of [...TUNE_SLIDERS, ...SPRINT_SLIDERS, ...SURFACE_SLIDERS, ...WIND_SLIDERS, ...HOLD_SLIDERS]) {
       const v = saved[s.key];
       if (typeof v === "number" && Number.isInteger(v) && v >= s.min && v <= s.max) params[s.key] = v;
     }
@@ -365,6 +421,7 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   const sprintRows = new Map<Exclude<SprintParamKey, "sprintMode">, Row>();
   const surfaceRows = new Map<SurfaceParamKey, Row>();
   const windRows = new Map<WindParamKey, Row>();
+  const holdRows = new Map<HoldSlider["key"], Row>();
   const status = document.createElement("div");
   status.className = "status";
 
@@ -415,10 +472,18 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
       r.hint.textContent = s.hint ? s.hint(params) : "";
       r.row.classList.toggle("changed", v !== WIND_DEFAULTS[s.key]);
     }
+    for (const s of HOLD_SLIDERS) {
+      const r = holdRows.get(s.key)!;
+      const v = holdSliderValue(params, s.key);
+      r.input.value = String(v);
+      r.value.textContent = `${formatHuman(s.unit, v)} (${v})`;
+      r.hint.textContent = s.hint ? s.hint(params) : "";
+      r.row.classList.toggle("changed", v !== (s.key === "jumpMinHold" ? JUMP_MIN_HOLD : JUMP_MICRO_MAX));
+    }
     sprintSwitch.textContent = on ? "Élan : activé" : "Élan : désactivé";
     sprintSwitch.setAttribute("aria-pressed", on ? "true" : "false");
     sprintBox.classList.toggle("on", on);
-    const changed = JUMP_PARAM_KEYS.filter((k) => params[k] !== DEFAULT_JUMP_PARAMS[k]).length + (on ? 1 : 0) + surfacesChanged(params) + windsChanged(params);
+    const changed = JUMP_PARAM_KEYS.filter((k) => params[k] !== DEFAULT_JUMP_PARAMS[k]).length + (on ? 1 : 0) + surfacesChanged(params) + windsChanged(params) + holdChanged(params);
     status.textContent = changed === 0 ? "Réglages par défaut" : `${changed} réglage(s) modifié(s) : partie jamais enregistrée`;
   };
 
@@ -439,6 +504,9 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
     hint.className = "hint";
     input.addEventListener("input", () => {
       (params as unknown as Record<K, number>)[s.key] = Math.round(Number(input.value));
+      // Lot 30 : revenir à la valeur des niveaux de la version 13 retire le réglage (la partie n'est plus `tuned`).
+      if (params.jumpMinHold === JUMP_MIN_HOLD) delete params.jumpMinHold;
+      if (params.jumpMicroMax === JUMP_MICRO_MAX) delete params.jumpMicroMax;
       saveTuned(params);
       refresh();
       onChange();
@@ -485,6 +553,18 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   windBox.append(windTitle, windNote);
   for (const s of WIND_SLIDERS) addSlider(windBox, s, windRows);
   body.append(windBox);
+
+  // Lot 30 : la section « Maintien du saut ».
+  const holdBox = document.createElement("div");
+  holdBox.className = "hold";
+  const holdTitle = document.createElement("strong");
+  holdTitle.textContent = "Maintien du saut";
+  const holdNote = document.createElement("small");
+  holdNote.className = "hint";
+  holdNote.textContent = "Un saut relâché avant ce nombre de pas continue comme s'il était tenu jusque-là (6 pas depuis la version 13 des niveaux), sauf le micro-saut : un appui de 4 pas ou moins coupe le saut comme avant. Modifié, la partie n'est jamais enregistrée ni envoyée.";
+  holdBox.append(holdTitle, holdNote);
+  for (const s of HOLD_SLIDERS) addSlider(holdBox, s, holdRows);
+  body.append(holdBox);
 
   // Lot 14 : la section « Caméra et secousses ».
   const cameraBox = document.createElement("div");

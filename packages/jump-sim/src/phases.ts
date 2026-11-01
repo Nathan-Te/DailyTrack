@@ -5,4 +5,4 @@
  * Lot 15 — **validation toutes phases** : les variantes (par morceau) dont une reprise à l'arrêt, à l'une des phases essayées de leur horloge,
  * n'a pas de solution jouable par un humain. Le générateur v4 ne les pose jamais (`daily.ts`) ; le détail est dans `modules/phases.json`.
  */
-export const PHASE_REFUSED: Readonly<Record<string, readonly number[]>> = {"cheminee-scie":[3],"nuit-opposition":[4],"scie-sol":[3]};
+export const PHASE_REFUSED: Readonly<Record<string, readonly number[]>> = {"champignon-rafale":[5],"champignon-tourbillon":[2],"laser-cheminee":[5],"nuit-opposition":[4],"presse-couloir":[2,3],"presse-ilot":[2,3],"scie-sol":[3],"tapis-contraire":[0]};

@@ -1,3 +1,4 @@
+import "./legacy";
 import { formatDay, parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -45,6 +46,7 @@ import {
   MUSHROOM_VERSION,
   RESTART_VERSION,
   ALT_KEPT_VERSION,
+  MIN_HOLD_VERSION,
   LASER_VERSION,
   bridgeModuleIds,
   STALACTITE_VERSION,
@@ -81,6 +83,7 @@ import {
   moduleStart,
   stepAttempt,
   type DailyLevel,
+  VARIETY_ORIGIN,
 } from "../src/index";
 import { emptyRun } from "../tools/vide";
 
@@ -115,8 +118,8 @@ describe("niveau du jour : identité et pureté", () => {
     // Lot 16 : avec ses voies lentes (et leurs montées ajoutées).
     const fresh = reassemble(levels[7]!);
     // Lot 15 : l'assemblage est en version 3 ; le niveau du jour, le même mis à l'heure unique (phases des sections).
-    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), ALT_KEPT_VERSION)).toBe(levels[7]!.ascii);
-    expect(levels[7]!.level.simVersion).toBe(ALT_KEPT_VERSION);
+    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), MIN_HOLD_VERSION)).toBe(levels[7]!.ascii);
+    expect(levels[7]!.level.simVersion).toBe(MIN_HOLD_VERSION);
   });
 
   it("trois dates voisines donnent trois niveaux différents", () => {
@@ -459,6 +462,8 @@ describe("lot 7 : variété", () => {
   it("cible de répétition : deux jours consécutifs ont au plus 1,5 morceau en commun en moyenne, 4 au plus", () => {
     const common: number[] = [];
     for (let k = 1; k < levels.length; k++) {
+      // Lot 30 : la règle de variété (aucun retour avant W jours) commence au 27/10/2026 ; les jours d'avant (avant le lancement public) gardent la cible du lot 7.
+      if (DATES[k - 1]! < VARIETY_ORIGIN) continue;
       const a = new Set(levels[k - 1]!.pieces.map((p) => p.id));
       common.push(levels[k]!.pieces.filter((p) => a.has(p.id)).length);
     }

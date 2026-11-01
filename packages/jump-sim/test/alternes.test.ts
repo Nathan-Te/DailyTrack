@@ -1,3 +1,4 @@
+import "./legacy";
 import { describe, expect, it } from "vitest";
 import {
   ALT_HOP_PRESS,
@@ -10,7 +11,10 @@ import {
   INPUT_RESPAWN,
   INPUT_RIGHT,
   JumpReplayError,
-  PRESS_MIN,
+  PRESS_MIN_LEGACY,
+  THEME_BAG_GENERATOR,
+  altHopPress,
+  JUMP_MIN_HOLD,
   RESPAWN_TICKS,
   RESTART_VERSION,
   TILE_ALT_OFF,
@@ -174,10 +178,13 @@ describe("lot 28 — la reprise garde l'état des alternés (version 12)", () =>
 });
 
 describe("lot 28 — le saut sur place remet A depuis B", () => {
-  it("hopToA : un appui d'au moins PRESS_MIN pas, retombé sur le palier, les blocs en A", () => {
+  it("hopToA : un appui d'au moins PRESS_MIN_LEGACY pas (version 12 : sans maintien minimal), retombé sur le palier, les blocs en A", () => {
     const lv = level(ALT_KEPT_VERSION);
     const back = play(dieAfter(lv, 1), 0, RESPAWN_TICKS, lv);
-    expect(ALT_HOP_PRESS).toBeGreaterThanOrEqual(PRESS_MIN);
+    expect(ALT_HOP_PRESS).toBeGreaterThanOrEqual(PRESS_MIN_LEGACY);
+    // Lot 30 : avec le maintien minimal (morceau joué seul, version 13), le saut sur place est tenu 10 pas, l'appui humain le plus court.
+    expect(altHopPress({ minHold: JUMP_MIN_HOLD })).toBe(JUMP_MIN_HOLD);
+    expect(altHopPress({ minHold: 0 })).toBe(ALT_HOP_PRESS);
     const hop = hopToA(lv, back)!;
     expect(hop).not.toBeNull();
     expect(hop.after.alt).toBe(0);
@@ -264,7 +271,7 @@ describe("lot 28 — un jour de néon g22 : les vies des essais fictifs repartan
   it("c'est un néon sans problème, à la version 12", () => {
     expect(jumpThemeForDay(day)).toBe("neon");
     expect(L.level.simVersion).toBe(ALT_KEPT_VERSION);
-    expect(L.id).toMatch(new RegExp(`-g${JUMP_GENERATOR_VERSION}$`)); // lot V1 : g23 (le sac de thèmes ; la physique et les morceaux de la g22)
+    expect(L.id).toMatch(new RegExp(`-g${THEME_BAG_GENERATOR}$`)); // lot V1 : g23 (le sac de thèmes ; la physique et les morceaux de la g22) ; lot 30 : le dernier de la version 12
     expect(dailyProblems(L)).toEqual([]);
     expect(L.level.alts.length).toBeGreaterThan(0);
   });

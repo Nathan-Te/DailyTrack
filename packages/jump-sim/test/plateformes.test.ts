@@ -1,3 +1,4 @@
+import "./legacy";
 import { Rng, parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -50,6 +51,7 @@ import {
   stepPlayerJump,
   type AttemptState,
   type Level,
+  variantUsable,
 } from "../src/index";
 
 // Lot 20 : plateformes mobiles (sim v5). Les niveaux sont de petits textes écrits ici.
@@ -563,11 +565,11 @@ describe("lot 20 — les morceaux à plateformes du catalogue", () => {
         expect(m.level.platforms.length, label).toBeGreaterThan(0);
         expect(palierProblems(m), label).toEqual([]);
         expect(platformProblems(m.level), label).toEqual([]);
+        // Lot 30 : une variante sans solution jouable, refusée toutes phases ou dont la voie parasite est fermée (`voies:modules`) est écartée du catalogue : le générateur ne la pose pas.
+        if (!variantUsable(def.id, v) || PHASE_REFUSED[def.id]?.includes(v) || PARASITE_CLOSED[def.id]?.includes(v)) continue;
         const sol = moduleSolutions(def.id, v)!;
         for (const entry of ["arret", "elan"] as const) expect(sol[entry]!.exigence, `${label} ${entry}`).toBeGreaterThanOrEqual(1);
         expect(variantExigence(sol), label).toBeGreaterThanOrEqual(1);
-        expect(PHASE_REFUSED[def.id]?.includes(v) ?? false, `${label} : toutes phases`).toBe(false);
-        expect(PARASITE_CLOSED[def.id]?.includes(v) ?? false, `${label} : voie parasite`).toBe(false);
       }
     }
     expect(variants).toBeGreaterThanOrEqual(25);
@@ -578,6 +580,7 @@ describe("lot 20 — les morceaux à plateformes du catalogue", () => {
     expect(rest.length).toBeGreaterThanOrEqual(1);
     for (const def of rest) {
       for (let v = 0; v < def.variants.length; v++) {
+        if (!variantUsable(def.id, v)) continue;
         expect(variantExigence(moduleSolutions(def.id, v)), `${def.id} v${v}`).toBeLessThanOrEqual(2);
         for (const entry of ["arret", "elan"] as const) {
           const bits = fromRuns(decodeReplay(moduleSolutions(def.id, v)![entry]!.code).runs);
@@ -586,9 +589,10 @@ describe("lot 20 — les morceaux à plateformes du catalogue", () => {
         }
       }
     }
-    const hard = PLATFORM_MODULES.filter((def) => def.variants.some((_, v) => variantExigence(moduleSolutions(def.id, v)) >= 4));
+    const hard = PLATFORM_MODULES.filter((def) => def.variants.some((_, v) => variantUsable(def.id, v) && variantExigence(moduleSolutions(def.id, v)) >= 4));
     expect(hard.length, "portions dures").toBeGreaterThanOrEqual(2);
-    expect(PLATFORM_MODULES.length - rest.length - hard.length, "passages intermédiaires").toBeGreaterThanOrEqual(2);
+    // Lot 30 : 2 au lot 20 ; avec le maintien minimal à 6 pas, davantage de morceaux à plateformes ont une variante notée 4 ou 5 (le petit saut est plus bas, les passages se re-résolvent autrement) : 1 passage intermédiaire reste.
+    expect(PLATFORM_MODULES.length - rest.length - hard.length, "passages intermédiaires").toBeGreaterThanOrEqual(1);
   });
 
   it("on monte vraiment sur la plateforme : la solution de chaque variante est portée par elle au moins un pas, aux deux entrées", () => {
