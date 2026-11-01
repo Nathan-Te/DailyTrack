@@ -51,7 +51,7 @@ export async function preparerJour(options: OptionsUrl, aujourdhui: number): Pro
 /** La suite d'essai ou les paliers (`?scenario=`, hors production) : un outil, sans jour ni médailles. Les scénarios sont à la demande (lot T3b). */
 export async function preparerScenario(options: OptionsUrl): Promise<Preparation> {
   const outils = await import("@cdj/tower-sim/scenarios/outils");
-  const contenu = options.scenario === "paliers" ? outils.scenarioPaliers(options.effet) : outils.SCENARIO_ESSAI;
+  const contenu = options.scenario === "paliers" ? outils.scenarioPaliers(options.effet) : options.scenario === "alignement" ? outils.SCENARIO_ALIGNEMENT : outils.SCENARIO_ESSAI;
   return { contenu, jour: null, date: null, numero: null, refuse: false, jourLu: null, medailles: SANS_MEDAILLES, theme: options.theme ?? "port", estAujourdhui: false };
 }
 

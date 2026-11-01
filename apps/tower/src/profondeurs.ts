@@ -17,6 +17,8 @@ export const Z = {
   vagues: -5.9,
   /** La gerbe d'eau (gouttes et ondes), devant l'eau. */
   gerbe: -5.8,
+  /** La visée (lot T6) : derrière les pièces (z ≥ 1), devant la plateforme. */
+  visee: 0.5,
   traineesVent: -0.4,
   pilier: -2,
   plateforme: -1,

@@ -494,7 +494,7 @@ export function createTower(platform: Platform, options: TowerOptions | undefine
          ON CONFLICT (day, player_id) DO UPDATE SET tirage = excluded.tirage, hauteur_mm = excluded.hauteur_mm, hauteur_max_mm = excluded.hauteur_max_mm, vies = excluded.vies, ticks = excluded.ticks,
            medal = excluded.medal, replay = excluded.replay, sim_version = excluded.sim_version, generator_version = excluded.generator_version, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash
          WHERE tower_results.apercu = excluded.apercu AND (excluded.hauteur_mm > tower_results.hauteur_mm OR (excluded.hauteur_mm = tower_results.hauteur_mm AND (excluded.vies > tower_results.vies OR (excluded.vies = tower_results.vies AND excluded.ticks < tower_results.ticks))))`,
-        [day, playerId, niveau.contenu.tirage ?? 0, res.hauteurMm, res.hauteurMaxMm, res.vies, res.ticks, medalNew, body.replay as string, TOWER_SIM_VERSION, niveau.contenu.g, t, t, hash, known?.hidden === 1 || apercu === 1 ? 1 : 0, apercu], // lot N1 : un joueur masqué reste masqué ; lot P : l'aperçu est masqué aussi
+        [day, playerId, niveau.contenu.tirage ?? 0, res.hauteurMm, res.hauteurMaxMm, res.vies, res.ticks, medalNew, body.replay as string, r.sim, niveau.contenu.g, t, t, hash, known?.hidden === 1 || apercu === 1 ? 1 : 0, apercu], // lot N1 : un joueur masqué reste masqué ; lot P : l'aperçu est masqué aussi
       );
     }
     log("INFO", "DailyTower : partie du jour", { day: formatDay(day), hauteurMm: res.hauteurMm, vies: res.vies, improved, executeur: executeur.nom ?? "inconnu" });

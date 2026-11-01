@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { COMMANDE, dailyTower, empreinteVue, Partie, type Rapier, rejouer, type Scenario, SCENARIO_ESSAI, scenarioPaliers } from "../src";
+import { boitesE, COMMANDE, dailyTower, empreinteVue, Partie, type Rapier, rejouer, type Scenario, SCENARIO_ESSAI, scenarioPaliers } from "../src";
 import { bot, commandesDuCoup, coupInterdit, coupsDe, essayerBot, jouerBot, jouerBotRobuste, noteEssai, OPTIONS_BOT, ROTATIONS, VARIANTES_BOT } from "../src/bot";
 import { BUDGET_TICKS, PENALITE_MOUVEMENT, PENALITE_VIE, PROFONDEUR_VISIBLE_MM, SATISFAIT_MM } from "../src/bot/constantes";
 import { chargerRapier } from "../src/rapier";
@@ -91,6 +91,31 @@ describe("le bot joue une vraie partie", () => {
     expect(r.resultat.hauteurMm).toBeGreaterThan(2_000);
     expect(rejouer(R, PETITE, r.rediffusion)).toEqual(r.resultat);
     expect(r.rediffusion.contenu).toEqual({ scenario: "petite" });
+  });
+
+  it("lot T6 — le bot joue en simulation 4 : sa preuve la nomme, se rejoue en version 4, et ses pièces sont posées bords sur la grille des demi-cases (rejeu pas à pas des commandes de sa preuve)", () => {
+    expect(a.rediffusion.sim).toBe(4);
+    // Rejoue la preuve : au lâcher de chaque pièce, ses bords gauche et droit sont sur la grille (hors vent : PETITE n'a pas de palier).
+    const p = new Partie(R, PETITE);
+    let verifiees = 0;
+    for (const plage of a.rediffusion.plages) {
+      for (let i = 0; i < plage.ticks; i++) {
+        const avant = p.vue();
+        const actif = avant.active >= 0 ? avant.pieces[avant.active]! : null;
+        p.avancer(plage.masque);
+        if (actif && p.vue().active !== actif.id) {
+          const q = avant.pieces[actif.id]!;
+          const c = boitesE(q.kind, q.rot, q.taille);
+          const g = q.x * 8 + Math.min(...c.map((b) => b.cx - b.hw));
+          const d = q.x * 8 + Math.max(...c.map((b) => b.cx + b.hw));
+          expect(((Math.round(g) % 4) + 4) % 4, `${q.kind} gauche`).toBe(0);
+          expect(((Math.round(d) % 4) + 4) % 4, `${q.kind} droite`).toBe(0);
+          verifiees++;
+        }
+      }
+    }
+    expect(verifiees).toBeGreaterThanOrEqual(4);
+    p.dispose();
   });
 
   it("le générateur rend les commandes de chaque pièce décidée (de quoi la regarder jouer), puis la preuve", { timeout: 60_000 }, () => {

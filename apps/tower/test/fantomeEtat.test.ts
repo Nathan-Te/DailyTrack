@@ -28,9 +28,9 @@ describe("la séquence du fantôme", () => {
     expect(suivant("diamant", { meilleure: false, diamant: false })).toBe("aucun");
   });
 
-  it("l'état de départ : Ma meilleure si elle existe, sinon Aucun (jamais le Diamant sans qu'on le choisisse)", () => {
-    expect(etatInitial(tout)).toBe("meilleure");
-    expect(etatInitial({ meilleure: false, diamant: true })).toBe("aucun");
+  it("l'état de départ : le fantôme est éteint par défaut (lot T6) — Aucun, même quand ta meilleure partie existe ; on le choisit avec le bouton", () => {
+    expect(etatInitial()).toBe("aucun");
+    expect(suivant(etatInitial(), tout)).toBe("meilleure"); // un appui sur le bouton le rallume
   });
 
   it("un état qui n'est plus disponible retombe sur Aucun", () => {

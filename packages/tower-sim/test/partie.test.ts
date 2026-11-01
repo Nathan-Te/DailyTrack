@@ -166,8 +166,8 @@ describe("les vies", () => {
     p.dispose();
   });
 
-  it("une pièce tombée de la tour (effondrement) coûte une vie, comme une pièce active ; une cascade en coûte plusieurs, jamais deux fois la même", () => {
-    const p = new Partie(R, SCENARIO_ESSAI);
+  it("une pièce tombée de la tour (effondrement) coûte une vie, comme une pièce active ; une cascade en coûte plusieurs, jamais deux fois la même (simulation 3)", () => {
+    const p = new Partie(R, SCENARIO_ESSAI, REGLAGES_DEFAUT, { version: 3 });
     // Chaque pièce est poussée à droite de 6 demi-cases : la tour se penche et s'effondre.
     const { transitions } = partieScriptee(p, (_id, k) => (k < 6 ? COMMANDE.DROITE : 0));
     const v = p.vue();
@@ -178,6 +178,20 @@ describe("les vies", () => {
     // Une pièce emportée alors qu'elle était posée (pas en l'air) : au moins deux dans la cascade.
     const tomberesPosees = transitions.filter((id) => id < v.posees && v.pieces[id]!.etat === "perdue");
     expect(tomberesPosees.length).toBeGreaterThanOrEqual(2);
+    p.dispose();
+  });
+});
+
+describe("les vies (simulation 4, lot T6)", () => {
+  it("une cascade en simulation 4 : neuf vies, la tour poussée à droite s'effondre, chaque pièce emportée coûte une vie, jamais deux fois la même", () => {
+    const p = new Partie(R, SCENARIO_ESSAI, { ...REGLAGES_DEFAUT, vies: 9 });
+    const { transitions } = partieScriptee(p, (_id, k) => (k < 6 ? COMMANDE.DROITE : 0));
+    const v = p.vue();
+    expect(new Set(transitions).size).toBe(transitions.length);
+    expect(transitions.length).toBeGreaterThanOrEqual(4);
+    expect(v.tombees).toBe(transitions.length);
+    expect(v.vies).toBe(Math.max(0, 9 - transitions.length));
+    expect(transitions.filter((id) => id < v.posees && v.pieces[id]!.etat === "perdue").length).toBeGreaterThanOrEqual(2); // des pièces emportées alors qu'elles étaient posées
     p.dispose();
   });
 });
@@ -324,9 +338,9 @@ describe("une partie scriptée", () => {
     return c;
   };
 
-  it(`TOWER_SIM_VERSION vaut 3 (lot T2) : la partie scriptée, qui descend vite, a une nouvelle empreinte de fin, celle de Node (version 1 : 42d2b82d50b261c2)`, () => {
-    expect(TOWER_SIM_VERSION).toBe(3);
-    const p = new Partie(R, SCENARIO_ESSAI);
+  it(`simulation 3 (lots T2 à T5) rejouée au bit près : la partie scriptée, qui descend vite, a l'empreinte de fin de Node (version 1 : 42d2b82d50b261c2) — lot T6 : la version 3 reste jouable telle quelle`, () => {
+    const p = new Partie(R, SCENARIO_ESSAI, REGLAGES_DEFAUT, { version: 3 });
+    expect(p.version).toBe(3);
     partieScriptee(p, SCRIPT);
     const r = p.resultat()!;
     const e = empreinteVue(p.vue());
@@ -340,6 +354,32 @@ describe("une partie scriptée", () => {
           "posees": 10,
           "ticks": 1046,
           "ticksGel": 1105,
+          "tombees": 5,
+          "vies": 0,
+        },
+      }
+    `);
+    p.dispose();
+  });
+
+  it(`TOWER_SIM_VERSION vaut 4 (lot T6 : la grille et la pose juste) : la partie scriptée a sa propre empreinte de fin, celle de Node, et ce n'est pas celle de la version 3`, () => {
+    expect(TOWER_SIM_VERSION).toBe(4);
+    const p = new Partie(R, SCENARIO_ESSAI);
+    expect(p.version).toBe(4);
+    partieScriptee(p, SCRIPT);
+    const r = p.resultat()!;
+    const e = empreinteVue(p.vue());
+    expect(e).not.toBe("1e7e3a52a2102cf8");
+    expect({ empreinte: e, resultat: r }).toMatchInlineSnapshot(`
+      {
+        "empreinte": "56a779235d584dc4",
+        "resultat": {
+          "hauteurMaxMm": 5465,
+          "hauteurMm": 3765,
+          "motif": "vies",
+          "posees": 9,
+          "ticks": 917,
+          "ticksGel": 1077,
           "tombees": 5,
           "vies": 0,
         },

@@ -10,6 +10,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { formatDay, parseDay } from "@cdj/core";
 import {
   COMMANDE,
+  scenarioNomme,
+  SCENARIO_ALIGNEMENT,
   type Contenu,
   dailyTower,
   empreinteContenu,
@@ -55,6 +57,8 @@ interface GoldenTower {
   tirages?: (GoldenContenu & { tirage: number })[];
   /** Lot T3 : les mêmes dates sous la version 1 du générateur (tout `port`), qui reste appelable et ne change jamais. */
   anciennes?: { g: number; contenus: GoldenContenu[] }[];
+  /** Lot T6 : les rediffusions des simulations PASSÉES (la 3), gardées telles quelles : elles se rejouent à jamais, au bit près, par la version qu'elles nomment. */
+  anciennesSim?: { sim: number; rediffusions: GoldenRediffusion[] }[];
   rediffusions: GoldenRediffusion[];
 }
 
@@ -119,22 +123,34 @@ for (const a of anciennes) {
   const recalcul = a.contenus.map((c) => empreinteContenu(dailyTower(parseDay(c.date)!, a.g)));
   if (recalcul.some((e, i) => e !== a.contenus[i]!.empreinte)) throw new Error(`le générateur g${a.g} ne donne plus ses empreintes : une version passée ne change jamais`);
 }
-const contenuDe = (id: GoldenRediffusion["contenu"]): Scenario => ("scenario" in id ? SCENARIO_ESSAI : dailyTower(parseDay(id.date)!, id.g, id.tirage ?? 0));
+const contenuDe = (id: GoldenRediffusion["contenu"]): Scenario => ("scenario" in id ? scenarioNomme(id.scenario)! : dailyTower(parseDay(id.date)!, id.g, id.tirage ?? 0));
+
+// Lot T6 : les rediffusions d'une simulation passée (la 3) sont reprises telles quelles sous `anciennesSim` et vérifiées à chaque passage (leur résultat ne change jamais) ; celles de la simulation
+// courante sont les `rediffusions`. Un golden d'une simulation plus ancienne que le code déplace ses rediffusions sous `anciennesSim`, une fois.
+const anciennesSim: NonNullable<GoldenTower["anciennesSim"]> = [...(ancien?.anciennesSim ?? [])];
+if (ancien && ancien.versions.sim < TOWER_SIM_VERSION && !anciennesSim.some((a) => a.sim === ancien.versions.sim)) anciennesSim.push({ sim: ancien.versions.sim, rediffusions: ancien.rediffusions });
+const courantes = ancien && ancien.versions.sim === TOWER_SIM_VERSION ? ancien.rediffusions : [];
+for (const a of anciennesSim) {
+  for (const r of a.rediffusions) {
+    const rejeu = rejouerComplet(R, contenuDe(r.contenu), r.code);
+    if (JSON.stringify(rejeu.resultat) !== JSON.stringify(r.resultat) || empreinteVue(rejeu.vue) !== r.empreinteFinale) throw new Error(`« ${r.nom} » (simulation ${a.sim}) ne donne plus son résultat : la version ${a.sim} reste rejouable au bit près`);
+  }
+}
 
 const rediffusions: GoldenRediffusion[] = [];
 const sources: { nom: string; id: GoldenRediffusion["contenu"]; trouver(): Partie }[] = [
   // Neuf vies (un réglage du joueur, dans l'en-tête de la rediffusion) : la partie va jusqu'au bout des 40 pièces.
   { nom: "essai", id: { scenario: "essai" }, trouver: () => chercher(R, SCENARIO_ESSAI, { ...REGLAGES_DEFAUT, vies: 9 }) },
-  // Les deux parties du lot T2 sont sur le contenu de la version 2 du générateur (paliers tous les 10 m) : elles le nomment, et restent rejouables tant qu'un fichier la nomme.
-  { nom: "jour-avec-paliers", id: { date: "2026-11-02", g: 2 }, trouver: () => chercher(R, dailyTower(PREMIER, 2), REGLAGES_DEFAUT) },
-  { nom: "zero-vie", id: { date: "2026-11-03", g: 2 }, trouver: () => perdreTout(R, dailyTower(PREMIER + 1, 2)) },
-  // Lot T3b : un jour de la version 3 (paliers tous les 8 m, tirage 0) et un tirage non nul (le genre 2 de la rediffusion).
-  { nom: "jour-v3", id: { date: "2026-11-02", g: 3 }, trouver: () => chercher(R, dailyTower(PREMIER, 3), REGLAGES_DEFAUT) },
-  { nom: "tirage-v3", id: { date: "2026-11-02", g: 3, tirage: 2 }, trouver: () => chercher(R, dailyTower(PREMIER, 3, 2), REGLAGES_DEFAUT) },
+  // Lot T6 : la suite pour essayer de poser juste (O, O, I, J, L, T, T, S, Z, O, I, T) — des quarts de tour, des pivots, des pièces posées contre d'autres.
+  { nom: "alignement", id: { scenario: "alignement" }, trouver: () => chercher(R, SCENARIO_ALIGNEMENT, { ...REGLAGES_DEFAUT, vies: 9 }) },
+  // Un jour de la version 3 du générateur (paliers tous les 8 m, tirage 0), une partie à 0 vie, un tirage non nul (le genre 2 de la rediffusion).
+  { nom: "jour-avec-paliers", id: { date: "2026-11-02", g: 3 }, trouver: () => chercher(R, dailyTower(PREMIER, 3), REGLAGES_DEFAUT) },
+  { nom: "zero-vie", id: { date: "2026-11-03", g: 3 }, trouver: () => perdreTout(R, dailyTower(PREMIER + 1, 3)) },
+  { nom: "tirage", id: { date: "2026-11-02", g: 3, tirage: 2 }, trouver: () => chercher(R, dailyTower(PREMIER, 3, 2), REGLAGES_DEFAUT) },
 ];
 for (const s of sources) {
   const contenu = contenuDe(s.id);
-  const gardee = ancien?.rediffusions.find((r) => r.nom === s.nom);
+  const gardee = courantes.find((r) => r.nom === s.nom);
   let code: string;
   if (gardee) {
     // Une partie gardée ne change JAMAIS : son code reste, et son résultat doit être exactement celui du golden (sinon une version a bougé sans être montée).
@@ -152,6 +168,6 @@ for (const s of sources) {
   rediffusions.push(g);
 }
 
-const golden: GoldenTower = { versions: { sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION }, contenus, tirages, anciennes, rediffusions };
+const golden: GoldenTower = { versions: { sim: TOWER_SIM_VERSION, g: TOWER_GENERATOR_VERSION }, contenus, tirages, anciennes, anciennesSim, rediffusions };
 writeFileSync(FICHIER, `${JSON.stringify(golden, null, 2)}\n`);
 console.log(`golden-tower.json écrit : ${contenus.length} contenus, ${rediffusions.length} rediffusions.`);

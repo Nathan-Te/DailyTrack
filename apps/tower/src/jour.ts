@@ -16,6 +16,8 @@ export interface JourDuJeu {
   contenu: Contenu;
   medailles: Medailles | null;
   preuve: string | null;
+  /** Lot T6 : la version de simulation du fichier (absente d'un jour généré). */
+  sim?: number;
 }
 
 /** Lit le fichier d'un jour figé (`jours/AAAA-MM-JJ.json`, à côté de la page) ; null s'il manque, n'est pas du JSON, ne se relit pas ou tarde. */

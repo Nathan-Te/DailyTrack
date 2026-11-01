@@ -4,6 +4,7 @@
 //   ?seed=AAAA-MM-JJ          le contenu de ce jour. R9 (même règle que `?seed=` de Jump) : sur la production une date FUTURE est refusée (le contenu d'aujourd'hui s'ouvre) ; sur un aperçu de
 //                             branche ou en local toutes les dates sont ouvertes. Une date illisible ouvre le contenu d'aujourd'hui.
 //   ?scenario=essai           la suite fixe d'essai du lot T1 : 40 pièces, une plateforme de 7 m, aucun palier — fermé en production
+//   ?scenario=alignement      la suite fixe pour essayer de poser juste (lot T6) : O, O, I, J, L, T, T, S, Z, O, I, T sur une plateforme de 7 m, sans palier — fermé en production
 //   ?scenario=paliers         une tour prête juste sous 10 m (lot T2) ; `&effet=lierre|figee|petite|geante|vent|glissante` force l'effet du premier palier (lierre par défaut) — fermé en production
 //   ?scenario=banc            la démonstration de la physique du lot T0 (`&engine=a|b`, `&libre`) ; son panneau est `&debug&tune` — fermé en production
 //   ?bot                      (lot T3, avec le contenu d'un jour) REGARDER le bot de l'auteur jouer : il rejoue la preuve du fichier du jour si elle existe, sinon il la calcule dans un Web Worker et joue chaque
@@ -21,7 +22,7 @@
 import { parseDay } from "@cdj/core";
 import { EFFETS, type Effet, THEMES_TOWER, type ThemeTower, TIRAGES_MAX } from "@cdj/tower-sim";
 
-export type Scenario = "jour" | "essai" | "paliers" | "banc";
+export type Scenario = "jour" | "essai" | "paliers" | "banc" | "alignement";
 export interface OptionsUrl {
   scenario: Scenario;
   /** `?seed=` lu (numéro de jour civil), null s'il est absent, illisible ou fermé (production sans date passée : voir `choisirJour`). */
@@ -37,6 +38,8 @@ export interface OptionsUrl {
   /** `?theme=` : le thème forcé, ou null (celui du jour). Fermé en production. */
   theme: ThemeTower | null;
   tactile: "1" | "0" | null;
+  /** Lot T6 : la visée (deux traits et le contour de l'arrivée de la pièce en main) ; allumée par défaut, `?visee=0` l'éteint (le réglage des Réglages viendra au lot T7). Affichage seul. */
+  visee: boolean;
   /** `?apercu=` présent (un lien d'aperçu) : l'interrupteur des jeux attend la clé avant de laisser le jeu appeler le serveur. */
   apercu: boolean;
   /** `?api=` lu tel quel (la règle R7 s'applique à `baseApi`, pas ici), ou null. */
@@ -52,7 +55,7 @@ export function lireOptions(search: string, restreint: boolean): OptionsUrl {
   const effet = q.get("effet");
   const theme = q.get("theme");
   const tirage = Number(q.get("tirage"));
-  const scenario = restreint ? "jour" : demande === "banc" || demande === "essai" || demande === "paliers" ? demande : "jour";
+  const scenario = restreint ? "jour" : demande === "banc" || demande === "essai" || demande === "paliers" || demande === "alignement" ? demande : "jour";
   return {
     scenario,
     seed: parseDay(q.get("seed") ?? ""),
@@ -63,6 +66,7 @@ export function lireOptions(search: string, restreint: boolean): OptionsUrl {
     tirage: !restreint && tirage > 0 && tirage < TIRAGES_MAX ? Math.floor(tirage) : 0,
     theme: !restreint && (THEMES_TOWER as readonly string[]).includes(theme ?? "") ? (theme as ThemeTower) : null,
     tactile: tactile === "1" || tactile === "0" ? tactile : null,
+    visee: q.get("visee") !== "0",
     apercu: q.has("apercu"),
     api: q.get("api"),
   };

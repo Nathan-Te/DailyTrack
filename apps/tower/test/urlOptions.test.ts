@@ -8,8 +8,8 @@ const J = (d: string): number => parseDay(d)!;
 
 describe("paramètres d'adresse de Tower", () => {
   it("hors production : le contenu du jour par défaut, la suite d'essai, les paliers, la démonstration du lot T0, les outils de Nathan", () => {
-    expect(lireOptions("", false)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, tirage: 0, theme: null, tactile: null, apercu: false, api: null });
-    expect(lireOptions("?scenario=essai&debug&tune&tactile=1", false)).toEqual({ scenario: "essai", seed: null, effet: "lierre", debug: true, tune: true, bot: false, tirage: 0, theme: null, tactile: "1", apercu: false, api: null });
+    expect(lireOptions("", false)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, tirage: 0, theme: null, tactile: null, visee: true, apercu: false, api: null });
+    expect(lireOptions("?scenario=essai&debug&tune&tactile=1", false)).toEqual({ scenario: "essai", seed: null, effet: "lierre", debug: true, tune: true, bot: false, tirage: 0, theme: null, tactile: "1", visee: true, apercu: false, api: null });
     expect(lireOptions("?scenario=banc&engine=b", false).scenario).toBe("banc");
     expect(lireOptions("?scenario=inconnu", false).scenario).toBe("jour");
     expect(lireOptions("?tune", false).tune).toBe(false); // `tune` ne va pas sans `debug`
@@ -30,9 +30,23 @@ describe("paramètres d'adresse de Tower", () => {
   });
 
   it("en production : ni scénario, ni effet, ni ?debug, ni ?tune ; seul ?seed= reste lu (sa date future est refusée par choisirJour)", () => {
-    expect(lireOptions("?scenario=banc&debug&tune&bot&theme=nuit", true)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, tirage: 0, theme: null, tactile: null, apercu: false, api: null });
+    expect(lireOptions("?scenario=banc&debug&tune&bot&theme=nuit", true)).toEqual({ scenario: "jour", seed: null, effet: "lierre", debug: false, tune: false, bot: false, tirage: 0, theme: null, tactile: null, visee: true, apercu: false, api: null });
     expect(lireOptions("?scenario=paliers&effet=vent", true)).toMatchObject({ scenario: "jour", effet: "lierre" });
     expect(lireOptions("?seed=2026-11-02", true).seed).toBe(J("2026-11-02"));
+  });
+});
+
+describe("lot T6 : ?scenario=alignement et ?visee=", () => {
+  it("?scenario=alignement (la suite pour essayer de poser juste) est un outil : lu hors production, fermé en production (R9)", () => {
+    expect(lireOptions("?scenario=alignement", false).scenario).toBe("alignement");
+    expect(lireOptions("?scenario=alignement", true).scenario).toBe("jour");
+  });
+
+  it("la visée est allumée par défaut ; ?visee=0 l'éteint (le réglage des Réglages viendra au lot T7) ; c'est de l'affichage seul, donc permis en production", () => {
+    expect(lireOptions("", false).visee).toBe(true);
+    expect(lireOptions("?visee=0", false).visee).toBe(false);
+    expect(lireOptions("?visee=1", false).visee).toBe(true);
+    expect(lireOptions("?visee=0", true).visee).toBe(false);
   });
 });
 
