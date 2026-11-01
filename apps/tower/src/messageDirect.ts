@@ -3,11 +3,11 @@ import { bandeauAnnonce, el, type TraducteurCommun, visibiliteDeLaPage } from "@
 import { langueCourante, traducteurDuSocle } from "./i18n";
 
 // Le message en direct de Tower (lot T4) : le composant commun (`bandeauAnnonce` de `@cdj/ui`, la surveillance de `@cdj/profile`), posé sur l'accueil et sur l'arrivée — jamais pendant une
-// partie. Aux couleurs de Tower (`accueil.css`, `.message-direct__bandeau`). Il ne prend **jamais le focus** (`role="status"`). Le texte est une donnée : `textContent`, jamais du HTML.
+// partie (lot T7 : et sur la pause). Aux couleurs de Tower (`accueil.css`, `.message-direct__bandeau`). Il ne prend **jamais le focus** (`role="status"`). Le texte est une donnée : `textContent`, jamais du HTML.
 // Lot TP : Tower a sa destination propre, `tower` (`OuAnnonce` de `@cdj/profile`, la table `annonces`, la case « Tower » du panneau d'administration).
 export const OU_TOWER: OuAnnonce = "tower";
 
-export type EcranMessage = "accueil" | "arrivee";
+export type EcranMessage = "accueil" | "arrivee" | "pause";
 
 export interface MessageDirect {
   /** L'écran du moment (`null` : une partie commence, plus rien ne s'affiche ni ne se lit). */
@@ -18,7 +18,7 @@ export interface MessageDirect {
 const traducteurVivant = (): TraducteurCommun => ({ get langue() { return traducteurDuSocle().langue; }, t: (cle: never, params?: never) => traducteurDuSocle().t(cle, params) }) as unknown as TraducteurCommun;
 
 /** `base` : l'adresse de l'API ; `hotes` : l'emplacement de chaque écran (vide, il n'occupe aucune place). */
-export function monterMessage(o: { base: string; stockage: Pick<Storage, "getItem" | "setItem"> | null; hotes: Record<EcranMessage, HTMLElement> }): MessageDirect {
+export function monterMessage(o: { base: string; stockage: Pick<Storage, "getItem" | "setItem"> | null; hotes: { accueil: HTMLElement; arrivee: HTMLElement; pause?: HTMLElement } }): MessageDirect {
   let ecran: EcranMessage | null = null;
   let annonce: Annonce | null = null;
   let bandeau: HTMLElement | null = null;
@@ -36,6 +36,7 @@ export function monterMessage(o: { base: string; stockage: Pick<Storage, "getIte
       dessine = annonce.id;
     }
     const hote = o.hotes[ecran];
+    if (!hote) return retirer();
     if (bandeau.parentElement !== hote) hote.append(bandeau);
   };
   const surveillance = surveillerAnnonce({

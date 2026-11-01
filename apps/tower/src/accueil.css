@@ -17,6 +17,15 @@
   align-items: flex-start;
   touch-action: pan-y;
 }
+/* La bande que `liensCommunauteJeu.css` réserve en bas de l'écran pour Discord et Ko-fi (sur deux lignes sous 480 px) : le même calcul, pour la réserver aussi en haut (centrage, lot T7). */
+.voile--accueil {
+  --bande-liens: calc(max(10px, env(safe-area-inset-bottom)) + var(--dj-cible) + var(--dj-espace-3));
+}
+@media (max-width: 480px) {
+  .voile--accueil {
+    --bande-liens: calc(max(10px, env(safe-area-inset-bottom)) + 2 * var(--dj-cible) + 2 * var(--dj-espace-3));
+  }
+}
 .accueil__colonne {
   box-sizing: border-box;
   width: min(900px, 100%);
@@ -143,6 +152,36 @@
 }
 .accueil__aide {
   min-height: var(--dj-cible);
+}
+/* Lot T7 : « Comment jouer », « Archives » et « Réglages », trois boutons de 44 px sur une rangée. */
+.accueil__secondaires {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--dj-espace-3);
+}
+.accueil__secondaires > * {
+  min-width: 0;
+  padding-inline: var(--dj-espace-2);
+}
+.accueil__archive {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-2) var(--dj-espace-4);
+  margin: 0;
+  padding: var(--dj-espace-2) var(--dj-espace-4);
+  background: var(--dj-encre);
+  color: var(--tower-menthe);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.accueil__archive[hidden] {
+  display: none;
+}
+.accueil__archive .accueil__lien {
+  color: var(--tower-menthe);
+  align-self: center;
 }
 /* Les paliers du jour : « 8 m · Lierre · BONUS » — le mot est toujours écrit, la couleur ne le porte pas seule. */
 .accueil__paliers {
@@ -335,21 +374,10 @@
   display: inline-flex;
   gap: var(--dj-espace-2);
 }
-.touche {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  min-height: 28px;
-  box-sizing: border-box;
-  padding: 0 var(--dj-espace-2);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  background: var(--dj-creme);
-  box-shadow: 0 2px 0 var(--dj-encre);
-  font-family: var(--dj-police-chiffres);
-  font-weight: 700;
+.aide__note {
+  margin: 0;
   font-size: var(--dj-taille-12);
+  font-weight: 600;
 }
 .aide__icone {
   fill: none;
@@ -396,6 +424,15 @@
   max-height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
+  /* Lot T7 : centrée dans la fenêtre, en hauteur comme en largeur (l'auto du flex ne déborde jamais : si la place manque, la colonne défile) ; sans l'auto, `min-height: 0` la collait en haut. */
+  margin: auto;
+}
+/* La bande des boutons Discord et Ko-fi est réservée en bas (`liensCommunauteJeu.css`) : la même en haut, pour que la coque soit centrée dans la FENÊTRE et non dans ce qui reste. Sur un écran bas
+   (paysage de téléphone) on ne la double pas : la place est comptée. */
+@media (min-height: 521px) {
+  .voile--accueil:has(.dj-communaute) {
+    padding-top: max(var(--bande-liens), max(8px, env(safe-area-inset-top, 0px)));
+  }
 }
 .voile--accueil:has(.dj-communaute) > .accueil__colonne::-webkit-scrollbar {
   display: none;

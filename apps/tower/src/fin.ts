@@ -67,6 +67,8 @@ export interface OptionsFin {
   eyebrow(): string;
   onPartager(): void;
   onClassement(): void;
+  /** Lot T7 : « Accueil de Tower » (retour à l'accueil du jeu, comme le retour par B à la manette). */
+  onAccueil(): void;
   /** Le pseudo choisi dans le formulaire du premier envoi. */
   onPseudo(nom: string): void;
   onRecharger(): void;
@@ -112,6 +114,8 @@ export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
   const rejouer = boutonJouer("", () => o.onRejouer(), "fin-rejouer");
   const partager = el("button", { classe: "dj-bouton dj-bouton--secondaire", attrs: { type: "button", id: "fin-partager" } });
   const classement = el("button", { classe: "dj-bouton dj-bouton--secondaire", attrs: { type: "button", id: "fin-voir-classement", hidden: true } });
+  const accueil = el("button", { classe: "dj-bouton dj-bouton--secondaire", attrs: { type: "button", id: "fin-accueil" } });
+  accueil.addEventListener("click", () => o.onAccueil());
   partager.addEventListener("click", () => o.onPartager());
   classement.addEventListener("click", () => o.onClassement());
   const retourPartage = el("p", { classe: "fin__partage", attrs: { role: "status", id: "fin-partage-message" } });
@@ -136,7 +140,7 @@ export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
     replique,
     el("div", { classe: "fin__rang" }, tuileMedaille, tuileVies, tuileRang),
     rejouer,
-    el("div", { classe: "fin__actions" }, partager, classement),
+    el("div", { classe: "fin__actions" }, partager, classement, accueil),
     retourPartage,
     secours,
     suiteHote,
@@ -216,6 +220,7 @@ export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
     temps.nom.textContent = t("fin.temps");
     rejouer.textContent = t("fin.rejouer");
     partager.textContent = t("fin.partager");
+    accueil.textContent = t("jeu.accueil");
     if (!donnees) return;
     const { vue, r, vies } = donnees;
     const session = donnees.note ?? null;

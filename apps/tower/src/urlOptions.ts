@@ -38,7 +38,7 @@ export interface OptionsUrl {
   /** `?theme=` : le thème forcé, ou null (celui du jour). Fermé en production. */
   theme: ThemeTower | null;
   tactile: "1" | "0" | null;
-  /** Lot T6 : la visée (deux traits et le contour de l'arrivée de la pièce en main) ; allumée par défaut, `?visee=0` l'éteint (le réglage des Réglages viendra au lot T7). Affichage seul. */
+  /** Lot T6 : la visée (deux traits et le contour de l'arrivée de la pièce en main) ; allumée par défaut, `?visee=0` l'éteint (lot T7 : le réglage « Visée » de Réglages › Affichage agit aussi, les deux doivent être allumés). Affichage seul. */
   visee: boolean;
   /** `?apercu=` présent (un lien d'aperçu) : l'interrupteur des jeux attend la clé avant de laisser le jeu appeler le serveur. */
   apercu: boolean;

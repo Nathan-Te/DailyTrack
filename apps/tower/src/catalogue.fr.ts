@@ -115,6 +115,10 @@ export const CATALOGUE_FR: Catalogue = {
   "accueil.toutLeClassement": "Tout le classement ›",
   "accueil.prochaine": "Prochaine tour dans",
   "accueil.profil": "Mon profil Du Jour ›",
+  "accueil.archives": "Archives",
+  "accueil.reglages": "Réglages",
+  "accueil.archive.note": "Archive : cette tour n'est pas classée.",
+  "accueil.archive.retour": "Tour du jour ›",
 
   "classement.titre": "Classement",
   "classement.classes": { one: "{total} classé", other: "{total} classés" },
@@ -134,7 +138,6 @@ export const CATALOGUE_FR: Catalogue = {
   "aide.deplacer": "Déplacer",
   "aide.tourner": "Tourner",
   "aide.descendre": "Descendre vite",
-  "aide.espace": "Espace",
   "aide.ok": "C'est parti",
 
   "partage.titre": "Du Jour · Tower #{numero}",

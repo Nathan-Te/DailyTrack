@@ -42,7 +42,9 @@ export function mesureTower(dist = DIST) {
   const cssPremier = [...new Set([...dePage.filter((f) => f.endsWith(".css")), ...feuilles(tous, jsPremier)])];
   const entreeJeu = tous.filter((f) => /^jeu-.*\.js$/.test(f));
   const jsJeu = [...graphe(dist, entreeJeu, premier)].filter((f) => f.endsWith(".js"));
-  const cssJeu = feuilles(tous, jsJeu).filter((c) => !cssPremier.includes(c));
+  // Lot T7 : `commandes-*.css` est la feuille de l'écran des commandes du socle (`@cdj/ui`, Réglages › Commandes), posée par un `<link>` à son ouverture : à la demande, jamais avec le jeu (son nom commence comme celui du
+  // module `commandes` de Tower, d'où l'exclusion ; Jump fait de même : `commandes-*.css` hors de sa mesure).
+  const cssJeu = feuilles(tous, jsJeu).filter((c) => !cssPremier.includes(c) && !/^commandes-/.test(c));
   const somme = (liste) => liste.reduce((n, f) => n + gz(f, dist), 0);
   const physique = tous.filter((f) => /^rapier-.*\.(js|wasm)$/.test(f));
   return {

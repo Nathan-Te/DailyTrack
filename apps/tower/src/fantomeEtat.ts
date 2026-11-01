@@ -24,11 +24,11 @@ export function suivant(etat: EtatFantome, dispo: DisponiblesFantome): EtatFanto
 }
 
 /**
- * L'état de départ d'une partie : toujours « Aucun » (lot T6). Revoir les pièces de sa partie précédente dessinées sur le fond perturbait plus qu'il n'aidait : le fantôme n'apparaît que si on le
- * choisit avec le bouton fantôme.
+ * L'état de départ d'une partie : « Aucun » par défaut (lot T6 : revoir les pièces de sa partie précédente dessinées sur le fond perturbait plus qu'il n'aidait) ; « Ma meilleure » seulement si le joueur
+ * l'a choisie dans Réglages › Affichage (lot T7) et qu'elle existe. Le bouton fantôme reste libre en partie.
  */
-export function etatInitial(): EtatFantome {
-  return "aucun";
+export function etatInitial(dispo: Partial<DisponiblesFantome> = {}, depart: "aucun" | "meilleure" = "aucun"): EtatFantome {
+  return depart === "meilleure" && dispo.meilleure ? "meilleure" : "aucun";
 }
 
 /** Un état qui n'est plus disponible (le Diamant d'un autre jour, une meilleure effacée) retombe sur « Aucun ». */

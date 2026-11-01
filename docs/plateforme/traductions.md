@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1373 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1426 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1700,6 +1700,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `accueil.toutLeClassement` | Tout le classement › | Full leaderboard › |
 | `accueil.prochaine` | Prochaine tour dans | Next tower in |
 | `accueil.profil` | Mon profil Du Jour › | My Du Jour profile › |
+| `accueil.archives` | Archives | Archives |
+| `accueil.reglages` | Réglages | Settings |
+| `accueil.archive.note` | Archive : cette tour n'est pas classée. | Archive: this tower isn't ranked. |
+| `accueil.archive.retour` | Tour du jour › | Today's tower › |
 
 ### annonce (`annonce.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1707,6 +1711,18 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `annonce.palier` | Palier {metres} · {effet} sur la pièce suivante | Checkpoint {metres} · {effet} on the next piece |
 | `annonce.palier.trois` | Palier {metres} · {effet} sur les trois pièces suivantes | Checkpoint {metres} · {effet} on the next three pieces |
+
+### Archives (`archives.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `archives.aria` | Archives | Archives |
+| `archives.titre` | Archives | Archives |
+| `archives.intro` | Rejoue une tour passée. Une partie d'archive n'est jamais classée. | Replay a past tower. An archive game is never ranked. |
+| `archives.vide` | Aucune tour passée pour l'instant. | No past tower yet. |
+| `archives.pasJoue` | Pas jouée | Not played |
+| `archives.tour` | Tour n° {numero} | Tower no. {numero} |
+| `archives.sousTitre` | {date} · {theme} | {date} · {theme} |
 
 ### bot (`bot.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1736,6 +1752,23 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.fermer` | Fermer | Close |
 | `classement.refuse` | Ta partie n'a pas pu être classée. | Your game couldn't be ranked. |
 
+### Commandes (`commandes.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `commandes.action.gauche` | Aller à gauche | Move left |
+| `commandes.action.droite` | Aller à droite | Move right |
+| `commandes.action.tourner` | Tourner | Rotate |
+| `commandes.action.descendre` | Descendre vite | Drop fast |
+| `commandes.action.recommencer` | Recommencer | Restart |
+| `commandes.action.pause` | Pause | Pause |
+| `commandes.action.fantome` | Fantôme | Ghost |
+| `commandes.manette.deplacer` | Déplacer | Move |
+| `commandes.manette.descendre` | Descendre vite | Drop fast |
+| `commandes.fixe.stick` | Stick ou croix | Stick or d-pad |
+| `commandes.fixe.stickBas` | Bas du stick ou de la croix | Stick or d-pad down |
+| `commandes.tactile` | Quatre boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute). | Four on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster). |
+
 ### Commandes tactiles (`commande.*`, `apps/tower/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -1757,8 +1790,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.deplacer` | Déplacer | Move |
 | `aide.tourner` | Tourner | Rotate |
 | `aide.descendre` | Descendre vite | Drop fast |
-| `aide.espace` | Espace | Space |
 | `aide.ok` | C'est parti | Let's go |
+| `aide.ligne` | {gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {pause} pause | {gauche} {droite} move · {tourner} rotate · {descendre} drop · {pause} pause |
+| `aide.pause` | Pause | Pause |
+| `aide.manette` | À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, Start met en pause. | On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, Start pauses. |
+| `aide.reglables` | Les touches se changent dans Réglages › Commandes. | You can change the keys in Settings › Controls. |
+
+### ecran (`ecran.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `ecran.retour` | Retour à Tower | Back to Tower |
 
 ### effet (`effet.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1826,6 +1868,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `fin.partage.partage` | Partagé. | Shared. |
 | `fin.partage.echec` | Copie impossible : sélectionne le texte ci-dessous. | Couldn't copy: select the text below. |
 | `fin.essai` | Réglage d'essai : partie non classée. | Test settings: run not ranked. |
+| `fin.archive` | Archive : partie non classée. | Archive: this game isn't ranked. |
 
 ### Jour (`jour.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1838,6 +1881,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `medailles.provisoire` | Médailles provisoires | Provisional medals |
+
+### Noms des jeux (`jeu.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `jeu.accueil` | Accueil de Tower | Tower home |
 
 ### Page (titre, chargement) (`page.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1876,6 +1925,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.objectif.aria` | Prochaine médaille : {medaille}, à {hauteur} | Next medal: {medaille}, at {hauteur} |
 | `hud.objectif.calcul` | Médailles en calcul… | Working out the medals… |
 | `hud.objectif.diamant` | Diamant battu | Diamond beaten |
+| `hud.archive` | Archive | Archive |
 
 ### Pause (`pause.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1889,6 +1939,34 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.recommencer` | Recommencer | Restart |
 | `pause.sons` | Sons | Sounds |
 | `pause.sons.volume` | Volume | Volume |
+| `pause.aide` | Comment jouer | How to play |
+| `pause.reglages` | Réglages | Settings |
+| `pause.mentions` | Mentions légales | Legal notice |
+
+### Réglages (`reglages.*`, `apps/tower/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `reglages.aria` | Réglages | Settings |
+| `reglages.titre` | Réglages | Settings |
+| `reglages.son` | Son | Sound |
+| `reglages.affichage` | Affichage | Display |
+| `reglages.commandes` | Commandes | Controls |
+| `reglages.fantome` | Fantôme au départ | Ghost at the start |
+| `reglages.fantome.aide` | Le fantôme posé quand une partie commence. Le Diamant se choisit en jeu, au bouton, une fois classé. | The ghost shown when a game starts. The Diamond is picked in game, with the button, once you're ranked. |
+| `reglages.secousses` | Secousses de l'écran | Screen shake |
+| `reglages.secousses.aide` | Quand une pièce tombe. Elles sont déjà coupées si ton système demande moins d'animations. | When a piece falls. Already off if your system asks for less motion. |
+| `reglages.yeux` | Panique des yeux | Eye panic |
+| `reglages.yeux.aide` | Les yeux des pièces s'écarquillent et tremblent quand la tour vacille. | The pieces' eyes widen and tremble when the tower wobbles. |
+| `reglages.visee` | Visée | Aim guide |
+| `reglages.visee.aide` | La grille et la ligne de chute qui aident à poser la pièce. | The grid and the drop line that help you place the piece. |
+| `reglages.niveau.normal` | Normal | Normal |
+| `reglages.niveau.reduit` | Réduit | Reduced |
+| `reglages.niveau.aucun` | Aucun | None |
+| `reglages.oui` | Oui | Yes |
+| `reglages.non` | Non | No |
+| `reglages.profil` | Mon profil Du Jour › | My Du Jour profile › |
+| `reglages.mentions` | Mentions légales › | Legal notice › |
 
 ### suite (`suite.*`, `apps/tower/src/catalogue.*.ts`)
 

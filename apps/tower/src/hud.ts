@@ -51,9 +51,13 @@ export class Hud {
   private readonly palierMetres = el("span", { classe: "palier__metres" });
   private readonly palierSigne = el("span", { classe: "palier__signe", attrs: { "aria-hidden": "true" } });
   private readonly palierEffet = el("span", { classe: "palier__nom" });
+  // Lot T7 : l'aide des commandes (une ligne sous la bande, `aideLigne.ts`), avant l'annonce : la feuille descend l'annonce d'un cran tant qu'elle est là.
+  private readonly aide = el("div", { classe: "aide-ligne", attrs: { role: "note", hidden: true } });
   private readonly annonce = el("div", { classe: "annonce", attrs: { role: "status", "aria-live": "polite" } });
   private minuteurAnnonce: ReturnType<typeof setTimeout> | null = null;
   private palierY = NaN;
+  // Lot T7 : « Archive » — une tour passée se joue hors classement ; la plaque le dit à côté des boutons du haut.
+  private readonly archive = el("span", { classe: "plaque-mode", attrs: { hidden: true, id: "hud-archive" } });
   readonly pause: HTMLButtonElement;
   readonly fantome: HTMLButtonElement;
   readonly plein: HTMLButtonElement;
@@ -75,11 +79,11 @@ export class Hud {
     this.viesBande.classList.add("bande__vies");
     const bande = el("div", { classe: "bande", attrs: { role: "group" } }, this.hauteur, this.pieces, this.viesBande);
     this.suivante.append(el("span", { classe: "suivante__legende" }), this.suivanteApercu, this.suivanteEffet);
-    const gauche = el("div", { classe: "hud__gauche" }, this.pause, this.plein, this.fantome);
+    const gauche = el("div", { classe: "hud__gauche" }, this.pause, this.plein, this.fantome, this.archive);
     this.objectif.append(this.objectifPastille, this.objectifNom, this.objectifValeur);
     const droite = el("div", { classe: "hud__droite" }, this.objectif, this.provisoire, this.suivante);
     this.palier.append(this.palierMetres, el("span", { classe: "palier__pastille" }, this.palierSigne, this.palierEffet));
-    this.element = el("div", { classe: ["hud", o.tactile && "hud--tactile"], attrs: { role: "group" } }, gauche, bande, droite, this.palier, this.annonce, this.commandes());
+    this.element = el("div", { classe: ["hud", o.tactile && "hud--tactile"], attrs: { role: "group" } }, gauche, bande, droite, this.palier, this.aide, this.annonce, this.commandes());
     o.racine.append(this.element);
     this.traduire();
   }
@@ -127,6 +131,18 @@ export class Hud {
   /** L'annonce d'un palier qui se déclenche : une ligne courte sous la bande, qui disparaît. */
   annoncerPalier(metres: number, effet: Effet): void {
     this.annoncerTexte(t(DUREE_EFFET[effet] > 1 ? "annonce.palier.trois" : "annonce.palier", { metres: formatPalier(metres), effet: t(`effet.${effet}`) }));
+  }
+
+  /** Lot T7 : la plaque « Archive » (une tour passée, hors classement). */
+  majArchive(oui: boolean): void {
+    this.archive.hidden = !oui;
+    this.archive.textContent = oui ? t("hud.archive") : "";
+  }
+
+  /** L'aide des commandes (lot T7) : les nœuds de `noeudsAide`, ou `null` pour la cacher. */
+  majAide(noeuds: readonly Node[] | null): void {
+    this.aide.hidden = noeuds === null;
+    this.aide.replaceChildren(...(noeuds ?? []));
   }
 
   /** Une ligne d'aide sous la bande (même emplacement, même disparition). */
