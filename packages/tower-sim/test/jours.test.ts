@@ -110,24 +110,29 @@ beforeAll(async () => {
 });
 
 describe("le garde-fou : chaque fichier figé ou préparé présent se régénère à l'identique avec sa version g, et sa preuve redonne son Diamant", () => {
+  // Un test par fichier : rejouer une preuve coûte ≈ 0,45 s (mesuré : 7 fichiers en 3,2 s sur un cœur libre) ; « Mettre en production » prépare les jours de Tower de la veille de
+  // la bascule à J+14 (≈ 16 fichiers dans apps/tower/public/jours/). Un seul test pour tous dépassait le délai par défaut de 5 s sur un runner chargé (CI complète du 01/11/2026).
+  // Le délai de 30 s par fichier laisse un facteur 60 sur la mesure : il borne un rejeu bloqué, il ne relâche rien de ce qui est vérifié.
   for (const dossier of [DOSSIER, FIXTURES]) {
     const fichiers = existsSync(dossier) ? readdirSync(dossier).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)) : [];
-    it(`les ${fichiers.length} fichier(s) de ${dossier.includes("fixtures") ? "test/fixtures/jours/" : "apps/tower/public/jours/"} se relisent et se régénèrent`, () => {
-      for (const nom of fichiers) {
+    const ou = dossier.includes("fixtures") ? "test/fixtures/jours/" : "apps/tower/public/jours/";
+    if (fichiers.length === 0) it(`${ou} : aucun fichier (rien à vérifier)`, () => expect(fichiers).toEqual([]));
+    for (const nom of fichiers) {
+      it(`${ou}${nom} se relit et se régénère ; sa preuve redonne son Diamant`, { timeout: 30_000 }, () => {
         const date = nom.slice(0, 10);
         const jour = parseDay(date)!;
         const brut = readFileSync(dossier + nom, "utf8");
         const lu = lireJour(JSON.parse(brut) as unknown, jour);
         expect(typeof lu, `${nom} : ${String(lu)}`).toBe("object");
-        if (typeof lu === "string") continue;
+        if (typeof lu === "string") return;
         expect(formatDay(lu.contenu.jour)).toBe(date);
         const tirage = lu.contenu.tirage ?? 0;
         expect(empreinteContenu(lu.contenu), `${nom} ne se régénère plus à l'identique avec g${lu.contenu.g} : un jour figé ne change jamais`).toBe(empreinteContenu(dailyTower(jour, lu.contenu.g, tirage)));
         const sim = (JSON.parse(brut) as { sim: number }).sim; // lot T6 : un jour figé sous la simulation 3 reste valide (sa preuve se rejoue en version 3)
         expect(brut, `${nom} n'est pas le texte canonique`).toBe(jsonJourFige({ ...figerJour(jour, lu.contenu.g, tirage, sim), medailles: lu.medailles, ...(lu.preuve === null ? {} : { preuve: lu.preuve }) }));
         if (lu.preuve !== null) expect(verifierJourPrepare(R, JSON.parse(brut) as unknown, jour), nom).toBeNull();
-      }
-    });
+      });
+    }
   }
 
   it("le garde-fou voit un fichier modifié à la main", () => {

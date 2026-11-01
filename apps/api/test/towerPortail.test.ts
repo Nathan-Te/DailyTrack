@@ -52,7 +52,7 @@ async function jump(t: TestApi, n: number, ticks: number, jour = JOUR): Promise<
 }
 
 describe(`Tower sur le portail : un jeu classé à la hauteur (${TEST_DB})`, () => {
-  it("la journée liste Tower avec son unité et ses seuils en mm ; Track et Jump gardent exactement leur forme (aucun champ `unite`, aucun `score`)", async () => {
+  it("la journée liste Tower avec son unité et ses seuils en mm ; Track et Jump gardent exactement leur forme (aucun champ `unite`, aucun `score`)", { timeout: 30_000 }, async () => {
     const t = await api();
     const r = await t.call("GET", "/api/portail/jour");
     expect(r.status).toBe(200);

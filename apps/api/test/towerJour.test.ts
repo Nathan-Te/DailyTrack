@@ -50,7 +50,7 @@ describe("Tower : le jour (lot T4)", () => {
     }
   });
 
-  it("serveur = jeu : un fichier préparé (preuve rejouée) donne son contenu, son tirage et ses médailles ; la preuve n'est jamais rendue", async () => {
+  it("serveur = jeu : un fichier préparé (preuve rejouée) donne son contenu, son tirage et ses médailles ; la preuve n'est jamais rendue", { timeout: 30_000 }, async () => {
     const dates = ["2026-11-06", "2026-11-07", "2026-11-08", "2026-11-17"];
     const frozen = Object.fromEntries(dates.map((d) => [d, fixtureJour(d)]));
     const t = await monter("2026-11-20", frozen);
