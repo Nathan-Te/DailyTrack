@@ -654,6 +654,10 @@
   background: var(--dj-moutarde);
   color: var(--dj-encre);
 }
+.nouveautes-zone--tower {
+  background: var(--tower-menthe);
+  color: var(--dj-encre);
+}
 
 /* Le pied : les deux liens externes (Discord, Ko-fi) en boutons secondaires, côte à côte, à la ligne sur un petit écran. */
 .portail-pied__liens {

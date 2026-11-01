@@ -9,6 +9,7 @@ import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
+import { NOM_DE_ZONE } from "@cdj/core/nouveautes";
 import { ecrireLangue, lireLangue, type Langue } from "@cdj/profile";
 import { CATALOGUE_COMMUN, barreJeu, bouton, choixLangue, cheminMentions, el, formatDate, traducteur } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
@@ -35,7 +36,6 @@ let suivante: string | null = null;
 /** `null` : première lecture pas encore faite ; sinon l'état de la dernière. */
 let etat: "chargement" | "ok" | "erreur" = "chargement";
 let enCours = false;
-const NOMS_ZONE = { dujour: "nouveautes.zone.dujour", track: "nouveautes.zone.track", jump: "nouveautes.zone.jump" } as const;
 
 function article(t: T, n: Nouveaute): HTMLElement {
   return el(
@@ -49,7 +49,7 @@ function article(t: T, n: Nouveaute): HTMLElement {
         el(
           "li",
           { classe: "nouveautes-ligne", attrs: { "data-zone": l.zone ?? "" } },
-          l.zone ? el("span", { classe: ["nouveautes-zone", `nouveautes-zone--${l.zone}`], texte: t.t(NOMS_ZONE[l.zone]) }) : null,
+          l.zone ? el("span", { classe: ["nouveautes-zone", `nouveautes-zone--${l.zone}`], texte: NOM_DE_ZONE[l.zone] }) : null,
           el("span", { classe: "nouveautes-ligne__texte", texte: dans(l, langue) }),
         ),
       ),

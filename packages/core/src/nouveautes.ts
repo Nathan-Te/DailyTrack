@@ -2,10 +2,14 @@
 // panneau d'administration les applique avant d'envoyer (même message d'erreur des deux côtés) et lit la section « Pour les joueurs » d'une PR.
 // Aucune dépendance : ni DOM, ni réseau, ni horloge (le temps est passé).
 
-/** Les zones d'une ligne de nouveauté : le code gardé en base, et le nom écrit entre crochets dans la PR. */
-export const ZONES_NOUVEAUTES = ["dujour", "track", "jump"] as const;
-export type ZoneNouveaute = (typeof ZONES_NOUVEAUTES)[number];
-export const NOM_DE_ZONE: Readonly<Record<ZoneNouveaute, string>> = { dujour: "Du Jour", track: "Track", jump: "Jump" };
+import { ZONES_NOUVEAUTES, estZone, type ZoneNouveaute } from "./zonesNouveautes";
+
+/** Les zones (liste unique des codes : `zonesNouveautes.ts`). */
+export { ZONES_NOUVEAUTES, estZone, type ZoneNouveaute };
+/** Le nom écrit entre crochets dans la PR et affiché devant chaque ligne ; typé de façon exhaustive : une zone sans nom ne compile pas. */
+export const NOM_DE_ZONE: Readonly<Record<ZoneNouveaute, string>> = { dujour: "Du Jour", track: "Track", jump: "Jump", tower: "Tower" };
+/** La liste lisible des noms, pour les messages : « Du Jour, Track, Jump ou Tower ». (Une fonction : rien ne s'exécute au chargement du module.) */
+export const nomsDeZoneTexte = (): string => `${ZONES_NOUVEAUTES.slice(0, -1).map((z) => NOM_DE_ZONE[z]).join(", ")} ou ${NOM_DE_ZONE[ZONES_NOUVEAUTES[ZONES_NOUVEAUTES.length - 1]!]}`;
 
 /** Longueurs maximales (en caractères) : le titre de l'accueil, une ligne. */
 export const TITRE_MAX = 80;
@@ -67,12 +71,11 @@ export interface SectionLue {
 
 const sansAccents = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-/** `Du Jour`, `du jour`, `Portail` → `dujour` ; `Track` ; `Jump` ; sinon `null`. */
+/** `Du Jour`, `du jour`, `Portail` → `dujour` ; `Track`, `DailyTrack` ; `Jump`, `DailyJump` ; `Tower` (le nom de chaque zone, sans casse ni espaces) ; sinon `null`. */
 export function zoneDeNom(nom: string): ZoneNouveaute | null {
   const n = sansAccents(nom).replace(/\s+/g, "");
-  if (n === "dujour" || n === "portail") return "dujour";
-  if (n === "track" || n === "dailytrack") return "track";
-  if (n === "jump" || n === "dailyjump") return "jump";
+  if (n === "portail") return "dujour";
+  for (const z of ZONES_NOUVEAUTES) if (n === sansAccents(NOM_DE_ZONE[z]).replace(/\s+/g, "") || n === `daily${z}`) return z;
   return null;
 }
 
@@ -146,7 +149,7 @@ export function texteProbleme(p: ProblemeNouveaute): string {
     case "date": return "Date affichée illisible (AAAA-MM-JJ).";
     case "sans_ligne": return "Au moins une ligne est attendue.";
     case "trop_de_lignes": return `${LIGNES_MAX} lignes au plus.`;
-    case "zone": return `Zone : ${p.n} ligne${p.n > 1 ? "s" : ""} sans zone (Du Jour, Track ou Jump).`;
+    case "zone": return `Zone : ${p.n} ligne${p.n > 1 ? "s" : ""} sans zone (${nomsDeZoneTexte()}).`;
     case "francais": return `Français : ${p.n} ligne${p.n > 1 ? "s" : ""} vide${p.n > 1 ? "s" : ""}.`;
     case "anglais": return `Anglais : ${p.n} ligne${p.n > 1 ? "s" : ""} pas encore traduite${p.n > 1 ? "s" : ""}`;
     case "ligne_longue": return `${p.n} ligne${p.n > 1 ? "s" : ""} de plus de ${LIGNE_MAX} caractères.`;
@@ -201,7 +204,7 @@ export function nettoyerNouveaute(brut: unknown): NouveauteContenu {
     date: typeof o.date === "string" ? o.date.trim() : "",
     lignes: lignes.slice(0, LIGNES_MAX + 1).map((l): LigneNouveaute => {
       const x = (l && typeof l === "object" ? l : {}) as Record<string, unknown>;
-      return { zone: typeof x.zone === "string" && (ZONES_NOUVEAUTES as readonly string[]).includes(x.zone) ? (x.zone as ZoneNouveaute) : null, fr: nettoyerTexte(x.fr), en: nettoyerTexte(x.en) };
+      return { zone: estZone(x.zone) ? x.zone : null, fr: nettoyerTexte(x.fr), en: nettoyerTexte(x.en) };
     }),
   };
 }
@@ -333,7 +336,7 @@ export function texteProblemeMessage(p: ProblemeMessage): string {
     case "en": return "Texte anglais manquant.";
     case "long": return `Texte ${p.langue === "fr" ? "français" : "anglais"} : ${MESSAGE_MAX} caractères au plus.`;
     case "lien": return `Texte ${p.langue === "fr" ? "français" : "anglais"} : texte seul, ni lien ni HTML.`;
-    case "ou": return "Choisis au moins un endroit : Portail, Track ou Jump.";
+    case "ou": return "Choisis au moins un endroit : Portail, Track, Jump ou Tower.";
     case "ton": return "Ton : Information ou Important.";
     case "fin_passee": return "L'heure de fin est déjà passée.";
     case "fin_lointaine": return "Un message dure 7 jours au plus.";

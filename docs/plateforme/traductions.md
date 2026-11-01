@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1426 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1423 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -329,9 +329,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `nouveautes.titre` | Nouveautés | What's new |
 | `nouveautes.description` | Les nouveautés de Du Jour, de Track et de Jump : ce qui change, mise à jour par mise à jour. | What's new in Du Jour, Track and Jump: what changes, update by update. |
-| `nouveautes.zone.dujour` | Du Jour | Du Jour |
-| `nouveautes.zone.track` | Track | Track |
-| `nouveautes.zone.jump` | Jump | Jump |
 | `nouveautes.plusAnciennes` | Plus anciennes | Older |
 | `nouveautes.plusAnciennes.aria` | Voir les nouveautés plus anciennes | Show older updates |
 | `nouveautes.vide` | Rien à lire pour l'instant : les prochaines mises à jour s'afficheront ici. | Nothing to read yet: the next updates will show up here. |
