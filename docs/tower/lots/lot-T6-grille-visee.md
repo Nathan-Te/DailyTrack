@@ -54,6 +54,8 @@ Des pièces censées être alignées sont posées par des commandes scriptées (
 - **Vérifié** : tests unitaires (`grille`, `poseJuste`, `visee`, `dessinPiece`, `contour`, rediffusion 3 et 4, golden, bot, fantôme éteint par défaut) ; la visée n'influence pas la rediffusion (même code, même résultat, même empreinte avec ou sans visée à chaque tick, versions 3 et 4) ; 7 formes × 3 tailles × 4 quarts de tour sur la grille ; dessin = collider au pixel près à 20 px/m ; rendu dans un vrai Chromium (visée, contour d'arrivée, deux carrés collés avec leur trait double, tour de 10 pièces) ; typecheck, build.
 - **Non vérifié** : la sensation d'un humain (la visée est discrète : 35 % d'opacité, à ajuster en jouant) ; téléphone en portrait ; Firefox et WebKit autrement que par le petit ensemble `@navigateurs` de la CI (les dix rediffusions de référence) ; la stabilité de contacts à 120 Hz sur de très hautes tours jouées par des humains (le bot a joué 42 parties de 40 pièces sans incident, mais un joueur fait des tours plus mal bâties) ; la CI de la PR.
 
+- **CI de la PR** : un premier run a échoué sur `apps/api/test/jump.test.ts` (« un seul calcul même si deux requêtes arrivent ensemble », délai de 5 s dépassé), un test de Jump hors de la zone du lot, qui passe en local ; relancé par une nouvelle poussée, pas corrigé (règle d'arrêt des agents).
+
 ## Questions pour Nathan
 1. **Le décalage de secours** d'un quart de tour refusé (gauche, droite, haut) est une proposition : le garder ? (`ROTATION_SECOURS = false` le débraye.)
 2. **Le coup de vent** pousse d'un huitième de mètre par construction : pendant ses trois pièces la pièce sort de la grille. À garder tel quel, ou pousser d'une demi-case moins souvent (au T5b, avec ses autres valeurs) ?
