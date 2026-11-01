@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { FIXED_NOW, atInstant } from "./clock";
+import { JUMP_GENERATOR_VERSION } from "@cdj/jump-sim";
 import { dayId } from "./jours";
 
 // Lot 9 — les thèmes visuels : chaque thème s'affiche sans erreur, en portrait et en paysage ; `?theme=` impose le thème ; les effets réduits
@@ -11,7 +11,6 @@ import { dayId } from "./jours";
 const THEMES = ["foret", "usine", "glace", "nuit", "neon"] as const;
 const DATE = "2026-10-20";
 /** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v12.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 interface ThemeView {
   name: string;
@@ -76,7 +75,7 @@ for (const orientation of ["paysage"] as ("paysage" | "portrait")[]) {
           expect(v.theme.name).toBe(name);
           // Le thème de la date donne le niveau ordinaire ; un autre thème, un essai à l'identifiant suffixé.
           expect(v.theme.forced).toBe(name !== natural);
-          expect(v.id).toBe(name === natural ? dayId(DATE) : `jour-${DATE}-g${GENERATOR}-t${name}`);
+          expect(v.id).toBe(name === natural ? dayId(DATE) : `jour-${DATE}-g${JUMP_GENERATOR_VERSION}-t${name}`);
           const s = v.theme.stats!;
           expect(s.tileChunks).toBeGreaterThan(1);
           expect(s.tileTriangles).toBeGreaterThan(1000);

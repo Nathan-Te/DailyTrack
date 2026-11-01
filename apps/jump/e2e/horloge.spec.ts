@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
-import { ATTEMPT_DEAD, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, attemptReplay, dailyLevel, encodeReplay, fromRuns, initialAttempt, jumpThemeForDay, stepAttempt } from "@cdj/jump-sim";
+import { ATTEMPT_DEAD, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, JUMP_SIM_VERSION, attemptReplay, dailyLevel, encodeReplay, fromRuns, initialAttempt, jumpThemeForDay, stepAttempt } from "@cdj/jump-sim";
 import { FROZEN_DATES, generatedDay, pageLevel } from "./jours";
 import { hasWebGL } from "./phone";
 
@@ -401,7 +401,7 @@ test("néon : un nombre impair de sauts, la mort : les blocs alternés restent d
   const r = { dead, back };
   // Un saut : B plein ; le prochain saut rendrait A (le repère le dit), et la reprise n'y change rien.
   expect(r.dead).toMatchObject({ status: "mort", checkpoint: 0, alt: 1, next: 0 });
-  expect(r.back).toMatchObject({ status: "course", checkpoint: 0, alt: 1, next: 0, simVersion: 12 });
+  expect(r.back).toMatchObject({ status: "course", checkpoint: 0, alt: 1, next: 0, simVersion: JUMP_SIM_VERSION }); // le jour est généré : la simulation en vigueur
   expect(r.back.states, "les blocs sont dans le même état qu'à la mort").toEqual(r.dead.states);
   expect(r.back.pips, "une pastille « jeu suivant » par bloc plein").toBe(r.dead.pips);
   expect(r.back.pips).toBeGreaterThan(0);

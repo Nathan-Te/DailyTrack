@@ -1,7 +1,6 @@
-import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
-import { dailyLevel } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, dailyLevel } from "@cdj/jump-sim";
 import { atInstant } from "./clock";
 import { FROZEN_DATES, generatedDay, noonOf } from "./jours";
 import { hasWebGL } from "./phone";
@@ -18,7 +17,6 @@ const GENERATED = generatedDay();
 const GENERATED_NOW = noonOf(GENERATED);
 
 /** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim` en vigueur (v13 ; lot 31 : le test lisait encore la v12, g23, alors que la page sert g24 puis g25). */
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v13.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 interface Load {
   source: string;
@@ -65,7 +63,7 @@ test("la page par défaut montre « Préparation du niveau… », puis le niveau
     const d = await daily(page);
     expect(d.load).toMatchObject({ source: "worker", generated: true, cacheMiss: "" });
     expect(seen.length).toBeGreaterThanOrEqual(1);
-    expect(d.id).toBe(`jour-${GENERATED}-g${GENERATOR}`);
+    expect(d.id).toBe(`jour-${GENERATED}-g${JUMP_GENERATOR_VERSION}`);
     expect(FROZEN_DATES).not.toContain(GENERATED);
   });
 });
@@ -153,7 +151,7 @@ test("sans worker : le générateur est chargé à la demande sur le fil princip
     await ready(page);
     const d = await daily(page);
     expect(d.load).toMatchObject({ source: "principal", generated: true, catalog: "principal" });
-    expect(d.id).toBe(`jour-${GENERATED}-g${GENERATOR}`);
+    expect(d.id).toBe(`jour-${GENERATED}-g${JUMP_GENERATOR_VERSION}`);
     expect(vu.catalogue.length).toBe(1);
     expect(vu.generateur.length).toBe(1);
     await expect.poll(() => overlay(page)).toContain("origine   généré (fil principal), catalogue chargé");
