@@ -918,10 +918,16 @@ test.describe("une course au volant, rejouée par le serveur", () => {
     // La rediffusion enregistrée, jouée par la simulation, redonne le temps affiché : rien n'a changé dans le format des commandes.
     expect(replayRace(circuit.track, decodeReplay(stocke.replay)).finishMs).toBe(stocke.ms);
     // Premier temps : le jeu demande un pseudo, puis l'envoie ; le serveur le rejoue et retrouve exactement le même temps.
-    await page.locator("#finish .online input").fill("Volant");
+    // Le serveur d'essai (8787) est partagé par les specs de la part : d'autres ont pu classer des temps ce jour-là. La place attendue se lit donc sur le serveur ;
+    // un pseudo propre à l'essai (même base en mémoire à la relance).
+    const pseudo = `Volant${test.info().retry || ""}`;
+    await page.locator("#finish .online input").fill(pseudo);
     await page.locator("#finish .online button[type=submit]").click();
-    await expect(page.locator("#finish .online .rank")).toHaveText("1er sur 1", { timeout: 20_000 });
-    const lb = await (await fetch(`${API}/api/day/${circuit.date}/leaderboard`)).json();
-    expect(lb.top.map((r: { name: string; ms: number }) => [r.name, r.ms])).toContainEqual(["Volant", stocke.ms]);
+    const rang = page.locator("#finish .online .rank");
+    await expect(rang).toHaveText(/^\d+(er|e) sur \d+$/, { timeout: 20_000 });
+    const lb = (await (await fetch(`${API}/api/day/${circuit.date}/leaderboard?limit=50`)).json()) as { participants: number; top: { rank: number; name: string; ms: number }[] };
+    const ligne = lb.top.find((r) => r.name === pseudo);
+    expect(ligne && [ligne.name, ligne.ms]).toEqual([pseudo, stocke.ms]); // le serveur a rejoué la course au même temps
+    await expect(rang).toHaveText(`${ligne!.rank === 1 ? "1er" : `${ligne!.rank}e`} sur ${lb.participants}`);
   });
 });

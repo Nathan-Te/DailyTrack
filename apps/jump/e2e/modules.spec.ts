@@ -68,7 +68,9 @@ for (const format of [
       const first = page.locator("#gallery .card").first();
       await expect(first.locator(".intent")).not.toBeEmpty();
       await expect(first.locator(".tag").first()).toBeVisible();
-      await expect(first.locator(".ex").first()).toContainText("/5");
+      // Lot 30 : une variante que la règle du saut a fermée garde sa place, « sans solution » (la galerie les range en tête) ; les autres ont leur exigence.
+      await expect(first.locator(".ex").first()).toHaveText(/\d\/5|sans solution/);
+      expect(await page.locator("#gallery .ex", { hasText: "/5" }).count()).toBeGreaterThan(info.variants / 2);
       await expect(first.locator(".dur").first()).toContainText("élan");
       // Cibles d'au moins 44 px (toutes, même hors de l'écran : la page défile), aucune page plus large que l'écran.
       for (const el of await page.locator("#gallery a.btn, #gallery .entry button").all()) {
@@ -117,7 +119,7 @@ test("?module=<id>&solution finit en pas à pas : le temps est celui de la solut
   await expect(page.locator("#finish .ref")).toContainText("Solution : ");
   const next = page.locator("#finish-next");
   await expect(next).toBeVisible();
-  await expect(next).toHaveAttribute("href", /module=[a-z-]+&variante=0&entree=elan&debug/);
+  await expect(next).toHaveAttribute("href", /module=[a-z-]+&variante=0&entree=elan(&theme=[a-z]+)?&debug/); // un morceau d'un thème s'ouvre dans son thème (lot 11)
   await expect(page.locator("#modname")).toContainText("cheminee");
 });
 

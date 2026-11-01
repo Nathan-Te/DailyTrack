@@ -28,11 +28,12 @@ export function mountBoardPanel(root: HTMLElement, onToggle: (folded: boolean) =
   root.replaceChildren(head, body);
   let isFolded = false;
   let customTitle = "";
+  // Le nom du bouton est son texte visible (axe, `label-content-name-mismatch` : un nom qui ne contient pas le texte affiché est refusé) ; l'action
+  // (replier / déplier) est sa description (infobulle) et l'état est dans `aria-expanded`.
   const label = () => {
-    head.setAttribute("aria-label", t(isFolded ? "palmares.deplier" : "palmares.replier"));
     const shown = customTitle || t("palmares.court");
     title.textContent = shown;
-    head.title = shown;
+    head.title = t(isFolded ? "palmares.deplier" : "palmares.replier");
   };
   const panel: BoardPanel = {
     root,

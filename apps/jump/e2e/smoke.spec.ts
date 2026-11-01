@@ -161,7 +161,7 @@ test("?debug&tune : un curseur par réglage, un réglage modifié marque la part
   await openSandbox(page, "&tune");
   await page.evaluate(() => localStorage.removeItem("jump:tune"));
   const sliders = page.locator("#tune input[type=range]");
-  await expect(sliders).toHaveCount(42); // 7 de la caméra (lot 14) + 1 « Prêt… » (lot 15) + 1 opacité des dangers à horloge du carnage (lot 17) + 4 durées d'annonce des éléments à horloge (lot 18) + 18 réglages du personnage + 2 du lot 2 (friable, ressort) + 3 de l'essai d'élan (lot 8b) + 3 des surfaces (lot 11 : tapis, glace) + 3 du vent (lot 13)
+  await expect(sliders).toHaveCount(44); // 7 de la caméra (lot 14) + 1 « Prêt… » (lot 15) + 1 opacité des dangers à horloge du carnage (lot 17) + 4 durées d'annonce des éléments à horloge (lot 18) + 18 réglages du personnage + 2 du lot 2 (friable, ressort) + 3 de l'essai d'élan (lot 8b) + 3 des surfaces (lot 11 : tapis, glace) + 3 du vent (lot 13) + 2 du maintien du saut (lot 30 : maintien minimal, micro-saut)
   await expect(page.locator("#tuned")).toBeEmpty();
   await expect(page.locator("#debug")).toContainText("vitesse");
   const gravity = page.locator('#tune input[data-key="gravity"]');

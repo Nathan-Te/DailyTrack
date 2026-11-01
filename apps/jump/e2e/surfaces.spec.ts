@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { decodeReplay, fromRuns, jumpThemeForDay, moduleSolutions } from "@cdj/jump-sim";
 import { FIXED_NOW, PUBLISHED, TODAY, atInstant, servePublished } from "./clock";
@@ -13,7 +13,6 @@ import { dayId } from "./jours";
 // Horloge maîtrisée par décalage de `Date` (`clock.ts`), jamais `page.clock.install` ; tout résultat qui dépend du nombre de pas se lit en pas à pas.
 
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v12.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 /** Les jours figés (`public/levels/`) : leur niveau est celui d'un générateur d'avant, jamais celui de cette version. */
 const FROZEN = new Set(readdirSync(new URL("../public/levels", import.meta.url)).map((f) => f.slice(0, 10)));
@@ -106,7 +105,7 @@ test("niveau du jour usine : sa rediffusion d'auteur finit au temps de l'auteur,
     test.skip(!(await open(page, `/?seed=${date}&solution&debug`)), SKIP);
     const start = await J(page);
     expect(start.theme).toMatchObject({ name: "usine", ofDay: "usine", forced: false });
-    expect(start.daily).toMatchObject({ date, theme: "usine", forcedTheme: false, id: `jour-${date}-g${GENERATOR}` });
+    expect(start.daily).toMatchObject({ date, theme: "usine", forcedTheme: false, id: dayId(date) });
     expect(start.daily!.pieces.filter((p) => p.mechanic === "tapis").length).toBeGreaterThanOrEqual(2);
     expect(start.theme.stats!.beltTiles).toBeGreaterThan(0);
     expect(start.theme.stats!.beltTriangles).toBe(start.theme.stats!.beltTiles * 2);
@@ -128,7 +127,7 @@ test("niveau du jour glace : sa rediffusion d'auteur finit au temps de l'auteur,
     test.skip(!(await open(page, `/?seed=${date}&solution&debug`)), SKIP);
     const start = await J(page);
     expect(start.theme).toMatchObject({ name: "glace", ofDay: "glace", forced: false });
-    expect(start.daily).toMatchObject({ date, theme: "glace", forcedTheme: false, id: `jour-${date}-g${GENERATOR}` });
+    expect(start.daily).toMatchObject({ date, theme: "glace", forcedTheme: false, id: dayId(date) });
     expect(start.daily!.pieces.filter((p) => p.mechanic === "glace").length).toBeGreaterThanOrEqual(2);
     // La glace est dessinée dans les tuiles pleines (aucun chevron : pas de tapis dans ce thème).
     expect(start.theme.stats!.beltTiles).toBe(0);

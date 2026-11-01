@@ -348,9 +348,13 @@ for (const format of FORMES) {
     await expect(dialogue).toBeVisible();
     await expect(dialogue).toContainText("Cette application a son propre stockage");
     await capture(page, `retrouver-${format}`);
-    // Le moyen le plus simple : « Coller mon code » lit le presse-papiers (un geste du joueur). Ici il est vide ou refusé : le champ prend le relais.
+    // Le moyen le plus simple : « Coller mon code » lit le presse-papiers (un geste du joueur). Ici il est refusé : le champ prend le relais.
+    // Le refus est imposé : Firefox ouvre un menu « Coller » que personne ne touche dans un navigateur piloté (la lecture ne finirait jamais).
+    await page.evaluate(() => {
+      if (navigator.clipboard) Object.defineProperty(navigator.clipboard, "readText", { configurable: true, value: () => Promise.reject(new DOMException("refusé", "NotAllowedError")) });
+    });
     await dialogue.getByRole("button", { name: "Coller mon code" }).click();
-    await expect(dialogue.locator('[role="status"]')).not.toBeEmpty();
+    await expect(dialogue.locator('[role="status"]')).toHaveText(/presse-papiers est vide ou refusé/);
     // Un texte qui n'est pas un code, puis le code (collé avec d'autres mots : le code est repéré dedans).
     const champ = dialogue.getByLabel("Ou colle ton code ici");
     await champ.fill("bonjour");

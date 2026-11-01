@@ -1,6 +1,6 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import "./jours";
+import { dayId } from "./jours";
 import { decodeReplay, fromRuns, jumpThemeForDay, moduleSolutions } from "@cdj/jump-sim";
 import { FIXED_NOW, atInstant } from "./clock";
 import { Fingers, hasWebGL, withPhone } from "./phone";
@@ -12,7 +12,6 @@ import { Fingers, hasWebGL, withPhone } from "./phone";
 // Horloge maîtrisée par décalage de `Date` (`clock.ts`), jamais `page.clock.install` ; tout résultat qui dépend du nombre de pas se lit en pas à pas.
 
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v12.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 /** Les jours figés (`public/levels/`) : leur niveau est celui d'un générateur d'avant, jamais celui de cette version. */
 const FROZEN = new Set(readdirSync(new URL("../public/levels", import.meta.url)).map((f) => f.slice(0, 10)));
@@ -132,7 +131,7 @@ for (const [theme, mechanic, expected] of [
       test.skip(!(await open(page, `/?seed=${date}&solution&debug`)), SKIP);
       const start = await J(page);
       expect(start.theme.name).toBe(theme);
-      expect(start.daily).toMatchObject({ date, theme, forcedTheme: false, id: `jour-${date}-g${GENERATOR}` });
+      expect(start.daily).toMatchObject({ date, theme, forcedTheme: false, id: dayId(date) });
       expect(start.daily!.pieces.filter((p) => p.mechanic === mechanic).length).toBeGreaterThanOrEqual(2);
       expect(start.blocks).not.toBeNull();
       expect(mechanic === "clignotant" ? start.blocks!.blinks : start.blocks!.alts).toBeGreaterThan(0);
