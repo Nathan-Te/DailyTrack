@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./lancement": "./src/lancement.ts",
     "./nouveautes": "./src/nouveautes.ts",
+    "./zones-nouveautes": "./src/zonesNouveautes.ts",
     "./jeux": "./src/jeux.ts",
     "./testing": "./testing/purity.ts"
   }

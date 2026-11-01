@@ -3,7 +3,7 @@
 
 ## Pour les joueurs
 <!-- Obligatoire dans toute PR de lot (lot N2). Une ligne par changement VISIBLE par les joueurs :
-     la zone entre crochets (Du Jour, Track ou Jump), le français, ` // `, l'anglais.
+     la zone entre crochets (Du Jour, Track, Jump ou Tower), le français, ` // `, l'anglais.
      Exemple : - [Track] Le bouton caméra revient à l'écran sur téléphone. // The camera button is back on screen on phones.
      Rien ne se voit (outils, tests, serveur sans effet visible) : écrire seulement `rien`. -->
 rien

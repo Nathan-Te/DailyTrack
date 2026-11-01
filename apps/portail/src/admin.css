@@ -611,6 +611,10 @@
 .admin-zone--jump {
   background: var(--dj-moutarde);
 }
+.admin-zone--tower {
+  background: var(--tower-menthe);
+  color: var(--dj-encre);
+}
 .admin-apercu {
   display: flex;
   flex-direction: column;

@@ -1,6 +1,7 @@
 import {
   MESSAGE_MAX,
   OU_MESSAGE,
+  estZone,
   nettoyerMessage,
   nettoyerNouveaute,
   messageActif,
@@ -113,7 +114,7 @@ function lignesDe(brut: string): LigneGardee[] {
     return l.map((x): LigneGardee => {
       const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
       return {
-        zone: o.zone === "dujour" || o.zone === "track" || o.zone === "jump" ? o.zone : null,
+        zone: estZone(o.zone) ? o.zone : null,
         fr: typeof o.fr === "string" ? o.fr : "",
         en: typeof o.en === "string" ? o.en : "",
         ...(typeof o.pr === "number" && Number.isInteger(o.pr) && o.pr > 0 ? { pr: o.pr } : {}),

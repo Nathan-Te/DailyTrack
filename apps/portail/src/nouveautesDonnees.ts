@@ -1,5 +1,5 @@
 import { call, type FetchLike } from "@cdj/profile";
-import type { ZoneNouveaute } from "@cdj/core/nouveautes";
+import { estZone, type ZoneNouveaute } from "@cdj/core/zones-nouveautes";
 import { baseApi } from "./jour";
 
 // Lot N2 : les nouveautés côté joueur — la lecture de `GET /api/portail/nouveautes?avant=` (20 par page), « lue sur cet appareil » (un seul repère en `localStorage`, dans un
@@ -29,8 +29,6 @@ export interface PageDeNouveautes {
   suivante: string | null;
 }
 
-const ZONES: readonly string[] = ["dujour", "track", "jump"];
-
 /** Lit une page de la réponse du serveur, avec prudence : ce qui est illisible est écarté (la page ne casse jamais). Les textes restent des textes. */
 export function pageDe(brut: unknown): PageDeNouveautes | null {
   const o = brut as { nouveautes?: unknown; suivante?: unknown } | null;
@@ -42,7 +40,7 @@ export function pageDe(brut: unknown): PageDeNouveautes | null {
     const lignes = x.lignes
       .map((l): LigneDeNouveaute | null => {
         const y = l as Partial<LigneDeNouveaute> | null;
-        return y && typeof y.fr === "string" && typeof y.en === "string" ? { zone: typeof y.zone === "string" && ZONES.includes(y.zone) ? (y.zone as ZoneNouveaute) : null, fr: y.fr, en: y.en } : null;
+        return y && typeof y.fr === "string" && typeof y.en === "string" ? { zone: estZone(y.zone) ? y.zone : null, fr: y.fr, en: y.en } : null;
       })
       .filter((l): l is LigneDeNouveaute => l !== null);
     nouveautes.push({ id: x.id, date: x.date, titre: { fr: x.titre.fr, en: x.titre.en }, lignes, publieLe: typeof x.publieLe === "number" ? x.publieLe : 0 });
