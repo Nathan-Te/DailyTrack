@@ -344,7 +344,7 @@ if (environnement === "production") {
   const R = await chargerRapier();
   const contenu = dailyTower(day, tday.body.generatorVersion, tday.body.tirage);
   // Le smoke tourne aussi sur la recette, dont la base garde les parties des passages précédents (rangées à part en aperçu, mais comptées par le refus des copies) : une partie scriptée
-  // toujours identique est refusée (409 `replay_copy`) dès le deuxième passage du même jour, ce qui arrêtait le site de la recette (29/10 et 01/11/2026). Comme DailyJump (graine
+  // toujours identique est refusée (409 `replay_copy`) dès le deuxième passage du même jour, ce qui arrêtait le déploiement du site de la recette (cas du lot T7, 01/11/2026). Comme DailyJump (graine
   // tirée à chaque passage), chaque passage joue donc **ses** placements : un quart de tour (0 à 3) et un décalage (−4 à 4 demi-cases) tirés au hasard pour chaque pièce.
   const hasard = crypto.getRandomValues(new Uint8Array(contenu.pieces.length * 2));
   const choix = Array.from({ length: contenu.pieces.length }, (_, i) => ({ rot: hasard[2 * i]! % 4, dx: (hasard[2 * i + 1]! % 9) - 4 }));
