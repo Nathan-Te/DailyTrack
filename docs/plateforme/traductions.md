@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1362 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1373 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1384,6 +1384,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.toi` | Toi | You |
 | `classement.sansMedaille` | Pas de médaille | No medal |
 | `classement.vide` | Personne n'est encore classé aujourd'hui. | Nobody's ranked today yet. |
+| `classement.course` | Voir la course du n° 1 | Watch #1's run |
+| `classement.course.aria` | Voir la course du n° 1 : {nom} | Watch #1's run: {nom} |
 | `classement.sansServeur` | Le classement a besoin du serveur. | The leaderboard needs the server. |
 
 ### Commandes (`commandes.*`, `apps/jump/src/catalogue.reglages.*.ts`)
@@ -1437,6 +1439,20 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.parti` | C'est parti | Let's go |
 | `aide.schema.legende` | À gauche, la direction ; à droite, le saut. Le milieu de l'écran reste au jeu. | Left side: direction. Right side: jump. The middle of the screen belongs to the game. |
 | `aide.zone.libre` | le jeu | the game |
+| `aide.course` | {pause} : pause · Échap : quitter | {pause}: pause · Esc: quit |
+
+### Course (surimpressions) (`course.*`, `apps/jump/src/catalogue.partie.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `course.titre` | COURSE DU N° 1 | #1'S RUN |
+| `course.joueur` | {nom} · {morts} | {nom} · {morts} |
+| `course.morts` | one : {total} mort · other : {total} morts | one : {total} death · other : {total} deaths |
+| `course.chrono` | CHRONO | TIME |
+| `course.chronoAria` | {nom} : {temps}, {morts} | {nom}: {temps}, {morts} |
+| `course.avancement` | Avancement de la course : {pc} % | Run progress: {pc}% |
+| `course.vitesse` | Vitesse : ×{x} | Speed: ×{x} |
+| `course.quitter` | Retour au classement | Back to leaderboard |
 
 ### decompte (`decompte.*`, `apps/jump/src/catalogue.partie.*.ts`)
 

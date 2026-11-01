@@ -13,6 +13,7 @@ import {
   RELEASE_MIN,
   SLOW_BRONZE_MARGIN,
   SLOW_COST_MIN_TICKS,
+  PHASE_HARD,
   SLOW_MIN_EXIGENCE,
   SLOW_ZONE_WIDTH,
   UNITS_PER_TILE,
@@ -46,13 +47,14 @@ const DAYS: DailyLevel[] = Array.from({ length: 14 }, (_, k) => dailyLevel(FIRST
 const T = UNITS_PER_TILE;
 
 describe("lot 16 — une voie lente par portion dure", () => {
-  it("chaque morceau noté 4 ou 5 (sauf le premier, qui part à l'arrêt du départ) a exactement une voie lente ; les autres n'en ont pas", () => {
+  it("chaque morceau noté 4 ou 5 (lot 31 : à l'entrée ou à l'une des phases ; sauf le premier, qui part à l'arrêt du départ) a exactement une voie lente ; les autres n'en ont pas", () => {
     let routes = 0;
     for (const L of DAYS) {
       expect(L.pieces[0]!.exigence, L.date).toBeLessThan(SLOW_MIN_EXIGENCE);
+      expect(PHASE_HARD[L.pieces[0]!.id]?.includes(L.pieces[0]!.variant) ?? false, `${L.date} : jamais une portion dure en premier`).toBe(false);
       L.pieces.forEach((p, k) => {
         const mine = L.slowRoutes.filter((r) => r.piece === k);
-        expect(mine.length, `${L.date} ${p.id}`).toBe(p.exigence >= SLOW_MIN_EXIGENCE ? 1 : 0);
+        expect(mine.length, `${L.date} ${p.id}`).toBe(p.exigence >= SLOW_MIN_EXIGENCE || (k > 0 && (PHASE_HARD[p.id]?.includes(p.variant) ?? false)) ? 1 : 0);
       });
       routes += L.slowRoutes.length;
       expect(dailyProblems(L), L.date).toEqual([]);
@@ -171,7 +173,8 @@ describe("lot 16 — aucun raccourci", () => {
       }
     }
     expect(searched).toBeGreaterThan(3);
-  }, 300_000);
+    // Lot 31 : 300 s → 900 s (mesuré : 250 s avant le lot, ≈ 330 s avec les portions dures lues sur la pire phase : plus de voies lentes sur les quatre premiers jours ; la recherche est la même).
+  }, 900_000);
 
   it("les voies parasites fermées (`PARASITE_CLOSED`) ne sont jamais posées", () => {
     for (const L of DAYS) for (const p of L.pieces) expect(PARASITE_CLOSED[p.id]?.includes(p.variant) ?? false, `${L.date} ${p.id}`).toBe(false);

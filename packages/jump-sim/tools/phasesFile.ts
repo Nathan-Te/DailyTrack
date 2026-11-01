@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { TICK_RATE, decodeReplay, fromRuns, parseLevel, sectionPeriod, withSingleClock, type BuiltModule } from "../src/index";
+import { SLOW_MIN_EXIGENCE, TICK_RATE, decodeReplay, fromRuns, parseLevel, sectionPeriod, withSingleClock, type BuiltModule } from "../src/index";
 import { modulesDir, packageDir } from "./files";
 
 // Lot 15 — la **validation toutes phases** des morceaux (fichiers et règles communes à `phases:modules` et aux tests). Dans un niveau à une
@@ -103,6 +103,12 @@ export function phasesSource(file: PhasesFile): string {
     const ko = m.variants.flatMap((v, k) => (v && !v.ok ? [k] : []));
     if (ko.length > 0) refused[id] = ko;
   }
+  // Lot 31 : une variante dont la note est 4 ou 5 à au moins une des phases essayées (et plus seulement à la phase de sa course de référence) est une portion dure.
+  const hard: Record<string, number[]> = {};
+  for (const [id, m] of Object.entries(file.modules)) {
+    const hs = m.variants.flatMap((v, k) => (v && v.ok && v.phases.some((p) => p.exigence >= SLOW_MIN_EXIGENCE) ? [k] : []));
+    if (hs.length > 0) hard[id] = hs;
+  }
   return [
     "// Généré par `npm run phases:modules -w @cdj/jump-sim` (lot 15) à partir de `modules/phases.json` : ne pas modifier à la main.",
     "// Un test vérifie que ce fichier est exactement celui que le script écrirait (sinon : « relancer phases:modules »).",
@@ -112,6 +118,12 @@ export function phasesSource(file: PhasesFile): string {
     " * n'a pas de solution jouable par un humain. Le générateur v4 ne les pose jamais (`daily.ts`) ; le détail est dans `modules/phases.json`.",
     " */",
     `export const PHASE_REFUSED: Readonly<Record<string, readonly number[]>> = ${JSON.stringify(refused)};`,
+    "",
+    "/**",
+    " * Lot 31 — **portion dure selon la pire phase** : les variantes (par morceau) dont la solution jouable est notée 4 ou 5 à au moins une des phases essayées de leur horloge. Le générateur g25",
+    " * les traite comme les variantes notées 4 ou 5 par leur course de référence : voie lente posée, voies parasites examinées (`daily.ts`, `voies:modules`).",
+    " */",
+    `export const PHASE_HARD: Readonly<Record<string, readonly number[]>> = ${JSON.stringify(hard)};`,
     "",
   ].join("\n");
 }

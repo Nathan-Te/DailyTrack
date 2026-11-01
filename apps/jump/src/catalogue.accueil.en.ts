@@ -49,5 +49,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "classement.toi": "You",
   "classement.sansMedaille": "No medal",
   "classement.vide": "Nobody's ranked today yet.",
+  "classement.course": "Watch #1's run",
+  "classement.course.aria": "Watch #1's run: {nom}",
   "classement.sansServeur": "The leaderboard needs the server.",
 };

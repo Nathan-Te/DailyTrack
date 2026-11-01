@@ -7,6 +7,7 @@ import {
   ATTEMPT_DEAD,
   DEFAULT_JUMP_PARAMS,
   INPUT_RIGHT,
+  PHASE_HARD,
   PHASE_REFUSED,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
@@ -226,11 +227,11 @@ async function main(): Promise<void> {
     if (only && !only.includes(def.id)) continue;
     def.variants.forEach((_, v) => {
       const s = moduleSolutions(def.id, v);
-      if (variantExigence(s) < SLOW_MIN_EXIGENCE || PHASE_REFUSED[def.id]?.includes(v)) return;
+      if ((variantExigence(s) < SLOW_MIN_EXIGENCE && !PHASE_HARD[def.id]?.includes(v)) || PHASE_REFUSED[def.id]?.includes(v)) return;
       jobs.push({ id: def.id, text, variant: v, beam });
     });
   }
-  console.log(`${jobs.length} variantes notées ${SLOW_MIN_EXIGENCE} ou 5 à examiner.`);
+  console.log(`${jobs.length} variantes notées ${SLOW_MIN_EXIGENCE} ou 5 (à l'entrée ou à une phase) à examiner.`);
   const results: JobResult[] = [];
   const workers = Math.max(1, Math.min(Number(args.get("--workers") ?? availableParallelism()), jobs.length));
   const queue = [...jobs];

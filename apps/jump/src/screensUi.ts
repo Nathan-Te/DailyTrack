@@ -1,4 +1,4 @@
-import { el, medaille } from "@cdj/ui";
+import { bouton, el, medaille } from "@cdj/ui";
 import { creerCadre } from "./cadre";
 import { MEDAL_TYPE } from "./dailyInfo";
 import { ligneClassement } from "./home";
@@ -108,6 +108,8 @@ export interface BoardView {
   gap: boolean;
   /** Un message à la place des lignes (« Personne n'est encore classé… », classement indisponible). */
   message: string;
+  /** Lot 31 : le pseudo du premier, quand sa course peut se voir (« Voir la course du n° 1 ») ; `null` : pas de bouton. */
+  course: string | null;
 }
 
 export interface BoardUi extends Ecran {
@@ -115,7 +117,7 @@ export interface BoardUi extends Ecran {
   update(view: BoardView): void;
 }
 
-export function mountBoard(o: { onToggle(open: boolean): void }): BoardUi {
+export function mountBoard(o: { onToggle(open: boolean): void; onCourse(): void }): BoardUi {
   const e = ecran("leaderboard", "classement.aria", o.onToggle);
   const subtitle = el("p", { classe: "etiquette__sous-titre" });
   const tete = el(
@@ -128,7 +130,11 @@ export function mountBoard(o: { onToggle(open: boolean): void }): BoardUi {
   );
   const list = el("ol", { classe: "lignes" });
   const message = el("p", { classe: "reglages__aide" });
-  e.cadre.corps.append(el("div", { classe: "etiquette__tete" }, lier(el("h1", { classe: "etiquette__titre" }), "classement.titre"), subtitle), tete, list, message);
+  // Lot 31 : « Voir la course du n° 1 » (la lecture de l'essai du premier, sur la scène) sous la liste ; absent sans classé.
+  const course = bouton({ texte: t("classement.course"), variante: "secondaire", onClick: () => o.onCourse() }) as HTMLButtonElement;
+  course.id = "board-course";
+  course.hidden = true;
+  e.cadre.corps.append(el("div", { classe: "etiquette__tete" }, lier(el("h1", { classe: "etiquette__titre" }), "classement.titre"), subtitle), tete, list, message, course);
   let view: BoardView | null = null;
   const render = (v: BoardView) => {
     view = v;
@@ -139,6 +145,9 @@ export function mountBoard(o: { onToggle(open: boolean): void }): BoardUi {
     message.textContent = v.message;
     message.hidden = v.message === "";
     tete.hidden = v.rows.length === 0;
+    course.hidden = v.course === null;
+    if (v.course !== null) lier(course, "classement.course");
+    if (v.course !== null) course.setAttribute("aria-label", t("classement.course.aria", { nom: v.course }));
   };
   onLangue(() => {
     if (view) render(view);

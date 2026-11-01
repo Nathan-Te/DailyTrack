@@ -17,7 +17,7 @@ import { ALT_KEPT_VERSION, MIN_HOLD_VERSION, THEME_BAG_GENERATOR, BRIDGE_GENERAT
 // bit près (le catalogue sans les morceaux à plateformes, la même règle de variété) ; `daily-golden-v5.json` : le générateur en vigueur (g15, sim v5), la
 // seule que `UPDATE_GOLDEN=1` écrive.
 // Lot 22 : quatre références. Les v3, v4 et **v5 (g15, écrite au lot 20)** sont intactes ; `daily-golden-v6.json` est le générateur en vigueur (g16, sim v6, presses).
-// Lot 30 : onze références. Les v3 à v11 et **v12 (g23, écrite au lot V1)** sont intactes ; `daily-golden-v13.json` est le générateur en vigueur (g24, sim v13, maintien minimal du saut).
+// Lot 30 : onze références. Les v3 à v11 et **v12 (g23, écrite au lot V1)** sont intactes ; `daily-golden-v13.json` est le générateur en vigueur (g25 depuis le lot 31, sim v13, maintien minimal du saut ; g24 jusqu’au lot 30).
 // Lot 28 : dix références. Les v3 à v10 et **v11 (g21, écrite au lot 27)** sont intactes ; `daily-golden-v12.json` est le générateur en vigueur (g22, sim v12, alternés qui gardent leur état à la reprise).
 // Lot 27 : neuf références. Les v3 à v9 et **v10 (g20, écrite au lot 26)** sont intactes ; `daily-golden-v11.json` est le générateur en vigueur (g21, sim v11, nouvel essai à zéro, forêt à vent continu).
 // Lot 26 : huit références. Les v3 à v8 et **v9 (g19, écrite au lot 25)** sont intactes ; `daily-golden-v10.json` est le générateur en vigueur (g20, sim v10, ponts à interrupteur, équilibre des mécaniques).

@@ -10,6 +10,7 @@ import {
   JUMP_GENERATOR_VERSION,
   LEVEL_ID_PATTERN,
   MAX_DAILY_HEIGHT,
+  maxDailyHeight,
   MAX_PIECES,
   MAX_PRECISION_RUN,
   MEDAL_PERCENT,
@@ -259,7 +260,7 @@ describe("niveau du jour : quotas et budget", () => {
 describe("niveau du jour : assemblage", () => {
   it("hauteur bornée (≤ 56 rangées) ; la rangée du haut est pleine", () => {
     for (const L of levels) {
-      expect(L.level.height).toBeLessThanOrEqual(MAX_DAILY_HEIGHT);
+      expect(L.level.height).toBeLessThanOrEqual(maxDailyHeight(L.level.simVersion));
       for (let c = 0; c < L.level.width; c++) expect(L.level.tiles[c]).toBe(TILE_SOLID);
     }
   });

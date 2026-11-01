@@ -106,6 +106,16 @@ export const fr = {
   "carnage.avancement": "Avancement : vague {n} sur {total}",
   "carnage.fermer": "Fermer",
   "carnage.aide": "Une commande pour passer",
+  // La course du n° 1 (lot 31) : la lecture de l'essai du premier du jour, avec ses morts et ses reprises, dans la barre du carnage.
+  "course.titre": "COURSE DU N° 1",
+  "course.joueur": "{nom} · {morts}",
+  "course.morts": { one: "{total} mort", other: "{total} morts" },
+  "course.chrono": "CHRONO",
+  "course.chronoAria": "{nom} : {temps}, {morts}",
+  "course.avancement": "Avancement de la course : {pc} %",
+  "course.vitesse": "Vitesse : ×{x}",
+  "course.quitter": "Retour au classement",
+  "aide.course": "{pause} : pause · Échap : quitter",
   // Commandes tactiles (lot 1b : mêmes zones ; boutons aux bords)
   "tactile.gauche": "Gauche",
   "tactile.droite": "Droite",
