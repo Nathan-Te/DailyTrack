@@ -128,9 +128,11 @@ export const JUMP_MICRO_MAX = 4;
  * 22 depuis le lot 28 (niveaux en sim v12 : les blocs alternés gardent leur état à la reprise ; chaque variante à alternés se reprend aussi depuis l'état B ; jamais d'alterné hors du néon) ;
  * 23 depuis le lot V1 de la plateforme (le sac de thèmes : jamais deux jours de suite le même thème, chaque thème une fois par cycle de cinq jours ; la physique, les morceaux et la
  * simulation ne changent pas : `JUMP_SIM_VERSION` reste 12, un niveau g22 se rejoue tel quel et garde son thème de l'ancienne règle) ;
- * 24 depuis le lot 30 (niveaux en sim v13 : le maintien minimal du saut ; appuis humains d'au moins 6 pas, durée d'appui tolérée à ±4 pas ; catalogue re-résolu).
+ * 24 depuis le lot 30 (niveaux en sim v13 : le maintien minimal du saut ; appuis humains d'au moins 6 pas, durée d'appui tolérée à ±4 pas ; catalogue re-résolu) ;
+ * 25 depuis le lot 31 (la place autour de la lame : 2 tuiles libres entre une scie mobile et la paroi d'une cheminée ; portion dure selon la pire phase ; la simulation ne change pas :
+ * `JUMP_SIM_VERSION` reste 13, un niveau g24 se rejoue tel quel).
  */
-export const JUMP_GENERATOR_VERSION = 24;
+export const JUMP_GENERATOR_VERSION = 25;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

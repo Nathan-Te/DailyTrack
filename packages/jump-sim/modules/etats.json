@@ -133,6 +133,11 @@
     null,
     null,
     null,
+    null,
+    null,
+    null,
+    null,
+    null,
     null
    ]
   },
@@ -3215,6 +3220,9 @@
   },
   "tunnel-rase": {
    "variants": [
+    null,
+    null,
+    null,
     null,
     null,
     null,

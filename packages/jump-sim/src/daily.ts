@@ -14,11 +14,12 @@ import { bridgePieceProblems } from "./pontsPieces";
 import { stalactiteProblems } from "./stalactites";
 import { stalactitePieceProblems } from "./stalactitesPieces";
 import { presseProblems } from "./presses";
-import { PHASE_REFUSED } from "./phases";
+import { PHASE_HARD, PHASE_REFUSED } from "./phases";
 import { ALT_B_REFUSED } from "./etats";
 import { PARASITE_CLOSED } from "./parasites";
 import { legacyCatalog } from "./legacyRegistry";
 import { variantUsable } from "./usable";
+import { BLADE_TIGHT } from "./lameTable";
 import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, soloLevel, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
 import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, auChangementDesJoursAnciens, jumpThemeOfSim, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
@@ -104,8 +105,16 @@ export const LONGEST_RUN_MAX = 2 * TICK_RATE;
  * de la cible) : la zone de bifurcation d'une portion dure ajoute 6 colonnes de course (moyenne 1,23 s sur 60 dates sans ce terme, mesuré).
  */
 export const LONGEST_RUN_TARGET = idiv(6 * TICK_RATE, 5);
-/** Hauteur totale du niveau, rangée de blocs du haut comprise (48 au lot 5 : un morceau de plus, c'est plus de dénivelé). */
+/** Hauteur totale du niveau, rangée de blocs du haut comprise (48 au lot 5 : un morceau de plus, c'est plus de dénivelé ; 56 au lot 6, **jusqu'à la version 12 du générateur**). */
 export const MAX_DAILY_HEIGHT = 56;
+/**
+ * **Lot 31 (g25, niveaux en version 13) : 57 rangées.** Avec la portion dure lue sur la pire phase, plus de morceaux portent une zone de bifurcation et sa galerie, et le 22/08/2027 (un néon, quatre morceaux
+ * longs possibles dont trois durs) n'avait plus aucun tirage à 56 rangées : niveau de secours. Une rangée de plus suffit (mesuré : 0 secours sur 365 dates ; niveaux de 55 à 57 rangées : rapport du lot) ;
+ * les versions d'avant gardent 56 (`maxDailyHeight`), leurs références ne bougent pas.
+ */
+export const MAX_DAILY_HEIGHT_V13 = 57;
+/** Le plafond de hauteur d'un niveau du jour de cette version de la simulation. */
+export const maxDailyHeight = (simVersion: number): number => (simVersion >= MIN_HOLD_VERSION ? MAX_DAILY_HEIGHT_V13 : MAX_DAILY_HEIGHT);
 
 // ——— Budget d'exigence (la même exigence chaque jour : pas de difficulté selon le jour de la semaine) ———
 
@@ -370,7 +379,7 @@ interface Choice {
  */
 export const V4_ONLY_VARIANTS: Readonly<Record<string, readonly number[]>> = Object.freeze({
   "scie-sol": [6],
-  "cheminee-scie": [4],
+  "cheminee-scie": [4, 5, 6, 7, 8, 9], // lot 31 (g25) : 5 à 9, les remplaçantes de la place autour de la lame (rail collé à une paroi, `rail=3` ou `rail=5`)
   // Lot 18 (g13) : les remplaçantes des variantes de nuit refusées par la règle des 1,5 s par phase (`BLINK_PHASE_MIN`), chacune plus lente que la sienne.
   "nuit-opposition": [5, 6, 7, 8, 9],
   "nuit-cheminee": [4, 5, 6, 7],
@@ -426,6 +435,16 @@ export function blinkTooFast(): Readonly<Record<string, readonly number[]>> {
 }
 
 /**
+ * Lot 31 (g25) : les variantes dont une scie mobile, dans un couloir ou une cheminée qu'on traverse, ne laisse pas **2 tuiles libres entre la lame et une paroi** sur toute sa course
+ * (`bladeRoomProblems`, `lame.ts`) : le générateur g25 ne les pose jamais ; elles gardent leur texte, leurs solutions et leur place (méthode du lot 17 : le catalogue d'avant, `src/legacy/`, les
+ * connaît telles quelles), et des variantes **ajoutées au bout de la liste** (rail collé à une paroi) les remplacent. **Table générée** (`npm run lame:modules -- --ecrire`, `src/lameTable.ts`, un test
+ * la relit sur les textes) : la règle elle-même (`lame.ts`) ne voyage pas dans le jeu.
+ */
+export function bladeTooTight(): Readonly<Record<string, readonly number[]>> {
+  return BLADE_TIGHT;
+}
+
+/**
  * Lot 27 (g21) : les variantes **ajoutées** pour que le vent de la forêt souffle en continu (`cycle=0` : la clause de rafale est retirée), au bout de la liste de leur morceau (méthode
  * du lot 17) ; les références v3 à v10 ne les connaissent pas (golden au bit près), le générateur g21 les pose. Leurs sœurs à rafales gardent leur texte, leurs solutions et leur place.
  */
@@ -457,6 +476,13 @@ export function gustyVariants(): Readonly<Record<string, readonly number[]>> {
   gusty = out;
   return out;
 }
+
+/**
+ * Lot 16 : une portion dure reçoit une voie lente. Lot 31 (g25, niveaux en version 13) : la note se lit sur **la pire des phases** de l'horloge de la variante (`PHASE_HARD`, `phases:modules`) et
+ * plus seulement sur la course de référence (`exigence`, la plus haute de ses deux entrées) ; avant la version 13, la seule course de référence, comme avant (références au bit près).
+ */
+const isHard = (c: Pick<Choice, "id" | "variant" | "exigence">, simVersion: number): boolean =>
+  c.exigence >= SLOW_MIN_EXIGENCE || (simVersion >= MIN_HOLD_VERSION && (PHASE_HARD[c.id]?.includes(c.variant) ?? false));
 
 /** Lot 27 : cette variante existe-t-elle pour cette version de la simulation ? (g21 : ni rafale ; avant : pas les variantes à vent continu ajoutées.) */
 const knownTo = (c: Pick<Choice, "id" | "variant">, simVersion: number): boolean =>
@@ -534,11 +560,12 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
   const refused = legacy ? { phase: legacyCatalog().phaseRefused, altB: legacyCatalog().altBRefused, parasite: legacyCatalog().parasiteClosed } : { phase: PHASE_REFUSED, altB: ALT_B_REFUSED, parasite: PARASITE_CLOSED };
   const everything = () => allChoices(legacy);
   if (simVersion >= SINGLE_CLOCK_VERSION) {
-    const usable = (list: Choice[]) => list.filter((c) => !refused.phase[c.id]?.includes(c.variant) && !refused.parasite[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant) && knownTo(c, simVersion)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE }));
+    const usable = (list: Choice[]) => list.filter((c) => !refused.phase[c.id]?.includes(c.variant) && !refused.parasite[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant) && knownTo(c, simVersion)).map((c) => ({ ...c, hard: isHard(c, simVersion) }));
     if (simVersion >= MIN_HOLD_VERSION) {
       // Lot 30 (g24) : le catalogue re-résolu pour le maintien minimal (mêmes règles que g22 et g23 ; les variantes sans solution, refusées par la règle des appuis, n'y sont pas).
+      // Lot 31 (g25) : en plus, jamais une scie mobile qui ne laisse pas 2 tuiles libres entre la lame et la paroi d'une cheminée (`bladeTooTight`).
       catalogV13 ??= everything()
-        .map((list) => usable(list).filter((c) => !refused.altB[c.id]?.includes(c.variant)))
+        .map((list) => usable(list).filter((c) => !refused.altB[c.id]?.includes(c.variant) && !bladeTooTight()[c.id]?.includes(c.variant)))
         .filter((list) => list.length > 0);
       return catalogV13;
     }
@@ -896,7 +923,7 @@ function compose(day: number, rng: Rng, theme: JumpThemeName, simVersion: number
             if (els > ELEMENT_MAX_PIECES || (wantElement && els < 1) || ![...picks, pick].some((q) => isOriginPiece(q.choice, theme))) return false;
           }
         }
-        return stack([...picks, pick]).height <= MAX_DAILY_HEIGHT;
+        return stack([...picks, pick]).height <= maxDailyHeight(simVersion);
       });
       if (ok.length === 0) continue;
       // La variante la plus proche du profil visé (à égalité : tirée au sort).
@@ -971,7 +998,7 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
   const full: Slot[] = picks.map((p, k) => {
     const choice = all.find((c) => c.id === p.id && c.variant === p.variant);
     if (!choice) throw new RangeError(`Morceau « ${p.id} », variante ${p.variant} : pas de solution utilisable`);
-    return { choice: { ...choice, hard: options.slow === true && k > 0 && choice.exigence >= SLOW_MIN_EXIGENCE }, entry: k === 0 ? "arret" : "elan" };
+    return { choice: { ...choice, hard: options.slow === true && k > 0 && isHard(choice, options.simVersion ?? MIN_HOLD_VERSION) }, entry: k === 0 ? "arret" : "elan" };
   });
   if (full.length === 0) throw new RangeError("Assemblage vide");
   const extras = options.extras ?? [];
@@ -1279,7 +1306,7 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   const { pieces, authorTicks: total } = d;
   if (total < AUTHOR_MIN_TICKS || total > AUTHOR_MAX_TICKS) out.push(`temps de l'auteur ${total} pas hors de [${AUTHOR_MIN_TICKS}, ${AUTHOR_MAX_TICKS}]`);
   if (pieces.length < MIN_PIECES || pieces.length > MAX_PIECES) out.push(`${pieces.length} morceaux (de ${MIN_PIECES} à ${MAX_PIECES})`);
-  if (d.level.height > MAX_DAILY_HEIGHT) out.push(`hauteur ${d.level.height} (au plus ${MAX_DAILY_HEIGHT})`);
+  if (d.level.height > maxDailyHeight(d.level.simVersion)) out.push(`hauteur ${d.level.height} (au plus ${maxDailyHeight(d.level.simVersion)})`);
   if (new Set(pieces.map((p) => p.id)).size !== pieces.length) out.push("morceau en double");
   if (new Set(pieces.map((p) => p.family)).size !== pieces.length) out.push("famille en double");
   const longs = pieces.filter((p) => p.long).length;
@@ -1614,7 +1641,7 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
   }
   const single = simVersion >= SINGLE_CLOCK_VERSION;
   // Lot 19 (v4) : un niveau trop haut est refusé avant tout rejeu (la règle de `dailyProblems`, vérifiée plus tôt).
-  if (single && asm.level.height > MAX_DAILY_HEIGHT) return `hauteur ${asm.level.height} (au plus ${MAX_DAILY_HEIGHT})`;
+  if (single && asm.level.height > maxDailyHeight(simVersion)) return `hauteur ${asm.level.height} (au plus ${maxDailyHeight(simVersion)})`;
   const chain = chainSolutions(asm);
   if (typeof chain === "string") return chain;
   const start = { checkpoint: -1, held: 0, time: 0, sections: [], elan: 0 };
@@ -1913,7 +1940,7 @@ export const FALLBACK_V13: Readonly<Record<JumpThemeName, readonly { id: string;
     { id: "tunnel", variant: 5 },
     { id: "plafond-pics", variant: 1 },
     { id: "chaland", variant: 2 },
-    { id: "cheminee-scie", variant: 3 },
+    { id: "cheminee-scie", variant: 6 },
     { id: "saut-long", variant: 6 },
     { id: "neon-silence", variant: 2 },
   ],

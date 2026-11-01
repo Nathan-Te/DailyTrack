@@ -9,6 +9,7 @@ import {
   EXIGENCE_RATE_MIN,
   JOINT_TICKS,
   MAX_DAILY_HEIGHT,
+  maxDailyHeight,
   MODULES,
   MODULE_TAGS,
   MUTATORS,
@@ -196,7 +197,7 @@ line("### Forme");
 line(`| mesure | min | moyenne | max |`);
 line(`|---|---|---|---|`);
 line(`| morceaux par niveau | ${stats(counts).min} | ${num(stats(counts).mean)} | ${stats(counts).max} |`);
-line(`| hauteur (rangées, ≤ ${MAX_DAILY_HEIGHT}) | ${stats(heights).min} | ${num(stats(heights).mean)} | ${stats(heights).max} |`);
+line(`| hauteur (rangées, ≤ ${maxDailyHeight(MIN_HOLD_VERSION)}) | ${stats(heights).min} | ${num(stats(heights).mean)} | ${stats(heights).max} |`);
 line(`| largeur (colonnes) | ${stats(widths).min} | ${num(stats(widths).mean)} | ${stats(widths).max} |`);
 line();
 

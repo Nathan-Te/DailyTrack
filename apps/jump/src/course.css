@@ -1,0 +1,17 @@
+/* La course du n° 1 (lot 31) : la barre du carnage habillée pour la lecture de l'essai du premier (course.ts, chargé à la demande). Jetons seulement. */
+.carnage__bouton--vitesse {
+  width: auto;
+  min-width: var(--dj-cible);
+  padding: 0 10px;
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-15);
+  line-height: 1;
+}
+.carnage__bouton--vitesse[aria-pressed="true"] {
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+}
+#carnage.course .carnage__vague-valeur {
+  min-width: 5.5ch;
+  text-align: right;
+}

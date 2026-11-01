@@ -50,5 +50,7 @@ export const fr = {
   "classement.toi": "Toi",
   "classement.sansMedaille": "Pas de médaille",
   "classement.vide": "Personne n'est encore classé aujourd'hui.",
+  "classement.course": "Voir la course du n° 1",
+  "classement.course.aria": "Voir la course du n° 1 : {nom}",
   "classement.sansServeur": "Le classement a besoin du serveur.",
 } as const;

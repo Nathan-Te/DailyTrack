@@ -1,6 +1,6 @@
 {
  "rule": 1,
- "catalog": "f62f7264",
+ "catalog": "b93b53e9",
  "modules": {
   "balancier": {
    "4": {
@@ -684,6 +684,49 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "3816ae5a",
+    "fast": 301,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "8": {
+    "grid": "069a4159",
+    "fast": 260,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "9": {
+    "grid": "58af3b51",
+    "fast": 331,
+    "costMin": 360,
+    "precise": [
+     73,
+     76
+    ],
+    "boxes": [
+     {
+      "c0": 7,
+      "c1": 9,
+      "r0": 12,
+      "r1": 16
+     },
+     {
+      "c0": 7,
+      "c1": 9,
+      "r0": 12,
+      "r1": 16
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
    }
   },
   "cheminee-vide": {
@@ -801,6 +844,37 @@
     "boxes": [],
     "detour": null,
     "verdict": "sans-detour"
+   }
+  },
+  "descente-scies": {
+   "1": {
+    "grid": "991522ae",
+    "fast": 644,
+    "costMin": 360,
+    "precise": [
+     479,
+     485
+    ],
+    "boxes": [
+     {
+      "c0": 44,
+      "c1": 46,
+      "r0": 15,
+      "r1": 19
+     },
+     {
+      "c0": 44,
+      "c1": 46,
+      "r0": 14,
+      "r1": 18
+     }
+    ],
+    "detour": {
+     "ticks": 644,
+     "note": 1,
+     "code": "AQMXbW9kdWxlOmRlc2NlbnRlLXNjaWVzOjEE6g426gymAcIM"
+    },
+    "verdict": "fermee"
    }
   },
   "escalier": {
@@ -1041,6 +1115,113 @@
     "verdict": "sans-detour"
    }
   },
+  "iles-scie": {
+   "3": {
+    "grid": "4945ba3b",
+    "fast": 295,
+    "costMin": 360,
+    "precise": [
+     150,
+     156,
+     198,
+     204
+    ],
+    "boxes": [
+     {
+      "c0": 14,
+      "c1": 16,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 14,
+      "c1": 16,
+      "r0": 5,
+      "r1": 9
+     },
+     {
+      "c0": 18,
+      "c1": 20,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 19,
+      "c1": 21,
+      "r0": 6,
+      "r1": 10
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   }
+  },
+  "laser-alterne-balai": {
+   "3": {
+    "grid": "b3cce87c",
+    "fast": 262,
+    "costMin": 360,
+    "precise": [
+     39,
+     45,
+     89,
+     95
+    ],
+    "boxes": [
+     {
+      "c0": 4,
+      "c1": 6,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 4,
+      "c1": 6,
+      "r0": 5,
+      "r1": 9
+     },
+     {
+      "c0": 8,
+      "c1": 10,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 6,
+      "r1": 10
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "6": {
+    "grid": "57629451",
+    "fast": 264,
+    "costMin": 360,
+    "precise": [
+     102,
+     108
+    ],
+    "boxes": [
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 10,
+      "c1": 12,
+      "r0": 5,
+      "r1": 9
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   }
+  },
   "laser-alterne-portes": {
    "0": {
     "grid": "c6a047f5",
@@ -1078,6 +1259,15 @@
       "r1": 10
      }
     ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "1": {
+    "grid": "42c8e9e9",
+    "fast": 258,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
     "detour": null,
     "verdict": "sans-detour"
    },
@@ -1159,6 +1349,31 @@
     "detour": null,
     "verdict": "sans-detour"
    },
+   "6": {
+    "grid": "f54d8bb3",
+    "fast": 382,
+    "costMin": 360,
+    "precise": [
+     17,
+     23
+    ],
+    "boxes": [
+     {
+      "c0": 2,
+      "c1": 4,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 2,
+      "c1": 4,
+      "r0": 5,
+      "r1": 9
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
    "9": {
     "grid": "dc0f5e99",
     "fast": 315,
@@ -1214,6 +1429,83 @@
       "c1": 12,
       "r0": 7,
       "r1": 11
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   }
+  },
+  "laser-balayage": {
+   "0": {
+    "grid": "41aaa3f7",
+    "fast": 218,
+    "costMin": 360,
+    "precise": [
+     93,
+     99
+    ],
+    "boxes": [
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 5,
+      "r1": 9
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "4": {
+    "grid": "9d4022f8",
+    "fast": 218,
+    "costMin": 360,
+    "precise": [
+     93,
+     99
+    ],
+    "boxes": [
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 5,
+      "r1": 9
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "4746bf47",
+    "fast": 218,
+    "costMin": 360,
+    "precise": [
+     93,
+     99
+    ],
+    "boxes": [
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 5,
+      "r1": 9
      }
     ],
     "detour": null,
@@ -1322,6 +1614,31 @@
       "c1": 8,
       "r0": 7,
       "r1": 11
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "2": {
+    "grid": "6dc56218",
+    "fast": 346,
+    "costMin": 360,
+    "precise": [
+     146,
+     149
+    ],
+    "boxes": [
+     {
+      "c0": 6,
+      "c1": 8,
+      "r0": 11,
+      "r1": 15
+     },
+     {
+      "c0": 6,
+      "c1": 8,
+      "r0": 11,
+      "r1": 15
      }
     ],
     "detour": null,
@@ -2269,6 +2586,24 @@
     "detour": null,
     "verdict": "sans-detour"
    },
+   "3": {
+    "grid": "1f2cb987",
+    "fast": 278,
+    "costMin": 360,
+    "precise": [
+     99
+    ],
+    "boxes": [
+     {
+      "c0": 8,
+      "c1": 10,
+      "r0": 7,
+      "r1": 11
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
    "4": {
     "grid": "6896c8bc",
     "fast": 270,
@@ -2662,6 +2997,80 @@
    }
   },
   "nuit-relais": {
+   "0": {
+    "grid": "5ab75d33",
+    "fast": 763,
+    "costMin": 382,
+    "precise": [
+     165,
+     381,
+     532,
+     535,
+     621,
+     631,
+     645,
+     666,
+     668
+    ],
+    "boxes": [
+     {
+      "c0": 15,
+      "c1": 17,
+      "r0": 4,
+      "r1": 8
+     },
+     {
+      "c0": 35,
+      "c1": 37,
+      "r0": 5,
+      "r1": 9
+     },
+     {
+      "c0": 44,
+      "c1": 46,
+      "r0": 4,
+      "r1": 8
+     },
+     {
+      "c0": 44,
+      "c1": 46,
+      "r0": 5,
+      "r1": 9
+     },
+     {
+      "c0": 50,
+      "c1": 52,
+      "r0": 2,
+      "r1": 6
+     },
+     {
+      "c0": 50,
+      "c1": 52,
+      "r0": 2,
+      "r1": 6
+     },
+     {
+      "c0": 50,
+      "c1": 52,
+      "r0": 1,
+      "r1": 5
+     },
+     {
+      "c0": 50,
+      "c1": 52,
+      "r0": 3,
+      "r1": 7
+     },
+     {
+      "c0": 50,
+      "c1": 52,
+      "r0": 3,
+      "r1": 7
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
    "1": {
     "grid": "e8294be1",
     "fast": 644,
@@ -2894,6 +3303,178 @@
       "r1": 13
      }
     ],
+    "detour": null,
+    "verdict": "sans-detour"
+   }
+  },
+  "piliers-scie": {
+   "0": {
+    "grid": "49c8b5b0",
+    "fast": 644,
+    "costMin": 360,
+    "precise": [
+     354,
+     360
+    ],
+    "boxes": [
+     {
+      "c0": 32,
+      "c1": 34,
+      "r0": 9,
+      "r1": 13
+     },
+     {
+      "c0": 33,
+      "c1": 35,
+      "r0": 8,
+      "r1": 12
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "1": {
+    "grid": "aadaa393",
+    "fast": 644,
+    "costMin": 360,
+    "precise": [
+     27,
+     33,
+     327,
+     330,
+     410,
+     413
+    ],
+    "boxes": [
+     {
+      "c0": 2,
+      "c1": 4,
+      "r0": 9,
+      "r1": 13
+     },
+     {
+      "c0": 3,
+      "c1": 5,
+      "r0": 8,
+      "r1": 12
+     },
+     {
+      "c0": 30,
+      "c1": 32,
+      "r0": 9,
+      "r1": 13
+     },
+     {
+      "c0": 30,
+      "c1": 32,
+      "r0": 9,
+      "r1": 13
+     },
+     {
+      "c0": 38,
+      "c1": 40,
+      "r0": 8,
+      "r1": 12
+     },
+     {
+      "c0": 38,
+      "c1": 40,
+      "r0": 8,
+      "r1": 12
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "2": {
+    "grid": "900f2b51",
+    "fast": 644,
+    "costMin": 360,
+    "precise": [
+     327,
+     330
+    ],
+    "boxes": [
+     {
+      "c0": 30,
+      "c1": 32,
+      "r0": 9,
+      "r1": 13
+     },
+     {
+      "c0": 30,
+      "c1": 32,
+      "r0": 9,
+      "r1": 13
+     }
+    ],
+    "detour": {
+     "ticks": 644,
+     "note": 2,
+     "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZToyBMoBRsoD1gGqAzaqA_YBqgOmAZoFtgHyA8YBwgNGkgU"
+    },
+    "verdict": "fermee"
+   },
+   "3": {
+    "grid": "b14e7280",
+    "fast": 644,
+    "costMin": 360,
+    "precise": [
+     490,
+     496
+    ],
+    "boxes": [
+     {
+      "c0": 45,
+      "c1": 47,
+      "r0": 7,
+      "r1": 11
+     },
+     {
+      "c0": 45,
+      "c1": 47,
+      "r0": 8,
+      "r1": 12
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "4": {
+    "grid": "5064df11",
+    "fast": 644,
+    "costMin": 360,
+    "precise": [
+     337,
+     340
+    ],
+    "boxes": [
+     {
+      "c0": 31,
+      "c1": 33,
+      "r0": 9,
+      "r1": 13
+     },
+     {
+      "c0": 31,
+      "c1": 33,
+      "r0": 9,
+      "r1": 13
+     }
+    ],
+    "detour": {
+     "ticks": 644,
+     "note": 5,
+     "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTo0BMIBTsID1gGyAza6A84BigR-igWmAZoElgG6A0aiBQ"
+    },
+    "verdict": "fermee"
+   },
+   "5": {
+    "grid": "1a0879d0",
+    "fast": 644,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
     "detour": null,
     "verdict": "sans-detour"
    }
@@ -3219,6 +3800,24 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "804d85ca",
+    "fast": 286,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "6": {
+    "grid": "dbc90b85",
+    "fast": 286,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
    }
   },
   "presse-ilot": {
@@ -3256,6 +3855,24 @@
    }
   },
   "presse-rythme": {
+   "3": {
+    "grid": "6ad146b3",
+    "fast": 281,
+    "costMin": 360,
+    "precise": [
+     174
+    ],
+    "boxes": [
+     {
+      "c0": 16,
+      "c1": 18,
+      "r0": 6,
+      "r1": 10
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
    "4": {
     "grid": "66968184",
     "fast": 277,
@@ -3301,6 +3918,24 @@
       "c1": 19,
       "r0": 4,
       "r1": 8
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "7": {
+    "grid": "a6a76d3c",
+    "fast": 277,
+    "costMin": 360,
+    "precise": [
+     172
+    ],
+    "boxes": [
+     {
+      "c0": 16,
+      "c1": 18,
+      "r0": 6,
+      "r1": 10
      }
     ],
     "detour": null,
@@ -4019,6 +4654,15 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   },
+   "2": {
+    "grid": "804b6298",
+    "fast": 260,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
    }
   },
   "tunnel": {
@@ -4081,6 +4725,40 @@
    "0": {
     "grid": "5a582003",
     "fast": 658,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "2": {
+    "grid": "938cb4f1",
+    "fast": 652,
+    "costMin": 360,
+    "precise": [
+     185,
+     188
+    ],
+    "boxes": [
+     {
+      "c0": 17,
+      "c1": 19,
+      "r0": 20,
+      "r1": 24
+     },
+     {
+      "c0": 17,
+      "c1": 19,
+      "r0": 20,
+      "r1": 24
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "86fae7c6",
+    "fast": 676,
     "costMin": 360,
     "precise": [],
     "boxes": [],
