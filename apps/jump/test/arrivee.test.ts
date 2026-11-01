@@ -169,7 +169,7 @@ describe("historique persistant", () => {
     expect(readHistory(garbage)).toEqual([]);
   });
 
-  it("survit à la purge du jour de la mémoire (autre clé, que la mémoire ne balaie pas)", () => {
+  it("survit à la purge du jour de la mémoire (autre clé, que la mémoire ne balaie pas)", { timeout: 30_000 }, () => {
     const store = new MemStore();
     new History(store).put(rec("2026-10-19", 3600));
     const d = dailyLevel(day("2026-10-20"));

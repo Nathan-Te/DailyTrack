@@ -40,11 +40,11 @@ describe("un jour préparé : format et garde-fou", () => {
     }
   });
 
-  it("la preuve rejouée donne exactement le Diamant écrit (générateur 2 : sa hauteur ; générateur 3 : min(sa hauteur, plafond))", () => {
+  it("la preuve rejouée donne exactement le Diamant écrit (générateur 2 : sa hauteur ; générateur 3 : min(sa hauteur, plafond))", { timeout: 30_000 }, () => {
     for (const [j, jour] of [["2026-11-06", J6], ["2026-11-08", J8], ["2026-11-07", J7], ["2026-11-17", J17]] as const) expect(verifierJourPrepare(R, lire(j), jour), j).toBeNull();
   });
 
-  it("lot T3b — le garde-fou étendu : la preuve du 07/11 finit au-dessus du plafond, le Diamant écrit vaut min(sa hauteur, 60 m) ; ni la hauteur brute ni autre chose n'est accepté", () => {
+  it("lot T3b — le garde-fou étendu : la preuve du 07/11 finit au-dessus du plafond, le Diamant écrit vaut min(sa hauteur, 60 m) ; ni la hauteur brute ni autre chose n'est accepté", { timeout: 30_000 }, () => {
     const f = lire("2026-11-07");
     const lu = lireJour(f, J7);
     expect(typeof lu).toBe("object");

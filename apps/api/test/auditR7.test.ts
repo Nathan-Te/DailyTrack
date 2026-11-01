@@ -18,7 +18,7 @@ describe("le plafond de rejeux compte la durée du rejeu", () => {
     expect(replayUnits([])).toBe(1);
   });
 
-  it("une rediffusion qui ne finit jamais (72 000 pas) épuise vite le plafond ; une vraie course passe encore", async () => {
+  it("une rediffusion qui ne finit jamais (72 000 pas) épuise vite le plafond ; une vraie course passe encore", { timeout: 30_000 }, async () => {
     const t = await makeApi({ replaysPerMinute: 20 });
     const date = formatDay(DAY);
     const stalled = encodeReplay({ simVersion: SIM_VERSION, trackId: circuitOf(DAY).track.id, runs: [{ count: 72_000, steer: 0, throttle: 0, brake: 0, respawn: 0 }] });

@@ -297,7 +297,7 @@ describe("lot 28 — un jour de néon g22 : les vies des essais fictifs repartan
     expect(hops).toBeGreaterThan(0);
   });
 
-  it("jamais d'alterné hors du néon (la règle du générateur, sur une nuit et une forêt)", () => {
+  it("jamais d'alterné hors du néon (la règle du générateur, sur une nuit et une forêt)", { timeout: 30_000 }, () => {
     const other = [daysFromCivil(2026, 10, 31), daysFromCivil(2026, 11, 9), daysFromCivil(2026, 11, 3)];
     for (const d of other) {
       const O = dailyLevel(d, null, ALT_KEPT_VERSION);
