@@ -16,6 +16,12 @@ const voiture = (page: Page) => page.evaluate(() => window.__cdj.voiture);
  * (tâches longues de la page, trois essais) ; le Garage est monté en moins de 60 ms après le clic. Sur un téléphone, une fraction de seconde.
  */
 const PREMIERE_IMAGE = 15_000;
+/**
+ * Ouvert depuis l'accueil, le Garage se monte quand le fil principal se libère : en rendu logiciel, l'accueil dessine sa scène (et le fantôme du record, la miniature)
+ * à chaque image. Mesuré (01/11/2026, 6 essais, accueil avec le fantôme du record et l'API coupée) : de 5,4 à 9,0 s entre le clic et le montage — au-delà des 5 s
+ * par défaut (CI complète du 01/11/2026 : rouge deux fois). Aucune exception : le Garage s'ouvre, plus tard. Sur un vrai appareil, une fraction de seconde.
+ */
+const MONTAGE = 30_000;
 
 async function accueil(page: Page, query = "?api=demo&debug&home=1") {
   await page.goto(`/${query}`);
@@ -27,7 +33,7 @@ test("ouvrir le Garage depuis l'accueil : voitures débloquées et verrouillées
   await accueil(page);
   await page.locator("#home-garage").click();
   const garage = page.locator("#garage");
-  await expect(garage).toBeVisible();
+  await expect(garage).toBeVisible({ timeout: MONTAGE });
   // Le joueur de démonstration (4 jours, 3 ors) : la Sparrow, la Pelican (3 jours, lot 42) et la Weasel (3 ors) ; les sept autres à gagner.
   await expect(garage.locator('[data-voiture="civile"]')).toContainText("Ta voiture");
   await expect(garage.locator('[data-voiture="evolution"]')).toContainText("WEASEL", { ignoreCase: true });
@@ -114,7 +120,7 @@ test("le fantôme de ton record attend au départ, dans ta voiture : il n'est pa
   await accueil(page, `?api=${encodeURIComponent(API)}&debug&home=1`);
   await page.waitForFunction(() => window.__cdj.ghost !== null && window.__cdj.voiture.fantome); // à l'accueil : le fantôme est là, sur la voiture
   await page.locator("#home-garage").click();
-  await expect(page.locator("#garage")).toBeVisible();
+  await expect(page.locator("#garage")).toBeVisible({ timeout: MONTAGE });
   await page.waitForFunction(() => !window.__cdj.voiture.fantome);
   await page.waitForTimeout(500); // rien ne doit changer : caché à chaque image, pas une fois
   expect((await voiture(page)).fantome).toBe(false);
@@ -141,7 +147,7 @@ test("hors connexion : le Garage s'ouvre quand même (la civile et ce que le nav
   await page.addInitScript((k) => localStorage.setItem(k, JSON.stringify({ debloquees: ["gt"] })), CLE);
   await accueil(page, `?api=${encodeURIComponent(API)}&debug&home=1`);
   await page.locator("#home-garage").click();
-  await expect(page.locator("#garage")).toBeVisible();
+  await expect(page.locator("#garage")).toBeVisible({ timeout: MONTAGE });
   // La ligne arrive avec la réponse (ici : la panne) de `GET /api/garage` ; un appel à l'API attend au plus 8 s (`@cdj/profile`, TIMEOUT_MS).
   await expect(page.locator(".garage-hors-ligne")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('#garage [data-voiture="gt"]')).not.toContainText("Verrouillée"); // « Nouveau » : jamais vue au Garage

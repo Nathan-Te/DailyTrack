@@ -24,10 +24,13 @@ test("le moteur de la voiture se charge au premier geste, tourne en course, se t
   expect(e.leger).toBe(false);
   expect(e.compresseur).toBe(true);
   expect(e.chargements).toBe(1);
-  // En course, gaz tenu : le régime monte au-dessus du ralenti, deux boucles jouent, trois au plus pendant un passage (jamais les huit).
+  // En course, gaz tenu : le régime monte au-dessus du ralenti, deux boucles jouent, cinq au plus juste après un passage de rapport (jamais les huit).
   await page.waitForFunction(() => (window.__cdj.audio.ext?.sources ?? 0) >= 1 && (window.__cdj.audio.ext?.rpm ?? 0) > 1500, undefined, { timeout: 15_000 });
   const roule = (await ext(page))!;
-  expect(roule.sources).toBeLessThanOrEqual(3); // les deux boucles voisines du régime et celle qui vient de s'éteindre
+  // Les deux boucles voisines du régime, plus celles que le régime vient de quitter : une boucle quittée joue encore, muette, `silenceApres` (0,4 s) avant de
+  // s'arrêter. Au passage de la 1re à la 2e le régime tombe de 11/20 (ETAGEMENT) = 2,07 intervalles entre boucles (×1,335) : pendant 0,4 s, 5 boucles au plus
+  // encadrent la plage parcourue. Lire juste après ce passage donnait 4 (CI complète du 01/11/2026 : instable) ; « 3 au plus » n'est vrai qu'entre deux passages.
+  expect(roule.sources).toBeLessThanOrEqual(5);
   expect(roule.noeuds).toBeLessThan(80);
   // En pause : le jeu se tait, puis toutes les boucles s'arrêtent (rien ne tourne pour rien).
   await page.keyboard.up("KeyW");
