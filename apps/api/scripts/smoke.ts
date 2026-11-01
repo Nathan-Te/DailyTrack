@@ -343,7 +343,12 @@ if (environnement === "production") {
   check("Tower : jour (médailles en mm, source), jamais la preuve de l'auteur", tday.status === 200 && tm?.author >= tm?.gold && tm?.gold >= tm?.silver && tm?.silver >= tm?.bronze && tm?.bronze > 0 && !JSON.stringify(tday.body).includes("preuve"), `${String(tday.body.source)}, tirage ${String(tday.body.tirage)}, Diamant ${String(tm?.author)} mm`);
   const R = await chargerRapier();
   const contenu = dailyTower(day, tday.body.generatorVersion, tday.body.tirage);
-  const { partie, code: tcode } = jouerScripte(R, contenu);
+  // Le smoke tourne aussi sur la recette, dont la base garde les parties des passages précédents (rangées à part en aperçu, mais comptées par le refus des copies) : une partie scriptée
+  // toujours identique est refusée (409 `replay_copy`) dès le deuxième passage du même jour, ce qui arrêtait le déploiement du site de la recette (cas du lot T7, 01/11/2026). Comme DailyJump (graine
+  // tirée à chaque passage), chaque passage joue donc **ses** placements : un quart de tour (0 à 3) et un décalage (−4 à 4 demi-cases) tirés au hasard pour chaque pièce.
+  const hasard = crypto.getRandomValues(new Uint8Array(contenu.pieces.length * 2));
+  const choix = Array.from({ length: contenu.pieces.length }, (_, i) => ({ rot: hasard[2 * i]! % 4, dx: (hasard[2 * i + 1]! % 9) - 4 }));
+  const { partie, code: tcode } = jouerScripte(R, contenu, choix);
   const local = partie.resultat()!;
   partie.dispose();
   const tbody = { replay: tcode, name: NAME };
