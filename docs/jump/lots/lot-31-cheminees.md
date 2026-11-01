@@ -46,4 +46,5 @@ Bouton **« Voir la course du n° 1 »** dans l'écran du classement (posé sur 
 
 ## Vérifié, non vérifié
 **Vérifié** : suite sqlite de `jump-sim` (dont le golden v3 à v12 inchangé) ; `apps/jump`, `apps/web/test`, `packages/ui`, tests d'API de Jump ; `typecheck` ; construction ; e2e `classement` (6 tests) et `poids` ; une capture regardée (la barre de la course). **Non vérifié** : libSQL et e2e complets (la CI), Firefox et WebKit, la manette réelle, la course sur téléphone. `voies.test.ts` (« aucun raccourci ») dure ≈ 330 s : son délai passe de 300 à 900 s.
+**CI** : un premier run a eu `apps/api/test/adresse.test.ts` (« PEER_FACTOR = 0 », zone que le lot ne touche pas) en dépassement de 5 s sur la part unitaire 4/4 ; il passe seul en local (SQLite et libSQL) : relancé une fois par ce commit (règle d'arrêt, `CLAUDE.md` racine). `chargement.spec.ts` lisait la référence **v12** (g23) alors que la page sert g24 puis g25 : il lit maintenant la v13.
 **Un fichier temporaire hors du dépôt** (`/daily.bak`, une sauvegarde faite par erreur pendant un essai) n'a pas pu être supprimé : à effacer.
