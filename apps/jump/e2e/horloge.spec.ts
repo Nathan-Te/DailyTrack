@@ -340,8 +340,9 @@ interface J28 extends J27 {
 }
 
 /**
- * Un jour généré du thème voulu où la preuve de l'auteur, puis (si `hop`) un saut juste après le premier point de passage et la course droite tenue, meurt avant le point suivant :
- * les commandes de l'essai, jouées par `autoplay`. Avec le saut, les blocs alternés sont en B à la mort ; sans, A (une nuit : pas d'alternés).
+ * Un jour généré du thème voulu où la preuve de l'auteur, puis la course droite tenue, meurt avant le point suivant : les commandes de l'essai, jouées par `autoplay`.
+ * Avec `hop`, les blocs alternés sont en B à la mort ; sans, on n'y regarde pas (une nuit : pas d'alternés). Depuis la version 14 (lot 32) le point de passage ne remet plus les alternés à A :
+ * la preuve y arrive dans la parité où ses sauts l'ont laissée. Si elle est déjà en B, le saut d'un nombre impair de sauts est déjà fait (un second la ramènerait à A) ; sinon on saute une fois juste après le point.
  */
 function dayDyingAfterFirstPoint(theme: "neon" | "nuit", hop: boolean): { date: string; code: string } {
   let day = parseDay(generatedDay())!;
@@ -356,8 +357,9 @@ function dayDyingAfterFirstPoint(theme: "neon" | "nuit", hop: boolean): { date: 
       inputs.push(proof[t]!);
     }
     if (s.checkpoint < 0) continue;
-    // Un saut en courant (il inverse les jeux), puis la droite tenue jusqu'à la mort.
-    for (let t = 0; t < 6 && hop; t++) {
+    // Un saut en courant (il inverse les jeux) si les alternés sont encore en A, puis la droite tenue jusqu'à la mort.
+    const jumps = hop && (s.alt ?? 0) !== 1;
+    for (let t = 0; t < 6 && jumps; t++) {
       s = stepAttempt(s, INPUT_RIGHT | INPUT_JUMP, L.level, DEFAULT_JUMP_PARAMS);
       inputs.push(INPUT_RIGHT | INPUT_JUMP);
     }
