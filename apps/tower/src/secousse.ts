@@ -6,7 +6,9 @@ import { mouvementReduit } from "./mouvement";
 export const DUREE_SECOUSSE_MS = 200;
 export const DUREE_CASCADE_MS = 320;
 /** Amplitude de crête, en mètres du monde (≈ 3 px et 8 px à 20 px par mètre). */
-export const AMPLITUDE = { perte: 0.15, cascade: 0.4 } as const;
+export const AMPLITUDE = { perte: 0.15, cascade: 0.4, taquet: 0.1 } as const;
+/** Lot T9 — la micro-secousse du choc d'un taquet : 80 ms (≈ 2 px à 20 px par mètre). */
+export const DUREE_TAQUET_MS = 80;
 
 export class Secousse {
   private restant = 0;
@@ -31,6 +33,17 @@ export class Secousse {
       this.amplitude = a;
       this.duree = d;
       this.restant = d;
+    }
+  }
+
+  /** Lot T9 — la micro-secousse du choc d'un taquet : 80 ms, `facteur` (le curseur du taquet fois le réglage du joueur) la module. Rien avec le mouvement réduit ni un facteur nul ; elle n'écrase pas une secousse plus forte. */
+  declencherTaquet(facteur: number): void {
+    if (this.reduit() || facteur <= 0) return;
+    const a = AMPLITUDE.taquet * facteur;
+    if (a >= this.amplitude * (this.restant / this.duree)) {
+      this.amplitude = a;
+      this.duree = DUREE_TAQUET_MS;
+      this.restant = DUREE_TAQUET_MS;
     }
   }
 

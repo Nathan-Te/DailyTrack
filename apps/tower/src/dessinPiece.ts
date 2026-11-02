@@ -53,7 +53,10 @@ export function interieur(bs: readonly Box8[], retrait: number): Rect[] {
   return out;
 }
 
-/** Les trois couches d'une pièce, de bas en haut : l'encre (le collider), le liseré d'un effet (s'il y en a un), la couleur de la pièce. Toutes dans la forme physique. */
-export function couchesDe(bs: readonly Box8[], avecLisere: boolean): { encre: Rect[]; lisere: Rect[]; couleur: Rect[] } {
-  return { encre: colliderDe(bs), lisere: avecLisere ? interieur(bs, BORD) : [], couleur: interieur(bs, avecLisere ? BORD + LISERE : BORD) };
+/**
+ * Les trois couches d'une pièce, de bas en haut : l'encre (le collider), le liseré d'un effet (s'il y en a un), la couleur de la pièce. Toutes dans la forme physique.
+ * Lot T9 : un effet peut changer l'épaisseur du trait d'encre (`bord` : la pièce géante) et celle du liseré (`lisere` : le bord de glace épais de la pièce glissante).
+ */
+export function couchesDe(bs: readonly Box8[], avecLisere: boolean, bord = BORD, lisere = LISERE): { encre: Rect[]; lisere: Rect[]; couleur: Rect[] } {
+  return { encre: colliderDe(bs), lisere: avecLisere ? interieur(bs, bord) : [], couleur: interieur(bs, avecLisere ? bord + lisere : bord) };
 }

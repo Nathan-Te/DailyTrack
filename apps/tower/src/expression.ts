@@ -3,10 +3,10 @@
 //
 // Les quatre états : 0 calme (yeux normaux), 1 inquiet (des sourcils tombent vers le centre), 2 paniqué (yeux écarquillés, pupilles qui rétrécissent, un léger tremblement), 3 affolé (yeux
 // immenses, pupilles en points, sourcils très hauts, tremblement). La chute : yeux écarquillés, pupilles en points qui regardent vers le haut d'où la pièce est tombée. Pièce figée : yeux fermés.
-// Lierre : un air soulagé (paupières mi-closes, regard bas, sourcils détendus). Glissante : un air inquiet permanent, la pupille qui file d'un côté à l'autre.
+// Lierre : un air soulagé (paupières mi-closes, regard bas, sourcils détendus). Glissante : un air inquiet permanent, la pupille qui file d'un côté à l'autre. Lot T9, coup de vent : les yeux plissés.
 import type { Niveau } from "./panique";
 
-export type Genre = "normal" | "chute" | "figee" | "soulage" | "glissante";
+export type Genre = "normal" | "chute" | "figee" | "soulage" | "glissante" | "plisse";
 
 export interface EntreeExpression {
   niveau: Niveau;
@@ -74,6 +74,10 @@ export function expressionDe(e: EntreeExpression): Expression {
     case "glissante":
       x.regardX = Math.sin(e.t * 2.4) * 0.85;
       x.regardY = 0;
+      break;
+    case "plisse":
+      // Lot T9 — le coup de vent : les yeux plissés (aux trois quarts fermés), les sourcils qui se froncent, le regard dans le vent.
+      x = { ouverture: 1, pupille: 0.9, regardX: e.regard.x, regardY: 0, fermeture: 0.6, sourcils: true, sourcilHaut: 0.04, sourcilAngle: 0.5, tremble: 0 };
       break;
     default:
       break;

@@ -21,7 +21,9 @@ import { hasardAffichage } from "./hasardAffichage";
 import { Hud } from "./hud";
 import { appliquerDocument, chargerLangue, langueCourante, t, traducteurDuSocle } from "./i18n";
 import { type EtatMedailles, SANS_MEDAILLES, TYPE_MEDAILLE } from "./medailles";
+import { vibrationPermise, vibrer } from "./vibration";
 import { hoteMessage, type MessageDirect, monterMessage } from "./messageDirect";
+import { chargerDecor } from "./decors";
 import { chargerPalette, poserPalette } from "./palette";
 import { AnalyseurPanique } from "./panique";
 import { monterPause } from "./pause";
@@ -30,7 +32,7 @@ import type { Preparation } from "./preparation";
 import { lireRecords, proposerRecord } from "./records";
 import { ecrireSons, lireSons, type ReglagesSons } from "./reglagesSons";
 import { ecrireReglagesJoueur, facteurDe, lireReglagesJoueur, type ReglagesJoueur } from "./reglagesJoueur";
-import { Scene3D } from "./scene";
+import { basDeVue, Scene3D } from "./scene";
 import { chargerSuite } from "./jeuSuivant";
 import { creerSession, type Session, suivreGeneration } from "./session";
 import { gameStorage } from "./stockage";
@@ -105,6 +107,10 @@ interface PorteDeTest {
   /** Lot T5 : les sons (le contexte est-il créé, et ce qui a été joué) et les événements du dernier tick. */
   sons(): { pret: boolean; joues: readonly string[] };
   evenements(): readonly EvenementJeu[];
+  /** Lot T9 : dessine une image de plus, `dt` secondes plus tard (en pas à pas : les effets du taquet, les décors et l'habit vivent avec le temps d'affichage). */
+  dessiner(dt: number): void;
+  /** Lot T9 : la scène (les mesures de cadence des essais : montrer ou cacher le décor). */
+  scene(): Scene3D;
 }
 
 /** Les outils d'essai (`?scenario=essai|paliers`) : pas d'accueil, la partie tout de suite, comme avant le lot T4. */
@@ -162,7 +168,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   /** Le gain de la panique des yeux : le curseur de `?debug&tune` fois le choix du joueur (Réglages › Affichage). */
   const gainYeux = (): number => reglages.rendu.panique * facteurDe(reglagesJ.yeux);
   /** Les réglages de rendu de `?debug&tune` avec les choix du joueur (secousses, yeux) : relus à chaque image par la scène. */
-  const renduEffectif = (): typeof reglages.rendu => ({ ...reglages.rendu, secousse: reglages.rendu.secousse * facteurDe(reglagesJ.secousses), panique: gainYeux() });
+  const renduEffectif = (): typeof reglages.rendu => ({ ...reglages.rendu, secousse: reglages.rendu.secousse * facteurDe(reglagesJ.secousses), secousseTaquet: reglages.rendu.secousseTaquet * facteurDe(reglagesJ.secousses), panique: gainYeux() });
   const { tactile } = session;
   const entrees = new Entrees(() => reglages.entrees);
   const contenu = preparation.contenu;
@@ -190,6 +196,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   const hasardScene = hasardAffichage(0x70e7);
   const hasardSon = hasardAffichage(0x5017);
   const scene = new Scene3D(racine, contenu.plateformeDemi8, { hasard: hasardScene, rendu: renduEffectif });
+  // Lot T9 : le décor du thème arrive à la demande (un module par thème) ; sous le voile, le ciel et la mer de la palette suffisent. Affichage seulement.
+  void chargerDecor(preparation.theme, basDeVue(0, scene.vue.H, scene.vue.W < scene.vue.H)).then((d) => scene.poserDecor(d)).catch(() => undefined);
   scene.viseeActive = options.visee && reglagesJ.visee; // lot T6 : allumée par défaut (`?visee=0` l'éteint) ; lot T7 : et le réglage « Visée » d'Affichage
   const stockageSons = stockage;
   let reglagesSons: ReglagesSons = lireSons(stockageSons);
@@ -295,6 +303,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
 
   /** Ce que la scène et le HUD montrent des paliers : le trait pointillé du prochain, les traînées d'un coup de vent sur la pièce active. */
   let declenchesVus = 0;
+  let soudeesVues = 0;
   function synchroPaliers(v: VuePartie): void {
     scene.poserPalier(v.palier?.metres ?? null);
     const active = v.active >= 0 ? v.pieces.find((p) => p.id === v.active) : undefined;
@@ -454,6 +463,10 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
       scene.secouer(ev.cascade >= 1);
       hud.clignerVies();
     } else if (ev.genre === "effondrement" && ev.force === 2) scene.secouer(true);
+    // Lot T9 : les quatre temps du taquet (étirement, traînées, éclat, micro-secousse, poussière), le bouton tactile qui clignote, la vibration du choc ; la pose d'une pièce géante (poussière, fissures).
+    scene.reagir(ev);
+    if (ev.genre === "taquet") hud.clignerTaquet(ev.sens);
+    else if (ev.genre === "choc") vibrer(vibrationPermise(reglagesJ.vibration, reglages.rendu.vibration));
   }
 
   function nouvellePartie(): void {
@@ -476,6 +489,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     poserFantome();
     hud.cacherAnnonce();
     declenchesVus = 0;
+    soudeesVues = 0;
     fin.cacher();
     dialogueClassement?.fermer();
     menu.fermer();
@@ -576,9 +590,15 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     scene.sync(v);
     // Lot T5 : la vue de la partie, lue (jamais écrite) par l'affichage : la panique des yeux, puis les événements (sons, secousse, clignement des vies).
     scene.poserPanique(analyseur.analyser(v));
-    derniersEvenements = observateur.observer(v, analyseur.nouveauxAffoles);
+    derniersEvenements = observateur.observer(v, analyseur.nouveauxAffoles, commandes);
     for (const ev of derniersEvenements) reagir(ev);
     synchroPaliers(v);
+    // Lot T9 : les soudures du lierre, une lecture seule des joints de Rapier, relues seulement quand une pièce de plus est soudée.
+    const soudees = v.pieces.reduce((n, p) => n + (p.soudee ? 1 : 0), 0);
+    if (soudees !== soudeesVues) {
+      soudeesVues = soudees;
+      scene.poserSoudures(soudees > 0 ? partie.soudures() : []);
+    }
     if (document.documentElement.dataset.phase !== v.phase) document.documentElement.dataset.phase = v.phase;
     if (v.phase === "fini" && !fin.ouverte) terminer();
   }
@@ -729,6 +749,8 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
       reglages: () => reglages,
       sons: () => ({ pret: sons.pret, joues: sons.joues }),
       evenements: () => derniersEvenements,
+      dessiner: (dt) => scene.dessiner(1, dt),
+      scene: () => scene,
     };
     (window as unknown as { __tower: PorteDeTest }).__tower = porte;
   }

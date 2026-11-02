@@ -89,7 +89,8 @@ describe("les curseurs de sensation", () => {
     expect(o).toMatchObject({ delaiTicks: 10, cadenceTicks: 3, vitesseChute8: 20, facteurDescente: 4, hauteurApparition8: 56, plateformeDemi8: 28, plateformeForcee: false, essai: false });
     expect(o.physique).toEqual(PHYSIQUE_REGLEE_DEFAUT);
     expect(o.rendu).toMatchObject({ panique: 1, secousse: 1, cris: 0.5 });
-    expect(Object.keys((o.rendu as { volumes: object }).volumes)).toHaveLength(8);
+    expect(Object.keys((o.rendu as { volumes: object }).volumes)).toHaveLength(9); // lot T9 : la famille « taquet » s'ajoute aux huit autres
+    expect(o.rendu).toMatchObject({ etirement: 1, eclat: 1, secousseTaquet: 1, vibration: 1 });
     expect(brut).not.toContain("\n"); // un seul bloc, une ligne
     r.plateformeDemi8 = 20;
     r.physique.frottement = 0.3;

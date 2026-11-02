@@ -46,10 +46,22 @@ export function mesureTower(dist = DIST) {
   // module `commandes` de Tower, d'où l'exclusion ; Jump fait de même : `commandes-*.css` hors de sa mesure).
   const cssJeu = feuilles(tous, jsJeu).filter((c) => !cssPremier.includes(c) && !/^commandes-/.test(c));
   const somme = (liste) => liste.reduce((n, f) => n + gz(f, dist), 0);
+  // Lot T9 — deux morceaux À LA DEMANDE, hors de l'accueil et hors de `jeu` : les décors (un module par thème, le port compris, plus ce qui les assemble : `decorScene-*` et `decorLogique-*`) et l'habillage des effets avec
+  // les effets du taquet (`habits-*`, `taquetFx-*`, `polygones-*`). `decors` : le plus gros thème (la ligne `tower.decors` : son plafond est la mesure + 10 %) ; `habits` : la ligne `tower.habits`.
+  const dejaJeu = new Set([...premier, ...jsJeu]);
+  const aPart = (fichiers) => somme([...graphe(dist, fichiers, dejaJeu)].filter((f) => f.endsWith(".js")));
+  const themes = tous.filter((f) => /^decor(Port|Chantier|Canyon|Banquise|Jungle|Nuit)-.*\.js$/.test(f));
+  const scene = tous.filter((f) => /^decorScene-.*\.js$/.test(f));
+  const parTheme = Object.fromEntries(themes.map((f) => [f.replace(/^decor(\w+)-.*$/, (_, n) => n.toLowerCase()), aPart([f, ...scene])]));
+  const decors = Math.max(0, ...Object.values(parTheme));
+  const habits = aPart(tous.filter((f) => /^(habits|taquetFx)-.*\.js$/.test(f)));
   const physique = tous.filter((f) => /^rapier-.*\.(js|wasm)$/.test(f));
   return {
     accueil: { js: somme(jsPremier), css: somme(cssPremier), total: somme(jsPremier) + somme(cssPremier), fichiers: [...jsPremier, ...cssPremier] },
     jeu: { js: somme(jsJeu), css: somme(cssJeu), total: somme(jsJeu) + somme(cssJeu), fichiers: [...jsJeu, ...cssJeu] },
+    decors,
+    decorsParTheme: parTheme,
+    habits,
     physique: somme(physique),
     physiqueWasm: somme(physique.filter((f) => f.endsWith(".wasm"))),
     anglais: somme(tous.filter((f) => f.startsWith("catalogue.en-"))),
