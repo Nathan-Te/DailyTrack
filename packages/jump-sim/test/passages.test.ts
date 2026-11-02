@@ -153,6 +153,46 @@ describe("lot 32 — franchir un point de passage par le haut", () => {
   });
 });
 
+describe("lot 32 — les blocs alternés ne sont plus remis à A en prenant un point de passage", () => {
+  /** Une salle avec un bloc A et un bloc B (en hauteur, hors du chemin) et un point de passage au sol, colonne 9. */
+  const withAlts = (version: number): Level => {
+    const rows: string[] = [];
+    for (let r = 0; r < 14; r++) rows.push(r === 0 || r >= 12 ? "#".repeat(16) : "#" + ".".repeat(14) + "#");
+    const put = (r: number, c: number, ch: string) => (rows[r] = rows[r]!.slice(0, c) + ch + rows[r]!.slice(c + 1));
+    put(11, 2, "S");
+    put(11, 9, "C");
+    put(11, 14, "F");
+    put(3, 3, "A");
+    put(3, 5, "B");
+    return parseLevel(rows.join("\n") + `\n\nversion ${version}\nmaintien 0\n`);
+  };
+  /** Un saut sur place à gauche du point (la parité passe à B), puis la course jusqu'après le point. */
+  const parityAfter = (version: number): { before: number; after: number; checkpoint: number } => {
+    const level = withAlts(version);
+    let s = initialAttempt(level);
+    let jumped = 0;
+    for (let t = 0; t < 40; t++) s = stepAttempt(s, t < 20 ? 4 : 0, level, P); // saut tenu sur place, puis posé
+    const before = s.alt ?? 0;
+    jumped = 1;
+    for (let t = 0; t < 300 && jumped; t++) {
+      s = stepAttempt(s, INPUT_RIGHT, level, P);
+      if (centerCol(s.player) >= 11) break;
+    }
+    return { before, after: s.alt ?? 0, checkpoint: s.checkpoint };
+  };
+
+  it("version 13 : franchir le point remet A ; version 14 : la parité reste B", () => {
+    const old = parityAfter(13);
+    expect(old.before).toBe(1);
+    expect(old.checkpoint).toBe(0);
+    expect(old.after).toBe(0);
+    const now = parityAfter(14);
+    expect(now.before).toBe(1);
+    expect(now.checkpoint).toBe(0);
+    expect(now.after).toBe(1);
+  });
+});
+
 describe("lot 32 — aucun raccourci par point de passage : le niveau du Jump n° 18", () => {
   // Le 02/11/2026, g21 : le premier morceau est `chute-pics:4`. Un couloir de quatre rangées libres court au-dessus du morceau jusqu'au puits du palier d'arrivée (ouvert jusqu'en haut) : on saute le puits
   // à pics au départ, on court sur le haut du mur, on franchit la colonne du point 1/10 à 23 rangées de son sol, puis on reprend au point.

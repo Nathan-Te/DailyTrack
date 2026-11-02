@@ -957,11 +957,8 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   let alt = state.alt ?? 0;
   if (level.alts.length > 0) {
     if (flags!.jumped === 1) alt = 1 - alt;
-    // Version 14 : franchir = entrer dans la zone du palier (centre dans ses colonnes, pieds à moins de 3 rangées du sol) ; avant, passer sa colonne vers la droite, à toute hauteur.
-    if (level.simVersion >= CHECKPOINT_ZONE_VERSION) {
-      const zone = passageZoneAt(level, player);
-      if (zone >= 0 && zone !== passageZoneAt(level, state.player)) alt = 0;
-    } else if (col > before && level.checkpoints.some((c) => before < c.col && c.col <= col)) alt = 0;
+    // Avant la version 14 : franchir un point de passage remet les alternés à A. Version 14 (lot 32, retour de Nathan) : plus de remise à A, la parité ne change que par un saut qui part — elle ne casse plus le rythme.
+    if (!(level.altKeep ?? level.simVersion >= CHECKPOINT_ZONE_VERSION) && col > before && level.checkpoints.some((c) => before < c.col && c.col <= col)) alt = 0;
   }
   // L'état des blocs clignotants et alternés pour le pas suivant (le personnage chevauche-t-il un bloc qui devient plein ? il reste absent).
   tiles = settleDynamic(level, tiles, sections, time, alt, player);

@@ -190,7 +190,7 @@ const maxAttemptsV4 = (simVersion: number): number => (simVersion >= LASER_VERSI
 /** Sels des graines : `mixSeed(jour, DAILY_SALT)`, et des groupes de repos. */
 const DAILY_SALT = 0x6a6f7572;
 /** Lot 32 (g26) : le sel des niveaux de la version 14, choisi par mesure (365 dates : 0 secours, aucun retour de morceau avant 4 jours) — `JUMP_SALT_G26`. */
-const DAILY_SALT_G26 = 0x6a6f757f;
+const DAILY_SALT_G26 = 0x6a6f758a;
 
 /**
  * **Course à vide** (lot 6) : le temps passé au sol **sans appui de saut** quand le centre du personnage est au-dessus d'un palier de
@@ -1658,7 +1658,52 @@ function playProof(level: Level, paliers: readonly Palier[], inputs: readonly nu
   return { states, palierTicks, longestRun, time: s.time };
 }
 
+/**
+ * Lot 32 (version 14) : **la parité des alternés à l'entrée de chaque morceau qui en a**, estimée sans rien assembler. Plus de remise à A au point de passage : la preuve de l'auteur arrive à un morceau
+ * à alternés dans l'état où les sauts d'avant l'ont laissé, et ses solutions partent de A. Chaque saut qui part inverse la parité ; on compte les appuis de saut de la solution de chaque morceau
+ * (fronts montants entre son entrée et sa sortie). Estimation seulement (un appui en l'air ne fait pas partir de saut) : elle écarte les tirages perdus d'avance avant de les assembler ; la chaîne
+ * des solutions, qui joue le niveau, reste le juge. Rend le numéro (1-based) du premier morceau à alternés qui entre en B, ou 0.
+ */
+const FLIPS_CACHE = new Map<string, number>();
+const ALT_PIECE_CACHE = new Map<string, boolean>();
+function solutionJumps(pieceId: string, variant: number, entry: ModuleEntry): number {
+  const key = `${pieceId}:${variant}:${entry}`;
+  let n = FLIPS_CACHE.get(key);
+  if (n === undefined) {
+    const sol = moduleSolutions(pieceId, variant, false)?.[entry];
+    n = 0;
+    if (sol) {
+      const bits = fromRuns(decodeReplay(sol.code).runs);
+      for (let t = sol.entryTick; t <= sol.exitTick && t < bits.length; t++) if ((bits[t]! & INPUT_JUMP) !== 0 && (t === 0 || (bits[t - 1]! & INPUT_JUMP) === 0)) n++;
+    }
+    FLIPS_CACHE.set(key, n);
+  }
+  return n;
+}
+function hasAlts(pieceId: string, variant: number): boolean {
+  const key = `${pieceId}:${variant}`;
+  let v = ALT_PIECE_CACHE.get(key);
+  if (v === undefined) {
+    v = buildModule(pieceId, variant).level.alts.length > 0;
+    ALT_PIECE_CACHE.set(key, v);
+  }
+  return v;
+}
+function oddAltEntry(picks: readonly { id: string; variant: number }[]): number {
+  let parity = 0;
+  for (let k = 0; k < picks.length; k++) {
+    const p = picks[k]!;
+    if (parity === 1 && hasAlts(p.id, p.variant)) return k + 1;
+    parity = (parity + solutionJumps(p.id, p.variant, k === 0 ? "arret" : "elan")) % 2;
+  }
+  return 0;
+}
+
 function proveOnce(picks: readonly { id: string; variant: number }[], id: string, theme: JumpThemeName, simVersion: number, extras: readonly number[]): { built: Built; problems: string[]; cheap: number[] } | string {
+  if (simVersion >= CHECKPOINT_ZONE_VERSION) {
+    const odd = oddAltEntry(picks);
+    if (odd > 0) return `alternés : le morceau ${odd} entre en B (parité des sauts d'avant, sans remise à A au point de passage)`;
+  }
   let asm: Assembled;
   try {
     asm = assemble(picks, { slow: simVersion >= SINGLE_CLOCK_VERSION, extras, simVersion });
@@ -1674,6 +1719,8 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     const geometry = [...slowShortcutProblems(asm, true, false), ...checkpointShortcutProblems(asm)];
     if (geometry.length > 0) return `${geometry.join(" ; ")}`;
   }
+  // Lot 32 (version 14) : plus de remise des alternés à A au point de passage — la chaîne des solutions (assemblée en version 3) joue déjà cette règle : un morceau à alternés qui n'arrive pas à A est refusé ici.
+  if (simVersion >= CHECKPOINT_ZONE_VERSION) asm = { ...asm, level: { ...asm.level, altKeep: true } };
   const single = simVersion >= SINGLE_CLOCK_VERSION;
   // Lot 19 (v4) : un niveau trop haut est refusé avant tout rejeu (la règle de `dailyProblems`, vérifiée plus tôt).
   if (single && asm.level.height > maxDailyHeight(simVersion)) return `hauteur ${asm.level.height} (au plus ${maxDailyHeight(simVersion)})`;
@@ -2053,18 +2100,16 @@ export const FALLBACK_V14: Readonly<Record<JumpThemeName, readonly { id: string;
     { id: "monte-charge", variant: 2 },
   ],
   neon: [
-    { id: "mur-trous", variant: 0 },
-    { id: "cheminee", variant: 1 },
-    { id: "ascenseur", variant: 6 },
-    { id: "ressort-plafond", variant: 2 },
+    { id: "paroi-friable", variant: 3 },
+    { id: "plongeon", variant: 6 },
+    { id: "va-et-vient", variant: 1 },
+    { id: "chaland", variant: 0 },
+    { id: "tunnel-rase", variant: 6 },
     { id: "neon-respiration", variant: 0 },
-    { id: "neon-cheminee", variant: 1 },
-    { id: "chute-pics", variant: 6 },
-    { id: "scie-sol", variant: 2 },
-    { id: "cheminee-vide", variant: 2 },
-    { id: "navette", variant: 2 },
-    { id: "va-et-vient", variant: 0 },
-    { id: "neon-silence", variant: 1 },
+    { id: "laser-barre-sol", variant: 3 },
+    { id: "descente-scies", variant: 4 },
+    { id: "laser-cheminee", variant: 8 },
+    { id: "ressort-scie", variant: 0 },
   ],
 };
 

@@ -18,7 +18,7 @@ import { idiv } from "./idiv";
 //       traversable jusqu'à ce que le personnage en sorte** : on ne meurt jamais écrasé ni coincé
 //   `A` `B` **blocs alternés** (lot 12, thème néon) : deux jeux de blocs pleins dont **exactement un est solide à la fois**. **Chaque saut qui
 //       part** (sol, coyote, saut mural, saut gardé dans le tampon qui part vraiment — pas un ressort, pas un simple appui) inverse les deux
-//       jeux. Au départ de l'essai, **A est solide** ; **franchir un point de passage** remet A solide, et la mort ramène l'état du point de
+//       jeux. Au départ de l'essai, **A est solide** ; **franchir un point de passage** remet A solide (jusqu’à la version 13 ; lot 32 : plus depuis la version 14), et la mort ramène l'état du point de
 //       reprise (donc A). Même règle de sortie que les clignotants
 //   `m` `w` `(` `)` **champignons rebonds** (lot 23, thème forêt) : tuiles **traversables** (ni un bloc, ni un danger) posées contre un bloc plein — `m` sur un
 //       sol (le chapeau regarde vers le haut), `w` sous un plafond (vers le bas), `)` contre un mur à sa gauche (le chapeau regarde vers la droite), `(` contre un mur
@@ -540,6 +540,11 @@ export interface Press {
 export interface Level {
   /** Lot 15 : la version de la simulation du niveau (3 : une horloge par section ; 4 : une seule horloge de course). */
   simVersion: number;
+  /**
+   * Lot 32 : les alternés gardent leur parité en franchissant un point de passage (aucune remise à A). Absent : selon la version du niveau (vrai depuis la version 14). Posé par le générateur
+   * sur le niveau assemblé (encore en version 3) pour que la chaîne des solutions joue la règle de la version 14.
+   */
+  altKeep?: boolean;
   /**
    * Lot 30 : le **maintien minimal du saut** du niveau (pas) : un saut relâché avant ce nombre de pas continue comme s'il était tenu jusque-là (`stepPlayerJump`).
    * 0 avant la version 13 ; `JUMP_MIN_HOLD` depuis, sauf déclaration `maintien <n>` du bloc annexe (les morceaux joués seuls, qui restent en version 3).
