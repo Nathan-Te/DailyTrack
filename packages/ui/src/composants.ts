@@ -189,11 +189,13 @@ export function etiquetteJump(o: OptionsEtiquette): HTMLElement {
 
 /**
  * L'étiquette du jeu `jeu` (lot K1) : un seul point d'entrée pour le portail, qui ne nomme plus un jeu pour choisir la fabrique. Un jeu dont la fiche dit `dessin: "propre"` a son
- * dessin écrit ici (`ETIQUETTES_FICHES` : Tower) ; l'étiquette générique d'un jeu neuf est le lot K3.
+ * dessin écrit ici (`ETIQUETTES_PROPRES`) ; l'étiquette générique d'un jeu neuf est le lot K3.
  */
 export function etiquetteDe(jeu: Jeu, o: OptionsEtiquette): HTMLElement {
-  return (jeu === "track" ? etiquetteTrack : jeu === "jump" ? etiquetteJump : etiquetteTower)(o);
+  return ETIQUETTES_PROPRES[jeu](o);
 }
+/** Le dessin de chaque jeu (`dessin: "propre"` de sa fiche) : exhaustif sur `Jeu`, donc un jeu de plus sans dessin ne compile pas. */
+const ETIQUETTES_PROPRES: Record<Jeu, (o: OptionsEtiquette) => HTMLElement> = { track: etiquetteTrack, jump: etiquetteJump, tower: etiquetteTower };
 
 /** Une tuile : légende en capitales, valeur, sous-texte. */
 export function tuile(o: { legende: string; valeur: string; sousTexte?: string; icone?: SVGSVGElement }): HTMLElement {

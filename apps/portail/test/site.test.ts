@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { DOSSIERS_DEMO, LAYOUT, REGION, firebaseConfig, partagerPolices, retirerDemos, robots } from "../../../scripts/site.mjs";
+import { DOSSIERS_DEMO, LAYOUT, REGION, SITES_FICHES, firebaseConfig, partagerPolices, retirerDemos, robots } from "../../../scripts/site.mjs";
 
 // Lot R4 : la configuration Firebase (firebase.json du dépôt) et la disposition du site.
 const template = JSON.parse(readFileSync(join(__dirname, "../../../firebase.json"), "utf8"));
@@ -124,11 +124,14 @@ describe("firebase.json", () => {
 });
 
 describe("disposition du site", () => {
-  it("portail à la racine, DailyTrack sous /track/, DailyJump sous /jump/", () => {
+  it("portail à la racine, DailyTrack sous /track/ ; lot K1b : DailyJump (et Tower) sous /<id>/ par leur fiche", () => {
     expect(LAYOUT).toEqual([
       { from: "apps/portail/dist", to: "" },
       { from: "apps/web/dist", to: "track" },
-      { from: "apps/jump/dist", to: "jump" },
+    ]);
+    expect(SITES_FICHES.map((s: { from: string; to: string }) => [s.from, s.to])).toEqual([
+      ["apps/jump/dist", "jump"],
+      ["apps/tower/dist", "tower"],
     ]);
   });
 });

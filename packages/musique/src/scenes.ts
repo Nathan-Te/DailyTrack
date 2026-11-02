@@ -13,8 +13,7 @@ export const FORMAT_SCENE = /^[a-z0-9]+(:[a-z0-9-]+)?$/;
 
 export const SCENES: Readonly<Record<JeuMusique, readonly string[]>> = {
   track: ["menu", "theme:stade", "theme:rallye", "theme:banquise", "theme:nuit", "theme:campagne", "theme:canyon", "theme:col", "theme:ville"],
-  jump: ["menu", "theme:foret", "theme:usine", "theme:glace", "theme:nuit", "theme:neon"],
-  // Lot K1 : les scènes de Tower sont celles de sa fiche (`musique.scenes` de `config/jeux/tower.json` : « menu » puis un thème par thème du jeu ; le test de Tower les compare à `THEMES_TOWER`).
+  // Lots K1 et K1b : les scènes de Jump et de Tower sont celles de leur fiche (`musique.scenes` de `config/jeux/<id>.json` : « menu » puis un thème par thème du jeu ; le test de chaque jeu les compare à ses thèmes).
   ...SCENES_FICHES,
   portail: ["menu"],
 };

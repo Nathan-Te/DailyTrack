@@ -14,7 +14,7 @@
 //        → la configuration Firebase d'un déploiement : `firebase.json` (en-têtes, renvoi /api/**), avec le site et le service de la cible.
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ADRESSES } from "./domaine.mjs";
 import { FICHES_CI } from "./fiches-lecture.mjs";
@@ -26,7 +26,6 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const LAYOUT = [
   { from: "apps/portail/dist", to: "" },
   { from: "apps/web/dist", to: "track" },
-  { from: "apps/jump/dist", to: "jump" },
 ];
 
 /**
@@ -35,10 +34,12 @@ export const LAYOUT = [
  * serveur** : la construction de production de Tower retire le champ `preuve` des jours publiés (`apps/tower/preuves.ts`), et `assembleSite --production` le revérifie (`fichiersAvecPreuveTower`).
  * (Avant le lot TP, la page de démonstration n'était publiée que hors production : `ESSAI_TOWER`.)
  */
-// Lot K1 : les jeux qui ont une fiche (`config/jeux/<id>.json`) sont publiés sous `/<id>/` (leur construction : `apps/<id>/dist`) ; leurs jours figés (`jours.dossier`) et la règle de la preuve de l'auteur
-// (`jours.preuveInterditeEnProd`) viennent d'elle. Track et Jump (sans fiche jusqu'aux lots K1b et K1c) restent dans `LAYOUT`.
+// Lots K1 et K1b : les jeux qui ont une fiche (`config/jeux/<id>.json` : Jump, Tower) sont publiés sous `/<id>/` (leur construction : `apps/<id>/dist`) ; leurs jours figés (`jours.dossier`, publiés sous le
+// même nom de dossier : `jump/levels`, `tower/jours`) et la règle de la preuve de l'auteur (`jours.preuveInterditeEnProd`) viennent d'elle. Track (sans fiche jusqu'au lot K1c) reste dans `LAYOUT`.
 export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.id}/dist`, to: f.id, jours: f.jours.dossier, preuveInterdite: f.jours.preuveInterditeEnProd }));
 export const TOWER_SITE = SITES_FICHES.find((s) => s.id === "tower");
+/** Lot K1b : Jump, dont les niveaux figés (`levels`) et les outils (`outils/`) ont leurs vérifications propres (règle R9) en plus de celles de tout jeu à fiche. */
+const JUMP_SITE = SITES_FICHES.find((s) => s.id === "jump");
 
 /**
  * Lot « musique » : les morceaux préparés (`npm run musique`) sont servis à `/musique/` (fichiers statiques, cache sans fin : `firebase.json`), à la racine du site comme `/api/` :
@@ -207,7 +208,7 @@ export function retirerDemos(out) {
  * même, lu dans les fichiers du dépôt), et `jump/outils` n'y est pas. Rend les fichiers fautifs (vide : tout va bien).
  */
 export const DOSSIERS_OUTILS = ["jump/outils"];
-export function fichiersAvecPreuve(out, niveaux = join(ROOT, "apps/jump/public/levels")) {
+export function fichiersAvecPreuve(out, niveaux = join(ROOT, JUMP_SITE.jours)) {
   const preuves = existsSync(niveaux)
     ? readdirSync(niveaux)
         .filter((f) => f.endsWith(".json"))
@@ -254,17 +255,17 @@ export function fichiersAvecPreuveDeFiche(out, site, jours = join(ROOT, site.jou
     }
   };
   parcourir(out);
-  const publies = join(out, site.to, "jours");
+  const publies = join(out, site.to, basename(site.jours));
   for (const f of depot) {
     const publie = join(publies, f);
     if (!existsSync(publie)) {
-      fautifs.push(`${site.to}/jours/${f} (absent)`);
+      fautifs.push(`${site.to}/${basename(site.jours)}/${f} (absent)`);
       continue;
     }
     const attendu = JSON.parse(readFileSync(join(jours, f), "utf8"));
     delete attendu.preuve;
     const lu = JSON.parse(readFileSync(publie, "utf8"));
-    if ("preuve" in lu || JSON.stringify(lu) !== JSON.stringify(attendu)) fautifs.push(`${site.to}/jours/${f}`);
+    if ("preuve" in lu || JSON.stringify(lu) !== JSON.stringify(attendu)) fautifs.push(`${site.to}/${basename(site.jours)}/${f}`);
   }
   return [...new Set(fautifs)];
 }
@@ -286,7 +287,7 @@ function pagesHtml(dir) {
 }
 
 /**
- * Assemble le site (portail, /track/, /jump/) ; rend le nombre de niveaux figés vérifiés et les images de partage. `production` : sans la vitrine
+ * Assemble le site (portail, /track/, puis chaque jeu à fiche) ; rend le nombre de niveaux figés vérifiés et les images de partage. `production` : sans la vitrine
  * `/ui/`. `origine` (lot I6) : celle du site déployé, pour les adresses absolues des aperçus de partage.
  */
 export async function assembleSite(out, { production = false, origine } = {}) {
@@ -303,14 +304,15 @@ export async function assembleSite(out, { production = false, origine } = {}) {
   partagerPolices(out); // lots I4 et I5 : les polices de Track et de Jump sont celles du portail (Tower garde les siennes : lot I1)
   const morceaux = copierMusique(out); // lot « musique » : `/musique/` (liste et fichiers préparés), jamais les sources
   // Les niveaux figés de DailyJump (lot 10) doivent être dans le site publié, identiques : sinon un jour déjà joué changerait de niveau.
-  const levels = join(ROOT, "apps/jump/public/levels");
+  const levels = join(ROOT, JUMP_SITE.jours);
+  const niveauxPublies = join(JUMP_SITE.to, basename(JUMP_SITE.jours));
   const files = existsSync(levels) ? readdirSync(levels).filter((f) => f.endsWith(".json")) : [];
   for (const f of files) {
-    const got = join(out, "jump/levels", f);
-    if (!existsSync(got)) throw new Error(`niveau figé absent ou différent du site : jump/levels/${f}`);
+    const got = join(out, niveauxPublies, f);
+    if (!existsSync(got)) throw new Error(`niveau figé absent ou différent du site : ${niveauxPublies}/${f}`);
     // Lot R9 : la production publie le fichier sans sa `preuve` (le reste, octet pour octet) ; ailleurs il est identique au dépôt.
     const attendu = production ? sansPreuve(readFileSync(join(levels, f), "utf8")) : readFileSync(join(levels, f), "utf8");
-    if (readFileSync(got, "utf8") !== attendu) throw new Error(`niveau figé absent ou différent du site : jump/levels/${f}`);
+    if (readFileSync(got, "utf8") !== attendu) throw new Error(`niveau figé absent ou différent du site : ${niveauxPublies}/${f}`);
   }
   // Lot I1 : la vitrine n'est jamais publiée en production ; ailleurs elle doit y être.
   const vitrine = existsSync(join(out, VITRINE, "index.html"));
@@ -348,7 +350,7 @@ if (isMain) {
       const out = resolve(option(argv, "--sortie", "site"));
       const production = argv.includes("--production");
       const { niveaux, images, origine, morceaux } = await assembleSite(out, { production, origine: option(argv, "--origine") });
-      console.log(`site assemblé dans ${out} : portail, /track/, /jump/, ${SITES_FICHES.map((s) => `/${s.to}/`).join(", ")}${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
+      console.log(`site assemblé dans ${out} : portail, /track/, ${SITES_FICHES.map((s) => `/${s.to}/`).join(", ")}${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
       console.log(`aperçus de partage : ${origine} ; images ${images.map((i) => `${i.nom}.png ${(i.octets / 1024).toFixed(1)} ko`).join(", ")}`);
     } else if (cmd === "firebase") {
       const template = JSON.parse(readFileSync(join(ROOT, "firebase.json"), "utf8"));

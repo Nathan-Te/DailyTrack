@@ -7,6 +7,7 @@ export interface FicheCI {
     fumee: string[];
     zones: Record<string, { _?: string; globs: string[]; sauf?: string[] }>;
     specs: Record<string, string[]>;
+    regression?: string[];
     parts: { main: number; complet: number; nuit: number };
   };
   jours: { dossier: string | null; preuveInterditeEnProd: boolean };

@@ -154,13 +154,12 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: Option
   const numeroTheme = numero && theme ? t.t("portail.numeroTheme", { numero, theme }) : numero;
   const etat = jeu?.etat;
   const compacte = opts.compacte === true;
-  // Jump : la réplique du thème du jour (une seule par écran ; lot I5 : catalogue commun de @cdj/ui, la même que dans le jeu) ; tant que le thème n'est pas connu
-  // (ou sans serveur), l'accroche du jeu.
-  const replique = c.code === "jump" && jeu?.theme ? cleConnue(`jump.replique.${jeu.theme}`) : null;
-  // Lot K1 : un jeu qui a une fiche donne son accroche, son titre et son étiquette ; Track et Jump gardent leur code d'avant.
+  // Lots K1 et K1b : un jeu qui a une fiche donne son accroche (celle du thème du jour quand elle en a une : Jump, une réplique par thème, la même que dans le jeu, catalogue commun de @cdj/ui),
+  // son titre et son étiquette ; Track (sans fiche jusqu'au lot K1c) garde son code d'avant.
   const fiche = ficheDuJeu(c.code);
-  const texte = fiche ? t.t((cleConnue(fiche.accroche) ?? "portail.jump.accroche") as Cle) : c.code === "track" ? t.t("portail.track.accroche") : t.t(replique ?? "portail.jump.accroche");
-  const titre = fiche ? titreDeCarte(fiche, t, t.t(nomCleDe(c.code))) : t.t(c.code === "track" ? "jeu.track.titre" : "jeu.jump.titre");
+  const parTheme = fiche?.accrocheTheme && jeu?.theme ? cleConnue(fiche.accrocheTheme + jeu.theme) : null;
+  const texte = fiche ? t.t(parTheme ?? (cleConnue(fiche.accroche) as Cle)) : t.t("portail.track.accroche");
+  const titre = fiche ? titreDeCarte(fiche, t, t.t(nomCleDe(c.code))) : t.t("jeu.track.titre");
   // La variante compacte (lot F1) n'a que le nom et le numéro : ni accroche, ni statut (le statut d'un jeu qu'on n'a pas épinglé n'est pas ce qu'on vient chercher).
   const etiquette = compacte ? etiquetteDe(c.code, { titre, numero: numeroTheme }) : etiquetteDe(c.code, { titre, numero: numeroTheme, texte, suite: statut(t, c, etat) });
   const nom = t.t(nomCleDe(c.code));

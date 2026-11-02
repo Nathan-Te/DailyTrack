@@ -113,11 +113,34 @@ describe("la validation refuse ce qui sortirait du jeu", () => {
   });
 });
 
+describe("Jump (lot K1b) : sa fiche", () => {
+  it("public d'emblée, classé au temps (ticks), dans le cumul ; ses jours sont un fichier par jour, preuve interdite en production", () => {
+    const j = lireFiche(brut("jump"), "jump");
+    expect(j).toMatchObject({ code: "jump", ordre: 2, etatDepart: "on", premierJour: "2026-10-16", partage: { extras: ["morts", "rang"] }, admin: { outils: true } });
+    expect(j.classement).toMatchObject({ cumul: true, unite: "ticks", format: "temps" });
+    expect(j.classement.colonnes.map((c) => c.nom)).toEqual(["ticks", "submitted_at", "player_id"]);
+    expect(j.medailles.methode).toBe("figees-niveau");
+    expect(j.jours).toEqual({ mode: "fichier-par-jour", dossier: "apps/jump/public/levels", preuveInterditeEnProd: true });
+    expect(j.donnees.tables.map((t) => `${t.nom}:${t.sort}`)).toEqual(["jump_results:videe", "jump_lives:videe", "jump_deaths:videe", "jump_levels:gardee"]);
+  });
+  it("un chemin hérité (`apps/api/scripts/measure-jump.ts`) est permis à Jump seul, nommé un par un", () => {
+    expect(validerFiche(brut("jump"), "jump")).toEqual([]);
+    const f = structuredClone(brut("tower"));
+    f.zones.jeu.push("apps/api/scripts/measure-jump.ts");
+    expect(validerFiche(f, "tower").join("\n")).toContain("n'est pas dans les zones du jeu");
+    const g = structuredClone(brut("jump"));
+    g.zones.jeu.push("apps/api/scripts/measure-autre.ts");
+    expect(validerFiche(g, "jump").join("\n")).toContain("n'est pas dans les zones du jeu");
+  });
+});
+
 describe("les projections", () => {
   it("le portail ne reçoit que ce qu'il dessine (ni zones, ni tables, ni versions, ni thèmes : un octet de plus pèse sur son budget)", () => {
     const p = projectionPortail(fiches());
-    expect(Object.keys(p.jeux[0]!).sort()).toEqual(["accroche", "code", "cumul", "format", "id", "titre"]);
-    expect(p.jeux.find((j) => j.id === "tower")).toMatchObject({ code: "tower", accroche: "portail.tower.accroche", titre: null, cumul: false, format: "hauteur" });
+    // Les champs facultatifs (titre, accrocheTheme, premierJour) ne sont écrits que s'ils servent : un octet de moins pour un jeu qui n'en a pas besoin.
+    for (const j of p.jeux) expect(Object.keys(j).every((k) => ["accroche", "accrocheTheme", "code", "cumul", "format", "id", "premierJour", "titre"].includes(k)), j.id).toBe(true);
+    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", code: "tower", accroche: "portail.tower.accroche", cumul: false, format: "hauteur" });
+    expect(p.jeux.find((j) => j.id === "jump")).toEqual({ id: "jump", code: "jump", accroche: "portail.jump.accroche", titre: "jeu.jump.titre", accrocheTheme: "jump.replique.", premierJour: "2026-10-16", cumul: true, format: "temps" });
   });
   it("les listes qui doivent aussi contenir Track et Jump sont complètes, dans l'ordre historique : les paquets n'embarquent pas un octet de plus", () => {
     const j = projectionJeu(fiches());
@@ -126,10 +149,10 @@ describe("les projections", () => {
     expect(j.ou).toEqual(["portail", "track", "jump", "tower"]);
     expect(j.zones).toEqual(["dujour", "track", "jump", "tower"]);
     expect(j.nomsDeZones).toEqual({ dujour: "Du Jour", track: "Track", jump: "Jump", tower: "Tower" });
-    expect(JEUX_SANS_FICHE.map((x) => x.id)).toEqual(["track", "jump"]);
+    expect(JEUX_SANS_FICHE.map((x) => x.id)).toEqual(["track"]); // lot K1b : Jump a sa fiche ; Track attend le lot K1c
   });
-  it("un jeu `on` d'une fiche entrerait dans les jeux publics, après Track et Jump", () => {
-    const f = { ...fiches()[0]!, etatDepart: "on" as const };
-    expect(projectionJeu([f]).publics).toEqual(["track", "jump", "tower"]);
+  it("un jeu `on` d'une fiche entre dans les jeux publics, dans l'ordre des fiches (Tower, une fois `on`, après Track et Jump)", () => {
+    const l = fiches().map((f) => (f.id === "tower" ? { ...f, etatDepart: "on" as const } : f));
+    expect(projectionJeu(l).publics).toEqual(["track", "jump", "tower"]);
   });
 });

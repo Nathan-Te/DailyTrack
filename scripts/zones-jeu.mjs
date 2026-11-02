@@ -12,8 +12,8 @@
 
 import { FICHES_CI } from "./fiches-lecture.mjs";
 
-// Lot K1 : Track et Jump (sans fiche jusqu'aux lots K1b et K1c) sont écrits ici ; chaque jeu qui a une fiche (`config/jeux/<id>.json`, Tower) donne ses zones (`zones.jeu`, validées : ce sont les siennes).
-export const JEUX = ["track", "jump", ...FICHES_CI.map((f) => f.id)];
+// Lots K1 et K1b : Track (sans fiche jusqu'au lot K1c) est écrit ici ; chaque jeu qui a une fiche (`config/jeux/<id>.json`, Jump, Tower) donne ses zones (`zones.jeu`, validées : ce sont les siennes).
+export const JEUX = ["track", ...FICHES_CI.map((f) => f.id)];
 
 // Les zones de chaque jeu. Dans `apps/api`, liste FERMÉE, fichier par fichier, alignée sur scripts/ci-scope.mjs (le test le vérifie) :
 // `history.ts` est importé par jumpHistory.ts et classementDemo.ts, `api.test.ts` et `classement.test.ts` passent par le cœur du serveur :
@@ -38,16 +38,7 @@ export const ZONES = {
     // La synthèse de DailyTrack (celle de DailyJump est dans docs/jump/**) : un lot Track y écrit son état et ses pièges.
     "docs/orchestration.md",
   ],
-  jump: [
-    "apps/jump/**",
-    "packages/jump-sim/**",
-    "apps/api/src/jump*.ts",
-    "apps/api/test/jump*.test.ts",
-    "apps/api/scripts/jump-*.ts",
-    "apps/api/scripts/measure-jump.ts",
-    "docs/jump/**",
-  ],
-  // Lot K1 : les zones de chaque jeu à fiche (Tower : `apps/tower/**`, `packages/tower-sim/**`, `apps/api/src/tower*.ts`, `apps/api/test/tower*.test.ts`, `apps/api/scripts/tower-*.ts`, `docs/tower/**`),
+  // Lot K1 : les zones de chaque jeu à fiche (Jump : `apps/jump/**`, `packages/jump-sim/**`, `apps/api/src/jump*.ts`… ; Tower : `apps/tower/**`, `packages/tower-sim/**`…),
   // alignées sur scripts/ci-scope.mjs, qui lit les mêmes fiches.
   ...Object.fromEntries(FICHES_CI.map((f) => [f.id, f.zones.jeu])),
 };

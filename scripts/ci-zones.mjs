@@ -23,9 +23,9 @@ import { FICHES_CI } from "./fiches-lecture.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // Lot R15 : Tower est un jeu de la CI au même titre que Track (`web`) et Jump (`jump`) : ses specs (apps/tower/e2e), ses durées, ses zones, son projet Playwright `tower-<navigateur>`.
-// Lot K1 : les suites des jeux qui ont une fiche (`config/jeux/<id>.json` : `e2e.suite`, `e2e.dossier`, ses zones, ses specs, sa fumée, ses parts) viennent d'elle ; Track (`web`) et Jump restent écrits ici.
-export const E2E_DIRS = { web: "apps/web/e2e", jump: "apps/jump/e2e", ...Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.dossier])) };
-export const JEUX_E2E = ["web", "jump", ...FICHES_CI.map((f) => f.e2e.suite)];
+// Lots K1 et K1b : les suites des jeux qui ont une fiche (`config/jeux/<id>.json` : `e2e.suite`, `e2e.dossier`, ses zones, ses specs, sa fumée, sa « Régression », ses parts) viennent d'elle ; Track (`web`) reste écrit ici.
+export const E2E_DIRS = { web: "apps/web/e2e", ...Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.dossier])) };
+export const JEUX_E2E = ["web", ...FICHES_CI.map((f) => f.e2e.suite)];
 const SUITES = JEUX_E2E.join("|");
 export const PARTS_E2E_MAX = 4;
 export const PARTS_UNITAIRES_MAX = 4;
@@ -78,6 +78,7 @@ export function chargerTable(racine = ROOT) {
     fumee: { ...brut.fumee, ...Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.fumee])) },
     zones: { ...brut.zones, ...Object.assign({}, ...FICHES_CI.map((f) => f.e2e.zones)) },
     specs: { ...brut.specs, ...Object.fromEntries(FICHES_CI.flatMap((f) => Object.entries(f.e2e.specs).map(([spec, zs]) => [`${f.e2e.suite}/${spec}`, zs]))) },
+    regression: [...(brut.regression ?? []), ...FICHES_CI.flatMap((f) => (f.e2e.regression ?? []).map((spec) => `${f.e2e.suite}/${spec}`))],
   };
   const zones = Object.fromEntries(
     Object.entries(t.zones).map(([nom, z]) => [nom, { globs: z.globs.map(globVersRegExp), sauf: (z.sauf ?? []).map(globVersRegExp), source: z }]),
@@ -150,7 +151,6 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
     // Un fichier de code : la fumée des jeux qu'il touche, et les specs de ses zones (une zone partagée — ui, profil, serveur — rejoint les deux jeux).
     const cats = categoriesOf(f);
     if (cats.includes("track")) fumee("web", f);
-    if (cats.includes("jump")) fumee("jump", f);
     for (const fc of FICHES_CI) if (cats.includes(fc.id)) fumee(fc.e2e.suite, f);
     for (const z of zonesDuFichier(f, table)) {
       for (const [spec, zs] of Object.entries(table.specs)) {
@@ -403,7 +403,7 @@ export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CI
 // Lot R15 : Tower, 1 part de Chromium (quelques dizaines de secondes de specs : un job de plus en parallèle, pas de mur de plus).
 // Lot K1 : le nombre de parts d'un jeu à fiche est son `e2e.parts` (Tower : 1, 1, 1).
 const partsDesFiches = (mode) => Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.parts[mode]]));
-export const PARTS_COMPLETES = { main: { web: 3, jump: 1, ...partsDesFiches("main") }, complet: { web: 8, jump: 1, ...partsDesFiches("complet") }, nuit: { web: 8, jump: 1, ...partsDesFiches("nuit") } };
+export const PARTS_COMPLETES = { main: { web: 3, ...partsDesFiches("main") }, complet: { web: 8, ...partsDesFiches("complet") }, nuit: { web: 8, ...partsDesFiches("nuit") } };
 
 /** La matrice des jobs `e2e-parts` d'un mode complet (une PR reçoit celle de `main` : le job y est sauté). */
 export function matriceComplete(mode) {
@@ -452,8 +452,8 @@ export function resume(d) {
   l.push(`Tests unitaires : ${d.unit.fichiers.length} fichier(s)${d.unit.tous ? " (tous)" : ""}, ${d.unitParts.length} part(s) ${d.unitParts.map((p) => `${p.secondes} s`).join(" / ")}`);
   for (const r of d.unit.raisons.slice(0, 12)) l.push(`  · ${r}`);
   if (d.mode === "pr") {
-    // Lot K1 : un libellé par suite — DailyTrack, DailyJump, puis le nom de chaque jeu à fiche (Tower).
-    const nomSuite = (j) => (j === "web" ? "DailyTrack" : j === "jump" ? "DailyJump" : j.charAt(0).toUpperCase() + j.slice(1));
+    // Lots K1 et K1b : un libellé par suite — DailyTrack, puis le nom de chaque jeu à fiche (« Jump » : le résumé disait « DailyJump », qui n'est plus que l'ancien nom).
+    const nomSuite = (j) => (j === "web" ? "DailyTrack" : j.charAt(0).toUpperCase() + j.slice(1));
     l.push(`e2e (Chromium) : ${JEUX_E2E.map((j) => `${d.e2e[j].length} spec(s) ${nomSuite(j)}`).join(", ")}, ${d.e2eParts.length} part(s) ${d.e2eParts.map((p) => `${p.secondes} s`).join(" / ")}`);
     for (const j of JEUX_E2E) for (const s of d.e2e[j]) l.push(`  · ${j}/${s}`);
     for (const r of d.e2e.raisons.slice(0, 12)) l.push(`  ↳ ${r}`);

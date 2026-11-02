@@ -6,7 +6,7 @@
 // Une valeur qui commence par `--` est un renvoi vers un autre jeton (`--jump-papier` = `--dj-papier`) : en CSS `var(--…)`, en TypeScript la
 // valeur résolue (`valeurJeton`).
 
-import { ETIQUETTE_TOWER_COQUE, ETIQUETTE_TOWER_FOND, ETIQUETTE_TOWER_POLICE } from "./fiches.generated";
+import { ETIQUETTE_JUMP_FOND, ETIQUETTE_JUMP_POLICE, ETIQUETTE_TOWER_COQUE, ETIQUETTE_TOWER_FOND, ETIQUETTE_TOWER_POLICE } from "./fiches.generated";
 
 /** Couleurs (charte § 3). */
 export const COULEURS = {
@@ -47,7 +47,8 @@ export const COULEURS = {
   "track-livree-texte": "#FF8A5C",
   "track-livree-ombre": "#8E2E14",
   // 3.4 Étiquette Jump
-  "jump-jaune": "#FFD23F",
+  // Lot K1b : le jaune et la police de l'étiquette Jump sont les valeurs de sa fiche (`config/jeux/jump.json`, via `fiches.generated.ts`) ; leurs NOMS restent ceux de la charte.
+  "jump-jaune": ETIQUETTE_JUMP_FOND,
   "jump-papier": "--dj-papier",
   "jump-encre": "--dj-encre",
   "jump-danger": "#D7263D",
@@ -64,7 +65,7 @@ export const POLICES = {
   "dj-police-texte": "\"Archivo\", sans-serif",
   "dj-police-chiffres": "\"JetBrains Mono\", monospace",
   "track-police": "\"Barlow Condensed\", \"Archivo\", sans-serif",
-  "jump-police": "\"Lilita One\", \"Archivo\", sans-serif",
+  "jump-police": ETIQUETTE_JUMP_POLICE,
   "tower-police": ETIQUETTE_TOWER_POLICE,
 } as const;
 

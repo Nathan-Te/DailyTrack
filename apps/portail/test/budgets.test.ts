@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { POIDS_MAX } from "../../../scripts/images-partage.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { LIGNES_TOWER } from "../../../scripts/budgets.mjs";
+import { LIGNES_JUMP, LIGNES_TOWER } from "../../../scripts/budgets.mjs";
 
 // Lot I6 (plateforme) : docs/plateforme/budgets.md est la référence des budgets. Ce test vérifie qu'il dit les **mêmes limites** que les tests qui les
 // imposent (une limite changée dans un test sans le tableau, ou l'inverse, échoue), et que chaque ligne est cohérente (marge = budget − après).
@@ -63,6 +63,8 @@ describe("lot I6 : docs/plateforme/budgets.md, la référence des budgets", () =
     expect([...lignes.keys()].sort()).toEqual(Object.keys(ATTENDUS).sort());
     for (const [cle, attendu] of Object.entries(ATTENDUS)) expect(lignes.get(cle)?.budget, cle).toBe(attendu);
     expect(lire(POIDS)).toContain("AVANT + 20_000");
+    // Lot K1b : les lignes de Jump de sa fiche sont celles du tableau (`jump.*`), ni plus ni moins.
+    expect([...(LIGNES_JUMP as string[])].sort()).toEqual([...lignes.keys()].filter((k) => k.startsWith("jump.")).sort());
     expect(lire(POIDS_TOWER), "le test de Tower lit ses limites dans budgets.md").toContain("docs/plateforme/budgets.md");
     for (const cle of LIGNES_TOWER as string[]) expect(lire(POIDS_TOWER), `${cle} : lue par le test de Tower`).toContain(`"${cle}"`);
   });

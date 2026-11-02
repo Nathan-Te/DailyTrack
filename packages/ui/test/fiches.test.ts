@@ -27,6 +27,13 @@ describe("le socle lit les fiches", () => {
     expect(POLICES["tower-police"]).toBe(t.etiquette.police);
   });
 
+  it("Jump (lot K1b) : le jaune et la police de sa charte portent les valeurs de sa fiche ; sa coque est l'encre du socle (l'étiquette est un papier bordé d'encre)", () => {
+    const j = fiches.find((f) => f.id === "jump")!;
+    expect(COULEURS["jump-jaune"]).toBe(j.etiquette.fond);
+    expect(POLICES["jump-police"]).toBe(j.etiquette.police);
+    expect(valeurJeton("dj-encre")).toBe(j.etiquette.coque);
+  });
+
   it("le texte d'encre reste lisible sur le fond de l'étiquette de chaque jeu (4,5:1)", () => {
     for (const f of fiches) expect(rapportContraste(valeurJeton("dj-encre"), f.etiquette.fond), f.id).toBeGreaterThanOrEqual(4.5);
   });

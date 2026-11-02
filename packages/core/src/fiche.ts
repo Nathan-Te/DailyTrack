@@ -7,8 +7,8 @@
 // `fr` + `en` ; la fiche porte les CLÉS (`accroche`, `titre`). **Qui l'écrit** : le lot du jeu (seule exception à la règle des zones : `config/jeux/<id>.json`) ;
 // `validerFiche` refuse donc une fiche qui sortirait de ce que le jeu peut réclamer (zones de CI ailleurs que dans les siennes, tables d'un autre jeu…).
 //
-// **Jeux sans fiche (jusqu'aux lots K1b et K1c)** : Track et Jump gardent leur code d'aujourd'hui ; chaque consommateur lit la fiche d'un jeu qui en a une et garde sinon son code
-// actuel. `JEUX_SANS_FICHE` nomme ces deux jeux pour les listes qui doivent encore les contenir ; il disparaît quand leurs fiches existent.
+// **Jeux sans fiche (jusqu'au lot K1c)** : Track garde son code d'aujourd'hui ; chaque consommateur lit la fiche d'un jeu qui en a une et garde sinon son code actuel.
+// `JEUX_SANS_FICHE` nomme ce jeu pour les listes qui doivent encore le contenir ; il disparaît quand sa fiche existe (lot K1b : Jump a la sienne).
 
 export type SensClassement = "asc" | "desc";
 export type UniteScore = "ms" | "ticks" | "mm" | "points";
@@ -34,6 +34,8 @@ export interface FicheJeu {
   nom: { fr: string; en: string };
   /** Clé de catalogue du portail : l'accroche de la cartouche. */
   accroche: string;
+  /** Lot K1b : un jeu dont l'accroche suit le thème du jour (Jump : une réplique par thème) donne le préfixe de ses clés (`jump.replique.` + le code du thème) ; absent : l'accroche seule. */
+  accrocheTheme?: string;
   /** Clé de catalogue du titre de la cartouche ; absente : le nom en capitales. */
   titre?: string;
   etiquette: {
@@ -69,7 +71,8 @@ export interface FicheJeu {
     /** La preuve de l'auteur ne quitte jamais le serveur (règle R9) : vrai pour un jeu dont les jours figés portent une `preuve`. */
     preuveInterditeEnProd: boolean;
   };
-  rejeu: { unitesServeur: number; fil?: boolean; maxTicks: number };
+  /** `ticksParUnite` (lot K1b) : le coût d'un rejeu est proportionnel à sa durée (une unité du plafond global par `ticksParUnite` pas rejoués, `unitesServeur` en est le minimum) ; absent : coût fixe. */
+  rejeu: { unitesServeur: number; fil?: boolean; maxTicks: number; ticksParUnite?: number };
   donnees: {
     /** Les tables liées à un joueur ou une partie (vidées par la remise à zéro) ou gardées (contenu du jour). */
     tables: { nom: string; sort: SortTable }[];
@@ -90,6 +93,8 @@ export interface FicheJeu {
     /** Zones nommées de `e2e/zones.json` pour ce jeu, et ses specs (nom de fichier → zones). */
     zones: Record<string, ZoneCI>;
     specs: Record<string, string[]>;
+    /** Lot K1b : les specs tout entiers de la famille « Régression » (CI complète et nuit seulement, `docs/tests.md`), parmi `specs`. */
+    regression?: string[];
     /** Nombre de parts Chromium de la CI complète, par mode. */
     parts: { main: number; complet: number; nuit: number };
   };
@@ -119,7 +124,14 @@ const listeDeTextes = (v: unknown): v is string[] => Array.isArray(v) && v.every
 export function prefixesDeZones(id: string): string[] {
   return [`apps/${id}/`, `packages/${id}-sim/`, `docs/${id}/`, `apps/api/src/${id}`, `apps/api/test/${id}`, `apps/api/scripts/${id}-`];
 }
-const globDuJeu = (glob: string, id: string): boolean => !glob.split("/").includes("..") && prefixesDeZones(id).some((p) => glob.startsWith(p));
+/**
+ * Lot K1b : les chemins d'un jeu qui ne suivent pas la règle `<dossier>/<id>…`, **nommés un par un** (des noms d'avant la règle, que le jeu garde) : un outil de mesure, un fichier du serveur. Une fiche ne
+ * peut réclamer que cela en plus de la règle : la validation reste « un jeu ne réclame que ses propres chemins ».
+ */
+export const CHEMINS_HERITES: Readonly<Record<string, readonly string[]>> = {
+  jump: ["apps/api/scripts/measure-jump.ts"],
+};
+const globDuJeu = (glob: string, id: string): boolean => !glob.split("/").includes("..") && (prefixesDeZones(id).some((p) => glob.startsWith(p)) || (CHEMINS_HERITES[id] ?? []).includes(glob));
 
 /**
  * Les problèmes d'une fiche lue (JSON brut) : une liste vide veut dire « valide ». Chaque message nomme le champ (`etiquette.fond : …`). `idDuFichier` : le nom du fichier sans `.json`,
@@ -140,6 +152,7 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   if (!estObjet(f.nom) || !estTexte(f.nom.fr) || !estTexte(f.nom.en)) ko("nom", "{ fr, en } non vides");
   if (!estTexte(f.accroche)) ko("accroche", "une clé de catalogue");
   if (f.titre !== undefined && !estTexte(f.titre)) ko("titre", "une clé de catalogue, ou absent");
+  if (f.accrocheTheme !== undefined && (typeof f.accrocheTheme !== "string" || !/^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*\.$/.test(f.accrocheTheme))) ko("accrocheTheme", "un préfixe de clés de catalogue qui finit par un point, ou absent");
 
   const e = f.etiquette;
   if (!estObjet(e)) ko("etiquette", "objet attendu");
@@ -187,7 +200,7 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   }
 
   const r = f.rejeu;
-  if (!estObjet(r) || !estEntier(r.unitesServeur) || r.unitesServeur < 1 || !estEntier(r.maxTicks) || r.maxTicks < 1 || (r.fil !== undefined && typeof r.fil !== "boolean")) ko("rejeu", "{ unitesServeur ≥ 1, maxTicks ≥ 1, fil? }");
+  if (!estObjet(r) || !estEntier(r.unitesServeur) || r.unitesServeur < 1 || !estEntier(r.maxTicks) || r.maxTicks < 1 || (r.fil !== undefined && typeof r.fil !== "boolean") || (r.ticksParUnite !== undefined && (!estEntier(r.ticksParUnite) || r.ticksParUnite < 1))) ko("rejeu", "{ unitesServeur ≥ 1, maxTicks ≥ 1, fil?, ticksParUnite? ≥ 1 }");
 
   const d = f.donnees;
   if (!estObjet(d)) ko("donnees", "objet attendu");
@@ -227,6 +240,7 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
     const specs = estObjet(t.specs) ? t.specs : {};
     if (!estObjet(t.specs) || !Object.entries(specs).every(([k, zs]) => /^[a-z0-9-]+\.spec\.ts$/.test(k) && listeDeTextes(zs) && zs.length > 0)) ko("e2e.specs", "{ \"x.spec.ts\": [zones] } avec au moins une zone par spec");
     if (!listeDeTextes(t.fumee) || !t.fumee.every((s) => s in specs)) ko("e2e.fumee", "des specs déclarés dans e2e.specs");
+    if (t.regression !== undefined && (!listeDeTextes(t.regression) || !t.regression.every((s) => s in specs))) ko("e2e.regression", "des specs déclarés dans e2e.specs, ou absent");
     if (!estObjet(t.zones)) ko("e2e.zones", "objet attendu");
     else {
       for (const [nom, zc] of Object.entries(t.zones)) {
@@ -280,13 +294,10 @@ export function validerEnsemble(fiches: readonly FicheJeu[]): string[] {
 // Les jeux qui n'ont pas encore de fiche
 
 /**
- * Track et Jump, **jusqu'à leurs lots de fiche (K1b, K1c)** : les listes dérivées des fiches doivent encore les contenir, dans leur forme d'aujourd'hui. Ce n'est PAS une fiche (leurs
- * consommateurs gardent leur code), seulement de quoi composer les listes sans changer un octet pour eux. Le jour où un jeu a sa fiche, sa ligne disparaît d'ici.
+ * Track, **jusqu'à son lot de fiche (K1c)** : les listes dérivées des fiches doivent encore le contenir, dans sa forme d'aujourd'hui. Ce n'est PAS une fiche (ses
+ * consommateurs gardent leur code), seulement de quoi composer les listes sans changer un octet pour lui. Le jour où il a sa fiche, sa ligne disparaît d'ici (Jump : lot K1b).
  */
-export const JEUX_SANS_FICHE = [
-  { id: "track", code: "cdj", ordre: 1, nom: "Track", etatDepart: "on" as const, prefixe: "cdj:", ou: "track", zone: "track" },
-  { id: "jump", code: "jump", ordre: 2, nom: "Jump", etatDepart: "on" as const, prefixe: "jump:", ou: "jump", zone: "jump" },
-] as const;
+export const JEUX_SANS_FICHE = [{ id: "track", code: "cdj", ordre: 1, nom: "Track", etatDepart: "on" as const, prefixe: "cdj:", ou: "track", zone: "track" }] as const;
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Les projections : ce que chaque lecteur reçoit, et rien de plus.
@@ -300,13 +311,29 @@ export interface ProjectionPortail {
     /** Le code au registre du serveur (`GET /api/portail/jour`). */
     code: string;
     accroche: string;
-    titre: string | null;
+    /** Absent : le nom en capitales. */
+    titre?: string;
+    /** Lot K1b : le préfixe des clés d'accroche par thème (Jump), absent sinon. */
+    accrocheTheme?: string;
+    /** Lot K1b : le premier jour (`AAAA-MM-JJ`) d'un jeu public d'emblée (`etatDepart: on`), dont la cartouche affiche un numéro sans attendre le serveur ; absent : le serveur seul donne le numéro (un jeu `off` à l'arrivée). */
+    premierJour?: string;
     cumul: boolean;
     format: FormatScore;
   }[];
 }
 export function projectionPortail(fiches: readonly FicheJeu[]): ProjectionPortail {
-  return { jeux: parOrdre(fiches).map((f) => ({ id: f.id, code: f.code, accroche: f.accroche, titre: f.titre ?? null, cumul: f.classement.cumul, format: f.classement.format })) };
+  return {
+    jeux: parOrdre(fiches).map((f) => ({
+      id: f.id,
+      code: f.code,
+      accroche: f.accroche,
+      ...(f.titre !== undefined ? { titre: f.titre } : {}),
+      ...(f.accrocheTheme !== undefined ? { accrocheTheme: f.accrocheTheme } : {}),
+      ...(f.etatDepart === "on" ? { premierJour: f.premierJour } : {}),
+      cumul: f.classement.cumul,
+      format: f.classement.format,
+    })),
+  };
 }
 
 /** Le serveur (registre, remise à zéro, mentions, jours figés) : lu par les tests de cohérence au lot K1, par le module du lot K2. */

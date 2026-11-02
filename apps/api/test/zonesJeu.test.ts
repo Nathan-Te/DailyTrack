@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { categoriesOf } from "../../../scripts/ci-scope.mjs";
+import { FICHES_CI } from "../../../scripts/fiches-lecture.mjs";
 import { EXCEPTIONS, JEUX, ZONES, horsZones, jeuDeLaPr, verifierZones } from "../../../scripts/zones-jeu.mjs";
 
 // Retouche du lot I6 — « Lots en parallèle » (docs/orchestration.md) : une PR de jeu ne sort pas de ses zones.
@@ -132,8 +133,10 @@ describe("cohérence avec la portée de la CI (scripts/ci-scope.mjs)", () => {
       }
   });
 
-  it("hors apps/api, une zone de jeu ne lance que les e2e de ce jeu", () => {
-    for (const jeu of JEUX)
-      for (const g of ZONES[jeu].filter((g) => !g.startsWith("apps/api/"))) expect(categoriesOf(g.replace("**", "a/b.ts")), g).toEqual([jeu]);
+  it("hors apps/api, une zone de jeu ne lance que les e2e de ce jeu (sauf ce que le serveur lit — lot K1b : les niveaux figés de Jump, `zones.serveur` de sa fiche —, qui lance aussi la plateforme)", () => {
+    for (const jeu of JEUX) {
+      const serveur: string[] = FICHES_CI.find((f) => f.id === jeu)?.zones.serveur ?? [];
+      for (const g of ZONES[jeu].filter((g) => !g.startsWith("apps/api/"))) expect(categoriesOf(g.replace("**", "a/b.ts")), g).toEqual(serveur.includes(g) ? [jeu, "plateforme"] : [jeu]);
+    }
   });
 });

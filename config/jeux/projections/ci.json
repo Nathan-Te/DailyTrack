@@ -1,6 +1,328 @@
 {
   "jeux": [
     {
+      "id": "jump",
+      "zones": {
+        "jeu": [
+          "apps/jump/**",
+          "apps/jump/public/levels/**",
+          "packages/jump-sim/**",
+          "apps/api/src/jump*.ts",
+          "apps/api/test/jump*.test.ts",
+          "apps/api/scripts/jump-*.ts",
+          "apps/api/scripts/measure-jump.ts",
+          "docs/jump/**"
+        ],
+        "serveur": [
+          "apps/jump/public/levels/**",
+          "apps/api/src/jump*.ts",
+          "apps/api/test/jump*.test.ts",
+          "apps/api/scripts/jump-*.ts",
+          "apps/api/scripts/measure-jump.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/jump/e2e",
+        "suite": "jump",
+        "fumee": [
+          "smoke.spec.ts",
+          "replay.spec.ts",
+          "poids.spec.ts",
+          "jour.spec.ts",
+          "dangers.spec.ts"
+        ],
+        "zones": {
+          "jump-sim": {
+            "globs": [
+              "packages/jump-sim/**"
+            ],
+            "sauf": [
+              "packages/jump-sim/modules/**",
+              "packages/jump-sim/tools/**"
+            ]
+          },
+          "jump-modules": {
+            "globs": [
+              "packages/jump-sim/modules/**",
+              "packages/jump-sim/tools/**",
+              "apps/jump/src/gallery.ts",
+              "apps/jump/src/modulesInfo.ts",
+              "apps/jump/src/semaine*.ts",
+              "apps/jump/public/outils/**"
+            ]
+          },
+          "jump-niveaux": {
+            "globs": [
+              "apps/jump/public/levels/**",
+              "apps/jump/public/demo/**",
+              "apps/jump/tools/**"
+            ]
+          },
+          "jump-jour": {
+            "globs": [
+              "apps/jump/src/daily*.ts",
+              "apps/jump/src/dayReads.ts",
+              "apps/jump/src/frozen.ts",
+              "apps/jump/src/boot.ts",
+              "apps/jump/src/loop.ts",
+              "apps/jump/src/main.ts",
+              "apps/jump/src/generationInit.ts",
+              "apps/jump/src/lancement.ts",
+              "apps/jump/src/interrupteur*.ts",
+              "apps/jump/index.html",
+              "apps/jump/vite.config.ts"
+            ]
+          },
+          "jump-rendu": {
+            "globs": [
+              "apps/jump/src/look.ts",
+              "apps/jump/src/palette.ts",
+              "apps/jump/src/artKit.ts",
+              "apps/jump/src/dynamicArt.ts",
+              "apps/jump/src/decor.ts",
+              "apps/jump/src/parallax.ts",
+              "apps/jump/src/actors.ts",
+              "apps/jump/src/fx.ts",
+              "apps/jump/src/camera.ts",
+              "apps/jump/src/scene.ts",
+              "apps/jump/src/themes.ts",
+              "apps/jump/src/tileArt.ts",
+              "apps/jump/src/sawArt.ts",
+              "apps/jump/src/surfaceArt.ts",
+              "apps/jump/src/windArt.ts",
+              "apps/jump/src/stains.ts",
+              "apps/jump/src/othersStains.ts",
+              "apps/jump/src/autotile.ts",
+              "apps/jump/src/contrast.ts",
+              "apps/jump/src/blocks.ts",
+              "apps/jump/src/slowRoute.ts",
+              "apps/jump/src/wind.ts",
+              "apps/jump/src/windSafety.ts",
+              "apps/jump/src/carnage*.ts",
+              "apps/jump/src/feel.ts",
+              "apps/jump/src/audio*.ts"
+            ]
+          },
+          "jump-ui": {
+            "globs": [
+              "apps/jump/src/*.css",
+              "apps/jump/src/hud.ts",
+              "apps/jump/src/home*.ts",
+              "apps/jump/src/pauseMenu.ts",
+              "apps/jump/src/screensUi.ts",
+              "apps/jump/src/cadre.ts",
+              "apps/jump/src/howtoUi.ts",
+              "apps/jump/src/settings*.ts",
+              "apps/jump/src/input.ts",
+              "apps/jump/src/manette.ts",
+              "apps/jump/src/touch*.ts",
+              "apps/jump/src/announce.ts",
+              "apps/jump/src/arrival.ts",
+              "apps/jump/src/share.ts",
+              "apps/jump/src/clipboard.ts",
+              "apps/jump/src/urlOptions.ts",
+              "apps/jump/src/tune.ts",
+              "apps/jump/src/verify.ts",
+              "apps/jump/verify.html"
+            ]
+          },
+          "jump-classement": {
+            "globs": [
+              "apps/jump/src/rank*.ts",
+              "apps/jump/src/ranking.ts",
+              "apps/jump/src/firstGhost.ts",
+              "apps/jump/src/ghost.ts",
+              "apps/jump/src/everyone.ts",
+              "apps/jump/src/history.ts",
+              "apps/jump/src/lives*.ts",
+              "apps/jump/src/jumpProfile.ts",
+              "apps/jump/src/demoRank.ts",
+              "apps/jump/src/session.ts",
+              "apps/jump/src/memory.ts",
+              "apps/jump/src/events.ts",
+              "apps/jump/src/storage.ts",
+              "apps/jump/src/profilLien.ts",
+              "apps/jump/src/jeuSuivant.ts"
+            ]
+          },
+          "jump-i18n": {
+            "globs": [
+              "apps/jump/src/catalogue*.ts",
+              "apps/jump/src/i18n.ts"
+            ]
+          },
+          "jump-admin": {
+            "globs": [
+              "apps/jump/src/admin*.ts",
+              "apps/jump/admin/**"
+            ]
+          },
+          "api-jump": {
+            "globs": [
+              "apps/api/src/jump*.ts",
+              "apps/api/scripts/jump-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "accessibilite.spec.ts": [
+            "jump-ui",
+            "jump-i18n",
+            "ui"
+          ],
+          "animation.spec.ts": [
+            "jump-rendu",
+            "jump-sim"
+          ],
+          "arrivee.spec.ts": [
+            "jump-ui",
+            "jump-jour",
+            "jump-classement",
+            "jump-sim"
+          ],
+          "carnage-lisible.spec.ts": [
+            "jump-rendu"
+          ],
+          "carnage.spec.ts": [
+            "jump-rendu",
+            "jump-classement",
+            "jump-sim"
+          ],
+          "chargement.spec.ts": [
+            "jump-jour"
+          ],
+          "classement.spec.ts": [
+            "jump-classement",
+            "api-jump",
+            "api-coeur"
+          ],
+          "dangers.spec.ts": [
+            "jump-sim",
+            "jump-rendu",
+            "jump-jour"
+          ],
+          "plateformes.spec.ts": [
+            "jump-sim",
+            "jump-rendu"
+          ],
+          "fantome-premier.spec.ts": [
+            "jump-classement",
+            "api-jump"
+          ],
+          "foret.spec.ts": [
+            "jump-sim",
+            "jump-rendu"
+          ],
+          "horloge.spec.ts": [
+            "jump-jour",
+            "jump-sim",
+            "core-clock"
+          ],
+          "hud-compact.spec.ts": [
+            "jump-ui",
+            "ui"
+          ],
+          "jour.spec.ts": [
+            "jump-jour",
+            "jump-sim",
+            "jump-niveaux"
+          ],
+          "langue.spec.ts": [
+            "jump-i18n",
+            "ui",
+            "profile-pkg"
+          ],
+          "mobile.spec.ts": [
+            "jump-ui",
+            "ui"
+          ],
+          "modules.spec.ts": [
+            "jump-modules",
+            "jump-sim"
+          ],
+          "nuit-neon.spec.ts": [
+            "jump-sim",
+            "jump-rendu"
+          ],
+          "plein-ecran.spec.ts": [
+            "jump-ui",
+            "ui"
+          ],
+          "poids.spec.ts": [
+            "jump-jour"
+          ],
+          "profil-commun.spec.ts": [
+            "jump-classement",
+            "api-jump",
+            "api-coeur",
+            "profile-pkg"
+          ],
+          "replay.spec.ts": [
+            "jump-sim",
+            "core-clock"
+          ],
+          "sensations.spec.ts": [
+            "jump-rendu",
+            "jump-ui"
+          ],
+          "smoke.spec.ts": [
+            "jump-jour"
+          ],
+          "surfaces.spec.ts": [
+            "jump-sim",
+            "jump-rendu"
+          ],
+          "themes.spec.ts": [
+            "jump-rendu"
+          ],
+          "tout-le-monde.spec.ts": [
+            "jump-classement",
+            "api-jump"
+          ],
+          "variete.spec.ts": [
+            "jump-modules",
+            "jump-sim"
+          ],
+          "voie-lente.spec.ts": [
+            "jump-jour",
+            "jump-sim"
+          ]
+        },
+        "regression": [
+          "accessibilite.spec.ts",
+          "animation.spec.ts",
+          "carnage-lisible.spec.ts",
+          "fantome-premier.spec.ts",
+          "foret.spec.ts",
+          "hud-compact.spec.ts",
+          "modules.spec.ts",
+          "plateformes.spec.ts",
+          "plein-ecran.spec.ts",
+          "sensations.spec.ts",
+          "surfaces.spec.ts",
+          "themes.spec.ts",
+          "tout-le-monde.spec.ts",
+          "variete.spec.ts",
+          "voie-lente.spec.ts"
+        ],
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        }
+      },
+      "jours": {
+        "dossier": "apps/jump/public/levels",
+        "preuveInterditeEnProd": true
+      },
+      "budget": [
+        "jump.jsCss",
+        "jump.anglais",
+        "jump.polices"
+      ],
+      "outilsAdmin": true
+    },
+    {
       "id": "tower",
       "zones": {
         "jeu": [

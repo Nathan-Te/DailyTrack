@@ -1,16 +1,14 @@
-import { daysFromCivil } from "@cdj/core";
+import { daysFromCivil, parseDay } from "@cdj/core";
 import { numeroDeJournee as numero, premierJourDuJour } from "@cdj/core/lancement";
 import type { Jeu } from "@cdj/ui";
 import { FICHES } from "./jeuxFiches";
 
 // Le numéro du jour de chaque jeu, pour les cartouches du portail (lot R4 ; lot I1 : les textes sont dans les catalogues). Le portail n'importe
-// aucun jeu (il resterait léger, et les jeux ne s'importent jamais l'un l'autre) : les deux premiers jours sont recopiés ici, et un test
+// aucun jeu (il resterait léger, et les jeux ne s'importent jamais l'un l'autre) : le premier jour de Track est recopié ici (celui de Jump vient de sa fiche : `premierJour`), et un test
 // (`test/jours.test.ts`) vérifie qu'ils donnent les mêmes numéros que `circuitNumber` (`@cdj/sim`) et `levelNumber` (`@cdj/jump-sim`).
 
 /** DailyTrack : le circuit n° 1, le 13/10/2026 (`PREMIER_JOUR` de `@cdj/sim`). */
 export const PREMIER_JOUR_TRACK = daysFromCivil(2026, 10, 13);
-/** DailyJump : le niveau n° 1, le 16/10/2026 (`PREMIER_JOUR_JUMP` de `@cdj/jump-sim`). */
-export const PREMIER_JOUR_JUMP = daysFromCivil(2026, 10, 16);
 
 /**
  * Lot R8 : la journée n° 1 de Du Jour (le lancement public) vient de `config/lancement.json` (`@cdj/core/lancement`), la même source que le
@@ -35,13 +33,13 @@ export interface CarteJeu {
 
 /**
  * Les cartouches du portail pour un jour de Paris (`parisDay`). Pure. Lot TP : Tower n'a **pas de numéro local** (`numero: 0`, donc rien avant la réponse du serveur) : il est
- * `off` tant que Nathan ne l'a pas activé, et la liste des jeux du serveur fait seule foi de sa présence et de son numéro.
+ * `off` tant que Nathan ne l'a pas activé, et la liste des jeux du serveur fait seule foi de sa présence et de son numéro. Lot K1b : le numéro local d'un jeu à fiche est celui de son `premierJour`
+ * (la projection ne le porte que pour un jeu public d'emblée).
  */
 export function cartes(day: number): CarteJeu[] {
   return [
     { code: "track", jeu: "cdj", lien: "track/", numero: day - PREMIER_JOUR_TRACK + 1 },
-    { code: "jump", jeu: "jump", lien: "jump/", numero: day - PREMIER_JOUR_JUMP + 1 },
-    // Lot K1 : les jeux qui ont une fiche (`config/jeux/<id>.json`, dans l'ordre de leur champ `ordre`, après Track et Jump) : Tower. Sans numéro local (le serveur le donne), comme avant.
-    ...FICHES.map((f): CarteJeu => ({ code: f.id as Jeu, jeu: f.code, lien: `${f.id}/`, numero: 0 })),
+    // Lots K1 et K1b : les jeux qui ont une fiche (`config/jeux/<id>.json`, dans l'ordre de leur champ `ordre`, après Track) : Jump, Tower. Sans `premierJour`, pas de numéro local (le serveur le donne).
+    ...FICHES.map((f): CarteJeu => ({ code: f.id as Jeu, jeu: f.code, lien: `${f.id}/`, numero: f.premierJour ? day - parseDay(f.premierJour)! + 1 : 0 })),
   ];
 }

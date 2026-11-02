@@ -1,6 +1,72 @@
 {
   "jeux": [
     {
+      "id": "jump",
+      "code": "jump",
+      "etatDepart": "on",
+      "premierJour": "2026-10-16",
+      "classement": {
+        "colonnes": [
+          {
+            "nom": "ticks",
+            "sens": "asc"
+          },
+          {
+            "nom": "submitted_at",
+            "sens": "asc"
+          },
+          {
+            "nom": "player_id",
+            "sens": "asc"
+          }
+        ],
+        "cumul": true,
+        "unite": "ticks",
+        "format": "temps"
+      },
+      "medailles": {
+        "methode": "figees-niveau",
+        "bareme": []
+      },
+      "versions": {
+        "sim": "packages/jump-sim/src/constants.ts:JUMP_SIM_VERSION",
+        "generateur": "packages/jump-sim/src/constants.ts:JUMP_GENERATOR_VERSION",
+        "medailles": "packages/jump-sim/src/jours.ts:MEDAILLES_ASSOUPLIES_VERSION"
+      },
+      "jours": {
+        "mode": "fichier-par-jour",
+        "dossier": "apps/jump/public/levels",
+        "preuveInterditeEnProd": true
+      },
+      "rejeu": {
+        "unitesServeur": 1,
+        "maxTicks": 72000,
+        "ticksParUnite": 5000
+      },
+      "tables": [
+        {
+          "nom": "jump_results",
+          "sort": "videe"
+        },
+        {
+          "nom": "jump_lives",
+          "sort": "videe"
+        },
+        {
+          "nom": "jump_deaths",
+          "sort": "videe"
+        },
+        {
+          "nom": "jump_levels",
+          "sort": "gardee"
+        }
+      ],
+      "prefixe": "jump:",
+      "reglagesGardes": [],
+      "messageOu": "jump",
+      "zoneNouveautes": "jump"
+    },
+    {
       "id": "tower",
       "code": "tower",
       "etatDepart": "off",

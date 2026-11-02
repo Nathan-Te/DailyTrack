@@ -11,7 +11,7 @@ import "./amisPortail.css";
 import { parisDay } from "@cdj/clock";
 import { formatDay, parseDay } from "@cdj/core";
 import { clientAmis, ecrireLangue, lireFiltre, lireLangue, readPlayerId, type FiltreAmis, type Langue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatHauteur, formatNombre, formatTemps, medaille, traducteur, type TypeMedaille } from "@cdj/ui";
+import { CATALOGUE_COMMUN, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatHauteur, formatNombre, formatTemps, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { FICHES, ficheDuRegistre } from "./jeuxFiches";
 import { CATALOGUE_PAGES } from "./cataloguePages";
@@ -47,8 +47,8 @@ type Cle = Parameters<T["t"]>[0];
 const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || cle in CATALOGUE_COMMUN.fr ? (cle as Cle) : null);
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
-/** Les jeux sans fiche que la page sait habiller (leur code au registre du serveur, leur dossier) ; lot K1 : ceux qui ont une fiche (`jeuxFiches.ts`) n'y sont plus. */
-const JEUX = { cdj: { cle: "jeu.track.nom", cadre: "track" }, jump: { cle: "jeu.jump.nom", cadre: "jump" } } as const;
+/** Les jeux sans fiche que la page sait habiller (leur code au registre du serveur, leur dossier) ; lots K1 et K1b : ceux qui ont une fiche (`jeuxFiches.ts` : Jump, Tower) n'y sont plus, il ne reste que Track. */
+const JEUX = { cdj: { cle: "jeu.track.nom", cadre: "track" } } as const;
 
 /** Le jour affiché (`AAAA-MM-JJ`, `null` : aujourd'hui, celui du serveur) et aujourd'hui tel que le serveur l'a dit (ou l'horloge locale). */
 let jourAffiche: string | null = new URLSearchParams(location.search).get("date");
@@ -79,7 +79,7 @@ const nomDuJeu = (t: T, jeu: { jeu: string; nom: string }): string => {
  */
 function caseDeJeu(t: T, jeu: { jeu: string; nom: string }, r: ResultatClassement | null, avecTemps: boolean): HTMLElement {
   // Lot TP : pour un jeu à la hauteur, la case dit les vies restantes (la hauteur est la valeur de la ligne) ; jamais le temps.
-  const cadre = jeu.jeu in JEUX ? JEUX[jeu.jeu as keyof typeof JEUX].cadre : undefined;
+  const cadre = (ficheDuRegistre(jeu.jeu)?.id as Jeu | undefined) ?? (jeu.jeu in JEUX ? JEUX[jeu.jeu as keyof typeof JEUX].cadre : undefined);
   let contenu: HTMLElement;
   if (r === null) contenu = el("span", { classe: "classement-jeu__vide" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: t.t("classement.pasFini") }));
   else if (r.medaille) contenu = medaille(t, { type: MEDAILLE[r.medaille]!, obtenue: true, jeu: cadre });
@@ -149,7 +149,7 @@ const nomOnglet = (t: T, o: { jeu?: string; nom?: string }): string => (o.jeu ? 
 
 /**
  * Les onglets (rôle `tablist`, un seul dans l'ordre de tabulation, flèches pour passer de l'un à l'autre) : Cumulé, puis un jeu par jeu du jour. Avant la
- * réponse du serveur : Cumulé, puis les jeux au temps (Track, Jump : lot K1, le champ `cumul` de la fiche d'un jeu). Un jeu hors du cumul (Tower, lot TP) n'y est jamais d'avance : il n'est dans le classement du jour qu'à partir de son premier jour entier
+ * réponse du serveur : Cumulé, puis les jeux au temps (lots K1 et K1b : le champ `cumul` de la fiche d'un jeu ; Track, sans fiche, d'abord). Un jeu hors du cumul (Tower, lot TP) n'y est jamais d'avance : il n'est dans le classement du jour qu'à partir de son premier jour entier
  * `on`, et un onglet dessiné puis retiré à la réponse clignoterait ; il apparaît avec la réponse du serveur, quand il est là.
  */
 function barreDesVues(t: T, c: Classement | null): HTMLElement {
