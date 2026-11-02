@@ -94,7 +94,6 @@ const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || c
 const maintenant = () => Date.now() + (lecture?.decalage ?? 0);
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
-const NOM_JEU = { track: "jeu.track.nom", jump: "jeu.jump.nom", tower: "jeu.tower.nom" } as const;
 
 /** Le nom traduit d'un thème (`portail.theme.<jeu>.<code>`), ou `null` s'il est inconnu du catalogue. */
 function nomTheme(t: T, jeu: string, theme: string | null): string | null {
@@ -139,7 +138,7 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined): HTMLElement
   const texte = c.code === "track" ? t.t("portail.track.accroche") : c.code === "tower" ? t.t("portail.tower.accroche") : t.t(replique ?? "portail.jump.accroche");
   const fabrique = c.code === "track" ? etiquetteTrack : c.code === "tower" ? etiquetteTower : etiquetteJump;
   const etiquette = fabrique({ titre: c.code === "tower" ? t.t("jeu.tower.nom").toUpperCase() : t.t(c.code === "track" ? "jeu.track.titre" : "jeu.jump.titre"), numero: numeroTheme, texte, suite });
-  const nom = t.t(NOM_JEU[c.code]);
+  const nom = t.t(`jeu.${c.code}.nom`);
   const action =
     etat?.statut === "fini"
       ? bouton({ texte: t.t("portail.rejouer"), href: c.lien, variante: "secondaire", pleineLargeur: true, ariaLabel: t.t("portail.rejouer.aria", { jeu: nom }) })
@@ -193,6 +192,8 @@ function tuileClassement(t: T, neuf: boolean): HTMLElement | null {
       : contenuTuile.type === "manque"
         ? tuile({ legende, valeur: formatRang(contenuTuile.rang, langue), sousTexte: t.t("portail.classement.manque", { jeu: nomDuJeu(t, contenuTuile.jeu) }) })
         : tuile({ legende, valeur: "—", sousTexte: t.t("portail.classement.inviter") });
+  // Lot F2 : « 3e entre amis » sous le rang (une ligne du serveur : `rangEntreAmis`, `null` sans ami).
+  if (joueur?.rangEntreAmis) contenu.append(el("div", { classe: "portail-tuile-amis", attrs: { id: "classement-amis" }, texte: t.t("portail.classement.entreAmis", { rang: formatRang(joueur.rangEntreAmis.rang, langue) }) }));
   return el("a", { classe: "portail-tuile-lien", attrs: { id: "classement", href: "classement/", "data-cle": "classement" } }, contenu);
 }
 

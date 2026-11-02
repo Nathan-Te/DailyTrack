@@ -52,6 +52,8 @@ export interface JoueurDuJour {
   cumulMs?: number | null;
   rangDuJour?: number | null;
   classesDuJour?: number | null;
+  /** Lot F2 : sa place parmi ses amis au cumul du jour (« 3e entre amis »), `null` sans ami ou tant qu'il n'a rien fini. */
+  rangEntreAmis?: { rang: number; sur: number } | null;
 }
 
 /** Lot N2 : la dernière nouveauté publiée (la ligne de l'accueil). `publieLe` : l'instant de publication en ms (« lue sur cet appareil » se compare à lui). */

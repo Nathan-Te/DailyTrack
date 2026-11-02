@@ -9,6 +9,7 @@ import { pathToFileURL } from "node:url";
 import { CATALOGUE_COMMUN } from "../packages/ui/src/catalogue";
 import type { Catalogue } from "../packages/ui/src/i18n";
 import { CATALOGUE_PORTAIL } from "../apps/portail/src/catalogue";
+import { CATALOGUE_PAGES } from "../apps/portail/src/cataloguePages";
 import { CATALOGUE_VITRINE } from "../apps/portail/src/catalogueVitrine";
 import { CATALOGUE_DEMO } from "../apps/portail/src/catalogueDemo";
 import { CATALOGUE_IPHONE } from "../packages/ui/src/catalogue.iphone";
@@ -47,6 +48,7 @@ export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingu
   ["packages/ui (amis)", "packages/ui/src/catalogue.amis.ts", CATALOGUE_AMIS as unknown as Bilingue],
   ["apps/portail", "apps/portail/src/catalogue.ts", CATALOGUE_PORTAIL as unknown as Bilingue],
   ["apps/portail (aperçu)", "apps/portail/src/catalogueApercu.ts", APERCU_PORTAIL as unknown as Bilingue],
+  ["apps/portail (pages)", "apps/portail/src/cataloguePages.ts", CATALOGUE_PAGES as unknown as Bilingue],
   ["apps/portail (vitrine)", "apps/portail/src/catalogueVitrine.ts", CATALOGUE_VITRINE as unknown as Bilingue],
   ["apps/portail (démonstration)", "apps/portail/src/catalogueDemo.ts", CATALOGUE_DEMO as unknown as Bilingue],
   ["apps/web (base)", "apps/web/src/catalogue.base.*.ts", TRACK_BASE as unknown as Bilingue],

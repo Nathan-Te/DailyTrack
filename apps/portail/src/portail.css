@@ -192,6 +192,11 @@
   height: 100%;
   box-sizing: border-box;
 }
+/* Lot F2 : « 3e entre amis » sous le rang de la tuile Classement du jour (la ligne n'existe que si le joueur a un rang entre amis : la tuile est dessinée avec elle). */
+.portail-tuile-amis {
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
 /* À prolonger : en encre et en gras (la terre cuite sur crème 2 n'a que 3,6:1). */
 .portail-serie__prolonger {
   font-size: var(--dj-taille-13);

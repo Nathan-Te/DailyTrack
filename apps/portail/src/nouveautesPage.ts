@@ -13,6 +13,7 @@ import { NOM_DE_ZONE } from "@cdj/core/nouveautes";
 import { ecrireLangue, lireLangue, type Langue } from "@cdj/profile";
 import { CATALOGUE_COMMUN, barreJeu, bouton, choixLangue, cheminMentions, el, formatDate, traducteur } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
+import { CATALOGUE_PAGES } from "./cataloguePages";
 import { dans, lireNouveautes, noterNouveauteLue, parDate, type Nouveaute } from "./nouveautesDonnees";
 import { numeroDeJournee } from "./jours";
 import { stockageDuPortail } from "./stockage";
@@ -28,7 +29,7 @@ activerManette(() => import("./manette").then((m) => m.pour("nouveautes")));
 
 const stockage = stockageDuPortail();
 let langue: Langue = lireLangue(stockage, navigator.languages).langue;
-const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
+const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_COMMUN);
 type T = ReturnType<typeof traduire>;
 
 let nouveautes: Nouveaute[] = [];
