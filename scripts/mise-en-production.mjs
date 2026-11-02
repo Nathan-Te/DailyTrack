@@ -164,9 +164,18 @@ export function instantDeParis(texte, maintenant = Date.now()) {
   throw new Error(`« ${voulu} » n'existe pas à Paris (changement d'heure) : choisir une autre minute`);
 }
 
-/** Le plan d'une mise en production faite à l'instant `ms` : bascule, dernier jour conservé, jours régénérés, premier jour du lancement. */
-export function planDesJours(ms, premierJour) {
-  const bascule = jourDeBascule(ms);
+/**
+ * La durée d'une mise en production, au plus, du clic au déploiement du site : le jour de bascule se compte depuis la FIN PRÉVUE (clic + cette marge), pas depuis le clic.
+ * Mesuré : 32 min (28/10/2026, CI reprise), 31 min jusqu'au serveur (01/11/2026, CI complète relancée). Le 01/11/2026 le bouton, lancé à 23 h 44 à Paris, a calculé la
+ * bascule au 02/11 ; le serveur se déployait à 00 h 15 : `bascule-valide` a tout arrêté (le 02/11 avait commencé). Deux heures couvrent une CI complète et des
+ * installations lentes (15 min au plus par étape). Un clic après 22 h à Paris met donc la bascule au surlendemain : le lendemain est alors un jour d'avant la bascule,
+ * protégé s'il a un résultat, régénéré sinon (règle R11) — comme n'importe quel jour d'avant.
+ */
+export const DUREE_MISE_EN_PRODUCTION_MS = 2 * 3_600_000;
+
+/** Le plan d'une mise en production lancée à l'instant `ms` : bascule (après la fin prévue, `marge`), dernier jour conservé, jours régénérés, premier jour du lancement. */
+export function planDesJours(ms, premierJour, marge = DUREE_MISE_EN_PRODUCTION_MS) {
+  const bascule = jourDeBascule(ms + marge);
   return {
     instant: ms,
     jourDeParis: jourDeParis(ms),

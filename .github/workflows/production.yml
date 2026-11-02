@@ -142,7 +142,7 @@ jobs:
           node scripts/mise-en-production.mjs bascule "${args[@]}" --sortie "$GITHUB_OUTPUT" > "$RUNNER_TEMP/bascule.txt"
           . <(sed 's/^/export /' "$RUNNER_TEMP/bascule.txt")
           {
-            echo "- Jour de bascule : **$bascule** (le premier jour de Paris qui commence après le déploiement${SIMULEE:+, heure simulée « $SIMULEE »} ; jour de Paris du déploiement : $jour_de_paris) — les jours protégés du $premier au $veille restent exactement ceux de la production, les $bascule et suivants sont régénérés avec le nouveau code."
+            echo "- Jour de bascule : **$bascule** (le premier jour de Paris qui commence après la fin prévue du déploiement, clic + 2 h${SIMULEE:+, heure simulée « $SIMULEE »} ; jour de Paris du clic : $jour_de_paris) — les jours protégés du $premier au $veille restent exactement ceux de la production, les $bascule et suivants sont régénérés avec le nouveau code."
             [ "$MODE" = production ] || echo "- **$MODE** : contre la recette, rien ne part en production."
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Aucune PR « Jours figés » n'attend d'être fusionnée
