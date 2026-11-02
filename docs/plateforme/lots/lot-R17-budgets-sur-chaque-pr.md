@@ -17,9 +17,12 @@ Le job du run de `main` publie l'artefact `budgets-<sha>` (30 jours). Une PR lit
 Plus aucun plafond en octets (testé : `budgets.test.ts`). Gardés, parce que ce n'est pas du poids : la **composition** (rien d'à-la-demande dans le premier chargement, polices et préchargement) et, pour `perf.spec.ts`, le chargement sur un téléphone simulé (navigateur). Aucun spec supprimé. Les plafonds sans ligne (fantômes, son, modes de direction, ombres, boucles : 8) sont devenus des **lignes de `budgets.md`** (même valeur). Retirés : le doublon esbuild de `musique.lecteur` (`poids.test.ts`) et les `BUDGET_*` du portail.
 
 ## Durée
-Job en parallèle des tests, sans en attendre la construction (l'attendre aurait allongé la CI). Local : construction 8 s, mesure 2 s. CI : voir « Runs ».
+Job en parallèle des tests, sans en attendre la construction (l'attendre aurait allongé la CI). **Mesuré : 32 à 36 s** (`npm ci`, construction, mesure) ; la CI de PR reste à **3,6 min** (run 41543505950), loin des 6 min.
 
 ## Vérifié / non vérifié
 - Vérifié en local : `npm run verifier` vert (499 s), `securite-workflows` 0 écart ; **aucun plafond de `budgets.md` changé** (comparé ligne à ligne).
 - **Constat pour Nathan** : une construction avec `VITE_PRODUCTION=1` mesure `tower.jsCss` = 40 111 o (> 40 000) ; les plafonds sont posés sur la construction des e2e (sans ce drapeau), que le job reprend. Non corrigé (hors périmètre).
-- Runs de CI et run d'essai rouge : voir ci-dessous.
+## Runs
+- CI de PR verte, job « Budgets » vert (36 s) : https://github.com/Nathan-Te/DailyTrack/actions/runs/41543505950
+- **Run d'essai rouge** (commit « ESSAI R17 » : +1,5 Ko aléatoires dans `packages/ui/src/i18n.ts`, puis annulé par un `revert`) : https://github.com/Nathan-Te/DailyTrack/actions/runs/41544065210 — Budgets et `test` rouges, six lignes nommées : `portail.premier` (+659 o), `track.jsCss` (+1 696), `track.js` (+1 727), `track.horsThree` (+1 670), `jump.jsCss` (+793), `tower.jsCss` (+1 698). Un socle qui grossit est donc vu dans sa PR.
+- Non vérifié : la colonne « écart avec main » n'a pas encore de donnée (le run de `main` n'a pas encore publié `budgets-<sha>`) : elle se remplit après la première fusion ; le chemin (artefact, `download-artifact`) n'est testé qu'en logique pure.
