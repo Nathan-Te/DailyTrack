@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
-import { ALT_KEPT_VERSION, MIN_HOLD_VERSION, THEME_BAG_GENERATOR, BRIDGE_GENERATOR, BRIDGE_VERSION, JUMP_GENERATOR_VERSION, RESTART_GENERATOR, RESTART_VERSION, LASER_GENERATOR, MUSHROOM_GENERATOR, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_GENERATOR, PLATFORM_VERSION, PRESS_GENERATOR, PRESS_VERSION, SECTION_CLOCK_GENERATOR, SECTION_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR, SINGLE_CLOCK_VERSION, STALACTITE_GENERATOR, STALACTITE_VERSION, dailyLevel } from "../src/index";
+import { ALT_KEPT_VERSION, CHECKPOINT_ZONE_VERSION, LAME_GENERATOR, MIN_HOLD_VERSION, THEME_BAG_GENERATOR, BRIDGE_GENERATOR, BRIDGE_VERSION, JUMP_GENERATOR_VERSION, RESTART_GENERATOR, RESTART_VERSION, LASER_GENERATOR, MUSHROOM_GENERATOR, LASER_VERSION, MUSHROOM_VERSION, PLATFORM_GENERATOR, PLATFORM_VERSION, PRESS_GENERATOR, PRESS_VERSION, SECTION_CLOCK_GENERATOR, SECTION_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR, SINGLE_CLOCK_VERSION, STALACTITE_GENERATOR, STALACTITE_VERSION, dailyLevel } from "../src/index";
 
 // Référence du générateur (lot 5) : pour des dates fixes, l'empreinte du niveau du jour, ses morceaux et variantes, le temps de l'auteur et
 // les médailles, figés dans `fixtures/daily-golden.json`. Tout changement qui modifie le niveau d'une date (règles, seuils, catalogue,
@@ -35,7 +35,8 @@ const FILE_V9 = join(import.meta.dirname, "fixtures/daily-golden-v9.json");
 const FILE_V10 = join(import.meta.dirname, "fixtures/daily-golden-v10.json");
 const FILE_V11 = join(import.meta.dirname, "fixtures/daily-golden-v11.json");
 const FILE_V12 = join(import.meta.dirname, "fixtures/daily-golden-v12.json");
-const FILE = join(import.meta.dirname, "fixtures/daily-golden-v13.json");
+const FILE_V13 = join(import.meta.dirname, "fixtures/daily-golden-v13.json");
+const FILE = join(import.meta.dirname, "fixtures/daily-golden-v14.json");
 /** Le premier jour, un jour ordinaire, un changement d'heure, un jour de fête, l'année suivante. */
 const DATES = ["2026-10-16", "2026-10-25", "2026-11-03", "2026-12-25", "2027-03-28", "2027-06-21"];
 
@@ -59,7 +60,7 @@ interface Golden {
   days: Record<string, GoldenDay>;
 }
 
-function snapshot(date: string, simVersion = MIN_HOLD_VERSION): GoldenDay {
+function snapshot(date: string, simVersion = CHECKPOINT_ZONE_VERSION): GoldenDay {
   const L = dailyLevel(parseDay(date)!, null, simVersion);
   return {
     id: L.id,
@@ -77,11 +78,12 @@ function snapshot(date: string, simVersion = MIN_HOLD_VERSION): GoldenDay {
 }
 
 if (process.env.UPDATE_GOLDEN) {
-  const golden: Golden = { jumpSimVersion: MIN_HOLD_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, days: Object.fromEntries(DATES.map((d) => [d, snapshot(d)])) };
+  const golden: Golden = { jumpSimVersion: CHECKPOINT_ZONE_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, days: Object.fromEntries(DATES.map((d) => [d, snapshot(d)])) };
   writeFileSync(FILE, JSON.stringify(golden, null, 2) + "\n");
 }
 
 const golden = JSON.parse(readFileSync(FILE, "utf8")) as Golden;
+const goldenV13 = JSON.parse(readFileSync(FILE_V13, "utf8")) as Golden;
 const goldenV12 = JSON.parse(readFileSync(FILE_V12, "utf8")) as Golden;
 const goldenV11 = JSON.parse(readFileSync(FILE_V11, "utf8")) as Golden;
 const goldenV10 = JSON.parse(readFileSync(FILE_V10, "utf8")) as Golden;
@@ -96,7 +98,7 @@ const goldenV3 = JSON.parse(readFileSync(FILE_V3, "utf8")) as Golden;
 describe("référence du générateur (niveau du jour)", () => {
   it("versions de la référence", () => {
     expect(golden.jumpGeneratorVersion, "JUMP_GENERATOR_VERSION a changé : régénérer la référence (UPDATE_GOLDEN=1)").toBe(JUMP_GENERATOR_VERSION);
-    expect(golden.jumpSimVersion, "la version des niveaux du jour a changé : JUMP_GENERATOR_VERSION +1 puis UPDATE_GOLDEN=1").toBe(MIN_HOLD_VERSION);
+    expect(golden.jumpSimVersion, "la version des niveaux du jour a changé : JUMP_GENERATOR_VERSION +1 puis UPDATE_GOLDEN=1").toBe(CHECKPOINT_ZONE_VERSION);
     expect(Object.keys(golden.days)).toEqual(DATES);
   });
 
@@ -104,6 +106,20 @@ describe("référence du générateur (niveau du jour)", () => {
     it(`${date} : même niveau, mêmes morceaux, même temps de l'auteur`, () => {
       const ref = golden.days[date]!;
       expect(snapshot(date), "le niveau de cette date a changé : JUMP_GENERATOR_VERSION +1 puis UPDATE_GOLDEN=1").toEqual(ref);
+    });
+  }
+});
+
+describe("lot 32 : la référence v13 du générateur est intacte (g25, place autour de la lame ; un point de passage se prend en franchissant sa colonne, à toute hauteur)", () => {
+  it("versions de la référence v13", () => {
+    expect(goldenV13.jumpGeneratorVersion).toBe(LAME_GENERATOR);
+    expect(goldenV13.jumpSimVersion).toBe(MIN_HOLD_VERSION);
+    expect(Object.keys(goldenV13.days)).toEqual(DATES);
+  });
+
+  for (const date of DATES) {
+    it(`${date} : dailyLevel(jour, thème, 13) rend le niveau g25 au bit près`, () => {
+      expect(snapshot(date, MIN_HOLD_VERSION)).toEqual(goldenV13.days[date]!);
     });
   }
 });

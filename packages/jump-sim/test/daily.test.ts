@@ -48,6 +48,8 @@ import {
   RESTART_VERSION,
   ALT_KEPT_VERSION,
   MIN_HOLD_VERSION,
+  CHECKPOINT_ZONE_VERSION,
+  PALIER_HEADROOM_ROWS,
   LASER_VERSION,
   bridgeModuleIds,
   STALACTITE_VERSION,
@@ -119,8 +121,8 @@ describe("niveau du jour : identité et pureté", () => {
     // Lot 16 : avec ses voies lentes (et leurs montées ajoutées).
     const fresh = reassemble(levels[7]!);
     // Lot 15 : l'assemblage est en version 3 ; le niveau du jour, le même mis à l'heure unique (phases des sections).
-    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), MIN_HOLD_VERSION)).toBe(levels[7]!.ascii);
-    expect(levels[7]!.level.simVersion).toBe(MIN_HOLD_VERSION);
+    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase), CHECKPOINT_ZONE_VERSION)).toBe(levels[7]!.ascii);
+    expect(levels[7]!.level.simVersion).toBe(CHECKPOINT_ZONE_VERSION);
   });
 
   it("trois dates voisines donnent trois niveaux différents", () => {
@@ -296,6 +298,18 @@ describe("niveau du jour : assemblage", () => {
         for (let c = p.col0; c <= p.col1; c++) {
           // Lot 16 : au-dessus du palier où une voie lente redescend, la descente s'ouvre depuis la galerie ; sa colonne de droite est murée
           // au-dessus de la portée d'un saut quand le haut du morceau suivant y donnerait.
+          if (lv.simVersion >= CHECKPOINT_ZONE_VERSION) {
+            // Lot 32 (version 14) : le puits d'un palier est fermé à `PALIER_HEADROOM_ROWS` rangées au-dessus du sol (plus haut seulement si les morceaux voisins sont plus bas) ; la descente d'une voie lente
+            // est creusée dans le plein au-dessus de cette pièce (colonne de gauche ou de droite, l'autre murée quand le morceau voisin y donnerait).
+            const top = Math.max(roof, p.row - PALIER_HEADROOM_ROWS);
+            for (let r = 0; r < lv.height; r++) {
+              if (r >= top && r < p.row) expect(at(c, r) === TILE_SOLID, `${L.date} palier ${k} (${c}, ${r}) libre`).toBe(false);
+              else if (r >= p.row) expect(at(c, r) === TILE_SOLID, `${L.date} palier ${k} (${c}, ${r}) sol`).toBe(true);
+              else if (down === undefined) expect(at(c, r) === TILE_SOLID, `${L.date} palier ${k} (${c}, ${r}) plafond`).toBe(true);
+              else if (r < down.galleryRow - 3) expect(at(c, r) === TILE_SOLID, `${L.date} palier ${k} (${c}, ${r}) au-dessus de la galerie`).toBe(true);
+            }
+            continue;
+          }
           const from = down === undefined ? roof : c === p.col1 && walled ? p.row - SLOW_REACH_ROWS : Math.min(roof, down.galleryRow - 3);
           for (let r = 0; r < lv.height; r++) expect(at(c, r) === TILE_SOLID, `${L.date} palier ${k} (${c}, ${r})`).toBe(r < from || r >= p.row);
         }

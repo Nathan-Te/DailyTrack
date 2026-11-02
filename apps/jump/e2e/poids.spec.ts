@@ -16,7 +16,8 @@ import { expect, test } from "@playwright/test";
 // PR « Jours figés » du 02/11/2026 : +100 o (9 624 → 9 724) : les dates des niveaux figés sont écrites en plages (`src/plagesJours.ts`) et dépliées au chargement (+61 o mesurés,
 // une fois pour toutes) au lieu d'une liste qui grossissait d'≈ 3 o par jour figé à chaque mise en production (les cinq jours du 29/10 au 02/11 : +15 o, plafond dépassé d'un octet).
 // À confirmer par Nathan (`docs/plateforme/budgets.md`, ligne `jump.jsCss`).
-const AVANT = 352_866 + 9_724;
+// Lot 32 : +1 376 o (9 724 → 11 100) : la version 14 de la simulation et du générateur g26 (`passageZoneAt`, assemblage aux puits fermés, descente scellée, règle « aucun raccourci par point de passage », suites de secours) et le bouton de la course du n° 1 sur l'accueil ; plafond à confirmer par Nathan.
+const AVANT = 352_866 + 11_100;
 const dist = new URL("../dist/assets/", import.meta.url);
 const gz = (f: string) => gzipSync(readFileSync(new URL(f, dist))).length;
 

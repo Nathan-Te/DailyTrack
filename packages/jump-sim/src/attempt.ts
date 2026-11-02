@@ -1,4 +1,4 @@
-import { ALT_KEPT_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
+import { ALT_KEPT_VERSION, CHECKPOINT_ZONE_VERSION, PASSAGE_ZONE_COLS, PASSAGE_ZONE_ROWS, RESTART_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { boxHits, sweep, tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
 import {
@@ -324,6 +324,24 @@ export function checkpointAttempt(level: Level, state: Readonly<AttemptState>): 
   if (level.simVersion >= ALT_KEPT_VERSION && level.alts.length > 0) back.alt = state.alt ?? 0;
   // Lot 12 : les clignotants des sections d'avant ont gardé leur cycle ; les alternés repartent de A (état du point de passage) — avant la v12.
   return { ...back, tiles: settleDynamic(level, back.tiles, back.sections, back.time, back.alt ?? 0, back.player) };
+}
+
+/**
+ * Lot 32 (version 14) : la zone du point de passage où se trouve le personnage, ou −1. **Un point ne se valide que sur son palier** : le centre du personnage est dans les `PASSAGE_ZONE_COLS`
+ * colonnes du palier (la colonne du fanion et la suivante) et ses pieds sont à au plus `PASSAGE_ZONE_ROWS` rangées au-dessus du sol du palier — la rangée du fanion est la rangée juste au-dessus
+ * du sol, la zone est donc le fanion et les deux tuiles au-dessus. Les pieds ne vont jamais sous le sol (il est plein). Pur, entier.
+ */
+export function passageZoneAt(level: Level, player: Readonly<Pick<PlayerState, "x" | "y">>): number {
+  const T = UNITS_PER_TILE;
+  const col = tileOf(player.x + idiv(PLAYER_WIDTH, 2));
+  const feet = player.y + PLAYER_HEIGHT;
+  for (let i = 0; i < level.checkpoints.length; i++) {
+    const c = level.checkpoints[i]!;
+    if (col < c.col) return -1;
+    if (col >= c.col + PASSAGE_ZONE_COLS) continue;
+    return feet <= (c.row + 1) * T && feet >= (c.row + 1 - PASSAGE_ZONE_ROWS) * T ? i : -1;
+  }
+  return -1;
 }
 
 /** Rectangle d'une tuile, en unités. */
@@ -939,7 +957,11 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   let alt = state.alt ?? 0;
   if (level.alts.length > 0) {
     if (flags!.jumped === 1) alt = 1 - alt;
-    if (col > before && level.checkpoints.some((c) => before < c.col && c.col <= col)) alt = 0;
+    // Version 14 : franchir = entrer dans la zone du palier (centre dans ses colonnes, pieds à moins de 3 rangées du sol) ; avant, passer sa colonne vers la droite, à toute hauteur.
+    if (level.simVersion >= CHECKPOINT_ZONE_VERSION) {
+      const zone = passageZoneAt(level, player);
+      if (zone >= 0 && zone !== passageZoneAt(level, state.player)) alt = 0;
+    } else if (col > before && level.checkpoints.some((c) => before < c.col && c.col <= col)) alt = 0;
   }
   // L'état des blocs clignotants et alternés pour le pas suivant (le personnage chevauche-t-il un bloc qui devient plein ? il reste absent).
   tiles = settleDynamic(level, tiles, sections, time, alt, player);
@@ -989,6 +1011,12 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   }
   // ——— Point de passage (lot 4) : pris quand le centre du personnage, vivant à la fin du pas, **franchit sa colonne vers la droite**, à
   // n'importe quelle hauteur (le sauter par-dessus le prend aussi) ; jamais sur une mort (on a déjà rendu l'état de la mort ci-dessus) ———
+  if (level.simVersion >= CHECKPOINT_ZONE_VERSION) {
+    // Version 14 (lot 32) : le point est pris quand, à la fin du pas, le personnage vivant est dans la zone de son palier (se poser en tombant du haut du puits compte ; le traverser plus haut, non).
+    const zone = passageZoneAt(level, player);
+    if (zone >= 0 && zone !== next.checkpoint) return { ...next, checkpoint: zone };
+    return next;
+  }
   if (col > before) {
     let taken = next.checkpoint;
     // Rangés de gauche à droite, une colonne chacun : le plus à droite des points franchis pendant ce pas l'emporte.
