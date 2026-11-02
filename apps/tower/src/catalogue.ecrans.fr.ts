@@ -5,7 +5,9 @@ import { CATALOGUE_FR } from "./catalogue.fr";
 // (`catalogue.en.ts`, à la demande) les a déjà. Les tests et `npm run traductions` voient le tout réuni (`catalogue.ts`).
 export const CATALOGUE_ECRANS_FR = {
   "aide.pause": "Pause",
-  "aide.manette": "À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, Start met en pause.",
+  "aide.manette": "À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} lancent le taquet, Start met en pause.",
+  "aide.taquet": "Taquet",
+  "aide.taquet.note": "Le taquet est un coup de côté donné à la pièce que tu tiens, avant de la poser : elle avance d'un mètre et demi d'un coup, exactement là où tu la pousses, sans aucun recalage. Si elle percute un bloc, elle t'échappe : tu ne la contrôles plus, elle tombe en poussant le bloc de toute sa force — de quoi faire tomber une pièce mal placée. Quand la pièce touche un appui, tu la gardes en main un quart de seconde (sauf si tu tiens « descendre ») : de quoi la glisser d'un taquet dans une fente à sa mesure.",
   "aide.reglables": "Les touches se changent dans Réglages › Commandes.",
 
   "ecran.retour": "Retour à Tower",
@@ -37,11 +39,13 @@ export const CATALOGUE_ECRANS_FR = {
   "commandes.action.recommencer": "Recommencer",
   "commandes.action.pause": "Pause",
   "commandes.action.fantome": "Fantôme",
+  "commandes.action.taquetGauche": "Taquet à gauche",
+  "commandes.action.taquetDroite": "Taquet à droite",
   "commandes.manette.deplacer": "Déplacer",
   "commandes.manette.descendre": "Descendre vite",
   "commandes.fixe.stick": "Stick ou croix",
   "commandes.fixe.stickBas": "Bas du stick ou de la croix",
-  "commandes.tactile": "Quatre boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute).",
+  "commandes.tactile": "Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite (un coup vers le côté, avant la pose).",
 
   "archives.aria": "Archives",
   "archives.titre": "Archives",

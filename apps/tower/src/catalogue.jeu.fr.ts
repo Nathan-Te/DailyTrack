@@ -15,7 +15,10 @@ export const CATALOGUE_JEU_FR = {
   "pause.mentions": "Mentions légales",
   "fin.archive": "Archive : partie non classée.",
   "hud.archive": "Archive",
-  "aide.ligne": "{gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {pause} pause",
+  "aide.ligne": "{gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {taquetGauche} {taquetDroite} taquet · {pause} pause",
+  // Lot T8 : les deux boutons tactiles du taquet (le gabarit de l'aide ci-dessus les cite).
+  "commande.taquetGauche": "Taquet à gauche",
+  "commande.taquetDroite": "Taquet à droite",
 };
 
 /** Ajoute les textes du jeu au catalogue français (le traducteur lit ce même objet : rien à reconstruire). */

@@ -24,7 +24,7 @@ import type RAPIER from "@dimforge/rapier2d-deterministic-compat";
 import type { PieceKind } from "../lab/interface";
 import {
   COMMANDE,
-  COMMANDES_CONNUES,
+  commandesDeLaVersion,
   DEMI_CASE_8,
   FIGEE_TICKS,
   LIMITE_X8,
@@ -42,6 +42,7 @@ import {
 import { CONTACT_V3, CONTACT_V4, DECALAGES_SECOURS, GROUPES_FANTOME, GROUPES_NORMAL, MARGE_LATERALE, type ParamsContact, ROTATION_SECOURS } from "./contact";
 import { cadreDe, departGauche8, PAS_GRILLE_8, pivoter } from "./grille";
 import { physiqueEstDEssai, physiqueResolue, type ReglagesPhysique } from "./physique";
+import { paramsResolus, type ParamsStabilite } from "./stabilite";
 import { DUREE_EFFET, type Effet, estBonus, type Palier, type Taille } from "./paliers";
 import type { Rapier } from "./rapier";
 import { boitesE, type Echelles, etenduePieceE, sommetPieceE } from "./echelles";
@@ -53,6 +54,10 @@ export interface PieceDepart {
   rot: number;
   x8: number;
   y8: number;
+  /** Lot T8 : un décalage horizontal en millimètres ENTIERS (défaut 0), pour un trou de quelques millimètres que les huitièmes de mètre ne savent pas dire (`?scenario=emboitement`) : x = x8 / 8 + dxMm / 1000. */
+  dxMm?: number;
+  /** Lot T8 : de même verticalement (millimètres entiers) : de quoi laisser un jour de quelques millimètres entre deux pièces (`?scenario=emboitement`). */
+  dyMm?: number;
 }
 
 /**
@@ -179,8 +184,17 @@ interface Piece {
   vecu: number;
   soudee: boolean;
   fixe: boolean;
+  /** Lot T8 : le recalage du déplacement intelligent, en millimètres entiers (x = x8 / 8 + corr / 1000) ; les élans de taquet donnés par cette pièce en main, et l'élan en cours (sens −1, 1 ou 0, ticks restants). */
+  corr: number;
+  coups: number;
+  /** Lot T8 : les ticks passés en main, posée contre un appui (le délai de grâce avant le lâcher, `delaiLacher`). */
+  contact: number;
+  coupSens: number;
+  coupReste: number;
 }
 
+/** Le déplacement intelligent ne recale que si la pièce tombe au moins aussi bas de plus que cela (mètres) : un vrai creux, pas un rebord. */
+const GAIN_ALIGNEMENT = 0.4;
 /** La portée de la visée (mètres) : plus que toute la hauteur d'une partie. */
 const PORTEE_VISEE = 200;
 
@@ -217,6 +231,12 @@ export class Partie {
   /** Lot T6 : la version de la simulation que joue cette partie (3 : celle des rediffusions d'avant le lot, rejouée au bit près ; 4 : la grille et la pose juste). */
   readonly version: number;
   private readonly v4: boolean;
+  /** Lot T8 : la simulation 5 (pose douce, tolérance, taquet) et ses réglages (`stabilite.ts`). */
+  private readonly v5: boolean;
+  private readonly params: ParamsStabilite;
+  /** Le recouvrement accepté en main (mètres) : 1 mm avant la simulation 5, la tolérance d'emboîtement ensuite ; et le retrait latéral du test de lâcher (5 mm avant, la tolérance au moins ensuite). */
+  private readonly tolRefus: number;
+  private readonly tolLaterale: number;
   private readonly contact: ParamsContact;
   private readonly secours: boolean;
 
@@ -229,17 +249,21 @@ export class Partie {
     R: Rapier,
     readonly scenario: Scenario,
     readonly reglages: Readonly<Reglages> = REGLAGES_DEFAUT,
-    private readonly options: { stabilisationMaxTicks?: number; physique?: Partial<ReglagesPhysique>; version?: number; secoursRotation?: boolean; contact?: Partial<ParamsContact> } = {},
+    private readonly options: { stabilisationMaxTicks?: number; physique?: Partial<ReglagesPhysique>; version?: number; secoursRotation?: boolean; contact?: Partial<ParamsContact>; stabilite?: Partial<ParamsStabilite> } = {},
     depuis?: Partie,
   ) {
     this.R = R;
     this.version = options.version ?? TOWER_SIM_VERSION;
     if (!VERSIONS_SIM_JOUABLES.includes(this.version)) throw new Error(`simulation ${this.version} : ce code joue les versions ${VERSIONS_SIM_JOUABLES.join(", ")}`);
     this.v4 = this.version >= 4;
+    this.v5 = this.version >= 5;
+    this.params = paramsResolus(options.stabilite);
+    this.tolRefus = this.v5 ? this.params.tolerance : MARGE_REFUS;
+    this.tolLaterale = this.v5 ? Math.max(MARGE_LATERALE, this.params.tolerance) : MARGE_LATERALE;
     this.contact = { ...(this.v4 ? CONTACT_V4 : CONTACT_V3), ...(options.contact ?? {}) };
     this.secours = options.secoursRotation ?? ROTATION_SECOURS;
     this.vies = reglages.vies;
-    this.physique = physiqueResolue(options.physique);
+    this.physique = physiqueResolue(options.physique, this.version);
     this.echelles = { petite4: this.physique.echellePetite4, geante4: this.physique.echelleGeante4 };
     if (depuis) {
       this.world = R.World.restoreSnapshot(depuis.world.takeSnapshot());
@@ -366,7 +390,7 @@ export class Partie {
 
   /** Lot T5 : cette partie a-t-elle des réglages d'ESSAI de physique (`?debug&tune`) ? Une telle partie n'est jamais classée (le serveur la rejouerait avec les réglages normaux). */
   get physiqueDEssai(): boolean {
-    return physiqueEstDEssai(this.physique);
+    return physiqueEstDEssai(this.physique, this.version);
   }
 
   /** Lot T5 : les tailles d'essai (pour le rendu : le jeu dessine les pièces à la taille que la physique leur donne). */
@@ -392,7 +416,7 @@ export class Partie {
   avancer(commandes: number): void {
     if (this.phase === "fini") return;
     this.ticks++;
-    if (this.phase === "jeu") this.journal.push(commandes & COMMANDES_CONNUES);
+    if (this.phase === "jeu") this.journal.push(commandes & commandesDeLaVersion(this.version));
     if (this.phase === "jeu" && this.active && !this.retenue) this.piloter(commandes | 0);
     this.world.step();
     this.apresPas();
@@ -402,30 +426,194 @@ export class Partie {
 
   private piloter(commandes: number): void {
     const p = this.active!;
-    if (commandes & COMMANDE.GAUCHE) this.deplacer(p, -DEMI_CASE_8);
-    if (commandes & COMMANDE.DROITE) this.deplacer(p, DEMI_CASE_8);
-    if (commandes & COMMANDE.TOURNER) this.tourner(p);
-    if (p.effet === "vent" && ++p.vecu % this.physique.ventPeriodeTicks === 0) this.deplacer(p, (this.scenario.ventSens === -1 ? -1 : 1) * this.physique.ventPas8);
+    commandes &= commandesDeLaVersion(this.version);
+    // Pendant un élan de taquet, la pièce file de côté : les pas, le quart de tour et le vent attendent la fin de l'élan (quelques dixièmes de seconde).
+    if (p.coupSens === 0) {
+      if (commandes & COMMANDE.GAUCHE) this.deplacer(p, -DEMI_CASE_8);
+      if (commandes & COMMANDE.DROITE) this.deplacer(p, DEMI_CASE_8);
+      if (commandes & COMMANDE.TOURNER) this.tourner(p);
+      if (commandes & COMMANDE.TAQUET_GAUCHE) this.taquet(p, -1);
+      else if (commandes & COMMANDE.TAQUET_DROITE) this.taquet(p, 1);
+    }
+    if (p.effet === "vent" && ++p.vecu % this.physique.ventPeriodeTicks === 0 && p.coupSens === 0) this.deplacer(p, (this.scenario.ventSens === -1 ? -1 : 1) * this.physique.ventPas8);
     const facteur = commandes & COMMANDE.DESCENDRE ? this.reglages.facteurDescente : 1;
     const normale = this.reglages.vitesseChute8 / 8;
+    if (p.coupSens !== 0 && this.elan(p, p.contact > 0 ? p.y : p.y - (normale * facteur) / TICKS_PAR_SECONDE)) return; // le taquet a percuté un bloc : la pièce est lâchée, plus rien ne la contrôle
     let vy = normale * facteur;
     // « Descendre » est un confort, jamais un effet physique (lot T2) : la descente rapide s'arrête à la marge de contact, la pièce finit sa course à la vitesse normale et
     // lâche exactement comme une pièce sans accélération — elle se pose à la même vitesse, avec la même force.
     if (facteur > 1 && this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) vy = normale;
-    p.body!.setLinvel({ x: 0, y: -vy }, true);
     // Au pas qui vient la pièce descend de vy / 60 : si elle toucherait (à la marge près) la plateforme ou une pièce, elle lâche maintenant.
-    if (this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) this.lacher(p);
+    if (this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) {
+      // Simulation 5 : le délai de grâce (le « coyote time » de Tricky Towers). Tant qu'on ne tient pas « descendre », la pièce reste EN MAIN `delaiLacher` ticks, posée à fleur de son appui, et tous les ordres
+      // marchent encore (pas, quart de tour, taquet) : de quoi la glisser d'un coup dans une fente à peine plus haute qu'elle. Si l'appui disparaît sous elle, elle retombe ; le délai passé, elle lâche.
+      if (this.v5 && !(commandes & COMMANDE.DESCENDRE) && p.contact < this.params.delaiLacher) {
+        if (p.contact === 0) this.poserSurAppui(p);
+        p.contact++;
+        p.body!.setLinvel({ x: 0, y: 0 }, true);
+        return;
+      }
+      p.body!.setLinvel({ x: 0, y: -vy }, true);
+      this.finirElan(p);
+      this.lacher(p);
+      return;
+    }
+    p.contact = 0;
+    p.body!.setLinvel({ x: 0, y: -vy }, true);
+  }
+
+  /** Pose la pièce en main à fleur de l'appui qu'elle va toucher (5 mm au-dessus) : une fente d'à peine plus que sa hauteur reste franchissable. Un lancer de forme vers le bas, rétréci comme le test de lâcher. */
+  private poserSurAppui(p: Piece): void {
+    let toi = Infinity;
+    for (const b of boitesE(p.kind, p.rot, p.taille, this.echelles)) {
+      const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - this.tolLaterale), b.hh / 8);
+      const hit = this.world.castShape({ x: p.x + b.cx / 8, y: p.y + b.cy / 8 }, 0, { x: 0, y: -1 }, forme, 0, 0.2, false, undefined, undefined, undefined, p.body!);
+      if (hit && hit.time_of_impact < toi) toi = hit.time_of_impact;
+    }
+    if (toi === Infinity) return;
+    p.y -= Math.max(0, toi - 0.005);
+    p.body!.setTranslation({ x: p.x, y: p.y }, true);
+  }
+
+  /**
+   * Lot T8 (simulation 5) — **le taquet**, un petit coup de côté de la pièce EN MAIN, avant la pose, vers la gauche (−1) ou la droite (1) — le « nudge » de Tricky Towers. **Un contrôle manuel à 100 %** :
+   * la pièce avance de `taquetPas8` huitièmes de mètre par tick pendant `taquetTicks` ticks, en ligne droite, sans aucun recalage ni alignement (le déplacement intelligent n'est que pour les pas de base) ;
+   * elle reste là où le coup l'a mise. Elle s'arrête au premier obstacle et frappe la pièce posée qu'elle touche (`elan`). `taquetMax` coups par pièce (0 : sans limite).
+   */
+  private taquet(p: Piece, sens: number): void {
+    if (this.params.taquetMax > 0 && p.coups >= this.params.taquetMax) return;
+    p.coups++;
+    p.coupSens = sens;
+    p.coupReste = this.params.taquetTicks;
+  }
+
+  /**
+   * Un tick de coup. La pièce (un fantôme, sans contact) avance de `taquetPas8` huitièmes : on lance sa forme (rétrécie de la tolérance d'emboîtement) dans le sens du coup, à la hauteur où elle sera à ce tick
+   * (`y`), et elle s'arrête au premier obstacle — en huitièmes ENTIERS, jamais dedans. **Si elle percute un bloc** (une pièce posée, même collée à elle, ou la plateforme), **elle n'est plus contrôlable** : elle
+   * est lâchée sur-le-champ comme un corps ordinaire (pas de pose douce : la gravité entière), avec une vitesse latérale de `taquetChoc8 / 8` vers le bloc — c'est la physique de Rapier qui pousse
+   * (une pièce mal placée en hauteur tombe). Le bord de la scène arrête le coup sans lâcher. Le coup finit aussi au bout de ses ticks, ou quand la pièce touche ce qui est dessous (le lâcher).
+   * Rend vrai si la pièce a été lâchée.
+   */
+  private elan(p: Piece, y: number): boolean {
+    const sens = p.coupSens;
+    const pas8 = this.params.taquetPas8;
+    const tol = this.tolRefus;
+    let avance8 = pas8;
+    let percute = false;
+    for (const b of boitesE(p.kind, p.rot, p.taille, this.echelles)) {
+      const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - tol), Math.max(0.0001, b.hh / 8 - tol));
+      const hit = this.world.castShape({ x: p.x + b.cx / 8, y: y + b.cy / 8 }, 0, { x: sens, y: 0 }, forme, 0, pas8 / 8, false, undefined, undefined, undefined, p.body!);
+      if (hit && hit.time_of_impact * 8 < avance8) {
+        avance8 = Math.max(0, Math.floor(hit.time_of_impact * 8 + 1e-9));
+        percute = true;
+      }
+    }
+    let bord = false;
+    if (Math.abs(p.x8 + sens * avance8) > LIMITE_X8) {
+      avance8 = Math.max(0, LIMITE_X8 - sens * p.x8);
+      percute = false;
+      bord = true;
+    }
+    if (avance8 > 0) {
+      p.x8 += sens * avance8;
+      p.g8 += sens * avance8;
+      p.x = p.x8 / 8 + p.corr / 1000;
+      p.body!.setTranslation({ x: p.x, y: p.y }, true);
+    }
+    if (percute) {
+      this.finirElan(p);
+      this.lacher(p, (sens * this.params.taquetChoc8) / 8, false);
+      return true;
+    }
+    if (bord || --p.coupReste <= 0) this.finirElan(p);
+    return false;
+  }
+
+  private finirElan(p: Piece): void {
+    p.coupSens = 0;
+    p.coupReste = 0;
+  }
+
+  /**
+   * Lot T8 (simulation 5) — **le déplacement intelligent**. Le pas d'un ordre reste fixe (une demi-case), mais le jeu recale la pièce en main de quelques centimètres (`alignement`, 6 cm au plus, en
+   * millimètres ENTIERS : x = x8 / 8 + corr / 1000) pour qu'elle tombe vraiment dans le creux qu'elle vise : un trou décalé de la grille par une dérive de quelques centimètres, un voisin qui dépasse.
+   * Pour chaque recalage candidat (pas de 4 mm) on lance la forme vers le bas (comme la visée) et on regarde de combien elle tombe. Si, à la grille, elle tombe aussi bas qu'avec le meilleur
+   * recalage (à 2 cm près) : aucun recalage. Sinon on prend, dans la plage des recalages qui tombent aussi bas, celui qui est le plus près de zéro en gardant 4 mm de jeu des bords de la plage ; si le creux
+   * n'est atteint qu'avec la tolérance d'emboîtement, on centre la pièce dans le creux. Un recalage n'est jamais pris s'il enfonce la pièce dans un voisin à sa hauteur. Rien n'est lu sur une horloge
+   * ni tiré au hasard : le résultat ne dépend que de l'état du monde, donc la rediffusion le refait à l'identique.
+   */
+  private aligner(p: Piece): void {
+    p.corr = 0;
+    p.x = p.x8 / 8;
+    const portee = Math.round(this.params.alignement * 1000);
+    if (!this.v5 || portee < 4 || !p.body || p.etat !== "active") return;
+    const bs = boitesE(p.kind, p.rot, p.taille, this.echelles);
+    const PAS = 4;
+    const n = Math.floor(portee / PAS);
+    const profondeur = (corrMm: number, marge: number): number | null => {
+      const x = p.x8 / 8 + corrMm / 1000;
+      if (corrMm !== 0 && this.toucheBoites(bs, p.body!, x, p.y, -this.tolRefus, -this.tolRefus)) return null;
+      let toi = Infinity;
+      for (const b of bs) {
+        const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - marge), b.hh / 8);
+        const hit = this.world.castShape({ x: x + b.cx / 8, y: p.y + b.cy / 8 }, 0, { x: 0, y: -1 }, forme, 0, PORTEE_VISEE, false, undefined, undefined, undefined, p.body!);
+        if (hit && hit.time_of_impact < toi) toi = hit.time_of_impact;
+      }
+      return toi === Infinity ? null : toi;
+    };
+    const essai = (marge: number, centrer: boolean): { dmax: number; corr: number; gain: number } | null => {
+      const d: (number | null)[] = [];
+      for (let k = -n; k <= n; k++) d.push(profondeur(k * PAS, marge));
+      let dmax = -Infinity;
+      for (const v of d) if (v !== null && v > dmax) dmax = v;
+      if (dmax === -Infinity) return null;
+      const bon = (k: number): boolean => d[k + n] !== null && d[k + n]! >= dmax - 0.02;
+      const d0 = d[n] ?? 0;
+      if (!centrer && bon(0)) return { dmax, corr: 0, gain: 0 };
+      // la plage contiguë de recalages « aussi bas que le meilleur » la plus proche de zéro (distance nulle si elle contient zéro)
+      let meilleure: [number, number] | null = null;
+      let distMin = Infinity;
+      for (let k = -n; k <= n; k++) {
+        if (!bon(k)) continue;
+        let j = k;
+        while (j + 1 <= n && bon(j + 1)) j++;
+        const dist = k <= 0 && j >= 0 ? 0 : Math.min(Math.abs(k), Math.abs(j));
+        if (dist < distMin) {
+          distMin = dist;
+          meilleure = [k, j];
+        }
+        k = j;
+      }
+      if (!meilleure) return null;
+      const lo = meilleure[0] * PAS;
+      const hi = meilleure[1] * PAS;
+      if (centrer) return { dmax, corr: Math.round((lo + hi) / 2), gain: dmax - d0 };
+      const jeu = Math.min(4, (hi - lo) / 2);
+      return { dmax, corr: Math.round(Math.min(Math.max(0, lo + jeu), hi - jeu)), gain: dmax - d0 };
+    };
+    const net = essai(0.001, false);
+    const mou = essai(this.tolLaterale, true);
+    let corr = 0;
+    if (net && (!mou || net.dmax >= mou.dmax - 0.02)) corr = net.corr;
+    else if (mou) corr = mou.corr;
+    // Un vrai creux seulement : le recalage ne joue que si la pièce tombe au moins `GAIN_ALIGNEMENT` plus bas (un creux d'une demi-case ou plus), jamais pour un simple rebord.
+    const gain = net && (!mou || net.dmax >= mou.dmax - 0.02) ? net.gain : (mou?.gain ?? 0);
+    if (corr === 0 || gain < GAIN_ALIGNEMENT) return;
+    p.corr = corr;
+    p.x = p.x8 / 8 + corr / 1000;
+    p.body.setTranslation({ x: p.x, y: p.y }, true);
   }
 
   /** Un déplacement de `delta8` huitièmes de mètre (une demi-case par ordre du joueur, un huitième par poussée du vent) ; refusé s'il enfonce la pièce dans un autre corps ou la sort des limites. */
   private deplacer(p: Piece, delta8: number): void {
     const x8 = p.x8 + delta8;
     if (Math.abs(x8) > LIMITE_X8) return;
-    if (this.touche(p, x8 / 8, p.y, -MARGE_REFUS)) return;
+    if (this.touche(p, x8 / 8, p.y, -this.tolRefus)) return;
     p.x8 = x8;
     p.g8 += delta8;
     p.x = x8 / 8;
     p.body!.setTranslation({ x: p.x, y: p.y }, true);
+    this.aligner(p);
   }
 
   /**
@@ -436,7 +624,7 @@ export class Partie {
   private tourner(p: Piece): void {
     const rot = (p.rot + 3) & 3;
     if (!this.v4) {
-      if (this.toucheBoites(boitesE(p.kind, rot, p.taille, this.echelles), p.body!, p.x, p.y, -MARGE_REFUS, -MARGE_REFUS)) return;
+      if (this.toucheBoites(boitesE(p.kind, rot, p.taille, this.echelles), p.body!, p.x, p.y, -this.tolRefus, -this.tolRefus)) return;
       this.retirerCorps(p);
       p.rot = rot;
       p.body = this.creerCorps(p);
@@ -454,7 +642,7 @@ export class Partie {
       const x8 = g8 - apres.gauche;
       if (Math.abs(x8) > LIMITE_X8) continue;
       const y = (pv.bas8 + dy * PAS_GRILLE_8 - apres.bas) / 8;
-      if (this.toucheBoites(bs, p.body!, x8 / 8, y, -MARGE_REFUS, -MARGE_REFUS)) continue;
+      if (this.toucheBoites(bs, p.body!, x8 / 8, y, -this.tolRefus, -this.tolRefus)) continue;
       this.retirerCorps(p);
       p.rot = rot;
       p.g8 = g8;
@@ -462,14 +650,21 @@ export class Partie {
       p.x = x8 / 8;
       p.y = y;
       p.body = this.creerCorps(p);
+      this.aligner(p);
       return;
     }
   }
 
-  private lacher(p: Piece): void {
-    p.body!.setLinvel({ x: 0, y: -this.reglages.vitesseChute8 / 8 }, true); // jamais la vitesse d'une descente rapide : celle d'une chute normale
+  /** Lâche la pièce en main. `vx` (m/s) : la vitesse latérale d'un taquet qui a percuté un bloc ; `douce` faux : pas de pose douce (la chute normale, la gravité entière), pour ce même cas. */
+  private lacher(p: Piece, vx: number = 0, douce: boolean = true): void {
+    // Version 5 : la pose douce — la pièce part de `vitessePose8` (petite, réglable) au lieu de la chute normale ; elle garde son poids (la gravité fait le reste). Avant : la chute normale.
+    const vitesse = this.v5 && douce ? this.params.vitessePose8 : this.reglages.vitesseChute8;
+    p.body!.setLinvel({ x: vx, y: -vitesse / 8 }, true); // jamais la vitesse d'une descente rapide
     p.body!.setGravityScale(1, true);
     if (this.v4) for (let i = 0; i < p.body!.numColliders(); i++) p.body!.collider(i).setCollisionGroups(GROUPES_NORMAL);
+    if (this.v5) {
+      if (douce && this.params.dureeGraviteDouce > 0 && this.params.graviteDouce !== 1) p.body!.setGravityScale(this.params.graviteDouce, true);
+    }
     p.etat = "libre";
     p.lacheTick = this.ticks;
     this.posees++;
@@ -488,7 +683,7 @@ export class Partie {
   private toucheEnBas(p: Piece, x: number, y: number): boolean {
     const bs = boitesE(p.kind, p.rot, p.taille, this.echelles);
     if (!this.v4) return this.toucheBoites(bs, p.body!, x, y, this.physique.margeContact, this.physique.margeContact);
-    return this.toucheBoites(bs, p.body!, x, y - this.physique.margeContact / 2, -MARGE_LATERALE, this.physique.margeContact / 2);
+    return this.toucheBoites(bs, p.body!, x, y - this.physique.margeContact / 2, -this.tolLaterale, this.physique.margeContact / 2);
   }
 
   /** Une boîte de la forme, agrandie de `margeX` et `margeY` (réduite si négative), recouvre-t-elle un autre corps que `corps` ? */
@@ -559,12 +754,13 @@ export class Partie {
     const y8 = Math.ceil(sommet * 8) + this.reglages.hauteurApparition8 - bas8;
     const p: Piece = {
       id, kind, rot: 0, etat: "active", body: null, x8, g8, x: x8 / 8, y: y8 / 8, angle: 0, endormie: false, sommet: y8 / 8, stabilisee: false,
-      taille, effet, lacheTick: -1, vecu: 0, soudee: false, fixe: false,
+      taille, effet, lacheTick: -1, vecu: 0, soudee: false, fixe: false, corr: 0, coups: 0, contact: 0, coupSens: 0, coupReste: 0,
     };
     p.body = this.creerCorps(p);
     this.pieces.push(p);
     this.active = p;
     this.distribuees++;
+    this.aligner(p);
   }
 
   /** L'effet de la pièce qui naît : celui qui est en cours, sinon le prochain de la file (« l'un après l'autre »). Un effet couvre `DUREE_EFFET` pièces. */
@@ -582,8 +778,8 @@ export class Partie {
   /** Une pièce posée d'avance : un corps endormi, déjà « stabilisé » (elle compte dans la hauteur dès le début). */
   private poserDepart(d: PieceDepart): void {
     const p: Piece = {
-      id: this.pieces.length, kind: d.kind, rot: d.rot & 3, etat: "libre", body: null, x8: d.x8, g8: 0, x: d.x8 / 8, y: d.y8 / 8, angle: 0, endormie: false, sommet: 0, stabilisee: true,
-      taille: "normale", effet: null, lacheTick: -1, vecu: 0, soudee: false, fixe: false,
+      id: this.pieces.length, kind: d.kind, rot: d.rot & 3, etat: "libre", body: null, x8: d.x8, g8: 0, x: d.x8 / 8 + (d.dxMm ?? 0) / 1000, y: d.y8 / 8 + (d.dyMm ?? 0) / 1000, angle: 0, endormie: false, sommet: 0, stabilisee: true,
+      taille: "normale", effet: null, lacheTick: -1, vecu: 0, soudee: false, fixe: false, corr: 0, coups: 0, contact: 0, coupSens: 0, coupReste: 0,
     };
     p.sommet = sommetPieceE(p.kind, p.rot, p.y, 0, "normale", this.echelles);
     p.body = this.creerCorps(p);
@@ -597,6 +793,8 @@ export class Partie {
     // 1. positions, pièces perdues.
     for (const p of this.pieces) {
       if (!p.body) continue;
+      // Pose douce : la gravité entière revient `dureeGraviteDouce` ticks après le lâcher (chaque pièce, même si une autre a été lâchée entre-temps).
+      if (this.v5 && p.lacheTick >= 0 && this.ticks - p.lacheTick === this.params.dureeGraviteDouce && this.params.dureeGraviteDouce > 0 && p.etat === "libre") p.body.setGravityScale(1, true);
       if (p.etat === "active") {
         const t = p.body.translation();
         // Version 4 : la colonne de la pièce en main est celle de la grille (l'autorité, jamais Rapier) ; seule la hauteur vient du moteur.
@@ -813,13 +1011,13 @@ export class Partie {
     // L'arrivée : chaque boîte est lancée vers le bas (rétrécie sur les côtés comme pour le lâcher : un voisin collé n'est pas « dessous »), la plus courte distance l'emporte.
     let toi = Infinity;
     for (const b of bs) {
-      const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - MARGE_LATERALE), b.hh / 8);
+      const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - this.tolLaterale), b.hh / 8);
       const hit = this.world.castShape({ x: p.x + b.cx / 8, y: p.y + b.cy / 8 }, 0, bas, forme, 0, PORTEE_VISEE, false, undefined, undefined, undefined, p.body);
       if (hit && hit.time_of_impact < toi) toi = hit.time_of_impact;
     }
     // Les deux traits : un rayon par bord (rentré de `MARGE_LATERALE`), parti du point le plus bas de la pièce à cette abscisse.
     const traits = [cadre.gauche / 8, cadre.droite / 8].map((bord, i) => {
-      const xRel = bord + (i === 0 ? MARGE_LATERALE : -MARGE_LATERALE);
+      const xRel = bord + (i === 0 ? this.tolLaterale : -this.tolLaterale);
       let yRel = Infinity;
       for (const b of bs) if (xRel >= (b.cx - b.hw) / 8 && xRel <= (b.cx + b.hw) / 8) yRel = Math.min(yRel, (b.cy - b.hh) / 8);
       const yHaut = p.y + yRel;

@@ -4,6 +4,7 @@
 //   ?seed=AAAA-MM-JJ          le contenu de ce jour. R9 (même règle que `?seed=` de Jump) : sur la production une date FUTURE est refusée (le contenu d'aujourd'hui s'ouvre) ; sur un aperçu de
 //                             branche ou en local toutes les dates sont ouvertes. Une date illisible ouvre le contenu d'aujourd'hui.
 //   ?scenario=essai           la suite fixe d'essai du lot T1 : 40 pièces, une plateforme de 7 m, aucun palier — fermé en production
+//   ?scenario=emboitement     (lot T8) une tour de départ avec une niche latérale et un trou du dessus rétréci de 1 cm, pour essayer le taquet et la tolérance d'emboîtement — fermé en production
 //   ?scenario=alignement      la suite fixe pour essayer de poser juste (lot T6) : O, O, I, J, L, T, T, S, Z, O, I, T sur une plateforme de 7 m, sans palier — fermé en production
 //   ?scenario=paliers         une tour prête juste sous 10 m (lot T2) ; `&effet=lierre|figee|petite|geante|vent|glissante` force l'effet du premier palier (lierre par défaut) — fermé en production
 //   ?scenario=banc            la démonstration de la physique du lot T0 (`&engine=a|b`, `&libre`) ; son panneau est `&debug&tune` — fermé en production
@@ -22,7 +23,7 @@
 import { parseDay } from "@cdj/core";
 import { EFFETS, type Effet, THEMES_TOWER, type ThemeTower, TIRAGES_MAX } from "@cdj/tower-sim";
 
-export type Scenario = "jour" | "essai" | "paliers" | "banc" | "alignement";
+export type Scenario = "jour" | "essai" | "paliers" | "banc" | "alignement" | "emboitement";
 export interface OptionsUrl {
   scenario: Scenario;
   /** `?seed=` lu (numéro de jour civil), null s'il est absent, illisible ou fermé (production sans date passée : voir `choisirJour`). */
@@ -55,7 +56,7 @@ export function lireOptions(search: string, restreint: boolean): OptionsUrl {
   const effet = q.get("effet");
   const theme = q.get("theme");
   const tirage = Number(q.get("tirage"));
-  const scenario = restreint ? "jour" : demande === "banc" || demande === "essai" || demande === "paliers" || demande === "alignement" ? demande : "jour";
+  const scenario = restreint ? "jour" : demande === "banc" || demande === "essai" || demande === "paliers" || demande === "alignement" || demande === "emboitement" ? demande : "jour";
   return {
     scenario,
     seed: parseDay(q.get("seed") ?? ""),

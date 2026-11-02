@@ -6,10 +6,12 @@
  * se régénère qu'avec elle. Version 2 (lot T2) : les paliers (lierre, pièce figée, petite, géante, coup de vent, glissante). Version 3 (lot T2) : « descendre » n'a plus aucun effet physique (la pièce se pose à la vitesse d'une chute normale) et la pièce figée se fige au contact.
  * **Version 4 (lot T6) : la grille et la pose juste** — la pièce active est pilotée par sa boîte englobante (ses bords restent sur la grille des demi-cases), le quart de tour pivote autour d'un point
  * de la grille avec un décalage de secours, la pièce ne lâche plus le long d'un voisin collé, et les paramètres de contact de Rapier changent (`contact.ts`). La version 3 reste rejouable telle quelle.
+ * **Version 5 (lot T8) : une tour qui tient, et le taquet** — pose douce, repos de la tour (`stabilite.ts`), tolérance d'emboîtement, les deux actions du taquet (deux bits de plus dans le masque),
+ * un coup de vent d'une demi-case (moins souvent). Les versions 3 et 4 restent rejouables telles quelles.
  */
-export const TOWER_SIM_VERSION = 4;
+export const TOWER_SIM_VERSION = 5;
 /** Les versions de la simulation que ce code sait jouer (lot T6 : la 3 reste rejouable au bit près, la 4 est celle des parties nouvelles). */
-export const VERSIONS_SIM_JOUABLES: readonly number[] = [3, 4];
+export const VERSIONS_SIM_JOUABLES: readonly number[] = [3, 4, 5];
 
 /** Pas fixe : 60 Hz (décision de Nathan après le lot T0). */
 export const TICKS_PAR_SECONDE = 60;
@@ -20,9 +22,13 @@ export const TICKS_PAR_SECONDE = 60;
  *   d'une touche maintenue (délai, cadence) est l'affaire du client : il lève le bit aux instants voulus, la simulation ne lit ni horloge ni état de touche.
  * - `DESCENDRE` est un **niveau** : tant que le bit est levé, la chute est multipliée par `facteurDescente`.
  */
-export const COMMANDE = { GAUCHE: 1, DROITE: 2, TOURNER: 4, DESCENDRE: 8 } as const;
+export const COMMANDE = { GAUCHE: 1, DROITE: 2, TOURNER: 4, DESCENDRE: 8, TAQUET_GAUCHE: 16, TAQUET_DROITE: 32 } as const;
 /** Tous les bits de commande connus : un masque qui en porte un autre est refusé par une rediffusion (lot T2). */
-export const COMMANDES_CONNUES = COMMANDE.GAUCHE | COMMANDE.DROITE | COMMANDE.TOURNER | COMMANDE.DESCENDRE;
+export const COMMANDES_CONNUES = COMMANDE.GAUCHE | COMMANDE.DROITE | COMMANDE.TOURNER | COMMANDE.DESCENDRE | COMMANDE.TAQUET_GAUCHE | COMMANDE.TAQUET_DROITE;
+/** Lot T8 : les bits que connaissent les simulations 3 et 4 (les deux bits du taquet sont nouveaux de la 5 : une rediffusion plus ancienne qui les porte est refusée). */
+export const COMMANDES_CONNUES_V4 = COMMANDE.GAUCHE | COMMANDE.DROITE | COMMANDE.TOURNER | COMMANDE.DESCENDRE;
+/** Les bits de commande qu'une simulation `sim` connaît. */
+export const commandesDeLaVersion = (sim: number): number => (sim >= 5 ? COMMANDES_CONNUES : COMMANDES_CONNUES_V4);
 
 /** Une demi-case, en huitièmes de mètre. */
 export const DEMI_CASE_8 = 4;
@@ -64,6 +70,9 @@ export const REGLAGES_DEFAUT: Readonly<Reglages> = { vitesseChute8: 20, facteurD
 
 /** Un coup de vent pousse la pièce active d'un huitième de mètre (12,5 cm) tous les `VENT_PERIODE_TICKS` ticks : 0,75 m/s, une poussée constante en ENTIERS (pas de force flottante). */
 export const VENT_PERIODE_TICKS = 10;
+/** Version 5 (lot T8) : le coup de vent pousse d'une DEMI-CASE (4 huitièmes) tous les `VENT_PERIODE_TICKS_V5` ticks — la même dérive moyenne (0,75 m/s), mais la pièce reste sur la grille. */
+export const VENT_PERIODE_TICKS_V5 = 40;
+export const VENT_PAS8_V5 = 4;
 /** Une pièce glissante a ce frottement (règle « minimum » de Rapier : celui de la pièce ou du support qui en a le moins) au lieu de `PHYSIQUE.frottement`. */
 export const FROTTEMENT_GLISSANT = 0.05;
 /** Pièce figée : elle devient un corps fixe pour toujours AU CONTACT (le premier après le lâcher, voir `DISTANCE_SOUDURE`), quitte à flotter ; au plus tard `FIGEE_TICKS` ticks (2 s) après le lâcher si ce contact a été manqué. */

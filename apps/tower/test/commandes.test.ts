@@ -26,6 +26,8 @@ describe("les actions de Tower et leurs touches d'origine", () => {
       ["recommencer", ["Enter"], "b2"],
       ["pause", ["KeyP"], null],
       ["fantome", ["KeyG"], "b3"],
+      ["taquetGauche", ["KeyQ"], "b4"],
+      ["taquetDroite", ["KeyE"], "b5"],
     ]);
   });
 
@@ -74,7 +76,7 @@ describe("changer une touche : échange, touches fixes, rétablir", () => {
     expect(r).toEqual({ ok: true, echange: { action: "tourner", emplacement: 0 } });
     expect(definirTouche(c, "gauche", 0, TOUCHE_FIXE)).toMatchObject({ ok: false, raison: "fixe" });
     expect(definirLiaison(c, "tourner", `b${BOUTON_FIXE}`)).toMatchObject({ ok: false, raison: "fixe" });
-    expect(definirLiaison(c, "tourner", "b5")).toEqual({ ok: true, echange: null });
+    expect(definirLiaison(c, "tourner", "b10")).toEqual({ ok: true, echange: null });
     retablir(c);
     expect(c.estDorigine()).toBe(true);
   });

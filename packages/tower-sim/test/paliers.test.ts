@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { COMMANDE, DUREE_EFFET, EFFETS, type Effet, estBonus, FIGEE_TICKS, FROTTEMENT_GLISSANT, Partie, type PieceKind, problemePaliers, type Rapier, type Scenario, scenarioPaliers, TOUR_DEPART, VENT_PERIODE_TICKS, HAUTEUR_TOUR_DEPART_MM, HAUTEUR_TOUR_DEPART_V3_MM } from "../src";
+import { COMMANDE, DUREE_EFFET, EFFETS, type Effet, estBonus, FIGEE_TICKS, FROTTEMENT_GLISSANT, Partie, type PieceKind, problemePaliers, type Rapier, type Scenario, scenarioPaliers, TOUR_DEPART, VENT_PERIODE_TICKS, VENT_PERIODE_TICKS_V5, HAUTEUR_TOUR_DEPART_MM, HAUTEUR_TOUR_DEPART_V3_MM } from "../src";
 import { chargerRapier } from "../src/rapier";
 
 // Lot T2 — les paliers : la règle de déclenchement, puis UN test par effet (lierre, pièce figée, petite, géante, coup de vent, glissante). Node seulement (règle R13).
@@ -147,9 +147,9 @@ describe("chaque effet", () => {
     p.dispose();
   });
 
-  it("coup de vent : la pièce active dérive d'un huitième de mètre tous les 10 ticks, dans le sens du jour, pendant trois pièces ; lâchée, elle ne dérive plus", () => {
+  it("coup de vent (simulations 3 et 4) : la pièce active dérive d'un huitième de mètre tous les 10 ticks, dans le sens du jour, pendant trois pièces ; lâchée, elle ne dérive plus", () => {
     for (const sens of [1, -1] as const) {
-      const p = new Partie(R, scenario("OOOOOOO", [{ metres: 10, effet: "vent" }], { ventSens: sens }));
+      const p = new Partie(R, scenario("OOOOOOO", [{ metres: 10, effet: "vent" }], { ventSens: sens }), undefined, { version: 4 });
       jusqua(p, () => p.vue().active === PREMIERE + 2);
       const x0 = piece(p, PREMIERE + 2).x;
       for (let i = 0; i < VENT_PERIODE_TICKS * 6; i++) p.avancer(0);
@@ -161,12 +161,35 @@ describe("chaque effet", () => {
     }
   });
 
-  it("coup de vent : les ordres du joueur s'ajoutent à la poussée, qui ne traverse pas une pièce", () => {
-    const p = new Partie(R, scenario("OOOOOOO", [{ metres: 10, effet: "vent" }]));
+  it("coup de vent (simulation 4) : les ordres du joueur s'ajoutent à la poussée, qui ne traverse pas une pièce", () => {
+    const p = new Partie(R, scenario("OOOOOOO", [{ metres: 10, effet: "vent" }]), undefined, { version: 4 });
     jusqua(p, () => p.vue().active === PREMIERE + 2);
     const x0 = piece(p, PREMIERE + 2).x;
     for (let i = 0; i < VENT_PERIODE_TICKS; i++) p.avancer(i === 0 ? COMMANDE.GAUCHE : 0);
     expect(piece(p, PREMIERE + 2).x - x0).toBeCloseTo(-0.5 + 0.125, 10);
+    p.dispose();
+  });
+
+  it("coup de vent (simulation 5, lot T8) : la pièce active dérive d'UNE DEMI-CASE tous les 40 ticks (la même dérive moyenne, mais elle reste sur la grille), dans le sens du jour, pendant trois pièces ; lâchée, elle ne dérive plus", () => {
+    for (const sens of [1, -1] as const) {
+      const p = new Partie(R, scenario("OOOOOOO", [{ metres: 10, effet: "vent" }], { ventSens: sens }));
+      jusqua(p, () => p.vue().active === PREMIERE + 2);
+      const x0 = piece(p, PREMIERE + 2).x;
+      for (let i = 0; i < VENT_PERIODE_TICKS_V5 * 3; i++) p.avancer(0);
+      expect(piece(p, PREMIERE + 2).x - x0).toBeCloseTo(sens * 1.5, 10); // exact : trois poussées d'une demi-case
+      expect(((x0 * 8 - piece(p, PREMIERE + 2).x * 8) % 4) + 0).toBeCloseTo(0, 10); // la pièce est restée sur la grille des demi-cases
+      jusqua(p, () => p.vue().pieces.length === PREMIERE + 6);
+      expect([2, 3, 4, 5].map((i) => piece(p, PREMIERE + i).effet)).toEqual(["vent", "vent", "vent", null]);
+      p.dispose();
+    }
+  });
+
+  it("coup de vent (simulation 5) : les ordres du joueur s'ajoutent à la poussée, qui ne traverse pas une pièce", () => {
+    const p = new Partie(R, scenario("OOOOOOO", [{ metres: 10, effet: "vent" }]));
+    jusqua(p, () => p.vue().active === PREMIERE + 2);
+    const x0 = piece(p, PREMIERE + 2).x;
+    for (let i = 0; i < VENT_PERIODE_TICKS_V5; i++) p.avancer(i === 0 ? COMMANDE.GAUCHE : 0);
+    expect(piece(p, PREMIERE + 2).x - x0).toBeCloseTo(-0.5 + 0.5, 10);
     p.dispose();
   });
 
@@ -181,7 +204,7 @@ describe("chaque effet", () => {
       return fige >= 0;
     });
     expect(piece(p, PREMIERE + 2).effet).toBe("figee");
-    expect(fige - lache).toBeLessThanOrEqual(4); // au contact, pas deux secondes plus tard
+    expect(fige - lache).toBeLessThanOrEqual(24); // au contact (lot T8 : la pose douce descend à 0,25 m/s jusqu'au contact, ≤ 20 ticks), pas deux secondes plus tard
     expect(fige - lache).toBeLessThan(FIGEE_TICKS);
     const avant = { x: piece(p, PREMIERE + 2).x, y: piece(p, PREMIERE + 2).y, angle: piece(p, PREMIERE + 2).angle };
     jusqua(p, () => p.vue().pieces.length >= PREMIERE + 6); // d'autres pièces tombent dessus
@@ -249,7 +272,7 @@ describe("chaque effet", () => {
       if (q?.soudee && soude < 0) soude = p.tick;
       return soude >= 0;
     });
-    expect(soude - lache).toBeLessThanOrEqual(4);
+    expect(soude - lache).toBeLessThanOrEqual(24); // lot T8 : la pose douce
     p.dispose();
   });
 

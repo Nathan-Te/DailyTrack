@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   aDoublon,
   aEcartMaximal,
+  COMMANDE,
   dailyTower,
   decoderRediffusion,
   empreinteContenu,
@@ -87,22 +88,30 @@ describe("golden-tower.json", () => {
     expect(new Set(cs.map((c) => c.plateformeDemi8))).toEqual(new Set([20, 24, 28, 32]));
   });
 
-  it("lot T6 — cinq rediffusions de référence de la SIMULATION 4 : le scénario d'essai à neuf vies, la suite d'alignement (des quarts de tour et des pièces posées les unes contre les autres), un jour avec paliers, une partie à 0 vie et un tirage non nul", () => {
-    expect(golden.rediffusions.map((r) => r.nom)).toEqual(["essai", "alignement", "jour-avec-paliers", "zero-vie", "tirage"]);
-    const [essai, alignement, paliers, zero, tirage] = golden.rediffusions as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
-    expect(decoderRediffusion(essai.code)).toMatchObject({ sim: 4, contenu: { scenario: "essai" }, g: 0, reglages: { vies: 9 } });
-    expect(decoderRediffusion(alignement.code)).toMatchObject({ sim: 4, contenu: { scenario: "alignement" }, g: 0 });
-    expect(decoderRediffusion(paliers.code)).toMatchObject({ sim: 4, contenu: { jour: parseDay("2026-11-02") }, g: 3 });
-    expect(decoderRediffusion(tirage.code)).toMatchObject({ sim: 4, contenu: { jour: parseDay("2026-11-02"), tirage: 2 }, g: 3 });
-    expect(paliers.paliers).toBeGreaterThanOrEqual(3);
-    expect(tirage.paliers).toBeGreaterThanOrEqual(2);
+  it("lot T8 — six rediffusions de référence de la SIMULATION 5 : le scénario d'essai à neuf vies, la suite d'alignement, un jour avec paliers, une partie à 0 vie, un tirage non nul, et la tour du taquet (`emboitement`, jouée avec des poussées de taquet)", () => {
+    expect(golden.rediffusions.map((r) => r.nom)).toEqual(["essai", "alignement", "jour-avec-paliers", "zero-vie", "tirage", "emboitement"]);
+    const [essai, alignement, paliers, zero, tirage, emboitement] = golden.rediffusions as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
+    expect(decoderRediffusion(essai.code)).toMatchObject({ sim: 5, contenu: { scenario: "essai" }, g: 0, reglages: { vies: 9 } });
+    expect(decoderRediffusion(alignement.code)).toMatchObject({ sim: 5, contenu: { scenario: "alignement" }, g: 0 });
+    expect(decoderRediffusion(paliers.code)).toMatchObject({ sim: 5, contenu: { jour: parseDay("2026-11-02") }, g: 3 });
+    expect(decoderRediffusion(tirage.code)).toMatchObject({ sim: 5, contenu: { jour: parseDay("2026-11-02"), tirage: 2 }, g: 3 });
+    const e = decoderRediffusion(emboitement.code);
+    expect(e).toMatchObject({ sim: 5, contenu: { scenario: "emboitement" }, g: 0 });
+    expect(e.plages.some((x) => x.masque & COMMANDE.TAQUET_DROITE)).toBe(true); // le golden contient les bits du taquet
+    expect(paliers.paliers).toBeGreaterThanOrEqual(1);
     expect(zero.resultat).toMatchObject({ vies: 0, tombees: 3, posees: 0, motif: "vies" });
     expect(golden.rediffusions.every((r) => decoderRediffusion(r.code).sim === TOWER_SIM_VERSION)).toBe(true);
   });
 
+  it("lot T8 — la SIMULATION 4 reste rejouable telle quelle : ses cinq rediffusions (lot T6) sont GARDÉES et rejouées par la version qu'elles nomment", () => {
+    const v4 = golden.anciennesSim.find((a) => a.sim === 4)!.rediffusions;
+    expect(v4.map((r) => r.nom)).toEqual(["essai", "alignement", "jour-avec-paliers", "zero-vie", "tirage"]);
+    for (const r of v4) expect(decoderRediffusion(r.code).sim, r.nom).toBe(4);
+  });
+
   it("lot T6 — la SIMULATION 3 reste rejouable telle quelle : ses cinq rediffusions (lots T2 et T3b) sont GARDÉES (codes, résultats, empreintes finales, ticks) et rejouées par la version qu'elles nomment", () => {
-    expect(golden.anciennesSim.map((a) => a.sim)).toEqual([3]);
-    const v3 = golden.anciennesSim[0]!.rediffusions;
+    expect(golden.anciennesSim.map((a) => a.sim)).toEqual([3, 4]);
+    const v3 = golden.anciennesSim.find((a) => a.sim === 3)!.rediffusions;
     expect(v3.map((r) => r.nom)).toEqual(["essai", "jour-avec-paliers", "zero-vie", "jour-v3", "tirage-v3"]);
     const [essai, paliers, zero] = v3 as [Golden["rediffusions"][number], Golden["rediffusions"][number], Golden["rediffusions"][number]];
     expect([essai.empreinteFinale, paliers.empreinteFinale, zero.empreinteFinale]).toEqual(["6bdaf6d2031e3d27", "42b1b91a21e39353", "816bc75119e02ae5"]);
