@@ -13,6 +13,8 @@ export interface AccueilTelephone {
   blocs: string[];
   /** L'action principale (Courir, Jouer). */
   principal: string;
+  /** La barre des jeux (« ‹ DU JOUR », la date) : elle reste en haut quand l'écran défile. */
+  barre: string;
 }
 
 interface Mesure {
@@ -20,6 +22,7 @@ interface Mesure {
   nuls: string[];
   atteignable: boolean;
   principalVu: boolean;
+  barre: { y: number; h: number };
   plaques: { id: string; x: number; y: number; w: number; h: number; nom: string | null }[];
   etiquette: { x: number; y: number; w: number; h: number };
   principalBoite: { x: number; y: number; w: number; h: number };
@@ -53,6 +56,7 @@ export async function verifierAccueilTelephone(page: Page, o: AccueilTelephone):
       coupes,
       nuls,
       atteignable: d.scrollHeight - d.clientHeight - d.scrollTop <= 1,
+      barre: (({ y, height }) => ({ y, h: height }))(document.querySelector(o.barre)!.getBoundingClientRect()),
       principalVu: pb.y >= -1 && pb.y + pb.h <= innerHeight + 1,
       plaques: ["discord", "kofi"].map((id) => ({ id, ...r(document.querySelector(`#communaute-${id}`)!), nom: document.querySelector(`#communaute-${id}`)!.getAttribute("aria-label") })),
       etiquette: r(e),
@@ -64,6 +68,7 @@ export async function verifierAccueilTelephone(page: Page, o: AccueilTelephone):
   expect(m.nuls, "un bloc de l'étiquette est écrasé").toEqual([]);
   expect(m.atteignable, "le défilement va jusqu'au bout").toBe(true);
   expect(m.principalVu, "l'action principale se voit au bas du défilement").toBe(true);
+  expect(m.barre.y >= -1 && m.barre.h > 20 && m.barre.y + m.barre.h < m.vue.h / 2, "la barre des jeux reste en haut, visible, au bas du défilement").toBe(true);
   const [a, b] = m.plaques;
   for (const p of m.plaques) {
     expect(p.w, `${p.id} : largeur`).toBe(44);

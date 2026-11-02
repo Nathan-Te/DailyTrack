@@ -128,7 +128,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   const droite = el("div", { classe: "accueil__droite" }, tuilePaliers, tuileClassement, pied);
 
   const coque = el("main", { classe: "coque coque--accueil", attrs: { role: "dialog", "aria-modal": "true", "aria-label": t("accueil.aria") } }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), el("div", { classe: "etiquette-tower etiquette-tower--accueil" }, gauche, droite));
-  const voile = el("div", { classe: "voile voile--accueil", attrs: { id: "accueil-ecran" } }, el("div", { classe: "accueil__colonne" }, barre, coque));
+  const voile = el("div", { classe: "voile voile--accueil", attrs: { id: "accueil-ecran" } }, el("div", { classe: "accueil__colonne" }, barre, el("div", { classe: "accueil__defile" }, coque)));
   /** Le décor sous le voile : un aplat du thème (le ciel, le sol), posé depuis la palette courante — le port tant que le thème du jour n'est pas connu. Jamais un écran blanc. */
   function habillerFond(): void {
     const palette = paletteCourante();

@@ -239,7 +239,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }
       await page.waitForFunction(() => (window as unknown as { __jump?: { home: { ready: boolean } } }).__jump?.home.ready === true);
       await expect(page.locator("#home .accueil__niveau")).toContainText("Glace");
       await verifierFocusTactile(page, "#home");
-      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .accueil__defile", blocs: [".accueil__titre", ".accueil__tuiles", "#home-ghost", ".classement-jour", "#home-play"], principal: "#home-play" });
+      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .accueil__defile", blocs: [".accueil__titre", ".accueil__tuiles", "#home-ghost", ".classement-jour", "#home-play"], principal: "#home-play", barre: "#home .dj-barre-jeu" });
     } finally {
       await context.close();
     }

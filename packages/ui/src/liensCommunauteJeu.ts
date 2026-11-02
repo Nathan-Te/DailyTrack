@@ -36,7 +36,7 @@ export function liensCommunaute(): HTMLElement {
 }
 
 /** Ce que l'accueil fait défiler : la colonne du cadre commun (`creerCadre`), ou celle de l'accueil de Tower. */
-const DEFILE = ".cadre__defile, .accueil__defile, .accueil__colonne";
+const DEFILE = ".cadre__defile, .accueil__defile";
 const ECART = 8;
 
 /**

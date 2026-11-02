@@ -406,18 +406,25 @@
   }
 }
 
-/* Lot S1 puis S1b : l'accueil qui porte les plaques Discord / Ko-fi (hors du flux, rien n'est réservé : `liensCommunauteJeu.css`) : c'est la colonne qui défile, et les plaques passent à sa fin si elles toucheraient quelque chose. */
-.voile--accueil:has(.dj-communaute) {
+/* Lot S1b : la barre des jeux (« ‹ DU JOUR », la date) reste en haut, fixe, comme sur Jump : **c'est la coque seule qui défile** (`.accueil__defile`), jamais la barre avec elle. Les plaques Discord / Ko-fi
+   (hors du flux, rien n'est réservé : `liensCommunauteJeu.css`) passent à la fin de ce défilement si elles toucheraient quelque chose. */
+.voile--accueil {
   overflow-y: hidden;
 }
-.voile--accueil:has(.dj-communaute) > .accueil__colonne {
+.accueil__colonne {
   min-height: 0;
   max-height: 100%;
-  overflow-y: auto;
-  scrollbar-width: none;
-  /* Lot T7 : centrée dans la fenêtre, en hauteur comme en largeur (l'auto du flex ne déborde jamais : si la place manque, la colonne défile) ; sans l'auto, `min-height: 0` la collait en haut. */
+  /* Lot T7 : centrée dans la fenêtre, en hauteur comme en largeur (l'auto du flex ne déborde jamais : si la place manque, la coque défile) ; sans l'auto, `min-height: 0` la collait en haut. */
   margin: auto;
 }
-.voile--accueil:has(.dj-communaute) > .accueil__colonne::-webkit-scrollbar {
+.accueil__colonne > .accueil__defile {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: 0 6px 6px 0;
+}
+.accueil__defile::-webkit-scrollbar {
   display: none;
 }

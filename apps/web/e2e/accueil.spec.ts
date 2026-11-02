@@ -90,7 +90,7 @@ test.describe("l'accueil", () => {
       await expect(page.locator("#home .home-circuit")).toContainText("Banquise");
       await expect(page.locator("#home .home-medailles .dj-medaille--case")).toHaveCount(4);
       await verifierFocusTactile(page, "#home");
-      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .cadre__defile", blocs: [".etiquette__tete", ".home-apercu", ".home-resume", ".home-medailles", ".home-fantome", ".home-actions", "#home-daily"], principal: "#home-daily" });
+      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .cadre__defile", blocs: [".etiquette__tete", ".home-apercu", ".home-resume", ".home-medailles", ".home-fantome", ".home-actions", "#home-daily"], principal: "#home-daily", barre: "#home .dj-barre-jeu" });
       await ctx.close();
     });
   }

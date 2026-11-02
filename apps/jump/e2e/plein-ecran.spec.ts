@@ -148,7 +148,7 @@ for (const viewport of [
       await expect(page.locator("#home .accueil__titre")).toBeVisible();
       await expect(page.locator("#home .accueil__niveau")).toContainText("Glace");
       await verifierFocusTactile(page, "#home"); // lot S1b : « JOUER » a le focus, rien ne se voit au toucher
-      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .accueil__defile", blocs: [".accueil__titre", ".accueil__tuiles", "#home-ghost", ".classement-jour", "#home-play"], principal: "#home-play" });
+      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .accueil__defile", blocs: [".accueil__titre", ".accueil__tuiles", "#home-ghost", ".classement-jour", "#home-play"], principal: "#home-play", barre: "#home .dj-barre-jeu" });
       // Les liens (lots S1 et S1b) : de simples liens sortants, sans rien qui identifie le joueur ; le nom est lu (`aria-label`).
       for (const [id, href] of [["discord", "https://discord.gg/2KZkUSpDej"], ["kofi", "https://ko-fi.com/C7X829MCE1"]] as const) {
         const lien = page.locator(`#communaute-${id}`);

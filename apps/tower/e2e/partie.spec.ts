@@ -71,7 +71,7 @@ for (const vue of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
       await page.waitForSelector("#accueil-jouer");
       await expect(page.locator("#communaute")).toBeVisible();
       await verifierFocusTactile(page, "#accueil-ecran", { focusAttendu: false });
-      await verifierAccueilTelephone(page, { etiquette: ".coque--accueil", defile: ".accueil__colonne", blocs: [".accueil__tuile", "#accueil-jouer"], principal: "#accueil-jouer" });
+      await verifierAccueilTelephone(page, { etiquette: ".coque--accueil", defile: ".accueil__defile", blocs: [".accueil__tuile", "#accueil-jouer"], principal: "#accueil-jouer", barre: ".accueil__barre .dj-barre-jeu" });
     } finally {
       await contexte.close();
     }
