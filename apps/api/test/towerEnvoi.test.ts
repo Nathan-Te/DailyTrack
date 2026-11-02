@@ -18,6 +18,7 @@ import { fixtureJour, jouerScripte, type Placement } from "../scripts/tower-aide
 import { D, midi, monterTower } from "../scripts/tower-test";
 import { MIGRATIONS, SCHEMA } from "../src/db";
 import { crc32Hex } from "../src/identity";
+import { refOfPlayer } from "../src/players";
 import { UNITES_REJEU_TOWER, type ExecuteurRejeu } from "../src/towerRejeu";
 import { silhouetteDe, TOWER_BOARD_TOP, TOWER_SCHEMA, towerInputs } from "../src/tower";
 import { playerId, TEST_DB, type TestApi } from "./helpers";
@@ -79,7 +80,7 @@ describe(`Tower : l'envoi d'une partie (${TEST_DB})`, () => {
     const attendue = nom === null ? null : ({ auteur: "author", or: "gold", argent: "silver", bronze: "bronze" } as const)[nom];
     expect(rep.body.medal).toBe(attendue);
     expect(rep.body.best).toEqual({ hauteurMm: r.hauteurMm, vies: r.vies, ticks: r.ticks, medal: attendue });
-    expect(rep.body.board.top).toEqual([{ rank: 1, name: "Joueur1", hauteurMm: r.hauteurMm, vies: r.vies, ticks: r.ticks, medal: attendue }]);
+    expect(rep.body.board.top).toEqual([{ rank: 1, name: "Joueur1", hauteurMm: r.hauteurMm, vies: r.vies, ticks: r.ticks, medal: attendue, ref: await refOfPlayer(playerId(1)) }]); // lot F2 : `ref`
     expect(rep.body.board.me).toEqual(rep.body.board.top[0]);
     expect(rep.body.board.generation).toBe(0);
     // Le joueur n'existe qu'après la partie valide, et la ligne gardée est celle du rejeu.

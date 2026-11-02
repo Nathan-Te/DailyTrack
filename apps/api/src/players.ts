@@ -153,6 +153,11 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       { sql: "INSERT INTO revoked_codes (hash, successor, revoked_at) VALUES (?, ?, ?) ON CONFLICT (hash) DO UPDATE SET successor = excluded.successor, revoked_at = excluded.revoked_at", params: [oldHash, newHash, t] },
       ...(rotateStatements?.(oldId, newId) ?? []), // les lignes de chaque jeu (registre)
       { sql: "UPDATE resultats_retires SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot N1 : les résultats retirés suivent le joueur
+      // Lot F2 : les amitiés (dans les deux sens) et le lien d'invitation suivent le joueur ; elles sont rangées par identifiant interne, la nouvelle référence publique n'y change rien. Le nouvel identifiant est neuf :
+      // aucune ligne à lui, donc aucun conflit de clé.
+      { sql: "UPDATE amities SET joueur = ? WHERE joueur = ?", params: [newId, oldId] },
+      { sql: "UPDATE amities SET ami = ? WHERE ami = ?", params: [newId, oldId] },
+      { sql: "UPDATE invitations_amis SET joueur = ? WHERE joueur = ?", params: [newId, oldId] },
       { sql: "UPDATE players SET id = ?, ref = ?, updated_at = ? WHERE id = ?", params: [newId, newHash.slice(0, REF_LENGTH), t, oldId] },
     ];
     if (db.batch) await db.batch(statements);
@@ -173,6 +178,10 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       successors = rows.map((r) => r.hash);
     }
     out.push({ sql: "DELETE FROM resultats_retires WHERE player_id = ?", params: [id] }); // lot N1 : ses résultats retirés (rediffusions gardées 30 jours) partent aussi
+    // Lot F2 : ses amis, ceux qui l'ont pour ami (les deux sens) et son lien d'invitation.
+    out.push({ sql: "DELETE FROM amities WHERE joueur = ?", params: [id] });
+    out.push({ sql: "DELETE FROM amities WHERE ami = ?", params: [id] });
+    out.push({ sql: "DELETE FROM invitations_amis WHERE joueur = ?", params: [id] });
     out.push({ sql: "DELETE FROM players WHERE id = ?", params: [id] });
     return out;
   }

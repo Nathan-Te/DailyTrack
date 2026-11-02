@@ -186,6 +186,24 @@ export const PLATFORM_SCHEMA: string[] = [
      cle_creee_le INTEGER,
      modifie_le INTEGER NOT NULL
    )`,
+  // --- Lot F2 : les amis (`amis.ts`). **Réversible** : deux tables nouvelles, rien d'existant touché (l'ancien code les ignore) ; retour arrière : `DROP TABLE amities` et `DROP TABLE invitations_amis` (les index partent
+  // avec). `amities` : une ligne = « `joueur` voit les temps de `ami` » (identifiants **internes** des joueurs, jamais montrés : la référence publique est `players.ref`) ; `origine` : `ajout` (par pseudo ou depuis un
+  // classement : sens unique) ou `invitation` (réciproque : deux lignes). La clé `(joueur, ami)` sert aussi la liste d'un joueur (préfixe `joueur`) ; l'index `amities_by_ami` sert « qui m'a comme ami » (effacement,
+  // « Changer mon code », réciprocité). `invitations_amis` : le lien d'invitation d'un joueur (un seul actif ; « Nouveau lien » le remplace) — **l'empreinte SHA-256 du jeton seulement**, jamais le jeton.
+  `CREATE TABLE IF NOT EXISTS amities (
+     joueur TEXT NOT NULL,
+     ami TEXT NOT NULL,
+     origine TEXT NOT NULL,
+     cree_le INTEGER NOT NULL,
+     PRIMARY KEY (joueur, ami)
+   )`,
+  `CREATE INDEX IF NOT EXISTS amities_by_ami ON amities (ami)`,
+  `CREATE TABLE IF NOT EXISTS invitations_amis (
+     joueur TEXT PRIMARY KEY,
+     empreinte TEXT NOT NULL,
+     cree_le INTEGER NOT NULL
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS invitations_amis_by_empreinte ON invitations_amis (empreinte)`,
 ];
 
 /** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */

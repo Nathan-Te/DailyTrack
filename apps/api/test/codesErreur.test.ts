@@ -97,6 +97,25 @@ const ROUTES = [
   "/api/portail/classement?date=2026-02-30",
   "/api/portail/classement?date=2099-01-01",
   "/api/portail/autre",
+  "/api/portail/classement?filtre=amis",
+  "/api/portail/classement?filtre=autre",
+  `/api/day/${D}/leaderboard?filtre=amis`,
+  `/api/day/${D}/leaderboard?filtre=tous`,
+  `/api/jump/day/${J}/board?filtre=amis`,
+  `/api/jump/day/${J}/board?filtre=`,
+  // Amis (amis.ts, lot F2)
+  "/api/amis",
+  "/api/amis/suggestions?q=abc",
+  "/api/amis/suggestions?q=a",
+  "/api/amis/invitation",
+  "/api/amis/invitation/voir",
+  "/api/amis/invitation/accepter",
+  "/api/amis/fiche/000000000000",
+  "/api/amis/fiche/pas-une-ref",
+  `/api/amis/fiche/000000000000?date=${J}`,
+  "/api/amis/000000000000",
+  "/api/amis/pas-une-ref",
+  "/api/amis/a/b/c",
 ];
 
 const METHODS = ["GET", "POST", "PUT", "DELETE"] as const;
@@ -151,6 +170,7 @@ describe(`codes d'erreur : parcours des routes (${TEST_DB})`, () => {
       "not_found", "method_not_allowed", "invalid_json", "too_large", "invalid_player", "unknown_player", "invalid_name", "invalid_code",
       "unauthorized", "invalid_date", "unknown_day", "day_closed", "day_started", "too_far", "invalid_variant", "invalid_kind", "no_ghost",
       "invalid_replay", "invalid_session", "unknown_session", "invalid_since", "too_many_refs", "invalid_ref", "invalid_level",
+      "invalid_filter", "invalid_friend", "invalid_invitation", // lot F2 : les amis
     ] satisfies CodeErreur[]) {
       expect(seen.get(code) ?? 0, `code « ${code} » jamais rendu par le parcours`).toBeGreaterThan(0);
     }

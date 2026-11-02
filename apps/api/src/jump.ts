@@ -24,6 +24,7 @@ import { inputsHash, jumpInputs } from "./copies";
 import { WithHeaders, cacheHeaders } from "./cache";
 import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
+import { refOfPlayer } from "./players";
 import type { AdminDuJeu, GameDefinition, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { JUMP_LIVES_SCHEMA, createJumpLives } from "./jumpLives";
 
@@ -165,6 +166,8 @@ export interface JumpBoardRow {
   ticks: number;
   deaths: number;
   medal: JumpMedal | null;
+  /** Lot F2 : la référence publique du joueur (`players.ref`). */
+  ref?: string;
 }
 
 /** Ce que l'essai rejoué a donné (la réponse de `POST /api/jump/submit`). */
@@ -586,8 +589,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       open: isOpen(v.day),
       participants: total,
       levelId: v.info.id,
-      top: rows.map((r, i) => ({ rank: i + 1, name: r.name, ticks: r.ticks, deaths: r.deaths, medal: jumpMedalFor(r.ticks, v.info.medals) })),
-      me: { rank, name, ticks: bestTicks, deaths: bestDeaths, medal },
+      top: rows.map((r, i) => ({ rank: i + 1, name: r.name, ticks: r.ticks, deaths: r.deaths, medal: jumpMedalFor(r.ticks, v.info.medals), ...(r.ref ? { ref: r.ref } : {}) })),
+      me: { rank, name, ticks: bestTicks, deaths: bestDeaths, medal, ref: await refOfPlayer(playerId) },
     };
     return {
       accepted: true,
@@ -606,9 +609,9 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   }
 
   /** Les 10 premiers d'un jour (la règle des égalités). */
-  function topOf(day: number): Promise<{ ticks: number; deaths: number; name: string }[]> {
-    return db.all<{ ticks: number; deaths: number; name: string }>(
-      "SELECT r.ticks AS ticks, r.deaths AS deaths, p.name AS name FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
+  function topOf(day: number): Promise<{ ticks: number; deaths: number; name: string; ref: string | null }[]> {
+    return db.all<{ ticks: number; deaths: number; name: string; ref: string | null }>(
+      "SELECT r.ticks AS ticks, r.deaths AS deaths, p.name AS name, p.ref AS ref FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
       [day, JUMP_BOARD_TOP],
     );
   }
@@ -619,8 +622,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       participants(day),
       topOf(day),
       me
-        ? db.first<{ ticks: number; deaths: number; submitted_at: number; name: string }>(
-            "SELECT r.ticks AS ticks, r.deaths AS deaths, r.submitted_at AS submitted_at, p.name AS name FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.player_id = ?",
+        ? db.first<{ ticks: number; deaths: number; submitted_at: number; name: string; ref: string | null }>(
+            "SELECT r.ticks AS ticks, r.deaths AS deaths, r.submitted_at AS submitted_at, p.name AS name, p.ref AS ref FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.player_id = ?",
             [day, me],
           )
         : Promise.resolve(null),
@@ -628,8 +631,9 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     const base = { date: formatDay(day), open: isOpen(day), participants: count };
     if (count === 0) return { ...base, levelId: null, top: [], me: null };
     const level = await getLevel(day);
-    const top: JumpBoardRow[] = rows.map((r, i) => ({ rank: i + 1, name: r.name, ticks: r.ticks, deaths: r.deaths, medal: jumpMedalFor(r.ticks, level.medals) }));
-    const mine: JumpBoardRow | null = own && me ? { rank: await rankOf(day, own.ticks, own.submitted_at, me), name: own.name, ticks: own.ticks, deaths: own.deaths, medal: jumpMedalFor(own.ticks, level.medals) } : null;
+    // Lot F2 : `ref` = la référence publique du joueur (`players.ref`, jamais l'identifiant secret), pour l'ajouter en ami depuis le classement.
+    const top: JumpBoardRow[] = rows.map((r, i) => ({ rank: i + 1, name: r.name, ticks: r.ticks, deaths: r.deaths, medal: jumpMedalFor(r.ticks, level.medals), ...(r.ref ? { ref: r.ref } : {}) }));
+    const mine: JumpBoardRow | null = own && me ? { rank: await rankOf(day, own.ticks, own.submitted_at, me), name: own.name, ticks: own.ticks, deaths: own.deaths, medal: jumpMedalFor(own.ticks, level.medals), ...(own.ref ? { ref: own.ref } : {}) } : null;
     return { ...base, levelId: level.id, top, me: mine };
   }
 
@@ -887,7 +891,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       );
       if (rows.length === 0) return [];
       const level = await getLevel(day);
-      return rows.map((r) => ({ playerId: r.player_id, tempsMs: msOfTicks(r.ticks), medaille: jumpMedalFor(r.ticks, level.medals), at: r.submitted_at }));
+      // Lot F2 : `ticks` (déjà dans l'index qui couvre cette requête : rien de plus à lire) pour le classement filtré « Amis » ; les morts, elles, sont lues pour les seuls amis (`amis.ts`).
+      return rows.map((r) => ({ playerId: r.player_id, tempsMs: msOfTicks(r.ticks), medaille: jumpMedalFor(r.ticks, level.medals), at: r.submitted_at, ticks: r.ticks }));
     },
   };
 

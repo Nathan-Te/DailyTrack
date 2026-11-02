@@ -2,11 +2,13 @@ import { formatDay, parseDay } from "@cdj/core";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "@cdj/core/lancement";
 import { parisDayStart } from "@cdj/clock";
 import { WithHeaders } from "./cache";
-import { classerLaJournee, ligneDe, placer, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
+import { classerLaJournee, ligneDe, placer, rangEntreAmis, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
+import type { AmisPourPortail } from "./amis";
 import { HttpError } from "./errors";
 import type { Diffusion } from "./diffusion";
 import type { Jeux } from "./jeux";
 import type { ClasseDuJour, EtatPortail, JourPortail, MedaillePortail, Platform, PortailDuJeu, RequestInfo, ScorePortail } from "./games";
+import { refOfPlayer } from "./players";
 
 // Le portail « Du Jour » (lot I2 de la plateforme, phase 3) : les lectures regroupées de la page d'accueil et du profil commun. Elles ne
 // connaissent aucun jeu : chacun déclare au registre ce que le portail montre de lui (crochet `portail`, `games.ts`). Ajouter le jeu n° 3 ne
@@ -69,6 +71,23 @@ export interface JeuPortail {
   portail: PortailDuJeu;
 }
 
+/**
+ * Lot F2 : ce que le portail partage avec les classements filtrés « Amis » (`classementAmis.ts`) : le classement du jour gardé par fenêtre, les jeux qui comptent, les états exacts d'un joueur. Les
+ * amis se calculent sur **le même classement gardé** que « Tous » : aucune requête par ami.
+ */
+export interface VuePartagee {
+  jeux: readonly JeuPortail[];
+  premierJour: number;
+  comptes(day: number): JeuPortail[];
+  jourOuvert(day: number): boolean;
+  estHauteur(j: JeuPortail): boolean;
+  classementDe(day: number): Promise<ClassementDuJour>;
+  etatsDe(id: string, day: number, ouverts: readonly JeuPortail[], c?: ClassementDuJour): Promise<EtatPortail[]>;
+  bilanDe(id: string, etats: readonly EtatPortail[], ouverts: readonly JeuPortail[]): LigneDuJour | null;
+  resultatsCorps(jeuxDuJour: readonly string[], resultats: readonly (ResultatJeu | null)[]): Record<string, unknown>;
+  charger(): Promise<void>;
+}
+
 /** Un jeu du jour dans la réponse publique. */
 export interface JeuDuJour extends JourPortail {
   jeu: string;
@@ -117,7 +136,7 @@ export function serieEtParfaites(today: number, jeux: readonly { premierJour: nu
   return { serie, aProlonger: !finiAujourdhui && serie > 0, journeesParfaites, aujourdhuiParfaite: parfaite(today) };
 }
 
-export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux) {
+export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux, amis?: AmisPourPortail) {
   const { now, log, today, players, hashKey, readHit, playerIdOf } = platform;
 
   // --- Lot P : l'interrupteur des jeux ---------------------------------------------------------------------------------------------
@@ -211,7 +230,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   interface Gardee {
     at: number;
     pending: Promise<ClassementDuJour>;
-    noms: Map<string, Promise<Map<string, string>>>;
+    noms: Map<string, Promise<Map<string, { name: string; ref: string }>>>;
   }
   const classements = new Map<number, Gardee>();
   let calculs = 0;
@@ -305,24 +324,27 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     let cumulMs: number | null = null;
     let rangDuJour: number | null = null;
     let classesDuJour: number | null = null;
+    let entreAmis: { rang: number; sur: number } | null = null;
     const bilan = bilanDe(id, etatsJoueur, ouverts);
     if (bilan) {
       cumulMs = bilan.cumulMs;
       ({ rang: rangDuJour, classes: classesDuJour } = placer(c, bilan));
+      // Lot F2 : « 3e entre amis » — une seule lecture (la liste des amis, indexée) et le classement gardé ; rien tant que le joueur n'a rien fini.
+      if (amis) entreAmis = await amis.rangCumul(id, c, bilan);
     }
     const body = {
       ...publique,
       jeux: publique.jeux.map((j) => ({ ...j, etat: etatDe.get(j.jeu) ?? { statut: "pas_joue" } })),
-      joueur: { pseudo: row.name, ...serie, cumulMs, rangDuJour, classesDuJour },
+      joueur: { pseudo: row.name, ...serie, cumulMs, rangDuJour, classesDuJour, rangEntreAmis: entreAmis },
     };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
 
-  /** Les pseudos des joueurs (une requête, jamais l'identifiant dans la réponse). */
-  async function pseudosDe(ids: readonly string[]): Promise<Map<string, string>> {
+  /** Les pseudos et références publiques des joueurs (une requête, jamais l'identifiant dans la réponse). Lot F2 : `ref` = `players.ref`, de quoi ajouter un joueur en ami depuis le classement. */
+  async function pseudosDe(ids: readonly string[]): Promise<Map<string, { name: string; ref: string }>> {
     if (ids.length === 0) return new Map();
-    const rows = await platform.db.all<{ id: string; name: string }>(`SELECT id, name FROM players WHERE id IN (${ids.map(() => "?").join(",")})`, [...ids]);
-    return new Map(rows.map((r) => [r.id, r.name]));
+    const rows = await platform.db.all<{ id: string; name: string; ref: string | null }>(`SELECT id, name, ref FROM players WHERE id IN (${ids.map(() => "?").join(",")})`, [...ids]);
+    return new Map(await Promise.all(rows.map(async (r) => [r.id, { name: r.name, ref: r.ref ?? (await refOfPlayer(r.id)) }] as const)));
   }
 
   /** `GET /api/portail/classement?date=&vue=` : les 50 premiers de la vue (le cumul, ou un jeu) et, avec `X-Player-Id`, ta ligne (exacte). */
@@ -362,17 +384,19 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     }
     const noms = await nomsVue;
     /** Une ligne : le temps de la vue (le cumul, ou le temps du jeu), si le joueur a tout fini (`complet` : toujours vrai dans la vue d'un jeu), et le résultat de chaque jeu. */
-    const ligneCorps = (l: LigneDuJour, rang: number, pseudo: string) => ({
+    const ligneCorps = (l: LigneDuJour, rang: number, pseudo: string, ref?: string) => ({
       rang,
       pseudo,
+      ...(ref ? { ref } : {}),
       tempsMs: g < 0 ? l.cumulMs : l.resultats[g]!.tempsMs,
       complet: g < 0 ? l.complet : true,
       resultats: resultatsCorps(c.jeux, l.resultats),
     });
     /** Lot TP : une ligne de la vue d'un jeu à la hauteur — son score (hauteur et vies) à côté de la durée de la partie. */
-    const ligneHauteur = (x: { tempsMs: number; medaille: MedaillePortail | null; score?: ScorePortail }, rang: number, pseudo: string) => ({
+    const ligneHauteur = (x: { tempsMs: number; medaille: MedaillePortail | null; score?: ScorePortail }, rang: number, pseudo: string, ref?: string) => ({
       rang,
       pseudo,
+      ...(ref ? { ref } : {}),
       tempsMs: x.tempsMs,
       complet: true,
       score: x.score ?? null,
@@ -386,7 +410,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       vue,
       jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: "mm" as const } : {}) })),
       classes: liste.length,
-      top: hauteur ? hauteur.classes.slice(0, CLASSEMENT_TOP).map((x, i) => ligneHauteur(x, i + 1, noms.get(x.playerId) ?? "?")) : (gardes as LigneDuJour[]).map((l, i) => ligneCorps(l, i + 1, noms.get(l.id) ?? "?")),
+      top: hauteur ? hauteur.classes.slice(0, CLASSEMENT_TOP).map((x, i) => ligneHauteur(x, i + 1, noms.get(x.playerId)?.name ?? "?", noms.get(x.playerId)?.ref)) : (gardes as LigneDuJour[]).map((l, i) => ligneCorps(l, i + 1, noms.get(l.id)?.name ?? "?", noms.get(l.id)?.ref)),
       ...(hauteur ? { unite: "mm" as const } : {}),
     };
     if (!id) {
@@ -395,17 +419,18 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       return new WithHeaders(publique, { "Cache-Control": `public, max-age=${maxAge}`, Vary: "X-Player-Id" });
     }
     const row = await joueurConnu(id, publique);
+    const maRef = await refOfPlayer(id); // lot F2 : sa propre référence publique, comme les autres lignes
     // Ses états à l'instant (une ligne par jeu avec le classement gardé : rien à compter) donnent sa ligne exacte et sa place, même juste après son essai.
     const etatsMoi = await etatsDe(id, day, ouverts, c);
     let moi: Record<string, unknown> | null = null;
     if (hauteur) {
       const e = etatsMoi[ouverts.indexOf(jeuVue!)]!;
-      if (e.statut === "fini") moi = { ...ligneHauteur(e, e.rang, row.name), classes: Math.max(hauteur.classes.length + (hauteur.index.has(id) ? 0 : 1), e.rang) };
+      if (e.statut === "fini") moi = { ...ligneHauteur(e, e.rang, row.name, maRef), classes: Math.max(hauteur.classes.length + (hauteur.index.has(id) ? 0 : 1), e.rang) };
     } else {
       const bilan = bilanDe(id, etatsMoi, ouverts);
       if (bilan && (g < 0 || bilan.resultats[g])) {
         const place = g < 0 ? placer(c, bilan) : { rang: bilan.resultats[g]!.rang, classes: Math.max(liste.length + (c.index.has(id) && c.cumul[c.index.get(id)!]!.resultats[g] ? 0 : 1), bilan.resultats[g]!.rang) };
-        moi = { ...ligneCorps(bilan, place.rang, row.name), classes: place.classes };
+        moi = { ...ligneCorps(bilan, place.rang, row.name, maRef), classes: place.classes };
       }
     }
     const body = { ...publique, top: publique.top.map((r, i) => (idDe(gardes[i]!) === id ? { ...r, moi: true } : r)), moi };
@@ -443,8 +468,12 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     throw new HttpError(404, "not_found", "Route inconnue");
   }
 
+  /** Lot F2 : ce que les classements filtrés « Amis » lisent du portail. */
+  const vue: VuePartagee = { jeux, premierJour, comptes, jourOuvert, estHauteur, classementDe, etatsDe, bilanDe, resultatsCorps, charger };
+
   return {
     route,
+    vue,
     /** Vide la mémoire de l'instance (effacement d'un joueur : il ne doit plus figurer dans un classement gardé). */
     oublier: () => classements.clear(),
     /** Combien de classements du jour cette instance a calculés (mesures et tests). */
