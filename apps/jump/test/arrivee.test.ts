@@ -8,7 +8,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { loadDaily, type LoaderOptions } from "../src/dailyLoader";
 import { FROZEN_FORMAT, decodeAscii, encodeAscii, freezeLevel, frozenJson, rleRow, thawLevel, unrleRow, type FrozenLevel } from "../src/frozen";
 import { HISTORY_KEY, HISTORY_MAX, History, mayRecord, mergeDay, readHistory, streakOf, type DayRecord } from "../src/history";
-import { PALIERS_MORTS, archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalThresholds, palierMorts, recordTile, streakText, wantsHome } from "../src/homeLogic";
+import { PALIERS_MORTS, archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalThresholds, nomDeLaCourse, palierMorts, recordTile, streakText, wantsHome } from "../src/homeLogic";
 import { COMMANDES, HOWTO_POINTS } from "../src/howtoUi";
 import { CATALOGUE_JUMP } from "../src/catalogue";
 import "../src/commandes"; // lot M2 : les aides citent les touches choisies (le crochet de `t`)
@@ -532,5 +532,18 @@ describe("niveaux figés : le chargement", () => {
     const load = await loadDaily(FROZEN_DAYS[1]!, base(async () => (asked++, null)));
     expect(asked).toBe(0);
     expect(load).toMatchObject({ source: "principal", frozenMiss: "" });
+  });
+});
+
+// Lot 31 (retouche) : « Voir la course du n° 1 » sur l'accueil, à côté de « Tout le classement » — présent avec au moins un classé, absent sans.
+describe("« Voir la course du n° 1 » (accueil et classement)", () => {
+  it("avec un premier lu et au moins un classé : son pseudo (le bouton est présent)", () => {
+    expect(nomDeLaCourse("Léa", 3)).toBe("Léa");
+    expect(nomDeLaCourse("Léa", 1)).toBe("Léa");
+  });
+  it("sans classé (ou sans classement lu : aucune ligne), sans premier ou pendant un carnage : null (le bouton est absent)", () => {
+    expect(nomDeLaCourse("Léa", 0)).toBeNull();
+    expect(nomDeLaCourse(null, 3)).toBeNull();
+    expect(nomDeLaCourse("Léa", 3, true)).toBeNull();
   });
 });

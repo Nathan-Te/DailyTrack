@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { ALT_KEPT_VERSION, BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MIN_HOLD_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
+import { ALT_KEPT_VERSION, BRIDGE_VERSION, CHECKPOINT_ZONE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, MIN_HOLD_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION } from "./constants";
 import { idiv } from "./idiv";
 import { jumpThemeOfSim, type JumpThemeName } from "./themes";
 import type { SlowRoute } from "./voies";
@@ -19,9 +19,9 @@ export function levelNumber(day: number): number {
  * Identifiant du niveau d'une date : `jour-AAAA-MM-JJ-g<JUMP_GENERATOR_VERSION>` (identifiant des rediffusions et de la mémoire). Un thème
  * **forcé** (lot 11 : un autre que celui de la date) y ajoute `-t<thème>` : c'est un essai (`forcedTheme`), jamais enregistré.
  */
-export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = MIN_HOLD_VERSION): string {
+export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = CHECKPOINT_ZONE_VERSION): string {
   const natural = jumpThemeOfSim(day, simVersion);
-  const g = simVersion >= MIN_HOLD_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= ALT_KEPT_VERSION ? THEME_BAG_GENERATOR : simVersion >= RESTART_VERSION ? RESTART_GENERATOR : simVersion >= BRIDGE_VERSION ? BRIDGE_GENERATOR : simVersion >= LASER_VERSION ? LASER_GENERATOR : simVersion >= STALACTITE_VERSION ? STALACTITE_GENERATOR : simVersion >= MUSHROOM_VERSION ? MUSHROOM_GENERATOR : simVersion >= PRESS_VERSION ? PRESS_GENERATOR : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
+  const g = simVersion >= CHECKPOINT_ZONE_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= MIN_HOLD_VERSION ? LAME_GENERATOR : simVersion >= ALT_KEPT_VERSION ? THEME_BAG_GENERATOR : simVersion >= RESTART_VERSION ? RESTART_GENERATOR : simVersion >= BRIDGE_VERSION ? BRIDGE_GENERATOR : simVersion >= LASER_VERSION ? LASER_GENERATOR : simVersion >= STALACTITE_VERSION ? STALACTITE_GENERATOR : simVersion >= MUSHROOM_VERSION ? MUSHROOM_GENERATOR : simVersion >= PRESS_VERSION ? PRESS_GENERATOR : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
   return `jour-${formatDay(day)}-g${g}${forced !== null && forced !== natural ? `-t${forced}` : ""}`;
 }
 
@@ -78,6 +78,16 @@ export const THEME_BAG_GENERATOR = 23;
  * exige un générateur ≥ 24 et réciproquement (`frozen.ts`).
  */
 export const MIN_HOLD_GENERATOR = 24;
+/**
+ * Lot 31 : le dernier générateur des niveaux en version 13 est g25 (la place autour de la lame, la portion dure sur la pire phase ; la simulation ne change pas) : `dailyLevel(jour, thème, 13)`
+ * le rend encore, à l'identique (référence v13 : `daily-golden-v13.json`, id `…-g25`). Lot 32 : les niveaux du jour depuis le générateur g26 (`CHECKPOINT_ZONE_GENERATOR`) sont en version 14.
+ */
+export const LAME_GENERATOR = 25;
+/**
+ * Lot 32 : le premier générateur des niveaux en version 14 (un point de passage ne se valide que sur son palier, aucun raccourci par point de passage) : g26. Un jour figé de la version 14 exige
+ * un générateur ≥ 26 et réciproquement (`frozen.ts`).
+ */
+export const CHECKPOINT_ZONE_GENERATOR = 26;
 
 /** Médailles : facteurs (en pour cent) du temps de l'auteur, arrondis au pas supérieur. À calibrer sur de vraies parties (seed § 5). */
 export const MEDAL_PERCENT = { gold: 110, silver: 130, bronze: 160 } as const;
@@ -108,7 +118,7 @@ export const MEDAL_PERCENT_G1 = { author: 105, gold: 115, silver: 137, bronze: 1
 export const MEDAILLES_ASSOUPLIES_VERSION = ALT_KEPT_VERSION;
 
 /** Les médailles d'un niveau à partir du temps de l'auteur et de la version du niveau (les références des versions d'avant gardent leurs seuils). */
-export function jumpMedalsFor(authorTicks: number, simVersion = MIN_HOLD_VERSION): JumpMedals {
+export function jumpMedalsFor(authorTicks: number, simVersion = CHECKPOINT_ZONE_VERSION): JumpMedals {
   const p = simVersion >= MEDAILLES_ASSOUPLIES_VERSION ? MEDAL_PERCENT_G1 : { author: 100, ...MEDAL_PERCENT };
   return {
     author: p.author === 100 ? authorTicks : ceilPercent(authorTicks, p.author),
@@ -135,7 +145,7 @@ export const SLOW_BRONZE_MARGIN = 110;
  * de n'importe quelle voie lente** (auteur + le plus petit surcoût − 1 pas) et **le bronze au-dessus du temps « toutes voies lentes »** avec
  * `SLOW_BRONZE_MARGIN` ; l'argent reste entre les deux. La calibration complète est pour le lot 17.
  */
-export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "fastTicks" | "slowTicks">[], simVersion = MIN_HOLD_VERSION): JumpMedals {
+export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "fastTicks" | "slowTicks">[], simVersion = CHECKPOINT_ZONE_VERSION): JumpMedals {
   const m = jumpMedalsFor(author, simVersion);
   if (slow.length === 0) return m;
   const minExtra = slow.reduce((n, r) => (r.slowTicks - r.fastTicks < n ? r.slowTicks - r.fastTicks : n), slow[0]!.slowTicks - slow[0]!.fastTicks);

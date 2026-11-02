@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 13;
+export const JUMP_SIM_VERSION = 14;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -92,6 +92,20 @@ export const ALT_KEPT_VERSION = 12;
  * Les niveaux du jour depuis le générateur g24 sont en v13 ; les golden et les rediffusions des versions 3 à 12 n'ont pas bougé (le champ `PlayerState.jumpAge` n'existe qu'avec un maintien).
  */
 export const MIN_HOLD_VERSION = 13;
+/**
+ * Lot 32 : **version 14 = version 13 + un point de passage ne se valide que sur son palier**. Jusqu'à la version 13 un point se prenait en franchissant sa colonne vers la droite, à n'importe quelle
+ * hauteur : le puits ouvert au-dessus d'un palier (ou la descente d'une voie lente) laissait le prendre d'en haut, sans faire la portion, puis reprendre au point (mort ou reprise volontaire) pour se
+ * retrouver en bas. Depuis la version 14 le personnage doit être **dans la zone du palier** à la fin d'un pas : son centre dans les `PASSAGE_ZONE_COLS` colonnes du palier (la colonne du fanion et la suivante)
+ * et ses pieds à au plus `PASSAGE_ZONE_ROWS` rangées au-dessus du sol (de la rangée du fanion, le sol est celle d'en dessous). Le traverser plus haut ne le valide pas ; se poser dans la zone en tombant du
+ * haut du puits, si. Les versions d'avant gardent exactement leur règle. Les niveaux du jour depuis le générateur g26 sont en v14.
+ */
+export const CHECKPOINT_ZONE_VERSION = 14;
+/** Lot 32 : largeur de la zone d'un point de passage (colonnes, à partir de la colonne du fanion) : le palier standard, `PALIER_LENGTH`. */
+export const PASSAGE_ZONE_COLS = 2;
+/** Lot 32 (g26) : rangées libres au-dessus du sol d'un palier de raccord dans l'assemblage de la version 14 (un saut complet monte de 4,1 tuiles, tête comprise 4,9 ; 6 laisse de la marge) : au-dessus, du plein. */
+export const PALIER_HEADROOM_ROWS = 6;
+/** Lot 32 : hauteur de la zone d'un point de passage : pieds du personnage à au plus tant de rangées au-dessus du sol du palier (le fanion et les deux tuiles au-dessus). */
+export const PASSAGE_ZONE_ROWS = 3;
 /** Lot 30 : le maintien minimal du saut (pas) des niveaux de la version 13 et suivantes : 6 pas = 50 ms. Réglable pour essayer (`JumpParams.jumpMinHold`, `?debug&tune`). */
 export const JUMP_MIN_HOLD = 6;
 /**
@@ -130,9 +144,11 @@ export const JUMP_MICRO_MAX = 4;
  * simulation ne changent pas : `JUMP_SIM_VERSION` reste 12, un niveau g22 se rejoue tel quel et garde son thème de l'ancienne règle) ;
  * 24 depuis le lot 30 (niveaux en sim v13 : le maintien minimal du saut ; appuis humains d'au moins 6 pas, durée d'appui tolérée à ±4 pas ; catalogue re-résolu) ;
  * 25 depuis le lot 31 (la place autour de la lame : 2 tuiles libres entre une scie mobile et la paroi d'une cheminée ; portion dure selon la pire phase ; la simulation ne change pas :
- * `JUMP_SIM_VERSION` reste 13, un niveau g24 se rejoue tel quel).
+ * `JUMP_SIM_VERSION` reste 13, un niveau g24 se rejoue tel quel) ;
+ * 26 depuis le lot 32 (niveaux en sim v14 : un point de passage ne se valide que sur son palier ; règle « aucun raccourci par point de passage » : le puits d'un palier est fermé à
+ * `PALIER_HEADROOM_ROWS` rangées, une zone ne s'atteint que par la portion qui la précède ou par sa voie lente ; un niveau g25 se rejoue tel quel en v13).
  */
-export const JUMP_GENERATOR_VERSION = 25;
+export const JUMP_GENERATOR_VERSION = 26;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

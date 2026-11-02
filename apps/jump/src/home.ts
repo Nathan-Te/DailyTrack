@@ -32,7 +32,7 @@ export interface HomeView {
   /** Le carnage du jour : les morts de tout le monde (carte des morts du serveur), et si l'on peut le voir (ton meilleur essai du jour en héros). */
   carnage: { morts: number; peut: boolean } | null;
   /** Les cinq premiers du classement du jour (et le nombre de classés), ou `null` : pas de classement ici (sans serveur). */
-  board: { rows: RankRowView[]; participants: number } | null;
+  board: { rows: RankRowView[]; participants: number; course: boolean } | null;
   /** Lot P2 : le code de cet appareil a été remplacé ailleurs (le profil commun le dit). */
   revoked: boolean;
   /** Lot G1 : le fantôme choisi (son nom). */
@@ -45,6 +45,8 @@ export interface HomeOptions {
   onHelp(): void;
   onArchives(): void;
   onBoard(): void;
+  /** Lot 31 : « Voir la course du n° 1 » (à côté de « Tout le classement ») ; on revient à l'accueil. */
+  onCourse(): void;
   onCarnage(): void;
   /** Lot G1 : un toucher sur le fantôme choisi passe au suivant (Aucun compris). */
   onGhost(): void;
@@ -148,7 +150,12 @@ export function mountHome(opts: HomeOptions): Home {
   const boardAll = el("button", { classe: "lien", attrs: { type: "button", id: "home-board" } });
   lier(boardAll, "accueil.classement.tout");
   boardAll.addEventListener("click", () => opts.onBoard());
-  const board = el("div", { classe: "classement-jour", attrs: { id: "home-leaderboard", hidden: true } }, boardTitre, boardList, boardVide, rank, boardAll);
+  // Lot 31 : « Voir la course du n° 1 », à côté de « Tout le classement » ; absent sans classé.
+  const boardCourse = el("button", { classe: "lien", attrs: { type: "button", id: "home-board-course", hidden: true } });
+  lier(boardCourse, "classement.course");
+  boardCourse.addEventListener("click", () => opts.onCourse());
+  const boardActions = el("div", { classe: "actions" }, boardAll, boardCourse);
+  const board = el("div", { classe: "classement-jour", attrs: { id: "home-leaderboard", hidden: true } }, boardTitre, boardList, boardVide, rank, boardActions);
   const countdown = el("span", { classe: "accueil__decompte", attrs: { id: "home-countdown", "aria-live": "off" } });
   const profil = el("a", { classe: "lien", attrs: { id: "home-profil", href: opts.profilHref } });
   lier(profil, "accueil.profil");
@@ -211,6 +218,7 @@ export function mountHome(opts: HomeOptions): Home {
       boardList.replaceChildren(...v.board.rows.slice(0, 5).map((r) => ligneClassement(r, false)));
       boardVide.hidden = v.board.rows.length > 0;
       boardAll.hidden = v.board.rows.length === 0;
+      boardCourse.hidden = !v.board.course;
     }
   };
   onLangue(() => changed()); // main.ts redessine la vue dans la nouvelle langue (`home.update`)

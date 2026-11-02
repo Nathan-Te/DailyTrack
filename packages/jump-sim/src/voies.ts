@@ -1,6 +1,6 @@
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, stepAttempt, type AttemptState } from "./attempt";
 import { tileOf } from "./collide";
-import { TICK_RATE, UNITS_PER_TILE } from "./constants";
+import { PALIER_HEADROOM_ROWS, TICK_RATE, UNITS_PER_TILE } from "./constants";
 import { idiv } from "./idiv";
 import type { Level } from "./level";
 import { RELEASE_MIN, isCleanRun, type Palier } from "./modules";
@@ -137,7 +137,7 @@ const SCRIPT_MAX = 40 * TICK_RATE;
  * galerie, se laisse tomber au milieu du palier suivant et repart jusqu'à sa sortie canonique (le bord droit, en course propre) — ou jusqu'à
  * l'arrivée si le palier suivant est le dernier. Rend les commandes, ou la raison de l'échec.
  */
-export function slowScript(level: Level, start: AttemptState, route: Pick<SlowRoute, "zone" | "entryRow" | "galleryRow" | "palierOut">, last: boolean): number[] | string {
+export function slowScript(level: Level, start: AttemptState, route: Pick<SlowRoute, "zone" | "entryRow" | "galleryRow" | "palierOut"> & { descentCol?: number }, last: boolean): number[] | string {
   const T = UNITS_PER_TILE;
   const ledges = slowLedges(route.zone, route.entryRow, route.galleryRow);
   const out = route.palierOut;
@@ -179,9 +179,11 @@ export function slowScript(level: Level, start: AttemptState, route: Pick<SlowRo
       }
     } else if (stage === ledges.length + 1) {
       // La galerie, puis la descente : centre visé sur la première colonne du palier suivant (de quoi reprendre toute sa vitesse avant son bord).
-      const aim = out.col0 * T + idiv(T, 2);
+      // Lot 32 : une descente à une colonne (le plein de l'autre côté) se prend par cette colonne, puis, sorti du puits au-dessus du palier (`room`), on vise la première colonne du palier.
+      const aimCol = route.descentCol !== undefined && feet(s) < (out.row - PALIER_HEADROOM_ROWS) * T ? route.descentCol : out.col0;
+      const aim = aimCol * T + idiv(T, 2);
       const c = center(s);
-      dir = tileOf(c) < out.col0 || c < aim - QUARTER ? INPUT_RIGHT : c > aim + QUARTER ? INPUT_LEFT : 0;
+      dir = tileOf(c) < aimCol || c < aim - QUARTER ? INPUT_RIGHT : c > aim + QUARTER ? INPUT_LEFT : 0;
     }
     // Appui humain : `HOLD` pas (au moins `PRESS_MIN`), relâché au moins `RELEASE_MIN` pas avant le suivant, jamais avant d'être reposé.
     let jump = false;
