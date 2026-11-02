@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   BUDGET_E2E_S,
+  budgetsPour,
+  changeLesBudgets,
   CIBLE_PART_UNITAIRE_S,
   PARTS_E2E_MAX,
   PARTS_UNITAIRES_MAX,
@@ -16,6 +18,7 @@ import {
   lister,
   partsE2e,
   partsUnitaires,
+  resume,
   sorties,
   specsDesZones,
   specsDuJeu,
@@ -300,9 +303,10 @@ describe("les parts", () => {
 
 describe("la décision d'une PR", () => {
   it("docs seuls : ni vérification ni construction, ni spec ; les tests qui lisent le document, seuls", () => {
-    const d = decider(["docs/plateforme/budgets.md"], { racine: ROOT });
+    // (lot R17 : `budgets.md` n'est plus l'exemple — il lance le job « Budgets » et plus de tests le lisent ; `effacement.md` n'est lu que par les mentions légales)
+    const d = decider(["docs/plateforme/effacement.md"], { racine: ROOT });
     expect(d).toMatchObject({ docsSeuls: true, e2eParts: [] });
-    expect(d.unitParts.flatMap((p) => p.fichiers)).toContain("apps/portail/test/budgets.test.ts");
+    expect(d.unitParts.flatMap((p) => p.fichiers)).toContain("apps/portail/test/mentions.test.ts");
     expect(d.unitParts.flatMap((p) => p.fichiers).length).toBeLessThanOrEqual(4);
     const out = sorties(d);
     expect(out).toContain("docs_seuls=true");
@@ -352,7 +356,7 @@ describe("le workflow (ci.yml)", () => {
   it("la PR lit la matrice du job de portée ; la CI complète garde sa matrice ; les statuts requis `test` et `e2e` sont toujours rapportés", () => {
     expect(code).toContain("fromJSON(needs.scope.outputs.unit_matrice)");
     expect(code).toContain("fromJSON(needs.scope.outputs.e2e_pr_matrice)");
-    expect(code).toMatch(/^  test:\n    needs: \[scope, unit, zones\]\n    if: always\(\)/m);
+    expect(code).toMatch(/^  test:\n    needs: \[scope, unit, zones, budgets\]\n    if: always\(\)/m); // lot R17 : le verdict `test` dépend aussi du job « Budgets »
     expect(code).toMatch(/^  e2e:\n    needs: \[scope, e2e-parts, e2e-pr\]\n    if: always\(\)/m);
     // Pas de filtre de chemins au niveau du workflow : un statut requis qui ne se rapporte pas bloquerait la fusion d'une PR de documentation.
     expect(code).not.toMatch(/paths(-ignore)?:/);
@@ -373,5 +377,93 @@ describe("le workflow (ci.yml)", () => {
     expect(pr).toContain("--project=tower-chromium"); // lot R15
     expect(pr).not.toMatch(/firefox|webkit/);
     expect(existsSync(join(ROOT, "e2e/zones.json"))).toBe(true);
+  });
+});
+
+// Lot R17 : le job « Budgets » (budgets de tous les jeux et du portail, sur chaque PR qui touche ce que charge un joueur). Le 02/11/2026 un lot du socle avait fait grossir Track de 144 o sans
+// qu'aucun spec de Track ne tourne : le filtre ne dépend donc PAS des zones de specs.
+describe("lot R17 : le job « Budgets »", () => {
+  it("une PR qui ne touche que `packages/ui/src/…` lance « Budgets » — même quand le seul spec de jeu choisi n'a rien à voir (le cas du 02/11)", () => {
+    const d = decider(["packages/ui/src/jetons.ts"], { racine: ROOT });
+    expect(d.budgets.actif).toBe(true);
+    expect(d.budgets.raisons[0]).toContain("packages/ui/src/jetons.ts");
+    expect(sorties(d)).toContain("budgets_actif=true\n");
+    expect(resume(d)).toContain("le job « Budgets » tourne");
+  });
+
+  it("une PR qui ne touche que `apps/api/src/…` ne le lance pas", () => {
+    const d = decider(["apps/api/src/cdj.ts", "apps/api/src/portail.ts"], { racine: ROOT });
+    expect(d.budgets.actif).toBe(false);
+    expect(sorties(d)).toContain("budgets_actif=false\n");
+    expect(resume(d)).toContain("pas de job « Budgets »");
+  });
+
+  it("ce qui change ce que charge un joueur le lance : jeux, portail, paquets, catalogues, fiches et projections, dépendances, Vite, le contrôle lui-même et le tableau des plafonds", () => {
+    for (const f of [
+      "apps/web/src/main.ts",
+      "apps/jump/src/screensUi.ts",
+      "apps/tower/src/accueil.ts",
+      "apps/portail/src/accueil.ts",
+      "apps/portail/mentions-legales/index.html",
+      "apps/jump/public/levels/2026-11-02.json",
+      "packages/ui/src/catalogue.fr.ts",
+      "packages/profile/src/index.ts",
+      "packages/core/src/prng.ts",
+      "packages/musique/src/branche.ts",
+      "config/jeux/tower.json",
+      "config/jeux/projections/portail.json",
+      "config/lancement.json",
+      "package.json",
+      "package-lock.json",
+      "apps/web/vite.config.ts",
+      "apps/web/e2e/mesureDecor.mjs",
+      "scripts/budgets.mjs",
+      "scripts/budgets-controle.mjs",
+      "docs/plateforme/budgets.md",
+      ".github/workflows/ci.yml",
+    ])
+      expect(changeLesBudgets(f), f).toBe(true);
+  });
+
+  it("l'API, la documentation et les tests ne le lancent pas", () => {
+    for (const f of [
+      "apps/api/src/cdj.ts",
+      "apps/api/test/budgets.test.ts",
+      "apps/web/test/ciZones.test.ts",
+      "apps/web/e2e/perf.spec.ts",
+      "apps/tower/e2e/poids.spec.ts",
+      "packages/ui/test/jetons.test.ts",
+      "packages/ui/CLAUDE.md",
+      "apps/web/CLAUDE.md",
+      "docs/orchestration.md",
+      "docs/tests.md",
+      "docs/plateforme/lots/lot-R17-budgets-sur-chaque-pr.md",
+      "CLAUDE.md",
+      ".github/workflows/production.yml",
+      "scripts/ci-zones.mjs",
+    ])
+      expect(changeLesBudgets(f), f).toBe(false);
+    expect(budgetsPour(["docs/tests.md", "apps/api/src/cdj.ts", "packages/ui/test/x.test.ts"]).actif).toBe(false);
+    expect(decider(["docs/tests.md"], { racine: ROOT }).budgets.actif).toBe(false);
+  });
+
+  it("un seul fichier servi suffit ; la CI complète (main, nuit, bouton) et le doute le lancent toujours", () => {
+    expect(budgetsPour(["docs/tests.md", "apps/api/src/cdj.ts", "packages/ui/src/jetons.ts"]).actif).toBe(true);
+    for (const mode of ["main", "complet", "nuit"]) expect(decider(["apps/api/src/cdj.ts"], { mode, racine: ROOT }).budgets.actif, mode).toBe(true);
+    expect(budgetsPour([]).actif).toBe(true);
+  });
+
+  it("le workflow : un job `budgets` construit, contrôle, et publie les mesures de main ; il ne reçoit que la lecture", () => {
+    const ci = read(".github/workflows/ci.yml");
+    const job = ci.slice(ci.indexOf("\n  budgets:\n"), ci.indexOf("\n  # CI COMPLÈTE"));
+    expect(job).toContain("if: needs.scope.outputs.budgets_actif == 'true'");
+    expect(job).toContain("name: Budgets");
+    expect(job).toContain("npm run build");
+    expect(job).toContain("node scripts/budgets-controle.mjs source");
+    expect(job).toContain("node scripts/budgets-controle.mjs \"${args[@]}\"");
+    expect(job).toMatch(/permissions:\n      contents: read\n      actions: read\n/);
+    expect(job).toContain("name: budgets-${{ github.sha }}");
+    expect(job).toMatch(/github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
+    expect(ci).toContain("budgets_actif: ${{ steps.scope.outputs.budgets_actif }}");
   });
 });

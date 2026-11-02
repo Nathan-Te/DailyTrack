@@ -10,6 +10,7 @@ export interface Decision {
   unitParts: PartUnitaire[];
   e2e: Choix;
   e2eParts: PartE2e[];
+  budgets: { actif: boolean; raisons: string[] };
 }
 export const E2E_DIRS: { web: string; jump: string; tower: string };
 export const JEUX_E2E: readonly ["web", "jump", "tower"];
@@ -47,3 +48,8 @@ export function dureesDepuisVitest(rapport: unknown, racine?: string): Record<st
 export const PARTS_COMPLETES: Record<"main" | "complet" | "nuit", { web: number; jump: number; tower: number }>;
 export function matriceComplete(mode: string): { include: { suite: string; browser: string; shard: string; essentiel: boolean }[] };
 export function dureeE2e(racine: string, jeu: "web" | "jump" | "tower", spec: string): number;
+export const BUDGETS_SERVIS: readonly string[];
+export const BUDGETS_EXCLUS: readonly string[];
+export const BUDGETS_TOUJOURS: readonly string[];
+export function changeLesBudgets(fichier: string): boolean;
+export function budgetsPour(files: string[], options?: { complet?: boolean }): { actif: boolean; raisons: string[] };

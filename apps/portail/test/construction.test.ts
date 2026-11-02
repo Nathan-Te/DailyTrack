@@ -12,9 +12,6 @@ import { VITRINE, portailEnv } from "../../../scripts/site.mjs";
 //     déclarées par la page ≤ 150 ko, seules Archivo Black et Archivo 400 préchargées ;
 //   - la vitrine `/ui/` n'est jamais construite pour la production.
 // Les chiffres sont écrits dans la sortie du test (et recopiés dans le README du lot).
-export const BUDGET_PREMIER_CHARGEMENT = 35_200; // lot F1 : 33 000 → 35 200 o (+2 200 pour +2 140 mesurés), « Mes jeux » (l'étoile, la cartouche compacte, la répartition, la pastille « Nouveau », les textes fr + en) : **à valider par Nathan** (`docs/plateforme/budgets.md`) ; avant : lot S1 : 32 768 → 33 000 o (+232 o), décision de Nathan du 31/10/2026 : les boutons Discord / Ko-fi passent par le composant du socle (jetons de couleur, code) ; avant : 32 * 1024 ; lot 53 : 30 → 32 ko (+2 048 o), décision de Nathan du 28/10/2026 : la pastille de l'iPhone, « Retrouver mon profil » (à la demande), l'en-tête iOS, les marges de sécurité
-export const BUDGET_POLICES = 150 * 1024;
-
 const ROOT = join(__dirname, "../../..");
 let tmp = "";
 const sorties: Record<"production" | "recette", string> = { production: "", recette: "" };
@@ -53,14 +50,12 @@ function premierChargement(dir: string): { fichiers: string[]; octets: number; p
 }
 
 describe("construction du portail", () => {
-  it(`budget : premier chargement ≤ ${BUDGET_PREMIER_CHARGEMENT / 1024} ko compressés hors polices, polices ≤ ${BUDGET_POLICES / 1024} ko`, () => {
+  it("premier chargement : un script, une feuille de style et les polices de l'accueil (les plafonds : job « Budgets »)", () => {
     const p = premierChargement(sorties.production);
     const polices = p.polices.reduce((s, f) => s + readFileSync(join(sorties.production, f)).length, 0);
     console.log(`portail : ${(p.octets / 1024).toFixed(1)} ko compressés (gzip) — ${p.fichiers.join(", ")} ; polices : ${(polices / 1024).toFixed(1)} ko (${p.polices.length} fichiers)`);
     expect(p.fichiers.some((f) => f.endsWith(".js")) && p.fichiers.some((f) => f.endsWith(".css"))).toBe(true);
-    expect(p.octets).toBeLessThanOrEqual(BUDGET_PREMIER_CHARGEMENT);
     expect(p.polices.length).toBeGreaterThan(3);
-    expect(polices).toBeLessThanOrEqual(BUDGET_POLICES);
   });
 
   it("seules Archivo Black et Archivo 400 sont préchargées", () => {

@@ -77,6 +77,16 @@ describe("verifier : les mêmes étapes que la CI", () => {
     expect(plan.some((n) => n.startsWith("e2e DailyTrack"))).toBe(false);
   });
 
+  it("lot R17 : le contrôle des budgets suit la CI — il suit la construction, et seulement quand la PR touche ce que charge un joueur", () => {
+    const socle = etapes(decider(["packages/ui/src/jetons.ts"]), { sansE2e: true }).map((e) => e.nom);
+    expect(socle.at(-2)).toBe("construction (jeux)");
+    expect(socle.at(-1)).toBe("budgets (toutes les lignes de budgets.md)");
+    const avecE2e = etapes(decider(["apps/jump/src/hud.ts"])).map((e) => e.nom);
+    expect(avecE2e.filter((n) => n.startsWith("construction (jeux")).length).toBe(1); // la construction des e2e est réutilisée
+    expect(avecE2e.at(-1)).toBe("budgets (toutes les lignes de budgets.md)");
+    expect(etapes(decider(["apps/api/src/cdj.ts"]), { sansE2e: true }).some((e) => e.nom.startsWith("budgets"))).toBe(false);
+  });
+
   it("--sans-e2e et --zones", () => {
     const d = decider(["apps/jump/src/hud.ts"]);
     expect(etapes(d, { sansE2e: true }).some((e) => e.nom.startsWith("e2e"))).toBe(false);

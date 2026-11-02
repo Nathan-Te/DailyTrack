@@ -4,73 +4,59 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { POIDS_MAX } from "../../../scripts/images-partage.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { LIGNES_TOWER } from "../../../scripts/budgets.mjs";
+import { CLES_MESUREES, LIGNES_TOWER } from "../../../scripts/budgets.mjs";
+import { HORS_JOB, lirePlafonds } from "../../../scripts/budgets-controle.mjs";
 
-// Lot I6 (plateforme) : docs/plateforme/budgets.md est la référence des budgets. Ce test vérifie qu'il dit les **mêmes limites** que les tests qui les
-// imposent (une limite changée dans un test sans le tableau, ou l'inverse, échoue), et que chaque ligne est cohérente (marge = budget − après).
+// Lot I6 (plateforme) : docs/plateforme/budgets.md est la référence des budgets. Lot R17 : c'est aussi la SEULE source des plafonds — le job « Budgets » de la CI
+// (scripts/budgets-controle.mjs) les lit ici et les compare à `mesuresParLigne` (scripts/budgets.mjs) ; plus aucun test n'en écrit de copie. Ce test vérifie que le tableau et la mesure
+// parlent des mêmes lignes (une ligne ajoutée au tableau sans mesure, ou l'inverse, échoue), que chaque ligne est cohérente (marge = budget − après), et qu'aucun spec ne ramène un plafond.
 const ROOT = join(__dirname, "../../..");
 const lire = (f: string) => readFileSync(join(ROOT, f), "utf8");
-const nombre = (s: string) => Number(s.replace(/[\s ]/g, ""));
+const nombre = (s: string) => Number(s.replace(/[\s ]/g, ""));
 
 const doc = lire("docs/plateforme/budgets.md");
+const plafonds: Record<string, number> = lirePlafonds(doc);
+/** Les lignes du grand tableau (celles qui portent « avant », « après » et « marge »). */
 const lignes = new Map(
   [...doc.matchAll(/^\| `([a-z.A-Z0-9]+)` \| [^|]+\| [^|]+\| ([\d\s]+) \| [^|]+\| ([\d\s]+)[^|]*\| ([\d\s]+) \|/gm)].map((m) => [m[1]!, { budget: nombre(m[2]!), apres: nombre(m[3]!), marge: nombre(m[4]!) }]),
 );
 
-/** La limite qu'un test impose, lue dans son source. */
-function limite(fichier: string, motif: RegExp): number {
-  const m = motif.exec(lire(fichier));
-  if (!m) throw new Error(`limite introuvable dans ${fichier} : ${motif}`);
-  return m.slice(1).reduce((n, x) => n + Number(x.replace(/_/g, "")), 0);
-}
-
-const CONSTRUCTION = "apps/portail/test/construction.test.ts";
-const PERF = "apps/web/e2e/perf.spec.ts";
-const POIDS = "apps/jump/e2e/poids.spec.ts";
-// Lot R15 : Tower. Le test de Tower LIT sa limite dans ce tableau (il n'en écrit aucune) : le tableau est la seule source, il n'y a pas de seconde valeur à comparer ;
-// ce test vérifie que les lignes sont celles que mesure `mesureTower` (`LIGNES_TOWER`) et que le test de Tower lit bien ce fichier.
-const POIDS_TOWER = "apps/tower/e2e/poids.spec.ts";
-const ATTENDUS: Record<string, number> = {
-  // (lus dans le source : importer construction.test.ts lancerait ses constructions)
-  "portail.premier": limite(CONSTRUCTION, /BUDGET_PREMIER_CHARGEMENT = ([\d_]+);/), // lot S1 : en octets (33 000)
-  "portail.polices": limite(CONSTRUCTION, /BUDGET_POLICES = (\d+) \* 1024;/) * 1024,
-  "track.jsCss": limite(PERF, /toBeLessThan\(([\d_]+) \+ ([\d_]+)\)/),
-  "track.js": limite(PERF, /JS compressé : \$\{JSON\.stringify\(gz\)\}`\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.horsThree": limite(PERF, /"le code du jeu et de la simulation, hors three\.js"\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.anglais": limite(PERF, /"le catalogue anglais, chargé à la demande"\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.miniatures": limite(PERF, /chargé à la demande"\)\.toBeLessThan\(([\d_]+)\); \/\/ ≈ [\d,]+ ko aujourd'hui \(lot 21/),
-  "track.salon": limite(PERF, /\.salon\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.admin": limite(PERF, /"page d'admin \(admin-\*\.js\), compressée"\)\.toBeLessThan\(([\d_]+)\)/),
-  // Lignes « à la demande » de Track (lots 41, 44 à 47) : hors du premier chargement, chacune gardée par un test de perf.spec.ts.
-  "track.decor": limite(PERF, /"décor 3D à la demande, les huit thèmes \(gzip\)"\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.palier2": limite(PERF, /"le palier 2, à la demande, compressé"\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.vieCiel": limite(PERF, /"la vie et le ciel, à la demande, compressés"\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.post": limite(PERF, /"le post-traitement, à la demande, compressé"\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.qualiteMesure": limite(PERF, /"la mesure de la règle de qualité, à la demande"\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.garage": limite(PERF, /"le Garage, à la demande \(JS\), compressé"\)\.toBeLessThan\(([\d_]+)\)/),
-  "track.polices": limite(PERF, /toBeLessThanOrEqual\((\d+) \* 1024\)/) * 1024,
-  "jump.jsCss": limite(POIDS, /const AVANT = ([\d_]+) \+ ([\d_]+);/) + 20_000,
-  "jump.anglais": limite(POIDS, /"le catalogue anglais, chargé à la demande"\)\.toBeLessThan\(([\d_]+)\)/),
-  "jump.polices": limite(POIDS, /toBeLessThanOrEqual\((\d+) \* 1024\)/) * 1024,
-  "partage.image": POIDS_MAX,
-  // Lot « musique » : le lecteur et le panneau, à la demande ; la limite est celle de `packages/musique/test/poids.test.ts` (mesure sur le code lui-même).
-  "musique.lecteur": limite("packages/musique/test/poids.test.ts", /BUDGET_LECTEUR = ([\d_]+);/),
-  ...Object.fromEntries((LIGNES_TOWER as string[]).map((cle) => [cle, lignes.get(cle)?.budget ?? Number.NaN])),
-};
-
-describe("lot I6 : docs/plateforme/budgets.md, la référence des budgets", () => {
-  it("chaque budget du tableau est la limite que son test impose", () => {
-    expect([...lignes.keys()].sort()).toEqual(Object.keys(ATTENDUS).sort());
-    for (const [cle, attendu] of Object.entries(ATTENDUS)) expect(lignes.get(cle)?.budget, cle).toBe(attendu);
-    expect(lire(POIDS)).toContain("AVANT + 20_000");
-    expect(lire(POIDS_TOWER), "le test de Tower lit ses limites dans budgets.md").toContain("docs/plateforme/budgets.md");
-    for (const cle of LIGNES_TOWER as string[]) expect(lire(POIDS_TOWER), `${cle} : lue par le test de Tower`).toContain(`"${cle}"`);
+describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule source des plafonds", () => {
+  it("chaque ligne du tableau a sa mesure dans le job « Budgets », et chaque mesure sa ligne", () => {
+    const sansMesure = Object.keys(plafonds).filter((c) => !(c in HORS_JOB));
+    expect(sansMesure.sort()).toEqual([...CLES_MESUREES].sort());
+    for (const cle of Object.keys(HORS_JOB)) expect(plafonds[cle], `${cle} : ligne hors job, gardée ailleurs`).toBeGreaterThan(0);
+    // Les lignes de Tower de la fiche (K1) sont toutes au tableau.
+    for (const cle of LIGNES_TOWER as string[]) expect(plafonds[cle], cle).toBeGreaterThan(0);
+    // Les images de partage sont gardées par scripts/images-partage.mjs : même limite.
+    expect(plafonds["partage.image"]).toBe(POIDS_MAX);
   });
 
   it("chaque ligne est cohérente : marge = budget − après, et l'après tient dans le budget", () => {
+    expect(lignes.size).toBeGreaterThan(30);
     for (const [cle, l] of lignes) {
+      expect(l.budget, cle).toBe(plafonds[cle]);
       expect(l.marge, cle).toBe(l.budget - l.apres);
       expect(l.apres, cle).toBeLessThanOrEqual(l.budget);
     }
+  });
+
+  it("aucun spec ni test ne garde de copie d'un plafond en octets : le contrôle est le job « Budgets »", () => {
+    const plafondEnOctets = /\.(toBeLessThan|toBeLessThanOrEqual)\(\s*[\d_]{4,}/;
+    const gardes = ["apps/web/e2e/perf.spec.ts", "apps/jump/e2e/poids.spec.ts", "apps/tower/e2e/poids.spec.ts", "apps/portail/test/construction.test.ts"];
+    for (const f of gardes) {
+      // (les deux délais de chargement d'un téléphone simulé de perf.spec.ts sont des millisecondes ; le fil du générateur de Jump « petit fichier » est une règle de composition, pas une ligne du tableau)
+      const lignesDuFichier = lire(f).split("\n").filter((l) => plafondEnOctets.test(l) && !/\bfcp\b|readyMs|petit fichier/.test(l));
+      expect(lignesDuFichier, `${f} : un plafond en octets (il vit dans docs/plateforme/budgets.md)`).toEqual([]);
+    }
+    expect(lire("packages/musique/test/poids.test.ts")).not.toContain("BUDGET_LECTEUR");
+    expect(lire("apps/portail/test/construction.test.ts")).not.toContain("BUDGET_PREMIER_CHARGEMENT");
+  });
+
+  it("la CI : le job « Budgets » contrôle le tableau, et la fusion en dépend (verdict `test`)", () => {
+    const ci = lire(".github/workflows/ci.yml");
+    expect(ci).toContain("node scripts/budgets-controle.mjs");
+    expect(ci).toMatch(/needs: \[scope, unit, zones, budgets\]/);
+    expect(ci).toContain("name: Budgets");
   });
 });
