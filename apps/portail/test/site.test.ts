@@ -124,12 +124,10 @@ describe("firebase.json", () => {
 });
 
 describe("disposition du site", () => {
-  it("portail à la racine, DailyTrack sous /track/ ; lot K1b : DailyJump (et Tower) sous /<id>/ par leur fiche", () => {
-    expect(LAYOUT).toEqual([
-      { from: "apps/portail/dist", to: "" },
-      { from: "apps/web/dist", to: "track" },
-    ]);
+  it("portail à la racine ; lots K1 à K1c : chaque jeu sous /<id>/ par sa fiche (Track construit dans apps/web)", () => {
+    expect(LAYOUT).toEqual([{ from: "apps/portail/dist", to: "" }]);
     expect(SITES_FICHES.map((s: { from: string; to: string }) => [s.from, s.to])).toEqual([
+      ["apps/web/dist", "track"],
       ["apps/jump/dist", "jump"],
       ["apps/tower/dist", "tower"],
     ]);

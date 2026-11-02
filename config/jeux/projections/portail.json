@@ -1,6 +1,13 @@
 {
   "jeux": [
     {
+      "id": "track",
+      "code": "cdj",
+      "accroche": "portail.track.accroche",
+      "titre": "jeu.track.titre",
+      "premierJour": "2026-10-13"
+    },
+    {
       "id": "jump",
       "accroche": "portail.jump.accroche",
       "titre": "jeu.jump.titre",

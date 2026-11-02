@@ -6,7 +6,7 @@
 //   - **les vues TypeScript** des paquets qui n'importent ni `@cdj/core` ni un fichier hors d'eux (`@cdj/profile`, `@cdj/ui`, `@cdj/musique` : tests de pureté et `rootDir`) et celle de `@cdj/core` :
 //     des constantes **écrites en toutes lettres**, identiques à ce que le code contenait, pour qu'**aucun octet** ne soit ajouté à un jeu (les budgets sont serrés) et que les types restent
 //     des unions de littéraux (`ZoneNouveaute`, `OuAnnonce`, `Jeu`).
-import { JEUX_SANS_FICHE, jsonDeProjection, projectionCI, projectionJeu, projectionPortail, projectionServeur, type FicheJeu } from "./fiche";
+import { jsonDeProjection, projectionCI, projectionJeu, projectionPortail, projectionServeur, type FicheJeu } from "./fiche";
 
 export const DOSSIER_FICHES = "config/jeux";
 export const DOSSIER_PROJECTIONS = "config/jeux/projections";
@@ -30,7 +30,7 @@ export function sorties(fiches: readonly FicheJeu[]): Record<string, string> {
   s["packages/core/src/fiches.generated.ts"] =
     ENTETE("jeu") +
     `export const IDS_FICHES = ${tuple(fiches.map((f) => f.id))};\n` +
-    `// Les jeux publics au départ (Track et Jump, hérités ; puis les fiches \`on\`).\n` +
+    `// Les jeux publics au départ (les fiches \`on\`, dans l'ordre).\n` +
     `export const JEUX_PUBLICS_GENERES: readonly string[] = ${lit(jeu.publics)};\n` +
     `export const ZONES_NOUVEAUTES_GENEREES = ${tuple(jeu.zones)};\n` +
     `export const OU_MESSAGE_GENERES = ${tuple(jeu.ou)};\n` +
@@ -42,24 +42,24 @@ export function sorties(fiches: readonly FicheJeu[]): Record<string, string> {
     `export const OU_ANNONCE_GENERES = ${tuple(jeu.ou)};\n` +
     `export const JEUX_PUBLICS_GENERES: readonly string[] = ${lit(jeu.publics)};\n`;
 
-  const ids = [...JEUX_SANS_FICHE.map((j) => j.id), ...fiches.map((f) => f.id)];
+  const ids = fiches.map((f) => f.id);
   // Des constantes une à une (pas un objet) : un `r.tower.fond` écrit dans un jeton serait gardé par les constructions des jeux (un accès de propriété n'est pas « pur »), un identifiant se remplace par sa valeur.
   const constantes = fiches.flatMap((f) =>
     (["fond", "coque", "police"] as const).map((k) => `export const ETIQUETTE_${f.id.toUpperCase().replace(/-/g, "_")}_${k.toUpperCase()} = ${lit(f.etiquette[k])};\n`),
   );
   s["packages/ui/src/fiches.generated.ts"] =
     ENTETE("jeu") +
-    `// Les jeux de la plateforme : Track (sans fiche jusqu'au lot K1c), puis ceux qui en ont une.\n` +
+    `// Les jeux de la plateforme : un par fiche, dans l'ordre.\n` +
     `export type JeuGenere = ${ids.map(lit).join(" | ")};\n` +
-    `// L'étiquette des jeux qui ont une fiche : les valeurs des jetons du socle (\`jetons.ts\` garde leurs noms).\n` +
+    `// L'étiquette de chaque jeu : les valeurs des jetons du socle (\`jetons.ts\` garde leurs noms).\n` +
     constantes.join("") +
     `export const ETIQUETTES_FICHES = {${fiches.map((f) => ` ${lit(f.id)}: { fond: ETIQUETTE_${f.id.toUpperCase().replace(/-/g, "_")}_FOND, coque: ETIQUETTE_${f.id.toUpperCase().replace(/-/g, "_")}_COQUE, police: ETIQUETTE_${f.id.toUpperCase().replace(/-/g, "_")}_POLICE, dessin: ${lit(f.etiquette.dessin)} }`).join(",")} } as const;\n`;
 
   s["packages/musique/src/fiches.generated.ts"] =
     ENTETE("jeu") +
-    `// Les scènes des jeux qui ont une fiche (celles de Track restent dans \`scenes.ts\`).\n` +
+    `// Les scènes de chaque jeu (\`musique.scenes\` de sa fiche).\n` +
     `export const SCENES_FICHES = ${JSON.stringify(Object.fromEntries(fiches.map((f) => [f.id, f.musique.scenes])))} as const;\n` +
-    `// Les applications qui peuvent jouer de la musique : Track, Jump, les jeux à fiche, puis le portail (qui doit être nommé : \`tous\` ne le désigne pas).\n` +
+    `// Les applications qui peuvent jouer de la musique : les jeux, puis le portail (qui doit être nommé : \`tous\` ne le désigne pas).\n` +
     `export const JEUX_MUSIQUE_GENERES = ${tuple([...ids, "portail"])};\n` +
     `// Ce que \`tous\` désigne : les jeux, pas le portail.\n` +
     `export const JEUX_DE_TOUS_GENERES = ${tuple(ids)};\n`;

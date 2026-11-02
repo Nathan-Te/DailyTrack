@@ -47,9 +47,6 @@ type Cle = Parameters<T["t"]>[0];
 const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || cle in CATALOGUE_COMMUN.fr ? (cle as Cle) : null);
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
-/** Les jeux sans fiche que la page sait habiller (leur code au registre du serveur, leur dossier) ; lots K1 et K1b : ceux qui ont une fiche (`jeuxFiches.ts` : Jump, Tower) n'y sont plus, il ne reste que Track. */
-const JEUX = { cdj: { cle: "jeu.track.nom", cadre: "track" } } as const;
-
 /** Le jour affiché (`AAAA-MM-JJ`, `null` : aujourd'hui, celui du serveur) et aujourd'hui tel que le serveur l'a dit (ou l'horloge locale). */
 let jourAffiche: string | null = new URLSearchParams(location.search).get("date");
 /** La vue affichée : `cumul` ou le dossier d'un jeu (`track`, `jump`). */
@@ -69,8 +66,8 @@ const identifiant = (): string | null => (stockage ? readPlayerId(stockage) : nu
 const filtreActif = (): FiltreAmis => filtreEffectif(filtreDemande, identifiant() !== null);
 
 const nomDuJeu = (t: T, jeu: { jeu: string; nom: string }): string => {
-  const fiche = ficheDuRegistre(jeu.jeu); // lot K1 : un jeu à fiche a son nom dans le catalogue commun (`jeu.<id>.nom`)
-  return fiche ? t.t(`jeu.${fiche.id}.nom` as never) : jeu.jeu in JEUX ? t.t(JEUX[jeu.jeu as keyof typeof JEUX].cle) : jeu.nom;
+  const fiche = ficheDuRegistre(jeu.jeu); // lots K1 à K1c : un jeu a son nom dans le catalogue commun (`jeu.<id>.nom`) ; un jeu inconnu du portail garde celui que le serveur déclare
+  return fiche ? t.t(`jeu.${fiche.id}.nom` as never) : jeu.nom;
 };
 
 /**
@@ -79,7 +76,7 @@ const nomDuJeu = (t: T, jeu: { jeu: string; nom: string }): string => {
  */
 function caseDeJeu(t: T, jeu: { jeu: string; nom: string }, r: ResultatClassement | null, avecTemps: boolean): HTMLElement {
   // Lot TP : pour un jeu à la hauteur, la case dit les vies restantes (la hauteur est la valeur de la ligne) ; jamais le temps.
-  const cadre = (ficheDuRegistre(jeu.jeu)?.id as Jeu | undefined) ?? (jeu.jeu in JEUX ? JEUX[jeu.jeu as keyof typeof JEUX].cadre : undefined);
+  const cadre = ficheDuRegistre(jeu.jeu)?.id as Jeu | undefined;
   let contenu: HTMLElement;
   if (r === null) contenu = el("span", { classe: "classement-jeu__vide" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: t.t("classement.pasFini") }));
   else if (r.medaille) contenu = medaille(t, { type: MEDAILLE[r.medaille]!, obtenue: true, jeu: cadre });
@@ -149,11 +146,11 @@ const nomOnglet = (t: T, o: { jeu?: string; nom?: string }): string => (o.jeu ? 
 
 /**
  * Les onglets (rôle `tablist`, un seul dans l'ordre de tabulation, flèches pour passer de l'un à l'autre) : Cumulé, puis un jeu par jeu du jour. Avant la
- * réponse du serveur : Cumulé, puis les jeux au temps (lots K1 et K1b : le champ `cumul` de la fiche d'un jeu ; Track, sans fiche, d'abord). Un jeu hors du cumul (Tower, lot TP) n'y est jamais d'avance : il n'est dans le classement du jour qu'à partir de son premier jour entier
+ * réponse du serveur : Cumulé, puis les jeux au temps (lots K1 à K1c : le champ `cumul` de la fiche d'un jeu). Un jeu hors du cumul (Tower, lot TP) n'y est jamais d'avance : il n'est dans le classement du jour qu'à partir de son premier jour entier
  * `on`, et un onglet dessiné puis retiré à la réponse clignoterait ; il apparaît avec la réponse du serveur, quand il est là.
  */
 function barreDesVues(t: T, c: Classement | null): HTMLElement {
-  const liste = c ? onglets(c.jeux) : onglets([...Object.entries(JEUX).map(([jeu, j]) => ({ jeu, site: j.cadre as string, nom: jeu })), ...FICHES.filter((f) => f.cumul).map((f) => ({ jeu: f.code, site: f.id, nom: f.code }))]);
+  const liste = c ? onglets(c.jeux) : onglets(FICHES.filter((f) => f.cumul).map((f) => ({ jeu: f.code, site: f.id, nom: f.code })));
   const actif = liste.some((o) => o.vue === vueAffichee) ? vueAffichee : VUE_CUMUL;
   const barre = el("div", { classe: "classement-vues", attrs: { role: "tablist", "aria-label": t.t("classement.vues.aria") } });
   const boutons = liste.map((o) => {

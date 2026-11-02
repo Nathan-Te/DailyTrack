@@ -1,54 +1,12 @@
 {
-  "_": "Lot R10 (plateforme) — la table spec → zones de la CI de PR courte (scripts/ci-zones.mjs, testée par apps/web/test/ciZones.test.ts). Une PR ne lance que les specs e2e (Chromium) dont une ZONE contient un fichier modifié, plus la fumée de chaque jeu touché ; tout tourne sur main (CI complète), la nuit et dans le lot de mise en production. Une zone = des motifs de chemins (`*` = un segment, `**` = tout) moins `sauf`. Un spec sans zone, une zone sans spec ou sans fichier, un nom inconnu : le test échoue. UN NOUVEAU SPEC SE DÉCLARE ICI (clé « jeu/fichier », au moins une zone) — lot K1 : sauf pour un jeu qui a une fiche (`config/jeux/<id>.json`, Tower), dont les zones, les specs et la fumée sont dans sa fiche (`e2e`) et fusionnés ici à la lecture (`chargerTable`, scripts/ci-zones.mjs) ; un fichier de jeu qu'aucune zone ne nomme ne lance que la fumée de son jeu. Les outils (captures-*, mesure-*) se sautent d'eux-mêmes hors CAPTURES / MESURE : ils n'ont pas de zone.",
+  "_": "Lot R10 (plateforme) — la table spec → zones de la CI de PR courte (scripts/ci-zones.mjs, testée par apps/web/test/ciZones.test.ts). Une PR ne lance que les specs e2e (Chromium) dont une ZONE contient un fichier modifié, plus la fumée de chaque jeu touché ; tout tourne sur main (CI complète), la nuit et dans le lot de mise en production. Une zone = des motifs de chemins (`*` = un segment, `**` = tout) moins `sauf`. Un spec sans zone, une zone sans spec ou sans fichier, un nom inconnu : le test échoue. UN NOUVEAU SPEC SE DÉCLARE DANS LA FICHE DE SON JEU (`config/jeux/<id>.json`, `e2e` : zones, specs, fumée, « Régression » ; lots K1, K1b et K1c : Track, Jump et Tower), fusionnée ici à la lecture (`chargerTable`, scripts/ci-zones.mjs) ; ne restent dans ce fichier que les zones partagées (`ui`, `portail`, `api-coeur`…) et les specs du portail et de la plateforme qui vivent dans `apps/web/e2e` (clé « web/fichier ») ; un fichier de jeu qu'aucune zone ne nomme ne lance que la fumée de son jeu. Les outils (captures-*, mesure-*) se sautent d'eux-mêmes hors CAPTURES / MESURE : ils n'ont pas de zone.",
   "fumee": {
-    "web": ["replay.spec.ts", "perf.spec.ts", "accueil.spec.ts"]
   },
   "_regression": "Lot R13 (le tri des tests, docs/tests.md) : les specs tout entiers de la famille « Régression » (mises en page, écrans secondaires, effets, Salon détaillé). Ils ne tournent que dans la CI complète (nuit, « Run workflow ») — sauf modifiés par la PR. Un test « Régression » dans un autre spec porte l'étiquette `@regression` ; un test sans étiquette est « Essentiel » (PR de sa zone et chaque fusion dans main).",
-  "regression": [
-    "web/accessibilite.spec.ts", "web/admin.spec.ts", "web/air.spec.ts", "web/cameras.spec.ts", "web/decor.spec.ts", "web/demo.spec.ts",
-    "web/figures.spec.ts", "web/garage.spec.ts", "web/hud-compact.spec.ts", "web/identite-plateforme.spec.ts", "web/juice.spec.ts", "web/manette.spec.ts",
-    "web/mobile.spec.ts",
-    "web/plein-ecran.spec.ts", "web/post.spec.ts", "web/qualite.spec.ts", "web/relief.spec.ts", "web/salon-serveur.spec.ts", "web/scene.spec.ts",
-    "web/socle.spec.ts", "web/thumbnails.spec.ts", "web/vie-ciel.spec.ts", "web/vitesse.spec.ts", "web/vitrine.spec.ts", "web/vitrine-voiture.spec.ts", "web/vitrine-son.spec.ts", "web/son-jeu.spec.ts"
-  ],
+  "regression": ["web/manette.spec.ts"],
   "_regressionUnitaires": "Lot R13 : les fichiers de tests unitaires de la famille « Régression » (jeux de données fictives de la recette) : CI complète et main seulement, sauf modifiés.",
   "regressionUnitaires": ["apps/api/test/portailDemo.test.ts", "apps/api/test/classementDemo.test.ts"],
   "zones": {
-    "track-sim": { "globs": ["packages/sim/**"] },
-    "track-coeur": { "globs": ["apps/web/src/main.ts", "apps/web/index.html", "apps/web/vite.config.ts", "apps/web/public/**", "apps/web/src/generationInit.ts", "apps/web/src/lancement.ts", "apps/web/src/nouveauDepart.ts", "apps/web/src/interrupteur*.ts"] },
-    "track-scene": {
-      "globs": ["apps/web/src/scene/**", "apps/web/src/trackMesh.ts", "apps/web/src/trackProps.ts", "apps/web/src/meshKit.ts", "apps/web/src/halo.ts", "apps/web/src/decorPose.ts", "apps/web/src/signage.ts", "apps/web/src/qualite.ts", "apps/web/src/qualiteMesure.ts", "apps/web/src/feux.ts", "apps/web/src/arena.ts", "apps/web/outils/**"],
-      "sauf": ["apps/web/outils/son/**"]
-    },
-    "track-voiture": { "globs": ["apps/web/src/voiture/**", "apps/web/src/carMesh.ts", "apps/web/src/carPose.ts", "apps/web/src/garage*.ts", "apps/web/src/garage.css"] },
-    "track-audio": {
-      "_": "Lot 55 (partie B) : le son du jeu (audio.ts, audioLogic.ts). Zone étroite : seul le spec du son l'active.",
-      "globs": ["apps/web/src/audio.ts", "apps/web/src/audioLogic.ts"]
-    },
-    "track-son": {
-      "_": "Lot 55 (partie B) : le nouveau son (profils de moteur, boîte virtuelle, moteurs, outil de rendu des échantillons). Zone étroite : seul le spec de la planche sonore la lance.",
-      "globs": ["apps/web/src/son/**", "apps/web/outils/son/**"]
-    },
-    "track-vitrine": { "globs": ["apps/web/src/vitrine/**", "apps/web/vitrine/**", "apps/web/vite.vitrine.config.ts"] },
-    "track-fantomes": {
-      "_": "Lot 55 : le choix des fantômes dans le classement (cases, compteur, cycle du bouton). Une zone étroite exprès : l'Essentiel d'une PR qui ne touche que le HUD ou le Salon ne lance pas son spec.",
-      "globs": ["apps/web/src/fantomes*.ts", "apps/web/src/fantomes.css", "apps/web/src/catalogue.course.fantomes.*.ts"]
-    },
-    "track-hud": {
-      "globs": ["apps/web/src/*.css", "apps/web/src/home*.ts", "apps/web/src/howto*.ts", "apps/web/src/arriveeUi.ts", "apps/web/src/board*.ts", "apps/web/src/settings*.ts", "apps/web/src/cadre.ts", "apps/web/src/dom.ts", "apps/web/src/icones.ts", "apps/web/src/input.ts", "apps/web/src/manette.ts", "apps/web/src/touch*.ts", "apps/web/src/compteurImages.ts", "apps/web/src/format.ts", "apps/web/src/landing.ts", "apps/web/src/labels.ts"],
-      "sauf": ["apps/web/src/garage.css", "apps/web/src/salon.css", "apps/web/src/fantomes.css"]
-    },
-    "track-salon": { "globs": ["apps/web/src/salon*.ts", "apps/web/src/salon.css", "apps/web/src/watch*.ts"] },
-    "track-admin": { "globs": ["apps/web/src/admin*.ts", "apps/web/src/adminTrack.css", "apps/web/src/planning.ts", "apps/web/src/access.ts", "apps/web/src/circuitStats.ts", "apps/web/admin/**"] },
-    "track-profil": {
-      "globs": ["apps/web/src/profile*.ts", "apps/web/src/profil*.ts", "apps/web/src/identity.ts", "apps/web/src/transfer.ts", "apps/web/src/online.ts", "apps/web/src/api.ts", "apps/web/src/records.ts", "apps/web/src/session.ts", "apps/web/src/storage.ts", "apps/web/src/jeuSuivant.ts"],
-      "sauf": ["apps/web/src/profilLien.ts"]
-    },
-    "track-i18n": { "globs": ["apps/web/src/catalogue*.ts", "apps/web/src/i18n.ts"] },
-    "track-archives": { "globs": ["apps/web/src/archive*.ts", "apps/web/src/share.ts", "apps/web/src/clipboard.ts", "apps/web/src/thumb*.ts", "apps/web/src/demo*.ts", "apps/web/src/dates.ts", "apps/web/src/profilLien.ts"] },
-    "track-audio-fx": { "globs": ["apps/web/src/audio*.ts", "apps/web/src/fx.ts", "apps/web/src/speedFeel.ts", "apps/web/src/telemetry.ts"] },
-    "track-camera": { "globs": ["apps/web/src/cameras.ts"] },
-    "track-circuit": { "globs": ["apps/web/src/circuit*.ts", "apps/web/src/scenarios.ts", "apps/web/src/tune.ts", "apps/web/src/verify.ts"] },
     "ui": { "globs": ["packages/ui/**"] },
     "profile-pkg": { "globs": ["packages/profile/**"] },
     "core-clock": { "globs": ["packages/core/**", "packages/clock/**", "config/**"] },
@@ -65,73 +23,18 @@
       "globs": ["apps/api/**"],
       "sauf": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/src/jump*.ts", "apps/api/src/tower*.ts", "apps/api/test/**", "apps/api/scripts/**", "apps/api/CLAUDE.md"]
     },
-    "api-track": { "globs": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/scripts/measure-salon.ts", "apps/api/scripts/history-seed.ts"] },
     "api-admin": { "globs": ["apps/api/src/admin*.ts", "apps/api/src/journaux.ts", "apps/api/src/diffusion.ts", "apps/api/src/jeux.ts", "packages/core/src/nouveautes.ts", "packages/core/src/jeux.ts"] }
   },
   "specs": {
-    "web/accessibilite.spec.ts": ["track-hud", "track-i18n", "ui"],
     "web/amis.spec.ts": ["portail", "amis"],
-    "web/accueil.spec.ts": ["track-hud", "track-i18n", "ui", "track-archives"],
-    "web/admin.spec.ts": ["track-admin"],
     "web/admin-panneau.spec.ts": ["portail", "api-admin"],
-    "web/admin-track.spec.ts": ["track-admin", "portail", "api-admin"],
     "web/admin-jump.spec.ts": ["jump-admin", "portail", "api-admin"],
     "web/diffusion.spec.ts": ["portail", "api-admin"],
-    "web/jeux-interrupteur.spec.ts": ["portail", "api-admin", "track-coeur", "jump-jour"],
-    "web/adresses-joueur.spec.ts": ["track-profil", "profile-pkg", "api-track", "api-coeur"],
-    "web/air.spec.ts": ["track-sim", "track-audio-fx"],
-    "web/bas-cotes.spec.ts": ["track-sim", "track-scene"],
-    "web/cameras.spec.ts": ["track-camera", "track-hud"],
-    "web/conduite.spec.ts": ["track-sim", "track-camera", "track-coeur"],
-    "web/cuves.spec.ts": ["track-sim", "track-scene"],
-    "web/daily.spec.ts": ["track-sim", "track-circuit", "track-coeur", "core-clock"],
-    "web/decor.spec.ts": ["track-scene"],
-    "web/demo.spec.ts": ["track-archives", "track-admin"],
     "web/domaine.spec.ts": ["portail", "ui"],
-    "web/figures.spec.ts": ["track-sim", "track-circuit"],
-    "web/futur.spec.ts": ["track-admin"],
-    "web/garage.spec.ts": ["track-voiture", "api-track"],
-    "web/rendu.spec.ts": ["track-scene", "track-coeur"],
-    "web/voiture-course.spec.ts": ["track-voiture", "track-profil", "track-salon", "api-track", "api-coeur"],
-    "web/ghost.spec.ts": ["track-sim", "track-salon"],
-    "web/graphismes.spec.ts": ["track-scene", "track-camera"],
-    "web/hud-compact.spec.ts": ["track-hud", "ui", "track-coeur"],
-    "web/identite-plateforme.spec.ts": ["track-profil", "profile-pkg", "api-coeur"],
     "web/iphone.spec.ts": ["portail", "iphone"],
-    "web/juice.spec.ts": ["track-audio-fx", "track-sim"],
-    "web/langue.spec.ts": ["track-i18n", "ui", "profile-pkg"],
-    "web/leaderboard.spec.ts": ["track-profil", "api-track", "api-coeur", "track-sim"],
-    "web/fantomes.spec.ts": ["track-fantomes", "api-track"],
     "web/manette.spec.ts": ["ui", "portail"],
-    "web/mobile.spec.ts": ["track-hud", "ui", "track-coeur"],
-    "web/nouveau-depart.spec.ts": ["portail", "profile-pkg", "api-coeur", "track-coeur", "jump-jour", "core-clock"],
-    "web/perf.spec.ts": ["track-coeur"],
-    "web/planning.spec.ts": ["track-admin", "api-track"],
-    "web/plein-ecran.spec.ts": ["track-hud", "ui"],
     "web/portail-jour.spec.ts": ["portail", "ui", "profile-pkg", "api-coeur"],
     "web/portail-journee.spec.ts": ["portail", "ui", "profile-pkg", "api-coeur", "api-jump"],
-    "web/portail.spec.ts": ["portail", "ui"],
-    "web/post.spec.ts": ["track-scene"],
-    "web/profil.spec.ts": ["track-profil", "profile-pkg", "api-coeur", "ui"],
-    "web/qualite.spec.ts": ["track-scene"],
-    "web/relief.spec.ts": ["track-sim", "track-scene"],
-    "web/replay.spec.ts": ["track-sim", "core-clock"],
-    "web/salon-serveur.spec.ts": ["track-salon", "api-track", "api-coeur"],
-    "web/salon.spec.ts": ["track-salon", "track-sim"],
-    "web/scene.spec.ts": ["track-hud", "ui", "track-scene", "track-coeur"],
-    "web/share.spec.ts": ["track-archives", "track-hud", "track-i18n"],
-    "web/socle.spec.ts": ["track-scene"],
-    "web/surfaces.spec.ts": ["track-sim", "track-scene", "track-audio-fx"],
-    "web/tactile.spec.ts": ["track-hud", "ui"],
-    "web/thumbnails.spec.ts": ["track-archives", "track-scene"],
-    "web/vie-ciel.spec.ts": ["track-scene"],
-    "web/vitesse.spec.ts": ["track-sim", "track-audio-fx"],
-    "web/vitrine-son.spec.ts": ["track-son", "track-vitrine"],
-    "web/son-jeu.spec.ts": ["track-son", "track-audio"],
-    "web/vitrine-voiture.spec.ts": ["track-voiture", "track-vitrine"],
-    "web/vitrine.spec.ts": ["track-vitrine", "track-scene"],
-    "web/voiture.spec.ts": ["track-voiture", "track-scene"],
-    "web/watch-serveur.spec.ts": ["track-salon", "api-track", "api-coeur"],
-    "web/watch.spec.ts": ["track-salon", "track-sim"]
+    "web/portail.spec.ts": ["portail", "ui"]
   }
 }

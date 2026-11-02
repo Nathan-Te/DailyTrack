@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { JEUX_SANS_FICHE, lireFiche, prefixesDeZones, projectionJeu, projectionPortail, validerEnsemble, validerFiche, type FicheJeu } from "../src/fiche";
+import { CHEMINS_HERITES, PREFIXES_HERITES, TABLES_HERITEES, lireFiche, prefixesDeZones, projectionJeu, projectionPortail, validerEnsemble, validerFiche, type FicheJeu } from "../src/fiche";
 import { DOSSIER_FICHES, sorties } from "../src/ficheSorties";
 
 // Lot K1 : la fiche d'un jeu (`config/jeux/<id>.json`) — la validation, TOUTES les fiches présentes, et les fichiers que `npm run fiches` en tire (à jour, comme `jetons.css`).
@@ -134,6 +134,60 @@ describe("Jump (lot K1b) : sa fiche", () => {
   });
 });
 
+describe("Track (lot K1c) : sa fiche", () => {
+  const track = () => lireFiche(brut("track"), "track");
+  it("public d'emblée, premier de l'ordre, classé au temps (ms) dans le cumul ; code du registre `cdj`, dossiers `web` et `sim`", () => {
+    const t = track();
+    expect(t).toMatchObject({ code: "cdj", ordre: 1, etatDepart: "on", premierJour: "2026-10-13", dossiers: { app: "web", sim: "sim" }, partage: { extras: ["rang"] }, admin: { outils: true } });
+    expect(t.classement).toMatchObject({ cumul: true, unite: "ms", format: "temps" });
+    expect(t.classement.colonnes.map((c) => c.nom)).toEqual(["ms", "submitted_at", "player_id"]);
+    expect(t.medailles.methode).toBe("facteurs-auteur");
+    expect(t.jours).toEqual({ mode: "registre", registre: "packages/sim/src/jours-track.json", preuveInterditeEnProd: false });
+    expect(t.donnees.stockage.prefixe).toBe("cdj:");
+  });
+  it("ses tables sont celles d'avant la règle, nommées une à une : la vidée et la gardée", () => {
+    const t = track();
+    expect(t.donnees.tables.map((x) => x.nom).sort()).toEqual([...TABLES_HERITEES.track!].sort());
+    expect(t.donnees.tables.filter((x) => x.sort === "gardee").map((x) => x.nom)).toEqual(["circuits", "planning"]);
+  });
+  it("la validation reste « un jeu ne réclame que ses propres chemins » : les dossiers, tables, préfixes et fichiers hérités de Track ne sont permis qu'à Track", () => {
+    const refuse = (id: string, modif: (f: Record<string, any>) => void, morceau: string) => {
+      const f = structuredClone(brut(id));
+      modif(f);
+      expect(validerFiche(f, id).join("\n"), morceau).toContain(morceau);
+    };
+    // Track ne peut pas réclamer les dossiers d'un autre jeu, ni un dossier hors de `dossiers`.
+    refuse("track", (f) => f.zones.jeu.push("apps/jump/**"), "n'est pas dans les zones du jeu");
+    refuse("track", (f) => f.zones.jeu.push("packages/jump-sim/**"), "n'est pas dans les zones du jeu");
+    refuse("track", (f) => f.zones.documents.push("packages/ui/src/composants.ts"), "n'est pas dans les zones du jeu");
+    refuse("track", (f) => f.zones.jeu.push("apps/api/src/jump.ts"), "n'est pas dans les zones du jeu");
+    refuse("track", (f) => f.donnees.tables.push({ nom: "jump_results", sort: "videe" }), "doit commencer par « track_ »");
+    refuse("track", (f) => (f.donnees.stockage.prefixe = "jump:"), "donnees.stockage");
+    refuse("track", (f) => (f.dossiers = { app: "Web/../x", sim: "sim" }), "dossiers");
+    // Les autres jeux n'héritent de rien de Track.
+    refuse("jump", (f) => f.zones.jeu.push("apps/api/src/cdj.ts"), "n'est pas dans les zones du jeu");
+    refuse("jump", (f) => f.donnees.tables.push({ nom: "results", sort: "videe" }), "doit commencer par « jump_ »");
+    refuse("tower", (f) => (f.donnees.stockage.prefixe = "cdj:"), "donnees.stockage");
+    refuse("jump", (f) => (f.dossiers = { app: "web", sim: "sim" }), "n'est pas dans les zones du jeu"); // des dossiers déclarés ne rendent pas ceux de Jump permis
+    expect(Object.keys(CHEMINS_HERITES).sort()).toEqual(["jump", "track"]);
+    expect(PREFIXES_HERITES).toEqual({ track: "cdj:" });
+  });
+  it("deux jeux ne déclarent pas le même dossier (la fiche de Jump ne peut pas viser `apps/web`)", () => {
+    const j: FicheJeu = { ...lireFiche(brut("jump"), "jump"), dossiers: { app: "web", sim: "sim" } }; // (non validée : on vérifie la contradiction entre fiches)
+    expect(validerEnsemble([track(), j]).join("\n")).toMatch(/dossier « apps\/web » : track et jump/);
+  });
+  it("un mode `registre` demande son fichier (et pas de dossier) ; `fichier-par-jour` demande son dossier", () => {
+    const refuse = (modif: (f: Record<string, any>) => void) => {
+      const f = structuredClone(brut("track"));
+      modif(f);
+      return validerFiche(f, "track").join("\n");
+    };
+    expect(refuse((f) => delete f.jours.registre)).toContain("jours.registre");
+    expect(refuse((f) => (f.jours.dossier = "apps/web/public"))).toContain("jours.registre");
+    expect(refuse((f) => (f.jours.registre = "packages/jump-sim/src/x.json"))).toContain("jours.registre");
+  });
+});
+
 describe("les projections", () => {
   it("le portail ne reçoit que ce qu'il dessine (ni zones, ni tables, ni versions, ni thèmes : un octet de plus pèse sur son budget)", () => {
     const p = projectionPortail(fiches());
@@ -149,7 +203,7 @@ describe("les projections", () => {
     expect(j.ou).toEqual(["portail", "track", "jump", "tower"]);
     expect(j.zones).toEqual(["dujour", "track", "jump", "tower"]);
     expect(j.nomsDeZones).toEqual({ dujour: "Du Jour", track: "Track", jump: "Jump", tower: "Tower" });
-    expect(JEUX_SANS_FICHE.map((x) => x.id)).toEqual(["track"]); // lot K1b : Jump a sa fiche ; Track attend le lot K1c
+    expect(j.jeux.map((x) => x.id)).toEqual(["track", "jump", "tower"]); // lot K1c : un jeu = une fiche, il n'y a plus de jeu sans fiche
   });
   it("un jeu `on` d'une fiche entre dans les jeux publics, dans l'ordre des fiches (Tower, une fois `on`, après Track et Jump)", () => {
     const l = fiches().map((f) => (f.id === "tower" ? { ...f, etatDepart: "on" as const } : f));

@@ -11,9 +11,11 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { regressionDesFiches } from "./fiches-lecture.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const zones = JSON.parse(readFileSync(join(ROOT, "e2e/zones.json"), "utf8"));
+zones.regression = [...(zones.regression ?? []), ...regressionDesFiches()]; // lot K1b : la « Régression » des jeux est dans leur fiche
 const estOutil = (f) => /^(captures|mesure)[-.]/.test(f);
 
 /** Les tests e2e d'un jeu : `[{ fichier, titre, regression, navigateurs }]` (projet Chromium), lus par `playwright test --list`. */

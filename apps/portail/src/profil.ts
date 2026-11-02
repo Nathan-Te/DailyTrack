@@ -127,9 +127,8 @@ function blocJeu(t: T, j: ProfilJeu): HTMLElement | null {
       return medaille(t, { type, obtenue: n > 0, forme: "case", jeu: carte.code, valeur: formatNombre(n, langue) });
     }),
   );
-  // Lots K1 et K1b : un jeu qui a une fiche donne son titre (à défaut, son nom en capitales : Tower n'a pas de `jeu.tower.titre`, comme sur l'accueil, `portail.ts`) ; Track garde son code d'avant.
-  const fiche = ficheDuJeu(carte.code);
-  const titre = fiche ? titreDeCarte(fiche, t, t.t(`jeu.${carte.code}.nom` as const)) : t.t("jeu.track.titre");
+  // Lots K1 à K1c : la fiche d'un jeu donne son titre (à défaut, son nom en capitales : Tower n'a pas de `jeu.tower.titre`, comme sur l'accueil, `portail.ts`).
+  const titre = titreDeCarte(ficheDuJeu(carte.code)!, t, t.t(`jeu.${carte.code}.nom` as const));
   const o = { titre, numero, texte: rang, suite: medailles, niveau: "h3" as const };
   const e = etiquetteDe(carte.code, o);
   e.setAttribute("data-jeu", carte.code);

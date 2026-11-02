@@ -1,6 +1,531 @@
 {
   "jeux": [
     {
+      "id": "track",
+      "zones": {
+        "jeu": [
+          "apps/web/**",
+          "packages/sim/**",
+          "apps/api/src/cdj.ts",
+          "apps/api/src/salon.ts",
+          "apps/api/src/garage*.ts",
+          "apps/api/test/garage*.test.ts",
+          "apps/api/test/salon.test.ts",
+          "apps/api/test/planning.test.ts",
+          "apps/api/scripts/measure-salon.ts",
+          "apps/api/scripts/measure-generator.ts",
+          "apps/api/scripts/measure-budget.ts",
+          "apps/api/scripts/history-seed.ts",
+          "docs/lots/**",
+          "docs/orchestration.md"
+        ],
+        "serveur": [
+          "apps/api/src/cdj.ts",
+          "apps/api/src/salon.ts",
+          "apps/api/src/garage*.ts",
+          "apps/api/test/garage*.test.ts",
+          "apps/api/test/salon.test.ts",
+          "apps/api/test/planning.test.ts",
+          "apps/api/scripts/measure-salon.ts",
+          "apps/api/scripts/measure-generator.ts",
+          "apps/api/scripts/measure-budget.ts",
+          "apps/api/scripts/history-seed.ts"
+        ],
+        "documents": [
+          "docs/seed.md",
+          "docs/guide-technique.md"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/web/e2e",
+        "suite": "web",
+        "fumee": [
+          "replay.spec.ts",
+          "perf.spec.ts",
+          "accueil.spec.ts"
+        ],
+        "zones": {
+          "track-sim": {
+            "globs": [
+              "packages/sim/**"
+            ]
+          },
+          "track-coeur": {
+            "globs": [
+              "apps/web/src/main.ts",
+              "apps/web/index.html",
+              "apps/web/vite.config.ts",
+              "apps/web/public/**",
+              "apps/web/src/generationInit.ts",
+              "apps/web/src/lancement.ts",
+              "apps/web/src/nouveauDepart.ts",
+              "apps/web/src/interrupteur*.ts"
+            ]
+          },
+          "track-scene": {
+            "globs": [
+              "apps/web/src/scene/**",
+              "apps/web/src/trackMesh.ts",
+              "apps/web/src/trackProps.ts",
+              "apps/web/src/meshKit.ts",
+              "apps/web/src/halo.ts",
+              "apps/web/src/decorPose.ts",
+              "apps/web/src/signage.ts",
+              "apps/web/src/qualite.ts",
+              "apps/web/src/qualiteMesure.ts",
+              "apps/web/src/feux.ts",
+              "apps/web/src/arena.ts",
+              "apps/web/outils/**"
+            ],
+            "sauf": [
+              "apps/web/outils/son/**"
+            ]
+          },
+          "track-voiture": {
+            "globs": [
+              "apps/web/src/voiture/**",
+              "apps/web/src/carMesh.ts",
+              "apps/web/src/carPose.ts",
+              "apps/web/src/garage*.ts",
+              "apps/web/src/garage.css"
+            ]
+          },
+          "track-audio": {
+            "_": "Lot 55 (partie B) : le son du jeu (audio.ts, audioLogic.ts). Zone étroite : seul le spec du son l'active.",
+            "globs": [
+              "apps/web/src/audio.ts",
+              "apps/web/src/audioLogic.ts"
+            ]
+          },
+          "track-son": {
+            "_": "Lot 55 (partie B) : le nouveau son (profils de moteur, boîte virtuelle, moteurs, outil de rendu des échantillons). Zone étroite : seul le spec de la planche sonore la lance.",
+            "globs": [
+              "apps/web/src/son/**",
+              "apps/web/outils/son/**"
+            ]
+          },
+          "track-vitrine": {
+            "globs": [
+              "apps/web/src/vitrine/**",
+              "apps/web/vitrine/**",
+              "apps/web/vite.vitrine.config.ts"
+            ]
+          },
+          "track-fantomes": {
+            "_": "Lot 55 : le choix des fantômes dans le classement (cases, compteur, cycle du bouton). Une zone étroite exprès : l'Essentiel d'une PR qui ne touche que le HUD ou le Salon ne lance pas son spec.",
+            "globs": [
+              "apps/web/src/fantomes*.ts",
+              "apps/web/src/fantomes.css",
+              "apps/web/src/catalogue.course.fantomes.*.ts"
+            ]
+          },
+          "track-hud": {
+            "globs": [
+              "apps/web/src/*.css",
+              "apps/web/src/home*.ts",
+              "apps/web/src/howto*.ts",
+              "apps/web/src/arriveeUi.ts",
+              "apps/web/src/board*.ts",
+              "apps/web/src/settings*.ts",
+              "apps/web/src/cadre.ts",
+              "apps/web/src/dom.ts",
+              "apps/web/src/icones.ts",
+              "apps/web/src/input.ts",
+              "apps/web/src/manette.ts",
+              "apps/web/src/touch*.ts",
+              "apps/web/src/compteurImages.ts",
+              "apps/web/src/format.ts",
+              "apps/web/src/landing.ts",
+              "apps/web/src/labels.ts"
+            ],
+            "sauf": [
+              "apps/web/src/garage.css",
+              "apps/web/src/salon.css",
+              "apps/web/src/fantomes.css"
+            ]
+          },
+          "track-salon": {
+            "globs": [
+              "apps/web/src/salon*.ts",
+              "apps/web/src/salon.css",
+              "apps/web/src/watch*.ts"
+            ]
+          },
+          "track-admin": {
+            "globs": [
+              "apps/web/src/admin*.ts",
+              "apps/web/src/adminTrack.css",
+              "apps/web/src/planning.ts",
+              "apps/web/src/access.ts",
+              "apps/web/src/circuitStats.ts",
+              "apps/web/admin/**"
+            ]
+          },
+          "track-profil": {
+            "globs": [
+              "apps/web/src/profile*.ts",
+              "apps/web/src/profil*.ts",
+              "apps/web/src/identity.ts",
+              "apps/web/src/transfer.ts",
+              "apps/web/src/online.ts",
+              "apps/web/src/api.ts",
+              "apps/web/src/records.ts",
+              "apps/web/src/session.ts",
+              "apps/web/src/storage.ts",
+              "apps/web/src/jeuSuivant.ts"
+            ],
+            "sauf": [
+              "apps/web/src/profilLien.ts"
+            ]
+          },
+          "track-i18n": {
+            "globs": [
+              "apps/web/src/catalogue*.ts",
+              "apps/web/src/i18n.ts"
+            ]
+          },
+          "track-archives": {
+            "globs": [
+              "apps/web/src/archive*.ts",
+              "apps/web/src/share.ts",
+              "apps/web/src/clipboard.ts",
+              "apps/web/src/thumb*.ts",
+              "apps/web/src/demo*.ts",
+              "apps/web/src/dates.ts",
+              "apps/web/src/profilLien.ts"
+            ]
+          },
+          "track-audio-fx": {
+            "globs": [
+              "apps/web/src/audio*.ts",
+              "apps/web/src/fx.ts",
+              "apps/web/src/speedFeel.ts",
+              "apps/web/src/telemetry.ts"
+            ]
+          },
+          "track-camera": {
+            "globs": [
+              "apps/web/src/cameras.ts"
+            ]
+          },
+          "track-circuit": {
+            "globs": [
+              "apps/web/src/circuit*.ts",
+              "apps/web/src/scenarios.ts",
+              "apps/web/src/tune.ts",
+              "apps/web/src/verify.ts"
+            ]
+          },
+          "api-track": {
+            "globs": [
+              "apps/api/src/cdj.ts",
+              "apps/api/src/salon.ts",
+              "apps/api/scripts/measure-salon.ts",
+              "apps/api/scripts/history-seed.ts"
+            ]
+          }
+        },
+        "specs": {
+          "accessibilite.spec.ts": [
+            "track-hud",
+            "track-i18n",
+            "ui"
+          ],
+          "accueil.spec.ts": [
+            "track-hud",
+            "track-i18n",
+            "ui",
+            "track-archives"
+          ],
+          "admin.spec.ts": [
+            "track-admin"
+          ],
+          "admin-track.spec.ts": [
+            "track-admin",
+            "portail",
+            "api-admin"
+          ],
+          "jeux-interrupteur.spec.ts": [
+            "portail",
+            "api-admin",
+            "track-coeur",
+            "jump-jour"
+          ],
+          "adresses-joueur.spec.ts": [
+            "track-profil",
+            "profile-pkg",
+            "api-track",
+            "api-coeur"
+          ],
+          "air.spec.ts": [
+            "track-sim",
+            "track-audio-fx"
+          ],
+          "bas-cotes.spec.ts": [
+            "track-sim",
+            "track-scene"
+          ],
+          "cameras.spec.ts": [
+            "track-camera",
+            "track-hud"
+          ],
+          "conduite.spec.ts": [
+            "track-sim",
+            "track-camera",
+            "track-coeur"
+          ],
+          "cuves.spec.ts": [
+            "track-sim",
+            "track-scene"
+          ],
+          "daily.spec.ts": [
+            "track-sim",
+            "track-circuit",
+            "track-coeur",
+            "core-clock"
+          ],
+          "decor.spec.ts": [
+            "track-scene"
+          ],
+          "demo.spec.ts": [
+            "track-archives",
+            "track-admin"
+          ],
+          "figures.spec.ts": [
+            "track-sim",
+            "track-circuit"
+          ],
+          "futur.spec.ts": [
+            "track-admin"
+          ],
+          "garage.spec.ts": [
+            "track-voiture",
+            "api-track"
+          ],
+          "rendu.spec.ts": [
+            "track-scene",
+            "track-coeur"
+          ],
+          "voiture-course.spec.ts": [
+            "track-voiture",
+            "track-profil",
+            "track-salon",
+            "api-track",
+            "api-coeur"
+          ],
+          "ghost.spec.ts": [
+            "track-sim",
+            "track-salon"
+          ],
+          "graphismes.spec.ts": [
+            "track-scene",
+            "track-camera"
+          ],
+          "hud-compact.spec.ts": [
+            "track-hud",
+            "ui",
+            "track-coeur"
+          ],
+          "identite-plateforme.spec.ts": [
+            "track-profil",
+            "profile-pkg",
+            "api-coeur"
+          ],
+          "juice.spec.ts": [
+            "track-audio-fx",
+            "track-sim"
+          ],
+          "langue.spec.ts": [
+            "track-i18n",
+            "ui",
+            "profile-pkg"
+          ],
+          "leaderboard.spec.ts": [
+            "track-profil",
+            "api-track",
+            "api-coeur",
+            "track-sim"
+          ],
+          "fantomes.spec.ts": [
+            "track-fantomes",
+            "api-track"
+          ],
+          "mobile.spec.ts": [
+            "track-hud",
+            "ui",
+            "track-coeur"
+          ],
+          "nouveau-depart.spec.ts": [
+            "portail",
+            "profile-pkg",
+            "api-coeur",
+            "track-coeur",
+            "jump-jour",
+            "core-clock"
+          ],
+          "perf.spec.ts": [
+            "track-coeur"
+          ],
+          "planning.spec.ts": [
+            "track-admin",
+            "api-track"
+          ],
+          "plein-ecran.spec.ts": [
+            "track-hud",
+            "ui"
+          ],
+          "post.spec.ts": [
+            "track-scene"
+          ],
+          "profil.spec.ts": [
+            "track-profil",
+            "profile-pkg",
+            "api-coeur",
+            "ui"
+          ],
+          "qualite.spec.ts": [
+            "track-scene"
+          ],
+          "relief.spec.ts": [
+            "track-sim",
+            "track-scene"
+          ],
+          "replay.spec.ts": [
+            "track-sim",
+            "core-clock"
+          ],
+          "salon-serveur.spec.ts": [
+            "track-salon",
+            "api-track",
+            "api-coeur"
+          ],
+          "salon.spec.ts": [
+            "track-salon",
+            "track-sim"
+          ],
+          "scene.spec.ts": [
+            "track-hud",
+            "ui",
+            "track-scene",
+            "track-coeur"
+          ],
+          "share.spec.ts": [
+            "track-archives",
+            "track-hud",
+            "track-i18n"
+          ],
+          "socle.spec.ts": [
+            "track-scene"
+          ],
+          "surfaces.spec.ts": [
+            "track-sim",
+            "track-scene",
+            "track-audio-fx"
+          ],
+          "tactile.spec.ts": [
+            "track-hud",
+            "ui"
+          ],
+          "thumbnails.spec.ts": [
+            "track-archives",
+            "track-scene"
+          ],
+          "vie-ciel.spec.ts": [
+            "track-scene"
+          ],
+          "vitesse.spec.ts": [
+            "track-sim",
+            "track-audio-fx"
+          ],
+          "vitrine-son.spec.ts": [
+            "track-son",
+            "track-vitrine"
+          ],
+          "son-jeu.spec.ts": [
+            "track-son",
+            "track-audio"
+          ],
+          "vitrine-voiture.spec.ts": [
+            "track-voiture",
+            "track-vitrine"
+          ],
+          "vitrine.spec.ts": [
+            "track-vitrine",
+            "track-scene"
+          ],
+          "voiture.spec.ts": [
+            "track-voiture",
+            "track-scene"
+          ],
+          "watch-serveur.spec.ts": [
+            "track-salon",
+            "api-track",
+            "api-coeur"
+          ],
+          "watch.spec.ts": [
+            "track-salon",
+            "track-sim"
+          ]
+        },
+        "regression": [
+          "accessibilite.spec.ts",
+          "admin.spec.ts",
+          "air.spec.ts",
+          "cameras.spec.ts",
+          "decor.spec.ts",
+          "demo.spec.ts",
+          "figures.spec.ts",
+          "garage.spec.ts",
+          "hud-compact.spec.ts",
+          "identite-plateforme.spec.ts",
+          "juice.spec.ts",
+          "mobile.spec.ts",
+          "plein-ecran.spec.ts",
+          "post.spec.ts",
+          "qualite.spec.ts",
+          "relief.spec.ts",
+          "salon-serveur.spec.ts",
+          "scene.spec.ts",
+          "socle.spec.ts",
+          "thumbnails.spec.ts",
+          "vie-ciel.spec.ts",
+          "vitesse.spec.ts",
+          "vitrine.spec.ts",
+          "vitrine-voiture.spec.ts",
+          "vitrine-son.spec.ts",
+          "son-jeu.spec.ts"
+        ],
+        "parts": {
+          "main": 3,
+          "complet": 8,
+          "nuit": 8
+        }
+      },
+      "app": "web",
+      "jours": {
+        "dossier": null,
+        "registre": "packages/sim/src/jours-track.json",
+        "preuveInterditeEnProd": false
+      },
+      "budget": [
+        "track.jsCss",
+        "track.js",
+        "track.horsThree",
+        "track.anglais",
+        "track.miniatures",
+        "track.salon",
+        "track.admin",
+        "track.decor",
+        "track.palier2",
+        "track.vieCiel",
+        "track.post",
+        "track.qualiteMesure",
+        "track.garage",
+        "track.polices"
+      ],
+      "outilsAdmin": true
+    },
+    {
       "id": "jump",
       "zones": {
         "jeu": [
@@ -311,8 +836,10 @@
           "nuit": 1
         }
       },
+      "app": "jump",
       "jours": {
         "dossier": "apps/jump/public/levels",
+        "registre": null,
         "preuveInterditeEnProd": true
       },
       "budget": [
@@ -411,8 +938,10 @@
           "nuit": 1
         }
       },
+      "app": "tower",
       "jours": {
         "dossier": "apps/tower/public/jours",
+        "registre": null,
         "preuveInterditeEnProd": true
       },
       "budget": [

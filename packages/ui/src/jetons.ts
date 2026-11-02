@@ -6,7 +6,7 @@
 // Une valeur qui commence par `--` est un renvoi vers un autre jeton (`--jump-papier` = `--dj-papier`) : en CSS `var(--…)`, en TypeScript la
 // valeur résolue (`valeurJeton`).
 
-import { ETIQUETTE_JUMP_FOND, ETIQUETTE_JUMP_POLICE, ETIQUETTE_TOWER_COQUE, ETIQUETTE_TOWER_FOND, ETIQUETTE_TOWER_POLICE } from "./fiches.generated";
+import { ETIQUETTE_JUMP_FOND, ETIQUETTE_JUMP_POLICE, ETIQUETTE_TRACK_COQUE, ETIQUETTE_TRACK_FOND, ETIQUETTE_TRACK_POLICE, ETIQUETTE_TOWER_COQUE, ETIQUETTE_TOWER_FOND, ETIQUETTE_TOWER_POLICE } from "./fiches.generated";
 
 /** Couleurs (charte § 3). */
 export const COULEURS = {
@@ -37,8 +37,9 @@ export const COULEURS = {
   "dj-bronze": "#C07A42",
   "dj-medaille-texte": "--dj-encre",
   // 3.3 Étiquette Track
-  "track-asphalte": "#1E1B19",
-  "track-coque": "#4A4440",
+  // Lot K1c : l'asphalte, la coque et la police de l'étiquette Track sont les valeurs de sa fiche (`config/jeux/track.json`, via `fiches.generated.ts`) ; leurs NOMS restent ceux de la charte.
+  "track-asphalte": ETIQUETTE_TRACK_FOND,
+  "track-coque": ETIQUETTE_TRACK_COQUE,
   "track-route": "#5A524C",
   "track-piste": "#26221F",
   "track-texte": "#F4EFE6",
@@ -64,7 +65,7 @@ export const POLICES = {
   "dj-police-marque": "\"Archivo Black\", \"Archivo\", sans-serif",
   "dj-police-texte": "\"Archivo\", sans-serif",
   "dj-police-chiffres": "\"JetBrains Mono\", monospace",
-  "track-police": "\"Barlow Condensed\", \"Archivo\", sans-serif",
+  "track-police": ETIQUETTE_TRACK_POLICE,
   "jump-police": ETIQUETTE_JUMP_POLICE,
   "tower-police": ETIQUETTE_TOWER_POLICE,
 } as const;

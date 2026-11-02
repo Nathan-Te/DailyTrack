@@ -25,7 +25,6 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** Où chaque partie du site est servie. */
 export const LAYOUT = [
   { from: "apps/portail/dist", to: "" },
-  { from: "apps/web/dist", to: "track" },
 ];
 
 /**
@@ -34,9 +33,9 @@ export const LAYOUT = [
  * serveur** : la construction de production de Tower retire le champ `preuve` des jours publiés (`apps/tower/preuves.ts`), et `assembleSite --production` le revérifie (`fichiersAvecPreuveTower`).
  * (Avant le lot TP, la page de démonstration n'était publiée que hors production : `ESSAI_TOWER`.)
  */
-// Lots K1 et K1b : les jeux qui ont une fiche (`config/jeux/<id>.json` : Jump, Tower) sont publiés sous `/<id>/` (leur construction : `apps/<id>/dist`) ; leurs jours figés (`jours.dossier`, publiés sous le
-// même nom de dossier : `jump/levels`, `tower/jours`) et la règle de la preuve de l'auteur (`jours.preuveInterditeEnProd`) viennent d'elle. Track (sans fiche jusqu'au lot K1c) reste dans `LAYOUT`.
-export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.id}/dist`, to: f.id, jours: f.jours.dossier, preuveInterdite: f.jours.preuveInterditeEnProd }));
+// Lots K1, K1b et K1c : chaque jeu (`config/jeux/<id>.json`) est publié sous `/<id>/` (sa construction : `apps/<app>/dist`, `app` = `web` pour Track) ; ses jours figés (`jours.dossier`, publiés sous le même
+// nom de dossier : `jump/levels`, `tower/jours` ; Track a un registre, pas de dossier) et la règle de la preuve de l'auteur (`jours.preuveInterditeEnProd`) viennent d'elle. `LAYOUT` ne garde que le portail.
+export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.app}/dist`, to: f.id, jours: f.jours.dossier, preuveInterdite: f.jours.preuveInterditeEnProd }));
 export const TOWER_SITE = SITES_FICHES.find((s) => s.id === "tower");
 /** Lot K1b : Jump, dont les niveaux figés (`levels`) et les outils (`outils/`) ont leurs vérifications propres (règle R9) en plus de celles de tout jeu à fiche. */
 const JUMP_SITE = SITES_FICHES.find((s) => s.id === "jump");
@@ -350,7 +349,7 @@ if (isMain) {
       const out = resolve(option(argv, "--sortie", "site"));
       const production = argv.includes("--production");
       const { niveaux, images, origine, morceaux } = await assembleSite(out, { production, origine: option(argv, "--origine") });
-      console.log(`site assemblé dans ${out} : portail, /track/, ${SITES_FICHES.map((s) => `/${s.to}/`).join(", ")}${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
+      console.log(`site assemblé dans ${out} : portail, ${SITES_FICHES.map((s) => `/${s.to}/`).join(", ")}${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
       console.log(`aperçus de partage : ${origine} ; images ${images.map((i) => `${i.nom}.png ${(i.octets / 1024).toFixed(1)} ko`).join(", ")}`);
     } else if (cmd === "firebase") {
       const template = JSON.parse(readFileSync(join(ROOT, "firebase.json"), "utf8"));

@@ -8,24 +8,28 @@ import { FICHES, ficheDuJeu, ficheDuRegistre, titreDeCarte } from "../src/jeuxFi
 import { cartes } from "../src/jours";
 import { daysFromCivil } from "@cdj/core";
 
-// Lots K1 et K1b : le portail lit la fiche des jeux qui en ont une (Jump, Tower ; Track au lot K1c) : cartouches, accroche, titre, nom, filtre du cumul, thèmes du catalogue, tableau de bord.
+// Lots K1, K1b et K1c : le portail lit la fiche de chaque jeu (Track, Jump, Tower) : cartouches, accroche, titre, nom, filtre du cumul, thèmes du catalogue, tableau de bord.
 const ROOT = join(__dirname, "../../..");
 const jeu = (JSON.parse(readFileSync(join(ROOT, "config/jeux/projections/jeu.json"), "utf8")) as { jeux: { id: string; themes: string[] }[] }).jeux;
 
 describe("les cartouches, le catalogue et les noms viennent de la fiche", () => {
-  it("la projection du portail est celle des fiches : Jump (au temps, dans le cumul) et Tower (hors du cumul, classé à la hauteur)", () => {
-    expect(FICHES.map((f) => f.id)).toEqual(["jump", "tower"]);
+  it("la projection du portail est celle des fiches : Track et Jump (au temps, dans le cumul) et Tower (hors du cumul, classé à la hauteur)", () => {
+    expect(FICHES.map((f) => f.id)).toEqual(["track", "jump", "tower"]);
+    expect(ficheDuJeu("track")).toMatchObject({ code: "cdj", cumul: true, format: "temps", titre: "jeu.track.titre", premierJour: "2026-10-13" });
+    expect(ficheDuJeu("track")?.accrocheTheme).toBeUndefined();
     expect(ficheDuJeu("tower")).toMatchObject({ code: "tower", cumul: false, format: "hauteur" });
     expect(ficheDuJeu("tower")?.titre).toBeUndefined();
     expect(ficheDuJeu("jump")).toMatchObject({ code: "jump", cumul: true, format: "temps", titre: "jeu.jump.titre", accrocheTheme: "jump.replique." });
     expect(ficheDuRegistre("tower")?.id).toBe("tower");
     expect(ficheDuRegistre("jump")?.id).toBe("jump");
-    expect(ficheDuJeu("track")).toBeUndefined(); // Track : son code d'avant, jusqu'au lot K1c
+    expect(ficheDuRegistre("cdj")?.id).toBe("track"); // le code du registre de Track n'est pas son identifiant
+    expect(ficheDuJeu("cdj")).toBeUndefined();
   });
 
-  it("les cartouches : Track, puis chaque fiche ; Jump a son numéro local (public d'emblée), Tower non (le serveur le donne)", () => {
+  it("les cartouches : une par fiche, dans l'ordre ; Track et Jump ont leur numéro local (publics d'emblée), Tower non (le serveur le donne)", () => {
     const c = cartes(20_000);
     expect(c.map((x) => [x.code, x.jeu, x.lien])).toEqual([["track", "cdj", "track/"], ["jump", "jump", "jump/"], ["tower", "tower", "tower/"]]);
+    expect(c[0]!.numero).toBe(20_000 - daysFromCivil(2026, 10, 13) + 1);
     expect(c[1]!.numero).toBe(20_000 - daysFromCivil(2026, 10, 16) + 1);
     expect(c[2]!.numero).toBe(0);
   });
@@ -43,7 +47,8 @@ describe("les cartouches, le catalogue et les noms viennent de la fiche", () => 
       expect(`jeu.${f.id}.nom` in CATALOGUE_COMMUN.en, `jeu.${f.id}.nom (en)`).toBe(true);
       if (f.titre) expect(f.titre in CATALOGUE_COMMUN.fr || f.titre in CATALOGUE_PORTAIL.fr).toBe(true);
     }
-    for (const j of jeu.filter((x) => FICHES.some((f) => f.id === x.id))) {
+    // Exception nommée : Track n'a pas de noms de thèmes au portail (sa cartouche n'en montre pas : `nomTheme` rend `null` sans clé) ; ajouter ses huit noms changerait la cartouche et le catalogue.
+    for (const j of jeu.filter((x) => FICHES.some((f) => f.id === x.id) && x.id !== "track")) {
       const cles = (c: Record<string, string>) => Object.keys(c).filter((k) => k.startsWith(`portail.theme.${j.id}.`)).map((k) => k.slice(`portail.theme.${j.id}.`.length)).sort();
       expect(cles(CATALOGUE_PORTAIL.fr), `thèmes de ${j.id} (fr)`).toEqual([...j.themes].sort());
       expect(cles(CATALOGUE_PORTAIL.en), `thèmes de ${j.id} (en)`).toEqual([...j.themes].sort());
@@ -58,6 +63,7 @@ describe("les cartouches, le catalogue et les noms viennent de la fiche", () => 
   // Lot K1b : le test de K1 s'étend à chaque jeu qui a une fiche (Track le rejoint au lot K1c). Les exceptions sont nommées une à une, avec leur raison ; chacune doit encore se voir dans le code
   // (une exception qui ne sert plus est retirée : le test échoue sinon).
   const EXCEPTIONS: { fichier: string; motif: RegExp; raison: string }[] = [
+    { fichier: "admin.ts", motif: /"data-menu": "track"/, raison: "le menu du panneau d'administration : l'entrée de la page d'outils `/track/admin/` (voir la suivante)" },
     { fichier: "admin.ts", motif: /"data-menu": "jump"/, raison: "le menu du panneau d'administration : les entrées des pages d'outils `/<jeu>/admin/` (`admin.outils` de la fiche) ne sont pas encore lues de la fiche — lot K2 (le panneau est l'outil de l'éditeur, hors du portail des joueurs)" },
   ];
   it("le portail ne nomme plus un jeu qui a une fiche en dur dans le code qui présente un jeu (hors commentaires et exceptions nommées)", () => {

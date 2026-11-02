@@ -84,6 +84,8 @@ export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
  */
 // Lot K1 : les lignes du grand tableau de `budgets.md` que mesure `mesureTower` sont celles de la fiche du jeu (`budget.lignes` de `config/jeux/tower.json`) ; les plafonds restent dans `budgets.md`.
 export const LIGNES_TOWER = ficheCI("tower").budget;
+/** Lot K1c : les lignes de Track (quatorze, dont celles « à la demande »), lues dans sa fiche (la mesure reste `mesureTrack`, le graphe de `index.html` ; les plafonds, dans `budgets.md`). */
+export const LIGNES_TRACK = ficheCI("track").budget;
 /** Lot K1b : les lignes de Jump, lues dans sa fiche comme celles de Tower (la mesure reste `mesureJump`, propre à son découpage ; les plafonds, dans `budgets.md`). */
 export const LIGNES_JUMP = ficheCI("jump").budget;
 export function mesureTower(dist = join(ROOT, "apps/tower/dist/assets")) {
