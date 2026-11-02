@@ -24,7 +24,7 @@ Il comparait déjà Tower (lot TP). Test ajouté : un jour protégé de Tower qu
 `towerJoursFiges.test.ts` (factice : aucun jour figé ne change ; connu → sa version, inconnu → la dernière ; le Diamant et les seuils d'un jour préparé ne bougent pas ; versions appelables), `jours-passes.test.ts`, `miseEnProduction.test.ts` (`towerAFiger`, `towerFigesAPoser`, `plagesConsecutives`, phrases du garde-fou).
 
 ## Ce que K2 devra unifier
-Trois mécanismes (registre de Track, niveaux de Jump, fichiers de Tower) derrière `jours.mode` ; une seule étape « figer » pilotée par la fiche. K1 est fusionné : `jours.mode` de Tower était déjà `fichier-par-jour`, `npm run fiches` inutile.
+Trois mécanismes (registre de Track, niveaux de Jump, fichiers de Tower) derrière `jours.mode` ; une seule étape « figer » pilotée par la fiche. La question 9 de `kit-de-jeu.md` (K0) est tranchée ici, à part de K1. K1 est fusionné : `jours.mode` de Tower était déjà `fichier-par-jour`, `npm run fiches` inutile.
 
 ## Réserves (décisions pour Nathan)
 - Les médailles d'un jour figé **sans préparation** restent l'estimation géométrique du code (`COEFFICIENT_GEOMETRIQUE_PCT`), non écrite dans le fichier : changer ce coefficient arrêterait la mise en production (fail-closed). Les jours préparés gardent leurs seuils et leur Diamant écrits. Les figer dans le fichier toucherait le jeu (budget `tower.jsCss`, marge ≈ 100 o) : hors périmètre.
