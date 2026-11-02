@@ -77,14 +77,22 @@ describe("production.yml : la CI d'abord, sans accès, et tout le reste en dépe
     expect(ci).not.toMatch(/secrets|environment|id-token/);
   });
 
-  it("le verdict (`ci-complete.mjs verdict`) précède le garde-fou, la répétition, la sauvegarde et le déploiement", () => {
+  // Lot R16 : le garde-fou et la répétition (lecture seule de la production, la recette) tournent EN MÊME TEMPS que la CI ; la sauvegarde attend le verdict ;
+  // le serveur de production exige, un par un, le verdict vert, le garde-fou, la répétition et la sauvegarde (plus rien n'est acquis par la seule chaîne).
+  it("le verdict (`ci-complete.mjs verdict`) précède la sauvegarde et le déploiement ; le garde-fou et la répétition tournent avec la CI", () => {
     expect(job("verifier")).toContain("ci-complete.mjs reprise");
     expect(job("ci-verdict")).toContain("ci-complete.mjs verdict");
-    expect(job("figer")).toMatch(/needs: \[verifier, ci-verdict\]\n.*needs\.ci-verdict\.result == 'success'/);
+    expect(job("figer")).toContain("needs: [verifier]\n");
     expect(job("recette-serveur")).toContain("needs: [verifier, figer]");
-    expect(job("sauvegarde")).toContain("needs.recette-verification.result == 'success'");
-    expect(job("serveur")).toContain("needs.sauvegarde.result == 'success'");
+    expect(job("sauvegarde")).toContain("needs: [verifier, ci-verdict, figer]");
+    for (const k of ["ci-verdict", "figer"]) expect(job("sauvegarde"), k).toContain(`needs.${k}.result == 'success'`);
+    const serveur = job("serveur");
+    expect(serveur).toContain("needs: [verifier, ci-verdict, figer, recette-verification, sauvegarde]");
+    for (const k of ["ci-verdict", "figer", "recette-verification", "sauvegarde"]) expect(serveur, k).toContain(`needs.${k}.result == 'success'`);
+    expect(serveur).toContain("inputs.mode == 'production'");
     for (const j of ["site", "verification", "etiquette"]) expect(job(j), j).toMatch(/needs: \[[^\n]*(serveur|site|verification)/);
+    // Un essai lancé sur main verse ses jours figés dans main : seulement après un verdict vert (avant le lot R16, `figer` le garantissait).
+    expect(job("depot")).toContain("inputs.mode == 'essai' && github.ref == 'refs/heads/main' && needs.ci-verdict.result == 'success' && needs.recette-verification.result == 'success'");
   });
 
   it("ci.yml est appelable (workflow_call : mode, commit) et rend ses tests rouges", () => {

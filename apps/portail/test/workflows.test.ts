@@ -198,7 +198,7 @@ describe("le garde-fou des jours (lot R6)", () => {
     expect(figer).not.toContain("freeze:days -w @cdj/jump -- demain");
     expect(figer).toContain("exit 1"); // la comparaison arrête le run
     expect(job("recette-serveur")).toContain("needs: [verifier, figer]");
-    expect(job("serveur")).toContain("needs: [verifier, figer, sauvegarde]");
+    expect(job("serveur")).toContain("needs: [verifier, ci-verdict, figer, recette-verification, sauvegarde]");
     expect(job("verifier")).toContain("mise-en-production.mjs bascule \"${args[@]}\" --sortie \"$GITHUB_OUTPUT\"");
     expect(job("verifier")).toContain("mise-en-production.mjs inventaire");
   });
@@ -232,7 +232,8 @@ describe("le garde-fou des jours (lot R6)", () => {
     // La vérification de la production lit aussi le commit déployé (et non le dernier main).
     expect(blocs.get("verification")).toContain("ref: ${{ needs.verifier.outputs.sha }}");
     // La PR « Jours figés » refait la démonstration de Jump quand des niveaux s'y ajoutent (elle rejoue les jours figés : sinon sa CI échoue), et la verse.
-    const depot = blocs.get("depot")!;
+    // Lot R16 : le versement est le workflow « Jours figés dans main » (jours-figes.yml), que le job `depot` de production.yml lance.
+    const depot = yml("jours-figes.yml");
     expect(depot.indexOf("npm run jump:seed -w @cdj/api")).toBeGreaterThan(depot.indexOf("mise-en-production.mjs jours-figes"));
     expect(depot).toContain("git add apps/jump/public/levels apps/jump/public/demo");
   });
@@ -269,5 +270,40 @@ describe("le garde-fou des jours (lot R6)", () => {
     expect(retour).toContain("apres_le_jour_j:");
     expect(retour).toContain("s/^basculement: *//p");
     expect(retour).toContain("mise-en-production.mjs bascule-valide \"$bascule\"");
+  });
+});
+
+// Lot R16 : le versement des jours figés sort du run du bouton. Il ne prend que les artefacts d'un vrai run de « Mettre en production » sur main dont le
+// garde-fou et la répétition ont réussi ; ses entrées passent par `env:` et sont vérifiées avant tout ; le bouton suivant attend sa fin.
+describe("« Jours figés dans main » (lot R16)", () => {
+  const jf = yml("jours-figes.yml");
+  const prod = yml("production.yml");
+
+  it("lancé à la main ou par le bouton seulement, un à la fois, jamais annulé par le suivant", () => {
+    expect(jf).toMatch(/\non:\n {2}workflow_dispatch:\n/);
+    expect(jf).not.toMatch(/\n {2}(push|pull_request|schedule|workflow_call|workflow_run):/);
+    expect(jf).toMatch(/concurrency:\n {2}group: jours-figes\n {2}cancel-in-progress: false/);
+    expect(prod).toContain("gh workflow run jours-figes.yml --repo \"$GITHUB_REPOSITORY\" --ref main -f run=\"$GITHUB_RUN_ID\"");
+  });
+
+  it("ses entrées sont vérifiées (forme, run de production.yml sur main, garde-fou et répétition réussis) avant de prendre le moindre artefact", () => {
+    const verif = stepScript("jours-figes.yml", "Le run de « Mettre en production » (entrées vérifiées)");
+    for (const x of ['"$GITHUB_REF" = refs/heads/main', '"$RUN" =~ ^[0-9]{1,20}$', '"$NOM" =~ ^(prod-', '"$VEILLE" =~ ^[0-9]{4}', '".github/workflows/production.yml main"', '"figer=success recette-verification=success"']) expect(verif, x).toContain(x);
+    expect(jf.indexOf("Le run de « Mettre en production » (entrées vérifiées)")).toBeLessThan(jf.indexOf("actions/download-artifact"));
+    expect([...jf.matchAll(/run-id: \$\{\{ inputs\.run \}\}/g)]).toHaveLength(4);
+    // Une entrée mal formée est refusée avant toute requête à GitHub.
+    for (const env of [{ RUN: "1; rm -rf /", NOM: "prod-2026-11-02-0730", VEILLE: "2026-11-02" }, { RUN: "123", NOM: "main", VEILLE: "2026-11-02" }, { RUN: "123", NOM: "essai-123", VEILLE: "demain" }]) {
+      const r = runStep(verif, { GITHUB_REF: "refs/heads/main", ...env });
+      expect(r.code, JSON.stringify(env)).toBe(1);
+      expect(r.stdout, JSON.stringify(env)).toContain("::error::");
+    }
+    expect(runStep(verif, { GITHUB_REF: "refs/heads/x", RUN: "1", NOM: "essai-1", VEILLE: "2026-11-02" }).stdout).toContain("se lance sur main");
+  });
+
+  it("le bouton refuse de partir tant qu'un versement tourne (production) ; il ne verse plus lui-même", () => {
+    expect(prod).toContain("- name: Aucun versement de jours figés n'est en cours");
+    expect(prod).toContain("gh run list --workflow jours-figes.yml");
+    expect(prod).not.toContain("gh pr create");
+    expect(prod).not.toContain("pull-requests: write");
   });
 });
