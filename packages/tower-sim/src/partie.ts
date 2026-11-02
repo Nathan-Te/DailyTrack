@@ -444,51 +444,56 @@ export class Partie {
     p.body!.setLinvel({ x: 0, y: -vy }, true);
     // Au pas qui vient la pièce descend de vy / 60 : si elle toucherait (à la marge près) la plateforme ou une pièce, elle lâche maintenant.
     if (this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) {
-      if (p.coupSens !== 0) this.finirElan(p, false);
+      this.finirElan(p);
       this.lacher(p);
     }
   }
 
   /**
-   * Lot T8 (simulation 5) — **le taquet**, un élan de la pièce EN MAIN, avant la pose, vers la gauche (−1) ou la droite (1) : d'un seul appui la pièce file de côté à `taquetVitesse8` pendant
-   * `taquetTicks` ticks (3 m, bien plus vite qu'avec les flèches) tout en continuant de descendre — le timing compte. Elle s'arrête net contre ce qu'elle heurte (de quoi se glisser d'un coup dans un
-   * trou) et donne un choc à la pièce posée qu'elle frappe (`elan`). Au plus `taquetMax` élans par pièce, un seul à la fois.
+   * Lot T8 (simulation 5) — **le taquet**, un petit coup de côté de la pièce EN MAIN, avant la pose, vers la gauche (−1) ou la droite (1) — le « nudge » de Tricky Towers. **Un contrôle manuel à 100 %** :
+   * la pièce avance de `taquetPas8` huitièmes de mètre par tick pendant `taquetTicks` ticks, en ligne droite, sans aucun recalage ni alignement (le déplacement intelligent n'est que pour les pas de base) ;
+   * elle reste là où le coup l'a mise. Elle s'arrête au premier obstacle et frappe la pièce posée qu'elle touche (`elan`). `taquetMax` coups par pièce (0 : sans limite).
    */
   private taquet(p: Piece, sens: number): void {
-    if (p.coups >= this.params.taquetMax) return;
+    if (this.params.taquetMax > 0 && p.coups >= this.params.taquetMax) return;
     p.coups++;
     p.coupSens = sens;
     p.coupReste = this.params.taquetTicks;
   }
 
   /**
-   * Un tick d'élan. La pièce (un fantôme, sans contact) avance de `taquetVitesse8 / 60` : on lance sa forme (rétrécie de la tolérance d'emboîtement) dans le sens de l'élan, à la hauteur où elle sera
-   * à ce tick (`y`), et elle s'arrête au premier obstacle. Si l'obstacle est une pièce posée libre, elle reçoit un choc : sa vitesse horizontale augmente de `taquetChoc8 / 8` partagée selon les masses
-   * (choc mou : v = choc × m_pièce / (m_pièce + m_frappée)) ; la plateforme, une pièce figée ou le bord de la scène ne bougent pas. L'élan finit contre l'obstacle ou au bout de sa portée.
+   * Un tick de coup. La pièce (un fantôme, sans contact) avance de `taquetPas8` huitièmes : on lance sa forme (rétrécie de la tolérance d'emboîtement) dans le sens du coup, à la hauteur où elle sera à ce tick
+   * (`y`), et elle s'arrête au premier obstacle — en huitièmes ENTIERS, jamais dans l'obstacle. Si l'obstacle est une pièce posée libre (même collée à elle : le coup part quand même), elle reçoit un choc : sa
+   * vitesse horizontale augmente de `taquetChoc8 / 8` partagée selon les masses (choc mou : v = choc × m_pièce / (m_pièce + m_frappée)) ; la plateforme, une pièce figée et le bord de la scène ne bougent pas.
+   * Le coup finit contre l'obstacle ou au bout de ses ticks, ou quand la pièce touche ce qui est dessous (le lâcher). La pièce n'est ensuite ni recalée ni ramenée sur la grille.
    */
   private elan(p: Piece, y: number): void {
     const sens = p.coupSens;
-    const pas = this.params.taquetVitesse8 / 8 / TICKS_PAR_SECONDE;
+    const pas8 = this.params.taquetPas8;
     const tol = this.tolRefus;
-    let avance = pas;
+    let avance8 = pas8;
     let cible: RAPIER.RigidBody | null = null;
     let bute = false;
     for (const b of boitesE(p.kind, p.rot, p.taille, this.echelles)) {
       const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - tol), Math.max(0.0001, b.hh / 8 - tol));
-      const hit = this.world.castShape({ x: p.x + b.cx / 8, y: y + b.cy / 8 }, 0, { x: sens, y: 0 }, forme, 0, pas, false, undefined, undefined, undefined, p.body!);
-      if (hit && hit.time_of_impact < avance) {
-        avance = hit.time_of_impact;
+      const hit = this.world.castShape({ x: p.x + b.cx / 8, y: y + b.cy / 8 }, 0, { x: sens, y: 0 }, forme, 0, pas8 / 8, false, undefined, undefined, undefined, p.body!);
+      if (hit && hit.time_of_impact * 8 < avance8) {
+        avance8 = Math.max(0, Math.floor(hit.time_of_impact * 8 + 1e-9));
         cible = hit.collider.parent();
         bute = true;
       }
     }
-    if (Math.abs(p.x + sens * avance) * 8 > LIMITE_X8) {
-      avance = Math.max(0, LIMITE_X8 / 8 - sens * p.x);
+    if (Math.abs(p.x8 + sens * avance8) > LIMITE_X8) {
+      avance8 = Math.max(0, LIMITE_X8 - sens * p.x8);
       cible = null;
       bute = true;
     }
-    p.x += sens * avance;
-    p.body!.setTranslation({ x: p.x, y: p.y }, true);
+    if (avance8 > 0) {
+      p.x8 += sens * avance8;
+      p.g8 += sens * avance8;
+      p.x = p.x8 / 8 + p.corr / 1000;
+      p.body!.setTranslation({ x: p.x, y: p.y }, true);
+    }
     if (bute && cible) {
       const q = this.parCorps.get(cible.handle);
       if (q && q.etat === "libre" && !q.fixe && q.body) {
@@ -498,27 +503,12 @@ export class Partie {
         q.body.setLinvel({ x: v.x + dv, y: v.y }, true);
       }
     }
-    if (bute || --p.coupReste <= 0) this.finirElan(p, bute);
+    if (bute || --p.coupReste <= 0) this.finirElan(p);
   }
 
-  /**
-   * La fin d'un élan : la pièce revient sur la grille des demi-cases. Arrêtée contre un obstacle, elle se recale du côté d'où elle vient (jamais dans l'obstacle : on recule d'une demi-case tant que
-   * la tolérance d'emboîtement ne suffit pas) ; au bout de sa portée, à la demi-case la plus proche. Puis le déplacement intelligent la recale comme après un pas.
-   */
-  private finirElan(p: Piece, bute: boolean): void {
-    const sens = p.coupSens;
+  private finirElan(p: Piece): void {
     p.coupSens = 0;
     p.coupReste = 0;
-    const k0 = (p.x * 8 - p.x8) / DEMI_CASE_8;
-    const marge = this.tolRefus * 2 + 1e-9;
-    let k = bute ? (sens > 0 ? Math.floor(k0 + marge) : Math.ceil(k0 - marge)) : Math.round(k0);
-    while (k !== 0 && (Math.abs(p.x8 + k * DEMI_CASE_8) > LIMITE_X8 || this.touche(p, (p.x8 + k * DEMI_CASE_8) / 8, p.y, -this.tolRefus))) k -= Math.sign(k);
-    const x8 = p.x8 + k * DEMI_CASE_8;
-    p.g8 += x8 - p.x8;
-    p.x8 = x8;
-    p.x = x8 / 8;
-    p.body!.setTranslation({ x: p.x, y: p.y }, true);
-    this.aligner(p);
   }
 
   /**

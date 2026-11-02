@@ -1868,7 +1868,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commandes.manette.descendre` | Descendre vite | Drop fast |
 | `commandes.fixe.stick` | Stick ou croix | Stick or d-pad |
 | `commandes.fixe.stickBas` | Bas du stick ou de la croix | Stick or d-pad down |
-| `commandes.tactile` | Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite (un élan vers le côté, avant la pose). | Six on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster), plus the two small bump buttons above left and right (a dash to the side, before you place the piece). |
+| `commandes.tactile` | Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite (un petit coup vers le côté, avant la pose). | Six on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster), plus the two small bump buttons above left and right (a small knock to the side, before you place the piece). |
 
 ### Commandes tactiles (`commande.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1898,7 +1898,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.pause` | Pause | Pause |
 | `aide.manette` | À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} lancent le taquet, Start met en pause. | On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, {m_taquetGauche} and {m_taquetDroite} bump, Start pauses. |
 | `aide.taquet` | Taquet | Bump |
-| `aide.taquet.note` | Le taquet est un élan de la pièce que tu tiens, avant de la poser : elle file de côté, bien plus vite qu'avec les flèches, frappe la pièce qu'elle touche pour la pousser et s'arrête net contre elle — de quoi se glisser d'un coup dans un trou. Elle continue de tomber pendant l'élan : c'est une affaire de timing. | The bump is a dash of the piece you are holding, before you place it: it shoots sideways, much faster than the arrows, hits whatever it touches to push it and stops dead against it — to slip into a gap in one go. The piece keeps falling during the dash, so timing matters. |
+| `aide.taquet.note` | Le taquet est un petit coup de côté, donné à la pièce que tu tiens, avant de la poser : elle avance d'un mètre, d'un coup, exactement là où tu la pousses, sans aucun recalage. Il frappe la pièce qu'il touche pour la pousser, et s'arrête net contre elle — de quoi se glisser dans un trou. | The bump is a small knock to the side, given to the piece you are holding, before you place it: it moves one metre in one go, exactly where you push it, with no adjustment. It hits whatever it touches to push it, and stops dead against it — to slip into a gap. |
 | `aide.reglables` | Les touches se changent dans Réglages › Commandes. | You can change the keys in Settings › Controls. |
 
 ### ecran (`ecran.*`, `apps/tower/src/catalogue.*.ts`)
