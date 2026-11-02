@@ -5,7 +5,9 @@ import { CATALOGUE_FR } from "./catalogue.fr";
 // (`catalogue.en.ts`, à la demande) les a déjà. Les tests et `npm run traductions` voient le tout réuni (`catalogue.ts`).
 export const CATALOGUE_ECRANS_FR = {
   "aide.pause": "Pause",
-  "aide.manette": "À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, Start met en pause.",
+  "aide.manette": "À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} donnent le taquet, Start met en pause.",
+  "aide.taquet": "Taquet",
+  "aide.taquet.note": "Le taquet décale la pièce en main d'un cran fin ; juste après la pose, il la pousse sur le côté pour la caler dans un creux.",
   "aide.reglables": "Les touches se changent dans Réglages › Commandes.",
 
   "ecran.retour": "Retour à Tower",
@@ -37,11 +39,13 @@ export const CATALOGUE_ECRANS_FR = {
   "commandes.action.recommencer": "Recommencer",
   "commandes.action.pause": "Pause",
   "commandes.action.fantome": "Fantôme",
+  "commandes.action.taquetGauche": "Taquet à gauche",
+  "commandes.action.taquetDroite": "Taquet à droite",
   "commandes.manette.deplacer": "Déplacer",
   "commandes.manette.descendre": "Descendre vite",
   "commandes.fixe.stick": "Stick ou croix",
   "commandes.fixe.stickBas": "Bas du stick ou de la croix",
-  "commandes.tactile": "Quatre boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute).",
+  "commandes.tactile": "Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite.",
 
   "archives.aria": "Archives",
   "archives.titre": "Archives",

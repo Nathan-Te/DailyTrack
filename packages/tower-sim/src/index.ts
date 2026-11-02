@@ -3,6 +3,8 @@
 export {
   COMMANDE,
   COMMANDES_CONNUES,
+  COMMANDES_CONNUES_V4,
+  commandesDeLaVersion,
   DEMI_CASE_8,
   DISTANCE_SOUDURE,
   FIGEE_TICKS,
@@ -15,9 +17,13 @@ export {
   TOWER_SIM_VERSION,
   type Reglages,
   VERSIONS_SIM_JOUABLES,
+  VENT_PAS8_V5,
   VENT_PERIODE_TICKS,
+  VENT_PERIODE_TICKS_V5,
 } from "./constantes";
-export { PHYSIQUE_REGLEE_DEFAUT, physiqueEstDEssai, physiqueResolue, type ReglagesPhysique } from "./physique";
+export { PHYSIQUE_REGLEE_DEFAUT, PHYSIQUE_REGLEE_V4, physiqueDeLaVersion, physiqueEstDEssai, physiqueResolue, type ReglagesPhysique } from "./physique";
+// Lot T8 : les réglages de la simulation 5 (pose douce, repos, tolérance, taquet).
+export { PARAMS_STABILITE, type ParamsStabilite, paramsResolus } from "./stabilite";
 export { numeroTower, PREMIER_JOUR_TOWER } from "./calendrier";
 export { empreinteContenu, empreinteVue } from "./empreinte";
 export { type Contenu, dailyTower, dateDuContenu, ErreurGenerateur, GENERATEUR_TIRAGE, type ThemeTower, TOWER_GENERATOR_VERSION, VERSIONS_GENERATEUR } from "./generateur";
@@ -76,9 +82,11 @@ export { boites, etenduePiece, sinCos, sommetPiece } from "./sommet";
 export { PIECE_KINDS, type PieceKind } from "../lab/interface";
 export { SCENARIO_ESSAI } from "../scenarios/essai";
 export { SCENARIO_ALIGNEMENT } from "../scenarios/alignement";
+export { DEPART_EMBOITEMENT, SCENARIO_EMBOITEMENT } from "../scenarios/emboitement";
 import { SCENARIO_ALIGNEMENT as ALIGNEMENT } from "../scenarios/alignement";
+import { SCENARIO_EMBOITEMENT as EMBOITEMENT } from "../scenarios/emboitement";
 import { SCENARIO_ESSAI as ESSAI } from "../scenarios/essai";
 import type { Scenario as ScenarioNomme } from "./partie";
 /** Lot T6 : un scénario nommé d'une rediffusion (`essai`, `alignement`), pour les outils et les tests qui rejouent une partie de référence ; undefined s'il est inconnu. */
-export const scenarioNomme = (nom: string): ScenarioNomme | undefined => (nom === ESSAI.nom ? ESSAI : nom === ALIGNEMENT.nom ? ALIGNEMENT : undefined);
+export const scenarioNomme = (nom: string): ScenarioNomme | undefined => (nom === ESSAI.nom ? ESSAI : nom === ALIGNEMENT.nom ? ALIGNEMENT : nom === EMBOITEMENT.nom ? EMBOITEMENT : undefined);
 export { HAUTEUR_TOUR_DEPART_MM, HAUTEUR_TOUR_DEPART_V3_MM, scenarioPaliers, TOUR_DEPART, TOUR_DEPART_V3 } from "../scenarios/paliers";

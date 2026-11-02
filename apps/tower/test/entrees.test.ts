@@ -35,11 +35,15 @@ const SCENARIO: Evt[] = [
   { tick: 0, action: "gauche", bas: true },
   { tick: 5, action: "tourner", bas: true },
   { tick: 6, action: "tourner", bas: false },
+  { tick: 8, action: "taquetGauche", bas: true },
+  { tick: 9, action: "taquetGauche", bas: false },
   { tick: 25, action: "gauche", bas: false },
   { tick: 40, action: "tourner", bas: true },
   { tick: 41, action: "tourner", bas: false },
   { tick: 60, action: "descendre", bas: true },
   { tick: 120, action: "droite", bas: true },
+  { tick: 130, action: "taquetDroite", bas: true },
+  { tick: 131, action: "taquetDroite", bas: false },
   { tick: 140, action: "droite", bas: false },
   { tick: 400, action: "descendre", bas: false },
 ];
@@ -140,6 +144,34 @@ describe("la manette", () => {
     expect(e.lire() & COMMANDE.DESCENDRE).toBeTruthy();
     e.lirePad(pad(), c);
     expect(e.lire() & COMMANDE.DESCENDRE).toBeFalsy();
+  });
+
+  it("lot T8 : LB et RB donnent le taquet (un ordre par appui, sans répétition, même tenus) ; les bits sont ceux de la simulation", () => {
+    const c = fraiche();
+    const e = new Entrees();
+    e.lirePad(pad([4]), c);
+    expect(e.lire()).toBe(COMMANDE.TAQUET_GAUCHE);
+    for (let i = 0; i < 30; i++) {
+      e.lirePad(pad([4]), c);
+      expect(e.lire() & COMMANDE.TAQUET_GAUCHE).toBe(0); // tenu : plus d'ordre
+    }
+    e.lirePad(pad([5]), c);
+    expect(e.lire()).toBe(COMMANDE.TAQUET_DROITE);
+    e.lirePad(pad(), c);
+    e.lirePad(pad([4]), c);
+    expect(e.lire()).toBe(COMMANDE.TAQUET_GAUCHE); // relâché puis repris : un nouvel ordre
+  });
+
+  it("lot T8 : au clavier, Q et E (touches physiques) donnent le taquet, une poussée par appui ; tenir la touche ne répète pas", () => {
+    const c = fraiche();
+    const { e, touche } = clavier(c);
+    touche("KeyQ", true);
+    expect(e.lire()).toBe(COMMANDE.TAQUET_GAUCHE);
+    touche("KeyQ", true, true); // répétition du clavier du système
+    for (let i = 0; i < 40; i++) expect(e.lire()).toBe(0);
+    touche("KeyQ", false);
+    touche("KeyE", true);
+    expect(e.lire()).toBe(COMMANDE.TAQUET_DROITE);
   });
 
   it("les boutons se changent dans Réglages › Commandes : « tourner » sur B", () => {

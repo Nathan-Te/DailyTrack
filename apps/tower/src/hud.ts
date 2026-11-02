@@ -89,19 +89,22 @@ export class Hud {
   }
 
   private bouton(touche: Touche, cle: string, icone: SVGElement, extra?: string): HTMLButtonElement {
-    const b = el("button", { classe: ["commande", `commande--${touche}`], attrs: { type: "button", "data-cle": cle } }, icone, extra ? el("span", { classe: "commande__texte", attrs: { "data-cle-texte": cle } }) : null);
+    const b = el("button", { classe: ["commande", `commande--${touche}`, touche.startsWith("taquet") && "commande--taquet"], attrs: { type: "button", "data-cle": cle } }, icone, extra ? el("span", { classe: "commande__texte", attrs: { "data-cle-texte": cle } }) : null);
     this.o.entrees.brancherBouton(b, touche);
     return b;
   }
 
-  /** Les quatre boutons des maquettes : gauche et droite en bas à gauche, descendre et tourner en bas à droite. Ni joystick ni zones. */
+  /** Les quatre boutons des maquettes : gauche et droite en bas à gauche, descendre et tourner en bas à droite ; lot T8 : les deux petits boutons du taquet au-dessus de gauche et de droite. Ni joystick ni zones. */
   private commandes(): HTMLElement {
     const trait = (d: string, largeur: number, taille = 30, vue = "0 0 30 30") => svg("svg", { classe: "commande__icone", attrs: { "aria-hidden": "true", viewBox: vue, width: taille, height: taille } }, svg("path", { attrs: { d, "stroke-width": largeur } }));
     const gauche = this.bouton("gauche", "commande.gauche", trait("M19 5 9 15l10 10", 4.5));
     const droite = this.bouton("droite", "commande.droite", trait("M11 5l10 10-10 10", 4.5));
+    // Lot T8 : les deux petits boutons du taquet, au-dessus de gauche et de droite (une flèche contre une butée).
+    const taquetG = this.bouton("taquetGauche", "commande.taquetGauche", trait("M19 7 11 15l8 8M6 6v18", 3.5, 22));
+    const taquetD = this.bouton("taquetDroite", "commande.taquetDroite", trait("M11 7l8 8-8 8M24 6v18", 3.5, 22));
     const descendre = this.bouton("descendre", "commande.descendre", trait("M6 5l9 9 9-9M6 15l9 9 9-9", 4));
     const tourner = this.bouton("tourner", "commande.tourner", svg("svg", { classe: "commande__icone", attrs: { "aria-hidden": "true", viewBox: "0 0 32 32", width: 32, height: 32 } }, svg("path", { attrs: { d: "M25 16a9 9 0 1 1-3-6.7", "stroke-width": 4 } }), svg("path", { attrs: { d: "M17 4h7v7", "stroke-width": 4 } })), "texte");
-    return el("div", { classe: "commandes", attrs: { role: "group", "data-cle-groupe": "hud.commandes" } }, el("div", { classe: "commandes__gauche" }, gauche, droite), el("div", { classe: "commandes__droite" }, descendre, tourner));
+    return el("div", { classe: "commandes", attrs: { role: "group", "data-cle-groupe": "hud.commandes" } }, el("div", { classe: "commandes__gauche" }, taquetG, taquetD, gauche, droite), el("div", { classe: "commandes__droite" }, descendre, tourner));
   }
 
   /** Relit tous les textes (au démarrage et au changement de langue). */

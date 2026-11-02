@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { boitesE as boites, TOUR_DEPART, type PieceKind, COMMANDE, EFFETS, empreinteVue, FROTTEMENT_GLISSANT, MARGE_CONTACT, DISTANCE_SOUDURE, Partie, PHYSIQUE, PHYSIQUE_REGLEE_DEFAUT, physiqueEstDEssai, physiqueResolue, type Rapier, SCENARIO_ESSAI, scenarioPaliers, VENT_PERIODE_TICKS } from "../src";
+import { boitesE as boites, TOUR_DEPART, type PieceKind, COMMANDE, EFFETS, empreinteVue, FROTTEMENT_GLISSANT, MARGE_CONTACT, DISTANCE_SOUDURE, Partie, PHYSIQUE, PHYSIQUE_REGLEE_DEFAUT, PHYSIQUE_REGLEE_V4, physiqueEstDEssai, physiqueResolue, type Rapier, SCENARIO_ESSAI, scenarioPaliers, VENT_PERIODE_TICKS, VENT_PERIODE_TICKS_V5 } from "../src";
 import { chargerRapier } from "../src/rapier";
 
 // Lot T5 — les réglages d'ESSAI de la physique (`?debug&tune`) : sans option, la partie est exactement celle d'avant ; un réglage change la partie et la marque « d'essai » ; `effetSuivant` est
@@ -16,10 +16,14 @@ function jouer(p: Partie, n = 900): string {
 }
 
 describe("les réglages d'essai de la physique", () => {
-  it("les défauts sont les constantes de la simulation", () => {
-    expect(PHYSIQUE_REGLEE_DEFAUT).toEqual({ frottement: PHYSIQUE.frottement, rebond: PHYSIQUE.rebond, ventPeriodeTicks: VENT_PERIODE_TICKS, ventPas8: 1, frottementGlissant: FROTTEMENT_GLISSANT, echellePetite4: 2, echelleGeante4: 8, margeContact: MARGE_CONTACT, distanceSoudure: DISTANCE_SOUDURE });
+  it("les défauts sont les constantes de la simulation (lot T8 : le coup de vent de la 5 pousse d'une demi-case tous les 40 ticks ; celui des 3 et 4, d'un huitième tous les 10)", () => {
+    const commun = { frottement: PHYSIQUE.frottement, rebond: PHYSIQUE.rebond, frottementGlissant: FROTTEMENT_GLISSANT, echellePetite4: 2, echelleGeante4: 8, margeContact: MARGE_CONTACT, distanceSoudure: DISTANCE_SOUDURE };
+    expect(PHYSIQUE_REGLEE_V4).toEqual({ ...commun, ventPeriodeTicks: VENT_PERIODE_TICKS, ventPas8: 1 });
+    expect(PHYSIQUE_REGLEE_DEFAUT).toEqual({ ...commun, ventPeriodeTicks: VENT_PERIODE_TICKS_V5, ventPas8: 4 });
     expect(physiqueEstDEssai(physiqueResolue(undefined))).toBe(false);
     expect(physiqueEstDEssai(physiqueResolue({ frottement: 0.6 }))).toBe(false);
+    expect(physiqueEstDEssai(physiqueResolue(undefined, 4), 4)).toBe(false);
+    expect(physiqueEstDEssai(physiqueResolue(undefined, 4))).toBe(true); // les réglages de la 4 ne sont pas ceux de la 5
   });
 
   it("sans option, ou avec les défauts écrits, la partie est la même au bit près ; un réglage d'essai la change", () => {
@@ -38,7 +42,7 @@ describe("les réglages d'essai de la physique", () => {
   it("chaque réglage d'essai change la partie (frottement, rebond, marges) et marque la partie", () => {
     const base = new Partie(R, scenarioPaliers("glissante"));
     const e0 = jouer(base, 1500);
-    for (const [nom, valeur] of Object.entries({ frottement: 0.2, rebond: 0.5, margeContact: 0.12, frottementGlissant: 0.5, echellePetite4: 3, echelleGeante4: 10, ventPas8: 3, ventPeriodeTicks: 4, distanceSoudure: 0.09 })) {
+    for (const [nom, valeur] of Object.entries({ frottement: 0.2, rebond: 0.5, margeContact: 0.12, frottementGlissant: 0.5, echellePetite4: 3, echelleGeante4: 10, ventPas8: 8, ventPeriodeTicks: 4, distanceSoudure: 0.09 })) {
       const p = new Partie(R, scenarioPaliers("glissante"), undefined, { physique: { [nom]: valeur } });
       expect(p.physiqueDEssai, nom).toBe(true);
       // Une partie sur le défaut ne bouge jamais ; les réglages qui ne touchent rien dans ce scénario (vent, petite, géante, soudure) peuvent donner la même empreinte : on ne l'exige que des autres.
@@ -60,9 +64,10 @@ describe("les réglages d'essai de la physique", () => {
       p.dispose();
       return dx;
     };
-    expect(decalage({}, 60)).toBeCloseTo(6 / 8, 10); // six poussées d'un huitième
-    expect(decalage({ ventPas8: 3 }, 60)).toBeCloseTo(18 / 8, 10);
-    expect(decalage({ ventPeriodeTicks: 5 }, 60)).toBeCloseTo(12 / 8, 10);
+    // Simulation 5 : une poussée d'une demi-case (4 huitièmes) tous les 40 ticks. 120 ticks : trois poussées.
+    expect(decalage({}, 120)).toBeCloseTo(1.5, 10);
+    expect(decalage({ ventPas8: 8 }, 120)).toBeCloseTo(3, 10);
+    expect(decalage({ ventPeriodeTicks: 20 }, 120)).toBeCloseTo(3, 10);
   });
 
   it("une taille d'essai met les pièces à l'échelle (la moitié et le double restent exactement ce qu'ils étaient)", () => {

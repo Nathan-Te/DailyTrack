@@ -24,7 +24,7 @@ import type RAPIER from "@dimforge/rapier2d-deterministic-compat";
 import type { PieceKind } from "../lab/interface";
 import {
   COMMANDE,
-  COMMANDES_CONNUES,
+  commandesDeLaVersion,
   DEMI_CASE_8,
   FIGEE_TICKS,
   LIMITE_X8,
@@ -42,6 +42,7 @@ import {
 import { CONTACT_V3, CONTACT_V4, DECALAGES_SECOURS, GROUPES_FANTOME, GROUPES_NORMAL, MARGE_LATERALE, type ParamsContact, ROTATION_SECOURS } from "./contact";
 import { cadreDe, departGauche8, PAS_GRILLE_8, pivoter } from "./grille";
 import { physiqueEstDEssai, physiqueResolue, type ReglagesPhysique } from "./physique";
+import { paramsResolus, type ParamsStabilite } from "./stabilite";
 import { DUREE_EFFET, type Effet, estBonus, type Palier, type Taille } from "./paliers";
 import type { Rapier } from "./rapier";
 import { boitesE, type Echelles, etenduePieceE, sommetPieceE } from "./echelles";
@@ -53,6 +54,8 @@ export interface PieceDepart {
   rot: number;
   x8: number;
   y8: number;
+  /** Lot T8 : un décalage horizontal en millimètres ENTIERS (défaut 0), pour un trou de quelques millimètres que les huitièmes de mètre ne savent pas dire (`?scenario=emboitement`) : x = x8 / 8 + dxMm / 1000. */
+  dxMm?: number;
 }
 
 /**
@@ -179,6 +182,8 @@ interface Piece {
   vecu: number;
   soudee: boolean;
   fixe: boolean;
+  /** Lot T8 : poussées de taquet reçues depuis le lâcher. */
+  poussees: number;
 }
 
 /** La portée de la visée (mètres) : plus que toute la hauteur d'une partie. */
@@ -217,6 +222,14 @@ export class Partie {
   /** Lot T6 : la version de la simulation que joue cette partie (3 : celle des rediffusions d'avant le lot, rejouée au bit près ; 4 : la grille et la pose juste). */
   readonly version: number;
   private readonly v4: boolean;
+  /** Lot T8 : la simulation 5 (pose douce, tolérance, taquet) et ses réglages (`stabilite.ts`). */
+  private readonly v5: boolean;
+  private readonly params: ParamsStabilite;
+  /** La dernière pièce lâchée : le taquet la pousse pendant sa fenêtre. */
+  private derniere: Piece | null = null;
+  /** Le recouvrement accepté en main (mètres) : 1 mm avant la simulation 5, la tolérance d'emboîtement ensuite ; et le retrait latéral du test de lâcher (5 mm avant, la tolérance au moins ensuite). */
+  private readonly tolRefus: number;
+  private readonly tolLaterale: number;
   private readonly contact: ParamsContact;
   private readonly secours: boolean;
 
@@ -229,17 +242,21 @@ export class Partie {
     R: Rapier,
     readonly scenario: Scenario,
     readonly reglages: Readonly<Reglages> = REGLAGES_DEFAUT,
-    private readonly options: { stabilisationMaxTicks?: number; physique?: Partial<ReglagesPhysique>; version?: number; secoursRotation?: boolean; contact?: Partial<ParamsContact> } = {},
+    private readonly options: { stabilisationMaxTicks?: number; physique?: Partial<ReglagesPhysique>; version?: number; secoursRotation?: boolean; contact?: Partial<ParamsContact>; stabilite?: Partial<ParamsStabilite> } = {},
     depuis?: Partie,
   ) {
     this.R = R;
     this.version = options.version ?? TOWER_SIM_VERSION;
     if (!VERSIONS_SIM_JOUABLES.includes(this.version)) throw new Error(`simulation ${this.version} : ce code joue les versions ${VERSIONS_SIM_JOUABLES.join(", ")}`);
     this.v4 = this.version >= 4;
+    this.v5 = this.version >= 5;
+    this.params = paramsResolus(options.stabilite);
+    this.tolRefus = this.v5 ? this.params.tolerance : MARGE_REFUS;
+    this.tolLaterale = this.v5 ? Math.max(MARGE_LATERALE, this.params.tolerance) : MARGE_LATERALE;
     this.contact = { ...(this.v4 ? CONTACT_V4 : CONTACT_V3), ...(options.contact ?? {}) };
     this.secours = options.secoursRotation ?? ROTATION_SECOURS;
     this.vies = reglages.vies;
-    this.physique = physiqueResolue(options.physique);
+    this.physique = physiqueResolue(options.physique, this.version);
     this.echelles = { petite4: this.physique.echellePetite4, geante4: this.physique.echelleGeante4 };
     if (depuis) {
       this.world = R.World.restoreSnapshot(depuis.world.takeSnapshot());
@@ -286,6 +303,7 @@ export class Partie {
       return q;
     });
     this.active = s.active ? mapa.get(s.active)! : null;
+    this.derniere = s.derniere ? mapa.get(s.derniere)! : null;
     this.ticks = s.ticks;
     this.phase = s.phase;
     this.distribuees = s.distribuees;
@@ -366,7 +384,7 @@ export class Partie {
 
   /** Lot T5 : cette partie a-t-elle des réglages d'ESSAI de physique (`?debug&tune`) ? Une telle partie n'est jamais classée (le serveur la rejouerait avec les réglages normaux). */
   get physiqueDEssai(): boolean {
-    return physiqueEstDEssai(this.physique);
+    return physiqueEstDEssai(this.physique, this.version);
   }
 
   /** Lot T5 : les tailles d'essai (pour le rendu : le jeu dessine les pièces à la taille que la physique leur donne). */
@@ -392,9 +410,11 @@ export class Partie {
   avancer(commandes: number): void {
     if (this.phase === "fini") return;
     this.ticks++;
-    if (this.phase === "jeu") this.journal.push(commandes & COMMANDES_CONNUES);
+    if (this.phase === "jeu") this.journal.push(commandes & commandesDeLaVersion(this.version));
     if (this.phase === "jeu" && this.active && !this.retenue) this.piloter(commandes | 0);
     this.world.step();
+    const d = this.derniere;
+    if (d && this.v5 && this.params.dureeGraviteDouce > 0 && this.ticks - d.lacheTick === this.params.dureeGraviteDouce && d.body && !d.fixe) d.body.setGravityScale(1, true);
     this.apresPas();
   }
 
@@ -402,9 +422,12 @@ export class Partie {
 
   private piloter(commandes: number): void {
     const p = this.active!;
+    commandes &= commandesDeLaVersion(this.version);
     if (commandes & COMMANDE.GAUCHE) this.deplacer(p, -DEMI_CASE_8);
     if (commandes & COMMANDE.DROITE) this.deplacer(p, DEMI_CASE_8);
     if (commandes & COMMANDE.TOURNER) this.tourner(p);
+    if (commandes & COMMANDE.TAQUET_GAUCHE) this.taquet(p, -1);
+    if (commandes & COMMANDE.TAQUET_DROITE) this.taquet(p, 1);
     if (p.effet === "vent" && ++p.vecu % this.physique.ventPeriodeTicks === 0) this.deplacer(p, (this.scenario.ventSens === -1 ? -1 : 1) * this.physique.ventPas8);
     const facteur = commandes & COMMANDE.DESCENDRE ? this.reglages.facteurDescente : 1;
     const normale = this.reglages.vitesseChute8 / 8;
@@ -417,11 +440,30 @@ export class Partie {
     if (this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) this.lacher(p);
   }
 
+  /**
+   * Lot T8 (simulation 5) — **le taquet**, un ordre de ce tick vers la gauche (−1) ou la droite (1). **Juste après un lâcher** (pendant `taquetFenetre` ticks, tant que la pièce lâchée n'est pas au
+   * repos et n'a pas reçu `taquetMax` poussées), il pousse CETTE pièce : sa vitesse horizontale augmente de `taquetDv8` huitièmes de m/s (une impulsion entière, une par appui) — elle glisse ou se
+   * cale dans un creux sur le côté, et pousse ce qu'elle touche. Pendant la fenêtre l'ordre est réservé à la pièce lâchée (au-delà du maximum il est sans effet). Hors fenêtre, **en main**, il déplace
+   * la pièce d'un pas fin de `pasFin8` huitièmes de mètre (hors de la grille), avec la même tolérance d'emboîtement que les déplacements.
+   */
+  private taquet(p: Piece, sens: number): void {
+    const d = this.derniere;
+    if (d && d.etat === "libre" && d.body && !d.fixe && this.ticks - d.lacheTick < this.params.taquetFenetre) {
+      if (d.poussees < this.params.taquetMax && !d.body.isSleeping()) {
+        const v = d.body.linvel();
+        d.body.setLinvel({ x: v.x + (sens * this.params.taquetDv8) / 8, y: v.y }, true);
+        d.poussees++;
+      }
+      return;
+    }
+    this.deplacer(p, sens * this.params.pasFin8);
+  }
+
   /** Un déplacement de `delta8` huitièmes de mètre (une demi-case par ordre du joueur, un huitième par poussée du vent) ; refusé s'il enfonce la pièce dans un autre corps ou la sort des limites. */
   private deplacer(p: Piece, delta8: number): void {
     const x8 = p.x8 + delta8;
     if (Math.abs(x8) > LIMITE_X8) return;
-    if (this.touche(p, x8 / 8, p.y, -MARGE_REFUS)) return;
+    if (this.touche(p, x8 / 8, p.y, -this.tolRefus)) return;
     p.x8 = x8;
     p.g8 += delta8;
     p.x = x8 / 8;
@@ -436,7 +478,7 @@ export class Partie {
   private tourner(p: Piece): void {
     const rot = (p.rot + 3) & 3;
     if (!this.v4) {
-      if (this.toucheBoites(boitesE(p.kind, rot, p.taille, this.echelles), p.body!, p.x, p.y, -MARGE_REFUS, -MARGE_REFUS)) return;
+      if (this.toucheBoites(boitesE(p.kind, rot, p.taille, this.echelles), p.body!, p.x, p.y, -this.tolRefus, -this.tolRefus)) return;
       this.retirerCorps(p);
       p.rot = rot;
       p.body = this.creerCorps(p);
@@ -454,7 +496,7 @@ export class Partie {
       const x8 = g8 - apres.gauche;
       if (Math.abs(x8) > LIMITE_X8) continue;
       const y = (pv.bas8 + dy * PAS_GRILLE_8 - apres.bas) / 8;
-      if (this.toucheBoites(bs, p.body!, x8 / 8, y, -MARGE_REFUS, -MARGE_REFUS)) continue;
+      if (this.toucheBoites(bs, p.body!, x8 / 8, y, -this.tolRefus, -this.tolRefus)) continue;
       this.retirerCorps(p);
       p.rot = rot;
       p.g8 = g8;
@@ -467,9 +509,15 @@ export class Partie {
   }
 
   private lacher(p: Piece): void {
-    p.body!.setLinvel({ x: 0, y: -this.reglages.vitesseChute8 / 8 }, true); // jamais la vitesse d'une descente rapide : celle d'une chute normale
+    // Version 5 : la pose douce — la pièce part de `vitessePose8` (petite, réglable) au lieu de la chute normale ; elle garde son poids (la gravité fait le reste). Avant : la chute normale.
+    const vitesse = this.v5 ? this.params.vitessePose8 : this.reglages.vitesseChute8;
+    p.body!.setLinvel({ x: 0, y: -vitesse / 8 }, true); // jamais la vitesse d'une descente rapide
     p.body!.setGravityScale(1, true);
     if (this.v4) for (let i = 0; i < p.body!.numColliders(); i++) p.body!.collider(i).setCollisionGroups(GROUPES_NORMAL);
+    if (this.v5) {
+      this.derniere = p;
+      if (this.params.dureeGraviteDouce > 0 && this.params.graviteDouce !== 1) p.body!.setGravityScale(this.params.graviteDouce, true);
+    }
     p.etat = "libre";
     p.lacheTick = this.ticks;
     this.posees++;
@@ -488,7 +536,7 @@ export class Partie {
   private toucheEnBas(p: Piece, x: number, y: number): boolean {
     const bs = boitesE(p.kind, p.rot, p.taille, this.echelles);
     if (!this.v4) return this.toucheBoites(bs, p.body!, x, y, this.physique.margeContact, this.physique.margeContact);
-    return this.toucheBoites(bs, p.body!, x, y - this.physique.margeContact / 2, -MARGE_LATERALE, this.physique.margeContact / 2);
+    return this.toucheBoites(bs, p.body!, x, y - this.physique.margeContact / 2, -this.tolLaterale, this.physique.margeContact / 2);
   }
 
   /** Une boîte de la forme, agrandie de `margeX` et `margeY` (réduite si négative), recouvre-t-elle un autre corps que `corps` ? */
@@ -559,7 +607,7 @@ export class Partie {
     const y8 = Math.ceil(sommet * 8) + this.reglages.hauteurApparition8 - bas8;
     const p: Piece = {
       id, kind, rot: 0, etat: "active", body: null, x8, g8, x: x8 / 8, y: y8 / 8, angle: 0, endormie: false, sommet: y8 / 8, stabilisee: false,
-      taille, effet, lacheTick: -1, vecu: 0, soudee: false, fixe: false,
+      taille, effet, lacheTick: -1, vecu: 0, soudee: false, fixe: false, poussees: 0,
     };
     p.body = this.creerCorps(p);
     this.pieces.push(p);
@@ -582,8 +630,8 @@ export class Partie {
   /** Une pièce posée d'avance : un corps endormi, déjà « stabilisé » (elle compte dans la hauteur dès le début). */
   private poserDepart(d: PieceDepart): void {
     const p: Piece = {
-      id: this.pieces.length, kind: d.kind, rot: d.rot & 3, etat: "libre", body: null, x8: d.x8, g8: 0, x: d.x8 / 8, y: d.y8 / 8, angle: 0, endormie: false, sommet: 0, stabilisee: true,
-      taille: "normale", effet: null, lacheTick: -1, vecu: 0, soudee: false, fixe: false,
+      id: this.pieces.length, kind: d.kind, rot: d.rot & 3, etat: "libre", body: null, x8: d.x8, g8: 0, x: d.x8 / 8 + (d.dxMm ?? 0) / 1000, y: d.y8 / 8, angle: 0, endormie: false, sommet: 0, stabilisee: true,
+      taille: "normale", effet: null, lacheTick: -1, vecu: 0, soudee: false, fixe: false, poussees: 0,
     };
     p.sommet = sommetPieceE(p.kind, p.rot, p.y, 0, "normale", this.echelles);
     p.body = this.creerCorps(p);
@@ -813,13 +861,13 @@ export class Partie {
     // L'arrivée : chaque boîte est lancée vers le bas (rétrécie sur les côtés comme pour le lâcher : un voisin collé n'est pas « dessous »), la plus courte distance l'emporte.
     let toi = Infinity;
     for (const b of bs) {
-      const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - MARGE_LATERALE), b.hh / 8);
+      const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - this.tolLaterale), b.hh / 8);
       const hit = this.world.castShape({ x: p.x + b.cx / 8, y: p.y + b.cy / 8 }, 0, bas, forme, 0, PORTEE_VISEE, false, undefined, undefined, undefined, p.body);
       if (hit && hit.time_of_impact < toi) toi = hit.time_of_impact;
     }
     // Les deux traits : un rayon par bord (rentré de `MARGE_LATERALE`), parti du point le plus bas de la pièce à cette abscisse.
     const traits = [cadre.gauche / 8, cadre.droite / 8].map((bord, i) => {
-      const xRel = bord + (i === 0 ? MARGE_LATERALE : -MARGE_LATERALE);
+      const xRel = bord + (i === 0 ? this.tolLaterale : -this.tolLaterale);
       let yRel = Infinity;
       for (const b of bs) if (xRel >= (b.cx - b.hw) / 8 && xRel <= (b.cx + b.hw) / 8) yRel = Math.min(yRel, (b.cy - b.hh) / 8);
       const yHaut = p.y + yRel;

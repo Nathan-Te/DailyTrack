@@ -23,8 +23,8 @@ describe("l'aide des commandes en partie", () => {
   it("au clavier : les deux premières touches de chaque action, celles du joueur", () => {
     const c = fraiche();
     c.disposition = new Map([["KeyW", "z"], ["KeyA", "q"], ["KeyS", "s"], ["KeyD", "d"]]); // AZERTY
-    expect(phrase(c, "clavier")).toBe("[←][Q] [→][D] déplacer · [↑][Z] tourner · [↓][S] descendre · [P] pause");
-    expect(phrase(c, "clavier", "en")).toBe("[←][Q] [→][D] move · [↑][Z] rotate · [↓][S] drop · [P] pause");
+    expect(phrase(c, "clavier")).toBe("[←][Q] [→][D] déplacer · [↑][Z] tourner · [↓][S] descendre · [Q] [E] taquet · [P] pause");
+    expect(phrase(c, "clavier", "en")).toBe("[←][Q] [→][D] move · [↑][Z] rotate · [↓][S] drop · [Q] [E] nudge · [P] pause");
   });
 
   it("cite la touche choisie dans Réglages › Commandes (Z pour tourner, Entrée ne figure pas)", () => {
@@ -39,10 +39,10 @@ describe("l'aide des commandes en partie", () => {
 
   it("à la manette : des boutons de manette — le stick déplace, A tourne, RT descend, Start met en pause (le bouton choisi, s'il a changé)", () => {
     const c = fraiche();
-    expect(phrase(c, "manette")).toBe("[←] [→] déplacer · [A] tourner · [RT] descendre · [Start] pause");
+    expect(phrase(c, "manette")).toBe("[←] [→] déplacer · [A] tourner · [RT] descendre · [LB] [RB] taquet · [Start] pause");
     definirLiaison(c, "tourner", "b1");
     definirLiaison(c, "descendre", "b6");
-    expect(phrase(c, "manette")).toBe("[←] [→] déplacer · [B] tourner · [LT] descendre · [Start] pause");
+    expect(phrase(c, "manette")).toBe("[←] [→] déplacer · [B] tourner · [LT] descendre · [LB] [RB] taquet · [Start] pause");
   });
 
   it("une action sans touche (emplacement vide) ne casse pas la ligne", () => {

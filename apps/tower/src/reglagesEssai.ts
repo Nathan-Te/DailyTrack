@@ -1,4 +1,4 @@
-import { PHYSIQUE_REGLEE_DEFAUT, type Reglages, REGLAGES_DEFAUT, type ReglagesPhysique } from "@cdj/tower-sim";
+import { PARAMS_STABILITE, type ParamsStabilite, PHYSIQUE_REGLEE_DEFAUT, type Reglages, REGLAGES_DEFAUT, type ReglagesPhysique } from "@cdj/tower-sim";
 import { ENTREES_DEFAUT, type ReglagesEntrees } from "./entrees";
 import { VOLUMES_DEFAUT, type VolumesFamilles } from "./sonsLogique";
 
@@ -31,17 +31,19 @@ export interface ReglagesTune {
   entrees: ReglagesEntrees;
   sim: Reglages;
   physique: ReglagesPhysique;
+  /** Lot T8 : la pose douce, la tolérance d'emboîtement et le taquet (pas fin, fenêtre, force, nombre de poussées) de la simulation 5. */
+  stabilite: ParamsStabilite;
   /** La largeur de la plateforme forcée (demi-largeur en huitièmes de mètre) ; `null` : celle du jour. Sans toucher au générateur. */
   plateformeDemi8: number | null;
   rendu: ReglagesRendu;
 }
 
 export function reglagesDeDepart(): ReglagesTune {
-  return { entrees: { ...ENTREES_DEFAUT }, sim: { ...REGLAGES_DEFAUT }, physique: { ...PHYSIQUE_REGLEE_DEFAUT }, plateformeDemi8: null, rendu: { ...RENDU_DEFAUT, volumes: { ...RENDU_DEFAUT.volumes } } };
+  return { entrees: { ...ENTREES_DEFAUT }, sim: { ...REGLAGES_DEFAUT }, physique: { ...PHYSIQUE_REGLEE_DEFAUT }, stabilite: { ...PARAMS_STABILITE }, plateformeDemi8: null, rendu: { ...RENDU_DEFAUT, volumes: { ...RENDU_DEFAUT.volumes } } };
 }
 
 /** La partie jouée avec ces réglages est-elle une partie d'ESSAI ? Vrai dès qu'une valeur du groupe 1 diffère de la valeur normale (le groupe 2 n'y change rien). Jamais classée. */
 export function reglagesEssai(r: ReglagesTune): boolean {
   const diff = <T extends object>(a: T, b: Readonly<T>): boolean => (Object.keys(b) as (keyof T)[]).some((k) => a[k] !== b[k]);
-  return diff(r.entrees, ENTREES_DEFAUT) || diff(r.sim, REGLAGES_DEFAUT) || diff(r.physique, PHYSIQUE_REGLEE_DEFAUT) || r.plateformeDemi8 !== null;
+  return diff(r.entrees, ENTREES_DEFAUT) || diff(r.sim, REGLAGES_DEFAUT) || diff(r.physique, PHYSIQUE_REGLEE_DEFAUT) || diff(r.stabilite, PARAMS_STABILITE) || r.plateformeDemi8 !== null;
 }

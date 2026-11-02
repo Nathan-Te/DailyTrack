@@ -168,7 +168,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   const jourLu = preparation.jourLu;
   const date = preparation.date;
   const enTete = (): string =>
-    options.scenario === "essai" || options.scenario === "alignement"
+    options.scenario === "essai" || options.scenario === "alignement" || options.scenario === "emboitement"
       ? t("fin.eyebrow")
       : options.scenario === "paliers"
         ? t("fin.eyebrow.paliers")
@@ -460,7 +460,9 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     classable = classableAvec();
     essai = reglagesEssai(reglages);
     const scenario: Scenario = reglages.plateformeDemi8 !== null ? { ...contenu, plateformeDemi8: reglages.plateformeDemi8 } : contenu;
-    partie = new Partie(R, scenario, { ...reglages.sim }, { physique: { ...reglages.physique }, version: versionDuBot });
+    // Lot T8 : une preuve des simulations 3 et 4 (`&bot`) est rejouée avec les réglages de CETTE version (les défauts du jeu courant, le vent d'une demi-case, n'en sont pas).
+    const ancienne = versionDuBot !== undefined && versionDuBot < 5;
+    partie = new Partie(R, scenario, { ...reglages.sim }, ancienne ? { version: versionDuBot } : { physique: { ...reglages.physique }, stabilite: { ...reglages.stabilite }, version: versionDuBot });
     scene.poserPlateforme(scenario.plateformeDemi8);
     scene.poserEchelles(partie.taillesDEssai);
     analyseur = new AnalyseurPanique(scenario.plateformeDemi8, partie.taillesDEssai, gainYeux);

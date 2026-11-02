@@ -160,8 +160,8 @@ describe("les vies", () => {
     expect(v.pieces[0]!.etat).toBe("perdue");
     expect(v.vies).toBe(2);
     expect(v.tombees).toBe(1);
-    expect(v.active).toBe(1);
-    for (let i = 0; i < 300; i++) p.avancer(0); // longtemps après : toujours une seule vie perdue, la pièce 1 est encore en l'air
+    expect(v.active).toBeGreaterThanOrEqual(1); // lot T8 : la pièce lâchée au bord tombe plus doucement, la suivante est déjà en main (ou déjà lâchée)
+    for (let i = 0; i < 300; i++) p.avancer(0); // longtemps après : toujours une seule vie perdue
     expect(p.vue().tombees === 1 ? p.vue().vies : -1).toBe(2);
     p.dispose();
   });
@@ -287,7 +287,8 @@ describe("la fin", () => {
 describe("« descendre » n'a aucun effet physique (lot T2)", () => {
   /** Pose un carré sur la plateforme (ou sur un autre) en tenant `descendre` ou non ; rend la vitesse du carré au tick de son lâcher et sa position une fois posé. */
   function poser(descendre: boolean): { vy: number; y: number; x: number } {
-    const p = new Partie(R, { nom: "carres", pieces: ["O", "O"], plateformeDemi8: 28 });
+    // Simulations 3 et 4 : le lâcher se fait à la vitesse de la chute normale (lot T8 : la simulation 5 pose en douceur, `stabilite.test.ts`).
+    const p = new Partie(R, { nom: "carres", pieces: ["O", "O"], plateformeDemi8: 28 }, REGLAGES_DEFAUT, { version: 4 });
     let vy = NaN;
     for (let k = 0; k < 4000 && p.vue().posees === 0; k++) p.avancer(descendre ? COMMANDE.DESCENDRE : 0);
     vy = p.vitesseDe(0)!.y;
@@ -362,9 +363,8 @@ describe("une partie scriptée", () => {
     p.dispose();
   });
 
-  it(`TOWER_SIM_VERSION vaut 4 (lot T6 : la grille et la pose juste) : la partie scriptée a sa propre empreinte de fin, celle de Node, et ce n'est pas celle de la version 3`, () => {
-    expect(TOWER_SIM_VERSION).toBe(4);
-    const p = new Partie(R, SCENARIO_ESSAI);
+  it(`simulation 4 (lot T6 : la grille et la pose juste) rejouée au bit près : la partie scriptée a sa propre empreinte de fin, celle de Node, et ce n'est pas celle de la version 3 — lot T8 : la version 4 reste jouable telle quelle`, () => {
+    const p = new Partie(R, SCENARIO_ESSAI, REGLAGES_DEFAUT, { version: 4 });
     expect(p.version).toBe(4);
     partieScriptee(p, SCRIPT);
     const r = p.resultat()!;
@@ -381,6 +381,33 @@ describe("une partie scriptée", () => {
           "ticks": 917,
           "ticksGel": 1077,
           "tombees": 5,
+          "vies": 0,
+        },
+      }
+    `);
+    p.dispose();
+  });
+
+  it(`TOWER_SIM_VERSION vaut 5 (lot T8 : une tour qui tient, et le taquet) : la partie scriptée a sa propre empreinte de fin, celle de Node, qui n'est ni celle de la version 3 ni celle de la 4`, () => {
+    expect(TOWER_SIM_VERSION).toBe(5);
+    const p = new Partie(R, SCENARIO_ESSAI);
+    expect(p.version).toBe(5);
+    partieScriptee(p, SCRIPT);
+    const r = p.resultat()!;
+    const e = empreinteVue(p.vue());
+    expect(e).not.toBe("1e7e3a52a2102cf8");
+    expect(e).not.toBe("56a779235d584dc4");
+    expect({ empreinte: e, resultat: r }).toMatchInlineSnapshot(`
+      {
+        "empreinte": "d55e70fa35b4c8b5",
+        "resultat": {
+          "hauteurMaxMm": 8288,
+          "hauteurMm": 3400,
+          "motif": "vies",
+          "posees": 7,
+          "ticks": 759,
+          "ticksGel": 818,
+          "tombees": 4,
           "vies": 0,
         },
       }

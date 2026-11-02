@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { boitesE, COMMANDE, dailyTower, empreinteVue, Partie, type Rapier, rejouer, type Scenario, SCENARIO_ESSAI, scenarioPaliers } from "../src";
+import { boitesE, COMMANDE, dailyTower, empreinteVue, Partie, type Rapier, rejouer, type Scenario, SCENARIO_ESSAI, scenarioPaliers, TOWER_SIM_VERSION } from "../src";
 import { bot, commandesDuCoup, coupInterdit, coupsDe, essayerBot, jouerBot, jouerBotRobuste, noteEssai, OPTIONS_BOT, ROTATIONS, VARIANTES_BOT } from "../src/bot";
 import { BUDGET_TICKS, PENALITE_MOUVEMENT, PENALITE_VIE, PROFONDEUR_VISIBLE_MM, SATISFAIT_MM } from "../src/bot/constantes";
 import { chargerRapier } from "../src/rapier";
@@ -93,8 +93,9 @@ describe("le bot joue une vraie partie", () => {
     expect(r.rediffusion.contenu).toEqual({ scenario: "petite" });
   });
 
-  it("lot T6 — le bot joue en simulation 4 : sa preuve la nomme, se rejoue en version 4, et ses pièces sont posées bords sur la grille des demi-cases (rejeu pas à pas des commandes de sa preuve)", () => {
-    expect(a.rediffusion.sim).toBe(4);
+  it("lot T6 (lot T8 : simulation 5) — le bot joue en simulation 5 : sa preuve la nomme, se rejoue en version 5, et ses pièces sont posées bords sur la grille des demi-cases (rejeu pas à pas des commandes de sa preuve)", () => {
+    expect(a.rediffusion.sim).toBe(TOWER_SIM_VERSION);
+    expect(TOWER_SIM_VERSION).toBe(5);
     // Rejoue la preuve : au lâcher de chaque pièce, ses bords gauche et droit sont sur la grille (hors vent : PETITE n'a pas de palier).
     const p = new Partie(R, PETITE);
     let verifiees = 0;

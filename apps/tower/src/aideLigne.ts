@@ -11,7 +11,7 @@ export type Entree = "clavier" | "manette" | "tactile";
 
 const MARQUE = "\u0001";
 /** Les actions que la ligne cite, dans le gabarit `aide.ligne`. */
-export const ACTIONS_AIDE = ["gauche", "droite", "tourner", "descendre", "pause"] as const;
+export const ACTIONS_AIDE = ["gauche", "droite", "tourner", "descendre", "taquetGauche", "taquetDroite", "pause"] as const;
 /** Le nombre de touches montrées par action : l'origine en a deux ou trois, la ligne reste courte. */
 const TOUCHES_MONTREES = 2;
 
