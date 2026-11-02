@@ -11,11 +11,12 @@ export interface ParamsStabilite {
   dureeGraviteDouce: number;
   /** Tolérance d'emboîtement (mètres) : un déplacement ou un quart de tour en main accepte de recouvrir une pièce posée jusqu'à cette profondeur ; au-delà il est refusé. */
   tolerance: number;
-  /** Le taquet en main : le pas fin (huitièmes de mètre). */
-  pasFin8: number;
-  /** Le taquet après le lâcher : la fenêtre (ticks), la vitesse ajoutée par poussée (huitièmes de m/s) et le nombre de poussées par pièce. */
+  /** Le déplacement « intelligent » : la portée (mètres) dans laquelle le jeu recale la pièce en main, après chaque déplacement ou quart de tour, pour qu'elle tombe vraiment dans le creux qu'elle vise (0 : éteint). */
+  alignement: number;
+  /** Le taquet, un vrai coup sur le côté juste après le lâcher : la fenêtre (ticks) pendant laquelle l'ordre est pris, la vitesse du coup (huitièmes de m/s), sa durée (ticks : la portée est vitesse × durée) et le nombre de coups par pièce. */
   taquetFenetre: number;
-  taquetDv8: number;
+  taquetVitesse8: number;
+  taquetTicks: number;
   taquetMax: number;
 }
 
@@ -24,10 +25,11 @@ export const PARAMS_STABILITE: Readonly<ParamsStabilite> = {
   graviteDouce: 0,
   dureeGraviteDouce: 20,
   tolerance: 0.02,
-  pasFin8: 1,
-  taquetFenetre: 15,
-  taquetDv8: 20,
-  taquetMax: 3,
+  alignement: 0.06,
+  taquetFenetre: 30,
+  taquetVitesse8: 36,
+  taquetTicks: 20,
+  taquetMax: 2,
 };
 
 /** Les bornes admises pour les réglages d'essai du taquet (`?debug&tune`). */

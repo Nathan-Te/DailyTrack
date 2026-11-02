@@ -863,12 +863,13 @@ const dormir = (n: number, v: number): Variante["apres"] => {
 };
 
 /** La simulation 5 avec tous ses correctifs éteints : celle de la 4, au coup de vent près (qui ne sert pas au corpus de départ). Chaque variante de cause ne change qu'UN facteur à partir d'elle. */
-const NEUTRE = { vitessePose8: 20, graviteDouce: 1, dureeGraviteDouce: 0, tolerance: 0.001 };
+const NEUTRE = { vitessePose8: 20, graviteDouce: 1, dureeGraviteDouce: 0, tolerance: 0.001, alignement: 0 };
 const depuisNeutre = (stabilite: Record<string, unknown> = {}, reste: Record<string, unknown> = {}): Record<string, unknown> => ({ ...reste, stabilite: { ...NEUTRE, ...stabilite } });
 
 export const VARIANTES: Variante[] = [
   { nom: "v4", description: "la simulation 4 telle quelle (l'« avant »)", version: 4 },
   { nom: "v5", description: "la simulation 5 telle quelle (l'« après »)", version: 5 },
+  { nom: "v5-sans-recalage", description: "la simulation 5 sans le déplacement intelligent (alignement 0)", version: 5, options: { stabilite: { alignement: 0 } } },
   { nom: "neutre", description: "la simulation 5 avec ses correctifs éteints (doit redonner la 4)", version: 5, options: depuisNeutre() },
   { nom: "pose-0", description: "pose douce : la pièce part de 0 m/s au lâcher (au lieu de 2,5 m/s) : la gravité seule", version: 5, options: depuisNeutre({ vitessePose8: 0 }) },
   { nom: "pose-4", description: "pose douce : la pièce part de 0,5 m/s au lâcher", version: 5, options: depuisNeutre({ vitessePose8: 4 }) },

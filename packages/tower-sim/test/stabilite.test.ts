@@ -80,12 +80,16 @@ describe("la tolérance d'emboîtement et la correction en douceur", () => {
     const p = new Partie(R, sc, REGLAGES_DEFAUT, { version });
     const avant = p.vue().pieces.map((q) => q.x);
     let k = 0;
+    let pas = 0;
     while (p.etape !== "fini" && k++ < 3000) {
       const v = p.vue();
       let m = COMMANDE.DESCENDRE;
       if (v.active >= 0) {
         if (k < 4) m |= COMMANDE.TOURNER;
-        else if (v.pieces[v.active]!.x < 5.5) m |= COMMANDE.DROITE; // le centre du trou, à 5,5 m
+        else if (pas < 11) {
+          m |= COMMANDE.DROITE; // 11 pas d'une demi-case : de la naissance (x = −0,5) au trou (x = 5)
+          pas++;
+        }
       }
       p.avancer(m);
     }
@@ -121,10 +125,11 @@ describe("la tolérance d'emboîtement et la correction en douceur", () => {
     const avant = p.vue().pieces.map((q) => q.x);
     let maxi = 0;
     let k = 0;
+    let pas = 0;
     while (p.etape !== "fini" && k++ < 3000) {
       const v = p.vue();
       let m = COMMANDE.DESCENDRE;
-      if (v.active === 2) m |= k < 4 ? COMMANDE.TOURNER : v.pieces[2]!.x < 5.5 ? COMMANDE.DROITE : 0;
+      if (v.active === 2) m |= k < 4 ? COMMANDE.TOURNER : pas++ < 11 ? COMMANDE.DROITE : 0;
       p.avancer(m);
       const f = p.vue().pieces;
       maxi = Math.max(maxi, Math.abs(f[0]!.x - avant[0]!), Math.abs(f[1]!.x - avant[1]!));
@@ -132,6 +137,64 @@ describe("la tolérance d'emboîtement et la correction en douceur", () => {
     expect(maxi).toBeLessThan(0.015);
     expect(p.vue().tombees).toBe(0);
     p.dispose();
+  });
+});
+
+describe("le déplacement intelligent : le pas reste d'une demi-case, le jeu recale la pièce pour qu'elle tombe dans le creux visé", () => {
+  /** Le bâton debout est mené au trou de 99 cm (les deux murs décalés ensemble de `decalMm` hors de la grille) ; rend sa hauteur finale, son abscisse et le déplacement des murs (mm). */
+  function versLeTrou(decalMm: number, alignement?: number): { y: number; x: number; murs: number } {
+    const sc: Scenario = {
+      nom: "trou décalé",
+      pieces: ["I"],
+      plateformeDemi8: 64,
+      depart: [{ kind: "O", rot: 0, x8: 32, y8: 8, dxMm: decalMm + 5 }, { kind: "O", rot: 0, x8: 56, y8: 8, dxMm: decalMm - 5 }],
+    };
+    const p = new Partie(R, sc, REGLAGES_DEFAUT, alignement === undefined ? {} : { stabilite: { alignement } });
+    const avant = p.vue().pieces.map((q) => q.x);
+    let k = 0;
+    let tournes = 0;
+    let pas = 0;
+    while (p.etape !== "fini" && k++ < 3000) {
+      const v = p.vue();
+      let m = COMMANDE.DESCENDRE;
+      if (v.active >= 0) {
+        if (tournes < 3 && k % 3 === 0) {
+          m |= COMMANDE.TOURNER;
+          tournes++;
+        } else if (tournes >= 3 && pas < 11) {
+          m |= COMMANDE.DROITE; // 11 pas d'une demi-case : de la naissance (x = −0,5) au trou (x = 5)
+          pas++;
+        }
+      }
+      p.avancer(m);
+    }
+    const f = p.vue().pieces;
+    const r = { y: f[2]!.y, x: f[2]!.x, murs: Math.max(Math.abs(f[0]!.x - avant[0]!), Math.abs(f[1]!.x - avant[1]!)) * 1000 };
+    p.dispose();
+    return r;
+  }
+
+  it("un trou décalé de la grille de 2, 4 ou 6 cm par une dérive : le bâton y tombe (il repose au fond) ; sans recalage il se pose en travers des murs", () => {
+    for (const mm of [20, 40, 60, -40]) {
+      const intelligent = versLeTrou(mm);
+      expect(intelligent.y, `${mm} mm`).toBeCloseTo(2, 1);
+      expect(intelligent.murs, `${mm} mm : les murs ne bougent pas`).toBeLessThan(10);
+    }
+    for (const mm of [40, 60]) expect(versLeTrou(mm, 0).y, `${mm} mm sans recalage`).toBeGreaterThan(2.4);
+  });
+
+  it("le recalage a une portée (6 cm) : un trou décalé de 9 cm n'est pas rattrapé, et il ne bouge pas une pièce qui n'en a pas besoin (trou à la grille : aucune correction)", () => {
+    expect(versLeTrou(90).y).toBeGreaterThan(2.4);
+    const p = new Partie(R, { nom: "libre", pieces: ["O"], plateformeDemi8: 64 });
+    for (let i = 0; i < 6; i++) p.avancer(i % 2 === 0 ? COMMANDE.DROITE : 0);
+    expect(p.vue().pieces[0]!.x * 8).toBeCloseTo(Math.round(p.vue().pieces[0]!.x * 8), 6); // sur la grille des huitièmes : rien n'a été recalé
+    p.dispose();
+  });
+
+  it("le recalage est le même à chaque fois (déterministe) et la rediffusion le refait : même résultat deux fois", () => {
+    const a = versLeTrou(40);
+    const b = versLeTrou(40);
+    expect(a).toEqual(b);
   });
 });
 
@@ -213,9 +276,10 @@ describe("le corpus du diagnostic : aucune pièce ne bouge sans cause (échantil
     const p = new Partie(R, { ...SCENARIO_EMBOITEMENT, pieces: ["O"] });
     expect(DEPART_EMBOITEMENT.length).toBe(4);
     const avant = p.vue().pieces.map((q) => [q.x, q.y]);
-    for (let k = 0; k < 120; k++) p.avancer(0);
+    for (let k = 0; k < 300; k++) p.avancer(0);
     p.vue().pieces.slice(0, 4).forEach((q, i) => {
-      expect(Math.hypot(q.x - avant[i]![0]!, q.y - avant[i]![1]!)).toBeLessThan(0.005);
+      expect(q.etat).toBe("libre");
+      expect(Math.hypot(q.x - avant[i]![0]!, q.y - avant[i]![1]!), `pièce ${i}`).toBeLessThan(0.012); // elle se tasse de quelques millimètres, rien de plus
     });
     p.dispose();
   });

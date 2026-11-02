@@ -1768,13 +1768,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commandes.action.recommencer` | Recommencer | Restart |
 | `commandes.action.pause` | Pause | Pause |
 | `commandes.action.fantome` | Fantôme | Ghost |
-| `commandes.action.taquetGauche` | Taquet à gauche | Nudge left |
-| `commandes.action.taquetDroite` | Taquet à droite | Nudge right |
+| `commandes.action.taquetGauche` | Taquet à gauche | Bump left |
+| `commandes.action.taquetDroite` | Taquet à droite | Bump right |
 | `commandes.manette.deplacer` | Déplacer | Move |
 | `commandes.manette.descendre` | Descendre vite | Drop fast |
 | `commandes.fixe.stick` | Stick ou croix | Stick or d-pad |
 | `commandes.fixe.stickBas` | Bas du stick ou de la croix | Stick or d-pad down |
-| `commandes.tactile` | Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite. | Six on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster), plus the two small nudge buttons above left and right. |
+| `commandes.tactile` | Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite (un coup sur le côté, juste après la pose). | Six on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster), plus the two small bump buttons above left and right (a hit to the side, right after a piece lands). |
 
 ### Commandes tactiles (`commande.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1784,8 +1784,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commande.droite` | Droite | Right |
 | `commande.tourner` | Tourner | Rotate |
 | `commande.descendre` | Descendre vite (maintenir) | Drop fast (hold) |
-| `commande.taquetGauche` | Taquet à gauche | Nudge left |
-| `commande.taquetDroite` | Taquet à droite | Nudge right |
+| `commande.taquetGauche` | Taquet à gauche | Bump left |
+| `commande.taquetDroite` | Taquet à droite | Bump right |
 
 ### Comment jouer (`aide.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1800,11 +1800,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.tourner` | Tourner | Rotate |
 | `aide.descendre` | Descendre vite | Drop fast |
 | `aide.ok` | C'est parti | Let's go |
-| `aide.ligne` | {gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {taquetGauche} {taquetDroite} taquet · {pause} pause | {gauche} {droite} move · {tourner} rotate · {descendre} drop · {taquetGauche} {taquetDroite} nudge · {pause} pause |
+| `aide.ligne` | {gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {taquetGauche} {taquetDroite} taquet · {pause} pause | {gauche} {droite} move · {tourner} rotate · {descendre} drop · {taquetGauche} {taquetDroite} bump · {pause} pause |
 | `aide.pause` | Pause | Pause |
-| `aide.manette` | À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} donnent le taquet, Start met en pause. | On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, {m_taquetGauche} and {m_taquetDroite} nudge, Start pauses. |
-| `aide.taquet` | Taquet | Nudge |
-| `aide.taquet.note` | Le taquet décale la pièce en main d'un cran fin ; juste après la pose, il la pousse sur le côté pour la caler dans un creux. | The nudge shifts the piece in your hand by a fine step; right after it lands, it pushes the piece sideways to wedge it into a gap. |
+| `aide.manette` | À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} donnent le taquet, Start met en pause. | On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, {m_taquetGauche} and {m_taquetDroite} bump, Start pauses. |
+| `aide.taquet` | Taquet | Bump |
+| `aide.taquet.note` | Le taquet est un coup sur le côté : juste après la pose, il envoie la pièce glisser jusqu'à ce qu'elle bute — de quoi la caler d'un coup entre deux pièces. | The bump is a hit to the side: right after a piece lands, it slides the piece until it hits something — wedge it between two pieces in one go. |
 | `aide.reglables` | Les touches se changent dans Réglages › Commandes. | You can change the keys in Settings › Controls. |
 
 ### ecran (`ecran.*`, `apps/tower/src/catalogue.*.ts`)

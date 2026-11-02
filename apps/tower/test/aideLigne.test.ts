@@ -24,7 +24,7 @@ describe("l'aide des commandes en partie", () => {
     const c = fraiche();
     c.disposition = new Map([["KeyW", "z"], ["KeyA", "q"], ["KeyS", "s"], ["KeyD", "d"]]); // AZERTY
     expect(phrase(c, "clavier")).toBe("[←][Q] [→][D] déplacer · [↑][Z] tourner · [↓][S] descendre · [Q] [E] taquet · [P] pause");
-    expect(phrase(c, "clavier", "en")).toBe("[←][Q] [→][D] move · [↑][Z] rotate · [↓][S] drop · [Q] [E] nudge · [P] pause");
+    expect(phrase(c, "clavier", "en")).toBe("[←][Q] [→][D] move · [↑][Z] rotate · [↓][S] drop · [Q] [E] bump · [P] pause");
   });
 
   it("cite la touche choisie dans Réglages › Commandes (Z pour tourner, Entrée ne figure pas)", () => {

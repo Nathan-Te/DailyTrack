@@ -1,99 +1,96 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { COMMANDE, COMMANDES_CONNUES, COMMANDES_CONNUES_V4, decoderRediffusion, encoderRediffusion, enregistrer, ErreurRediffusion, Partie, PARAMS_STABILITE, type PieceDepart, type Rapier, REGLAGES_DEFAUT, rejouer, type Scenario, SCENARIO_EMBOITEMENT } from "../src";
+import { COMMANDE, COMMANDES_CONNUES, COMMANDES_CONNUES_V4, decoderRediffusion, DEPART_EMBOITEMENT, encoderRediffusion, enregistrer, ErreurRediffusion, Partie, type Rapier, REGLAGES_DEFAUT, rejouer, SCENARIO_EMBOITEMENT } from "../src";
 import { chargerRapier } from "../src/rapier";
 
-// Lot T8 — le taquet (simulation 5) : en main, un pas fin d'un huitième de mètre ; juste après le lâcher, une poussée physique latérale (fenêtre, vitesse, nombre de poussées). Et les deux bits sont
-// nouveaux de la simulation 5 : les versions 3 et 4 les refusent.
+// Lot T8 — le taquet (simulation 5) : un vrai coup sur le côté juste après le lâcher (fenêtre, portée, nombre de coups). Et les deux bits sont nouveaux de la simulation 5 : les versions 3 et 4 les refusent.
 let R: Rapier;
 beforeAll(async () => {
   R = await chargerRapier();
 });
 
-const plate = (pieces: Scenario["pieces"], depart: readonly PieceDepart[] = [], demi8 = 64): Scenario => ({ nom: "taquet", pieces, plateformeDemi8: demi8, depart });
 
-describe("le taquet en main : un pas fin d'un huitième de mètre, hors de la grille", () => {
-  it("TAQUET_DROITE déplace la pièce en main de 12,5 cm (un huitième), TAQUET_GAUCHE de même vers la gauche ; un déplacement ordinaire reste une demi-case, à partir de la position courante", () => {
-    const p = new Partie(R, plate(["O", "O"]));
-    const x0 = p.vue().pieces[0]!.x;
-    p.avancer(COMMANDE.TAQUET_DROITE);
-    expect(p.vue().pieces[0]!.x - x0).toBeCloseTo(0.125, 6);
-    p.avancer(COMMANDE.TAQUET_GAUCHE);
-    p.avancer(COMMANDE.TAQUET_GAUCHE);
-    expect(p.vue().pieces[0]!.x - x0).toBeCloseTo(-0.125, 6);
-    p.avancer(COMMANDE.DROITE); // une demi-case à partir de −0,125
-    expect(p.vue().pieces[0]!.x - x0).toBeCloseTo(0.375, 6);
-    p.dispose();
-  });
+/** Les quatre premières pièces de `?scenario=emboitement` sont la tour de départ (le L, le bâton et les deux murs) : la première pièce jouée porte le numéro 4. */
+const PREMIERE = DEPART_EMBOITEMENT.length;
 
-  it("le pas fin est soumis à la tolérance d'emboîtement : collée contre un carré posé, la pièce en main ne peut pas être poussée de 12,5 cm dedans (2 cm toléré) ; elle peut s'en écarter", () => {
-    // Un carré posé d'avance (x de 0 à 2) ; la pièce en main, un carré, descend le long de lui, collée à sa gauche (x de −2 à 0).
-    const p = new Partie(R, plate(["O"], [{ kind: "O", rot: 0, x8: 8, y8: 8 }]));
-    p.avancer(COMMANDE.GAUCHE);
-    p.avancer(COMMANDE.GAUCHE);
-    let k = 0;
-    while (p.vue().pieces[1]!.y > 1.6 && k++ < 800) p.avancer(COMMANDE.DESCENDRE);
-    expect(p.vue().active).toBe(1);
-    const avant = p.vue().pieces[1]!.x;
-    expect(avant).toBeCloseTo(-1, 6);
-    p.avancer(COMMANDE.TAQUET_DROITE);
-    expect(p.vue().pieces[1]!.x).toBeCloseTo(avant, 6);
-    p.avancer(COMMANDE.TAQUET_GAUCHE);
-    expect(p.vue().pieces[1]!.x).toBeCloseTo(avant - 0.125, 6);
-    p.dispose();
-  });
-});
-
-describe("le taquet après le lâcher : une poussée physique latérale, dans une fenêtre, en nombre limité", () => {
-  /** Pose un carré sur la plateforme (descendre) et rend la partie à l'instant juste après son lâcher. */
-  function apresLacher(): Partie {
-    const p = new Partie(R, plate(["O", "O", "O"]));
-    let k = 0;
-    while (p.vue().active === 0 && k++ < 2000) p.avancer(COMMANDE.DESCENDRE);
-    return p;
+/** Joue le carré de la niche : cinq pas à gauche (il se pose à gauche du bâton couché, contre lui), puis `coups` donne les ticks (depuis le lâcher) de chaque taquet vers la droite. */
+function jouerNiche(coups: readonly number[], sens: number = COMMANDE.TAQUET_DROITE): Partie {
+  const p = new Partie(R, { ...SCENARIO_EMBOITEMENT, pieces: ["O", "O"] });
+  let k = 0;
+  let lache = -1;
+  while (p.etape !== "fini" && k < 900) {
+    const v = p.vue();
+    let m = COMMANDE.DESCENDRE;
+    if (v.active === PREMIERE && k < 5) m |= COMMANDE.GAUCHE;
+    if (lache < 0 && v.pieces[PREMIERE]?.etat === "libre") lache = k;
+    if (lache >= 0 && coups.includes(k - lache)) m |= sens;
+    p.avancer(m);
+    k++;
   }
+  return p;
+}
 
-  it("une poussée ajoute 1,5 m/s (12 huitièmes) à la vitesse horizontale de la pièce lâchée ; la pièce en main n'est pas touchée", () => {
-    const p = apresLacher();
-    const xMain = p.vue().pieces[1]!.x;
-    expect(p.vitesseDe(0)!.x).toBe(0);
-    p.avancer(COMMANDE.TAQUET_DROITE);
-    expect(p.vitesseDe(0)!.x).toBeGreaterThan(1.2); // 1,5 m/s moins le frottement d'un tick
-    expect(p.vue().pieces[1]!.x).toBeCloseTo(xMain, 6);
+describe("le taquet : un vrai coup sur le côté, d'un seul appui", () => {
+  it("sans coup, le carré reste où il s'est posé : à gauche du bâton, hors de la niche (le bâton ferme la niche par le haut)", () => {
+    const p = jouerNiche([]);
+    expect(p.vue().pieces[PREMIERE]!.x).toBeLessThan(-2.4);
     p.dispose();
   });
 
-  it("au plus `taquetMax` poussées par pièce (trois) : la quatrième est sans effet, et ne déplace pas non plus la pièce en main", () => {
-    const p = apresLacher();
-    const xMain = p.vue().pieces[1]!.x;
-    for (let i = 0; i < 3; i++) p.avancer(COMMANDE.TAQUET_DROITE);
-    const v3 = p.vitesseDe(0)!.x;
-    p.avancer(COMMANDE.TAQUET_DROITE);
-    expect(p.vitesseDe(0)!.x).toBeLessThanOrEqual(v3 + 1e-9);
-    expect(p.vue().pieces[1]!.x).toBeCloseTo(xMain, 6);
+  it("UN coup, à n'importe quel instant de la fenêtre (de 2 à 28 ticks après le lâcher), envoie le carré dans la niche jusqu'à la tige du L, où il s'arrête, calé — sans bouger le L", () => {
+    for (const t of [2, 6, 10, 16, 22, 28]) {
+      const p = jouerNiche([t]);
+      const q = p.vue().pieces[PREMIERE]!;
+      expect(q.x, `coup à ${t}`).toBeGreaterThan(-1.1);
+      expect(q.x, `coup à ${t}`).toBeLessThan(-0.95);
+      expect(q.y, `coup à ${t}`).toBeCloseTo(1, 2);
+      expect(Math.abs(p.vue().pieces[0]!.x - DEPART_EMBOITEMENT[0]!.x8 / 8), `le L, coup à ${t}`).toBeLessThan(0.03);
+      p.dispose();
+    }
+  });
+
+  it("le coup vers la gauche envoie la pièce vers la gauche ; hors de la fenêtre (30 ticks) ou sans pièce lâchée, l'ordre est sans effet", () => {
+    const g = jouerNiche([6], COMMANDE.TAQUET_GAUCHE);
+    expect(g.vue().pieces[PREMIERE]!.x).toBeLessThan(-3.5); // le carré part à gauche, de sa pose (x = −2,5)
+    g.dispose();
+    const tard = jouerNiche([32]);
+    expect(tard.vue().pieces[PREMIERE]!.x).toBeLessThan(-2.4);
+    tard.dispose();
+    const p = new Partie(R, { ...SCENARIO_EMBOITEMENT, pieces: ["O"] });
+    const x0 = p.vue().pieces[PREMIERE]!.x;
+    p.avancer(COMMANDE.TAQUET_DROITE); // rien n'est lâché : la pièce en main n'est jamais touchée
+    expect(p.vue().pieces[PREMIERE]!.x).toBe(x0);
     p.dispose();
   });
 
-  it("la fenêtre dure `taquetFenetre` ticks (15) : au-delà, le taquet déplace de nouveau la pièce en main d'un pas fin", () => {
-    const p = apresLacher();
-    for (let i = 0; i < PARAMS_STABILITE.taquetFenetre; i++) p.avancer(0);
-    const xMain = p.vue().pieces[1]!.x;
-    p.avancer(COMMANDE.TAQUET_GAUCHE);
-    expect(p.vue().pieces[1]!.x).toBeCloseTo(xMain - 0.125, 6);
-    p.dispose();
-  });
-
-  it("deux poussées dans la fenêtre font glisser la pièce plus loin qu'une seule (à partir de la même pose)", () => {
-    const glisse = (n: number): number => {
-      const p = apresLacher();
-      const x0 = p.vue().pieces[0]!.x;
-      for (let i = 0; i < n; i++) p.avancer(COMMANDE.TAQUET_DROITE);
-      for (let i = 0; i < 120; i++) p.avancer(0);
+  it("en terrain libre, un coup a sa portée (vitesse × durée = 1,5 m) puis s'arrête net ; deux coups à la suite vont deux fois plus loin ; un troisième est refusé (deux coups par pièce)", () => {
+    const portee = (coups: number[]): number => {
+      const p = new Partie(R, { nom: "libre", pieces: ["O", "O"], plateformeDemi8: 128 });
+      let k = 0;
+      let lache = -1;
+      let x0 = NaN;
+      while (k < 400) {
+        const v = p.vue();
+        let m = COMMANDE.DESCENDRE;
+        if (lache < 0 && v.pieces[0]!.etat === "libre") {
+          lache = k;
+          x0 = v.pieces[0]!.x;
+        }
+        if (lache >= 0 && coups.includes(k - lache)) m |= COMMANDE.TAQUET_DROITE;
+        p.avancer(m);
+        k++;
+      }
       const d = p.vue().pieces[0]!.x - x0;
       p.dispose();
       return d;
     };
-    expect(glisse(2)).toBeGreaterThan(glisse(1) + 0.05);
-    expect(glisse(1)).toBeGreaterThan(0.05);
+    const un = portee([4]);
+    expect(un).toBeGreaterThan(1.35);
+    expect(un).toBeLessThan(1.65);
+    const deux = portee([4, 25]);
+    expect(deux).toBeGreaterThan(2.7);
+    const trois = portee([4, 25, 27]); // le troisième ordre (dans la fenêtre, après le deuxième coup fini) n'ajoute rien : deux coups par pièce
+    expect(Math.abs(trois - deux)).toBeLessThan(0.05);
+    expect(portee([4, 8])).toBeLessThan(un + 0.05); // un coup en cours ne se double pas
   });
 });
 

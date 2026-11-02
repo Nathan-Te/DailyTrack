@@ -80,7 +80,7 @@ export function perdreTout(R: Rapier, contenu: Scenario): Partie {
 
 
 /**
- * Lot T8 — la partie de référence du taquet (`?scenario=emboitement`) : le carré 0 est posé à gauche du bâton couché puis poussé deux fois vers la droite dans la niche (taquet après le lâcher), le
+ * Lot T8 — la partie de référence du taquet (`?scenario=emboitement`) : le carré 0 est posé à gauche du bâton couché puis envoyé d'un coup de taquet dans la niche, calé contre la tige du L, le
  * bâton 1 est mené debout dans le trou rétréci (tolérance d'emboîtement), les autres tombent au centre. Des commandes scriptées (réactives), pas une recherche : de quoi produire un golden qui
  * contient les deux bits du taquet.
  */
@@ -103,14 +103,14 @@ export function joueurEmboitement(R: Rapier, contenu: Scenario): Partie {
     let m = 0;
     if (lacheDepuis >= 0) {
       lacheDepuis++;
-      // la pièce 0 vient d'être lâchée : deux poussées vers la droite, à 3 et 8 ticks
-      if (lacheDepuis === 3 || lacheDepuis === 8) m |= COMMANDE.TAQUET_DROITE;
+      // la pièce 0 vient d'être lâchée : un coup de taquet vers la droite, 6 ticks après
+      if (lacheDepuis === 6) m |= COMMANDE.TAQUET_DROITE;
       if (lacheDepuis > 12) lacheDepuis = -2;
     }
     if (v.active >= 0) {
       const q = v.pieces[v.active]!;
       const n = id - base;
-      const cible8 = n === 0 ? -24 : n === 1 ? 40 : 0;
+      const cible8 = n === 0 ? -28 : n === 1 ? 40 : 0;
       if (n === 1 && tournes < 3 && k % 6 === 1) {
         m |= COMMANDE.TOURNER;
         tournes++;
