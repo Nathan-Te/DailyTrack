@@ -104,6 +104,7 @@ const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || c
 const maintenant = () => Date.now() + (lecture?.decalage ?? 0);
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
+const NOM_JEU = { track: "jeu.track.nom", jump: "jeu.jump.nom", tower: "jeu.tower.nom" } as const;
 
 /** Le nom traduit d'un thème (`portail.theme.<jeu>.<code>`), ou `null` s'il est inconnu du catalogue. */
 function nomTheme(t: T, jeu: string, theme: string | null): string | null {

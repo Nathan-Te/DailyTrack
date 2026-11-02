@@ -80,11 +80,7 @@ test("classement du 24/10 : toucher un joueur › Ajouter en ami › « Amis » 
   expect(cible, "un joueur du classement qui n'est pas l'ami de « Démo »").toBeDefined();
 
   const context = await newContextAt(browser, T24, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, locale: "fr-FR" });
-  // L'identité de « Démo » (comme `/?demo=joueur` l'installe) : l'identifiant reste dans le stockage et dans l'en-tête, jamais dans une adresse.
-  await context.addInitScript((id) => {
-    localStorage.setItem("cdj:player", id);
-    localStorage.setItem("cdj:name", "Démo");
-  }, DEMO_ID);
+  // L'identité de « Démo » est installée par le lien de démonstration de Nathan (`/classement/?demo=joueur`) : l'identifiant reste dans le stockage et dans l'en-tête, jamais dans une adresse.
   const page = await context.newPage();
   const requetes: string[] = [];
   page.on("request", (r) => {
@@ -92,7 +88,7 @@ test("classement du 24/10 : toucher un joueur › Ajouter en ami › « Amis » 
     if (u.pathname.startsWith("/api/")) requetes.push(`${r.method()} ${u.pathname}${u.search}`);
   });
 
-  await page.goto(`${SITE}/classement/`);
+  await page.goto(`${SITE}/classement/?demo=joueur`);
   await expect(page.locator("#classement-liste li")).not.toHaveCount(0);
   // Le sélecteur : « Tous · N » (le classement lu) et « Amis · 5 » (une seule lecture de la liste, au premier affichage).
   const selecteur = page.locator("#classement-selecteur");

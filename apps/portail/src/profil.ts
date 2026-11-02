@@ -340,5 +340,15 @@ function changerLangue(l: Langue): void {
   document.querySelector<HTMLElement>(`.dj-choix-langue [data-langue="${l}"]`)?.focus();
 }
 
-rendre();
-void charger();
+async function demarrer(): Promise<void> {
+  // Recette et aperçus seulement : `/profil/?demo=joueur` installe le joueur de démonstration (absent de la construction de production), comme l'accueil.
+  if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).get("demo") === "joueur") {
+    const racine = document.getElementById("profil");
+    const { lienDemo } = await import("./demo");
+    if (racine) await lienDemo(stockage, langue, racine);
+  }
+  rendre();
+  void charger();
+}
+
+void demarrer();

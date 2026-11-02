@@ -464,10 +464,20 @@ function changerLangue(l: Langue): void {
   document.querySelector<HTMLElement>(`.dj-choix-langue [data-langue="${l}"]`)?.focus();
 }
 
-rendre();
-void charger(jourAffiche);
-// Lot F2 : avec une identité, les composants des amis arrivent en arrière-plan (le sélecteur prend sa place réservée) et le nombre d'amis est lu une fois.
-if (identifiant()) {
-  void preparerAmis().then(rendre);
-  void lireNombreDAmis();
+async function demarrer(): Promise<void> {
+  // Recette et aperçus seulement : `/classement/?demo=joueur` installe le joueur de démonstration (absent de la construction de production), comme l'accueil.
+  if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).get("demo") === "joueur") {
+    const racine = document.getElementById("classement");
+    const { lienDemo } = await import("./demo");
+    if (racine) await lienDemo(stockage, langue, racine);
+  }
+  rendre();
+  void charger(jourAffiche);
+  // Lot F2 : avec une identité, les composants des amis arrivent en arrière-plan (le sélecteur prend sa place réservée) et le nombre d'amis est lu une fois.
+  if (identifiant()) {
+    void preparerAmis().then(rendre);
+    void lireNombreDAmis();
+  }
 }
+
+void demarrer();

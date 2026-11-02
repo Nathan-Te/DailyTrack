@@ -222,6 +222,14 @@ function changerLangue(l: Langue): void {
 }
 
 async function demarrer(): Promise<void> {
+  // Recette et aperçus seulement : `/amis/?demo=joueur` installe le joueur de démonstration (absent de la construction de production), comme l'accueil.
+  if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).get("demo") === "joueur") {
+    const racine = document.getElementById("amis");
+    const { lienDemo } = await import("./demo");
+    if (racine) await lienDemo(stockage, langue, racine);
+    idCourant = stockage ? readPlayerId(stockage) : null;
+    liste = idCourant === null ? { etat: "absent" } : { etat: "chargement" };
+  }
   construire();
   try {
     const [ui, c] = await Promise.all([import("@cdj/ui/src/amis"), import("@cdj/ui/src/catalogue.amis")]);
