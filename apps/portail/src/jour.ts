@@ -119,7 +119,7 @@ export function baseApi(env: string | undefined = import.meta.env.VITE_API_URL a
 /** Délai d'attente de la requête du portail (le reste de la page ne l'attend pas). */
 export const DELAI_MS = 8000;
 
-const estJour = (b: unknown): b is Jour => {
+export const estJour = (b: unknown): b is Jour => {
   const o = b as Partial<Jour> | null;
   return !!o && typeof o.date === "string" && typeof o.maintenant === "string" && typeof o.prochainJour === "string" && Array.isArray(o.jeux);
 };

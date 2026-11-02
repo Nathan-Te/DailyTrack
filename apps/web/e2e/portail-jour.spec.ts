@@ -165,6 +165,36 @@ test("portail plein (joueur de démonstration) : compte à rebours, Track fini (
   await capture(paysage, "portail-plein-paysage-en");
 });
 
+test("accueil instantané : à la deuxième visite, la page est complète (Track fini, série) avant la réponse du serveur, puis la réponse fraîche la remplace ; une seule requête", async ({ browser }) => {
+  const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
+  const page = await context.newPage();
+  // Première visite : le joueur de démonstration s'installe, la réponse du serveur est gardée dans le navigateur.
+  await page.goto(`http://localhost:${SITES.midi}/?demo=joueur`);
+  await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("cdj:portail:jour") !== null)).toBe(true);
+  // Deuxième visite : la réponse du serveur est retenue tant que le test ne la libère pas.
+  let liberer: () => void = () => undefined;
+  const retenue = new Promise<void>((ok) => (liberer = ok));
+  let demandes = 0;
+  await page.route("**/api/portail/jour", async (route) => {
+    demandes += 1;
+    await retenue;
+    await route.continue();
+  });
+  await page.reload();
+  // Sans réponse du serveur : le jeu fini (état gardé), la série et le classement sont déjà là ; l'état « en cours » n'est pas montré (il a pu changer).
+  await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
+  await expect(page.locator("#serie .dj-tuile__valeur")).toHaveText("5 jours");
+  await expect(page.locator("#classement")).toBeVisible();
+  await expect(page.locator('[data-jeu="jump"] a.dj-bouton')).toHaveText("Jouer");
+  expect(demandes).toBe(1);
+  // La réponse arrive : l'état exact de Jump (en cours) remplace l'inconnu.
+  liberer();
+  await expect(page.locator('[data-jeu="jump"] a.dj-bouton')).toHaveText("Continuer");
+  expect(demandes).toBe(1);
+  await context.close();
+});
+
 test("Mes jeux : épingler Jump le fait monter sous « Mes jeux », l'ordre est gardé au rechargement, et le choix compte dès demain", async ({ browser }) => {
   // Le choix s'écrit pour de bon dans la base du serveur de midi (il compte dès demain : les autres tests de ce fichier, qui lisent la journée d'aujourd'hui, n'en voient rien).
   const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
