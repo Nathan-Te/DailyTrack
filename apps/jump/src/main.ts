@@ -810,6 +810,7 @@ function homeView(): HomeView {
   // Lot P1 : ton rang du jour (un temps classé aujourd'hui), les cinq premiers du classement lu.
   const rank = homeRankText(ranking.enabled, ranking.known(formatDay(today)));
   const b = ranking.enabled ? (ranking.boards.get(formatDay(today))?.board ?? null) : null;
+  const { rows } = rowsOf(b);
   return {
     ...heading,
     replique: repliqueTheme(homeTheme.name),
@@ -821,7 +822,7 @@ function homeView(): HomeView {
     countdown: countdownText(now),
     rank,
     carnage: accueilDonnees.morts === null ? null : { morts: accueilDonnees.morts, peut: accueilDonnees.carnage },
-    board: ranking.enabled ? { rows: rowsOf(b).rows, participants: b?.participants ?? 0, course: nomDeLaCourse(accueilDonnees.premier, rowsOf(b).rows.length) !== null } : null,
+    board: ranking.enabled ? { rows, participants: b?.participants ?? 0, course: nomDeLaCourse(accueilDonnees.premier, rows.length) !== null } : null,
     revoked: jumpSync.state.status === "revoked",
     fantome: { nom: ghostName(ghostChoice) },
   };
