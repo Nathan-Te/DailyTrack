@@ -45,6 +45,7 @@ import {
   cheminMentions,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
+import { CATALOGUE_PAGES } from "./cataloguePages";
 import { baseApi } from "./jour";
 import { cartes } from "./jours";
 import { lireRetour } from "./retour";
@@ -62,7 +63,7 @@ activerManette(() => import("./manette").then((m) => m.pour("profil")));
 
 const stockage = stockageDuPortail();
 let langue: Langue = lireLangue(stockage, navigator.languages).langue;
-const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
+const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_COMMUN);
 type T = ReturnType<typeof traduire>;
 type Cle = Parameters<T["t"]>[0];
 const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || cle in CATALOGUE_COMMUN.fr ? (cle as Cle) : null);
@@ -213,6 +214,8 @@ function rendre(): void {
         )
       : null,
     p ? section(t.t("profil.jeux.titre"), "titre-jeux", el("div", { classe: "profil-jeux" }, ...p.jeux.map((j) => blocJeu(t, j)))) : null,
+    // Lot F2 : « Mes amis » (la page `/amis/` : ajouter, inviter, ta liste) ; aucune requête de plus ici.
+    id ? section(t.t("profil.amis.titre"), "titre-amis", el("p", { classe: "profil-aide", texte: t.t("profil.amis.aide") }), bouton({ texte: t.t("profil.amis.lien"), variante: "secondaire", href: "../amis/" })) : null,
     section(
       t.t("profil.code.titre"),
       "titre-code",
@@ -337,5 +340,15 @@ function changerLangue(l: Langue): void {
   document.querySelector<HTMLElement>(`.dj-choix-langue [data-langue="${l}"]`)?.focus();
 }
 
-rendre();
-void charger();
+async function demarrer(): Promise<void> {
+  // Recette et aperçus seulement : `/profil/?demo=joueur` installe le joueur de démonstration (absent de la construction de production), comme l'accueil.
+  if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).get("demo") === "joueur") {
+    const racine = document.getElementById("profil");
+    const { lienDemo } = await import("./demo");
+    if (racine) await lienDemo(stockage, langue, racine);
+  }
+  rendre();
+  void charger();
+}
+
+void demarrer();

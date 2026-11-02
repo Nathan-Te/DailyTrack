@@ -2,7 +2,9 @@
 // « CLASSEMENT », le thème et le nombre de classés, et les lignes (le haut du classement, ta ligne en moutarde même hors du haut après « … »). Ouvert depuis
 // l'accueil (« Tout le classement ») ; la section de l'accueil, elle, n'en montre que cinq lignes. Le DOM seulement : les données viennent de `BoardScreenHost`.
 import type { ApiResult, Leaderboard } from "./api";
-import { boardTitle, dayLines, linesEls } from "./boardView";
+import type { PageAmis } from "./amisClassement";
+import type { Online } from "./online";
+import { boardTitle, dayLines, lineEl, linesEls } from "./boardView";
 import { creerCadre } from "./cadre";
 import { button, el } from "./dom";
 import { messageErreur, nomTheme, onLangue, t } from "./i18n";
@@ -14,6 +16,8 @@ export interface BoardScreenHost {
   leaderboard: ((limit: number) => Promise<ApiResult<Leaderboard>>) | null;
   noBoardReason: "sans_serveur" | "hors_ligne";
   watchBest(): void;
+  /** Lot F2 : le filtre « Amis » (module à la demande) ; `null` sans serveur, sans identité ou en démonstration : le sélecteur n'apparaît pas. */
+  amis?: Online | null;
 }
 
 export interface BoardScreen {
@@ -28,6 +32,7 @@ export const BOARD_SCREEN_ROWS = 50;
 export function mountBoardScreen(host: BoardScreenHost): BoardScreen {
   let open = false;
   let generation = 0;
+  let amis: PageAmis | null = null; // lot F2 : le filtre « Amis », une fois son module chargé
   let state: { kind: "charge" } | { kind: "sans_serveur" } | { kind: "hors_ligne" } | { kind: "erreur"; code: string } | { kind: "vide" } | { kind: "ok"; lb: Leaderboard } = { kind: "charge" };
   const cadre = creerCadre({ id: "board-screen", titreAria: "palmares.ecran.aria", retour: "jeu", onRetour: () => api.close(), haut: true });
   cadre.racine.hidden = true;
@@ -49,6 +54,7 @@ export function mountBoardScreen(host: BoardScreenHost): BoardScreen {
     revoir.textContent = t("palmares.revoir");
     revoir.hidden = true;
     sousTitre.textContent = "";
+    if (amis?.rendre()) return;
     const s = state;
     if (s.kind === "charge") return corps.replaceChildren(el("p", "empty note", t("palmares.charge")));
     if (s.kind === "sans_serveur" || s.kind === "hors_ligne") return corps.replaceChildren(el("p", "empty note", t(s.kind === "sans_serveur" ? "palmares.sansServeur" : "palmares.horsLigne")));
@@ -89,10 +95,19 @@ export function mountBoardScreen(host: BoardScreenHost): BoardScreen {
       cadre.racine.hidden = false;
       cadre.corps.scrollTop = 0;
       void load(generation);
+      // Lot F2 : le filtre « Amis » (module à la demande, jamais au premier chargement).
+      const g = generation;
+      if (host.amis && host.leaderboard) {
+        void import("./amisClassement").then((m) => {
+          if (g === generation) amis = m.monter(host.amis!, host.daily, { tete, corps, sousTitre, revoir }, () => (state.kind === "ok" ? state.lb.participants : null), render, lineEl);
+        });
+      }
     },
     close() {
       open = false;
       generation++;
+      amis?.fermer();
+      amis = null;
       cadre.racine.hidden = true;
     },
     isOpen: () => open,

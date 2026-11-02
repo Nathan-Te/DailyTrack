@@ -18,6 +18,7 @@ import { GRACE_MS } from "../src/api";
 import { readConfig } from "../src/config";
 import { JUMP_GRACE_MS } from "../src/jump";
 import type { Logger } from "../src/log";
+import { refOfPlayer } from "../src/players";
 import { DAY_MS, makeApi, parisDayStart, playerId, TEST_DB } from "./helpers";
 
 // Lot P1 (plateforme) : le classement du jour de DailyJump, prouvé par rejeu. `POST /api/jump/submit` (débit → taille → jour → versions → rejeu),
@@ -83,8 +84,8 @@ describe(`POST /api/jump/submit (${TEST_DB})`, () => {
         open: true,
         participants: 1,
         levelId: D.id,
-        top: [{ rank: 1, name: "Alice", ticks: slow.ticks, deaths: slow.deaths, medal: jumpMedalFor(slow.ticks, D.medals) }],
-        me: { rank: 1, name: "Alice", ticks: slow.ticks, deaths: slow.deaths, medal: jumpMedalFor(slow.ticks, D.medals) },
+        top: [{ rank: 1, name: "Alice", ticks: slow.ticks, deaths: slow.deaths, medal: jumpMedalFor(slow.ticks, D.medals), ref: await refOfPlayer(playerId(1)) }], // lot F2 : `ref`, la référence publique
+        me: { rank: 1, name: "Alice", ticks: slow.ticks, deaths: slow.deaths, medal: jumpMedalFor(slow.ticks, D.medals), ref: await refOfPlayer(playerId(1)) },
       },
     });
     const row = await t.db.first<Record<string, unknown>>("SELECT * FROM jump_results WHERE day = ? AND player_id = ?", [DAY, playerId(1)]);
@@ -262,7 +263,7 @@ describe(`GET /api/jump/day/<date>/board (${TEST_DB})`, () => {
     expect(r.body).toMatchObject({ date: DATE, open: true, participants: total, levelId: D.id, me: null });
     expect(r.body.top).toHaveLength(10);
     expect(r.body.top.slice(0, 3).map((x: { name: string }) => x.name)).toEqual(["Premier", "Troisième", "Second"]);
-    expect(r.body.top[0]).toEqual({ rank: 1, name: "Premier", ticks: D.authorTicks, deaths: 0, medal: "author" });
+    expect(r.body.top[0]).toEqual({ rank: 1, name: "Premier", ticks: D.authorTicks, deaths: 0, medal: "author", ref: await refOfPlayer(playerId(300)) });
     const ticks = r.body.top.map((x: { ticks: number }) => x.ticks);
     expect([...ticks].sort((a: number, b: number) => a - b)).toEqual(ticks);
     expect(r.body.top.map((x: { rank: number }) => x.rank)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);

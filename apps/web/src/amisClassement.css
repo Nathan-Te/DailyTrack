@@ -1,0 +1,51 @@
+/* Lot F2 (plateforme) — « Tous / Amis » dans le classement du jour de Track : chargée avec `amisClassement.ts` (à la demande, jamais au premier écran). Jetons seulement. */
+
+/* Le sélecteur et le mot discret sous l'en-tête de la page. */
+.classement-page .dj-amis-selecteur {
+  margin: 4px 0 10px;
+}
+.amis-classement__avis {
+  margin: 0 0 8px;
+  color: var(--track-texte-doux);
+}
+
+/* Une ligne d'« Amis » n'est pas une `.row` (les cases « fantôme » ne lisent que le classement « Tous ») : le repère « toi » reprend l'aspect de `.row .you` (accueil.css). */
+.amis-ligne .you {
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: var(--dj-encre);
+  color: var(--dj-moutarde);
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+
+/* Le nom d'un autre joueur se touche (la feuille du joueur) : une cible de 44 px de haut, le focus visible vient du socle. */
+.ligne__nom[role="button"] {
+  min-height: var(--dj-cible);
+  line-height: var(--dj-cible);
+  cursor: pointer;
+}
+
+/* Les amis qui n'ont rien fini ce jour-là : en bas, sans temps. */
+.amis-absents {
+  margin: 10px 0 2px;
+  padding: 0 6px;
+  color: var(--track-texte-doux);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.ligne--absent {
+  color: var(--track-texte-doux);
+}
+.ligne--absent .ligne__temps {
+  min-width: 0;
+  font-family: var(--dj-police-chiffres);
+  font-style: normal;
+  font-weight: 600;
+  font-size: var(--dj-taille-12);
+}

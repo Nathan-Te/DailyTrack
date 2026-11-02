@@ -3,6 +3,7 @@ import { defineConfig, type Plugin } from "vite";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
 import { pagesDuSocle } from "../../packages/ui/outils/vite";
 import { CATALOGUE_PORTAIL } from "./src/catalogue";
+import { CATALOGUE_PAGES } from "./src/cataloguePages";
 import { CATALOGUE_APERCU } from "./src/catalogueApercu";
 import { CATALOGUE_VITRINE } from "./src/catalogueVitrine";
 
@@ -36,7 +37,7 @@ export default defineConfig({
   define: { __PORTAIL_DEMO__: JSON.stringify(vitrine) },
   plugins: [
     pagesDuSocle({
-      catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_PORTAIL.fr, ...CATALOGUE_VITRINE.fr, ...CATALOGUE_APERCU.fr },
+      catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_PORTAIL.fr, ...CATALOGUE_PAGES.fr, ...CATALOGUE_VITRINE.fr, ...CATALOGUE_APERCU.fr },
       prechargees: ["archivo-black-latin-400-normal", "archivo-latin-400-normal"],
     }),
     introuvableAbsolue(),
@@ -59,6 +60,8 @@ export default defineConfig({
         classement: resolve(import.meta.dirname, "classement/index.html"),
         // Lot N2 : les nouveautés (`/nouveautes/`), ce qui change dans Du Jour, Track et Jump.
         nouveautes: resolve(import.meta.dirname, "nouveautes/index.html"),
+        // Lot F2 : « Mes amis » (`/amis/`) et l'accueil d'un lien d'invitation.
+        amis: resolve(import.meta.dirname, "amis/index.html"),
         ...(vitrine ? { vitrine: resolve(import.meta.dirname, "ui/index.html") } : {}),
       },
     },

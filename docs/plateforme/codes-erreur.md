@@ -74,6 +74,14 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `no_ghost` | 404 | Pas de fantôme : personne de classé, pas de temps pour ce joueur, ou personne devant lui. | `GET /api/day/<j>/ghost`, `GET /api/jump/day/<j>/ghost/first` |
 | `invalid_kind` | 400 | DailyTrack : fantôme demandé avec un `kind` autre que `first` ou `ahead`. | `GET /api/day/<j>/ghost` |
 | `not_ranked` | 403 | Tower (lot T4) : la tour du Diamant ne se rend qu'à un joueur classé ce jour-là (règle G1 : on la débloque en finissant). | `GET /api/tower/day/<j>/diamant` |
+| `invalid_friend` | 400 | Amis (lot F2) : référence ou pseudo d'ami absent, mal formé, ou les deux à la fois. | `POST /api/amis`, `DELETE /api/amis/<ref>`, `GET /api/amis/fiche/<ref>` |
+| `friend_self` | 400 | Amis (lot F2) : on ne s'ajoute pas soi-même (ni son propre lien d'invitation). | `POST /api/amis`, `POST /api/amis/invitation/accepter` |
+| `unknown_friend` | 404 | Amis (lot F2) : aucun joueur pour cette référence ou ce pseudo — **un joueur masqué a le même visage qu'un joueur inconnu**. | `POST /api/amis`, `GET /api/amis/fiche/<ref>` |
+| `friend_exists` | 409 | Amis (lot F2) : ce joueur est déjà dans ta liste (ou le lien d'invitation a déjà servi à cette personne). | `POST /api/amis`, `POST /api/amis/invitation/accepter` |
+| `friends_full` | 409 | Amis (lot F2) : ta liste est pleine (100 amis au plus). | `POST /api/amis`, `POST /api/amis/invitation/accepter` |
+| `their_friends_full` | 409 | Amis (lot F2) : la liste de l'autre personne est pleine ; une invitation n'est acceptée que si les deux listes ont de la place, rien n'est créé sinon (pas même le profil). | `POST /api/amis/invitation/accepter` |
+| `invalid_invitation` | 404 | Amis (lot F2) : lien d'invitation inconnu, renouvelé (« Nouveau lien »), mal formé ou d'un joueur masqué — un seul visage pour ces cas. | `POST /api/amis/invitation/voir`, `POST /api/amis/invitation/accepter` |
+| `invalid_filter` | 400 | Amis (lot F2) : `filtre` d'un classement autre que `amis`. | `GET /api/portail/classement?filtre=`, `GET /api/day/<j>/leaderboard?filtre=`, `GET /api/jump/day/<j>/board?filtre=`, `GET /api/tower/day/<j>/board?filtre=` |
 | `invalid_session` | 400 | Salon : numéro de session (ou adresse) illisible. | `/api/salon/<n>/board`, `/ghosts`, `/submit` |
 | `unknown_session` | 404 | Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée). | `GET /api/salon/<n>/board`, `/ghosts` |
 | `session_future` | 409 | Salon : envoi pour une session qui n'a pas commencé. | `POST /api/salon/<n>/submit` |

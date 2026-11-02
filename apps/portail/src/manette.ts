@@ -1,4 +1,4 @@
-import { demarrerManette, type OptionsManette } from "@cdj/ui/src/manette";
+import { demarrerManette, type EcranManette, type OptionsManette } from "@cdj/ui/src/manette";
 
 // Lot M1 (plateforme) : les pages du portail se pilotent à la manette (`packages/ui/src/manette.ts`, la seule logique de la plateforme, chargée à la première manette).
 // **Chaque page déclare son action principale** (où le focus se pose à l'arrivée) : une ligne par page, à l'appel de sa propre entrée. B revient par la flèche « ‹ » de
@@ -10,10 +10,21 @@ export const PAGES_MANETTE = {
   classement: '[role="tab"][aria-selected="true"]', // l'onglet de la vue affichée ; LB / RB changent d'onglet
   profil: "input", // le champ du pseudo ; A ouvre la saisie
   nouveautes: ".dj-barre-jeu__retour",
+  // Lot F2 : « Mes amis » → le champ du pseudo à ajouter, ou « Accepter » quand une invitation est affichée ; la feuille d'un joueur (A valide, B ferme) est ajoutée par `optionsPage` (classement).
+  amis: ".dj-carte-invitation .dj-bouton, .dj-ajout-ami__champ",
 } as const;
 
-/** Ce que le menu à la manette lit pour une page (chargé avec lui, à la première manette). */
-export const optionsPage = (page: keyof typeof PAGES_MANETTE): OptionsManette => ({ page: true, ecrans: [{ ecran: ":root", principal: PAGES_MANETTE[page] }] });
+/**
+ * La feuille d'un joueur (toucher une ligne du classement, lot F2) : A valide « Ajouter en ami » / « Retirer », B ferme. La même ligne que `ECRAN_MANETTE_FEUILLE` de `@cdj/ui/src/amis`
+ * (testée égale, `test/manette.test.ts`) : elle n'est pas importée ici, ce qui ramènerait les composants des amis dans le menu à la manette de chaque page.
+ */
+export const ECRAN_FEUILLE: EcranManette = { ecran: ".dj-feuille", principal: ".dj-feuille__principal, .dj-feuille__fermer", retour: ".dj-feuille__fermer" };
+
+/** Ce que le menu à la manette lit pour une page (chargé avec lui, à la première manette) ; le classement y ajoute la feuille d'un joueur. */
+export const optionsPage = (page: keyof typeof PAGES_MANETTE): OptionsManette => ({
+  page: true,
+  ecrans: [{ ecran: ":root", principal: PAGES_MANETTE[page] }, ...(page === "classement" ? [ECRAN_FEUILLE] : [])],
+});
 
 /** Le module d'une page pour `activerManette` : ses déclarations et le moteur (un seul `import()` au premier chargement). */
 export const pour = (page: keyof typeof PAGES_MANETTE) => ({ demarrerManette, OPTIONS_MANETTE: optionsPage(page) });

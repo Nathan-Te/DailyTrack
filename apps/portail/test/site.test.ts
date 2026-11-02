@@ -60,7 +60,7 @@ describe("firebase.json", () => {
     for (const h of headers.filter((x) => x.source !== "/admin/**")) for (const k of h.headers) expect(k.value, `${h.source ?? h.regex} ${k.key}`).not.toContain("google");
     // Lot N2 : `api.github.com` n'est autorisé nulle part ailleurs que dans la CSP de `/admin/` (les pages des joueurs ne parlent à aucun tiers).
     for (const h of headers.filter((x) => x.source !== "/admin/**")) for (const k of h.headers) expect(k.value, `${h.source ?? h.regex} ${k.key}`).not.toContain("github");
-    const pages = ["index.html", "profil/index.html", "classement/index.html", "mentions-legales/index.html", "legal/index.html", "404.html"].map((f) => readFileSync(join(__dirname, "..", f), "utf8"));
+    const pages = ["index.html", "profil/index.html", "classement/index.html", "amis/index.html", "mentions-legales/index.html", "legal/index.html", "404.html"].map((f) => readFileSync(join(__dirname, "..", f), "utf8"));
     for (const html of pages) expect(html).not.toContain("accounts.google.com");
     const page = readFileSync(join(__dirname, "../admin/index.html"), "utf8");
     expect(page).toContain('content="noindex');

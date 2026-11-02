@@ -22,6 +22,8 @@ export interface ResultatJeu {
   at: number;
   /** Lot TP : le score en hauteur (un jeu classé à la hauteur : jamais dans le cumul, mais le résultat garde sa forme). */
   score?: ScorePortail;
+  /** Lot F2 : les pas exacts de l'essai (le classement filtré « Amis » les rend ; le classement du jour ne les rend jamais). */
+  ticks?: number;
 }
 
 /** Un joueur classé du jour. `resultats[i]` : son résultat dans le jeu n° i de `ClassementDuJour.jeux`, `null` s'il ne l'a pas fini. */
@@ -102,7 +104,7 @@ export function classerLaJournee(jeux: readonly { jeu: string; classes: readonly
         resultats = jeux.map(() => null);
         parJoueur.set(c.playerId, resultats);
       }
-      resultats[g] = { rang: i + 1, tempsMs: c.tempsMs, medaille: c.medaille, at: c.at, ...(c.score ? { score: c.score } : {}) };
+      resultats[g] = { rang: i + 1, tempsMs: c.tempsMs, medaille: c.medaille, at: c.at, ...(c.score ? { score: c.score } : {}), ...(c.ticks !== undefined ? { ticks: c.ticks } : {}) };
     });
   });
   const lignes = new Map([...parJoueur].map(([id, r]) => [id, ligneDe(id, r)] as const));
@@ -117,14 +119,44 @@ export function classerLaJournee(jeux: readonly { jeu: string; classes: readonly
  * temps) : on le met après tous ceux qui le valent ou le devancent — il vient de finir, il est le dernier arrivé à son temps —, en ne se comptant
  * pas deux fois s'il figure dans l'ancien classement. `classes` compte les joueurs du classement gardé, plus lui s'il n'y était pas.
  */
+const memeBilan = (l: LigneDuJour, moi: LigneDuJour): boolean => l.complet === moi.complet && l.cumulMs === moi.cumulMs && l.meilleurRang === moi.meilleurRang && l.meilleurJeu === moi.meilleurJeu;
+
 export function placer(c: ClassementDuJour, moi: LigneDuJour): { rang: number; classes: number } {
   const gardee = c.index.get(moi.id);
   if (gardee !== undefined) {
     const l = c.cumul[gardee]!;
-    if (l.complet === moi.complet && l.cumulMs === moi.cumulMs && l.meilleurRang === moi.meilleurRang && l.meilleurJeu === moi.meilleurJeu) return { rang: gardee + 1, classes: c.cumul.length };
+    if (memeBilan(l, moi)) return { rang: gardee + 1, classes: c.cumul.length };
   }
   const arrive = { ...moi, at: Number.POSITIVE_INFINITY };
   let devant = 0;
   for (const l of c.cumul) if (l.id !== moi.id && comparer(l, arrive) < 0) devant++;
   return { rang: devant + 1, classes: c.cumul.length + (gardee === undefined ? 1 : 0) };
+}
+
+/**
+ * Lot F2 : la ligne qui sert à **ordonner** un joueur dont on connaît le bilan exact parmi les lignes du classement gardé : la sienne si elle y est avec le même bilan (il garde son rang d'arrivée), sinon
+ * lui, arrivé le dernier à ce temps (comme `placer`).
+ */
+export function ligneDeTri(c: ClassementDuJour, moi: LigneDuJour): LigneDuJour {
+  const gardee = c.index.get(moi.id);
+  if (gardee !== undefined && memeBilan(c.cumul[gardee]!, moi)) return c.cumul[gardee]!;
+  return { ...moi, at: Number.POSITIVE_INFINITY };
+}
+
+/**
+ * Lot F2 : « 3e entre amis » — la place d'un joueur (son bilan exact) parmi lui et ses amis qui ont fini au moins un jeu ce jour-là, dans l'ordre du cumul. `null` quand aucun de ses amis n'a rien fini
+ * (rien à comparer). Les amis masqués n'ont aucune ligne dans le classement (les classements écartent `hidden = 1`) : ils ne comptent pas. Pur ; une lecture de la liste des amis, aucune requête par ami.
+ */
+export function rangEntreAmis(c: ClassementDuJour, moi: LigneDuJour, amis: Iterable<string>): { rang: number; sur: number } | null {
+  const reference = ligneDeTri(c, moi);
+  let presents = 0;
+  let devant = 0;
+  for (const ami of amis) {
+    if (ami === moi.id) continue;
+    const i = c.index.get(ami);
+    if (i === undefined) continue;
+    presents++;
+    if (comparer(c.cumul[i]!, reference) < 0) devant++;
+  }
+  return presents === 0 ? null : { rang: devant + 1, sur: presents + 1 };
 }

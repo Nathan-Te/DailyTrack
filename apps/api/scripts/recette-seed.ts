@@ -14,6 +14,7 @@
 // Lot I2 : le **joueur de démonstration du portail** (« Démo », `seedPortailDemo`, apps/api/src/portailDemo.ts) : série de 5 jours, 2 journées
 // parfaites, aujourd'hui Track fini (or) et Jump en cours ; le portail l'installe par `/?demo=joueur` (recette et aperçus seulement). Effacé
 // puis recréé à chaque passage (la série reste de 5 jours). `--demo-seulement` : lui seul (les e2e du portail, en quelques secondes).
+// Lot F2 : ses **amis** (`seedAmisDemo`, apps/api/scripts/amisDemo.ts) : 5, dont 3 réciproques et 1 qui n'a pas joué aujourd'hui.
 import { FICTIONAL_NAMES, Rng, dailyCircuit, formatDay, mixSeed, parseDay, runFictional, styleFor } from "@cdj/sim";
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { readFileSync, readdirSync } from "node:fs";
@@ -24,6 +25,7 @@ import { fictionalId } from "../src/history";
 import { seedJumpDays } from "../src/jumpHistory";
 import { CLASSEMENT_DEMO_JOURS, seedClassementDemo } from "../src/classementDemo";
 import { DEMO_JOUEUR_ID, seedPortailDemo } from "../src/portailDemo";
+import { seedAmisDemo } from "./amisDemo";
 import { semerNouveautes } from "../src/diffusion";
 import { ensureSchemaOn } from "../src/db";
 import { empreinteDuSeed, lireMarqueurs } from "../src/recetteSeed";
@@ -267,6 +269,12 @@ if (!refaire && demoPresent) {
     `Joueur de démonstration « Démo » (portail, /?demo=joueur) : Garage ${demo.garage.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ") || "—"} ; Track ${demo.track.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ")} ; Jump ${demo.jump.map((j) => j.date).join(", ") || "—"} ; ${demo.morts} mort(s) aujourd'hui — ${((Date.now() - demoStarted) / 1000).toFixed(0)} s.`,
   );
 }
+// Lot F2 : les amis de « Démo » (5, dont 3 réciproques et 1 qui n'a pas joué aujourd'hui), par le vrai `createApi`. « Démo » (effacé puis recréé chaque jour) et les joueurs du classement (recréés quand
+// leur contenu change) perdent leurs amitiés avec leur profil : ce passage constate (une lecture indexée) et ne recrée que ce qui manque ; rien d'écrit quand « Démo » a déjà ses amis.
+const amisDemo = await seedAmisDemo({ db, today });
+if (amisDemo.deja) console.log("Amis de « Démo » (lot F2) : déjà là (rien d'écrit)");
+else if (!amisDemo.amis.length) console.log("Amis de « Démo » (lot F2) : sautés (« Démo » ou les joueurs du classement n'existent pas encore sur cette base)");
+else console.log(`Amis de « Démo » (lot F2) : ${amisDemo.amis.length} ami(s), dont ${amisDemo.reciproques.length} réciproque(s)${amisDemo.absent ? `, et un qui n'a pas joué aujourd'hui (${amisDemo.absent})` : " (aucun pilote de l'historique sans résultat aujourd'hui)"}.`);
 if (saut) console.log(`\n${saut} segment(s) déjà faits, sautés (rien d'écrit pour eux ; --refaire pour tout rejouer).`);
 
 // Lot N2 : **deux nouveautés publiées et aucun message actif** (la ligne « Nouveautés » de l'accueil et la page /nouveautes/ ont de quoi s'afficher sur la recette). Dates d'avant tout vrai

@@ -10,6 +10,9 @@ export const ECRANS_MANETTE: readonly EcranManette[] = [
   { ecran: '#fin-ecran [role="dialog"]', principal: "#fin-rejouer", retour: "#fin-accueil" }, // la fin de partie : « Rejouer » ; B : l'accueil de Tower (lot T7)
   { ecran: "#reglages-ecran", principal: "#reglages-sons" }, // les Réglages (lot T7) ; B : « ‹ TOWER », la barre
   { ecran: "#archives-ecran", principal: ".archive, .dj-barre-jeu__retour" }, // les Archives (lot T7) : le premier jour ; B : « ‹ TOWER »
+  // Lot F2 : la feuille d'un joueur (au toucher d'une ligne du classement) : A valide, B ferme. C'est `ECRAN_MANETTE_FEUILLE` de `@cdj/ui/src/amis`, recopié ici pour ne pas charger le morceau des amis
+  // à la première manette (`test/manette.test.ts` vérifie l'égalité).
+  { ecran: ".dj-feuille", principal: ".dj-feuille__principal, .dj-feuille__fermer", retour: ".dj-feuille__fermer" },
 ];
 
 /** Ce que le menu à la manette lit (chargé avec lui, à la première manette). */

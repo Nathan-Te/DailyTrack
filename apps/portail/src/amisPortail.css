@@ -1,0 +1,60 @@
+/* Lot F2 : les amis dans le portail — le sélecteur « Tous / Amis » du classement, la ligne qu'on touche, les amis qui n'ont rien fini, la page « Mes amis » (/amis/). Feuille à part : seules les pages
+   du classement et des amis la chargent (le premier chargement de l'accueil est au plafond de son budget). Valeurs : jetons de @cdj/ui seulement. */
+/* Lot F2 : le sélecteur « Tous / Amis » (sa place est réservée tant que les composants des amis se chargent), la ligne qu'on touche, les amis qui n'ont rien fini. */
+.classement-filtre {
+  min-height: var(--dj-cible);
+}
+.classement-amis-indispo {
+  color: var(--dj-encre-douce);
+}
+.classement-ligne--touchable {
+  padding: 0;
+}
+.classement-ligne__bouton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  width: 100%;
+  min-height: var(--dj-cible);
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.classement-ligne__bouton:focus-visible {
+  outline-offset: calc(-1 * var(--dj-trait-fort));
+}
+.classement-ligne--absente {
+  border-style: dashed;
+}
+.classement-ligne__tete--absent .classement-rang,
+.classement-pas-joue {
+  color: var(--dj-encre-douce);
+}
+.classement-pas-joue {
+  font-size: var(--dj-taille-13);
+  text-align: right;
+}
+.classement-panneau > .dj-bouton,
+.classement-panneau > .dj-amis-vide {
+  margin-top: var(--dj-espace-4);
+}
+.classement-absents .classement-separation {
+  margin-top: var(--dj-espace-5);
+}
+/* « Mes amis » : la barre et les zones (invitation, gestion) ; les composants des amis ont leur propre feuille. */
+.amis .dj-barre-jeu {
+  padding: 0;
+}
+.amis-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+}
+.amis-zone:empty {
+  display: none;
+}

@@ -25,6 +25,16 @@ export interface LigneClassement {
   resultats: Record<string, ResultatClassement | null>;
   /** Le haut du classement : cette ligne est la tienne (avec ton identifiant seulement). */
   moi?: true;
+  /** Lot F2 : la référence publique du joueur (12 hexadécimaux, jamais son identifiant secret) : de quoi ouvrir sa feuille et l'ajouter en ami. */
+  ref?: string;
+  /** Lot F2, filtre « Amis » : `rang` est le rang entre amis ; `rangGeneral` le rang dans le classement « Tous » de la même vue. */
+  rangGeneral?: number;
+}
+
+/** Lot F2 : un ami qui n'a rien fini ce jour-là (dans la vue) : en bas de « Amis », sans temps. */
+export interface AmiAbsent {
+  ref: string;
+  pseudo: string;
 }
 
 export interface Classement {
@@ -42,6 +52,11 @@ export interface Classement {
   top: LigneClassement[];
   /** Ta ligne (avec ton identifiant), même hors du haut ; `null` : tu n'as fini aucun jeu ce jour-là. */
   moi?: (LigneClassement & { classes: number }) | null;
+  /** Lot F2 : `"amis"` quand c'est le classement filtré (toi et tes amis, tous, sans la limite de 50). */
+  filtre?: "amis";
+  /** Lot F2, filtre « Amis » : combien d'amis tu as, et ceux qui n'ont rien fini ce jour-là. */
+  amis?: number;
+  absents?: AmiAbsent[];
 }
 
 export interface LectureClassement {
@@ -62,13 +77,23 @@ const estClassement = (b: unknown): b is Classement => {
  * Lit le classement d'un jour (`date` : `AAAA-MM-JJ`, absent : aujourd'hui) dans une vue (`cumul` ou le dossier d'un jeu). L'identifiant secret part dans l'en-tête `X-Player-Id` (jamais dans l'adresse).
  * Un joueur inconnu du serveur (404 `unknown_player`) ou au code révoqué (410) reçoit quand même le classement public (le corps le porte). Ne lève jamais.
  */
-export async function lireClassement(fetchImpl: typeof fetch, joueur: string | null, date: string | null, vue = "cumul", base = baseApi(), delaiMs = DELAI_CLASSEMENT_MS): Promise<LectureClassement> {
+export async function lireClassement(
+  fetchImpl: typeof fetch,
+  joueur: string | null,
+  date: string | null,
+  vue = "cumul",
+  base = baseApi(),
+  delaiMs = DELAI_CLASSEMENT_MS,
+  /** Lot F2 : `"amis"` ajoute `filtre=amis` (demandé seulement avec une identité : le serveur refuse sans elle). */
+  filtre: "tous" | "amis" = "tous",
+): Promise<LectureClassement> {
   const controle = new AbortController();
   const minuterie = setTimeout(() => controle.abort(), delaiMs);
   try {
     const parametres = new URLSearchParams();
     if (date) parametres.set("date", date);
     if (vue !== "cumul") parametres.set("vue", vue);
+    if (filtre === "amis" && joueur) parametres.set("filtre", "amis");
     const query = parametres.size > 0 ? `?${parametres}` : "";
     const res = await fetchImpl(`${base}/api/portail/classement${query}`, { headers: joueur ? { "X-Player-Id": joueur } : {}, cache: "no-store", signal: controle.signal });
     const corps = (await res.json().catch(() => null)) as (Partial<Classement> & { error?: unknown }) | null;

@@ -13,6 +13,7 @@ export const ECRANS_MANETTE: readonly EcranManette[] = [
   { ecran: "#finish", principal: "#finish-restart" }, // le bandeau d'arrivée d'un morceau ou d'un scénario
   { ecran: "#carnage", principal: "#carnage-pause", retour: "#carnage-close" }, // le carnage : la lecture ; B le ferme
   { ecran: "#leaderboard", principal: ".dj-barre-jeu__retour" }, // le classement du jour
+  { ecran: ".dj-feuille", principal: ".dj-feuille__principal, .dj-feuille__fermer", retour: ".dj-feuille__fermer" }, // lot F2 : la feuille d'un joueur (classement) : A valide « Ajouter en ami » / « Retirer », B ferme ; la même ligne que `ECRAN_MANETTE_FEUILLE` de `@cdj/ui/src/amis` (testée égale : elle n'est pas importée ici, ce qui ramènerait les composants des amis dans le menu à la manette)
   { ecran: "#archives", principal: ".etiquette a[href], .etiquette button" }, // les archives : le premier jour
   { ecran: "#settings", principal: ".etiquette button, .etiquette input" }, // les réglages
 ];

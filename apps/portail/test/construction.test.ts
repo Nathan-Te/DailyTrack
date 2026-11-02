@@ -141,6 +141,21 @@ describe("construction du portail", () => {
     }
   });
 
+  it("lot F2 : la page « Mes amis » /amis/ est dans la production comme dans la recette (balises de partage, noindex, aucune ressource extérieure) ; le code des amis est à la demande, hors du premier chargement", () => {
+    for (const sortie of [sorties.production, sorties.recette]) {
+      const html = readFileSync(join(sortie, "amis/index.html"), "utf8");
+      expect(html).toContain('<title data-t="amisPage.titre">Mes amis</title>');
+      expect(html).toContain('property="og:title"');
+      expect(html).toContain('content="Rejoins-moi sur Du Jour"');
+      expect(html).toContain('name="robots" content="noindex"');
+      expect(html).not.toMatch(/(?:src|href)="https?:/);
+      expect(html).toContain("__ORIGINE_DU_SITE__/amis/");
+    }
+    // Le premier chargement de l'accueil ne contient ni les composants des amis (sélecteur, feuille, liste, invitation) ni leur feuille de style.
+    const p = premierChargement(sorties.production);
+    expect(p.fichiers.filter((f) => /(^|\/)(amis|amisPortail|catalogue\.amis)[-.]/.test(f))).toEqual([]);
+  });
+
   it("deploy-site.yml : --production pour la cible production, jamais pour la recette ni un aperçu", () => {
     const yml = readFileSync(join(ROOT, ".github/workflows/deploy-site.yml"), "utf8");
     expect(yml).toContain(`node scripts/site.mjs site --sortie site \${{ inputs.cible == 'production' && '--production' || '' }} --origine "\${{ steps.origine.outputs.origine }}"`);
