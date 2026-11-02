@@ -92,8 +92,8 @@ Retour de Nathan (2 novembre) : « les blocs bougent un tout petit peu et on ne 
 ## Poids (`node apps/tower/tools/mesure.mjs`, gzip)
 | ligne | avant (T7) | après | plafond | marge |
 |---|---|---|---|---|
-| `tower.jsCss` (l'accueil) | 39 669 | **39 745** (+76) | 40 000 | 255 |
-| `tower.jeu` | 169 111 | **170 839** (+1 728 : +1 679 du lot, +49 venus de `main`) | **170 900** (relevé de 1 700 o) | 61 |
+| `tower.jsCss` (l'accueil) | 39 669 | **39 990** (+321 : +76 du lot, +245 venus de `main`, lot F2) | 40 000 | 10 |
+| `tower.jeu` | 169 111 | **170 841** (+1 730 : +1 679 du lot, +51 venus de `main`) | **170 900** (relevé de 1 700 o) | 59 |
 `budgets.md` est remesuré. Sur les 3 000 o accordés par Nathan : **1 679 o pris** par le lot (le coup de taquet, le déplacement intelligent, la pose douce, la tolérance, les deux bits, deux boutons tactiles, l'aide et les textes) ; `physique` inchangé (958 766 o dont le `.wasm`). L'outil de diagnostic, le scénario, les curseurs et les écrans sont hors du jeu (outils, à la demande).
 
 ## Vérifié / non vérifié
