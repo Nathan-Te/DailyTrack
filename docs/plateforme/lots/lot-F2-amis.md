@@ -53,7 +53,7 @@ Maquette : `maquettes/favoris-et-amis.html` (planches B, C, D) ; charte `docs/pl
 ## Vérifié / non vérifié
 - **Vérifié** : serveur — `vitest apps/api` + mentions : 738 tests (SQLite), 698 (libSQL) ; `tsc -b` ; unitaires du socle (683), de Tower (316), de Jump (882 avec `ciZones`), de Track (88 ciblés), du portail ; `npm run traductions` (1507 clés) ; **un e2e** (`apps/web/e2e/amis.spec.ts`, Chromium, vrai serveur : ajouter depuis le classement › filtre Amis) ; e2e du portail (`portail`, `portail-jour`, `portail-journee`) ; captures du portail regardées par l'agent (classement Amis, feuille, `/amis/`, invitation).
 - **Non vérifié** : le sélecteur et la feuille de **Track, Jump et Tower** n'ont jamais tourné dans un navigateur (tests unitaires seulement, pas de jsdom) ; pas d'axe sur `/amis/` ni sur « Amis » (passé une fois à la main sur `/amis/`) ; pas de captures de Track, Jump, Tower ; aucun essai sur Turso (règle R14).
-- **CI de PR** : (run à renseigner).
+- **CI de PR** : verte sur `122ed63` (12,1 min) : https://github.com/Nathan-Te/DailyTrack/actions/runs/41422588919 ; `npm run verifier` en local vert (unitaires SQLite et libSQL, e2e Track 24, Jump 13, Tower 4 specs). Golden inchangés.
 
 ## Lignes lues (R14, base de référence 300 joueurs × 14 jours, `file:` local, estimation basse ; froid / chaud)
 | Route | 0 ami | 10 amis | 100 amis |
