@@ -167,7 +167,7 @@ beforeAll(() => {
   authorCode = D.code;
   const seen = new Set<number>();
   runs = [];
-  for (const a of demoAttempts(D.level, D.replay, 0x5eed, { attempts: 40, reprise: repriseParPhase(D) })) {
+  for (const a of demoAttempts(D.level, D.replay, 0x5eed, { attempts: 80, reprise: repriseParPhase(D) })) {
     const r = replayAttempt(D.level, a.replay, D.id);
     if (a.end !== "arrivée" || !r.finished || seen.has(r.time) || r.time <= D.authorTicks) continue;
     seen.add(r.time);
