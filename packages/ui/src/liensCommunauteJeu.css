@@ -1,21 +1,41 @@
-/* Lot S1 : sur l'accueil d'un jeu, les deux boutons en bas à gauche, sur la scène sous le voile (le bas à droite est la bande d'aide de la manette). L'écran qui les porte leur réserve une bande en bas,
-   rien ne passe dessous (le contenu défile s'il manque de place). Jetons seulement. */
+/* Lot S1b : les deux plaques Discord et Ko-fi de l'accueil d'un jeu (`liensCommunauteJeu.ts`). Charte § 5 : coins de 3 px, bordure de 2 px, ombre nette, 44 px ; fond papier, glyphe encre —
+   ni les couleurs des marques ni pilules. Jetons seulement. Par défaut : en bas à gauche de l'écran, **hors du flux** (aucune hauteur prise à l'étiquette, rien n'est réservé) ; si elles
+   toucheraient quelque chose, `placer` les met **à la fin du défilement** (`dj-communaute--flux`), sous l'étiquette. */
 .dj-communaute {
   position: fixed;
   z-index: 1;
   left: max(10px, env(safe-area-inset-left));
   bottom: max(10px, env(safe-area-inset-bottom));
   display: flex;
-  flex-wrap: wrap;
   gap: var(--dj-espace-3);
-  max-width: calc(100vw - 20px);
 }
-:is(.cadre, .voile, .accueil):has(.dj-communaute) {
-  padding-bottom: calc(max(10px, env(safe-area-inset-bottom)) + var(--dj-cible) + var(--dj-espace-3));
+.dj-communaute--flux {
+  position: static;
+  align-self: flex-start;
 }
-/* Étroit : les deux boutons passent sur deux lignes, la bande réservée double. */
-@media (max-width: 480px) {
-  :is(.cadre, .voile, .accueil):has(.dj-communaute) {
-    padding-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 2 * var(--dj-cible) + 2 * var(--dj-espace-3));
-  }
+.dj-communaute__plaque {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+  text-decoration: none;
+  transition: transform var(--dj-duree-courte);
+}
+.dj-communaute__plaque:hover {
+  background: var(--dj-creme-2);
+}
+/* Appui : la plaque s'enfonce de 2 px vers le bas et la droite, l'ombre réduite d'autant (§ 8). */
+.dj-communaute__plaque:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+.dj-communaute__plaque svg {
+  display: block;
 }

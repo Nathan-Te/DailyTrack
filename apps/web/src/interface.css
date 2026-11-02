@@ -45,7 +45,6 @@ canvas {
 
 /* --- Les écrans posés sur la scène (lot I4b, charte rév. 8 § 9 : « on reste dans le jeu ») : le cadre commun de @cdj/ui (cadre.css), réglé pour Track ---- */
 :root {
-  --cadre-voile: repeating-linear-gradient(115deg, var(--track-asphalte) 0 5px, transparent 5px 8px);
   --cadre-largeur: 940px;
 }
 /* Un seul voile : un écran posé sur la scène efface les plaques et les boutons de la course (tout sauf la scène, ses effets de rendu, les écrans et les
@@ -373,7 +372,7 @@ textarea.champ {
   align-items: center;
   justify-content: center;
   padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
-  background: var(--cadre-voile);
+  background: var(--dj-voile);
   touch-action: none;
 }
 .dialogue {

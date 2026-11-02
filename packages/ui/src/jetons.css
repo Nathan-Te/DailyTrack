@@ -108,4 +108,6 @@
   --dj-duree-courte: 120ms;
   --dj-duree: 160ms;
   --dj-duree-longue: 200ms;
+  /* voile des écrans de jeu (lot S1b) */
+  --dj-voile: repeating-linear-gradient(115deg, #1E1B19D9 0 5px, #1E1B19B3 5px 10px);
 }

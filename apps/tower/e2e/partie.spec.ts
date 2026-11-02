@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { verifierAccueilTelephone, verifierFocusTactile } from "./accueilTelephone";
 
 // Lot T1 — LE test de navigateur du nouveau parcours (règle R13 : un unitaire d'abord, un seul e2e par parcours de joueur ; les règles de la partie sont dans
 // `packages/tower-sim/test/partie.test.ts`). Chromium seulement : le déterminisme dans les trois navigateurs est celui du banc (`determinisme.spec.ts`).
@@ -34,7 +35,7 @@ async function jouerLeJour(page: import("@playwright/test").Page, adresse: strin
   await expect(page.locator("#communaute")).toBeHidden(); // lot S1 : jamais en partie
 }
 
-/** Lot S1 : Discord et Ko-fi sur l'accueil — deux plaques de 44 px en bas à gauche, en liens sortants, qui ne chevauchent ni JOUER ni « Comment jouer ». */
+/** Lots S1 et S1b : Discord et Ko-fi sur l'accueil — deux plaques de 44 px (l'icône seule, nom lu par `aria-label`) à gauche, en liens sortants, qui ne chevauchent ni JOUER ni « Comment jouer ». */
 async function verifierLiensCommunaute(page: import("@playwright/test").Page): Promise<void> {
   await expect(page.locator("#communaute")).toBeVisible();
   const rect = async (sel: string) => (await page.locator(sel).boundingBox())!;
@@ -42,8 +43,8 @@ async function verifierLiensCommunaute(page: import("@playwright/test").Page): P
   const vue = page.viewportSize()!;
   for (const b of plaques) {
     expect(b.height).toBe(44);
+    expect(b.width).toBe(44);
     expect(b.x).toBeLessThan(vue.width / 4);
-    expect(b.y).toBeGreaterThan(vue.height / 2);
     for (const autre of [await rect("#accueil-jouer"), await rect("#accueil-aide")]) {
       const recouvre = Math.min(b.x + b.width, autre.x + autre.width) - Math.max(b.x, autre.x) > 2 && Math.min(b.y + b.height, autre.y + autre.height) - Math.max(b.y, autre.y) > 2;
       expect(recouvre).toBe(false);
@@ -54,7 +55,27 @@ async function verifierLiensCommunaute(page: import("@playwright/test").Page): P
     await expect(lien).toHaveAttribute("href", href);
     await expect(lien).toHaveAttribute("target", "_blank");
     await expect(lien).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(lien).toHaveText("");
+    await expect(lien).toHaveAttribute("aria-label", /.+/);
   }
+}
+
+// Lot S1b (docs/tests.md : l'accueil d'un jeu s'ouvre d'abord en portrait sur un téléphone — parcours Essentiel) : 390 × 844 et 360 × 640. L'étiquette est complète (l'écran défile), les plaques ne la recouvrent pas, aucun anneau au toucher.
+for (const vue of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
+  test(`accueil sur téléphone en portrait (${vue.width}×${vue.height}) : l'étiquette est complète, Discord et Ko-fi ne la recouvrent pas, aucun anneau de focus au toucher`, async ({ browser }) => {
+    const contexte = await browser.newContext({ viewport: vue, hasTouch: true, isMobile: true });
+    try {
+      const page = await contexte.newPage();
+      await page.addInitScript(() => localStorage.setItem("tower:aide:vu", "1"));
+      await page.goto("/");
+      await page.waitForSelector("#accueil-jouer");
+      await expect(page.locator("#communaute")).toBeVisible();
+      await verifierFocusTactile(page, "#accueil-ecran", { focusAttendu: false });
+      await verifierAccueilTelephone(page, { etiquette: ".coque--accueil", defile: ".accueil__defile", blocs: [".accueil__tuile", "#accueil-jouer"], principal: "#accueil-jouer", barre: ".accueil__barre .dj-barre-jeu" });
+    } finally {
+      await contexte.close();
+    }
+  });
 }
 const GAUCHE = 1;
 const DESCENDRE = 8;
