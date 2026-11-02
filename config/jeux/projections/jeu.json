@@ -1,0 +1,69 @@
+{
+  "jeux": [
+    {
+      "id": "tower",
+      "code": "tower",
+      "ordre": 3,
+      "nom": {
+        "fr": "Tower",
+        "en": "Tower"
+      },
+      "etiquette": {
+        "fond": "#9ED9BE",
+        "coque": "#2F7D62",
+        "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+        "dessin": "propre"
+      },
+      "etatDepart": "off",
+      "format": "hauteur",
+      "unite": "mm",
+      "prefixe": "tower:",
+      "messageOu": "tower",
+      "zoneNouveautes": "tower",
+      "themes": [
+        "port",
+        "chantier",
+        "canyon",
+        "banquise",
+        "jungle",
+        "nuit"
+      ],
+      "scenes": [
+        "menu",
+        "theme:port",
+        "theme:chantier",
+        "theme:canyon",
+        "theme:banquise",
+        "theme:jungle",
+        "theme:nuit"
+      ]
+    }
+  ],
+  "publics": [
+    "track",
+    "jump"
+  ],
+  "prefixes": [
+    "cdj:",
+    "jump:",
+    "tower:"
+  ],
+  "ou": [
+    "portail",
+    "track",
+    "jump",
+    "tower"
+  ],
+  "zones": [
+    "dujour",
+    "track",
+    "jump",
+    "tower"
+  ],
+  "nomsDeZones": {
+    "dujour": "Du Jour",
+    "track": "Track",
+    "jump": "Jump",
+    "tower": "Tower"
+  }
+}

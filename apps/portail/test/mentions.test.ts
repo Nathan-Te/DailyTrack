@@ -86,6 +86,20 @@ describe("page des mentions légales et de la confidentialité", () => {
     for (const t of [...tables, "meta"]) expect(decrites.has(t), `table non décrite : ${t}`).toBe(true);
   });
 
+  it("lot K1 : les tables que la fiche d'un jeu déclare (`donnees.tables`) sont décrites dans les deux pages, et existent dans le schéma de la base", () => {
+    const fiches = (JSON.parse(readFileSync(join(ROOT, "config/jeux/projections/serveur.json"), "utf8")) as { jeux: { id: string; tables: { nom: string }[] }[] }).jeux;
+    const schema = SCHEMA.map((sql) => /CREATE TABLE IF NOT EXISTS (\w+)/.exec(sql)?.[1]);
+    expect(fiches.length).toBeGreaterThan(0);
+    for (const f of fiches) {
+      for (const { nom } of f.tables) {
+        expect(schema, `${f.id} : ${nom} n'est pas dans le schéma`).toContain(nom);
+        for (const [page, decrites] of [["française", tablesDecrites(PAGE)], ["anglaise", tablesDecrites(PAGE_EN)]] as const) {
+          expect(decrites.flatMap((d) => d!.split(/\s+/)), `${f.id} : ${nom} n'est pas décrite dans la page ${page}`).toContain(nom);
+        }
+      }
+    }
+  });
+
   it("éditeur, contact, hébergeurs, droits, CNIL ; aucun cookie, aucun script, aucune ressource extérieure", () => {
     for (const texte of ["MZC Studios", "particulier", "mzc.studios.gamedev@gmail.com", "Google Cloud France", "8 rue de Londres", "01 42 68 53 00", "ChiselStrike Inc.", "Claymont", "code de transfert", "www.cnil.fr/fr/plaintes", "article 82", "aucun cookie"]) {
       expect(PAGE, texte).toContain(texte);

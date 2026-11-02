@@ -5,6 +5,8 @@
 // passés. Tout ceci se dit en **périodes** `[du, au)` de jours de Paris (`au` absent = encore ouverte).
 // Consignes : CLAUDE.md racine, « Publication des jeux ».
 
+import { JEUX_PUBLICS_GENERES } from "./fiches.generated";
+
 export type EtatJeu = "off" | "preview" | "on";
 export const ETATS_JEU: readonly EtatJeu[] = ["off", "preview", "on"];
 
@@ -15,10 +17,10 @@ export type PeriodeJeu = readonly [du: number, au: number | null];
 export const etatDe = (brut: unknown): EtatJeu => (brut === "on" || brut === "preview" ? brut : "off");
 
 /**
- * Les jeux **déjà publics** quand l'interrupteur est arrivé : Track et Jump (leur dossier sur le site). Ils naissent `on` dans la base, et c'est la liste du
+ * Les jeux **déjà publics** quand l'interrupteur est arrivé : Track et Jump (leur dossier sur le site ; lot K1 : la liste est **générée** depuis les fiches (`etatDepart: "on"`) et les deux jeux sans fiche, `npm run fiches`). Ils naissent `on` dans la base, et c'est la liste du
  * site quand l'API ne répond pas. **Un jeu en développement n'y est jamais** : il n'apparaît donc pas par défaut.
  */
-export const JEUX_PUBLICS: readonly string[] = ["track", "jump"];
+export const JEUX_PUBLICS: readonly string[] = JEUX_PUBLICS_GENERES;
 
 /** Les états à utiliser sans réseau ou quand l'API ne répond pas : seuls les jeux déjà publics sont `on`. */
 export const etatsParDefaut = (): Record<string, EtatJeu> => Object.fromEntries(JEUX_PUBLICS.map((j) => [j, "on" as EtatJeu]));

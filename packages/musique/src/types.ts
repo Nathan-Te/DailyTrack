@@ -1,11 +1,13 @@
 // Les types communs de la musique de Du Jour (lot « musique »). Ce fichier ne contient que des types et des constantes : il est lu par le lecteur (navigateur),
 // par la commande `npm run musique` (Node) et par les tests.
 
+import { JEUX_DE_TOUS_GENERES, JEUX_MUSIQUE_GENERES } from "./fiches.generated";
+
 /** Les applications qui peuvent jouer de la musique. `tous` (dans la description) veut dire Track, Jump et Tower — **pas le portail**, qui doit être nommé. */
-export const JEUX_MUSIQUE = ["track", "jump", "tower", "portail"] as const;
+export const JEUX_MUSIQUE = JEUX_MUSIQUE_GENERES; // lot K1 : générée depuis les fiches (`npm run fiches`) : "track", "jump", "tower", "portail"
 export type JeuMusique = (typeof JEUX_MUSIQUE)[number];
 /** Ce que `tous` désigne. */
-export const JEUX_DE_TOUS: readonly JeuMusique[] = ["track", "jump", "tower"];
+export const JEUX_DE_TOUS: readonly JeuMusique[] = JEUX_DE_TOUS_GENERES;
 
 /** Les licences admises : un morceau de Nathan, du domaine public (CC0), CC-BY (crédit exigé), ou acheté. Rien d'autre n'est publié. */
 export const LICENCES = ["mienne", "CC0", "CC-BY-4.0", "achetee"] as const;

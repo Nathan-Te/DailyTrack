@@ -17,6 +17,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, write
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ADRESSES } from "./domaine.mjs";
+import { FICHES_CI } from "./fiches-lecture.mjs";
 import { DOSSIER_PARTAGE, produireImages } from "./images-partage.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -34,7 +35,10 @@ export const LAYOUT = [
  * serveur** : la construction de production de Tower retire le champ `preuve` des jours publiés (`apps/tower/preuves.ts`), et `assembleSite --production` le revérifie (`fichiersAvecPreuveTower`).
  * (Avant le lot TP, la page de démonstration n'était publiée que hors production : `ESSAI_TOWER`.)
  */
-export const TOWER_SITE = { from: "apps/tower/dist", to: "tower" };
+// Lot K1 : les jeux qui ont une fiche (`config/jeux/<id>.json`) sont publiés sous `/<id>/` (leur construction : `apps/<id>/dist`) ; leurs jours figés (`jours.dossier`) et la règle de la preuve de l'auteur
+// (`jours.preuveInterditeEnProd`) viennent d'elle. Track et Jump (sans fiche jusqu'aux lots K1b et K1c) restent dans `LAYOUT`.
+export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.id}/dist`, to: f.id, jours: f.jours.dossier, preuveInterdite: f.jours.preuveInterditeEnProd }));
+export const TOWER_SITE = SITES_FICHES.find((s) => s.id === "tower");
 
 /**
  * Lot « musique » : les morceaux préparés (`npm run musique`) sont servis à `/musique/` (fichiers statiques, cache sans fin : `firebase.json`), à la racine du site comme `/api/` :
@@ -231,6 +235,11 @@ export function fichiersAvecPreuve(out, niveaux = join(ROOT, "apps/jump/public/l
  * du dépôt (`apps/tower/public/jours/*.json`, `preuve`), ou qui porte un champ `preuve` dans `tower/jours/`, ou un jour publié qui n'est pas celui du dépôt moins sa preuve. Vide : tout va bien.
  */
 export function fichiersAvecPreuveTower(out, jours = join(ROOT, "apps/tower/public/jours")) {
+  return fichiersAvecPreuveDeFiche(out, TOWER_SITE, jours);
+}
+
+/** Lot K1 : la même vérification pour tout jeu à fiche (`site` : un élément de `SITES_FICHES`) ; `jours` : le dossier des jours du dépôt (par défaut celui de la fiche). */
+export function fichiersAvecPreuveDeFiche(out, site, jours = join(ROOT, site.jours)) {
   const depot = existsSync(jours) ? readdirSync(jours).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)) : [];
   const preuves = depot.map((f) => JSON.parse(readFileSync(join(jours, f), "utf8")).preuve).filter((p) => typeof p === "string" && p.length > 0);
   const fautifs = [];
@@ -245,17 +254,17 @@ export function fichiersAvecPreuveTower(out, jours = join(ROOT, "apps/tower/publ
     }
   };
   parcourir(out);
-  const publies = join(out, TOWER_SITE.to, "jours");
+  const publies = join(out, site.to, "jours");
   for (const f of depot) {
     const publie = join(publies, f);
     if (!existsSync(publie)) {
-      fautifs.push(`${TOWER_SITE.to}/jours/${f} (absent)`);
+      fautifs.push(`${site.to}/jours/${f} (absent)`);
       continue;
     }
     const attendu = JSON.parse(readFileSync(join(jours, f), "utf8"));
     delete attendu.preuve;
     const lu = JSON.parse(readFileSync(publie, "utf8"));
-    if ("preuve" in lu || JSON.stringify(lu) !== JSON.stringify(attendu)) fautifs.push(`${TOWER_SITE.to}/jours/${f}`);
+    if ("preuve" in lu || JSON.stringify(lu) !== JSON.stringify(attendu)) fautifs.push(`${site.to}/jours/${f}`);
   }
   return [...new Set(fautifs)];
 }
@@ -282,7 +291,7 @@ function pagesHtml(dir) {
  */
 export async function assembleSite(out, { production = false, origine } = {}) {
   const origineSite = origineDuSite({ production, origine });
-  for (const part of [...LAYOUT.slice(1), TOWER_SITE]) if (!existsSync(join(ROOT, part.from, "index.html"))) throw new Error(`${part.from} n'est pas construit : npm run build`);
+  for (const part of [...LAYOUT.slice(1), ...SITES_FICHES]) if (!existsSync(join(ROOT, part.from, "index.html"))) throw new Error(`${part.from} n'est pas construit : npm run build`);
   viteBuild({ production });
   rmSync(out, { recursive: true, force: true });
   for (const part of LAYOUT) {
@@ -290,7 +299,7 @@ export async function assembleSite(out, { production = false, origine } = {}) {
     mkdirSync(dest, { recursive: true });
     cpSync(join(ROOT, part.from), dest, { recursive: true });
   }
-  cpSync(join(ROOT, TOWER_SITE.from), join(out, TOWER_SITE.to), { recursive: true });
+  for (const part of SITES_FICHES) cpSync(join(ROOT, part.from), join(out, part.to), { recursive: true });
   partagerPolices(out); // lots I4 et I5 : les polices de Track et de Jump sont celles du portail (Tower garde les siennes : lot I1)
   const morceaux = copierMusique(out); // lot « musique » : `/musique/` (liste et fichiers préparés), jamais les sources
   // Les niveaux figés de DailyJump (lot 10) doivent être dans le site publié, identiques : sinon un jour déjà joué changerait de niveau.
@@ -310,9 +319,11 @@ export async function assembleSite(out, { production = false, origine } = {}) {
     // Lot R9 : la preuve de l'auteur et les outils de Jump ne sont jamais publiés (ils sont retirés à la construction de Jump ; ici on le vérifie).
     const fautifs = fichiersAvecPreuve(out, levels);
     if (fautifs.length > 0) throw new Error(`le site de production publierait la preuve de l'auteur ou les outils de Jump : ${fautifs.join(", ")}`);
-    // Lot TP : de même pour les jours de Tower (la construction de production de Tower retire la preuve ; ici on le revérifie).
-    const fautifsTower = fichiersAvecPreuveTower(out);
-    if (fautifsTower.length > 0) throw new Error(`le site de production publierait la preuve de l'auteur d'un jour de Tower : ${fautifsTower.join(", ")}`);
+    // Lots TP et K1 : de même pour les jours de chaque jeu à fiche qui l'interdit (Tower : la construction de production retire la preuve ; ici on le revérifie).
+    for (const site of SITES_FICHES.filter((s) => s.preuveInterdite)) {
+      const fautifsFiche = fichiersAvecPreuveDeFiche(out, site);
+      if (fautifsFiche.length > 0) throw new Error(`le site de production publierait la preuve de l'auteur d'un jour de ${site.id === "tower" ? "Tower" : site.id} : ${fautifsFiche.join(", ")}`);
+    }
   }
   if (production && vitrine) throw new Error(`la vitrine /${VITRINE}/ ne doit pas être dans le site de production`);
   if (!production && !vitrine) throw new Error(`vitrine /${VITRINE}/ absente du site`);
@@ -337,7 +348,7 @@ if (isMain) {
       const out = resolve(option(argv, "--sortie", "site"));
       const production = argv.includes("--production");
       const { niveaux, images, origine, morceaux } = await assembleSite(out, { production, origine: option(argv, "--origine") });
-      console.log(`site assemblé dans ${out} : portail, /track/, /jump/, /tower/${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
+      console.log(`site assemblé dans ${out} : portail, /track/, /jump/, ${SITES_FICHES.map((s) => `/${s.to}/`).join(", ")}${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
       console.log(`aperçus de partage : ${origine} ; images ${images.map((i) => `${i.nom}.png ${(i.octets / 1024).toFixed(1)} ko`).join(", ")}`);
     } else if (cmd === "firebase") {
       const template = JSON.parse(readFileSync(join(ROOT, "firebase.json"), "utf8"));

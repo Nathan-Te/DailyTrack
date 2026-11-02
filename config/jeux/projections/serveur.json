@@ -1,0 +1,75 @@
+{
+  "jeux": [
+    {
+      "id": "tower",
+      "code": "tower",
+      "etatDepart": "off",
+      "premierJour": "2026-11-02",
+      "classement": {
+        "colonnes": [
+          {
+            "nom": "hauteur_mm",
+            "sens": "desc"
+          },
+          {
+            "nom": "vies",
+            "sens": "desc"
+          },
+          {
+            "nom": "ticks",
+            "sens": "asc"
+          },
+          {
+            "nom": "submitted_at",
+            "sens": "asc"
+          },
+          {
+            "nom": "player_id",
+            "sens": "asc"
+          }
+        ],
+        "cumul": false,
+        "unite": "mm",
+        "format": "hauteur"
+      },
+      "medailles": {
+        "methode": "pourcentage-diamant",
+        "bareme": [
+          50,
+          30,
+          15
+        ],
+        "plafondDiamant": 60000
+      },
+      "versions": {
+        "sim": "packages/tower-sim/src/constantes.ts:TOWER_SIM_VERSION",
+        "generateur": "packages/tower-sim/src/generateur/index.ts:TOWER_GENERATOR_VERSION",
+        "medailles": "packages/tower-sim/src/medailles.ts:MEDAILLES_VERSION"
+      },
+      "jours": {
+        "mode": "fichier-par-jour",
+        "dossier": "apps/tower/public/jours",
+        "preuveInterditeEnProd": true
+      },
+      "rejeu": {
+        "unitesServeur": 30,
+        "fil": true,
+        "maxTicks": 20300
+      },
+      "tables": [
+        {
+          "nom": "tower_results",
+          "sort": "videe"
+        },
+        {
+          "nom": "tower_levels",
+          "sort": "gardee"
+        }
+      ],
+      "prefixe": "tower:",
+      "reglagesGardes": [],
+      "messageOu": "tower",
+      "zoneNouveautes": "tower"
+    }
+  ]
+}

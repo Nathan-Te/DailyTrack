@@ -1,5 +1,6 @@
-import type { OuMessage, TonMessage, ZoneNouveaute } from "@cdj/core/nouveautes";
+import { NOM_DE_ZONE, type OuMessage, type TonMessage, type ZoneNouveaute } from "@cdj/core/nouveautes";
 import { instantDeParis } from "./adminGithub";
+import { FICHES } from "./jeuxFiches";
 
 // Lot N1 : ce que le panneau d'administration lit et écrit (`/api/admin/*`, `apps/api/CLAUDE.md`, « Administration (lot N1) ») et les calculs purs de son
 // affichage (barres, formats). Aucune page ici : testé dans `test/admin.test.ts`. Outil interne de l'éditeur, en français seulement.
@@ -18,6 +19,25 @@ export interface Chiffres {
   nouveauxProfils: number;
   track: { finis: number };
   jump: { finis: number; morts: number };
+}
+
+/**
+ * Lot K1 : le tableau de bord a **une tuile par jeu**. Track et Jump gardent leurs deux tuiles (leur forme d'avant : Jump y ajoute ses morts) ; chaque jeu qui a une fiche (Tower) en a une, « <Nom> finis »,
+ * dès que la réponse de l'API porte ses chiffres (`chiffres.<id>`, envoyés quand le jeu est monté sur le serveur). Rend `{ legende, valeur }`.
+ */
+export function tuilesDesJeux(c: Chiffres): { legende: string; valeur: string; sousTexte?: string }[] {
+  const autres = c as unknown as Record<string, { finis?: number } | undefined>;
+  return [
+    { legende: "Track finis", valeur: String(c.track.finis) },
+    { legende: "Jump finis", valeur: String(c.jump.finis), sousTexte: `${c.jump.morts} mort${c.jump.morts > 1 ? "s" : ""}` },
+    ...FICHES.flatMap((f) => (typeof autres[f.id]?.finis === "number" ? [{ legende: `${NOM_DE_ZONE[f.id as ZoneNouveaute] ?? f.id} finis`, valeur: String(autres[f.id]!.finis) }] : [])),
+  ];
+}
+
+/** Lot K1 : le nom d'un jeu d'après son code au registre du serveur (`cdj`, `jump`, `tower`), pour un résultat retiré : jamais « Track » par défaut pour un jeu qu'on ne reconnaît pas. */
+export function nomDuJeuAdmin(code: string): string {
+  const fiche = FICHES.find((f) => f.code === code);
+  return fiche ? (NOM_DE_ZONE[fiche.id as ZoneNouveaute] ?? fiche.id) : code === "cdj" ? "Track" : code === "jump" ? "Jump" : code;
 }
 
 export interface JourDeLaCourbe {

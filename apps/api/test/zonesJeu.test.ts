@@ -69,7 +69,24 @@ describe("les zones", () => {
 
   it("les exceptions tolérées, et rien d'autre", () => {
     for (const jeu of JEUX) expect(horsZones(jeu, EXCEPTIONS), jeu).toEqual([]);
-    expect(EXCEPTIONS.sort()).toEqual(["docs/plateforme/budgets.md", "docs/plateforme/traductions.md", "packages/ui/test/applications.ts"]);
+    // Lot K1 : s'y ajoutent ce que `npm run fiches` écrit (projections et vues générées des paquets), qui change mécaniquement avec la fiche d'un jeu.
+    expect([...EXCEPTIONS].sort()).toEqual([
+      "config/jeux/projections/**",
+      "docs/plateforme/budgets.md",
+      "docs/plateforme/traductions.md",
+      "packages/core/src/fiches.generated.ts",
+      "packages/musique/src/fiches.generated.ts",
+      "packages/profile/src/fiches.generated.ts",
+      "packages/ui/src/fiches.generated.ts",
+      "packages/ui/test/applications.ts",
+    ]);
+  });
+
+  it("lot K1 : le lot d'un jeu écrit SA fiche (seule exception à la règle des zones), jamais celle d'un autre ni un autre fichier de config/", () => {
+    expect(horsZones("tower", ["config/jeux/tower.json", "config/jeux/projections/ci.json", "packages/ui/src/fiches.generated.ts"])).toEqual([]);
+    expect(horsZones("tower", ["config/jeux/jump.json", "config/jeux/track.json", "config/lancement.json", "config/jeux/tower.json.bak"])).toHaveLength(4);
+    expect(horsZones("jump", ["config/jeux/tower.json"])).toEqual(["config/jeux/tower.json"]);
+    expect(verifierZones({ etiquettes: ["jeu:tower"], fichiers: ["config/jeux/tower.json", "apps/tower/src/jeu.ts"] }).ok).toBe(true);
   });
 
   it("une zone partagée fait échouer une PR de jeu, avec la liste des fichiers", () => {

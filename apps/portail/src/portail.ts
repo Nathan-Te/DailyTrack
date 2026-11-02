@@ -23,21 +23,20 @@ import {
   boutonFavori,
   cartouche,
   el,
-  etiquetteJump,
-  etiquetteTower,
-  etiquetteTrack,
+  etiquetteDe,
   formatDate,
   formatDateCourte,
-  formatHauteur,
   formatNombre,
   formatNumeroJour,
   formatRang,
+  formatScore,
   formatTemps,
   icone,
   medaille,
   modeApplication,
   traducteur,
   tuile,
+  type Jeu,
   type TypeMedaille,
   cheminMentions,
   visibiliteDeLaPage,
@@ -47,6 +46,7 @@ import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { choixPourDemain, repartir } from "./mesJeux";
 import { dans, nonLue } from "./nouveautesDonnees";
+import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
 import { construireOptions, nomDuJeu } from "./partageDuJour";
 import { tuileDuClassement } from "./classementVues";
@@ -107,7 +107,8 @@ const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || c
 const maintenant = () => Date.now() + (lecture?.decalage ?? 0);
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
-const NOM_JEU = { track: "jeu.track.nom", jump: "jeu.jump.nom", tower: "jeu.tower.nom" } as const;
+/** Le nom d'un jeu : `jeu.<id>.nom` du catalogue commun (Track, Jump et les jeux à fiche : lot K1). */
+const nomCleDe = (code: Jeu) => `jeu.${code}.nom` as const;
 
 /** Le nom traduit d'un thème (`portail.theme.<jeu>.<code>`), ou `null` s'il est inconnu du catalogue. */
 function nomTheme(t: T, jeu: string, theme: string | null): string | null {
@@ -128,7 +129,7 @@ function statut(t: T, c: CarteJeu, etat: Etat | undefined): HTMLElement {
     contenu.push(
       ligne(
         el("span", { classe: "portail-pastille-fini", texte: t.t("portail.statut.fini") }),
-        el("span", { classe: "portail-statut__temps", texte: score ? formatHauteur(score.valeur, langue) : formatTemps(etat.tempsMs, langue) }),
+        el("span", { classe: "portail-statut__temps", texte: score ? formatScore(ficheDuJeu(c.code)?.format ?? "hauteur", score.valeur, langue) : formatTemps(etat.tempsMs, langue) }),
         score ? el("span", { classe: "portail-statut__vies", texte: t.t("portail.statut.vies", { n: score.vies }) }) : null,
       ),
       ligne(
@@ -156,12 +157,13 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: Option
   // Jump : la réplique du thème du jour (une seule par écran ; lot I5 : catalogue commun de @cdj/ui, la même que dans le jeu) ; tant que le thème n'est pas connu
   // (ou sans serveur), l'accroche du jeu.
   const replique = c.code === "jump" && jeu?.theme ? cleConnue(`jump.replique.${jeu.theme}`) : null;
-  const texte = c.code === "track" ? t.t("portail.track.accroche") : c.code === "tower" ? t.t("portail.tower.accroche") : t.t(replique ?? "portail.jump.accroche");
-  const fabrique = c.code === "track" ? etiquetteTrack : c.code === "tower" ? etiquetteTower : etiquetteJump;
-  const titre = c.code === "tower" ? t.t("jeu.tower.nom").toUpperCase() : t.t(c.code === "track" ? "jeu.track.titre" : "jeu.jump.titre");
+  // Lot K1 : un jeu qui a une fiche donne son accroche, son titre et son étiquette ; Track et Jump gardent leur code d'avant.
+  const fiche = ficheDuJeu(c.code);
+  const texte = fiche ? t.t((cleConnue(fiche.accroche) ?? "portail.jump.accroche") as Cle) : c.code === "track" ? t.t("portail.track.accroche") : t.t(replique ?? "portail.jump.accroche");
+  const titre = fiche ? titreDeCarte(fiche, t, t.t(nomCleDe(c.code))) : t.t(c.code === "track" ? "jeu.track.titre" : "jeu.jump.titre");
   // La variante compacte (lot F1) n'a que le nom et le numéro : ni accroche, ni statut (le statut d'un jeu qu'on n'a pas épinglé n'est pas ce qu'on vient chercher).
-  const etiquette = compacte ? fabrique({ titre, numero: numeroTheme }) : fabrique({ titre, numero: numeroTheme, texte, suite: statut(t, c, etat) });
-  const nom = t.t(NOM_JEU[c.code]);
+  const etiquette = compacte ? etiquetteDe(c.code, { titre, numero: numeroTheme }) : etiquetteDe(c.code, { titre, numero: numeroTheme, texte, suite: statut(t, c, etat) });
+  const nom = t.t(nomCleDe(c.code));
   const action =
     etat?.statut === "fini"
       ? bouton({ texte: t.t("portail.rejouer"), href: c.lien, variante: "secondaire", pleineLargeur: !compacte, ariaLabel: t.t("portail.rejouer.aria", { jeu: nom }) })

@@ -1,0 +1,12 @@
+{
+  "jeux": [
+    {
+      "id": "tower",
+      "code": "tower",
+      "accroche": "portail.tower.accroche",
+      "titre": null,
+      "cumul": false,
+      "format": "hauteur"
+    }
+  ]
+}

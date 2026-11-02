@@ -112,7 +112,8 @@ export const EXCLUSIONS: Record<string, string> = {
  */
 export const SOURCES_DES_CLES: Record<string, string[]> = {
   "packages/ui": ["packages/ui/src"],
-  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/ui"],
+  // Lot K1 : la projection `portail` des fiches nomme les clés d'accroche des jeux à fiche (lues à la construction, `jeuxFiches.ts`) : elle compte comme source.
+  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/ui", "config/jeux/projections/portail.json"],
   "apps/web": ["apps/web/src", "apps/web/index.html"],
   "apps/jump": ["apps/jump/src", "apps/jump/index.html"],
   "apps/tower": ["apps/tower/src", "apps/tower/index.html"],

@@ -10,7 +10,10 @@
 //   - une PR de jeu ne change que les fichiers de ses ZONES ou de ses EXCEPTIONS tolérées ; tout autre fichier fait échouer le job ;
 //   - le diff est pris depuis la base commune (`origin/main...HEAD`) : fusionner `main` dans la branche n'ajoute aucun fichier.
 
-export const JEUX = ["track", "jump", "tower"];
+import { FICHES_CI } from "./fiches-lecture.mjs";
+
+// Lot K1 : Track et Jump (sans fiche jusqu'aux lots K1b et K1c) sont écrits ici ; chaque jeu qui a une fiche (`config/jeux/<id>.json`, Tower) donne ses zones (`zones.jeu`, validées : ce sont les siennes).
+export const JEUX = ["track", "jump", ...FICHES_CI.map((f) => f.id)];
 
 // Les zones de chaque jeu. Dans `apps/api`, liste FERMÉE, fichier par fichier, alignée sur scripts/ci-scope.mjs (le test le vérifie) :
 // `history.ts` est importé par jumpHistory.ts et classementDemo.ts, `api.test.ts` et `classement.test.ts` passent par le cœur du serveur :
@@ -44,20 +47,24 @@ export const ZONES = {
     "apps/api/scripts/measure-jump.ts",
     "docs/jump/**",
   ],
-  // Lot R15 : Tower (3ᵉ jeu). Côté serveur, comme Jump : `tower*.ts` (les routes `/api/tower/` du lot T4), leurs tests et leurs outils, alignés sur scripts/ci-scope.mjs.
-  tower: [
-    "apps/tower/**",
-    "packages/tower-sim/**",
-    "apps/api/src/tower*.ts",
-    "apps/api/test/tower*.test.ts",
-    "apps/api/scripts/tower-*.ts",
-    "docs/tower/**",
-  ],
+  // Lot K1 : les zones de chaque jeu à fiche (Tower : `apps/tower/**`, `packages/tower-sim/**`, `apps/api/src/tower*.ts`, `apps/api/test/tower*.test.ts`, `apps/api/scripts/tower-*.ts`, `docs/tower/**`),
+  // alignées sur scripts/ci-scope.mjs, qui lit les mêmes fiches.
+  ...Object.fromEntries(FICHES_CI.map((f) => [f.id, f.zones.jeu])),
 };
 
 // Les exceptions tolérées, communes aux jeux : sa ligne de budgets.md, ses listes de packages/ui/test/applications.ts, et le relevé des
 // traductions, régénéré par `npm run traductions` après tout changement de catalogue (ses clés de catalogue sont dans ses zones). Rien d'autre.
-export const EXCEPTIONS = ["docs/plateforme/budgets.md", "packages/ui/test/applications.ts", "docs/plateforme/traductions.md"];
+// Lot K1 : la fiche du jeu (`config/jeux/<id>.json`, seulement SA fiche : voir `horsZones`) et ce que `npm run fiches` en tire — les projections et les `fiches.generated.ts` des paquets — qui changent mécaniquement avec elle.
+export const EXCEPTIONS = [
+  "docs/plateforme/budgets.md",
+  "packages/ui/test/applications.ts",
+  "docs/plateforme/traductions.md",
+  "config/jeux/projections/**",
+  "packages/core/src/fiches.generated.ts",
+  "packages/profile/src/fiches.generated.ts",
+  "packages/ui/src/fiches.generated.ts",
+  "packages/musique/src/fiches.generated.ts",
+];
 
 function globToRegExp(glob) {
   const re = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\u0000").replace(/\*/g, "[^/]*").replace(/\u0000/g, ".*");
@@ -91,7 +98,8 @@ export function jeuDeLaPr({ etiquettes = [], branche = "" } = {}) {
 /** Les fichiers changés qui sortent des zones de ce jeu (et de ses exceptions). */
 export function horsZones(jeu, fichiers) {
   if (!JEUX.includes(jeu)) throw new Error(`jeu inconnu : ${jeu}`);
-  return fichiers.map(normaliser).filter(Boolean).filter((f) => !correspond(ZONES[jeu], f) && !correspond(EXCEPTIONS, f));
+  // Lot K1 : le lot d'un jeu écrit SA fiche (`config/jeux/<id>.json`) ; la fiche d'un autre jeu est une zone partagée.
+  return fichiers.map(normaliser).filter(Boolean).filter((f) => !correspond(ZONES[jeu], f) && !correspond(EXCEPTIONS, f) && f !== `config/jeux/${jeu}.json`);
 }
 
 /** Verdict complet, avec le texte du résumé du run. */

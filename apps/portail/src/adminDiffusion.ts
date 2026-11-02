@@ -571,7 +571,8 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
 // =================================================================================================================================================
 // Message en direct
 // =================================================================================================================================================
-const NOMS_OU: Record<OuMessage, string> = { portail: "Portail", track: "Track", jump: "Jump", tower: "Tower" };
+// Lot K1 : le nom d'un jeu vient de la liste des zones (`NOM_DE_ZONE`, générée depuis les fiches) ; seul le portail a le sien.
+const NOMS_OU = Object.fromEntries(OU_MESSAGE.map((o) => [o, o === "portail" ? "Portail" : NOM_DE_ZONE[o]])) as Record<OuMessage, string>;
 const NOMS_TON: Record<TonMessage, string> = { information: "Information", important: "Important" };
 
 /** Une ligne qui dit où et jusqu'à quand (« Portail, Track · Important · jusqu'au 28/10, 22:00 »). */

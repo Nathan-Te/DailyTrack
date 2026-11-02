@@ -33,9 +33,7 @@ import {
   bouton,
   choixLangue,
   el,
-  etiquetteJump,
-  etiquetteTower,
-  etiquetteTrack,
+  etiquetteDe,
   formatDateCourte,
   formatNombre,
   formatRang,
@@ -47,6 +45,7 @@ import {
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
+import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
 import { baseApi } from "./jour";
 import { cartes } from "./jours";
 import { lireRetour } from "./retour";
@@ -128,10 +127,11 @@ function blocJeu(t: T, j: ProfilJeu): HTMLElement | null {
       return medaille(t, { type, obtenue: n > 0, forme: "case", jeu: carte.code, valeur: formatNombre(n, langue) });
     }),
   );
-  // Lot TP : Tower n'a pas de `jeu.tower.titre` : son titre est son nom en capitales (comme sur l'accueil, `portail.ts`).
-  const titre = carte.code === "tower" ? t.t("jeu.tower.nom").toUpperCase() : t.t(carte.code === "track" ? "jeu.track.titre" : "jeu.jump.titre");
+  // Lot K1 : un jeu qui a une fiche donne son titre (à défaut, son nom en capitales : Tower n'a pas de `jeu.tower.titre`, comme sur l'accueil, `portail.ts`) ; Track et Jump gardent leur code d'avant.
+  const fiche = ficheDuJeu(carte.code);
+  const titre = fiche ? titreDeCarte(fiche, t, t.t(`jeu.${carte.code}.nom` as const)) : t.t(carte.code === "track" ? "jeu.track.titre" : "jeu.jump.titre");
   const o = { titre, numero, texte: rang, suite: medailles, niveau: "h3" as const };
-  const e = carte.code === "track" ? etiquetteTrack(o) : carte.code === "tower" ? etiquetteTower(o) : etiquetteJump(o);
+  const e = etiquetteDe(carte.code, o);
   e.setAttribute("data-jeu", carte.code);
   return e;
 }

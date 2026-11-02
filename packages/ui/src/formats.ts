@@ -86,6 +86,14 @@ export function formatHauteur(mm: number, langue: Langue): string {
   return `${nombres(langue, 1).format(dixiemes / 10).replace(/\u202f/g, INSECABLE)}${INSECABLE}m`;
 }
 
+/**
+ * Lot K1 : le score d'un jeu dans le format que dit sa fiche (`classement.format` : `temps` en millisecondes, `hauteur` en millimètres, `entier`). Un seul point d'entrée pour les
+ * listes de jeux du portail : elles ne choisissent plus la fonction d'après le nom du jeu.
+ */
+export function formatScore(format: "temps" | "hauteur" | "entier", valeur: number, langue: Langue): string {
+  return format === "hauteur" ? formatHauteur(valeur, langue) : format === "entier" ? formatNombre(valeur, langue) : formatTemps(valeur, langue);
+}
+
 /** Le numéro du jour d'un jeu : `n° 12` / `#12`. */
 export function formatNumeroJour(n: number, langue: Langue): string {
   return langue === "fr" ? `n°${INSECABLE}${n}` : `#${n}`;
