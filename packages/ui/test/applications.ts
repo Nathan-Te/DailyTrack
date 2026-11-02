@@ -26,6 +26,8 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["packages/ui (musique)", "packages/ui/src/catalogue.musique.ts", "CATALOGUE_MUSIQUE"],
   // Lot S1 : les noms des boutons Discord et Ko-fi de l'accueil des jeux (à la demande avec leur groupe).
   ["packages/ui (communauté)", "packages/ui/src/catalogue.communaute.ts", "CATALOGUE_COMMUNAUTE"],
+  // Lot F2 : le vocabulaire des amis (sélecteur, feuille d'un joueur, liste, invitation), commun au portail et aux trois jeux (chargé à la demande avec les composants).
+  ["packages/ui (amis)", "packages/ui/src/catalogue.amis.ts", "CATALOGUE_AMIS"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
   ["apps/web (base)", "apps/web/src/catalogue.base.ts", "CATALOGUE_BASE"],
   ["apps/web (accueil)", "apps/web/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],

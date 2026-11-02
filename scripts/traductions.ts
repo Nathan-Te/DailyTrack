@@ -16,6 +16,7 @@ import { CATALOGUE_MANETTE } from "../packages/ui/src/catalogue.manette";
 import { CATALOGUE_COMMANDES } from "../packages/ui/src/catalogue.commandes";
 import { CATALOGUE_INTERRUPTEUR } from "../packages/ui/src/catalogue.interrupteur";
 import { CATALOGUE_COMMUNAUTE } from "../packages/ui/src/catalogue.communaute";
+import { CATALOGUE_AMIS } from "../packages/ui/src/catalogue.amis";
 import { CATALOGUE_MUSIQUE } from "../packages/ui/src/catalogue.musique";
 import { CATALOGUE_APERCU as APERCU_PORTAIL } from "../apps/portail/src/catalogueApercu";
 import { CATALOGUE_BASE as TRACK_BASE } from "../apps/web/src/catalogue.base";
@@ -43,6 +44,7 @@ export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingu
   ["packages/ui (interrupteur)", "packages/ui/src/catalogue.interrupteur.ts", CATALOGUE_INTERRUPTEUR as unknown as Bilingue],
   ["packages/ui (musique)", "packages/ui/src/catalogue.musique.ts", CATALOGUE_MUSIQUE as unknown as Bilingue],
   ["packages/ui (communauté)", "packages/ui/src/catalogue.communaute.ts", CATALOGUE_COMMUNAUTE as unknown as Bilingue],
+  ["packages/ui (amis)", "packages/ui/src/catalogue.amis.ts", CATALOGUE_AMIS as unknown as Bilingue],
   ["apps/portail", "apps/portail/src/catalogue.ts", CATALOGUE_PORTAIL as unknown as Bilingue],
   ["apps/portail (aperçu)", "apps/portail/src/catalogueApercu.ts", APERCU_PORTAIL as unknown as Bilingue],
   ["apps/portail (vitrine)", "apps/portail/src/catalogueVitrine.ts", CATALOGUE_VITRINE as unknown as Bilingue],
@@ -74,6 +76,7 @@ const APPLICATIONS: Record<string, string> = {
 /** Le nom d'un écran (le premier mot de la clé) ; un mot inconnu s'écrit tel quel. */
 const ECRANS: Record<string, string> = {
   accueil: "Accueil",
+  amis: "Amis",
   aide: "Comment jouer",
   apercu: "Aperçu de partage (quand on colle le lien)",
   archives: "Archives",
