@@ -1,7 +1,7 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, circleHitsBox, initialAttempt, sawReach, stepAttempt, type AttemptState, type Box } from "./attempt";
-import { ALT_KEPT_VERSION, BRIDGE_VERSION, JUMP_GENERATOR_VERSION, LASER_VERSION, JUMP_MIN_HOLD, MIN_HOLD_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
-import { ALT_KEPT_GENERATOR, MIN_HOLD_GENERATOR, THEME_BAG_GENERATOR, MEDAILLES_ASSOUPLIES_VERSION, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
+import { ALT_KEPT_VERSION, BRIDGE_VERSION, CHECKPOINT_ZONE_VERSION, PALIER_HEADROOM_ROWS, JUMP_GENERATOR_VERSION, LASER_VERSION, JUMP_MIN_HOLD, MIN_HOLD_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, RESTART_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, STALACTITE_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
+import { ALT_KEPT_GENERATOR, CHECKPOINT_ZONE_GENERATOR, LAME_GENERATOR, MIN_HOLD_GENERATOR, THEME_BAG_GENERATOR, MEDAILLES_ASSOUPLIES_VERSION, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals } from "./jours";
 import { idiv } from "./idiv";
 import { PRESS_HEIGHT_TILES, TILE_EMPTY, TILE_SOLID, cycleMod, laserBarBox, laserBox, mushroomPad, parseLevel, platformPos, pressBox, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
 import { FROZEN_BASE_IDS } from "./figes";
@@ -19,6 +19,7 @@ import { ALT_B_REFUSED } from "./etats";
 import { PARASITE_CLOSED } from "./parasites";
 import { legacyCatalog } from "./legacyRegistry";
 import { variantUsable } from "./usable";
+import { checkpointShortcutProblems } from "./passages";
 import { BLADE_TIGHT } from "./lameTable";
 import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, soloLevel, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
 import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, auChangementDesJoursAnciens, jumpThemeOfSim, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
@@ -27,7 +28,7 @@ import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpR
 import { SLOW_MAX_EXTRA, SLOW_MIN_EXIGENCE, SLOW_REACH_ROWS, SLOW_ZONE_WIDTH, carveSlowRoute, slowCostMin, slowGalleryRow, slowHeadroom, slowLedges, slowScript, type SlowRoute } from "./voies";
 
 // Lot 21 : le numéro et l'identifiant d'un niveau, ses médailles et les numéros de générateur de référence sont dans `jours.ts` ; réexportés ici.
-export { ALT_KEPT_GENERATOR, MIN_HOLD_GENERATOR, THEME_BAG_GENERATOR, MEDAILLES_ASSOUPLIES_VERSION, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
+export { ALT_KEPT_GENERATOR, CHECKPOINT_ZONE_GENERATOR, LAME_GENERATOR, MIN_HOLD_GENERATOR, THEME_BAG_GENERATOR, MEDAILLES_ASSOUPLIES_VERSION, MEDAL_PERCENT, MEDAL_PERCENT_G1, MUSHROOM_GENERATOR, PLATFORM_GENERATOR, PREMIER_JOUR_JUMP, PRESS_GENERATOR, SECTION_CLOCK_GENERATOR, SINGLE_CLOCK_GENERATOR, SLOW_BRONZE_MARGIN, STALACTITE_GENERATOR, LASER_GENERATOR, BRIDGE_GENERATOR, RESTART_GENERATOR, dailyLevelId, jumpMedalFor, jumpMedalsFor, levelNumber, medalsWithSlow, type JumpMedal, type JumpMedals };
 
 // Le niveau du jour (lot 5) : `dailyLevel(jour)` assemble des morceaux du catalogue (lot 4) qui **portent leur solution**, puis **rejoue** la
 // suite de ces solutions sur le niveau assemblé. Si elle arrive au bout sans mourir, le niveau est valide et ce rejeu donne le temps de
@@ -188,6 +189,8 @@ export const DAILY_MAX_ATTEMPTS_LASERS = 1000;
 const maxAttemptsV4 = (simVersion: number): number => (simVersion >= LASER_VERSION ? DAILY_MAX_ATTEMPTS_LASERS : DAILY_MAX_ATTEMPTS_V4);
 /** Sels des graines : `mixSeed(jour, DAILY_SALT)`, et des groupes de repos. */
 const DAILY_SALT = 0x6a6f7572;
+/** Lot 32 (g26) : le sel des niveaux de la version 14, choisi par mesure (365 dates : 0 secours, aucun retour de morceau avant 4 jours) — `JUMP_SALT_G26`. */
+const DAILY_SALT_G26 = 0x6a6f759a;
 
 /**
  * **Course à vide** (lot 6) : le temps passé au sol **sans appui de saut** quand le centre du personnage est au-dessus d'un palier de
@@ -287,7 +290,7 @@ export const VARIETY_DAYS = 4;
 export const VARIETY_DAYS_BEFORE_LASERS = 3;
 
 /** Le délai de variété W d'un niveau de cette version de simulation (4 depuis la version 9, 3 avant). */
-export function varietyDays(simVersion = MIN_HOLD_VERSION): number {
+export function varietyDays(simVersion = CHECKPOINT_ZONE_VERSION): number {
   return simVersion >= LASER_VERSION ? VARIETY_DAYS : VARIETY_DAYS_BEFORE_LASERS;
 }
 /**
@@ -319,7 +322,7 @@ export function varietyPosition(day: number): number {
  * époque, les premiers jours de la suivante à moins de `VARIETY_DAYS` jours. Toute paire de jours à moins de `VARIETY_DAYS` jours y est
  * couverte exactement une fois (par le plus tardif dans une époque, par celui de la première époque à travers une coupure).
  */
-export function varietyNeighbours(day: number, simVersion = MIN_HOLD_VERSION): number[] {
+export function varietyNeighbours(day: number, simVersion = CHECKPOINT_ZONE_VERSION): number[] {
   const W = varietyDays(simVersion);
   const pos = varietyPosition(day);
   const out: number[] = [];
@@ -334,14 +337,14 @@ export function varietyNeighbours(day: number, simVersion = MIN_HOLD_VERSION): n
 }
 
 /** Les morceaux de base du niveau du jour `day` (son thème, v4) : le contenu figé avant `VARIETY_ORIGIN`, sinon celui que donne `dailyLevel`. */
-export function dailyBaseIds(day: number, simVersion = MIN_HOLD_VERSION): readonly string[] {
+export function dailyBaseIds(day: number, simVersion = CHECKPOINT_ZONE_VERSION): readonly string[] {
   // Lot 25 : la table des jours figés couvre les `VARIETY_DAYS − 1` jours d'avant l'origine (W = 4) ; une version à W = 3 (g14 à g18) n'en lit que les deux derniers, comme avant le lot.
   const frozen = day < VARIETY_ORIGIN && VARIETY_ORIGIN - day < varietyDays(simVersion) ? VARIETY_FROZEN[formatDay(day)] : undefined;
   return frozen ?? dailyLevel(day, null, simVersion).pieces.map((p) => p.id);
 }
 
 /** Les morceaux de base que le niveau v4 du jour `day` ne peut pas poser (lot 19). */
-export function varietyExcluded(day: number, simVersion = MIN_HOLD_VERSION): Set<string> {
+export function varietyExcluded(day: number, simVersion = CHECKPOINT_ZONE_VERSION): Set<string> {
   const out = new Set<string>();
   for (const d of varietyNeighbours(day, simVersion)) for (const id of dailyBaseIds(d, simVersion)) out.add(id);
   return out;
@@ -976,8 +979,8 @@ export interface Assembled {
   ascii: string;
   pieces: DailyPiece[];
   paliers: Palier[];
-  /** Lot 16 : les voies lentes posées (sans leurs temps : `prove` les mesure), et les cases creusées pour chacune. */
-  slow: { piece: number; zone: number; entryRow: number; galleryRow: number; extra: number; carved: { col: number; row: number }[]; walls: { col: number; row: number }[] }[];
+  /** Lot 16 : les voies lentes posées (sans leurs temps : `prove` les mesure), et les cases creusées pour chacune. Lot 32 : `sealed` — la descente est fermée de chaque côté (une colonne au moins reste libre à chaque rangée). */
+  slow: { piece: number; zone: number; entryRow: number; galleryRow: number; extra: number; carved: { col: number; row: number }[]; walls: { col: number; row: number }[]; sealed: boolean }[];
 }
 
 /** Options d'assemblage (lot 16) : poser les voies lentes des portions dures (niveaux v4), avec `extras[k]` montées de plus pour le morceau k. */
@@ -993,12 +996,13 @@ export interface AssembleOptions {
 
 /** Assemble une suite de morceaux en un niveau (grille + bloc annexe). */
 export function assemble(picks: readonly { id: string; variant: number }[], options: AssembleOptions = {}): Assembled {
-  const hold = (options.simVersion ?? MIN_HOLD_VERSION) >= MIN_HOLD_VERSION;
+  const hold = (options.simVersion ?? CHECKPOINT_ZONE_VERSION) >= MIN_HOLD_VERSION;
+  const closedWells = (options.simVersion ?? CHECKPOINT_ZONE_VERSION) >= CHECKPOINT_ZONE_VERSION;
   const all = allChoices(!hold).flat();
   const full: Slot[] = picks.map((p, k) => {
     const choice = all.find((c) => c.id === p.id && c.variant === p.variant);
     if (!choice) throw new RangeError(`Morceau « ${p.id} », variante ${p.variant} : pas de solution utilisable`);
-    return { choice: { ...choice, hard: options.slow === true && k > 0 && isHard(choice, options.simVersion ?? MIN_HOLD_VERSION) }, entry: k === 0 ? "arret" : "elan" };
+    return { choice: { ...choice, hard: options.slow === true && k > 0 && isHard(choice, options.simVersion ?? CHECKPOINT_ZONE_VERSION) }, entry: k === 0 ? "arret" : "elan" };
   });
   if (full.length === 0) throw new RangeError("Assemblage vide");
   const extras = options.extras ?? [];
@@ -1150,7 +1154,10 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
     const before = pieces[k - 1];
     const after = pieces[k];
     const row = after ? after.entryRow : before!.exitRow;
-    const roof = Math.min(before ? before.top : height, after ? after.top : height);
+    let roof = Math.min(before ? before.top : height, after ? after.top : height);
+    // Lot 32 (version 14) : le puits d'un palier de raccord (celui d'un point de passage) est fermé à `PALIER_HEADROOM_ROWS` rangées au-dessus du sol : on n'y entre plus par le haut, depuis le haut
+    // des morceaux voisins ; la voie lente d'une portion y descend, creusée dans le plein.
+    if (closedWells && k >= 1 && k < full.length) roof = Math.max(roof, row - PALIER_HEADROOM_ROWS);
     const zone = k < full.length ? zones[k]! : -1;
     const col0 = zone >= 0 ? zone - L : after ? after.col0 - L : before!.col1 + 1;
     // Le premier palier a sa colonne de garde devant lui, le dernier la colonne d'arrivée derrière lui.
@@ -1184,7 +1191,26 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
     const shaftTop = Math.min(roofs[k + 1]!, galleryRow - 3);
     // À droite du puits : le morceau suivant, ou le mur gauche de la cage de la portion dure suivante (plein au-dessus de son entrée).
     const side = out.col1 + 1;
-    if (k + 1 < full.length) {
+    let sealed = true;
+    if (closedWells) {
+      // Lot 32 (version 14) : le puits du palier est fermé à `PALIER_HEADROOM_ROWS` rangées, la descente est donc creusée dans le plein jusqu'à lui — le long de la fin du morceau (à gauche) et du début du
+      // morceau suivant (à droite) quand ils montent plus haut que le plafond du palier. Une rangée dont un côté est libre est murée de ce côté ; si les deux côtés sont libres, ou si le mur change de côté,
+      // la descente donnerait sur un morceau : le tirage est refusé (« palier sous une descente de voie lente »).
+      const wallSides = new Set<number>();
+      for (let r = shaftTop; r < roofs[k + 1]!; r++) {
+        // Dans les rangées de la galerie (au-dessus de son sol), la case de gauche est la galerie elle-même : seule la droite peut fuir.
+        const left = r >= galleryRow && rows[r]![out.col0 - 1] !== "#";
+        const right = rows[r]![out.col1 + 1] !== "#";
+        if (left && right) sealed = false;
+        for (const [leaks, c] of [[left, out.col0], [right, out.col1]] as const) {
+          if (!leaks) continue;
+          wallSides.add(c);
+          if (rows[r]![c] !== "#") walls.push({ col: c, row: r });
+          rows[r]![c] = "#";
+        }
+      }
+      if (wallSides.size > 1) sealed = false;
+    } else if (k + 1 < full.length) {
       let open = false;
       for (let r = shaftTop; r < high; r++) if (rows[r]![side] !== "#") open = true;
       if (open) {
@@ -1195,7 +1221,7 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
       }
     }
     const kept = carved.filter((c) => !walls.some((w) => w.col === c.col && w.row === c.row));
-    slow.push({ piece: k, zone, entryRow: piece.entryRow, galleryRow, extra, carved: kept, walls });
+    slow.push({ piece: k, zone, entryRow: piece.entryRow, galleryRow, extra, carved: kept, walls, sealed });
   });
   if (hold) annex.push(`maintien ${JUMP_MIN_HOLD}`);
   const ascii = rows.map((r) => r.join("")).join("\n") + "\n\n" + annex.join("\n") + "\n";
@@ -1224,7 +1250,7 @@ type Step = (s: AttemptState, bits: number) => AttemptState;
  * le suit (la première colonne du morceau suivant), vivant, en course propre —, ou jusqu'à l'arrivée pour le dernier. Rend les commandes et
  * le pas où commence chaque morceau, ou la raison de l'échec.
  */
-function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[]; final: AttemptState } | string {
+export function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[]; final: AttemptState } | string {
   const zoned = new Set(asm.slow.map((r) => r.piece));
   const level = asm.level;
   const step: Step = (s, bits) => stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
@@ -1632,13 +1658,69 @@ function playProof(level: Level, paliers: readonly Palier[], inputs: readonly nu
   return { states, palierTicks, longestRun, time: s.time };
 }
 
+/**
+ * Lot 32 (version 14) : **la parité des alternés à l'entrée de chaque morceau qui en a**, estimée sans rien assembler. Plus de remise à A au point de passage : la preuve de l'auteur arrive à un morceau
+ * à alternés dans l'état où les sauts d'avant l'ont laissé, et ses solutions partent de A. Chaque saut qui part inverse la parité ; on compte les appuis de saut de la solution de chaque morceau
+ * (fronts montants entre son entrée et sa sortie). Estimation seulement (un appui en l'air ne fait pas partir de saut) : elle écarte les tirages perdus d'avance avant de les assembler ; la chaîne
+ * des solutions, qui joue le niveau, reste le juge. Rend le numéro (1-based) du premier morceau à alternés qui entre en B, ou 0.
+ */
+const FLIPS_CACHE = new Map<string, number>();
+const ALT_PIECE_CACHE = new Map<string, boolean>();
+function solutionJumps(pieceId: string, variant: number, entry: ModuleEntry): number {
+  const key = `${pieceId}:${variant}:${entry}`;
+  let n = FLIPS_CACHE.get(key);
+  if (n === undefined) {
+    const sol = moduleSolutions(pieceId, variant, false)?.[entry];
+    n = 0;
+    if (sol) {
+      const bits = fromRuns(decodeReplay(sol.code).runs);
+      for (let t = sol.entryTick; t <= sol.exitTick && t < bits.length; t++) if ((bits[t]! & INPUT_JUMP) !== 0 && (t === 0 || (bits[t - 1]! & INPUT_JUMP) === 0)) n++;
+    }
+    FLIPS_CACHE.set(key, n);
+  }
+  return n;
+}
+function hasAlts(pieceId: string, variant: number): boolean {
+  const key = `${pieceId}:${variant}`;
+  let v = ALT_PIECE_CACHE.get(key);
+  if (v === undefined) {
+    v = buildModule(pieceId, variant).level.alts.length > 0;
+    ALT_PIECE_CACHE.set(key, v);
+  }
+  return v;
+}
+function oddAltEntry(picks: readonly { id: string; variant: number }[]): number {
+  let parity = 0;
+  for (let k = 0; k < picks.length; k++) {
+    const p = picks[k]!;
+    if (parity === 1 && hasAlts(p.id, p.variant)) return k + 1;
+    parity = (parity + solutionJumps(p.id, p.variant, k === 0 ? "arret" : "elan")) % 2;
+  }
+  return 0;
+}
+
 function proveOnce(picks: readonly { id: string; variant: number }[], id: string, theme: JumpThemeName, simVersion: number, extras: readonly number[]): { built: Built; problems: string[]; cheap: number[] } | string {
+  if (simVersion >= CHECKPOINT_ZONE_VERSION) {
+    const odd = oddAltEntry(picks);
+    if (odd > 0) return `alternés : le morceau ${odd} entre en B (parité des sauts d'avant, sans remise à A au point de passage)`;
+  }
   let asm: Assembled;
   try {
     asm = assemble(picks, { slow: simVersion >= SINGLE_CLOCK_VERSION, extras, simVersion });
   } catch (e) {
     return `assemblage : ${(e as Error).message}`;
   }
+  // Lot 32 (version 14) : la géométrie des points de passage se juge avant la preuve (elle ne dépend que de l'assemblage) : un tirage dont la descente d'une voie lente donne sur un morceau voisin, ou
+  // dont un palier a un autre accès que la portion et sa voie lente, est refusé tout de suite.
+  if (simVersion >= CHECKPOINT_ZONE_VERSION) {
+    const unsealed = asm.slow.filter((r) => !r.sealed).map((r) => `voie lente du morceau ${r.piece + 1} : la descente donne sur un morceau voisin`);
+    if (unsealed.length > 0) return unsealed.join(" ; ");
+    // Les cases d'abord (peu coûteux) ; les scies qui touchent la voie, qui parcourent tout leur cycle, sont jugées avec le reste des règles.
+    const geometry = [...slowShortcutProblems(asm, true, false), ...checkpointShortcutProblems(asm)];
+    if (geometry.length > 0) return `${geometry.join(" ; ")}`;
+  }
+  // Lot 32 (version 14) : plus de remise des alternés à A au point de passage — la chaîne des solutions (assemblée en version 3) joue déjà cette règle : un morceau à alternés qui n'arrive pas à A est refusé ici.
+  if (simVersion >= CHECKPOINT_ZONE_VERSION) asm = { ...asm, level: { ...asm.level, altKeep: true } };
   const single = simVersion >= SINGLE_CLOCK_VERSION;
   // Lot 19 (v4) : un niveau trop haut est refusé avant tout rejeu (la règle de `dailyProblems`, vérifiée plus tôt).
   if (single && asm.level.height > maxDailyHeight(simVersion)) return `hauteur ${asm.level.height} (au plus ${maxDailyHeight(simVersion)})`;
@@ -1656,7 +1738,7 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     const v3Time = result.time;
     let ascii: string;
     try {
-      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= MIN_HOLD_VERSION ? MIN_HOLD_VERSION : simVersion >= ALT_KEPT_VERSION ? ALT_KEPT_VERSION : simVersion >= RESTART_VERSION ? RESTART_VERSION : simVersion >= BRIDGE_VERSION ? BRIDGE_VERSION : simVersion >= LASER_VERSION ? LASER_VERSION : simVersion >= STALACTITE_VERSION ? STALACTITE_VERSION : simVersion >= MUSHROOM_VERSION ? MUSHROOM_VERSION : simVersion >= PRESS_VERSION ? PRESS_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
+      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= CHECKPOINT_ZONE_VERSION ? CHECKPOINT_ZONE_VERSION : simVersion >= MIN_HOLD_VERSION ? MIN_HOLD_VERSION : simVersion >= ALT_KEPT_VERSION ? ALT_KEPT_VERSION : simVersion >= RESTART_VERSION ? RESTART_VERSION : simVersion >= BRIDGE_VERSION ? BRIDGE_VERSION : simVersion >= LASER_VERSION ? LASER_VERSION : simVersion >= STALACTITE_VERSION ? STALACTITE_VERSION : simVersion >= MUSHROOM_VERSION ? MUSHROOM_VERSION : simVersion >= PRESS_VERSION ? PRESS_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
       asm = { ...asm, ascii, level: parseLevel(ascii) };
     } catch (e) {
       return `horloge unique : ${(e as Error).message}`;
@@ -1693,6 +1775,11 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
   // Un tirage que les règles refusent déjà n'a pas besoin de ses voies lentes (elles ne changent aucune de ces règles) : on s'arrête là.
   const early = dailyProblems({ ...base, theme });
   if (early.length > 0) return { built: base, problems: early, cheap: [] };
+  // Lot 32 (version 14) : la reprise sur le point de passage de chaque morceau se juge avant les voies lentes (un rejeu de sa solution « arrêt » par morceau : moins cher qu'un script de voie lente).
+  if (simVersion >= CHECKPOINT_ZONE_VERSION) {
+    const respawn = slowRespawnProblems(asm, pieces);
+    if (respawn.length > 0) return { built: base, problems: respawn, cheap: [] };
+  }
   // Lot 16 : les voies lentes, mesurées contre la preuve.
   const slow = slowRoutesOf(asm, chain.inputs, id, total, states);
   if (typeof slow === "string") return slow;
@@ -1701,7 +1788,13 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
   const built: Built = { ...base, medals: medalsWithSlow(total, slow, simVersion), slowRoutes: slow, slowTicks };
   const problems = [...early];
   problems.push(...slowShortcutProblems(asm));
-  problems.push(...slowRespawnProblems(asm, pieces));
+  if (simVersion < CHECKPOINT_ZONE_VERSION) problems.push(...slowRespawnProblems(asm, pieces));
+  // Lot 32 (version 14) : aucun raccourci par point de passage.
+  if (asm.level.simVersion >= CHECKPOINT_ZONE_VERSION) {
+    // Déjà jugé plus haut pour un tirage ordinaire ; `dailyProblems`-like : la même règle sur le niveau final (garde-fou, même résultat).
+    for (const r of asm.slow) if (!r.sealed) problems.push(`voie lente du morceau ${r.piece + 1} : la descente donne sur un morceau voisin`);
+    problems.push(...checkpointShortcutProblems(asm));
+  }
   return { built, problems, cheap };
 }
 
@@ -1738,7 +1831,9 @@ function slowRoutesOf(asm: Assembled, inputs: readonly number[], id: string, tot
     const end = last ? total : leave[k + 1]!;
     if (fork < 1 || end < 0) return `voie lente du morceau ${k + 1} : la preuve ne passe pas ses paliers`;
     const palierOut = asm.paliers[k + 1]!;
-    const script = slowScript(level, states[fork - 1]!, { zone: r.zone, entryRow: r.entryRow, galleryRow: r.galleryRow, palierOut }, last);
+    // Lot 32 : une descente murée à gauche (la fin du morceau fuit) se prend par la colonne de droite.
+    const descentCol = r.walls.some((w) => w.col === palierOut.col0) ? palierOut.col1 : palierOut.col0;
+    const script = slowScript(level, states[fork - 1]!, { zone: r.zone, entryRow: r.entryRow, galleryRow: r.galleryRow, palierOut, descentCol }, last);
     if (typeof script === "string") return `morceau ${k + 1} : ${script}`;
     const all = [...inputs.slice(0, fork), ...script];
     const code = encodeReplay({ simVersion: level.simVersion, levelId: id, start: { checkpoint: -1, held: 0, time: 0, sections: [], elan: 0 }, runs: toRuns(all) });
@@ -1768,13 +1863,14 @@ function slowRoutesOf(asm: Assembled, inputs: readonly number[], id: string, tot
  * (la vérification que `daily.test.ts` fait sur 20 dates, posée en règle pour les morceaux voisins d'une voie lente : en g14, le 19/10/2026 —
  * `chute-pics` v0 suivi de `mur-seul` v2 — et le 02/11/2026 l'avaient cassée). Rend ce qui ne va pas.
  */
-export function slowRespawnProblems(asm: Pick<Assembled, "level" | "slow" | "paliers">, pieces: readonly Pick<DailyPiece, "id" | "variant" | "col0" | "entryRow">[]): string[] {
+export function slowRespawnProblems(asm: Pick<Assembled, "level" | "slow" | "paliers">, pieces: readonly Pick<DailyPiece, "id" | "variant" | "col0" | "entryRow">[], every = asm.level.simVersion >= CHECKPOINT_ZONE_VERSION): string[] {
   const out: string[] = [];
   const lv = asm.level;
   const hard = new Set(asm.slow.map((r) => r.piece));
   const zoneOf = new Map(asm.slow.map((r) => [r.piece, r]));
   for (let k = 1; k < pieces.length - 1; k++) {
-    if (!hard.has(k + 1) && !(zoneOf.get(k)?.walls.length ?? 0)) continue;
+    // Lot 32 (version 14) : tous les morceaux — le palier est fermé à 6 rangées, une solution « arrêt » qui montait plus haut dans le puits ne se rejoue plus après une reprise.
+    if (!every && !hard.has(k + 1) && !(zoneOf.get(k)?.walls.length ?? 0)) continue;
     const p = pieces[k]!;
     const sol = moduleSolutions(p.id, p.variant, lv.minHold === 0)?.arret;
     if (!sol) continue;
@@ -1787,7 +1883,7 @@ export function slowRespawnProblems(asm: Pick<Assembled, "level" | "slow" | "pal
     // Devant une portion dure, la reprise se joue depuis le palier « bis » de la zone (l'entrée du morceau seul).
     if (hard.has(k)) s = { ...s, player: { ...s.player, x: s.player.x + (p.col0 - PALIER_LENGTH - asm.paliers[k]!.col0) * UNITS_PER_TILE } };
     for (let t = 0; t < sol.exitTick && s.status === ATTEMPT_RUNNING; t++) s = stepAttempt(s, own[t]!, lv, DEFAULT_JUMP_PARAMS);
-    if (s.status !== ATTEMPT_RUNNING || centerCol(s.player) !== asm.paliers[k + 1]!.col1 + 1 || !isCleanRun(s.player)) out.push(`morceau ${k + 1} : une voie lente voisine gêne la reprise`);
+    if (s.status !== ATTEMPT_RUNNING || centerCol(s.player) !== asm.paliers[k + 1]!.col1 + 1 || !isCleanRun(s.player)) out.push(`morceau ${k + 1} : la reprise sur son point de passage n'en sort pas (palier fermé ou voie lente voisine)`);
   }
   return out;
 }
@@ -1798,7 +1894,7 @@ export function slowRespawnProblems(asm: Pick<Assembled, "level" | "slow" | "pal
  * (`SLOW_REACH_ROWS`), le morceau suivant n'a aucune case libre contre la descente (on ne tombe pas dans le haut du morceau suivant). Aucune
  * scie ne touche une case de la voie, à aucun pas de son cycle. Rend ce qui ne va pas.
  */
-export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "paliers" | "pieces">): string[] {
+export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "paliers" | "pieces">, closedWells = asm.level.simVersion >= CHECKPOINT_ZONE_VERSION, withSaws = true): string[] {
   const out: string[] = [];
   const level = asm.level;
   const T = UNITS_PER_TILE;
@@ -1806,7 +1902,7 @@ export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "pa
   const mine = new Map<string, number>();
   asm.slow.forEach((r, i) => r.carved.forEach((cell) => mine.set(`${cell.col},${cell.row}`, i)));
   // Le trajet de chaque scie (tous les pas de son cycle) et sa boîte, rayon compris : calculés une fois pour toutes les voies.
-  const sawPaths = asm.slow.length === 0 ? [] : level.saws.map((saw) => {
+  const sawPaths = asm.slow.length === 0 || !withSaws ? [] : level.saws.map((saw) => {
     const steps = saw.cycle === 0 ? 1 : saw.cycle;
     const centers: { x: number; y: number }[] = [];
     for (let t = 0; t < steps; t++) centers.push(sawCenter(saw, t));
@@ -1852,7 +1948,9 @@ export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "pa
     }
     // La descente longe le morceau suivant : rien de libre au-dessus de la portée d'un saut.
     if (next) {
-      for (let row = 0; row < pout.row - SLOW_REACH_ROWS; row++) {
+      // Lot 32 (version 14) : au-dessus du plafond du palier (`PALIER_HEADROOM_ROWS`), pas seulement hors de portée d'un saut.
+      const reach = closedWells ? PALIER_HEADROOM_ROWS + 1 : SLOW_REACH_ROWS;
+      for (let row = 0; row < pout.row - reach; row++) {
         let c = pout.col0;
         while (c <= pout.col1 + 1 && at(c, row) !== TILE_SOLID) c++;
         if (c > pout.col1 + 1) out.push(`voie lente ${i + 1} : la descente donne sur le morceau suivant en ${pout.col1 + 1},${row}`);
@@ -1946,8 +2044,78 @@ export const FALLBACK_V13: Readonly<Record<JumpThemeName, readonly { id: string;
   ],
 };
 
+/**
+ * Lot 32 (g26) : les suites de secours de chaque thème, **rechoisies** pour la version 14 (puits des paliers fermés, descente des voies lentes scellée : les anciennes (`FALLBACK_V13`) ne tiennent plus la règle « aucun raccourci par point
+ * de passage » et servent aux références de la version 13). Choisies par `secours:modules` (le niveau valide le plus près du centre sur 40 dates en thème forcé).
+ */
+export const FALLBACK_V14: Readonly<Record<JumpThemeName, readonly { id: string; variant: number }[]>> = {
+  foret: [
+    { id: "ressorts-trous", variant: 1 },
+    { id: "vent-derive", variant: 2 },
+    { id: "cheminee-pics", variant: 0 },
+    { id: "monte-charge", variant: 2 },
+    { id: "descente-scies", variant: 4 },
+    { id: "vent-brise", variant: 1 },
+    { id: "lucarne", variant: 3 },
+    { id: "paroi-friable", variant: 0 },
+    { id: "ressort-plafond", variant: 1 },
+    { id: "vent-piliers", variant: 2 },
+  ],
+  usine: [
+    { id: "mur-trous", variant: 2 },
+    { id: "saut-long", variant: 7 },
+    { id: "scie-sol", variant: 1 },
+    { id: "tapis-respiration", variant: 1 },
+    { id: "grande-scie", variant: 5 },
+    { id: "presse-ilot", variant: 4 },
+    { id: "pont-friable", variant: 4 },
+    { id: "descente-scies", variant: 4 },
+    { id: "plongeon", variant: 4 },
+    { id: "tapis-contraire", variant: 3 },
+  ],
+  glace: [
+    { id: "glace-mur", variant: 1 },
+    { id: "scie-ronde", variant: 4 },
+    { id: "scies-jumelles", variant: 5 },
+    { id: "glace-saut-haut", variant: 2 },
+    { id: "pont-friable", variant: 5 },
+    { id: "escalier-scies", variant: 4 },
+    { id: "tunnel", variant: 5 },
+    { id: "ressorts-trous", variant: 0 },
+    { id: "mur-friable", variant: 4 },
+    { id: "glace-corniches", variant: 1 },
+    { id: "tour-mobile", variant: 0 },
+  ],
+  nuit: [
+    { id: "ascenseur", variant: 5 },
+    { id: "pendule", variant: 4 },
+    { id: "mur-trous", variant: 5 },
+    { id: "escalier", variant: 2 },
+    { id: "nuit-escalier", variant: 6 },
+    { id: "marelle", variant: 6 },
+    { id: "plafond-pics", variant: 3 },
+    { id: "ressort-mur", variant: 3 },
+    { id: "cheminee-pics", variant: 2 },
+    { id: "nuit-pont", variant: 9 },
+    { id: "monte-charge", variant: 2 },
+  ],
+  neon: [
+    { id: "paroi-friable", variant: 3 },
+    { id: "plongeon", variant: 6 },
+    { id: "va-et-vient", variant: 1 },
+    { id: "chaland", variant: 0 },
+    { id: "tunnel-rase", variant: 6 },
+    { id: "neon-respiration", variant: 0 },
+    { id: "laser-barre-sol", variant: 3 },
+    { id: "descente-scies", variant: 4 },
+    { id: "laser-cheminee", variant: 8 },
+    { id: "ressort-scie", variant: 0 },
+  ],
+};
+
 /** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi ; lot 19 : celle de la forêt). */
-export function fallbackFor(theme: JumpThemeName, simVersion = MIN_HOLD_VERSION): readonly { id: string; variant: number }[] {
+export function fallbackFor(theme: JumpThemeName, simVersion = CHECKPOINT_ZONE_VERSION): readonly { id: string; variant: number }[] {
+  if (simVersion >= CHECKPOINT_ZONE_VERSION) return FALLBACK_V14[theme];
   if (simVersion >= MIN_HOLD_VERSION) return FALLBACK_V13[theme];
   return legacyCatalog().fallbackFor(theme, simVersion);
 }
@@ -1969,7 +2137,7 @@ auChangementDesJoursAnciens(forgetDailyLevels);
  * Lot 15 : `simVersion` 3 : le niveau g9 d'avant le lot, à l'identique (référence v3). Lot 20 : 4 : le niveau g14 d'avant les plateformes, à l'identique (référence v4) ;
  * 5 (défaut) : le niveau du générateur g15, en version 5.
  */
-export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = MIN_HOLD_VERSION): DailyLevel {
+export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = CHECKPOINT_ZONE_VERSION): DailyLevel {
   const natural = jumpThemeOfSim(day, simVersion);
   const theme = forced ?? natural;
   const isForced = theme !== natural;
@@ -1977,7 +2145,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
   const hit = cache.get(key);
   if (hit) return hit;
   const id = dailyLevelId(day, theme, simVersion);
-  const seed = mixSeed(day, DAILY_SALT);
+  const seed = mixSeed(day, simVersion >= CHECKPOINT_ZONE_VERSION ? DAILY_SALT_G26 : DAILY_SALT);
   const attempts: DailyAttempt[] = [];
   let best: { built: Built; index: number; score: number } | null = null;
   /** Prouve un tirage composé, l'inscrit dans `attempts` et rend son résultat s'il est valide. */
@@ -2060,7 +2228,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 }
 
 /** Le niveau de secours d'une date (pour les tests et la mesure : il ne sert que si aucun tirage ne passe). */
-export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = MIN_HOLD_VERSION): DailyLevel | string {
+export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = CHECKPOINT_ZONE_VERSION): DailyLevel | string {
   const natural = jumpThemeOfSim(day, simVersion);
   const theme = forced ?? natural;
   const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);
