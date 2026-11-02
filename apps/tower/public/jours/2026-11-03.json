@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "jeu": "tower",
+  "date": "2026-11-03",
+  "g": 3,
+  "tirage": 0,
+  "sim": 4,
+  "contenu": {
+    "pieces": "LTZJOSIZTSLJIOTJSOZLIJZTLOSIJTLOIZSZLIJO",
+    "plateformeDemi8": 20,
+    "paliers": [{"metres":8,"effet":"petite"},{"metres":16,"effet":"geante"},{"metres":24,"effet":"lierre"},{"metres":32,"effet":"glissante"},{"metres":40,"effet":"figee"},{"metres":48,"effet":"vent"}],
+    "ventSens": -1,
+    "theme": "chantier"
+  },
+  "medailles": { "auteur": 33189, "or": 16594, "argent": 9956, "bronze": 4978 },
+  "preuve": "AQQDAJiiARQEOAMMAQgpDAMJAgglDAEIWgkCCCsJAggrDAEJAgghCQIIKgwDCQMIIAkBCCwJBQgoDAEKAgg5CQMIVQwBCQEIJwwCCQIILQwBCCoKBAgoDAEJBAg1CgUIOgwBCQIILAwCCgEIcA"
+}
