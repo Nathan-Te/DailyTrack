@@ -103,7 +103,7 @@ async function sansFeuilleDePartage(context: BrowserContext): Promise<void> {
 }
 
 /** Ce que le serveur dit du joueur de démonstration à cet instant (la vérité des attentes ci-dessous). */
-async function jourDeDemo(): Promise<{ journee: number; joueur: { serie: number; cumulMs: number | null; rangDuJour: number | null; classesDuJour: number | null; aujourdhuiParfaite: boolean }; jeux: { etat: { statut: string; medaille?: string | null } }[] }> {
+async function jourDeDemo(): Promise<{ journee: number; joueur: { serie: number; cumulMs: number | null; rangDuJour: number | null; classesDuJour: number | null; aujourdhuiParfaite: boolean; jeuxDuJour?: string[] }; jeux: { etat: { statut: string; medaille?: string | null } }[] }> {
   const r = await fetch("http://127.0.0.1:8797/api/portail/jour", { headers: { "X-Player-Id": DEMO_ID } });
   return (await r.json()) as never;
 }
@@ -116,8 +116,10 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   expect(demo.journee).toBe(2);
   expect(demo.joueur.rangDuJour).not.toBeNull();
   const medailleTrack = demo.jeux[0]!.etat.medaille ?? null;
-  expect(demo.jeux[1]!.etat.statut).toBe("en_cours"); // Jump en cours : « Jump ⬜ » dans la ligne
-  const ligne = `Du Jour #2 — Track ${medailleTrack ? EMOJI[medailleTrack] : "✅"} · Jump ⬜ — 🔥 ${demo.joueur.serie}`;
+  expect(demo.jeux[1]!.etat.statut).toBe("en_cours"); // Jump en cours
+  // Lot F1 : le joueur de démonstration a Track en favori (pas Jump) : la ligne ne cite que mes jeux — Track fini, donc la journée parfaite (⭐) ; « Jump ⬜ » n'y est plus.
+  expect(demo.joueur.jeuxDuJour).toEqual(["track"]);
+  const ligne = `Du Jour #2 — Track ${medailleTrack ? EMOJI[medailleTrack] : "✅"} — 🔥 ${demo.joueur.serie} ⭐`;
 
   const context = await newContextAt(browser, T24, { ...PORTRAIT, locale: "fr-FR" });
   await sansFeuilleDePartage(context);

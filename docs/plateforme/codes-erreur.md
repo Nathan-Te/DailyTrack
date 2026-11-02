@@ -33,7 +33,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 |---|---|---|---|
 | `not_found` | 404 | Route inconnue (y compris les routes d'admin quand l'admin est désactivé, et toute adresse inconnue sous `/api/jump/`). | toute adresse inconnue ; `/api/admin/*` sans `ADMIN_TOKEN` ; `/api/sonde/entetes` hors recette |
 | `method_not_allowed` | 405 | La route existe, mais pas pour cette méthode HTTP . | toutes les routes |
-| `invalid_json` | 400 | Le corps de la requête n'est pas un objet JSON. | tous les envois (`POST`, `PUT`) |
+| `invalid_json` | 400 | Le corps de la requête n'est pas un objet JSON (lot F1 : ou `PUT /api/portail/favoris` reçoit une `favoris` qui n'est pas une liste de noms de jeux connus). | tous les envois (`POST`, `PUT`) |
 | `too_large` | 413 | Le corps dépasse la taille permise (`MAX_BODY_BYTES`), annoncée ou lue. | tous les envois |
 | `rate_limited` | 429 | Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (`Retry-After`). | envois, `/api/name`, `/api/me`, lectures du Salon, du Garage (`GET /api/garage`, lot 41), son enregistrement (`PUT /api/garage`, lot 51), de DailyJump et du portail, `/api/admin/*` |
 | `busy` | 503 | Serveur saturé : plafond de rejeux par minute de l'instance atteint (`Retry-After`), ou envois simultanés de vies du même joueur impossibles à fusionner. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit`, `/api/jump/lives` |

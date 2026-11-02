@@ -25,7 +25,8 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
     const as = { headers: { "X-Player-Id": DEMO_JOUEUR_ID } };
     let r = await t.call("GET", "/api/portail/jour", undefined, as);
     expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body.joueur).toEqual({ pseudo: "Démo", serie: 5, aProlonger: false, journeesParfaites: 2, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: 1, classesDuJour: 1 }); // lot A1 : Jump n'est pas fini, pas de temps cumulé
+    // Lot F1 : Track en favori (dès aujourd'hui) : sa journée est Track, fini, donc parfaite (la troisième journée parfaite) ; les jours d'avant restent jugés sur tous les jeux (2 journées parfaites).
+    expect(r.body.joueur).toEqual({ pseudo: "Démo", serie: 5, aProlonger: false, journeesParfaites: 3, aujourdhuiParfaite: true, cumulMs: null, rangDuJour: 1, classesDuJour: 1, favoris: ["track"], jeuxDuJour: ["track"] }); // lot A1 : Jump n'est pas fini, pas de temps cumulé
     expect(r.body.jeux[0].etat).toMatchObject({ statut: "fini", medaille: "gold", rang: 1 });
     expect(r.body.jeux[1].etat).toEqual({ statut: "en_cours", morts: DEMO_MORTS });
     expect(await t.db.first("SELECT demo FROM players WHERE id = ?", [DEMO_JOUEUR_ID])).toEqual({ demo: 1 });
@@ -38,7 +39,7 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
     await seedPortailDemo({ db: t.db, frozen, today: TODAY + 1 });
     t.clock.now = parisDayStart(TODAY + 1) + 15 * 3_600_000;
     r = await t.call("GET", "/api/portail/jour", undefined, as);
-    expect(r.body.joueur).toMatchObject({ serie: 5, journeesParfaites: 2 });
+    expect(r.body.joueur).toMatchObject({ serie: 5, journeesParfaites: 3 });
     expect(r.body.jeux[1].etat).toEqual({ statut: "en_cours", morts: DEMO_MORTS });
   }, 120_000);
 
