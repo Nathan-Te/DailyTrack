@@ -34,6 +34,7 @@ import {
   choixLangue,
   el,
   etiquetteJump,
+  etiquetteTower,
   etiquetteTrack,
   formatDateCourte,
   formatNombre,
@@ -127,8 +128,10 @@ function blocJeu(t: T, j: ProfilJeu): HTMLElement | null {
       return medaille(t, { type, obtenue: n > 0, forme: "case", jeu: carte.code, valeur: formatNombre(n, langue) });
     }),
   );
-  const o = { titre: t.t(carte.code === "track" ? "jeu.track.titre" : "jeu.jump.titre"), numero, texte: rang, suite: medailles, niveau: "h3" as const };
-  const e = carte.code === "track" ? etiquetteTrack(o) : etiquetteJump(o);
+  // Lot TP : Tower n'a pas de `jeu.tower.titre` : son titre est son nom en capitales (comme sur l'accueil, `portail.ts`).
+  const titre = carte.code === "tower" ? t.t("jeu.tower.nom").toUpperCase() : t.t(carte.code === "track" ? "jeu.track.titre" : "jeu.jump.titre");
+  const o = { titre, numero, texte: rang, suite: medailles, niveau: "h3" as const };
+  const e = carte.code === "track" ? etiquetteTrack(o) : carte.code === "tower" ? etiquetteTower(o) : etiquetteJump(o);
   e.setAttribute("data-jeu", carte.code);
   return e;
 }
