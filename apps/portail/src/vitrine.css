@@ -181,9 +181,6 @@
   position: absolute;
   z-index: 0;
 }
-.vitrine-scene--track {
-  --cadre-voile: repeating-linear-gradient(115deg, var(--track-asphalte) 0 5px, transparent 5px 8px);
-}
 
 /* Lot I7 : le plein écran sur asphalte, tel que le jeu l'habille en partie (plaque : bordure 2 px, ombre nette 2 px). */
 .plaque-vitrine {

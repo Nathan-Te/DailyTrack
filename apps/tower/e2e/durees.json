@@ -3,13 +3,13 @@
   "secondes": {
     "classement.spec.ts": 25,
     "determinisme.spec.ts": 2,
-    "partie.spec.ts": 12,
+    "partie.spec.ts": 18,
     "poids.spec.ts": 1
   },
   "essentiel": {
     "classement.spec.ts": 25,
     "determinisme.spec.ts": 2,
-    "partie.spec.ts": 12,
+    "partie.spec.ts": 18,
     "poids.spec.ts": 1
   }
 }

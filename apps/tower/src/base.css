@@ -2,7 +2,6 @@
    (HUD, pause, arrivée, scène) est dans `jeu.css`, chargée avec le jeu, à la demande. Tout vient des jetons de @cdj/ui (couleurs, polices, ombres nettes) : aucune couleur en dur, aucune ombre floue,
    aucun dégradé (seul le motif du voile à rayures). */
 :root {
-  --voile-rayures: repeating-linear-gradient(115deg, var(--dj-encre) 0 3px, transparent 3px 8px);
   --z-hud: 10;
   --z-voile: 30;
   --marge-g: max(12px, env(safe-area-inset-left, 0px));
@@ -53,7 +52,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
-  background: var(--voile-rayures);
+  background: var(--dj-voile);
   touch-action: none;
 }
 .voile[hidden] {

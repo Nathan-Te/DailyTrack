@@ -17,15 +17,6 @@
   align-items: flex-start;
   touch-action: pan-y;
 }
-/* La bande que `liensCommunauteJeu.css` réserve en bas de l'écran pour Discord et Ko-fi (sur deux lignes sous 480 px) : le même calcul, pour la réserver aussi en haut (centrage, lot T7). */
-.voile--accueil {
-  --bande-liens: calc(max(10px, env(safe-area-inset-bottom)) + var(--dj-cible) + var(--dj-espace-3));
-}
-@media (max-width: 480px) {
-  .voile--accueil {
-    --bande-liens: calc(max(10px, env(safe-area-inset-bottom)) + 2 * var(--dj-cible) + 2 * var(--dj-espace-3));
-  }
-}
 .accueil__colonne {
   box-sizing: border-box;
   width: min(900px, 100%);
@@ -415,7 +406,7 @@
   }
 }
 
-/* Lot S1 : l'accueil qui porte les boutons Discord / Ko-fi (liensCommunaute.css réserve une bande en bas, padding du voile) : c'est la colonne qui défile, dans ce qui reste, pour que le contenu ne passe jamais sous les boutons. */
+/* Lot S1 puis S1b : l'accueil qui porte les plaques Discord / Ko-fi (hors du flux, rien n'est réservé : `liensCommunauteJeu.css`) : c'est la colonne qui défile, et les plaques passent à sa fin si elles toucheraient quelque chose. */
 .voile--accueil:has(.dj-communaute) {
   overflow-y: hidden;
 }
@@ -426,13 +417,6 @@
   scrollbar-width: none;
   /* Lot T7 : centrée dans la fenêtre, en hauteur comme en largeur (l'auto du flex ne déborde jamais : si la place manque, la colonne défile) ; sans l'auto, `min-height: 0` la collait en haut. */
   margin: auto;
-}
-/* La bande des boutons Discord et Ko-fi est réservée en bas (`liensCommunauteJeu.css`) : la même en haut, pour que la coque soit centrée dans la FENÊTRE et non dans ce qui reste. Sur un écran bas
-   (paysage de téléphone) on ne la double pas : la place est comptée. */
-@media (min-height: 521px) {
-  .voile--accueil:has(.dj-communaute) {
-    padding-top: max(var(--bande-liens), max(8px, env(safe-area-inset-top, 0px)));
-  }
 }
 .voile--accueil:has(.dj-communaute) > .accueil__colonne::-webkit-scrollbar {
   display: none;

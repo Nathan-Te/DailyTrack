@@ -33,7 +33,7 @@ body.home #hud-droite {
 /* Le tracé du circuit (la miniature du lot 13) posée sur la piste. */
 .home-apercu {
   aspect-ratio: 16 / 9;
-  max-height: 200px;
+  max-height: min(200px, 24vh); /* lot S1b : sur un écran bas la miniature se réduit d'abord (94 px à 390 de haut), avant que l'écran défile */
   width: 100%;
   background: var(--track-piste);
   border-radius: var(--dj-rayon-bouton);
@@ -190,7 +190,7 @@ body.home #hud-droite {
 /* Actions : « Courir » reste collé en bas de l'étiquette, toujours visible sans défiler. */
 .home-actions {
   position: sticky;
-  bottom: calc(-1 * var(--corps-y)); /* jusqu'au bord de l'étiquette : rien ne défile sous la barre */
+  bottom: -6px; /* lot S1b : au bas de l'écran qui défile (`.cadre__defile`, dont la marge basse de 6 px est couverte : rien ne se lit sous le bouton) ; arrivé au bout, il repose au bas de l'étiquette */
   z-index: 1;
   margin: auto calc(-1 * var(--corps-x)) calc(-1 * var(--corps-y));
   padding: 10px var(--corps-x) var(--corps-y);
@@ -546,12 +546,15 @@ body.finished #board {
 
 /* --- L'accueil reste posé sur la vue 3D du départ (retour de Nathan ; lot I4b : comme tous les écrans de Track, cadre commun de @cdj/ui) : le voile à rayures
    sur la scène, la barre des jeux en plaque crème, l'étiquette Track (opaque, ombre dure). -------------------------------------------------------------- */
-/* Téléphone en portrait : une fenêtre sur la scène entre la barre et l'étiquette (l'étiquette, collée en bas, défile). */
-@media (max-width: 699px) and (orientation: portrait) {
-  #home .cadre__defile {
-    margin-top: auto;
-    max-height: calc(100% - 64px - 40vh);
-  }
+/* Lot S1b : l'étiquette de l'accueil n'est JAMAIS coupée. Elle garde toute sa hauteur (elle ne se resserre plus, son corps ne défile plus de son côté : plus de fenêtre de 40 % de l'écran sur la scène,
+   plus d'`overflow: hidden` qui rogne) ; **c'est l'écran qui défile** (`.cadre__defile`, cadre commun de @cdj/ui), « Courir » collé au bas de ce qui est vu. `overflow: clip` garde les coins arrondis et la
+   livrée sans créer de zone de défilement (le collant se rapporte alors à l'écran). Ordre retenu quand la hauteur manque : (1) la miniature du circuit se réduit (`.home-apercu` : 200 px, ou 24 % de la hauteur de l'écran s'il est bas), (2) l'écran défile. */
+#home .cadre__defile > .etiquette {
+  flex-shrink: 0;
+  overflow: clip;
+}
+#home .etiquette__corps {
+  overflow: visible;
 }
 /* Grand écran : trois colonnes (le circuit et tes temps · le classement · le Salon et les liens), centrées dans la page. */
 @media (min-width: 1000px) and (min-height: 521px) {

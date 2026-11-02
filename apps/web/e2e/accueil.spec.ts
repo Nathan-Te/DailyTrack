@@ -1,6 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Page, TODAY, newClockedContext, clockNow } from "./fixtures";
-import { dailyCircuit, formatDay } from "@cdj/sim";
+import { dailyCircuit, formatDay, themeForDay } from "@cdj/sim";
 import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
+import { verifierAccueilTelephone, verifierFocusTactile } from "./accueilTelephone";
 
 // Interface du lot 29 : accueil, classement en course, barre du haut, pause, réglages, « Comment jouer », profil, chrono.
 // Le jeu en démonstration (`?api=demo`) : aucune API réelle n'est touchée. Le rendu 3D demande WebGL : Chromium seulement.
@@ -52,12 +53,14 @@ test.describe("l'accueil", () => {
     // Plus de carte de profil sur l'accueil : un lien vers le profil commun du portail, avec le chemin de retour vers le jeu.
     await expect(page.locator("#home-profile")).toHaveAttribute("href", /profil\/\?retour=/);
     for (const label of ["Archives", "Réglages", "Comment jouer"]) await expect(page.locator("#home .links").getByRole("button", { name: new RegExp(label) })).toBeVisible();
-    // Lot S1 : Discord et Ko-fi, deux boutons de 44 px de haut (l'aspect du portail) en bas à gauche, en liens sortants sans rien qui identifie le joueur ; elles ne chevauchent rien.
+    // Lots S1 et S1b : Discord et Ko-fi, deux plaques de 44 px (l'icône seule, nom lu par `aria-label`) en bas à gauche, en liens sortants sans rien qui identifie le joueur ; elles ne chevauchent rien.
     const plaques = await boxes(page, ["#communaute-discord", "#communaute-kofi", "#home-daily", "#home-salon", "#home-portail", "#home .links"]);
     expect(plaques).toHaveLength(6);
-    for (const b of plaques.slice(0, 2)) expect(b.h).toBe(44);
-    expect(plaques[0]!.x, "bas à gauche").toBeLessThan(DESKTOP.width / 4);
-    expect(plaques[0]!.y).toBeGreaterThan(DESKTOP.height / 2);
+    for (const b of plaques.slice(0, 2)) {
+      expect(b.h).toBe(44);
+      expect(b.w).toBe(44);
+    }
+    expect(plaques[0]!.x, "à gauche").toBeLessThan(DESKTOP.width / 4);
     expectNoOverlap(plaques, DESKTOP);
     for (const [id, href] of [["discord", "https://discord.gg/2KZkUSpDej"], ["kofi", "https://ko-fi.com/C7X829MCE1"]] as const) {
       const lien = page.locator(`#communaute-${id}`);
@@ -65,13 +68,32 @@ test.describe("l'accueil", () => {
       await expect(lien).toHaveAttribute("target", "_blank");
       await expect(lien).toHaveAttribute("rel", "noopener noreferrer");
     }
-    await expect(page.locator("#communaute-discord")).toHaveText("Rejoindre le Discord");
-    await expect(page.locator("#communaute-kofi")).toHaveText("Soutenir sur Ko-fi");
+    await expect(page.locator("#communaute-discord")).toHaveAttribute("aria-label", "Rejoindre le Discord");
+    await expect(page.locator("#communaute-kofi")).toHaveAttribute("aria-label", "Soutenir sur Ko-fi");
+    await expect(page.locator("#communaute-discord")).toHaveText(""); // l'icône seule (lot S1b)
     // Le HUD de course n'est pas là : on est à l'accueil.
     await expect(page.locator("#menu")).toBeHidden();
     await expect(page.locator("#speed")).toBeHidden();
     await ctx.close();
   });
+
+  // Lot S1b (charte rév. 16, docs/tests.md : l'accueil d'un jeu s'ouvre d'abord en portrait sur un téléphone — parcours Essentiel) : 390 × 844 et 360 × 640, sur le thème le plus clair (Banquise).
+  // L'étiquette n'est jamais coupée (l'écran défile), Discord et Ko-fi ne la recouvrent pas, le toucher ne montre aucun anneau de focus.
+  for (const vp of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
+    test(`téléphone en portrait (${vp.width}×${vp.height}), thème Banquise : l'étiquette est complète, les plaques Discord et Ko-fi ne la recouvrent pas, aucun anneau au toucher`, async ({ browser }) => {
+      const depart = TODAY as number;
+      const banquise = formatDay([...Array(30).keys()].map((d) => depart + d).find((jour) => themeForDay(jour).name === "banquise")!);
+      const ctx = await fresh(browser, vp, true);
+      const page = await ctx.newPage();
+      await page.addInitScript(() => localStorage.setItem("cdj:howto", "1")); // « Comment jouer » est déjà vu : l'accueil seul
+      await open(page, `/?home=1&debug&fps=0&today=${banquise}&api=demo`);
+      await expect(page.locator("#home .home-circuit")).toContainText("Banquise");
+      await expect(page.locator("#home .home-medailles .dj-medaille--case")).toHaveCount(4);
+      await verifierFocusTactile(page, "#home");
+      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .cadre__defile", blocs: [".etiquette__tete", ".home-apercu", ".home-resume", ".home-medailles", ".home-fantome", ".home-actions", "#home-daily"], principal: "#home-daily" });
+      await ctx.close();
+    });
+  }
 
   test("la course ne démarre pas tant qu'on n'a pas choisi ; « Circuit du jour » la lance avec le classement visible", async ({ browser }) => {
     const ctx = await fresh(browser);
@@ -502,13 +524,14 @@ for (const vp of PHONES) {
 
     // Accueil : rien ne déborde à droite, les cartes ne se chevauchent pas, tout se touche du doigt.
     const sizes = await page.evaluate(() => {
-      // Lot I4 : le défilement est celui de l'étiquette (`.etiquette__corps`) ; « Courir » est collé en bas (sticky) : il recouvre exprès ce qui défile dessous.
-      const corps = document.querySelector<HTMLElement>("#home .etiquette__corps")!;
+      // Lot S1b : le défilement est celui de l'écran (`.cadre__defile`) ; l'étiquette n'est plus coupée. « Courir » est collé en bas (sticky) : il recouvre exprès ce qui défile dessous.
+      const corps = document.querySelector<HTMLElement>("#home .cadre__defile")!;
+      const etiquetteCorps = document.querySelector<HTMLElement>("#home .etiquette__corps")!;
       const cards = [...document.querySelectorAll("#home .etiquette__tete, #home .home-apercu, #home .home-resume, #home .home-medailles, #home .home-fantome, #home .card, #home .home-liens")].filter((e) => (e as HTMLElement).offsetParent).map((e) => {
         const r = e.getBoundingClientRect();
         return { name: e.className, x: r.x, y: r.y + corps.scrollTop, w: r.width, h: r.height };
       });
-      return { overflowX: corps.scrollWidth - corps.clientWidth, cards, clip: [...document.querySelectorAll("#home .card")].map((c) => c.scrollWidth - c.clientWidth) };
+      return { overflowX: etiquetteCorps.scrollWidth - etiquetteCorps.clientWidth, cards, clip: [...document.querySelectorAll("#home .card")].map((c) => c.scrollWidth - c.clientWidth) };
     });
     expect(sizes.overflowX, "l'accueil déborde en largeur").toBeLessThanOrEqual(1);
     for (const c of sizes.clip) expect(c, "une carte coupe son contenu").toBeLessThanOrEqual(1);
@@ -524,10 +547,10 @@ for (const vp of PHONES) {
     for (const b of await page.locator("#home button:visible").all()) expect((await b.boundingBox())!.height, `un bouton de l'accueil est trop petit (${await b.textContent()})`).toBeGreaterThanOrEqual(43.5);
     await expect(page.locator("#home-daily")).toBeInViewport(); // le grand bouton se voit sans défiler
     // Défiler jusqu'en bas : « Courir » reste visible (collé en bas de l'étiquette), le dernier bloc se voit.
-    await page.locator("#home .etiquette__corps").evaluate((e) => e.scrollTo(0, 99999));
+    await page.locator("#home .cadre__defile").evaluate((e) => e.scrollTo(0, 99999));
     await expect(page.locator("#home-daily")).toBeInViewport();
     await expect(page.locator("#home .home-liens")).toBeInViewport();
-    await page.locator("#home .etiquette__corps").evaluate((e) => e.scrollTo(0, 0));
+    await page.locator("#home .cadre__defile").evaluate((e) => e.scrollTo(0, 0));
 
     // Réglages, onglet par onglet.
     await page.locator("#home-settings").click();

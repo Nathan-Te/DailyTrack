@@ -1,4 +1,7 @@
+import { formatDay, parseDay } from "@cdj/core";
+import { jumpThemeForDay } from "@cdj/jump-sim";
 import { expect, test, type Page } from "@playwright/test";
+import { verifierAccueilTelephone, verifierFocusTactile } from "./accueilTelephone";
 import { FIXED_NOW, PUBLISHED, TODAY, atInstant, servePublished, shiftDate } from "./clock";
 import { Fingers, hasWebGL } from "./phone";
 import { dayId } from "./jours";
@@ -218,3 +221,27 @@ test.describe("au doigt (téléphone en paysage)", () => {
     }
   });
 });
+
+// Lot S1b (docs/tests.md : l'accueil d'un jeu s'ouvre d'abord en portrait sur un téléphone — parcours Essentiel) : 390 × 844 et 360 × 640, sur le thème le plus clair de Jump (Glace). L'étiquette est complète
+// (l'écran défile), Discord et Ko-fi ne la recouvrent pas, le toucher ne montre aucun anneau de focus.
+for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
+  test(`accueil sur téléphone en portrait (${viewport.width}×${viewport.height}), thème Glace : l'étiquette est complète, les plaques Discord et Ko-fi ne la recouvrent pas, aucun anneau au toucher`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, locale: "fr-FR" });
+    try {
+      await shiftDate(context, FIXED_NOW);
+      await context.addInitScript(() => localStorage.setItem("jump:aide", "1")); // « Comment jouer » ne s'ouvre pas tout seul
+      const depart = parseDay(TODAY)! + 30; // au-delà des niveaux déjà figés : leur thème est celui de leur version, pas celui du sac d'aujourd'hui
+      const glace = [...Array(30).keys()].map((d) => depart + d).find((jour) => jumpThemeForDay(jour) === "glace")!;
+      await shiftDate(context, Date.now() + (Date.parse(`${formatDay(glace)}T12:00:00Z`) - FIXED_NOW)); // « aujourd'hui » est un jour Glace (s'ajoute au décalage précédent)
+      const page = await context.newPage();
+      await page.goto("/?debug");
+      test.skip(!(await hasWebGL(page)), "WebGL indisponible");
+      await page.waitForFunction(() => (window as unknown as { __jump?: { home: { ready: boolean } } }).__jump?.home.ready === true);
+      await expect(page.locator("#home .accueil__niveau")).toContainText("Glace");
+      await verifierFocusTactile(page, "#home");
+      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .accueil__defile", blocs: [".accueil__titre", ".accueil__tuiles", "#home-ghost", ".classement-jour", "#home-play"], principal: "#home-play" });
+    } finally {
+      await context.close();
+    }
+  });
+}

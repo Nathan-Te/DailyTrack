@@ -9,7 +9,7 @@
   z-index: var(--z-accueil);
   display: flex;
   flex-direction: column;
-  background: var(--voile-rayures);
+  background: var(--dj-voile);
   font-family: var(--dj-police-texte);
   font-size: var(--dj-taille-15);
   line-height: 1.3;
