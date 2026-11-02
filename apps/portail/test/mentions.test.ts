@@ -144,6 +144,16 @@ describe("page des mentions légales et de la confidentialité", () => {
     expect(readFileSync(join(ROOT, "packages/profile/src/generation.ts"), "utf8")).toContain(`"${cle}"`);
   });
 
+  // La copie de la dernière réponse de l'accueil (`cdj:portail:jour`) : nommée dans les deux langues, lue dans le source du module, et effacée au « Nouveau départ ».
+  it("la copie de l'accueil (cdj:portail:jour) est nommée dans les deux langues et n'est pas un réglage gardé", () => {
+    const cle = /export const CLE_CACHE_JOUR = "([^"]+)"/.exec(readFileSync(join(ROOT, "apps/portail/src/cacheJour.ts"), "utf8"))?.[1];
+    expect(cle).toBe("cdj:portail:jour");
+    for (const page of [PAGE, PAGE_EN]) expect(page).toContain(`<code>${cle}</code>`);
+    expect(PAGE).toContain("la dernière réponse du serveur à l'accueil");
+    expect(PAGE_EN).toContain("the server's last answer for the portal home page");
+    expect(readFileSync(join(ROOT, "packages/profile/src/generation.ts"), "utf8")).not.toContain(`"${cle}"`);
+  });
+
   // Suites de Track 2 : les deux clés que le Garage (lot 41) et la règle de qualité (lot 45) écrivent sont nommées, dans les deux langues. Les clés sont lues dans le source du jeu :
   // une clé renommée sans la page échoue ici.
   it("le Garage et la qualité graphique sont nommés (cdj:track:garage, cdj:qualite), avec ce qu'ils gardent", () => {

@@ -52,6 +52,7 @@ import { construireOptions, nomDuJeu } from "./partageDuJour";
 import { tuileDuClassement } from "./classementVues";
 import { envoyer, lienDuPortail, textePartage } from "./partage";
 import { stockageDuPortail } from "./stockage";
+import { garderJour, jourGarde } from "./cacheJour";
 import { activerManette } from "@cdj/ui/src/manetteLien";
 
 // Lot M1 : cette page se pilote à la manette (son action principale : une ligne de `manette.ts`, chargée avec le menu).
@@ -76,6 +77,8 @@ let langue: Langue = lireLangue(stockage, navigator.languages).langue;
 /** Ce que le serveur a rendu (`null` : pas encore de réponse). */
 let lecture: Lecture | null = null;
 let chargement = false;
+/** Ce qui est affiché vient de la copie gardée dans le navigateur (la réponse du serveur n'est pas encore là) : si elle n'arrive pas, la copie reste, avec le message d'erreur. */
+let depuisLaCopie = false;
 /** Lot I3 : le message du dernier partage (« Ligne copiée… »), sous le bouton. */
 let messagePartage: string | null = null;
 // Lot F1 : « Mes jeux ». Le serveur fait foi pour un joueur qu'il connaît ; le navigateur garde la liste d'un visiteur (`cdj:favoris`), reprise dans le profil à sa création.
@@ -324,6 +327,7 @@ function basculerFavori(site: string): void {
       actuel.joueur = { ...actuel.joueur, ...r.data };
       favorisLocaux = { jeux: r.data.favoris ?? [], attente: false };
       ecrireFavorisLocaux(stockage, favorisLocaux);
+      garderJour(stockage, actuel, true);
     } else if (!r.ok) {
       if (actuel?.joueur) actuel.joueur = { ...actuel.joueur, favoris: precedent };
       const t = traduire(langue);
@@ -488,7 +492,9 @@ async function charger(ancien: string | null, essai = 0): Promise<void> {
     minuterie = setTimeout(() => void charger(ancien, essai + 1), 2000);
     return;
   }
-  lecture = l;
+  // Le serveur n'a pas répondu alors que la copie est à l'écran : elle reste (la page n'est pas vidée), avec le message discret.
+  lecture = !l.jour && depuisLaCopie && lecture?.jour ? { ...l, jour: lecture.jour, decalage: lecture.decalage } : l;
+  depuisLaCopie = false;
   // Lot R8 : une génération de données plus récente que celle de ce navigateur (remise à zéro du lancement) : ses données de jeu sont effacées,
   // la page recharge et il est un joueur neuf (le message le dit une fois).
   if (stockage && appliquerGeneration(stockage, generationDeReponse(l.jour)) === "efface") {
@@ -503,6 +509,7 @@ async function charger(ancien: string | null, essai = 0): Promise<void> {
     /* stockage refusé : l'avatar garde l'ancien pseudo */
   }
   recopierFavorisDuServeur();
+  if (l.jour) garderJour(stockage, l.jour, readIdentity(stockage).exists);
   // Lot N2 : le message de la réponse est semé (aucune requête de plus au chargement) ; la surveillance démarre une fois.
   if (l.jour) surveillance.semer(l.jour.annonce ?? null, l.decalage);
   if (!surveillanceActive) {
@@ -544,6 +551,12 @@ async function demarrer(): Promise<void> {
     const racine = document.getElementById("portail");
     const { lienDemo } = await import("./demo");
     if (racine) await lienDemo(stockage, langue, racine);
+  }
+  // La dernière réponse du serveur, s'il y en a une valable (même jour, même joueur) : la page est complète tout de suite, la réponse fraîche la corrige.
+  const copie = stockage ? jourGarde(stockage, parisDay(Date.now()), Date.now(), readIdentity(stockage).exists) : null;
+  if (copie) {
+    lecture = { jour: copie, decalage: 0, erreur: null };
+    depuisLaCopie = true;
   }
   rendre();
   battre();
