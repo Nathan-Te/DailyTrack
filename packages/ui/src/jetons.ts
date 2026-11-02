@@ -147,6 +147,21 @@ export const DUREES = {
   "dj-duree-longue": "200ms",
 } as const;
 
+/**
+ * Le voile à rayures posé sur la scène d'un écran de jeu (charte rév. 16, § 9) : **la seule définition**, lue par `creerCadre`, par les dialogues et les écrans de Track, de Jump et de Tower
+ * (`var(--dj-voile)`). **Deux tons sombres alternés, jamais une bande transparente** : l'asphalte à 85 % puis à 70 %. Les deux restent sombres même sur une scène claire (Banquise, Glace, Ciel :
+ * 64 et 97 sur 255 sur de la neige), la scène reste devinée et l'étiquette lisible ; avec des bandes transparentes (3/8 de la scène à nu) la neige faisait un zèbre illisible (constaté le 02/11).
+ * **Seule exception aux couleurs opaques de la charte** : une couleur à canal alpha (`#RRGGBBAA`), hors de `COULEURS` (leur test impose `#RRGGBB`) et hors de `JETONS` : les applications ne
+ * l'importent pas (aucun octet de plus dans leur JavaScript) ; elle n'existe qu'en CSS, dans le seul jeton `--dj-voile`, écrit par `cssDesJetons`. Le test `jetons.test.ts` vérifie qu'elles sont deux, sombres et distinctes.
+ */
+export const VOILES = {
+  "dj-voile-1": "#1E1B19D9",
+  "dj-voile-2": "#1E1B19B3",
+} as const;
+/** Le motif du voile : des bandes obliques à 115°, ni flou ni dégradé (deux aplats alternés). */
+// (une fonction, pas une constante : une constante calculée resterait dans le JavaScript des applications, qui importent ce fichier pour `valeurJeton`)
+export const motifVoile = (): string => `repeating-linear-gradient(115deg, ${VOILES["dj-voile-1"]} 0 5px, ${VOILES["dj-voile-2"]} 5px 10px)`;
+
 /** Tous les jetons, par famille, dans l'ordre du fichier CSS. */
 export const JETONS = { COULEURS, POLICES, TAILLES, RAYONS, TRAITS, OMBRES, ESPACES, CIBLES, DUREES } as const;
 
@@ -184,6 +199,8 @@ export function cssDesJetons(): string {
     lignes.push(`  /* ${famille.toLowerCase()} */`);
     for (const [nom, v] of Object.entries(valeurs)) lignes.push(`  --${nom}: ${v.startsWith("--") ? `var(${v})` : v};`);
   }
+  lignes.push("  /* voile des écrans de jeu (lot S1b) */");
+  lignes.push(`  --dj-voile: ${motifVoile()};`);
   lignes.push("}");
   return lignes.join("\n") + "\n";
 }

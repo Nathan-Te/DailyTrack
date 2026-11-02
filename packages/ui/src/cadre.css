@@ -1,5 +1,5 @@
 /* Le cadre d'un écran de jeu posé sur sa scène (cadre.ts ; lot I4b, charte rév. 8 § 9). Chargée par les jeux seulement (pas par styles.css : le
-   portail n'en a pas besoin). Le jeu règle : `--cadre-voile` (le motif du voile, encre par défaut), `--cadre-largeur` (largeur de la barre et de ce qui
+   portail n'en a pas besoin). Le voile est celui du socle (`--dj-voile`, jetons.ts : aucun jeu ne le redéfinit). Le jeu règle : `--cadre-largeur` (largeur de la barre et de ce qui
    défile), `--z-cadre` et `--z-cadre-haut` (ses couches), l'habillage de son étiquette (et de sa coque). Valeurs : jetons seulement. */
 .cadre {
   position: fixed;
@@ -10,8 +10,8 @@
   align-items: center;
   justify-content: center;
   padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-  /* Un voile à rayures sur la scène : un motif net, ni flou ni transparence (§ 9). */
-  background: var(--cadre-voile, repeating-linear-gradient(115deg, var(--dj-encre) 0 3px, transparent 3px 8px));
+  /* Un voile à rayures sur la scène : deux tons sombres alternés (`--dj-voile`, la seule définition : jetons.ts), jamais une bande transparente (§ 9, rév. 16). */
+  background: var(--dj-voile);
   color: var(--dj-encre);
   font-family: var(--dj-police-texte);
   font-size: var(--dj-taille-15);
@@ -70,4 +70,14 @@
 /* Un seul voile : un sous-écran ouvert efface les écrans du dessous. */
 body:has(.cadre--haut:not([hidden])) .cadre:not(.cadre--haut) {
   visibility: hidden;
+}
+/* Lot S1b (charte rév. 16, § 10) : au toucher, aucun anneau — le focus posé par un jeu sur l'action principale de son écran (« COURIR », « JOUER ») n'est pas un focus de clavier, mais un navigateur dessine l'anneau
+   d'un focus posé par un script tant que rien n'a été touché (le bouton cerclé de moutarde d'un téléphone, constaté le 02/11). Sur un appareil qui n'a que le toucher (`any-pointer: coarse` sans `fine` :
+   téléphone, tablette sans souris), les dialogues des jeux n'encadrent rien. La manette garde son anneau : la règle de `manette.css` (`html[data-entree="manette"] :focus…`, l'état « dernière entrée » du
+   lot M1) est plus précise. **Sans JavaScript, donc sans octet dans le premier chargement des jeux** (un état « dernière entrée » du clavier coûtait ≈ 100 o à chaque jeu). Limite assumée : un clavier
+   branché à un appareil sans souris ne voit pas non plus l'anneau. Retiré, jamais rendu transparent. */
+@media (any-pointer: coarse) and (not (any-pointer: fine)) {
+  [role="dialog"] :focus-visible {
+    outline: 0;
+  }
 }

@@ -19,8 +19,6 @@
   --z-aide: 38;
   --z-reglages: 40;
   --z-outil: 45; /* l'outil de réglage interne (?debug&tune) passe devant tout */
-  /* Le voile à rayures (charte § 9 : motif net, ni flou ni transparence) : des traits d'encre à 115° sur la scène. */
-  --voile-rayures: repeating-linear-gradient(115deg, var(--dj-encre) 0 3px, transparent 3px 8px);
 }
 html {
   margin: 0;
@@ -483,7 +481,7 @@ textarea.champ {
   align-items: center;
   justify-content: center;
   padding: max(8px, env(safe-area-inset-top, 0)) max(8px, env(safe-area-inset-right, 0)) max(8px, env(safe-area-inset-bottom, 0)) max(8px, env(safe-area-inset-left, 0));
-  background: var(--voile-rayures);
+  background: var(--dj-voile);
   touch-action: none;
   font-family: var(--dj-police-texte);
 }

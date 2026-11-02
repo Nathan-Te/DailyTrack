@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { COULEURS, JETONS, cssDesJetons, valeurJeton, varJeton } from "../src/jetons";
+import { COULEURS, JETONS, VOILES, cssDesJetons, valeurJeton, varJeton } from "../src/jetons";
+import { luminance } from "../src/contraste";
 
 // Lot I1 : une seule source pour les jetons (jetons.ts) ; jetons.css en est généré et doit être à jour. Les feuilles et les composants
 // n'écrivent aucune couleur ni police en dur : tout passe par `var(--…)`.
@@ -51,5 +52,32 @@ describe("jetons de la charte", () => {
       // Ombres : jamais de flou (troisième longueur non nulle).
       for (const m of texte.matchAll(/box-shadow:\s*([^;]+);/g)) expect(m[1], `${f} : ${m[1]}`).not.toMatch(/-?\d+px\s+-?\d+px\s+[1-9]\d*px/);
     }
+  });
+  // Lot S1b (charte rév. 16, § 9) : le voile des écrans de jeu a deux tons sombres alternés, jamais une bande transparente ; une seule définition (`--dj-voile`), lue partout.
+  it("le voile : deux tons sombres distincts, assez couverts pour qu'une scène claire n'y fasse pas de zèbre, une seule définition", () => {
+    const tons = Object.values(VOILES);
+    expect(tons).toHaveLength(2);
+    expect(new Set(tons).size).toBe(2);
+    const alphas = tons.map((v) => {
+      expect(v).toMatch(/^#[0-9A-F]{8}$/);
+      return parseInt(v.slice(7), 16) / 255;
+    });
+    for (const a of alphas) expect(a, "jamais une bande transparente : au moins 70 % de couverture").toBeGreaterThanOrEqual(0.7);
+    // Sur de la neige (blanc), chaque bande reste sombre et les deux sont proches : un voile calme.
+    const sur = (v: string, fond: number) => {
+      const a = parseInt(v.slice(7), 16) / 255;
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(v.slice(i, i + 2), 16));
+      return [r, g, b].map((c) => c! * a + fond * (1 - a));
+    };
+    const [clair, moyen] = tons.map((v) => sur(v, 255)[0]!);
+    expect(Math.max(clair!, moyen!)).toBeLessThan(110);
+    expect(Math.abs(clair! - moyen!)).toBeLessThan(45);
+    expect(luminance("#1E1B19")).toBeLessThan(0.02);
+    // Une seule définition : aucune feuille d'application ne redessine un voile (ni `--cadre-voile` ni `--voile-rayures`).
+    for (const f of ["apps/web/src/interface.css", "apps/jump/src/interface.css", "apps/tower/src/base.css", "apps/portail/src/vitrine.css"]) {
+      const texte = readFileSync(join(SRC, "../../..", f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      expect(texte, f).not.toMatch(/--(cadre-voile|voile-rayures)\s*:/);
+    }
+    expect(cssDesJetons()).toContain("--dj-voile: repeating-linear-gradient(115deg, #1E1B19D9 0 5px, #1E1B19B3 5px 10px)");
   });
 });

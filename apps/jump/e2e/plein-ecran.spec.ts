@@ -1,6 +1,9 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { auditAxe } from "./axe";
-import { FIXED_NOW, shiftDate } from "./clock";
+import { formatDay, parseDay } from "@cdj/core";
+import { jumpThemeForDay } from "@cdj/jump-sim";
+import { verifierAccueilTelephone, verifierFocusTactile } from "./accueilTelephone";
+import { FIXED_NOW, TODAY, shiftDate } from "./clock";
 import { boxes, expectCentreLibre, expectNoOverlap, SURIMPRESSIONS } from "./layout";
 import { hasWebGL } from "./phone";
 
@@ -114,11 +117,15 @@ for (const viewport of [
   });
 }
 
+// Lot S1b : en paysage, sur le thème le plus clair de Jump (Glace), l'étiquette est complète et les plaques ne la recouvrent pas (le portrait, parcours Essentiel : `jour.spec.ts`).
 for (const viewport of [
   { width: 844, height: 390 },
 ]) {
-  test(`accueil ${viewport.width}×${viewport.height} : le plein écran est dans la barre des jeux, à côté de la date ; il bascule`, async ({ browser }) => {
+  test(`accueil ${viewport.width}×${viewport.height}, thème Glace : le plein écran est dans la barre des jeux, à côté de la date ; il bascule ; l'étiquette est complète, Discord et Ko-fi ne la recouvrent pas, aucun anneau au toucher`, async ({ browser }) => {
     const context = await telephone(browser, viewport);
+    const depart = parseDay(TODAY)! + 30; // au-delà des niveaux déjà figés : leur thème est celui de leur version, pas celui du sac d'aujourd'hui
+    const glace = [...Array(30).keys()].map((d) => depart + d).find((jour) => jumpThemeForDay(jour) === "glace")!;
+    await shiftDate(context, Date.now() + (Date.parse(`${formatDay(glace)}T12:00:00Z`) - FIXED_NOW)); // « aujourd'hui » est un jour Glace (s'ajoute au décalage de `telephone`)
     await noterLesVerrous(context);
     try {
       const page = await context.newPage();
@@ -138,17 +145,19 @@ for (const viewport of [
       await expect(bouton).toHaveAttribute("aria-pressed", "false");
       // Lot S1 : Discord et Ko-fi, deux plaques de 44 px en bas à gauche, en liens sortants ; elles ne chevauchent ni JOUER, ni la coque, ni les autres boutons ; jamais en partie.
       await expect(page.locator("#communaute")).toBeVisible();
-      const plaques = await boxes(page, ["#communaute-discord", "#communaute-kofi", "#home-play", "#home-ghost"]);
-      expect(plaques).toHaveLength(4); // la rangée Archives / Comment jouer / Réglages défile au-dessus de la bande réservée aux plaques (la coque dépasse l'écran en 844 × 390)
-      for (const b of plaques.slice(0, 2)) expect(b.h).toBe(44);
-      expect(plaques[0]!.x, "bas à gauche").toBeLessThan(viewport.width / 4);
-      expectNoOverlap(plaques, viewport);
+      await expect(page.locator("#home .accueil__titre")).toBeVisible();
+      await expect(page.locator("#home .accueil__niveau")).toContainText("Glace");
+      await verifierFocusTactile(page, "#home"); // lot S1b : « JOUER » a le focus, rien ne se voit au toucher
+      await verifierAccueilTelephone(page, { etiquette: "#home .etiquette", defile: "#home .accueil__defile", blocs: [".accueil__titre", ".accueil__tuiles", "#home-ghost", ".classement-jour", "#home-play"], principal: "#home-play", barre: "#home .dj-barre-jeu" });
+      // Les liens (lots S1 et S1b) : de simples liens sortants, sans rien qui identifie le joueur ; le nom est lu (`aria-label`).
       for (const [id, href] of [["discord", "https://discord.gg/2KZkUSpDej"], ["kofi", "https://ko-fi.com/C7X829MCE1"]] as const) {
         const lien = page.locator(`#communaute-${id}`);
         await expect(lien).toHaveAttribute("href", href);
         await expect(lien).toHaveAttribute("target", "_blank");
         await expect(lien).toHaveAttribute("rel", "noopener noreferrer");
+        await expect(lien).toHaveText(""); // l'icône seule
       }
+      await page.locator("#home .accueil__defile").evaluate((e) => e.scrollTo(0, 0)); // le bouton est dans la barre, au-dessus de ce qui défile
       await bouton.click();
       await expect(bouton).toHaveAttribute("aria-pressed", "true");
       await expect(bouton).toHaveAttribute("aria-label", "Quitter le plein écran");
