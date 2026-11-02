@@ -37,21 +37,32 @@
 .dj-cartouche--avec-favori {
   position: relative;
 }
-/* La cartouche compacte : une ligne, mêmes coque, couleurs et étiquette que la pleine (variante, pas un nouveau dessin). Les stries de préhension laissent la place. */
+/* La cartouche compacte : une ligne, mêmes coque, couleurs et étiquette que la pleine (variante, pas un nouveau dessin). Les stries de préhension laissent la place ; les décors de
+   l'étiquette (dessin de Jump et de Tower) aussi — le nom, le numéro et la couleur du jeu restent ; la livrée de Track n'est plus qu'une bande étroite, sous laquelle le texte ne passe pas. */
 .dj-cartouche--compacte {
+  position: relative;
   flex-direction: row;
   align-items: center;
   gap: var(--dj-espace-3);
   padding: var(--dj-espace-3) var(--dj-espace-4);
 }
-.dj-cartouche--compacte .dj-cartouche__stries {
+.dj-cartouche--compacte .dj-cartouche__stries,
+.dj-cartouche--compacte .jump-etiquette__dessin,
+.dj-cartouche--compacte .tower-etiquette__dessin {
   display: none;
 }
 .dj-cartouche--compacte .dj-etiquette {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  padding: var(--dj-espace-2) var(--dj-espace-4);
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+}
+.dj-cartouche--compacte .track-etiquette {
+  padding-right: 52px;
+}
+.dj-cartouche--compacte .track-etiquette__livree {
+  width: 40px;
+  right: -8px;
 }
 .dj-cartouche--compacte .dj-cartouche__action {
   flex: none;
@@ -61,4 +72,3 @@
   min-height: var(--dj-cible);
   padding: 0 var(--dj-espace-5);
 }
-

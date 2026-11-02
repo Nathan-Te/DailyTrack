@@ -694,6 +694,11 @@
 .portail-etagere--compacte {
   gap: var(--dj-espace-4);
 }
+@media (min-width: 600px) {
+  .portail-etagere.portail-etagere--compacte {
+    grid-template-columns: minmax(0, 1fr); /* une ligne par jeu, jamais deux colonnes étroites */
+  }
+}
 .portail-etagere--compacte .track-etiquette__tete,
 .portail-etagere--compacte .jump-etiquette__tete,
 .portail-etagere--compacte .tower-etiquette__tete {
@@ -729,7 +734,8 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.dj-cartouche--avec-favori > .dj-badge-nouveau {
+.dj-cartouche--avec-favori > .dj-badge-nouveau,
+.dj-cartouche--compacte > .dj-badge-nouveau {
   position: absolute;
   top: -12px;
   left: var(--dj-espace-5);
