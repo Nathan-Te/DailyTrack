@@ -1,7 +1,7 @@
 import type { Langue } from "@cdj/profile";
 import { CATALOGUE_COMMUN, traducteur } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
-import type { Etat, Jour } from "./jour";
+import { jeuxDeLaJournee, type Etat, type Jour } from "./jour";
 import type { JeuPartage, OptionsPartage } from "./partage";
 
 // Lot I3 : de la réponse du serveur (`GET /api/portail/jour`) aux options de la ligne de partage (`partage.ts`). Les mots (le titre, les noms des jeux)
@@ -23,7 +23,8 @@ export const nomDuJeu = (t: T, jeu: { jeu: string; nom?: string }): string => (j
 export function construireOptions(t: T, jour: Jour, lien: string): OptionsPartage | null {
   const joueur = jour.joueur;
   if (!joueur) return null;
-  const jeux: JeuPartage[] = jour.jeux.filter((j) => j.compte !== false).map((j) => ({ // lot P : un jeu qui ne compte pas encore n'est pas dans la ligne à partager
+  // Lot P : un jeu qui ne compte pas encore n'est pas dans la ligne à partager ; lot F1 : elle ne cite que mes jeux (`jeuxDuJour`), tous les jeux sans favori.
+  const jeux: JeuPartage[] = jeuxDeLaJournee(jour.jeux, joueur.jeuxDuJour).map((j) => ({
     nom: nomDuJeu(t, j),
     statut: estFini(j.etat) ? { fini: true, medaille: j.etat.medaille } : { fini: false },
   }));

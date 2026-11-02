@@ -2,7 +2,7 @@ import type { CleCommune } from "./catalogue";
 import { el, svg } from "./dom";
 import { formatDateCourte, formatNumeroJour, majuscule } from "./formats";
 import { LANGUES, type Langue, type Traducteur } from "./i18n";
-import { icone } from "./icones";
+import { icone, iconeEtoile } from "./icones";
 import { astuceIphoneAPropos, basculerPleinEcran, pleinEcranActif, pleinEcranBoutonVisible, pleinEcranParEcranAccueil, reglagesAideIphone, surChangementPleinEcran } from "./pleinEcran";
 
 // Les composants de base de la charte « Cartouches » (lot I1) : des fonctions qui construisent des éléments du DOM portant les classes de
@@ -51,6 +51,13 @@ export interface OptionsCartouche {
   etiquette: HTMLElement;
   /** L'action sous l'étiquette (un `bouton`). */
   action?: HTMLElement;
+  /**
+   * Lot F1 (« Les autres jeux ») : la **variante compacte** — une ligne : l'étiquette (son nom et son numéro, sans texte ni statut : l'appelant ne les donne pas) puis l'action et, s'il y en a
+   * une, l'étoile. Elle garde la coque, les couleurs et la police du jeu (mêmes classes, mêmes jetons) : ce n'est pas un nouveau dessin par jeu.
+   */
+  compacte?: boolean;
+  /** Lot F1 : le bouton étoile (`boutonFavori`), posé au coin de la cartouche pleine ou en fin de ligne de la compacte. Il vient après l'action dans l'ordre du clavier. */
+  favori?: HTMLElement;
   attrs?: Record<string, string>;
 }
 
@@ -58,11 +65,36 @@ export interface OptionsCartouche {
 export function cartouche(o: OptionsCartouche): HTMLElement {
   return el(
     "article",
-    { classe: ["dj-cartouche", o.jeu && `dj-cartouche--${o.jeu}`], attrs: o.attrs },
+    { classe: ["dj-cartouche", o.jeu && `dj-cartouche--${o.jeu}`, o.compacte && "dj-cartouche--compacte", o.favori && !o.compacte && "dj-cartouche--avec-favori"], attrs: o.attrs },
     el("div", { classe: "dj-cartouche__stries", attrs: { "aria-hidden": "true" } }),
     o.etiquette,
     o.action ? el("div", { classe: "dj-cartouche__action" }, o.action) : null,
+    o.favori ?? null,
   );
+}
+
+export interface OptionsBoutonFavori {
+  /** Le jeu est-il épinglé ? */
+  epingle: boolean;
+  /** Le nom lu du bouton, déjà traduit : « Ajouter Track à mes jeux » / « Retirer Track de mes jeux » (les textes sont ceux du catalogue de l'application : les jeux ne portent pas ceux du portail). */
+  nom: string;
+  onClick?: (e: MouseEvent) => void;
+  /** Lot F1 : posé au coin d'une cartouche pleine (`coin`, par défaut) ou dans la ligne d'une compacte (`ligne`). */
+  place?: "coin" | "ligne";
+}
+
+/**
+ * Lot F1 — l'étoile de « Mes jeux » : un bouton de 44 px qui épingle ou retire un jeu. `aria-pressed` dit l'état ; son nom lu dit l'action (« Ajouter Track à mes jeux » /
+ * « Retirer Track de mes jeux », texte fourni par l'appelant). Pleine `--dj-moutarde` = épinglé, contour = non (la forme change aussi : l'étoile se remplit).
+ */
+export function boutonFavori(o: OptionsBoutonFavori): HTMLButtonElement {
+  const b = el("button", {
+    classe: ["dj-favori", `dj-favori--${o.place ?? "coin"}`],
+    attrs: { type: "button", "aria-pressed": o.epingle ? "true" : "false", "aria-label": o.nom },
+  }) as HTMLButtonElement;
+  b.append(iconeEtoile({ taille: 22 }));
+  if (o.onClick) b.addEventListener("click", (ev) => o.onClick!(ev as MouseEvent));
+  return b;
 }
 
 export interface OptionsEtiquette {

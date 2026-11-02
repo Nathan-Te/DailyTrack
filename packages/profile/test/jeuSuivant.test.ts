@@ -73,3 +73,22 @@ for (const [COURANT, nom, autreCode, autreSite, autreNom] of [
     });
   });
 }
+
+// Lot F1 : « Mes jeux » — le jeu suivant et la journée parfaite ne portent que sur les jeux du jour du joueur (`joueur.jeuxDuJour`, leurs dossiers).
+describe("suiteDuJour sur « mes jeux » (lot F1)", () => {
+  const monde = (etats: Record<string, unknown>, jeuxDuJour?: string[]) => ({
+    date: "2026-11-02",
+    jeux: [jeu("cdj", "track", "Track", etats.track), jeu("jump", "jump", "Jump", etats.jump), jeu("tower", "tower", "Tower", etats.tower)],
+    ...(jeuxDuJour ? { joueur: { pseudo: "x", jeuxDuJour } } : {}),
+  });
+  it("un jeu qui n'est pas dans mes jeux n'est pas proposé : mes jeux finis, c'est la journée parfaite", () => {
+    expect(suiteDuJour(monde({ track: fini, jump: pasJoue, tower: pasJoue }, ["track"]), "cdj")).toEqual({ kind: "parfaite", href: "../" });
+  });
+  it("le premier de mes jeux non fini, pas un autre", () => {
+    expect(suiteDuJour(monde({ track: fini, jump: pasJoue, tower: pasJoue }, ["track", "tower"]), "cdj")).toEqual({ kind: "suivant", jeu: "tower", nom: "Tower", href: "../tower/" });
+  });
+  it("sans liste (serveur plus ancien) ou vide : tous les jeux, comme avant", () => {
+    expect(suiteDuJour(monde({ track: fini, jump: pasJoue, tower: pasJoue }), "cdj")).toMatchObject({ kind: "suivant", jeu: "jump" });
+    expect(suiteDuJour(monde({ track: fini, jump: pasJoue, tower: pasJoue }, []), "cdj")).toMatchObject({ kind: "suivant", jeu: "jump" });
+  });
+});

@@ -1,6 +1,7 @@
 import { formatDay, parseDay } from "@cdj/core";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "@cdj/core/lancement";
-import { parisDayStart } from "@cdj/clock";
+import { parisDay, parisDayStart } from "@cdj/clock";
+import { estNouveau, favorisLe, jeuxDeLaBase, jourDEffet, listeApresChoix, listeDeFavoris, mesJeuxDuJour, type PeriodeFavoris } from "@cdj/core/favoris";
 import { WithHeaders } from "./cache";
 import { classerLaJournee, ligneDe, placer, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
 import { HttpError } from "./errors";
@@ -31,6 +32,12 @@ import type { ClasseDuJour, EtatPortail, JourPortail, MedaillePortail, Platform,
 // **Journée parfaite** : un jour où le joueur a fini **tous les jeux qui existaient ce jour-là** (premier jour de chaque jeu). Les jours sont des
 // numéros de jours de Paris (`parisDay`) : un jour de 23 h ou de 25 h (changements d'heure) compte pour un, comme tous les autres.
 //
+// **Mes jeux (lot F1)** : le joueur épingle des jeux (`PUT /api/portail/favoris`, la liste entière, table `favoris_jeux` : une ligne par changement). La journée parfaite, « n fini sur m »,
+// la série et la ligne de partage portent sur **mes jeux** (tous les jeux du jour sans favori). **Un changement compte à partir du lendemain** (`@cdj/core/favoris`) : chaque jour est
+// jugé avec la liste qui était la sienne (l'historique est gardé), sauf pour un joueur dont le profil est créé aujourd'hui (son premier choix compte tout de suite). Le classement du jour
+// **ne change pas** (il suit les jeux du classement général). `GET /api/portail/jour` porte `joueur.favoris` (la liste choisie, `null` : jamais choisie) et `joueur.jeuxDuJour` (les
+// jeux qui comptent pour lui aujourd'hui) ; chaque jeu de la liste porte `nouveau` pendant 7 jours après son ouverture.
+//
 // **Cache** (règle du lot P4, `cache.ts`) : sans joueur, la réponse est **publique**, gardée au plus `PORTAIL_PUBLIC_MAX_S` et jamais au-delà
 // du prochain minuit de Paris ; avec `X-Player-Id`, **jamais publique** (`private, no-cache`). Les deux portent `Vary: X-Player-Id` : un cache
 // partagé qui garde la réponse publique ne la sert pas à une requête qui porte un identifiant. Lectures comptées **en mémoire** (aucune écriture,
@@ -42,6 +49,9 @@ export const PORTAIL_PUBLIC_MAX_S = 60;
 export const PORTAIL_READS_PER_CLIENT = 120;
 /** Lectures du portail par joueur et par fenêtre. */
 export const PORTAIL_READS_PER_PLAYER = 60;
+/** Lot F1 : écritures de la liste des jeux épinglés par adresse et par joueur et par fenêtre (10 minutes) : un joueur touche quelques étoiles, jamais des dizaines. */
+export const FAVORIS_PER_CLIENT = 40;
+export const FAVORIS_PER_PLAYER = 20;
 
 // Lot R8 : le premier jour de la journée commune (« Du Jour #1 », le lancement public) n'est plus une constante d'ici : il vient de
 // `config/lancement.json` par `@cdj/core` (`PREMIER_JOUR_DU_JOUR`, `numeroDeJournee`). `createPortailRoutes(…, premierJour)` le reçoit (la
@@ -82,6 +92,8 @@ export interface JeuDuJour extends JourPortail {
    * partir du premier jour entier où il est `on`. Il est quand même présent à l'accueil (jouable) ; un client qui compte « combien de jeux finis sur combien » ne compte que ceux-là.
    */
   compte: boolean;
+  /** Lot F1 : présent (et vrai) pendant les 7 jours qui suivent l'ouverture du jeu (`estNouveau`) : la pastille « Nouveau » de l'accueil. Absent pour un jeu d'avant l'interrupteur. */
+  nouveau?: true;
   /** Lot P : présent (et vrai) seulement sur un aperçu de PR, pour un jeu qui n'est pas encore `on` : le portail le montre avec le badge « Brouillon ». */
   brouillon?: true;
 }
@@ -159,7 +171,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
           log("WARNING", "portail : jour d'un jeu indisponible", { jeu: j.code, error: e instanceof HttpError ? e.code : "inconnue" });
           jour = { numero: day - j.portail.premierJour + 1, theme: null, seuils: null };
         }
-        return { jeu: j.code, site: j.portail.site, nom: j.portail.nom, premierJour: formatDay(j.portail.premierJour), compte: compte(j, day), ...(surLeSite(j) ? {} : { brouillon: true as const }), ...jour };
+        return { jeu: j.code, site: j.portail.site, nom: j.portail.nom, premierJour: formatDay(j.portail.premierJour), compte: compte(j, day), ...(estNouveau(etats?.liveFrom(j.portail.site) ?? null, day) ? { nouveau: true as const } : {}), ...(surLeSite(j) ? {} : { brouillon: true as const }), ...jour };
       }),
     );
   }
@@ -182,9 +194,30 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     };
   }
 
-  async function serieDe(id: string, day: number): Promise<Serie> {
-    const finis = await Promise.all(jeux.map(async (j) => ({ premierJour: j.portail.premierJour, finis: new Set(await j.portail.joursFinis(id)), compte: (d: number) => compte(j, d) })));
+  // --- Lot F1 : Mes jeux ------------------------------------------------------------------------------------------------------------
+  /** L'historique des jeux épinglés d'un joueur (une requête sur la clé : une ligne par changement), du plus ancien au plus récent. Aucune ligne : il n'a jamais rien choisi. */
+  async function favorisDe(id: string): Promise<PeriodeFavoris[]> {
+    const rows = await platform.db.all<{ du: number; jeux: string }>("SELECT du, jeux FROM favoris_jeux WHERE player_id = ? ORDER BY du", [id]);
+    return rows.map((r) => [r.du, jeuxDeLaBase(r.jeux)] as const);
+  }
+  /** Les jeux de la journée de ce joueur ce jour-là (les `JeuPortail`) : ses favoris parmi les jeux qui comptent, sinon tous ceux qui comptent. */
+  const jeuxDe = (periodes: readonly PeriodeFavoris[], day: number): JeuPortail[] => {
+    const comptent = comptes(day);
+    const choisis = new Set(mesJeuxDuJour(comptent.map((j) => j.portail.site), favorisLe(periodes, day)));
+    return comptent.filter((j) => choisis.has(j.portail.site));
+  };
+
+  async function serieDe(id: string, day: number, periodes?: readonly PeriodeFavoris[]): Promise<Serie> {
+    const mes = periodes ?? (await favorisDe(id));
+    // Chaque jour est jugé avec la liste qui était la sienne : un jeu compte ce jour-là s'il compte pour la plateforme ET s'il est dans les jeux du joueur.
+    const dansMesJeux = (j: JeuPortail, d: number) => mes.length === 0 || jeuxDe(mes, d).includes(j);
+    const finis = await Promise.all(jeux.map(async (j) => ({ premierJour: j.portail.premierJour, finis: new Set(await j.portail.joursFinis(id)), compte: (d: number) => compte(j, d) && dansMesJeux(j, d) })));
     return serieEtParfaites(day, finis);
+  }
+
+  /** Ce que le portail sait des jeux épinglés d'un joueur : sa liste (`null` : jamais choisie) et les jeux qui comptent pour lui aujourd'hui (les jeux visibles, dans l'ordre de la plateforme). */
+  function etatFavoris(periodes: readonly PeriodeFavoris[], day: number, visibles: (j: JeuPortail) => boolean) {
+    return { favoris: periodes.length > 0 ? [...periodes[periodes.length - 1]![1]] : null, jeuxDuJour: jeuxDe(periodes, day).filter(visibles).map((j) => j.portail.site) };
   }
 
   /**
@@ -296,7 +329,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     // Lot I3 : le classement du jour gardé (calculé au plus une fois par fenêtre et par instance : jamais à chaque visite) donne sa place et ses classés ;
     // son cumul est exact (ses états à l'instant). Aucun jeu fini aujourd'hui : pas de rang.
     const c = await classementDe(day);
-    const [etatsJoueur, serie] = await Promise.all([etatsDe(id, day, ouverts, c), serieDe(id, day)]);
+    const periodes = await favorisDe(id);
+    const [etatsJoueur, serie] = await Promise.all([etatsDe(id, day, ouverts, c), serieDe(id, day, periodes)]);
     const etatDe = new Map<string, EtatPortail>(ouverts.map((j, i) => [j.code, etatsJoueur[i]!] as const));
     // Un jeu présent à l'accueil mais qui ne compte pas encore (activé aujourd'hui) a quand même son état : le joueur peut y jouer.
     await Promise.all(
@@ -313,7 +347,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const body = {
       ...publique,
       jeux: publique.jeux.map((j) => ({ ...j, etat: etatDe.get(j.jeu) ?? { statut: "pas_joue" } })),
-      joueur: { pseudo: row.name, ...serie, cumulMs, rangDuJour, classesDuJour },
+      joueur: { pseudo: row.name, ...serie, cumulMs, rangDuJour, classesDuJour, ...etatFavoris(periodes, day, (j) => toutVoir || surLeSite(j)) },
     };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
@@ -412,6 +446,44 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
 
+  /**
+   * `PUT /api/portail/favoris` (lot F1) : la liste entière des jeux épinglés (`{ favoris: ["track", …] }`), pour un joueur connu. Un jeu qui n'est pas ouvert (`on`) ne s'épingle pas
+   * (écarté ; celui qui l'était déjà reste dans la liste : il revient avec le jeu). Le choix compte **à partir de demain**, sauf pour un profil créé aujourd'hui (`jourDEffet`). Un choix qui
+   * rend la liste déjà en vigueur la veille n'écrit rien de plus qu'un effacement (basculer une étoile puis la remettre ne laisse aucune ligne). Réponse : ce que le portail a besoin de redessiner.
+   */
+  async function ecrireFavoris(req: Request, info: RequestInfo): Promise<WithHeaders> {
+    const id = joueurDe(req);
+    if (!id) throw new HttpError(400, "invalid_player", "Identifiant de joueur manquant (en-tête X-Player-Id)");
+    await platform.hitAddress(info, "pfv", FAVORIS_PER_CLIENT);
+    await platform.hit(await hashKey("pfvp", id), FAVORIS_PER_PLAYER);
+    const corps = await platform.readJson(req);
+    const demandes = listeDeFavoris(corps.favoris);
+    const connus = new Set(jeux.map((j) => j.portail.site));
+    if (!demandes || demandes.some((j) => !connus.has(j))) throw new HttpError(400, "invalid_json", "Liste de jeux illisible ou jeu inconnu");
+    await charger();
+    await joueurConnu(id);
+    const toutVoir = etats?.apercuDePr(req) ?? false;
+    const visible = (j: JeuPortail) => toutVoir || surLeSite(j);
+    const jour = today();
+    const [periodes, ligne] = await Promise.all([favorisDe(id), platform.db.first<{ created_at: number }>("SELECT created_at FROM players WHERE id = ?", [id])]);
+    const actuels = periodes.length > 0 ? periodes[periodes.length - 1]![1] : [];
+    const liste = listeApresChoix(demandes, actuels, new Set(jeux.filter(visible).map((j) => j.portail.site)));
+    const du = jourDEffet(jour, ligne ? parisDay(ligne.created_at) === jour : false);
+    // La liste en vigueur juste avant ce jour-là (sans la ligne qu'on va écrire) : si le choix la rétablit, la ligne en attente disparaît.
+    const sans = periodes.filter(([d]) => d !== du);
+    const avant = favorisLe(sans, du) ?? [];
+    const identique = avant.length === liste.length && liste.every((j) => avant.includes(j));
+    const ecriture = identique
+      ? { sql: "DELETE FROM favoris_jeux WHERE player_id = ? AND du = ?", params: [id, du] }
+      : { sql: "INSERT INTO favoris_jeux (player_id, du, jeux) VALUES (?, ?, ?) ON CONFLICT (player_id, du) DO UPDATE SET jeux = excluded.jeux", params: [id, du, JSON.stringify(liste)] };
+    await platform.db.run(ecriture.sql, ecriture.params);
+    const apres: PeriodeFavoris[] = identique ? sans : [...sans, [du, liste] as const].sort((a, b) => a[0] - b[0]);
+    // Les caches de ce joueur : la réponse du jour est `private, no-cache` et se recalcule à chaque requête (série et jeux du jour lus ici dans la même foulée) ; le classement du jour
+    // gardé en mémoire ne dépend pas de ses favoris (il suit les jeux du classement général) : rien à vider.
+    const serie = await serieDe(id, jour, apres);
+    return new WithHeaders({ ...etatFavoris(apres, jour, visible), ...serie, effetLe: formatDay(du) }, { "Cache-Control": "no-store", Vary: "X-Player-Id" });
+  }
+
   async function profil(req: Request, info: RequestInfo): Promise<WithHeaders> {
     const id = joueurDe(req);
     if (!id) throw new HttpError(400, "invalid_player", "Identifiant de joueur manquant (en-tête X-Player-Id)");
@@ -435,6 +507,10 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     if (path === "/api/portail/profil") {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       return await profil(req, info);
+    }
+    if (path === "/api/portail/favoris") {
+      if (req.method !== "PUT") throw new HttpError(405, "method_not_allowed", "PUT attendu");
+      return await ecrireFavoris(req, info);
     }
     if (path === "/api/portail/classement") {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
