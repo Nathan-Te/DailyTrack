@@ -190,7 +190,7 @@ const maxAttemptsV4 = (simVersion: number): number => (simVersion >= LASER_VERSI
 /** Sels des graines : `mixSeed(jour, DAILY_SALT)`, et des groupes de repos. */
 const DAILY_SALT = 0x6a6f7572;
 /** Lot 32 (g26) : le sel des niveaux de la version 14, choisi par mesure (365 dates : 0 secours, aucun retour de morceau avant 4 jours) — `JUMP_SALT_G26`. */
-const DAILY_SALT_G26 = 0x6a6f758a;
+const DAILY_SALT_G26 = 0x6a6f759a;
 
 /**
  * **Course à vide** (lot 6) : le temps passé au sol **sans appui de saut** quand le centre du personnage est au-dessus d'un palier de

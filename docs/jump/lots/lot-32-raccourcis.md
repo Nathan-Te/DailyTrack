@@ -18,7 +18,7 @@ Versions : `JUMP_SIM_VERSION` **14** · `JUMP_GENERATOR_VERSION` **26** (`…-g2
 1. **Validation sur le palier (v14)** : le personnage vivant est dans la zone — centre dans les 2 colonnes du palier, pieds à au plus 3 rangées au-dessus du sol — à la fin d'un pas. Traversé 8 rangées au-dessus : pas de fanion ; posé en tombant du puits : fanion. **Les alternés ne sont plus remis à A en prenant un point** (retour de Nathan sur le seed du 27/11) : la parité ne change que par un saut ; la preuve de l'auteur doit donc arriver en A à chaque morceau à alternés (`Level.altKeep` dans la chaîne des solutions) — les jours de néon demandent plus de tirages.
 2. **Règle « aucun raccourci par point de passage » (g26)** : propagation case par case depuis le point d'avant (ou le départ), la fin de la portion (6 rangées au ras du sol) et la cage de la voie lente fermées : la zone ne doit pas être atteinte. Confirmée par le solveur dans `tools/raccourcis.ts` et les tests (le n° 18 : trouvé en 2,4 s).
 3. **Corrections d'assemblage** (au lieu de refuser au cas par cas) : le **puits d'un palier de raccord est fermé à 6 rangées** (« plafond trop haut au-dessus d'un palier ») ; la **descente d'une voie lente** (« palier sous une descente ») est creusée jusque-là, murée du côté où le morceau voisin fuit (une seule colonne, le script de la voie prend l'autre) ; refus si les deux côtés fuient. Ces contrôles se font **avant la preuve**.
-4. **Sel de g26** `0x6a6f758a` choisi par mesure (voir les décisions).
+4. **Sel de g26** `0x6a6f759a` choisi par mesure (voir les décisions).
 
 ## Mesures (120 dates, sauf mention ; g25 reconstruit sur la même machine)
 | mesure | g25 | g26 |
