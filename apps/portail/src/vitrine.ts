@@ -1,4 +1,5 @@
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/favoris.css";
 import "@cdj/ui/src/cadre.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
@@ -252,7 +253,7 @@ function bloc(l: Langue): HTMLElement {
         cartouche({ etiquette: el("div", { classe: "dj-etiquette vitrine-etiquette-vide" }, logo(t)) }),
       ),
       // Lot F1 : « Mes jeux » — l'étoile (non épinglée, épinglée) et la variante compacte des cartouches (« Les autres jeux »).
-      el("div", { classe: "vitrine-ligne" }, boutonFavori(t, { epingle: false, jeu: t.t("jeu.track.nom"), place: "ligne" }), boutonFavori(t, { epingle: true, jeu: t.t("jeu.track.nom"), place: "ligne" })),
+      el("div", { classe: "vitrine-ligne" }, boutonFavori({ epingle: false, nom: t.t("jeu.track.nom"), place: "ligne" }), boutonFavori({ epingle: true, nom: t.t("jeu.track.nom"), place: "ligne" })),
       el(
         "div",
         { classe: "vitrine-etagere" },
@@ -261,21 +262,21 @@ function bloc(l: Langue): HTMLElement {
           compacte: true,
           etiquette: etiquetteTrack({ titre: t.t("jeu.track.titre"), numero: formatNumeroJour(12, l), niveau: "h3" }),
           action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", variante: "secondaire" }),
-          favori: boutonFavori(t, { epingle: false, jeu: t.t("jeu.track.nom"), place: "ligne" }),
+          favori: boutonFavori({ epingle: false, nom: t.t("jeu.track.nom"), place: "ligne" }),
         }),
         cartouche({
           jeu: "jump",
           compacte: true,
           etiquette: etiquetteJump({ titre: t.t("jeu.jump.titre"), numero: formatNumeroJour(12, l), niveau: "h3" }),
           action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", variante: "secondaire" }),
-          favori: boutonFavori(t, { epingle: true, jeu: t.t("jeu.jump.nom"), place: "ligne" }),
+          favori: boutonFavori({ epingle: true, nom: t.t("jeu.jump.nom"), place: "ligne" }),
         }),
         cartouche({
           jeu: "tower",
           compacte: true,
           etiquette: etiquetteTower({ titre: t.t("jeu.tower.nom").toUpperCase(), numero: formatNumeroJour(12, l), niveau: "h3" }),
           action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", variante: "secondaire" }),
-          favori: boutonFavori(t, { epingle: false, jeu: t.t("jeu.tower.nom"), place: "ligne" }),
+          favori: boutonFavori({ epingle: false, nom: t.t("jeu.tower.nom"), place: "ligne" }),
         }),
       ),
     ),

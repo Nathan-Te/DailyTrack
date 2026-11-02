@@ -174,6 +174,7 @@ test("Mes jeux : épingler Jump le fait monter sous « Mes jeux », l'ordre est 
   // Avant : Track seul sous « Mes jeux », Jump dessous (compact).
   await expect(page.locator("#jeux [data-jeu]")).toHaveText([/TRACK/i]);
   await expect(page.locator("#autres-jeux [data-jeu]")).toHaveCount(1);
+  const ecrit = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/portail/favoris" && r.request().method() === "PUT");
   await page.getByRole("button", { name: "Ajouter Jump à mes jeux" }).click();
   // Après : Jump monte, en cartouche pleine avec son statut, dans l'ordre de la plateforme (Track, Jump) ; plus de « Les autres jeux » ; le focus a suivi l'étoile.
   await expect(page.locator("#jeux [data-jeu]")).toHaveCount(2);
@@ -185,6 +186,7 @@ test("Mes jeux : épingler Jump le fait monter sous « Mes jeux », l'ordre est 
   // Le choix compte à partir de demain : « 1 fini sur 1 » aujourd'hui, et la ligne le dit.
   await expect(page.locator("#favoris-demain")).toContainText("à partir de demain");
   await expect(page.locator("#avancement")).toHaveText("1 fini sur 1");
+  expect((await ecrit).status()).toBe(200); // le choix est enregistré avant de recharger
   // Recharger : la liste vient du serveur (le profil), l'ordre est gardé.
   await page.reload();
   await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");

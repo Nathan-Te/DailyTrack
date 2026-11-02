@@ -52,10 +52,10 @@ describe(`Mes jeux : la route d'écriture (${TEST_DB})`, () => {
     await joueur(t, 1, { track: [T] });
     expect((await t.call("PUT", "/api/portail/favoris", { favoris: ["track"] })).status).toBe(400); // pas d'identifiant
     expect((await t.call("GET", "/api/portail/favoris", undefined, as(1))).status).toBe(405);
-    expect((await epingler(t, 1, "track")).body).toMatchObject({ error: "invalid_favorites" });
-    expect((await epingler(t, 1, undefined)).body).toMatchObject({ error: "invalid_favorites" });
-    expect((await epingler(t, 1, ["track", 3])).body).toMatchObject({ error: "invalid_favorites" });
-    expect((await epingler(t, 1, ["monopoly"])).body).toMatchObject({ error: "invalid_favorites" }); // un jeu que le serveur ne connaît pas
+    expect((await epingler(t, 1, "track")).body).toMatchObject({ error: "invalid_json" });
+    expect((await epingler(t, 1, undefined)).body).toMatchObject({ error: "invalid_json" });
+    expect((await epingler(t, 1, ["track", 3])).body).toMatchObject({ error: "invalid_json" });
+    expect((await epingler(t, 1, ["monopoly"])).body).toMatchObject({ error: "invalid_json" }); // un jeu que le serveur ne connaît pas
     expect((await t.call("PUT", "/api/portail/favoris", { favoris: ["track"] }, as(99))).status).toBe(404); // un visiteur : sa liste reste dans son navigateur
     expect(await lignes(t, 1)).toEqual([]); // rien n'a été écrit par un refus
   });

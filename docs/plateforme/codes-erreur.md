@@ -33,7 +33,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 |---|---|---|---|
 | `not_found` | 404 | Route inconnue (y compris les routes d'admin quand l'admin est désactivé, et toute adresse inconnue sous `/api/jump/`). | toute adresse inconnue ; `/api/admin/*` sans `ADMIN_TOKEN` ; `/api/sonde/entetes` hors recette |
 | `method_not_allowed` | 405 | La route existe, mais pas pour cette méthode HTTP . | toutes les routes |
-| `invalid_json` | 400 | Le corps de la requête n'est pas un objet JSON. | tous les envois (`POST`, `PUT`) |
+| `invalid_json` | 400 | Le corps de la requête n'est pas un objet JSON (lot F1 : ou `PUT /api/portail/favoris` reçoit une `favoris` qui n'est pas une liste de noms de jeux connus). | tous les envois (`POST`, `PUT`) |
 | `too_large` | 413 | Le corps dépasse la taille permise (`MAX_BODY_BYTES`), annoncée ou lue. | tous les envois |
 | `rate_limited` | 429 | Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (`Retry-After`). | envois, `/api/name`, `/api/me`, lectures du Salon, du Garage (`GET /api/garage`, lot 41), son enregistrement (`PUT /api/garage`, lot 51), de DailyJump et du portail, `/api/admin/*` |
 | `busy` | 503 | Serveur saturé : plafond de rejeux par minute de l'instance atteint (`Retry-After`), ou envois simultanés de vies du même joueur impossibles à fusionner. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit`, `/api/jump/lives` |
@@ -56,7 +56,6 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `unknown_news` | 404 | Panneau d'administration (lot N2) : cette nouveauté n'existe pas. | `POST /api/admin/nouveautes`, `POST /api/admin/nouveautes/<id>/depublier`, `…/supprimer` |
 | `invalid_message` | 400 | Panneau d'administration (lot N2) : message en direct refusé (`problemes` : texte manquant ou de plus de 160 caractères, lien ou HTML, endroit, ton, heure de fin passée ou à plus de 7 jours). | `POST /api/admin/message` |
 | `invalid_cursor` | 400 | Portail, nouveautés (lot N2) : `avant` n'est pas au format AAAA-MM-JJ.<n>. | `GET /api/portail/nouveautes` |
-| `invalid_favorites` | 400 | Portail, Mes jeux (lot F1) : la liste des jeux épinglés n'est pas une liste de noms de jeux (tableau absent, trop long) ou nomme un jeu que le serveur ne connaît pas. | `PUT /api/portail/favoris` |
 | `game_unavailable` | 404 | Interrupteur des jeux (lot P) : ce jeu n'est pas ouvert au public (état `off`, ou `preview` sans la bonne clé d'aperçu dans l'en-tête `X-Preview-Key`) ; l'envoi ou la lecture est refusé. | toute route d'un jeu (`/api/submit`, `/api/jump/submit`, classements, fantômes…) |
 | `invalid_date` | 400 | Date illisible (`AAAA-MM-JJ` attendue). | `/api/day/<j>…` (lot I2 : un encodage illisible aussi, plus jamais 500), `/api/submit`, `/api/admin/planning/<j>`, `/api/jump/day/<j>…`, `/api/portail/classement?date=` (lot I3) |
 | `invalid_view` | 400 | Classement du jour du portail : `vue` n'est ni `cumul` ni le dossier d'un jeu qui existe ce jour-là (lot A1). | `GET /api/portail/classement?vue=` |

@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1432 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1431 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -102,7 +102,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.unknown_news` | Cette nouveauté n'existe pas. | That update doesn't exist. |
 | `erreur.invalid_message` | Ce message n'est pas valide. | That message isn't valid. |
 | `erreur.invalid_cursor` | Cette page des nouveautés n'existe pas. | That page of updates doesn't exist. |
-| `erreur.invalid_favorites` | Ta liste de jeux n'a pas pu être enregistrée. | Your list of games couldn't be saved. |
 | `erreur.game_unavailable` | Ce jeu n'est pas encore ouvert. Reviens bientôt ! | This game isn't open yet. Come back soon! |
 | `erreur.invalid_player` | Identifiant de joueur invalide. | Invalid player ID. |
 | `erreur.unknown_player` | Ce profil n'a encore aucun résultat. | This profile has no results yet. |
@@ -143,13 +142,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.too_many_refs` | Trop de références demandées. | Too many references requested. |
 | `erreur.invalid_lives` | Ces essais sont illisibles. | These attempts couldn't be read. |
 | `erreur.too_many_lives` | Trop d'essais envoyés d'un coup. | Too many attempts sent at once. |
-
-### favoris (`favoris.*`, `packages/ui/src/catalogue.ts`)
-
-| Clé | Français | Anglais |
-|---|---|---|
-| `favoris.ajouter` | Ajouter {jeu} à mes jeux | Add {jeu} to my games |
-| `favoris.retirer` | Retirer {jeu} de mes jeux | Remove {jeu} from my games |
 
 ### Icônes (`icone.*`, `packages/ui/src/catalogue.ts`)
 
@@ -365,6 +357,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.favoris.demain` | Ton choix compte pour ta journée à partir de demain. | Your choice counts for your day from tomorrow. |
 | `portail.favoris.echec` | Ton choix n'a pas pu être enregistré. Réessaie dans un instant. | Your choice couldn't be saved. Try again in a moment. |
 | `portail.nouveau` | Nouveau | New |
+| `portail.favoris.ajouter` | Ajouter {jeu} à mes jeux | Add {jeu} to my games |
+| `portail.favoris.retirer` | Retirer {jeu} de mes jeux | Remove {jeu} from my games |
 | `portail.track.accroche` | Un circuit par jour, le même pour tous. | One track a day, the same for everyone. |
 | `portail.jump.accroche` | Un niveau de plateforme par jour, le même pour tous. | One platform level a day, the same for everyone. |
 | `portail.tower.accroche` | Une tour par jour, les mêmes pièces pour tous. | One tower a day, the same pieces for everyone. |

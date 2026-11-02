@@ -167,7 +167,7 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: Option
         : bouton({ texte: t.t("portail.jouer"), href: c.lien, variante: compacte ? "secondaire" : "marque", pleineLargeur: !compacte, ariaLabel: t.t("portail.jouer.aria", { jeu: nom }) });
   action.setAttribute("data-cle", `jouer-${c.code}`);
   // Lot F1 : l'étoile (44 px) épingle ou retire le jeu ; son nom lu dit l'action. Après l'action dans l'ordre du clavier : « Jouer » reste l'action principale.
-  const favori = boutonFavori(t, { epingle: opts.epingle, jeu: nom, place: compacte ? "ligne" : "coin", onClick: () => basculerFavori(c.code) });
+  const favori = boutonFavori({ epingle: opts.epingle, nom: t.t(opts.epingle ? "portail.favoris.retirer" : "portail.favoris.ajouter", { jeu: nom }), place: compacte ? "ligne" : "coin", onClick: () => basculerFavori(c.code) });
   favori.setAttribute("data-cle", `favori-${c.code}`);
   const carte = cartouche({ jeu: c.code, etiquette, action, favori, compacte, attrs: { "data-jeu": c.code, "data-epingle": opts.epingle ? "oui" : "non" } });
   // Lot P : sur un aperçu de PR, un jeu pas encore `on` se montre avec le badge « Brouillon ».

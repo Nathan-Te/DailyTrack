@@ -12,7 +12,7 @@ export const CODES_ERREUR = {
   // --- Commun à toutes les routes ---------------------------------------------------------------------------
   not_found: { status: 404, sens: "Route inconnue (y compris les routes d'admin quand l'admin est désactivé, et toute adresse inconnue sous /api/jump/)." },
   method_not_allowed: { status: 405, sens: "La route existe, mais pas pour cette méthode HTTP." },
-  invalid_json: { status: 400, sens: "Le corps de la requête n'est pas un objet JSON." },
+  invalid_json: { status: 400, sens: "Le corps de la requête n'est pas un objet JSON (lot F1 : ou `PUT /api/portail/favoris` reçoit une `favoris` qui n'est pas une liste de noms de jeux connus)." },
   too_large: { status: 413, sens: "Le corps de la requête dépasse la taille permise (MAX_BODY_BYTES), annoncée ou lue." },
   rate_limited: { status: 429, sens: "Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (en-tête Retry-After)." },
   busy: { status: 503, sens: "Serveur saturé : plafond de rejeux par minute de l'instance atteint (Retry-After), ou envois simultanés de vies du même joueur impossibles à fusionner." },
@@ -38,7 +38,6 @@ export const CODES_ERREUR = {
   invalid_message: { status: 400, sens: "Panneau d'administration (lot N2) : message en direct refusé (`problemes` : texte manquant ou de plus de 160 caractères, lien ou HTML, endroit, ton, heure de fin passée ou à plus de 7 jours)." },
   game_unavailable: { status: 404, sens: "Interrupteur des jeux (lot P) : ce jeu n'est pas ouvert au public (état `off`, ou `preview` sans la bonne clé d'aperçu dans l'en-tête X-Preview-Key) ; l'envoi ou la lecture est refusé." },
   invalid_cursor: { status: 400, sens: "Portail, nouveautés (lot N2) : `avant` n'est pas au format AAAA-MM-JJ.<n>." },
-  invalid_favorites: { status: 400, sens: "Portail, Mes jeux (lot F1) : la liste des jeux épinglés n'est pas une liste de noms de jeux (tableau absent, trop long, doublon exclu) ou nomme un jeu que le serveur ne connaît pas." },
 
   // --- Jours, circuits et niveaux ----------------------------------------------------------------------------
   invalid_date: { status: 400, sens: "Date illisible (AAAA-MM-JJ attendue)." },

@@ -459,7 +459,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const corps = await platform.readJson(req);
     const demandes = listeDeFavoris(corps.favoris);
     const connus = new Set(jeux.map((j) => j.portail.site));
-    if (!demandes || demandes.some((j) => !connus.has(j))) throw new HttpError(400, "invalid_favorites", "Liste de jeux illisible ou jeu inconnu");
+    if (!demandes || demandes.some((j) => !connus.has(j))) throw new HttpError(400, "invalid_json", "Liste de jeux illisible ou jeu inconnu");
     await charger();
     await joueurConnu(id);
     const toutVoir = etats?.apercuDePr(req) ?? false;

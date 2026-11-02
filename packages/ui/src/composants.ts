@@ -76,8 +76,8 @@ export function cartouche(o: OptionsCartouche): HTMLElement {
 export interface OptionsBoutonFavori {
   /** Le jeu est-il épinglé ? */
   epingle: boolean;
-  /** Le nom du jeu, déjà traduit (« Track ») : il entre dans le nom lu du bouton. */
-  jeu: string;
+  /** Le nom lu du bouton, déjà traduit : « Ajouter Track à mes jeux » / « Retirer Track de mes jeux » (les textes sont ceux du catalogue de l'application : les jeux ne portent pas ceux du portail). */
+  nom: string;
   onClick?: (e: MouseEvent) => void;
   /** Lot F1 : posé au coin d'une cartouche pleine (`coin`, par défaut) ou dans la ligne d'une compacte (`ligne`). */
   place?: "coin" | "ligne";
@@ -85,12 +85,12 @@ export interface OptionsBoutonFavori {
 
 /**
  * Lot F1 — l'étoile de « Mes jeux » : un bouton de 44 px qui épingle ou retire un jeu. `aria-pressed` dit l'état ; son nom lu dit l'action (« Ajouter Track à mes jeux » /
- * « Retirer Track de mes jeux », catalogue commun). Pleine `--dj-moutarde` = épinglé, contour = non (la forme change aussi : l'étoile se remplit).
+ * « Retirer Track de mes jeux », texte fourni par l'appelant). Pleine `--dj-moutarde` = épinglé, contour = non (la forme change aussi : l'étoile se remplit).
  */
-export function boutonFavori(t: TraducteurCommun, o: OptionsBoutonFavori): HTMLButtonElement {
+export function boutonFavori(o: OptionsBoutonFavori): HTMLButtonElement {
   const b = el("button", {
     classe: ["dj-favori", `dj-favori--${o.place ?? "coin"}`],
-    attrs: { type: "button", "aria-pressed": o.epingle ? "true" : "false", "aria-label": t.t(o.epingle ? "favoris.retirer" : "favoris.ajouter", { jeu: o.jeu }) },
+    attrs: { type: "button", "aria-pressed": o.epingle ? "true" : "false", "aria-label": o.nom },
   }) as HTMLButtonElement;
   b.append(iconeEtoile({ taille: 22 }));
   if (o.onClick) b.addEventListener("click", (ev) => o.onClick!(ev as MouseEvent));
