@@ -330,6 +330,22 @@ jobs:
           node outils/scripts/mise-en-production.mjs registre-fusion cible/packages/sim/src/jours-track.json "$RUNNER_TEMP/registre/prod.json" --resume "$GITHUB_STEP_SUMMARY" \
             || { echo "::error title=Mise en production arrêtée::un jour du registre de Track ne s'accorde pas avec ce que la production sert : la liste est dans le résumé du run"; exit 1; }
           cp cible/packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json"
+      # Lot R16 — Tower fige ses jours comme Jump : un fichier par jour servi (`apps/tower/public/jours/`). Tout jour PROTÉGÉ (d'avant le lancement, déjà figé ou avec un résultat) qui n'a pas de
+      # fichier est figé ICI avec le code en production (`figer:tower` dans `prod` : ce qu'il sert est ce qu'il fige), puis posé dans la construction, l'artefact `jours-tower`, le serveur, le site et
+      # le dépôt. Sans cela un jour sans fichier prendrait le générateur courant et changerait à la prochaine TOWER_GENERATOR_VERSION. S'il en manque un, la mise en production s'arrête.
+      # Le code en production n'a pas Tower (première mise en production du jeu) : il n'a servi aucun jour, rien à figer.
+      - name: Les jours de Tower déjà servis sont figés (code en production) — un jour protégé a toujours son fichier
+        run: |
+          set -euo pipefail
+          figes="$RUNNER_TEMP/tower-figes"
+          mkdir -p "$figes/jours"
+          node outils/scripts/mise-en-production.mjs tower-a-figer --prod prod --cible cible --proteges "$RUNNER_TEMP/registre-track/proteges.json" --sortie "$figes/plan.json" --resume "$GITHUB_STEP_SUMMARY"
+          for plage in $(jq -r '.plages | map(.[0] + ":" + .[1]) | join(" ")' "$figes/plan.json"); do
+            du="${plage%%:*}"; au="${plage##*:}"
+            (cd prod && npm run figer:tower -w @cdj/tower-sim -- --du "$du" --au "$au" --dossier="$figes/jours")
+          done
+          node outils/scripts/mise-en-production.mjs tower-figes-poser "$figes" cible/apps/tower/public/jours \
+            || { echo "::error title=Mise en production arrêtée::un jour de Tower déjà servi n'a pas pu être figé avec le code en production : un jour servi ne change jamais"; exit 1; }
       - name: Les empreintes des jours (code en production, puis nouvelle construction) — rien avant la bascule ne doit changer
         id: empreintes
         env:

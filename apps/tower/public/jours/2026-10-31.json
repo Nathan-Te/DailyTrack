@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "jeu": "tower",
+  "date": "2026-10-31",
+  "g": 3,
+  "tirage": 0,
+  "sim": 5,
+  "contenu": {
+    "pieces": "JLTOIZSJZILOTSIJSOLTZJZSOTLIZJSITLOTZLSJ",
+    "plateformeDemi8": 20,
+    "paliers": [{"metres":8,"effet":"lierre"},{"metres":16,"effet":"glissante"},{"metres":24,"effet":"petite"},{"metres":32,"effet":"geante"},{"metres":40,"effet":"figee"},{"metres":48,"effet":"vent"}],
+    "ventSens": 1,
+    "theme": "banquise"
+  },
+  "medailles": null
+}

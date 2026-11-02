@@ -35,6 +35,8 @@ describe("jours passés (jours-passes.json)", () => {
       dates.forEach((d, i) => i > 0 && expect(parseDay(d), `${jeu} ${d}`).toBeGreaterThan(parseDay(dates[i - 1]!)!));
     }
     expect(Object.keys(gardees.track)).toEqual(Object.keys(gardees.jump));
+    // Lot R16 : Tower garde les mêmes jours protégés que les deux autres jeux (un jour est protégé pour toute la plateforme).
+    expect(Object.keys(gardees.tower ?? {}).sort(), "Tower : les mêmes jours que Track et Jump").toEqual(Object.keys(gardees.track).sort());
   });
 
   it("lot R11 : chaque jour gardé ici est au registre des jours de Track (même version), et le registre n'a pas de jour au-delà de la dernière décision", () => {
@@ -71,6 +73,17 @@ describe("jours passés (jours-passes.json)", () => {
       const e = empreinteTower(parseDay(date)!, TOWER_JOURS);
       expect(e.ok, `Tower ${date} : fichier du jour abîmé`).toBe(true);
       expect(e, `Tower ${date} a changé : un jour passé ne change jamais — son fichier préparé le fige (apps/tower/public/jours), monter TOWER_GENERATOR_VERSION ne change que les jours sans fichier ni résultat`).toMatchObject({ id: gardees.tower![date]!.id, h: gardees.tower![date]!.h });
+    }
+  });
+
+  // Lot R16 : un jour protégé de Tower a toujours son fichier (« Mettre en production » le fige avec le code en production), donc la version du générateur qui l'a servi : monter
+  // `TOWER_GENERATOR_VERSION` ne change que les jours sans fichier ni résultat. Le test du générateur factice est `towerJoursFiges.test.ts`.
+  it("Tower : chaque jour gardé a son fichier, qui nomme la version du générateur de son identifiant", () => {
+    for (const date of Object.keys(gardees.tower ?? {}).sort()) {
+      const chemin = join(TOWER_JOURS, `${date}.json`);
+      expect(existsSync(chemin), `Tower ${date} : un jour protégé sans fichier changerait à la prochaine version du générateur — le job « figer » de « Mettre en production » le fige avec le code en production`).toBe(true);
+      const f = JSON.parse(readFileSync(chemin, "utf8")) as { g: number; tirage?: number };
+      expect(gardees.tower![date]!.id, date).toBe(`tower-${date}-g${f.g}-t${f.tirage ?? 0}`);
     }
   });
 

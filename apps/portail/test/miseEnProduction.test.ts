@@ -34,6 +34,10 @@ import {
   planDesJours,
   DUREE_MISE_EN_PRODUCTION_MS,
   planTower,
+  plagesConsecutives,
+  resumeTowerFiges,
+  towerAFiger,
+  towerFigesAPoser,
   joursTowerAPoser,
   resumeTower,
   versionsTower,
@@ -611,6 +615,48 @@ describe("Tower : la lecture des résultats, les jours préparés et le premier 
     const artefact = { "2026-11-10.json": "A", "2026-11-11.json": "B2", "2026-11-12.json": "C", "notes.txt": "x" };
     expect(joursTowerAPoser(artefact, { "2026-11-10.json": "A", "2026-11-11.json": "B1" }, plan)).toEqual({ ajouts: ["2026-11-12.json"], remplaces: ["2026-11-11.json"], conflits: [] });
     expect(joursTowerAPoser({ "2026-11-10.json": "A2" }, { "2026-11-10.json": "A" }, plan).conflits).toEqual(["2026-11-10.json"]);
+  });
+});
+
+// Lot R16 : un jour protégé de Tower a toujours son fichier. Les jours protégés sans fichier sont figés avec le code en production ; s'il en manque un, la mise en production s'arrête.
+describe("Tower : les jours déjà servis sont figés (lot R16)", () => {
+  const proteges = { format: 1, premier: "2026-10-26", debut: "2026-10-24", veille: "2026-10-29", jours: { "2026-10-27": "1 classé(s)", "2026-10-29": "déjà figé" }, resultats: {} };
+
+  it("towerAFiger : les jours protégés sans fichier, de `debut` à la veille ; un jour sans résultat n'est pas figé ; un jour qui a déjà son fichier non plus", () => {
+    const plan = towerAFiger({ proteges, fichiers: { "2026-10-25": true } });
+    // avant le lancement (24 et 25 : protégés, le 25 a déjà son fichier) puis les deux jours nommés (27, 29) ; le 26 et le 28 n'ont aucun résultat : régénérés, pas figés
+    expect(plan.dates).toEqual(["2026-10-24", "2026-10-27", "2026-10-29"]);
+    expect(plan.plages).toEqual([["2026-10-24", "2026-10-24"], ["2026-10-27", "2026-10-27"], ["2026-10-29", "2026-10-29"]]);
+    expect(towerAFiger({ proteges, fichiers: Object.fromEntries(plan.dates.map((d) => [d, true]).concat([["2026-10-25", true]])) }).dates).toEqual([]);
+  });
+
+  it("le code en production n'a pas Tower (première mise en production du jeu) : il n'a servi aucun jour, rien à figer", () => {
+    const plan = towerAFiger({ proteges, fichiers: {}, prodSansTower: true });
+    expect(plan).toMatchObject({ dates: [], plages: [], prodSansTower: true });
+    expect(resumeTowerFiges(plan)).toContain("n'a pas Tower");
+  });
+
+  it("towerFigesAPoser : écrit ce que le code en production a figé ; il manque un jour = erreur ; un fichier déjà là mais différent = erreur (un jour figé ne change jamais)", () => {
+    const plan = { dates: ["2026-10-26", "2026-10-27"] };
+    expect(towerFigesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, {})).toEqual({ ecrire: ["2026-10-26.json", "2026-10-27.json"], manquants: [], conflits: [] });
+    expect(towerFigesAPoser(plan, { "2026-10-26.json": "A" }, {}).manquants).toEqual(["2026-10-27"]);
+    expect(towerFigesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, { "2026-10-27.json": "B" })).toEqual({ ecrire: ["2026-10-26.json"], manquants: [], conflits: [] });
+    expect(towerFigesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, { "2026-10-27.json": "AUTRE" }).conflits).toEqual(["2026-10-27"]);
+  });
+
+  it("plagesConsecutives regroupe les jours qui se suivent (y compris à cheval sur deux mois)", () => {
+    expect(plagesConsecutives(["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-03"])).toEqual([["2026-10-30", "2026-11-01"], ["2026-11-03", "2026-11-03"]]);
+    expect(plagesConsecutives([])).toEqual([]);
+  });
+
+  it("le garde-fou compare Tower comme les autres jeux : un jour protégé qui changerait arrête la mise en production, avec la même phrase", () => {
+    const e = (h: string) => ({ id: "x", h, ok: true });
+    const c = comparerEmpreintes({ tower: { "2026-10-27": e("a") } }, { tower: { "2026-10-27": e("b") } }, "2026-10-30", "2026-10-26", proteges);
+    expect(c.ok).toBe(false);
+    expect(c.jeux.tower.differences).toEqual([{ date: "2026-10-27", prod: "x", cible: "x", raison: "autre contenu, même identifiant" }]);
+    const texte = resumeBascule({ plan: { jourDeParis: "2026-10-29", bascule: "2026-10-30", veille: "2026-10-29", premier: "2026-10-26" }, comparaison: c });
+    expect(texte).toContain("❌ **Tower 2026-10-27** : autre contenu, même identifiant");
+    expect(texte).toContain("⛔ **La mise en production s'arrête**");
   });
 });
 
