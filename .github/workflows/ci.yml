@@ -144,6 +144,10 @@ jobs:
   # Pas d'installation de dépendances ici : les deux scripts n'utilisent que Node. Un échec de ce job fait échouer `test` et `e2e` (jamais de « saut » par erreur).
   scope:
     runs-on: ubuntu-latest
+    # Lot R16 : `actions: read` pour retrouver les durées mesurées par le run de nuit (artefact `durees-e2e`) ; rien n'est écrit.
+    permissions:
+      contents: read
+      actions: read
     outputs:
       track: ${{ steps.scope.outputs.track }}
       jump: ${{ steps.scope.outputs.jump }}
@@ -157,6 +161,7 @@ jobs:
       e2e_pr_actif: ${{ steps.scope.outputs.e2e_pr_actif }}
       e2e_pr_matrice: ${{ steps.scope.outputs.e2e_pr_matrice }}
       e2e_complet_matrice: ${{ steps.scope.outputs.e2e_complet_matrice }}
+      durees: ${{ steps.durees.outputs.durees }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -195,6 +200,31 @@ jobs:
             echo '```'; cat "$RUNNER_TEMP/zones.txt"; echo; cat "$RUNNER_TEMP/scope.txt"; echo '```'
             echo "Fichiers changés : $(wc -l < "$RUNNER_TEMP/files.txt")"
           } >> "$GITHUB_STEP_SUMMARY"
+      # Lot R16 : les parts de la CI complète et de main sont composées avec les durées MESURÉES par le dernier run de nuit de main (artefact `durees-e2e`,
+      # scripts/durees-e2e.mjs), validées ici une fois puis passées à toutes les parts (`E2E_DUREES`) : chacune compose les mêmes parts. Rien de lisible : durees.json
+      # du dépôt, comme avant (jamais d'arrêt pour cela). Une PR n'en a pas besoin (ses specs viennent de ses zones).
+      - name: Durées de la nuit (quel run ?)
+        id: nuit
+        if: steps.scope.outputs.mode != 'pr'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/durees-e2e.mjs source --sortie "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: steps.nuit.outputs.run != ''
+        continue-on-error: true
+        with:
+          name: durees-e2e
+          path: ${{ runner.temp }}/durees-nuit
+          run-id: ${{ steps.nuit.outputs.run }}
+          github-token: ${{ github.token }}
+      - name: Durées de la nuit (lecture)
+        id: durees
+        if: steps.nuit.outputs.run != ''
+        continue-on-error: true
+        env:
+          RUN_NUIT: ${{ steps.nuit.outputs.run }}
+        run: node scripts/durees-e2e.mjs lire "$RUNNER_TEMP/durees-nuit/durees-e2e.json" --run "$RUN_NUIT" --sortie "$GITHUB_OUTPUT" --resume "$GITHUB_STEP_SUMMARY"
 
   # CI COMPLÈTE (main, « Run workflow », nuit) : même rediffusion rejouée dans Chromium, Firefox et WebKit : le résultat doit être identique à celui de Node.
   # Retouche 29b — CI rapide et fiable : une matrice (un job par navigateur et par part, `--shard`), une relance unique (`retries: 1`, voir
@@ -220,6 +250,8 @@ jobs:
       matrix: ${{ fromJSON(needs.scope.outputs.e2e_complet_matrice) }}
     env:
       E2E_ALL_BROWSERS: "1"
+      # Lot R16 : les durées de la nuit (la même chaîne pour toutes les parts ; vide : durees.json du dépôt), lues par scripts/e2e-parts.mjs.
+      E2E_DUREES: ${{ needs.scope.outputs.durees }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -282,7 +314,7 @@ jobs:
           # Le petit ensemble (lot R13) nomme le rapport de chacune de ses deux étapes.
           [ "${{ matrix.suite }}" = navigateurs ] || echo "E2E_BLOB_NAME=report-$blob.zip" >> "$GITHUB_ENV"
       # Chromium (retouche 31b) : parts composées par DURÉE (scripts/e2e-parts.mjs, apps/web/e2e/durees.json) et UN test à la fois.
-      # Le runner a 2 cœurs : deux pages en WebGL logiciel côte à côte s'y affament (miniatures + spectateur : × 3 à × 6 sur les durées),
+      # Le runner avait 2 cœurs (31b ; il en a 4 depuis, `nproc` du 02/11/2026 : deux pages à la fois restent à mesurer) : deux pages en WebGL logiciel côte à côte s'y affamaient (miniatures + spectateur : × 3 à × 6 sur les durées),
       # et `--shard` (coupe au nombre de tests) changeait de voisins à chaque spec ajouté.
       - name: Tests e2e (${{ matrix.browser }}, part ${{ matrix.shard }})
         if: matrix.suite == 'web'
@@ -564,6 +596,17 @@ jobs:
           cat summary.md
           [ "$PARTS" = "success" ] || [ $code -ne 0 ] || { echo "::error::une part e2e a échoué sans test en échec (installation, construction, délai dépassé…) : voir le job"; code=1; }
           exit $code
+      # Lot R16 : la nuit, les durées de chaque spec (dernier essai, fichiers sans échec) deviennent l'artefact `durees-e2e` que les runs suivants lisent (scope).
+      - name: Durées mesurées (run de nuit)
+        if: always() && env.MODE == 'nuit' && env.RAPPORTS == 'true' && hashFiles('apps/web/merged/report.json') != ''
+        run: node scripts/durees-e2e.mjs mesurer apps/web/merged/report.json "$RUNNER_TEMP/durees-e2e/durees-e2e.json" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && env.MODE == 'nuit' && env.RAPPORTS == 'true' && hashFiles('apps/web/merged/report.json') != ''
+        with:
+          name: durees-e2e
+          path: ${{ runner.temp }}/durees-e2e/durees-e2e.json
+          retention-days: 30
+          if-no-files-found: ignore
 
   # Lot 28 : l'image Docker de l'API (celle de Cloud Run) démarre contre un vrai serveur libSQL (le protocole de Turso), répond à /api/health,
   # sert un temps du jour et du Salon rejoués par le serveur, et refuse de démarrer avec SALON_MINUTES.

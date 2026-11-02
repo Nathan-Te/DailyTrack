@@ -1,0 +1,155 @@
+name: Jours figés dans main
+# Lot R16 (plateforme) — le versement des jours figés d'une mise en production, sorti de « Mettre en production » (production.yml, job `depot`, qui le LANCE
+# dès que le serveur de production est déployé, ou à la fin d'un essai lancé sur main) : il dure 6 à 8 min (la CI de sa PR) et n'allongeait le run que pour lui.
+# Ce qu'il fait n'a pas changé (lot R12) : une branche robot avec les jours figés de Jump (et la démonstration refaite), les jours de Tower, le registre des jours
+# de Track et les empreintes des jours passés ; une PR ; sa CI (celle d'une PR : `pull_request` avec ROBOT_TOKEN ; sinon ci.yml lancé ici en mode `pr`, la
+# règle de GitHub ne lançant aucun workflow pour un jeton de workflow) ; puis la fusion faite par le workflow LUI-MÊME dès que `test` et `e2e` sont verts.
+# Ses entrées ne sont que des DONNÉES (passées par `env:`, jamais écrites dans un script) et sont vérifiées : `run` doit être un run de « Mettre en production »
+# sur main dont le garde-fou (`figer`) et la répétition (`recette-verification`) ont réussi — ce sont ses artefacts qui partent dans main. Le relancer à la
+# main (Run workflow, branche main) est sans danger : « déjà dans main » si tout y est ; « Mettre en production » refuse de partir tant qu'il tourne.
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: "le run de « Mettre en production » dont les jours figés partent dans main (son numéro, dans son adresse)"
+        type: string
+        required: true
+      nom:
+        description: "l'étiquette de la mise en production (prod-AAAA-MM-JJ-HHMM), ou essai-<run> pour un essai"
+        type: string
+        required: true
+      veille:
+        description: "la veille du jour de bascule (AAAA-MM-JJ), donnée par le run"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jours-figes
+  cancel-in-progress: false
+
+jobs:
+  verser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+      checks: read
+    outputs:
+      etat: ${{ steps.depot.outputs.etat }}
+      pr: ${{ steps.depot.outputs.pr }}
+    env:
+      GH_TOKEN: ${{ secrets.ROBOT_TOKEN || github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+      HAS_ROBOT: ${{ secrets.ROBOT_TOKEN != '' }}
+      RUN: ${{ inputs.run }}
+      NOM: ${{ inputs.nom }}
+      VEILLE: ${{ inputs.veille }}
+    steps:
+      - name: Le run de « Mettre en production » (entrées vérifiées)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::« Jours figés dans main » se lance sur main (Run workflow → Branch: main)"; exit 1; }
+          [[ "$RUN" =~ ^[0-9]{1,20}$ ]] || { echo "::error::run : un numéro de run attendu"; exit 1; }
+          [[ "$NOM" =~ ^(prod-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4}|essai-[0-9]{1,20})$ ]] || { echo "::error::nom : prod-AAAA-MM-JJ-HHMM ou essai-<run> attendu"; exit 1; }
+          [[ "$VEILLE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "::error::veille : AAAA-MM-JJ attendu"; exit 1; }
+          info="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN" --jq '.path + " " + .head_branch')"
+          [ "$info" = ".github/workflows/production.yml main" ] || { echo "::error::le run $RUN n'est pas un run de « Mettre en production » sur main ($info)"; exit 1; }
+          etats="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN/jobs?per_page=100" --jq '[.jobs[] | select(.name == "figer" or .name == "recette-verification") | .name + "=" + (.conclusion // "en cours")] | sort | join(" ")')"
+          [ "$etats" = "figer=success recette-verification=success" ] || { echo "::error::le run $RUN n'a pas réussi son garde-fou et sa répétition ($etats) : ses jours ne partent pas dans main"; exit 1; }
+          echo "### Jours figés de $NOM (run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$RUN)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          token: ${{ secrets.ROBOT_TOKEN || github.token }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: jours-figes
+          path: ${{ runner.temp }}/jours-figes
+          run-id: ${{ inputs.run }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: empreintes-jours
+          path: ${{ runner.temp }}/empreintes-jours
+          run-id: ${{ inputs.run }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: jours-tower
+          path: ${{ runner.temp }}/jours-tower
+          run-id: ${{ inputs.run }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: registre-track
+          path: ${{ runner.temp }}/registre-track
+          run-id: ${{ inputs.run }}
+          github-token: ${{ github.token }}
+      - name: Les jours figés dans main
+        id: depot
+        run: |
+          node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels
+          # Lot TP : les jours de Tower (préparés ou refaits avec le code déployé, preuve comprise : le dépôt est privé du serveur, le site publié la perd) rejoignent le dépôt.
+          node scripts/mise-en-production.mjs tower-poser "$RUNNER_TEMP/jours-tower" apps/tower/public/jours
+          # Lot R11 : le registre des jours de Track (jusqu'à la veille de la bascule) rejoint le dépôt avec les niveaux figés de Jump ; les jours d'avant ne changent jamais.
+          node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json" --resume "$GITHUB_STEP_SUMMARY"
+          # Lot R6 : les empreintes des jours passés (jusqu'à la veille de la bascule) rejoignent le test `jours-passes.test.ts` : un jour passé ne change plus jamais.
+          node scripts/mise-en-production.mjs empreintes-fusion apps/api/test/jours-passes.json "$RUNNER_TEMP/empreintes-jours/prod.json" --jusqua "$VEILLE" --proteges "$RUNNER_TEMP/registre-track/proteges.json"
+          # La démonstration de Jump (`?api=demo`, apps/jump/public/demo) rejoue les niveaux de ses jours, fichiers figés compris : un jour qu'elle couvre et que
+          # cette mise en production fige change de niveau, ses données se refont (déterministe, ≈ 1 min ; sans cela la CI de la PR échoue : « relancer jump:seed »).
+          if [ -n "$(git status --porcelain apps/jump/public/levels)" ]; then
+            npm ci --ignore-scripts --no-audit --no-fund > /dev/null
+            npm run jump:seed -w @cdj/api > /dev/null
+          fi
+          if [ -z "$(git status --porcelain apps/jump/public/levels apps/jump/public/demo apps/tower/public/jours apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
+            echo "etat=rien" >> "$GITHUB_OUTPUT"
+            echo "### ✅ Jours figés : déjà dans main, rien à ajouter" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          branch="robot/jours-figes-$NOM"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add apps/jump/public/levels apps/jump/public/demo apps/tower/public/jours apps/api/test/jours-passes.json packages/sim/src/jours-track.json
+          # « Jours figés de la mise en production » : le début du message est lu par `jours-servis` (les jours que la production sert).
+          git commit -q -m "Jours figés de la mise en production $NOM (code en production, freeze:days jusqu'à la veille de la bascule)"
+          git push -q origin "$branch"
+          body="Jours figés par « Mettre en production » ($NOM, run $RUN) avec **le code qui était en production** : niveaux de DailyJump, registre des jours de DailyTrack (packages/sim/src/jours-track.json) et empreintes des jours passés (apps/api/test/jours-passes.json). **Le workflow fusionne cette PR lui-même** dès que sa CI est verte (lot R12) : rien à faire."
+          url="$(gh pr create --base main --head "$branch" --title "Jours figés — $NOM" --body "$body")"
+          echo "pr=$url" >> "$GITHUB_OUTPUT"
+          # La CI de la PR, puis la fusion faite par le workflow lui-même. Si `main` a avancé entre-temps (« à jour avant de fusionner »), la branche reprend main
+          # (`update-branch`, une fusion : rien n'est réécrit) et sa CI recommence ; trois essais au plus.
+          for essai in 1 2 3; do
+            sleep 10
+            sha="$(gh pr view "$url" --json headRefOid --jq .headRefOid)"
+            # Sans ROBOT_TOKEN, un commit poussé par le jeton du workflow ne lance aucune CI (règle de GitHub) : on la lance, en mode `pr` (comme une PR).
+            if [ "$HAS_ROBOT" != true ]; then GH_TOKEN="$GITHUB_TOKEN" gh workflow run ci.yml --ref "$branch" -f mode=pr; fi
+            if ! node scripts/ci-complete.mjs statuts "$GITHUB_REPOSITORY" "$sha" test,e2e --attente-max 45; then
+              echo "etat=ci-rouge" >> "$GITHUB_OUTPUT"
+              echo "### ⛔ Jours figés : la CI de $url n'est pas verte — la lire, corriger, puis la fusionner" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            if gh pr merge "$url" --merge --delete-branch --match-head-commit "$sha"; then
+              echo "etat=fusionnee" >> "$GITHUB_OUTPUT"
+              echo "### ✅ Jours figés versés dans main : $url (fusionnée par le workflow)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            [ "$essai" = 3 ] || gh pr update-branch "$url" || break
+          done
+          if gh pr merge "$url" --merge --auto; then
+            echo "etat=auto" >> "$GITHUB_OUTPUT"
+            echo "### ⛔ Jours figés : la protection de main retient $url (fusion automatique programmée) — réglage : docs/plateforme/lots/lot-R12-un-seul-bouton.md, « Jours figés sans PR »" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "etat=refusee" >> "$GITHUB_OUTPUT"
+            echo "### ⛔ Jours figés : la protection de main refuse la fusion de $url par le workflow — réglage : docs/plateforme/lots/lot-R12-un-seul-bouton.md, « Jours figés sans PR »" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 1

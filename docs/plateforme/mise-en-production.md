@@ -8,16 +8,15 @@
 
 **Actions › « Mettre en production » › Run workflow**, branche **`main`**, mode **`production`**, les autres champs vides. C'est tout : plus de CI à lancer avant, plus de sauvegarde sur ton ordinateur, plus de « Review deployments », plus de PR « Jours figés » à fusionner.
 
-Le run enchaîne, seul (≈ 40 min, détail et durées : `docs/plateforme/lots/lot-R12-un-seul-bouton.md`) :
+Le run enchaîne, seul (≈ 25 min visées depuis le lot R16, contre ≈ 34 min avant ; détail : `docs/plateforme/lots/lot-R16-mise-en-production-courte.md`) :
 
 1. **la CI complète** du commit (tout : unitaires, Essentiel et Régression, Firefox et WebKit) — ou il **reprend** celle de la nuit ou d'un essai si elle est verte pour ce même commit ;
-2. **le garde-fou des jours** : aucun jour protégé (d'avant le lancement, déjà figé, ou avec un résultat) ne change ;
-3. **la répétition** sur la recette (la même construction, à l'heure réelle, `smoke` complet) ;
-4. **la sauvegarde** de la base des joueurs dans un bucket privé (30 jours) ;
-5. **le déploiement** du serveur et du site, la vérification en lecture seule, l'étiquette `prod-…` ;
-6. **les jours figés versés dans `main`** par le workflow lui-même.
+2. **en même temps** : **le garde-fou des jours** (aucun jour protégé — d'avant le lancement, déjà figé, ou avec un résultat — ne change ; il ne fait que lire la production) puis **la répétition** sur la recette (la même construction, à l'heure réelle, `smoke` complet) ;
+3. **la sauvegarde** de la base des joueurs dans un bucket privé (30 jours), dès que la CI est verte ;
+4. **le déploiement** du serveur et du site — **seulement si la CI, le garde-fou, la répétition et la sauvegarde ont tous réussi** —, la vérification en lecture seule, l'étiquette `prod-…` ;
+5. **les jours figés versés dans `main`** : le bouton lance le workflow **« Jours figés dans main »** et s'arrête ; ce workflow fait la PR, attend sa CI et la fusionne (≈ 7 min, son propre run). **Tant qu'il tourne, le bouton refuse de repartir** (« attendre sa fin ») : rien à faire, il suffit d'attendre.
 
-Tout arrêt avant l'étape 5 laisse la production intacte.
+Tout arrêt avant l'étape 4 laisse la production intacte (la recette, elle, a pu recevoir la construction : elle reçoit déjà chaque fusion dans `main`).
 
 ## Le résumé (en haut du run)
 
@@ -30,6 +29,7 @@ Tout arrêt avant l'étape 5 laisse la production intacte.
 | répétition | rien n'est parti ; lot de mise en production avec ce run |
 | sauvegarde | faire l'annexe C (une fois), puis rappuyer |
 | vérification après déploiement | « Retour arrière » (annexe B) |
+| versement des jours figés (lot R16) | la production est en ligne ; relancer « Jours figés dans main » à la main (Run workflow, branche `main`) avec le numéro du run, son étiquette et la veille du jour de bascule |
 
 ### Les jours de Tower (lot TP)
 

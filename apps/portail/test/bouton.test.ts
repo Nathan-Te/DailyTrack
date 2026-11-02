@@ -20,7 +20,7 @@ const tout = (mode: string) =>
             : e.cle === "sauvegarde"
               ? OK({ fichier: "gs://p-sauvegardes/production/2026-10-27-1012-dailytrack-run7.sql.gz" })
               : e.cle === "depot"
-                ? OK({ etat: "fusionnee", pr: "https://github.com/x/y/pull/170" })
+                ? OK({ etat: "lance" })
                 : OK(),
     ]),
   );
@@ -31,7 +31,7 @@ describe("le résumé du bouton (lot R12)", () => {
     const tete = t.split("\n|")[0]!;
     expect(t.split("\n")[0]).toBe("## ✅ Mise en production faite `0123456`");
     expect(tete).not.toContain("À faire");
-    for (const x of ["relancée par le bouton — [run](https://github.com/x/y/actions/runs/7) — 13 min", "2 PR (#160 #161)", "2026-10-28", "Track 2 conservés", "gs://p-sauvegardes/production/", "versés dans main (https://github.com/x/y/pull/170)", "[Jump](https://playdujour.com/jump/)"]) expect(tete, x).toContain(x);
+    for (const x of ["relancée par le bouton — [run](https://github.com/x/y/actions/runs/7) — 13 min", "2 PR (#160 #161)", "2026-10-28", "Track 2 conservés", "gs://p-sauvegardes/production/", "versement lancé — Actions › « Jours figés dans main »", "[Jump](https://playdujour.com/jump/)"]) expect(tete, x).toContain(x);
   });
 
   it("CI reprise : dite « reprise », l'étape `ci` sautée n'est pas un arrêt", () => {
@@ -52,7 +52,7 @@ describe("le résumé du bouton (lot R12)", () => {
     expect(t).toContain("**À faire : Lance le lot de mise en production avec ce run : https://github.com/x/y/actions/runs/7**");
     // hors de main : ni sauvegarde ni dépôt attendus
     expect(t).toContain("aucune (essai hors de main)");
-    expect(t).not.toContain("8. Jours figés");
+    expect(t).not.toContain("8. Versement des jours figés");
   });
 
   it("chaque arrêt a sa phrase : garde-fou, répétition, sauvegarde, vérification, jours figés", () => {
@@ -61,7 +61,7 @@ describe("le résumé du bouton (lot R12)", () => {
       ["recette-verification", /répétition sur la recette a échoué : rien n'est parti en production/],
       ["sauvegarde", /annexe C de docs\/plateforme\/mise-en-production\.md/],
       ["verification", /Retour arrière/],
-      ["depot", /fusionne https:\/\/github\.com\/x\/y\/pull\/170/],
+      ["depot", /Actions › « Jours figés dans main » › Run workflow \(branche main\), avec le numéro de ce run \(https:\/\/github\.com\/x\/y\/actions\/runs\/7\)/],
     ];
     for (const [cle, phrase] of cas) {
       const n = tout("production");
@@ -70,6 +70,18 @@ describe("le résumé du bouton (lot R12)", () => {
       expect(t.startsWith("## ⛔"), cle).toBe(true);
       expect(t, cle).toMatch(phrase);
     }
+  });
+
+  // Lot R16 : le garde-fou et la répétition tournent avec la CI ; un verdict rouge reste l'arrêt nommé, même quand ils ont réussi à côté.
+  it("CI rouge pendant que le garde-fou et la répétition ont réussi en parallèle : l'arrêt est la CI, rien n'est parti", () => {
+    const n = tout("production");
+    n.ci = { result: "failure", outputs: {} };
+    n["ci-verdict"] = { result: "failure", outputs: { etat: "rouge", url: "https://github.com/x/y/actions/runs/7" } };
+    for (const cle of ["sauvegarde", "serveur", "site", "verification", "etiquette", "depot"]) n[cle] = { result: "skipped", outputs: {} };
+    const t = resumeDuBouton({ mode: "production", needs: n, runUrl: RUN, origine: "https://playdujour.com" });
+    expect(t.split("\n")[0]).toBe("## ⛔ Mise en production arrêtée `0123456`");
+    expect(t).toContain("**À faire : Lance le lot de mise en production avec ce run : https://github.com/x/y/actions/runs/7**");
+    expect(t).toMatch(/\| 4c\. Répétition : smoke de la recette \| ✅ success \|/);
   });
 
   it("répétition : ni CI, ni sauvegarde, ni main ; les liens de la recette", () => {

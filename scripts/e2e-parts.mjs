@@ -15,6 +15,7 @@
 // lot R3 est retiré : une PR ne lance plus que Chromium, tout tourne sur les trois navigateurs à chaque fusion et la nuit.
 
 import { readFileSync, readdirSync } from "node:fs";
+import { dureesDeLEnvironnement, superposer } from "./durees-e2e.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -96,7 +97,10 @@ function main(argv) {
   }
   const [current, total] = [+m[1], +m[2]];
   const game = gameOf(project);
-  const durations = durees(game.dir, { essentiel });
+  // Lot R16 : les durées mesurées la nuit précédente (`E2E_DUREES`, la même chaîne pour toutes les parts, validée par `scope`) remplacent celles du dépôt.
+  const mesurees = dureesDeLEnvironnement(process.env.E2E_DUREES, game.name, { essentiel });
+  const durations = superposer(durees(game.dir, { essentiel }), mesurees);
+  if (mesurees) console.error(`e2e-parts : durées mesurées la nuit pour ${Object.keys(mesurees).length} spec(s) de ${game.name}`);
   // `--essentiel` (CI de main, lot R13) : sans les specs tout entiers « Régression » ; les tests `@regression` des autres sont écartés par `--grep-invert`.
   const regression = essentiel ? specsRegression(game.name) : [];
   const files = specFiles(game.dir).filter((f) => !regression.includes(f));

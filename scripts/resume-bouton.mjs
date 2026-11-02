@@ -23,7 +23,8 @@ export const ETAPES = [
   { cle: "site", titre: "7b. Site playdujour.com", modes: ["production"] },
   { cle: "verification", titre: "7c. Vérification en lecture seule", modes: ["production"] },
   { cle: "etiquette", titre: "7d. Étiquette prod-…", modes: ["production"] },
-  { cle: "depot", titre: "8. Jours figés versés dans main", modes: ["production", "essai"] },
+  // Lot R16 : le versement lui-même est le workflow « Jours figés dans main » (jours-figes.yml) ; le bouton ne fait que le lancer.
+  { cle: "depot", titre: "8. Versement des jours figés lancé", modes: ["production", "essai"] },
 ];
 
 const SYMBOLE = { success: "✅", failure: "❌", cancelled: "⏹️", skipped: "⏭️" };
@@ -54,7 +55,7 @@ export function phraseArret(cle, { needs, runUrl, origine }) {
     case "etiquette":
       return "La production est en ligne mais l'étiquette prod-… manque : « Re-run failed jobs » sur ce run.";
     case "depot":
-      return `La production est en ligne ; les jours figés ne sont pas encore dans main : fusionne ${o("depot").pr || "la PR « Jours figés »"} quand sa CI est verte (réglage pour que le workflow le fasse seul : README du lot R12, « Jours figés sans PR »).`;
+      return `La production est en ligne ; le versement des jours figés n'est pas parti : Actions › « Jours figés dans main » › Run workflow (branche main), avec le numéro de ce run (${runUrl}), son étiquette et la veille du jour de bascule.`;
     default:
       return "Le run a été annulé : relance le bouton.";
   }
@@ -90,7 +91,8 @@ export function resumeDuBouton({ mode, needs, jobs = [], runUrl, ref = "refs/hea
     const s = o("sauvegarde").fichier;
     l.push(`- **Sauvegarde** : ${res("sauvegarde") === "success" && s ? `\`${s}\` (30 jours ; restauration : annexe C de docs/plateforme/mise-en-production.md)` : ref !== "refs/heads/main" ? "aucune (essai hors de main)" : "non faite"}`);
     const d = o("depot");
-    const dep = { fusionnee: `versés dans main (${d.pr})`, rien: "déjà dans main", auto: `en attente de la protection de main (${d.pr})`, refusee: `refusés par la protection de main (${d.pr})`, "ci-rouge": `CI rouge (${d.pr})` }[d.etat];
+    // Lot R16 : le versement tourne à part ; son propre run dit la suite (PR, CI, fusion) et le bouton suivant attend sa fin.
+    const dep = { lance: "versement lancé — Actions › « Jours figés dans main » (sa PR, sa CI, sa fusion : ≈ 7 min ; le bouton suivant l'attend)" }[d.etat];
     if (ref === "refs/heads/main") l.push(`- **Jours figés** : ${dep ?? "non versés"}`);
   }
   l.push(`- **Liens** : [portail](${origine}/) · [Track](${origine}/track/) · [Jump](${origine}/jump/)`, "");
