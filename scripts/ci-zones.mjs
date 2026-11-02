@@ -21,13 +21,14 @@ import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assignParts } from "./e2e-parts.mjs";
 import { categoriesOf } from "./ci-scope.mjs";
-import { FICHES_CI } from "./fiches-lecture.mjs";
+import { FICHES_CI, regressionDesFiches } from "./fiches-lecture.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // Lot R15 : Tower est un jeu de la CI au même titre que Track (`web`) et Jump (`jump`) : ses specs (apps/tower/e2e), ses durées, ses zones, son projet Playwright `tower-<navigateur>`.
-// Lot K1 : les suites des jeux qui ont une fiche (`config/jeux/<id>.json` : `e2e.suite`, `e2e.dossier`, ses zones, ses specs, sa fumée, ses parts) viennent d'elle ; Track (`web`) et Jump restent écrits ici.
-export const E2E_DIRS = { web: "apps/web/e2e", jump: "apps/jump/e2e", ...Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.dossier])) };
-export const JEUX_E2E = ["web", "jump", ...FICHES_CI.map((f) => f.e2e.suite)];
+// Lots K1, K1b et K1c : la suite de chaque jeu (`config/jeux/<id>.json` : `e2e.suite`, `e2e.dossier`, ses zones, ses specs, sa fumée, sa « Régression », ses parts) vient de sa fiche (Track : la suite `web`,
+// Jump : `jump`, Tower : `tower`). Restent dans `e2e/zones.json` les zones partagées (`ui`, `portail`…) et les specs du portail et de la plateforme qui vivent dans `apps/web/e2e`.
+export const E2E_DIRS = Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.dossier]));
+export const JEUX_E2E = FICHES_CI.map((f) => f.e2e.suite);
 const SUITES = JEUX_E2E.join("|");
 export const PARTS_E2E_MAX = 4;
 export const PARTS_UNITAIRES_MAX = 4;
@@ -80,6 +81,7 @@ export function chargerTable(racine = ROOT) {
     fumee: { ...brut.fumee, ...Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.fumee])) },
     zones: { ...brut.zones, ...Object.assign({}, ...FICHES_CI.map((f) => f.e2e.zones)) },
     specs: { ...brut.specs, ...Object.fromEntries(FICHES_CI.flatMap((f) => Object.entries(f.e2e.specs).map(([spec, zs]) => [`${f.e2e.suite}/${spec}`, zs]))) },
+    regression: [...(brut.regression ?? []), ...regressionDesFiches()],
   };
   const zones = Object.fromEntries(
     Object.entries(t.zones).map(([nom, z]) => [nom, { globs: z.globs.map(globVersRegExp), sauf: (z.sauf ?? []).map(globVersRegExp), source: z }]),
@@ -152,7 +154,6 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
     // Un fichier de code : la fumée des jeux qu'il touche, et les specs de ses zones (une zone partagée — ui, profil, serveur — rejoint les deux jeux).
     const cats = categoriesOf(f);
     if (cats.includes("track")) fumee("web", f);
-    if (cats.includes("jump")) fumee("jump", f);
     for (const fc of FICHES_CI) if (cats.includes(fc.id)) fumee(fc.e2e.suite, f);
     for (const z of zonesDuFichier(f, table)) {
       for (const [spec, zs] of Object.entries(table.specs)) {
@@ -252,7 +253,7 @@ export function fichierImporte(racine, fichier, spec) {
   else {
     const m = /^@cdj\/([\w-]+)(?:\/(.+))?$/.exec(nu);
     if (!m) return null;
-    const dossier = ["web", "jump", "api", "portail"].includes(m[1]) ? `apps/${m[1]}` : `packages/${m[1]}`;
+    const dossier = ["api", "portail", ...FICHES_CI.map((f) => f.app)].includes(m[1]) ? `apps/${m[1]}` : `packages/${m[1]}`;
     if (!existsSync(join(racine, dossier, "package.json"))) return null;
     const pkg = JSON.parse(readFileSync(join(racine, dossier, "package.json"), "utf8"));
     const cle = m[2] ? `./${m[2]}` : ".";
@@ -268,6 +269,13 @@ export function fichierImporte(racine, fichier, spec) {
   const sansJs = base.replace(/\.(m?js)$/, "");
   if (sansJs !== base) for (const ext of [".ts", ".mts"]) if (existsSync(join(racine, sansJs + ext))) return sansJs + ext;
   return null;
+}
+
+const PROJECTION_CI = "config/jeux/projections/ci.json";
+/** Les dossiers de jours figés que déclarent les fiches (`jours.dossier` de la projection `ci` de ce dépôt). */
+function dossiersDeJours(racine) {
+  const f = join(racine, PROJECTION_CI);
+  return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")).jeux.flatMap((j) => (j.jours.dossier ? [j.jours.dossier] : [])) : [];
 }
 
 /**
@@ -298,6 +306,9 @@ export function graphe(racine = ROOT) {
           if (SOURCES.test(r) && r !== f && statSync(join(racine, r)).isFile()) imports.add(r);
         }
       }
+      // Lot K1b : le dossier des jours figés d'un jeu n'est plus écrit en dur dans le code qui le lit, il vient de sa fiche (`jours.dossier`, projection `ci`) : un fichier qui cite cette projection
+      // cite aussi ces dossiers, sinon une PR qui ne change qu'un niveau figé ne lancerait plus les tests qui le lisent.
+      if (cites.has(PROJECTION_CI)) for (const dossier of dossiersDeJours(racine)) cites.add(dossier);
       noeuds.set(f, { imports, cites });
     }
   }
@@ -454,9 +465,9 @@ export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CI
  */
 // Lot R12 : `complet` et `nuit` repassent à 8 parts de Track (≈ 560 s de specs chacune au lieu de ≈ 745 s) : objectif ≤ 15 min de mur pour la CI que lance le bouton.
 // Lot R15 : Tower, 1 part de Chromium (quelques dizaines de secondes de specs : un job de plus en parallèle, pas de mur de plus).
-// Lot K1 : le nombre de parts d'un jeu à fiche est son `e2e.parts` (Tower : 1, 1, 1).
+// Lots K1 et K1c : le nombre de parts d'un jeu est son `e2e.parts` (Track : 3, 8, 8 ; Jump et Tower : 1, 1, 1).
 const partsDesFiches = (mode) => Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.parts[mode]]));
-export const PARTS_COMPLETES = { main: { web: 3, jump: 1, ...partsDesFiches("main") }, complet: { web: 8, jump: 1, ...partsDesFiches("complet") }, nuit: { web: 8, jump: 1, ...partsDesFiches("nuit") } };
+export const PARTS_COMPLETES = { main: partsDesFiches("main"), complet: partsDesFiches("complet"), nuit: partsDesFiches("nuit") };
 
 /** La matrice des jobs `e2e-parts` d'un mode complet (une PR reçoit celle de `main` : le job y est sauté). */
 export function matriceComplete(mode) {
@@ -509,8 +520,11 @@ export function resume(d) {
   for (const r of d.unit.raisons.slice(0, 12)) l.push(`  · ${r}`);
   l.push(`Budgets (lot R17) : ${d.budgets.actif ? "le job « Budgets » tourne" : "pas de job « Budgets » (rien de ce que charge un joueur)"}${d.budgets.raisons.length ? ` — ${d.budgets.raisons.join(" ; ")}` : ""}`);
   if (d.mode === "pr") {
-    // Lot K1 : un libellé par suite — DailyTrack, DailyJump, puis le nom de chaque jeu à fiche (Tower).
-    const nomSuite = (j) => (j === "web" ? "DailyTrack" : j === "jump" ? "DailyJump" : j.charAt(0).toUpperCase() + j.slice(1));
+    // Lots K1, K1b et K1c : un libellé par suite (« Track » pour la suite `web`, « Jump », « Tower » : le nom du jeu ; le résumé disait « DailyTrack » et « DailyJump », qui ne sont plus que les anciens noms).
+    const nomSuite = (j) => {
+      const id = FICHES_CI.find((f) => f.e2e.suite === j).id;
+      return id.charAt(0).toUpperCase() + id.slice(1);
+    };
     l.push(`e2e (Chromium) : ${JEUX_E2E.map((j) => `${d.e2e[j].length} spec(s) ${nomSuite(j)}`).join(", ")}, ${d.e2eParts.length} part(s) ${d.e2eParts.map((p) => `${p.secondes} s`).join(" / ")}`);
     for (const j of JEUX_E2E) for (const s of d.e2e[j]) l.push(`  · ${j}/${s}`);
     for (const r of d.e2e.raisons.slice(0, 12)) l.push(`  ↳ ${r}`);

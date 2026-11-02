@@ -107,7 +107,7 @@ const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || c
 const maintenant = () => Date.now() + (lecture?.decalage ?? 0);
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
-/** Le nom d'un jeu : `jeu.<id>.nom` du catalogue commun (Track, Jump et les jeux à fiche : lot K1). */
+/** Le nom d'un jeu : `jeu.<id>.nom` du catalogue commun (lots K1 à K1c : chaque jeu a sa fiche). */
 const nomCleDe = (code: Jeu) => `jeu.${code}.nom` as const;
 
 /** Le nom traduit d'un thème (`portail.theme.<jeu>.<code>`), ou `null` s'il est inconnu du catalogue. */
@@ -154,13 +154,12 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: Option
   const numeroTheme = numero && theme ? t.t("portail.numeroTheme", { numero, theme }) : numero;
   const etat = jeu?.etat;
   const compacte = opts.compacte === true;
-  // Jump : la réplique du thème du jour (une seule par écran ; lot I5 : catalogue commun de @cdj/ui, la même que dans le jeu) ; tant que le thème n'est pas connu
-  // (ou sans serveur), l'accroche du jeu.
-  const replique = c.code === "jump" && jeu?.theme ? cleConnue(`jump.replique.${jeu.theme}`) : null;
-  // Lot K1 : un jeu qui a une fiche donne son accroche, son titre et son étiquette ; Track et Jump gardent leur code d'avant.
-  const fiche = ficheDuJeu(c.code);
-  const texte = fiche ? t.t((cleConnue(fiche.accroche) ?? "portail.jump.accroche") as Cle) : c.code === "track" ? t.t("portail.track.accroche") : t.t(replique ?? "portail.jump.accroche");
-  const titre = fiche ? titreDeCarte(fiche, t, t.t(nomCleDe(c.code))) : t.t(c.code === "track" ? "jeu.track.titre" : "jeu.jump.titre");
+  // Lots K1, K1b et K1c : la fiche d'un jeu donne son accroche (celle du thème du jour quand elle en a une : Jump, une réplique par thème, la même que dans le jeu, catalogue commun de @cdj/ui),
+  // son titre et son étiquette.
+  const fiche = ficheDuJeu(c.code)!;
+  const parTheme = fiche.accrocheTheme && jeu?.theme ? cleConnue(fiche.accrocheTheme + jeu.theme) : null;
+  const texte = t.t(parTheme ?? (cleConnue(fiche.accroche) as Cle));
+  const titre = titreDeCarte(fiche, t, t.t(nomCleDe(c.code)));
   // La variante compacte (lot F1) n'a que le nom et le numéro : ni accroche, ni statut (le statut d'un jeu qu'on n'a pas épinglé n'est pas ce qu'on vient chercher).
   const etiquette = compacte ? etiquetteDe(c.code, { titre, numero: numeroTheme }) : etiquetteDe(c.code, { titre, numero: numeroTheme, texte, suite: statut(t, c, etat) });
   const nom = t.t(nomCleDe(c.code));

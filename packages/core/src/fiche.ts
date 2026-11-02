@@ -7,8 +7,8 @@
 // `fr` + `en` ; la fiche porte les CLÉS (`accroche`, `titre`). **Qui l'écrit** : le lot du jeu (seule exception à la règle des zones : `config/jeux/<id>.json`) ;
 // `validerFiche` refuse donc une fiche qui sortirait de ce que le jeu peut réclamer (zones de CI ailleurs que dans les siennes, tables d'un autre jeu…).
 //
-// **Jeux sans fiche (jusqu'aux lots K1b et K1c)** : Track et Jump gardent leur code d'aujourd'hui ; chaque consommateur lit la fiche d'un jeu qui en a une et garde sinon son code
-// actuel. `JEUX_SANS_FICHE` nomme ces deux jeux pour les listes qui doivent encore les contenir ; il disparaît quand leurs fiches existent.
+// **Les trois jeux ont une fiche** (lots K1, K1b et K1c) : il n'y a plus de jeu sans fiche, ni de chemin de transition. Les jeux dont les noms ne suivent pas la règle `apps/<id>/`, `packages/<id>-sim/`,
+// `<id>_…`, `<id>:` (Track : `apps/web`, `packages/sim`, les tables `results`…, le préfixe `cdj:`) les déclarent par `dossiers` et par des listes de noms hérités, nommés un par un ci-dessous.
 
 export type SensClassement = "asc" | "desc";
 export type UniteScore = "ms" | "ticks" | "mm" | "points";
@@ -29,11 +29,15 @@ export interface FicheJeu {
   id: string;
   /** Son code au registre du serveur (`GET /api/portail/jour`, tables) : `cdj` pour Track, sinon l'identifiant. */
   code: string;
+  /** Lot K1c : les dossiers du jeu quand ils ne suivent pas la règle (`apps/<id>/`, `packages/<id>-sim/`) : Track est dans `apps/web` et `packages/sim`. Absent : la règle. */
+  dossiers?: { app: string; sim: string };
   /** Sa place dans les listes (cartouches, onglets, zones) ; unique. */
   ordre: number;
   nom: { fr: string; en: string };
   /** Clé de catalogue du portail : l'accroche de la cartouche. */
   accroche: string;
+  /** Lot K1b : un jeu dont l'accroche suit le thème du jour (Jump : une réplique par thème) donne le préfixe de ses clés (`jump.replique.` + le code du thème) ; absent : l'accroche seule. */
+  accrocheTheme?: string;
   /** Clé de catalogue du titre de la cartouche ; absente : le nom en capitales. */
   titre?: string;
   etiquette: {
@@ -63,13 +67,17 @@ export interface FicheJeu {
   /** `fichier:constante` des versions que la plateforme lit (lot K2) : un test vérifie que chacune existe. */
   versions: { sim: string; generateur: string; medailles?: string };
   jours: {
-    /** Le champ que prévoit K1 pour le registre des versions de Tower (traité à part) : `registre` (plages, comme Track) ou `fichier-par-jour`. */
+    /** `registre` (un fichier de plages de jours protégés, Track) ou `fichier-par-jour` (Jump, Tower). */
     mode: ModeJours;
+    /** Mode `fichier-par-jour` : le dossier des jours figés. */
     dossier?: string;
+    /** Lot K1c, mode `registre` : le fichier du registre (`packages/sim/src/jours-track.json`). */
+    registre?: string;
     /** La preuve de l'auteur ne quitte jamais le serveur (règle R9) : vrai pour un jeu dont les jours figés portent une `preuve`. */
     preuveInterditeEnProd: boolean;
   };
-  rejeu: { unitesServeur: number; fil?: boolean; maxTicks: number };
+  /** `ticksParUnite` (lot K1b) : le coût d'un rejeu est proportionnel à sa durée (une unité du plafond global par `ticksParUnite` pas rejoués, `unitesServeur` en est le minimum) ; absent : coût fixe. */
+  rejeu: { unitesServeur: number; fil?: boolean; maxTicks: number; ticksParUnite?: number };
   donnees: {
     /** Les tables liées à un joueur ou une partie (vidées par la remise à zéro) ou gardées (contenu du jour). */
     tables: { nom: string; sort: SortTable }[];
@@ -80,8 +88,11 @@ export interface FicheJeu {
   musique: { scenes: string[] };
   /** Le jeu a-t-il une page d'outils `/<id>/admin/` ? */
   admin: { outils: boolean };
-  /** Les zones qu'une PR de ce jeu peut toucher (`zones-jeu.mjs`) ; `serveur` en est la part qui compte aussi pour la plateforme (`ci-scope.mjs`). */
-  zones: { jeu: string[]; serveur: string[] };
+  /**
+   * Les zones qu'une PR de ce jeu peut toucher (`zones-jeu.mjs`) ; `serveur` en est la part qui compte aussi pour la plateforme (`ci-scope.mjs`). Lot K1c : `documents` = des documents que la CI
+   * range avec le jeu (ses e2e seuls tournent quand ils changent) sans que le lot du jeu les écrive (les visions de Nathan : `docs/seed.md`).
+   */
+  zones: { jeu: string[]; serveur: string[]; documents?: string[] };
   e2e: {
     /** Le dossier des specs ; la suite de la CI (`tower` : `tower/<spec>`, projet Playwright `tower-<navigateur>`). */
     dossier: string;
@@ -90,6 +101,8 @@ export interface FicheJeu {
     /** Zones nommées de `e2e/zones.json` pour ce jeu, et ses specs (nom de fichier → zones). */
     zones: Record<string, ZoneCI>;
     specs: Record<string, string[]>;
+    /** Lot K1b : les specs tout entiers de la famille « Régression » (CI complète et nuit seulement, `docs/tests.md`), parmi `specs`. */
+    regression?: string[];
     /** Nombre de parts Chromium de la CI complète, par mode. */
     parts: { main: number; complet: number; nuit: number };
   };
@@ -101,6 +114,7 @@ export interface FicheJeu {
 // Validation
 
 const ID = /^[a-z][a-z0-9-]{1,23}$/;
+const DOSSIER = /^[a-z][a-z0-9-]*$/;
 const JOUR = /^\d{4}-\d{2}-\d{2}$/;
 const COULEUR = /^#[0-9A-Fa-f]{6}$/;
 const NOM_TABLE = /^[a-z][a-z0-9_]*$/;
@@ -115,11 +129,47 @@ const estTexte = (v: unknown): v is string => typeof v === "string" && v.length 
 const estEntier = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
 const listeDeTextes = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
 
-/** Les préfixes de chemins qu'un jeu `id` peut réclamer pour ses zones : les siens, rien d'autre (la fiche est écrite par le lot du jeu). */
-export function prefixesDeZones(id: string): string[] {
-  return [`apps/${id}/`, `packages/${id}-sim/`, `docs/${id}/`, `apps/api/src/${id}`, `apps/api/test/${id}`, `apps/api/scripts/${id}-`];
+/**
+ * Les préfixes de chemins qu'un jeu `id` peut réclamer pour ses zones : les siens, rien d'autre (la fiche est écrite par le lot du jeu). `dossiers` (lot K1c) remplace `apps/<id>/` et
+ * `packages/<id>-sim/` par ceux que le jeu déclare (Track : `apps/web/`, `packages/sim/`) ; deux fiches ne peuvent pas déclarer le même dossier (`validerEnsemble`).
+ */
+export function prefixesDeZones(id: string, dossiers?: { app: string; sim: string }): string[] {
+  return [`apps/${dossiers?.app ?? id}/`, `packages/${dossiers?.sim ?? `${id}-sim`}/`, `docs/${id}/`, `apps/api/src/${id}`, `apps/api/test/${id}`, `apps/api/scripts/${id}-`];
 }
-const globDuJeu = (glob: string, id: string): boolean => !glob.split("/").includes("..") && prefixesDeZones(id).some((p) => glob.startsWith(p));
+/**
+ * Lots K1b et K1c : les chemins d'un jeu qui ne suivent pas la règle `<dossier>/<id>…`, **nommés un par un** (des noms d'avant la règle, que le jeu garde) : un outil de mesure, un fichier du
+ * serveur, ses documents. Une entrée qui finit par `/` est un dossier (toute glob qui le commence est permise), les autres sont des noms exacts. Une fiche ne peut réclamer que cela en plus de
+ * la règle : la validation reste « un jeu ne réclame que ses propres chemins ».
+ */
+export const CHEMINS_HERITES: Readonly<Record<string, readonly string[]>> = {
+  jump: ["apps/api/scripts/measure-jump.ts"],
+  track: [
+    "apps/api/src/cdj.ts",
+    "apps/api/src/salon.ts",
+    "apps/api/src/garage*.ts",
+    "apps/api/test/garage*.test.ts",
+    "apps/api/test/salon.test.ts",
+    "apps/api/test/planning.test.ts",
+    "apps/api/scripts/measure-salon.ts",
+    "apps/api/scripts/measure-generator.ts",
+    "apps/api/scripts/measure-budget.ts",
+    "apps/api/scripts/history-seed.ts",
+    "docs/lots/",
+    "docs/orchestration.md",
+    "docs/seed.md",
+    "docs/guide-technique.md",
+  ],
+};
+/** Les tables d'un jeu qui ne commencent pas par `<id>_` : celles de Track, avant la règle (le serveur de DailyTrack est le plus ancien). */
+export const TABLES_HERITEES: Readonly<Record<string, readonly string[]>> = {
+  track: ["results", "circuits", "planning", "garage_choices", "salon_runs", "salon_sessions", "salon_circuits", "salon_presence", "salon_throttle"],
+};
+/** Le préfixe de stockage d'un jeu quand ce n'est pas `<id>:` : `cdj:` est celui de Track et de la plateforme (l'identité commune y vit). */
+export const PREFIXES_HERITES: Readonly<Record<string, string>> = { track: "cdj:" };
+/** Le préfixe de stockage d'un jeu. */
+export const prefixeDeStockage = (id: string): string => PREFIXES_HERITES[id] ?? `${id}:`;
+const globDuJeu = (glob: string, id: string, dossiers?: { app: string; sim: string }): boolean =>
+  !glob.split("/").includes("..") && (prefixesDeZones(id, dossiers).some((p) => glob.startsWith(p)) || (CHEMINS_HERITES[id] ?? []).some((h) => (h.endsWith("/") ? glob.startsWith(h) : glob === h)));
 
 /**
  * Les problèmes d'une fiche lue (JSON brut) : une liste vide veut dire « valide ». Chaque message nomme le champ (`etiquette.fond : …`). `idDuFichier` : le nom du fichier sans `.json`,
@@ -137,9 +187,13 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   if (!estTexte(f.code) || !ID.test(f.code)) ko("code", "le code du registre du serveur");
   if (!estEntier(f.ordre) || f.ordre < 1) ko("ordre", "entier ≥ 1");
 
+  if (f.dossiers !== undefined && (!estObjet(f.dossiers) || !DOSSIER.test(String(f.dossiers.app)) || !DOSSIER.test(String(f.dossiers.sim)))) ko("dossiers", "{ app, sim } : des noms de dossiers (a-z, chiffres, tirets), ou absent");
+  const dossiers = estObjet(f.dossiers) && DOSSIER.test(String(f.dossiers.app)) && DOSSIER.test(String(f.dossiers.sim)) ? (f.dossiers as { app: string; sim: string }) : undefined;
+
   if (!estObjet(f.nom) || !estTexte(f.nom.fr) || !estTexte(f.nom.en)) ko("nom", "{ fr, en } non vides");
   if (!estTexte(f.accroche)) ko("accroche", "une clé de catalogue");
   if (f.titre !== undefined && !estTexte(f.titre)) ko("titre", "une clé de catalogue, ou absent");
+  if (f.accrocheTheme !== undefined && (typeof f.accrocheTheme !== "string" || !/^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*\.$/.test(f.accrocheTheme))) ko("accrocheTheme", "un préfixe de clés de catalogue qui finit par un point, ou absent");
 
   const e = f.etiquette;
   if (!estObjet(e)) ko("etiquette", "objet attendu");
@@ -181,24 +235,26 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   if (!estObjet(j)) ko("jours", "objet attendu");
   else {
     if (j.mode !== "registre" && j.mode !== "fichier-par-jour") ko("jours.mode", "`registre` ou `fichier-par-jour`");
-    if (j.dossier !== undefined && (typeof j.dossier !== "string" || !CHEMIN.test(j.dossier) || !globDuJeu(j.dossier, id))) ko("jours.dossier", `un dossier du jeu (${prefixesDeZones(id).slice(0, 2).join(" ou ")}…)`);
-    if (j.mode === "fichier-par-jour" && typeof j.dossier !== "string") ko("jours.dossier", "obligatoire pour `fichier-par-jour`");
+    if (j.dossier !== undefined && (typeof j.dossier !== "string" || !CHEMIN.test(j.dossier) || !globDuJeu(j.dossier, id, dossiers))) ko("jours.dossier", `un dossier du jeu (${prefixesDeZones(id, dossiers).slice(0, 2).join(" ou ")}…)`);
+    if (j.registre !== undefined && (typeof j.registre !== "string" || !CHEMIN.test(j.registre) || !globDuJeu(j.registre, id, dossiers))) ko("jours.registre", `un fichier du jeu (${prefixesDeZones(id, dossiers).slice(0, 2).join(" ou ")}…)`);
+    if (j.mode === "fichier-par-jour" && (typeof j.dossier !== "string" || j.registre !== undefined)) ko("jours.dossier", "obligatoire pour `fichier-par-jour` (et sans `registre`)");
+    if (j.mode === "registre" && (typeof j.registre !== "string" || j.dossier !== undefined)) ko("jours.registre", "obligatoire pour `registre` (et sans `dossier`)");
     if (typeof j.preuveInterditeEnProd !== "boolean") ko("jours.preuveInterditeEnProd", "booléen");
   }
 
   const r = f.rejeu;
-  if (!estObjet(r) || !estEntier(r.unitesServeur) || r.unitesServeur < 1 || !estEntier(r.maxTicks) || r.maxTicks < 1 || (r.fil !== undefined && typeof r.fil !== "boolean")) ko("rejeu", "{ unitesServeur ≥ 1, maxTicks ≥ 1, fil? }");
+  if (!estObjet(r) || !estEntier(r.unitesServeur) || r.unitesServeur < 1 || !estEntier(r.maxTicks) || r.maxTicks < 1 || (r.fil !== undefined && typeof r.fil !== "boolean") || (r.ticksParUnite !== undefined && (!estEntier(r.ticksParUnite) || r.ticksParUnite < 1))) ko("rejeu", "{ unitesServeur ≥ 1, maxTicks ≥ 1, fil?, ticksParUnite? ≥ 1 }");
 
   const d = f.donnees;
   if (!estObjet(d)) ko("donnees", "objet attendu");
   else {
     if (!Array.isArray(d.tables) || d.tables.length === 0 || !d.tables.every((x) => estObjet(x) && typeof x.nom === "string" && NOM_TABLE.test(x.nom) && (x.sort === "videe" || x.sort === "gardee"))) ko("donnees.tables", "des { nom, sort: videe | gardee }");
     else {
-      for (const t of d.tables as { nom: string }[]) if (!t.nom.startsWith(`${id}_`)) ko("donnees.tables", `« ${t.nom} » doit commencer par « ${id}_ » (un jeu ne déclare que ses tables)`);
+      for (const t of d.tables as { nom: string }[]) if (!t.nom.startsWith(`${id}_`) && !(TABLES_HERITEES[id] ?? []).includes(t.nom)) ko("donnees.tables", `« ${t.nom} » doit commencer par « ${id}_ » (un jeu ne déclare que ses tables)`);
       if (new Set((d.tables as { nom: string }[]).map((t) => t.nom)).size !== d.tables.length) ko("donnees.tables", "noms uniques");
     }
     const s = d.stockage;
-    if (!estObjet(s) || typeof s.prefixe !== "string" || s.prefixe !== `${id}:` || !listeDeTextes(s.reglagesGardes) || !s.reglagesGardes.every((k) => k.startsWith(`${id}:`))) ko("donnees.stockage", `{ prefixe: « ${id}: », reglagesGardes: des clés qui commencent par ce préfixe }`);
+    if (!estObjet(s) || typeof s.prefixe !== "string" || s.prefixe !== prefixeDeStockage(id) || !listeDeTextes(s.reglagesGardes) || !s.reglagesGardes.every((k) => k.startsWith(prefixeDeStockage(id)))) ko("donnees.stockage", `{ prefixe: « ${prefixeDeStockage(id)} », reglagesGardes: des clés qui commencent par ce préfixe }`);
   }
 
   if (!estObjet(f.message) || f.message.ou !== id) ko("message.ou", `doit être « ${id} » (la destination du message en direct d'un jeu est son identifiant)`);
@@ -213,26 +269,27 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   if (!estObjet(f.admin) || typeof f.admin.outils !== "boolean") ko("admin.outils", "booléen");
 
   const z = f.zones;
-  if (!estObjet(z) || !listeDeTextes(z.jeu) || !listeDeTextes(z.serveur)) ko("zones", "{ jeu: [motifs], serveur: [motifs] }");
+  if (!estObjet(z) || !listeDeTextes(z.jeu) || !listeDeTextes(z.serveur) || (z.documents !== undefined && !listeDeTextes(z.documents))) ko("zones", "{ jeu: [motifs], serveur: [motifs], documents?: [motifs] }");
   else {
-    for (const g of [...z.jeu, ...z.serveur]) if (!CHEMIN.test(g) || !globDuJeu(g, id)) ko("zones", `« ${g} » n'est pas dans les zones du jeu (${prefixesDeZones(id).join(", ")})`);
+    for (const g of [...z.jeu, ...z.serveur, ...(z.documents ?? [])]) if (!CHEMIN.test(g) || !globDuJeu(g, id, dossiers)) ko("zones", `« ${g} » n'est pas dans les zones du jeu (${prefixesDeZones(id, dossiers).join(", ")})`);
     for (const g of z.serveur) if (!z.jeu.includes(g)) ko("zones.serveur", `« ${g} » doit aussi être dans zones.jeu`);
   }
 
   const t = f.e2e;
   if (!estObjet(t)) ko("e2e", "objet attendu");
   else {
-    if (typeof t.dossier !== "string" || !globDuJeu(t.dossier, id)) ko("e2e.dossier", "un dossier du jeu");
+    if (typeof t.dossier !== "string" || !globDuJeu(t.dossier, id, dossiers)) ko("e2e.dossier", "un dossier du jeu");
     if (typeof t.suite !== "string" || !ID.test(t.suite)) ko("e2e.suite", "le nom de la suite de la CI");
     const specs = estObjet(t.specs) ? t.specs : {};
     if (!estObjet(t.specs) || !Object.entries(specs).every(([k, zs]) => /^[a-z0-9-]+\.spec\.ts$/.test(k) && listeDeTextes(zs) && zs.length > 0)) ko("e2e.specs", "{ \"x.spec.ts\": [zones] } avec au moins une zone par spec");
     if (!listeDeTextes(t.fumee) || !t.fumee.every((s) => s in specs)) ko("e2e.fumee", "des specs déclarés dans e2e.specs");
+    if (t.regression !== undefined && (!listeDeTextes(t.regression) || !t.regression.every((s) => s in specs))) ko("e2e.regression", "des specs déclarés dans e2e.specs, ou absent");
     if (!estObjet(t.zones)) ko("e2e.zones", "objet attendu");
     else {
       for (const [nom, zc] of Object.entries(t.zones)) {
         if (!new RegExp(`^${id}-[a-z0-9-]+$|^api-${id}$`).test(nom)) ko("e2e.zones", `« ${nom} » doit s'appeler ${id}-… (ou api-${id}) : une fiche ne définit que ses zones`);
         if (!estObjet(zc) || !listeDeTextes(zc.globs) || zc.globs.length === 0 || (zc.sauf !== undefined && !listeDeTextes(zc.sauf))) ko(`e2e.zones.${nom}`, "{ globs: [motifs], sauf?: [motifs] }");
-        else for (const g of [...zc.globs, ...(zc.sauf ?? [])]) if (!CHEMIN.test(g) || !globDuJeu(g, id)) ko(`e2e.zones.${nom}`, `« ${g} » n'est pas dans les zones du jeu`);
+        else for (const g of [...zc.globs, ...(zc.sauf ?? [])]) if (!CHEMIN.test(g) || !globDuJeu(g, id, dossiers)) ko(`e2e.zones.${nom}`, `« ${g} » n'est pas dans les zones du jeu`);
       }
     }
     if (estObjet(t.zones) && estObjet(t.specs)) {
@@ -268,6 +325,12 @@ export function validerEnsemble(fiches: readonly FicheJeu[]): string[] {
       else vus.set(v, f.id);
     }
   }
+  // Lot K1c : deux jeux ne déclarent pas le même dossier (`dossiers`, ou la règle `apps/<id>`, `packages/<id>-sim`).
+  const dossiersVus = new Map<string, string>();
+  for (const f of fiches) for (const d of [`apps/${f.dossiers?.app ?? f.id}`, `packages/${f.dossiers?.sim ?? `${f.id}-sim`}`]) {
+    if (dossiersVus.has(d)) p.push(`dossier « ${d} » : ${dossiersVus.get(d)} et ${f.id}`);
+    else dossiersVus.set(d, f.id);
+  }
   const tables = new Map<string, string>();
   for (const f of fiches) for (const t of f.donnees.tables) {
     if (tables.has(t.nom)) p.push(`table « ${t.nom} » : ${tables.get(t.nom)} et ${f.id}`);
@@ -275,18 +338,6 @@ export function validerEnsemble(fiches: readonly FicheJeu[]): string[] {
   }
   return p;
 }
-
-// ---------------------------------------------------------------------------------------------------------------------------------------
-// Les jeux qui n'ont pas encore de fiche
-
-/**
- * Track et Jump, **jusqu'à leurs lots de fiche (K1b, K1c)** : les listes dérivées des fiches doivent encore les contenir, dans leur forme d'aujourd'hui. Ce n'est PAS une fiche (leurs
- * consommateurs gardent leur code), seulement de quoi composer les listes sans changer un octet pour eux. Le jour où un jeu a sa fiche, sa ligne disparaît d'ici.
- */
-export const JEUX_SANS_FICHE = [
-  { id: "track", code: "cdj", ordre: 1, nom: "Track", etatDepart: "on" as const, prefixe: "cdj:", ou: "track", zone: "track" },
-  { id: "jump", code: "jump", ordre: 2, nom: "Jump", etatDepart: "on" as const, prefixe: "jump:", ou: "jump", zone: "jump" },
-] as const;
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Les projections : ce que chaque lecteur reçoit, et rien de plus.
@@ -297,16 +348,35 @@ const parOrdre = <T extends { ordre: number }>(l: readonly T[]): T[] => [...l].s
 export interface ProjectionPortail {
   jeux: {
     id: string;
-    /** Le code au registre du serveur (`GET /api/portail/jour`). */
-    code: string;
+    /** Le code au registre du serveur (`GET /api/portail/jour`) ; absent : l'identifiant (cas de Jump et de Tower). */
+    code?: string;
     accroche: string;
-    titre: string | null;
-    cumul: boolean;
-    format: FormatScore;
+    /** Absent : le nom en capitales. */
+    titre?: string;
+    /** Lot K1b : le préfixe des clés d'accroche par thème (Jump), absent sinon. */
+    accrocheTheme?: string;
+    /** Lot K1b : le premier jour (`AAAA-MM-JJ`) d'un jeu public d'emblée (`etatDepart: on`), dont la cartouche affiche un numéro sans attendre le serveur ; absent : le serveur seul donne le numéro (un jeu `off` à l'arrivée). */
+    premierJour?: string;
+    /** Absent : vrai (un jeu au temps entre dans le cumul) ; `false` pour un jeu hors du cumul. */
+    cumul?: false;
+    /** Absent : `temps`. */
+    format?: FormatScore;
   }[];
 }
 export function projectionPortail(fiches: readonly FicheJeu[]): ProjectionPortail {
-  return { jeux: parOrdre(fiches).map((f) => ({ id: f.id, code: f.code, accroche: f.accroche, titre: f.titre ?? null, cumul: f.classement.cumul, format: f.classement.format })) };
+  return {
+    jeux: parOrdre(fiches).map((f) => ({
+      id: f.id,
+      // Lot K1b : ce qui va de soi n'est pas écrit (le portail le rétablit à la lecture : `jeuxFiches.ts`) — un octet de JSON pèse sur son budget.
+      ...(f.code !== f.id ? { code: f.code } : {}),
+      accroche: f.accroche,
+      ...(f.titre !== undefined ? { titre: f.titre } : {}),
+      ...(f.accrocheTheme !== undefined ? { accrocheTheme: f.accrocheTheme } : {}),
+      ...(f.etatDepart === "on" ? { premierJour: f.premierJour } : {}),
+      ...(f.classement.cumul ? {} : { cumul: false }),
+      ...(f.classement.format !== "temps" ? { format: f.classement.format } : {}),
+    })),
+  };
 }
 
 /** Le serveur (registre, remise à zéro, mentions, jours figés) : lu par les tests de cohérence au lot K1, par le module du lot K2. */
@@ -355,20 +425,22 @@ export interface ProjectionCI {
     id: string;
     zones: FicheJeu["zones"];
     e2e: FicheJeu["e2e"];
-    jours: { dossier: string | null; preuveInterditeEnProd: boolean };
+    /** Lot K1c : le dossier de l'application (`web` pour Track : `apps/web/dist`), celui des jours figés (`fichier-par-jour`) ou le fichier du registre (`registre`). */
+    app: string;
+    jours: { dossier: string | null; registre: string | null; preuveInterditeEnProd: boolean };
     budget: string[];
     outilsAdmin: boolean;
   }[];
 }
 export function projectionCI(fiches: readonly FicheJeu[]): ProjectionCI {
   return {
-    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, jours: { dossier: f.jours.dossier ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd }, budget: f.budget.lignes, outilsAdmin: f.admin.outils })),
+    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd }, budget: f.budget.lignes, outilsAdmin: f.admin.outils })),
   };
 }
 
 /**
- * Les jeux côté jeu et socle (`@cdj/core`, `@cdj/profile`, `@cdj/ui`, `@cdj/musique`) : le nom, l'étiquette, le stockage, le message, les scènes. Les listes qui doivent aussi contenir Track et
- * Jump (`publics`, `prefixes`, `ou`, `zones`, `jeuxMusique`) sont **complètes** : elles sont écrites telles qu'elles étaient dans le code, pour que les paquets n'embarquent pas un octet de plus.
+ * Les jeux côté jeu et socle (`@cdj/core`, `@cdj/profile`, `@cdj/ui`, `@cdj/musique`) : le nom, l'étiquette, le stockage, le message, les scènes. Les listes (`publics`, `prefixes`, `ou`, `zones`,
+ * `jeuxMusique`) sont **complètes et dans l'ordre des fiches** : elles sont écrites en toutes lettres, telles qu'elles étaient dans le code, pour que les paquets n'embarquent pas un octet de plus.
  */
 export interface ProjectionJeu {
   jeux: {
@@ -386,13 +458,13 @@ export interface ProjectionJeu {
     themes: string[];
     scenes: string[];
   }[];
-  /** Les jeux publics au départ (`on`), dans l'ordre : Track, Jump, puis les fiches `on`. */
+  /** Les jeux publics au départ (`etatDepart: on`), dans l'ordre des fiches. */
   publics: string[];
-  /** Les préfixes de stockage des données de jeu, dans l'ordre historique : `cdj:`, `jump:`, puis les fiches. */
+  /** Les préfixes de stockage des données de jeu, dans l'ordre des fiches (`cdj:`, `jump:`, `tower:`). */
   prefixes: string[];
-  /** Les destinations du message en direct : le portail, Track, Jump, puis les fiches. */
+  /** Les destinations du message en direct : le portail, puis chaque jeu. */
   ou: string[];
-  /** Les zones des nouveautés : `dujour`, Track, Jump, puis les fiches. */
+  /** Les zones des nouveautés : `dujour`, puis chaque jeu. */
   zones: string[];
   /** Les noms affichés des zones, par code. */
   nomsDeZones: Record<string, string>;
@@ -415,11 +487,11 @@ export function projectionJeu(fiches: readonly FicheJeu[]): ProjectionJeu {
       themes: f.themes,
       scenes: f.musique.scenes,
     })),
-    publics: [...JEUX_SANS_FICHE.filter((j) => j.etatDepart === "on").map((j) => j.id), ...l.filter((f) => f.etatDepart === "on").map((f) => f.id)],
-    prefixes: [...JEUX_SANS_FICHE.map((j) => j.prefixe), ...l.map((f) => f.donnees.stockage.prefixe)],
-    ou: ["portail", ...JEUX_SANS_FICHE.map((j) => j.ou), ...l.map((f) => f.message.ou)],
-    zones: ["dujour", ...JEUX_SANS_FICHE.map((j) => j.zone), ...l.map((f) => f.zoneNouveautes)],
-    nomsDeZones: { dujour: "Du Jour", ...Object.fromEntries(JEUX_SANS_FICHE.map((j) => [j.zone, j.nom])), ...Object.fromEntries(l.map((f) => [f.zoneNouveautes, f.nom.fr])) },
+    publics: l.filter((f) => f.etatDepart === "on").map((f) => f.id),
+    prefixes: l.map((f) => f.donnees.stockage.prefixe),
+    ou: ["portail", ...l.map((f) => f.message.ou)],
+    zones: ["dujour", ...l.map((f) => f.zoneNouveautes)],
+    nomsDeZones: { dujour: "Du Jour", ...Object.fromEntries(l.map((f) => [f.zoneNouveautes, f.nom.fr])) },
   };
 }
 

@@ -22,22 +22,21 @@ export interface Chiffres {
 }
 
 /**
- * Lot K1 : le tableau de bord a **une tuile par jeu**. Track et Jump gardent leurs deux tuiles (leur forme d'avant : Jump y ajoute ses morts) ; chaque jeu qui a une fiche (Tower) en a une, « <Nom> finis »,
- * dès que la réponse de l'API porte ses chiffres (`chiffres.<id>`, envoyés quand le jeu est monté sur le serveur). Rend `{ legende, valeur }`.
+ * Lots K1 à K1c : le tableau de bord a **une tuile par jeu** (sa fiche), « <Nom> finis », dès que la réponse de l'API porte ses chiffres (`chiffres.<id>`, envoyés quand le jeu est monté sur le serveur) ;
+ * un jeu qui compte aussi ses morts (Jump) les dit en sous-texte. Rend `{ legende, valeur }`.
  */
 export function tuilesDesJeux(c: Chiffres): { legende: string; valeur: string; sousTexte?: string }[] {
-  const autres = c as unknown as Record<string, { finis?: number } | undefined>;
-  return [
-    { legende: "Track finis", valeur: String(c.track.finis) },
-    { legende: "Jump finis", valeur: String(c.jump.finis), sousTexte: `${c.jump.morts} mort${c.jump.morts > 1 ? "s" : ""}` },
-    ...FICHES.flatMap((f) => (typeof autres[f.id]?.finis === "number" ? [{ legende: `${NOM_DE_ZONE[f.id as ZoneNouveaute] ?? f.id} finis`, valeur: String(autres[f.id]!.finis) }] : [])),
-  ];
+  const chiffres = c as unknown as Record<string, { finis?: number; morts?: number } | undefined>;
+  return FICHES.flatMap((f) => {
+    const x = chiffres[f.id];
+    return typeof x?.finis === "number" ? [{ legende: `${NOM_DE_ZONE[f.id as ZoneNouveaute] ?? f.id} finis`, valeur: String(x.finis), ...(typeof x.morts === "number" ? { sousTexte: `${x.morts} mort${x.morts > 1 ? "s" : ""}` } : {}) }] : [];
+  });
 }
 
-/** Lot K1 : le nom d'un jeu d'après son code au registre du serveur (`cdj`, `jump`, `tower`), pour un résultat retiré : jamais « Track » par défaut pour un jeu qu'on ne reconnaît pas. */
+/** Lots K1 à K1c : le nom d'un jeu d'après son code au registre du serveur (`cdj`, `jump`, `tower`), pour un résultat retiré : jamais « Track » par défaut pour un jeu qu'on ne reconnaît pas. */
 export function nomDuJeuAdmin(code: string): string {
   const fiche = FICHES.find((f) => f.code === code);
-  return fiche ? (NOM_DE_ZONE[fiche.id as ZoneNouveaute] ?? fiche.id) : code === "cdj" ? "Track" : code === "jump" ? "Jump" : code;
+  return fiche ? (NOM_DE_ZONE[fiche.id as ZoneNouveaute] ?? fiche.id) : code;
 }
 
 export interface JourDeLaCourbe {

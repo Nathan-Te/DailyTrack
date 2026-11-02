@@ -16,6 +16,7 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import { dureesDeLEnvironnement, superposer } from "./durees-e2e.mjs";
+import { regressionDesFiches } from "./fiches-lecture.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -71,10 +72,10 @@ export function durees(dir = E2E, { essentiel = false } = {}) {
   return essentiel ? d.essentiel ?? {} : d.secondes;
 }
 
-/** Lot R13 : les specs tout entiers « Régression » d'un jeu (`web` | `jump` | `tower`), d'après e2e/zones.json. */
+/** Lot R13 : les specs tout entiers « Régression » d'un jeu (`web` | `jump` | `tower`), d'après sa fiche (lot K1b : `e2e.regression`) et e2e/zones.json (les specs de la plateforme rangés dans `apps/web/e2e`). */
 export function specsRegression(jeu) {
   const t = JSON.parse(readFileSync(join(ROOT, "e2e/zones.json"), "utf8"));
-  return (t.regression ?? []).filter((s) => s.startsWith(`${jeu}/`)).map((s) => s.slice(jeu.length + 1));
+  return [...(t.regression ?? []), ...regressionDesFiches()].filter((s) => s.startsWith(`${jeu}/`)).map((s) => s.slice(jeu.length + 1));
 }
 
 function main(argv) {

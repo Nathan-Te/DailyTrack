@@ -27,8 +27,22 @@ describe("le socle lit les fiches", () => {
     expect(POLICES["tower-police"]).toBe(t.etiquette.police);
   });
 
-  it("le texte d'encre reste lisible sur le fond de l'étiquette de chaque jeu (4,5:1)", () => {
-    for (const f of fiches) expect(rapportContraste(valeurJeton("dj-encre"), f.etiquette.fond), f.id).toBeGreaterThanOrEqual(4.5);
+  it("Jump (lot K1b) : le jaune et la police de sa charte portent les valeurs de sa fiche ; sa coque est l'encre du socle (l'étiquette est un papier bordé d'encre)", () => {
+    const j = fiches.find((f) => f.id === "jump")!;
+    expect(COULEURS["jump-jaune"]).toBe(j.etiquette.fond);
+    expect(POLICES["jump-police"]).toBe(j.etiquette.police);
+    expect(valeurJeton("dj-encre")).toBe(j.etiquette.coque);
+  });
+
+  it("Track (lot K1c) : l'asphalte, la coque et la police de sa charte portent les valeurs de sa fiche", () => {
+    const t = fiches.find((f) => f.id === "track")!;
+    expect(COULEURS["track-asphalte"]).toBe(t.etiquette.fond);
+    expect(COULEURS["track-coque"]).toBe(t.etiquette.coque);
+    expect(POLICES["track-police"]).toBe(t.etiquette.police);
+  });
+
+  it("le texte de l'étiquette reste lisible sur son fond, pour chaque jeu (4,5:1) : de l'encre, sauf Track, sombre, qui écrit en clair", () => {
+    for (const f of fiches) expect(rapportContraste(valeurJeton(f.id === "track" ? "track-texte" : "dj-encre"), f.etiquette.fond), f.id).toBeGreaterThanOrEqual(4.5);
   });
 
   it("chaque jeu a sa feuille : le sélecteur d'amis et, s'il a un dessin propre, son étiquette", () => {

@@ -17,6 +17,19 @@ describe("parts e2e", () => {
     expect(parts.flatMap((p) => p.files).sort()).toEqual(files);
   });
 
+  it("lot K1b : la « Régression » de chaque jeu est celle de sa fiche (plus celle d'e2e/zones.json) ; les specs de la plateforme rangés dans apps/web/e2e y restent", () => {
+    const web = specsRegression("web");
+    const jump = specsRegression("jump");
+    expect(web).toHaveLength(27); // 26 specs de Track (fiche) + manette.spec.ts (plateforme, e2e/zones.json)
+    expect(web).toContain("manette.spec.ts");
+    expect(web).toContain("garage.spec.ts");
+    expect(jump).toHaveLength(15);
+    expect(jump).toContain("themes.spec.ts");
+    expect(specsRegression("tower")).toEqual([]);
+    // Un spec de la Régression existe vraiment dans le dossier des specs de son jeu.
+    expect(web.filter((f) => !specFiles().includes(f))).toEqual([]);
+  });
+
   it("lot R13 : la CI de main lance l'Essentiel de chaque spec qui n'est pas tout entier « Régression », en parts équilibrées", () => {
     const regression = specsRegression("web");
     const files = specFiles().filter((f) => !regression.includes(f));

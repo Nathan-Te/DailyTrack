@@ -1,66 +1,43 @@
-// Portée d'une PR pour la CI (lot R2) : range chaque fichier changé dans une ou plusieurs catégories — `track` (DailyTrack), `jump` (DailyJump),
-// `plateforme` — et dit quelles parties de la CI doivent tourner. Pur et testé (apps/api/test/ciScope.test.ts) ; utilisé par le job `scope` de
+// Portée d'une PR pour la CI (lot R2) : range chaque fichier changé dans une ou plusieurs catégories — un jeu (son identifiant : `track`, `jump`, `tower`, lus dans les fiches
+// `config/jeux/<id>.json`) ou `plateforme` — et dit quelles parties de la CI doivent tourner. Pur et testé (apps/api/test/ciScope.test.ts) ; utilisé par le job `scope` de
 // .github/workflows/ci.yml :
 //   git diff --name-only origin/main...HEAD | node scripts/ci-scope.mjs [--full]   → lignes `clé=valeur` pour $GITHUB_OUTPUT
 //
 // Règles (docs/plateforme/lots/lot-R2-hygiene.md) :
-//   - lot R3 : dans `apps/api`, les fichiers propres à DailyJump (jump*.ts…) ou à DailyTrack (cdj.ts, salon.ts…) comptent pour ce jeu + plateforme ;
+//   - lot R3 : dans `apps/api`, les fichiers propres à un jeu (`zones.serveur` de sa fiche : jump*.ts, cdj.ts, salon.ts…) comptent pour ce jeu + plateforme ;
 //   - un fichier propre à un jeu compte pour ce jeu seul ; une zone partagée (le reste d'apps/api, packages/core, packages/clock, le module de profil, les
-//     workflows, les scripts de CI, la configuration racine, package.json et son verrou, le CLAUDE.md racine…) compte pour LES TROIS ;
-//   - tout fichier qu'aucune règle ne reconnaît compte pour les trois (le doute ne saute jamais un test) ; une liste vide aussi ;
+//     workflows, les scripts de CI, la configuration racine, package.json et son verrou, le CLAUDE.md racine…) compte pour TOUS LES JEUX ;
+//   - tout fichier qu'aucune règle ne reconnaît compte pour tous les jeux (le doute ne saute jamais un test) ; une liste vide aussi ;
 //   - typecheck et tests unitaires : toujours tout (hors de ce script) ; e2e : les suites des catégories touchées ; api-image : si le serveur est touché (SERVER_PATHS, ou toute zone partagée / tout doute).
 import { FICHES_CI } from "./fiches-lecture.mjs";
 import { touchesServer } from "./recette.mjs";
 
-// Lot K1 : les catégories des jeux qui ont une fiche (`config/jeux/<id>.json`, Tower) viennent d'elle ; Track et Jump sont écrits ici jusqu'aux lots K1b et K1c.
-export const CATEGORIES = ["track", "jump", ...FICHES_CI.map((f) => f.id), "plateforme"];
+// Lots K1, K1b et K1c : les catégories sont les jeux, lus dans leurs fiches (`config/jeux/<id>.json`), puis la plateforme. Plus aucun jeu n'est écrit ici.
+export const CATEGORIES = [...FICHES_CI.map((f) => f.id), "plateforme"];
+/**
+ * **Exception nommée (portail)** : les specs e2e du portail et de la plateforme (portail, domaine, profil, amis, admin…) vivent dans le dossier des specs de Track (`apps/web/e2e`, la suite `web`) : une
+ * modification de `apps/portail/**` lance donc cette suite, et la plateforme. Le jour où ces specs auront leur propre suite (lot K2 ou K3), cette ligne disparaît.
+ */
+const SUITE_DES_SPECS_DU_PORTAIL = "web";
+const HOTE_DU_PORTAIL = FICHES_CI.find((f) => f.e2e.suite === SUITE_DES_SPECS_DU_PORTAIL).id;
 const IDS = FICHES_CI.map((f) => f.id);
-/** Les règles d'un jeu à fiche : la part `serveur` de ses zones compte aussi pour la plateforme (l'image de l'API tourne), le reste pour lui seul. */
+/** Les règles d'un jeu : la part `serveur` de ses zones compte aussi pour la plateforme (l'image de l'API tourne), le reste pour lui seul. */
 const reglesServeur = FICHES_CI.flatMap((f) => f.zones.serveur.map((glob) => ({ glob, cats: [f.id, "plateforme"] })));
-const reglesJeu = FICHES_CI.flatMap((f) => f.zones.jeu.filter((g) => !f.zones.serveur.includes(g)).map((glob) => ({ glob, cats: [f.id] })));
+const reglesJeu = FICHES_CI.flatMap((f) => [...f.zones.jeu, ...(f.zones.documents ?? [])].filter((g) => !f.zones.serveur.includes(g)).map((glob) => ({ glob, cats: [f.id] })));
 
 // Dans l'ordre : la première règle qui reconnaît le fichier l'emporte. Les exceptions précèdent la règle générale de leur dossier.
 export const RULES = [
-  // Les niveaux figés de DailyJump sont lus par le serveur (SERVER_PATHS) : DailyJump et plateforme.
-  { glob: "apps/jump/public/levels/**", cats: ["jump", "plateforme"] },
   // Lot R3 — le serveur (`apps/api`) n'est plus d'un bloc. Ce qui ne sert qu'à un jeu compte pour ce jeu et la plateforme (l'image de l'API
   // tourne toujours : SERVER_PATHS) ; le cœur (registre, identité, configuration, serveur, base, Dockerfile, CLAUDE.md…) et tout fichier
   // non listé ici restent « les trois » (règle par défaut). Liste FERMÉE, fichier par fichier : un nouveau fichier du serveur est un doute.
-  // DailyJump côté serveur : jump*.ts (jump, jumpHistory, jumpLives), leurs tests, leurs scripts.
-  { glob: "apps/api/src/jump*.ts", cats: ["jump", "plateforme"] },
-  { glob: "apps/api/test/jump*.test.ts", cats: ["jump", "plateforme"] },
-  { glob: "apps/api/scripts/jump-*.ts", cats: ["jump", "plateforme"] },
-  { glob: "apps/api/scripts/measure-jump.ts", cats: ["jump", "plateforme"] },
-  // Lot K1 : les jeux à fiche côté serveur (Tower : tower*.ts, leurs tests, leurs scripts), lus dans leur fiche, comme scripts/zones-jeu.mjs.
+  // Lots K1 et K1b : les jeux à fiche côté serveur (Jump : jump*.ts, ses tests, ses scripts, ses niveaux figés que le serveur lit ; Tower : tower*.ts…), lus dans leur fiche (`zones.serveur`), comme scripts/zones-jeu.mjs.
   ...reglesServeur,
-  // DailyTrack côté serveur : son jeu (`cdj.ts` : jour, planning, classement) et son Salon, leurs tests, ses outils de mesure et d'historique.
-  // `history.ts` n'y est pas : jumpHistory.ts l'importe (doute → les trois).
-  { glob: "apps/api/src/cdj.ts", cats: ["track", "plateforme"] },
-  { glob: "apps/api/src/salon.ts", cats: ["track", "plateforme"] },
-  // Suites des lots 40 à 47 : le Garage du serveur (`garage.ts`) et son test à part, alignés sur scripts/zones-jeu.mjs.
-  { glob: "apps/api/src/garage*.ts", cats: ["track", "plateforme"] },
-  { glob: "apps/api/test/garage*.test.ts", cats: ["track", "plateforme"] },
-  { glob: "apps/api/test/salon.test.ts", cats: ["track", "plateforme"] },
-  { glob: "apps/api/test/planning.test.ts", cats: ["track", "plateforme"] },
-  { glob: "apps/api/scripts/measure-salon.ts", cats: ["track", "plateforme"] },
-  { glob: "apps/api/scripts/measure-generator.ts", cats: ["track", "plateforme"] },
-  { glob: "apps/api/scripts/measure-budget.ts", cats: ["track", "plateforme"] },
-  { glob: "apps/api/scripts/history-seed.ts", cats: ["track", "plateforme"] },
   // Lot I1 — le socle de l'interface (`packages/ui`) sert à toutes les applications : les trois (comme une zone partagée, explicitement). Le
   // portail (`apps/portail`) : ses tests unitaires (toujours lancés) et ses e2e, qui vivent dans la suite DailyTrack (apps/web/e2e :
   // portail.spec.ts, domaine.spec.ts, qui assemblent le site) → DailyTrack + plateforme ; il ne touche pas le serveur.
-  { glob: "packages/ui/**", cats: ["track", "jump", ...IDS, "plateforme"] },
-  { glob: "apps/portail/**", cats: ["track", "plateforme"] },
-  { glob: "apps/web/**", cats: ["track"] },
-  { glob: "packages/sim/**", cats: ["track"] },
-  { glob: "docs/lots/**", cats: ["track"] },
-  { glob: "docs/seed.md", cats: ["track"] },
-  { glob: "docs/orchestration.md", cats: ["track"] },
-  { glob: "docs/guide-technique.md", cats: ["track"] },
-  { glob: "apps/jump/**", cats: ["jump"] },
-  { glob: "packages/jump-sim/**", cats: ["jump"] },
-  { glob: "docs/jump/**", cats: ["jump"] },
-  // Lots R15 et K1 : un jeu à fiche (Tower), sa simulation et ses documents ne lancent que ses e2e (les tests unitaires, eux, suivent le graphe des imports).
+  { glob: "packages/ui/**", cats: [...IDS, "plateforme"] },
+  { glob: "apps/portail/**", cats: [HOTE_DU_PORTAIL, "plateforme"] },
+  // Lots R15, K1, K1b et K1c : un jeu (Track, Jump, Tower), sa simulation et ses documents ne lancent que ses e2e (les tests unitaires, eux, suivent le graphe des imports).
   ...reglesJeu,
   { glob: "docs/plateforme/**", cats: ["plateforme"] },
   { glob: "docs/mise-en-ligne.md", cats: ["plateforme"] },
@@ -96,8 +73,6 @@ export function scopeOf(files, { full = false } = {}) {
   const cats = new Set(all ? CATEGORIES : list.flatMap(categoriesOf));
   return {
     full: all,
-    track: cats.has("track"),
-    jump: cats.has("jump"),
     ...Object.fromEntries(IDS.map((id) => [id, cats.has(id)])),
     plateforme: cats.has("plateforme"),
     // Le serveur est touché par ses chemins (SERVER_PATHS) ou par toute zone partagée / tout doute (workflows, scripts de CI, configuration racine…).

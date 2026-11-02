@@ -11,14 +11,11 @@ import type { JeuPartage, OptionsPartage } from "./partage";
 export const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
 export type T = ReturnType<typeof traduire>;
 
-/** Le nom traduit des jeux que le portail connaît (leur code au registre du serveur) ; un autre jeu garde le nom que le serveur déclare. */
-const NOM_JEU = { cdj: "jeu.track.nom", jump: "jeu.jump.nom" } as const;
-
-/** Le nom traduit d'un jeu du jour (celui du catalogue pour les jeux que le portail connaît, sinon celui que le serveur déclare). */
+/** Le nom traduit d'un jeu du jour (celui du catalogue pour un jeu qui a une fiche, sinon celui que le serveur déclare). */
 export const nomDuJeu = (t: T, jeu: { jeu: string; nom?: string }): string => {
-  // Lot K1 : un jeu qui a une fiche a son nom dans le catalogue commun (`jeu.<id>.nom`) ; Track et Jump gardent leur table d'avant.
+  // Lots K1 à K1c : un jeu a son nom dans le catalogue commun (`jeu.<id>.nom`) par sa fiche.
   const fiche = ficheDuRegistre(jeu.jeu);
-  return fiche ? t.t(`jeu.${fiche.id}.nom` as never) : jeu.jeu in NOM_JEU ? t.t(NOM_JEU[jeu.jeu as keyof typeof NOM_JEU]) : (jeu.nom ?? jeu.jeu);
+  return fiche ? t.t(`jeu.${fiche.id}.nom` as never) : (jeu.nom ?? jeu.jeu);
 };
 
 /**

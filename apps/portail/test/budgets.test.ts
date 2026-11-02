@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { POIDS_MAX } from "../../../scripts/images-partage.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { CLES_MESUREES, LIGNES_TOWER } from "../../../scripts/budgets.mjs";
+import { CLES_MESUREES, LIGNES_JUMP, LIGNES_TOWER, LIGNES_TRACK } from "../../../scripts/budgets.mjs";
 import { HORS_JOB, lirePlafonds } from "../../../scripts/budgets-controle.mjs";
 
 // Lot I6 (plateforme) : docs/plateforme/budgets.md est la référence des budgets. Lot R17 : c'est aussi la SEULE source des plafonds — le job « Budgets » de la CI
@@ -28,6 +28,9 @@ describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule 
     for (const cle of Object.keys(HORS_JOB)) expect(plafonds[cle], `${cle} : ligne hors job, gardée ailleurs`).toBeGreaterThan(0);
     // Les lignes de Tower de la fiche (K1) sont toutes au tableau.
     for (const cle of LIGNES_TOWER as string[]) expect(plafonds[cle], cle).toBeGreaterThan(0);
+    // Lots K1b et K1c : les lignes de Jump et de Track de leur fiche sont exactement les lignes `jump.*` et `track.*` du tableau.
+    for (const [jeu, fiche] of [["jump", LIGNES_JUMP], ["track", LIGNES_TRACK]] as const)
+      expect([...(fiche as string[])].sort(), `lignes de ${jeu} : sa fiche et le tableau`).toEqual(Object.keys(plafonds).filter((c) => c.startsWith(`${jeu}.`)).sort());
     // Les images de partage sont gardées par scripts/images-partage.mjs : même limite.
     expect(plafonds["partage.image"]).toBe(POIDS_MAX);
   });

@@ -12,43 +12,14 @@
 
 import { FICHES_CI } from "./fiches-lecture.mjs";
 
-// Lot K1 : Track et Jump (sans fiche jusqu'aux lots K1b et K1c) sont écrits ici ; chaque jeu qui a une fiche (`config/jeux/<id>.json`, Tower) donne ses zones (`zones.jeu`, validées : ce sont les siennes).
-export const JEUX = ["track", "jump", ...FICHES_CI.map((f) => f.id)];
+// Lots K1, K1b et K1c : chaque jeu donne ses zones par sa fiche (`config/jeux/<id>.json` : `zones.jeu`, validées : ce sont les siennes). Plus aucun jeu n'est écrit ici.
+export const JEUX = FICHES_CI.map((f) => f.id);
 
 // Les zones de chaque jeu. Dans `apps/api`, liste FERMÉE, fichier par fichier, alignée sur scripts/ci-scope.mjs (le test le vérifie) :
 // `history.ts` est importé par jumpHistory.ts et classementDemo.ts, `api.test.ts` et `classement.test.ts` passent par le cœur du serveur :
 // zones partagées.
 export const ZONES = {
-  track: [
-    "apps/web/**",
-    "packages/sim/**",
-    "apps/api/src/cdj.ts",
-    "apps/api/src/salon.ts",
-    // Suites des lots 40 à 47 : le Garage du serveur (lot 41 : ses règles sont dans packages/sim/src/garage.ts, ses routes dans cdj.ts) pourra
-    // vivre dans `garage.ts` avec son test à part ; aucun de ces fichiers n'existe encore (un motif, comme `jump*.ts` pour Jump).
-    "apps/api/src/garage*.ts",
-    "apps/api/test/garage*.test.ts",
-    "apps/api/test/salon.test.ts",
-    "apps/api/test/planning.test.ts",
-    "apps/api/scripts/measure-salon.ts",
-    "apps/api/scripts/measure-generator.ts",
-    "apps/api/scripts/measure-budget.ts",
-    "apps/api/scripts/history-seed.ts",
-    "docs/lots/**",
-    // La synthèse de DailyTrack (celle de DailyJump est dans docs/jump/**) : un lot Track y écrit son état et ses pièges.
-    "docs/orchestration.md",
-  ],
-  jump: [
-    "apps/jump/**",
-    "packages/jump-sim/**",
-    "apps/api/src/jump*.ts",
-    "apps/api/test/jump*.test.ts",
-    "apps/api/scripts/jump-*.ts",
-    "apps/api/scripts/measure-jump.ts",
-    "docs/jump/**",
-  ],
-  // Lot K1 : les zones de chaque jeu à fiche (Tower : `apps/tower/**`, `packages/tower-sim/**`, `apps/api/src/tower*.ts`, `apps/api/test/tower*.test.ts`, `apps/api/scripts/tower-*.ts`, `docs/tower/**`),
-  // alignées sur scripts/ci-scope.mjs, qui lit les mêmes fiches.
+  // Lots K1, K1b et K1c : les zones de chaque jeu, alignées sur scripts/ci-scope.mjs, qui lit les mêmes fiches (Track : `apps/web/**`, `packages/sim/**`, `apps/api/src/cdj.ts`… ; Jump : `apps/jump/**`… ; Tower : `apps/tower/**`…).
   ...Object.fromEntries(FICHES_CI.map((f) => [f.id, f.zones.jeu])),
 };
 

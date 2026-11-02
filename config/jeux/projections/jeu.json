@@ -1,6 +1,84 @@
 {
   "jeux": [
     {
+      "id": "track",
+      "code": "cdj",
+      "ordre": 1,
+      "nom": {
+        "fr": "Track",
+        "en": "Track"
+      },
+      "etiquette": {
+        "fond": "#1E1B19",
+        "coque": "#4A4440",
+        "police": "\"Barlow Condensed\", \"Archivo\", sans-serif",
+        "dessin": "propre"
+      },
+      "etatDepart": "on",
+      "format": "temps",
+      "unite": "ms",
+      "prefixe": "cdj:",
+      "messageOu": "track",
+      "zoneNouveautes": "track",
+      "themes": [
+        "stade",
+        "rallye",
+        "banquise",
+        "nuit",
+        "campagne",
+        "canyon",
+        "col",
+        "ville"
+      ],
+      "scenes": [
+        "menu",
+        "theme:stade",
+        "theme:rallye",
+        "theme:banquise",
+        "theme:nuit",
+        "theme:campagne",
+        "theme:canyon",
+        "theme:col",
+        "theme:ville"
+      ]
+    },
+    {
+      "id": "jump",
+      "code": "jump",
+      "ordre": 2,
+      "nom": {
+        "fr": "Jump",
+        "en": "Jump"
+      },
+      "etiquette": {
+        "fond": "#FFD23F",
+        "coque": "#2A1E16",
+        "police": "\"Lilita One\", \"Archivo\", sans-serif",
+        "dessin": "propre"
+      },
+      "etatDepart": "on",
+      "format": "temps",
+      "unite": "ticks",
+      "prefixe": "jump:",
+      "messageOu": "jump",
+      "zoneNouveautes": "jump",
+      "themes": [
+        "foret",
+        "usine",
+        "glace",
+        "nuit",
+        "neon"
+      ],
+      "scenes": [
+        "menu",
+        "theme:foret",
+        "theme:usine",
+        "theme:glace",
+        "theme:nuit",
+        "theme:neon"
+      ]
+    },
+    {
       "id": "tower",
       "code": "tower",
       "ordre": 3,
