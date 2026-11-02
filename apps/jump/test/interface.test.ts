@@ -16,8 +16,8 @@ const SRC = join(__dirname, "../src");
 const feuilles = readdirSync(SRC).filter((f) => f.endsWith(".css"));
 
 describe("feuilles de style de Jump", () => {
-  it("les cinq feuilles du jeu existent (lot 31 : `course.css`, à la demande)", () => {
-    expect(feuilles.sort()).toEqual(["course.css", "ecrans.css", "hud.css", "interface.css", "outils.css"]);
+  it("les six feuilles du jeu existent (lot 31 : `course.css`, à la demande ; lot F2 : `amis.css`, à la demande)", () => {
+    expect(feuilles.sort()).toEqual(["amis.css", "course.css", "ecrans.css", "hud.css", "interface.css", "outils.css"]);
   });
 
   for (const f of feuilles) {

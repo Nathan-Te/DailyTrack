@@ -29,6 +29,8 @@ export interface JumpBoardRow {
   ticks: number;
   deaths: number;
   medal: JumpMedal | null;
+  /** Lot F2 : la référence publique du joueur (`players.ref`), pour ouvrir sa feuille ; absente d'un serveur plus ancien. */
+  ref?: string;
 }
 
 /** `GET /api/jump/day/<date>/board`. */

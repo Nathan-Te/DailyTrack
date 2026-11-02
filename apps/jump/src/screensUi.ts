@@ -18,7 +18,7 @@ interface Ecran {
   close(): void;
 }
 
-function ecran(id: string, aria: string, onToggle: (open: boolean) => void) {
+function ecran(id: string, aria: string, onToggle: (open: boolean) => void, retenir?: () => boolean) {
   let open = false;
   const cadre = creerCadre({ id, titreAria: aria, retour: "jeu", onRetour: () => self.close() });
   const self = {
@@ -44,7 +44,7 @@ function ecran(id: string, aria: string, onToggle: (open: boolean) => void) {
   window.addEventListener(
     "keydown",
     (e) => {
-      if (e.code !== "Escape" || !open) return;
+      if (e.code !== "Escape" || !open || retenir?.()) return; // lot F2 : la feuille d'un joueur, ouverte par-dessus, prend l'Échap
       self.close();
       e.stopImmediatePropagation();
     },
@@ -110,15 +110,35 @@ export interface BoardView {
   message: string;
   /** Lot 31 : le pseudo du premier, quand sa course peut se voir (« Voir la course du n° 1 ») ; `null` : pas de bouton. */
   course: string | null;
+  /** Lot F2 : le nombre de joueurs du classement « Tous » (le sélecteur l'écrit), `null` tant qu'il est inconnu. */
+  participants?: number | null;
+}
+
+/** Lot F2 : les emplacements que le module des amis (chargé à la demande) remplit ; vides tant qu'il n'est pas là. */
+export interface BoardHote {
+  /** Sous le titre : le sélecteur « Tous / Amis » et son message discret. */
+  amis: HTMLElement;
+  liste: HTMLElement;
+  message: HTMLElement;
+  tete: HTMLElement;
+  course: HTMLElement;
+  /** Sous la liste : « Inviter un ami » quand on n'a aucun ami. */
+  pied: HTMLElement;
+  /** Appelé à la fin de chaque dessin du classement (le module des amis rend les lignes tactiles, ou remplace la liste par celle d'« Amis »). */
+  apres: ((view: BoardView) => void) | null;
+  /** Vrai tant qu'une feuille de joueur est ouverte par-dessus l'écran : Échap ne ferme alors que la feuille. */
+  echap: (() => boolean) | null;
 }
 
 export interface BoardUi extends Ecran {
   open(view: BoardView): void;
   update(view: BoardView): void;
+  readonly hote: BoardHote;
 }
 
 export function mountBoard(o: { onToggle(open: boolean): void; onCourse(): void }): BoardUi {
-  const e = ecran("leaderboard", "classement.aria", o.onToggle);
+  let hote: BoardHote;
+  const e = ecran("leaderboard", "classement.aria", o.onToggle, () => hote.echap?.() ?? false);
   const subtitle = el("p", { classe: "etiquette__sous-titre" });
   const tete = el(
     "div",
@@ -134,7 +154,8 @@ export function mountBoard(o: { onToggle(open: boolean): void; onCourse(): void 
   const course = bouton({ texte: t("classement.course"), variante: "secondaire", onClick: () => o.onCourse() }) as HTMLButtonElement;
   course.id = "board-course";
   course.hidden = true;
-  e.cadre.corps.append(el("div", { classe: "etiquette__tete" }, lier(el("h1", { classe: "etiquette__titre" }), "classement.titre"), subtitle), tete, list, message, course);
+  hote = { amis: el("div", { classe: "classement-amis" }), liste: list, message, tete, course, pied: el("div", { classe: "classement-amis__pied" }), apres: null, echap: null };
+  e.cadre.corps.append(el("div", { classe: "etiquette__tete" }, lier(el("h1", { classe: "etiquette__titre" }), "classement.titre"), subtitle), hote.amis, tete, list, message, course, hote.pied);
   let view: BoardView | null = null;
   const render = (v: BoardView) => {
     view = v;
@@ -148,6 +169,7 @@ export function mountBoard(o: { onToggle(open: boolean): void; onCourse(): void 
     course.hidden = v.course === null;
     if (v.course !== null) lier(course, "classement.course");
     if (v.course !== null) course.setAttribute("aria-label", t("classement.course.aria", { nom: v.course }));
+    hote.apres?.(v);
   };
   onLangue(() => {
     if (view) render(view);
@@ -162,5 +184,6 @@ export function mountBoard(o: { onToggle(open: boolean): void; onCourse(): void 
     },
     update: render,
     close: () => e.close(),
+    hote,
   };
 }

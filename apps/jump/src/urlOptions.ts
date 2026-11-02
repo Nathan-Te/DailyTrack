@@ -152,6 +152,11 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: [],
   },
   {
+    name: "filtre",
+    description: "Lot F2 : `?filtre=amis` ouvre le classement sur « Amis » (toi et tes amis). Le sélecteur l'écrit dans l'adresse ; sans identité ni serveur il est sans effet.",
+    values: ["amis"],
+  },
+  {
     name: "semaine",
     description:
       "Lot 19 : outil de la variété (en français, chargé à la demande, sans Three.js) : les 7 niveaux du jour à partir de cette date (AAAA-MM-JJ), côte à côte — pour chacun une miniature du niveau et la liste de ses morceaux de base ; un morceau présent dans plusieurs des 7 jours est surligné (en jaune, la miniature le marque aussi). Calculé par le générateur en vigueur (aucun fichier figé n'est lu). Exemple : `?semaine=2026-10-27`. Lot R9 : **absent de la production** (les sept niveaux suivants calculés dans le navigateur : outil réservé aux constructions hors production, avec `outils/`).",
@@ -227,6 +232,8 @@ export interface UrlChoices {
   api: string | null;
   /** Lot P : `?apercu=` présent (un lien d'aperçu) : l'interrupteur des jeux attend la clé avant de laisser le jeu appeler le serveur. */
   apercu: boolean;
+  /** Lot F2 : `?filtre=amis` (le classement s'ouvre sur « Amis »), sinon `tous`. */
+  filtre: "tous" | "amis";
 }
 
 /**
@@ -277,6 +284,7 @@ export function readUrlOptions(search: string, restricted = false): UrlChoices {
     archives: daily && params.has("archives"),
     api: params.get("api") || null,
     apercu: params.has("apercu"),
+    filtre: params.get("filtre") === "amis" ? "amis" : "tous",
   };
 }
 
