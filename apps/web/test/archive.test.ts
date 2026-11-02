@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GENERATOR_BEFORE_34 as G15, GENERATOR_BEFORE_48 as G16, GENERATOR_VERSION as G, PREMIER_JOUR, SIM_VERSION, formatDay } from "@cdj/sim";
+import { GENERATOR_BEFORE_34 as G15, GENERATOR_BEFORE_48 as G16, GENERATOR_VERSION as G, PREMIER_JOUR, SIM_VERSION, formatDay, generatorVersionOf, parseDay, resumeRegistreTrack } from "@cdj/sim";
 import { premierJourDuJour } from "@cdj/core/lancement";
 import { PREMIER_JOUR_ARCHIVES } from "../src/lancement";
 import { RANDOM_SPAN, archiveDays, archiveHref, nextTheme, randomSeedHref, themeHref } from "../src/archive";
@@ -94,25 +94,30 @@ describe("listDayBests", () => {
   });
 
   it("retrouve les records des circuits du jour, et seulement ceux du générateur de leur jour et de la simulation actuelle", () => {
+    // Lot R11 : chaque mise en production allonge le registre (jours-track.json) ; le test ne suppose donc rien de la version d'un jour récent : il la lit dans le registre
+    // (`generatorVersionOf`) pour un jour protégé, et prend pour « jours que le registre ne nomme pas » des jours qui suivent son dernier jour (`jusqua`).
+    const apresLeRegistre = (n: number) => formatDay(parseDay(resumeRegistreTrack().jusqua)! + n);
+    const [libre1, libre2] = [apresLeRegistre(3), apresLeRegistre(4)];
+    const g31 = generatorVersionOf(parseDay("2026-10-31")!);
+    expect(generatorVersionOf(parseDay("2026-10-30")!), "un jour du registre garde sa version, jamais la v15").not.toBe(G15);
     const m = listDayBests(
       store({
         [`cdj:best:jour-2026-10-06-g${G15}`]: JSON.stringify({ ms: 40123, splits: [], medal: "silver", simVersion: SIM_VERSION }),
         [`cdj:best:jour-2026-10-07-g${G15}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
         [`cdj:best:jour-2026-10-08-g${G15}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION - 1 }), // ancienne physique
         "cdj:best:jour-2026-10-08-g99": JSON.stringify({ ms: 1, splits: [], simVersion: SIM_VERSION }), // autre générateur : autre circuit
-        // Lot R11 : un jour du registre (jusqu'au 27/10/2026) garde sa version, la v15 (la dernière version y serait un autre circuit) ; un jour que le registre ne nomme pas prend la dernière.
+        // Un jour du registre garde sa version (le 09/10 : la v15 ; la dernière version y serait un autre circuit), le 31/10 la sienne ; un jour que le registre ne nomme pas prend la dernière.
         [`cdj:best:jour-2026-10-09-g${G}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
-        // Hors du registre, la v16 d'avant n'est plus la version du jour : son record n'est pas celui du circuit d'aujourd'hui.
-        [`cdj:best:jour-2026-10-29-g${G16}`]: JSON.stringify({ ms: 38000, splits: [], simVersion: SIM_VERSION }),
         [`cdj:best:jour-2026-10-30-g${G15}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
-        [`cdj:best:jour-2026-10-31-g${G}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
-        [`cdj:best:jour-2026-11-05-g${G}`]: JSON.stringify({ ms: 37000, splits: [], simVersion: SIM_VERSION }),
-        [`cdj:best:jour-2026-11-06-g${G16}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-31-g${g31}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
+        // Hors du registre, la v16 d'avant n'est plus la version du jour : son record n'est pas celui du circuit d'aujourd'hui.
+        [`cdj:best:jour-${libre1}-g${G16}`]: JSON.stringify({ ms: 38000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-${libre2}-g${G}`]: JSON.stringify({ ms: 37000, splits: [], simVersion: SIM_VERSION }),
         "cdj:best:essai": JSON.stringify({ ms: 35000, splits: [] }), // circuit d'essai : pas une archive
         "cdj:name": "Alice",
       }),
     );
-    expect([...m.keys()].sort()).toEqual(["2026-10-06", "2026-10-07", "2026-10-31", "2026-11-05"]);
+    expect([...m.keys()].sort()).toEqual(["2026-10-06", "2026-10-07", "2026-10-31", libre2]);
     expect(m.get("2026-10-06")).toEqual({ date: "2026-10-06", ms: 40123, medal: "silver" });
     expect(m.get("2026-10-07")!.medal).toBeNull();
   });

@@ -256,7 +256,8 @@ describe("médailles du lot 35 : nouveaux seuils à partir de la bascule seuleme
       const admin = (await t.call("GET", "/api/admin/medailles", undefined, { headers: auth })).body;
       expect(admin.days[0].medals).toEqual(medalsFor(author, day));
     }
-  });
+    // Deux circuits générés puis rejoués : 2,5 à 2,7 s mesurées en local (SQLite et libSQL), plus de 5 s dans une part chargée de la CI (run 41402149309, unit 2/4).
+  }, 30_000);
 });
 
 // --- Lot 41 : le Garage (les déblocages viennent du serveur) -------------------------------------------------------------------------------

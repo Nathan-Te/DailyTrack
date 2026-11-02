@@ -36,6 +36,7 @@ import {
   type Figure,
   type WidthLetter,
   toujoursMotif,
+  OLDEST_GENERATOR,
 } from "../src/index";
 import { FIGURE_INTENTS } from "../src/figureIntents";
 
@@ -336,10 +337,13 @@ describe("rotation par jour (sans générer les jours précédents)", () => {
 });
 
 describe("thèmes : figures favorites et interdites", () => {
+  // La règle du lot 20 (favorites de `THEMES` ×4) se juge sur un générateur qui la suit seule : le plus ancien que le code garde (v15, `OLDEST_GENERATOR`). Depuis la v18
+  // `themeOfVersion` ajoute d'autres favorites, et depuis la v21 les fiches de biomes règlent les poids (`variete.test.ts`, `identite-*.test.ts`) ; sans version imposée,
+  // les jours de l'échantillon prenaient celle du registre, qui change à chaque mise en production (02/11/2026 : Stade passait sous le seuil, 0,139 contre 0,140).
   const samples = (name: (typeof THEME_NAMES)[number]) => {
     const out: string[][] = [];
     for (let d = 0; d < 80; d++) {
-      const c = composeFigures(JOUR_TEST + d, 0, THEMES[name]);
+      const c = composeFigures(JOUR_TEST + d, 0, THEMES[name], 0, OLDEST_GENERATOR);
       if (c) out.push(c.figures.map((f) => f.name));
     }
     return out;
