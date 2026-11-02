@@ -29,6 +29,7 @@ import { jouerScripte } from "./tower-aide";
 import { DEMO_JOUEUR_ID } from "../src/portailDemo";
 import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, verifierVide } from "./smokeRead";
 import { exigerDistant } from "../src/distant";
+import { fetchFiable, lireJson } from "./appelFiable";
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
 const option = (name: string): string | undefined => {
@@ -36,6 +37,8 @@ const option = (name: string): string | undefined => {
   return at > 0 ? process.argv[at + 1] : undefined;
 };
 const origin = option("--origin");
+/** `fetch` qui réessaie un refus passager de l'infrastructure (voir `appelFiable.ts`). */
+const fiable = (u: string, i?: RequestInit) => fetchFiable((a, b) => fetch(a, b), u, i, { journal: (l) => console.log(l) });
 const readOnly = process.argv.includes("--lecture-seule");
 // Lot R14 : le mode complet écrit (des joueurs « Fumée » dans la base du serveur visé) : contre un serveur déployé, `--distant` le dit en clair. Le mode lecture seule n'écrit rien.
 if (!readOnly) exigerDistant(base, process.argv, "smoke crée des joueurs « Fumée » et leurs résultats dans la base du serveur visé.");
@@ -52,10 +55,10 @@ if (readOnly) {
     console.error("--joueur-demo : le joueur de démonstration n'existe qu'en recette (--environnement recette)");
     process.exit(1);
   }
-  const checks = await readOnlySmoke(base, (u, i) => fetch(u, i), { expectEnvironment: option("--environnement"), origin });
+  const checks = await readOnlySmoke(base, (u, i) => fiable(u, i), { expectEnvironment: option("--environnement"), origin });
   // Lot R8 : après la remise à zéro du lancement, la base est vide (à lancer sur l'adresse du service, pas sur celle de Hosting).
-  if (process.argv.includes("--vide")) checks.push(...(await verifierVide(base, (u, i) => fetch(u, i))));
-  if (parHosting) checks.push(...(await varyParHosting(base, (u, i) => fetch(u, i), { joueur: demo ? DEMO_JOUEUR_ID : undefined })));
+  if (process.argv.includes("--vide")) checks.push(...(await verifierVide(base, (u, i) => fiable(u, i))));
+  if (parHosting) checks.push(...(await varyParHosting(base, (u, i) => fiable(u, i), { joueur: demo ? DEMO_JOUEUR_ID : undefined })));
   for (const c of checks) console.log(`${c.ok ? "✓" : "✗"} ${c.label} — ${c.route} ${c.status}${c.detail ? ` — ${c.detail}` : ""}`);
   const failedChecks = checks.filter((c) => !c.ok).length;
   const summary = option("--resume");
@@ -67,12 +70,12 @@ if (readOnly) {
 
 async function call(method: string, path: string, body?: unknown): Promise<{ status: number; body: any; ms: number; headers: Headers }> {
   const t0 = performance.now();
-  const res = await fetch(base + path, {
+  const res = await fiable(base + path, {
     method,
     headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(origin ? { Origin: origin } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
-  return { status: res.status, body: await res.json(), ms: Math.round(performance.now() - t0), headers: res.headers };
+  return { status: res.status, body: await lireJson(res, method, base + path), ms: Math.round(performance.now() - t0), headers: res.headers };
 }
 
 let failed = 0;
@@ -118,8 +121,8 @@ const sub = await call("POST", "/api/submit", { playerId: player, name: NAME, da
 check("temps du jour accepté, rejoué par le serveur", sub.status === 200 && sub.body.ms === run.finishMs && sub.body.rank >= 1, sub.status === 200 ? `${sub.body.ms} ms (pilote : ${run.finishMs} ms), ${sub.ms} ms de requête` : `${sub.status} ${sub.body.error ?? ""}, ${sub.ms} ms de requête`);
 const taken = await call("GET", `/api/name?name=${encodeURIComponent(NAME.toUpperCase())}`);
 check("pseudo réservé : le même, en majuscules, est pris (et rien d'autre n'est dit)", taken.status === 200 && taken.body.available === false && Object.keys(taken.body).every((k) => k === "available" || k === "suggestions"));
-const mine = await fetch(`${base}/api/me`, { headers: { "X-Player-Id": player } });
-const profile = (await mine.json()) as any;
+const mine = await fiable(`${base}/api/me`, { headers: { "X-Player-Id": player } });
+const profile = (await lireJson(mine, "GET", `${base}/api/me`)) as any;
 check("profil du joueur (identifiant en en-tête) : pseudo, temps du jour avec rediffusion, statistiques", mine.status === 200 && profile.name === NAME && profile.best?.ms === run.finishMs && profile.best?.replay === encodeReplay(run.replay) && profile.stats?.days === 1);
 const board = await call("GET", `/api/day/${date}/leaderboard?player=${player}`);
 check("classement du jour : le joueur y est", board.status === 200 && board.body.me?.name === NAME);
@@ -129,7 +132,7 @@ check("fantôme du premier servi", ghost.status === 200 && typeof ghost.body.rep
 // créé). On renvoie la course que ce passage vient de classer, pas le premier de la base : sur la recette, le premier du jour peut venir d'un autre générateur
 // (servi avant que la mise en production fige ce jour avec le code en production) et serait refusé pour sa version avant la règle des copies (28/10/2026).
 const stranger = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
-const tghost = await fetch(`${base}/api/submit`, { method: "POST", headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) }, body: JSON.stringify({ name: `${NAME}Copie`, date, replay: encodeReplay(run.replay) }) });
+const tghost = await fiable(`${base}/api/submit`, { method: "POST", headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) }, body: JSON.stringify({ name: `${NAME}Copie`, date, replay: encodeReplay(run.replay) }) });
 const tghostBody = (await tghost.json().catch(() => ({}))) as { error?: string };
 check("DailyTrack : une course classée renvoyée sous un autre identifiant est refusée (409 replay_copy)", tghost.status === 409 && tghostBody.error === "replay_copy", `${tghost.status} ${tghostBody.error ?? ""}`);
 
@@ -204,12 +207,12 @@ const jmedal = jumpMedalFor(monEssai.ticks, level.medals);
 const jbody = { levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: monEssai.code };
 const jcall = async (method: string, path: string, body?: unknown) => {
   const t0 = performance.now();
-  const res = await fetch(base + path, {
+  const res = await fiable(base + path, {
     method,
     headers: { "X-Player-Id": player, ...(body ? { "Content-Type": "application/json" } : {}), ...(origin ? { Origin: origin } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
-  return { status: res.status, body: (await res.json()) as any, ms: Math.round(performance.now() - t0), headers: res.headers };
+  return { status: res.status, body: (await lireJson(res, method, base + path)) as any, ms: Math.round(performance.now() - t0), headers: res.headers };
 };
 check("DailyJump : le niveau du jour du serveur est celui du jeu", jday.body.id === level.id && jday.body.hash === level.hash, `${level.id} ${level.hash}`);
 const jcopy = await jcall("POST", "/api/jump/submit", { ...jbody, replay: level.code });
@@ -248,7 +251,7 @@ check(
   `${jghost.status} premier « ${String(jghost.body.name)} », ${String(jghost.body.ticks)} pas, ${jghost.ms} ms`,
 );
 // Lot R9 : une course classée renvoyée sous un autre identifiant est refusée — l'essai que ce passage vient de classer, pas le premier de la base (voir DailyTrack).
-const jghostCopy = await fetch(`${base}/api/jump/submit`, {
+const jghostCopy = await fiable(`${base}/api/jump/submit`, {
   method: "POST",
   headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) },
   body: JSON.stringify({ ...jbody, name: `${NAME}Copie` }),
@@ -275,12 +278,12 @@ const fromCheckpoint = deathLives.map((c) => decodeReplay(c)).find((r) => r.star
 const forged = fromCheckpoint ? encodeJump({ ...fromCheckpoint, start: { ...fromCheckpoint.start, checkpoint: level.level.checkpoints.length } }) : "forgée";
 const livesBody = { levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives: [...deathLives, forged] };
 const unknown = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
-const jstranger = await fetch(`${base}/api/jump/lives`, {
+const jstranger = await fiable(`${base}/api/jump/lives`, {
   method: "POST",
   headers: { "X-Player-Id": unknown, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) },
   body: JSON.stringify(livesBody),
 });
-check("DailyJump : un inconnu ne peut pas envoyer de vies (404 unknown_player)", jstranger.status === 404 && ((await jstranger.json()) as any).error === "unknown_player");
+check("DailyJump : un inconnu ne peut pas envoyer de vies (404 unknown_player)", jstranger.status === 404 && ((await lireJson(jstranger, "POST", `${base}/api/jump/lives`)) as any).error === "unknown_player");
 const jlives = await jcall("POST", "/api/jump/lives", livesBody);
 const verdicts: string[] = Array.isArray(jlives.body.results) ? jlives.body.results : [];
 check(
@@ -304,8 +307,8 @@ check(
 );
 
 // --- Lot P4 : la lecture regroupée (classement, fantôme, carte) et ses en-têtes de cache ------------------------------------------------
-const jbundle = await fetch(`${base}/api/jump/day/${date}/bundle`, { headers: { "X-Player-Id": player, ...(origin ? { Origin: origin } : {}) } });
-const bundleBody = (await jbundle.json()) as any;
+const jbundle = await fiable(`${base}/api/jump/day/${date}/bundle`, { headers: { "X-Player-Id": player, ...(origin ? { Origin: origin } : {}) } });
+const bundleBody = (await lireJson(jbundle, "GET", `${base}/api/jump/day/${date}/bundle`)) as any;
 check(
   "DailyJump : lecture regroupée (classement avec ta ligne, fantôme, carte, profil) en une requête, jamais en cache partagé",
   jbundle.status === 200 &&
@@ -326,12 +329,12 @@ check(
 const environnement = typeof where?.body?.environment === "string" ? where.body.environment : "local";
 const entetesTower: Record<string, string> = environnement === "production" ? {} : { "X-Forwarded-Host": "recette--pr-1-abcdef0.web.app" };
 const tcall = async (method: string, path: string, body?: unknown, avecJoueur = false) => {
-  const res = await fetch(base + path, {
+  const res = await fiable(base + path, {
     method,
     headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(origin ? { Origin: origin } : {}), ...entetesTower, ...(avecJoueur ? { "X-Player-Id": player } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
-  return { status: res.status, body: (await res.json()) as any, headers: res.headers };
+  return { status: res.status, body: (await lireJson(res, method, base + path)) as any, headers: res.headers };
 };
 const tinfo = await tcall("GET", "/api/tower/info");
 if (environnement === "production") {
