@@ -21,7 +21,7 @@ Tout arrêt avant l'étape 5 laisse la production intacte.
 
 ## Le résumé (en haut du run)
 
-✅ ou ⛔, puis : la CI (« relancée » ou « reprise », son lien, sa durée), ce qui part (les PR), **le jour de bascule** (le premier jour de Paris qui commence après le déploiement : avant lui, rien ne change ; à partir de lui, les cartes du nouveau code), les jours conservés et régénérés de Track et de Jump, le fichier de sauvegarde, les liens du portail, de Track et de Jump. **En cas de ⛔, la première ligne « À faire » dit quoi faire**, par exemple :
+✅ ou ⛔, puis : la CI (« relancée » ou « reprise », son lien, sa durée), ce qui part (les PR), **le jour de bascule** (le premier jour de Paris qui commence après la fin prévue du déploiement, clic + 2 h : avant lui, rien ne change ; à partir de lui, les cartes du nouveau code ; un clic après 22 h met donc la bascule au surlendemain), les jours conservés et régénérés de Track et de Jump, le fichier de sauvegarde, les liens du portail, de Track et de Jump. **En cas de ⛔, la première ligne « À faire » dit quoi faire**, par exemple :
 
 | ⛔ à l'étape | la phrase dit |
 |---|---|
@@ -54,7 +54,8 @@ Mode **`repetition`** + **heure_simulee** (à Paris) : ni CI, ni sauvegarde, ni 
 | à tester | heure simulée | jour de bascule attendu |
 |---|---|---|
 | un matin | `demain 10:00` | après-demain |
-| un soir tard | `aujourdhui 23:30` | demain |
+| un soir avant 22 h | `aujourdhui 21:30` | demain |
+| un soir tard (minuit passerait pendant le déploiement : marge de 2 h) | `aujourdhui 23:30` | après-demain |
 | la nuit d'un changement d'heure | `2027-03-28 03:30` (ou `01:30` ; `02:30` n'existe pas) | le lundi 29/03/2027 |
 
 `reference` permet de traiter un commit comme « le code en production » (répéter une date lointaine).

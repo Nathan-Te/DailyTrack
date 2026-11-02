@@ -32,6 +32,7 @@ import {
   lotDe,
   nomDuJour,
   planDesJours,
+  DUREE_MISE_EN_PRODUCTION_MS,
   planTower,
   joursTowerAPoser,
   resumeTower,
@@ -134,6 +135,20 @@ describe("le jour de bascule : le premier jour de Paris qui commence après le d
     expect(jourDeBascule(instantDeParis("aujourdhui 23:30", maintenant))).toBe("2026-10-27");
     expect(instantDeParis("2026-10-27T08:00:00Z")).toBe(Date.parse("2026-10-27T08:00:00Z"));
     expect(() => instantDeParis("bientôt")).toThrow(/illisible/);
+  });
+
+  it("le plan compte depuis la FIN prévue de la mise en production (clic + 2 h) : un clic à 23 h 44 ne bascule pas le lendemain, dont minuit passerait pendant le déploiement", () => {
+    // 01/11/2026 : lancé à 23 h 44 à Paris, le serveur se déployait à 00 h 15 — le 02/11 avait commencé, `bascule-valide` arrêtait tout (run 41358599711).
+    expect(DUREE_MISE_EN_PRODUCTION_MS).toBe(2 * 3_600_000);
+    const clic = instantDeParis("2026-11-01 23:44");
+    expect(planDesJours(clic, "2026-10-27")).toMatchObject({ bascule: "2026-11-03", veille: "2026-11-02" });
+    expect(basculeCommencee(planDesJours(clic, "2026-10-27").bascule, clic + 31 * 60_000)).toBe(false); // le serveur, 31 min plus tard
+    expect(basculeCommencee(planDesJours(clic, "2026-10-27").bascule, clic + DUREE_MISE_EN_PRODUCTION_MS)).toBe(false);
+    // La limite : 22 h à Paris. Avant, la bascule est le lendemain ; à partir de 22 h, le surlendemain.
+    expect(planDesJours(instantDeParis("2026-11-01 21:59"), "2026-10-27").bascule).toBe("2026-11-02");
+    expect(planDesJours(instantDeParis("2026-11-01 22:00"), "2026-10-27").bascule).toBe("2026-11-03");
+    // Sans marge, la règle d'avant (le jour qui suit le clic).
+    expect(planDesJours(clic, "2026-10-27", 0).bascule).toBe("2026-11-02");
   });
 
   it("le plan : veille, derniers jours régénérés ; un clic trop vieux (le jour de bascule a commencé) est refusé", () => {
