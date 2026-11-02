@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1521 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1529 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1810,6 +1810,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `annonce.palier` | Palier {metres} · {effet} sur la pièce suivante | Checkpoint {metres} · {effet} on the next piece |
 | `annonce.palier.trois` | Palier {metres} · {effet} sur les trois pièces suivantes | Checkpoint {metres} · {effet} on the next three pieces |
+| `annonce.tampon.lierre` | LIERRE ! | IVY! |
+| `annonce.tampon.figee` | FIGÉE ! | BOLTED! |
+| `annonce.tampon.petite` | MINI ! | MINI! |
+| `annonce.tampon.geante` | GÉANTE… | GIANT… |
+| `annonce.tampon.vent` | COUP DE VENT… | GUST… |
+| `annonce.tampon.glissante` | GLISSANTE… | SLIPPERY… |
 
 ### Archives (`archives.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -2065,6 +2071,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.yeux.aide` | Les yeux des pièces s'écarquillent et tremblent quand la tour vacille. | The pieces' eyes widen and tremble when the tower wobbles. |
 | `reglages.visee` | Visée | Aim guide |
 | `reglages.visee.aide` | La grille et la ligne de chute qui aident à poser la pièce. | The grid and the drop line that help you place the piece. |
+| `reglages.vibration` | Vibration | Vibration |
+| `reglages.vibration.aide` | Une courte vibration du téléphone quand un taquet percute un bloc. Sans effet sur ordinateur. | A short buzz on phones when a bump hits a block. No effect on a computer. |
 | `reglages.niveau.normal` | Normal | Normal |
 | `reglages.niveau.reduit` | Réduit | Reduced |
 | `reglages.niveau.aucun` | Aucun | None |

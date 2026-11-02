@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tower — le taquet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&amp;family=Rubik+Mono+One&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1320px;height:460px;box-sizing:border-box;background:#EDE3CF;font-family:Archivo, sans-serif;color:#2A1E16;padding:22px 30px;display:flex;flex-direction:column;gap:14px">
+
+  <svg aria-hidden="true" width="0" height="0" style="position:absolute">
+    <defs>
+      <g id="mur">
+        <rect x="0" y="240" width="300" height="60" fill="#2F6F8F"/>
+        <rect x="20" y="228" width="200" height="12" fill="#6B5847" stroke="#2A1E16" stroke-width="2.5"/>
+        <g stroke="#2A1E16" stroke-width="2.5">
+          <rect x="30" y="188" width="160" height="40" fill="#FFD23F"/>
+          <rect x="30" y="148" width="40" height="40" fill="#F07FB0"/>
+          <rect x="30" y="108" width="160" height="40" fill="#9B6BD6"/>
+        </g>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="1.4"><circle cx="100" cy="208" r="4.5"/><circle cx="112" cy="208" r="4.5"/><circle cx="44" cy="168" r="4"/><circle cx="56" cy="168" r="4"/><circle cx="100" cy="128" r="4.5"/><circle cx="112" cy="128" r="4.5"/></g>
+        <g fill="#2A1E16"><circle cx="101" cy="208" r="1.8"/><circle cx="113" cy="208" r="1.8"/><circle cx="46" cy="168" r="1.6"/><circle cx="58" cy="168" r="1.6"/><circle cx="101" cy="130" r="1.8"/><circle cx="113" cy="130" r="1.8"/></g>
+      </g>
+    </defs>
+  </svg>
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between">
+    <span style="font-family:'Rubik Mono One', sans-serif;font-size:22px">Le taquet, en quatre temps</span>
+    <span style="font-size:13px;color:#6B5847">0,1 s de coup · un choc qui se voit, s'entend et se sent</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:20px">
+
+    <figure style="margin:0;display:flex;flex-direction:column;gap:6px">
+      <svg role="img" aria-label="La pièce descend à hauteur du trou" width="300" height="300" viewBox="0 0 300 300" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <use href="#mur"/>
+        <g stroke="#FFF6E0" stroke-width="2" stroke-dasharray="5 5" opacity="1"><path d="M190 182v46M290 182v46"/></g>
+        <rect x="190" y="142" width="100" height="40" fill="#F28C38" stroke="#2A1E16" stroke-width="2.5"/>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="1.4"><circle cx="234" cy="162" r="4.5"/><circle cx="246" cy="162" r="4.5"/></g>
+        <g fill="#2A1E16"><circle cx="232" cy="163" r="1.8"/><circle cx="244" cy="163" r="1.8"/></g>
+      </svg>
+      <figcaption style="font-size:13px"><b>1. Viser</b> — la pièce descend le long de la tour ; ses yeux regardent le trou.</figcaption>
+    </figure>
+
+    <figure style="margin:0;display:flex;flex-direction:column;gap:6px">
+      <svg role="img" aria-label="Coup vif vers la gauche" width="300" height="300" viewBox="0 0 300 300" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <use href="#mur"/>
+        <g stroke-linecap="round"><path d="M240 156h46M254 168h40M244 180h34" stroke="#2A1E16" stroke-width="8"/><path d="M240 156h46M254 168h40M244 180h34" stroke="#FFFFFF" stroke-width="4"/></g>
+        <path d="M118 151h116v34H118z" fill="#F28C38" stroke="#2A1E16" stroke-width="2.5"/>
+        <path d="M118 151h10v34h-10z" fill="#FFB774"/>
+        <g stroke="#2A1E16" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M158 164l8 3M178 164l-8 3"/></g>
+        <path d="M162 176h14" stroke="#2A1E16" stroke-width="2.2"/>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="1.6"><circle cx="270" cy="194" r="7"/><circle cx="282" cy="186" r="5"/></g>
+        <path d="M20 20h40v8H20z" fill="#2A1E16"/><path d="M24 22h32v4H24z" fill="#F2B544"/>
+      </svg>
+      <figcaption style="font-size:13px"><b>2. Coup</b> — la pièce s'écrase dans le sens du coup (×1,15 / ×0,85), traînées de vitesse, bouffée d'air ; le bouton taquet clignote.</figcaption>
+    </figure>
+
+    <figure style="margin:0;display:flex;flex-direction:column;gap:6px">
+      <svg role="img" aria-label="Choc contre le pilier" width="300" height="300" viewBox="0 0 300 300" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <g transform="translate(-3 2)">
+          <use href="#mur"/>
+          <rect x="70" y="148" width="100" height="40" fill="#F28C38" stroke="#2A1E16" stroke-width="2.5"/>
+          <path d="M70 168l-14-16 4 12-16-4 12 10-16 6 16 2-10 10 14-6-2 16 8-14 6 12z" fill="#F2B544" stroke="#2A1E16" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M66 168l-6-6 2 6-6 0 6 4-4 4 6-2z" fill="#FFF6E0"/>
+          <g stroke="#2A1E16" stroke-width="2.4" stroke-linecap="round"><path d="M40 132l-10-8M36 196l-12 8M82 132l4-12"/></g>
+          <g fill="#F07FB0" stroke="#2A1E16" stroke-width="1.6"><rect x="24" y="150" width="6" height="6" transform="rotate(20 27 153)"/><rect x="20" y="182" width="5" height="5"/></g>
+          <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="1.6"><circle cx="112" cy="168" r="6"/><circle cx="128" cy="168" r="6"/></g>
+          <g fill="#2A1E16"><circle cx="110" cy="168" r="1.5"/><circle cx="126" cy="168" r="1.5"/></g>
+          <circle cx="120" cy="180" r="3.5" fill="#2A1E16"/>
+        </g>
+      </svg>
+      <figcaption style="font-size:13px"><b>3. Choc</b> — éclat étoilé au point d'impact, éclats, micro-secousse de 80 ms (sauf mouvement réduit), « toc » sec, vibration de 15 ms au téléphone.</figcaption>
+    </figure>
+
+    <figure style="margin:0;display:flex;flex-direction:column;gap:6px">
+      <svg role="img" aria-label="La pièce calée dans le trou" width="300" height="300" viewBox="0 0 300 300" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <use href="#mur"/>
+        <rect x="70" y="148" width="100" height="40" fill="#F28C38" stroke="#2A1E16" stroke-width="2.5"/>
+        <g fill="none" stroke="#2A1E16" stroke-width="2.4" stroke-linecap="round"><path d="M106 166q6-6 12 0M122 166q6-6 12 0"/></g>
+        <path d="M112 176q8 6 16 0" fill="none" stroke="#2A1E16" stroke-width="2"/>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="1.4"><circle cx="180" cy="196" r="4"/><circle cx="188" cy="204" r="3"/><circle cx="174" cy="206" r="2.5"/></g>
+        <g fill="#F2B544" stroke="#2A1E16" stroke-width="1.6" stroke-linejoin="round"><path d="M200 128l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/></g>
+      </svg>
+      <figcaption style="font-size:13px"><b>4. Calée</b> — un peu de poussière qui retombe, une étincelle, les yeux se détendent.</figcaption>
+    </figure>
+  </div>
+
+  <p style="margin:0;font-size:13px;line-height:1.45;max-width:1220px">Tout est de l'<b>affichage</b> (étirement, traînées, éclat, secousse, son, vibration) : la simulation et la rediffusion ne changent pas. Sans choc (le coup s'arrête dans le vide ou au bord), seulement les temps 1, 2 et un petit souffle. Le son et la vibration ont leurs curseurs ; la secousse suit le réglage « réduire les secousses ».</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":460}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

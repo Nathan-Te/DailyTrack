@@ -21,10 +21,10 @@ export interface Couche {
 }
 
 /** Les familles de volume du second groupe de `?debug&tune` (un curseur chacune). */
-export const FAMILLES = ["clics", "contacts", "paliers", "chute", "effondrement", "vent", "fin", "cris"] as const;
+export const FAMILLES = ["clics", "contacts", "paliers", "chute", "effondrement", "vent", "fin", "cris", "taquet"] as const;
 export type Famille = (typeof FAMILLES)[number];
 export type VolumesFamilles = Record<Famille, number>;
-export const VOLUMES_DEFAUT: Readonly<VolumesFamilles> = { clics: 1, contacts: 1, paliers: 1, chute: 1, effondrement: 1, vent: 1, fin: 1, cris: 1 };
+export const VOLUMES_DEFAUT: Readonly<VolumesFamilles> = { clics: 1, contacts: 1, paliers: 1, chute: 1, effondrement: 1, vent: 1, fin: 1, cris: 1, taquet: 1 };
 
 export interface Recette {
   famille: Famille;
@@ -49,6 +49,10 @@ export const FAMILLE_DE: Readonly<Record<GenreEvenement, Famille>> = {
   cri: "cris",
   fin: "fin",
   medaille: "fin",
+  taquet: "taquet",
+  choc: "taquet",
+  cale: "taquet",
+  souffle: "taquet",
 };
 
 /** Fréquence d'une note, en demi-tons depuis le la 440 Hz. */
@@ -113,6 +117,18 @@ export function sonDe(e: EvenementJeu, variation = 0.5): Recette {
     case "cri":
       // Un petit cri aigu, discret : deux notes qui montent puis retombent.
       return recette("cris", 0, [note("triangle", 900 * (1 + 0.15 * v), 0.08, 0.05, 0, 1400), note("triangle", 1500 * (1 + 0.15 * v), 0.12, 0.045, 0.07, 800)]);
+    case "taquet":
+      // Lot T9 — le coup : un « fouett » bref (du bruit filtré qui monte), plus aigu quand il part vers la droite.
+      return recette("taquet", 0, [bruit(900 * (e.sens > 0 ? 1.15 : 1) * (1 + 0.1 * v), 0.09, 0.08, 0, 2600, "bandpass", 1.4)]);
+    case "choc":
+      // Le « toc » sec d'une pièce arrêtée net contre un bloc : un coup de bois, grave et court, avec un claquement.
+      return recette("taquet", 2, [note("sine", 230 * (1 + 0.08 * v), 0.07, 0.26, 0, 90), bruit(1800, 0.04, 0.16, 0, 500, "highpass", 0.8)]);
+    case "cale":
+      // La pièce se cale : un tout petit tic.
+      return recette("taquet", 0, [note("triangle", 520 * (1 + 0.05 * v), 0.05, 0.05, 0, 400)]);
+    case "souffle":
+      // Le coup s'arrête dans le vide : un petit souffle, très discret.
+      return recette("taquet", 0, [bruit(700, 0.14, 0.03, 0, 300, "bandpass", 0.8)]);
     case "fin":
       return recette("fin", 3, (e.motif === "pieces" ? [0, 4, 7] : [7, 3, 0]).map((n, i) => note("triangle", noteFreq(n - 5), 0.16, 0.12, i * 0.14)));
     case "medaille": {

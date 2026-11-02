@@ -182,23 +182,36 @@
 .suivante[hidden] {
   display: none;
 }
-/* Lot T5 : l'effet qui attend la prochaine pièce — un liseré (vert pour un bonus, encre épais pour un malus) et une petite icône au trait dans sa pastille. Le mot « bonus » ou « malus » est dans l'étiquette
-   de la plaque : la couleur ne porte jamais seule le sens. */
+/* Lot T9 : la plaque « Suivante » MARQUE l'effet qui attend la prochaine pièce — un bonus a un cadre vert épais ; un malus un cadre d'encre et une bande rayée en haut ; un macaron rond au coin bas gauche (pas contre l'étiquette ni contre le bord de l'écran) porte l'icône au trait de l'effet.
+   Le mot « bonus » ou « malus » reste dans l'étiquette de la plaque : la couleur ne porte jamais seule le sens. */
+.suivante {
+  position: relative;
+}
 .suivante--bonus {
+  border-width: 4px;
   border-color: var(--tower-bonus);
-  box-shadow: 0 0 0 var(--dj-trait) var(--dj-encre), var(--dj-ombre-bouton);
+  outline: var(--dj-trait) solid var(--dj-encre);
 }
 .suivante--malus {
-  border-width: var(--dj-trait-fort);
+  border-width: 4px;
+  border-color: var(--dj-encre);
+  padding-top: 10px;
+  background-image: repeating-linear-gradient(135deg, var(--dj-encre) 0 4px, var(--dj-papier) 4px 9px);
+  background-size: 100% 6px;
+  background-repeat: no-repeat;
 }
 .suivante__effet {
+  position: absolute;
+  bottom: -13px;
+  left: -13px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 22px;
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
   border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
+  border-radius: 50%;
 }
 .suivante__effet[hidden] {
   display: none;
@@ -212,8 +225,8 @@
   color: var(--dj-papier);
 }
 .effet-icone {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2.2;
@@ -278,6 +291,10 @@
 .commande--taquet {
   height: 40px;
   gap: 0;
+}
+/* Lot T9 : le bouton du taquet s'allume un instant quand le coup part (un clignement de couleur, sans mouvement). */
+.commande--clignote {
+  background: var(--dj-ambre);
 }
 .commande--tourner {
   width: 104px;
@@ -379,6 +396,80 @@
   .annonce,
   .annonce--visible {
     transition: none;
+  }
+}
+/* Lot T9 — l'annonce d'un palier en TAMPON, sous la bande (le centre reste libre) : « 8 m · LIERRE ! » vert, penché à gauche, avec un point d'exclamation ; « 40 m · COUP DE VENT… » encre, penché à droite, ombré terre
+   cuite, avec des points de suspension. Il tombe avec un court rebond, reste environ 1,5 s (le jeu le retire). Le mouvement réduit le montre sans tomber. */
+.tampon {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--marge-h) + 38px);
+  box-sizing: border-box;
+  max-width: min(92vw, 440px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: calc(var(--z-hud) + 1);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) rotate(var(--tampon-angle, 0deg));
+}
+.tampon--bonus {
+  --tampon-angle: -2deg;
+  background: var(--tower-bonus);
+  color: var(--dj-encre);
+  box-shadow: 4px 4px 0 var(--dj-encre);
+}
+.tampon--malus {
+  --tampon-angle: 2deg;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  box-shadow: 4px 4px 0 var(--dj-terre);
+}
+.tampon__metres {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.tampon__nom {
+  font-family: var(--tower-police);
+  font-size: var(--dj-taille-15);
+  text-transform: uppercase;
+}
+.tampon--visible {
+  opacity: 1;
+  visibility: visible;
+  animation: tampon-tombe 0.42s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+@keyframes tampon-tombe {
+  from {
+    transform: translate(-50%, -70px) rotate(calc(var(--tampon-angle, 0deg) * 3));
+  }
+  60% {
+    transform: translate(-50%, 6px) rotate(var(--tampon-angle, 0deg));
+  }
+  to {
+    transform: translate(-50%, 0) rotate(var(--tampon-angle, 0deg));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tampon--visible {
+    animation: none;
+  }
+}
+.aide-ligne:not([hidden]) ~ .tampon {
+  top: calc(var(--marge-h) + 38px + 40px);
+}
+@media (max-aspect-ratio: 1/1) {
+  .tampon {
+    top: calc(max(8px, env(safe-area-inset-top, 0px)) + 40px + var(--dj-cible) + 10px);
+  }
+  .aide-ligne:not([hidden]) ~ .tampon {
+    top: calc(max(8px, env(safe-area-inset-top, 0px)) + 156px + 56px);
   }
 }
 /* Lot T7 — l'aide des commandes : une ligne sous la bande, comme l'annonce (qui descend d'un cran tant que l'aide est là). Pas d'interaction : le centre reste libre. */

@@ -111,6 +111,9 @@ export function monterReglages(racine: HTMLElement, o: OptionsReglages): Reglage
       aide("reglages.yeux.aide"),
       ligne("reglages.visee", segment("visee", "reglages.visee", [{ valeur: true, cle: "reglages.oui" }, { valeur: false, cle: "reglages.non" }])),
       aide("reglages.visee.aide"),
+      // Lot T9 : la vibration du téléphone au choc d'un taquet (15 ms), allumée par défaut.
+      ligne("reglages.vibration", segment("vibration", "reglages.vibration", [{ valeur: true, cle: "reglages.oui" }, { valeur: false, cle: "reglages.non" }])),
+      aide("reglages.vibration.aide"),
     ),
     section("reglages.commandes", hoteCommandes),
     el("div", { classe: "reglages__liens" }, lien("reglages-profil", "reglages.profil", o.profilHref), lien("reglages-mentions", "reglages.mentions", cheminMentions(langueCourante(), "../"))),

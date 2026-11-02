@@ -1,10 +1,15 @@
 import { boitesE, type Echelles, type Effet, type PieceKind, type Taille, type Visee, type VuePartie, type VuePiece } from "@cdj/tower-sim";
 import { BufferAttribute, BufferGeometry, Color, Group, Mesh, OrthographicCamera, PlaneGeometry, Scene, WebGLRenderer } from "three";
 import { contourDe, enQuads } from "./contour";
-import { BORD, couchesDe } from "./dessinPiece";
+import type { DecorScene } from "./decorScene";
+import { melanger } from "./couleurs";
+import { BORD, couchesDe, LISERE } from "./dessinPiece";
 import { avancerChute, type ChuteDecor, commencerChute, rayonDePiece } from "./chute";
 import { Clignotement, expressionDe, type Genre, regardVers } from "./expression";
 import type { FantomePiece } from "./fantomeLocal";
+import type { Habit, Soudure } from "./habits";
+import type { EffetsTaquet } from "./taquetFx";
+import type { EvenementJeu } from "./evenements";
 import { matiere, matiereTransparente, rect } from "./formes";
 import { Gerbe, VIE_ONDE } from "./gerbe";
 import { graineDePiece, hasardAffichage } from "./hasardAffichage";
@@ -72,6 +77,21 @@ interface Entree {
   clignement: Clignotement;
   regard: { x: number; y: number };
   penche: number;
+  /** Lot T9 : l'habit de l'effet (`habits.ts`, à la demande), l'instant où la pièce a été dessinée, sa demi-taille (mètres, pour le taquet) et l'étirement du coup en cours (0 à 1). */
+  habit: Habit | null;
+  naissance: number;
+  demi: { x: number; y: number };
+  etire: number;
+  /** L'instant (secondes d'affichage) jusqu'auquel les yeux se détendent, après un choc ou une pièce calée. */
+  detente: number;
+}
+
+/** Libère les formes propres à une pièce (l'habit : `polygones.ts` les marque `jetable`) ; les formes partagées (`formes.ts`) restent. */
+function jeter(g: Group): void {
+  g.traverse((o) => {
+    const geo = (o as Mesh).geometry;
+    if (geo?.userData.jetable) geo.dispose();
+  });
 }
 
 const cleDe = (p: { rot: number; taille: Taille; effet: Effet | null; fixe: boolean }): string => `${p.rot}${p.taille}${p.effet ?? ""}${p.fixe ? "f" : ""}`;
@@ -87,33 +107,49 @@ export function genreDe(p: Pick<VuePiece, "etat" | "fixe" | "soudee" | "effet">)
   if (p.fixe) return "figee";
   if (p.soudee) return "soulage";
   if (p.effet === "glissante") return "glissante";
+  if (p.effet === "vent" && p.etat === "active") return "plisse"; // lot T9 : le coup de vent plisse les yeux de la pièce en main
   return "normal";
 }
 
-/** Une pièce : l'encre de sa forme sous sa couleur en retrait, et ses yeux (lot T2 : à sa taille, avec le liseré de son effet : lierre, pièce figée, pièce glissante ; lot T5 : des yeux vivants). */
-function construirePiece(kind: PieceKind, rot: number, taille: Taille, effet: Effet | null, fixe: boolean, echelles: Echelles | undefined, phase: number): { groupe: Group; yeux: Yeux; rayon: number } {
+/** Le verglas de la pièce glissante : la glace du bord (épais) et le blanc qui givre sa couleur. */
+const GLACE = "#BFE6F5";
+const LISERE_GLACE = 0.2;
+/** Le trait d'encre épais de la pièce géante (le double et plus d'un trait ordinaire). */
+const BORD_GEANTE = BORD * 2.2;
+
+/**
+ * Une pièce : l'encre de sa forme sous sa couleur en retrait, et ses yeux (lot T2 : à sa taille, avec le liseré de son effet : lierre, pièce figée ; lot T5 : des yeux vivants).
+ * Lot T9 : **l'habit de l'effet**, dessiné tout de suite pour ce qui tient aux couches (le bord de glace épais et la teinte givrée de la pièce glissante, le trait d'encre épais de la géante) ; le reste de l'habit
+ * (plaques boulonnées, liane, glaçons, rivets…) est posé par `habits.ts` dès qu'il est arrivé.
+ */
+function construirePiece(kind: PieceKind, rot: number, taille: Taille, effet: Effet | null, fixe: boolean, echelles: Echelles | undefined, phase: number, id: number, habits: typeof import("./habits") | null): { groupe: Group; yeux: Yeux; rayon: number; habit: Habit | null; demi: { x: number; y: number } } {
   const g = new Group();
   const bs = boitesE(kind, rot, taille, echelles);
   const e4 = echelles ?? { petite4: 2, geante4: 8 };
   // Les yeux suivent la taille de la pièce (la moitié : 0,55 ; le double : 1,6 ; une taille d'essai : à proportion).
   const echelle = taille === "petite" ? (1.1 * e4.petite4) / 4 : taille === "geante" ? (0.8 * e4.geante4) / 4 : 1;
-  const halo = fixe ? EFFET_HALO.figee : effet === "lierre" ? EFFET_HALO.lierre : effet === "figee" ? EFFET_HALO.figee : effet === "glissante" ? EFFET_HALO.glissante : null;
+  const glissante = effet === "glissante";
+  const halo = glissante ? GLACE : fixe ? EFFET_HALO.figee : effet === "lierre" ? EFFET_HALO.lierre : effet === "figee" ? EFFET_HALO.figee : null;
   // Lot T6 : le dessin est le collider — l'encre est la forme physique, le liseré d'un effet puis la couleur de la pièce sont EN RETRAIT, tous à l'intérieur (`dessinPiece.ts`).
-  const couches = couchesDe(bs, halo !== null);
+  const couches = couchesDe(bs, halo !== null, taille === "geante" ? BORD_GEANTE : BORD, glissante ? LISERE_GLACE : LISERE);
+  const base = paletteCourante().pieces[kind];
+  const couleur = glissante ? melanger(base, "#FFFFFF", 0.55) : base;
   for (const r of couches.encre) g.add(rect(SCENE.encre, r.cx, r.cy, r.w, r.h, 0));
   if (halo) for (const r of couches.lisere) g.add(rect(halo, r.cx, r.cy, r.w, r.h, 0.005));
-  for (const r of couches.couleur) g.add(rect(paletteCourante().pieces[kind], r.cx, r.cy, r.w, r.h, 0.01));
+  for (const r of couches.couleur) g.add(rect(couleur, r.cx, r.cy, r.w, r.h, 0.01));
+  const habit = habits && (effet !== null || fixe) ? habits.habiller(g, { bs, id, effet, fixe, taille, couleur: base }) : null;
   // Les yeux, dans la plus grande boîte, droits dans le repère de la pièce.
   const grande = bs.reduce((a, b) => (Math.min(b.hw, b.hh) > Math.min(a.hw, a.hh) ? b : a));
   const yeux = new Yeux(g, grande.cx / 8, grande.cy / 8, echelle, phase);
-  return { groupe: g, yeux, rayon: rayonDePiece(bs) };
+  const demi = { x: Math.max(...bs.map((b) => Math.abs(b.cx) + b.hw)) / 8, y: Math.max(...bs.map((b) => Math.abs(b.cy) + b.hh)) / 8 };
+  return { groupe: g, yeux, rayon: rayonDePiece(bs), habit, demi };
 }
 
 /** Les options de la scène : le hasard d'affichage et les réglages de rendu lus à chaque image (les curseurs de `?debug&tune` s'appliquent tout de suite). */
 export interface OptionsScene {
   hasard?: () => number;
   /** Les réglages de rendu en vigueur : gain de panique, secousse, inclinaison au vent, traînées. */
-  rendu?: () => { panique: number; secousse: number; inclinaisonVent: number; trainees: number };
+  rendu?: () => { panique: number; secousse: number; inclinaisonVent: number; trainees: number; etirement?: number; eclat?: number; secousseTaquet?: number };
   /** Mouvement réduit ? (`prefers-reduced-motion` ; injectable pour les tests). */
   reduit?: () => boolean;
 }
@@ -135,12 +171,15 @@ export class Scene3D {
   viseeActive = true;
   /** Lot T2 : le trait pointillé du prochain palier (à la hauteur en mètres, posé sur le monde) et les traînées du coup de vent. */
   private readonly palier = new Group();
-  private readonly trainees: Mesh[] = [];
+  private readonly trainees: Group[] = [];
   private sensVent: -1 | 0 | 1 = 0;
   private temps = 0;
   private yBas = BAS_MIN;
   private cibleHauteur = 0;
   private premier = true;
+  /** Lot T9 : le décor monté (s'il est arrivé) et le bas de la vue au départ de la partie, d'où partent les parallaxes. */
+  private decorMonte: DecorScene | null = null;
+  private yRef = BAS_MIN;
   private W = 1;
   private H = 1;
   // Lot T5
@@ -156,6 +195,11 @@ export class Scene3D {
   private numeroPartie = 0;
   /** Une pièce tombée touche l'eau : le jeu en fait un « plouf ». */
   surPlouf: ((x: number, taille: Taille) => void) | null = null;
+  /** Lot T9 — l'habillage des effets (`habits.ts`) et les effets du taquet (`taquetFx.ts`), deux modules à la demande chargés ensemble, au premier effet ou au premier taquet. */
+  private habits: typeof import("./habits") | null = null;
+  private fx: EffetsTaquet | null = null;
+  private habitsDemandes = false;
+  private soudures: readonly Soudure[] = [];
 
   constructor(
     private readonly conteneur: HTMLElement,
@@ -185,13 +229,14 @@ export class Scene3D {
     this.scene.add(this.viseeGroupe);
     this.monterPalier();
     this.redimensionner();
+    // Lot T9 : l'habillage des effets et les effets du taquet se chargent dès l'ouverture du jeu (deux petits modules à part), pour être prêts au premier effet comme au premier taquet.
+    this.demanderHabits();
   }
 
-  /** Le ciel (le fond), les nuages, la mer, l'eau de devant (où les pièces tombées disparaissent), la plateforme et son pilier. */
+  /** Le ciel (le fond : un aplat, la couleur d'effacement), la mer, l'eau de devant (où les pièces tombées disparaissent), la plateforme et son pilier. */
   private decor(): void {
     const s = this.scene;
     const P = paletteCourante();
-    for (const [x, y, w, h] of P.formes) s.add(rect(P.decor, x, y, w, h, Z.decor));
     s.add(rect(P.sol, 0, NIVEAU_MER - 60, 400, 120, Z.mer));
     // L'eau de devant : le même aplat que la mer, devant les pièces tombées (`Z.chute`) et derrière la plateforme : une pièce qui tombe entre dans l'eau sans rien couper.
     s.add(rect(P.sol, 0, NIVEAU_MER - 60, 400, 120, Z.merAvant));
@@ -219,6 +264,23 @@ export class Scene3D {
     if (demi8 === this.plateformeDemi8) return;
     this.plateformeDemi8 = demi8;
     this.remplirPlateforme();
+    this.decorMonte?.poserPlateforme(demi8 / 8);
+  }
+
+  /**
+   * Lot T9 — le décor du thème (trois plans, le registre d'altitude, ce qui s'ajoute à la plateforme), chargé à la demande (`decors.ts`) : il se pose quand il arrive, sous le ciel et la mer du thème qui
+   * suffisaient en attendant. Affichage seulement.
+   */
+  /** Le décor monté (pour les essais de cadence : le cacher ou le montrer). */
+  get decorDuTheme(): DecorScene | null {
+    return this.decorMonte;
+  }
+
+  poserDecor(d: DecorScene): void {
+    this.decorMonte?.dispose();
+    this.decorMonte = d;
+    this.scene.add(d.racine);
+    d.poserPlateforme(this.plateformeDemi8 / 8);
   }
 
   /** Lot T5 : les tailles d'essai (la physique les donne aux pièces ; la scène les dessine à la même taille). À poser avant `vider` et `sync` d'une nouvelle partie. */
@@ -229,6 +291,57 @@ export class Scene3D {
   /** Lot T5 : la panique de chaque pièce (`AnalyseurPanique.analyser`), lue à chaque image par les yeux. */
   poserPanique(p: ReadonlyMap<number, PaniquePiece>): void {
     this.panique = p;
+  }
+
+  /** Lot T9 : charge (une fois) les modules de l'habillage et du taquet, à l'ouverture du jeu ; quand ils arrivent, les pièces qui portent un effet sont redessinées avec leur habit. */
+  private demanderHabits(): void {
+    if (this.habitsDemandes) return;
+    this.habitsDemandes = true;
+    void Promise.all([import("./habits"), import("./taquetFx")])
+      .then(([h, t]) => {
+        this.habits = h;
+        this.fx = new t.EffetsTaquet(this.hasard, this.reduit);
+        this.scene.add(this.fx.racine);
+        for (const e of this.pieces.values()) e.cle = "";
+      })
+      .catch(() => undefined);
+  }
+
+  /** Lot T9 : les soudures du lierre (`Partie.soudures()`, une lecture seule des joints), à poser quand leur nombre change. */
+  poserSoudures(s: readonly Soudure[]): void {
+    this.soudures = s;
+  }
+
+  /**
+   * Lot T9 — les quatre temps du taquet, lus dans les événements de la partie : le coup étire la pièce et lance les traînées, le choc fait l'éclat et la micro-secousse, la pièce calée lève sa poussière et
+   * ses yeux se détendent, un coup sans choc ne laisse qu'un souffle ; la pose d'une pièce géante lève sa poussière et fend ce qu'elle écrase. Le « toc » et la vibration sont ajoutés par le jeu.
+   */
+  reagir(ev: EvenementJeu): void {
+    if (ev.genre === "contact" && ev.id !== undefined && ev.taille === "geante" && ev.vitesse > 0.3) {
+      const e = this.pieces.get(ev.id);
+      if (e && this.fx) this.fx.poseGeante({ x: e.cur.x, y: e.cur.y, demiX: e.demi.x, demiY: e.demi.y });
+      return;
+    }
+    if (ev.genre !== "taquet" && ev.genre !== "choc" && ev.genre !== "cale" && ev.genre !== "souffle") return;
+    const e = this.pieces.get(ev.id);
+    if (!e) return;
+    const cadre = { x: e.cur.x, y: e.cur.y, demiX: e.demi.x, demiY: e.demi.y };
+    const r = this.rendu();
+    if (ev.genre === "taquet") {
+      e.etire = 1;
+      this.fx?.coup(cadre, ev.sens);
+    } else if (ev.genre === "choc") {
+      e.etire = 0;
+      this.fx?.choc(cadre, ev.sens, r.eclat ?? 1);
+      this.secousse.declencherTaquet(r.secousseTaquet ?? 1);
+      e.detente = this.temps + 1.2;
+    } else if (ev.genre === "cale") {
+      this.fx?.cale(cadre);
+      e.detente = this.temps + 1.2;
+    } else {
+      e.etire = 0;
+      this.fx?.souffle(cadre, ev.sens);
+    }
   }
 
   /** Lot T5 : la secousse de caméra (une pièce perdue, ou une cascade). Rien avec le mouvement réduit. */
@@ -248,7 +361,12 @@ export class Scene3D {
     this.scene.add(this.palier);
     // Les traînées du vent : des barres plates de longueurs et d'épaisseurs différentes, en aplat (lot T5 : plus nombreuses, plus variées).
     for (let i = 0; i < TRAINEES_MAX; i++) {
-      const m = rect(SCENE.papier, 0, 0, 1.6 + (i % 4) * 0.8, 0.05 + (i % 3) * 0.03, Z.traineesVent);
+      // Lot T9 : des traînées blanches cerclées d'encre (l'encre dessous, un peu plus grande).
+      const l = 1.6 + (i % 4) * 0.8;
+      const ep = 0.07 + (i % 3) * 0.035;
+      const m = new Group();
+      m.add(rect(SCENE.encre, 0, 0, l + 0.1, ep + 0.09, 0), rect(SCENE.papier, 0, 0, l, ep, 0.001));
+      m.position.z = Z.traineesVent;
       m.visible = false;
       this.trainees.push(m);
       this.scene.add(m);
@@ -291,10 +409,11 @@ export class Scene3D {
     for (const p of vue.pieces) {
       let e = this.pieces.get(p.id);
       if (!e) {
-        const c = construirePiece(p.kind, p.rot, p.taille, p.effet, p.fixe, this.echelles, p.id * 1.3);
+        const c = construirePiece(p.kind, p.rot, p.taille, p.effet, p.fixe, this.echelles, p.id * 1.3, p.id, this.habits);
         e = {
           groupe: c.groupe, yeux: c.yeux, kind: p.kind, cle: cleDe(p), prev: { x: p.x, y: p.y, angle: p.angle }, cur: { x: p.x, y: p.y, angle: p.angle }, chute: null, vue: p,
           clignement: new Clignotement(hasardAffichage(graineDePiece(p.id, this.numeroPartie)), this.temps), regard: { x: 0, y: -0.5 }, penche: 0,
+          habit: c.habit, naissance: this.temps, demi: c.demi, etire: 0, detente: 0,
         };
         e.groupe.position.z = 1 + p.id * 0.05;
         this.scene.add(e.groupe);
@@ -304,9 +423,12 @@ export class Scene3D {
       if (e.cle !== cleDe(p)) {
         const z = e.groupe.position.z;
         this.scene.remove(e.groupe);
-        const c = construirePiece(p.kind, p.rot, p.taille, p.effet, p.fixe, this.echelles, p.id * 1.3);
+        jeter(e.groupe);
+        const c = construirePiece(p.kind, p.rot, p.taille, p.effet, p.fixe, this.echelles, p.id * 1.3, p.id, this.habits);
         e.groupe = c.groupe;
         e.yeux = c.yeux;
+        e.habit = c.habit;
+        e.demi = c.demi;
         e.groupe.position.z = z;
         this.scene.add(e.groupe);
         e.cle = cleDe(p);
@@ -358,11 +480,18 @@ export class Scene3D {
       const cibleInclinaison = e.vue.etat === "active" && e.vue.effet === "vent" && this.sensVent !== 0 ? -this.sensVent * ((rendu.inclinaisonVent * Math.PI) / 180) * (0.75 + 0.25 * Math.sin(this.temps * 2.2)) : 0;
       e.penche += (cibleInclinaison - e.penche) * (1 - Math.exp(-8 * dt));
       e.groupe.rotation.z = e.prev.angle + da * a + e.penche;
+      // Lot T9 : le coup de taquet écrase la pièce dans le sens du coup (×1,15 / ×0,85, à l'affichage seul, pendant le coup) ; l'habit de l'effet s'anime.
+      e.etire = Math.max(0, e.etire - dt / 0.13);
+      const k = reduit ? 0 : e.etire * 0.15 * (rendu.etirement ?? 1);
+      e.groupe.scale.set(1 + k, 1 - k, 1);
+      e.habit?.maj({ t: this.temps, age: this.temps - e.naissance, reduit, sensVent: e.vue.etat === "active" ? this.sensVent : 0, angle: e.cur.angle, soudures: this.soudures });
       this.animerYeux(e, active, rendu.panique, dt);
     }
     const but = basDeVue(this.cibleHauteur, this.H, this.W < this.H);
     this.yBas = this.premier ? but : this.yBas + (but - this.yBas) * (1 - Math.exp(-SUIVI * dt));
+    if (this.premier) this.yRef = but;
     this.premier = false;
+    this.decorMonte?.maj(this.yBas, this.yRef, this.temps, reduit);
     this.camera.bottom = this.yBas;
     this.camera.top = this.yBas + this.H;
     this.camera.updateProjectionMatrix();
@@ -379,6 +508,7 @@ export class Scene3D {
       });
     }
     this.gerbe.avancer(dt);
+    this.fx?.maj(dt);
     this.dessinerGerbe();
     this.dessinerVisee();
     this.renderer.render(this.scene, this.camera);
@@ -396,7 +526,7 @@ export class Scene3D {
     const k = 1 - Math.exp(-14 * dt);
     e.regard.x += (v.x - e.regard.x) * k;
     e.regard.y += (v.y - e.regard.y) * k;
-    e.yeux.appliquer(expressionDe({ niveau, genre: genreDe(e.vue), regard: e.regard, clignement: e.clignement.valeur(this.temps, niveau), t: this.temps }), this.temps);
+    e.yeux.appliquer(expressionDe({ niveau, genre: this.temps < e.detente && e.vue.etat === "libre" ? "soulage" : genreDe(e.vue), regard: e.regard, clignement: e.clignement.valeur(this.temps, niveau), t: this.temps }), this.temps);
   }
 
   /** La visée de l'image : deux traits translucides depuis le bas de la pièce en main (à sa position interpolée) et le contour de l'arrivée, reconstruit seulement quand la forme change. */
@@ -464,12 +594,17 @@ export class Scene3D {
 
   /** Efface les pièces (une nouvelle partie). */
   vider(): void {
-    for (const e of this.pieces.values()) this.scene.remove(e.groupe);
+    for (const e of this.pieces.values()) {
+      this.scene.remove(e.groupe);
+      jeter(e.groupe);
+    }
     this.pieces.clear();
     this.premier = true;
     this.cibleHauteur = 0;
     this.numeroPartie++;
     this.gerbe.vider();
+    this.fx?.vider();
+    this.soudures = [];
     this.secousse.arreter();
     this.panique = new Map();
     this.poserPalier(null);

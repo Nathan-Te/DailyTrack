@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tower — bonus et malus</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&amp;family=JetBrains+Mono:wght@700&amp;family=Rubik+Mono+One&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:1320px;height:800px;box-sizing:border-box;background:#EDE3CF;font-family:Archivo, sans-serif;color:#2A1E16;padding:22px 30px;display:flex;flex-direction:column;gap:14px">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between">
+    <span style="font-family:'Rubik Mono One', sans-serif;font-size:22px">Bonus et malus</span>
+    <span style="font-size:13px;color:#6B5847">La pièce porte son effet sur tout son corps · la plaque « Suivante » le montre · l'annonce du palier le tamponne</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:18px 20px">
+
+    <section style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px"><b style="font-family:'Rubik Mono One', sans-serif;font-size:15px">Lierre</b><span style="background:#5DBB63;border:2px solid #2A1E16;font-size:10px;font-weight:700;letter-spacing:1px;padding:1px 6px">BONUS</span><span style="font-size:12px;color:#6B5847">se soude à ce qu'il touche</span></div>
+      <svg role="img" aria-label="Pièce de lierre soudée à un bloc" width="400" height="210" viewBox="0 0 400 210" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <rect x="100" y="160" width="200" height="50" fill="#FFD23F" stroke="#2A1E16" stroke-width="3"/>
+        <path d="M120 120h40v-40h40v40h40v40h-120z" fill="#9B6BD6" stroke="#2A1E16" stroke-width="3"/>
+        <path d="M122 124c20-8 30 6 48-2s16-30 30-36 20 10 18 20 16 2 20 10" fill="none" stroke="#2F7D3A" stroke-width="4" stroke-linecap="round"/>
+        <path d="M122 124c-4 14 4 22 0 36" fill="none" stroke="#2F7D3A" stroke-width="4" stroke-linecap="round"/>
+        <path d="M238 128c6 12-2 20 2 32" fill="none" stroke="#2F7D3A" stroke-width="4" stroke-linecap="round"/>
+        <g fill="#5DBB63" stroke="#2A1E16" stroke-width="1.8"><path d="M150 118q10-12 20 0q-10 10-20 0z"/><path d="M192 86q10-12 20 0q-10 10-20 0z"/><path d="M222 112q10-12 20 0q-10 10-20 0z"/><path d="M114 146q10-12 20 0q-10 10-20 0z"/><path d="M236 146q10-12 20 0q-10 10-20 0z"/></g>
+        <g fill="#5DBB63" stroke="#2A1E16" stroke-width="1.8"><path d="M118 152l10 18 10-18z"/><path d="M232 152l10 18 10-18z"/><path d="M174 152l10 18 10-18z"/></g>
+        <g fill="none" stroke="#2A1E16" stroke-width="2.4" stroke-linecap="round"><path d="M168 140q6-6 12 0"/><path d="M186 140q6-6 12 0"/></g>
+        <path d="M176 148q8 6 16 0" fill="none" stroke="#2A1E16" stroke-width="2"/>
+      </svg>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:68px;background:#FFF6E0;border:4px solid #5DBB63;outline:2px solid #2A1E16;box-shadow:3px 3px 0 #2A1E16;padding:4px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+          <span style="font-size:9px;font-weight:700;letter-spacing:1px">SUIVANTE</span>
+          <svg aria-hidden="true" width="40" height="27" viewBox="0 0 63 42"><path d="M21 1h20v20h20v20H1V21h20z" fill="#9B6BD6" stroke="#2A1E16" stroke-width="2.5"/></svg>
+          <span style="position:absolute;right:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#5DBB63;border:2px solid #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M2 12C2 5 6 2 12 2c0 6-3 10-10 10zM2 12l6-6" fill="none" stroke="#2A1E16" stroke-width="2"/></svg></span>
+        </div>
+        <div style="transform:rotate(-2deg);background:#5DBB63;border:3px solid #2A1E16;box-shadow:4px 4px 0 #2A1E16;padding:6px 12px;display:flex;align-items:center;gap:8px"><span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">8 m</span><span style="font-family:'Rubik Mono One', sans-serif;font-size:14px">LIERRE !</span></div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px"><b style="font-family:'Rubik Mono One', sans-serif;font-size:15px">Pièce figée</b><span style="background:#5DBB63;border:2px solid #2A1E16;font-size:10px;font-weight:700;letter-spacing:1px;padding:1px 6px">BONUS</span><span style="font-size:12px;color:#6B5847">boulonnée sur place au premier contact</span></div>
+      <svg role="img" aria-label="Pièce boulonnée à la tour, façon chantier" width="400" height="210" viewBox="0 0 400 210" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <rect x="100" y="160" width="200" height="50" fill="#FFD23F" stroke="#2A1E16" stroke-width="3"/>
+        <path d="M120 120h40v-40h40v40h40v40h-120z" fill="#3F7FD9" stroke="#2A1E16" stroke-width="3"/>
+        <path d="M122 146h116v12H122z" fill="#F2B705"/>
+        <g fill="#2A1E16"><path d="M126 146h8l-8 12z"/><path d="M142 146h10l-8 12h-10z"/><path d="M160 146h10l-8 12h-10z"/><path d="M178 146h10l-8 12h-10z"/><path d="M196 146h10l-8 12h-10z"/><path d="M214 146h10l-8 12h-10z"/><path d="M232 146h6v4l-5 8h-7z"/></g>
+        <g fill="#A7A9AC" stroke="#2A1E16" stroke-width="2"><path d="M122 122h18v8h-10v10h-8z"/><path d="M238 122h-18v8h10v10h8z"/><path d="M162 82h14v8h-6v6h-8z"/><path d="M198 82h-14v8h6v6h8z"/></g>
+        <g fill="#A7A9AC" stroke="#2A1E16" stroke-width="2.2"><path d="M110 138h12v34h26v12h-38z"/><path d="M250 138h-12v34h-26v12h38z"/></g>
+        <g fill="#6B6E72" stroke="#2A1E16" stroke-width="1.4"><circle cx="116" cy="146" r="3.2"/><circle cx="116" cy="164" r="3.2"/><circle cx="132" cy="178" r="3.2"/><circle cx="244" cy="146" r="3.2"/><circle cx="244" cy="164" r="3.2"/><circle cx="228" cy="178" r="3.2"/><circle cx="127" cy="126" r="2.6"/><circle cx="233" cy="126" r="2.6"/><circle cx="167" cy="86" r="2.6"/><circle cx="193" cy="86" r="2.6"/></g>
+        <g stroke="#2A1E16" stroke-width="1.2"><path d="M114 144l4 4M114 162l4 4M130 176l4 4M242 144l4 4M242 162l4 4M226 176l4 4"/></g>
+        <g fill="#F2B544" stroke="#2A1E16" stroke-width="1.4" stroke-linejoin="round"><path d="M98 182l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/><path d="M264 178l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></g>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="1.4"><circle cx="172" cy="134" r="4.5"/><circle cx="186" cy="134" r="4.5"/></g>
+        <g fill="#2A1E16"><circle cx="172" cy="135" r="1.8"/><circle cx="186" cy="135" r="1.8"/></g>
+        <path d="M174 142q5 3 10 0" fill="none" stroke="#2A1E16" stroke-width="2"/>
+        <path d="M260 90l18-18M272 66l12 12-6 6-12-12z" fill="#A7A9AC" stroke="#2A1E16" stroke-width="2.2" stroke-linejoin="round"/>
+      </svg>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:68px;background:#FFF6E0;border:4px solid #5DBB63;outline:2px solid #2A1E16;box-shadow:3px 3px 0 #2A1E16;padding:4px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+          <span style="font-size:9px;font-weight:700;letter-spacing:1px">SUIVANTE</span>
+          <svg aria-hidden="true" width="40" height="27" viewBox="0 0 63 42"><path d="M21 1h20v20h20v20H1V21h20z" fill="#3F7FD9" stroke="#2A1E16" stroke-width="2.5"/><path d="M3 33h57v6H3z" fill="#F2B705"/><g fill="#2A1E16"><path d="M8 33h5l-4 6H4z"/><path d="M20 33h5l-4 6h-5z"/><path d="M32 33h5l-4 6h-5z"/><path d="M44 33h5l-4 6h-5z"/></g></svg>
+          <span style="position:absolute;right:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#A7A9AC;border:2px solid #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M7 1l5 3v6l-5 3-5-3V4z" fill="none" stroke="#2A1E16" stroke-width="1.8"/><circle cx="7" cy="7" r="2" fill="none" stroke="#2A1E16" stroke-width="1.6"/></svg></span>
+        </div>
+        <div style="transform:rotate(-2deg);background:#5DBB63;border:3px solid #2A1E16;box-shadow:4px 4px 0 #2A1E16;padding:6px 12px;display:flex;align-items:center;gap:8px"><span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">16 m</span><span style="font-family:'Rubik Mono One', sans-serif;font-size:14px">FIGÉE !</span></div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px"><b style="font-family:'Rubik Mono One', sans-serif;font-size:15px">Petite pièce</b><span style="background:#5DBB63;border:2px solid #2A1E16;font-size:10px;font-weight:700;letter-spacing:1px;padding:1px 6px">BONUS</span><span style="font-size:12px;color:#6B5847">moitié de sa taille</span></div>
+      <svg role="img" aria-label="Petite pièce qui rétrécit" width="400" height="210" viewBox="0 0 400 210" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <rect x="100" y="160" width="200" height="50" fill="#FFD23F" stroke="#2A1E16" stroke-width="3"/>
+        <rect x="150" y="60" width="100" height="100" fill="none" stroke="#FFF6E0" stroke-width="3" stroke-dasharray="8 6"/>
+        <g stroke="#FFF6E0" stroke-width="3" stroke-linecap="round" fill="none"><path d="M158 68l14 14M242 68l-14 14M158 152l14-14M242 152l-14-14"/></g>
+        <rect x="175" y="110" width="50" height="50" fill="#5DBB63" stroke="#2A1E16" stroke-width="3"/>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="1.4"><circle cx="193" cy="128" r="4.5"/><circle cx="207" cy="128" r="4.5"/></g>
+        <g fill="#2A1E16"><circle cx="193" cy="129" r="1.8"/><circle cx="207" cy="129" r="1.8"/></g>
+        <path d="M194 140q6 5 12 0" fill="none" stroke="#2A1E16" stroke-width="2"/>
+        <g fill="#F2B544" stroke="#2A1E16" stroke-width="1.6" stroke-linejoin="round"><path d="M270 70l4 10 10 4-10 4-4 10-4-10-10-4 10-4z"/><path d="M128 100l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/><path d="M262 124l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/></g>
+      </svg>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:68px;background:#FFF6E0;border:4px solid #5DBB63;outline:2px solid #2A1E16;box-shadow:3px 3px 0 #2A1E16;padding:4px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+          <span style="font-size:9px;font-weight:700;letter-spacing:1px">SUIVANTE</span>
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 42 42" style="margin:4px 0"><rect x="1" y="1" width="40" height="40" fill="#5DBB63" stroke="#2A1E16" stroke-width="4"/></svg>
+          <span style="position:absolute;right:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#5DBB63;border:2px solid #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M1 1l4 4M13 1l-4 4M1 13l4-4M13 13l-4-4M5 2v3H2M9 2v3h3M5 12V9H2M9 12V9h3" fill="none" stroke="#2A1E16" stroke-width="1.6"/></svg></span>
+        </div>
+        <div style="transform:rotate(-2deg);background:#5DBB63;border:3px solid #2A1E16;box-shadow:4px 4px 0 #2A1E16;padding:6px 12px;display:flex;align-items:center;gap:8px"><span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">24 m</span><span style="font-family:'Rubik Mono One', sans-serif;font-size:14px">MINI !</span></div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px"><b style="font-family:'Rubik Mono One', sans-serif;font-size:15px">Pièce géante</b><span style="background:#2A1E16;color:#FFF6E0;border:2px solid #2A1E16;font-size:10px;font-weight:700;letter-spacing:1px;padding:1px 6px">MALUS</span><span style="font-size:12px;color:#6B5847">double taille, elle écrase</span></div>
+      <svg role="img" aria-label="Pièce géante qui écrase la tour" width="400" height="210" viewBox="0 0 400 210" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <rect x="80" y="170" width="240" height="40" fill="#FFD23F" stroke="#2A1E16" stroke-width="3"/>
+        <path d="M130 170l12 10-8 8 10 12" fill="none" stroke="#2A1E16" stroke-width="2.4"/>
+        <path d="M270 170l-10 12 8 6-6 12" fill="none" stroke="#2A1E16" stroke-width="2.4"/>
+        <rect x="140" y="50" width="120" height="120" fill="#F28C38" stroke="#2A1E16" stroke-width="5"/>
+        <rect x="143" y="140" width="114" height="27" fill="#C96E22"/>
+        <g fill="#2A1E16"><circle cx="152" cy="62" r="3.5"/><circle cx="248" cy="62" r="3.5"/><circle cx="152" cy="130" r="3.5"/><circle cx="248" cy="130" r="3.5"/></g>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"><circle cx="186" cy="94" r="8"/><circle cx="214" cy="94" r="8"/></g>
+        <g fill="#2A1E16"><circle cx="186" cy="97" r="3"/><circle cx="214" cy="97" r="3"/></g>
+        <path d="M176 82l14 4M224 82l-14 4" stroke="#2A1E16" stroke-width="2.6"/>
+        <path d="M188 116h24" stroke="#2A1E16" stroke-width="2.6"/>
+        <path d="M262 64q8 10 0 16q-8-6 0-16z" fill="#BFE6F5" stroke="#2A1E16" stroke-width="1.8"/>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="2"><circle cx="120" cy="162" r="9"/><circle cx="106" cy="158" r="6"/><circle cx="282" cy="162" r="9"/><circle cx="296" cy="158" r="6"/></g>
+      </svg>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:68px;background:#FFF6E0;border:4px solid #2A1E16;box-shadow:3px 3px 0 #2A1E16;padding:4px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;background-image:repeating-linear-gradient(135deg,#2A1E16 0 4px,#FFF6E0 4px 9px);background-size:100% 6px;background-repeat:no-repeat">
+          <span style="font-size:9px;font-weight:700;letter-spacing:1px;margin-top:4px">SUIVANTE</span>
+          <svg aria-hidden="true" width="40" height="27" viewBox="0 0 63 42"><rect x="11" y="1" width="40" height="40" fill="#F28C38" stroke="#2A1E16" stroke-width="4"/></svg>
+          <span style="position:absolute;right:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#2A1E16;border:2px solid #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M5 5L1 1M9 5l4-4M5 9l-4 4M9 9l4 4M1 4V1h3M13 4V1h-3M1 10v3h3M13 10v3h-3" fill="none" stroke="#FFF6E0" stroke-width="1.6"/></svg></span>
+        </div>
+        <div style="transform:rotate(2deg);background:#2A1E16;color:#FFF6E0;border:3px solid #2A1E16;box-shadow:4px 4px 0 #C2401F;padding:6px 12px;display:flex;align-items:center;gap:8px"><span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">32 m</span><span style="font-family:'Rubik Mono One', sans-serif;font-size:14px">GÉANTE…</span></div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px"><b style="font-family:'Rubik Mono One', sans-serif;font-size:15px">Coup de vent</b><span style="background:#2A1E16;color:#FFF6E0;border:2px solid #2A1E16;font-size:10px;font-weight:700;letter-spacing:1px;padding:1px 6px">MALUS</span><span style="font-size:12px;color:#6B5847">pousse trois pièces de côté</span></div>
+      <svg role="img" aria-label="Pièce poussée par le vent" width="400" height="210" viewBox="0 0 400 210" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <rect x="100" y="170" width="200" height="40" fill="#FFD23F" stroke="#2A1E16" stroke-width="3"/>
+        <g stroke-linecap="round"><path d="M20 50h120M60 80h70M10 120h90M240 60h120M300 100h80M250 140h60" stroke="#2A1E16" stroke-width="9"/><path d="M20 50h120M60 80h70M10 120h90M240 60h120M300 100h80M250 140h60" stroke="#FFFFFF" stroke-width="5"/></g>
+        <path d="M150 60q16-14 30 0q14 14 0 24q-14 6-18-6" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+        <g transform="rotate(8 220 110)"><rect x="150" y="90" width="160" height="40" fill="#F28C38" stroke="#2A1E16" stroke-width="3"/>
+          <g stroke="#2A1E16" stroke-width="2.4" stroke-linecap="round" fill="none"><path d="M212 104l8 4-8 4M236 104l-8 4 8 4"/></g>
+          <path d="M218 120q6-4 12 0" fill="none" stroke="#2A1E16" stroke-width="2"/></g>
+        <g fill="#5DBB63" stroke="#2A1E16" stroke-width="1.6"><path d="M330 40q8-8 14 0q-8 6-14 0z"/><path d="M360 132q8-8 14 0q-8 6-14 0z"/></g>
+      </svg>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:68px;background:#FFF6E0;border:4px solid #2A1E16;box-shadow:3px 3px 0 #2A1E16;padding:4px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;background-image:repeating-linear-gradient(135deg,#2A1E16 0 4px,#FFF6E0 4px 9px);background-size:100% 6px;background-repeat:no-repeat">
+          <span style="font-size:9px;font-weight:700;letter-spacing:1px;margin-top:4px">SUIVANTE</span>
+          <svg aria-hidden="true" width="40" height="27" viewBox="0 0 63 42"><rect x="1" y="11" width="61" height="20" fill="#F28C38" stroke="#2A1E16" stroke-width="2.5"/></svg>
+          <span style="position:absolute;right:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#2A1E16;border:2px solid #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M1 4h8a2 2 0 1 0-2-2M1 8h11a2 2 0 1 1-2 2M1 11h5" fill="none" stroke="#FFF6E0" stroke-width="1.6"/></svg></span>
+        </div>
+        <div style="transform:rotate(2deg);background:#2A1E16;color:#FFF6E0;border:3px solid #2A1E16;box-shadow:4px 4px 0 #C2401F;padding:6px 12px;display:flex;align-items:center;gap:8px"><span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">40 m</span><span style="font-family:'Rubik Mono One', sans-serif;font-size:14px">COUP DE VENT…</span><svg aria-hidden="true" width="16" height="12" viewBox="0 0 16 12"><path d="M1 6h12M9 2l4 4-4 4" fill="none" stroke="#FFF6E0" stroke-width="2"/></svg></div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px"><b style="font-family:'Rubik Mono One', sans-serif;font-size:15px">Pièce glissante</b><span style="background:#2A1E16;color:#FFF6E0;border:2px solid #2A1E16;font-size:10px;font-weight:700;letter-spacing:1px;padding:1px 6px">MALUS</span><span style="font-size:12px;color:#6B5847">verglacée, elle file</span></div>
+      <svg role="img" aria-label="Pièce glissante prise dans le verglas" width="400" height="210" viewBox="0 0 400 210" style="border:3px solid #2A1E16;background:#9FD3E6;display:block">
+        <rect x="100" y="160" width="200" height="50" fill="#FFD23F" stroke="#2A1E16" stroke-width="3"/>
+        <path d="M144 166V114h40V74h52v92z" fill="#BFE6F5" stroke="#2A1E16" stroke-width="3"/>
+        <path d="M152 158v-36h40V82h36v76z" fill="#F4B8D4"/>
+        <g fill="#FFFFFF"><path d="M148 118h16l-16 14z"/><path d="M188 78h14l-14 12z"/><path d="M216 92l10-8v14z"/><path d="M160 150l16-10v6z"/></g>
+        <g fill="#BFE6F5" stroke="#2A1E16" stroke-width="2"><path d="M154 166l5 14 5-14z"/><path d="M212 166l4 10 4-10z"/></g>
+        <g fill="#BFE6F5" stroke="#2A1E16" stroke-width="1.6"><path d="M190 172q-3 8 2 10q5-2 2-10z"/><path d="M232 170q-3 8 2 10q5-2 2-10z"/></g>
+        <g stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"><path d="M268 66v14M261 73h14M264 69l8 8M272 69l-8 8"/><path d="M124 92v10M119 97h10"/></g>
+        <g fill="#FFF6E0" stroke="#2A1E16" stroke-width="1.4"><circle cx="196" cy="134" r="5"/><circle cx="210" cy="134" r="5"/></g>
+        <g fill="#2A1E16"><circle cx="199" cy="134" r="2"/><circle cx="213" cy="134" r="2"/></g>
+        <path d="M188 126l10 2M218 126l-10 2" stroke="#2A1E16" stroke-width="2"/>
+        <path d="M197 146q7-4 14 0" fill="none" stroke="#2A1E16" stroke-width="2"/>
+        <g stroke="#2A1E16" stroke-width="2.4" stroke-linecap="round"><path d="M244 150h28M250 142h18"/></g>
+      </svg>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:68px;background:#FFF6E0;border:4px solid #2A1E16;box-shadow:3px 3px 0 #2A1E16;padding:4px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;background-image:repeating-linear-gradient(135deg,#2A1E16 0 4px,#FFF6E0 4px 9px);background-size:100% 6px;background-repeat:no-repeat">
+          <span style="font-size:9px;font-weight:700;letter-spacing:1px;margin-top:4px">SUIVANTE</span>
+          <svg aria-hidden="true" width="40" height="27" viewBox="0 0 63 42"><path d="M21 1h20v40H1V21h20z" fill="#BFE6F5" stroke="#2A1E16" stroke-width="2.5"/><path d="M25 5h12v32H5V25h20z" fill="#F4B8D4"/></svg>
+          <span style="position:absolute;right:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#2A1E16;border:2px solid #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M7 1v12M1 7h12M3 3l8 8M11 3l-8 8" fill="none" stroke="#FFF6E0" stroke-width="1.8"/></svg></span>
+        </div>
+        <div style="transform:rotate(2deg);background:#2A1E16;color:#FFF6E0;border:3px solid #2A1E16;box-shadow:4px 4px 0 #C2401F;padding:6px 12px;display:flex;align-items:center;gap:8px"><span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">48 m</span><span style="font-family:'Rubik Mono One', sans-serif;font-size:14px">GLISSANTE…</span></div>
+      </div>
+    </section>
+  </div>
+
+  <p style="margin:0;font-size:13px;line-height:1.45;max-width:1220px">Règle : un <b>bonus</b> est vert, penché à gauche, avec un point d'exclamation ; un <b>malus</b> est encre, penché à droite, ombré terre cuite, avec des points de suspension, et sa plaque « Suivante » porte une bande rayée. L'annonce du palier <b>tombe en tampon</b> sous la bande du HUD (court rebond, 1,5 s, centre libre) ; la pièce garde son habit tant que l'effet dure (plaques boulonnées, lierre, verglas), pas seulement un liseré.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
