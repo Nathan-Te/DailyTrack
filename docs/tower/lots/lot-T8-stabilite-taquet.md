@@ -96,8 +96,8 @@ Retour de Nathan (2 novembre) : « les blocs bougent un tout petit peu et on ne 
 | ligne | avant (T7) | après | plafond | marge |
 |---|---|---|---|---|
 | `tower.jsCss` (l'accueil) | 39 669 | **39 745** (+76) | 40 000 | 255 |
-| `tower.jeu` | 169 111 | **170 101** (+990) | **170 200** (relevé de 1 000 o) | 99 |
-`budgets.md` est remesuré. Sur les 3 000 o accordés par Nathan : **990 o pris** (les deux bits, la poussée, le pas fin, la pose douce, la tolérance, deux boutons tactiles, l'aide et les textes) ; `physique` inchangé (958 766 o dont le `.wasm`). L'outil de diagnostic, le scénario, les curseurs et les écrans sont hors du jeu (outils, à la demande).
+| `tower.jeu` | 169 111 | **170 150** (+1 039 : +990 du lot, +49 venus de `main`) | **170 200** (relevé de 1 000 o) | 50 |
+`budgets.md` est remesuré. Sur les 3 000 o accordés par Nathan : **990 o pris** par le lot (les deux bits, la poussée, le pas fin, la pose douce, la tolérance, deux boutons tactiles, l'aide et les textes) ; `physique` inchangé (958 766 o dont le `.wasm`). L'outil de diagnostic, le scénario, les curseurs et les écrans sont hors du jeu (outils, à la demande).
 
 ## Vérifié / non vérifié
 - **Vérifié** : `npm run verifier` vert (typecheck, unitaires SQLite et libSQL, construction, **e2e Tower en Chromium : classement, déterminisme — les six rediffusions de la simulation 5 et les dix des simulations 3 et 4 rejouées au bit près —, partie, poids**) ; tests ajoutés : `taquet.test.ts` (pas fin, tolérance, fenêtre, nombre de poussées, bits refusés par les versions 3 et 4, rediffusion avec taquets), `stabilite.test.ts` (pose douce, trou rétréci de 1,5 cm, refus au-delà de la tolérance, garde-fou de la physique en version 5 : O dans le vide, trois quarts, escalier, alignement ; échantillon de 12 parties du corpus : zéro mouvement sans cause), entrées M2 (mêmes bits avec d'autres touches, LB / RB, Q / E, un ordre par appui), vent d'une demi-case ; traductions à jour ; zones du lot respectées (`scripts/zones-jeu.mjs`) ; rendu tactile contrôlé dans Chromium en 844 × 390 et 390 × 844 (les deux petits boutons au-dessus de ← et →, sans chevauchement).
