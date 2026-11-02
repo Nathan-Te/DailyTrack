@@ -34,5 +34,6 @@ Conception : `docs/plateforme/kit-de-jeu.md` (lot K0, PR #239 pas encore fusionn
 
 ## Vérifié / non vérifié
 - Vérifié : suite complète SQLite (406 fichiers, 6 013 tests) avant la correction des constantes ; `tsc -b` et `tsc -p apps/portail` ; tests ciblés après correction (`ui`, `core`, `portail`, zones). Reste à voir sur la CI : projet libSQL, e2e, run en mode `main` forcé.
+- **CI en mode `main` forcé (run 41532090082, `e2738db`) : tout vert sauf `e2e-parts (chromium 2/3)`, une seule assertion — `apps/web/e2e/perf.spec.ts`, budget de Track : 296 880 o mesurés pour un plafond de 296 736 (+144).** Ce n'est pas ce lot : `origin/main` seul, reconstruit à part, mesure **296 880** (la branche aussi, octet pour octet) — le dépassement vient d'un lot déjà fusionné (S1b ?). Je n'ai pas relevé le plafond (décision de Nathan, règle d'arrêt) ; `e2e` et la fusion restent bloqués tant qu'il n'est pas réglé (relever à 297 000 o, ou retirer 144 o de Track).
 - **Non fait** : captures côte à côte de la cartouche (à regarder sur l'aperçu de la PR, § Nathan ci-dessous) ; budgets mesurés à froid une seule fois par état.
 - **Nathan (2 clics)** : (1) aperçu de la PR, `/` : cartouche de Tower avec « Brouillon », identique à la production ; (2) recette après fusion, `/admin/` : tuile « Tower finis » (si Tower est monté sur la recette).
