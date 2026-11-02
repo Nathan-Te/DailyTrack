@@ -7,6 +7,7 @@ import { formatHauteur, formatPalier } from "./formatHauteur";
 import { iconeEffet } from "./iconesEffet";
 import { t, traducteurDuSocle } from "./i18n";
 import { type EtatMedailles, TYPE_MEDAILLE } from "./medailles";
+import { plaqueDe, tamponDe } from "./tampon";
 
 // Le HUD de la partie (lot T1) — maquettes `tower-hud-paysage.html` et `tower-hud-portrait.html`, charte rév. 13 § 9. Une bande de 30 px en haut au centre (hauteur · pièce n/40 ·
 // vies en cœurs) ; pause, plein écran et fantôme en vue ; à droite la plaque « Suivante » et, au-dessus, l'objectif de médaille (lot T3 : la prochaine médaille et son seuil, ou « Médailles en calcul… ») ; les commandes tactiles
@@ -27,6 +28,8 @@ export { formatHauteur, formatPalier };
 
 /** Combien de temps l'annonce d'un palier reste à l'écran (ms) : une ligne courte, qui disparaît (charte § 9). */
 const ANNONCE_MS = 3600;
+/** Lot T9 : le tampon d'un palier reste à peu près une seconde et demie. */
+export const TAMPON_MS = 1500;
 
 export class Hud {
   readonly element: HTMLElement;
@@ -54,6 +57,13 @@ export class Hud {
   // Lot T7 : l'aide des commandes (une ligne sous la bande, `aideLigne.ts`), avant l'annonce : la feuille descend l'annonce d'un cran tant qu'elle est là.
   private readonly aide = el("div", { classe: "aide-ligne", attrs: { role: "note", hidden: true } });
   private readonly annonce = el("div", { classe: "annonce", attrs: { role: "status", "aria-live": "polite" } });
+  // Lot T9 : l'annonce d'un palier est un TAMPON (« LIERRE ! » vert penché à gauche, « COUP DE VENT… » encre penché à droite) qui tombe sous la bande, rebondit et reste 1,5 s.
+  private readonly tampon = el("div", { classe: "tampon", attrs: { role: "status", "aria-live": "polite" } });
+  private readonly tamponMetres = el("span", { classe: "tampon__metres" });
+  private readonly tamponNom = el("span", { classe: "tampon__nom" });
+  private minuteurTampon: ReturnType<typeof setTimeout> | null = null;
+  private clignement: Partial<Record<Touche, ReturnType<typeof setTimeout>>> = {};
+  private readonly boutons: Partial<Record<Touche, HTMLButtonElement>> = {};
   private minuteurAnnonce: ReturnType<typeof setTimeout> | null = null;
   private palierY = NaN;
   // Lot T7 : « Archive » — une tour passée se joue hors classement ; la plaque le dit à côté des boutons du haut.
@@ -83,7 +93,8 @@ export class Hud {
     this.objectif.append(this.objectifPastille, this.objectifNom, this.objectifValeur);
     const droite = el("div", { classe: "hud__droite" }, this.objectif, this.provisoire, this.suivante);
     this.palier.append(this.palierMetres, el("span", { classe: "palier__pastille" }, this.palierSigne, this.palierEffet));
-    this.element = el("div", { classe: ["hud", o.tactile && "hud--tactile"], attrs: { role: "group" } }, gauche, bande, droite, this.palier, this.aide, this.annonce, this.commandes());
+    this.tampon.append(this.tamponMetres, this.tamponNom);
+    this.element = el("div", { classe: ["hud", o.tactile && "hud--tactile"], attrs: { role: "group" } }, gauche, bande, droite, this.palier, this.aide, this.annonce, this.tampon, this.commandes());
     o.racine.append(this.element);
     this.traduire();
   }
@@ -91,6 +102,7 @@ export class Hud {
   private bouton(touche: Touche, cle: string, icone: SVGElement, extra?: string): HTMLButtonElement {
     const b = el("button", { classe: ["commande", `commande--${touche}`, touche.startsWith("taquet") && "commande--taquet"], attrs: { type: "button", "data-cle": cle } }, icone, extra ? el("span", { classe: "commande__texte", attrs: { "data-cle-texte": cle } }) : null);
     this.o.entrees.brancherBouton(b, touche);
+    this.boutons[touche] = b;
     return b;
   }
 
@@ -131,9 +143,33 @@ export class Hud {
     this.palier.style.setProperty("--palier-y", `${y}px`);
   }
 
-  /** L'annonce d'un palier qui se déclenche : une ligne courte sous la bande, qui disparaît. */
+  /**
+   * L'annonce d'un palier qui se déclenche : un tampon sous la bande (lot T9) — vert, penché à gauche et avec un point d'exclamation pour un bonus ; encre, penché à droite, ombré terre cuite et avec des
+   * points de suspension pour un malus. Il tombe avec un court rebond (la feuille de style), reste environ 1,5 s et ne passe jamais au centre. Son `aria-label` dit la phrase complète.
+   */
   annoncerPalier(metres: number, effet: Effet): void {
-    this.annoncerTexte(t(DUREE_EFFET[effet] > 1 ? "annonce.palier.trois" : "annonce.palier", { metres: formatPalier(metres), effet: t(`effet.${effet}`) }));
+    const def = tamponDe(effet);
+    this.tampon.classList.toggle("tampon--bonus", def.bonus);
+    this.tampon.classList.toggle("tampon--malus", !def.bonus);
+    this.tamponMetres.textContent = formatPalier(metres);
+    this.tamponNom.textContent = t(def.cle);
+    this.tampon.setAttribute("aria-label", t(DUREE_EFFET[effet] > 1 ? "annonce.palier.trois" : "annonce.palier", { metres: formatPalier(metres), effet: t(`effet.${effet}`) }));
+    // Relance l'animation d'une feuille de style déjà jouée.
+    this.tampon.classList.remove("tampon--visible");
+    void this.tampon.offsetWidth;
+    this.tampon.classList.add("tampon--visible");
+    if (this.minuteurTampon) clearTimeout(this.minuteurTampon);
+    this.minuteurTampon = setTimeout(() => this.tampon.classList.remove("tampon--visible"), TAMPON_MS);
+  }
+
+  /** Lot T9 : le bouton tactile du taquet clignote (le coup part). Un clignement de couleur, sans mouvement. */
+  clignerTaquet(sens: -1 | 1): void {
+    const touche: Touche = sens < 0 ? "taquetGauche" : "taquetDroite";
+    const b = this.boutons[touche];
+    if (!b) return;
+    b.classList.add("commande--clignote");
+    if (this.clignement[touche]) clearTimeout(this.clignement[touche]);
+    this.clignement[touche] = setTimeout(() => b.classList.remove("commande--clignote"), 160);
   }
 
   /** Lot T7 : la plaque « Archive » (une tour passée, hors classement). */
@@ -157,6 +193,7 @@ export class Hud {
   }
 
   cacherAnnonce(): void {
+    this.tampon.classList.remove("tampon--visible");
     if (this.minuteurAnnonce) clearTimeout(this.minuteurAnnonce);
     this.minuteurAnnonce = null;
     if (this.ligne !== null) {
@@ -237,8 +274,7 @@ export class Hud {
     if (vue.suivante !== d.suivante) {
       d.suivante = vue.suivante;
       this.suivante.hidden = vue.suivante === null;
-      this.suivanteApercu.replaceChildren(...(vue.suivante ? [apercuPiece(vue.suivante)] : []));
-      d.effet = "?"; // l'étiquette de la plaque dépend aussi de l'effet : relue ci-dessous
+      d.effet = "?"; // la pièce de la plaque et son étiquette dépendent aussi de l'effet : relues ci-dessous
     }
     const cleEffet = vue.effetSuivant ?? "";
     if (cleEffet !== d.effet) {
@@ -268,8 +304,11 @@ export class Hud {
   /** La plaque « Suivante » : la forme qui vient, et l'effet qui l'attend (liseré et icône au trait ; un bonus se lit « bonus », un malus « malus », jamais la couleur seule). */
   private majEffetSuivant(vue: VuePartie): void {
     const effet = vue.effetSuivant;
-    this.suivante.classList.toggle("suivante--bonus", effet !== null && estBonus(effet));
-    this.suivante.classList.toggle("suivante--malus", effet !== null && !estBonus(effet));
+    const plaque = plaqueDe(effet);
+    // Lot T9 : la pièce dessinée dans la plaque prend la couleur ou la taille de l'effet (petite : moitié ; géante : trait épais ; glissante : givrée ; figée : bande rayée ; lierre : liane).
+    this.suivanteApercu.replaceChildren(...(vue.suivante ? [apercuPiece(vue.suivante, undefined, undefined, plaque.piece)] : []));
+    this.suivante.classList.toggle("suivante--bonus", plaque.cadre === "vert");
+    this.suivante.classList.toggle("suivante--malus", plaque.cadre === "encre");
     this.suivanteEffet.hidden = effet === null;
     this.suivanteEffet.replaceChildren(...(effet ? [iconeEffet(effet)] : []));
     if (!vue.suivante) return;

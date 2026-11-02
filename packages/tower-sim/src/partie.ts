@@ -1027,6 +1027,26 @@ export class Partie {
     return { traits, arrivee: toi === Infinity ? null : { x: p.x, y: p.y - toi } };
   }
 
+  /**
+   * Lot T9 — **les soudures du lierre**, une LECTURE SEULE des joints fixes de Rapier (`souder` les a créés ; ici on ne fait que les lire), appelée par le rendu entre deux ticks, jamais pendant un
+   * pas : l'affichage y pose une feuille-agrafe par soudure. Une ligne par joint : la pièce qui porte le lierre (`id`), la pièce soudée (`vers`, −1 pour la plateforme), leurs centres (mètres). Rien n'est
+   * créé, déplacé ni haché : la partie rejouée n'en dépend pas (testé : même rediffusion, même empreinte, avec ou sans lecture).
+   */
+  soudures(): { id: number; vers: number; x: number; y: number; px: number; py: number }[] {
+    const sortie: { id: number; vers: number; x: number; y: number; px: number; py: number }[] = [];
+    this.world.impulseJoints.forEach((j) => {
+      const a = j.body1();
+      const b = j.body2();
+      const p = this.parCorps.get(a.handle);
+      if (!p) return;
+      const q = this.parCorps.get(b.handle);
+      const ta = a.translation();
+      const tb = b.translation();
+      sortie.push({ id: p.id, vers: q ? q.id : -1, x: ta.x, y: ta.y, px: q ? tb.x : ta.x, py: q ? tb.y : 0 });
+    });
+    return sortie;
+  }
+
   /** Libère la mémoire WebAssembly du monde. */
   dispose(): void {
     this.world.free();

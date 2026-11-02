@@ -23,8 +23,10 @@ export interface ReglagesJoueur {
   yeux: Niveau;
   /** La visée (lot T6 : la grille et la ligne de chute) : branchée à la fusion du lot T6 (`visee` n'a pas encore de lecteur). */
   visee: boolean;
+  /** Lot T9 : la vibration du téléphone au choc d'un taquet (15 ms) : allumée par défaut. */
+  vibration: boolean;
 }
-export const REGLAGES_JOUEUR_DEFAUT: Readonly<ReglagesJoueur> = { fantome: "aucun", secousses: "normal", yeux: "normal", visee: true };
+export const REGLAGES_JOUEUR_DEFAUT: Readonly<ReglagesJoueur> = { fantome: "aucun", secousses: "normal", yeux: "normal", visee: true, vibration: true };
 
 /** Le facteur d'un niveau (1, 0,5 ou 0) : celui qui multiplie la secousse et le gain de la panique. */
 export const facteurDe = (n: Niveau): number => (n === "normal" ? 1 : n === "reduit" ? 0.5 : 0);
@@ -39,7 +41,7 @@ export function lireReglagesJoueur(s: Lecture): ReglagesJoueur {
   try {
     const o = JSON.parse(s?.getItem(CLE_REGLAGES) ?? "null") as Partial<Record<keyof ReglagesJoueur | "v", unknown>> | null;
     if (o?.v !== VERSION_REGLAGES) return { ...REGLAGES_JOUEUR_DEFAUT };
-    return { fantome: o.fantome === "meilleure" ? "meilleure" : "aucun", secousses: niveau(o.secousses), yeux: niveau(o.yeux), visee: o.visee !== false };
+    return { fantome: o.fantome === "meilleure" ? "meilleure" : "aucun", secousses: niveau(o.secousses), yeux: niveau(o.yeux), visee: o.visee !== false, vibration: o.vibration !== false };
   } catch {
     return { ...REGLAGES_JOUEUR_DEFAUT };
   }

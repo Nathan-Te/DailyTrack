@@ -22,10 +22,15 @@ export interface ReglagesRendu {
   inclinaisonVent: number;
   /** Nombre de traînées de vent visibles (0 à 12). */
   trainees: number;
+  /** Lot T9 — le taquet : l'étirement de la pièce pendant le coup (1 normal, 0 : aucun), la taille de l'éclat du choc, la micro-secousse du choc (1 : 80 ms, 0 : aucune) et la vibration du téléphone (1 : 15 ms, 0 : aucune). */
+  etirement: number;
+  eclat: number;
+  secousseTaquet: number;
+  vibration: number;
   /** Volume de chaque famille de sons. */
   volumes: VolumesFamilles;
 }
-export const RENDU_DEFAUT: Readonly<ReglagesRendu> = { panique: 1, secousse: 1, cris: 0.5, inclinaisonVent: 4, trainees: 10, volumes: { ...VOLUMES_DEFAUT, cris: 0.5 } };
+export const RENDU_DEFAUT: Readonly<ReglagesRendu> = { panique: 1, secousse: 1, cris: 0.5, inclinaisonVent: 4, trainees: 10, etirement: 1, eclat: 1, secousseTaquet: 1, vibration: 1, volumes: { ...VOLUMES_DEFAUT, cris: 0.5 } };
 
 export interface ReglagesTune {
   entrees: ReglagesEntrees;

@@ -52,6 +52,12 @@ export const CURSEURS: readonly Curseur[] = [
   { cle: "rendu.cris", nom: "Cris de panique", groupe: 2, min: 0, max: 1, pas: 0.05, unite: "", decimales: 2, lire: (r) => r.rendu.cris, ecrire: (r, v) => ((r.rendu.cris = v), (r.rendu.volumes.cris = v)) },
   { cle: "rendu.inclinaisonVent", nom: "Inclinaison au vent", groupe: 2, min: 0, max: 12, pas: 0.5, unite: "°", decimales: 1, lire: (r) => r.rendu.inclinaisonVent, ecrire: (r, v) => (r.rendu.inclinaisonVent = v) },
   { cle: "rendu.trainees", nom: "Traînées de vent", groupe: 2, min: 0, max: 12, pas: 1, unite: "", lire: (r) => r.rendu.trainees, ecrire: (r, v) => (r.rendu.trainees = Math.round(v)) },
+  // Lot T9 — le taquet en quatre temps : de l'affichage, du son et une vibration (rien n'entre dans la simulation).
+  { cle: "rendu.etirement", nom: "Taquet : étirement de la pièce", groupe: 2, min: 0, max: 2, pas: 0.05, unite: "×", decimales: 2, lire: (r) => r.rendu.etirement, ecrire: (r, v) => (r.rendu.etirement = v) },
+  { cle: "rendu.eclat", nom: "Taquet : éclat du choc", groupe: 2, min: 0, max: 2, pas: 0.05, unite: "×", decimales: 2, lire: (r) => r.rendu.eclat, ecrire: (r, v) => (r.rendu.eclat = v) },
+  { cle: "rendu.secousseTaquet", nom: "Taquet : micro-secousse du choc", groupe: 2, min: 0, max: 2, pas: 0.05, unite: "×", decimales: 2, lire: (r) => r.rendu.secousseTaquet, ecrire: (r, v) => (r.rendu.secousseTaquet = v) },
+  { cle: "rendu.vibration", nom: "Taquet : vibration du téléphone (0 : aucune)", groupe: 2, min: 0, max: 1, pas: 1, unite: "", lire: (r) => r.rendu.vibration, ecrire: (r, v) => (r.rendu.vibration = Math.round(v)) },
+  famille("Volume : taquet", "taquet"),
   famille("Volume : clics", "clics"),
   famille("Volume : contacts", "contacts"),
   famille("Volume : paliers", "paliers"),
@@ -73,7 +79,7 @@ export function blocJson(r: ReglagesTune, demiLargeurDuJour: number): string {
     stabilite: { ...r.stabilite },
     plateformeDemi8: r.plateformeDemi8 ?? demiLargeurDuJour,
     plateformeForcee: r.plateformeDemi8 !== null,
-    rendu: { panique: r.rendu.panique, secousse: r.rendu.secousse, cris: r.rendu.cris, inclinaisonVent: r.rendu.inclinaisonVent, trainees: r.rendu.trainees, volumes: { ...r.rendu.volumes } },
+    rendu: { panique: r.rendu.panique, secousse: r.rendu.secousse, cris: r.rendu.cris, inclinaisonVent: r.rendu.inclinaisonVent, trainees: r.rendu.trainees, etirement: r.rendu.etirement, eclat: r.rendu.eclat, secousseTaquet: r.rendu.secousseTaquet, vibration: r.rendu.vibration, volumes: { ...r.rendu.volumes } },
     essai: reglagesEssai(r),
   });
 }

@@ -21,7 +21,7 @@ interface Morceau {
   fichiers: string[];
 }
 const mesureComplete = mesureTower() as { polices: number; detail: Record<string, unknown> };
-const mesure = { ...mesureComplete.detail, polices: mesureComplete.polices } as { accueil: Morceau; jeu: Morceau; physique: number; physiqueWasm: number; anglais: number; polices: number };
+const mesure = { ...mesureComplete.detail, polices: mesureComplete.polices } as { accueil: Morceau; jeu: Morceau; physique: number; physiqueWasm: number; anglais: number; polices: number; decors: number; decorsParTheme: Record<string, number>; habits: number };
 
 test("budgets.md a une ligne par mesure de Tower", () => {
   expect(LIGNES_TOWER.map(limite).every((n: number) => n > 0)).toBe(true);
@@ -42,6 +42,17 @@ test("le jeu (la scène avec Three.js, la partie, le HUD, l'arrivée) est à la 
   expect(j.js, `fichiers mesurés : ${j.fichiers.join(", ")}`).toBeGreaterThan(100_000); // Three.js est le gros du jeu : la mesure l'a bien trouvé
   expect(j.fichiers.some((f) => f.startsWith("rapier-") || f.startsWith("catalogue.en-")), "ni la physique ni l'anglais dans le jeu").toBe(false);
   expect(j.total, `JS ${j.js} + CSS ${j.css}`).toBeLessThanOrEqual(limite("tower.jeu"));
+});
+
+// Lot T9 : les décors (un module par thème, le port compris) et l'habillage des effets et du taquet sont à la demande — ni dans l'accueil, ni dans `tower.jeu` — et chacun a sa ligne (plafond = la mesure + 10 %).
+test("les décors (le plus gros thème) et l'habillage des effets sont à la demande, hors de l'accueil et du jeu, dans leurs budgets", () => {
+  test.info().annotations.push({ type: "mesure", description: `décors ${mesure.decors} o (budget ${limite("tower.decors")} o) ${JSON.stringify(mesure.decorsParTheme)} ; habits ${mesure.habits} o (budget ${limite("tower.habits")} o)` });
+  expect(Object.keys(mesure.decorsParTheme).sort(), "un module de décor par thème, le port compris").toEqual(["banquise", "canyon", "chantier", "jungle", "nuit", "port"]);
+  expect(mesure.decors, "le plus gros thème").toBeGreaterThan(1_000);
+  expect(mesure.decors).toBeLessThanOrEqual(limite("tower.decors"));
+  expect(mesure.habits).toBeGreaterThan(1_000);
+  expect(mesure.habits).toBeLessThanOrEqual(limite("tower.habits"));
+  for (const [nom, m] of [["l'accueil", mesure.accueil], ["le jeu", mesure.jeu]] as const) expect(m.fichiers.some((f) => /^(decor|habits|taquetFx|polygones)/.test(f)), `ni décor ni habillage dans ${nom}`).toBe(false);
 });
 
 test("la physique (Rapier et son .wasm) est à la demande et dans son budget", () => {

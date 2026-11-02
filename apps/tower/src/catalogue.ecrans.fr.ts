@@ -24,6 +24,8 @@ export const CATALOGUE_ECRANS_FR = {
   "reglages.yeux.aide": "Les yeux des pièces s'écarquillent et tremblent quand la tour vacille.",
   "reglages.visee": "Visée",
   "reglages.visee.aide": "La grille et la ligne de chute qui aident à poser la pièce.",
+  "reglages.vibration": "Vibration",
+  "reglages.vibration.aide": "Une courte vibration du téléphone quand un taquet percute un bloc. Sans effet sur ordinateur.",
   "reglages.niveau.normal": "Normal",
   "reglages.niveau.reduit": "Réduit",
   "reglages.niveau.aucun": "Aucun",

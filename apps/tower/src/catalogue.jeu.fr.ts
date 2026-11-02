@@ -8,6 +8,14 @@ export const CATALOGUE_JEU_FR = {
   "pause.sons.volume": "Volume",
   "fin.essai": "Réglage d'essai : partie non classée.",
 
+  // Lot T9 : le tampon d'un palier (un bonus : un point d'exclamation ; un malus : des points de suspension).
+  "annonce.tampon.lierre": "LIERRE !",
+  "annonce.tampon.figee": "FIGÉE !",
+  "annonce.tampon.petite": "MINI !",
+  "annonce.tampon.geante": "GÉANTE…",
+  "annonce.tampon.vent": "COUP DE VENT…",
+  "annonce.tampon.glissante": "GLISSANTE…",
+
   // Lot T7 : la pause complète, l'aide des commandes, les Réglages, les Archives, l'accueil de Tower depuis la partie.
   "pause.aide": "Comment jouer",
   "pause.reglages": "Réglages",
