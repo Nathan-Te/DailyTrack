@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { verifierEcrans } from "../../../packages/ui/test/ecransManette";
+import { ECRAN_MANETTE_FEUILLE } from "@cdj/ui/src/amis";
 import { ECRANS_MANETTE } from "../src/manetteEcrans";
 
 // Lot M1 : chaque écran de Tower déclare son action principale (`src/manette.ts`) et ce qu'il nomme existe encore.
@@ -28,5 +29,10 @@ describe("les menus de Tower à la manette", () => {
     expect(de("fin-ecran").retour).toBe("#fin-accueil");
     expect(de("pause-ecran").retour).toBe("#pause-reprendre");
     expect(de("accueil-ecran").retour).toBeUndefined(); // B ne quitte pas Tower depuis son accueil
+  });
+
+  // Lot F2 : la feuille d'un joueur est la ligne du socle, telle quelle (recopiée pour ne pas charger les amis à la première manette).
+  it("la feuille d'un joueur (lot F2) est la ligne du socle, sans écran de plus à voiler", () => {
+    expect(ECRANS_MANETTE.filter((e) => e.ecran === ECRAN_MANETTE_FEUILLE.ecran)).toEqual([ECRAN_MANETTE_FEUILLE]);
   });
 });
