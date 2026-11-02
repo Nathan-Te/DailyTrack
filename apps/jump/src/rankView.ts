@@ -19,6 +19,8 @@ export interface RankRowView {
   /** « 3 morts » (sous le pseudo). */
   deaths: string;
   mine: boolean;
+  /** Lot F2 : la référence publique du joueur de la ligne (sa feuille s'ouvre au toucher) ; absente d'un serveur plus ancien. */
+  ref?: string;
 }
 
 export interface RankView {
@@ -56,7 +58,7 @@ export interface ArrivalRankInput {
 export function rowsOf(board: JumpBoard | null): { rows: RankRowView[]; gap: boolean } {
   if (!board) return { rows: [], gap: false };
   const mine = board.me?.rank ?? null;
-  const row = (r: JumpBoard["top"][number]): RankRowView => ({ rank: String(r.rank), name: r.name, time: fTicks(r.ticks), medal: r.medal, deaths: t("commun.morts", { n: r.deaths }), mine: r.rank === mine });
+  const row = (r: JumpBoard["top"][number]): RankRowView => ({ rank: String(r.rank), name: r.name, time: fTicks(r.ticks), medal: r.medal, deaths: t("commun.morts", { n: r.deaths }), mine: r.rank === mine, ...(r.ref ? { ref: r.ref } : {}) });
   const rows = board.top.map(row);
   const gap = board.me !== null && !board.top.some((r) => r.rank === mine);
   if (gap) rows.push(row(board.me!));

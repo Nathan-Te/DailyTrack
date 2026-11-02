@@ -8,6 +8,7 @@ const ROOT = join(__dirname, "../../..");
 /** Catalogues des applications (fichier, export) : leur parité est vérifiée par catalogues.test.ts. */
 export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["apps/portail", "apps/portail/src/catalogue.ts", "CATALOGUE_PORTAIL"],
+  ["apps/portail (pages)", "apps/portail/src/cataloguePages.ts", "CATALOGUE_PAGES"],
   ["apps/portail (vitrine)", "apps/portail/src/catalogueVitrine.ts", "CATALOGUE_VITRINE"],
   ["apps/portail (démonstration)", "apps/portail/src/catalogueDemo.ts", "CATALOGUE_DEMO"],
   // Lot I6 : les textes des aperçus de partage (Open Graph), lus seulement à la construction (vite.config.ts de chaque application).
@@ -26,6 +27,8 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["packages/ui (musique)", "packages/ui/src/catalogue.musique.ts", "CATALOGUE_MUSIQUE"],
   // Lot S1 : les noms des boutons Discord et Ko-fi de l'accueil des jeux (à la demande avec leur groupe).
   ["packages/ui (communauté)", "packages/ui/src/catalogue.communaute.ts", "CATALOGUE_COMMUNAUTE"],
+  // Lot F2 : le vocabulaire des amis (sélecteur, feuille d'un joueur, liste, invitation), commun au portail et aux trois jeux (chargé à la demande avec les composants).
+  ["packages/ui (amis)", "packages/ui/src/catalogue.amis.ts", "CATALOGUE_AMIS"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
   ["apps/web (base)", "apps/web/src/catalogue.base.ts", "CATALOGUE_BASE"],
   ["apps/web (accueil)", "apps/web/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],
@@ -47,7 +50,7 @@ export async function cataloguesApplications(): Promise<[string, { fr: Catalogue
 }
 
 /** Les dossiers et fichiers soumis au refus des chaînes écrites en dur (chainesEnDur.test.ts). Lots I4, I5 : ajouter `apps/web/src`, `apps/jump/src`… */
-export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"];
+export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"];
 
 /** Ce qui n'est pas vérifié, chacun avec sa raison. */
 export const EXCLUSIONS: Record<string, string> = {
@@ -109,9 +112,9 @@ export const EXCLUSIONS: Record<string, string> = {
  */
 export const SOURCES_DES_CLES: Record<string, string[]> = {
   "packages/ui": ["packages/ui/src"],
-  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/ui"],
+  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/ui"],
   "apps/web": ["apps/web/src", "apps/web/index.html"],
   "apps/jump": ["apps/jump/src", "apps/jump/index.html"],
   "apps/tower": ["apps/tower/src", "apps/tower/index.html"],
-  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"],
+  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"],
 };

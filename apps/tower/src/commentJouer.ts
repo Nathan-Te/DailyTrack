@@ -47,6 +47,7 @@ function schema(tactile: boolean): HTMLElement {
       ligne([pastille("M19 5 9 15l10 10"), pastille("M11 5l10 10-10 10")], "aide.deplacer"),
       ligne([pastille("M6 5l9 9 9-9M6 15l9 9 9-9")], "aide.descendre"),
       ligne([pastille("M25 16a9 9 0 1 1-3-6.7")], "aide.tourner"),
+      ligne([pastille("M19 7 11 15l8 8M6 6v18"), pastille("M11 7l8 8-8 8M24 6v18")], "aide.taquet"),
     );
   }
   return el(
@@ -55,7 +56,9 @@ function schema(tactile: boolean): HTMLElement {
     ligne(touchesDe("gauche", "droite"), "aide.deplacer"),
     ligne(touchesDe("tourner"), "aide.tourner"),
     ligne(touchesDe("descendre"), "aide.descendre"),
+    ligne(touchesDe("taquetGauche", "taquetDroite"), "aide.taquet"),
     ligne(touchesDe("pause"), "aide.pause"),
+    el("p", { classe: "aide__note", texte: t("aide.taquet.note") }),
     el("p", { classe: "aide__note", texte: t("aide.manette") }),
     el("p", { classe: "aide__note", texte: t("aide.reglables") }),
   );

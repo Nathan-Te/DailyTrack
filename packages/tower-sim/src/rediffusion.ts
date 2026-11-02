@@ -8,12 +8,12 @@
 //   jour : numéro de jour civil (entier de longueur variable) · scénario : [longueur 1 à 32] puis ses caractères ASCII `[a-z0-9:_-]`
 //   [vitesseChute8] [facteurDescente] [hauteurApparition8] [vies]  (les `Reglages`, chacun un entier de longueur variable)
 //   puis par plage de ticks consécutifs aux mêmes commandes : [masque, 1 octet] [nombre de ticks ≥ 1, entier de longueur variable].
-// L'en-tête fixe donc : le format, la version de la simulation (lot T6 : 3 ou 4, `VERSIONS_SIM_JOUABLES` ; une partie nouvelle est en `TOWER_SIM_VERSION`), `TOWER_GENERATOR_VERSION` (0 pour un scénario nommé, qui n'a pas de générateur), le jour ou le nom du scénario, les réglages.
+// L'en-tête fixe donc : le format, la version de la simulation (lot T6 : 3 ou 4 ; lot T8 : 3, 4 ou 5, `VERSIONS_SIM_JOUABLES` — les deux bits du taquet n'existent qu'en 5 ; une partie nouvelle est en `TOWER_SIM_VERSION`), `TOWER_GENERATOR_VERSION` (0 pour un scénario nommé, qui n'a pas de générateur), le jour ou le nom du scénario, les réglages.
 //
 // **Seuls les ticks de la phase de jeu sont enregistrés** : après la dernière pièce (ou la dernière vie) la simulation n'a plus besoin de commandes, elle attend la stabilisation.
 // Une rediffusion qui s'arrête avant la fin de la partie est refusée (`inachevee`), qui en porte après (`surplus`) aussi : une partie n'a qu'une rediffusion.
 import { CodecError, fromBase64Url, pushVarint, readVarint, toBase64Url } from "@cdj/core";
-import { COMMANDES_CONNUES, type Reglages, STABILISATION_MAX_TICKS, TOWER_SIM_VERSION, VERSIONS_SIM_JOUABLES } from "./constantes";
+import { commandesDeLaVersion, type Reglages, STABILISATION_MAX_TICKS, TOWER_SIM_VERSION, VERSIONS_SIM_JOUABLES } from "./constantes";
 import { GENERATEUR_TIRAGE, VERSIONS_GENERATEUR } from "./generateur";
 import { Partie, type Resultat, type Scenario, type VuePartie } from "./partie";
 import type { Rapier } from "./rapier";
@@ -193,7 +193,7 @@ export function decoderRediffusion(code: string): Rediffusion {
   let total = 0;
   while (pos < bytes.length) {
     const masque = octet();
-    if (masque & ~COMMANDES_CONNUES) throw new ErreurRediffusion("commandes_inconnues", `masque ${masque}`);
+    if (masque & ~commandesDeLaVersion(sim)) throw new ErreurRediffusion("commandes_inconnues", `masque ${masque}`);
     const ticks = entier();
     if (ticks < 1) throw new ErreurRediffusion("format_illisible", "plage vide");
     total += ticks;
@@ -228,7 +228,7 @@ export function* rejouerParTranches(R: Rapier, contenu: Scenario, rediffusion: R
   if (!memeContenu || r.g !== (contenu.g ?? 0)) throw new ErreurRediffusion("contenu_different");
   if (!reglagesValides(r.reglages)) throw new ErreurRediffusion("reglages_invalides");
   if (ticksRediffusion(r) > MAX_TICKS_JEU) throw new ErreurRediffusion("trop_longue", `plus de ${MAX_TICKS_JEU} ticks`);
-  for (const p of r.plages) if (p.masque & ~COMMANDES_CONNUES) throw new ErreurRediffusion("commandes_inconnues", `masque ${p.masque}`);
+  for (const p of r.plages) if (p.masque & ~commandesDeLaVersion(r.sim)) throw new ErreurRediffusion("commandes_inconnues", `masque ${p.masque}`);
   const partie = new Partie(R, contenu, r.reglages, { version: r.sim }); // lot T6 : la rediffusion est rejouée par la version de simulation qu'elle nomme (3 ou 4)
   try {
     let faits = 0;

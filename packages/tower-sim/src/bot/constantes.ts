@@ -7,7 +7,7 @@ export const POSITIONS_PAR_COTE = 5;
 /** Une tour est « calme » quand aucune pièce libre non endormie ne dépasse `CALME_VITESSE` m/s pendant `CALME_TICKS` ticks de suite (jamais avant `CALME_MIN_TICKS` ticks après le lâcher). */
 export const CALME_VITESSE = 0.05;
 export const CALME_TICKS = 4;
-export const CALME_MIN_TICKS = 8;
+export const CALME_MIN_TICKS = 28;
 /** Un coup est jugé calme au plus tard à ce tick après le lâcher (la tour qui bouge encore alors est pénalisée par `PENALITE_MOUVEMENT`). */
 export const CALME_MAX_TICKS = 100;
 /** Les meilleurs coups (au premier jugement) dont on anticipe la pièce suivante. */

@@ -20,6 +20,8 @@ Révision 13 (choix de Nathan, 30/10/2026, maquettes de Tower) : étiquette de T
 
 Révision 14 (demande de Nathan, 31/10/2026, lot M1) : navigation à la manette dans tous les menus, bande d'aide de la manette, commandes réglables par jeu (§ 10 ; maquette `manette-et-commandes.html`). (La demande l'appelait « révision 13 » : ce numéro était déjà pris par les maquettes de Tower.)
 
+Révision 15 (maquette `favoris-et-amis.html`, planche A, 02/11/2026, lot F1) : « Mes jeux » et cartouches compactes (§ 9). (Le fichier de charte fourni avec le lot F1 numérotait ce texte « révision 14 » sur une base plus ancienne que ce dépôt ; seul le passage « Mes jeux » en est repris ici. Le sélecteur Tous / Amis des classements, de la même maquette, est celui du lot F2.)
+
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
 Chaque règle porte sa raison. Une règle dont la raison ne s'applique plus se discute avec Nathan ; elle ne se contourne pas.
@@ -211,6 +213,7 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - **Le cadre crème pleine page** est réservé aux écrans **Du Jour** : portail, profil commun, classement du jour, mentions légales.
 - **« Comment jouer »** : dans le jeu, trois points courts, schéma des commandes, « C'est parti » ; montré une seule fois au premier lancement, puis depuis la pause et l'accueil.
 - **Classements** (portail et jeux) : **ta ligne** sur fond `--dj-moutarde`, bordure 3 px encre et ombre nette ; visible même hors du haut, après « … », à sa vraie place. **Sur l'étiquette jaune de Jump**, ta ligne est en **encre** (texte jaune, ombre papier) : la moutarde ne s'y distinguerait pas.
+- **Mes jeux (favoris)** : une étoile de 44 px en haut à droite de chaque cartouche (pleine `--dj-moutarde` = épinglé, contour = non). « Mes jeux » en haut de l'accueil en cartouches pleines ; « Les autres jeux » dessous en **cartouches compactes** d'une ligne qui **gardent la coque, l'étiquette, la couleur et la police de leur jeu** (jamais une ligne grise neutre), avec « Jouer » et l'étoile.
 - **Profil commun** : une étiquette par jeu (la cartouche agrandie, § 1) porte ses statistiques ; médailles en cases, deux par ligne.
 
 ## 10. Accessibilité

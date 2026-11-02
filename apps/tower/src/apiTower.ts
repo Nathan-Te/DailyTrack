@@ -23,6 +23,8 @@ export interface LigneTower {
   vies: number;
   ticks: number;
   medal: MedailleApi | null;
+  /** Lot F2 : la référence publique du joueur (12 hexadécimaux), pour ouvrir sa feuille ; jamais son identifiant. */
+  ref?: string;
 }
 
 /** `GET /api/tower/day/<date>/board` : les 50 premiers, le nombre de classés, ta ligne (identifiant fourni et classé). */

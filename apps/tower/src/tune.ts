@@ -76,6 +76,7 @@ export function monterTune(racine: HTMLElement, r: ReglagesTune, o: OptionsTune)
     r.entrees = d.entrees;
     r.sim = d.sim;
     r.physique = d.physique;
+    r.stabilite = d.stabilite;
     r.plateformeDemi8 = d.plateformeDemi8;
     r.rendu = d.rendu;
     for (const c of racine.querySelectorAll<HTMLInputElement>(".tune input[type=range]")) {

@@ -86,7 +86,7 @@ export function choisirDates(g: number = TOWER_GENERATOR_VERSION): number[] {
   return choisies.sort((a, b) => a - b);
 }
 
-import { chercher, perdreTout } from "./joueur";
+import { chercher, joueurEmboitement, perdreTout } from "./joueur";
 import { decoderRediffusion } from "../src";
 
 function enGolden(R: Rapier, nom: string, contenu: Scenario, code: string, id: GoldenRediffusion["contenu"]): GoldenRediffusion {
@@ -147,6 +147,8 @@ const sources: { nom: string; id: GoldenRediffusion["contenu"]; trouver(): Parti
   { nom: "jour-avec-paliers", id: { date: "2026-11-02", g: 3 }, trouver: () => chercher(R, dailyTower(PREMIER, 3), REGLAGES_DEFAUT) },
   { nom: "zero-vie", id: { date: "2026-11-03", g: 3 }, trouver: () => perdreTout(R, dailyTower(PREMIER + 1, 3)) },
   { nom: "tirage", id: { date: "2026-11-02", g: 3, tirage: 2 }, trouver: () => chercher(R, dailyTower(PREMIER, 3, 2), REGLAGES_DEFAUT) },
+  // Lot T8 : la tour de départ du taquet et de la tolérance (`?scenario=emboitement`), jouée avec deux poussées de taquet après le lâcher.
+  { nom: "emboitement", id: { scenario: "emboitement" }, trouver: () => joueurEmboitement(R, scenarioNomme("emboitement")!) },
 ];
 for (const s of sources) {
   const contenu = contenuDe(s.id);

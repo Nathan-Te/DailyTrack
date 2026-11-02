@@ -1126,6 +1126,7 @@ const boardScreen = mountBoardScreen({
   leaderboard: online.enabled ? homeLeaderboard : null,
   noBoardReason,
   watchBest: () => location.assign(watchHref(location.search)),
+  amis: online.enabled && !online.demo ? online : null, // lot F2 : « Tous / Amis » (rien sans serveur ni en démonstration)
 });
 
 // --- Synchronisation du profil (lot 30) -------------------------------------------------------------------

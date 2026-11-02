@@ -85,6 +85,10 @@
       "_": "Lot 53 : les fichiers propres à l'iPhone et à l'application ajoutée à l'écran d'accueil (l'aide du plein écran, « Retrouver mon profil », la détection). Une zone étroite exprès : l'Essentiel de web/iphone.spec.ts (28 s) ne doit pas entrer dans toutes les PR qui touchent `packages/ui` ou `packages/profile` (le budget de 900 s d'une PR large n'a plus de marge : ciZones.test.ts) ; ses tests de mise en page sont `@regression`.",
       "globs": ["packages/ui/src/aideIphone.ts", "packages/ui/src/composants.ts", "packages/ui/src/retrouver.ts", "packages/ui/src/modale.css", "packages/ui/src/catalogue.iphone.ts", "packages/ui/src/pleinEcran.ts", "packages/profile/src/retrouver.ts", "apps/web/src/retrouverJeu.ts", "apps/jump/src/retrouverJeu.ts", "apps/web/e2e/iphone.spec.ts"]
     },
+    "amis": {
+      "_": "Lot F2 : les fichiers propres aux amis (composants et vocabulaire du socle, client du profil, routes du serveur et classement filtré). Une zone étroite exprès, comme `iphone` : l'Essentiel de web/amis.spec.ts (≈ 30 s : site assemblé, recette garnie, serveur) ne doit pas entrer dans toutes les PR qui touchent `packages/ui`, `packages/profile` ou `apps/api` (le budget de 900 s d'une PR large n'a plus de marge : ciZones.test.ts). Les unitaires des amis (portail, ui, profile, api) tournent avec leurs zones.",
+      "globs": ["packages/ui/src/amis.ts", "packages/ui/src/amis.css", "packages/ui/src/catalogue.amis.ts", "packages/profile/src/amis.ts", "apps/api/src/amis.ts", "apps/api/src/classementAmis.ts", "apps/web/e2e/amis.spec.ts"]
+    },
     "portail": { "globs": ["apps/portail/**", "scripts/site.mjs", "scripts/images-partage.mjs", "firebase.json"] },
     "api-coeur": {
       "globs": ["apps/api/**"],
@@ -97,6 +101,7 @@
   },
   "specs": {
     "web/accessibilite.spec.ts": ["track-hud", "track-i18n", "ui"],
+    "web/amis.spec.ts": ["portail", "amis"],
     "web/accueil.spec.ts": ["track-hud", "track-i18n", "ui", "track-archives"],
     "web/admin.spec.ts": ["track-admin"],
     "web/admin-panneau.spec.ts": ["portail", "api-admin"],

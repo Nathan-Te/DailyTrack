@@ -10,6 +10,9 @@ const fr = {
   // Lot N2 : la page /nouveautes/
   "apercu.nouveautes.titre": "Nouveautés — Du Jour",
   "apercu.nouveautes.description": "Ce qui change dans Du Jour, Track et Jump : les nouveautés, mise à jour par mise à jour, en français et en anglais.",
+  // Lot F2 : la page /amis/ (le lien d'invitation qu'on partage y mène)
+  "apercu.amis.titre": "Rejoins-moi sur Du Jour",
+  "apercu.amis.description": "Un circuit Track et un niveau Jump chaque jour, les mêmes pour tout le monde. Ajoutons-nous en amis pour comparer nos temps.",
 } as const;
 
 const en: Catalogues<typeof fr>["en"] = {
@@ -18,6 +21,8 @@ const en: Catalogues<typeof fr>["en"] = {
   "apercu.image": "The DU JOUR logo and two cartridges on the shelf: Track and Jump.",
   "apercu.nouveautes.titre": "What's new — Du Jour",
   "apercu.nouveautes.description": "What changes in Du Jour, Track and Jump: updates one by one, in French and in English.",
+  "apercu.amis.titre": "Join me on Du Jour",
+  "apercu.amis.description": "One Track circuit and one Jump level every day, the same for everyone. Let's add each other as friends to compare our times.",
 };
 
 export const CATALOGUE_APERCU = { fr, en };

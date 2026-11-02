@@ -145,6 +145,8 @@ export interface ClasseDuJour {
   at: number;
   /** Lot TP : le score en hauteur d'un jeu qui ne se classe pas au chrono (alors `tempsMs` est la durée de la partie, le dernier départage). */
   score?: ScorePortail;
+  /** Lot F2 : les pas exacts de l'essai (Jump, Tower), que la ligne d'un classement filtré « Amis » montre ; le classement du jour tous jeux confondus ne les rend jamais. */
+  ticks?: number;
 }
 
 /** Le crochet `portail` d'un jeu (lot I2). */

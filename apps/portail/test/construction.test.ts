@@ -12,7 +12,7 @@ import { VITRINE, portailEnv } from "../../../scripts/site.mjs";
 //     déclarées par la page ≤ 150 ko, seules Archivo Black et Archivo 400 préchargées ;
 //   - la vitrine `/ui/` n'est jamais construite pour la production.
 // Les chiffres sont écrits dans la sortie du test (et recopiés dans le README du lot).
-export const BUDGET_PREMIER_CHARGEMENT = 33_000; // lot S1 : 32 768 → 33 000 o (+232 o), décision de Nathan du 31/10/2026 : les boutons Discord / Ko-fi passent par le composant du socle (jetons de couleur, code) ; avant : 32 * 1024 ; lot 53 : 30 → 32 ko (+2 048 o), décision de Nathan du 28/10/2026 : la pastille de l'iPhone, « Retrouver mon profil » (à la demande), l'en-tête iOS, les marges de sécurité
+export const BUDGET_PREMIER_CHARGEMENT = 35_200; // lot F1 : 33 000 → 35 200 o (+2 200 pour +2 140 mesurés), « Mes jeux » (l'étoile, la cartouche compacte, la répartition, la pastille « Nouveau », les textes fr + en) : **à valider par Nathan** (`docs/plateforme/budgets.md`) ; avant : lot S1 : 32 768 → 33 000 o (+232 o), décision de Nathan du 31/10/2026 : les boutons Discord / Ko-fi passent par le composant du socle (jetons de couleur, code) ; avant : 32 * 1024 ; lot 53 : 30 → 32 ko (+2 048 o), décision de Nathan du 28/10/2026 : la pastille de l'iPhone, « Retrouver mon profil » (à la demande), l'en-tête iOS, les marges de sécurité
 export const BUDGET_POLICES = 150 * 1024;
 
 const ROOT = join(__dirname, "../../..");
@@ -139,6 +139,21 @@ describe("construction du portail", () => {
       expect(html).not.toMatch(/(?:src|href)="https?:/);
       expect(html).toContain("__ORIGINE_DU_SITE__/nouveautes/"); // l'origine est posée à l'assemblage du site (scripts/site.mjs), pas à la construction : le jeton y est encore
     }
+  });
+
+  it("lot F2 : la page « Mes amis » /amis/ est dans la production comme dans la recette (balises de partage, noindex, aucune ressource extérieure) ; le code des amis est à la demande, hors du premier chargement", () => {
+    for (const sortie of [sorties.production, sorties.recette]) {
+      const html = readFileSync(join(sortie, "amis/index.html"), "utf8");
+      expect(html).toContain('<title data-t="amisPage.titre">Mes amis</title>');
+      expect(html).toContain('property="og:title"');
+      expect(html).toContain('content="Rejoins-moi sur Du Jour"');
+      expect(html).toContain('name="robots" content="noindex"');
+      expect(html).not.toMatch(/(?:src|href)="https?:/);
+      expect(html).toContain("__ORIGINE_DU_SITE__/amis/");
+    }
+    // Le premier chargement de l'accueil ne contient ni les composants des amis (sélecteur, feuille, liste, invitation) ni leur feuille de style.
+    const p = premierChargement(sorties.production);
+    expect(p.fichiers.filter((f) => /(^|\/)(amis|amisPortail|catalogue\.amis)[-.]/.test(f))).toEqual([]);
   });
 
   it("deploy-site.yml : --production pour la cible production, jamais pour la recette ni un aperçu", () => {

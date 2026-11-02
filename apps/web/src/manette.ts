@@ -15,6 +15,9 @@ export const ECRANS_MANETTE: readonly EcranManette[] = [
   { ecran: "#archive", principal: ".etiquette a[href], .etiquette button" }, // les archives : le premier jour
   { ecran: "#podium", principal: ".etiquette .dj-bouton, .etiquette button" }, // le classement final du Salon
   { ecran: "#garage", principal: '.garage-voiture[aria-current="true"], .garage-voiture' }, // le Garage : la voiture regardée
+  // Lot F2 : la feuille d'un joueur (toucher une ligne du classement) : A valide « Ajouter en ami » / « Retirer », B ferme. C'est `ECRAN_MANETTE_FEUILLE` de `@cdj/ui/src/amis`, écrit ici tel quel
+  // (l'importer ferait entrer les composants des amis dans le morceau de la manette) ; `test/manette.test.ts` vérifie qu'il en est l'égal.
+  { ecran: ".dj-feuille", principal: ".dj-feuille__principal, .dj-feuille__fermer", retour: ".dj-feuille__fermer" },
 ];
 
 /** Ce que le menu à la manette lit (chargé avec lui, à la première manette : ce fichier n'importe rien d'exécutable). */

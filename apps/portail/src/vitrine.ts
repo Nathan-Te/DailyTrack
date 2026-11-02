@@ -1,4 +1,5 @@
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/favoris.css";
 import "@cdj/ui/src/cadre.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
@@ -29,11 +30,13 @@ import {
   bouton,
   boutonFantome,
   boutonPleinEcran,
+  boutonFavori,
   cartouche,
   choixLangue,
   creerCadre,
   el,
   etiquetteJump,
+  etiquetteTower,
   etiquetteTrack,
   formatNombre,
   formatNumeroJour,
@@ -50,6 +53,7 @@ import {
   type VarianteBouton,
 } from "@cdj/ui";
 import { CATALOGUE_VITRINE } from "./catalogueVitrine";
+import { remplirAmis } from "./vitrineAmis";
 import { stockageDuPortail } from "./stockage";
 
 // La vitrine des composants (`/ui/`, lot I1) : chaque composant de @cdj/ui dans tous ses états, en français ET en anglais (côte à côte), sur
@@ -224,6 +228,8 @@ function bloc(l: Langue): HTMLElement {
       bandeauAnnonce(t, { texte: t.t("vitrine.bandeau.information"), ton: "information" }),
       bandeauAnnonce(t, { texte: t.t("vitrine.bandeau.important"), ton: "important", fermableApresMs: 0 }),
     ),
+    // Lot F2 : les composants des amis (chargés à la demande, comme dans les pages qui les utilisent).
+    section(t.t("vitrine.section.amis"), `amis-${l}`, remplirAmis(l, (cle) => t.t(cle as never))),
     section(
       t.t("vitrine.section.boutons"),
       `boutons-${l}`,
@@ -248,6 +254,33 @@ function bloc(l: Langue): HTMLElement {
           action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", pleineLargeur: true }),
         }),
         cartouche({ etiquette: el("div", { classe: "dj-etiquette vitrine-etiquette-vide" }, logo(t)) }),
+      ),
+      // Lot F1 : « Mes jeux » — l'étoile (non épinglée, épinglée) et la variante compacte des cartouches (« Les autres jeux »).
+      el("div", { classe: "vitrine-ligne" }, boutonFavori({ epingle: false, nom: t.t("jeu.track.nom"), place: "ligne" }), boutonFavori({ epingle: true, nom: t.t("jeu.track.nom"), place: "ligne" })),
+      el(
+        "div",
+        { classe: "vitrine-etagere" },
+        cartouche({
+          jeu: "track",
+          compacte: true,
+          etiquette: etiquetteTrack({ titre: t.t("jeu.track.titre"), numero: formatNumeroJour(12, l), niveau: "h3" }),
+          action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", variante: "secondaire" }),
+          favori: boutonFavori({ epingle: false, nom: t.t("jeu.track.nom"), place: "ligne" }),
+        }),
+        cartouche({
+          jeu: "jump",
+          compacte: true,
+          etiquette: etiquetteJump({ titre: t.t("jeu.jump.titre"), numero: formatNumeroJour(12, l), niveau: "h3" }),
+          action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", variante: "secondaire" }),
+          favori: boutonFavori({ epingle: true, nom: t.t("jeu.jump.nom"), place: "ligne" }),
+        }),
+        cartouche({
+          jeu: "tower",
+          compacte: true,
+          etiquette: etiquetteTower({ titre: t.t("jeu.tower.nom").toUpperCase(), numero: formatNumeroJour(12, l), niveau: "h3" }),
+          action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", variante: "secondaire" }),
+          favori: boutonFavori({ epingle: false, nom: t.t("jeu.tower.nom"), place: "ligne" }),
+        }),
       ),
     ),
     section(t.t("vitrine.section.cadre"), `cadre-${l}`, el("p", { classe: "vitrine-intro", texte: t.t("vitrine.cadre.intro") }), cadreSurScene(t, "track", jour), cadreSurScene(t, "jump", jour)),

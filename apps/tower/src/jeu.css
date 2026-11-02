@@ -244,6 +244,10 @@
 }
 .commandes__gauche {
   left: max(14px, env(safe-area-inset-left, 0px));
+  /* Lot T8 : une grille de deux colonnes — le taquet (petits boutons) au-dessus de gauche et de droite. */
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  align-items: end;
 }
 .commandes__droite {
   right: max(14px, env(safe-area-inset-right, 0px));
@@ -270,6 +274,10 @@
   fill: none;
   stroke: currentColor;
   stroke-linecap: square;
+}
+.commande--taquet {
+  height: 40px;
+  gap: 0;
 }
 .commande--tourner {
   width: 104px;

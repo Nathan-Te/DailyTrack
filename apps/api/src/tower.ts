@@ -157,6 +157,8 @@ export interface TowerRow {
   vies: number;
   ticks: number;
   medal: MedailleTower | null;
+  /** Lot F2 : la référence publique du joueur (`players.ref`). */
+  ref?: string;
 }
 
 export interface TowerBoard {
@@ -427,19 +429,19 @@ export function createTower(platform: Platform, options: TowerOptions | undefine
     return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM tower_results WHERE day = ? AND hidden = 0", [day]))?.n ?? 0;
   }
 
-  type LigneBrute = { hauteur_mm: number; vies: number; ticks: number; medal: string | null; name: string };
-  const ligne = (rank: number, r: LigneBrute): TowerRow => ({ rank, name: r.name, hauteurMm: r.hauteur_mm, vies: r.vies, ticks: r.ticks, medal: (r.medal as MedailleTower | null) ?? null });
+  type LigneBrute = { hauteur_mm: number; vies: number; ticks: number; medal: string | null; name: string; ref: string | null };
+  const ligne = (rank: number, r: LigneBrute): TowerRow => ({ rank, name: r.name, hauteurMm: r.hauteur_mm, vies: r.vies, ticks: r.ticks, medal: (r.medal as MedailleTower | null) ?? null, ...(r.ref ? { ref: r.ref } : {}) });
 
   async function board(day: number, me: string | null): Promise<TowerBoard> {
     const [count, rows, own, generation] = await Promise.all([
       participants(day),
       db.all<LigneBrute>(
-        "SELECT r.hauteur_mm AS hauteur_mm, r.vies AS vies, r.ticks AS ticks, r.medal AS medal, p.name AS name FROM tower_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.hauteur_mm DESC, r.vies DESC, r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
+        "SELECT r.hauteur_mm AS hauteur_mm, r.vies AS vies, r.ticks AS ticks, r.medal AS medal, p.name AS name, p.ref AS ref FROM tower_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.hauteur_mm DESC, r.vies DESC, r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
         [day, TOWER_BOARD_TOP],
       ),
       me
         ? db.first<LigneBrute & { submitted_at: number }>(
-            "SELECT r.hauteur_mm AS hauteur_mm, r.vies AS vies, r.ticks AS ticks, r.medal AS medal, r.submitted_at AS submitted_at, p.name AS name FROM tower_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.player_id = ?",
+            "SELECT r.hauteur_mm AS hauteur_mm, r.vies AS vies, r.ticks AS ticks, r.medal AS medal, r.submitted_at AS submitted_at, p.name AS name, p.ref AS ref FROM tower_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.player_id = ?",
             [day, me],
           )
         : Promise.resolve(null),
@@ -633,7 +635,7 @@ export function createTower(platform: Platform, options: TowerOptions | undefine
         "SELECT player_id, hauteur_mm, vies, ticks, medal, submitted_at FROM tower_results WHERE day = ? AND hidden = 0 ORDER BY hauteur_mm DESC, vies DESC, ticks ASC, submitted_at ASC, player_id ASC",
         [day],
       );
-      return rows.map((r) => ({ playerId: r.player_id, tempsMs: msOfTicks(r.ticks), medaille: medaillePortail(r.medal), at: r.submitted_at, score: scoreDe(r) }));
+      return rows.map((r) => ({ playerId: r.player_id, tempsMs: msOfTicks(r.ticks), medaille: medaillePortail(r.medal), at: r.submitted_at, score: scoreDe(r), ticks: r.ticks })); // lot F2 : `ticks` exacts pour le classement filtré « Amis »
     },
   };
 

@@ -9,7 +9,7 @@ import { SEUIL_AXE, type Commandes } from "@cdj/ui/src/commandes";
 // liaisons de `commandes` et les fixes (stick, croix), le tactile par les boutons de l'écran. Trois sources peuvent tenir la même touche (un ordre n'est levé qu'au premier appui) ; ce qui sort
 // d'ici est toujours le même masque de bits par tick, donc la rediffusion ne dépend jamais des touches choisies.
 
-export type Touche = "gauche" | "droite" | "tourner" | "descendre";
+export type Touche = "gauche" | "droite" | "tourner" | "descendre" | "taquetGauche" | "taquetDroite";
 export interface ReglagesEntrees {
   /** Ticks entre l'appui et la première répétition (10 = 167 ms). */
   delaiTicks: number;
@@ -18,8 +18,8 @@ export interface ReglagesEntrees {
 }
 export const ENTREES_DEFAUT: Readonly<ReglagesEntrees> = { delaiTicks: 10, cadenceTicks: 3 };
 
-const BIT: Record<Touche, number> = { gauche: COMMANDE.GAUCHE, droite: COMMANDE.DROITE, tourner: COMMANDE.TOURNER, descendre: COMMANDE.DESCENDRE };
-const TOUCHES: readonly Touche[] = ["gauche", "droite", "tourner", "descendre"];
+const BIT: Record<Touche, number> = { gauche: COMMANDE.GAUCHE, droite: COMMANDE.DROITE, tourner: COMMANDE.TOURNER, descendre: COMMANDE.DESCENDRE, taquetGauche: COMMANDE.TAQUET_GAUCHE, taquetDroite: COMMANDE.TAQUET_DROITE };
+const TOUCHES: readonly Touche[] = ["gauche", "droite", "tourner", "descendre", "taquetGauche", "taquetDroite"];
 /** Plus d'ordres en attente que cela et le suivant est perdu (un clavier qui rafale ne prépare pas dix déplacements). */
 const FILE_MAX = 2;
 
@@ -27,7 +27,7 @@ const FILE_MAX = 2;
 export type Source = "clavier" | "tactile" | "manette";
 const SOURCE: Record<Source, number> = { clavier: 1, tactile: 2, manette: 4 };
 /** Les actions de `commandes.ts` qui sont des touches de la partie. */
-const TOUCHE_DE_ACTION: Readonly<Record<string, Touche | undefined>> = { gauche: "gauche", droite: "droite", tourner: "tourner", descendre: "descendre" };
+const TOUCHE_DE_ACTION: Readonly<Record<string, Touche | undefined>> = { gauche: "gauche", droite: "droite", tourner: "tourner", descendre: "descendre", taquetGauche: "taquetGauche", taquetDroite: "taquetDroite" };
 
 /** Ce que la partie lit d'une manette : des boutons et des axes (disposition « standard »). */
 export type PadLu = { buttons: ArrayLike<{ pressed: boolean }>; axes: ArrayLike<number> };
@@ -54,9 +54,9 @@ export function padActif(pad: PadLu): boolean {
 }
 
 export class Entrees {
-  private readonly tenue: Record<Touche, number> = { gauche: 0, droite: 0, tourner: 0, descendre: 0 };
-  private readonly attente: Record<Touche, number> = { gauche: 0, droite: 0, tourner: 0, descendre: 0 };
-  private readonly depuis: Record<Touche, number> = { gauche: 0, droite: 0, tourner: 0, descendre: 0 };
+  private readonly tenue: Record<Touche, number> = { gauche: 0, droite: 0, tourner: 0, descendre: 0, taquetGauche: 0, taquetDroite: 0 };
+  private readonly attente: Record<Touche, number> = { gauche: 0, droite: 0, tourner: 0, descendre: 0, taquetGauche: 0, taquetDroite: 0 };
+  private readonly depuis: Record<Touche, number> = { gauche: 0, droite: 0, tourner: 0, descendre: 0, taquetGauche: 0, taquetDroite: 0 };
 
   constructor(private readonly reglages: () => ReglagesEntrees = () => ENTREES_DEFAUT) {}
 
@@ -97,9 +97,12 @@ export class Entrees {
         if (n >= delaiTicks && (n - delaiTicks) % Math.max(1, cadenceTicks) === 0) masque |= BIT[t];
       }
     }
-    if (this.attente.tourner > 0) {
-      this.attente.tourner--;
-      masque |= BIT.tourner;
+    // « Tourner » et les deux taquets sont un ordre par appui, sans répétition (une poussée par appui : lot T8).
+    for (const t of ["tourner", "taquetGauche", "taquetDroite"] as const) {
+      if (this.attente[t] > 0) {
+        this.attente[t]--;
+        masque |= BIT[t];
+      }
     }
     if (this.tenue.descendre !== 0) masque |= BIT.descendre;
     return masque;
@@ -146,6 +149,8 @@ export class Entrees {
     tenir("droite", sens > 0);
     tenir("tourner", !!pad && commandes.enfonceeManette("tourner", pad));
     tenir("descendre", !!pad && (commandes.enfonceeManette("descendre", pad) || basDuPad(pad)));
+    tenir("taquetGauche", !!pad && commandes.enfonceeManette("taquetGauche", pad));
+    tenir("taquetDroite", !!pad && commandes.enfonceeManette("taquetDroite", pad));
   }
 
   /** Un bouton tactile (ou à la souris) : appuyé tant que le doigt est dessus, relâché à la levée ou à la perte du pointeur. */

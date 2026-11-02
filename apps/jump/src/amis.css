@@ -1,0 +1,60 @@
+/* Lot F2 (plateforme) : les amis dans l'écran du classement de Jump — **feuille à la demande**, importée par `classementAmis.ts` (rien au premier chargement). Jetons seulement. Les lignes viennent de
+   `interface.css` (`.ligne`, ta ligne `.ligne--moi` en encre sur l'étiquette jaune) ; les composants des amis (`@cdj/ui/src/amis`) ont leur propre feuille. */
+
+/* --- Lot F2 : toucher une ligne ouvre la feuille du joueur (classement « Tous » et « Amis »). Le pseudo est un bouton dont le ::after couvre toute la ligne : une cible de 44 px, un arrêt de tabulation. */
+.ligne--ouvrable {
+  position: relative;
+  cursor: pointer;
+}
+.ligne__bouton {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ligne__bouton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.ligne__bouton:focus-visible {
+  outline: none;
+}
+.ligne--ouvrable:has(.ligne__bouton:focus-visible) {
+  outline: var(--dj-focus) solid var(--dj-encre);
+  outline-offset: var(--dj-focus-ecart);
+}
+/* Un ami qui n'a rien fini ce jour-là : en bas, sans temps. */
+.ligne--absent {
+  color: var(--dj-encre);
+  background: transparent;
+  border-style: dashed;
+}
+.ligne--absent .ligne__rang {
+  text-align: center;
+}
+.ligne--absent .ligne__temps {
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+.classement-amis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  margin: var(--dj-espace-3) 0;
+}
+.classement-amis:empty,
+.classement-amis__pied:empty {
+  display: none;
+}
+.classement-amis__pied {
+  margin-top: var(--dj-espace-3);
+}

@@ -117,6 +117,8 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
   const etat = (site: string): EtatJeu => lignes.get(site)?.etat ?? "off";
   /** Ce jour-là, le jeu compte-t-il dans la journée (série, journée parfaite, classement du jour, partage) ? */
   const compteLe = (site: string, jour: number): boolean => compteDansPeriodes(lignes.get(site)?.periodes ?? [], jour);
+  /** Lot F1 : le premier jour où le jeu compte dans sa période en cours (`live_from`), ou `null` sans période : la pastille « Nouveau » en dérive (`estNouveau`). */
+  const liveFrom = (site: string): number | null => liveFromDe(lignes.get(site)?.periodes ?? []);
 
   /** Vrai pour une requête venue d'un aperçu de PR, hors production : ses jeux `off` se montrent et se jouent (résultats à part). */
   function apercuDePr(req: Request): boolean {
@@ -291,6 +293,7 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
     charger,
     etat,
     compteLe,
+    liveFrom,
     garde,
     apercuDePr,
     routePublique,

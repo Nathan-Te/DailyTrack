@@ -250,17 +250,17 @@ describe("lot T6 — deux versions de la simulation, la 3 reste rejouable telle 
     b.dispose();
   });
 
-  it("une version que ce code ne joue pas (2, 5) est refusée à la lecture comme au rejeu ; les versions 3 et 4 sont acceptées", () => {
+  it("une version que ce code ne joue pas (2, 6) est refusée à la lecture comme au rejeu ; les versions 3, 4 et 5 sont acceptées", () => {
     for (const sim of VERSIONS_SIM_JOUABLES) expect(() => decoderRediffusion(octets({ sim, genre: 1, g: 0 }))).not.toThrow();
-    for (const sim of [2, 5]) {
+    for (const sim of [2, 6]) {
       expect(refus(() => decoderRediffusion(octets({ sim, genre: 1, g: 0 })))).toBe("version_inconnue");
       expect(refus(() => rejouerComplet(R, contenu, { sim, g: 0, contenu: { scenario: "essai" }, reglages: { ...REGLAGES_DEFAUT }, plages: [{ masque: 0, ticks: 1 }] }))).toBe("version_inconnue");
     }
-    expect(VERSIONS_SIM_JOUABLES).toEqual([3, 4]);
-    expect(TOWER_SIM_VERSION).toBe(4);
+    expect(VERSIONS_SIM_JOUABLES).toEqual([3, 4, 5]);
+    expect(TOWER_SIM_VERSION).toBe(5);
   });
 
-  it("une partie sans version donnée est jouée en version courante (4)", () => {
+  it("une partie sans version donnée est jouée en version courante (5)", () => {
     expect(new Partie(R, contenu).version).toBe(TOWER_SIM_VERSION);
   });
 });
@@ -291,9 +291,11 @@ describe("les refus : un code d'erreur propre à Tower pour chaque cas", () => {
     expect(refus(() => decoderRediffusion(octets({ plages: [[0, 5]] }) + "A"))).toBe("format_illisible"); // une plage dont le nombre de ticks manque
   });
 
-  it("commandes inconnues : un masque qui porte un bit que le jeu n'a pas", () => {
-    for (const m of [16, 32, 128, 255, COMMANDE.GAUCHE | 16]) expect(refus(() => decoderRediffusion(octets({ plages: [[m, 3]] })))).toBe("commandes_inconnues");
-    for (const m of [0, 1, 2, 4, 8, 15]) expect(() => decoderRediffusion(octets({ plages: [[m, 3]] }))).not.toThrow();
+  it("commandes inconnues : un masque qui porte un bit que le jeu n'a pas (les deux bits du taquet, 16 et 32, sont de la simulation 5)", () => {
+    for (const m of [64, 128, 255, COMMANDE.GAUCHE | 64]) expect(refus(() => decoderRediffusion(octets({ plages: [[m, 3]] })))).toBe("commandes_inconnues");
+    for (const m of [0, 1, 2, 4, 8, 15, 16, 32, 63]) expect(() => decoderRediffusion(octets({ plages: [[m, 3]] }))).not.toThrow();
+    // lot T8 : en simulation 3 et 4, ces deux bits n'existent pas
+    for (const sim of [3, 4]) for (const m of [16, 32, 48, COMMANDE.GAUCHE | 16]) expect(refus(() => decoderRediffusion(octets({ sim, plages: [[m, 3]] })))).toBe("commandes_inconnues");
   });
 
   it("partie trop longue : plus de MAX_TICKS_JEU ticks, ou un texte démesuré (refusé avant d'être décodé)", () => {

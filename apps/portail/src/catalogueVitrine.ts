@@ -48,6 +48,18 @@ const fr = {
   "vitrine.contraste.ok": "passe",
   "vitrine.contraste.ko": "échoue",
   "vitrine.contraste.exemple": "Aa",
+  // Lot F2 : les amis
+  "vitrine.section.amis": "Les amis",
+  "vitrine.amis.selecteur": "Sélecteur Tous / Amis (portail, Track, Jump, Tower)",
+  "vitrine.amis.feuille": "Feuille d'un joueur",
+  "vitrine.amis.feuille.chargement": "Chargement",
+  "vitrine.amis.feuille.fiche": "Joueur à ajouter",
+  "vitrine.amis.feuille.ami": "Un ami",
+  "vitrine.amis.feuille.erreur": "Erreur",
+  "vitrine.amis.liste": "Ligne et liste d'amis",
+  "vitrine.amis.ajout": "Ajout par pseudo et lien d'invitation",
+  "vitrine.amis.carte": "Carte d'invitation (avec et sans profil)",
+  "vitrine.amis.vide": "Classement « Amis » sans ami",
 } as const;
 
 const en: Catalogues<typeof fr>["en"] = {
@@ -95,6 +107,17 @@ const en: Catalogues<typeof fr>["en"] = {
   "vitrine.contraste.ok": "pass",
   "vitrine.contraste.ko": "fail",
   "vitrine.contraste.exemple": "Aa",
+  "vitrine.section.amis": "Friends",
+  "vitrine.amis.selecteur": "All / Friends selector (portal, Track, Jump, Tower)",
+  "vitrine.amis.feuille": "Player sheet",
+  "vitrine.amis.feuille.chargement": "Loading",
+  "vitrine.amis.feuille.fiche": "Player to add",
+  "vitrine.amis.feuille.ami": "A friend",
+  "vitrine.amis.feuille.erreur": "Error",
+  "vitrine.amis.liste": "Friend row and list",
+  "vitrine.amis.ajout": "Add by name and invitation link",
+  "vitrine.amis.carte": "Invitation card (with and without a profile)",
+  "vitrine.amis.vide": "“Friends” leaderboard with no friend",
 };
 
 export const CATALOGUE_VITRINE = { fr, en } as const;

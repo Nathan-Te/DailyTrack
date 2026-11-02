@@ -45,7 +45,7 @@ export class Online {
     readonly trackId: string | null,
     /** Date « AAAA-MM-JJ » du circuit du jour ; `null` pour les circuits d'essai, qui n'ont pas de classement. */
     readonly date: string | null,
-    base = apiBase(),
+    readonly base = apiBase(),
   ) {
     this.demo = base === DEMO_BASE;
     this.api = base && date && trackId ? (this.demo ? new DemoApi((d) => listDayBests().get(d) ?? null) : new LeaderboardApi(base)) : null;

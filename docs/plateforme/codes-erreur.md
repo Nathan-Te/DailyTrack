@@ -33,7 +33,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 |---|---|---|---|
 | `not_found` | 404 | Route inconnue (y compris les routes d'admin quand l'admin est désactivé, et toute adresse inconnue sous `/api/jump/`). | toute adresse inconnue ; `/api/admin/*` sans `ADMIN_TOKEN` ; `/api/sonde/entetes` hors recette |
 | `method_not_allowed` | 405 | La route existe, mais pas pour cette méthode HTTP . | toutes les routes |
-| `invalid_json` | 400 | Le corps de la requête n'est pas un objet JSON. | tous les envois (`POST`, `PUT`) |
+| `invalid_json` | 400 | Le corps de la requête n'est pas un objet JSON (lot F1 : ou `PUT /api/portail/favoris` reçoit une `favoris` qui n'est pas une liste de noms de jeux connus). | tous les envois (`POST`, `PUT`) |
 | `too_large` | 413 | Le corps dépasse la taille permise (`MAX_BODY_BYTES`), annoncée ou lue. | tous les envois |
 | `rate_limited` | 429 | Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (`Retry-After`). | envois, `/api/name`, `/api/me`, lectures du Salon, du Garage (`GET /api/garage`, lot 41), son enregistrement (`PUT /api/garage`, lot 51), de DailyJump et du portail, `/api/admin/*` |
 | `busy` | 503 | Serveur saturé : plafond de rejeux par minute de l'instance atteint (`Retry-After`), ou envois simultanés de vies du même joueur impossibles à fusionner. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit`, `/api/jump/lives` |
@@ -74,6 +74,14 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `no_ghost` | 404 | Pas de fantôme : personne de classé, pas de temps pour ce joueur, ou personne devant lui. | `GET /api/day/<j>/ghost`, `GET /api/jump/day/<j>/ghost/first` |
 | `invalid_kind` | 400 | DailyTrack : fantôme demandé avec un `kind` autre que `first` ou `ahead`. | `GET /api/day/<j>/ghost` |
 | `not_ranked` | 403 | Tower (lot T4) : la tour du Diamant ne se rend qu'à un joueur classé ce jour-là (règle G1 : on la débloque en finissant). | `GET /api/tower/day/<j>/diamant` |
+| `invalid_friend` | 400 | Amis (lot F2) : référence ou pseudo d'ami absent, mal formé, ou les deux à la fois. | `POST /api/amis`, `DELETE /api/amis/<ref>`, `GET /api/amis/fiche/<ref>` |
+| `friend_self` | 400 | Amis (lot F2) : on ne s'ajoute pas soi-même (ni son propre lien d'invitation). | `POST /api/amis`, `POST /api/amis/invitation/accepter` |
+| `unknown_friend` | 404 | Amis (lot F2) : aucun joueur pour cette référence ou ce pseudo — **un joueur masqué a le même visage qu'un joueur inconnu**. | `POST /api/amis`, `GET /api/amis/fiche/<ref>` |
+| `friend_exists` | 409 | Amis (lot F2) : ce joueur est déjà dans ta liste (ou le lien d'invitation a déjà servi à cette personne). | `POST /api/amis`, `POST /api/amis/invitation/accepter` |
+| `friends_full` | 409 | Amis (lot F2) : ta liste est pleine (100 amis au plus). | `POST /api/amis`, `POST /api/amis/invitation/accepter` |
+| `their_friends_full` | 409 | Amis (lot F2) : la liste de l'autre personne est pleine ; une invitation n'est acceptée que si les deux listes ont de la place, rien n'est créé sinon (pas même le profil). | `POST /api/amis/invitation/accepter` |
+| `invalid_invitation` | 404 | Amis (lot F2) : lien d'invitation inconnu, renouvelé (« Nouveau lien »), mal formé ou d'un joueur masqué — un seul visage pour ces cas. | `POST /api/amis/invitation/voir`, `POST /api/amis/invitation/accepter` |
+| `invalid_filter` | 400 | Amis (lot F2) : `filtre` d'un classement autre que `amis`. | `GET /api/portail/classement?filtre=`, `GET /api/day/<j>/leaderboard?filtre=`, `GET /api/jump/day/<j>/board?filtre=`, `GET /api/tower/day/<j>/board?filtre=` |
 | `invalid_session` | 400 | Salon : numéro de session (ou adresse) illisible. | `/api/salon/<n>/board`, `/ghosts`, `/submit` |
 | `unknown_session` | 404 | Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée). | `GET /api/salon/<n>/board`, `/ghosts` |
 | `session_future` | 409 | Salon : envoi pour une session qui n'a pas commencé. | `POST /api/salon/<n>/submit` |

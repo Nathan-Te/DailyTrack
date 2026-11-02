@@ -2,9 +2,65 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1423 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1521 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
+
+### Amis (`amis.*`, `packages/ui/src/catalogue.amis.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `amis.selecteur.groupe` | Qui voir dans le classement | Who to show in the leaderboard |
+| `amis.selecteur.tous` | Tous | All |
+| `amis.selecteur.tousN` | Tous · {n} | All · {n} |
+| `amis.selecteur.amis` | Amis | Friends |
+| `amis.selecteur.amisN` | Amis · {n} | Friends · {n} |
+| `amis.ajouter` | Ajouter en ami | Add as friend |
+| `amis.retirer` | Retirer | Remove |
+| `amis.retirer.aria` | Retirer {pseudo} de mes amis | Remove {pseudo} from my friends |
+| `amis.fermer` | Fermer | Close |
+| `amis.reessayer` | Réessayer | Try again |
+| `amis.chargement` | Chargement… | Loading… |
+| `amis.horsLigne` | Hors ligne : réessaie dans un moment. | Offline: try again in a moment. |
+| `amis.erreur.generique` | Quelque chose n'a pas marché. Réessaie dans un moment. | Something went wrong. Try again in a moment. |
+| `amis.reciproque` | vous deux | you both |
+| `amis.ajouteParToi` | ajouté par toi | added by you |
+| `amis.pasJoue` | pas encore joué | not played yet |
+| `amis.absents` | Pas encore joué aujourd'hui | Not played today yet |
+| `amis.rangEntreAmis` | {rang} entre amis | {rang} among friends |
+| `amis.feuille.rang` | {rang} sur {classes} | {rang} of {classes} |
+| `amis.feuille.jeu` | Jeu | Game |
+| `amis.feuille.resultat` | Résultat | Result |
+| `amis.feuille.medaille` | Médaille | Medal |
+| `amis.feuille.aucun` | Rien de fini aujourd'hui. | Nothing finished today. |
+| `amis.feuille.retire` | {pseudo} n'est plus dans tes amis. | {pseudo} is no longer in your friends. |
+| `amis.prevenu` | {pseudo} n'est pas prévenu. Tu verras simplement ses temps dans « Amis ». Tu peux le retirer quand tu veux. | {pseudo} won't be notified. You'll just see their times in “Friends”. You can remove them whenever you like. |
+| `amis.compteur` | one : {n} ami · other : {n} amis | one : {n} friend · other : {n} friends |
+| `amis.max` | {max} au plus | {max} at most |
+| `amis.vide` | Pas encore d'ami. Ajoute un pseudo ou envoie ton lien pour comparer vos temps. | No friends yet. Add a name or send your link to compare your times. |
+| `amis.classementVide` | Tu n'as pas encore d'ami. Invite quelqu'un ou ajoute un pseudo : vous verrez vos temps côte à côte. | You have no friends yet. Invite someone or add a name: you'll see your times side by side. |
+| `amis.inviter` | Inviter un ami | Invite a friend |
+| `amis.ajout.titre` | Ajouter par pseudo | Add by name |
+| `amis.ajout.bouton` | Ajouter | Add |
+| `amis.ajout.suggestions` | Pseudos qui ressemblent | Similar names |
+| `amis.ajout.suggestion` | {pseudo} · Ajouter | {pseudo} · Add |
+| `amis.ajout.fait` | {pseudo} est dans tes amis. | {pseudo} is in your friends. |
+| `amis.inviter.lien` | Inviter un ami (lien) | Invite a friend (link) |
+| `amis.invitation.lien` | Ton lien d'invitation | Your invitation link |
+| `amis.invitation.actif` | Ton lien est actif. Pour le retrouver ou en changer, crée un nouveau lien. | Your link is active. To see it again or change it, create a new link. |
+| `amis.invitation.nouveau` | Nouveau lien | New link |
+| `amis.invitation.avertissement` | Un nouveau lien rend l'ancien inutilisable. | A new link makes the old one useless. |
+| `amis.invitation.copier` | Copier le lien | Copy the link |
+| `amis.invitation.copie` | Lien copié. | Link copied. |
+| `amis.invitation.pasDeCopie` | Copie impossible : sélectionne le lien à la main. | Couldn't copy: select the link by hand. |
+| `amis.invitation.partager` | Partager | Share |
+| `amis.invitation.partageTexte` | Compare tes temps aux miens sur Du Jour. | Compare your times with mine on Du Jour. |
+| `amis.invitation.titre` | {pseudo} t'invite sur Du Jour | {pseudo} invites you to Du Jour |
+| `amis.invitation.texte` | Des jeux du jour, les mêmes pour tout le monde. Accepte pour comparer vos temps. | Daily games, the same for everyone. Accept to compare your times. |
+| `amis.invitation.accepter` | Accepter | Accept |
+| `amis.invitation.pseudo` | Choisis ton pseudo | Pick your name |
+| `amis.invitation.suggestions` | Pseudos libres | Free names |
+| `amis.invitation.fait` | C'est fait : {pseudo} est dans tes amis, et toi dans les siens. | Done: {pseudo} is in your friends, and you're in theirs. |
 
 ### annonce (`annonce.*`, `packages/ui/src/catalogue.ts`)
 
@@ -81,7 +137,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `communaute.discord` | Rejoindre le Discord | Join the Discord |
 | `communaute.kofi` | Soutenir sur Ko-fi | Support on Ko-fi |
 
-### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`)
+### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`, `packages/ui/src/catalogue.amis.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -142,6 +198,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.too_many_refs` | Trop de références demandées. | Too many references requested. |
 | `erreur.invalid_lives` | Ces essais sont illisibles. | These attempts couldn't be read. |
 | `erreur.too_many_lives` | Trop d'essais envoyés d'un coup. | Too many attempts sent at once. |
+| `erreur.invalid_friend` | Cet ami n'est pas valide. | That friend isn't valid. |
+| `erreur.friend_self` | Tu ne peux pas être ton propre ami. | You can't be your own friend. |
+| `erreur.unknown_friend` | Ce joueur est introuvable. | That player can't be found. |
+| `erreur.friend_exists` | Ce joueur est déjà dans tes amis. | That player is already in your friends. |
+| `erreur.friends_full` | Ta liste d'amis est pleine : 100 au plus. Retires-en un d'abord. | Your friends list is full: 100 at most. Remove one first. |
+| `erreur.their_friends_full` | La liste d'amis de ce joueur est pleine. | That player's friends list is full. |
+| `erreur.invalid_invitation` | Ce lien d'invitation n'est plus valable. Demande-en un nouveau. | This invitation link is no longer valid. Ask for a new one. |
+| `erreur.invalid_filter` | Ce filtre n'existe pas. | That filter doesn't exist. |
 
 ### Icônes (`icone.*`, `packages/ui/src/catalogue.ts`)
 
@@ -281,6 +345,18 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 ## Portail Du Jour (accueil, profil commun, classement du jour, vitrine et démonstration de la recette)
 
+### amisPage (`amisPage.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `amisPage.titre` | Mes amis | My friends |
+| `amisPage.description` | Tes amis sur Du Jour : ajoute un pseudo ou envoie ton lien, et compare vos temps dans les classements. | Your friends on Du Jour: add a name or send your link, and compare your times in the leaderboards. |
+| `amisPage.retour` | Profil | Profile |
+| `amisPage.retour.aria` | Retour à ton profil | Back to your profile |
+| `amisPage.sansProfil` | Pas encore de profil : finis un jeu pour l'ouvrir, tu pourras ensuite ajouter des amis. Un ami t'a invité ? Ouvre son lien. | No profile yet: finish a game to open one, then you can add friends. Did a friend invite you? Open their link. |
+| `amisPage.chargement` | Chargement de tes amis… | Loading your friends… |
+| `amisPage.invitation.chargement` | Lecture de l'invitation… | Reading the invitation… |
+
 ### Aperçu de partage (quand on colle le lien) (`apercu.*`, `apps/portail/src/catalogueApercu.ts`)
 
 | Clé | Français | Anglais |
@@ -290,8 +366,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `apercu.image` | Le logo DU JOUR et deux cartouches posées sur l'étagère : Track et Jump. | The DU JOUR logo and two cartridges on the shelf: Track and Jump. |
 | `apercu.nouveautes.titre` | Nouveautés — Du Jour | What's new — Du Jour |
 | `apercu.nouveautes.description` | Ce qui change dans Du Jour, Track et Jump : les nouveautés, mise à jour par mise à jour, en français et en anglais. | What changes in Du Jour, Track and Jump: updates one by one, in French and in English. |
+| `apercu.amis.titre` | Rejoins-moi sur Du Jour | Join me on Du Jour |
+| `apercu.amis.description` | Un circuit Track et un niveau Jump chaque jour, les mêmes pour tout le monde. Ajoutons-nous en amis pour comparer nos temps. | One Track circuit and one Jump level every day, the same for everyone. Let's add each other as friends to compare our times. |
 
-### Classement (`classement.*`, `apps/portail/src/catalogue.ts`)
+### Classement (`classement.*`, `apps/portail/src/cataloguePages.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -313,6 +391,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.chargement` | Chargement du classement… | Loading the leaderboard… |
 | `classement.ferme` | Jour terminé : ce classement est figé. | Day over: this leaderboard is final. |
 | `classement.invite` | Finis un jeu pour entrer au classement. | Finish a game to enter the leaderboard. |
+| `classement.amis.indispo` | Le classement de tes amis ne répond pas : voici tous les joueurs. | Your friends' leaderboard isn't answering: here is everyone. |
 
 ### Démonstration (recette seulement) (`demo.*`, `apps/portail/src/catalogueDemo.ts`)
 
@@ -323,7 +402,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `demo.installer` | Installer le joueur de démonstration | Install the demo player |
 | `demo.annuler` | Garder mon profil | Keep my profile |
 
-### nouveautes (`nouveautes.*`, `apps/portail/src/catalogue.ts`)
+### nouveautes (`nouveautes.*`, `apps/portail/src/cataloguePages.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -351,6 +430,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.description` | Du Jour : un jeu par jour, le même pour tous. Track et Jump. | Du Jour: one game a day, the same for everyone. Track and Jump. |
 | `portail.jeux.titre` | Les jeux du jour | Today's games |
 | `portail.brouillon` | Brouillon | Draft |
+| `portail.mesJeux.titre` | Mes jeux | My games |
+| `portail.autresJeux.titre` | Les autres jeux | Other games |
+| `portail.favoris.invite` | Touche l'étoile pour garder tes jeux en haut. | Tap the star to keep your games at the top. |
+| `portail.favoris.demain` | Ton choix compte pour ta journée à partir de demain. | Your choice counts for your day from tomorrow. |
+| `portail.favoris.echec` | Ton choix n'a pas pu être enregistré. Réessaie dans un instant. | Your choice couldn't be saved. Try again in a moment. |
+| `portail.nouveau` | Nouveau | New |
+| `portail.favoris.ajouter` | Ajouter {jeu} à mes jeux | Add {jeu} to my games |
+| `portail.favoris.retirer` | Retirer {jeu} de mes jeux | Remove {jeu} from my games |
 | `portail.track.accroche` | Un circuit par jour, le même pour tous. | One track a day, the same for everyone. |
 | `portail.jump.accroche` | Un niveau de plateforme par jour, le même pour tous. | One platform level a day, the same for everyone. |
 | `portail.tower.accroche` | Une tour par jour, les mêmes pièces pour tous. | One tower a day, the same pieces for everyone. |
@@ -405,6 +492,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.classement.cumul` | {temps} cumulés | {temps} combined |
 | `portail.classement.manque` | Finis {jeu} pour le cumul | Finish {jeu} for the combined time |
 | `portail.classement.inviter` | Finis un jeu pour entrer au classement | Finish a game to enter the leaderboard |
+| `portail.classement.entreAmis` | {rang} entre amis | {rang} among friends |
 | `portail.partager` | Partager ma journée | Share my day |
 | `portail.partage.apercu` | Ce que tu partages | What you're sharing |
 | `portail.partage.partage` | Journée partagée. | Day shared. |
@@ -413,7 +501,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.nouveautes.legende` | Nouveautés · {date} | What's new · {date} |
 | `portail.nouveautes.nonLue` | Nouveau | New |
 
-### Profil (`profil.*`, `apps/portail/src/catalogue.ts`)
+### Profil (`profil.*`, `apps/portail/src/cataloguePages.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -451,6 +539,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.medailles` | Médailles | Medals |
 | `profil.langue.titre` | Langue | Language |
 | `profil.chargement` | Chargement du profil… | Loading your profile… |
+| `profil.amis.titre` | Amis | Friends |
+| `profil.amis.aide` | Compare tes temps à ceux de tes amis dans les classements. | Compare your times with your friends' in the leaderboards. |
+| `profil.amis.lien` | Mes amis | My friends |
 
 ### Vitrine des composants (recette seulement) (`vitrine.*`, `apps/portail/src/catalogueVitrine.ts`)
 
@@ -500,6 +591,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.contraste.ok` | passe | pass |
 | `vitrine.contraste.ko` | échoue | fail |
 | `vitrine.contraste.exemple` | Aa | Aa |
+| `vitrine.section.amis` | Les amis | Friends |
+| `vitrine.amis.selecteur` | Sélecteur Tous / Amis (portail, Track, Jump, Tower) | All / Friends selector (portal, Track, Jump, Tower) |
+| `vitrine.amis.feuille` | Feuille d'un joueur | Player sheet |
+| `vitrine.amis.feuille.chargement` | Chargement | Loading |
+| `vitrine.amis.feuille.fiche` | Joueur à ajouter | Player to add |
+| `vitrine.amis.feuille.ami` | Un ami | A friend |
+| `vitrine.amis.feuille.erreur` | Erreur | Error |
+| `vitrine.amis.liste` | Ligne et liste d'amis | Friend row and list |
+| `vitrine.amis.ajout` | Ajout par pseudo et lien d'invitation | Add by name and invitation link |
+| `vitrine.amis.carte` | Carte d'invitation (avec et sans profil) | Invitation card (with and without a profile) |
+| `vitrine.amis.vide` | Classement « Amis » sans ami | “Friends” leaderboard with no friend |
 
 ## Track
 
@@ -1760,11 +1862,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commandes.action.recommencer` | Recommencer | Restart |
 | `commandes.action.pause` | Pause | Pause |
 | `commandes.action.fantome` | Fantôme | Ghost |
+| `commandes.action.taquetGauche` | Taquet à gauche | Bump left |
+| `commandes.action.taquetDroite` | Taquet à droite | Bump right |
 | `commandes.manette.deplacer` | Déplacer | Move |
 | `commandes.manette.descendre` | Descendre vite | Drop fast |
 | `commandes.fixe.stick` | Stick ou croix | Stick or d-pad |
 | `commandes.fixe.stickBas` | Bas du stick ou de la croix | Stick or d-pad down |
-| `commandes.tactile` | Quatre boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute). | Four on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster). |
+| `commandes.tactile` | Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite (un coup vers le côté, avant la pose). | Six on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster), plus the two small bump buttons above left and right (a knock to the side, before you place the piece). |
 
 ### Commandes tactiles (`commande.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1774,6 +1878,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commande.droite` | Droite | Right |
 | `commande.tourner` | Tourner | Rotate |
 | `commande.descendre` | Descendre vite (maintenir) | Drop fast (hold) |
+| `commande.taquetGauche` | Taquet à gauche | Bump left |
+| `commande.taquetDroite` | Taquet à droite | Bump right |
 
 ### Comment jouer (`aide.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1788,9 +1894,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.tourner` | Tourner | Rotate |
 | `aide.descendre` | Descendre vite | Drop fast |
 | `aide.ok` | C'est parti | Let's go |
-| `aide.ligne` | {gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {pause} pause | {gauche} {droite} move · {tourner} rotate · {descendre} drop · {pause} pause |
+| `aide.ligne` | {gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {taquetGauche} {taquetDroite} taquet · {pause} pause | {gauche} {droite} move · {tourner} rotate · {descendre} drop · {taquetGauche} {taquetDroite} bump · {pause} pause |
 | `aide.pause` | Pause | Pause |
-| `aide.manette` | À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, Start met en pause. | On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, Start pauses. |
+| `aide.manette` | À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} lancent le taquet, Start met en pause. | On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, {m_taquetGauche} and {m_taquetDroite} bump, Start pauses. |
+| `aide.taquet` | Taquet | Bump |
+| `aide.taquet.note` | Le taquet est un coup de côté donné à la pièce que tu tiens, avant de la poser : elle avance d'un mètre et demi d'un coup, exactement là où tu la pousses, sans aucun recalage. Si elle percute un bloc, elle t'échappe : tu ne la contrôles plus, elle tombe en poussant le bloc de toute sa force — de quoi faire tomber une pièce mal placée. Quand la pièce touche un appui, tu la gardes en main un quart de seconde (sauf si tu tiens « descendre ») : de quoi la glisser d'un taquet dans une fente à sa mesure. | The bump is a knock to the side given to the piece you are holding, before you place it: it moves a metre and a half in one go, exactly where you push it, with no adjustment. If it hits a block, it gets away from you: you no longer control it, and it falls, pushing the block with all its might — enough to topple a badly placed piece. When the piece touches a support, you keep hold of it for a quarter of a second (unless you hold drop): enough to bump it into a gap just its size. |
 | `aide.reglables` | Les touches se changent dans Réglages › Commandes. | You can change the keys in Settings › Controls. |
 
 ### ecran (`ecran.*`, `apps/tower/src/catalogue.*.ts`)

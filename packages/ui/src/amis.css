@@ -1,0 +1,374 @@
+/* Lot F2 (plateforme) : les composants des amis (amis.ts) — sélecteur Tous / Amis, feuille d'un joueur, liste « Mes amis », ajout par pseudo, lien d'invitation, carte de la personne invitée.
+   **Une feuille à part, importée par `amis.ts` et chargée à la demande avec lui** (jamais dans `styles.css` : rien au premier chargement). Jetons seulement ; ombres nettes, aucune translucidité ;
+   cibles de 44 px ; focus visible (socle.css). Charte : docs/plateforme/identite.md § 9 et 10, maquette favoris-et-amis.html (planches B, C, D). */
+
+/* --- Le sélecteur Tous / Amis : deux segments de 44 px. Les couleurs viennent de variables que chaque jeu reprend (Track asphalte, Jump jaune, Tower menthe). */
+.dj-amis-selecteur {
+  --sel-fond: var(--dj-creme);
+  --sel-texte: var(--dj-encre);
+  --sel-bord: var(--dj-encre);
+  --sel-actif-fond: var(--dj-encre);
+  --sel-actif-texte: var(--dj-creme);
+  display: flex;
+  width: min(100%, 16rem);
+}
+.dj-amis-selecteur--track {
+  --sel-fond: var(--track-asphalte);
+  --sel-texte: var(--track-texte);
+  --sel-bord: var(--track-texte);
+  --sel-actif-fond: var(--track-livree);
+  --sel-actif-texte: var(--track-asphalte);
+}
+.dj-amis-selecteur--jump {
+  --sel-fond: var(--jump-jaune);
+  --sel-actif-fond: var(--jump-encre);
+  --sel-actif-texte: var(--jump-jaune);
+}
+.dj-amis-selecteur--tower {
+  --sel-fond: var(--tower-menthe);
+  --sel-actif-fond: var(--dj-encre);
+  --sel-actif-texte: var(--tower-menthe);
+}
+.dj-amis-selecteur__option {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--sel-bord);
+  background: var(--sel-fond);
+  color: var(--sel-texte);
+  font-family: var(--dj-police-texte);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  line-height: 1.1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dj-amis-selecteur__option:first-child {
+  border-radius: var(--dj-rayon-bouton) 0 0 var(--dj-rayon-bouton);
+}
+.dj-amis-selecteur__option:last-child {
+  margin-left: calc(-1 * var(--dj-trait));
+  border-radius: 0 var(--dj-rayon-bouton) var(--dj-rayon-bouton) 0;
+}
+.dj-amis-selecteur__option[aria-checked="true"] {
+  background: var(--sel-actif-fond);
+  color: var(--sel-actif-texte);
+}
+.dj-amis-selecteur__option:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Messages d'état ou d'échec (sous un champ ou un bouton). */
+.dj-amis-message {
+  min-height: 1.4em;
+  margin: 0;
+  font-size: var(--dj-taille-14);
+  font-weight: 700;
+  line-height: 1.4;
+}
+.dj-amis-message:empty {
+  display: none;
+}
+.dj-amis-message--echec {
+  padding-left: var(--dj-espace-3);
+  border-left: var(--dj-trait-fort) solid var(--dj-terre);
+}
+.dj-amis-vide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+}
+
+/* --- La feuille d'un joueur : voile à rayures (motif net) et dialogue collé en bas de l'écran, marges de sécurité en bas et sur les côtés. */
+.dj-feuille-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Track efface les enfants de `body` hors de sa liste quand un écran est ouvert : la feuille passe devant toujours. */
+  visibility: visible !important;
+  background: repeating-linear-gradient(115deg, var(--dj-encre) 0 3px, transparent 3px 8px);
+  font-family: var(--dj-police-texte);
+}
+.dj-feuille {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+  width: min(100%, 30rem);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--dj-espace-7) max(var(--dj-espace-7), env(safe-area-inset-right)) max(var(--dj-espace-7), env(safe-area-inset-bottom)) max(var(--dj-espace-7), env(safe-area-inset-left));
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-bottom: 0;
+  border-radius: var(--dj-rayon-tuile) var(--dj-rayon-tuile) 0 0;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  box-shadow: 0 calc(-1 * var(--dj-espace-1)) 0 var(--dj-encre);
+}
+.dj-feuille__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+}
+.dj-feuille__nom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--dj-espace-1) var(--dj-espace-5);
+  min-width: 0;
+}
+.dj-feuille__titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-22);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.dj-feuille__rang {
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+}
+.dj-feuille__rang:empty {
+  display: none;
+}
+.dj-feuille__fermer {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--dj-cible);
+  min-height: var(--dj-cible);
+  margin: calc(-1 * var(--dj-espace-3)) calc(-1 * var(--dj-espace-3)) 0 0;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.dj-feuille__fermer:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+.dj-feuille__corps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+}
+.dj-feuille__etat {
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+}
+.dj-feuille__tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--dj-taille-14);
+}
+.dj-feuille__tableau th,
+.dj-feuille__tableau td {
+  padding: var(--dj-espace-3) var(--dj-espace-2);
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: middle;
+}
+.dj-feuille__tableau tbody th {
+  font-weight: 700;
+}
+.dj-feuille__vide,
+.dj-feuille__aucun,
+.dj-feuille__relation {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-13);
+}
+.dj-feuille__prevenu {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+  line-height: 1.4;
+}
+
+/* --- La liste « Mes amis » et ses lignes. */
+.dj-liste-amis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.dj-liste-amis__entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+  padding-bottom: var(--dj-espace-1);
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.dj-liste-amis__titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-14);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.dj-liste-amis__titre:focus {
+  outline: none;
+}
+.dj-liste-amis__max {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+}
+.dj-liste-amis__vide {
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+}
+.dj-liste-amis__liste {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dj-ligne-ami {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+}
+.dj-ligne-ami__pseudo {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.dj-ligne-ami__etat {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+}
+.dj-ligne-ami__retirer {
+  min-width: var(--dj-cible);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-3);
+  border: 0;
+  background: transparent;
+  color: var(--dj-encre);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  text-decoration: underline;
+}
+.dj-ligne-ami__retirer:disabled {
+  color: var(--dj-encre-douce);
+  cursor: not-allowed;
+}
+.dj-ligne-ami__message {
+  grid-column: 1 / -1;
+}
+
+/* --- Ajouter par pseudo (et choisir son pseudo sur la carte d'invitation). */
+.dj-ajout-ami {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.dj-ajout-ami__etiquette {
+  color: var(--dj-encre-douce);
+  font-weight: 700;
+  font-size: var(--dj-taille-legende);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.dj-ajout-ami__rangee {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--dj-espace-3);
+}
+.dj-ajout-ami__champ {
+  min-width: 0;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-blanc);
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-16);
+}
+.dj-ajout-ami__suggestions {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dj-ajout-ami__suggestion {
+  width: 100%;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-3);
+  border: 0;
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+  background: transparent;
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-14);
+  font-weight: 700;
+  text-align: left;
+}
+
+/* --- Ton lien d'invitation. */
+.dj-invitation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.dj-invitation__texte {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-13);
+  line-height: 1.4;
+}
+.dj-invitation__montre {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.dj-invitation__lien {
+  min-width: 0;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--dj-blanc);
+  color: var(--dj-encre);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+}
+.dj-invitation__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-3);
+}
+.dj-invitation__actions > * {
+  flex: 1 1 8rem;
+}
+
+/* --- La carte de la personne invitée : bordure épaisse, ombre nette, fond papier. */
+.dj-carte-invitation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+  padding: var(--dj-espace-5);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.dj-carte-invitation__titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-22);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.dj-carte-invitation__texte {
+  font-size: var(--dj-taille-14);
+  line-height: 1.4;
+}

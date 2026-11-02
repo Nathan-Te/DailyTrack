@@ -14,6 +14,9 @@ export const ACTIONS_TOWER: readonly ActionCommande[] = [
   { id: "recommencer", clavier: ["Enter"], manette: "b2" },
   { id: "pause", clavier: ["KeyP"], manette: null },
   { id: "fantome", clavier: ["KeyG"], manette: "b3" },
+  // Lot T8 : le taquet (simulation 5) — vers la gauche et vers la droite. Q et E sont les touches physiques : A et E sur un AZERTY. LB et RB sont libres en partie.
+  { id: "taquetGauche", clavier: ["KeyQ"], manette: "b4" },
+  { id: "taquetDroite", clavier: ["KeyE"], manette: "b5" },
 ];
 
 /** La clé de catalogue qui nomme une action (Réglages › Commandes). */
