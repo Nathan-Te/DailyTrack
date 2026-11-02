@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { useLegacyCatalog } from "../../../packages/jump-sim/src/legacy";
 import { formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, decodeReplay, replayAttempt } from "@cdj/jump-sim";
 import { JUMP_DEMO_DAYS, JUMP_DEMO_TODAY, fictionalJumps, jumpDailyOf, seedJumpDays } from "../src/jumpHistory";
@@ -9,6 +10,10 @@ import { openTestDb, playerId, TEST_DB } from "./helpers";
 
 // Lot P1 (plateforme) : les joueurs fictifs de DailyJump (démonstration `?api=demo` et `recette:seed`) : de vraies rediffusions, envoyées par
 // le vrai `createApi` (rejeu serveur), joueurs marqués `demo`, déterministes ; et le jeu de données statique du jeu est à jour.
+
+// Comme `jump:seed` (scripts/jump-seed.ts) : les jours figés d'avant la version 13 de la simulation (la mise en production du 02/11/2026 a figé du 29/10 au 02/11 en
+// version 11) se jouent avec le catalogue d'avant le maintien minimal du saut ; sans lui, les joueurs fictifs de ces jours ne jouent pas les mêmes parties que le jeu de données.
+useLegacyCatalog();
 
 const PUBLIC = join(__dirname, "..", "..", "jump", "public");
 const FROZEN: Record<string, unknown> = Object.fromEntries(

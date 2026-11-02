@@ -13,7 +13,10 @@ import { expect, test } from "@playwright/test";
 // (ce spec compte `interrupteur-*`, pas `scripts/budgets.mjs`), le lot en ajoute 722. Ce n'est pas une nouvelle mesure de l'état d'avant : seul le plafond bouge.
 // Lot 31 : +1 000 o (8 624 → 9 624) : le lot ajoute 2 271 o ici (portion dure à la pire phase, huit variantes et leurs solutions, bouton de la course du n° 1) ; la barre de la course est à la demande (`course-*`).
 // Proposition au lot : à confirmer par Nathan, comme le lot 30 (plafond du premier chargement, `docs/plateforme/budgets.md`).
-const AVANT = 352_866 + 9_624;
+// PR « Jours figés » du 02/11/2026 : +100 o (9 624 → 9 724) : les dates des niveaux figés sont écrites en plages (`src/plagesJours.ts`) et dépliées au chargement (+61 o mesurés,
+// une fois pour toutes) au lieu d'une liste qui grossissait d'≈ 3 o par jour figé à chaque mise en production (les cinq jours du 29/10 au 02/11 : +15 o, plafond dépassé d'un octet).
+// À confirmer par Nathan (`docs/plateforme/budgets.md`, ligne `jump.jsCss`).
+const AVANT = 352_866 + 9_724;
 const dist = new URL("../dist/assets/", import.meta.url);
 const gz = (f: string) => gzipSync(readFileSync(new URL(f, dist))).length;
 

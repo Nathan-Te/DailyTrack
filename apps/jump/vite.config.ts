@@ -8,6 +8,7 @@ import { musiqueServie } from "../../packages/musique/outils/vite";
 import { pagesDuSocle } from "../../packages/ui/outils/vite";
 import { CATALOGUE_APERCU } from "./src/catalogue.apercu";
 import { CATALOGUE_FR } from "./src/catalogue.fr";
+import { enPlages } from "./src/plagesJours";
 
 // Lot I5 (plateforme) : Jump passe au socle `@cdj/ui`, comme Track au lot I4 — textes du HTML pré-remplis depuis le catalogue français (`pagesDuSocle`), couleur
 // de l'onglet et icône tirées des jetons, polices du premier écran préchargées (Lilita One et Archivo 400). Les polices sont servies par un chemin absolu et
@@ -18,7 +19,8 @@ const FACES_PRECHARGEES = ["lilita-one-latin-400-normal", "archivo-latin-400-nor
 
 /**
  * Lot 10 : les dates des niveaux figés (`public/levels/AAAA-MM-JJ.json`), écrites dans le jeu à la construction : le jeu ne demande un
- * fichier figé que pour ces dates (aucune requête inutile pour les autres jours). Vide tant qu'aucun niveau n'est figé.
+ * fichier figé que pour ces dates (aucune requête inutile pour les autres jours). Vide tant qu'aucun niveau n'est figé. Écrites en plages de jours consécutifs
+ * (`src/plagesJours.ts`) : le premier chargement ne grossit plus à chaque mise en production.
  */
 function frozenDays(): string[] {
   try {
@@ -33,8 +35,8 @@ function frozenDays(): string[] {
 
 /**
  * Lot V1 : les dates des niveaux figés par un générateur d'avant le sac de thèmes (`generatorVersion` < 23), écrites dans le jeu à la construction. Leur thème garde l'ancienne
- * règle et le premier jour du sac lit celui de la veille : `declareOldFrozenDays` (`@cdj/jump-sim`, `src/frozen.ts`). La liste ne grossit plus : les niveaux figés par un
- * générateur du sac n'y sont pas.
+ * règle et le premier jour du sac lit celui de la veille : `declareOldFrozenDays` (`@cdj/jump-sim`, `src/frozen.ts`). Les niveaux figés par un générateur du sac n'y sont
+ * pas (la mise en production du 02/11/2026 y a encore ajouté cinq jours : la production servait alors un générateur d'avant le sac). En plages, comme `frozenDays`.
  */
 function frozenOldDays(): string[] {
   const out: string[] = [];
@@ -123,7 +125,7 @@ export default defineConfig({
       return fichier.endsWith(".woff2") ? `/${fichier}` : undefined;
     },
   },
-  define: { __JUMP_FROZEN_DAYS__: JSON.stringify(frozenDays()), __JUMP_FROZEN_OLD_DAYS__: JSON.stringify(frozenOldDays()) },
+  define: { __JUMP_FROZEN_DAYS__: JSON.stringify(enPlages(frozenDays())), __JUMP_FROZEN_OLD_DAYS__: JSON.stringify(enPlages(frozenOldDays())) },
   build: {
     target: "es2022",
     rollupOptions: {

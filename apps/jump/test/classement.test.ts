@@ -1,8 +1,8 @@
 import "./figesDepot";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, jumpMedalsFor } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, jumpMedalsFor, thawLevel } from "@cdj/jump-sim";
 import { NAME_KEY, PLAYER_KEY, createIdentity, type ApiResult, type KeyValueStore, type NameCheck } from "@cdj/profile";
 import { DEMO_TODAY, DemoRankSource, demoBoard, type DemoDay } from "../src/demoRank";
 import { ordinal, rankApiBase, rankText, type JumpBoard, type JumpSubmitResult, type RankEntry, type RankSource } from "../src/rankApi";
@@ -436,8 +436,12 @@ describe("démonstration (?api=demo)", () => {
     expect(await src.submit("p", "Moi", e, versions)).toMatchObject({ ok: false, status: 0 });
     // Les médailles sont celles de `jumpMedalsFor(temps de l'auteur du niveau)`, ajustées par les voies lentes du niveau (lot 16 : l'or ne dépasse jamais la voie rapide, le bronze couvre toutes les voies lentes) :
     // l'auteur (le Diamant, 105 % depuis le lot G1) et l'argent sont ceux de la formule, l'or ne la dépasse pas, le bronze n'est pas en dessous. Le niveau est celui que le jeu de données a joué (lot V1 :
-    // les niveaux figés du dépôt déclarés comme le fait le serveur, `figesDepot`).
-    const L = dailyLevel(DEMO_TODAY);
+    // les niveaux figés du dépôt déclarés comme le fait le serveur, `figesDepot`) : **le niveau figé du jour s'il existe** (une mise en production fige les jours servis, le
+    // jeu de données est alors refait sur lui), sinon le niveau généré.
+    const fichier = new URL(`../public/levels/${formatDay(DEMO_TODAY)}.json`, import.meta.url);
+    const fige = existsSync(fichier) ? thawLevel(JSON.parse(readFileSync(fichier, "utf8")), DEMO_TODAY) : null;
+    if (typeof fige === "string") throw new Error(fige);
+    const L = fige ?? dailyLevel(DEMO_TODAY);
     const plain = jumpMedalsFor(L.authorTicks, L.level.simVersion);
     expect(today.levelId).toBe(L.id);
     expect(today.medals.author).toBe(plain.author);

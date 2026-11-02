@@ -1,4 +1,4 @@
-import "./frozen";
+import { FROZEN_DAYS as FIGES } from "./frozen";
 import { parisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import { numeroDeJournee } from "@cdj/core/lancement";
@@ -27,8 +27,6 @@ import { readUrlOptions } from "./urlOptions";
 
 const KEY = "jump:admin";
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-declare const __JUMP_FROZEN_DAYS__: readonly string[] | undefined;
-const FIGES: readonly string[] = typeof __JUMP_FROZEN_DAYS__ === "undefined" ? [] : __JUMP_FROZEN_DAYS__;
 
 const CIBLES_TEXTE: Record<Cible, string> = {
   jour: "Niveau du jour",
