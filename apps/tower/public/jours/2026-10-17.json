@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "jeu": "tower",
+  "date": "2026-10-17",
+  "g": 3,
+  "tirage": 0,
+  "sim": 5,
+  "contenu": {
+    "pieces": "OZJTLISSTOLJIZILJZTSOIOSTZLJLJZSOITSTZIO",
+    "plateformeDemi8": 24,
+    "paliers": [{"metres":8,"effet":"figee"},{"metres":16,"effet":"geante"},{"metres":24,"effet":"petite"},{"metres":32,"effet":"vent"},{"metres":40,"effet":"lierre"},{"metres":48,"effet":"glissante"}],
+    "ventSens": -1,
+    "theme": "port"
+  },
+  "medailles": null
+}

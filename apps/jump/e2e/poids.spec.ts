@@ -2,47 +2,22 @@ import { readFileSync, readdirSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { expect, test } from "@playwright/test";
 
-// Lot I5 (budget de la phase 3) : le premier chargement de Jump ne pèse pas plus de **+20 ko** compressés de JS et de CSS qu'avant le lot ; les polices, au plus
-// 150 ko, servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail et Track), seules celles du premier écran préchargées ; le
-// catalogue anglais à part, chargé à la demande. Déterministe (la construction), sans navigateur.
-//
-// « Avant » = `main` au début du lot I5 (4c57c67), mesuré de la même façon : 352 866 o de JS (les neuf fichiers de la construction, hors `verify.html`, dont le fil
-// de travail du générateur et la galerie) + 5 624 o de CSS (la feuille écrite dans `index.html`), soit **358 490 o**. (Le « 355 ko » du lot R4 comptait la même chose
-// avant les lots P3 et P4.)
-// Lot 30 : le CSS « avant » compte 3 000 o de plus (5 624 + 3 000) : plafond du premier chargement relevé de 378 490 à 381 490 o (décision de Nathan, 31/10/2026) ; `main` mesurait déjà 379 481 o ici
-// (ce spec compte `interrupteur-*`, pas `scripts/budgets.mjs`), le lot en ajoute 722. Ce n'est pas une nouvelle mesure de l'état d'avant : seul le plafond bouge.
-// Lot 31 : +1 000 o (8 624 → 9 624) : le lot ajoute 2 271 o ici (portion dure à la pire phase, huit variantes et leurs solutions, bouton de la course du n° 1) ; la barre de la course est à la demande (`course-*`).
-// Proposition au lot : à confirmer par Nathan, comme le lot 30 (plafond du premier chargement, `docs/plateforme/budgets.md`).
-// PR « Jours figés » du 02/11/2026 : +100 o (9 624 → 9 724) : les dates des niveaux figés sont écrites en plages (`src/plagesJours.ts`) et dépliées au chargement (+61 o mesurés,
-// une fois pour toutes) au lieu d'une liste qui grossissait d'≈ 3 o par jour figé à chaque mise en production (les cinq jours du 29/10 au 02/11 : +15 o, plafond dépassé d'un octet).
-// À confirmer par Nathan (`docs/plateforme/budgets.md`, ligne `jump.jsCss`).
-// Lot 32 : +1 376 o (9 724 → 11 100) : la version 14 de la simulation et du générateur g26 (`passageZoneAt`, assemblage aux puits fermés, descente scellée, règle « aucun raccourci par point de passage », suites de secours) et le bouton de la course du n° 1 sur l'accueil ; plafond à confirmer par Nathan.
-const AVANT = 352_866 + 11_100;
+// **Lot R17 : les plafonds de poids ne sont plus ici.** Ils sont dans `docs/plateforme/budgets.md` (la seule source : lignes `jump.jsCss`, `jump.anglais`, `jump.polices`) et contrôlés par le job
+// « Budgets » de la CI (`scripts/budgets-controle.mjs`) sur toute PR qui touche ce que charge un joueur, qu'un spec de Jump tourne ou non (son histoire — « avant + 20 ko », les relèvements des
+// lots 30 à 32 — est dans la ligne `jump.jsCss` du tableau). Ce fichier ne garde que la **composition** du chargement : ce qui est ou n'est pas dans le premier chargement, les polices et leur
+// préchargement. Déterministe (la construction), sans navigateur.
 const dist = new URL("../dist/assets/", import.meta.url);
 const gz = (f: string) => gzipSync(readFileSync(new URL(f, dist))).length;
 
-test("le premier chargement : JS + CSS ≤ avant + 20 ko compressés ; le catalogue anglais à part", () => {
-  const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
-  const poids = Object.fromEntries(js.map((f) => [f, gz(f)]));
-  // À la demande : le catalogue anglais (un joueur en anglais), la page `verify.html` (tests de navigateur), la page d'outils `/jump/admin/` (`admin-*` : jamais chargée par un joueur). (`tune.ts` reste dans le fichier principal,
-  // comme avant le lot : s'il en sortait un jour, il ne compterait pas.)
-  // Lot 31 : la barre de la course du n° 1 (`course-*.js` et sa feuille), chargée au premier « Voir la course du n° 1 » seulement : à la demande.
-  // Lot M1 : le menu à la manette (`manette-*.js` et sa feuille), chargé à la première manette seulement, est à la demande comme le catalogue anglais. Lot M2 : l'écran Réglages › Commandes (`commandesEcran-`, à la première ouverture) aussi. Lot « musique » : le lecteur (`demarrage-`) et le panneau des réglages (`panneauMusique-`) (premier geste, ouverture des Réglages) : ligne `musique.lecteur` de budgets.md.
-  const aLaDemande = (f: string) => f.startsWith("catalogue.en-") || f.startsWith("tune-") || f.startsWith("verify-") || f.startsWith("admin-") || f.startsWith("manette-") || f.startsWith("course-") || f.startsWith("commandesEcran-") || f.startsWith("demarrage-") || f.startsWith("panneauMusique-") || f.startsWith("liensCommunauteJeu-") || f.startsWith("classementAmis-") || f.startsWith("interrupteur-"); // lot F2 (mesure alignée sur `scripts/budgets.mjs` : `interrupteur-*` est à la demande ici aussi) : classementAmis- : les amis du classement (sélecteur, feuille, vocabulaire), à la demande, comme `manette-` ; lot S1 : les plaques Discord / Ko-fi, à la demande (à confirmer par Nathan, comme `manette-*`)
-  const total = Object.entries(poids).reduce((n, [f, o]) => n + (aLaDemande(f) ? 0 : o), 0);
-  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("manette-") && !f.startsWith("course-") && !f.startsWith("commandes-") && !f.startsWith("panneauMusique-") && !f.startsWith("liensCommunauteJeu-") && !f.startsWith("classementAmis-") && !f.startsWith("interrupteur-")).reduce((n, f) => n + gz(f), 0);
-  const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
-  const styleDansLaPage = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]!).length, 0);
-  test.info().annotations.push({ type: "mesure", description: `JS ${total} + CSS ${css + styleDansLaPage} = ${total + css + styleDansLaPage} o (avant : ${AVANT} o, +${total + css + styleDansLaPage - AVANT} o)` });
-  expect(total + css + styleDansLaPage, `JS ${total} + CSS ${css} : ${JSON.stringify(poids)}`).toBeLessThanOrEqual(AVANT + 20_000);
+test("le catalogue anglais est à part (à la demande) et three.js reste dans son propre fichier", () => {
+  const poids = Object.fromEntries(readdirSync(dist).filter((f) => f.endsWith(".js")).map((f) => [f, gz(f)]));
   const anglais = Object.entries(poids).find(([f]) => f.startsWith("catalogue.en-"))?.[1] ?? 0;
   expect(anglais, "le catalogue anglais existe, à part").toBeGreaterThan(1_000);
-  expect(anglais, "le catalogue anglais, chargé à la demande").toBeLessThan(8_000);
   const three = Object.entries(poids).find(([f]) => f.startsWith("three-"))?.[1] ?? 0;
   expect(three, "three.js reste dans son propre fichier (cache entre déploiements)").toBeGreaterThan(100_000);
 });
 
-test("les polices : au plus 150 ko, chemin du site partagé avec le portail et Track, Lilita One et Archivo 400 préchargées", () => {
+test("les polices : chemin du site partagé avec le portail et Track, Lilita One et Archivo 400 préchargées", () => {
   const css = readdirSync(dist).filter((f) => f.endsWith(".css"));
   const faces = new Set<string>();
   for (const f of css) for (const m of readFileSync(new URL(f, dist), "utf8").matchAll(/url\(["']?([^)"']+\.woff2)["']?\)/g)) faces.add(m[1]!);
@@ -54,13 +29,9 @@ test("les polices : au plus 150 ko, chemin du site partagé avec le portail et T
     "jetbrains-mono-latin-700-normal",
     "lilita-one-latin-400-normal",
   ]);
-  let octets = 0;
   for (const face of faces) {
     expect(face, "les polices sont servies par /assets/ (la racine du site, comme le portail et Track), pas relativement à la page").toMatch(/^\/assets\/[a-z-]+-latin-\d+-normal-[\w-]+\.woff2$/);
-    octets += readFileSync(new URL(`.${face}`, new URL("../dist/", import.meta.url))).length;
   }
-  test.info().annotations.push({ type: "mesure", description: `polices : ${(octets / 1024).toFixed(1)} Ko` });
-  expect(octets, `polices : ${(octets / 1024).toFixed(1)} ko`).toBeLessThanOrEqual(150 * 1024);
   const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
   const precharges = [...html.matchAll(/<link rel="preload" as="font" type="font\/woff2" crossorigin href="([^"]+)"/g)].map((m) => m[1]!);
   expect(precharges.map((p) => p.replace(/^\/assets\//, "").replace(/-[\w-]{8}\.woff2$/, "")).sort()).toEqual(["archivo-latin-400-normal", "lilita-one-latin-400-normal"]);

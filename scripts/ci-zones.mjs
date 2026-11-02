@@ -11,6 +11,8 @@
 //    tests qui le LISENT (chemin cité près d'une lecture). Configuration racine (package.json, verrou, tsconfig, vitest) : tous.
 // 3. « docs seuls » : une modification qui ne touche que `docs/**` ou des `*.md` ne lance rien (les jobs de verdict réussissent), sauf les tests qui
 //    lisent ce document (`docsLusParLesTests`).
+// 3 bis. Lot R17 — le job « Budgets » : `budgetsPour` dit si une PR peut changer ce que charge un joueur (tout le code servi, hors serveur, tests et documents) ; indépendant des zones de
+//    specs : le 02/11/2026 un lot du socle avait fait grossir Track sans qu'aucun spec de Track ne tourne.
 // 4. Les parts : les fichiers (specs ou tests) sont posés du plus long au plus court sur la part la moins chargée (assignParts), 4 parts e2e et 4 parts
 //    unitaires au plus.
 
@@ -372,6 +374,57 @@ export function testsPour(files, g, { complet = false, regression = [] } = {}) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
+// 2 bis. Lot R17 — le job « Budgets »
+
+/**
+ * Ce qui peut changer ce qu'un joueur charge (et donc un poids de `docs/plateforme/budgets.md`) : le code des applications (sauf le serveur), les paquets, les catalogues (dans les
+ * paquets et les applications), les fiches de jeu et leurs projections, la configuration de la construction (dépendances, Vite, TypeScript), l'outil de mesure lui-même et le tableau des plafonds.
+ */
+export const BUDGETS_SERVIS = [
+  "apps/**",
+  "packages/**",
+  "config/**",
+  "package.json",
+  "package-lock.json",
+  "tsconfig*.json",
+  "vite.config.*",
+  "scripts/budgets.mjs",
+  "scripts/budgets-controle.mjs",
+  "scripts/fiches*.mjs",
+  "scripts/fiches.ts",
+  "scripts/github-api.mjs",
+  "docs/plateforme/budgets.md",
+  ".github/workflows/ci.yml",
+];
+/** Ce qui, dans ces dossiers, ne part jamais chez un joueur : le serveur, les tests, les specs e2e, les documents. */
+export const BUDGETS_EXCLUS = ["apps/api/**", "**/test/**", "**/e2e/**", "**/*.test.ts", "**/*.md", "**/*.spec.ts"];
+/** Exceptions aux exclusions : les outils de mesure que le contrôle importe (un spec n'en est pas un). */
+export const BUDGETS_TOUJOURS = ["apps/web/e2e/mesureDecor.mjs", "docs/plateforme/budgets.md"];
+
+const reBudgets = (liste) => liste.map(globVersRegExp);
+const BUDGETS_RE = { servis: reBudgets(BUDGETS_SERVIS), exclus: reBudgets(BUDGETS_EXCLUS), toujours: reBudgets(BUDGETS_TOUJOURS) };
+
+/** Ce fichier peut-il changer ce que charge un joueur ? (`toujours` d'abord, puis les exclusions, puis ce qui est servi.) */
+export function changeLesBudgets(fichier) {
+  const f = norm(fichier);
+  if (BUDGETS_RE.toujours.some((re) => re.test(f))) return true;
+  if (BUDGETS_RE.exclus.some((re) => re.test(f))) return false;
+  return BUDGETS_RE.servis.some((re) => re.test(f));
+}
+
+/**
+ * Le job « Budgets » tourne-t-il ? Oui dans tous les modes complets (`main`, `complet`, `nuit` : `main` publie les mesures qu'une PR compare) ; pour une PR, si un fichier change ce que charge
+ * un joueur ; et dans le doute (aucun fichier connu : la différence est illisible). Une PR qui ne touche que l'API, la documentation ou des tests ne le lance pas.
+ */
+export function budgetsPour(files, { complet = false } = {}) {
+  const f2 = files.map(norm).filter(Boolean);
+  if (complet) return { actif: true, raisons: ["CI complète : le job publie les mesures de main"] };
+  if (f2.length === 0) return { actif: true, raisons: ["aucun fichier connu (doute : tout tourne)"] };
+  const touches = f2.filter(changeLesBudgets);
+  return { actif: touches.length > 0, raisons: touches.slice(0, 3).map((f) => `${f} : code servi aux joueurs`).concat(touches.length > 3 ? [`… et ${touches.length - 3} autre(s)`] : []) };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
 // 3. Les parts
 
 export function dureesUnitaires(racine = ROOT) {
@@ -440,7 +493,9 @@ export function decider(files, { mode = "pr", racine = ROOT } = {}) {
   const e2eParts = complet ? [] : partsE2e(e2e, racine);
   // Hors docs seuls, une première part vérifie toujours (typecheck, portail, construction), même sans test unitaire à lancer.
   if (!docsSeuls && unitParts.length === 0) unitParts.push({ part: "1/1", fichiers: [], secondes: 0 });
-  return { mode, docsSeuls, unit, unitParts, e2e, e2eParts };
+  // Lot R17 : le job « Budgets » (indépendant des parts de tests : une PR du socle le lance même quand aucun spec de jeu ne tourne).
+  const budgets = budgetsPour(files, { complet });
+  return { mode, docsSeuls, unit, unitParts, e2e, e2eParts, budgets };
 }
 
 /** Lignes `clé=valeur` pour $GITHUB_OUTPUT. */
@@ -454,6 +509,7 @@ export function sorties(d) {
     `e2e_pr_actif=${d.e2eParts.length > 0}`,
     `e2e_pr_matrice=${JSON.stringify(e2eMatrice)}`,
     `e2e_complet_matrice=${JSON.stringify(matriceComplete(d.mode))}`,
+    `budgets_actif=${d.budgets.actif}`,
   ].join("\n") + "\n";
 }
 
@@ -462,6 +518,7 @@ export function resume(d) {
   const l = [`Mode ${d.mode}${d.docsSeuls ? " — docs seuls : aucun test (sauf ceux qui lisent ces documents)" : ""}`];
   l.push(`Tests unitaires : ${d.unit.fichiers.length} fichier(s)${d.unit.tous ? " (tous)" : ""}, ${d.unitParts.length} part(s) ${d.unitParts.map((p) => `${p.secondes} s`).join(" / ")}`);
   for (const r of d.unit.raisons.slice(0, 12)) l.push(`  · ${r}`);
+  l.push(`Budgets (lot R17) : ${d.budgets.actif ? "le job « Budgets » tourne" : "pas de job « Budgets » (rien de ce que charge un joueur)"}${d.budgets.raisons.length ? ` — ${d.budgets.raisons.join(" ; ")}` : ""}`);
   if (d.mode === "pr") {
     // Lots K1, K1b et K1c : un libellé par suite (« Track » pour la suite `web`, « Jump », « Tower » : le nom du jeu ; le résumé disait « DailyTrack » et « DailyJump », qui ne sont plus que les anciens noms).
     const nomSuite = (j) => {

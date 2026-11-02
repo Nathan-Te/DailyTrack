@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "jeu": "tower",
+  "date": "2026-10-29",
+  "g": 3,
+  "tirage": 0,
+  "sim": 5,
+  "contenu": {
+    "pieces": "TISOZJLJTSOLZIOJSZTILTZSIJLOZJLIOTSIJSOT",
+    "plateformeDemi8": 24,
+    "paliers": [{"metres":8,"effet":"lierre"},{"metres":16,"effet":"glissante"},{"metres":24,"effet":"figee"},{"metres":32,"effet":"vent"},{"metres":40,"effet":"petite"},{"metres":48,"effet":"geante"}],
+    "ventSens": 1,
+    "theme": "chantier"
+  },
+  "medailles": null
+}

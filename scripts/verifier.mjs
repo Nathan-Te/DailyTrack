@@ -4,7 +4,7 @@
 //   npm run verifier                              fichiers modifiés par rapport à origin/main (commits + modifications en cours + fichiers neufs)
 //   npm run verifier -- --zones=track-sim,jump-ui + les specs de ces zones (e2e/zones.json), en plus de ceux des fichiers modifiés
 //   npm run verifier -- --liste                   n'affiche que la sélection (aucun test lancé)
-//   npm run verifier -- --sans-e2e                typecheck, construction et tests unitaires seulement
+//   npm run verifier -- --sans-e2e                typecheck, construction et tests unitaires seulement (lot R17 : et les budgets, si la PR touche ce que charge un joueur)
 //   npm run verifier -- --regression              lot R13 : les tests `@regression` des specs choisis aussi (la CI de PR ne lance que l'Essentiel, docs/tests.md)
 //   npm run verifier -- --base=origin/main --fichiers=a.ts,b.ts
 // Code de sortie : 0 si tout est vert, 1 au premier échec (le suivant n'est pas lancé : on corrige, on relance).
@@ -49,7 +49,9 @@ export function etapes(d, { sansE2e = false, extra = null, regression = false } 
   const web = extra ? [...new Set([...d.e2e.web, ...extra.web])].sort() : d.e2e.web;
   const jump = extra ? [...new Set([...d.e2e.jump, ...extra.jump])].sort() : d.e2e.jump;
   const tower = extra ? [...new Set([...d.e2e.tower, ...(extra.tower ?? [])])].sort() : d.e2e.tower;
+  let construit = false;
   if (!d.docsSeuls && !sansE2e && (web.length || jump.length || tower.length)) {
+    construit = true;
     // Lot R8 : comme la CI, les archives des jeux commencent au circuit n° 1 (les e2e tournent le 20/10/2026, avant la date du lancement public).
     out.push({ nom: "construction (jeux et serveur)", cmd: "npm", args: ["run", "build"], env: { VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13" } });
     if (web.length) out.push({ nom: "construction du serveur", cmd: "npm", args: ["run", "build:node", "-w", "@cdj/api"] });
@@ -59,6 +61,11 @@ export function etapes(d, { sansE2e = false, extra = null, regression = false } 
     if (jump.length) out.push({ nom: `e2e DailyJump (Chromium, ${jump.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", "@cdj/jump", "--", "--project=chromium", "--workers=1", ...filtre, ...jump.map((s) => `e2e/${s}`)] });
     // Lot R15 : Tower (3ᵉ jeu), mêmes règles.
     if (tower.length) out.push({ nom: `e2e Tower (Chromium, ${tower.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", "@cdj/tower", "--", "--project=chromium", "--workers=1", ...filtre, ...tower.map((s) => `e2e/${s}`)] });
+  }
+  // Lot R17 : comme la CI de PR, le job « Budgets » (toutes les lignes de docs/plateforme/budgets.md) dès qu'un fichier change ce que charge un joueur ; la construction est celle des e2e (réutilisée).
+  if (d.budgets?.actif) {
+    if (!construit) out.push({ nom: "construction (jeux)", cmd: "npm", args: ["run", "build"], env: { VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13" } });
+    out.push({ nom: "budgets (toutes les lignes de budgets.md)", cmd: "node", args: ["scripts/budgets-controle.mjs", "controler"] });
   }
   return out;
 }

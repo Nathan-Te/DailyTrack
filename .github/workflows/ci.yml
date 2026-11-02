@@ -8,6 +8,9 @@ name: CI
 #   - complet (`push` sur main, `workflow_dispatch`) et nuit (`schedule`) : TOUT, sur les trois navigateurs, sans filtre, quarantaine bloquante ; la
 #     nuit, un instable ou une dette expirée fait aussi échouer. Sur main il est INFORMATIF pour les lots en cours (un rouge ne les bloque pas : ils ne
 #     voient que leurs zones) ; production.yml exige le run `push` de main vert, et le lot de mise en production répare ce qui est rouge.
+# Lot R17 — le job « Budgets » : toute PR qui peut changer ce que charge un joueur (code des applications hors serveur, paquets, catalogues, fiches, dépendances, Vite : `budgetsPour` de
+#   scripts/ci-zones.mjs) construit les jeux et contrôle TOUTES les lignes de docs/plateforme/budgets.md (scripts/budgets-controle.mjs). Indépendant des specs e2e choisis : le 02/11/2026 un lot du
+#   socle avait fait grossir Track sans qu'aucun spec de Track ne tourne. Il tourne aussi dans les CI complètes (main publie les mesures que les PR comparent ; le bouton de production l'exige).
 # Un `push` sur une autre branche ne lance rien : la PR (brouillon) le fait. Les statuts requis de `main` restent `test` et `e2e` (mêmes noms) : ils
 # tournent toujours, même pour une PR de documentation (c'est pourquoi pas de `paths-ignore` ici : un statut requis qui ne s'est pas rapporté bloque la fusion).
 # Lot R12 — « Mettre en production » APPELLE ce workflow (`workflow_call`, mode `complet`, sur le commit qu'il va déployer : entrée `ref`) : ses jobs
@@ -100,12 +103,14 @@ jobs:
   # Lot R10 : `unit` est sauté quand il n'y a rien à lancer (docs seuls) : « sauté » est un succès ici, mais jamais si `scope` a échoué.
   # Retouche du lot I6 : il porte aussi le verdict de `zones` (une PR de jeu restée dans ses zones).
   test:
-    needs: [scope, unit, zones]
+    needs: [scope, unit, zones, budgets]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - run: |
           [ "${{ needs.scope.result }}" = success ] || { echo "::error::le job scope a échoué : on ne sait pas quels tests devaient tourner"; exit 1; }
+          # Lot R17 : un budget qui dépasse son plafond bloque la fusion (le job Budgets est sauté quand la PR ne touche rien de ce que charge un joueur).
+          case "${{ needs.budgets.result }}" in success|skipped) ;; *) echo "::error::un budget dépasse son plafond (job Budgets, docs/plateforme/budgets.md)"; exit 1;; esac
           case "${{ needs.unit.result }}" in success|skipped) ;; *) echo "::error::une part des tests unitaires a échoué (jobs unit)"; exit 1;; esac
           [ "${{ needs.zones.result }}" = success ] || { echo "::error::une PR de jeu sort de ses zones (job zones, docs/orchestration.md « Lots en parallèle »)"; exit 1; }
           [ "${{ needs.unit.result }}" != skipped ] || echo "### test : aucun test unitaire concerné (docs seuls) — verdict vert" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -161,6 +166,7 @@ jobs:
       e2e_pr_actif: ${{ steps.scope.outputs.e2e_pr_actif }}
       e2e_pr_matrice: ${{ steps.scope.outputs.e2e_pr_matrice }}
       e2e_complet_matrice: ${{ steps.scope.outputs.e2e_complet_matrice }}
+      budgets_actif: ${{ steps.scope.outputs.budgets_actif }}
       durees: ${{ steps.durees.outputs.durees }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -225,6 +231,67 @@ jobs:
         env:
           RUN_NUIT: ${{ steps.nuit.outputs.run }}
         run: node scripts/durees-e2e.mjs lire "$RUNNER_TEMP/durees-nuit/durees-e2e.json" --run "$RUN_NUIT" --sortie "$GITHUB_OUTPUT" --resume "$GITHUB_STEP_SUMMARY"
+
+  # Lot R17 — les budgets de TOUS les jeux et du portail, sur chaque PR qui touche ce que charge un joueur (scripts/ci-zones.mjs, `budgetsPour`). Pas de navigateur : on construit (comme les e2e,
+  # avec la date de lancement de test : les plafonds ont été posés sur cette construction) et `scripts/budgets-controle.mjs` compare chaque ligne de docs/plateforme/budgets.md à sa mesure ; il échoue
+  # si une ligne dépasse, et ne relève JAMAIS un plafond. Le résumé du job est le tableau (ligne · plafond · mesure · marge · écart avec main). Les mesures de main viennent de l'artefact
+  # `budgets-<commit>` que le run de `main` publie pour chaque fusion (celui du commit dont part la PR, `HEAD^1` du commit de fusion ; sinon le plus récent) : recalculer main coûterait un `npm ci` et
+  # une construction de plus. Le job tourne EN PARALLÈLE des tests (il ne réutilise pas la construction de la part `unit` : l'attendre l'allongerait de la durée des tests).
+  budgets:
+    needs: scope
+    if: needs.scope.outputs.budgets_actif == 'true'
+    name: Budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # `actions: read` pour retrouver l'artefact des mesures de main ; rien n'est écrit.
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Deux commits : le commit de fusion d'une PR et son premier parent, le commit de main dont la PR part (pour l'écart avec main).
+          fetch-depth: 2
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          # Lot R8 : la construction des e2e (les archives des jeux commencent au circuit n° 1) ; c'est sur elle que les plafonds de budgets.md sont posés.
+          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
+      - name: Mesures de main (quel artefact ?)
+        id: main
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/budgets-controle.mjs source --sha "$(git rev-parse HEAD^1)" --sortie "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: steps.main.outputs.run != ''
+        continue-on-error: true
+        with:
+          name: ${{ steps.main.outputs.nom }}
+          path: ${{ runner.temp }}/budgets-main
+          run-id: ${{ steps.main.outputs.run }}
+          github-token: ${{ github.token }}
+      - name: Contrôle des budgets
+        env:
+          BUDGETS_MAIN_EXACT: ${{ steps.main.outputs.exact }}
+        run: |
+          args=(controler --resume "$GITHUB_STEP_SUMMARY" --ecrire "$RUNNER_TEMP/budgets-mesures.json")
+          [ -f "$RUNNER_TEMP/budgets-main/budgets-mesures.json" ] && args+=(--main "$RUNNER_TEMP/budgets-main/budgets-mesures.json")
+          node scripts/budgets-controle.mjs "${args[@]}"
+      # Le run de main garde ses mesures 30 jours, sous le nom du commit : c'est ce que les PR suivantes comparent (même si ce run est rouge : la mesure reste vraie).
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: budgets-${{ github.sha }}
+          path: ${{ runner.temp }}/budgets-mesures.json
+          retention-days: 30
+          if-no-files-found: warn
 
   # CI COMPLÈTE (main, « Run workflow », nuit) : même rediffusion rejouée dans Chromium, Firefox et WebKit : le résultat doit être identique à celui de Node.
   # Retouche 29b — CI rapide et fiable : une matrice (un job par navigateur et par part, `--shard`), une relance unique (`retries: 1`, voir

@@ -521,6 +521,14 @@
         "track.post",
         "track.qualiteMesure",
         "track.garage",
+        "track.ombres",
+        "track.fantomes",
+        "track.son",
+        "track.sonBoucles",
+        "track.steerSlider",
+        "track.steerWheel",
+        "track.steerGyro",
+        "track.touchReglages",
         "track.polices"
       ],
       "outilsAdmin": true

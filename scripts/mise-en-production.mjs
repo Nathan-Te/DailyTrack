@@ -412,13 +412,51 @@ export function planTower({ veille, bascule, proteges, fichiers = {}, versions }
     if (action === "reprepare") aSupprimer.push(d);
     jours.push({ date: d, action });
   }
+  const plages = plagesConsecutives(aPreparer);
+  return { format: 1, du: veille, au, versions, jours, aPreparer, aSupprimer, plages };
+}
+
+/** Les dates (triées) regroupées en plages de jours consécutifs `[du, au]`. */
+export function plagesConsecutives(dates) {
   const plages = [];
-  for (const d of aPreparer) {
+  for (const d of dates) {
     const derniere = plages.at(-1);
     if (derniere && ajouterJours(derniere[1], 1) === d) derniere[1] = d;
     else plages.push([d, d]);
   }
-  return { format: 1, du: veille, au, versions, jours, aPreparer, aSupprimer, plages };
+  return plages;
+}
+
+/**
+ * **Lot R16 — un jour protégé de Tower a toujours son fichier.** Tower fige ses jours comme Jump (un fichier par jour, `apps/tower/public/jours/`) : sans fichier, le jour prendrait
+ * le générateur courant, donc changerait à la prochaine `TOWER_GENERATOR_VERSION` alors que des joueurs l'ont vu. Les jours à figer sont les jours **protégés** (d'avant le lancement
+ * à partir de `proteges.debut`, déjà figés, ou avec un résultat — `estProtege`) jusqu'à la veille de la bascule qui n'ont pas de fichier dans `fichiers` (`{ date: … }`, le dépôt construit).
+ * Ils sont figés **avec le code en production** (`figer:tower` dans son dépôt : ce qu'il sert est ce qu'il fige), jamais avec le code déployé. `prodSansTower` : le code en production
+ * n'a pas le jeu (la première mise en production de Tower) : il n'a rien servi, rien à figer. Rend `{ dates, plages, prodSansTower }`.
+ */
+export function towerAFiger({ proteges, fichiers = {}, prodSansTower = false }) {
+  const dates = [];
+  if (!prodSansTower) {
+    for (let d = proteges.debut ?? proteges.premier; d <= proteges.veille; d = ajouterJours(d, 1)) if (estProtege(proteges, d) && !(d in fichiers)) dates.push(d);
+  }
+  return { format: 1, dates, plages: plagesConsecutives(dates), prodSansTower };
+}
+
+/**
+ * Pose les jours que le code en production vient de figer (`figes` : `{ nom de fichier: contenu }`) dans le dossier de la construction (`existants`) et **refuse de terminer s'il en
+ * manque un** : un jour du plan sans fichier figé, ou figé dans un autre contenu que celui déjà là, est une erreur (un jour figé ne change jamais). Rend les fichiers à écrire.
+ */
+export function towerFigesAPoser(plan, figes, existants) {
+  const manquants = [];
+  const conflits = [];
+  const ecrire = [];
+  for (const d of plan.dates) {
+    const nom = `${d}.json`;
+    if (!(nom in figes)) manquants.push(d);
+    else if (!(nom in existants)) ecrire.push(nom);
+    else if (existants[nom] !== figes[nom]) conflits.push(d);
+  }
+  return { ecrire, manquants, conflits };
 }
 
 /**
@@ -436,6 +474,15 @@ export function joursTowerAPoser(artefact, existants, plan) {
     else if (existants[nom] !== contenu) (plan.aSupprimer.includes(nom.slice(0, 10)) ? remplaces : conflits).push(nom);
   }
   return { ajouts: ajouts.sort(), remplaces: remplaces.sort(), conflits: conflits.sort() };
+}
+
+/** Lot R16 : le résumé de l'étape qui fige les jours de Tower déjà servis. */
+export function resumeTowerFiges(plan) {
+  const l = ["### Tower : les jours servis sont figés", ""];
+  if (plan.prodSansTower) l.push("- Le code en production n'a pas Tower : il n'a servi aucun jour, rien à figer.");
+  else if (plan.dates.length === 0) l.push("- Chaque jour protégé a déjà son fichier : rien à figer.");
+  else l.push(`- ${plan.dates.length} jour(s) protégé(s) sans fichier, figés avec **le code en production** : ${plage(plan.dates)} (${plan.dates.length} jour${plan.dates.length > 1 ? "s" : ""}). Un jour servi ne change plus, quelle que soit la version du générateur déployée ensuite.`);
+  return l.join("\n") + "\n";
 }
 
 /** Le résumé du run : les jours de Tower conservés, préparés, refaits, jusqu'où ils sont couverts, et le temps de la préparation mesuré sur le runner. */
@@ -818,6 +865,27 @@ if (isMain) {
       if (opt("--resume")) appendFileSync(opt("--resume"), text);
       process.stdout.write(text);
       if (opt("--github-sortie")) appendFileSync(opt("--github-sortie"), `tower_plages=${plan.plages.map(([du, au]) => `${du}:${au}`).join(" ")}\ntower_a_preparer=${plan.aPreparer.length}\ntower_au=${plan.au}\n`);
+    } else if (cmd === "tower-a-figer") {
+      // Lot R16 : les jours protégés de Tower qui n'ont pas de fichier (`--cible` : le dépôt construit ; `--prod` : le code en production, qui doit avoir Tower pour avoir servi un jour).
+      const dossier = join(resolve(opt("--cible")), TOWER_DOSSIER);
+      const fichiers = {};
+      if (existsSync(dossier)) for (const f of readdirSync(dossier)) if (/^\d{4}-\d{2}-\d{2}\.json$/.test(f)) fichiers[f.slice(0, 10)] = true;
+      const prodSansTower = !existsSync(join(resolve(opt("--prod")), "packages/tower-sim"));
+      const proteges = JSON.parse(readFileSync(opt("--proteges"), "utf8"));
+      const plan = towerAFiger({ proteges, fichiers, prodSansTower });
+      mkdirSync(dirname(resolve(opt("--sortie"))), { recursive: true });
+      writeFileSync(resolve(opt("--sortie")), JSON.stringify(plan, null, 1) + "\n");
+      const text = resumeTowerFiges(plan);
+      if (opt("--resume")) appendFileSync(opt("--resume"), text);
+      process.stdout.write(text);
+    } else if (cmd === "tower-figes-poser") {
+      // `a` : le dossier où le code en production a figé (`plan.json` et `jours/*.json`) ; `b` : le dossier des jours de Tower de la construction. Il manque un jour = la mise en production s'arrête.
+      const plan = JSON.parse(readFileSync(join(a, "plan.json"), "utf8"));
+      const { ecrire, manquants, conflits } = towerFigesAPoser(plan, read(join(a, "jours")), read(b));
+      if (manquants.length || conflits.length) throw new Error(`jours de Tower protégés sans fichier figé : ${manquants.join(", ") || "aucun"} ; figés dans un autre contenu que celui du dépôt : ${conflits.join(", ") || "aucun"} (un jour servi ne change jamais : corriger puis relancer)`);
+      mkdirSync(b, { recursive: true });
+      for (const f of ecrire) writeFileSync(join(b, f), readFileSync(join(a, "jours", f)));
+      console.log(ecrire.length ? `jours de Tower figés avec le code en production : ${ecrire.length} (${ecrire.map((f) => f.slice(0, 10)).join(", ")})` : "aucun jour de Tower à figer");
     } else if (cmd === "tower-nettoyer") {
       // Retire du dossier (`a`) les fichiers d'une autre version que le plan refait : l'outil de préparation n'écrase jamais un fichier d'une autre version.
       const plan = JSON.parse(readFileSync(opt("--plan"), "utf8"));
