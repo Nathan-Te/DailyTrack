@@ -32,6 +32,7 @@ export const TABLES_VIDEES: Readonly<Record<string, string>> = {
   resultats_retires: "panneau d'administration (lot N1) : les résultats retirés par l'administration, avec leur rediffusion gardée 30 jours",
   amities: "amis (lot F2) : qui voit les temps de qui (identifiants internes des deux joueurs, origine, date)",
   invitations_amis: "amis (lot F2) : le lien d'invitation de chaque joueur (empreinte SHA-256 du jeton seulement)",
+  favoris_jeux: "« Mes jeux » (lot F1) : les jeux épinglés de chaque joueur, une ligne par changement",
 };
 
 /** Les tables gardées : aucune donnée de joueur (planning de l'administration, caches de niveaux déterministes, table de service). */

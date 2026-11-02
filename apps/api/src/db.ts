@@ -147,6 +147,16 @@ export const PLATFORM_SCHEMA: string[] = [
    )`,
   `CREATE INDEX IF NOT EXISTS resultats_retires_by_player ON resultats_retires (player_id)`,
   `CREATE INDEX IF NOT EXISTS resultats_retires_by_inputs ON resultats_retires (game, day, inputs_hash)`,
+  // --- Lot F1 : « Mes jeux », les jeux épinglés de chaque joueur (`portail.ts`). **Réversible** : une table nouvelle, rien d'existant touché (l'ancien code l'ignore) ; retour arrière :
+  // `DROP TABLE favoris_jeux`. Une ligne par **changement** : à partir du jour `du` (numéro de jour de Paris), `jeux` (JSON, le dossier de chaque jeu sur le site) est la liste du joueur.
+  // Un changement compte à partir du lendemain (`@cdj/core/favoris`) : le jour d'une série se juge avec la liste qui était la sienne. Liée à un joueur : vidée par la remise à zéro,
+  // effacée avec lui, suit « Changer mon code ».
+  `CREATE TABLE IF NOT EXISTS favoris_jeux (
+     player_id TEXT NOT NULL,
+     du INTEGER NOT NULL,
+     jeux TEXT NOT NULL,
+     PRIMARY KEY (player_id, du)
+   )`,
   // --- Lot N2 : les nouveautés et le message en direct (`diffusion.ts`). **Réversible** : deux tables nouvelles, rien d'existant touché (l'ancien code les ignore) ; retour arrière :
   // `DROP TABLE nouveautes` et `DROP TABLE annonces` (les index partent avec). Aucune donnée de joueur : ce que Nathan écrit pour les joueurs.
   // Nouveauté : titre FR / EN, date affichée (AAAA-MM-JJ), lignes (JSON : zone, français, anglais, PR d'origine), statut (`brouillon` | `publiee`), dates.

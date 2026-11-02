@@ -12,7 +12,7 @@ export const CODES_ERREUR = {
   // --- Commun à toutes les routes ---------------------------------------------------------------------------
   not_found: { status: 404, sens: "Route inconnue (y compris les routes d'admin quand l'admin est désactivé, et toute adresse inconnue sous /api/jump/)." },
   method_not_allowed: { status: 405, sens: "La route existe, mais pas pour cette méthode HTTP." },
-  invalid_json: { status: 400, sens: "Le corps de la requête n'est pas un objet JSON." },
+  invalid_json: { status: 400, sens: "Le corps de la requête n'est pas un objet JSON (lot F1 : ou `PUT /api/portail/favoris` reçoit une `favoris` qui n'est pas une liste de noms de jeux connus)." },
   too_large: { status: 413, sens: "Le corps de la requête dépasse la taille permise (MAX_BODY_BYTES), annoncée ou lue." },
   rate_limited: { status: 429, sens: "Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (en-tête Retry-After)." },
   busy: { status: 503, sens: "Serveur saturé : plafond de rejeux par minute de l'instance atteint (Retry-After), ou envois simultanés de vies du même joueur impossibles à fusionner." },

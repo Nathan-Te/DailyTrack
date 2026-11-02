@@ -142,7 +142,7 @@ test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec u
   const page = await (await newClockedContext(browser, { viewport: { width: 1024, height: 768 }, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("#jeux .dj-cartouche")).toHaveCount(2);
-  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', ".dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-jeu="jump"] a.dj-bouton', "#discord", "#kofi", "#mentions"]; // pied : Discord et Ko-fi (retouche) ; lot I3 : sans réponse du serveur (ici, aucun), la tuile « Classement du jour » n'est pas là
+  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', ".dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-cle="favori-track"]', '[data-jeu="jump"] a.dj-bouton', '[data-cle="favori-jump"]', "#discord", "#kofi", "#mentions"]; // lot F1 : l'étoile de chaque cartouche suit son « Jouer » ; pied : Discord et Ko-fi (retouche) ; lot I3 : sans réponse du serveur (ici, aucun), la tuile « Classement du jour » n'est pas là
   for (const sel of attendus) {
     await page.keyboard.press("Tab");
     await expect(page.locator(sel), sel).toBeFocused();
@@ -154,7 +154,7 @@ test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec u
     expect(contour.largeur, sel).toBeGreaterThanOrEqual(3);
   }
   // Entrée sur le bouton d'un jeu : on y va (les jeux ne sont pas construits ici : la demande de la page suffit).
-  for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+Tab"); // mentions › Ko-fi › Discord › le bouton de Jump
+  for (let i = 0; i < 4; i++) await page.keyboard.press("Shift+Tab"); // mentions › Ko-fi › Discord › l'étoile de Jump (lot F1) › le bouton de Jump
   const vers = page.waitForRequest((r) => r.isNavigationRequest() && r.url() === `${SITE}/jump/`);
   await page.keyboard.press("Enter");
   await vers;

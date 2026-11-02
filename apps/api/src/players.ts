@@ -158,6 +158,7 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       { sql: "UPDATE amities SET joueur = ? WHERE joueur = ?", params: [newId, oldId] },
       { sql: "UPDATE amities SET ami = ? WHERE ami = ?", params: [newId, oldId] },
       { sql: "UPDATE invitations_amis SET joueur = ? WHERE joueur = ?", params: [newId, oldId] },
+      { sql: "UPDATE favoris_jeux SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot F1 : ses jeux épinglés le suivent
       { sql: "UPDATE players SET id = ?, ref = ?, updated_at = ? WHERE id = ?", params: [newId, newHash.slice(0, REF_LENGTH), t, oldId] },
     ];
     if (db.batch) await db.batch(statements);
@@ -182,6 +183,7 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
     out.push({ sql: "DELETE FROM amities WHERE joueur = ?", params: [id] });
     out.push({ sql: "DELETE FROM amities WHERE ami = ?", params: [id] });
     out.push({ sql: "DELETE FROM invitations_amis WHERE joueur = ?", params: [id] });
+    out.push({ sql: "DELETE FROM favoris_jeux WHERE player_id = ?", params: [id] }); // lot F1 : ses jeux épinglés
     out.push({ sql: "DELETE FROM players WHERE id = ?", params: [id] });
     return out;
   }

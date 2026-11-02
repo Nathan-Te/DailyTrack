@@ -22,6 +22,9 @@ const TRACES: Record<NomIcone, readonly string[]> = {
 /** Lot G1 : le fantôme (silhouette à bas ondulé, deux yeux) — « passer au fantôme suivant ». À part de `TRACES` : le portail n'a pas de bouton fantôme et ne le paie pas (budget du premier chargement ; une entrée de `TRACES` serait toujours embarquée). */
 const TRACES_FANTOME = ["M5 21V11a7 7 0 0 1 14 0v10l-3-2-3 2-3-2-3 2z", "M9 11h1M14 11h1"];
 
+/** Lot F1 : l'étoile de « Mes jeux » (pleine quand le jeu est épinglé : le remplissage vient de la feuille de style, `.dj-favori[aria-pressed="true"]`). À part de `TRACES`, comme le fantôme : seuls les écrans qui épinglent la paient. */
+const TRACES_ETOILE = ["M12 2.8l2.8 6 6.4.6-4.9 4.3 1.5 6.3L12 16.7 6.2 20l1.5-6.3L2.8 9.4l6.4-.6z"];
+
 type OptionsIcone = { label?: string; taille?: number };
 
 function dessiner(nom: string, traces: readonly string[], { label, taille = 20 }: OptionsIcone): SVGSVGElement {
@@ -50,3 +53,6 @@ export const icone = (nom: NomIcone, o: OptionsIcone = {}): SVGSVGElement => des
 
 /** Lot G1 : l'icône du fantôme (voir `TRACES_FANTOME`). */
 export const iconeFantome = (o: OptionsIcone = {}): SVGSVGElement => dessiner("fantome", TRACES_FANTOME, o);
+
+/** Lot F1 : l'icône de l'étoile (voir `TRACES_ETOILE`). */
+export const iconeEtoile = (o: OptionsIcone = {}): SVGSVGElement => dessiner("etoile", TRACES_ETOILE, o);

@@ -38,6 +38,8 @@ export interface JeuDuJour {
   compte?: boolean;
   /** Lot P : présent seulement sur un aperçu de PR, pour un jeu pas encore `on` : le badge « Brouillon ». */
   brouillon?: boolean;
+  /** Lot F1 : présent (et vrai) pendant les 7 jours qui suivent l'ouverture du jeu : la pastille « Nouveau ». */
+  nouveau?: boolean;
   /** Avec un joueur seulement. */
   etat?: Etat;
 }
@@ -54,6 +56,10 @@ export interface JoueurDuJour {
   classesDuJour?: number | null;
   /** Lot F2 : sa place parmi ses amis au cumul du jour (« 3e entre amis »), `null` sans ami ou tant qu'il n'a rien fini. */
   rangEntreAmis?: { rang: number; sur: number } | null;
+  /** Lot F1 : les jeux épinglés du joueur (leur dossier sur le site) — `null` : il n'a jamais rien choisi ; absent d'un serveur plus ancien. */
+  favoris?: string[] | null;
+  /** Lot F1 : les jeux qui comptent pour sa journée aujourd'hui (journée parfaite, « n fini sur m », partage) ; un choix de favoris ne compte qu'à partir de demain. */
+  jeuxDuJour?: string[];
 }
 
 /** Lot N2 : la dernière nouveauté publiée (la ligne de l'accueil). `publieLe` : l'instant de publication en ms (« lue sur cet appareil » se compare à lui). */
@@ -162,8 +168,18 @@ export const estHauteur = (j: { unite?: string }): boolean => j.unite === "mm";
 /** Lot P : le jeu compte-t-il aujourd'hui dans la journée ? (Absent : oui.) */
 export const compteAujourdhui = (j: { compte?: boolean }): boolean => j.compte !== false;
 
-/** Combien de jeux sont finis, sur combien (ceux que le portail montre et qui comptent aujourd'hui : un jeu activé aujourd'hui est jouable mais ne compte que dès demain). */
-export function avancement(jeux: readonly JeuDuJour[]): { finis: number; total: number } {
+/**
+ * Lot F1 : les jeux de la journée de ce joueur — parmi les jeux montrés qui comptent aujourd'hui, **mes jeux** (`jeuxDuJour` : leur dossier, rendu par le serveur ; un choix de favoris
+ * ne compte qu'à partir de demain). Absent, vide ou sans aucun jeu montré : tous les jeux qui comptent (sans favori, c'est la journée d'avant).
+ */
+export function jeuxDeLaJournee<T extends { site?: string; compte?: boolean }>(jeux: readonly T[], jeuxDuJour?: readonly string[]): T[] {
   const comptes = jeux.filter(compteAujourdhui);
-  return { finis: comptes.filter((j) => j.etat?.statut === "fini").length, total: comptes.length };
+  const miens = jeuxDuJour ? comptes.filter((j) => jeuxDuJour.includes(j.site ?? "")) : [];
+  return miens.length > 0 ? miens : comptes;
+}
+
+/** Combien de jeux sont finis, sur combien (ceux de ma journée : voir `jeuxDeLaJournee` ; un jeu activé aujourd'hui est jouable mais ne compte que dès demain). */
+export function avancement(jeux: readonly JeuDuJour[], jeuxDuJour?: readonly string[]): { finis: number; total: number } {
+  const base = jeuxDeLaJournee(jeux, jeuxDuJour);
+  return { finis: base.filter((j) => j.etat?.statut === "fini").length, total: base.length };
 }

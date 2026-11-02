@@ -1,3 +1,4 @@
+@import "@cdj/ui/src/favoris.css"; /* lot F1 : l'étoile et la cartouche compacte (feuille du socle, avec celle du portail : une seule feuille compressée) */
 /* Mise en page du portail (lot I1, charte § 9) : mobile d'abord (portrait 390 px, marges de 16 px), contenu aligné à gauche, hiérarchie nette
    (barre, date, titre de section, cartouches, pied) ; en paysage et sur grand écran, les cartouches côte à côte, largeur limitée à ≈ 720 px,
    fond crème sur toute la fenêtre. Valeurs : jetons de @cdj/ui seulement. */
@@ -686,3 +687,62 @@
   text-transform: uppercase;
 }
 
+
+/* --- Lot F1 : Mes jeux ---------------------------------------------------------------------------------------------------------------- */
+/* La ligne courte sous le titre (l'invitation à épingler, ou « compte dès demain ») : discrète, jamais une alerte. */
+.portail-favoris__note {
+  margin: 0;
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre-douce);
+}
+/* « Les autres jeux » : des cartouches compactes d'une ligne, plus serrées que les pleines. Nom et numéro côte à côte (la pleine les empile), le nom un peu plus petit. */
+.portail-etagere--compacte {
+  gap: var(--dj-espace-4);
+}
+@media (min-width: 600px) {
+  .portail-etagere.portail-etagere--compacte {
+    grid-template-columns: minmax(0, 1fr); /* une ligne par jeu, jamais deux colonnes étroites */
+  }
+}
+.portail-etagere--compacte .track-etiquette__tete,
+.portail-etagere--compacte .jump-etiquette__tete,
+.portail-etagere--compacte .tower-etiquette__tete {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--dj-espace-3);
+}
+.portail-etagere--compacte .track-etiquette__titre,
+.portail-etagere--compacte .jump-etiquette__titre,
+.portail-etagere--compacte .tower-etiquette__titre {
+  font-size: var(--dj-taille-22);
+}
+.portail-etagere--compacte .track-etiquette__numero,
+.portail-etagere--compacte .jump-etiquette__numero,
+.portail-etagere--compacte .tower-etiquette__numero {
+  white-space: nowrap; /* « n° 5 · Forêt » passe en entier sous le nom quand la ligne est étroite, jamais coupé au milieu */
+}
+.portail-etagere--compacte .dj-cartouche__action .dj-bouton {
+  min-height: var(--dj-cible);
+}
+/* La pastille « Nouveau » d'un jeu ouvert depuis moins de 7 jours : terre cuite, posée sur le haut de la cartouche pleine, en tête de ligne de la compacte. */
+.dj-badge-nouveau {
+  flex: none;
+  display: inline-block;
+  padding: 1px var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+  font-size: var(--dj-taille-12);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dj-cartouche--avec-favori > .dj-badge-nouveau,
+.dj-cartouche--compacte > .dj-badge-nouveau {
+  position: absolute;
+  top: -12px;
+  left: var(--dj-espace-5);
+  z-index: 1;
+}
