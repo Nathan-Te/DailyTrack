@@ -192,10 +192,10 @@ test("Mes jeux : épingler Jump le fait monter sous « Mes jeux », l'ordre est 
   await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
   await expect(page.locator("#jeux [data-jeu]")).toHaveCount(2);
   await expect(page.locator("#jeux [data-jeu]").nth(1)).toHaveAttribute("data-jeu", "jump");
-  // Le partage ne cite que mes jeux de la journée (aujourd'hui : Track).
+  // Le partage ne cite que les médailles de mes jeux de la journée (aujourd'hui : Track, donc une seule médaille) et aucun nom de jeu.
   const ligne = (await page.locator("#partage-apercu").textContent()) ?? "";
-  expect(ligne).toContain("Track");
-  expect(ligne).not.toContain("Jump");
+  expect(ligne).toContain("🥇");
+  expect(ligne).not.toMatch(/Track|Jump|Tower/);
   await context.close();
 });
 
