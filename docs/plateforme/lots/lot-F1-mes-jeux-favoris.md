@@ -24,4 +24,4 @@ Accueil avec et sans favoris × portrait et paysage × FR et EN (8 images).
 ## Vérifié
 Typecheck (`tsc -b`, portail) ; unitaires : noyau (`favoris.test.ts`), serveur (`portailFavoris.test.ts` : épingler en cours de journée, retirer à 23 h 59, série à cheval, favori qui passe à `off`, première visite, effacement, « Changer mon code », débit ; SQLite et libSQL, plans vérifiés par `openTestDb`), profil, portail ; e2e Chromium locaux : `portail-jour` (dont le **seul** nouveau test, épingler › l'ordre change › recharger), `portail-journee` (axe compris), `portail`.
 ## Non vérifié
-Firefox et WebKit ; la mesure de coût sur un `sqld` (pas de Docker ici : le plan et les lignes lues sont vérifiés sur `file:`) ; l'aperçu déployé. Runs de CI : voir la PR.
+Firefox et WebKit ; la mesure de coût sur un `sqld` (pas de Docker ici : le plan et les lignes lues sont vérifiés sur `file:`) ; l'aperçu déployé. **CI de PR verte** (run 41420307733, `ebf0cfc` : unitaires, e2e Chromium, image du serveur) ; une première poussée avait échoué sur deux points, corrigés : le budget de Jump (la feuille de l'étoile est maintenant à part) et un e2e qui rechargeait avant la fin de l'écriture.
