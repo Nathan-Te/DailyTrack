@@ -436,7 +436,7 @@ export class Partie {
     if (p.effet === "vent" && ++p.vecu % this.physique.ventPeriodeTicks === 0 && p.coupSens === 0) this.deplacer(p, (this.scenario.ventSens === -1 ? -1 : 1) * this.physique.ventPas8);
     const facteur = commandes & COMMANDE.DESCENDRE ? this.reglages.facteurDescente : 1;
     const normale = this.reglages.vitesseChute8 / 8;
-    if (p.coupSens !== 0) this.elan(p, p.y - (normale * facteur) / TICKS_PAR_SECONDE);
+    if (p.coupSens !== 0 && this.elan(p, p.y - (normale * facteur) / TICKS_PAR_SECONDE)) return; // le taquet a percuté un bloc : la pièce est lâchée, plus rien ne la contrôle
     let vy = normale * facteur;
     // « Descendre » est un confort, jamais un effet physique (lot T2) : la descente rapide s'arrête à la marge de contact, la pièce finit sa course à la vitesse normale et
     // lâche exactement comme une pièce sans accélération — elle se pose à la même vitesse, avec la même force.
@@ -463,30 +463,30 @@ export class Partie {
 
   /**
    * Un tick de coup. La pièce (un fantôme, sans contact) avance de `taquetPas8` huitièmes : on lance sa forme (rétrécie de la tolérance d'emboîtement) dans le sens du coup, à la hauteur où elle sera à ce tick
-   * (`y`), et elle s'arrête au premier obstacle — en huitièmes ENTIERS, jamais dans l'obstacle. Si l'obstacle est une pièce posée libre (même collée à elle : le coup part quand même), elle reçoit un choc : sa
-   * vitesse horizontale augmente de `taquetChoc8 / 8` partagée selon les masses (choc mou : v = choc × m_pièce / (m_pièce + m_frappée)) ; la plateforme, une pièce figée et le bord de la scène ne bougent pas.
-   * Le coup finit contre l'obstacle ou au bout de ses ticks, ou quand la pièce touche ce qui est dessous (le lâcher). La pièce n'est ensuite ni recalée ni ramenée sur la grille.
+   * (`y`), et elle s'arrête au premier obstacle — en huitièmes ENTIERS, jamais dedans. **Si elle percute un bloc** (une pièce posée, même collée à elle, ou la plateforme), **elle n'est plus contrôlable** : elle
+   * est lâchée sur-le-champ comme un corps ordinaire (pas de pose douce : la gravité entière), avec une vitesse latérale de `taquetChoc8 / 8` vers le bloc — c'est la physique de Rapier qui pousse
+   * (une pièce mal placée en hauteur tombe). Le bord de la scène arrête le coup sans lâcher. Le coup finit aussi au bout de ses ticks, ou quand la pièce touche ce qui est dessous (le lâcher).
+   * Rend vrai si la pièce a été lâchée.
    */
-  private elan(p: Piece, y: number): void {
+  private elan(p: Piece, y: number): boolean {
     const sens = p.coupSens;
     const pas8 = this.params.taquetPas8;
     const tol = this.tolRefus;
     let avance8 = pas8;
-    let cible: RAPIER.RigidBody | null = null;
-    let bute = false;
+    let percute = false;
     for (const b of boitesE(p.kind, p.rot, p.taille, this.echelles)) {
       const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - tol), Math.max(0.0001, b.hh / 8 - tol));
       const hit = this.world.castShape({ x: p.x + b.cx / 8, y: y + b.cy / 8 }, 0, { x: sens, y: 0 }, forme, 0, pas8 / 8, false, undefined, undefined, undefined, p.body!);
       if (hit && hit.time_of_impact * 8 < avance8) {
         avance8 = Math.max(0, Math.floor(hit.time_of_impact * 8 + 1e-9));
-        cible = hit.collider.parent();
-        bute = true;
+        percute = true;
       }
     }
+    let bord = false;
     if (Math.abs(p.x8 + sens * avance8) > LIMITE_X8) {
       avance8 = Math.max(0, LIMITE_X8 - sens * p.x8);
-      cible = null;
-      bute = true;
+      percute = false;
+      bord = true;
     }
     if (avance8 > 0) {
       p.x8 += sens * avance8;
@@ -494,16 +494,13 @@ export class Partie {
       p.x = p.x8 / 8 + p.corr / 1000;
       p.body!.setTranslation({ x: p.x, y: p.y }, true);
     }
-    if (bute && cible) {
-      const q = this.parCorps.get(cible.handle);
-      if (q && q.etat === "libre" && !q.fixe && q.body) {
-        const md = p.body!.mass();
-        const dv = (sens * this.params.taquetChoc8) / 8 * (md / (md + q.body.mass()));
-        const v = q.body.linvel();
-        q.body.setLinvel({ x: v.x + dv, y: v.y }, true);
-      }
+    if (percute) {
+      this.finirElan(p);
+      this.lacher(p, (sens * this.params.taquetChoc8) / 8, false);
+      return true;
     }
-    if (bute || --p.coupReste <= 0) this.finirElan(p);
+    if (bord || --p.coupReste <= 0) this.finirElan(p);
+    return false;
   }
 
   private finirElan(p: Piece): void {
@@ -632,14 +629,15 @@ export class Partie {
     }
   }
 
-  private lacher(p: Piece): void {
+  /** Lâche la pièce en main. `vx` (m/s) : la vitesse latérale d'un taquet qui a percuté un bloc ; `douce` faux : pas de pose douce (la chute normale, la gravité entière), pour ce même cas. */
+  private lacher(p: Piece, vx: number = 0, douce: boolean = true): void {
     // Version 5 : la pose douce — la pièce part de `vitessePose8` (petite, réglable) au lieu de la chute normale ; elle garde son poids (la gravité fait le reste). Avant : la chute normale.
-    const vitesse = this.v5 ? this.params.vitessePose8 : this.reglages.vitesseChute8;
-    p.body!.setLinvel({ x: 0, y: -vitesse / 8 }, true); // jamais la vitesse d'une descente rapide
+    const vitesse = this.v5 && douce ? this.params.vitessePose8 : this.reglages.vitesseChute8;
+    p.body!.setLinvel({ x: vx, y: -vitesse / 8 }, true); // jamais la vitesse d'une descente rapide
     p.body!.setGravityScale(1, true);
     if (this.v4) for (let i = 0; i < p.body!.numColliders(); i++) p.body!.collider(i).setCollisionGroups(GROUPES_NORMAL);
     if (this.v5) {
-      if (this.params.dureeGraviteDouce > 0 && this.params.graviteDouce !== 1) p.body!.setGravityScale(this.params.graviteDouce, true);
+      if (douce && this.params.dureeGraviteDouce > 0 && this.params.graviteDouce !== 1) p.body!.setGravityScale(this.params.graviteDouce, true);
     }
     p.etat = "libre";
     p.lacheTick = this.ticks;

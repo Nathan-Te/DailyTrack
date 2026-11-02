@@ -500,19 +500,19 @@
       "contenu": {
         "scenario": "emboitement"
       },
-      "code": "AQUAAQtlbWJvaXRlbWVudBQEOAMBBQgjAGQgAQAEIAEIBAABBAEABQQBAAUEAQILAAYIMgAfCCYAHwgmAB8IJgAfCCgAHwgnAB8IJQAfCGMAHwg0",
+      "code": "AQUAAQtlbWJvaXRlbWVudBQEOAMBBQgjAGQgAQgGAAEEAQAFBAEABQQBAgsABggyAB8IJgAfCCYAHwgmAB8IKAAfCCoAHwgmAB8IKQAfCCY",
       "resultat": {
-        "hauteurMm": 5604,
-        "vies": 0,
-        "ticks": 860,
-        "ticksGel": 1160,
-        "hauteurMaxMm": 14829,
+        "hauteurMm": 12457,
+        "vies": 3,
+        "ticks": 789,
+        "ticksGel": 1089,
+        "hauteurMaxMm": 16912,
         "posees": 10,
-        "tombees": 3,
+        "tombees": 0,
         "motif": "pieces"
       },
-      "empreinteFinale": "1039c7a5b43c251a",
-      "ticks": 860,
+      "empreinteFinale": "46427ad0e83ce18d",
+      "ticks": 789,
       "paliers": 0
     }
   ]
