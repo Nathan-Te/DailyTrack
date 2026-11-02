@@ -27,6 +27,14 @@ export function countdownText(nowMs: number): string {
   return t("accueil.prochain", { temps: fDecompte(msUntilNextParisDay(nowMs)) });
 }
 
+/**
+ * Lot 31 : le pseudo du n° 1 si « Voir la course du n° 1 » peut être proposé (le classement et l'accueil), sinon `null` : pas de premier lu (et validé par le rejeu du jeu),
+ * aucun classé (`classes` : lignes du classement lu ; 0 sans classement lu), ou un carnage déjà en cours. **Sans classé, pas de bouton.**
+ */
+export function nomDeLaCourse(premier: string | null, classes: number, enCarnage = false): string | null {
+  return !enCarnage && classes > 0 ? premier : null;
+}
+
 /** Le titre de l'accueil et le niveau : « JUMP », « Niveau n° 5 · Forêt » (avant le premier jour : la date à la place du numéro). */
 export function homeHeading(day: number, themeCode: string): { title: string; subtitle: string } {
   const n = levelNumber(day);

@@ -105,7 +105,7 @@ import { browserWorker } from "./workerNavigateur";
 import { chooseDay, dayLine, finishMedalText, isPreview, originLine, medalWord, newDayText, nextMedal, refusedText, shortDate, type DayChoice } from "./dailyInfo";
 import { FROZEN_DAYS } from "./frozen";
 import { History, mayRecord, type DayRecord } from "./history";
-import { archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalText, recordTile, streakText, wantsHome } from "./homeLogic";
+import { archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalText, nomDeLaCourse, recordTile, streakText, wantsHome } from "./homeLogic";
 import { mountHome, type Home, type HomeView } from "./home";
 import { mountArrival, type ArrivalView } from "./arrival";
 import { mountResult, resultGap, type ResultView } from "./resultat";
@@ -755,7 +755,7 @@ let messageEnDirect: MessageEnDirect | null = null;
  * Lot I5 : ce que l'accueil lit de la partie, rempli au fil du chargement (l'accueil s'ouvre avant que le niveau soit là) : les médailles du jour, le total des
  * morts de tout le monde (carte des morts du serveur), et si le carnage du jour peut se jouer (ton meilleur essai, la scène).
  */
-const accueilDonnees = { medals: null as DailyLevel["medals"] | null, morts: null as number | null, carnage: false };
+const accueilDonnees = { medals: null as DailyLevel["medals"] | null, morts: null as number | null, carnage: false, premier: null as string | null };
 /** Lot I5 : le profil commun du portail (`/profil/?retour=/jump/`) : plus de profil dans le jeu. */
 const profil = profilHref(location.pathname);
 // Lot G1 (charte rév. 12) : **un seul fantôme choisi à la fois**, qui tourne (le tien → le premier → aucun) : touche G, bouton de la partie, entrée de la pause et ligne de
@@ -781,6 +781,7 @@ const home: Home | null = homeHere
       onHelp: () => howto.open(() => home?.focus()),
       onArchives: () => archivesUi.open(() => archiveDays(gameDay()).map((d) => archiveRow(d, themeForDay(d).name, history.forDate(formatDay(d))))),
       onBoard: () => openBoard(),
+      onCourse: () => courseDuPremier(),
       onCarnage: () => carnageFromHome(),
       onGhost: () => cycleGhost(),
       profilHref: profil,
@@ -820,7 +821,7 @@ function homeView(): HomeView {
     countdown: countdownText(now),
     rank,
     carnage: accueilDonnees.morts === null ? null : { morts: accueilDonnees.morts, peut: accueilDonnees.carnage },
-    board: ranking.enabled ? { rows: rowsOf(b).rows, participants: b?.participants ?? 0 } : null,
+    board: ranking.enabled ? { rows: rowsOf(b).rows, participants: b?.participants ?? 0, course: nomDeLaCourse(accueilDonnees.premier, rowsOf(b).rows.length) !== null } : null,
     revoked: jumpSync.state.status === "revoked",
     fantome: { nom: ghostName(ghostChoice) },
   };
@@ -935,6 +936,7 @@ function onDay(b: DayBundle): void {
     firstMiss = c.ok ? "" : c.reason;
     firstRemote = c.ok ? c.ghost : null;
   }
+  accueilDonnees.premier = firstRemote?.name ?? null; // l'accueil ne lit pas `firstRemote` (déclaré après son premier affichage)
   ranking.noteBoard(b.date, b.board);
   if (dayReady) showDay(b);
 }
@@ -945,6 +947,7 @@ function noteOwnFirst(name: string, ticks: number): void {
   const replay = memory.bestReplay();
   if (!best || !replay || best.time !== ticks) return;
   firstRemote = { name, replay, code: best.code, ticks: best.time, deaths: best.deaths, mine: true };
+  accueilDonnees.premier = name;
   firstMiss = "";
 }
 /** Le premier d'un classement (réponse d'un envoi) n'est plus celui qu'on a : à relire. Toi premier : ton fantôme suffit. */
@@ -1277,7 +1280,8 @@ interface CourseRun {
   ticks: number;
   deaths: number;
   speed: 1 | 2;
-  from: "home" | "arrival" | "autre";
+  /** D'où l'on est parti : l'accueil, l'arrivée ou la scène, **par le classement** (on y revient) ; `"accueil"` : le bouton de l'accueil (on revient à l'accueil seul). */
+  from: "home" | "arrival" | "autre" | "accueil";
   ui: import("./course").CourseUi | null;
 }
 let carnage: CarnageRun | null = null;
@@ -1431,12 +1435,12 @@ function endCarnage(): void {
     restart();
     hud.toast(t("toast.finDemo"));
   } else if (c.course) {
-    // Lot 31 : retour au classement, sur l'écran d'où l'on est parti (accueil, arrivée) ou sur la scène.
+    // Lot 31 : retour sur l'écran d'où l'on est parti (accueil, arrivée) ou sur la scène, puis le classement — sauf depuis le bouton de l'accueil : l'accueil seul.
     phase = phaseOf(session.state);
     camera = snapCamera(follow(session.state.player), scene.frame);
-    if (c.course.from === "home") goHome();
+    if (c.course.from === "home" || c.course.from === "accueil") goHome();
     else if (c.course.from === "arrival") showFinish();
-    openBoard();
+    if (c.course.from !== "accueil") openBoard();
   } else if (c.fromHome) {
     phase = phaseOf(session.state);
     camera = snapCamera(follow(session.state.player), scene.frame);
@@ -2887,7 +2891,7 @@ function boardView(): BoardView {
   const { rows, gap } = rowsOf(b);
   const theme = nomTheme(daily?.theme ?? homeTheme.name);
   const message = !ranking.enabled ? t("classement.sansServeur") : b === null ? t(entry?.status === "loading" || !entry ? "rang.chargement" : "rang.indisponible") : rows.length === 0 ? t("classement.vide") : "";
-  return { subtitle: b ? t("classement.sousTitre", { theme, classes: classesText(b.participants) }) : theme, rows, gap, message, course: !carnage && firstRemote !== null && firstDate !== null && b !== null && rows.length > 0 ? firstRemote.name : null };
+  return { subtitle: b ? t("classement.sousTitre", { theme, classes: classesText(b.participants) }) : theme, rows, gap, message, course: nomDeLaCourse(firstRemote?.name ?? null, rows.length, carnage !== null) };
 }
 function openBoard(): void {
   boardUi.open(boardView());
@@ -2910,7 +2914,7 @@ function carnageFromHome(): void {
 function courseDuPremier(): void {
   const f = firstRemote;
   if (!f || carnage || !scene || !firstDate) return;
-  const from = home?.isOpen ? "home" : arrival.shown ? "arrival" : "autre";
+  const from = !boardUi.isOpen ? "accueil" : home?.isOpen ? "home" : arrival.shown ? "arrival" : "autre";
   boardUi.close();
   home?.close();
   syncPause();
@@ -2920,6 +2924,7 @@ function courseDuPremier(): void {
     if (carnage !== c || !c.course) return;
     c.course.ui = m.montrerCourse({
       nom: c.course.nom,
+      accueil: c.course.from === "accueil",
       actionDeTouche: (code) => commandes.actionDeTouche(code),
       onToggle: () => {
         c.paused = !c.paused;
