@@ -13,10 +13,13 @@ export interface ParamsStabilite {
   tolerance: number;
   /** Le déplacement « intelligent » : la portée (mètres) dans laquelle le jeu recale la pièce en main, après chaque déplacement ou quart de tour, pour qu'elle tombe vraiment dans le creux qu'elle vise (0 : éteint). */
   alignement: number;
-  /** Le taquet, un vrai coup sur le côté juste après le lâcher : la fenêtre (ticks) pendant laquelle l'ordre est pris, la vitesse du coup (huitièmes de m/s), sa durée (ticks : la portée est vitesse × durée) et le nombre de coups par pièce. */
-  taquetFenetre: number;
+  /**
+   * Le taquet, un élan de la pièce EN MAIN (avant la pose) : sa vitesse latérale (huitièmes de m/s), sa durée (ticks : la portée est vitesse × durée), la vitesse du choc donné à une pièce posée qu'elle
+   * heurte (huitièmes de m/s, avant partage de la masse) et le nombre d'élans par pièce.
+   */
   taquetVitesse8: number;
   taquetTicks: number;
+  taquetChoc8: number;
   taquetMax: number;
 }
 
@@ -26,10 +29,10 @@ export const PARAMS_STABILITE: Readonly<ParamsStabilite> = {
   dureeGraviteDouce: 20,
   tolerance: 0.02,
   alignement: 0.06,
-  taquetFenetre: 30,
-  taquetVitesse8: 36,
-  taquetTicks: 20,
-  taquetMax: 2,
+  taquetVitesse8: 160,
+  taquetTicks: 9,
+  taquetChoc8: 20,
+  taquetMax: 3,
 };
 
 /** Les bornes admises pour les réglages d'essai du taquet (`?debug&tune`). */

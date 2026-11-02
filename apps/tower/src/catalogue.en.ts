@@ -179,7 +179,7 @@ export const CATALOGUE_EN: Catalogue = {
   "aide.pause": "Pause",
   "aide.manette": "On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, {m_taquetGauche} and {m_taquetDroite} bump, Start pauses.",
   "aide.taquet": "Bump",
-  "aide.taquet.note": "The bump is a hit to the side: right after a piece lands, it slides the piece until it hits something — wedge it between two pieces in one go.",
+  "aide.taquet.note": "The bump is a dash of the piece you are holding, before you place it: it shoots sideways, much faster than the arrows, hits whatever it touches to push it and stops dead against it — to slip into a gap in one go. The piece keeps falling during the dash, so timing matters.",
   "aide.reglables": "You can change the keys in Settings › Controls.",
 
   "ecran.retour": "Back to Tower",
@@ -217,7 +217,7 @@ export const CATALOGUE_EN: Catalogue = {
   "commandes.manette.descendre": "Drop fast",
   "commandes.fixe.stick": "Stick or d-pad",
   "commandes.fixe.stickBas": "Stick or d-pad down",
-  "commandes.tactile": "Six on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster), plus the two small bump buttons above left and right (a hit to the side, right after a piece lands).",
+  "commandes.tactile": "Six on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster), plus the two small bump buttons above left and right (a dash to the side, before you place the piece).",
 
   "archives.aria": "Archives",
   "archives.titre": "Archives",

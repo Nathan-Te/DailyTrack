@@ -80,41 +80,45 @@ export function perdreTout(R: Rapier, contenu: Scenario): Partie {
 
 
 /**
- * Lot T8 — la partie de référence du taquet (`?scenario=emboitement`) : le carré 0 est posé à gauche du bâton couché puis envoyé d'un coup de taquet dans la niche, calé contre la tige du L, le
- * bâton 1 est mené debout dans le trou rétréci (tolérance d'emboîtement), les autres tombent au centre. Des commandes scriptées (réactives), pas une recherche : de quoi produire un golden qui
- * contient les deux bits du taquet.
+ * Lot T8 — la partie de référence du taquet (`?scenario=emboitement`) : le carré 0 est mené à gauche du bâton couché, descend le long de son bout, et au bon moment (son bas passe sous le bâton) un
+ * élan de taquet vers la droite le glisse dans la niche, calé contre la tige du L ; le bâton 1 est mené debout dans le trou rétréci (tolérance d'emboîtement) ; les autres tombent au centre. Des
+ * commandes scriptées (réactives), pas une recherche : de quoi produire un golden qui contient les deux bits du taquet.
  */
 export function joueurEmboitement(R: Rapier, contenu: Scenario): Partie {
   const p = new Partie(R, contenu, REGLAGES_DEFAUT);
   const base = contenu.depart?.length ?? 0; // la tour de départ occupe les premiers numéros de pièce
   let id = -1;
   let k = 0;
-  let lacheDepuis = -1;
+  let elanDonne = false;
   let tournes = 0;
   const bord8 = (q: { kind: Scenario["pieces"][number]; rot: number; x: number; angle: number }): number => etendue(q.kind, q.rot, { x: q.x, y: 0, angle: q.angle }).gauche * 8;
   for (let t = 0; t < 20000 && p.etape !== "fini"; t++) {
     const v = p.vue();
     if (v.active !== id) {
-      if (id === base) lacheDepuis = 0;
       id = v.active;
       k = 0;
       tournes = 0;
+      elanDonne = false;
     }
     let m = 0;
-    if (lacheDepuis >= 0) {
-      lacheDepuis++;
-      // la pièce 0 vient d'être lâchée : un coup de taquet vers la droite, 6 ticks après
-      if (lacheDepuis === 6) m |= COMMANDE.TAQUET_DROITE;
-      if (lacheDepuis > 12) lacheDepuis = -2;
-    }
     if (v.active >= 0) {
       const q = v.pieces[v.active]!;
       const n = id - base;
       const cible8 = n === 0 ? -28 : n === 1 ? 40 : 0;
-      if (n === 1 && tournes < 3 && k % 6 === 1) {
+      if (n === 0) {
+        const ecart = cible8 - bord8(q);
+        if (elanDonne) m |= COMMANDE.DESCENDRE;
+        else if (ecart > 2) m |= COMMANDE.DROITE;
+        else if (ecart < -2) m |= COMMANDE.GAUCHE;
+        else if (q.y > 6) m |= COMMANDE.DESCENDRE; // il descend vite jusqu'au bout du bâton, puis à la vitesse normale : l'élan se donne quand son bas passe sous le bâton
+        else if (q.y <= 1.8) {
+          m |= COMMANDE.TAQUET_DROITE;
+          elanDonne = true;
+        }
+      } else if (n === 1 && tournes < 3 && k % 6 === 1) {
         m |= COMMANDE.TOURNER;
         tournes++;
-      } else if (n <= 1 && (n === 0 || tournes >= 3)) {
+      } else if (n === 1 && tournes >= 3) {
         const ecart = cible8 - bord8(q);
         if (ecart > 2) m |= COMMANDE.DROITE;
         else if (ecart < -2) m |= COMMANDE.GAUCHE;

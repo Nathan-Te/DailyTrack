@@ -5,9 +5,9 @@ import { CATALOGUE_FR } from "./catalogue.fr";
 // (`catalogue.en.ts`, à la demande) les a déjà. Les tests et `npm run traductions` voient le tout réuni (`catalogue.ts`).
 export const CATALOGUE_ECRANS_FR = {
   "aide.pause": "Pause",
-  "aide.manette": "À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} donnent le taquet, Start met en pause.",
+  "aide.manette": "À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} lancent le taquet, Start met en pause.",
   "aide.taquet": "Taquet",
-  "aide.taquet.note": "Le taquet est un coup sur le côté : juste après la pose, il envoie la pièce glisser jusqu'à ce qu'elle bute — de quoi la caler d'un coup entre deux pièces.",
+  "aide.taquet.note": "Le taquet est un élan de la pièce que tu tiens, avant de la poser : elle file de côté, bien plus vite qu'avec les flèches, frappe la pièce qu'elle touche pour la pousser et s'arrête net contre elle — de quoi se glisser d'un coup dans un trou. Elle continue de tomber pendant l'élan : c'est une affaire de timing.",
   "aide.reglables": "Les touches se changent dans Réglages › Commandes.",
 
   "ecran.retour": "Retour à Tower",
@@ -45,7 +45,7 @@ export const CATALOGUE_ECRANS_FR = {
   "commandes.manette.descendre": "Descendre vite",
   "commandes.fixe.stick": "Stick ou croix",
   "commandes.fixe.stickBas": "Bas du stick ou de la croix",
-  "commandes.tactile": "Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite (un coup sur le côté, juste après la pose).",
+  "commandes.tactile": "Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite (un élan vers le côté, avant la pose).",
 
   "archives.aria": "Archives",
   "archives.titre": "Archives",

@@ -184,7 +184,7 @@ interface Piece {
   vecu: number;
   soudee: boolean;
   fixe: boolean;
-  /** Lot T8 : le recalage du déplacement intelligent, en millimètres entiers (x = x8 / 8 + corr / 1000) ; les coups de taquet donnés depuis le lâcher, et le coup en cours (sens −1, 1 ou 0, ticks restants). */
+  /** Lot T8 : le recalage du déplacement intelligent, en millimètres entiers (x = x8 / 8 + corr / 1000) ; les élans de taquet donnés par cette pièce en main, et l'élan en cours (sens −1, 1 ou 0, ticks restants). */
   corr: number;
   coups: number;
   coupSens: number;
@@ -232,8 +232,6 @@ export class Partie {
   /** Lot T8 : la simulation 5 (pose douce, tolérance, taquet) et ses réglages (`stabilite.ts`). */
   private readonly v5: boolean;
   private readonly params: ParamsStabilite;
-  /** La dernière pièce lâchée : le taquet la pousse pendant sa fenêtre. */
-  private derniere: Piece | null = null;
   /** Le recouvrement accepté en main (mètres) : 1 mm avant la simulation 5, la tolérance d'emboîtement ensuite ; et le retrait latéral du test de lâcher (5 mm avant, la tolérance au moins ensuite). */
   private readonly tolRefus: number;
   private readonly tolLaterale: number;
@@ -310,7 +308,6 @@ export class Partie {
       return q;
     });
     this.active = s.active ? mapa.get(s.active)! : null;
-    this.derniere = s.derniere ? mapa.get(s.derniere)! : null;
     this.ticks = s.ticks;
     this.phase = s.phase;
     this.distribuees = s.distribuees;
@@ -419,9 +416,7 @@ export class Partie {
     this.ticks++;
     if (this.phase === "jeu") this.journal.push(commandes & commandesDeLaVersion(this.version));
     if (this.phase === "jeu" && this.active && !this.retenue) this.piloter(commandes | 0);
-    if (this.v5) this.mener();
     this.world.step();
-    if (this.v5) this.finirCoups();
     this.apresPas();
   }
 
@@ -430,52 +425,100 @@ export class Partie {
   private piloter(commandes: number): void {
     const p = this.active!;
     commandes &= commandesDeLaVersion(this.version);
-    if (commandes & COMMANDE.GAUCHE) this.deplacer(p, -DEMI_CASE_8);
-    if (commandes & COMMANDE.DROITE) this.deplacer(p, DEMI_CASE_8);
-    if (commandes & COMMANDE.TOURNER) this.tourner(p);
-    if (commandes & COMMANDE.TAQUET_GAUCHE) this.taquet(-1);
-    if (commandes & COMMANDE.TAQUET_DROITE) this.taquet(1);
-    if (p.effet === "vent" && ++p.vecu % this.physique.ventPeriodeTicks === 0) this.deplacer(p, (this.scenario.ventSens === -1 ? -1 : 1) * this.physique.ventPas8);
+    // Pendant un élan de taquet, la pièce file de côté : les pas, le quart de tour et le vent attendent la fin de l'élan (quelques dixièmes de seconde).
+    if (p.coupSens === 0) {
+      if (commandes & COMMANDE.GAUCHE) this.deplacer(p, -DEMI_CASE_8);
+      if (commandes & COMMANDE.DROITE) this.deplacer(p, DEMI_CASE_8);
+      if (commandes & COMMANDE.TOURNER) this.tourner(p);
+      if (commandes & COMMANDE.TAQUET_GAUCHE) this.taquet(p, -1);
+      else if (commandes & COMMANDE.TAQUET_DROITE) this.taquet(p, 1);
+    }
+    if (p.effet === "vent" && ++p.vecu % this.physique.ventPeriodeTicks === 0 && p.coupSens === 0) this.deplacer(p, (this.scenario.ventSens === -1 ? -1 : 1) * this.physique.ventPas8);
     const facteur = commandes & COMMANDE.DESCENDRE ? this.reglages.facteurDescente : 1;
     const normale = this.reglages.vitesseChute8 / 8;
+    if (p.coupSens !== 0) this.elan(p, p.y - (normale * facteur) / TICKS_PAR_SECONDE);
     let vy = normale * facteur;
     // « Descendre » est un confort, jamais un effet physique (lot T2) : la descente rapide s'arrête à la marge de contact, la pièce finit sa course à la vitesse normale et
     // lâche exactement comme une pièce sans accélération — elle se pose à la même vitesse, avec la même force.
     if (facteur > 1 && this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) vy = normale;
     p.body!.setLinvel({ x: 0, y: -vy }, true);
     // Au pas qui vient la pièce descend de vy / 60 : si elle toucherait (à la marge près) la plateforme ou une pièce, elle lâche maintenant.
-    if (this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) this.lacher(p);
+    if (this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) {
+      if (p.coupSens !== 0) this.finirElan(p, false);
+      this.lacher(p);
+    }
   }
 
   /**
-   * Lot T8 (simulation 5) — **le taquet**, un vrai coup sur le côté, vers la gauche (−1) ou la droite (1) : **juste après un lâcher** (`taquetFenetre` ticks), il envoie la pièce lâchée glisser à
-   * `taquetVitesse8` pendant `taquetTicks` ticks — elle va jusqu'à ce qu'elle bute contre une pièce (elle s'arrête net, calée) ou au bout de sa portée (1,5 m) : de quoi la placer d'un coup entre deux
-   * pièces. Au plus `taquetMax` coups par pièce, un seul à la fois ; sans pièce lâchée dans la fenêtre l'ordre est sans effet (la pièce en main n'est jamais touchée).
+   * Lot T8 (simulation 5) — **le taquet**, un élan de la pièce EN MAIN, avant la pose, vers la gauche (−1) ou la droite (1) : d'un seul appui la pièce file de côté à `taquetVitesse8` pendant
+   * `taquetTicks` ticks (3 m, bien plus vite qu'avec les flèches) tout en continuant de descendre — le timing compte. Elle s'arrête net contre ce qu'elle heurte (de quoi se glisser d'un coup dans un
+   * trou) et donne un choc à la pièce posée qu'elle frappe (`elan`). Au plus `taquetMax` élans par pièce, un seul à la fois.
    */
-  private taquet(sens: number): void {
-    const d = this.derniere;
-    if (!d || d.etat !== "libre" || !d.body || d.fixe || d.coupSens !== 0 || d.coups >= this.params.taquetMax || this.ticks - d.lacheTick >= this.params.taquetFenetre) return;
-    d.coups++;
-    d.coupSens = sens;
-    d.coupReste = this.params.taquetTicks;
+  private taquet(p: Piece, sens: number): void {
+    if (p.coups >= this.params.taquetMax) return;
+    p.coups++;
+    p.coupSens = sens;
+    p.coupReste = this.params.taquetTicks;
   }
 
-  /** Le coup en cours : à chaque tick sa vitesse horizontale est reposée (le frottement ne la grignote pas) ; il finit au bout de sa portée ou dès que la pièce bute (sa vitesse tombe de plus de moitié). */
-  private mener(): void {
-    for (const p of this.pieces) if (p.coupSens !== 0 && p.body) p.body.setLinvel({ x: (p.coupSens * this.params.taquetVitesse8) / 8, y: p.body.linvel().y }, true);
-  }
-
-  private finirCoups(): void {
-    const v = this.params.taquetVitesse8 / 8;
-    for (const p of this.pieces) {
-      if (p.coupSens === 0) continue;
-      const b = p.body;
-      const bute = !b || p.coupSens * b.linvel().x < 0.35 * v;
-      if (--p.coupReste <= 0 || bute) {
-        if (b) b.setLinvel({ x: 0, y: b.linvel().y }, true);
-        p.coupSens = 0;
+  /**
+   * Un tick d'élan. La pièce (un fantôme, sans contact) avance de `taquetVitesse8 / 60` : on lance sa forme (rétrécie de la tolérance d'emboîtement) dans le sens de l'élan, à la hauteur où elle sera
+   * à ce tick (`y`), et elle s'arrête au premier obstacle. Si l'obstacle est une pièce posée libre, elle reçoit un choc : sa vitesse horizontale augmente de `taquetChoc8 / 8` partagée selon les masses
+   * (choc mou : v = choc × m_pièce / (m_pièce + m_frappée)) ; la plateforme, une pièce figée ou le bord de la scène ne bougent pas. L'élan finit contre l'obstacle ou au bout de sa portée.
+   */
+  private elan(p: Piece, y: number): void {
+    const sens = p.coupSens;
+    const pas = this.params.taquetVitesse8 / 8 / TICKS_PAR_SECONDE;
+    const tol = this.tolRefus;
+    let avance = pas;
+    let cible: RAPIER.RigidBody | null = null;
+    let bute = false;
+    for (const b of boitesE(p.kind, p.rot, p.taille, this.echelles)) {
+      const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - tol), Math.max(0.0001, b.hh / 8 - tol));
+      const hit = this.world.castShape({ x: p.x + b.cx / 8, y: y + b.cy / 8 }, 0, { x: sens, y: 0 }, forme, 0, pas, false, undefined, undefined, undefined, p.body!);
+      if (hit && hit.time_of_impact < avance) {
+        avance = hit.time_of_impact;
+        cible = hit.collider.parent();
+        bute = true;
       }
     }
+    if (Math.abs(p.x + sens * avance) * 8 > LIMITE_X8) {
+      avance = Math.max(0, LIMITE_X8 / 8 - sens * p.x);
+      cible = null;
+      bute = true;
+    }
+    p.x += sens * avance;
+    p.body!.setTranslation({ x: p.x, y: p.y }, true);
+    if (bute && cible) {
+      const q = this.parCorps.get(cible.handle);
+      if (q && q.etat === "libre" && !q.fixe && q.body) {
+        const md = p.body!.mass();
+        const dv = (sens * this.params.taquetChoc8) / 8 * (md / (md + q.body.mass()));
+        const v = q.body.linvel();
+        q.body.setLinvel({ x: v.x + dv, y: v.y }, true);
+      }
+    }
+    if (bute || --p.coupReste <= 0) this.finirElan(p, bute);
+  }
+
+  /**
+   * La fin d'un élan : la pièce revient sur la grille des demi-cases. Arrêtée contre un obstacle, elle se recale du côté d'où elle vient (jamais dans l'obstacle : on recule d'une demi-case tant que
+   * la tolérance d'emboîtement ne suffit pas) ; au bout de sa portée, à la demi-case la plus proche. Puis le déplacement intelligent la recale comme après un pas.
+   */
+  private finirElan(p: Piece, bute: boolean): void {
+    const sens = p.coupSens;
+    p.coupSens = 0;
+    p.coupReste = 0;
+    const k0 = (p.x * 8 - p.x8) / DEMI_CASE_8;
+    const marge = this.tolRefus * 2 + 1e-9;
+    let k = bute ? (sens > 0 ? Math.floor(k0 + marge) : Math.ceil(k0 - marge)) : Math.round(k0);
+    while (k !== 0 && (Math.abs(p.x8 + k * DEMI_CASE_8) > LIMITE_X8 || this.touche(p, (p.x8 + k * DEMI_CASE_8) / 8, p.y, -this.tolRefus))) k -= Math.sign(k);
+    const x8 = p.x8 + k * DEMI_CASE_8;
+    p.g8 += x8 - p.x8;
+    p.x8 = x8;
+    p.x = x8 / 8;
+    p.body!.setTranslation({ x: p.x, y: p.y }, true);
+    this.aligner(p);
   }
 
   /**
@@ -606,7 +649,6 @@ export class Partie {
     p.body!.setGravityScale(1, true);
     if (this.v4) for (let i = 0; i < p.body!.numColliders(); i++) p.body!.collider(i).setCollisionGroups(GROUPES_NORMAL);
     if (this.v5) {
-      this.derniere = p;
       if (this.params.dureeGraviteDouce > 0 && this.params.graviteDouce !== 1) p.body!.setGravityScale(this.params.graviteDouce, true);
     }
     p.etat = "libre";

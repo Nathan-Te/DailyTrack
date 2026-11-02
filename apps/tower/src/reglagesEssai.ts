@@ -31,7 +31,7 @@ export interface ReglagesTune {
   entrees: ReglagesEntrees;
   sim: Reglages;
   physique: ReglagesPhysique;
-  /** Lot T8 : la pose douce, la tolérance d'emboîtement et le taquet (pas fin, fenêtre, force, nombre de poussées) de la simulation 5. */
+  /** Lot T8 : la pose douce, la tolérance d'emboîtement et le taquet (tolérance, recalage, élan du taquet : vitesse, durée, choc, nombre d'élans) de la simulation 5. */
   stabilite: ParamsStabilite;
   /** La largeur de la plateforme forcée (demi-largeur en huitièmes de mètre) ; `null` : celle du jour. Sans toucher au générateur. */
   plateformeDemi8: number | null;
