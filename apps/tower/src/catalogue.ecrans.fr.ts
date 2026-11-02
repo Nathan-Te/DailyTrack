@@ -7,7 +7,7 @@ export const CATALOGUE_ECRANS_FR = {
   "aide.pause": "Pause",
   "aide.manette": "À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} lancent le taquet, Start met en pause.",
   "aide.taquet": "Taquet",
-  "aide.taquet.note": "Le taquet est un coup de côté donné à la pièce que tu tiens, avant de la poser : elle avance d'un mètre et demi d'un coup, exactement là où tu la pousses, sans aucun recalage. Si elle percute un bloc, elle t'échappe : tu ne la contrôles plus, elle tombe en poussant le bloc de toute sa force — de quoi faire tomber une pièce mal placée.",
+  "aide.taquet.note": "Le taquet est un coup de côté donné à la pièce que tu tiens, avant de la poser : elle avance d'un mètre et demi d'un coup, exactement là où tu la pousses, sans aucun recalage. Si elle percute un bloc, elle t'échappe : tu ne la contrôles plus, elle tombe en poussant le bloc de toute sa force — de quoi faire tomber une pièce mal placée. Quand la pièce touche un appui, tu la gardes en main un quart de seconde (sauf si tu tiens « descendre ») : de quoi la glisser d'un taquet dans une fente à sa mesure.",
   "aide.reglables": "Les touches se changent dans Réglages › Commandes.",
 
   "ecran.retour": "Retour à Tower",

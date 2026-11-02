@@ -98,6 +98,58 @@ describe("le taquet : un coup de côté de la pièce en main, manuel à 100 %", 
     p.dispose();
   });
 
+  it("le délai de grâce (coyote time) : posée contre l'appui sans « descendre », la pièce reste en main et un taquet la glisse dans une fente à peine plus haute qu'elle", () => {
+    // la fente : au-dessus d'un carré (dessus à 2 m), sous le bâton couché sur la tige du L (dessous à 3 m) ; son fond est fermé par la tige (x = 0). Le bâton en main se pose sur le coin gauche du carré.
+    const depart = [
+      { kind: "L" as const, rot: 3, x8: 6, y8: 10 },
+      { kind: "I" as const, rot: 0, x8: 4, y8: 28 },
+      { kind: "O" as const, rot: 0, x8: -8, y8: 8 },
+    ];
+    const jouer = (stabilite: Record<string, number>, taquet: boolean): { x: number; y: number } => {
+      const p = new Partie(R, { nom: "fente", pieces: ["I"], plateformeDemi8: 128, depart }, REGLAGES_DEFAUT, { stabilite });
+      let donne = false;
+      for (let k = 0; k < 900 && p.vue().active === 3; k++) {
+        const q = p.vue().pieces[3]!;
+        const bas = q.y - 0.5;
+        let m: number = k < 7 ? COMMANDE.GAUCHE : 0; // sept demi-cases à gauche : le bâton en main couvre x de −5,5 à −1,5, son bout droit à l'aplomb du bout du bâton couché, un demi-mètre au-dessus du coin du carré
+        if (k >= 7 && bas > 4.2) m |= COMMANDE.DESCENDRE;
+        if (taquet && !donne && k >= 7 && bas <= 2.06) {
+          m |= COMMANDE.TAQUET_DROITE; // le bas du bâton est à 5 mm du dessus du carré : on est dans la fente
+          donne = true;
+        }
+        p.avancer(m);
+      }
+      for (let k = 0; k < 200; k++) p.avancer(0);
+      const q = p.vue().pieces[3]!;
+      p.dispose();
+      return { x: q.x, y: q.y };
+    };
+    const avec = jouer({}, true);
+    expect(avec.x).toBeGreaterThan(-2.3); // entré dans la fente jusqu'à la tige : x de −4 à 0
+    expect(avec.x).toBeLessThan(-1.7);
+    expect(avec.y).toBeCloseTo(2.5, 1); // posé sur le carré, sous le bâton couché
+    const sans = jouer({ delaiLacher: 0 }, true); // sans délai de grâce, la pièce est lâchée au contact : le taquet arrive trop tard
+    expect(sans.x).toBeLessThan(-2.9);
+  });
+
+  it("le délai de grâce dure 15 ticks sans « descendre » (la pièce reste en main, à fleur du sol) et « descendre » tenu la lâche aussitôt", () => {
+    const attenteAvantLacher = (descendre: boolean): number => {
+      const p = new Partie(R, { nom: "sol", pieces: ["O", "O"], plateformeDemi8: 128 });
+      let arrivee = -1;
+      for (let k = 0; k < 900; k++) {
+        const v = p.vue();
+        if (v.active !== 0) return k - arrivee;
+        const bas = v.pieces[0]!.y - 1;
+        if (arrivee < 0 && bas <= 0.08) arrivee = k;
+        p.avancer(descendre || bas > 4 ? COMMANDE.DESCENDRE : 0);
+      }
+      return -1;
+    };
+    expect(attenteAvantLacher(false)).toBeGreaterThanOrEqual(14);
+    expect(attenteAvantLacher(false)).toBeLessThanOrEqual(19);
+    expect(attenteAvantLacher(true)).toBeLessThanOrEqual(4);
+  });
+
   it("le taquet pousse une pièce mal placée en hauteur et la fait tomber : un carré en porte-à-faux sur un autre bascule quand le taquet le frappe de côté", () => {
     // le carré du bas : x de 0 à 2 ; celui du haut, x de 0,5 à 2,5 (son centre de masse, 1,5, tient encore sur le bas) : frappé de la gauche, il part et tombe
     const depart = [

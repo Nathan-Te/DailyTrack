@@ -179,7 +179,7 @@ export const CATALOGUE_EN: Catalogue = {
   "aide.pause": "Pause",
   "aide.manette": "On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, {m_taquetGauche} and {m_taquetDroite} bump, Start pauses.",
   "aide.taquet": "Bump",
-  "aide.taquet.note": "The bump is a knock to the side given to the piece you are holding, before you place it: it moves a metre and a half in one go, exactly where you push it, with no adjustment. If it hits a block, it gets away from you: you no longer control it, and it falls, pushing the block with all its might — enough to topple a badly placed piece.",
+  "aide.taquet.note": "The bump is a knock to the side given to the piece you are holding, before you place it: it moves a metre and a half in one go, exactly where you push it, with no adjustment. If it hits a block, it gets away from you: you no longer control it, and it falls, pushing the block with all its might — enough to topple a badly placed piece. When the piece touches a support, you keep hold of it for a quarter of a second (unless you hold drop): enough to bump it into a gap just its size.",
   "aide.reglables": "You can change the keys in Settings › Controls.",
 
   "ecran.retour": "Back to Tower",

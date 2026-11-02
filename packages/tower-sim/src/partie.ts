@@ -187,6 +187,8 @@ interface Piece {
   /** Lot T8 : le recalage du déplacement intelligent, en millimètres entiers (x = x8 / 8 + corr / 1000) ; les élans de taquet donnés par cette pièce en main, et l'élan en cours (sens −1, 1 ou 0, ticks restants). */
   corr: number;
   coups: number;
+  /** Lot T8 : les ticks passés en main, posée contre un appui (le délai de grâce avant le lâcher, `delaiLacher`). */
+  contact: number;
   coupSens: number;
   coupReste: number;
 }
@@ -436,17 +438,41 @@ export class Partie {
     if (p.effet === "vent" && ++p.vecu % this.physique.ventPeriodeTicks === 0 && p.coupSens === 0) this.deplacer(p, (this.scenario.ventSens === -1 ? -1 : 1) * this.physique.ventPas8);
     const facteur = commandes & COMMANDE.DESCENDRE ? this.reglages.facteurDescente : 1;
     const normale = this.reglages.vitesseChute8 / 8;
-    if (p.coupSens !== 0 && this.elan(p, p.y - (normale * facteur) / TICKS_PAR_SECONDE)) return; // le taquet a percuté un bloc : la pièce est lâchée, plus rien ne la contrôle
+    if (p.coupSens !== 0 && this.elan(p, p.contact > 0 ? p.y : p.y - (normale * facteur) / TICKS_PAR_SECONDE)) return; // le taquet a percuté un bloc : la pièce est lâchée, plus rien ne la contrôle
     let vy = normale * facteur;
     // « Descendre » est un confort, jamais un effet physique (lot T2) : la descente rapide s'arrête à la marge de contact, la pièce finit sa course à la vitesse normale et
     // lâche exactement comme une pièce sans accélération — elle se pose à la même vitesse, avec la même force.
     if (facteur > 1 && this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) vy = normale;
-    p.body!.setLinvel({ x: 0, y: -vy }, true);
     // Au pas qui vient la pièce descend de vy / 60 : si elle toucherait (à la marge près) la plateforme ou une pièce, elle lâche maintenant.
     if (this.toucheEnBas(p, p.x, p.y - vy / TICKS_PAR_SECONDE)) {
+      // Simulation 5 : le délai de grâce (le « coyote time » de Tricky Towers). Tant qu'on ne tient pas « descendre », la pièce reste EN MAIN `delaiLacher` ticks, posée à fleur de son appui, et tous les ordres
+      // marchent encore (pas, quart de tour, taquet) : de quoi la glisser d'un coup dans une fente à peine plus haute qu'elle. Si l'appui disparaît sous elle, elle retombe ; le délai passé, elle lâche.
+      if (this.v5 && !(commandes & COMMANDE.DESCENDRE) && p.contact < this.params.delaiLacher) {
+        if (p.contact === 0) this.poserSurAppui(p);
+        p.contact++;
+        p.body!.setLinvel({ x: 0, y: 0 }, true);
+        return;
+      }
+      p.body!.setLinvel({ x: 0, y: -vy }, true);
       this.finirElan(p);
       this.lacher(p);
+      return;
     }
+    p.contact = 0;
+    p.body!.setLinvel({ x: 0, y: -vy }, true);
+  }
+
+  /** Pose la pièce en main à fleur de l'appui qu'elle va toucher (5 mm au-dessus) : une fente d'à peine plus que sa hauteur reste franchissable. Un lancer de forme vers le bas, rétréci comme le test de lâcher. */
+  private poserSurAppui(p: Piece): void {
+    let toi = Infinity;
+    for (const b of boitesE(p.kind, p.rot, p.taille, this.echelles)) {
+      const forme = new this.R.Cuboid(Math.max(0.0001, b.hw / 8 - this.tolLaterale), b.hh / 8);
+      const hit = this.world.castShape({ x: p.x + b.cx / 8, y: p.y + b.cy / 8 }, 0, { x: 0, y: -1 }, forme, 0, 0.2, false, undefined, undefined, undefined, p.body!);
+      if (hit && hit.time_of_impact < toi) toi = hit.time_of_impact;
+    }
+    if (toi === Infinity) return;
+    p.y -= Math.max(0, toi - 0.005);
+    p.body!.setTranslation({ x: p.x, y: p.y }, true);
   }
 
   /**
@@ -728,7 +754,7 @@ export class Partie {
     const y8 = Math.ceil(sommet * 8) + this.reglages.hauteurApparition8 - bas8;
     const p: Piece = {
       id, kind, rot: 0, etat: "active", body: null, x8, g8, x: x8 / 8, y: y8 / 8, angle: 0, endormie: false, sommet: y8 / 8, stabilisee: false,
-      taille, effet, lacheTick: -1, vecu: 0, soudee: false, fixe: false, corr: 0, coups: 0, coupSens: 0, coupReste: 0,
+      taille, effet, lacheTick: -1, vecu: 0, soudee: false, fixe: false, corr: 0, coups: 0, contact: 0, coupSens: 0, coupReste: 0,
     };
     p.body = this.creerCorps(p);
     this.pieces.push(p);
@@ -753,7 +779,7 @@ export class Partie {
   private poserDepart(d: PieceDepart): void {
     const p: Piece = {
       id: this.pieces.length, kind: d.kind, rot: d.rot & 3, etat: "libre", body: null, x8: d.x8, g8: 0, x: d.x8 / 8 + (d.dxMm ?? 0) / 1000, y: d.y8 / 8 + (d.dyMm ?? 0) / 1000, angle: 0, endormie: false, sommet: 0, stabilisee: true,
-      taille: "normale", effet: null, lacheTick: -1, vecu: 0, soudee: false, fixe: false, corr: 0, coups: 0, coupSens: 0, coupReste: 0,
+      taille: "normale", effet: null, lacheTick: -1, vecu: 0, soudee: false, fixe: false, corr: 0, coups: 0, contact: 0, coupSens: 0, coupReste: 0,
     };
     p.sommet = sommetPieceE(p.kind, p.rot, p.y, 0, "normale", this.echelles);
     p.body = this.creerCorps(p);

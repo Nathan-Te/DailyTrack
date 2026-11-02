@@ -21,6 +21,8 @@ export interface ParamsStabilite {
   taquetTicks: number;
   taquetChoc8: number;
   taquetMax: number;
+  /** Le délai de grâce (« coyote time ») : ticks pendant lesquels la pièce reste en main, posée contre son appui, avant d'être lâchée (sauf si « descendre » est tenu ; 0 : aucun délai). */
+  delaiLacher: number;
 }
 
 export const PARAMS_STABILITE: Readonly<ParamsStabilite> = {
@@ -33,6 +35,7 @@ export const PARAMS_STABILITE: Readonly<ParamsStabilite> = {
   taquetTicks: 6,
   taquetChoc8: 40,
   taquetMax: 0,
+  delaiLacher: 15,
 };
 
 /** Les bornes admises pour les réglages d'essai du taquet (`?debug&tune`). */
