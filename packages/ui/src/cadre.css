@@ -77,7 +77,7 @@ body:has(.cadre--haut:not([hidden])) .cadre:not(.cadre--haut) {
    lot M1) est plus précise. **Sans JavaScript, donc sans octet dans le premier chargement des jeux** (un état « dernière entrée » du clavier coûtait ≈ 100 o à chaque jeu). Limite assumée : un clavier
    branché à un appareil sans souris ne voit pas non plus l'anneau. Retiré, jamais rendu transparent. */
 @media (any-pointer: coarse) and (not (any-pointer: fine)) {
-  html [role="dialog"] :focus-visible {
+  [role="dialog"] :focus-visible {
     outline: 0;
   }
 }
