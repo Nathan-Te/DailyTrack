@@ -37,8 +37,8 @@
 .dj-cartouche--avec-favori {
   position: relative;
 }
-/* La cartouche compacte : une ligne, mêmes coque, couleurs et étiquette que la pleine (variante, pas un nouveau dessin). Les stries de préhension laissent la place ; les décors de
-   l'étiquette (dessin de Jump et de Tower) aussi — le nom, le numéro et la couleur du jeu restent ; la livrée de Track n'est plus qu'une bande étroite, sous laquelle le texte ne passe pas. */
+/* La cartouche compacte : une ligne, mêmes coque, couleurs, police **et décor** que la pleine (variante, pas un nouveau dessin) : le dessin de Jump et de Tower et la livrée de Track
+   sont gardés, en plus petit, sous le texte jamais dessus. Seules les stries de préhension laissent la place. */
 .dj-cartouche--compacte {
   position: relative;
   flex-direction: row;
@@ -46,9 +46,7 @@
   gap: var(--dj-espace-3);
   padding: var(--dj-espace-3) var(--dj-espace-4);
 }
-.dj-cartouche--compacte .dj-cartouche__stries,
-.dj-cartouche--compacte .jump-etiquette__dessin,
-.dj-cartouche--compacte .tower-etiquette__dessin {
+.dj-cartouche--compacte .dj-cartouche__stries {
   display: none;
 }
 .dj-cartouche--compacte .dj-etiquette {
@@ -57,12 +55,34 @@
   min-height: 0;
   padding: var(--dj-espace-3) var(--dj-espace-4);
 }
+.dj-cartouche--compacte .jump-etiquette__dessin {
+  width: 46px;
+  height: auto;
+}
+.dj-cartouche--compacte .tower-etiquette__dessin {
+  width: 38px;
+  height: auto;
+}
 .dj-cartouche--compacte .track-etiquette {
-  padding-right: 52px;
+  padding-right: 62px;
 }
 .dj-cartouche--compacte .track-etiquette__livree {
-  width: 40px;
+  width: 44px;
   right: -8px;
+}
+@media (min-width: 600px) {
+  .dj-cartouche--compacte .jump-etiquette__dessin {
+    width: 62px;
+  }
+  .dj-cartouche--compacte .tower-etiquette__dessin {
+    width: 50px;
+  }
+  .dj-cartouche--compacte .track-etiquette {
+    padding-right: 96px;
+  }
+  .dj-cartouche--compacte .track-etiquette__livree {
+    width: 84px;
+  }
 }
 .dj-cartouche--compacte .dj-cartouche__action {
   flex: none;
