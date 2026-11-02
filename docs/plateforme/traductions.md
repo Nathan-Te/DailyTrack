@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1423 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1429 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1760,11 +1760,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commandes.action.recommencer` | Recommencer | Restart |
 | `commandes.action.pause` | Pause | Pause |
 | `commandes.action.fantome` | Fantôme | Ghost |
+| `commandes.action.taquetGauche` | Taquet à gauche | Nudge left |
+| `commandes.action.taquetDroite` | Taquet à droite | Nudge right |
 | `commandes.manette.deplacer` | Déplacer | Move |
 | `commandes.manette.descendre` | Descendre vite | Drop fast |
 | `commandes.fixe.stick` | Stick ou croix | Stick or d-pad |
 | `commandes.fixe.stickBas` | Bas du stick ou de la croix | Stick or d-pad down |
-| `commandes.tactile` | Quatre boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute). | Four on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster). |
+| `commandes.tactile` | Six boutons à l'écran suffisent : gauche, droite, tourner et descendre (maintiens-le pour accélérer la chute), plus les deux petits boutons du taquet au-dessus de gauche et de droite. | Six on-screen buttons are enough: left, right, rotate and drop (hold it to fall faster), plus the two small nudge buttons above left and right. |
 
 ### Commandes tactiles (`commande.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1774,6 +1776,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commande.droite` | Droite | Right |
 | `commande.tourner` | Tourner | Rotate |
 | `commande.descendre` | Descendre vite (maintenir) | Drop fast (hold) |
+| `commande.taquetGauche` | Taquet à gauche | Nudge left |
+| `commande.taquetDroite` | Taquet à droite | Nudge right |
 
 ### Comment jouer (`aide.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -1788,9 +1792,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.tourner` | Tourner | Rotate |
 | `aide.descendre` | Descendre vite | Drop fast |
 | `aide.ok` | C'est parti | Let's go |
-| `aide.ligne` | {gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {pause} pause | {gauche} {droite} move · {tourner} rotate · {descendre} drop · {pause} pause |
+| `aide.ligne` | {gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {taquetGauche} {taquetDroite} taquet · {pause} pause | {gauche} {droite} move · {tourner} rotate · {descendre} drop · {taquetGauche} {taquetDroite} nudge · {pause} pause |
 | `aide.pause` | Pause | Pause |
-| `aide.manette` | À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, Start met en pause. | On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, Start pauses. |
+| `aide.manette` | À la manette : le stick ou la croix déplacent, {m_tourner} tourne, {m_descendre} descend, {m_taquetGauche} et {m_taquetDroite} donnent le taquet, Start met en pause. | On a gamepad: the stick or d-pad move, {m_tourner} rotates, {m_descendre} drops, {m_taquetGauche} and {m_taquetDroite} nudge, Start pauses. |
+| `aide.taquet` | Taquet | Nudge |
+| `aide.taquet.note` | Le taquet décale la pièce en main d'un cran fin ; juste après la pose, il la pousse sur le côté pour la caler dans un creux. | The nudge shifts the piece in your hand by a fine step; right after it lands, it pushes the piece sideways to wedge it into a gap. |
 | `aide.reglables` | Les touches se changent dans Réglages › Commandes. | You can change the keys in Settings › Controls. |
 
 ### ecran (`ecran.*`, `apps/tower/src/catalogue.*.ts`)

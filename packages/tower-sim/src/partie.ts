@@ -413,8 +413,6 @@ export class Partie {
     if (this.phase === "jeu") this.journal.push(commandes & commandesDeLaVersion(this.version));
     if (this.phase === "jeu" && this.active && !this.retenue) this.piloter(commandes | 0);
     this.world.step();
-    const d = this.derniere;
-    if (d && this.v5 && this.params.dureeGraviteDouce > 0 && this.ticks - d.lacheTick === this.params.dureeGraviteDouce && d.body && !d.fixe) d.body.setGravityScale(1, true);
     this.apresPas();
   }
 
@@ -645,6 +643,8 @@ export class Partie {
     // 1. positions, pièces perdues.
     for (const p of this.pieces) {
       if (!p.body) continue;
+      // Pose douce : la gravité entière revient `dureeGraviteDouce` ticks après le lâcher (chaque pièce, même si une autre a été lâchée entre-temps).
+      if (this.v5 && p.lacheTick >= 0 && this.ticks - p.lacheTick === this.params.dureeGraviteDouce && this.params.dureeGraviteDouce > 0 && p.etat === "libre") p.body.setGravityScale(1, true);
       if (p.etat === "active") {
         const t = p.body.translation();
         // Version 4 : la colonne de la pièce en main est celle de la grille (l'autorité, jamais Rapier) ; seule la hauteur vient du moteur.
