@@ -321,6 +321,74 @@ test("démo : « Voir la course du n° 1 » lit l'essai du premier jusqu'à l'ar
   });
 });
 
+test("démo : « Voir la course du n° 1 » est sur l'accueil à côté de « Tout le classement » ; la course ramène à l'accueil", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await atInstant(browser, FIXED_NOW, async (page, context) => {
+    await withName(context, "Témoin");
+    await page.goto("/?debug&api=demo");
+    test.skip(!(await hasWebGL(page)), SKIP);
+    await homeReady(page);
+    if (await page.locator("#help").isVisible()) await page.locator("#help-close").click();
+    const course = page.locator("#home-board-course");
+    const tout = page.locator("#home-board");
+    await expect(course).toBeVisible();
+    await expect(course).toHaveText("Voir la course du n° 1");
+    await expect(tout).toBeVisible();
+    // Côte à côte (ou l'un sous l'autre si la place manque), sans chevauchement, et tous deux des cibles d'au moins 44 px — sur ordinateur puis en paysage sur téléphone.
+    for (const vue of [{ width: 1280, height: 720 }, { width: 844, height: 390 }]) {
+      await page.setViewportSize(vue);
+      await course.scrollIntoViewIfNeeded();
+      const a = (await tout.boundingBox())!;
+      const b = (await course.boundingBox())!;
+      expect(a.height, "Tout le classement").toBeGreaterThanOrEqual(44);
+      expect(b.height, "Voir la course du n° 1").toBeGreaterThanOrEqual(44);
+      const separes = a.x + a.width <= b.x + 0.5 || b.x + b.width <= a.x + 0.5 || a.y + a.height <= b.y + 0.5 || b.y + b.height <= a.y + 0.5;
+      expect(separes, `chevauchement à ${vue.width}×${vue.height}`).toBe(true);
+      if (process.env.CAPTURES) await page.screenshot({ path: `${process.env.CAPTURES}/accueil-course-${vue.width}x${vue.height}.png` });
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+    expect(await page.evaluate(() => document.querySelector("#home-board")!.parentElement === document.querySelector("#home-board-course")!.parentElement)).toBe(true);
+    // Un clic lance la course (barre : titre, pseudo, chrono, pause, ×1/×2, retour) ; « Retour à l'accueil » ramène à l'accueil, pas au classement.
+    await course.click();
+    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.carnage.state.course?.barre === true);
+    await expect(page.locator("#home")).toBeHidden();
+    await expect(page.locator("#carnage .carnage__titre")).toHaveText("COURSE DU N° 1");
+    const nom = await page.evaluate(() => (window as unknown as { __jump: J }).__jump.carnage.state.course!.nom);
+    await expect(page.locator("#carnage .count")).toContainText(nom);
+    await expect(page.locator("#carnage-pause")).toBeVisible();
+    await expect(page.locator("#course-vitesse")).toBeVisible();
+    await expect(page.locator("#carnage-close")).toHaveText("Retour à l'accueil de Jump");
+    await page.locator("#carnage-close").click();
+    await expect(page.locator("#home")).toBeVisible();
+    await expect(page.locator("#leaderboard")).toBeHidden();
+    await expect(page.locator("#carnage")).toBeHidden();
+    await expect(course).toBeVisible();
+    // Échap quitte aussi, vers l'accueil.
+    await course.click();
+    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.carnage.state.course?.barre === true);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#home")).toBeVisible();
+    // Lancée depuis l'écran du classement complet, la course revient à ce classement (le bouton du classement complet est inchangé).
+    await tout.click();
+    await expect(page.locator("#leaderboard")).toBeVisible();
+    await page.locator("#board-course").click();
+    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.carnage.state.course?.barre === true);
+    await expect(page.locator("#carnage-close")).toHaveText("Retour au classement");
+    await page.locator("#carnage-close").click();
+    await expect(page.locator("#leaderboard")).toBeVisible();
+  });
+});
+
+test("sans serveur, pas de classé : « Voir la course du n° 1 » est absent de l'accueil", async ({ browser }) => {
+  test.setTimeout(60_000);
+  await atInstant(browser, FIXED_NOW, async (page) => {
+    await page.goto("/?debug");
+    test.skip(!(await hasWebGL(page)), SKIP);
+    await homeReady(page);
+    await expect(page.locator("#home-board-course")).toBeHidden();
+  });
+});
+
 test("sans serveur, pas de classé : « Voir la course du n° 1 » est absent du classement", async ({ browser }) => {
   test.setTimeout(60_000);
   await atInstant(browser, FIXED_NOW, async (page) => {

@@ -25,6 +25,8 @@ export interface CourseUi {
 
 export interface CourseOptions {
   nom: string;
+  /** Lancée par le bouton de l'accueil (« Retour à l'accueil ») et non par le classement (« Retour au classement »). */
+  accueil: boolean;
   /** L'action d'une touche selon les commandes du joueur (`commandes.actionDeTouche`, lot M2) : jamais une touche en dur. Échap (fixe) quitte, l'action `pause` met en pause. */
   actionDeTouche(code: string): string | null;
   onToggle(): void;
@@ -59,7 +61,7 @@ export function montrerCourse(o: CourseOptions): CourseUi {
   lier(titre, "course.titre");
   lier(legende, "course.chrono");
   lier(aide, "aide.course");
-  lier(quitter, "course.quitter");
+  lier(quitter, o.accueil ? "cadre.retourJump" : "course.quitter");
   precedente.hidden = true;
   suivante.hidden = true;
   racine.classList.add("course");

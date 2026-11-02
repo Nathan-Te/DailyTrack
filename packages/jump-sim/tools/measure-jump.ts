@@ -28,6 +28,7 @@ import {
   RESTART_VERSION,
   ALT_KEPT_VERSION,
   MIN_HOLD_VERSION,
+  CHECKPOINT_ZONE_VERSION,
   LASER_VERSION,
   PRESS_VERSION,
   SINGLE_CLOCK_VERSION,
@@ -59,7 +60,8 @@ const DAYS = arg ? Number(arg.slice(8)) : 120;
 // Lot 27 : `-- --generateur=20` mesure la référence v10 (g20, mort avant le premier point = reprise au départ, forêt à rafales) ; sans option, le générateur en vigueur (g21).
 // Lot 25 : `-- --generateur=18` mesure la référence v8 (g18, le catalogue sans lasers, W = 3) ; sans option, le générateur en vigueur (g19).
 // Lot 28 : `-- --generateur=21` mesure la référence v11 (g21, les alternés repartent de A à la reprise) ; sans option, le générateur en vigueur (g22).
-const SIM_VERSION = process.argv.includes("--generateur=23") ? ALT_KEPT_VERSION : process.argv.includes("--generateur=21") ? RESTART_VERSION : process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : process.argv.includes("--generateur=17") ? MUSHROOM_VERSION : process.argv.includes("--generateur=18") ? STALACTITE_VERSION : process.argv.includes("--generateur=19") ? LASER_VERSION : process.argv.includes("--generateur=20") ? BRIDGE_VERSION : MIN_HOLD_VERSION;
+// Lot 32 : `-- --generateur=25` mesure la référence v13 (g25) ; sans option, le générateur en vigueur (g26, version 14).
+const SIM_VERSION = process.argv.includes("--generateur=25") ? MIN_HOLD_VERSION : process.argv.includes("--generateur=23") ? ALT_KEPT_VERSION : process.argv.includes("--generateur=21") ? RESTART_VERSION : process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : process.argv.includes("--generateur=17") ? MUSHROOM_VERSION : process.argv.includes("--generateur=18") ? STALACTITE_VERSION : process.argv.includes("--generateur=19") ? LASER_VERSION : process.argv.includes("--generateur=20") ? BRIDGE_VERSION : CHECKPOINT_ZONE_VERSION;
 // Lot 30 : `-- --generateur=23` mesure la référence v12 (g23, avant le maintien minimal du saut) ; sans option, le générateur en vigueur (g24). Les références d'avant lisent le catalogue d'avant.
 if (SIM_VERSION < MIN_HOLD_VERSION) useLegacyCatalog();
 const sec = (t: number) => (t / TICK_RATE).toFixed(2).replace(".", ",");
@@ -197,7 +199,7 @@ line("### Forme");
 line(`| mesure | min | moyenne | max |`);
 line(`|---|---|---|---|`);
 line(`| morceaux par niveau | ${stats(counts).min} | ${num(stats(counts).mean)} | ${stats(counts).max} |`);
-line(`| hauteur (rangées, ≤ ${maxDailyHeight(MIN_HOLD_VERSION)}) | ${stats(heights).min} | ${num(stats(heights).mean)} | ${stats(heights).max} |`);
+line(`| hauteur (rangées, ≤ ${maxDailyHeight(SIM_VERSION)}) | ${stats(heights).min} | ${num(stats(heights).mean)} | ${stats(heights).max} |`);
 line(`| largeur (colonnes) | ${stats(widths).min} | ${num(stats(widths).mean)} | ${stats(widths).max} |`);
 line();
 

@@ -5,6 +5,7 @@ import {
   ATTEMPT_DEAD,
   DEFAULT_JUMP_PARAMS,
   BRIDGE_VERSION,
+  RESTART_VERSION,
   LASER_VERSION,
   STALACTITE_VERSION,
   SINGLE_CLOCK_VERSION,
@@ -27,8 +28,8 @@ import {
 const day = (date: string) => parseDay(date)!;
 /** v5 (g15) : deux jours à plateformes et à portions dures ; v4 (g14, la référence) : deux jours. */
 const V5 = ["2026-10-28", "2026-10-29", "2026-10-30"].map((d) => dailyLevel(day(d), null, BRIDGE_VERSION));
-/** v11 (g21, lot 27) : les mêmes jours, avec le niveau d'aujourd'hui. */
-const V11 = ["2026-10-28", "2026-10-29", "2026-10-30"].map((d) => dailyLevel(day(d)));
+/** v11 (g21, lot 27) : les mêmes jours, avec les niveaux de la version 11 (lot 32 : la version est nommée ; avant, le test lisait le générateur en vigueur, qui change avec chaque lot). */
+const V11 = ["2026-10-28", "2026-10-29", "2026-10-30"].map((d) => dailyLevel(day(d), null, RESTART_VERSION));
 const V4 = ["2026-11-03", "2026-11-09"].map((d) => dailyLevel(day(d), null, SINGLE_CLOCK_VERSION));
 
 const arrivalShare = (levels: readonly DailyLevel[], reprise: boolean, attempts: number): number => {
