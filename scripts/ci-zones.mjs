@@ -268,6 +268,13 @@ export function fichierImporte(racine, fichier, spec) {
   return null;
 }
 
+const PROJECTION_CI = "config/jeux/projections/ci.json";
+/** Les dossiers de jours figés que déclarent les fiches (`jours.dossier` de la projection `ci` de ce dépôt). */
+function dossiersDeJours(racine) {
+  const f = join(racine, PROJECTION_CI);
+  return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")).jeux.flatMap((j) => (j.jours.dossier ? [j.jours.dossier] : [])) : [];
+}
+
 /**
  * Le graphe des fichiers de code (`packages/*`, `apps/*`, `scripts`, sans les e2e, qui ont leur propre table) : pour chacun, les fichiers qu'il
  * importe et les chemins existants qu'il cite (documents, workflows, configuration, dossiers de données). Un test dépend de tout ce que son
@@ -296,6 +303,9 @@ export function graphe(racine = ROOT) {
           if (SOURCES.test(r) && r !== f && statSync(join(racine, r)).isFile()) imports.add(r);
         }
       }
+      // Lot K1b : le dossier des jours figés d'un jeu n'est plus écrit en dur dans le code qui le lit, il vient de sa fiche (`jours.dossier`, projection `ci`) : un fichier qui cite cette projection
+      // cite aussi ces dossiers, sinon une PR qui ne change qu'un niveau figé ne lancerait plus les tests qui le lisent.
+      if (cites.has(PROJECTION_CI)) for (const dossier of dossiersDeJours(racine)) cites.add(dossier);
       noeuds.set(f, { imports, cites });
     }
   }

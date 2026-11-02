@@ -137,10 +137,10 @@ describe("Jump (lot K1b) : sa fiche", () => {
 describe("les projections", () => {
   it("le portail ne reçoit que ce qu'il dessine (ni zones, ni tables, ni versions, ni thèmes : un octet de plus pèse sur son budget)", () => {
     const p = projectionPortail(fiches());
-    // Les champs facultatifs (titre, accrocheTheme, premierJour) ne sont écrits que s'ils servent : un octet de moins pour un jeu qui n'en a pas besoin.
+    // Seul ce qui s'écarte de l'usage est écrit (code ≠ id, titre, accrocheTheme, premierJour, cumul faux, format ≠ temps) : un octet de JSON pèse sur le budget du portail.
     for (const j of p.jeux) expect(Object.keys(j).every((k) => ["accroche", "accrocheTheme", "code", "cumul", "format", "id", "premierJour", "titre"].includes(k)), j.id).toBe(true);
-    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", code: "tower", accroche: "portail.tower.accroche", cumul: false, format: "hauteur" });
-    expect(p.jeux.find((j) => j.id === "jump")).toEqual({ id: "jump", code: "jump", accroche: "portail.jump.accroche", titre: "jeu.jump.titre", accrocheTheme: "jump.replique.", premierJour: "2026-10-16", cumul: true, format: "temps" });
+    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", accroche: "portail.tower.accroche", cumul: false, format: "hauteur" }); // code = id, absent
+    expect(p.jeux.find((j) => j.id === "jump")).toEqual({ id: "jump", accroche: "portail.jump.accroche", titre: "jeu.jump.titre", accrocheTheme: "jump.replique.", premierJour: "2026-10-16" }); // code = id, cumul vrai et format `temps` : les défauts, absents
   });
   it("les listes qui doivent aussi contenir Track et Jump sont complètes, dans l'ordre historique : les paquets n'embarquent pas un octet de plus", () => {
     const j = projectionJeu(fiches());

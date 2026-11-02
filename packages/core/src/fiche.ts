@@ -308,8 +308,8 @@ const parOrdre = <T extends { ordre: number }>(l: readonly T[]): T[] => [...l].s
 export interface ProjectionPortail {
   jeux: {
     id: string;
-    /** Le code au registre du serveur (`GET /api/portail/jour`). */
-    code: string;
+    /** Le code au registre du serveur (`GET /api/portail/jour`) ; absent : l'identifiant (cas de Jump et de Tower). */
+    code?: string;
     accroche: string;
     /** Absent : le nom en capitales. */
     titre?: string;
@@ -317,21 +317,24 @@ export interface ProjectionPortail {
     accrocheTheme?: string;
     /** Lot K1b : le premier jour (`AAAA-MM-JJ`) d'un jeu public d'emblée (`etatDepart: on`), dont la cartouche affiche un numéro sans attendre le serveur ; absent : le serveur seul donne le numéro (un jeu `off` à l'arrivée). */
     premierJour?: string;
-    cumul: boolean;
-    format: FormatScore;
+    /** Absent : vrai (un jeu au temps entre dans le cumul) ; `false` pour un jeu hors du cumul. */
+    cumul?: false;
+    /** Absent : `temps`. */
+    format?: FormatScore;
   }[];
 }
 export function projectionPortail(fiches: readonly FicheJeu[]): ProjectionPortail {
   return {
     jeux: parOrdre(fiches).map((f) => ({
       id: f.id,
-      code: f.code,
+      // Lot K1b : ce qui va de soi n'est pas écrit (le portail le rétablit à la lecture : `jeuxFiches.ts`) — un octet de JSON pèse sur son budget.
+      ...(f.code !== f.id ? { code: f.code } : {}),
       accroche: f.accroche,
       ...(f.titre !== undefined ? { titre: f.titre } : {}),
       ...(f.accrocheTheme !== undefined ? { accrocheTheme: f.accrocheTheme } : {}),
       ...(f.etatDepart === "on" ? { premierJour: f.premierJour } : {}),
-      cumul: f.classement.cumul,
-      format: f.classement.format,
+      ...(f.classement.cumul ? {} : { cumul: false }),
+      ...(f.classement.format !== "temps" ? { format: f.classement.format } : {}),
     })),
   };
 }

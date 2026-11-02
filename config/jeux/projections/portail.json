@@ -2,17 +2,13 @@
   "jeux": [
     {
       "id": "jump",
-      "code": "jump",
       "accroche": "portail.jump.accroche",
       "titre": "jeu.jump.titre",
       "accrocheTheme": "jump.replique.",
-      "premierJour": "2026-10-16",
-      "cumul": true,
-      "format": "temps"
+      "premierJour": "2026-10-16"
     },
     {
       "id": "tower",
-      "code": "tower",
       "accroche": "portail.tower.accroche",
       "cumul": false,
       "format": "hauteur"
