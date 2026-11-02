@@ -38,8 +38,29 @@ Maquette : `maquettes/favoris-et-amis.html` (planches B, C, D) ; charte `docs/pl
 - **Portail** : `/classement/` (sélecteur sous les onglets, `?filtre=amis`, feuille au toucher d'une ligne), `/amis/` (planche D : ajouter par pseudo + suggestions, « Inviter un ami (lien) » par `navigator.share` ou copie, liste « vous deux » / « ajouté par toi » + Retirer, compteur sur 100, « Nouveau lien » ; `?invitation=` : carte « {pseudo} t'invite sur Du Jour » + Accepter, avec création du profil sans profil), lien depuis `/profil/`, tuile de l'accueil « 3e entre amis ».
 - **Track, Jump, Tower** : le même sélecteur dans leur classement, la feuille au toucher d'une ligne, `?filtre=amis` dans l'adresse. Manette (lot M1) et catalogues fr + en partout.
 
-## Vérifié / non vérifié, runs
-(à remplir en fin de lot)
+## Réalisé (écarts au contrat)
+- **Serveur** : `amities` + `invitations_amis` (jeton en empreinte), `/api/amis/…`, `filtre=amis` sur le portail (3 vues), Track, Jump, Tower via le classement du jour partagé par fenêtre (`classementAmis.ts`) : **aucune requête par ami**. Les classements filtrés émettent `rang` (contrat) **et** `rank` (nom historique des jeux), plus `rangGeneral`, `ref`, `absents`, `amis`. `rangEntreAmis` est `null` aussi si aucun ami n'a rien fini. Plafond de 100 vérifié à l'écriture (`INSERT … WHERE COUNT < 100`), masqués comptés dans le plafond mais pas dans `total`. Le lien rouvert par la même personne : `friend_exists` ; il complète la réciprocité si une seule ligne existait. Profils créés par une acceptation : 5 par adresse et fenêtre.
+- **Client** : `@cdj/profile` `clientAmis`, jeton en `sessionStorage` (`cdj:invitation`, retiré de l'adresse) ; `@cdj/ui` `selecteurAmis` (**radiogroup**, pas tablist : LB/RB changent d'onglet), `feuilleJoueur`, page Mes amis ; tout est **à la demande**, `CATALOGUE_AMIS` à part (les 8 `erreur.*` y sont : +321 o au premier chargement du portail sinon).
+- **Écrans** : portail `/classement/` (sélecteur, `?filtre=amis`, feuille), `/amis/` (planche D, invitation, sans profil), lien du profil, « 3e entre amis » ; Track (page du classement du jour), Jump (écran du classement ; ta ligne en encre), Tower (dialogue « Tout le classement »). Le top 5/10 de l'accueil et de l'arrivée reste « Tous ». Le rang général est dans la feuille (« 8e sur 412 »), pas dans la ligne. Manette : `ECRAN_MANETTE_FEUILLE` recopié (testé égal) dans chaque `manette` pour ne pas charger les composants.
 
-## Lignes lues (R14)
-(à remplir en fin de lot)
+## Décisions pour Nathan
+1. **Référence publique** = `players.ref` existante (SHA-256 tronqué, à sens unique), pas une colonne tirée au hasard : voir plus haut.
+2. **Mesure du budget de Jump** : `scripts/budgets.mjs` et `poids.spec.ts` divergeaient de 684 o ; les deux excluent désormais `course-` et `interrupteur-` (fichiers déjà documentés « à la demande ») et `classementAmis-`. `jump.jsCss` : 381 075 o (+563 o contre `main`, plafond 382 590). **L'ancienne mesure baisse d'environ 1,3 ko** : à confirmer. Aucun plafond relevé.
+3. **Marges minces** : `tower.jsCss` 39 916/40 000 (marge 84), `tower.jeu` 169 141/169 200 (59), `track.jsCss` 296 653/296 736 (83). Le portail passe de 33 000 (atteint à l'octet) à 31 103 o : les clés des autres pages sont sorties de `catalogue.ts` (`cataloguePages.ts`).
+4. Accepter une invitation **sans profil crée un profil sans résultat** (limité à 5 par adresse).
+5. Suggestions : au plus 300 candidats lus ; un début très courant ne renvoie que le début de l'ordre alphabétique.
+
+## Vérifié / non vérifié
+- **Vérifié** : serveur — `vitest apps/api` + mentions : 738 tests (SQLite), 698 (libSQL) ; `tsc -b` ; unitaires du socle (683), de Tower (316), de Jump (882 avec `ciZones`), de Track (88 ciblés), du portail ; `npm run traductions` (1507 clés) ; **un e2e** (`apps/web/e2e/amis.spec.ts`, Chromium, vrai serveur : ajouter depuis le classement › filtre Amis) ; e2e du portail (`portail`, `portail-jour`, `portail-journee`) ; captures du portail regardées par l'agent (classement Amis, feuille, `/amis/`, invitation).
+- **Non vérifié** : le sélecteur et la feuille de **Track, Jump et Tower** n'ont jamais tourné dans un navigateur (tests unitaires seulement, pas de jsdom) ; pas d'axe sur `/amis/` ni sur « Amis » (passé une fois à la main sur `/amis/`) ; pas de captures de Track, Jump, Tower ; aucun essai sur Turso (règle R14).
+- **CI de PR** : (run à renseigner).
+
+## Lignes lues (R14, base de référence 300 joueurs × 14 jours, `file:` local, estimation basse ; froid / chaud)
+| Route | 0 ami | 10 amis | 100 amis |
+|---|---|---|---|
+| `GET /api/amis` | 2 / 1 | 12 / 11 | 102 / 101 |
+| `GET /api/portail/jour` (joueur) | 636 / 27 | 646 / 37 | 736 / 127 |
+| classement filtré (portail, Track, Tower) | 612 / 4 | 622 / 14 | 712 / 104 |
+| classement filtré Jump | 613 / 5 | 629 / 21 | 779 / 171 |
+| fiche d'un joueur | 610 / 2 | 612 / 4 | 612 / 4 |
+Le « froid » est le calcul du classement du jour, le même que pour « Tous » ; le nombre d'instructions ne dépend pas du nombre d'amis (testé). Ajout d'un ami : 7 lignes, une écriture. Détail : `couts.md` § 11.
