@@ -1,4 +1,5 @@
 import { call, type FetchLike } from "./client";
+import { JEUX_PUBLICS_GENERES } from "./fiches.generated";
 
 // Lot P de la plateforme — l'**interrupteur des jeux** côté client. Chaque jeu, à son ouverture, lit l'état des jeux (`GET /api/jeux`, public, cache de 30 s) et décide ce qu'il montre :
 // le jeu (`on`), le jeu avec le bandeau « Aperçu » (`preview` et une clé d'aperçu sur cet appareil, ou un aperçu de PR), ou la page « Bientôt » (`off`, ou `preview` sans clé).
@@ -7,10 +8,10 @@ import { call, type FetchLike } from "./client";
 // ensuite le jeu l'envoie dans l'en-tête `X-Preview-Key` (même raison que `?player=` retiré : une adresse finit dans les journaux). Pur : stockage, adresse, réseau injectés ; aucun DOM.
 
 // Le module de profil n'importe aucun paquet (test `purete.test.ts`) : les quelques règles pures de `@cdj/core/jeux` dont le client a besoin sont recopiées ici, et le test `jeux.test.ts`
-// de ce paquet vérifie qu'elles disent la même chose que celles du serveur.
+// de ce paquet vérifie qu'elles disent la même chose que celles du serveur. Lot K1 : la LISTE des jeux publics n'est plus recopiée, elle est générée (`fiches.generated.ts`) du même endroit que celle du serveur.
 export type EtatJeu = "off" | "preview" | "on";
 /** Les jeux déjà publics à l'arrivée de l'interrupteur : la liste du site quand l'API ne répond pas (un jeu en développement n'y est jamais). Même liste que `JEUX_PUBLICS` de `@cdj/core/jeux`. */
-export const JEUX_PUBLICS_PAR_DEFAUT: readonly string[] = ["track", "jump"];
+export const JEUX_PUBLICS_PAR_DEFAUT: readonly string[] = JEUX_PUBLICS_GENERES; // lot K1 : la même liste générée que `@cdj/core/jeux` (Track, Jump et les fiches `on`)
 export const etatDeJeu = (brut: unknown): EtatJeu => (brut === "on" || brut === "preview" ? brut : "off");
 export const etatsParDefaut = (): Record<string, EtatJeu> => Object.fromEntries(JEUX_PUBLICS_PAR_DEFAUT.map((j) => [j, "on" as EtatJeu]));
 /** L'état d'un jeu dans une liste : absent = `off`. */

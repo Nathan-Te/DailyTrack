@@ -6,6 +6,8 @@
 // Une valeur qui commence par `--` est un renvoi vers un autre jeton (`--jump-papier` = `--dj-papier`) : en CSS `var(--…)`, en TypeScript la
 // valeur résolue (`valeurJeton`).
 
+import { ETIQUETTE_TOWER_COQUE, ETIQUETTE_TOWER_FOND, ETIQUETTE_TOWER_POLICE } from "./fiches.generated";
+
 /** Couleurs (charte § 3). */
 export const COULEURS = {
   // 3.1 Marque (portail et cadre des jeux)
@@ -50,8 +52,9 @@ export const COULEURS = {
   "jump-encre": "--dj-encre",
   "jump-danger": "#D7263D",
   // 3.5 Étiquette Tower (charte rév. 13)
-  "tower-menthe": "#9ED9BE",
-  "tower-coque": "#2F7D62",
+  // Lot K1 : le fond, la coque et la police de l'étiquette Tower sont les valeurs de sa fiche (`config/jeux/tower.json`, via `fiches.generated.ts`) ; leurs NOMS restent ceux de la charte.
+  "tower-menthe": ETIQUETTE_TOWER_FOND,
+  "tower-coque": ETIQUETTE_TOWER_COQUE,
   "tower-bonus": "#5DBB63",
 } as const;
 
@@ -62,7 +65,7 @@ export const POLICES = {
   "dj-police-chiffres": "\"JetBrains Mono\", monospace",
   "track-police": "\"Barlow Condensed\", \"Archivo\", sans-serif",
   "jump-police": "\"Lilita One\", \"Archivo\", sans-serif",
-  "tower-police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+  "tower-police": ETIQUETTE_TOWER_POLICE,
 } as const;
 
 /** Échelle typographique (charte § 4) : 12 · 13 · 15 · 22 · 24 · 32 · 38 · 64-72 px ; 10-11 px pour les seules légendes en capitales (700). */

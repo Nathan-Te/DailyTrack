@@ -5,7 +5,8 @@
     "types": ["vite/client"],
     "composite": false,
     "declaration": false,
-    "noEmit": true
+    "noEmit": true,
+    "resolveJsonModule": true
   },
   "include": ["src", "vite.config.ts"]
 }

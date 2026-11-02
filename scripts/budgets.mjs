@@ -9,6 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { mesureTower as mesureTowerDetail } from "../apps/tower/tools/mesure.mjs";
+import { ficheCI } from "./fiches-lecture.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const gz = (f, level) => gzipSync(readFileSync(f), level === undefined ? {} : { level }).length;
@@ -81,7 +82,8 @@ export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
  * Rapier et son `.wasm` : `physique`), le catalogue anglais, l'aide de l'iPhone, l'interrupteur, la démonstration du banc (jamais en production). Les chiffres vont dans
  * `docs/plateforme/budgets.md` (lignes `tower.*`).
  */
-export const LIGNES_TOWER = ["tower.jsCss", "tower.jeu", "tower.physique", "tower.anglais", "tower.polices"];
+// Lot K1 : les lignes du grand tableau de `budgets.md` que mesure `mesureTower` sont celles de la fiche du jeu (`budget.lignes` de `config/jeux/tower.json`) ; les plafonds restent dans `budgets.md`.
+export const LIGNES_TOWER = ficheCI("tower").budget;
 export function mesureTower(dist = join(ROOT, "apps/tower/dist/assets")) {
   const detail = mesureTowerDetail(dist);
   return {

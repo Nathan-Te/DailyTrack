@@ -2,12 +2,14 @@
 // panneau d'administration les applique avant d'envoyer (même message d'erreur des deux côtés) et lit la section « Pour les joueurs » d'une PR.
 // Aucune dépendance : ni DOM, ni réseau, ni horloge (le temps est passé).
 
+import { NOMS_DE_ZONES_GENERES, OU_MESSAGE_GENERES } from "./fiches.generated";
 import { ZONES_NOUVEAUTES, estZone, type ZoneNouveaute } from "./zonesNouveautes";
 
 /** Les zones (liste unique des codes : `zonesNouveautes.ts`). */
 export { ZONES_NOUVEAUTES, estZone, type ZoneNouveaute };
 /** Le nom écrit entre crochets dans la PR et affiché devant chaque ligne ; typé de façon exhaustive : une zone sans nom ne compile pas. */
-export const NOM_DE_ZONE: Readonly<Record<ZoneNouveaute, string>> = { dujour: "Du Jour", track: "Track", jump: "Jump", tower: "Tower" };
+// Lot K1 : les noms des jeux qui ont une fiche viennent d'elle (`npm run fiches`).
+export const NOM_DE_ZONE: Readonly<Record<ZoneNouveaute, string>> = NOMS_DE_ZONES_GENERES;
 /** La liste lisible des noms, pour les messages : « Du Jour, Track, Jump ou Tower ». (Une fonction : rien ne s'exécute au chargement du module.) */
 export const nomsDeZoneTexte = (): string => `${ZONES_NOUVEAUTES.slice(0, -1).map((z) => NOM_DE_ZONE[z]).join(", ")} ou ${NOM_DE_ZONE[ZONES_NOUVEAUTES[ZONES_NOUVEAUTES.length - 1]!]}`;
 
@@ -19,7 +21,7 @@ export const LIGNES_MAX = 30;
 
 /** Le message en direct : 160 caractères au plus, texte seul. */
 export const MESSAGE_MAX = 160;
-export const OU_MESSAGE = ["portail", "track", "jump", "tower"] as const;
+export const OU_MESSAGE = OU_MESSAGE_GENERES;
 export type OuMessage = (typeof OU_MESSAGE)[number];
 export const TONS_MESSAGE = ["information", "important"] as const;
 export type TonMessage = (typeof TONS_MESSAGE)[number];

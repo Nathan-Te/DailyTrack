@@ -1,0 +1,212 @@
+{
+  "id": "tower",
+  "code": "tower",
+  "ordre": 3,
+  "nom": {
+    "fr": "Tower",
+    "en": "Tower"
+  },
+  "accroche": "portail.tower.accroche",
+  "etiquette": {
+    "fond": "#9ED9BE",
+    "coque": "#2F7D62",
+    "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+    "dessin": "propre"
+  },
+  "etatDepart": "off",
+  "premierJour": "2026-11-02",
+  "classement": {
+    "colonnes": [
+      {
+        "nom": "hauteur_mm",
+        "sens": "desc"
+      },
+      {
+        "nom": "vies",
+        "sens": "desc"
+      },
+      {
+        "nom": "ticks",
+        "sens": "asc"
+      },
+      {
+        "nom": "submitted_at",
+        "sens": "asc"
+      },
+      {
+        "nom": "player_id",
+        "sens": "asc"
+      }
+    ],
+    "cumul": false,
+    "unite": "mm",
+    "format": "hauteur"
+  },
+  "medailles": {
+    "methode": "pourcentage-diamant",
+    "bareme": [
+      50,
+      30,
+      15
+    ],
+    "plafondDiamant": 60000
+  },
+  "partage": {
+    "extras": [
+      "vies"
+    ]
+  },
+  "themes": [
+    "port",
+    "chantier",
+    "canyon",
+    "banquise",
+    "jungle",
+    "nuit"
+  ],
+  "versions": {
+    "sim": "packages/tower-sim/src/constantes.ts:TOWER_SIM_VERSION",
+    "generateur": "packages/tower-sim/src/generateur/index.ts:TOWER_GENERATOR_VERSION",
+    "medailles": "packages/tower-sim/src/medailles.ts:MEDAILLES_VERSION"
+  },
+  "jours": {
+    "mode": "fichier-par-jour",
+    "dossier": "apps/tower/public/jours",
+    "preuveInterditeEnProd": true
+  },
+  "rejeu": {
+    "unitesServeur": 30,
+    "fil": true,
+    "maxTicks": 20300
+  },
+  "donnees": {
+    "tables": [
+      {
+        "nom": "tower_results",
+        "sort": "videe"
+      },
+      {
+        "nom": "tower_levels",
+        "sort": "gardee"
+      }
+    ],
+    "stockage": {
+      "prefixe": "tower:",
+      "reglagesGardes": []
+    }
+  },
+  "message": {
+    "ou": "tower"
+  },
+  "zoneNouveautes": "tower",
+  "musique": {
+    "scenes": [
+      "menu",
+      "theme:port",
+      "theme:chantier",
+      "theme:canyon",
+      "theme:banquise",
+      "theme:jungle",
+      "theme:nuit"
+    ]
+  },
+  "admin": {
+    "outils": false
+  },
+  "zones": {
+    "jeu": [
+      "apps/tower/**",
+      "packages/tower-sim/**",
+      "apps/api/src/tower*.ts",
+      "apps/api/test/tower*.test.ts",
+      "apps/api/scripts/tower-*.ts",
+      "docs/tower/**"
+    ],
+    "serveur": [
+      "apps/api/src/tower*.ts",
+      "apps/api/test/tower*.test.ts",
+      "apps/api/scripts/tower-*.ts"
+    ]
+  },
+  "e2e": {
+    "dossier": "apps/tower/e2e",
+    "suite": "tower",
+    "fumee": [
+      "determinisme.spec.ts",
+      "partie.spec.ts",
+      "poids.spec.ts"
+    ],
+    "zones": {
+      "tower-sim": {
+        "_": "Lot R15 : Tower (3ᵉ jeu). La simulation (`packages/tower-sim`, dont le banc d'essai du lot T0 et les empreintes de Node).",
+        "globs": [
+          "packages/tower-sim/**"
+        ]
+      },
+      "tower-jeu": {
+        "_": "Lot R15 : la page du jeu (`/tower/`) : la boucle, la scène, l'interface, les entrées, le chargement de Rapier.",
+        "globs": [
+          "apps/tower/index.html",
+          "apps/tower/vite.config.ts",
+          "apps/tower/rapierWasm.ts",
+          "apps/tower/src/*"
+        ],
+        "sauf": [
+          "apps/tower/src/moteurs.ts",
+          "apps/tower/src/verify.ts"
+        ]
+      },
+      "tower-banc": {
+        "_": "Lot R15 : la démonstration de la physique du lot T0 (`?scenario=banc`) et la page de vérification sans rendu.",
+        "globs": [
+          "apps/tower/src/banc/**",
+          "apps/tower/src/moteurs.ts",
+          "apps/tower/src/verify.ts",
+          "apps/tower/verify.html"
+        ]
+      },
+      "api-tower": {
+        "_": "Lot T4 : le serveur de Tower (routes, rejeu, fil de calcul) et son serveur d'essai, que lance le spec classement.",
+        "globs": [
+          "apps/api/src/tower*.ts",
+          "apps/api/scripts/tower-*.ts"
+        ]
+      }
+    },
+    "specs": {
+      "determinisme.spec.ts": [
+        "tower-sim",
+        "tower-banc",
+        "core-clock"
+      ],
+      "partie.spec.ts": [
+        "tower-sim",
+        "tower-jeu",
+        "ui"
+      ],
+      "classement.spec.ts": [
+        "tower-sim",
+        "tower-jeu",
+        "api-tower"
+      ],
+      "poids.spec.ts": [
+        "tower-jeu",
+        "ui"
+      ]
+    },
+    "parts": {
+      "main": 1,
+      "complet": 1,
+      "nuit": 1
+    }
+  },
+  "budget": {
+    "lignes": [
+      "tower.jsCss",
+      "tower.jeu",
+      "tower.physique",
+      "tower.anglais",
+      "tower.polices"
+    ]
+  }
+}

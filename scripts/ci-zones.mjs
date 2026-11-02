@@ -19,11 +19,14 @@ import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assignParts } from "./e2e-parts.mjs";
 import { categoriesOf } from "./ci-scope.mjs";
+import { FICHES_CI } from "./fiches-lecture.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // Lot R15 : Tower est un jeu de la CI au même titre que Track (`web`) et Jump (`jump`) : ses specs (apps/tower/e2e), ses durées, ses zones, son projet Playwright `tower-<navigateur>`.
-export const E2E_DIRS = { web: "apps/web/e2e", jump: "apps/jump/e2e", tower: "apps/tower/e2e" };
-export const JEUX_E2E = /** @type {const} */ (["web", "jump", "tower"]);
+// Lot K1 : les suites des jeux qui ont une fiche (`config/jeux/<id>.json` : `e2e.suite`, `e2e.dossier`, ses zones, ses specs, sa fumée, ses parts) viennent d'elle ; Track (`web`) et Jump restent écrits ici.
+export const E2E_DIRS = { web: "apps/web/e2e", jump: "apps/jump/e2e", ...Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.dossier])) };
+export const JEUX_E2E = ["web", "jump", ...FICHES_CI.map((f) => f.e2e.suite)];
+const SUITES = JEUX_E2E.join("|");
 export const PARTS_E2E_MAX = 4;
 export const PARTS_UNITAIRES_MAX = 4;
 /** Durée visée d'une part (secondes de la CI) : au-delà, on ajoute une part (dans la limite du maximum). */
@@ -68,7 +71,14 @@ export function lister(racine, dir, filtre = () => true) {
 // 1. La table spec → zones
 
 export function chargerTable(racine = ROOT) {
-  const t = JSON.parse(readFileSync(join(racine, "e2e/zones.json"), "utf8"));
+  const brut = JSON.parse(readFileSync(join(racine, "e2e/zones.json"), "utf8"));
+  // Lot K1 : les zones, les specs et la fumée d'un jeu qui a une fiche sont les siens (`e2e.zones`, `e2e.specs`, `e2e.fumee`), plus dans `e2e/zones.json`.
+  const t = {
+    ...brut,
+    fumee: { ...brut.fumee, ...Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.fumee])) },
+    zones: { ...brut.zones, ...Object.assign({}, ...FICHES_CI.map((f) => f.e2e.zones)) },
+    specs: { ...brut.specs, ...Object.fromEntries(FICHES_CI.flatMap((f) => Object.entries(f.e2e.specs).map(([spec, zs]) => [`${f.e2e.suite}/${spec}`, zs]))) },
+  };
   const zones = Object.fromEntries(
     Object.entries(t.zones).map(([nom, z]) => [nom, { globs: z.globs.map(globVersRegExp), sauf: (z.sauf ?? []).map(globVersRegExp), source: z }]),
   );
@@ -84,7 +94,7 @@ export function zonesDuFichier(fichier, table) {
   });
 }
 
-/** Les specs d'un jeu (`web` | `jump` | `tower`) : noms de fichiers, sans les outils (captures, mesures : ils se sautent d'eux-mêmes). */
+/** Les specs d'un suite (`web` | `jump` | un jeu à fiche : `tower`) : noms de fichiers, sans les outils (captures, mesures : ils se sautent d'eux-mêmes). */
 export function specsDuJeu(jeu, racine = ROOT) {
   return lister(racine, E2E_DIRS[jeu], (f) => f.endsWith(".spec.ts") && f.split("/").length === 4)
     .map((f) => posix.basename(f))
@@ -116,7 +126,7 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
   for (const brut of files) {
     const f = norm(brut);
     if (!f || estDoc(f)) continue;
-    const m = /^apps\/(web|jump|tower)\/e2e\/([^/]+)$/.exec(f);
+    const m = new RegExp(`^apps\\/(${SUITES})\\/e2e\\/([^/]+)$`).exec(f);
     if (m) {
       const jeu = m[1];
       const nom = m[2];
@@ -132,7 +142,7 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
       }
       continue;
     }
-    const config = /^apps\/(web|jump|tower)\/playwright\.config\.ts$/.exec(f);
+    const config = new RegExp(`^apps\\/(${SUITES})\\/playwright\\.config\\.ts$`).exec(f);
     if (config) {
       fumee(config[1], "configuration de Playwright");
       continue;
@@ -141,7 +151,7 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
     const cats = categoriesOf(f);
     if (cats.includes("track")) fumee("web", f);
     if (cats.includes("jump")) fumee("jump", f);
-    if (cats.includes("tower")) fumee("tower", f);
+    for (const fc of FICHES_CI) if (cats.includes(fc.id)) fumee(fc.e2e.suite, f);
     for (const z of zonesDuFichier(f, table)) {
       for (const [spec, zs] of Object.entries(table.specs)) {
         if (!zs.includes(z)) continue;
@@ -170,9 +180,7 @@ export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S }
   }
   const trier = (s) => [...s].filter((x) => x).sort();
   return {
-    web: trier(choix.web),
-    jump: trier(choix.jump),
-    tower: trier(choix.tower),
+    ...Object.fromEntries(JEUX_E2E.map((j) => [j, trier(choix[j])])),
     raisons: [...raisons].sort(),
     reportes: reportes.sort(),
     regression: enRegression.map((c) => `${c.jeu}/${c.nom}`).sort(),
@@ -190,14 +198,14 @@ export function dureeE2e(racine, jeu, spec) {
 
 /** Les specs de la table pour des zones nommées à la main (`npm run verifier -- --zones=track-sim,jump-rendu`). */
 export function specsDesZones(zones, table) {
-  const choix = { web: new Set(), jump: new Set(), tower: new Set() };
+  const choix = Object.fromEntries(JEUX_E2E.map((j) => [j, new Set()]));
   const inconnues = zones.filter((z) => !(z in table.compilees));
   for (const [spec, zs] of Object.entries(table.specs)) {
     if (!zs.some((z) => zones.includes(z))) continue;
     const [jeu, nom] = spec.split("/");
     choix[jeu].add(nom);
   }
-  return { web: [...choix.web].sort(), jump: [...choix.jump].sort(), tower: [...choix.tower].sort(), inconnues };
+  return { ...Object.fromEntries(JEUX_E2E.map((j) => [j, [...choix[j]].sort()])), inconnues };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -375,20 +383,14 @@ export function partsUnitaires(fichiers, durees, { max = PARTS_UNITAIRES_MAX, ci
 /** Parts e2e : au plus `max` parts, chacune peut porter des specs des DEUX jeux (étapes successives du même job). */
 export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CIBLE_PART_E2E_S } = {}) {
   const duree = (jeu, spec) => dureeE2e(racine, jeu, spec);
-  const items = [
-    ...choix.web.map((s) => `web/${s}`),
-    ...choix.jump.map((s) => `jump/${s}`),
-    ...(choix.tower ?? []).map((s) => `tower/${s}`),
-  ];
+  const items = JEUX_E2E.flatMap((j) => (choix[j] ?? []).map((s) => `${j}/${s}`));
   if (items.length === 0) return [];
   const poids = Object.fromEntries(items.map((i) => { const [j, s] = i.split("/"); return [i, Math.max(1, duree(j, s))]; }));
   const total = Object.values(poids).reduce((a, b) => a + b, 0);
   const n = Math.min(nombreDeParts(total, cible, max), items.length);
   return assignParts(items, poids, n).map((p, i) => ({
     part: `${i + 1}/${n}`,
-    web: p.files.filter((x) => x.startsWith("web/")).map((x) => x.slice(4)),
-    jump: p.files.filter((x) => x.startsWith("jump/")).map((x) => x.slice(5)),
-    tower: p.files.filter((x) => x.startsWith("tower/")).map((x) => x.slice(6)),
+    ...Object.fromEntries(JEUX_E2E.map((j) => [j, p.files.filter((x) => x.startsWith(`${j}/`)).map((x) => x.slice(j.length + 1))])),
     secondes: Math.round(p.load),
   }));
 }
@@ -399,16 +401,16 @@ export function partsE2e(choix, racine = ROOT, { max = PARTS_E2E_MAX, cible = CI
  */
 // Lot R12 : `complet` et `nuit` repassent à 8 parts de Track (≈ 560 s de specs chacune au lieu de ≈ 745 s) : objectif ≤ 15 min de mur pour la CI que lance le bouton.
 // Lot R15 : Tower, 1 part de Chromium (quelques dizaines de secondes de specs : un job de plus en parallèle, pas de mur de plus).
-export const PARTS_COMPLETES = { main: { web: 3, jump: 1, tower: 1 }, complet: { web: 8, jump: 1, tower: 1 }, nuit: { web: 8, jump: 1, tower: 1 } };
+// Lot K1 : le nombre de parts d'un jeu à fiche est son `e2e.parts` (Tower : 1, 1, 1).
+const partsDesFiches = (mode) => Object.fromEntries(FICHES_CI.map((f) => [f.e2e.suite, f.e2e.parts[mode]]));
+export const PARTS_COMPLETES = { main: { web: 3, jump: 1, ...partsDesFiches("main") }, complet: { web: 8, jump: 1, ...partsDesFiches("complet") }, nuit: { web: 8, jump: 1, ...partsDesFiches("nuit") } };
 
 /** La matrice des jobs `e2e-parts` d'un mode complet (une PR reçoit celle de `main` : le job y est sauté). */
 export function matriceComplete(mode) {
   const parts = PARTS_COMPLETES[mode] ?? PARTS_COMPLETES.main;
   const essentiel = !(mode in PARTS_COMPLETES) || mode === "main";
   const include = [];
-  for (let i = 1; i <= parts.web; i++) include.push({ suite: "web", browser: "chromium", shard: `${i}/${parts.web}`, essentiel });
-  for (let i = 1; i <= parts.jump; i++) include.push({ suite: "jump", browser: "chromium", shard: `${i}/${parts.jump}`, essentiel });
-  for (let i = 1; i <= parts.tower; i++) include.push({ suite: "tower", browser: "chromium", shard: `${i}/${parts.tower}`, essentiel });
+  for (const suite of JEUX_E2E) for (let i = 1; i <= parts[suite]; i++) include.push({ suite, browser: "chromium", shard: `${i}/${parts[suite]}`, essentiel });
   for (const browser of ["firefox", "webkit"]) include.push({ suite: "navigateurs", browser, shard: "1/1", essentiel: false });
   return { include };
 }
@@ -422,7 +424,8 @@ export function decider(files, { mode = "pr", racine = ROOT } = {}) {
   const durees = dureesUnitaires(racine);
   const unitParts = partsUnitaires(unit.fichiers, durees, complet ? { max: 3, cible: 270 } : {});
   const docsSeuls = !complet && unit.docsSeuls;
-  const e2e = complet ? { web: [], jump: [], tower: [], raisons: ["CI complète : matrice complète"] } : docsSeuls ? { web: [], jump: [], tower: [], raisons: ["docs seuls"] } : specsPour(files, table, racine);
+  const aucun = Object.fromEntries(JEUX_E2E.map((j) => [j, []]));
+  const e2e = complet ? { ...aucun, raisons: ["CI complète : matrice complète"] } : docsSeuls ? { ...aucun, raisons: ["docs seuls"] } : specsPour(files, table, racine);
   const e2eParts = complet ? [] : partsE2e(e2e, racine);
   // Hors docs seuls, une première part vérifie toujours (typecheck, portail, construction), même sans test unitaire à lancer.
   if (!docsSeuls && unitParts.length === 0) unitParts.push({ part: "1/1", fichiers: [], secondes: 0 });
@@ -432,7 +435,7 @@ export function decider(files, { mode = "pr", racine = ROOT } = {}) {
 /** Lignes `clé=valeur` pour $GITHUB_OUTPUT. */
 export function sorties(d) {
   const unitMatrice = { include: d.unitParts.map((p, i) => ({ part: p.part, fichiers: p.fichiers.join(" "), api: p.fichiers.some((f) => f.startsWith("apps/api/test/")), verif: !d.docsSeuls && i === 0 })) };
-  const e2eMatrice = { include: d.e2eParts.map((p) => ({ part: p.part, web: p.web.join(" "), jump: p.jump.join(" "), tower: p.tower.join(" ") })) };
+  const e2eMatrice = { include: d.e2eParts.map((p) => ({ part: p.part, ...Object.fromEntries(JEUX_E2E.map((j) => [j, p[j].join(" ")])) })) };
   return [
     `docs_seuls=${d.docsSeuls}`,
     `unit_actif=${d.unitParts.length > 0}`,
@@ -449,10 +452,10 @@ export function resume(d) {
   l.push(`Tests unitaires : ${d.unit.fichiers.length} fichier(s)${d.unit.tous ? " (tous)" : ""}, ${d.unitParts.length} part(s) ${d.unitParts.map((p) => `${p.secondes} s`).join(" / ")}`);
   for (const r of d.unit.raisons.slice(0, 12)) l.push(`  · ${r}`);
   if (d.mode === "pr") {
-    l.push(`e2e (Chromium) : ${d.e2e.web.length} spec(s) DailyTrack, ${d.e2e.jump.length} spec(s) DailyJump, ${d.e2e.tower.length} spec(s) Tower, ${d.e2eParts.length} part(s) ${d.e2eParts.map((p) => `${p.secondes} s`).join(" / ")}`);
-    for (const s of d.e2e.web) l.push(`  · web/${s}`);
-    for (const s of d.e2e.jump) l.push(`  · jump/${s}`);
-    for (const s of d.e2e.tower) l.push(`  · tower/${s}`);
+    // Lot K1 : un libellé par suite — DailyTrack, DailyJump, puis le nom de chaque jeu à fiche (Tower).
+    const nomSuite = (j) => (j === "web" ? "DailyTrack" : j === "jump" ? "DailyJump" : j.charAt(0).toUpperCase() + j.slice(1));
+    l.push(`e2e (Chromium) : ${JEUX_E2E.map((j) => `${d.e2e[j].length} spec(s) ${nomSuite(j)}`).join(", ")}, ${d.e2eParts.length} part(s) ${d.e2eParts.map((p) => `${p.secondes} s`).join(" / ")}`);
+    for (const j of JEUX_E2E) for (const s of d.e2e[j]) l.push(`  · ${j}/${s}`);
     for (const r of d.e2e.raisons.slice(0, 12)) l.push(`  ↳ ${r}`);
     if (d.e2e.reportes?.length) l.push(`Reportés à la CI complète de main (budget de ${BUDGET_E2E_S} s de specs atteint) : ${d.e2e.reportes.join(", ")}`);
     if (d.e2e.regression?.length) l.push(`Régression (CI complète de main et nuit seulement, docs/tests.md) : ${d.e2e.regression.join(", ")}`);

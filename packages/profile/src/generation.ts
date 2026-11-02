@@ -1,3 +1,4 @@
+import { PREFIXES_DE_JEU_GENERES } from "./fiches.generated";
 import { keysWith, type ListableStore } from "./identity";
 
 // Lot R8 — « tout le monde repart de zéro » côté navigateur. Le serveur annonce une **génération de données** (un nombre, l'instant de la remise
@@ -16,7 +17,7 @@ export const NOUVEAU_DEPART_KEY = "cdj:nouveau-depart";
 export const NAVIGATEUR_NEUF = "neuf";
 
 /** Les préfixes des données de jeu : DailyTrack et la plateforme (`cdj:`), DailyJump (`jump:`), Tower (`tower:`, lot TP). */
-export const PREFIXES_DE_JEU = ["cdj:", "jump:", "tower:"] as const;
+export const PREFIXES_DE_JEU = PREFIXES_DE_JEU_GENERES; // lot K1 : générés depuis les fiches (`npm run fiches`) : "cdj:", "jump:", "tower:"
 
 /**
  * Ce qui **survit** à l'effacement : la langue commune, le son, les commandes (tactiles), les réglages d'affichage et de jeu, la qualité graphique,

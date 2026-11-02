@@ -1,0 +1,9 @@
+# `packages/core` (`@cdj/core`) : consignes
+
+Socle sans logique de jeu (PRNG, calendrier, codage d'octets, sac de thèmes, date du lancement, règles des nouveautés et de l'interrupteur). Zone partagée. La « Règle du socle » (aucune dépendance, aucun `Date`, aucune transcendante, golden des jeux inchangés) est dans `packages/jump-sim/CLAUDE.md`.
+
+## La fiche d'un jeu (lot K1)
+- **`src/fiche.ts`** : le type `FicheJeu`, `validerFiche` / `lireFiche` (tous les problèmes d'un coup), `validerEnsemble` (identifiants, codes, ordres, tables uniques) et les **projections** — une par lecteur : `projectionPortail` (ce que le portail dessine, rien de plus : il l'embarque), `projectionServeur`, `projectionCI`, `projectionJeu`. Pur : aucun disque, aucun DOM. `JEUX_SANS_FICHE` nomme Track et Jump jusqu'à leurs lots (K1b, K1c) : il disparaît quand ils ont leur fiche.
+- **`src/ficheSorties.ts`** : ce que `npm run fiches` écrit — `config/jeux/projections/{portail,serveur,ci,jeu}.json` (lus par les scripts, le portail, les tests) et un `fiches.generated.ts` dans `core`, `profile`, `ui`, `musique` (ces paquets n'importent rien d'extérieur : pureté, `rootDir`). Les listes y sont **écrites en toutes lettres, identiques à ce que le code contenait** : un jeu ne grossit pas d'un octet. Le test `test/fiches.test.ts` recalcule les sorties et échoue si le dépôt n'est pas à jour (comme `jetons.css`).
+- **Validation = garde de la règle des zones** : le lot d'un jeu écrit sa fiche ; la validation refuse des zones de CI, des tables (`<id>_…`), un préfixe de stockage, une destination de message ou des lignes de budget qui ne seraient pas ceux de ce jeu. Une règle nouvelle de la fiche s'ajoute ici avec son test.
+- **Ajouter un champ** : le type, la validation, la projection qui le porte (la plus petite possible), `config/jeux/tower.json`, `npm run fiches`, un test. Ne jamais lire une fiche depuis un jeu : un jeu ne s'importe pas lui-même par la plateforme.

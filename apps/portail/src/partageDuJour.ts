@@ -2,6 +2,7 @@ import type { Langue } from "@cdj/profile";
 import { CATALOGUE_COMMUN, traducteur } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { jeuxDeLaJournee, type Etat, type Jour } from "./jour";
+import { ficheDuRegistre } from "./jeuxFiches";
 import type { JeuPartage, OptionsPartage } from "./partage";
 
 // Lot I3 : de la réponse du serveur (`GET /api/portail/jour`) aux options de la ligne de partage (`partage.ts`). Les mots (le titre)
@@ -11,10 +12,14 @@ export const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGU
 export type T = ReturnType<typeof traduire>;
 
 /** Le nom traduit des jeux que le portail connaît (leur code au registre du serveur) ; un autre jeu garde le nom que le serveur déclare. */
-const NOM_JEU = { cdj: "jeu.track.nom", jump: "jeu.jump.nom", tower: "jeu.tower.nom" } as const;
+const NOM_JEU = { cdj: "jeu.track.nom", jump: "jeu.jump.nom" } as const;
 
 /** Le nom traduit d'un jeu du jour (celui du catalogue pour les jeux que le portail connaît, sinon celui que le serveur déclare). */
-export const nomDuJeu = (t: T, jeu: { jeu: string; nom?: string }): string => (jeu.jeu in NOM_JEU ? t.t(NOM_JEU[jeu.jeu as keyof typeof NOM_JEU]) : (jeu.nom ?? jeu.jeu));
+export const nomDuJeu = (t: T, jeu: { jeu: string; nom?: string }): string => {
+  // Lot K1 : un jeu qui a une fiche a son nom dans le catalogue commun (`jeu.<id>.nom`) ; Track et Jump gardent leur table d'avant.
+  const fiche = ficheDuRegistre(jeu.jeu);
+  return fiche ? t.t(`jeu.${fiche.id}.nom` as never) : jeu.jeu in NOM_JEU ? t.t(NOM_JEU[jeu.jeu as keyof typeof NOM_JEU]) : (jeu.nom ?? jeu.jeu);
+};
 
 /**
  * Les options de la ligne de partage, ou `null` tant qu'aucun jeu n'est fini aujourd'hui (rien à partager) ou sans réponse du serveur sur le joueur.

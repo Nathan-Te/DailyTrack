@@ -21,7 +21,8 @@ function fichiers(chemin: string): string[] {
 function sources(dossiers: string[]): string {
   return dossiers
     .flatMap(fichiers)
-    .filter((f) => /\.(ts|html)$/.test(f) && !/(^|\/)catalogue[^/]*\.ts$/.test(f))
+    .filter((f) => /\.(ts|html)$/.test(f) || f === "config/jeux/projections/portail.json") // lot K1 : et la projection du portail
+    .filter((f) => !/(^|\/)catalogue[^/]*\.ts$/.test(f))
     .map((f) => readFileSync(join(ROOT, f), "utf8"))
     .join("\n");
 }

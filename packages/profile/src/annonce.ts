@@ -1,4 +1,5 @@
 import { call, type FetchLike } from "./client";
+import { OU_ANNONCE_GENERES } from "./fiches.generated";
 import type { Langue } from "./langue";
 
 // Lot N2 de la plateforme — le **message en direct** côté client (portail, Track, Jump) : lire le message actif (`GET /api/annonce`, une réponse **publique** gardée 30 s par le cache
@@ -8,7 +9,7 @@ import type { Langue } from "./langue";
 // Ne lève jamais : un serveur injoignable ou un stockage refusé n'est jamais un problème (pas de bandeau, rien ne casse).
 
 /** Où un message s'affiche : le portail, Track, Jump ou Tower (le dossier du jeu sur le site). */
-export type OuAnnonce = "portail" | "track" | "jump" | "tower";
+export type OuAnnonce = (typeof OU_ANNONCE_GENERES)[number]; // lot K1 : générée depuis les fiches (`npm run fiches`) : "portail" | "track" | "jump" | "tower"
 export type TonAnnonce = "information" | "important";
 
 /** Le message en direct, tel que `GET /api/annonce` et `GET /api/portail/jour` le rendent. */
@@ -27,7 +28,7 @@ export const ANNONCE_FERMEE_KEY = "cdj:annonce:fermee";
 /** Une page ouverte relit le message toutes les 60 s (le cache de Hosting le garde 30 s : il est vu en 45 s en moyenne, 90 s au pire). */
 export const ANNONCE_RELECTURE_MS = 60_000;
 
-const OU: readonly string[] = ["portail", "track", "jump", "tower"];
+const OU: readonly string[] = OU_ANNONCE_GENERES;
 
 /** Lit un message d'une réponse du serveur (illisible : `null`). Jamais du HTML : un texte reste un texte, posé en `textContent`. */
 export function annonceDe(brut: unknown): Annonce | null {

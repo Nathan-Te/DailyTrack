@@ -13,6 +13,7 @@ import { formatDay, parseDay } from "@cdj/core";
 import { clientAmis, ecrireLangue, lireFiltre, lireLangue, readPlayerId, type FiltreAmis, type Langue } from "@cdj/profile";
 import { CATALOGUE_COMMUN, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatHauteur, formatNombre, formatTemps, medaille, traducteur, type TypeMedaille } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
+import { FICHES, ficheDuRegistre } from "./jeuxFiches";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { lireClassement, type AmiAbsent, type Classement, type LectureClassement, type LigneClassement, type ResultatClassement } from "./classementDonnees";
 import { absentsLisibles, adresseDuClassement, filtreEffectif, ficheAffichee, ligneTouchable, nombreDAmis, sansAmi } from "./classementAmis";
@@ -46,8 +47,8 @@ type Cle = Parameters<T["t"]>[0];
 const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || cle in CATALOGUE_COMMUN.fr ? (cle as Cle) : null);
 
 const MEDAILLE: Record<string, TypeMedaille> = { author: "diamant", gold: "or", silver: "argent", bronze: "bronze" };
-/** Les jeux que la page sait habiller (leur code au registre du serveur) ; un autre jeu garde le nom que le serveur déclare. */
-const JEUX = { cdj: { cle: "jeu.track.nom", cadre: "track" }, jump: { cle: "jeu.jump.nom", cadre: "jump" }, tower: { cle: "jeu.tower.nom", cadre: "tower" } } as const;
+/** Les jeux sans fiche que la page sait habiller (leur code au registre du serveur, leur dossier) ; lot K1 : ceux qui ont une fiche (`jeuxFiches.ts`) n'y sont plus. */
+const JEUX = { cdj: { cle: "jeu.track.nom", cadre: "track" }, jump: { cle: "jeu.jump.nom", cadre: "jump" } } as const;
 
 /** Le jour affiché (`AAAA-MM-JJ`, `null` : aujourd'hui, celui du serveur) et aujourd'hui tel que le serveur l'a dit (ou l'horloge locale). */
 let jourAffiche: string | null = new URLSearchParams(location.search).get("date");
@@ -67,7 +68,10 @@ let sequence = 0;
 const identifiant = (): string | null => (stockage ? readPlayerId(stockage) : null);
 const filtreActif = (): FiltreAmis => filtreEffectif(filtreDemande, identifiant() !== null);
 
-const nomDuJeu = (t: T, jeu: { jeu: string; nom: string }): string => (jeu.jeu in JEUX ? t.t(JEUX[jeu.jeu as keyof typeof JEUX].cle) : jeu.nom);
+const nomDuJeu = (t: T, jeu: { jeu: string; nom: string }): string => {
+  const fiche = ficheDuRegistre(jeu.jeu); // lot K1 : un jeu à fiche a son nom dans le catalogue commun (`jeu.<id>.nom`)
+  return fiche ? t.t(`jeu.${fiche.id}.nom` as never) : jeu.jeu in JEUX ? t.t(JEUX[jeu.jeu as keyof typeof JEUX].cle) : jeu.nom;
+};
 
 /**
  * La case d'un jeu pour un joueur : son nom, son temps (au cumul seulement : dans la vue d'un jeu, c'est le temps de la ligne), puis la médaille (pastille et
@@ -145,11 +149,11 @@ const nomOnglet = (t: T, o: { jeu?: string; nom?: string }): string => (o.jeu ? 
 
 /**
  * Les onglets (rôle `tablist`, un seul dans l'ordre de tabulation, flèches pour passer de l'un à l'autre) : Cumulé, puis un jeu par jeu du jour. Avant la
- * réponse du serveur : Cumulé, Track, Jump. Tower n'y est jamais d'avance (lot TP) : il n'est dans le classement du jour qu'à partir de son premier jour entier
+ * réponse du serveur : Cumulé, puis les jeux au temps (Track, Jump : lot K1, le champ `cumul` de la fiche d'un jeu). Un jeu hors du cumul (Tower, lot TP) n'y est jamais d'avance : il n'est dans le classement du jour qu'à partir de son premier jour entier
  * `on`, et un onglet dessiné puis retiré à la réponse clignoterait ; il apparaît avec la réponse du serveur, quand il est là.
  */
 function barreDesVues(t: T, c: Classement | null): HTMLElement {
-  const liste = c ? onglets(c.jeux) : onglets(Object.entries(JEUX).filter(([jeu]) => jeu !== "tower").map(([jeu, j]) => ({ jeu, site: j.cadre, nom: jeu })));
+  const liste = c ? onglets(c.jeux) : onglets([...Object.entries(JEUX).map(([jeu, j]) => ({ jeu, site: j.cadre as string, nom: jeu })), ...FICHES.filter((f) => f.cumul).map((f) => ({ jeu: f.code, site: f.id, nom: f.code }))]);
   const actif = liste.some((o) => o.vue === vueAffichee) ? vueAffichee : VUE_CUMUL;
   const barre = el("div", { classe: "classement-vues", attrs: { role: "tablist", "aria-label": t.t("classement.vues.aria") } });
   const boutons = liste.map((o) => {

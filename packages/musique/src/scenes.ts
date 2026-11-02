@@ -1,3 +1,4 @@
+import { SCENES_FICHES } from "./fiches.generated";
 import type { JeuMusique } from "./types";
 
 // Les scènes de chaque jeu (lot « musique ») : **où un morceau peut passer** — `menu` (l'accueil) et un thème de niveaux par `theme:<code>`. C'est la liste que la vérification de
@@ -13,8 +14,8 @@ export const FORMAT_SCENE = /^[a-z0-9]+(:[a-z0-9-]+)?$/;
 export const SCENES: Readonly<Record<JeuMusique, readonly string[]>> = {
   track: ["menu", "theme:stade", "theme:rallye", "theme:banquise", "theme:nuit", "theme:campagne", "theme:canyon", "theme:col", "theme:ville"],
   jump: ["menu", "theme:foret", "theme:usine", "theme:glace", "theme:nuit", "theme:neon"],
-  // Tower n'a pas encore d'accueil : « menu » est prêt pour quand il en aura un. Ses thèmes : `THEMES_TOWER` de `@cdj/tower-sim` (lot T3).
-  tower: ["menu", "theme:port", "theme:chantier", "theme:canyon", "theme:banquise", "theme:jungle", "theme:nuit"],
+  // Lot K1 : les scènes de Tower sont celles de sa fiche (`musique.scenes` de `config/jeux/tower.json` : « menu » puis un thème par thème du jeu ; le test de Tower les compare à `THEMES_TOWER`).
+  ...SCENES_FICHES,
   portail: ["menu"],
 };
 

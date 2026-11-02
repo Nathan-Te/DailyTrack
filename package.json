@@ -32,6 +32,7 @@
     "mesure-circuits": "esbuild packages/sim/scripts/mesure-circuits.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/mesure-circuits.mjs --log-level=warning && node node_modules/.cache/cdj/mesure-circuits.mjs",
     "mesure:themes": "esbuild scripts/mesure-themes.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/mesure-themes.mjs --log-level=warning && node node_modules/.cache/cdj/mesure-themes.mjs",
     "traductions": "esbuild scripts/traductions.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/traductions.mjs --log-level=warning && node node_modules/.cache/cdj/traductions.mjs",
+    "fiches": "esbuild scripts/fiches.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/fiches.mjs --log-level=warning && node node_modules/.cache/cdj/fiches.mjs",
     "verifier": "node scripts/verifier.mjs",
     "attendre-ci": "node scripts/attendre-ci.mjs",
     "mesure-ci": "node scripts/mesure-ci.mjs",

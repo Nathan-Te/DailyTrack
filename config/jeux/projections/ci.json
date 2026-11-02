@@ -1,0 +1,106 @@
+{
+  "jeux": [
+    {
+      "id": "tower",
+      "zones": {
+        "jeu": [
+          "apps/tower/**",
+          "packages/tower-sim/**",
+          "apps/api/src/tower*.ts",
+          "apps/api/test/tower*.test.ts",
+          "apps/api/scripts/tower-*.ts",
+          "docs/tower/**"
+        ],
+        "serveur": [
+          "apps/api/src/tower*.ts",
+          "apps/api/test/tower*.test.ts",
+          "apps/api/scripts/tower-*.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/tower/e2e",
+        "suite": "tower",
+        "fumee": [
+          "determinisme.spec.ts",
+          "partie.spec.ts",
+          "poids.spec.ts"
+        ],
+        "zones": {
+          "tower-sim": {
+            "_": "Lot R15 : Tower (3ᵉ jeu). La simulation (`packages/tower-sim`, dont le banc d'essai du lot T0 et les empreintes de Node).",
+            "globs": [
+              "packages/tower-sim/**"
+            ]
+          },
+          "tower-jeu": {
+            "_": "Lot R15 : la page du jeu (`/tower/`) : la boucle, la scène, l'interface, les entrées, le chargement de Rapier.",
+            "globs": [
+              "apps/tower/index.html",
+              "apps/tower/vite.config.ts",
+              "apps/tower/rapierWasm.ts",
+              "apps/tower/src/*"
+            ],
+            "sauf": [
+              "apps/tower/src/moteurs.ts",
+              "apps/tower/src/verify.ts"
+            ]
+          },
+          "tower-banc": {
+            "_": "Lot R15 : la démonstration de la physique du lot T0 (`?scenario=banc`) et la page de vérification sans rendu.",
+            "globs": [
+              "apps/tower/src/banc/**",
+              "apps/tower/src/moteurs.ts",
+              "apps/tower/src/verify.ts",
+              "apps/tower/verify.html"
+            ]
+          },
+          "api-tower": {
+            "_": "Lot T4 : le serveur de Tower (routes, rejeu, fil de calcul) et son serveur d'essai, que lance le spec classement.",
+            "globs": [
+              "apps/api/src/tower*.ts",
+              "apps/api/scripts/tower-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "determinisme.spec.ts": [
+            "tower-sim",
+            "tower-banc",
+            "core-clock"
+          ],
+          "partie.spec.ts": [
+            "tower-sim",
+            "tower-jeu",
+            "ui"
+          ],
+          "classement.spec.ts": [
+            "tower-sim",
+            "tower-jeu",
+            "api-tower"
+          ],
+          "poids.spec.ts": [
+            "tower-jeu",
+            "ui"
+          ]
+        },
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        }
+      },
+      "jours": {
+        "dossier": "apps/tower/public/jours",
+        "preuveInterditeEnProd": true
+      },
+      "budget": [
+        "tower.jsCss",
+        "tower.jeu",
+        "tower.physique",
+        "tower.anglais",
+        "tower.polices"
+      ],
+      "outilsAdmin": false
+    }
+  ]
+}

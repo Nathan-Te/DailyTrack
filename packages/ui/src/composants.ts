@@ -1,5 +1,6 @@
 import type { CleCommune } from "./catalogue";
 import { el, svg } from "./dom";
+import type { JeuGenere } from "./fiches.generated";
 import { formatDateCourte, formatNumeroJour, majuscule } from "./formats";
 import { LANGUES, type Langue, type Traducteur } from "./i18n";
 import { icone, iconeEtoile } from "./icones";
@@ -11,7 +12,8 @@ import { astuceIphoneAPropos, basculerPleinEcran, pleinEcranActif, pleinEcranBou
 
 /** Le traducteur que reçoivent les composants : au moins le catalogue commun. */
 export type TraducteurCommun = Traducteur<CleCommune>;
-export type Jeu = "track" | "jump" | "tower";
+/** Les jeux de la plateforme : lot K1 — l'union est **générée** (Track, Jump, puis chaque jeu qui a une fiche `config/jeux/<id>.json` : `npm run fiches`). */
+export type Jeu = JeuGenere;
 export type TypeMedaille = "diamant" | "or" | "argent" | "bronze";
 export const MEDAILLES: readonly TypeMedaille[] = ["diamant", "or", "argent", "bronze"];
 
@@ -183,6 +185,14 @@ export function etiquetteJump(o: OptionsEtiquette): HTMLElement {
     ),
     dessinJump(),
   );
+}
+
+/**
+ * L'étiquette du jeu `jeu` (lot K1) : un seul point d'entrée pour le portail, qui ne nomme plus un jeu pour choisir la fabrique. Un jeu dont la fiche dit `dessin: "propre"` a son
+ * dessin écrit ici (`ETIQUETTES_FICHES` : Tower) ; l'étiquette générique d'un jeu neuf est le lot K3.
+ */
+export function etiquetteDe(jeu: Jeu, o: OptionsEtiquette): HTMLElement {
+  return (jeu === "track" ? etiquetteTrack : jeu === "jump" ? etiquetteJump : etiquetteTower)(o);
 }
 
 /** Une tuile : légende en capitales, valeur, sous-texte. */

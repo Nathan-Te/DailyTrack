@@ -1,5 +1,7 @@
 import { daysFromCivil } from "@cdj/core";
 import { numeroDeJournee as numero, premierJourDuJour } from "@cdj/core/lancement";
+import type { Jeu } from "@cdj/ui";
+import { FICHES } from "./jeuxFiches";
 
 // Le numéro du jour de chaque jeu, pour les cartouches du portail (lot R4 ; lot I1 : les textes sont dans les catalogues). Le portail n'importe
 // aucun jeu (il resterait léger, et les jeux ne s'importent jamais l'un l'autre) : les deux premiers jours sont recopiés ici, et un test
@@ -22,9 +24,9 @@ export const numeroDeJournee = (day: number): number | null => numero(day, PREMI
 
 export interface CarteJeu {
   /** Le code du jeu (son dossier sur le site : `/track/`, `/jump/`). */
-  code: "track" | "jump" | "tower";
+  code: Jeu;
   /** Lot I2 : son code au registre du serveur (`GET /api/portail/jour`). */
-  jeu: "cdj" | "jump" | "tower";
+  jeu: string;
   /** Lien relatif à la page du portail. */
   lien: string;
   /** Numéro du jour (≤ 0 avant le premier : la cartouche ne l'affiche pas). */
@@ -39,6 +41,7 @@ export function cartes(day: number): CarteJeu[] {
   return [
     { code: "track", jeu: "cdj", lien: "track/", numero: day - PREMIER_JOUR_TRACK + 1 },
     { code: "jump", jeu: "jump", lien: "jump/", numero: day - PREMIER_JOUR_JUMP + 1 },
-    { code: "tower", jeu: "tower", lien: "tower/", numero: 0 },
+    // Lot K1 : les jeux qui ont une fiche (`config/jeux/<id>.json`, dans l'ordre de leur champ `ordre`, après Track et Jump) : Tower. Sans numéro local (le serveur le donne), comme avant.
+    ...FICHES.map((f): CarteJeu => ({ code: f.id as Jeu, jeu: f.code, lien: `${f.id}/`, numero: 0 })),
   ];
 }
