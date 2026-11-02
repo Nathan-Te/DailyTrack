@@ -3,15 +3,15 @@
   "jeu": "tower",
   "date": "2026-11-14",
   "g": 3,
-  "tirage": 0,
-  "sim": 4,
+  "tirage": 2,
+  "sim": 5,
   "contenu": {
-    "pieces": "LZSTOJISOZTJILSJZTLIOJLOTISZISLOJTZOSILZ",
-    "plateformeDemi8": 24,
-    "paliers": [{"metres":8,"effet":"lierre"},{"metres":16,"effet":"glissante"},{"metres":24,"effet":"petite"},{"metres":32,"effet":"geante"},{"metres":40,"effet":"figee"},{"metres":48,"effet":"vent"}],
-    "ventSens": 1,
+    "pieces": "TZSJIOLSTLJIOZOJLISTZOITZSLJIOLTSJZOTZIS",
+    "plateformeDemi8": 20,
+    "paliers": [{"metres":8,"effet":"lierre"},{"metres":16,"effet":"glissante"},{"metres":24,"effet":"figee"},{"metres":32,"effet":"vent"},{"metres":40,"effet":"petite"},{"metres":48,"effet":"geante"}],
+    "ventSens": -1,
     "theme": "banquise"
   },
-  "medailles": { "auteur": 60000, "or": 30000, "argent": 18000, "bronze": 9000 },
-  "preuve": "AQQDAKOiARQEOAMMAQkFCCQKBQg6DAEKAwgyDAEKBQgkCQUIQAwDCgMIJAkECF4MAQoECCUKBQgoDAEKBAglDAMKBAgpDAEKBQgkDAEKBAgfDAEKBQgkDAEKBAgoDAIKAwgtCgQIKQwBCgUIJAwDCgMIIQwBCgIIIQoECCkMAwoCCCYMAwoBCCQKAggpDAEKAwgkDAEKAwggCgIIKQoCCCkMAQoCCB8KAggpDAEKAwgkCgIIKQwBCgMIJAwBCgIIJQoBCCoJBAgvCgIIMAwBCgIIIgwDCgEIJAwBCgMIKg"
+  "medailles": { "auteur": 48498, "or": 24249, "argent": 14549, "bronze": 7274 },
+  "preuve": "AQUDAqOiAQIUBDgDDAEIKQwBCQIIJwwBCC8MAwkCCCsMAQkDCCAJAwgqDAEJAQgoDAEJAggnDAIJAggpDAMJAgglDAMJBQgiDAEJBAgfCQUIKAkECCkJAwgqDAEJAggnDAMJAwgkDAEJBQg1"
 }
