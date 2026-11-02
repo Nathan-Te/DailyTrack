@@ -99,6 +99,10 @@
   background: var(--jump-jaune);
   border: var(--dj-trait-fort) solid var(--jump-encre);
 }
+.vitrine-menthe {
+  padding: var(--dj-espace-5);
+  background: var(--tower-menthe);
+}
 .vitrine-medailles {
   display: flex;
   flex-direction: column;

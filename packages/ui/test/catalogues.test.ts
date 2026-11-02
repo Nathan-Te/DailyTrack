@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { CATALOGUE_AMIS } from "../src/catalogue.amis";
 import { CATALOGUE_COMMUN } from "../src/catalogue";
 import { parametresDe, type Catalogue } from "../src/i18n";
 import { cataloguesApplications } from "./applications";
@@ -63,9 +64,10 @@ describe("catalogues de traduction", () => {
     const { CODES_ERREUR } = (await import(/* @vite-ignore */ chemin)) as { CODES_ERREUR: Record<string, { status: number }> };
     const codes = Object.keys(CODES_ERREUR).sort();
     expect(codes.length).toBeGreaterThan(40);
-    const traduits = Object.keys(CATALOGUE_COMMUN.fr).filter((k) => k.startsWith("erreur.")).map((k) => k.slice("erreur.".length)).sort();
+    // Lot F2 : les codes des amis sont traduits dans le catalogue des amis (à la demande), pas dans le commun, que le portail charge au premier affichage et dont le budget est au plafond.
+    const traduits = [...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_AMIS.fr)].filter((k) => k.startsWith("erreur.")).map((k) => k.slice("erreur.".length)).sort();
     expect(traduits).toEqual(codes);
-    for (const code of codes) for (const l of ["fr", "en"] as const) expect((CATALOGUE_COMMUN[l] as Catalogue)[`erreur.${code}`], `${l} ${code}`).toBeTruthy();
+    for (const code of codes) for (const l of ["fr", "en"] as const) expect(((CATALOGUE_COMMUN[l] as Catalogue)[`erreur.${code}`] ?? (CATALOGUE_AMIS[l] as Catalogue)[`erreur.${code}`]), `${l} ${code}`).toBeTruthy();
     expect(readFileSync(chemin, "utf8")).toContain("erreur.<code>");
   });
 });

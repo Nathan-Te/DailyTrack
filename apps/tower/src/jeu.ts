@@ -8,7 +8,7 @@ import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
 import type { Entree } from "./aideLigne";
 import { adresseAccueil, estArchive } from "./jourPasse";
 import { commandes } from "./commandes";
-import { monterClassement } from "./classementUi";
+import { monterClassement, type DialogueClassement } from "./classementUi";
 import { texteDebug } from "./debug";
 import { Entrees, padActif } from "./entrees";
 import { evenementsDeFin, type EvenementJeu, Observateur } from "./evenements";
@@ -155,6 +155,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   message.remove();
 
   const stockage = gameStorage();
+  const idJoueur = (): string | null => readPlayerId(stockage ?? { getItem: () => null });
   const reglages = reglagesDeDepart();
   // Lot T7 : les réglages d'affichage du joueur (Réglages › Affichage, `tower:reglages`) : le fantôme au départ, les secousses, la panique des yeux. **Affichage seulement** : rien ne retourne dans la simulation.
   let reglagesJ: ReglagesJoueur = lireReglagesJoueur(stockage);
@@ -261,7 +262,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   };
   /** Le Diamant se demande au serveur la première fois qu'on le choisit (il refuse tant qu'on n'est pas classé, et pour un jour sans preuve). */
   async function chargerDiamant(): Promise<void> {
-    const pid = readPlayerId(stockage ?? { getItem: () => null });
+    const pid = idJoueur();
     if (diamantPieces || !session.source || !pid || date === null) return;
     const r = await session.source.diamant(date, pid);
     if (r.ok && r.data.pieces.length > 0) diamantPieces = r.data.pieces;
@@ -342,7 +343,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   let suiteLue = 0;
   const lireLaSuite = async (force: boolean): Promise<void> => {
     if (!classable || !session.base || (!force && Date.now() - suiteLue < 10_000)) return;
-    const id = readPlayerId(stockage ?? { getItem: () => null });
+    const id = idJoueur();
     if (!id) return;
     suiteLue = Date.now();
     const suite = await chargerSuite(session.base, id);
@@ -419,14 +420,15 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
   if (options.tune) monterTune(racine, reglages, { demiJour: contenu.plateformeDemi8, onRecommencer: () => nouvellePartie() });
 
   /** Le classement du jour en dialogue : la réponse du dernier envoi, sinon une lecture du serveur. */
-  let dialogueClassement: ReturnType<typeof monterClassement> | null = null;
+  let dialogueClassement: DialogueClassement | null = null;
   async function ouvrirClassement(): Promise<void> {
-    dialogueClassement ??= monterClassement(racine);
+    // Lot F2 : les amis du dialogue sont à la demande ; le contexte se lit à l'ouverture.
+    dialogueClassement ??= monterClassement(racine, { amis: { base: session.base, id: idJoueur, date } });
     const connu = date ? session.envoi.resultats.get(date)?.board : undefined;
     if (connu) return dialogueClassement.ouvrir(connu);
     dialogueClassement.ouvrir(null, "chargement");
     if (!session.source || !date) return dialogueClassement.ouvrir(null, "indisponible");
-    const r = await session.source.board(date, readPlayerId(stockage ?? { getItem: () => null }));
+    const r = await session.source.board(date, idJoueur());
     if (r.ok) suivreGeneration(r.data);
     dialogueClassement.ouvrir(r.ok ? r.data : null, r.ok ? "ok" : "indisponible");
   }

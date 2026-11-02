@@ -53,6 +53,7 @@ import {
   type VarianteBouton,
 } from "@cdj/ui";
 import { CATALOGUE_VITRINE } from "./catalogueVitrine";
+import { remplirAmis } from "./vitrineAmis";
 import { stockageDuPortail } from "./stockage";
 
 // La vitrine des composants (`/ui/`, lot I1) : chaque composant de @cdj/ui dans tous ses états, en français ET en anglais (côte à côte), sur
@@ -227,6 +228,8 @@ function bloc(l: Langue): HTMLElement {
       bandeauAnnonce(t, { texte: t.t("vitrine.bandeau.information"), ton: "information" }),
       bandeauAnnonce(t, { texte: t.t("vitrine.bandeau.important"), ton: "important", fermableApresMs: 0 }),
     ),
+    // Lot F2 : les composants des amis (chargés à la demande, comme dans les pages qui les utilisent).
+    section(t.t("vitrine.section.amis"), `amis-${l}`, remplirAmis(l, (cle) => t.t(cle as never))),
     section(
       t.t("vitrine.section.boutons"),
       `boutons-${l}`,

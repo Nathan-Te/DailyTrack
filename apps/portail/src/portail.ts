@@ -217,6 +217,8 @@ function tuileClassement(t: T, neuf: boolean): HTMLElement | null {
       : contenuTuile.type === "manque"
         ? tuile({ legende, valeur: formatRang(contenuTuile.rang, langue), sousTexte: t.t("portail.classement.manque", { jeu: nomDuJeu(t, contenuTuile.jeu) }) })
         : tuile({ legende, valeur: "—", sousTexte: t.t("portail.classement.inviter") });
+  // Lot F2 : « 3e entre amis » sous le rang (une ligne du serveur : `rangEntreAmis`, `null` sans ami).
+  if (joueur?.rangEntreAmis) contenu.append(el("div", { classe: "portail-tuile-amis", attrs: { id: "classement-amis" }, texte: t.t("portail.classement.entreAmis", { rang: formatRang(joueur.rangEntreAmis.rang, langue) }) }));
   return el("a", { classe: "portail-tuile-lien", attrs: { id: "classement", href: "classement/", "data-cle": "classement" } }, contenu);
 }
 

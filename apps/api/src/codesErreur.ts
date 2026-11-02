@@ -62,6 +62,16 @@ export const CODES_ERREUR = {
   // --- Tower (lot T4) -----------------------------------------------------------------------------------------------
   not_ranked: { status: 403, sens: "Tower (lot T4) : la tour du Diamant ne se rend qu'à un joueur classé ce jour-là (règle G1 : on la débloque en finissant)." },
 
+  // --- Amis (lot F2) ---------------------------------------------------------------------------------------------------
+  invalid_friend: { status: 400, sens: "Amis (lot F2) : référence ou pseudo d'ami absent, mal formé, ou les deux à la fois." },
+  friend_self: { status: 400, sens: "Amis (lot F2) : on ne s'ajoute pas soi-même (ni son propre lien d'invitation)." },
+  unknown_friend: { status: 404, sens: "Amis (lot F2) : aucun joueur pour cette référence ou ce pseudo — un joueur masqué a le même visage qu'un joueur inconnu." },
+  friend_exists: { status: 409, sens: "Amis (lot F2) : ce joueur est déjà dans ta liste (ou le lien d'invitation a déjà servi à cette personne)." },
+  friends_full: { status: 409, sens: "Amis (lot F2) : ta liste est pleine (100 amis au plus) ; retire quelqu'un avant d'en ajouter." },
+  their_friends_full: { status: 409, sens: "Amis (lot F2) : la liste de l'autre personne est pleine (100 amis au plus) ; une invitation n'est acceptée que si les deux listes ont de la place, rien n'est créé sinon." },
+  invalid_invitation: { status: 404, sens: "Amis (lot F2) : lien d'invitation inconnu, renouvelé ou d'un joueur masqué (un seul visage pour ces trois cas)." },
+  invalid_filter: { status: 400, sens: "Amis (lot F2) : `filtre` d'un classement autre que `amis`." },
+
   // --- Salon (DailyTrack) ----------------------------------------------------------------------------------------
   invalid_session: { status: 400, sens: "Salon : numéro de session (ou adresse) illisible." },
   unknown_session: { status: 404, sens: "Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée)." },

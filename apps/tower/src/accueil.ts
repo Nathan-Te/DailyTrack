@@ -12,7 +12,7 @@ import { identityRevisionSeen, readPlayerId } from "@cdj/profile";
 import type { Musique } from "@cdj/musique/branche";
 import { barreJeu, el, formatDecompte, formatNombre, nomMedaille, type TraducteurCommun } from "@cdj/ui";
 import type { ClassementTower, MoiTower } from "./apiTower";
-import { monterClassement } from "./classementUi";
+import { monterClassement, type DialogueClassement } from "./classementUi";
 import { estArchive } from "./jourPasse";
 import { petiteTour } from "./composants";
 import { formatHauteur, formatPalier } from "./formatHauteur";
@@ -78,6 +78,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   const session = creerSession(options);
   const etat: Etat = { options, session, racine, preparation: null, classement: null, moi: null, classementIndisponible: false };
   const stockage = gameStorage();
+  const idJoueur = (): string | null => readPlayerId(stockage ?? { getItem: () => null });
   // Révision d'identité de la plateforme (lot P4) : un code chargé dans un autre jeu depuis la dernière visite change le profil de ce navigateur ; les records gardés ici appartenaient à
   // l'ancien. Rotation, création ou première visite : même profil, rien n'est effacé (`identityRevisionSeen` note la révision comme vue dans tous les cas).
   try {
@@ -194,7 +195,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
       etat.classementIndisponible = true;
       return dessinerClassement();
     }
-    const pid = readPlayerId(stockage ?? { getItem: () => null });
+    const pid = idJoueur();
     const [b, m] = await Promise.all([session.source.board(dateDuJour, pid), pid ? session.source.towerMe(pid) : Promise.resolve(null)]);
     if (b.ok) {
       suivreGeneration(b.data);
@@ -215,7 +216,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   };
   void lectures();
   // Ce qui attendait d'être envoyé (une partie jouée hors ligne) repart ; sans identité encore, rien à envoyer.
-  if (readPlayerId(stockage ?? { getItem: () => null })) session.envoi.offrir();
+  if (idJoueur()) session.envoi.offrir();
 
   // --- Le contenu du jour : un morceau à part (le générateur), chargé dès que la page est dessinée ; le jeu et la physique se préchargent dès que l'accueil est affiché ---
   const prep = import("./preparation").then((m) => m.preparerJour(options, session.aujourdhui));
@@ -235,9 +236,10 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   });
 
   // --- Le classement en dialogue ---
-  let dialogueClassement: ReturnType<typeof monterClassement> | null = null;
+  // Lot F2 : les amis du dialogue sont à la demande ; le contexte se lit à l'ouverture (l'identité peut naître entre-temps).
+  let dialogueClassement: DialogueClassement | null = null;
   toutLeClassement.addEventListener("click", () => {
-    dialogueClassement ??= monterClassement(racine);
+    dialogueClassement ??= monterClassement(racine, { amis: { base: session.base, id: idJoueur, date: dateDuJour } });
     dialogueClassement.ouvrir(etat.classement, etat.classement ? "ok" : "indisponible");
   });
 
@@ -265,7 +267,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
       stockage,
       jours: async () => {
         if (etat.moi) return etat.moi.days;
-        const pid = readPlayerId(stockage ?? { getItem: () => null });
+        const pid = idJoueur();
         const r = session.source && pid ? await session.source.towerMe(pid) : null;
         return r?.ok ? r.data.days : [];
       },

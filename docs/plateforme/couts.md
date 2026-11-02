@@ -222,3 +222,29 @@ Mesure : `npm run measure:annonce -w @cdj/api` (28/10/2026, base en mémoire ; l
 - **Séparer les quotas** (étape de Nathan, README du lot R14) : la recette dans **une autre organisation Turso**, gratuite elle aussi, pour qu'elle ne puisse plus jamais bloquer la production. À faire tant que la production et la recette sont dans la même organisation.
 - **Lire l'usage** : `turso db inspect <base> --queries` (les requêtes qui lisent et écrivent le plus, par base) ; tableau de bord Turso › *Usage* (par organisation, par mois). Le panneau `/admin/` n'affiche pas l'usage Turso : il faudrait un jeton de l'API Turso de plus, un secret que le lot n'ajoute pas. **Chaque lundi, avec la projection du § 3** : relever les lignes lues et écrites du mois de la production et de la recette ; au-delà de 50 % du quota en milieu de mois, regarder `--queries` avant que ça bloque.
 - **Mesurer une route** : `npm run measure:lignes -w @cdj/api` (lignes lues et écrites des routes les plus appelées, base de référence locale) ; l'exact de Turso (`rows_read` du serveur `sqld`) : `measure:portail`, `measure:jump-api`, `measure:budget` avec un `sqld` local (Docker), comme avant.
+
+## 11. Les amis (lot F2)
+
+Mesuré le 02/11/2026 par `npm run measure:amis -w @cdj/api` (`scripts/amisCout.ts`) sur la base de référence du lot R14 (300 joueurs, 14 jours de parties dans chaque jeu), **base libSQL locale comptée, jamais Turso** (`src/comptage.ts` : lignes parcourues sans index + lignes rendues, **estimation basse** — une jointure lit aussi la ligne de chaque ami, une recherche par index lit les entrées qu'elle écarte). Garde-fou de CI : `apps/api/test/amisCout.test.ts`. « Froid » : une instance neuve (le cas fréquent avec `min-instances=0`) ; « chaud » : la même instance, une seconde fois (classement du jour gardé pour sa fenêtre de 45 s).
+
+**Lignes lues, froid / chaud, pour 0 – 10 – 100 amis :**
+
+| route | 0 ami | 10 amis | 100 amis |
+|---|---|---|---|
+| `GET /api/amis` | 2 / 1 | 12 / 11 | 102 / 101 |
+| `GET /api/portail/jour` avec joueur (rang « entre amis » compris) | 636 / 27 | 646 / 37 | 736 / 127 |
+| `GET /api/portail/classement?filtre=amis` (cumul, Track, Jump, Tower) | 612 / 4 | 622 / 14 | 712 / 104 |
+| `GET /api/day/<j>/leaderboard?filtre=amis` (Track) | 612 / 4 | 622 / 14 | 712 / 104 |
+| `GET /api/jump/day/<j>/board?filtre=amis` (Jump : + les morts des amis) | 613 / 5 | 629 / 21 | 779 / 171 |
+| `GET /api/tower/day/<j>/board?filtre=amis` | 613 / 5 | 623 / 15 | 713 / 105 |
+| `GET /api/amis/fiche/<ref>` | 610 / 2 | 612 / 4 | 612 / 4 |
+| `GET /api/amis/suggestions?q=…` | 7 / 6 | 7 / 6 | 7 / 6 |
+| `POST /api/amis` (ajout) | 7 | 7 | 7 (à 99) |
+| `POST /api/amis/invitation` (lien) | 6 | 4 | 4 |
+
+- **Aucune requête par ami** : le nombre d'instructions d'une route filtrée ne dépend pas du nombre d'amis (testé : même nombre d'instructions à chaud pour 0, 10 et 100 amis). Le classement du jour vient de celui que le portail garde déjà (fenêtre de 45 s, calculé une fois pour « Tous » et les amis : le « froid » de 612 est le calcul du classement du jour, qu'une visite de « Tous » paie de la même façon) ; **à chaud, une route filtrée lit une ligne par ami** (la liste des amis, jointe à leurs pseudos et références) : 100 lignes pour 100 amis. Jump lit en plus les morts des seuls amis classés (une requête sur la clé du jour, 67 lignes pour 100 amis).
+- **Lecture réelle sur Turso** (estimation haute, lignes d'index comprises) pour 100 amis : la liste des amis lit 100 lignes de la clé de `amities`, 100 lignes de `players` (par clé) et, pour `GET /api/amis`, 100 recherches de réciprocité dans la clé de `amities` : de l'ordre de **300 lignes** pour `GET /api/amis`, **200** pour un classement filtré à chaud. À 10 amis : 30 et 20.
+- **Écritures** : un ajout écrit **1 ligne dans `amities` + 2 entrées d'index** (la clé et `amities_by_ami`), plus les compteurs de débit (`rate`, comme tout envoi : 2 lignes par fenêtre) ; une invitation acceptée écrit 2 lignes (4 entrées d'index) et, sans profil, le profil (comme un premier envoi) ; le lien d'invitation écrit 1 ligne dans `invitations_amis` (+ 2 entrées d'index) à chaque création ou renouvellement. Un retrait écrit 1 suppression. Aucune écriture à la lecture.
+- **`GET /api/portail/jour`** : +1 instruction (la liste des amis, indexée) **seulement pour un joueur qui a fini un jeu ce jour-là** ; 0 pour un visiteur ou un joueur qui n'a rien fini (la réponse publique est inchangée, cache public de 60 s intact). Les plafonds de `routesChaudes.test.ts` tiennent sans changement.
+- **Suggestions** : au plus `SUGGESTIONS_CANDIDATS` (300) pseudos lus par recherche (début de pseudo, index de `name_key`) et au plus trois recherches d'index par candidat (résultats de Track, Jump, Tower des 30 derniers jours) ; limitées à 60 par joueur et par fenêtre de 10 minutes (en mémoire, aucune écriture). Le pire cas (un début de pseudo très courant dont personne n'est actif) lit ≈ 300 + 3 × 300 lignes ; le cas courant (3 lettres, quelques dizaines de pseudos) quelques dizaines.
+- **Limites de débit** (par adresse **et** par joueur, fenêtre de 10 minutes) : ajout / retrait 60 par adresse et 30 par joueur (compteurs en base, comme un envoi) ; création du lien 10 par joueur ; acceptation 60 / 30, et **5 profils créés par adresse** (un profil sans résultat réserve un pseudo : plus strict) ; lectures (liste, feuille, suggestions) 120 par adresse et 60 par joueur ; classements filtrés 300 par adresse et 60 par joueur ; lecture d'un lien 120 par adresse. L'adresse de connexion compte aussi (`PEER_FACTOR`).

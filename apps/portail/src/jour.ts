@@ -54,6 +54,8 @@ export interface JoueurDuJour {
   cumulMs?: number | null;
   rangDuJour?: number | null;
   classesDuJour?: number | null;
+  /** Lot F2 : sa place parmi ses amis au cumul du jour (« 3e entre amis »), `null` sans ami ou tant qu'il n'a rien fini. */
+  rangEntreAmis?: { rang: number; sur: number } | null;
   /** Lot F1 : les jeux épinglés du joueur (leur dossier sur le site) — `null` : il n'a jamais rien choisi ; absent d'un serveur plus ancien. */
   favoris?: string[] | null;
   /** Lot F1 : les jeux qui comptent pour sa journée aujourd'hui (journée parfaite, « n fini sur m », partage) ; un choix de favoris ne compte qu'à partir de demain. */

@@ -1,6 +1,7 @@
 import { GENERATOR_VERSION, SIM_VERSION, formatDay } from "@cdj/sim";
 import { parisClockSource } from "@cdj/clock";
 import { createAdmin, type Admin, type AdminOptions } from "./admin";
+import { createAmis } from "./amis";
 import type { CdjInstance, CdjOptions } from "./cdj";
 import { WithHeaders, mergeVary } from "./cache";
 import type { SqlDb } from "./db";
@@ -174,6 +175,9 @@ export function createApi(options: ApiOptions) {
     platform,
     instances.map((g) => ({ code: g.code, site: g.instance.portail?.site ?? g.code, nom: g.instance.portail?.nom ?? g.code, viderApercu: g.instance.viderApercu?.bind(g.instance) })),
   );
+  // Lot F2 : les amis (`/api/amis…`, le filtre `filtre=amis` des classements). Ils lisent le classement du jour que le portail garde par fenêtre (créé juste après : d'où la lecture paresseuse).
+  let portailPartage: ReturnType<typeof createPortailRoutes> | null = null;
+  const amis = createAmis(platform, () => portailPartage!.vue);
   // Lot I2 : le portail (accueil et profil commun), à partir de ce que chaque jeu déclare (crochet `portail`).
   const portail = createPortailRoutes(
     platform,
@@ -181,7 +185,9 @@ export function createApi(options: ApiOptions) {
     options.premierJourDuJour,
     diffusion,
     interrupteur,
+    amis.pourPortail,
   );
+  portailPartage = portail;
   // Lot R8 : la remise à zéro du lancement vide la base ; une instance qui voit la génération changer oublie sa mémoire (comme après un effacement).
   platform.onGenerationChange(() => {
     for (const g of instances) g.instance.onErased?.();
@@ -297,7 +303,7 @@ export function createApi(options: ApiOptions) {
       if (req.method !== "GET" && req.method !== "HEAD") await admin.entretien();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
-      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await portail.route(path, req, url, info));
+      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await amis.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
       if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;
@@ -311,6 +317,11 @@ export function createApi(options: ApiOptions) {
             if (ecriture && !g.instance.ecrituresApercu?.includes(path)) throw new HttpError(404, "game_unavailable", "Ce jeu n'accepte pas cette écriture pendant l'aperçu");
             infoJeu = { ...info, apercu: true };
           }
+        }
+        // Lot F2 : le classement du jeu filtré aux amis (`?filtre=amis`), après la garde de l'interrupteur ; sans `filtre`, le classement « Tous » du jeu, inchangé.
+        if (url.searchParams.has("filtre")) {
+          const filtre = await amis.classementJeu(g.code, path, req, url, infoJeu);
+          if (filtre !== undefined) return answer(reply, filtre);
         }
         const body = await g.instance.route(path, req, url, infoJeu);
         if (body !== undefined) return answer(reply, body);

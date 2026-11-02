@@ -106,13 +106,14 @@ import { chooseDay, dayLine, finishMedalText, isPreview, originLine, medalWord, 
 import { FROZEN_DAYS } from "./frozen";
 import { History, mayRecord, type DayRecord } from "./history";
 import { archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalText, recordTile, streakText, wantsHome } from "./homeLogic";
-import { mountHome, type Home, type HomeView } from "./home";
+import { ligneClassement, mountHome, type Home, type HomeView } from "./home";
 import { mountArrival, type ArrivalView } from "./arrival";
 import { mountResult, resultGap, type ResultView } from "./resultat";
 import { definirJour } from "./cadre";
 import { mountHowto } from "./howtoUi";
 import { mountSettings } from "./settingsUi";
 import { mountArchives, mountBoard, type BoardView } from "./screensUi";
+import type { ControleurAmis } from "./classementAmis";
 import { profilHref } from "./profilLien";
 import { boutonFantome, boutonPleinEcran, el, icone, majPleinEcran, modeApplication, reglerAideIphone, svg } from "@cdj/ui";
 import { aCle, chargerLangue, demarrerLangue, fNumero, fTicks, langueCourante, lier, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
@@ -773,7 +774,16 @@ const syncIfReady = () => {
 const howto = mountHowto(touchOn ? "touch" : "keys", { onChange: syncIfReady });
 // Lot I5 : les archives et le classement du jour du jeu, deux écrans du cadre crème ouverts depuis l'accueil (« ‹ JUMP » les ferme).
 const archivesUi = mountArchives({ href: (date) => archiveHref(date, options), onToggle: () => (syncIfReady(), home?.focus()) });
-const boardUi = mountBoard({ onToggle: () => (syncIfReady(), home?.focus()), onCourse: () => courseDuPremier() });
+// Lot F2 : le module des amis du classement (sélecteur « Tous / Amis », feuille d'un joueur), chargé à la demande à la première ouverture d'un joueur qui a une identité sur un vrai serveur.
+let amisDuClassement: Promise<ControleurAmis | null> | null = null;
+const boardUi = mountBoard({
+  onToggle: (open) => {
+    if (!open) void amisDuClassement?.then((c) => c?.fermer());
+    syncIfReady();
+    home?.focus();
+  },
+  onCourse: () => courseDuPremier(),
+});
 const home: Home | null = homeHere
   ? mountHome({
       onPlay: () => playFromHome(),
@@ -2887,11 +2897,20 @@ function boardView(): BoardView {
   const { rows, gap } = rowsOf(b);
   const theme = nomTheme(daily?.theme ?? homeTheme.name);
   const message = !ranking.enabled ? t("classement.sansServeur") : b === null ? t(entry?.status === "loading" || !entry ? "rang.chargement" : "rang.indisponible") : rows.length === 0 ? t("classement.vide") : "";
-  return { subtitle: b ? t("classement.sousTitre", { theme, classes: classesText(b.participants) }) : theme, rows, gap, message, course: !carnage && firstRemote !== null && firstDate !== null && b !== null && rows.length > 0 ? firstRemote.name : null };
+  return { subtitle: b ? t("classement.sousTitre", { theme, classes: classesText(b.participants) }) : theme, rows, gap, message, participants: b?.participants ?? null, course: !carnage && firstRemote !== null && firstDate !== null && b !== null && rows.length > 0 ? firstRemote.name : null };
 }
 function openBoard(): void {
-  boardUi.open(boardView());
+  const view = boardView();
+  boardUi.open(view);
   void refreshDay();
+  // Lot F2 : « Tous / Amis » seulement avec une identité, sur un vrai serveur (pas la démonstration) ; le module (et ses composants) se charge alors, à la demande.
+  if (apiBase && !demoRank && ownId()) {
+    amisDuClassement ??= import("./classementAmis").then(
+      (m) => m.brancherAmis({ ui: boardUi, base: apiBase, playerId: ownId, date: () => daily?.date ?? formatDay(today), filtre: options.filtre, ligne: (r) => ligneClassement(r, true), href: "../amis/" }),
+      () => (amisDuClassement = null), // hors ligne : le prochain essai recharge le module
+    );
+    void amisDuClassement.then((c) => c?.ouvrir(view));
+  }
 }
 /** Lot I5 : « Voir le carnage » de l'accueil : ton meilleur essai du jour en héros et toutes les vies du jour ; à la fin, retour à l'accueil. */
 function carnageFromHome(): void {

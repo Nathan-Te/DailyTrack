@@ -1,0 +1,58 @@
+/* Lot F2 — les amis dans le classement de Tower (à la demande avec `amisClassement.ts`). Jetons seulement. */
+.dialogue--classement .dj-amis-selecteur {
+  align-self: stretch;
+}
+.amis-extras {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+}
+.amis-extras:empty {
+  display: none;
+}
+.rang__bouton {
+  min-height: var(--dj-cible);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.rang .rang__bouton {
+  min-width: 0;
+  min-height: 36px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.amis-absents__titre {
+  margin: 0;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.amis-absents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.amis-absent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+  min-height: 36px;
+  font-size: var(--dj-taille-13);
+  border-bottom: 1px solid var(--dj-creme-2);
+}
+.amis-absent__vide {
+  white-space: nowrap;
+}
+.dialogue--classement .dj-amis-selecteur[hidden] {
+  display: none;
+}

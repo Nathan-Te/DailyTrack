@@ -2,9 +2,65 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1431 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1515 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
+
+### Amis (`amis.*`, `packages/ui/src/catalogue.amis.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `amis.selecteur.groupe` | Qui voir dans le classement | Who to show in the leaderboard |
+| `amis.selecteur.tous` | Tous | All |
+| `amis.selecteur.tousN` | Tous · {n} | All · {n} |
+| `amis.selecteur.amis` | Amis | Friends |
+| `amis.selecteur.amisN` | Amis · {n} | Friends · {n} |
+| `amis.ajouter` | Ajouter en ami | Add as friend |
+| `amis.retirer` | Retirer | Remove |
+| `amis.retirer.aria` | Retirer {pseudo} de mes amis | Remove {pseudo} from my friends |
+| `amis.fermer` | Fermer | Close |
+| `amis.reessayer` | Réessayer | Try again |
+| `amis.chargement` | Chargement… | Loading… |
+| `amis.horsLigne` | Hors ligne : réessaie dans un moment. | Offline: try again in a moment. |
+| `amis.erreur.generique` | Quelque chose n'a pas marché. Réessaie dans un moment. | Something went wrong. Try again in a moment. |
+| `amis.reciproque` | vous deux | you both |
+| `amis.ajouteParToi` | ajouté par toi | added by you |
+| `amis.pasJoue` | pas encore joué | not played yet |
+| `amis.absents` | Pas encore joué aujourd'hui | Not played today yet |
+| `amis.rangEntreAmis` | {rang} entre amis | {rang} among friends |
+| `amis.feuille.rang` | {rang} sur {classes} | {rang} of {classes} |
+| `amis.feuille.jeu` | Jeu | Game |
+| `amis.feuille.resultat` | Résultat | Result |
+| `amis.feuille.medaille` | Médaille | Medal |
+| `amis.feuille.aucun` | Rien de fini aujourd'hui. | Nothing finished today. |
+| `amis.feuille.retire` | {pseudo} n'est plus dans tes amis. | {pseudo} is no longer in your friends. |
+| `amis.prevenu` | {pseudo} n'est pas prévenu. Tu verras simplement ses temps dans « Amis ». Tu peux le retirer quand tu veux. | {pseudo} won't be notified. You'll just see their times in “Friends”. You can remove them whenever you like. |
+| `amis.compteur` | one : {n} ami · other : {n} amis | one : {n} friend · other : {n} friends |
+| `amis.max` | {max} au plus | {max} at most |
+| `amis.vide` | Pas encore d'ami. Ajoute un pseudo ou envoie ton lien pour comparer vos temps. | No friends yet. Add a name or send your link to compare your times. |
+| `amis.classementVide` | Tu n'as pas encore d'ami. Invite quelqu'un ou ajoute un pseudo : vous verrez vos temps côte à côte. | You have no friends yet. Invite someone or add a name: you'll see your times side by side. |
+| `amis.inviter` | Inviter un ami | Invite a friend |
+| `amis.ajout.titre` | Ajouter par pseudo | Add by name |
+| `amis.ajout.bouton` | Ajouter | Add |
+| `amis.ajout.suggestions` | Pseudos qui ressemblent | Similar names |
+| `amis.ajout.suggestion` | {pseudo} · Ajouter | {pseudo} · Add |
+| `amis.ajout.fait` | {pseudo} est dans tes amis. | {pseudo} is in your friends. |
+| `amis.inviter.lien` | Inviter un ami (lien) | Invite a friend (link) |
+| `amis.invitation.lien` | Ton lien d'invitation | Your invitation link |
+| `amis.invitation.actif` | Ton lien est actif. Pour le retrouver ou en changer, crée un nouveau lien. | Your link is active. To see it again or change it, create a new link. |
+| `amis.invitation.nouveau` | Nouveau lien | New link |
+| `amis.invitation.avertissement` | Un nouveau lien rend l'ancien inutilisable. | A new link makes the old one useless. |
+| `amis.invitation.copier` | Copier le lien | Copy the link |
+| `amis.invitation.copie` | Lien copié. | Link copied. |
+| `amis.invitation.pasDeCopie` | Copie impossible : sélectionne le lien à la main. | Couldn't copy: select the link by hand. |
+| `amis.invitation.partager` | Partager | Share |
+| `amis.invitation.partageTexte` | Compare tes temps aux miens sur Du Jour. | Compare your times with mine on Du Jour. |
+| `amis.invitation.titre` | {pseudo} t'invite sur Du Jour | {pseudo} invites you to Du Jour |
+| `amis.invitation.texte` | Des jeux du jour, les mêmes pour tout le monde. Accepte pour comparer vos temps. | Daily games, the same for everyone. Accept to compare your times. |
+| `amis.invitation.accepter` | Accepter | Accept |
+| `amis.invitation.pseudo` | Choisis ton pseudo | Pick your name |
+| `amis.invitation.suggestions` | Pseudos libres | Free names |
+| `amis.invitation.fait` | C'est fait : {pseudo} est dans tes amis, et toi dans les siens. | Done: {pseudo} is in your friends, and you're in theirs. |
 
 ### annonce (`annonce.*`, `packages/ui/src/catalogue.ts`)
 
@@ -81,7 +137,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `communaute.discord` | Rejoindre le Discord | Join the Discord |
 | `communaute.kofi` | Soutenir sur Ko-fi | Support on Ko-fi |
 
-### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`)
+### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`, `packages/ui/src/catalogue.amis.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -142,6 +198,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.too_many_refs` | Trop de références demandées. | Too many references requested. |
 | `erreur.invalid_lives` | Ces essais sont illisibles. | These attempts couldn't be read. |
 | `erreur.too_many_lives` | Trop d'essais envoyés d'un coup. | Too many attempts sent at once. |
+| `erreur.invalid_friend` | Cet ami n'est pas valide. | That friend isn't valid. |
+| `erreur.friend_self` | Tu ne peux pas être ton propre ami. | You can't be your own friend. |
+| `erreur.unknown_friend` | Ce joueur est introuvable. | That player can't be found. |
+| `erreur.friend_exists` | Ce joueur est déjà dans tes amis. | That player is already in your friends. |
+| `erreur.friends_full` | Ta liste d'amis est pleine : 100 au plus. Retires-en un d'abord. | Your friends list is full: 100 at most. Remove one first. |
+| `erreur.their_friends_full` | La liste d'amis de ce joueur est pleine. | That player's friends list is full. |
+| `erreur.invalid_invitation` | Ce lien d'invitation n'est plus valable. Demande-en un nouveau. | This invitation link is no longer valid. Ask for a new one. |
+| `erreur.invalid_filter` | Ce filtre n'existe pas. | That filter doesn't exist. |
 
 ### Icônes (`icone.*`, `packages/ui/src/catalogue.ts`)
 
@@ -281,6 +345,18 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 ## Portail Du Jour (accueil, profil commun, classement du jour, vitrine et démonstration de la recette)
 
+### amisPage (`amisPage.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `amisPage.titre` | Mes amis | My friends |
+| `amisPage.description` | Tes amis sur Du Jour : ajoute un pseudo ou envoie ton lien, et compare vos temps dans les classements. | Your friends on Du Jour: add a name or send your link, and compare your times in the leaderboards. |
+| `amisPage.retour` | Profil | Profile |
+| `amisPage.retour.aria` | Retour à ton profil | Back to your profile |
+| `amisPage.sansProfil` | Pas encore de profil : finis un jeu pour l'ouvrir, tu pourras ensuite ajouter des amis. Un ami t'a invité ? Ouvre son lien. | No profile yet: finish a game to open one, then you can add friends. Did a friend invite you? Open their link. |
+| `amisPage.chargement` | Chargement de tes amis… | Loading your friends… |
+| `amisPage.invitation.chargement` | Lecture de l'invitation… | Reading the invitation… |
+
 ### Aperçu de partage (quand on colle le lien) (`apercu.*`, `apps/portail/src/catalogueApercu.ts`)
 
 | Clé | Français | Anglais |
@@ -290,8 +366,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `apercu.image` | Le logo DU JOUR et deux cartouches posées sur l'étagère : Track et Jump. | The DU JOUR logo and two cartridges on the shelf: Track and Jump. |
 | `apercu.nouveautes.titre` | Nouveautés — Du Jour | What's new — Du Jour |
 | `apercu.nouveautes.description` | Ce qui change dans Du Jour, Track et Jump : les nouveautés, mise à jour par mise à jour, en français et en anglais. | What changes in Du Jour, Track and Jump: updates one by one, in French and in English. |
+| `apercu.amis.titre` | Rejoins-moi sur Du Jour | Join me on Du Jour |
+| `apercu.amis.description` | Un circuit Track et un niveau Jump chaque jour, les mêmes pour tout le monde. Ajoutons-nous en amis pour comparer nos temps. | One Track circuit and one Jump level every day, the same for everyone. Let's add each other as friends to compare our times. |
 
-### Classement (`classement.*`, `apps/portail/src/catalogue.ts`)
+### Classement (`classement.*`, `apps/portail/src/cataloguePages.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -313,6 +391,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.chargement` | Chargement du classement… | Loading the leaderboard… |
 | `classement.ferme` | Jour terminé : ce classement est figé. | Day over: this leaderboard is final. |
 | `classement.invite` | Finis un jeu pour entrer au classement. | Finish a game to enter the leaderboard. |
+| `classement.amis.indispo` | Le classement de tes amis ne répond pas : voici tous les joueurs. | Your friends' leaderboard isn't answering: here is everyone. |
 
 ### Démonstration (recette seulement) (`demo.*`, `apps/portail/src/catalogueDemo.ts`)
 
@@ -323,7 +402,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `demo.installer` | Installer le joueur de démonstration | Install the demo player |
 | `demo.annuler` | Garder mon profil | Keep my profile |
 
-### nouveautes (`nouveautes.*`, `apps/portail/src/catalogue.ts`)
+### nouveautes (`nouveautes.*`, `apps/portail/src/cataloguePages.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -413,6 +492,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.classement.cumul` | {temps} cumulés | {temps} combined |
 | `portail.classement.manque` | Finis {jeu} pour le cumul | Finish {jeu} for the combined time |
 | `portail.classement.inviter` | Finis un jeu pour entrer au classement | Finish a game to enter the leaderboard |
+| `portail.classement.entreAmis` | {rang} entre amis | {rang} among friends |
 | `portail.partager` | Partager ma journée | Share my day |
 | `portail.partage.apercu` | Ce que tu partages | What you're sharing |
 | `portail.partage.partage` | Journée partagée. | Day shared. |
@@ -421,7 +501,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.nouveautes.legende` | Nouveautés · {date} | What's new · {date} |
 | `portail.nouveautes.nonLue` | Nouveau | New |
 
-### Profil (`profil.*`, `apps/portail/src/catalogue.ts`)
+### Profil (`profil.*`, `apps/portail/src/cataloguePages.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -459,6 +539,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.medailles` | Médailles | Medals |
 | `profil.langue.titre` | Langue | Language |
 | `profil.chargement` | Chargement du profil… | Loading your profile… |
+| `profil.amis.titre` | Amis | Friends |
+| `profil.amis.aide` | Compare tes temps à ceux de tes amis dans les classements. | Compare your times with your friends' in the leaderboards. |
+| `profil.amis.lien` | Mes amis | My friends |
 
 ### Vitrine des composants (recette seulement) (`vitrine.*`, `apps/portail/src/catalogueVitrine.ts`)
 
@@ -508,6 +591,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.contraste.ok` | passe | pass |
 | `vitrine.contraste.ko` | échoue | fail |
 | `vitrine.contraste.exemple` | Aa | Aa |
+| `vitrine.section.amis` | Les amis | Friends |
+| `vitrine.amis.selecteur` | Sélecteur Tous / Amis (portail, Track, Jump, Tower) | All / Friends selector (portal, Track, Jump, Tower) |
+| `vitrine.amis.feuille` | Feuille d'un joueur | Player sheet |
+| `vitrine.amis.feuille.chargement` | Chargement | Loading |
+| `vitrine.amis.feuille.fiche` | Joueur à ajouter | Player to add |
+| `vitrine.amis.feuille.ami` | Un ami | A friend |
+| `vitrine.amis.feuille.erreur` | Erreur | Error |
+| `vitrine.amis.liste` | Ligne et liste d'amis | Friend row and list |
+| `vitrine.amis.ajout` | Ajout par pseudo et lien d'invitation | Add by name and invitation link |
+| `vitrine.amis.carte` | Carte d'invitation (avec et sans profil) | Invitation card (with and without a profile) |
+| `vitrine.amis.vide` | Classement « Amis » sans ami | “Friends” leaderboard with no friend |
 
 ## Track
 
