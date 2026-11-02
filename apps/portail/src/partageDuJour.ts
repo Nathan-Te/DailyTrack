@@ -4,7 +4,7 @@ import { CATALOGUE_PORTAIL } from "./catalogue";
 import { jeuxDeLaJournee, type Etat, type Jour } from "./jour";
 import type { JeuPartage, OptionsPartage } from "./partage";
 
-// Lot I3 : de la réponse du serveur (`GET /api/portail/jour`) aux options de la ligne de partage (`partage.ts`). Les mots (le titre, les noms des jeux)
+// Lot I3 : de la réponse du serveur (`GET /api/portail/jour`) aux options de la ligne de partage (`partage.ts`). Les mots (le titre)
 // viennent du catalogue de la langue ; les médailles, la série et la journée parfaite, de la réponse. Pur (testé : `test/partage.test.ts`).
 
 export const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
@@ -25,7 +25,6 @@ export function construireOptions(t: T, jour: Jour, lien: string): OptionsPartag
   if (!joueur) return null;
   // Lot P : un jeu qui ne compte pas encore n'est pas dans la ligne à partager ; lot F1 : elle ne cite que mes jeux (`jeuxDuJour`), tous les jeux sans favori.
   const jeux: JeuPartage[] = jeuxDeLaJournee(jour.jeux, joueur.jeuxDuJour).map((j) => ({
-    nom: nomDuJeu(t, j),
     statut: estFini(j.etat) ? { fini: true, medaille: j.etat.medaille } : { fini: false },
   }));
   if (!jeux.some((j) => j.statut.fini)) return null;
