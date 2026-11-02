@@ -4,7 +4,7 @@
   "date": "2026-11-04",
   "g": 3,
   "tirage": 0,
-  "sim": 4,
+  "sim": 5,
   "contenu": {
     "pieces": "SOJITZLLTZOSIJTISZJOLLJZOSTIILJTOZSTSOJL",
     "plateformeDemi8": 28,
@@ -12,6 +12,6 @@
     "ventSens": 1,
     "theme": "canyon"
   },
-  "medailles": { "auteur": 33200, "or": 16600, "argent": 9960, "bronze": 4980 },
-  "preuve": "AQQDAJmiARQEOAMMAQkBCCgKBQg6DAEKBQgqDAEKBQgeDAEKBQgkDAEKBAglDAEKBAglDAEKBAglDAEKAwgmDAEKAwgsCgIIKwkCCCsMAQkDCB4MAQkDCCQMAQkDCCEMAQkBCCwMAQoCCD4MAQkDCCUMAgkDCD4JBQgpDAMJAgg7CQUIKQwCCQUIMwoBCI4B"
+  "medailles": { "auteur": 60000, "or": 30000, "argent": 18000, "bronze": 9000 },
+  "preuve": "AQUDAJmiARQEOAMMAQgpCQIIMQwDCQEIJgwBCCMMAQgpDAEJAQgoDAMJAgglDAEJAggnDAEJAggnCQMIKgoCCCsMAQoECCUMAQoDCCUMAQoECCIMAQoDCCYMAQoCCCcMAQoBCC4KAggqDAEKAwgmCgIIKwwDCgEIJgwDCgEIJgwBCgIIJwoBCCwKAQgsCgIIKwwDCCcMAQoBCCIMAQoCCCEMAQoCCCcMAQoCCCcMAwoBCCYKAggrCgIIKwoBCCwMAgoBCCoKAQgrCgEILAwDCgEIJgwBCQMIRA"
 }

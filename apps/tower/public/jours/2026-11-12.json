@@ -3,15 +3,15 @@
   "jeu": "tower",
   "date": "2026-11-12",
   "g": 3,
-  "tirage": 2,
-  "sim": 4,
+  "tirage": 0,
+  "sim": 5,
   "contenu": {
-    "pieces": "TZLJIOSZSOLTIJOZLISTJJZSLOITLIJTOSZOIZSJ",
+    "pieces": "OIJSZTLSZLOIJTOIJLSTZOTJISZLLSTJIOZOSILZ",
     "plateformeDemi8": 32,
-    "paliers": [{"metres":8,"effet":"figee"},{"metres":16,"effet":"glissante"},{"metres":24,"effet":"lierre"},{"metres":32,"effet":"geante"},{"metres":40,"effet":"petite"},{"metres":48,"effet":"vent"}],
+    "paliers": [{"metres":8,"effet":"figee"},{"metres":16,"effet":"geante"},{"metres":24,"effet":"lierre"},{"metres":32,"effet":"vent"},{"metres":40,"effet":"petite"},{"metres":48,"effet":"glissante"}],
     "ventSens": -1,
     "theme": "nuit"
   },
-  "medailles": { "auteur": 60000, "or": 30000, "argent": 18000, "bronze": 9000 },
-  "preuve": "AQQDAqGiAQIUBDgDDAMIJwwBCgEIKAwDCgEILAwBCgMIJgwBCgEIIQoBCFcMAQoBCC0KAwgwCgEILAwDCCcMAQoDCCUMAQoCCCEMAQoCCCcKAggrCQEIKgwDCgMIJAwBCgMINQwBCQIIMwwDCgIIKwwDCgIIJAwBCgQIJQoECCkKBAgpDAMKAgglCgMIKgwBCgIIIQoCCCoMAQoDCCYKAggrDAMKAgglDAEKAwgmCgIIKwoCCCsKAggrCgMIKgwBCgIIIQwBCgMILAoCCCsMAQoCCCg"
+  "medailles": { "auteur": 29207, "or": 14603, "argent": 8762, "bronze": 4381 },
+  "preuve": "AQUDAKGiARQEOAMILQwBCQEIIgwBCQEIKAwBCQEIKAwBCCkMAQgpDAMJAQgmCQEILAkBCCwMAwkBCCYJAQgsDAEIIwwDCCcMAwoBCCYKAggrDAEKAggkDAEKAggnDAMKAQgmCgMIKgwBCgMIJgwBCgUIKgoDCCsMAgg7DAMKBAhFDAEKAwiRAQ"
 }

@@ -4,7 +4,7 @@
   "date": "2026-11-06",
   "g": 3,
   "tirage": 0,
-  "sim": 4,
+  "sim": 5,
   "contenu": {
     "pieces": "JISOTZLITZOLSJOTSIZLJIZOTLSJZSILTOJLZOJI",
     "plateformeDemi8": 28,
@@ -12,6 +12,6 @@
     "ventSens": -1,
     "theme": "banquise"
   },
-  "medailles": { "auteur": 28982, "or": 14491, "argent": 8694, "bronze": 4347 },
-  "preuve": "AQQDAJuiARQEOAMMAQgpDAEIUAkBCCwMAwkCCCUJAQgsDAEKAQgoCgEILAwCCFgJAQgsDAMJAgglDAEJAQgoDAMJAwgqCQIIKwwDCQMITgkBCFkMAwgnDAEKAQhVDAEKAwiVAQwBCQEIKAwBCgQIWQwBCQEIlQE"
+  "medailles": { "auteur": 33995, "or": 16997, "argent": 10198, "bronze": 5099 },
+  "preuve": "AQUDAJuiARQEOAMMAQgpDAEIfQwBCgEIKAwBCCkMAwgtDAEIIwwDCCcMAQoBCCgJAwgqDAMJBAgjDAEJAggnDAEJAggqCQUIKAwDCQUIIgwBCQQILgwBCQMIIAkDCCoMAwkDCCQMAgoCCC4MAQoECOcB"
 }

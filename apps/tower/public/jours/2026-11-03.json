@@ -4,7 +4,7 @@
   "date": "2026-11-03",
   "g": 3,
   "tirage": 0,
-  "sim": 4,
+  "sim": 5,
   "contenu": {
     "pieces": "LTZJOSIZTSLJIOTJSOZLIJZTLOSIJTLOIZSZLIJO",
     "plateformeDemi8": 20,
@@ -12,6 +12,6 @@
     "ventSens": -1,
     "theme": "chantier"
   },
-  "medailles": { "auteur": 33189, "or": 16594, "argent": 9956, "bronze": 4978 },
-  "preuve": "AQQDAJiiARQEOAMMAQgpDAMJAgglDAEIWgkCCCsJAggrDAEJAgghCQIIKgwDCQMIIAkBCCwJBQgoDAEKAgg5CQMIVQwBCQEIJwwCCQIILQwBCCoKBAgoDAEJBAg1CgUIOgwBCQIILAwCCgEIcA"
+  "medailles": { "auteur": 46997, "or": 23498, "argent": 14099, "bronze": 7049 },
+  "preuve": "AQUDAJiiARQEOAMMAwgnDAMKAQgmCgEILAwBCgIIJgoBCCwKAQgsDAEKAQgiCgEILAwDCCQMAQoCCCcMAwoBCCYMAQoCCCcMAQoBCE8MAQoCCCcMAQoCCCcMAQoECCUKBQgoDAEKBAglDAEKBAglDAEKAQgiCgQIKgkFCPMB"
 }

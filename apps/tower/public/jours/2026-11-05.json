@@ -4,7 +4,7 @@
   "date": "2026-11-05",
   "g": 3,
   "tirage": 0,
-  "sim": 4,
+  "sim": 5,
   "contenu": {
     "pieces": "IJLTOZSZIJOLTSLZOSJTISOTJZILIZSOTJLOJSTZ",
     "plateformeDemi8": 24,
@@ -12,6 +12,6 @@
     "ventSens": 1,
     "theme": "port"
   },
-  "medailles": { "auteur": 55837, "or": 27918, "argent": 16751, "bronze": 8375 },
-  "preuve": "AQQDAJqiARQEOAMMAQkBCCIMAwkBCCYMAwkBCCYMAwkBCIABDAEIKQkCCDEMAQkCCCEMAwkDCCQKAQgsDAMJAQgmDAEKAQhVDAMJAQgjCgMIKgoBCC0MAQoCCCUMAQoCCC0KAggrCgIILAoCCCsKAggsDAEKAQgmDAEKAQhRDAEIIQkBCCoMAQkBCCAMAQhCDAEJAggmCgEITQwBCgUIPgwBCgQINwwDCgMISQ"
+  "medailles": { "auteur": 35174, "or": 17587, "argent": 10552, "bronze": 5276 },
+  "preuve": "AQUDAJqiARQEOAMMAQgjDAMIJwwBCgIIJwwBCgEIKAkBCCwMAQhcDAEJAQgoDAEIIwwDCQUITAkCCCsMAwkCCCUMAwkDCCQJAggrCQMIKgoBCCsJAggxDAEIJwwBCQEILAwDCQIIIwwBCQIIHwwBCQQIKQkDCCoMAghYDAMJBAihAQ"
 }

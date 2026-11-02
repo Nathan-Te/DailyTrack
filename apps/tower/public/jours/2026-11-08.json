@@ -4,7 +4,7 @@
   "date": "2026-11-08",
   "g": 3,
   "tirage": 0,
-  "sim": 4,
+  "sim": 5,
   "contenu": {
     "pieces": "ZJOLSTITISZOLJLSZJTIOOTSLZIJSZOITJLTLSOZ",
     "plateformeDemi8": 20,
@@ -12,6 +12,6 @@
     "ventSens": 1,
     "theme": "jungle"
   },
-  "medailles": { "auteur": 45464, "or": 22732, "argent": 13639, "bronze": 6819 },
-  "preuve": "AQQDAJ2iARQEOAMMAQgpDAEKAggtCgEILAwDCFQMAQoCCCcKAQgsDAMIJwwBCgEIIgoBCIYBDAEJAQgoDAEJAQgoDAMJAwgkCQIIKwkCCCsMAwkCCCUMAwkBCFIJAQgsCQEILQwBCQEIJgkBCCoMAwkBCCQMAQkBCCYMAQoBCCgMAQoCCFcJBAg0DAEKAghDCgEIRAkDCGs"
+  "medailles": { "auteur": 45038, "or": 22519, "argent": 13511, "bronze": 6755 },
+  "preuve": "AQUDAJ2iARQEOAMMAQgpDAEKAggtCgEILAwBCFYMAwgnDAEILAwBCCkMAQhQDAEJAQgoCgEIMgwDCQEIJQwBCgEIJwwBCgIIIwkBCCsKAQgrDAEKAQgnDAEKAQgnDAEJAQghCQMIKAoCCFMJAQhZDAEJAQgoDAMKBQhr"
 }
