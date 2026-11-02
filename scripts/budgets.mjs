@@ -9,6 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { mesureTower as mesureTowerDetail } from "../apps/tower/tools/mesure.mjs";
+import { mesureDecor } from "../apps/web/e2e/mesureDecor.mjs";
 import { ficheCI } from "./fiches-lecture.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -145,6 +146,95 @@ export function mesurePortail() {
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+/**
+ * Lot R17 — Track, ce que le joueur charge **à la demande** : pour chaque entrée (le nom des morceaux d'un module), le JS de ses morceaux et, de proche en proche, de ce qu'ils importent
+ * hors du premier chargement (le code déjà chargé par le premier écran ne compte pas : il est déjà là). Une seule implémentation : le contrôle des budgets (`scripts/budgets-controle.mjs`) et
+ * les specs de composition de `apps/web/e2e/perf.spec.ts` (rien dans le premier chargement, le module existe) l'appellent.
+ */
+export function aLaDemandeTrack(entrees, dist = join(ROOT, "apps/web/dist/assets"), base = mesureTrack(dist)) {
+  const vus = new Set();
+  const file = readdirSync(dist).filter((f) => entrees.test(f));
+  while (file.length) {
+    const f = file.pop();
+    if (vus.has(f) || base.fichiers.includes(f)) continue;
+    vus.add(f);
+    for (const m of readFileSync(join(dist, f), "utf8").matchAll(/(?:from|import)\s*["']\.\/([^"']+\.js)["']/g)) file.push(m[1]);
+  }
+  return { octets: [...vus].reduce((n, f) => n + base.gz[f], 0), fichiers: [...vus] };
+}
+
+/** Les voitures de Track dont les boucles de moteur (`<id>-*.m4a`, huit chacune) sont servies à la demande (une voiture n'en charge que huit). */
+export const VOITURES_TRACK = ["civile", "fourgon", "evolution", "rallye", "gt", "roadster", "pickup", "proto", "muscle", "monoplace"];
+
+/** Lot R17 — les lignes « à la demande » de Track (`track.*` de budgets.md) : clé → les morceaux qui la composent. */
+export const ENTREES_TRACK_A_LA_DEMANDE = {
+  "track.vieCiel": /^(vieJeu|cielJeu)-.*\.js$/,
+  "track.ombres": /^ombres3-.*\.js$/,
+  "track.palier2": /^finitionJeu-.*\.js$/,
+  "track.qualiteMesure": /^qualiteMesure-.*\.js$/,
+  "track.post": /^postJeu-.*\.js$/,
+  "track.garage": /^garage-.*\.js$/,
+  "track.fantomes": /^fantomesJeu-.*\.js$/,
+  "track.son": /^extension-.*\.js$/,
+  "track.steerSlider": /^steerSlider-.*\.js$/,
+  "track.steerWheel": /^steerWheel-.*\.js$/,
+  "track.steerGyro": /^steerGyro-.*\.js$/,
+  "track.touchReglages": /^touchReglages-.*\.js$/,
+};
+
+/**
+ * Lot R17 — **toutes les lignes de `docs/plateforme/budgets.md`, en une mesure** : `{ "track.jsCss": 296875, … }`, après `npm run build` (les trois jeux) ; le portail se construit à part
+ * (`mesurePortail`). Même méthode que les tests qui gardaient ces lignes avant le lot R17 (ils n'imposent plus aucune limite : le contrôle est `scripts/budgets-controle.mjs`). Les clés de
+ * `CLES_MESUREES` sont celles du tableau, moins `partage.image` (il faut Chromium pour dessiner les images : `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts`).
+ */
+export const CLES_MESUREES = [
+  "portail.premier", "portail.polices",
+  "track.jsCss", "track.js", "track.horsThree", "track.anglais", "track.miniatures", "track.salon", "track.admin", "track.decor", "track.palier2", "track.vieCiel", "track.post", "track.qualiteMesure", "track.garage", "track.polices",
+  "track.ombres", "track.fantomes", "track.son", "track.sonBoucles", "track.steerSlider", "track.steerWheel", "track.steerGyro", "track.touchReglages",
+  "jump.jsCss", "jump.anglais", "jump.polices",
+  "tower.jsCss", "tower.jeu", "tower.physique", "tower.anglais", "tower.polices", "tower.decors", "tower.habits",
+  "musique.lecteur",
+];
+
+export function mesuresParLigne({ portail = mesurePortail } = {}) {
+  const t = mesureTrack();
+  const jump = mesureJump();
+  const tower = mesureTower();
+  const lignes = {
+    "portail.premier": null,
+    "portail.polices": null,
+    "track.jsCss": t.jsCss,
+    "track.js": t.js,
+    "track.horsThree": t.horsThree,
+    "track.anglais": t.anglais,
+    "track.miniatures": t.miniatures,
+    "track.salon": t.salon,
+    "track.admin": t.admin,
+    "track.decor": mesureDecor().total,
+    "track.polices": t.polices,
+    "jump.jsCss": jump.jsCss,
+    "jump.anglais": jump.anglais,
+    "jump.polices": jump.polices,
+    "tower.jsCss": tower.jsCss,
+    "tower.jeu": tower.jeu,
+    "tower.physique": tower.physique,
+    "tower.anglais": tower.anglais,
+    "tower.polices": tower.polices,
+    "tower.decors": tower.detail.decors,
+    "tower.habits": tower.detail.habits,
+    "musique.lecteur": mesureMusique().jsCss,
+  };
+  for (const [cle, entrees] of Object.entries(ENTREES_TRACK_A_LA_DEMANDE)) lignes[cle] = aLaDemandeTrack(entrees, undefined, t).octets;
+  // « track.sonBoucles » : les huit boucles de moteur de la voiture la plus lourde (octets des fichiers AAC, déjà compressés).
+  const dist = join(ROOT, "apps/web/dist/assets");
+  const boucles = readdirSync(dist).filter((f) => f.endsWith(".m4a"));
+  lignes["track.sonBoucles"] = Math.max(0, ...VOITURES_TRACK.map((id) => boucles.filter((f) => f.startsWith(`${id}-`)).reduce((n, f) => n + statSync(join(dist, f)).size, 0)));
+  const p = portail();
+  lignes["portail.premier"] = p.premierChargement;
+  lignes["portail.polices"] = p.polices;
+  return lignes;
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
