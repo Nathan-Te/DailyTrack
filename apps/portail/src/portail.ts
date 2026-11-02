@@ -11,7 +11,7 @@ import "@cdj/ui/src/polices/rubik-mono-one-400.css";
 import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
-import { NAME_KEY, appliquerGeneration, ecrireLangue, generationDeReponse, lireLangue, lireNouveauDepart, readIdentity, readPlayerId, surveillerAnnonce, texteDeAnnonce, type Langue } from "@cdj/profile";
+import { NAME_KEY, aReprendre, appliquerGeneration, basculer, ecrireFavorisLocaux, ecrireLangue, generationDeReponse, lireFavorisLocaux, lireLangue, lireNouveauDepart, listeAffichee, readIdentity, readPlayerId, surveillerAnnonce, texteDeAnnonce, type Langue } from "@cdj/profile";
 import {
   CATALOGUE_COMMUN,
   afficheur,
@@ -20,6 +20,7 @@ import {
   bandeauAnnonce,
   barrePortail,
   bouton,
+  boutonFavori,
   cartouche,
   el,
   etiquetteJump,
@@ -43,7 +44,8 @@ import {
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
-import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
+import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
+import { choixPourDemain, repartir } from "./mesJeux";
 import { dans, nonLue } from "./nouveautesDonnees";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
 import { construireOptions, nomDuJeu } from "./partageDuJour";
@@ -76,6 +78,14 @@ let lecture: Lecture | null = null;
 let chargement = false;
 /** Lot I3 : le message du dernier partage (« Ligne copiée… »), sous le bouton. */
 let messagePartage: string | null = null;
+// Lot F1 : « Mes jeux ». Le serveur fait foi pour un joueur qu'il connaît ; le navigateur garde la liste d'un visiteur (`cdj:favoris`), reprise dans le profil à sa création.
+let favorisLocaux = lireFavorisLocaux(stockage);
+/** L'écriture au serveur est **à la demande** (premier toucher d'une étoile, ou reprise d'une liste de visiteur) : le premier chargement ne la paie pas. */
+const reseauFavoris = () => import("@cdj/profile/src/favorisReseau");
+/** Les écritures de la liste partent l'une après l'autre (un double toucher n'envoie jamais deux listes en désordre). */
+let ecrituresFavoris: Promise<void> = Promise.resolve();
+/** Le message discret quand le choix n'a pas pu être enregistré (un code du serveur traduit, sinon l'échec du réseau). */
+let messageFavoris: string | null = null;
 
 // Lot N2 : le message en direct. Il arrive **dans la réponse de `GET /api/portail/jour`** (la seule requête du chargement : règle du lot I3) et est semé dans la surveillance ;
 // ensuite la page le relit toutes les 60 s, seulement visible (`GET /api/annonce`, partagée par le cache de Hosting). Fermé, il ne revient que si le message change.
@@ -127,29 +137,43 @@ function statut(t: T, c: CarteJeu, etat: Etat | undefined): HTMLElement {
   return el("div", { classe: "portail-statut", attrs: { "data-statut": etat?.statut ?? "inconnu" } }, ...contenu);
 }
 
-function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined): HTMLElement {
+interface OptionsCarte {
+  /** Lot F1 : la cartouche est-elle sous « Mes jeux » ? */
+  epingle: boolean;
+  /** Lot F1 : la variante compacte d'une ligne (« Les autres jeux »). */
+  compacte?: boolean;
+}
+
+function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: OptionsCarte = { epingle: false }): HTMLElement {
   const numero = (jeu?.numero ?? c.numero) > 0 ? formatNumeroJour(jeu?.numero ?? c.numero, langue) : undefined;
   const theme = nomTheme(t, c.jeu, jeu?.theme ?? null);
   const numeroTheme = numero && theme ? t.t("portail.numeroTheme", { numero, theme }) : numero;
   const etat = jeu?.etat;
-  const suite = statut(t, c, etat);
+  const compacte = opts.compacte === true;
   // Jump : la réplique du thème du jour (une seule par écran ; lot I5 : catalogue commun de @cdj/ui, la même que dans le jeu) ; tant que le thème n'est pas connu
   // (ou sans serveur), l'accroche du jeu.
   const replique = c.code === "jump" && jeu?.theme ? cleConnue(`jump.replique.${jeu.theme}`) : null;
   const texte = c.code === "track" ? t.t("portail.track.accroche") : c.code === "tower" ? t.t("portail.tower.accroche") : t.t(replique ?? "portail.jump.accroche");
   const fabrique = c.code === "track" ? etiquetteTrack : c.code === "tower" ? etiquetteTower : etiquetteJump;
-  const etiquette = fabrique({ titre: c.code === "tower" ? t.t("jeu.tower.nom").toUpperCase() : t.t(c.code === "track" ? "jeu.track.titre" : "jeu.jump.titre"), numero: numeroTheme, texte, suite });
+  const titre = c.code === "tower" ? t.t("jeu.tower.nom").toUpperCase() : t.t(c.code === "track" ? "jeu.track.titre" : "jeu.jump.titre");
+  // La variante compacte (lot F1) n'a que le nom et le numéro : ni accroche, ni statut (le statut d'un jeu qu'on n'a pas épinglé n'est pas ce qu'on vient chercher).
+  const etiquette = compacte ? fabrique({ titre, numero: numeroTheme }) : fabrique({ titre, numero: numeroTheme, texte, suite: statut(t, c, etat) });
   const nom = t.t(NOM_JEU[c.code]);
   const action =
     etat?.statut === "fini"
-      ? bouton({ texte: t.t("portail.rejouer"), href: c.lien, variante: "secondaire", pleineLargeur: true, ariaLabel: t.t("portail.rejouer.aria", { jeu: nom }) })
+      ? bouton({ texte: t.t("portail.rejouer"), href: c.lien, variante: "secondaire", pleineLargeur: !compacte, ariaLabel: t.t("portail.rejouer.aria", { jeu: nom }) })
       : etat?.statut === "en_cours"
-        ? bouton({ texte: t.t("portail.continuer"), href: c.lien, variante: "marque", pleineLargeur: true, ariaLabel: t.t("portail.continuer.aria", { jeu: nom }) })
-        : bouton({ texte: t.t("portail.jouer"), href: c.lien, variante: "marque", pleineLargeur: true, ariaLabel: t.t("portail.jouer.aria", { jeu: nom }) });
+        ? bouton({ texte: t.t("portail.continuer"), href: c.lien, variante: compacte ? "secondaire" : "marque", pleineLargeur: !compacte, ariaLabel: t.t("portail.continuer.aria", { jeu: nom }) })
+        : bouton({ texte: t.t("portail.jouer"), href: c.lien, variante: compacte ? "secondaire" : "marque", pleineLargeur: !compacte, ariaLabel: t.t("portail.jouer.aria", { jeu: nom }) });
   action.setAttribute("data-cle", `jouer-${c.code}`);
-  const carte = cartouche({ jeu: c.code, etiquette, action, attrs: { "data-jeu": c.code } });
+  // Lot F1 : l'étoile (44 px) épingle ou retire le jeu ; son nom lu dit l'action. Après l'action dans l'ordre du clavier : « Jouer » reste l'action principale.
+  const favori = boutonFavori(t, { epingle: opts.epingle, jeu: nom, place: compacte ? "ligne" : "coin", onClick: () => basculerFavori(c.code) });
+  favori.setAttribute("data-cle", `favori-${c.code}`);
+  const carte = cartouche({ jeu: c.code, etiquette, action, favori, compacte, attrs: { "data-jeu": c.code, "data-epingle": opts.epingle ? "oui" : "non" } });
   // Lot P : sur un aperçu de PR, un jeu pas encore `on` se montre avec le badge « Brouillon ».
   if (jeu?.brouillon) carte.prepend(el("span", { classe: "dj-badge-brouillon", attrs: { "data-brouillon": "" }, texte: t.t("portail.brouillon") }));
+  // Lot F1 : un jeu ouvert depuis moins de 7 jours porte « Nouveau » tant que le joueur ne l'a pas épinglé (le serveur compte les 7 jours).
+  if (jeu?.nouveau && !opts.epingle) carte.prepend(el("span", { classe: "dj-badge-nouveau", attrs: { "data-nouveau": "" }, texte: t.t("portail.nouveau") }));
   return carte;
 }
 
@@ -257,6 +281,85 @@ function ligneNouveautes(t: T): HTMLElement | null {
   );
 }
 
+/** Une étagère de cartouches (celle de « Mes jeux », ou celle des compactes de « Les autres jeux »). */
+function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string, JeuDuJour>, jour: Lecture["jour"] | undefined, neuf: boolean, o: { id: string; epingle: boolean; compacte?: boolean }): HTMLElement {
+  return el(
+    "div",
+    { classe: ["portail-etagere", o.compacte && "portail-etagere--compacte"], attrs: { id: o.id } },
+    ...cartesMontrees.map((c) => {
+      const j = parJeu.get(c.jeu);
+      // Un joueur inconnu du serveur n'a rien joué : « Pas encore joué » ; sans identité, pareil (rien à attendre).
+      const etat = j?.etat ?? (jour && neuf && lecture?.erreur !== "code_revoked" ? ({ statut: "pas_joue" } as const) : undefined);
+      return cartoucheDe(c, t, j ? { ...j, etat } : etat ? { jeu: c.jeu, numero: c.numero, theme: null, seuils: null, premierJour: "", etat } : undefined, { epingle: o.epingle, compacte: o.compacte });
+    }),
+  );
+}
+
+// --- Lot F1 : Mes jeux ------------------------------------------------------------------------------------------------------------------
+/**
+ * Le toucher d'une étoile. Un joueur que le serveur connaît : la liste change tout de suite à l'écran, puis part au serveur (la liste entière, une écriture à la fois) ; un refus ou une panne
+ * remet la liste d'avant avec un message discret. Un visiteur (sans profil connu du serveur) : la liste reste dans son navigateur, reprise dans son profil à sa création.
+ */
+function basculerFavori(site: string): void {
+  const jour = lecture?.jour;
+  const avant = listeAffichee(jour?.joueur?.favoris, !!jour?.joueur, favorisLocaux);
+  const apres = basculer(avant, site);
+  messageFavoris = null;
+  const id = stockage ? readPlayerId(stockage) : null;
+  if (!jour?.joueur || !id) {
+    favorisLocaux = { jeux: apres, attente: true };
+    ecrireFavorisLocaux(stockage, favorisLocaux);
+    rendre();
+    return;
+  }
+  const precedent = jour.joueur.favoris;
+  jour.joueur = { ...jour.joueur, favoris: apres };
+  rendre();
+  ecrituresFavoris = ecrituresFavoris.then(async () => {
+    const r = await reseauFavoris().then((m) => m.enregistrerFavoris(baseApi(), id, apres), () => ({ ok: false as const, code: "network" })); // le module introuvable (hors ligne) est un échec comme un autre
+    const actuel = lecture?.jour;
+    if (r.ok && actuel?.joueur) {
+      actuel.joueur = { ...actuel.joueur, ...r.data };
+      favorisLocaux = { jeux: r.data.favoris ?? [], attente: false };
+      ecrireFavorisLocaux(stockage, favorisLocaux);
+    } else if (!r.ok) {
+      if (actuel?.joueur) actuel.joueur = { ...actuel.joueur, favoris: precedent };
+      const t = traduire(langue);
+      messageFavoris = t.t(cleConnue(`erreur.${r.code}`) ?? "portail.favoris.echec");
+    }
+    rendre();
+  });
+}
+
+/**
+ * Après la lecture du jour : la liste du serveur fait foi pour un joueur qu'il connaît (le navigateur la recopie) ; si le serveur n'a rien et que le visiteur avait fait une liste
+ * avant d'avoir un profil, elle est reprise dans son profil (une écriture, une fois).
+ */
+async function reprendreFavoris(): Promise<void> {
+  const joueur = lecture?.jour?.joueur;
+  const id = stockage ? readPlayerId(stockage) : null;
+  if (!joueur || !id) return;
+  if (!aReprendre(joueur.favoris, favorisLocaux)) return;
+  const r = await reseauFavoris().then((m) => m.enregistrerFavoris(baseApi(), id, favorisLocaux.jeux), () => null);
+  if (!r) return;
+  if (r.ok && lecture?.jour?.joueur) {
+    lecture.jour.joueur = { ...lecture.jour.joueur, ...r.data };
+    favorisLocaux = { jeux: r.data.favoris ?? [], attente: false };
+    ecrireFavorisLocaux(stockage, favorisLocaux);
+    rendre();
+  }
+}
+
+/** Le serveur connaît le joueur et a répondu : sa liste est celle de ce navigateur (sauf une liste de visiteur encore à reprendre). */
+function recopierFavorisDuServeur(): void {
+  const joueur = lecture?.jour?.joueur;
+  if (!joueur || aReprendre(joueur.favoris, favorisLocaux)) return;
+  const jeux = joueur.favoris ?? [];
+  if (jeux.join() === favorisLocaux.jeux.join() && !favorisLocaux.attente) return;
+  favorisLocaux = { jeux, attente: false };
+  ecrireFavorisLocaux(stockage, favorisLocaux);
+}
+
 function rendre(): void {
   const racine = document.getElementById("portail");
   if (!racine) return;
@@ -272,7 +375,11 @@ function rendre(): void {
   // Les cartouches que le portail sait dessiner, dans l'ordre du serveur quand il a répondu.
   const montrees = cartes(day).filter((c) => (jour ? parJeu.has(c.jeu) : c.numero > 0));
   const statuts = jour?.joueur ? montrees.map((c) => parJeu.get(c.jeu)!) : [];
-  const { finis, total } = avancement(statuts);
+  const { finis, total } = avancement(statuts, jour?.joueur?.jeuxDuJour);
+  // Lot F1 : mes jeux (épinglés) en cartouches pleines en haut, les autres en compactes dessous ; sans favori, l'accueil d'avant.
+  const favoris = listeAffichee(jour?.joueur?.favoris, !!jour?.joueur, favorisLocaux);
+  const { sansFavori, mes, autres } = repartir(montrees, favoris);
+  const pourDemain = !!jour?.joueur && choixPourDemain(favoris, statuts.filter(compteAujourdhui).map((j) => j.site ?? ""), jour.joueur.jeuxDuJour);
   const neuf = !identite.exists || lecture?.erreur === "unknown_player";
   const journee = jour ? (jour.journee ?? null) : numeroDeJournee(day);
   const texteMessage = message(t);
@@ -297,25 +404,30 @@ function rendre(): void {
       el(
         "div",
         { classe: "portail-jeux__tete" },
-        el("h2", { classe: "portail-jeux__titre", attrs: { id: "portail-jeux-titre" }, texte: t.t("portail.jeux.titre") }),
+        el("h2", { classe: "portail-jeux__titre", attrs: { id: "portail-jeux-titre" }, texte: t.t(sansFavori ? "portail.jeux.titre" : "portail.mesJeux.titre") }),
         el("span", { classe: "portail-jeux__avancement", attrs: { id: "avancement" }, texte: statuts.length ? t.t("portail.avancement", { n: finis, total }) : "" }),
       ),
-      el(
-        "div",
-        { classe: "portail-etagere", attrs: { id: "jeux" } },
-        ...montrees.map((c) => {
-          const j = parJeu.get(c.jeu);
-          // Un joueur inconnu du serveur n'a rien joué : « Pas encore joué » ; sans identité, pareil (rien à attendre).
-          const etat = j?.etat ?? (jour && neuf && lecture?.erreur !== "code_revoked" ? ({ statut: "pas_joue" } as const) : undefined);
-          return cartoucheDe(c, t, j ? { ...j, etat } : etat ? { jeu: c.jeu, numero: c.numero, theme: null, seuils: null, premierJour: "", etat } : undefined);
-        }),
-      ),
+      // Sans favori : la ligne courte qui invite à épingler (inutile avec un seul jeu). Avec des favoris : le choix qui vient d'être fait compte dès demain.
+      sansFavori && montrees.length > 1 ? el("p", { classe: "portail-favoris__note", attrs: { id: "favoris-invite" }, texte: t.t("portail.favoris.invite") }) : null,
+      pourDemain ? el("p", { classe: "portail-favoris__note", attrs: { id: "favoris-demain", role: "status" }, texte: t.t("portail.favoris.demain") }) : null,
+      etagereDe(t, mes, parJeu, jour, neuf, { id: "jeux", epingle: !sansFavori }),
     ),
+    ...(autres.length > 0
+      ? [
+          el(
+            "section",
+            { classe: "portail-jeux", attrs: { "aria-labelledby": "portail-autres-titre" } },
+            el("div", { classe: "portail-jeux__tete" }, el("h2", { classe: "portail-jeux__titre", attrs: { id: "portail-autres-titre" }, texte: t.t("portail.autresJeux.titre") })),
+            etagereDe(t, autres, parJeu, jour, neuf, { id: "autres-jeux", epingle: false, compacte: true }),
+          ),
+        ]
+      : []),
     ...(neuf ? [el("p", { classe: "portail-accueil", attrs: { id: "accueil" }, texte: t.t("portail.accueil") })] : []),
     ...[el("div", { classe: "portail-tuiles" }, ...[neuf ? null : tuileSerie(t), tuileClassement(t, neuf)].filter((e): e is HTMLElement => e !== null))].filter((g) => g.childElementCount > 0),
     ...[ligneNouveautes(t)].filter((e): e is HTMLElement => e !== null),
     ...[partage(t)].filter((e): e is HTMLElement => e !== null),
     ...(texteMessage ? [el("p", { classe: "portail-message", attrs: { id: "message", role: "status" }, texte: texteMessage })] : []),
+    ...(messageFavoris ? [el("p", { classe: "portail-message", attrs: { id: "message-favoris", role: "status" }, texte: messageFavoris })] : []),
     el(
       "footer",
       { classe: "portail-pied" },
@@ -388,6 +500,7 @@ async function charger(ancien: string | null, essai = 0): Promise<void> {
   } catch {
     /* stockage refusé : l'avatar garde l'ancien pseudo */
   }
+  recopierFavorisDuServeur();
   // Lot N2 : le message de la réponse est semé (aucune requête de plus au chargement) ; la surveillance démarre une fois.
   if (l.jour) surveillance.semer(l.jour.annonce ?? null, l.decalage);
   if (!surveillanceActive) {
@@ -396,6 +509,7 @@ async function charger(ancien: string | null, essai = 0): Promise<void> {
   }
   rendre();
   battre();
+  void reprendreFavoris();
 }
 
 function changerLangue(l: Langue): void {

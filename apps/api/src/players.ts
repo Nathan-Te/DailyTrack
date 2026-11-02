@@ -153,6 +153,7 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       { sql: "INSERT INTO revoked_codes (hash, successor, revoked_at) VALUES (?, ?, ?) ON CONFLICT (hash) DO UPDATE SET successor = excluded.successor, revoked_at = excluded.revoked_at", params: [oldHash, newHash, t] },
       ...(rotateStatements?.(oldId, newId) ?? []), // les lignes de chaque jeu (registre)
       { sql: "UPDATE resultats_retires SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot N1 : les résultats retirés suivent le joueur
+      { sql: "UPDATE favoris_jeux SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot F1 : ses jeux épinglés le suivent
       { sql: "UPDATE players SET id = ?, ref = ?, updated_at = ? WHERE id = ?", params: [newId, newHash.slice(0, REF_LENGTH), t, oldId] },
     ];
     if (db.batch) await db.batch(statements);
@@ -173,6 +174,7 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       successors = rows.map((r) => r.hash);
     }
     out.push({ sql: "DELETE FROM resultats_retires WHERE player_id = ?", params: [id] }); // lot N1 : ses résultats retirés (rediffusions gardées 30 jours) partent aussi
+    out.push({ sql: "DELETE FROM favoris_jeux WHERE player_id = ?", params: [id] }); // lot F1 : ses jeux épinglés
     out.push({ sql: "DELETE FROM players WHERE id = ?", params: [id] });
     return out;
   }

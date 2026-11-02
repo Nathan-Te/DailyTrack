@@ -30,6 +30,7 @@ export const TABLES_VIDEES: Readonly<Record<string, string>> = {
   jump_deaths: "DailyJump : cartes des morts et échantillons du carnage (aucun joueur n'y est nommé, mais ils viennent des vies)",
   journal_admin: "panneau d'administration (lot N1) : le journal des actions, qui nomme des pseudos de joueurs",
   resultats_retires: "panneau d'administration (lot N1) : les résultats retirés par l'administration, avec leur rediffusion gardée 30 jours",
+  favoris_jeux: "« Mes jeux » (lot F1) : les jeux épinglés de chaque joueur, une ligne par changement",
 };
 
 /** Les tables gardées : aucune donnée de joueur (planning de l'administration, caches de niveaux déterministes, table de service). */

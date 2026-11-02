@@ -11,6 +11,7 @@
     "./nouveautes": "./src/nouveautes.ts",
     "./zones-nouveautes": "./src/zonesNouveautes.ts",
     "./jeux": "./src/jeux.ts",
+    "./favoris": "./src/favoris.ts",
     "./testing": "./testing/purity.ts"
   }
 }

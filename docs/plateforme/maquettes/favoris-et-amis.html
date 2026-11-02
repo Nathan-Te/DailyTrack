@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Favoris et amis</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&family=Barlow+Condensed:ital,wght@1,800&family=Lilita+One&display=swap">
+<style>
+:root{--creme:#EDE3CF;--creme2:#E3D6BC;--encre:#2A1E16;--terre:#C2401F;--moutarde:#E8B23A;--gris:#6B5847;--diamant:#4FC3DC;--or:#D9A21B;--argent:#A7A9AC;--bronze:#C07A42;--papier:#FFF6E0}
+*{box-sizing:border-box}
+body{margin:0;background:#D8CCB3;color:var(--encre);font-family:Archivo,sans-serif;padding:24px 16px 60px}
+h1{font-family:'Archivo Black';font-size:24px;margin:0 0 6px}
+.intro{max-width:1700px;margin:0 auto 24px;font-size:14px;line-height:1.5}
+.rang{display:flex;gap:24px;flex-wrap:wrap;max-width:1700px;margin:0 auto}
+.col{display:flex;flex-direction:column;gap:10px;width:390px}
+.col h2{font-family:'Archivo Black';font-size:14px;letter-spacing:1px;text-transform:uppercase;margin:0}
+.col p{font-size:12.5px;line-height:1.45;margin:0;color:#4A3A2C}
+.tel{width:390px;height:844px;background:var(--creme);padding:14px 16px;display:flex;flex-direction:column;gap:10px;overflow:hidden;border:3px solid var(--encre);border-radius:18px;box-shadow:6px 6px 0 var(--encre);position:relative}
+.noir{font-family:'Archivo Black',sans-serif}.mono{font-family:'JetBrains Mono',monospace}
+.petit{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gris)}
+.logo{background:var(--encre);color:var(--creme);font-family:'Archivo Black';font-size:19px;letter-spacing:1px;padding:6px 10px 5px;border-radius:3px;box-shadow:3px 3px 0 var(--terre)}
+.cart{border:3px solid var(--encre);border-radius:12px 12px 3px 3px;box-shadow:4px 4px 0 var(--encre);padding:7px 9px 9px;display:flex;flex-direction:column;gap:7px;position:relative}
+.etoile{position:absolute;right:-6px;top:-10px;width:44px;height:44px;border:2px solid var(--encre);border-radius:50%;background:var(--papier);display:grid;place-items:center;box-shadow:2px 2px 0 var(--encre)}
+.etoile.on{background:var(--moutarde)}
+.btn{height:42px;border:2px solid var(--encre);border-radius:3px;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--creme)}
+.btn.p{background:var(--terre);color:#FFF4E0;font-family:'Archivo Black';letter-spacing:.5px}
+.sep{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid var(--encre);padding-bottom:4px}
+.mini{display:flex;align-items:center;gap:10px;border:2px solid var(--encre);border-radius:4px;padding:6px 8px;background:var(--creme2)}
+.seg{display:grid;border:2px solid var(--encre);border-radius:3px;overflow:hidden}
+.seg span{height:38px;display:grid;place-items:center;font-weight:700;font-size:13px}
+.seg .on{background:var(--encre);color:var(--creme)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+td{padding:7px 6px;border-bottom:1px solid #CDBFA3}
+tr.moi td{background:var(--moutarde);font-weight:700}
+.med{display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid var(--encre);vertical-align:-1px}
+.feuille{position:absolute;left:0;right:0;bottom:0;background:var(--papier);border-top:3px solid var(--encre);padding:14px 16px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 -4px 0 var(--encre)}
+.ombre{position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(42,30,22,.55) 0 12px,rgba(42,30,22,.45) 12px 24px)}
+.note{background:var(--papier);border:2px dashed var(--encre);padding:9px 11px;font-size:12px;line-height:1.45}
+.code{font-family:'JetBrains Mono';font-weight:700;font-size:22px;letter-spacing:2px;background:#fff;border:2px solid var(--encre);padding:8px 12px;text-align:center}
+</style>
+</head>
+<body>
+<div class="intro"><h1>Favoris et amis</h1>Maquettes à valider (téléphone, 390 × 844). Pseudos et chiffres inventés. La troisième cartouche est un exemple de jeu à venir.</div>
+<div class="rang">
+
+<!-- A ACCUEIL FAVORIS -->
+<div class="col">
+  <h2>A · Accueil : mes jeux d'abord</h2>
+  <p>L'étoile sur chaque cartouche épingle le jeu. « Mes jeux » en haut ; les autres dessous, en cartouches compactes qui gardent leurs couleurs et leur étiquette. Sans favori : tous les jeux, comme aujourd'hui, avec une ligne d'invitation.</p>
+  <div class="tel">
+    <header style="display:flex;justify-content:space-between;align-items:center"><div class="logo">DU JOUR</div><span style="width:42px;height:42px;border-radius:50%;border:2px solid var(--encre);background:var(--moutarde);display:grid;place-items:center" class="noir">LU</span></header>
+    <div class="sep"><span class="noir" style="font-size:20px">Lundi 2 novembre</span><span class="mono" style="font-weight:700;font-size:12px">Journée n° 7</span></div>
+    <div class="sep" style="border-bottom-width:2px"><span class="noir" style="font-size:14px;text-transform:uppercase;letter-spacing:1px">Mes jeux</span><span style="font-size:12px;font-weight:600;color:var(--gris)">0 fini sur 2</span></div>
+    <div class="cart" style="background:#4A4440">
+      <div class="etoile on" aria-label="Retirer Track de mes jeux"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2.8l2.8 6 6.4.6-4.9 4.3 1.5 6.3L12 16.7 6.2 20l1.5-6.3L2.8 9.4l6.4-.6z" fill="var(--encre)"/></svg></div>
+      <div style="background:#1E1B19;color:#F4EFE6;padding:9px 11px;border-radius:3px"><span style="font-family:'Barlow Condensed';font-style:italic;font-weight:800;font-size:32px;line-height:1">TRACK</span><div class="mono" style="font-size:12px;color:#CFC6BA">n° 7 · Canyon</div></div>
+      <div class="btn p">JOUER</div>
+    </div>
+    <div class="cart" style="background:#7FB7A4">
+      <div class="etoile on" aria-label="Retirer Tower de mes jeux"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2.8l2.8 6 6.4.6-4.9 4.3 1.5 6.3L12 16.7 6.2 20l1.5-6.3L2.8 9.4l6.4-.6z" fill="var(--encre)"/></svg></div>
+      <div style="background:#F4EFE6;border:2px solid var(--encre);padding:7px 11px;border-radius:3px"><span class="noir" style="font-size:30px;line-height:1">TOWER</span> <span class="mono" style="font-size:11px;color:var(--gris)">exemple</span><div class="mono" style="font-size:12px;color:var(--gris)">n° 1 · Ciel</div></div>
+      <div class="btn">Jouer</div>
+    </div>
+    <div class="sep" style="border-bottom-width:2px;margin-top:4px"><span class="noir" style="font-size:14px;text-transform:uppercase;letter-spacing:1px">Les autres jeux</span></div>
+    <div class="cart" style="background:var(--moutarde);flex-direction:row;align-items:center;padding:6px 8px;gap:8px;border-radius:10px 10px 3px 3px">
+      <div style="flex:1;background:#FFD23F;border:2px solid var(--encre);padding:4px 10px;border-radius:3px;display:flex;align-items:baseline;gap:8px"><span style="font-family:'Lilita One';font-size:26px;line-height:1">JUMP</span><span class="mono" style="font-size:11px;color:#5A4A3A">n° 7 · Usine</span></div>
+      <span class="btn" style="height:40px;padding:0 12px;font-size:13px;background:#FFF6E0">Jouer</span>
+      <span class="etoile" style="position:static;width:44px;height:44px;box-shadow:none;flex:none" aria-label="Ajouter Jump à mes jeux"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 2.8l2.8 6 6.4.6-4.9 4.3 1.5 6.3L12 16.7 6.2 20l1.5-6.3L2.8 9.4l6.4-.6z" fill="none" stroke="var(--encre)" stroke-width="2"/></svg></span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+      <div style="background:var(--creme2);border:2px solid var(--encre);border-radius:4px;padding:9px 11px"><div class="petit">Série</div><div class="noir" style="font-size:20px">6 jours</div></div>
+      <div style="background:var(--creme2);border:2px solid var(--encre);border-radius:4px;padding:9px 11px"><div class="petit">Classement du jour</div><div class="noir" style="font-size:20px">12e</div><div style="font-size:12px;color:var(--gris)">3e entre amis</div></div>
+    </div>
+    <div class="note" style="margin-top:auto">Retenu : la journée parfaite, la série et la ligne de partage portent sur <b>mes jeux</b> (tous les jeux sans favori). Un changement de favoris compte à partir du lendemain. Le classement du jour ne change pas : il suit la liste des jeux du classement.</div>
+  </div>
+</div>
+
+<!-- B CLASSEMENT AMIS -->
+<div class="col">
+  <h2>B · Classement : Tous / Amis</h2>
+  <p>Un second sélecteur sous les onglets de vue. « Amis » montre tes amis et toi, tous, sans limite de 50. Même sélecteur dans le classement de chaque jeu.</p>
+  <div class="tel">
+    <header style="display:flex;align-items:center;gap:12px"><span class="noir" style="font-size:22px">‹</span><span class="noir" style="font-size:22px">Classement du jour</span></header>
+    <div class="seg" style="grid-template-columns:repeat(3,1fr)"><span class="on">Cumulé</span><span>Track</span><span>Jump</span></div>
+    <div class="seg" style="grid-template-columns:1fr 1fr;width:220px"><span>Tous · 412</span><span class="on">Amis · 6</span></div>
+    <table>
+      <tr><td class="mono">1</td><td><b>Vitesse88</b></td><td class="mono" style="text-align:right">1:38,204</td></tr>
+      <tr><td class="mono">2</td><td>Lilou_R</td><td class="mono" style="text-align:right">1:40,019</td></tr>
+      <tr class="moi"><td class="mono">3</td><td>Nathan (toi)</td><td class="mono" style="text-align:right">1:42,315</td></tr>
+      <tr><td class="mono">4</td><td>Pépito</td><td class="mono" style="text-align:right">1:51,770</td></tr>
+      <tr><td class="mono">5</td><td>Marmotte</td><td class="mono" style="text-align:right">2:05,002</td></tr>
+      <tr><td class="mono">—</td><td style="color:var(--gris)">Gaston</td><td style="text-align:right;font-size:12px;color:var(--gris)">pas encore joué</td></tr>
+    </table>
+    <div class="note">Les rangs sont ceux <b>entre amis</b> ; le rang général reste visible au toucher d'une ligne. Un ami qui n'a pas joué aujourd'hui apparaît en bas, sans temps : ça donne envie de le relancer.</div>
+    <div style="margin-top:auto" class="btn">Inviter un ami</div>
+  </div>
+</div>
+
+<!-- C AJOUTER DEPUIS LE CLASSEMENT -->
+<div class="col">
+  <h2>C · Ajouter depuis le classement</h2>
+  <p>Toucher une ligne de « Tous » ouvre une petite feuille : temps par jeu, rang général, et « Ajouter en ami ». Aucun autre renseignement sur le joueur.</p>
+  <div class="tel">
+    <header style="display:flex;align-items:center;gap:12px"><span class="noir" style="font-size:22px">‹</span><span class="noir" style="font-size:22px">Classement du jour</span></header>
+    <div class="seg" style="grid-template-columns:repeat(3,1fr)"><span class="on">Cumulé</span><span>Track</span><span>Jump</span></div>
+    <div class="seg" style="grid-template-columns:1fr 1fr;width:220px"><span class="on">Tous · 412</span><span>Amis · 6</span></div>
+    <table><tr><td class="mono">7</td><td>Brindille</td><td class="mono" style="text-align:right">1:41,880</td></tr><tr><td class="mono">8</td><td>Kraken42</td><td class="mono" style="text-align:right">1:41,950</td></tr></table>
+    <div class="ombre"></div>
+    <div class="feuille">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="noir" style="font-size:22px">Kraken42</span><span class="mono" style="font-size:13px">8e sur 412</span></div>
+      <table><tr><td>Track</td><td class="mono">0:40,112</td><td><span class="med" style="background:var(--or)"></span> Or</td></tr><tr><td>Jump</td><td class="mono">1:01,838</td><td><span class="med" style="background:var(--argent)"></span> Argent</td></tr></table>
+      <div class="btn p">AJOUTER EN AMI</div>
+      <div style="font-size:12px;color:var(--gris);line-height:1.4">Kraken42 n'est pas prévenu. Tu verras simplement ses temps dans « Amis ». Tu peux le retirer quand tu veux.</div>
+    </div>
+  </div>
+</div>
+
+<!-- D PROFIL AMIS + INVITATION -->
+<div class="col">
+  <h2>D · Profil › Amis, et invitation</h2>
+  <p>Les pseudos sont uniques : on ajoute un ami par son pseudo. Ton lien d'invitation, lui, est réciproque : celui qui l'ouvre et accepte devient ton ami, <b>et toi le sien</b>.</p>
+  <div class="tel">
+    <header style="display:flex;align-items:center;gap:12px"><span class="noir" style="font-size:22px">‹</span><span class="noir" style="font-size:22px">Mes amis</span></header>
+    <div class="petit">Ajouter par pseudo</div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px"><div style="height:42px;border:2px solid var(--encre);background:#fff;border-radius:3px;display:flex;align-items:center;padding:0 10px;font-size:15px">Kraken4</div><div class="btn" style="padding:0 14px;font-size:13px">Ajouter</div></div>
+    <div style="font-size:12px;color:var(--gris)">Kraken42 · 8e aujourd'hui — touche pour l'ajouter</div>
+    <div class="btn p" style="font-size:13px">INVITER UN AMI (LIEN)</div>
+<div class="sep" style="border-bottom-width:2px;margin-top:6px"><span class="noir" style="font-size:14px;text-transform:uppercase;letter-spacing:1px">6 amis</span><span style="font-size:12px;color:var(--gris)">100 au plus</span></div>
+    <table>
+      <tr><td><b>Vitesse88</b></td><td style="font-size:12px;color:var(--gris)">vous deux</td><td style="text-align:right;color:var(--terre);font-weight:700;font-size:13px">Retirer</td></tr>
+      <tr><td><b>Lilou_R</b></td><td style="font-size:12px;color:var(--gris)">vous deux</td><td style="text-align:right;color:var(--terre);font-weight:700;font-size:13px">Retirer</td></tr>
+      <tr><td><b>Kraken42</b></td><td style="font-size:12px;color:var(--gris)">ajouté par toi</td><td style="text-align:right;color:var(--terre);font-weight:700;font-size:13px">Retirer</td></tr>
+      <tr><td><b>Pépito</b></td><td style="font-size:12px;color:var(--gris)">vous deux</td><td style="text-align:right;color:var(--terre);font-weight:700;font-size:13px">Retirer</td></tr>
+    </table>
+    <div style="margin-top:8px;border:3px solid var(--encre);background:var(--papier);box-shadow:4px 4px 0 var(--encre);padding:12px;display:flex;flex-direction:column;gap:8px">
+      <span class="petit">Ce que voit la personne invitée</span>
+      <span class="noir" style="font-size:18px">Nathan t'invite sur Du Jour</span>
+      <span style="font-size:13px;line-height:1.4">Une course et un niveau de plateforme chaque jour. Accepte pour comparer vos temps.</span>
+      <div class="btn p">ACCEPTER</div>
+    </div>
+    <div class="note" style="margin-top:auto">Le lien porte un jeton caché, pas ton identifiant secret. « Nouveau lien » rend les anciens liens inutilisables (en cas de partage trop large). Une amitié suit le joueur, pas le pseudo : elle survit à un changement de pseudo.</div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

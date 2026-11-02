@@ -13,7 +13,7 @@ import { jumpDailyOf } from "./jump";
 // une base dont le nom contient « recette »), par le **vrai `createApi`** (rejeu serveur de chaque course, de chaque essai et de chaque vie,
 // horloge injectée sur chaque jour) avec `demoPlayers: true` (joueur marqué `demo`), une option que le serveur de production ne règle jamais.
 //
-// Son historique, chaque fois le même quel que soit le jour : **série de 5 jours** (Track fini les 5 derniers jours), **2 journées parfaites**
+// **Mes jeux (lot F1)** : Track en favori, pas Jump (`DEMO_FAVORIS`). Son historique, chaque fois le même quel que soit le jour : **série de 5 jours** (Track fini les 5 derniers jours), **2 journées parfaites**
 // (Jump fini avant-hier et hier), et **aujourd'hui Track fini avec la médaille d'or, Jump en cours** (des morts envoyées, aucun essai classé). **Depuis la bascule des médailles
 // (28/10/2026, lot 35) le pilote ne peut plus atteindre une médaille** (seuils sous son temps) : Track est fini sans médaille, avec la course la plus rapide du pilote.
 // **Son Garage (lot de plateforme « suites de Track 2 »)** : il garde, quelle que soit la date, **la Sparrow, la Pelican, la Weasel et la Badger débloquées et le reste en
@@ -37,6 +37,11 @@ export const DEMO_JOURS_TRACK = 5;
 export const DEMO_JOURS_JUMP = 2;
 /** Morts envoyées aujourd'hui dans Jump (en cours). */
 export const DEMO_MORTS = 12;
+/**
+ * Lot F1 (« Mes jeux ») : le joueur de démonstration a **Track** en favori, et pas Jump (le portail le montre sous « Mes jeux », Jump dessous en cartouche compacte). Choisi aujourd'hui et
+ * compté dès aujourd'hui (le compte est recréé chaque jour) : les jours d'avant restent jugés sur tous les jeux, donc sa série de 5 jours et ses 2 journées parfaites ne bougent pas.
+ */
+export const DEMO_FAVORIS: readonly string[] = ["track"];
 
 /**
  * Ce que le Garage de « Démo » doit montrer, lu dans la table des règles (`DEBLOCAGES`, `packages/sim/src/garage.ts`) : la Weasel (`evolution`, des ors) et la Badger (`rallye`, des jours
@@ -180,5 +185,7 @@ export async function seedPortailDemo(o: { db: SqlDb; frozen: Readonly<Record<st
     const r = must("vies de Jump", await call("POST", "/api/jump/lives", { levelId: d.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives }, asDemo));
     report.morts = r.dayCount as number;
   }
+  // 5. Mes jeux : Track en favori, dès aujourd'hui (voir `DEMO_FAVORIS`).
+  await o.db.run("INSERT INTO favoris_jeux (player_id, du, jeux) VALUES (?, ?, ?) ON CONFLICT (player_id, du) DO UPDATE SET jeux = excluded.jeux", [DEMO_JOUEUR_ID, o.today, JSON.stringify(DEMO_FAVORIS)]);
   return report;
 }
