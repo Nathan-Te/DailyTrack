@@ -19,3 +19,41 @@ export const ficheCI = (id) => FICHES_CI.find((f) => f.id === id);
 
 /** Lot K1b : les specs tout entiers « Régression » que déclarent les fiches, au format de `e2e/zones.json` (`<suite>/<spec>`). */
 export const regressionDesFiches = () => FICHES_CI.flatMap((f) => (f.e2e.regression ?? []).map((spec) => `${f.e2e.suite}/${spec}`));
+
+// Lot K4 (partie 1) — **les suites e2e, lues dans les fiches**. Un jeu = une suite (`e2e.suite`) : ses specs dans `e2e.dossier`, un projet Playwright `<préfixe><navigateur>` (le préfixe est `e2e.projet`,
+// `<suite>-` s'il est absent ; Track, qui héberge aussi les specs du portail et de la plateforme, a le préfixe vide : son projet s'appelle `chromium`), son espace de travail `@cdj/<app>`
+// et le document de sa dette de quarantaine. Plus aucun script n'écrit « jump » ou « tower » pour le dire.
+/** Les suites e2e, dans l'ordre des fiches : `{ id, suite, dossier, app, espace, projet, dette }`. */
+export const SUITES = FICHES_CI.map((f) => ({
+  id: f.id,
+  suite: f.e2e.suite,
+  dossier: f.e2e.dossier,
+  app: f.app,
+  espace: `@cdj/${f.app}`,
+  projet: f.e2e.projet ?? `${f.e2e.suite}-`,
+  dette: f.e2e.dette ?? `docs/${f.id}/consignes.md`,
+}));
+/** La suite d'après son nom (`web`, `jump`, `tower`…), ou `undefined`. */
+export const suiteNommee = (suite) => SUITES.find((s) => s.suite === suite);
+/** Le projet Playwright d'une suite pour un navigateur (`chromium` pour la suite `web`, `jump-chromium`, `tower-firefox`…). */
+export const projetDe = (suite, navigateur) => `${suiteNommee(suite)?.projet ?? `${suite}-`}${navigateur}`;
+/** La suite d'un projet Playwright (`jump-chromium` → `jump`, `chromium` → la suite au préfixe vide), ou `undefined`. */
+export function suiteDuProjet(projet) {
+  const avecPrefixe = SUITES.filter((s) => s.projet !== "" && projet.startsWith(s.projet)).sort((a, b) => b.projet.length - a.projet.length)[0];
+  return avecPrefixe ?? SUITES.find((s) => s.projet === "");
+}
+/** Le navigateur d'un projet Playwright (`tower-webkit` → `webkit`). */
+export const navigateurDuProjet = (projet) => projet.slice(suiteDuProjet(projet)?.projet.length ?? 0);
+
+// Lot K4 (partie 1) — les projections `serveur` (versions, jours, tables) et `jeu` (noms) pour « Mettre en production » : les versions à comparer, les jours figés, le nom d'un jeu dans un résumé.
+/** Les fiches de la projection `serveur`, dans l'ordre. */
+export const FICHES_SERVEUR = JSON.parse(readFileSync(join(RACINE, "config/jeux/projections/serveur.json"), "utf8")).jeux;
+/** Le nom français de chaque jeu (`Track`, `Jump`, `Tower`…), d'après sa fiche : `{ id: nom }`. */
+export const NOMS_DES_JEUX = Object.fromEntries(JSON.parse(readFileSync(join(RACINE, "config/jeux/projections/jeu.json"), "utf8")).jeux.map((j) => [j.id, j.nom.fr]));
+/** Les versions (simulation, générateur) de chaque jeu, `{ nom de la constante, fichier, jeu }` : la fiche dit `fichier:CONSTANTE` (`versions.sim`, `versions.generateur`). */
+export const VERSIONS_DES_JEUX = FICHES_SERVEUR.flatMap((f) =>
+  [["sim", f.versions.sim], ["generateur", f.versions.generateur]].map(([role, v]) => {
+    const [fichier, nom] = v.split(":");
+    return { nom, fichier, jeu: NOMS_DES_JEUX[f.id], id: f.id, role };
+  }),
+);

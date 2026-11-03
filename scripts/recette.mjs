@@ -15,11 +15,10 @@ export const SERVER_PATHS = [
   "packages/sim/**",
   "packages/core/**",
   "packages/clock/**",
-  "packages/jump-sim/**",
+  "packages/*-sim/**", // lot K4 : la simulation de chaque jeu (jump-sim, tower-sim, celle d'un jeu neuf) : le serveur rejoue les parties
   "packages/profile/**",
-  "packages/tower-sim/**", // lot TP : le serveur rejoue les parties de Tower
-  "apps/tower/public/jours/**", // lot TP : les jours de Tower préparés (preuve comprise) entrent dans l'image
-  "apps/jump/public/levels/**",
+  "apps/*/public/jours/**", // lots TP et K4 : les jours figés d'un jeu (Tower : préparés, preuve comprise) entrent dans l'image
+  "apps/*/public/levels/**", // les niveaux figés de Jump
   "config/**", // lot R8 : la date du lancement (config/lancement.json) est lue par le serveur
   "package.json",
   "package-lock.json",

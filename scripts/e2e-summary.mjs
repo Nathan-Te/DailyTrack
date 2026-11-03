@@ -9,6 +9,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { MAX_DAYS, loadQuarantine, matches } from "./e2e-quarantaine.mjs";
+import { SUITES, projetDe } from "./fiches-lecture.mjs";
 
 /** Parcourt les suites et rend les tests à plat : { file, title, project, status, attempts, errors }. */
 export function collectTests(report) {
@@ -37,12 +38,13 @@ export function collectTests(report) {
   return out;
 }
 
-/** Secondes passées par fichier dans Chromium (tous essais), triées par nom. Les fichiers de DailyJump (projet `jump-chromium`, lot 3c) sont préfixés « jump/ », ceux de Tower (`tower-chromium`, lot R15) « tower/ ». */
+/** Secondes passées par fichier dans Chromium (tous essais), triées par nom. Lot K4 : le fichier d'un jeu dont le projet porte un préfixe (`jump-chromium`, `tower-chromium` : celui de sa fiche) est préfixé de sa suite (« jump/ », « tower/ »). */
 export function chromiumSeconds(tests) {
   const sum = {};
   for (const t of tests) {
-    if (t.project !== "chromium" && t.project !== "jump-chromium" && t.project !== "tower-chromium") continue;
-    const key = t.project === "jump-chromium" ? `jump/${t.file.split("/").pop()}` : t.project === "tower-chromium" ? `tower/${t.file.split("/").pop()}` : t.file;
+    const suite = SUITES.find((x) => t.project === projetDe(x.suite, "chromium"));
+    if (!suite) continue;
+    const key = suite.projet === "" ? t.file : `${suite.suite}/${t.file.split("/").pop()}`;
     sum[key] = (sum[key] ?? 0) + t.ms;
   }
   return Object.fromEntries(Object.keys(sum).sort().map((f) => [f, Math.round(sum[f] / 1000)]));

@@ -11,7 +11,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { regressionDesFiches } from "./fiches-lecture.mjs";
+import { SUITES, regressionDesFiches } from "./fiches-lecture.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const zones = JSON.parse(readFileSync(join(ROOT, "e2e/zones.json"), "utf8"));
@@ -20,7 +20,7 @@ const estOutil = (f) => /^(captures|mesure)[-.]/.test(f);
 
 /** Les tests e2e d'un jeu : `[{ fichier, titre, regression, navigateurs }]` (projet Chromium), lus par `playwright test --list`. */
 export function testsE2e(jeu) {
-  const r = spawnSync("npx", ["playwright", "test", "--list", "--reporter=json", "--project", "chromium"], { cwd: join(ROOT, "apps", jeu), encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync("npx", ["playwright", "test", "--list", "--reporter=json", "--project", "chromium"], { cwd: join(ROOT, "apps", SUITES.find((s) => s.suite === jeu).app), encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (r.status !== 0) throw new Error(`playwright --list (${jeu}) : ${r.stderr.slice(-400)}`);
   const out = [];
   const marcher = (s, fichier, titres) => {
@@ -35,7 +35,7 @@ export function testsE2e(jeu) {
 export function specsParFamille(jeu, tests = testsE2e(jeu)) {
   const nom = jeu;
   const regression = new Set((zones.regression ?? []).filter((s) => s.startsWith(`${nom}/`)).map((s) => s.slice(nom.length + 1)));
-  const durees = JSON.parse(readFileSync(join(ROOT, "apps", jeu, "e2e/durees.json"), "utf8"));
+  const durees = JSON.parse(readFileSync(join(ROOT, SUITES.find((s) => s.suite === jeu).dossier, "durees.json"), "utf8"));
   const par = {};
   for (const t of tests) {
     const p = (par[t.fichier] ??= { essentiel: 0, regression: 0, navigateurs: 0, entier: regression.has(t.fichier), secondes: durees.secondes[t.fichier] ?? 0, secondesEssentiel: durees.essentiel?.[t.fichier] ?? 0 });
@@ -69,7 +69,7 @@ function main(argv) {
   const lignes = ["| Famille | Specs e2e (fichiers) | Tests e2e | Durée Chromium (s) | Fichiers unitaires | Tests unitaires | Durée unitaires (s) |", "|---|---|---|---|---|---|---|"];
   const tot = { Essentiel: [0, 0, 0, 0, 0, 0], Régression: [0, 0, 0, 0, 0, 0], Outil: [0, 0, 0, 0, 0, 0] };
   const detail = [];
-  for (const jeu of ["web", "jump", "tower"]) {
+  for (const { suite: jeu, dossier } of SUITES) {
     const par = specsParFamille(jeu);
     for (const [spec, p] of Object.entries(par).sort()) {
       const famille = p.entier ? "Régression" : p.regression ? `Essentiel (${p.essentiel}) + Régression (${p.regression})` : "Essentiel";
@@ -77,7 +77,7 @@ function main(argv) {
       if (p.essentiel) (tot.Essentiel[0]++, (tot.Essentiel[1] += p.essentiel), (tot.Essentiel[2] += p.entier ? 0 : p.secondesEssentiel));
       if (p.regression) (tot.Régression[0]++, (tot.Régression[1] += p.regression), (tot.Régression[2] += p.secondes - (p.entier ? 0 : p.secondesEssentiel)));
     }
-    for (const f of readdirSync(join(ROOT, "apps", jeu, "e2e")).filter((f) => f.endsWith(".spec.ts") && estOutil(f))) tot.Outil[0]++;
+    for (const f of readdirSync(join(ROOT, dossier)).filter((f) => f.endsWith(".spec.ts") && estOutil(f))) tot.Outil[0]++;
   }
   for (const u of unitaires()) {
     const t = tot[u.famille];

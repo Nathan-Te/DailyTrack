@@ -39,6 +39,8 @@
       "e2e": {
         "dossier": "apps/web/e2e",
         "suite": "web",
+        "projet": "",
+        "dette": "docs/orchestration.md",
         "fumee": [
           "replay.spec.ts",
           "perf.spec.ts",
@@ -557,6 +559,7 @@
       "e2e": {
         "dossier": "apps/jump/e2e",
         "suite": "jump",
+        "dette": "docs/jump/synthese.md",
         "fumee": [
           "smoke.spec.ts",
           "replay.spec.ts",

@@ -205,12 +205,12 @@ describe("comparer les jours que sert la production et ceux que servira la const
     const plan = planDesJours(instantDeParis("2026-10-27 10:00"), "2026-10-26");
     const bon = resumeBascule({ plan, comparaison: comparerEmpreintes(prod, prod, "2026-10-28", "2026-10-26") });
     expect(bon).toContain("jour de bascule : mercredi 2026-10-28");
-    expect(bon).toContain("| DailyTrack | 2 (2026-10-26 → 2026-10-27) | 0 | 2 (2026-10-28 → 2026-10-29) | 2 | 0 |");
+    expect(bon).toContain("| Track | 2 (2026-10-26 → 2026-10-27) | 0 | 2 (2026-10-28 → 2026-10-29) | 2 | 0 |");
     expect(bon).toContain("Aucun jour protégé ne change");
     const cible = { track: prod.track, jump: { ...prod.jump, "2026-10-27": e("j27-g17", "zz") } };
     const mauvais = resumeBascule({ plan, comparaison: comparerEmpreintes(prod, cible, "2026-10-28", "2026-10-26"), simulee: true });
     expect(mauvais).toContain("répétition");
-    expect(mauvais).toContain("❌ **DailyJump 2026-10-27**");
+    expect(mauvais).toContain("❌ **Jump 2026-10-27**");
     expect(mauvais).toContain("La mise en production s'arrête");
   });
 

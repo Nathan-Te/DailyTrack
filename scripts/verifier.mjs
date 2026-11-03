@@ -14,10 +14,14 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chargerTable, decider, specsDesZones } from "./ci-zones.mjs";
+import { SUITES } from "./fiches-lecture.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const LOGS = join(ROOT, "node_modules/.cache/cdj/verifier");
 export const LIGNES_D_ECHEC = 30;
+
+const HOTE = SUITES.find((s) => s.projet === "");
+const NOM_DU_JEU = (s) => s.id.charAt(0).toUpperCase() + s.id.slice(1);
 
 const opt = (argv, nom) => argv.find((a) => a.startsWith(`${nom}=`))?.slice(nom.length + 1);
 
@@ -46,21 +50,22 @@ export function etapes(d, { sansE2e = false, extra = null, regression = false } 
     const api = fichiers.filter((f) => f.startsWith("apps/api/test/"));
     if (api.length) out.push({ nom: `tests unitaires (libSQL, ${api.length} fichier(s))`, cmd: "npx", args: ["vitest", "run", "--project", "libsql", "--passWithNoTests", ...api] });
   }
-  const web = extra ? [...new Set([...d.e2e.web, ...extra.web])].sort() : d.e2e.web;
-  const jump = extra ? [...new Set([...d.e2e.jump, ...extra.jump])].sort() : d.e2e.jump;
-  const tower = extra ? [...new Set([...d.e2e.tower, ...(extra.tower ?? [])])].sort() : d.e2e.tower;
+  // Lot K4 : une suite par jeu, lue dans les fiches (`SUITES` : espace de travail, dossier des specs) ; plus aucun jeu n'est nommé ici.
+  const specsDe = (suite) => (extra ? [...new Set([...(d.e2e[suite] ?? []), ...(extra[suite] ?? [])])].sort() : d.e2e[suite] ?? []);
+  const aLancer = SUITES.filter((s) => specsDe(s.suite).length > 0);
   let construit = false;
-  if (!d.docsSeuls && !sansE2e && (web.length || jump.length || tower.length)) {
+  if (!d.docsSeuls && !sansE2e && aLancer.length) {
     construit = true;
     // Lot R8 : comme la CI, les archives des jeux commencent au circuit n° 1 (les e2e tournent le 20/10/2026, avant la date du lancement public).
     out.push({ nom: "construction (jeux et serveur)", cmd: "npm", args: ["run", "build"], env: { VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13" } });
-    if (web.length) out.push({ nom: "construction du serveur", cmd: "npm", args: ["run", "build:node", "-w", "@cdj/api"] });
+    // Les specs de la suite hôte (celle du portail et de la plateforme) ont besoin du serveur construit.
+    if (specsDe(HOTE.suite).length) out.push({ nom: "construction du serveur", cmd: "npm", args: ["run", "build:node", "-w", "@cdj/api"] });
     // Lot R13 : comme la CI de PR, sans les tests `@regression` (famille « Régression », CI complète seulement), sauf `--regression`.
     const filtre = regression ? [] : ["--grep-invert=@regression"];
-    if (web.length) out.push({ nom: `e2e DailyTrack (Chromium, ${web.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", "@cdj/web", "--", "--project=chromium", "--workers=1", ...filtre, ...web.map((s) => `e2e/${s}`)] });
-    if (jump.length) out.push({ nom: `e2e DailyJump (Chromium, ${jump.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", "@cdj/jump", "--", "--project=chromium", "--workers=1", ...filtre, ...jump.map((s) => `e2e/${s}`)] });
-    // Lot R15 : Tower (3ᵉ jeu), mêmes règles.
-    if (tower.length) out.push({ nom: `e2e Tower (Chromium, ${tower.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", "@cdj/tower", "--", "--project=chromium", "--workers=1", ...filtre, ...tower.map((s) => `e2e/${s}`)] });
+    for (const s of aLancer) {
+      const specs = specsDe(s.suite);
+      out.push({ nom: `e2e ${NOM_DU_JEU(s)} (Chromium, ${specs.length} spec(s))`, cmd: "npm", args: ["run", "e2e", "-w", s.espace, "--", "--project=chromium", "--workers=1", ...filtre, ...specs.map((x) => `e2e/${x}`)] });
+    }
   }
   // Lot R17 : comme la CI de PR, le job « Budgets » (toutes les lignes de docs/plateforme/budgets.md) dès qu'un fichier change ce que charge un joueur ; la construction est celle des e2e (réutilisée).
   if (d.budgets?.actif) {

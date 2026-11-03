@@ -97,6 +97,13 @@ export interface FicheJeu {
     /** Le dossier des specs ; la suite de la CI (`tower` : `tower/<spec>`, projet Playwright `tower-<navigateur>`). */
     dossier: string;
     suite: string;
+    /**
+     * Lot K4 : le préfixe du projet Playwright de la CI (`tower-` : le projet `tower-chromium`) ; absent : `<suite>-`. Track, qui héberge aussi les specs du portail et de la plateforme,
+     * a le préfixe vide (son projet s'appelle `chromium`).
+     */
+    projet?: string;
+    /** Lot K4 : le document où se note la dette d'un test en quarantaine ; absent : `docs/<id>/consignes.md`. */
+    dette?: string;
     fumee: string[];
     /** Zones nommées de `e2e/zones.json` pour ce jeu, et ses specs (nom de fichier → zones). */
     zones: Record<string, ZoneCI>;
@@ -282,6 +289,8 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
     if (typeof t.suite !== "string" || !ID.test(t.suite)) ko("e2e.suite", "le nom de la suite de la CI");
     const specs = estObjet(t.specs) ? t.specs : {};
     if (!estObjet(t.specs) || !Object.entries(specs).every(([k, zs]) => /^[a-z0-9-]+\.spec\.ts$/.test(k) && listeDeTextes(zs) && zs.length > 0)) ko("e2e.specs", "{ \"x.spec.ts\": [zones] } avec au moins une zone par spec");
+    if (t.projet !== undefined && (typeof t.projet !== "string" || !/^([a-z0-9]+-)?$/.test(t.projet))) ko("e2e.projet", "le préfixe du projet Playwright (« tower- »), vide ou absent");
+    if (t.dette !== undefined && (typeof t.dette !== "string" || !/^docs\/[A-Za-z0-9_./-]+\.md$/.test(t.dette))) ko("e2e.dette", "un document de docs/, ou absent");
     if (!listeDeTextes(t.fumee) || !t.fumee.every((s) => s in specs)) ko("e2e.fumee", "des specs déclarés dans e2e.specs");
     if (t.regression !== undefined && (!listeDeTextes(t.regression) || !t.regression.every((s) => s in specs))) ko("e2e.regression", "des specs déclarés dans e2e.specs, ou absent");
     if (!estObjet(t.zones)) ko("e2e.zones", "objet attendu");

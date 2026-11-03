@@ -29,6 +29,8 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { FICHES_CI, IDS_FICHES, NOMS_DES_JEUX, VERSIONS_DES_JEUX } from "./fiches-lecture.mjs";
+import { EXCEPTIONS as EXCEPTIONS_DE_ZONES, ZONES as ZONES_DES_JEUX } from "./zones-jeu.mjs";
 
 export const TAG_PREFIX = "prod-";
 const TAG = /^prod-(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})$/;
@@ -229,7 +231,8 @@ export function comparerEmpreintes(prod, cible, bascule, premier = "0000-00-00",
   return { bascule, jeux, ok: Object.values(jeux).every((j) => j.differences.length === 0 && j.invalides.length === 0) };
 }
 
-const NOMS_JEUX = { track: "DailyTrack", jump: "DailyJump", tower: "Tower" };
+// Lot K4 : le nom d'un jeu dans un résumé est celui de sa fiche (`Track`, `Jump`, `Tower` : les anciens noms « DailyTrack » et « DailyJump » ne servent plus).
+const NOMS_JEUX = NOMS_DES_JEUX;
 
 /** Lot R12 : la ligne courte d'un jeu pour le haut du résumé du bouton (« 12 conservés, 14 régénérés dont 3 changent »). */
 export function ligneJours(r) {
@@ -271,7 +274,7 @@ export function fusionnerEmpreintes(existant, nouveau, jusqua = "9999-12-31", pr
   const out = JSON.parse(JSON.stringify(existant));
   const conflits = [];
   const ajoutes = [];
-  for (const jeu of ["track", "jump", "tower"]) {
+  for (const jeu of IDS_FICHES) {
     out[jeu] ??= {};
     for (const [date, e] of Object.entries(nouveau[jeu] ?? {})) {
       if (proteges && (date < proteges.premier || !estProtege(proteges, date))) continue; // lot R11 : seuls les jours protégés du lancement à la veille de la bascule sont « passés » : un jour sans résultat est régénéré
@@ -580,14 +583,8 @@ export const niveauxAEffacer = (fichiers, proteges) => fichiers.filter((f) => /^
 
 // ——— L'inventaire : « Ce qui part » ————————————————————————————————————————————————————————————————————————————————————————
 
-const VERSIONS = [
-  { nom: "JUMP_SIM_VERSION", fichier: "packages/jump-sim/src/constants.ts", jeu: "Jump" },
-  { nom: "JUMP_GENERATOR_VERSION", fichier: "packages/jump-sim/src/constants.ts", jeu: "Jump" },
-  { nom: "TOWER_SIM_VERSION", fichier: "packages/tower-sim/src/constantes.ts", jeu: "Tower" },
-  { nom: "TOWER_GENERATOR_VERSION", fichier: "packages/tower-sim/src/generateur/index.ts", jeu: "Tower" },
-  { nom: "SIM_VERSION", fichier: "packages/sim/src/constants.ts", jeu: "Track" },
-  { nom: "GENERATOR_VERSION", fichier: "packages/sim/src/constants.ts", jeu: "Track" },
-];
+// Lot K4 : les versions de chaque jeu viennent de sa fiche (`versions.sim` et `versions.generateur`, « fichier:CONSTANTE »).
+const VERSIONS = VERSIONS_DES_JEUX;
 
 /** Les versions et les dates de bascule d'un état du code : `texts` = `{ chemin: texte }` (absent : le fichier n'existait pas encore). */
 export function versionsDe(texts) {
@@ -632,17 +629,20 @@ export function routesDe(texts) {
   return [...routes].sort();
 }
 
-/** Les fichiers partagés qu'un lot de jeu a le droit de toucher (CLAUDE.md racine, « Lots en parallèle ») : ils ne font pas d'une PR de jeu une PR de la plateforme. */
-const TOLERES_POUR_UN_JEU = /^(docs\/plateforme\/(budgets|traductions)\.md|package-lock\.json|e2e\/zones\.json|packages\/ui\/(src\/catalogue[^/]*|test\/applications)\.ts|apps\/(web|jump)\/e2e\/durees\.json|apps\/api\/test\/[^/]+)$/;
+// Lot K4 : la zone d'une PR vient des fiches (`zones.jeu` de chaque jeu, comme scripts/zones-jeu.mjs : `ZONES`) ; les fichiers partagés qu'un lot de jeu a le droit de toucher
+// (CLAUDE.md racine, « Lots en parallèle ») sont les exceptions de ce même script, plus les fichiers mécaniques d'un jeu (verrou, zones de CI, catalogues, durées des e2e, tests de l'API).
+const motif = (glob) => new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\u0000").replace(/\*/g, "[^/]*").replace(/\u0000/g, ".*")}$`);
+const TOLERES_POUR_UN_JEU = [
+  ...EXCEPTIONS_DE_ZONES.map(motif),
+  /^(package-lock\.json|e2e\/zones\.json|packages\/ui\/src\/catalogue[^/]*\.ts|apps\/api\/test\/[^/]+)$/,
+  ...FICHES_CI.map((f) => motif(`${f.e2e.dossier}/durees.json`)),
+];
 
 /** La zone d'une PR d'après les fichiers qu'elle touche. */
 export function zoneDes(fichiers) {
-  const track = fichiers.some((f) => /^(apps\/web|packages\/sim|docs\/lots)\//.test(f) || /^apps\/api\/src\/(cdj|salon|garage[^/]*)\.ts$/.test(f));
-  const jump = fichiers.some((f) => /^(apps\/jump|packages\/jump-sim|docs\/jump)\//.test(f) || /^apps\/api\/src\/jump[^/]*\.ts$/.test(f));
-  const plateforme = fichiers.some((f) => !/^(apps\/web|packages\/sim|docs\/lots|apps\/jump|packages\/jump-sim|docs\/jump)\//.test(f) && !/^apps\/api\/src\/(cdj|salon|garage[^/]*|jump[^/]*)\.ts$/.test(f) && !TOLERES_POUR_UN_JEU.test(f));
-  const z = [];
-  if (track) z.push("Track");
-  if (jump) z.push("Jump");
+  const zones = IDS_FICHES.map((id) => ({ id, nom: NOMS_DES_JEUX[id], res: ZONES_DES_JEUX[id].map(motif) }));
+  const z = zones.filter((jeu) => fichiers.some((f) => jeu.res.some((re) => re.test(f)))).map((jeu) => jeu.nom);
+  const plateforme = fichiers.some((f) => !zones.some((jeu) => jeu.res.some((re) => re.test(f))) && !TOLERES_POUR_UN_JEU.some((re) => re.test(f)));
   if (plateforme || z.length === 0) z.push("plateforme");
   return z.join(" + ");
 }
@@ -677,6 +677,12 @@ export function inventaire({ de, a, prs, versionsAvant, versionsApres, baseAvant
   vers("JUMP_SIM_VERSION", "Jump", "La physique de Jump change pour les niveaux d'après la bascule ; les jours figés se rejouent comme avant.", "Un onglet resté ouvert envoie l'ancienne version : accepté pour un jour d'avant la bascule, sinon « recharge la page ».", "Tests `jumpVieuxOnglets` ; les archives se rejouent (liste de contrôle).");
   vers("GENERATOR_VERSION", "Track", "Les circuits de Track **à partir du jour de bascule de la mise en production** changent (le registre des jours garde la version de chaque jour servi) ; les jours d'avant gardent leur circuit au bit près.", "Un jour servi que le registre ne nommerait pas prendrait la nouvelle version : le registre est écrit par ce workflow, avant le déploiement.", "Résumé « Jours » et « Registre des jours de Track » : 0 différence ; `jours-passes.json`.");
   vers("SIM_VERSION", "Track", "La physique de Track change : les anciennes rediffusions ne se rejouent plus.", "Un onglet ouvert reçoit « recharge la page » à l'envoi ; le fantôme d'avant est ignoré.", "Golden régénérés par le lot ; un temps envoyé après le déploiement.");
+  // Lot K4 : les versions des autres jeux (Tower, un jeu neuf) : le même texte, par rôle, avec le nom du jeu de la fiche. Track et Jump gardent leur texte ci-dessus.
+  const avecTexte = new Set(["JUMP_GENERATOR_VERSION", "JUMP_SIM_VERSION", "GENERATOR_VERSION", "SIM_VERSION"]);
+  for (const { nom, jeu, role } of VERSIONS.filter((v) => !avecTexte.has(v.nom))) {
+    if (role === "generateur") vers(nom, jeu, `Le contenu de ${jeu} **à partir du jour de bascule** change (un jour servi garde son fichier figé) ; avant, rien.`, "Un jour passé qui changerait arrête la mise en production.", "Résumé « Jours » : 0 différence, N jours régénérés et valides.");
+    else vers(nom, jeu, `La simulation de ${jeu} change : les rediffusions d'une autre version sont refusées ou rejouées par leur version.`, "Un onglet ouvert reçoit « recharge la page » à l'envoi ; le fantôme d'avant est ignoré.", "Golden régénérés par le lot ; un résultat envoyé après le déploiement.");
+  }
   for (const nom of new Set([...Object.keys(versionsAvant.bascules ?? {}), ...Object.keys(versionsApres.bascules ?? {})])) {
     const x = versionsAvant.bascules?.[nom];
     const y = versionsApres.bascules?.[nom];

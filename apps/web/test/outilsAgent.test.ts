@@ -73,8 +73,8 @@ describe("verifier : les mêmes étapes que la CI", () => {
     const plan = etapes(decider(["apps/jump/src/hud.ts"])).map((e) => e.nom);
     expect(plan[0]).toBe("typecheck");
     expect(plan.some((n) => n.startsWith("tests unitaires (SQLite"))).toBe(true);
-    expect(plan.some((n) => n.startsWith("e2e DailyJump"))).toBe(true);
-    expect(plan.some((n) => n.startsWith("e2e DailyTrack"))).toBe(false);
+    expect(plan.some((n) => n.startsWith("e2e Jump"))).toBe(true);
+    expect(plan.some((n) => n.startsWith("e2e Track"))).toBe(false);
   });
 
   it("lot R17 : le contrôle des budgets suit la CI — il suit la construction, et seulement quand la PR touche ce que charge un joueur", () => {
@@ -91,7 +91,7 @@ describe("verifier : les mêmes étapes que la CI", () => {
     const d = decider(["apps/jump/src/hud.ts"]);
     expect(etapes(d, { sansE2e: true }).some((e) => e.nom.startsWith("e2e"))).toBe(false);
     const avec = etapes(d, { extra: { web: ["salon.spec.ts"], jump: [] } });
-    expect(avec.find((e) => e.nom.startsWith("e2e DailyTrack"))!.args).toContain("e2e/salon.spec.ts");
+    expect(avec.find((e) => e.nom.startsWith("e2e Track"))!.args).toContain("e2e/salon.spec.ts");
   });
 
   it(`un échec ne montre que la fin du journal (${LIGNES_D_ECHEC} lignes), sans couleurs`, () => {
