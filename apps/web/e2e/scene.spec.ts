@@ -34,6 +34,23 @@ async function tientDansLEcran(page: Page, id: string, viewport: { width: number
   }
 }
 
+/** Accueil (lot S1b) : l'étiquette n'est jamais rognée (elle garde sa hauteur de contenu), l'écran défile jusqu'à son bas, la barre des jeux et l'étiquette ne se chevauchent pas. */
+async function etiquetteIntacte(page: Page, id: string) {
+  const m = await page.evaluate((id) => {
+    const e = document.querySelector<HTMLElement>(`#${id} .etiquette`)!;
+    const d = document.querySelector<HTMLElement>(`#${id} .cadre__defile`)!;
+    const barre = document.querySelector<HTMLElement>(`#${id} > .dj-barre-jeu`)!.getBoundingClientRect();
+    d.scrollTo(0, 0);
+    const haut = e.getBoundingClientRect().top; // en haut du défilement, l'étiquette commence sous la barre des jeux
+    d.scrollTo(0, 1e5);
+    return { rogne: e.scrollHeight - e.clientHeight, atteignable: d.scrollHeight - d.clientHeight - d.scrollTop <= 1, bas: e.getBoundingClientRect().bottom, haut, barreBas: barre.bottom, vueH: innerHeight };
+  }, id);
+  expect(m.rogne, `#${id} .etiquette rognée`).toBeLessThanOrEqual(1);
+  expect(m.atteignable, `#${id} : l'écran défile jusqu'au bout`).toBe(true);
+  expect(m.bas, `#${id} .etiquette : son bas se voit au bas du défilement`).toBeLessThanOrEqual(m.vueH + 1);
+  expect(m.haut, `#${id} .etiquette sous la barre des jeux`).toBeGreaterThanOrEqual(m.barreBas - 1);
+}
+
 for (const vp of [
   { name: "paysage", width: 844, height: 390, touch: true },
   { name: "portrait", width: 390, height: 844, touch: true },
@@ -48,7 +65,10 @@ for (const vp of [
     await page.addStyleTag({ content: WIDE_FONT });
     await expect(page.locator("#home .board-card .row, #home .home-classement .ligne").first()).toBeVisible({ timeout: 15_000 });
     await surLaScene(page, "home");
-    await tientDansLEcran(page, "home", vp);
+    // L'accueil suit la règle du lot S1b (charte rév. 15) : l'étiquette garde toute sa hauteur et c'est l'écran qui défile quand la hauteur manque ; elle n'est donc plus
+    // « dans l'écran » sans défiler (paysage, portrait). Ses invariants complets (blocs non écrasés, plaques de 44 px dehors, anneau de focus) sont dans `accueil.spec.ts`
+    // (« téléphone en portrait », Essentiel) ; ici, seule la superposition sur la scène compte : l'étiquette n'est pas rognée et l'écran va jusqu'au bout.
+    await etiquetteIntacte(page, "home");
 
     // Sous-écrans de l'accueil : chacun sur la scène, l'accueil s'efface dessous ; Échap (au clavier) ou « ‹ TRACK » (au doigt) y ramène.
     for (const [bouton, id] of [["#home-board-all", "board-screen"], ["#home-archive", "archive"], ["#home-settings", "settings"]] as const) {
