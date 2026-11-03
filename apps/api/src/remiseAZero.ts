@@ -26,6 +26,7 @@ export const TABLES_VIDEES: Readonly<Record<string, string>> = {
   salon_throttle: "Salon : délai entre deux envois (empreintes)",
   jump_results: "DailyJump : meilleurs essais, rediffusions (fantômes), places finales",
   jump_lives: "DailyJump : vies de chaque joueur (morts)",
+  resultats_jeu: "jeux neufs (lot K4c) : meilleures parties de chaque joueur dans les jeux sur la table commune (clés de classement, rediffusion, empreinte des entrées)",
   tower_results: "Tower : meilleures parties (hauteur, vies, temps), rediffusions (fantôme « ma meilleure »)",
   jump_deaths: "DailyJump : cartes des morts et échantillons du carnage (aucun joueur n'y est nommé, mais ils viennent des vies)",
   journal_admin: "panneau d'administration (lot N1) : le journal des actions, qui nomme des pseudos de joueurs",

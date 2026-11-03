@@ -93,7 +93,7 @@ export type MedaillePortail = "author" | "gold" | "silver" | "bronze";
  * changent donc pas d'un octet. `valeur` : la hauteur stable, en millimètres entiers ; `vies` : les vies restantes (le premier départage, le temps de la partie, `tempsMs`, le second).
  */
 export interface ScorePortail {
-  unite: "mm";
+  unite: "mm" | "points";
   valeur: number;
   vies: number;
 }
@@ -107,7 +107,7 @@ export interface JourPortail {
   /** Seuils de médailles du jour, **en millisecondes** (le temps de l'auteur, puis or, argent, bronze), ou `null` s'ils ne sont pas connus. */
   seuils: Record<MedaillePortail, number> | null;
   /** Lot TP : l'unité des `seuils` quand ce n'est pas la milliseconde (`mm` : Tower). Absente pour un jeu au temps (sa réponse ne change pas). */
-  unite?: "mm";
+  unite?: "mm" | "points";
 }
 
 /**

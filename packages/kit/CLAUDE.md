@@ -14,6 +14,9 @@ Chargé quand on lit un fichier de `packages/kit`. **Zone partagée par les troi
 | `partage` | le gabarit de la ligne à partager, l'adresse, `ligneParDefaut` | premier chargement (fonctions pures) |
 | `fantome` | le cycle du bouton fantôme qui saute ce qui n'existe pas | premier chargement (pure) |
 | `jour` | lecture d'un fichier de jour figé (requête, délai, refus) | premier chargement |
+| `records` (lot K4c) | les **records locaux** d'un jeu neuf : par jour, le meilleur score (les colonnes de la fiche et leur sens), la rediffusion, « envoyé » | `import()` de l'envoi |
+| `envoi` (lot K4c) | la **file d'envoi hors ligne** d'un jeu neuf (`FileEnvoi`) : essais qui s'allongent de 15 s à 5 min, réveil au retour du réseau, pseudo au premier envoi, version / refus définitifs oubliés | `import()` |
+| `amis` + `amisDom` (lot K4c) | la **colle des amis et du groupe** : lecture générique du classement filtré (`amis.ts`, pure), sélecteur « Tous · Amis · Mon groupe » et feuille d'un joueur (`amisDom.ts`) | `import()` du dialogue du classement |
 | `fiche` | la projection `jeu` de la fiche, **pour les tests et l'outillage** | **jamais dans un jeu** |
 
 ## Règles
@@ -22,3 +25,6 @@ Chargé quand on lit un fichier de `packages/kit`. **Zone partagée par les troi
 - **Les arguments positionnels sont voulus** pour `suite` : un nom de propriété ne se compresse pas, et les premiers chargements sont mesurés à l'octet.
 - **Les fiches ne se lisent pas à l'exécution** dans un jeu (les trois jeux embarqueraient les trois fiches) ; le jeu passe son nom, son préfixe, sa destination, et le test de la fiche garde l'accord.
 - Ce que le kit n'extrait pas, et pourquoi : `docs/plateforme/lots/lot-K3-briques-cote-jeu.md`.
+
+## Les briques « jeu neuf » (lot K4c)
+`records`, `envoi`, `amis` et `amisDom` sont écrites **sur le modèle de Tower** (`apps/tower/src/{records,envoi,amisLogique,amisClassement}.ts`) et **rendues génériques** : le score est la suite des colonnes de classement de la fiche (leurs noms et leurs sens sont donnés), le serveur est une `SourceEnvoi` (une fonction `submit`). **Les trois jeux existants ne les utilisent pas** (leurs files d'envoi, leurs records et leur colle gardent leur code : hors périmètre) ; un jeu neuf (`npm run nouveau-jeu`) les reçoit. Toutes sont **à la demande** : jamais importées par un premier chargement. `amisDom.ts` n'est **pas jouée hors navigateur** (la partie pure `amis.ts` l'est : `test/amis.test.ts`) ; son premier usage réel est celui du premier jeu neuf.

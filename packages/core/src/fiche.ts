@@ -81,6 +81,11 @@ export interface FicheJeu {
   donnees: {
     /** Les tables liées à un joueur ou une partie (vidées par la remise à zéro) ou gardées (contenu du jour). */
     tables: { nom: string; sort: SortTable }[];
+    /**
+     * Lot K4c : le jeu range ses résultats dans la **table commune** `resultats_jeu` de la plateforme (`apps/api/src/jeux/adaptateur.ts`, `adaptateurResultatsJeu`) : il n'a alors besoin d'aucune table à lui
+     * (`tables` peut être vide) ; la table commune est décrite une fois dans les mentions légales, vidée par la remise à zéro et effacée par le module.
+     */
+    tableCommune?: "resultats_jeu";
     stockage: { prefixe: string; reglagesGardes: string[] };
   };
   message: { ou: string };
@@ -255,7 +260,8 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   const d = f.donnees;
   if (!estObjet(d)) ko("donnees", "objet attendu");
   else {
-    if (!Array.isArray(d.tables) || d.tables.length === 0 || !d.tables.every((x) => estObjet(x) && typeof x.nom === "string" && NOM_TABLE.test(x.nom) && (x.sort === "videe" || x.sort === "gardee"))) ko("donnees.tables", "des { nom, sort: videe | gardee }");
+    if (d.tableCommune !== undefined && d.tableCommune !== "resultats_jeu") ko("donnees.tableCommune", "« resultats_jeu » ou absent");
+    if (!Array.isArray(d.tables) || (d.tables.length === 0 && d.tableCommune === undefined) || !d.tables.every((x) => estObjet(x) && typeof x.nom === "string" && NOM_TABLE.test(x.nom) && (x.sort === "videe" || x.sort === "gardee"))) ko("donnees.tables", "des { nom, sort: videe | gardee }");
     else {
       for (const t of d.tables as { nom: string }[]) if (!t.nom.startsWith(`${id}_`) && !(TABLES_HERITEES[id] ?? []).includes(t.nom)) ko("donnees.tables", `« ${t.nom} » doit commencer par « ${id}_ » (un jeu ne déclare que ses tables)`);
       if (new Set((d.tables as { nom: string }[]).map((t) => t.nom)).size !== d.tables.length) ko("donnees.tables", "noms uniques");
