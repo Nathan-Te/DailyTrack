@@ -117,7 +117,7 @@ Puis faire pointer le serveur dessus (variable `TURSO_DATABASE_URL` et secret `c
 La chaîne (`production.yml`, `jours-figes.yml`, `deploy-api.yml`, `deploy-site.yml`, `scripts/mise-en-production.mjs`) **lit les fiches des jeux** (`jours.fabrication`) : un jeu neuf n'y ajoute aucune ligne. Un lot qui la modifie **ne se fusionne qu'après deux essais de ta part, sur la branche du lot** (un agent ne lance jamais de workflow) :
 
 1. Actions › **Mettre en production** › *Use workflow from* : **la branche du lot** › mode **`essai`** › Run. Contre la recette seulement. Le résumé doit être ✅ ; pour chaque jeu, la ligne « Jours » montre les jours conservés sans différence ; l'artefact **`jours`** (un dossier par jeu + `proteges.json`) est là, avec `empreintes-jours`.
-2. Même bouton, mode **`repetition`**, heure simulée « demain 10:00 » : ✅, avec le jour de bascule.
+2. Même bouton, mode **`repetition`**, heure simulée « demain 10:00 », **sur la même branche** (lot K4b : la répétition peut tourner sur une branche, comme l'essai, et prend alors le commit de la branche ; seule la production est réservée à `main`) : ✅, avec le jour de bascule.
 
 Seulement ensuite, fusionner. Les commandes que le workflow lance (toutes lisent les fiches ; `node scripts/mise-en-production.mjs <commande>`) :
 

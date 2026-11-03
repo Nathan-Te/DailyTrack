@@ -252,7 +252,9 @@ describe("le garde-fou des jours (lot R6)", () => {
   it("lot R12 : plus de validation à attendre, mais la production n'est lancée que par le propriétaire du dépôt, sur main", () => {
     const v = job("verifier");
     expect(v).toContain("ACTEUR: ${{ github.triggering_actor }}");
-    expect(v).toContain('[ "$MODE" != essai ] && [ "$GITHUB_REF" != refs/heads/main ]');
+    // Lot K4b : seule la production est réservée à main ; un essai et une répétition peuvent tourner sur une branche (recette seulement) et prennent alors le commit de la branche.
+    expect(v).toContain('[ "$MODE" = production ] && [ "$GITHUB_REF" != refs/heads/main ]');
+    expect(v).toContain('if [ "$MODE" != production ]; then\n            sha="$(git rev-parse --verify "${COMMIT:-$GITHUB_SHA}^{commit}")"');
     // L'environnement `production` (limité à main, S-07) reste celui du déploiement du serveur.
     expect(yml("deploy-api.yml")).toContain("name: ${{ inputs.target == 'production' && 'production' || 'recette' }}");
   });

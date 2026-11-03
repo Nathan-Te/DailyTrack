@@ -25,7 +25,7 @@ name: Mettre en production
 # Validation (lot R12, décision de Nathan) : plus de « Review deployments » — lancer le bouton sur main (réservé à qui peut écrire, et vérifié ici : le
 # propriétaire du dépôt, ou la variable MISE_EN_PRODUCTION_PAR) VAUT validation ; l'environnement `production` reste limité à `main` (S-07).
 # Modes : `production` (le vrai) ; `essai` (tout, contre la recette seulement : CI, garde-fou, répétition, sauvegarde DE LA RECETTE, jours figés versés dans main
-# quand il tourne sur main ; il peut tourner sur une autre branche, il ne touche alors que la recette) ; `repetition` (lot R6 : la répétition seule, heure
+# quand il tourne sur main ; il peut tourner sur une autre branche, il ne touche alors que la recette) ; `repetition` (lot R6 ; lot K4b : peut aussi tourner sur une autre branche : la répétition seule, heure
 # simulée, ni CI, ni sauvegarde, ni main). Pas à pas : docs/plateforme/mise-en-production.md ; détail : docs/plateforme/lots/lot-R12-un-seul-bouton.md.
 # Lot R6 (le garde-fou des jours) — une fois des joueurs publics présents, une mise en production ne change JAMAIS un jour protégé :
 #   - le **jour de bascule** est calculé au clic : le premier jour de Paris qui commence après le déploiement (`scripts/mise-en-production.mjs bascule`) ;
@@ -46,7 +46,7 @@ on:
         options: [production, essai, repetition]
         default: production
       commit:
-        description: "Commit à mettre en production (vide : le dernier de main ; essai : le dernier de la branche)"
+        description: "Commit à mettre en production (vide : le dernier de main ; essai et répétition : celui de la branche lancée)"
         type: string
         default: ""
       heure_simulee:
@@ -97,8 +97,8 @@ jobs:
           PERMIS: ${{ vars.MISE_EN_PRODUCTION_PAR }}
           SIMULEE: ${{ inputs.heure_simulee }}
         run: |
-          # Production et répétition : sur main. Un essai peut tourner sur une autre branche (il ne touche que la recette).
-          if [ "$MODE" != essai ] && [ "$GITHUB_REF" != refs/heads/main ]; then echo "::error::« Mettre en production » ($MODE) se lance sur main (Run workflow → Branch: main), pas sur $GITHUB_REF_NAME"; exit 1; fi
+          # Production : sur main. Un essai et une répétition peuvent tourner sur une autre branche (ils ne touchent que la recette) : lot K4b, pour essayer un lot qui touche cette chaîne avant de le fusionner.
+          if [ "$MODE" = production ] && [ "$GITHUB_REF" != refs/heads/main ]; then echo "::error::« Mettre en production » ($MODE) se lance sur main (Run workflow → Branch: main), pas sur $GITHUB_REF_NAME"; exit 1; fi
           if [ "$MODE" != repetition ] && [ -n "$SIMULEE" ]; then echo "::error::l'heure simulée est réservée au mode repetition"; exit 1; fi
           # Lot R12 : plus de « Review deployments » — le lancement vaut validation ; il est donc réservé au propriétaire du dépôt (ou à la liste MISE_EN_PRODUCTION_PAR).
           if [ "$MODE" = production ]; then
@@ -117,7 +117,7 @@ jobs:
           COMMIT: ${{ inputs.commit }}
           MODE: ${{ inputs.mode }}
         run: |
-          if [ "$MODE" = essai ]; then
+          if [ "$MODE" != production ]; then
             sha="$(git rev-parse --verify "${COMMIT:-$GITHUB_SHA}^{commit}")" || { echo "::error::commit introuvable : « $COMMIT »"; exit 1; }
           else
             sha="$(git rev-parse --verify "${COMMIT:-origin/main}^{commit}")" || { echo "::error::commit introuvable : « $COMMIT »"; exit 1; }
