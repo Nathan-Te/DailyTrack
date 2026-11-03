@@ -37,6 +37,6 @@ Contrat minimal d'un jeu neuf, `resultats_jeu`, formateurs de réponses par déf
 
 ## Vérifié / non vérifié
 - **Vérifié en local** : tout ce qui précède ; `construire-pr` + `pr` de `e2e-suite.mjs` sur Tower (10 tests Chromium verts).
-- **Vérifié par la CI** : voir la PR (run de PR) ; un run en mode `main` n'a **pas** été forcé (le critère d'arrêt « run `main` vert » n'est donc pas démontré).
-- **Non vérifié** : `ci.yml` en CI complète (parts `web` / `navigateurs` : le script est essayé en local pour `pr` seulement), `stabilite.yml` (matrice générée, jamais lancée), `recette.yml` (liste de chemins : testée par `recette.test.ts`), aucune étape de production.
+- **Vérifié par la CI** : run de PR vert (5,6 min : https://github.com/Nathan-Te/DailyTrack/actions/runs/41629762440) ; **run en mode `main` forcé une fois, vert** (9,7 min, Track 3 parts, Jump, Tower, Firefox et WebKit en petit ensemble, Budgets, api-image : https://github.com/Nathan-Te/DailyTrack/actions/runs/41630585183) ; le forçage est retiré (commit de retour).
+- **Non vérifié** : `stabilite.yml` (matrice générée, jamais lancée), `recette.yml` (liste de chemins : testée par `recette.test.ts`), aucune étape de production.
 - Décisions pour Nathan : accepter les nouveaux noms de jobs / d'artefacts de la CI complète ; décider si la suite du lot (réécriture de `production.yml`) doit se faire avec un essai en mode `essai` avant fusion.
