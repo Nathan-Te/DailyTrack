@@ -119,8 +119,8 @@ export const SOURCES_DES_CLES: Record<string, string[]> = {
   "packages/ui": ["packages/ui/src"],
   // Lot K1 : la projection `portail` des fiches nomme les clés d'accroche des jeux à fiche (lues à la construction, `jeuxFiches.ts`) : elle compte comme source.
   "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/portail/groupe", "apps/portail/ui", "config/jeux/projections/portail.json"],
-  "apps/web": ["apps/web/src", "apps/web/index.html"],
-  "apps/jump": ["apps/jump/src", "apps/jump/index.html"],
-  "apps/tower": ["apps/tower/src", "apps/tower/index.html"],
+  "apps/web": ["apps/web/src", "apps/web/index.html", "packages/kit/src"], // lot K3 : le kit lit des clés du catalogue pour le jeu (`arrivee.legendeSuite`…)
+  "apps/jump": ["apps/jump/src", "apps/jump/index.html", "packages/kit/src"], // lot K3 : le kit lit des clés du catalogue pour le jeu (`arrivee.legendeSuite`…)
+  "apps/tower": ["apps/tower/src", "apps/tower/index.html", "packages/kit/src"], // lot K3 : le kit lit des clés du catalogue pour le jeu (`arrivee.legendeSuite`…)
   commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/portail/groupe", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"],
 };

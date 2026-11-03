@@ -26,6 +26,9 @@
       "path": "packages/musique"
     },
     {
+      "path": "packages/kit"
+    },
+    {
       "path": "apps/web"
     },
     {

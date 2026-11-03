@@ -1,3 +1,4 @@
+import { suivantDisponible } from "@cdj/kit/fantome";
 import type { KeyValue } from "./memory";
 import { storageKey } from "./storage";
 
@@ -25,14 +26,7 @@ export interface GhostAvailability {
 const available = (c: GhostChoice, a: GhostAvailability): boolean => (c === "premier" ? a.premier : true);
 
 /** Le choix suivant (en bouclant), en sautant ceux qui n'existent pas. Un choix courant qui n'existe plus (premier perdu) mène au suivant possible. */
-export function nextChoice(current: GhostChoice, a: GhostAvailability): GhostChoice {
-  const i = GHOST_CHOICES.indexOf(current);
-  for (let k = 1; k <= GHOST_CHOICES.length; k++) {
-    const c = GHOST_CHOICES[(i + k) % GHOST_CHOICES.length]!;
-    if (available(c, a)) return c;
-  }
-  return "mien";
-}
+export const nextChoice = (current: GhostChoice, a: GhostAvailability): GhostChoice => suivantDisponible(GHOST_CHOICES, current, (c) => available(c, a), "mien");
 
 /** Le texte mémorisé → le choix (une valeur inconnue, ou rien : « le tien », comme avant le lot). */
 export function parseChoice(raw: string | null | undefined): GhostChoice {

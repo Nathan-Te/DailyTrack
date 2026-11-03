@@ -1200,8 +1200,11 @@ async function showNextGame(): Promise<void> {
   if (!box || box.dataset.lu || !base || base === DEMO_BASE || online.demo) return;
   box.dataset.lu = "1";
   const suite = await lireSuite(base, online.playerId, "cdj");
-  if (!suite || finishNext !== box || phase !== "finished" || !box.isConnected) return;
-  box.replaceChildren(...elementsDeSuite(suite));
+  const vivant = (): boolean => finishNext === box && phase === "finished" && box.isConnected;
+  if (!suite || !vivant()) return;
+  const elements = await elementsDeSuite(suite); // lot K3 : le DOM de la suite vient du kit, à la demande
+  if (!vivant()) return;
+  box.replaceChildren(...elements);
   box.hidden = false;
 }
 

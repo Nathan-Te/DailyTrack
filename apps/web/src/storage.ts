@@ -14,74 +14,21 @@
 //     aucun préfixe.
 // Sans préfixe, `gameStorage()` rend `localStorage` lui-même : en production le comportement est exactement celui d'avant.
 
-/** Préfixe physique des aperçus et du développement local (le même pour DailyJump : `apercu:jump:*`). */
-export const PREVIEW_PREFIX = "apercu:";
+// **Lot K3 : le stockage préfixé, le préfixe physique et son calcul sont ceux de `@cdj/kit/stockage`**, communs aux trois jeux ; il ne reste ici que ce qui est propre à Track — ses noms (`storagePrefix`,
+// `STORAGE_PREFIX`) et `gameStorage()` qui, comme avant, ne rend jamais `null` (il lève si le stockage est refusé : les appelants gardent leur `try/catch`).
+import { gameStorage as stockageDuKit, NAMESPACE_PREFIX, namespacePrefix, PREVIEW_PREFIX, prefixedStorage, type BackingStorage } from "@cdj/kit/stockage";
 
 /** Le préfixe physique d'après la variable de construction et le mode de Vite. Pure (testée). */
-export function storagePrefix(flag: string | undefined, mode: string | undefined): string {
-  if (flag === "production") return "";
-  // Toute autre valeur (faute de frappe comprise) : le préfixe. Une erreur ne doit jamais faire écrire un aperçu dans la production.
-  if (flag) return PREVIEW_PREFIX;
-  return mode === "development" ? PREVIEW_PREFIX : "";
-}
-
-// `import.meta.env` n'existe que sous Vite et Vitest : les specs Playwright (Node) importent aussi des modules qui passent par ici. Vite
-// remplace `import.meta.env.VITE_STORAGE` et `import.meta.env.MODE` par leur valeur à la construction ; sous Node, l'accès lève.
-type Env = { env: Record<string, string | undefined> };
-function buildFlags(): { flag?: string; mode?: string } {
-  try {
-    return { flag: (import.meta as unknown as Env).env.VITE_STORAGE, mode: (import.meta as unknown as Env).env.MODE };
-  } catch {
-    return {};
-  }
-}
-const flags = buildFlags();
-export const STORAGE_PREFIX = storagePrefix(flags.flag, flags.mode);
-
-/** Le sous-ensemble de `Storage` qu'un stockage préfixé exige de celui qu'il enveloppe. */
-export type BackingStorage = Pick<Storage, "getItem" | "setItem" | "removeItem" | "key" | "length">;
+export const storagePrefix = namespacePrefix;
+/** Le préfixe physique de cette construction (`""` en production). */
+export const STORAGE_PREFIX = NAMESPACE_PREFIX;
+export { PREVIEW_PREFIX, prefixedStorage, type BackingStorage };
 
 /**
- * Un stockage vu à travers un préfixe : `getItem("cdj:x")` lit `<préfixe>cdj:x` ; `key(i)` et `length` ne voient que les clés préfixées,
- * rendues sans le préfixe. Les autres clés de l'origine (celles de la production) sont invisibles et jamais modifiées.
+ * Le stockage local du jeu (clés logiques) : celui du kit, typé comme avant (jamais `null` pour l'appelant). S'il est refusé (navigation privée stricte, stockage bloqué) l'accès à ses méthodes lève,
+ * comme `localStorage` avant le lot K3 : les appelants gardent leur `try/catch`. Relu à chaque appel.
  */
-export function prefixedStorage(backing: BackingStorage, prefix: string): Storage {
-  if (!prefix) return backing as Storage;
-  const own = (): string[] => {
-    const keys: string[] = [];
-    for (let i = 0; i < backing.length; i++) {
-      const k = backing.key(i);
-      if (k !== null && k.startsWith(prefix)) keys.push(k.slice(prefix.length));
-    }
-    return keys;
-  };
-  return {
-    getItem: (key) => backing.getItem(prefix + key),
-    setItem: (key, value) => backing.setItem(prefix + key, value),
-    removeItem: (key) => backing.removeItem(prefix + key),
-    key: (index) => own()[index] ?? null,
-    get length() {
-      return own().length;
-    },
-    // N'efface que les clés préfixées (jamais celles de la production).
-    clear: () => {
-      for (const k of own()) backing.removeItem(prefix + k);
-    },
-  } as Storage;
-}
-
-let wrapped: { backing: BackingStorage; storage: Storage } | null = null;
-
-/**
- * Le stockage local du jeu (clés logiques). Peut lever comme `localStorage` (navigation privée stricte, stockage bloqué) : les appelants
- * gardent leur `try/catch`. Relu à chaque appel (les tests remplacent `globalThis.localStorage`).
- */
-export function gameStorage(): Storage {
-  const backing = (globalThis as { localStorage: Storage }).localStorage;
-  if (!STORAGE_PREFIX) return backing;
-  if (wrapped?.backing !== backing) wrapped = { backing, storage: prefixedStorage(backing, STORAGE_PREFIX) };
-  return wrapped.storage;
-}
+export const gameStorage = stockageDuKit as () => Storage;
 
 /** Toutes les clés (logiques) d'un stockage, dans l'ordre de `key(i)`. */
 export function storageKeys(storage: Pick<Storage, "key" | "length">): string[] {

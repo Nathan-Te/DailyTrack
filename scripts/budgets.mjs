@@ -68,7 +68,7 @@ export function mesureTrack(dist = join(ROOT, "apps/web/dist/assets")) {
 export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
   const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
   // Lot « musique » : le lecteur (`demarrage-`) et le panneau des réglages (`panneauMusique-`) sont chargés à la demande, au premier geste : ligne `musique.lecteur`. Lot M1 : `manette-` aussi ; lot M2 : `commandesEcran-` (l'écran Commandes).
-  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-", "classementAmis-", "course-", "retoursJeu-"].some((p) => f.startsWith(p)); // lot F2 : classementAmis- = les amis du classement, course- = la barre de la course du n° 1 (à la demande ; mesure alignée sur `apps/jump/e2e/poids.spec.ts`, qui exclut aussi interrupteur-)
+  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-", "classementAmis-", "course-", "retoursJeu-", "message-", "suite-"].some((p) => f.startsWith(p)); // lot K3 : message- et suite- = les briques du kit (message en direct, jeu suivant) chargées par `import()` ; lot F2 : classementAmis- = les amis du classement, course- = la barre de la course du n° 1 (à la demande ; mesure alignée sur `apps/jump/e2e/poids.spec.ts`, qui exclut aussi interrupteur-)
   const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);

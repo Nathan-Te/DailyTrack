@@ -1,0 +1,27 @@
+{
+  "name": "@cdj/kit",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "dependencies": {
+    "@cdj/core": "*",
+    "@cdj/profile": "*",
+    "@cdj/ui": "*"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./stockage": "./src/stockage.ts",
+    "./branche": "./src/branche.ts",
+    "./interrupteur": "./src/interrupteur.ts",
+    "./suite": "./src/suite.ts",
+    "./message": "./src/message.ts",
+    "./fantome": "./src/fantome.ts",
+    "./partage": "./src/partage.ts",
+    "./jour": "./src/jour.ts",
+    "./ecrans": "./src/ecrans.ts",
+    "./fiche": "./src/fiche.ts"
+  }
+}

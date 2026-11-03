@@ -192,6 +192,8 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   let firstName: string | null = null;
   let everyoneLabel: string | null = null;
   let suiteShown: Suite | null = null;
+  /** Dessine la suite (le DOM vient du kit, à la demande) ; une suite remplacée entre-temps n'est pas dessinée. */
+  const poserSuite = (suite: Suite): void => void elementsDeSuite(suite).then((els) => suiteShown === suite && suiteBox.replaceChildren(...els));
   let view: ArrivalView | null = null;
 
   const render = (v: ArrivalView) => {
@@ -221,7 +223,7 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   onLangue(() => {
     if (view && shown) render(view);
     if (firstName !== null) lier(first, "arrivee.premier", { nom: firstName });
-    if (suiteShown) suiteBox.replaceChildren(...elementsDeSuite(suiteShown));
+    if (suiteShown) poserSuite(suiteShown);
   });
 
   return {
@@ -232,7 +234,8 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
     setSuite(suite) {
       suiteShown = suite;
       suiteBox.hidden = suite === null;
-      suiteBox.replaceChildren(...(suite ? elementsDeSuite(suite) : []));
+      if (suite) poserSuite(suite);
+      else suiteBox.replaceChildren();
     },
     get everyone() {
       return everyoneLabel;
