@@ -1,0 +1,156 @@
+# Rediffusions refusées et « serveur indisponible » — analyse (lot D1)
+
+Enquête **sans correction** (K2bc et K3 modifient en ce moment le serveur et les jeux). Niveaux de preuve : **reproduit** (en local, `scripts/analyse/reproduire-refus.ts`), **déduit** (du code, fichier cité), **à confirmer** (il faut les données de la production, que cet agent n'a pas). Aucune donnée de joueur ici.
+
+## En tête
+
+- **H6 (écart de déterminisme navigateur ↔ serveur) : non confirmée, non exclue.** Rien ne la montre ; elle est gardée par les golden rejoués dans Node (31 tests verts relancés ici : `packages/sim`, `packages/jump-sim`, `packages/tower-sim`) et par les specs `@navigateurs` (Chromium, Firefox, WebKit). Mais le tableau de bord additionne tout : **il ne peut pas la voir** (§3).
+- **Les deux constats ne se rejoignent pas comme on le pensait.** Le renvoi d'une partie déjà acceptée **n'est jamais un refus** (H2 : reproduit). L'hypothèse « le jeu abandonne avant la fin du rejeu, le serveur écrit quand même » (H1) est **possible et reproduite dans son mécanisme**, mais il faut ≈ 320 à 600 ms par instruction SQL, ou un blocage équivalent, pour atteindre les 8 s du jeu : c'est un événement rare, pas le fonctionnement normal.
+- **Le tableau de bord ne dit pas pourquoi** : il affiche un seul total « Rediffusions refusées (24 h) » (`apps/api/src/admin.ts:432` jette le détail par code que `journaux.erreurs24h()` calcule). C'est la première correction.
+
+## 1. Le chemin d'un envoi
+
+### Côté jeu
+
+| | Track | Jump | Tower |
+|---|---|---|---|
+| Délai de la requête | 8 s (`TIMEOUT_MS`, `packages/profile/src/client.ts:43`, `AbortController`) | 8 s (même `call`) | 8 s (même `call`) |
+| Nouvelles tentatives | **pas de file** : le record reste « non envoyé » (`needsSubmit`) ; renvoi manuel (« Réessayer »), au lancement, au retour sur l'accueil, à l'événement `online` (`apps/web/src/main.ts:1173`, `:1597`) | **file** `RankQueue` : un envoi par jour, le meilleur ; 5 s, 15 s, 30 s, 60 s, 120 s, 300 s (`rankQueue.ts` `RETRY_MS`) ; tout de suite au retour du réseau | `Envoi` : 15 s doublé jusqu'à 300 s (`envoi.ts:51`) ; retour du réseau, page visible |
+| Réponse → message | timeout / réseau (statut 0) : « Hors ligne : course non classée (Le serveur ne répond pas. / Serveur injoignable.) » ; 429, 503 : le texte du code (`erreur.rate_limited`, `erreur.busy`) | **statut 0, 429, ≥ 500, `not_found` → tous « Classement indisponible, ton temps sera envoyé. »** (`ranking.ts:195`, `rankView.ts:92` ; seul le 429 a « Trop d'envois ») ; `version` → « nouvelle version », envoi **oublié** ; autre 4xx → « refused », envoi oublié | statut 0, 429, ≥ 500 → « Hors ligne, non classé : ta partie sera envoyée. » ; `version` et autres 4xx : record marqué envoyé, oublié |
+| Au renvoi | renvoie le même record | renvoie la même rediffusion ; `confirm` ne se fait qu'à une réponse reçue | idem (`noterEnvoye` seulement si `r.ok`) |
+
+Conséquence : **timeout, coupure réseau, 429, 502/503/504 et 500 donnent le même message** (Jump, Tower) ; le message ne dit pas si le serveur a reçu la partie.
+
+### Côté serveur (module commun pour Tower ; `cdj.ts` et `jump.ts` pour Track et Jump)
+
+Ordre (du moins cher au plus cher) : débit par adresse puis par joueur (**en base**) → taille du corps → décodage et versions → jour (Paris, **grâce de 10 minutes**) → contenu du jour → pseudo et code → **copies** (`player_id <>` : le même joueur n'est jamais « copie » de lui-même, `cdj.ts:443`, `jump.ts:555`, `jeux/adaptateur.ts:166`) → **plafond de rejeux** (`spendReplays`, 600 unités/min/instance, 503) → rejeu → écriture → rang et classement. Instructions SQL mesurées : **Track 14 (24 sur instance neuve), Jump 13 (24), Tower 11 à 13**.
+
+Ce que le tableau de bord compte (« rediffusions refusées ») = **8 codes sur une route finissant par `/submit`** (`journaux.ts:24,38`) :
+
+| Code | Statut | Déclencheur | Jeu |
+|---|---|---|---|
+| `invalid_replay` | 400 | illisible, tronquée, réglages non permis, autre niveau, départ non neuf | tous |
+| `sim_version` | 409 | simulation d'une autre version | Track, Salon |
+| `track_mismatch` | 409 | autre circuit que celui du serveur (autre version du générateur **ou planning remplacé**) | Track, Salon |
+| `version` | 409 | versions annoncées ≠ celles du niveau du jour, ou identifiant de niveau ≠ celui du serveur | Jump, Tower |
+| `not_finished` | 422 | le **rejeu du serveur** n'arrive pas au bout | tous |
+| `replay_copy` | 409 | mêmes entrées que l'auteur, qu'un autre joueur ce jour-là, ou qu'un résultat retiré | tous |
+| `not_daily` | 409 | niveau du futur, thème forcé, scénario | Jump, Tower |
+| `invalid_level` | 400 | identifiant de niveau illisible | Jump |
+
+**Non comptés** : `day_closed` (grâce passée), `unknown_day` (Track, date du futur), `name_taken`/`name_required`, `code_revoked`, **429 `rate_limited`**, **503 `busy`** (compté « erreur serveur », pas « rediffusion »).
+
+Durée du rejeu : Track ≈ 15 à 40 ms, Jump ≈ 5 à 30 ms (`apps/api/CLAUDE.md`), Tower 0,25 s en médiane, **0,65 s au pire** (`towerRejeu.ts`, un fil, file de **4**, `503 busy` au-delà). Limites : 30 envois par joueur et **60 par adresse** par fenêtre de 10 min ; lectures (classement…) 120 par adresse (Jump) ou 300 (Track), en mémoire par instance.
+
+### Côté plateforme
+
+Cloud Run (`deploy-api.yml:383-390`) : `europe-west1`, **min 0**, **max 2**, 1 vCPU, 512 Mo, **concurrence 40**, `--timeout=30`, pas de `--cpu-boost` ni de CPU permanent. Firebase Hosting renvoie `/api/**` vers lui, **60 s** au plus. Image : un seul `server.mjs` de 5 Mo ; démarrage mesuré ici **857 ms** (processus + schéma), premier circuit Track 0,3 s, **premier niveau Jump 1,1 s**. Base Turso : une instruction = un aller-retour réseau. `node-server.ts` ne règle ni `keepAliveTimeout` ni l'abandon d'une requête annulée : **le serveur finit toujours le travail d'un client parti**.
+
+## 2. Les hypothèses
+
+| # | Verdict | Preuve |
+|---|---|---|
+| **H1** délai du jeu < travail du serveur | **Confirmée en production (§6) : 6 envois en 200 de 8,1 à 10,9 s** ; cause de la lenteur inconnue | Script §B : serveur HTTP local, jeu qui abandonne à 1 s → rien d'écrit à cet instant, **résultat écrit quelques secondes plus tard sans nouvel envoi**. Seuil : un envoi chaud dure 0,75 s à 50 ms/instruction, 2,1 s à 150 ms, 5,7 s à 400 ms ; **8 s à ≈ 570 ms/instruction (Track chaud), ≈ 320 ms (instance neuve)**. Normalement loin du compte ; il faut une panne de Turso, un démarrage à froid sur une instance saturée ou un processeur bridé (voir limite plus bas). **À confirmer** : requêtes `/submit` en 200 avec latence ≥ 8 s (§4). |
+| **H2** renvoi d'une partie acceptée compté en refus | **Réfutée** (reproduit) | Même joueur, mêmes entrées : `200 improved=false`, **aucune ligne** dans `journal_erreurs`, sur Track et Jump ; Tower par le même module (`towerEnvoi.test.ts`). Le renvoi coûte seulement **un second rejeu**. Variante rare, **déduite** : une identité changée entre le premier envoi (accepté mais sans réponse) et le renvoi (code chargé, `applyIdentity` garde le record du jour non confirmé) donne un `replay_copy`. |
+| **H3** 429 / 503 affichés « indisponible » | **Vraie pour le message (déduit du code), cause à confirmer** | Jump et Tower : tout 429/503 → « indisponible », puis succès au renvoi (5 s / 15 s). 429 reproduit à la 31ᵉ requête d'un joueur et à la **61ᵉ d'une même adresse**. **Piste sérieuse : CGNAT mobile, école, entreprise** — les joueurs d'une même adresse publique partagent 60 envois et 120 lectures par 10 min (déduit). 503 `busy` : plafond de 600 unités/min/instance (Track/Jump : hors d'atteinte) ; **Tower : plus de 4 rejeux en attente par instance** (file) — hors production tant que Tower est `off`. |
+| **H4** onglet ouvert pendant une mise en production | **Reproduite** | Jump `version` ×2 (générateur, simulation), Track `sim_version` et `track_mismatch` : **comptés**. Chaque mise en production régénère les jours sans résultat (règle R11) : tout onglet resté ouvert envoie un `version`. Effet pour le joueur : Jump **oublie** l'envoi. Fréquence : à croiser avec les étiquettes `prod-…` (§4). |
+| **H5** partie commencée avant minuit, envoyée après la grâce | **Reproduite, mais invisible au tableau de bord** | 00:09:59 Paris → accepté ; 00:10:02 → `409 day_closed`, **non compté**. Ne peut donc pas expliquer le total affiché. |
+| **H6** déterminisme | **Non confirmée** | Golden verts (31 tests). Signal à guetter : un `not_finished`/`invalid_replay` venu du **jeu officiel** (qui n'envoie que des parties qu'il a vues finir). Aujourd'hui noyé dans le total. |
+| **H7** triche, rediffusions abîmées | **Plausible, non mesurable** | `invalid_replay`, `not_finished` (tronquée), `replay_copy` : reproduits. Pas de motif régulier observable sans le détail par code. |
+| **H8** (nouvelle) horloge de l'appareil | **Reproduite** | Date/niveau du lendemain : Jump `not_daily` (**compté**), Track `unknown_day` (non compté). |
+| **H9** (nouvelle) démarrage à froid ou pic de minuit | **Affaiblie par §6** (démarrage du conteneur ≤ 2,8 s, jamais saturé) | min 0, pas de boost : l'instance neuve coûte 24 instructions au premier envoi, plus 0,3 s (Track) ou 1,1 s (Jump) de calcul du jour ; une seule instance mono-fil sert d'abord tout le monde. Reproduit ici : 245 ms (Track), 49 ms (Jump) de calcul, sans latence réseau. |
+| **H10** (nouvelle) connexions inactives coupées | **Piste, aucune preuve** | `keepAliveTimeout` de Node à sa valeur par défaut (5 s) derrière le frontal de Google : 502 sporadiques possibles, partie non reçue, renvoi réussi. Non reproductible en local. |
+
+**Limite de la reproduction** : en local rien ne bride le processeur. Sur Cloud Run, le processeur n’est garanti que pendant une requête (à confirmer pour une requête abandonnée par le client) : un envoi abandonné peut donc **ne pas** être écrit : c'est alors le renvoi qui fait apparaître le temps.
+
+## 3. Ce que les données existantes disent
+
+- **Gardé** : `journal_erreurs` (heure, code, route sans date ni identifiant, 14 jours, 60 écritures/min/instance) ; compteurs 24 h `serveur` et `rediffusions` ; par résultat : `submitted_at`, versions, `inputs_hash`. Journaux Cloud Run : une ligne « refus » (statut, code) pour chaque 429 et 5xx **mais pas pour les 4xx** (`api.ts:354`), une ligne « temps du jour » / « essai du jour » par envoi accepté, et le journal de requêtes de Cloud Run (statut, **latence**, URL).
+- **Conclusion sans toucher à la production** : (1) le total est un mélange de huit codes qui n'ont pas la même gravité ; (2) 429, 503, `day_closed` n'y sont pas, alors qu'ils produisent « indisponible » ou un temps perdu ; (3) aucun moyen de relier un échec du jeu à ce que le serveur a fait.
+- **Manque, sans donnée personnelle** : jeu ; code ; **version du jeu qui envoie** ; **famille de navigateur** (Chrome, Safari, Firefox, autre) ; **durée du rejeu et durée totale** de la requête ; **« renvoi depuis la file »** (en-tête fourni par le jeu) ; **« ce joueur a-t-il déjà été accepté pour ce jour dans les 10 minutes ? »** (booléen calculé par le serveur, rien d'autre gardé) ; **le détail par code dans le tableau de bord**.
+
+## 4. Ce que Nathan peut regarder tout de suite (lecture seule)
+
+Console Google Cloud, projet `dailytrack-511513` → **Cloud Run** → service **`cdj-api`** (région `europe-west1`).
+
+1. **Journaux** (onglet « Journaux », champ de requête). Essayer, sur 7 jours :
+   - envois de plus de 8 s **qui ont réussi** (H1 confirmée si le nombre est non nul) : `httpRequest.requestUrl=~"/submit$" AND httpRequest.status=200 AND httpRequest.latency>="8s"`
+   - envois lents : mêmes critères avec `httpRequest.latency>="3s"` ;
+   - 5xx : `httpRequest.status>=500` ; 429 : `httpRequest.status=429` ; requêtes annulées : `httpRequest.status=499` (existe peut-être) ;
+   - raisons des 429 et 5xx (statut et code) : `jsonPayload.message="refus"` ;
+   - refus 409 par heure : `httpRequest.requestUrl=~"/submit$" AND httpRequest.status=409`, puis regarder les pics après chaque étiquette `prod-…` (H4) ou après 22 h UTC (minuit à Paris, H5).
+2. **Métriques** : « Latence des requêtes » (p50, p95, p99), « Nombre d'instances de conteneur », « Nombre de requêtes » par classe de code, **« Latence de démarrage des conteneurs »** (démarrages à froid), « Utilisation du processeur ». Chercher la p99 ≥ 5 s et les instances à 2 (plafond atteint).
+3. **En ligne de commande** : `gcloud logging read '<filtre ci-dessus>' --project=dailytrack-511513 --freshness=7d --limit=50 --format='table(timestamp,httpRequest.status,httpRequest.latency,httpRequest.requestUrl)'` ; `gcloud run revisions list --service=cdj-api --region=europe-west1`.
+4. **Administration** : `/admin/` → tableau de bord → « État du site » → « Rediffusions refusées (24 h) » : **le total seulement** (le détail par code n'y est pas, voir §5). Faute de mieux, lecture seule de la base : `turso db shell <base de production> "SELECT code, route, COUNT(*) FROM journal_erreurs GROUP BY 1, 2"` (quelques centaines de lignes au plus ; ne rien écrire).
+5. **Dans Turso** : la région de la base (`turso db show`) — si elle est loin de `europe-west1`, chaque instruction coûte cher (14 par envoi).
+
+Rapporter dans la conversation : (a) le nombre d'envois 200 de plus de 8 s ; (b) le décompte 429 et 5xx par code ; (c) la p99 de latence et le pic d'instances ; (d) la région Turso ; (e) le détail par code si la requête SQL est faite.
+
+## 5. Conclusion et corrections proposées
+
+**Causes les plus probables, classées**
+
+| Rang | Cause | Explique | Preuve |
+|---|---|---|---|
+| 1 | **Jeu qui abandonne à 8 s alors que le serveur écrit** (H1) | constat 2 sans second envoi | **confirmée en production (6 cas, §6)** ; cause de la lenteur inconnue |
+| 2 | **Onglets d'avant une mise en production** (`version`, `sim_version`, `track_mismatch`) | la plus grosse part du constat 1 | reproduit (mécanisme), à confirmer (dates) |
+| 3 | **Échec passager de l'aller-retour** (429 d'une adresse partagée, 502/503/504, `busy`, coupure) puis renvoi réussi | constat 2 | **affaiblie par §6** : 0 erreur 5xx, 429 seulement sur le Garage ; un échec qui n'atteint pas Cloud Run reste possible (499 à compter) |
+| 4 | Horloge de l'appareil (H8), copies et rediffusions abîmées (H7) | « quelques-uns » du constat 1 | reproduit |
+| — | H2, H5 : **ne produisent pas** de refus au tableau de bord | — | reproduit |
+| — | H6 : non confirmée ; H10 : piste | — | à instrumenter |
+
+**Corrections, à faire après K2bc et K3, dans le module commun (une fois pour les trois jeux)**
+
+| # | Correction | Taille |
+|---|---|---|
+| C1 | Tableau de bord : exposer et afficher `parCode` (déjà calculé, jeté par `admin.ts:432`) | S |
+| C2 | Instrumentation de §3 : colonnes additives de `journal_erreurs` (jeu, version du jeu, famille de navigateur, durée du rejeu, durée totale, renvoi, déjà-accepté), alimentées par le module ; mêmes champs dans la ligne « temps du jour » ; compter aussi 429, `day_closed`, `busy` | M |
+| C3 | Délai d'un envoi aligné sur le pire cas : ≈ 20 s pour `submit` seulement (`call` prend déjà `timeoutMs`), sous les 30 s de Cloud Run | S |
+| C4 | Message honnête : distinguer `timeout` de `network` et dire « Envoi en cours, ton temps sera pris en compte » tant que la partie est en file ; fr + en pour les trois jeux | M |
+| C5 | Renvoi d'une partie déjà acceptée : si le même joueur a déjà ce `inputs_hash` ce jour-là, répondre `200` « déjà enregistrée » avec le rang **avant** le rejeu (économise un rejeu, ne change aucun compte) | S |
+| C6 | Si §4 montre des 429 sur des adresses partagées : relever ou affiner la limite par adresse (décision de Nathan, coûts) ; si des instances saturent ou démarrent à froid : `--cpu-boost` (coût à chiffrer dans `couts.md`) | S + décision |
+| C7 | Si 502 sporadiques : régler `keepAliveTimeout` du serveur Node | S |
+| C10 | Tower, avant son ouverture : mesurer la mémoire après N envois, corriger la rétention ou passer à 1 Go (décision de Nathan, coût) | S à M |
+| C9 | Calculer le niveau du jour suivant avant minuit, ou hors du fil principal (voir § 6 bis) | M |
+| C8 | Durées par étape (niveau, SQL, rejeu, écriture) dans la ligne d'envoi, pour trouver la traîne lente (p95 3,7 s) ; à faire **avant** de relever d'autres limites | M |
+
+Ordre conseillé : **C3 tout de suite** (les six cas réels passent sous 20 s), C1, C2 et C8 (pour trancher), puis C4 et C5 ; C6 et C7 seulement sur preuve.
+
+## 6. Constats de production (relevés par Nathan le 3/11/2026, cités sans donnée de joueur)
+
+| Relevé | Résultat | Lecture |
+|---|---|---|
+| Envois `/submit` en 200 de plus de 8 s | **6** : Track ×1 (15/10, 8,14 s, avant le domaine), Jump ×2 (31/10, 10,9 s et 10,1 s, **même instance, à 2 min d'écart**), Tower ×3 (2/11, 8,34 / 8,46 / 8,41 s, **trois instances différentes**) | H1 réelle sur les trois jeux. Le jeu abandonne à 8 s : les six joueurs ont vu « indisponible » ou « hors ligne » alors que le serveur répondait 200. Cloud Run a loggé 200, pas 499 : la ligne seule ne prouve pas que le joueur ait vu l'abandon (le délai de 8 s du code, si). Le plus long, 10,9 s, passe sous un délai de 20 s. |
+| 5xx | **0** | Les 500, 502, 503 (dont `busy`) ne sont pas la cause. |
+| 429 | **3**, tous sur `/api/garage` (`rate_limited`) | H3 non soutenue pour les envois. Limite de lecture du Garage par adresse : à surveiller, sans lien avec le constat. |
+| Refus 409 sur `/submit` | 10 en 7 jours | Même ordre de grandeur que « quelques-uns par jour ». Dates à croiser avec les étiquettes `prod-…`. |
+| Turso | `euw`, comme Cloud Run | Pas de latence réseau de base. |
+| Latence de démarrage du conteneur | p50 0,6 s ; p95 et p99 ≤ 2,8 s (un pic à 2,76 s le 27/10) | Un démarrage à froid seul ne fait pas 8 s. |
+| Latence des requêtes (7 jours) | **p50 0,23 s, p95 3,7 s, p99 9,6 s** ; pics de p99 à 5 s (28/10, 30/10, 31/10 matin), **9,6 s le 31/10 vers 20-21 h**, 7,5 s le 2/11 midi, 8,2 s le 3/11 ; p99 de 2 à 3,5 s en continu le 2 et le 3/11 | **Le fait principal : une traîne lente.** 5 % des requêtes durent plus de 3,7 s alors que la médiane est à 0,23 s. Quel route ? Inconnu. |
+| Instances | 1 en général, 0 la nuit, 2 actives par moments, **3 inactives + 2 actives le 2/11 vers 17 h** (probablement deux révisions qui se chevauchent) | Le plafond de 2 n'est pas atteint longtemps. Le 31/10 à 19 h 22 UTC il y avait **une seule instance** : la lenteur vient de l'instance, pas du manque d'instances. |
+
+**Ce qui est établi** : le jeu abandonne des envois que le serveur finit, sur les trois jeux ; ce n'est ni une erreur serveur, ni la base, ni le démarrage du conteneur, ni le plafond d'instances. **Ce qui ne l'est pas** : pourquoi certaines requêtes durent 8 à 11 s. Trois pistes, aucune prouvée : (a) un blocage de l'unique fil de Node (rejeu de Track et de Jump dans le fil principal, concurrence 40, processeur partagé) ; (b) pour Tower, le premier rejeu d'une instance (fil, Rapier, rejeu de la preuve du jour) : mesuré ici ≈ 1 s (jour 0,63 s, envoi 0,3 à 0,4 s) — trop peu pour 8,4 s, et trois durées presque identiques sur trois instances évoquent un coût fixe, pas un hasard ; (c) un ralentissement ponctuel de Turso ou du processeur de l'instance. **À relever pour trancher** : les lignes du journal de l'instance autour de chacun des six envois (filtre `labels.instanceId="<id>"` et la minute), les URL du haut de la traîne (`httpRequest.latency>="3s"`, panneau des champs de Logs Explorer), le nombre de statuts 499. **Conséquence sur les corrections** : C3 (délai ≈ 20 s) est justifiée tout de suite ; s'ajoute **C8 : durées par étape (niveau, SQL, rejeu, écriture) dans la ligne d'envoi, pour trouver la traîne (M)**.
+
+### 6 bis. Ce que montrent les journaux de l'instance (3/11/2026, captures de Nathan)
+
+Les heures sont celles du **début** des requêtes (le journal « temps du jour » d'un envoi tombe à la fin de sa latence : vérifié sur les deux envois Track et Jump). Heures de Paris (UTC+1 depuis le 25/10).
+
+| Constat | Preuve | Lecture |
+|---|---|---|
+| **H1 + H2 vus en production, deux fois** | 31/10 20:22:14,957 `jump/submit` 10,87 s ; ligne « DailyJump : essai du jour » à 20:22:25,665 (**le serveur l'a accepté**) ; **nouveau** `jump/submit` à 20:22:27,882 (1,81 s) ; deuxième « essai du jour » à 20:22:29,553. Même schéma à 20:24:28,286 (10,09 s), ligne à 20:24:38,271, renvoi à 20:24:41,275, ligne à 20:24:42,699. | Le jeu a abandonné à 8 s, **renvoyé 5 s après** (`RETRY_MS[0]`), le serveur a **rejoué deux fois** et accepté deux fois (`improved=false` au second), **aucun refus**. Mécanisme décrit au § 2, confirmé tel quel. |
+| **Toute l'instance est bloquée, pas seulement l'envoi** | À 20:22 : `jump/submit` (début 14,96) 10,9 s, `portail/jour` (14,98) 8,6 s, `annonce` (19,60) 3,4 s, `carnage` (19,60) 3,6 s, `bundle` (19,61) 4,0 s. **Fins : 22,97 à 23,63 pour les quatre lectures**, puis tout redevient rapide (`portail/jour` 0,78 s, `submit` 1,8 s). Même signature à 20:24:28 (fins de `portail/jour` et `bundle` à 36,80 et 36,83) et à 20:04:40 (deux `jump/lives` finis à 48,8 et 49,3). | Un blocage de **toute l'instance pendant ≈ 8 s** : une cause unique, pas la lenteur propre d'une route. |
+| Le blocage suit une pause | Avant chacun des deux blocages de 20:22 et 20:24, **aucune requête sur cette instance pendant ≈ 31 s et ≈ 33 s**. | À confirmer sur d'autres cas ; piste : instance dont le processeur est bridé hors requête, ou connexions à Turso devenues mortes pendant la pause. |
+| **Chaque minuit** | `portail/jour` **de 4,7 à 10,8 s** à 00:00:00 les 28/10 (6,0 s), 29/10 (6,5 s), 1/11 (10,8 s et 6,8 s), 2/11 (4,7 s), 3/11 (8,6 s) ; le 30/10 `portail/jour` et le classement à 5 s. | Tous les onglets ouverts se rechargent à zéro ; la première requête du jour génère le niveau de Jump et le circuit de Track **dans le fil principal**. **Mesuré en local** : le premier `portail/jour` d'un jour sur une instance neuve fait attendre **30 requêtes simultanées 1,84 à 1,98 s** (niveau de Jump 1,9 s + circuit de Track 0,4 s). Sur Cloud Run, 3 à 5 fois plus lent, cela donne 6 à 10 s. |
+| Pas de 499 | aucune entrée | Hosting garde la requête ouverte : Cloud Run ne voit pas l'abandon du joueur. Le serveur finit donc toujours son travail. |
+| Tower | 15 envois de plus de 3 s en un jour et demi, dont 8,3 à 8,5 s trois fois | En local un envoi Tower chaud coûte 0,3 à 0,4 s : l'écart reste à expliquer (premier rejeu d'une instance, processeur partagé avec le fil de calcul). |
+
+**À relever pour trancher** : dans Cloud Monitoring, **utilisation du processeur** et **de la mémoire** du conteneur (`run.googleapis.com/container/cpu/utilizations` et `…/memory/utilizations`, agrégation max, pas de 1 minute) le 31/10 de 20:00 à 20:40 et le 1/11 à 00:00. Processeur proche de 100 % pendant les blocages : le fil de Node est occupé (calcul, ramasse-miettes) ; processeur bas : l'instance attend (Turso, réseau, processeur bridé). **Corrections ajoutées** : **C8** gagne la mesure du retard de la boucle d'événements (`monitorEventLoopDelay`, une ligne de journal au-delà d'une seconde) ; **C9 : calculer le niveau du jour suivant avant minuit** (première requête après 23 h 50, hors de la requête d'un joueur) **ou le sortir du fil principal** (M) ; c'est ce qui supprime les 5 à 10 s de chaque minuit.
+
+### 6 ter. Processeur et mémoire du conteneur (semaine du 27/10 au 3/11, captures de Nathan, lues à l'œil sur les graphiques)
+
+| Mesure | Lecture | Conséquence |
+|---|---|---|
+| **Processeur** (centiles 50, 95, 99) | médiane ≈ 1 % ; p99 en général 5 à 20 % ; **pics de 14 à 22 % juste après chaque minuit** (28, 29, 30, 31/10, 1/11 jusqu'à ≈ 22 %, 3/11) ; un seul point à ≈ 37 % (1/11 en journée) ; **jamais proche de 100 %** | C'est une **moyenne par minute** : 8 s à pleine charge dans une minute font ≈ 13 %. Les pics de minuit (14 à 22 %) sont **de la taille d'un calcul de 8 à 13 s**, ce qui va avec la génération du jour (C9). Le soir du 31/10 le p99 vaut 15 à 22 % : compatible avec un blocage de 8 s par du calcul, **sans le prouver** (résolution trop grosse). |
+| **Mémoire** (limite 512 Mo) | **jusqu'au 31/10 : médiane ≈ 20 %, p99 ≤ 32 %** (≈ 100 à 160 Mo). **À partir du 1/11 : médiane ≈ 50 % les 2 et 3/11, p99 de 75 à 86 %** (≈ 380 à 440 Mo), en dents de scie (montée, puis retour vers 17-20 %) | Un second problème, **distinct du premier** : il apparaît avec Tower (aperçu, fil de calcul et Rapier chargés dans l'instance ; 15 envois Tower de plus de 3 s le 2/11). Il n'explique pas les blocages du 31/10 (mémoire à 25-32 % ce soir-là). Aucune erreur 5xx : le plafond n'a pas été franchi, mais la marge est faible, et un tas presque plein ralentit le ramasse-miettes. Forme en dents de scie compatible avec une **fuite** ou avec le cycle de vie des instances : à mesurer. |
+
+**Corrections ajoutées** : **C10 (avant l'ouverture de Tower)** : mesurer la mémoire du serveur après N envois Tower (en local, sans Turso), puis décider entre corriger la rétention (S à M) ou passer le service de 512 Mo à 1 Go (coût à chiffrer par Nathan dans `couts.md`).
