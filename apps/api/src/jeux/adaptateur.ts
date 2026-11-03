@@ -29,6 +29,10 @@ export interface AdaptateurTable {
    * puis l'identifiant). La colonne `medal`, `replay`, `inputs_hash`, `first_at`, `submitted_at`, `hidden`, `apercu` sont celles de la plateforme.
    */
   colonnes: readonly ColonneClassement[];
+  /** La table n'a pas de colonne `medal` : la médaille se calcule sur le niveau du jour (`ContratJeu.medailleDeLigne`). */
+  sansMedaille?: boolean;
+  /** Des colonnes de plus que lisent le haut du classement, la ligne du joueur et son meilleur précédent (Jump : `deaths`). */
+  lecturesPlus?: readonly string[];
   /** Les colonnes écrites à l'insertion après `day` et `player_id`, dans l'ordre. */
   colonnesEcrites: readonly string[];
   /** Celles que le remplacement par une meilleure partie ne touche pas (le premier envoi, la marque de masquage, l'aperçu). */
@@ -136,8 +140,11 @@ export function sqlDe(a: AdaptateurTable): SqlDuJeu {
          ON CONFLICT (${jeu ? `${jeu.colonne}, ` : ""}day, player_id) DO UPDATE SET ${ecrites.filter((c) => !gardees.has(c)).map((c) => `${c} = excluded.${c}`).join(", ")}
          WHERE ${T}.apercu = excluded.apercu AND (${meilleur})`;
 
-  const brut = [...cs.map((c) => dans(c.colonne, c.nom)), "medal"].join(", ");
-  const brutR = [...cs.map((c) => `r.${c.colonne} AS ${c.nom}`), "r.medal AS medal"].join(", ");
+  const plus = (a.lecturesPlus ?? []).map(ident);
+  const medal = a.sansMedaille ? [] : ["medal"];
+  const brut = [...cs.map((c) => dans(c.colonne, c.nom)), ...medal].join(", ");
+  const brutPlus = [...cs.map((c) => dans(c.colonne, c.nom)), ...plus, ...medal].join(", ");
+  const brutR = [...cs.map((c) => `r.${c.colonne} AS ${c.nom}`), ...plus.map((c) => `r.${c} AS ${c}`), ...medal.map(() => "r.medal AS medal")].join(", ");
   const P = portee;
   return {
     portee,
@@ -148,7 +155,7 @@ export function sqlDe(a: AdaptateurTable): SqlDuJeu {
     compteJour: `SELECT COUNT(*) AS n FROM ${T} WHERE ${P}day = ?`,
     top: `SELECT ${brutR}, p.name AS name, p.ref AS ref FROM ${T} r JOIN players p ON p.id = r.player_id WHERE ${porteeR}r.day = ? AND r.hidden = 0 ORDER BY ${ordreR} LIMIT ?`,
     moi: `SELECT ${brutR}, r.submitted_at AS submitted_at, p.name AS name, p.ref AS ref FROM ${T} r JOIN players p ON p.id = r.player_id WHERE ${porteeR}r.day = ? AND r.player_id = ?`,
-    precedent: `SELECT ${brut}, submitted_at FROM ${T} WHERE ${P}day = ? AND player_id = ? AND apercu = ?`,
+    precedent: `SELECT ${brutPlus}, submitted_at FROM ${T} WHERE ${P}day = ? AND player_id = ? AND apercu = ?`,
     insertion,
     colonnesInsert: ecrites,
     parClasse: ordre,
