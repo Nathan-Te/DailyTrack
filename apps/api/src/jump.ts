@@ -462,9 +462,6 @@ export function contratJump(platform: Platform, options: JumpOptions): ContratJe
       if (typeof body.simVersion !== "number" || typeof body.generatorVersion !== "number") throw versionRefus(`simulation v${String(body.simVersion)}, générateur v${String(body.generatorVersion)}`);
       if (body.simVersion > JUMP_SIM_VERSION) throw versionRefus(`simulation v${String(body.simVersion)}, serveur v${JUMP_SIM_VERSION}`);
       if (typeof body.replay !== "string" || body.replay.length === 0) throw new RefusJeu("invalid_replay", "Rediffusion manquante");
-      // Lot D2 (C5) : un renvoi déjà accepté (même joueur, même jour, même rediffusion) répond avant tout décodage et tout rejeu ; ses versions ont déjà été vérifiées à son premier envoi.
-      const deja = await ctx.dejaAccepte(day, body.replay);
-      if (deja) return { jour: day, niveau: await ctx.niveau(day), rejeu: null as unknown as JumpReplay, mesure: { ticks: n(deja.ticks), deaths: n(deja.deaths) }, empreinte: "", empreinteAuteur: null, deja };
       let replay: JumpReplay;
       try {
         replay = decodeReplay(body.replay);
@@ -483,6 +480,9 @@ export function contratJump(platform: Platform, options: JumpOptions): ContratJe
       if (replay.levelId !== info.id) throw new RefusJeu("invalid_replay", "Cette rediffusion n'est pas celle de ce niveau");
       // Un essai part du départ, à l'arrêt, chrono à zéro : une « vie » qui repartirait d'un point de passage avec un chrono choisi n'est pas un essai.
       if (replay.start.checkpoint !== -1 || replay.start.time !== 0 || replay.start.elan !== 0 || replay.start.sections.length !== 0) throw new RefusJeu("invalid_replay", "Un essai part du départ du niveau");
+      // Lot D2 (C5) : un renvoi déjà accepté (même joueur, même jour, même rediffusion) répond ici, **après** les contrôles de version et de forme (une autre version reste refusée) et **avant** le plafond de rejeux et le rejeu.
+      const deja = await ctx.dejaAccepte(day, body.replay);
+      if (deja) return { jour: day, niveau, rejeu: replay, mesure: { ticks: n(deja.ticks), deaths: n(deja.deaths) }, empreinte: "", empreinteAuteur: null, deja };
       await ctx.avantRejeu();
       platform.spendReplays(replayUnits(replay.runs)); // lots R5 et R7 : plafond global de rejeux de l'instance, proportionnel à la durée (503 au-delà)
       let r;

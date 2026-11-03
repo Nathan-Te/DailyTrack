@@ -320,14 +320,11 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       jour = j;
       if (jour > today()) throw new HttpError(409, "not_daily", "Ce jour n'est pas encore sorti");
       if (!isOpen(jour)) throw new HttpError(409, "day_closed", "Le classement de ce jour est figé : seul le jour en cours se classe");
-      // Lot D2 (C5) : un renvoi déjà accepté répond ici, avant le niveau, le joueur, les copies et le rejeu.
-      const deja = await dejaAccepte(jour, body.replay);
-      if (deja) {
-        niveau = await getNiveau(jour);
-        return reponseDeja(playerId, jour, niveau, deja, contrat.mesureDeLigne!(deja, niveau));
-      }
       niveau = await getNiveau(jour);
       contrat.memeContenu!(r, niveau);
+      // Lot D2 (C5) : un renvoi déjà accepté répond ici, **après** les contrôles du jour et du contenu (une autre version reste refusée) et **avant** le joueur, les copies, le plafond de rejeux et le rejeu.
+      const deja = await dejaAccepte(jour, body.replay);
+      if (deja) return reponseDeja(playerId, jour, niveau, deja, contrat.mesureDeLigne!(deja, niveau));
       // 6. Joueur actif et pseudo.
       await joueur();
       // 7. Copies (lot R9) : refusées avant d'écrire quoi que ce soit, pas même le joueur ; le même joueur qui renvoie sa propre partie n'est pas concerné.
