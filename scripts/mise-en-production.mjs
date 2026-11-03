@@ -738,12 +738,15 @@ export function joursServis(jeu, ref, cible, jusqua = "origin/main") {
   if (jeu.mode === "fichier-par-jour") {
     mkdirSync(cible, { recursive: true });
     const remis = [];
+    // Un jeu dont les fichiers sont figés une fois pour toutes (Jump) : un fichier déjà là n'est jamais réécrit. Un jeu qui PRÉPARE ses jours (Tower) en refait : ce que la production sert est la dernière version
+    // versée depuis l'étiquette, qui remplace celle du commit de l'étiquette (sans cela, le jour de Tower refait par la mise en production du 02/11 se comparait à sa version périmée).
+    const remplace = Boolean(jeu.preparer);
     for (const sha of commits) {
       for (const chemin of git("diff-tree", "--no-commit-id", "--name-only", "-r", sha, "--", jeu.dossier).split("\n").filter((f) => /\/\d{4}-\d{2}-\d{2}\.json$/.test(f))) {
         const fichier = join(cible, chemin.split("/").at(-1));
-        if (existsSync(fichier)) continue;
+        if (existsSync(fichier) && !remplace) continue;
         writeFileSync(fichier, git("show", `${sha}:${chemin}`));
-        remis.push(chemin.split("/").at(-1));
+        if (!remis.includes(chemin.split("/").at(-1))) remis.push(chemin.split("/").at(-1));
       }
     }
     console.log(remis.length ? `jours servis par la production, remis : ${remis.join(" ")}` : "aucun jour servi hors du commit de l'étiquette");
@@ -829,6 +832,8 @@ export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, so
       // Lot R16 : les jours protégés sans fichier, figés avec le code en production.
       mkdirSync(join(sortieJeu, "jours"), { recursive: true });
       const dossierCible = join(cible, jeu.dossier);
+      // Ce que la production sert de ce jeu n'est pas seulement le commit de son étiquette : les jours que « Mettre en production » a refaits ou figés depuis y sont versés (`Jours figés de la mise en production`).
+      joursServis(jeu, reference, join(prod, jeu.dossier), jusqua);
       const fichiers = Object.fromEntries(datesDuDossier(dossierCible).map((d) => [d, true]));
       const plan = joursAFiger({ proteges: protege, fichiers, absentDeProd: !existsSync(join(prod, "packages", jeu.sim)) });
       const figes = join(temp, `${jeu.id}-figes`);

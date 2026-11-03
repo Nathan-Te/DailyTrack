@@ -413,6 +413,44 @@ describe("le registre des jours de Track (lot R11)", () => {
   });
 });
 
+describe("jours-servis : un jeu qui prépare ses jours (Tower) voit ses fichiers refaits remplacés par la dernière version versée (lot K4b)", () => {
+  const CLI = join(__dirname, "../../../scripts/mise-en-production.mjs");
+  const git = (cwd: string, ...args: string[]) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, encoding: "utf8" });
+
+  it("le fichier du commit de l'étiquette est remplacé par la version que la production sert (versée depuis) ; un jeu à jours figés (Jump) ne réécrit jamais un fichier", () => {
+    const depot = mkdtempSync(join(tmpdir(), "servis-prepare-"));
+    const tower = join(depot, "apps/tower/public/jours");
+    const jump = join(depot, "apps/jump/public/levels");
+    mkdirSync(tower, { recursive: true });
+    mkdirSync(jump, { recursive: true });
+    git(depot, "init", "-q", "-b", "main");
+    writeFileSync(join(tower, "2026-11-03.json"), "ancien");
+    writeFileSync(join(jump, "2026-11-03.json"), "figé");
+    git(depot, "add", "-A");
+    git(depot, "commit", "-q", "-m", "code en production");
+    git(depot, "tag", "prod-2026-11-02-0730");
+    // Le versement de la mise en production : Tower refait le jour, Jump (hypothèse d'école) en voit un autre contenu.
+    writeFileSync(join(tower, "2026-11-03.json"), "refait");
+    writeFileSync(join(tower, "2026-11-04.json"), "nouveau");
+    writeFileSync(join(jump, "2026-11-03.json"), "autre");
+    git(depot, "add", "-A");
+    git(depot, "commit", "-q", "-m", "Jours figés de la mise en production prod-2026-11-02-0730 (code en production)");
+    const copie = (jeu: string, dossier: string) => {
+      const prod = mkdtempSync(join(tmpdir(), "prod-"));
+      writeFileSync(join(prod, "2026-11-03.json"), jeu === "tower" ? "ancien" : "figé"); // ce que le commit de l'étiquette contenait
+      const out = execFileSync("node", [CLI, "jours-servis", "prod-2026-11-02-0730", prod, "--jeu", jeu, "--jusqua", "HEAD"], { cwd: depot, encoding: "utf8" });
+      void dossier;
+      return { prod, out };
+    };
+    const t = copie("tower", tower);
+    expect(readFileSync(join(t.prod, "2026-11-03.json"), "utf8")).toBe("refait");
+    expect(readFileSync(join(t.prod, "2026-11-04.json"), "utf8")).toBe("nouveau");
+    expect(t.out).toContain("2026-11-03.json 2026-11-04.json");
+    const j = copie("jump", jump);
+    expect(readFileSync(join(j.prod, "2026-11-03.json"), "utf8")).toBe("figé");
+  });
+});
+
 describe("les jours protégés (lot R11, décision de Nathan) : d'avant le lancement, déjà figés, ou avec au moins un résultat", () => {
   const PREMIER = "2026-10-26";
   const empreintes = (jours: Record<string, string>) => Object.fromEntries(Object.entries(jours).map(([d, h]) => [d, { id: `jour-${d}-g${h === "a" ? 15 : 18}`, h, ok: true }]));
