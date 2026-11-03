@@ -150,6 +150,31 @@ test("une partie scriptée est envoyée, rejouée par le serveur et classée ; l
   await context.close();
 });
 
+test("lot D2 : un envoi lent dit « Envoi en cours… » puis donne le rang, sans jamais dire « indisponible » ni « hors ligne »", async ({ browser }) => {
+  const v = variante();
+  const { context, page } = await appareil(browser);
+  // Le serveur met 3,6 s à répondre (plus que les 3 s de « Envoi en cours… », bien moins que les 20 s du délai) : le joueur ne doit voir ni « indisponible » ni « hors ligne ».
+  await context.route("**/api/tower/submit", async (r) => {
+    await new Promise((ok) => setTimeout(ok, 3_600));
+    await r.continue();
+  });
+  await jouerUnePartie(page, v);
+  await expect(page.locator("#fin-pseudo")).toBeVisible({ timeout: 40_000 });
+  await page.evaluate(() => {
+    const vus: string[] = [];
+    (window as unknown as { __vus: string[] }).__vus = vus;
+    const cible = document.getElementById("fin-rang-statut")!;
+    new MutationObserver(() => vus.push(cible.textContent ?? "")).observe(cible, { childList: true, characterData: true, subtree: true });
+  });
+  await choisirPseudo(page, "Lent", v);
+  await expect(page.locator("#fin-rang-statut")).toHaveText("Envoi en cours…", { timeout: 20_000 });
+  await expect(page.locator("#fin-rang-statut")).toContainText(/nouveau record/, { timeout: 20_000 });
+  const vus = await page.evaluate(() => (window as unknown as { __vus: string[] }).__vus);
+  expect(vus.join(" | ")).not.toMatch(/indisponible|hors ligne|offline/i);
+  expect(vus).toContain("Envoi en cours…");
+  await context.close();
+});
+
 test("une copie est refusée : la même suite de commandes qu'un autre joueur ne se classe pas", async ({ browser }) => {
   const v = variante();
   // Le premier joueur est classé.

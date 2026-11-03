@@ -42,6 +42,15 @@ export type NameCheck = { available: true } | { available: false; suggestions: s
 
 export const TIMEOUT_MS = 8000;
 
+/**
+ * Lot D2 — le délai d'un **envoi de partie** (`submit`), commun aux trois jeux (une seule constante). Le serveur rejoue la rediffusion avant de répondre ; en production, six envois acceptés (200) ont
+ * mis de 8,1 à 10,9 s (D1, `docs/plateforme/analyse-refus.md` § 6) : avec le délai ordinaire de 8 s le joueur voyait « indisponible » alors que son temps était écrit. 20 s = environ **deux fois le pire
+ * envoi mesuré** (10,9 s), et reste **sous les 30 s de Cloud Run** (`--timeout=30`) : on n'abandonne jamais une requête que le serveur finit. Les lectures gardent `TIMEOUT_MS`.
+ */
+export const DELAI_ENVOI_MS = 20_000;
+/** Lot D2 : au bout de ce temps sans réponse, l'envoi est dit « en cours » (un envoi ordinaire répond bien avant). */
+export const ATTENTE_ENVOI_MS = 3_000;
+
 /** Un appel à l'API : délai borné, erreurs traduites, suggestions de pseudo gardées. Ne lève jamais. */
 export async function call<T>(base: string, method: string, path: string, body?: unknown, timeoutMs = TIMEOUT_MS, headers?: Record<string, string>, fetchImpl?: FetchLike): Promise<ApiResult<T>> {
   const controller = new AbortController();
@@ -85,8 +94,8 @@ export class ProfileClient implements ProfileApi {
     protected readonly fetchImpl?: FetchLike,
   ) {}
 
-  protected call<T>(method: string, path: string, body?: unknown, headers?: Record<string, string>): Promise<ApiResult<T>> {
-    return call<T>(this.base, method, path, body, TIMEOUT_MS, headers, this.fetchImpl);
+  protected call<T>(method: string, path: string, body?: unknown, headers?: Record<string, string>, timeoutMs = TIMEOUT_MS): Promise<ApiResult<T>> {
+    return call<T>(this.base, method, path, body, timeoutMs, headers, this.fetchImpl);
   }
 
   me(playerId: string) {

@@ -25,6 +25,7 @@
     "./fiche": "./src/fiche.ts",
     "./records": "./src/records.ts",
     "./envoi": "./src/envoi.ts",
+    "./version": "./src/version.ts",
     "./amis": "./src/amis.ts",
     "./amisDom": "./src/amisDom.ts"
   }

@@ -1,4 +1,4 @@
-import { ProfileClient, TIMEOUT_MS, apiFromAddress, call, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
+import { DELAI_ENVOI_MS, ProfileClient, TIMEOUT_MS, apiFromAddress, call, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
 import type { JumpMedal } from "@cdj/jump-sim";
 import { fNombre, fRang, t } from "./i18n";
 import type { DayBundle } from "./dayReads";
@@ -53,6 +53,8 @@ export interface JumpSubmitResult {
   ticks: number;
   deaths: number;
   improved: boolean;
+  /** Lot D2 (C5) : le serveur avait déjà accepté cet essai (un renvoi) : réponse immédiate, rien n'a été rejoué ni écrit. */
+  deja?: true;
   bestTicks: number;
   bestDeaths: number;
   medal: JumpMedal | null;
@@ -136,7 +138,7 @@ export class HttpRankSource extends ProfileClient implements RankSource {
   submit(playerId: string, name: string | null, entry: RankEntry, versions: { simVersion: number; generatorVersion: number }) {
     // Ni le temps ni les morts du jeu ne partent : le serveur rejoue la rediffusion et garde les siens.
     const body = { levelId: entry.levelId, simVersion: versions.simVersion, generatorVersion: versions.generatorVersion, replay: entry.replay, ...(name ? { name } : {}) };
-    return this.call<JumpSubmitResult>("POST", "/api/jump/submit", body, { "X-Player-Id": playerId });
+    return this.call<JumpSubmitResult>("POST", "/api/jump/submit", body, { "X-Player-Id": playerId }, DELAI_ENVOI_MS);
   }
 
   board(date: string, playerId: string | null) {

@@ -129,6 +129,11 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: ["off"],
   },
   {
+    name: "simuler",
+    description: "Lot D2, avec `debug`, hors production : `lent` retarde l'envoi de 12 s, `perime` annonce une autre version du jeu.",
+    values: ["lent", "perime"],
+  },
+  {
     name: "accueil",
     description:
       "Lot 10 : `0` saute l'accueil (le niveau du jour s'ouvre tout de suite, comme avant ; les tests de navigateur s'en servent), `1` le montre. Sans le paramètre, la page par défaut ouvre l'accueil ; les liens directs (`seed`, `module`, `scenario`, `solution`, `watch`, `carnage`) ouvrent toujours directement leur contenu.",
@@ -224,6 +229,8 @@ export interface UrlChoices {
   theme: ThemeName | null;
   /** Lot 12 : le métronome de la nuit (`?metronome=off` le coupe). */
   metronome: boolean;
+  /** Lot D2 : `?debug&simuler=lent|perime` (jamais en production). */
+  simuler: "lent" | "perime" | null;
   /** Lot 10 : `?accueil=1` (vrai) / `?accueil=0` (faux) ; null : la page décide (`wantsHome`, homeLogic.ts). */
   home: boolean | null;
   /** Lot 10 : `?archives` : l'accueil s'ouvre sur la liste des archives. */
@@ -280,6 +287,7 @@ export function readUrlOptions(search: string, restricted = false): UrlChoices {
     module: mod,
     theme: themeByName(params.get("theme"))?.name ?? null,
     metronome: params.get("metronome") !== "off",
+    simuler: !restricted && debug && (params.get("simuler") === "lent" || params.get("simuler") === "perime") ? (params.get("simuler") as "lent" | "perime") : null,
     home: params.get("accueil") === "1" ? true : params.get("accueil") === "0" ? false : null,
     archives: daily && params.has("archives"),
     api: params.get("api") || null,
@@ -310,6 +318,7 @@ function carried(from: UrlChoices, home = false): string[] {
   if (from.ghost) out.push(`ghost=${from.ghost}`);
   if (from.theme) out.push(`theme=${from.theme}`);
   if (!from.metronome) out.push("metronome=off");
+  if (from.simuler) out.push(`simuler=${from.simuler}`);
   if (home && from.home === false) out.push("accueil=0");
   if (from.api) out.push(`api=${encodeURIComponent(from.api)}`);
   return out;

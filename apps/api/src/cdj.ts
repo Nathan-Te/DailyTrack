@@ -432,8 +432,21 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
 
     // Pseudo (lot 30) : réservé à son premier propriétaire, vérifié avant le rejeu (bon marché) et garanti par la base à l'écriture.
     await players.assertActive(playerId);
+
+    // Lot D2 (C5) : **un renvoi déjà accepté répond avant le rejeu.** Le jeu abandonnait un envoi que le serveur finissait (D1, `analyse-refus.md` § 6), puis le renvoyait : le même texte, du même joueur,
+    // pour le même jour, est celui du résultat déjà écrit. On rend ce résultat tout de suite (`deja: true`, `improved: false`), **sans rejeu et sans dépenser le plafond de rejeux** ; aucun résultat n'est écrit (le pseudo suit les règles d'un envoi ordinaire).
+    // C'est la rediffusion écrite caractère pour caractère qui compte (celle que renvoie la file) : une rediffusion équivalente aux entrées près passe par le rejeu, comme avant.
+    const apercuDeja = info.apercu === true ? 1 : 0;
+    const dejaAccepte = await db.first<{ ms: number; splits: string; respawns: number; submitted_at: number }>(
+      "SELECT ms, splits, respawns, submitted_at FROM results WHERE day = ? AND player_id = ? AND apercu = ? AND replay = ?",
+      [day, playerId, apercuDeja, body.replay],
+    );
     const known = await players.find(playerId);
     const name = await players.resolveName(playerId, body.name, known);
+    if (dejaAccepte) {
+      await players.save(playerId, name, known); // le pseudo suit les mêmes règles qu'un envoi ordinaire (réservé à son propriétaire, réécrivable avec une autre casse)
+      return reponseDejaAcceptee(day, playerId, dejaAccepte);
+    }
 
     const { result, circuit, inputsHash: hash } = await validateRun(day, body.replay);
     // Lot R9 : une copie (les entrées de l'auteur du circuit, ou d'une course déjà classée d'un autre joueur ce jour-là) est refusée avant d'écrire quoi que ce soit.
@@ -487,6 +500,31 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       garage: ouvert
         ? { progres: pApres, voitures: toutDebloque(etatGarage(pApres)), nouvelles: [] }
         : { progres: pApres, voitures: etatGarage(pApres), nouvelles: nouvellesVoitures(pAvant, pApres) },
+    };
+  }
+
+  /**
+   * Lot D2 (C5) : la réponse d'un envoi **déjà accepté** — celle d'un envoi ordinaire qui n'améliore rien (`improved: false`), construite sur la ligne écrite, plus `deja: true`. Même forme que la
+   * réponse d'un envoi (le jeu la lit comme les autres) ; le circuit du jour est celui que le serveur a déjà (aucun calcul de plus), aucune écriture.
+   */
+  async function reponseDejaAcceptee(day: number, playerId: string, ligne: { ms: number; splits: string; respawns: number; submitted_at: number }) {
+    const circuit = await getCircuit(day);
+    const rows = await resultatsGarage(playerId);
+    const progres = progresGarage(rows);
+    const ouvert = await garageOuvert(playerId);
+    log("INFO", "temps du jour déjà accepté", { day: formatDay(day) });
+    return {
+      accepted: true,
+      improved: false,
+      deja: true,
+      ms: ligne.ms,
+      splits: JSON.parse(ligne.splits) as number[],
+      respawns: ligne.respawns,
+      bestMs: ligne.ms,
+      rank: await rankOf(day, ligne.ms, ligne.submitted_at),
+      participants: await participants(day),
+      medal: medalFor(ligne.ms, medalsFor(circuit.authorMs, day)) as Medal | null,
+      garage: ouvert ? { progres, voitures: toutDebloque(etatGarage(progres)), nouvelles: [] } : { progres, voitures: etatGarage(progres), nouvelles: [] },
     };
   }
 

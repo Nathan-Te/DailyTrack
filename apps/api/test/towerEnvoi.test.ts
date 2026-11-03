@@ -113,11 +113,12 @@ describe(`Tower : l'envoi d'une partie (${TEST_DB})`, () => {
     const { code, r } = partie("droit");
     await envoyer(t, 1, code);
     // On abaisse à la main la ligne gardée : même hauteur, une vie de moins, plus de ticks → la partie rejouée est « meilleure ».
-    await t.db.run("UPDATE tower_results SET vies = ? WHERE player_id = ?", [r.vies - 1, playerId(1)]);
+    // Lot D2 (C5) : le texte gardé n'est plus celui qu'on renvoie (`replay = ''`), sinon le renvoi répondrait avant le rejeu (`deja`) ; ici on veut la règle du rejeu.
+    await t.db.run("UPDATE tower_results SET vies = ?, replay = '' WHERE player_id = ?", [r.vies - 1, playerId(1)]);
     expect((await envoyer(t, 1, code)).body.improved).toBe(true);
-    await t.db.run("UPDATE tower_results SET ticks = ? WHERE player_id = ?", [r.ticks + 10, playerId(1)]);
+    await t.db.run("UPDATE tower_results SET ticks = ?, replay = '' WHERE player_id = ?", [r.ticks + 10, playerId(1)]);
     expect((await envoyer(t, 1, code)).body.improved).toBe(true);
-    await t.db.run("UPDATE tower_results SET ticks = ? WHERE player_id = ?", [r.ticks - 10, playerId(1)]);
+    await t.db.run("UPDATE tower_results SET ticks = ?, replay = '' WHERE player_id = ?", [r.ticks - 10, playerId(1)]);
     expect((await envoyer(t, 1, code)).body.improved).toBe(false);
   });
 });

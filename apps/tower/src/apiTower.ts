@@ -1,4 +1,4 @@
-import { apiFromAddress, ProfileClient, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
+import { apiFromAddress, DELAI_ENVOI_MS, ProfileClient, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
 import type { NomMedaille } from "@cdj/tower-sim";
 import type { FantomePiece } from "./fantomeLocal";
 
@@ -47,6 +47,8 @@ export interface EnvoiTower {
   medal: MedailleApi | null;
   /** « Nouveau record » : premier envoi du jour, ou strictement meilleur que le précédent. */
   improved: boolean;
+  /** Lot D2 (C5) : le serveur avait déjà accepté cette partie (un renvoi) : réponse immédiate, rien n'a été rejoué ni écrit. */
+  deja?: true;
   best: { hauteurMm: number; vies: number; ticks: number; medal: MedailleApi | null };
   rank: number;
   participants: number;
@@ -96,7 +98,7 @@ export class HttpTowerSource extends ProfileClient implements SourceTower {
 
   submit(playerId: string, name: string | null, replay: string) {
     // Ni la hauteur ni les vies du jeu ne partent : le serveur rejoue la rediffusion et garde les siennes.
-    return this.call<EnvoiTower>("POST", "/api/tower/submit", { replay, ...(name ? { name } : {}) }, { "X-Player-Id": playerId });
+    return this.call<EnvoiTower>("POST", "/api/tower/submit", { replay, ...(name ? { name } : {}) }, { "X-Player-Id": playerId }, DELAI_ENVOI_MS);
   }
 
   board(date: string, playerId: string | null) {

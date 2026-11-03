@@ -19,6 +19,7 @@ import { CATALOGUE_INTERRUPTEUR } from "../packages/ui/src/catalogue.interrupteu
 import { CATALOGUE_COMMUNAUTE } from "../packages/ui/src/catalogue.communaute";
 import { CATALOGUE_AMIS } from "../packages/ui/src/catalogue.amis";
 import { CATALOGUE_RETOURS } from "../packages/ui/src/catalogue.retours";
+import { CATALOGUE_VERSION } from "../packages/ui/src/catalogue.version";
 import { CATALOGUE_MUSIQUE } from "../packages/ui/src/catalogue.musique";
 import { CATALOGUE_APERCU as APERCU_PORTAIL } from "../apps/portail/src/catalogueApercu";
 import { CATALOGUE_BASE as TRACK_BASE } from "../apps/web/src/catalogue.base";
@@ -48,6 +49,7 @@ export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingu
   ["packages/ui (communauté)", "packages/ui/src/catalogue.communaute.ts", CATALOGUE_COMMUNAUTE as unknown as Bilingue],
   ["packages/ui (amis)", "packages/ui/src/catalogue.amis.ts", CATALOGUE_AMIS as unknown as Bilingue],
   ["packages/ui (retours)", "packages/ui/src/catalogue.retours.ts", CATALOGUE_RETOURS as unknown as Bilingue],
+  ["packages/ui (version)", "packages/ui/src/catalogue.version.ts", CATALOGUE_VERSION as unknown as Bilingue],
   ["apps/portail", "apps/portail/src/catalogue.ts", CATALOGUE_PORTAIL as unknown as Bilingue],
   ["apps/portail (aperçu)", "apps/portail/src/catalogueApercu.ts", APERCU_PORTAIL as unknown as Bilingue],
   ["apps/portail (pages)", "apps/portail/src/cataloguePages.ts", CATALOGUE_PAGES as unknown as Bilingue],

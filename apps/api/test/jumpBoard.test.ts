@@ -201,7 +201,9 @@ describe(`POST /api/jump/submit (${TEST_DB})`, () => {
     expect([third.status, third.body.error]).toEqual([429, "rate_limited"]);
     expect(third.headers.get("retry-after")).toBeTruthy();
     expect((await t.call("POST", "/api/jump/submit", body(D.code, { levelId: "x" }), as(10))).status).toBe(429);
-    expect(log.filter((m) => m === "DailyJump : essai du jour")).toHaveLength(2);
+    // Lot D2 (C5) : le deuxième envoi est le renvoi du même essai : il répond avant le rejeu (une ligne « déjà acceptée »), le premier seul est un essai du jour.
+    expect(log.filter((m) => m === "DailyJump : essai du jour")).toHaveLength(1);
+    expect(log.filter((m) => m === "DailyJump : essai du jour déjà acceptée")).toHaveLength(1);
     // Compteurs en base, propres à DailyJump : ceux de DailyTrack (`ip:`, `p:`) ne bougent pas.
     const keys = (await t.db.all<{ key: string }>("SELECT key FROM rate")).map((r) => r.key.split(":")[0]).sort();
     expect([...new Set(keys)]).toEqual(["jip", "jp"]);

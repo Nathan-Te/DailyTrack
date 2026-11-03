@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, jumpMedalsFor, thawLevel } from "@cdj/jump-sim";
-import { NAME_KEY, PLAYER_KEY, createIdentity, type ApiResult, type KeyValueStore, type NameCheck } from "@cdj/profile";
+import { ATTENTE_ENVOI_MS, NAME_KEY, PLAYER_KEY, createIdentity, type ApiResult, type KeyValueStore, type NameCheck } from "@cdj/profile";
 import { DEMO_TODAY, DemoRankSource, demoBoard, type DemoDay } from "../src/demoRank";
 import { ordinal, rankApiBase, rankText, type JumpBoard, type JumpSubmitResult, type RankEntry, type RankSource } from "../src/rankApi";
 import { GRACE_MS, QUEUE_KEY, RANKS_KEY, RETRY_MS, RankQueue, backoff } from "../src/rankQueue";
@@ -248,6 +248,95 @@ describe("Ranking : envoi, reprise, pseudo", () => {
     expect(ranking.pendingFor(DATE)).not.toBeNull();
   });
 
+  // Lot D2 : des envois sans faux « serveur indisponible ».
+  it("lot D2 — un envoi qui tarde : « en cours » après 3 s, puis classé, sans jamais passer par « en attente »", async () => {
+    const src = new FakeSource();
+    let fin!: () => void;
+    const reponse = src.submit.bind(src);
+    src.submit = (...a: Parameters<FakeSource["submit"]>) => new Promise((r) => (fin = () => r(reponse(...a))));
+    const store = new MemStore();
+    store.setItem(NAME_KEY, "Moi");
+    const { ranking, timers } = setup(src, store);
+    ranking.offer(entry(5000));
+    const envoi = ranking.flush();
+    await settle();
+    expect(ranking.state).toMatchObject({ status: "sending", code: "" });
+    const lent = timers.find((t) => t.at === ATTENTE_ENVOI_MS)!;
+    expect(lent).toBeDefined(); // la minuterie de 3 s
+    lent.fn();
+    expect(ranking.state).toMatchObject({ status: "sending", code: "lent" });
+    fin();
+    await envoi;
+    expect(ranking.state).toMatchObject({ status: "ranked" });
+    expect(timers.some((t) => t.at === ATTENTE_ENVOI_MS)).toBe(false); // nettoyée
+  });
+
+  it("lot D2 — le délai dépassé (timeout) met la partie en file : « en attente », jamais « indisponible » ; elle repart", async () => {
+    const src = new FakeSource();
+    let ok = false;
+    src.reply = (n) => (ok ? new FakeSource().reply(n) : { ok: false, status: 0, code: "timeout", message: "Le serveur ne répond pas" });
+    const store = new MemStore();
+    store.setItem(NAME_KEY, "Moi");
+    const { ranking, timers } = setup(src, store);
+    ranking.offer(entry(5000));
+    await ranking.flush();
+    expect(ranking.state).toMatchObject({ status: "offline", code: "attente" });
+    expect(ranking.pendingFor(DATE)).not.toBeNull();
+    expect(timers.map((t) => t.at)).toEqual([RETRY_MS[0]]);
+    ok = true;
+    ranking.wake();
+    await ranking.flush();
+    expect(ranking.state.status).toBe("ranked");
+    expect(ranking.pendingFor(DATE)).toBeNull();
+  });
+
+  it("lot D2 — un refus de version prévient l'hôte (bandeau « Nouvelle version en ligne ») ; un autre refus non", async () => {
+    const vus: string[] = [];
+    for (const code of ["version", "replay_copy"]) {
+      const src = new FakeSource();
+      src.reply = () => ({ ok: false, status: 409, code, message: "" });
+      const store = new MemStore();
+      store.setItem(NAME_KEY, "Moi");
+      const { ranking } = setup(src, store);
+      ranking.surRefus = (c) => void vus.push(c);
+      ranking.offer(entry(5000));
+      await ranking.flush();
+    }
+    expect(vus).toEqual(["version"]);
+  });
+
+  it("lot D2 — « indisponible » seulement quand la file abandonne : son jour est fini et la grâce passée", async () => {
+    const src = new FakeSource();
+    src.reply = () => ({ ok: false, status: 503, code: "busy", message: "" });
+    const store = new MemStore();
+    store.setItem(NAME_KEY, "Moi");
+    let depuisMinuit = 12 * 3_600_000;
+    let jour = DAY;
+    const clock = { now: 0 };
+    const ranking = new Ranking({
+      source: src,
+      queue: new RankQueue(store, () => clock.now),
+      identity: createIdentity(() => store),
+      identityStore: () => store,
+      today: () => jour,
+      sinceMidnight: () => depuisMinuit,
+      setTimer: () => 0,
+      clearTimer: () => undefined,
+      now: () => clock.now,
+    });
+    ranking.offer(entry(5000));
+    await ranking.flush();
+    expect(ranking.state).toMatchObject({ status: "offline", code: "attente" });
+    // Deux jours plus tard : la grâce de la veille est passée, la file oublie l'envoi.
+    jour = DAY + 2;
+    depuisMinuit = 3_600_000;
+    clock.now += 10 * RETRY_MS[5]!;
+    ranking.wake();
+    await ranking.flush();
+    expect(ranking.state).toMatchObject({ status: "refused", code: "abandon" });
+    expect(ranking.pendingFor(DATE)).toBeNull();
+  });
+
   it("serveur injoignable : en attente, nouvel essai plus tard (minuterie), puis tout de suite au retour du réseau", async () => {
     const src = new FakeSource();
     let up = false;
@@ -258,7 +347,7 @@ describe("Ranking : envoi, reprise, pseudo", () => {
     ranking.offer(entry(5000));
     await ranking.flush();
     // Lot I5 : l'état porte un code (le texte vient du catalogue à l'affichage, rankView.ts).
-    expect(ranking.state).toMatchObject({ status: "offline", code: "reseau" });
+    expect(ranking.state).toMatchObject({ status: "offline", code: "attente" });
     expect(ranking.pendingFor(DATE)).toMatchObject({ tries: 1 });
     expect(timers.map((t) => t.at)).toEqual([RETRY_MS[0]]);
     // La minuterie : nouvel échec, délai plus long.
@@ -348,7 +437,11 @@ describe("écran d'arrivée et accueil", () => {
   });
   it("états clairs : envoi, injoignable, nouvelle version, pseudo à choisir ; sans serveur, rien", () => {
     expect(arrivalRankView({ ...input, pending: true, state: state("sending"), board: null }).status).toBe("Envoi au classement…");
-    expect(arrivalRankView({ ...input, pending: true, state: state("offline", "reseau"), board: null })).toMatchObject({ status: "Classement indisponible, ton temps sera envoyé.", tone: "warn" });
+    expect(arrivalRankView({ ...input, pending: true, state: state("offline", "attente"), board: null })).toMatchObject({ status: "Envoi en attente : ton temps sera pris en compte dès que possible", tone: "warn" });
+    // Lot D2 : « Envoi en cours… » quand la réponse tarde, et « indisponible » seulement quand la file a abandonné.
+    expect(arrivalRankView({ ...input, pending: true, state: state("sending", "lent"), board: null })).toMatchObject({ status: "Envoi en cours…", tone: "wait" });
+    expect(arrivalRankView({ ...input, pending: true, state: state("sending"), board: null }).status).toBe("Envoi au classement…");
+    expect(arrivalRankView({ ...input, state: state("refused", "abandon"), board: null })).toMatchObject({ status: "Classement indisponible : ton résultat n'a pas pu être envoyé. Rejoue pour le renvoyer, ou réessaie plus tard.", tone: "warn" });
     expect(arrivalRankView({ ...input, pending: true, state: state("offline", "trop_envois"), board: null }).status).toBe("Trop d'envois : nouvel essai dans un moment.");
     expect(arrivalRankView({ ...input, state: state("version") })).toMatchObject({ status: "Une nouvelle version du jeu est disponible", reload: true });
     // Le pseudo refusé : le texte du code d'erreur (catalogue commun), pas le message du serveur.

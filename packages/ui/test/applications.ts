@@ -31,6 +31,7 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["packages/ui (amis)", "packages/ui/src/catalogue.amis.ts", "CATALOGUE_AMIS"],
   // Lot C1 : « Un bug ? Une idée ? » et « Mes messages » (dialogue d'envoi, page du portail), communs au portail et aux trois jeux (chargés à la demande avec le dialogue).
   ["packages/ui (retours)", "packages/ui/src/catalogue.retours.ts", "CATALOGUE_RETOURS"],
+  ["packages/ui (version)", "packages/ui/src/catalogue.version.ts", "CATALOGUE_VERSION"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
   ["apps/web (base)", "apps/web/src/catalogue.base.ts", "CATALOGUE_BASE"],
   ["apps/web (accueil)", "apps/web/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],
@@ -67,6 +68,7 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/portail/src/adminGroupes.ts": "lot C1 : la rubrique Groupes du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminImages.ts": "lot C1 : la rubrique Images du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminJeux.ts": "lot P : la rubrique Jeux (interrupteur et clé d'aperçu) du panneau d'administration, outil interne de l'éditeur, en français seulement",
+  "apps/portail/src/adminRefus.ts": "lot D2 : la carte « Refus d'envoi par cause » du tableau de bord du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminGithub.ts": "lot N2 : la lecture des PR par le panneau d'administration (messages d'erreur pour l'éditeur), en français seulement",
   "apps/portail/src/adminDonnees.ts": "lot N1 : les textes et formats du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/partage": "lot I6 : la source des images de partage (outil de construction, jamais servie) : seulement les noms de la marque",
