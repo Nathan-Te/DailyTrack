@@ -160,6 +160,33 @@ export const PLATFORM_SCHEMA: string[] = [
      jeux TEXT NOT NULL,
      PRIMARY KEY (player_id, du)
    )`,
+  // --- Lot K4c : `resultats_jeu`, la table commune des jeux neufs (`jeux/adaptateur.ts`, `adaptateurResultatsJeu`). **Réversible** : une table nouvelle, rien d'existant touché (l'ancien code l'ignore) ; retour
+  // arrière : `DROP TABLE resultats_jeu` (les index partent avec). Une ligne par joueur, par jour et par jeu (`jeu`) : la meilleure partie **rejouée par le serveur**. `cle1` à `cle3` sont les colonnes de
+  // classement de la fiche du jeu, **normalisées en croissant** (`cle1 = -score` pour un score qui se classe du plus grand au plus petit), de sorte qu'un seul index sert tous les sens ; `mesures` (JSON) garde
+  // les valeurs du rejeu que le jeu veut relire. Liée à un joueur : vidée par la remise à zéro, effacée avec lui (crochet `erase` du module), suit « Changer mon code ».
+  `CREATE TABLE IF NOT EXISTS resultats_jeu (
+     jeu TEXT NOT NULL,
+     day INTEGER NOT NULL,
+     player_id TEXT NOT NULL,
+     cle1 INTEGER NOT NULL DEFAULT 0,
+     cle2 INTEGER NOT NULL DEFAULT 0,
+     cle3 INTEGER NOT NULL DEFAULT 0,
+     medal TEXT,
+     replay TEXT NOT NULL,
+     sim_version INTEGER NOT NULL,
+     generator_version INTEGER NOT NULL,
+     mesures TEXT,
+     first_at INTEGER NOT NULL,
+     submitted_at INTEGER NOT NULL,
+     inputs_hash TEXT NOT NULL,
+     hidden INTEGER NOT NULL DEFAULT 0,
+     apercu INTEGER NOT NULL DEFAULT 0,
+     PRIMARY KEY (jeu, day, player_id)
+   )`,
+  `CREATE INDEX IF NOT EXISTS resultats_jeu_by_rank ON resultats_jeu (jeu, day, hidden, cle1, cle2, cle3, submitted_at, player_id)`,
+  `CREATE INDEX IF NOT EXISTS resultats_jeu_by_inputs ON resultats_jeu (jeu, day, inputs_hash)`,
+  `CREATE INDEX IF NOT EXISTS resultats_jeu_by_player ON resultats_jeu (jeu, player_id, day)`,
+  `CREATE INDEX IF NOT EXISTS resultats_jeu_by_apercu ON resultats_jeu (apercu) WHERE apercu = 1`,
   // --- Lot N2 : les nouveautés et le message en direct (`diffusion.ts`). **Réversible** : deux tables nouvelles, rien d'existant touché (l'ancien code les ignore) ; retour arrière :
   // `DROP TABLE nouveautes` et `DROP TABLE annonces` (les index partent avec). Aucune donnée de joueur : ce que Nathan écrit pour les joueurs.
   // Nouveauté : titre FR / EN, date affichée (AAAA-MM-JJ), lignes (JSON : zone, français, anglais, PR d'origine), statut (`brouillon` | `publiee`), dates.

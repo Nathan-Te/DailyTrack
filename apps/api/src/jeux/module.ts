@@ -111,8 +111,8 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
   const messagePartie = contrat.messagesJournal?.partie ?? `${contrat.nomJournal} : partie du jour`;
   const sql = sqlDe(adaptateur);
   const colonnes = adaptateur.colonnes;
-  const tableNiveaux = adaptateur.niveaux.table;
-  const colonnesNiveau = adaptateur.niveaux.colonnes;
+  const tableNiveaux = adaptateur.niveaux?.table ?? null;
+  const colonnesNiveau = adaptateur.niveaux?.colonnes ?? [];
   const premierJour = parseDay(fiche.premierJour)!;
   const unites = fiche.rejeu.unitesServeur;
   /** Le sens du classement de la fiche : `desc` = la plus grande valeur d'abord. */
@@ -123,7 +123,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
   const enCalcul = new Map<number, Promise<Niveau>>();
 
   async function chargerNiveau(day: number, rule: string): Promise<Niveau> {
-    const row = await db.first<Record<string, SqlValue>>(`SELECT rule, ${colonnesNiveau.join(", ")} FROM ${tableNiveaux} WHERE day = ?`, [day]);
+    const row = tableNiveaux ? await db.first<Record<string, SqlValue>>(`SELECT rule, ${colonnesNiveau.join(", ")} FROM ${tableNiveaux} WHERE day = ?`, [day]) : null;
     let niveau: Niveau | null = null;
     if (row && row.rule === rule) {
       try {
@@ -136,7 +136,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       const debutCalcul = performance.now();
       const c = await contrat.calculer(day);
       niveau = c.niveau;
-      await db.run(`INSERT OR REPLACE INTO ${tableNiveaux} (day, rule, ${colonnesNiveau.join(", ")}, created_at) VALUES (?, ?, ${colonnesNiveau.map(() => "?").join(", ")}, ?)`, [
+      if (tableNiveaux) await db.run(`INSERT OR REPLACE INTO ${tableNiveaux} (day, rule, ${colonnesNiveau.join(", ")}, created_at) VALUES (?, ?, ${colonnesNiveau.map(() => "?").join(", ")}, ?)`, [
         day,
         rule,
         ...colonnesNiveau.map((k) => c.ligne[k] ?? null),
@@ -429,7 +429,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     site: fiche.id,
     nom: config.nom,
     premierJour,
-    classement: fiche.classement.format === "hauteur" ? "hauteur" : "temps",
+    classement: fiche.classement.format === "temps" ? "temps" : "hauteur", // lot K4c : tout jeu classé à un score (hauteur, points) compte dans la journée mais jamais dans le cumul au temps
     async jour(day) {
       return contrat.portailJour(await getNiveau(day), day);
     },

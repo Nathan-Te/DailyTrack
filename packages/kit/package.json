@@ -22,6 +22,10 @@
     "./partage": "./src/partage.ts",
     "./jour": "./src/jour.ts",
     "./ecrans": "./src/ecrans.ts",
-    "./fiche": "./src/fiche.ts"
+    "./fiche": "./src/fiche.ts",
+    "./records": "./src/records.ts",
+    "./envoi": "./src/envoi.ts",
+    "./amis": "./src/amis.ts",
+    "./amisDom": "./src/amisDom.ts"
   }
 }

@@ -17,6 +17,8 @@ export interface ColonneClassement {
   sens: Sens;
   /** `-1` quand la table range la valeur opposée pour que tout se range en croissant (table commune) ; `1` (défaut) sinon. */
   signe?: 1 | -1;
+  /** Lot K4c : une clé de la table commune que la fiche du jeu n'utilise pas (toujours 0) : elle reste dans l'ordre de l'index, `verifierAdaptateur` ne la demande pas à la fiche. */
+  remplissage?: boolean;
 }
 
 export interface AdaptateurTable {
@@ -37,8 +39,11 @@ export interface AdaptateurTable {
   colonnesEcrites: readonly string[];
   /** Celles que le remplacement par une meilleure partie ne touche pas (le premier envoi, la marque de masquage, l'aperçu). */
   colonnesGardees: readonly string[];
-  /** La table du niveau du jour : une ligne par jour (`day`, `rule`, `created_at` + `colonnes`). Aucune donnée de joueur. */
-  niveaux: { table: string; colonnes: readonly string[] };
+  /**
+   * La table du niveau du jour : une ligne par jour (`day`, `rule`, `created_at` + `colonnes`). Aucune donnée de joueur. **Absente (lot K4c, jeux sur `resultats_jeu`)** : le niveau du jour se recalcule à la
+   * demande et ne se garde qu'en mémoire de l'instance — il est déterministe et bon marché, et le lot n'ajoute aucune table de niveaux.
+   */
+  niveaux?: { table: string; colonnes: readonly string[] };
 }
 
 /** Les départages ultimes de toute table de résultats (la fiche les nomme à la fin de `classement.colonnes`). */
@@ -93,7 +98,7 @@ const dans = (colonne: string, nom: string) => (colonne === nom ? colonne : `${c
 
 /** Compare la fiche et l'adaptateur : mêmes colonnes, dans le même ordre et le même sens **effectif** (le sens de la table retourné par le signe). Lève sinon. */
 export function verifierAdaptateur(fiche: readonly { nom: string; sens: Sens }[], a: AdaptateurTable): void {
-  const voulu = [...a.colonnes.map((c) => ({ nom: c.nom, sens: (c.signe === -1 ? (c.sens === "asc" ? "desc" : "asc") : c.sens) as Sens })), ...DEPARTAGES];
+  const voulu = [...a.colonnes.filter((c) => !c.remplissage).map((c) => ({ nom: c.nom, sens: (c.signe === -1 ? (c.sens === "asc" ? "desc" : "asc") : c.sens) as Sens })), ...DEPARTAGES];
   const lu = JSON.stringify(fiche.map((c) => [c.nom, c.sens]));
   if (JSON.stringify(voulu.map((c) => [c.nom, c.sens])) !== lu) throw new Error(`l'adaptateur de ${a.table} ne dit pas le classement de la fiche : ${lu}`);
 }
@@ -192,4 +197,21 @@ export function versTable(a: AdaptateurTable, score: Record<string, number>, aut
   const out: Record<string, SqlValue> = { ...autres };
   for (const c of a.colonnes) out[c.colonne] = (score[c.nom] ?? 0) * (c.signe ?? 1) || 0;
   return out;
+}
+
+/** Lot K4c — les colonnes de `resultats_jeu` : ce qu'un jeu neuf ne décrit pas, la plateforme l'écrit. */
+export const COLONNES_ECRITES_RESULTATS_JEU = ["cle1", "cle2", "cle3", "medal", "replay", "sim_version", "generator_version", "mesures", "first_at", "submitted_at", "inputs_hash", "hidden", "apercu"] as const;
+export const CLES_RESULTATS_JEU = 3;
+
+/**
+ * **L'adaptateur de la table commune `resultats_jeu`** (lot K4c) : une seule table pour tous les jeux neufs (`jeu = '<code>'`), trois clés de tri **normalisées en croissant** (`cle1 = -score` pour un score
+ * qui se classe du plus grand au plus petit : `signe: -1`) et un seul index `(jeu, day, hidden, cle1, cle2, cle3, submitted_at, player_id)` qui sert tous les sens. Les colonnes de classement viennent de la
+ * fiche du jeu (une à trois, sans les deux départages ultimes) ; les clés qu'elle n'utilise pas restent à 0 (`remplissage`). Les valeurs en plus qu'une partie veut garder vont en `mesures` (JSON).
+ */
+export function adaptateurResultatsJeu(code: string, colonnesFiche: readonly { nom: string; sens: Sens }[]): AdaptateurTable {
+  const reelles = colonnesFiche.filter((c) => c.nom !== DEPARTAGES[0].nom && c.nom !== DEPARTAGES[1].nom);
+  if (reelles.length < 1 || reelles.length > CLES_RESULTATS_JEU) throw new Error(`${code} : la table commune range une à ${CLES_RESULTATS_JEU} colonnes de classement (${reelles.length} dans la fiche)`);
+  const colonnes: ColonneClassement[] = reelles.map((c, i) => ({ nom: c.nom, colonne: `cle${i + 1}`, sens: "asc", signe: c.sens === "desc" ? -1 : 1 }));
+  for (let i = colonnes.length; i < CLES_RESULTATS_JEU; i++) colonnes.push({ nom: `cle${i + 1}`, colonne: `cle${i + 1}`, sens: "asc", remplissage: true });
+  return { table: "resultats_jeu", filtreJeu: { colonne: "jeu", valeur: code }, colonnes, colonnesEcrites: COLONNES_ECRITES_RESULTATS_JEU, colonnesGardees: ["first_at", "hidden", "apercu"] };
 }

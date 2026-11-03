@@ -76,6 +76,21 @@ describe("la validation refuse ce qui sortirait du jeu", () => {
     refuse((f) => (f.e2e.zones["track-sim"] = { globs: ["apps/tower/**"] }), "ne définit que ses zones");
     refuse((f) => (f.jours.dossier = "apps/web/public"), "un dossier du jeu");
   });
+  it("lot K4c : un jeu sur la table commune `resultats_jeu` n'a besoin d'aucune table à lui, mais n'en vole pas une autre", () => {
+    refuse((f) => (f.donnees.tables = []), "donnees.tables");
+    const ok = (f: Record<string, any>) => {
+      f.donnees.tableCommune = "resultats_jeu";
+      f.donnees.tables = [];
+    };
+    const f = structuredClone(fiches().find((x) => x.id === "tower")!);
+    ok(f);
+    expect(validerFiche(f, "tower")).toEqual([]);
+    refuse((g) => {
+      ok(g);
+      g.donnees.tables.push({ nom: "results", sort: "videe" });
+    }, "doit commencer par « tower_ »");
+    refuse((g) => ((g.donnees as { tableCommune?: string }).tableCommune = "results"), "donnees.tableCommune");
+  });
   it("une table d'un autre jeu, un autre préfixe de stockage, une autre destination : refusés", () => {
     refuse((f) => f.donnees.tables.push({ nom: "results", sort: "videe" }), "doit commencer par « tower_ »");
     refuse((f) => (f.donnees.stockage.prefixe = "cdj:"), "donnees.stockage");
