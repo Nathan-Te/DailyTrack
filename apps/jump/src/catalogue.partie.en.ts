@@ -73,6 +73,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "pause.aide": "How to play",
   "pause.accueil": "Jump home",
   "pause.mentions": "Legal notice",
+  "pause.retours": "Found a bug? Got an idea?",
   "aide.aria": "How to play",
   "aide.titre": "HOW TO PLAY",
   "aide.point1": "Get to the flag. The clock starts with your first move.",

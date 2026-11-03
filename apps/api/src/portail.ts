@@ -5,6 +5,7 @@ import { estNouveau, favorisLe, jeuxDeLaBase, jourDEffet, listeApresChoix, liste
 import { WithHeaders } from "./cache";
 import { classerLaJournee, ligneDe, placer, rangEntreAmis, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
 import type { AmisPourPortail } from "./amis";
+import type { RetoursPourPortail } from "./retours";
 import { HttpError } from "./errors";
 import type { Diffusion } from "./diffusion";
 import type { Jeux } from "./jeux";
@@ -148,7 +149,7 @@ export function serieEtParfaites(today: number, jeux: readonly { premierJour: nu
   return { serie, aProlonger: !finiAujourdhui && serie > 0, journeesParfaites, aujourdhuiParfaite: parfaite(today) };
 }
 
-export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux, amis?: AmisPourPortail) {
+export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux, amis?: AmisPourPortail, retours?: RetoursPourPortail) {
   const { now, log, today, players, hashKey, readHit, playerIdOf } = platform;
 
   // --- Lot P : l'interrupteur des jeux ---------------------------------------------------------------------------------------------
@@ -360,6 +361,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     let classesDuJour: number | null = null;
     let entreAmis: { rang: number; sur: number } | null = null;
     const bilan = bilanDe(id, etatsJoueur, ouverts);
+    // Lot C1 : les réponses de l'éditeur qui attendent (« Mes messages »), une lecture indexée — la pastille de l'avatar, sans requête de plus.
+    const messagesNonLus = retours ? await retours.nonLus(id) : 0;
     if (bilan) {
       cumulMs = bilan.cumulMs;
       ({ rang: rangDuJour, classes: classesDuJour } = placer(c, bilan));
@@ -369,7 +372,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const body = {
       ...publique,
       jeux: publique.jeux.map((j) => ({ ...j, etat: etatDe.get(j.jeu) ?? { statut: "pas_joue" } })),
-      joueur: { pseudo: row.name, ...serie, cumulMs, rangDuJour, classesDuJour, rangEntreAmis: entreAmis, ...etatFavoris(periodes, day, (j) => toutVoir || surLeSite(j)) },
+      joueur: { pseudo: row.name, ...serie, cumulMs, rangDuJour, classesDuJour, rangEntreAmis: entreAmis, messagesNonLus, ...etatFavoris(periodes, day, (j) => toutVoir || surLeSite(j)) },
     };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
@@ -518,7 +521,9 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const day = today();
     // Lot P : le profil commun ne liste que les jeux ouverts (`on`) ; un jeu désactivé y revient, résultats compris, à sa réactivation. La série, elle, suit les périodes de chaque jeu.
     const [serie, parJeu] = await Promise.all([serieDe(id, day), Promise.all(jeux.filter(surLeSite).map(async (j) => ({ jeu: j.code, ...(await j.portail.profil(id)) })))]);
-    const body = { pseudo: row.name, renameRequired: row.rename_required === 1, date: formatDay(day), ...serie, jeux: parJeu };
+    // Lot C1 : « Mes messages » du profil dit si une réponse de l'éditeur attend.
+    const messagesNonLus = retours ? await retours.nonLus(id) : 0;
+    const body = { pseudo: row.name, renameRequired: row.rename_required === 1, date: formatDay(day), ...serie, messagesNonLus, jeux: parJeu };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
 

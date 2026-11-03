@@ -128,6 +128,8 @@ export default defineConfig({
   define: { __JUMP_FROZEN_DAYS__: JSON.stringify(enPlages(frozenDays())), __JUMP_FROZEN_OLD_DAYS__: JSON.stringify(enPlages(frozenOldDays())) },
   build: {
     target: "es2022",
+    // Lot C1 : pas de polyfill du préchargement des modules (≈ 390 o du premier chargement) : un navigateur sans `rel=modulepreload` charge ses modules au besoin, sans précharger — rien ne casse (les budgets sont à l'octet).
+    modulePreload: { polyfill: false },
     rollupOptions: {
       // Lot 3 : `verify.html`, rejeu sans rendu pour les tests de déterminisme entre navigateurs. `admin/` : la page d'outils de Jump (`/jump/admin/`), jamais chargée par un joueur.
       input: { main: "index.html", verify: "verify.html", admin: "admin/index.html" },

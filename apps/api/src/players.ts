@@ -3,6 +3,7 @@ import { HttpError } from "./errors";
 import type { Statement } from "./games";
 import { isForbidden, isUniqueViolation, nameKey, suggestionCandidates } from "./pseudos";
 import { cleanName } from "./validate";
+import { effacerRetours } from "./retours";
 
 // Joueurs (lot 30) : pseudos réservés, codes révoqués, changement d'identifiant secret. Tout ce qui touche à la table `players` passe ici,
 // pour que le classement du jour et le Salon appliquent exactement les mêmes règles.
@@ -159,6 +160,7 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       { sql: "UPDATE amities SET ami = ? WHERE ami = ?", params: [newId, oldId] },
       { sql: "UPDATE invitations_amis SET joueur = ? WHERE joueur = ?", params: [newId, oldId] },
       { sql: "UPDATE favoris_jeux SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot F1 : ses jeux épinglés le suivent
+      { sql: "UPDATE retours SET player_id = ?, ref = ? WHERE player_id = ?", params: [newId, newHash.slice(0, REF_LENGTH), oldId] }, // lot C1 : ses fils de retours le suivent (la référence publique change)
       { sql: "UPDATE players SET id = ?, ref = ?, updated_at = ? WHERE id = ?", params: [newId, newHash.slice(0, REF_LENGTH), t, oldId] },
     ];
     if (db.batch) await db.batch(statements);
@@ -184,6 +186,7 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
     out.push({ sql: "DELETE FROM amities WHERE ami = ?", params: [id] });
     out.push({ sql: "DELETE FROM invitations_amis WHERE joueur = ?", params: [id] });
     out.push({ sql: "DELETE FROM favoris_jeux WHERE player_id = ?", params: [id] }); // lot F1 : ses jeux épinglés
+    out.push(...effacerRetours(id)); // lot C1 : ses retours et les réponses reçues
     out.push({ sql: "DELETE FROM players WHERE id = ?", params: [id] });
     return out;
   }

@@ -136,6 +136,7 @@ import { chargerDecor, decorPret, instantsDecor } from "./scene/decor";
 import { etatFeux } from "./feux";
 import { brancherMusique } from "@cdj/musique/branche";
 import { gameStorage } from "./storage";
+import { ouvrirRetours } from "./retoursLien";
 import { followIdentityRevision } from "./transfer";
 
 // Lot P4 (plateforme) : un code chargé dans un autre jeu de la plateforme (DailyJump) depuis la dernière visite : le cache des records de
@@ -1006,6 +1007,7 @@ $("pause-respawn").addEventListener("click", () => {
 $("pause-settings").addEventListener("click", () => openSettings());
 $("pause-howto").addEventListener("click", () => howto.open());
 $("pause-home").addEventListener("click", () => goHome());
+$("pause-retours").addEventListener("click", ouvrirRetours);
 $("pause-stay").addEventListener("click", () => showPauseConfirm(false));
 $("pause-leave").addEventListener("click", () => leaveToHome());
 $("helpchip").addEventListener("click", () => howto.open());

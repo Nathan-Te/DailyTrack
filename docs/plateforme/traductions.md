@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1529 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1606 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -137,7 +137,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `communaute.discord` | Rejoindre le Discord | Join the Discord |
 | `communaute.kofi` | Soutenir sur Ko-fi | Support on Ko-fi |
 
-### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`, `packages/ui/src/catalogue.amis.ts`)
+### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`, `packages/ui/src/catalogue.amis.ts`, `packages/ui/src/catalogue.retours.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -206,6 +206,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.their_friends_full` | La liste d'amis de ce joueur est pleine. | That player's friends list is full. |
 | `erreur.invalid_invitation` | Ce lien d'invitation n'est plus valable. Demande-en un nouveau. | This invitation link is no longer valid. Ask for a new one. |
 | `erreur.invalid_filter` | Ce filtre n'existe pas. | That filter doesn't exist. |
+| `erreur.invalid_feedback` | Ton message est vide, trop long ou d'un type inconnu. | Your message is empty, too long or of an unknown type. |
+| `erreur.unknown_feedback` | Ce message n'existe pas. | That message doesn't exist. |
+| `erreur.feedback_limit` | Tu as déjà envoyé 5 messages aujourd'hui. Reviens demain. | You've already sent 5 messages today. Come back tomorrow. |
+| `erreur.feedback_full` | Ce fil est complet : écris un nouveau message. | This thread is full: write a new message. |
 
 ### Icônes (`icone.*`, `packages/ui/src/catalogue.ts`)
 
@@ -343,6 +347,47 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `retrouver.echec` | Impossible d'enregistrer le profil sur cet appareil. | Couldn't save the profile on this device. |
 | `retrouver.passer` | Commencer sans profil | Start without a profile |
 
+### Un bug ? Une idée ? (`retours.*`, `packages/ui/src/catalogue.retours.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `retours.titre` | Un bug ? Une idée ? | Found a bug? Got an idea? |
+| `retours.intro` | Dis-nous ce qui ne va pas, ou ce que tu aimerais voir. Seul l'éditeur lit ton message. | Tell us what's wrong, or what you'd like to see. Only the publisher reads your message. |
+| `retours.type` | C'est plutôt… | It's more like… |
+| `retours.type.bug` | Un bug | A bug |
+| `retours.type.suggestion` | Une idée | An idea |
+| `retours.type.autre` | Autre chose | Something else |
+| `retours.message` | Ton message | Your message |
+| `retours.message.aide` | Du texte seul, {max} caractères au plus. | Plain text, {max} characters at most. |
+| `retours.compteur` | {n} / {max} | {n} / {max} |
+| `retours.contexte.titre` | Ce qui part avec ton message | What goes with your message |
+| `retours.contexte.aide` | Rien de caché : voilà tout ce qui est joint. | Nothing hidden: this is everything that is attached. |
+| `retours.contexte.page` | Page | Page |
+| `retours.contexte.jour` | Jour | Day |
+| `retours.contexte.version` | Version du site | Site version |
+| `retours.contexte.navigateur` | Navigateur | Browser |
+| `retours.contexte.systeme` | Système | System |
+| `retours.contexte.ecran` | Écran | Screen |
+| `retours.contexte.langue` | Langue | Language |
+| `retours.contexte.reference` | Ta référence publique | Your public reference |
+| `retours.contexte.sansReference` | aucune (pas de profil) | none (no profile) |
+| `retours.contexte.inconnue` | inconnue | unknown |
+| `retours.page.portail` | le portail | the portal |
+| `retours.page.track` | Track | Track |
+| `retours.page.jump` | Jump | Jump |
+| `retours.page.tower` | Tower | Tower |
+| `retours.sansProfil` | Tu n'as pas de profil : on recevra ton message, mais aucune réponse ne pourra te parvenir. | You don't have a profile: we'll get your message, but no reply can reach you. |
+| `retours.envoyer` | Envoyer | Send |
+| `retours.envoi` | Envoi… | Sending… |
+| `retours.annuler` | Annuler | Cancel |
+| `retours.fermer` | Fermer | Close |
+| `retours.merci` | Merci, c'est reçu. | Thanks, we got it. |
+| `retours.merciReponse` | Si on te répond, ce sera dans « Mes messages », dans ton profil. | If we reply, it will be in “My messages”, in your profile. |
+| `retours.merciSansReponse` | Sans profil, on ne pourra pas te répondre. | Without a profile, we won't be able to reply. |
+| `retours.voirMessages` | Mes messages | My messages |
+| `retours.horsLigne` | Hors ligne : ton message n'est pas parti. Réessaie dans un moment. | Offline: your message didn't go out. Try again in a moment. |
+| `retours.vide` | Écris un message d'abord. | Write a message first. |
+
 ## Portail Du Jour (accueil, profil commun, classement du jour, vitrine et démonstration de la recette)
 
 ### amisPage (`amisPage.*`, `apps/portail/src/cataloguePages.ts`)
@@ -366,6 +411,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `apercu.image` | Le logo DU JOUR et deux cartouches posées sur l'étagère : Track et Jump. | The DU JOUR logo and two cartridges on the shelf: Track and Jump. |
 | `apercu.nouveautes.titre` | Nouveautés — Du Jour | What's new — Du Jour |
 | `apercu.nouveautes.description` | Ce qui change dans Du Jour, Track et Jump : les nouveautés, mise à jour par mise à jour, en français et en anglais. | What changes in Du Jour, Track and Jump: updates one by one, in French and in English. |
+| `apercu.messages.titre` | Mes messages — Du Jour | My messages — Du Jour |
+| `apercu.messages.description` | Tes messages à l'éditeur de Du Jour et ses réponses. | Your messages to the Du Jour publisher, and the replies. |
 | `apercu.amis.titre` | Rejoins-moi sur Du Jour | Join me on Du Jour |
 | `apercu.amis.description` | Un circuit Track et un niveau Jump chaque jour, les mêmes pour tout le monde. Ajoutons-nous en amis pour comparer nos temps. | One Track circuit and one Jump level every day, the same for everyone. Let's add each other as friends to compare our times. |
 
@@ -401,6 +448,39 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `demo.texte` | Ce lien installe sur cet appareil le joueur « {nom} » de la recette, pour voir le portail plein. Il remplacera le profil de cet appareil ({actuel}), dans tous les jeux. | This link installs the test server's player "{nom}" on this device, to see the portal full. It will replace this device's profile ({actuel}), in every game. |
 | `demo.installer` | Installer le joueur de démonstration | Install the demo player |
 | `demo.annuler` | Garder mon profil | Keep my profile |
+
+### Mes messages (`messages.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `messages.vide` | Tu n'as encore rien envoyé. « Un bug ? Une idée ? » est en bas de chaque page. | You haven't sent anything yet. “Found a bug? Got an idea?” is at the bottom of every page. |
+| `messages.nonLu` | Nouvelle réponse | New reply |
+| `messages.toi` | Toi | You |
+| `messages.editeur` | L'éditeur | The publisher |
+| `messages.statut.nouveau` | Envoyé | Sent |
+| `messages.statut.lu` | Lu | Read |
+| `messages.statut.en_cours` | En cours | In progress |
+| `messages.statut.traite` | Traité | Done |
+| `messages.statut.refuse` | Pas retenu | Not retained |
+| `messages.repondre.aide` | Ta réponse (texte seul, {max} caractères au plus) | Your reply (plain text, {max} characters at most) |
+| `messages.envoyer` | Envoyer la réponse | Send reply |
+| `messages.plein` | Ce fil est complet : écris un nouveau message. | This thread is full: write a new message. |
+| `messages.fil.retour` | ‹ Mes messages | ‹ My messages |
+| `messages.erreur` | Impossible de charger tes messages. Réessaie dans un moment. | Couldn't load your messages. Try again in a moment. |
+| `messages.reessayer` | Réessayer | Try again |
+| `messages.nombre` | {n} messages | {n} messages |
+| `messages.fil.aria` | Ouvrir le message : {extrait} | Open the message: {extrait} |
+
+### messagesPage (`messagesPage.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `messagesPage.titre` | Mes messages | My messages |
+| `messagesPage.description` | Tes messages à l'éditeur de Du Jour (bugs, idées) et ses réponses. | Your messages to the Du Jour publisher (bugs, ideas) and the replies. |
+| `messagesPage.retour` | Profil | Profile |
+| `messagesPage.retour.aria` | Retour à ton profil | Back to your profile |
+| `messagesPage.sansProfil` | Pas encore de profil : finis un jeu pour l'ouvrir, tu pourras ensuite recevoir des réponses. Tu peux quand même écrire avec « Un bug ? Une idée ? ». | No profile yet: finish a game to open one, then you can get replies. You can still write with “Found a bug? Got an idea?”. |
+| `messagesPage.chargement` | Chargement de tes messages… | Loading your messages… |
 
 ### nouveautes (`nouveautes.*`, `apps/portail/src/cataloguePages.ts`)
 
@@ -445,6 +525,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.jouer.aria` | Jouer à {jeu} | Play {jeu} |
 | `portail.pied` | Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux. | A new day at midnight, Paris time. Your profile is the same in every game. |
 | `portail.mentions` | Mentions légales et confidentialité | Legal notice and privacy |
+| `portail.retours.lien` | Un bug ? Une idée ? | Found a bug? Got an idea? |
+| `portail.messages.nonLu` | Ton profil : {nom} — une réponse t'attend dans Mes messages | Your profile: {nom} — a reply is waiting in My messages |
 | `portail.discord` | Rejoindre le Discord | Join the Discord |
 | `portail.kofi` | Me soutenir sur Ko-fi | Support me on Ko-fi |
 | `portail.compte.legende` | Prochains niveaux dans | Next levels in |
@@ -539,6 +621,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.medailles` | Médailles | Medals |
 | `profil.langue.titre` | Langue | Language |
 | `profil.chargement` | Chargement du profil… | Loading your profile… |
+| `profil.messages.titre` | Mes messages | My messages |
+| `profil.messages.aide` | Les réponses de l'éditeur à tes bugs et à tes idées. | The publisher's replies to your bugs and ideas. |
+| `profil.messages.lien` | Mes messages | My messages |
+| `profil.messages.nonLu` | {n} réponse à lire | {n} reply to read |
 | `profil.amis.titre` | Amis | Friends |
 | `profil.amis.aide` | Compare tes temps à ceux de tes amis dans les classements. | Compare your times with your friends' in the leaderboards. |
 | `profil.amis.lien` | Mes amis | My friends |
@@ -1106,6 +1192,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.aide` | Comment jouer | How to play |
 | `pause.accueil` | Accueil de Track | Track home |
 | `pause.mentions` | Mentions légales et confidentialité | Legal notice and privacy |
+| `pause.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 | `pause.quitter` | Quitter cette course ? Le tour en cours ne sera pas enregistré. | Leave this run? The lap in progress won't be saved. |
 | `pause.rester` | Rester | Stay |
 | `pause.retourAccueil` | Retour à l'accueil | Back to home |
@@ -1186,6 +1273,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.langue.titre` | Langue | Language |
 | `reglages.profil` | Mon profil Du Jour | My Du Jour profile |
 | `reglages.mentions` | Mentions légales | Legal notice |
+| `reglages.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 | `reglages.reinit` | Rétablir les réglages par défaut | Reset settings to default |
 
 ### Revoir le meilleur tour (`revoir.*`, `apps/web/src/catalogue.salon.*.ts`)
@@ -1683,6 +1771,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.aide` | Comment jouer | How to play |
 | `pause.accueil` | Accueil de Jump | Jump home |
 | `pause.mentions` | Mentions légales | Legal notice |
+| `pause.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 
 ### Rang (`rang.*`, `apps/jump/src/catalogue.arrivee.*.ts`)
 
@@ -1741,6 +1830,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.langue` | Langue | Language |
 | `reglages.profil` | Mon profil Du Jour | My Du Jour profile |
 | `reglages.mentions` | Mentions légales | Legal notice |
+| `reglages.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 
 ### resultat (`resultat.*`, `apps/jump/src/catalogue.arrivee.*.ts`)
 
@@ -2053,6 +2143,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.aide` | Comment jouer | How to play |
 | `pause.reglages` | Réglages | Settings |
 | `pause.mentions` | Mentions légales | Legal notice |
+| `pause.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 
 ### Réglages (`reglages.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -2080,6 +2171,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.non` | Non | No |
 | `reglages.profil` | Mon profil Du Jour › | My Du Jour profile › |
 | `reglages.mentions` | Mentions légales › | Legal notice › |
+| `reglages.retours` | Un bug ? Une idée ? › | Found a bug? Got an idea? › |
 
 ### suite (`suite.*`, `apps/tower/src/catalogue.*.ts`)
 

@@ -116,6 +116,20 @@ const ROUTES = [
   "/api/amis/000000000000",
   "/api/amis/pas-une-ref",
   "/api/amis/a/b/c",
+  // Lot C1 : les retours des joueurs
+  "/api/retours",
+  "/api/retours/contexte",
+  "/api/retours/1",
+  "/api/retours/1/messages",
+  "/api/retours/1/lu",
+  "/api/retours/pas-un-numero",
+  "/api/retours/1/inconnue",
+  "/api/admin/retours",
+  "/api/admin/retours/compte",
+  "/api/admin/retours/1",
+  "/api/admin/retours/1/repondre",
+  "/api/admin/retours/1/statut",
+  "/api/admin/retours/1/lu",
 ];
 
 const METHODS = ["GET", "POST", "PUT", "DELETE"] as const;

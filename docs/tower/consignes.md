@@ -316,3 +316,6 @@ Rapport : `docs/tower/lots/lot-T7-menus-manette.md`. **Décision de Nathan : les
 - **Interrupteur** : `generationInit.ts` puis `interrupteurInit.ts` sont importés en tête de `main.ts` (`pret`, une promesse, pas de `await` de premier niveau : il alourdissait le premier chargement de 3,2 ko) ; `interrupteur.ts` (« Bientôt » si `off`, bandeau « Aperçu ») est **à la demande**. Clé d'aperçu : `?apercu=` → `cdj:apercu:tower` (réglage gardé), retirée de l'adresse, en-tête `X-Preview-Key`. La page n'a plus de garde `PRODUCTION` : seules les options d'essai restent fermées (`lireOptions(…, PRODUCTION)`).
 - **Génération** : `suivreGeneration` (`session.ts`) lit `generation` du classement et de `me` (`appliquerGeneration` de `@cdj/profile`, rechargement si effacé) ; le préfixe `tower:` est dans `PREFIXES_DE_JEU`.
 - Test : `apps/tower/test/interrupteur.test.ts`.
+
+## « Un bug ? Une idée ? » (lot C1)
+L'entrée est **dans la pause** (`#pause-retours`, `pause.retours`, `onRetours` de `OptionsPause`) **et dans Réglages** (`#reglages-retours`, `reglages.retours` ; `reglages.ts` charge `retoursJeu.ts` à la demande avec `base`, que l'accueil et le jeu lui passent). Le dialogue est dans `ECRANS_MANETTE` (`manetteEcrans.ts`). Budgets : `tower.jsCss` et `tower.jeu` tiennent (polyfill du préchargement retiré de `vite.config.ts`, un seul `import()` dans la pause).

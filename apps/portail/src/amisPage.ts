@@ -14,6 +14,7 @@ import { CATALOGUE_COMMUN, barreJeu, bouton, cheminMentions, choixLangue, el, tr
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { accepterEtEcrire, etatDeLInvitation, ouvrirInvitation, oublieLInvitation, type EtatInvitation } from "./amisDonnees";
+import { lienRetours } from "./retoursLien";
 import { baseApi } from "./jour";
 import { numeroDeJournee } from "./jours";
 import { stockageDuPortail } from "./stockage";
@@ -207,6 +208,7 @@ function construire(): void {
       "footer",
       { classe: "portail-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
+      lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
   );
   majEtat();

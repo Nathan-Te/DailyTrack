@@ -234,6 +234,13 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
     supprimerNouveaute: (id: number) => appeler<{ supprimee: true }>("POST", `/api/admin/nouveautes/${id}/supprimer`, { confirmer: true }),
     message: () => appeler<MessagesAdmin>("GET", "/api/admin/message"),
     mettreAJourMessage: (c: CorpsMessage) => appeler<{ actif: AnnonceAdmin | null }>("POST", "/api/admin/message", { ...c, confirmer: true }),
+    // Lot C1 : les retours
+    retours: (f: FiltresRetours) => appeler<ListeRetours>("GET", `/api/admin/retours${q({ type: f.type, jeu: f.jeu, statut: f.statut, page: f.page && f.page > 1 ? f.page : undefined })}`),
+    retoursCompte: () => appeler<{ nonLus: number }>("GET", "/api/admin/retours/compte"),
+    retour: (id: number) => appeler<RetourDetail>("GET", `/api/admin/retours/${id}`),
+    lireRetour: (id: number) => appeler<{ statut: StatutRetourAdmin }>("POST", `/api/admin/retours/${id}/lu`, { confirmer: true }),
+    repondreRetour: (id: number, texte: string) => appeler<{ ok: true; statut: StatutRetourAdmin }>("POST", `/api/admin/retours/${id}/repondre`, { texte, confirmer: true }),
+    statutRetour: (id: number, statut: StatutRetourAdmin) => appeler<{ statut: StatutRetourAdmin }>("POST", `/api/admin/retours/${id}/statut`, { statut, confirmer: true }),
     // Lot P
     jeux: () => appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("GET", "/api/admin/jeux"),
     changerEtatJeu: (jeu: string, etat: JeuAdmin["etat"]) => appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("POST", `/api/admin/jeux/${encodeURIComponent(jeu)}/etat`, { etat, confirmer: true }),
@@ -243,6 +250,51 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
   };
 }
 export type ClientAdmin = ReturnType<typeof clientAdmin>;
+
+// --- Lot C1 : les retours des joueurs ---------------------------------------------------------------------------------------------
+export const TYPES_RETOUR_ADMIN = { bug: "Bug", suggestion: "Idée", autre: "Autre" } as const;
+export const STATUTS_RETOUR_ADMIN = { nouveau: "Nouveau", lu: "Lu", en_cours: "En cours", traite: "Traité", refuse: "Refusé" } as const;
+export type StatutRetourAdmin = keyof typeof STATUTS_RETOUR_ADMIN;
+export interface RetourResume {
+  id: number;
+  type: keyof typeof TYPES_RETOUR_ADMIN;
+  jeu: string;
+  statut: StatutRetourAdmin;
+  creeLe: string;
+  majLe: string;
+  nonLu: boolean;
+  messages: number;
+  ref: string | null;
+  pseudo: string | null;
+  apercu: string;
+}
+export interface ListeRetours {
+  page: number;
+  parPage: number;
+  suivante: boolean;
+  nonLus: number;
+  retours: RetourResume[];
+}
+export interface RetourDetail {
+  id: number;
+  type: keyof typeof TYPES_RETOUR_ADMIN;
+  jeu: string;
+  statut: StatutRetourAdmin;
+  creeLe: string;
+  majLe: string;
+  nonLu: boolean;
+  contexte: Record<string, unknown> | null;
+  ref: string | null;
+  pseudo: string | null;
+  reponsePossible: boolean;
+  messages: { auteur: "joueur" | "admin"; texte: string; creeLe: string }[];
+}
+export interface FiltresRetours {
+  type?: string;
+  jeu?: string;
+  statut?: string;
+  page?: number;
+}
 
 // --- Affichage : calculs purs ---------------------------------------------------------------------------------------------------
 
@@ -262,6 +314,9 @@ export const TEXTES_ERREUR: Record<string, string> = {
   invalid_news: "La nouveauté est incomplète : elle n'est pas publiée.",
   unknown_news: "Nouveauté introuvable (déjà supprimée ?).",
   game_unavailable: "Ce jeu n'est pas ouvert au public.",
+  invalid_feedback: "Le message est vide, trop long (1 000 caractères) ou d'un type inconnu.",
+  unknown_feedback: "Retour introuvable.",
+  feedback_full: "Ce fil est complet (100 messages).",
   invalid_message: "Le message est refusé : texte, endroit, ton ou heure de fin incorrects.",
 };
 export const texteErreur = (e: unknown): string => (e instanceof ErreurAdmin ? (TEXTES_ERREUR[e.code] ?? `Erreur : ${e.code}.`) : "Erreur inattendue.");

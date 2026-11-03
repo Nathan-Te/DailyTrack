@@ -126,6 +126,12 @@
           <p>Purpose: showing your friends' times of the day in the “Friends” leaderboard. Your friends therefore see your times of the day in their “Friends” leaderboard; when you add someone by nickname or from a leaderboard, or when they add you, the other person is not notified. You can remove a friend at any time; your friendships, in both directions, are deleted along with your profile.</p>
           <p class="duree">Kept: until you remove the friend or ask for your profile to be erased (<span data-constante="AMIS_MAX" data-valeur="100">100</span> friends at most).</p>
         </li>
+        <li data-tables="retours retours_messages">
+          <h3>Your feedback (“Found a bug? Got an idea?”)</h3>
+          <p>If you write to the publisher from “Found a bug? Got an idea?”: your message (plain text only, up to <span data-constante="RETOUR_TEXTE_MAX" data-valeur="1000">1000</span> characters), its type (bug, suggestion or other), the publisher's replies and yours, and the context the dialog shows you before sending: the game or page, the day, the site version, the family of your browser and system (for example “Firefox” and “Linux”, never the details), your screen size, your language and your public reference (a one-way fingerprint of your identifier, never the identifier itself). Without a profile, the message is kept without a reference and no reply can reach you.</p>
+          <p>Purpose: fixing a defect or keeping an idea, and replying to you in “My messages” in your profile, without e-mail. Only the publisher reads these messages. You can send at most <span data-constante="RETOURS_PAR_JOUR" data-valeur="5">5</span> new messages a day. They are deleted along with your profile.</p>
+          <p class="duree">Kept: a message is kept <span data-constante="RETOURS_GARDE_JOURS" data-valeur="365">365</span> days after the last activity of its thread (yours or the publisher's), then erased.</p>
+        </li>
         <li data-tables="circuits planning salon_circuits jump_levels tower_levels meta nouveautes annonces jeux">
           <h3>And nothing else</h3>
           <p>The rest of the database is not about players: the daily tracks and levels, the schedule, the database version, and the texts the publisher writes for everyone (the updates and the live messages: no player is named in them), and the state of each game (closed, preview or open) with the fingerprint of its preview key, never the key itself.</p>

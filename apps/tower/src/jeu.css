@@ -592,7 +592,18 @@
 }
 .pause__pied {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 4px 16px;
+}
+.pause__lien--bouton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .pause__lien {
   display: inline-flex;

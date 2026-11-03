@@ -72,6 +72,12 @@ export const CODES_ERREUR = {
   invalid_invitation: { status: 404, sens: "Amis (lot F2) : lien d'invitation inconnu, renouvelé ou d'un joueur masqué (un seul visage pour ces trois cas)." },
   invalid_filter: { status: 400, sens: "Amis (lot F2) : `filtre` d'un classement autre que `amis`." },
 
+  // --- Retours des joueurs (lot C1) --------------------------------------------------------------------------------------
+  invalid_feedback: { status: 400, sens: "Retours (lot C1) : type inconnu, ou message vide, trop long (1 000 caractères au plus) ou qui n'est pas du texte." },
+  unknown_feedback: { status: 404, sens: "Retours (lot C1) : ce fil n'existe pas, ou n'est pas à ce joueur (un seul visage)." },
+  feedback_limit: { status: 429, sens: "Retours (lot C1) : 5 nouveaux fils par joueur et par jour de Paris atteints (Retry-After jusqu'à minuit)." },
+  feedback_full: { status: 409, sens: "Retours (lot C1) : ce fil a atteint ses 100 messages." },
+
   // --- Salon (DailyTrack) ----------------------------------------------------------------------------------------
   invalid_session: { status: 400, sens: "Salon : numéro de session (ou adresse) illisible." },
   unknown_session: { status: 404, sens: "Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée)." },

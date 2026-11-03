@@ -46,6 +46,7 @@ import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { choixPourDemain, repartir } from "./mesJeux";
 import { dans, nonLue } from "./nouveautesDonnees";
+import { lienRetours } from "./retoursLien";
 import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
 import { construireOptions, nomDuJeu } from "./partageDuJour";
@@ -393,7 +394,14 @@ function rendre(): void {
   racine.replaceChildren(
     ...[bandeau(t)].filter((e): e is HTMLElement => e !== null),
     el("h1", { classe: "dj-cache", texte: t.t("portail.titre") }),
-    barrePortail(t, { langue, onLangue: changerLangue, pseudo: identite.exists ? identite.name : null, profil: "profil/" }),
+    barrePortail(t, {
+      langue,
+      onLangue: changerLangue,
+      pseudo: identite.exists ? identite.name : null,
+      profil: "profil/",
+      // Lot C1 : une réponse de l'éditeur attend dans « Mes messages » : la pastille de l'avatar, et son nom lu le dit.
+      ...((jour?.joueur?.messagesNonLus ?? 0) > 0 && identite.exists ? { pastille: true, nomAvatar: t.t("portail.messages.nonLu", { nom: identite.name ?? "" }) } : {}),
+    }),
     ...(nouveauDepart ? [avisNouveauDepart(t, { onFermer: () => (nouveauDepart = false) })] : []),
     // Lot 53 : sur iPhone, hors du mode application, la ligne « Partager › Sur l'écran d'accueil » (une seule fois : fermée, elle ne revient pas).
     ...[stockage ? astuceIphone({ textes: () => ({ astuce: t.t("pleinEcran.iphone"), fermer: t.t("pleinEcran.iphone.fermer") }), stockage }) : null].filter((e): e is HTMLElement => e !== null),
@@ -446,6 +454,7 @@ function rendre(): void {
         lienKofi(t.t("portail.kofi")),
       ),
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue), hreflang: langue }, texte: t.t("portail.mentions") }),
+      lienRetours(t.t("portail.retours.lien"), langue),
     ),
   );
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();

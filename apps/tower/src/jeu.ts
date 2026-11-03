@@ -368,12 +368,15 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
     if (rep && fin.ouverte) void lireLaSuite(true);
   });
   // Lot « musique » : la scène est le thème de la partie (celui de la palette, `preparation.theme` : `?theme=`, sinon celui du jour ; la suite d'essai et les paliers gardent le port) ; un peu plus basse pendant une partie, ses réglages sont dans la pause.
+  // Lot C1 : « Un bug ? Une idée ? » (pause et Réglages) : le dialogue de la plateforme, à la demande.
+  const ouvrirRetours = (): void => void import("./retoursJeu").then((m) => m.ouvrir(session.base, stockage));
   const menu = monterPause(racine, {
     onReprendre: () => reprendre(),
     onRecommencer: () => nouvellePartie(),
     onAccueil: () => allerAccueil(),
     onAide: () => void ouvrirAide(),
     onReglages: () => void ouvrirReglages(),
+    onRetours: () => ouvrirRetours(),
     musique: () => musique.lecteur(),
     // Lot T5 : les effets sonores ont leur case et leur volume dans la pause (la musique, son bloc commun juste dessous) ; lot T7 : et dans Réglages › Son.
     sons: { lire: () => reglagesSons, ecrire: (r) => appliquerSons(r) },
@@ -411,6 +414,7 @@ export async function demarrerJeu(ctx: ContexteJeu): Promise<void> {
       },
       tactile,
       profilHref: "../profil/?retour=/tower/",
+      base: session.base,
     });
     reglagesMontes.ouvrir();
   }

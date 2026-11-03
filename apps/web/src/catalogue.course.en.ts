@@ -85,6 +85,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "pause.aide": "How to play",
   "pause.accueil": "Track home",
   "pause.mentions": "Legal notice and privacy",
+  "pause.retours": "Found a bug? Got an idea?",
   "pause.quitter": "Leave this run? The lap in progress won't be saved.",
   "pause.rester": "Stay",
   "pause.retourAccueil": "Back to home",

@@ -11,6 +11,7 @@ import type { GameDefinition, GameInstance, RequestInfo } from "./games";
 import { createDiffusion } from "./diffusion";
 import { createJeux } from "./jeux";
 import { createIdentityRoutes } from "./identity";
+import { createRetours } from "./retours";
 import { aNoter } from "./journaux";
 import { silentLog, type Logger } from "./log";
 import { DEFAULT_LIMITS, createPlatform } from "./platform";
@@ -175,6 +176,8 @@ export function createApi(options: ApiOptions) {
     platform,
     instances.map((g) => ({ code: g.code, site: g.instance.portail?.site ?? g.code, nom: g.instance.portail?.nom ?? g.code, viderApercu: g.instance.viderApercu?.bind(g.instance) })),
   );
+  // Lot C1 : les retours des joueurs (`/api/retours…`), « Un bug ? Une idée ? ». Leur nombre de réponses non lues entre dans `GET /api/portail/jour` (`messagesNonLus`).
+  const retours = createRetours(platform, { version: options.admin?.releaseTag ?? options.revision?.slice(0, 12) ?? "local" });
   // Lot F2 : les amis (`/api/amis…`, le filtre `filtre=amis` des classements). Ils lisent le classement du jour que le portail garde par fenêtre (créé juste après : d'où la lecture paresseuse).
   let portailPartage: ReturnType<typeof createPortailRoutes> | null = null;
   const amis = createAmis(platform, () => portailPartage!.vue);
@@ -186,6 +189,7 @@ export function createApi(options: ApiOptions) {
     diffusion,
     interrupteur,
     amis.pourPortail,
+    retours.pourPortail,
   );
   portailPartage = portail;
   // Lot R8 : la remise à zéro du lancement vide la base ; une instance qui voit la génération changer oublie sa mémoire (comme après un effacement).
@@ -207,6 +211,7 @@ export function createApi(options: ApiOptions) {
     oublier: () => portail.oublier(),
     diffusion,
     interrupteur,
+    retours,
   });
   adminRef = admin;
   const salon = cdj.salon;
@@ -303,7 +308,7 @@ export function createApi(options: ApiOptions) {
       if (req.method !== "GET" && req.method !== "HEAD") await admin.entretien();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
-      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await amis.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
+      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await amis.route(path, req, url, info)) ?? (await retours.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
       if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;

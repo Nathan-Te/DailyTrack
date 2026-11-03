@@ -26,6 +26,8 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
+    // Lot C1 : pas de polyfill du préchargement des modules (≈ 390 o du premier chargement) : un navigateur sans `rel=modulepreload` charge ses modules au besoin, sans précharger — rien ne casse (les budgets sont à l'octet).
+    modulePreload: { polyfill: false },
     // Trois pages : le jeu, `verify.html` (rejeu de rediffusion sans rendu, pour les tests de navigateur) et `admin/` (menu des outils de test).
     rollupOptions: {
       input: { main: "index.html", verify: "verify.html", admin: "admin/index.html" },

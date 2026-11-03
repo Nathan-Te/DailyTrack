@@ -16,6 +16,7 @@ import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { dans, lireNouveautes, noterNouveauteLue, parDate, type Nouveaute } from "./nouveautesDonnees";
 import { numeroDeJournee } from "./jours";
+import { lienRetours } from "./retoursLien";
 import { stockageDuPortail } from "./stockage";
 import { activerManette } from "@cdj/ui/src/manetteLien";
 
@@ -91,6 +92,7 @@ function rendre(): void {
       "footer",
       { classe: "portail-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
+      lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
   ];
   racine.replaceChildren(...enfants.filter((e): e is Node => e !== null));

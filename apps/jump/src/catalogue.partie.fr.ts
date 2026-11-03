@@ -80,6 +80,7 @@ export const fr = {
   "pause.aide": "Comment jouer",
   "pause.accueil": "Accueil de Jump",
   "pause.mentions": "Mentions légales",
+  "pause.retours": "Un bug ? Une idée ?",
   // « Comment jouer » dans le jeu (une seule fois, puis depuis la pause et l'accueil)
   "aide.aria": "Comment jouer",
   "aide.titre": "COMMENT JOUER",

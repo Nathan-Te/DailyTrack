@@ -248,3 +248,15 @@ Mesuré le 02/11/2026 par `npm run measure:amis -w @cdj/api` (`scripts/amisCout.
 - **`GET /api/portail/jour`** : +1 instruction (la liste des amis, indexée) **seulement pour un joueur qui a fini un jeu ce jour-là** ; 0 pour un visiteur ou un joueur qui n'a rien fini (la réponse publique est inchangée, cache public de 60 s intact). Les plafonds de `routesChaudes.test.ts` tiennent sans changement.
 - **Suggestions** : au plus `SUGGESTIONS_CANDIDATS` (300) pseudos lus par recherche (début de pseudo, index de `name_key`) et au plus trois recherches d'index par candidat (résultats de Track, Jump, Tower des 30 derniers jours) ; limitées à 60 par joueur et par fenêtre de 10 minutes (en mémoire, aucune écriture). Le pire cas (un début de pseudo très courant dont personne n'est actif) lit ≈ 300 + 3 × 300 lignes ; le cas courant (3 lettres, quelques dizaines de pseudos) quelques dizaines.
 - **Limites de débit** (par adresse **et** par joueur, fenêtre de 10 minutes) : ajout / retrait 60 par adresse et 30 par joueur (compteurs en base, comme un envoi) ; création du lien 10 par joueur ; acceptation 60 / 30, et **5 profils créés par adresse** (un profil sans résultat réserve un pseudo : plus strict) ; lectures (liste, feuille, suggestions) 120 par adresse et 60 par joueur ; classements filtrés 300 par adresse et 60 par joueur ; lecture d'un lien 120 par adresse. L'adresse de connexion compte aussi (`PEER_FACTOR`).
+
+## 12. Retours des joueurs (lot C1, partie A)
+Estimation d'après le code (chaque requête est examinée par `EXPLAIN QUERY PLAN` à chaque test, aucun `SCAN` sauf les deux permis de `plans.ts` : la liste du panneau sans filtre, arrêtée par `LIMIT`, et le compte des non lus, sur un index partiel) ; la route chaude qui change est `portail jour` (`routesChaudes.test.ts`, plafonds tenus).
+| Route | Requêtes | Lignes lues | Lignes écrites |
+|---|---|---|---|
+| `GET /api/portail/jour` et `/profil` (joueur) | **+1** (`messagesNonLus`) | ≈ le nombre de fils du joueur (0 à 5 le plus souvent) | 0 |
+| `POST /api/retours` (joueur) | 4 (actif, limite du jour + insertion, message, compteurs de débit) | ≈ 6 | 3 à 4 (fil, message, compteurs) |
+| `GET /api/retours` | 2 | ≤ 50 fils + leur dernier message | 0 |
+| `GET /api/retours/<id>` | 3 | ≤ 101 | 0 |
+| répondre / marquer lu | 3 à 4 | ≈ 3 | 2 à 3 |
+| panneau : liste, compte, détail | 2, 1, 3 | ≤ 51 fils + extraits, 1 (index partiel), ≤ 101 | 0 |
+Rien ne tourne au chargement d'une page de jeu ; le dialogue est chargé au toucher et ne lit que `GET /api/retours/contexte` (cache de 5 minutes, aucune requête SQL).

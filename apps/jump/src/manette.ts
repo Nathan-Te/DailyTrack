@@ -16,6 +16,7 @@ export const ECRANS_MANETTE: readonly EcranManette[] = [
   { ecran: ".dj-feuille", principal: ".dj-feuille__principal, .dj-feuille__fermer", retour: ".dj-feuille__fermer" }, // lot F2 : la feuille d'un joueur (classement) : A valide « Ajouter en ami » / « Retirer », B ferme ; la même ligne que `ECRAN_MANETTE_FEUILLE` de `@cdj/ui/src/amis` (testée égale : elle n'est pas importée ici, ce qui ramènerait les composants des amis dans le menu à la manette)
   { ecran: "#archives", principal: ".etiquette a[href], .etiquette button" }, // les archives : le premier jour
   { ecran: "#settings", principal: ".etiquette button, .etiquette input" }, // les réglages
+  { ecran: ".dj-retour", principal: ".dj-retour__texte", retour: ".dj-retour__fermer" }, // lot C1 : « Un bug ? Une idée ? » (pause, Réglages) ; la même ligne que `ECRAN_MANETTE_RETOUR` de `@cdj/ui/src/retours` (testée égale : elle n'est pas importée ici, ce qui ramènerait le dialogue dans le menu à la manette)
 ];
 
 /** Ce que le menu à la manette lit (chargé avec lui, à la première manette). La barre du carnage n'est pas un dialogue : elle se pilote comme un écran tant qu'elle est visible. */

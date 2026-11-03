@@ -30,6 +30,8 @@ export interface OptionsPause {
   onAccueil(): void;
   onAide(): void;
   onReglages(): void;
+  /** Lot C1 : « Un bug ? Une idée ? » (le dialogue de la plateforme, à la demande). */
+  onRetours(): void;
   /** Lot « musique » : le lecteur commun, chargé à la première ouverture de la pause. */
   musique(): Promise<ControleMusique>;
   /** Lot T5 : le réglage des effets sonores (une case « Sons » et un volume : il n'existe pas de réglage de sons commun à la plateforme). */
@@ -57,7 +59,9 @@ export function monterPause(racine: HTMLElement, o: OptionsPause): Pause {
   const placeMusique = el("div", { classe: "pause__musique" });
   const sons = monterBlocSons({ lire: () => o.sons.lire(), ecrire: (r) => o.sons.ecrire(r), idCase: "pause-sons", idVolume: "pause-sons-volume" });
   const mentions = el("a", { classe: "pause__lien", attrs: { id: "pause-mentions", href: "" } });
-  dialogue.append(hoteMessage, el("div", { classe: "pause__tete" }, titre, etat), replique, reprendre, el("div", { classe: "pause__actions" }, recommencer, aide, reglages, plein, accueil), sons.element, placeMusique, el("div", { classe: "pause__pied" }, mentions));
+  const retours = el("button", { classe: "pause__lien pause__lien--bouton", attrs: { id: "pause-retours", type: "button" } });
+  retours.addEventListener("click", () => o.onRetours());
+  dialogue.append(hoteMessage, el("div", { classe: "pause__tete" }, titre, etat), replique, reprendre, el("div", { classe: "pause__actions" }, recommencer, aide, reglages, plein, accueil), sons.element, placeMusique, el("div", { classe: "pause__pied" }, mentions, retours));
   voile.append(dialogue);
   racine.append(voile);
   suivreDialogue(voile, { focusInitial: () => reprendre });
@@ -79,6 +83,7 @@ export function monterPause(racine: HTMLElement, o: OptionsPause): Pause {
     reglages.textContent = t("pause.reglages");
     accueil.textContent = t("jeu.accueil");
     mentions.textContent = t("pause.mentions");
+    retours.textContent = t("pause.retours");
     mentions.setAttribute("href", cheminMentions(langueCourante(), "../"));
     sons.traduire();
     if (derniere) etat.textContent = t("pause.etat", { n: Math.min(derniere.numero, derniere.total), total: derniere.total, hauteur: formatHauteur(derniere.hauteurMm) });

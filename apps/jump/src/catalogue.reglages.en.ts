@@ -36,6 +36,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "reglages.langue": "Language",
   "reglages.profil": "My Du Jour profile",
   "reglages.mentions": "Legal notice",
+  "reglages.retours": "Found a bug? Got an idea?",
   "commandes.clavier.courir": "{gauche} · {droite}: run",
   "commandes.clavier.sauter": "{sauter}: jump",
   "commandes.clavier.reprendre": "{reprendre}: last checkpoint",

@@ -82,6 +82,10 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `their_friends_full` | 409 | Amis (lot F2) : la liste de l'autre personne est pleine ; une invitation n'est acceptée que si les deux listes ont de la place, rien n'est créé sinon (pas même le profil). | `POST /api/amis/invitation/accepter` |
 | `invalid_invitation` | 404 | Amis (lot F2) : lien d'invitation inconnu, renouvelé (« Nouveau lien »), mal formé ou d'un joueur masqué — un seul visage pour ces cas. | `POST /api/amis/invitation/voir`, `POST /api/amis/invitation/accepter` |
 | `invalid_filter` | 400 | Amis (lot F2) : `filtre` d'un classement autre que `amis`. | `GET /api/portail/classement?filtre=`, `GET /api/day/<j>/leaderboard?filtre=`, `GET /api/jump/day/<j>/board?filtre=`, `GET /api/tower/day/<j>/board?filtre=` |
+| `invalid_feedback` | 400 | Retours (lot C1) : type inconnu, ou message vide, trop long (1 000 caractères au plus) ou qui n'est pas du texte. | `POST /api/retours`, `POST /api/retours/<id>/messages` |
+| `unknown_feedback` | 404 | Retours (lot C1) : ce fil n'existe pas, ou n'est pas à ce joueur (un seul visage). | `GET /api/retours/<id>`, `POST /api/retours/<id>/messages`, `POST /api/retours/<id>/lu`, `GET /api/admin/retours/<id>` |
+| `feedback_limit` | 429 | Retours (lot C1) : 5 nouveaux fils par joueur et par jour de Paris atteints (`Retry-After` jusqu'à minuit). | `POST /api/retours` |
+| `feedback_full` | 409 | Retours (lot C1) : ce fil a atteint ses 100 messages. | `POST /api/retours/<id>/messages`, `POST /api/admin/retours/<id>/repondre` |
 | `invalid_session` | 400 | Salon : numéro de session (ou adresse) illisible. | `/api/salon/<n>/board`, `/ghosts`, `/submit` |
 | `unknown_session` | 404 | Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée). | `GET /api/salon/<n>/board`, `/ghosts` |
 | `session_future` | 409 | Salon : envoi pour une session qui n'a pas commencé. | `POST /api/salon/<n>/submit` |

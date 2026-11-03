@@ -9,13 +9,15 @@
  */
 
 /** Grandes tables : leur taille croît avec les joueurs ou les jours. Un parcours complet de l'une d'elles est refusé sauf justification. */
-export const GRANDES_TABLES = ["players", "results", "jump_results", "tower_results", "salon_runs", "jump_lives", "rate", "journal_admin", "journal_erreurs", "resultats_retires", "revoked_codes", "admin_sessions", "garage_choices", "favoris_jeux", "amities", "invitations_amis"];
+export const GRANDES_TABLES = ["players", "results", "jump_results", "tower_results", "salon_runs", "jump_lives", "rate", "journal_admin", "journal_erreurs", "resultats_retires", "revoked_codes", "admin_sessions", "garage_choices", "favoris_jeux", "amities", "invitations_amis", "retours", "retours_messages"];
 
 /**
  * Parcours complets acceptés, un par (table, motif du texte de la requête), chacun avec sa raison. Tout autre `SCAN` d'une grande table échoue
  * (`apps/api/test/plans.test.ts`). Une table qui reste petite à vie (planning, nouveautés, annonces, circuits, meta) n'a pas besoin de ligne ici.
  */
 export const PARCOURS_PERMIS: { table: string; motif: RegExp; raison: string }[] = [
+  { table: "retours", motif: /FROM retours f ORDER BY f\.maj_le DESC LIMIT/, raison: "liste de l'administration sans filtre : parcours de l'index `retours_by_maj` dans l'ordre, arrêté par LIMIT 51 + OFFSET" },
+  { table: "retours", motif: /^SELECT COUNT\(\*\) AS n FROM retours WHERE non_lu_admin = 1/, raison: "le nombre de non lus du menu : parcours de l'index partiel `retours_non_lus_admin`, qui ne contient que les fils non lus" },
   // --- Ménages bornés : au plus une fois par fenêtre ou par heure et par instance, sur une table qui ne garde que peu de lignes ---
   {
     table: "rate",

@@ -24,6 +24,8 @@ export default defineConfig({
   worker: { format: "es", plugins: () => [rapierWasmServi()] },
   build: {
     target: "es2022",
+    // Lot C1 : pas de polyfill du préchargement des modules (≈ 390 o du premier chargement) : un navigateur sans `rel=modulepreload` charge ses modules au besoin, sans précharger — rien ne casse (les budgets sont à l'octet).
+    modulePreload: { polyfill: false },
     rollupOptions: { input: { main: "index.html", verify: "verify.html" } },
     chunkSizeWarningLimit: 4000,
   },

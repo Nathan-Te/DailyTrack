@@ -281,6 +281,7 @@
 }
 .pause__pied {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -291,6 +292,15 @@
   min-height: var(--dj-cible);
   font-size: var(--dj-taille-13);
   font-weight: 700;
+}
+.pause__lien--bouton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .pause__version {
   font-family: var(--dj-police-chiffres);
@@ -685,6 +695,15 @@ body:not(.touch) .reglages__ligne--tactile {
   text-decoration: none;
   font-size: var(--dj-taille-14);
   font-weight: 600;
+}
+.reglages__lien--bouton {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 .reglages__lien--profil {
   font-family: var(--jump-police);

@@ -45,6 +45,7 @@ body.paused #pause {
 .pause__pied {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
 }
@@ -59,7 +60,8 @@ body.paused #pause {
 .pause__menu .lien:hover {
   text-decoration: underline;
 }
-#pause-mentions {
+#pause-mentions,
+#pause-retours {
   font-family: var(--dj-police-texte);
   font-size: var(--dj-taille-13);
   color: var(--track-texte-doux);

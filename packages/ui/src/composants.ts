@@ -245,21 +245,23 @@ export function initiales(pseudo: string, langue: Langue): string {
  * L'avatar : les initiales du pseudo s'il y en a un, sinon l'icône profil. Lot I2 : avec `href`, un lien vers le profil commun (cible de 44 px,
  * nommé « Ton profil… ») ; sans, une image (lot I1).
  */
-export function avatar(t: TraducteurCommun, o: { pseudo: string | null; href?: string }): HTMLElement {
+export function avatar(t: TraducteurCommun, o: { pseudo: string | null; href?: string; nom?: string; pastille?: boolean }): HTMLElement {
   const ini = o.pseudo ? initiales(o.pseudo, t.langue) : "";
-  const nom = ini ? t.t("profil.avatar", { nom: o.pseudo! }) : t.t(o.href !== undefined ? "profil.ouvrir" : "profil.aucun");
+  // Lot C1 : `pastille` (une réponse de l'éditeur attend dans « Mes messages ») ; `nom` : le nom lu, que l'application fournit alors (il dit aussi la réponse qui attend).
+  const nom = o.nom ?? (ini ? t.t("profil.avatar", { nom: o.pseudo! }) : t.t(o.href !== undefined ? "profil.ouvrir" : "profil.aucun"));
   const contenu = ini ? el("span", { attrs: { "aria-hidden": "true" }, texte: ini }) : icone("profil", { taille: 22 });
   const classe = ["dj-avatar", !ini && "dj-avatar--vide", o.href !== undefined && "dj-avatar--lien"];
-  return o.href !== undefined ? el("a", { classe, attrs: { href: o.href, "aria-label": nom } }, contenu) : el("span", { classe, attrs: { role: "img", "aria-label": nom } }, contenu);
+  const enfants = o.pastille ? [contenu, el("span", { classe: "dj-avatar__pastille", attrs: { "aria-hidden": "true" } })] : [contenu];
+  return o.href !== undefined ? el("a", { classe, attrs: { href: o.href, "aria-label": nom } }, ...enfants) : el("span", { classe, attrs: { role: "img", "aria-label": nom } }, ...enfants);
 }
 
 /** La barre du portail : logo à gauche ; à droite le choix de langue et l'avatar (lot I2 : un lien vers le profil commun avec `profil`). */
-export function barrePortail(t: TraducteurCommun, o: { langue: Langue; onLangue?: (l: Langue) => void; pseudo: string | null; profil?: string }): HTMLElement {
+export function barrePortail(t: TraducteurCommun, o: { langue: Langue; onLangue?: (l: Langue) => void; pseudo: string | null; profil?: string; nomAvatar?: string; pastille?: boolean }): HTMLElement {
   return el(
     "header",
     { classe: "dj-barre-portail" },
     logo(t),
-    el("div", { classe: "dj-barre-portail__droite" }, choixLangue(t, { langue: o.langue, onChange: o.onLangue }), avatar(t, { pseudo: o.pseudo, href: o.profil })),
+    el("div", { classe: "dj-barre-portail__droite" }, choixLangue(t, { langue: o.langue, onChange: o.onLangue }), avatar(t, { pseudo: o.pseudo, href: o.profil, nom: o.nomAvatar, pastille: o.pastille })),
   );
 }
 

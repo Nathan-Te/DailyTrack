@@ -128,6 +128,12 @@
           <p>But : montrer les temps du jour de tes amis dans le classement « Amis ». Tes amis voient ainsi tes temps du jour dans leur classement « Amis » ; quand tu ajoutes quelqu'un par son pseudo ou depuis un classement, ou qu'il t'ajoute, l'autre n'est pas prévenu. Tu peux retirer un ami à tout moment ; tes amitiés, dans les deux sens, sont supprimées avec ton profil.</p>
           <p class="duree">Durée : tant que tu ne retires pas l'ami et que tu ne demandes pas l'effacement de ton profil (<span data-constante="AMIS_MAX" data-valeur="100">100</span> amis au plus).</p>
         </li>
+        <li data-tables="retours retours_messages">
+          <h3>Tes retours (« Un bug ? Une idée ? »)</h3>
+          <p>Si tu écris à l'éditeur depuis « Un bug ? Une idée ? » : ton message (du texte seul, <span data-constante="RETOUR_TEXTE_MAX" data-valeur="1000">1000</span> caractères au plus), son type (bug, suggestion ou autre), les réponses de l'éditeur et tes réponses, ainsi que le contexte que le dialogue te montre avant l'envoi : le jeu ou la page, le jour, la version du site, la famille de ton navigateur et de ton système (par exemple « Firefox » et « Linux », jamais le détail), la taille de ton écran, ta langue et ta référence publique (une empreinte à sens unique de ton identifiant, jamais l'identifiant). Sans profil, le message est gardé sans référence et aucune réponse ne peut te parvenir.</p>
+          <p>But : corriger un défaut ou retenir une idée, et te répondre dans « Mes messages » de ton profil, sans e-mail. Seul l'éditeur lit ces messages. Tu peux envoyer <span data-constante="RETOURS_PAR_JOUR" data-valeur="5">5</span> nouveaux messages par jour au plus. Ils sont supprimés avec ton profil.</p>
+          <p class="duree">Durée : un message est gardé <span data-constante="RETOURS_GARDE_JOURS" data-valeur="365">365</span> jours après la dernière activité de son fil (le tien ou celle de l'éditeur), puis effacé.</p>
+        </li>
         <li data-tables="circuits planning salon_circuits jump_levels tower_levels meta nouveautes annonces jeux">
           <h3>Et rien d'autre</h3>
           <p>Le reste de la base ne parle pas des joueurs : les circuits, niveaux et tours du jour, le planning, la version de la base, et les textes que l'éditeur écrit pour tout le monde (les nouveautés et les messages en direct : aucun joueur n'y est nommé), et l'état de chaque jeu (fermé, en aperçu ou ouvert) avec l'empreinte de sa clé d'aperçu, jamais la clé elle-même.</p>

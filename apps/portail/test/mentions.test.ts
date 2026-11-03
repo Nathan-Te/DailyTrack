@@ -15,6 +15,7 @@ import { SAUVEGARDE_JOURS } from "../../api/src/sauvegarde";
 import { SESSION_MS as ADMIN_SESSION_MS } from "../../api/src/adminSession";
 import { ERREURS_JOURS, JOURNAL_ADMIN_JOURS, RETRAIT_REDIFFUSION_JOURS } from "../../api/src/journaux";
 import { AMIS_MAX } from "../../api/src/amis";
+import { RETOURS_GARDE_JOURS, RETOURS_PAR_JOUR, RETOUR_TEXTE_MAX } from "../../api/src/retours";
 
 // Lot R5 (plateforme) : la page « Mentions légales et confidentialité » ne promet rien que le code ne fait pas. Chaque nombre ou durée tiré du
 // code porte `data-constante` et `data-valeur` : ils doivent être les constantes du serveur, et le texte affiché doit dire la même chose.
@@ -46,6 +47,10 @@ const CONSTANTES: Record<string, number> = {
   RETRAIT_REDIFFUSION_JOURS,
   // Lot F2 : les amis (100 au plus par joueur).
   AMIS_MAX,
+  // Lot C1 : les retours des joueurs (« Un bug ? Une idée ? »).
+  RETOUR_TEXTE_MAX,
+  RETOURS_PAR_JOUR,
+  RETOURS_GARDE_JOURS,
 };
 
 /** Ce qu'une valeur doit afficher : un nombre, ou une durée en mots (« 20 secondes », « 10 minutes », « 1 heure » ; en anglais « 20 seconds »…). */

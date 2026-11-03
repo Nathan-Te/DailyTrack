@@ -24,6 +24,8 @@ Révision 15 (maquette `favoris-et-amis.html`, planche A, 02/11/2026, lot F1) : 
 
 Révision 16 (accueil des jeux sur téléphone, 02/11/2026, lot S1b) : voile à deux tons sombres, jamais de bande transparente ; anneau de focus seulement au clavier et à la manette (§ 9, § 10). (La demande l'appelait « révision 15 » : ce numéro était déjà pris par « Mes jeux ».)
 
+Révision 17 (demande de Nathan, 03/11/2026, lot C1) : avatars des joueurs, emblèmes des groupes, bouton « Un bug ? Une idée ? » et « Mes messages » (§ 9). (Le fichier de charte fourni avec le lot l'appelait « révision 16 » sur une base plus ancienne que ce dépôt ; seuls ses trois passages du § 9 sont repris ici.)
+
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
 Chaque règle porte sa raison. Une règle dont la raison ne s'applique plus se discute avec Nathan ; elle ne se contourne pas.
@@ -216,6 +218,9 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - **« Comment jouer »** : dans le jeu, trois points courts, schéma des commandes, « C'est parti » ; montré une seule fois au premier lancement, puis depuis la pause et l'accueil.
 - **Classements** (portail et jeux) : **ta ligne** sur fond `--dj-moutarde`, bordure 3 px encre et ombre nette ; visible même hors du haut, après « … », à sa vraie place. **Sur l'étiquette jaune de Jump**, ta ligne est en **encre** (texte jaune, ombre papier) : la moutarde ne s'y distinguerait pas.
 - **Mes jeux (favoris)** : une étoile de 44 px en haut à droite de chaque cartouche (pleine `--dj-moutarde` = épinglé, contour = non). « Mes jeux » en haut de l'accueil en cartouches pleines ; « Les autres jeux » dessous en **cartouches compactes** d'une ligne qui **gardent la coque, l'étiquette, la couleur et la police de leur jeu** (jamais une ligne grise neutre), avec « Jouer » et l'étoile.
+- **Avatar d'un joueur** : un **rond**, bordure 2 px encre, image recadrée carrée ; tailles 24 px (lignes de classement), 32 px (listes), 44 px (barre du portail, profil), 96 px (page de profil). Sans image : ses initiales sur une couleur tirée de sa référence publique parmi les couleurs de la charte (contraste vérifié).
+- **Emblème d'un groupe** : un **carré à coins de 3 px**, bordure 2 px encre, ombre nette de 2 px ; mêmes tailles. Sans image : les deux premières lettres du nom sur une couleur de la charte. Un rond = une personne, un carré = un groupe.
+- **« Un bug ? Une idée ? »** : un lien discret en pied de portail, et une entrée dans la pause et les réglages de chaque jeu ; il ouvre un dialogue (type, message, contexte joint montré au joueur). « Mes messages » dans le profil, avec une pastille `--dj-terre` quand une réponse attend.
 - **Profil commun** : une étiquette par jeu (la cartouche agrandie, § 1) porte ses statistiques ; médailles en cases, deux par ligne.
 
 ## 10. Accessibilité

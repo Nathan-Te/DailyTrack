@@ -21,6 +21,7 @@ export const CATALOGUE_JEU_FR = {
   "pause.reglages": "Réglages",
   "jeu.accueil": "Accueil de Tower",
   "pause.mentions": "Mentions légales",
+  "pause.retours": "Un bug ? Une idée ?",
   "fin.archive": "Archive : partie non classée.",
   "hud.archive": "Archive",
   "aide.ligne": "{gauche} {droite} déplacer · {tourner} tourner · {descendre} descendre · {taquetGauche} {taquetDroite} taquet · {pause} pause",

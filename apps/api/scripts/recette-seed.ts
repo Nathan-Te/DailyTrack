@@ -26,6 +26,7 @@ import { seedJumpDays } from "../src/jumpHistory";
 import { CLASSEMENT_DEMO_JOURS, seedClassementDemo } from "../src/classementDemo";
 import { DEMO_JOUEUR_ID, seedPortailDemo } from "../src/portailDemo";
 import { seedAmisDemo } from "./amisDemo";
+import { seedRetoursDemo } from "./retoursDemo";
 import { semerNouveautes } from "../src/diffusion";
 import { ensureSchemaOn } from "../src/db";
 import { empreinteDuSeed, lireMarqueurs } from "../src/recetteSeed";
@@ -275,6 +276,11 @@ const amisDemo = await seedAmisDemo({ db, today });
 if (amisDemo.deja) console.log("Amis de « Démo » (lot F2) : déjà là (rien d'écrit)");
 else if (!amisDemo.amis.length) console.log("Amis de « Démo » (lot F2) : sautés (« Démo » ou les joueurs du classement n'existent pas encore sur cette base)");
 else console.log(`Amis de « Démo » (lot F2) : ${amisDemo.amis.length} ami(s), dont ${amisDemo.reciproques.length} réciproque(s)${amisDemo.absent ? `, et un qui n'a pas joué aujourd'hui (${amisDemo.absent})` : " (aucun pilote de l'historique sans résultat aujourd'hui)"}.`);
+// Lot C1 : trois retours de joueurs (dont un avec la réponse de l'éditeur à lire dans « Mes messages »), par le vrai `createApi` ; constate d'abord (une lecture indexée), n'écrit rien s'ils sont là.
+const retoursDemo = await seedRetoursDemo({ db, today });
+if (retoursDemo.deja) console.log("Retours de la recette (lot C1) : déjà là (rien d'écrit)");
+else if (!retoursDemo.crees) console.log("Retours de la recette (lot C1) : sautés (« Démo » n'existe pas encore sur cette base)");
+else console.log(`Retours de la recette (lot C1) : ${retoursDemo.crees} retour(s), dont un avec la réponse de l'éditeur.`);
 if (saut) console.log(`\n${saut} segment(s) déjà faits, sautés (rien d'écrit pour eux ; --refaire pour tout rejouer).`);
 
 // Lot N2 : **deux nouveautés publiées et aucun message actif** (la ligne « Nouveautés » de l'accueil et la page /nouveautes/ ont de quoi s'afficher sur la recette). Dates d'avant tout vrai

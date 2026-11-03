@@ -77,6 +77,16 @@
   text-decoration-thickness: var(--dj-trait);
   text-underline-offset: 3px;
 }
+/* Lot C1 : « Un bug ? Une idée ? » du pied, un bouton qui a l'allure d'un lien. */
+.portail-pied__bouton {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .portail-sans-script {
   display: flex;
   flex-wrap: wrap;
@@ -745,4 +755,20 @@
   top: -12px;
   left: var(--dj-espace-5);
   z-index: 1;
+}
+
+/* Lot C1 : la pastille d'une réponse qui attend dans « Mes messages » sur l'avatar du portail (le nom lu de l'avatar dit la même chose). Ici et non dans le socle : les jeux ne paient pas ces octets. */
+.dj-avatar {
+  position: relative;
+}
+.dj-avatar__pastille {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-terre);
 }

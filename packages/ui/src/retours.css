@@ -1,0 +1,207 @@
+/* Lot C1, partie A (plateforme) : le dialogue « Un bug ? Une idée ? » (retours.ts). **Une feuille à part, importée par `retours.ts` et chargée à la demande avec lui** (jamais dans `styles.css` :
+   rien au premier chargement). Jetons seulement ; ombres nettes, aucune translucidité ; cibles de 44 px ; champs à 16 px (pas de zoom sur téléphone) ; marges de sécurité. Charte § 9 (révision 17). */
+.dj-retour-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* Track efface les enfants de `body` hors de sa liste quand un écran est ouvert : le dialogue passe devant toujours. */
+  visibility: visible !important;
+  background: var(--dj-voile);
+  font-family: var(--dj-police-texte);
+}
+.dj-retour {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+  width: min(100%, 32rem);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--dj-espace-7) max(var(--dj-espace-7), env(safe-area-inset-right)) max(var(--dj-espace-7), env(safe-area-inset-bottom)) max(var(--dj-espace-7), env(safe-area-inset-left));
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-bottom: 0;
+  border-radius: var(--dj-rayon-tuile) var(--dj-rayon-tuile) 0 0;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  box-shadow: 0 calc(-1 * var(--dj-espace-1)) 0 var(--dj-encre);
+}
+@media (min-width: 40rem) {
+  .dj-retour-voile {
+    align-items: center;
+  }
+  .dj-retour {
+    border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+    border-radius: var(--dj-rayon-tuile);
+    box-shadow: var(--dj-ombre-cartouche);
+  }
+}
+.dj-retour__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+}
+.dj-retour__titre {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-21);
+  line-height: 1.15;
+}
+.dj-retour__fermer {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--dj-cible);
+  min-height: var(--dj-cible);
+  margin: calc(-1 * var(--dj-espace-3)) calc(-1 * var(--dj-espace-3)) 0 0;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.dj-retour__fermer:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+.dj-retour__corps,
+.dj-retour__champ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.dj-retour__corps {
+  gap: var(--dj-espace-4);
+}
+.dj-retour__intro,
+.dj-retour__merci {
+  margin: 0;
+  font-size: var(--dj-taille-15);
+}
+.dj-retour__merci {
+  font-weight: 700;
+}
+.dj-retour__sans-profil {
+  margin: 0;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-creme-2);
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+}
+.dj-retour__etiquette {
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+}
+.dj-retour__types {
+  display: flex;
+}
+.dj-retour__type {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dj-retour__type + .dj-retour__type {
+  margin-left: calc(-1 * var(--dj-trait));
+}
+.dj-retour__type:first-child {
+  border-radius: var(--dj-rayon-bouton) 0 0 var(--dj-rayon-bouton);
+}
+.dj-retour__type:last-child {
+  border-radius: 0 var(--dj-rayon-bouton) var(--dj-rayon-bouton) 0;
+}
+.dj-retour__type[aria-checked="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.dj-retour__type:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+.dj-retour__texte {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 7.5rem;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: 1rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+.dj-retour__sous-champ {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+}
+.dj-retour__aide,
+.dj-retour__compteur {
+  margin: 0;
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.dj-retour__compteur--plein {
+  color: var(--dj-encre);
+  font-weight: 700;
+}
+.dj-retour__contexte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  padding: var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-creme-2);
+}
+.dj-retour__sous-titre {
+  margin: 0;
+  font-size: var(--dj-taille-14);
+}
+.dj-retour__liste {
+  display: grid;
+  gap: var(--dj-espace-1);
+  margin: 0;
+  font-size: var(--dj-taille-13);
+}
+.dj-retour__ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+}
+.dj-retour__ligne dt {
+  color: var(--dj-encre-douce);
+}
+.dj-retour__ligne dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.dj-retour__message {
+  margin: 0;
+  min-height: 1.2em;
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+}
+.dj-retour__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}

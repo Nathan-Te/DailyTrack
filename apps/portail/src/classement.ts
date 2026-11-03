@@ -17,6 +17,7 @@ import { FICHES, ficheDuRegistre } from "./jeuxFiches";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { lireClassement, type AmiAbsent, type Classement, type LectureClassement, type LigneClassement, type ResultatClassement } from "./classementDonnees";
 import { absentsLisibles, adresseDuClassement, filtreEffectif, ficheAffichee, ligneTouchable, nombreDAmis, sansAmi } from "./classementAmis";
+import { lienRetours } from "./retoursLien";
 import { baseApi } from "./jour";
 import { VUE_CUMUL, aSeparation, ongletVoisin, onglets, vueDeLAdresse } from "./classementVues";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "./jours";
@@ -394,6 +395,7 @@ function rendre(): void {
       "footer",
       { classe: "portail-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
+      lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
   ];
   racine.replaceChildren(...enfants.filter((e): e is HTMLElement => e !== null));

@@ -46,6 +46,7 @@ import {
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
+import { lienRetours } from "./retoursLien";
 import { baseApi } from "./jour";
 import { cartes } from "./jours";
 import { lireRetour } from "./retour";
@@ -92,6 +93,8 @@ interface Profil {
   aProlonger: boolean;
   journeesParfaites: number;
   aujourdhuiParfaite: boolean;
+  /** Lot C1 : les réponses de l'éditeur qui attendent (« Mes messages »). */
+  messagesNonLus?: number;
   jeux: ProfilJeu[];
 }
 
@@ -216,6 +219,16 @@ function rendre(): void {
         )
       : null,
     p ? section(t.t("profil.jeux.titre"), "titre-jeux", el("div", { classe: "profil-jeux" }, ...p.jeux.map((j) => blocJeu(t, j)))) : null,
+    // Lot C1 : « Mes messages » (la page `/messages/`) : les réponses de l'éditeur, avec le nombre de celles qui attendent.
+    id
+      ? section(
+          t.t("profil.messages.titre"),
+          "titre-messages",
+          el("p", { classe: "profil-aide", texte: t.t("profil.messages.aide") }),
+          bouton({ texte: t.t("profil.messages.lien"), variante: "secondaire", href: "../messages/" }),
+          (p?.messagesNonLus ?? 0) > 0 ? el("p", { classe: "profil-message profil-messages-nonlu", attrs: { id: "messages-non-lus", role: "status" }, texte: t.t("profil.messages.nonLu", { n: p!.messagesNonLus! }) }) : null,
+        )
+      : null,
     // Lot F2 : « Mes amis » (la page `/amis/` : ajouter, inviter, ta liste) ; aucune requête de plus ici.
     id ? section(t.t("profil.amis.titre"), "titre-amis", el("p", { classe: "profil-aide", texte: t.t("profil.amis.aide") }), bouton({ texte: t.t("profil.amis.lien"), variante: "secondaire", href: "../amis/" })) : null,
     section(
@@ -246,6 +259,7 @@ function rendre(): void {
       "footer",
       { classe: "portail-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
+      lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
   ];
   racine.replaceChildren(...enfants.filter((e): e is HTMLElement => e !== null));

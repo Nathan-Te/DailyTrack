@@ -36,6 +36,8 @@ export interface PauseMenuOptions {
   onHelp(): void;
   /** Lot 10 : retour à l'accueil de Jump. */
   onHome?(): void;
+  /** Lot C1 : « Un bug ? Une idée ? » (le dialogue de la plateforme, à la demande). */
+  onRetours?(): void;
 }
 
 export interface PauseMenu {
@@ -83,10 +85,13 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   lier(portail, "barre.retour.aria", undefined, "aria-label");
   // Lot R5 (plateforme) : la page « Mentions légales et confidentialité » du site (racine de playdujour.com) ; lot I6 : celle de la langue choisie.
   const mentions = lierMentions(lier(el("a", { classe: "pause__lien", attrs: { id: "menu-mentions", href: "../mentions-legales/" } }), "pause.mentions"));
+  // Lot C1 : « Un bug ? Une idée ? » (un bouton qui a l'allure d'un lien ; le dialogue est à la demande).
+  const retours = lier(el("button", { classe: "pause__lien pause__lien--bouton", attrs: { id: "menu-retours", type: "button" } }), "pause.retours");
+  retours.addEventListener("click", () => opts.onRetours?.());
   const version = el("span", { classe: "pause__version", attrs: { id: "menu-version" } });
   const actions = el("div", { classe: "pause__actions" }, respawn, restart, ghost, sound, settings, help, full, home, portail);
   const hoteMessage = el("div", { classe: ["message-direct", "message-direct--pause"] });
-  dialog.append(hoteMessage, tete, replique, resume, actions, el("div", { classe: "pause__pied" }, mentions, version));
+  dialog.append(hoteMessage, tete, replique, resume, actions, el("div", { classe: "pause__pied" }, mentions, retours, version));
   document.body.append(root);
 
   let open = false;

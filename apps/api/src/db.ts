@@ -214,6 +214,36 @@ export const PLATFORM_SCHEMA: string[] = [
      cree_le INTEGER NOT NULL
    )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS invitations_amis_by_empreinte ON invitations_amis (empreinte)`,
+  // --- Lot C1, partie A : les retours des joueurs (`retours.ts`). **Réversible** : deux tables nouvelles, rien d'existant touché (l'ancien code les ignore) ; retour arrière : `DROP TABLE retours` et
+  // `DROP TABLE retours_messages` (les index partent avec). `retours` : un fil (`player_id` NULL pour un envoi sans profil : aucune réponse possible ; `ref` : la référence publique, jamais l'identifiant secret ;
+  // `contexte` : JSON, liste fermée de champs vérifiés ; `non_lu_joueur` / `non_lu_admin` : une réponse ou un message attend de l'autre côté). `retours_messages` : les messages du fil (`joueur` | `admin`), du texte seul.
+  // Liées à un joueur : vidées par la remise à zéro, effacées avec lui, suivent « Changer mon code » ; gardées 12 mois après la dernière activité du fil (entretien horaire).
+  `CREATE TABLE IF NOT EXISTS retours (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     player_id TEXT,
+     ref TEXT,
+     type TEXT NOT NULL,
+     jeu TEXT NOT NULL,
+     statut TEXT NOT NULL,
+     contexte TEXT NOT NULL,
+     cree_le INTEGER NOT NULL,
+     maj_le INTEGER NOT NULL,
+     non_lu_joueur INTEGER NOT NULL DEFAULT 0,
+     non_lu_admin INTEGER NOT NULL DEFAULT 0,
+     nb_messages INTEGER NOT NULL DEFAULT 0
+   )`,
+  `CREATE INDEX IF NOT EXISTS retours_by_player ON retours (player_id, cree_le)`,
+  `CREATE INDEX IF NOT EXISTS retours_by_statut ON retours (statut, maj_le)`,
+  `CREATE INDEX IF NOT EXISTS retours_by_maj ON retours (maj_le)`,
+  `CREATE INDEX IF NOT EXISTS retours_non_lus_admin ON retours (maj_le) WHERE non_lu_admin = 1`,
+  `CREATE TABLE IF NOT EXISTS retours_messages (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     retour_id INTEGER NOT NULL,
+     auteur TEXT NOT NULL,
+     texte TEXT NOT NULL,
+     cree_le INTEGER NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS retours_messages_by_retour ON retours_messages (retour_id, id)`,
 ];
 
 /** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */

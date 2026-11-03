@@ -62,6 +62,8 @@ export default defineConfig({
         nouveautes: resolve(import.meta.dirname, "nouveautes/index.html"),
         // Lot F2 : « Mes amis » (`/amis/`) et l'accueil d'un lien d'invitation.
         amis: resolve(import.meta.dirname, "amis/index.html"),
+        // Lot C1 : « Mes messages » (`/messages/`), les réponses de l'éditeur.
+        messages: resolve(import.meta.dirname, "messages/index.html"),
         ...(vitrine ? { vitrine: resolve(import.meta.dirname, "ui/index.html") } : {}),
       },
     },
