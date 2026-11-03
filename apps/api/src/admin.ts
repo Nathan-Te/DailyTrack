@@ -70,6 +70,8 @@ export interface AdminOptions {
 export interface JeuAdmin {
   code: string;
   name: string;
+  /** Le préfixe de ses routes (lot D2 : le journal des erreurs range un refus sous le jeu dont la route le porte). */
+  prefixe?: string;
   instance: GameInstance;
 }
 
@@ -389,7 +391,7 @@ export function createAdmin(deps: AdminDeps) {
     await db.first("SELECT 1 AS ok");
     const baseMs = Math.round(performance.now() - sonde);
 
-    const [serie, nouveaux, compteurs, prets, erreurs] = await Promise.all([
+    const [serie, nouveaux, compteurs, prets, erreurs, refus] = await Promise.all([
       // Un joueur compte une fois par jour même s'il a fini les deux jeux : l'union des (jour, joueur) de chaque jeu. Les jours fermés déjà comptés ne sont pas relus.
       activite.length
         ? (() => {
@@ -405,6 +407,7 @@ export function createAdmin(deps: AdminDeps) {
       Promise.all(hooks.map(async (g) => ({ code: g.code, ...(await g.instance.admin!.compteurs(t)) }))),
       Promise.all(hooks.map(async (g) => ({ jeu: g.code, nom: g.name, ...(await g.instance.admin!.joursPrets()) }))),
       journaux.erreurs24h(),
+      journaux.refusParCause(jeux.map((g) => ({ code: g.code, nom: g.name, prefixe: g.prefixe ?? `/api/${g.code}` }))),
     ]);
     for (const r of serie) if (r.jour < t - 1) joursFermes.set(r.jour, r.n);
     for (let d = depart; d < t - 1; d++) if (!joursFermes.has(d) && !serie.some((r) => r.jour === d)) joursFermes.set(d, 0); // un jour sans joueur est compté aussi (0)
@@ -429,7 +432,9 @@ export function createAdmin(deps: AdminDeps) {
         base: { ok: true, ms: baseMs },
         version: { etiquette: options.releaseTag ?? null, commit: options.commit ? options.commit.slice(0, 7) : null, revision: deps.revision ?? null },
         joursPrets: prets,
-        erreurs24h: { serveur: erreurs.serveur, rediffusions: erreurs.rediffusions },
+        erreurs24h: { serveur: erreurs.serveur, rediffusions: erreurs.rediffusions, perimes: erreurs.perimes, limites: erreurs.limites },
+        /** Lot D2 (C1) : les refus par cause et par jeu, sur 24 h et sur 7 jours, avec le détail par code. */
+        refus,
         /** La place des « PR depuis la dernière mise en production » (lot N2) : pas de chiffre ici. */
         prDepuisMiseEnProduction: null,
       },

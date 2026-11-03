@@ -1,4 +1,4 @@
-import { Profile, isValidName, normalizeName, type Identity, type KeyValueStore, type ProfileApi, type RenameResult, type SyncView } from "@cdj/profile";
+import { ATTENTE_ENVOI_MS, Profile, avecAttente, estEchecPassager, estOngletPerime, isValidName, normalizeName, type Identity, type KeyValueStore, type ProfileApi, type RenameResult, type SyncView } from "@cdj/profile";
 import type { MagasinRecords, RecordLocal } from "./records";
 
 // Lot K4c — **la file d'envoi hors ligne d'un jeu neuf**, sans DOM (testée sous Node). Modèle : `apps/tower/src/envoi.ts`, rendue générique : le serveur est une `SourceEnvoi` (une fonction `submit`), le record
@@ -43,6 +43,12 @@ export interface DepsEnvoi<T extends { date: string }> {
   surAccepte?(r: T): void;
 }
 
+/** Lot D2 : les codes locaux de l'état d'un envoi. `lent` (statut `sending`) : la réponse tarde (3 s) ; `attente` (statut `offline`) : la partie est gardée, elle repartira. */
+export const CODE_LENT = "lent";
+export const CODE_ATTENTE = "attente";
+/** Pas de connexion du tout (et non un délai dépassé) : « Hors ligne », la partie repartira au retour du réseau. */
+export const CODE_RESEAU = "reseau";
+
 const SANS_SYNC: SyncView = { state: { known: null }, noteRenamed() {}, noteServerKnows() {}, reset() {} };
 export const DELAI_BASE_MS = 15_000;
 export const DELAI_MAX_MS = 300_000;
@@ -56,6 +62,8 @@ export class FileEnvoi<T extends { date: string }> {
   private minuterie: unknown = null;
   private essais = 0;
   private readonly ecouteurs = new Set<() => void>();
+  /** Lot D2 : le serveur a refusé pour `version` (onglet périmé) : l'hôte montre « Nouvelle version en ligne — recharger ». */
+  surRefus: ((code: string) => void) | null = null;
 
   constructor(private readonly deps: DepsEnvoi<T>) {
     this.state = { statut: deps.source ? "idle" : "off", code: "", suggestions: [] };
@@ -124,7 +132,8 @@ export class FileEnvoi<T extends { date: string }> {
       const record: RecordLocal = records.lire(this.deps.stockage())[date]!;
       this.poser({ statut: "sending", code: "", suggestions: [] });
       const playerId = this.deps.identity.getPlayerId(); // créé ici, au premier envoi, s'il n'existait pas
-      const r = await source.submit(playerId, this.pseudo, record.rediffusion);
+      // Lot D2 : le délai de l'envoi est `DELAI_ENVOI_MS` (20 s, commun aux trois jeux) ; après 3 s « Envoi en cours… », puis « Envoi en attente » si la partie repart plus tard — jamais « indisponible ».
+      const r = await avecAttente(source.submit(playerId, this.pseudo, record.rediffusion), () => this.poser({ statut: "sending", code: CODE_LENT, suggestions: [] }), ATTENTE_ENVOI_MS, { set: this.deps.setTimer, clear: this.deps.clearTimer });
       if (r.ok) {
         records.noterEnvoye(this.deps.stockage(), date, record.score);
         this.resultats.set(r.data.date, r.data);
@@ -135,11 +144,12 @@ export class FileEnvoi<T extends { date: string }> {
         continue;
       }
       const code = r.code ?? "";
-      if (r.status === 0 || r.status === 429 || r.status >= 500 || code === "not_found") {
+      if (estEchecPassager({ status: r.status, code })) {
         this.essais++;
-        this.poser({ statut: "offline", code: r.status === 429 ? "trop_envois" : "reseau", suggestions: [] });
+        this.poser({ statut: "offline", code: r.status === 429 ? "trop_envois" : (r.status === 0 && code !== "timeout") || code === "not_found" ? CODE_RESEAU : CODE_ATTENTE, suggestions: [] });
         return;
       }
+      if (estOngletPerime(code)) this.surRefus?.(code);
       if (code === "version") {
         records.noterEnvoye(this.deps.stockage(), date, record.score); // il ne passera jamais : on ne le renvoie plus
         this.poser({ statut: "version", code: "version", suggestions: [] });

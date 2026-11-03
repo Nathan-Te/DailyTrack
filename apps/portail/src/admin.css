@@ -353,6 +353,50 @@
   background: var(--dj-encre);
   color: var(--dj-papier);
 }
+.admin-filtre[aria-pressed="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+/* Lot D2 : refus d'envoi par cause. Le détail par code est une ligne cachée sous le jeu ; « Rediffusion invalide » (la ligne à surveiller) est en gras quand elle n'est pas à zéro. */
+.admin-refus__periodes {
+  display: flex;
+  gap: var(--dj-espace-3);
+  margin-bottom: var(--dj-espace-4);
+}
+.admin-refus__detail {
+  min-height: var(--dj-cible);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dj-encre);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.admin-refus__n {
+  font-family: var(--dj-police-chiffres);
+  text-align: right;
+}
+.admin-refus__n--surveiller {
+  font-weight: 900;
+}
+.admin-refus__total th,
+.admin-refus__total td {
+  border-top: var(--dj-trait) solid var(--dj-encre);
+  font-weight: 700;
+}
+.admin-refus__codes[hidden] {
+  display: none;
+}
+.admin-refus__liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .admin-actions {
   display: flex;
   flex-wrap: wrap;

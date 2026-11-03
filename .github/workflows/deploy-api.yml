@@ -347,8 +347,8 @@ jobs:
             RATE_SALT=cdj-rate-salt:latest
             ${{ steps.admin.outputs.lignes }}
           # Bornes du coût : 2 instances au plus, 0 au repos (aucun coût sans joueurs). Une instance : 1 vCPU (le calcul est la ressource
-          # qui compte : un rejeu fait 20–40 ms de calcul) et 512 Mo (mesuré dans l'image : 16 Mo au repos, 43 Mo après la génération d'un
-          # circuit et deux rejeux ; le gratuit compte les Go-secondes à part et ne limite pas ici, donc la marge est gratuite). 40 requêtes
+          # qui compte : un rejeu fait 20–40 ms de calcul) et 1 Gio (lot D2 : 512 Mo à l'origine ; mesuré en production 50 à 86 % d'utilisation depuis
+          # l'aperçu de Tower, assurance contre l'arrêt d'une instance qui sature ; la mémoire n'est facturée que pendant les requêtes). 40 requêtes
           # à la fois : Node n'a qu'un fil, au-delà elles feraient la queue derrière un rejeu sans rien gagner et la deuxième instance prend
           # le relais ; une requête ne dure jamais 30 s.
           flags: >-
@@ -356,7 +356,7 @@ jobs:
             --min-instances=0
             --max-instances=2
             --cpu=1
-            --memory=512Mi
+            --memory=1Gi
             --concurrency=40
             --timeout=30
             --port=8080
@@ -403,7 +403,7 @@ jobs:
             --revision-suffix="$suffix" $traffic \
             --set-env-vars="$envs" \
             --set-secrets="TURSO_AUTH_TOKEN=cdj-recette-turso-token:latest,ADMIN_TOKEN=cdj-recette-admin-token:latest,RATE_SALT=cdj-recette-rate-salt:latest${ADMIN_SECRETS}" \
-            --allow-unauthenticated --min-instances=0 --max-instances=1 --cpu=1 --memory=512Mi --concurrency=40 --timeout=30 --port=8080 \
+            --allow-unauthenticated --min-instances=0 --max-instances=1 --cpu=1 --memory=1Gi --concurrency=40 --timeout=30 --port=8080 \
             --service-account="${{ steps.cfg.outputs.runtime_sa }}"
           revision="${service}-${suffix}"
           if [ -z "$TAG" ]; then

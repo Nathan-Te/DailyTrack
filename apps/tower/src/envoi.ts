@@ -1,4 +1,4 @@
-import { Profile, isValidName, normalizeName, type Identity, type KeyValueStore, type RenameResult, type SyncView } from "@cdj/profile";
+import { ATTENTE_ENVOI_MS, Profile, avecAttente, estEchecPassager, estOngletPerime, isValidName, normalizeName, type Identity, type KeyValueStore, type RenameResult, type SyncView } from "@cdj/profile";
 import type { EnvoiTower, SourceTower } from "./apiTower";
 import { enAttente, lireRecords, noterEnvoye, type Records } from "./records";
 
@@ -47,6 +47,12 @@ export interface DepsEnvoi {
   surAccepte?(r: EnvoiTower): void;
 }
 
+/** Lot D2 : les codes locaux de l'état d'un envoi. `lent` (statut `sending`) : la réponse tarde (3 s) ; `attente` (statut `offline`) : la partie est gardée, elle repartira. */
+export const CODE_LENT = "lent";
+export const CODE_ATTENTE = "attente";
+/** Pas de connexion du tout (et non un délai dépassé) : « Hors ligne », la partie repartira au retour du réseau. */
+export const CODE_RESEAU = "reseau";
+
 const SANS_SYNC: SyncView = { state: { known: null }, noteRenamed() {}, noteServerKnows() {}, reset() {} };
 const DELAI_BASE_MS = 15_000;
 const DELAI_MAX_MS = 300_000;
@@ -60,6 +66,8 @@ export class Envoi {
   private minuterie: unknown = null;
   private essais = 0;
   private readonly ecouteurs = new Set<() => void>();
+  /** Lot D2 : le serveur a refusé pour `version` : l'hôte montre « Nouvelle version en ligne — recharger » (jamais en partie : c'est la brique du kit qui le garde). */
+  surRefus: ((code: string) => void) | null = null;
 
   constructor(private readonly deps: DepsEnvoi) {
     this.state = { statut: deps.source ? "idle" : "off", code: "", suggestions: [] };
@@ -135,7 +143,8 @@ export class Envoi {
       const nom = this.pseudo;
       this.poser({ statut: "sending", code: "", suggestions: [] });
       const playerId = this.deps.identity.getPlayerId(); // créé ici, au premier envoi, s'il n'existait pas
-      const r = await source.submit(playerId, nom, record.rediffusion);
+      // Lot D2 : 20 s pour répondre (`DELAI_ENVOI_MS`) ; après 3 s l'écran dit « Envoi en cours… », jamais « hors ligne » tant que la partie n'a pas échoué.
+      const r = await avecAttente(source.submit(playerId, nom, record.rediffusion), () => this.poser({ statut: "sending", code: CODE_LENT, suggestions: [] }), ATTENTE_ENVOI_MS, { set: this.deps.setTimer, clear: this.deps.clearTimer });
       if (r.ok) {
         const d = r.data;
         noterEnvoye(this.deps.stockage(), date, record);
@@ -146,11 +155,13 @@ export class Envoi {
         this.deps.surAccepte?.(d);
         continue;
       }
-      if (r.status === 0 || r.status === 429 || r.status >= 500 || r.code === "not_found") {
+      if (estEchecPassager(r)) {
+        // Lot D2 : la partie reste gardée et repartira (le serveur a peut-être même fini de la traiter : le renvoi répond avant le rejeu, C5) — « Envoi en attente », jamais « indisponible ».
         this.essais++;
-        this.poser({ statut: "offline", code: r.status === 429 ? "trop_envois" : "reseau", suggestions: [] });
+        this.poser({ statut: "offline", code: r.status === 429 ? "trop_envois" : (r.status === 0 && r.code !== "timeout") || r.code === "not_found" ? CODE_RESEAU : CODE_ATTENTE, suggestions: [] });
         return;
       }
+      if (estOngletPerime(r.code)) this.surRefus?.(r.code ?? "");
       if (r.code === "version") {
         noterEnvoye(this.deps.stockage(), date, record); // il ne passera jamais : on ne le renvoie plus
         this.poser({ statut: "version", code: "version", suggestions: [] });

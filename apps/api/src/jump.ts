@@ -462,6 +462,9 @@ export function contratJump(platform: Platform, options: JumpOptions): ContratJe
       if (typeof body.simVersion !== "number" || typeof body.generatorVersion !== "number") throw versionRefus(`simulation v${String(body.simVersion)}, générateur v${String(body.generatorVersion)}`);
       if (body.simVersion > JUMP_SIM_VERSION) throw versionRefus(`simulation v${String(body.simVersion)}, serveur v${JUMP_SIM_VERSION}`);
       if (typeof body.replay !== "string" || body.replay.length === 0) throw new RefusJeu("invalid_replay", "Rediffusion manquante");
+      // Lot D2 (C5) : un renvoi déjà accepté (même joueur, même jour, même rediffusion) répond avant tout décodage et tout rejeu ; ses versions ont déjà été vérifiées à son premier envoi.
+      const deja = await ctx.dejaAccepte(day, body.replay);
+      if (deja) return { jour: day, niveau: await ctx.niveau(day), rejeu: null as unknown as JumpReplay, mesure: { ticks: n(deja.ticks), deaths: n(deja.deaths) }, empreinte: "", empreinteAuteur: null, deja };
       let replay: JumpReplay;
       try {
         replay = decodeReplay(body.replay);
@@ -493,6 +496,7 @@ export function contratJump(platform: Platform, options: JumpOptions): ContratJe
     },
     corpsDeRegistre: (niveau, code) => ({ levelId: niveau.info.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: code }),
 
+    mesureDeLigne: (l) => ({ ticks: n(l.ticks), deaths: n(l.deaths) }),
     rejouee: (niveau, _r, m) => ({
       score: { ticks: m.ticks },
       autres: { level_id: niveau.info.id, deaths: m.deaths, sim_version: JUMP_SIM_VERSION, generator_version: JUMP_GENERATOR_VERSION },

@@ -562,8 +562,8 @@
     "hauteurMaxMm": 8080,
     "vies": 0,
     "ticks": 530,
-    "posees": 8,
-    "tombees": 4,
+    "posees": 0,
+    "tombees": 0,
     "motif": "vies"
    },
    "medal": null,
@@ -601,7 +601,8 @@
      "ref": "e0cca2965509"
     },
     "generation": 0
-   }
+   },
+   "deja": true
   }
  },
  {

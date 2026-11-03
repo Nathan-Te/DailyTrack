@@ -1,0 +1,18 @@
+/* Lot D2 — « Nouvelle version en ligne — recharger » : un bandeau (celui du message en direct, ton « important ») posé en haut de l'écran, au-dessus des écrans, sous la zone sûre.
+   Chargé à la demande avec le module, jamais dans le premier chargement d'un jeu. */
+.dj-versionperimee {
+  position: fixed;
+  top: max(var(--dj-espace-3), env(safe-area-inset-top));
+  left: 50%;
+  z-index: 900;
+  width: min(560px, calc(100% - 2 * max(var(--dj-espace-4), env(safe-area-inset-left), env(safe-area-inset-right))));
+  transform: translateX(-50%);
+  padding-right: var(--dj-espace-2);
+}
+.dj-versionperimee[hidden] {
+  display: none;
+}
+.dj-versionperimee .dj-bouton {
+  flex: none;
+  min-height: var(--dj-cible);
+}

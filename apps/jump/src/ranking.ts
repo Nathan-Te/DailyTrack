@@ -1,6 +1,6 @@
 import { formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION } from "@cdj/jump-sim";
-import { Profile, isValidName, normalizeName, readIdentity, readPlayerId, type Identity, type KeyValueStore, type RenameResult, type SyncView } from "@cdj/profile";
+import { ATTENTE_ENVOI_MS, Profile, avecAttente, estEchecPassager, estOngletPerime, isValidName, normalizeName, readIdentity, readPlayerId, type Identity, type KeyValueStore, type RenameResult, type SyncView } from "@cdj/profile";
 import type { JumpBoard, JumpSubmitResult, RankEntry, RankSource } from "./rankApi";
 import type { KnownRank, RankQueue } from "./rankQueue";
 
@@ -29,6 +29,11 @@ export function mayRank(o: { mode: "jour" | "archive" | "futur" | "essai" | null
 }
 
 export type RankStatus = "off" | "idle" | "sending" | "ranked" | "offline" | "version" | "name" | "revoked" | "refused";
+
+/** Lot D2 : les codes locaux de l'état d'un envoi. `lent` (statut `sending`) : la réponse tarde (3 s) ; `attente` (statut `offline`) : la partie est en file, elle repartira ; `abandon` (statut `refused`) : la file l'a abandonnée (son jour est fini). */
+export const CODE_LENT = "lent";
+export const CODE_ATTENTE = "attente";
+export const CODE_ABANDON = "abandon";
 
 export interface RankState {
   status: RankStatus;
@@ -85,6 +90,8 @@ export class Ranking {
   private timer: unknown = null;
   private readonly listeners = new Set<() => void>();
   readonly profile: Profile;
+  /** Lot D2 : le serveur a refusé pour `version` (ou `sim_version`) : l'hôte montre « Nouvelle version en ligne — recharger » (jamais en partie : c'est la brique du kit qui le garde). */
+  surRefus: ((code: string) => void) | null = null;
 
   constructor(private readonly deps: RankingDeps) {
     this.state = { status: deps.source ? "idle" : "off", code: "", suggestions: [] };
@@ -169,7 +176,10 @@ export class Ranking {
   private async drain(): Promise<void> {
     const source = this.deps.source!;
     const queue = this.deps.queue;
+    // Lot D2 : un envoi dont le jour est fini (grâce passée) est abandonné pour de bon : c'est le seul cas où le joueur lit « indisponible », avec ce qu'il peut faire.
+    const avant = queue.pending.length;
     queue.purge(this.deps.today(), this.deps.sinceMidnight());
+    if (queue.pending.length < avant) this.set({ status: "refused", code: CODE_ABANDON, suggestions: [] });
     for (let p = queue.due(); p; p = queue.due()) {
       const name = this.name;
       // Premier envoi sans pseudo : on attend que le joueur en choisisse un (l'envoi reste dans la file).
@@ -179,7 +189,8 @@ export class Ranking {
       }
       this.set({ status: "sending", code: "", suggestions: [] });
       const playerId = this.deps.identity.getPlayerId(); // créé ici, au premier envoi, s'il n'existait pas
-      const r = await source.submit(playerId, name, p, { simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION });
+      // Lot D2 : l'envoi a 20 s pour répondre (`DELAI_ENVOI_MS`) ; après 3 s l'écran dit « Envoi en cours… », jamais « indisponible ».
+      const r = await avecAttente(source.submit(playerId, name, p, { simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION }), () => this.set({ status: "sending", code: CODE_LENT, suggestions: [] }), ATTENTE_ENVOI_MS, { set: this.deps.setTimer, clear: this.deps.clearTimer });
       if (r.ok) {
         const d = r.data;
         queue.confirm(p, { date: p.date, levelId: d.levelId, ticks: d.bestTicks, rank: d.rank, participants: d.participants, medal: d.medal });
@@ -192,10 +203,15 @@ export class Ranking {
         this.deps.onAccepted?.(d);
         continue;
       }
-      if (r.status === 0 || r.status === 429 || r.status >= 500 || r.code === "not_found") {
+      if (estEchecPassager(r)) {
+        // Lot D2 : la partie reste en file et repartira (le serveur a peut-être même fini de la traiter : le renvoi répond avant le rejeu, C5) — « Envoi en attente », jamais « indisponible ».
         queue.failed(p.date);
-        this.set({ status: "offline", code: r.status === 429 ? "trop_envois" : "reseau", suggestions: [] });
+        this.set({ status: "offline", code: r.status === 429 ? "trop_envois" : CODE_ATTENTE, suggestions: [] });
         return;
+      }
+      if (estOngletPerime(r.code)) {
+        // Lot D2 : un onglet d'avant une mise en production (`version`) : le bandeau « Nouvelle version en ligne — recharger » le dit (l'hôte l'écoute) ; l'envoi ne passera jamais.
+        this.surRefus?.(r.code);
       }
       if (r.code === "version") {
         queue.drop(p.date);

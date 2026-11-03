@@ -35,6 +35,8 @@ export interface AdaptateurTable {
   sansMedaille?: boolean;
   /** Des colonnes de plus que lisent le haut du classement, la ligne du joueur et son meilleur précédent (Jump : `deaths`). */
   lecturesPlus?: readonly string[];
+  /** Lot D2 (C5) : des colonnes de plus pour la seule requête du renvoi déjà accepté (Tower : la hauteur la plus haute atteinte, que sa réponse rend). */
+  lecturesDeja?: readonly string[];
   /** Les colonnes écrites à l'insertion après `day` et `player_id`, dans l'ordre. */
   colonnesEcrites: readonly string[];
   /** Celles que le remplacement par une meilleure partie ne touche pas (le premier envoi, la marque de masquage, l'aperçu). */
@@ -73,6 +75,8 @@ export interface SqlDuJeu {
   top: string;
   moi: string;
   precedent: string;
+  /** Lot D2 (C5) : la partie déjà écrite de ce joueur ce jour-là **si c'est exactement cette rediffusion** (même texte) : le renvoi répond avant le rejeu. Paramètres : jour, joueur, aperçu, texte. */
+  deja: string;
   /** `INSERT … ON CONFLICT DO UPDATE` du meilleur résultat : paramètres dans l'ordre de `colonnesInsert`. */
   insertion: string;
   colonnesInsert: readonly string[];
@@ -161,6 +165,7 @@ export function sqlDe(a: AdaptateurTable): SqlDuJeu {
     top: `SELECT ${brutR}, p.name AS name, p.ref AS ref FROM ${T} r JOIN players p ON p.id = r.player_id WHERE ${porteeR}r.day = ? AND r.hidden = 0 ORDER BY ${ordreR} LIMIT ?`,
     moi: `SELECT ${brutR}, r.submitted_at AS submitted_at, p.name AS name, p.ref AS ref FROM ${T} r JOIN players p ON p.id = r.player_id WHERE ${porteeR}r.day = ? AND r.player_id = ?`,
     precedent: `SELECT ${brutPlus}, submitted_at FROM ${T} WHERE ${P}day = ? AND player_id = ? AND apercu = ?`,
+    deja: `SELECT ${[brutPlus, ...(a.lecturesDeja ?? []).map(ident)].join(", ")}, submitted_at FROM ${T} WHERE ${P}day = ? AND player_id = ? AND apercu = ? AND replay = ?`,
     insertion,
     colonnesInsert: ecrites,
     parClasse: ordre,

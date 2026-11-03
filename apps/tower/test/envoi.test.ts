@@ -129,7 +129,8 @@ describe("l'envoi d'un record", () => {
     const t = monter(null);
     const f = faux([ko(0, "network"), ko(0, "network"), ok(reponse(12_000))]);
     const minuteries: { fn: () => void; ms: number }[] = [];
-    const e = new Envoi({ source: f.source, identity: t.identity, stockage: () => t.stockage, aujourdhui: () => "2026-11-06", setTimer: (fn, ms) => (minuteries.push({ fn, ms }), minuteries.length), clearTimer: () => {} });
+    // Lot D2 : la minuterie de 3 s de « Envoi en cours » passe par la même horloge injectée ; elle ne compte pas parmi les nouveaux essais.
+    const e = new Envoi({ source: f.source, identity: t.identity, stockage: () => t.stockage, aujourdhui: () => "2026-11-06", setTimer: (fn, ms) => (ms === 3000 ? 0 : (minuteries.push({ fn, ms }), minuteries.length)), clearTimer: () => {} });
     t.identity.setName("Pistache");
     t.record();
     await e.flush();
@@ -143,6 +144,34 @@ describe("l'envoi d'un record", () => {
     await e.flush();
     expect(e.state.statut).toBe("ranked");
     expect(lireRecords(t.stockage)["2026-11-06"]!.envoye).toBe(true);
+  });
+
+  it("lot D2 — un envoi qui tarde est « en cours » après 3 s ; le délai dépassé (timeout) le met en attente, jamais « indisponible » ; un refus de version prévient l'hôte", async () => {
+    const t = monter(null);
+    let fin!: (r: ApiResult<EnvoiTower>) => void;
+    const source = { ...faux([]).source, submit: () => new Promise<ApiResult<EnvoiTower>>((r) => (fin = r)) } as unknown as SourceTower;
+    const taches: { fn: () => void; ms: number; vivante: boolean }[] = [];
+    const e = new Envoi({ source, identity: t.identity, stockage: () => t.stockage, aujourdhui: () => "2026-11-06", setTimer: (fn, ms) => (taches.push({ fn, ms, vivante: true }), taches.length - 1), clearTimer: (h) => void (taches[h as number]!.vivante = false) });
+    t.identity.setName("Pistache");
+    t.record();
+    const envoi = e.flush();
+    await Promise.resolve();
+    expect(e.state).toMatchObject({ statut: "sending", code: "" });
+    expect(taches[0]).toMatchObject({ ms: 3000, vivante: true });
+    taches[0]!.fn();
+    expect(e.state).toMatchObject({ statut: "sending", code: "lent" });
+    fin(ko(0, "timeout"));
+    await envoi;
+    expect(taches[0]!.vivante).toBe(false);
+    expect(e.state).toMatchObject({ statut: "offline", code: "attente" });
+    expect(lireRecords(t.stockage)["2026-11-06"]!.envoye).toBe(false);
+    // Version : l'hôte est prévenu.
+    const vus: string[] = [];
+    const f2 = faux([ko(409, "version")]);
+    const e2 = new Envoi({ source: f2.source, identity: t.identity, stockage: () => t.stockage, aujourdhui: () => "2026-11-06", setTimer: () => 0, clearTimer: () => {} });
+    e2.surRefus = (c) => void vus.push(c);
+    await e2.flush();
+    expect(vus).toEqual(["version"]);
   });
 
   it("trop de requêtes (429) ou route inconnue (serveur sans Tower) : « offline », jamais un refus définitif", async () => {

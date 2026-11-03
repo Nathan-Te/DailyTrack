@@ -12,6 +12,7 @@ export * from "./apiAdresse";
 export * from "./generation";
 export * from "./annonce";
 export * from "./jeux";
+export * from "./envoiLent";
 // Lot F2 : les amis (client des routes `/api/amis/…`, lien d'invitation, filtre « Tous / Amis » de l'adresse).
 export * from "./amis";
 export * from "./favoris";

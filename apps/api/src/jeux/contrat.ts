@@ -54,6 +54,11 @@ export interface ContexteValidation<Niveau> {
   ouvert(jour: number): boolean;
   /** À appeler juste avant le plafond de rejeux : joueur actif et pseudo (le module garde `known` et `name`). */
   avantRejeu(): Promise<void>;
+  /**
+   * Lot D2 (C5) : ce joueur a-t-il déjà cette rediffusion (texte identique) d'acceptée pour ce jour ? Rend sa ligne, ou `null`. À appeler **avant** `avantRejeu` et le plafond de rejeux : le renvoi
+   * d'une partie déjà écrite répond tout de suite. Vérifie d'abord que le code du joueur est actif.
+   */
+  dejaAccepte(jour: number, texte: string): Promise<LigneBrute | null>;
 }
 
 /** Ce que rend `valider` : l'envoi validé et rejoué. */
@@ -65,6 +70,8 @@ export interface Validation<Niveau, Rejeu, Mesure> {
   /** SHA-256 des entrées jouées (copies) et celui des entrées de l'auteur (`null` : pas calculé). */
   empreinte: string;
   empreinteAuteur: string | null;
+  /** Lot D2 (C5) : la ligne déjà écrite, quand l'envoi est un renvoi déjà accepté (`ctx.dejaAccepte`) ; le module répond avec elle, sans copies ni écriture. */
+  deja?: LigneBrute;
 }
 
 /** Ce que reçoit `tableau` : tout ce que le module a lu pour le classement d'un jour, le niveau et la place restant à la demande. */
@@ -130,6 +137,8 @@ export interface ContratJeu<Niveau, Rejeu, Mesure> {
   corpsDeRegistre?(niveau: Niveau, code: string): Record<string, unknown>;
   /** Le plafond de rejeux (unités) que coûte cette rediffusion ; défaut : `rejeu.unitesServeur` de la fiche (Tower : un poids fixe). */
   unites?(rejeu: Rejeu): number;
+  /** Lot D2 (C5) : ce que la ligne d'une partie déjà écrite dit de la partie rejouée (sans la rejouer), pour la réponse d'un renvoi. Absent : pas de réponse avant le rejeu pour ce jeu. */
+  mesureDeLigne?(ligne: LigneBrute, niveau: Niveau): Mesure;
   /** Les valeurs à écrire pour cette partie. */
   rejouee(niveau: Niveau, rejeu: Rejeu, mesure: Mesure): Rejouee;
   /** La médaille obtenue (code commun `author|gold|silver|bronze`) par ce score sur ce niveau. */

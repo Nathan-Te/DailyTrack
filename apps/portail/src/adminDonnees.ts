@@ -54,6 +54,16 @@ export interface EntreeJournal {
   apres: Record<string, unknown> | null;
 }
 
+/** Lot D2 (C1) : un jeu (ou la plateforme) sur une période : le nombre de refus par cause et le détail par code. */
+export interface RefusPeriode {
+  total: { perime: number; invalide: number; limites: number; jour: number; serveur: number; codes: Record<string, number> };
+  parJeu: { jeu: string; nom: string; perime: number; invalide: number; limites: number; jour: number; serveur: number; codes: Record<string, number> }[];
+}
+export interface RefusDuTableau {
+  h24: RefusPeriode;
+  j7: RefusPeriode;
+}
+
 export interface Tableau {
   calculeA: string;
   date: string;
@@ -65,7 +75,9 @@ export interface Tableau {
     base: { ok: boolean; ms: number };
     version: { etiquette: string | null; commit: string | null; revision: string | null };
     joursPrets: { jeu: string; nom: string; figes: number; planifies?: number }[];
-    erreurs24h: { serveur: number; rediffusions: number };
+    erreurs24h: { serveur: number; rediffusions: number; perimes: number; limites: number };
+    /** Lot D2 (C1) : les refus d'envoi par cause et par jeu, sur 24 h et sur 7 jours. */
+    refus: RefusDuTableau;
     prDepuisMiseEnProduction: number | null;
   };
   journal: EntreeJournal[];

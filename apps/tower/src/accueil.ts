@@ -146,6 +146,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
   if (session.base) {
     message = monterMessage({ base: session.base, stockage, hotes: { accueil: hoteAccueil, arrivee: hoteMessage() } });
     message.montrer("accueil");
+    void import("./versionJeu").then((m) => m.monterVersionTower({ base: session.base, simuler: options.simuler, envoi: session.envoi })); // lot D2 : l'onglet périmé (à la demande)
   }
 
   // Le décompte jusqu'à minuit à Paris ; à zéro la page se recharge sur la nouvelle tour.

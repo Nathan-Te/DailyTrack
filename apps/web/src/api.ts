@@ -1,4 +1,4 @@
-import { ProfileClient, apiFromAddress, call, type ApiResult, type MeProfile, type NameCheck } from "@cdj/profile";
+import { DELAI_ENVOI_MS, ProfileClient, apiFromAddress, call, type ApiResult, type MeProfile, type NameCheck } from "@cdj/profile";
 import type { EtatVoiture, ProgresGarage } from "@cdj/sim";
 import { isRestricted } from "./access";
 import type { ChoixVoiture } from "./voiture/choix";
@@ -28,6 +28,8 @@ export interface Leaderboard {
 export interface SubmitResult {
   accepted: true;
   improved: boolean;
+  /** Lot D2 (C5) : le serveur avait déjà accepté cette course (un renvoi) : réponse immédiate, rien n'a été rejoué ni écrit. */
+  deja?: true;
   ms: number;
   splits: number[];
   respawns: number;
@@ -145,7 +147,7 @@ export const DEMO_BASE = "demo";
 export class LeaderboardApi extends ProfileClient implements LeaderboardSource {
   // Lot 32 : l'identifiant secret du joueur voyage dans l'en-tête `X-Player-Id`, jamais dans l'adresse (qui finit dans les journaux de l'hébergeur).
   submit(playerId: string, name: string | null, date: string, replay: string, voiture?: ChoixVoiture) {
-    return this.call<SubmitResult>("POST", "/api/submit", { ...(name ? { name } : {}), date, replay, ...(voiture ? { voiture } : {}) }, asPlayer(playerId));
+    return this.call<SubmitResult>("POST", "/api/submit", { ...(name ? { name } : {}), date, replay, ...(voiture ? { voiture } : {}) }, asPlayer(playerId), DELAI_ENVOI_MS);
   }
 
   leaderboard(date: string, playerId: string, limit = 10) {

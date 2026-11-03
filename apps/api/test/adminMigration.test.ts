@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ensureSchemaOn } from "../src/db";
 import { CODES_ERREUR } from "../src/codesErreur";
-import { ERREURS_PAR_MINUTE, aNoter, createJournaux, genreDe, routeDe } from "../src/journaux";
+import { CAUSE_DES_CODES, CAUSES, ERREURS_PAR_MINUTE, aNoter, causeDe, createJournaux, genreDe, routeDe } from "../src/journaux";
 import { silentLog } from "../src/log";
 import { TEST_DB, openTestDb } from "./helpers";
 
@@ -68,7 +68,12 @@ describe("journal des erreurs : routes, genres, bornes", () => {
     expect(aNoter(409, "version", "/api/jump/submit")).toBe(true);
     expect(aNoter(409, "replay_copy", "/api/day/2026-10-20/leaderboard")).toBe(false);
     expect(aNoter(404, "not_found", "/api/zzz")).toBe(false);
-    expect(aNoter(429, "rate_limited", "/api/submit")).toBe(false);
+    // Lot D2 : la limite de débit et le jour clos se notent aussi, mais à l'envoi d'une partie seulement (une lecture limitée n'est pas un refus d'envoi).
+    expect(aNoter(429, "rate_limited", "/api/submit")).toBe(true);
+    expect(aNoter(429, "rate_limited", "/api/tower/submit")).toBe(true);
+    expect(aNoter(429, "rate_limited", "/api/day/2026-10-20/leaderboard")).toBe(false);
+    expect(aNoter(409, "day_closed", "/api/jump/submit")).toBe(true);
+    expect(aNoter(409, "day_closed", "/api/day/2026-10-20")).toBe(false);
     expect(aNoter(401, "unauthorized", "/api/admin/session")).toBe(false);
     expect(aNoter(400, "invalid_name", "/api/submit")).toBe(false);
   });
@@ -83,9 +88,20 @@ describe("journal des erreurs : routes, genres, bornes", () => {
 
   it("le genre d'un code : « serveur » si son statut est ≥ 500, sinon « rediffusion » ; chaque code de la liste a un genre", () => {
     expect(genreDe("internal")).toBe("serveur");
-    expect(genreDe("busy")).toBe("serveur");
+    expect(genreDe("busy")).toBe("rediffusion"); // lot D2 : `busy` est une limite (cause « limites »), pas une panne
     expect(genreDe("replay_copy")).toBe("rediffusion");
     for (const code of Object.keys(CODES_ERREUR)) expect(["serveur", "rediffusion"]).toContain(genreDe(code));
+  });
+
+  it("lot D2 (C1) : chaque code de refus a sa cause ; un onglet périmé n'est ni une rediffusion invalide ni une limite", () => {
+    expect(CAUSES).toEqual(["perime", "invalide", "limites", "jour"]);
+    for (const code of ["version", "sim_version", "track_mismatch"]) expect(causeDe(code)).toBe("perime");
+    for (const code of ["invalid_replay", "not_finished", "replay_copy", "invalid_level"]) expect(causeDe(code)).toBe("invalide");
+    for (const code of ["rate_limited", "busy"]) expect(causeDe(code)).toBe("limites");
+    for (const code of ["day_closed", "not_daily"]) expect(causeDe(code)).toBe("jour");
+    for (const code of ["internal", "db_unavailable", "name_taken", "unknown_player"]) expect(causeDe(code)).toBeNull();
+    // Tout code classé existe dans la liste unique des codes d'erreur.
+    for (const code of Object.keys(CAUSE_DES_CODES)) expect(Object.keys(CODES_ERREUR)).toContain(code);
   });
 
   it("l'écriture est bornée : au plus 60 par minute et par instance, puis de nouveau permise à la minute suivante", async () => {

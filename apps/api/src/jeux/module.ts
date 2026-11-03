@@ -249,6 +249,27 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     if (await db.first(`SELECT 1 AS n FROM resultats_retires WHERE game = '${fiche.code}' AND day = ? AND inputs_hash = ? LIMIT 1`, [jour, hash])) throw new HttpError(409, "replay_copy", "Cette partie a été retirée par l'administration");
   }
 
+  /**
+   * Lot D2 (C5) : la réponse d'un renvoi déjà accepté — celle d'un envoi qui n'améliore rien (`improved: false`), construite sur la ligne écrite, avec `deja: true`. Même forme que la réponse d'un
+   * envoi pour le jeu ; le classement est celui d'aujourd'hui ; **rien n'est rejoué ni écrit**, le plafond de rejeux n'est pas touché.
+   */
+  async function reponseDeja(playerIdCourant: string, jour: number, niveau: Niveau, ligneDeja: LigneBrute, mesure: Mesure): Promise<unknown> {
+    const prev = versFiche(adaptateur, ligneDeja);
+    const at = Number(ligneDeja.submitted_at);
+    const medaille = sansMedaille ? contrat.medailleDeLigne!(niveau, prev) : ((ligneDeja.medal as string | null) ?? null);
+    const best: LigneBrute & { submitted_at: number } = { ...prev, ...scoreDe(prev), medal: medaille, submitted_at: at };
+    const entrees = { date: formatDay(jour), jour, niveau, mesure, medaille, improved: false, meilleur: best };
+    log("INFO", `${messagePartie} déjà acceptée`, { day: formatDay(jour) });
+    if (contrat.tableau) {
+      const [rank, total, rows] = await Promise.all([rankOf(jour, scoreDe(best), at, playerIdCourant), participants(jour), db.all<LigneBrute>(sql.top, [jour, config.top])]);
+      const moi: LigneBrute = { ...best, name: (await players.find(playerIdCourant))?.name ?? "", ref: await refOfPlayer(playerIdCourant) };
+      const tableau = await contrat.tableau({ date: formatDay(jour), ouvert: isOpen(jour), participants: total, top: rows, moi, rangMoi: async () => rank, niveau: async () => niveau, apresEnvoi: true });
+      return { ...(contrat.reponseEnvoi({ ...entrees, rang: rank, participants: total, board: tableau }) as object), deja: true };
+    }
+    const [rank, b] = await Promise.all([rankOf(jour, scoreDe(best), at, playerIdCourant), board(jour, playerIdCourant)]);
+    return { ...(contrat.reponseEnvoi({ ...entrees, rang: rank, participants: (b as { participants: number }).participants, board: b }) as object), deja: true };
+  }
+
   async function submit(req: Request, info: RequestInfo): Promise<unknown> {
     // 1. Débit, compté en base (exact quelle que soit l'instance), avant de lire le corps et avant tout rejeu. Compteurs propres au jeu.
     await platform.hitAddress(info, debit.adresse, limits.perClient);
@@ -258,11 +279,26 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     const body = await readJson(req);
     let known = null as Awaited<ReturnType<typeof players.find>>;
     let name = "";
+    let actif: Promise<void> | null = null;
+    const verifierActif = (): Promise<void> => (actif ??= players.assertActive(playerId));
     /** Joueur actif et pseudo (réservé à son premier propriétaire, vérifié avant le rejeu). */
     const joueur = async (): Promise<void> => {
-      await players.assertActive(playerId);
+      await verifierActif();
       known = await players.find(playerId);
       name = await players.resolveName(playerId, body.name, known);
+    };
+    /**
+     * Lot D2 (C5) : la partie déjà écrite de ce joueur, si le texte envoyé est exactement celui de sa meilleure partie du jour (un renvoi) — sans rejeu, sans plafond de rejeux. Le pseudo suit les
+     * mêmes règles qu'un envoi ordinaire (réservé à son propriétaire ; un joueur peut réécrire le sien avec une autre casse) : seul le rejeu est évité.
+     */
+    const dejaAccepte = async (jourDemande: number, texte: unknown): Promise<LigneBrute | null> => {
+      if (typeof texte !== "string" || texte.length === 0 || !contrat.mesureDeLigne) return null;
+      await verifierActif();
+      const ligne = await db.first<LigneBrute>(sql.deja, [jourDemande, playerId, info.apercu === true ? 1 : 0, texte]);
+      if (!ligne) return null;
+      await joueur();
+      await players.save(playerId, name, known);
+      return ligne;
     };
     let jour: number;
     let niveau: Niveau;
@@ -271,8 +307,9 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     let hash: string;
     if (contrat.valider) {
       // Point d'extension : le jeu valide dans son ordre (le jour, les versions, la rediffusion, le rejeu) ; les copies viennent après, comme avant.
-      const v = await contrat.valider(body, { niveau: getNiveau, ouvert: isOpen, avantRejeu: joueur });
+      const v = await contrat.valider(body, { niveau: getNiveau, ouvert: isOpen, avantRejeu: joueur, dejaAccepte });
       ({ jour, niveau, rejeu: r, mesure } = v);
+      if (v.deja) return reponseDeja(playerId, jour, niveau, v.deja, mesure);
       hash = v.empreinte;
       await refuserCopies(jour, hash, v.empreinteAuteur, playerId);
     } else {
@@ -283,6 +320,12 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       jour = j;
       if (jour > today()) throw new HttpError(409, "not_daily", "Ce jour n'est pas encore sorti");
       if (!isOpen(jour)) throw new HttpError(409, "day_closed", "Le classement de ce jour est figé : seul le jour en cours se classe");
+      // Lot D2 (C5) : un renvoi déjà accepté répond ici, avant le niveau, le joueur, les copies et le rejeu.
+      const deja = await dejaAccepte(jour, body.replay);
+      if (deja) {
+        niveau = await getNiveau(jour);
+        return reponseDeja(playerId, jour, niveau, deja, contrat.mesureDeLigne!(deja, niveau));
+      }
       niveau = await getNiveau(jour);
       contrat.memeContenu!(r, niveau);
       // 6. Joueur actif et pseudo.
@@ -513,7 +556,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       try {
         if (contrat.valider) {
           const n = await getNiveau(day);
-          const v = await contrat.valider(contrat.corpsDeRegistre!(n, code), { niveau: getNiveau, ouvert: isOpen, avantRejeu: async () => {} });
+          const v = await contrat.valider(contrat.corpsDeRegistre!(n, code), { niveau: getNiveau, ouvert: isOpen, avantRejeu: async () => {}, dejaAccepte: async () => null });
           return contrat.validation(v.mesure);
         }
         const r = contrat.decoder!(code);

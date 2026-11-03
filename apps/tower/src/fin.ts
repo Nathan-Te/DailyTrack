@@ -180,7 +180,7 @@ export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
       rangValeur.textContent = formatRang(rep.rank, langueCourante());
       rangSous.textContent = t(rep.improved ? "fin.rang.record" : "fin.rang.sur", { total: formatNombre(rep.participants, langueCourante()) });
     } else if (e.statut === "sending") {
-      rangSous.textContent = t("fin.rang.envoi");
+      rangSous.textContent = t(e.code === "lent" ? "fin.rang.enCours" : "fin.rang.envoi");
     } else if (e.statut === "version") {
       rangSous.textContent = t("fin.rang.version");
       recharger.hidden = false;
@@ -205,7 +205,7 @@ export function monterFin(racine: HTMLElement, o: OptionsFin): Fin {
     } else if (e.statut === "revoked" || e.statut === "refused") {
       rangSous.textContent = texteErreur(e.code);
     } else if (e.statut === "offline" || e.statut === "off" || e.statut === "idle") {
-      rangSous.textContent = t(e.code === "trop_envois" ? "fin.rang.tropEnvois" : "fin.rang.horsLigne");
+      rangSous.textContent = t(e.code === "trop_envois" ? "fin.rang.tropEnvois" : e.statut === "offline" && e.code === "attente" ? "fin.rang.attente" : "fin.rang.horsLigne"); // lot D2 : en file = « Envoi en attente », jamais « hors ligne »
     }
   };
   const traduire = () => {

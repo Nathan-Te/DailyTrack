@@ -342,7 +342,7 @@ describe(`panneau : tableau de bord (${TEST_DB})`, () => {
       { jeu: "jump", nom: "DailyJump", figes: 0 },
       { jeu: "tower", nom: "Tower", figes: 0 },
     ]);
-    expect(etat.erreurs24h).toEqual({ serveur: 0, rediffusions: 0 });
+    expect(etat.erreurs24h).toEqual({ serveur: 0, rediffusions: 0, perimes: 0, limites: 0 });
     expect(etat.prDepuisMiseEnProduction).toBeNull(); // la place des « PR depuis la dernière mise en production » (lot N2) : aucun chiffre
   });
 
@@ -363,7 +363,7 @@ describe(`panneau : tableau de bord (${TEST_DB})`, () => {
     expect(lignes.find((l) => l.code === "invalid_replay")).toEqual({ code: "invalid_replay", route: "/api/submit" });
     expect(JSON.stringify(lignes)).not.toContain(playerId(1));
     const { adm } = await connecte(t);
-    expect((await adm("GET", "/api/admin/tableau")).body.etat.erreurs24h).toEqual({ serveur: 2, rediffusions: 1 });
+    expect((await adm("GET", "/api/admin/tableau")).body.etat.erreurs24h).toEqual({ serveur: 2, rediffusions: 1, perimes: 0, limites: 0 });
   });
 
   it("est calculé au plus une fois par minute et par instance ; les dernières actions sont toujours fraîches", async () => {

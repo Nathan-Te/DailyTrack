@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1709 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1718 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -404,6 +404,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `retours.voirMessages` | Mes messages | My messages |
 | `retours.horsLigne` | Hors ligne : ton message n'est pas parti. Réessaie dans un moment. | Offline: your message didn't go out. Try again in a moment. |
 | `retours.vide` | Écris un message d'abord. | Write a message first. |
+
+### version (`version.*`, `packages/ui/src/catalogue.version.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `version.perimee` | Nouvelle version en ligne — recharger | New version online — reload |
+| `version.recharger` | Recharger | Reload |
+| `version.rechargerAria` | Recharger la page pour passer à la nouvelle version | Reload the page to switch to the new version |
 
 ## Portail Du Jour (accueil, profil commun, classement du jour, vitrine et démonstration de la recette)
 
@@ -894,6 +902,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `arrivee.horsLigneDetail` | Hors ligne : course non classée ({detail}) | Offline: run not ranked ({detail}) |
 | `arrivee.jourPasse` | Jour passé : le classement est figé, ce temps n'y entre pas. | Past day: the leaderboard is frozen, this time doesn't count. |
 | `arrivee.envoi` | Envoi au classement… | Sending to the leaderboard… |
+| `arrivee.envoiLent` | Envoi en cours… | Sending… |
+| `arrivee.envoiAttente` | Envoi en attente : ton temps sera pris en compte dès que possible | Waiting to send: your time will be counted as soon as possible |
 | `arrivee.chargement` | Chargement du classement… | Loading the leaderboard… |
 | `arrivee.tempsServeur` | temps du serveur : {temps} | server time: {temps} |
 | `arrivee.changerPseudo` | Changer de pseudo | Change name |
@@ -1901,7 +1911,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `rang.personne` | Personne n'a été classé ce jour-là | Nobody was ranked that day |
 | `rang.version` | Une nouvelle version du jeu est disponible | A new version of the game is out |
 | `rang.pseudo` | Choisis ton pseudo pour entrer au classement | Pick a name to join the leaderboard |
-| `rang.horsLigne` | Classement indisponible, ton temps sera envoyé. | Leaderboard unavailable, your time will be sent. |
+| `rang.attente` | Envoi en attente : ton temps sera pris en compte dès que possible | Waiting to send: your time will be counted as soon as possible |
+| `rang.enCours` | Envoi en cours… | Sending… |
+| `rang.abandon` | Classement indisponible : ton résultat n'a pas pu être envoyé. Rejoue pour le renvoyer, ou réessaie plus tard. | Leaderboard unavailable: your result could not be sent. Play again to resend it, or try again later. |
 | `rang.tropEnvois` | Trop d'envois : nouvel essai dans un moment. | Too many submissions: trying again in a moment. |
 | `rang.envoi` | Envoi au classement… | Sending to the leaderboard… |
 | `rang.duJour` | Ton rang du jour : {rang} | Your rank today: {rang} |
@@ -2169,6 +2181,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `fin.rang.record` | sur {total} · nouveau record | of {total} · new record |
 | `fin.rang.pasMieux` | Pas mieux que ton record du jour. | Not better than your record of the day. |
 | `fin.rang.envoi` | Envoi de ta partie… | Sending your game… |
+| `fin.rang.enCours` | Envoi en cours… | Sending… |
+| `fin.rang.attente` | Envoi en attente : ta partie sera prise en compte dès que possible | Waiting to send: your game will be counted as soon as possible |
 | `fin.rang.horsLigne` | Hors ligne, non classé : ta partie sera envoyée. | Offline, not ranked: your game will be sent. |
 | `fin.rang.tropEnvois` | Trop d'envois : ta partie sera envoyée plus tard. | Too many sends: your game will be sent later. |
 | `fin.rang.version` | Une nouvelle version du jeu est disponible. | A new version of the game is out. |
