@@ -6,7 +6,7 @@ Charte : `docs/plateforme/identite.md`, **révision 17** (le fichier fourni part
 ## Où j'en suis
 - **A (retours) : faite**, verte en local (tests unitaires SQLite et libSQL, budgets, un e2e).
 - **B (avatars) : faite**, verte en local (suite complète SQLite : 6 157 tests ; avatars et amis en libSQL ; budgets ; un e2e `avatars.spec.ts`).
-- **C (groupes) : faite** (voir « Partie C »), à l'exception de ce qui est listé dans « Ce qui reste » : suite complète, budgets, deux e2e (`avatars`, `groupes`) verts en local ; la CI de la PR n'est pas encore lue (voir « Vérifié / pas vérifié »).
+- **C (groupes) : faite** (voir « Partie C »), à l'exception de ce qui est listé dans « Ce qui reste » : suite complète, budgets, deux e2e (`avatars`, `groupes`) verts en local ; CI de la PR verte (voir « CI »).
 
 ## Partie A — « Un bug ? Une idée ? »
 - **Tables** `retours`, `retours_messages` (migration réversible, `DROP TABLE` des deux) ; effacées avec le profil, suivent « Changer mon code », vidées par la remise à zéro, **gardées 12 mois après la dernière activité du fil**.
@@ -46,5 +46,9 @@ Charte : `docs/plateforme/identite.md`, **révision 17** (le fichier fourni part
 
 ## Vérifié / pas vérifié
 - **Vérifié en local** : typecheck ; suite complète SQLite (voir le dernier run) ; libSQL `file:` pour les tests d'API de A, B et C ; budgets (`scripts/budgets-controle.mjs`) ; e2e `retours`, `avatars`, `groupes` ; `node scripts/securite-workflows.mjs`.
-- **Pas vérifié** : la CI de la PR (voir la section ci-dessous), les navigateurs Firefox et WebKit, un vrai Safari pour l'encodage JPEG du recadrage (le repli est codé et testé sur des octets, pas sur l'appareil), le panneau d'administration en clic (seulement ses captures).
+- **Pas vérifié** : les navigateurs Firefox et WebKit, un vrai Safari pour l'encodage JPEG du recadrage (le repli est codé et testé sur des octets, pas sur l'appareil), le panneau d'administration en clic (seulement ses captures).
+
+## CI
+- Run de la PR (commit `25cede2`) : [41563220818](https://github.com/Nathan-Te/DailyTrack/actions/runs/41563220818) — **verte** : `zones`, `scope`, `api-image`, `unit` (4 parts), `Budgets`, `e2e-pr` (4 parts), `test`, `e2e`. Un premier run était rouge sur trois specs existants (l'image donnée à « Démo » par le seed, et le texte des initiales dans la ligne de classement) : corrigé dans la PR (le seed ne touche plus « Démo », le pseudo reste le premier enfant de la ligne).
+- Captures (français, portrait 390 × 844 et paysage 844 × 390) : `docs/plateforme/lots/img/lot-C1-*.png` (outil : `CAPTURES=1 npx playwright test captures-lot-c1 --project=chromium`).
 
