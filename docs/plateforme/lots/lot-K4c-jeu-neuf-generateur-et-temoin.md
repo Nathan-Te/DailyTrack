@@ -38,4 +38,5 @@
 
 ## Vérifié / non vérifié
 - **Vérifié en local** : `tsc -b`, tests de `core`, `kit`, `apps/api` (sqlite + libsql), mentions, remise à zéro.
-- **Non vérifié** : la CI de PR (voir le résumé de la PR), le job « Budgets », aucun run en mode `main` forcé (la partie B n'existe pas, et ce lot ne touche ni workflow ni budget).
+- **CI de PR, 1er run** (https://github.com/Nathan-Te/DailyTrack/actions/runs/41653872380) : tout vert (scope, zones, Budgets, unit 4/4, api-image, e2e-pr 2/4, 3/4, 4/4) **sauf `e2e-pr (1/4)`** : `apps/web/e2e/profil.spec.ts:144` (« un record fait sur un appareil apparaît sur l'autre », Track, `#finish .online .rank` introuvable après 30 s). Zone que le lot ne touche pas (serveur de Track inchangé, bancs identiques) ; **le fichier entier passe en local, 7 tests sur 7, sans relance** (`npx playwright test e2e/profil.spec.ts --project=chromium --retries=0`, 2,3 min). Règle d'arrêt (1) : une seule relance (ce commit de rapport) ; si le test échoue encore, Nathan tranche.
+- **Non vérifié** : aucun run en mode `main` forcé (la partie B n'existe pas, et ce lot ne touche ni workflow ni budget) ; `stabilite.yml`, `recette.yml` non lancés.
