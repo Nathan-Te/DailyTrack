@@ -1,3 +1,4 @@
+import { adresseDePartage, assemblerLigne, textePartage } from "@cdj/kit/partage";
 import type { JumpMedal } from "@cdj/jump-sim";
 import { MEDAL_ICON } from "./dailyInfo";
 import { fNombre, fRang, fTicks, t } from "./i18n";
@@ -34,20 +35,11 @@ export interface ShareResult {
 export function shareLine(r: ShareResult): string {
   const titre = r.number >= 1 ? t("lignePartage.titre", { numero: r.number }) : t("lignePartage.titreSansNumero", { date: r.date });
   const title = r.kind === "jour" ? titre : `${titre} ${t(r.kind === "archive" ? "lignePartage.archive" : "lignePartage.futur")}`;
-  const parts = [title, fTicks(r.ticks)];
-  if (r.medal) parts.push(MEDAL_ICON[r.medal]);
-  parts.push(`${fNombre(r.deaths)} 💀`);
-  if (r.rank && r.kind === "jour") parts.push(`${fRang(r.rank.rank)}/${fNombre(r.rank.participants)}`);
-  return parts.join(" — ");
+  return assemblerLigne([title, fTicks(r.ticks), r.medal && MEDAL_ICON[r.medal], `${fNombre(r.deaths)} 💀`, r.rank && r.kind === "jour" && `${fRang(r.rank.rank)}/${fNombre(r.rank.participants)}`]);
 }
 
 /** Adresse à partager : la page courante sans aucun paramètre ; `?seed=` pour un niveau qui n'est pas celui du jour. */
-export function shareUrl(loc: { origin: string; pathname: string }, date: string, kind: ShareKind): string {
-  const base = loc.origin + loc.pathname;
-  return kind === "jour" ? base : `${base}?seed=${date}`;
-}
+export const shareUrl = (loc: { origin: string; pathname: string }, date: string, kind: ShareKind): string => adresseDePartage(loc, date, kind === "jour");
 
 /** Texte complet : la ligne, puis le lien. */
-export function shareText(r: ShareResult, loc: { origin: string; pathname: string }): string {
-  return `${shareLine(r)}\n${shareUrl(loc, r.date, r.kind)}`;
-}
+export const shareText = (r: ShareResult, loc: { origin: string; pathname: string }): string => textePartage(shareLine(r), shareUrl(loc, r.date, r.kind));

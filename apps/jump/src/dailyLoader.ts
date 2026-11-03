@@ -1,3 +1,4 @@
+import { lireFichierDeJour } from "@cdj/kit/jour";
 import type { JumpThemeName, PublicDailyLevel } from "@cdj/jump-sim";
 import { dailyLevelId, jumpThemeForDay } from "@cdj/jump-sim";
 import { formatDay } from "@cdj/core";
@@ -185,19 +186,7 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
 // (Le worker lui-même est créé par `workerNavigateur.ts`, seul fichier à connaître le chemin du fil de travail construit.)
 
 /** Lot 10 : lit le fichier figé d'une date (`levels/AAAA-MM-JJ.json`, à côté de la page) ; null s'il manque, n'est pas du JSON ou tarde. */
-export async function browserFrozen(date: string): Promise<unknown> {
-  const ctrl = typeof AbortController === "function" ? new AbortController() : null;
-  const timer = setTimeout(() => ctrl?.abort(), 8000);
-  try {
-    const r = await fetch(new URL(`levels/${date}.json`, document.baseURI), { signal: ctrl?.signal, cache: "no-cache" });
-    if (!r.ok) return null;
-    return (await r.json()) as unknown;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
+export const browserFrozen = (date: string): Promise<unknown> => lireFichierDeJour("levels", date, document.baseURI, 8000);
 
 /** « Préparation du niveau… » : un message centré, créé à la demande, retiré dès que le niveau est prêt (lot I5 : le texte vient du catalogue, l'habillage de hud.css). */
 export function progressMessage(doc: Document, texte: string): (on: boolean) => void {
