@@ -167,7 +167,7 @@ export function formatCompte(ms: number): string {
 }
 
 /** Lot TP : le jeu est-il classé à la hauteur (et non au chrono) ? Il n'entre jamais dans le cumul au temps. */
-export const estHauteur = (j: { unite?: string }): boolean => j.unite === "mm" || j.unite === "points";
+export const estHauteur = (j: { unite?: string }): boolean => !!j.unite;
 
 /** Lot P : le jeu compte-t-il aujourd'hui dans la journée ? (Absent : oui.) */
 export const compteAujourdhui = (j: { compte?: boolean }): boolean => j.compte !== false;

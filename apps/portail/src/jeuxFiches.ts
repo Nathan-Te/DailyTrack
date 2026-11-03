@@ -12,13 +12,6 @@ export const FICHES: readonly FichePortail[] = (projection as ProjectionPortail)
 export const ficheDuJeu = (id: string): FichePortail | undefined => FICHES.find((f) => f.id === id);
 /** La fiche d'un jeu d'après son code au registre du serveur (`cdj`, `jump`, `tower`), ou `undefined` (un jeu que le portail ne connaît pas). */
 export const ficheDuRegistre = (code: string): FichePortail | undefined => FICHES.find((f) => f.code === code);
-/**
- * Lot K4d : le format d'un score dans la vue d'un jeu (`vue` = son dossier sur le site) : au temps, le temps ; sinon celui que dit **la fiche** du jeu (`hauteur` en mètres, `entier` pour des points) —
- * jamais des mètres pour un jeu qui ne mesure pas une hauteur.
- */
-export function formatDeVue(vue: string, sens: "temps" | "hauteur"): "temps" | "hauteur" | "entier" {
-  return sens === "temps" ? "temps" : ficheDuJeu(vue)?.format === "entier" ? "entier" : "hauteur";
-}
 /** Le titre d'une cartouche d'un jeu à fiche : sa clé `titre` du catalogue si elle en a une, sinon son nom en capitales (la forme que Tower a toujours eue). */
 export function titreDeCarte(fiche: FichePortail, t: { t: (cle: never) => string }, nom: string): string {
   return fiche.titre ? t.t(fiche.titre as never) : nom.toUpperCase();

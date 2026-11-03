@@ -3,7 +3,7 @@ import { baseApi } from "./jour"; // la feuille est importée par les modules à
 import { adresseAvatar, type Langue } from "@cdj/profile";
 import { adresseGroupe, clientGroupes, type ClassementGroupes } from "@cdj/profile/src/groupes";
 import { avatar, el, formatNombre, formatScore } from "@cdj/ui";
-import { formatDeVue } from "./jeuxFiches";
+import { formatDeVue } from "./formatDeVue";
 import { CATALOGUE_COMMUN } from "@cdj/ui";
 import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
 

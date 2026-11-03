@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { estHauteur } from "../src/jour";
-import { formatDeVue } from "../src/jeuxFiches";
+import { formatDeVue } from "../src/formatDeVue";
 
 // Lot K4d — le portail sait afficher un score en `points` (en plus du temps et de la hauteur en mm) : l'unité vient du serveur, le format de la fiche du jeu. Un jeu qui n'est pas dans les fiches publiées
 // (un jeu neuf avant sa fiche) retombe sur la hauteur, comme avant ; Track, Jump et Tower ne changent pas d'un caractère.

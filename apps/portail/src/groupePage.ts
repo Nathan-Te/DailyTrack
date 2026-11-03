@@ -16,7 +16,7 @@ import { parseDay } from "@cdj/core";
 import { adresseAvatar, clientAvatar, ecrireLangue, lireLangue, readPlayerId, type Langue } from "@cdj/profile";
 import { adresseInvitationGroupe, clientGroupes, nomDansLeChemin, retirerInvitationDeLAdresse, type Invitation, type MonGroupe, type PageGroupe } from "@cdj/profile/src/groupes";
 import { CATALOGUE_COMMUN, avatar, barreJeu, bouton, cheminMentions, choixLangue, el, formatDate, formatNombre, formatRang, formatScore, traducteur } from "@cdj/ui";
-import { formatDeVue } from "./jeuxFiches";
+import { formatDeVue } from "./formatDeVue";
 import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
