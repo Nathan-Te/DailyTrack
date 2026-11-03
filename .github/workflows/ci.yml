@@ -185,14 +185,13 @@ jobs:
           full=""
           if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ]; then full="--full"; fi
           if [ "$EVENT" = workflow_dispatch ] && [ "$MODE_DEMANDE" = pr ]; then full=""; fi
-          if [ "$EVENT" = pull_request ]; then full="--full"; fi # FORÇAGE TEMPORAIRE lot K4
           : > "$RUNNER_TEMP/files.txt"
           # Une base introuvable ou une différence illisible = le doute : la CI complète, jamais une CI vide.
           if [ -z "$full" ]; then
             { git fetch --no-tags origin "$BASE" && git diff --name-only "origin/$BASE...HEAD" > "$RUNNER_TEMP/files.txt"; } || full="--full"
           fi
           # pr (filtré, Chromium, quarantaine non bloquante) | main (chaque fusion : l'Essentiel de tout, lot R13) | complet (« Run workflow ») | nuit.
-          mode=pr; [ -n "$full" ] && mode=complet; [ "$EVENT" = push ] && [ "$REF" = refs/heads/main ] && mode=main; [ "$EVENT" = pull_request ] && mode=main; [ "$EVENT" = schedule ] && mode=nuit
+          mode=pr; [ -n "$full" ] && mode=complet; [ "$EVENT" = push ] && [ "$REF" = refs/heads/main ] && mode=main; [ "$EVENT" = schedule ] && mode=nuit
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           node scripts/ci-scope.mjs $full < "$RUNNER_TEMP/files.txt" | tee -a "$GITHUB_OUTPUT" > "$RUNNER_TEMP/scope.txt"
           node scripts/ci-zones.mjs --mode "$mode" < "$RUNNER_TEMP/files.txt" >> "$GITHUB_OUTPUT" 2> "$RUNNER_TEMP/zones.txt"
