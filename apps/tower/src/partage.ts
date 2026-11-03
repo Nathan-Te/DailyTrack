@@ -1,3 +1,4 @@
+import { adresseDePartage, assemblerLigne, textePartage as textePartageKit } from "@cdj/kit/partage";
 import type { NomMedaille } from "@cdj/tower-sim";
 import { formatNombre, type Langue } from "@cdj/ui";
 
@@ -42,14 +43,7 @@ export function coeursPartages(vies: number, total: number): string {
 }
 
 /** `Du Jour · Tower #12 — 42,7 m — 🥇 — ❤️❤️🖤` (sans médaille : ce morceau est omis). */
-export function ligneDePartage(d: DonneesPartage): string {
-  const morceaux = [d.titre, hauteurPartagee(d.hauteurMm, d.langue)];
-  if (d.medaille) morceaux.push(EMOJI_MEDAILLE[d.medaille]);
-  morceaux.push(coeursPartages(d.vies, d.total));
-  return morceaux.join(" — ");
-}
+export const ligneDePartage = (d: DonneesPartage): string => assemblerLigne([d.titre, hauteurPartagee(d.hauteurMm, d.langue), d.medaille && EMOJI_MEDAILLE[d.medaille], coeursPartages(d.vies, d.total)]);
 
 /** Texte complet : la ligne, puis le lien du jeu (l'adresse courante sans paramètre : un aperçu de branche partage un lien d'aperçu). */
-export function textePartage(d: DonneesPartage, lieu: { origin: string; pathname: string }): string {
-  return `${ligneDePartage(d)}\n${lieu.origin}${lieu.pathname}`;
-}
+export const textePartage = (d: DonneesPartage, lieu: { origin: string; pathname: string }): string => textePartageKit(ligneDePartage(d), adresseDePartage(lieu));

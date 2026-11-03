@@ -1,4 +1,5 @@
 import { formatDay } from "@cdj/core";
+import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { type Contenu, dailyTower, lireJour, type Medailles, TOWER_GENERATOR_VERSION } from "@cdj/tower-sim";
 
 // Le contenu d'un jour pour le jeu (lot T2) : le jour FIGÉ s'il existe (`jours/AAAA-MM-JJ.json`, écrit par `npm run figer:tower -w @cdj/tower-sim`, jamais à la main), sinon le
@@ -20,22 +21,16 @@ export interface JourDuJeu {
   sim?: number;
 }
 
-/** Lit le fichier d'un jour figé (`jours/AAAA-MM-JJ.json`, à côté de la page) ; null s'il manque, n'est pas du JSON, ne se relit pas ou tarde. */
+/** Lit le fichier d'un jour figé (`jours/AAAA-MM-JJ.json`, à côté de la page) ; null s'il manque, n'est pas du JSON, ne se relit pas ou tarde (lot K3 : la requête est `lireFichierDeJour` du kit). */
 async function lireFichier(jour: number, base: string, delai = 4000): Promise<JourDuJeu | null> {
   const date = formatDay(jour);
   // En production la liste écrite à la construction décide (aucune requête pour un jour qui n'est pas figé) ; ailleurs (aperçu, local, tests) on essaie toujours : un fichier absent est ignoré.
-  if (import.meta.env.VITE_PRODUCTION === "1" && !JOURS_FIGES.includes(date)) return null;
-  const ctrl = typeof AbortController === "undefined" ? null : new AbortController();
-  const minuteur = ctrl ? setTimeout(() => ctrl.abort(), delai) : null;
+  if (!dateDemandable(date, import.meta.env.VITE_PRODUCTION === "1", JOURS_FIGES)) return null;
   try {
-    const r = await fetch(new URL(`jours/${date}.json`, base), { signal: ctrl?.signal, cache: "no-cache" });
-    if (!r.ok) return null;
-    const lu = lireJour((await r.json()) as unknown, jour);
+    const lu = lireJour(await lireFichierDeJour("jours", date, base, delai), jour);
     return typeof lu === "string" ? null : lu;
   } catch {
     return null;
-  } finally {
-    if (minuteur) clearTimeout(minuteur);
   }
 }
 
