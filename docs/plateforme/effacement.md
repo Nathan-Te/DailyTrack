@@ -54,3 +54,6 @@ unset ADMIN_TOKEN CODE
 - Pour voir le résultat sans risque : joue un temps sur `https://recette.playdujour.com/track/`, copie le code de ce profil de test, puis la même commande avec `https://recette.playdujour.com/api/admin/effacer` et le jeton d'admin **de la recette**.
 - Code : `apps/api/src/identity.ts` (`erasePlayer`), crochets `erase` des jeux (`cdj.ts`, `jump.ts`, `jumpLives.ts`), `players.eraseStatements` ; tests `apps/api/test/effacement.test.ts` (SQLite et libSQL).
 - **Règle** : toute nouvelle donnée gardée sur un joueur est effacée par le crochet `erase` de son jeu **et** décrite sur la page de confidentialité (`apps/api/CLAUDE.md`).
+
+## Retours, photo de profil et groupes (lot C1)
+L'effacement d'un profil supprime aussi : ses **retours** (fils et messages), sa **photo de profil** et les signalements d'image qu'il a faits ou reçus, son interdiction d'envoi d'images, et sa **ligne de membre de groupe**. S'il était chef, le membre le plus ancien devient chef ; s'il était seul, le groupe est dissous avec son emblème (`departDuJoueur`, `apps/api/src/groupesDepart.ts`). Tests : `apps/api/test/groupes.test.ts`, `avatars.test.ts`, `retours.test.ts`.

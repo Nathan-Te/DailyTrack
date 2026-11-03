@@ -387,6 +387,3 @@
 .dj-feuille__entete .dj-feuille__nom {
   flex: 1;
 }
-.dj-amis-selecteur__option[hidden] {
-  display: none;
-}

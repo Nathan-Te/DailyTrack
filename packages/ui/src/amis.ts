@@ -159,11 +159,9 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
   let total = o.total ?? null;
   let amis = o.amis ?? null;
   let groupe: number | null | undefined = o.groupe;
-  const FILTRES: FiltreClassement[] = ["tous", "amis", "groupe"]; // « Mon groupe » n'est montré qu'à un joueur qui a un groupe (le nombre arrive avec `maj`)
-  const visibles = (): FiltreClassement[] => FILTRES.filter((f) => f !== "groupe" || groupe !== undefined);
+  const FILTRES: FiltreClassement[] = ["tous", "amis"]; // « Mon groupe » (lot C1, partie C) s'y ajoute dès qu'on sait que le joueur a un groupe (`groupe` ou `maj({ groupe })`)
   const racine = el("div", { classe: ["dj-amis-selecteur", o.jeu && `dj-amis-selecteur--${o.jeu}`, o.jeu === "track" && "dj-sombre"], attrs: { id: o.id, role: "radiogroup", "aria-label": t.t("amis.selecteur.groupe") } });
-  const boutons = FILTRES.map((f) => el("button", { classe: "dj-amis-selecteur__option", attrs: { type: "button", role: "radio", "data-filtre": f } }));
-  racine.append(...boutons);
+  const boutons: HTMLElement[] = [];
   const nom = (f: FiltreClassement): string => {
     if (f === "groupe") return groupe === null || groupe === undefined ? t.t("amis.selecteur.monGroupe") : t.t("amis.selecteur.monGroupeN", { n: groupe });
     const n = f === "tous" ? total : amis;
@@ -173,7 +171,6 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
     boutons.forEach((b, i) => {
       const f = FILTRES[i]!;
       b.textContent = nom(f);
-      b.hidden = f === "groupe" && groupe === undefined;
       b.setAttribute("aria-checked", String(f === filtre));
       b.tabIndex = f === filtre ? 0 : -1;
     });
@@ -185,19 +182,26 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
     if (focus) boutons[FILTRES.indexOf(f)]!.focus();
     o.onChange(f);
   };
-  boutons.forEach((b, i) => {
-    b.addEventListener("click", () => choisir(FILTRES[i]!, false));
+  const ajouter = (f: FiltreClassement) => {
+    const b = el("button", { classe: "dj-amis-selecteur__option", attrs: { type: "button", role: "radio", "data-filtre": f } });
+    boutons.push(b);
+    racine.append(b);
+    b.addEventListener("click", () => choisir(f, false));
     b.addEventListener("keydown", (e) => {
-            const liste = visibles();
-      const place = liste.indexOf(FILTRES[i]!);
-      const suivant = e.key === "ArrowRight" || e.key === "ArrowDown" ? place + 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? place - 1 : e.key === "Home" ? 0 : e.key === "End" ? liste.length - 1 : null;
+      const place = FILTRES.indexOf(f);
+      const suivant = e.key === "ArrowRight" || e.key === "ArrowDown" ? place + 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? place - 1 : e.key === "Home" ? 0 : e.key === "End" ? FILTRES.length - 1 : null;
       if (suivant === null) return;
       e.preventDefault();
-      const f = liste[(suivant + liste.length) % liste.length]!;
-      if (f === filtre) boutons[FILTRES.indexOf(f)]!.focus();
-      else choisir(f, true);
+      const cible = FILTRES[(suivant + FILTRES.length) % FILTRES.length]!;
+      if (cible === filtre) boutons[FILTRES.indexOf(cible)]!.focus();
+      else choisir(cible, true);
     });
-  });
+  };
+  FILTRES.forEach(ajouter);
+  if (groupe !== undefined) {
+    FILTRES.push("groupe");
+    ajouter("groupe");
+  }
   rendre();
   return {
     racine,
@@ -205,7 +209,13 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
       if (n.filtre !== undefined) filtre = n.filtre;
       if (n.total !== undefined) total = n.total;
       if (n.amis !== undefined) amis = n.amis;
-      if (n.groupe !== undefined) groupe = n.groupe;
+      if (n.groupe !== undefined) {
+        groupe = n.groupe;
+        if (!FILTRES.includes("groupe")) {
+          FILTRES.push("groupe");
+          ajouter("groupe");
+        }
+      }
       rendre();
     },
   };

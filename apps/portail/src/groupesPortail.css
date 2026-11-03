@@ -34,7 +34,13 @@
 .groupes-ligne__nom {
   flex: 1;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+.groupes-ligne {
+  flex-wrap: wrap;
+}
+.groupes-ligne__nom {
+  min-width: 8em;
 }
 .groupe-membre__chef {
   padding: 0 var(--dj-espace-3);
