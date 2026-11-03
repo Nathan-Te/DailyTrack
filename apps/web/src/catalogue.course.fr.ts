@@ -89,6 +89,7 @@ export const fr = {
   "pause.aide": "Comment jouer",
   "pause.accueil": "Accueil de Track",
   "pause.mentions": "Mentions légales et confidentialité",
+  "pause.retours": "Un bug ? Une idée ?",
   "pause.quitter": "Quitter cette course ? Le tour en cours ne sera pas enregistré.",
   "pause.rester": "Rester",
   "pause.retourAccueil": "Retour à l'accueil",

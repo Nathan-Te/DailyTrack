@@ -82,6 +82,23 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `their_friends_full` | 409 | Amis (lot F2) : la liste de l'autre personne est pleine ; une invitation n'est acceptée que si les deux listes ont de la place, rien n'est créé sinon (pas même le profil). | `POST /api/amis/invitation/accepter` |
 | `invalid_invitation` | 404 | Amis (lot F2) : lien d'invitation inconnu, renouvelé (« Nouveau lien »), mal formé ou d'un joueur masqué — un seul visage pour ces cas. | `POST /api/amis/invitation/voir`, `POST /api/amis/invitation/accepter` |
 | `invalid_filter` | 400 | Amis (lot F2) : `filtre` d'un classement autre que `amis`. | `GET /api/portail/classement?filtre=`, `GET /api/day/<j>/leaderboard?filtre=`, `GET /api/jump/day/<j>/board?filtre=`, `GET /api/tower/day/<j>/board?filtre=` |
+| `invalid_feedback` | 400 | Retours (lot C1) : type inconnu, ou message vide, trop long (1 000 caractères au plus) ou qui n'est pas du texte. | `POST /api/retours`, `POST /api/retours/<id>/messages` |
+| `unknown_feedback` | 404 | Retours (lot C1) : ce fil n'existe pas, ou n'est pas à ce joueur (un seul visage). | `GET /api/retours/<id>`, `POST /api/retours/<id>/messages`, `POST /api/retours/<id>/lu`, `GET /api/admin/retours/<id>` |
+| `feedback_limit` | 429 | Retours (lot C1) : 5 nouveaux fils par joueur et par jour de Paris atteints (`Retry-After` jusqu'à minuit). | `POST /api/retours` |
+| `feedback_full` | 409 | Retours (lot C1) : ce fil a atteint ses 100 messages. | `POST /api/retours/<id>/messages`, `POST /api/admin/retours/<id>/repondre` |
+| `invalid_image` | 400 | Avatars (lot C1) : image refusée par le serveur (`raison` : `taille` — 20 Ko au plus —, `format` — WebP ou JPEG seulement —, `metadonnees` — EXIF, XMP, ICC ou tout autre segment —, `dimensions` — carrée, 128 pixels au plus). | `POST /api/avatar` |
+| `avatar_limit` | 429 | Avatars (lot C1) : un seul changement d'image par jour et par joueur ou groupe (`Retry-After` jusqu'à minuit). | `POST /api/avatar` |
+| `avatar_banned` | 403 | Avatars (lot C1) : l'envoi d'images est interdit à ce joueur ou à ce groupe par l'administration. | `POST /api/avatar` |
+| `unknown_avatar` | 404 | Avatars (lot C1) : pas d'image à ce nom (jamais envoyée, retirée, ou masquée par signalements), ou aucun joueur de cette référence. | `GET /api/avatars/<empreinte>`, `POST /api/avatar/signaler`, `GET /api/admin/images/…` |
+| `invalid_report` | 400 | Avatars (lot C1) : signalement refusé (référence mal formée, ou on ne se signale pas soi-même). | `POST /api/avatar/signaler` |
+| `invalid_group` | 400 | Groupes (lot C1) : nom (3 à 24 caractères) ou description (140 au plus) refusés, ou action impossible (se retirer soi-même, déjà chef). | `POST /api/groupes`, `/api/groupes/renommer`, `/decrire`, `/retirer`, `/chef` |
+| `group_name_taken` | 409 | Groupes (lot C1) : ce nom de groupe est déjà pris (unicité sur la forme normalisée, comme les pseudos). | `POST /api/groupes`, `/api/groupes/renommer` |
+| `already_in_group` | 409 | Groupes (lot C1) : un joueur n'est que dans un seul groupe. | `POST /api/groupes`, `/api/groupes/rejoindre` |
+| `unknown_group` | 404 | Groupes (lot C1) : le groupe n'existe pas, le lien d'invitation ne mène plus nulle part (renouvelé ou dissous), ou le joueur n'est dans aucun groupe. | `GET /api/groupes/nom/<nom>`, `/invitation/<jeton>`, les actions |
+| `group_full` | 409 | Groupes (lot C1) : le groupe a déjà 30 membres (vérifié à l'écriture). | `POST /api/groupes/rejoindre` |
+| `not_group_chief` | 403 | Groupes (lot C1) : seule le chef du groupe peut renouveler le lien, retirer un membre, passer le chef, renommer, décrire, changer l'emblème ou dissoudre. | `POST /api/groupes/renouveler`, `/retirer`, `/chef`, `/renommer`, `/decrire`, `/dissoudre`, `/emblem` |
+| `group_rename_limit` | 429 | Groupes (lot C1) : un groupe se renomme une fois par semaine (`Retry-After`). | `POST /api/groupes/renommer` |
+| `unknown_member` | 404 | Groupes (lot C1) : ce joueur n'est pas dans le groupe. | `POST /api/groupes/retirer`, `/chef` |
 | `invalid_session` | 400 | Salon : numéro de session (ou adresse) illisible. | `/api/salon/<n>/board`, `/ghosts`, `/submit` |
 | `unknown_session` | 404 | Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée). | `GET /api/salon/<n>/board`, `/ghosts` |
 | `session_future` | 409 | Salon : envoi pour une session qui n'a pas commencé. | `POST /api/salon/<n>/submit` |

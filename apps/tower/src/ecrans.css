@@ -131,6 +131,14 @@ body:has(.voile--ecran:not([hidden])) .voile:not(.voile--ecran) {
   padding-top: 6px;
   border-top: var(--dj-trait-fort) solid var(--dj-encre);
 }
+.reglages__lien--bouton {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
 .reglages__lien {
   display: flex;
   align-items: center;

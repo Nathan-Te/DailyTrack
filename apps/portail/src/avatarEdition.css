@@ -1,0 +1,19 @@
+/* Lot C1, partie B : l'aperçu du recadrage. `touch-action: none` : sur un téléphone, glisser le doigt sur l'image déplace la zone prise (sinon le navigateur fait défiler la page) ; la sélection du texte et la loupe d'image sont coupées pour la même raison. */
+.avatar-edition__apercu {
+  display: block;
+  width: 100%;
+  max-width: 256px;
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  background: var(--dj-creme-2);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.avatar-edition__apercu:active {
+  cursor: grabbing;
+}

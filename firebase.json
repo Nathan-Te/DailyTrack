@@ -11,6 +11,10 @@
           "serviceId": "cdj-api",
           "region": "europe-west1"
         }
+      },
+      {
+        "source": "/groupe/**",
+        "destination": "/groupe/index.html"
       }
     ],
     "headers": [

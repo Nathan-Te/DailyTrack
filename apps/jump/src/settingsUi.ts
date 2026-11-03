@@ -24,6 +24,8 @@ export interface SettingsUiOptions {
   canVibrate: boolean;
   /** `../profil/?retour=/jump/` : le profil commun du portail, avec le retour au jeu. */
   profilHref: string;
+  /** Lot C1 : « Un bug ? Une idée ? » (le dialogue de la plateforme, à la demande). */
+  onRetours(): void;
   /** L'écran est ouvert ou fermé (la pause du jeu suit). */
   onToggle?(open: boolean): void;
 }
@@ -86,6 +88,9 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
   const ouiNon = (key: "vibration" | "reducedMotion", cle: string) =>
     el("div", { classe: "reglages__ligne" }, lier(el("span", { classe: "reglages__nom" }), cle), segment(key, cle, [{ valeur: true, cle: "commun.oui" }, { valeur: false, cle: "commun.non" }]));
 
+  // Lot C1 : « Un bug ? Une idée ? » — un bouton qui a l'allure des autres liens du bas.
+  const retours = el("button", { classe: "reglages__lien reglages__lien--bouton", attrs: { id: "settings-retours", type: "button" } }, lier(el("span"), "reglages.retours"), icone("chevron", { taille: 16 }));
+  retours.addEventListener("click", () => opts.onRetours());
   const lienFleche = (id: string, cle: string, href: string, classe: string) => el("a", { classe: ["reglages__lien", classe], attrs: { id, href } }, lier(el("span"), cle), icone("chevron", { taille: 16 }));
 
   // Lot « musique » : le bloc commun (volume, couper, morceau suivant, en écoute), chargé à la première ouverture des Réglages avec le lecteur.
@@ -148,7 +153,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
     ),
     el("section", { classe: "reglages__section reglages__section--ligne" }, lier(el("h2", { classe: "reglages__titre" }), "reglages.langue"), langue),
     // Lot I5 : plus de profil dans le jeu — le profil commun du portail ; lot R5 : les mentions légales du site.
-    el("div", { classe: "reglages__liens" }, lienFleche("settings-profil", "reglages.profil", opts.profilHref, "reglages__lien--profil"), lierMentions(lienFleche("settings-mentions", "reglages.mentions", "../mentions-legales/", "reglages__lien--mentions"))),
+    el("div", { classe: "reglages__liens" }, lienFleche("settings-profil", "reglages.profil", opts.profilHref, "reglages__lien--profil"), lierMentions(lienFleche("settings-mentions", "reglages.mentions", "../mentions-legales/", "reglages__lien--mentions")), retours),
   );
   shows.forEach((f) => f());
   onLangue(() => shows.forEach((f) => f()));

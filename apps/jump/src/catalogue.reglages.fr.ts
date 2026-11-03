@@ -36,6 +36,7 @@ export const fr = {
   "reglages.langue": "Langue",
   "reglages.profil": "Mon profil Du Jour",
   "reglages.mentions": "Mentions légales",
+  "reglages.retours": "Un bug ? Une idée ?",
   // Les commandes (aussi dans « Comment jouer » au clavier). Clavier : `KeyboardEvent.code` (la touche physique : Q D sur AZERTY, A D sur QWERTY).
   "commandes.clavier.courir": "{gauche} · {droite} : courir",
   "commandes.clavier.sauter": "{sauter} : sauter",

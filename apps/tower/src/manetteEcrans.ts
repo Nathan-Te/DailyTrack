@@ -13,6 +13,9 @@ export const ECRANS_MANETTE: readonly EcranManette[] = [
   // Lot F2 : la feuille d'un joueur (au toucher d'une ligne du classement) : A valide, B ferme. C'est `ECRAN_MANETTE_FEUILLE` de `@cdj/ui/src/amis`, recopié ici pour ne pas charger le morceau des amis
   // à la première manette (`test/manette.test.ts` vérifie l'égalité).
   { ecran: ".dj-feuille", principal: ".dj-feuille__principal, .dj-feuille__fermer", retour: ".dj-feuille__fermer" },
+  // Lot C1 : le dialogue « Un bug ? Une idée ? » (pause, Réglages) : A valide, B ferme. C'est `ECRAN_MANETTE_RETOUR` de `@cdj/ui/src/retours`, recopié ici (l'importer ferait entrer le dialogue dans le morceau de la
+  // manette) ; `packages/ui/test/retours.test.ts` vérifie l'égalité.
+  { ecran: ".dj-retour", principal: ".dj-retour__texte", retour: ".dj-retour__fermer" },
 ];
 
 /** Ce que le menu à la manette lit (chargé avec lui, à la première manette). */

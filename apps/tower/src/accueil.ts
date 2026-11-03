@@ -255,6 +255,7 @@ export async function demarrerAccueil(options: OptionsUrl, musique: Musique): Pr
       reglages: { lire: () => joueurM.lireReglagesJoueur(stockage), ecrire: (r) => joueurM.ecrireReglagesJoueur(stockage, r) },
       tactile: session.tactile,
       profilHref: "../profil/?retour=/tower/",
+      base: session.base, // lot C1 : « Un bug ? Une idée ? » (Réglages l'ouvre à la demande)
     });
     reglagesMontes.ouvrir();
   });

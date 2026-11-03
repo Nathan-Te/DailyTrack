@@ -135,6 +135,18 @@ describe("selecteurAmis", () => {
     expect(onChange).toHaveBeenCalledTimes(n + 1);
   });
 
+  it("lot C1 : « Mon groupe » n'existe que pour un joueur qui a un groupe (donné au départ ou appris par maj), et se choisit comme les autres", () => {
+    const onChange = vi.fn();
+    const s = selecteurAmis({ t, filtre: "tous", onChange });
+    expect(s.racine.children.map(texte)).toEqual(["Tous", "Amis"]);
+    s.maj({ groupe: 4 });
+    expect(s.racine.children.map(texte)).toEqual(["Tous", "Amis", "Mon groupe · 4"]);
+    s.maj({ groupe: 5 }); // pas de troisième bouton de plus
+    expect(s.racine.children.map(texte)).toEqual(["Tous", "Amis", "Mon groupe · 5"]);
+    s.racine.children[2]!.click();
+    expect(onChange).toHaveBeenCalledWith("groupe");
+    expect(selecteurAmis({ t, filtre: "groupe", groupe: null, onChange }).racine.children.map(texte)).toEqual(["Tous", "Amis", "Mon groupe"]);
+  });
   it("maj : les nombres se mettent à jour (sans nombre connu, le mot seul) et n'appellent pas onChange", () => {
     const onChange = vi.fn();
     const s = selecteurAmis({ t, filtre: "tous", onChange });

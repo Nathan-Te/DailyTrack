@@ -1,0 +1,85 @@
+/* Lot C1, partie C : la page d'un groupe, le classement des groupes et la section « Mon groupe » du profil. Jetons seulement. */
+.groupe-entete {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-5);
+}
+.groupe-entete__texte {
+  min-width: 0;
+}
+.groupe-description {
+  margin: 0 0 var(--dj-espace-2);
+  overflow-wrap: anywhere;
+}
+.groupe-rangs,
+.groupe-membres,
+.groupes-liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.groupe-rang,
+.groupe-membre,
+.groupes-ligne {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  border-bottom: var(--dj-trait) solid var(--dj-creme-2);
+}
+.groupe-rang {
+  justify-content: space-between;
+}
+.groupe-membre__pseudo,
+.groupes-ligne__nom {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.groupes-ligne {
+  flex-wrap: wrap;
+}
+.groupes-ligne__nom {
+  min-width: 8em;
+}
+.groupe-membre__chef {
+  padding: 0 var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  font-size: var(--dj-taille-12);
+}
+.groupe-invitation {
+  padding: var(--dj-espace-5);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  box-shadow: 0 var(--dj-espace-1) 0 var(--dj-encre);
+}
+.groupe-actions {
+  flex-wrap: wrap;
+}
+.groupes-ligne--moi {
+  background: var(--dj-moutarde);
+}
+.groupes-ligne__rang {
+  min-width: 2.5em;
+  text-align: right;
+}
+.groupes-ligne__score {
+  font-family: var(--dj-police-chiffres);
+}
+.groupes-moins {
+  margin: var(--dj-espace-5) 0 var(--dj-espace-2);
+}
+.groupes-bascule {
+  display: flex;
+  gap: var(--dj-espace-3);
+  margin: var(--dj-espace-3) 0;
+}
+.groupes-bascule button[aria-checked="true"] {
+  background: var(--dj-moutarde);
+}
+.groupe-gestion {
+  display: grid;
+  gap: var(--dj-espace-3);
+}

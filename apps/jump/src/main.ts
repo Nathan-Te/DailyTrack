@@ -2710,12 +2710,15 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
 }
 // Lot I5 : les Réglages, un écran du cadre crème (ouvert depuis la pause ou l'accueil ; « ‹ JUMP » le ferme) : son, sensations, fantôme du premier, taches,
 // commandes, langue, « Mon profil Du Jour › » (le profil commun du portail : plus de profil dans le jeu) et les mentions légales.
+// Lot C1 : « Un bug ? Une idée ? » (pause et Réglages) : le dialogue de la plateforme, à la demande.
+const ouvrirRetours = (): void => void import("./retoursJeu").then((m) => m.ouvrir(apiBase, store));
 const settingsUi = mountSettings({
   settings,
   musique: () => musique.lecteur(),
   canVibrate: typeof navigator.vibrate === "function",
   onChange: applySettings,
   profilHref: profil,
+  onRetours: () => ouvrirRetours(),
   onToggle: (open) => {
     syncPause();
     if (!open) {
@@ -2748,6 +2751,7 @@ const menu = mountPauseMenu({
   onSettings: () => settingsUi.open(),
   onHelp: () => howto.open(),
   onHome: () => goHome(),
+  onRetours: () => ouvrirRetours(),
 });
 /** Lot I5 : ce que montre la pause : le niveau, les morts et le point de passage, la réplique du thème, fantôme et son, la version du jeu. */
 function pauseView(): PauseView {

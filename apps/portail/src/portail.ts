@@ -1,5 +1,6 @@
 import "./generationInit";
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/avatar.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -11,7 +12,7 @@ import "@cdj/ui/src/polices/rubik-mono-one-400.css";
 import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
-import { NAME_KEY, aReprendre, appliquerGeneration, basculer, ecrireFavorisLocaux, ecrireLangue, generationDeReponse, lireFavorisLocaux, lireLangue, lireNouveauDepart, listeAffichee, readIdentity, readPlayerId, surveillerAnnonce, texteDeAnnonce, type Langue } from "@cdj/profile";
+import { NAME_KEY, adresseAvatar, aReprendre, appliquerGeneration, basculer, ecrireFavorisLocaux, ecrireLangue, generationDeReponse, lireFavorisLocaux, lireLangue, lireNouveauDepart, listeAffichee, readIdentity, readPlayerId, surveillerAnnonce, texteDeAnnonce, type Langue } from "@cdj/profile";
 import {
   CATALOGUE_COMMUN,
   afficheur,
@@ -46,6 +47,7 @@ import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
 import { choixPourDemain, repartir } from "./mesJeux";
 import { dans, nonLue } from "./nouveautesDonnees";
+import { boutonRetours } from "./retoursLien";
 import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
 import { construireOptions, nomDuJeu } from "./partageDuJour";
@@ -226,7 +228,7 @@ function tuileClassement(t: T, neuf: boolean): HTMLElement | null {
   return el("a", { classe: "portail-tuile-lien", attrs: { id: "classement", href: "classement/", "data-cle": "classement" } }, contenu);
 }
 
-/** Lot I3 — « Partager ma journée » dès qu'au moins un jeu est fini aujourd'hui : le bouton, la ligne qu'il enverra (le joueur voit ce qu'il envoie), le message. */
+/** Lot I3 — « Partager ma journée » dès qu'au moins un jeu est fini aujourd'hui : un seul bouton qui partage ou copie la ligne (elle n'est plus montrée), puis le message. */
 function partage(t: T): HTMLElement | null {
   const jour = lecture?.jour;
   const options = jour ? construireOptions(t, jour, lienDuPortail(location)) : null;
@@ -239,7 +241,6 @@ function partage(t: T): HTMLElement | null {
     "section",
     { classe: "portail-partage", attrs: { "aria-label": t.t("portail.partager") } },
     bouton_,
-    el("p", { classe: "portail-partage__apercu", attrs: { id: "partage-apercu", "aria-label": t.t("portail.partage.apercu") }, texte }),
     messagePartage ? el("p", { classe: "portail-message", attrs: { id: "partage-message", role: "status" }, texte: messagePartage }) : null,
   );
 }
@@ -393,7 +394,15 @@ function rendre(): void {
   racine.replaceChildren(
     ...[bandeau(t)].filter((e): e is HTMLElement => e !== null),
     el("h1", { classe: "dj-cache", texte: t.t("portail.titre") }),
-    barrePortail(t, { langue, onLangue: changerLangue, pseudo: identite.exists ? identite.name : null, profil: "profil/" }),
+    barrePortail(t, {
+      langue,
+      onLangue: changerLangue,
+      pseudo: identite.exists ? identite.name : null,
+      profil: "profil/",
+      image: adresseAvatar(baseApi(), jour?.joueur?.avatar), // lot C1, partie B : son image (absente : ses initiales)
+      // Lot C1 : une réponse de l'éditeur attend dans « Mes messages » : la pastille de l'avatar, et son nom lu le dit.
+      ...((jour?.joueur?.messagesNonLus ?? 0) > 0 && identite.exists ? { pastille: true, nomAvatar: t.t("portail.messages.nonLu", { nom: identite.name ?? "" }) } : {}),
+    }),
     ...(nouveauDepart ? [avisNouveauDepart(t, { onFermer: () => (nouveauDepart = false) })] : []),
     // Lot 53 : sur iPhone, hors du mode application, la ligne « Partager › Sur l'écran d'accueil » (une seule fois : fermée, elle ne revient pas).
     ...[stockage ? astuceIphone({ textes: () => ({ astuce: t.t("pleinEcran.iphone"), fermer: t.t("pleinEcran.iphone.fermer") }), stockage }) : null].filter((e): e is HTMLElement => e !== null),
@@ -433,6 +442,8 @@ function rendre(): void {
     ...[el("div", { classe: "portail-tuiles" }, ...[neuf ? null : tuileSerie(t), tuileClassement(t, neuf)].filter((e): e is HTMLElement => e !== null))].filter((g) => g.childElementCount > 0),
     ...[ligneNouveautes(t)].filter((e): e is HTMLElement => e !== null),
     ...[partage(t)].filter((e): e is HTMLElement => e !== null),
+    // Lot C1 : « Un bug ? Une idée ? » en bouton visible (plus seulement un lien du pied).
+    boutonRetours(t.t("portail.retours.lien"), langue),
     ...(texteMessage ? [el("p", { classe: "portail-message", attrs: { id: "message", role: "status" }, texte: texteMessage })] : []),
     ...(messageFavoris ? [el("p", { classe: "portail-message", attrs: { id: "message-favoris", role: "status" }, texte: messageFavoris })] : []),
     el(

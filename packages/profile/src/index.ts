@@ -15,5 +15,9 @@ export * from "./jeux";
 // Lot F2 : les amis (client des routes `/api/amis/…`, lien d'invitation, filtre « Tous / Amis » de l'adresse).
 export * from "./amis";
 export * from "./favoris";
+// Lot C1, partie B : l'adresse d'une image d'avatar et le client des routes `/api/avatar…`.
+export * from "./avatar";
+// Lot C1, partie C : `./groupes` (les groupes : types, adresses, client des routes) n'est volontairement PAS ici : les pages qui l'utilisent l'importent par son chemin (`@cdj/profile/src/groupes`), sinon l'empaqueteur
+// le range dans le morceau du profil que le premier chargement de l'accueil télécharge (+300 o mesurés).
 // Lot 53 : `./retrouver` (« Retrouver mon profil ») n'est volontairement PAS ici : les applications l'importent par son chemin (`@cdj/profile/src/retrouver`) depuis un module chargé à la demande.
 // Dans ce fichier, l'empaqueteur le rangerait dans le morceau du profil que le premier chargement d'un jeu télécharge.

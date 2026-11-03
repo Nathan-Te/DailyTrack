@@ -1,7 +1,10 @@
+import "./avatar.css";
+import "./avatar-liste.css";
 import "./amis.css";
 import type { CleAmis } from "./catalogue.amis";
 import type { CleCommune } from "./catalogue";
 import { bouton, medaille, type Jeu, type TypeMedaille } from "./composants";
+import { avatar } from "./avatar";
 import { suivreDialogue } from "./dialogue";
 import { el, svg } from "./dom";
 import { formatHauteur, formatNombre, formatRang, formatTemps } from "./formats";
@@ -16,7 +19,7 @@ import type { Traducteur } from "./i18n";
 /** Le traducteur des composants : le catalogue commun (médailles, `erreur.<code>`) et `CATALOGUE_AMIS`. */
 export type TraducteurAmis = Traducteur<CleAmis | CleCommune>;
 /** Le filtre d'un classement. Le même type que `FiltreAmis` de `@cdj/profile` (ce paquet ne l'importe pas). */
-export type FiltreClassement = "tous" | "amis";
+export type FiltreClassement = "tous" | "amis" | "groupe";
 /**
  * Ce qu'un callback rend : `ok`, ou l'échec avec le `code` du serveur (`friends_full`, `network`…). Un `ApiResult` de `@cdj/profile` convient tel quel ;
  * `suggestions` : les pseudos libres que rend `name_taken`.
@@ -130,6 +133,8 @@ export interface OptionsSelecteurAmis {
   total?: number | null;
   /** Le nombre d'amis ; `null` / absent : pas encore connu. */
   amis?: number | null;
+  /** Lot C1, partie C : le nombre de membres de mon groupe ; absent (`undefined`) : pas de groupe, l'option « Mon groupe » n'existe pas ; `null` : un groupe dont le nombre n'est pas encore connu. */
+  groupe?: number | null;
   /** Appelé quand le joueur choisit l'autre filtre (jamais pour le filtre déjà choisi). */
   onChange: (filtre: FiltreClassement) => void;
   /** Le jeu dont le classement est montré : Track (asphalte), Jump (jaune) ou Tower (menthe) en reprennent les couleurs ; absent : le crème du portail. */
@@ -139,10 +144,9 @@ export interface OptionsSelecteurAmis {
 export interface SelecteurAmis {
   racine: HTMLElement;
   /** Met à jour le choix et les nombres (ce qui n'est pas donné ne change pas). N'appelle pas `onChange`. */
-  maj(o: { filtre?: FiltreClassement; total?: number | null; amis?: number | null }): void;
+  maj(o: { filtre?: FiltreClassement; total?: number | null; amis?: number | null; groupe?: number | null }): void;
 }
 
-const FILTRES: readonly FiltreClassement[] = ["tous", "amis"];
 
 /**
  * Le sélecteur segmenté « Tous · 412 » / « Amis · 6 » (planche B), sous les onglets de vue d'un classement. **Un groupe de boutons radio** (`role="radiogroup"` + `role="radio"`, un seul arrêt de tabulation,
@@ -154,10 +158,12 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
   let filtre = o.filtre;
   let total = o.total ?? null;
   let amis = o.amis ?? null;
+  let groupe: number | null | undefined = o.groupe;
+  const FILTRES: FiltreClassement[] = ["tous", "amis"]; // « Mon groupe » (lot C1, partie C) s'y ajoute dès qu'on sait que le joueur a un groupe (`groupe` ou `maj({ groupe })`)
   const racine = el("div", { classe: ["dj-amis-selecteur", o.jeu && `dj-amis-selecteur--${o.jeu}`, o.jeu === "track" && "dj-sombre"], attrs: { id: o.id, role: "radiogroup", "aria-label": t.t("amis.selecteur.groupe") } });
-  const boutons = FILTRES.map((f) => el("button", { classe: "dj-amis-selecteur__option", attrs: { type: "button", role: "radio", "data-filtre": f } }));
-  racine.append(...boutons);
+  const boutons: HTMLElement[] = [];
   const nom = (f: FiltreClassement): string => {
+    if (f === "groupe") return groupe === null || groupe === undefined ? t.t("amis.selecteur.monGroupe") : t.t("amis.selecteur.monGroupeN", { n: groupe });
     const n = f === "tous" ? total : amis;
     return n === null ? t.t(f === "tous" ? "amis.selecteur.tous" : "amis.selecteur.amis") : t.t(f === "tous" ? "amis.selecteur.tousN" : "amis.selecteur.amisN", { n });
   };
@@ -176,17 +182,26 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
     if (focus) boutons[FILTRES.indexOf(f)]!.focus();
     o.onChange(f);
   };
-  boutons.forEach((b, i) => {
-    b.addEventListener("click", () => choisir(FILTRES[i]!, false));
+  const ajouter = (f: FiltreClassement) => {
+    const b = el("button", { classe: "dj-amis-selecteur__option", attrs: { type: "button", role: "radio", "data-filtre": f } });
+    boutons.push(b);
+    racine.append(b);
+    b.addEventListener("click", () => choisir(f, false));
     b.addEventListener("keydown", (e) => {
-      const suivant = e.key === "ArrowRight" || e.key === "ArrowDown" ? i + 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? FILTRES.length - 1 : null;
+      const place = FILTRES.indexOf(f);
+      const suivant = e.key === "ArrowRight" || e.key === "ArrowDown" ? place + 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? place - 1 : e.key === "Home" ? 0 : e.key === "End" ? FILTRES.length - 1 : null;
       if (suivant === null) return;
       e.preventDefault();
-      const f = FILTRES[(suivant + FILTRES.length) % FILTRES.length]!;
-      if (f === filtre) boutons[FILTRES.indexOf(f)]!.focus();
-      else choisir(f, true);
+      const cible = FILTRES[(suivant + FILTRES.length) % FILTRES.length]!;
+      if (cible === filtre) boutons[FILTRES.indexOf(cible)]!.focus();
+      else choisir(cible, true);
     });
-  });
+  };
+  FILTRES.forEach(ajouter);
+  if (groupe !== undefined) {
+    FILTRES.push("groupe");
+    ajouter("groupe");
+  }
   rendre();
   return {
     racine,
@@ -194,6 +209,13 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
       if (n.filtre !== undefined) filtre = n.filtre;
       if (n.total !== undefined) total = n.total;
       if (n.amis !== undefined) amis = n.amis;
+      if (n.groupe !== undefined) {
+        groupe = n.groupe;
+        if (!FILTRES.includes("groupe")) {
+          FILTRES.push("groupe");
+          ajouter("groupe");
+        }
+      }
       rendre();
     },
   };
@@ -212,6 +234,9 @@ export interface JeuDeFiche {
 /** Ce que la feuille montre d'un joueur (la fiche de `clientAmis().ficheJoueur`) : **rien d'autre**. */
 export interface FicheAffichee {
   pseudo: string;
+  /** Lot C1 : l'adresse de son image (déjà contrôlée par le serveur) et sa référence publique (la couleur des initiales). */
+  image?: string;
+  ref?: string;
   ami: boolean;
   reciproque: boolean;
   rang: number | null;
@@ -229,6 +254,8 @@ export interface OptionsFeuilleJoueur {
   onAjouter: () => Promise<ResultatAction>;
   /** « Retirer ». */
   onRetirer: () => Promise<ResultatAction>;
+  /** Lot C1 : « Signaler l'image » (montré seulement quand la fiche a une image) ; absent : pas de bouton. */
+  onSignaler?: () => Promise<ResultatAction>;
   /** La feuille s'est fermée (Échap, bouton, voile ou `fermer()`). */
   onFermer?: () => void;
   /** Où la poser (par défaut `document.body`) ; elle couvre l'écran en bas (`position: fixed`). */
@@ -261,7 +288,8 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
   const fermerBouton = el("button", { classe: "dj-feuille__fermer", attrs: { type: "button", "aria-label": t.t("amis.fermer") } }, croix());
   const titre = el("h2", { classe: "dj-feuille__titre", attrs: { id: titreId }, texte: o.pseudo });
   const rang = el("p", { classe: "dj-feuille__rang dj-chiffres" });
-  const entete = el("div", { classe: "dj-feuille__entete" }, el("div", { classe: "dj-feuille__nom" }, titre, rang), fermerBouton);
+  const portrait = el("span", { classe: "dj-feuille__portrait" });
+  const entete = el("div", { classe: "dj-feuille__entete" }, portrait, el("div", { classe: "dj-feuille__nom" }, titre, rang), fermerBouton);
   const corps = el("div", { classe: "dj-feuille__corps" });
   const dialogue = el("div", { classe: "dj-feuille", attrs: { role: "dialog", "aria-modal": "true", "aria-labelledby": titreId, tabindex: "-1" } }, entete, corps);
   const racine = el("div", { classe: ["dj-feuille-voile", o.jeu && `dj-feuille-voile--${o.jeu}`] }, dialogue);
@@ -269,6 +297,7 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
   let occupe = false;
   let ouverte = true;
   let message: { texte: string; echec: boolean } | null = null;
+  let signale = false;
 
   const tableau = (f: FicheAffichee): HTMLElement => {
     if (f.jeux.length === 0) return el("p", { classe: "dj-feuille__aucun", texte: t.t("amis.feuille.aucun") });
@@ -320,6 +349,7 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
     } else {
       const f = etat.fiche;
       titre.textContent = f.pseudo;
+      portrait.replaceChildren(avatar(t, { pseudo: f.pseudo, ref: f.ref, image: f.image, taille: 44, decoratif: true }));
       if (f.rang !== null && f.classes !== null) rang.textContent = t.t("amis.feuille.rang", { rang: formatRang(f.rang, t.langue), classes: formatNombre(f.classes, t.langue) });
       enfants.push(tableau(f));
       if (f.ami) enfants.push(el("p", { classe: "dj-feuille__relation", texte: f.reciproque ? t.t("amis.reciproque") : t.t("amis.ajouteParToi") }));
@@ -348,6 +378,29 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
         enfants.push(m);
       }
       if (!f.ami) enfants.push(el("p", { classe: "dj-feuille__prevenu", texte: t.t("amis.prevenu", { pseudo: f.pseudo }) }));
+      if (f.image && o.onSignaler) {
+        const signaler = o.onSignaler;
+        const b = bouton({
+          texte: signale ? t.t("amis.signale") : t.t("amis.signaler"),
+          variante: "secondaire",
+          pleineLargeur: true,
+          desactive: signale || occupe,
+          onClick: () =>
+            void (async () => {
+              if (signale || occupe) return;
+              occupe = true;
+              rendre();
+              const r = await executer(signaler);
+              occupe = false;
+              if (!ouverte) return;
+              if (r.ok) signale = true;
+              else message = { texte: messageErreur(t, r.code), echec: true };
+              rendre();
+            })(),
+        });
+        b.classList.add("dj-feuille__signaler");
+        enfants.push(b);
+      }
     }
     corps.replaceChildren(...enfants.filter((e): e is Node => e !== null));
   }
@@ -428,6 +481,8 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
 export interface AmiAffiche {
   ref: string;
   pseudo: string;
+  /** Lot C1 : l'adresse de son image, absente : ses initiales. */
+  image?: string;
   /** Il t'a aussi parmi ses amis : « vous deux » ; sinon « ajouté par toi ». */
   reciproque: boolean;
 }
@@ -450,6 +505,7 @@ export function ligneAmi(o: OptionsLigneAmi): HTMLLIElement {
   const racine = el(
     "li",
     { classe: "dj-ligne-ami", attrs: { "data-ref": ami.ref } },
+    avatar(t, { pseudo: ami.pseudo, ref: ami.ref, image: ami.image, taille: 32, decoratif: true }),
     el("span", { classe: "dj-ligne-ami__pseudo", texte: ami.pseudo }),
     el("span", { classe: "dj-ligne-ami__etat", texte: ami.reciproque ? t.t("amis.reciproque") : t.t("amis.ajouteParToi") }),
     retirer,

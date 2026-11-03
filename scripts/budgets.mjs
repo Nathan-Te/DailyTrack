@@ -68,11 +68,11 @@ export function mesureTrack(dist = join(ROOT, "apps/web/dist/assets")) {
 export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
   const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
   // Lot « musique » : le lecteur (`demarrage-`) et le panneau des réglages (`panneauMusique-`) sont chargés à la demande, au premier geste : ligne `musique.lecteur`. Lot M1 : `manette-` aussi ; lot M2 : `commandesEcran-` (l'écran Commandes).
-  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-", "classementAmis-", "course-"].some((p) => f.startsWith(p)); // lot F2 : classementAmis- = les amis du classement, course- = la barre de la course du n° 1 (à la demande ; mesure alignée sur `apps/jump/e2e/poids.spec.ts`, qui exclut aussi interrupteur-)
+  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-", "admin-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-", "classementAmis-", "course-", "retoursJeu-"].some((p) => f.startsWith(p)); // lot F2 : classementAmis- = les amis du classement, course- = la barre de la course du n° 1 (à la demande ; mesure alignée sur `apps/jump/e2e/poids.spec.ts`, qui exclut aussi interrupteur-)
   const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
-  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-") && !f.startsWith("manette-") && !f.startsWith("commandes-") && !f.startsWith("panneauMusique-") && !f.startsWith("liensCommunauteJeu-") && !f.startsWith("classementAmis-") && !f.startsWith("course-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !f.startsWith("admin-") && !f.startsWith("interrupteur-") && !f.startsWith("manette-") && !f.startsWith("commandes-") && !f.startsWith("panneauMusique-") && !f.startsWith("liensCommunauteJeu-") && !f.startsWith("classementAmis-") && !f.startsWith("course-") && !f.startsWith("retoursJeu-")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
   return { js: total, css, jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
 }
 
@@ -116,6 +116,15 @@ export function mesureMusique(dist = join(ROOT, "apps/web/dist/assets"), servi =
   const panneau = tous.filter((f) => f.startsWith("panneauMusique-"));
   const morceaux = existsSync(servi) ? readdirSync(servi).filter((f) => f.endsWith(".m4a")) : [];
   return { lecteur: somme(lecteur), panneau: somme(panneau), jsCss: somme(lecteur) + somme(panneau), morceaux: morceaux.length, octetsMorceaux: morceaux.reduce((n, f) => n + statSync(join(servi, f)).size, 0) };
+}
+
+/**
+ * Lot C1 : le dialogue « Un bug ? Une idée ? » **à la demande** (le module `retoursJeu-*` d'un jeu : le dialogue, son vocabulaire français et anglais, le client des routes, sa feuille), chargé au toucher de
+ * l'entrée de la pause ou de Réglages : jamais dans le premier chargement d'un jeu. Mesuré dans la construction de Track ; ligne `retours.dialogue`. (Jump compte tous ses fichiers hors liste : `retoursJeu-` y est exclu.)
+ */
+export function mesureRetours(dist = join(ROOT, "apps/web/dist/assets")) {
+  const fichiers = readdirSync(dist).filter((f) => f.startsWith("retoursJeu-"));
+  return { jsCss: fichiers.reduce((n, f) => n + gz(join(dist, f)), 0), fichiers };
 }
 
 /** Les polices qu'une construction déclare (octets des fichiers woff2, déjà compressés), lues dans ses feuilles. */
@@ -199,7 +208,7 @@ export const CLES_MESUREES = [
   "track.ombres", "track.fantomes", "track.son", "track.sonBoucles", "track.steerSlider", "track.steerWheel", "track.steerGyro", "track.touchReglages",
   "jump.jsCss", "jump.anglais", "jump.polices",
   "tower.jsCss", "tower.jeu", "tower.physique", "tower.anglais", "tower.polices", "tower.decors", "tower.habits",
-  "musique.lecteur",
+  "musique.lecteur", "retours.dialogue",
 ];
 
 export function mesuresParLigne({ portail = mesurePortail } = {}) {
@@ -229,6 +238,7 @@ export function mesuresParLigne({ portail = mesurePortail } = {}) {
     "tower.decors": tower.detail.decors,
     "tower.habits": tower.detail.habits,
     "musique.lecteur": mesureMusique().jsCss,
+    "retours.dialogue": mesureRetours().jsCss,
   };
   for (const [cle, entrees] of Object.entries(ENTREES_TRACK_A_LA_DEMANDE)) lignes[cle] = aLaDemandeTrack(entrees, undefined, t).octets;
   // « track.sonBoucles » : les huit boucles de moteur de la voiture la plus lourde (octets des fichiers AAC, déjà compressés).

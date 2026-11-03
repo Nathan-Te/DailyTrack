@@ -11,6 +11,7 @@ import { withVolume, type AudioSettings } from "./audioLogic";
 import { cleAction, commandes } from "./commandes";
 import { ajouterTextes, langueCourante, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
 import { profilHref } from "./profilLien";
+import { ouvrirRetours } from "./retoursLien";
 import { DEFAULT_SETTINGS, GHOST_CHOICES, GHOST_KEY, SPEED_FEEL_CHOICES, SPEED_FEEL_KEY, type GameSettings } from "./settings";
 import { CHOIX_GRAPHISMES, type ChoixGraphismes, type NiveauQualite } from "./qualite";
 import { DEFAULT_TOUCH_SETTINGS, saveTouchSettings, type TouchPad } from "./touch";
@@ -232,8 +233,13 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     const mentions = el("a", "reglages__lien", t("reglages.mentions"));
     mentions.id = "settings-mentions";
     lierMentions(mentions); // lot I6 : la page de la langue choisie
-    for (const a of [profil, mentions]) a.append(icone("chevron", { taille: 16 }));
-    liens.append(profil, mentions);
+    // Lot C1 : « Un bug ? Une idée ? » (le dialogue est à la demande ; la langue est celle de <html lang>).
+    const retours = el("button", "reglages__lien", t("reglages.retours"));
+    retours.id = "settings-retours";
+    retours.setAttribute("type", "button");
+    retours.addEventListener("click", ouvrirRetours);
+    for (const a of [profil, mentions, retours]) a.append(icone("chevron", { taille: 16 }));
+    liens.append(profil, mentions, retours);
     const reset = bouton({
       texte: t("reglages.reinit"),
       variante: "secondaire",

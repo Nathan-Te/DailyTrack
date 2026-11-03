@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1529 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1709 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -19,6 +19,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `amis.retirer` | Retirer | Remove |
 | `amis.retirer.aria` | Retirer {pseudo} de mes amis | Remove {pseudo} from my friends |
 | `amis.fermer` | Fermer | Close |
+| `amis.signaler` | Signaler l'image | Report the picture |
+| `amis.signale` | Image signalée, merci | Picture reported, thank you |
 | `amis.reessayer` | Réessayer | Try again |
 | `amis.chargement` | Chargement… | Loading… |
 | `amis.horsLigne` | Hors ligne : réessaie dans un moment. | Offline: try again in a moment. |
@@ -61,6 +63,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `amis.invitation.pseudo` | Choisis ton pseudo | Pick your name |
 | `amis.invitation.suggestions` | Pseudos libres | Free names |
 | `amis.invitation.fait` | C'est fait : {pseudo} est dans tes amis, et toi dans les siens. | Done: {pseudo} is in your friends, and you're in theirs. |
+| `amis.selecteur.monGroupe` | Mon groupe | My group |
+| `amis.selecteur.monGroupeN` | Mon groupe · {n} | My group · {n} |
 
 ### annonce (`annonce.*`, `packages/ui/src/catalogue.ts`)
 
@@ -137,7 +141,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `communaute.discord` | Rejoindre le Discord | Join the Discord |
 | `communaute.kofi` | Soutenir sur Ko-fi | Support on Ko-fi |
 
-### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`, `packages/ui/src/catalogue.amis.ts`)
+### Erreurs (`erreur.*`, `packages/ui/src/catalogue.ts`, `packages/ui/src/catalogue.amis.ts`, `packages/ui/src/catalogue.retours.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
@@ -206,6 +210,23 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.their_friends_full` | La liste d'amis de ce joueur est pleine. | That player's friends list is full. |
 | `erreur.invalid_invitation` | Ce lien d'invitation n'est plus valable. Demande-en un nouveau. | This invitation link is no longer valid. Ask for a new one. |
 | `erreur.invalid_filter` | Ce filtre n'existe pas. | That filter doesn't exist. |
+| `erreur.invalid_group` | Ce nom ou cette description n'est pas accepté (nom de 3 à 24 caractères, description de 140 au plus). | That name or description isn't accepted (name of 3 to 24 characters, description up to 140). |
+| `erreur.group_name_taken` | Ce nom de groupe est déjà pris. | That group name is already taken. |
+| `erreur.already_in_group` | Tu es déjà dans un groupe : quitte-le d'abord. | You're already in a group: leave it first. |
+| `erreur.unknown_group` | Ce groupe n'existe pas, ou ce lien d'invitation ne marche plus. | That group doesn't exist, or that invitation link no longer works. |
+| `erreur.group_full` | Ce groupe est complet (30 membres). | That group is full (30 members). |
+| `erreur.not_group_chief` | Seul le chef du groupe peut faire cela. | Only the group's leader can do that. |
+| `erreur.group_rename_limit` | Un groupe se renomme une fois par semaine. | A group can be renamed once a week. |
+| `erreur.unknown_member` | Ce joueur n'est pas dans le groupe. | That player isn't in the group. |
+| `erreur.invalid_image` | Cette image n'est pas acceptée : choisis-en une autre. | That picture isn't accepted: pick another one. |
+| `erreur.avatar_limit` | Tu as déjà changé ton image aujourd'hui : reviens demain. | You already changed your picture today: come back tomorrow. |
+| `erreur.avatar_banned` | L'envoi d'image n'est plus possible pour ce profil. | Sending a picture is no longer possible for this profile. |
+| `erreur.unknown_avatar` | Cette image n'existe plus. | That picture no longer exists. |
+| `erreur.invalid_report` | Ce signalement n'est pas valide. | That report isn't valid. |
+| `erreur.invalid_feedback` | Ton message est vide, trop long ou d'un type inconnu. | Your message is empty, too long or of an unknown type. |
+| `erreur.unknown_feedback` | Ce message n'existe pas. | That message doesn't exist. |
+| `erreur.feedback_limit` | Tu as déjà envoyé 5 messages aujourd'hui. Reviens demain. | You've already sent 5 messages today. Come back tomorrow. |
+| `erreur.feedback_full` | Ce fil est complet : écris un nouveau message. | This thread is full: write a new message. |
 
 ### Icônes (`icone.*`, `packages/ui/src/catalogue.ts`)
 
@@ -343,6 +364,47 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `retrouver.echec` | Impossible d'enregistrer le profil sur cet appareil. | Couldn't save the profile on this device. |
 | `retrouver.passer` | Commencer sans profil | Start without a profile |
 
+### Un bug ? Une idée ? (`retours.*`, `packages/ui/src/catalogue.retours.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `retours.titre` | Un bug ? Une idée ? | Found a bug? Got an idea? |
+| `retours.intro` | Dis-nous ce qui ne va pas, ou ce que tu aimerais voir. Seul l'éditeur lit ton message. | Tell us what's wrong, or what you'd like to see. Only the publisher reads your message. |
+| `retours.type` | C'est plutôt… | It's more like… |
+| `retours.type.bug` | Un bug | A bug |
+| `retours.type.suggestion` | Une idée | An idea |
+| `retours.type.autre` | Autre chose | Something else |
+| `retours.message` | Ton message | Your message |
+| `retours.message.aide` | Du texte seul, {max} caractères au plus. | Plain text, {max} characters at most. |
+| `retours.compteur` | {n} / {max} | {n} / {max} |
+| `retours.contexte.titre` | Ce qui part avec ton message | What goes with your message |
+| `retours.contexte.aide` | Rien de caché : voilà tout ce qui est joint. | Nothing hidden: this is everything that is attached. |
+| `retours.contexte.page` | Page | Page |
+| `retours.contexte.jour` | Jour | Day |
+| `retours.contexte.version` | Version du site | Site version |
+| `retours.contexte.navigateur` | Navigateur | Browser |
+| `retours.contexte.systeme` | Système | System |
+| `retours.contexte.ecran` | Écran | Screen |
+| `retours.contexte.langue` | Langue | Language |
+| `retours.contexte.reference` | Ta référence publique | Your public reference |
+| `retours.contexte.sansReference` | aucune (pas de profil) | none (no profile) |
+| `retours.contexte.inconnue` | inconnue | unknown |
+| `retours.page.portail` | le portail | the portal |
+| `retours.page.track` | Track | Track |
+| `retours.page.jump` | Jump | Jump |
+| `retours.page.tower` | Tower | Tower |
+| `retours.sansProfil` | Tu n'as pas de profil : on recevra ton message, mais aucune réponse ne pourra te parvenir. | You don't have a profile: we'll get your message, but no reply can reach you. |
+| `retours.envoyer` | Envoyer | Send |
+| `retours.envoi` | Envoi… | Sending… |
+| `retours.annuler` | Annuler | Cancel |
+| `retours.fermer` | Fermer | Close |
+| `retours.merci` | Merci, c'est reçu. | Thanks, we got it. |
+| `retours.merciReponse` | Si on te répond, ce sera dans « Mes messages », dans ton profil. | If we reply, it will be in “My messages”, in your profile. |
+| `retours.merciSansReponse` | Sans profil, on ne pourra pas te répondre. | Without a profile, we won't be able to reply. |
+| `retours.voirMessages` | Mes messages | My messages |
+| `retours.horsLigne` | Hors ligne : ton message n'est pas parti. Réessaie dans un moment. | Offline: your message didn't go out. Try again in a moment. |
+| `retours.vide` | Écris un message d'abord. | Write a message first. |
+
 ## Portail Du Jour (accueil, profil commun, classement du jour, vitrine et démonstration de la recette)
 
 ### amisPage (`amisPage.*`, `apps/portail/src/cataloguePages.ts`)
@@ -366,6 +428,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `apercu.image` | Le logo DU JOUR et deux cartouches posées sur l'étagère : Track et Jump. | The DU JOUR logo and two cartridges on the shelf: Track and Jump. |
 | `apercu.nouveautes.titre` | Nouveautés — Du Jour | What's new — Du Jour |
 | `apercu.nouveautes.description` | Ce qui change dans Du Jour, Track et Jump : les nouveautés, mise à jour par mise à jour, en français et en anglais. | What changes in Du Jour, Track and Jump: updates one by one, in French and in English. |
+| `apercu.messages.titre` | Mes messages — Du Jour | My messages — Du Jour |
+| `apercu.messages.description` | Tes messages à l'éditeur de Du Jour et ses réponses. | Your messages to the Du Jour publisher, and the replies. |
+| `apercu.groupe.titre` | Rejoins mon groupe sur Du Jour | Join my group on Du Jour |
+| `apercu.groupe.description` | Un circuit Track et un niveau Jump chaque jour, les mêmes pour tout le monde. Rejoins mon groupe : notre classement est la moyenne de nos 3 meilleurs. | One Track circuit and one Jump level every day, the same for everyone. Join my group: our ranking is the average of our 3 best. |
 | `apercu.amis.titre` | Rejoins-moi sur Du Jour | Join me on Du Jour |
 | `apercu.amis.description` | Un circuit Track et un niveau Jump chaque jour, les mêmes pour tout le monde. Ajoutons-nous en amis pour comparer nos temps. | One Track circuit and one Jump level every day, the same for everyone. Let's add each other as friends to compare our times. |
 
@@ -392,6 +458,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.ferme` | Jour terminé : ce classement est figé. | Day over: this leaderboard is final. |
 | `classement.invite` | Finis un jeu pour entrer au classement. | Finish a game to enter the leaderboard. |
 | `classement.amis.indispo` | Le classement de tes amis ne répond pas : voici tous les joueurs. | Your friends' leaderboard isn't answering: here is everyone. |
+| `classement.mode.aria` | Qui est classé | Who is ranked |
+| `classement.mode.joueurs` | Joueurs | Players |
+| `classement.mode.groupes` | Groupes | Groups |
+| `classement.groupes.toi` | Ton groupe | Your group |
+| `classement.groupes.classes` | one : {n} classé · other : {n} classés | one : {n} ranked · other : {n} ranked |
+| `classement.groupes.regle` | Au chrono : la moyenne des 3 meilleurs de chaque groupe ({min} classés au moins). | Against the clock: the average of each group's 3 best ({min} ranked at least). |
+| `classement.groupes.compte` | one : {n} groupe classé · other : {n} groupes classés | one : {n} group ranked · other : {n} groups ranked |
+| `classement.groupes.vide` | Aucun groupe classé ce jour-là. | No group ranked that day. |
 
 ### Démonstration (recette seulement) (`demo.*`, `apps/portail/src/catalogueDemo.ts`)
 
@@ -401,6 +475,108 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `demo.texte` | Ce lien installe sur cet appareil le joueur « {nom} » de la recette, pour voir le portail plein. Il remplacera le profil de cet appareil ({actuel}), dans tous les jeux. | This link installs the test server's player "{nom}" on this device, to see the portal full. It will replace this device's profile ({actuel}), in every game. |
 | `demo.installer` | Installer le joueur de démonstration | Install the demo player |
 | `demo.annuler` | Garder mon profil | Keep my profile |
+
+### groupePage (`groupePage.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `groupePage.titre` | Groupe | Group |
+| `groupePage.titreNom` | {nom} · Groupe | {nom} · Group |
+| `groupePage.description` | Un groupe de joueurs de Du Jour : ses membres et son classement du jour. | A group of Du Jour players: its members and its leaderboard of the day. |
+| `groupePage.chargement` | Chargement du groupe… | Loading the group… |
+| `groupePage.inconnu` | Ce groupe n'existe pas (ou plus). | This group doesn't exist (any more). |
+| `groupePage.chef` | Chef | Leader |
+| `groupePage.membres` | one : {n} membre sur {max} · other : {n} membres sur {max} | one : {n} member of {max} · other : {n} members of {max} |
+| `groupePage.membres.titre` | Membres | Members |
+| `groupePage.invite` | Tu es invité dans « {nom} » | You're invited to “{nom}” |
+| `groupePage.rejoindre` | Rejoindre le groupe | Join the group |
+| `groupePage.rejoindre.aide` | Tu compteras dans son classement dès demain. Tu ne peux être que dans un seul groupe. | You'll count in its ranking from tomorrow. You can only be in one group. |
+| `groupePage.rejoint` | Tu fais partie du groupe. Tu compteras dans son classement dès demain. | You're in the group. You'll count in its ranking from tomorrow. |
+| `groupePage.plein` | Ce groupe est complet. | This group is full. |
+| `groupePage.dejaMembre` | Tu fais déjà partie d'un groupe : quitte-le d'abord (Profil › Mon groupe). | You're already in a group: leave it first (Profile › My group). |
+| `groupePage.sansProfil` | Finis un jeu pour ouvrir ton profil, puis rouvre ce lien. | Finish a game to open your profile, then open this link again. |
+| `groupePage.invitationMorte` | Ce lien d'invitation n'est plus valable : demande-en un nouveau au chef du groupe. | This invitation link is no longer valid: ask the group's leader for a new one. |
+| `groupePage.classement` | Classement du jour · {date} | Leaderboard of the day · {date} |
+| `groupePage.aucunRang` | Pas de classement des groupes pour ce jour. | No group ranking for this day. |
+| `groupePage.regle` | Le score d'un groupe est la moyenne de ses {min} meilleurs. Il faut {min} classés au moins. | A group's score is the average of its {min} best. At least {min} must be ranked. |
+| `groupePage.rang` | {rang} sur {sur} | {rang} of {sur} |
+| `groupePage.moins` | Moins de {min} classés | Fewer than {min} ranked |
+| `groupePage.partager` | Partager le lien d'invitation | Share the invitation link |
+| `groupePage.gerer` | Gérer mon groupe | Manage my group |
+| `groupePage.lienCopie` | Lien d'invitation copié. | Invitation link copied. |
+| `groupePage.lienCopie.echec` | Copie impossible ici : ouvre Profil › Mon groupe. | Can't copy here: open Profile › My group. |
+
+### groupeProfil (`groupeProfil.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `groupeProfil.confirmer` | Confirmer : {action} | Confirm: {action} |
+| `groupeProfil.nom` | Nom du groupe | Group name |
+| `groupeProfil.description` | Description (140 caractères) | Description (140 characters) |
+| `groupeProfil.creer` | Créer le groupe | Create the group |
+| `groupeProfil.cree` | Groupe créé. Montre le lien d'invitation à tes amis. | Group created. Show the invitation link to your friends. |
+| `groupeProfil.aucun` | Tu n'es dans aucun groupe. | You're not in any group. |
+| `groupeProfil.regles` | Un nom de 3 à 24 caractères, unique ; jusqu'à {max} membres ; tu en es le chef. | A unique name of 3 to 24 characters; up to {max} members; you're its leader. |
+| `groupeProfil.lien.titre` | Lien d'invitation | Invitation link |
+| `groupeProfil.lien.aide` | Tout membre peut le partager. Le chef peut le renouveler : l'ancien lien cesse alors de marcher. | Any member can share it. The leader can renew it: the old link then stops working. |
+| `groupeProfil.lien` | Lien d'invitation du groupe | The group's invitation link |
+| `groupeProfil.copier` | Copier le lien | Copy the link |
+| `groupeProfil.lienCopie` | Lien copié. | Link copied. |
+| `groupeProfil.lienAMain` | Copie impossible ici : sélectionne le lien à la main. | Can't copy here: select the link by hand. |
+| `groupeProfil.renouveler` | Nouveau lien | New link |
+| `groupeProfil.renouvele` | Nouveau lien : l'ancien ne marche plus. | New link: the old one no longer works. |
+| `groupeProfil.arrivee` | Tu comptes dans le classement du groupe depuis le {date}. | You've counted in the group's ranking since {date}. |
+| `groupeProfil.passerChef` | Passer le chef | Make leader |
+| `groupeProfil.chefPasse` | {pseudo} est le nouveau chef. | {pseudo} is the new leader. |
+| `groupeProfil.retirer` | Retirer | Remove |
+| `groupeProfil.retire` | {pseudo} a été retiré du groupe. | {pseudo} was removed from the group. |
+| `groupeProfil.quitter` | Quitter le groupe | Leave the group |
+| `groupeProfil.quitte` | Tu as quitté le groupe. | You left the group. |
+| `groupeProfil.chef.titre` | Réservé au chef | Leader only |
+| `groupeProfil.renommer` | Renommer | Rename |
+| `groupeProfil.renommer.attente` | Renommer (une fois par semaine) | Rename (once a week) |
+| `groupeProfil.renomme` | Groupe renommé. | Group renamed. |
+| `groupeProfil.decrire` | Enregistrer la description | Save the description |
+| `groupeProfil.decrit` | Description enregistrée. | Description saved. |
+| `groupeProfil.emblemeChoisir` | Choisir un emblème | Choose an emblem |
+| `groupeProfil.emblemeFait` | Emblème enregistré. | Emblem saved. |
+| `groupeProfil.emblemeRetirer` | Retirer l'emblème | Remove the emblem |
+| `groupeProfil.emblemeRetire` | Emblème retiré. | Emblem removed. |
+| `groupeProfil.dissoudre` | Dissoudre le groupe | Dissolve the group |
+| `groupeProfil.dissous` | Groupe dissous. | Group dissolved. |
+
+### Mes messages (`messages.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `messages.vide` | Tu n'as encore rien envoyé. « Un bug ? Une idée ? » est en bas de chaque page. | You haven't sent anything yet. “Found a bug? Got an idea?” is at the bottom of every page. |
+| `messages.nonLu` | Nouvelle réponse | New reply |
+| `messages.toi` | Toi | You |
+| `messages.editeur` | L'éditeur | The publisher |
+| `messages.statut.nouveau` | Envoyé | Sent |
+| `messages.statut.lu` | Lu | Read |
+| `messages.statut.en_cours` | En cours | In progress |
+| `messages.statut.traite` | Traité | Done |
+| `messages.statut.refuse` | Pas retenu | Not retained |
+| `messages.repondre.aide` | Ta réponse (texte seul, {max} caractères au plus) | Your reply (plain text, {max} characters at most) |
+| `messages.envoyer` | Envoyer la réponse | Send reply |
+| `messages.plein` | Ce fil est complet : écris un nouveau message. | This thread is full: write a new message. |
+| `messages.fil.retour` | ‹ Mes messages | ‹ My messages |
+| `messages.erreur` | Impossible de charger tes messages. Réessaie dans un moment. | Couldn't load your messages. Try again in a moment. |
+| `messages.reessayer` | Réessayer | Try again |
+| `messages.nombre` | {n} messages | {n} messages |
+| `messages.fil.aria` | Ouvrir le message : {extrait} | Open the message: {extrait} |
+
+### messagesPage (`messagesPage.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `messagesPage.titre` | Mes messages | My messages |
+| `messagesPage.description` | Tes messages à l'éditeur de Du Jour (bugs, idées) et ses réponses. | Your messages to the Du Jour publisher (bugs, ideas) and the replies. |
+| `messagesPage.retour` | Profil | Profile |
+| `messagesPage.retour.aria` | Retour à ton profil | Back to your profile |
+| `messagesPage.sansProfil` | Pas encore de profil : finis un jeu pour l'ouvrir, tu pourras ensuite recevoir des réponses. Tu peux quand même écrire avec « Un bug ? Une idée ? ». | No profile yet: finish a game to open one, then you can get replies. You can still write with “Found a bug? Got an idea?”. |
+| `messagesPage.chargement` | Chargement de tes messages… | Loading your messages… |
 
 ### nouveautes (`nouveautes.*`, `apps/portail/src/cataloguePages.ts`)
 
@@ -445,6 +621,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.jouer.aria` | Jouer à {jeu} | Play {jeu} |
 | `portail.pied` | Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux. | A new day at midnight, Paris time. Your profile is the same in every game. |
 | `portail.mentions` | Mentions légales et confidentialité | Legal notice and privacy |
+| `portail.retours.lien` | Un bug ? Une idée ? | Found a bug? Got an idea? |
+| `portail.messages.nonLu` | Ton profil : {nom} — une réponse t'attend dans Mes messages | Your profile: {nom} — a reply is waiting in My messages |
 | `portail.discord` | Rejoindre le Discord | Join the Discord |
 | `portail.kofi` | Me soutenir sur Ko-fi | Support me on Ko-fi |
 | `portail.compte.legende` | Prochains niveaux dans | Next levels in |
@@ -494,7 +672,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.classement.inviter` | Finis un jeu pour entrer au classement | Finish a game to enter the leaderboard |
 | `portail.classement.entreAmis` | {rang} entre amis | {rang} among friends |
 | `portail.partager` | Partager ma journée | Share my day |
-| `portail.partage.apercu` | Ce que tu partages | What you're sharing |
 | `portail.partage.partage` | Journée partagée. | Day shared. |
 | `portail.partage.copie` | Ligne copiée : colle-la où tu veux. | Line copied: paste it wherever you like. |
 | `portail.partage.pasDeCopie` | Copie impossible ici : sélectionne la ligne à la main. | Can't copy here: select the line by hand. |
@@ -539,6 +716,28 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.medailles` | Médailles | Medals |
 | `profil.langue.titre` | Langue | Language |
 | `profil.chargement` | Chargement du profil… | Loading your profile… |
+| `profil.avatar.titre` | Avatar | Avatar |
+| `profil.avatar.aide` | Choisis une image et recadre-la en carré : elle est réduite à 128 × 128 sur ton appareil, sans les informations de ta photo (lieu, appareil). | Pick an image and crop it to a square: it is shrunk to 128 × 128 on your device, without your photo's information (place, device). |
+| `profil.avatar.choisir` | Choisir une image | Pick an image |
+| `profil.avatar.apercu` | Aperçu du recadrage | Crop preview |
+| `profil.avatar.zoom` | Zoom | Zoom |
+| `profil.avatar.utiliser` | Utiliser cette image | Use this image |
+| `profil.avatar.annuler` | Annuler | Cancel |
+| `profil.avatar.illisible` | Cette image n'a pas pu être lue. | This image couldn't be read. |
+| `profil.avatar.lourde` | Cette image est trop lourde, même réduite. | This image is too heavy, even shrunk. |
+| `profil.avatar.retirer` | Retirer mon image | Remove my image |
+| `profil.avatar.fait` | Ton image est enregistrée. | Your image is saved. |
+| `profil.avatar.retiree` | Ton image est retirée : tes initiales reviennent. | Your image is removed: your initials are back. |
+| `profil.avatar.limite` | Un changement d'image par jour : reviens demain. | One image change a day: come back tomorrow. |
+| `profil.avatar.interdit` | L'envoi d'images est interdit sur ce profil. | Sending images is forbidden on this profile. |
+| `profil.avatar.refus` | Cette image est refusée (WebP ou JPEG, carrée, 20 Ko au plus, sans métadonnées). | This image is refused (WebP or JPEG, square, 20 KB at most, no metadata). |
+| `profil.avatar.regles` | Pas d'image qui blesse ou qui choque : on les retire sans délai. Voir les mentions légales. | No image that hurts or shocks: we remove them without delay. See the legal notice. |
+| `profil.messages.titre` | Mes messages | My messages |
+| `profil.messages.aide` | Les réponses de l'éditeur à tes bugs et à tes idées. | The publisher's replies to your bugs and ideas. |
+| `profil.messages.lien` | Mes messages | My messages |
+| `profil.messages.nonLu` | {n} réponse à lire | {n} reply to read |
+| `profil.groupe.titre` | Mon groupe | My group |
+| `profil.groupe.aide` | Crée un groupe ou rejoins-en un par lien d'invitation : tout le groupe a son classement, la moyenne de ses 3 meilleurs du jour. | Create a group or join one with an invitation link: each group has its own leaderboard, the average of its 3 best of the day. |
 | `profil.amis.titre` | Amis | Friends |
 | `profil.amis.aide` | Compare tes temps à ceux de tes amis dans les classements. | Compare your times with your friends' in the leaderboards. |
 | `profil.amis.lien` | Mes amis | My friends |
@@ -1106,6 +1305,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.aide` | Comment jouer | How to play |
 | `pause.accueil` | Accueil de Track | Track home |
 | `pause.mentions` | Mentions légales et confidentialité | Legal notice and privacy |
+| `pause.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 | `pause.quitter` | Quitter cette course ? Le tour en cours ne sera pas enregistré. | Leave this run? The lap in progress won't be saved. |
 | `pause.rester` | Rester | Stay |
 | `pause.retourAccueil` | Retour à l'accueil | Back to home |
@@ -1186,6 +1386,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.langue.titre` | Langue | Language |
 | `reglages.profil` | Mon profil Du Jour | My Du Jour profile |
 | `reglages.mentions` | Mentions légales | Legal notice |
+| `reglages.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 | `reglages.reinit` | Rétablir les réglages par défaut | Reset settings to default |
 
 ### Revoir le meilleur tour (`revoir.*`, `apps/web/src/catalogue.salon.*.ts`)
@@ -1683,6 +1884,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.aide` | Comment jouer | How to play |
 | `pause.accueil` | Accueil de Jump | Jump home |
 | `pause.mentions` | Mentions légales | Legal notice |
+| `pause.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 
 ### Rang (`rang.*`, `apps/jump/src/catalogue.arrivee.*.ts`)
 
@@ -1741,6 +1943,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.langue` | Langue | Language |
 | `reglages.profil` | Mon profil Du Jour | My Du Jour profile |
 | `reglages.mentions` | Mentions légales | Legal notice |
+| `reglages.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 
 ### resultat (`resultat.*`, `apps/jump/src/catalogue.arrivee.*.ts`)
 
@@ -2053,6 +2256,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.aide` | Comment jouer | How to play |
 | `pause.reglages` | Réglages | Settings |
 | `pause.mentions` | Mentions légales | Legal notice |
+| `pause.retours` | Un bug ? Une idée ? | Found a bug? Got an idea? |
 
 ### Réglages (`reglages.*`, `apps/tower/src/catalogue.*.ts`)
 
@@ -2080,6 +2284,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.non` | Non | No |
 | `reglages.profil` | Mon profil Du Jour › | My Du Jour profile › |
 | `reglages.mentions` | Mentions légales › | Legal notice › |
+| `reglages.retours` | Un bug ? Une idée ? › | Found a bug? Got an idea? › |
 
 ### suite (`suite.*`, `apps/tower/src/catalogue.*.ts`)
 

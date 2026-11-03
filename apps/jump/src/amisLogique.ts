@@ -53,9 +53,9 @@ const objet = (v: unknown): Record<string, unknown> | null => (typeof v === "obj
  * Lit la réponse du serveur sans lui faire confiance : une ligne mal formée est écartée, une réponse qui n'est pas celle du filtre « Amis » (**un serveur plus ancien ignore le
  * paramètre et rend le classement « Tous »** : pas de `filtre: "amis"`) est refusée (`null`) — jamais montrée comme un classement d'amis.
  */
-export function lireClassementAmis(corps: unknown): ClassementAmis | null {
+export function lireClassementAmis(corps: unknown, filtre: "amis" | "groupe" = "amis"): ClassementAmis | null {
   const c = objet(corps);
-  if (!c || c.filtre !== "amis" || !Array.isArray(c.top) || typeof c.date !== "string") return null;
+  if (!c || c.filtre !== filtre || !Array.isArray(c.top) || typeof c.date !== "string") return null;
   const lignes: LigneAmis[] = [];
   for (const brut of c.top) {
     const l = objet(brut);

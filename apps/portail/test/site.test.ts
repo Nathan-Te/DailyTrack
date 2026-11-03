@@ -10,14 +10,17 @@ const template = JSON.parse(readFileSync(join(__dirname, "../../../firebase.json
 type Header = { source?: string; regex?: string; headers: { key: string; value: string }[] };
 const cacheOf = (h: Header) => h.headers.find((x) => x.key === "Cache-Control")?.value;
 
+// Lot C1, partie C : la page d'un groupe (`/groupe/<nom>`) est la seule réécriture de pages du site (après `/api/**`).
+const GROUPE = { source: "/groupe/**", destination: "/groupe/index.html" };
+
 describe("firebase.json", () => {
   it("renvoie /api/** vers le service Cloud Run de la cible, en europe-west1", () => {
     const prod = firebaseConfig(template, { site: "playdujour-prod", service: "cdj-api" });
     const recette = firebaseConfig(template, { site: "playdujour-recette", service: "cdj-api-recette" });
     expect(REGION).toBe("europe-west1");
     expect(prod.hosting.site).toBe("playdujour-prod");
-    expect(prod.hosting.rewrites).toEqual([{ source: "/api/**", run: { serviceId: "cdj-api", region: "europe-west1" } }]);
-    expect(recette.hosting.rewrites).toEqual([{ source: "/api/**", run: { serviceId: "cdj-api-recette", region: "europe-west1" } }]);
+    expect(prod.hosting.rewrites).toEqual([{ source: "/api/**", run: { serviceId: "cdj-api", region: "europe-west1" } }, GROUPE]);
+    expect(recette.hosting.rewrites).toEqual([{ source: "/api/**", run: { serviceId: "cdj-api-recette", region: "europe-west1" } }, GROUPE]);
     // Jamais épinglé à une révision (pinTag est expérimental et suit la dernière révision créée : voir le README du lot R4).
     expect(JSON.stringify(template)).not.toContain("pinTag");
     expect(template.hosting.rewrites[0].run).toEqual({ serviceId: "cdj-api", region: "europe-west1" });
@@ -60,7 +63,7 @@ describe("firebase.json", () => {
     for (const h of headers.filter((x) => x.source !== "/admin/**")) for (const k of h.headers) expect(k.value, `${h.source ?? h.regex} ${k.key}`).not.toContain("google");
     // Lot N2 : `api.github.com` n'est autorisé nulle part ailleurs que dans la CSP de `/admin/` (les pages des joueurs ne parlent à aucun tiers).
     for (const h of headers.filter((x) => x.source !== "/admin/**")) for (const k of h.headers) expect(k.value, `${h.source ?? h.regex} ${k.key}`).not.toContain("github");
-    const pages = ["index.html", "profil/index.html", "classement/index.html", "amis/index.html", "mentions-legales/index.html", "legal/index.html", "404.html"].map((f) => readFileSync(join(__dirname, "..", f), "utf8"));
+    const pages = ["index.html", "profil/index.html", "classement/index.html", "amis/index.html", "groupe/index.html", "mentions-legales/index.html", "legal/index.html", "404.html"].map((f) => readFileSync(join(__dirname, "..", f), "utf8"));
     for (const html of pages) expect(html).not.toContain("accounts.google.com");
     const page = readFileSync(join(__dirname, "../admin/index.html"), "utf8");
     expect(page).toContain('content="noindex');

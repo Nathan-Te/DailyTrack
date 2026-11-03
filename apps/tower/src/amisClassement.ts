@@ -16,8 +16,8 @@ import { langueCourante } from "./i18n";
 
 /** Le client des routes de Tower qui n'existent que pour les amis : le même `call` que le reste du profil (délai, erreurs en valeur, `X-Player-Id` en en-tête, jamais dans l'adresse). */
 class LectureAmis extends ProfileClient {
-  classement(date: string, playerId: string): Promise<ApiResult<unknown>> {
-    return this.call<unknown>("GET", `/api/tower/day/${encodeURIComponent(date)}/board?filtre=amis`, undefined, { "X-Player-Id": playerId });
+  classement(date: string, playerId: string, filtre: "amis" | "groupe"): Promise<ApiResult<unknown>> {
+    return this.call<unknown>("GET", `/api/tower/day/${encodeURIComponent(date)}/board?filtre=${filtre}`, undefined, { "X-Player-Id": playerId });
   }
 }
 
@@ -141,7 +141,7 @@ async function brancherAmis(h: HoteAmis, contexte: () => ContexteAmis | null): P
       });
       extras.append(titre, el("ul", { classe: "amis-absents" }, ...items));
     }
-    if (sansAmi(c)) extras.append(classementAmisVide(t, { href: "../amis/" }));
+    if (filtre === "amis" && sansAmi(c)) extras.append(classementAmisVide(t, { href: "../amis/" }));
     habiller();
   }
 
@@ -154,9 +154,10 @@ async function brancherAmis(h: HoteAmis, contexte: () => ContexteAmis | null): P
     h.sous.textContent = "";
     h.message.textContent = t.t("amis.chargement");
     h.message.hidden = false;
-    const r = await new LectureAmis(c.base).classement(c.date, c.playerId);
-    if (mon !== envoi || filtre !== "amis") return;
-    const lu = r.ok ? lireClassementAmis(r.data) : null;
+    const demande = filtre === "groupe" ? "groupe" : "amis";
+    const r = await new LectureAmis(c.base).classement(c.date, c.playerId, demande);
+    if (mon !== envoi || filtre !== demande) return;
+    const lu = r.ok ? lireClassementAmis(r.data, demande) : null;
     if (!lu) return retomber(r.ok ? "network" : (r.code ?? "network"));
     dessinerAmis(lu);
   }
@@ -187,7 +188,7 @@ async function brancherAmis(h: HoteAmis, contexte: () => ContexteAmis | null): P
 
   function choisir(f: FiltreAmis): void {
     appliquer(f);
-    if (f === "amis") void montrerAmis();
+    if (f !== "tous") void montrerAmis();
   }
 
   return {
@@ -199,11 +200,11 @@ async function brancherAmis(h: HoteAmis, contexte: () => ContexteAmis | null): P
         void client(c)
           .lireAmis()
           .then((r) => {
-            if (r.ok && mon === comptage) selecteur.maj({ amis: r.data.total });
+            if (r.ok && mon === comptage) selecteur.maj({ amis: r.data.total, groupe: r.data.groupe });
           });
       }
       selecteur.maj({ filtre });
-      if (filtre === "amis") void montrerAmis();
+      if (filtre !== "tous") void montrerAmis();
     },
     tous(b, etat) {
       tousEtat = etat;

@@ -372,3 +372,18 @@
   font-size: var(--dj-taille-14);
   line-height: 1.4;
 }
+
+/* Lot C1, partie B : l'image dans l'entête de la feuille d'un joueur, la ligne de « Mes amis » et le bouton « Signaler l'image ». */
+.dj-feuille__portrait {
+  display: inline-flex;
+  flex: none;
+}
+.dj-feuille__signaler {
+  margin-top: var(--dj-espace-3);
+}
+.dj-ligne-ami {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+.dj-feuille__entete .dj-feuille__nom {
+  flex: 1;
+}

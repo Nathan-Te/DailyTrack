@@ -1,25 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { verifierEcrans } from "../../../packages/ui/test/ecransManette";
 import { ECRAN_MANETTE_FEUILLE } from "../../../packages/ui/src/amis";
-import { ECRAN_FEUILLE, PAGES_MANETTE, optionsPage } from "../src/manette";
+import { ECRAN_MANETTE_RETOUR } from "../../../packages/ui/src/retours";
+import { ECRAN_FEUILLE, ECRAN_RETOUR, PAGES_MANETTE, optionsPage } from "../src/manette";
 
 // Lot M1 : chaque page du portail déclare son action principale (`src/manette.ts`), et ce qu'elle nomme existe encore. L'administration n'en a pas (clavier et souris).
 describe("les pages du portail à la manette", () => {
   it("chaque page déclare son action principale, et les éléments nommés existent", () => {
-    expect(Object.keys(PAGES_MANETTE).sort()).toEqual(["accueil", "amis", "classement", "nouveautes", "profil"]);
+    expect(Object.keys(PAGES_MANETTE).sort()).toEqual(["accueil", "amis", "classement", "groupe", "messages", "nouveautes", "profil"]);
     verifierEcrans(
       Object.values(PAGES_MANETTE).map((principal, i) => ({ ecran: `page-${i}`, principal })),
-      ["apps/portail/src", "packages/ui/src/composants.ts", "packages/ui/src/amis.ts"],
+      ["apps/portail/src", "packages/ui/src/composants.ts", "packages/ui/src/amis.ts", "packages/ui/src/retours.ts"],
     );
   });
 
   it("lot F2 : la feuille d'un joueur est dans le menu du classement seulement, et c'est la ligne du socle", () => {
     expect(ECRAN_FEUILLE).toEqual(ECRAN_MANETTE_FEUILLE);
     expect(optionsPage("classement").ecrans).toContainEqual(ECRAN_FEUILLE);
-    for (const page of ["accueil", "amis", "nouveautes", "profil"] as const) expect(optionsPage(page).ecrans).not.toContainEqual(ECRAN_FEUILLE);
+    for (const page of ["accueil", "amis", "groupe", "messages", "nouveautes", "profil"] as const) expect(optionsPage(page).ecrans).not.toContainEqual(ECRAN_FEUILLE);
     // « Mes amis » : le champ du pseudo, ou « Accepter » quand une invitation est affichée.
     expect(PAGES_MANETTE.amis).toContain(".dj-carte-invitation");
     expect(PAGES_MANETTE.amis).toContain(".dj-ajout-ami__champ");
+  });
+
+  it("lot C1 : le dialogue « Un bug ? Une idée ? » est dans le menu de toutes les pages, et c'est la ligne du socle", () => {
+    expect(ECRAN_RETOUR).toEqual(ECRAN_MANETTE_RETOUR);
+    for (const page of Object.keys(PAGES_MANETTE) as (keyof typeof PAGES_MANETTE)[]) expect(optionsPage(page).ecrans).toContainEqual(ECRAN_RETOUR);
   });
 
   it("les mentions légales restent sans script, et l'administration sans menu à la manette", async () => {

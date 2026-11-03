@@ -58,3 +58,9 @@
 .amis-zone:empty {
   display: none;
 }
+
+/* Lot C1, partie B : dans une ligne de classement l'image vient avant le pseudo (le texte reste le premier enfant : l'ordre du DOM sert aux tests et aux lecteurs d'écran). */
+.classement-pseudo .dj-avatar {
+  order: -1;
+  flex: none;
+}

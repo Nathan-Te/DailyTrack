@@ -5,6 +5,7 @@ import { estNouveau, favorisLe, jeuxDeLaBase, jourDEffet, listeApresChoix, liste
 import { WithHeaders } from "./cache";
 import { classerLaJournee, ligneDe, placer, rangEntreAmis, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
 import type { AmisPourPortail } from "./amis";
+import type { RetoursPourPortail } from "./retours";
 import { HttpError } from "./errors";
 import type { Diffusion } from "./diffusion";
 import type { Jeux } from "./jeux";
@@ -148,7 +149,7 @@ export function serieEtParfaites(today: number, jeux: readonly { premierJour: nu
   return { serie, aProlonger: !finiAujourdhui && serie > 0, journeesParfaites, aujourdhuiParfaite: parfaite(today) };
 }
 
-export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux, amis?: AmisPourPortail) {
+export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux, amis?: AmisPourPortail, retours?: RetoursPourPortail) {
   const { now, log, today, players, hashKey, readHit, playerIdOf } = platform;
 
   // --- Lot P : l'interrupteur des jeux ---------------------------------------------------------------------------------------------
@@ -243,7 +244,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
    * Le joueur doit exister (un résultat classé dans un jeu) et son code être valide ; sinon le refus porte quand même la partie publique (`jour`)
    * : le portail n'a qu'une requête au chargement, il affiche le jour même pour un joueur que le serveur ne connaît pas.
    */
-  async function joueurConnu(id: string, publique?: Record<string, unknown>): Promise<{ name: string; rename_required: number }> {
+  async function joueurConnu(id: string, publique?: Record<string, unknown>): Promise<{ name: string; rename_required: number; avatar: string | null }> {
     try {
       await players.assertActive(id);
     } catch (e) {
@@ -263,7 +264,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   interface Gardee {
     at: number;
     pending: Promise<ClassementDuJour>;
-    noms: Map<string, Promise<Map<string, { name: string; ref: string }>>>;
+    noms: Map<string, Promise<Map<string, { name: string; ref: string; avatar: string | null }>>>;
   }
   const classements = new Map<number, Gardee>();
   let calculs = 0;
@@ -360,6 +361,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     let classesDuJour: number | null = null;
     let entreAmis: { rang: number; sur: number } | null = null;
     const bilan = bilanDe(id, etatsJoueur, ouverts);
+    // Lot C1 : les réponses de l'éditeur qui attendent (« Mes messages »), une lecture indexée — la pastille de l'avatar, sans requête de plus.
+    const messagesNonLus = retours ? await retours.nonLus(id) : 0;
     if (bilan) {
       cumulMs = bilan.cumulMs;
       ({ rang: rangDuJour, classes: classesDuJour } = placer(c, bilan));
@@ -369,16 +372,16 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const body = {
       ...publique,
       jeux: publique.jeux.map((j) => ({ ...j, etat: etatDe.get(j.jeu) ?? { statut: "pas_joue" } })),
-      joueur: { pseudo: row.name, ...serie, cumulMs, rangDuJour, classesDuJour, rangEntreAmis: entreAmis, ...etatFavoris(periodes, day, (j) => toutVoir || surLeSite(j)) },
+      joueur: { pseudo: row.name, ...(row.avatar ? { avatar: row.avatar } : {}), ...serie, cumulMs, rangDuJour, classesDuJour, rangEntreAmis: entreAmis, messagesNonLus, ...etatFavoris(periodes, day, (j) => toutVoir || surLeSite(j)) },
     };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
 
   /** Les pseudos et références publiques des joueurs (une requête, jamais l'identifiant dans la réponse). Lot F2 : `ref` = `players.ref`, de quoi ajouter un joueur en ami depuis le classement. */
-  async function pseudosDe(ids: readonly string[]): Promise<Map<string, { name: string; ref: string }>> {
+  async function pseudosDe(ids: readonly string[]): Promise<Map<string, { name: string; ref: string; avatar: string | null }>> {
     if (ids.length === 0) return new Map();
-    const rows = await platform.db.all<{ id: string; name: string; ref: string | null }>(`SELECT id, name, ref FROM players WHERE id IN (${ids.map(() => "?").join(",")})`, [...ids]);
-    return new Map(await Promise.all(rows.map(async (r) => [r.id, { name: r.name, ref: r.ref ?? (await refOfPlayer(r.id)) }] as const)));
+    const rows = await platform.db.all<{ id: string; name: string; ref: string | null; avatar: string | null }>(`SELECT id, name, ref, avatar FROM players WHERE id IN (${ids.map(() => "?").join(",")})`, [...ids]);
+    return new Map(await Promise.all(rows.map(async (r) => [r.id, { name: r.name, ref: r.ref ?? (await refOfPlayer(r.id)), avatar: r.avatar }] as const)));
   }
 
   /** `GET /api/portail/classement?date=&vue=` : les 50 premiers de la vue (le cumul, ou un jeu) et, avec `X-Player-Id`, ta ligne (exacte). */
@@ -418,19 +421,21 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     }
     const noms = await nomsVue;
     /** Une ligne : le temps de la vue (le cumul, ou le temps du jeu), si le joueur a tout fini (`complet` : toujours vrai dans la vue d'un jeu), et le résultat de chaque jeu. */
-    const ligneCorps = (l: LigneDuJour, rang: number, pseudo: string, ref?: string) => ({
+    const ligneCorps = (l: LigneDuJour, rang: number, pseudo: string, ref?: string, avatar?: string | null) => ({
       rang,
       pseudo,
       ...(ref ? { ref } : {}),
+      ...(avatar ? { avatar } : {}), // lot C1 : l'empreinte de son image (l'adresse immuable `/api/avatars/<empreinte>`) ; absente : ses initiales
       tempsMs: g < 0 ? l.cumulMs : l.resultats[g]!.tempsMs,
       complet: g < 0 ? l.complet : true,
       resultats: resultatsCorps(c.jeux, l.resultats),
     });
     /** Lot TP : une ligne de la vue d'un jeu à la hauteur — son score (hauteur et vies) à côté de la durée de la partie. */
-    const ligneHauteur = (x: { tempsMs: number; medaille: MedaillePortail | null; score?: ScorePortail }, rang: number, pseudo: string, ref?: string) => ({
+    const ligneHauteur = (x: { tempsMs: number; medaille: MedaillePortail | null; score?: ScorePortail }, rang: number, pseudo: string, ref?: string, avatar?: string | null) => ({
       rang,
       pseudo,
       ...(ref ? { ref } : {}),
+      ...(avatar ? { avatar } : {}),
       tempsMs: x.tempsMs,
       complet: true,
       score: x.score ?? null,
@@ -444,7 +449,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       vue,
       jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: "mm" as const } : {}) })),
       classes: liste.length,
-      top: hauteur ? hauteur.classes.slice(0, CLASSEMENT_TOP).map((x, i) => ligneHauteur(x, i + 1, noms.get(x.playerId)?.name ?? "?", noms.get(x.playerId)?.ref)) : (gardes as LigneDuJour[]).map((l, i) => ligneCorps(l, i + 1, noms.get(l.id)?.name ?? "?", noms.get(l.id)?.ref)),
+      top: hauteur ? hauteur.classes.slice(0, CLASSEMENT_TOP).map((x, i) => ligneHauteur(x, i + 1, noms.get(x.playerId)?.name ?? "?", noms.get(x.playerId)?.ref, noms.get(x.playerId)?.avatar)) : (gardes as LigneDuJour[]).map((l, i) => ligneCorps(l, i + 1, noms.get(l.id)?.name ?? "?", noms.get(l.id)?.ref, noms.get(l.id)?.avatar)),
       ...(hauteur ? { unite: "mm" as const } : {}),
     };
     if (!id) {
@@ -459,12 +464,12 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     let moi: Record<string, unknown> | null = null;
     if (hauteur) {
       const e = etatsMoi[ouverts.indexOf(jeuVue!)]!;
-      if (e.statut === "fini") moi = { ...ligneHauteur(e, e.rang, row.name, maRef), classes: Math.max(hauteur.classes.length + (hauteur.index.has(id) ? 0 : 1), e.rang) };
+      if (e.statut === "fini") moi = { ...ligneHauteur(e, e.rang, row.name, maRef, row.avatar), classes: Math.max(hauteur.classes.length + (hauteur.index.has(id) ? 0 : 1), e.rang) };
     } else {
       const bilan = bilanDe(id, etatsMoi, ouverts);
       if (bilan && (g < 0 || bilan.resultats[g])) {
         const place = g < 0 ? placer(c, bilan) : { rang: bilan.resultats[g]!.rang, classes: Math.max(liste.length + (c.index.has(id) && c.cumul[c.index.get(id)!]!.resultats[g] ? 0 : 1), bilan.resultats[g]!.rang) };
-        moi = { ...ligneCorps(bilan, place.rang, row.name, maRef), classes: place.classes };
+        moi = { ...ligneCorps(bilan, place.rang, row.name, maRef, row.avatar), classes: place.classes };
       }
     }
     const body = { ...publique, top: publique.top.map((r, i) => (idDe(gardes[i]!) === id ? { ...r, moi: true } : r)), moi };
@@ -518,7 +523,9 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const day = today();
     // Lot P : le profil commun ne liste que les jeux ouverts (`on`) ; un jeu désactivé y revient, résultats compris, à sa réactivation. La série, elle, suit les périodes de chaque jeu.
     const [serie, parJeu] = await Promise.all([serieDe(id, day), Promise.all(jeux.filter(surLeSite).map(async (j) => ({ jeu: j.code, ...(await j.portail.profil(id)) })))]);
-    const body = { pseudo: row.name, renameRequired: row.rename_required === 1, date: formatDay(day), ...serie, jeux: parJeu };
+    // Lot C1 : « Mes messages » du profil dit si une réponse de l'éditeur attend.
+    const messagesNonLus = retours ? await retours.nonLus(id) : 0;
+    const body = { pseudo: row.name, ...(row.avatar ? { avatar: row.avatar } : {}), renameRequired: row.rename_required === 1, date: formatDay(day), ...serie, messagesNonLus, jeux: parJeu };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }
 

@@ -64,6 +64,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "reglages.langue.titre": "Language",
   "reglages.profil": "My Du Jour profile",
   "reglages.mentions": "Legal notice",
+  "reglages.retours": "Found a bug? Got an idea?",
   "reglages.reinit": "Reset settings to default",
   "tactile.direction.nom": "Steering",
   "tactile.direction.aide": "Buttons, slider, wheel or gyroscope.",

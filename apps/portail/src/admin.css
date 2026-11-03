@@ -760,3 +760,92 @@
   font: inherit;
   max-width: 100%;
 }
+
+/* Lot C1 : la rubrique « Retours » (liste, détail, fil). */
+.admin-retour__apercu {
+  max-width: 28rem;
+  overflow-wrap: anywhere;
+}
+.admin-menu__nombre {
+  margin-left: var(--dj-espace-3);
+}
+.admin-bulles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-bulle {
+  max-width: 92%;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+}
+.admin-bulle--admin {
+  align-self: flex-end;
+  background: var(--dj-moutarde);
+}
+.admin-bulle__texte {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.admin-retour-lien {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  font-weight: 700;
+}
+#retour-reponse {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: 1rem;
+}
+
+/* Lot C1, partie B : la galerie des images. */
+.admin-images {
+  display: grid;
+  gap: var(--dj-espace-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.admin-image {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  padding: var(--dj-espace-5);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+}
+.admin-image__cadre {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--dj-creme-2);
+}
+.admin-image__cadre img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+}
+.admin-image__nom {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}

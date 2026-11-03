@@ -1,0 +1,116 @@
+/* Lot C1, partie A : « Mes messages » (/messages/) — la liste des fils, un fil ouvert (bulles du joueur et de l'éditeur), la réponse. Feuille à part : seule cette page la charge (le premier
+   chargement de l'accueil est au plafond de son budget). Valeurs : jetons de @cdj/ui seulement ; ombres nettes, aucune translucidité ; cibles de 44 px. */
+.messages-liste,
+.messages-bulles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.messages-fil {
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-creme-2);
+}
+.messages-fil--nonlu {
+  background: var(--dj-papier);
+  border-width: var(--dj-trait-fort);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.messages-fil__ouvrir {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  min-height: var(--dj-cible);
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border-radius: inherit;
+  color: inherit;
+  text-decoration: none;
+}
+.messages-fil__tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-2) var(--dj-espace-4);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.messages-fil__statut {
+  color: var(--dj-encre-douce);
+}
+.messages-fil__nonlu {
+  padding: 1px var(--dj-espace-3);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+}
+.messages-fil__apercu {
+  font-size: var(--dj-taille-15);
+  overflow-wrap: anywhere;
+}
+.messages-fil__pied {
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.messages-retour {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  color: var(--dj-encre);
+  font-weight: 700;
+}
+.messages-fil__entete {
+  display: flex;
+  gap: var(--dj-espace-4);
+  margin: 0;
+  font-weight: 700;
+  color: var(--dj-encre-douce);
+}
+.messages-bulle {
+  max-width: 92%;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+}
+.messages-bulle--joueur {
+  align-self: flex-end;
+  background: var(--dj-moutarde);
+}
+.messages-bulle--admin {
+  align-self: flex-start;
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.messages-bulle__auteur {
+  margin: 0 0 var(--dj-espace-1);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+.messages-bulle__texte {
+  margin: 0;
+  font-size: var(--dj-taille-15);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.messages-reponse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.messages-reponse__champ {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 6rem;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: 1rem;
+  line-height: 1.4;
+  resize: vertical;
+}

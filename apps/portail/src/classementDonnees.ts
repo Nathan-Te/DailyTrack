@@ -27,6 +27,8 @@ export interface LigneClassement {
   moi?: true;
   /** Lot F2 : la référence publique du joueur (12 hexadécimaux, jamais son identifiant secret) : de quoi ouvrir sa feuille et l'ajouter en ami. */
   ref?: string;
+  /** Lot C1 : l'empreinte de son image d'avatar (absente : ses initiales). */
+  avatar?: string;
   /** Lot F2, filtre « Amis » : `rang` est le rang entre amis ; `rangGeneral` le rang dans le classement « Tous » de la même vue. */
   rangGeneral?: number;
 }
@@ -53,7 +55,7 @@ export interface Classement {
   /** Ta ligne (avec ton identifiant), même hors du haut ; `null` : tu n'as fini aucun jeu ce jour-là. */
   moi?: (LigneClassement & { classes: number }) | null;
   /** Lot F2 : `"amis"` quand c'est le classement filtré (toi et tes amis, tous, sans la limite de 50). */
-  filtre?: "amis";
+  filtre?: "amis" | "groupe";
   /** Lot F2, filtre « Amis » : combien d'amis tu as, et ceux qui n'ont rien fini ce jour-là. */
   amis?: number;
   absents?: AmiAbsent[];
@@ -85,7 +87,7 @@ export async function lireClassement(
   base = baseApi(),
   delaiMs = DELAI_CLASSEMENT_MS,
   /** Lot F2 : `"amis"` ajoute `filtre=amis` (demandé seulement avec une identité : le serveur refuse sans elle). */
-  filtre: "tous" | "amis" = "tous",
+  filtre: "tous" | "amis" | "groupe" = "tous",
 ): Promise<LectureClassement> {
   const controle = new AbortController();
   const minuterie = setTimeout(() => controle.abort(), delaiMs);
@@ -93,7 +95,7 @@ export async function lireClassement(
     const parametres = new URLSearchParams();
     if (date) parametres.set("date", date);
     if (vue !== "cumul") parametres.set("vue", vue);
-    if (filtre === "amis" && joueur) parametres.set("filtre", "amis");
+    if (filtre !== "tous" && joueur) parametres.set("filtre", filtre);
     const query = parametres.size > 0 ? `?${parametres}` : "";
     const res = await fetchImpl(`${base}/api/portail/classement${query}`, { headers: joueur ? { "X-Player-Id": joueur } : {}, cache: "no-store", signal: controle.signal });
     const corps = (await res.json().catch(() => null)) as (Partial<Classement> & { error?: unknown }) | null;

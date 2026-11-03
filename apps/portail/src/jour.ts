@@ -56,6 +56,10 @@ export interface JoueurDuJour {
   classesDuJour?: number | null;
   /** Lot F2 : sa place parmi ses amis au cumul du jour (« 3e entre amis »), `null` sans ami ou tant qu'il n'a rien fini. */
   rangEntreAmis?: { rang: number; sur: number } | null;
+  /** Lot C1 : les réponses de l'éditeur qui attendent dans « Mes messages » (la pastille de l'avatar) ; absent d'un serveur plus ancien. */
+  messagesNonLus?: number;
+  /** Lot C1, partie B : l'empreinte de son image d'avatar (absente : ses initiales). */
+  avatar?: string;
   /** Lot F1 : les jeux épinglés du joueur (leur dossier sur le site) — `null` : il n'a jamais rien choisi ; absent d'un serveur plus ancien. */
   favoris?: string[] | null;
   /** Lot F1 : les jeux qui comptent pour sa journée aujourd'hui (journée parfaite, « n fini sur m », partage) ; un choix de favoris ne compte qu'à partir de demain. */

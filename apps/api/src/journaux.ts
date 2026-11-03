@@ -2,6 +2,7 @@ import { CODES_ERREUR, estCodeErreur } from "./codesErreur";
 import type { SqlDb } from "./db";
 import type { Statement } from "./games";
 import type { Logger } from "./log";
+import { RETOURS_GARDE_JOURS } from "./retours";
 
 // Lot N1 (plateforme) : les deux journaux du panneau d'administration et l'entretien qui les borne.
 //
@@ -136,6 +137,9 @@ export function createJournaux({ db, now, log }: { db: SqlDb; now: () => number;
       await db.run("DELETE FROM journal_erreurs WHERE at < ?", [t - ERREURS_JOURS * JOUR_MS]);
       await db.run("DELETE FROM journal_admin WHERE at < ?", [t - JOURNAL_ADMIN_JOURS * JOUR_MS]);
       await db.run("UPDATE resultats_retires SET replay = '' WHERE replay <> '' AND removed_at < ?", [t - RETRAIT_REDIFFUSION_JOURS * JOUR_MS]);
+      // Lot C1 : un fil de retours est effacé 12 mois après son dernier message (les messages d'abord : ils se trouvent par les fils).
+      await db.run("DELETE FROM retours_messages WHERE retour_id IN (SELECT id FROM retours WHERE maj_le < ?)", [t - RETOURS_GARDE_JOURS * JOUR_MS]);
+      await db.run("DELETE FROM retours WHERE maj_le < ?", [t - RETOURS_GARDE_JOURS * JOUR_MS]);
     } catch (e) {
       entretenuA = -Infinity; // réessayé à la requête suivante
       log("WARNING", "entretien des journaux impossible", { error: e instanceof Error ? e.message.slice(0, 120) : "inconnue" });

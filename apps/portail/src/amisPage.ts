@@ -1,4 +1,6 @@
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/avatar.css";
+import "@cdj/ui/src/avatar-liste.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -9,11 +11,12 @@ import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
 import "./amisPortail.css";
 import { parisDay } from "@cdj/clock";
-import { adresseInvitation, clientAmis, ecrireLangue, lireLangue, oublierInvitation, readPlayerId, type Langue } from "@cdj/profile";
+import { adresseAvatar, adresseInvitation, clientAmis, ecrireLangue, lireLangue, oublierInvitation, readPlayerId, type Langue } from "@cdj/profile";
 import { CATALOGUE_COMMUN, barreJeu, bouton, cheminMentions, choixLangue, el, traducteur } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { accepterEtEcrire, etatDeLInvitation, ouvrirInvitation, oublieLInvitation, type EtatInvitation } from "./amisDonnees";
+import { lienRetours } from "./retoursLien";
 import { baseApi } from "./jour";
 import { numeroDeJournee } from "./jours";
 import { stockageDuPortail } from "./stockage";
@@ -50,7 +53,7 @@ type ModuleAmis = typeof import("@cdj/ui/src/amis");
 let amis: { ui: ModuleAmis; catalogue: (typeof import("@cdj/ui/src/catalogue.amis"))["CATALOGUE_AMIS"] } | null = null;
 const traducteurAmis = () => traducteur(langue, CATALOGUE_COMMUN, amis!.catalogue);
 
-type Liste = { amis: { ref: string; pseudo: string; reciproque: boolean }[]; max: number; active: boolean };
+type Liste = { amis: { ref: string; pseudo: string; image?: string; reciproque: boolean }[]; max: number; active: boolean };
 /** La liste de tes amis : `chargement`, `ok`, `inconnu` (une identité locale que le serveur ne connaît pas : pas de profil), `erreur` (un code). */
 let liste: { etat: "chargement" | "inconnu" | "erreur" | "absent"; code?: string } | { etat: "ok"; donnees: Liste } = idCourant === null ? { etat: "absent" } : { etat: "chargement" };
 let invitation: EtatInvitation | null = invitationInitiale;
@@ -144,7 +147,7 @@ async function lireListe(): Promise<void> {
     return;
   }
   const r = await client.lireAmis();
-  if (r.ok) liste = { etat: "ok", donnees: { amis: r.data.amis, max: r.data.max, active: r.data.invitation.active } };
+  if (r.ok) liste = { etat: "ok", donnees: { amis: r.data.amis.map((a) => ({ ref: a.ref, pseudo: a.pseudo, image: adresseAvatar(baseApi(), a.avatar), reciproque: a.reciproque })), max: r.data.max, active: r.data.invitation.active } };
   else liste = r.code === "unknown_player" ? { etat: "inconnu" } : { etat: "erreur", code: r.code };
 }
 
@@ -207,6 +210,7 @@ function construire(): void {
       "footer",
       { classe: "portail-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
+      lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
   );
   majEtat();

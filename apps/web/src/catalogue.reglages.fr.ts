@@ -72,6 +72,7 @@ export const fr = {
   "reglages.langue.titre": "Langue",
   "reglages.profil": "Mon profil Du Jour",
   "reglages.mentions": "Mentions légales",
+  "reglages.retours": "Un bug ? Une idée ?",
   "reglages.reinit": "Rétablir les réglages par défaut",
   // --- Commandes tactiles ----------------------------------------------------------------------------------------------------------------------
   "tactile.direction.nom": "Direction",

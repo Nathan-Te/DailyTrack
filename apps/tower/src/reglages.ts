@@ -5,6 +5,7 @@ import { type Ecran, creerEcran } from "./ecrans";
 import { installerCataloguesDesEcrans } from "./catalogue.ecrans.fr";
 import { installerCataloguesDuJeu } from "./catalogue.jeu.fr";
 import { langueCourante, t } from "./i18n";
+import { gameStorage } from "./stockage";
 import { cheminMentions } from "@cdj/ui";
 import type { FantomeDepart, Niveau, ReglagesJoueur } from "./reglagesJoueur";
 
@@ -27,6 +28,8 @@ export interface OptionsReglages {
   tactile: boolean;
   /** `../profil/?retour=/tower/` : le profil commun du portail, avec le retour au jeu. */
   profilHref: string;
+  /** Lot C1 : l'adresse du serveur, pour « Un bug ? Une idée ? » (le dialogue de la plateforme, ouvert à la demande d'ici). */
+  base: string | null;
   surOuverture?(): void;
   surFermeture?(): void;
 }
@@ -68,6 +71,11 @@ export function monterReglages(racine: HTMLElement, o: OptionsReglages): Reglage
   const ligne = (cle: string, groupe: HTMLElement): HTMLElement => el("div", { classe: "reglages__ligne" }, el("span", { classe: "reglages__nom", texte: t(cle) }), groupe);
   const niveaux = (quoi: "secousses" | "yeux", cle: string) => ligne(cle, segment(quoi, cle, NIVEAUX.map((n) => ({ valeur: n, cle: `reglages.niveau.${n}` }))));
   const lien = (id: string, cle: string, href: string): HTMLElement => el("a", { classe: "reglages__lien", attrs: { id, href }, texte: t(cle) });
+  const boutonLien = (id: string, cle: string, onClick: () => void): HTMLElement => {
+    const b = el("button", { classe: "reglages__lien reglages__lien--bouton", attrs: { id, type: "button" }, texte: t(cle) });
+    b.addEventListener("click", onClick);
+    return b;
+  };
 
   const blocSons = monterBlocSons({ lire: () => o.sons.lire(), ecrire: (r) => o.sons.ecrire(r), idCase: "reglages-sons", idVolume: "reglages-sons-volume" });
   const placeMusique = el("div", { classe: "reglages__musique" });
@@ -116,7 +124,7 @@ export function monterReglages(racine: HTMLElement, o: OptionsReglages): Reglage
       aide("reglages.vibration.aide"),
     ),
     section("reglages.commandes", hoteCommandes),
-    el("div", { classe: "reglages__liens" }, lien("reglages-profil", "reglages.profil", o.profilHref), lien("reglages-mentions", "reglages.mentions", cheminMentions(langueCourante(), "../"))),
+    el("div", { classe: "reglages__liens" }, lien("reglages-profil", "reglages.profil", o.profilHref), lien("reglages-mentions", "reglages.mentions", cheminMentions(langueCourante(), "../")), boutonLien("reglages-retours", "reglages.retours", () => void import("./retoursJeu").then((m) => m.ouvrir(o.base, gameStorage())))),
   );
   montrer.forEach((f) => f());
 

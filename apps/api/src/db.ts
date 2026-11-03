@@ -72,6 +72,9 @@ export const MIGRATIONS: string[] = [
   // de PR) ; il est écrit `hidden = 1` (aucun classement public ne le lit) et effacé quand le jeu passe `on`.
   "ALTER TABLE results ADD COLUMN apercu INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE jump_results ADD COLUMN apercu INTEGER NOT NULL DEFAULT 0",
+  // Lot C1, partie B (avatars) : `players.avatar` = l'empreinte de l'image visible du joueur (NULL : ses initiales). **Réversible** : une colonne ajoutée (l'ancien code l'ignore) ; retour arrière : `ALTER TABLE players DROP COLUMN avatar`.
+  // Elle est copiée sur la ligne du joueur pour que les classements l'obtiennent sans lire la table des images.
+  "ALTER TABLE players ADD COLUMN avatar TEXT",
 ];
 
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */
@@ -214,6 +217,101 @@ export const PLATFORM_SCHEMA: string[] = [
      cree_le INTEGER NOT NULL
    )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS invitations_amis_by_empreinte ON invitations_amis (empreinte)`,
+  // --- Lot C1, partie A : les retours des joueurs (`retours.ts`). **Réversible** : deux tables nouvelles, rien d'existant touché (l'ancien code les ignore) ; retour arrière : `DROP TABLE retours` et
+  // `DROP TABLE retours_messages` (les index partent avec). `retours` : un fil (`player_id` NULL pour un envoi sans profil : aucune réponse possible ; `ref` : la référence publique, jamais l'identifiant secret ;
+  // `contexte` : JSON, liste fermée de champs vérifiés ; `non_lu_joueur` / `non_lu_admin` : une réponse ou un message attend de l'autre côté). `retours_messages` : les messages du fil (`joueur` | `admin`), du texte seul.
+  // Liées à un joueur : vidées par la remise à zéro, effacées avec lui, suivent « Changer mon code » ; gardées 12 mois après la dernière activité du fil (entretien horaire).
+  `CREATE TABLE IF NOT EXISTS retours (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     player_id TEXT,
+     ref TEXT,
+     type TEXT NOT NULL,
+     jeu TEXT NOT NULL,
+     statut TEXT NOT NULL,
+     contexte TEXT NOT NULL,
+     cree_le INTEGER NOT NULL,
+     maj_le INTEGER NOT NULL,
+     non_lu_joueur INTEGER NOT NULL DEFAULT 0,
+     non_lu_admin INTEGER NOT NULL DEFAULT 0,
+     nb_messages INTEGER NOT NULL DEFAULT 0
+   )`,
+  `CREATE INDEX IF NOT EXISTS retours_by_player ON retours (player_id, cree_le)`,
+  `CREATE INDEX IF NOT EXISTS retours_by_statut ON retours (statut, maj_le)`,
+  `CREATE INDEX IF NOT EXISTS retours_by_maj ON retours (maj_le)`,
+  `CREATE INDEX IF NOT EXISTS retours_non_lus_admin ON retours (maj_le) WHERE non_lu_admin = 1`,
+  `CREATE TABLE IF NOT EXISTS retours_messages (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     retour_id INTEGER NOT NULL,
+     auteur TEXT NOT NULL,
+     texte TEXT NOT NULL,
+     cree_le INTEGER NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS retours_messages_by_retour ON retours_messages (retour_id, id)`,
+  // --- Lot C1, partie B : les avatars et les emblèmes de groupe (`avatars.ts`). **Réversible** : trois tables nouvelles (l'ancien code les ignore) ; retour arrière : `DROP TABLE avatars`, `DROP TABLE avatar_signalements`,
+  // `DROP TABLE avatar_interdits` (les index partent avec). `avatars` : une ligne par propriétaire (`kind` `joueur` | `groupe`, `owner` = l'identifiant interne du joueur ou du groupe) = l'image **contrôlée par le serveur**
+  // en base64 (≤ 20 Ko → ≈ 27 Ko), son empreinte (`hash` : la clé de l'adresse immuable `/api/avatars/<hash>`), son état (`visible` | `masque` — 3 signalements en attente — | `retire` — par l'administration, les octets sont
+  // effacés), `revu` (l'administration l'a vue : « garder »), `jour` (le jour de Paris du dernier changement : un changement par jour). `avatar_signalements` : un signalement par signalant et par image (`traite` : décidé par
+  // l'administration, il ne compte plus). `avatar_interdits` : l'envoi d'images interdit à ce joueur ou ce groupe. Liées à un joueur : vidées par la remise à zéro, effacées avec lui, suivent « Changer mon code ».
+  `CREATE TABLE IF NOT EXISTS avatars (
+     kind TEXT NOT NULL,
+     owner TEXT NOT NULL,
+     hash TEXT NOT NULL,
+     mime TEXT NOT NULL,
+     data TEXT NOT NULL,
+     statut TEXT NOT NULL,
+     revu INTEGER NOT NULL DEFAULT 0,
+     jour INTEGER NOT NULL,
+     cree_le INTEGER NOT NULL,
+     maj_le INTEGER NOT NULL,
+     PRIMARY KEY (kind, owner)
+   )`,
+  `CREATE INDEX IF NOT EXISTS avatars_by_hash ON avatars (hash)`,
+  `CREATE INDEX IF NOT EXISTS avatars_a_revoir ON avatars (maj_le) WHERE statut = 'visible' AND revu = 0`,
+  `CREATE INDEX IF NOT EXISTS avatars_masques ON avatars (maj_le) WHERE statut = 'masque'`,
+  `CREATE TABLE IF NOT EXISTS avatar_signalements (
+     kind TEXT NOT NULL,
+     owner TEXT NOT NULL,
+     hash TEXT NOT NULL,
+     reporter TEXT NOT NULL,
+     traite INTEGER NOT NULL DEFAULT 0,
+     cree_le INTEGER NOT NULL,
+     PRIMARY KEY (kind, owner, hash, reporter)
+   )`,
+  `CREATE INDEX IF NOT EXISTS avatar_signalements_by_reporter ON avatar_signalements (reporter)`,
+  `CREATE TABLE IF NOT EXISTS avatar_interdits (
+     kind TEXT NOT NULL,
+     owner TEXT NOT NULL,
+     cree_le INTEGER NOT NULL,
+     PRIMARY KEY (kind, owner)
+   )`,
+  // --- Lot C1, partie C : les groupes (`groupes.ts`). **Réversible** : deux tables nouvelles (l'ancien code les ignore) ; retour arrière : `DROP TABLE groupes`, `DROP TABLE groupe_membres` (les index partent avec).
+  // `groupes` : `id` public (12 hexadécimaux tirés au hasard, pas un secret), `name` / `name_key` (unicité sur la forme normalisée, comme les pseudos), `description`, `chef`, `avatar` (l'empreinte de l'emblème visible,
+  // comme `players.avatar`), `invitation` (le jeton du lien : 32 hexadécimaux tirés au hasard, **gardé tel quel** pour que tout membre puisse le montrer ; le renouveler tue l'ancien), `renomme_le` (un renommage par
+  // semaine), `classement_masque` (l'administration l'écarte des classements), `cree_le`. `groupe_membres` : une ligne par joueur (clé primaire = un seul groupe par joueur), `rejoint_le` et `arrivee` (le premier jour
+  // de Paris où il compte : le lendemain de son arrivée). Liées à un joueur : vidées par la remise à zéro, effacées avec lui (le chef part : le plus ancien le devient, sinon le groupe est dissous).
+  `CREATE TABLE IF NOT EXISTS groupes (
+     id TEXT PRIMARY KEY,
+     name TEXT NOT NULL,
+     name_key TEXT NOT NULL,
+     description TEXT NOT NULL DEFAULT '',
+     chef TEXT NOT NULL,
+     avatar TEXT,
+     invitation TEXT NOT NULL,
+     renomme_le INTEGER,
+     classement_masque INTEGER NOT NULL DEFAULT 0,
+     cree_le INTEGER NOT NULL
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS groupes_by_name_key ON groupes (name_key)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS groupes_by_invitation ON groupes (invitation)`,
+  `CREATE INDEX IF NOT EXISTS groupes_by_cree ON groupes (cree_le)`,
+  `CREATE INDEX IF NOT EXISTS groupes_by_chef ON groupes (chef)`, // « Changer mon code » : le groupe qu'il dirige le suit
+  `CREATE TABLE IF NOT EXISTS groupe_membres (
+     player_id TEXT PRIMARY KEY,
+     groupe TEXT NOT NULL,
+     rejoint_le INTEGER NOT NULL,
+     arrivee INTEGER NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS groupe_membres_by_groupe ON groupe_membres (groupe, rejoint_le)`,
 ];
 
 /** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */

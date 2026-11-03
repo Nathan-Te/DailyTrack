@@ -248,3 +248,42 @@ Mesuré le 02/11/2026 par `npm run measure:amis -w @cdj/api` (`scripts/amisCout.
 - **`GET /api/portail/jour`** : +1 instruction (la liste des amis, indexée) **seulement pour un joueur qui a fini un jeu ce jour-là** ; 0 pour un visiteur ou un joueur qui n'a rien fini (la réponse publique est inchangée, cache public de 60 s intact). Les plafonds de `routesChaudes.test.ts` tiennent sans changement.
 - **Suggestions** : au plus `SUGGESTIONS_CANDIDATS` (300) pseudos lus par recherche (début de pseudo, index de `name_key`) et au plus trois recherches d'index par candidat (résultats de Track, Jump, Tower des 30 derniers jours) ; limitées à 60 par joueur et par fenêtre de 10 minutes (en mémoire, aucune écriture). Le pire cas (un début de pseudo très courant dont personne n'est actif) lit ≈ 300 + 3 × 300 lignes ; le cas courant (3 lettres, quelques dizaines de pseudos) quelques dizaines.
 - **Limites de débit** (par adresse **et** par joueur, fenêtre de 10 minutes) : ajout / retrait 60 par adresse et 30 par joueur (compteurs en base, comme un envoi) ; création du lien 10 par joueur ; acceptation 60 / 30, et **5 profils créés par adresse** (un profil sans résultat réserve un pseudo : plus strict) ; lectures (liste, feuille, suggestions) 120 par adresse et 60 par joueur ; classements filtrés 300 par adresse et 60 par joueur ; lecture d'un lien 120 par adresse. L'adresse de connexion compte aussi (`PEER_FACTOR`).
+
+## 12. Retours des joueurs (lot C1, partie A)
+Estimation d'après le code (chaque requête est examinée par `EXPLAIN QUERY PLAN` à chaque test, aucun `SCAN` sauf les deux permis de `plans.ts` : la liste du panneau sans filtre, arrêtée par `LIMIT`, et le compte des non lus, sur un index partiel) ; la route chaude qui change est `portail jour` (`routesChaudes.test.ts`, plafonds tenus).
+| Route | Requêtes | Lignes lues | Lignes écrites |
+|---|---|---|---|
+| `GET /api/portail/jour` et `/profil` (joueur) | **+1** (`messagesNonLus`) | ≈ le nombre de fils du joueur (0 à 5 le plus souvent) | 0 |
+| `POST /api/retours` (joueur) | 4 (actif, limite du jour + insertion, message, compteurs de débit) | ≈ 6 | 3 à 4 (fil, message, compteurs) |
+| `GET /api/retours` | 2 | ≤ 50 fils + leur dernier message | 0 |
+| `GET /api/retours/<id>` | 3 | ≤ 101 | 0 |
+| répondre / marquer lu | 3 à 4 | ≈ 3 | 2 à 3 |
+| panneau : liste, compte, détail | 2, 1, 3 | ≤ 51 fils + extraits, 1 (index partiel), ≤ 101 | 0 |
+Rien ne tourne au chargement d'une page de jeu ; le dialogue est chargé au toucher et ne lit que `GET /api/retours/contexte` (cache de 5 minutes, aucune requête SQL).
+
+## 13. Avatars (lot C1, partie B)
+Estimation d'après le code (chaque requête est examinée par `EXPLAIN QUERY PLAN`, aucun `SCAN` de `players`, `avatars` ni `avatar_signalements`). **Stockage** : une image de 20 Ko au plus, en base64 dans la table `avatars` (≈ 27 Ko ; `SqlDb` n'a que des textes) — **une ligne par joueur**, pas d'historique : 10 000 joueurs qui ont tous une image = ≈ 270 Mo au pire, ≈ 80 Mo avec les 6 Ko d'une image de 128 × 128 réelle. **Lectures** : le classement ne lit **jamais** `avatars` (le pseudo et l'empreinte viennent de `players.avatar`, une colonne de plus sur une ligne déjà lue) ; une image est lue **une fois par appareil et par empreinte** (cache d'un an, adresse immuable) et une fois par heure et par empreinte chez Firebase Hosting (`s-maxage=3600`).
+| Route | Requêtes | Lignes lues | Lignes écrites |
+|---|---|---|---|
+| `GET /api/avatars/<empreinte>` (cache froid) | 1 (index `avatars_by_hash`) + 1 de débit | 1 | 1 (compteur) |
+| `POST /api/avatar` | 5 (actif, joueur, limite du jour, interdit, écriture) | ≈ 4 | 3 (image, `players.avatar`, compteur) |
+| `DELETE /api/avatar` | 3 | 1 | 2 |
+| `POST /api/avatar/signaler` | 6 | ≈ 6 | 2 à 4 (signalement ; masquage à 3) |
+| `GET /api/portail/classement`, amis, `jour` | **+0** | **+0** (la colonne `players.avatar` suit le pseudo) | 0 |
+| panneau : galerie | 2 (index partiels) + 1 par image (pseudo) | ≤ 120 | 0 |
+Le plus cher est donc l'**envoi** (une fois par joueur et par jour au plus) ; la lecture d'une image coûte une ligne. Rien ne tourne au chargement d'une page de jeu.
+
+## 14. Groupes (lot C1, partie C)
+Estimation d'après le code (chaque requête est examinée par `EXPLAIN QUERY PLAN`, aucun `SCAN` de `groupes` ni de `groupe_membres`). **Stockage** : une ligne par groupe (≈ 300 octets) et une par membre (≈ 100 octets) ; l'emblème est une image d'avatar (`couts.md` § 13). **Le classement des groupes** n'est pas stocké : il est calculé à la demande, gardé 45 s par instance, à partir du classement du jour que le portail garde déjà.
+| Route | Requêtes | Lignes lues | Lignes écrites |
+|---|---|---|---|
+| `GET /api/groupes/classement` (calcul, une fois par instance et par jour tous les 45 s) | 1 + ⌈N/400⌉ + ⌈G/400⌉ | N classés du jour (une recherche par clé primaire chacun : ≈ le nombre de **membres** de groupe parmi eux) + les groupes concernés | 1 (compteur) |
+| `GET /api/groupes/classement` (gardé) | 0 | 0 | 1 (compteur) |
+| `GET /api/groupes/nom/<nom>` | 2 + le classement | ≤ 30 membres + 1 | 1 |
+| `GET /api/groupes/moi` | 3 | ≤ 31 | 1 |
+| `POST rejoindre` / `quitter` / actions du chef | 4 à 6 | ≤ 31 | 2 à 4 |
+| `GET /api/amis` (le nombre de membres de mon groupe) | **+2** | ≤ 31 (index `groupe_membres_by_groupe`) | 0 |
+| `filtre=groupe` (les quatre classements) | comme `filtre=amis` + 1 | ≤ 30 | 0 |
+| panneau : liste, fiche | 1 + 1 par groupe (compte des membres, index), 3 | ≤ 51 + 51 × membres, ≤ 31 | 0 |
+Ce qui coûte le plus : le calcul du classement des groupes d'une journée très jouée (N classés → N recherches). Il est borné par la garde de 45 s : au pire une fois par instance et par fenêtre.
+

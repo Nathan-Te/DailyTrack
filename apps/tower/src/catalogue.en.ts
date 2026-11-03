@@ -177,6 +177,7 @@ export const CATALOGUE_EN: Catalogue = {
   "pause.reglages": "Settings",
   "jeu.accueil": "Tower home",
   "pause.mentions": "Legal notice",
+  "pause.retours": "Found a bug? Got an idea?",
   "fin.archive": "Archive: this game isn't ranked.",
   "hud.archive": "Archive",
   "aide.ligne": "{gauche} {droite} move · {tourner} rotate · {descendre} drop · {taquetGauche} {taquetDroite} bump · {pause} pause",
@@ -211,6 +212,7 @@ export const CATALOGUE_EN: Catalogue = {
   "reglages.non": "No",
   "reglages.profil": "My Du Jour profile ›",
   "reglages.mentions": "Legal notice ›",
+  "reglages.retours": "Found a bug? Got an idea? ›",
 
   "commandes.action.gauche": "Move left",
   "commandes.action.droite": "Move right",

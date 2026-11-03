@@ -150,9 +150,13 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   await expect(partager).toHaveText("Partager ma journée");
   await expect(partager).toHaveClass(/dj-bouton--marque/);
   expect((await partager.boundingBox())!.height).toBeGreaterThanOrEqual(46);
-  const apercu = page.locator("#partage-apercu");
-  await expect(apercu).toHaveText(`${ligne}\n${SITE_24}/`);
-  expect(await apercu.evaluate((e) => getComputedStyle(e).fontFamily)).toContain("JetBrains Mono");
+  // Lot C1 : la ligne n'est plus affichée sous le bouton (il la copie ou la partage tout seul) ; « Un bug ? Une idée ? » est un vrai bouton, visible, juste dessous.
+  await expect(page.locator("#partage-apercu")).toHaveCount(0);
+  const retours = page.locator("#retours");
+  await expect(retours).toHaveText("Un bug ? Une idée ?");
+  await expect(retours).toHaveClass(/dj-bouton--secondaire/);
+  expect((await retours.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await retours.boundingBox())!.y).toBeGreaterThan((await partager.boundingBox())!.y);
   // Une seule requête à l'API au chargement, avec l'identifiant en en-tête (jamais dans l'adresse).
   await page.waitForTimeout(1500);
   expect(vues).toEqual([{ url: "/api/portail/jour", joueur: DEMO_ID }]);
@@ -170,7 +174,7 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   await expect(page.locator("#classement .dj-tuile__valeur")).toHaveText(rangEn(demo.joueur.rangDuJour!));
   await expect(page.locator("#classement .dj-tuile__sous-texte")).toHaveText("Finish Jump for the combined time");
   await expect(partager).toHaveText("Share my day");
-  await expect(apercu).toHaveText(`${ligne}\n${SITE_24}/`);
+  await expect(retours).toHaveText("Found a bug? Got an idea?");
   await capture(page, "portail-plein-portrait-en");
   await partager.click();
   await expect(page.locator("#partage-message")).toHaveText("Line copied: paste it wherever you like.");

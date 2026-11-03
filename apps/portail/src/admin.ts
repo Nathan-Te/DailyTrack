@@ -32,6 +32,9 @@ import {
 import { baseApi } from "./jour";
 import { remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
 import { vueJeux } from "./adminJeux";
+import { vueRetour, vueRetours } from "./adminRetours";
+import { vueImages } from "./adminImages";
+import { vueGroupe, vueGroupes } from "./adminGroupes";
 
 // Lot N1 (plateforme) : le panneau d'administration — `/admin/`. Connexion avec le compte Google de l'éditeur (Google Identity Services, chargé ici et nulle part
 // ailleurs ; la CSP de `/admin/` est dans `firebase.json`), tableau de bord, joueurs (recherche, fiche, cinq actions confirmées), journal. Une page pour l'éditeur :
@@ -157,7 +160,7 @@ async function afficherConnexion(raison?: string): Promise<void> {
 }
 
 // --- Le panneau ----------------------------------------------------------------------------------------------------------------------
-type Vue = { vue: "tableau" } | { vue: "nouveautes" } | { vue: "message" } | { vue: "jeux" } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
+type Vue = { vue: "tableau" } | { vue: "nouveautes" } | { vue: "message" } | { vue: "jeux" } | { vue: "images" } | { vue: "groupes"; q: string; page: number } | { vue: "groupe"; id: string } | { vue: "retours"; type: string; jeu: string; statut: string; page: number } | { vue: "retour"; id: number } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
 
 function lireVue(): Vue {
   const [chemin = "", requete = ""] = location.hash.replace(/^#\/?/, "").split("?");
@@ -169,6 +172,11 @@ function lireVue(): Vue {
   if (morceaux[0] === "nouveautes") return { vue: "nouveautes" };
   if (morceaux[0] === "message") return { vue: "message" };
   if (morceaux[0] === "jeux") return { vue: "jeux" };
+  if (morceaux[0] === "images") return { vue: "images" };
+  if (morceaux[0] === "groupes" && /^[0-9a-f]{12}$/.test(morceaux[1] ?? "")) return { vue: "groupe", id: morceaux[1]! };
+  if (morceaux[0] === "groupes") return { vue: "groupes", q: params.get("q") ?? "", page: Math.max(1, Number(params.get("page")) || 1) };
+  if (morceaux[0] === "retours" && /^\d{1,9}$/.test(morceaux[1] ?? "")) return { vue: "retour", id: Number(morceaux[1]) };
+  if (morceaux[0] === "retours") return { vue: "retours", type: params.get("type") ?? "", jeu: params.get("jeu") ?? "", statut: params.get("statut") ?? "", page: Math.max(1, Number(params.get("page")) || 1) };
   return { vue: "tableau" };
 }
 const adresseJoueurs = (q: string, filtre: string, page: number) => {
@@ -250,7 +258,7 @@ async function afficherPanneau(): Promise<void> {
 
 /** Le menu : les entrées de N1 et de N2 (Nouveautés, Message en direct), Track et Jump (leurs pages d'outils). */
 function dessinerMenu(vue: Vue): void {
-  const actif = vue.vue === "fiche" ? "joueurs" : vue.vue;
+  const actif = vue.vue === "fiche" ? "joueurs" : vue.vue === "retour" ? "retours" : vue.vue === "groupe" ? "groupes" : vue.vue;
   const lien = (cle: string, texte: string, href: string) =>
     el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href, "data-menu": cle, "aria-current": actif === cle ? "page" : null }, texte }));
   menu.replaceChildren(
@@ -262,11 +270,26 @@ function dessinerMenu(vue: Vue): void {
       lien("nouveautes", "Nouveautés", "#/nouveautes"),
       lien("message", "Message en direct", "#/message"),
       lien("jeux", "Jeux", "#/jeux"),
+      lien("images", "Images", "#/images"), // lot C1, partie B
+      lien("groupes", "Groupes", "#/groupes"), // lot C1, partie C
+      lien("retours", "Retours", "#/retours"), // lot C1 : le nombre de non lus est ajouté plus bas, quand le serveur l'a donné
       lien("journal", "Journal", "#/journal"),
       el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../track/admin/", "data-menu": "track" }, texte: "Track" }), el("span", { classe: "admin-menu__sous", texte: "outils : planning, médailles" })),
       el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../jump/admin/", "data-menu": "jump" }, texte: "Jump" }), el("span", { classe: "admin-menu__sous", texte: "outils : calendrier, essais" })),
     ),
   );
+}
+
+/** Lot C1 : le nombre de retours non lus à côté de « Retours » dans le menu (une lecture indexée ; un échec n'affiche rien). */
+async function montrerNonLus(): Promise<void> {
+  try {
+    const { nonLus } = await client.retoursCompte();
+    const entree = menu.querySelector('[data-menu="retours"]');
+    entree?.querySelector(".admin-menu__nombre")?.remove();
+    if (nonLus > 0) entree?.append(el("span", { classe: "admin-pastille admin-pastille--probleme admin-menu__nombre", attrs: { "data-non-lus": String(nonLus) }, texte: String(nonLus) }));
+  } catch {
+    /* sans importance pour le menu */
+  }
 }
 
 async function afficherVue(): Promise<void> {
@@ -276,6 +299,7 @@ async function afficherVue(): Promise<void> {
   menu.classList.remove("est-ouvert");
   document.querySelector(".admin-menu-bouton")?.setAttribute("aria-expanded", "false");
   contenu.replaceChildren(el("p", { classe: "admin-message admin-message--info", attrs: { role: "status" }, texte: "Chargement…" }));
+  void montrerNonLus(); // lot C1 : le nombre de retours à lire, dans le menu
   try {
     const noeud = await (vue.vue === "tableau"
       ? vueTableau()
@@ -289,10 +313,20 @@ async function afficherVue(): Promise<void> {
               ? vueMessage(contexteDiffusion)
               : vue.vue === "jeux"
                 ? vueJeux(contexteDiffusion)
-                : vueJournal());
+                : vue.vue === "groupes"
+                  ? vueGroupes(contexteDiffusion, vue)
+                  : vue.vue === "groupe"
+                    ? vueGroupe(contexteDiffusion, vue.id)
+                    : vue.vue === "images"
+                  ? vueImages(contexteDiffusion)
+                  : vue.vue === "retours"
+                  ? vueRetours(contexteDiffusion, vue)
+                  : vue.vue === "retour"
+                    ? vueRetour(contexteDiffusion, vue.id)
+                    : vueJournal());
     if (courante !== generation) return; // une autre vue a été demandée entre-temps
     contenu.replaceChildren(...noeud);
-    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : vue.vue === "nouveautes" ? "Nouveautés" : vue.vue === "message" ? "Message en direct" : vue.vue === "jeux" ? "Jeux" : "Joueurs"} · Administration · Du Jour`;
+    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : vue.vue === "nouveautes" ? "Nouveautés" : vue.vue === "message" ? "Message en direct" : vue.vue === "jeux" ? "Jeux" : vue.vue === "images" ? "Images" : vue.vue === "groupes" || vue.vue === "groupe" ? "Groupes" : vue.vue === "retours" || vue.vue === "retour" ? "Retours" : "Joueurs"} · Administration · Du Jour`;
   } catch (e) {
     if (courante !== generation) return;
     if (e instanceof ErreurAdmin && e.statut === 401) {

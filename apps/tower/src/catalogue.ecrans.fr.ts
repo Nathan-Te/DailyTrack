@@ -33,6 +33,7 @@ export const CATALOGUE_ECRANS_FR = {
   "reglages.non": "Non",
   "reglages.profil": "Mon profil Du Jour ›",
   "reglages.mentions": "Mentions légales ›",
+  "reglages.retours": "Un bug ? Une idée ? ›",
 
   "commandes.action.gauche": "Aller à gauche",
   "commandes.action.droite": "Aller à droite",
