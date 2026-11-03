@@ -109,7 +109,7 @@ function ligne(t: T, c: Classement, l: LigneClassement, moi: boolean): HTMLEleme
     "span",
     { classe: "classement-ligne__tete" },
     el("span", { classe: "classement-rang", texte: formatNombre(l.rang, langue) }),
-    el("span", { classe: "classement-pseudo" }, avatar(t, { pseudo: l.pseudo, ref: l.ref, image: adresseAvatar(baseApi(), l.avatar), taille: 24, decoratif: true }), l.pseudo, moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
+    el("span", { classe: "classement-pseudo" }, l.pseudo, avatar(t, { pseudo: l.pseudo, ref: l.ref, image: adresseAvatar(baseApi(), l.avatar), taille: 24, decoratif: true }), moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
     l.score
       ? el("span", { classe: "classement-temps classement-hauteur", texte: formatHauteur(l.score.valeur, langue) })
       : l.tempsMs === null

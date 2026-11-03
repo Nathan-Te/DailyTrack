@@ -5,7 +5,7 @@ import type { SqlDb } from "../src/db";
 import { fictionalId } from "../src/history";
 import { DEMO_JOUEUR_ID } from "../src/portailDemo";
 
-// Lot C1, partie B (plateforme) : **quatre joueurs avec une image** sur la recette (« Démo » et trois joueurs fictifs du classement de démonstration), pour juger l'avatar dans les classements, la feuille d'un joueur,
+// Lot C1, partie B (plateforme) : **quatre joueurs avec une image** sur la recette (les quatre premiers joueurs fictifs du classement de démonstration, dans l'ordre alphabétique ; « Démo » garde ses initiales), pour juger l'avatar dans les classements, la feuille d'un joueur,
 // le profil et la galerie « Images » du panneau en deux clics. Les images (64 × 64, WebP, ≈ 150 à 300 octets, **sans profil de couleur ni métadonnées**) sont de petits aplats dessinés pour la recette ;
 // elles passent par le **vrai `createApi`** (`POST /api/avatar`, `demoPlayers: true`, jamais réglé en production), donc par la validation du serveur. Constate d'abord (une lecture) ; relancé, il n'écrit rien.
 
@@ -26,7 +26,7 @@ export async function seedAvatarsDemo(o: { db: SqlDb; today: number }): Promise<
   const existe = async (id: string) => !!(await db.first("SELECT 1 AS x FROM players WHERE id = ?", [id]));
   if (!(await existe(DEMO_JOUEUR_ID))) return { deja: false, crees: 0 };
   if (await db.first("SELECT 1 AS x FROM avatars WHERE kind = 'joueur' LIMIT 1")) return { deja: true, crees: 0 }; // la clé primaire commence par `kind` : une recherche, pas un parcours
-  const joueurs: string[] = [DEMO_JOUEUR_ID];
+  const joueurs: string[] = []; // pas « Démo » : son avatar reste ses initiales (les écrans de démonstration du portail les montrent)
   for (const nom of [...CLASSEMENT_DEMO_NOMS].sort((a, b) => a.localeCompare(b, "fr"))) {
     const id = fictionalId(nom);
     if (joueurs.length < IMAGES_DEMO.length && (await existe(id))) joueurs.push(id);
