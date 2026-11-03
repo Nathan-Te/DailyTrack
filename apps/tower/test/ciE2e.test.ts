@@ -4,6 +4,7 @@ import { assignParts, gameOf, specFiles, specsRegression, testList } from "../..
 import { chromiumSeconds } from "../../../scripts/e2e-summary.mjs";
 import { chargerTable, dureeE2e, matriceComplete, specsDuJeu } from "../../../scripts/ci-zones.mjs";
 import { DEBT_DOCS, projectFor } from "../../../scripts/e2e-quarantaine.mjs";
+import { commandesDuPetitEnsemble } from "../../../scripts/e2e-suite.mjs";
 
 // Lot R15 (plateforme) : Tower est un jeu de la CI au même titre que Track et Jump. Ces tests gardent la plomberie : aucun spec de Tower oublié par les parts, ses durées, son
 // projet de CI, son entrée dans le petit ensemble Firefox et WebKit, et la disparition du workflow à part (`tower-essai.yml`).
@@ -17,7 +18,9 @@ describe("e2e de Tower dans la CI", () => {
   it("la matrice a une part Tower en Chromium dans chaque mode complet ; Firefox et WebKit lancent le petit ensemble, Tower compris", () => {
     for (const mode of ["main", "complet", "nuit"]) expect(matriceComplete(mode).include.filter((x: { suite: string }) => x.suite === "tower"), mode).toHaveLength(1);
     for (const browser of ["firefox", "webkit"]) expect(matriceComplete("nuit").include, browser).toContainEqual({ suite: "navigateurs", browser, shard: "1/1", essentiel: false });
-    expect(code).toContain("npm run e2e -w @cdj/tower -- --project=tower-${{ matrix.browser }}");
+    // Lot K4 : le workflow appelle `scripts/e2e-suite.mjs`, qui lance le petit ensemble de chaque jeu d'après sa fiche (le projet de Tower : `tower-<navigateur>`).
+    expect(code).toContain('node scripts/e2e-suite.mjs petit-ensemble "$NAVIGATEUR"');
+    expect(commandesDuPetitEnsemble("firefox")).toContainEqual({ cmd: "npm", args: ["run", "e2e", "-w", "@cdj/tower", "--", "--project=tower-firefox"], rapport: "report-firefox-tower.zip" });
     expect(lire("../playwright.config.ts")).toMatch(/name\("firefox"\), grep: \/@navigateurs\//);
     expect(lire("../playwright.config.ts")).toMatch(/name\("webkit"\), grep: \/@navigateurs\//);
   });

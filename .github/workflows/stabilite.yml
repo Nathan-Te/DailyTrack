@@ -27,13 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - id: liste
-        run: |
-          node -e '
-            const s = JSON.parse(require("fs").readFileSync("e2e/stabilite.json", "utf8"));
-            const include = s.tests.map((t) => ({ ...t, nom: `${t.jeu}/${t.fichier}${t.titre ? " › " + t.titre : ""} (${t.navigateur})` }));
-            console.log(`matrix=${JSON.stringify({ include })}`);
-            console.log(`repetitions=${s.repetitions}`);
-          ' >> "$GITHUB_OUTPUT"
+        # Lot K4 : le projet Playwright et le dossier de chaque test viennent de la fiche de son jeu (scripts/e2e-suite.mjs).
+        run: node scripts/e2e-suite.mjs stabilite >> "$GITHUB_OUTPUT"
 
   repetition:
     needs: liste
@@ -63,21 +58,17 @@ jobs:
       - run: npx playwright install-deps ${{ matrix.navigateur }}
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit == 'true'
-      - run: npm run build && npm run build:node -w @cdj/api
-        if: matrix.jeu == 'web'
+      - name: Construction (${{ matrix.jeu }})
         env:
-          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13" # lot R8 : les archives des e2e (horloge au 20/10/2026) commencent au circuit n° 1
-      - run: npm run build -w @cdj/jump
-        if: matrix.jeu == 'jump'
-        env:
-          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13" # lot R8 : les archives des e2e (horloge au 20/10/2026) commencent au circuit n° 1
+          SUITE: ${{ matrix.jeu }}
+        run: node scripts/e2e-suite.mjs construire "$SUITE"
       - name: ${{ needs.liste.outputs.repetitions }} passages de suite, sans relance
         env:
           FICHIER: ${{ matrix.fichier }}
           TITRE: ${{ matrix.titre }}
-          PROJET: ${{ matrix.jeu == 'jump' && format('jump-{0}', matrix.navigateur) || matrix.navigateur }}
+          PROJET: ${{ matrix.projet }}
           N: ${{ needs.liste.outputs.repetitions }}
-        working-directory: ${{ matrix.jeu == 'jump' && 'apps/jump' || 'apps/web' }}
+        working-directory: apps/${{ matrix.app }}
         run: |
           set -o pipefail
           args=(--project="$PROJET" --workers=1 --retries=0 --repeat-each="$N" --reporter=list)
@@ -94,6 +85,6 @@ jobs:
         if: failure()
         with:
           name: stabilite-${{ strategy.job-index }}
-          path: ${{ matrix.jeu == 'jump' && 'apps/jump' || 'apps/web' }}/test-results/
+          path: apps/${{ matrix.app }}/test-results/
           retention-days: 7
           if-no-files-found: ignore

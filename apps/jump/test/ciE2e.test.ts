@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assignParts, gameOf, specFiles, testList } from "../../../scripts/e2e-parts.mjs";
 import { chromiumSeconds, summarize } from "../../../scripts/e2e-summary.mjs";
 import { matriceComplete } from "../../../scripts/ci-zones.mjs";
+import { commandesDuPetitEnsemble } from "../../../scripts/e2e-suite.mjs";
 
 // Lot 3c : les e2e de DailyJump suivent les règles de CI de DailyTrack (matrice, rapport fusionné, une relance, instables nommés).
 // Ces tests gardent la plomberie : aucun spec de DailyJump oublié par les parts, outils sautés avec leur motif, config de CI.
@@ -16,7 +17,9 @@ describe("e2e de DailyJump dans la CI", () => {
   it("la matrice a des parts DailyJump en Chromium ; Firefox et WebKit lancent le petit ensemble des deux jeux (lot R13)", () => {
     expect(JUMP_CHROMIUM_PARTS).toBeGreaterThanOrEqual(1);
     for (const browser of ["firefox", "webkit"]) expect(matriceComplete("nuit").include, browser).toContainEqual({ suite: "navigateurs", browser, shard: "1/1", essentiel: false });
-    expect(ci).toContain("npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }}");
+    // Lot K4 : le workflow appelle `scripts/e2e-suite.mjs`, qui lance le petit ensemble de chaque jeu d'après sa fiche (le projet de Jump : `jump-<navigateur>`).
+    expect(ci).toContain('node scripts/e2e-suite.mjs petit-ensemble "$NAVIGATEUR"');
+    expect(commandesDuPetitEnsemble("firefox")).toContainEqual({ cmd: "npm", args: ["run", "e2e", "-w", "@cdj/jump", "--", "--project=jump-firefox"], rapport: "report-firefox-jump.zip" });
     expect(read("../playwright.config.ts")).toMatch(/name: name\("firefox"\), grep: \/@navigateurs\//);
     expect(read("../playwright.config.ts")).toMatch(/name: name\("webkit"\), grep: \/@navigateurs\//);
   });

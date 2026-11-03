@@ -1,3 +1,4 @@
+import { commandesDeLaPartDePr } from "../../../scripts/e2e-suite.mjs";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -372,9 +373,10 @@ describe("le workflow (ci.yml)", () => {
   it("une poussée annule la CI de la précédente (jamais sur main, jamais celle du bouton « Mettre en production »), et la PR ne lance que Chromium", () => {
     expect(code).toContain("cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.workflow == 'CI' }}");
     const pr = code.slice(code.indexOf("  e2e-pr:"), code.indexOf("  e2e:\n"));
-    expect(pr).toContain("--project=chromium");
-    expect(pr).toContain("--project=jump-chromium");
-    expect(pr).toContain("--project=tower-chromium"); // lot R15
+    // Lot K4 : le workflow appelle `scripts/e2e-suite.mjs pr`, qui lance chaque jeu sur son projet Chromium (celui de sa fiche) ; Chromium seulement.
+    expect(pr).toContain("node scripts/e2e-suite.mjs pr");
+    const projets = commandesDeLaPartDePr({ web: "a.spec.ts", jump: "b.spec.ts", tower: "c.spec.ts" }).map((c) => c.args.find((x) => x.startsWith("--project=")));
+    expect(projets).toEqual(["--project=chromium", "--project=jump-chromium", "--project=tower-chromium"]);
     expect(pr).not.toMatch(/firefox|webkit/);
     expect(existsSync(join(ROOT, "e2e/zones.json"))).toBe(true);
   });
