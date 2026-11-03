@@ -1,3 +1,4 @@
+@import "./jeux.generated.css"; /* lot K4e : les règles des jeux à étiquette générique, tirées de leur fiche (vide sans eux) */
 @import "@cdj/ui/src/favoris.css"; /* lot F1 : l'étoile et la cartouche compacte (feuille du socle, avec celle du portail : une seule feuille compressée) */
 /* Mise en page du portail (lot I1, charte § 9) : mobile d'abord (portrait 390 px, marges de 16 px), contenu aligné à gauche, hiérarchie nette
    (barre, date, titre de section, cartouches, pied) ; en paysage et sur grand écran, les cartouches côte à côte, largeur limitée à ≈ 720 px,

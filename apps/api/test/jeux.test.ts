@@ -3,7 +3,7 @@ import { formatDay } from "@cdj/core";
 import { GAMES } from "../src/registry";
 import type { GameDefinition, PortailDuJeu } from "../src/games";
 import { ADMIN_EMAIL, CLIENT_ID, SESSION_KEY } from "./adminHelpers";
-import { DAY, DAY_MS, NOON, makeApi, ouvrirJeu, parisDayStart, pilotReplay, playerId, TEST_DB, type TestApi } from "./helpers";
+import { AUTRES_JEUX, DAY, DAY_MS, NOON, makeApi, ouvrirJeu, parisDayStart, pilotReplay, playerId, TEST_DB, type TestApi } from "./helpers";
 
 // Lot P (plateforme) — l'interrupteur des jeux côté serveur : les trois états, un jeu inconnu vaut `off`, la clé d'aperçu (bonne, révoquée, absente, jamais en clair), les résultats
 // d'aperçu absents des classements publics, la journée (`live_from`, séries). Bases locales seulement (SQLite et libSQL `file:`), jamais Turso. Logique pure : `packages/core/test/jeux.test.ts`.
@@ -53,12 +53,14 @@ function fauxJeu(finis = new Map<string, number[]>()): GameDefinition<never> {
   return { code: "lune", name: "Lune", prefix: "/api/lune", tables: [], schema: [], versions: () => ({}), create: () => ({ route: async () => ({ ok: true }), dailyLevel: async () => null, portail }) };
 }
 
+const autresEteints = Object.fromEntries(AUTRES_JEUX.map((g) => [g.code, "off"]));
+
 describe(`interrupteur des jeux : les états (${TEST_DB})`, () => {
   it("Track et Jump, déjà publics, sont `on` ; un jeu qui n'a pas de ligne vaut `off` (un nouveau jeu naît caché)", async () => {
     const t = await makeApi({ games: [...GAMES, fauxJeu()] });
     const r = await t.call("GET", "/api/jeux");
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ jeux: { track: "on", jump: "on", tower: "off", lune: "off" } });
+    expect(r.body).toEqual({ jeux: { track: "on", jump: "on", tower: "off", lune: "off", ...autresEteints } }); // lot K4e : un jeu neuf des fiches naît `off`
     // Le jeu inconnu refuse tout, Track et Jump marchent.
     expect(await t.call("GET", "/api/lune/info")).toMatchObject({ status: 404, body: { error: "game_unavailable" } });
     expect((await t.call("GET", `/api/day/${DATE}`)).status).toBe(200);
@@ -109,7 +111,7 @@ describe(`interrupteur des jeux : les états (${TEST_DB})`, () => {
       const r = await t.call(m, p, b);
       expect([m, p, r.status, r.body.error]).toEqual([m, p, 404, "game_unavailable"]);
     }
-    expect((await t.call("GET", "/api/jeux")).body.jeux).toEqual({ track: "off", jump: "on", tower: "off" });
+    expect((await t.call("GET", "/api/jeux")).body.jeux).toEqual({ track: "off", jump: "on", tower: "off", ...autresEteints });
     expect(codes((await t.call("GET", "/api/portail/jour")).body)).not.toContain("cdj"); // l'accueil
     expect((await t.call("GET", "/api/me", undefined, { headers: { "X-Player-Id": playerId(1) } })).status).toBe(200); // le profil commun reste
     expect((await t.call("GET", "/api/jump/info")).status).toBe(200); // l'autre jeu
@@ -252,7 +254,7 @@ describe(`interrupteur des jeux : l'administration et le journal (${TEST_DB})`, 
     expect(lignes.map((l) => [l.cible, JSON.parse(l.avant).etat, JSON.parse(l.apres).etat])).toEqual([["track", "on", "off"], ["track", "off", "preview"]]);
     expect(JSON.stringify(lignes)).not.toContain(ADMIN_EMAIL);
     const liste = await adm("GET", "/api/admin/jeux");
-    expect(liste.body.jeux.map((j: { jeu: string; etat: string }) => [j.jeu, j.etat])).toEqual([["track", "preview"], ["jump", "on"], ["tower", "off"]]);
+    expect(liste.body.jeux.map((j: { jeu: string; etat: string }) => [j.jeu, j.etat])).toEqual([["track", "preview"], ["jump", "on"], ["tower", "off"], ...AUTRES_JEUX.map((g) => [g.code, "off"])]);
   });
 
   it("la remise à zéro du lancement garde l'interrupteur (la table est gardée)", async () => {

@@ -1,9 +1,20 @@
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Catalogue } from "../src/i18n";
 
 // Les applications passées au socle (lot I1 : le portail et sa vitrine ; lots I4, I5 : ajouter Track et Jump ici, rien d'autre à changer).
 // Les modules sont chargés par chemin calculé : ils n'entrent pas dans le projet TypeScript de packages/ui.
 const ROOT = join(__dirname, "../../..");
+
+/**
+ * Lot K4e — **les jeux neufs sont lus des fiches** : tout jeu de `config/jeux/projections/jeu.json` autre que Track, Jump et Tower (qui ont leurs catalogues par zone, listés plus bas) a, par convention, un
+ * catalogue `apps/<id>/src/catalogue.ts` qui exporte `CATALOGUE_<ID>` (fr + en), comme Tower. S'il existe, il est vérifié comme les autres (parité, chaînes en dur, clés jamais lues) ; avant que le jeu
+ * n'ait son application, il n'y a rien à vérifier.
+ */
+const JEUX_LIVRES = ["track", "jump", "tower"];
+const jeuxNeufs = (JSON.parse(readFileSync(join(ROOT, "config/jeux/projections/jeu.json"), "utf8")) as { jeux: { id: string }[] }).jeux
+  .map((j) => j.id)
+  .filter((id) => !JEUX_LIVRES.includes(id) && existsSync(join(ROOT, "apps", id, "src/catalogue.ts")));
 
 /** Catalogues des applications (fichier, export) : leur parité est vérifiée par catalogues.test.ts. */
 export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
@@ -45,6 +56,8 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["apps/jump (réglages)", "apps/jump/src/catalogue.reglages.ts", "CATALOGUE_REGLAGES"],
   // Lot T1 : Tower, un seul catalogue (fr + en réunis par apps/tower/src/catalogue.ts ; le jeu charge le français puis l'anglais à la demande).
   ["apps/tower", "apps/tower/src/catalogue.ts", "CATALOGUE_TOWER"],
+  // Lot K4e : un jeu neuf (sa fiche), un seul catalogue comme Tower.
+  ...jeuxNeufs.map((id): [string, string, string] => [`apps/${id}`, `apps/${id}/src/catalogue.ts`, `CATALOGUE_${id.toUpperCase().replace(/-/g, "_")}`]),
 ];
 
 export async function cataloguesApplications(): Promise<[string, { fr: Catalogue; en: Catalogue }][]> {
@@ -52,7 +65,7 @@ export async function cataloguesApplications(): Promise<[string, { fr: Catalogue
 }
 
 /** Les dossiers et fichiers soumis au refus des chaînes écrites en dur (chainesEnDur.test.ts). Lots I4, I5 : ajouter `apps/web/src`, `apps/jump/src`… */
-export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"];
+export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html", ...jeuxNeufs.flatMap((id) => [`apps/${id}/src`, `apps/${id}/index.html`])]; // lot K4e : les jeux neufs des fiches
 
 /** Ce qui n'est pas vérifié, chacun avec sa raison. */
 export const EXCLUSIONS: Record<string, string> = {
@@ -122,5 +135,7 @@ export const SOURCES_DES_CLES: Record<string, string[]> = {
   "apps/web": ["apps/web/src", "apps/web/index.html", "packages/kit/src"], // lot K3 : le kit lit des clés du catalogue pour le jeu (`arrivee.legendeSuite`…)
   "apps/jump": ["apps/jump/src", "apps/jump/index.html", "packages/kit/src"], // lot K3 : le kit lit des clés du catalogue pour le jeu (`arrivee.legendeSuite`…)
   "apps/tower": ["apps/tower/src", "apps/tower/index.html", "packages/kit/src"], // lot K3 : le kit lit des clés du catalogue pour le jeu (`arrivee.legendeSuite`…)
-  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/portail/groupe", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"],
+  // Lot K4e : chaque jeu neuf des fiches lit ses clés dans son application et dans le kit.
+  ...Object.fromEntries(jeuxNeufs.map((id) => [`apps/${id}`, [`apps/${id}/src`, `apps/${id}/index.html`, "packages/kit/src"]])),
+  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/portail/groupe", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html", ...jeuxNeufs.flatMap((id) => [`apps/${id}/src`, `apps/${id}/index.html`])], // lot K4e: les jeux neufs lisent le catalogue commun
 };

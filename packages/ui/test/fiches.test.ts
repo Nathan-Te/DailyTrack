@@ -1,6 +1,7 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { ETIQUETTES_PROPRES } from "../src/composants";
 import { rapportContraste } from "../src/contraste";
 import { ETIQUETTES_FICHES } from "../src/fiches.generated";
 import { COULEURS, POLICES, valeurJeton } from "../src/jetons";
@@ -9,9 +10,9 @@ import { COULEURS, POLICES, valeurJeton } from "../src/jetons";
 // pour ce jeu (étiquette, sélecteur d'amis) existe. Un jeu dont la fiche est ajoutée sans cette feuille échoue ici, au lieu de s'afficher sans couleur.
 
 const RACINE = resolve(__dirname, "..", "..", "..");
-const fiches = readdirSync(join(RACINE, "config/jeux"))
-  .filter((f) => f.endsWith(".json"))
-  .map((f) => JSON.parse(readFileSync(join(RACINE, "config/jeux", f), "utf8")) as { id: string; etiquette: { fond: string; coque: string; police: string; dessin: string } });
+// Lot K4e : les fiches du dépôt ET, en essai, celles de `CDJ_FICHES_SUPPLEMENTAIRES` (le jeu fictif de `scripts/jeu-fictif.mjs`).
+const { lireFichesBrutes } = (await import(/* @vite-ignore */ join(RACINE, "scripts/fiches-brutes.mjs"))) as typeof import("../../../scripts/fiches-brutes.mjs");
+const fiches = lireFichesBrutes(RACINE).map((f) => f.brut as { id: string; etiquette: { fond: string; coque: string; police: string; dessin: string } });
 const css = (f: string) => readFileSync(join(RACINE, "packages/ui/src", f), "utf8");
 
 describe("le socle lit les fiches", () => {
@@ -45,10 +46,20 @@ describe("le socle lit les fiches", () => {
     for (const f of fiches) expect(rapportContraste(valeurJeton(f.id === "track" ? "track-texte" : "dj-encre"), f.etiquette.fond), f.id).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("chaque jeu a sa feuille : le sélecteur d'amis et, s'il a un dessin propre, son étiquette", () => {
+  it("chaque jeu a sa feuille : écrite à la main s'il a un dessin propre, tirée de sa fiche (`npm run fiches`) s'il est générique — et un dessin propre ne se déclare que dans `ETIQUETTES_PROPRES`", () => {
     for (const f of fiches) {
-      expect(css("amis.css"), `.dj-amis-selecteur--${f.id} dans amis.css`).toContain(`.dj-amis-selecteur--${f.id} {`);
-      if (f.etiquette.dessin === "propre") expect(css("composants.css"), `.${f.id}-etiquette dans composants.css`).toContain(`.${f.id}-etiquette {`);
+      if (f.etiquette.dessin === "propre") {
+        expect(css("amis.css"), `.dj-amis-selecteur--${f.id} dans amis.css`).toContain(`.dj-amis-selecteur--${f.id} {`);
+        expect(css("composants.css"), `.${f.id}-etiquette dans composants.css`).toContain(`.${f.id}-etiquette {`);
+        expect(ETIQUETTES_PROPRES, `un dessin pour ${f.id} dans ETIQUETTES_PROPRES (composants.ts)`).toHaveProperty(f.id);
+      } else {
+        // Un jeu générique n'écrit aucune règle de style partagée : tout est dans les feuilles générées.
+        expect(css("amis.generated.css"), `.dj-amis-selecteur--${f.id} dans amis.generated.css`).toContain(`.dj-amis-selecteur--${f.id} {`);
+        expect(css("jeux.generated.css"), `.jeu-etiquette--${f.id} dans jeux.generated.css`).toContain(`.jeu-etiquette--${f.id} {`);
+        expect(css("jeux.generated.css"), `.dj-cartouche--${f.id} dans jeux.generated.css`).toContain(`.dj-cartouche--${f.id} {`);
+        expect(ETIQUETTES_PROPRES, `${f.id} est générique : pas de dessin propre`).not.toHaveProperty(f.id);
+        expect(css("amis.css"), "aucune règle à la main pour un jeu générique").not.toContain(`.dj-amis-selecteur--${f.id} {`);
+      }
     }
   });
 });

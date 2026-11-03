@@ -62,13 +62,14 @@ if (config.db.kind === "turso") {
   db = openSqlite(config.db.path);
 }
 
-/** Lot P0 : les niveaux figés de DailyJump, inclus dans le paquet par `scripts/build-node.mjs` (absents hors du paquet : aucun). */
-declare const __JUMP_FROZEN_LEVELS__: Record<string, unknown> | undefined;
-const jumpFrozen = typeof __JUMP_FROZEN_LEVELS__ === "undefined" ? {} : __JUMP_FROZEN_LEVELS__;
-
-/** Lot TP : les jours de Tower (préparés ou figés), preuve comprise : elle reste dans l'image du serveur, qui la rejoue (jamais publiée). */
-declare const __TOWER_JOURS__: Record<string, unknown> | undefined;
-const towerFrozen = typeof __TOWER_JOURS__ === "undefined" ? {} : __TOWER_JOURS__;
+/**
+ * Lots P0, TP et K4e : les jours figés de chaque jeu (`{ <jeu>: { <date>: contenu } }`), inclus dans le paquet par `scripts/build-node.mjs` d'après les fiches (absents hors du paquet : aucun). Jump lit ses
+ * niveaux, Tower ses jours (preuve comprise : elle reste dans l'image du serveur, qui la rejoue, jamais publiée) ; ce sont les options propres de ces deux jeux (`createApi`).
+ */
+declare const __JOURS_FIGES__: Record<string, Record<string, unknown>> | undefined;
+const joursFiges = typeof __JOURS_FIGES__ === "undefined" ? {} : __JOURS_FIGES__;
+const jumpFrozen = joursFiges.jump ?? {};
+const towerFrozen = joursFiges.tower ?? {};
 
 /**
  * Lot TP : les rejeux de Tower passent par **un fil de calcul** (`tower-fil.mjs`, la seconde entrée de `build-node.mjs`, posée à côté de `server.mjs` dans l'image) ; sans ce fichier (développement,

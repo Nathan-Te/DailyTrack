@@ -76,6 +76,14 @@ export const TRACK_PLAYER: UnitCost = { requests: 16, read: 1911, written: 45, c
  * 8 requêtes ordinaires → 0,75 s ; facturé au plus 10 × 100 ms + les rejeux arrondis au-delà (2 × 0,3 s) = 1,6 s. Le rejeu est le poids de Tower : `UNITES_REJEU_TOWER` = 30 unités du plafond global.
  */
 export const TOWER_PLAYER: UnitCost = { requests: 10, read: 720, written: 10, cpuS: 0.75, billedS: 1.6 };
+
+/**
+ * Lot K4e : **le coût d'un joueur d'un jeu neuf** (un jeu des fiches que ce fichier ne nomme pas : table commune `resultats_jeu`, routes du module des jeux), tant que son lot ne l'a pas mesuré. Valeur par défaut = celle
+ * de Tower (le jeu le plus lourd du module : un rejeu de plusieurs centaines de millisecondes) ; un jeu qui mesure le sien le met dans `COUTS_PAR_JEU` (clé = son identifiant). Jamais plus bas que mesuré.
+ */
+export const JEU_NEUF_PLAYER: UnitCost = TOWER_PLAYER;
+/** Les coûts mesurés des jeux neufs qui l'ont fait (identifiant → coût) ; vide aujourd'hui. */
+export const COUTS_PAR_JEU: Record<string, UnitCost> = {};
 /**
  * **Lot 55 (choisir ses fantômes dans le classement)** : `GET /api/day/<date>/run/<ref>` (la rediffusion d'une ligne), **une requête par fantôme choisi et par page** (cinq au plus ; la page garde
  * ce qu'elle a téléchargé : recommencer ne relit rien), **seulement pour un joueur qui coche des cases ou qui garde « Ma sélection »** — le joueur type de `TRACK_PLAYER` n'en fait aucune de
@@ -154,6 +162,8 @@ export interface PlatformInput {
   portail?: number;
   /** Lot TP : joueurs de Tower par jour (0 par défaut). */
   tower?: number;
+  /** Lot K4e : joueurs par jour des jeux neufs (identifiant du jeu → joueurs), au coût de `COUTS_PAR_JEU` ou, à défaut, de `JEU_NEUF_PLAYER`. */
+  autres?: Record<string, number>;
   days?: number;
 }
 
@@ -189,6 +199,12 @@ export function projectMonth(input: PlatformInput): { resources: Resource[]; byG
       written: (input.tower ?? 0) * TOWER_PLAYER.written,
       billedS: (input.tower ?? 0) * TOWER_PLAYER.billedS,
     },
+    ...Object.fromEntries(
+      Object.entries(input.autres ?? {}).map(([id, n]) => {
+        const c = COUTS_PAR_JEU[id] ?? JEU_NEUF_PLAYER;
+        return [id, { requests: n * c.requests, read: n * c.read, written: n * c.written, billedS: n * c.billedS }];
+      }),
+    ),
     Salon: {
       requests: input.salon * SALON_HALF_HOUR.requests,
       read: input.salon * SALON_HALF_HOUR.read,

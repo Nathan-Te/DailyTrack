@@ -3,23 +3,21 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { build } from "esbuild";
 
-// Lot P0 (plateforme) : les niveaux figés de DailyJump (`apps/jump/public/levels/AAAA-MM-JJ.json`) entrent dans le paquet, tels quels : le
-// serveur calcule le niveau d'une date par la même règle que le jeu (le fichier figé d'abord). Un fichier illisible arrête la construction.
-const levelsDir = new URL("../../jump/public/levels/", import.meta.url);
-const frozen = {};
-for (const f of readdirSync(levelsDir).sort()) {
-  const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
-  if (date) frozen[date] = JSON.parse(readFileSync(new URL(f, levelsDir), "utf8"));
-}
-
-// Lot TP : les jours de Tower (`apps/tower/public/jours/AAAA-MM-JJ.json`), **preuve comprise** : elle reste dans l'image (le serveur la rejoue, `examinerJourPrepare`) et ne sort jamais (le site publié, lui,
-// la perd : `apps/tower/preuves.ts`). Le dossier peut ne pas exister (aucun jour préparé encore) ; un fichier illisible arrête la construction.
-const joursTower = new URL("../../tower/public/jours/", import.meta.url);
-const towerFrozen = {};
-if (existsSync(joursTower)) {
-  for (const f of readdirSync(joursTower).sort()) {
-    const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
-    if (date) towerFrozen[date] = JSON.parse(readFileSync(new URL(f, joursTower), "utf8"));
+// Lot K4e : **les jours figés de chaque jeu viennent des fiches** (`config/jeux/projections/serveur.json`, écrite par `npm run fiches`) : `jours.dossier` de chaque jeu à fichiers (Jump : `apps/jump/public/levels`,
+// ses niveaux, lot P0 ; Tower : `apps/tower/public/jours`, lot TP, **preuve comprise** : elle reste dans l'image, le serveur la rejoue, et ne sort jamais ; un jeu neuf : les siens). Un fichier `AAAA-MM-JJ.json`
+// par jour, lu tel quel ; le serveur calcule le contenu d'une date par la même règle que le jeu (le fichier figé d'abord). Un dossier qui n'existe pas (aucun jour encore) est vide ; un fichier illisible
+// arrête la construction. Le résultat est `{ <jeu>: { <date>: contenu } }`, posé dans le paquet comme `__JOURS_FIGES__` (`server.ts` en tire les options de chaque jeu).
+const racine = new URL("../../../", import.meta.url);
+const fiches = JSON.parse(readFileSync(new URL("config/jeux/projections/serveur.json", racine), "utf8")).jeux;
+const joursFiges = {};
+for (const f of fiches) {
+  if (!f.jours.dossier) continue;
+  const dossier = new URL(`${f.jours.dossier}/`, racine);
+  joursFiges[f.id] = {};
+  if (!existsSync(dossier)) continue;
+  for (const nom of readdirSync(dossier).sort()) {
+    const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(nom)?.[1];
+    if (date) joursFiges[f.id][date] = JSON.parse(readFileSync(new URL(nom, dossier), "utf8"));
   }
 }
 
@@ -32,8 +30,9 @@ const commun = {
   logLevel: "warning",
 };
 
-// Lot TP : le script du fil de calcul de Tower, empaqueté à part (un `worker_threads` charge un fichier) et posé à côté de `server.mjs` : le Dockerfile copie les deux.
-await build({ ...commun, entryPoints: ["src/towerFilTravail.ts"], outfile: "dist/tower-fil.mjs" });
+// Lot TP : le script du fil de calcul d'un jeu (fiche `rejeu.fil` : Tower), empaqueté à part (un `worker_threads` charge un fichier) et posé à côté de `server.mjs` : le Dockerfile copie les deux.
+// Lot K4e : `src/<id>FilTravail.ts` → `dist/<id>-fil.mjs`, pour chaque fiche qui le demande.
+for (const f of fiches.filter((x) => x.rejeu.fil)) await build({ ...commun, entryPoints: [`src/${f.id}FilTravail.ts`], outfile: `dist/${f.id}-fil.mjs` });
 
 await build({
   entryPoints: ["src/server.ts"],
@@ -44,7 +43,7 @@ await build({
   outfile: "dist/server.mjs",
   // Le client HTTP de libSQL tire `ws`, écrit en CommonJS : dans un paquet ESM il lui faut un `require`.
   banner: { js: "import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);" },
-  define: { __JUMP_FROZEN_LEVELS__: JSON.stringify(frozen), __TOWER_JOURS__: JSON.stringify(towerFrozen) },
+  define: { __JOURS_FIGES__: JSON.stringify(joursFiges) },
   legalComments: "none",
   logLevel: "warning",
 });

@@ -1,3 +1,4 @@
+@import "./jeux.generated.css"; /* lot K4e : les couleurs de zone des jeux à étiquette générique, tirées de leur fiche (vide sans eux) */
 /* Le panneau d'administration (lot N1) : la charte « Cartouches » — fonds unis, traits de 2 et 3 px, ombres nettes, aucun dégradé, aucune translucidité ; jetons de
    @cdj/ui seulement. Ordinateur d'abord ; sur téléphone le menu est replié derrière un bouton. */
 .admin {

@@ -3,9 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { DOSSIERS_DEMO, LAYOUT, REGION, SITES_FICHES, firebaseConfig, partagerPolices, retirerDemos, robots } from "../../../scripts/site.mjs";
+import { DOSSIERS_DEMO, LAYOUT, REGION, SITES_FICHES, firebaseConfig, partagerPolices, retenirSites, retirerDemos, robots } from "../../../scripts/site.mjs";
+import { lireFichesBrutes } from "../../../scripts/fiches-brutes.mjs";
 
 // Lot R4 : la configuration Firebase (firebase.json du dépôt) et la disposition du site.
+// Lot K4e : « les jeux des fiches » — celles du dépôt et, en essai, celles de `CDJ_FICHES_SUPPLEMENTAIRES` (le jeu fictif de `scripts/jeu-fictif.mjs`).
+const fichesDuDepot = (lireFichesBrutes(join(__dirname, "../../..")) as { brut: { id: string; ordre: number; dossiers?: { app: string } } }[]).map((f) => f.brut).sort((a, b) => a.ordre - b.ordre);
 const template = JSON.parse(readFileSync(join(__dirname, "../../../firebase.json"), "utf8"));
 type Header = { source?: string; regex?: string; headers: { key: string; value: string }[] };
 const cacheOf = (h: Header) => h.headers.find((x) => x.key === "Cache-Control")?.value;
@@ -126,14 +129,26 @@ describe("firebase.json", () => {
   });
 });
 
+describe("un jeu témoin n'est jamais publié en production (lot K4e)", () => {
+  const sites = [{ id: "track", to: "track" }, { id: "essai", to: "essai", temoin: true }, { id: "jump", to: "jump" }];
+  it("`retenirSites` écarte les témoins de la production et les garde ailleurs (recette, aperçus, local)", () => {
+    expect(retenirSites(sites, { production: true }).map((s: { id: string }) => s.id)).toEqual(["track", "jump"]);
+    expect(retenirSites(sites, { production: false }).map((s: { id: string }) => s.id)).toEqual(["track", "jump", "essai"].sort((a, b) => sites.findIndex((s) => s.id === a) - sites.findIndex((s) => s.id === b)));
+  });
+  it("les jeux des fiches : chaque site publié porte le drapeau de sa fiche", () => {
+    for (const s of SITES_FICHES as { id: string; temoin: boolean }[]) {
+      const f = (lireFichesBrutes(join(__dirname, "../../..")) as { id: string; brut: { temoin?: boolean } }[]).find((x) => x.id === s.id)!;
+      expect(s.temoin, s.id).toBe(f.brut.temoin === true);
+    }
+  });
+});
+
 describe("disposition du site", () => {
   it("portail à la racine ; lots K1 à K1c : chaque jeu sous /<id>/ par sa fiche (Track construit dans apps/web)", () => {
     expect(LAYOUT).toEqual([{ from: "apps/portail/dist", to: "" }]);
-    expect(SITES_FICHES.map((s: { from: string; to: string }) => [s.from, s.to])).toEqual([
-      ["apps/web/dist", "track"],
-      ["apps/jump/dist", "jump"],
-      ["apps/tower/dist", "tower"],
-    ]);
+    // Lot K4e : une disposition par fiche, dans l'ordre des fiches (Track, Jump, Tower, puis tout jeu neuf), Track construit dans `apps/web` ; chaque jeu est vérifié.
+    expect(SITES_FICHES.map((s: { from: string; to: string }) => [s.from, s.to])).toEqual(fichesDuDepot.map((f) => [`apps/${f.dossiers?.app ?? f.id}/dist`, f.id]));
+    expect(SITES_FICHES.slice(0, 3).map((s: { from: string; to: string }) => [s.from, s.to])).toEqual([["apps/web/dist", "track"], ["apps/jump/dist", "jump"], ["apps/tower/dist", "tower"]]);
   });
 });
 

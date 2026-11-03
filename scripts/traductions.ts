@@ -34,6 +34,8 @@ import { CATALOGUE_ARRIVEE as JUMP_ARRIVEE } from "../apps/jump/src/catalogue.ar
 import { CATALOGUE_REGLAGES as JUMP_REGLAGES } from "../apps/jump/src/catalogue.reglages";
 import { CATALOGUE_APERCU as APERCU_JUMP } from "../apps/jump/src/catalogue.apercu";
 import { CATALOGUE_TOWER } from "../apps/tower/src/catalogue";
+// Lot K4e : les catalogues des jeux neufs, tirés des fiches (`npm run fiches` écrit ce fichier : vide tant qu'aucun jeu neuf n'a d'application).
+import { CATALOGUES_JEUX_NEUFS } from "./catalogues-jeux.generated";
 
 type Bilingue = { fr: Catalogue; en: Catalogue };
 
@@ -66,6 +68,7 @@ export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingu
   ["apps/jump (arrivée)", "apps/jump/src/catalogue.arrivee.*.ts", JUMP_ARRIVEE as unknown as Bilingue],
   ["apps/jump (réglages)", "apps/jump/src/catalogue.reglages.*.ts", JUMP_REGLAGES as unknown as Bilingue],
   ["apps/tower", "apps/tower/src/catalogue.*.ts", CATALOGUE_TOWER as unknown as Bilingue],
+  ...CATALOGUES_JEUX_NEUFS.map(([nom, fichier, catalogue]): [string, string, Bilingue] => [nom, fichier, catalogue as unknown as Bilingue]),
 ];
 
 /** Le titre de chaque application dans le document. */
@@ -75,6 +78,8 @@ const APPLICATIONS: Record<string, string> = {
   "apps/web": "Track",
   "apps/jump": "Jump",
   "apps/tower": "Tower",
+  // Lot K4e : le titre d'un jeu neuf est le nom de sa fiche.
+  ...Object.fromEntries(CATALOGUES_JEUX_NEUFS.map(([nom, , , titre]) => [nom, titre])),
 };
 
 /** Le nom d'un écran (le premier mot de la clé) ; un mot inconnu s'écrit tel quel. */

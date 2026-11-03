@@ -1,6 +1,6 @@
 import type { CleCommune } from "./catalogue";
 import { el, svg } from "./dom";
-import type { JeuGenere } from "./fiches.generated";
+import { A_DES_JEUX_GENERIQUES, type JeuGenere } from "./fiches.generated";
 import { formatDateCourte, formatNumeroJour, majuscule } from "./formats";
 import { LANGUES, type Langue, type Traducteur } from "./i18n";
 import { avatar } from "./avatar";
@@ -190,13 +190,28 @@ export function etiquetteJump(o: OptionsEtiquette): HTMLElement {
 
 /**
  * L'étiquette du jeu `jeu` (lot K1) : un seul point d'entrée pour le portail, qui ne nomme plus un jeu pour choisir la fabrique. Un jeu dont la fiche dit `dessin: "propre"` a son
- * dessin écrit ici (`ETIQUETTES_PROPRES`) ; l'étiquette générique d'un jeu neuf est le lot K3.
+ * dessin écrit ici (`ETIQUETTES_PROPRES`) ; un jeu dont la fiche dit `generique` (jeu neuf, lot K4e) a l'étiquette générique, sans dessin.
  */
 export function etiquetteDe(jeu: Jeu, o: OptionsEtiquette): HTMLElement {
-  return ETIQUETTES_PROPRES[jeu](o);
+  // Lot K4e : un jeu sans dessin propre (`dessin: "generique"`, jeu neuf) a l'étiquette générique, sans dessin, habillée par les variables que `npm run fiches` écrit de sa fiche (`jeux.generated.css`) : fond,
+  // police ; la coque est celle de sa cartouche. Tant qu'aucun jeu n'est générique (`A_DES_JEUX_GENERIQUES` est faux), ces lignes sont du code mort que l'empaqueteur retire : **le premier chargement du
+  // portail ne grossit pas d'un octet** (mesuré : `portail.premier`).
+  if (A_DES_JEUX_GENERIQUES && !(jeu in ETIQUETTES_PROPRES)) {
+    return el(
+      "div",
+      { classe: ["dj-etiquette", "jeu-etiquette", `jeu-etiquette--${jeu}`] },
+      el("div", { classe: "jeu-etiquette__tete" }, el(o.niveau ?? "h2", { classe: "jeu-etiquette__titre", texte: o.titre }), o.numero ? el("span", { classe: "jeu-etiquette__numero", texte: o.numero }) : null),
+      o.texte ? el("p", { classe: "jeu-etiquette__texte", texte: o.texte }) : null,
+      o.suite ? el("div", { classe: "jeu-etiquette__suite" }, o.suite) : null,
+    );
+  }
+  return ETIQUETTES_PROPRES[jeu]!(o);
 }
-/** Le dessin de chaque jeu (`dessin: "propre"` de sa fiche) : exhaustif sur `Jeu`, donc un jeu de plus sans dessin ne compile pas. */
-const ETIQUETTES_PROPRES: Record<Jeu, (o: OptionsEtiquette) => HTMLElement> = { track: etiquetteTrack, jump: etiquetteJump, tower: etiquetteTower };
+/**
+ * Le dessin des jeux qui en ont un (`dessin: "propre"` de leur fiche). Lot K4e : plus exhaustif sur `Jeu` — un jeu neuf n'a pas à en écrire un —, mais `packages/ui/test/fiches.test.ts` refuse une fiche
+ * `propre` sans dessin ici, et une fiche `generique` qui en aurait un.
+ */
+export const ETIQUETTES_PROPRES: Readonly<Record<string, (o: OptionsEtiquette) => HTMLElement>> = { track: etiquetteTrack, jump: etiquetteJump, tower: etiquetteTower };
 
 /** Une tuile : légende en capitales, valeur, sous-texte. */
 export function tuile(o: { legende: string; valeur: string; sousTexte?: string; icone?: SVGSVGElement }): HTMLElement {

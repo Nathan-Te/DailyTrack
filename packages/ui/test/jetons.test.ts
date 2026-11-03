@@ -39,8 +39,10 @@ describe("jetons de la charte", () => {
     expect(new Set(noms).size).toBe(noms.length);
   });
 
+  // Lot K4e : les feuilles `*.generated.css` portent les couleurs et la police de la FICHE d'un jeu à étiquette générique (`npm run fiches`) : leur fraîcheur est testée (`packages/core/test/fiches.test.ts`), la fiche est
+  // leur source — comme `jetons.ts` l'est de `jetons.css`. Elles ne contiennent rien d'autre qu'une couleur de fiche (le reste est en jetons : ce test les lit aussi, moins la couleur).
   it("feuilles et composants : aucune couleur ni police en dur (jetons seulement), aucune ombre floue ni translucidité", () => {
-    const fichiers = readdirSync(SRC).filter((f) => (f.endsWith(".css") && f !== "jetons.css") || /^(composants|cadre|icones|dom)\.ts$/.test(f));
+    const fichiers = readdirSync(SRC).filter((f) => (f.endsWith(".css") && f !== "jetons.css" && !f.endsWith(".generated.css")) || /^(composants|cadre|icones|dom)\.ts$/.test(f));
     expect(fichiers.length).toBeGreaterThanOrEqual(5);
     for (const f of fichiers) {
       const texte = readFileSync(join(SRC, f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");

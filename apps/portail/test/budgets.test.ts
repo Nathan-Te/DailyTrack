@@ -6,6 +6,7 @@ import { POIDS_MAX } from "../../../scripts/images-partage.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { CLES_MESUREES, LIGNES_JUMP, LIGNES_TOWER, LIGNES_TRACK } from "../../../scripts/budgets.mjs";
 import { HORS_JOB, lirePlafonds } from "../../../scripts/budgets-controle.mjs";
+import { lireFichesBrutes } from "../../../scripts/fiches-brutes.mjs";
 
 // Lot I6 (plateforme) : docs/plateforme/budgets.md est la référence des budgets. Lot R17 : c'est aussi la SEULE source des plafonds — le job « Budgets » de la CI
 // (scripts/budgets-controle.mjs) les lit ici et les compare à `mesuresParLigne` (scripts/budgets.mjs) ; plus aucun test n'en écrit de copie. Ce test vérifie que le tableau et la mesure
@@ -31,6 +32,8 @@ describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule 
     // Lots K1b et K1c : les lignes de Jump et de Track de leur fiche sont exactement les lignes `jump.*` et `track.*` du tableau.
     for (const [jeu, fiche] of [["jump", LIGNES_JUMP], ["track", LIGNES_TRACK]] as const)
       expect([...(fiche as string[])].sort(), `lignes de ${jeu} : sa fiche et le tableau`).toEqual(Object.keys(plafonds).filter((c) => c.startsWith(`${jeu}.`)).sort());
+    // Lot K4e : chaque jeu des fiches (celles du dépôt et, en essai, du jeu fictif) a ses lignes au tableau — un jeu neuf obtient ses mesures d'office (`mesureJeuNeuf`).
+    for (const f of lireFichesBrutes(ROOT) as { id: string; brut: unknown }[]) for (const cle of (f.brut as { budget: { lignes: string[] } }).budget.lignes) expect(plafonds[cle], `fiche « ${f.id} » : la ligne « ${cle} » manque à docs/plateforme/budgets.md`).toBeGreaterThan(0);
     // Les images de partage sont gardées par scripts/images-partage.mjs : même limite.
     expect(plafonds["partage.image"]).toBe(POIDS_MAX);
   });
@@ -59,7 +62,7 @@ describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule 
   it("la CI : le job « Budgets » contrôle le tableau, et la fusion en dépend (verdict `test`)", () => {
     const ci = lire(".github/workflows/ci.yml");
     expect(ci).toContain("node scripts/budgets-controle.mjs");
-    expect(ci).toMatch(/needs: \[scope, unit, zones, budgets\]/);
+    expect(ci).toMatch(/needs: \[scope, unit, zones, budgets, jeu-fictif\]/); // lot K4e : le jeu fictif bloque aussi la fusion
     expect(ci).toContain("name: Budgets");
   });
 });

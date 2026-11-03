@@ -9,6 +9,10 @@ import { PREPARATION, argsEncodage, argsMesure, blocCredits, construireListe, ec
 import { CLES_GARDEES } from "@cdj/profile";
 
 const ROOT = join(__dirname, "../../..");
+
+// Lot K4e : « les jeux des fiches » (celles du dépôt et, en essai, de `CDJ_FICHES_SUPPLEMENTAIRES`), dans l'ordre des fiches : ce que désigne `tous`.
+const { lireFichesBrutes } = (await import(/* @vite-ignore */ join(__dirname, "../../../scripts/fiches-brutes.mjs"))) as typeof import("../../../scripts/fiches-brutes.mjs");
+const JEUX_DES_FICHES = lireFichesBrutes(join(__dirname, "../../..")).map((f) => f.brut as { id: string; ordre: number }).sort((a, b) => a.ordre - b.ordre).map((f) => f.id);
 // `scripts/site.mjs` n'a pas de déclaration de types : chargé par chemin (comme `packages/ui/test/applications.ts` charge ses modules).
 const { copierMusique } = (await import(/* @vite-ignore */ join(ROOT, "scripts/site.mjs"))) as { copierMusique(out: string, source?: string): number };
 const MESURE = `[Parsed_loudnorm_0 @ 0x1]\n{\n\t"input_i" : "-23.50",\n\t"input_tp" : "-4.10",\n\t"input_lra" : "6.20",\n\t"input_thresh" : "-34.00",\n\t"output_i" : "-18.10",\n\t"target_offset" : "0.10"\n}\n`;
@@ -48,7 +52,7 @@ describe("la préparation des morceaux (npm run musique)", () => {
   it("la liste servie : jeux résolus, crédit toujours écrit, poids et correction repris, relisible par le jeu", () => {
     const infos = new Map([["un", { fichier: "un-11111111.m4a", duree: 100.04, sha: "a".repeat(64) }], ["deux", { fichier: "deux-22222222.m4a", duree: 50, sha: "b".repeat(64) }]]);
     const l = construireListe({ pistes: desc.pistes }, infos);
-    expect(l.pistes[0]).toMatchObject({ jeux: ["track", "jump", "tower"], credit: "« Un » — A", poids: 2, volumeDb: -1.5, duree: 100 });
+    expect(l.pistes[0]).toMatchObject({ jeux: JEUX_DES_FICHES, credit: "« Un » — A", poids: 2, volumeDb: -1.5, duree: 100 });
     expect(l.pistes[1]).toMatchObject({ jeux: ["portail"], credit: "Deux par B (CC BY 4.0)" });
     expect(lireListe(JSON.parse(texteListe(l)))).toEqual(l);
     expect(() => construireListe({ pistes: desc.pistes }, new Map())).toThrow();

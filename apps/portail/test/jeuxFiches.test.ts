@@ -7,14 +7,18 @@ import { CATALOGUE_PORTAIL } from "../src/catalogue";
 import { FICHES, ficheDuJeu, ficheDuRegistre, titreDeCarte } from "../src/jeuxFiches";
 import { cartes } from "../src/jours";
 import { daysFromCivil } from "@cdj/core";
+import { JEUX_SANS_NOM_DE_THEME, clesManquantes } from "@cdj/core/fiche";
 
 // Lots K1, K1b et K1c : le portail lit la fiche de chaque jeu (Track, Jump, Tower) : cartouches, accroche, titre, nom, filtre du cumul, thèmes du catalogue, tableau de bord.
 const ROOT = join(__dirname, "../../..");
 const jeu = (JSON.parse(readFileSync(join(ROOT, "config/jeux/projections/jeu.json"), "utf8")) as { jeux: { id: string; themes: string[] }[] }).jeux;
+// Lot K4e : « les jeux des fiches » — celles du dépôt et, en essai, celles de `CDJ_FICHES_SUPPLEMENTAIRES` (le jeu fictif de `scripts/jeu-fictif.mjs`) : un test qui vérifiait trois jeux vérifie chaque jeu.
+const { lireFichesBrutes } = (await import(/* @vite-ignore */ join(ROOT, "scripts/fiches-brutes.mjs"))) as typeof import("../../../scripts/fiches-brutes.mjs");
+const fichesDuDepot = lireFichesBrutes(ROOT).map((f) => f.brut as { id: string; code: string; ordre: number; accroche: string; titre?: string; themes: string[]; accrocheTheme?: string }).sort((a, b) => a.ordre - b.ordre);
 
 describe("les cartouches, le catalogue et les noms viennent de la fiche", () => {
   it("la projection du portail est celle des fiches : Track et Jump (au temps, dans le cumul) et Tower (hors du cumul, classé à la hauteur)", () => {
-    expect(FICHES.map((f) => f.id)).toEqual(["track", "jump", "tower"]);
+    expect(FICHES.map((f) => f.id)).toEqual(fichesDuDepot.map((f) => f.id)); // une cartouche par fiche, dans l'ordre des fiches (Track, Jump, Tower, puis un jeu neuf)
     expect(ficheDuJeu("track")).toMatchObject({ code: "cdj", cumul: true, format: "temps", titre: "jeu.track.titre", premierJour: "2026-10-13" });
     expect(ficheDuJeu("track")?.accrocheTheme).toBeUndefined();
     expect(ficheDuJeu("tower")).toMatchObject({ code: "tower", cumul: false, format: "hauteur" });
@@ -28,7 +32,7 @@ describe("les cartouches, le catalogue et les noms viennent de la fiche", () => 
 
   it("les cartouches : une par fiche, dans l'ordre ; Track et Jump ont leur numéro local (publics d'emblée), Tower non (le serveur le donne)", () => {
     const c = cartes(20_000);
-    expect(c.map((x) => [x.code, x.jeu, x.lien])).toEqual([["track", "cdj", "track/"], ["jump", "jump", "jump/"], ["tower", "tower", "tower/"]]);
+    expect(c.map((x) => [x.code, x.jeu, x.lien])).toEqual(fichesDuDepot.map((f) => [f.id, f.code, `${f.id}/`]));
     expect(c[0]!.numero).toBe(20_000 - daysFromCivil(2026, 10, 13) + 1);
     expect(c[1]!.numero).toBe(20_000 - daysFromCivil(2026, 10, 16) + 1);
     expect(c[2]!.numero).toBe(0);
@@ -39,19 +43,16 @@ describe("les cartouches, le catalogue et les noms viennent de la fiche", () => 
     for (const t of jeu.find((x) => x.id === "jump")!.themes) expect(`${j.accrocheTheme}${t}` in CATALOGUE_COMMUN.fr, t).toBe(true);
   });
 
-  it("chaque fiche a son accroche et son nom dans les catalogues français et anglais, et un nom par thème", () => {
-    for (const f of FICHES) {
-      expect(f.accroche in CATALOGUE_PORTAIL.fr, `${f.accroche} (fr)`).toBe(true);
-      expect(f.accroche in CATALOGUE_PORTAIL.en, `${f.accroche} (en)`).toBe(true);
-      expect(`jeu.${f.id}.nom` in CATALOGUE_COMMUN.fr, `jeu.${f.id}.nom (fr)`).toBe(true);
-      expect(`jeu.${f.id}.nom` in CATALOGUE_COMMUN.en, `jeu.${f.id}.nom (en)`).toBe(true);
-      if (f.titre) expect(f.titre in CATALOGUE_COMMUN.fr || f.titre in CATALOGUE_PORTAIL.fr).toBe(true);
-    }
-    // Exception nommée : Track n'a pas de noms de thèmes au portail (sa cartouche n'en montre pas : `nomTheme` rend `null` sans clé) ; ajouter ses huit noms changerait la cartouche et le catalogue.
-    for (const j of jeu.filter((x) => FICHES.some((f) => f.id === x.id) && x.id !== "track")) {
-      const cles = (c: Record<string, string>) => Object.keys(c).filter((k) => k.startsWith(`portail.theme.${j.id}.`)).map((k) => k.slice(`portail.theme.${j.id}.`.length)).sort();
-      expect(cles(CATALOGUE_PORTAIL.fr), `thèmes de ${j.id} (fr)`).toEqual([...j.themes].sort());
-      expect(cles(CATALOGUE_PORTAIL.en), `thèmes de ${j.id} (en)`).toEqual([...j.themes].sort());
+  // Lot K4e — UN SEUL test pour toutes les fiches : les clés de catalogue qu'une fiche exige sont listées par la fiche (`clesDeCatalogue`, `@cdj/core/fiche`), le nom du jeu, l'accroche, le titre, un nom par thème.
+  // Une clé manquante donne une phrase qui nomme la fiche et la clé (« fiche « essai » : la clé « jeu.essai.nom » manque au catalogue commun de @cdj/ui (en) »).
+  it("chaque fiche a toutes les clés de catalogue qu'elle exige, en français et en anglais : aucune ne manque, aucune ne reste en trop pour ses thèmes", () => {
+    const catalogues = { commun: { fr: CATALOGUE_COMMUN.fr, en: CATALOGUE_COMMUN.en }, portail: { fr: CATALOGUE_PORTAIL.fr, en: CATALOGUE_PORTAIL.en } };
+    expect(fichesDuDepot.flatMap((f) => clesManquantes(f as never, catalogues))).toEqual([]);
+    // Pas de nom de thème « orphelin » : ceux du catalogue sont exactement les thèmes de la fiche (Track n'en a pas : exception nommée, `JEUX_SANS_NOM_DE_THEME`).
+    for (const f of fichesDuDepot.filter((x) => !JEUX_SANS_NOM_DE_THEME.includes(x.id))) {
+      const cles = (c: Record<string, string>) => Object.keys(c).filter((k) => k.startsWith(`portail.theme.${f.id}.`)).map((k) => k.slice(`portail.theme.${f.id}.`.length)).sort();
+      expect(cles(CATALOGUE_PORTAIL.fr), `thèmes de ${f.id} (fr)`).toEqual([...f.themes].sort());
+      expect(cles(CATALOGUE_PORTAIL.en), `thèmes de ${f.id} (en)`).toEqual([...f.themes].sort());
     }
   });
 

@@ -17,8 +17,140 @@ const ENTETE = (lecteur: string) =>
 const lit = (v: unknown): string => JSON.stringify(v);
 const tuple = (l: readonly string[]): string => `[${l.map(lit).join(", ")}] as const`;
 
-/** Les fichiers produits, relatifs à la racine du dépôt. */
-export function sorties(fiches: readonly FicheJeu[]): Record<string, string> {
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// Lot K4e — les feuilles de style d'un jeu à étiquette générique, tirées de sa fiche. Les jeux à dessin propre (Track, Jump, Tower) gardent leurs règles écrites à la main ; un jeu `generique` n'écrit
+// AUCUNE règle de style partagée. Sans jeu générique ces fichiers ne contiennent qu'un commentaire : le premier chargement des applications ne pèse pas un octet de plus.
+
+const ENTETE_CSS = (lecteur: string) =>
+  `/* GÉNÉRÉ par \`npm run fiches\` (lot K4e : config/jeux/<id>.json → ${lecteur}) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */\n`;
+const generiques = (fiches: readonly FicheJeu[]) => fiches.filter((f) => f.etiquette.dessin === "generique");
+
+/** `packages/ui/src/jeux.generated.css` : l'étiquette générique (structure, une fois) et, par jeu générique, ses couleurs et la coque de sa cartouche. */
+function cssUi(fiches: readonly FicheJeu[]): string {
+  const g = generiques(fiches);
+  if (g.length === 0) return ENTETE_CSS("ui");
+  const structure = `/* L'étiquette générique : un papier de la couleur du jeu, bordé d'encre, le nom dans la police du jeu. */
+.jeu-etiquette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-1);
+  background: var(--jeu-fond);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  padding: var(--dj-espace-3) var(--dj-espace-5);
+  min-height: 92px;
+}
+.jeu-etiquette__tete {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--dj-espace-4);
+}
+.jeu-etiquette__titre {
+  font-family: var(--jeu-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-22);
+  line-height: 1;
+}
+.jeu-etiquette__numero {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+}
+.jeu-etiquette__texte {
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+`;
+  const parJeu = g
+    .map((f) => `.jeu-etiquette--${f.id} {\n  --jeu-fond: ${f.etiquette.fond};\n  --jeu-police: ${f.etiquette.police};\n}\n.dj-cartouche--${f.id} {\n  background: ${f.etiquette.coque};\n}\n`)
+    .join("");
+  return ENTETE_CSS("ui") + structure + parJeu;
+}
+
+/** `packages/ui/src/amis.generated.css` : le sélecteur « Tous / Amis » de chaque jeu générique (importé par `amis.css`, à la demande avec lui). */
+function cssAmis(fiches: readonly FicheJeu[]): string {
+  return (
+    ENTETE_CSS("ui, amis") +
+    generiques(fiches)
+      .map((f) => `.dj-amis-selecteur.dj-amis-selecteur--${f.id} {\n  --sel-fond: ${f.etiquette.fond};\n  --sel-actif-fond: var(--dj-encre);\n  --sel-actif-texte: ${f.etiquette.fond};\n}\n`)
+      .join("")
+  );
+}
+
+/** `apps/portail/src/jeux.generated.css` : les étiquettes de zone (panneau d'administration, nouveautés) et la mise en page de l'étiquette générique sur l'étagère du portail. */
+function cssPortail(fiches: readonly FicheJeu[]): string {
+  const g = generiques(fiches);
+  if (g.length === 0) return ENTETE_CSS("portail");
+  const zones = g
+    .map(
+      (f) =>
+        `.admin-zone.admin-zone--${f.zoneNouveautes} {\n  background: ${f.etiquette.fond};\n  color: var(--dj-encre);\n}\n.nouveautes-zone.nouveautes-zone--${f.zoneNouveautes} {\n  background: ${f.etiquette.fond};\n  color: var(--dj-encre);\n}\n`,
+    )
+    .join("");
+  return (
+    ENTETE_CSS("portail") +
+    zones +
+    `/* L'étiquette générique sur l'étagère : le numéro et le thème sous le nom, l'accroche sur deux lignes réservées ; en cartouche compacte, le nom et le numéro côte à côte. */
+.portail-etagere .jeu-etiquette__tete {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.portail-etagere .jeu-etiquette__texte {
+  min-height: calc(2 * 1.3em);
+  line-height: 1.3;
+}
+.portail-etagere--compacte .jeu-etiquette__tete {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--dj-espace-3);
+}
+.portail-etagere--compacte .jeu-etiquette__numero {
+  white-space: nowrap;
+}
+`
+  );
+}
+
+/** `apps/api/src/registre.generated.ts` : les jeux du registre du serveur, un par fiche, dans l'ordre. Le module d'un jeu est `apps/api/src/<code>.ts` et exporte `<CODE>_GAME` (convention des trois jeux). */
+function registreServeur(fiches: readonly FicheJeu[]): string {
+  const nom = (f: FicheJeu) => `${f.code.toUpperCase().replace(/-/g, "_")}_GAME`;
+  return (
+    ENTETE("serveur") +
+    `import type { GameDefinition } from "./games";\n` +
+    fiches.map((f) => `import { ${nom(f)} } from "./${f.code}";\n`).join("") +
+    `\n// Lot K4e : le registre vient des fiches. \`temoin\` : un jeu témoin n'est jamais dans le registre d'un serveur de production (\`jeuxPourEnvironnement\`, \`registry.ts\`).\n` +
+    `export const JEUX_DU_REGISTRE: readonly { code: string; temoin: boolean; jeu: GameDefinition<never> }[] = [\n` +
+    fiches.map((f) => `  { code: ${lit(f.code)}, temoin: ${f.temoin ? "true" : "false"}, jeu: ${nom(f)} as unknown as GameDefinition<never> },\n`).join("") +
+    `];\n`
+  );
+}
+
+/** Les trois jeux livrés, dont les catalogues sont listés à la main (par zone) : tout autre jeu des fiches est « neuf » et suit la convention `apps/<id>/src/catalogue.ts` → `CATALOGUE_<ID>`. */
+const JEUX_LIVRES = ["track", "jump", "tower"];
+
+/**
+ * `scripts/catalogues-jeux.generated.ts` : les catalogues des jeux neufs que lit `scripts/traductions.ts` (le document des traductions). Un import ne se calcule pas : le fichier est écrit ici, une ligne par jeu neuf
+ * dont l'application a déjà son catalogue (`existe(chemin)` : le disque, injecté pour que cette fonction reste pure). Vide tant qu'aucun jeu neuf n'a d'application.
+ */
+function cataloguesDesJeuxNeufs(fiches: readonly FicheJeu[], existe: (chemin: string) => boolean): string {
+  const nom = (f: FicheJeu) => `CATALOGUE_${(f.dossiers?.app ?? f.id).toUpperCase().replace(/-/g, "_")}`;
+  const neufs = fiches.filter((f) => !JEUX_LIVRES.includes(f.id) && existe(`apps/${f.dossiers?.app ?? f.id}/src/catalogue.ts`));
+  return (
+    ENTETE("traductions") +
+    neufs.map((f) => `import { ${nom(f)} } from "../apps/${f.dossiers?.app ?? f.id}/src/catalogue";\n`).join("") +
+    `\ntype Bilingue = { fr: Record<string, string>; en: Record<string, string> };\n` +
+    `// [nom (de l'application), fichiers, catalogue, titre dans le document].\n` +
+    `export const CATALOGUES_JEUX_NEUFS: [string, string, Bilingue, string][] = [\n` +
+    neufs.map((f) => `  [${lit(`apps/${f.dossiers?.app ?? f.id}`)}, ${lit(`apps/${f.dossiers?.app ?? f.id}/src/catalogue.*.ts`)}, ${nom(f)} as unknown as Bilingue, ${lit(f.nom.fr)}],\n`).join("") +
+    `];\n`
+  );
+}
+
+/** Les fichiers produits, relatifs à la racine du dépôt. `existe` : le disque (un chemin relatif à la racine existe-t-il ?), pour les fichiers qui n'existent que si le jeu a déjà son application. */
+export function sorties(fiches: readonly FicheJeu[], existe: (chemin: string) => boolean = () => false): Record<string, string> {
   const jeu = projectionJeu(fiches);
   const s: Record<string, string> = {
     [`${DOSSIER_PROJECTIONS}/portail.json`]: jsonDeProjection(projectionPortail(fiches)),
@@ -46,6 +178,12 @@ export function sorties(fiches: readonly FicheJeu[]): Record<string, string> {
   s["apps/api/src/fiches.generated.ts"] =
     ENTETE("serveur") + `export const FICHES_SERVEUR = ${JSON.stringify(projectionServeur(fiches).jeux, null, 2)} as const;\n`;
 
+  s["packages/ui/src/jeux.generated.css"] = cssUi(fiches);
+  s["packages/ui/src/amis.generated.css"] = cssAmis(fiches);
+  s["apps/portail/src/jeux.generated.css"] = cssPortail(fiches);
+  s["apps/api/src/registre.generated.ts"] = registreServeur(fiches);
+  s["scripts/catalogues-jeux.generated.ts"] = cataloguesDesJeuxNeufs(fiches, existe);
+
   const ids = fiches.map((f) => f.id);
   // Des constantes une à une (pas un objet) : un `r.tower.fond` écrit dans un jeton serait gardé par les constructions des jeux (un accès de propriété n'est pas « pur »), un identifiant se remplace par sa valeur.
   const constantes = fiches.flatMap((f) =>
@@ -57,6 +195,8 @@ export function sorties(fiches: readonly FicheJeu[]): Record<string, string> {
     `export type JeuGenere = ${ids.map(lit).join(" | ")};\n` +
     `// L'étiquette de chaque jeu : les valeurs des jetons du socle (\`jetons.ts\` garde leurs noms).\n` +
     constantes.join("") +
+    `// Lot K4e : y a-t-il un jeu à étiquette générique ? Tant que non, le dessin générique de \`composants.ts\` est du code mort que l'empaqueteur retire (aucun octet de plus dans les applications).\n` +
+    `export const A_DES_JEUX_GENERIQUES = ${fiches.some((f) => f.etiquette.dessin === "generique")};\n` +
     `export const ETIQUETTES_FICHES = {${fiches.map((f) => ` ${lit(f.id)}: { fond: ETIQUETTE_${f.id.toUpperCase().replace(/-/g, "_")}_FOND, coque: ETIQUETTE_${f.id.toUpperCase().replace(/-/g, "_")}_COQUE, police: ETIQUETTE_${f.id.toUpperCase().replace(/-/g, "_")}_POLICE, dessin: ${lit(f.etiquette.dessin)} }`).join(",")} } as const;\n`;
 
   s["packages/musique/src/fiches.generated.ts"] =

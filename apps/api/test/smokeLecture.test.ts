@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, type DailyLevel } from "@cdj/jump-sim";
 import { HEALTH_FIELDS, isLocalBase, readOnlyFetch, readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, type FetchFn } from "../scripts/smokeRead";
-import { makeApi, parisDayStart, playerId, TEST_DB, verifierErreur, type TestApi } from "./helpers";
+import { AUTRES_JEUX, makeApi, parisDayStart, playerId, TEST_DB, verifierErreur, type TestApi } from "./helpers";
 
 // Lot P4 (plateforme) : `smoke --lecture-seule`, la vérification de la production après chaque déploiement. Elle **n'écrit jamais rien**
 // (des GET seulement, sans identifiant de joueur : la base est identique avant et après), et c'est **le seul mode permis contre la production**
@@ -60,6 +60,7 @@ describe(`smoke --lecture-seule (${TEST_DB})`, () => {
       `/api/jump/day/${DATE}`,
       `/api/jump/day/${DATE}/board`,
       "/api/tower/info", // lot TP : Tower, fermé (404 game_unavailable) tant qu'il est `off`
+      ...AUTRES_JEUX.map((g) => `/api/${g.code}/info`), // lot K4e : un jeu neuf des fiches (fermé, ou jeu témoin absent de la production : 404)
       `/api/jump/day/${DATE}/ghost/first`,
       `/api/jump/day/${DATE}/deaths`,
       `/api/jump/day/${DATE}/bundle`,

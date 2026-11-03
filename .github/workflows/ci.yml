@@ -103,7 +103,7 @@ jobs:
   # Lot R10 : `unit` est sauté quand il n'y a rien à lancer (docs seuls) : « sauté » est un succès ici, mais jamais si `scope` a échoué.
   # Retouche du lot I6 : il porte aussi le verdict de `zones` (une PR de jeu restée dans ses zones).
   test:
-    needs: [scope, unit, zones, budgets]
+    needs: [scope, unit, zones, budgets, jeu-fictif]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -111,6 +111,8 @@ jobs:
           [ "${{ needs.scope.result }}" = success ] || { echo "::error::le job scope a échoué : on ne sait pas quels tests devaient tourner"; exit 1; }
           # Lot R17 : un budget qui dépasse son plafond bloque la fusion (le job Budgets est sauté quand la PR ne touche rien de ce que charge un joueur).
           case "${{ needs.budgets.result }}" in success|skipped) ;; *) echo "::error::un budget dépasse son plafond (job Budgets, docs/plateforme/budgets.md)"; exit 1;; esac
+          # Lot K4e : un jeu fictif qui casse un test ou le typage bloque la fusion (le job est sauté quand la PR ne touche rien de ce que lisent les fiches).
+          case "${{ needs.jeu-fictif.result }}" in success|skipped) ;; *) echo "::error::un jeu fictif ne passe pas la suite (job jeu fictif, scripts/jeu-fictif.mjs : la plateforme lit un jeu en dur)"; exit 1;; esac
           case "${{ needs.unit.result }}" in success|skipped) ;; *) echo "::error::une part des tests unitaires a échoué (jobs unit)"; exit 1;; esac
           [ "${{ needs.zones.result }}" = success ] || { echo "::error::une PR de jeu sort de ses zones (job zones, docs/orchestration.md « Lots en parallèle »)"; exit 1; }
           [ "${{ needs.unit.result }}" != skipped ] || echo "### test : aucun test unitaire concerné (docs seuls) — verdict vert" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -164,6 +166,7 @@ jobs:
       e2e_pr_matrice: ${{ steps.scope.outputs.e2e_pr_matrice }}
       e2e_complet_matrice: ${{ steps.scope.outputs.e2e_complet_matrice }}
       budgets_actif: ${{ steps.scope.outputs.budgets_actif }}
+      jeu_fictif: ${{ steps.fictif.outputs.jeu_fictif }}
       durees: ${{ steps.durees.outputs.durees }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -203,6 +206,17 @@ jobs:
             echo '```'; cat "$RUNNER_TEMP/zones.txt"; echo; cat "$RUNNER_TEMP/scope.txt"; echo '```'
             echo "Fichiers changés : $(wc -l < "$RUNNER_TEMP/files.txt")"
           } >> "$GITHUB_STEP_SUMMARY"
+      # Lot K4e — la preuve « un 4ᵉ jeu sans retouche » (scripts/jeu-fictif.mjs) : elle tourne dans toute CI qui n'est pas celle d'une PR courte (main, complet, nuit : donc aussi le bouton « Mettre en
+      # production »), et sur une PR qui touche ce que lisent les fiches (fiches, noyau, socle de l'interface, portail, serveur, scripts, tests de la plateforme).
+      - name: Le jeu fictif est-il à lancer ?
+        id: fictif
+        env:
+          MODE: ${{ steps.scope.outputs.mode }}
+        run: |
+          actif=false
+          if [ "$MODE" != pr ]; then actif=true; fi
+          if grep -Eq '^(config/jeux/|packages/(core|ui|musique|profile|kit)/|apps/portail/|apps/api/(src|scripts|test)/|apps/api/Dockerfile|scripts/|apps/web/test/|e2e/|vitest\.config\.ts|package(-lock)?\.json|\.github/workflows/ci\.yml)' "$RUNNER_TEMP/files.txt"; then actif=true; fi
+          echo "jeu_fictif=$actif" >> "$GITHUB_OUTPUT"
       # Lot R16 : les parts de la CI complète et de main sont composées avec les durées MESURÉES par le dernier run de nuit de main (artefact `durees-e2e`,
       # scripts/durees-e2e.mjs), validées ici une fois puis passées à toutes les parts (`E2E_DUREES`) : chacune compose les mêmes parts. Rien de lisible : durees.json
       # du dépôt, comme avant (jamais d'arrêt pour cela). Une PR n'en a pas besoin (ses specs viennent de ses zones).
@@ -228,6 +242,33 @@ jobs:
         env:
           RUN_NUIT: ${{ steps.nuit.outputs.run }}
         run: node scripts/durees-e2e.mjs lire "$RUNNER_TEMP/durees-nuit/durees-e2e.json" --run "$RUN_NUIT" --sortie "$GITHUB_OUTPUT" --resume "$GITHUB_STEP_SUMMARY"
+
+  # Lot K4e — la preuve qu'un 4ᵉ jeu s'ajoute sans retouche : `scripts/jeu-fictif.mjs` pose un jeu fictif `essai` (étiquette générique, table commune, témoin, score en points) dans UNE COPIE du dépôt, y lance
+  # `npm run fiches`, le typage et toute la suite unitaire (SQLite, puis libSQL pour apps/api), en trois parts. Rouge = la plateforme a lu un jeu en dur (docs/plateforme/lots/lot-K4e-quatrieme-jeu-sans-retouche.md).
+  # Aucune base distante (R14), aucun secret, rien n'est écrit dans le dépôt.
+  jeu-fictif:
+    needs: scope
+    if: needs.scope.outputs.jeu_fictif == 'true'
+    name: jeu fictif (${{ matrix.part }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ["1/3", "2/3", "3/3"]
+    env:
+      PART: ${{ matrix.part }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Un jeu fictif dans une copie du dépôt (fiches, typage, suite unitaire)
+        run: node scripts/jeu-fictif.mjs --part "$PART"
 
   # Lot R17 — les budgets de TOUS les jeux et du portail, sur chaque PR qui touche ce que charge un joueur (scripts/ci-zones.mjs, `budgetsPour`). Pas de navigateur : on construit (comme les e2e,
   # avec la date de lancement de test : les plafonds ont été posés sur cette construction) et `scripts/budgets-controle.mjs` compare chaque ligne de docs/plateforme/budgets.md à sa mesure ; il échoue

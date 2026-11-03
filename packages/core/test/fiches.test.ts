@@ -1,19 +1,16 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CHEMINS_HERITES, PREFIXES_HERITES, TABLES_HERITEES, lireFiche, prefixesDeZones, projectionJeu, projectionPortail, validerEnsemble, validerFiche, type FicheJeu } from "../src/fiche";
+import { CHEMINS_HERITES, JEUX_SANS_NOM_DE_THEME, PREFIXES_HERITES, TABLES_HERITEES, clesDeCatalogue, clesManquantes, lireFiche, prefixesDeZones, projectionCI, projectionJeu, projectionPortail, projectionServeur, validerEnsemble, validerFiche, type FicheJeu } from "../src/fiche";
 import { DOSSIER_FICHES, sorties } from "../src/ficheSorties";
 
 // Lot K1 : la fiche d'un jeu (`config/jeux/<id>.json`) — la validation, TOUTES les fiches présentes, et les fichiers que `npm run fiches` en tire (à jour, comme `jetons.css`).
 
 const RACINE = resolve(__dirname, "..", "..", "..");
+// Lot K4e : les fiches du dépôt ET, en essai, celles de `CDJ_FICHES_SUPPLEMENTAIRES` (le jeu fictif de `scripts/jeu-fictif.mjs`) ; `brut(id)` ne lit que les trois jeux livrés.
+const { lireFichesBrutes } = (await import(/* @vite-ignore */ join(RACINE, "scripts/fiches-brutes.mjs"))) as typeof import("../../../scripts/fiches-brutes.mjs");
 const brut = (id: string): Record<string, any> => JSON.parse(readFileSync(join(RACINE, DOSSIER_FICHES, `${id}.json`), "utf8"));
-const fiches = (): FicheJeu[] =>
-  readdirSync(join(RACINE, DOSSIER_FICHES))
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => lireFiche(brut(f.slice(0, -5)), f.slice(0, -5)))
-    .sort((a, b) => a.ordre - b.ordre);
+const fiches = (): FicheJeu[] => lireFichesBrutes(RACINE).map((f) => lireFiche(f.brut, f.id)).sort((a, b) => a.ordre - b.ordre);
 
 describe("les fiches du dépôt", () => {
   it("chacune est valide et se contredit avec aucune autre", () => {
@@ -33,9 +30,11 @@ describe("les fiches du dépôt", () => {
   });
 
   it("les fichiers générés (projections et vues des paquets) sont à jour : `npm run fiches` sinon", () => {
-    const attendu = sorties(fiches());
+    const attendu = sorties(fiches(), (chemin) => existsSync(join(RACINE, chemin)));
     expect(Object.keys(attendu).sort()).toEqual([
       "apps/api/src/fiches.generated.ts",
+      "apps/api/src/registre.generated.ts",
+      "apps/portail/src/jeux.generated.css",
       "config/jeux/projections/ci.json",
       "config/jeux/projections/jeu.json",
       "config/jeux/projections/portail.json",
@@ -43,7 +42,10 @@ describe("les fiches du dépôt", () => {
       "packages/core/src/fiches.generated.ts",
       "packages/musique/src/fiches.generated.ts",
       "packages/profile/src/fiches.generated.ts",
+      "packages/ui/src/amis.generated.css",
       "packages/ui/src/fiches.generated.ts",
+      "packages/ui/src/jeux.generated.css",
+      "scripts/catalogues-jeux.generated.ts",
     ]);
     for (const [chemin, contenu] of Object.entries(attendu)) {
       expect(existsSync(join(RACINE, chemin)), chemin).toBe(true);
@@ -217,8 +219,19 @@ describe("les projections", () => {
     expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", accroche: "portail.tower.accroche", cumul: false, format: "hauteur" }); // code = id, absent
     expect(p.jeux.find((j) => j.id === "jump")).toEqual({ id: "jump", accroche: "portail.jump.accroche", titre: "jeu.jump.titre", accrocheTheme: "jump.replique.", premierJour: "2026-10-16" }); // code = id, cumul vrai et format `temps` : les défauts, absents
   });
+  // Lot K4e : les trois jeux livrés (leurs listes historiques sont écrites en toutes lettres) ; les listes de TOUTES les fiches sont vérifiées juste après.
+  const trois = () => ["track", "jump", "tower"].map((id) => lireFiche(brut(id), id));
+  it("les listes de toutes les fiches (jeu neuf compris) suivent leurs fiches, dans l'ordre", () => {
+    const l = fiches();
+    const j = projectionJeu(l);
+    expect(j.jeux.map((x) => x.id)).toEqual(l.map((f) => f.id));
+    expect(j.prefixes).toEqual(l.map((f) => f.donnees.stockage.prefixe));
+    expect(j.ou).toEqual(["portail", ...l.map((f) => f.message.ou)]);
+    expect(j.zones).toEqual(["dujour", ...l.map((f) => f.zoneNouveautes)]);
+    expect(j.publics).toEqual(l.filter((f) => f.etatDepart === "on").map((f) => f.id));
+  });
   it("les listes qui doivent aussi contenir Track et Jump sont complètes, dans l'ordre historique : les paquets n'embarquent pas un octet de plus", () => {
-    const j = projectionJeu(fiches());
+    const j = projectionJeu(trois());
     expect(j.publics).toEqual(["track", "jump"]); // Tower est `off` : il n'est pas public
     expect(j.prefixes).toEqual(["cdj:", "jump:", "tower:"]);
     expect(j.ou).toEqual(["portail", "track", "jump", "tower"]);
@@ -227,7 +240,7 @@ describe("les projections", () => {
     expect(j.jeux.map((x) => x.id)).toEqual(["track", "jump", "tower"]); // lot K1c : un jeu = une fiche, il n'y a plus de jeu sans fiche
   });
   it("un jeu `on` d'une fiche entre dans les jeux publics, dans l'ordre des fiches (Tower, une fois `on`, après Track et Jump)", () => {
-    const l = fiches().map((f) => (f.id === "tower" ? { ...f, etatDepart: "on" as const } : f));
+    const l = trois().map((f) => (f.id === "tower" ? { ...f, etatDepart: "on" as const } : f));
     expect(projectionJeu(l).publics).toEqual(["track", "jump", "tower"]);
   });
 });
@@ -265,5 +278,69 @@ describe("jours.fabrication (lot K4b) : la chaîne de « Mettre en production »
     expect(refuse((f) => (f.jours.fabrication.preparer.joursApresBascule = -1))).toContain("joursApresBascule");
     expect(refuse((f) => (f.jours.fabrication.apresPose = { paquet: "@cdj/web", script: "seed", sorties: ["apps/tower/public/demo"] }))).toContain("apresPose.paquet");
     expect(refuse((f) => (f.jours.fabrication.apresPose = { paquet: "@cdj/api", script: "seed", sorties: ["apps/web/public/demo"] }))).toContain("apresPose.sorties");
+  });
+});
+
+// Lot K4e — le jeu témoin, les clés de catalogue qu'une fiche exige, et les fiches d'un dossier de plus (essais seulement).
+describe("un jeu témoin (lot K4e)", () => {
+  const neuf = () => {
+    const f = structuredClone(brut("tower"));
+    f.id = f.code = f.message.ou = f.zoneNouveautes = "essai";
+    return f;
+  };
+  it("`temoin` est un booléen ; un témoin ne range ses résultats que dans la table commune (aucune table à lui : la base de production n'en voit pas la trace)", () => {
+    expect(validerFiche(brut("tower"), "tower")).toEqual([]);
+    const t = structuredClone(brut("tower"));
+    t.temoin = "oui";
+    expect(validerFiche(t, "tower").join("\n")).toContain("temoin : booléen");
+    t.temoin = true;
+    expect(validerFiche(t, "tower").join("\n")).toContain("table commune");
+    t.donnees.tables = [];
+    expect(validerFiche(t, "tower").join("\n")).toContain("table commune"); // sans `tableCommune` : refusé aussi
+    t.donnees.tableCommune = "resultats_jeu";
+    expect(validerFiche(t, "tower")).toEqual([]);
+    expect(neuf().id).toBe("essai");
+  });
+  it("les projections portent `temoin: true` pour un témoin et rien pour les autres", () => {
+    const t = lireFiche({ ...brut("tower"), temoin: true, donnees: { ...brut("tower").donnees, tables: [], tableCommune: "resultats_jeu" } }, "tower");
+    expect(projectionServeur([t]).jeux[0]).toMatchObject({ temoin: true });
+    expect(projectionCI([t]).jeux[0]).toMatchObject({ temoin: true });
+    expect(projectionJeu([t]).jeux[0]).toMatchObject({ temoin: true });
+    const autre = lireFiche(brut("tower"), "tower");
+    for (const p of [projectionServeur([autre]).jeux[0]!, projectionCI([autre]).jeux[0]!, projectionJeu([autre]).jeux[0]!]) expect(p).not.toHaveProperty("temoin");
+  });
+});
+
+describe("les clés de catalogue qu'une fiche exige (lot K4e)", () => {
+  it("le nom, l'accroche, le titre s'il y en a un, un nom par thème (sauf Track) et une réplique par thème pour une accroche par thème", () => {
+    const tower = clesDeCatalogue(lireFiche(brut("tower"), "tower")).map((c) => c.cle);
+    expect(tower).toEqual(["jeu.tower.nom", "portail.tower.accroche", ...["port", "chantier", "canyon", "banquise", "jungle", "nuit"].map((t) => `portail.theme.tower.${t}`)]);
+    const jump = clesDeCatalogue(lireFiche(brut("jump"), "jump")).map((c) => c.cle);
+    expect(jump).toContain("jeu.jump.titre");
+    expect(jump).toContain("jump.replique.foret");
+    expect(jump).toContain("portail.theme.jump.neon");
+    const track = clesDeCatalogue(lireFiche(brut("track"), "track")).map((c) => c.cle);
+    expect(track.some((k) => k.startsWith("portail.theme.track."))).toBe(false);
+    expect(JEUX_SANS_NOM_DE_THEME).toEqual(["track"]);
+  });
+  it("une clé manquante donne une phrase qui nomme la fiche, la clé, le catalogue et la langue", () => {
+    const f = lireFiche(brut("tower"), "tower");
+    const complet = { fr: Object.fromEntries(clesDeCatalogue(f).map((c) => [c.cle, "x"])), en: Object.fromEntries(clesDeCatalogue(f).map((c) => [c.cle, "x"])) };
+    expect(clesManquantes(f, { commun: complet, portail: complet })).toEqual([]);
+    const sansAccroche = { fr: { ...complet.fr }, en: { ...complet.en } };
+    delete (sansAccroche.en as Record<string, string>)["portail.tower.accroche"];
+    expect(clesManquantes(f, { commun: complet, portail: sansAccroche })).toEqual(["fiche « tower » : la clé « portail.tower.accroche » manque au catalogue du portail (en)"]);
+    expect(clesManquantes(f, { commun: { fr: {}, en: {} }, portail: complet })).toContain("fiche « tower » : la clé « jeu.tower.nom » manque au catalogue commun de @cdj/ui (fr)");
+  });
+});
+
+describe("les fiches d'un dossier de plus (lot K4e, essais seulement)", () => {
+  it("la variable est refusée hors essai, acceptée en essai, et un identifiant en double est une erreur claire", async () => {
+    const m = (await import(/* @vite-ignore */ join(RACINE, "scripts/fiches-brutes.mjs"))) as typeof import("../../../scripts/fiches-brutes.mjs");
+    expect(() => m.dossiersSupplementaires({ CDJ_FICHES_SUPPLEMENTAIRES: "/x" })).toThrow(/réservée aux essais/);
+    expect(m.dossiersSupplementaires({ CDJ_FICHES_SUPPLEMENTAIRES: "/x:/y", CDJ_MODE_ESSAI: "1" })).toEqual(["/x", "/y"]);
+    expect(m.dossiersSupplementaires({ CDJ_FICHES_SUPPLEMENTAIRES: "/x", NODE_ENV: "test" })).toEqual(["/x"]);
+    expect(m.dossiersSupplementaires({})).toEqual([]);
+    expect(() => m.lireFichesBrutes(RACINE, { CDJ_FICHES_SUPPLEMENTAIRES: join(RACINE, DOSSIER_FICHES), CDJ_MODE_ESSAI: "1" })).toThrow(/deux fiches pour le jeu « jump »/);
   });
 });
