@@ -8,7 +8,7 @@ export type Medaille = "author" | "gold" | "silver" | "bronze";
 
 /** Lot TP : le score d'un jeu classé à la hauteur (Tower) : la hauteur en millimètres entiers et les vies restantes. */
 export interface ScoreHauteur {
-  unite: "mm";
+  unite: "mm" | "points";
   valeur: number;
   vies: number;
 }
@@ -27,7 +27,7 @@ export interface JeuDuJour {
   nom?: string;
   numero: number;
   /** Lot TP : `"mm"` pour un jeu classé à la hauteur (Tower : seuils en millimètres, score `{ valeur, vies }`) ; absent pour un jeu au temps. */
-  unite?: "mm";
+  unite?: "mm" | "points";
   theme: string | null;
   seuils: Record<Medaille, number> | null;
   premierJour: string;
@@ -167,7 +167,7 @@ export function formatCompte(ms: number): string {
 }
 
 /** Lot TP : le jeu est-il classé à la hauteur (et non au chrono) ? Il n'entre jamais dans le cumul au temps. */
-export const estHauteur = (j: { unite?: string }): boolean => j.unite === "mm";
+export const estHauteur = (j: { unite?: string }): boolean => !!j.unite;
 
 /** Lot P : le jeu compte-t-il aujourd'hui dans la journée ? (Absent : oui.) */
 export const compteAujourdhui = (j: { compte?: boolean }): boolean => j.compte !== false;

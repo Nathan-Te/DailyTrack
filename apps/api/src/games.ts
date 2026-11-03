@@ -151,6 +151,8 @@ export interface ClasseDuJour {
 
 /** Le crochet `portail` d'un jeu (lot I2). */
 export interface PortailDuJeu {
+  /** Lot K4d : l'unité du score d'un jeu classé à un score (`mm` : défaut, Tower ; `points` : un jeu neuf) — celle que les vues du classement rendent ; sans objet pour un jeu au temps. */
+  unite?: "mm" | "points";
   /** Lot I3 : le dossier du jeu sur le site (`track`, `jump`) : l'écran d'arrivée d'un autre jeu y mène (`../<site>/`). */
   site: string;
   /** Lot I3 : le nom du jeu tel qu'on l'écrit (« Track », « Jump ») : « Jeu suivant du jour : Jump ». */
@@ -216,7 +218,7 @@ export interface RetraitAdmin {
 /** Le crochet `admin` d'un jeu (lot N1). */
 export interface AdminDuJeu {
   /** Les tables qui disent qu'un joueur a joué un jour (« joueur du jour » : au moins un résultat classé, Track ou Jump) : nom, colonne du jour, colonne du joueur. */
-  activite: readonly { table: string; jour: string; joueur: string }[];
+  activite: readonly { table: string; jour: string; joueur: string; /** Lot K4d : la portée d'un jeu sur une table partagée (`jeu = 'cibles'`), une constante de code. */ portee?: string }[];
   /** Les chiffres d'un jour : les joueurs classés ; DailyJump ajoute les morts envoyées ce jour-là (ses vies, oubliées à la fin du jour). */
   compteurs(day: number): Promise<{ finis: number; morts?: number }>;
   /** Les jours prêts : ceux du registre figé, plus ceux que l'administration a planifiés d'avance (Track). */
@@ -268,6 +270,11 @@ export interface GameInstance {
   ecrituresApercu?: readonly string[];
   /** Lot P : les instructions qui effacent les résultats rangés à part par l'aperçu (exécutées quand le jeu passe `on` : un résultat d'aperçu ne devient jamais public). */
   viderApercu?(): Statement[];
+  /**
+   * Lot K4d — les lignes du classement que le filtre « Amis » / « Mon groupe » montre pour ce jeu, quand son format n'est pas l'un des trois d'origine : pour ces joueurs et ce jour, **une seule requête
+   * indexée** rend, par joueur, la fonction qui met sa ligne en forme (rang entre amis, pseudo, référence) comme le classement « Tous » du jeu. Un jeu sans ce crochet garde son format propre (`classementAmis.ts`).
+   */
+  lignesAmies?(day: number, ids: readonly string[]): Promise<Map<string, (rang: number, pseudo: string, ref: string) => Record<string, unknown>>>;
   /** Tâche facultative (hors production), toutes les 15 s sous Node. */
   tick?(): Promise<void>;
 }

@@ -475,6 +475,8 @@ export interface ProjectionServeur {
     jours: FicheJeu["jours"];
     rejeu: FicheJeu["rejeu"];
     tables: FicheJeu["donnees"]["tables"];
+    /** Lot K4d : le jeu se classe sur la table commune `resultats_jeu` (jeu neuf). */
+    tableCommune?: "resultats_jeu";
     prefixe: string;
     reglagesGardes: string[];
     messageOu: string;
@@ -494,6 +496,7 @@ export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeu
       jours: f.jours,
       rejeu: f.rejeu,
       tables: f.donnees.tables,
+      ...(f.donnees.tableCommune ? { tableCommune: f.donnees.tableCommune } : {}),
       prefixe: f.donnees.stockage.prefixe,
       reglagesGardes: f.donnees.stockage.reglagesGardes,
       messageOu: f.message.ou,

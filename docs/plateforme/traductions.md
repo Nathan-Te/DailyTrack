@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1709 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1710 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -443,6 +443,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.description` | Le classement du jour de Du Jour au chrono : le temps cumulé de tous les jeux, ou jeu par jeu, avec la médaille de chaque joueur. | Today's Du Jour leaderboard, against the clock: the combined time across every game, or game by game, with each player's medal. |
 | `classement.egalite` | Au chrono. À égalité : le premier arrivé à ce temps. | Against the clock. Tie: whoever got there first. |
 | `classement.egaliteHauteur` | À la hauteur. À égalité : plus de vies, puis plus vite. | By height. Tie: more lives, then faster. |
+| `classement.egalitePoints` | Aux points. À égalité : le premier arrivé à ce score. | By points. Tie: whoever got there first. |
 | `classement.vues.aria` | Vues du classement | Leaderboard views |
 | `classement.vue.cumul` | Cumulé | Combined |
 | `classement.separation` | Un jeu sur deux | One game out of two |

@@ -15,7 +15,8 @@ import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
 import { adresseAvatar, clientAvatar, ecrireLangue, lireLangue, readPlayerId, type Langue } from "@cdj/profile";
 import { adresseInvitationGroupe, clientGroupes, nomDansLeChemin, retirerInvitationDeLAdresse, type Invitation, type MonGroupe, type PageGroupe } from "@cdj/profile/src/groupes";
-import { CATALOGUE_COMMUN, avatar, barreJeu, bouton, cheminMentions, choixLangue, el, formatDate, formatNombre, formatRang, formatTemps, formatHauteur, traducteur } from "@cdj/ui";
+import { CATALOGUE_COMMUN, avatar, barreJeu, bouton, cheminMentions, choixLangue, el, formatDate, formatNombre, formatRang, formatScore, traducteur } from "@cdj/ui";
+import { formatDeVue } from "./formatDeVue";
 import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
@@ -58,7 +59,7 @@ const nomDeVue = (t: ReturnType<typeof traduire>, vue: string): string => {
   const cle = `jeu.${vue}.nom`; // le dossier d'un jeu est l'identifiant de sa fiche (`jeu.<id>.nom` du catalogue commun)
   return cle in CATALOGUE_COMMUN.fr ? t.t(cle as never) : vue;
 };
-const valeurDeVue = (r: { sens: "temps" | "hauteur"; score: number }): string => (r.sens === "hauteur" ? formatHauteur(r.score, langue) : formatTemps(r.score, langue));
+const valeurDeVue = (r: { vue: string; sens: "temps" | "hauteur"; score: number }): string => formatScore(formatDeVue(r.vue, r.sens), r.score, langue);
 
 function erreurLisible(t: ReturnType<typeof traduire>, code: string): string {
   const cle = `erreur.${code}`;
@@ -101,7 +102,7 @@ function carteInvitation(t: ReturnType<typeof traduire>): HTMLElement | null {
 function sectionClassement(t: ReturnType<typeof traduire>, p: PageGroupe): HTMLElement | null {
   if (!p.date) return null;
   const lignes = p.classement.map((r) => {
-    const rang = r.rang !== null && r.score !== null ? `${t.t("groupePage.rang", { rang: formatRang(r.rang, langue), sur: formatNombre(r.sur, langue) })} · ${valeurDeVue({ sens: r.sens, score: r.score })}` : t.t("groupePage.moins", { min: p.min });
+    const rang = r.rang !== null && r.score !== null ? `${t.t("groupePage.rang", { rang: formatRang(r.rang, langue), sur: formatNombre(r.sur, langue) })} · ${valeurDeVue({ vue: r.vue, sens: r.sens, score: r.score })}` : t.t("groupePage.moins", { min: p.min });
     return el("li", { classe: "groupe-rang", attrs: { "data-vue": r.vue } }, el("span", { classe: "groupe-rang__vue", texte: nomDeVue(t, r.vue) }), el("span", { classe: "groupe-rang__valeur dj-chiffres", texte: rang }));
   });
   return el(
