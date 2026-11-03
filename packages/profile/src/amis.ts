@@ -40,7 +40,7 @@ export interface FicheJeu {
   jeu: string;
   site: string;
   nom: string;
-  unite: "temps" | "hauteur";
+  unite: "temps" | "hauteur" | "entier";
   valeur: number | null;
   medaille: string | null;
   rang: number | null;
@@ -94,7 +94,7 @@ function lireFiche(corps: unknown): FicheJoueur | null {
   const jeux = (Array.isArray(o.jeux) ? o.jeux : []).flatMap((j): FicheJeu[] => {
     const x = j as Record<string, unknown> | null;
     if (!x || typeof x.jeu !== "string") return [];
-    return [{ jeu: x.jeu, site: texte(x.site), nom: texte(x.nom) || x.jeu, unite: x.unite === "hauteur" ? "hauteur" : "temps", valeur: entier(x.valeur), medaille: typeof x.medaille === "string" ? x.medaille : null, rang: entier(x.rang) }];
+    return [{ jeu: x.jeu, site: texte(x.site), nom: texte(x.nom) || x.jeu, unite: x.unite === "hauteur" || x.unite === "entier" ? x.unite : "temps", valeur: entier(x.valeur), medaille: typeof x.medaille === "string" ? x.medaille : null, rang: entier(x.rang) }];
   });
   return { ref: o.ref, pseudo: o.pseudo, ...(typeof o.avatar === "string" ? { avatar: o.avatar } : {}), ami: o.ami === true, reciproque: o.reciproque === true, rang: entier(o.rang), classes: entier(o.classes), jeux };
 }

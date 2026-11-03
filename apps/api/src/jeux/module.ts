@@ -472,6 +472,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     site: fiche.id,
     nom: config.nom,
     premierJour,
+    ...(fiche.classement.format !== "temps" ? { unite: fiche.classement.unite === "mm" ? ("mm" as const) : ("points" as const) } : {}),
     classement: fiche.classement.format === "temps" ? "temps" : "hauteur", // lot K4c : tout jeu classé à un score (hauteur, points) compte dans la journée mais jamais dans le cumul au temps
     async jour(day) {
       return contrat.portailJour(await getNiveau(day), day);
@@ -517,7 +518,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
   const portail = config.surcharges?.portail ? config.surcharges.portail(portailBase) : portailBase;
 
   const adminBase: AdminDuJeu = {
-    activite: [{ table: adaptateur.table, jour: "day", joueur: "player_id" }],
+    activite: [{ table: adaptateur.table, jour: "day", joueur: "player_id", ...(adaptateur.filtreJeu ? { portee: `${adaptateur.filtreJeu.colonne} = '${adaptateur.filtreJeu.valeur}'` } : {}) }],
     compteurs: async (day) => ({ finis: (await db.first<{ n: number }>(sql.compteJour, [day]))?.n ?? 0 }),
     joursPrets: async () => ({ figes: contrat.joursFiges.length }),
     resultats: async (id, limite) => {
@@ -584,5 +585,13 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       return config.surcharges?.effacement ? config.surcharges.effacement(playerId, base) : base;
     },
     onErased: config.surcharges?.apresEffacement ? () => config.surcharges!.apresEffacement!() : undefined,
+    // Lot K4d : les lignes du classement filtré (« Amis », « Mon groupe ») d'un jeu au format neuf : les colonnes de la fiche des seuls joueurs de la liste, **une requête**, mises en forme comme « Tous ».
+    lignesAmies: async (day, ids) => {
+      const sorties = new Map<string, (rang: number, pseudo: string, ref: string) => Record<string, unknown>>();
+      if (ids.length === 0 || !contrat.ligneClassement) return sorties;
+      const rows = await db.all<LigneBrute & { player_id: string }>(sql.joueurs(ids.length), [day, ...ids]);
+      for (const r of rows) sorties.set(r.player_id, (rang, pseudo, ref) => contrat.ligneClassement!(rang, versFiche(adaptateur, { ...r, name: pseudo, ref })) as Record<string, unknown>);
+      return sorties;
+    },
   };
 }

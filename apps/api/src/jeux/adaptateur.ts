@@ -37,6 +37,8 @@ export interface AdaptateurTable {
   lecturesPlus?: readonly string[];
   /** Lot D2 (C5) : des colonnes de plus pour la seule requête du renvoi déjà accepté (Tower : la hauteur la plus haute atteinte, que sa réponse rend). */
   lecturesDeja?: readonly string[];
+  /** Lot K4d : l'index par joueur de la table (`resultats_jeu_by_player`), imposé à la lecture des parties d'une liste de joueurs : sans lui SQLite préfère l'index du classement et lit toute la journée (R14). */
+  indexJoueur?: string;
   /** Les colonnes écrites à l'insertion après `day` et `player_id`, dans l'ordre. */
   colonnesEcrites: readonly string[];
   /** Celles que le remplacement par une meilleure partie ne touche pas (le premier envoi, la marque de masquage, l'aperçu). */
@@ -83,6 +85,8 @@ export interface SqlDuJeu {
   parClasse: string;
   /** Les classés d'un jour dans l'ordre du classement (portail, groupes, amis). */
   classes: string;
+  /** Lot K4d : les parties visibles d'un jour pour une liste de joueurs (n identifiants) : le classement filtré aux amis lit les colonnes de la fiche, une seule requête. */
+  joueurs(n: number): string;
   etat: string;
   joursFinis: string;
   profil: string;
@@ -170,6 +174,7 @@ export function sqlDe(a: AdaptateurTable): SqlDuJeu {
     colonnesInsert: ecrites,
     parClasse: ordre,
     classes: `SELECT player_id, ${brut}, submitted_at FROM ${T} WHERE ${P}day = ? AND hidden = 0 ORDER BY ${ordre}`,
+    joueurs: (n) => `SELECT player_id, ${brut} FROM ${T}${a.indexJoueur ? ` INDEXED BY ${ident(a.indexJoueur)}` : ""} WHERE ${P}day = ? AND hidden = 0 AND player_id IN (${Array.from({ length: n }, () => "?").join(", ")})`,
     etat: `SELECT ${brut}, submitted_at FROM ${T} WHERE ${P}day = ? AND player_id = ?`,
     joursFinis: `SELECT day FROM ${T} WHERE ${P}player_id = ?`,
     profil: `SELECT day, ${brut}, submitted_at FROM ${T} WHERE ${P}player_id = ?`,
@@ -218,5 +223,5 @@ export function adaptateurResultatsJeu(code: string, colonnesFiche: readonly { n
   if (reelles.length < 1 || reelles.length > CLES_RESULTATS_JEU) throw new Error(`${code} : la table commune range une à ${CLES_RESULTATS_JEU} colonnes de classement (${reelles.length} dans la fiche)`);
   const colonnes: ColonneClassement[] = reelles.map((c, i) => ({ nom: c.nom, colonne: `cle${i + 1}`, sens: "asc", signe: c.sens === "desc" ? -1 : 1 }));
   for (let i = colonnes.length; i < CLES_RESULTATS_JEU; i++) colonnes.push({ nom: `cle${i + 1}`, colonne: `cle${i + 1}`, sens: "asc", remplissage: true });
-  return { table: "resultats_jeu", filtreJeu: { colonne: "jeu", valeur: code }, colonnes, colonnesEcrites: COLONNES_ECRITES_RESULTATS_JEU, colonnesGardees: ["first_at", "hidden", "apercu"] };
+  return { table: "resultats_jeu", filtreJeu: { colonne: "jeu", valeur: code }, colonnes, colonnesEcrites: COLONNES_ECRITES_RESULTATS_JEU, colonnesGardees: ["first_at", "hidden", "apercu"], indexJoueur: "resultats_jeu_by_player" };
 }

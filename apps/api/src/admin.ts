@@ -250,7 +250,7 @@ export function createAdmin(deps: AdminDeps) {
     const [parJeu, jours, retires] = await Promise.all([
       Promise.all(hooks.map(async (g) => ({ g, r: await g.instance.admin!.resultats(j.id, FICHE_JOURS) }))),
       activite.length
-        ? db.first<{ n: number }>(`SELECT COUNT(*) AS n FROM (${activite.map((a) => `SELECT ${a.jour} AS jour FROM ${a.table} WHERE ${a.joueur} = ?`).join(" UNION ")})`, activite.map(() => j.id))
+        ? db.first<{ n: number }>(`SELECT COUNT(*) AS n FROM (${activite.map((a) => `SELECT ${a.jour} AS jour FROM ${a.table} WHERE ${a.portee ? `${a.portee} AND ` : ""}${a.joueur} = ?`).join(" UNION ")})`, activite.map(() => j.id))
         : Promise.resolve(null),
       db.all<{ game: string; day: number; temps_ms: number; removed_at: number; motif: string; gardee: number }>(
         "SELECT game, day, temps_ms, removed_at, motif, replay <> '' AS gardee FROM resultats_retires WHERE player_id = ? ORDER BY removed_at DESC LIMIT 100",
@@ -398,7 +398,7 @@ export function createAdmin(deps: AdminDeps) {
             let premier = depart;
             while (premier < t - 1 && joursFermes.has(premier)) premier++;
             return db.all<{ jour: number; n: number }>(
-              `SELECT jour, COUNT(*) AS n FROM (${activite.map((a) => `SELECT ${a.jour} AS jour, ${a.joueur} AS joueur FROM ${a.table} WHERE ${a.jour} >= ? AND ${a.jour} <= ?`).join(" UNION ")}) GROUP BY jour`,
+              `SELECT jour, COUNT(*) AS n FROM (${activite.map((a) => `SELECT ${a.jour} AS jour, ${a.joueur} AS joueur FROM ${a.table} WHERE ${a.portee ? `${a.portee} AND ` : ""}${a.jour} >= ? AND ${a.jour} <= ?`).join(" UNION ")}) GROUP BY jour`,
               activite.flatMap(() => [premier, t]),
             );
           })()

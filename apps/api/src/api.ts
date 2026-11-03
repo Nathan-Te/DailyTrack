@@ -189,7 +189,7 @@ export function createApi(options: ApiOptions) {
   let portailPartage: ReturnType<typeof createPortailRoutes> | null = null;
   // Lot C1, partie C : les groupes (`/api/groupes…`, le filtre `filtre=groupe` des classements, le classement des groupes). Ils lisent le même classement du jour gardé par le portail.
   const groupes = createGroupes(platform, () => portailPartage!.vue, avatars);
-  const amis = createAmis(platform, () => portailPartage!.vue, groupes.membresPourClassement, groupes.tailleDuGroupe);
+  const amis = createAmis(platform, () => portailPartage!.vue, groupes.membresPourClassement, groupes.tailleDuGroupe, () => instances);
   // Lot I2 : le portail (accueil et profil commun), à partir de ce que chaque jeu déclare (crochet `portail`).
   const portail = createPortailRoutes(
     platform,

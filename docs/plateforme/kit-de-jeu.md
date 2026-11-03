@@ -226,6 +226,8 @@ Le reste (portail, registre, CI, mentions, effacement, remise à zéro, `smoke`,
 
 **Ordre** : K1 → K2 → K3 → K4 ; K3 peut commencer dès K1 (client et serveur sont indépendants) ; K4 exige K1 à K3 pour Tower au moins (le modèle). Chaque lot : une PR brouillon, `Pour les joueurs : rien`, CI verte.
 
+**Fait : K4d, partie 1** — rapport `docs/plateforme/lots/lot-K4d-generateur-et-temoin.md`. Amis, « Mon groupe », suggestions et classement des groupes d'un jeu neuf sont lus dans ses crochets (`amis.ts` ne nomme plus que l'héritage des trois jeux) ; le portail affiche un score en `points` (format de la fiche) ; la file d'envoi du kit suit l'enquête D1. **Le kit n'est toujours pas « terminé »** : une 4ᵉ fiche posée à l'essai casse 17 tests dans 11 fichiers et le typage (étiquette générique absente, feuilles écrites à la main, tests qui écrivent « trois jeux », entrées mécaniques) ; le rapport en donne la liste et propose **K4e** (la plateforme lit la fiche pour un 4ᵉ jeu) avant le générateur, « Cibles » et le job « Kit de bout en bout » (K4d bis).
+
 ## 7. Les questions pour Nathan
 
 1. **Fiche en JSON ou en TypeScript ?** Recommandation : **JSON** (`config/jeux/<id>.json`), type et validation dans `@cdj/core` : lisible par les `.mjs`, le shell de la CI et l'image du serveur sans compilation.

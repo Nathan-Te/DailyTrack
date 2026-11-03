@@ -226,7 +226,7 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
 /** Une ligne de la feuille : un jeu du jour. `valeur` en millisecondes (`temps`) ou en millimètres (`hauteur`, Tower) ; `null` : pas fini. */
 export interface JeuDeFiche {
   nom: string;
-  unite: "temps" | "hauteur";
+  unite: "temps" | "hauteur" | "entier";
   valeur: number | null;
   /** La médaille telle que la donne le serveur (`auteur`, `or`…) : voir `medailleDeDonnee`. */
   medaille: string | null;
@@ -303,7 +303,7 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
     if (f.jeux.length === 0) return el("p", { classe: "dj-feuille__aucun", texte: t.t("amis.feuille.aucun") });
     const ligne = (j: JeuDeFiche): HTMLElement => {
       const type = medailleDeDonnee(j.medaille);
-      const valeur = j.valeur === null ? textesAmis(t).pasJoue() : j.unite === "hauteur" ? formatHauteur(j.valeur, t.langue) : formatTemps(j.valeur, t.langue);
+      const valeur = j.valeur === null ? textesAmis(t).pasJoue() : j.unite === "hauteur" ? formatHauteur(j.valeur, t.langue) : j.unite === "entier" ? formatNombre(j.valeur, t.langue) : formatTemps(j.valeur, t.langue);
       return el(
         "tr",
         {},

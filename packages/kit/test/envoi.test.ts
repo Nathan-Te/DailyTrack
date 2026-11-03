@@ -1,6 +1,6 @@
 import { createIdentity } from "@cdj/profile";
 import { describe, expect, it } from "vitest";
-import { DELAI_BASE_MS, FileEnvoi, type ReponseSource } from "../src/envoi";
+import { DELAI_BASE_MS, DELAI_ENVOI_MS, FileEnvoi, type ReponseSource } from "../src/envoi";
 import { creerRecords } from "../src/records";
 
 // Lot K4c — la file d'envoi hors ligne d'un jeu neuf, sans DOM ni réseau : un faux serveur, un stockage en mémoire, des minuteries injectées. Le jeu ne bloque jamais sur le réseau ; un échec est un état.
@@ -11,6 +11,7 @@ function memoire(): Storage {
 interface Rep {
   date: string;
   rank: number;
+  improved?: boolean;
 }
 const ok = (rank = 1): ReponseSource<Rep> => ({ ok: true, data: { date: "2026-11-10", rank } });
 const ko = (status: number, code = "", suggestions?: string[]): ReponseSource<Rep> => ({ ok: false, status, code, ...(suggestions ? { suggestions } : {}) });
@@ -18,8 +19,8 @@ const R = creerRecords({ cle: "essai:records", sens: ["desc"] });
 
 function monter(reponses: ReponseSource<Rep>[] | null) {
   const stockage = memoire();
-  const appels: { playerId: string; name: string | null; replay: string }[] = [];
-  const source = reponses && { submit: async (playerId: string, name: string | null, replay: string) => (appels.push({ playerId, name, replay }), reponses.shift() ?? ko(500, "internal")) };
+  const appels: { playerId: string; name: string | null; replay: string; delaiMs?: number }[] = [];
+  const source = reponses && { submit: async (playerId: string, name: string | null, replay: string, delaiMs?: number) => (appels.push({ playerId, name, replay, delaiMs }), reponses.shift() ?? ko(500, "internal")) };
   const minuteries: { fn: () => void; ms: number }[] = [];
   const acceptes: Rep[] = [];
   const envoi = new FileEnvoi<Rep>({
@@ -114,5 +115,38 @@ describe("la file d'envoi d'un jeu neuf (lot K4c)", () => {
     for (const d of ["2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09"]) R.proposer(m.stockage, d, { score: [1], medaille: null, rediffusion: `R${d}` });
     await m.envoi.flush();
     expect(m.appels.map((a) => a.replay)).toEqual(["R2026-11-09", "R2026-11-08", "R2026-11-07", "R2026-11-06"]);
+  });
+  it("enquête D1 : on attend 20 s la réponse d'un envoi", async () => {
+    const m = monter([ok()]);
+    m.record();
+    await m.envoi.flush();
+    expect(DELAI_ENVOI_MS).toBe(20_000);
+    expect(m.appels[0]!.delaiMs).toBe(DELAI_ENVOI_MS);
+  });
+  it("enquête D1 : un délai dépassé est « envoi en cours », pas « indisponible » ; la partie reste en file et repart", async () => {
+    const m = monter([ko(0, "timeout"), { ok: true, data: { date: "2026-11-10", rank: 2, improved: true } }]);
+    m.record();
+    await m.envoi.flush();
+    expect(m.envoi.state).toMatchObject({ statut: "offline", code: "en_cours" });
+    expect(R.enAttente(R.lire(m.stockage))).toHaveLength(1);
+    m.envoi.reveiller();
+    await m.envoi.flush();
+    expect(m.envoi.state).toMatchObject({ statut: "ranked", code: "" }); // la première fois que le serveur la prend : un envoi réussi ordinaire
+  });
+  it("enquête D1 : le serveur avait fini après l'abandon, le renvoi est « déjà enregistré » (succès), jamais un refus", async () => {
+    const m = monter([ko(0, "timeout"), { ok: true, data: { date: "2026-11-10", rank: 2, improved: false } }]);
+    m.record();
+    await m.envoi.flush();
+    m.envoi.reveiller();
+    await m.envoi.flush();
+    expect(m.envoi.state).toMatchObject({ statut: "ranked", code: "deja" });
+    expect(m.envoi.resultats.get("2026-11-10")).toMatchObject({ rank: 2 });
+    expect(R.enAttente(R.lire(m.stockage))).toEqual([]);
+  });
+  it("un renvoi sans amélioration qui ne suit aucun délai dépassé n'est pas marqué « déjà »", async () => {
+    const m = monter([{ ok: true, data: { date: "2026-11-10", rank: 2, improved: false } }]);
+    m.record();
+    await m.envoi.flush();
+    expect(m.envoi.state).toMatchObject({ statut: "ranked", code: "" });
   });
 });
