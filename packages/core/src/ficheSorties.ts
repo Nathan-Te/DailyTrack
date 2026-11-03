@@ -1,7 +1,7 @@
 // Lot K1 (plateforme) — **ce que `npm run fiches` écrit** : une fonction pure (fiches → { chemin relatif à la racine du dépôt : contenu }). Le script (`scripts/fiches.ts`) ne fait que
 // lire les fiches et écrire ces fichiers ; le test `packages/core/test/fiches.test.ts` les recalcule et vérifie qu'ils sont à jour (comme `jetons.css`).
 //
-// Deux familles de sorties :
+// Trois familles de sorties (lot K2 : la vue du serveur) :
 //   - **les projections JSON**, une par lecteur (`config/jeux/projections/<lecteur>.json`) : lues par les scripts (`.mjs`), le portail (import JSON de Vite) et les tests ;
 //   - **les vues TypeScript** des paquets qui n'importent ni `@cdj/core` ni un fichier hors d'eux (`@cdj/profile`, `@cdj/ui`, `@cdj/musique` : tests de pureté et `rootDir`) et celle de `@cdj/core` :
 //     des constantes **écrites en toutes lettres**, identiques à ce que le code contenait, pour qu'**aucun octet** ne soit ajouté à un jeu (les budgets sont serrés) et que les types restent
@@ -41,6 +41,10 @@ export function sorties(fiches: readonly FicheJeu[]): Record<string, string> {
     `export const PREFIXES_DE_JEU_GENERES = ${tuple(jeu.prefixes)};\n` +
     `export const OU_ANNONCE_GENERES = ${tuple(jeu.ou)};\n` +
     `export const JEUX_PUBLICS_GENERES: readonly string[] = ${lit(jeu.publics)};\n`;
+
+  // Lot K2 : la fiche telle que le serveur la lit (le module des jeux, `apps/api/src/jeux/`) : la projection `serveur`, écrite en TypeScript pour que le paquet du serveur n'importe aucun fichier hors de lui.
+  s["apps/api/src/fiches.generated.ts"] =
+    ENTETE("serveur") + `export const FICHES_SERVEUR = ${JSON.stringify(projectionServeur(fiches).jeux, null, 2)} as const;\n`;
 
   const ids = fiches.map((f) => f.id);
   // Des constantes une à une (pas un objet) : un `r.tower.fond` écrit dans un jeton serait gardé par les constructions des jeux (un accès de propriété n'est pas « pur »), un identifiant se remplace par sa valeur.

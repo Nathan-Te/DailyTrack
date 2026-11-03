@@ -8,7 +8,9 @@ import { consoleLog } from "./log";
 import { createNodeServer } from "./node-server";
 import { openSqlite } from "./node-sqlite";
 import { REPLAYS_PER_MINUTE } from "./platform";
-import { executeurFil } from "./towerFil";
+import { executeurFil } from "./jeux/fil";
+import type { DemandeRejeu } from "./towerRejeu";
+import type { Resultat } from "@cdj/tower-sim";
 
 // Point d'entrée du serveur Node : conteneur Cloud Run (Turso) ou Docker / poste local (SQLite). Variables : voir `config.ts`.
 // **Aucune tâche de fond** n'est indispensable (Cloud Run éteint le conteneur sans requête, et n'alloue du calcul que pendant une requête) :
@@ -74,7 +76,7 @@ const towerFrozen = typeof __TOWER_JOURS__ === "undefined" ? {} : __TOWER_JOURS_
  */
 const towerFilFichier = new URL("./tower-fil.mjs", import.meta.url);
 const towerFil = existsSync(towerFilFichier);
-const towerExecuteur = towerFil ? executeurFil(towerFilFichier) : undefined;
+const towerExecuteur = towerFil ? executeurFil<DemandeRejeu, Resultat>(towerFilFichier) : undefined;
 consoleLog("INFO", towerFil ? "Tower : les rejeux passent par le fil de calcul" : "Tower : les rejeux passent par le fil principal (repli, pas de tower-fil.mjs)", { fil: towerFil });
 
 const api = createApi({

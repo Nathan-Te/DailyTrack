@@ -35,6 +35,7 @@ describe("les fiches du dépôt", () => {
   it("les fichiers générés (projections et vues des paquets) sont à jour : `npm run fiches` sinon", () => {
     const attendu = sorties(fiches());
     expect(Object.keys(attendu).sort()).toEqual([
+      "apps/api/src/fiches.generated.ts",
       "config/jeux/projections/ci.json",
       "config/jeux/projections/jeu.json",
       "config/jeux/projections/portail.json",

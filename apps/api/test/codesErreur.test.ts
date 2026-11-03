@@ -227,7 +227,8 @@ describe("codes d'erreur : la liste", () => {
 
 describe("codes d'erreur : les sources (apps/api/src)", () => {
   const dir = new URL("../src/", import.meta.url);
-  const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
+  // Lot K2 : le module des jeux (`src/jeux/`) construit des erreurs lui aussi : ses sources sont lues comme celles du dossier.
+  const files = [...readdirSync(dir).filter((f) => f.endsWith(".ts")), ...readdirSync(new URL("jeux/", dir)).filter((f) => f.endsWith(".ts")).map((f) => `jeux/${f}`)];
   const sources = files.map((f) => ({ file: f, text: readFileSync(new URL(f, dir), "utf8") }));
 
   it("chaque `new HttpError(<statut>, \"<code>\"` a un code de la liste et le statut de la liste", () => {

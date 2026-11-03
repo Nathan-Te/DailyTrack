@@ -1,0 +1,5531 @@
+[
+ {
+  "nom": "info — GET /api/tower/info",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "game": "tower",
+   "simVersion": 5,
+   "generatorVersion": 3,
+   "today": "2026-11-10",
+   "frozenDays": [],
+   "environment": "local"
+  }
+ },
+ {
+  "nom": "jour — GET /api/tower/day/2026-11-10",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "empreinte": "6167b61b783bd45c",
+   "number": 9,
+   "theme": "port",
+   "tirage": 0,
+   "medals": {
+    "author": 52800,
+    "gold": 26400,
+    "silver": 15840,
+    "bronze": 7920
+   },
+   "source": "genere",
+   "provisoire": true,
+   "simVersion": 5,
+   "generatorVersion": 3
+  }
+ },
+ {
+  "nom": "jour futur — GET /api/tower/day/2026-11-15",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "unknown_day"
+  }
+ },
+ {
+  "nom": "date illisible — GET /api/tower/day/2026-13-45",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_date"
+  }
+ },
+ {
+  "nom": "date mal encodée — GET /api/tower/day/%E0",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_date"
+  }
+ },
+ {
+  "nom": "jour d'hier — GET /api/tower/day/2026-11-09",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=86400",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-09",
+   "empreinte": "69da9e45164c1d3e",
+   "number": 8,
+   "theme": "chantier",
+   "tirage": 0,
+   "medals": {
+    "author": 44000,
+    "gold": 22000,
+    "silver": 13200,
+    "bronze": 6600
+   },
+   "source": "genere",
+   "provisoire": true,
+   "simVersion": 5,
+   "generatorVersion": 3
+  }
+ },
+ {
+  "nom": "info en POST — POST /api/tower/info",
+  "status": 405,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "method_not_allowed"
+  }
+ },
+ {
+  "nom": "submit en GET — GET /api/tower/submit",
+  "status": 405,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "method_not_allowed"
+  }
+ },
+ {
+  "nom": "board en POST — POST /api/tower/day/2026-11-10/board",
+  "status": 405,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "method_not_allowed"
+  }
+ },
+ {
+  "nom": "me en POST — POST /api/tower/me",
+  "status": 405,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "method_not_allowed"
+  }
+ },
+ {
+  "nom": "route inconnue — GET /api/tower/zz",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_found"
+  }
+ },
+ {
+  "nom": "racine de Tower — GET /api/tower",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_found"
+  }
+ },
+ {
+  "nom": "classement vide — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 0,
+   "top": [],
+   "me": null,
+   "generation": 0
+  }
+ },
+ {
+  "nom": "classement vide avec identifiant — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 0,
+   "top": [],
+   "me": null,
+   "generation": 0
+  }
+ },
+ {
+  "nom": "me sans identifiant — GET /api/tower/me",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_player"
+  }
+ },
+ {
+  "nom": "me d'un inconnu — GET /api/tower/me",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "unknown_player"
+  }
+ },
+ {
+  "nom": "Diamant sans identifiant — GET /api/tower/day/2026-11-10/diamant",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_player"
+  }
+ },
+ {
+  "nom": "Diamant verrouillé — GET /api/tower/day/2026-11-10/diamant",
+  "status": 403,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_ranked"
+  }
+ },
+ {
+  "nom": "refus : pas d'identifiant — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_player"
+  }
+ },
+ {
+  "nom": "refus : corps illisible — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_json"
+  }
+ },
+ {
+  "nom": "refus : corps démesuré — POST /api/tower/submit",
+  "status": 413,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "too_large"
+  }
+ },
+ {
+  "nom": "refus : rediffusion manquante — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "refus : rediffusion qui n'est pas du texte — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "refus : texte illisible — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "refus : texte démesuré — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "refus : version de la simulation — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "version"
+  }
+ },
+ {
+  "nom": "refus : générateur inconnu — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "version"
+  }
+ },
+ {
+  "nom": "refus : autre générateur que celui du jour — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "version"
+  }
+ },
+ {
+  "nom": "refus : autre tirage que celui du jour — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "version"
+  }
+ },
+ {
+  "nom": "refus : réglages hors défaut — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "refus : scénario d'essai — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_daily"
+  }
+ },
+ {
+  "nom": "refus : jour futur — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_daily"
+  }
+ },
+ {
+  "nom": "refus : jour fermé — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "day_closed"
+  }
+ },
+ {
+  "nom": "refus : pseudo manquant — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "name_required"
+  }
+ },
+ {
+  "nom": "refus : pseudo interdit — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_name"
+  }
+ },
+ {
+  "nom": "refus : partie inachevée — POST /api/tower/submit",
+  "status": 422,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_finished"
+  }
+ },
+ {
+  "nom": "refus : commandes après la fin — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "après les refus — tower_results",
+  "status": 0,
+  "entetes": {},
+  "corps": []
+ },
+ {
+  "nom": "après les refus — tower_levels",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20766,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "chantier",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":44000,\"or\":22000,\"argent\":13200,\"bronze\":6600}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   },
+   {
+    "day": 20767,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "port",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":52800,\"or\":26400,\"argent\":15840,\"bronze\":7920}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   }
+  ]
+ },
+ {
+  "nom": "envoi valide — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 5999,
+    "hauteurMaxMm": 8080,
+    "vies": 0,
+    "ticks": 530,
+    "posees": 8,
+    "tombees": 4,
+    "motif": "vies"
+   },
+   "medal": null,
+   "improved": true,
+   "best": {
+    "hauteurMm": 5999,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null
+   },
+   "rank": 1,
+   "participants": 1,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 1,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur1",
+      "hauteurMm": 5999,
+      "vies": 0,
+      "ticks": 530,
+      "medal": null,
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "même partie renvoyée (pas un record) — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 5999,
+    "hauteurMaxMm": 8080,
+    "vies": 0,
+    "ticks": 530,
+    "posees": 8,
+    "tombees": 4,
+    "motif": "vies"
+   },
+   "medal": null,
+   "improved": false,
+   "best": {
+    "hauteurMm": 5999,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null
+   },
+   "rank": 1,
+   "participants": 1,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 1,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur1",
+      "hauteurMm": 5999,
+      "vies": 0,
+      "ticks": 530,
+      "medal": null,
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "autre joueur — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 11288,
+    "hauteurMaxMm": 11330,
+    "vies": 0,
+    "ticks": 528,
+    "posees": 9,
+    "tombees": 5,
+    "motif": "vies"
+   },
+   "medal": "bronze",
+   "improved": true,
+   "best": {
+    "hauteurMm": 11288,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze"
+   },
+   "rank": 1,
+   "participants": 2,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 2,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur2",
+      "hauteurMm": 11288,
+      "vies": 0,
+      "ticks": 528,
+      "medal": "bronze",
+      "ref": "d2b1f1d83f0a"
+     },
+     {
+      "rank": 2,
+      "name": "Joueur1",
+      "hauteurMm": 5999,
+      "vies": 0,
+      "ticks": 530,
+      "medal": null,
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 1,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "troisième joueur — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 24252,
+    "hauteurMaxMm": 28787,
+    "vies": 0,
+    "ticks": 1476,
+    "posees": 24,
+    "tombees": 8,
+    "motif": "vies"
+   },
+   "medal": "silver",
+   "improved": true,
+   "best": {
+    "hauteurMm": 24252,
+    "vies": 0,
+    "ticks": 1476,
+    "medal": "silver"
+   },
+   "rank": 1,
+   "participants": 3,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 3,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur3",
+      "hauteurMm": 24252,
+      "vies": 0,
+      "ticks": 1476,
+      "medal": "silver",
+      "ref": "19d8d35c06ab"
+     },
+     {
+      "rank": 2,
+      "name": "Joueur2",
+      "hauteurMm": 11288,
+      "vies": 0,
+      "ticks": 528,
+      "medal": "bronze",
+      "ref": "d2b1f1d83f0a"
+     },
+     {
+      "rank": 3,
+      "name": "Joueur1",
+      "hauteurMm": 5999,
+      "vies": 0,
+      "ticks": 530,
+      "medal": null,
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 1,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "quatrième joueur — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 14551,
+    "hauteurMaxMm": 15871,
+    "vies": 0,
+    "ticks": 749,
+    "posees": 11,
+    "tombees": 3,
+    "motif": "vies"
+   },
+   "medal": "bronze",
+   "improved": true,
+   "best": {
+    "hauteurMm": 14551,
+    "vies": 0,
+    "ticks": 749,
+    "medal": "bronze"
+   },
+   "rank": 2,
+   "participants": 4,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 4,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur3",
+      "hauteurMm": 24252,
+      "vies": 0,
+      "ticks": 1476,
+      "medal": "silver",
+      "ref": "19d8d35c06ab"
+     },
+     {
+      "rank": 2,
+      "name": "Joueur4",
+      "hauteurMm": 14551,
+      "vies": 0,
+      "ticks": 749,
+      "medal": "bronze",
+      "ref": "a20248c7f641"
+     },
+     {
+      "rank": 3,
+      "name": "Joueur2",
+      "hauteurMm": 11288,
+      "vies": 0,
+      "ticks": 528,
+      "medal": "bronze",
+      "ref": "d2b1f1d83f0a"
+     },
+     {
+      "rank": 4,
+      "name": "Joueur1",
+      "hauteurMm": 5999,
+      "vies": 0,
+      "ticks": 530,
+      "medal": null,
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 2,
+     "name": "Joueur4",
+     "hauteurMm": 14551,
+     "vies": 0,
+     "ticks": 749,
+     "medal": "bronze",
+     "ref": "a20248c7f641"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "copie de la partie d'un autre — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "replay_copy"
+  }
+ },
+ {
+  "nom": "pseudo déjà pris — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "name_taken",
+   "suggestions": [
+    "Joueur12",
+    "Joueur1_FR",
+    "Joueur13"
+   ]
+  }
+ },
+ {
+  "nom": "résultat annoncé ignoré — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 14011,
+    "hauteurMaxMm": 24162,
+    "vies": 0,
+    "ticks": 604,
+    "posees": 11,
+    "tombees": 8,
+    "motif": "vies"
+   },
+   "medal": "bronze",
+   "improved": true,
+   "best": {
+    "hauteurMm": 14011,
+    "vies": 0,
+    "ticks": 604,
+    "medal": "bronze"
+   },
+   "rank": 3,
+   "participants": 5,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 5,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur3",
+      "hauteurMm": 24252,
+      "vies": 0,
+      "ticks": 1476,
+      "medal": "silver",
+      "ref": "19d8d35c06ab"
+     },
+     {
+      "rank": 2,
+      "name": "Joueur4",
+      "hauteurMm": 14551,
+      "vies": 0,
+      "ticks": 749,
+      "medal": "bronze",
+      "ref": "a20248c7f641"
+     },
+     {
+      "rank": 3,
+      "name": "Joueur5",
+      "hauteurMm": 14011,
+      "vies": 0,
+      "ticks": 604,
+      "medal": "bronze",
+      "ref": "2dc3b97b1e90"
+     },
+     {
+      "rank": 4,
+      "name": "Joueur2",
+      "hauteurMm": 11288,
+      "vies": 0,
+      "ticks": 528,
+      "medal": "bronze",
+      "ref": "d2b1f1d83f0a"
+     },
+     {
+      "rank": 5,
+      "name": "Joueur1",
+      "hauteurMm": 5999,
+      "vies": 0,
+      "ticks": 530,
+      "medal": null,
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 3,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "classement — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 5,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur4",
+     "hauteurMm": 14551,
+     "vies": 0,
+     "ticks": 749,
+     "medal": "bronze",
+     "ref": "a20248c7f641"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 4,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    {
+     "rank": 5,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": null,
+   "generation": 0
+  }
+ },
+ {
+  "nom": "classement du joueur 1 — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 5,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur4",
+     "hauteurMm": 14551,
+     "vies": 0,
+     "ticks": 749,
+     "medal": "bronze",
+     "ref": "a20248c7f641"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 4,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    {
+     "rank": 5,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": {
+    "rank": 5,
+    "name": "Joueur1",
+    "hauteurMm": 5999,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null,
+    "ref": "e0cca2965509"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "classement du joueur 3 — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 5,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur4",
+     "hauteurMm": 14551,
+     "vies": 0,
+     "ticks": 749,
+     "medal": "bronze",
+     "ref": "a20248c7f641"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 4,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    {
+     "rank": 5,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": {
+    "rank": 1,
+    "name": "Joueur3",
+    "hauteurMm": 24252,
+    "vies": 0,
+    "ticks": 1476,
+    "medal": "silver",
+    "ref": "19d8d35c06ab"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "classement d'un non-classé — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 5,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur4",
+     "hauteurMm": 14551,
+     "vies": 0,
+     "ticks": 749,
+     "medal": "bronze",
+     "ref": "a20248c7f641"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 4,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    {
+     "rank": 5,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": null,
+   "generation": 0
+  }
+ },
+ {
+  "nom": "me du joueur 1 — GET /api/tower/me",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "name": "Joueur1",
+   "renameRequired": false,
+   "today": "2026-11-10",
+   "simVersion": 5,
+   "generatorVersion": 3,
+   "days": [
+    {
+     "date": "2026-11-10",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null
+    }
+   ],
+   "stats": {
+    "days": 1,
+    "medals": {
+     "author": 0,
+     "gold": 0,
+     "silver": 0,
+     "bronze": 0
+    },
+    "streak": 1
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "Diamant d'un classé sans preuve — GET /api/tower/day/2026-11-10/diamant",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "no_ghost"
+  }
+ },
+ {
+  "nom": "portail : le jour — GET /api/portail/jour",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=60",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "journee": 15,
+   "lancement": "2026-10-27",
+   "generation": 0,
+   "maintenant": "2026-11-10T12:00:05.000Z",
+   "prochainJour": "2026-11-10T23:00:00.000Z",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track",
+     "premierJour": "2026-10-13",
+     "compte": true,
+     "numero": 29,
+     "theme": "nuit",
+     "seuils": {
+      "author": 35041,
+      "gold": 36618,
+      "silver": 37494,
+      "bronze": 39596
+     }
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump",
+     "premierJour": "2026-10-16",
+     "compte": true,
+     "numero": 26,
+     "theme": "usine",
+     "seuils": {
+      "author": 32117,
+      "gold": 35175,
+      "silver": 41900,
+      "bronze": 51992
+     }
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "premierJour": "2026-11-02",
+     "compte": true,
+     "numero": 9,
+     "theme": "port",
+     "seuils": {
+      "author": 52800,
+      "gold": 26400,
+      "silver": 15840,
+      "bronze": 7920
+     },
+     "unite": "mm"
+    }
+   ],
+   "nouveaute": null,
+   "annonce": null
+  }
+ },
+ {
+  "nom": "portail : le jour du joueur 1 — GET /api/portail/jour",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "journee": 15,
+   "lancement": "2026-10-27",
+   "generation": 0,
+   "maintenant": "2026-11-10T12:00:05.000Z",
+   "prochainJour": "2026-11-10T23:00:00.000Z",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track",
+     "premierJour": "2026-10-13",
+     "compte": true,
+     "numero": 29,
+     "theme": "nuit",
+     "seuils": {
+      "author": 35041,
+      "gold": 36618,
+      "silver": 37494,
+      "bronze": 39596
+     },
+     "etat": {
+      "statut": "pas_joue"
+     }
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump",
+     "premierJour": "2026-10-16",
+     "compte": true,
+     "numero": 26,
+     "theme": "usine",
+     "seuils": {
+      "author": 32117,
+      "gold": 35175,
+      "silver": 41900,
+      "bronze": 51992
+     },
+     "etat": {
+      "statut": "pas_joue"
+     }
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "premierJour": "2026-11-02",
+     "compte": true,
+     "numero": 9,
+     "theme": "port",
+     "seuils": {
+      "author": 52800,
+      "gold": 26400,
+      "silver": 15840,
+      "bronze": 7920
+     },
+     "unite": "mm",
+     "etat": {
+      "statut": "fini",
+      "tempsMs": 8833,
+      "medaille": null,
+      "rang": 5,
+      "classes": 5,
+      "score": {
+       "unite": "mm",
+       "valeur": 5999,
+       "vies": 0
+      }
+     }
+    }
+   ],
+   "nouveaute": null,
+   "annonce": null,
+   "joueur": {
+    "pseudo": "Joueur1",
+    "serie": 1,
+    "aProlonger": false,
+    "journeesParfaites": 0,
+    "aujourdhuiParfaite": false,
+    "cumulMs": null,
+    "rangDuJour": null,
+    "classesDuJour": null,
+    "rangEntreAmis": null,
+    "messagesNonLus": 0,
+    "favoris": null,
+    "jeuxDuJour": [
+     "track",
+     "jump",
+     "tower"
+    ]
+   }
+  }
+ },
+ {
+  "nom": "portail : classement Tower — GET /api/portail/classement?date=2026-11-10&vue=tower",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "journee": 15,
+   "ouvert": true,
+   "vue": "tower",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track"
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump"
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "unite": "mm"
+    }
+   ],
+   "classes": 5,
+   "top": [
+    {
+     "rang": 1,
+     "pseudo": "Joueur3",
+     "ref": "19d8d35c06ab",
+     "tempsMs": 24600,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 24252,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 1,
+       "tempsMs": 24600,
+       "medaille": "silver",
+       "score": {
+        "unite": "mm",
+        "valeur": 24252,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 2,
+     "pseudo": "Joueur4",
+     "ref": "a20248c7f641",
+     "tempsMs": 12483,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 14551,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 2,
+       "tempsMs": 12483,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 14551,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 3,
+     "pseudo": "Joueur5",
+     "ref": "2dc3b97b1e90",
+     "tempsMs": 10067,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 14011,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 3,
+       "tempsMs": 10067,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 14011,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 4,
+     "pseudo": "Joueur2",
+     "ref": "d2b1f1d83f0a",
+     "tempsMs": 8800,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 11288,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 4,
+       "tempsMs": 8800,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 11288,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 5,
+     "pseudo": "Joueur1",
+     "ref": "e0cca2965509",
+     "tempsMs": 8833,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 5999,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 5,
+       "tempsMs": 8833,
+       "medaille": null,
+       "score": {
+        "unite": "mm",
+        "valeur": 5999,
+        "vies": 0
+       }
+      }
+     }
+    }
+   ],
+   "unite": "mm"
+  }
+ },
+ {
+  "nom": "portail : classement Tower du joueur 2 — GET /api/portail/classement?date=2026-11-10&vue=tower",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "journee": 15,
+   "ouvert": true,
+   "vue": "tower",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track"
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump"
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "unite": "mm"
+    }
+   ],
+   "classes": 5,
+   "top": [
+    {
+     "rang": 1,
+     "pseudo": "Joueur3",
+     "ref": "19d8d35c06ab",
+     "tempsMs": 24600,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 24252,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 1,
+       "tempsMs": 24600,
+       "medaille": "silver",
+       "score": {
+        "unite": "mm",
+        "valeur": 24252,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 2,
+     "pseudo": "Joueur4",
+     "ref": "a20248c7f641",
+     "tempsMs": 12483,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 14551,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 2,
+       "tempsMs": 12483,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 14551,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 3,
+     "pseudo": "Joueur5",
+     "ref": "2dc3b97b1e90",
+     "tempsMs": 10067,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 14011,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 3,
+       "tempsMs": 10067,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 14011,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 4,
+     "pseudo": "Joueur2",
+     "ref": "d2b1f1d83f0a",
+     "tempsMs": 8800,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 11288,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 4,
+       "tempsMs": 8800,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 11288,
+        "vies": 0
+       }
+      }
+     },
+     "moi": true
+    },
+    {
+     "rang": 5,
+     "pseudo": "Joueur1",
+     "ref": "e0cca2965509",
+     "tempsMs": 8833,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 5999,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 5,
+       "tempsMs": 8833,
+       "medaille": null,
+       "score": {
+        "unite": "mm",
+        "valeur": 5999,
+        "vies": 0
+       }
+      }
+     }
+    }
+   ],
+   "unite": "mm",
+   "moi": {
+    "rang": 4,
+    "pseudo": "Joueur2",
+    "ref": "d2b1f1d83f0a",
+    "tempsMs": 8800,
+    "complet": true,
+    "score": {
+     "unite": "mm",
+     "valeur": 11288,
+     "vies": 0
+    },
+    "resultats": {
+     "tower": {
+      "rang": 4,
+      "tempsMs": 8800,
+      "medaille": "bronze",
+      "score": {
+       "unite": "mm",
+       "valeur": 11288,
+       "vies": 0
+      }
+     }
+    },
+    "classes": 5
+   }
+  }
+ },
+ {
+  "nom": "portail : classement cumulé — GET /api/portail/classement?date=2026-11-10",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "journee": 15,
+   "ouvert": true,
+   "vue": "cumul",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track"
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump"
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "unite": "mm"
+    }
+   ],
+   "classes": 0,
+   "top": [],
+   "moi": null
+  }
+ },
+ {
+  "nom": "portail : profil du joueur 1 — GET /api/portail/profil",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "pseudo": "Joueur1",
+   "renameRequired": false,
+   "date": "2026-11-10",
+   "serie": 1,
+   "aProlonger": false,
+   "journeesParfaites": 0,
+   "aujourdhuiParfaite": false,
+   "messagesNonLus": 0,
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "joursFinis": 0,
+     "medailles": {
+      "author": 0,
+      "gold": 0,
+      "silver": 0,
+      "bronze": 0
+     },
+     "meilleurRang": null
+    },
+    {
+     "jeu": "jump",
+     "joursFinis": 0,
+     "medailles": {
+      "author": 0,
+      "gold": 0,
+      "silver": 0,
+      "bronze": 0
+     },
+     "meilleurRang": null
+    },
+    {
+     "jeu": "tower",
+     "joursFinis": 1,
+     "medailles": {
+      "author": 0,
+      "gold": 0,
+      "silver": 0,
+      "bronze": 0
+     },
+     "meilleurRang": {
+      "date": "2026-11-10",
+      "rang": 5,
+      "classes": 5
+     }
+    }
+   ]
+  }
+ },
+ {
+  "nom": "amis : ajouter par pseudo — POST /api/amis",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "ami": {
+    "ref": "d2b1f1d83f0a",
+    "pseudo": "Joueur2",
+    "reciproque": false,
+    "origine": "ajout"
+   },
+   "total": 1
+  }
+ },
+ {
+  "nom": "amis : ajouter le premier — POST /api/amis",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "ami": {
+    "ref": "e0cca2965509",
+    "pseudo": "Joueur1",
+    "reciproque": false,
+    "origine": "ajout"
+   },
+   "total": 1
+  }
+ },
+ {
+  "nom": "classement Amis du joueur 1 — GET /api/tower/day/2026-11-10/board?filtre=amis",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "filtre": "amis",
+   "date": "2026-11-10",
+   "classes": 2,
+   "amis": 1,
+   "absents": [],
+   "top": [
+    {
+     "rank": 1,
+     "rang": 1,
+     "rangGeneral": 4,
+     "ref": "d2b1f1d83f0a",
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze"
+    },
+    {
+     "rank": 2,
+     "rang": 2,
+     "rangGeneral": 5,
+     "ref": "e0cca2965509",
+     "moi": true,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null
+    }
+   ],
+   "open": true,
+   "participants": 5,
+   "me": {
+    "rank": 2,
+    "rang": 2,
+    "rangGeneral": 5,
+    "ref": "e0cca2965509",
+    "moi": true,
+    "name": "Joueur1",
+    "hauteurMm": 5999,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "classement Amis du joueur 3 — GET /api/tower/day/2026-11-10/board?filtre=amis",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "filtre": "amis",
+   "date": "2026-11-10",
+   "classes": 2,
+   "amis": 1,
+   "absents": [],
+   "top": [
+    {
+     "rank": 1,
+     "rang": 1,
+     "rangGeneral": 1,
+     "ref": "19d8d35c06ab",
+     "moi": true,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver"
+    },
+    {
+     "rank": 2,
+     "rang": 2,
+     "rangGeneral": 5,
+     "ref": "e0cca2965509",
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null
+    }
+   ],
+   "open": true,
+   "participants": 5,
+   "me": {
+    "rank": 1,
+    "rang": 1,
+    "rangGeneral": 1,
+    "ref": "19d8d35c06ab",
+    "moi": true,
+    "name": "Joueur3",
+    "hauteurMm": 24252,
+    "vies": 0,
+    "ticks": 1476,
+    "medal": "silver"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "classement Amis sans identifiant — GET /api/tower/day/2026-11-10/board?filtre=amis",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_player"
+  }
+ },
+ {
+  "nom": "classement : filtre inconnu — GET /api/tower/day/2026-11-10/board?filtre=zz",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_filter"
+  }
+ },
+ {
+  "nom": "classement Amis du portail — GET /api/portail/classement?date=2026-11-10&vue=tower&filtre=amis",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "journee": 15,
+   "ouvert": true,
+   "vue": "tower",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track"
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump"
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "unite": "mm"
+    }
+   ],
+   "filtre": "amis",
+   "classes": 2,
+   "amis": 1,
+   "top": [
+    {
+     "rang": 1,
+     "rangGeneral": 4,
+     "ref": "d2b1f1d83f0a",
+     "pseudo": "Joueur2",
+     "tempsMs": 8800,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 11288,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 4,
+       "tempsMs": 8800,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 11288,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 2,
+     "rangGeneral": 5,
+     "ref": "e0cca2965509",
+     "moi": true,
+     "pseudo": "Joueur1",
+     "tempsMs": 8833,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 5999,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 5,
+       "tempsMs": 8833,
+       "medaille": null,
+       "score": {
+        "unite": "mm",
+        "valeur": 5999,
+        "vies": 0
+       }
+      }
+     }
+    }
+   ],
+   "absents": [],
+   "moi": {
+    "rang": 2,
+    "rangGeneral": 5,
+    "ref": "e0cca2965509",
+    "moi": true,
+    "pseudo": "Joueur1",
+    "tempsMs": 8833,
+    "complet": true,
+    "score": {
+     "unite": "mm",
+     "valeur": 5999,
+     "vies": 0
+    },
+    "resultats": {
+     "tower": {
+      "rang": 5,
+      "tempsMs": 8833,
+      "medaille": null,
+      "score": {
+       "unite": "mm",
+       "valeur": 5999,
+       "vies": 0
+      }
+     }
+    },
+    "classes": 2
+   },
+   "unite": "mm"
+  }
+ },
+ {
+  "nom": "feuille d'un ami — GET /api/amis/fiche/d2b1f1d83f0a?date=2026-11-10",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "ref": "d2b1f1d83f0a",
+   "pseudo": "Joueur2",
+   "ami": true,
+   "reciproque": false,
+   "rang": null,
+   "classes": 0,
+   "jeux": [
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "unite": "hauteur",
+     "valeur": 11288,
+     "medaille": "bronze",
+     "rang": 4
+    }
+   ]
+  }
+ },
+ {
+  "nom": "groupe : création — POST /api/groupes",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "id": "<identifiant>",
+   "nom": "Les Hauts"
+  }
+ },
+ {
+  "nom": "groupe : mon groupe — GET /api/groupes/moi",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "groupe": {
+    "id": "<identifiant>",
+    "nom": "Les Hauts",
+    "description": "",
+    "membres": [
+     {
+      "ref": "e0cca2965509",
+      "pseudo": "Joueur1",
+      "chef": true,
+      "depuis": "2026-11-10"
+     }
+    ],
+    "max": 30,
+    "moi": true,
+    "chef": true,
+    "invitation": "<aléatoire>",
+    "arrivee": "2026-11-11",
+    "renommerDans": 0
+   }
+  }
+ },
+ {
+  "nom": "groupe : le joueur 2 rejoint — POST /api/groupes/rejoindre",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "id": "<identifiant>",
+   "nom": "Les Hauts",
+   "arrivee": "2026-11-11"
+  }
+ },
+ {
+  "nom": "groupe : le joueur 3 rejoint — POST /api/groupes/rejoindre",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "id": "<identifiant>",
+   "nom": "Les Hauts",
+   "arrivee": "2026-11-11"
+  }
+ },
+ {
+  "nom": "groupe : le joueur 4 rejoint — POST /api/groupes/rejoindre",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "id": "<identifiant>",
+   "nom": "Les Hauts",
+   "arrivee": "2026-11-11"
+  }
+ },
+ {
+  "nom": "classement Mon groupe du joueur 1 — GET /api/tower/day/2026-11-10/board?filtre=groupe",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "filtre": "groupe",
+   "date": "2026-11-10",
+   "classes": 4,
+   "amis": 3,
+   "absents": [],
+   "top": [
+    {
+     "rank": 1,
+     "rang": 1,
+     "rangGeneral": 1,
+     "ref": "19d8d35c06ab",
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver"
+    },
+    {
+     "rank": 2,
+     "rang": 2,
+     "rangGeneral": 2,
+     "ref": "a20248c7f641",
+     "name": "Joueur4",
+     "hauteurMm": 14551,
+     "vies": 0,
+     "ticks": 749,
+     "medal": "bronze"
+    },
+    {
+     "rank": 3,
+     "rang": 3,
+     "rangGeneral": 4,
+     "ref": "d2b1f1d83f0a",
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze"
+    },
+    {
+     "rank": 4,
+     "rang": 4,
+     "rangGeneral": 5,
+     "ref": "e0cca2965509",
+     "moi": true,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null
+    }
+   ],
+   "open": true,
+   "participants": 5,
+   "me": {
+    "rank": 4,
+    "rang": 4,
+    "rangGeneral": 5,
+    "ref": "e0cca2965509",
+    "moi": true,
+    "name": "Joueur1",
+    "hauteurMm": 5999,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "classement Mon groupe du joueur 5 (sans groupe) — GET /api/tower/day/2026-11-10/board?filtre=groupe",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "filtre": "groupe",
+   "date": "2026-11-10",
+   "classes": 1,
+   "amis": 0,
+   "absents": [],
+   "top": [
+    {
+     "rank": 1,
+     "rang": 1,
+     "rangGeneral": 3,
+     "ref": "2dc3b97b1e90",
+     "moi": true,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze"
+    }
+   ],
+   "open": true,
+   "participants": 5,
+   "me": {
+    "rank": 1,
+    "rang": 1,
+    "rangGeneral": 3,
+    "ref": "2dc3b97b1e90",
+    "moi": true,
+    "name": "Joueur5",
+    "hauteurMm": 14011,
+    "vies": 0,
+    "ticks": 604,
+    "medal": "bronze"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "amis : le sélecteur porte le groupe — GET /api/amis",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "amis": [
+    {
+     "ref": "d2b1f1d83f0a",
+     "pseudo": "Joueur2",
+     "reciproque": false,
+     "origine": "ajout"
+    }
+   ],
+   "total": 1,
+   "max": 100,
+   "invitation": {
+    "active": false
+   },
+   "groupe": 4
+  }
+ },
+ {
+  "nom": "classement des groupes (Tower) — GET /api/groupes/classement?date=2026-11-10&vue=tower",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=15, s-maxage=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "ouvert": true,
+   "vue": "tower",
+   "sens": "hauteur",
+   "vues": [
+    "cumul",
+    "track",
+    "jump",
+    "tower"
+   ],
+   "min": 3,
+   "groupes": [
+    {
+     "rang": 1,
+     "id": "<identifiant>",
+     "nom": "Les Hauts",
+     "score": 16697,
+     "classes": 4
+    }
+   ],
+   "moins": []
+  }
+ },
+ {
+  "nom": "classement des groupes (cumulé) — GET /api/groupes/classement?date=2026-11-10&vue=cumul",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=15, s-maxage=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "ouvert": true,
+   "vue": "cumul",
+   "sens": "temps",
+   "vues": [
+    "cumul",
+    "track",
+    "jump",
+    "tower"
+   ],
+   "min": 3,
+   "groupes": [],
+   "moins": []
+  }
+ },
+ {
+  "nom": "admin : connexion — POST /api/admin/session",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "admin": "0576e2e437af",
+   "expire": "2026-11-10T13:00:05.000Z"
+  }
+ },
+ {
+  "nom": "admin : recherche — GET /api/admin/joueurs?q=Joueur",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "page": 1,
+   "parPage": 50,
+   "suivante": false,
+   "joueurs": [
+    {
+     "ref": "e0cca2965509",
+     "pseudo": "Joueur1",
+     "masque": false,
+     "creeLe": "2026-11-10T12:00:00.000Z"
+    },
+    {
+     "ref": "d2b1f1d83f0a",
+     "pseudo": "Joueur2",
+     "masque": false,
+     "creeLe": "2026-11-10T12:00:02.000Z"
+    },
+    {
+     "ref": "19d8d35c06ab",
+     "pseudo": "Joueur3",
+     "masque": false,
+     "creeLe": "2026-11-10T12:00:03.000Z"
+    },
+    {
+     "ref": "a20248c7f641",
+     "pseudo": "Joueur4",
+     "masque": false,
+     "creeLe": "2026-11-10T12:00:04.000Z"
+    },
+    {
+     "ref": "2dc3b97b1e90",
+     "pseudo": "Joueur5",
+     "masque": false,
+     "creeLe": "2026-11-10T12:00:05.000Z"
+    }
+   ]
+  }
+ },
+ {
+  "nom": "admin : fiche du joueur 1 — GET /api/admin/joueurs/e0cca2965509",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "ref": "e0cca2965509",
+   "pseudo": "Joueur1",
+   "masque": false,
+   "creeLe": "2026-11-10T12:00:00.000Z",
+   "dernierePartie": "2026-11-10T12:00:00.000Z",
+   "joursJoues": 1,
+   "resultats": [
+    {
+     "jeu": "cdj",
+     "nom": "DailyTrack",
+     "jours": 0,
+     "resultats": []
+    },
+    {
+     "jeu": "jump",
+     "nom": "DailyJump",
+     "jours": 0,
+     "resultats": []
+    },
+    {
+     "jeu": "tower",
+     "nom": "Tower",
+     "jours": 1,
+     "resultats": [
+      {
+       "date": "2026-11-10",
+       "tempsMs": 8833,
+       "score": {
+        "unite": "mm",
+        "valeur": 5999,
+        "vies": 0
+       },
+       "morts": null,
+       "medaille": null,
+       "rang": 5,
+       "classes": 5,
+       "envoyeA": "2026-11-10T12:00:00.000Z",
+       "rediffusion": null
+      }
+     ]
+    }
+   ],
+   "retires": [],
+   "gardeJours": 30
+  }
+ },
+ {
+  "nom": "admin : masquer le joueur 2 — POST /api/admin/joueurs/d2b1f1d83f0a/masquer",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "masque": true
+  }
+ },
+ {
+  "nom": "classement sans le joueur masqué — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 4,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur4",
+     "hauteurMm": 14551,
+     "vies": 0,
+     "ticks": 749,
+     "medal": "bronze",
+     "ref": "a20248c7f641"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 4,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": {
+    "rank": 1,
+    "name": "Joueur3",
+    "hauteurMm": 24252,
+    "vies": 0,
+    "ticks": 1476,
+    "medal": "silver",
+    "ref": "19d8d35c06ab"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "portail : classement Tower sans le masqué — GET /api/portail/classement?date=2026-11-10&vue=tower",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "journee": 15,
+   "ouvert": true,
+   "vue": "tower",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track"
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump"
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "unite": "mm"
+    }
+   ],
+   "classes": 4,
+   "top": [
+    {
+     "rang": 1,
+     "pseudo": "Joueur3",
+     "ref": "19d8d35c06ab",
+     "tempsMs": 24600,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 24252,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 1,
+       "tempsMs": 24600,
+       "medaille": "silver",
+       "score": {
+        "unite": "mm",
+        "valeur": 24252,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 2,
+     "pseudo": "Joueur4",
+     "ref": "a20248c7f641",
+     "tempsMs": 12483,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 14551,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 2,
+       "tempsMs": 12483,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 14551,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 3,
+     "pseudo": "Joueur5",
+     "ref": "2dc3b97b1e90",
+     "tempsMs": 10067,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 14011,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 3,
+       "tempsMs": 10067,
+       "medaille": "bronze",
+       "score": {
+        "unite": "mm",
+        "valeur": 14011,
+        "vies": 0
+       }
+      }
+     }
+    },
+    {
+     "rang": 4,
+     "pseudo": "Joueur1",
+     "ref": "e0cca2965509",
+     "tempsMs": 8833,
+     "complet": true,
+     "score": {
+      "unite": "mm",
+      "valeur": 5999,
+      "vies": 0
+     },
+     "resultats": {
+      "tower": {
+       "rang": 4,
+       "tempsMs": 8833,
+       "medaille": null,
+       "score": {
+        "unite": "mm",
+        "valeur": 5999,
+        "vies": 0
+       }
+      }
+     }
+    }
+   ],
+   "unite": "mm"
+  }
+ },
+ {
+  "nom": "le masqué se voit lui-même — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 4,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur4",
+     "hauteurMm": 14551,
+     "vies": 0,
+     "ticks": 749,
+     "medal": "bronze",
+     "ref": "a20248c7f641"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 4,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": {
+    "rank": 4,
+    "name": "Joueur2",
+    "hauteurMm": 11288,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze",
+    "ref": "d2b1f1d83f0a"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "admin : démasquer le joueur 2 — POST /api/admin/joueurs/d2b1f1d83f0a/masquer",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "masque": false
+  }
+ },
+ {
+  "nom": "admin : retirer le résultat du joueur 4 — POST /api/admin/joueurs/a20248c7f641/retirer",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "retire": true,
+   "rediffusionGardeeJours": 30
+  }
+ },
+ {
+  "nom": "la partie retirée ne revient pas — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "replay_copy"
+  }
+ },
+ {
+  "nom": "classement après le retrait — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 4,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur3",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    {
+     "rank": 4,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": null,
+   "generation": 0
+  }
+ },
+ {
+  "nom": "admin : renommer le joueur 3 — POST /api/admin/joueurs/19d8d35c06ab/renommer",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "pseudo": "Troisieme"
+  }
+ },
+ {
+  "nom": "classement après le renommage — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 4,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Troisieme",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    {
+     "rank": 4,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": null,
+   "generation": 0
+  }
+ },
+ {
+  "nom": "pseudo changé par le joueur — PUT /api/player",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "name": "Nouveau"
+  }
+ },
+ {
+  "nom": "classement après le changement de pseudo — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 4,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Troisieme",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    {
+     "rank": 4,
+     "name": "Nouveau",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": null,
+   "generation": 0
+  }
+ },
+ {
+  "nom": "changer de code — POST /api/me/code",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "rotated": true
+  }
+ },
+ {
+  "nom": "ancien code refusé — POST /api/tower/submit",
+  "status": 410,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "code_revoked"
+  }
+ },
+ {
+  "nom": "le nouveau code garde la partie — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 4,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Troisieme",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "b7e3ee2c7b73"
+    },
+    {
+     "rank": 4,
+     "name": "Nouveau",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": {
+    "rank": 3,
+    "name": "Joueur2",
+    "hauteurMm": 11288,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze",
+    "ref": "b7e3ee2c7b73"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "me avec l'ancien code — GET /api/tower/me",
+  "status": 410,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "code_revoked"
+  }
+ },
+ {
+  "nom": "avant l'effacement — tower_results",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000001",
+    "tirage": 0,
+    "hauteur_mm": 5999,
+    "hauteur_max_mm": 8080,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null,
+    "replay": "c3f85c904f476160",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312000000,
+    "submitted_at": 1794312000000,
+    "inputs_hash": "f85b03058dbad60e57f36ce489bcded9efcc234b9b1ab07fa34be4c3d4a05bb3",
+    "hidden": 0,
+    "apercu": 0
+   },
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000003",
+    "tirage": 0,
+    "hauteur_mm": 24252,
+    "hauteur_max_mm": 28787,
+    "vies": 0,
+    "ticks": 1476,
+    "medal": "silver",
+    "replay": "c449ba5c8010dced",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312003000,
+    "submitted_at": 1794312003000,
+    "inputs_hash": "fb3fef70b53e81225784f3ba5303d1f841d7cf3b09602a6a59f2de2c55aaeecb",
+    "hidden": 0,
+    "apercu": 0
+   },
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000005",
+    "tirage": 0,
+    "hauteur_mm": 14011,
+    "hauteur_max_mm": 24162,
+    "vies": 0,
+    "ticks": 604,
+    "medal": "bronze",
+    "replay": "3f88301e3d39cae3",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312005000,
+    "submitted_at": 1794312005000,
+    "inputs_hash": "488da3da807bd583fdf874edcd7edb482e5bac2cb6f8f616830b004f73019540",
+    "hidden": 0,
+    "apercu": 0
+   },
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000063",
+    "tirage": 0,
+    "hauteur_mm": 11288,
+    "hauteur_max_mm": 11330,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze",
+    "replay": "861626a0fb063a35",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312002000,
+    "submitted_at": 1794312002000,
+    "inputs_hash": "1ed75c9779d473ac990341dbbe2e5cd052f74c338a0298281f4e376e395aaf4c",
+    "hidden": 0,
+    "apercu": 0
+   }
+  ]
+ },
+ {
+  "nom": "avant l'effacement — tower_levels",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20766,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "chantier",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":44000,\"or\":22000,\"argent\":13200,\"bronze\":6600}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   },
+   {
+    "day": 20767,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "port",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":52800,\"or\":26400,\"argent\":15840,\"bronze\":7920}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   }
+  ]
+ },
+ {
+  "nom": "effacement : essai à blanc — POST /api/admin/effacer",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "essai": true,
+   "pseudo": "Nouveau",
+   "tempsDailyTrack": 0,
+   "coursesSalon": 0,
+   "essaisDailyJump": 0,
+   "viesDailyJump": 0,
+   "partiesDailyTower": 1
+  }
+ },
+ {
+  "nom": "effacement — POST /api/admin/effacer",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "efface": true,
+   "pseudo": "Nouveau",
+   "tempsDailyTrack": 0,
+   "coursesSalon": 0,
+   "essaisDailyJump": 0,
+   "viesDailyJump": 0,
+   "partiesDailyTower": 1
+  }
+ },
+ {
+  "nom": "classement après l'effacement — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 3,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Troisieme",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "19d8d35c06ab"
+    },
+    {
+     "rank": 2,
+     "name": "Joueur5",
+     "hauteurMm": 14011,
+     "vies": 0,
+     "ticks": 604,
+     "medal": "bronze",
+     "ref": "2dc3b97b1e90"
+    },
+    {
+     "rank": 3,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "b7e3ee2c7b73"
+    }
+   ],
+   "me": {
+    "rank": 1,
+    "name": "Troisieme",
+    "hauteurMm": 24252,
+    "vies": 0,
+    "ticks": 1476,
+    "medal": "silver",
+    "ref": "19d8d35c06ab"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "me après l'effacement — GET /api/tower/me",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "unknown_player"
+  }
+ },
+ {
+  "nom": "portail : profil après l'effacement — GET /api/portail/jour",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "journee": 15,
+   "lancement": "2026-10-27",
+   "generation": 0,
+   "maintenant": "2026-11-10T12:00:05.000Z",
+   "prochainJour": "2026-11-10T23:00:00.000Z",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track",
+     "premierJour": "2026-10-13",
+     "compte": true,
+     "numero": 29,
+     "theme": "nuit",
+     "seuils": {
+      "author": 35041,
+      "gold": 36618,
+      "silver": 37494,
+      "bronze": 39596
+     },
+     "etat": {
+      "statut": "pas_joue"
+     }
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump",
+     "premierJour": "2026-10-16",
+     "compte": true,
+     "numero": 26,
+     "theme": "usine",
+     "seuils": {
+      "author": 32117,
+      "gold": 35175,
+      "silver": 41900,
+      "bronze": 51992
+     },
+     "etat": {
+      "statut": "pas_joue"
+     }
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "premierJour": "2026-11-02",
+     "compte": true,
+     "numero": 9,
+     "theme": "port",
+     "seuils": {
+      "author": 52800,
+      "gold": 26400,
+      "silver": 15840,
+      "bronze": 7920
+     },
+     "unite": "mm",
+     "etat": {
+      "statut": "fini",
+      "tempsMs": 24600,
+      "medaille": "silver",
+      "rang": 1,
+      "classes": 3,
+      "score": {
+       "unite": "mm",
+       "valeur": 24252,
+       "vies": 0
+      }
+     }
+    }
+   ],
+   "nouveaute": null,
+   "annonce": null,
+   "joueur": {
+    "pseudo": "Troisieme",
+    "serie": 1,
+    "aProlonger": false,
+    "journeesParfaites": 0,
+    "aujourdhuiParfaite": false,
+    "cumulMs": null,
+    "rangDuJour": null,
+    "classesDuJour": null,
+    "rangEntreAmis": null,
+    "messagesNonLus": 0,
+    "favoris": null,
+    "jeuxDuJour": [
+     "track",
+     "jump",
+     "tower"
+    ]
+   }
+  }
+ },
+ {
+  "nom": "après l'effacement — tower_results",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000003",
+    "tirage": 0,
+    "hauteur_mm": 24252,
+    "hauteur_max_mm": 28787,
+    "vies": 0,
+    "ticks": 1476,
+    "medal": "silver",
+    "replay": "c449ba5c8010dced",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312003000,
+    "submitted_at": 1794312003000,
+    "inputs_hash": "fb3fef70b53e81225784f3ba5303d1f841d7cf3b09602a6a59f2de2c55aaeecb",
+    "hidden": 0,
+    "apercu": 0
+   },
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000005",
+    "tirage": 0,
+    "hauteur_mm": 14011,
+    "hauteur_max_mm": 24162,
+    "vies": 0,
+    "ticks": 604,
+    "medal": "bronze",
+    "replay": "3f88301e3d39cae3",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312005000,
+    "submitted_at": 1794312005000,
+    "inputs_hash": "488da3da807bd583fdf874edcd7edb482e5bac2cb6f8f616830b004f73019540",
+    "hidden": 0,
+    "apercu": 0
+   },
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000063",
+    "tirage": 0,
+    "hauteur_mm": 11288,
+    "hauteur_max_mm": 11330,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze",
+    "replay": "861626a0fb063a35",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312002000,
+    "submitted_at": 1794312002000,
+    "inputs_hash": "1ed75c9779d473ac990341dbbe2e5cd052f74c338a0298281f4e376e395aaf4c",
+    "hidden": 0,
+    "apercu": 0
+   }
+  ]
+ },
+ {
+  "nom": "après l'effacement — tower_levels",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20766,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "chantier",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":44000,\"or\":22000,\"argent\":13200,\"bronze\":6600}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   },
+   {
+    "day": 20767,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "port",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":52800,\"or\":26400,\"argent\":15840,\"bronze\":7920}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   }
+  ]
+ },
+ {
+  "nom": "plafond : premier rejeu — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 11288,
+    "hauteurMaxMm": 11330,
+    "vies": 0,
+    "ticks": 528,
+    "posees": 9,
+    "tombees": 5,
+    "motif": "vies"
+   },
+   "medal": "bronze",
+   "improved": true,
+   "best": {
+    "hauteurMm": 11288,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze"
+   },
+   "rank": 1,
+   "participants": 1,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 1,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur1",
+      "hauteurMm": 11288,
+      "vies": 0,
+      "ticks": 528,
+      "medal": "bronze",
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "e0cca2965509"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "plafond : trop de rejeux — POST /api/tower/submit",
+  "status": 503,
+  "entetes": {
+   "cache-control": "no-store",
+   "retry-after": "60",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "busy"
+  }
+ },
+ {
+  "nom": "plafond : la minute suivante — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 24252,
+    "hauteurMaxMm": 28787,
+    "vies": 0,
+    "ticks": 1476,
+    "posees": 24,
+    "tombees": 8,
+    "motif": "vies"
+   },
+   "medal": "silver",
+   "improved": true,
+   "best": {
+    "hauteurMm": 24252,
+    "vies": 0,
+    "ticks": 1476,
+    "medal": "silver"
+   },
+   "rank": 1,
+   "participants": 2,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 2,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur2",
+      "hauteurMm": 24252,
+      "vies": 0,
+      "ticks": 1476,
+      "medal": "silver",
+      "ref": "d2b1f1d83f0a"
+     },
+     {
+      "rank": 2,
+      "name": "Joueur1",
+      "hauteurMm": 11288,
+      "vies": 0,
+      "ticks": 528,
+      "medal": "bronze",
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 1,
+     "name": "Joueur2",
+     "hauteurMm": 24252,
+     "vies": 0,
+     "ticks": 1476,
+     "medal": "silver",
+     "ref": "d2b1f1d83f0a"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "débit : 1er envoi du joueur — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "débit : 2e envoi du joueur — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "débit : limite du joueur — POST /api/tower/submit",
+  "status": 429,
+  "entetes": {
+   "cache-control": "no-store",
+   "retry-after": "600",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "rate_limited"
+  }
+ },
+ {
+  "nom": "débit : un autre joueur, même adresse — POST /api/tower/submit",
+  "status": 400,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "invalid_replay"
+  }
+ },
+ {
+  "nom": "débit : limite de l'adresse — POST /api/tower/submit",
+  "status": 429,
+  "entetes": {
+   "cache-control": "no-store",
+   "retry-after": "600",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "rate_limited"
+  }
+ },
+ {
+  "nom": "grâce : 00 h 05 — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-09",
+   "resultat": {
+    "hauteurMm": 13821,
+    "hauteurMaxMm": 13971,
+    "vies": 0,
+    "ticks": 614,
+    "posees": 10,
+    "tombees": 5,
+    "motif": "vies"
+   },
+   "medal": "silver",
+   "improved": true,
+   "best": {
+    "hauteurMm": 13821,
+    "vies": 0,
+    "ticks": 614,
+    "medal": "silver"
+   },
+   "rank": 1,
+   "participants": 1,
+   "board": {
+    "date": "2026-11-09",
+    "open": true,
+    "participants": 1,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur1",
+      "hauteurMm": 13821,
+      "vies": 0,
+      "ticks": 614,
+      "medal": "silver",
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 13821,
+     "vies": 0,
+     "ticks": 614,
+     "medal": "silver",
+     "ref": "e0cca2965509"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "grâce : classement d'hier — GET /api/tower/day/2026-11-09/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-09",
+   "open": true,
+   "participants": 1,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 13821,
+     "vies": 0,
+     "ticks": 614,
+     "medal": "silver",
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": {
+    "rank": 1,
+    "name": "Joueur1",
+    "hauteurMm": 13821,
+    "vies": 0,
+    "ticks": 614,
+    "medal": "silver",
+    "ref": "e0cca2965509"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "grâce : 00 h 11 — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "day_closed"
+  }
+ },
+ {
+  "nom": "grâce : classement d'hier, jour fermé — GET /api/tower/day/2026-11-09/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=86400",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-09",
+   "open": false,
+   "participants": 1,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 13821,
+     "vies": 0,
+     "ticks": 614,
+     "medal": "silver",
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": {
+    "rank": 1,
+    "name": "Joueur1",
+    "hauteurMm": 13821,
+    "vies": 0,
+    "ticks": 614,
+    "medal": "silver",
+    "ref": "e0cca2965509"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "panne du rejeu — POST /api/tower/submit",
+  "status": 500,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "internal"
+  }
+ },
+ {
+  "nom": "après la panne — tower_results",
+  "status": 0,
+  "entetes": {},
+  "corps": []
+ },
+ {
+  "nom": "après la panne — tower_levels",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20767,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "port",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":52800,\"or\":26400,\"argent\":15840,\"bronze\":7920}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   }
+  ]
+ },
+ {
+  "nom": "off : info — GET /api/tower/info",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "game_unavailable"
+  }
+ },
+ {
+  "nom": "off : jour — GET /api/tower/day/2026-11-10",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "game_unavailable"
+  }
+ },
+ {
+  "nom": "off : classement — GET /api/tower/day/2026-11-10/board",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "game_unavailable"
+  }
+ },
+ {
+  "nom": "off : envoi — POST /api/tower/submit",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "game_unavailable"
+  }
+ },
+ {
+  "nom": "off : les jeux — GET /api/jeux",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=0, s-maxage=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "jeux": {
+    "track": "on",
+    "jump": "on",
+    "tower": "off"
+   }
+  }
+ },
+ {
+  "nom": "aperçu de PR : jour — GET /api/tower/day/2026-11-10",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "empreinte": "6167b61b783bd45c",
+   "number": 9,
+   "theme": "port",
+   "tirage": 0,
+   "medals": {
+    "author": 52800,
+    "gold": 26400,
+    "silver": 15840,
+    "bronze": 7920
+   },
+   "source": "genere",
+   "provisoire": true,
+   "simVersion": 5,
+   "generatorVersion": 3
+  }
+ },
+ {
+  "nom": "aperçu de PR : envoi — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 5999,
+    "hauteurMaxMm": 8080,
+    "vies": 0,
+    "ticks": 530,
+    "posees": 8,
+    "tombees": 4,
+    "motif": "vies"
+   },
+   "medal": null,
+   "improved": true,
+   "best": {
+    "hauteurMm": 5999,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null
+   },
+   "rank": 1,
+   "participants": 0,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 0,
+    "top": [],
+    "me": {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 5999,
+     "vies": 0,
+     "ticks": 530,
+     "medal": null,
+     "ref": "e0cca2965509"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "aperçu de PR : classement public vide — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 0,
+   "top": [],
+   "me": {
+    "rank": 1,
+    "name": "Joueur1",
+    "hauteurMm": 5999,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null,
+    "ref": "e0cca2965509"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "aperçu de PR : écriture non permise — PUT /api/tower/submit",
+  "status": 405,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "method_not_allowed"
+  }
+ },
+ {
+  "nom": "admin : connexion — POST /api/admin/session",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "admin": "0576e2e437af",
+   "expire": "2026-11-10T13:00:00.000Z"
+  }
+ },
+ {
+  "nom": "admin : Tower en preview — POST /api/admin/jeux/tower/etat",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "aujourdhui": "2026-11-10",
+   "jeux": [
+    {
+     "jeu": "track",
+     "nom": "Track",
+     "etat": "on",
+     "liveFrom": "1970-01-01",
+     "periodes": [
+      {
+       "du": "1970-01-01",
+       "au": null
+      }
+     ],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    },
+    {
+     "jeu": "jump",
+     "nom": "Jump",
+     "etat": "on",
+     "liveFrom": "1970-01-01",
+     "periodes": [
+      {
+       "du": "1970-01-01",
+       "au": null
+      }
+     ],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    },
+    {
+     "jeu": "tower",
+     "nom": "Tower",
+     "etat": "preview",
+     "liveFrom": null,
+     "periodes": [],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    }
+   ]
+  }
+ },
+ {
+  "nom": "admin : clé d'aperçu — POST /api/admin/jeux/tower/cle",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "cle": "<aléatoire>",
+   "jeu": "tower"
+  }
+ },
+ {
+  "nom": "preview sans clé : info — GET /api/tower/info",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "game_unavailable"
+  }
+ },
+ {
+  "nom": "preview, mauvaise clé : info — GET /api/tower/info",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "game_unavailable"
+  }
+ },
+ {
+  "nom": "preview avec clé : info — GET /api/tower/info",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "game": "tower",
+   "simVersion": 5,
+   "generatorVersion": 3,
+   "today": "2026-11-10",
+   "frozenDays": [],
+   "environment": "recette"
+  }
+ },
+ {
+  "nom": "preview avec clé : jour — GET /api/tower/day/2026-11-10",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "empreinte": "6167b61b783bd45c",
+   "number": 9,
+   "theme": "port",
+   "tirage": 0,
+   "medals": {
+    "author": 52800,
+    "gold": 26400,
+    "silver": 15840,
+    "bronze": 7920
+   },
+   "source": "genere",
+   "provisoire": true,
+   "simVersion": 5,
+   "generatorVersion": 3
+  }
+ },
+ {
+  "nom": "preview avec clé : envoi (rangé à part) — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-10",
+   "resultat": {
+    "hauteurMm": 11288,
+    "hauteurMaxMm": 11330,
+    "vies": 0,
+    "ticks": 528,
+    "posees": 9,
+    "tombees": 5,
+    "motif": "vies"
+   },
+   "medal": "bronze",
+   "improved": true,
+   "best": {
+    "hauteurMm": 11288,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze"
+   },
+   "rank": 1,
+   "participants": 0,
+   "board": {
+    "date": "2026-11-10",
+    "open": true,
+    "participants": 0,
+    "top": [],
+    "me": {
+     "rank": 1,
+     "name": "Joueur2",
+     "hauteurMm": 11288,
+     "vies": 0,
+     "ticks": 528,
+     "medal": "bronze",
+     "ref": "d2b1f1d83f0a"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "preview avec clé : écriture non permise — POST /api/tower/zz",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "game_unavailable"
+  }
+ },
+ {
+  "nom": "preview avec clé : classement public vide — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 0,
+   "top": [],
+   "me": {
+    "rank": 1,
+    "name": "Joueur2",
+    "hauteurMm": 11288,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze",
+    "ref": "d2b1f1d83f0a"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "preview : les jeux — GET /api/jeux",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=0, s-maxage=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "jeux": {
+    "track": "on",
+    "jump": "on",
+    "tower": "preview"
+   }
+  }
+ },
+ {
+  "nom": "en preview — tower_results",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000001",
+    "tirage": 0,
+    "hauteur_mm": 5999,
+    "hauteur_max_mm": 8080,
+    "vies": 0,
+    "ticks": 530,
+    "medal": null,
+    "replay": "c3f85c904f476160",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312000000,
+    "submitted_at": 1794312000000,
+    "inputs_hash": "f85b03058dbad60e57f36ce489bcded9efcc234b9b1ab07fa34be4c3d4a05bb3",
+    "hidden": 1,
+    "apercu": 1
+   },
+   {
+    "day": 20767,
+    "player_id": "00000000000000000000000000000002",
+    "tirage": 0,
+    "hauteur_mm": 11288,
+    "hauteur_max_mm": 11330,
+    "vies": 0,
+    "ticks": 528,
+    "medal": "bronze",
+    "replay": "861626a0fb063a35",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794312000000,
+    "submitted_at": 1794312000000,
+    "inputs_hash": "1ed75c9779d473ac990341dbbe2e5cd052f74c338a0298281f4e376e395aaf4c",
+    "hidden": 1,
+    "apercu": 1
+   }
+  ]
+ },
+ {
+  "nom": "en preview — tower_levels",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20767,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "port",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":52800,\"or\":26400,\"argent\":15840,\"bronze\":7920}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   }
+  ]
+ },
+ {
+  "nom": "admin : clé révoquée — POST /api/admin/jeux/tower/cle/revoquer",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "aujourdhui": "2026-11-10",
+   "jeux": [
+    {
+     "jeu": "track",
+     "nom": "Track",
+     "etat": "on",
+     "liveFrom": "1970-01-01",
+     "periodes": [
+      {
+       "du": "1970-01-01",
+       "au": null
+      }
+     ],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    },
+    {
+     "jeu": "jump",
+     "nom": "Jump",
+     "etat": "on",
+     "liveFrom": "1970-01-01",
+     "periodes": [
+      {
+       "du": "1970-01-01",
+       "au": null
+      }
+     ],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    },
+    {
+     "jeu": "tower",
+     "nom": "Tower",
+     "etat": "preview",
+     "liveFrom": null,
+     "periodes": [],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    }
+   ]
+  }
+ },
+ {
+  "nom": "preview, clé révoquée : info — GET /api/tower/info",
+  "status": 404,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "game_unavailable"
+  }
+ },
+ {
+  "nom": "admin : Tower on — POST /api/admin/jeux/tower/etat",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "aujourdhui": "2026-11-10",
+   "jeux": [
+    {
+     "jeu": "track",
+     "nom": "Track",
+     "etat": "on",
+     "liveFrom": "1970-01-01",
+     "periodes": [
+      {
+       "du": "1970-01-01",
+       "au": null
+      }
+     ],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    },
+    {
+     "jeu": "jump",
+     "nom": "Jump",
+     "etat": "on",
+     "liveFrom": "1970-01-01",
+     "periodes": [
+      {
+       "du": "1970-01-01",
+       "au": null
+      }
+     ],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    },
+    {
+     "jeu": "tower",
+     "nom": "Tower",
+     "etat": "on",
+     "liveFrom": "2026-11-11",
+     "periodes": [
+      {
+       "du": "2026-11-11",
+       "au": null
+      }
+     ],
+     "cle": {
+      "presente": false,
+      "creeeLe": null
+     },
+     "modifieLe": "<horloge réelle>"
+    }
+   ]
+  }
+ },
+ {
+  "nom": "on : info — GET /api/tower/info",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "game": "tower",
+   "simVersion": 5,
+   "generatorVersion": 3,
+   "today": "2026-11-10",
+   "frozenDays": [],
+   "environment": "recette"
+  }
+ },
+ {
+  "nom": "on : classement (les parties d'aperçu sont effacées) — GET /api/tower/day/2026-11-10/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-10",
+   "open": true,
+   "participants": 0,
+   "top": [],
+   "me": null,
+   "generation": 0
+  }
+ },
+ {
+  "nom": "on : les jeux — GET /api/jeux",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=0, s-maxage=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "jeux": {
+    "track": "on",
+    "jump": "on",
+    "tower": "on"
+   }
+  }
+ },
+ {
+  "nom": "après le passage à on — tower_results",
+  "status": 0,
+  "entetes": {},
+  "corps": []
+ },
+ {
+  "nom": "après le passage à on — tower_levels",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20767,
+    "rule": "s5-g3-m2--",
+    "g": 3,
+    "tirage": 0,
+    "theme": "port",
+    "source": "genere",
+    "fichier": 0,
+    "medals": "{\"auteur\":52800,\"or\":26400,\"argent\":15840,\"bronze\":7920}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794312000000
+   }
+  ]
+ },
+ {
+  "nom": "figé : info — GET /api/tower/info",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "game": "tower",
+   "simVersion": 5,
+   "generatorVersion": 3,
+   "today": "2026-11-07",
+   "frozenDays": [
+    "2026-11-07"
+   ],
+   "environment": "local"
+  }
+ },
+ {
+  "nom": "figé : jour — GET /api/tower/day/2026-11-07",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-07",
+   "empreinte": "bf34865fc016e1c8",
+   "number": 6,
+   "theme": "nuit",
+   "tirage": 0,
+   "medals": {
+    "author": 60000,
+    "gold": 30000,
+    "silver": 18000,
+    "bronze": 9000
+   },
+   "source": "prepare",
+   "provisoire": false,
+   "simVersion": 5,
+   "generatorVersion": 3
+  }
+ },
+ {
+  "nom": "figé : Diamant verrouillé — GET /api/tower/day/2026-11-07/diamant",
+  "status": 403,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_ranked"
+  }
+ },
+ {
+  "nom": "figé : copie de la preuve de l'auteur — POST /api/tower/submit",
+  "status": 409,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "replay_copy"
+  }
+ },
+ {
+  "nom": "figé : envoi — POST /api/tower/submit",
+  "status": 200,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "accepted": true,
+   "date": "2026-11-07",
+   "resultat": {
+    "hauteurMm": 14831,
+    "hauteurMaxMm": 22745,
+    "vies": 0,
+    "ticks": 958,
+    "posees": 16,
+    "tombees": 7,
+    "motif": "vies"
+   },
+   "medal": "bronze",
+   "improved": true,
+   "best": {
+    "hauteurMm": 14831,
+    "vies": 0,
+    "ticks": 958,
+    "medal": "bronze"
+   },
+   "rank": 1,
+   "participants": 1,
+   "board": {
+    "date": "2026-11-07",
+    "open": true,
+    "participants": 1,
+    "top": [
+     {
+      "rank": 1,
+      "name": "Joueur1",
+      "hauteurMm": 14831,
+      "vies": 0,
+      "ticks": 958,
+      "medal": "bronze",
+      "ref": "e0cca2965509"
+     }
+    ],
+    "me": {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 14831,
+     "vies": 0,
+     "ticks": 958,
+     "medal": "bronze",
+     "ref": "e0cca2965509"
+    },
+    "generation": 0
+   }
+  }
+ },
+ {
+  "nom": "figé : Diamant débloqué — GET /api/tower/day/2026-11-07/diamant",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-07",
+   "hauteurMm": 60000,
+   "pieces": [
+    {
+     "kind": "L",
+     "rot": 3,
+     "taille": "normale",
+     "x": 0.24999165534973145,
+     "y": 1.249497413635254,
+     "angle": 0.0006384023581631482
+    },
+    {
+     "kind": "T",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.01271883025765419,
+     "y": 4.493520736694336,
+     "angle": -0.001876901020295918
+    },
+    {
+     "kind": "J",
+     "rot": 1,
+     "taille": "normale",
+     "x": -0.251797616481781,
+     "y": 7.240318775177002,
+     "angle": -0.009018749929964542
+    },
+    {
+     "kind": "Z",
+     "rot": 3,
+     "taille": "normale",
+     "x": 0.011370353400707245,
+     "y": 10.478819847106934,
+     "angle": 0.007580941077321768
+    },
+    {
+     "kind": "I",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.5023482441902161,
+     "y": 13.975885391235352,
+     "angle": 0.0035766928922384977
+    },
+    {
+     "kind": "S",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.0033831563778221607,
+     "y": 17.47737693786621,
+     "angle": 0.006278125569224358
+    },
+    {
+     "kind": "I",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.7509080767631531,
+     "y": 19.960588455200195,
+     "angle": 0.023946812376379967
+    },
+    {
+     "kind": "J",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.8270138502120972,
+     "y": 23.702499389648438,
+     "angle": 0.02297278307378292
+    },
+    {
+     "kind": "S",
+     "rot": 0,
+     "taille": "normale",
+     "x": -1.093400239944458,
+     "y": 25.941864013671875,
+     "angle": 0.025281349197030067
+    },
+    {
+     "kind": "Z",
+     "rot": 0,
+     "taille": "petite",
+     "x": -1.0454045534133911,
+     "y": 27.417036056518555,
+     "angle": 0.007156267296522856
+    },
+    {
+     "kind": "L",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.9246516823768616,
+     "y": 29.154930114746094,
+     "angle": 0.018217140808701515
+    },
+    {
+     "kind": "O",
+     "rot": 0,
+     "taille": "normale",
+     "x": -1.1950384378433228,
+     "y": 31.89324951171875,
+     "angle": 0.01263474952429533
+    },
+    {
+     "kind": "T",
+     "rot": 1,
+     "taille": "normale",
+     "x": -1.1745628118515015,
+     "y": 34.38666534423828,
+     "angle": 0.010570756159722805
+    },
+    {
+     "kind": "J",
+     "rot": 1,
+     "taille": "normale",
+     "x": -0.9125752449035645,
+     "y": 37.13631820678711,
+     "angle": 0.008170288987457752
+    },
+    {
+     "kind": "Z",
+     "rot": 0,
+     "taille": "normale",
+     "x": -0.6613683104515076,
+     "y": 39.88296890258789,
+     "angle": 0.014932114630937576
+    },
+    {
+     "kind": "L",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.9749495983123779,
+     "y": 42.12415313720703,
+     "angle": 0.026290329173207283
+    },
+    {
+     "kind": "I",
+     "rot": 3,
+     "taille": "normale",
+     "x": 0.10943400859832764,
+     "y": 43.93669891357422,
+     "angle": -0.11308726668357849
+    },
+    {
+     "kind": "S",
+     "rot": 3,
+     "taille": "normale",
+     "x": -1.2872179746627808,
+     "y": 45.357913970947266,
+     "angle": 0.0026638321578502655
+    },
+    {
+     "kind": "T",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.6832885146141052,
+     "y": 48.35599136352539,
+     "angle": 0.008201573975384235
+    },
+    {
+     "kind": "S",
+     "rot": 0,
+     "taille": "normale",
+     "x": -1.2043472528457642,
+     "y": 50.84613037109375,
+     "angle": 0.012150213122367859
+    },
+    {
+     "kind": "O",
+     "rot": 0,
+     "taille": "geante",
+     "x": -1.2727839946746826,
+     "y": 53.842411041259766,
+     "angle": 0.01170441322028637
+    },
+    {
+     "kind": "T",
+     "rot": 2,
+     "taille": "normale",
+     "x": -0.2895786166191101,
+     "y": 57.10609436035156,
+     "angle": 0.004491207655519247
+    },
+    {
+     "kind": "L",
+     "rot": 3,
+     "taille": "normale",
+     "x": -1.0944164991378784,
+     "y": 59.10202407836914,
+     "angle": 0.0046428232453763485
+    },
+    {
+     "kind": "I",
+     "rot": 3,
+     "taille": "normale",
+     "x": -2.908905029296875,
+     "y": 57.823143005371094,
+     "angle": 0.012226475402712822
+    },
+    {
+     "kind": "J",
+     "rot": 3,
+     "taille": "normale",
+     "x": -2.7024896144866943,
+     "y": 61.57509231567383,
+     "angle": 0.011506924405694008
+    },
+    {
+     "kind": "Z",
+     "rot": 3,
+     "taille": "normale",
+     "x": 0.6685149073600769,
+     "y": 59.35957336425781,
+     "angle": 0.003352884901687503
+    },
+    {
+     "kind": "J",
+     "rot": 2,
+     "taille": "normale",
+     "x": -0.06113443896174431,
+     "y": 62.50279235839844,
+     "angle": -0.4084824323654175
+    },
+    {
+     "kind": "S",
+     "rot": 3,
+     "taille": "normale",
+     "x": -1.8930461406707764,
+     "y": 64.36404418945312,
+     "angle": 0.041808247566223145
+    }
+   ]
+  }
+ },
+ {
+  "nom": "figé : Diamant d'un autre joueur — GET /api/tower/day/2026-11-07/diamant",
+  "status": 403,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_ranked"
+  }
+ },
+ {
+  "nom": "figé : Diamant relu — GET /api/tower/day/2026-11-07/diamant",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-07",
+   "hauteurMm": 60000,
+   "pieces": [
+    {
+     "kind": "L",
+     "rot": 3,
+     "taille": "normale",
+     "x": 0.24999165534973145,
+     "y": 1.249497413635254,
+     "angle": 0.0006384023581631482
+    },
+    {
+     "kind": "T",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.01271883025765419,
+     "y": 4.493520736694336,
+     "angle": -0.001876901020295918
+    },
+    {
+     "kind": "J",
+     "rot": 1,
+     "taille": "normale",
+     "x": -0.251797616481781,
+     "y": 7.240318775177002,
+     "angle": -0.009018749929964542
+    },
+    {
+     "kind": "Z",
+     "rot": 3,
+     "taille": "normale",
+     "x": 0.011370353400707245,
+     "y": 10.478819847106934,
+     "angle": 0.007580941077321768
+    },
+    {
+     "kind": "I",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.5023482441902161,
+     "y": 13.975885391235352,
+     "angle": 0.0035766928922384977
+    },
+    {
+     "kind": "S",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.0033831563778221607,
+     "y": 17.47737693786621,
+     "angle": 0.006278125569224358
+    },
+    {
+     "kind": "I",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.7509080767631531,
+     "y": 19.960588455200195,
+     "angle": 0.023946812376379967
+    },
+    {
+     "kind": "J",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.8270138502120972,
+     "y": 23.702499389648438,
+     "angle": 0.02297278307378292
+    },
+    {
+     "kind": "S",
+     "rot": 0,
+     "taille": "normale",
+     "x": -1.093400239944458,
+     "y": 25.941864013671875,
+     "angle": 0.025281349197030067
+    },
+    {
+     "kind": "Z",
+     "rot": 0,
+     "taille": "petite",
+     "x": -1.0454045534133911,
+     "y": 27.417036056518555,
+     "angle": 0.007156267296522856
+    },
+    {
+     "kind": "L",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.9246516823768616,
+     "y": 29.154930114746094,
+     "angle": 0.018217140808701515
+    },
+    {
+     "kind": "O",
+     "rot": 0,
+     "taille": "normale",
+     "x": -1.1950384378433228,
+     "y": 31.89324951171875,
+     "angle": 0.01263474952429533
+    },
+    {
+     "kind": "T",
+     "rot": 1,
+     "taille": "normale",
+     "x": -1.1745628118515015,
+     "y": 34.38666534423828,
+     "angle": 0.010570756159722805
+    },
+    {
+     "kind": "J",
+     "rot": 1,
+     "taille": "normale",
+     "x": -0.9125752449035645,
+     "y": 37.13631820678711,
+     "angle": 0.008170288987457752
+    },
+    {
+     "kind": "Z",
+     "rot": 0,
+     "taille": "normale",
+     "x": -0.6613683104515076,
+     "y": 39.88296890258789,
+     "angle": 0.014932114630937576
+    },
+    {
+     "kind": "L",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.9749495983123779,
+     "y": 42.12415313720703,
+     "angle": 0.026290329173207283
+    },
+    {
+     "kind": "I",
+     "rot": 3,
+     "taille": "normale",
+     "x": 0.10943400859832764,
+     "y": 43.93669891357422,
+     "angle": -0.11308726668357849
+    },
+    {
+     "kind": "S",
+     "rot": 3,
+     "taille": "normale",
+     "x": -1.2872179746627808,
+     "y": 45.357913970947266,
+     "angle": 0.0026638321578502655
+    },
+    {
+     "kind": "T",
+     "rot": 3,
+     "taille": "normale",
+     "x": -0.6832885146141052,
+     "y": 48.35599136352539,
+     "angle": 0.008201573975384235
+    },
+    {
+     "kind": "S",
+     "rot": 0,
+     "taille": "normale",
+     "x": -1.2043472528457642,
+     "y": 50.84613037109375,
+     "angle": 0.012150213122367859
+    },
+    {
+     "kind": "O",
+     "rot": 0,
+     "taille": "geante",
+     "x": -1.2727839946746826,
+     "y": 53.842411041259766,
+     "angle": 0.01170441322028637
+    },
+    {
+     "kind": "T",
+     "rot": 2,
+     "taille": "normale",
+     "x": -0.2895786166191101,
+     "y": 57.10609436035156,
+     "angle": 0.004491207655519247
+    },
+    {
+     "kind": "L",
+     "rot": 3,
+     "taille": "normale",
+     "x": -1.0944164991378784,
+     "y": 59.10202407836914,
+     "angle": 0.0046428232453763485
+    },
+    {
+     "kind": "I",
+     "rot": 3,
+     "taille": "normale",
+     "x": -2.908905029296875,
+     "y": 57.823143005371094,
+     "angle": 0.012226475402712822
+    },
+    {
+     "kind": "J",
+     "rot": 3,
+     "taille": "normale",
+     "x": -2.7024896144866943,
+     "y": 61.57509231567383,
+     "angle": 0.011506924405694008
+    },
+    {
+     "kind": "Z",
+     "rot": 3,
+     "taille": "normale",
+     "x": 0.6685149073600769,
+     "y": 59.35957336425781,
+     "angle": 0.003352884901687503
+    },
+    {
+     "kind": "J",
+     "rot": 2,
+     "taille": "normale",
+     "x": -0.06113443896174431,
+     "y": 62.50279235839844,
+     "angle": -0.4084824323654175
+    },
+    {
+     "kind": "S",
+     "rot": 3,
+     "taille": "normale",
+     "x": -1.8930461406707764,
+     "y": 64.36404418945312,
+     "angle": 0.041808247566223145
+    }
+   ]
+  }
+ },
+ {
+  "nom": "figé : classement — GET /api/tower/day/2026-11-07/board",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, max-age=30",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-07",
+   "open": true,
+   "participants": 1,
+   "top": [
+    {
+     "rank": 1,
+     "name": "Joueur1",
+     "hauteurMm": 14831,
+     "vies": 0,
+     "ticks": 958,
+     "medal": "bronze",
+     "ref": "e0cca2965509"
+    }
+   ],
+   "me": {
+    "rank": 1,
+    "name": "Joueur1",
+    "hauteurMm": 14831,
+    "vies": 0,
+    "ticks": 958,
+    "medal": "bronze",
+    "ref": "e0cca2965509"
+   },
+   "generation": 0
+  }
+ },
+ {
+  "nom": "figé : portail — GET /api/portail/jour",
+  "status": 200,
+  "entetes": {
+   "cache-control": "private, no-cache",
+   "vary": "X-Player-Id",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-07",
+   "journee": 12,
+   "lancement": "2026-10-27",
+   "generation": 0,
+   "maintenant": "2026-11-07T12:00:00.000Z",
+   "prochainJour": "2026-11-07T23:00:00.000Z",
+   "jeux": [
+    {
+     "jeu": "cdj",
+     "site": "track",
+     "nom": "Track",
+     "premierJour": "2026-10-13",
+     "compte": true,
+     "numero": 26,
+     "theme": "banquise",
+     "seuils": {
+      "author": 35615,
+      "gold": 37218,
+      "silver": 38108,
+      "bronze": 40245
+     },
+     "etat": {
+      "statut": "pas_joue"
+     }
+    },
+    {
+     "jeu": "jump",
+     "site": "jump",
+     "nom": "Jump",
+     "premierJour": "2026-10-16",
+     "compte": true,
+     "numero": 23,
+     "theme": "glace",
+     "seuils": {
+      "author": 32117,
+      "gold": 33700,
+      "silver": 41900,
+      "bronze": 51992
+     },
+     "etat": {
+      "statut": "pas_joue"
+     }
+    },
+    {
+     "jeu": "tower",
+     "site": "tower",
+     "nom": "Tower",
+     "premierJour": "2026-11-02",
+     "compte": true,
+     "numero": 6,
+     "theme": "nuit",
+     "seuils": {
+      "author": 60000,
+      "gold": 30000,
+      "silver": 18000,
+      "bronze": 9000
+     },
+     "unite": "mm",
+     "etat": {
+      "statut": "fini",
+      "tempsMs": 15967,
+      "medaille": "bronze",
+      "rang": 1,
+      "classes": 1,
+      "score": {
+       "unite": "mm",
+       "valeur": 14831,
+       "vies": 0
+      }
+     }
+    }
+   ],
+   "nouveaute": null,
+   "annonce": null,
+   "joueur": {
+    "pseudo": "Joueur1",
+    "serie": 1,
+    "aProlonger": false,
+    "journeesParfaites": 0,
+    "aujourdhuiParfaite": false,
+    "cumulMs": null,
+    "rangDuJour": null,
+    "classesDuJour": null,
+    "rangEntreAmis": null,
+    "messagesNonLus": 0,
+    "favoris": null,
+    "jeuxDuJour": [
+     "track",
+     "jump",
+     "tower"
+    ]
+   }
+  }
+ },
+ {
+  "nom": "jour figé — tower_results",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20764,
+    "player_id": "00000000000000000000000000000001",
+    "tirage": 0,
+    "hauteur_mm": 14831,
+    "hauteur_max_mm": 22745,
+    "vies": 0,
+    "ticks": 958,
+    "medal": "bronze",
+    "replay": "1d2a3646c9b468ae",
+    "sim_version": 5,
+    "generator_version": 3,
+    "first_at": 1794052800000,
+    "submitted_at": 1794052800000,
+    "inputs_hash": "a220b2924c7b4239c74c94b83af8578f7c43575ae6e67748fb173205d211216e",
+    "hidden": 0,
+    "apercu": 0
+   }
+  ]
+ },
+ {
+  "nom": "jour figé — tower_levels",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20764,
+    "rule": "s5-g3-m2-f7368e53e1f12787f",
+    "g": 3,
+    "tirage": 0,
+    "theme": "nuit",
+    "source": "prepare",
+    "fichier": 1,
+    "medals": "{\"auteur\":60000,\"or\":30000,\"argent\":18000,\"bronze\":9000}",
+    "silhouette": "ac8ca222f6811966",
+    "author_hash": "45bcf9db916313a44480a0300f3d113f1501524c6ce0adcd12dcfb2cbffad7b6",
+    "created_at": 1794052800000
+   }
+  ]
+ },
+ {
+  "nom": "figé abîmé : jour (généré) — GET /api/tower/day/2026-11-07",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-07",
+   "empreinte": "bf34865fc016e1c8",
+   "number": 6,
+   "theme": "nuit",
+   "tirage": 0,
+   "medals": {
+    "author": 52800,
+    "gold": 26400,
+    "silver": 15840,
+    "bronze": 7920
+   },
+   "source": "genere",
+   "provisoire": true,
+   "simVersion": 5,
+   "generatorVersion": 3
+  }
+ },
+ {
+  "nom": "figé abîmé : Diamant — GET /api/tower/day/2026-11-07/diamant",
+  "status": 403,
+  "entetes": {
+   "cache-control": "no-store",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "error": "not_ranked"
+  }
+ },
+ {
+  "nom": "figé sans médailles : jour — GET /api/tower/day/2026-11-07",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-07",
+   "empreinte": "bf34865fc016e1c8",
+   "number": 6,
+   "theme": "nuit",
+   "tirage": 0,
+   "medals": {
+    "author": 52800,
+    "gold": 26400,
+    "silver": 15840,
+    "bronze": 7920
+   },
+   "source": "genere",
+   "provisoire": true,
+   "simVersion": 5,
+   "generatorVersion": 3
+  }
+ },
+ {
+  "nom": "figé sans médailles — tower_results",
+  "status": 0,
+  "entetes": {},
+  "corps": []
+ },
+ {
+  "nom": "figé sans médailles — tower_levels",
+  "status": 0,
+  "entetes": {},
+  "corps": [
+   {
+    "day": 20764,
+    "rule": "s5-g3-m2-f521b4c388a22c485",
+    "g": 3,
+    "tirage": 0,
+    "theme": "nuit",
+    "source": "genere",
+    "fichier": 1,
+    "medals": "{\"auteur\":52800,\"or\":26400,\"argent\":15840,\"bronze\":7920}",
+    "silhouette": null,
+    "author_hash": null,
+    "created_at": 1794052800000
+   }
+  ]
+ },
+ {
+  "nom": "jour sans fichier — médailles estimées",
+  "status": 0,
+  "entetes": {},
+  "corps": {
+   "auteur": 52800,
+   "or": 26400,
+   "argent": 15840,
+   "bronze": 7920
+  }
+ },
+ {
+  "nom": "jour sans fichier — GET /api/tower/day/2026-11-20",
+  "status": 200,
+  "entetes": {
+   "cache-control": "public, max-age=30",
+   "content-type": "application/json; charset=utf-8"
+  },
+  "corps": {
+   "date": "2026-11-20",
+   "empreinte": "f609541225187b77",
+   "number": 19,
+   "theme": "nuit",
+   "tirage": 0,
+   "medals": {
+    "author": 52800,
+    "gold": 26400,
+    "silver": 15840,
+    "bronze": 7920
+   },
+   "source": "genere",
+   "provisoire": true,
+   "simVersion": 5,
+   "generatorVersion": 3
+  }
+ }
+]
