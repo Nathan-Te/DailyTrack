@@ -190,12 +190,13 @@ describe("le garde-fou des jours (lot R6)", () => {
     expect(job("verification")).not.toMatch(/smoke -w @cdj\/api -- "\$\{url%\/\}" --origin/);
   });
 
-  it("avant tout déploiement : jours servis, jours figés jusqu'à la veille de la bascule, empreintes comparées, ancien code sur la base migrée ; puis répétition et sauvegarde", () => {
+  it("avant tout déploiement : jours de chaque jeu figés avec le code en production (lus dans les fiches), empreintes comparées, jours préparés, ancien code sur la base migrée ; puis répétition et sauvegarde", () => {
     const figer = job("figer");
-    const ordre = ["jours-servis", "freeze:days -w @cdj/jump -- \"$VEILLE\"", "mise-en-production.mjs empreintes prod", "mise-en-production.mjs empreintes cible", "mise-en-production.mjs comparer", "base-migree.mjs cible prod"].map((x) => figer.indexOf(x));
+    // Lot K4b : aucun jeu n'est nommé dans le job ; la chaîne lit les fiches (`figer-jeux`, `preparer-jeux`).
+    expect(figer.split("\n  recette-serveur:")[0]).not.toMatch(/tower|jump|freeze:days|jours-tower|jours-figes\b/i);
+    const ordre = ["mise-en-production.mjs figer-jeux", "mise-en-production.mjs empreintes prod", "mise-en-production.mjs empreintes cible", "mise-en-production.mjs comparer", "mise-en-production.mjs preparer-jeux", "base-migree.mjs cible prod"].map((x) => figer.indexOf(x));
     expect(ordre.every((i) => i > 0), JSON.stringify(ordre)).toBe(true);
     expect([...ordre].sort((a, b) => a - b)).toEqual(ordre);
-    expect(figer).not.toContain("freeze:days -w @cdj/jump -- demain");
     expect(figer).toContain("exit 1"); // la comparaison arrête le run
     expect(job("recette-serveur")).toContain("needs: [verifier, figer]");
     expect(job("serveur")).toContain("needs: [verifier, ci-verdict, figer, recette-verification, sauvegarde]");
@@ -207,7 +208,7 @@ describe("le garde-fou des jours (lot R6)", () => {
   // Le smoke recalcule le circuit et le niveau du jour : il refaisait un jour figé avec le nouveau générateur, et tout envoi était refusé (21 vérifications).
   it("tout smoke complet tourne sur ce que le serveur visé a reçu : le commit déployé, ses jours figés et son registre, appliqués avant le smoke", () => {
     const complets = (texte: string) => texte.split("\n").filter((l) => /npm run smoke -w @cdj\/api -- /.test(l) && !l.includes("--lecture-seule"));
-    const avec = ["jours-figes", "registre-track"];
+    const avec = ["jours"];
     // Les jobs, coupés à chaque nom de job (tirets compris) : `job()` ne coupe qu'aux noms sans tiret.
     const debuts = [...prod.matchAll(/\n {2}([a-z-]+):\n/g)].map((m) => ({ nom: m[1]!, i: m.index! }));
     const blocs = new Map(debuts.map((d, k) => [d.nom, prod.slice(d.i, debuts[k + 1]?.i)]));
@@ -218,24 +219,23 @@ describe("le garde-fou des jours (lot R6)", () => {
       expect(j, nom).toContain("ref: ${{ needs.verifier.outputs.sha }}");
       const smoke = j.indexOf(complets(j)[0]!);
       for (const a of avec) expect(j.indexOf(`name: ${a}`), `${nom} : artefact ${a}`).toBeGreaterThan(0);
-      const figes = j.indexOf("mise-en-production.mjs jours-figes");
-      const registre = j.indexOf("mise-en-production.mjs registre-fusion");
-      expect(figes, `${nom} : jours figés appliqués avant le smoke`).toBeGreaterThan(0);
-      expect(registre, `${nom} : registre appliqué avant le smoke`).toBeGreaterThan(0);
-      expect(Math.max(figes, registre)).toBeLessThan(smoke);
+      const poses = j.indexOf("mise-en-production.mjs poser-jours");
+      expect(poses, `${nom} : jours (fichiers figés, jours préparés, registre) appliqués avant le smoke`).toBeGreaterThan(0);
+      expect(poses).toBeLessThan(smoke);
     }
     // Le serveur de la recette (deploy-api.yml) : ses artefacts entrent dans l'image avant son propre smoke complet.
     const deploy = yml("deploy-api.yml");
     const smokeDeploy = deploy.indexOf(complets(deploy)[0]!);
-    expect(deploy.indexOf("mise-en-production.mjs jours-figes")).toBeLessThan(smokeDeploy);
-    expect(deploy.indexOf("mise-en-production.mjs registre-fusion")).toBeLessThan(smokeDeploy);
+    expect(deploy.indexOf("mise-en-production.mjs poser-jours")).toBeLessThan(smokeDeploy);
     // La vérification de la production lit aussi le commit déployé (et non le dernier main).
     expect(blocs.get("verification")).toContain("ref: ${{ needs.verifier.outputs.sha }}");
     // La PR « Jours figés » refait la démonstration de Jump quand des niveaux s'y ajoutent (elle rejoue les jours figés : sinon sa CI échoue), et la verse.
     // Lot R16 : le versement est le workflow « Jours figés dans main » (jours-figes.yml), que le job `depot` de production.yml lance.
     const depot = yml("jours-figes.yml");
-    expect(depot.indexOf("npm run jump:seed -w @cdj/api")).toBeGreaterThan(depot.indexOf("mise-en-production.mjs jours-figes"));
-    expect(depot).toContain("git add apps/jump/public/levels apps/jump/public/demo");
+    // Lot K4b : la démonstration de Jump est refaite par `apres-pose` (fiche : `jours.fabrication.apresPose`) après la pose des jours, et ses chemins sont versés avec `chemins-du-versement`.
+    expect(depot.indexOf("mise-en-production.mjs apres-pose")).toBeGreaterThan(depot.indexOf("mise-en-production.mjs poser-jours"));
+    expect(depot.indexOf("git add $chemins")).toBeGreaterThan(depot.indexOf("mise-en-production.mjs apres-pose"));
+    expect(depot).not.toMatch(/apps\/(jump|tower)\//);
   });
 
   it("lot R12 : la sauvegarde lit la base en lecture seule par un compte et un environnement à elle, et ne laisse ni artefact ni journal", () => {
@@ -290,7 +290,7 @@ describe("« Jours figés dans main » (lot R16)", () => {
     const verif = stepScript("jours-figes.yml", "Le run de « Mettre en production » (entrées vérifiées)");
     for (const x of ['"$GITHUB_REF" = refs/heads/main', '"$RUN" =~ ^[0-9]{1,20}$', '"$NOM" =~ ^(prod-', '"$VEILLE" =~ ^[0-9]{4}', '".github/workflows/production.yml main"', '"figer=success recette-verification=success"']) expect(verif, x).toContain(x);
     expect(jf.indexOf("Le run de « Mettre en production » (entrées vérifiées)")).toBeLessThan(jf.indexOf("actions/download-artifact"));
-    expect([...jf.matchAll(/run-id: \$\{\{ inputs\.run \}\}/g)]).toHaveLength(4);
+    expect([...jf.matchAll(/run-id: \$\{\{ inputs\.run \}\}/g)]).toHaveLength(2);
     // Une entrée mal formée est refusée avant toute requête à GitHub.
     for (const env of [{ RUN: "1; rm -rf /", NOM: "prod-2026-11-02-0730", VEILLE: "2026-11-02" }, { RUN: "123", NOM: "main", VEILLE: "2026-11-02" }, { RUN: "123", NOM: "essai-123", VEILLE: "demain" }]) {
       const r = runStep(verif, { GITHUB_REF: "refs/heads/main", ...env });
@@ -306,4 +306,16 @@ describe("« Jours figés dans main » (lot R16)", () => {
     expect(prod).not.toContain("gh pr create");
     expect(prod).not.toContain("pull-requests: write");
   });
+});
+
+// Lot K4b : la chaîne de production lit les fiches (`jours.fabrication`) ; un jeu neuf n'ajoute aucune ligne à ces workflows. Hors commentaires et hors le texte d'un résumé, aucun nom de jeu,
+// aucun script ni dossier d'un jeu n'y est écrit.
+describe("la chaîne de production ne nomme aucun jeu (lot K4b)", () => {
+  for (const f of ["production.yml", "jours-figes.yml", "deploy-api.yml", "deploy-site.yml"]) {
+    it(`${f} : ni dossier de jours, ni script de fabrication, ni artefact propre à un jeu`, () => {
+      const code = yml(f).split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+      expect(code).not.toMatch(/freeze:days|figer:tower|preparer:tower|jump:seed|jours-track\.json|apps\/(jump|tower|web)\/public|jours-tower|registre-track|jours-figes\b.*artifact|jours_(figes|tower)|registre_track/);
+      expect(code).not.toMatch(/mise-en-production\.mjs (tower-|jours-figes |jours-figes-filtrer|registre-fusion)/);
+    });
+  }
 });

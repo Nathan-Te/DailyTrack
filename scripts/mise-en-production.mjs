@@ -3,33 +3,38 @@
 //   node scripts/mise-en-production.mjs etiquette [--maintenant <ISO>]              → `prod-AAAA-MM-JJ-HHMM` (heure de Paris)
 //   node scripts/mise-en-production.mjs derniere [--avant <étiquette>]              → la dernière étiquette `prod-*` du dépôt (vide s'il n'y en a pas)
 //   node scripts/mise-en-production.mjs changements <de> <à> [--resume <fichier>] [--sortie <fichier>]   → PR et commits de <de> (exclu ; vide : tout) à <à>, en Markdown
-//   node scripts/mise-en-production.mjs jours-figes <dossier figé> <dossier cible>  → copie les jours figés absents de la cible ; refuse un
-//                                                                                     fichier différent (un jour figé ne change jamais)
 // Lot R6 (le garde-fou des jours) :
-//   node scripts/mise-en-production.mjs jours-servis <réf> <dossier> [--jusqua <réf>]  → remet dans <dossier> les jours figés que la production sert sans qu'ils soient dans le commit
-//                                                                                     de <réf> : ceux des PR « Jours figés de la mise en production » fusionnées depuis
+//   node scripts/mise-en-production.mjs jours-servis <réf> <cible> --jeu <id> [--jusqua <réf>]  → remet dans <cible> (le dossier des jours d'un jeu à fichiers, ou le fichier du registre d'un jeu à registre) ce
+//                                                                                     que la production sert sans que ce soit dans le commit de <réf> : ceux des PR « Jours figés de la mise en production » fusionnées depuis
 //   node scripts/mise-en-production.mjs bascule [--simulee "<heure>"] [--sortie <fichier>]   → le jour de bascule (le premier jour de Paris qui commence
 //                                                                                     après le déploiement), calculé à l'instant du clic ou à l'heure simulée
-//   node scripts/mise-en-production.mjs empreintes <dépôt> --du <jour> --au <jour> --niveaux <dossier> --sortie <fichier>
-//                                                                                     → les empreintes des jours du code de <dépôt> (le script d'empreintes y est copié)
+//   node scripts/mise-en-production.mjs empreintes <dépôt> --du <jour> --au <jour> --sortie <fichier>
+//                                                                                     → les empreintes des jours de CHAQUE jeu pour le code de <dépôt> (modules de jeu et pilote copiés dans <dépôt>) ; ajoute la clé de chaque jeu
 //   node scripts/mise-en-production.mjs bascule-valide <AAAA-MM-JJ>                  → refuse (code 1) si le jour de bascule a déjà commencé
-//   node scripts/mise-en-production.mjs comparer <prod.json> <cible.json> <bascule> [--resume <fichier>] [--sortie <fichier> : jours_track, jours_jump]
+//   node scripts/mise-en-production.mjs comparer <prod.json> <cible.json> <bascule> [--resume <fichier>] [--sortie <fichier> : jours={ <jeu>: ligne }]
 //                                                                                     → compare les empreintes des jours ; la moindre différence AVANT la bascule arrête
 //   node scripts/mise-en-production.mjs empreintes-fusion <existant.json> <nouveau.json> [--jusqua <jour>]  → ajoute les jours nouveaux, refuse un jour qui change
+// Lot K4b (la chaîne lit les fiches : `jours.fabrication`, aucun jeu n'est nommé ici) :
+//   node scripts/mise-en-production.mjs jeux [--mode registre|fichier-par-jour]      → les identifiants des jeux de la chaîne
+//   node scripts/mise-en-production.mjs figer-jeux --prod <dépôt> --cible <dépôt> --proteges <f> --veille <jour> --reference <réf> --sortie <dossier> [--temp <dossier>] [--resume <f>]
+//                                                                                     → pour chaque jeu : registre ou jours figés avec le code en production, superposés à la cible ; écrit l'artefact `jours`
+//   node scripts/mise-en-production.mjs preparer-jeux --cible <dépôt> --proteges <f> --veille <jour> --bascule <jour> --sortie <dossier> [--resume <f>] [--github-sortie <f>]
+//                                                                                     → les jours que préparent certains jeux (plan, préparation, garde-fou), avec le code déployé
+//   node scripts/mise-en-production.mjs poser-jours <dossier de l'artefact `jours`> [--resume <f>]  → pose dans le dépôt courant ce que la mise en production a produit pour chaque jeu
 // Lot R11 (Track fige ses circuits comme Jump) :
 //   node scripts/mise-en-production.mjs proteges --origine <url> --cible <dépôt> --premier <jour> --veille <jour> --sortie <fichier>  → les jours qui ne changent jamais : d'avant le lancement, déjà
 //                                                                                     figés, ou avec au moins un résultat en production (lecture seule du classement du jour) ; les autres sont régénérés
 //   node scripts/mise-en-production.mjs proteges-verifier <proteges.json> --origine <url>  → relit (lecture seule) les jours régénérés : aucun ne doit avoir reçu de résultat depuis
-//   node scripts/mise-en-production.mjs jours-figes-filtrer <dossier de niveaux> --proteges <fichier>  → retire les niveaux figés de Jump des jours sans résultat
-//   node scripts/mise-en-production.mjs registre <dépôt> --du <jour> --au <jour> --sortie <fichier> [--proteges <fichier>]  → le registre des jours de Track tel que le code de <dépôt> les sert (le script y est copié)
+//   node scripts/mise-en-production.mjs registre --jeu <id> <dépôt> --du <jour> --au <jour> --sortie <fichier> [--proteges <fichier>]  → le registre des jours d'un jeu à registre tel que le code de <dépôt> les sert (le module y est copié)
 //   node scripts/mise-en-production.mjs registre-fusion <registre du dépôt> <registre de la production> [--resume <fichier>]  → ajoute les jours nouveaux au registre du dépôt (écrit en place),
 //                                                                                     refuse un jour qui change ou un jour du dépôt au-delà de la veille de la bascule
 //   node scripts/mise-en-production.mjs inventaire <de> <à> [--resume <fichier>]     → « Ce qui part » : PR, versions, migrations, routes
 import { execFileSync } from "node:child_process";
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { availableParallelism, tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FICHES_CI, IDS_FICHES, NOMS_DES_JEUX, VERSIONS_DES_JEUX } from "./fiches-lecture.mjs";
+import { CHAINE, FICHES_CI, IDS_FICHES, NOMS_DES_JEUX, VERSIONS_DES_JEUX, jeuDeLaChaine } from "./fiches-lecture.mjs";
 import { EXCEPTIONS as EXCEPTIONS_DE_ZONES, ZONES as ZONES_DES_JEUX } from "./zones-jeu.mjs";
 
 export const TAG_PREFIX = "prod-";
@@ -370,37 +375,33 @@ export async function lireResultats(origine, jours, { fetchImpl = fetch, attendr
   return resultats;
 }
 
-// ——— Lot TP : les jours de Tower préparés par « Mettre en production » —————————————————————————————————————————————————————————————
+// ——— Lots TP et K4b : les jours des jeux à fichier par jour, figés et préparés par « Mettre en production » ————————————————————————————————————
 
 /**
- * **Combien de jours après le jour de bascule les jours de Tower sont préparés** : la fenêtre va de la veille de la bascule (aujourd'hui, à Paris) à `bascule + 14`, soit 16 jours :
- * une mise en production au moins tous les quinze jours suffit. Au-delà, un jour n'a pas de fichier préparé et Tower le sert avec l'estimation géométrique de ses médailles
- * (« provisoire ») : le résumé du run dit jusqu'où les jours sont couverts.
+ * Les versions d'un état du code (`texts` : `{ chemin: texte }`) d'un jeu, d'après sa fiche (`versions.sim` et `versions.generateur`, « fichier:CONSTANTE »), pour savoir si un jour préparé est à
+ * refaire : `{ sim, g }` (`null` : le jeu n'existe pas dans ce code).
  */
-export const TOWER_JOURS_APRES_BASCULE = 14;
-/** Où sont les jours de Tower dans le dépôt, l'image du serveur et le site. */
-export const TOWER_DOSSIER = "apps/tower/public/jours";
-
-/** Les versions de Tower d'un état du code (`texts` : `{ chemin: texte }`), pour savoir si un jour préparé est à refaire : `{ sim, g }` (`null` : Tower n'existe pas dans ce code). */
-export function versionsTower(texts) {
-  const lire = (nom, fichier) => {
+export function versionsDuJeu(texts, versions) {
+  const lire = (v) => {
+    const [fichier, nom] = v.split(":");
     const m = new RegExp(`export const ${nom}\\s*=\\s*(\\d+)`).exec(texts[fichier] ?? "");
     return m ? Number(m[1]) : null;
   };
-  return { sim: lire("TOWER_SIM_VERSION", "packages/tower-sim/src/constantes.ts"), g: lire("TOWER_GENERATOR_VERSION", "packages/tower-sim/src/generateur/index.ts") };
+  return { sim: lire(versions.sim), g: lire(versions.generateur) };
 }
 
 /**
- * **Ce que la mise en production fait des jours de Tower** (règle R11 appliquée à Tower, décision de Nathan) — sur la fenêtre de la veille de la bascule à `bascule + 14` :
- *   - un jour **protégé** (d'avant le lancement, déjà figé, ou avec un résultat de Tower ou d'un autre jeu) ne change jamais : son fichier, s'il existe, reste tel quel ; sans fichier on ne
+ * **Ce que la mise en production fait des jours d'un jeu qui les prépare** (règle R11 appliquée à Tower, décision de Nathan ; `preparer` de sa fiche) — sur la fenêtre de la veille de la bascule
+ * à `bascule + joursApres` :
+ *   - un jour **protégé** (d'avant le lancement, déjà figé, ou avec un résultat de ce jeu ou d'un autre) ne change jamais : son fichier, s'il existe, reste tel quel ; sans fichier on ne
  *     lui en crée pas (ce qu'il a servi, ce qu'il servira, ne bouge pas) ;
  *   - un jour **sans résultat** dont le fichier est de la version du code déployé (`g`, `sim`) est gardé tel quel ; sans fichier, ou avec un fichier d'une autre version, il est
  *     (re)préparé avec le code déployé (le fichier d'une autre version est supprimé avant : l'outil de préparation refuse toujours d'écraser une autre version).
  * `fichiers` : `{ AAAA-MM-JJ: { g, sim } }` des fichiers du dépôt construit ; `versions` : `{ sim, g }` du code déployé ; `proteges` : `joursProteges`. Rend le plan : les jours (et leur sort),
  * ceux à préparer (regroupés en plages consécutives pour l'outil), ceux à supprimer, et la couverture.
  */
-export function planTower({ veille, bascule, proteges, fichiers = {}, versions }) {
-  const au = ajouterJours(bascule, TOWER_JOURS_APRES_BASCULE);
+export function planPreparation({ veille, bascule, joursApres, proteges, fichiers = {}, versions }) {
+  const au = ajouterJours(bascule, joursApres);
   const jours = [];
   const aPreparer = [];
   const aSupprimer = [];
@@ -431,25 +432,25 @@ export function plagesConsecutives(dates) {
 }
 
 /**
- * **Lot R16 — un jour protégé de Tower a toujours son fichier.** Tower fige ses jours comme Jump (un fichier par jour, `apps/tower/public/jours/`) : sans fichier, le jour prendrait
- * le générateur courant, donc changerait à la prochaine `TOWER_GENERATOR_VERSION` alors que des joueurs l'ont vu. Les jours à figer sont les jours **protégés** (d'avant le lancement
+ * **Lot R16 — un jour protégé d'un jeu à fichiers préparés a toujours son fichier** (forme `jours-proteges` de `figer`). Tower fige ses jours comme Jump (un fichier par jour) : sans fichier, le jour
+ * prendrait le générateur courant, donc changerait à la prochaine version du générateur alors que des joueurs l'ont vu. Les jours à figer sont les jours **protégés** (d'avant le lancement
  * à partir de `proteges.debut`, déjà figés, ou avec un résultat — `estProtege`) jusqu'à la veille de la bascule qui n'ont pas de fichier dans `fichiers` (`{ date: … }`, le dépôt construit).
- * Ils sont figés **avec le code en production** (`figer:tower` dans son dépôt : ce qu'il sert est ce qu'il fige), jamais avec le code déployé. `prodSansTower` : le code en production
- * n'a pas le jeu (la première mise en production de Tower) : il n'a rien servi, rien à figer. Rend `{ dates, plages, prodSansTower }`.
+ * Ils sont figés **avec le code en production** (le script `figer` de la fiche, dans son dépôt : ce qu'il sert est ce qu'il fige), jamais avec le code déployé. `absentDeProd` : le code en production
+ * n'a pas le jeu (la première mise en production du jeu) : il n'a rien servi, rien à figer. Rend `{ dates, plages, absentDeProd }`.
  */
-export function towerAFiger({ proteges, fichiers = {}, prodSansTower = false }) {
+export function joursAFiger({ proteges, fichiers = {}, absentDeProd = false }) {
   const dates = [];
-  if (!prodSansTower) {
+  if (!absentDeProd) {
     for (let d = proteges.debut ?? proteges.premier; d <= proteges.veille; d = ajouterJours(d, 1)) if (estProtege(proteges, d) && !(d in fichiers)) dates.push(d);
   }
-  return { format: 1, dates, plages: plagesConsecutives(dates), prodSansTower };
+  return { format: 1, dates, plages: plagesConsecutives(dates), absentDeProd };
 }
 
 /**
  * Pose les jours que le code en production vient de figer (`figes` : `{ nom de fichier: contenu }`) dans le dossier de la construction (`existants`) et **refuse de terminer s'il en
  * manque un** : un jour du plan sans fichier figé, ou figé dans un autre contenu que celui déjà là, est une erreur (un jour figé ne change jamais). Rend les fichiers à écrire.
  */
-export function towerFigesAPoser(plan, figes, existants) {
+export function figesAPoser(plan, figes, existants) {
   const manquants = [];
   const conflits = [];
   const ecrire = [];
@@ -463,11 +464,11 @@ export function towerFigesAPoser(plan, figes, existants) {
 }
 
 /**
- * Ce que « poser » les jours de Tower d'une construction fait dans un dossier (`apps/tower/public/jours` du commit déployé, de l'image, du site ou de `main`) : `artefact` et `existants` sont
+ * Ce que « poser » les jours d'un jeu d'une construction fait dans un dossier (le dossier de ses jours dans le commit déployé, l'image, le site ou `main`) : `artefact` et `existants` sont
  * `{ nom de fichier: contenu }`. Un fichier absent s'ajoute ; identique, rien ; différent, il n'est remplacé que si le plan le **refait** (jour sans résultat d'une autre version, `aSupprimer`) —
- * sinon c'est un conflit : un jour de Tower figé ne change jamais.
+ * sinon c'est un conflit : un jour figé ne change jamais. Sans plan (un jeu qui ne prépare rien : Jump), tout fichier différent est un conflit.
  */
-export function joursTowerAPoser(artefact, existants, plan) {
+export function joursAPoser(artefact, existants, plan = { aSupprimer: [] }) {
   const ajouts = [];
   const remplaces = [];
   const conflits = [];
@@ -479,31 +480,37 @@ export function joursTowerAPoser(artefact, existants, plan) {
   return { ajouts: ajouts.sort(), remplaces: remplaces.sort(), conflits: conflits.sort() };
 }
 
-/** Lot R16 : le résumé de l'étape qui fige les jours de Tower déjà servis. */
-export function resumeTowerFiges(plan) {
-  const l = ["### Tower : les jours servis sont figés", ""];
-  if (plan.prodSansTower) l.push("- Le code en production n'a pas Tower : il n'a servi aucun jour, rien à figer.");
+/** Lot R16 : le résumé de l'étape qui fige les jours déjà servis d'un jeu (`nom` : son nom d'après sa fiche). */
+export function resumeFiges(nom, plan) {
+  const l = [`### ${nom} : les jours servis sont figés`, ""];
+  if (plan.absentDeProd) l.push(`- Le code en production n'a pas ${nom} : il n'a servi aucun jour, rien à figer.`);
   else if (plan.dates.length === 0) l.push("- Chaque jour protégé a déjà son fichier : rien à figer.");
   else l.push(`- ${plan.dates.length} jour(s) protégé(s) sans fichier, figés avec **le code en production** : ${plage(plan.dates)} (${plan.dates.length} jour${plan.dates.length > 1 ? "s" : ""}). Un jour servi ne change plus, quelle que soit la version du générateur déployée ensuite.`);
   return l.join("\n") + "\n";
 }
 
-/** Le résumé du run : les jours de Tower conservés, préparés, refaits, jusqu'où ils sont couverts, et le temps de la préparation mesuré sur le runner. */
-export function resumeTower(plan, mesure = null) {
+/** Le résumé du run : les jours d'un jeu conservés, préparés, refaits, jusqu'où ils sont couverts, et le temps de la préparation mesuré sur le runner. */
+export function resumePreparation(nom, plan, joursApres, mesure = null) {
   const n = (a) => plan.jours.filter((j) => j.action === a).map((j) => j.date);
   const protegesGardes = n("garde-protege");
   const gardes = n("garde");
   const prepares = n("prepare");
   const refaits = n("reprepare");
   const sansFichier = n("protege-sans-fichier");
-  const l = ["### Tower : les jours préparés", ""];
-  l.push(`- Fenêtre : **${plan.du} → ${plan.au}** (la veille de la bascule jusqu'à J+${TOWER_JOURS_APRES_BASCULE}), code déployé : simulation v${plan.versions.sim}, générateur g${plan.versions.g}.`);
+  const l = [`### ${nom} : les jours préparés`, ""];
+  l.push(`- Fenêtre : **${plan.du} → ${plan.au}** (la veille de la bascule jusqu'à J+${joursApres}), code déployé : simulation v${plan.versions.sim}, générateur g${plan.versions.g}.`);
   l.push(`- Conservés tels quels : ${protegesGardes.length + gardes.length} (${protegesGardes.length} protégé${protegesGardes.length > 1 ? "s" : ""}, ${gardes.length} sans résultat mais déjà à la version du code)${protegesGardes.length + gardes.length ? ` — ${[...protegesGardes, ...gardes].sort().join(", ")}` : ""}.`);
   l.push(`- Préparés : ${prepares.length}${prepares.length ? ` (${plage(prepares)})` : ""} ; refaits (autre version, sans résultat) : ${refaits.length}${refaits.length ? ` (${refaits.join(", ")})` : ""}.`);
   if (sansFichier.length) l.push(`- Protégés sans fichier préparé : ${sansFichier.join(", ")} — ils gardent ce qu'ils ont servi (rien n'est créé pour eux).`);
   if (mesure) l.push(`- Temps : ${mesure.jours} jour${mesure.jours > 1 ? "s" : ""} préparé${mesure.jours > 1 ? "s" : ""} en **${Math.floor(mesure.secondes / 60)} min ${Math.round(mesure.secondes % 60)} s** sur ${mesure.fils} fil${mesure.fils > 1 ? "s" : ""} (le runner de la mise en production).`);
-  l.push(`- **Jours couverts : ${plan.du} → ${plan.au}** (${plan.jours.length} jours). À partir du ${ajouterJours(plan.au, 1)}, un jour n'a pas de fichier préparé tant qu'une autre mise en production n'a pas eu lieu : Tower le sert avec l'estimation géométrique de ses médailles (« provisoire »). **Prochaine mise en production au plus tard le ${plan.au}.**`);
+  l.push(`- **Jours couverts : ${plan.du} → ${plan.au}** (${plan.jours.length} jours). À partir du ${ajouterJours(plan.au, 1)}, un jour n'a pas de fichier préparé tant qu'une autre mise en production n'a pas eu lieu : ${nom} le sert avec l'estimation géométrique de ses médailles (« provisoire »). **Prochaine mise en production au plus tard le ${plan.au}.**`);
   return l.join("\n") + "\n";
+}
+
+/** La ligne courte d'un jeu qui prépare ses jours, pour le haut du résumé du bouton (« 3 conservé(s), 14 préparé(s), 0 refait(s), couvert jusqu'au … »). */
+export function lignePreparation(plan) {
+  const n = (act) => plan.jours.filter((j) => j.action === act).length;
+  return `${n("garde") + n("garde-protege")} conservé(s), ${n("prepare")} préparé(s), ${n("reprepare")} refait(s), couvert jusqu'au ${plan.au}`;
 }
 
 /**
@@ -707,6 +714,233 @@ export function inventaire({ de, a, prs, versionsAvant, versionsApres, baseAvant
 const read = (dir) => (existsSync(dir) ? Object.fromEntries(readdirSync(dir).filter((f) => f.endsWith(".json")).map((f) => [f, readFileSync(join(dir, f), "utf8")])) : {});
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" });
 
+// ——— Lot K4b : la chaîne des jours, jeu par jeu (lue dans les fiches : `jours.fabrication`) ————————————————————————————————————————————————————————
+
+const SCRIPTS_ICI = fileURLToPath(new URL("../apps/api/scripts/", import.meta.url));
+const copierSiAutre = (de, vers) => {
+  if (resolve(de) !== resolve(vers)) copyFileSync(de, vers);
+};
+const datesDuDossier = (dossier) => (existsSync(dossier) ? readdirSync(dossier).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).map((f) => f.slice(0, 10)) : []);
+/** Un script de l'API du dépôt `depot` (`apps/api/scripts/<entree>.ts`), compilé là (esbuild du dépôt) puis lancé avec `args`. */
+function compilerEtLancer(depot, entree, args) {
+  const api = join(depot, "apps/api");
+  execFileSync(join(depot, "node_modules/.bin/esbuild"), [`scripts/${entree}.ts`, "--bundle", "--platform=node", "--format=esm", "--target=node22", `--outfile=dist/${entree}.mjs`, "--log-level=warning"], { cwd: api, stdio: "inherit" });
+  execFileSync(process.execPath, [`dist/${entree}.mjs`, ...args], { cwd: api, stdio: "inherit", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
+}
+const ajouterAuResume = (resume, texte) => {
+  if (resume) appendFileSync(resume, texte);
+  process.stdout.write(texte);
+};
+
+/** Remet dans `cible` ce que la production sert d'un jeu sans que ce soit dans le commit de `ref` : ses fichiers (un jeu à fichier par jour : dans le dossier `cible`) ou son registre (un jeu à registre : le fichier `cible`). */
+export function joursServis(jeu, ref, cible, jusqua = "origin/main") {
+  const commits = git("log", "--reverse", "--format=%H", "-E", "--grep=^Jours figés de la mise en production", `${ref}..${jusqua}`).split("\n").filter(Boolean);
+  if (jeu.mode === "fichier-par-jour") {
+    mkdirSync(cible, { recursive: true });
+    const remis = [];
+    for (const sha of commits) {
+      for (const chemin of git("diff-tree", "--no-commit-id", "--name-only", "-r", sha, "--", jeu.dossier).split("\n").filter((f) => /\/\d{4}-\d{2}-\d{2}\.json$/.test(f))) {
+        const fichier = join(cible, chemin.split("/").at(-1));
+        if (existsSync(fichier)) continue;
+        writeFileSync(fichier, git("show", `${sha}:${chemin}`));
+        remis.push(chemin.split("/").at(-1));
+      }
+    }
+    console.log(remis.length ? `jours servis par la production, remis : ${remis.join(" ")}` : "aucun jour servi hors du commit de l'étiquette");
+  } else if (existsSync(dirname(cible))) {
+    // Le registre des jours que la production sert est celui de son image : le fichier du commit de l'étiquette, plus ce que les PR « Jours figés » y ont ajouté depuis. Un code en production d'avant le
+    // registre n'a pas le fichier : rien à remettre (il choisit la version par une date).
+    const dernier = git("log", "--format=%H", "-1", "-E", "--grep=^Jours figés de la mise en production", `${ref}..${jusqua}`, "--", jeu.registre).trim();
+    if (dernier) {
+      writeFileSync(cible, git("show", `${dernier}:${jeu.registre}`));
+      console.log(`registre des jours de ${jeu.nom} servi par la production : celui de ${dernier.slice(0, 7)}`);
+    } else console.log(`registre des jours de ${jeu.nom} : celui du commit de l'étiquette`);
+  }
+}
+
+/** Le registre d'un jeu à registre tel que le code de `depot` le sert, de `du` à `au`, restreint aux jours protégés, écrit dans `sortie`. */
+export function registreDuDepot(jeu, depot, du, au, proteges, sortie) {
+  depot = resolve(depot);
+  const dossier = join(depot, "apps/api/scripts");
+  mkdirSync(dossier, { recursive: true });
+  copierSiAutre(join(SCRIPTS_ICI, basename(jeu.moduleRegistre)), join(dossier, basename(jeu.moduleRegistre)));
+  const brut = resolve(sortie + ".jours");
+  compilerEtLancer(depot, basename(jeu.moduleRegistre, ".ts"), ["--du", du, "--au", au, "--sortie", brut]);
+  const { jours } = JSON.parse(readFileSync(brut, "utf8"));
+  // Seuls les jours protégés entrent au registre (lot R11) : un jour sans résultat prend la version du code déployé.
+  const gardes = Object.entries(jours).filter(([d]) => !proteges || estProtege(proteges, d)).map(([d, [g, sim]]) => [d, `${g}/${sim}`]);
+  writeFileSync(resolve(sortie), JSON.stringify(registreDesJours(Object.fromEntries(gardes), au), null, 1) + "\n");
+}
+
+/**
+ * **Le garde-fou des jours, jeu par jeu** (lots R6, R11 et R16 ; lot K4b : lu dans les fiches). Pour chaque jeu de la chaîne :
+ *  - **à registre** (Track) : ce que le code en production sert de la veille du lancement à la veille de la bascule s'ajoute au registre du dépôt visé ; un jour qui diffère arrête ;
+ *  - **à fichiers, forme `jusqu-a-la-veille`** (Jump) : les jours que la production sert sont remis, le script `figer` écrit tous les fichiers jusqu'à la veille avec le code en production, les jours sans
+ *    résultat sont retirés (le nouveau code les régénère), le reste est superposé au dépôt visé (un fichier différent arrête) ;
+ *  - **à fichiers, forme `jours-proteges`** (Tower) : les jours protégés qui n'ont pas de fichier sont figés avec le code en production puis posés dans le dépôt visé ; s'il en manque un, arrêt.
+ * Écrit l'artefact `jours` dans `sortie` : `proteges.json` et, pour chaque jeu, `<id>/` (son registre, ou `jours/*.json`).
+ */
+export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, sortie, temp, resume }) {
+  prod = resolve(prod);
+  cible = resolve(cible);
+  sortie = resolve(sortie);
+  temp = resolve(temp ?? tmpdir());
+  const protege = JSON.parse(readFileSync(proteges, "utf8"));
+  mkdirSync(sortie, { recursive: true });
+  copyFileSync(proteges, join(sortie, "proteges.json"));
+  for (const jeu of CHAINE) {
+    const sortieJeu = join(sortie, jeu.id);
+    mkdirSync(sortieJeu, { recursive: true });
+    if (jeu.mode === "registre") {
+      // Lot R11 : le registre des jours. Ce que la production sert pour chaque jour jusqu'à la veille de la bascule s'ajoute à celui du dépôt ; un jour qui diffère (ou un jour du dépôt au-delà de la veille)
+      // arrête la mise en production. La construction (cible) l'a ensuite : ses empreintes sont celles de la production.
+      joursServis(jeu, reference, join(prod, jeu.registre), jusqua);
+      const debut = JSON.parse(readFileSync(join(cible, jeu.registre), "utf8")).plages[0].du;
+      const donne = join(temp, "registre", `${jeu.id}.json`);
+      mkdirSync(dirname(donne), { recursive: true });
+      registreDuDepot(jeu, prod, debut, veille, protege, donne);
+      const { fusion, conserves, ajoutes, conflits } = fusionnerRegistre(JSON.parse(readFileSync(join(cible, jeu.registre), "utf8")), JSON.parse(readFileSync(donne, "utf8")));
+      ajouterAuResume(resume, resumeRegistre({ conserves, ajoutes, conflits, fusion }));
+      if (conflits.length) throw new Error(`un jour du registre de ${jeu.nom} ne s'accorde pas avec ce que la production sert : la liste est dans le résumé du run`);
+      writeFileSync(join(cible, jeu.registre), JSON.stringify(fusion, null, 1) + "\n");
+      copyFileSync(join(cible, jeu.registre), join(sortieJeu, basename(jeu.registre)));
+    } else if (jeu.figer.forme === "jusqu-a-la-veille") {
+      mkdirSync(join(sortieJeu, "jours"), { recursive: true });
+      const dossierProd = join(prod, jeu.dossier);
+      const dossierCible = join(cible, jeu.dossier);
+      joursServis(jeu, reference, dossierProd, jusqua);
+      execFileSync("npm", ["run", jeu.figer.script, "-w", jeu.figer.paquet, "--", veille], { cwd: prod, stdio: "inherit" });
+      // Les jours sans résultat ne sont pas figés (le nouveau code les régénère).
+      const retires = niveauxAEffacer(existsSync(dossierProd) ? readdirSync(dossierProd) : [], protege);
+      for (const f of retires) rmSync(join(dossierProd, f));
+      const texte = retires.length ? `fichiers de ${jeu.nom} retirés (jours sans résultat, régénérés par le nouveau code) : ${retires.join(" ")}` : `aucun fichier de ${jeu.nom} à retirer`;
+      console.log(texte);
+      if (resume) appendFileSync(resume, texte + "\n");
+      // Les jours figés s'accordent-ils avec le commit déployé ? Superposés au dépôt visé : c'est ce que le serveur et le site auront, et ce que ses empreintes liront.
+      const { add, conflicts } = frozenOverlay(read(dossierProd), read(dossierCible));
+      if (conflicts.length) throw new Error(`jour(s) figé(s) de ${jeu.nom} différent(s) entre le code en production et le commit déployé : ${conflicts.join(", ")} (un jour figé ne change jamais : voir docs/plateforme/domaine.md)`);
+      mkdirSync(dossierCible, { recursive: true });
+      for (const f of add) copyFileSync(join(dossierProd, f), join(dossierCible, f));
+      const t = add.length ? `jours figés de ${jeu.nom} ajoutés : ${add.join(" ")}` : `aucun jour figé de ${jeu.nom} à ajouter`;
+      console.log(t);
+      if (resume) appendFileSync(resume, t + "\n");
+      for (const f of datesDuDossier(dossierProd)) copyFileSync(join(dossierProd, `${f}.json`), join(sortieJeu, "jours", `${f}.json`));
+    } else {
+      // Lot R16 : les jours protégés sans fichier, figés avec le code en production.
+      mkdirSync(join(sortieJeu, "jours"), { recursive: true });
+      const dossierCible = join(cible, jeu.dossier);
+      const fichiers = Object.fromEntries(datesDuDossier(dossierCible).map((d) => [d, true]));
+      const plan = joursAFiger({ proteges: protege, fichiers, absentDeProd: !existsSync(join(prod, "packages", jeu.sim)) });
+      const figes = join(temp, `${jeu.id}-figes`);
+      mkdirSync(join(figes, "jours"), { recursive: true });
+      writeFileSync(join(figes, "plan.json"), JSON.stringify(plan, null, 1) + "\n");
+      ajouterAuResume(resume, resumeFiges(jeu.nom, plan));
+      for (const [du, au] of plan.plages) execFileSync("npm", ["run", jeu.figer.script, "-w", jeu.figer.paquet, "--", "--du", du, "--au", au, `--dossier=${join(figes, "jours")}`], { cwd: prod, stdio: "inherit" });
+      const { ecrire, manquants, conflits } = figesAPoser(plan, read(join(figes, "jours")), read(dossierCible));
+      if (manquants.length || conflits.length) throw new Error(`jours de ${jeu.nom} protégés sans fichier figé : ${manquants.join(", ") || "aucun"} ; figés dans un autre contenu que celui du dépôt : ${conflits.join(", ") || "aucun"} (un jour servi ne change jamais : corriger puis relancer)`);
+      mkdirSync(dossierCible, { recursive: true });
+      for (const f of ecrire) writeFileSync(join(dossierCible, f), readFileSync(join(figes, "jours", f)));
+      console.log(ecrire.length ? `jours de ${jeu.nom} figés avec le code en production : ${ecrire.length} (${ecrire.map((f) => f.slice(0, 10)).join(", ")})` : `aucun jour de ${jeu.nom} à figer`);
+      // Sans préparation, l'artefact est ce que le dépôt visé a maintenant ; avec, `preparer-jeux` le refait.
+      for (const d of datesDuDossier(dossierCible)) copyFileSync(join(dossierCible, `${d}.json`), join(sortieJeu, "jours", `${d}.json`));
+    }
+  }
+}
+
+/**
+ * **Les jours que préparent certains jeux** (le bot de Tower : `preparer` de la fiche), avec le code déployé : le plan (règle R11), le nettoyage des fichiers d'une autre version, la préparation par plages,
+ * le garde-fou de chaque fichier, l'artefact (`<id>/plan.json` et `<id>/jours/*.json`) et le résumé. Écrit pour le haut du résumé du bouton `preparation` : `{ <id>: ligne }`.
+ */
+export function preparerJeux({ cible, proteges, veille, bascule, sortie, resume, githubSortie }) {
+  cible = resolve(cible);
+  sortie = resolve(sortie);
+  const protege = JSON.parse(readFileSync(proteges, "utf8"));
+  const lignes = {};
+  for (const jeu of CHAINE.filter((j) => j.preparer)) {
+    const dossier = join(cible, jeu.dossier);
+    const fichiers = {};
+    for (const d of datesDuDossier(dossier)) {
+      try {
+        const j = JSON.parse(readFileSync(join(dossier, `${d}.json`), "utf8"));
+        fichiers[d] = { g: j.g, sim: j.sim };
+      } catch {
+        fichiers[d] = { g: null, sim: null }; // illisible : à refaire s'il n'est pas protégé
+      }
+    }
+    const texts = {};
+    for (const v of [jeu.versions.sim, jeu.versions.generateur]) {
+      const f = v.split(":")[0];
+      texts[f] = existsSync(join(cible, f)) ? readFileSync(join(cible, f), "utf8") : "";
+    }
+    const versions = versionsDuJeu(texts, jeu.versions);
+    if (versions.sim === null || versions.g === null) throw new Error(`le commit déployé n'a pas les versions de ${jeu.nom} (${jeu.versions.sim}, ${jeu.versions.generateur})`);
+    const plan = planPreparation({ veille, bascule, joursApres: jeu.preparer.joursApresBascule, proteges: protege, fichiers, versions });
+    const sortieJeu = join(sortie, jeu.id);
+    mkdirSync(join(sortieJeu, "jours"), { recursive: true });
+    writeFileSync(join(sortieJeu, "plan.json"), JSON.stringify(plan, null, 1) + "\n");
+    ajouterAuResume(resume, resumePreparation(jeu.nom, plan, jeu.preparer.joursApresBascule));
+    // L'outil de préparation n'écrase jamais un fichier d'une autre version : ceux que le plan refait sont retirés avant.
+    for (const d of plan.aSupprimer) rmSync(join(dossier, `${d}.json`), { force: true });
+    console.log(plan.aSupprimer.length ? `fichiers de ${jeu.nom} d'une autre version retirés : ${plan.aSupprimer.join(" ")}` : `aucun fichier de ${jeu.nom} à retirer`);
+    mkdirSync(dossier, { recursive: true });
+    const debut = Date.now();
+    for (const [du, au] of plan.plages) execFileSync("npm", ["run", jeu.preparer.script, "-w", jeu.preparer.paquet, "--", "--du", du, "--au", au, `--dossier=${dossier}`], { cwd: cible, stdio: "inherit" });
+    const secondes = (Date.now() - debut) / 1000;
+    // Chaque fichier (ceux de la fenêtre comme ceux du dépôt) se relit, se régénère à l'identique et sa preuve rejouée redonne son Diamant (garde-fou du lot T3).
+    execFileSync("npx", ["vitest", "run", "--project", "sqlite", jeu.preparer.garde], { cwd: cible, stdio: "inherit" });
+    for (const d of datesDuDossier(dossier)) copyFileSync(join(dossier, `${d}.json`), join(sortieJeu, "jours", `${d}.json`));
+    if (resume) appendFileSync(resume, resumePreparation(jeu.nom, plan, jeu.preparer.joursApresBascule, { jours: plan.aPreparer.length, secondes, fils: availableParallelism() }));
+    lignes[jeu.id] = lignePreparation(plan);
+  }
+  if (githubSortie) appendFileSync(githubSortie, `preparation=${JSON.stringify(lignes)}\n`);
+}
+
+/** Les chemins que le versement des jours figés ajoute au dépôt : pour chaque jeu ses jours (dossier ou registre) et ce que refait son `apresPose`, plus les empreintes des jours passés. */
+export const cheminsDuVersement = () => [...CHAINE.flatMap((j) => [j.dossier ?? j.registre, ...(j.apresPose?.sorties ?? [])]), "apps/api/test/jours-passes.json"];
+
+/** Refait, pour chaque jeu qui le demande (`apresPose`), ce qui dépend de ses jours dès qu'un de ses fichiers a changé dans le dépôt courant (la démonstration de Jump, ≈ 1 min). */
+export function apresPose() {
+  let installe = false;
+  for (const jeu of CHAINE) {
+    if (!jeu.apresPose || !jeu.dossier || !git("status", "--porcelain", "--", jeu.dossier).trim()) continue;
+    if (!installe) {
+      execFileSync("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], { stdio: "ignore" });
+      installe = true;
+    }
+    execFileSync("npm", ["run", jeu.apresPose.script, "-w", jeu.apresPose.paquet], { stdio: "ignore" });
+    console.log(`${jeu.nom} : ${jeu.apresPose.sorties.join(", ")} refait (${jeu.apresPose.script})`);
+  }
+}
+
+/**
+ * Pose, dans le dépôt courant, ce que « Mettre en production » a produit pour chaque jeu (`dossier` : l'artefact `jours`, un dossier par jeu — son registre, ou `jours/*.json` et un `plan.json` éventuel).
+ * Un registre est fusionné (un jour qui diffère arrête), des jours sont posés (un fichier différent arrête, sauf ceux que le plan refait). Un jeu absent de l'artefact est sauté.
+ */
+export function poserJours(dossier, { resume } = {}) {
+  const dit = (texte) => {
+    console.log(texte);
+    if (resume) appendFileSync(resume, texte + "\n");
+  };
+  for (const jeu of CHAINE) {
+    const d = join(resolve(dossier), jeu.id);
+    if (!existsSync(d)) continue;
+    if (jeu.mode === "registre") {
+      const { fusion, conserves, ajoutes, conflits } = fusionnerRegistre(JSON.parse(readFileSync(jeu.registre, "utf8")), JSON.parse(readFileSync(join(d, basename(jeu.registre)), "utf8")));
+      ajouterAuResume(resume, resumeRegistre({ conserves, ajoutes, conflits, fusion }));
+      if (conflits.length) throw new Error(`un jour du registre de ${jeu.nom} ne s'accorde pas avec ce que la production sert`);
+      writeFileSync(jeu.registre, JSON.stringify(fusion, null, 1) + "\n");
+      continue;
+    }
+    const plan = existsSync(join(d, "plan.json")) ? JSON.parse(readFileSync(join(d, "plan.json"), "utf8")) : undefined;
+    const artefact = read(join(d, "jours"));
+    const { ajouts, remplaces, conflits } = joursAPoser(artefact, read(jeu.dossier), plan);
+    if (conflits.length) throw new Error(`jour(s) de ${jeu.nom} différent(s) entre la préparation et le commit déployé : ${conflits.join(", ")} (un jour figé ne change jamais : voir docs/plateforme/domaine.md)`);
+    mkdirSync(jeu.dossier, { recursive: true });
+    for (const f of [...ajouts, ...remplaces]) writeFileSync(join(jeu.dossier, f), artefact[f]);
+    dit(ajouts.length || remplaces.length ? `jours de ${jeu.nom} posés : ${ajouts.length} ajouté(s), ${remplaces.length} refait(s)` : `aucun jour de ${jeu.nom} à poser`);
+  }
+}
+
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (isMain) {
   const [cmd, a, b, ...rest] = process.argv.slice(2);
@@ -725,11 +959,6 @@ if (isMain) {
       const out = opt("--resume");
       if (out) appendFileSync(out, text);
       process.stdout.write(text);
-    } else if (cmd === "jours-figes") {
-      const { add, conflicts } = frozenOverlay(read(a), read(b));
-      if (conflicts.length) throw new Error(`jour(s) figé(s) différent(s) entre le code en production et le commit déployé : ${conflicts.join(", ")} (un jour figé ne change jamais : voir docs/plateforme/domaine.md)`);
-      for (const f of add) copyFileSync(join(a, f), join(b, f));
-      console.log(add.length ? `jours figés ajoutés : ${add.join(" ")}` : "aucun jour figé à ajouter");
     } else if (cmd === "bascule") {
       // L'instant du déploiement : l'heure simulée (répétition) ou maintenant. Le jour de bascule est calculé ICI, au moment du clic.
       const premier = JSON.parse(readFileSync(new URL("../config/lancement.json", import.meta.url), "utf8")).premierJour;
@@ -739,69 +968,29 @@ if (isMain) {
       const lignes = [`bascule=${plan.bascule}`, `veille=${plan.veille}`, `premier=${plan.premier}`, `dernier_regenere=${plan.dernierRegenere}`, `instant=${plan.instant}`, `jour_de_paris=${plan.jourDeParis}`];
       if (opt("--sortie")) appendFileSync(opt("--sortie"), lignes.join("\n") + "\n");
       console.log(lignes.join("\n"));
-    } else if (cmd === "jours-servis") {
-      // La production sert les jours figés de son IMAGE : le commit de son étiquette, plus ceux que « Mettre en production » y a ajoutés (artefact `jours-figes`) et qui n'entrent
-      // dans le dépôt que par la PR « robot » qui suit (commit « Jours figés de la mise en production … »). Sans eux, le code en production régénérerait ces jours avec son code d'aujourd'hui,
-      // autre que celui qui les a figés (le code d'avant) : un faux conflit. On les relit donc dans l'historique.
-      const jusqua = opt("--jusqua") ?? "origin/main";
-      const commits = git("log", "--reverse", "--format=%H", "-E", "--grep=^Jours figés de la mise en production", `${a}..${jusqua}`).split("\n").filter(Boolean);
-      mkdirSync(b, { recursive: true });
-      const remis = [];
-      for (const sha of commits) {
-        for (const chemin of git("diff-tree", "--no-commit-id", "--name-only", "-r", sha, "--", "apps/jump/public/levels").split("\n").filter((f) => /\/\d{4}-\d{2}-\d{2}\.json$/.test(f))) {
-          const cible = join(b, chemin.split("/").at(-1));
-          if (existsSync(cible)) continue;
-          writeFileSync(cible, git("show", `${sha}:${chemin}`));
-          remis.push(chemin.split("/").at(-1));
-        }
-      }
-      console.log(remis.length ? `jours servis par la production, remis : ${remis.join(" ")}` : "aucun jour servi hors du commit de l'étiquette");
-      // Lot R11 : le registre des jours de Track que la production sert est celui de son image : le fichier du commit de l'étiquette, plus ce que les PR « Jours figés » y ont ajouté depuis
-      // (même raison que les niveaux de Jump). Un code en production d'avant le registre n'a pas le fichier : rien à remettre (il choisit la version par une date).
-      const registre = opt("--registre");
-      if (registre && existsSync(dirname(registre))) {
-        const chemin = "packages/sim/src/jours-track.json";
-        const dernier = git("log", "--format=%H", "-1", "-E", "--grep=^Jours figés de la mise en production", `${a}..${jusqua}`, "--", chemin).trim();
-        if (dernier) {
-          writeFileSync(registre, git("show", `${dernier}:${chemin}`));
-          console.log(`registre des jours de Track servi par la production : celui de ${dernier.slice(0, 7)}`);
-        } else console.log("registre des jours de Track : celui du commit de l'étiquette");
-      }
-    } else if (cmd === "empreintes") {
-      // Le script d'empreintes est celui de CE dépôt, copié dans le dépôt visé (le code en production ne l'a pas) : il ne dépend que des paquets @cdj/*.
-      const depot = resolve(a);
-      const ici = fileURLToPath(new URL("../apps/api/scripts/", import.meta.url));
-      const dossier = join(depot, "apps/api/scripts");
-      mkdirSync(dossier, { recursive: true });
-      for (const f of ["empreintes.ts", "empreintes-jours.ts"]) copyFileSync(join(ici, f), join(dossier, f));
-      const api = join(depot, "apps/api");
-      execFileSync(join(depot, "node_modules/.bin/esbuild"), ["scripts/empreintes-jours.ts", "--bundle", "--platform=node", "--format=esm", "--target=node22", "--outfile=dist/empreintes-jours.mjs", "--log-level=warning"], { cwd: api, stdio: "inherit" });
-      const donnees = ["--du", "--au", "--niveaux", "--sortie", "--jeux"].flatMap((o) => (opt(o) ? [o, o === "--niveaux" || o === "--sortie" ? resolve(opt(o)) : opt(o)] : []));
-      execFileSync(process.execPath, ["dist/empreintes-jours.mjs", ...donnees], { cwd: api, stdio: "inherit", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
-      // Lot TP : les jours de Tower — seulement si ce code a le jeu (le code en production n'a pas Tower avant sa première mise en production : la clé `tower` manque alors, et
-      // `comparerEmpreintes` n'a rien à conserver pour lui).
-      if (opt("--tower") && existsSync(join(depot, "packages/tower-sim"))) {
-        copyFileSync(join(ici, "empreintes-tower.ts"), join(dossier, "empreintes-tower.ts"));
-        execFileSync(join(depot, "node_modules/.bin/esbuild"), ["scripts/empreintes-tower.ts", "--bundle", "--platform=node", "--format=esm", "--target=node22", "--outfile=dist/empreintes-tower.mjs", "--log-level=warning"], { cwd: api, stdio: "inherit" });
-        execFileSync(process.execPath, ["dist/empreintes-tower.mjs", "--du", opt("--du"), "--au", opt("--au"), "--jours", resolve(opt("--tower")), "--sortie", resolve(opt("--sortie"))], { cwd: api, stdio: "inherit", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
-      } else if (opt("--tower")) console.log("Tower : absent de ce code, aucune empreinte (rien à conserver pour lui)");
     } else if (cmd === "proteges") {
-      // Les jours à partir du lancement (`--premier`) jusqu'à la veille de la bascule : déjà figés (registre de Track, niveaux de Jump du dépôt visé) ou avec un résultat en production.
+      // Les jours à partir du lancement (`--premier`) jusqu'à la veille de la bascule : déjà figés (registre des jeux à registre, fichiers des jeux dont les fichiers SONT des jours figés — forme
+      // `jusqu-a-la-veille` de `figer` — du dépôt visé) ou avec un résultat en production. Les fichiers préparés d'un jeu (forme `jours-proteges`) ne sont pas des jours figés : ils sont refaits.
       const cible = resolve(opt("--cible"));
       const figes = new Set();
-      const regFichier = join(cible, "packages/sim/src/jours-track.json");
-      if (existsSync(regFichier)) for (const d of Object.keys(joursDuRegistre(JSON.parse(readFileSync(regFichier, "utf8"))))) figes.add(d);
-      const niveaux = join(cible, "apps/jump/public/levels");
-      const datesJump = existsSync(niveaux) ? readdirSync(niveaux).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).map((f) => f.slice(0, 10)) : [];
-      for (const d of datesJump) figes.add(d);
+      const datesFichiers = [];
+      for (const jeu of CHAINE) {
+        if (jeu.mode === "registre") {
+          const f = join(cible, jeu.registre);
+          if (existsSync(f)) for (const d of Object.keys(joursDuRegistre(JSON.parse(readFileSync(f, "utf8"))))) figes.add(d);
+        } else if (jeu.figer?.forme === "jusqu-a-la-veille") {
+          const dossier = join(cible, jeu.dossier);
+          for (const f of existsSync(dossier) ? readdirSync(dossier) : []) if (/^\d{4}-\d{2}-\d{2}\.json$/.test(f)) { figes.add(f.slice(0, 10)); datesFichiers.push(f.slice(0, 10)); }
+        }
+      }
       const premier = opt("--premier");
       const veille = opt("--veille");
       const alire = [];
       for (let d = premier; d <= veille; d = ajouterJours(d, 1)) if (!figes.has(d)) alire.push(d);
       const resultats = await lireResultats(opt("--origine"), alire);
       const proteges = joursProteges({ premier, veille, figes: [...figes], resultats });
-      // Le premier jour comparé : le plus ancien niveau figé de Jump (les jours d'avant le lancement « restent tels quels »).
-      proteges.debut = datesJump.filter((d) => d < premier).sort()[0] ?? premier;
+      // Le premier jour comparé : le plus ancien fichier figé (les jours d'avant le lancement « restent tels quels »).
+      proteges.debut = datesFichiers.filter((d) => d < premier).sort()[0] ?? premier;
       proteges.origine = opt("--origine");
       writeFileSync(resolve(opt("--sortie")), JSON.stringify(proteges, null, 1) + "\n");
       const text = resumeProteges(proteges, premier, veille);
@@ -815,27 +1004,49 @@ if (isMain) {
       const nouveaux = Object.entries(maintenant).filter(([, n]) => n > 0).map(([d, n]) => `${d} (${n} classé(s))`);
       if (nouveaux.length) throw new Error(`un jour que cette mise en production régénère a reçu des résultats depuis la vérification : ${nouveaux.join(", ")}. Relancer « Mettre en production » (les jours protégés se relisent au clic).`);
       console.log(regeneres.length ? `les ${regeneres.length} jour(s) régénérés (${regeneres.join(", ")}) n'ont toujours aucun résultat` : "aucun jour sans résultat à régénérer avant la bascule");
-    } else if (cmd === "jours-figes-filtrer") {
-      const proteges = JSON.parse(readFileSync(opt("--proteges"), "utf8"));
-      const retires = niveauxAEffacer(existsSync(a) ? readdirSync(a) : [], proteges);
-      for (const f of retires) rmSync(join(a, f));
-      console.log(retires.length ? `niveaux de Jump retirés (jours sans résultat, régénérés par le nouveau code) : ${retires.join(" ")}` : "aucun niveau de Jump à retirer");
-    } else if (cmd === "registre") {
-      // Le script est celui de CE dépôt, copié dans le dépôt visé (le code en production ne l'a pas) ; il ne dépend que de `@cdj/sim`.
+    } else if (cmd === "jeux") {
+      // Les jeux de la chaîne (identifiants, dans l'ordre des fiches), éventuellement ceux d'un mode : `--mode registre|fichier-par-jour`.
+      console.log(CHAINE.filter((j) => !opt("--mode") || j.mode === opt("--mode")).map((j) => j.id).join(" "));
+    } else if (cmd === "jours-servis") {
+      // La production sert les jours figés de son IMAGE : le commit de son étiquette, plus ceux que « Mettre en production » y a ajoutés (artefact `jours`) et qui n'entrent dans le dépôt que par la PR
+      // « robot » qui suit (commit « Jours figés de la mise en production … »). Sans eux, le code en production régénérerait ces jours avec son code d'aujourd'hui, autre que celui qui les a figés (le code
+      // d'avant) : un faux conflit. On les relit donc dans l'historique. `--jeu` : un jeu de la chaîne ; `a` : la référence du code en production ; `b` : où remettre (le dossier de ses jours, ou le fichier de son registre).
+      joursServis(jeuDeLaChaine(opt("--jeu")), a, b, opt("--jusqua") ?? "origin/main");
+    } else if (cmd === "figer-jeux") {
+      // Lot K4b : le garde-fou des jours, pour chaque jeu de la chaîne (lots R6, R11, R16). Se lance dans le dépôt des outils (tout l'historique : `jours-servis` le lit).
+      figerJeux({ prod: opt("--prod"), cible: opt("--cible"), proteges: opt("--proteges"), veille: opt("--veille"), reference: opt("--reference"), jusqua: opt("--jusqua") ?? "origin/main", sortie: opt("--sortie"), temp: opt("--temp"), resume: opt("--resume") });
+    } else if (cmd === "preparer-jeux") {
+      // Lot K4b : les jours que préparent certains jeux (le bot de Tower), avec le code DÉPLOYÉ (`--cible`), après la comparaison des empreintes.
+      preparerJeux({ cible: opt("--cible"), proteges: opt("--proteges"), veille: opt("--veille"), bascule: opt("--bascule"), sortie: opt("--sortie"), resume: opt("--resume"), githubSortie: opt("--github-sortie") });
+    } else if (cmd === "registres") {
+      // Les fichiers de registre des jeux à registre (un par jeu : `jours.registre` de sa fiche).
+      console.log(CHAINE.filter((j) => j.mode === "registre").map((j) => j.registre).join(" "));
+    } else if (cmd === "chemins-du-versement") {
+      console.log(cheminsDuVersement().join(" "));
+    } else if (cmd === "apres-pose") {
+      apresPose();
+    } else if (cmd === "poser-jours") {
+      // Lot K4b : pose, dans le dépôt courant (le commit déployé, l'image, le site ou `main`), ce que « Mettre en production » a produit pour chaque jeu (artefact `jours`, dossier `a`).
+      poserJours(a, { resume: opt("--resume") });
+    } else if (cmd === "empreintes") {
+      // Les empreintes des jours de chaque jeu pour le code du dépôt `a`. Les modules de jeu (`jours.fabrication.empreinte`) et le pilote sont ceux de CE dépôt, copiés dans le dépôt visé (le code en
+      // production ne les a pas) : ils ne dépendent que des paquets @cdj/*. Un jeu que ce code ne contient pas n'a rien servi : aucune empreinte, rien à conserver pour lui.
       const depot = resolve(a);
-      const ici = fileURLToPath(new URL("../apps/api/scripts/", import.meta.url));
-      const dossier = join(depot, "apps/api/scripts");
-      mkdirSync(dossier, { recursive: true });
-      copyFileSync(join(ici, "registre-jours.ts"), join(dossier, "registre-jours.ts"));
-      const api = join(depot, "apps/api");
-      execFileSync(join(depot, "node_modules/.bin/esbuild"), ["scripts/registre-jours.ts", "--bundle", "--platform=node", "--format=esm", "--target=node22", "--outfile=dist/registre-jours.mjs", "--log-level=warning"], { cwd: api, stdio: "inherit" });
-      const brut = resolve(opt("--sortie") + ".jours");
-      execFileSync(process.execPath, ["dist/registre-jours.mjs", "--du", opt("--du"), "--au", opt("--au"), "--sortie", brut], { cwd: api, stdio: "inherit", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
-      const { jours } = JSON.parse(readFileSync(brut, "utf8"));
-      // Seuls les jours protégés entrent au registre (lot R11) : un jour sans résultat prend la version du code déployé.
-      const proteges = opt("--proteges") ? JSON.parse(readFileSync(opt("--proteges"), "utf8")) : null;
-      const gardes = Object.entries(jours).filter(([d]) => !proteges || estProtege(proteges, d)).map(([d, [g, sim]]) => [d, `${g}/${sim}`]);
-      writeFileSync(resolve(opt("--sortie")), JSON.stringify(registreDesJours(Object.fromEntries(gardes), opt("--au")), null, 1) + "\n");
+      for (const jeu of CHAINE) {
+        if (!existsSync(join(depot, "packages", jeu.sim))) {
+          console.log(`${jeu.nom} : absent de ce code, aucune empreinte (rien à conserver pour lui)`);
+          continue;
+        }
+        const dossier = join(depot, "apps/api/scripts");
+        mkdirSync(dossier, { recursive: true });
+        const module_ = basename(jeu.moduleEmpreinte, ".ts");
+        for (const f of ["empreintes.ts", "empreintes-jours.ts", `${module_}.ts`]) copierSiAutre(join(SCRIPTS_ICI, f), join(dossier, f));
+        writeFileSync(join(dossier, `empreintes-entree-${jeu.id}.ts`), `import { empreinteJour } from "./${module_}";\nimport { executer } from "./empreintes-jours";\n\nexecuter(empreinteJour, ${JSON.stringify(jeu.id)});\n`);
+        compilerEtLancer(depot, `empreintes-entree-${jeu.id}`, ["--du", opt("--du"), "--au", opt("--au"), "--sortie", resolve(opt("--sortie")), ...(jeu.dossier ? ["--jours", join(depot, jeu.dossier)] : [])]);
+      }
+    } else if (cmd === "registre") {
+      // Le registre des jours d'un jeu à registre (`--jeu`) tel que le code du dépôt `a` les sert (`jours.fabrication.registre`, copié dans ce dépôt : le code en production ne l'a pas).
+      registreDuDepot(jeuDeLaChaine(opt("--jeu")), a, opt("--du"), opt("--au"), opt("--proteges") ? JSON.parse(readFileSync(opt("--proteges"), "utf8")) : null, opt("--sortie"));
     } else if (cmd === "registre-fusion") {
       const { fusion, conserves, ajoutes, conflits } = fusionnerRegistre(JSON.parse(readFileSync(a, "utf8")), JSON.parse(readFileSync(b, "utf8")));
       const text = resumeRegistre({ conserves, ajoutes, conflits, fusion });
@@ -843,81 +1054,6 @@ if (isMain) {
       process.stdout.write(text);
       if (conflits.length) process.exit(1);
       writeFileSync(a, JSON.stringify(fusion, null, 1) + "\n");
-    } else if (cmd === "tower-plan") {
-      // Le plan des jours de Tower : lit le dépôt construit (`--cible`), les jours protégés (`--proteges`) et la fenêtre (`--veille`, `--bascule`).
-      const cible = resolve(opt("--cible"));
-      const dossier = join(cible, TOWER_DOSSIER);
-      const fichiers = {};
-      if (existsSync(dossier)) {
-        for (const f of readdirSync(dossier)) {
-          const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
-          if (!date) continue;
-          try {
-            const j = JSON.parse(readFileSync(join(dossier, f), "utf8"));
-            fichiers[date] = { g: j.g, sim: j.sim };
-          } catch {
-            fichiers[date] = { g: null, sim: null }; // illisible : à refaire s'il n'est pas protégé
-          }
-        }
-      }
-      const texts = {};
-      for (const f of ["packages/tower-sim/src/constantes.ts", "packages/tower-sim/src/generateur/index.ts"]) texts[f] = existsSync(join(cible, f)) ? readFileSync(join(cible, f), "utf8") : "";
-      const versions = versionsTower(texts);
-      if (versions.sim === null || versions.g === null) throw new Error("le commit déployé n'a pas les versions de Tower (packages/tower-sim)");
-      const proteges = JSON.parse(readFileSync(opt("--proteges"), "utf8"));
-      const plan = planTower({ veille: opt("--veille"), bascule: opt("--bascule"), proteges, fichiers, versions });
-      writeFileSync(resolve(opt("--sortie")), JSON.stringify(plan, null, 1) + "\n");
-      const text = resumeTower(plan);
-      if (opt("--resume")) appendFileSync(opt("--resume"), text);
-      process.stdout.write(text);
-      if (opt("--github-sortie")) appendFileSync(opt("--github-sortie"), `tower_plages=${plan.plages.map(([du, au]) => `${du}:${au}`).join(" ")}\ntower_a_preparer=${plan.aPreparer.length}\ntower_au=${plan.au}\n`);
-    } else if (cmd === "tower-a-figer") {
-      // Lot R16 : les jours protégés de Tower qui n'ont pas de fichier (`--cible` : le dépôt construit ; `--prod` : le code en production, qui doit avoir Tower pour avoir servi un jour).
-      const dossier = join(resolve(opt("--cible")), TOWER_DOSSIER);
-      const fichiers = {};
-      if (existsSync(dossier)) for (const f of readdirSync(dossier)) if (/^\d{4}-\d{2}-\d{2}\.json$/.test(f)) fichiers[f.slice(0, 10)] = true;
-      const prodSansTower = !existsSync(join(resolve(opt("--prod")), "packages/tower-sim"));
-      const proteges = JSON.parse(readFileSync(opt("--proteges"), "utf8"));
-      const plan = towerAFiger({ proteges, fichiers, prodSansTower });
-      mkdirSync(dirname(resolve(opt("--sortie"))), { recursive: true });
-      writeFileSync(resolve(opt("--sortie")), JSON.stringify(plan, null, 1) + "\n");
-      const text = resumeTowerFiges(plan);
-      if (opt("--resume")) appendFileSync(opt("--resume"), text);
-      process.stdout.write(text);
-    } else if (cmd === "tower-figes-poser") {
-      // `a` : le dossier où le code en production a figé (`plan.json` et `jours/*.json`) ; `b` : le dossier des jours de Tower de la construction. Il manque un jour = la mise en production s'arrête.
-      const plan = JSON.parse(readFileSync(join(a, "plan.json"), "utf8"));
-      const { ecrire, manquants, conflits } = towerFigesAPoser(plan, read(join(a, "jours")), read(b));
-      if (manquants.length || conflits.length) throw new Error(`jours de Tower protégés sans fichier figé : ${manquants.join(", ") || "aucun"} ; figés dans un autre contenu que celui du dépôt : ${conflits.join(", ") || "aucun"} (un jour servi ne change jamais : corriger puis relancer)`);
-      mkdirSync(b, { recursive: true });
-      for (const f of ecrire) writeFileSync(join(b, f), readFileSync(join(a, "jours", f)));
-      console.log(ecrire.length ? `jours de Tower figés avec le code en production : ${ecrire.length} (${ecrire.map((f) => f.slice(0, 10)).join(", ")})` : "aucun jour de Tower à figer");
-    } else if (cmd === "tower-nettoyer") {
-      // Retire du dossier (`a`) les fichiers d'une autre version que le plan refait : l'outil de préparation n'écrase jamais un fichier d'une autre version.
-      const plan = JSON.parse(readFileSync(opt("--plan"), "utf8"));
-      for (const d of plan.aSupprimer) rmSync(join(a, `${d}.json`), { force: true });
-      console.log(plan.aSupprimer.length ? `fichiers de Tower d'une autre version retirés : ${plan.aSupprimer.join(" ")}` : "aucun fichier de Tower à retirer");
-    } else if (cmd === "tower-poser") {
-      // `a` : l'artefact `jours-tower` (plan.json et jours/*.json) ; `b` : le dossier des jours de Tower du dépôt visé.
-      const plan = JSON.parse(readFileSync(join(a, "plan.json"), "utf8"));
-      const dossierArtefact = join(a, "jours");
-      const artefact = read(dossierArtefact);
-      const existants = read(b);
-      const { ajouts, remplaces, conflits } = joursTowerAPoser(artefact, existants, plan);
-      if (conflits.length) throw new Error(`jour(s) de Tower différent(s) entre la préparation et le commit déployé : ${conflits.join(", ")} (un jour figé ne change jamais)`);
-      mkdirSync(b, { recursive: true });
-      for (const f of [...ajouts, ...remplaces]) writeFileSync(join(b, f), artefact[f]);
-      console.log(ajouts.length || remplaces.length ? `jours de Tower posés : ${ajouts.length} ajouté(s), ${remplaces.length} refait(s)` : "aucun jour de Tower à poser");
-    } else if (cmd === "tower-resume") {
-      const plan = JSON.parse(readFileSync(opt("--plan"), "utf8"));
-      const text = resumeTower(plan, { jours: plan.aPreparer.length, secondes: Number(opt("--secondes") ?? 0), fils: Number(opt("--fils") ?? 1) });
-      if (opt("--resume")) appendFileSync(opt("--resume"), text);
-      // Lot TP : la ligne courte du haut du résumé du bouton.
-      if (opt("--github-sortie")) {
-        const n = (act) => plan.jours.filter((j) => j.action === act).length;
-        appendFileSync(opt("--github-sortie"), `tower_ligne=${n("garde") + n("garde-protege")} conservé(s), ${n("prepare")} préparé(s), ${n("reprepare")} refait(s), couvert jusqu'au ${plan.au}\n`);
-      }
-      process.stdout.write(text);
     } else if (cmd === "bascule-valide") {
       const ms = opt("--maintenant") ? Date.parse(opt("--maintenant")) : Date.now();
       if (basculeCommencee(a, ms)) throw new Error(`le jour de bascule (${a}) a déjà commencé à Paris (nous sommes le ${jourDeParis(ms)}) : la mise en production aurait changé un jour que les joueurs ont ouvert. Relancer « Mettre en production » (le jour de bascule se recalcule au clic).`);
@@ -932,19 +1068,20 @@ if (isMain) {
       const plan = planDesJours(opt("--instant") ? Number(opt("--instant")) : Date.now(), premier);
       const text = resumeBascule({ plan: { ...plan, bascule, veille: ajouterJours(bascule, -1) }, comparaison, simulee: all.includes("--simulee") });
       if (opt("--resume")) appendFileSync(opt("--resume"), text);
-      // Lot R12 : une ligne par jeu pour le haut du résumé de « Mettre en production » (jours_track, jours_jump).
-      if (opt("--sortie")) appendFileSync(opt("--sortie"), Object.entries(comparaison.jeux).map(([jeu, r]) => `jours_${jeu}=${ligneJours(r)}\n`).join(""));
+      // Lot R12 : une ligne par jeu pour le haut du résumé de « Mettre en production » (`jours` : { <jeu>: ligne }).
+      if (opt("--sortie")) appendFileSync(opt("--sortie"), `jours=${JSON.stringify(Object.fromEntries(Object.entries(comparaison.jeux).map(([jeu, r]) => [jeu, ligneJours(r)])))}\n`);
       process.stdout.write(text);
       if (!comparaison.ok) process.exit(1);
     } else if (cmd === "empreintes-fusion") {
-      const { fusion, ajoutes, conflits } = fusionnerEmpreintes(existsSync(a) ? JSON.parse(readFileSync(a, "utf8")) : { track: {}, jump: {} }, JSON.parse(readFileSync(b, "utf8")), opt("--jusqua"), opt("--proteges") ? JSON.parse(readFileSync(opt("--proteges"), "utf8")) : null);
+      const { fusion, ajoutes, conflits } = fusionnerEmpreintes(existsSync(a) ? JSON.parse(readFileSync(a, "utf8")) : {}, JSON.parse(readFileSync(b, "utf8")), opt("--jusqua"), opt("--proteges") ? JSON.parse(readFileSync(opt("--proteges"), "utf8")) : null);
       if (conflits.length) throw new Error(`jour(s) passé(s) dont l'empreinte change : ${conflits.join(", ")} (un jour passé ne change jamais)`);
       writeFileSync(a, JSON.stringify(fusion, null, 1) + "\n");
       console.log(ajoutes.length ? `empreintes ajoutées : ${ajoutes.length} (${ajoutes[0]} … ${ajoutes.at(-1)})` : "aucune empreinte à ajouter");
     } else if (cmd === "inventaire") {
       const lire = (ref) => {
-        const fichiers = git("ls-tree", "-r", "--name-only", ref, "--", "apps/api/src", "packages/sim/src", "packages/jump-sim/src").split("\n").filter(Boolean);
-        const voulus = ["packages/jump-sim/src/constants.ts", "packages/sim/src/constants.ts", "packages/sim/src/dailyId.ts", "packages/sim/src/medals.ts", ...fichiers.filter((f) => f.startsWith("apps/api/src/"))];
+        // Les fichiers de versions de chaque jeu (fiches), ceux des dates de bascule de Track, et les sources de l'API (migrations, tables, routes).
+        const fichiers = git("ls-tree", "-r", "--name-only", ref, "--", "apps/api/src").split("\n").filter(Boolean);
+        const voulus = [...VERSIONS_DES_JEUX.map((v) => v.fichier), "packages/sim/src/dailyId.ts", "packages/sim/src/medals.ts", ...fichiers];
         const texts = {};
         for (const f of new Set(voulus)) {
           try {
@@ -985,7 +1122,7 @@ if (isMain) {
       process.stdout.write(text);
     } else {
       void rest;
-      console.error("usage : node scripts/mise-en-production.mjs etiquette | derniere | changements <de> <à> | jours-figes <figés> <cible> | bascule | bascule-valide <jour> | comparer <prod> <cible> <bascule> | empreintes-fusion <fichier> <nouveau> | proteges | proteges-verifier <fichier> | jours-figes-filtrer <dossier> | registre <dépôt> | registre-fusion <registre> <production> | inventaire <de> <à>");
+      console.error("usage : node scripts/mise-en-production.mjs etiquette | derniere | changements <de> <à> | jeux | registres | bascule | bascule-valide <jour> | comparer <prod> <cible> <bascule> | empreintes-fusion <fichier> <nouveau> | proteges | proteges-verifier <fichier> | jours-servis <réf> <cible> --jeu <id> | figer-jeux | preparer-jeux | poser-jours <dossier> | empreintes <dépôt> | registre --jeu <id> <dépôt> | registre-fusion <dépôt> <servi> | inventaire <de> <à>");
       process.exit(2);
     }
   } catch (e) {

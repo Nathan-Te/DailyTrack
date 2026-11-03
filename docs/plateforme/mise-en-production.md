@@ -109,3 +109,25 @@ turso db create dailytrack-restauree --from-dump <fichier>.sql      # une base n
 ```
 
 Puis faire pointer le serveur dessus (variable `TURSO_DATABASE_URL` et secret `cdj-turso-token`, puis « Mettre en production ») — ou demander un lot. Le fichier contient des pseudos : il ne quitte ni le bucket ni ton ordinateur, et s'efface avec le reste au bout de 30 jours.
+
+---
+
+## Annexe E — Essayer un lot qui touche la chaîne de production (lot K4b)
+
+La chaîne (`production.yml`, `jours-figes.yml`, `deploy-api.yml`, `deploy-site.yml`, `scripts/mise-en-production.mjs`) **lit les fiches des jeux** (`jours.fabrication`) : un jeu neuf n'y ajoute aucune ligne. Un lot qui la modifie **ne se fusionne qu'après deux essais de ta part, sur la branche du lot** (un agent ne lance jamais de workflow) :
+
+1. Actions › **Mettre en production** › *Use workflow from* : **la branche du lot** › mode **`essai`** › Run. Contre la recette seulement. Le résumé doit être ✅ ; pour chaque jeu, la ligne « Jours » montre les jours conservés sans différence ; l'artefact **`jours`** (un dossier par jeu + `proteges.json`) est là, avec `empreintes-jours`.
+2. Même bouton, mode **`repetition`**, heure simulée « demain 10:00 » : ✅, avec le jour de bascule.
+
+Seulement ensuite, fusionner. Les commandes que le workflow lance (toutes lisent les fiches ; `node scripts/mise-en-production.mjs <commande>`) :
+
+| commande | ce qu'elle fait |
+|---|---|
+| `jeux [--mode registre\|fichier-par-jour]` | les jeux de la chaîne, dans l'ordre des fiches |
+| `figer-jeux --prod … --cible … --proteges … --veille … --reference … --sortie <dossier>` | pour chaque jeu, avec le code en production : registre, jours figés (les jours sans résultat sont retirés) ou jours protégés sans fichier ; superpose à la cible ; écrit l'artefact `jours` |
+| `empreintes <dépôt> --du … --au … --sortie <fichier>` | les empreintes des jours de chaque jeu (une clé par jeu) ; un jeu absent du code n'a rien à conserver |
+| `preparer-jeux --cible … --proteges … --veille … --bascule … --sortie <dossier>` | les jours que préparent certains jeux (`preparer` de la fiche), avec le code déployé ; sortie `preparation` |
+| `poser-jours <dossier de l'artefact>` | pose, dans le dépôt courant, le registre et les jours de chaque jeu (serveur, site, `main`) |
+| `jours-servis <réf> <cible> --jeu <id>`, `registre --jeu <id> <dépôt> …`, `registres`, `chemins-du-versement`, `apres-pose` | les pièces de ce qui précède |
+
+Les artefacts de l'ancienne chaîne (`jours-figes`, `registre-track`, `jours-tower`) n'existent plus : tout est dans `jours`.

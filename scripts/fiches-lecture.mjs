@@ -57,3 +57,33 @@ export const VERSIONS_DES_JEUX = FICHES_SERVEUR.flatMap((f) =>
     return { nom, fichier, jeu: NOMS_DES_JEUX[f.id], id: f.id, role };
   }),
 );
+
+// Lot K4b — **la chaîne de « Mettre en production » lue dans les fiches** : comment chaque jeu fige, prépare et compare ses jours (`jours.fabrication`, `packages/core/src/fiche.ts`). Plus aucun jeu n'est écrit
+// dans `scripts/mise-en-production.mjs` ni dans les workflows de production : un jeu neuf, avec sa fiche, entre dans la chaîne sans une ligne de plus.
+/**
+ * Les jeux de la chaîne, dans l'ordre des fiches : `{ id, nom, mode, dossier, registre, sim, versions, moduleEmpreinte, moduleRegistre?, figer?, preparer? }`. `mode` : `registre` (un fichier de plages,
+ * `registre`) ou `fichier-par-jour` (un fichier par jour dans `dossier`) ; `sim` : le dossier de la simulation (`packages/<sim>`), où l'on voit si un code contient le jeu.
+ */
+export const CHAINE = FICHES_CI.map((f) => {
+  const { empreinte, registre, figer, preparer, apresPose } = f.jours.fabrication;
+  return {
+    id: f.id,
+    nom: NOMS_DES_JEUX[f.id],
+    mode: f.jours.registre ? "registre" : "fichier-par-jour",
+    dossier: f.jours.dossier,
+    registre: f.jours.registre,
+    sim: f.sim,
+    versions: FICHES_SERVEUR.find((x) => x.id === f.id).versions,
+    moduleEmpreinte: empreinte,
+    moduleRegistre: registre,
+    figer,
+    preparer,
+    apresPose,
+  };
+});
+/** Un jeu de la chaîne d'après son identifiant ; une erreur claire s'il n'a pas de fiche. */
+export function jeuDeLaChaine(id) {
+  const j = CHAINE.find((x) => x.id === id);
+  if (!j) throw new Error(`jeu inconnu : « ${id} » (les fiches : ${IDS_FICHES.join(", ")})`);
+  return j;
+}

@@ -1,0 +1,35 @@
+# Lot K4b — la chaîne de mise en production lit les fiches
+
+*3 novembre 2026. Suite de `lot-K4-nouveau-jeu-et-temoin.md` (inventaire du § « Ce qui reste nommé »). Pour les joueurs : rien.*
+
+**Résultat.** `production.yml`, `jours-figes.yml`, `deploy-api.yml`, `deploy-site.yml` et `scripts/mise-en-production.mjs` **n'écrivent plus aucun jeu** : un jeu neuf, avec sa fiche, est figé, comparé, préparé, posé dans l'image, le site et `main` sans une ligne de plus (test : `workflows.test.ts`, « la chaîne de production ne nomme aucun jeu »). **L'agent s'arrête avant les essais du bouton, qui sont à Nathan** (marche plus bas). Une partie du point 4 de la commande n'est pas faite (voir « Non fait »).
+
+## Le champ `jours.fabrication` (`packages/core/src/fiche.ts`, validé, rempli pour les trois jeux)
+- `empreinte` (toujours) : le module du jeu qui calcule l'empreinte de ce qu'il sert un jour — `apps/api/scripts/<id>-empreintes.ts` (`empreinteJour(jour, dossier)`), copié puis compilé dans le code en production.
+- `registre` (mode `registre` : Track) : `track-registre.ts`. `figer` (mode `fichier-par-jour`) : `{ paquet, script, forme }` — `jusqu-a-la-veille` (Jump : `freeze:days -- <veille>`, ses fichiers SONT des jours figés, les jours sans résultat sont retirés) ou `jours-proteges` (Tower : `figer:tower --du --au --dossier=`, ses fichiers sont préparés, pas figés).
+- `preparer` (Tower) : script, `joursApresBascule` (14), test `garde`. `apresPose` (Jump) : ce que le versement refait (`jump:seed`, `apps/jump/public/demo`). La projection `ci` porte `fabrication` et `sim`.
+
+## Les commandes (`scripts/mise-en-production.mjs`, toutes lues dans les fiches)
+`figer-jeux`, `preparer-jeux`, `poser-jours`, `empreintes <dépôt>`, `registre --jeu`, `jours-servis --jeu`, `jeux`, `registres`, `chemins-du-versement`, `apres-pose`. Disparus : `tower-*`, `jours-figes`, `jours-figes-filtrer`, les options `--niveaux` / `--tower`. Fonctions pures renommées (`planPreparation`, `joursAFiger`, `figesAPoser`, `joursAPoser`, `resumeFiges`, `resumePreparation`), assertions des tests inchangées.
+`apps/api/scripts` : `empreintes.ts` (type et `sha`), `empreintes-jours.ts` (pilote commun) et `<id>-empreintes.ts` ; `track-registre.ts`. Les scripts `npm run jours:*` sont retirés. `npm run build` lit les fiches (`scripts/construire.mjs`).
+
+## Les workflows
+- `production.yml`, job `figer` : `proteges` → `npm ci` du code en production → `figer-jeux` → `empreintes` (prod puis cible) → `comparer` → `preparer-jeux` → ancien code sur la base migrée → artefacts. Même ordre qu'avant, même arrêt.
+- **Un seul artefact `jours`** (un dossier par jeu + `proteges.json`) remplace `jours-figes`, `registre-track` et `jours-tower` ; `empreintes-jours` reste. **Écart à la commande** : elle voulait `jours-<id>` ; GitHub ne peut pas boucler sur `upload-artifact`, le dossier par jeu en tient lieu (un artefact par jeu = une matrice de jobs, à décider).
+- Les entrées `jours_figes` / `jours_tower` / `registre_track` deviennent `jours` ; `jours-figes.yml` : `poser-jours`, `apres-pose`, `chemins-du-versement`. Sorties du job : `jours` et `preparation` (JSON `{ <jeu>: ligne }`, lues par `resume-bouton.mjs`). `securite-workflows.mjs` : 0 écart, permissions et secrets inchangés.
+
+## Avant / après en local (heure simulée « 2026-11-10 10:00 », bascule 11-11, code en production = `dc4e226`)
+Deux chaînes jouées pour de vrai sur la même entrée (`proteges.json` fixe : 11 jours protégés, dont 3 jours de Tower sans fichier retirés du « code en production » et des deux cibles pour exercer `figer:tower`) : l'**avant** (commandes de `dc4e226`, enchaînées comme `production.yml` le faisait) et l'**après** (`figer-jeux`, `empreintes`, `comparer`, `preparer-jeux`). Registre de Track, `freeze:days` de Jump, `figer:tower`, 8 jours préparés par le bot (3 min 35 s contre 3 min 28 s) et le garde-fou `jours.test.ts` : exécutés.
+- **Identiques au bit près** : les jours de Jump et de Tower et le registre de la cible, les jours figés de la production (= l'artefact de Jump), `proteges.json`, le plan de Tower, les jours de Tower de l'artefact (preuves comprises), les deux fichiers d'empreintes (`empreintes-jours` compris), les lignes du résumé « 20 conservés, 20 régénérés (0 change) » pour les trois jeux.
+- **Différences expliquées** : (1) la sortie `jours_track` / `jours_jump` / `jours_tower` devient `jours={"track":…}` (même texte) ; (2) les phrases d'étape nomment le jeu de la fiche (« fichiers de Jump retirés… », « jours de Tower posés : N ajouté(s), M refait(s) ») au lieu de « niveaux de Jump » / « jours figés ajoutés » ; (3) le dossier des jours de Jump de la cible reçoit les jours de la production tout de suite (avant, une copie temporaire pour les empreintes, puis le vrai dossier plus loin) : même contenu au moment de chaque lecture ; (4) l'inventaire « Ce qui part » lit aussi les versions de Tower (elles manquaient : K4 les avait mises dans la fiche sans les lire) ; (5) le résumé d'un run montre les lignes de Jump et le bloc de temps de Tower que ma reproduction de l'ancienne chaîne n'écrivait pas dans le résumé (elle les mettait sur la sortie standard) : l'ancien workflow les y mettait.
+- Non rejoué en local : `proteges` (lit playdujour.com), `base-migree.mjs` (inchangé), les étapes de GitHub (artefacts, jetons, PR).
+
+## Marche pour Nathan (avant la fusion)
+1. Actions › **Mettre en production** › branche **`claude/production-reads-sheets-c08pgx`** › mode **`essai`** › Run. Attendu : ✅ ; ligne « Jours » : Track, Jump et Tower « N conservés, 14 régénérés » ; « Jours de Tower » : préparés, couverts jusqu'à J+14 ; artefacts `jours` et `empreintes-jours` ; **déploiement de la recette seulement**, rien en production.
+2. Même bouton, mode **`repetition`**, heure simulée **`demain 10:00`** : ✅ et le jour de bascule. **Seulement ensuite**, fusionner. Détail : `mise-en-production.md`, annexe E.
+
+## Non fait (restent nommés, lot suivant)
+`smoke`, `smokeRead`, `recette:seed`, `routesChaudes`, `platformBudget`, `build-node.mjs` et `Dockerfile` (le paquet embarque les jours de Jump et de Tower par deux constantes lues dans `apps/api/src`), `budgets.mjs` (une mesure par jeu : chaque jeu découpe son chargement à sa façon), le contrôle `api-image` de `ci.yml` (forme de `/api/jump/day`) : ils ne sont pas dans la chaîne du bouton et demandent un contrat de jeu (K4 parties 2 et 3). `unit-durees.json` : des durées par fichier de test, aucun jeu n'y est écrit.
+
+## Vérifié / non vérifié
+Vérifié : tests (`npx vitest run --project sqlite` : 122 fichiers, 1 685 tests), `tsc -b`, `securite-workflows.mjs`, YAML relus, comparaison locale. **Non vérifié : les workflows eux-mêmes** (aucun run : ils ne se lancent que par le bouton), CI de PR et run en mode `main` : à la fin de ce rapport.

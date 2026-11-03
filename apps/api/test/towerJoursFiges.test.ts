@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { formatDay, parseDay } from "@cdj/core";
 import { dailyTower, lireJour, TOWER_GENERATOR_VERSION, VERSIONS_GENERATEUR } from "@cdj/tower-sim";
-import { empreinteTower } from "../scripts/empreintes-tower";
+import { empreinteJour as empreinteTower } from "../scripts/tower-empreintes";
 
 // Lot R16 (plateforme) : les jours de Tower ne changent jamais, même sans fichier préparé. Ce test monte la version du générateur **dans le test seulement** (un générateur factice, la
 // « version 4 » : même jour, autres pièces et autre thème) et regarde ce que sert Tower pour les jours déjà servis. Le vrai générateur n'est pas touché (`TOWER_GENERATOR_VERSION` reste 3).

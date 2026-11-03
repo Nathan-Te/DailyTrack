@@ -61,7 +61,22 @@
   "jours": {
     "mode": "fichier-par-jour",
     "dossier": "apps/jump/public/levels",
-    "preuveInterditeEnProd": true
+    "preuveInterditeEnProd": true,
+    "fabrication": {
+      "empreinte": "apps/api/scripts/jump-empreintes.ts",
+      "figer": {
+        "paquet": "@cdj/jump",
+        "script": "freeze:days",
+        "forme": "jusqu-a-la-veille"
+      },
+      "apresPose": {
+        "paquet": "@cdj/api",
+        "script": "jump:seed",
+        "sorties": [
+          "apps/jump/public/demo"
+        ]
+      }
+    }
   },
   "rejeu": {
     "unitesServeur": 1,

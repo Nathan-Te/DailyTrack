@@ -24,6 +24,27 @@ export interface ZoneCI {
   sauf?: string[];
 }
 
+/**
+ * Lot K4b — **comment un jeu fige, prépare et compare ses jours** : la chaîne de « Mettre en production » (`scripts/mise-en-production.mjs`, `production.yml`) lit ce bloc et ne nomme plus aucun jeu.
+ *  - `empreinte` (toujours) : le module du jeu qui calcule l'empreinte de ce que le jeu SERT pour un jour (`empreinteJour(jour, dossier)` : `apps/api/scripts/<id>-empreintes.ts`). Il est copié dans le code
+ *    en production (plus ancien que lui) et compilé là : il ne dépend que des paquets `@cdj/*`.
+ *  - `registre` (mode `registre`) : le module qui dit, pour chaque jour, la version que ce code sert (`apps/api/scripts/<id>-registre.ts`).
+ *  - `figer` (mode `fichier-par-jour`) : le script npm qui écrit les fichiers des jours avec le code en production. Forme `jusqu-a-la-veille` : `npm run <script> -w <paquet> -- <veille>` écrit tout
+ *    jusqu'à la veille de la bascule, puis la chaîne retire les jours sans résultat ; forme `jours-proteges` : `npm run <script> -w <paquet> -- --du D --au A --dossier=<dossier>` pour les
+ *    jours protégés qui n'ont pas de fichier.
+ *  - `apresPose` (facultatif) : ce que le dépôt doit refaire quand des fichiers de ses jours changent (la démonstration de Jump, qui rejoue ses niveaux : `jump:seed`) : le script npm (du serveur, `@cdj/api`, ou du jeu) et les
+ *    chemins qu'il écrit, que le versement des jours figés ajoute au commit.
+ *  - `preparer` (facultatif) : un jeu dont les jours demandent un calcul AVANT d'être servis (le bot de Tower) : le script npm (mêmes arguments que `figer: jours-proteges`), la fenêtre (de la veille de la
+ *    bascule à bascule + `joursApresBascule`) et le test qui garde chaque fichier (`garde`).
+ */
+export interface FabricationJours {
+  empreinte: string;
+  registre?: string;
+  figer?: { paquet: string; script: string; forme: "jusqu-a-la-veille" | "jours-proteges" };
+  preparer?: { paquet: string; script: string; joursApresBascule: number; garde: string };
+  apresPose?: { paquet: string; script: string; sorties: string[] };
+}
+
 export interface FicheJeu {
   /** Le dossier du jeu sur le site (`/tower/`), son préfixe de route (`/api/tower/`) et son nom de dossier (`apps/tower`). `a-z`, `0-9`, `-`. */
   id: string;
@@ -75,6 +96,8 @@ export interface FicheJeu {
     registre?: string;
     /** La preuve de l'auteur ne quitte jamais le serveur (règle R9) : vrai pour un jeu dont les jours figés portent une `preuve`. */
     preuveInterditeEnProd: boolean;
+    /** Lot K4b : comment la chaîne de « Mettre en production » fige, prépare et compare les jours de ce jeu (voir `FabricationJours`). */
+    fabrication: FabricationJours;
   };
   /** `ticksParUnite` (lot K1b) : le coût d'un rejeu est proportionnel à sa durée (une unité du plafond global par `ticksParUnite` pas rejoués, `unitesServeur` en est le minimum) ; absent : coût fixe. */
   rejeu: { unitesServeur: number; fil?: boolean; maxTicks: number; ticksParUnite?: number };
@@ -247,6 +270,51 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
     if (j.mode === "fichier-par-jour" && (typeof j.dossier !== "string" || j.registre !== undefined)) ko("jours.dossier", "obligatoire pour `fichier-par-jour` (et sans `registre`)");
     if (j.mode === "registre" && (typeof j.registre !== "string" || j.dossier !== undefined)) ko("jours.registre", "obligatoire pour `registre` (et sans `dossier`)");
     if (typeof j.preuveInterditeEnProd !== "boolean") ko("jours.preuveInterditeEnProd", "booléen");
+    const fab = j.fabrication;
+    if (!estObjet(fab)) ko("jours.fabrication", "objet attendu { empreinte, registre?, figer?, preparer? }");
+    else {
+      const chemin = (nom: string, v: unknown) => {
+        if (typeof v !== "string" || !CHEMIN.test(v) || !globDuJeu(v, id, dossiers)) ko(`jours.fabrication.${nom}`, `un fichier du jeu (${prefixesDeZones(id, dossiers).slice(0, 2).join(" ou ")}…)`);
+      };
+      const paquets = [`@cdj/${dossiers?.app ?? id}`, `@cdj/${dossiers?.sim ?? `${id}-sim`}`];
+      const script = (nom: string, o: Record<string, unknown>) => {
+        if (typeof o.paquet !== "string" || !paquets.includes(o.paquet)) ko(`jours.fabrication.${nom}.paquet`, `un paquet du jeu (${paquets.join(" ou ")})`);
+        if (typeof o.script !== "string" || !/^[a-z][a-z0-9:-]*$/.test(o.script)) ko(`jours.fabrication.${nom}.script`, "un nom de script npm");
+      };
+      chemin("empreinte", fab.empreinte);
+      if (fab.registre !== undefined) chemin("registre", fab.registre);
+      if (j.mode === "registre" && fab.registre === undefined) ko("jours.fabrication.registre", "obligatoire pour `registre`");
+      if (j.mode === "fichier-par-jour" && fab.registre !== undefined) ko("jours.fabrication.registre", "réservé au mode `registre`");
+      if (fab.figer !== undefined) {
+        if (!estObjet(fab.figer)) ko("jours.fabrication.figer", "objet attendu { paquet, script, forme }");
+        else {
+          script("figer", fab.figer);
+          if (fab.figer.forme !== "jusqu-a-la-veille" && fab.figer.forme !== "jours-proteges") ko("jours.fabrication.figer.forme", "`jusqu-a-la-veille` ou `jours-proteges`");
+        }
+      }
+      if (j.mode === "fichier-par-jour" && fab.figer === undefined) ko("jours.fabrication.figer", "obligatoire pour `fichier-par-jour`");
+      if (j.mode === "registre" && fab.figer !== undefined) ko("jours.fabrication.figer", "réservé au mode `fichier-par-jour`");
+      if (fab.apresPose !== undefined) {
+        const ap = fab.apresPose;
+        if (!estObjet(ap)) ko("jours.fabrication.apresPose", "objet attendu { paquet, script, sorties }");
+        else {
+          if (typeof ap.paquet !== "string" || ![...paquets, "@cdj/api"].includes(ap.paquet)) ko("jours.fabrication.apresPose.paquet", `un paquet du jeu (${paquets.join(" ou ")}) ou @cdj/api`);
+          if (typeof ap.script !== "string" || !/^[a-z][a-z0-9:-]*$/.test(ap.script)) ko("jours.fabrication.apresPose.script", "un nom de script npm");
+          if (!Array.isArray(ap.sorties) || ap.sorties.length === 0 || !ap.sorties.every((x) => typeof x === "string" && CHEMIN.test(x) && globDuJeu(x, id, dossiers))) ko("jours.fabrication.apresPose.sorties", "des chemins du jeu");
+          if (j.mode !== "fichier-par-jour") ko("jours.fabrication.apresPose", "réservé au mode `fichier-par-jour`");
+        }
+      }
+      if (fab.preparer !== undefined) {
+        const pr = fab.preparer;
+        if (!estObjet(pr)) ko("jours.fabrication.preparer", "objet attendu { paquet, script, joursApresBascule, garde }");
+        else {
+          script("preparer", pr);
+          if (!estEntier(pr.joursApresBascule) || pr.joursApresBascule < 0) ko("jours.fabrication.preparer.joursApresBascule", "entier ≥ 0");
+          chemin("preparer.garde", pr.garde);
+          if (j.mode !== "fichier-par-jour") ko("jours.fabrication.preparer", "réservé au mode `fichier-par-jour`");
+        }
+      }
+    }
   }
 
   const r = f.rejeu;
@@ -436,14 +504,16 @@ export interface ProjectionCI {
     e2e: FicheJeu["e2e"];
     /** Lot K1c : le dossier de l'application (`web` pour Track : `apps/web/dist`), celui des jours figés (`fichier-par-jour`) ou le fichier du registre (`registre`). */
     app: string;
-    jours: { dossier: string | null; registre: string | null; preuveInterditeEnProd: boolean };
+    jours: { dossier: string | null; registre: string | null; preuveInterditeEnProd: boolean; fabrication: FabricationJours };
+    /** Lot K4b : le dossier de la simulation (`packages/<sim>`), où la chaîne de production voit si un code contient le jeu. */
+    sim: string;
     budget: string[];
     outilsAdmin: boolean;
   }[];
 }
 export function projectionCI(fiches: readonly FicheJeu[]): ProjectionCI {
   return {
-    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd }, budget: f.budget.lignes, outilsAdmin: f.admin.outils })),
+    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd, fabrication: f.jours.fabrication }, sim: f.dossiers?.sim ?? `${f.id}-sim`, budget: f.budget.lignes, outilsAdmin: f.admin.outils })),
   };
 }
 

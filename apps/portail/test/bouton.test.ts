@@ -16,7 +16,7 @@ const tout = (mode: string) =>
         : e.cle === "ci-verdict"
           ? OK({ etat: "vert", url: "https://github.com/x/y/actions/runs/7", duree: "13", qui: "relancée" })
           : e.cle === "figer"
-            ? OK({ jours_track: "2 conservés, 14 régénérés (3 changent)", jours_jump: "2 conservés, 14 régénérés (14 changent)" })
+            ? OK({ jours: JSON.stringify({ track: "2 conservés, 14 régénérés (3 changent)", jump: "2 conservés, 14 régénérés (14 changent)" }) })
             : e.cle === "sauvegarde"
               ? OK({ fichier: "gs://p-sauvegardes/production/2026-10-27-1012-dailytrack-run7.sql.gz" })
               : e.cle === "depot"
@@ -89,5 +89,18 @@ describe("le résumé du bouton (lot R12)", () => {
     expect(t.split("\n")[0]).toBe("## ✅ Répétition réussie (recette) `0123456`");
     expect(t).not.toMatch(/Sauvegarde|Jours figés/);
     expect(t).toContain("[portail](https://recette.playdujour.com/)");
+  });
+
+  // Lot K4b : une ligne par jeu de la chaîne, lue dans les sorties JSON du job `figer` (les fiches nomment les jeux, le résumé n'en écrit aucun).
+  it("« Jours » et « Jours de <jeu> » : une ligne par jeu des sorties JSON `jours` et `preparation`", () => {
+    const n = tout("production");
+    n.figer = OK({
+      jours: JSON.stringify({ track: "2 conservés", jump: "3 conservés", tower: "4 conservés" }),
+      preparation: JSON.stringify({ tower: "8 conservé(s), 8 préparé(s), 0 refait(s), couvert jusqu'au 2026-11-25" }),
+    });
+    const t = resumeDuBouton({ mode: "production", needs: n, runUrl: RUN, origine: "https://playdujour.com" });
+    expect(t).toContain("- **Jours** : Track 2 conservés · Jump 3 conservés · Tower 4 conservés");
+    expect(t).toContain("- **Jours de Tower** : 8 conservé(s), 8 préparé(s), 0 refait(s), couvert jusqu'au 2026-11-25");
+    expect(t).not.toContain("Jours de Track");
   });
 });

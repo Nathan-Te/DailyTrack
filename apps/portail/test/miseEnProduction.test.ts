@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -33,15 +33,17 @@ import {
   nomDuJour,
   planDesJours,
   DUREE_MISE_EN_PRODUCTION_MS,
-  planTower,
+  planPreparation,
   plagesConsecutives,
-  resumeTowerFiges,
-  towerAFiger,
-  towerFigesAPoser,
-  joursTowerAPoser,
-  resumeTower,
-  versionsTower,
-  TOWER_JOURS_APRES_BASCULE,
+  resumeFiges,
+  joursAFiger,
+  figesAPoser,
+  joursAPoser,
+  resumePreparation,
+  cheminsDuVersement,
+  poserJours,
+  lignePreparation,
+  versionsDuJeu,
   prodTag,
   resumeBascule,
   routesDe,
@@ -298,14 +300,14 @@ describe("les jours que la production sert hors du commit de son étiquette (jou
     git(depot, "add", "-A");
     git(depot, "commit", "-q", "-m", "Lot 99 : fige à la main");
     const sortie = join(depot, "servis");
-    const out = execFileSync("node", [CLI, "jours-servis", "prod-2026-10-25-0933", sortie, "--jusqua", "HEAD"], { cwd: depot, encoding: "utf8" });
+    const out = execFileSync("node", [CLI, "jours-servis", "prod-2026-10-25-0933", sortie, "--jeu", "jump", "--jusqua", "HEAD"], { cwd: depot, encoding: "utf8" });
     expect(out).toContain("2026-10-24.json");
     expect(readFileSync(join(sortie, "2026-10-24.json"), "utf8")).toBe("{\"v\":\"robot\"}");
     expect(existsSync(join(sortie, "2026-10-30.json"))).toBe(false); // un fichier de lot n'est pas servi par la production
     expect(existsSync(join(sortie, "2026-10-23.json"))).toBe(false); // celui du commit de l'étiquette y est déjà
     // Un fichier déjà présent n'est jamais réécrit.
     writeFileSync(join(sortie, "2026-10-24.json"), "{\"v\":\"deja\"}");
-    execFileSync("node", [CLI, "jours-servis", "prod-2026-10-25-0933", sortie, "--jusqua", "HEAD"], { cwd: depot, encoding: "utf8" });
+    execFileSync("node", [CLI, "jours-servis", "prod-2026-10-25-0933", sortie, "--jeu", "jump", "--jusqua", "HEAD"], { cwd: depot, encoding: "utf8" });
     expect(readFileSync(join(sortie, "2026-10-24.json"), "utf8")).toBe("{\"v\":\"deja\"}");
   });
 });
@@ -357,7 +359,7 @@ describe("le registre des jours de Track (lot R11)", () => {
     expect(fusionnerRegistre(initial, tard).conflits.some((x: { raison: string }) => x.raison.includes("absent de ce que la production sert"))).toBe(true);
   });
 
-  describe("en ligne de commande (registre-fusion, jours-servis --registre)", () => {
+  describe("en ligne de commande (registre-fusion, jours-servis --jeu track)", () => {
     const CLI = join(__dirname, "../../../scripts/mise-en-production.mjs");
     const git = (cwd: string, ...args: string[]) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], { cwd, encoding: "utf8" });
 
@@ -404,7 +406,7 @@ describe("le registre des jours de Track (lot R11)", () => {
       const prodCopie = mkdtempSync(join(tmpdir(), "prod-"));
       mkdirSync(join(prodCopie, "packages/sim/src"), { recursive: true });
       writeFileSync(join(prodCopie, chemin), JSON.stringify(initial));
-      const out = execFileSync("node", [CLI, "jours-servis", "prod-2026-10-25-0933", join(depot, "niveaux"), "--jusqua", "HEAD", "--registre", join(prodCopie, chemin)], { cwd: depot, encoding: "utf8" });
+      const out = execFileSync("node", [CLI, "jours-servis", "prod-2026-10-25-0933", join(prodCopie, chemin), "--jeu", "track", "--jusqua", "HEAD"], { cwd: depot, encoding: "utf8" });
       expect(out).toContain("registre des jours de Track servi par la production");
       expect(JSON.parse(readFileSync(join(prodCopie, chemin), "utf8")).jusqua).toBe("2026-10-29");
     });
@@ -549,22 +551,22 @@ describe("Tower : la lecture des résultats, les jours préparés et le premier 
   const proteges = { format: 1, premier: "2026-10-26", veille: "2026-11-09", jours: { "2026-11-09": "2 classé(s)" }, resultats: {} };
   const versions = { sim: 3, g: 3 };
 
-  it("versionsTower lit les deux constantes ; Tower absent d'un code : null", () => {
-    expect(versionsTower({ "packages/tower-sim/src/constantes.ts": "export const TOWER_SIM_VERSION = 3;", "packages/tower-sim/src/generateur/index.ts": "export const TOWER_GENERATOR_VERSION = 4;" })).toEqual({ sim: 3, g: 4 });
-    expect(versionsTower({})).toEqual({ sim: null, g: null });
+  it("versionsDuJeu lit les deux constantes de sa fiche ; un jeu absent d'un code : null", () => {
+    const VERSIONS = { sim: "packages/tower-sim/src/constantes.ts:TOWER_SIM_VERSION", generateur: "packages/tower-sim/src/generateur/index.ts:TOWER_GENERATOR_VERSION" };
+    expect(versionsDuJeu({ "packages/tower-sim/src/constantes.ts": "export const TOWER_SIM_VERSION = 3;", "packages/tower-sim/src/generateur/index.ts": "export const TOWER_GENERATOR_VERSION = 4;" }, VERSIONS)).toEqual({ sim: 3, g: 4 });
+    expect(versionsDuJeu({}, VERSIONS)).toEqual({ sim: null, g: null });
   });
 
-  it("planTower : un jour protégé ne change jamais ; un jour sans résultat est préparé s'il n'a pas de fichier ou refait s'il est d'une autre version, gardé sinon ; la fenêtre va de la veille à J+14", () => {
+  it("planPreparation : un jour protégé ne change jamais ; un jour sans résultat est préparé s'il n'a pas de fichier ou refait s'il est d'une autre version, gardé sinon ; la fenêtre va de la veille à J+14", () => {
     const fichiers = {
       "2026-11-09": { g: 2, sim: 3 }, // protégé, d'une autre version : on n'y touche pas
       "2026-11-10": { g: 3, sim: 3 }, // à la version du code : gardé
       "2026-11-11": { g: 2, sim: 3 }, // autre version, sans résultat : refait
     };
-    const plan = planTower({ veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers, versions });
+    const plan = planPreparation({ joursApres: 14, veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers, versions });
     expect(plan.du).toBe("2026-11-09");
     expect(plan.au).toBe("2026-11-24");
     expect(plan.jours).toHaveLength(16);
-    expect(TOWER_JOURS_APRES_BASCULE).toBe(14);
     const action = (d: string) => plan.jours.find((j: { date: string }) => j.date === d).action;
     expect(action("2026-11-09")).toBe("garde-protege");
     expect(action("2026-11-10")).toBe("garde");
@@ -573,17 +575,17 @@ describe("Tower : la lecture des résultats, les jours préparés et le premier 
     expect(plan.aSupprimer).toEqual(["2026-11-11"]);
     expect(plan.plages).toEqual([["2026-11-11", "2026-11-24"]]);
     // Un jour protégé sans fichier n'en reçoit pas : on ne crée rien pour lui.
-    const sans = planTower({ veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: {}, versions });
+    const sans = planPreparation({ joursApres: 14, veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: {}, versions });
     expect(sans.jours[0]).toEqual({ date: "2026-11-09", action: "protege-sans-fichier" });
     expect(sans.plages).toEqual([["2026-11-10", "2026-11-24"]]);
     // Des plages séparées quand un jour gardé coupe la fenêtre.
-    const coupe = planTower({ veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: { "2026-11-12": { g: 3, sim: 3 } }, versions });
+    const coupe = planPreparation({ joursApres: 14, veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: { "2026-11-12": { g: 3, sim: 3 } }, versions });
     expect(coupe.plages).toEqual([["2026-11-10", "2026-11-11"], ["2026-11-13", "2026-11-24"]]);
   });
 
   it("le résumé dit ce qui est conservé, préparé, refait, jusqu'où les jours sont couverts et le temps mesuré", () => {
-    const plan = planTower({ veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: { "2026-11-10": { g: 3, sim: 3 }, "2026-11-11": { g: 2, sim: 3 } }, versions });
-    const texte = resumeTower(plan, { jours: plan.aPreparer.length, secondes: 289, fils: 4 });
+    const plan = planPreparation({ joursApres: 14, veille: "2026-11-09", bascule: "2026-11-10", proteges, fichiers: { "2026-11-10": { g: 3, sim: 3 }, "2026-11-11": { g: 2, sim: 3 } }, versions });
+    const texte = resumePreparation("Tower", plan, 14, { jours: plan.aPreparer.length, secondes: 289, fils: 4 });
     expect(texte).toContain("2026-11-09 → 2026-11-24");
     expect(texte).toContain("Préparés : 13");
     expect(texte).toContain("refaits (autre version, sans résultat) : 1 (2026-11-11)");
@@ -610,11 +612,11 @@ describe("Tower : la lecture des résultats, les jours préparés et le premier 
     expect(Object.keys(fusion.tower)).toEqual(["2026-11-08"]);
   });
 
-  it("joursTowerAPoser : ajoute ce qui manque, ne remplace que les jours refaits par le plan, refuse tout autre changement", () => {
+  it("joursAPoser : ajoute ce qui manque, ne remplace que les jours refaits par le plan, refuse tout autre changement", () => {
     const plan = { aSupprimer: ["2026-11-11"] };
     const artefact = { "2026-11-10.json": "A", "2026-11-11.json": "B2", "2026-11-12.json": "C", "notes.txt": "x" };
-    expect(joursTowerAPoser(artefact, { "2026-11-10.json": "A", "2026-11-11.json": "B1" }, plan)).toEqual({ ajouts: ["2026-11-12.json"], remplaces: ["2026-11-11.json"], conflits: [] });
-    expect(joursTowerAPoser({ "2026-11-10.json": "A2" }, { "2026-11-10.json": "A" }, plan).conflits).toEqual(["2026-11-10.json"]);
+    expect(joursAPoser(artefact, { "2026-11-10.json": "A", "2026-11-11.json": "B1" }, plan)).toEqual({ ajouts: ["2026-11-12.json"], remplaces: ["2026-11-11.json"], conflits: [] });
+    expect(joursAPoser({ "2026-11-10.json": "A2" }, { "2026-11-10.json": "A" }, plan).conflits).toEqual(["2026-11-10.json"]);
   });
 });
 
@@ -622,26 +624,26 @@ describe("Tower : la lecture des résultats, les jours préparés et le premier 
 describe("Tower : les jours déjà servis sont figés (lot R16)", () => {
   const proteges = { format: 1, premier: "2026-10-26", debut: "2026-10-24", veille: "2026-10-29", jours: { "2026-10-27": "1 classé(s)", "2026-10-29": "déjà figé" }, resultats: {} };
 
-  it("towerAFiger : les jours protégés sans fichier, de `debut` à la veille ; un jour sans résultat n'est pas figé ; un jour qui a déjà son fichier non plus", () => {
-    const plan = towerAFiger({ proteges, fichiers: { "2026-10-25": true } });
+  it("joursAFiger : les jours protégés sans fichier, de `debut` à la veille ; un jour sans résultat n'est pas figé ; un jour qui a déjà son fichier non plus", () => {
+    const plan = joursAFiger({ proteges, fichiers: { "2026-10-25": true } });
     // avant le lancement (24 et 25 : protégés, le 25 a déjà son fichier) puis les deux jours nommés (27, 29) ; le 26 et le 28 n'ont aucun résultat : régénérés, pas figés
     expect(plan.dates).toEqual(["2026-10-24", "2026-10-27", "2026-10-29"]);
     expect(plan.plages).toEqual([["2026-10-24", "2026-10-24"], ["2026-10-27", "2026-10-27"], ["2026-10-29", "2026-10-29"]]);
-    expect(towerAFiger({ proteges, fichiers: Object.fromEntries(plan.dates.map((d) => [d, true]).concat([["2026-10-25", true]])) }).dates).toEqual([]);
+    expect(joursAFiger({ proteges, fichiers: Object.fromEntries(plan.dates.map((d) => [d, true]).concat([["2026-10-25", true]])) }).dates).toEqual([]);
   });
 
   it("le code en production n'a pas Tower (première mise en production du jeu) : il n'a servi aucun jour, rien à figer", () => {
-    const plan = towerAFiger({ proteges, fichiers: {}, prodSansTower: true });
-    expect(plan).toMatchObject({ dates: [], plages: [], prodSansTower: true });
-    expect(resumeTowerFiges(plan)).toContain("n'a pas Tower");
+    const plan = joursAFiger({ proteges, fichiers: {}, absentDeProd: true });
+    expect(plan).toMatchObject({ dates: [], plages: [], absentDeProd: true });
+    expect(resumeFiges("Tower", plan)).toContain("n'a pas Tower");
   });
 
-  it("towerFigesAPoser : écrit ce que le code en production a figé ; il manque un jour = erreur ; un fichier déjà là mais différent = erreur (un jour figé ne change jamais)", () => {
+  it("figesAPoser : écrit ce que le code en production a figé ; il manque un jour = erreur ; un fichier déjà là mais différent = erreur (un jour figé ne change jamais)", () => {
     const plan = { dates: ["2026-10-26", "2026-10-27"] };
-    expect(towerFigesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, {})).toEqual({ ecrire: ["2026-10-26.json", "2026-10-27.json"], manquants: [], conflits: [] });
-    expect(towerFigesAPoser(plan, { "2026-10-26.json": "A" }, {}).manquants).toEqual(["2026-10-27"]);
-    expect(towerFigesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, { "2026-10-27.json": "B" })).toEqual({ ecrire: ["2026-10-26.json"], manquants: [], conflits: [] });
-    expect(towerFigesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, { "2026-10-27.json": "AUTRE" }).conflits).toEqual(["2026-10-27"]);
+    expect(figesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, {})).toEqual({ ecrire: ["2026-10-26.json", "2026-10-27.json"], manquants: [], conflits: [] });
+    expect(figesAPoser(plan, { "2026-10-26.json": "A" }, {}).manquants).toEqual(["2026-10-27"]);
+    expect(figesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, { "2026-10-27.json": "B" })).toEqual({ ecrire: ["2026-10-26.json"], manquants: [], conflits: [] });
+    expect(figesAPoser(plan, { "2026-10-26.json": "A", "2026-10-27.json": "B" }, { "2026-10-27.json": "AUTRE" }).conflits).toEqual(["2026-10-27"]);
   });
 
   it("plagesConsecutives regroupe les jours qui se suivent (y compris à cheval sur deux mois)", () => {
@@ -663,7 +665,7 @@ describe("Tower : les jours déjà servis sont figés (lot R16)", () => {
 // Mise en production du 01/11/2026 (run 41351231877) : le script d'empreintes est COPIÉ dans le code en production (`empreintes <dépôt>`), qui peut être plus ancien que
 // lui. Il importait par son nom `declareFrozenGenerators` (lot V1), que le code en production n'avait pas : esbuild refusait de le compiler (« No matching export ») et le
 // garde-fou des jours arrêtait tout. Ce test le compile contre un `@cdj/jump-sim` réduit à ce qu'avait le code d'avant le lot V1 (`dailyLevel`, `thawLevel`).
-describe("le script d'empreintes se compile dans un code plus ancien que lui", () => {
+describe("les modules d'empreintes se compilent dans un code plus ancien qu'eux", () => {
   it("contre un @cdj/jump-sim sans declareFrozenGenerators (code d'avant le lot V1) : compilé, sans avertissement", async () => {
     const { build } = await import("esbuild");
     const ancien = { name: "jump-sim-ancien", setup(b: { onResolve: Function; onLoad: Function }) {
@@ -671,11 +673,77 @@ describe("le script d'empreintes se compile dans un code plus ancien que lui", (
       b.onLoad({ filter: /.*/, namespace: "ancien" }, () => ({ contents: "export function dailyLevel() {}\nexport function thawLevel() {}\n", loader: "js" }));
     } };
     const r = await build({
-      entryPoints: [join(__dirname, "../../api/scripts/empreintes-jours.ts")],
+      // L'entrée que `empreintes` écrit dans le dépôt visé : le module de Jump (`jours.fabrication.empreinte`) et le pilote commun.
+      stdin: { contents: 'import { empreinteJour } from "./jump-empreintes";\nimport { executer } from "./empreintes-jours";\nexecuter(empreinteJour, "jump");\n', resolveDir: join(__dirname, "../../api/scripts"), loader: "ts" },
       bundle: true, write: false, platform: "node", format: "esm", target: "node22", logLevel: "silent",
       external: ["@cdj/core", "@cdj/sim"], plugins: [ancien as never],
     });
     expect(r.errors).toEqual([]);
     expect(r.warnings.map((w) => w.text)).toEqual([]);
+  });
+});
+
+// Lot K4b : la chaîne lit les fiches (`jours.fabrication`) — ce que le versement des jours figés ajoute au dépôt vient d'elles.
+describe("la chaîne des jours lit les fiches (lot K4b)", () => {
+  it("les chemins du versement : les jours de chaque jeu (dossier ou registre), ce que refait `apresPose`, les empreintes des jours passés", () => {
+    expect(cheminsDuVersement().sort()).toEqual(["apps/api/test/jours-passes.json", "apps/jump/public/demo", "apps/jump/public/levels", "apps/tower/public/jours", "packages/sim/src/jours-track.json"]);
+  });
+});
+
+describe("poser-jours : ce que « Mettre en production » a produit pour chaque jeu entre dans le dépôt courant, sans nommer un jeu (lot K4b)", () => {
+  const CLI = join(__dirname, "../../../scripts/mise-en-production.mjs");
+  const ecrire = (racine: string, chemin: string, contenu: string) => {
+    mkdirSync(join(racine, chemin, ".."), { recursive: true });
+    writeFileSync(join(racine, chemin), contenu);
+  };
+  const monter = () => {
+    const depot = mkdtempSync(join(tmpdir(), "poser-"));
+    const art = join(tmpdir(), `artefact-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    // Le dépôt visé : un registre de Track, un niveau de Jump, deux jours de Tower (l'un sera refait par le plan, l'autre est identique).
+    const registre = (jusqua: string, g: number) => JSON.stringify(registreDesJours({ "2026-11-01": `${g}/14`, "2026-11-02": `${g}/14` }, jusqua));
+    ecrire(depot, "packages/sim/src/jours-track.json", registre("2026-11-02", 15));
+    ecrire(depot, "apps/jump/public/levels/2026-11-03.json", "{\"niveau\":\"3\"}");
+    ecrire(depot, "apps/tower/public/jours/2026-11-10.json", "A");
+    ecrire(depot, "apps/tower/public/jours/2026-11-12.json", "ANCIEN");
+    // L'artefact `jours` : un dossier par jeu.
+    ecrire(art, "proteges.json", "{}");
+    ecrire(art, "track/jours-track.json", JSON.stringify(registreDesJours({ "2026-11-01": "15/14", "2026-11-02": "15/14", "2026-11-03": "15/14" }, "2026-11-03")));
+    ecrire(art, "jump/jours/2026-11-03.json", "{\"niveau\":\"3\"}");
+    ecrire(art, "jump/jours/2026-11-04.json", "{\"niveau\":\"4\"}");
+    ecrire(art, "tower/plan.json", JSON.stringify({ aSupprimer: ["2026-11-12"] }));
+    ecrire(art, "tower/jours/2026-11-10.json", "A");
+    ecrire(art, "tower/jours/2026-11-12.json", "NOUVEAU");
+    ecrire(art, "tower/jours/2026-11-13.json", "B");
+    return { depot, art };
+  };
+
+  it("fusionne le registre, ajoute les niveaux manquants, ajoute et refait les jours d'un jeu qui prépare (plan), et le dit jeu par jeu", () => {
+    const { depot, art } = monter();
+    const resume = join(depot, "resume.md");
+    const out = execFileSync("node", [CLI, "poser-jours", art, "--resume", resume], { cwd: depot, encoding: "utf8" });
+    expect(readFileSync(join(depot, "apps/jump/public/levels/2026-11-04.json"), "utf8")).toBe("{\"niveau\":\"4\"}");
+    expect(readFileSync(join(depot, "apps/tower/public/jours/2026-11-12.json"), "utf8")).toBe("NOUVEAU"); // refait : le plan le demande
+    expect(readFileSync(join(depot, "apps/tower/public/jours/2026-11-13.json"), "utf8")).toBe("B");
+    expect(JSON.parse(readFileSync(join(depot, "packages/sim/src/jours-track.json"), "utf8")).jusqua).toBe("2026-11-03");
+    expect(out).toContain("jours de Jump posés : 1 ajouté(s), 0 refait(s)");
+    expect(out).toContain("jours de Tower posés : 1 ajouté(s), 1 refait(s)");
+    expect(readFileSync(resume, "utf8")).toContain("jours de Tower posés");
+  });
+
+  it("un jour figé qui diffère arrête (code 1), sauf s'il est refait par le plan ; rien n'est écrit pour lui", () => {
+    const { depot, art } = monter();
+    ecrire(art, "jump/jours/2026-11-03.json", "{\"niveau\":\"AUTRE\"}");
+    expect(() => execFileSync("node", [CLI, "poser-jours", art], { cwd: depot, encoding: "utf8", stdio: "pipe" })).toThrow(/jour\(s\) de Jump différent\(s\)/);
+    expect(readFileSync(join(depot, "apps/jump/public/levels/2026-11-03.json"), "utf8")).toBe("{\"niveau\":\"3\"}");
+  });
+
+  it("un jeu absent de l'artefact est sauté ; `jeux` liste ceux des fiches, dans l'ordre, par mode", () => {
+    const { depot, art } = monter();
+    rmSync(join(art, "tower"), { recursive: true });
+    const out = execFileSync("node", [CLI, "poser-jours", art], { cwd: depot, encoding: "utf8" });
+    expect(out).not.toContain("Tower");
+    expect(execFileSync("node", [CLI, "jeux"], { encoding: "utf8" }).trim()).toBe("track jump tower");
+    expect(execFileSync("node", [CLI, "jeux", "--mode", "registre"], { encoding: "utf8" }).trim()).toBe("track");
+    expect(execFileSync("node", [CLI, "jeux", "--mode", "fichier-par-jour"], { encoding: "utf8" }).trim()).toBe("jump tower");
   });
 });

@@ -72,7 +72,21 @@
   "jours": {
     "mode": "fichier-par-jour",
     "dossier": "apps/tower/public/jours",
-    "preuveInterditeEnProd": true
+    "preuveInterditeEnProd": true,
+    "fabrication": {
+      "empreinte": "apps/api/scripts/tower-empreintes.ts",
+      "figer": {
+        "paquet": "@cdj/tower-sim",
+        "script": "figer:tower",
+        "forme": "jours-proteges"
+      },
+      "preparer": {
+        "paquet": "@cdj/tower-sim",
+        "script": "preparer:tower",
+        "joursApresBascule": 14,
+        "garde": "packages/tower-sim/test/jours.test.ts"
+      }
+    }
   },
   "rejeu": {
     "unitesServeur": 30,
