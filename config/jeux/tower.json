@@ -187,7 +187,8 @@
       "classement.spec.ts": [
         "tower-sim",
         "tower-jeu",
-        "api-tower"
+        "api-tower",
+        "api-jeux"
       ],
       "poids.spec.ts": [
         "tower-jeu",

@@ -35,6 +35,7 @@
       "globs": ["apps/api/**"],
       "sauf": ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/src/jump*.ts", "apps/api/src/tower*.ts", "apps/api/test/**", "apps/api/scripts/**", "apps/api/CLAUDE.md"]
     },
+    "api-jeux": { "globs": ["apps/api/src/jeux/**", "apps/api/src/fiches.generated.ts"] },
     "api-admin": { "globs": ["apps/api/src/admin*.ts", "apps/api/src/journaux.ts", "apps/api/src/diffusion.ts", "apps/api/src/jeux.ts", "packages/core/src/nouveautes.ts", "packages/core/src/jeux.ts"] }
   },
   "specs": {
