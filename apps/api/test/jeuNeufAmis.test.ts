@@ -107,4 +107,22 @@ describe("un jeu neuf : amis, groupe, suggestions et classement des groupes", ()
     expect(r.body.groupes).toHaveLength(1);
     expect(r.body.groupes[0]).toMatchObject({ nom: "Les Cibles", score: 60, classes: 4 }); // (90 + 60 + 30) / 3
   });
+
+  it("le portail rend l'unité du jeu neuf (points, pas des millimètres) dans sa vue, dans « Amis » et dans la feuille d'un joueur", { timeout: 30_000 }, async () => {
+    const { t, code } = await monter();
+    for (const [n, charge] of [[1, [90]], [2, [60]]] as const) await jouer(t, code, n, [...charge]);
+    await ami(t, 1, 2);
+    const vue = await get(t, 1, `/api/portail/classement?date=${JOUR_ESSAI}&vue=${code}`);
+    expect(vue.status, JSON.stringify(vue.body)).toBe(200);
+    expect(vue.body).toMatchObject({ vue: code, unite: "points" });
+    expect(vue.body.jeux.find((j: { jeu: string }) => j.jeu === code)).toMatchObject({ unite: "points" });
+    expect(vue.body.top[0]).toMatchObject({ pseudo: "Joueur1", score: { unite: "points", valeur: 90 } });
+    const amis = await get(t, 1, `/api/portail/classement?date=${JOUR_ESSAI}&vue=${code}&filtre=amis`);
+    expect(amis.status, JSON.stringify(amis.body)).toBe(200);
+    expect(amis.body).toMatchObject({ unite: "points", filtre: "amis" });
+    const fiche = await get(t, 1, `/api/amis/fiche/${await refDe(2)}?date=${JOUR_ESSAI}`);
+    expect(fiche.body.jeux).toEqual([expect.objectContaining({ site: code, unite: "entier", valeur: 60 })]);
+    const jour = await get(t, 1, "/api/portail/jour");
+    expect(jour.body.jeux.find((j: { jeu: string }) => j.jeu === code)).toMatchObject({ unite: "points" });
+  });
 });

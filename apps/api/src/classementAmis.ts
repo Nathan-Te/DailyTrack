@@ -225,14 +225,14 @@ export function creerClassementAmis(d: DepsClassementAmis) {
         journee: numeroDeJournee(day, v.premierJour),
         ouvert,
         vue: vueNom,
-        jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(v.estHauteur(j) ? { unite: "mm" as const } : {}) })),
+        jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(v.estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}) })),
         filtre,
         classes,
         amis: amis.length,
         top: lignes,
         absents,
         moi: moi ? { ...moi, classes } : null,
-        ...(hauteur ? { unite: "mm" as const } : {}),
+        ...(hauteur ? { unite: jeuVue!.portail.unite ?? ("mm" as const) } : {}),
       };
     } else if (format === "cdj") {
       corps = { ...commune, participants, me: moi };
@@ -263,13 +263,13 @@ export function creerClassementAmis(d: DepsClassementAmis) {
     if (!cible) throw new HttpError(404, "unknown_friend", "Aucun joueur pour cette référence");
     const [c, monLien, sonLien] = await Promise.all([v.classementDe(day), d.origineDe(id, cible.id), d.origineDe(cible.id, id)]);
     const i = c.index.get(cible.id);
-    const jeux: { jeu: string; site: string; nom: string; unite: "temps" | "hauteur"; valeur: number; medaille: MedaillePortail | null; rang: number }[] = [];
+    const jeux: { jeu: string; site: string; nom: string; unite: "temps" | "hauteur" | "entier"; valeur: number; medaille: MedaillePortail | null; rang: number }[] = [];
     for (const j of ouverts) {
       const entete = { jeu: j.code, site: j.portail.site, nom: j.portail.nom };
       if (v.estHauteur(j)) {
         const h = c.hauteurs?.find((x) => x.jeu === j.code);
         const k = h?.index.get(cible.id);
-        if (h && k !== undefined) jeux.push({ ...entete, unite: "hauteur", valeur: h.classes[k]!.score?.valeur ?? 0, medaille: h.classes[k]!.medaille, rang: k + 1 });
+        if (h && k !== undefined) jeux.push({ ...entete, unite: j.portail.unite === "points" ? "entier" : "hauteur", valeur: h.classes[k]!.score?.valeur ?? 0, medaille: h.classes[k]!.medaille, rang: k + 1 });
       } else {
         const r = i === undefined ? undefined : c.cumul[i]!.resultats[c.jeux.indexOf(j.code)];
         if (r) jeux.push({ ...entete, unite: "temps", valeur: r.tempsMs, medaille: r.medaille, rang: r.rang });

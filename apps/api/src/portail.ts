@@ -447,10 +447,10 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       journee: numeroDeJournee(day, premierJour),
       ouvert,
       vue,
-      jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: "mm" as const } : {}) })),
+      jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}) })),
       classes: liste.length,
       top: hauteur ? hauteur.classes.slice(0, CLASSEMENT_TOP).map((x, i) => ligneHauteur(x, i + 1, noms.get(x.playerId)?.name ?? "?", noms.get(x.playerId)?.ref, noms.get(x.playerId)?.avatar)) : (gardes as LigneDuJour[]).map((l, i) => ligneCorps(l, i + 1, noms.get(l.id)?.name ?? "?", noms.get(l.id)?.ref, noms.get(l.id)?.avatar)),
-      ...(hauteur ? { unite: "mm" as const } : {}),
+      ...(hauteur ? { unite: jeuVue!.portail.unite ?? ("mm" as const) } : {}),
     };
     if (!id) {
       const restant = Math.floor((parisDayStart(aujourdhui + 1) - now()) / 1000);

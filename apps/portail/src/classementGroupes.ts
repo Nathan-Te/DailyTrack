@@ -2,7 +2,8 @@ import "./groupesPortail.css";
 import { baseApi } from "./jour"; // la feuille est importée par les modules à la demande (jamais par une page d'entrée qui l'embarquerait dans le premier chargement de l'accueil)
 import { adresseAvatar, type Langue } from "@cdj/profile";
 import { adresseGroupe, clientGroupes, type ClassementGroupes } from "@cdj/profile/src/groupes";
-import { avatar, el, formatHauteur, formatNombre, formatTemps } from "@cdj/ui";
+import { avatar, el, formatNombre, formatScore } from "@cdj/ui";
+import { formatDeVue } from "./jeuxFiches";
 import { CATALOGUE_COMMUN } from "@cdj/ui";
 import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
 
@@ -41,7 +42,7 @@ export async function monterGroupes(zone: HTMLElement, o: OptionsGroupes): Promi
     const cle = `jeu.${v}.nom`; // le dossier d'un jeu est l'identifiant de sa fiche
     return cle in CATALOGUE_COMMUN.fr ? t(cle) : v;
   };
-  const valeur = (score: number): string => (c.sens === "hauteur" ? formatHauteur(score, o.langue) : formatTemps(score, o.langue));
+  const valeur = (score: number): string => formatScore(formatDeVue(c.vue, c.sens), score, o.langue);
   const onglets = el(
     "div",
     { classe: "groupes-bascule", attrs: { role: "radiogroup", "aria-label": t("classement.vues.aria"), id: "groupes-vues" } },

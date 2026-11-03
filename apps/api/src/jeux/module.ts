@@ -429,6 +429,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     site: fiche.id,
     nom: config.nom,
     premierJour,
+    ...(fiche.classement.format !== "temps" ? { unite: fiche.classement.unite === "mm" ? ("mm" as const) : ("points" as const) } : {}),
     classement: fiche.classement.format === "temps" ? "temps" : "hauteur", // lot K4c : tout jeu classé à un score (hauteur, points) compte dans la journée mais jamais dans le cumul au temps
     async jour(day) {
       return contrat.portailJour(await getNiveau(day), day);

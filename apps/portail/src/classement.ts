@@ -13,9 +13,9 @@ import "./amisPortail.css";
 import { parisDay } from "@cdj/clock";
 import { formatDay, parseDay } from "@cdj/core";
 import { adresseAvatar, clientAmis, clientAvatar, ecrireLangue, lireFiltre, lireLangue, readPlayerId, type FiltreAmis, type Langue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, avatar, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatHauteur, formatNombre, formatTemps, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
+import { CATALOGUE_COMMUN, avatar, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatNombre, formatScore, formatTemps, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
-import { FICHES, ficheDuRegistre } from "./jeuxFiches";
+import { FICHES, ficheDuRegistre, formatDeVue } from "./jeuxFiches";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { lireClassement, type AmiAbsent, type Classement, type LectureClassement, type LigneClassement, type ResultatClassement } from "./classementDonnees";
 import { absentsLisibles, adresseDuClassement, filtreEffectif, ficheAffichee, ligneTouchable, nombreDAmis, sansAmi } from "./classementAmis";
@@ -111,7 +111,7 @@ function ligne(t: T, c: Classement, l: LigneClassement, moi: boolean): HTMLEleme
     el("span", { classe: "classement-rang", texte: formatNombre(l.rang, langue) }),
     el("span", { classe: "classement-pseudo" }, l.pseudo, avatar(t, { pseudo: l.pseudo, ref: l.ref, image: adresseAvatar(baseApi(), l.avatar), taille: 24, decoratif: true }), moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
     l.score
-      ? el("span", { classe: "classement-temps classement-hauteur", texte: formatHauteur(l.score.valeur, langue) })
+      ? el("span", { classe: "classement-temps classement-hauteur", texte: formatScore(formatDeVue(c.vue, "hauteur"), l.score.valeur, langue) })
       : l.tempsMs === null
       ? el("span", { classe: "classement-temps" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: t.t("classement.pasFini") }))
       : el("span", { classe: "classement-temps", texte: formatTemps(l.tempsMs, langue) }),
@@ -374,7 +374,7 @@ function rendre(): void {
     identifie ? el("div", { classe: "classement-filtre", attrs: { id: "classement-filtre" } }, selecteurDesAmis()) : null,
     amisIndispo ? el("p", { classe: "classement-etat classement-amis-indispo", attrs: { id: "classement-amis-indispo", role: "status" }, texte: t.t("classement.amis.indispo") }) : null,
     etat ? el("p", { classe: "classement-etat", attrs: { id: "classement-etat", role: "status" }, texte: etat }) : null,
-    c ? el("p", { classe: "classement-egalite", texte: t.t(c.unite === "mm" ? "classement.egaliteHauteur" : "classement.egalite") }) : null,
+    c ? el("p", { classe: "classement-egalite", texte: t.t(c.unite === "mm" ? "classement.egaliteHauteur" : c.unite === "points" ? "classement.egalitePoints" : "classement.egalite") }) : null,
     c
       ? el(
           "p",

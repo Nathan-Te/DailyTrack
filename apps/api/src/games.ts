@@ -151,6 +151,8 @@ export interface ClasseDuJour {
 
 /** Le crochet `portail` d'un jeu (lot I2). */
 export interface PortailDuJeu {
+  /** Lot K4d : l'unité du score d'un jeu classé à un score (`mm` : défaut, Tower ; `points` : un jeu neuf) — celle que les vues du classement rendent ; sans objet pour un jeu au temps. */
+  unite?: "mm" | "points";
   /** Lot I3 : le dossier du jeu sur le site (`track`, `jump`) : l'écran d'arrivée d'un autre jeu y mène (`../<site>/`). */
   site: string;
   /** Lot I3 : le nom du jeu tel qu'on l'écrit (« Track », « Jump ») : « Jeu suivant du jour : Jump ». */
