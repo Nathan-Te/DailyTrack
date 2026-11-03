@@ -110,6 +110,7 @@ Rapporter dans la conversation : (a) le nombre d'envois 200 de plus de 8 s ; (b)
 | C5 | Renvoi d'une partie déjà acceptée : si le même joueur a déjà ce `inputs_hash` ce jour-là, répondre `200` « déjà enregistrée » avec le rang **avant** le rejeu (économise un rejeu, ne change aucun compte) | S |
 | C6 | Si §4 montre des 429 sur des adresses partagées : relever ou affiner la limite par adresse (décision de Nathan, coûts) ; si des instances saturent ou démarrent à froid : `--cpu-boost` (coût à chiffrer dans `couts.md`) | S + décision |
 | C7 | Si 502 sporadiques : régler `keepAliveTimeout` du serveur Node | S |
+| C10 | Tower, avant son ouverture : mesurer la mémoire après N envois, corriger la rétention ou passer à 1 Go (décision de Nathan, coût) | S à M |
 | C9 | Calculer le niveau du jour suivant avant minuit, ou hors du fil principal (voir § 6 bis) | M |
 | C8 | Durées par étape (niveau, SQL, rejeu, écriture) dans la ligne d'envoi, pour trouver la traîne lente (p95 3,7 s) ; à faire **avant** de relever d'autres limites | M |
 
@@ -144,3 +145,12 @@ Les heures sont celles du **début** des requêtes (le journal « temps du jour 
 | Tower | 15 envois de plus de 3 s en un jour et demi, dont 8,3 à 8,5 s trois fois | En local un envoi Tower chaud coûte 0,3 à 0,4 s : l'écart reste à expliquer (premier rejeu d'une instance, processeur partagé avec le fil de calcul). |
 
 **À relever pour trancher** : dans Cloud Monitoring, **utilisation du processeur** et **de la mémoire** du conteneur (`run.googleapis.com/container/cpu/utilizations` et `…/memory/utilizations`, agrégation max, pas de 1 minute) le 31/10 de 20:00 à 20:40 et le 1/11 à 00:00. Processeur proche de 100 % pendant les blocages : le fil de Node est occupé (calcul, ramasse-miettes) ; processeur bas : l'instance attend (Turso, réseau, processeur bridé). **Corrections ajoutées** : **C8** gagne la mesure du retard de la boucle d'événements (`monitorEventLoopDelay`, une ligne de journal au-delà d'une seconde) ; **C9 : calculer le niveau du jour suivant avant minuit** (première requête après 23 h 50, hors de la requête d'un joueur) **ou le sortir du fil principal** (M) ; c'est ce qui supprime les 5 à 10 s de chaque minuit.
+
+### 6 ter. Processeur et mémoire du conteneur (semaine du 27/10 au 3/11, captures de Nathan, lues à l'œil sur les graphiques)
+
+| Mesure | Lecture | Conséquence |
+|---|---|---|
+| **Processeur** (centiles 50, 95, 99) | médiane ≈ 1 % ; p99 en général 5 à 20 % ; **pics de 14 à 22 % juste après chaque minuit** (28, 29, 30, 31/10, 1/11 jusqu'à ≈ 22 %, 3/11) ; un seul point à ≈ 37 % (1/11 en journée) ; **jamais proche de 100 %** | C'est une **moyenne par minute** : 8 s à pleine charge dans une minute font ≈ 13 %. Les pics de minuit (14 à 22 %) sont **de la taille d'un calcul de 8 à 13 s**, ce qui va avec la génération du jour (C9). Le soir du 31/10 le p99 vaut 15 à 22 % : compatible avec un blocage de 8 s par du calcul, **sans le prouver** (résolution trop grosse). |
+| **Mémoire** (limite 512 Mo) | **jusqu'au 31/10 : médiane ≈ 20 %, p99 ≤ 32 %** (≈ 100 à 160 Mo). **À partir du 1/11 : médiane ≈ 50 % les 2 et 3/11, p99 de 75 à 86 %** (≈ 380 à 440 Mo), en dents de scie (montée, puis retour vers 17-20 %) | Un second problème, **distinct du premier** : il apparaît avec Tower (aperçu, fil de calcul et Rapier chargés dans l'instance ; 15 envois Tower de plus de 3 s le 2/11). Il n'explique pas les blocages du 31/10 (mémoire à 25-32 % ce soir-là). Aucune erreur 5xx : le plafond n'a pas été franchi, mais la marge est faible, et un tas presque plein ralentit le ramasse-miettes. Forme en dents de scie compatible avec une **fuite** ou avec le cycle de vie des instances : à mesurer. |
+
+**Corrections ajoutées** : **C10 (avant l'ouverture de Tower)** : mesurer la mémoire du serveur après N envois Tower (en local, sans Turso), puis décider entre corriger la rétention (S à M) ou passer le service de 512 Mo à 1 Go (coût à chiffrer par Nathan dans `couts.md`).

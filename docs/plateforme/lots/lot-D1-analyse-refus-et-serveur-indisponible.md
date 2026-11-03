@@ -13,10 +13,10 @@ Rapport complet : `docs/plateforme/analyse-refus.md`. Reproduction locale : `scr
 Coût d'un envoi (14 à 24 instructions SQL), abandon à 1 s puis résultat écrit tout seul, renvoi `200 improved=false` sans ligne au journal, un refus de chaque famille avec « compté / non compté » au journal, 429 (31ᵉ du joueur, 61ᵉ d'une adresse), 503 `busy`. Golden de `sim`, `jump-sim`, `tower-sim` : 31 tests verts.
 
 ## Vérifications pour Nathan (lecture seule, détail et filtres au § 4 du rapport)
-Cloud Run › `cdj-api` › Journaux : envois en `200` de plus de 8 s ; 429 et 5xx (`jsonPayload.message="refus"`) ; 409 par heure. Métriques : latence p99, instances, démarrage des conteneurs. Région de la base Turso. Relevés faits le 3/11 : voir le § 6 du rapport. Reste à relever : l'utilisation du processeur et de la mémoire pendant les blocages (31/10 20:00-20:40, 1/11 00:00).
+Cloud Run › `cdj-api` › Journaux : envois en `200` de plus de 8 s ; 429 et 5xx (`jsonPayload.message="refus"`) ; 409 par heure. Métriques : latence p99, instances, démarrage des conteneurs. Région de la base Turso. Relevés faits le 3/11 : voir le § 6 du rapport. Processeur et mémoire relevés (§ 6 ter) : pics de processeur de la taille d'un calcul de 8 à 13 s à chaque minuit ; **mémoire passée de ≈ 20 % à 50-86 % depuis l'aperçu de Tower** (marge faible sur 512 Mo).
 
 ## Corrections proposées (après K2bc et K3, module commun)
-**C3 délai d'envoi ≈ 20 s (S, à faire tout de suite)** · C9 niveau du lendemain calculé avant minuit (M) · C8 durées par étape et retard de la boucle d'événements (M) · C1 détail par code au tableau de bord (S) · C2 instrumentation sans donnée personnelle (M) · C4 message « Envoi en cours… » au lieu d'« indisponible » (M) · C5 renvoi déjà accepté : réponse avant le rejeu (S) · C6 limites par adresse ou `--cpu-boost`, sur preuve (décision de Nathan) · C7 `keepAliveTimeout`, sur preuve (S).
+**C3 délai d'envoi ≈ 20 s (S, à faire tout de suite)** · C9 niveau du lendemain calculé avant minuit (M) · C8 durées par étape et retard de la boucle d'événements (M) · C10 mémoire de Tower avant son ouverture (S à M) · C1 détail par code au tableau de bord (S) · C2 instrumentation sans donnée personnelle (M) · C4 message « Envoi en cours… » au lieu d'« indisponible » (M) · C5 renvoi déjà accepté : réponse avant le rejeu (S) · C6 limites par adresse ou `--cpu-boost`, sur preuve (décision de Nathan) · C7 `keepAliveTimeout`, sur preuve (S).
 
 ## Pour les joueurs
 rien
