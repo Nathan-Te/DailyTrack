@@ -22,9 +22,11 @@ const CLES_ALEATOIRES = new Set(["invitation", "jeton", "cle", "lien", "token", 
 const CLES_HORLOGE_REELLE = new Set(["modifieLe", "creeeLe"]);
 
 /** Masque ce qui est tiré au hasard à chaque passage (jetons, clés d'aperçu, identifiants de groupes) ; le reste est conservé tel quel. */
-export function normaliser(valeur: unknown, cle = ""): unknown {
-  if (Array.isArray(valeur)) return valeur.map((v) => normaliser(v, cle));
-  if (valeur && typeof valeur === "object") return Object.fromEntries(Object.entries(valeur).map(([k, v]) => [k, normaliser(v, k)]));
+export function normaliser(valeur: unknown, cle = "", parent = ""): unknown {
+  if (Array.isArray(valeur)) return valeur.map((v) => normaliser(v, cle, parent));
+  if (valeur && typeof valeur === "object") return Object.fromEntries(Object.entries(valeur).map(([k, v]) => [k, normaliser(v, k, cle)]));
+  // Lot K2b : les durées mesurées sur l'horloge réelle (l'état du tableau de bord : `etat.api.ms`, `etat.base.ms`) varient d'un passage à l'autre.
+  if (typeof valeur === "number" && cle === "ms" && (parent === "api" || parent === "base")) return "<durée réelle>";
   if (typeof valeur === "string") {
     if (CLES_ALEATOIRES.has(cle) && valeur.length > 0) return "<aléatoire>";
     if (CLES_HORLOGE_REELLE.has(cle) && valeur.length > 0) return "<horloge réelle>";

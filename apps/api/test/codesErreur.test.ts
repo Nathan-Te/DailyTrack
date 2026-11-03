@@ -253,6 +253,8 @@ describe("codes d'erreur : les sources (apps/api/src)", () => {
     for (const { text } of sources) {
       for (const [, code] of text.matchAll(/new HttpError\(\s*\d{3}\s*,\s*"([a-z_]+)"/g)) used.add(code!);
       for (const [, code] of text.matchAll(/corpsErreur\(\s*"([a-z_]+)"/g)) used.add(code!);
+      // Lot K2b : le contrat d'un jeu lève `RefusJeu("<code>", …)` ; le module le rend au statut de la liste (`versHttp`, typé par `CodeErreur`).
+      for (const [, code] of text.matchAll(/new RefusJeu\(\s*"([a-z_]+)"/g)) used.add(code!);
     }
     expect(Object.keys(CODES_ERREUR).filter((c) => !used.has(c))).toEqual([]);
   });

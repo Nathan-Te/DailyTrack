@@ -24,10 +24,15 @@ import { inputsHash, jumpInputs } from "./copies";
 import { WithHeaders, cacheHeaders } from "./cache";
 import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
-import { refOfPlayer } from "./players";
-import type { AdminDuJeu, GameDefinition, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
+import { FICHES_SERVEUR } from "./fiches.generated";
+import type { GameDefinition, GameInstance, MedaillePortail, Platform, RequestInfo } from "./games";
+import { type AdaptateurTable, type ContratJeu, creerJeu, type LigneBrute, type LigneNiveau, type OutilsModule, RefusJeu } from "./jeux/index";
 import { JUMP_LIVES_SCHEMA, createJumpLives } from "./jumpLives";
 
+// **Lot K2b : le serveur de Jump = son contrat (`contratJump`), son adaptateur de table (`ADAPTATEUR_JUMP`) et ses routes propres** (vies, carte des morts, carnage, fantôme du premier, lecture regroupée) ; les
+// routes `info`, `day`, `submit`, `board`, `me`, le classement, les copies, l'aperçu, l'effacement et les crochets du portail et de l'administration sont ceux du module des jeux (`jeux/module.ts`,
+// `apps/api/CLAUDE.md`, « Module des jeux »). Ce qui suit décrit ce que fait le serveur de Jump, quel que soit l'endroit du code.
+//
 // DailyJump (`jump`) au registre des jeux. Lot P0 de la plateforme : l'espace `/api/jump/` en lecture ; lot P1 : **le classement du jour
 // prouvé par rejeu**.
 //
@@ -257,18 +262,6 @@ export interface JumpBundle {
 
 const LEVEL_ID = /^jour-(\d{4}-\d{2}-\d{2})-g(\d{1,4})(-t[a-z]+)?$/;
 
-/** Ce que rend `validateJump` : l'essai rejoué par le serveur sur le niveau du jour. */
-export interface JumpValidated {
-  day: number;
-  info: JumpDayInfo;
-  replay: JumpReplay;
-  ticks: number;
-  deaths: number;
-  /** Lot R9 : l'empreinte des entrées de l'essai, et celle de l'auteur du niveau (`null` : pas calculée, jour fermé) : la base du refus des copies. */
-  inputsHash: string;
-  authorHash: string | null;
-}
-
 // ——— La règle des niveaux figés : celle du jeu, importée de `@cdj/jump-sim` (lot P1 ; avant, une copie gardée égale par un test) ———
 
 /**
@@ -328,313 +321,247 @@ export function jumpDailyOf(day: number, frozen: Readonly<Record<string, unknown
   return dailyLevel(day);
 }
 
-/** Rang d'un résultat : ceux qui ont un meilleur temps, puis à temps égal ceux qui l'ont envoyé avant, puis au même instant l'identifiant. */
-const RANK_SQL =
-  "SELECT COUNT(*) AS n FROM jump_results WHERE day = ? AND hidden = 0 AND (ticks < ? OR (ticks = ? AND (submitted_at < ? OR (submitted_at = ? AND player_id < ?))))";
+const msOfTicks = (ticks: number) => Math.round((ticks * 1000) / TICK_RATE);
+const n = (v: unknown): number => Number(v);
 
-export function createJump(platform: Platform, options: JumpOptions): GameInstance {
-  const { db, now, log, today, sinceMidnight, hashKey, hit, readHit, readJson, playerIdOf, players, limits } = platform;
+/** Le niveau du jour tel que le module le garde : ce que rend `/api/jump/day`, le texte (jamais rendu) et l'empreinte des entrées de l'auteur ; la grille jouable se lit une fois, au premier rejeu. */
+export interface NiveauJump {
+  info: JumpDayInfo;
+  ascii: string;
+  authorHash: string | null;
+  level: Level | null;
+}
+
+/** Ce qu'un rejeu a donné : le temps (pas) et les morts du serveur. */
+export interface MesureJump {
+  ticks: number;
+  deaths: number;
+}
+
+/**
+ * **L'adaptateur de table de Jump** (lot K2b) : `jump_results`, classée au temps (pas) croissant (puis envoi ↑, identifiant ↑ : les départages ultimes de toute table) ; la table n'a pas de colonne
+ * `medal` (la médaille se lit sur le niveau du jour) et le classement lit aussi les morts de l'essai ; `jump_levels` garde le niveau du jour.
+ */
+export const ADAPTATEUR_JUMP: AdaptateurTable = {
+  table: "jump_results",
+  colonnes: [{ nom: "ticks", colonne: "ticks", sens: "asc" }],
+  sansMedaille: true,
+  lecturesPlus: ["deaths"],
+  colonnesEcrites: ["level_id", "ticks", "deaths", "replay", "sim_version", "generator_version", "first_at", "submitted_at", "inputs_hash", "hidden", "apercu"],
+  colonnesGardees: ["first_at", "hidden", "apercu"],
+  niveaux: { table: "jump_levels", colonnes: ["level_id", "hash", "author_ticks", "medals", "theme", "source", "ascii", "author_hash"] },
+};
+
+const versionRefus = (detail: string) => new RefusJeu("version", `Une nouvelle version du jeu est disponible : recharge la page (${detail})`);
+
+/**
+ * **Le contrat de Jump** (lot K2b) : le niveau du jour (le fichier figé qui se vérifie, sinon le générateur), la validation d'un essai **dans l'ordre de Jump** (`valider` : le niveau du jour seulement, les
+ * versions, la rediffusion, un essai qui part du départ, puis le rejeu), les médailles lues sur le niveau, le format des réponses. Il ne lit ni n'écrit aucune table (la ligne du niveau est gardée par le
+ * module) et ne construit aucune réponse HTTP (il lève `RefusJeu`).
+ */
+export function contratJump(platform: Platform, options: JumpOptions): ContratJeu<NiveauJump, JumpReplay, MesureJump> {
+  const { log, today } = platform;
   const frozen = options.frozen ?? {};
   const frozenDays = Object.keys(frozen).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   // Lot V1 : le générateur de chaque fichier figé dit si le jour garde l'ancienne règle des thèmes (g22 et avant) et si le premier jour du sac doit éviter le thème de la veille.
   declareFrozenGenerators(Object.fromEntries(frozenDays.map((d) => [d, (frozen[d] as { generatorVersion?: unknown } | undefined)?.generatorVersion as number])));
-  /** Niveaux connus de cette instance : la règle, ce que rend `/api/jump/day`, le texte, et le niveau lu (au premier rejeu). */
-  const levels = new Map<number, { rule: string; info: JumpDayInfo; ascii: string; level: Level | null; authorHash: string | null }>();
-  /** Niveaux en cours de calcul : deux requêtes simultanées n'en font qu'un (≈ 0,2 s de génération). */
-  const computing = new Map<number, Promise<JumpDayInfo>>();
 
-  /** La règle d'une date : versions et empreinte du fichier figé de l'image (sans le rejouer : le rejeu ne se fait qu'au calcul). */
-  function ruleOf(day: number): string {
-    const f = frozen[formatDay(day)] as { hash?: unknown } | undefined;
-    const tag = f === undefined ? "-" : `f${typeof f.hash === "string" ? f.hash : "?"}`;
-    return `s${JUMP_SIM_VERSION}-g${JUMP_GENERATOR_VERSION}-${tag}`;
-  }
-
-  async function getLevel(day: number): Promise<JumpDayInfo> {
-    const rule = ruleOf(day);
-    const memo = levels.get(day);
-    if (memo && memo.rule === rule) return memo.info;
-    let pending = computing.get(day);
-    if (!pending) {
-      pending = loadLevel(day, rule).finally(() => computing.delete(day));
-      computing.set(day, pending);
+  /** Le niveau jouable : le texte vient de la base, on vérifie son empreinte avant de s'en servir (une ligne abîmée ne doit jamais classer un essai). */
+  function jouable(niveau: NiveauJump): Level {
+    if (!niveau.level) {
+      if (textHash(niveau.ascii) !== niveau.info.hash) throw new RefusJeu("level_unavailable", "Niveau du jour indisponible, réessaie plus tard");
+      niveau.level = parseLevel(niveau.ascii);
     }
-    return pending;
+    return niveau.level;
   }
 
-  /** Le niveau jouable d'une date (pour le rejeu d'un envoi) : celui de `getLevel`, lu une fois par instance. */
-  async function playable(day: number): Promise<{ info: JumpDayInfo; level: Level; authorHash: string | null }> {
-    const info = await getLevel(day);
-    const memo = levels.get(day)!;
-    if (!memo.level) {
-      // Le texte vient de la base : on vérifie son empreinte avant de s'en servir (une ligne abîmée ne doit jamais classer un essai).
-      if (textHash(memo.ascii) !== info.hash) throw new HttpError(503, "level_unavailable", "Niveau du jour indisponible, réessaie plus tard");
-      memo.level = parseLevel(memo.ascii);
-    }
-    return { info, level: memo.level, authorHash: memo.authorHash };
+  /** Étape 3 d'un envoi (essai ou vies) : le niveau du jour seulement. Rend le numéro du jour ; archive, thème forcé, futur : refusés. */
+  function jourDuNiveau(levelId: unknown, ouvert: (jour: number) => boolean): number {
+    const m = typeof levelId === "string" ? LEVEL_ID.exec(levelId) : null;
+    if (!m) throw new RefusJeu("invalid_level", "Identifiant de niveau attendu : jour-AAAA-MM-JJ-g<N>");
+    if (m[3]) throw new RefusJeu("not_daily", "Un thème forcé est un essai : il n'est jamais classé");
+    const day = parseDay(m[1]!);
+    if (day === null) throw new RefusJeu("invalid_level", "Date du niveau illisible");
+    if (day > today()) throw new RefusJeu("not_daily", "Ce niveau n'est pas encore sorti");
+    if (day < PREMIER_JOUR_JUMP) throw new RefusJeu("not_daily", "Ce jour n'a pas de niveau DailyJump");
+    if (!ouvert(day)) throw new RefusJeu("day_closed", "Le classement de ce jour est figé : seul le niveau du jour se classe");
+    return day;
   }
 
-  /** Lu en base si la règle est la même, sinon calculé et gardé. Deux instances peuvent le calculer ensemble : même résultat, même écriture. */
-  async function loadLevel(day: number, rule: string): Promise<JumpDayInfo> {
-    const row = await db.first<{ rule: string; level_id: string; hash: string; author_ticks: number; medals: string; theme: string; source: string; ascii: string; author_hash: string | null }>(
-      "SELECT rule, level_id, hash, author_ticks, medals, theme, source, ascii, author_hash FROM jump_levels WHERE day = ?",
-      [day],
-    );
-    let info: JumpDayInfo;
-    let ascii: string;
-    let authorHash: string | null;
-    // Lot R9 : un niveau gardé sans l'empreinte de son auteur (écrit avant le lot) est recalculé tant que son jour accepte des essais ; un jour fermé ne sert plus à rien.
-    if (row && row.rule === rule && (row.author_hash !== null || day < today() - 1)) {
-      const generatorVersion = Number(/-g(\d+)$/.exec(row.level_id)?.[1] ?? JUMP_GENERATOR_VERSION);
-      info = {
+  const contrat: ContratJeu<NiveauJump, JumpReplay, MesureJump> & { jourDuNiveau: typeof jourDuNiveau; jouable: typeof jouable } = {
+    jourDuNiveau,
+    jouable,
+    nomJournal: "DailyJump",
+    compteEffacement: "essaisDailyJump",
+    messagesJournal: { jour: "DailyJump : niveau du jour calculé", partie: "DailyJump : essai du jour" },
+    jourMin: PREMIER_JOUR_JUMP,
+    versions: () => ({ simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION }),
+    joursFiges: frozenDays,
+
+    /** La règle d'une date : versions et empreinte du fichier figé de l'image (sans le rejouer : le rejeu ne se fait qu'au calcul). */
+    async regle(day) {
+      const f = frozen[formatDay(day)] as { hash?: unknown } | undefined;
+      const tag = f === undefined ? "-" : `f${typeof f.hash === "string" ? f.hash : "?"}`;
+      return `s${JUMP_SIM_VERSION}-g${JUMP_GENERATOR_VERSION}-${tag}`;
+    },
+
+    async calculer(day) {
+      const c = computeJumpDay(day, frozen[formatDay(day)]);
+      const authorHash = await inputsHash(c.authorInputs);
+      if (c.frozenMiss) log("WARNING", "DailyJump : niveau figé refusé, niveau généré", { day: c.info.date, reason: c.frozenMiss.slice(0, 120) });
+      const niveau: NiveauJump = { info: c.info, ascii: c.ascii, authorHash, level: null };
+      const ligne: LigneNiveau = {
+        level_id: c.info.id,
+        hash: c.info.hash,
+        author_ticks: c.info.authorTicks,
+        medals: JSON.stringify(c.info.medals),
+        theme: c.info.theme,
+        source: c.info.source,
+        ascii: c.ascii,
+        author_hash: authorHash,
+      };
+      return { niveau, ligne };
+    },
+
+    restaurer(day, ligne) {
+      // Lot R9 : un niveau gardé sans l'empreinte de son auteur (écrit avant le lot) est recalculé tant que son jour accepte des essais ; un jour fermé ne sert plus à rien.
+      const authorHash = (ligne.author_hash as string | null) ?? null;
+      if (authorHash === null && !(day < today() - 1)) throw new Error("niveau gardé sans l'empreinte de son auteur");
+      const levelId = String(ligne.level_id);
+      const info: JumpDayInfo = {
         date: formatDay(day),
         number: levelNumber(day),
-        id: row.level_id,
-        hash: row.hash,
-        authorTicks: row.author_ticks,
-        medals: JSON.parse(row.medals) as JumpMedals,
-        theme: row.theme,
-        source: row.source === "fige" ? "fige" : "genere",
+        id: levelId,
+        hash: String(ligne.hash),
+        authorTicks: n(ligne.author_ticks),
+        medals: JSON.parse(String(ligne.medals)) as JumpMedals,
+        theme: String(ligne.theme),
+        source: ligne.source === "fige" ? "fige" : "genere",
         simVersion: JUMP_SIM_VERSION,
-        generatorVersion,
+        generatorVersion: Number(/-g(\d+)$/.exec(levelId)?.[1] ?? JUMP_GENERATOR_VERSION),
       };
-      ascii = row.ascii;
-      authorHash = row.author_hash;
-    } else {
-      const started = performance.now();
-      const c = computeJumpDay(day, frozen[formatDay(day)]);
-      info = c.info;
-      ascii = c.ascii;
-      authorHash = await inputsHash(c.authorInputs);
-      await db.run(
-        "INSERT OR REPLACE INTO jump_levels (day, rule, level_id, hash, author_ticks, medals, theme, source, ascii, created_at, author_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [day, rule, info.id, info.hash, info.authorTicks, JSON.stringify(info.medals), info.theme, info.source, c.ascii, now(), authorHash],
-      );
-      if (c.frozenMiss) log("WARNING", "DailyJump : niveau figé refusé, niveau généré", { day: info.date, reason: c.frozenMiss.slice(0, 120) });
-      log("INFO", "DailyJump : niveau du jour calculé", { day: info.date, id: info.id, source: info.source, ms: Math.round(performance.now() - started) });
-    }
-    levels.set(day, { rule, info, ascii, level: null, authorHash });
-    return info;
-  }
+      return { info, ascii: String(ligne.ascii), authorHash, level: null };
+    },
 
-  function dayOf(date: string): number {
-    const day = parseDay(date);
-    if (day === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
-    if (day > today()) throw new HttpError(404, "unknown_day", "Ce niveau n'est pas encore sorti");
-    if (day < PREMIER_JOUR_JUMP) throw new HttpError(404, "unknown_day", "Ce jour n'a pas de niveau DailyJump");
-    return day;
-  }
+    champsJournalJour: (niveau) => ({ id: niveau.info.id, source: niveau.info.source }),
+    infoJour: (niveau) => niveau.info,
+    portailJour: (niveau) => {
+      const l = niveau.info;
+      return { numero: l.number, theme: l.theme, seuils: { author: msOfTicks(l.medals.author), gold: msOfTicks(l.medals.gold), silver: msOfTicks(l.medals.silver), bronze: msOfTicks(l.medals.bronze) } };
+    },
+    empreinteAuteur: (niveau) => niveau.authorHash,
 
-  /** Le jour accepte-t-il encore des envois ? Aujourd'hui (Paris), et hier pendant la grâce qui suit minuit. Sinon il est figé. */
-  const isOpen = (day: number): boolean => day === today() || (day === today() - 1 && sinceMidnight() < JUMP_GRACE_MS);
+    /**
+     * La validation d'un envoi, dans l'ordre de Jump : le niveau du jour seulement ; les versions annoncées ; la rediffusion (lot R6 : un onglet resté ouvert pendant une mise en production envoie les versions
+     * de SON code — pour un jour conservé, celles du niveau suffisent) ; le niveau que le serveur joue ; un essai qui part du départ ; le joueur (bon marché) ; le plafond de rejeux, proportionnel à la durée ;
+     * le rejeu, la seule source du temps et des morts.
+     */
+    async valider(body, ctx) {
+      const levelId = body.levelId;
+      const day = jourDuNiveau(levelId, ctx.ouvert);
+      if (typeof body.simVersion !== "number" || typeof body.generatorVersion !== "number") throw versionRefus(`simulation v${String(body.simVersion)}, générateur v${String(body.generatorVersion)}`);
+      if (body.simVersion > JUMP_SIM_VERSION) throw versionRefus(`simulation v${String(body.simVersion)}, serveur v${JUMP_SIM_VERSION}`);
+      if (typeof body.replay !== "string" || body.replay.length === 0) throw new RefusJeu("invalid_replay", "Rediffusion manquante");
+      let replay: JumpReplay;
+      try {
+        replay = decodeReplay(body.replay);
+      } catch (e) {
+        throw new RefusJeu("invalid_replay", e instanceof JumpReplayError ? e.message : "Rediffusion illisible");
+      }
+      if (replay.simVersion > JUMP_SIM_VERSION) throw versionRefus(`rediffusion v${replay.simVersion}, serveur v${JUMP_SIM_VERSION}`);
+      const niveau = await ctx.niveau(day);
+      const level = jouable(niveau);
+      const info = niveau.info;
+      if (body.simVersion !== JUMP_SIM_VERSION && body.simVersion !== level.simVersion) throw versionRefus(`simulation v${body.simVersion}, serveur v${JUMP_SIM_VERSION}, niveau en v${level.simVersion}`);
+      if (body.generatorVersion !== JUMP_GENERATOR_VERSION && body.generatorVersion !== info.generatorVersion) throw versionRefus(`générateur v${body.generatorVersion}, serveur v${JUMP_GENERATOR_VERSION}, niveau en g${info.generatorVersion}`);
+      // Lot 15 : une rediffusion porte la version de son niveau (3 pour un jour figé en v3, 4 ensuite).
+      if (replay.simVersion !== level.simVersion) throw versionRefus(`rediffusion v${replay.simVersion}, niveau en v${level.simVersion}`);
+      if (levelId !== info.id) throw versionRefus(`niveau ${String(levelId)}, le serveur joue ${info.id}`);
+      if (replay.levelId !== info.id) throw new RefusJeu("invalid_replay", "Cette rediffusion n'est pas celle de ce niveau");
+      // Un essai part du départ, à l'arrêt, chrono à zéro : une « vie » qui repartirait d'un point de passage avec un chrono choisi n'est pas un essai.
+      if (replay.start.checkpoint !== -1 || replay.start.time !== 0 || replay.start.elan !== 0 || replay.start.sections.length !== 0) throw new RefusJeu("invalid_replay", "Un essai part du départ du niveau");
+      await ctx.avantRejeu();
+      platform.spendReplays(replayUnits(replay.runs)); // lots R5 et R7 : plafond global de rejeux de l'instance, proportionnel à la durée (503 au-delà)
+      let r;
+      try {
+        r = replayAttempt(level, replay, info.id);
+      } catch (e) {
+        throw new RefusJeu("invalid_replay", e instanceof JumpReplayError ? e.message : "Rediffusion illisible");
+      }
+      if (!r.finished) throw new RefusJeu("not_finished", "Cet essai n'arrive pas au bout du niveau");
+      return { jour: day, niveau, rejeu: replay, mesure: { ticks: r.time, deaths: r.deaths.length }, empreinte: await inputsHash(jumpInputs(replay.runs)), empreinteAuteur: niveau.authorHash };
+    },
+    corpsDeRegistre: (niveau, code) => ({ levelId: niveau.info.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: code }),
 
-  async function limitReads(info: RequestInfo): Promise<void> {
-    await platform.readHitAddress(info, "jrd", JUMP_READS_PER_CLIENT);
-  }
+    rejouee: (niveau, _r, m) => ({
+      score: { ticks: m.ticks },
+      autres: { level_id: niveau.info.id, deaths: m.deaths, sim_version: JUMP_SIM_VERSION, generator_version: JUMP_GENERATOR_VERSION },
+    }),
+    medaille: (niveau, score) => jumpMedalFor(score.ticks!, niveau.info.medals),
+    medailleDeLigne: (niveau, b) => jumpMedalFor(n(b.ticks), niveau.info.medals),
+    champsJournalPartie: (m, improved) => ({ ticks: m.ticks, deaths: m.deaths, improved }),
+    validation: (m) => ({ ms: msOfTicks(m.ticks), ticks: m.ticks, deaths: m.deaths }),
 
-  /** L'identifiant secret de l'en-tête `X-Player-Id` (jamais dans l'adresse : elle finit dans les journaux de l'hébergeur). */
-  function headerPlayer(req: Request, required: boolean): string | null {
-    const raw = req.headers.get("x-player-id");
-    if (raw === null || raw === "") {
-      if (required) throw new HttpError(400, "invalid_player", "Identifiant de joueur manquant (en-tête X-Player-Id)");
-      return null;
-    }
-    return playerIdOf(raw);
-  }
+    /** Le classement : top 10 (rang, pseudo, temps en pas, morts, médaille), ta ligne ; un jour sans classé ne lit pas le niveau. Même mise en forme pour la réponse d'un envoi. */
+    async tableau(c) {
+      const base = { date: c.date, open: c.ouvert, participants: c.participants };
+      if (!c.apresEnvoi && c.participants === 0) return { ...base, levelId: null, top: [], me: null };
+      const niveau = await c.niveau();
+      // Lot F2 : `ref` = la référence publique du joueur (`players.ref`, jamais l'identifiant secret), pour l'ajouter en ami depuis le classement.
+      const ligne = (rank: number, b: LigneBrute): JumpBoardRow => ({
+        rank,
+        name: String(b.name),
+        ticks: n(b.ticks),
+        deaths: n(b.deaths),
+        medal: jumpMedalFor(n(b.ticks), niveau.info.medals),
+        ...(b.ref ? { ref: String(b.ref) } : {}),
+      });
+      const top = c.top.map((r, i) => ligne(i + 1, r));
+      const me = c.moi ? ligne(await c.rangMoi(), c.moi) : null;
+      return { ...base, levelId: niveau.info.id, top, me };
+    },
+    reponseEnvoi: (c): JumpSubmitResult => {
+      const m = c.mesure as MesureJump;
+      return {
+        accepted: true,
+        date: c.date,
+        levelId: c.niveau.info.id,
+        ticks: m.ticks,
+        deaths: m.deaths,
+        improved: c.improved,
+        bestTicks: n(c.meilleur.ticks),
+        bestDeaths: n(c.meilleur.deaths),
+        medal: (c.meilleur.medal as JumpMedal | null) ?? null,
+        rank: c.rang,
+        participants: c.participants,
+        board: c.board as JumpBoard,
+      };
+    },
+    versPortail: (b) => ({ tempsMs: msOfTicks(n(b.ticks)), ticks: n(b.ticks) }),
+    // Pas d'essai classé : des morts envoyées ce jour-là (les vies du jour, oubliées à la fin du jour) disent que le joueur a commencé.
+    async etatSansEssai(id, day) {
+      const vies = await platform.db.first<{ count: number }>("SELECT count FROM jump_lives WHERE day = ? AND player_id = ?", [day, id]);
+      return vies && vies.count > 0 ? { statut: "en_cours", morts: vies.count } : { statut: "pas_joue" };
+    },
+  };
+  return contrat;
+}
 
-  const versionError = (detail: string) => new HttpError(409, "version", `Une nouvelle version du jeu est disponible : recharge la page (${detail})`);
+/** La fiche de Jump (`config/jeux/jump.json`), telle que le serveur la lit. */
+const FICHE_JUMP = FICHES_SERVEUR.find((f) => f.code === "jump")!;
 
-  /**
-   * Étapes 3 à 5 de la validation d'un envoi (le débit et la taille sont vérifiés avant, par la route) : le niveau du jour seulement, les
-   * versions, puis **le rejeu**. Rend le temps et les morts **du serveur**. Sert aussi au registre (`validate`).
-   */
-  /** Étape 3 d'un envoi (essai ou vies) : le niveau du jour seulement. Rend le numéro du jour ; archive, thème forcé, futur : refusés. */
-  function dailyDayOf(levelId: unknown): number {
-    const m = typeof levelId === "string" ? LEVEL_ID.exec(levelId) : null;
-    if (!m) throw new HttpError(400, "invalid_level", "Identifiant de niveau attendu : jour-AAAA-MM-JJ-g<N>");
-    if (m[3]) throw new HttpError(409, "not_daily", "Un thème forcé est un essai : il n'est jamais classé");
-    const day = parseDay(m[1]!);
-    if (day === null) throw new HttpError(400, "invalid_level", "Date du niveau illisible");
-    if (day > today()) throw new HttpError(409, "not_daily", "Ce niveau n'est pas encore sorti");
-    if (day < PREMIER_JOUR_JUMP) throw new HttpError(409, "not_daily", "Ce jour n'a pas de niveau DailyJump");
-    if (!isOpen(day)) throw new HttpError(409, "day_closed", "Le classement de ce jour est figé : seul le niveau du jour se classe");
-    return day;
-  }
+export function createJump(platform: Platform, options: JumpOptions): GameInstance {
+  const { db, now, today, hashKey, readHit, players } = platform;
+  const contrat = contratJump(platform, options) as ReturnType<typeof contratJump> & { jourDuNiveau: (levelId: unknown, ouvert: (jour: number) => boolean) => number; jouable: (n: NiveauJump) => Level };
+  /** Les outils du module (le niveau d'un jour, le classement, la place…), reçus à la création. */
+  let o!: OutilsModule<NiveauJump>;
+  /** Lot P3 : les vies de tout le monde (envoi, carte des morts, échantillon du carnage, oubli à la fin du jour). */
+  let lives!: ReturnType<typeof createJumpLives>;
 
-  async function validateJump(body: Record<string, unknown>, beforeReplay?: () => Promise<void>): Promise<JumpValidated> {
-    // 3. Le niveau du jour seulement.
-    const levelId = body.levelId;
-    const day = dailyDayOf(levelId);
-    // 4. Les versions : celles du code du jeu, puis le niveau que le serveur calcule pour ce jour (figé ou généré).
-    //    Lot R6 : un onglet resté ouvert pendant une mise en production envoie les versions de SON code. Pour un jour d'avant la bascule, le niveau n'a pas changé
-    //    (fichier figé, même identifiant) : ses versions sont celles du niveau, et l'envoi est accepté ; pour un jour régénéré, ce sont celles du serveur, et un vieil
-    //    onglet reçoit 409 `version` (« recharge la page »), jamais une perte silencieuse.
-    if (typeof body.simVersion !== "number" || typeof body.generatorVersion !== "number") throw versionError(`simulation v${String(body.simVersion)}, générateur v${String(body.generatorVersion)}`);
-    if (body.simVersion > JUMP_SIM_VERSION) throw versionError(`simulation v${String(body.simVersion)}, serveur v${JUMP_SIM_VERSION}`);
-    if (typeof body.replay !== "string" || body.replay.length === 0) throw new HttpError(400, "invalid_replay", "Rediffusion manquante");
-    let replay: JumpReplay;
-    try {
-      replay = decodeReplay(body.replay);
-    } catch (e) {
-      throw new HttpError(400, "invalid_replay", e instanceof JumpReplayError ? e.message : "Rediffusion illisible");
-    }
-    if (replay.simVersion > JUMP_SIM_VERSION) throw versionError(`rediffusion v${replay.simVersion}, serveur v${JUMP_SIM_VERSION}`);
-    const { info, level, authorHash } = await playable(day);
-    // Lot R6 : les versions annoncées par le jeu sont celles du serveur, ou celles du niveau de ce jour (un onglet d'avant la mise en production, sur un jour conservé).
-    if (body.simVersion !== JUMP_SIM_VERSION && body.simVersion !== level.simVersion) throw versionError(`simulation v${body.simVersion}, serveur v${JUMP_SIM_VERSION}, niveau en v${level.simVersion}`);
-    if (body.generatorVersion !== JUMP_GENERATOR_VERSION && body.generatorVersion !== info.generatorVersion) throw versionError(`générateur v${body.generatorVersion}, serveur v${JUMP_GENERATOR_VERSION}, niveau en g${info.generatorVersion}`);
-    // Lot 15 : une rediffusion porte la version de son niveau (3 pour un jour figé en v3, 4 ensuite).
-    if (replay.simVersion !== level.simVersion) throw versionError(`rediffusion v${replay.simVersion}, niveau en v${level.simVersion}`);
-    if (levelId !== info.id) throw versionError(`niveau ${levelId}, le serveur joue ${info.id}`);
-    if (replay.levelId !== info.id) throw new HttpError(400, "invalid_replay", "Cette rediffusion n'est pas celle de ce niveau");
-    // Un essai part du départ, à l'arrêt, chrono à zéro : une « vie » qui repartirait d'un point de passage avec un chrono choisi n'est pas un essai.
-    if (replay.start.checkpoint !== -1 || replay.start.time !== 0 || replay.start.elan !== 0 || replay.start.sections.length !== 0) {
-      throw new HttpError(400, "invalid_replay", "Un essai part du départ du niveau");
-    }
-    await beforeReplay?.();
-    platform.spendReplays(replayUnits(replay.runs)); // lots R5 et R7 : plafond global de rejeux de l'instance, proportionnel à la durée (503 au-delà)
-    // 5. Le rejeu : la seule source du temps et des morts.
-    let r;
-    try {
-      r = replayAttempt(level, replay, info.id);
-    } catch (e) {
-      throw new HttpError(400, "invalid_replay", e instanceof JumpReplayError ? e.message : "Rediffusion illisible");
-    }
-    if (!r.finished) throw new HttpError(422, "not_finished", "Cet essai n'arrive pas au bout du niveau");
-    return { day, info, replay, ticks: r.time, deaths: r.deaths.length, inputsHash: await inputsHash(jumpInputs(replay.runs)), authorHash };
-  }
-
-  // Lot P3 : les vies de tout le monde (envoi, carte des morts, échantillon du carnage, oubli à la fin du jour).
-  const lives = createJumpLives({
-    platform,
-    playable,
-    dailyDayOf,
-    dayOf,
-    isOpen,
-    lastClosed: () => (isOpen(today() - 1) ? today() - 2 : today() - 1),
-    headerPlayer,
-    versionError,
-  });
-
-  async function rankOf(day: number, ticks: number, submittedAt: number, playerId: string): Promise<number> {
-    const row = await db.first<{ n: number }>(RANK_SQL, [day, ticks, ticks, submittedAt, submittedAt, playerId]);
-    return (row?.n ?? 0) + 1;
-  }
-
-  async function participants(day: number): Promise<number> {
-    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE day = ? AND hidden = 0", [day]))?.n ?? 0;
-  }
-
-  /** Tous les essais classés d'un jour, masqués compris (le panneau d'administration compte l'activité réelle). */
-  async function participantsTous(day: number): Promise<number> {
-    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE day = ?", [day]))?.n ?? 0;
-  }
-
-  async function submit(req: Request, info: RequestInfo): Promise<JumpSubmitResult> {
-    // 1. Débit, compté en base (exact quelle que soit l'instance), avant de lire le corps et avant tout rejeu. Compteurs propres à DailyJump :
-    // ceux de DailyTrack (`ip`, `p`) ne bougent pas.
-    await platform.hitAddress(info, "jip", limits.perClient);
-    const playerId = headerPlayer(req, true)!;
-    await hit(await hashKey("jp", playerId), limits.perPlayer);
-    // 2. Taille du corps (413 au-delà de `MAX_BODY_BYTES`, lu sans tout charger).
-    const body = await readJson(req);
-    // 3 à 5. Le jour, les versions, puis (après le code révoqué et le pseudo, bon marché) le rejeu.
-    let known: Awaited<ReturnType<typeof players.find>> = null;
-    let name = "";
-    const v = await validateJump(body, async () => {
-      // Pseudo (lot 30, règle de la plateforme) : réservé à son premier propriétaire, vérifié avant le rejeu et garanti par la base à l'écriture.
-      await players.assertActive(playerId);
-      known = await players.find(playerId);
-      name = await players.resolveName(playerId, body.name, known);
-    });
-
-    // Lot R9 : une copie (les entrées de la preuve de l'auteur, ou d'un essai déjà classé d'un autre joueur ce jour-là) est refusée avant d'écrire quoi que ce soit (pas
-    // même le joueur). Le même joueur qui renvoie son propre essai n'est pas concerné ; l'ordre d'arrivée ne change rien (le premier essai classé garde sa place).
-    if (!platform.allowCopies) {
-      if (v.inputsHash === v.authorHash) throw new HttpError(409, "replay_copy", "Cet essai est la copie de la preuve de l'auteur du niveau");
-      const copy = await db.first<{ n: number }>("SELECT 1 AS n FROM jump_results WHERE day = ? AND inputs_hash = ? AND player_id <> ? LIMIT 1", [v.day, v.inputsHash, playerId]);
-      if (copy) throw new HttpError(409, "replay_copy", "Cet essai est la copie d'un autre");
-      // Lot N1 : un essai que l'administration a retiré ne revient pas tel quel.
-      if (await db.first("SELECT 1 AS n FROM resultats_retires WHERE game = 'jump' AND day = ? AND inputs_hash = ? LIMIT 1", [v.day, v.inputsHash])) throw new HttpError(409, "replay_copy", "Cet essai a été retiré par l'administration");
-    }
-
-    const t = now();
-    // Le joueur n'existe qu'après un essai valide (table `players` de la plateforme, comme DailyTrack).
-    await players.save(playerId, name, known);
-    // Lot P : pendant l'aperçu du jeu (`info.apercu`) l'essai est rangé à part (`apercu = 1`, `hidden = 1` : aucun classement public ne le lit) ; il ne remplace jamais un essai public.
-    const apercu = info.apercu === true ? 1 : 0;
-    const previous = await db.first<{ ticks: number; deaths: number; submitted_at: number }>(
-      "SELECT ticks, deaths, submitted_at FROM jump_results WHERE day = ? AND player_id = ? AND apercu = ?",
-      [v.day, playerId, apercu],
-    );
-    const improved = !previous || v.ticks < previous.ticks;
-    if (improved) {
-      await db.run(
-        `INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at, inputs_hash, hidden, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT (day, player_id) DO UPDATE SET level_id = excluded.level_id, ticks = excluded.ticks, deaths = excluded.deaths, replay = excluded.replay,
-           sim_version = excluded.sim_version, generator_version = excluded.generator_version, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash
-         WHERE excluded.ticks < jump_results.ticks AND jump_results.apercu = excluded.apercu`,
-        [v.day, playerId, v.info.id, v.ticks, v.deaths, body.replay as string, JUMP_SIM_VERSION, JUMP_GENERATOR_VERSION, t, t, v.inputsHash, (known as { hidden: number } | null)?.hidden === 1 || apercu === 1 ? 1 : 0, apercu], // lot N1 : un joueur masqué reste masqué ; lot P : l'aperçu est masqué aussi
-      );
-    }
-    log("INFO", "DailyJump : essai du jour", { day: v.info.date, ticks: v.ticks, deaths: v.deaths, improved });
-    const bestTicks = improved ? v.ticks : previous!.ticks;
-    const bestDeaths = improved ? v.deaths : previous!.deaths;
-    const bestAt = improved ? t : previous!.submitted_at;
-    const [rank, total, rows] = await Promise.all([rankOf(v.day, bestTicks, bestAt, playerId), participants(v.day), topOf(v.day)]);
-    const medal = jumpMedalFor(bestTicks, v.info.medals);
-    // Lot P4 : le classement d'après l'envoi (le top 10 et ta ligne) : le jeu n'a pas à relire `/board`.
-    const board: JumpBoard = {
-      date: v.info.date,
-      open: isOpen(v.day),
-      participants: total,
-      levelId: v.info.id,
-      top: rows.map((r, i) => ({ rank: i + 1, name: r.name, ticks: r.ticks, deaths: r.deaths, medal: jumpMedalFor(r.ticks, v.info.medals), ...(r.ref ? { ref: r.ref } : {}) })),
-      me: { rank, name, ticks: bestTicks, deaths: bestDeaths, medal, ref: await refOfPlayer(playerId) },
-    };
-    return {
-      accepted: true,
-      date: v.info.date,
-      levelId: v.info.id,
-      ticks: v.ticks,
-      deaths: v.deaths,
-      improved,
-      bestTicks,
-      bestDeaths,
-      medal,
-      rank,
-      participants: total,
-      board,
-    };
-  }
-
-  /** Les 10 premiers d'un jour (la règle des égalités). */
-  function topOf(day: number): Promise<{ ticks: number; deaths: number; name: string; ref: string | null }[]> {
-    return db.all<{ ticks: number; deaths: number; name: string; ref: string | null }>(
-      "SELECT r.ticks AS ticks, r.deaths AS deaths, p.name AS name, p.ref AS ref FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.hidden = 0 ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
-      [day, JUMP_BOARD_TOP],
-    );
-  }
-
-  /** Le classement d'un jour : top 10, nombre de classés, la ligne du joueur (en-tête `X-Player-Id`). Un jour passé est figé, toujours lisible. */
-  async function board(day: number, me: string | null): Promise<JumpBoard> {
-    const [count, rows, own] = await Promise.all([
-      participants(day),
-      topOf(day),
-      me
-        ? db.first<{ ticks: number; deaths: number; submitted_at: number; name: string; ref: string | null }>(
-            "SELECT r.ticks AS ticks, r.deaths AS deaths, r.submitted_at AS submitted_at, p.name AS name, p.ref AS ref FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.player_id = ?",
-            [day, me],
-          )
-        : Promise.resolve(null),
-    ]);
-    const base = { date: formatDay(day), open: isOpen(day), participants: count };
-    if (count === 0) return { ...base, levelId: null, top: [], me: null };
-    const level = await getLevel(day);
-    // Lot F2 : `ref` = la référence publique du joueur (`players.ref`, jamais l'identifiant secret), pour l'ajouter en ami depuis le classement.
-    const top: JumpBoardRow[] = rows.map((r, i) => ({ rank: i + 1, name: r.name, ticks: r.ticks, deaths: r.deaths, medal: jumpMedalFor(r.ticks, level.medals), ...(r.ref ? { ref: r.ref } : {}) }));
-    const mine: JumpBoardRow | null = own && me ? { rank: await rankOf(day, own.ticks, own.submitted_at, me), name: own.name, ticks: own.ticks, deaths: own.deaths, medal: jumpMedalFor(own.ticks, level.medals), ...(own.ref ? { ref: own.ref } : {}) } : null;
-    return { ...base, levelId: level.id, top, me: mine };
+  /** Le niveau jouable d'un jour pour les vies (le même que pour le classement) ; son refus est celui du contrat. */
+  async function playable(day: number): Promise<{ info: JumpDayInfo; level: Level; authorHash: string | null }> {
+    const niveau = await o.niveau(day);
+    return { info: niveau.info, level: contrat.jouable(niveau), authorHash: niveau.authorHash };
   }
 
   /**
@@ -660,7 +587,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       first = row
         ? { playerId: row.player_id, date: formatDay(day), levelId: row.level_id, name: row.name, ticks: row.ticks, deaths: row.deaths, replay: row.replay, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION }
         : null;
-      if (!isOpen(day) && first) {
+      if (!o.ouvert(day) && first) {
         if (firstOfClosed.size >= GHOST_CACHE_MAX && !firstOfClosed.has(day)) firstOfClosed.delete(firstOfClosed.keys().next().value!);
         firstOfClosed.set(day, { at: now(), first });
       }
@@ -721,8 +648,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
    * rendus comme une valeur : `profileError`). Les mêmes fonctions que les routes séparées : mêmes réponses, mêmes lignes lues.
    */
   async function bundle(day: number, req: Request, info: RequestInfo): Promise<WithHeaders> {
-    const me = headerPlayer(req, false);
-    const open = isOpen(day);
+    const me = o.joueurEntete(req, false);
+    const open = o.ouvert(day);
     const date = formatDay(day);
     const wantProfile = me !== null && day === today();
     const profile = wantProfile
@@ -735,7 +662,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
         )
       : Promise.resolve(null);
     const [b, ghost, deaths, p, generation] = await Promise.all([
-      board(day, me),
+      o.classement(day, me) as Promise<JumpBoard>,
       firstGhost(day, me).catch((e: unknown) => {
         if (e instanceof HttpError && e.code === "no_ghost") return null;
         throw e;
@@ -749,66 +676,123 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     return new WithHeaders(body, cacheHeaders({ open, perPlayer: true, noCache: wantProfile }));
   }
 
-  async function route(path: string, req: Request, _url: URL, info: RequestInfo): Promise<unknown> {
-    // Lot P3 : la première requête qui voit un jour terminé fige sa carte et son échantillon et oublie ses vies brutes (une comparaison
-    // d'entiers ensuite, par instance).
-    if (path.startsWith("/api/jump/")) await lives.forget();
-    if (path === "/api/jump/info") {
+  /** Les routes que seul Jump a : les vies (lot P3) et les lectures du jour qui ne sont pas celles du module (fantôme du premier, carte des morts, carnage, lecture regroupée). */
+  const routesPropres = [
+    async (path: string, req: Request, _url: URL, info: RequestInfo): Promise<unknown> => {
+      if (path === "/api/jump/lives") {
+        if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
+        return await lives.receive(req, info);
+      }
+      const m = /^\/api\/jump\/day\/([^/]+)(\/ghost\/first|\/deaths|\/carnage|\/bundle)$/.exec(path);
+      if (!m) return undefined;
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-      await limitReads(info);
-      return { game: "jump", simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, today: formatDay(today()), frozenDays, environment: platform.environment };
-    }
-    if (path === "/api/jump/submit") {
-      if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
-      return await submit(req, info);
-    }
-    if (path === "/api/jump/lives") {
-      if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
-      return await lives.receive(req, info);
-    }
-    if (path === "/api/jump/me") {
-      if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-      return await myProfile(headerPlayer(req, true)!, info);
-    }
-    const m = /^\/api\/jump\/day\/([^/]+)(\/board|\/ghost\/first|\/deaths|\/carnage|\/bundle)?$/.exec(path);
-    if (m) {
-      if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-      await limitReads(info);
+      await o.limiterLectures(info);
       let date: string;
       try {
         date = decodeURIComponent(m[1]!);
       } catch {
         throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
       }
-      const day = dayOf(date);
+      const day = o.dayOf(date);
       // Lot P4 : chaque lecture porte son cache (`cache.ts`) ; celles qui dépendent de `X-Player-Id` ne sont jamais partagées.
-      const open = isOpen(day);
-      const personal = (body: unknown) => new WithHeaders(body, cacheHeaders({ open, perPlayer: true }));
-      const common = (body: unknown) => new WithHeaders(body, cacheHeaders({ open, perPlayer: false }));
-      if (m[2] === "/board") return personal(await board(day, headerPlayer(req, false)));
-      if (m[2] === "/ghost/first") return personal(await firstGhost(day, headerPlayer(req, false)));
-      if (m[2] === "/deaths") return common(await lives.deathMap(date));
-      if (m[2] === "/carnage") return common(await lives.carnage(date));
-      if (m[2] === "/bundle") return await bundle(day, req, info);
-      return common(await getLevel(day));
-    }
-    if (path === "/api/jump" || path.startsWith("/api/jump/")) throw new HttpError(404, "not_found", "Route inconnue");
-    return undefined;
-  }
+      const open = o.ouvert(day);
+      if (m[2] === "/ghost/first") return new WithHeaders(await firstGhost(day, o.joueurEntete(req, false)), cacheHeaders({ open, perPlayer: true }));
+      if (m[2] === "/deaths") return new WithHeaders(await lives.deathMap(date), cacheHeaders({ open, perPlayer: false }));
+      if (m[2] === "/carnage") return new WithHeaders(await lives.carnage(date), cacheHeaders({ open, perPlayer: false }));
+      return await bundle(day, req, info);
+    },
+  ];
 
-  // --- Lot I2 : ce que le portail montre de DailyJump (`portail.ts`) -----------------------------------------------------------
-  // Le niveau du jour (`getLevel` : figé ou généré, gardé) donne le numéro, le thème et les seuils (en pas, rendus en ms) ; l'état du joueur vient
-  // de `jump_results` (classement prouvé) puis, sans essai classé, de `jump_lives` (des morts envoyées ce jour-là : `en_cours`).
-  const msOfTicks = (ticks: number) => Math.round((ticks * 1000) / TICK_RATE);
-  const classesMemo = new Map<number, { at: number; n: number }>();
-  async function classesDuJour(day: number): Promise<number> {
-    const kept = classesMemo.get(day);
-    if (kept && now() - kept.at < JUMP_CLASSES_MEMO_MS) return kept.n;
-    const n = await participants(day);
-    if (classesMemo.size > 8) classesMemo.clear();
-    classesMemo.set(day, { at: now(), n });
-    return n;
-  }
+  return creerJeu(platform, {
+    fiche: FICHE_JUMP,
+    contrat,
+    adaptateur: ADAPTATEUR_JUMP,
+    nom: "Jump",
+    prefixe: "/api/jump",
+    graceMs: JUMP_GRACE_MS,
+    top: JUMP_BOARD_TOP,
+    lecturesParAdresse: JUMP_READS_PER_CLIENT,
+    lecturesProfilParJoueur: JUMP_ME_PER_PLAYER,
+    debit: { adresse: "jip", joueur: "jp", lectures: "jrd", profilAdresse: "jmeip", profilJoueur: "jme" },
+    memoClasses: JUMP_CLASSES_MEMO_MS,
+    // Le lecteur existant (`?watch=first`, lot P2) ne montre que l'essai du premier du jour.
+    lienRediffusion: (date, rang) => (rang === 1 ? `/jump/?watch=first&seed=${date}` : null),
+    // Lot P3 : la première requête qui voit un jour terminé fige sa carte et son échantillon et oublie ses vies brutes (une comparaison d'entiers ensuite, par instance).
+    avantRoute: async (path) => {
+      if (path.startsWith("/api/jump/")) await lives.forget();
+    },
+    recevoirOutils: (outils) => {
+      o = outils;
+      lives = createJumpLives({
+        platform,
+        playable,
+        dailyDayOf: (levelId) => contrat.jourDuNiveau(levelId, o.ouvert),
+        dayOf: o.dayOf,
+        isOpen: o.ouvert,
+        lastClosed: () => (o.ouvert(today() - 1) ? today() - 2 : today() - 1),
+        headerPlayer: o.joueurEntete,
+        versionError: (detail) => new HttpError(409, "version", `Une nouvelle version du jeu est disponible : recharge la page (${detail})`),
+      });
+    },
+    // Lot P2 : un profil par jeu, sous son préfixe (`/api/me` de DailyTrack ne change pas).
+    profil: myProfile,
+    routesPropres,
+    surcharges: {
+      // Lot P2 / I2 : le profil commun lit la place gardée d'un jour fermé (`final_rank`) ; lot N1 : les actions de l'administration oublient les places gardées des jours concernés.
+      portail: (base) => ({ ...base, profil: profilPortail }),
+      admin: (base) => ({
+        ...base,
+        compteurs: async (day) => {
+          const [finis, vies] = await Promise.all([base.compteurs(day), db.first<{ n: number }>("SELECT COALESCE(SUM(count), 0) AS n FROM jump_lives WHERE day = ?", [day])]);
+          let morts = vies?.n ?? 0;
+          if (morts === 0) morts = (await db.first<{ n: number }>("SELECT deaths AS n FROM jump_deaths WHERE day = ?", [day]))?.n ?? 0; // un jour fini : les vies brutes sont oubliées, il reste le total figé
+          return { ...finis, morts };
+        },
+        resultats: resultatsAdmin,
+        retirer: async (id, day) => {
+          const row = await db.first<{ ticks: number; replay: string; inputs_hash: string | null }>("SELECT ticks, replay, inputs_hash FROM jump_results WHERE day = ? AND player_id = ?", [day, id]);
+          if (!row) return null;
+          return {
+            tempsMs: msOfTicks(row.ticks),
+            replay: row.replay,
+            inputsHash: row.inputs_hash,
+            statements: [
+              { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day = ?", params: [day] },
+              { sql: "DELETE FROM jump_results WHERE day = ? AND player_id = ?", params: [day, id] },
+            ],
+          };
+        },
+        masquer: (id, masque) => [
+          { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM jump_results WHERE player_id = ?)", params: [id] },
+          { sql: "UPDATE jump_results SET hidden = ? WHERE player_id = ?", params: [masque ? 1 : 0, id] },
+        ],
+      }),
+      // « Changer mon code » : les essais classés suivent le joueur (les premiers gardés en mémoire sont oubliés : leur identifiant a changé), ses vies aussi.
+      rotation: (ancien, nouveau, base) => {
+        firstOfClosed.clear();
+        return [...base, ...lives.rotateStatements(ancien, nouveau)];
+      },
+      // Lot R5 — effacement d'un joueur : ses essais classés (un premier effacé n'est plus servi : le suivant devient le premier) et ses vies du jour en cours.
+      effacement: async (playerId, base) => {
+        const l = await lives.erase(playerId);
+        return {
+          counts: { ...base.counts, ...l.counts },
+          statements: [
+            // Lot I2 : les places finales des jours concernés sont recalculées sans lui (à la prochaine lecture du profil commun des autres).
+            { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM jump_results WHERE player_id = ?)", params: [playerId] },
+            ...base.statements,
+            ...l.statements,
+          ],
+        };
+      },
+      // Un pseudo changé : le premier d'un jour passé gardé en mémoire le reprend à la prochaine lecture.
+      apresRenommage: () => firstOfClosed.clear(),
+      apresEffacement: () => {
+        firstOfClosed.clear();
+        lives.onErased();
+      },
+    },
+  });
 
   /**
    * Le profil commun : jours classés, médailles, meilleure place. La place d'un jour fermé est calculée une fois (`final_rank`, `final_total`)
@@ -820,7 +804,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       "SELECT r.day AS day, r.level_id AS level_id, r.ticks AS ticks, r.submitted_at AS submitted_at, r.final_rank AS final_rank, r.final_total AS final_total, l.level_id AS l_id, l.medals AS medals FROM jump_results r LEFT JOIN jump_levels l ON l.day = r.day WHERE r.player_id = ?",
       [id],
     );
-    const closedBefore = isOpen(today() - 1) ? today() - 1 : today();
+    const closedBefore = o.ouvert(today() - 1) ? today() - 1 : today();
     if (rows.some((r) => r.final_rank === null && r.day < closedBefore)) {
       const done = await db.all<{ day: number; final_rank: number; final_total: number }>(
         `UPDATE jump_results SET
@@ -850,155 +834,37 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
           /* médailles illisibles : le jour compte, pas sa médaille */
         }
       }
-      const rang = r.final_rank ?? (await rankOf(r.day, r.ticks, r.submitted_at, id));
-      const classes = r.final_total ?? (await participants(r.day));
+      const rang = r.final_rank ?? (await o.rang(r.day, { ticks: r.ticks }, r.submitted_at, id));
+      const classes = r.final_total ?? (await o.classes(r.day));
       if (!meilleurRang || rang < meilleurRang.rang || (rang === meilleurRang.rang && classes > meilleurRang.classes)) meilleurRang = { date: formatDay(r.day), rang, classes };
     }
     return { joursFinis: rows.length, medailles, meilleurRang };
   }
 
-  const portail: PortailDuJeu = {
-    site: "jump",
-    nom: "Jump",
-    premierJour: PREMIER_JOUR_JUMP,
-    async jour(day) {
-      const l = await getLevel(day);
-      return {
-        numero: l.number,
-        theme: l.theme,
-        seuils: { author: msOfTicks(l.medals.author), gold: msOfTicks(l.medals.gold), silver: msOfTicks(l.medals.silver), bronze: msOfTicks(l.medals.bronze) },
-      };
-    },
-    async etat(id, day, connu) {
-      const own = await db.first<{ ticks: number; submitted_at: number }>("SELECT ticks, submitted_at FROM jump_results WHERE day = ? AND player_id = ?", [day, id]);
-      if (own) {
-        // Lot I3 : la place et les classés du classement du jour gardé par le portail, quand il les a ; sinon on les compte (une ligne lue par classé).
-        const [rang, classes, level] = await Promise.all([connu ? connu.rang : rankOf(day, own.ticks, own.submitted_at, id), connu ? connu.classes : classesDuJour(day), getLevel(day)]);
-        return { statut: "fini", tempsMs: msOfTicks(own.ticks), medaille: jumpMedalFor(own.ticks, level.medals), rang, classes: Math.max(classes, rang) };
-      }
-      // Pas d'essai classé : des morts envoyées ce jour-là (les vies du jour, oubliées à la fin du jour) disent que le joueur a commencé.
-      const vies = await db.first<{ count: number }>("SELECT count FROM jump_lives WHERE day = ? AND player_id = ?", [day, id]);
-      return vies && vies.count > 0 ? { statut: "en_cours", morts: vies.count } : { statut: "pas_joue" };
-    },
-    joursFinis: async (id) => (await db.all<{ day: number }>("SELECT day FROM jump_results WHERE player_id = ?", [id])).map((r) => r.day),
-    profil: profilPortail,
-    // Lot I3 : tous les classés du jour, dans l'ordre du classement du jeu (temps en pas, premier envoyé, identifiant : `RANK_SQL`), médaille lue
-    // sur les seuils du niveau du jour (comme `etat`). Aucun calcul de niveau pour un jour sans classé.
-    async classes(day) {
-      const rows = await db.all<{ player_id: string; ticks: number; submitted_at: number }>(
-        "SELECT player_id, ticks, submitted_at FROM jump_results WHERE day = ? AND hidden = 0 ORDER BY ticks ASC, submitted_at ASC, player_id ASC",
-        [day],
-      );
-      if (rows.length === 0) return [];
-      const level = await getLevel(day);
-      // Lot F2 : `ticks` (déjà dans l'index qui couvre cette requête : rien de plus à lire) pour le classement filtré « Amis » ; les morts, elles, sont lues pour les seuls amis (`amis.ts`).
-      return rows.map((r) => ({ playerId: r.player_id, tempsMs: msOfTicks(r.ticks), medaille: jumpMedalFor(r.ticks, level.medals), at: r.submitted_at, ticks: r.ticks }));
-    },
-  };
-
-  // --- Lot N1 : ce que le panneau d'administration fait de DailyJump (`admin.ts`) -----------------------------------------------------
-  // Même principe que DailyTrack : « masquer » recopie `hidden` sur chaque essai classé du joueur, « retirer » sort la ligne de `jump_results` (la rediffusion va dans
-  // `resultats_retires`). Les places finales gardées des jours concernés sont oubliées. Le premier d'un jour fermé gardé en mémoire (`firstOfClosed`) est oublié par `onErased`.
-  const admin: AdminDuJeu = {
-    activite: [{ table: "jump_results", jour: "day", joueur: "player_id" }],
-    compteurs: async (day) => {
-      const [finis, vies] = await Promise.all([
-        participantsTous(day),
-        db.first<{ n: number }>("SELECT COALESCE(SUM(count), 0) AS n FROM jump_lives WHERE day = ?", [day]),
-      ]);
-      let morts = vies?.n ?? 0;
-      if (morts === 0) morts = (await db.first<{ n: number }>("SELECT deaths AS n FROM jump_deaths WHERE day = ?", [day]))?.n ?? 0; // un jour fini : les vies brutes sont oubliées, il reste le total figé
-      return { finis, morts };
-    },
-    joursPrets: async () => ({ figes: frozenDays.length }),
-    resultats: async (id, limite) => {
-      const [jours, rows] = await Promise.all([
-        db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE player_id = ?", [id]),
-        db.all<{ day: number; level_id: string; ticks: number; deaths: number; submitted_at: number; hidden: number; final_rank: number | null; final_total: number | null; l_id: string | null; medals: string | null }>(
-          "SELECT r.day AS day, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, r.submitted_at AS submitted_at, r.hidden AS hidden, r.final_rank AS final_rank, r.final_total AS final_total, l.level_id AS l_id, l.medals AS medals FROM jump_results r LEFT JOIN jump_levels l ON l.day = r.day WHERE r.player_id = ? ORDER BY r.day DESC LIMIT ?",
-          [id, limite],
-        ),
-      ]);
-      const liste = [];
-      for (const r of rows) {
-        let medaille: MedaillePortail | null = null;
-        if (r.medals !== null && r.l_id === r.level_id) {
-          try {
-            medaille = jumpMedalFor(r.ticks, JSON.parse(r.medals) as JumpMedals);
-          } catch {
-            medaille = null;
-          }
+  async function resultatsAdmin(id: string, limite: number) {
+    const [jours, rows] = await Promise.all([
+      db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE player_id = ?", [id]),
+      db.all<{ day: number; level_id: string; ticks: number; deaths: number; submitted_at: number; hidden: number; final_rank: number | null; final_total: number | null; l_id: string | null; medals: string | null }>(
+        "SELECT r.day AS day, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, r.submitted_at AS submitted_at, r.hidden AS hidden, r.final_rank AS final_rank, r.final_total AS final_total, l.level_id AS l_id, l.medals AS medals FROM jump_results r LEFT JOIN jump_levels l ON l.day = r.day WHERE r.player_id = ? ORDER BY r.day DESC LIMIT ?",
+        [id, limite],
+      ),
+    ]);
+    const liste = [];
+    for (const r of rows) {
+      let medaille: MedaillePortail | null = null;
+      if (r.medals !== null && r.l_id === r.level_id) {
+        try {
+          medaille = jumpMedalFor(r.ticks, JSON.parse(r.medals) as JumpMedals);
+        } catch {
+          medaille = null;
         }
-        const rang = r.final_rank ?? (await rankOf(r.day, r.ticks, r.submitted_at, id)); // un jour fermé a sa place gardée
-        const classes = r.final_total ?? (await participants(r.day));
-        liste.push({ day: r.day, tempsMs: msOfTicks(r.ticks), morts: r.deaths, medaille, rang, classes: Math.max(classes + r.hidden, rang), envoyeA: r.submitted_at });
       }
-      return { jours: jours?.n ?? 0, liste };
-    },
-    retirer: async (id, day) => {
-      const row = await db.first<{ ticks: number; replay: string; inputs_hash: string | null }>("SELECT ticks, replay, inputs_hash FROM jump_results WHERE day = ? AND player_id = ?", [day, id]);
-      if (!row) return null;
-      return {
-        tempsMs: msOfTicks(row.ticks),
-        replay: row.replay,
-        inputsHash: row.inputs_hash,
-        statements: [
-          { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day = ?", params: [day] },
-          { sql: "DELETE FROM jump_results WHERE day = ? AND player_id = ?", params: [day, id] },
-        ],
-      };
-    },
-    masquer: (id, masque): Statement[] => [
-      { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM jump_results WHERE player_id = ?)", params: [id] },
-      { sql: "UPDATE jump_results SET hidden = ? WHERE player_id = ?", params: [masque ? 1 : 0, id] },
-    ],
-    // Le lecteur existant (`?watch=first`, lot P2) ne montre que l'essai du premier du jour.
-    lienRediffusion: (date, rang) => (rang === 1 ? `/jump/?watch=first&seed=${date}` : null),
-  };
-
-  return {
-    route,
-    portail,
-    admin,
-    dailyLevel: getLevel,
-    // Lot P (interrupteur des jeux) : en aperçu, seul l'envoi d'un essai range ses résultats à part ; ils sont effacés quand le jeu passe `on` (jamais publics). Les vies (carte des morts) restent fermées.
-    ecrituresApercu: ["/api/jump/submit"],
-    viderApercu: (): Statement[] => [{ sql: "DELETE FROM jump_results WHERE apercu = 1" }],
-    // Le registre : la validation d'un essai (le niveau du jour, les versions du code, le rejeu). Le temps rendu est celui du rejeu, en ms.
-    validate: async (day, code) => {
-      const level = await getLevel(day);
-      const v = await validateJump({ levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: code });
-      return { ms: Math.round((v.ticks * 1000) / TICK_RATE), ticks: v.ticks, deaths: v.deaths };
-    },
-    // « Changer mon code » : les essais classés suivent le joueur (les premiers gardés en mémoire sont oubliés : leur identifiant a changé).
-    rotateStatements: (oldId, newId): Statement[] => {
-      firstOfClosed.clear();
-      return [{ sql: "UPDATE jump_results SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, ...lives.rotateStatements(oldId, newId)];
-    },
-    // Un pseudo changé : le premier d'un jour passé gardé en mémoire le reprend à la prochaine lecture.
-    onRename: async () => {
-      firstOfClosed.clear();
-    },
-    // Lot R5 — effacement d'un joueur : ses essais classés (un premier effacé n'est plus servi : le suivant devient le premier) et ses vies du
-    // jour en cours (`jumpLives.ts`). La carte et l'échantillon figés des jours passés n'ont plus aucun lien avec lui (vies brutes oubliées).
-    erase: async (playerId) => {
-      const n = await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE player_id = ?", [playerId]);
-      const l = await lives.erase(playerId);
-      return {
-        counts: { essaisDailyJump: n?.n ?? 0, ...l.counts },
-        statements: [
-          // Lot I2 : les places finales des jours concernés sont recalculées sans lui (à la prochaine lecture du profil commun des autres).
-          { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM jump_results WHERE player_id = ?)", params: [playerId] },
-          { sql: "DELETE FROM jump_results WHERE player_id = ?", params: [playerId] },
-          ...l.statements,
-        ],
-      };
-    },
-    onErased: () => {
-      firstOfClosed.clear();
-      lives.onErased();
-    },
-  };
+      const rang = r.final_rank ?? (await o.rang(r.day, { ticks: r.ticks }, r.submitted_at, id)); // un jour fermé a sa place gardée
+      const classes = r.final_total ?? (await o.classes(r.day));
+      liste.push({ day: r.day, tempsMs: msOfTicks(r.ticks), morts: r.deaths, medaille, rang, classes: Math.max(classes + r.hidden, rang), envoyeA: r.submitted_at });
+    }
+    return { jours: jours?.n ?? 0, liste };
+  }
 }
 
 /** DailyJump au registre : routes sous `/api/jump`. */

@@ -7,6 +7,7 @@ import { HttpError } from "../errors";
 import type { FICHES_SERVEUR } from "../fiches.generated";
 import type { AdminDuJeu, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "../games";
 import { type AdaptateurTable, sqlDe, verifierAdaptateur, versFiche, versTable } from "./adaptateur";
+import { refOfPlayer } from "../players";
 import { type ContratJeu, type LigneBrute, RefusJeu } from "./contrat";
 
 // Lot K2 — **le module des jeux** : tout ce que le serveur d'un jeu qui se classe fait à l'identique (routes `info`, `day`, `submit`, `board`, fantôme, `me` ; ordre de validation d'un envoi ; classement par colonnes
@@ -21,8 +22,28 @@ import { type ContratJeu, type LigneBrute, RefusJeu } from "./contrat";
 /** La fiche d'un jeu telle que le serveur la lit (projection `serveur`, `npm run fiches`). */
 export type FicheServeur = (typeof FICHES_SERVEUR)[number];
 
+/** Ce que le module met à la disposition des routes propres d'un jeu et de ses extensions (lot K2b) : les mêmes fonctions que ses propres routes, jamais une copie. */
+export interface OutilsModule<Niveau> {
+  /** Le niveau d'un jour (lu en base si la règle est la même, sinon calculé une seule fois). */
+  niveau(jour: number): Promise<Niveau>;
+  /** Une date d'adresse en jour (400 `invalid_date`, 404 `unknown_day` pour le futur ou avant le premier jour). */
+  dayOf(date: string): number;
+  /** Le jour accepte-t-il encore des envois (aujourd'hui à Paris, hier pendant la grâce) ? */
+  ouvert(jour: number): boolean;
+  /** Le débit des lectures du jeu (en mémoire, par adresse). */
+  limiterLectures(info: RequestInfo): Promise<void>;
+  /** L'identifiant du joueur en en-tête `X-Player-Id` (400 `invalid_player` s'il est exigé et manque). */
+  joueurEntete(req: Request, requis: boolean): string | null;
+  /** Le classement d'un jour tel que la route `board` le rend (ta ligne avec `moi`). */
+  classement(jour: number, moi: string | null): Promise<unknown>;
+  /** La place d'un résultat dans le classement du jour (nombre de classés visibles qui passent devant, plus un). */
+  rang(jour: number, score: Record<string, number>, envoyeA: number, playerId: string): Promise<number>;
+  /** Le nombre de classés visibles d'un jour. */
+  classes(jour: number): Promise<number>;
+}
+
 /** Une route que seul ce jeu a (Salon, Garage, vies, carnage, paliers…) : essayée après celles du module ; `undefined` : ce chemin n'est pas à elle. */
-export type RoutePropre = (path: string, req: Request, url: URL, info: RequestInfo) => Promise<unknown>;
+export type RoutePropre = (path: string, req: Request, url: URL, info: RequestInfo, outils: OutilsModule<never>) => Promise<unknown>;
 
 /** Les compteurs de débit du jeu (préfixes de la table `rate` : propres à chaque jeu, ceux des autres ne bougent pas). */
 export interface DebitDuJeu {
@@ -51,6 +72,23 @@ export interface ConfigJeu<Niveau, Rejeu, Mesure> {
   /** Les écritures de plus permises pendant l'aperçu (chacune range ses résultats à part). */
   ecrituresApercuPropres?: readonly string[];
   routesPropres?: readonly RoutePropre[];
+  /** Point d'extension : appelé en tête de chaque requête que l'instance reçoit, avant tout (Jump y oublie les vies d'un jour fini). */
+  avantRoute?: (path: string) => Promise<void>;
+  /** Point d'extension : reçoit les outils du module à la création (les routes propres et leurs sous-modules en ont besoin avant la première requête). */
+  recevoirOutils?: (outils: OutilsModule<Niveau>) => void;
+  /** Point d'extension : le profil `me` du jeu quand son format n'est pas celui du module (Jump). */
+  profil?: (id: string, info: RequestInfo) => Promise<unknown>;
+  /** Point d'extension : durée (ms) pendant laquelle le portail garde en mémoire le nombre de classés du jour (défaut : aucune mémoire). */
+  memoClasses?: number;
+  /** Points d'extension : ce que le jeu ajoute ou remplace dans ce que le module fabrique (le module ne nomme jamais un jeu). */
+  surcharges?: {
+    portail?: (base: PortailDuJeu) => PortailDuJeu;
+    admin?: (base: AdminDuJeu) => AdminDuJeu;
+    rotation?: (ancien: string, nouveau: string, base: Statement[]) => Statement[];
+    effacement?: (playerId: string, base: { counts: Record<string, number>; statements: Statement[] }) => Promise<{ counts: Record<string, number>; statements: Statement[] }>;
+    apresRenommage?: () => void;
+    apresEffacement?: () => void;
+  };
   /** Le lecteur d'une rediffusion pour l'administration (`AdminDuJeu.lienRediffusion`) ; défaut : aucun. */
   lienRediffusion?: (date: string, rang: number) => string | null;
 }
@@ -67,6 +105,10 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
   const { fiche, contrat, adaptateur, prefixe, debit } = config;
   const { db, now, log, today, sinceMidnight, hashKey, hit, readHit, readJson, playerIdOf, players, limits } = platform;
   verifierAdaptateur(fiche.classement.colonnes, adaptateur);
+  if (!contrat.valider && !(contrat.decoder && contrat.jourDe && contrat.memeContenu && contrat.entrees && contrat.rejouer)) throw new Error(`le contrat de ${fiche.code} ne dit ni \`valider\` ni decoder / jourDe / memeContenu / entrees / rejouer`);
+  const sansMedaille = adaptateur.sansMedaille === true;
+  const messageJour = contrat.messagesJournal?.jour ?? `${contrat.nomJournal} : jour calculé`;
+  const messagePartie = contrat.messagesJournal?.partie ?? `${contrat.nomJournal} : partie du jour`;
   const sql = sqlDe(adaptateur);
   const colonnes = adaptateur.colonnes;
   const tableNiveaux = adaptateur.niveaux.table;
@@ -100,7 +142,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
         ...colonnesNiveau.map((k) => c.ligne[k] ?? null),
         now(),
       ]);
-      log("INFO", `${contrat.nomJournal} : jour calculé`, { day: formatDay(day), ...contrat.champsJournalJour(niveau), ms: Math.round(performance.now() - debutCalcul) });
+      log("INFO", messageJour, { day: formatDay(day), ...contrat.champsJournalJour(niveau), ms: Math.round(performance.now() - debutCalcul) });
     }
     niveaux.set(day, { rule, niveau });
     return niveau;
@@ -124,6 +166,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     const day = parseDay(date);
     if (day === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
     if (day > today()) throw new HttpError(404, "unknown_day", "Ce jour n'est pas encore sorti");
+    if (contrat.jourMin !== undefined && day < contrat.jourMin) throw new HttpError(404, "unknown_day", "Ce jour n'a pas de niveau");
     return day;
   }
 
@@ -154,9 +197,23 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     return (await db.first<{ n: number }>(sql.participants, [day]))?.n ?? 0;
   }
 
-  const ligne = (rank: number, brute: LigneBrute): unknown => contrat.ligneClassement(rank, versFiche(adaptateur, brute));
+  const ligne = (rank: number, brute: LigneBrute): unknown => contrat.ligneClassement!(rank, versFiche(adaptateur, brute));
 
   async function board(day: number, me: string | null): Promise<unknown> {
+    if (contrat.tableau) {
+      // Point d'extension : le jeu met le classement en forme (Jump : `levelId`, `deaths`, un niveau lu seulement s'il y a des classés).
+      const [count, rows, own] = await Promise.all([participants(day), db.all<LigneBrute>(sql.top, [day, config.top]), me ? db.first<LigneBrute>(sql.moi, [day, me]) : Promise.resolve(null)]);
+      return contrat.tableau({
+        date: formatDay(day),
+        ouvert: isOpen(day),
+        participants: count,
+        top: rows,
+        moi: own && me ? own : null,
+        rangMoi: () => rankOf(day, scoreDe(versFiche(adaptateur, own!)), Number(own!.submitted_at), me!),
+        niveau: () => getNiveau(day),
+        apresEnvoi: false,
+      });
+    }
     const [count, rows, own, generation] = await Promise.all([
       participants(day),
       db.all<LigneBrute>(sql.top, [day, config.top]),
@@ -179,9 +236,17 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
   }
 
   // --- La validation et l'envoi -----------------------------------------------------------------------------------------------------------
-  async function rejouer(niveau: Niveau, texte: string): Promise<Mesure> {
-    platform.spendReplays(unites); // lots R5 et R7 : le plafond global de rejeux de l'instance (503 au-delà) ; le jeu pèse `rejeu.unitesServeur` de sa fiche
-    return contrat.rejouer(niveau, texte);
+  async function rejouer(niveau: Niveau, texte: string, r?: Rejeu): Promise<Mesure> {
+    platform.spendReplays(r !== undefined && contrat.unites ? contrat.unites(r) : unites); // lots R5 et R7 : le plafond global de rejeux de l'instance (503 au-delà) ; le jeu pèse `rejeu.unitesServeur` de sa fiche, ou ce que dit son contrat
+    return contrat.rejouer!(niveau, texte);
+  }
+
+  /** Lot R9 : une copie (les entrées de l'auteur du niveau, ou d'une partie déjà classée d'un autre joueur ce jour-là, ou retirée par l'administration) est refusée avant d'écrire quoi que ce soit. */
+  async function refuserCopies(jour: number, hash: string, auteur: string | null, playerId: string): Promise<void> {
+    if (platform.allowCopies) return;
+    if (hash === auteur) throw new HttpError(409, "replay_copy", "Cette partie est la copie de la preuve de l'auteur");
+    if (await db.first(sql.copie, [jour, hash, playerId])) throw new HttpError(409, "replay_copy", "Cette partie est la copie d'une autre");
+    if (await db.first(`SELECT 1 AS n FROM resultats_retires WHERE game = '${fiche.code}' AND day = ? AND inputs_hash = ? LIMIT 1`, [jour, hash])) throw new HttpError(409, "replay_copy", "Cette partie a été retirée par l'administration");
   }
 
   async function submit(req: Request, info: RequestInfo): Promise<unknown> {
@@ -191,27 +256,43 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     await hit(await hashKey(debit.joueur, playerId), limits.perPlayer);
     // 2. Taille du corps (413 au-delà de `MAX_BODY_BYTES`, lu sans tout charger).
     const body = await readJson(req);
-    // 3 à 5. Le texte, le jour, le contenu.
-    const r = contrat.decoder(body.replay);
-    const jour = contrat.jourDe(r);
-    if (jour === null) throw new HttpError(409, "not_daily", "Un scénario d'essai n'est jamais classé");
-    if (jour > today()) throw new HttpError(409, "not_daily", "Ce jour n'est pas encore sorti");
-    if (!isOpen(jour)) throw new HttpError(409, "day_closed", "Le classement de ce jour est figé : seul le jour en cours se classe");
-    const niveau = await getNiveau(jour);
-    contrat.memeContenu(r, niveau);
-    // 6. Joueur actif et pseudo (réservé à son premier propriétaire, vérifié avant le rejeu).
-    await players.assertActive(playerId);
-    const known = await players.find(playerId);
-    const name = await players.resolveName(playerId, body.name, known);
-    // 7. Copies (lot R9) : refusées avant d'écrire quoi que ce soit, pas même le joueur ; le même joueur qui renvoie sa propre partie n'est pas concerné.
-    const hash = await inputsHash(contrat.entrees(r));
-    if (!platform.allowCopies) {
-      if (hash === contrat.empreinteAuteur(niveau)) throw new HttpError(409, "replay_copy", "Cette partie est la copie de la preuve de l'auteur");
-      if (await db.first(sql.copie, [jour, hash, playerId])) throw new HttpError(409, "replay_copy", "Cette partie est la copie d'une autre");
-      if (await db.first(`SELECT 1 AS n FROM resultats_retires WHERE game = '${fiche.code}' AND day = ? AND inputs_hash = ? LIMIT 1`, [jour, hash])) throw new HttpError(409, "replay_copy", "Cette partie a été retirée par l'administration");
+    let known = null as Awaited<ReturnType<typeof players.find>>;
+    let name = "";
+    /** Joueur actif et pseudo (réservé à son premier propriétaire, vérifié avant le rejeu). */
+    const joueur = async (): Promise<void> => {
+      await players.assertActive(playerId);
+      known = await players.find(playerId);
+      name = await players.resolveName(playerId, body.name, known);
+    };
+    let jour: number;
+    let niveau: Niveau;
+    let r: Rejeu;
+    let mesure: Mesure;
+    let hash: string;
+    if (contrat.valider) {
+      // Point d'extension : le jeu valide dans son ordre (le jour, les versions, la rediffusion, le rejeu) ; les copies viennent après, comme avant.
+      const v = await contrat.valider(body, { niveau: getNiveau, ouvert: isOpen, avantRejeu: joueur });
+      ({ jour, niveau, rejeu: r, mesure } = v);
+      hash = v.empreinte;
+      await refuserCopies(jour, hash, v.empreinteAuteur, playerId);
+    } else {
+      // 3 à 5. Le texte, le jour, le contenu.
+      r = contrat.decoder!(body.replay);
+      const j = contrat.jourDe!(r);
+      if (j === null) throw new HttpError(409, "not_daily", "Un scénario d'essai n'est jamais classé");
+      jour = j;
+      if (jour > today()) throw new HttpError(409, "not_daily", "Ce jour n'est pas encore sorti");
+      if (!isOpen(jour)) throw new HttpError(409, "day_closed", "Le classement de ce jour est figé : seul le jour en cours se classe");
+      niveau = await getNiveau(jour);
+      contrat.memeContenu!(r, niveau);
+      // 6. Joueur actif et pseudo.
+      await joueur();
+      // 7. Copies (lot R9) : refusées avant d'écrire quoi que ce soit, pas même le joueur ; le même joueur qui renvoie sa propre partie n'est pas concerné.
+      hash = await inputsHash(contrat.entrees!(r));
+      await refuserCopies(jour, hash, contrat.empreinteAuteur(niveau), playerId);
+      // 8. Le plafond de rejeux, puis le rejeu : la seule source du résultat.
+      mesure = await rejouer(niveau, body.replay as string, r);
     }
-    // 8. Le plafond de rejeux, puis le rejeu : la seule source du résultat.
-    const mesure = await rejouer(niveau, body.replay as string);
 
     const t = now();
     // Le joueur n'existe qu'après une partie valide (table `players` de la plateforme).
@@ -231,17 +312,25 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
         first_at: t,
         submitted_at: t,
         inputs_hash: hash,
-        hidden: known?.hidden === 1 || apercu === 1 ? 1 : 0, // lot N1 : un joueur masqué reste masqué ; lot P : l'aperçu est masqué aussi
+        hidden: (known as { hidden: number } | null)?.hidden === 1 || apercu === 1 ? 1 : 0, // lot N1 : un joueur masqué reste masqué ; lot P : l'aperçu est masqué aussi
         apercu,
       };
       await db.run(sql.insertion, [jour, playerId, ...sql.colonnesInsert.map((c) => valeurs[c] ?? null)]);
     }
-    log("INFO", `${contrat.nomJournal} : partie du jour`, { day: formatDay(jour), ...contrat.champsJournalPartie(mesure, improved) });
+    log("INFO", messagePartie, { day: formatDay(jour), ...contrat.champsJournalPartie(mesure, improved) });
+    const medalPrev = prev ? (sansMedaille ? contrat.medailleDeLigne!(niveau, prev) : ((prev.medal as string | null) ?? null)) : null;
     const best: LigneBrute & { submitted_at: number } = improved
-      ? { ...rejouee.score, medal: medalNew, submitted_at: t }
-      : { ...scoreDe(prev!), medal: (prev!.medal as string | null) ?? null, submitted_at: Number(prev!.submitted_at) };
+      ? { ...rejouee.autres, ...rejouee.score, medal: medalNew, submitted_at: t }
+      : { ...prev!, ...scoreDe(prev!), medal: medalPrev, submitted_at: Number(prev!.submitted_at) };
+    if (contrat.tableau) {
+      // Point d'extension : le classement d'après l'envoi se met en forme comme les autres, sans relire ta ligne (elle vient d'être écrite : `best`).
+      const [rank, total, rows] = await Promise.all([rankOf(jour, scoreDe(best), best.submitted_at, playerId), participants(jour), db.all<LigneBrute>(sql.top, [jour, config.top])]);
+      const moi: LigneBrute = { ...best, name, ref: await refOfPlayer(playerId) };
+      const tableau = await contrat.tableau({ date: formatDay(jour), ouvert: isOpen(jour), participants: total, top: rows, moi, rangMoi: async () => rank, niveau: async () => niveau, apresEnvoi: true });
+      return contrat.reponseEnvoi({ date: formatDay(jour), jour, niveau, mesure, medaille: medalNew, improved, meilleur: best, rang: rank, participants: total, board: tableau });
+    }
     const [rank, b] = await Promise.all([rankOf(jour, scoreDe(best), best.submitted_at, playerId), board(jour, playerId)]);
-    return contrat.reponseEnvoi({ date: formatDay(jour), mesure, medaille: medalNew, improved, meilleur: best, rang: rank, participants: (b as { participants: number }).participants, board: b });
+    return contrat.reponseEnvoi({ date: formatDay(jour), jour, niveau, mesure, medaille: medalNew, improved, meilleur: best, rang: rank, participants: (b as { participants: number }).participants, board: b });
   }
 
   // --- Le fantôme (réservé aux classés) ---------------------------------------------------------------------------------------------------
@@ -263,7 +352,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     const days = rows.map((r) => {
       const m = medaillePortail(r.medal);
       if (m) medals[m]++;
-      return contrat.jourProfil(versFiche(adaptateur, r), formatDay(Number(r.day)));
+      return contrat.jourProfil!(versFiche(adaptateur, r), formatDay(Number(r.day)));
     });
     const joues = new Set(rows.map((r) => Number(r.day)));
     const t = today();
@@ -276,8 +365,12 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
   const echapper = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
   const cheminJour = new RegExp(`^${echapper(prefixe)}/day/([^/]+)(/board${contrat.fantome ? `|/${echapper(contrat.fantome.route)}` : ""})?$`);
 
+  /** Les outils que le module prête aux routes propres et aux extensions du jeu. */
+  const outils: OutilsModule<Niveau> = { niveau: getNiveau, dayOf, ouvert: isOpen, limiterLectures: limitReads, joueurEntete: headerPlayer, classement: board, rang: rankOf, classes: participants };
+
   async function route(path: string, req: Request, _url: URL, info: RequestInfo): Promise<unknown> {
     try {
+      await config.avantRoute?.(path);
       if (path === `${prefixe}/info`) {
         if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
         await limitReads(info);
@@ -289,7 +382,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       }
       if (path === `${prefixe}/me`) {
         if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-        return await myProfile(headerPlayer(req, true)!, info);
+        return config.profil ? await config.profil(headerPlayer(req, true)!, info) : await myProfile(headerPlayer(req, true)!, info);
       }
       const m = cheminJour.exec(path);
       if (m) {
@@ -308,7 +401,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
         return new WithHeaders(await getInfo(day), cacheHeaders({ open, perPlayer: false }));
       }
       for (const propre of config.routesPropres ?? []) {
-        const r = await propre(path, req, _url, info);
+        const r = await propre(path, req, _url, info, outils as OutilsModule<never>);
         if (r !== undefined) return r;
       }
       if (path === prefixe || path.startsWith(`${prefixe}/`)) throw new HttpError(404, "not_found", "Route inconnue");
@@ -320,7 +413,19 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
 
   // --- Les crochets du portail et de l'administration ----------------------------------------------------------------------------------------
   // Un jeu classé à la **hauteur** (fiche : `classement.format`) compte dans la journée mais jamais dans le cumul au temps ; son score est celui que `versPortail` du contrat rend.
-  const portail: PortailDuJeu = {
+  /** Le nombre de classés montré par le portail : relu à chaque fois, ou gardé `memoClasses` ms par instance (Jump). */
+  const classesMemo = new Map<number, { at: number; n: number }>();
+  async function classesDuJour(day: number): Promise<number> {
+    if (!config.memoClasses) return participants(day);
+    const kept = classesMemo.get(day);
+    if (kept && now() - kept.at < config.memoClasses) return kept.n;
+    const n = await participants(day);
+    if (classesMemo.size > 8) classesMemo.clear();
+    classesMemo.set(day, { at: now(), n });
+    return n;
+  }
+
+  const portailBase: PortailDuJeu = {
     site: fiche.id,
     nom: config.nom,
     premierJour,
@@ -330,11 +435,16 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     },
     async etat(id, day, connu) {
       const own = await db.first<LigneBrute>(sql.etat, [day, id]);
-      if (!own) return { statut: "pas_joue" };
+      if (!own) return contrat.etatSansEssai ? contrat.etatSansEssai(id, day) : { statut: "pas_joue" };
       const f = versFiche(adaptateur, own);
       const v = contrat.versPortail(f);
-      const [rang, classes] = await Promise.all([connu ? connu.rang : rankOf(day, scoreDe(f), Number(own.submitted_at), id), connu ? connu.classes : participants(day)]);
-      return { statut: "fini", tempsMs: v.tempsMs, medaille: medaillePortail(own.medal), rang, classes: Math.max(classes, rang), ...(v.score ? { score: v.score } : {}) };
+      const [rang, classes, niveau] = await Promise.all([
+        connu ? connu.rang : rankOf(day, scoreDe(f), Number(own.submitted_at), id),
+        connu ? connu.classes : classesDuJour(day),
+        sansMedaille ? getNiveau(day) : Promise.resolve(null),
+      ]);
+      const medaille = niveau !== null ? medaillePortail(contrat.medailleDeLigne!(niveau, f)) : medaillePortail(own.medal);
+      return { statut: "fini", tempsMs: v.tempsMs, medaille, rang, classes: Math.max(classes, rang), ...(v.score ? { score: v.score } : {}) };
     },
     joursFinis: async (id) => (await db.all<{ day: number }>(sql.joursFinis, [id])).map((r) => r.day),
     async profil(id) {
@@ -352,14 +462,18 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     // Tous les classés du jour dans l'ordre du classement du jeu (un jour sans classé ne calcule rien : le niveau du jour n'est pas lu).
     async classes(day) {
       const rows = await db.all<LigneBrute & { player_id: string }>(sql.classes, [day]);
+      if (rows.length === 0) return [];
+      const niveau = sansMedaille ? await getNiveau(day) : null; // un jour sans classé ne calcule rien
       return rows.map((r) => {
         const v = contrat.versPortail(versFiche(adaptateur, r));
-        return { playerId: r.player_id, tempsMs: v.tempsMs, medaille: medaillePortail(r.medal), at: Number(r.submitted_at), ...(v.score ? { score: v.score } : {}), ...(v.ticks !== undefined ? { ticks: v.ticks } : {}) }; // lot F2 : `ticks` exacts pour le classement filtré « Amis »
+        return { playerId: r.player_id, tempsMs: v.tempsMs, medaille: niveau !== null ? medaillePortail(contrat.medailleDeLigne!(niveau, versFiche(adaptateur, r))) : medaillePortail(r.medal), at: Number(r.submitted_at), ...(v.score ? { score: v.score } : {}), ...(v.ticks !== undefined ? { ticks: v.ticks } : {}) }; // lot F2 : `ticks` exacts pour le classement filtré « Amis »
       });
     },
   };
 
-  const admin: AdminDuJeu = {
+  const portail = config.surcharges?.portail ? config.surcharges.portail(portailBase) : portailBase;
+
+  const adminBase: AdminDuJeu = {
     activite: [{ table: adaptateur.table, jour: "day", joueur: "player_id" }],
     compteurs: async (day) => ({ finis: (await db.first<{ n: number }>(sql.compteJour, [day]))?.n ?? 0 }),
     joursPrets: async () => ({ figes: contrat.joursFiges.length }),
@@ -382,6 +496,9 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     masquer: (id, masque): Statement[] => [{ sql: sql.masquer, params: [masque ? 1 : 0, id] }],
     lienRediffusion: (date, rang) => config.lienRediffusion?.(date, rang) ?? null,
   };
+  const admin = config.surcharges?.admin ? config.surcharges.admin(adminBase) : adminBase;
+
+  config.recevoirOutils?.(outils);
 
   return {
     route,
@@ -394,23 +511,35 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     // Le registre : la validation d'une partie du jour (le contenu du serveur, les versions, le rejeu). Le temps rendu est celui de la partie, en ms.
     validate: async (day, code) => {
       try {
-        const r = contrat.decoder(code);
-        if (contrat.jourDe(r) !== day) throw new HttpError(409, "not_daily", "Cette partie n'est pas celle de ce jour");
+        if (contrat.valider) {
+          const n = await getNiveau(day);
+          const v = await contrat.valider(contrat.corpsDeRegistre!(n, code), { niveau: getNiveau, ouvert: isOpen, avantRejeu: async () => {} });
+          return contrat.validation(v.mesure);
+        }
+        const r = contrat.decoder!(code);
+        if (contrat.jourDe!(r) !== day) throw new HttpError(409, "not_daily", "Cette partie n'est pas celle de ce jour");
         const n = await getNiveau(day);
-        contrat.memeContenu(r, n);
-        return contrat.validation(await rejouer(n, code));
+        contrat.memeContenu!(r, n);
+        return contrat.validation(await rejouer(n, code, r));
       } catch (e) {
         throw e instanceof RefusJeu ? versHttp(e) : e;
       }
     },
     // « Changer mon code » : les parties classées suivent le joueur.
-    rotateStatements: (oldId, newId): Statement[] => [{ sql: sql.rotation, params: [newId, oldId] }],
-    // Un pseudo changé : le classement le joint à chaque lecture (rien n'est gardé en mémoire).
-    onRename: async () => {},
+    rotateStatements: (oldId, newId): Statement[] => {
+      const base: Statement[] = [{ sql: sql.rotation, params: [newId, oldId] }];
+      return config.surcharges?.rotation ? config.surcharges.rotation(oldId, newId, base) : base;
+    },
+    // Un pseudo changé : le classement le joint à chaque lecture (rien n'est gardé en mémoire, sauf ce que le jeu garde et oublie ici).
+    onRename: async () => {
+      config.surcharges?.apresRenommage?.();
+    },
     // Lot R5 — effacement d'un joueur : ses parties classées (le classement se recalcule sans lui à la prochaine lecture).
     erase: async (playerId) => {
       const n = await db.first<{ n: number }>(sql.compteJoueur, [playerId]);
-      return { counts: { [contrat.compteEffacement]: n?.n ?? 0 }, statements: [{ sql: sql.effacer, params: [playerId] }] };
+      const base = { counts: { [contrat.compteEffacement]: n?.n ?? 0 }, statements: [{ sql: sql.effacer, params: [playerId] }] as Statement[] };
+      return config.surcharges?.effacement ? config.surcharges.effacement(playerId, base) : base;
     },
+    onErased: config.surcharges?.apresEffacement ? () => config.surcharges!.apresEffacement!() : undefined,
   };
 }
