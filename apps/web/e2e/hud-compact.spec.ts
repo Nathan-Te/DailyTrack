@@ -70,7 +70,10 @@ for (const viewport of [
     await expect(page.locator("#pause")).toBeVisible();
     await expect(page.locator("#pause-settings")).toBeVisible();
     await expect(page.locator("#pause-camera, #pause-garage, #pause-archive")).toHaveCount(0);
-    expect(await page.locator("#pause button:visible").count()).toBeLessThanOrEqual(9);
+    // Charte rév. 12, § 9 : « Reprendre et huit actions au plus ». Les liens du pied (portail, mentions légales, « Un bug ? Une idée ? » du lot C1) ne sont pas des actions
+    // de la pause : ce sont des `.lien`, hors de `.pause__actions` ; seuls les boutons du socle (`.dj-bouton`) comptent.
+    expect(await page.locator("#pause .dj-bouton:visible").count()).toBeLessThanOrEqual(9);
+    await expect(page.locator("#pause .pause__pied #pause-retours")).toBeVisible();
     for (const b of await page.locator("#pause button:visible").all()) expect((await b.boundingBox())!.height, `pause : ${await b.textContent()}`).toBeGreaterThanOrEqual(43.5);
     await context.close();
   });
