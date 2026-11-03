@@ -25,7 +25,7 @@ console.log(`Machine : ${cpus()[0]?.model ?? "?"} (${cpus().length} cœurs), Nod
 const dossier = mkdtempSync(join(tmpdir(), "cdj-rejeu-"));
 let n = 0;
 
-async function mesurer(nom: string, date: string, chemin: string, corps: (nom: string) => unknown, rejeuSeul: () => number): Promise<void> {
+async function mesurer(nom: string, date: string, chemin: string, corps: (nom: string) => unknown, rejeuSeul: () => unknown): Promise<void> {
   const db = await openLibsql({ url: `file:${join(dossier, `m${n++}.db`)}` });
   const clock = { now: parisDayStart(D(date)) + 12 * 3_600_000 };
   const api = createApi({ db, now: () => clock.now, allowCopies: true });

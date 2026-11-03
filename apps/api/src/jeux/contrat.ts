@@ -46,6 +46,42 @@ export interface JourProfil {
   brute: LigneBrute;
 }
 
+/** Ce que le module met à la disposition de `valider`. */
+export interface ContexteValidation<Niveau> {
+  /** Le niveau d'un jour (celui du module : lu en base si la règle est la même, sinon calculé une seule fois). */
+  niveau(jour: number): Promise<Niveau>;
+  /** Le jour accepte-t-il encore des envois (aujourd'hui à Paris, hier pendant la grâce) ? */
+  ouvert(jour: number): boolean;
+  /** À appeler juste avant le plafond de rejeux : joueur actif et pseudo (le module garde `known` et `name`). */
+  avantRejeu(): Promise<void>;
+}
+
+/** Ce que rend `valider` : l'envoi validé et rejoué. */
+export interface Validation<Niveau, Rejeu, Mesure> {
+  jour: number;
+  niveau: Niveau;
+  rejeu: Rejeu;
+  mesure: Mesure;
+  /** SHA-256 des entrées jouées (copies) et celui des entrées de l'auteur (`null` : pas calculé). */
+  empreinte: string;
+  empreinteAuteur: string | null;
+}
+
+/** Ce que reçoit `tableau` : tout ce que le module a lu pour le classement d'un jour, le niveau et la place restant à la demande. */
+export interface ContexteTableau<Niveau> {
+  date: string;
+  ouvert: boolean;
+  participants: number;
+  /** Le haut du classement (lignes brutes avec `name`, `ref`). */
+  top: LigneBrute[];
+  /** La ligne du joueur qui regarde (brute, avec `name`, `ref`, `submitted_at`), ou `null`. */
+  moi: LigneBrute | null;
+  rangMoi(): Promise<number>;
+  niveau(): Promise<Niveau>;
+  /** Vrai pour le classement rendu avec un envoi : la ligne du joueur est celle qu'il vient d'écrire (même si les classements publics l'écartent). */
+  apresEnvoi: boolean;
+}
+
 export interface ContratJeu<Niveau, Rejeu, Mesure> {
   /** Le nom des lignes de journal (« DailyTower » : « DailyTower : partie du jour »). */
   nomJournal: string;
@@ -73,16 +109,27 @@ export interface ContratJeu<Niveau, Rejeu, Mesure> {
   empreinteAuteur(niveau: Niveau): string | null;
 
   // --- Un envoi -------------------------------------------------------------------------------------------------------------------------
+  // La validation standard (Tower) : décoder, jour, contenu, copies, rejeu. **Ou bien** `valider` (ci-dessous) : un jeu dont l'ordre des contrôles est le sien (Jump) la délègue tout entière.
   /** Le texte envoyé, décodé et contrôlé (taille, format, versions connues, réglages permis) ; lève `RefusJeu`. */
-  decoder(texte: unknown): Rejeu;
+  decoder?(texte: unknown): Rejeu;
   /** Le jour que nomme la rediffusion, ou `null` pour un scénario d'essai (jamais classé). */
-  jourDe(rejeu: Rejeu): number | null;
+  jourDe?(rejeu: Rejeu): number | null;
   /** La rediffusion nomme le contenu que le serveur sert ce jour-là ; lève `RefusJeu("version")` sinon. */
-  memeContenu(rejeu: Rejeu, niveau: Niveau): void;
+  memeContenu?(rejeu: Rejeu, niveau: Niveau): void;
   /** Les entrées effectivement jouées, en texte canonique (le module en prend l'empreinte SHA-256 pour refuser les copies). */
-  entrees(rejeu: Rejeu): string;
+  entrees?(rejeu: Rejeu): string;
   /** Le rejeu, la seule source du résultat. Le module a déjà compté `unitesRejeu` dans le plafond global. Lève `RefusJeu` pour une partie refusée. */
-  rejouer(niveau: Niveau, texte: string): Promise<Mesure>;
+  rejouer?(niveau: Niveau, texte: string): Promise<Mesure>;
+  /**
+   * **Point d'extension : la validation entière d'un envoi, dans l'ordre du jeu** (lot K2b). Le module a déjà vérifié le débit et la taille du corps ; `valider` contrôle le jour, les versions, la
+   * rediffusion et son contenu, appelle `ctx.avantRejeu()` (joueur actif et pseudo, bon marché) juste avant de dépenser le plafond de rejeux et de rejouer, et rend ce que le module écrit.
+   * Le module fait ensuite les copies (après le rejeu), l'écriture, le classement et la réponse. Lève `RefusJeu`.
+   */
+  valider?(corps: Record<string, unknown>, ctx: ContexteValidation<Niveau>): Promise<Validation<Niveau, Rejeu, Mesure>>;
+  /** Le corps qu'un envoi du registre (`validate`) fait passer par `valider` : le niveau du jour et la rediffusion déjà connus. */
+  corpsDeRegistre?(niveau: Niveau, code: string): Record<string, unknown>;
+  /** Le plafond de rejeux (unités) que coûte cette rediffusion ; défaut : `rejeu.unitesServeur` de la fiche (Tower : un poids fixe). */
+  unites?(rejeu: Rejeu): number;
   /** Les valeurs à écrire pour cette partie. */
   rejouee(niveau: Niveau, rejeu: Rejeu, mesure: Mesure): Rejouee;
   /** La médaille obtenue (code commun `author|gold|silver|bronze`) par ce score sur ce niveau. */
@@ -90,15 +137,25 @@ export interface ContratJeu<Niveau, Rejeu, Mesure> {
   /** Ce que le journal dit d'une partie acceptée (aucune donnée de joueur ; `executeur` : où le rejeu s'est calculé). */
   champsJournalPartie(mesure: Mesure, improved: boolean): Record<string, unknown>;
   /** La durée de la partie, pour la validation du registre (`validate`). */
-  validation(mesure: Mesure): { ms: number; ticks?: number };
+  validation(mesure: Mesure): { ms: number; ticks?: number; deaths?: number };
 
   // --- La présentation (formats des réponses) ---------------------------------------------------------------------------------------------
   /** Une ligne du classement : `brute` porte les colonnes de classement, `medal`, `name`, `ref`. */
-  ligneClassement(rang: number, brute: LigneBrute): unknown;
+  ligneClassement?(rang: number, brute: LigneBrute): unknown;
   /** La réponse d'un envoi accepté. */
-  reponseEnvoi(c: { date: string; mesure: Mesure; medaille: string | null; improved: boolean; meilleur: LigneBrute; rang: number; participants: number; board: unknown }): unknown;
+  reponseEnvoi(c: { date: string; jour: number; niveau: Niveau; mesure: Mesure; medaille: string | null; improved: boolean; meilleur: LigneBrute; rang: number; participants: number; board: unknown }): unknown;
   /** Un jour du profil `me`. */
-  jourProfil(brute: LigneBrute, date: string): unknown;
+  jourProfil?(brute: LigneBrute, date: string): unknown;
+  /** **Point d'extension du classement** : met en forme le classement d'un jour (défaut : `{ date, open, participants, top, me, generation }`). Sert aussi la réponse d'un envoi (`apresEnvoi`). */
+  tableau?(c: ContexteTableau<Niveau>): Promise<unknown>;
+  /** La médaille d'une ligne quand la table n'a pas de colonne `medal` (`AdaptateurTable.sansMedaille`) : calculée sur le niveau du jour. */
+  medailleDeLigne?(niveau: Niveau, brute: LigneBrute): string | null;
+  /** L'état d'un joueur qui n'a aucun résultat classé ce jour-là (défaut : `pas_joue`) : Jump y lit ses vies (`en_cours`). */
+  etatSansEssai?(playerId: string, day: number): Promise<import("../games").EtatPortail>;
+  /** Les textes de journal du jeu (défaut : `<nomJournal> : jour calculé` et `<nomJournal> : partie du jour`). */
+  messagesJournal?: { jour: string; partie: string };
+  /** Le premier jour du jeu : avant lui `day/<date>` répond `404 unknown_day` (défaut : aucun contrôle). */
+  jourMin?: number;
   /** Le temps de la partie (ms), le score et les pas d'une ligne : ce que le portail et l'administration lisent. */
   versPortail(brute: LigneBrute): { tempsMs: number; score?: ScorePortail; ticks?: number };
 
