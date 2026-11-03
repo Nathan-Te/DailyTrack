@@ -232,22 +232,9 @@
   flex-direction: column;
   gap: var(--dj-espace-3);
 }
-.portail-partage .dj-bouton {
+.portail-partage .dj-bouton,
+.portail-retours .dj-bouton {
   min-height: var(--dj-cible-portail);
-}
-.portail-partage__apercu {
-  margin: 0;
-  padding: var(--dj-espace-3) var(--dj-espace-4);
-  border: var(--dj-trait) dashed var(--dj-encre-douce);
-  border-radius: var(--dj-rayon-bouton);
-  background: var(--dj-papier);
-  font-family: var(--dj-police-chiffres);
-  font-weight: 700;
-  font-size: var(--dj-taille-13);
-  line-height: 1.5;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  user-select: all;
 }
 .portail-accueil {
   font-size: var(--dj-taille-15);

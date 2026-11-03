@@ -1,3 +1,4 @@
+import "./avatarEdition.css"; // `touch-action: none` sur l'aperçu : le doigt déplace la zone prise, pas la page
 import "@cdj/ui/src/retours.css"; // le cadre du dialogue est celui de « Un bug ? Une idée ? » (à la demande, avec ce module)
 import { bouton, el, suivreDialogue } from "@cdj/ui";
 import { CADRAGE_INITIAL, COTE_SORTIE, OCTETS_MAX, QUALITES, ZOOM_MAX, carreDeRecadrage, deplacer, assainirImage, typeDeSortie, versBase64, type Cadrage } from "./avatarLogique";
@@ -16,7 +17,7 @@ export function choisirImage(t: Dire, parent: HTMLElement = document.body): Prom
     const titreId = "avatar-titre";
     const message = el("p", { classe: "avatar-edition__message", attrs: { role: "alert" } });
     const fichier = el("input", { attrs: { type: "file", accept: "image/*", id: "avatar-fichier", "aria-label": t("profil.avatar.choisir") } }) as HTMLInputElement;
-    const canvas = el("canvas", { classe: "avatar-edition__apercu", attrs: { width: APERCU, height: APERCU, "aria-label": t("profil.avatar.apercu"), role: "img" } }) as HTMLCanvasElement;
+    const canvas = el("canvas", { classe: "avatar-edition__apercu", attrs: { width: APERCU, height: APERCU, "aria-label": t("profil.avatar.apercu"), role: "img", tabindex: "-1" } }) as HTMLCanvasElement;
     const zoom = el("input", { attrs: { type: "range", min: 1, max: ZOOM_MAX, step: 0.05, value: 1, id: "avatar-zoom", "aria-label": t("profil.avatar.zoom"), disabled: true } }) as HTMLInputElement;
     const utiliser = bouton({ texte: t("profil.avatar.utiliser"), variante: "marque", desactive: true, onClick: () => void valider() }) as HTMLButtonElement;
     utiliser.id = "avatar-utiliser";
@@ -75,11 +76,14 @@ export function choisirImage(t: Dire, parent: HTMLElement = document.body): Prom
     });
     let doigt: { x: number; y: number } | null = null;
     canvas.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); // le doigt prend la main sur l'image : la page ne défile pas
+      canvas.focus({ preventScroll: true });
       doigt = { x: e.clientX, y: e.clientY };
       canvas.setPointerCapture?.(e.pointerId);
     });
     canvas.addEventListener("pointermove", (e) => {
       if (!doigt || !image) return;
+      e.preventDefault();
       const k = APERCU / canvas.getBoundingClientRect().width;
       cadrage = deplacer(cadrage, largeur, hauteur, (e.clientX - doigt.x) * k, (e.clientY - doigt.y) * k, APERCU);
       doigt = { x: e.clientX, y: e.clientY };

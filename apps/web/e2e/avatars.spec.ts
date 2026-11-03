@@ -101,6 +101,8 @@ test("le classement montre les images (adresse immuable) › un joueur sans imag
   await page.getByRole("button", { name: "Choisir une image" }).click();
   await page.locator("#avatar-fichier").setInputFiles({ name: "moi.webp", mimeType: "image/webp", buffer: Buffer.from(WEBP_B, "base64") });
   await expect(page.locator("#avatar-utiliser")).toBeEnabled();
+  // Sur un téléphone, glisser le doigt sur l'aperçu déplace la zone prise, pas la page : `touch-action: none`.
+  expect(await page.locator(".avatar-edition__apercu").evaluate((e) => getComputedStyle(e).touchAction)).toBe("none");
   await page.locator("#avatar-utiliser").click();
   await expect(page.locator("#avatar-message")).toHaveText("Ton image est enregistrée.");
   const sienne = await page.locator("#titre-avatar").locator("xpath=..").locator("img.dj-avatar__img").getAttribute("src");
