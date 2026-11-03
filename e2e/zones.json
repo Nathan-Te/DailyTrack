@@ -7,7 +7,7 @@
   "_regressionUnitaires": "Lot R13 : les fichiers de tests unitaires de la famille « Régression » (jeux de données fictives de la recette) : CI complète et main seulement, sauf modifiés.",
   "regressionUnitaires": ["apps/api/test/portailDemo.test.ts", "apps/api/test/classementDemo.test.ts"],
   "zones": {
-    "ui": { "globs": ["packages/ui/**"] },
+    "ui": { "globs": ["packages/ui/**", "packages/kit/**"] },
     "profile-pkg": { "globs": ["packages/profile/**"] },
     "core-clock": { "globs": ["packages/core/**", "packages/clock/**", "config/**"] },
     "iphone": {
