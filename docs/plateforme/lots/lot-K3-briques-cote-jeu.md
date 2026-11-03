@@ -56,4 +56,5 @@ En une ligne chacun : le stockage (`@cdj/kit/stockage`), la génération de donn
 
 ## Vérifié / non vérifié
 - Vérifié en local : `tsc -b` complet ; tests unitaires (SQLite) ; e2e Chromium Jump (41), Tower (20), Track (40 : accueil, interrupteur, nouveau départ, perf, replay, partage, jeu suivant dans les deux sens, langue, accessibilité) ; budgets ci-dessus.
-- Non vérifié : Firefox et WebKit, libSQL (CI), les captures. CI de PR et run `main` : voir le résumé de la PR.
+- **CI** : un run en mode `main` forcé une fois, **vert** (16 min, tous les jobs dont Budgets, Firefox et WebKit petit ensemble, libSQL compris) : https://github.com/Nathan-Te/DailyTrack/actions/runs/41618244765 ; le forçage est retiré (commit suivant). La CI de PR normale : voir le résumé de la PR.
+- Non vérifié : les captures (aucune n'était à produire : rien ne change pour les joueurs).
