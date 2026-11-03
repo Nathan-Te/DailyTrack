@@ -2,7 +2,7 @@
 // sont écrits par le jeu qui les choisit. Les morceaux qu'on ne connaît pas (pas de médaille, pas de classement) sont simplement omis.
 
 /** Assemble les morceaux de la ligne (les vides sont omis) avec le séparateur de la plateforme. */
-export function assemblerLigne(morceaux: readonly (string | null | undefined | false)[]): string {
+export function assemblerLigne(morceaux: readonly (string | null | undefined | false | 0)[]): string {
   return morceaux.filter(Boolean).join(" — ");
 }
 

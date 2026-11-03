@@ -18,26 +18,24 @@ export function namespacePrefix(flag: string | undefined, mode: string | undefin
 }
 
 type Env = { env: Record<string, string | undefined> };
-function buildFlags(): { flag?: string; mode?: string; api?: string; production?: string } {
+// Chaque drapeau est lu à part et marqué sans effet : un jeu qui n'utilise pas `BUILD_API_URL` ou `BUILD_RESTRICTED` ne paie pas leur lecture (Track : seul le préfixe). Accès écrits en entier
+// (`import.meta.env.X`) : Vite ne remplace que cette forme à la construction (jamais un `env` rangé dans une variable) ; sous Node l'accès lève, d'où le `try`.
+const lire = (f: () => string | undefined): string | undefined => {
   try {
-    // Accès écrits en entier (`import.meta.env.X`) : Vite ne remplace que cette forme à la construction (jamais un `env` rangé dans une variable).
-    return {
-      flag: (import.meta as unknown as Env).env.VITE_STORAGE,
-      mode: (import.meta as unknown as Env).env.MODE,
-      api: (import.meta as unknown as Env).env.VITE_API_URL,
-      production: (import.meta as unknown as Env).env.VITE_PRODUCTION,
-    };
+    return f();
   } catch {
-    return {};
+    return undefined;
   }
-}
-const flags = buildFlags();
+};
 /** L'adresse du serveur fixée à la construction (`VITE_API_URL` : `/` sur la production, la recette et les aperçus ; absente : pas de classement, sauf `?api=`). */
-export const BUILD_API_URL: string | undefined = flags.api || undefined;
+export const BUILD_API_URL: string | undefined = /* @__PURE__ */ lire(() => (import.meta as unknown as Env).env.VITE_API_URL) || undefined;
 /** Cette construction est celle de la production (`VITE_PRODUCTION=1`) : `?api=` et les options d'essai y sont restreints (règles R7 et R9). */
-export const BUILD_RESTRICTED: boolean = flags.production === "1";
+export const BUILD_RESTRICTED: boolean = /* @__PURE__ */ lire(() => (import.meta as unknown as Env).env.VITE_PRODUCTION) === "1";
 /** Le préfixe physique de cette construction (`""` en production). */
-export const NAMESPACE_PREFIX = namespacePrefix(flags.flag, flags.mode);
+export const NAMESPACE_PREFIX = namespacePrefix(
+  /* @__PURE__ */ lire(() => (import.meta as unknown as Env).env.VITE_STORAGE),
+  /* @__PURE__ */ lire(() => (import.meta as unknown as Env).env.MODE),
+);
 
 /** Le sous-ensemble de `Storage` qu'un stockage préfixé exige de celui qu'il enveloppe. */
 export type BackingStorage = Pick<Storage, "getItem" | "setItem" | "removeItem" | "key" | "length">;
