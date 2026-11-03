@@ -17,7 +17,8 @@
           "apps/api/scripts/measure-budget.ts",
           "apps/api/scripts/history-seed.ts",
           "docs/lots/**",
-          "docs/orchestration.md"
+          "docs/orchestration.md",
+          "apps/api/scripts/track-*.ts"
         ],
         "serveur": [
           "apps/api/src/cdj.ts",
@@ -29,7 +30,8 @@
           "apps/api/scripts/measure-salon.ts",
           "apps/api/scripts/measure-generator.ts",
           "apps/api/scripts/measure-budget.ts",
-          "apps/api/scripts/history-seed.ts"
+          "apps/api/scripts/history-seed.ts",
+          "apps/api/scripts/track-*.ts"
         ],
         "documents": [
           "docs/seed.md",
@@ -507,8 +509,13 @@
       "jours": {
         "dossier": null,
         "registre": "packages/sim/src/jours-track.json",
-        "preuveInterditeEnProd": false
+        "preuveInterditeEnProd": false,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/track-empreintes.ts",
+          "registre": "apps/api/scripts/track-registre.ts"
+        }
       },
+      "sim": "sim",
       "budget": [
         "track.jsCss",
         "track.js",
@@ -851,8 +858,24 @@
       "jours": {
         "dossier": "apps/jump/public/levels",
         "registre": null,
-        "preuveInterditeEnProd": true
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/jump-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/jump",
+            "script": "freeze:days",
+            "forme": "jusqu-a-la-veille"
+          },
+          "apresPose": {
+            "paquet": "@cdj/api",
+            "script": "jump:seed",
+            "sorties": [
+              "apps/jump/public/demo"
+            ]
+          }
+        }
       },
+      "sim": "jump-sim",
       "budget": [
         "jump.jsCss",
         "jump.anglais",
@@ -954,8 +977,23 @@
       "jours": {
         "dossier": "apps/tower/public/jours",
         "registre": null,
-        "preuveInterditeEnProd": true
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/tower-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/tower-sim",
+            "script": "figer:tower",
+            "forme": "jours-proteges"
+          },
+          "preparer": {
+            "paquet": "@cdj/tower-sim",
+            "script": "preparer:tower",
+            "joursApresBascule": 14,
+            "garde": "packages/tower-sim/test/jours.test.ts"
+          }
+        }
       },
+      "sim": "tower-sim",
       "budget": [
         "tower.jsCss",
         "tower.jeu",

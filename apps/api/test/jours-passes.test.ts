@@ -3,11 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
 import { generatorVersionOf, type RegistreJoursTrack } from "@cdj/sim";
-import { empreinteJump, empreinteTrack } from "../scripts/empreintes";
-import { empreinteTower } from "../scripts/empreintes-tower";
+import { empreinteJour as empreinteJump } from "../scripts/jump-empreintes";
+import { empreinteJour as empreinteTower } from "../scripts/tower-empreintes";
+import { empreinteJour as empreinteTrack } from "../scripts/track-empreintes";
 
 // Lot R6 (le garde-fou des jours) : **un jour passé ne change jamais**. `jours-passes.json` garde, pour chaque jour de la journée n° 1 jusqu'à la veille du jour de bascule
-// de la dernière mise en production, l'empreinte de ce que chaque jeu a servi ce jour-là (`scripts/empreintes.ts`). Elle est ajoutée par « Mettre en production » (la PR
+// de la dernière mise en production, l'empreinte de ce que chaque jeu a servi ce jour-là (`scripts/<jeu>-empreintes.ts`). Elle est ajoutée par « Mettre en production » (la PR
 // « robot » des jours figés), avec le code qui était alors en production : ce test fait échouer **dès la PR** un changement de générateur, de physique ou de thème qui
 // modifierait un jour déjà joué — avant, seule la mise en production le voyait. Un lot qui change le générateur pour la suite monte sa version (`GENERATOR_VERSION`, Track ;
 // `JUMP_GENERATOR_VERSION`, Jump) : c'est la mise en production qui décide du premier jour concerné (le jour de bascule) et qui fige les jours d'avant (lot R11).

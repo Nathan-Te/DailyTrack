@@ -7,6 +7,7 @@
 import { appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { ADRESSES } from "./domaine.mjs";
+import { CHAINE } from "./fiches-lecture.mjs";
 import { api, jeton } from "./github-api.mjs";
 
 /** Les étapes du bouton, dans l'ordre : la clé de `needs` (et le préfixe des jobs appelés, « ci / … »), le titre, les modes qui la font. */
@@ -84,9 +85,19 @@ export function resumeDuBouton({ mode, needs, jobs = [], runUrl, ref = "refs/hea
   l.push(`- **Ce qui part** : ${v.nb_pr ?? "?"} PR${v.prs ? ` (${v.prs})` : ""} — le détail (« Ce qui part ») est dans le job « verifier »`);
   if (v.bascule_le) l.push(`- **Jour de bascule** : ${v.bascule_le} (les jours protégés d'avant restent ceux de la production)`);
   const f = o("figer");
-  if (f.jours_track || f.jours_jump) l.push(`- **Jours** : Track ${f.jours_track ?? "?"} · Jump ${f.jours_jump ?? "?"}${f.jours_tower ? ` · Tower ${f.jours_tower}` : ""}`);
-  // Lot TP : les jours de Tower préparés (conservés, préparés, refaits) et jusqu'où ils sont couverts.
-  if (f.tower_ligne) l.push(`- **Jours de Tower** : ${f.tower_ligne}`);
+  // Lot K4b : une ligne par jeu de la chaîne (les fiches), lue dans les sorties JSON du job `figer` : `jours` ({ <jeu>: ligne }) et `preparation` (les jeux qui préparent leurs jours : Tower).
+  const json = (t) => {
+    try {
+      return JSON.parse(t || "{}");
+    } catch {
+      return {};
+    }
+  };
+  const jours = json(f.jours);
+  if (Object.keys(jours).length) l.push(`- **Jours** : ${CHAINE.filter((j) => jours[j.id]).map((j) => `${j.nom} ${jours[j.id]}`).join(" · ")}`);
+  // Lot TP : les jours préparés (conservés, préparés, refaits) et jusqu'où ils sont couverts.
+  const preparation = json(f.preparation);
+  for (const j of CHAINE) if (preparation[j.id]) l.push(`- **Jours de ${j.nom}** : ${preparation[j.id]}`);
   if (mode !== "repetition") {
     const s = o("sauvegarde").fichier;
     l.push(`- **Sauvegarde** : ${res("sauvegarde") === "success" && s ? `\`${s}\` (30 jours ; restauration : annexe C de docs/plateforme/mise-en-production.md)` : ref !== "refs/heads/main" ? "aucune (essai hors de main)" : "non faite"}`);

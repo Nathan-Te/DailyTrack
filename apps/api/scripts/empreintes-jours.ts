@@ -1,42 +1,33 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { formatDay, parseDay } from "@cdj/core";
-import { empreinteJump, empreinteTrack, type EmpreinteJour } from "./empreintes";
+import type { EmpreinteJour } from "./empreintes";
 
-// Lot R6 : les empreintes des jours d'une construction, pour le garde-fou de « Mettre en production » (et sa répétition).
+// Lot R6 : les empreintes des jours d'une construction, pour le garde-fou de « Mettre en production » (et sa répétition). Lot K4b : le pilote est le même pour tous les jeux ; la fonction de chaque
+// jeu (`empreinteJour` de `<id>-empreintes.ts`) lui est donnée par une entrée que `scripts/mise-en-production.mjs empreintes` écrit puis compile (`executer(empreinteJour, "<id>")`).
 //
-//   npm run jours:empreintes -w @cdj/api -- --du 2026-10-26 --au 2026-11-10 --niveaux ../jump/public/levels --sortie /tmp/prod.json
+//   node dist/empreintes-<id>.mjs --du 2026-10-26 --au 2026-11-10 --jours <dossier des fichiers du jeu> --sortie /tmp/prod.json
 //
-// Lancé deux fois par le workflow : dans le dépôt du code actuellement en production (ce script y est copié, avec `empreintes.ts`) et dans celui du commit à déployer ;
-// `scripts/mise-en-production.mjs comparer` compare les deux. Rien n'est lu en base ni écrit ailleurs que le fichier de sortie. `--jeux track,jump` en choisit un.
+// Lancé deux fois par le workflow, pour chaque jeu : dans le dépôt du code actuellement en production (ces scripts y sont copiés) et dans celui du commit à déployer ; `comparer` compare les deux.
+// Rien n'est lu en base ni écrit ailleurs que le fichier de sortie, **auquel la clé du jeu est ajoutée** (`{ version, du, au, <id>: { AAAA-MM-JJ: empreinte } }`).
 
-const args = process.argv.slice(2);
-const val = (nom: string): string | undefined => (args.includes(nom) ? args[args.indexOf(nom) + 1] : undefined);
-const du = parseDay(val("--du") ?? "");
-const au = parseDay(val("--au") ?? "");
-const sortie = val("--sortie");
-if (du === null || au === null || au < du || !sortie) {
-  console.error("Usage : npm run jours:empreintes -w @cdj/api -- --du AAAA-MM-JJ --au AAAA-MM-JJ --sortie <fichier.json> [--niveaux <dossier des niveaux figés de Jump>] [--jeux track,jump]");
-  process.exit(2);
+export function executer(empreinteJour: (jour: number, dossier: string | null) => EmpreinteJour, jeu: string, argv: string[] = process.argv.slice(2)): void {
+  const val = (nom: string): string | undefined => (argv.includes(nom) ? argv[argv.indexOf(nom) + 1] : undefined);
+  const du = parseDay(val("--du") ?? "");
+  const au = parseDay(val("--au") ?? "");
+  const sortie = val("--sortie");
+  if (du === null || au === null || au < du || !sortie) {
+    console.error("Usage : node dist/empreintes-<jeu>.mjs --du AAAA-MM-JJ --au AAAA-MM-JJ --sortie <fichier.json> [--jours <dossier des fichiers du jeu>]");
+    process.exit(2);
+  }
+  const jours = val("--jours") ? resolve(val("--jours") as string) : null;
+  const empreintes: Record<string, EmpreinteJour> = {};
+  const debut = Date.now();
+  for (let day = du; day <= au; day++) empreintes[formatDay(day)] = empreinteJour(day, jours);
+  const chemin = resolve(sortie);
+  const existant = existsSync(chemin) ? (JSON.parse(readFileSync(chemin, "utf8")) as Record<string, unknown>) : { version: 1, du: formatDay(du), au: formatDay(au) };
+  mkdirSync(dirname(chemin), { recursive: true });
+  writeFileSync(chemin, JSON.stringify({ ...existant, [jeu]: empreintes }, null, 1) + "\n");
+  const invalides = Object.entries(empreintes).filter(([, e]) => !e.ok).map(([d]) => d);
+  console.log(`Empreintes ${jeu} ${formatDay(du)} → ${formatDay(au)} : ${au - du + 1} jour(s) en ${((Date.now() - debut) / 1000).toFixed(1)} s${invalides.length ? `, NON VALIDES : ${invalides.join(", ")}` : ""} → ${sortie}`);
 }
-const jeux = (val("--jeux") ?? "track,jump").split(",");
-// `npm run -w` lance le script depuis apps/api : les niveaux figés sont ceux du dépôt, à côté.
-const niveaux = resolve(val("--niveaux") ?? "../jump/public/levels");
-
-const out: { version: number; du: string; au: string; track: Record<string, EmpreinteJour>; jump: Record<string, EmpreinteJour> } = {
-  version: 1,
-  du: formatDay(du),
-  au: formatDay(au),
-  track: {},
-  jump: {},
-};
-const debut = Date.now();
-for (let day = du; day <= au; day++) {
-  const date = formatDay(day);
-  if (jeux.includes("track")) out.track[date] = empreinteTrack(day);
-  if (jeux.includes("jump")) out.jump[date] = empreinteJump(day, niveaux);
-}
-mkdirSync(dirname(resolve(sortie)), { recursive: true });
-writeFileSync(resolve(sortie), JSON.stringify(out, null, 1) + "\n");
-const invalides = Object.entries({ ...Object.fromEntries(Object.entries(out.track).map(([d, e]) => [`track ${d}`, e])), ...Object.fromEntries(Object.entries(out.jump).map(([d, e]) => [`jump ${d}`, e])) }).filter(([, e]) => !e.ok);
-console.log(`Empreintes ${formatDay(du)} → ${formatDay(au)} (${jeux.join(", ")}) : ${au - du + 1} jour(s) en ${((Date.now() - debut) / 1000).toFixed(1)} s${invalides.length ? `, NON VALIDES : ${invalides.map(([k]) => k).join(", ")}` : ""} → ${sortie}`);

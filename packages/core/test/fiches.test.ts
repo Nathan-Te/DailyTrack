@@ -121,7 +121,12 @@ describe("Jump (lot K1b) : sa fiche", () => {
     expect(j.classement).toMatchObject({ cumul: true, unite: "ticks", format: "temps" });
     expect(j.classement.colonnes.map((c) => c.nom)).toEqual(["ticks", "submitted_at", "player_id"]);
     expect(j.medailles.methode).toBe("figees-niveau");
-    expect(j.jours).toEqual({ mode: "fichier-par-jour", dossier: "apps/jump/public/levels", preuveInterditeEnProd: true });
+    expect(j.jours).toEqual({
+      mode: "fichier-par-jour",
+      dossier: "apps/jump/public/levels",
+      preuveInterditeEnProd: true,
+      fabrication: { empreinte: "apps/api/scripts/jump-empreintes.ts", figer: { paquet: "@cdj/jump", script: "freeze:days", forme: "jusqu-a-la-veille" }, apresPose: { paquet: "@cdj/api", script: "jump:seed", sorties: ["apps/jump/public/demo"] } },
+    });
     expect(j.donnees.tables.map((t) => `${t.nom}:${t.sort}`)).toEqual(["jump_results:videe", "jump_lives:videe", "jump_deaths:videe", "jump_levels:gardee"]);
   });
   it("un chemin hérité (`apps/api/scripts/measure-jump.ts`) est permis à Jump seul, nommé un par un", () => {
@@ -143,7 +148,7 @@ describe("Track (lot K1c) : sa fiche", () => {
     expect(t.classement).toMatchObject({ cumul: true, unite: "ms", format: "temps" });
     expect(t.classement.colonnes.map((c) => c.nom)).toEqual(["ms", "submitted_at", "player_id"]);
     expect(t.medailles.methode).toBe("facteurs-auteur");
-    expect(t.jours).toEqual({ mode: "registre", registre: "packages/sim/src/jours-track.json", preuveInterditeEnProd: false });
+    expect(t.jours).toEqual({ mode: "registre", registre: "packages/sim/src/jours-track.json", preuveInterditeEnProd: false, fabrication: { empreinte: "apps/api/scripts/track-empreintes.ts", registre: "apps/api/scripts/track-registre.ts" } });
     expect(t.donnees.stockage.prefixe).toBe("cdj:");
   });
   it("ses tables sont celles d'avant la règle, nommées une à une : la vidée et la gardée", () => {
@@ -209,5 +214,41 @@ describe("les projections", () => {
   it("un jeu `on` d'une fiche entre dans les jeux publics, dans l'ordre des fiches (Tower, une fois `on`, après Track et Jump)", () => {
     const l = fiches().map((f) => (f.id === "tower" ? { ...f, etatDepart: "on" as const } : f));
     expect(projectionJeu(l).publics).toEqual(["track", "jump", "tower"]);
+  });
+});
+
+// Lot K4b — comment un jeu fige, prépare et compare ses jours (`jours.fabrication`) : lu par `scripts/mise-en-production.mjs` et les workflows de production.
+describe("jours.fabrication (lot K4b) : la chaîne de « Mettre en production » lit la fiche", () => {
+  const refuse = (modif: (f: Record<string, any>) => void, id = "tower"): string => {
+    const f = structuredClone(brut(id));
+    modif(f);
+    return validerFiche(f, id).join("\n");
+  };
+  it("Tower : un module d'empreinte, un script qui fige les jours protégés et un script qui prépare (fenêtre, garde)", () => {
+    expect(lireFiche(brut("tower"), "tower").jours.fabrication).toEqual({
+      empreinte: "apps/api/scripts/tower-empreintes.ts",
+      figer: { paquet: "@cdj/tower-sim", script: "figer:tower", forme: "jours-proteges" },
+      preparer: { paquet: "@cdj/tower-sim", script: "preparer:tower", joursApresBascule: 14, garde: "packages/tower-sim/test/jours.test.ts" },
+    });
+  });
+  it("le bloc est obligatoire, avec son module d'empreinte ; un chemin hors du jeu est refusé", () => {
+    expect(refuse((f) => delete f.jours.fabrication)).toContain("jours.fabrication");
+    expect(refuse((f) => delete f.jours.fabrication.empreinte)).toContain("jours.fabrication.empreinte");
+    expect(refuse((f) => (f.jours.fabrication.empreinte = "apps/api/scripts/jump-empreintes.ts"))).toContain("jours.fabrication.empreinte");
+    expect(refuse((f) => (f.jours.fabrication.preparer.garde = "packages/sim/test/x.test.ts"))).toContain("jours.fabrication.preparer.garde");
+  });
+  it("un mode `fichier-par-jour` dit comment il fige ; un mode `registre` dit son module de registre, et ne fige ni ne prépare", () => {
+    expect(refuse((f) => delete f.jours.fabrication.figer)).toContain("jours.fabrication.figer");
+    expect(refuse((f) => (f.jours.fabrication.figer.forme = "toujours"))).toContain("jours.fabrication.figer.forme");
+    expect(refuse((f) => (f.jours.fabrication.registre = "apps/api/scripts/tower-registre.ts"))).toContain("jours.fabrication.registre");
+    expect(refuse((f) => delete f.jours.fabrication.registre, "track")).toContain("jours.fabrication.registre");
+    expect(refuse((f) => (f.jours.fabrication.figer = { paquet: "@cdj/sim", script: "x", forme: "jours-proteges" }), "track")).toContain("jours.fabrication.figer");
+  });
+  it("un script npm est celui d'un paquet du jeu (apresPose : ou celui du serveur) ; la fenêtre est un entier ≥ 0", () => {
+    expect(refuse((f) => (f.jours.fabrication.figer.paquet = "@cdj/jump"))).toContain("jours.fabrication.figer.paquet");
+    expect(refuse((f) => (f.jours.fabrication.figer.script = "x && rm -rf /"))).toContain("jours.fabrication.figer.script");
+    expect(refuse((f) => (f.jours.fabrication.preparer.joursApresBascule = -1))).toContain("joursApresBascule");
+    expect(refuse((f) => (f.jours.fabrication.apresPose = { paquet: "@cdj/web", script: "seed", sorties: ["apps/tower/public/demo"] }))).toContain("apresPose.paquet");
+    expect(refuse((f) => (f.jours.fabrication.apresPose = { paquet: "@cdj/api", script: "seed", sorties: ["apps/web/public/demo"] }))).toContain("apresPose.sorties");
   });
 });

@@ -14,7 +14,20 @@ export interface FicheCI {
     regression?: string[];
     parts: { main: number; complet: number; nuit: number };
   };
-  jours: { dossier: string | null; registre: string | null; preuveInterditeEnProd: boolean };
+  jours: {
+    dossier: string | null;
+    registre: string | null;
+    preuveInterditeEnProd: boolean;
+    fabrication: {
+      empreinte: string;
+      registre?: string;
+      figer?: { paquet: string; script: string; forme: "jusqu-a-la-veille" | "jours-proteges" };
+      preparer?: { paquet: string; script: string; joursApresBascule: number; garde: string };
+      apresPose?: { paquet: string; script: string; sorties: string[] };
+    };
+  };
+  /** Lot K4b : le dossier de la simulation (`packages/<sim>`). */
+  sim: string;
   budget: string[];
   outilsAdmin: boolean;
 }
@@ -48,3 +61,21 @@ export interface FicheServeur {
 export const FICHES_SERVEUR: FicheServeur[];
 export const NOMS_DES_JEUX: Record<string, string>;
 export const VERSIONS_DES_JEUX: { nom: string; fichier: string; jeu: string; id: string; role: "sim" | "generateur" }[];
+
+/** Lot K4b : un jeu de la chaîne de « Mettre en production », lu dans sa fiche (`jours.fabrication`). */
+export interface JeuDeLaChaine {
+  id: string;
+  nom: string;
+  mode: "registre" | "fichier-par-jour";
+  dossier: string | null;
+  registre: string | null;
+  sim: string;
+  versions: { sim: string; generateur: string; medailles?: string };
+  moduleEmpreinte: string;
+  moduleRegistre?: string;
+  figer?: { paquet: string; script: string; forme: "jusqu-a-la-veille" | "jours-proteges" };
+  preparer?: { paquet: string; script: string; joursApresBascule: number; garde: string };
+  apresPose?: { paquet: string; script: string; sorties: string[] };
+}
+export const CHAINE: JeuDeLaChaine[];
+export function jeuDeLaChaine(id: string): JeuDeLaChaine;

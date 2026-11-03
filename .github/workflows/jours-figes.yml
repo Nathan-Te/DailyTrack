@@ -1,8 +1,8 @@
 name: Jours figés dans main
 # Lot R16 (plateforme) — le versement des jours figés d'une mise en production, sorti de « Mettre en production » (production.yml, job `depot`, qui le LANCE
 # dès que le serveur de production est déployé, ou à la fin d'un essai lancé sur main) : il dure 6 à 8 min (la CI de sa PR) et n'allongeait le run que pour lui.
-# Ce qu'il fait n'a pas changé (lot R12) : une branche robot avec les jours figés de Jump (et la démonstration refaite), les jours de Tower, le registre des jours
-# de Track et les empreintes des jours passés ; une PR ; sa CI (celle d'une PR : `pull_request` avec ROBOT_TOKEN ; sinon ci.yml lancé ici en mode `pr`, la
+# Ce qu'il fait n'a pas changé (lot R12) : une branche robot avec les jours de chaque jeu (lus dans les fiches : fichiers figés ou préparés, registre, ce qu'il faut
+# refaire ensuite) et les empreintes des jours passés ; une PR ; sa CI (celle d'une PR : `pull_request` avec ROBOT_TOKEN ; sinon ci.yml lancé ici en mode `pr`, la
 # règle de GitHub ne lançant aucun workflow pour un jeton de workflow) ; puis la fusion faite par le workflow LUI-MÊME dès que `test` et `e2e` sont verts.
 # Ses entrées ne sont que des DONNÉES (passées par `env:`, jamais écrites dans un script) et sont vérifiées : `run` doit être un run de « Mettre en production »
 # sur main dont le garde-fou (`figer`) et la répétition (`recette-verification`) ont réussi — ce sont ses artefacts qui partent dans main. Le relancer à la
@@ -72,8 +72,8 @@ jobs:
           node-version: 22
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: jours-figes
-          path: ${{ runner.temp }}/jours-figes
+          name: jours
+          path: ${{ runner.temp }}/jours
           run-id: ${{ inputs.run }}
           github-token: ${{ github.token }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -82,35 +82,20 @@ jobs:
           path: ${{ runner.temp }}/empreintes-jours
           run-id: ${{ inputs.run }}
           github-token: ${{ github.token }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: jours-tower
-          path: ${{ runner.temp }}/jours-tower
-          run-id: ${{ inputs.run }}
-          github-token: ${{ github.token }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: registre-track
-          path: ${{ runner.temp }}/registre-track
-          run-id: ${{ inputs.run }}
-          github-token: ${{ github.token }}
       - name: Les jours figés dans main
         id: depot
         run: |
-          node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels
-          # Lot TP : les jours de Tower (préparés ou refaits avec le code déployé, preuve comprise : le dépôt est privé du serveur, le site publié la perd) rejoignent le dépôt.
-          node scripts/mise-en-production.mjs tower-poser "$RUNNER_TEMP/jours-tower" apps/tower/public/jours
-          # Lot R11 : le registre des jours de Track (jusqu'à la veille de la bascule) rejoint le dépôt avec les niveaux figés de Jump ; les jours d'avant ne changent jamais.
-          node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json" --resume "$GITHUB_STEP_SUMMARY"
+          # Lot K4b : les jours de chaque jeu (jours figés, jours préparés — preuve comprise : le dépôt est privé du serveur, le site publié la perd —, registre) rejoignent le dépôt ; les jours d'avant ne
+          # changent jamais. Aucun jeu n'est nommé ici : `poser-jours` lit les fiches.
+          node scripts/mise-en-production.mjs poser-jours "$RUNNER_TEMP/jours" --resume "$GITHUB_STEP_SUMMARY"
           # Lot R6 : les empreintes des jours passés (jusqu'à la veille de la bascule) rejoignent le test `jours-passes.test.ts` : un jour passé ne change plus jamais.
-          node scripts/mise-en-production.mjs empreintes-fusion apps/api/test/jours-passes.json "$RUNNER_TEMP/empreintes-jours/prod.json" --jusqua "$VEILLE" --proteges "$RUNNER_TEMP/registre-track/proteges.json"
-          # La démonstration de Jump (`?api=demo`, apps/jump/public/demo) rejoue les niveaux de ses jours, fichiers figés compris : un jour qu'elle couvre et que
-          # cette mise en production fige change de niveau, ses données se refont (déterministe, ≈ 1 min ; sans cela la CI de la PR échoue : « relancer jump:seed »).
-          if [ -n "$(git status --porcelain apps/jump/public/levels)" ]; then
-            npm ci --ignore-scripts --no-audit --no-fund > /dev/null
-            npm run jump:seed -w @cdj/api > /dev/null
-          fi
-          if [ -z "$(git status --porcelain apps/jump/public/levels apps/jump/public/demo apps/tower/public/jours apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
+          node scripts/mise-en-production.mjs empreintes-fusion apps/api/test/jours-passes.json "$RUNNER_TEMP/empreintes-jours/prod.json" --jusqua "$VEILLE" --proteges "$RUNNER_TEMP/jours/proteges.json"
+          # Ce qui dépend des jours d'un jeu se refait (la démonstration de Jump rejoue les niveaux de ses jours, fichiers figés compris : un jour qu'elle couvre et que cette mise en production fige change
+          # de niveau, ses données se refont, déterministe, ≈ 1 min ; sans cela la CI de la PR échoue : « relancer jump:seed »).
+          node scripts/mise-en-production.mjs apres-pose
+          chemins="$(node scripts/mise-en-production.mjs chemins-du-versement)"
+          # shellcheck disable=SC2086 — la liste est faite de chemins du dépôt, sans espace
+          if [ -z "$(git status --porcelain $chemins)" ]; then
             echo "etat=rien" >> "$GITHUB_OUTPUT"
             echo "### ✅ Jours figés : déjà dans main, rien à ajouter" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -119,11 +104,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add apps/jump/public/levels apps/jump/public/demo apps/tower/public/jours apps/api/test/jours-passes.json packages/sim/src/jours-track.json
+          # shellcheck disable=SC2086
+          git add $chemins
           # « Jours figés de la mise en production » : le début du message est lu par `jours-servis` (les jours que la production sert).
-          git commit -q -m "Jours figés de la mise en production $NOM (code en production, freeze:days jusqu'à la veille de la bascule)"
+          git commit -q -m "Jours figés de la mise en production $NOM (code en production, jours figés jusqu'à la veille de la bascule)"
           git push -q origin "$branch"
-          body="Jours figés par « Mettre en production » ($NOM, run $RUN) avec **le code qui était en production** : niveaux de DailyJump, registre des jours de DailyTrack (packages/sim/src/jours-track.json) et empreintes des jours passés (apps/api/test/jours-passes.json). **Le workflow fusionne cette PR lui-même** dès que sa CI est verte (lot R12) : rien à faire."
+          body="Jours figés par « Mettre en production » ($NOM, run $RUN) avec **le code qui était en production** : les jours de chaque jeu (fichiers figés ou préparés, registre : ce que dit sa fiche) et les empreintes des jours passés (apps/api/test/jours-passes.json). **Le workflow fusionne cette PR lui-même** dès que sa CI est verte (lot R12) : rien à faire."
           url="$(gh pr create --base main --head "$branch" --title "Jours figés — $NOM" --body "$body")"
           echo "pr=$url" >> "$GITHUB_OUTPUT"
           # La CI de la PR, puis la fusion faite par le workflow lui-même. Si `main` a avancé entre-temps (« à jour avant de fusionner »), la branche reprend main

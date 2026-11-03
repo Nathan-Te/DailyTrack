@@ -41,7 +41,11 @@ export const FICHES_SERVEUR = [
     "jours": {
       "mode": "registre",
       "registre": "packages/sim/src/jours-track.json",
-      "preuveInterditeEnProd": false
+      "preuveInterditeEnProd": false,
+      "fabrication": {
+        "empreinte": "apps/api/scripts/track-empreintes.ts",
+        "registre": "apps/api/scripts/track-registre.ts"
+      }
     },
     "rejeu": {
       "unitesServeur": 1,
@@ -127,7 +131,22 @@ export const FICHES_SERVEUR = [
     "jours": {
       "mode": "fichier-par-jour",
       "dossier": "apps/jump/public/levels",
-      "preuveInterditeEnProd": true
+      "preuveInterditeEnProd": true,
+      "fabrication": {
+        "empreinte": "apps/api/scripts/jump-empreintes.ts",
+        "figer": {
+          "paquet": "@cdj/jump",
+          "script": "freeze:days",
+          "forme": "jusqu-a-la-veille"
+        },
+        "apresPose": {
+          "paquet": "@cdj/api",
+          "script": "jump:seed",
+          "sorties": [
+            "apps/jump/public/demo"
+          ]
+        }
+      }
     },
     "rejeu": {
       "unitesServeur": 1,
@@ -206,7 +225,21 @@ export const FICHES_SERVEUR = [
     "jours": {
       "mode": "fichier-par-jour",
       "dossier": "apps/tower/public/jours",
-      "preuveInterditeEnProd": true
+      "preuveInterditeEnProd": true,
+      "fabrication": {
+        "empreinte": "apps/api/scripts/tower-empreintes.ts",
+        "figer": {
+          "paquet": "@cdj/tower-sim",
+          "script": "figer:tower",
+          "forme": "jours-proteges"
+        },
+        "preparer": {
+          "paquet": "@cdj/tower-sim",
+          "script": "preparer:tower",
+          "joursApresBascule": 14,
+          "garde": "packages/tower-sim/test/jours.test.ts"
+        }
+      }
     },
     "rejeu": {
       "unitesServeur": 30,

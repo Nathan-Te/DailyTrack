@@ -70,7 +70,11 @@
   "jours": {
     "mode": "registre",
     "registre": "packages/sim/src/jours-track.json",
-    "preuveInterditeEnProd": false
+    "preuveInterditeEnProd": false,
+    "fabrication": {
+      "empreinte": "apps/api/scripts/track-empreintes.ts",
+      "registre": "apps/api/scripts/track-registre.ts"
+    }
   },
   "rejeu": {
     "unitesServeur": 1,
@@ -156,7 +160,8 @@
       "apps/api/scripts/measure-budget.ts",
       "apps/api/scripts/history-seed.ts",
       "docs/lots/**",
-      "docs/orchestration.md"
+      "docs/orchestration.md",
+      "apps/api/scripts/track-*.ts"
     ],
     "serveur": [
       "apps/api/src/cdj.ts",
@@ -168,7 +173,8 @@
       "apps/api/scripts/measure-salon.ts",
       "apps/api/scripts/measure-generator.ts",
       "apps/api/scripts/measure-budget.ts",
-      "apps/api/scripts/history-seed.ts"
+      "apps/api/scripts/history-seed.ts",
+      "apps/api/scripts/track-*.ts"
     ],
     "documents": [
       "docs/seed.md",
