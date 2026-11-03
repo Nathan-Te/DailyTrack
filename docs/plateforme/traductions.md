@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1606 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1629 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -19,6 +19,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `amis.retirer` | Retirer | Remove |
 | `amis.retirer.aria` | Retirer {pseudo} de mes amis | Remove {pseudo} from my friends |
 | `amis.fermer` | Fermer | Close |
+| `amis.signaler` | Signaler l'image | Report the picture |
+| `amis.signale` | Image signalée, merci | Picture reported, thank you |
 | `amis.reessayer` | Réessayer | Try again |
 | `amis.chargement` | Chargement… | Loading… |
 | `amis.horsLigne` | Hors ligne : réessaie dans un moment. | Offline: try again in a moment. |
@@ -206,6 +208,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.their_friends_full` | La liste d'amis de ce joueur est pleine. | That player's friends list is full. |
 | `erreur.invalid_invitation` | Ce lien d'invitation n'est plus valable. Demande-en un nouveau. | This invitation link is no longer valid. Ask for a new one. |
 | `erreur.invalid_filter` | Ce filtre n'existe pas. | That filter doesn't exist. |
+| `erreur.invalid_image` | Cette image n'est pas acceptée : choisis-en une autre. | That picture isn't accepted: pick another one. |
+| `erreur.avatar_limit` | Tu as déjà changé ton image aujourd'hui : reviens demain. | You already changed your picture today: come back tomorrow. |
+| `erreur.avatar_banned` | L'envoi d'image n'est plus possible pour ce profil. | Sending a picture is no longer possible for this profile. |
+| `erreur.unknown_avatar` | Cette image n'existe plus. | That picture no longer exists. |
+| `erreur.invalid_report` | Ce signalement n'est pas valide. | That report isn't valid. |
 | `erreur.invalid_feedback` | Ton message est vide, trop long ou d'un type inconnu. | Your message is empty, too long or of an unknown type. |
 | `erreur.unknown_feedback` | Ce message n'existe pas. | That message doesn't exist. |
 | `erreur.feedback_limit` | Tu as déjà envoyé 5 messages aujourd'hui. Reviens demain. | You've already sent 5 messages today. Come back tomorrow. |
@@ -621,6 +628,22 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.medailles` | Médailles | Medals |
 | `profil.langue.titre` | Langue | Language |
 | `profil.chargement` | Chargement du profil… | Loading your profile… |
+| `profil.avatar.titre` | Avatar | Avatar |
+| `profil.avatar.aide` | Choisis une image et recadre-la en carré : elle est réduite à 128 × 128 sur ton appareil, sans les informations de ta photo (lieu, appareil). | Pick an image and crop it to a square: it is shrunk to 128 × 128 on your device, without your photo's information (place, device). |
+| `profil.avatar.choisir` | Choisir une image | Pick an image |
+| `profil.avatar.apercu` | Aperçu du recadrage | Crop preview |
+| `profil.avatar.zoom` | Zoom | Zoom |
+| `profil.avatar.utiliser` | Utiliser cette image | Use this image |
+| `profil.avatar.annuler` | Annuler | Cancel |
+| `profil.avatar.illisible` | Cette image n'a pas pu être lue. | This image couldn't be read. |
+| `profil.avatar.lourde` | Cette image est trop lourde, même réduite. | This image is too heavy, even shrunk. |
+| `profil.avatar.retirer` | Retirer mon image | Remove my image |
+| `profil.avatar.fait` | Ton image est enregistrée. | Your image is saved. |
+| `profil.avatar.retiree` | Ton image est retirée : tes initiales reviennent. | Your image is removed: your initials are back. |
+| `profil.avatar.limite` | Un changement d'image par jour : reviens demain. | One image change a day: come back tomorrow. |
+| `profil.avatar.interdit` | L'envoi d'images est interdit sur ce profil. | Sending images is forbidden on this profile. |
+| `profil.avatar.refus` | Cette image est refusée (WebP ou JPEG, carrée, 20 Ko au plus, sans métadonnées). | This image is refused (WebP or JPEG, square, 20 KB at most, no metadata). |
+| `profil.avatar.regles` | Pas d'image qui blesse ou qui choque : on les retire sans délai. Voir les mentions légales. | No image that hurts or shocks: we remove them without delay. See the legal notice. |
 | `profil.messages.titre` | Mes messages | My messages |
 | `profil.messages.aide` | Les réponses de l'éditeur à tes bugs et à tes idées. | The publisher's replies to your bugs and ideas. |
 | `profil.messages.lien` | Mes messages | My messages |

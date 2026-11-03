@@ -16,6 +16,8 @@ const fr = {
   "amis.retirer": "Retirer",
   "amis.retirer.aria": "Retirer {pseudo} de mes amis",
   "amis.fermer": "Fermer",
+  "amis.signaler": "Signaler l'image",
+  "amis.signale": "Image signalée, merci",
   "amis.reessayer": "Réessayer",
   "amis.chargement": "Chargement…",
   "amis.horsLigne": "Hors ligne : réessaie dans un moment.",
@@ -73,6 +75,11 @@ const fr = {
   "erreur.their_friends_full": "La liste d'amis de ce joueur est pleine.",
   "erreur.invalid_invitation": "Ce lien d'invitation n'est plus valable. Demande-en un nouveau.",
   "erreur.invalid_filter": "Ce filtre n'existe pas.",
+  "erreur.invalid_image": "Cette image n'est pas acceptée : choisis-en une autre.",
+  "erreur.avatar_limit": "Tu as déjà changé ton image aujourd'hui : reviens demain.",
+  "erreur.avatar_banned": "L'envoi d'image n'est plus possible pour ce profil.",
+  "erreur.unknown_avatar": "Cette image n'existe plus.",
+  "erreur.invalid_report": "Ce signalement n'est pas valide.",
 } as const;
 
 const en: Catalogues<typeof fr>["en"] = {
@@ -85,6 +92,8 @@ const en: Catalogues<typeof fr>["en"] = {
   "amis.retirer": "Remove",
   "amis.retirer.aria": "Remove {pseudo} from my friends",
   "amis.fermer": "Close",
+  "amis.signaler": "Report the picture",
+  "amis.signale": "Picture reported, thank you",
   "amis.reessayer": "Try again",
   "amis.chargement": "Loading…",
   "amis.horsLigne": "Offline: try again in a moment.",
@@ -135,6 +144,11 @@ const en: Catalogues<typeof fr>["en"] = {
   "erreur.their_friends_full": "That player's friends list is full.",
   "erreur.invalid_invitation": "This invitation link is no longer valid. Ask for a new one.",
   "erreur.invalid_filter": "That filter doesn't exist.",
+  "erreur.invalid_image": "That picture isn't accepted: pick another one.",
+  "erreur.avatar_limit": "You already changed your picture today: come back tomorrow.",
+  "erreur.avatar_banned": "Sending a picture is no longer possible for this profile.",
+  "erreur.unknown_avatar": "That picture no longer exists.",
+  "erreur.invalid_report": "That report isn't valid.",
 };
 
 export const CATALOGUE_AMIS = { fr, en };

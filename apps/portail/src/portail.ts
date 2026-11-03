@@ -1,5 +1,6 @@
 import "./generationInit";
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/avatar.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -11,7 +12,7 @@ import "@cdj/ui/src/polices/rubik-mono-one-400.css";
 import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
-import { NAME_KEY, aReprendre, appliquerGeneration, basculer, ecrireFavorisLocaux, ecrireLangue, generationDeReponse, lireFavorisLocaux, lireLangue, lireNouveauDepart, listeAffichee, readIdentity, readPlayerId, surveillerAnnonce, texteDeAnnonce, type Langue } from "@cdj/profile";
+import { NAME_KEY, adresseAvatar, aReprendre, appliquerGeneration, basculer, ecrireFavorisLocaux, ecrireLangue, generationDeReponse, lireFavorisLocaux, lireLangue, lireNouveauDepart, listeAffichee, readIdentity, readPlayerId, surveillerAnnonce, texteDeAnnonce, type Langue } from "@cdj/profile";
 import {
   CATALOGUE_COMMUN,
   afficheur,
@@ -399,6 +400,7 @@ function rendre(): void {
       onLangue: changerLangue,
       pseudo: identite.exists ? identite.name : null,
       profil: "profil/",
+      image: adresseAvatar(baseApi(), jour?.joueur?.avatar), // lot C1, partie B : son image (absente : ses initiales)
       // Lot C1 : une réponse de l'éditeur attend dans « Mes messages » : la pastille de l'avatar, et son nom lu le dit.
       ...((jour?.joueur?.messagesNonLus ?? 0) > 0 && identite.exists ? { pastille: true, nomAvatar: t.t("portail.messages.nonLu", { nom: identite.name ?? "" }) } : {}),
     }),

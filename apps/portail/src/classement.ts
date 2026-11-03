@@ -1,4 +1,6 @@
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/avatar.css";
+import "@cdj/ui/src/avatar-liste.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -10,8 +12,8 @@ import "./portail.css";
 import "./amisPortail.css";
 import { parisDay } from "@cdj/clock";
 import { formatDay, parseDay } from "@cdj/core";
-import { clientAmis, ecrireLangue, lireFiltre, lireLangue, readPlayerId, type FiltreAmis, type Langue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatHauteur, formatNombre, formatTemps, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
+import { adresseAvatar, clientAmis, clientAvatar, ecrireLangue, lireFiltre, lireLangue, readPlayerId, type FiltreAmis, type Langue } from "@cdj/profile";
+import { CATALOGUE_COMMUN, avatar, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatHauteur, formatNombre, formatTemps, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { FICHES, ficheDuRegistre } from "./jeuxFiches";
 import { CATALOGUE_PAGES } from "./cataloguePages";
@@ -104,7 +106,7 @@ function ligne(t: T, c: Classement, l: LigneClassement, moi: boolean): HTMLEleme
     "span",
     { classe: "classement-ligne__tete" },
     el("span", { classe: "classement-rang", texte: formatNombre(l.rang, langue) }),
-    el("span", { classe: "classement-pseudo" }, l.pseudo, moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
+    el("span", { classe: "classement-pseudo" }, avatar(t, { pseudo: l.pseudo, ref: l.ref, image: adresseAvatar(baseApi(), l.avatar), taille: 24, decoratif: true }), l.pseudo, moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
     l.score
       ? el("span", { classe: "classement-temps classement-hauteur", texte: formatHauteur(l.score.valeur, langue) })
       : l.tempsMs === null
@@ -291,6 +293,7 @@ async function ouvrirFiche(ref: string, pseudo: string): Promise<void> {
       if (r.ok) modifie(r.data.total);
       return r;
     },
+    onSignaler: () => clientAvatar({ base: baseApi(), playerId: () => identifiant() }).signaler({ ref }),
     onFermer: () => {
       feuilleOuverte = false;
       // Un ami ajouté ou retiré change « Amis » (la ligne apparaît ou disparaît) ; « Tous » ne change pas.
@@ -302,7 +305,7 @@ async function ouvrirFiche(ref: string, pseudo: string): Promise<void> {
     feuille.chargement();
     const r = await client.ficheJoueur(ref, date);
     if (!feuille.ouverte) return;
-    if (r.ok) feuille.afficher(ficheAffichee(r.data, (jeu) => nomDuJeu(t, jeu)));
+    if (r.ok) feuille.afficher(ficheAffichee(r.data, (jeu) => nomDuJeu(t, jeu), baseApi()));
     else feuille.erreur(r.code, () => void lire());
   };
   void lire();

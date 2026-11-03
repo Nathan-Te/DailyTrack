@@ -1,4 +1,6 @@
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/avatar.css";
+import "@cdj/ui/src/avatar-liste.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";

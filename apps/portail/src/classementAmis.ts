@@ -1,4 +1,4 @@
-import { adresseAvecFiltre, refValide, type FicheJoueur, type FiltreAmis } from "@cdj/profile";
+import { adresseAvatar, adresseAvecFiltre, refValide, type FicheJoueur, type FiltreAmis } from "@cdj/profile";
 import type { AmiAbsent, Classement, LigneClassement } from "./classementDonnees";
 import { adresseDeVue } from "./classementVues";
 
@@ -41,9 +41,11 @@ export const nombreDAmis = (c: Pick<Classement, "amis">): number | null => (type
 export const sansAmi = (c: Pick<Classement, "amis" | "filtre">): boolean => c.filtre === "amis" && nombreDAmis(c) === 0;
 
 /** Ce que la feuille d'un joueur montre de la réponse du serveur : le nom de chaque jeu vient de l'application (traduit), rien d'autre n'est gardé. */
-export function ficheAffichee(f: FicheJoueur, nomDuJeu: (jeu: { jeu: string; nom: string }) => string) {
+export function ficheAffichee(f: FicheJoueur, nomDuJeu: (jeu: { jeu: string; nom: string }) => string, base = "") {
   return {
     pseudo: f.pseudo,
+    ref: f.ref,
+    image: adresseAvatar(base, f.avatar),
     ami: f.ami,
     reciproque: f.reciproque,
     rang: f.rang,

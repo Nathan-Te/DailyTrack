@@ -260,3 +260,15 @@ Estimation d'après le code (chaque requête est examinée par `EXPLAIN QUERY PL
 | répondre / marquer lu | 3 à 4 | ≈ 3 | 2 à 3 |
 | panneau : liste, compte, détail | 2, 1, 3 | ≤ 51 fils + extraits, 1 (index partiel), ≤ 101 | 0 |
 Rien ne tourne au chargement d'une page de jeu ; le dialogue est chargé au toucher et ne lit que `GET /api/retours/contexte` (cache de 5 minutes, aucune requête SQL).
+
+## 13. Avatars (lot C1, partie B)
+Estimation d'après le code (chaque requête est examinée par `EXPLAIN QUERY PLAN`, aucun `SCAN` de `players`, `avatars` ni `avatar_signalements`). **Stockage** : une image de 20 Ko au plus, en base64 dans la table `avatars` (≈ 27 Ko ; `SqlDb` n'a que des textes) — **une ligne par joueur**, pas d'historique : 10 000 joueurs qui ont tous une image = ≈ 270 Mo au pire, ≈ 80 Mo avec les 6 Ko d'une image de 128 × 128 réelle. **Lectures** : le classement ne lit **jamais** `avatars` (le pseudo et l'empreinte viennent de `players.avatar`, une colonne de plus sur une ligne déjà lue) ; une image est lue **une fois par appareil et par empreinte** (cache d'un an, adresse immuable) et une fois par heure et par empreinte chez Firebase Hosting (`s-maxage=3600`).
+| Route | Requêtes | Lignes lues | Lignes écrites |
+|---|---|---|---|
+| `GET /api/avatars/<empreinte>` (cache froid) | 1 (index `avatars_by_hash`) + 1 de débit | 1 | 1 (compteur) |
+| `POST /api/avatar` | 5 (actif, joueur, limite du jour, interdit, écriture) | ≈ 4 | 3 (image, `players.avatar`, compteur) |
+| `DELETE /api/avatar` | 3 | 1 | 2 |
+| `POST /api/avatar/signaler` | 6 | ≈ 6 | 2 à 4 (signalement ; masquage à 3) |
+| `GET /api/portail/classement`, amis, `jour` | **+0** | **+0** (la colonne `players.avatar` suit le pseudo) | 0 |
+| panneau : galerie | 2 (index partiels) + 1 par image (pseudo) | ≤ 120 | 0 |
+Le plus cher est donc l'**envoi** (une fois par joueur et par jour au plus) ; la lecture d'une image coûte une ligne. Rien ne tourne au chargement d'une page de jeu.

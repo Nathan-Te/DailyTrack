@@ -12,6 +12,7 @@ import { createDiffusion } from "./diffusion";
 import { createJeux } from "./jeux";
 import { createIdentityRoutes } from "./identity";
 import { createRetours } from "./retours";
+import { createAvatars } from "./avatars";
 import { aNoter } from "./journaux";
 import { silentLog, type Logger } from "./log";
 import { DEFAULT_LIMITS, createPlatform } from "./platform";
@@ -178,6 +179,8 @@ export function createApi(options: ApiOptions) {
   );
   // Lot C1 : les retours des joueurs (`/api/retours…`), « Un bug ? Une idée ? ». Leur nombre de réponses non lues entre dans `GET /api/portail/jour` (`messagesNonLus`).
   const retours = createRetours(platform, { version: options.admin?.releaseTag ?? options.revision?.slice(0, 12) ?? "local" });
+  // Lot C1, partie B : les avatars (`/api/avatar…`, `/api/avatars/<empreinte>`) : l'envoi, le signalement, l'image servie en cache long.
+  const avatars = createAvatars(platform);
   // Lot F2 : les amis (`/api/amis…`, le filtre `filtre=amis` des classements). Ils lisent le classement du jour que le portail garde par fenêtre (créé juste après : d'où la lecture paresseuse).
   let portailPartage: ReturnType<typeof createPortailRoutes> | null = null;
   const amis = createAmis(platform, () => portailPartage!.vue);
@@ -212,6 +215,7 @@ export function createApi(options: ApiOptions) {
     diffusion,
     interrupteur,
     retours,
+    avatars,
   });
   adminRef = admin;
   const salon = cdj.salon;
@@ -236,9 +240,11 @@ export function createApi(options: ApiOptions) {
     return (status: number, body: unknown, extra: Record<string, string> = {}) => {
       // Lot P4 : une lecture d'un jeu peut porter son `Cache-Control` et son `Vary` (`cache.ts`) ; `Vary: Origin` de CORS est gardé.
       const vary = mergeVary(cors.Vary, extra.Vary);
-      return new Response(status === 204 ? null : JSON.stringify(body), {
+      // Lot C1 : une image d'avatar est rendue en octets (`WithHeaders` avec un `Uint8Array` et son `Content-Type`) ; tout le reste est du JSON.
+      const octets = body instanceof Uint8Array;
+      return new Response(status === 204 ? null : octets ? (body as BodyInit) : JSON.stringify(body), {
         status,
-        headers: { ...cors, ...SECURITY_HEADERS, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra, ...(vary ? { Vary: vary } : {}) },
+        headers: { ...cors, ...SECURITY_HEADERS, "Content-Type": octets ? "application/octet-stream" : "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra, ...(vary ? { Vary: vary } : {}) },
       });
     };
   };
@@ -308,7 +314,7 @@ export function createApi(options: ApiOptions) {
       if (req.method !== "GET" && req.method !== "HEAD") await admin.entretien();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
-      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await amis.route(path, req, url, info)) ?? (await retours.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
+      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await amis.route(path, req, url, info)) ?? (await retours.route(path, req, url, info)) ?? (await avatars.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
       if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;

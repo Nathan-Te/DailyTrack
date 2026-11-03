@@ -26,6 +26,7 @@ import { seedJumpDays } from "../src/jumpHistory";
 import { CLASSEMENT_DEMO_JOURS, seedClassementDemo } from "../src/classementDemo";
 import { DEMO_JOUEUR_ID, seedPortailDemo } from "../src/portailDemo";
 import { seedAmisDemo } from "./amisDemo";
+import { seedAvatarsDemo } from "./avatarsDemo";
 import { seedRetoursDemo } from "./retoursDemo";
 import { semerNouveautes } from "../src/diffusion";
 import { ensureSchemaOn } from "../src/db";
@@ -281,6 +282,11 @@ const retoursDemo = await seedRetoursDemo({ db, today });
 if (retoursDemo.deja) console.log("Retours de la recette (lot C1) : déjà là (rien d'écrit)");
 else if (!retoursDemo.crees) console.log("Retours de la recette (lot C1) : sautés (« Démo » n'existe pas encore sur cette base)");
 else console.log(`Retours de la recette (lot C1) : ${retoursDemo.crees} retour(s), dont un avec la réponse de l'éditeur.`);
+// Lot C1, partie B : quatre joueurs avec une image (par le vrai `createApi`) ; constate d'abord, n'écrit rien s'il y en a déjà.
+const avatarsDemo = await seedAvatarsDemo({ db, today });
+if (avatarsDemo.deja) console.log("Images de la recette (lot C1) : déjà là (rien d'écrit)");
+else if (!avatarsDemo.crees) console.log("Images de la recette (lot C1) : sautées (« Démo » n'existe pas encore sur cette base)");
+else console.log(`Images de la recette (lot C1) : ${avatarsDemo.crees} joueur(s) avec une image.`);
 if (saut) console.log(`\n${saut} segment(s) déjà faits, sautés (rien d'écrit pour eux ; --refaire pour tout rejouer).`);
 
 // Lot N2 : **deux nouveautés publiées et aucun message actif** (la ligne « Nouveautés » de l'accueil et la page /nouveautes/ ont de quoi s'afficher sur la recette). Dates d'avant tout vrai

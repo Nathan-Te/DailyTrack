@@ -234,6 +234,22 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
     supprimerNouveaute: (id: number) => appeler<{ supprimee: true }>("POST", `/api/admin/nouveautes/${id}/supprimer`, { confirmer: true }),
     message: () => appeler<MessagesAdmin>("GET", "/api/admin/message"),
     mettreAJourMessage: (c: CorpsMessage) => appeler<{ actif: AnnonceAdmin | null }>("POST", "/api/admin/message", { ...c, confirmer: true }),
+    // Lot C1, partie B : les images (la liste, les octets en adresse `data:` — la CSP de /admin/ n'autorise pas `blob:` —, les quatre actions)
+    images: () => appeler<ListeImages>("GET", "/api/admin/images"),
+    octetsImage: async (genre: string, ref: string): Promise<string | null> => {
+      try {
+        const res = await fetchImpl(`${base}/api/admin/images/${encodeURIComponent(genre)}/${encodeURIComponent(ref)}`, { credentials: "same-origin", cache: "no-store" });
+        const type = res.headers.get("Content-Type") ?? "";
+        if (!res.ok || !/^image\/(webp|jpeg)$/.test(type)) return null;
+        const octets = new Uint8Array(await res.arrayBuffer());
+        let binaire = "";
+        for (const o of octets) binaire += String.fromCharCode(o);
+        return `data:${type};base64,${btoa(binaire)}`;
+      } catch {
+        return null;
+      }
+    },
+    actionImage: (genre: string, ref: string, action: ActionImage) => appeler<Record<string, unknown>>("POST", `/api/admin/images/${encodeURIComponent(genre)}/${encodeURIComponent(ref)}/${action}`, { confirmer: true }),
     // Lot C1 : les retours
     retours: (f: FiltresRetours) => appeler<ListeRetours>("GET", `/api/admin/retours${q({ type: f.type, jeu: f.jeu, statut: f.statut, page: f.page && f.page > 1 ? f.page : undefined })}`),
     retoursCompte: () => appeler<{ nonLus: number }>("GET", "/api/admin/retours/compte"),
@@ -250,6 +266,24 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
   };
 }
 export type ClientAdmin = ReturnType<typeof clientAdmin>;
+
+// --- Lot C1, partie B : les images ----------------------------------------------------------------------------------------------
+export type ActionImage = "garder" | "retirer" | "interdire" | "autoriser";
+export interface ImageAdmin {
+  kind: string;
+  ref: string;
+  nom: string | null;
+  hash: string;
+  statut: string;
+  signalements: number;
+  interdit: boolean;
+  majLe: string;
+}
+export interface ListeImages {
+  signalees: ImageAdmin[];
+  nouvelles: ImageAdmin[];
+  max: number;
+}
 
 // --- Lot C1 : les retours des joueurs ---------------------------------------------------------------------------------------------
 export const TYPES_RETOUR_ADMIN = { bug: "Bug", suggestion: "Idée", autre: "Autre" } as const;

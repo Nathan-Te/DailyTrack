@@ -18,6 +18,8 @@ export interface PlayerRow {
   rename_required: number;
   /** Lot N1 : 1 = masqué des classements par l'administration (le joueur n'en voit aucune différence). */
   hidden: number;
+  /** Lot C1 : l'empreinte de son avatar visible (`NULL` : ses initiales). */
+  avatar: string | null;
 }
 
 /** Lot N1 : la référence publique d'un joueur (12 premiers hexadécimaux du SHA-256 de son identifiant secret) : la seule façon de le nommer dans le panneau d'administration. */
@@ -47,7 +49,7 @@ export interface PlayersOptions {
 export type Players = ReturnType<typeof createPlayers>;
 
 export function createPlayers({ db, now, demoPlayers, rotateStatements }: PlayersOptions) {
-  const find = (id: string) => db.first<PlayerRow>("SELECT id, name, name_key, rename_required, hidden FROM players WHERE id = ?", [id]);
+  const find = (id: string) => db.first<PlayerRow>("SELECT id, name, name_key, rename_required, hidden, avatar FROM players WHERE id = ?", [id]);
 
   /** Ce code a-t-il été remplacé (« Changer mon code ») ? */
   async function isRevoked(id: string): Promise<boolean> {
@@ -160,6 +162,10 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       { sql: "UPDATE amities SET ami = ? WHERE ami = ?", params: [newId, oldId] },
       { sql: "UPDATE invitations_amis SET joueur = ? WHERE joueur = ?", params: [newId, oldId] },
       { sql: "UPDATE favoris_jeux SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot F1 : ses jeux épinglés le suivent
+      { sql: "UPDATE avatars SET owner = ? WHERE kind = 'joueur' AND owner = ?", params: [newId, oldId] }, // lot C1 : son avatar, les signalements qu'il a faits ou reçus et son interdiction le suivent
+      { sql: "UPDATE avatar_signalements SET owner = ? WHERE kind = 'joueur' AND owner = ?", params: [newId, oldId] },
+      { sql: "UPDATE avatar_signalements SET reporter = ? WHERE reporter = ?", params: [newId, oldId] },
+      { sql: "UPDATE avatar_interdits SET owner = ? WHERE kind = 'joueur' AND owner = ?", params: [newId, oldId] },
       { sql: "UPDATE retours SET player_id = ?, ref = ? WHERE player_id = ?", params: [newId, newHash.slice(0, REF_LENGTH), oldId] }, // lot C1 : ses fils de retours le suivent (la référence publique change)
       { sql: "UPDATE players SET id = ?, ref = ?, updated_at = ? WHERE id = ?", params: [newId, newHash.slice(0, REF_LENGTH), t, oldId] },
     ];
@@ -186,7 +192,12 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
     out.push({ sql: "DELETE FROM amities WHERE ami = ?", params: [id] });
     out.push({ sql: "DELETE FROM invitations_amis WHERE joueur = ?", params: [id] });
     out.push({ sql: "DELETE FROM favoris_jeux WHERE player_id = ?", params: [id] }); // lot F1 : ses jeux épinglés
-    out.push(...effacerRetours(id)); // lot C1 : ses retours et les réponses reçues
+    out.push(...effacerRetours(id));
+    // Lot C1, partie B : son avatar, les signalements dont il est l'objet ou l'auteur, et son interdiction d'envoi.
+    out.push({ sql: "DELETE FROM avatars WHERE kind = 'joueur' AND owner = ?", params: [id] });
+    out.push({ sql: "DELETE FROM avatar_signalements WHERE kind = 'joueur' AND owner = ?", params: [id] });
+    out.push({ sql: "DELETE FROM avatar_signalements WHERE reporter = ?", params: [id] });
+    out.push({ sql: "DELETE FROM avatar_interdits WHERE kind = 'joueur' AND owner = ?", params: [id] }); // lot C1 : ses retours et les réponses reçues
     out.push({ sql: "DELETE FROM players WHERE id = ?", params: [id] });
     return out;
   }

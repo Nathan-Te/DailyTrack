@@ -84,6 +84,7 @@ describe("la feuille d'un joueur", () => {
     const a = ficheAffichee(f, (j) => j.nom.toUpperCase());
     expect(a).toEqual({
       pseudo: "Kraken42",
+      ref: REF, // lot C1 : la référence publique donne la couleur des initiales (jamais l'identifiant secret)
       ami: false,
       reciproque: false,
       rang: 8,
@@ -93,7 +94,7 @@ describe("la feuille d'un joueur", () => {
         { nom: "TOWER", unite: "hauteur", valeur: null, medaille: null },
       ],
     });
-    expect(JSON.stringify(a)).not.toContain(REF); // la référence ne va pas dans l'affichage
+    expect(Object.keys(a).sort()).toEqual(["ami", "classes", "image", "jeux", "pseudo", "rang", "reciproque", "ref"]); // rien d'autre n'est gardé
   });
 });
 

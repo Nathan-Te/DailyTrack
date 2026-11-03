@@ -1,0 +1,24 @@
+/* Lot C1, partie B (plateforme) : l'avatar d'un joueur (charte § 9, révision 17) — un rond de bordure 2 px, tailles 24 · 32 · 44 (défaut) · 96, l'image recadrée en carré ou les initiales sur une couleur de la charte tirée
+   de la référence publique (texte encre : paires déjà dans `contraste.ts`). Feuille à part (le socle d'un avatar : l'image et la pastille ; les tailles et les couleurs des initiales sont dans `avatar-liste.css`, que l'accueil du portail ne paie pas) : le portail et les composants à la demande (amis, groupes) l'importent, les jeux ne la paient pas. Jetons seulement. */
+.dj-avatar {
+  position: relative;
+  overflow: visible;
+}
+.dj-avatar__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--dj-rayon-avatar);
+  object-fit: cover;
+}
+.dj-avatar__pastille {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-terre);
+}

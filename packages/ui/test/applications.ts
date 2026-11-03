@@ -64,6 +64,7 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/portail/src/admin.ts": "lot N1 : le panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminDiffusion.ts": "lot N2 : les rubriques Nouveautés et Message en direct du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminRetours.ts": "lot C1 : la rubrique Retours du panneau d'administration, outil interne de l'éditeur, en français seulement",
+  "apps/portail/src/adminImages.ts": "lot C1 : la rubrique Images du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminJeux.ts": "lot P : la rubrique Jeux (interrupteur et clé d'aperçu) du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminGithub.ts": "lot N2 : la lecture des PR par le panneau d'administration (messages d'erreur pour l'éditeur), en français seulement",
   "apps/portail/src/adminDonnees.ts": "lot N1 : les textes et formats du panneau d'administration, outil interne de l'éditeur, en français seulement",

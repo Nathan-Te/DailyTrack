@@ -72,6 +72,9 @@ export const MIGRATIONS: string[] = [
   // de PR) ; il est écrit `hidden = 1` (aucun classement public ne le lit) et effacé quand le jeu passe `on`.
   "ALTER TABLE results ADD COLUMN apercu INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE jump_results ADD COLUMN apercu INTEGER NOT NULL DEFAULT 0",
+  // Lot C1, partie B (avatars) : `players.avatar` = l'empreinte de l'image visible du joueur (NULL : ses initiales). **Réversible** : une colonne ajoutée (l'ancien code l'ignore) ; retour arrière : `ALTER TABLE players DROP COLUMN avatar`.
+  // Elle est copiée sur la ligne du joueur pour que les classements l'obtiennent sans lire la table des images.
+  "ALTER TABLE players ADD COLUMN avatar TEXT",
 ];
 
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */
@@ -244,6 +247,43 @@ export const PLATFORM_SCHEMA: string[] = [
      cree_le INTEGER NOT NULL
    )`,
   `CREATE INDEX IF NOT EXISTS retours_messages_by_retour ON retours_messages (retour_id, id)`,
+  // --- Lot C1, partie B : les avatars et les emblèmes de groupe (`avatars.ts`). **Réversible** : trois tables nouvelles (l'ancien code les ignore) ; retour arrière : `DROP TABLE avatars`, `DROP TABLE avatar_signalements`,
+  // `DROP TABLE avatar_interdits` (les index partent avec). `avatars` : une ligne par propriétaire (`kind` `joueur` | `groupe`, `owner` = l'identifiant interne du joueur ou du groupe) = l'image **contrôlée par le serveur**
+  // en base64 (≤ 20 Ko → ≈ 27 Ko), son empreinte (`hash` : la clé de l'adresse immuable `/api/avatars/<hash>`), son état (`visible` | `masque` — 3 signalements en attente — | `retire` — par l'administration, les octets sont
+  // effacés), `revu` (l'administration l'a vue : « garder »), `jour` (le jour de Paris du dernier changement : un changement par jour). `avatar_signalements` : un signalement par signalant et par image (`traite` : décidé par
+  // l'administration, il ne compte plus). `avatar_interdits` : l'envoi d'images interdit à ce joueur ou ce groupe. Liées à un joueur : vidées par la remise à zéro, effacées avec lui, suivent « Changer mon code ».
+  `CREATE TABLE IF NOT EXISTS avatars (
+     kind TEXT NOT NULL,
+     owner TEXT NOT NULL,
+     hash TEXT NOT NULL,
+     mime TEXT NOT NULL,
+     data TEXT NOT NULL,
+     statut TEXT NOT NULL,
+     revu INTEGER NOT NULL DEFAULT 0,
+     jour INTEGER NOT NULL,
+     cree_le INTEGER NOT NULL,
+     maj_le INTEGER NOT NULL,
+     PRIMARY KEY (kind, owner)
+   )`,
+  `CREATE INDEX IF NOT EXISTS avatars_by_hash ON avatars (hash)`,
+  `CREATE INDEX IF NOT EXISTS avatars_a_revoir ON avatars (maj_le) WHERE statut = 'visible' AND revu = 0`,
+  `CREATE INDEX IF NOT EXISTS avatars_masques ON avatars (maj_le) WHERE statut = 'masque'`,
+  `CREATE TABLE IF NOT EXISTS avatar_signalements (
+     kind TEXT NOT NULL,
+     owner TEXT NOT NULL,
+     hash TEXT NOT NULL,
+     reporter TEXT NOT NULL,
+     traite INTEGER NOT NULL DEFAULT 0,
+     cree_le INTEGER NOT NULL,
+     PRIMARY KEY (kind, owner, hash, reporter)
+   )`,
+  `CREATE INDEX IF NOT EXISTS avatar_signalements_by_reporter ON avatar_signalements (reporter)`,
+  `CREATE TABLE IF NOT EXISTS avatar_interdits (
+     kind TEXT NOT NULL,
+     owner TEXT NOT NULL,
+     cree_le INTEGER NOT NULL,
+     PRIMARY KEY (kind, owner)
+   )`,
 ];
 
 /** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */

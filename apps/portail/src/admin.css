@@ -810,3 +810,42 @@
   font-family: var(--dj-police-texte);
   font-size: 1rem;
 }
+
+/* Lot C1, partie B : la galerie des images. */
+.admin-images {
+  display: grid;
+  gap: var(--dj-espace-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.admin-image {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  padding: var(--dj-espace-5);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+}
+.admin-image__cadre {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--dj-creme-2);
+}
+.admin-image__cadre img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+}
+.admin-image__nom {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}

@@ -27,6 +27,8 @@ export interface LigneClassement {
   moi?: true;
   /** Lot F2 : la référence publique du joueur (12 hexadécimaux, jamais son identifiant secret) : de quoi ouvrir sa feuille et l'ajouter en ami. */
   ref?: string;
+  /** Lot C1 : l'empreinte de son image d'avatar (absente : ses initiales). */
+  avatar?: string;
   /** Lot F2, filtre « Amis » : `rang` est le rang entre amis ; `rangGeneral` le rang dans le classement « Tous » de la même vue. */
   rangGeneral?: number;
 }

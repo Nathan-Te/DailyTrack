@@ -1,4 +1,6 @@
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/avatar.css";
+import "@cdj/ui/src/avatar-liste.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -28,6 +30,7 @@ import {
 } from "@cdj/profile";
 import {
   CATALOGUE_COMMUN,
+  avatar,
   MEDAILLES,
   barreJeu,
   bouton,
@@ -47,6 +50,7 @@ import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
 import { lienRetours } from "./retoursLien";
+import { adresseAvatar, clientAvatar } from "@cdj/profile";
 import { baseApi } from "./jour";
 import { cartes } from "./jours";
 import { lireRetour } from "./retour";
@@ -95,6 +99,8 @@ interface Profil {
   aujourdhuiParfaite: boolean;
   /** Lot C1 : les réponses de l'éditeur qui attendent (« Mes messages »). */
   messagesNonLus?: number;
+  /** Lot C1, partie B : l'empreinte de son image d'avatar (absente : ses initiales). */
+  avatar?: string;
   jeux: ProfilJeu[];
 }
 
@@ -105,6 +111,40 @@ let profil: ApiResult<Profil> | null = null;
 let messagePseudo: { texte: string; suggestions?: string[] } | null = null;
 let messageCode: string | null = null;
 let apercu: { id: string; profil: Profil } | null = null;
+/** Lot C1, partie B : le dernier message de la section Avatar. */
+let messageAvatar: string | null = null;
+
+/** Choisir et recadrer une image (module à la demande), l'envoyer, puis redessiner ; chaque refus du serveur a sa phrase. */
+async function changerAvatar(): Promise<void> {
+  const id = stockage ? readPlayerId(stockage) : null;
+  if (!id || !profil?.ok) return;
+  const t = traduire(langue);
+  const dire = (cle: string, params?: Record<string, string | number>) => t.t(cle as never, params as never);
+  const r = await (await import("./avatarEdition")).choisirImage(dire);
+  if (!r.ok) {
+    messageAvatar = r.code === "annule" ? null : t.t(r.code === "trop_lourde" ? "profil.avatar.lourde" : "profil.avatar.illisible");
+    return rendre();
+  }
+  const envoi = await clientAvatar({ base: API, playerId: id }).envoyer(r.base64);
+  if (envoi.ok) {
+    profil.data.avatar = envoi.data.avatar;
+    messageAvatar = t.t("profil.avatar.fait");
+  } else {
+    messageAvatar = t.t(envoi.code === "avatar_limit" ? "profil.avatar.limite" : envoi.code === "avatar_banned" ? "profil.avatar.interdit" : envoi.code === "invalid_image" ? "profil.avatar.refus" : "portail.horsLigne");
+  }
+  rendre();
+}
+async function retirerAvatar(): Promise<void> {
+  const id = stockage ? readPlayerId(stockage) : null;
+  if (!id || !profil?.ok) return;
+  const t = traduire(langue);
+  const r = await clientAvatar({ base: API, playerId: id }).retirer();
+  if (r.ok) {
+    delete profil.data.avatar;
+    messageAvatar = t.t("profil.avatar.retiree");
+  } else messageAvatar = t.t("portail.horsLigne");
+  rendre();
+}
 
 /** Un échec du serveur ou du réseau, traduit (code d'erreur du catalogue commun). */
 function erreur(t: T, r: { code: string }): string {
@@ -219,6 +259,18 @@ function rendre(): void {
         )
       : null,
     p ? section(t.t("profil.jeux.titre"), "titre-jeux", el("div", { classe: "profil-jeux" }, ...p.jeux.map((j) => blocJeu(t, j)))) : null,
+    // Lot C1, partie B : l'avatar (96 px), choisir une image (recadrée dans le navigateur) ou la retirer.
+    id && p
+      ? section(
+          t.t("profil.avatar.titre"),
+          "titre-avatar",
+          avatar(t, { pseudo: p.pseudo, image: adresseAvatar(API, p.avatar), taille: 96, decoratif: true }),
+          el("p", { classe: "profil-aide", texte: t.t("profil.avatar.aide") }),
+          el("p", { classe: "profil-aide", texte: t.t("profil.avatar.regles") }),
+          el("div", { classe: "profil-ligne" }, bouton({ texte: t.t("profil.avatar.choisir"), variante: "secondaire", onClick: () => void changerAvatar() }), p.avatar ? bouton({ texte: t.t("profil.avatar.retirer"), variante: "secondaire", onClick: () => void retirerAvatar() }) : null),
+          messageAvatar ? el("p", { classe: "profil-message", attrs: { id: "avatar-message", role: "status" }, texte: messageAvatar }) : null,
+        )
+      : null,
     // Lot C1 : « Mes messages » (la page `/messages/`) : les réponses de l'éditeur, avec le nombre de celles qui attendent.
     id
       ? section(

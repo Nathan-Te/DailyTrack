@@ -1,7 +1,10 @@
+import "./avatar.css";
+import "./avatar-liste.css";
 import "./amis.css";
 import type { CleAmis } from "./catalogue.amis";
 import type { CleCommune } from "./catalogue";
 import { bouton, medaille, type Jeu, type TypeMedaille } from "./composants";
+import { avatar } from "./avatar";
 import { suivreDialogue } from "./dialogue";
 import { el, svg } from "./dom";
 import { formatHauteur, formatNombre, formatRang, formatTemps } from "./formats";
@@ -212,6 +215,9 @@ export interface JeuDeFiche {
 /** Ce que la feuille montre d'un joueur (la fiche de `clientAmis().ficheJoueur`) : **rien d'autre**. */
 export interface FicheAffichee {
   pseudo: string;
+  /** Lot C1 : l'adresse de son image (déjà contrôlée par le serveur) et sa référence publique (la couleur des initiales). */
+  image?: string;
+  ref?: string;
   ami: boolean;
   reciproque: boolean;
   rang: number | null;
@@ -229,6 +235,8 @@ export interface OptionsFeuilleJoueur {
   onAjouter: () => Promise<ResultatAction>;
   /** « Retirer ». */
   onRetirer: () => Promise<ResultatAction>;
+  /** Lot C1 : « Signaler l'image » (montré seulement quand la fiche a une image) ; absent : pas de bouton. */
+  onSignaler?: () => Promise<ResultatAction>;
   /** La feuille s'est fermée (Échap, bouton, voile ou `fermer()`). */
   onFermer?: () => void;
   /** Où la poser (par défaut `document.body`) ; elle couvre l'écran en bas (`position: fixed`). */
@@ -261,7 +269,8 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
   const fermerBouton = el("button", { classe: "dj-feuille__fermer", attrs: { type: "button", "aria-label": t.t("amis.fermer") } }, croix());
   const titre = el("h2", { classe: "dj-feuille__titre", attrs: { id: titreId }, texte: o.pseudo });
   const rang = el("p", { classe: "dj-feuille__rang dj-chiffres" });
-  const entete = el("div", { classe: "dj-feuille__entete" }, el("div", { classe: "dj-feuille__nom" }, titre, rang), fermerBouton);
+  const portrait = el("span", { classe: "dj-feuille__portrait" });
+  const entete = el("div", { classe: "dj-feuille__entete" }, portrait, el("div", { classe: "dj-feuille__nom" }, titre, rang), fermerBouton);
   const corps = el("div", { classe: "dj-feuille__corps" });
   const dialogue = el("div", { classe: "dj-feuille", attrs: { role: "dialog", "aria-modal": "true", "aria-labelledby": titreId, tabindex: "-1" } }, entete, corps);
   const racine = el("div", { classe: ["dj-feuille-voile", o.jeu && `dj-feuille-voile--${o.jeu}`] }, dialogue);
@@ -269,6 +278,7 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
   let occupe = false;
   let ouverte = true;
   let message: { texte: string; echec: boolean } | null = null;
+  let signale = false;
 
   const tableau = (f: FicheAffichee): HTMLElement => {
     if (f.jeux.length === 0) return el("p", { classe: "dj-feuille__aucun", texte: t.t("amis.feuille.aucun") });
@@ -320,6 +330,7 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
     } else {
       const f = etat.fiche;
       titre.textContent = f.pseudo;
+      portrait.replaceChildren(avatar(t, { pseudo: f.pseudo, ref: f.ref, image: f.image, taille: 44, decoratif: true }));
       if (f.rang !== null && f.classes !== null) rang.textContent = t.t("amis.feuille.rang", { rang: formatRang(f.rang, t.langue), classes: formatNombre(f.classes, t.langue) });
       enfants.push(tableau(f));
       if (f.ami) enfants.push(el("p", { classe: "dj-feuille__relation", texte: f.reciproque ? t.t("amis.reciproque") : t.t("amis.ajouteParToi") }));
@@ -348,6 +359,29 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
         enfants.push(m);
       }
       if (!f.ami) enfants.push(el("p", { classe: "dj-feuille__prevenu", texte: t.t("amis.prevenu", { pseudo: f.pseudo }) }));
+      if (f.image && o.onSignaler) {
+        const signaler = o.onSignaler;
+        const b = bouton({
+          texte: signale ? t.t("amis.signale") : t.t("amis.signaler"),
+          variante: "secondaire",
+          pleineLargeur: true,
+          desactive: signale || occupe,
+          onClick: () =>
+            void (async () => {
+              if (signale || occupe) return;
+              occupe = true;
+              rendre();
+              const r = await executer(signaler);
+              occupe = false;
+              if (!ouverte) return;
+              if (r.ok) signale = true;
+              else message = { texte: messageErreur(t, r.code), echec: true };
+              rendre();
+            })(),
+        });
+        b.classList.add("dj-feuille__signaler");
+        enfants.push(b);
+      }
     }
     corps.replaceChildren(...enfants.filter((e): e is Node => e !== null));
   }
@@ -428,6 +462,8 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
 export interface AmiAffiche {
   ref: string;
   pseudo: string;
+  /** Lot C1 : l'adresse de son image, absente : ses initiales. */
+  image?: string;
   /** Il t'a aussi parmi ses amis : « vous deux » ; sinon « ajouté par toi ». */
   reciproque: boolean;
 }
@@ -450,6 +486,7 @@ export function ligneAmi(o: OptionsLigneAmi): HTMLLIElement {
   const racine = el(
     "li",
     { classe: "dj-ligne-ami", attrs: { "data-ref": ami.ref } },
+    avatar(t, { pseudo: ami.pseudo, ref: ami.ref, image: ami.image, taille: 32, decoratif: true }),
     el("span", { classe: "dj-ligne-ami__pseudo", texte: ami.pseudo }),
     el("span", { classe: "dj-ligne-ami__etat", texte: ami.reciproque ? t.t("amis.reciproque") : t.t("amis.ajouteParToi") }),
     retirer,

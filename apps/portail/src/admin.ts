@@ -33,6 +33,7 @@ import { baseApi } from "./jour";
 import { remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
 import { vueJeux } from "./adminJeux";
 import { vueRetour, vueRetours } from "./adminRetours";
+import { vueImages } from "./adminImages";
 
 // Lot N1 (plateforme) : le panneau d'administration — `/admin/`. Connexion avec le compte Google de l'éditeur (Google Identity Services, chargé ici et nulle part
 // ailleurs ; la CSP de `/admin/` est dans `firebase.json`), tableau de bord, joueurs (recherche, fiche, cinq actions confirmées), journal. Une page pour l'éditeur :
@@ -158,7 +159,7 @@ async function afficherConnexion(raison?: string): Promise<void> {
 }
 
 // --- Le panneau ----------------------------------------------------------------------------------------------------------------------
-type Vue = { vue: "tableau" } | { vue: "nouveautes" } | { vue: "message" } | { vue: "jeux" } | { vue: "retours"; type: string; jeu: string; statut: string; page: number } | { vue: "retour"; id: number } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
+type Vue = { vue: "tableau" } | { vue: "nouveautes" } | { vue: "message" } | { vue: "jeux" } | { vue: "images" } | { vue: "retours"; type: string; jeu: string; statut: string; page: number } | { vue: "retour"; id: number } | { vue: "joueurs"; q: string; filtre: "tous" | "masques"; page: number } | { vue: "fiche"; ref: string } | { vue: "journal" };
 
 function lireVue(): Vue {
   const [chemin = "", requete = ""] = location.hash.replace(/^#\/?/, "").split("?");
@@ -170,6 +171,7 @@ function lireVue(): Vue {
   if (morceaux[0] === "nouveautes") return { vue: "nouveautes" };
   if (morceaux[0] === "message") return { vue: "message" };
   if (morceaux[0] === "jeux") return { vue: "jeux" };
+  if (morceaux[0] === "images") return { vue: "images" };
   if (morceaux[0] === "retours" && /^\d{1,9}$/.test(morceaux[1] ?? "")) return { vue: "retour", id: Number(morceaux[1]) };
   if (morceaux[0] === "retours") return { vue: "retours", type: params.get("type") ?? "", jeu: params.get("jeu") ?? "", statut: params.get("statut") ?? "", page: Math.max(1, Number(params.get("page")) || 1) };
   return { vue: "tableau" };
@@ -265,6 +267,7 @@ function dessinerMenu(vue: Vue): void {
       lien("nouveautes", "Nouveautés", "#/nouveautes"),
       lien("message", "Message en direct", "#/message"),
       lien("jeux", "Jeux", "#/jeux"),
+      lien("images", "Images", "#/images"), // lot C1, partie B
       lien("retours", "Retours", "#/retours"), // lot C1 : le nombre de non lus est ajouté plus bas, quand le serveur l'a donné
       lien("journal", "Journal", "#/journal"),
       el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../track/admin/", "data-menu": "track" }, texte: "Track" }), el("span", { classe: "admin-menu__sous", texte: "outils : planning, médailles" })),
@@ -306,14 +309,16 @@ async function afficherVue(): Promise<void> {
               ? vueMessage(contexteDiffusion)
               : vue.vue === "jeux"
                 ? vueJeux(contexteDiffusion)
-                : vue.vue === "retours"
+                : vue.vue === "images"
+                  ? vueImages(contexteDiffusion)
+                  : vue.vue === "retours"
                   ? vueRetours(contexteDiffusion, vue)
                   : vue.vue === "retour"
                     ? vueRetour(contexteDiffusion, vue.id)
                     : vueJournal());
     if (courante !== generation) return; // une autre vue a été demandée entre-temps
     contenu.replaceChildren(...noeud);
-    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : vue.vue === "nouveautes" ? "Nouveautés" : vue.vue === "message" ? "Message en direct" : vue.vue === "jeux" ? "Jeux" : vue.vue === "retours" || vue.vue === "retour" ? "Retours" : "Joueurs"} · Administration · Du Jour`;
+    document.title = `${vue.vue === "tableau" ? "Tableau de bord" : vue.vue === "journal" ? "Journal" : vue.vue === "nouveautes" ? "Nouveautés" : vue.vue === "message" ? "Message en direct" : vue.vue === "jeux" ? "Jeux" : vue.vue === "images" ? "Images" : vue.vue === "retours" || vue.vue === "retour" ? "Retours" : "Joueurs"} · Administration · Du Jour`;
   } catch (e) {
     if (courante !== generation) return;
     if (e instanceof ErreurAdmin && e.statut === 401) {

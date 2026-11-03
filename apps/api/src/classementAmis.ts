@@ -27,7 +27,7 @@ export interface DepsClassementAmis {
   idDe(req: Request): string;
   limiter(info: RequestInfo, id: string): Promise<void>;
   limiterFiche(info: RequestInfo, id: string): Promise<void>;
-  parRef(ref: string): Promise<{ id: string; name: string; ref: string } | null>;
+  parRef(ref: string): Promise<{ id: string; name: string; ref: string; avatar?: string | null } | null>;
   refValide(x: unknown): string;
   origineDe(joueur: string, ami: string): Promise<"ajout" | "invitation" | null>;
 }
@@ -45,6 +45,7 @@ interface Entree {
   id: string;
   ref: string;
   pseudo: string;
+  avatar?: string | null;
   moi: boolean;
   /** Le rang dans le classement « Tous » de cette vue. */
   rangGeneral: number;
@@ -131,7 +132,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
 
     const entrees: Entree[] = [];
     const absents: { ref: string; pseudo: string }[] = [];
-    const commun = (a: AmiLu) => ({ id: a.id, ref: a.ref, pseudo: a.name, moi: false });
+    const commun = (a: AmiLu) => ({ id: a.id, ref: a.ref, pseudo: a.name, avatar: a.avatar, moi: false });
 
     if (cumul) {
       for (const a of amis) {
@@ -139,7 +140,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
         if (i === undefined) absents.push({ ref: a.ref, pseudo: a.name });
         else entrees.push({ ...commun(a), rangGeneral: i + 1, ligne: c.cumul[i]!, tri: c.cumul[i]!, res: null });
       }
-      if (bilan) entrees.push({ id, ref: maRef, pseudo: row.name, moi: true, rangGeneral: placer(c, bilan).rang, ligne: bilan, tri: ligneDeTri(c, bilan), res: null });
+      if (bilan) entrees.push({ id, ref: maRef, pseudo: row.name, avatar: row.avatar, moi: true, rangGeneral: placer(c, bilan).rang, ligne: bilan, tri: ligneDeTri(c, bilan), res: null });
       entrees.sort((x, y) => comparer(x.tri!, y.tri!));
     } else if (jeuVue) {
       for (const a of amis) {
@@ -167,7 +168,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
       }
       const e = etatsMoi[ouverts.indexOf(jeuVue)];
       if (e && e.statut === "fini") {
-        entrees.push({ id, ref: maRef, pseudo: row.name, moi: true, rangGeneral: e.rang, ligne: hauteur ? null : bilan, tri: null, res: { tempsMs: e.tempsMs, medaille: e.medaille, score: e.score } });
+        entrees.push({ id, ref: maRef, pseudo: row.name, avatar: row.avatar, moi: true, rangGeneral: e.rang, ligne: hauteur ? null : bilan, tri: null, res: { tempsMs: e.tempsMs, medaille: e.medaille, score: e.score } });
       }
       // Dans l'ordre du classement de la vue. Les amis gardent leur rang du classement gardé ; le joueur qui regarde est placé par son résultat exact (ce qu'il vient de finir peut devancer un ami que
       // le classement gardé n'avait pas encore dépassé), et passe après ceux qui font le même résultat.
@@ -187,7 +188,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
     // --- La mise en forme : « mêmes lignes qu'en Tous », plus le rang entre amis (`rang`), le rang général (`rangGeneral`) et `ref` ---
     const lignes = entrees.map((x, i) => {
       const rang = i + 1;
-      const base = { rang, rangGeneral: x.rangGeneral, ref: x.ref, ...(x.moi ? { moi: true } : {}) };
+      const base = { rang, rangGeneral: x.rangGeneral, ref: x.ref, ...(x.avatar ? { avatar: x.avatar } : {}), ...(x.moi ? { moi: true } : {}) };
       switch (format) {
         case "portail": {
           if (cumul) return { ...base, pseudo: x.pseudo, tempsMs: x.ligne!.cumulMs, complet: x.ligne!.complet, resultats: v.resultatsCorps(c.jeux, x.ligne!.resultats) };
@@ -268,6 +269,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
       date: formatDay(day),
       ref: cible.ref,
       pseudo: cible.name,
+      ...(cible.avatar ? { avatar: cible.avatar } : {}), // lot C1
       ami: monLien !== null,
       reciproque: monLien !== null && sonLien !== null,
       rang: i === undefined ? null : i + 1,

@@ -1,0 +1,9 @@
+/* Lot C1, partie B : les tailles (24 · 32 · 96) et les couleurs des initiales d'un avatar — pour les lignes de classement, les listes et le profil (l'accueil du portail n'a que l'avatar de la barre). Jetons seulement. */
+.dj-avatar--c1 { background: var(--dj-creme-2); }
+.dj-avatar--c2 { background: var(--dj-papier); }
+.dj-avatar--c3 { background: var(--dj-or); }
+.dj-avatar--c4 { background: var(--dj-argent); }
+.dj-avatar--c5 { background: var(--dj-bronze); }
+.dj-avatar--t24 { width: 24px; height: 24px; font-size: var(--dj-taille-12); }
+.dj-avatar--t32 { width: 32px; height: 32px; font-size: var(--dj-taille-13); }
+.dj-avatar--t96 { width: 96px; height: 96px; font-size: 32px; }

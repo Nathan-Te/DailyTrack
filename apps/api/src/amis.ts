@@ -48,6 +48,8 @@ export const AMIS_PROFILS_PAR_ADRESSE = 5;
 export interface AmiVu {
   ref: string;
   pseudo: string;
+  /** Lot C1 : l'empreinte de son image (absente : ses initiales). */
+  avatar?: string;
   /** Lui aussi t'a pour ami (invitation acceptée, ou il t'a ajouté de son côté). */
   reciproque: boolean;
   origine: "ajout" | "invitation";
@@ -58,6 +60,7 @@ export interface AmiLu {
   id: string;
   name: string;
   ref: string;
+  avatar?: string | null;
 }
 
 /** Ce que le classement filtré lit des amitiés. */
@@ -101,15 +104,15 @@ export function createAmis(platform: Platform, vue: () => VuePartagee) {
 
   /** Les amis d'un joueur (masqués écartés), avec la réciprocité. Une requête ; tri par pseudo (sans accents ni casse). */
   async function listeComplete(id: string): Promise<(AmiLu & { origine: "ajout" | "invitation"; reciproque: boolean })[]> {
-    const rows = await db.all<{ id: string; name: string; ref: string | null; origine: string; reciproque: number }>(
-      `SELECT a.ami AS id, p.name AS name, p.ref AS ref, a.origine AS origine,
+    const rows = await db.all<{ id: string; name: string; ref: string | null; avatar: string | null; origine: string; reciproque: number }>(
+      `SELECT a.ami AS id, p.name AS name, p.ref AS ref, p.avatar AS avatar, a.origine AS origine,
               EXISTS (SELECT 1 FROM amities b WHERE b.joueur = a.ami AND b.ami = a.joueur) AS reciproque
          FROM amities a JOIN players p ON p.id = a.ami
         WHERE a.joueur = ? AND p.hidden = 0
         ORDER BY p.name_key`,
       [id],
     );
-    return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, ref: await refDe(r.id, r.ref), origine: r.origine === "invitation" ? ("invitation" as const) : ("ajout" as const), reciproque: r.reciproque === 1 })));
+    return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, ref: await refDe(r.id, r.ref), avatar: r.avatar, origine: r.origine === "invitation" ? ("invitation" as const) : ("ajout" as const), reciproque: r.reciproque === 1 })));
   }
 
   const lecture: AmisLecture = {
@@ -145,9 +148,9 @@ export function createAmis(platform: Platform, vue: () => VuePartagee) {
   const AJOUT_SOUS_LA_LIMITE = "INSERT INTO amities (joueur, ami, origine, cree_le) SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM amities WHERE joueur = ?) < ? ON CONFLICT (joueur, ami) DO NOTHING";
 
   /** Un joueur par sa référence publique (12 hexadécimaux) : `null` s'il est inconnu **ou masqué** (un seul visage). */
-  async function parRef(ref: string): Promise<{ id: string; name: string; ref: string } | null> {
-    const r = await db.first<{ id: string; name: string; hidden: number }>("SELECT id, name, hidden FROM players WHERE ref = ?", [ref.toLowerCase()]);
-    return r && r.hidden === 0 ? { id: r.id, name: r.name, ref: ref.toLowerCase() } : null;
+  async function parRef(ref: string): Promise<{ id: string; name: string; ref: string; avatar: string | null } | null> {
+    const r = await db.first<{ id: string; name: string; hidden: number; avatar: string | null }>("SELECT id, name, hidden, avatar FROM players WHERE ref = ?", [ref.toLowerCase()]);
+    return r && r.hidden === 0 ? { id: r.id, name: r.name, ref: ref.toLowerCase(), avatar: r.avatar } : null;
   }
 
   function refValide(x: unknown): string {
@@ -179,7 +182,7 @@ export function createAmis(platform: Platform, vue: () => VuePartagee) {
     await limiterLecture(info, id, "amlip", "aml", AMIS_LECTURES_PAR_ADRESSE, AMIS_LECTURES_PAR_JOUEUR);
     await joueurActif(id);
     const [amis, invitation] = await Promise.all([listeComplete(id), db.first("SELECT 1 AS x FROM invitations_amis WHERE joueur = ?", [id])]);
-    const vus: AmiVu[] = amis.map((a) => ({ ref: a.ref, pseudo: a.name, reciproque: a.reciproque, origine: a.origine }));
+    const vus: AmiVu[] = amis.map((a) => ({ ref: a.ref, pseudo: a.name, ...(a.avatar ? { avatar: a.avatar } : {}), reciproque: a.reciproque, origine: a.origine }));
     return { amis: vus, total: vus.length, max: AMIS_MAX, invitation: { active: invitation !== null } };
   }
 

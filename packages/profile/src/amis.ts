@@ -17,6 +17,8 @@ export type OrigineAmi = "ajout" | "invitation";
 export interface Ami {
   ref: string;
   pseudo: string;
+  /** Lot C1 : l'empreinte de son image (voir `adresseAvatar`), absente : ses initiales. */
+  avatar?: string;
   reciproque: boolean;
   origine: OrigineAmi;
 }
@@ -45,6 +47,7 @@ export interface FicheJeu {
 export interface FicheJoueur {
   ref: string;
   pseudo: string;
+  avatar?: string;
   ami: boolean;
   reciproque: boolean;
   /** Rang général du jour parmi `classes` joueurs classés ; `null` s'il n'a rien fini. */
@@ -65,7 +68,7 @@ export const refValide = (ref: unknown): ref is string => typeof ref === "string
 function lireAmi(v: unknown): Ami | null {
   const o = v as { ref?: unknown; pseudo?: unknown; reciproque?: unknown; origine?: unknown } | null;
   if (!o || !refValide(o.ref) || typeof o.pseudo !== "string") return null;
-  return { ref: o.ref, pseudo: o.pseudo, reciproque: o.reciproque === true, origine: o.origine === "invitation" ? "invitation" : "ajout" };
+  return { ref: o.ref, pseudo: o.pseudo, ...(typeof (o as { avatar?: unknown }).avatar === "string" ? { avatar: (o as { avatar: string }).avatar } : {}), reciproque: o.reciproque === true, origine: o.origine === "invitation" ? "invitation" : "ajout" };
 }
 const lireTotal = (v: unknown, repli: number): number => {
   const n = entier(v);
@@ -90,7 +93,7 @@ function lireFiche(corps: unknown): FicheJoueur | null {
     if (!x || typeof x.jeu !== "string") return [];
     return [{ jeu: x.jeu, site: texte(x.site), nom: texte(x.nom) || x.jeu, unite: x.unite === "hauteur" ? "hauteur" : "temps", valeur: entier(x.valeur), medaille: typeof x.medaille === "string" ? x.medaille : null, rang: entier(x.rang) }];
   });
-  return { ref: o.ref, pseudo: o.pseudo, ami: o.ami === true, reciproque: o.reciproque === true, rang: entier(o.rang), classes: entier(o.classes), jeux };
+  return { ref: o.ref, pseudo: o.pseudo, ...(typeof o.avatar === "string" ? { avatar: o.avatar } : {}), ami: o.ami === true, reciproque: o.reciproque === true, rang: entier(o.rang), classes: entier(o.classes), jeux };
 }
 
 // --- Le client ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

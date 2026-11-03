@@ -18,6 +18,10 @@
       "_": "Lot F2 : les fichiers propres aux amis (composants et vocabulaire du socle, client du profil, routes du serveur et classement filtré). Une zone étroite exprès, comme `iphone` : l'Essentiel de web/amis.spec.ts (≈ 30 s : site assemblé, recette garnie, serveur) ne doit pas entrer dans toutes les PR qui touchent `packages/ui`, `packages/profile` ou `apps/api` (le budget de 900 s d'une PR large n'a plus de marge : ciZones.test.ts). Les unitaires des amis (portail, ui, profile, api) tournent avec leurs zones.",
       "globs": ["packages/ui/src/amis.ts", "packages/ui/src/amis.css", "packages/ui/src/catalogue.amis.ts", "packages/profile/src/amis.ts", "apps/api/src/amis.ts", "apps/api/src/classementAmis.ts", "apps/web/e2e/amis.spec.ts"]
     },
+    "avatars": {
+      "_": "Lot C1, partie B : les fichiers propres aux avatars (validation du serveur, composants, client, éditeur d'image et galerie d'administration). Zone étroite exprès, comme `retours`.",
+      "globs": ["packages/profile/src/avatar.ts", "packages/ui/src/avatar.css", "apps/api/src/avatars.ts", "apps/api/src/imagesAvatar.ts", "apps/api/scripts/avatarsDemo.ts", "apps/portail/src/avatar*.ts", "apps/portail/src/adminImages.ts", "apps/web/e2e/avatars.spec.ts"]
+    },
     "retours": {
       "_": "Lot C1 : les fichiers propres aux retours des joueurs (« Un bug ? Une idée ? » et « Mes messages ») : dialogue et vocabulaire du socle, client du profil, routes du serveur, pages du portail. Une zone étroite exprès, comme `amis` : l'Essentiel de web/retours.spec.ts (site assemblé, recette garnie, serveur) ne doit pas entrer dans toutes les PR qui touchent `packages/ui`, `packages/profile` ou `apps/api`.",
       "globs": ["packages/ui/src/retours.ts", "packages/ui/src/retours.css", "packages/ui/src/retoursOuvrir.ts", "packages/ui/src/catalogue.retours.ts", "packages/profile/src/retours.ts", "apps/api/src/retours.ts", "apps/api/scripts/retoursDemo.ts", "apps/portail/src/retours*.ts", "apps/portail/src/messages*", "apps/portail/messages/**", "apps/portail/src/adminRetours.ts", "apps/web/e2e/retours.spec.ts"]
@@ -32,6 +36,7 @@
   "specs": {
     "web/amis.spec.ts": ["portail", "amis"],
     "web/retours.spec.ts": ["portail", "retours"],
+    "web/avatars.spec.ts": ["portail", "avatars"],
     "web/admin-panneau.spec.ts": ["portail", "api-admin"],
     "web/admin-jump.spec.ts": ["jump-admin", "portail", "api-admin"],
     "web/diffusion.spec.ts": ["portail", "api-admin"],

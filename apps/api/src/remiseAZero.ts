@@ -33,6 +33,9 @@ export const TABLES_VIDEES: Readonly<Record<string, string>> = {
   amities: "amis (lot F2) : qui voit les temps de qui (identifiants internes des deux joueurs, origine, date)",
   invitations_amis: "amis (lot F2) : le lien d'invitation de chaque joueur (empreinte SHA-256 du jeton seulement)",
   favoris_jeux: "« Mes jeux » (lot F1) : les jeux épinglés de chaque joueur, une ligne par changement",
+  avatars: "avatars et emblèmes (lot C1) : l'image contrôlée de chaque joueur ou groupe, en base64, son empreinte et son état de modération",
+  avatar_signalements: "avatars (lot C1) : les signalements d'images (un par signalant et par image ; identifiants internes)",
+  avatar_interdits: "avatars (lot C1) : les joueurs et groupes à qui l'administration a interdit l'envoi d'images",
   retours: "retours des joueurs (lot C1) : un fil par bug ou idée envoyé (type, jeu, statut, contexte joint, référence publique du joueur)",
   retours_messages: "retours des joueurs (lot C1) : les messages des fils, du texte seul (joueur et réponses de l'éditeur)",
 };
