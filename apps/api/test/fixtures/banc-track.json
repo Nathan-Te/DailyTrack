@@ -654,6 +654,7 @@
   "corps": {
    "accepted": true,
    "improved": false,
+   "deja": true,
    "ms": 40617,
    "splits": [
     12315,
@@ -4181,7 +4182,83 @@
     ],
     "erreurs24h": {
      "serveur": 0,
-     "rediffusions": 10
+     "rediffusions": 8,
+     "perimes": 3,
+     "limites": 0
+    },
+    "refus": {
+     "h24": {
+      "total": {
+       "perime": 3,
+       "invalide": 7,
+       "limites": 0,
+       "jour": 1,
+       "serveur": 0,
+       "codes": {
+        "day_closed": 1,
+        "invalid_replay": 4,
+        "not_finished": 1,
+        "replay_copy": 2,
+        "sim_version": 2,
+        "track_mismatch": 1
+       }
+      },
+      "parJeu": [
+       {
+        "jeu": "cdj",
+        "nom": "DailyTrack",
+        "perime": 3,
+        "invalide": 7,
+        "limites": 0,
+        "jour": 1,
+        "serveur": 0,
+        "codes": {
+         "day_closed": 1,
+         "invalid_replay": 4,
+         "not_finished": 1,
+         "replay_copy": 2,
+         "sim_version": 2,
+         "track_mismatch": 1
+        }
+       }
+      ]
+     },
+     "j7": {
+      "total": {
+       "perime": 3,
+       "invalide": 7,
+       "limites": 0,
+       "jour": 1,
+       "serveur": 0,
+       "codes": {
+        "day_closed": 1,
+        "invalid_replay": 4,
+        "not_finished": 1,
+        "replay_copy": 2,
+        "sim_version": 2,
+        "track_mismatch": 1
+       }
+      },
+      "parJeu": [
+       {
+        "jeu": "cdj",
+        "nom": "DailyTrack",
+        "perime": 3,
+        "invalide": 7,
+        "limites": 0,
+        "jour": 1,
+        "serveur": 0,
+        "codes": {
+         "day_closed": 1,
+         "invalid_replay": 4,
+         "not_finished": 1,
+         "replay_copy": 2,
+         "sim_version": 2,
+         "track_mismatch": 1
+        }
+       }
+      ]
+     }
     },
     "prDepuisMiseEnProduction": null
    },

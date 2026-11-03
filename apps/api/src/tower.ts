@@ -117,6 +117,7 @@ export const ADAPTATEUR_TOWER: AdaptateurTable = {
   ],
   colonnesEcrites: ["tirage", "hauteur_mm", "hauteur_max_mm", "vies", "ticks", "medal", "replay", "sim_version", "generator_version", "first_at", "submitted_at", "inputs_hash", "hidden", "apercu"],
   colonnesGardees: ["first_at", "hidden", "apercu"],
+  lecturesDeja: ["hauteur_max_mm"], // lot D2 (C5) : la réponse d'un renvoi déjà accepté rend la hauteur la plus haute atteinte
   niveaux: { table: "tower_levels", colonnes: ["g", "tirage", "theme", "source", "fichier", "medals", "silhouette", "author_hash"] },
 };
 
@@ -394,6 +395,8 @@ export function contratTower(platform: Platform, options: TowerOptions | undefin
     ligneClassement(rank, b: LigneBrute): TowerRow {
       return { rank, name: String(b.name), hauteurMm: n(b.hauteur_mm), vies: n(b.vies), ticks: n(b.ticks), medal: (b.medal as MedailleTower | null) ?? null, ...(b.ref ? { ref: String(b.ref) } : {}) };
     },
+    // Lot D2 (C5) : la partie déjà écrite dit la hauteur, la hauteur maximale, les vies et la durée ; les pièces posées et tombées ne sont pas gardées (le jeu lit sa propre partie pour les afficher).
+    mesureDeLigne: (l) => ({ hauteurMm: n(l.hauteur_mm), hauteurMaxMm: n(l.hauteur_max_mm), vies: n(l.vies), ticks: n(l.ticks), posees: 0, tombees: 0, motif: n(l.vies) > 0 ? "pieces" : "vies" }) as unknown as Resultat,
     reponseEnvoi: (c): TowerSubmitResult => {
       const res = c.mesure as Resultat;
       return {

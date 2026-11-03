@@ -1603,7 +1603,10 @@ function startOnlineFlow(box: HTMLElement) {
     const name = online.name;
     if (!best || !name) return nameForm();
     box.replaceChildren(text(t("arrivee.envoi")));
+    // Lot D2 : 20 s pour répondre (`DELAI_ENVOI_MS`) ; après 3 s « Envoi en cours… » ; si le délai passe, la course reste « non envoyée » et repart (au retour sur l'accueil, au réseau revenu, ou « Réessayer »).
+    const lent = setTimeout(() => box.replaceChildren(text(t("arrivee.envoiLent"))), 3e3);
     const r = await online.submit(best, name);
+    clearTimeout(lent);
     if (r.ok) {
       online.sync.noteNameProblem(null);
       const gap = r.data.bestMs !== best.ms ? t("arrivee.tempsServeur", { temps: fTemps(r.data.bestMs) }) : "";
@@ -1615,7 +1618,9 @@ function startOnlineFlow(box: HTMLElement) {
     } else if (r.code === "code_revoked") {
       box.replaceChildren(text(messageErreur(r.code), "error"), profileLink());
     } else {
-      box.replaceChildren(text(r.status === 0 ? t("arrivee.horsLigneDetail", { detail: messageErreur(r.code) }) : messageErreur(r.code), "error"), link(t("commun.reessayer"), () => void send()));
+      // Lot D2 : jamais « indisponible » tant que la course est gardée (« Envoi en attente ») ; un refus de version allume « Nouvelle version en ligne — recharger ».
+      void versionJeu.then((m) => m.noterRefus(r.code));
+      box.replaceChildren(text(r.status ? r.status >= 429 ? t("arrivee.envoiAttente") : messageErreur(r.code) : r.code === "timeout" ? t("arrivee.envoiAttente") : t("arrivee.horsLigneDetail", { detail: messageErreur(r.code) }), "error"), link(t("commun.reessayer"), () => void send()));
     }
   };
 
@@ -2133,6 +2138,12 @@ function stepOnce(input: CarInput) {
 function isFrozen(): boolean {
   return paused || homeOpen || garageOuvert() || !!pageFigures?.ouvert() || !hudArchive.hidden || !!settingsPanel?.isOpen() || howto.isOpen() || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
 }
+
+// Lot D2 : l'onglet périmé (`versionJeu.ts`, module à la demande qui se démarre seul : la version du jeu contre celle du serveur avant la course, jamais pendant).
+const versionJeu = import("./versionJeu").then((m) => {
+  m.demarrer({ base: apiBase(), restreint: isRestricted(location.search) });
+  return m;
+});
 
 // Lot N2 : le message en direct (`annonceUi.ts`, chargé à la demande la première fois qu'il a le droit d'être là). Accueil, arrivée et pause seulement : pendant une course (décompte compris) et sur tout
 // autre écran la surveillance est suspendue (plus de minuterie ni de lecture du réseau) ; sans serveur, en démonstration, dans le Salon, un scénario ou une rediffusion : jamais chargé.

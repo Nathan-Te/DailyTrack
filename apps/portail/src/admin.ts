@@ -32,6 +32,7 @@ import {
 import { baseApi } from "./jour";
 import { remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
 import { vueJeux } from "./adminJeux";
+import { carteRefus } from "./adminRefus";
 import { vueRetour, vueRetours } from "./adminRetours";
 import { vueImages } from "./adminImages";
 import { vueGroupe, vueGroupes } from "./adminGroupes";
@@ -476,11 +477,12 @@ async function vueTableau(): Promise<Node[]> {
         ligneEtat("Version en production", version, undefined, "version"),
         ligneEtat("Jours prêts", prets || "—", undefined, "jours"),
         ligneEtat("Erreurs serveur (24 h)", String(e.erreurs24h.serveur), e.erreurs24h.serveur === 0, "erreurs"),
-        ligneEtat("Rediffusions refusées (24 h)", String(e.erreurs24h.rediffusions), undefined, "refus"),
+        ligneEtat("Rediffusions refusées (24 h)", `${e.erreurs24h.rediffusions} · hors onglets périmés (${e.erreurs24h.perimes}) et limites (${e.erreurs24h.limites})`, undefined, "refus"),
         // Lot N2 : le nombre de PR fusionnées depuis la mise en production en cours, lu sur GitHub par le navigateur (comme « Nouveautés ») : rempli juste après le dessin, jamais bloquant.
         ligneEtat("PR depuis la dernière mise en production", "Lecture de GitHub…", undefined, "pr"),
       ),
     ),
+    carteRefus(e.refus),
     el(
       "section",
       { classe: "admin-carte", attrs: { "aria-labelledby": "titre-dernieres" } },

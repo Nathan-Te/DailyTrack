@@ -1,4 +1,4 @@
-import { Profile, isValidName, normalizeName, type Identity, type KeyValueStore, type ProfileApi, type RenameResult, type SyncView } from "@cdj/profile";
+import { DELAI_ENVOI_MS, Profile, isValidName, normalizeName, type Identity, type KeyValueStore, type ProfileApi, type RenameResult, type SyncView } from "@cdj/profile";
 import type { MagasinRecords, RecordLocal } from "./records";
 
 // Lot K4c — **la file d'envoi hors ligne d'un jeu neuf**, sans DOM (testée sous Node). Modèle : `apps/tower/src/envoi.ts`, rendue générique : le serveur est une `SourceEnvoi` (une fonction `submit`), le record
@@ -49,8 +49,8 @@ export interface DepsEnvoi<T extends { date: string }> {
 
 const SANS_SYNC: SyncView = { state: { known: null }, noteRenamed() {}, noteServerKnows() {}, reset() {} };
 export const DELAI_BASE_MS = 15_000;
-/** Enquête D1 (C3) : on attend 20 s la réponse d'un envoi (le pire rejeu mesuré dure 11 s ; Cloud Run coupe à 30 s). */
-export const DELAI_ENVOI_MS = 20_000;
+/** Enquête D1 (C3) : on attend 20 s la réponse d'un envoi (le pire rejeu mesuré dure 11 s ; Cloud Run coupe à 30 s). Lot D2 : **une seule constante pour les trois jeux et le kit**, celle de `@cdj/profile`. */
+export { DELAI_ENVOI_MS };
 export const DELAI_MAX_MS = 300_000;
 
 export class FileEnvoi<T extends { date: string }> {

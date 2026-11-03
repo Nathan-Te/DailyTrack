@@ -118,6 +118,8 @@ export const en: Catalogues<typeof fr>["en"] = {
   "arrivee.horsLigneDetail": "Offline: run not ranked ({detail})",
   "arrivee.jourPasse": "Past day: the leaderboard is frozen, this time doesn't count.",
   "arrivee.envoi": "Sending to the leaderboard…",
+  "arrivee.envoiLent": "Sending…",
+  "arrivee.envoiAttente": "Waiting to send: your time will be counted as soon as possible",
   "arrivee.chargement": "Loading the leaderboard…",
   "arrivee.tempsServeur": "server time: {temps}",
   "arrivee.changerPseudo": "Change name",

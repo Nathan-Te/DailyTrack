@@ -89,8 +89,11 @@ export function arrivalRankView(i: ArrivalRankInput): RankView {
   const s = i.state;
   if (s.status === "version") return { ...base, status: t("rang.version"), tone: "warn", reload: true };
   if (s.status === "name" && i.pending) return { ...base, status: t("rang.pseudo"), tone: "wait", askName: true, nameMessage: s.code ? messageErreur(s.code) : "", suggestions: s.suggestions };
-  if (s.status === "offline" && i.pending) return { ...base, status: t(s.code === "trop_envois" ? "rang.tropEnvois" : "rang.horsLigne"), tone: "warn" };
+  // Lot D2 : jamais « indisponible » tant que la partie est en file (« Envoi en attente… ») ; « Envoi en cours… » quand la réponse tarde ; « indisponible » seulement si la file a abandonné.
+  if (s.status === "offline" && i.pending) return { ...base, status: t(s.code === "trop_envois" ? "rang.tropEnvois" : "rang.attente"), tone: "warn" };
+  if (s.status === "refused" && s.code === "abandon") return { ...base, status: t("rang.abandon"), tone: "warn" };
   if (s.status === "revoked" || (s.status === "refused" && s.code)) return { ...base, status: messageErreur(s.code), tone: "warn" };
+  if (s.status === "sending" && s.code === "lent" && i.pending) return { ...base, status: t("rang.enCours"), tone: "wait" };
   if (i.pending) return { ...base, status: t("rang.envoi"), tone: "wait" };
   const rank = i.board?.board?.me ? { rank: i.board.board.me.rank, participants: i.board.board.participants } : i.known;
   if (rank) return { ...base, status: rankText(rank.rank, rank.participants), tone: "ok" };

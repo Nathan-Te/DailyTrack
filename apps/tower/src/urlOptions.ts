@@ -15,6 +15,7 @@
 //   ?theme=<nom>              (lot T3) force le thème (port, chantier, canyon, banquise, jungle, nuit), pour les essayer — fermé en production
 //   ?debug                    une ligne d'état (tick, phase, empreinte) et la porte `window.__tower` pour les tests
 //   ?debug&tune               + le panneau des réglages de sensation (curseurs)
+//   ?debug&simuler=lent|perime lot D2 : une réponse d'envoi retardée de 12 s / un serveur d'une autre version (pour voir les messages sans vrai incident)
 //   ?tactile=1 | 0            force l'interface tactile (boutons aux bords) ou la coupe ; sans lui, l'appareil décide (pointeur grossier)
 //   ?apercu=<clé>             (lot TP) le lien d'aperçu d'un jeu pas encore ouvert : la page range la clé sur l'appareil (`cdj:apercu:tower`), la retire aussitôt de l'adresse et l'envoie dans l'en-tête
 //                             `X-Preview-Key` (jamais dans l'adresse d'une requête). Sans effet si le jeu est ouvert à tous ; ne désigne ni serveur ni jour. Ouvert aussi en production.
@@ -41,6 +42,8 @@ export interface OptionsUrl {
   tactile: "1" | "0" | null;
   /** Lot T6 : la visée (deux traits et le contour de l'arrivée de la pièce en main) ; allumée par défaut, `?visee=0` l'éteint (lot T7 : le réglage « Visée » de Réglages › Affichage agit aussi, les deux doivent être allumés). Affichage seul. */
   visee: boolean;
+  /** Lot D2 : `?debug&simuler=lent|perime` (la réponse d'un envoi retardée de 12 s ; un serveur qui annonce une autre version). Fermé en production. */
+  simuler: "lent" | "perime" | null;
   /** `?apercu=` présent (un lien d'aperçu) : l'interrupteur des jeux attend la clé avant de laisser le jeu appeler le serveur. */
   apercu: boolean;
   /** `?api=` lu tel quel (la règle R7 s'applique à `baseApi`, pas ici), ou null. */
@@ -66,6 +69,7 @@ export function lireOptions(search: string, restreint: boolean): OptionsUrl {
     bot: !restreint && scenario === "jour" && q.has("bot"),
     tirage: !restreint && tirage > 0 && tirage < TIRAGES_MAX ? Math.floor(tirage) : 0,
     theme: !restreint && (THEMES_TOWER as readonly string[]).includes(theme ?? "") ? (theme as ThemeTower) : null,
+    simuler: !restreint && q.has("debug") && (q.get("simuler") === "lent" || q.get("simuler") === "perime") ? (q.get("simuler") as "lent" | "perime") : null,
     tactile: tactile === "1" || tactile === "0" ? tactile : null,
     visee: q.get("visee") !== "0",
     apercu: q.has("apercu"),

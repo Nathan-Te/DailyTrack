@@ -159,6 +159,8 @@ export const CATALOGUE_EN: Catalogue = {
   "fin.rang.record": "of {total} · new record",
   "fin.rang.pasMieux": "Not better than your record of the day.",
   "fin.rang.envoi": "Sending your game…",
+  "fin.rang.enCours": "Sending…",
+  "fin.rang.attente": "Waiting to send: your game will be counted as soon as possible",
   "fin.rang.horsLigne": "Offline, not ranked: your game will be sent.",
   "fin.rang.tropEnvois": "Too many sends: your game will be sent later.",
   "fin.rang.version": "A new version of the game is out.",

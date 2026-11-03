@@ -150,6 +150,8 @@ export const CATALOGUE_FR: Catalogue = {
   "fin.rang.record": "sur {total} · nouveau record",
   "fin.rang.pasMieux": "Pas mieux que ton record du jour.",
   "fin.rang.envoi": "Envoi de ta partie…",
+  "fin.rang.enCours": "Envoi en cours…",
+  "fin.rang.attente": "Envoi en attente : ta partie sera prise en compte dès que possible",
   "fin.rang.horsLigne": "Hors ligne, non classé : ta partie sera envoyée.",
   "fin.rang.tropEnvois": "Trop d'envois : ta partie sera envoyée plus tard.",
   "fin.rang.version": "Une nouvelle version du jeu est disponible.",

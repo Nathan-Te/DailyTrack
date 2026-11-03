@@ -2795,9 +2795,10 @@ function syncPause(): void {
   syncMessage();
 }
 /** Lot N2 : l'écran du moment (accueil, arrivée, pause, ou rien : un niveau, un carnage) commande le message en direct. Sans effet avant que le jeu soit prêt. */
+let ecranVu: EcranMessage | null = null; // lot D2 : le dernier écran du bandeau (null : un niveau tourne), lu par le bandeau de version
 function syncMessage(): void {
+  const ecran: EcranMessage | null = (ecranVu = ecranDuMessage({ accueil: home?.isOpen ?? false, pause: menuOpen, arrivee: arrival.shown, carnage: carnage !== null }));
   if (!gameReady || baseMessage === null) return;
-  const ecran: EcranMessage | null = ecranDuMessage({ accueil: home?.isOpen ?? false, pause: menuOpen, arrivee: arrival.shown, carnage: carnage !== null });
   if (ecran === null && messageEnDirect === null) return; // jamais monté : rien à suspendre
   messageEnDirect ??= monterMessageEnDirect({
     base: baseMessage,
@@ -3190,4 +3191,6 @@ if (!scene) {
 gameReady = true;
 home?.setReady(true);
 syncPause();
+/** Lot D2 : l'onglet périmé (`versionJeu.ts`, à la demande) : la version du jeu contre celle du serveur avant le niveau, « Nouvelle version en ligne — recharger », jamais pendant un niveau ni un carnage. */
+void import("./versionJeu").then((m) => m.monterVersionJump({ base: baseMessage, simuler: options.simuler, enPartie: () => ecranVu === null, ranking }));
 

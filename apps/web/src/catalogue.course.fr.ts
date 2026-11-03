@@ -123,6 +123,8 @@ export const fr = {
   "arrivee.horsLigneDetail": "Hors ligne : course non classée ({detail})",
   "arrivee.jourPasse": "Jour passé : le classement est figé, ce temps n'y entre pas.",
   "arrivee.envoi": "Envoi au classement…",
+  "arrivee.envoiLent": "Envoi en cours…",
+  "arrivee.envoiAttente": "Envoi en attente : ton temps sera pris en compte dès que possible",
   "arrivee.chargement": "Chargement du classement…",
   "arrivee.tempsServeur": "temps du serveur : {temps}",
   "arrivee.changerPseudo": "Changer de pseudo",

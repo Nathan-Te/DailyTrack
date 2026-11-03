@@ -216,7 +216,7 @@ export function createApi(options: ApiOptions) {
     options: options.admin ?? { emails: [] },
     jeux: instances.flatMap((g) => {
       const def = jeux.find((d) => d.code === g.code);
-      return def ? [{ code: g.code, name: def.name, instance: g.instance }] : [];
+      return def ? [{ code: g.code, name: def.name, prefixe: def.prefix, instance: g.instance }] : [];
     }),
     allowedOrigins,
     revision: options.revision,
