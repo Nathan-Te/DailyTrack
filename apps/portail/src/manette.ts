@@ -14,6 +14,8 @@ export const PAGES_MANETTE = {
   amis: ".dj-carte-invitation .dj-bouton, .dj-ajout-ami__champ",
   // Lot C1 : « Mes messages » → le premier message, ou le champ de réponse d'un fil ouvert.
   messages: ".messages-fil__ouvrir, .messages-reponse__champ",
+  // Lot C1, partie C : la page d'un groupe → « Rejoindre le groupe » quand une invitation est affichée, sinon « Partager le lien d'invitation » d'un membre, sinon le lien de retour.
+  groupe: "#groupe-rejoindre, .groupe-actions .dj-bouton, .dj-barre-jeu__retour",
 } as const;
 
 /**

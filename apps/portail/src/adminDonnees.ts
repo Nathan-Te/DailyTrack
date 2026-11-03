@@ -250,6 +250,10 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
       }
     },
     actionImage: (genre: string, ref: string, action: ActionImage) => appeler<Record<string, unknown>>("POST", `/api/admin/images/${encodeURIComponent(genre)}/${encodeURIComponent(ref)}/${action}`, { confirmer: true }),
+    // Lot C1, partie C : les groupes
+    groupes: (o: { q?: string; page?: number }) => appeler<ListeGroupes>("GET", `/api/admin/groupes${q({ q: o.q, page: o.page && o.page > 1 ? o.page : undefined })}`),
+    groupe: (id: string) => appeler<FicheGroupeAdmin>("GET", `/api/admin/groupes/${encodeURIComponent(id)}`),
+    actionGroupe: (id: string, action: ActionGroupe, corps: Record<string, unknown> = {}) => appeler<Record<string, unknown>>("POST", `/api/admin/groupes/${encodeURIComponent(id)}/${action}`, { ...corps, confirmer: true }),
     // Lot C1 : les retours
     retours: (f: FiltresRetours) => appeler<ListeRetours>("GET", `/api/admin/retours${q({ type: f.type, jeu: f.jeu, statut: f.statut, page: f.page && f.page > 1 ? f.page : undefined })}`),
     retoursCompte: () => appeler<{ nonLus: number }>("GET", "/api/admin/retours/compte"),
@@ -266,6 +270,31 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
   };
 }
 export type ClientAdmin = ReturnType<typeof clientAdmin>;
+
+// --- Lot C1, partie C : les groupes ---------------------------------------------------------------------------------------------
+export type ActionGroupe = "renommer" | "emblem-retirer" | "retirer" | "chef" | "masquer" | "dissoudre";
+export interface GroupeResume {
+  id: string;
+  nom: string;
+  membres: number;
+  masque: boolean;
+  creeLe: string;
+}
+export interface ListeGroupes {
+  page: number;
+  suivante: boolean;
+  groupes: GroupeResume[];
+}
+export interface FicheGroupeAdmin {
+  id: string;
+  nom: string;
+  description: string;
+  creeLe: string;
+  renommeLe: string | null;
+  masque: boolean;
+  emblem: { statut: string; hash: string } | null;
+  membres: { ref: string; pseudo: string; chef: boolean; depuis: string; masque: boolean }[];
+}
 
 // --- Lot C1, partie B : les images ----------------------------------------------------------------------------------------------
 export type ActionImage = "garder" | "retirer" | "interdire" | "autoriser";

@@ -23,6 +23,8 @@ export interface DepsClassementAmis {
   platform: Platform;
   vue: () => VuePartagee;
   amis: AmisLecture;
+  /** Lot C1, partie C : les membres de mon groupe (hors moi) qui comptent ce jour-là : la liste de `filtre=groupe` à la place de celle des amis. */
+  groupe?: (id: string, day: number) => Promise<AmiLu[]>;
   joueurActif(id: string): Promise<PlayerRow>;
   idDe(req: Request): string;
   limiter(info: RequestInfo, id: string): Promise<void>;
@@ -95,7 +97,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
   /**
    * `options` : pour un classement de jeu (`code` du jeu, `date` de l'adresse) ; absent pour le portail (`date` et `vue` en paramètres).
    */
-  async function classement(format: FormatClassement, req: Request, url: URL, info: RequestInfo, options?: { code: string; date: string }): Promise<WithHeaders> {
+  async function classement(format: FormatClassement, req: Request, url: URL, info: RequestInfo, options?: { code: string; date: string }, filtre: "amis" | "groupe" = "amis"): Promise<WithHeaders> {
     const v = d.vue();
     const id = d.idDe(req);
     await d.limiter(info, id);
@@ -119,7 +121,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
       vueNom = jeu?.portail.site ?? options!.code;
     }
     const row = await d.joueurActif(id);
-    const [amis, c] = await Promise.all([d.amis.liste(id), v.classementDe(day)]);
+    const [amis, c] = await Promise.all([filtre === "groupe" ? (d.groupe ? d.groupe(id, day) : Promise.resolve([])) : d.amis.liste(id), v.classementDe(day)]);
     const maRef = await refOfPlayer(id);
 
     // Ce que le joueur a fait à l'instant (ses états exacts, une lecture par jeu) : ce qu'il vient de finir figure tout de suite dans sa liste.
@@ -206,7 +208,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
       }
     });
     const moi = lignes.find((l) => "moi" in l && l.moi === true) ?? null;
-    const commune = { filtre: "amis", date: formatDay(day), classes, amis: amis.length, absents, top: lignes };
+    const commune = { filtre, date: formatDay(day), classes, amis: amis.length, absents, top: lignes };
 
     let corps: Record<string, unknown>;
     if (format === "portail") {
@@ -216,7 +218,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
         ouvert,
         vue: vueNom,
         jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(v.estHauteur(j) ? { unite: "mm" as const } : {}) })),
-        filtre: "amis",
+        filtre,
         classes,
         amis: amis.length,
         top: lignes,

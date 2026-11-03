@@ -22,6 +22,10 @@
       "_": "Lot C1, partie B : les fichiers propres aux avatars (validation du serveur, composants, client, éditeur d'image et galerie d'administration). Zone étroite exprès, comme `retours`.",
       "globs": ["packages/profile/src/avatar.ts", "packages/ui/src/avatar.css", "apps/api/src/avatars.ts", "apps/api/src/imagesAvatar.ts", "apps/api/scripts/avatarsDemo.ts", "apps/portail/src/avatar*.ts", "apps/portail/src/adminImages.ts", "apps/web/e2e/avatars.spec.ts"]
     },
+    "groupes": {
+      "_": "Lot C1, partie C : les fichiers propres aux groupes (serveur, client du profil, pages du portail, administration, réécriture de Hosting). Zone étroite exprès, comme `retours` et `avatars`.",
+      "globs": ["apps/api/src/groupes*.ts", "apps/api/scripts/groupesDemo.ts", "packages/profile/src/groupes.ts", "apps/portail/groupe/**", "apps/portail/src/groupe*.ts", "apps/portail/src/classementGroupes.ts", "apps/portail/src/adminGroupes.ts", "apps/portail/src/groupesPortail.css", "apps/web/e2e/groupes.spec.ts"]
+    },
     "retours": {
       "_": "Lot C1 : les fichiers propres aux retours des joueurs (« Un bug ? Une idée ? » et « Mes messages ») : dialogue et vocabulaire du socle, client du profil, routes du serveur, pages du portail. Une zone étroite exprès, comme `amis` : l'Essentiel de web/retours.spec.ts (site assemblé, recette garnie, serveur) ne doit pas entrer dans toutes les PR qui touchent `packages/ui`, `packages/profile` ou `apps/api`.",
       "globs": ["packages/ui/src/retours.ts", "packages/ui/src/retours.css", "packages/ui/src/retoursOuvrir.ts", "packages/ui/src/catalogue.retours.ts", "packages/profile/src/retours.ts", "apps/api/src/retours.ts", "apps/api/scripts/retoursDemo.ts", "apps/portail/src/retours*.ts", "apps/portail/src/messages*", "apps/portail/messages/**", "apps/portail/src/adminRetours.ts", "apps/web/e2e/retours.spec.ts"]
@@ -37,6 +41,7 @@
     "web/amis.spec.ts": ["portail", "amis"],
     "web/retours.spec.ts": ["portail", "retours"],
     "web/avatars.spec.ts": ["portail", "avatars"],
+    "web/groupes.spec.ts": ["portail", "groupes"],
     "web/admin-panneau.spec.ts": ["portail", "api-admin"],
     "web/admin-jump.spec.ts": ["jump-admin", "portail", "api-admin"],
     "web/diffusion.spec.ts": ["portail", "api-admin"],

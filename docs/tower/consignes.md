@@ -319,3 +319,7 @@ Rapport : `docs/tower/lots/lot-T7-menus-manette.md`. **Décision de Nathan : les
 
 ## « Un bug ? Une idée ? » (lot C1)
 L'entrée est **dans la pause** (`#pause-retours`, `pause.retours`, `onRetours` de `OptionsPause`) **et dans Réglages** (`#reglages-retours`, `reglages.retours` ; `reglages.ts` charge `retoursJeu.ts` à la demande avec `base`, que l'accueil et le jeu lui passent). Le dialogue est dans `ECRANS_MANETTE` (`manetteEcrans.ts`). Budgets : `tower.jsCss` et `tower.jeu` tiennent (polyfill du préchargement retiré de `vite.config.ts`, un seul `import()` dans la pause).
+
+## « Mon groupe » dans le classement (lot C1, partie C)
+Le sélecteur des amis (`selecteurAmis`) a une troisième option **« Mon groupe · n »**, visible quand `GET /api/amis` porte `groupe` (le joueur est dans un groupe) : même code que « Amis » avec `?filtre=groupe` (le classement est lu avec `filtre=groupe` et la réponse doit porter `filtre: "groupe"`), mêmes lignes touchables ; seule la phrase « Inviter un ami » est propre à « Amis ». Le choix s'écrit dans l'adresse (`?filtre=groupe`). Aucun octet de plus au premier chargement (le module des amis est à la demande).
+

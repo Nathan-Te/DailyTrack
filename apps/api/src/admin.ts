@@ -7,6 +7,7 @@ import type { Diffusion } from "./diffusion";
 import type { Jeux } from "./jeux";
 import type { Retours } from "./retours";
 import type { Avatars } from "./avatars";
+import type { Groupes } from "./groupes";
 import { HttpError } from "./errors";
 import type { GameInstance, Platform, RequestInfo, Statement } from "./games";
 import { ecrireJournal, createJournaux, JOURNAL_ADMIN_LIGNES, RETRAIT_REDIFFUSION_JOURS } from "./journaux";
@@ -90,6 +91,7 @@ export interface AdminDeps {
   retours: Retours;
   /** Lot C1, partie B : les avatars (la rubrique « Images »). */
   avatars: Avatars;
+  groupes: Groupes;
 }
 
 type Corps = Record<string, unknown>;
@@ -460,7 +462,8 @@ export function createAdmin(deps: AdminDeps) {
     const interrupteur = /^jeux(?:\/[^/]+\/(?:etat|cle|cle\/revoquer))?$/.test(reste); // lot P
     const retours = /^retours(?:\/(?:compte|[^/]+(?:\/(?:repondre|statut|lu))?))?$/.test(reste); // lot C1
     const images = /^images(?:\/[a-z]+\/[^/]+(?:\/(?:garder|retirer|interdire|autoriser))?)?$/.test(reste); // lot C1, partie B
-    if (!miennes.includes(reste) && !joueur && !diffuse && !interrupteur && !retours && !images) return undefined; // les outils de DailyTrack (overview, planning, medailles, effacer)
+    const groupes = /^groupes(?:\/[0-9a-f]{12}(?:\/(?:renommer|emblem-retirer|retirer|chef|masquer|dissoudre))?)?$/.test(reste); // lot C1, partie C
+    if (!miennes.includes(reste) && !joueur && !diffuse && !interrupteur && !retours && !images && !groupes) return undefined; // les outils de DailyTrack (overview, planning, medailles, effacer)
     if (reste === "config") {
       if (req.method !== "GET") return nonPermise("GET");
       await platform.readHitAddress(info, "admc", 120);
@@ -486,6 +489,11 @@ export function createAdmin(deps: AdminDeps) {
     if (images) {
       const r = await deps.avatars.routeAdmin(reste, req, s.admin, () => platform.readJson(req));
       if (req.method !== "GET") deps.oublier(); // un avatar retiré ou gardé change ce que les classements gardés montrent
+      return r;
+    }
+    if (groupes) {
+      const r = await deps.groupes.routeAdmin(reste, req, s.admin, url, () => platform.readJson(req));
+      if (req.method !== "GET") deps.oublier(); // un groupe renommé, masqué ou dissous change ce que les classements gardés montrent
       return r;
     }
     if (retours) return await deps.retours.routeAdmin(reste, req, url, s.admin, () => platform.readJson(req));

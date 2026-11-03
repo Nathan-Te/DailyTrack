@@ -74,6 +74,7 @@ export function brancherAmis(o: OptionsAmis): ControleurAmis {
   /** Le sélecteur est posé (une identité connue du serveur) : sinon le classement reste « Tous ». */
   let disponible = false;
   let amis: number | null = null;
+  let groupe: number | undefined; // lot C1, partie C : les membres de mon groupe (absent : pas de « Mon groupe »)
   let selecteur: SelecteurAmis | null = null;
   let classement: ClassementAmis | null = null;
   let vue: BoardView | null = null;
@@ -177,7 +178,7 @@ export function brancherAmis(o: OptionsAmis): ControleurAmis {
     h.message.textContent = "";
     h.message.hidden = true;
     h.course.hidden = true;
-    h.pied.replaceChildren(...(c.amis === 0 ? [classementAmisVide(t, { href: o.href })] : []));
+    h.pied.replaceChildren(...(filtre === "amis" && c.amis === 0 ? [classementAmisVide(t, { href: o.href })] : []));
   }
 
   function dessinerChargement(): void {
@@ -209,9 +210,9 @@ export function brancherAmis(o: OptionsAmis): ControleurAmis {
     redessiner();
     const id = o.playerId();
     // `GET …/board?filtre=amis` : la réponse est lue prudemment (`lireClassementAmis`) ; l'identifiant part en en-tête.
-    const r: ApiResult<unknown> = id ? await call<unknown>(base, "GET", `/api/jump/day/${encodeURIComponent(o.date())}/board?filtre=amis`, undefined, undefined, { "X-Player-Id": id }, o.fetch) : { ok: false, status: 0, code: "invalid_player", message: "" };
+    const r: ApiResult<unknown> = id ? await call<unknown>(base, "GET", `/api/jump/day/${encodeURIComponent(o.date())}/board?filtre=${filtre === "groupe" ? "groupe" : "amis"}`, undefined, undefined, { "X-Player-Id": id }, o.fetch) : { ok: false, status: 0, code: "invalid_player", message: "" };
     if (mon !== demande || !ui.isOpen) return;
-    const lu = r.ok ? lireClassementAmis(r.data) : null;
+    const lu = r.ok ? lireClassementAmis(r.data, filtre === "groupe" ? "groupe" : "amis") : null;
     if (lu) {
       classement = lu;
       amis = lu.amis;
@@ -240,7 +241,7 @@ export function brancherAmis(o: OptionsAmis): ControleurAmis {
   }
 
   function poserSelecteur(): void {
-    selecteur = selecteurAmis({ t, filtre, total: vue?.participants ?? null, amis, onChange: choisir, jeu: "jump" });
+    selecteur = selecteurAmis({ t, filtre, total: vue?.participants ?? null, amis, groupe, onChange: choisir, jeu: "jump" });
     ui.hote.amis.replaceChildren(selecteur.racine, message);
   }
 
@@ -268,9 +269,10 @@ export function brancherAmis(o: OptionsAmis): ControleurAmis {
         if (mon !== ouverture || !ui.isOpen) return;
         if (!r.ok && sansSelecteur(r.code)) return; // pas de profil connu du serveur : rien à filtrer
         amis = r.ok ? r.data.total : null;
+        groupe = r.ok ? r.data.groupe : undefined;
         disponible = true;
         poserSelecteur();
-        if (filtre === "amis") await chargerAmis();
+        if (filtre !== "tous") await chargerAmis();
         else redessiner();
       });
     },

@@ -52,9 +52,9 @@ function lireLigne(v: unknown): LigneAmisTower | null {
 }
 
 /** Lit la réponse du serveur ; `null` si elle n'a pas la forme du contrat (une réponse mal formée ne casse rien). */
-export function lireClassementAmis(corps: unknown): ClassementAmisTower | null {
+export function lireClassementAmis(corps: unknown, filtre: "amis" | "groupe" = "amis"): ClassementAmisTower | null {
   const o = corps as Record<string, unknown> | null;
-  if (!o || o.filtre !== "amis" || !Array.isArray(o.top)) return null;
+  if (!o || o.filtre !== filtre || !Array.isArray(o.top)) return null;
   const lignes = o.top.map(lireLigne).filter((l): l is LigneAmisTower => l !== null);
   const absents = (Array.isArray(o.absents) ? o.absents : []).flatMap((a): AbsentTower[] => {
     const x = a as { ref?: unknown; pseudo?: unknown } | null;

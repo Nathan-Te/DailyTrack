@@ -77,7 +77,7 @@ export interface HoteAmis {
   /** D'où lire le contexte des amis (`undefined` : pas d'amis dans ce dialogue). */
   amis?: SourceAmis;
   /** Le filtre choisi, posé par le morceau des amis : « Amis » prend la liste, le dialogue ne redessine plus « Tous ». */
-  filtre?: "tous" | "amis";
+  filtre?: "tous" | "amis" | "groupe";
   controle?: Promise<ControleAmis>;
 }
 
@@ -144,7 +144,7 @@ export function monterClassement(racine: HTMLElement, o: { surFermeture?: () => 
       dialogue.setAttribute("aria-label", t("classement.titre"));
       titre.textContent = t("classement.titre");
       fermer.textContent = t("classement.fermer");
-      if (hote.filtre !== "amis") rendreTous();
+      if (hote.filtre === undefined || hote.filtre === "tous") rendreTous();
       ouvert = true;
       voile.hidden = false;
       if (neuve) dialogue.scrollTop = 0;

@@ -28,6 +28,8 @@ export interface ListeAmis {
   max: number;
   /** Un lien d'invitation est-il actif ? (Le jeton lui-même n'est rendu qu'à sa création.) */
   invitation: { active: boolean };
+  /** Lot C1, partie C : le nombre de membres de mon groupe, présent seulement si j'en ai un (le sélecteur « Mon groupe »). */
+  groupe?: number;
 }
 export interface Suggestion {
   ref: string;
@@ -78,7 +80,8 @@ export function lireListeAmis(corps: unknown): ListeAmis | null {
   const o = corps as { amis?: unknown; total?: unknown; max?: unknown; invitation?: { active?: unknown } } | null;
   if (!o || !Array.isArray(o.amis)) return null;
   const amis = o.amis.map(lireAmi).filter((a): a is Ami => a !== null);
-  return { amis, total: lireTotal(o.total, amis.length), max: lireTotal(o.max, MAX_AMIS), invitation: { active: o.invitation?.active === true } };
+  const groupe = entier((corps as { groupe?: unknown }).groupe);
+  return { amis, total: lireTotal(o.total, amis.length), max: lireTotal(o.max, MAX_AMIS), invitation: { active: o.invitation?.active === true }, ...(groupe !== null && groupe >= 0 ? { groupe } : {}) };
 }
 function lireAjout(corps: unknown): { ami: Ami; total: number } | null {
   const o = corps as { ami?: unknown; total?: unknown } | null;
@@ -264,13 +267,14 @@ export function oublierInvitation(session: Pick<Storage, "removeItem"> | null | 
 
 // --- Le filtre « Tous / Amis » dans l'adresse ---------------------------------------------------------------------------------------------------------------------------------------
 
-export type FiltreAmis = "tous" | "amis";
+export type FiltreAmis = "tous" | "amis" | "groupe";
 /** Le paramètre d'adresse du filtre. */
 export const PARAMETRE_FILTRE = "filtre";
 
-/** Le filtre d'une adresse (`location.search`) : `?filtre=amis` → `amis`, tout le reste → `tous`. */
+/** Le filtre d'une adresse (`location.search`) : `?filtre=amis` → `amis`, `?filtre=groupe` (lot C1, partie C : mon groupe) → `groupe`, tout le reste → `tous`. */
 export function lireFiltre(search: string): FiltreAmis {
-  return new URLSearchParams(search).get(PARAMETRE_FILTRE) === "amis" ? "amis" : "tous";
+  const f = new URLSearchParams(search).get(PARAMETRE_FILTRE);
+  return f === "amis" || f === "groupe" ? f : "tous";
 }
 
 /** La même adresse (relative ou absolue) avec le filtre : `?filtre=amis` pour « amis », rien pour « tous » ; les autres paramètres (`?vue=`, `?date=`) et le fragment restent. */
@@ -281,7 +285,7 @@ export function adresseAvecFiltre(adresse: string, filtre: FiltreAmis): string {
   const point = sansFragment.indexOf("?");
   const chemin = point < 0 ? sansFragment : sansFragment.slice(0, point);
   const params = new URLSearchParams(point < 0 ? "" : sansFragment.slice(point + 1));
-  if (filtre === "amis") params.set(PARAMETRE_FILTRE, "amis");
+  if (filtre !== "tous") params.set(PARAMETRE_FILTRE, filtre);
   else params.delete(PARAMETRE_FILTRE);
   const reste = params.toString();
   return `${chemin}${reste ? `?${reste}` : ""}${fragment}`;

@@ -13,6 +13,7 @@ import { createJeux } from "./jeux";
 import { createIdentityRoutes } from "./identity";
 import { createRetours } from "./retours";
 import { createAvatars } from "./avatars";
+import { createGroupes, proprietaireGroupe } from "./groupes";
 import { aNoter } from "./journaux";
 import { silentLog, type Logger } from "./log";
 import { DEFAULT_LIMITS, createPlatform } from "./platform";
@@ -168,7 +169,10 @@ export function createApi(options: ApiOptions) {
     platform,
     instances.map((g) => g.instance),
     (req, info) => cdj.requireAdmin(req, info),
-    () => portail.oublier(),
+    () => {
+      portail.oublier();
+      groupes.oublier();
+    },
   );
   // Lot N2 : les nouveautés et le message en direct (lectures publiques, routes d'administration).
   const diffusion = createDiffusion(platform);
@@ -180,10 +184,12 @@ export function createApi(options: ApiOptions) {
   // Lot C1 : les retours des joueurs (`/api/retours…`), « Un bug ? Une idée ? ». Leur nombre de réponses non lues entre dans `GET /api/portail/jour` (`messagesNonLus`).
   const retours = createRetours(platform, { version: options.admin?.releaseTag ?? options.revision?.slice(0, 12) ?? "local" });
   // Lot C1, partie B : les avatars (`/api/avatar…`, `/api/avatars/<empreinte>`) : l'envoi, le signalement, l'image servie en cache long.
-  const avatars = createAvatars(platform);
+  const avatars = createAvatars(platform, { groupe: proprietaireGroupe });
   // Lot F2 : les amis (`/api/amis…`, le filtre `filtre=amis` des classements). Ils lisent le classement du jour que le portail garde par fenêtre (créé juste après : d'où la lecture paresseuse).
   let portailPartage: ReturnType<typeof createPortailRoutes> | null = null;
-  const amis = createAmis(platform, () => portailPartage!.vue);
+  // Lot C1, partie C : les groupes (`/api/groupes…`, le filtre `filtre=groupe` des classements, le classement des groupes). Ils lisent le même classement du jour gardé par le portail.
+  const groupes = createGroupes(platform, () => portailPartage!.vue, avatars);
+  const amis = createAmis(platform, () => portailPartage!.vue, groupes.membresPourClassement, groupes.tailleDuGroupe);
   // Lot I2 : le portail (accueil et profil commun), à partir de ce que chaque jeu déclare (crochet `portail`).
   const portail = createPortailRoutes(
     platform,
@@ -199,6 +205,7 @@ export function createApi(options: ApiOptions) {
   platform.onGenerationChange(() => {
     for (const g of instances) g.instance.onErased?.();
     portail.oublier();
+    groupes.oublier();
   });
   // Lot N1 : le panneau d'administration (connexion Google, tableau de bord, joueurs, journal). Il existe toujours (le journal des erreurs et l'entretien servent
   // même sans lui) ; sans configuration complète, ses routes répondent 404.
@@ -211,11 +218,15 @@ export function createApi(options: ApiOptions) {
     }),
     allowedOrigins,
     revision: options.revision,
-    oublier: () => portail.oublier(),
+    oublier: () => {
+      portail.oublier();
+      groupes.oublier();
+    },
     diffusion,
     interrupteur,
     retours,
     avatars,
+    groupes,
   });
   adminRef = admin;
   const salon = cdj.salon;
@@ -314,7 +325,7 @@ export function createApi(options: ApiOptions) {
       if (req.method !== "GET" && req.method !== "HEAD") await admin.entretien();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
-      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await amis.route(path, req, url, info)) ?? (await retours.route(path, req, url, info)) ?? (await avatars.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
+      const common = (await admin.route(path, req, url, info)) ?? (await identity.route(path, req, url, info)) ?? (await diffusion.routePublique(path, req, url, info)) ?? (await interrupteur.routePublique(path, req, info)) ?? (await amis.route(path, req, url, info)) ?? (await retours.route(path, req, url, info)) ?? (await avatars.route(path, req, url, info)) ?? (await groupes.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
       if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;

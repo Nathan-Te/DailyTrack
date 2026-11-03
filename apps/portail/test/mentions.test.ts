@@ -17,6 +17,7 @@ import { ERREURS_JOURS, JOURNAL_ADMIN_JOURS, RETRAIT_REDIFFUSION_JOURS } from ".
 import { AMIS_MAX } from "../../api/src/amis";
 import { IMAGE_COTE_MAX, IMAGE_OCTETS_MAX } from "../../api/src/imagesAvatar";
 import { SIGNALEMENTS_MASQUAGE } from "../../api/src/avatars";
+import { GROUPE_DESCRIPTION_MAX, GROUPE_MEMBRES_MAX, GROUPE_RENOMMER_JOURS } from "../../api/src/groupes";
 import { RETOURS_GARDE_JOURS, RETOURS_PAR_JOUR, RETOUR_TEXTE_MAX } from "../../api/src/retours";
 
 // Lot R5 (plateforme) : la page « Mentions légales et confidentialité » ne promet rien que le code ne fait pas. Chaque nombre ou durée tiré du
@@ -57,6 +58,10 @@ const CONSTANTES: Record<string, number> = {
   IMAGE_COTE_MAX,
   IMAGE_OCTETS_MAX,
   SIGNALEMENTS_MASQUAGE,
+  // Lot C1, partie C : les groupes.
+  GROUPE_DESCRIPTION_MAX,
+  GROUPE_MEMBRES_MAX,
+  GROUPE_RENOMMER_JOURS,
 };
 
 /** Ce qu'une valeur doit afficher : un nombre, ou une durée en mots (« 20 secondes », « 10 minutes », « 1 heure » ; en anglais « 20 seconds »…). */

@@ -3,6 +3,7 @@ import { HttpError } from "./errors";
 import type { Statement } from "./games";
 import { isForbidden, isUniqueViolation, nameKey, suggestionCandidates } from "./pseudos";
 import { cleanName } from "./validate";
+import { departDuJoueur } from "./groupesDepart";
 import { effacerRetours } from "./retours";
 
 // Joueurs (lot 30) : pseudos réservés, codes révoqués, changement d'identifiant secret. Tout ce qui touche à la table `players` passe ici,
@@ -166,6 +167,8 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
       { sql: "UPDATE avatar_signalements SET owner = ? WHERE kind = 'joueur' AND owner = ?", params: [newId, oldId] },
       { sql: "UPDATE avatar_signalements SET reporter = ? WHERE reporter = ?", params: [newId, oldId] },
       { sql: "UPDATE avatar_interdits SET owner = ? WHERE kind = 'joueur' AND owner = ?", params: [newId, oldId] },
+      { sql: "UPDATE groupe_membres SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot C1, partie C : son groupe le suit (il en reste le chef)
+      { sql: "UPDATE groupes SET chef = ? WHERE chef = ?", params: [newId, oldId] },
       { sql: "UPDATE retours SET player_id = ?, ref = ? WHERE player_id = ?", params: [newId, newHash.slice(0, REF_LENGTH), oldId] }, // lot C1 : ses fils de retours le suivent (la référence publique change)
       { sql: "UPDATE players SET id = ?, ref = ?, updated_at = ? WHERE id = ?", params: [newId, newHash.slice(0, REF_LENGTH), t, oldId] },
     ];
@@ -193,6 +196,8 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
     out.push({ sql: "DELETE FROM invitations_amis WHERE joueur = ?", params: [id] });
     out.push({ sql: "DELETE FROM favoris_jeux WHERE player_id = ?", params: [id] }); // lot F1 : ses jeux épinglés
     out.push(...effacerRetours(id));
+    // Lot C1, partie C : son groupe — s'il en est le chef, le plus ancien membre le devient, sinon le groupe est dissous ; sa ligne de membre part dans tous les cas.
+    out.push(...(await departDuJoueur(db, id)).statements);
     // Lot C1, partie B : son avatar, les signalements dont il est l'objet ou l'auteur, et son interdiction d'envoi.
     out.push({ sql: "DELETE FROM avatars WHERE kind = 'joueur' AND owner = ?", params: [id] });
     out.push({ sql: "DELETE FROM avatar_signalements WHERE kind = 'joueur' AND owner = ?", params: [id] });

@@ -386,3 +386,7 @@ Module et règles : `packages/ui/CLAUDE.md`, « Les commandes réglables (lot M2
 
 ## « Un bug ? Une idée ? » (lot C1)
 L'entrée est **dans la pause** (`#pause-retours`, clé `pause.retours`) **et dans Réglages** (`#settings-retours`, `reglages.retours`) ; un seul `import()` dans le premier chargement (`src/retoursLien.ts`, `ouvrirRetours`) charge `src/retoursJeu.ts` (à la demande, n'importe rien du jeu) → le dialogue commun (`packages/ui/CLAUDE.md`). Le dialogue est dans `ECRANS_MANETTE`. **Budgets** : `track.jsCss` tient parce que le polyfill du préchargement des modules est retiré (`build.modulePreload.polyfill: false`, ≈ 390 o ; sans lui un navigateur très ancien ne précharge pas, rien ne casse). Un nouvel `import()` du premier chargement coûte sa liste de dépendances : en mettre un seul.
+
+## « Mon groupe » dans le classement (lot C1, partie C)
+Le sélecteur des amis (`selecteurAmis`) a une troisième option **« Mon groupe · n »**, visible quand `GET /api/amis` porte `groupe` (le joueur est dans un groupe) : même code que « Amis » avec `?filtre=groupe` (le classement est lu avec `filtre=groupe` et la réponse doit porter `filtre: "groupe"`), mêmes lignes touchables ; seule la phrase « Inviter un ami » est propre à « Amis ». Le choix s'écrit dans l'adresse (`?filtre=groupe`). Aucun octet de plus au premier chargement (le module des amis est à la demande).
+

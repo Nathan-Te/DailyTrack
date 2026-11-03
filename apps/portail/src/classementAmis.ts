@@ -7,7 +7,7 @@ import { adresseDeVue } from "./classementVues";
 // (`GET /api/portail/classement?filtre=amis`) : rien n'est recalculé ici.
 
 /** Le filtre réellement appliqué : « Amis » demande une identité (le serveur refuserait sans elle) ; sans profil, on reste sur « Tous ». */
-export const filtreEffectif = (demande: FiltreAmis, identifie: boolean): FiltreAmis => (identifie && demande === "amis" ? "amis" : "tous");
+export const filtreEffectif = (demande: FiltreAmis, identifie: boolean): FiltreAmis => (identifie ? demande : "tous");
 
 /**
  * L'adresse qui garde le jour, la vue **et** le filtre (`?date=…&vue=…&filtre=amis`, dans cet ordre : une adresse ne change pas selon le chemin qui y a mené). Aujourd'hui, le cumul et

@@ -38,6 +38,8 @@ export const TABLES_VIDEES: Readonly<Record<string, string>> = {
   avatar_interdits: "avatars (lot C1) : les joueurs et groupes à qui l'administration a interdit l'envoi d'images",
   retours: "retours des joueurs (lot C1) : un fil par bug ou idée envoyé (type, jeu, statut, contexte joint, référence publique du joueur)",
   retours_messages: "retours des joueurs (lot C1) : les messages des fils, du texte seul (joueur et réponses de l'éditeur)",
+  groupes: "groupes (lot C1) : nom, description, chef, empreinte de l'emblème, lien d'invitation (créés par des joueurs)",
+  groupe_membres: "groupes (lot C1) : qui est dans quel groupe, depuis quand (identifiants internes)",
 };
 
 /** Les tables gardées : aucune donnée de joueur (planning de l'administration, caches de niveaux déterministes, table de service). */

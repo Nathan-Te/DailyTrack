@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1629 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1710 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -63,6 +63,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `amis.invitation.pseudo` | Choisis ton pseudo | Pick your name |
 | `amis.invitation.suggestions` | Pseudos libres | Free names |
 | `amis.invitation.fait` | C'est fait : {pseudo} est dans tes amis, et toi dans les siens. | Done: {pseudo} is in your friends, and you're in theirs. |
+| `amis.selecteur.monGroupe` | Mon groupe | My group |
+| `amis.selecteur.monGroupeN` | Mon groupe · {n} | My group · {n} |
 
 ### annonce (`annonce.*`, `packages/ui/src/catalogue.ts`)
 
@@ -208,6 +210,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.their_friends_full` | La liste d'amis de ce joueur est pleine. | That player's friends list is full. |
 | `erreur.invalid_invitation` | Ce lien d'invitation n'est plus valable. Demande-en un nouveau. | This invitation link is no longer valid. Ask for a new one. |
 | `erreur.invalid_filter` | Ce filtre n'existe pas. | That filter doesn't exist. |
+| `erreur.invalid_group` | Ce nom ou cette description n'est pas accepté (nom de 3 à 24 caractères, description de 140 au plus). | That name or description isn't accepted (name of 3 to 24 characters, description up to 140). |
+| `erreur.group_name_taken` | Ce nom de groupe est déjà pris. | That group name is already taken. |
+| `erreur.already_in_group` | Tu es déjà dans un groupe : quitte-le d'abord. | You're already in a group: leave it first. |
+| `erreur.unknown_group` | Ce groupe n'existe pas, ou ce lien d'invitation ne marche plus. | That group doesn't exist, or that invitation link no longer works. |
+| `erreur.group_full` | Ce groupe est complet (30 membres). | That group is full (30 members). |
+| `erreur.not_group_chief` | Seul le chef du groupe peut faire cela. | Only the group's leader can do that. |
+| `erreur.group_rename_limit` | Un groupe se renomme une fois par semaine. | A group can be renamed once a week. |
+| `erreur.unknown_member` | Ce joueur n'est pas dans le groupe. | That player isn't in the group. |
 | `erreur.invalid_image` | Cette image n'est pas acceptée : choisis-en une autre. | That picture isn't accepted: pick another one. |
 | `erreur.avatar_limit` | Tu as déjà changé ton image aujourd'hui : reviens demain. | You already changed your picture today: come back tomorrow. |
 | `erreur.avatar_banned` | L'envoi d'image n'est plus possible pour ce profil. | Sending a picture is no longer possible for this profile. |
@@ -420,6 +430,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `apercu.nouveautes.description` | Ce qui change dans Du Jour, Track et Jump : les nouveautés, mise à jour par mise à jour, en français et en anglais. | What changes in Du Jour, Track and Jump: updates one by one, in French and in English. |
 | `apercu.messages.titre` | Mes messages — Du Jour | My messages — Du Jour |
 | `apercu.messages.description` | Tes messages à l'éditeur de Du Jour et ses réponses. | Your messages to the Du Jour publisher, and the replies. |
+| `apercu.groupe.titre` | Rejoins mon groupe sur Du Jour | Join my group on Du Jour |
+| `apercu.groupe.description` | Un circuit Track et un niveau Jump chaque jour, les mêmes pour tout le monde. Rejoins mon groupe : notre classement est la moyenne de nos 3 meilleurs. | One Track circuit and one Jump level every day, the same for everyone. Join my group: our ranking is the average of our 3 best. |
 | `apercu.amis.titre` | Rejoins-moi sur Du Jour | Join me on Du Jour |
 | `apercu.amis.description` | Un circuit Track et un niveau Jump chaque jour, les mêmes pour tout le monde. Ajoutons-nous en amis pour comparer nos temps. | One Track circuit and one Jump level every day, the same for everyone. Let's add each other as friends to compare our times. |
 
@@ -446,6 +458,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.ferme` | Jour terminé : ce classement est figé. | Day over: this leaderboard is final. |
 | `classement.invite` | Finis un jeu pour entrer au classement. | Finish a game to enter the leaderboard. |
 | `classement.amis.indispo` | Le classement de tes amis ne répond pas : voici tous les joueurs. | Your friends' leaderboard isn't answering: here is everyone. |
+| `classement.mode.aria` | Qui est classé | Who is ranked |
+| `classement.mode.joueurs` | Joueurs | Players |
+| `classement.mode.groupes` | Groupes | Groups |
+| `classement.groupes.toi` | Ton groupe | Your group |
+| `classement.groupes.classes` | one : {n} classé · other : {n} classés | one : {n} ranked · other : {n} ranked |
+| `classement.groupes.regle` | Au chrono : la moyenne des 3 meilleurs de chaque groupe ({min} classés au moins). | Against the clock: the average of each group's 3 best ({min} ranked at least). |
+| `classement.groupes.compte` | one : {n} groupe classé · other : {n} groupes classés | one : {n} group ranked · other : {n} groups ranked |
+| `classement.groupes.vide` | Aucun groupe classé ce jour-là. | No group ranked that day. |
 
 ### Démonstration (recette seulement) (`demo.*`, `apps/portail/src/catalogueDemo.ts`)
 
@@ -455,6 +475,75 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `demo.texte` | Ce lien installe sur cet appareil le joueur « {nom} » de la recette, pour voir le portail plein. Il remplacera le profil de cet appareil ({actuel}), dans tous les jeux. | This link installs the test server's player "{nom}" on this device, to see the portal full. It will replace this device's profile ({actuel}), in every game. |
 | `demo.installer` | Installer le joueur de démonstration | Install the demo player |
 | `demo.annuler` | Garder mon profil | Keep my profile |
+
+### groupePage (`groupePage.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `groupePage.titre` | Groupe | Group |
+| `groupePage.titreNom` | {nom} · Groupe | {nom} · Group |
+| `groupePage.description` | Un groupe de joueurs de Du Jour : ses membres et son classement du jour. | A group of Du Jour players: its members and its leaderboard of the day. |
+| `groupePage.chargement` | Chargement du groupe… | Loading the group… |
+| `groupePage.inconnu` | Ce groupe n'existe pas (ou plus). | This group doesn't exist (any more). |
+| `groupePage.chef` | Chef | Leader |
+| `groupePage.membres` | one : {n} membre sur {max} · other : {n} membres sur {max} | one : {n} member of {max} · other : {n} members of {max} |
+| `groupePage.membres.titre` | Membres | Members |
+| `groupePage.invite` | Tu es invité dans « {nom} » | You're invited to “{nom}” |
+| `groupePage.rejoindre` | Rejoindre le groupe | Join the group |
+| `groupePage.rejoindre.aide` | Tu compteras dans son classement dès demain. Tu ne peux être que dans un seul groupe. | You'll count in its ranking from tomorrow. You can only be in one group. |
+| `groupePage.rejoint` | Tu fais partie du groupe. Tu compteras dans son classement dès demain. | You're in the group. You'll count in its ranking from tomorrow. |
+| `groupePage.plein` | Ce groupe est complet. | This group is full. |
+| `groupePage.dejaMembre` | Tu fais déjà partie d'un groupe : quitte-le d'abord (Profil › Mon groupe). | You're already in a group: leave it first (Profile › My group). |
+| `groupePage.sansProfil` | Finis un jeu pour ouvrir ton profil, puis rouvre ce lien. | Finish a game to open your profile, then open this link again. |
+| `groupePage.invitationMorte` | Ce lien d'invitation n'est plus valable : demande-en un nouveau au chef du groupe. | This invitation link is no longer valid: ask the group's leader for a new one. |
+| `groupePage.classement` | Classement du jour · {date} | Leaderboard of the day · {date} |
+| `groupePage.aucunRang` | Pas de classement des groupes pour ce jour. | No group ranking for this day. |
+| `groupePage.regle` | Le score d'un groupe est la moyenne de ses {min} meilleurs. Il faut {min} classés au moins. | A group's score is the average of its {min} best. At least {min} must be ranked. |
+| `groupePage.rang` | {rang} sur {sur} | {rang} of {sur} |
+| `groupePage.moins` | Moins de {min} classés | Fewer than {min} ranked |
+| `groupePage.partager` | Partager le lien d'invitation | Share the invitation link |
+| `groupePage.gerer` | Gérer mon groupe | Manage my group |
+| `groupePage.lienCopie` | Lien d'invitation copié. | Invitation link copied. |
+| `groupePage.lienCopie.echec` | Copie impossible ici : ouvre Profil › Mon groupe. | Can't copy here: open Profile › My group. |
+
+### groupeProfil (`groupeProfil.*`, `apps/portail/src/cataloguePages.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `groupeProfil.confirmer` | Confirmer : {action} | Confirm: {action} |
+| `groupeProfil.nom` | Nom du groupe | Group name |
+| `groupeProfil.description` | Description (140 caractères) | Description (140 characters) |
+| `groupeProfil.creer` | Créer le groupe | Create the group |
+| `groupeProfil.cree` | Groupe créé. Montre le lien d'invitation à tes amis. | Group created. Show the invitation link to your friends. |
+| `groupeProfil.aucun` | Tu n'es dans aucun groupe. | You're not in any group. |
+| `groupeProfil.regles` | Un nom de 3 à 24 caractères, unique ; jusqu'à {max} membres ; tu en es le chef. | A unique name of 3 to 24 characters; up to {max} members; you're its leader. |
+| `groupeProfil.lien.titre` | Lien d'invitation | Invitation link |
+| `groupeProfil.lien.aide` | Tout membre peut le partager. Le chef peut le renouveler : l'ancien lien cesse alors de marcher. | Any member can share it. The leader can renew it: the old link then stops working. |
+| `groupeProfil.lien` | Lien d'invitation du groupe | The group's invitation link |
+| `groupeProfil.copier` | Copier le lien | Copy the link |
+| `groupeProfil.lienCopie` | Lien copié. | Link copied. |
+| `groupeProfil.lienAMain` | Copie impossible ici : sélectionne le lien à la main. | Can't copy here: select the link by hand. |
+| `groupeProfil.renouveler` | Nouveau lien | New link |
+| `groupeProfil.renouvele` | Nouveau lien : l'ancien ne marche plus. | New link: the old one no longer works. |
+| `groupeProfil.arrivee` | Tu comptes dans le classement du groupe depuis le {date}. | You've counted in the group's ranking since {date}. |
+| `groupeProfil.passerChef` | Passer le chef | Make leader |
+| `groupeProfil.chefPasse` | {pseudo} est le nouveau chef. | {pseudo} is the new leader. |
+| `groupeProfil.retirer` | Retirer | Remove |
+| `groupeProfil.retire` | {pseudo} a été retiré du groupe. | {pseudo} was removed from the group. |
+| `groupeProfil.quitter` | Quitter le groupe | Leave the group |
+| `groupeProfil.quitte` | Tu as quitté le groupe. | You left the group. |
+| `groupeProfil.chef.titre` | Réservé au chef | Leader only |
+| `groupeProfil.renommer` | Renommer | Rename |
+| `groupeProfil.renommer.attente` | Renommer (une fois par semaine) | Rename (once a week) |
+| `groupeProfil.renomme` | Groupe renommé. | Group renamed. |
+| `groupeProfil.decrire` | Enregistrer la description | Save the description |
+| `groupeProfil.decrit` | Description enregistrée. | Description saved. |
+| `groupeProfil.emblemeChoisir` | Choisir un emblème | Choose an emblem |
+| `groupeProfil.emblemeFait` | Emblème enregistré. | Emblem saved. |
+| `groupeProfil.emblemeRetirer` | Retirer l'emblème | Remove the emblem |
+| `groupeProfil.emblemeRetire` | Emblème retiré. | Emblem removed. |
+| `groupeProfil.dissoudre` | Dissoudre le groupe | Dissolve the group |
+| `groupeProfil.dissous` | Groupe dissous. | Group dissolved. |
 
 ### Mes messages (`messages.*`, `apps/portail/src/cataloguePages.ts`)
 
@@ -648,6 +737,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.messages.aide` | Les réponses de l'éditeur à tes bugs et à tes idées. | The publisher's replies to your bugs and ideas. |
 | `profil.messages.lien` | Mes messages | My messages |
 | `profil.messages.nonLu` | {n} réponse à lire | {n} reply to read |
+| `profil.groupe.titre` | Mon groupe | My group |
+| `profil.groupe.aide` | Crée un groupe ou rejoins-en un par lien d'invitation : tout le groupe a son classement, la moyenne de ses 3 meilleurs du jour. | Create a group or join one with an invitation link: each group has its own leaderboard, the average of its 3 best of the day. |
 | `profil.amis.titre` | Amis | Friends |
 | `profil.amis.aide` | Compare tes temps à ceux de tes amis dans les classements. | Compare your times with your friends' in the leaderboards. |
 | `profil.amis.lien` | Mes amis | My friends |

@@ -84,6 +84,14 @@ export const CODES_ERREUR = {
   avatar_banned: { status: 403, sens: "Avatars (lot C1) : l'envoi d'images est interdit à ce joueur ou à ce groupe par l'administration." },
   unknown_avatar: { status: 404, sens: "Avatars (lot C1) : pas d'image à ce nom (jamais envoyée, retirée, ou masquée par signalements), ou aucun joueur de cette référence." },
   invalid_report: { status: 400, sens: "Avatars (lot C1) : signalement refusé (référence mal formée, ou on ne se signale pas soi-même)." },
+  invalid_group: { status: 400, sens: "Groupes (lot C1) : nom (3 à 24 caractères) ou description (140 au plus) refusés, ou action impossible (se retirer soi-même, déjà chef)." },
+  group_name_taken: { status: 409, sens: "Groupes (lot C1) : ce nom de groupe est déjà pris (unicité sur la forme normalisée, comme les pseudos)." },
+  already_in_group: { status: 409, sens: "Groupes (lot C1) : un joueur n'est que dans un seul groupe." },
+  unknown_group: { status: 404, sens: "Groupes (lot C1) : le groupe n'existe pas, le lien d'invitation ne mène plus nulle part (renouvelé ou dissous), ou le joueur n'est dans aucun groupe." },
+  group_full: { status: 409, sens: "Groupes (lot C1) : le groupe a déjà 30 membres (vérifié à l'écriture)." },
+  not_group_chief: { status: 403, sens: "Groupes (lot C1) : seule le chef du groupe peut renouveler le lien, retirer un membre, passer le chef, renommer, décrire, changer l'emblème ou dissoudre." },
+  group_rename_limit: { status: 429, sens: "Groupes (lot C1) : un groupe se renomme une fois par semaine (`Retry-After`)." },
+  unknown_member: { status: 404, sens: "Groupes (lot C1) : ce joueur n'est pas dans le groupe." },
 
   // --- Salon (DailyTrack) ----------------------------------------------------------------------------------------
   invalid_session: { status: 400, sens: "Salon : numéro de session (ou adresse) illisible." },

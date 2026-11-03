@@ -5,7 +5,8 @@ Charte : `docs/plateforme/identite.md`, **révision 17** (le fichier fourni part
 
 ## Où j'en suis
 - **A (retours) : faite**, verte en local (tests unitaires SQLite et libSQL, budgets, un e2e).
-- **B (avatars) : faite**, verte en local (suite complète SQLite : 6 157 tests ; avatars et amis en libSQL ; budgets ; un e2e `avatars.spec.ts`). C (groupes) : en cours.
+- **B (avatars) : faite**, verte en local (suite complète SQLite : 6 157 tests ; avatars et amis en libSQL ; budgets ; un e2e `avatars.spec.ts`).
+- **C (groupes) : faite** (voir « Partie C »), à l'exception de ce qui est listé dans « Ce qui reste » : suite complète, budgets, deux e2e (`avatars`, `groupes`) verts en local ; la CI de la PR n'est pas encore lue (voir « Vérifié / pas vérifié »).
 
 ## Partie A — « Un bug ? Une idée ? »
 - **Tables** `retours`, `retours_messages` (migration réversible, `DROP TABLE` des deux) ; effacées avec le profil, suivent « Changer mon code », vidées par la remise à zéro, **gardées 12 mois après la dernière activité du fil**.
@@ -23,4 +24,27 @@ Charte : `docs/plateforme/identite.md`, **révision 17** (le fichier fourni part
 - **Écrans** : profil › Photo de profil (recadrage carré dans le navigateur) ; avatar de la barre, lignes de `/classement/` (Tous et Amis), feuille d'un joueur (avec « Signaler l'image »), « Mes amis » ; administration › Images (galerie). **Pas encore** : l'avatar dans les classements *à l'intérieur* des trois jeux (ils n'ont que le pseudo ; décision à prendre avec Nathan, car chaque jeu est près de son plafond de poids).
 - **Budgets** : l'avatar a été sorti de `composants.ts` (`avatar.ts`) et ses feuilles scindées (`avatar.css` / `avatar-liste.css`) : sans cela `amis.ts` faisait entrer +370 o dans le premier chargement des trois jeux. `portail.premier` : 35 182 pour 35 200 (**18 o de marge**).
 - **Mentions** FR et EN : rubrique « Ta photo de profil » (tables, constantes, modération, contact `mzc.studios.gamedev@gmail.com`, retrait sans délai). **Seed** : 4 joueurs avec une image.
+
+## Partie C — Groupes
+- **Tables** `groupes`, `groupe_membres` (migration réversible, `DROP TABLE` des deux) ; un seul groupe par joueur (clé primaire), 30 membres au plus (vérifiés à l'écriture) ; vidées par la remise à zéro, effacées avec le profil (le chef part : le plus ancien devient chef, sinon le groupe est dissous), suivent « Changer mon code ».
+- **Routes** : `/api/groupes/moi`, `POST /api/groupes`, `GET …/nom/<nom>` (page publique), `GET …/classement?date=&vue=`, `GET …/invitation/<jeton>`, `rejoindre`, `quitter`, `renouveler`, `retirer`, `chef`, `renommer` (une fois par semaine), `decrire`, `dissoudre`, `emblem` ; administration `GET/POST /api/admin/groupes…` (liste, fiche, renommer, retirer l'emblème ou un membre, changer le chef, masquer des classements, dissoudre ; confirmé et journalisé). Le filtre **`filtre=groupe`** passe par le chemin de « Amis » des quatre classements ; `GET /api/amis` porte `groupe` (le nombre de membres) pour faire apparaître « Mon groupe ».
+- **Score d'un groupe** (pur, `groupesScore.ts`) : **la moyenne des 3 meilleurs** de ses membres du jour dans la vue (Cumulé : ceux qui ont fini tous les jeux ; un jeu ; Tower à la hauteur, le plus haut gagne) ; **3 classés au moins**, sinon « Moins de 3 classés », sans rang. Égalité : moyenne, puis 4e résultat, puis premier arrivé, puis identifiant. Un membre compte **dès le lendemain de son arrivée**, plus du tout dès qu'il part ; un masqué jamais. **Exemple** (testé) : 5 membres à 31,2 · 32,4 · 34,2 · 35,0 · 40,0 s → (31,2 + 32,4 + 34,2) / 3 = **32,6 s** (le 4e, 35,0 s, ne sert qu'à départager) ; un groupe de 3 à 50 · 52 · 54 s fait 52,0 s et vient derrière ; un groupe de 2 classés est « Moins de 3 classés ».
+- **Écrans** : `/groupe/<nom>` (page publique, réécriture de Hosting `/groupe/**`, noindex, « Rejoindre le groupe » avec `?invitation=` — le jeton quitte l'adresse tout de suite —, « Partager le lien », « Signaler l'image ») ; `/classement/?mode=groupes` (Joueurs · Groupes, vues, « Moins de 3 classés », ton groupe surligné) ; **« Mon groupe »** en troisième option du sélecteur des amis dans le portail, Track, Jump et Tower (même code que « Amis », `?filtre=groupe`) ; Profil › Mon groupe (créer, lien, gestion du chef avec confirmation, quitter) ; administration › Groupes. **Pas fait** : la tuile optionnelle « Groupe : 4e » de l'accueil (le premier chargement de l'accueil n'a que 19 o de marge ; à décider avec Nathan).
+- **Mentions** FR et EN : rubrique « Tes groupes » (tables, constantes, ce qui est public, retrait sans délai). **Seed** : 3 groupes (« Les Noctambules » avec « Démo » pour chef, « Les Rapides » avec un emblème, « Les Deux » à moins de 3 classés).
+- **Budgets** : aucun plafond relevé. `portail.premier` 35 181 pour 35 200 : tout module qui importe `@cdj/profile/src/groupes` importe aussi `./jour` (sinon l'empaqueteur sépare `jour.ts` du morceau commun, +300 o ; mesuré, voir `apps/portail/CLAUDE.md`).
+
+## Décisions pour Nathan
+- **Lien d'invitation d'un groupe gardé tel quel** (32 hexadécimaux au hasard), et non en empreinte : « tout membre peut le montrer et le partager » est impossible avec une empreinte à sens unique. Il n'ouvre que l'entrée dans ce groupe, le chef le renouvelle (l'ancien meurt) et il quitte l'adresse à l'ouverture. À l'inverse, le lien d'invitation d'un ami (lot F2) reste en empreinte.
+- Retrait du **polyfill du préchargement des modules** dans les trois jeux (≈ 390 o), exclusion de `retoursJeu-*` de la mesure de Jump et ligne `retours.dialogue` (7 500 o) au tableau des budgets : voir la partie A.
+- **Charte** : révision 17 = trois puces du § 9 reprises sur la révision 16 du dépôt (le fichier fourni était plus ancien).
+- **Cache d'une image** : `s-maxage` d'une heure chez Hosting (un retrait « sans délai » met au plus une heure à sortir des caches pour qui connaît déjà l'adresse) ; le navigateur la garde un an (l'adresse change avec l'image).
+- **Classement des groupes calculé à la demande**, gardé 45 s par instance (aucune table de scores) ; seuls les groupes ayant au moins un membre classé ce jour-là y figurent.
+
+## Ce qui reste
+- **L'avatar dans les classements à l'intérieur des trois jeux** (ils n'ont que le pseudo ; chaque jeu est près de son plafond de poids) ; l'avatar est déjà dans la feuille d'un joueur et « Mes amis ».
+- La tuile « Groupe : 4e » de l'accueil ; la détection automatique d'images interdites (hors périmètre) ; les rubriques « Retours / Images / Groupes » n'ont pas d'essai navigateur de bout en bout (le serveur est testé, les captures les montrent).
+
+## Vérifié / pas vérifié
+- **Vérifié en local** : typecheck ; suite complète SQLite (voir le dernier run) ; libSQL `file:` pour les tests d'API de A, B et C ; budgets (`scripts/budgets-controle.mjs`) ; e2e `retours`, `avatars`, `groupes` ; `node scripts/securite-workflows.mjs`.
+- **Pas vérifié** : la CI de la PR (voir la section ci-dessous), les navigateurs Firefox et WebKit, un vrai Safari pour l'encodage JPEG du recadrage (le repli est codé et testé sur des octets, pas sur l'appareil), le panneau d'administration en clic (seulement ses captures).
 

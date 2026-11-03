@@ -19,7 +19,7 @@ import type { Traducteur } from "./i18n";
 /** Le traducteur des composants : le catalogue commun (médailles, `erreur.<code>`) et `CATALOGUE_AMIS`. */
 export type TraducteurAmis = Traducteur<CleAmis | CleCommune>;
 /** Le filtre d'un classement. Le même type que `FiltreAmis` de `@cdj/profile` (ce paquet ne l'importe pas). */
-export type FiltreClassement = "tous" | "amis";
+export type FiltreClassement = "tous" | "amis" | "groupe";
 /**
  * Ce qu'un callback rend : `ok`, ou l'échec avec le `code` du serveur (`friends_full`, `network`…). Un `ApiResult` de `@cdj/profile` convient tel quel ;
  * `suggestions` : les pseudos libres que rend `name_taken`.
@@ -133,6 +133,8 @@ export interface OptionsSelecteurAmis {
   total?: number | null;
   /** Le nombre d'amis ; `null` / absent : pas encore connu. */
   amis?: number | null;
+  /** Lot C1, partie C : le nombre de membres de mon groupe ; absent (`undefined`) : pas de groupe, l'option « Mon groupe » n'existe pas ; `null` : un groupe dont le nombre n'est pas encore connu. */
+  groupe?: number | null;
   /** Appelé quand le joueur choisit l'autre filtre (jamais pour le filtre déjà choisi). */
   onChange: (filtre: FiltreClassement) => void;
   /** Le jeu dont le classement est montré : Track (asphalte), Jump (jaune) ou Tower (menthe) en reprennent les couleurs ; absent : le crème du portail. */
@@ -142,10 +144,9 @@ export interface OptionsSelecteurAmis {
 export interface SelecteurAmis {
   racine: HTMLElement;
   /** Met à jour le choix et les nombres (ce qui n'est pas donné ne change pas). N'appelle pas `onChange`. */
-  maj(o: { filtre?: FiltreClassement; total?: number | null; amis?: number | null }): void;
+  maj(o: { filtre?: FiltreClassement; total?: number | null; amis?: number | null; groupe?: number | null }): void;
 }
 
-const FILTRES: readonly FiltreClassement[] = ["tous", "amis"];
 
 /**
  * Le sélecteur segmenté « Tous · 412 » / « Amis · 6 » (planche B), sous les onglets de vue d'un classement. **Un groupe de boutons radio** (`role="radiogroup"` + `role="radio"`, un seul arrêt de tabulation,
@@ -157,10 +158,14 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
   let filtre = o.filtre;
   let total = o.total ?? null;
   let amis = o.amis ?? null;
+  let groupe: number | null | undefined = o.groupe;
+  const FILTRES: FiltreClassement[] = ["tous", "amis", "groupe"]; // « Mon groupe » n'est montré qu'à un joueur qui a un groupe (le nombre arrive avec `maj`)
+  const visibles = (): FiltreClassement[] => FILTRES.filter((f) => f !== "groupe" || groupe !== undefined);
   const racine = el("div", { classe: ["dj-amis-selecteur", o.jeu && `dj-amis-selecteur--${o.jeu}`, o.jeu === "track" && "dj-sombre"], attrs: { id: o.id, role: "radiogroup", "aria-label": t.t("amis.selecteur.groupe") } });
   const boutons = FILTRES.map((f) => el("button", { classe: "dj-amis-selecteur__option", attrs: { type: "button", role: "radio", "data-filtre": f } }));
   racine.append(...boutons);
   const nom = (f: FiltreClassement): string => {
+    if (f === "groupe") return groupe === null || groupe === undefined ? t.t("amis.selecteur.monGroupe") : t.t("amis.selecteur.monGroupeN", { n: groupe });
     const n = f === "tous" ? total : amis;
     return n === null ? t.t(f === "tous" ? "amis.selecteur.tous" : "amis.selecteur.amis") : t.t(f === "tous" ? "amis.selecteur.tousN" : "amis.selecteur.amisN", { n });
   };
@@ -168,6 +173,7 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
     boutons.forEach((b, i) => {
       const f = FILTRES[i]!;
       b.textContent = nom(f);
+      b.hidden = f === "groupe" && groupe === undefined;
       b.setAttribute("aria-checked", String(f === filtre));
       b.tabIndex = f === filtre ? 0 : -1;
     });
@@ -182,10 +188,12 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
   boutons.forEach((b, i) => {
     b.addEventListener("click", () => choisir(FILTRES[i]!, false));
     b.addEventListener("keydown", (e) => {
-      const suivant = e.key === "ArrowRight" || e.key === "ArrowDown" ? i + 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? FILTRES.length - 1 : null;
+            const liste = visibles();
+      const place = liste.indexOf(FILTRES[i]!);
+      const suivant = e.key === "ArrowRight" || e.key === "ArrowDown" ? place + 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? place - 1 : e.key === "Home" ? 0 : e.key === "End" ? liste.length - 1 : null;
       if (suivant === null) return;
       e.preventDefault();
-      const f = FILTRES[(suivant + FILTRES.length) % FILTRES.length]!;
+      const f = liste[(suivant + liste.length) % liste.length]!;
       if (f === filtre) boutons[FILTRES.indexOf(f)]!.focus();
       else choisir(f, true);
     });
@@ -197,6 +205,7 @@ export function selecteurAmis(o: OptionsSelecteurAmis): SelecteurAmis {
       if (n.filtre !== undefined) filtre = n.filtre;
       if (n.total !== undefined) total = n.total;
       if (n.amis !== undefined) amis = n.amis;
+      if (n.groupe !== undefined) groupe = n.groupe;
       rendre();
     },
   };

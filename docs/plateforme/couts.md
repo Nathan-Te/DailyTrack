@@ -272,3 +272,18 @@ Estimation d'après le code (chaque requête est examinée par `EXPLAIN QUERY PL
 | `GET /api/portail/classement`, amis, `jour` | **+0** | **+0** (la colonne `players.avatar` suit le pseudo) | 0 |
 | panneau : galerie | 2 (index partiels) + 1 par image (pseudo) | ≤ 120 | 0 |
 Le plus cher est donc l'**envoi** (une fois par joueur et par jour au plus) ; la lecture d'une image coûte une ligne. Rien ne tourne au chargement d'une page de jeu.
+
+## 14. Groupes (lot C1, partie C)
+Estimation d'après le code (chaque requête est examinée par `EXPLAIN QUERY PLAN`, aucun `SCAN` de `groupes` ni de `groupe_membres`). **Stockage** : une ligne par groupe (≈ 300 octets) et une par membre (≈ 100 octets) ; l'emblème est une image d'avatar (`couts.md` § 13). **Le classement des groupes** n'est pas stocké : il est calculé à la demande, gardé 45 s par instance, à partir du classement du jour que le portail garde déjà.
+| Route | Requêtes | Lignes lues | Lignes écrites |
+|---|---|---|---|
+| `GET /api/groupes/classement` (calcul, une fois par instance et par jour tous les 45 s) | 1 + ⌈N/400⌉ + ⌈G/400⌉ | N classés du jour (une recherche par clé primaire chacun : ≈ le nombre de **membres** de groupe parmi eux) + les groupes concernés | 1 (compteur) |
+| `GET /api/groupes/classement` (gardé) | 0 | 0 | 1 (compteur) |
+| `GET /api/groupes/nom/<nom>` | 2 + le classement | ≤ 30 membres + 1 | 1 |
+| `GET /api/groupes/moi` | 3 | ≤ 31 | 1 |
+| `POST rejoindre` / `quitter` / actions du chef | 4 à 6 | ≤ 31 | 2 à 4 |
+| `GET /api/amis` (le nombre de membres de mon groupe) | **+2** | ≤ 31 (index `groupe_membres_by_groupe`) | 0 |
+| `filtre=groupe` (les quatre classements) | comme `filtre=amis` + 1 | ≤ 30 | 0 |
+| panneau : liste, fiche | 1 + 1 par groupe (compte des membres, index), 3 | ≤ 51 + 51 × membres, ≤ 31 | 0 |
+Ce qui coûte le plus : le calcul du classement des groupes d'une journée très jouée (N classés → N recherches). Il est borné par la garde de 45 s : au pire une fois par instance et par fenêtre.
+

@@ -187,7 +187,8 @@ export function createAvatars(platform: Platform, extra: Partial<Record<GenreIma
       const r = await db.first<{ name: string; ref: string | null }>("SELECT name, ref FROM players WHERE id = ?", [owner]);
       return r ? { nom: r.name, ref: r.ref ?? "" } : null;
     }
-    return null;
+    const g = await proprietaires[kind]?.trouver(db, owner); // un groupe : sa référence publique est son identifiant
+    return g ? { nom: g.nom, ref: g.ref } : null;
   }
 
   async function listerAdmin(): Promise<unknown> {

@@ -76,7 +76,7 @@ export interface AmisPourPortail {
 
 const base64url = (octets: Uint8Array): string => btoa(String.fromCharCode(...octets)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-export function createAmis(platform: Platform, vue: () => VuePartagee) {
+export function createAmis(platform: Platform, vue: () => VuePartagee, membresDuGroupe?: (id: string, day: number) => Promise<AmiLu[]>, tailleDuGroupe?: (id: string) => Promise<number | null>) {
   const { db, now, log, limits, players, hashKey, hit, readHit, hitAddress, readHitAddress, readJson, playerIdOf } = platform;
 
   // --- Aides ---------------------------------------------------------------------------------------------------------------------
@@ -181,9 +181,10 @@ export function createAmis(platform: Platform, vue: () => VuePartagee) {
     const id = idDe(req);
     await limiterLecture(info, id, "amlip", "aml", AMIS_LECTURES_PAR_ADRESSE, AMIS_LECTURES_PAR_JOUEUR);
     await joueurActif(id);
-    const [amis, invitation] = await Promise.all([listeComplete(id), db.first("SELECT 1 AS x FROM invitations_amis WHERE joueur = ?", [id])]);
+    const [amis, invitation, groupe] = await Promise.all([listeComplete(id), db.first("SELECT 1 AS x FROM invitations_amis WHERE joueur = ?", [id]), tailleDuGroupe ? tailleDuGroupe(id) : Promise.resolve(null)]);
     const vus: AmiVu[] = amis.map((a) => ({ ref: a.ref, pseudo: a.name, ...(a.avatar ? { avatar: a.avatar } : {}), reciproque: a.reciproque, origine: a.origine }));
-    return { amis: vus, total: vus.length, max: AMIS_MAX, invitation: { active: invitation !== null } };
+    // Lot C1, partie C : `groupe` = le nombre de membres de mon groupe, présent seulement si j'en ai un (le sélecteur « Mon groupe » des classements l'apprend ici, sans requête de plus).
+    return { amis: vus, total: vus.length, max: AMIS_MAX, invitation: { active: invitation !== null }, ...(groupe !== null ? { groupe } : {}) };
   }
 
   async function ajouter(req: Request, info: RequestInfo): Promise<unknown> {
@@ -313,6 +314,7 @@ export function createAmis(platform: Platform, vue: () => VuePartagee) {
     platform,
     vue,
     amis: lecture,
+    groupe: membresDuGroupe,
     joueurActif,
     idDe,
     limiter: (info, id) => limiterLecture(info, id, "amcip", "amc", AMIS_CLASSEMENTS_PAR_ADRESSE, AMIS_LECTURES_PAR_JOUEUR),
@@ -322,18 +324,19 @@ export function createAmis(platform: Platform, vue: () => VuePartagee) {
     origineDe,
   });
 
-  /** Valide `filtre` : `amis` ou rien ; toute autre valeur est refusée. */
-  function filtreDemande(url: URL): boolean {
+  /** Valide `filtre` : `amis`, `groupe` (lot C1, partie C : mon groupe) ou rien ; toute autre valeur est refusée. */
+  function filtreDemande(url: URL): "amis" | "groupe" | null {
     const f = url.searchParams.get("filtre");
-    if (f === null) return false;
-    if (f !== "amis") throw new HttpError(400, "invalid_filter", "Filtre inconnu : amis attendu");
-    return true;
+    if (f === null) return null;
+    if (f !== "amis" && f !== "groupe") throw new HttpError(400, "invalid_filter", "Filtre inconnu : amis ou groupe attendu");
+    return f;
   }
 
   /** `GET /api/portail/classement?filtre=amis` (les trois vues) ; `undefined` : pas de filtre, c'est le classement « Tous » du portail. */
   async function classementPortail(req: Request, url: URL, info: RequestInfo): Promise<unknown> {
-    if (!filtreDemande(url)) return undefined;
-    return classements.classement("portail", req, url, info);
+    const filtre = filtreDemande(url);
+    if (!filtre) return undefined;
+    return classements.classement("portail", req, url, info, undefined, filtre);
   }
 
   const MOTIFS_JEUX: Record<string, { format: FormatClassement; motif: RegExp }> = {
@@ -347,14 +350,14 @@ export function createAmis(platform: Platform, vue: () => VuePartagee) {
     const jeu = MOTIFS_JEUX[code];
     const m = jeu?.motif.exec(path);
     if (!jeu || !m || req.method !== "GET" || !url.searchParams.has("filtre")) return undefined;
-    filtreDemande(url);
+    const filtre = filtreDemande(url)!;
     let date: string;
     try {
       date = decodeURIComponent(m[1]!);
     } catch {
       throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
     }
-    return classements.classement(jeu.format, req, url, info, { code, date });
+    return classements.classement(jeu.format, req, url, info, { code, date }, filtre);
   }
 
   // --- Aiguillage ----------------------------------------------------------------------------------------------------------------

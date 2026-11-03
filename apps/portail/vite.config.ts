@@ -24,7 +24,12 @@ function introuvableAbsolue(): Plugin {
     name: "cdj-404-absolue",
     transformIndexHtml: {
       order: "post",
-      handler: (html, ctx) => (ctx.path === "/404.html" ? html.replace(/(href|src)="\.\/assets\//g, '$1="/assets/') : html),
+      handler: (html, ctx) => {
+        if (ctx.path === "/404.html") return html.replace(/(href|src)="\.\/assets\//g, '$1="/assets/');
+        // Lot C1, partie C : la page d'un groupe (`/groupe/<nom>`) est servie par Hosting à toute adresse de ce dossier (réécriture) : ses ressources aussi sont absolues.
+        if (ctx.path === "/groupe/index.html") return html.replace(/(href|src)="\.\.\/assets\//g, '$1="/assets/');
+        return html;
+      },
     },
   };
 }
@@ -64,6 +69,8 @@ export default defineConfig({
         amis: resolve(import.meta.dirname, "amis/index.html"),
         // Lot C1 : « Mes messages » (`/messages/`), les réponses de l'éditeur.
         messages: resolve(import.meta.dirname, "messages/index.html"),
+        // Lot C1, partie C : la page d'un groupe (`/groupe/<nom>`).
+        groupe: resolve(import.meta.dirname, "groupe/index.html"),
         ...(vitrine ? { vitrine: resolve(import.meta.dirname, "ui/index.html") } : {}),
       },
     },

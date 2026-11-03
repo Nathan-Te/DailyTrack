@@ -62,7 +62,7 @@ export function monter(serveur: Pick<Online, "base" | "playerId">, jour: { date:
   dom.tete.after(avis);
   const desabonner = onLangue(() => selecteur?.maj({}));
 
-  const actif = (): boolean => !ferme && selecteur !== null && filtre === "amis";
+  const actif = (): boolean => !ferme && selecteur !== null && filtre !== "tous";
 
   function noterFiltre(f: FiltreAmis): void {
     filtre = f;
@@ -91,7 +91,7 @@ export function monter(serveur: Pick<Online, "base" | "playerId">, jour: { date:
     }
     const c = etat.c;
     dom.sousTitre.textContent = t("palmares.sousTitre", { theme: nomTheme(jour.theme), n: c.classes });
-    if (sansAmi(c)) return corps.replaceChildren(classementAmisVide(tr, { href: "../amis/" }));
+    if (filtre === "amis" && sansAmi(c)) return corps.replaceChildren(classementAmisVide(tr, { href: "../amis/" }));
     if (classementVide(c)) return corps.replaceChildren(el("p", "empty note", t("palmares.vide")));
     const liste = el("div", "rows lignes");
     for (const l of c.lignes) {
@@ -193,7 +193,7 @@ export function monter(serveur: Pick<Online, "base" | "playerId">, jour: { date:
   /** Le filtre « Amis » n'a pas pu se lire : retour sur « Tous », avec un mot discret si le joueur venait de le demander. */
   function retomber(code: string, dire: boolean): void {
     sequence++;
-    const demande = filtre === "amis";
+    const demande = filtre !== "tous";
     noterFiltre("tous");
     selecteur?.maj({ filtre: "tous" });
     avis.textContent = dire && demande ? messageErreur(tr, code) : "";
@@ -207,7 +207,7 @@ export function monter(serveur: Pick<Online, "base" | "playerId">, jour: { date:
       etat = { genre: "charge" };
       rendre();
     }
-    const r = await call<unknown>(serveur.base!, "GET", cheminClassementAmis(jour.date), undefined, undefined, { "X-Player-Id": serveur.playerId });
+    const r = await call<unknown>(serveur.base!, "GET", cheminClassementAmis(jour.date, filtre === "groupe" ? "groupe" : "amis"), undefined, undefined, { "X-Player-Id": serveur.playerId });
     if (ferme || n !== sequence) return;
     const c = r.ok ? lireClassementAmis(r.data) : null;
     if (!c) return retomber(r.ok ? "network" : r.code, true);
@@ -221,7 +221,7 @@ export function monter(serveur: Pick<Online, "base" | "playerId">, jour: { date:
     noterFiltre(f);
     avis.hidden = true;
     avis.textContent = "";
-    if (f === "amis") {
+    if (f !== "tous") {
       etat = { genre: "charge" };
       rendre();
       void chargerAmis();
@@ -237,15 +237,15 @@ export function monter(serveur: Pick<Online, "base" | "playerId">, jour: { date:
     if (ferme) return;
     if (!liste.ok) {
       // Pas de profil que le serveur connaît (ou serveur muet) : rien à filtrer, le sélecteur n'apparaît pas.
-      if (filtre === "amis") retomber(liste.code, liste.code !== "unknown_player" && liste.code !== "invalid_player");
+      if (filtre !== "tous") retomber(liste.code, liste.code !== "unknown_player" && liste.code !== "invalid_player");
       return;
     }
     pret = true;
     totalAmis = liste.data.total;
-    selecteur = selecteurAmis({ t: tr, filtre, total: tousTotal(), amis: totalAmis, jeu: "track", onChange: choisir });
+    selecteur = selecteurAmis({ t: tr, filtre, total: tousTotal(), amis: totalAmis, groupe: liste.data.groupe, jeu: "track", onChange: choisir });
     dom.tete.after(selecteur.racine);
     activerLignes();
-    if (filtre === "amis") {
+    if (filtre !== "tous") {
       rendre();
       void chargerAmis();
     }

@@ -151,6 +151,20 @@ describe("construction du portail", () => {
     expect(p.fichiers.filter((f) => /(^|\/)(amis|amisPortail|catalogue\.amis)[-.]/.test(f))).toEqual([]);
   });
 
+  it("lot C1, partie C : la page d'un groupe /groupe/ est servie à n'importe quel nom (réécriture de Hosting) : ses ressources sont en chemins absolus, noindex, balises de partage ; son code est hors du premier chargement de l'accueil", () => {
+    for (const sortie of [sorties.production, sorties.recette]) {
+      const html = readFileSync(join(sortie, "groupe/index.html"), "utf8");
+      expect(html).toContain('name="robots" content="noindex"');
+      expect(html).toContain('property="og:title"');
+      expect(html).toContain("__ORIGINE_DU_SITE__/groupe/");
+      expect(html).not.toMatch(/(?:src|href)="https?:/);
+      expect(html).not.toMatch(/(?:src|href)="\.{1,2}\/assets\//); // jamais relatifs à la page : /groupe/<nom> n'a pas de profondeur fixe
+      expect(html).toMatch(/src="\/assets\/groupe-[^"]+\.js"/);
+    }
+    const p = premierChargement(sorties.production);
+    expect(p.fichiers.filter((f) => /(^|\/)(groupe|groupes|groupeProfil|classementGroupes|adminGroupes|catalogue\.amis)[-.]/.test(f))).toEqual([]);
+  });
+
   it("deploy-site.yml : --production pour la cible production, jamais pour la recette ni un aperçu", () => {
     const yml = readFileSync(join(ROOT, ".github/workflows/deploy-site.yml"), "utf8");
     expect(yml).toContain(`node scripts/site.mjs site --sortie site \${{ inputs.cible == 'production' && '--production' || '' }} --origine "\${{ steps.origine.outputs.origine }}"`);

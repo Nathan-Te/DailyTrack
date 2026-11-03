@@ -27,6 +27,7 @@ import { CLASSEMENT_DEMO_JOURS, seedClassementDemo } from "../src/classementDemo
 import { DEMO_JOUEUR_ID, seedPortailDemo } from "../src/portailDemo";
 import { seedAmisDemo } from "./amisDemo";
 import { seedAvatarsDemo } from "./avatarsDemo";
+import { seedGroupesDemo } from "./groupesDemo";
 import { seedRetoursDemo } from "./retoursDemo";
 import { semerNouveautes } from "../src/diffusion";
 import { ensureSchemaOn } from "../src/db";
@@ -287,6 +288,11 @@ const avatarsDemo = await seedAvatarsDemo({ db, today });
 if (avatarsDemo.deja) console.log("Images de la recette (lot C1) : déjà là (rien d'écrit)");
 else if (!avatarsDemo.crees) console.log("Images de la recette (lot C1) : sautées (« Démo » n'existe pas encore sur cette base)");
 else console.log(`Images de la recette (lot C1) : ${avatarsDemo.crees} joueur(s) avec une image.`);
+// Lot C1, partie C : trois groupes (dont un à moins de 3 classés), par le vrai `createApi` ; constate d'abord, n'écrit rien s'il y en a déjà.
+const groupesDemo = await seedGroupesDemo({ db, today });
+if (groupesDemo.deja) console.log("Groupes de la recette (lot C1) : déjà là (rien d'écrit)");
+else if (!groupesDemo.crees) console.log("Groupes de la recette (lot C1) : sautés (« Démo » ou les joueurs du classement n'existent pas encore sur cette base)");
+else console.log(`Groupes de la recette (lot C1) : ${groupesDemo.crees} groupe(s), dont un à moins de 3 classés.`);
 if (saut) console.log(`\n${saut} segment(s) déjà faits, sautés (rien d'écrit pour eux ; --refaire pour tout rejouer).`);
 
 // Lot N2 : **deux nouveautés publiées et aucun message actif** (la ligne « Nouveautés » de l'accueil et la page /nouveautes/ ont de quoi s'afficher sur la recette). Dates d'avant tout vrai

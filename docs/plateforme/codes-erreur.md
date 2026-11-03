@@ -91,6 +91,14 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `avatar_banned` | 403 | Avatars (lot C1) : l'envoi d'images est interdit à ce joueur ou à ce groupe par l'administration. | `POST /api/avatar` |
 | `unknown_avatar` | 404 | Avatars (lot C1) : pas d'image à ce nom (jamais envoyée, retirée, ou masquée par signalements), ou aucun joueur de cette référence. | `GET /api/avatars/<empreinte>`, `POST /api/avatar/signaler`, `GET /api/admin/images/…` |
 | `invalid_report` | 400 | Avatars (lot C1) : signalement refusé (référence mal formée, ou on ne se signale pas soi-même). | `POST /api/avatar/signaler` |
+| `invalid_group` | 400 | Groupes (lot C1) : nom (3 à 24 caractères) ou description (140 au plus) refusés, ou action impossible (se retirer soi-même, déjà chef). | `POST /api/groupes`, `/api/groupes/renommer`, `/decrire`, `/retirer`, `/chef` |
+| `group_name_taken` | 409 | Groupes (lot C1) : ce nom de groupe est déjà pris (unicité sur la forme normalisée, comme les pseudos). | `POST /api/groupes`, `/api/groupes/renommer` |
+| `already_in_group` | 409 | Groupes (lot C1) : un joueur n'est que dans un seul groupe. | `POST /api/groupes`, `/api/groupes/rejoindre` |
+| `unknown_group` | 404 | Groupes (lot C1) : le groupe n'existe pas, le lien d'invitation ne mène plus nulle part (renouvelé ou dissous), ou le joueur n'est dans aucun groupe. | `GET /api/groupes/nom/<nom>`, `/invitation/<jeton>`, les actions |
+| `group_full` | 409 | Groupes (lot C1) : le groupe a déjà 30 membres (vérifié à l'écriture). | `POST /api/groupes/rejoindre` |
+| `not_group_chief` | 403 | Groupes (lot C1) : seule le chef du groupe peut renouveler le lien, retirer un membre, passer le chef, renommer, décrire, changer l'emblème ou dissoudre. | `POST /api/groupes/renouveler`, `/retirer`, `/chef`, `/renommer`, `/decrire`, `/dissoudre`, `/emblem` |
+| `group_rename_limit` | 429 | Groupes (lot C1) : un groupe se renomme une fois par semaine (`Retry-After`). | `POST /api/groupes/renommer` |
+| `unknown_member` | 404 | Groupes (lot C1) : ce joueur n'est pas dans le groupe. | `POST /api/groupes/retirer`, `/chef` |
 | `invalid_session` | 400 | Salon : numéro de session (ou adresse) illisible. | `/api/salon/<n>/board`, `/ghosts`, `/submit` |
 | `unknown_session` | 404 | Salon : cette session n'est pas servie (pas encore préparée, ou finie et oubliée). | `GET /api/salon/<n>/board`, `/ghosts` |
 | `session_future` | 409 | Salon : envoi pour une session qui n'a pas commencé. | `POST /api/salon/<n>/submit` |

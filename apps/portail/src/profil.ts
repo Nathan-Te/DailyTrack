@@ -47,6 +47,7 @@ import {
   cheminMentions,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
+import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
 import { lienRetours } from "./retoursLien";
@@ -68,7 +69,7 @@ activerManette(() => import("./manette").then((m) => m.pour("profil")));
 
 const stockage = stockageDuPortail();
 let langue: Langue = lireLangue(stockage, navigator.languages).langue;
-const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_COMMUN);
+const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_AMIS, CATALOGUE_COMMUN);
 type T = ReturnType<typeof traduire>;
 type Cle = Parameters<T["t"]>[0];
 const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || cle in CATALOGUE_COMMUN.fr ? (cle as Cle) : null);
@@ -281,6 +282,8 @@ function rendre(): void {
           (p?.messagesNonLus ?? 0) > 0 ? el("p", { classe: "profil-message profil-messages-nonlu", attrs: { id: "messages-non-lus", role: "status" }, texte: t.t("profil.messages.nonLu", { n: p!.messagesNonLus! }) }) : null,
         )
       : null,
+    // Lot C1, partie C : « Mon groupe » (créer, inviter, gérer, quitter), dessiné à la demande dans la zone ci-dessous (`groupeProfil.ts`).
+    id ? section(t.t("profil.groupe.titre"), "titre-groupe", el("p", { classe: "profil-aide", texte: t.t("profil.groupe.aide") }), el("div", { attrs: { id: "groupe-zone" } })) : null,
     // Lot F2 : « Mes amis » (la page `/amis/` : ajouter, inviter, ta liste) ; aucune requête de plus ici.
     id ? section(t.t("profil.amis.titre"), "titre-amis", el("p", { classe: "profil-aide", texte: t.t("profil.amis.aide") }), bouton({ texte: t.t("profil.amis.lien"), variante: "secondaire", href: "../amis/" })) : null,
     section(
@@ -316,6 +319,9 @@ function rendre(): void {
   ];
   racine.replaceChildren(...enfants.filter((e): e is HTMLElement => e !== null));
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
+  const zoneGroupe = racine.querySelector<HTMLElement>("#groupe-zone");
+  const idGroupe = stockage ? readPlayerId(stockage) : null;
+  if (zoneGroupe && idGroupe) void import("./groupeProfil").then((m) => m.monterGroupe(zoneGroupe, { tr: t, langue, base: API, id: idGroupe }));
 }
 
 async function charger(): Promise<void> {

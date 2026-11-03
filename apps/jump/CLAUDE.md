@@ -463,3 +463,7 @@ README : `docs/plateforme/lots/lot-F2-amis.md` ; composants communs : `packages/
 
 ## « Un bug ? Une idée ? » (lot C1)
 L'entrée est **dans la pause** (`#menu-retours`, `pause.retours`) **et dans Réglages** (`#settings-retours`, `reglages.retours`) ; `ouvrirRetours` de `main.ts` charge `src/retoursJeu.ts` (à la demande, n'importe rien du jeu) → le dialogue commun. Le dialogue est dans `ECRANS_MANETTE`. **Budget** : `mesureJump` compte tous les fichiers hors liste : `retoursJeu-` est exclu de `jump.jsCss` (comme `manette-`) et mesuré par la ligne `retours.dialogue`.
+
+## « Mon groupe » dans le classement (lot C1, partie C)
+Le sélecteur des amis (`selecteurAmis`) a une troisième option **« Mon groupe · n »**, visible quand `GET /api/amis` porte `groupe` (le joueur est dans un groupe) : même code que « Amis » avec `?filtre=groupe` (le classement est lu avec `filtre=groupe` et la réponse doit porter `filtre: "groupe"`), mêmes lignes touchables ; seule la phrase « Inviter un ami » est propre à « Amis ». Le choix s'écrit dans l'adresse (`?filtre=groupe`). Aucun octet de plus au premier chargement (le module des amis est à la demande).
+

@@ -284,6 +284,34 @@ export const PLATFORM_SCHEMA: string[] = [
      cree_le INTEGER NOT NULL,
      PRIMARY KEY (kind, owner)
    )`,
+  // --- Lot C1, partie C : les groupes (`groupes.ts`). **Réversible** : deux tables nouvelles (l'ancien code les ignore) ; retour arrière : `DROP TABLE groupes`, `DROP TABLE groupe_membres` (les index partent avec).
+  // `groupes` : `id` public (12 hexadécimaux tirés au hasard, pas un secret), `name` / `name_key` (unicité sur la forme normalisée, comme les pseudos), `description`, `chef`, `avatar` (l'empreinte de l'emblème visible,
+  // comme `players.avatar`), `invitation` (le jeton du lien : 32 hexadécimaux tirés au hasard, **gardé tel quel** pour que tout membre puisse le montrer ; le renouveler tue l'ancien), `renomme_le` (un renommage par
+  // semaine), `classement_masque` (l'administration l'écarte des classements), `cree_le`. `groupe_membres` : une ligne par joueur (clé primaire = un seul groupe par joueur), `rejoint_le` et `arrivee` (le premier jour
+  // de Paris où il compte : le lendemain de son arrivée). Liées à un joueur : vidées par la remise à zéro, effacées avec lui (le chef part : le plus ancien le devient, sinon le groupe est dissous).
+  `CREATE TABLE IF NOT EXISTS groupes (
+     id TEXT PRIMARY KEY,
+     name TEXT NOT NULL,
+     name_key TEXT NOT NULL,
+     description TEXT NOT NULL DEFAULT '',
+     chef TEXT NOT NULL,
+     avatar TEXT,
+     invitation TEXT NOT NULL,
+     renomme_le INTEGER,
+     classement_masque INTEGER NOT NULL DEFAULT 0,
+     cree_le INTEGER NOT NULL
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS groupes_by_name_key ON groupes (name_key)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS groupes_by_invitation ON groupes (invitation)`,
+  `CREATE INDEX IF NOT EXISTS groupes_by_cree ON groupes (cree_le)`,
+  `CREATE INDEX IF NOT EXISTS groupes_by_chef ON groupes (chef)`, // « Changer mon code » : le groupe qu'il dirige le suit
+  `CREATE TABLE IF NOT EXISTS groupe_membres (
+     player_id TEXT PRIMARY KEY,
+     groupe TEXT NOT NULL,
+     rejoint_le INTEGER NOT NULL,
+     arrivee INTEGER NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS groupe_membres_by_groupe ON groupe_membres (groupe, rejoint_le)`,
 ];
 
 /** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */

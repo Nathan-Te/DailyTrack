@@ -151,7 +151,7 @@ describe("lot I6 : la page 404", () => {
 
   it("firebase.json : Hosting sert 404.html pour toute adresse inconnue (aucun renvoi « attrape-tout »), /api/** reste au serveur", () => {
     const config = JSON.parse(lire("firebase.json"));
-    expect(config.hosting.rewrites).toEqual([{ source: "/api/**", run: { serviceId: "cdj-api", region: "europe-west1" } }]);
+    expect(config.hosting.rewrites).toEqual([{ source: "/api/**", run: { serviceId: "cdj-api", region: "europe-west1" } }, { source: "/groupe/**", destination: "/groupe/index.html" }]);
     expect(JSON.stringify(config)).not.toContain("404.html"); // le comportement par défaut de Hosting : la page 404.html à la racine du site
     expect(config.hosting.public).toBe("site");
     expect(lire("scripts/site.mjs")).toContain('existsSync(join(out, "404.html"))');

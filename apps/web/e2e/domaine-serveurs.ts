@@ -64,7 +64,9 @@ export function startSite(dir: string, port: number, apiPort: number, entetes: (
         res.writeHead(301, { Location: `${path}/${url.search}` }).end();
         return;
       }
-      const file = fileFor(dir, path);
+      // Lot C1, partie C : la réécriture de firebase.json — `/groupe/<nom>` reçoit la page du groupe (ce que Hosting fait avec `{ source: "/groupe/**", destination: "/groupe/index.html" }`).
+      const groupe = /^\/groupe\/[^/]+\/?$/.test(path) ? join(dir, "groupe/index.html") : null;
+      const file = groupe && existsSync(groupe) ? groupe : fileFor(dir, path);
       if (!file) {
         const introuvable = join(dir, "404.html");
         if (existsSync(introuvable)) send(res, introuvable, 404, entetes(path));

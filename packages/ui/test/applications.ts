@@ -64,6 +64,7 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/portail/src/admin.ts": "lot N1 : le panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminDiffusion.ts": "lot N2 : les rubriques Nouveautés et Message en direct du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminRetours.ts": "lot C1 : la rubrique Retours du panneau d'administration, outil interne de l'éditeur, en français seulement",
+  "apps/portail/src/adminGroupes.ts": "lot C1 : la rubrique Groupes du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminImages.ts": "lot C1 : la rubrique Images du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminJeux.ts": "lot P : la rubrique Jeux (interrupteur et clé d'aperçu) du panneau d'administration, outil interne de l'éditeur, en français seulement",
   "apps/portail/src/adminGithub.ts": "lot N2 : la lecture des PR par le panneau d'administration (messages d'erreur pour l'éditeur), en français seulement",
@@ -117,9 +118,9 @@ export const EXCLUSIONS: Record<string, string> = {
 export const SOURCES_DES_CLES: Record<string, string[]> = {
   "packages/ui": ["packages/ui/src"],
   // Lot K1 : la projection `portail` des fiches nomme les clés d'accroche des jeux à fiche (lues à la construction, `jeuxFiches.ts`) : elle compte comme source.
-  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/portail/ui", "config/jeux/projections/portail.json"],
+  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/portail/groupe", "apps/portail/ui", "config/jeux/projections/portail.json"],
   "apps/web": ["apps/web/src", "apps/web/index.html"],
   "apps/jump": ["apps/jump/src", "apps/jump/index.html"],
   "apps/tower": ["apps/tower/src", "apps/tower/index.html"],
-  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"],
+  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/nouveautes", "apps/portail/amis", "apps/portail/messages", "apps/portail/groupe", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html", "apps/tower/src", "apps/tower/index.html"],
 };

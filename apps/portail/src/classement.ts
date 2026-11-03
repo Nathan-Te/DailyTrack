@@ -61,6 +61,9 @@ let filtreDemande: FiltreAmis = lireFiltre(location.search);
 /** Combien de joueurs dans « Tous » (la dernière lecture de « Tous » de ce jour et de cette vue) et d'amis (`GET /api/amis`, puis chaque lecture de « Amis » ou ajout / retrait) ; `null` : pas encore connus. */
 let totalTous: number | null = null;
 let nbAmis: number | null = null;
+/** Lot C1, partie C : le mode (« Joueurs » ou « Groupes », `?mode=groupes` dans l'adresse) et le nombre de membres de mon groupe (`undefined` : je n'en ai pas, pas de « Mon groupe »). */
+let modeAffiche: "joueurs" | "groupes" = new URLSearchParams(location.search).get("mode") === "groupes" ? "groupes" : "joueurs";
+let nbGroupe: number | null | undefined;
 /** Le filtre « Amis » n'a pas répondu : une ligne discrète sous le sélecteur. */
 let amisIndispo = false;
 /** Une lecture plus récente a pris la main : celle qui revient en retard est ignorée. */
@@ -231,13 +234,13 @@ const traducteurAmis = () => traducteur(langue, CATALOGUE_COMMUN, amisPret!.cata
 
 const clientDesAmis = () => clientAmis({ base: baseApi(), playerId: () => identifiant() });
 
-let selecteur: { racine: HTMLElement; maj(o: { filtre?: FiltreAmis; total?: number | null; amis?: number | null }): void } | null = null;
+let selecteur: { racine: HTMLElement; maj(o: { filtre?: FiltreAmis; total?: number | null; amis?: number | null; groupe?: number | null }): void } | null = null;
 
 /** Le sélecteur « Tous · 412 » / « Amis · 6 » (créé à la première fois, ses nombres relus à chaque affichage ; refait au changement de langue). */
 function selecteurDesAmis(): HTMLElement | null {
   if (!identifiant() || !amisPret) return null;
-  selecteur ??= amisPret.ui.selecteurAmis({ t: traducteurAmis(), filtre: filtreActif(), total: totalTous, amis: nbAmis, onChange: choisirFiltre, id: "classement-selecteur" });
-  selecteur.maj({ filtre: filtreActif(), total: totalTous, amis: nbAmis });
+  selecteur ??= amisPret.ui.selecteurAmis({ t: traducteurAmis(), filtre: filtreActif(), total: totalTous, amis: nbAmis, groupe: nbGroupe, onChange: choisirFiltre, id: "classement-selecteur" });
+  selecteur.maj({ filtre: filtreActif(), total: totalTous, amis: nbAmis, groupe: nbGroupe });
   return selecteur.racine;
 }
 
@@ -254,10 +257,10 @@ function choisirFiltre(f: FiltreAmis): void {
 async function lireNombreDAmis(): Promise<void> {
   if (!identifiant() || nbAmis !== null) return;
   const r = await clientDesAmis().lireAmis();
-  if (r.ok && nbAmis === null) {
-    nbAmis = r.data.total;
-    rendre();
-  }
+  if (r.ok && nbAmis === null) nbAmis = r.data.total;
+  // Lot C1, partie C : « Mon groupe » n'existe dans le sélecteur que pour un joueur qui a un groupe (le nombre vient de la même réponse).
+  if (r.ok && r.data.groupe !== undefined) nbGroupe = r.data.groupe;
+  rendre();
 }
 
 let feuilleOuverte = false;
@@ -347,13 +350,26 @@ function rendre(): void {
   // Lot F2 : le sélecteur (une place réservée tant que les composants se chargent), la phrase si « Amis » n'a pas répondu, les amis qui n'ont rien fini, le lien « Inviter un ami ».
   const identifie = identifiant() !== null;
   const surAmis = !!c && c.filtre === "amis" && amisPret !== null;
-  const absents = surAmis ? absentsLisibles(c!) : [];
+  const surFiltre = !!c && (c.filtre === "amis" || c.filtre === "groupe") && amisPret !== null; // lot C1, partie C : « Mon groupe » montre aussi ses membres qui n'ont rien fini
+  const absents = surFiltre ? absentsLisibles(c!) : [];
   const sansAmis = surAmis && sansAmi(c!);
   const textesDesAmis = amisPret ? amisPret.ui.textesAmis(traducteurAmis()) : null;
-  const enfants: (HTMLElement | null)[] = [
+  const groupes = modeAffiche === "groupes";
+  const enfants: (HTMLElement | null)[] = groupes
+    ? [
+        barreJeu(t, { href: "../", jour: day, numero: numeroDeJournee(day) ?? undefined }),
+        el("h1", { classe: "classement-titre", texte: t.t("classement.titre") }),
+        navigation,
+        commutateurMode(t),
+        el("div", { classe: "classement-panneau", attrs: { id: "groupes-zone" } }),
+        el("section", { classe: "profil-section", attrs: { "aria-labelledby": "titre-langue" } }, el("h2", { classe: "profil-section__titre", attrs: { id: "titre-langue" }, texte: t.t("profil.langue.titre") }), choixLangue(t, { langue, onChange: changerLangue })),
+        el("footer", { classe: "portail-pied" }, el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }), lienRetours(t.t("portail.retours.lien"), langue, "../")),
+      ]
+    : [
     barreJeu(t, { href: "../", jour: day, numero: numeroDeJournee(day) ?? undefined }),
     el("h1", { classe: "classement-titre", texte: t.t("classement.titre") }),
     navigation,
+    commutateurMode(t),
     barreDesVues(t, c),
     identifie ? el("div", { classe: "classement-filtre", attrs: { id: "classement-filtre" } }, selecteurDesAmis()) : null,
     amisIndispo ? el("p", { classe: "classement-etat classement-amis-indispo", attrs: { id: "classement-amis-indispo", role: "status" }, texte: t.t("classement.amis.indispo") }) : null,
@@ -402,8 +418,59 @@ function rendre(): void {
     ),
   ];
   racine.replaceChildren(...enfants.filter((e): e is HTMLElement => e !== null));
+  const zoneGroupes = racine.querySelector<HTMLElement>("#groupes-zone");
+  if (zoneGroupes) {
+    const id = identifiant();
+    void import("./classementGroupes").then((m) => m.monterGroupes(zoneGroupes, { tr: t, langue, base: baseApi(), id, date: jourAffiche, vue: vueAffichee, surVue: changerVue }));
+  }
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
   else if (surSelecteur) racine.querySelector<HTMLElement>('#classement-selecteur [aria-checked="true"]')?.focus();
+}
+
+/** Lot C1, partie C : « Joueurs » / « Groupes » (un groupe de boutons radio, sous la navigation par jour). */
+function commutateurMode(t: T): HTMLElement {
+  const modes = ["joueurs", "groupes"] as const;
+  return el(
+    "div",
+    { classe: "groupes-bascule", attrs: { role: "radiogroup", "aria-label": t.t("classement.mode.aria"), id: "classement-mode" } },
+    ...modes.map((m) => {
+      const b = el("button", { classe: "dj-bouton dj-bouton--secondaire", attrs: { type: "button", role: "radio", "aria-checked": String(m === modeAffiche), id: `mode-${m}`, "data-cle": `mode-${m}` }, texte: t.t(m === "joueurs" ? "classement.mode.joueurs" : "classement.mode.groupes") });
+      b.addEventListener("click", () => changerMode(m));
+      return b;
+    }),
+  );
+}
+function changerMode(m: "joueurs" | "groupes"): void {
+  if (m === modeAffiche) return;
+  modeAffiche = m;
+  if (m === "joueurs") {
+    try {
+      const u = new URL(location.href);
+      u.searchParams.delete("mode");
+      history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`);
+    } catch {
+      /* l'adresse reste telle quelle */
+    }
+  }
+  lecture = null;
+  rendre();
+  document.getElementById(`mode-${m}`)?.focus();
+  void charger(jourAffiche);
+}
+/** L'adresse du mode « Groupes » : le mode, le jour et la vue (jamais le filtre des joueurs). */
+function majAdresseGroupes(): void {
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set("mode", "groupes");
+    u.searchParams.delete("filtre");
+    if (vueAffichee === VUE_CUMUL) u.searchParams.delete("vue");
+    else u.searchParams.set("vue", vueAffichee);
+    if (jourAffiche && jourAffiche !== aujourdhui) u.searchParams.set("date", jourAffiche);
+    else u.searchParams.delete("date");
+    history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`);
+  } catch {
+    /* l'adresse reste telle quelle */
+  }
 }
 
 /** Lit un jour dans une vue (une requête) et l'affiche ; l'adresse garde le jour, la vue et le filtre affichés. */
@@ -413,18 +480,24 @@ async function charger(date: string | null): Promise<void> {
   amisIndispo = false;
   const id = identifiant();
   let filtre = filtreActif();
-  if (filtre === "amis") await preparerAmis();
+  if (modeAffiche === "groupes") {
+    // Lot C1, partie C : le mode « Groupes » a son propre module (une requête par jour et par vue), pas de classement de joueurs à lire.
+    majAdresseGroupes();
+    rendre();
+    return;
+  }
+  if (filtre !== "tous") await preparerAmis();
   if (mien !== sequence) return;
   const lire = (v: string, f: FiltreAmis) => lireClassement(fetch.bind(globalThis), id, date, v, undefined, undefined, f);
   // « Amis » demande les composants des amis (leur chargement a échoué : « Tous »).
-  let l: LectureClassement = filtre === "amis" && !amisPret ? { classement: null, erreur: "reseau" } : await lire(vueAffichee, filtre);
+  let l: LectureClassement = filtre !== "tous" && !amisPret ? { classement: null, erreur: "reseau" } : await lire(vueAffichee, filtre);
   // Une vue qui n'existe pas ce jour-là (un lien `?vue=jump` vers un jour d'avant Jump) : le cumul.
   if (l.erreur === "invalid_view" && vueAffichee !== VUE_CUMUL) {
     vueAffichee = VUE_CUMUL;
     l = await lire(VUE_CUMUL, filtre);
   }
   // Lot F2 : « Amis » n'a pas répondu (hors ligne, filtre refusé, profil inconnu du serveur…) : un message discret, et « Tous » (une lecture de plus, la seule).
-  if (filtre === "amis" && !l.classement) {
+  if (filtre !== "tous" && !l.classement) {
     amisIndispo = true;
     filtreDemande = "tous";
     filtre = "tous";
@@ -436,6 +509,7 @@ async function charger(date: string | null): Promise<void> {
   if (date === null && l.classement) aujourdhui = l.classement.date;
   if (l.classement && filtre === "tous") totalTous = l.classement.classes;
   if (l.classement && filtre === "amis") nbAmis = nombreDAmis(l.classement) ?? nbAmis;
+  if (l.classement && filtre === "groupe") nbGroupe = (nombreDAmis(l.classement) ?? (nbGroupe ?? 1) - 1) + 1; // les autres membres, plus moi
   try {
     history.replaceState(null, "", adresseDuClassement(location.href, { date: date === null || date === aujourdhui ? null : date, vue: vueAffichee, filtre }));
   } catch {

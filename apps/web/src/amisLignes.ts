@@ -87,4 +87,4 @@ export const filtreAuChargement = (search: string, memoire: FiltreAmis | null): 
 export const adresseDuFiltre = (page: { pathname: string; search: string; hash: string }, filtre: FiltreAmis): string => adresseAvecFiltre(`${page.pathname}${page.search}${page.hash}`, filtre);
 
 /** Le chemin de la requête « Amis » (l'identifiant du joueur voyage dans l'en-tête `X-Player-Id`, jamais ici). Pas de `limit` : toi et tes amis, tous. */
-export const cheminClassementAmis = (date: string): string => `/api/day/${encodeURIComponent(date)}/leaderboard?filtre=amis`;
+export const cheminClassementAmis = (date: string, filtre: "amis" | "groupe" = "amis"): string => `/api/day/${encodeURIComponent(date)}/leaderboard?filtre=${filtre}`;
