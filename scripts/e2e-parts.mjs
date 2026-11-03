@@ -1,7 +1,6 @@
 // Répartition des specs e2e entre les parts de la CI, par DURÉE (retouche 31b). Utilisé par .github/workflows/ci.yml pour Chromium.
 //   node scripts/e2e-parts.mjs 3/8 chromium > liste.txt   → liste de tests pour `playwright test --test-list liste.txt`
-//   node scripts/e2e-parts.mjs 1/2 jump-chromium > liste.txt   → idem pour les specs de DailyJump (lot 3c)
-//   node scripts/e2e-parts.mjs 1/1 tower-chromium > liste.txt  → idem pour les specs de Tower (lot R15)
+//   node scripts/e2e-parts.mjs 1/2 jump-chromium > liste.txt   → idem pour les specs d'un autre jeu : le projet est `<préfixe de sa fiche><navigateur>` (lots 3c, R15 et K4)
 //   node scripts/e2e-parts.mjs 1/3 chromium --essentiel > liste.txt   → lot R13 : la CI de main (sans la famille « Régression », docs/tests.md)
 //
 // Pourquoi : `--shard` de Playwright coupe la liste des tests par NOMBRE, fichier par fichier, dans l'ordre alphabétique. Ajouter un spec
@@ -16,18 +15,19 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import { dureesDeLEnvironnement, superposer } from "./durees-e2e.mjs";
-import { regressionDesFiches } from "./fiches-lecture.mjs";
+import { SUITES, projetDe, regressionDesFiches, suiteDuProjet, suiteNommee } from "./fiches-lecture.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const E2E = join(ROOT, "apps/web/e2e");
-// Lot 3c : DailyJump a ses specs et ses durées à lui (apps/jump/e2e/durees.json). Son projet Playwright de CI s'appelle `jump-<navigateur>`
-// (apps/jump/playwright.config.ts) : le préfixe du projet dit de quel jeu il s'agit.
-const E2E_JUMP = join(ROOT, "apps/jump/e2e");
-// Lot R15 : Tower a les siens (apps/tower/e2e/durees.json), son projet de CI s'appelle `tower-<navigateur>`.
-const E2E_TOWER = join(ROOT, "apps/tower/e2e");
-export const gameOf = (project) => (project.startsWith("jump-") ? { dir: E2E_JUMP, name: "jump" } : project.startsWith("tower-") ? { dir: E2E_TOWER, name: "tower" } : { dir: E2E, name: "web" });
+// Lots 3c, R15 et K4 : chaque jeu a ses specs et ses durées à lui (`<dossier>/durees.json`) et un projet Playwright de CI `<préfixe><navigateur>` (`jump-chromium`, `tower-chromium`) ;
+// le préfixe du projet dit de quel jeu il s'agit. Tout vient de la fiche du jeu (`e2e.dossier`, `e2e.suite`, `e2e.projet` : scripts/fiches-lecture.mjs).
+const dossierDe = (suite) => join(ROOT, suiteNommee(suite).dossier);
+const E2E = dossierDe(SUITES.find((s) => s.projet === "").suite);
+export const gameOf = (project) => {
+  const s = suiteDuProjet(project);
+  return { dir: dossierDe(s.suite), name: s.suite };
+};
 export const DEFAULT_S = 60;
 
 /** Lot R13 : un outil (captures, mesures) n'est jamais dans la CI (`testIgnore` des configurations de Playwright sans `CAPTURES`, `MESURE`…). */
@@ -80,11 +80,11 @@ export function specsRegression(jeu) {
 
 function main(argv) {
   if (argv[0] === "liste") {
-    // liste <projet-web> <jeu/fichier>… : le projet du jeu `jump` est `jump-<navigateur>`.
+    // liste <navigateur> <suite/fichier>… : le projet d'une suite est `<préfixe de sa fiche><navigateur>`.
     const navigateur = argv[1] ?? "chromium";
     const lignes = argv.slice(2).filter(Boolean).map((x) => {
       const [jeu, fichier] = x.split("/");
-      return `[${jeu === "jump" || jeu === "tower" ? `${jeu}-${navigateur}` : navigateur}] › ${fichier}`;
+      return `[${projetDe(jeu, navigateur)}] › ${fichier}`;
     });
     process.stdout.write(lignes.join("\n") + "\n");
     return;

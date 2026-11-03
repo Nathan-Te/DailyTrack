@@ -1,4 +1,19 @@
 {
   "_": "Quarantaine des tests e2e (lot R3 de la plateforme, docs/plateforme/lots/lot-R3-ci.md) : le filet pour un test instable FUTUR, pas la règle. Une entrée = { test : « web/e2e/<fichier>.spec.ts › <titre> » (ou « jump/e2e/… », le nom du résumé du run), navigateur : chromium | firefox | webkit, depuis : AAAA-MM-JJ, dette : lien vers la dette (docs/orchestration.md#… pour DailyTrack, docs/jump/synthese.md#… pour DailyJump, qui nomme le fichier du test), responsable : la personne ou le lot qui le répare }. Sur une PR, le test tourne toujours et son échec n'est qu'un avertissement ; sur main, la nuit et avant la production il reste bloquant. Au plus 3 entrées ; une entrée de plus de 14 jours fait échouer le run de nuit (« dette expirée »). Vérifié par scripts/e2e-quarantaine.mjs et apps/web/test/quarantaine.test.ts.",
-  "entrees": []
+  "entrees": [
+    {
+      "test": "web/e2e/tactile.spec.ts › Android (Pixel 7) › pause, reprise au point de contrôle et départ se font au toucher, et la pause fige la course",
+      "navigateur": "chromium",
+      "depuis": "2026-11-03",
+      "dette": "docs/orchestration.md#8-pièges-rencontrés-à-éviter",
+      "responsable": "un lot de Track (stabilité des e2e tactile)"
+    },
+    {
+      "test": "web/e2e/salon.spec.ts › le classement final reste 8 s sur l'ancien circuit, puis le circuit change au même instant pour deux navigateurs (heure du serveur, pas la fin de leur course)",
+      "navigateur": "chromium",
+      "depuis": "2026-11-03",
+      "dette": "docs/orchestration.md#8-pièges-rencontrés-à-éviter",
+      "responsable": "un lot de Track (stabilité du Salon)"
+    }
+  ]
 }

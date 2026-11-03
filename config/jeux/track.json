@@ -178,6 +178,8 @@
   "e2e": {
     "dossier": "apps/web/e2e",
     "suite": "web",
+    "projet": "",
+    "dette": "docs/orchestration.md",
     "fumee": [
       "replay.spec.ts",
       "perf.spec.ts",

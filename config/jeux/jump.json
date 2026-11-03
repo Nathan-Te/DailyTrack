@@ -131,6 +131,7 @@
   "e2e": {
     "dossier": "apps/jump/e2e",
     "suite": "jump",
+    "dette": "docs/jump/synthese.md",
     "fumee": [
       "smoke.spec.ts",
       "replay.spec.ts",

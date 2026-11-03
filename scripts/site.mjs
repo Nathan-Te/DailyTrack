@@ -37,8 +37,11 @@ export const LAYOUT = [
 // nom de dossier : `jump/levels`, `tower/jours` ; Track a un registre, pas de dossier) et la règle de la preuve de l'auteur (`jours.preuveInterditeEnProd`) viennent d'elle. `LAYOUT` ne garde que le portail.
 export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.app}/dist`, to: f.id, jours: f.jours.dossier, preuveInterdite: f.jours.preuveInterditeEnProd }));
 export const TOWER_SITE = SITES_FICHES.find((s) => s.id === "tower");
-/** Lot K1b : Jump, dont les niveaux figés (`levels`) et les outils (`outils/`) ont leurs vérifications propres (règle R9) en plus de celles de tout jeu à fiche. */
-const JUMP_SITE = SITES_FICHES.find((s) => s.id === "jump");
+/**
+ * Lot K4 : les jeux qui ont une page d'outils (`admin.outils` de la fiche : Track et Jump) ont aussi une démonstration (`<id>/demo/`, `?api=demo`) et des outils d'essai (`<id>/outils/`) qui ne vont jamais
+ * en production (règles R7 et R9). Un jeu sans page d'outils (Tower, un jeu neuf) n'en publie pas.
+ */
+const SITES_AVEC_OUTILS = FICHES_CI.filter((f) => f.outilsAdmin).map((f) => f.id);
 
 /**
  * Lot « musique » : les morceaux préparés (`npm run musique`) sont servis à `/musique/` (fichiers statiques, cache sans fin : `firebase.json`), à la racine du site comme `/api/` :
@@ -106,7 +109,7 @@ function viteBuild(options) {
  * d'un jeu demande : si le portail l'a (ou un jeu précédent l'y a mise), elle doit être identique (sinon l'assemblage s'arrête) ; sinon elle rejoint `assets/` du
  * portail ; dans les deux cas la copie de `<jeu>/assets/` est retirée (un seul fichier par police sur le site). Rend les polices déjà là et celles ajoutées.
  */
-export function partagerPolices(out, jeux = ["track", "jump"]) {
+export function partagerPolices(out, jeux = SITES_FICHES.map((s) => s.id)) {
   const communes = [];
   const ajoutees = [];
   for (const jeu of jeux) {
@@ -189,7 +192,7 @@ export function manifeste(jetonsCss) {
  * à venir y porte la rediffusion « parfaite » du premier — la preuve de l'auteur du niveau que le jeu jouera ce jour-là (constaté le 25/10/2026 :
  * `jump/demo/2026-10-30.json`, acceptée par le serveur le jour J). La démonstration reste dans la recette et les aperçus. Rend les dossiers retirés.
  */
-export const DOSSIERS_DEMO = ["track/demo", "jump/demo"];
+export const DOSSIERS_DEMO = SITES_AVEC_OUTILS.map((id) => `${id}/demo`);
 export function retirerDemos(out) {
   const retires = [];
   for (const d of DOSSIERS_DEMO) {
@@ -206,14 +209,16 @@ export function retirerDemos(out) {
  * figé et supprime `outils/` (`?semaine=`) et `demo/` ; ici on **revérifie le site assemblé** : aucun fichier publié ne contient la preuve d'un jour (le texte
  * même, lu dans les fichiers du dépôt), et `jump/outils` n'y est pas. Rend les fichiers fautifs (vide : tout va bien).
  */
-export const DOSSIERS_OUTILS = ["jump/outils"];
-export function fichiersAvecPreuve(out, niveaux = join(ROOT, JUMP_SITE.jours)) {
-  const preuves = existsSync(niveaux)
+export const DOSSIERS_OUTILS = SITES_AVEC_OUTILS.map((id) => `${id}/outils`);
+export function fichiersAvecPreuve(out, niveaux) {
+  // Lot K4 : sans dossier donné, les jours de tous les jeux dont la fiche interdit la preuve en production.
+  const dossiers = niveaux === undefined ? SITES_FICHES.filter((x) => x.preuveInterdite && x.jours).map((x) => join(ROOT, x.jours)) : [niveaux];
+  const preuves = dossiers.flatMap((niveaux) => existsSync(niveaux)
     ? readdirSync(niveaux)
         .filter((f) => f.endsWith(".json"))
         .map((f) => JSON.parse(readFileSync(join(niveaux, f), "utf8")).preuve)
         .filter((p) => typeof p === "string" && p.length > 0)
-    : [];
+    : []);
   const fautifs = [];
   const parcourir = (dir) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -275,8 +280,10 @@ export function robots({ production = false } = {}) {
 }
 
 /** Lot R9 : le texte d'un fichier figé sans son champ `preuve` (le reste inchangé, même ordre des champs, même fin de ligne : `frozenJson`). */
-export function sansPreuve(texte) {
+export function sansPreuve(texte, indentation) {
   const { preuve: _preuve, ...publie } = JSON.parse(texte);
+  // `indentation` : la mise en forme d'un fichier « une ligne par champ » (Tower, `jsonJourFige`) ; la preuve est son dernier champ, le reste est le texte même du dépôt.
+  if (indentation) return texte.replace(/,\n {2}"preuve": "[A-Za-z0-9_-]*"\n\}\n$/, "\n}\n");
   return `${JSON.stringify(publie)}\n`;
 }
 
@@ -300,26 +307,33 @@ export async function assembleSite(out, { production = false, origine } = {}) {
     cpSync(join(ROOT, part.from), dest, { recursive: true });
   }
   for (const part of SITES_FICHES) cpSync(join(ROOT, part.from), join(out, part.to), { recursive: true });
-  partagerPolices(out); // lots I4 et I5 : les polices de Track et de Jump sont celles du portail (Tower garde les siennes : lot I1)
+  partagerPolices(out); // lots I4, I5 et K4 : les polices qu'une feuille de jeu demande à `/assets/` sont celles du portail (celles de Tower, relatives à son dossier, restent les siennes : lot I1)
   const morceaux = copierMusique(out); // lot « musique » : `/musique/` (liste et fichiers préparés), jamais les sources
-  // Les niveaux figés de DailyJump (lot 10) doivent être dans le site publié, identiques : sinon un jour déjà joué changerait de niveau.
-  const levels = join(ROOT, JUMP_SITE.jours);
-  const niveauxPublies = join(JUMP_SITE.to, basename(JUMP_SITE.jours));
-  const files = existsSync(levels) ? readdirSync(levels).filter((f) => f.endsWith(".json")) : [];
-  for (const f of files) {
-    const got = join(out, niveauxPublies, f);
-    if (!existsSync(got)) throw new Error(`niveau figé absent ou différent du site : ${niveauxPublies}/${f}`);
-    // Lot R9 : la production publie le fichier sans sa `preuve` (le reste, octet pour octet) ; ailleurs il est identique au dépôt.
-    const attendu = production ? sansPreuve(readFileSync(join(levels, f), "utf8")) : readFileSync(join(levels, f), "utf8");
-    if (readFileSync(got, "utf8") !== attendu) throw new Error(`niveau figé absent ou différent du site : ${niveauxPublies}/${f}`);
+  // Les jours figés de chaque jeu à dossier (Jump : ses niveaux, lot 10 ; Tower : ses jours, lot TP ; un jeu neuf : les siens, lot K4) doivent être dans le site publié, identiques : sinon un jour déjà joué
+  // changerait de niveau. Lot R9 : la production publie le fichier sans sa `preuve` (le reste, octet pour octet) si la fiche du jeu l'interdit ; ailleurs il est identique au dépôt.
+  let niveauxVerifies = 0;
+  for (const site of SITES_FICHES.filter((x) => x.jours)) {
+    const dossier = join(ROOT, site.jours);
+    const publies = join(site.to, basename(site.jours));
+    const fichiers = existsSync(dossier) ? readdirSync(dossier).filter((f) => f.endsWith(".json")) : [];
+    for (const f of fichiers) {
+      const got = join(out, publies, f);
+      if (!existsSync(got)) throw new Error(`niveau figé absent ou différent du site : ${publies}/${f}`);
+      const texte = readFileSync(join(dossier, f), "utf8");
+      // Les deux mises en forme du fichier sans sa preuve : sur une ligne (Jump, `frozenJson`) ou une ligne par champ (Tower, `jsonJourFige`) ; rien d'autre ne change, octet pour octet.
+      const attendus = production && site.preuveInterdite ? [sansPreuve(texte), sansPreuve(texte, 2)] : [texte];
+      if (!attendus.includes(readFileSync(got, "utf8"))) throw new Error(`niveau figé absent ou différent du site : ${publies}/${f}`);
+    }
+    // Le compte rendu ne compte que les niveaux de Jump, comme avant (Tower a ses propres vérifications, plus bas).
+    if (site.id === "jump") niveauxVerifies = fichiers.length;
   }
   // Lot I1 : la vitrine n'est jamais publiée en production ; ailleurs elle doit y être.
   const vitrine = existsSync(join(out, VITRINE, "index.html"));
   if (production) {
     retirerDemos(out);
-    // Lot R9 : la preuve de l'auteur et les outils de Jump ne sont jamais publiés (ils sont retirés à la construction de Jump ; ici on le vérifie).
-    const fautifs = fichiersAvecPreuve(out, levels);
-    if (fautifs.length > 0) throw new Error(`le site de production publierait la preuve de l'auteur ou les outils de Jump : ${fautifs.join(", ")}`);
+    // Lot R9 : la preuve de l'auteur et les outils d'un jeu ne sont jamais publiés (ils sont retirés à la construction du jeu ; ici on le vérifie).
+    const fautifs = fichiersAvecPreuve(out);
+    if (fautifs.length > 0) throw new Error(`le site de production publierait la preuve de l'auteur ou les outils d'un jeu : ${fautifs.join(", ")}`);
     // Lots TP et K1 : de même pour les jours de chaque jeu à fiche qui l'interdit (Tower : la construction de production retire la preuve ; ici on le revérifie).
     for (const site of SITES_FICHES.filter((s) => s.preuveInterdite)) {
       const fautifsFiche = fichiersAvecPreuveDeFiche(out, site);
@@ -338,7 +352,7 @@ export async function assembleSite(out, { production = false, origine } = {}) {
   if (!existsSync(join(out, "404.html"))) throw new Error("page 404 absente du site (apps/portail/404.html)");
   // Lot R7 : la production s'indexe (le portail et les jeux) ; la recette et les aperçus s'interdisent à tous les robots.
   writeFileSync(join(out, "robots.txt"), robots({ production }));
-  return { niveaux: files.length, images, origine: origineSite, morceaux };
+  return { niveaux: niveauxVerifies, images, origine: origineSite, morceaux };
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);

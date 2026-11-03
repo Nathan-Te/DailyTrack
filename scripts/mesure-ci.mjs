@@ -14,6 +14,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromiumSeconds, collectTests } from "./e2e-summary.mjs";
+import { SUITES } from "./fiches-lecture.mjs";
 import { api, depotPar, jeton, relancerAvecProxy } from "./github-api.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -110,10 +111,10 @@ export function specsLesPlusLongs(durees, n = 20) {
     .map(([spec, secondes]) => ({ spec, secondes }));
 }
 
-/** Les durées de `durees.json` des jeux, préfixées par le jeu (`web/…`, `jump/…`, `tower/…`) ; sans les outils (durée 0 : captures et mesures sautés). */
+/** Les durées de `durees.json` des jeux, préfixées par leur suite (`web/…`, `jump/…`, `tower/…` : les fiches) ; sans les outils (durée 0 : captures et mesures sautés). */
 export function dureesDuDepot(racine = ROOT) {
   const out = {};
-  for (const [jeu, dossier] of [["web", "apps/web/e2e"], ["jump", "apps/jump/e2e"], ["tower", "apps/tower/e2e"]]) {
+  for (const { suite: jeu, dossier } of SUITES) {
     const f = join(racine, dossier, "durees.json");
     if (!existsSync(f)) continue;
     for (const [spec, s] of Object.entries(JSON.parse(readFileSync(f, "utf8")).secondes)) if (s > 0) out[`${jeu}/${spec}`] = s;
@@ -121,10 +122,11 @@ export function dureesDuDepot(racine = ROOT) {
   return out;
 }
 
-/** Les durées d'un rapport JSON fusionné de Playwright (artefact du job `e2e`), `jump/…` pour DailyJump, `tower/…` pour Tower. */
+/** Les durées d'un rapport JSON fusionné de Playwright (artefact du job `e2e`), préfixées par leur suite (`jump/…`, `tower/…`). */
 export function dureesDuRapport(rapport) {
   const s = chromiumSeconds(collectTests(rapport));
-  return Object.fromEntries(Object.entries(s).map(([f, v]) => [f.startsWith("jump/") || f.startsWith("tower/") ? f : `web/${f.split("/").pop()}`, v]));
+  const hote = SUITES.find((x) => x.projet === "").suite;
+  return Object.fromEntries(Object.entries(s).map(([f, v]) => [SUITES.some((x) => x.projet !== "" && f.startsWith(`${x.suite}/`)) ? f : `${hote}/${f.split("/").pop()}`, v]));
 }
 
 const num = (x, suffixe = "") => (x === null || x === undefined || Number.isNaN(x) ? "—" : `${x}${suffixe}`);

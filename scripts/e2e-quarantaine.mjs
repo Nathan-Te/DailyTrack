@@ -12,18 +12,18 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SUITES, projetDe } from "./fiches-lecture.mjs";
 
 export const MAX_ENTRIES = 3;
 export const MAX_DAYS = 14;
 export const BROWSERS = ["chromium", "firefox", "webkit"];
-/** Où vit la dette d'un test, selon son jeu (préfixe du fichier dans le rapport fusionné : `web/e2e/…`, `jump/e2e/…`). */
-// Lot R15 : Tower (3ᵉ jeu, `tower/e2e/…`) n'a pas de synthèse : sa dette se note dans `docs/tower/consignes.md`.
-export const DEBT_DOCS = { web: "docs/orchestration.md", jump: "docs/jump/synthese.md", tower: "docs/tower/consignes.md" };
+/** Où vit la dette d'un test, selon sa suite (préfixe du fichier dans le rapport fusionné : `web/e2e/…`, `jump/e2e/…`). Lot K4 : le document est `e2e.dette` de la fiche (par défaut `docs/<id>/consignes.md`). */
+export const DEBT_DOCS = Object.fromEntries(SUITES.map((s) => [s.suite, s.dette]));
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const QUARANTINE_FILE = join(ROOT, "e2e/quarantaine.json");
 
-const TEST_RE = /^(web|jump|tower)\/e2e\/([\w.-]+\.spec\.ts) › \S.*$/;
+const TEST_RE = new RegExp(`^(${SUITES.map((s) => s.suite).join("|")})\\/e2e\\/([\\w.-]+\\.spec\\.ts) › \\S.*$`);
 const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** Jour (nombre de jours depuis 1970, UTC) d'une date AAAA-MM-JJ, ou null si elle n'existe pas. */
@@ -46,9 +46,9 @@ export function matches(entry, t) {
   return entry.test === `${m[1]}/e2e/${m[2]} › ${(t.path ?? [t.title]).join(" › ")}`;
 }
 
-/** Projet Playwright d'un navigateur pour un jeu : DailyTrack `chromium`, DailyJump `jump-chromium` (lot 3c), Tower `tower-chromium` (lot R15). */
+/** Projet Playwright d'un navigateur pour la suite d'un test : `chromium` pour la suite `web`, `jump-chromium`, `tower-chromium`… (le préfixe est celui de la fiche : `e2e.projet`). */
 export function projectFor(test, browser) {
-  return test.startsWith("jump/") || test.startsWith("tower/") ? `${test.split("/")[0]}-${browser}` : browser;
+  return projetDe(test.split("/")[0], browser);
 }
 
 /**
@@ -67,7 +67,7 @@ export function checkQuarantine(data, { today, readDoc }) {
     const where = `quarantaine, entrée ${i + 1}${e?.test ? ` (${e.test})` : ""}`;
     const problems = [];
     const m = TEST_RE.exec(String(e?.test ?? ""));
-    if (!m) problems.push("« test » doit nommer le test du rapport : « web/e2e/<fichier>.spec.ts › <titre> », « jump/e2e/… » ou « tower/e2e/… »");
+    if (!m) problems.push(`« test » doit nommer le test du rapport : « ${SUITES[0].suite}/e2e/<fichier>.spec.ts › <titre> » (ou ${SUITES.slice(1).map((x) => `« ${x.suite}/e2e/… »`).join(", ")})`);
     if (!BROWSERS.includes(e?.navigateur)) problems.push(`« navigateur » : ${BROWSERS.join(", ")}`);
     const since = dayOf(e?.depuis);
     if (since === null) problems.push("« depuis » : la date d'entrée, AAAA-MM-JJ");
