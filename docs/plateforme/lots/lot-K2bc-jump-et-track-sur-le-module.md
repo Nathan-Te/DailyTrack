@@ -33,7 +33,7 @@ Je n'ai **pas** migré Track. Ce n'est pas une différence de banc que je n'aura
 Ordre de grandeur : une dizaine de points d'extension de plus, et les 1 187 lignes de `cdj.ts` à reprendre sous le garde du banc de Track.
 
 ## Vérifié / non vérifié
-Vérifié : `npm run verifier` (typecheck, unitaires SQLite et libSQL, constructions, e2e Track 11 specs, Jump 7, Tower 4 : tout vert, 1 008 s) ; `tsc -b` ; suite `apps/api` entière sur SQLite (831 tests) **et** libSQL (813, 7 ignorés comme avant) ; les trois bancs ; `measure:lignes` ; `measure:rejeu`. Étendu pour le lot : `codesErreur.test.ts` compte aussi les codes que seul un contrat lève (`RefusJeu`) — un test élargi, pas affaibli. Non vérifié : `smoke` sur la recette, la CI (voir ci-dessous).
+Vérifié : `npm run verifier` (typecheck, unitaires SQLite et libSQL, constructions, e2e Track 11 specs, Jump 7, Tower 4 : tout vert, 1 008 s) ; `tsc -b` ; suite `apps/api` entière sur SQLite (831 tests) **et** libSQL (813, 7 ignorés comme avant) ; les trois bancs ; `measure:lignes` ; `measure:rejeu`. Étendu pour le lot : `codesErreur.test.ts` compte aussi les codes que seul un contrat lève (`RefusJeu`) — un test élargi, pas affaibli. Non vérifié : `smoke` sur la recette (un agent ne la lance pas).
 
 ## CI
-(à compléter : runs de la CI de PR et du run en mode `main`)
+CI de PR verte (tête `5001c63`) : https://github.com/Nathan-Te/DailyTrack/actions/runs/41616793500. Run en mode `main` (forcé une fois par un commit, retiré ensuite) vert (tête `3c75395` : Track en 3 parts, Jump, Tower, Firefox et WebKit, unitaires, Budgets) : https://github.com/Nathan-Te/DailyTrack/actions/runs/41618616414. Le dernier commit retire le forçage ; la CI de PR le reconfirme.
