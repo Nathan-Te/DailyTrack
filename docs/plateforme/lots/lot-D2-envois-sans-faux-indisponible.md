@@ -25,5 +25,7 @@ Les trois bancs sont identiques à la référence **sauf le cas C5** : la répon
 ## Vérifié / non vérifié
 - Vérifié en local : typecheck, tests unitaires du lot (profil, kit, trois bancs, C5 des trois jeux sur SQLite **et** libSQL, causes et carte du tableau de bord, files d'envoi des trois jeux), traductions régénérées.
 - Un seul test navigateur (R13) : Tower, envoi lent (3,6 s) → « Envoi en cours… » → rang, sans « indisponible ».
-- **Non vérifié** : Firefox/WebKit ; `?debug&simuler` à la main sur l'aperçu ; mémoire 1 Gio sur Cloud Run (se lit après déploiement) ; captures (voir ci-dessous).
-- CI de la PR : voir le bas de la PR.
+- **Non vérifié** : Firefox/WebKit ; `?debug&simuler` à la main sur l'aperçu ; mémoire 1 Gio sur Cloud Run (se lit après déploiement) ; captures de Track, de Jump et du tableau de bord (non faites : seuls des tests unitaires les couvrent).
+- **CI de la PR : verte** (run 41715484418, 10 min, « Budgets » compris). Un premier run était rouge : `api-image` (smoke « une autre version est refusée ») parce que la réponse « déjà accepté » passait avant le refus de version ; corrigé (elle passe après les contrôles de version, avant le rejeu).
+- Captures : `docs/plateforme/lots/img/lot-D2-tower-en-cours.png`, `…-en-attente.png`, `…-bandeau-version.png` (Tower). Mémoire 1 Gio : à lire sur Cloud Run après déploiement.
+- K4d : la file du kit est celle de K4d, non refaite ; `DELAI_ENVOI_MS` du kit réexporte celle du profil.
