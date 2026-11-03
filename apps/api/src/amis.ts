@@ -1,5 +1,5 @@
 import { HttpError } from "./errors";
-import type { Platform, RequestInfo } from "./games";
+import type { GameInstance, Platform, RequestInfo } from "./games";
 import { nameKey } from "./pseudos";
 import { refOfPlayer, sha256Hex, REF_LENGTH, type PlayerRow } from "./players";
 import { rangEntreAmis, type ClassementDuJour, type LigneDuJour } from "./classementDuJour";
@@ -76,7 +76,24 @@ export interface AmisPourPortail {
 
 const base64url = (octets: Uint8Array): string => btoa(String.fromCharCode(...octets)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-export function createAmis(platform: Platform, vue: () => VuePartagee, membresDuGroupe?: (id: string, day: number) => Promise<AmiLu[]>, tailleDuGroupe?: (id: string) => Promise<number | null>) {
+/**
+ * Lot K4d — les trois jeux d'origine gardent la forme de ligne qui leur est propre et leur adresse historique (les bancs de réponses la fixent) ; **tout autre jeu** (un jeu neuf sur la table commune) est lu
+ * par ses crochets : son classement filtré se lit à `/api/<code>/day/<date>/board?filtre=…` et ses lignes viennent de `GameInstance.lignesAmies` — aucune ligne à écrire pour un jeu de plus.
+ */
+const FORMATS_HERITES: Record<string, { format: FormatClassement; motif: RegExp }> = {
+  cdj: { format: "cdj", motif: /^\/api\/day\/([^/]+)\/leaderboard$/ },
+  jump: { format: "jump", motif: /^\/api\/jump\/day\/([^/]+)\/board$/ },
+  tower: { format: "tower", motif: /^\/api\/tower\/day\/([^/]+)\/board$/ },
+};
+
+export function createAmis(
+  platform: Platform,
+  vue: () => VuePartagee,
+  membresDuGroupe?: (id: string, day: number) => Promise<AmiLu[]>,
+  tailleDuGroupe?: (id: string) => Promise<number | null>,
+  /** Lot K4d : les jeux du registre (leur activité pour les suggestions, leurs lignes de classement filtré). */
+  jeux: () => readonly { code: string; instance: GameInstance }[] = () => [],
+) {
   const { db, now, log, limits, players, hashKey, hit, readHit, hitAddress, readHitAddress, readJson, playerIdOf } = platform;
 
   // --- Aides ---------------------------------------------------------------------------------------------------------------------
@@ -223,16 +240,16 @@ export function createAmis(platform: Platform, vue: () => VuePartagee, membresDu
     if ([...cle].length < SUGGESTIONS_LETTRES_MIN || cle.length > 64) return { suggestions: [] };
     await joueurActif(id);
     const depuis = platform.today() - SUGGESTIONS_JOURS + 1;
+    // Lot K4d : l'activité se lit dans ce que chaque jeu déclare (`admin.activite` : sa table, et sa portée sur une table partagée) — plus aucun jeu écrit ici.
+    const activites = jeux().flatMap((g) => g.instance.admin?.activite ?? []);
+    const actifs = activites.map((a) => `EXISTS (SELECT 1 FROM ${a.table} x WHERE ${a.portee ? `x.${a.portee} AND ` : ""}x.${a.joueur} = c.id AND x.${a.jour} >= ? AND x.hidden = 0)`);
     const rows = await db.all<{ id: string; name: string; ref: string | null }>(
       `SELECT c.id AS id, c.name AS name, c.ref AS ref FROM (
          SELECT id, name, ref, name_key FROM players WHERE name_key >= ? AND name_key < ? AND hidden = 0 AND id <> ? ORDER BY name_key LIMIT ?
        ) c
-       WHERE NOT EXISTS (SELECT 1 FROM amities a WHERE a.joueur = ? AND a.ami = c.id)
-         AND (EXISTS (SELECT 1 FROM results r WHERE r.player_id = c.id AND r.day >= ? AND r.hidden = 0)
-           OR EXISTS (SELECT 1 FROM jump_results j WHERE j.player_id = c.id AND j.day >= ? AND j.hidden = 0)
-           OR EXISTS (SELECT 1 FROM tower_results t WHERE t.player_id = c.id AND t.day >= ? AND t.hidden = 0))
+       WHERE NOT EXISTS (SELECT 1 FROM amities a WHERE a.joueur = ? AND a.ami = c.id)${actifs.length ? `\n         AND (${actifs.join("\n           OR ")})` : ""}
        ORDER BY c.name_key LIMIT ?`,
-      [cle, `${cle}￿`, id, SUGGESTIONS_CANDIDATS, id, depuis, depuis, depuis, SUGGESTIONS_MAX],
+      [cle, `${cle}￿`, id, SUGGESTIONS_CANDIDATS, id, ...activites.map(() => depuis), SUGGESTIONS_MAX],
     );
     return { suggestions: await Promise.all(rows.map(async (r) => ({ ref: await refDe(r.id, r.ref), pseudo: r.name }))) };
   }
@@ -322,6 +339,7 @@ export function createAmis(platform: Platform, vue: () => VuePartagee, membresDu
     parRef,
     refValide,
     origineDe,
+    lignesDe: async (code, day, ids) => (await jeux().find((g) => g.code === code)?.instance.lignesAmies?.(day, ids)) ?? new Map(),
   });
 
   /** Valide `filtre` : `amis`, `groupe` (lot C1, partie C : mon groupe) ou rien ; toute autre valeur est refusée. */
@@ -339,15 +357,9 @@ export function createAmis(platform: Platform, vue: () => VuePartagee, membresDu
     return classements.classement("portail", req, url, info, undefined, filtre);
   }
 
-  const MOTIFS_JEUX: Record<string, { format: FormatClassement; motif: RegExp }> = {
-    cdj: { format: "cdj", motif: /^\/api\/day\/([^/]+)\/leaderboard$/ },
-    jump: { format: "jump", motif: /^\/api\/jump\/day\/([^/]+)\/board$/ },
-    tower: { format: "tower", motif: /^\/api\/tower\/day\/([^/]+)\/board$/ },
-  };
-
-  /** Le classement d'un jeu avec `filtre=amis` (`api.ts` l'appelle après la garde de l'interrupteur) ; `undefined` : ce n'est pas un classement filtré. Un nouveau jeu ajoute sa ligne à `MOTIFS_JEUX`. */
+  /** Le classement d'un jeu avec `filtre=amis` (`api.ts` l'appelle après la garde de l'interrupteur) ; `undefined` : ce n'est pas un classement filtré. Les jeux d'origine : `FORMATS_HERITES` ; un jeu neuf : ses crochets (`lignesAmies`). */
   async function classementJeu(code: string, path: string, req: Request, url: URL, info: RequestInfo): Promise<unknown> {
-    const jeu = MOTIFS_JEUX[code];
+    const jeu = FORMATS_HERITES[code] ?? (jeux().some((g) => g.code === code && g.instance.lignesAmies) ? { format: "neuf" as const, motif: new RegExp(`^/api/${code}/day/([^/]+)/board$`) } : undefined);
     const m = jeu?.motif.exec(path);
     if (!jeu || !m || req.method !== "GET" || !url.searchParams.has("filtre")) return undefined;
     const filtre = filtreDemande(url)!;

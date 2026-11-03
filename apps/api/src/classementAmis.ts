@@ -17,7 +17,7 @@ import type { JeuPortail, VuePartagee } from "./portail";
 // Une réponse filtrée dépend du joueur : `Cache-Control: private, no-cache` et `Vary: X-Player-Id`. Un classement « Tous » ne change pas (cache public intact, `ref` en plus sur chaque ligne).
 // Les amis masqués n'y figurent pas (la liste les écarte, et le classement du jour écarte `hidden = 1`).
 
-export type FormatClassement = "portail" | "cdj" | "jump" | "tower";
+export type FormatClassement = "portail" | "cdj" | "jump" | "tower" | "neuf";
 
 export interface DepsClassementAmis {
   platform: Platform;
@@ -32,6 +32,8 @@ export interface DepsClassementAmis {
   parRef(ref: string): Promise<{ id: string; name: string; ref: string; avatar?: string | null } | null>;
   refValide(x: unknown): string;
   origineDe(joueur: string, ami: string): Promise<"ajout" | "invitation" | null>;
+  /** Lot K4d : les lignes d'un jeu au format neuf pour ces joueurs (`GameInstance.lignesAmies`). */
+  lignesDe?(code: string, day: number, ids: readonly string[]): Promise<Map<string, (rang: number, pseudo: string, ref: string) => Record<string, unknown>>>;
 }
 
 /** Le résultat d'un joueur dans un jeu, tel que les lignes le montrent. */
@@ -181,6 +183,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
 
     // Jump : les morts (et les pas exacts) des seuls joueurs de la liste, en une requête ; Tower : les pas exacts du joueur qui regarde.
     const jump = format === "jump" ? await jumpDe(day, entrees.map((x) => x.id)) : new Map<string, { ticks: number; deaths: number }>();
+    const neuves = format === "neuf" && d.lignesDe && options ? await d.lignesDe(options.code, day, entrees.map((x) => x.id)) : new Map<string, (rang: number, pseudo: string, ref: string) => Record<string, unknown>>();
     const monTowerTicks = format === "tower" && entrees.some((x) => x.moi) ? await towerTicksDe(day, id) : null;
 
     const participants = hauteur ? Math.max(hauteur.classes.length, ...entrees.filter((x) => x.moi).map((x) => x.rangGeneral)) : g >= 0 ? Math.max(c.parJeu[g]!.length, ...entrees.filter((x) => x.moi).map((x) => x.rangGeneral)) : c.cumul.length;
@@ -202,6 +205,11 @@ export function creerClassementAmis(d: DepsClassementAmis) {
         case "jump": {
           const j = jump.get(x.id);
           return { rank: rang, ...base, name: x.pseudo, ticks: j?.ticks ?? x.res!.ticks ?? 0, deaths: j?.deaths ?? 0, medal: x.res!.medaille };
+        }
+        case "neuf": {
+          // Lot K4d : les colonnes de la fiche, mises en forme par le jeu comme son classement « Tous » ; sans ligne (partie masquée entre-temps) : le minimum.
+          const ligne = neuves.get(x.id)?.(rang, x.pseudo, x.ref) ?? { rank: rang, name: x.pseudo, medal: x.res!.medaille };
+          return { ...ligne, ...base };
         }
         case "tower":
           return { rank: rang, ...base, name: x.pseudo, hauteurMm: x.res!.score?.valeur ?? 0, vies: x.res!.score?.vies ?? 0, ticks: (x.moi ? monTowerTicks : null) ?? x.res!.ticks ?? 0, medal: x.res!.medaille };
