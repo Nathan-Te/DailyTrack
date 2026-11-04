@@ -16,7 +16,8 @@
     "@cdj/kit": "*",
     "@cdj/musique": "*",
     "@cdj/profile": "*",
-    "@cdj/ui": "*"
+    "@cdj/ui": "*",
+    "@cdj/visuels": "*"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

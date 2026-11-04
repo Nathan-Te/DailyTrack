@@ -43,6 +43,8 @@ export const TEINTES = [
   ["#F4B6A6", "#7A2A1B"],
   ["#D6D6D6", "#444444"],
 ];
+/** Les paquets communs que TOUT jeu neuf déclare d'office (lot B1) : « Cibles » n'en a pas l'usage, un jeu qui reprend les blocs de Tower (`@cdj/visuels`) ne doit pas attendre un lot de la plateforme pour le déclarer (`package-lock.json` est hors des zones d'un jeu). */
+export const DEPENDANCES_COMMUNES = ["@cdj/visuels"];
 const IGNORES = new Set(["node_modules", "dist", "dist-types", "test-results", "playwright-report", "blob-report", ".cache"]);
 const THEMES_MODELE = { sable: "clair", ardoise: "sombre" };
 const THEMES_FR = { clair: "Clair", sombre: "Sombre" };
@@ -295,7 +297,7 @@ export function entreesMecaniques(racine, c) {
       const j = JSON.parse(t);
       const p = j.packages;
       const clone = (o) => JSON.parse(renommer(JSON.stringify(o), c));
-      p[`apps/${c.id}`] = { ...clone(p[`apps/${MODELE}`]), dependencies: triee(clone(p[`apps/${MODELE}`]).dependencies) };
+      p[`apps/${c.id}`] = { ...clone(p[`apps/${MODELE}`]), dependencies: triee({ ...clone(p[`apps/${MODELE}`]).dependencies, ...Object.fromEntries(DEPENDANCES_COMMUNES.map((d) => [d, "*"])) }) };
       p[`packages/${c.id}-sim`] = clone(p[`packages/${MODELE}-sim`]);
       p[`node_modules/@cdj/${c.id}`] = clone(p[`node_modules/@cdj/${MODELE}`]);
       p[`node_modules/@cdj/${c.id}-sim`] = clone(p[`node_modules/@cdj/${MODELE}-sim`]);
@@ -379,12 +381,24 @@ export function intitulesDesRegles(texte, titre) {
   return sortie;
 }
 
+/**
+ * Lot B1 — où en est le jeu, lu sur le dépôt : **squelette** tant que ses catalogues portent encore les textes « À remplacer » du générateur, **seed vide** tant que `docs/<id>/seed.md` est le gabarit
+ * (« À écrire par Nathan »). Un jeu qui n'existe pas encore (plan à blanc) est l'un et l'autre. La passation d'un jeu qui a dépassé son squelette ne dit plus « squelette » et ne nomme plus le modèle.
+ */
+export function etatDuJeu(racine, id) {
+  const lireSi = (chemin) => (existsSync(join(racine, chemin)) ? lire(racine, chemin) : null);
+  const catalogue = lireSi(`apps/${id}/src/catalogue.fr.ts`);
+  const seed = lireSi(`docs/${id}/seed.md`);
+  return { squelette: catalogue === null || /À remplacer/.test(catalogue), seedVide: seed === null || /\*\*À écrire par Nathan\.\*\*/.test(seed) };
+}
+
 export function construirePassation(racine, fiche, { classement, teinte, aDefinir = true }) {
   // Lot T1 : la passation RENVOIE aux consignes au lieu de les résumer (elle faisait 22 Ko, et se périmait à chaque changement d'une règle). Elle ne garde
   // que ce qui est propre à ce jeu (état, fiche, zones) et la liste des intitulés des règles communes, lue dans le CLAUDE.md racine.
   const claude = lire(racine, "CLAUDE.md");
   const id = fiche.id;
   const nom = fiche.nom.fr;
+  const { squelette, seedVide } = etatDuJeu(racine, id);
   const autres = fichesExistantes(racine).filter((f) => f.id !== id);
   const tableauJeux = autres.map((f) => `- **${f.nom.fr}** (\`${f.id}\`) — classement : ${f.classement.colonnes[0].nom} ${f.classement.colonnes[0].sens === "desc" ? "↓" : "↑"}${f.temoin ? " — jeu témoin, jamais en production" : ""}`);
   const intitules = intitulesDesRegles(claude, "Règles communes à tous les lots");
@@ -394,13 +408,17 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
     `> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (\`docs/${id}/seed.md\`). Générée par \`npm run nouveau-jeu\` à partir des \`CLAUDE.md\` du dépôt : **ne pas la retoucher à la main** ; pour la mettre à jour après un changement des règles de la plateforme : \`npm run nouveau-jeu -- --id ${id} --passation\`.`,
     "",
     "## 1. Où en est ce jeu",
-    `- **${nom}** (\`${id}\`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). Il vient d'être créé par le générateur : l'état est \`off\` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis \`/admin/\` › Jeux : \`off\` → \`preview\` → \`on\`**.`,
-    `- **Le jeu de départ est un squelette** : « toucher des cibles » (${classement === "temps" ? "classé au temps croissant : toucher les 20 cibles le plus vite possible" : "classé au score décroissant : les cibles touchées en 30 secondes"}), copié du jeu témoin « Cibles ». Il est jouable, classé et rejoué par le serveur, avec tous les écrans de la plateforme ; **sa simulation, son rendu et ses textes sont à remplacer** par ceux du vrai jeu. Son vocabulaire (« ${id} » pour des cibles dans le code) n'est pas à garder.`,
+    `- **${nom}** (\`${id}\`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). ${squelette ? "Il vient d'être créé par le générateur : l'état" : "L'état de départ"} est \`off\` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis \`/admin/\` › Jeux : \`off\` → \`preview\` → \`on\`**.`,
+    ...(squelette
+      ? [`- **Le jeu de départ est un squelette** : « toucher des cibles » (${classement === "temps" ? "classé au temps croissant : toucher les 20 cibles le plus vite possible" : "classé au score décroissant : les cibles touchées en 30 secondes"}), copié du jeu témoin « Cibles ». Il est jouable, classé et rejoué par le serveur, avec tous les écrans de la plateforme ; **sa simulation, son rendu et ses textes sont à remplacer** par ceux du vrai jeu. Son vocabulaire (« ${id} » pour des cibles dans le code) n'est pas à garder.`]
+      : [`- **Le jeu a dépassé son squelette** : sa simulation, son rendu et ses textes sont ceux de ${nom}. L'état exact (ce qui est fait, ce qui reste, les décisions à relire) est dans \`docs/${id}/consignes.md\`, \`apps/${id}/CLAUDE.md\` et les README de \`docs/${id}/lots/\` ; **cette passation ne le résume pas**.`]),
     `- **Classement** : ${fiche.classement.colonnes.slice(0, -2).map((k) => `\`${k.nom}\` ${k.sens === "desc" ? "↓" : "↑"}`).join(", ")} (fiche \`config/jeux/${id}.json\`). Variante de départ : \`${classement}\` (\`packages/${id}-sim/src/variante.ts\` : tout ce qui dépend du sens du classement y est rangé).`,
     `- **Catégorie** : \`${fiche.categorie}\` (fiche, lot A3)${fiche.categorie === "arcade" ? " — un jeu d'arcade a son niveau du jour et son classement, mais ne compte ni dans la journée (journée parfaite, série, ligne de partage), ni dans le classement cumulé ; il a sa section « Arcade » sur l'accueil et ses onglets après le séparateur « Arcade » de /classement/" : " — il compte dans la journée (journée parfaite, série, ligne de partage) ; son classement n'entre au cumul que si Nathan le décide"}.`,
-    `- **Vision** : \`docs/${id}/seed.md\` — **à écrire par Nathan** (un gabarit vide avec ses titres). Tant qu'il est vide, le jeu de départ n'a pas de direction.`,
-    `- **Teinte de l'étiquette** : ${teinte[0]} / ${teinte[1]} — **à choisir par Nathan** (charte § 3 ; la fiche, \`etiquette\`) ; le générateur a pris la première teinte qu'aucun jeu n'utilise.`,
-    `- **Premier jour** : celui du modèle, \`${fiche.premierJour}\` — à régler au lancement du jeu (\`premierJour\` de la fiche, une ligne).`,
+    seedVide
+      ? `- **Vision** : \`docs/${id}/seed.md\` — **à écrire par Nathan** (un gabarit vide avec ses titres). Tant qu'il est vide, le jeu de départ n'a pas de direction.`
+      : `- **Vision** : \`docs/${id}/seed.md\` (**ne pas modifier**, c'est Nathan qui le fait).`,
+    `- **Teinte de l'étiquette** : ${teinte[0]} / ${teinte[1]} — **à choisir par Nathan** (charte § 3 ; la fiche, \`etiquette\`)${squelette ? " ; le générateur a pris la première teinte qu'aucun jeu n'utilise" : ""}.`,
+    `- **Premier jour** : ${squelette ? "celui du modèle, " : ""}\`${fiche.premierJour}\` — à régler au lancement du jeu (\`premierJour\` de la fiche, une ligne).`,
     "",
     "## 2. La plateforme en bref — et où lire les règles (elles ne sont pas recopiées ici)",
     "- **Du Jour** : un portail (`playdujour.com`) et des jeux quotidiens (un niveau par jour, identique pour tous, minuit à Paris), un profil commun, un serveur unique (`apps/api`) qui **rejoue chaque partie** pour classer. Un monorepo ; français et anglais.",
@@ -515,6 +533,17 @@ export async function planifier(opts) {
       const avant = 'export const VARIANTE_NOM: NomVariante = "score";';
       if (!texte.includes(avant)) throw new Error("variante.ts : la ligne VARIANTE_NOM a changé, le générateur doit suivre");
       texte = texte.replace(avant, `export const VARIANTE_NOM: NomVariante = "${opts.classement}";`);
+    }
+    if (cible === `apps/${c.id}/package.json`) {
+      const j = JSON.parse(texte);
+      j.dependencies = triee({ ...j.dependencies, ...Object.fromEntries(DEPENDANCES_COMMUNES.map((d) => [d, "*"])) });
+      texte = json(j);
+    }
+    if (cible === `apps/${c.id}/tsconfig.json`) {
+      // La dernière référence du modèle est `packages/ui` : les paquets communs déclarés d'office la suivent (ordre alphabétique : `ui` < `visuels`).
+      const fin = '{ "path": "../../packages/ui" }]';
+      if (!texte.includes(fin)) throw new Error(`${cible} : la dernière référence n'est plus packages/ui, le générateur doit suivre`);
+      texte = texte.replace(fin, `{ "path": "../../packages/ui" }, ${DEPENDANCES_COMMUNES.map((d) => `{ "path": "../../packages/${d.replace("@cdj/", "")}" }`).join(", ")}]`);
     }
     creations.push({ chemin: cible, contenu: texte });
   }

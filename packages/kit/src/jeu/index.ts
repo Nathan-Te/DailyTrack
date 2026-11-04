@@ -88,7 +88,9 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   const aide = secondaire(IDS.aide, "kit.accueil.aide");
   const reglages = secondaire(IDS.reglages, "kit.accueil.reglages");
   const attente = el("p", { classe: "jeu-attente", attrs: { role: "status", id: "jeu-attente" } });
-  const noteArchive = choix.archive || choix.refuse ? el("p", { classe: "jeu-archive", attrs: { role: "status", id: "jeu-archive" }, texte: choix.refuse ? t("kit.accueil.pasEncore") : t("kit.fin.archive") }) : null;
+  // Lot B1 : une partie d'essai (scénario, réglage…) que le jeu déclare non classable — le jour reste celui d'aujourd'hui, la partie n'est ni classée ni envoyée.
+  const essai = def.classable?.(location.search) === false;
+  const noteArchive = choix.archive || choix.refuse || essai ? el("p", { classe: "jeu-archive", attrs: { role: "status", id: "jeu-archive" }, texte: choix.refuse ? t("kit.accueil.pasEncore") : choix.archive ? t("kit.fin.archive") : t("kit.fin.essai") }) : null;
   const suite = el("div", { classe: "suite-du-jour", attrs: { hidden: true, id: "suite-du-jour" } });
   const classementTitre = el("span", { classe: "jeu-tuile__legende", texte: t("kit.accueil.classement") });
   const classementListe = el("ol", { classe: "jeu-rangs", attrs: { id: "jeu-classement" } });
@@ -190,7 +192,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   });
 
   // --- « Comment jouer » : une fois au premier lancement, puis à la demande ; Réglages ; le classement en dialogue (modules à la demande) ---
-  const ctx = () => ({ fiche, def, o, options, i18n, donnees: donnees!, jour, date, theme, archive: choix.archive, musique });
+  const ctx = () => ({ fiche, def, o, options, i18n, donnees: donnees!, jour, date, theme, archive: choix.archive, essai, musique });
   let aideMontee: Awaited<ReturnType<typeof import("./aide")["monterAide"]>> | null = null;
   const ouvrirAide = async (): Promise<void> => {
     await prets;

@@ -50,7 +50,30 @@ export function interieur(bs: readonly Boite8[], retrait: number): Rect[] {
       }
     }
   }
+  // Un point que quatre quarts de plan remplis se partagent (quatre cases autour d'un même point, ou deux cases qui s'appuient sur une troisième) : les ponts s'arrêtent tous à `retrait` du point,
+  // il resterait un petit carré d'encre au milieu de la forme. Un carré de `2 × retrait` le recouvre. Aucune forme de Tower n'a un tel point (`test/description.test.ts` le garde).
+  for (const [px, py] of pointsCommuns(b)) out.push(rect(px - retrait, px + retrait, py - retrait, py + retrait));
   return out;
+}
+
+/** Les coins de boîtes autour desquels les quatre quarts de plan sont couverts par une boîte (chaque boîte est prise par son côté du point : elle ne le recouvre pas, elle s'y appuie). */
+function pointsCommuns(b: readonly { x0: number; x1: number; y0: number; y1: number }[]): [number, number][] {
+  const vus = new Set<string>();
+  const sortie: [number, number][] = [];
+  for (const r of b) {
+    for (const px of [r.x0, r.x1]) {
+      for (const py of [r.y0, r.y1]) {
+        const cle = `${Math.round(px * 1e6)}:${Math.round(py * 1e6)}`;
+        if (vus.has(cle)) continue;
+        vus.add(cle);
+        // `sx` / `sy` : -1 = en deçà du point, +1 = au-delà ; une boîte couvre le quart si elle s'étend de ce côté et touche ou contient le point.
+        const couvert = (sx: number, sy: number): boolean =>
+          b.some((q) => (sx < 0 ? q.x0 < px - EPS && q.x1 > px - 2 * EPS : q.x0 < px + 2 * EPS && q.x1 > px + EPS) && (sy < 0 ? q.y0 < py - EPS && q.y1 > py - 2 * EPS : q.y0 < py + 2 * EPS && q.y1 > py + EPS));
+        if (couvert(-1, -1) && couvert(1, -1) && couvert(-1, 1) && couvert(1, 1)) sortie.push([px, py]);
+      }
+    }
+  }
+  return sortie;
 }
 
 /**
