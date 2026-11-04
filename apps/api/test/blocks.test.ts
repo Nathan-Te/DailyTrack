@@ -38,7 +38,7 @@ describe("Blocks sur le serveur", () => {
   it("sert la suite du jour de la simulation (serveur = jeu), jamais de preuve ; pas de médaille avant B3", async () => {
     const t = await monter();
     const info = await t.call("GET", "/api/blocks/info");
-    expect(info.body).toMatchObject({ game: "blocks", simVersion: 1, generatorVersion: 1, today: DATE });
+    expect(info.body).toMatchObject({ game: "blocks", simVersion: BLOCKS_SIM_VERSION, generatorVersion: BLOCKS_GENERATOR_VERSION, today: DATE });
     const jour = await t.call("GET", `/api/blocks/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.theme).toBe(themeDuJour(JOUR));

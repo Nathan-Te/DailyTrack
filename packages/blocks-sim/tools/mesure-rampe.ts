@@ -1,5 +1,5 @@
 import { daysFromCivil } from "@cdj/core";
-import { dailyBlocks, RAMPE_PAR_DEFAUT, type Rampe } from "../src/index";
+import { BLOCKS_GENERATOR_VERSION, dailyBlocks, RAMPE_PAR_DEFAUT, type Rampe } from "../src/index";
 import { jouerGlouton } from "../src/glouton";
 
 // `npm run mesure:rampe -w @cdj/blocks-sim -- [--graines=200] [--pente=4] [--rangmax=80]` : la durée (en pièces) des parties du glouton simple sur N jours, pour calibrer la rampe. Écrit médiane, quartiles, extrêmes.
@@ -10,7 +10,7 @@ const depart = daysFromCivil(2026, 11, 2);
 const durees: number[] = [];
 const scores: number[] = [];
 for (let i = 0; i < N; i++) {
-  const r = jouerGlouton(dailyBlocks(depart + i, 1, rampe)).resultat;
+  const r = jouerGlouton(dailyBlocks(depart + i, BLOCKS_GENERATOR_VERSION, rampe)).resultat;
   durees.push(r.poses);
   scores.push(r.score);
 }

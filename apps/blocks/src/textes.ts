@@ -18,3 +18,6 @@ export const texte = (cle: string, params?: Readonly<Record<string, string | num
 
 /** Un score écrit pour un joueur : `4 582 pts` (le nombre au format de la langue : « 4 582 » ou « 4,582 »). */
 export const ecrireScore = (n: number): string => texte("score.valeur", { n });
+
+/** La langue courante (`fr` sans traducteur) : pour écrire un nombre au format de la langue. */
+export const langueCourante = (): string => courant?.langue ?? "fr";

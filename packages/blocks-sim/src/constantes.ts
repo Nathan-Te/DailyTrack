@@ -2,8 +2,8 @@
 
 /** La version des RÈGLES (la pose, l'effacement, le barème, la fin). Elle monte à tout changement qui change une partie rejouée. */
 export const BLOCKS_SIM_VERSION = 1;
-/** La version du TIRAGE (la suite du jour : catalogue, poids, rampe, garde-fous). Elle monte à tout changement de ce que `dailyBlocks` produit. */
-export const BLOCKS_GENERATOR_VERSION = 1;
+/** La version du TIRAGE (la suite du jour : catalogue, poids, rampe, garde-fous). Elle monte à tout changement de ce que `dailyBlocks` produit. v2 (lot B2) : 40 pièces (grand T ajouté, pièce de 1 case retirée). */
+export const BLOCKS_GENERATOR_VERSION = 2;
 
 export const COLONNES = 8;
 export const LIGNES = 8;

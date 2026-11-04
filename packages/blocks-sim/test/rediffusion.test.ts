@@ -23,7 +23,8 @@ describe("rediffusion et rejeu", () => {
     expect(decoderRediffusion(texte).actions).toEqual(actions);
     expect(rejouer(contenu, texte)).toEqual(resultat);
     expect(resultat.raison).toBe("bloquee");
-    expect(texte.length).toBeLessThan(10 + Math.ceil((actions.length * 4) / 3));
+    // Un octet par pose : ce que les poses ajoutent au texte vide est leur nombre en base64url (4 caractères pour 3 octets), à un caractère près.
+    expect(texte.length - enregistrer(contenu, []).length).toBeLessThanOrEqual(Math.ceil((actions.length * 4) / 3) + 1);
   });
 
   it("refuse une action illégale", () => {
@@ -45,7 +46,7 @@ describe("rediffusion et rejeu", () => {
   });
   it("refuse un autre jour, une autre version, un texte illisible ou tronqué", () => {
     expect(refus(() => rejouer(dailyBlocks(JOUR + 1), enregistrer(contenu, actions)))).toBe("contenu_different");
-    expect(refus(() => rejouer(contenu, encoderRediffusion({ sim: 2, g: 1, contenu: { jour: JOUR }, actions })))).toBe("version_inconnue");
+    expect(refus(() => rejouer(contenu, encoderRediffusion({ sim: 2, g: BLOCKS_GENERATOR_VERSION, contenu: { jour: JOUR }, actions })))).toBe("version_inconnue");
     expect(refus(() => decoderRediffusion("pas-une-rediffusion"))).not.toBe("accepté");
     expect(refus(() => decoderRediffusion(""))).toBe("format_illisible");
     expect(refus(() => decoderRediffusion(enregistrer(contenu, actions).slice(0, 3)))).not.toBe("accepté");
@@ -60,6 +61,6 @@ describe("rediffusion et rejeu", () => {
   });
   it("une partie courte à la main (suite d'essai) se rejoue", () => {
     const c = contenuDEssai(["coin-0"], ["XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXX.."]);
-    expect(rejouer({ ...c, jour: JOUR, g: 1 }, enregistrer({ ...c, jour: JOUR }, [])).raison).toBe("bloquee");
+    expect(rejouer({ ...c, jour: JOUR, g: BLOCKS_GENERATOR_VERSION }, enregistrer({ ...c, jour: JOUR }, [])).raison).toBe("bloquee");
   });
 });

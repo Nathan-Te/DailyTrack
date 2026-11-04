@@ -15,14 +15,17 @@ import { CATALOGUE_FR } from "./catalogue.fr";
 import { DEFINITION } from "./definition";
 import { lireEssai } from "./essai";
 import { FICHE } from "./fiche";
+import { fournirMusique } from "./kitSon";
 import { fournirTraduction } from "./textes";
 
 // « Blocks » : tout le jeu tient dans `brancherJeu` — la fiche, la définition (simulation, rendu, aide) et les catalogues. Les écrans, l'interrupteur, le serveur, les records, les amis… sont le kit.
 // Un scénario ou une rampe réglée (`?scenario=`, `?debug&tune`) met la page en archive AVANT que le kit lise l'adresse : une partie d'essai n'est jamais classée ni envoyée (`essai.ts`).
 const essai = lireEssai(location.search, BUILD_RESTRICTED, parisDay(Date.now()));
 if (essai.adresse !== null) history.replaceState(null, "", `${location.pathname}${essai.adresse}${location.hash}`);
+const musique = brancherMusique("blocks", gameStorage);
+fournirMusique(musique);
 void brancherJeu(FICHE, DEFINITION, {
   catalogues: { fr: CATALOGUE_FR, chargerEn: () => import("./catalogue.en").then((m) => ({ jeu: m.CATALOGUE_EN, commun: m.CATALOGUE_COMMUN_EN })) },
-  musique: brancherMusique("blocks", gameStorage),
+  musique,
   racine: document.getElementById("app")!,
 }).then((b) => fournirTraduction({ get langue() { return b.i18n.langue; }, t: (cle, params) => b.i18n.t(cle, params) }));

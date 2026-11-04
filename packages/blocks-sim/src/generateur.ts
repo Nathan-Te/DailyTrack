@@ -27,9 +27,9 @@ export class ErreurGenerateur extends Error {
   }
 }
 
-/** Le contenu d'un jour. Les anciennes versions du tirage restent appelables tant qu'un jour figé les nomme (ici : une seule). */
+/** Le contenu d'un jour. Une seule version du tirage reste appelable (la v2) : la v1 (37 pièces) n'a jamais servi un jour classé, le jeu étant `off`. */
 export function dailyBlocks(jour: number, version: number = BLOCKS_GENERATOR_VERSION, rampe?: Rampe): Contenu {
-  if (version !== 1) throw new ErreurGenerateur(`version de tirage inconnue : ${version}`);
+  if (version !== BLOCKS_GENERATOR_VERSION) throw new ErreurGenerateur(`version de tirage inconnue : ${version}`);
   const regle = rampe && (rampe.pente !== RAMPE_PAR_DEFAUT.pente || rampe.rangMax !== RAMPE_PAR_DEFAUT.rangMax);
   return { jour, g: version, suite: genererSuite(graineDuJour(jour), rampe ?? RAMPE_PAR_DEFAUT, PLAFOND_PIECES), ...(regle ? { rampe } : {}) };
 }

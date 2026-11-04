@@ -14,17 +14,23 @@ const DEFINITIONS: Record<NomScenario, Definition> = {
   // Une pose du rectangle 3 × 2 en (5, 6) remplit les lignes 6 et 7 ET la colonne 7 : 2 lignes + 1 colonne d'un coup (n = 3), sans vider la grille (les deux cases de la colonne 0 restent).
   "presque-plein": {
     depart: ["X......X", "X......X", ".......X", ".......X", ".......X", ".......X", "XXXXX...", "XXXXX..."],
-    debut: ["rect-0", "mono-0", "coin-0", "domino-1", "barre3-0"],
+    debut: ["rect-0", "domino-0", "coin-0", "domino-1", "barre3-0"],
   },
   // Chaque case vide est seule (un damier) : le domino ne tient nulle part, la partie finit tout de suite.
   blocage: {
     depart: ["X.X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X"],
-    debut: ["domino-0", "mono-0"],
+    debut: ["domino-0", "domino-0"],
   },
   // Le domino vertical posé en (7, 6) complète les lignes 6 et 7 : la grille est vide, +300.
   "plateau-vide": {
     depart: ["........", "........", "........", "........", "........", "........", "XXXXXXX.", "XXXXXXX."],
-    debut: ["domino-1", "mono-0", "barre3-0"],
+    debut: ["domino-1", "domino-0", "barre3-0"],
+  },
+  // Quatre poses de suite effacent chacune une ligne : le domino horizontal posé en (6, 4), (6, 5), (6, 6) puis (6, 7) achève les lignes 4 à 7. Le combo monte de 1 à 4 (effacements de 10, 20, 30 puis 40) ; une case de la
+  // ligne 0 reste, la grille n'est jamais vide (pas de +300 qui masquerait la montée des demi-tons).
+  combo: {
+    depart: ["X.......", "........", "........", "........", "XXXXXX..", "XXXXXX..", "XXXXXX..", "XXXXXX.."],
+    debut: ["domino-0", "domino-0", "domino-0", "domino-0", "barre3-0"],
   },
 };
 

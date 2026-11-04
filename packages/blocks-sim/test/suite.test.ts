@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
 import { jouerGlouton } from "../src/glouton";
-import { dailyBlocks, empreinteContenu, genererSuite, graineDuJour, NB_PIECES, PIECES, PLAFOND_PIECES, poidsAuRang, RAMPE_PAR_DEFAUT, RANGS_SANS_TRES_GROSSE, estClassable } from "../src/index";
+import { BLOCKS_GENERATOR_VERSION, dailyBlocks, empreinteContenu, genererSuite, graineDuJour, NB_PIECES, PIECES, PLAFOND_PIECES, poidsAuRang, RAMPE_PAR_DEFAUT, RANGS_SANS_TRES_GROSSE, estClassable } from "../src/index";
 
 const JOUR = daysFromCivil(2026, 11, 2);
 const GRAINES = Array.from({ length: 1000 }, (_, i) => graineDuJour(JOUR + i));
@@ -15,6 +15,23 @@ describe("la suite du jour", () => {
     expect(empreinteContenu(dailyBlocks(JOUR + 1))).not.toBe(empreinteContenu(a));
     expect(a.suite.every((id) => id >= 0 && id < NB_PIECES)).toBe(true);
     expect(estClassable(a)).toBe(true);
+  });
+
+  it("v2 : aucune pièce de 1 case sur 1 000 graines, et le grand T sort (jamais deux boîtes de 3 × 3 de suite, jamais parmi les 6 premières)", () => {
+    expect(PIECES.some((p) => p.cases === 1)).toBe(false);
+    let grandsT = 0;
+    for (const g of GRAINES) {
+      const s = genererSuite(g, RAMPE_PAR_DEFAUT, 300);
+      for (const [i, id] of s.entries()) {
+        const p = PIECES[id]!;
+        expect(p.cases, `rang ${i}`).toBeGreaterThanOrEqual(2);
+        if (p.nom.startsWith("grandt")) {
+          grandsT++;
+          expect(i).toBeGreaterThanOrEqual(RANGS_SANS_TRES_GROSSE);
+        }
+      }
+    }
+    expect(grandsT).toBeGreaterThan(0);
   });
 
   it("la pièce de rang i ne dépend que de la graine et de i : un préfixe de la suite est le début de la suite entière", () => {
@@ -65,15 +82,15 @@ describe("la suite du jour", () => {
   });
 
   it("une rampe réglée donne un contenu « réglé » (jamais classé) ; la rampe du jeu non", () => {
-    expect(estClassable(dailyBlocks(JOUR, 1, { ...RAMPE_PAR_DEFAUT }))).toBe(true);
-    const c = dailyBlocks(JOUR, 1, { pente: 0, rangMax: 10 });
+    expect(estClassable(dailyBlocks(JOUR, BLOCKS_GENERATOR_VERSION, { ...RAMPE_PAR_DEFAUT }))).toBe(true);
+    const c = dailyBlocks(JOUR, BLOCKS_GENERATOR_VERSION, { pente: 0, rangMax: 10 });
     expect(estClassable(c)).toBe(false);
     expect(c.suite).not.toEqual(dailyBlocks(JOUR).suite);
   });
 
   it("la rampe rend les parties plus courtes : la médiane du glouton simple (200 jours) est plus petite avec la rampe du jeu que sans", () => {
     const mediane = (pente: number): number => {
-      const n = Array.from({ length: 200 }, (_, i) => jouerGlouton(dailyBlocks(JOUR + i, 1, { pente, rangMax: RAMPE_PAR_DEFAUT.rangMax })).resultat.poses).sort((a, b) => a - b);
+      const n = Array.from({ length: 200 }, (_, i) => jouerGlouton(dailyBlocks(JOUR + i, BLOCKS_GENERATOR_VERSION, { pente, rangMax: RAMPE_PAR_DEFAUT.rangMax })).resultat.poses).sort((a, b) => a - b);
       return n[100]!;
     };
     expect(mediane(RAMPE_PAR_DEFAUT.pente)).toBeLessThan(mediane(0));
