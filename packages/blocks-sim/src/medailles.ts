@@ -1,7 +1,6 @@
-import type { Contenu } from "./generateur";
-
-// Les MÉDAILLES attendent le lot B3 (le bot Diamant, ses seuils). En attendant (lot B1), un jour n'a pas de médaille : les seuils sont à zéro et `medailleDe` ne rend rien. Le serveur dit la même chose
-// (`apps/api/src/blocks.ts` : `seuils` rend `null`). Le Diamant sera la partie d'un bot : pour chaque pièce, il essaiera toutes les positions en regardant la pièce suivante.
+// Les MÉDAILLES (lot B3, seed § 5). **Diamant** = le score du bot Diamant sur la suite du jour (`diamant.ts` ; dans les données la clé reste `auteur`, `author`). **Or, argent, bronze** = des fractions ENTIÈRES du Diamant
+// (en pour cent), les mêmes tous les jours : `FRACTIONS_MEDAILLES`, calibrées sur 1 000 jours (`npm run calibrer:medailles`, README du lot B3). Ce fichier est pur et léger (il est dans le premier chargement du jeu) ;
+// le calcul du Diamant, lui, est dans `diamant.ts` (`seuilsDe`), chargé avec le corps du jeu et par le serveur. Les fractions font partie des règles du classement avec le bot : les changer monte `BLOCKS_BOT_VERSION`.
 export type Medaille = "author" | "gold" | "silver" | "bronze";
 export interface Seuils {
   author: number;
@@ -9,5 +8,21 @@ export interface Seuils {
   silver: number;
   bronze: number;
 }
-export const seuilsDe = (_contenu: Contenu): Seuils => ({ author: 0, gold: 0, silver: 0, bronze: 0 });
-export const medailleDe = (_score: readonly number[], _s: Seuils): Medaille | null => null;
+
+/** Or, argent et bronze, en pour cent du Diamant (= le `bareme` de la fiche, dans cet ordre). */
+export const FRACTIONS_MEDAILLES = { gold: 60, silver: 20, bronze: 8 } as const;
+
+/** Les seuils d'un jour d'après le score du Diamant. Entiers, **strictement croissants** : bronze < argent < or < Diamant (un Diamant trop petit pour cela donne des seuils 1, 2, 3, 4 au minimum). */
+export function seuilsDepuis(diamant: number): Seuils {
+  const d = Math.max(4, Math.floor(diamant));
+  const bronze = Math.max(1, Math.floor((d * FRACTIONS_MEDAILLES.bronze) / 100));
+  const silver = Math.max(bronze + 1, Math.floor((d * FRACTIONS_MEDAILLES.silver) / 100));
+  const gold = Math.max(silver + 1, Math.floor((d * FRACTIONS_MEDAILLES.gold) / 100));
+  return { author: Math.max(d, gold + 1), gold, silver, bronze };
+}
+
+/** La médaille d'un score (les colonnes de classement ; la première est le score) : la plus haute dont le seuil est atteint. */
+export function medailleDe(score: readonly number[], s: Seuils): Medaille | null {
+  const v = score[0] ?? 0;
+  return v >= s.author ? "author" : v >= s.gold ? "gold" : v >= s.silver ? "silver" : v >= s.bronze ? "bronze" : null;
+}

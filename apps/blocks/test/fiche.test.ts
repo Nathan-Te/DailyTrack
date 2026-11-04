@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, dailyBlocks, numeroBlocks, PREMIER_JOUR_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
+import { describe, expect, it, vi } from "vitest";
+import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, dailyBlocks, medailleDe, numeroBlocks, PREMIER_JOUR_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
+import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_BLOCKS } from "../src/catalogue";
 import { DEFINITION } from "../src/definition";
@@ -40,15 +41,25 @@ describe("« Blocks » : le client suit sa fiche", () => {
       for (const k of [...DEFINITION.aide, "page.titre", "scene.aria", ...DEFINITION.actions.map((a) => `commandes.action.${a.id}`)]) expect(c, `${lang} ${k}`).toHaveProperty([k]);
     }
   });
-  it("la définition : numéro, thème, pas de médaille avant B3, texte du score et du partage", () => {
+  it("la définition : numéro, thème, médailles du bot Diamant, texte du score et du partage", async () => {
+    vi.stubGlobal("location", { search: "", pathname: "/" });
     const J = PREMIER_JOUR_BLOCKS + 3;
     expect(DEFINITION.numero(J)).toBe(numeroBlocks(J));
     expect(DEFINITION.numero(J)).toBe(4);
     expect(DEFINITION.themeDuJour(J)).toBe(themeDuJour(J));
-    const c = dailyBlocks(J);
-    expect(DEFINITION.medaille([4582, 7], DEFINITION.seuils(c))).toBeNull();
+    const c = await DEFINITION.contenuDuJour(J, "http://localhost/blocks/"); // charge le corps du jeu (palette, bot), comme l'accueil
+    expect(c.suite).toEqual(dailyBlocks(J).suite);
+    const s = DEFINITION.seuils(c);
+    expect(s).toEqual(seuilsDe(c)); // les seuils du serveur : le Diamant est la partie du bot
+    expect(DEFINITION.medaille([jouerDiamant(c).resultat.score, 0], s)).toBe("author");
+    expect(DEFINITION.medaille([s.silver, 0], s)).toBe(medailleDe([s.silver, 0], s));
+    expect(DEFINITION.medaille([0, 0], s)).toBeNull();
+    expect(DEFINITION.classable!("?seed=2026-11-02&bot")).toBe(false); // `&bot` : jamais classée
+    expect(DEFINITION.classable!("?seed=2026-11-02")).toBe(true);
+    expect(DEFINITION.classable!("?theme=nuit")).toBe(true); // un thème forcé ne change rien à la partie
     // Sans traducteur (Node) : le français du catalogue, « 4 582 pts » (le nombre au format de la langue est celui de `remplir`).
     expect(DEFINITION.formatScore([120, 3], "fr")).toBe("120 pts");
     expect(DEFINITION.scorePartage([120, 3], "en")).toBe("120 pts");
+    vi.unstubAllGlobals();
   });
 });

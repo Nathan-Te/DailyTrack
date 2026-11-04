@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1964 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1984 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -682,8 +682,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.tower.nuit` | Nuit | Night |
 | `portail.theme.cibles.sable` | Sable | Sand |
 | `portail.theme.cibles.ardoise` | Ardoise | Slate |
-| `portail.theme.blocks.clair` | Clair (à remplacer) | Light (to replace) |
-| `portail.theme.blocks.sombre` | Sombre (à remplacer) | Dark (to replace) |
+| `portail.theme.blocks.port` | Port | Harbour |
+| `portail.theme.blocks.chantier` | Chantier | Building site |
+| `portail.theme.blocks.canyon` | Canyon | Canyon |
+| `portail.theme.blocks.banquise` | Banquise | Ice floe |
+| `portail.theme.blocks.jungle` | Jungle | Jungle |
+| `portail.theme.blocks.nuit` | Nuit | Night |
 | `portail.journee` | Journée {numero} | Day {numero} |
 | `portail.classement.legende` | Classement du jour | Today's leaderboard |
 | `portail.classement.cumul` | {temps} cumulés | {temps} combined |
@@ -2499,8 +2503,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `accueil.phrase.clair` | Pose, efface, enchaîne : la même suite de pièces pour tout le monde. | Place, clear, chain: the same run of pieces for everyone. |
-| `accueil.phrase.sombre` | Un coup d'œil, un geste : la grille t'attend, la même pour tous. | One glance, one gesture: the grid is waiting, the same for all. |
+| `accueil.phrase.port` | « Le port s'éveille. Les pièces s'alignent sur le quai, la même suite pour tout le monde. » | “The harbor is waking up. The pieces line up on the quay, the same run for everyone.” |
+| `accueil.phrase.chantier` | « Le chantier est ouvert. Les pièces attendent d'être posées, dans le même ordre pour tous. » | “The site is open. The pieces wait to be placed, in the same order for all.” |
+| `accueil.phrase.canyon` | « Le canyon résonne. Chaque pièce y trouve sa place, la même pour tous. » | “The canyon echoes. Every piece finds its place, the same for all.” |
+| `accueil.phrase.banquise` | « Sur la banquise, tout glisse sauf les pièces. Elles tombent dans le même ordre pour tous. » | “On the ice floe everything slides but the pieces. They fall in the same order for all.” |
+| `accueil.phrase.jungle` | « La jungle a repoussé pendant la nuit. Les pièces s'y accrochent, les mêmes pour tous. » | “The jungle grew back overnight. The pieces cling to it, the same for all.” |
+| `accueil.phrase.nuit` | « Il fait nuit. Les pièces brillent dans le noir, la même suite pour tout le monde. » | “It is night. The pieces glow in the dark, the same run for everyone.” |
 
 ### Commandes (`commandes.*`, `apps/blocks/src/catalogue.*.ts`)
 
@@ -2657,5 +2665,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `theme.clair` | Clair | Light |
-| `theme.sombre` | Sombre | Dark |
+| `theme.port` | Port | Harbor |
+| `theme.chantier` | Chantier | Building site |
+| `theme.canyon` | Canyon | Canyon |
+| `theme.banquise` | Banquise | Ice floe |
+| `theme.jungle` | Jungle | Jungle |
+| `theme.nuit` | Nuit | Night |

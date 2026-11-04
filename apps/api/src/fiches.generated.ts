@@ -363,15 +363,15 @@ export const FICHES_SERVEUR = [
     "medailles": {
       "methode": "pourcentage-diamant",
       "bareme": [
-        50,
-        30,
-        15
-      ],
-      "plafondDiamant": 20
+        60,
+        20,
+        8
+      ]
     },
     "versions": {
       "sim": "packages/blocks-sim/src/constantes.ts:BLOCKS_SIM_VERSION",
-      "generateur": "packages/blocks-sim/src/constantes.ts:BLOCKS_GENERATOR_VERSION"
+      "generateur": "packages/blocks-sim/src/constantes.ts:BLOCKS_GENERATOR_VERSION",
+      "medailles": "packages/blocks-sim/src/constantes.ts:BLOCKS_BOT_VERSION"
     },
     "jours": {
       "mode": "fichier-par-jour",

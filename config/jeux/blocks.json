@@ -42,22 +42,26 @@
   "medailles": {
     "methode": "pourcentage-diamant",
     "bareme": [
-      50,
-      30,
-      15
-    ],
-    "plafondDiamant": 20
+      60,
+      20,
+      8
+    ]
   },
   "partage": {
     "extras": []
   },
   "themes": [
-    "clair",
-    "sombre"
+    "port",
+    "chantier",
+    "canyon",
+    "banquise",
+    "jungle",
+    "nuit"
   ],
   "versions": {
     "sim": "packages/blocks-sim/src/constantes.ts:BLOCKS_SIM_VERSION",
-    "generateur": "packages/blocks-sim/src/constantes.ts:BLOCKS_GENERATOR_VERSION"
+    "generateur": "packages/blocks-sim/src/constantes.ts:BLOCKS_GENERATOR_VERSION",
+    "medailles": "packages/blocks-sim/src/constantes.ts:BLOCKS_BOT_VERSION"
   },
   "jours": {
     "mode": "fichier-par-jour",
@@ -91,8 +95,12 @@
   "musique": {
     "scenes": [
       "menu",
-      "theme:clair",
-      "theme:sombre"
+      "theme:port",
+      "theme:chantier",
+      "theme:canyon",
+      "theme:banquise",
+      "theme:jungle",
+      "theme:nuit"
     ]
   },
   "admin": {
@@ -176,6 +184,10 @@
         "blocks-jeu"
       ],
       "sensations.spec.ts": [
+        "blocks-sim",
+        "blocks-jeu"
+      ],
+      "bot-themes.spec.ts": [
         "blocks-sim",
         "blocks-jeu"
       ]

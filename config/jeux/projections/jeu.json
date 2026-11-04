@@ -168,13 +168,21 @@
       "messageOu": "blocks",
       "zoneNouveautes": "blocks",
       "themes": [
-        "clair",
-        "sombre"
+        "port",
+        "chantier",
+        "canyon",
+        "banquise",
+        "jungle",
+        "nuit"
       ],
       "scenes": [
         "menu",
-        "theme:clair",
-        "theme:sombre"
+        "theme:port",
+        "theme:chantier",
+        "theme:canyon",
+        "theme:banquise",
+        "theme:jungle",
+        "theme:nuit"
       ]
     }
   ],

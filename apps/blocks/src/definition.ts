@@ -1,5 +1,9 @@
-import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, medailleDe, numeroBlocks, seuilsDe, themeDuJour, type Contenu } from "@cdj/blocks-sim";
+import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, medailleDe, numeroBlocks, type Contenu, type Seuils } from "@cdj/blocks-sim";
+import { parisDay } from "@cdj/clock";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
+import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
+import { lireEssai } from "./essai";
+import { themeAffiche } from "./themeAffiche";
 import { ecrireScore } from "./textes";
 
 // La définition de « Blocks » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Le corps du jeu (le tirage de la suite, les scénarios, la scène, les blocs communs) est à la demande**
@@ -16,16 +20,17 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
     { id: "bas", clavier: ["ArrowDown", "KeyS"], manette: null },
     { id: "poser", clavier: ["Space", "Enter"], manette: "b0" },
   ],
-  themeDuJour,
+  themeDuJour: themeAffiche, // le thème du jour (sac commun), ou `?theme=` hors production
   numero: numeroBlocks,
   async contenuDuJour(jour, base) {
     corps ??= await import("./corps");
     return corps.contenuDuJour(jour, base);
   },
-  seuils: (c) => seuilsDe(c), // pas de médaille avant B3
+  seuils: (c) => corps!.seuilsDeBlocks(c), // le Diamant (bot) et ses fractions, dans le corps du jeu (à la demande)
   medaille: (score, s) => medailleDe(score, s),
   nouvellePartie: (c, hote, o) => corps!.nouvellePartieBlocks(c, hote, o),
-  rediffusionDiamant: () => "", // le Diamant (bot) et le fantôme viennent aux lots B3 et B4
+  rediffusionDiamant: () => "", // le fantôme (et la partie du Diamant en fantôme) vient au lot B4
+  classable: (adresse) => lireEssai(adresse, BUILD_RESTRICTED, parisDay(Date.now())).bot === null, // `&bot` : le bot joue, la partie n'est jamais classée (essai local)
   formatScore: (score) => ecrireScore(score[0] ?? 0),
   scorePartage: (score) => ecrireScore(score[0] ?? 0),
   aide: ["aide.point1", "aide.point2", "aide.point3"],

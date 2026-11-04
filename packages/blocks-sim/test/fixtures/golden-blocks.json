@@ -1,71 +1,132 @@
 {
-  "_": "Golden de Blocks (lot B1). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
+  "_": "Golden de Blocks (lots B1 et B3). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
   "sim": 1,
-  "generateur": 2,
+  "generateur": 3,
+  "bot": 1,
   "jours": [
     {
       "date": "2026-11-02",
-      "empreinte": "a8c52e5a"
+      "empreinte": "51a2d24a",
+      "seuils": {
+        "author": 12465,
+        "gold": 7479,
+        "silver": 2493,
+        "bronze": 997
+      }
     },
     {
       "date": "2026-11-05",
-      "empreinte": "35f903c2"
+      "empreinte": "9ac48ab0",
+      "seuils": {
+        "author": 7520,
+        "gold": 4512,
+        "silver": 1504,
+        "bronze": 601
+      }
     },
     {
       "date": "2026-11-08",
-      "empreinte": "af5405d0"
+      "empreinte": "5629732e",
+      "seuils": {
+        "author": 5908,
+        "gold": 3544,
+        "silver": 1181,
+        "bronze": 472
+      }
     },
     {
       "date": "2026-11-11",
-      "empreinte": "904c0256"
+      "empreinte": "ad861452",
+      "seuils": {
+        "author": 22987,
+        "gold": 13792,
+        "silver": 4597,
+        "bronze": 1838
+      }
     },
     {
       "date": "2026-11-14",
-      "empreinte": "ce27e68a"
+      "empreinte": "1a4ee8b0",
+      "seuils": {
+        "author": 27419,
+        "gold": 16451,
+        "silver": 5483,
+        "bronze": 2193
+      }
     },
     {
       "date": "2026-11-17",
-      "empreinte": "0338f14e"
+      "empreinte": "6c8ccf22",
+      "seuils": {
+        "author": 1894,
+        "gold": 1136,
+        "silver": 378,
+        "bronze": 151
+      }
     },
     {
       "date": "2026-11-20",
-      "empreinte": "1c38b90a"
+      "empreinte": "d4846c5e",
+      "seuils": {
+        "author": 6806,
+        "gold": 4083,
+        "silver": 1361,
+        "bronze": 544
+      }
     },
     {
       "date": "2026-11-23",
-      "empreinte": "53d40d79"
+      "empreinte": "ccf6b91f",
+      "seuils": {
+        "author": 2264,
+        "gold": 1358,
+        "silver": 452,
+        "bronze": 181
+      }
     },
     {
       "date": "2026-11-26",
-      "empreinte": "d6c56f09"
+      "empreinte": "92ae94b4",
+      "seuils": {
+        "author": 21792,
+        "gold": 13075,
+        "silver": 4358,
+        "bronze": 1743
+      }
     },
     {
       "date": "2026-11-29",
-      "empreinte": "0a8dafae"
+      "empreinte": "baa1c712",
+      "seuils": {
+        "author": 4770,
+        "gold": 2862,
+        "silver": 954,
+        "bronze": 381
+      }
     }
   ],
   "rediffusions": [
     {
       "nom": "glouton-jour-1",
       "date": "2026-11-02",
-      "g": 2,
-      "code": "AQECAJeiATAgBzUfABkIMxslIQM2EA",
+      "g": 3,
+      "code": "AQEDAJeiAQAQBhYFESgTLQcUISQoLSoB",
       "resultat": {
-        "score": 119,
+        "score": 105,
         "combo": 2,
-        "poses": 15,
+        "poses": 17,
         "raison": "bloquee"
       }
     },
     {
       "nom": "glouton-jour-4",
       "date": "2026-11-11",
-      "g": 2,
-      "code": "AQECAKCiAQA4MC0rAiEqEAooFBgFEB4AGhoqMwIJLSgdBRs",
+      "g": 3,
+      "code": "AQEDAKCiAQAIECAECxIiMisOIw0YGSMjJhQgKg",
       "resultat": {
-        "score": 448,
-        "combo": 5,
-        "poses": 28,
+        "score": 132,
+        "combo": 2,
+        "poses": 21,
         "raison": "bloquee"
       }
     },
@@ -73,12 +134,12 @@
       "nom": "glouton-presque-plein",
       "date": "1970-01-01",
       "scenario": "presque-plein",
-      "g": 2,
-      "code": "AQECAQ1wcmVzcXVlLXBsZWluNQEQCQMKFCAFIQULCA4NMR4s",
+      "g": 3,
+      "code": "AQEDAQ1wcmVzcXVlLXBsZWluNQEQCQMGAiASDAsHFAwFAAwjJQoyCBotBwIq",
       "resultat": {
-        "score": 215,
-        "combo": 3,
-        "poses": 18,
+        "score": 413,
+        "combo": 6,
+        "poses": 27,
         "raison": "bloquee"
       }
     },
@@ -86,12 +147,49 @@
       "nom": "blocage",
       "date": "1970-01-01",
       "scenario": "blocage",
-      "g": 2,
-      "code": "AQECAQdibG9jYWdl",
+      "g": 3,
+      "code": "AQEDAQdibG9jYWdl",
       "resultat": {
         "score": 0,
         "combo": 0,
         "poses": 0,
+        "raison": "bloquee"
+      }
+    },
+    {
+      "nom": "diamant-jour-1",
+      "date": "2026-11-02",
+      "g": 3,
+      "code": "AQEDAJeiAQcABRYmAQMEBDYVCAEGCTA7NQ0QLh4GOC4dFAAWKAMbBgsIGDoOGxgeEQIZIRsxAAIiPiYSDQQHFQgVBSgDAiwfJBQBGSEELSAyCAodCC4xNjA0DgwdEiwuISQAFBEhLSsEBwQCGzQDOjUzGjArGjICMCMlHSAFAgAECgAYEhoBFAkSDyUGJyMDAREwGwQ7BhYhJB0FACwuBRwFAwUtGAMADBMOLQ0qCQIeBRodJyQaMTQWGBMdBSsmKBATEBYB",
+      "resultat": {
+        "score": 12465,
+        "combo": 26,
+        "poses": 191,
+        "raison": "bloquee"
+      }
+    },
+    {
+      "nom": "diamant-jour-4",
+      "date": "2026-11-11",
+      "g": 3,
+      "code": "AQEDAKCiAQAEMAcyBi4VHjUuMDYtJQUVPTMkIyApICgQMAAWADEZAAUYMC0LEwwFCAACLCsyFAMMCAYqBQIACwgSGQYCGxYuFg0EAyotCCsoLQkLGxYQEygCJAQABgkcAxAIOC4oACcWGBwgKiAtGjQ1EDMAGDABBRA8IxQROAAwIBEVACUzHjUoLCobNSQDKgQBAQwxNBAgEDMSMwUcAxQbKRQ4EgMsLAUiIgApMAAJEBMCMAAsCygQHgUbJAEAGCkRASEqMAo1AioSISgjLh4EBgALNCgpCQEoECopIBwmISAFFhIkLRcAKBgDIAAlKhoIFAQsFRAtIwQeFRgSFjIQDBgbAgsZMSQcDgsEHy0bKQIhEQYtHjYVEgAJBhAMKhYILighKxsYOhMjCAsDICQrHQ4KFiAIAhUbEA0tBA4xNS0VMBMFNBM",
+      "resultat": {
+        "score": 22987,
+        "combo": 41,
+        "poses": 322,
+        "raison": "bloquee"
+      }
+    },
+    {
+      "nom": "diamant-presque-plein",
+      "date": "1970-01-01",
+      "scenario": "presque-plein",
+      "g": 3,
+      "code": "AQEDAQ1wcmVzcXVlLXBsZWluNQEwEAMGDQUgCQIaOi0DAC8dBDUdBg4tBQYdJgAOGQ8VCyU2MBsYEBsWKhMeABE0BQEgIQwaAxQQJCo0KDkpACIOChsEBwEDKwUtBBMQFSoVEh0kKBEuLzEsMhMuKxAcBhYYBh4XKC4UNgIUMCsTCRIIGh8CDRsKMRgTDjsFNR0DCBsWBBkqGSsIEQEGAhsEBg",
+      "resultat": {
+        "score": 4937,
+        "combo": 16,
+        "poses": 145,
         "raison": "bloquee"
       }
     }
