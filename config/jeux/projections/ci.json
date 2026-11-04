@@ -1104,6 +1104,107 @@
       ],
       "outilsAdmin": false,
       "temoin": true
+    },
+    {
+      "id": "blocks",
+      "zones": {
+        "jeu": [
+          "apps/blocks/**",
+          "packages/blocks-sim/**",
+          "apps/api/src/blocks*.ts",
+          "apps/api/test/blocks*.test.ts",
+          "apps/api/scripts/blocks-*.ts",
+          "docs/blocks/**"
+        ],
+        "serveur": [
+          "apps/api/src/blocks*.ts",
+          "apps/api/test/blocks*.test.ts",
+          "apps/api/scripts/blocks-*.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/blocks/e2e",
+        "suite": "blocks",
+        "fumee": [
+          "determinisme.spec.ts",
+          "partie.spec.ts",
+          "poids.spec.ts"
+        ],
+        "zones": {
+          "blocks-sim": {
+            "globs": [
+              "packages/blocks-sim/**"
+            ]
+          },
+          "blocks-jeu": {
+            "globs": [
+              "apps/blocks/index.html",
+              "apps/blocks/vite.config.ts",
+              "apps/blocks/verify.html",
+              "apps/blocks/src/*"
+            ]
+          },
+          "api-blocks": {
+            "globs": [
+              "apps/api/src/blocks*.ts",
+              "apps/api/scripts/blocks-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "determinisme.spec.ts": [
+            "blocks-sim",
+            "blocks-jeu",
+            "core-clock"
+          ],
+          "partie.spec.ts": [
+            "blocks-sim",
+            "blocks-jeu",
+            "ui"
+          ],
+          "classement.spec.ts": [
+            "blocks-sim",
+            "blocks-jeu",
+            "api-blocks",
+            "api-jeux"
+          ],
+          "poids.spec.ts": [
+            "blocks-jeu",
+            "ui"
+          ]
+        },
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        }
+      },
+      "app": "blocks",
+      "jours": {
+        "dossier": "apps/blocks/public/jours",
+        "registre": null,
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/blocks-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/blocks-sim",
+            "script": "figer:blocks",
+            "forme": "jours-proteges"
+          }
+        }
+      },
+      "sim": "blocks-sim",
+      "budget": [
+        "blocks.jsCss"
+      ],
+      "budgetALaDemande": [
+        "partie-",
+        "classement-",
+        "reglages-",
+        "retours-",
+        "version-"
+      ],
+      "outilsAdmin": false
     }
   ]
 }

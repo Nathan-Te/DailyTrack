@@ -26,6 +26,13 @@
       "accroche": "portail.cibles.accroche",
       "cumul": false,
       "format": "entier"
+    },
+    {
+      "id": "blocks",
+      "accroche": "portail.blocks.accroche",
+      "cumul": false,
+      "categorie": "arcade",
+      "format": "entier"
     }
   ]
 }

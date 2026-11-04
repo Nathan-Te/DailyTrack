@@ -1,0 +1,186 @@
+{
+  "id": "blocks",
+  "code": "blocks",
+  "ordre": 5,
+  "nom": {
+    "fr": "Blocks",
+    "en": "Blocks"
+  },
+  "accroche": "portail.blocks.accroche",
+  "etiquette": {
+    "fond": "#B8D8F4",
+    "coque": "#1F4E79",
+    "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+    "dessin": "generique"
+  },
+  "etatDepart": "off",
+  "premierJour": "2026-11-02",
+  "categorie": "arcade",
+  "classement": {
+    "colonnes": [
+      {
+        "nom": "touches",
+        "sens": "desc"
+      },
+      {
+        "nom": "dernier",
+        "sens": "asc"
+      },
+      {
+        "nom": "submitted_at",
+        "sens": "asc"
+      },
+      {
+        "nom": "player_id",
+        "sens": "asc"
+      }
+    ],
+    "cumul": false,
+    "unite": "points",
+    "format": "entier"
+  },
+  "medailles": {
+    "methode": "pourcentage-diamant",
+    "bareme": [
+      50,
+      30,
+      15
+    ],
+    "plafondDiamant": 20
+  },
+  "partage": {
+    "extras": []
+  },
+  "themes": [
+    "clair",
+    "sombre"
+  ],
+  "versions": {
+    "sim": "packages/blocks-sim/src/constantes.ts:BLOCKS_SIM_VERSION",
+    "generateur": "packages/blocks-sim/src/constantes.ts:BLOCKS_GENERATOR_VERSION"
+  },
+  "jours": {
+    "mode": "fichier-par-jour",
+    "dossier": "apps/blocks/public/jours",
+    "preuveInterditeEnProd": true,
+    "fabrication": {
+      "empreinte": "apps/api/scripts/blocks-empreintes.ts",
+      "figer": {
+        "paquet": "@cdj/blocks-sim",
+        "script": "figer:blocks",
+        "forme": "jours-proteges"
+      }
+    }
+  },
+  "rejeu": {
+    "unitesServeur": 1,
+    "maxTicks": 900
+  },
+  "donnees": {
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "stockage": {
+      "prefixe": "blocks:",
+      "reglagesGardes": []
+    }
+  },
+  "message": {
+    "ou": "blocks"
+  },
+  "zoneNouveautes": "blocks",
+  "musique": {
+    "scenes": [
+      "menu",
+      "theme:clair",
+      "theme:sombre"
+    ]
+  },
+  "admin": {
+    "outils": false
+  },
+  "zones": {
+    "jeu": [
+      "apps/blocks/**",
+      "packages/blocks-sim/**",
+      "apps/api/src/blocks*.ts",
+      "apps/api/test/blocks*.test.ts",
+      "apps/api/scripts/blocks-*.ts",
+      "docs/blocks/**"
+    ],
+    "serveur": [
+      "apps/api/src/blocks*.ts",
+      "apps/api/test/blocks*.test.ts",
+      "apps/api/scripts/blocks-*.ts"
+    ]
+  },
+  "e2e": {
+    "dossier": "apps/blocks/e2e",
+    "suite": "blocks",
+    "fumee": [
+      "determinisme.spec.ts",
+      "partie.spec.ts",
+      "poids.spec.ts"
+    ],
+    "zones": {
+      "blocks-sim": {
+        "globs": [
+          "packages/blocks-sim/**"
+        ]
+      },
+      "blocks-jeu": {
+        "globs": [
+          "apps/blocks/index.html",
+          "apps/blocks/vite.config.ts",
+          "apps/blocks/verify.html",
+          "apps/blocks/src/*"
+        ]
+      },
+      "api-blocks": {
+        "globs": [
+          "apps/api/src/blocks*.ts",
+          "apps/api/scripts/blocks-*.ts"
+        ]
+      }
+    },
+    "specs": {
+      "determinisme.spec.ts": [
+        "blocks-sim",
+        "blocks-jeu",
+        "core-clock"
+      ],
+      "partie.spec.ts": [
+        "blocks-sim",
+        "blocks-jeu",
+        "ui"
+      ],
+      "classement.spec.ts": [
+        "blocks-sim",
+        "blocks-jeu",
+        "api-blocks",
+        "api-jeux"
+      ],
+      "poids.spec.ts": [
+        "blocks-jeu",
+        "ui"
+      ]
+    },
+    "parts": {
+      "main": 1,
+      "complet": 1,
+      "nuit": 1
+    }
+  },
+  "budget": {
+    "lignes": [
+      "blocks.jsCss"
+    ],
+    "aLaDemande": [
+      "partie-",
+      "classement-",
+      "reglages-",
+      "retours-",
+      "version-"
+    ]
+  },
+  "temoin": false
+}

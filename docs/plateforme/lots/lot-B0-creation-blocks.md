@@ -1,0 +1,19 @@
+# Lot B0 — création du jeu « Blocks » (plateforme, court)
+
+Commande : `npm run nouveau-jeu -- --id blocks --nom "Blocks" --classement score --categorie arcade` (sortie complète : 53 fichiers créés, 9 fichiers partagés avec des lignes mécaniques, puis `npm run fiches`, `golden:blocks` et `npm run traductions`).
+
+## Livré
+- Fiche `config/jeux/blocks.json` : état `off`, `categorie: arcade`, `classement.cumul: false`, ordre 5. Projections et `*.generated.*` régénérés.
+- Teinte provisoire du générateur (`#B8D8F4` / `#1F4E79`) : **à choisir par Nathan** (Blocks reprendra la DA de Tower).
+- Plafond de budget provisoire : ligne `blocks.jsCss` de `budgets.md` = celle du modèle (45 Ko) ; à fixer avec la mesure du jeu.
+- Premier jour : `2026-11-02` (celui du modèle) ; **à fixer par Nathan avant `preview`**.
+- `docs/blocks/passation.md` et `consignes.md` générés. Aucun `CLAUDE.md` modifié par moi.
+
+## Vérifié en local
+`npm run fiches -- --verifier` et `npm run traductions -- --verifier` à jour ; `npm run typecheck` vert ; Vitest (sim, app, API de Blocks) : 6 fichiers, 63 tests verts.
+
+## Non vérifié / à décider
+- **Le seed de Nathan n'était pas joint au prompt reçu** : `docs/blocks/seed.md` est encore le gabarit vide du générateur. À verser tel quel (un commit) avant d'ouvrir la conversation du jeu.
+- CI de la PR (« Kit de bout en bout » compris) : à lire sur la PR ; e2e Chromium non lancés en local.
+
+Pour les joueurs : rien.

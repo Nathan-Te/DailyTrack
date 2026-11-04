@@ -26,6 +26,7 @@ const fr = {
   "portail.jump.accroche": "Un niveau de plateforme par jour, le même pour tous.",
   "portail.tower.accroche": "Une tour par jour, les mêmes pièces pour tous.",
   "portail.cibles.accroche": "Trente secondes, vingt cibles, les mêmes pour tous.",
+  "portail.blocks.accroche": "À remplacer : l'accroche de Blocks.",
   "portail.jouer": "Jouer",
   "portail.jouer.aria": "Jouer à {jeu}",
   "portail.pied": "Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux.",
@@ -78,6 +79,8 @@ const fr = {
   "portail.theme.tower.nuit": "Nuit",
   "portail.theme.cibles.sable": "Sable",
   "portail.theme.cibles.ardoise": "Ardoise",
+  "portail.theme.blocks.clair": "Clair (à remplacer)",
+  "portail.theme.blocks.sombre": "Sombre (à remplacer)",
   // Les répliques de Jump, une par thème (la mécanique du jour)
   // Lot I3 : la journée partagée — le numéro de journée, le classement du jour, la ligne de partage
   "portail.journee": "Journée {numero}",
@@ -115,6 +118,7 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.jump.accroche": "One platform level a day, the same for everyone.",
   "portail.tower.accroche": "One tower a day, the same pieces for everyone.",
   "portail.cibles.accroche": "Thirty seconds, twenty targets, the same for everyone.",
+  "portail.blocks.accroche": "To replace: the tagline of Blocks.",
   "portail.jouer": "Play",
   "portail.jouer.aria": "Play {jeu}",
   "portail.pied": "A new day at midnight, Paris time. Your profile is the same in every game.",
@@ -165,6 +169,8 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.theme.tower.nuit": "Night",
   "portail.theme.cibles.sable": "Sand",
   "portail.theme.cibles.ardoise": "Slate",
+  "portail.theme.blocks.clair": "Light (to replace)",
+  "portail.theme.blocks.sombre": "Dark (to replace)",
   "portail.journee": "Day {numero}",
   "portail.classement.legende": "Today's leaderboard",
   "portail.classement.cumul": "{temps} combined",

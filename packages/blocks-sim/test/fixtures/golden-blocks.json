@@ -1,0 +1,85 @@
+{
+  "_": "Golden de Blocks (lot K4f). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
+  "sim": 1,
+  "generateur": 1,
+  "jours": [
+    {
+      "date": "2026-11-02",
+      "empreinte": "e23280b5"
+    },
+    {
+      "date": "2026-11-05",
+      "empreinte": "1ae55536"
+    },
+    {
+      "date": "2026-11-08",
+      "empreinte": "bd2a7c11"
+    },
+    {
+      "date": "2026-11-11",
+      "empreinte": "a6ca05d0"
+    },
+    {
+      "date": "2026-11-14",
+      "empreinte": "03234e3a"
+    },
+    {
+      "date": "2026-11-17",
+      "empreinte": "df267548"
+    },
+    {
+      "date": "2026-11-20",
+      "empreinte": "843fd01a"
+    },
+    {
+      "date": "2026-11-23",
+      "empreinte": "57380123"
+    },
+    {
+      "date": "2026-11-26",
+      "empreinte": "16c012c6"
+    },
+    {
+      "date": "2026-11-29",
+      "empreinte": "f6c0640f"
+    }
+  ],
+  "rediffusions": [
+    {
+      "nom": "bot",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiASAfKxIqJykQKhgtFSoiKxIrHygEKS4tHSctKQUqLiwQLAAnLSsrKBA",
+      "resultat": {
+        "touches": 20,
+        "dernier": 831,
+        "ratees": 0,
+        "ticks": 900
+      }
+    },
+    {
+      "nom": "joueur-lent",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiARkgCR8sEisnVRguFRwjDyJYHxcFEgQqLkEuCi0qBSsuWgAoLRwsECs",
+      "resultat": {
+        "touches": 15,
+        "dernier": 800,
+        "ratees": 5,
+        "ticks": 900
+      }
+    },
+    {
+      "nom": "vide",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiAQ",
+      "resultat": {
+        "touches": 0,
+        "dernier": 900,
+        "ratees": 0,
+        "ticks": 900
+      }
+    }
+  ]
+}

@@ -14,6 +14,7 @@ const fr = {
   "jeu.jump.titre": "JUMP",
   "jeu.tower.nom": "Tower",
   "jeu.cibles.nom": "Cibles",
+  "jeu.blocks.nom": "Blocks",
   // Barres
   "barre.retour": "DU JOUR",
   "barre.retour.aria": "Retour au portail Du Jour",

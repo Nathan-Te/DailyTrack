@@ -38,3 +38,10 @@
 .dj-cartouche--cibles {
   background: #8E2C4A;
 }
+.jeu-etiquette--blocks {
+  --jeu-fond: #B8D8F4;
+  --jeu-police: "Rubik Mono One", "Archivo", sans-serif;
+}
+.dj-cartouche--blocks {
+  background: #1F4E79;
+}
