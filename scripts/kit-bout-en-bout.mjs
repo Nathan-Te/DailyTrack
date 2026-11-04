@@ -173,7 +173,7 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
   if (ok) etape(lancer("budgets (toutes les lignes, dont celles des deux jeux)", "node", ["scripts/budgets-controle.mjs", "controler"], copie));
   if (ok && !args.includes("--sans-e2e")) {
     const chromium = process.env.CHROMIUM_PATH ?? (existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
-    for (const jeu of jeuxE2e) if (ok) etape(lancer(`e2e Essentiel de ${jeu} (Chromium)`, "npx", ["playwright", "test", "--project", "chromium", "--grep-invert", "@regression"], join(copie, "apps", jeu), { ...(chromium ? { CHROMIUM_PATH: chromium } : {}) }));
+    for (const jeu of jeuxE2e) if (ok) etape(lancer(`e2e Essentiel de ${jeu} (Chromium)`, "npx", ["playwright", "test", "--project", "chromium", "--grep-invert", "@regression"], join(copie, "apps", jeu), { CI: "", ...(chromium ? { CHROMIUM_PATH: chromium } : {}) })); // CI vide : le projet s'appelle `chromium` (en CI, `<jeu>-chromium`, rapport « blob » pour la fusion des parts : inutile ici)
   }
   {
     const apres = empreintes(copie);
