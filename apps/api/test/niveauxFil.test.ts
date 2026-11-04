@@ -1,9 +1,10 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { build } from "esbuild";
 import { daysFromCivil } from "@cdj/core";
 import { parisDayStart } from "@cdj/clock";
+import { dailyLevel, declareFrozenGenerators } from "@cdj/jump-sim";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApi } from "../src/api";
 import { executeurFil } from "../src/jeux/fil";
@@ -14,6 +15,12 @@ import { openTestDb, TEST_DB } from "./helpers";
 // Lot D3 (C9) : le niveau du lendemain est prêt avant minuit, et le calcul du niveau ne bloque plus le fil principal. **Aucun niveau ne change** : le fil de calcul et le fil principal donnent le même niveau, date par date.
 
 const D = (date: string): number => daysFromCivil(Number(date.slice(0, 4)), Number(date.slice(5, 7)), Number(date.slice(8, 10)));
+// Ce que le serveur déclare au démarrage (`contratJump`) : le générateur de chaque niveau figé de l'image. Le thème d'un jour en dépend ; le fil de calcul ne l'a pas de lui-même (état du module), la demande le porte.
+const generateurs: Record<string, number> = Object.fromEntries(
+  readdirSync(new URL("../../jump/public/levels/", import.meta.url))
+    .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))
+    .map((f) => [f.slice(0, 10), (JSON.parse(readFileSync(new URL(`../../jump/public/levels/${f}`, import.meta.url), "utf8")) as { generatorVersion: number }).generatorVersion]),
+);
 const dossier = mkdtempSync(join(tmpdir(), "niveaux-fil-"));
 const fichier = join(dossier, "niveaux-fil.mjs");
 
@@ -44,7 +51,7 @@ describe(`le calcul du niveau dans un fil (${TEST_DB})`, () => {
     const principal = executeurNiveauxPrincipal();
     try {
       const demandes: DemandeNiveau[] = [
-        ...["2026-10-30", "2026-11-12", "2026-12-01"].map((d) => ({ jeu: "jump" as const, day: D(d), fige: undefined })),
+        ...["2026-10-30", "2026-11-04", "2026-11-12", "2026-12-01"].map((d) => ({ jeu: "jump" as const, day: D(d), fige: undefined, generateurs })),
         ...["2026-10-14", "2026-11-12", "2026-12-01"].map((d) => ({ jeu: "track" as const, day: D(d), variante: 0, theme: null })),
         { jeu: "track", day: D("2026-11-12"), variante: 2, theme: null },
       ];
@@ -54,6 +61,24 @@ describe(`le calcul du niveau dans un fil (${TEST_DB})`, () => {
         expect(a, `${d.jeu} ${d.day}`).toEqual(b);
         expect(a).toEqual(calculerNiveau(d));
       }
+    } finally {
+      await fil.fermer?.();
+    }
+  }, 120_000);
+
+  it("le thème de Jump dépend des niveaux figés déclarés : le fil reçoit la déclaration avec la demande (sans elle il calculerait un autre niveau, le smoke de l'image l'a montré)", async () => {
+    const fil = executeurFil<DemandeNiveau, ReponseNiveau>(fichier, { delaiMs: DELAI_NIVEAU_MS });
+    try {
+      const jour = D("2026-11-04");
+      const avec = (await fil.rejouer({ jeu: "jump", day: jour, fige: undefined, generateurs })) as { info: { id: string; hash: string; theme: string } };
+      const sans = (await fil.rejouer({ jeu: "jump", day: jour, fige: undefined, generateurs: {} })) as { info: { id: string; hash: string; theme: string } };
+      // Le niveau « du jeu » : calculé ici après la même déclaration que fait le serveur.
+      declareFrozenGenerators(generateurs);
+      const attendu = dailyLevel(jour);
+      expect(avec.info.hash).toBe(attendu.hash);
+      expect(avec.info.theme).toBe(attendu.theme);
+      // Sans la déclaration, le niveau du 04/11 n'est pas le même : c'est ce que la demande porte.
+      expect(sans.info.hash).not.toBe(avec.info.hash);
     } finally {
       await fil.fermer?.();
     }

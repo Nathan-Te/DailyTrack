@@ -1,3 +1,4 @@
+import { declareFrozenGenerators } from "@cdj/jump-sim";
 import { dailyCircuit, replayTicks, type PaletteName, type ThemeName } from "@cdj/sim";
 import { trackInputs } from "./copies";
 import { computeJumpDay } from "./jump";
@@ -10,7 +11,7 @@ import type { ExecuteurRejeu } from "./jeux/fil";
 
 /** Ce que demande le serveur : le niveau de Jump d'un jour (avec son fichier figé s'il y en a un), ou le circuit de Track d'un jour (variante et thème du planning). */
 export type DemandeNiveau =
-  | { jeu: "jump"; day: number; fige: unknown }
+  | { jeu: "jump"; day: number; fige: unknown; generateurs: Readonly<Record<string, number>> }
   | { jeu: "track"; day: number; variante: number; theme: ThemeName | null };
 
 /** Le circuit de Track, sans l'objet `Track` (reconstruit par `parseTrack(trackId, spec)`) : ce qui traverse le fil. */
@@ -30,7 +31,11 @@ export type ReponseNiveau = ReturnType<typeof computeJumpDay> | CircuitCalcule;
 
 /** Le calcul, pur et synchrone (le fil l'appelle ; le repli aussi). */
 export function calculerNiveau(d: DemandeNiveau): ReponseNiveau {
-  if (d.jeu === "jump") return computeJumpDay(d.day, d.fige);
+  if (d.jeu === "jump") {
+    // Le thème d'un jour de Jump dépend de ce que le serveur a appris des niveaux figés (`declareFrozenGenerators`, un état du module : le fil n'a pas celui du fil principal) : il part avec la demande.
+    declareFrozenGenerators(d.generateurs);
+    return computeJumpDay(d.day, d.fige);
+  }
   const c = dailyCircuit(d.day, d.variante, d.theme);
   return {
     trackId: c.track.id,
