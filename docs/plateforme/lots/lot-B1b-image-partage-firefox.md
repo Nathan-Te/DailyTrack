@@ -21,6 +21,5 @@ Les trois polices (Archivo Black, Barlow Condensed 800 italique, Lilita One) son
 
 ![portail.png : Chromium avant, Chromium après, Firefox](lot-B1b/portail-cote-a-cote.png)
 
-**Vérifié** : `npm run verifier -- --sans-e2e` vert ; `node scripts/securite-workflows.mjs` : 0 écart ; `site.mjs` assemblé avec Chromium (images 41,8 / 27,4 / 28,8 ko). **Run de CI** : voir ci-dessous.
-
-**Run `main` forcé (Firefox, WebKit, Chromium)** : à compléter.
+**Vérifié** : `npm run verifier -- --sans-e2e` vert ; `node scripts/securite-workflows.mjs` : 0 écart ; `site.mjs` assemblé avec Chromium (images 41,8 / 27,4 / 28,8 ko). 
+**Run `main` forcé (Firefox, WebKit, Chromium) : VERT**, `e2e-parts (navigateurs firefox, petit ensemble)` et `webkit` compris — https://github.com/Nathan-Te/DailyTrack/actions/runs/41834566470 (commit `a3cfc79`, 11,8 min). Le forçage est retiré (revert) ; `securite-workflows.mjs` : 0 écart.
