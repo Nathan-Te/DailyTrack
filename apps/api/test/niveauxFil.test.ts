@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApi } from "../src/api";
 import { executeurFil } from "../src/jeux/fil";
 import type { Logger } from "../src/log";
-import { type DemandeNiveau, type ReponseNiveau, DELAI_NIVEAU_MS, calculerNiveau, executeurNiveauxPrincipal } from "../src/niveauxFil";
+import { type DemandeNiveau, type ExecuteurNiveaux, type ReponseNiveau, DELAI_NIVEAU_MS, calculerNiveau, executeurNiveauxPrincipal } from "../src/niveauxFil";
 import { openTestDb, TEST_DB } from "./helpers";
 
 // Lot D3 (C9) : le niveau du lendemain est prêt avant minuit, et le calcul du niveau ne bloque plus le fil principal. **Aucun niveau ne change** : le fil de calcul et le fil principal donnent le même niveau, date par date.
@@ -129,8 +129,12 @@ describe(`le niveau du lendemain, prêt avant minuit (${TEST_DB})`, () => {
     const { log, lignes } = journal();
     const horloge = { now: quand.vingtH };
     const fil = executeurFil<DemandeNiveau, ReponseNiveau>(fichier, { delaiMs: DELAI_NIVEAU_MS });
+    // Lot D3b — « la réponse n'attend pas la préparation » se prouve sans chronomètre : une porte fermée retient tout calcul de niveau, et la réponse doit revenir quand même.
+    let porte: Promise<void> = Promise.resolve();
+    const ouvrir = { f: () => {} };
+    const retenu: ExecuteurNiveaux = { nom: fil.nom, rejouer: async (d) => (await porte, fil.rejouer(d)) };
     try {
-      const soir = createApi({ db, now: () => horloge.now, niveauxExecuteur: fil, allowCopies: true, log });
+      const soir = createApi({ db, now: () => horloge.now, niveauxExecuteur: retenu, allowCopies: true, log });
       const get = async (api: ReturnType<typeof createApi>, chemin: string) => api.handle(new Request(`http://api.test${chemin}`), { clientKey: "203.0.113.7" });
 
       // 20 h : rien n'est préparé.
@@ -141,16 +145,17 @@ describe(`le niveau du lendemain, prêt avant minuit (${TEST_DB})`, () => {
 
       // 23 h 35 : la requête qui arrive lance la préparation, et sa réponse ne l'attend pas.
       horloge.now = quand.trenteCinq;
-      const t0 = performance.now();
-      expect((await get(soir, "/api/portail/jour")).status).toBe(200);
-      const reponseMs = performance.now() - t0;
+      porte = new Promise<void>((r) => (ouvrir.f = r)); // la porte se ferme : aucun calcul de niveau ne finit tant qu'on ne l'ouvre pas
+      expect((await get(soir, "/api/portail/jour")).status, "la réponse revient alors que la préparation est retenue").toBe(200);
       const en = soir.preparerLeLendemain();
-      expect(en, "la préparation est en cours ou finie").not.toBe(undefined);
+      expect(en, "la préparation est en cours").not.toBe(undefined);
+      expect(message(lignes, "niveau du lendemain prêt"), "rien n'est prêt tant que la porte est fermée").toHaveLength(0);
+      expect(await db.first("SELECT 1 AS ok FROM jump_levels WHERE day = ?", [jour + 1])).toBeNull();
+      ouvrir.f();
       await en;
       const prets = message(lignes, "niveau du lendemain prêt");
       expect(prets.map((l) => l.fields.jeu).sort()).toEqual(["cdj", "jump"]); // Tower est éteint (absent de la table `jeux`) : rien à préparer
       expect(prets.every((l) => l.fields.jour === "2026-11-13")).toBe(true);
-      expect(reponseMs).toBeLessThan(3000);
       expect(await db.first("SELECT 1 AS ok FROM circuits WHERE day = ?", [jour + 1])).not.toBeNull();
       expect(await db.first("SELECT 1 AS ok FROM jump_levels WHERE day = ?", [jour + 1])).not.toBeNull();
       // Une seconde requête de la demi-heure ne refait rien.
