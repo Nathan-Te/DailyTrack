@@ -31,6 +31,7 @@ export const EXCEPTIONS = [
   "packages/ui/test/applications.ts",
   "docs/plateforme/traductions.md",
   "config/jeux/projections/**",
+  "apps/api/src/fiches.generated.ts",
   "packages/core/src/fiches.generated.ts",
   "packages/profile/src/fiches.generated.ts",
   "packages/ui/src/fiches.generated.ts",

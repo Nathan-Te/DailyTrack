@@ -15,6 +15,7 @@ const RACINE = join(import.meta.dirname, "../../..");
 const CLAUDE_MD = [
   "CLAUDE.md",
   "apps/api/CLAUDE.md",
+  "apps/blocks/CLAUDE.md",
   "apps/jump/CLAUDE.md",
   "apps/portail/CLAUDE.md",
   "apps/tower/CLAUDE.md",
