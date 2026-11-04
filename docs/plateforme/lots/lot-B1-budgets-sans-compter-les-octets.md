@@ -32,4 +32,6 @@ Ce qui coûte (Track : réseau seul 2,9 s, processeur seul 1,7 s ; Jump : 2,3 s 
 **Conclusion : pas « on s'arrête là ».** Track dépasse 3 s (4,0 s ; 4,3 s en production) et Jump y est (3,0 s en production). À traiter en premier, un lot par jeu : **Track** — afficher « Courir » avant three.js (≈ 134 Ko de JS sur 297) ; **Jump** — piste : l'accueil avant le moteur (à confirmer par la mesure du lot). Portail et Tower : sous 1,5 s.
 
 ## Vérifié / non vérifié
-Vérifié en local : `npm run verifier` (typecheck, unitaires SQLite 445 fichiers et libSQL 77, construction), tests des budgets, des polices, du recalage. Non vérifié : mesure sur l'aperçu de la PR (après le déploiement), runs de CI (voir la PR).
+- Local : `npm run verifier` vert (typecheck, unitaires SQLite 445 fichiers et libSQL 77, e2e Track, Jump, Tower, budgets) ; `securite-workflows` : 0 écart.
+- **CI de la PR verte** (run 41803838288, commit 5eb8cee, « Budgets » compris). Le premier run (ef72fba) était rouge : ma ligne du jeu fictif (40 Ko) dépassait la règle (corrigé, 32 Ko) et `apps/api/test/mesures.test.ts` (lot D3, hors de ma zone) a échoué une fois, puis est passé sans changement de ma part.
+- **Non vérifié** : mesure du temps d'affichage sur l'aperçu de la PR (non faite) ; seules la version locale et la production (avant le lot) sont mesurées.
