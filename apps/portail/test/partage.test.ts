@@ -169,3 +169,19 @@ describe("jeux à la hauteur et jeux au temps ensemble (lot TP)", () => {
     expect(estHauteur(j("cdj", true, true))).toBe(false);
   });
 });
+
+// --- Lot A3 : un jeu d'arcade n'entre jamais dans la ligne de partage du portail ---------------------------------------------------------------
+describe("la ligne de partage sans jeu d'arcade (lot A3)", () => {
+  const t = traducteur("fr", CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
+  it("Tower fini (arcade, `compte: false`) ne fait ni une médaille ni une ligne à partager ; épinglé non plus", () => {
+    const j = jour(4, [finiEtat("gold"), pasJoue], { serie: 2, jeuxDuJour: ["track", "jump"] });
+    j.jeux.push({ jeu: "tower", site: "tower", nom: "Tower", numero: 3, theme: null, seuils: null, premierJour: "2026-11-02", compte: false, categorie: "arcade", etat: finiEtat("author") } as never);
+    expect(textePartage(construireOptions(t, j, LIEN)!)).toBe("Du Jour #4 — 🥇 — 🔥 2\nhttps://playdujour.com/");
+    // Le joueur n'a fini que Tower : rien à partager (il n'a rien fini dans la journée).
+    const seul = jour(4, [pasJoue, pasJoue]);
+    seul.jeux.push({ jeu: "tower", site: "tower", nom: "Tower", numero: 3, theme: null, seuils: null, premierJour: "2026-11-02", compte: false, categorie: "arcade", etat: finiEtat("author") } as never);
+    expect(construireOptions(t, seul, LIEN)).toBeNull();
+    seul.joueur!.jeuxDuJour = ["tower"];
+    expect(construireOptions(t, seul, LIEN)).toBeNull();
+  });
+});

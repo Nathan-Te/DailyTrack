@@ -423,7 +423,19 @@
 /* Lot A1 : les onglets Cumulé · Track · Jump (trois boutons de 44 px de haut qui se partagent la largeur). */
 .classement-vues {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--dj-espace-2);
+}
+/* Lot A3 : le séparateur « Arcade » avant les onglets des jeux d'arcade (onglets des joueurs et des groupes). */
+.classement-vues__sep {
+  flex: 0 0 auto;
+  padding-inline: var(--dj-espace-2);
+  border-inline-start: var(--dj-trait) dashed var(--dj-encre-douce);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-15);
+  color: var(--dj-encre-douce);
+  text-transform: uppercase;
 }
 .classement-vues .dj-bouton {
   flex: 1 1 0;

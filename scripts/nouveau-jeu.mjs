@@ -1,7 +1,7 @@
 // Lot K4g (plateforme) — **`npm run nouveau-jeu -- --id <id>`** : crée un jeu neuf à partir de « Cibles » (le modèle, `docs/cibles/consignes.md`) : il copie ses fichiers, les renomme, écrit la fiche, les entrées
 // mécaniques des fichiers partagés (lignes AJOUTÉES seulement), les trois documents du jeu (`docs/<id>/` : seed, consignes, passation), puis lance `npm run fiches`, le golden du jeu et `npm run traductions`.
 //
-//   npm run nouveau-jeu -- --id <id> [--nom "<Nom>"] [--classement score|temps] [--a-blanc]
+//   npm run nouveau-jeu -- --id <id> [--nom "<Nom>"] [--classement score|temps] [--categorie jour|arcade] [--a-blanc]
 //   npm run nouveau-jeu -- --id <id> --passation          → réécrit seulement `docs/<id>/passation.md` d'un jeu qui existe (la tenir à jour depuis les CLAUDE.md)
 //   --detail             → avec --a-blanc, un fichier par ligne ; --racine <dossier> → un autre arbre de sources (la copie du dépôt du job « Kit de bout en bout ») ; --sans-commandes : n'écrit que les fichiers (tests).
 //
@@ -64,6 +64,7 @@ export function lireOptions(argv) {
     id: valeur("--id"),
     nom: valeur("--nom"),
     classement: valeur("--classement") ?? "score",
+    categorie: valeur("--categorie") ?? "jour",
     aBlanc: argv.includes("--a-blanc"),
     passation: argv.includes("--passation"),
     sansCommandes: argv.includes("--sans-commandes"),
@@ -72,6 +73,7 @@ export function lireOptions(argv) {
   };
   if (!o.id) throw new Error("--id <id> est obligatoire (minuscules et chiffres, 3 à 20 caractères)");
   if (!["score", "temps"].includes(o.classement)) throw new Error(`--classement : « score » ou « temps » (reçu « ${o.classement} »)`);
+  if (!["jour", "arcade"].includes(o.categorie)) throw new Error(`--categorie : « jour » ou « arcade » (reçu « ${o.categorie} ») — lot A3 : un jeu d'arcade a son classement mais ne compte ni dans la journée ni dans le cumul`);
   o.nom = o.nom ?? cap(o.id);
   return o;
 }
@@ -231,7 +233,7 @@ export function choisirTeinte(fiches) {
   if (!t) throw new Error("plus aucune teinte libre dans TEINTES (scripts/nouveau-jeu.mjs) : en ajouter une");
   return t;
 }
-export async function construireFiche(racine, c, classement) {
+export async function construireFiche(racine, c, classement, categorie = "jour") {
   const fiches = fichesExistantes(racine);
   const modele = JSON.parse(renommer(lire(racine, `config/jeux/${MODELE}.json`), c));
   const variantes = await lireVariantes(racine);
@@ -249,6 +251,9 @@ export async function construireFiche(racine, c, classement) {
   modele.medailles = { methode: modele.medailles.methode, bareme: [...v.bareme], ...(v.plafondDiamant !== undefined ? { plafondDiamant: v.plafondDiamant } : {}) };
   modele.temoin = false;
   modele.etatDepart = "off";
+  // Lot A3 : la catégorie se choisit à la création (`jour` par défaut) ; elle naît avec le jeu, sans `categorieDepuis`. Un jeu d'arcade a `classement.cumul: false` (déjà le cas de tout jeu neuf).
+  modele.categorie = categorie;
+  delete modele.categorieDepuis;
   return { fiche: modele, teinte: [fond, coque] };
 }
 
@@ -392,6 +397,7 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
     `- **${nom}** (\`${id}\`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). Il vient d'être créé par le générateur : l'état est \`off\` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis \`/admin/\` › Jeux : \`off\` → \`preview\` → \`on\`**.`,
     `- **Le jeu de départ est un squelette** : « toucher des cibles » (${classement === "temps" ? "classé au temps croissant : toucher les 20 cibles le plus vite possible" : "classé au score décroissant : les cibles touchées en 30 secondes"}), copié du jeu témoin « Cibles ». Il est jouable, classé et rejoué par le serveur, avec tous les écrans de la plateforme ; **sa simulation, son rendu et ses textes sont à remplacer** par ceux du vrai jeu. Son vocabulaire (« ${id} » pour des cibles dans le code) n'est pas à garder.`,
     `- **Classement** : ${fiche.classement.colonnes.slice(0, -2).map((k) => `\`${k.nom}\` ${k.sens === "desc" ? "↓" : "↑"}`).join(", ")} (fiche \`config/jeux/${id}.json\`). Variante de départ : \`${classement}\` (\`packages/${id}-sim/src/variante.ts\` : tout ce qui dépend du sens du classement y est rangé).`,
+    `- **Catégorie** : \`${fiche.categorie}\` (fiche, lot A3)${fiche.categorie === "arcade" ? " — un jeu d'arcade a son niveau du jour et son classement, mais ne compte ni dans la journée (journée parfaite, série, ligne de partage), ni dans le classement cumulé ; il a sa section « Arcade » sur l'accueil et ses onglets après le séparateur « Arcade » de /classement/" : " — il compte dans la journée (journée parfaite, série, ligne de partage) ; son classement n'entre au cumul que si Nathan le décide"}.`,
     `- **Vision** : \`docs/${id}/seed.md\` — **à écrire par Nathan** (un gabarit vide avec ses titres). Tant qu'il est vide, le jeu de départ n'a pas de direction.`,
     `- **Teinte de l'étiquette** : ${teinte[0]} / ${teinte[1]} — **à choisir par Nathan** (charte § 3 ; la fiche, \`etiquette\`) ; le générateur a pris la première teinte qu'aucun jeu n'utilise.`,
     `- **Premier jour** : celui du modèle, \`${fiche.premierJour}\` — à régler au lancement du jeu (\`premierJour\` de la fiche, une ligne).`,
@@ -512,7 +518,7 @@ export async function planifier(opts) {
     }
     creations.push({ chemin: cible, contenu: texte });
   }
-  const { fiche, teinte } = await construireFiche(racine, c, opts.classement);
+  const { fiche, teinte } = await construireFiche(racine, c, opts.classement, opts.categorie);
   creations.push({ chemin: `config/jeux/${c.id}.json`, contenu: json(fiche) });
   creations.push({ chemin: `docs/${c.id}/seed.md`, contenu: SEED(c) });
   creations.push({ chemin: `docs/${c.id}/consignes.md`, contenu: CONSIGNES(c, opts.classement).replace("{site}", String(c.ports.site)).replace("{serveur}", String(c.ports.serveur)) });

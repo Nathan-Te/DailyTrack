@@ -29,11 +29,17 @@ export interface Onglet {
   vue: string;
   jeu?: string;
   nom?: string;
+  /** Lot A3 : l'onglet d'un jeu d'arcade (après le séparateur « Arcade »). */
+  arcade?: true;
 }
 
-/** Les onglets d'un jour : Cumulé, puis un par jeu qui existe ce jour-là, dans l'ordre du registre (Track, Jump, Tower : lot TP). */
-export function onglets(jeux: readonly { jeu: string; site: string; nom: string }[]): Onglet[] {
-  return [{ vue: VUE_CUMUL }, ...jeux.map((j) => ({ vue: j.site, jeu: j.jeu, nom: j.nom }))];
+/**
+ * Les onglets d'un jour : Cumulé, puis un par jeu du jour qui existe ce jour-là, dans l'ordre du registre, puis (lot A3) **ceux des jeux d'arcade**, que la barre sépare par « Arcade ». Un jeu d'arcade
+ * n'est jamais dans « Cumulé » ; il garde ses vues Tous, Amis, Mon groupe et Groupes.
+ */
+export function onglets(jeux: readonly { jeu: string; site: string; nom: string; categorie?: "arcade" }[]): Onglet[] {
+  const un = (j: (typeof jeux)[number]): Onglet => ({ vue: j.site, jeu: j.jeu, nom: j.nom, ...(j.categorie === "arcade" ? { arcade: true as const } : {}) });
+  return [{ vue: VUE_CUMUL }, ...jeux.filter((j) => j.categorie !== "arcade").map(un), ...jeux.filter((j) => j.categorie === "arcade").map(un)];
 }
 
 /** L'onglet voisin au clavier (flèches, Début, Fin), en bouclant ; `null` pour une autre touche. */

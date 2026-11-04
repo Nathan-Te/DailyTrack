@@ -465,10 +465,15 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     return n;
   }
 
+  // Lot A3 : le premier jour de la catégorie (facultatif dans la fiche ; la fiche générée n'en écrit le champ que si un jeu l'a).
+  const depuis = (fiche as { categorieDepuis?: string }).categorieDepuis;
+  const categorieDepuis = depuis === undefined ? undefined : (parseDay(depuis) ?? undefined);
   const portailBase: PortailDuJeu = {
     site: fiche.id,
     nom: config.nom,
     premierJour,
+    categorie: fiche.categorie,
+    ...(categorieDepuis !== undefined ? { categorieDepuis } : {}),
     ...(fiche.classement.format !== "temps" ? { unite: fiche.classement.unite === "mm" ? ("mm" as const) : ("points" as const) } : {}),
     classement: fiche.classement.format === "temps" ? "temps" : "hauteur", // lot K4c : tout jeu classé à un score (hauteur, points) compte dans la journée mais jamais dans le cumul au temps
     async jour(day) {

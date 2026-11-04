@@ -1,4 +1,5 @@
 import { formatDay, parseDay } from "@cdj/core";
+import { categorieLe, type CategorieJeu } from "@cdj/core/jeux";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "@cdj/core/lancement";
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { estNouveau, favorisLe, jeuxDeLaBase, jourDEffet, listeApresChoix, listeDeFavoris, mesJeuxDuJour, type PeriodeFavoris } from "@cdj/core/favoris";
@@ -92,6 +93,8 @@ export interface VuePartagee {
   comptes(day: number): JeuPortail[];
   jourOuvert(day: number): boolean;
   estHauteur(j: JeuPortail): boolean;
+  /** Lot A3 : le jeu est-il d'arcade ce jour-là ? (Son onglet vient après le séparateur « Arcade ».) */
+  estArcade(j: JeuPortail, day: number): boolean;
   classementDe(day: number): Promise<ClassementDuJour>;
   etatsDe(id: string, day: number, ouverts: readonly JeuPortail[], c?: ClassementDuJour): Promise<EtatPortail[]>;
   bilanDe(id: string, etats: readonly EtatPortail[], ouverts: readonly JeuPortail[]): LigneDuJour | null;
@@ -159,6 +162,13 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   const compte = (j: JeuPortail, day: number): boolean => j.portail.premierJour <= day && (etats ? etats.compteLe(j.portail.site, day) : true);
   /** Les jeux qui comptent ce jour-là : ceux du cumul, du classement du jour, de la journée parfaite. */
   const comptes = (day: number): JeuPortail[] => jeux.filter((j) => compte(j, day));
+  // Lot A3 : la catégorie. Un jeu d'arcade a son niveau du jour et son classement (il reste dans `comptes`, donc dans les vues du classement) mais **ne compte pas dans la journée** : ni journée
+  // parfaite, ni « n fini sur m », ni série, ni ligne de partage — qu'il soit épinglé ou non. La catégorie se lit ce jour-là (`categorieLe`) : un changement compte à partir du lendemain.
+  const categorieDe = (j: JeuPortail, day: number): CategorieJeu => categorieLe(j.portail.categorie ?? "jour", j.portail.categorieDepuis, day);
+  /** Le jeu compte-t-il dans la journée (série, journée parfaite, partage) ce jour-là ? L'interrupteur (`compte`) ET la catégorie `jour`. */
+  const compteJournee = (j: JeuPortail, day: number): boolean => compte(j, day) && categorieDe(j, day) === "jour";
+  const estArcade = (j: JeuPortail, day: number): boolean => categorieDe(j, day) === "arcade";
+  const comptesJournee = (day: number): JeuPortail[] => jeux.filter((j) => compteJournee(j, day));
   /** Lot TP : un jeu classé à la hauteur (Tower) a sa vue ; il n'entre jamais dans le cumul au temps. */
   const estHauteur = (j: JeuPortail): boolean => j.portail.classement === "hauteur";
   const charger = async (): Promise<void> => {
@@ -191,7 +201,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
           log("WARNING", "portail : jour d'un jeu indisponible", { jeu: j.code, error: e instanceof HttpError ? e.code : "inconnue" });
           jour = { numero: day - j.portail.premierJour + 1, theme: null, seuils: null };
         }
-        return { jeu: j.code, site: j.portail.site, nom: j.portail.nom, premierJour: formatDay(j.portail.premierJour), compte: compte(j, day), ...(estNouveau(etats?.liveFrom(j.portail.site) ?? null, day) ? { nouveau: true as const } : {}), ...(surLeSite(j) ? {} : { brouillon: true as const }), ...jour };
+        return { jeu: j.code, site: j.portail.site, nom: j.portail.nom, premierJour: formatDay(j.portail.premierJour), compte: compteJournee(j, day), ...(estArcade(j, day) ? { categorie: "arcade" as const } : {}), ...(estNouveau(etats?.liveFrom(j.portail.site) ?? null, day) ? { nouveau: true as const } : {}), ...(surLeSite(j) ? {} : { brouillon: true as const }), ...jour };
       }),
     );
   }
@@ -222,7 +232,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   }
   /** Les jeux de la journée de ce joueur ce jour-là (les `JeuPortail`) : ses favoris parmi les jeux qui comptent, sinon tous ceux qui comptent. */
   const jeuxDe = (periodes: readonly PeriodeFavoris[], day: number): JeuPortail[] => {
-    const comptent = comptes(day);
+    const comptent = comptesJournee(day);
     const choisis = new Set(mesJeuxDuJour(comptent.map((j) => j.portail.site), favorisLe(periodes, day)));
     return comptent.filter((j) => choisis.has(j.portail.site));
   };
@@ -231,7 +241,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const mes = periodes ?? (await favorisDe(id));
     // Chaque jour est jugé avec la liste qui était la sienne : un jeu compte ce jour-là s'il compte pour la plateforme ET s'il est dans les jeux du joueur.
     const dansMesJeux = (j: JeuPortail, d: number) => mes.length === 0 || jeuxDe(mes, d).includes(j);
-    const finis = await Promise.all(jeux.map(async (j) => ({ premierJour: j.portail.premierJour, finis: new Set(await j.portail.joursFinis(id)), compte: (d: number) => compte(j, d) && dansMesJeux(j, d) })));
+    const finis = await Promise.all(jeux.map(async (j) => ({ premierJour: j.portail.premierJour, finis: new Set(await j.portail.joursFinis(id)), compte: (d: number) => compteJournee(j, d) && dansMesJeux(j, d) })));
     return serieEtParfaites(day, finis);
   }
 
@@ -447,7 +457,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       journee: numeroDeJournee(day, premierJour),
       ouvert,
       vue,
-      jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}) })),
+      jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}), ...(estArcade(j, day) ? { categorie: "arcade" as const } : {}) })),
       classes: liste.length,
       top: hauteur ? hauteur.classes.slice(0, CLASSEMENT_TOP).map((x, i) => ligneHauteur(x, i + 1, noms.get(x.playerId)?.name ?? "?", noms.get(x.playerId)?.ref, noms.get(x.playerId)?.avatar)) : (gardes as LigneDuJour[]).map((l, i) => ligneCorps(l, i + 1, noms.get(l.id)?.name ?? "?", noms.get(l.id)?.ref, noms.get(l.id)?.avatar)),
       ...(hauteur ? { unite: jeuVue!.portail.unite ?? ("mm" as const) } : {}),
@@ -552,7 +562,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   }
 
   /** Lot F2 : ce que les classements filtrés « Amis » lisent du portail. */
-  const vue: VuePartagee = { jeux, premierJour, comptes, jourOuvert, estHauteur, classementDe, etatsDe, bilanDe, resultatsCorps, charger };
+  const vue: VuePartagee = { jeux, premierJour, comptes, jourOuvert, estHauteur, estArcade, classementDe, etatsDe, bilanDe, resultatsCorps, charger };
 
   return {
     route,

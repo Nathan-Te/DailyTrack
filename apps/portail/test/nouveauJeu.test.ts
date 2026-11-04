@@ -25,6 +25,11 @@ describe("l'identifiant et les options", () => {
     expect(() => lireOptions([])).toThrow(/--id/);
     expect(() => lireOptions(["--id", "banctest", "--classement", "hauteur"])).toThrow(/score|temps/);
   });
+  it("lot A3 : `--categorie jour|arcade` (défaut : jour), tout autre mot est refusé", () => {
+    expect(lireOptions(["--id", "banctest"]).categorie).toBe("jour");
+    expect(lireOptions(["--id", "banctest", "--categorie", "arcade"]).categorie).toBe("arcade");
+    expect(() => lireOptions(["--id", "banctest", "--categorie", "tournoi"])).toThrow(/jour|arcade/);
+  });
 });
 
 describe("le renommage", () => {
@@ -91,6 +96,20 @@ describe("le plan à blanc, sur le dépôt réel", () => {
       expect(existsSync(join(RACINE, "apps/banctest"))).toBe(false);
     });
   }
+  for (const categorie of ["jour", "arcade"] as const) {
+    it(`lot A3 : \`--categorie ${categorie}\` écrit la catégorie dans la fiche (valide, hors cumul, sans premier jour de catégorie)`, async () => {
+      const plan = await planifier({ id: "banctest", nom: "Banctest", classement: "score", categorie, aBlanc: true, passation: false, sansCommandes: true, racine: RACINE });
+      expect(validerFiche(plan.fiche, "banctest")).toEqual([]);
+      expect(plan.fiche.categorie).toBe(categorie);
+      expect(plan.fiche.classement.cumul).toBe(false);
+      expect("categorieDepuis" in plan.fiche).toBe(false);
+    });
+  }
+  it("lot A3 : `principal --a-blanc --categorie arcade` passe l'option jusqu'à la fiche d'un jeu d'arcade", async () => {
+    const plan = await planifier(lireOptions(["--id", "banctest", "--categorie", "arcade", "--a-blanc", "--sans-commandes"]));
+    expect(plan.fiche.categorie).toBe("arcade");
+    expect(validerFiche(plan.fiche, "banctest")).toEqual([]);
+  });
   it("`principal --a-blanc` liste ce qu'il créerait, affiche les 5 étapes et n'écrit rien", async () => {
     const lignes: string[] = await principal(["--id", "banctest", "--a-blanc"]);
     const texte = lignes.join("\n");

@@ -60,6 +60,8 @@ export interface ClassementGroupes {
   vue: string;
   sens: "temps" | "hauteur";
   vues: string[];
+  /** Lot A3 : parmi `vues`, celles des jeux d'arcade (après le séparateur « Arcade »). Absent : aucune. */
+  arcade?: string[];
   min: number;
   groupes: (LigneGroupe & { rang: number; score: number })[];
   moins: LigneGroupe[];
@@ -120,7 +122,7 @@ export function lireClassementGroupes(corps: unknown): ClassementGroupes | null 
   };
   const groupes = o.groupes.map(ligne).filter((l): l is LigneGroupe & { rang: number; score: number } => l !== null && l.rang !== undefined && l.score !== undefined);
   const moins = (Array.isArray(o.moins) ? o.moins : []).map(ligne).filter((l): l is LigneGroupe => l !== null);
-  return { date: texte(o.date), ouvert: o.ouvert === true, vue: o.vue, sens: o.sens === "hauteur" ? "hauteur" : "temps", vues: (Array.isArray(o.vues) ? o.vues : []).filter((x): x is string => typeof x === "string"), min: entier(o.min) ?? 3, groupes, moins };
+  return { date: texte(o.date), ouvert: o.ouvert === true, vue: o.vue, sens: o.sens === "hauteur" ? "hauteur" : "temps", vues: (Array.isArray(o.vues) ? o.vues : []).filter((x): x is string => typeof x === "string"), ...(Array.isArray(o.arcade) ? { arcade: o.arcade.filter((x): x is string => typeof x === "string") } : {}), min: entier(o.min) ?? 3, groupes, moins };
 }
 export function lireInvitationGroupe(corps: unknown): Invitation | null {
   const o = corps as Record<string, unknown> | null;

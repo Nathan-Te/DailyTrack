@@ -35,6 +35,13 @@ describe("les onglets", () => {
     expect(onglets([JEUX[0]!]).map((o) => o.vue)).toEqual(["cumul", "track"]);
   });
 
+  it("lot A3 : les onglets des jeux d'arcade viennent après ceux du jour, marqués `arcade` (la barre y met le séparateur), même s'ils sont avant dans l'ordre du registre", () => {
+    const l = onglets([{ jeu: "tower", site: "tower", nom: "Tower", categorie: "arcade" }, ...JEUX]);
+    expect(l.map((o) => o.vue)).toEqual(["cumul", "track", "jump", "tower"]);
+    expect(l.filter((o) => o.arcade).map((o) => o.vue)).toEqual(["tower"]);
+    expect(onglets(JEUX).some((o) => o.arcade)).toBe(false);
+  });
+
   it("flèches, Début et Fin passent d'un onglet à l'autre en bouclant ; une autre touche ne fait rien", () => {
     expect(ongletVoisin(0, 3, "ArrowRight")).toBe(1);
     expect(ongletVoisin(2, 3, "ArrowRight")).toBe(0);

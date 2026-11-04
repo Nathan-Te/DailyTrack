@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { JEUX_PUBLICS, compteLe, etatDansListe, etatDe, etatsDeReponse, etatsParDefaut, liveFromDe, lirePeriodes, periodesApres, type PeriodeJeu } from "../src/jeux";
+import { JEUX_PUBLICS, categorieLe, compteDansLaJournee, compteLe, etatDansListe, etatDe, etatsDeReponse, etatsParDefaut, liveFromDe, lirePeriodes, periodesApres, type PeriodeJeu } from "../src/jeux";
 
 // Lot P : la logique pure de l'interrupteur des jeux — états, jeu inconnu, et surtout les périodes `[du, au)` où un jeu compte dans la journée, à dates fixes
 // (jours de Paris en jours depuis 1970 : 100 = « lundi », 101 = mardi…). L'intégration (base, routes, séries) est dans `apps/api/test/jeux.test.ts`.
@@ -78,5 +78,29 @@ describe("périodes de la journée", () => {
     expect(lirePeriodes('[[0,null],[5,7]]')).toEqual([[0, null], [5, 7]]);
     for (const v of ["", "pas du json", "{}", '[["a",1]]', '[[1.5,null]]', null, undefined]) expect(lirePeriodes(v)).toEqual([]);
     expect(compteLe(lirePeriodes("abîmé"), 100)).toBe(false); // abîmé : le jeu ne compte pas, rien ne casse
+  });
+});
+
+// Lot A3 : la catégorie d'un jeu ce jour-là. Dates fixes : `T` = le jour du changement, un jour compte à partir de `depuis`, jamais avant.
+describe("catégorie (lot A3)", () => {
+  const T = 200;
+  it("sans `depuis`, la catégorie est celle de la fiche, de tout temps", () => {
+    for (const jour of [0, T - 1, T, T + 1]) {
+      expect(categorieLe("arcade", undefined, jour)).toBe("arcade");
+      expect(categorieLe("jour", null, jour)).toBe("jour");
+    }
+  });
+  it("un jeu qui passe en arcade le jour T-1 (fiche : depuis = T) compte encore le jour T-1, plus dès T ; la veille et avant, il comptait", () => {
+    expect(categorieLe("arcade", T, T - 1)).toBe("jour");
+    expect(categorieLe("arcade", T, T)).toBe("arcade");
+    expect(categorieLe("arcade", T, T + 30)).toBe("arcade");
+    expect(compteDansLaJournee("arcade", T, T - 1)).toBe(true);
+    expect(compteDansLaJournee("arcade", T, T)).toBe(false);
+  });
+  it("le chemin inverse (arcade → jour) compte aussi à partir du lendemain", () => {
+    expect(categorieLe("jour", T, T - 1)).toBe("arcade");
+    expect(categorieLe("jour", T, T)).toBe("jour");
+    expect(compteDansLaJournee("jour", T, T - 1)).toBe(false);
+    expect(compteDansLaJournee("jour", T, T)).toBe(true);
   });
 });
