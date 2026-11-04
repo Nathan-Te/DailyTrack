@@ -142,7 +142,20 @@ export interface FicheJeu {
     parts: { main: number; complet: number; nuit: number };
   };
   /** Les lignes de `docs/plateforme/budgets.md` du jeu (les plafonds y restent : un seul endroit). */
-  budget: { lignes: string[] };
+  budget: {
+    lignes: string[];
+    /**
+     * Lot K4e : sa façon de mesurer son chargement — les préfixes de fichiers (`essai-` pour `essai-<empreinte>.js`) que le jeu charge à la demande en plus des briques du kit (`A_LA_DEMANDE_PAR_DEFAUT`,
+     * `scripts/budgets.mjs`) : ils ne comptent pas dans son premier chargement. Absent : seulement les briques du kit. Les trois jeux livrés ont leur mesure propre et ne le lisent pas.
+     */
+    aLaDemande?: string[];
+  };
+  /**
+   * Lot K4e : un **jeu témoin** n'est jamais mis en production. Il existe en local et sur la recette (registre du serveur, site de la recette, tests) ; il est absent de `site.mjs --production`, du registre
+   * du serveur de production (`ENVIRONMENT=production`) et de « Mettre en production » (figer, préparer, comparer les jours). Il ne range ses résultats que dans la table commune `resultats_jeu` (aucune table à
+   * lui : la base de production n'en voit pas la trace). Absent : faux.
+   */
+  temoin?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -384,8 +397,12 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
     if (!estObjet(parts) || !(["main", "complet", "nuit"] as const).every((k) => estEntier(parts[k]) && (parts[k] as number) >= 1)) ko("e2e.parts", "{ main, complet, nuit } : des entiers ≥ 1");
   }
 
+  if (f.temoin !== undefined && typeof f.temoin !== "boolean") ko("temoin", "booléen, ou absent");
+  if (f.temoin === true && estObjet(f.donnees) && (!Array.isArray(f.donnees.tables) || f.donnees.tables.length > 0 || f.donnees.tableCommune !== "resultats_jeu")) ko("temoin", "un jeu témoin ne range ses résultats que dans la table commune (`tableCommune`, aucune table à lui) : la base de production n'en voit pas la trace");
+
   const b = f.budget;
   if (!estObjet(b) || !listeDeTextes(b.lignes) || b.lignes.length === 0 || !b.lignes.every((l) => LIGNE_BUDGET.test(l) && l.startsWith(`${id}.`))) ko("budget.lignes", `des lignes de budgets.md qui commencent par « ${id}. »`);
+  else if (b.aLaDemande !== undefined && (!listeDeTextes(b.aLaDemande) || !b.aLaDemande.every((p) => /^[A-Za-z0-9.]+-$/.test(p)))) ko("budget.aLaDemande", "des préfixes de fichiers qui finissent par un tiret (`essai-`), ou absent");
 
   return p;
 }
@@ -481,6 +498,8 @@ export interface ProjectionServeur {
     reglagesGardes: string[];
     messageOu: string;
     zoneNouveautes: string;
+    /** Lot K4e : un jeu témoin (jamais en production). */
+    temoin?: true;
   }[];
 }
 export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeur {
@@ -501,6 +520,7 @@ export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeu
       reglagesGardes: f.donnees.stockage.reglagesGardes,
       messageOu: f.message.ou,
       zoneNouveautes: f.zoneNouveautes,
+      ...(f.temoin ? { temoin: true as const } : {}),
     })),
   };
 }
@@ -517,12 +537,16 @@ export interface ProjectionCI {
     /** Lot K4b : le dossier de la simulation (`packages/<sim>`), où la chaîne de production voit si un code contient le jeu. */
     sim: string;
     budget: string[];
+    /** Lot K4e : préfixes de fichiers chargés à la demande, en plus des briques du kit (absent : aucun). */
+    budgetALaDemande?: string[];
     outilsAdmin: boolean;
+    /** Lot K4e : un jeu témoin (jamais en production). */
+    temoin?: true;
   }[];
 }
 export function projectionCI(fiches: readonly FicheJeu[]): ProjectionCI {
   return {
-    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd, fabrication: f.jours.fabrication }, sim: f.dossiers?.sim ?? `${f.id}-sim`, budget: f.budget.lignes, outilsAdmin: f.admin.outils })),
+    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd, fabrication: f.jours.fabrication }, sim: f.dossiers?.sim ?? `${f.id}-sim`, budget: f.budget.lignes, ...(f.budget.aLaDemande ? { budgetALaDemande: f.budget.aLaDemande } : {}), outilsAdmin: f.admin.outils, ...(f.temoin ? { temoin: true as const } : {}) })),
   };
 }
 
@@ -545,6 +569,8 @@ export interface ProjectionJeu {
     zoneNouveautes: string;
     themes: string[];
     scenes: string[];
+    /** Lot K4e : un jeu témoin (jamais en production). */
+    temoin?: true;
   }[];
   /** Les jeux publics au départ (`etatDepart: on`), dans l'ordre des fiches. */
   publics: string[];
@@ -574,6 +600,7 @@ export function projectionJeu(fiches: readonly FicheJeu[]): ProjectionJeu {
       zoneNouveautes: f.zoneNouveautes,
       themes: f.themes,
       scenes: f.musique.scenes,
+      ...(f.temoin ? { temoin: true as const } : {}),
     })),
     publics: l.filter((f) => f.etatDepart === "on").map((f) => f.id),
     prefixes: l.map((f) => f.donnees.stockage.prefixe),
@@ -581,6 +608,42 @@ export function projectionJeu(fiches: readonly FicheJeu[]): ProjectionJeu {
     zones: ["dujour", ...l.map((f) => f.zoneNouveautes)],
     nomsDeZones: { dujour: "Du Jour", ...Object.fromEntries(l.map((f) => [f.zoneNouveautes, f.nom.fr])) },
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// Lot K4e — les clés de catalogue qu'un jeu doit fournir
+
+/** Les jeux dont la cartouche du portail ne nomme pas les thèmes (exception nommée, avant la règle : Track n'a pas de `portail.theme.track.*`). */
+export const JEUX_SANS_NOM_DE_THEME: readonly string[] = ["track"];
+
+export interface CleDeCatalogue {
+  /** Le catalogue qui la porte : le commun de `@cdj/ui`, celui du portail, ou l'un des deux (un titre de cartouche). */
+  catalogue: "commun" | "portail" | "commun-ou-portail";
+  cle: string;
+}
+/**
+ * **Les clés de catalogue qu'une fiche exige** (fr ET en) : le nom du jeu (`jeu.<id>.nom`), son accroche, son titre s'il en a un, un nom par thème (`portail.theme.<id>.<code>`) et, pour une accroche par thème,
+ * la réplique de chaque thème. Le générateur d'un jeu neuf les écrit ; `clesManquantes` les vérifie pour chaque fiche, en nommant la fiche et la clé.
+ */
+export function clesDeCatalogue(f: Pick<FicheJeu, "id" | "accroche" | "titre" | "themes" | "accrocheTheme">): CleDeCatalogue[] {
+  return [
+    { catalogue: "commun", cle: `jeu.${f.id}.nom` },
+    { catalogue: "portail", cle: f.accroche },
+    ...(f.titre ? [{ catalogue: "commun-ou-portail" as const, cle: f.titre }] : []),
+    ...(JEUX_SANS_NOM_DE_THEME.includes(f.id) ? [] : f.themes.map((t) => ({ catalogue: "portail" as const, cle: `portail.theme.${f.id}.${t}` }))),
+    ...(f.accrocheTheme ? f.themes.map((t) => ({ catalogue: "commun" as const, cle: `${f.accrocheTheme}${t}` })) : []),
+  ];
+}
+type Catalogue2 = { fr: Readonly<Record<string, string>>; en: Readonly<Record<string, string>> };
+/** Les clés qui manquent à une fiche, une phrase par clé et par langue : « fiche « essai » : la clé « jeu.essai.nom » manque au catalogue commun (en) ». Liste vide : tout y est. */
+export function clesManquantes(f: Pick<FicheJeu, "id" | "accroche" | "titre" | "themes" | "accrocheTheme">, catalogues: { commun: Catalogue2; portail: Catalogue2 }): string[] {
+  const manques: string[] = [];
+  for (const { catalogue, cle } of clesDeCatalogue(f))
+    for (const langue of ["fr", "en"] as const) {
+      const presente = catalogue === "commun" ? cle in catalogues.commun[langue] : catalogue === "portail" ? cle in catalogues.portail[langue] : cle in catalogues.commun[langue] || cle in catalogues.portail[langue];
+      if (!presente) manques.push(`fiche « ${f.id} » : la clé « ${cle} » manque au catalogue ${catalogue === "commun" ? "commun de @cdj/ui" : catalogue === "portail" ? "du portail" : "commun ou du portail"} (${langue})`);
+    }
+  return manques;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------

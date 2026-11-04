@@ -18,7 +18,7 @@ import { refOfPlayer, sha256Hex } from "../src/players";
 import { replayUnits } from "../src/replayCost";
 import { ADMIN_EMAIL, CLIENT_ID, SESSION_KEY } from "../test/adminHelpers";
 import { makeApi, playerId, type TestApi } from "../test/helpers";
-import { creerBanc, type Banc, type Trace } from "./banc";
+import { creerBanc, jeuxDesBancs, type Banc, type Trace } from "./banc";
 
 // Lot K2b — le scénario du banc de réponses de Jump (voir `banc.ts`), **écrit sur le code d'avant la migration** vers le module des jeux. Il couvre tout ce qui sort du serveur de Jump : un envoi valide, chaque
 // refus, le classement (Tous, Amis, Mon groupe, Groupes), le profil, le fantôme du premier, `bundle`, les vies, la carte des morts et le carnage (et leur oubli à la fin du jour), une copie refusée, l'interrupteur
@@ -117,7 +117,7 @@ async function connecter(banc: Banc, t: TestApi) {
 }
 
 async function monter(date: string, options: Record<string, unknown> = {}): Promise<TestApi> {
-  const t = await makeApi({ seed: false, environment: "recette", ...options });
+  const t = await makeApi({ seed: false, environment: "recette", games: jeuxDesBancs(), ...options });
   t.clock.now = midi(D(date));
   return t;
 }
@@ -362,7 +362,7 @@ export async function scenarioJump(): Promise<Trace[]> {
     const t = await monter(JOUR);
     await banc.appeler(t, "niveau abîmé : le jour", "GET", `/api/jump/day/${JOUR}`);
     await t.db.run("UPDATE jump_levels SET ascii = ? WHERE day = ?", ["# abîmé", D(JOUR)]);
-    const t2 = await makeApi({ seed: false, environment: "recette", db: t.db });
+    const t2 = await makeApi({ seed: false, environment: "recette", games: jeuxDesBancs(), db: t.db });
     t2.clock.now = midi(D(JOUR));
     await banc.appeler(t2, "niveau abîmé : envoi", "POST", "/api/jump/submit", corps(lent.code, { name: "Joueur1" }), { id: 1 });
     await etatDeLaBase(banc, t2, "après le niveau abîmé");

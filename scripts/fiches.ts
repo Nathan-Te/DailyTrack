@@ -1,20 +1,20 @@
 // Lot K1 (plateforme) — `npm run fiches` : lit `config/jeux/<id>.json`, valide chaque fiche (`@cdj/core/fiche`) puis écrit les projections (portail, serveur, ci, jeu) et les vues TypeScript des
 // paquets (`packages/core/src/ficheSorties.ts` dit lesquelles). `npm run fiches -- --verifier` n'écrit rien et échoue si un fichier du dépôt n'est pas à jour (le test
 // `packages/core/test/fiches.test.ts` fait la même vérification). À lancer après tout changement de fiche. Aucune dépendance, aucun réseau.
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { lireFichesBrutes } from "./fiches-brutes.mjs";
 import { lireFiche, validerEnsemble, type FicheJeu } from "../packages/core/src/fiche";
-import { DOSSIER_FICHES, sorties } from "../packages/core/src/ficheSorties";
+import { sorties } from "../packages/core/src/ficheSorties";
 
 const RACINE = process.cwd();
 
-/** Les fiches du dépôt, validées, dans l'ordre de leur champ `ordre`. Lève une erreur qui liste tous les problèmes. */
+/**
+ * Les fiches du dépôt, validées, dans l'ordre de leur champ `ordre`. Lève une erreur qui liste tous les problèmes. Lot K4e : en essai seulement (`CDJ_FICHES_SUPPLEMENTAIRES`, voir
+ * `fiches-brutes.mjs`), les fiches d'un dossier de plus (le jeu fictif de `scripts/jeu-fictif.mjs`).
+ */
 export function lireLesFiches(racine = RACINE): FicheJeu[] {
-  const dossier = join(racine, DOSSIER_FICHES);
-  const fiches = readdirSync(dossier)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => lireFiche(JSON.parse(readFileSync(join(dossier, f), "utf8")), f.slice(0, -5)));
+  const fiches = lireFichesBrutes(racine).map((f) => lireFiche(f.brut, f.id));
   const problemes = validerEnsemble(fiches);
   if (problemes.length > 0) throw new Error(`les fiches se contredisent :\n  - ${problemes.join("\n  - ")}`);
   return fiches.sort((a, b) => a.ordre - b.ordre);
@@ -23,7 +23,7 @@ export function lireLesFiches(racine = RACINE): FicheJeu[] {
 const verifier = process.argv.includes("--verifier");
 if (process.argv[1] && resolve(process.argv[1]).includes("fiches")) {
   const fiches = lireLesFiches();
-  const attendu = sorties(fiches);
+  const attendu = sorties(fiches, (chemin) => existsSync(join(RACINE, chemin)));
   const perimes: string[] = [];
   for (const [chemin, contenu] of Object.entries(attendu)) {
     const f = join(RACINE, chemin);

@@ -3,7 +3,7 @@ import { formatDay, SIM_VERSION, VOITURE_PAR_DEFAUT, decodeReplay, dailyTrackId,
 import { refOfPlayer, sha256Hex } from "../src/players";
 import { ADMIN_EMAIL, CLIENT_ID, SESSION_KEY } from "../test/adminHelpers";
 import { circuitOf, DAY, DAY_MS, NOON, makeApi, pilotReplay, playerId, salonReplay, SALON_SESSION, seedSalonCircuit, type TestApi } from "../test/helpers";
-import { creerBanc, type Banc, type Trace } from "./banc";
+import { creerBanc, jeuxDesBancs, type Banc, type Trace } from "./banc";
 
 // Lot K2c — le scénario du banc de réponses de Track (voir `banc.ts`), **écrit sur le code d'avant la migration** vers le module des jeux. Il couvre tout ce qui sort du serveur de Track : un envoi valide et un refus par
 // code, les routes historiques sous `/api` (`day`, `leaderboard`, `ghost`, `run/<ref>`, `planning`, `garage`, `me`), le circuit du jour et les variantes du planning, les médailles de chaque version du générateur (G1),
@@ -67,7 +67,7 @@ export async function scenarioTrack(): Promise<Trace[]> {
 
   // --- 1. Le jour générique : lectures, refus, envois, classements, fantômes, profil, garage, planning, amis, groupes, portail, administration, effacement ------------
   {
-    const t = await makeApi({ allowCopies: false, adminToken: JETON, admin: ADMIN, environment: "recette" });
+    const t = await makeApi({ games: jeuxDesBancs(), allowCopies: false, adminToken: JETON, admin: ADMIN, environment: "recette" });
     const a = (nom: string, method: string, path: string, body?: unknown, id?: number | null, headers?: Record<string, string>) => banc.appeler(t, nom, method, path, body, { id, headers });
     const envoyer = (nom: string, n: number, body: unknown, extra: Record<string, unknown> = {}) => a(nom, "POST", "/api/submit", { ...(body as object), name: `Joueur${n}`, ...extra }, n);
 
@@ -266,7 +266,7 @@ export async function scenarioTrack(): Promise<Trace[]> {
     const fast = salonReplay(S, 0.9);
     const mid = salonReplay(S, 0.78);
     const slow = salonReplay(S, 0.65);
-    const t = await makeApi({ allowCopies: false });
+    const t = await makeApi({ games: jeuxDesBancs(), allowCopies: false });
     await seedSalonCircuit(t.db, S);
     const a = (nom: string, method: string, path: string, body?: unknown, id?: number | null, headers?: Record<string, string>) => banc.appeler(t, nom, method, path, body, { id, headers });
     await a("salon : maintenant", "GET", `/api/salon/now?player=${playerId(1)}`);
@@ -305,7 +305,7 @@ export async function scenarioTrack(): Promise<Trace[]> {
 
   // --- 3. Le plafond global de rejeux (503) -------------------------------------------------------------------------------------------------------
   {
-    const t = await makeApi({ replaysPerMinute: 1 });
+    const t = await makeApi({ games: jeuxDesBancs(), replaysPerMinute: 1 });
     const envoyer = (nom: string, n: number, replay: string) => banc.appeler(t, nom, "POST", "/api/submit", { ...corps(replay), name: `Joueur${n}` }, { id: n });
     await envoyer("plafond : premier rejeu", 1, c1.code);
     await envoyer("plafond : trop de rejeux", 2, c2.code);
@@ -315,7 +315,7 @@ export async function scenarioTrack(): Promise<Trace[]> {
 
   // --- 4. Le débit par joueur et par adresse (429) -------------------------------------------------------------------------------------------------
   {
-    const t = await makeApi({ limits: { windowMs: 600_000, perClient: 4, perPlayer: 2 } });
+    const t = await makeApi({ games: jeuxDesBancs(), limits: { windowMs: 600_000, perClient: 4, perPlayer: 2 } });
     const envoyer = (nom: string, n: number) => banc.appeler(t, nom, "POST", "/api/submit", { ...corps("%%%"), name: `Joueur${n}` }, { id: n, clientKey: "203.0.113.7" });
     await envoyer("débit : 1er envoi du joueur", 1);
     await envoyer("débit : 2e envoi du joueur", 1);
@@ -327,7 +327,7 @@ export async function scenarioTrack(): Promise<Trace[]> {
   // --- 5. La grâce après minuit et le jour fermé ----------------------------------------------------------------------------------------------------
   {
     const hier = pilotReplay(DAY - 1, 0.9);
-    const t = await makeApi();
+    const t = await makeApi({ games: jeuxDesBancs() });
     const minuit = parisDayStart(DAY);
     const corpsHier = { date: formatDay(DAY - 1), replay: hier.code };
     t.clock.now = minuit + 5 * 60_000;
@@ -341,7 +341,7 @@ export async function scenarioTrack(): Promise<Trace[]> {
 
   // --- 6. L'interrupteur : off, aperçu de PR, preview avec et sans clé, puis on ------------------------------------------------------------------------
   {
-    const t = await makeApi({ admin: ADMIN, environment: "recette" });
+    const t = await makeApi({ games: jeuxDesBancs(), admin: ADMIN, environment: "recette" });
     const a = (nom: string, method: string, path: string, body?: unknown, id?: number | null, headers?: Record<string, string>) => banc.appeler(t, nom, method, path, body, { id, headers });
     const adm = await connecter(banc, t);
     await a("on : jour", "GET", `/api/day/${JOUR}`);
@@ -380,7 +380,7 @@ export async function scenarioTrack(): Promise<Trace[]> {
   for (const date of ["2026-10-27", "2026-10-28", "2026-10-29"]) {
     const jour = Number(await (async () => (await import("@cdj/core")).parseDay(date))());
     const course = pilotReplay(jour, 0.9);
-    const t = await makeApi({ seed: false });
+    const t = await makeApi({ games: jeuxDesBancs(), seed: false });
     t.clock.now = midi(jour);
     await banc.appeler(t, `médailles ${date} : jour`, "GET", `/api/day/${date}`);
     await banc.appeler(t, `médailles ${date} : envoi`, "POST", "/api/submit", { date, replay: course.code, name: "Joueur1" }, { id: 1 });

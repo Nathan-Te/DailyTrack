@@ -2,6 +2,9 @@
    **Une feuille à part, importée par `amis.ts` et chargée à la demande avec lui** (jamais dans `styles.css` : rien au premier chargement). Jetons seulement ; ombres nettes, aucune translucidité ;
    cibles de 44 px ; focus visible (socle.css). Charte : docs/plateforme/identite.md § 9 et 10, maquette favoris-et-amis.html (planches B, C, D). */
 
+/* Lot K4e : le sélecteur des jeux à étiquette générique, tiré de leur fiche (`npm run fiches`). */
+@import "./amis.generated.css";
+
 /* --- Le sélecteur Tous / Amis : deux segments de 44 px. Les couleurs viennent de variables que chaque jeu reprend (Track asphalte, Jump jaune, Tower menthe). */
 .dj-amis-selecteur {
   --sel-fond: var(--dj-creme);

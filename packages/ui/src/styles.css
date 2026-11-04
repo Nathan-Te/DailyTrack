@@ -3,3 +3,5 @@
 @import "./jetons.css";
 @import "./socle.css";
 @import "./composants.css";
+/* Lot K4e : l'étiquette et la cartouche des jeux à étiquette générique, tirées de leur fiche (`npm run fiches`) ; vide tant qu'aucun jeu n'est générique. */
+@import "./jeux.generated.css";

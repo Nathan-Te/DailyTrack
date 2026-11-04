@@ -14,6 +14,12 @@ export const FICHES_CI = JSON.parse(readFileSync(join(RACINE, "config/jeux/proje
 /** Les identifiants des jeux (`track`, `jump`, `tower`), dans l'ordre des fiches. */
 export const IDS_FICHES = FICHES_CI.map((f) => f.id);
 
+/**
+ * Lot K4e : **les jeux qui vont en production**, dans l'ordre des fiches : tous sauf les jeux témoins (`temoin: true`). La chaîne de « Mettre en production » (jours, versions, empreintes) ne lit que ceux-là ;
+ * un témoin existe en local et sur la recette, jamais ici.
+ */
+export const IDS_PRODUCTION = FICHES_CI.filter((f) => !f.temoin).map((f) => f.id);
+
 /** La fiche d'un jeu d'après son identifiant, ou `undefined`. */
 export const ficheCI = (id) => FICHES_CI.find((f) => f.id === id);
 
@@ -51,7 +57,7 @@ export const FICHES_SERVEUR = JSON.parse(readFileSync(join(RACINE, "config/jeux/
 /** Le nom français de chaque jeu (`Track`, `Jump`, `Tower`…), d'après sa fiche : `{ id: nom }`. */
 export const NOMS_DES_JEUX = Object.fromEntries(JSON.parse(readFileSync(join(RACINE, "config/jeux/projections/jeu.json"), "utf8")).jeux.map((j) => [j.id, j.nom.fr]));
 /** Les versions (simulation, générateur) de chaque jeu, `{ nom de la constante, fichier, jeu }` : la fiche dit `fichier:CONSTANTE` (`versions.sim`, `versions.generateur`). */
-export const VERSIONS_DES_JEUX = FICHES_SERVEUR.flatMap((f) =>
+export const VERSIONS_DES_JEUX = FICHES_SERVEUR.filter((f) => !f.temoin).flatMap((f) =>
   [["sim", f.versions.sim], ["generateur", f.versions.generateur]].map(([role, v]) => {
     const [fichier, nom] = v.split(":");
     return { nom, fichier, jeu: NOMS_DES_JEUX[f.id], id: f.id, role };
@@ -64,7 +70,7 @@ export const VERSIONS_DES_JEUX = FICHES_SERVEUR.flatMap((f) =>
  * Les jeux de la chaîne, dans l'ordre des fiches : `{ id, nom, mode, dossier, registre, sim, versions, moduleEmpreinte, moduleRegistre?, figer?, preparer? }`. `mode` : `registre` (un fichier de plages,
  * `registre`) ou `fichier-par-jour` (un fichier par jour dans `dossier`) ; `sim` : le dossier de la simulation (`packages/<sim>`), où l'on voit si un code contient le jeu.
  */
-export const CHAINE = FICHES_CI.map((f) => {
+export const CHAINE = FICHES_CI.filter((f) => !f.temoin).map((f) => {
   const { empreinte, registre, figer, preparer, apresPose } = f.jours.fabrication;
   return {
     id: f.id,

@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { mesureTower as mesureTowerDetail } from "../apps/tower/tools/mesure.mjs";
 import { mesureDecor } from "../apps/web/e2e/mesureDecor.mjs";
-import { ficheCI } from "./fiches-lecture.mjs";
+import { FICHES_CI, ficheCI } from "./fiches-lecture.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const gz = (f, level) => gzipSync(readFileSync(f), level === undefined ? {} : { level }).length;
@@ -103,6 +103,39 @@ export function mesureTower(dist = join(ROOT, "apps/tower/dist/assets")) {
     fichiers: detail.accueil.fichiers,
     detail,
   };
+}
+
+/**
+ * Lot K4e — **un jeu neuf se mesure sans qu'on écrive sa mesure** : les trois jeux livrés ont chacun la leur (`mesureTrack`, `mesureJump`, `mesureTower` : leur découpage est propre), tout autre jeu des fiches
+ * est mesuré par `mesureJeuNeuf`. Premier chargement = le JS et le CSS que le joueur charge d'emblée, **hors de ce que les briques du kit chargent à la demande** (`A_LA_DEMANDE_PAR_DEFAUT` : catalogue anglais,
+ * interrupteur, manette, commandes, musique, plaques de la communauté, amis du classement, retours, message en direct, jeu suivant, outils `?debug`) ; sa fiche peut ajouter les siens (`budget.aLaDemande` : des
+ * préfixes de fichiers, `essai-` pour `essai-<empreinte>.js`) — c'est le champ de fiche « sa façon de mesurer son chargement ».
+ */
+export const JEUX_A_MESURE_PROPRE = ["track", "jump", "tower"];
+export const A_LA_DEMANDE_PAR_DEFAUT = ["catalogue.en-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-", "classementAmis-", "amisClassement-", "retoursJeu-", "message-", "suite-", "tune-", "verify-", "admin-"];
+/** Les lignes de budget qu'un jeu neuf obtient d'office (les autres demandent leur propre mesure). */
+export const LIGNES_DE_JEU_NEUF = ["jsCss", "anglais", "polices"];
+export function mesureJeuNeuf(fiche, dist = join(ROOT, "apps", fiche.app, "dist/assets")) {
+  if (!existsSync(join(dist, "../index.html"))) return null; // pas construit : aucune mesure
+  const aLaDemande = (f) => [...A_LA_DEMANDE_PAR_DEFAUT, ...(fiche.budgetALaDemande ?? [])].some((p) => f.startsWith(p));
+  const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
+  const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
+  const html = readFileSync(join(dist, "../index.html"), "utf8");
+  const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
+  return { jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
+}
+/** Les jeux des fiches qui se mesurent par `mesureJeuNeuf`. */
+export const jeuxNeufs = () => FICHES_CI.filter((f) => !JEUX_A_MESURE_PROPRE.includes(f.id));
+/** Les lignes de budget de ces jeux (`<id>.jsCss`…) : celles de leur fiche ; une ligne que `mesureJeuNeuf` ne sait pas mesurer est une erreur claire (un champ de fiche à ajouter), jamais un silence. */
+export function lignesDesJeuxNeufs() {
+  return jeuxNeufs().flatMap((f) =>
+    f.budget.map((ligne) => {
+      const nom = ligne.slice(f.id.length + 1);
+      if (!LIGNES_DE_JEU_NEUF.includes(nom)) throw new Error(`fiche « ${f.id} » : la ligne de budget « ${ligne} » n'a pas de mesure (un jeu neuf obtient d'office ${LIGNES_DE_JEU_NEUF.map((n) => `${f.id}.${n}`).join(", ")}) : ajoute sa mesure à scripts/budgets.mjs`);
+      return ligne;
+    }),
+  );
 }
 
 /**
@@ -209,6 +242,8 @@ export const CLES_MESUREES = [
   "jump.jsCss", "jump.anglais", "jump.polices",
   "tower.jsCss", "tower.jeu", "tower.physique", "tower.anglais", "tower.polices", "tower.decors", "tower.habits",
   "musique.lecteur", "retours.dialogue",
+  // Lot K4e : les lignes des jeux neufs, lues dans leurs fiches (vide tant qu'aucun jeu neuf n'existe).
+  ...lignesDesJeuxNeufs(),
 ];
 
 export function mesuresParLigne({ portail = mesurePortail } = {}) {
@@ -240,6 +275,11 @@ export function mesuresParLigne({ portail = mesurePortail } = {}) {
     "musique.lecteur": mesureMusique().jsCss,
     "retours.dialogue": mesureRetours().jsCss,
   };
+  // Lot K4e : chaque jeu neuf des fiches, par sa mesure d'office (`null` s'il n'est pas construit : le job « Budgets » construit tout d'abord).
+  for (const f of jeuxNeufs()) {
+    const m = mesureJeuNeuf(f);
+    for (const ligne of f.budget) lignes[ligne] = m ? m[ligne.slice(f.id.length + 1)] : null;
+  }
   for (const [cle, entrees] of Object.entries(ENTREES_TRACK_A_LA_DEMANDE)) lignes[cle] = aLaDemandeTrack(entrees, undefined, t).octets;
   // « track.sonBoucles » : les huit boucles de moteur de la voiture la plus lourde (octets des fichiers AAC, déjà compressés).
   const dist = join(ROOT, "apps/web/dist/assets");

@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { GAMES } from "../src/registry";
 import type { TestApi } from "../test/helpers";
 
 // Lot K2 — le **banc de réponses** : la preuve qu'un refactor du serveur d'un jeu ne change rien pour les joueurs. Un scénario scripté appelle l'API (`appeler`), le banc garde pour chaque appel le statut,
@@ -7,6 +8,13 @@ import type { TestApi } from "../test/helpers";
 //
 // **Quand le lancer** : à toute modification de `apps/api/src/jeux/**` ou du serveur d'un jeu migré (`apps/api/CLAUDE.md`, « Module des jeux »). **Régénérer la référence** (`UPDATE_BANC=1`) n'est permis que pour
 // une différence voulue, listée et justifiée dans le README du lot ; jamais pour faire passer un refactor. K2b (Jump) et K2c (Track) écrivent leur scénario sur ce modèle (`banc-tower.ts`).
+
+/**
+ * Lot K4e — **les jeux que couvrent les bancs** : Track, Jump et Tower. Le registre vient des fiches, donc un jeu neuf y entre sans qu'on y touche ; mais une référence versée décrit les réponses de ces trois
+ * jeux (la fiche d'un joueur, le tableau de bord, l'interrupteur listent « les jeux du registre ») : le banc monte donc le serveur avec eux seuls. Un jeu neuf a ses propres tests (`jeuNeuf*.test.ts`).
+ */
+export const CODES_DES_BANCS = ["cdj", "jump", "tower"];
+export const jeuxDesBancs = (base: typeof GAMES = GAMES): typeof GAMES => base.filter((g) => CODES_DES_BANCS.includes(g.code));
 
 /** Un appel enregistré. */
 export interface Trace {

@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { creditDe, resoudreJeux, verifierDescription } from "../src/description";
 import { FORMAT_SCENE, SCENES } from "../src/scenes";
 import { pistesDuJeu } from "../src/liste";
+import { join } from "node:path";
 import { liste, piste } from "./faux";
+
+// Lot K4e : « les jeux des fiches » (celles du dépôt et, en essai, de `CDJ_FICHES_SUPPLEMENTAIRES`), dans l'ordre des fiches : ce que désigne `tous`.
+const { lireFichesBrutes } = (await import(/* @vite-ignore */ join(__dirname, "../../../scripts/fiches-brutes.mjs"))) as typeof import("../../../scripts/fiches-brutes.mjs");
+const JEUX_DES_FICHES = lireFichesBrutes(join(__dirname, "../../..")).map((f) => f.brut as { id: string; ordre: number }).sort((a, b) => a.ordre - b.ordre).map((f) => f.id);
 
 const existe = { fichierExiste: () => true };
 const bon = { id: "premier-jour", titre: "Premier jour", artiste: "Nathan", fichier: "premier-jour.mp3", jeux: ["track"], licence: "mienne" };
@@ -48,9 +53,9 @@ describe("musiques.json : la vérification refuse ce qui ne peut pas être publi
     expect(verifierDescription({}, existe).erreurs[0]).toContain("pistes");
   });
 
-  it("`tous` désigne Track, Jump et Tower — pas le portail, qui doit être nommé", () => {
-    expect(resoudreJeux(["tous"])).toEqual(["track", "jump", "tower"]);
-    expect(resoudreJeux(["portail", "tous", "jump"])).toEqual(["track", "jump", "tower", "portail"]);
+  it("`tous` désigne les jeux des fiches (Track, Jump, Tower, puis tout jeu neuf) — pas le portail, qui doit être nommé", () => {
+    expect(resoudreJeux(["tous"])).toEqual(JEUX_DES_FICHES);
+    expect(resoudreJeux(["portail", "tous", "jump"])).toEqual([...JEUX_DES_FICHES, "portail"]);
     expect(resoudreJeux(["tetris"])).toEqual([]);
   });
 

@@ -34,7 +34,7 @@ import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, read
 import { availableParallelism, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CHAINE, FICHES_CI, IDS_FICHES, NOMS_DES_JEUX, VERSIONS_DES_JEUX, jeuDeLaChaine } from "./fiches-lecture.mjs";
+import { CHAINE, FICHES_CI, IDS_FICHES, IDS_PRODUCTION, NOMS_DES_JEUX, VERSIONS_DES_JEUX, jeuDeLaChaine } from "./fiches-lecture.mjs";
 import { EXCEPTIONS as EXCEPTIONS_DE_ZONES, ZONES as ZONES_DES_JEUX } from "./zones-jeu.mjs";
 
 export const TAG_PREFIX = "prod-";
@@ -279,7 +279,7 @@ export function fusionnerEmpreintes(existant, nouveau, jusqua = "9999-12-31", pr
   const out = JSON.parse(JSON.stringify(existant));
   const conflits = [];
   const ajoutes = [];
-  for (const jeu of IDS_FICHES) {
+  for (const jeu of IDS_PRODUCTION) {
     out[jeu] ??= {};
     for (const [date, e] of Object.entries(nouveau[jeu] ?? {})) {
       if (proteges && (date < proteges.premier || !estProtege(proteges, date))) continue; // lot R11 : seuls les jours protégés du lancement à la veille de la bascule sont « passés » : un jour sans résultat est régénéré

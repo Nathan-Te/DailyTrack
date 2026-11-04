@@ -20,7 +20,7 @@ import { DEFAULT_LIMITS, createPlatform } from "./platform";
 import { createPortailRoutes } from "./portail";
 import type { TowerOptions } from "./tower";
 import type { ExecuteurRejeu } from "./towerRejeu";
-import { GAMES } from "./registry";
+import { jeuxPourEnvironnement } from "./registry";
 import { salonSessionMs, type SalonLimits } from "./salon";
 
 // API de la plateforme (DailyTrack, DailyJump). Elle ne fait confiance à aucun temps annoncé : elle reçoit la rediffusion (la suite des
@@ -106,7 +106,7 @@ export interface ApiOptions {
   /** Lot TP : ce qui exécute les rejeux de Tower (le fil de calcul, `executeurFil`) ; absent : le fil principal (repli). */
   towerExecuteur?: ExecuteurRejeu;
   /**
-   * Lot I2 : le registre des jeux (`GAMES` par défaut). **Tests seulement** (un faux jeu n° 3 prouve que le portail ne change pas) : `server.ts`
+   * Lot I2 : le registre des jeux (les jeux des fiches par défaut, `jeuxPourEnvironnement`). **Tests seulement** (un faux jeu n° 3 prouve que le portail ne change pas) : `server.ts`
    * ne le règle jamais. Un faux jeu n'a pas de tables (le schéma est celui de `GAMES`).
    */
   games?: readonly GameDefinition<never>[];
@@ -160,7 +160,9 @@ export function createApi(options: ApiOptions) {
     jump: { frozen: options.jumpFrozen },
     tower: { frozen: options.towerFrozen, executeur: options.towerExecuteur } satisfies TowerOptions,
   };
-  for (const g of options.games ?? GAMES) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });
+  // Lot K4e : le registre vient des fiches ; un jeu témoin n'est jamais dans celui d'un serveur de production.
+  const jeux = options.games ?? jeuxPourEnvironnement(options.environment === "production" ? "production" : options.environment === "recette" ? "recette" : "local");
+  for (const g of jeux) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });
   const byPrefix = [...instances].sort((a, b) => b.prefix.length - a.prefix.length);
   const cdj = instances.find((g) => g.code === "cdj")!.instance as CdjInstance; // DailyTrack est toujours au registre (admin, Salon)
   // Lot R5 : les routes d'admin de la plateforme (effacement d'un joueur) gardées par le jeton de l'admin de DailyTrack (`ADMIN_TOKEN`).
@@ -213,7 +215,7 @@ export function createApi(options: ApiOptions) {
     platform,
     options: options.admin ?? { emails: [] },
     jeux: instances.flatMap((g) => {
-      const def = (options.games ?? GAMES).find((d) => d.code === g.code);
+      const def = jeux.find((d) => d.code === g.code);
       return def ? [{ code: g.code, name: def.name, prefixe: def.prefix, instance: g.instance }] : [];
     }),
     allowedOrigins,

@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import { GAMES } from "../src/registry";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -178,3 +179,9 @@ export async function ouvrirJeu(t: { db: SqlDb }, site: string, du = 0): Promise
   await ensureSchemaOn(t.db);
   await t.db.run("INSERT OR REPLACE INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES (?, 'on', ?, ?, 0)", [site, du, JSON.stringify([[du, null]])]);
 }
+
+/**
+ * Lot K4e — les jeux du registre (donc des fiches) que les tests écrits pour Track, Jump et Tower ne nomment pas : un jeu neuf (en essai, le jeu fictif de `scripts/jeu-fictif.mjs`). Il est `off` et n'a aucun
+ * résultat : un test qui énumère « les jeux » ajoute ces lignes à ses attentes au lieu de supposer trois jeux.
+ */
+export const AUTRES_JEUX: { code: string; name: string }[] = GAMES.filter((g) => !["cdj", "jump", "tower"].includes(g.code)).map((g) => ({ code: g.code, name: g.name }));

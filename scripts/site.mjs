@@ -35,7 +35,12 @@ export const LAYOUT = [
  */
 // Lots K1, K1b et K1c : chaque jeu (`config/jeux/<id>.json`) est publié sous `/<id>/` (sa construction : `apps/<app>/dist`, `app` = `web` pour Track) ; ses jours figés (`jours.dossier`, publiés sous le même
 // nom de dossier : `jump/levels`, `tower/jours` ; Track a un registre, pas de dossier) et la règle de la preuve de l'auteur (`jours.preuveInterditeEnProd`) viennent d'elle. `LAYOUT` ne garde que le portail.
-export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.app}/dist`, to: f.id, jours: f.jours.dossier, preuveInterdite: f.jours.preuveInterditeEnProd }));
+export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.app}/dist`, to: f.id, jours: f.jours.dossier, preuveInterdite: f.jours.preuveInterditeEnProd, temoin: f.temoin === true }));
+/**
+ * Lot K4e : **un jeu témoin n'est jamais publié en production** (`temoin: true` de sa fiche) ; il est présent en local, sur la recette et sur les aperçus. Les sites d'une construction : tous ceux des fiches, moins
+ * les témoins si `production`.
+ */
+export const retenirSites = (sites, { production = false } = {}) => (production ? sites.filter((s) => !s.temoin) : sites);
 export const TOWER_SITE = SITES_FICHES.find((s) => s.id === "tower");
 /**
  * Lot K4 : les jeux qui ont une page d'outils (`admin.outils` de la fiche : Track et Jump) ont aussi une démonstration (`<id>/demo/`, `?api=demo`) et des outils d'essai (`<id>/outils/`) qui ne vont jamais
@@ -298,7 +303,8 @@ function pagesHtml(dir) {
  */
 export async function assembleSite(out, { production = false, origine } = {}) {
   const origineSite = origineDuSite({ production, origine });
-  for (const part of [...LAYOUT.slice(1), ...SITES_FICHES]) if (!existsSync(join(ROOT, part.from, "index.html"))) throw new Error(`${part.from} n'est pas construit : npm run build`);
+  const sites = retenirSites(SITES_FICHES, { production }); // lot K4e : un jeu témoin n'est jamais publié en production
+  for (const part of [...LAYOUT.slice(1), ...sites]) if (!existsSync(join(ROOT, part.from, "index.html"))) throw new Error(`${part.from} n'est pas construit : npm run build`);
   viteBuild({ production });
   rmSync(out, { recursive: true, force: true });
   for (const part of LAYOUT) {
@@ -306,13 +312,13 @@ export async function assembleSite(out, { production = false, origine } = {}) {
     mkdirSync(dest, { recursive: true });
     cpSync(join(ROOT, part.from), dest, { recursive: true });
   }
-  for (const part of SITES_FICHES) cpSync(join(ROOT, part.from), join(out, part.to), { recursive: true });
+  for (const part of sites) cpSync(join(ROOT, part.from), join(out, part.to), { recursive: true });
   partagerPolices(out); // lots I4, I5 et K4 : les polices qu'une feuille de jeu demande à `/assets/` sont celles du portail (celles de Tower, relatives à son dossier, restent les siennes : lot I1)
   const morceaux = copierMusique(out); // lot « musique » : `/musique/` (liste et fichiers préparés), jamais les sources
   // Les jours figés de chaque jeu à dossier (Jump : ses niveaux, lot 10 ; Tower : ses jours, lot TP ; un jeu neuf : les siens, lot K4) doivent être dans le site publié, identiques : sinon un jour déjà joué
   // changerait de niveau. Lot R9 : la production publie le fichier sans sa `preuve` (le reste, octet pour octet) si la fiche du jeu l'interdit ; ailleurs il est identique au dépôt.
   let niveauxVerifies = 0;
-  for (const site of SITES_FICHES.filter((x) => x.jours)) {
+  for (const site of sites.filter((x) => x.jours)) {
     const dossier = join(ROOT, site.jours);
     const publies = join(site.to, basename(site.jours));
     const fichiers = existsSync(dossier) ? readdirSync(dossier).filter((f) => f.endsWith(".json")) : [];
@@ -334,8 +340,11 @@ export async function assembleSite(out, { production = false, origine } = {}) {
     // Lot R9 : la preuve de l'auteur et les outils d'un jeu ne sont jamais publiés (ils sont retirés à la construction du jeu ; ici on le vérifie).
     const fautifs = fichiersAvecPreuve(out);
     if (fautifs.length > 0) throw new Error(`le site de production publierait la preuve de l'auteur ou les outils d'un jeu : ${fautifs.join(", ")}`);
+    // Lot K4e : le garde-fou d'un jeu témoin, revérifié sur le site assemblé (jamais un dossier `/<id>/` de témoin en production).
+    const temoinsPublies = SITES_FICHES.filter((x) => x.temoin && existsSync(join(out, x.to)));
+    if (temoinsPublies.length > 0) throw new Error(`le site de production publierait un jeu témoin : ${temoinsPublies.map((x) => x.id).join(", ")}`);
     // Lots TP et K1 : de même pour les jours de chaque jeu à fiche qui l'interdit (Tower : la construction de production retire la preuve ; ici on le revérifie).
-    for (const site of SITES_FICHES.filter((s) => s.preuveInterdite)) {
+    for (const site of sites.filter((s) => s.preuveInterdite)) {
       const fautifsFiche = fichiersAvecPreuveDeFiche(out, site);
       if (fautifsFiche.length > 0) throw new Error(`le site de production publierait la preuve de l'auteur d'un jour de ${site.id === "tower" ? "Tower" : site.id} : ${fautifsFiche.join(", ")}`);
     }
@@ -363,7 +372,7 @@ if (isMain) {
       const out = resolve(option(argv, "--sortie", "site"));
       const production = argv.includes("--production");
       const { niveaux, images, origine, morceaux } = await assembleSite(out, { production, origine: option(argv, "--origine") });
-      console.log(`site assemblé dans ${out} : portail, ${SITES_FICHES.map((s) => `/${s.to}/`).join(", ")}${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
+      console.log(`site assemblé dans ${out} : portail, ${retenirSites(SITES_FICHES, { production }).map((s) => `/${s.to}/`).join(", ")}${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s) ; ${morceaux} morceau(x) de musique`);
       console.log(`aperçus de partage : ${origine} ; images ${images.map((i) => `${i.nom}.png ${(i.octets / 1024).toFixed(1)} ko`).join(", ")}`);
     } else if (cmd === "firebase") {
       const template = JSON.parse(readFileSync(join(ROOT, "firebase.json"), "utf8"));

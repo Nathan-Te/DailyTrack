@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { RACINE, lireFichesBrutes } from "../../../scripts/fiches-brutes.mjs";
 import { SUITES, navigateurDuProjet, projetDe, suiteDuProjet } from "../../../scripts/fiches-lecture.mjs";
 import { commandesDUnePart, commandesDeConstruction, commandesDeConstructionDePr, commandesDeLaPartDePr, commandesDuPetitEnsemble, rassemblerRapports } from "../../../scripts/e2e-suite.mjs";
 
@@ -11,12 +12,17 @@ const ci = readFileSync(new URL("../../../.github/workflows/ci.yml", import.meta
 const code = ci.split("\n").filter((l) => !l.trim().startsWith("#")).join("\n");
 const e2eSeul = code.slice(code.indexOf("  e2e-parts:"), code.indexOf("  api-image:"));
 
+// Lot K4e : « les jeux des fiches » — celles du dépôt et, en essai, celles de `CDJ_FICHES_SUPPLEMENTAIRES` (le jeu fictif de `scripts/jeu-fictif.mjs`), dans l'ordre des fiches. Un jeu neuf suit la règle : suite = identifiant, projet `<id>-`.
+const fiches = (lireFichesBrutes(RACINE) as { brut: unknown }[]).map((f) => f.brut as { id: string; ordre: number; dossiers?: { app: string }; e2e: { suite: string; projet?: string } }).sort((a, b) => a.ordre - b.ordre);
+const jeuxNeufs = fiches.filter((f) => !["track", "jump", "tower"].includes(f.id));
+
 describe("les suites e2e, lues dans les fiches", () => {
   it("chaque jeu a sa suite, son espace de travail et son projet Playwright ; Track, qui héberge les specs du portail, a le préfixe vide", () => {
     expect(SUITES.map((s) => [s.id, s.suite, s.espace, s.projet])).toEqual([
       ["track", "web", "@cdj/web", ""],
       ["jump", "jump", "@cdj/jump", "jump-"],
       ["tower", "tower", "@cdj/tower", "tower-"],
+      ...jeuxNeufs.map((f) => [f.id, f.e2e.suite, `@cdj/${f.dossiers?.app ?? f.id}`, f.e2e.projet ?? `${f.e2e.suite}-`]),
     ]);
     expect(SUITES.filter((s) => s.projet === "")).toHaveLength(1);
     expect(projetDe("web", "chromium")).toBe("chromium");
@@ -40,6 +46,7 @@ describe("les suites e2e, lues dans les fiches", () => {
       ["@cdj/web", "--project=webkit", "report-webkit-web.zip"],
       ["@cdj/jump", "--project=jump-webkit", "report-webkit-jump.zip"],
       ["@cdj/tower", "--project=tower-webkit", "report-webkit-tower.zip"],
+      ...jeuxNeufs.map((f) => [`@cdj/${f.dossiers?.app ?? f.id}`, `--project=${f.e2e.projet ?? `${f.e2e.suite}-`}webkit`, `report-webkit-${f.e2e.suite}.zip`]),
     ]);
   });
 

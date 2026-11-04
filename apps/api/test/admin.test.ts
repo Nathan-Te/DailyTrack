@@ -9,7 +9,7 @@ import { refOfPlayer } from "../src/players";
 import { nameKey } from "../src/pseudos";
 import type { Logger } from "../src/log";
 import { ADMIN_EMAIL, CLIENT_ID, SESSION_KEY, cleDeTest, fauxFetch, jeton, type CleDeTest } from "./adminHelpers";
-import { circuitOf, makeApi, parisDayStart, playerId, TEST_DB, type TestApi } from "./helpers";
+import { AUTRES_JEUX, circuitOf, makeApi, parisDayStart, playerId, TEST_DB, type TestApi } from "./helpers";
 
 // Lot N1 (plateforme) : le panneau d'administration côté serveur — connexion, session, protections, tableau de bord, joueurs, les cinq actions et leur effet sur les
 // classements, journal. Les résultats sont écrits directement en base (comme `classement.test.ts`) ; les lectures, elles, sont les vraies. SQLite et libSQL.
@@ -341,6 +341,7 @@ describe(`panneau : tableau de bord (${TEST_DB})`, () => {
       { jeu: "cdj", nom: "DailyTrack", figes: resumeRegistreTrack().jours, planifies: 1 },
       { jeu: "jump", nom: "DailyJump", figes: 0 },
       { jeu: "tower", nom: "Tower", figes: 0 },
+      ...AUTRES_JEUX.map((g) => ({ jeu: g.code, nom: g.name, figes: 0 })), // lot K4e : un jeu neuf des fiches
     ]);
     expect(etat.erreurs24h).toEqual({ serveur: 0, rediffusions: 0, perimes: 0, limites: 0 });
     expect(etat.prDepuisMiseEnProduction).toBeNull(); // la place des « PR depuis la dernière mise en production » (lot N2) : aucun chiffre

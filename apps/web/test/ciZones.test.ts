@@ -357,7 +357,7 @@ describe("le workflow (ci.yml)", () => {
   it("la PR lit la matrice du job de portée ; la CI complète garde sa matrice ; les statuts requis `test` et `e2e` sont toujours rapportés", () => {
     expect(code).toContain("fromJSON(needs.scope.outputs.unit_matrice)");
     expect(code).toContain("fromJSON(needs.scope.outputs.e2e_pr_matrice)");
-    expect(code).toMatch(/^  test:\n    needs: \[scope, unit, zones, budgets\]\n    if: always\(\)/m); // lot R17 : le verdict `test` dépend aussi du job « Budgets »
+    expect(code).toMatch(/^  test:\n    needs: \[scope, unit, zones, budgets, jeu-fictif\]\n    if: always\(\)/m); // lot K4e : le jeu fictif bloque aussi la fusion, lot R17 : le verdict `test` dépend aussi du job « Budgets »
     expect(code).toMatch(/^  e2e:\n    needs: \[scope, e2e-parts, e2e-pr\]\n    if: always\(\)/m);
     // Pas de filtre de chemins au niveau du workflow : un statut requis qui ne se rapporte pas bloquerait la fusion d'une PR de documentation.
     expect(code).not.toMatch(/paths(-ignore)?:/);

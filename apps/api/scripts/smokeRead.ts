@@ -12,6 +12,8 @@
 // Seule écriture possible, et **du serveur, pas de l'outil** : les caches que la première requête d'un joueur, quel qu'il soit, remplirait aussi
 // (le niveau du jour calculé et gardé, la carte d'un jour terminé figée) ; jamais un joueur, un temps, une vie ni un compteur.
 
+import { FICHES_SERVEUR } from "../src/fiches.generated";
+
 /** Une adresse locale (l'image de la CI, un poste de développement). */
 export function isLocalBase(base: string): boolean {
   return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base.replace(/\/+$/, ""));
@@ -149,29 +151,39 @@ export async function readOnlySmoke(base: string, fetchImpl: FetchFn, o: { expec
     `${String(board.body?.participants)} classé(s)`,
   );
 
-  // Lot TP : Tower. Un nouveau jeu naît `off` : l'API répond alors `404 game_unavailable` (le bon état, Tower n'est pas encore public). Ouvert, il répond avec ses versions, son jour (médailles en mm,
-  // jamais la preuve de l'auteur) et son classement.
-  const tower = await get("/api/tower/info");
-  const towerFerme = tower.status === 404 && tower.body?.error === "game_unavailable";
-  check(
-    "Tower : /api/tower/info répond (jeu ouvert) ou dit « jeu fermé » (404 game_unavailable : Tower naît `off`)",
-    towerFerme || (tower.status === 200 && Number.isInteger(tower.body?.simVersion) && Number.isInteger(tower.body?.generatorVersion) && tower.body?.today === date),
-    "/api/tower/info",
-    tower,
-    towerFerme ? "fermé (off ou aperçu)" : `simulation v${String(tower.body?.simVersion)}, générateur v${String(tower.body?.generatorVersion)}, ${(tower.body?.frozenDays ?? []).length} jour(s) de l'image`,
-  );
-  if (tower.status === 200) {
-    const tday = await get(`/api/tower/day/${date}`);
-    const m = tday.body?.medals;
+  // Lots TP et K4e : **les jeux du module des jeux, lus des fiches** (Tower, puis tout jeu neuf ; Track et Jump ont leurs vérifications plus haut et plus bas). Un nouveau jeu naît `off` : l'API répond alors
+  // `404 game_unavailable` (le bon état). Ouvert, il répond avec ses versions, son jour (médailles dans l'unité de sa fiche, ordonnées dans le sens de son classement, jamais la preuve de l'auteur) et son
+  // classement. **Un jeu témoin n'est pas dans le registre d'un serveur de production** : sur `--environnement production` ses routes ne répondent pas (404, quel que soit le code).
+  for (const f of FICHES_SERVEUR.filter((x) => x.id !== "track" && x.id !== "jump")) {
+    const nom = f.id.charAt(0).toUpperCase() + f.id.slice(1);
+    const racine = `/api/${f.id}`;
+    const info = await get(`${racine}/info`);
+    if ("temoin" in f && f.temoin === true && o.expectEnvironment === "production") {
+      check(`${nom} : jeu témoin, absent du serveur de production (404)`, info.status === 404, `${racine}/info`, info, `${info.status}`);
+      continue;
+    }
+    const ferme = info.status === 404 && info.body?.error === "game_unavailable";
     check(
-      "Tower : jour (médailles en mm croissantes), jamais la preuve de l'auteur",
-      tday.status === 200 && typeof tday.body?.empreinte === "string" && !!m && m.author >= m.gold && m.gold >= m.silver && m.silver >= m.bronze && m.bronze > 0 && !JSON.stringify(tday.body).includes("preuve"),
-      `/api/tower/day/${date}`,
-      tday,
-      `${String(tday.body?.source)}, tirage ${String(tday.body?.tirage)}, Diamant ${String(m?.author)} mm`,
+      `${nom} : ${racine}/info répond (jeu ouvert) ou dit « jeu fermé » (404 game_unavailable : un jeu neuf naît \`off\`)`,
+      ferme || (info.status === 200 && Number.isInteger(info.body?.simVersion) && Number.isInteger(info.body?.generatorVersion) && info.body?.today === date),
+      `${racine}/info`,
+      info,
+      ferme ? "fermé (off ou aperçu)" : `simulation v${String(info.body?.simVersion)}, générateur v${String(info.body?.generatorVersion)}, ${(info.body?.frozenDays ?? []).length} jour(s) de l'image`,
     );
-    const tboard = await get(`/api/tower/day/${date}/board`);
-    check("Tower : classement du jour, jamais en cache partagé", tboard.status === 200 && tboard.body?.date === date && Array.isArray(tboard.body?.top) && tboard.body?.me === null && personal(tboard.headers), `/api/tower/day/${date}/board`, tboard, `${String(tboard.body?.participants)} classé(s)`);
+    if (info.status !== 200) continue;
+    const jour = await get(`${racine}/day/${date}`);
+    const m = jour.body?.medals;
+    const croissant = (f.classement.colonnes[0]!.sens as string) === "asc"; // un temps : l'or est plus court que le bronze ; une hauteur ou un score : plus grand
+    const rangees = !!m && (croissant ? m.author <= m.gold && m.gold <= m.silver && m.silver <= m.bronze : m.author >= m.gold && m.gold >= m.silver && m.silver >= m.bronze);
+    check(
+      `${nom} : jour (médailles ${croissant ? "croissantes" : "décroissantes"}), jamais la preuve de l'auteur`,
+      jour.status === 200 && (f.id !== "tower" || typeof jour.body?.empreinte === "string") && rangees && m.bronze > 0 && !JSON.stringify(jour.body).includes("preuve"),
+      `${racine}/day/${date}`,
+      jour,
+      `${String(jour.body?.source)}, tirage ${String(jour.body?.tirage)}, Diamant ${String(m?.author)} ${f.classement.unite}`,
+    );
+    const tableau = await get(`${racine}/day/${date}/board`);
+    check(`${nom} : classement du jour, jamais en cache partagé`, tableau.status === 200 && tableau.body?.date === date && Array.isArray(tableau.body?.top) && tableau.body?.me === null && personal(tableau.headers), `${racine}/day/${date}/board`, tableau);
   }
   const ghost = await get(`${dayRoute}/ghost/first`);
   check(

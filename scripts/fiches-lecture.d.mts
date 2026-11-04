@@ -29,10 +29,16 @@ export interface FicheCI {
   /** Lot K4b : le dossier de la simulation (`packages/<sim>`). */
   sim: string;
   budget: string[];
+  /** Lot K4e : préfixes de fichiers chargés à la demande, en plus des briques du kit. */
+  budgetALaDemande?: string[];
   outilsAdmin: boolean;
+  /** Lot K4e : un jeu témoin (jamais en production). */
+  temoin?: true;
 }
 export const FICHES_CI: FicheCI[];
 export const IDS_FICHES: string[];
+/** Lot K4e : les jeux qui vont en production (tous sauf les témoins). */
+export const IDS_PRODUCTION: string[];
 export function ficheCI(id: string): FicheCI | undefined;
 export function regressionDesFiches(): string[];
 

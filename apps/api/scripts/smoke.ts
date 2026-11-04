@@ -23,6 +23,7 @@ import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, declareFrozenGenerators, decodeReplay, demoAttempts, encodeReplay as encodeJump, jumpMedalFor, lifeReplay, repriseParPhase, replayAttempt } from "@cdj/jump-sim";
 import { dailyTower, PREMIER_JOUR_TOWER } from "@cdj/tower-sim";
+import { FICHES_SERVEUR } from "../src/fiches.generated";
 import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { jumpDailyOf } from "../src/jump";
 import { jouerScripte } from "./tower-aide";
@@ -369,6 +370,24 @@ if (environnement === "production") {
   if (day >= PREMIER_JOUR_TOWER) {
     check("Tower : la journée du portail le liste (unité mm) avec ton score ; le cumul au temps ne le compte pas", !!tcartouche && tcartouche.unite === "mm" && tcartouche.etat?.statut === "fini" && tcartouche.etat?.score?.valeur === local.hauteurMm, `${tportail.status} ${String(tcartouche?.etat?.statut)}`);
   } else check("Tower : avant sa première tour, absent de la journée du portail", tportail.status === 200 && !tcartouche, `${tportail.status}`);
+}
+
+// --- Lot K4e : les jeux neufs des fiches (tout jeu autre que Track, Jump et Tower) ----------------------------------------------------------------
+// Leurs routes sont celles du module des jeux. Sans module d'essais de leur côté (une partie scriptée, comme `tower-aide.ts`), le smoke complet ne joue pas à leur place : il vérifie ce qu'un joueur lit — le jeu
+// est fermé (`off`) ou répond (versions, jour, classement vide) — et qu'**un jeu témoin n'existe pas sur un serveur de production**. Une partie scriptée d'un jeu neuf s'ajoute avec son module d'essais.
+for (const f of FICHES_SERVEUR.filter((x) => !["track", "jump", "tower"].includes(x.id))) {
+  const nom = f.id.charAt(0).toUpperCase() + f.id.slice(1);
+  const ninfo = await tcall("GET", `/api/${f.id}/info`);
+  if (environnement === "production") {
+    const attendu = "temoin" in f && f.temoin === true ? ninfo.status === 404 : ninfo.status === 404 && ninfo.body.error === "game_unavailable";
+    check(`${nom} : ${"temoin" in f && f.temoin === true ? "jeu témoin, absent du serveur de production (404)" : "fermé (`off`) sur un serveur de production : 404 game_unavailable"}`, attendu, `${ninfo.status} ${String(ninfo.body.error)}`);
+    continue;
+  }
+  check(`${nom} : /api/${f.id}/info (versions, jour de Paris)`, ninfo.status === 200 && Number.isInteger(ninfo.body.simVersion) && Number.isInteger(ninfo.body.generatorVersion) && ninfo.body.today === date, `${ninfo.status}`);
+  const nday = await tcall("GET", `/api/${f.id}/day/${date}`);
+  check(`${nom} : jour, jamais la preuve de l'auteur`, nday.status === 200 && !JSON.stringify(nday.body).includes("preuve"), `${nday.status}`);
+  const nboard = await tcall("GET", `/api/${f.id}/day/${date}/board`);
+  check(`${nom} : classement du jour`, nboard.status === 200 && Array.isArray(nboard.body.top), `${nboard.status}`);
 }
 
 // --- Lot I2 : le portail (la route regroupée de l'accueil et le profil commun) ---------------------------------------------------------

@@ -6,7 +6,7 @@ import { crc32Hex, playerIdFromCode } from "../src/identity";
 import { CLOSED_GHOST_TTL_MS } from "../src/jump";
 import type { Logger } from "../src/log";
 import { crc32 } from "../../../packages/profile/src/transfer";
-import { DAY, TEST_DB, makeApi, parisDayStart, pilotReplay, playerId, type TestApi } from "./helpers";
+import { AUTRES_JEUX, DAY, TEST_DB, makeApi, parisDayStart, pilotReplay, playerId, type TestApi } from "./helpers";
 
 // Lot R5 (plateforme) : l'effacement d'un joueur à sa demande (`POST /api/admin/effacer`, jeton d'admin ; procédure :
 // docs/plateforme/effacement.md). Le joueur, ses temps et essais, ses vies, ses courses du Salon, son pseudo libéré ; les classements passés
@@ -15,6 +15,9 @@ const TOKEN = "jeton-admin-de-test-assez-long";
 const code = (id: string) => `CDJ2.${id}.${crc32Hex(new TextEncoder().encode(id))}`;
 const admin = { Authorization: `Bearer ${TOKEN}` };
 const erase = (t: TestApi, body: unknown, headers: Record<string, string> = admin) => t.call("POST", "/api/admin/effacer", body, { headers });
+
+// Lot K4e : un jeu neuf des fiches compte ses parties effacées sous `parties<Nom>` (le crochet d'effacement du module des jeux) : zéro, ici.
+const partiesDesAutresJeux = Object.fromEntries(AUTRES_JEUX.map((g) => [`parties${g.name.replace(/[^A-Za-z0-9]/g, "")}`, 0]));
 
 describe("le code de transfert (CDJ2) lu par le serveur", () => {
   it("la même somme de contrôle que @cdj/profile ; un code abîmé ou d'une autre forme est refusé", () => {
@@ -50,7 +53,7 @@ describe(`effacement d'un joueur de DailyTrack (${TEST_DB})`, () => {
     expect((await t.call("GET", "/api/admin/effacer", undefined, { headers: admin })).status).toBe(405);
     const dry = await erase(t, { code: code(alice) });
     expect(dry.status).toBe(200);
-    expect(dry.body).toEqual({ essai: true, pseudo: "Alice", tempsDailyTrack: 1, coursesSalon: 0, essaisDailyJump: 0, viesDailyJump: 0, partiesDailyTower: 0 });
+    expect(dry.body).toEqual({ essai: true, pseudo: "Alice", tempsDailyTrack: 1, coursesSalon: 0, essaisDailyJump: 0, viesDailyJump: 0, partiesDailyTower: 0, ...partiesDesAutresJeux });
     expect(await t.db.first("SELECT 1 AS x FROM players WHERE id = ?", [alice])).not.toBeNull();
     // Sans jeton configuré : la route n'existe pas.
     const off = await makeApi({ seed: false });
@@ -155,7 +158,7 @@ describe(`effacement d'un joueur de DailyJump (${TEST_DB})`, () => {
     expect((await t.call("GET", `/api/jump/day/${JDATE}/ghost/first`)).body.name).toBe("Alice");
 
     const dry = await erase(t, { code: code(alice) });
-    expect(dry.body).toEqual({ essai: true, pseudo: "Alice", tempsDailyTrack: 0, coursesSalon: 0, essaisDailyJump: 1, viesDailyJump: deaths.length, partiesDailyTower: 0 });
+    expect(dry.body).toEqual({ essai: true, pseudo: "Alice", tempsDailyTrack: 0, coursesSalon: 0, essaisDailyJump: 1, viesDailyJump: deaths.length, partiesDailyTower: 0, ...partiesDesAutresJeux });
     expect((await erase(t, { code: code(alice), confirmer: true })).body).toMatchObject({ efface: true, essaisDailyJump: 1, viesDailyJump: deaths.length });
 
     expect(await t.db.first("SELECT 1 AS x FROM jump_results WHERE player_id = ?", [alice])).toBeNull();
