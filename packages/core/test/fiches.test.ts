@@ -375,6 +375,6 @@ describe("les fiches d'un dossier de plus (lot K4e, essais seulement)", () => {
     expect(m.dossiersSupplementaires({ CDJ_FICHES_SUPPLEMENTAIRES: "/x:/y", CDJ_MODE_ESSAI: "1" })).toEqual(["/x", "/y"]);
     expect(m.dossiersSupplementaires({ CDJ_FICHES_SUPPLEMENTAIRES: "/x", NODE_ENV: "test" })).toEqual(["/x"]);
     expect(m.dossiersSupplementaires({})).toEqual([]);
-    expect(() => m.lireFichesBrutes(RACINE, { CDJ_FICHES_SUPPLEMENTAIRES: join(RACINE, DOSSIER_FICHES), CDJ_MODE_ESSAI: "1" })).toThrow(/deux fiches pour le jeu « (cibles|jump|tower|track) »/);
+    expect(() => m.lireFichesBrutes(RACINE, { CDJ_FICHES_SUPPLEMENTAIRES: join(RACINE, DOSSIER_FICHES), CDJ_MODE_ESSAI: "1" })).toThrow(/deux fiches pour le jeu « [a-z0-9]+ »/);
   });
 });

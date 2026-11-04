@@ -330,5 +330,71 @@ export const FICHES_SERVEUR = [
     "messageOu": "cibles",
     "zoneNouveautes": "cibles",
     "temoin": true
+  },
+  {
+    "id": "blocks",
+    "code": "blocks",
+    "etatDepart": "off",
+    "premierJour": "2026-11-02",
+    "categorie": "arcade",
+    "classement": {
+      "colonnes": [
+        {
+          "nom": "touches",
+          "sens": "desc"
+        },
+        {
+          "nom": "dernier",
+          "sens": "asc"
+        },
+        {
+          "nom": "submitted_at",
+          "sens": "asc"
+        },
+        {
+          "nom": "player_id",
+          "sens": "asc"
+        }
+      ],
+      "cumul": false,
+      "unite": "points",
+      "format": "entier"
+    },
+    "medailles": {
+      "methode": "pourcentage-diamant",
+      "bareme": [
+        50,
+        30,
+        15
+      ],
+      "plafondDiamant": 20
+    },
+    "versions": {
+      "sim": "packages/blocks-sim/src/constantes.ts:BLOCKS_SIM_VERSION",
+      "generateur": "packages/blocks-sim/src/constantes.ts:BLOCKS_GENERATOR_VERSION"
+    },
+    "jours": {
+      "mode": "fichier-par-jour",
+      "dossier": "apps/blocks/public/jours",
+      "preuveInterditeEnProd": true,
+      "fabrication": {
+        "empreinte": "apps/api/scripts/blocks-empreintes.ts",
+        "figer": {
+          "paquet": "@cdj/blocks-sim",
+          "script": "figer:blocks",
+          "forme": "jours-proteges"
+        }
+      }
+    },
+    "rejeu": {
+      "unitesServeur": 1,
+      "maxTicks": 900
+    },
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "prefixe": "blocks:",
+    "reglagesGardes": [],
+    "messageOu": "blocks",
+    "zoneNouveautes": "blocks"
   }
 ] as const;

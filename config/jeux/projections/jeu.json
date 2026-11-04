@@ -146,6 +146,36 @@
         "theme:ardoise"
       ],
       "temoin": true
+    },
+    {
+      "id": "blocks",
+      "code": "blocks",
+      "ordre": 5,
+      "nom": {
+        "fr": "Blocks",
+        "en": "Blocks"
+      },
+      "etiquette": {
+        "fond": "#B8D8F4",
+        "coque": "#1F4E79",
+        "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+        "dessin": "generique"
+      },
+      "etatDepart": "off",
+      "format": "entier",
+      "unite": "points",
+      "prefixe": "blocks:",
+      "messageOu": "blocks",
+      "zoneNouveautes": "blocks",
+      "themes": [
+        "clair",
+        "sombre"
+      ],
+      "scenes": [
+        "menu",
+        "theme:clair",
+        "theme:sombre"
+      ]
     }
   ],
   "publics": [
@@ -156,27 +186,31 @@
     "cdj:",
     "jump:",
     "tower:",
-    "cibles:"
+    "cibles:",
+    "blocks:"
   ],
   "ou": [
     "portail",
     "track",
     "jump",
     "tower",
-    "cibles"
+    "cibles",
+    "blocks"
   ],
   "zones": [
     "dujour",
     "track",
     "jump",
     "tower",
-    "cibles"
+    "cibles",
+    "blocks"
   ],
   "nomsDeZones": {
     "dujour": "Du Jour",
     "track": "Track",
     "jump": "Jump",
     "tower": "Tower",
-    "cibles": "Cibles"
+    "cibles": "Cibles",
+    "blocks": "Blocks"
   }
 }

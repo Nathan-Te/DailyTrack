@@ -20,6 +20,9 @@
       "path": "packages/cibles-sim"
     },
     {
+      "path": "packages/blocks-sim"
+    },
+    {
       "path": "packages/profile"
     },
     {
@@ -48,6 +51,9 @@
     },
     {
       "path": "apps/cibles"
+    },
+    {
+      "path": "apps/blocks"
     },
     {
       "path": "apps/jump/e2e"

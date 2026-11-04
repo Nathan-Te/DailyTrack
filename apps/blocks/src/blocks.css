@@ -1,0 +1,8 @@
+/* « Blocks » : seulement ce qui est propre au jeu — le plateau en Canvas. Les écrans sont ceux du kit (`@cdj/kit/jeu.css`). */
+.blocks-plateau {
+  display: block;
+  touch-action: none;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  box-shadow: var(--dj-ombre-cartouche);
+}

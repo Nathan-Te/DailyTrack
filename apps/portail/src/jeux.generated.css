@@ -7,6 +7,14 @@
   background: #F4A6B8;
   color: var(--dj-encre);
 }
+.admin-zone.admin-zone--blocks {
+  background: #B8D8F4;
+  color: var(--dj-encre);
+}
+.nouveautes-zone.nouveautes-zone--blocks {
+  background: #B8D8F4;
+  color: var(--dj-encre);
+}
 /* L'étiquette générique sur l'étagère : le numéro et le thème sous le nom, l'accroche sur deux lignes réservées ; en cartouche compacte, le nom et le numéro côte à côte. */
 .portail-etagere .jeu-etiquette__tete {
   flex-direction: column;

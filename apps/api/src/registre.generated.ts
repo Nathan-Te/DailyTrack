@@ -5,6 +5,7 @@ import { CDJ_GAME } from "./cdj";
 import { JUMP_GAME } from "./jump";
 import { TOWER_GAME } from "./tower";
 import { CIBLES_GAME } from "./cibles";
+import { BLOCKS_GAME } from "./blocks";
 
 // Lot K4e : le registre vient des fiches. `temoin` : un jeu témoin n'est jamais dans le registre d'un serveur de production (`jeuxPourEnvironnement`, `registry.ts`).
 export const JEUX_DU_REGISTRE: readonly { code: string; temoin: boolean; jeu: GameDefinition<never> }[] = [
@@ -12,4 +13,5 @@ export const JEUX_DU_REGISTRE: readonly { code: string; temoin: boolean; jeu: Ga
   { code: "jump", temoin: false, jeu: JUMP_GAME as unknown as GameDefinition<never> },
   { code: "tower", temoin: false, jeu: TOWER_GAME as unknown as GameDefinition<never> },
   { code: "cibles", temoin: true, jeu: CIBLES_GAME as unknown as GameDefinition<never> },
+  { code: "blocks", temoin: false, jeu: BLOCKS_GAME as unknown as GameDefinition<never> },
 ];

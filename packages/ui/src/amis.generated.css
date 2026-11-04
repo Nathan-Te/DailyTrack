@@ -4,3 +4,8 @@
   --sel-actif-fond: var(--dj-encre);
   --sel-actif-texte: #F4A6B8;
 }
+.dj-amis-selecteur.dj-amis-selecteur--blocks {
+  --sel-fond: #B8D8F4;
+  --sel-actif-fond: var(--dj-encre);
+  --sel-actif-texte: #B8D8F4;
+}

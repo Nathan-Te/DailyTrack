@@ -20,6 +20,13 @@
       "cumul": false,
       "categorie": "arcade",
       "format": "hauteur"
+    },
+    {
+      "id": "blocks",
+      "accroche": "portail.blocks.accroche",
+      "cumul": false,
+      "categorie": "arcade",
+      "format": "entier"
     }
   ]
 }

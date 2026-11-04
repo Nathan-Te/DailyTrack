@@ -1,1 +1,28 @@
 /* GÉNÉRÉ par `npm run fiches` (lot K4e : config/jeux/<id>.json → portail) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */
+.admin-zone.admin-zone--blocks {
+  background: #B8D8F4;
+  color: var(--dj-encre);
+}
+.nouveautes-zone.nouveautes-zone--blocks {
+  background: #B8D8F4;
+  color: var(--dj-encre);
+}
+/* L'étiquette générique sur l'étagère : le numéro et le thème sous le nom, l'accroche sur deux lignes réservées ; en cartouche compacte, le nom et le numéro côte à côte. */
+.portail-etagere .jeu-etiquette__tete {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.portail-etagere .jeu-etiquette__texte {
+  min-height: calc(2 * 1.3em);
+  line-height: 1.3;
+}
+.portail-etagere--compacte .jeu-etiquette__tete {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--dj-espace-3);
+}
+.portail-etagere--compacte .jeu-etiquette__numero {
+  white-space: nowrap;
+}

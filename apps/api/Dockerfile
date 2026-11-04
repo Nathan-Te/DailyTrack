@@ -24,6 +24,9 @@ COPY apps/tower/package.json apps/tower/
 # Cibles (lot K4f, jeu témoin : sans effet en production, le registre ne le monte pas) : de même.
 COPY apps/cibles/package.json apps/cibles/
 COPY packages/cibles-sim/package.json packages/cibles-sim/
+# Blocks (généré par `npm run nouveau-jeu`) : le verrou liste l'espace de travail du jeu.
+COPY apps/blocks/package.json apps/blocks/
+COPY packages/blocks-sim/package.json packages/blocks-sim/
 # Seulement ce dont l'API a besoin (pas Three.js, pas Playwright) : une construction rapide.
 RUN npm ci -w @cdj/api --ignore-scripts
 COPY packages/core packages/core
@@ -41,6 +44,9 @@ COPY apps/jump/public/levels apps/jump/public/levels
 # Lot K4f : la simulation de Cibles (le serveur rejoue ses parties) et ses jours figés.
 COPY packages/cibles-sim packages/cibles-sim
 COPY apps/cibles/public/jours apps/cibles/public/jours
+# Blocks : sa simulation (le serveur rejoue ses parties) et ses jours figés.
+COPY packages/blocks-sim packages/blocks-sim
+COPY apps/blocks/public/jours apps/blocks/public/jours
 # Lot R8 : la date du lancement public (config/lancement.json), lue par le serveur (journée n° 1) et entrée dans le paquet.
 COPY config config
 COPY apps/api apps/api
