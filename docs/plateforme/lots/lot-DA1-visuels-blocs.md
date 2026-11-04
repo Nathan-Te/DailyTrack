@@ -30,7 +30,7 @@ Tower perd ses six copies (`palettes`, `couleurs`, `dessinPiece`, `expression`, 
 | `tower.jsCss` (accueil) | 39 639 | 39 640 |
 | `tower.jeu` | 174 714 | ≈ 175 130 |
 | `tower.decors` · `tower.habits` | 4 129 · 5 309 | 4 134 · 5 301 |
-Plafonds **non relevés** (jeu : 193 Ko). **Écart non résolu : `tower.jeu` grossit d'environ 0,4 Ko** (la couche de description, les poses d'yeux en objets ; la version intermédiaire coupait déjà `three` en deux fichiers, +1,9 Ko, évité). Décision à Nathan : l'accepter (règle B1 : garde-fou, pas objectif) ou retirer la couche « pose » du chemin de Tower.
+Plafonds **non relevés** (jeu : 193 Ko). **Écart non résolu : `tower.jeu` grossit d'environ 0,4 Ko** (la couche de description, les poses d'yeux en objets ; la version intermédiaire coupait déjà `three` en deux fichiers, +1,9 Ko, évité). **Accepté par Nathan** (règle B1 : garde-fou, pas objectif) : aucun plafond ni mesure à la pose de `budgets.md` ne change, la mesure reste très sous le plafond.
 
 ## Modifications des consignes
 `docs/tower/consignes.md` (les visuels viennent du module), `packages/visuels/CLAUDE.md` (description, dessinateurs, réutiliser un design), `docs/orchestration.md` § 12 ter, `CLAUDE.md` racine et `carte-du-depot.md` (une ligne), `apps/tower/CLAUDE.md`. Hors périmètre : Blocks, l'apparence de Tower.
