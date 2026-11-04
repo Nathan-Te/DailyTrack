@@ -1,84 +1,98 @@
 {
-  "_": "Golden de Blocks (lot K4f). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
+  "_": "Golden de Blocks (lot B1). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
   "sim": 1,
   "generateur": 1,
   "jours": [
     {
       "date": "2026-11-02",
-      "empreinte": "e23280b5"
+      "empreinte": "ba1c6fe9"
     },
     {
       "date": "2026-11-05",
-      "empreinte": "1ae55536"
+      "empreinte": "b708d905"
     },
     {
       "date": "2026-11-08",
-      "empreinte": "bd2a7c11"
+      "empreinte": "eb07e54e"
     },
     {
       "date": "2026-11-11",
-      "empreinte": "a6ca05d0"
+      "empreinte": "6ef9e540"
     },
     {
       "date": "2026-11-14",
-      "empreinte": "03234e3a"
+      "empreinte": "691490c3"
     },
     {
       "date": "2026-11-17",
-      "empreinte": "df267548"
+      "empreinte": "651bf030"
     },
     {
       "date": "2026-11-20",
-      "empreinte": "843fd01a"
+      "empreinte": "615e5490"
     },
     {
       "date": "2026-11-23",
-      "empreinte": "57380123"
+      "empreinte": "9809c77d"
     },
     {
       "date": "2026-11-26",
-      "empreinte": "16c012c6"
+      "empreinte": "78f827a6"
     },
     {
       "date": "2026-11-29",
-      "empreinte": "f6c0640f"
+      "empreinte": "63059bb1"
     }
   ],
   "rediffusions": [
     {
-      "nom": "bot",
+      "nom": "glouton-jour-1",
       "date": "2026-11-02",
       "g": 1,
-      "code": "AQEBAJeiASAfKxIqJykQKhgtFSoiKxIrHygEKS4tHSctKQUqLiwQLAAnLSsrKBA",
+      "code": "AQEBAJeiAQAIGDI0MCsYISgREx0KFCkiJRgoLgAfBQ",
       "resultat": {
-        "touches": 20,
-        "dernier": 831,
-        "ratees": 0,
-        "ticks": 900
+        "score": 353,
+        "combo": 4,
+        "poses": 24,
+        "raison": "bloquee"
       }
     },
     {
-      "nom": "joueur-lent",
-      "date": "2026-11-02",
+      "nom": "glouton-jour-4",
+      "date": "2026-11-11",
       "g": 1,
-      "code": "AQEBAJeiARkgCR8sEisnVRguFRwjDyJYHxcFEgQqLkEuCi0qBSsuWgAoLRwsECs",
+      "code": "AQEBAKCiASgpBycAAgwiHBAFEgAdHxgMKy0",
       "resultat": {
-        "touches": 15,
-        "dernier": 800,
-        "ratees": 5,
-        "ticks": 900
+        "score": 146,
+        "combo": 3,
+        "poses": 19,
+        "raison": "bloquee"
       }
     },
     {
-      "nom": "vide",
-      "date": "2026-11-02",
+      "nom": "glouton-presque-plein",
+      "date": "1970-01-01",
+      "scenario": "presque-plein",
       "g": 1,
-      "code": "AQEBAJeiAQ",
+      "code": "AQEBAQ1wcmVzcXVlLXBsZWluNQEQCQIYNSYKGzguGyw4HhQwDAULCiAAAiopHRADECANKTI9FQU0",
       "resultat": {
-        "touches": 0,
-        "dernier": 900,
-        "ratees": 0,
-        "ticks": 900
+        "score": 774,
+        "combo": 7,
+        "poses": 39,
+        "raison": "bloquee"
+      }
+    },
+    {
+      "nom": "blocage",
+      "date": "1970-01-01",
+      "scenario": "blocage",
+      "g": 1,
+      "code": "AQEBAQdibG9jYWdl",
+      "resultat": {
+        "score": 0,
+        "combo": 0,
+        "poses": 0,
+        "raison": "bloquee"
       }
     }
   ]

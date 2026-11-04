@@ -4,12 +4,18 @@
     "determinisme.spec.ts": 3,
     "partie.spec.ts": 20,
     "classement.spec.ts": 30,
-    "poids.spec.ts": 2
+    "poids.spec.ts": 2,
+    "glisser.spec.ts": 6,
+    "scenarios.spec.ts": 5,
+    "disposition.spec.ts": 5
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
     "partie.spec.ts": 20,
     "classement.spec.ts": 30,
-    "poids.spec.ts": 2
+    "poids.spec.ts": 2,
+    "glisser.spec.ts": 6,
+    "scenarios.spec.ts": 5,
+    "disposition.spec.ts": 5
   }
 }

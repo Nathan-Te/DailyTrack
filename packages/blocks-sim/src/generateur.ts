@@ -1,21 +1,23 @@
-import { mixSeed, Rng } from "@cdj/core";
-import { BLOCKS_GENERATOR_VERSION, NB_CASES, NB_BLOCKS } from "./constantes";
+import { BLOCKS_GENERATOR_VERSION, PLAFOND_PIECES, RAMPE_PAR_DEFAUT, type Rampe } from "./constantes";
+import { type Grille } from "./grille";
+import { genererSuite, graineDuJour } from "./suite";
 
-// Le contenu du jour : 20 blocks, une case chacune, et la fenêtre de ticks pendant laquelle on peut la toucher. **Pure** : la graine vient du numéro de jour civil, jamais d'une horloge.
-// Les blocks apparaissent une à une : la fenêtre de la i-ᵉ cible finit avant l'apparition de la suivante (une seule cible visible à la fois).
+// Le contenu du jour : la suite des pièces (ids du catalogue), `PLAFOND_PIECES` rangs. **Pure** : la graine vient du numéro de jour civil, jamais d'une horloge.
+// Un contenu peut aussi être un SCÉNARIO d'essai (`scenarios.ts` : grille de départ et début de suite fixés) ou porter une rampe réglée (`?debug&tune`) : jamais classé, jamais envoyé.
 
-export interface Cible {
-  /** La case (0 à 47, ligne par ligne). */
-  c: number;
-  /** Le tick d'apparition. */
-  d: number;
-  /** Le tick de disparition (exclu) : on peut la toucher aux ticks `d` à `f − 1`. */
-  f: number;
-}
 export interface Contenu {
+  /** Le numéro de jour civil (0 pour un scénario). */
   jour: number;
+  /** La version du tirage qui l'a produit. */
   g: number;
-  blocks: Cible[];
+  /** Les ids des pièces, dans l'ordre : `suite[i]` est la pièce du moment après `i` poses. */
+  suite: readonly number[];
+  /** La grille de départ d'un scénario (vide sinon). */
+  depart?: Grille;
+  /** Le nom du scénario d'essai, s'il y en a un : la rediffusion nomme alors le scénario et non le jour. */
+  scenario?: string;
+  /** La rampe, quand elle n'est pas celle du jeu : le contenu est alors « réglé » et ne se classe pas. */
+  rampe?: Rampe;
 }
 
 export class ErreurGenerateur extends Error {
@@ -25,27 +27,15 @@ export class ErreurGenerateur extends Error {
   }
 }
 
-/** Sel de la graine de Blocks (propre au jeu). */
-const SEL = 0x0da1c3;
-const PERIODE = 42;
-const DECALAGE = 20;
-
-/** Le contenu d'un jour. Les anciennes versions du générateur restent appelables tant qu'un jour figé les nomme (ici : une seule). */
-export function dailyBlocks(jour: number, version: number = BLOCKS_GENERATOR_VERSION): Contenu {
-  if (version !== 1) throw new ErreurGenerateur(`version de générateur inconnue : ${version}`);
-  const rng = new Rng(mixSeed(jour, SEL));
-  const blocks: Cible[] = [];
-  let avant = -1;
-  for (let i = 0; i < NB_BLOCKS; i++) {
-    let c = rng.int(NB_CASES);
-    if (c === avant) c = (c + 1 + rng.int(NB_CASES - 1)) % NB_CASES; // jamais deux fois la même case de suite
-    avant = c;
-    const d = DECALAGE + PERIODE * i + rng.int(6);
-    // De plus en plus brèves : 36 ticks (1,2 s) pour la première, 27 (0,9 s) pour la dernière ; la suivante apparaît au plus tôt 37 ticks après.
-    blocks.push({ c, d, f: d + 36 - Math.floor(i / 2) });
-  }
-  return { jour, g: version, blocks };
+/** Le contenu d'un jour. Les anciennes versions du tirage restent appelables tant qu'un jour figé les nomme (ici : une seule). */
+export function dailyBlocks(jour: number, version: number = BLOCKS_GENERATOR_VERSION, rampe?: Rampe): Contenu {
+  if (version !== 1) throw new ErreurGenerateur(`version de tirage inconnue : ${version}`);
+  const regle = rampe && (rampe.pente !== RAMPE_PAR_DEFAUT.pente || rampe.rangMax !== RAMPE_PAR_DEFAUT.rangMax);
+  return { jour, g: version, suite: genererSuite(graineDuJour(jour), rampe ?? RAMPE_PAR_DEFAUT, PLAFOND_PIECES), ...(regle ? { rampe } : {}) };
 }
+
+/** Le contenu est-il celui que le serveur sert (ni scénario, ni rampe réglée) ? Seul celui-là s'envoie. */
+export const estClassable = (c: Contenu): boolean => c.scenario === undefined && c.rampe === undefined;
 
 /** L'empreinte du contenu (FNV-1a 32 bits sur ses entiers) : un texte de huit hexadécimaux. */
 export function empreinteContenu(contenu: Contenu): string {
@@ -53,7 +43,7 @@ export function empreinteContenu(contenu: Contenu): string {
   const octet = (n: number): void => {
     h = Math.imul(h ^ (n & 0xff), 0x01000193) >>> 0;
   };
-  for (const n of [contenu.jour, contenu.g, ...contenu.blocks.flatMap((x) => [x.c, x.d, x.f])]) {
+  for (const n of [contenu.jour, contenu.g, ...contenu.suite]) {
     octet(n);
     octet(n >>> 8);
     octet(n >>> 16);

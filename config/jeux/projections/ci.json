@@ -1171,6 +1171,18 @@
           "poids.spec.ts": [
             "blocks-jeu",
             "ui"
+          ],
+          "glisser.spec.ts": [
+            "blocks-sim",
+            "blocks-jeu"
+          ],
+          "scenarios.spec.ts": [
+            "blocks-sim",
+            "blocks-jeu",
+            "api-blocks"
+          ],
+          "disposition.spec.ts": [
+            "blocks-jeu"
           ]
         },
         "parts": {
@@ -1202,7 +1214,8 @@
         "classement-",
         "reglages-",
         "retours-",
-        "version-"
+        "version-",
+        "corps-"
       ],
       "outilsAdmin": false
     }

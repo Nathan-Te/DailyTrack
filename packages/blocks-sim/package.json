@@ -11,11 +11,12 @@
   },
   "scripts": {
     "figer:blocks": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
-    "golden:blocks": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs"
+    "golden:blocks": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs",
+    "mesure:rampe": "esbuild tools/mesure-rampe.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesure-rampe.mjs --log-level=warning && node dist/mesure-rampe.mjs"
   },
   "exports": {
     ".": "./src/index.ts",
     "./calendrier": "./src/calendrier.ts",
-    "./bot": "./src/bot.ts"
+    "./glouton": "./src/glouton.ts"
   }
 }

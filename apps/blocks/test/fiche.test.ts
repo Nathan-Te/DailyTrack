@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, dailyBlocks, numeroBlocks, partieDuBot, PREMIER_JOUR_BLOCKS, themeDuJour, VARIANTE } from "@cdj/blocks-sim";
+import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, dailyBlocks, numeroBlocks, PREMIER_JOUR_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_BLOCKS } from "../src/catalogue";
 import { DEFINITION } from "../src/definition";
@@ -40,18 +40,15 @@ describe("« Blocks » : le client suit sa fiche", () => {
       for (const k of [...DEFINITION.aide, "page.titre", "scene.aria", ...DEFINITION.actions.map((a) => `commandes.action.${a.id}`)]) expect(c, `${lang} ${k}`).toHaveProperty([k]);
     }
   });
-  it("la définition : numéro, thème, médaille, texte du score et du partage", () => {
+  it("la définition : numéro, thème, pas de médaille avant B3, texte du score et du partage", () => {
     const J = PREMIER_JOUR_BLOCKS + 3;
     expect(DEFINITION.numero(J)).toBe(numeroBlocks(J));
     expect(DEFINITION.numero(J)).toBe(4);
     expect(DEFINITION.themeDuJour(J)).toBe(themeDuJour(J));
     const c = dailyBlocks(J);
-    const s = DEFINITION.seuils(c);
-    // La médaille et les textes du score viennent de la variante du jeu (`variante.ts`) : la définition ne fait que les brancher.
-    expect(DEFINITION.medaille(VARIANTE.score(partieDuBot(c)), s)).toBe("author");
-    expect(DEFINITION.medaille(VARIANTE.score({ touches: 0, dernier: 900 }), s)).toBeNull();
-    const exemple = VARIANTE.score({ touches: 17, dernier: 300 });
-    expect(DEFINITION.formatScore(exemple, "fr")).toBe(VARIANTE.formatScore(exemple, "fr"));
-    expect(DEFINITION.scorePartage(exemple, "en")).toBe(VARIANTE.scorePartage(exemple, "en"));
+    expect(DEFINITION.medaille([4582, 7], DEFINITION.seuils(c))).toBeNull();
+    // Sans traducteur (Node) : le français du catalogue, « 4 582 pts » (le nombre au format de la langue est celui de `remplir`).
+    expect(DEFINITION.formatScore([120, 3], "fr")).toBe("120 pts");
+    expect(DEFINITION.scorePartage([120, 3], "en")).toBe("120 pts");
   });
 });

@@ -72,6 +72,7 @@ describe("les zones", () => {
     for (const jeu of JEUX) expect(horsZones(jeu, EXCEPTIONS), jeu).toEqual([]);
     // Lot K1 : s'y ajoutent ce que `npm run fiches` écrit (projections et vues générées des paquets), qui change mécaniquement avec la fiche d'un jeu.
     expect([...EXCEPTIONS].sort()).toEqual([
+      "apps/api/src/fiches.generated.ts",
       "config/jeux/projections/**",
       "docs/plateforme/budgets.md",
       "docs/plateforme/traductions.md",

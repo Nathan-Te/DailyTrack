@@ -340,12 +340,12 @@ export const FICHES_SERVEUR = [
     "classement": {
       "colonnes": [
         {
-          "nom": "touches",
+          "nom": "score",
           "sens": "desc"
         },
         {
-          "nom": "dernier",
-          "sens": "asc"
+          "nom": "combo",
+          "sens": "desc"
         },
         {
           "nom": "submitted_at",
@@ -388,7 +388,7 @@ export const FICHES_SERVEUR = [
     },
     "rejeu": {
       "unitesServeur": 1,
-      "maxTicks": 900
+      "maxTicks": 2000
     },
     "tables": [],
     "tableCommune": "resultats_jeu",
