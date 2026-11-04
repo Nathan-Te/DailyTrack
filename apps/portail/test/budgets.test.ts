@@ -83,7 +83,7 @@ describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule 
   it("la CI : le job « Budgets » contrôle le tableau, et la fusion en dépend (verdict `test`)", () => {
     const ci = lire(".github/workflows/ci.yml");
     expect(ci).toContain("node scripts/budgets-controle.mjs");
-    expect(ci).toMatch(/needs: \[scope, unit, zones, budgets, jeu-fictif\]/); // lot K4e : le jeu fictif bloque aussi la fusion
+    expect(ci).toMatch(/needs: \[scope, unit, zones, budgets, jeu-fictif, kit-bout-en-bout\]/); // lot K4e : le jeu fictif bloque aussi la fusion
     expect(ci).toContain("name: Budgets");
   });
 });
