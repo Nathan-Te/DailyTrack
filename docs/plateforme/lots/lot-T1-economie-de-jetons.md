@@ -1,0 +1,35 @@
+# Lot T1 (plateforme) — économie de jetons pour les agents
+
+**Résultat** : une session neuve charge 3 à 7 fois moins de consignes (−58 000 à −144 000 jetons de contexte), sans qu'une règle soit perdue. Aucun code de jeu ni de serveur modifié.
+
+## 1. Mesure avant / après (`npm run mesure-jetons`, `-- --rev f5c68e9` pour l'« avant » ; 1 jeton ≈ 4 caractères)
+| session (dossiers lus) | avant : fichiers · lignes · jetons | après | gain |
+|---|---|---|---|
+| portail (`apps/portail`, `ui`, `profile`, `core`) | 6 · 786 · 82 680 | 5 · 335 · 24 452 | −58 200 (−70 %) |
+| Track (`web`, `sim`, `api`, `core`, `profile`, `ui`, `kit`) | 9 · 1 716 · 186 257 | 8 · 745 · 42 938 | −143 300 (−77 %) |
+| jeu neuf (`apps/<id>`, `<id>-sim`, `api`, `kit`, `ui`, `profile`, `core`) | 7 · 1 127 · 119 944 | 6 · 484 · 30 740 | −89 200 (−74 %) |
+| API (`apps/api`, `core`) | 4 · 924 · 102 033 | 3 · 295 · 15 156 | −86 900 (−85 %) |
+Causes : le racine importait `@docs/tower/consignes.md` (**33 000 jetons dans chaque session**, même sur Track) et pesait 21 000 ; `apps/web`, `apps/api` et `apps/jump` pesaient 45 000 à 47 000 chacun. **Mécanisme (documentation de Claude Code, « How Claude remembers your project »)** : le racine et ses `@imports` sont chargés au lancement (un import ne réduit rien) ; un `CLAUDE.md` de sous-dossier ne l'est qu'à la première lecture ou modification d'un fichier du dossier (Read, ou une commande de lecture comme `cat`).
+**Top 20 des fichiers texte** (Ko) : `maquettes.html` du lot 41 (1 179) · `jump-sim/modules/phases.json` (612) et `solutions.json` (472) · bancs `banc-track/jump/tower.json` (203, 144, 111) · `apps/web`, `api`, `jump`, `jump-sim` `CLAUDE.md` (195, 190, 181, 152) · `docs/tower/consignes.md` (137) · `docs/orchestration.md` (174) · `traductions.md` (169) · `package-lock.json` (130) · `budgets-historique.md` (113) · cinq fichiers de code. Ceux qu'une recherche ramène : les bancs, les `modules/*.json`, `traductions.md`, `orchestration.md`, `lots/` (liste complète : `npm run mesure-jetons`).
+**Sorties** : déjà courtes — `fiches` 294 car., `traductions --verifier` 298, `typecheck` 45, `nouveau-jeu --a-blanc` 2,8 Ko, `verifier --liste` 1,8 Ko, `verifier` une ligne par étape, `attendre-ci` un verdict par job, Vitest (réduit au résumé en terminal non interactif) 188 car. pour 24 fichiers. La seule vraie source : **Playwright en local, rapporteur `list`** (40 tests : 4 925 car. ; en `dot` : 134).
+
+## 2. Règles déplacées (rien n'est réécrit : texte repris mot pour mot ; liste complète, une ligne par règle : `docs/regles/deplacements.md`)
+| ancienne place | reste dans le `CLAUDE.md` | déplacé vers `docs/regles/` |
+|---|---|---|
+| `CLAUDE.md` racine (21 300 → 6 400 jetons, 116 lignes) | règles communes courtes, sécurité, mentions, commandes, discipline, méthode, « ne pas ouvrir » | 33 unités : carte (`racine/carte-du-depot`), lancement et Turso, administration et preuve de l'auteur, musique/manette/iPhone/pages, fiches et générateur, publication, adresses et production, tests et CI (16 règles), index des rubriques |
+| `apps/web` 7 800 · `apps/jump` 11 400 · `apps/api` 7 500 · `packages/sim` 4 500 · `jump-sim` 6 700 · `portail` 4 200 · `ui` 6 900 | fiche, emplacements, conventions, sécurité, premier chargement, sections courtes | `web/` 36, `jump/` 42, `api/` 32, `sim/` 15, `jump-sim/` 27, `portail/` 7, `ui/` 3 sections (une par lot : le titre et son renvoi « → Détail » restent) |
+| `docs/tower/consignes.md` (34 000, **plus importé**) | `apps/tower/CLAUDE.md` (6 900) et **`packages/tower-sim/CLAUDE.md`** (2 500, nouveau : déterminisme, Rapier, la partie) | 22 sections : 19 vers `tower/`, 3 telles quelles dans `packages/tower-sim/CLAUDE.md` ; `docs/tower/consignes.md` n'est plus qu'un index |
+Dédoublonnés : « Mon groupe » (trois copies identiques → `packages/kit/CLAUDE.md`), le blockquote « Renvois » (cinq copies, réécrit), la liste des zones partagées de « Plusieurs jeux » (déjà dans la carte). Les phrases remplacées sont gardées dans `racine/textes-remplaces.md`. Renvois à des README de lot : retirés des `CLAUDE.md` (la règle y reste ; les README restent dans les documents déplacés, mot pour mot).
+**Preuve** : `node scripts/consignes-controle.mjs --contre f5c68e9` → « Règles perdues : 0 » (chaque phrase des 12 `CLAUDE.md` et de `docs/tower/consignes.md` d'avant se retrouve dans un `CLAUDE.md` ou `docs/regles/` ; seuls les renvois aux README de lot sont écartés de la comparaison). Test permanent : `apps/portail/test/consignes.test.ts` (racine ≤ 200 lignes et 8 000 jetons, zone ≤ 300 et 12 000, aucun `@import`, aucun renvoi à un README de lot, liens vivants, plafond par session, réglage de lecture).
+
+## 3. « Ne pas ouvrir » : dans le racine (tableau fichier → commande) et `.claude/settings.json`
+Refus de **lecture** (`Read(./…)`, syntaxe gitignore) : `package-lock.json`, `banc-*.json`, `*golden*.json`, `config/jeux/projections/**`, `*.generated.{ts,css}`, `traductions.md`, `jump-sim/modules/*.json`, `jump/public/{levels,outils}/**`, `budgets-historique.md`, trois `maquettes.html`. **Limites vérifiées dans la documentation** : Grep/Glob au mieux ; **un refus de lecture bloque aussi Edit et Write sur ces chemins** (ils se produisent par leur commande) ; Bash (`cat`, `jq`) et tous les scripts et tests lisent sans gêne (457 fichiers, 6 488 tests unitaires SQLite verts avec le réglage en place ; un test vérifie que chaque règle vise un fichier existant et qu'aucun code, test ni `CLAUDE.md` n'est visé). **Non éprouvé en direct** : les réglages sont lus au lancement de la session, pas pendant ; à constater à la prochaine session.
+
+## 4. Historique des lots : pas déplacé (décision à valider)
+Aucun `CLAUDE.md` ne renvoie plus à un README. Je n'ai **pas** créé de dossier `archives` : un refus de lecture sur `docs/**/lots/` bloquerait aussi l'écriture du README du lot en cours, et les chemins sont dans les fiches (zone de Track `docs/lots/**`), les outils de capture et 120 fichiers. Si tu le veux : un lot de plateforme à part (déplacer, mettre à jour zones et commentaires, puis refuser `docs/archives/**`).
+
+## 5. Sorties courtes et passation
+`--bavard` / `CDJ_BAVARD=1` : détail complet de `verifier` (journal de chaque étape), `attendre-ci` (200 lignes d'erreur au lieu de 20), Vitest (`vitest.config.ts`, rapporteur `agent` explicite hors CI), Playwright (`dot` en local au lieu de `list`, quatre applications). L'échec garde son message complet. **Passation** : 25 100 → 6 400 octets (`banctest`) ; elle renvoie aux consignes (liste des intitulés des règles, plus de résumés) ; test à 8 000 octets.
+
+## 6. Gain et réserves
+Environ **60 000 à 140 000 jetons de contexte en moins dès le premier message**, relus à chaque tour (au tarif du cache) : plus de marge avant la compaction. Non mesuré : l'effet sur la facture, et si un agent ouvre à bon escient les documents déplacés (règle écrite en tête du racine et sous chaque titre). Risque : un sujet oublié dans un `CLAUDE.md` n'est plus vu qu'en cherchant. Vérifié : `tsc -b`, tests unitaires SQLite (457 fichiers). Non lancé ici : libSQL, e2e, CI de PR (à lire sur la PR).

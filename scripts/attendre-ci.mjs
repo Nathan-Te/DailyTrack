@@ -2,6 +2,7 @@
 // commit poussé (sans rien écrire en attendant : l'agent ne lit rien, ne sonde rien), puis n'écrit que le verdict, job par job ; pour un échec, le
 // nom des tests rouges et 20 lignes d'erreur au plus. Jamais le journal complet d'un job.
 //   GITHUB_TOKEN=… npm run attendre-ci [-- --branche <nom>] [--sha <commit>] [--attente-max <minutes>] [--pr]
+//   --bavard (lot T1) : 200 lignes d'erreur par job au lieu de 20.
 //   code de sortie : 0 vert · 1 rouge · 2 usage, aucun run ou délai dépassé.
 // Pour l'événement du run, `pull_request` d'abord (la CI d'une PR), sinon `push`.
 
@@ -121,12 +122,12 @@ async function main(argv) {
       console.log(`\n${j.name} : journal illisible (${e.message.slice(0, 80)})`);
       continue;
     }
-    const e = extraireEchecs(journal);
+    const e = extraireEchecs(journal, argv.includes("--bavard") ? 200 : LIGNES_D_ERREUR);
     const etape = j.steps?.find((s) => s.conclusion === "failure")?.name;
     console.log(`\n✘ ${j.name}${etape ? ` — étape « ${etape} »` : ""}`);
     for (const t of e.tests) console.log(`  rouge : ${t}`);
     if (e.autres) console.log(`  … et ${e.autres} autre(s)`);
-    for (const l of e.erreur) console.log(`    ${l.slice(0, 200)}`);
+    for (const l of e.erreur) console.log(`    ${argv.includes("--bavard") ? l : l.slice(0, 200)}`);
   }
   process.exit(run.conclusion === "success" ? 0 : 1);
 }

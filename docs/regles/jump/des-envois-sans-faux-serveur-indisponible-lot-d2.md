@@ -1,0 +1,8 @@
+# Des envois sans faux « serveur indisponible » (lot D2)
+
+> Déplacé **mot pour mot** de `apps/jump/CLAUDE.md` (lot T1, économie de jetons) : rien n'est réécrit, les règles sont en vigueur. Le renvoi est dans [`apps/jump/CLAUDE.md`](../../../apps/jump/CLAUDE.md).
+
+## Des envois sans faux « serveur indisponible » (lot D2)
+README : `docs/plateforme/lots/lot-D2-envois-sans-faux-indisponible.md` ; règles communes : `packages/kit/CLAUDE.md`, « Des envois sans faux « serveur indisponible » ».
+- **Délai commun** : l'envoi d'une partie a **20 s** pour répondre (`DELAI_ENVOI_MS` de `@cdj/profile`, une seule constante pour les trois jeux), pas 8 s. **Trois messages** (catalogue commun `envoi.*`, fr + en) : « Envoi en cours… » après 3 s ; « Envoi en attente : ton temps sera pris en compte dès que possible » quand le délai passe (la file `RankQueue` garde la partie, `RETRY_MS`) ; l'état `refused` de code `abandon` (jour fini, grâce passée) dit « Classement indisponible : ton résultat n'a pas pu être envoyé. Rejoue pour le renvoyer, ou réessaie plus tard. » ; « indisponible » seulement si la file abandonne pour de bon. **Jamais « indisponible » tant que la partie est en file.** Le serveur répond tout de suite à un renvoi déjà accepté (`deja: true`, sans rejeu : `apps/api/CLAUDE.md`).
+- **Onglet périmé** : `versionJeu.ts` (à la demande) monte `@cdj/kit/version` : la version du jeu comparée à celle du serveur (`/api/jump/info`) au chargement et au retour sur l'onglet, un refus `version` allume « Nouvelle version en ligne — recharger » avec son bouton. **Jamais pendant un niveau ni un carnage (même règle que le message en direct : `ecranDuMessage`).** `?debug&simuler=lent|perime` (hors production, option de l'adresse) montre les messages sans vrai incident.

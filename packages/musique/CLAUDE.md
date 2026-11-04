@@ -1,6 +1,6 @@
 # `packages/musique` (`@cdj/musique`) : la musique commune de Du Jour (lot « musique »)
 
-Chargé quand on lit un fichier de `packages/musique`. **Zone partagée par les trois jeux et le portail** (un lot n'y touche que si son prompt le dit). Procédure de Nathan : **`docs/plateforme/musique.md`** ; rapport : `docs/plateforme/lots/lot-musique.md`.
+Chargé quand on lit un fichier de `packages/musique`. **Zone partagée par les trois jeux et le portail** (un lot n'y touche que si son prompt le dit). Procédure de Nathan : **`docs/plateforme/musique.md`**.
 
 ## Ce que contient le paquet
 - `src/types.ts` (jeux, licences, formats de la description et de la liste servie), `src/description.ts` (**la vérification de `musique/musiques.json`**, pure : licence, jeux, id, fichier, crédit, source ; messages en français), `src/liste.ts` (lecture prudente de `liste.json`, liste par jeu), `src/logique.ts` (**pure** : tirage pondéré sans répétition immédiate, courbes du fondu à puissance constante, niveau final, réglages `cdj:musique`, reprise), `src/lecteur.ts` (**le lecteur**, tout le navigateur injecté : `Dependances`), `src/navigateur.ts` (les dépendances réelles : le seul fichier qui touche `window`, `document`, `fetch`, `Audio`, `sessionStorage`), `src/demarrage.ts` (point d'entrée **à la demande**), `src/branche.ts` (**le branchement d'un jeu**, premier chargement), `outils/preparation.ts` + `scripts/musique.ts` (Node : ffmpeg, liste, crédits), `outils/essai.ts` (le morceau d'essai généré), `outils/vite.ts` (sert `/musique/` en développement et en aperçu local).

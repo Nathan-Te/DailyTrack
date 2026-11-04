@@ -364,26 +364,25 @@ export function resume(texte, titre, max = 330) {
   });
 }
 
+/** Les intitulés (le gras de tête) des puces d'une section : de quoi nommer les règles sans les recopier. */
+export function intitulesDesRegles(texte, titre) {
+  const sortie = [];
+  for (const l of section(texte, titre)) {
+    const m = /^- \*\*([^*]+)\*\*/.exec(l);
+    if (m && !/^Règles communes/.test(m[1])) sortie.push(m[1].replace(/\s*[:—-]\s*$/, "").trim());
+  }
+  return sortie;
+}
+
 export function construirePassation(racine, fiche, { classement, teinte, aDefinir = true }) {
+  // Lot T1 : la passation RENVOIE aux consignes au lieu de les résumer (elle faisait 22 Ko, et se périmait à chaque changement d'une règle). Elle ne garde
+  // que ce qui est propre à ce jeu (état, fiche, zones) et la liste des intitulés des règles communes, lue dans le CLAUDE.md racine.
   const claude = lire(racine, "CLAUDE.md");
-  const kit = existsSync(join(racine, "packages/kit/CLAUDE.md")) ? lire(racine, "packages/kit/CLAUDE.md") : "";
   const id = fiche.id;
   const nom = fiche.nom.fr;
   const autres = fichesExistantes(racine).filter((f) => f.id !== id);
   const tableauJeux = autres.map((f) => `- **${f.nom.fr}** (\`${f.id}\`) — classement : ${f.classement.colonnes[0].nom} ${f.classement.colonnes[0].sens === "desc" ? "↓" : "↑"}${f.temoin ? " — jeu témoin, jamais en production" : ""}`);
-  const regles = resume(claude, "Règles communes à tous les lots");
-  const fichesRegles = [...resume(claude, "Un jeu = une fiche"), ...resume(claude, "Ajouter une fiche suffit")];
-  const publication = resume(claude, "Publication des jeux");
-  const adresses = resume(claude, "Adresses et mise en production", 300);
-  const discipline = resume(claude, "Discipline de l'agent");
-  const tests = resume(claude, "Tests et CI", 260);
-  const kitRegles = [...resume(kit, "Règles", 300), ...resume(kit, "Ce que contient", 240)];
-  const charte = existsSync(join(racine, "docs/plateforme/identite.md"))
-    ? lire(racine, "docs/plateforme/identite.md")
-        .split("\n")
-        .filter((l) => /^## /.test(l))
-        .map((l) => `- ${l.replace(/^## /, "")}`)
-    : [];
+  const intitules = intitulesDesRegles(claude, "Règles communes à tous les lots");
   const lignes = [
     `# Passation — ${nom} (\`${id}\`)`,
     "",
@@ -397,9 +396,9 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
     `- **Teinte de l'étiquette** : ${teinte[0]} / ${teinte[1]} — **à choisir par Nathan** (charte § 3 ; la fiche, \`etiquette\`) ; le générateur a pris la première teinte qu'aucun jeu n'utilise.`,
     `- **Premier jour** : celui du modèle, \`${fiche.premierJour}\` — à régler au lancement du jeu (\`premierJour\` de la fiche, une ligne).`,
     "",
-    "## 2. La plateforme en bref",
-    "- **Du Jour** : un portail (`playdujour.com`) et des jeux quotidiens (un niveau par jour, identique pour tous, minuit à Paris), un profil commun (identifiant secret, pseudo réservé, code de transfert), un serveur unique (`apps/api`, Cloud Run + Turso) qui **rejoue chaque partie** pour classer. Un monorepo ; langue : français et anglais.",
-    ...adresses,
+    "## 2. La plateforme en bref — et où lire les règles (elles ne sont pas recopiées ici)",
+    "- **Du Jour** : un portail (`playdujour.com`) et des jeux quotidiens (un niveau par jour, identique pour tous, minuit à Paris), un profil commun, un serveur unique (`apps/api`) qui **rejoue chaque partie** pour classer. Un monorepo ; français et anglais.",
+    "- **Lis, dans cet ordre** : `CLAUDE.md` (racine : carte du dépôt, règles communes, ce qu'on n'ouvre pas, discipline de l'agent) ; `packages/kit/CLAUDE.md` (ce que le kit donne déjà) ; `docs/regles/racine/un-jeu-une-fiche.md`, `ajouter-une-fiche-suffit.md`, `creer-un-jeu.md`, `publication-des-jeux.md`, `tests-et-ci.md`, `adresses-et-mise-en-production.md` ; `docs/plateforme/kit-de-jeu.md`.",
     "",
     "## 2 bis. Les jeux qui existent",
     ...tableauJeux,
@@ -410,25 +409,14 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
     "- **Exceptions tolérées, rien d'autre** : ta fiche `config/jeux/" + id + ".json` et ce que `npm run fiches` en tire, ta ligne de `docs/plateforme/budgets.md`, tes clés de catalogue (et `docs/plateforme/traductions.md` régénéré par `npm run traductions`).",
     "- **Tout le reste est partagé** (le serveur hors de ces fichiers, `scripts/**`, `.github/**`, `packages/**` communs, la charte, ce fichier) : un lot de jeu qui en a besoin **s'arrête et le propose** dans son README. Une PR de ce jeu porte l'étiquette `jeu:" + id + "` (ou `" + id + "` dans son nom de branche) ; le job `zones` échoue si elle sort de ses zones.",
     "",
-    "## 4. Ce que le kit donne déjà, et ce que le jeu écrit",
-    ...(kitRegles.length > 0 ? kitRegles : ["- (voir `packages/kit/CLAUDE.md`)"]),
-    `- **Le jeu écrit** : sa simulation (\`packages/${id}-sim\`), le rendu et les entrées de sa scène (\`apps/${id}/src/scene.ts\`), sa définition (\`definition.ts\`, la glue de \`brancherJeu\`), ses catalogues fr + en, son contrat serveur (\`apps/api/src/${id}.ts\`) et son module d'essais (\`apps/api/scripts/${id}-essais.ts\`). **Aucun écran** : le kit les écrit. Si le jeu a besoin d'écrire une ligne hors de ses zones, c'est un défaut du kit à corriger dans un lot de la plateforme.`,
+    "## 4. Ce que le jeu écrit (le kit écrit le reste : `packages/kit/CLAUDE.md`)",
+    `- Sa simulation (\`packages/${id}-sim\`), le rendu et les entrées de sa scène (\`apps/${id}/src/scene.ts\`), sa définition (\`definition.ts\`, la glue de \`brancherJeu\`), ses catalogues fr + en, son contrat serveur (\`apps/api/src/${id}.ts\`) et son module d'essais (\`apps/api/scripts/${id}-essais.ts\`). **Aucun écran** : le kit les écrit. Si le jeu a besoin d'écrire une ligne hors de ses zones, c'est un défaut du kit à corriger dans un lot de la plateforme.`,
     "",
-    "## 5. Les règles de la plateforme (résumé généré du `CLAUDE.md` racine)",
-    "### Règles communes à tous les lots",
-    ...regles,
-    "### Une fiche, un jeu",
-    ...fichesRegles,
-    "### Publication des jeux",
-    ...publication,
-    "### Tests et CI",
-    ...tests,
-    "### Discipline de l'agent",
-    ...discipline,
+    "## 5. Les règles de la plateforme (intitulés seulement ; le texte est dans `CLAUDE.md`, « Règles communes à tous les lots »)",
+    ...intitules.map((i) => `- ${i.length > 90 ? `${i.slice(0, 90).replace(/\s+\S*$/, "")} […]` : i}`),
     "",
     "## 6. La charte visuelle",
-    "- `docs/plateforme/identite.md` (direction « Cartouches ») prime. **Maquettes d'abord** pour l'étiquette et le HUD, validées par Nathan avant le code ; aucune couleur ni chaîne d'interface en dur (jetons et catalogues `fr` + `en` de `@cdj/ui`). Sections de la charte :",
-    ...charte,
+    "- `docs/plateforme/identite.md` (direction « Cartouches ») prime. **Maquettes d'abord** pour l'étiquette et le HUD, validées par Nathan avant le code ; aucune couleur ni chaîne d'interface en dur (jetons et catalogues `fr` + `en` de `@cdj/ui`).",
     "",
     "## 7. La méthode",
     "- **Un lot = une session = une branche = une PR brouillon.** L'agent s'arrête quand les critères d'arrêt du lot sont verts ; rapport honnête (vérifié / non vérifié) ; README de lot de 150 lignes au plus ; section « Pour les joueurs » dans la PR (une ligne `- [" + nom + "] … // …` par changement visible, ou `rien`).",

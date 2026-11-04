@@ -50,7 +50,7 @@ export default defineConfig({
   retries: CI ? 1 : 0,
   // CI : rapport « blob » par part, fusionné ensuite en un seul rapport (job `e2e-rapport`). En local : liste.
   // (`E2E_BLOB_NAME` : un nom de fichier propre à chaque part, sinon « chromium 1/8 » et « firefox 1/2 » s'écraseraient à la fusion.)
-  reporter: CI ? [["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }], ["list"]] : "list",
+  reporter: CI ? [["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }], ["list"]] : process.env.CDJ_BAVARD ? "list" : "dot", // lot T1 : en local, des points et les échecs en entier ; `CDJ_BAVARD=1` ou `--reporter=list` pour une ligne par test
   use: {
     baseURL: "http://localhost:4173",
     // Lot I4 : le jeu est en français ou en anglais selon la langue du navigateur (cdj:langue, @cdj/profile) ; les tests sont écrits pour le français. Un test

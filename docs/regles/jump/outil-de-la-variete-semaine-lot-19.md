@@ -1,0 +1,10 @@
+# Outil de la variété `?semaine` (lot 19)
+
+> Déplacé **mot pour mot** de `apps/jump/CLAUDE.md` (lot T1, économie de jetons) : rien n'est réécrit, les règles sont en vigueur. Le renvoi est dans [`apps/jump/CLAUDE.md`](../../../apps/jump/CLAUDE.md).
+
+## Outil de la variété `?semaine` (lot 19)
+> **Lot R9 : réservé aux constructions hors production** (recette, aperçus, local) : `?semaine=` et `&generateur=` sont fermés quand `VITE_PRODUCTION=1` et `outils/` (dont `semaine-g13.json`) n'est pas publié — voir « Lot R9 — la preuve de l'auteur ne quitte pas le serveur ».
+README : `docs/jump/lots/lot-19-variete.md` ; la règle : `packages/jump-sim/CLAUDE.md`, « Variété (lot 19) ».
+- **`?semaine=AAAA-MM-JJ`** : les 7 niveaux du jour à partir de la date, côte à côte (grille qui passe à la ligne sur téléphone) ; pour chacun la date, le thème, l'identifiant, **une miniature** (canevas, 2 px par tuile : plein, mécanique, dangers, repères, premier point des scies mobiles ; couleurs lues dans les jetons) et **la liste de ses morceaux de base** (`id vN`) ; **un morceau présent dans plusieurs des 7 jours est surligné** en jaune (son infobulle dit les autres dates) et ses colonnes sont marquées sous la miniature ; lien « Jouer ce niveau ». Calculé ici, un niveau à la fois (la page dit l'avancement), par le générateur en vigueur ; aucun fichier figé n'est lu.
+- **`&generateur=13`** : la même semaine telle que l'aurait faite g13, lue dans `public/outils/semaine-g13.json` (du 27/10 au 23/11/2026, produit avec le code de `main` d'avant le lot ; rangées codées par `rleRow`) ; un lien bascule de l'un à l'autre (`semaineHref`).
+- **Outil interne, en français**, exempté des catalogues (`packages/ui/test/applications.ts`) ; habillage `outils.css` (jetons seulement). **Chargé à la demande** par `boot.ts` comme la galerie (ni Three.js ni la boucle de jeu). Logique pure : `semaineInfo.ts` (`semaineDayOf`, `repeatedPieces`, `miniKind`) ; test `test/semaine.test.ts`. `?debug` : `__jump.semaine` (`days`, `repeated`, `ready`).

@@ -1,0 +1,9 @@
+# Commandes réglables (lot M2)
+
+> Déplacé **mot pour mot** de `apps/web/CLAUDE.md` (lot T1, économie de jetons) : rien n'est réécrit, les règles sont en vigueur. Le renvoi est dans [`apps/web/CLAUDE.md`](../../../apps/web/CLAUDE.md).
+
+## Commandes réglables (lot M2)
+Module et règles : `packages/ui/CLAUDE.md`, « Les commandes réglables (lot M2) ». **Track déclare ses actions dans `src/commandes.ts` (`ACTIONS_TRACK`) et ne lit jamais une touche en dur** : `input.ts` (clavier : `keyboardAxes`, manette : `gamepadAxes`, `Controls`) et `main.ts` (fantôme, son, classement) passent par `commandes` **avant** `makeInput` — la simulation reçoit les mêmes commandes, aucune rediffusion ne change (`test/commandes.test.ts`).
+- **Actions et origine** — clavier / manette : `gauche` ← A / stick et croix (fixes) ; `droite` → D / idem ; `accelerer` ↑ W / RT ; `freiner` ↓ S Espace / LT ; `point` R / Y ; `recommencer` Entrée / X ; `camera` C / Vue (Select) ; `pause` P / Start (fixe) ; `classement` L ; `fantome` G ; `son` M. Fixes : Échap, Start, stick et croix, Tab (Salon), N T H (outils d'essai), Espace et flèches du spectateur.
+- **Les aides sont des paramètres** (`{accelerer}`, `{point}`…) : `howto.ts` (`keyboardControls()`, `gamepadControls()`, `keyboardBasics()` : les noms choisis), les clés `aide.point.*.clavier`, `course.aide.puce`, `course.chronoTourne.clavier`, `arrivee.indice`, `reglages.*.aide`, `salon.arrivee.aide`, `revoir.*`. **Un nouveau raccourci = une action de `ACTIONS_TRACK`** (catalogue `catalogue.reglages.commandes.ts` pour son nom, à la demande) et un texte en paramètre.
+- Réglages › Commandes (`settingsUi.ts`) charge l'écran du socle à la première ouverture ; l'onglet **Tactile** est celui de `touchReglages.ts` (inchangé), **ouvert par défaut sur un appareil tactile**. Budget : `track.jsCss` relevé de 1 024 o (`docs/plateforme/budgets.md`).
