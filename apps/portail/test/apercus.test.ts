@@ -66,7 +66,8 @@ describe("lot I6 : chaque page partagée déclare ses balises de partage", () =>
   it("les images : 1200 × 630, au plus 48 Ko (`partage.image`) ; les icônes 180, 192 et 512 ; la source est dans le dépôt, sans ressource extérieure", () => {
     for (const i of IMAGES_PARTAGE) expect([i.largeur, i.hauteur], i.nom).toEqual([1200, 630]);
     expect(ICONES.map((i: { taille: number }) => i.taille)).toEqual([180, 192, 512]);
-    expect(POIDS_MAX).toBe(48_000);
+    // Lot B1b : un seul plafond, celui de la ligne `partage.image` de budgets.md (`images-partage.mjs` le lit ; `budgets.test.ts` vérifie l'égalité).
+    expect(POIDS_MAX).toBeGreaterThan(0);
     const source = lire(SOURCE_IMAGES);
     expect(source).not.toMatch(/(?:href|src)="https?:/);
     expect(source).not.toMatch(/url\(["']?https?:/);
@@ -155,5 +156,18 @@ describe("lot I6 : la page 404", () => {
     expect(JSON.stringify(config)).not.toContain("404.html"); // le comportement par défaut de Hosting : la page 404.html à la racine du site
     expect(config.hosting.public).toBe("site");
     expect(lire("scripts/site.mjs")).toContain('existsSync(join(out, "404.html"))');
+  });
+  it("lot B1b : les images de partage sont dessinées par Chromium et lui seul, dans tous les jobs qui assemblent le site", () => {
+    // Firefox dessinait la même page en PNG RGBA de 75 Ko (Chromium : 42 Ko) : le repli sur « le navigateur installé » a fait échouer `main` (48 Ko).
+    const dessin = lire("scripts/images-partage.mjs").replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(dessin).toContain("chromium.launch");
+    expect(dessin).not.toMatch(/firefox|webkit/i);
+    // Les jobs qui lancent des specs sous Firefox ou WebKit (ces specs assemblent le site) installent Chromium en plus.
+    for (const f of [".github/workflows/ci.yml", ".github/workflows/stabilite.yml"]) {
+      const yml = lire(f);
+      expect(yml, f).toMatch(/playwright install[^\n]*format\('\{0\} chromium'/);
+    }
+    expect(lire(".github/workflows/ci.yml")).toContain("paquets-playwright.sh ${{ matrix.browser }}");
+    expect(lire(".github/workflows/ci.yml")).toContain("matrix.browser != 'chromium' && 'chromium'");
   });
 });

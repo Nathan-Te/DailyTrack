@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Lot R12 (plateforme) — les paquets système des navigateurs de Playwright, SANS apt quand c'est possible.
-#   bash scripts/paquets-playwright.sh <chromium|firefox|webkit> <dossier du cache>
+#   bash scripts/paquets-playwright.sh <chromium|firefox|webkit> <dossier du cache> [navigateur de plus…]
+# (lot B1b : un job Firefox ou WebKit passe aussi `chromium`, qui dessine les images de partage du site que ses specs assemblent)
 # `playwright install-deps` passe par apt, dont le miroir est parfois très lent (jusqu'à 10 min sur un runner sur cinq, lot R13). Le job restaure
 # d'abord <dossier> (actions/cache, clé : navigateur + version de Playwright + image du runner) :
 #   - cache présent (fichier `fait`) : `dpkg -i` des paquets gardés que le runner n'a pas déjà (jamais une rétrogradation), sans réseau ; même image du
@@ -12,6 +13,8 @@
 set -euo pipefail
 navigateur="$1"
 dossier="$2"
+shift 2
+supplementaires=("$@")
 debut=$(date +%s)
 cd "$(dirname "$0")/../apps/web"
 
@@ -45,7 +48,7 @@ sudo rm -rf "$dossier"
 # run 40399054124) ; un miroir lent mais vivant n'est jamais interrompu (tuer apt garde le verrou dpkg). Les paquets téléchargés restent dans <dossier>.
 mkdir -p "$dossier/partial"
 printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\nDir::Cache::Archives "%s/";\nAPT::Keep-Downloaded-Packages "true";\nBinary::apt::APT::Keep-Downloaded-Packages "true";\n' "$dossier" | sudo tee /etc/apt/apt.conf.d/99ci > /dev/null
-npx playwright install-deps "$navigateur"
+npx playwright install-deps "$navigateur" ${supplementaires[@]+"${supplementaires[@]}"}
 sudo rm -rf "$dossier/partial" "$dossier/lock"
 sudo chown -R "$(id -u):$(id -g)" "$dossier"
 touch "$dossier/fait"

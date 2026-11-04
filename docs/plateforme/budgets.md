@@ -52,6 +52,8 @@ Posé le 04/11/2026 (lot B1) sur la construction des e2e, polices découpées co
 | `tower.polices` | Tower | polices (Rubik Mono One, Archivo 400 · 600 · 700, JetBrains Mono 700) | police | 70 Ko | 63 012 | 6 988 |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | police | 48 Ko | 42 752 | 5 248 |
 
+**L'image de partage (`partage.image`, lot B1b) : un seul plafond, un seul navigateur.** Le plafond de la ligne (48 Ko) **est lu ici** par `scripts/images-partage.mjs` (`POIDS_MAX`, jamais recopié ; `apps/portail/test/budgets.test.ts` vérifie l'égalité) et la construction du site échoue au-dessus. **Les images sont dessinées par Chromium et lui seul**, quel que soit le job qui assemble le site (pas de repli sur un autre navigateur) : la même page pèse 42 752 o dessinée par Chromium (PNG RGB) et 75 742 o par Firefox (PNG RGBA, compression plus faible) ; les jobs Firefox et WebKit de la CI installent donc Chromium en plus du leur. Le texte de l'image (« DU JOUR », « TRACK », « JUMP ») est couvert par la découpe des polices (`packages/ui/test/polices.test.ts`). Aucun plafond n'est relevé.
+
 ## Relèvements décidés par Nathan
 
 Un plafond au-dessus de ce que donne la règle (mesure à la pose + marge de sa famille) est écrit ici, **avec sa raison**, par le lot qui applique la décision. Aucun à ce jour : le tableau ci-dessus est la pose du lot B1.

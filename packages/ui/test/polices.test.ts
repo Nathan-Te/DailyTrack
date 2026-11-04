@@ -103,6 +103,18 @@ describe("polices hébergées", () => {
     expect(manquants).toEqual([]);
   });
 
+  // Lot B1b : les images de partage et les icônes (scripts/images-partage.mjs) affichent « DU JOUR », « TRACK » et « JUMP » dans trois polices d'affichage : la découpe les couvre, sinon l'image
+  // retomberait sur une police du système (le dessin lui-même refuse une police non chargée, mais pas un caractère absent d'une police chargée).
+  it("le texte de l'image de partage est dans les polices qui le dessinent (Archivo Black, Barlow Condensed 800 italique, Lilita One)", () => {
+    const html = readFileSync(join(__dirname, "../../../apps/portail/partage/images.html"), "utf8").replace(/<!--[\s\S]*?-->/g, "").replace(/<(style|script|title)[\s\S]*?<\/\1>/g, "");
+    const texte = [...html.matchAll(/>([^<>]+)</g)].map((m) => m[1]!.trim()).join("");
+    expect(texte.length, "le texte de l'image est lu").toBeGreaterThan(8);
+    for (const f of ["archivo-black-latin-400-normal.woff2", "barlow-condensed-latin-800-italic.woff2", "lilita-one-latin-400-normal.woff2"]) {
+      const couverts = caracteresCouverts(readFileSync(join(DIR, f)));
+      expect([...new Set(texte.replace(/\s/g, ""))].filter((c) => !couverts.has(c.codePointAt(0)!)), `${f} : un caractère de l'image de partage manque (relance \`node scripts/polices/decouper.mjs\`)`).toEqual([]);
+    }
+  });
+
   it("une licence SIL OFL à côté de chaque famille", () => {
     for (const s of SOURCES) {
       expect(existsSync(join(DIR, s.licence)), s.licence).toBe(true);

@@ -51,11 +51,12 @@ jobs:
         id: browsers
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.navigateur }}
-      - run: npx playwright install --with-deps ${{ matrix.navigateur }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.navigateur }}${{ matrix.navigateur != 'chromium' && '-avec-chromium' || '' }}
+      # Lot B1b : Chromium en plus (les images de partage du site assemblé par un spec sont dessinées par lui seul : scripts/images-partage.mjs).
+      - run: npx playwright install --with-deps ${{ matrix.navigateur != 'chromium' && format('{0} chromium', matrix.navigateur) || 'chromium' }}
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps ${{ matrix.navigateur }}
+      - run: npx playwright install-deps ${{ matrix.navigateur != 'chromium' && format('{0} chromium', matrix.navigateur) || 'chromium' }}
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit == 'true'
       - name: Construction (${{ matrix.jeu }})
