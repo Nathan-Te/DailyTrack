@@ -34,6 +34,7 @@
     "@cdj/jump-sim": "*",
     "@cdj/sim": "*",
     "@cdj/tower-sim": "*",
+    "@cdj/cibles-sim": "*",
     "@libsql/client": "^0.18.0"
   },
   "devDependencies": {

@@ -1002,6 +1002,108 @@
         "tower.polices"
       ],
       "outilsAdmin": false
+    },
+    {
+      "id": "cibles",
+      "zones": {
+        "jeu": [
+          "apps/cibles/**",
+          "packages/cibles-sim/**",
+          "apps/api/src/cibles*.ts",
+          "apps/api/test/cibles*.test.ts",
+          "apps/api/scripts/cibles-*.ts",
+          "docs/cibles/**"
+        ],
+        "serveur": [
+          "apps/api/src/cibles*.ts",
+          "apps/api/test/cibles*.test.ts",
+          "apps/api/scripts/cibles-*.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/cibles/e2e",
+        "suite": "cibles",
+        "fumee": [
+          "determinisme.spec.ts",
+          "partie.spec.ts",
+          "poids.spec.ts"
+        ],
+        "zones": {
+          "cibles-sim": {
+            "globs": [
+              "packages/cibles-sim/**"
+            ]
+          },
+          "cibles-jeu": {
+            "globs": [
+              "apps/cibles/index.html",
+              "apps/cibles/vite.config.ts",
+              "apps/cibles/verify.html",
+              "apps/cibles/src/*"
+            ]
+          },
+          "api-cibles": {
+            "globs": [
+              "apps/api/src/cibles*.ts",
+              "apps/api/scripts/cibles-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "determinisme.spec.ts": [
+            "cibles-sim",
+            "cibles-jeu",
+            "core-clock"
+          ],
+          "partie.spec.ts": [
+            "cibles-sim",
+            "cibles-jeu",
+            "ui"
+          ],
+          "classement.spec.ts": [
+            "cibles-sim",
+            "cibles-jeu",
+            "api-cibles",
+            "api-jeux"
+          ],
+          "poids.spec.ts": [
+            "cibles-jeu",
+            "ui"
+          ]
+        },
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        }
+      },
+      "app": "cibles",
+      "jours": {
+        "dossier": "apps/cibles/public/jours",
+        "registre": null,
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/cibles-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/cibles-sim",
+            "script": "figer:cibles",
+            "forme": "jours-proteges"
+          }
+        }
+      },
+      "sim": "cibles-sim",
+      "budget": [
+        "cibles.jsCss"
+      ],
+      "budgetALaDemande": [
+        "partie-",
+        "classement-",
+        "reglages-",
+        "retours-",
+        "version-"
+      ],
+      "outilsAdmin": false,
+      "temoin": true
     }
   ]
 }

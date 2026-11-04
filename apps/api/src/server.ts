@@ -86,6 +86,7 @@ const api = createApi({
   jumpFrozen,
   towerFrozen,
   towerExecuteur,
+  joursFiges, // lot K4f : les jours figés des jeux neufs (les fiches)
   allowOrigin: config.allowOrigin ?? "*",
   allowedOrigins: config.allowedOrigins,
   rateSalt: config.rateSalt,

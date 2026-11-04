@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
@@ -14,6 +15,29 @@ import { CATALOGUE_VITRINE } from "./src/catalogueVitrine";
 // pré-remplis depuis le catalogue français, Archivo Black et Archivo 400 préchargées ; la vitrine des composants (`/ui/`) est construite
 // sauf quand `PORTAIL_VITRINE=0` (la production : `node scripts/site.mjs site --production`).
 const vitrine = process.env.PORTAIL_VITRINE !== "0";
+// Lot K4f : **un jeu témoin n'est jamais en production** : le portail de la production (`PORTAIL_TEMOINS=0`, `node scripts/site.mjs site --production`) et la mesure de son budget ne l'embarquent pas — ils lisent les variantes
+// de production des fichiers générés (`npm run fiches` : `portail.production.json`, `fiches.production.generated.ts`, `jeux.production.generated.css`), écrites sans les témoins. La recette, les aperçus et le développement les gardent.
+const sansTemoins = process.env.PORTAIL_TEMOINS === "0";
+const ALIAS_PRODUCTION = sansTemoins
+  ? [
+      { find: /^(.*\/projections\/portail)\.json$/, replacement: "$1.production.json" },
+      { find: /^(.*\/(?:fiches|jeux))\.generated(\.css)?$/, replacement: "$1.production.generated$2" },
+    ]
+  : [];
+
+/**
+ * Lot K4f : en production, les textes d'un jeu témoin (`jeu.<id>.nom`, `portail.<id>.accroche`, `portail.theme.<id>.<code>`) quittent les catalogues du portail et du socle : une clé par ligne, retirée à la lecture
+ * des fichiers (`config/jeux/projections/ci.json` dit quels jeux sont des témoins). Sans effet hors production (`sansTemoins`).
+ */
+function sansCataloguesDesTemoins(): Plugin {
+  const ids = (JSON.parse(readFileSync(resolve(import.meta.dirname, "../../config/jeux/projections/ci.json"), "utf8")) as { jeux: { id: string; temoin?: boolean }[] }).jeux.filter((j) => j.temoin).map((j) => j.id);
+  const ligne = new RegExp(String.raw`^[ \t]*"(?:jeu|portail)\.(?:theme\.)?(?:${ids.join("|")})\.[^"]*":.*\n`, "gm");
+  return {
+    name: "cdj-sans-catalogues-des-temoins",
+    enforce: "pre",
+    transform: (code, id) => (ids.length > 0 && /\/(?:apps\/portail\/src\/catalogue|packages\/ui\/src\/catalogue(?:\.en)?)\.ts$/.test(id) ? code.replace(ligne, "") : null),
+  };
+}
 
 /**
  * Lot I6 : la page 404 est servie par Firebase Hosting à n'importe quelle profondeur (`/a/b/c`) : ses ressources sont demandées par un chemin
@@ -37,10 +61,12 @@ function introuvableAbsolue(): Plugin {
 export default defineConfig({
   root: import.meta.dirname,
   base: "./",
+  resolve: { alias: ALIAS_PRODUCTION },
   // Lot I2 : le lien de démonstration `/?demo=joueur` n'existe que là où la vitrine existe (recette et aperçus) : la construction de production
   // ne contient ni le chemin, ni l'identifiant, ni ses textes (code mort retiré par la construction ; test construction.test.ts).
   define: { __PORTAIL_DEMO__: JSON.stringify(vitrine) },
   plugins: [
+    ...(sansTemoins ? [sansCataloguesDesTemoins()] : []),
     pagesDuSocle({
       catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_PORTAIL.fr, ...CATALOGUE_PAGES.fr, ...CATALOGUE_VITRINE.fr, ...CATALOGUE_APERCU.fr },
       prechargees: ["archivo-black-latin-400-normal", "archivo-latin-400-normal"],

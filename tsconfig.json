@@ -17,6 +17,9 @@
       "path": "packages/tower-sim"
     },
     {
+      "path": "packages/cibles-sim"
+    },
+    {
       "path": "packages/profile"
     },
     {
@@ -39,6 +42,9 @@
     },
     {
       "path": "apps/tower"
+    },
+    {
+      "path": "apps/cibles"
     },
     {
       "path": "apps/jump/e2e"

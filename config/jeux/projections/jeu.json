@@ -115,6 +115,37 @@
         "theme:jungle",
         "theme:nuit"
       ]
+    },
+    {
+      "id": "cibles",
+      "code": "cibles",
+      "ordre": 4,
+      "nom": {
+        "fr": "Cibles",
+        "en": "Targets"
+      },
+      "etiquette": {
+        "fond": "#F4A6B8",
+        "coque": "#8E2C4A",
+        "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+        "dessin": "generique"
+      },
+      "etatDepart": "off",
+      "format": "entier",
+      "unite": "points",
+      "prefixe": "cibles:",
+      "messageOu": "cibles",
+      "zoneNouveautes": "cibles",
+      "themes": [
+        "sable",
+        "ardoise"
+      ],
+      "scenes": [
+        "menu",
+        "theme:sable",
+        "theme:ardoise"
+      ],
+      "temoin": true
     }
   ],
   "publics": [
@@ -124,24 +155,28 @@
   "prefixes": [
     "cdj:",
     "jump:",
-    "tower:"
+    "tower:",
+    "cibles:"
   ],
   "ou": [
     "portail",
     "track",
     "jump",
-    "tower"
+    "tower",
+    "cibles"
   ],
   "zones": [
     "dujour",
     "track",
     "jump",
-    "tower"
+    "tower",
+    "cibles"
   ],
   "nomsDeZones": {
     "dujour": "Du Jour",
     "track": "Track",
     "jump": "Jump",
-    "tower": "Tower"
+    "tower": "Tower",
+    "cibles": "Cibles"
   }
 }

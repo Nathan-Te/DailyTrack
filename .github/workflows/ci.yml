@@ -667,6 +667,7 @@ jobs:
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:8091/api/health && break; sleep 0.5; done
           curl -sf http://127.0.0.1:8091/api/health | jq -e '.ok == true and .db == "ok"'
           npm run smoke -w @cdj/api -- http://127.0.0.1:8091 --origin https://playdujour.com
+          node scripts/image-jours-figes.mjs http://127.0.0.1:8091 --environnement recette
           docker logs cdj-recette
           docker rm -f cdj-recette
       - name: Démarrer l'image contre libSQL
@@ -677,28 +678,11 @@ jobs:
           curl -sf http://127.0.0.1:8090/api/health | jq -e '.ok == true and .db == "ok" and .salonOverride == false'
       - name: Essai de bout en bout (temps du jour, Salon, DailyJump)
         run: npm run smoke -w @cdj/api -- http://127.0.0.1:8090 --origin https://playdujour.com
-      # Lot P0 (plateforme) : l'image contient jump-sim et les jours figés ; `/api/jump/info` les liste tous, et chaque jour figé est servi depuis
-      # son fichier (preuve rejouée) avec l'identifiant, l'empreinte et le temps de l'auteur du fichier du dépôt.
-      - name: DailyJump — /api/jump/info et chaque jour figé servi avec l'empreinte de son fichier
-        run: |
-          info=$(curl -sf http://127.0.0.1:8090/api/jump/info)
-          echo "$info"
-          expected=$(ls apps/jump/public/levels/*.json | sed -E 's#.*/([0-9-]+)\.json#\1#' | sort | jq -R . | jq -cs .)
-          echo "$info" | jq -e --argjson days "$expected" '.frozenDays == $days and (.frozenDays | length) > 0' > /dev/null || { echo "jours figés attendus : $expected"; exit 1; }
-          today=$(echo "$info" | jq -r .today)
-          for f in apps/jump/public/levels/*.json; do
-            d=$(basename "$f" .json)
-            # « Mettre en production » fige aussi demain (freeze:days -- demain) : un jour figé à venir n'est pas encore servi (404).
-            if [[ "$d" > "$today" ]]; then
-              code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8090/api/jump/day/$d")
-              echo "$d → $code (à venir)"
-              [ "$code" = 404 ] || { echo "$d : jour à venir servi ($code)"; exit 1; }
-              continue
-            fi
-            got=$(curl -sf "http://127.0.0.1:8090/api/jump/day/$d")
-            echo "$d → $got"
-            jq -e --argjson g "$got" '$g.source == "fige" and $g.id == .id and $g.hash == .hash and $g.authorTicks == .auteur' "$f" > /dev/null || { echo "$d : réponse différente du fichier figé"; exit 1; }
-          done
+      # Lots P0 et K4f : l'image contient les simulations et les jours figés de chaque jeu (les fiches : `jours.dossier`). `scripts/image-jours-figes.mjs` vérifie, pour chaque jeu, que
+      # `/api/<jeu>/info` liste exactement les fichiers du dépôt, que chaque jour passé est servi, qu'un jour à venir ne l'est pas, que les niveaux figés de Jump sont rendus avec l'identifiant,
+      # l'empreinte et le temps de l'auteur du fichier, et qu'un jeu témoin est absent d'un serveur de production.
+      - name: Jours figés de chaque jeu — le serveur de production de l'image sert ce que disent les fichiers
+        run: node scripts/image-jours-figes.mjs http://127.0.0.1:8090 --environnement production
       - name: Journaux du conteneur
         if: always()
         run: docker logs cdj

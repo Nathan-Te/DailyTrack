@@ -1,0 +1,185 @@
+{
+  "id": "cibles",
+  "code": "cibles",
+  "ordre": 4,
+  "nom": {
+    "fr": "Cibles",
+    "en": "Targets"
+  },
+  "accroche": "portail.cibles.accroche",
+  "etiquette": {
+    "fond": "#F4A6B8",
+    "coque": "#8E2C4A",
+    "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+    "dessin": "generique"
+  },
+  "etatDepart": "off",
+  "premierJour": "2026-11-02",
+  "classement": {
+    "colonnes": [
+      {
+        "nom": "touches",
+        "sens": "desc"
+      },
+      {
+        "nom": "dernier",
+        "sens": "asc"
+      },
+      {
+        "nom": "submitted_at",
+        "sens": "asc"
+      },
+      {
+        "nom": "player_id",
+        "sens": "asc"
+      }
+    ],
+    "cumul": false,
+    "unite": "points",
+    "format": "entier"
+  },
+  "medailles": {
+    "methode": "pourcentage-diamant",
+    "bareme": [
+      50,
+      30,
+      15
+    ],
+    "plafondDiamant": 20
+  },
+  "partage": {
+    "extras": []
+  },
+  "themes": [
+    "sable",
+    "ardoise"
+  ],
+  "versions": {
+    "sim": "packages/cibles-sim/src/constantes.ts:CIBLES_SIM_VERSION",
+    "generateur": "packages/cibles-sim/src/constantes.ts:CIBLES_GENERATOR_VERSION"
+  },
+  "jours": {
+    "mode": "fichier-par-jour",
+    "dossier": "apps/cibles/public/jours",
+    "preuveInterditeEnProd": true,
+    "fabrication": {
+      "empreinte": "apps/api/scripts/cibles-empreintes.ts",
+      "figer": {
+        "paquet": "@cdj/cibles-sim",
+        "script": "figer:cibles",
+        "forme": "jours-proteges"
+      }
+    }
+  },
+  "rejeu": {
+    "unitesServeur": 1,
+    "maxTicks": 900
+  },
+  "donnees": {
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "stockage": {
+      "prefixe": "cibles:",
+      "reglagesGardes": []
+    }
+  },
+  "message": {
+    "ou": "cibles"
+  },
+  "zoneNouveautes": "cibles",
+  "musique": {
+    "scenes": [
+      "menu",
+      "theme:sable",
+      "theme:ardoise"
+    ]
+  },
+  "admin": {
+    "outils": false
+  },
+  "zones": {
+    "jeu": [
+      "apps/cibles/**",
+      "packages/cibles-sim/**",
+      "apps/api/src/cibles*.ts",
+      "apps/api/test/cibles*.test.ts",
+      "apps/api/scripts/cibles-*.ts",
+      "docs/cibles/**"
+    ],
+    "serveur": [
+      "apps/api/src/cibles*.ts",
+      "apps/api/test/cibles*.test.ts",
+      "apps/api/scripts/cibles-*.ts"
+    ]
+  },
+  "e2e": {
+    "dossier": "apps/cibles/e2e",
+    "suite": "cibles",
+    "fumee": [
+      "determinisme.spec.ts",
+      "partie.spec.ts",
+      "poids.spec.ts"
+    ],
+    "zones": {
+      "cibles-sim": {
+        "globs": [
+          "packages/cibles-sim/**"
+        ]
+      },
+      "cibles-jeu": {
+        "globs": [
+          "apps/cibles/index.html",
+          "apps/cibles/vite.config.ts",
+          "apps/cibles/verify.html",
+          "apps/cibles/src/*"
+        ]
+      },
+      "api-cibles": {
+        "globs": [
+          "apps/api/src/cibles*.ts",
+          "apps/api/scripts/cibles-*.ts"
+        ]
+      }
+    },
+    "specs": {
+      "determinisme.spec.ts": [
+        "cibles-sim",
+        "cibles-jeu",
+        "core-clock"
+      ],
+      "partie.spec.ts": [
+        "cibles-sim",
+        "cibles-jeu",
+        "ui"
+      ],
+      "classement.spec.ts": [
+        "cibles-sim",
+        "cibles-jeu",
+        "api-cibles",
+        "api-jeux"
+      ],
+      "poids.spec.ts": [
+        "cibles-jeu",
+        "ui"
+      ]
+    },
+    "parts": {
+      "main": 1,
+      "complet": 1,
+      "nuit": 1
+    }
+  },
+  "budget": {
+    "lignes": [
+      "cibles.jsCss"
+    ],
+    "aLaDemande": [
+      "partie-",
+      "classement-",
+      "reglages-",
+      "retours-",
+      "version-"
+    ]
+  },
+  "temoin": true
+}

@@ -244,3 +244,8 @@ Le reste (portail, registre, CI, mentions, effacement, remise à zéro, `smoke`,
 
 ## 8. Ce qui n'est pas vérifié
 Chiffres : dépôt au 2 novembre 2026 (`1c2ec57`), aucune CI lancée (aucun code changé). Les tailles de lots sont des ordres de grandeur ; le poids de `@cdj/kit` face aux budgets se mesure au lot K3, ligne par ligne, avant toute migration de Track.
+
+
+## État du plan (mis à jour au lot K4f)
+- **K4f fait** (4 novembre 2026) : `brancherJeu` (`@cdj/kit/jeu`) et « Cibles », le premier jeu assemblé par le kit (`apps/cibles`, `packages/cibles-sim`, `apps/api/src/cibles.ts`, `docs/cibles/`), **écrit seulement dans ses zones** (plus sa fiche) ; les trois fichiers qui restaient nommés dans les scripts (`smoke`, `recette:seed`, `routesChaudes`, le contrôle des jours figés de `api-image`) bouclent maintenant sur les fiches. Rapport : `docs/plateforme/lots/lot-K4f-cibles-assemblage-cote-jeu.md`.
+- **Reste K4g** : le générateur (`npm run nouveau-jeu`, qui copie et renomme « Cibles » : fiche, simulation, application, contrat serveur, module d'essais, bloc du `Dockerfile`, clés de catalogue, ligne de `budgets.md`), le job de CI de bout en bout, « Créer un jeu » (`CLAUDE.md` racine, `docs/orchestration.md`).

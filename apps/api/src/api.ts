@@ -105,6 +105,8 @@ export interface ApiOptions {
   towerFrozen?: Readonly<Record<string, unknown>>;
   /** Lot TP : ce qui exécute les rejeux de Tower (le fil de calcul, `executeurFil`) ; absent : le fil principal (repli). */
   towerExecuteur?: ExecuteurRejeu;
+  /** Lot K4f : les jours figés de l'image de **tout autre jeu** (code du jeu → date → contenu du fichier), lus à la construction d'après les fiches (`jours.dossier`) ; le jeu les reçoit en option `frozen`. */
+  joursFiges?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   /**
    * Lot I2 : le registre des jeux (les jeux des fiches par défaut, `jeuxPourEnvironnement`). **Tests seulement** (un faux jeu n° 3 prouve que le portail ne change pas) : `server.ts`
    * ne le règle jamais. Un faux jeu n'a pas de tables (le schéma est celui de `GAMES`).
@@ -160,6 +162,8 @@ export function createApi(options: ApiOptions) {
     jump: { frozen: options.jumpFrozen },
     tower: { frozen: options.towerFrozen, executeur: options.towerExecuteur } satisfies TowerOptions,
   };
+  // Lot K4f : un jeu neuf reçoit ses jours figés (`frozen`) sans que le serveur ne le nomme ; les trois premiers jeux gardent leurs options propres ci-dessus.
+  for (const [code, frozen] of Object.entries(options.joursFiges ?? {})) if (!(code in gameOptions)) gameOptions[code] = { frozen };
   // Lot K4e : le registre vient des fiches ; un jeu témoin n'est jamais dans celui d'un serveur de production.
   const jeux = options.games ?? jeuxPourEnvironnement(options.environment === "production" ? "production" : options.environment === "recette" ? "recette" : "local");
   for (const g of jeux) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });
