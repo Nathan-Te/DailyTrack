@@ -9,11 +9,11 @@ Commande : `npm run nouveau-jeu -- --id blocks --nom "Blocks" --classement score
 ## Correctif après la première CI (rouge)
 Trois tests nommaient les jeux un par un : `miseEnProduction.test.ts`, `fiches.test.ts` et `routesChaudes` (la mesure de `rate` grossissait avec chaque route : `DELETE FROM rate` avant chaque route, plafonds inchangés). **Le dernier touche la garde R14 (zone partagée) : à valider par Nathan.**
 
-## Reste rouge : « jeu fictif (2/3) » — décision de Nathan
-`routesChaudes` « portail classement (cumul) » : 15 lignes parcourues pour un plafond de 13, dans la copie à **6 fiches** (les 5 du dépôt + `essai`). Sur les 5 fiches du dépôt : 12 pour 12, donc vert à ras. Trois requêtes (`jeux`, `planning`, `jump_levels`) comptent chacune autant de lignes que de jeux : la mesure monte de 3 par jeu, le plafond `7 + nombre de fiches` de 1. Tout 5ᵉ jeu réel l'aurait fait casser. Je n'ai pas relevé le plafond sans toi ; options : plafond à 3 par jeu (`3 × (N − 1)` mesuré) ou corriger le comptage (`src/comptage.ts`, delta de `sqlite_stmt`).
+## Plafond des lignes parcourues (décision de Nathan : option A)
+`routesChaudes` « portail classement (cumul) » monte de 3 lignes par jeu (12 à 5 fiches, 15 à 6 ; trois requêtes : `jeux`, `planning`, `jump_levels`). Plafond `7 + N` → `3 × N` (15 et 18). Il cassait au 6ᵉ jeu, quel qu'il soit.
 
 ## Vérifié / non vérifié
-- Local : `fiches` et `traductions` à jour, typage vert, tests de Blocks (63), `miseEnProduction`, `fiches`, `routesChaudes` verts. Run complet `--project sqlite` : 467 fichiers, 6597 tests verts. CI : tout vert sauf le point ci-dessus.
+- Local : `fiches` et `traductions` à jour, typage vert, tests de Blocks (63), `miseEnProduction`, `fiches`, `routesChaudes` verts. Run complet `--project sqlite` : 467 fichiers, 6597 tests verts. CI : à relire après cette poussée (le jeu fictif à 6 fiches n'est pas rejoué en local).
 - La phrase de `passation.md` « seed à écrire par Nathan » est du texte fixe du générateur, périmée.
 
 Pour les joueurs : rien.

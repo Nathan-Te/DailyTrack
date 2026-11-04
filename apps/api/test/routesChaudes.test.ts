@@ -22,7 +22,9 @@ import { TEST_DB } from "./helpers";
 const PLAFOND_LECTURE = 100;
 const PLAFOND_CLASSEMENT_JOUR = 770;
 // Lot K4f : la table `jeux` (une ligne par jeu, lue en entier à chaque instance neuve) compte dans les lignes parcourues : 7 de base + une par jeu de la référence (3 jeux : 10, comme avant ; 4 avec « Cibles » : 11).
-const PLAFOND_PARCOURUES = 7 + FICHES_SERVEUR.length;
+// Lot B0 (mesuré le 04/11/2026) : « portail classement (cumul) » compte 3 requêtes (`jeux`, `planning`, `jump_levels`) qui parcourent chacune autant de lignes que de jeux : 12 avec les 5 fiches du dépôt, 15 avec 6 (le jeu
+// fictif de la CI), soit 3 de plus par jeu. Le plafond suit : **3 par fiche** (15 et 18), avec 3 lignes de marge ; l'ancien `7 + 1 par fiche` ne tenait qu'à 5 fiches (12 pour 12) et cassait au 6ᵉ jeu.
+const PLAFOND_PARCOURUES = 3 * FICHES_SERVEUR.length;
 const PLAFOND_INSTRUCTIONS = 30;
 const CLASSEMENT = new Set(["portail jour (joueur)", "portail classement (cumul)"]);
 
