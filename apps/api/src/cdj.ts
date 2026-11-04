@@ -51,6 +51,7 @@ import {
 } from "@cdj/sim";
 import { inputsHash, trackInputs } from "./copies";
 import { replayUnits } from "./replayCost";
+import type { CircuitCalcule, ExecuteurNiveaux } from "./niveauxFil";
 import { HttpError } from "./errors";
 import type { AdminDuJeu, GameDefinition, GameInstance, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { DEFAULT_SALON_LIMITS, createSalon, salonSessionMs, type SalonLimits } from "./salon";
@@ -188,6 +189,8 @@ export interface CdjOptions {
   salonLimits?: Partial<SalonLimits>;
   /** Joueurs fictifs (`history:seed`, `recette:seed`) : jamais réglé par le serveur de production. */
   demoPlayers?: boolean;
+  /** Lot D3 : ce qui calcule le circuit d'un jour (le fil de calcul `niveaux-fil.mjs`, ou le fil principal en repli) ; absent : le calcul se fait sur place, comme avant. */
+  niveaux?: ExecuteurNiveaux;
 }
 
 interface Circuit {
@@ -220,6 +223,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
   /** Circuits en cours de calcul (jour + identifiant) : deux requêtes simultanées n'en font qu'un (le générateur coûte ≈ 0,2–0,5 s de calcul). */
   const generating = new Map<string, Promise<Circuit>>();
   const sessionMs = salonSessionMs(options.salonMinutes) ?? 600_000;
+  const niveaux = options.niveaux;
 
   // --- Planning et circuit du jour (cache : le générateur est coûteux, le résultat est figé) -----------------
   /** Variante et thème imposé du planning pour un jour (`{ 0, null }` : le circuit d'origine). */
@@ -273,7 +277,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       };
     } else {
       const started = performance.now();
-      circuit = await withAuthorHash(generate(day, variant, theme));
+      circuit = await withAuthorHash(await generateParLeFil(day, variant, theme));
       await storeCircuit(circuit);
       log("INFO", "circuit du jour généré", { day: formatDay(day), trackId: circuit.trackId, attempt: circuit.attempt, ms: Math.round(performance.now() - started) });
     }
@@ -298,6 +302,17 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       authorHash: null,
       authorInputs: trackInputs(c.authorReplay.runs, replayTicks(c.authorReplay)),
     };
+  }
+
+  /**
+   * Lot D3 : le circuit d'un jour **calculé par le fil de calcul** (le fil principal reste libre pendant les 0,4 s du générateur), ou sur place sans fil. Le fil rend des données : le circuit
+   * est reconstruit par `parseTrack(trackId, spec)`, comme quand il vient de la base (testé : même circuit, date par date).
+   */
+  async function generateParLeFil(day: number, variant: number, theme: ThemeName | null): Promise<Circuit & { authorInputs: string }> {
+    if (!niveaux) return generate(day, variant, theme);
+    const c = (await niveaux.rejouer({ jeu: "track", day, variante: variant, theme })) as CircuitCalcule;
+    if (c.repli) throw new HttpError(503, "circuit_unavailable", "Circuit indisponible, réessaie plus tard");
+    return { day, trackId: c.trackId, variant, theme, spec: c.spec, authorMs: c.authorMs, attempt: c.attempt, palette: c.palette, track: parseTrack(c.trackId, c.spec), authorHash: null, authorInputs: c.authorInputs };
   }
 
   /** Lot R9 : le circuit avec l'empreinte des entrées de son auteur (le pilote). */

@@ -78,6 +78,8 @@ export interface Tableau {
     erreurs24h: { serveur: number; rediffusions: number; perimes: number; limites: number };
     /** Lot D2 (C1) : les refus d'envoi par cause et par jeu, sur 24 h et sur 7 jours. */
     refus: RefusDuTableau;
+    /** Lot D3 : l'instance qui répond (mémoire, plus grand retard de la boucle pendant une requête sur 24 h) ; absent si elle n'est pas mesurée. */
+    instance?: { depuisMs: number; memoire: { rssMo: number; tasMo: number; externeMo: number }; retardMax24hMs: number; blocages24h: number };
     prDepuisMiseEnProduction: number | null;
   };
   journal: EntreeJournal[];

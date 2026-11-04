@@ -478,6 +478,13 @@ async function vueTableau(): Promise<Node[]> {
         ligneEtat("Jours prêts", prets || "—", undefined, "jours"),
         ligneEtat("Erreurs serveur (24 h)", String(e.erreurs24h.serveur), e.erreurs24h.serveur === 0, "erreurs"),
         ligneEtat("Rediffusions refusées (24 h)", `${e.erreurs24h.rediffusions} · hors onglets périmés (${e.erreurs24h.perimes}) et limites (${e.erreurs24h.limites})`, undefined, "refus"),
+        // Lot D3 : l'instance qui répond (Cloud Run en garde jusqu'à deux, qu'on ne voit pas toutes) : sa mémoire, et son plus grand retard de boucle pendant une requête.
+        ...(e.instance
+          ? [
+              ligneEtat("Mémoire de l'instance", `${e.instance.memoire.rssMo} Mo (tas ${e.instance.memoire.tasMo} Mo) · depuis ${Math.round(e.instance.depuisMs / 60000)} min`, undefined, "memoire"),
+              ligneEtat("Retard max de la boucle (24 h)", `${e.instance.retardMax24hMs} ms · ${e.instance.blocages24h} blocage(s) de plus d'une seconde`, e.instance.blocages24h === 0, "boucle"),
+            ]
+          : []),
         // Lot N2 : le nombre de PR fusionnées depuis la mise en production en cours, lu sur GitHub par le navigateur (comme « Nouveautés ») : rempli juste après le dessin, jamais bloquant.
         ligneEtat("PR depuis la dernière mise en production", "Lecture de GitHub…", undefined, "pr"),
       ),
