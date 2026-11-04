@@ -21,6 +21,7 @@ import {
   type Level,
 } from "@cdj/jump-sim";
 import { inputsHash, jumpInputs } from "./copies";
+import type { ExecuteurNiveaux } from "./niveauxFil";
 import { WithHeaders, cacheHeaders } from "./cache";
 import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
@@ -140,6 +141,8 @@ export const JUMP_SCHEMA: string[] = [
 export interface JumpOptions {
   /** Les fichiers figés de l'image (date → contenu JSON), lus à la construction (`scripts/build-node.mjs`) ; vide sans eux. */
   frozen?: Readonly<Record<string, unknown>>;
+  /** Lot D3 : ce qui calcule le niveau d'un jour (le fil de calcul `niveaux-fil.mjs`, ou le fil principal en repli) ; absent : le calcul se fait sur place, comme avant. */
+  niveaux?: ExecuteurNiveaux;
 }
 
 /** Le niveau d'une date tel que `/api/jump/day` le rend. */
@@ -362,9 +365,11 @@ const versionRefus = (detail: string) => new RefusJeu("version", `Une nouvelle v
 export function contratJump(platform: Platform, options: JumpOptions): ContratJeu<NiveauJump, JumpReplay, MesureJump> {
   const { log, today } = platform;
   const frozen = options.frozen ?? {};
+  const niveaux = options.niveaux;
   const frozenDays = Object.keys(frozen).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   // Lot V1 : le générateur de chaque fichier figé dit si le jour garde l'ancienne règle des thèmes (g22 et avant) et si le premier jour du sac doit éviter le thème de la veille.
-  declareFrozenGenerators(Object.fromEntries(frozenDays.map((d) => [d, (frozen[d] as { generatorVersion?: unknown } | undefined)?.generatorVersion as number])));
+  const generateurs: Record<string, number> = Object.fromEntries(frozenDays.map((d) => [d, (frozen[d] as { generatorVersion?: unknown } | undefined)?.generatorVersion as number]));
+  declareFrozenGenerators(generateurs);
 
   /** Le niveau jouable : le texte vient de la base, on vérifie son empreinte avant de s'en servir (une ligne abîmée ne doit jamais classer un essai). */
   function jouable(niveau: NiveauJump): Level {
@@ -406,7 +411,9 @@ export function contratJump(platform: Platform, options: JumpOptions): ContratJe
     },
 
     async calculer(day) {
-      const c = computeJumpDay(day, frozen[formatDay(day)]);
+      // Lot D3 : par le fil de calcul quand il y en a un (le fil principal reste libre pendant les 2 s du niveau), sinon sur place.
+      const fige = frozen[formatDay(day)];
+      const c = niveaux ? ((await niveaux.rejouer({ jeu: "jump", day, fige, generateurs })) as ReturnType<typeof computeJumpDay>) : computeJumpDay(day, fige);
       const authorHash = await inputsHash(c.authorInputs);
       if (c.frozenMiss) log("WARNING", "DailyJump : niveau figé refusé, niveau généré", { day: c.info.date, reason: c.frozenMiss.slice(0, 120) });
       const niveau: NiveauJump = { info: c.info, ascii: c.ascii, authorHash, level: null };

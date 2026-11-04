@@ -1,10 +1,13 @@
 import { GENERATOR_VERSION, SIM_VERSION, formatDay } from "@cdj/sim";
-import { parisClockSource } from "@cdj/clock";
+import { msUntilNextParisDay, parisClockSource } from "@cdj/clock";
 import { createAdmin, type Admin, type AdminOptions } from "./admin";
 import { createAmis } from "./amis";
 import type { CdjInstance, CdjOptions } from "./cdj";
+import type { JumpOptions } from "./jump";
 import { WithHeaders, mergeVary } from "./cache";
 import type { SqlDb } from "./db";
+import type { Mesures } from "./mesures";
+import { routeDe } from "./journaux";
 import { CODES_ERREUR, ERREUR_INTERNE, corpsErreur } from "./codesErreur";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, RequestInfo } from "./games";
@@ -20,6 +23,7 @@ import { DEFAULT_LIMITS, createPlatform } from "./platform";
 import { createPortailRoutes } from "./portail";
 import type { TowerOptions } from "./tower";
 import type { ExecuteurRejeu } from "./towerRejeu";
+import type { ExecuteurNiveaux } from "./niveauxFil";
 import { jeuxPourEnvironnement } from "./registry";
 import { salonSessionMs, type SalonLimits } from "./salon";
 
@@ -49,6 +53,11 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
 
 export interface ApiOptions {
   db: SqlDb;
+  /**
+   * Lot D3 : les mesures de l'instance (retard de la boucle d'événements, étapes d'un envoi, ramasse-miettes : `mesures.ts`), créées par `server.ts`. Absentes : rien n'est mesuré (tests, outils).
+   * Elles ne changent aucune réponse : seulement des lignes de journal.
+   */
+  mesures?: Mesures;
   now?: () => number;
   /** Valeur de `Access-Control-Allow-Origin` (« * » par défaut : aucune session, l'identité est dans le corps). */
   allowOrigin?: string;
@@ -108,6 +117,11 @@ export interface ApiOptions {
   /** Lot K4f : les jours figés de l'image de **tout autre jeu** (code du jeu → date → contenu du fichier), lus à la construction d'après les fiches (`jours.dossier`) ; le jeu les reçoit en option `frozen`. */
   joursFiges?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   /**
+   * Lot D3 : ce qui calcule le niveau de Jump et le circuit de Track d'un jour (le fil de calcul `niveaux-fil.mjs`, `server.ts`) ; absent : sur place dans le fil principal (tests, outils, développement),
+   * comme avant le lot D3. Le niveau est le même ; seul le fil qui le calcule change.
+   */
+  niveauxExecuteur?: ExecuteurNiveaux;
+  /**
    * Lot I2 : le registre des jeux (les jeux des fiches par défaut, `jeuxPourEnvironnement`). **Tests seulement** (un faux jeu n° 3 prouve que le portail ne change pas) : `server.ts`
    * ne le règle jamais. Un faux jeu n'a pas de tables (le schéma est celui de `GAMES`).
    */
@@ -126,7 +140,8 @@ export interface ApiOptions {
 }
 
 export function createApi(options: ApiOptions) {
-  const { db } = options;
+  const mesures = options.mesures;
+  const db = mesures ? mesures.envelopper(options.db) : options.db; // lot D3 : la base chronométrée (temps passé en SQL de chaque requête)
   const now = options.now ?? Date.now;
   const allowOrigin = options.allowOrigin ?? "*";
   const allowedOrigins = options.allowedOrigins?.map((o) => o.trim().replace(/\/+$/, "").toLowerCase()).filter(Boolean);
@@ -145,6 +160,7 @@ export function createApi(options: ApiOptions) {
     replaysPerMinute: options.replaysPerMinute,
     peerFactor: options.peerFactor,
     demoPlayers: options.demoPlayers === true,
+    etape: mesures ? (e) => mesures.marquer(e) : undefined,
     allowCopies: options.allowCopies === true,
     rotateStatements: (oldId, newId) => instances.flatMap((g) => g.instance.rotateStatements?.(oldId, newId) ?? []),
   });
@@ -158,8 +174,9 @@ export function createApi(options: ApiOptions) {
       salonMinutes: options.salonMinutes,
       salonLimits: options.salonLimits,
       demoPlayers: options.demoPlayers,
+      niveaux: options.niveauxExecuteur,
     } satisfies CdjOptions,
-    jump: { frozen: options.jumpFrozen },
+    jump: { frozen: options.jumpFrozen, niveaux: options.niveauxExecuteur } satisfies JumpOptions,
     tower: { frozen: options.towerFrozen, executeur: options.towerExecuteur } satisfies TowerOptions,
   };
   // Lot K4f : un jeu neuf reçoit ses jours figés (`frozen`) sans que le serveur ne le nomme ; les trois premiers jeux gardent leurs options propres ci-dessus.
@@ -224,6 +241,7 @@ export function createApi(options: ApiOptions) {
     }),
     allowedOrigins,
     revision: options.revision,
+    mesures,
     oublier: () => {
       portail.oublier();
       groupes.oublier();
@@ -315,7 +333,63 @@ export function createApi(options: ApiOptions) {
     };
   }
 
-  async function handle(req: Request, info: RequestInfo = {}): Promise<Response> {
+  /**
+   * Lot D3 (C9) — **le niveau du lendemain, calculé avant minuit.** À minuit tous les onglets se rechargent et la première requête du jour calculait le niveau de Jump (1,9 s) et le circuit de Track (0,4 s) :
+   * 5 à 10 s sur Cloud Run (D1 § 6 bis). Dans la **demi-heure qui précède minuit de Paris**, la première requête qui arrive sur une instance lance, **sans l'attendre**, le calcul du niveau du lendemain de chaque
+   * jeu ouvert (`dailyLevel(demain)` : le calcul et l'écriture en base sont ceux de minuit, par le fil de calcul quand il y en a un) : après minuit, **toute instance le lit en base** et ne calcule plus rien.
+   * Aucun niveau ne change (même calcul, fait plus tôt ; la règle de chaque niveau — versions, fichier figé — est vérifiée à la lecture comme avant). Pas de tâche de fond (Cloud Run ne donne du calcul que pendant
+   * une requête) : une instance qui ne reçoit aucune requête dans la demi-heure ne prépare rien, et le premier joueur d'après minuit calcule, dans le fil de calcul, sans bloquer les autres.
+   */
+  const AVANCE_PREPARATION_MS = 30 * 60_000;
+  const REPRISE_PREPARATION_MS = 2 * 60_000;
+  let preparation: { jour: number; en: Promise<void> | null; reussie: boolean; echecA: number } = { jour: -1, en: null, reussie: false, echecA: -Infinity };
+  let controleA = -Infinity;
+  /** Prépare le niveau de demain (ou, avec `force`, sans attendre la demi-heure d'avance : tests et mesures). Rend la promesse du travail en cours, que `handle` n'attend jamais. */
+  function preparerLeLendemain(force = false): Promise<void> | null {
+    const t = now();
+    if (!force && t - controleA < 5_000) return preparation.en;
+    controleA = t;
+    if (!force && msUntilNextParisDay(t) > AVANCE_PREPARATION_MS) return preparation.en;
+    const demain = platform.today() + 1;
+    if (preparation.jour === demain && (preparation.en || preparation.reussie || t - preparation.echecA < REPRISE_PREPARATION_MS)) return preparation.en;
+    preparation = {
+      jour: demain,
+      reussie: false,
+      echecA: -Infinity,
+      en: (async () => {
+        try {
+          await interrupteur.charger();
+          let echec = false;
+          for (const g of instances) {
+            const site = interrupteur.siteDe(g.code);
+            if (!site || interrupteur.etat(site) === "off") continue; // un jeu éteint n'a rien à préparer
+            if (g.instance.portail && demain < g.instance.portail.premierJour) continue;
+            const debut = performance.now();
+            try {
+              await g.instance.dailyLevel(demain);
+              log("INFO", "niveau du lendemain prêt", { jeu: g.code, jour: formatDay(demain), ms: Math.round(performance.now() - debut) });
+            } catch (e) {
+              echec = true;
+              log("WARNING", "niveau du lendemain : calcul impossible, il se fera à minuit", { jeu: g.code, jour: formatDay(demain), code: e instanceof HttpError ? e.code : "inconnu" });
+            }
+          }
+          if (echec) preparation.echecA = now();
+          else preparation.reussie = true;
+        } catch {
+          preparation.echecA = now(); // la base ne répond pas : on réessaie dans 2 minutes
+        } finally {
+          preparation.en = null;
+        }
+      })(),
+    };
+    return preparation.en;
+  }
+
+  /** Lot D3 : chaque requête est suivie (route, étapes, temps en SQL) quand l'instance est mesurée ; la réponse ne change pas. */
+  const handle = (req: Request, info: RequestInfo = {}): Promise<Response> =>
+    mesures && req.method !== "OPTIONS" ? mesures.suivre(routeDe(new URL(req.url).pathname.replace(/\/+$/, "")), () => traiter(req, info)) : traiter(req, info);
+
+  async function traiter(req: Request, info: RequestInfo = {}): Promise<Response> {
     const reply = replier(req);
     let path = "";
     try {
@@ -325,6 +399,7 @@ export function createApi(options: ApiOptions) {
       if (path === "/api/health" && req.method === "GET") return await health(reply);
       if (path === "/api/sonde/entetes" && req.method === "GET" && options.environment === "recette") return reply(200, probeHeaders(req, info));
       await ensureSchema();
+      void preparerLeLendemain(); // lot D3 : dans la demi-heure d'avant minuit, le niveau du lendemain se prépare sans que cette requête l'attende
       await platform.generation(); // lot R8 : une ligne par instance et par 30 s ; une génération changée vide la mémoire de l'instance
       // Lot N1 : les journaux et les rediffusions retirées passent leur durée (au plus une fois par heure et par instance). Jamais pendant une lecture : une lecture
       // n'écrit rien (la vérification de la production, `smoke --lecture-seule`, le prouve).
@@ -384,5 +459,5 @@ export function createApi(options: ApiOptions) {
   /** Le registre en marche : code et préfixe de chaque jeu (documentation, tests). */
   const games = instances.map((g) => ({ code: g.code, prefix: g.prefix }));
 
-  return { handle, tick, salon, games };
+  return { handle, tick, salon, games, preparerLeLendemain };
 }

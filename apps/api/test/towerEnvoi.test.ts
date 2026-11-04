@@ -19,7 +19,7 @@ import { D, midi, monterTower } from "../scripts/tower-test";
 import { MIGRATIONS, SCHEMA } from "../src/db";
 import { crc32Hex } from "../src/identity";
 import { refOfPlayer } from "../src/players";
-import { UNITES_REJEU_TOWER, type ExecuteurRejeu } from "../src/towerRejeu";
+import { UNITES_REJEU_TOWER, type DemandeRejeu, type ExecuteurRejeu } from "../src/towerRejeu";
 import { silhouetteDe, TOWER_BOARD_TOP, TOWER_SCHEMA, towerInputs } from "../src/tower";
 import { playerId, TEST_DB, type TestApi } from "./helpers";
 import { ADMIN_EMAIL, CLIENT_ID, SESSION_KEY } from "./adminHelpers";
@@ -134,7 +134,8 @@ describe(`Tower : les refus et l'ordre de validation (${TEST_DB})`, () => {
       async rejouer(d) {
         appels++;
         const { rejouer } = await import("@cdj/tower-sim");
-        return rejouer(R, d.contenu, d.rediffusion);
+        const demande = d as DemandeRejeu; // lot D3 : seuls des rejeux de joueurs arrivent à ce compteur (l'examen d'un jour ne passe que par un vrai fil)
+        return rejouer(R, demande.contenu, demande.rediffusion);
       },
     };
   }

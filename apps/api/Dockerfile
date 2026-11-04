@@ -51,6 +51,8 @@ WORKDIR /app
 COPY --from=build /app/apps/api/dist/server.mjs ./server.mjs
 # Lot TP : le fil de calcul des rejeux de Tower (chargé par server.mjs s'il est là).
 COPY --from=build /app/apps/api/dist/tower-fil.mjs ./tower-fil.mjs
+# Lot D3 : le fil de calcul des niveaux du jour (Jump, Track), chargé par server.mjs s'il est là.
+COPY --from=build /app/apps/api/dist/niveaux-fil.mjs ./niveaux-fil.mjs
 # Un seul fichier JavaScript : pas de node_modules à charger au réveil. Pas de variable GIT_SHA ici : le déploiement la pose.
 ENV NODE_ENV=production NODE_NO_WARNINGS=1 PORT=8080 DB_PATH=/data/cdj.sqlite
 RUN mkdir /data && chown node:node /data

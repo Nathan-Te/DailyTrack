@@ -3,14 +3,16 @@
 // Protocole : le fil principal envoie `{ id, contenu, rediffusion }`, le fil répond `{ id, resultat }` ou `{ id, refus }` (le code d'une `ErreurRediffusion`) ou `{ id, panne }`.
 import { parentPort } from "node:worker_threads";
 import { ErreurRediffusion, rejouer } from "@cdj/tower-sim";
+import { examinerSurPlace, type DemandeTower } from "./towerRejeu";
 import { chargerRapier } from "@cdj/tower-sim/rapier";
 
 if (!parentPort) throw new Error("towerFilTravail.ts se lance dans un fil de calcul (worker_threads)");
 const port = parentPort;
-port.on("message", async (m: { id: number; contenu: Parameters<typeof rejouer>[1]; rediffusion: string }) => {
+port.on("message", async (m: { id: number } & DemandeTower) => {
   try {
     const R = await chargerRapier();
-    port.postMessage({ id: m.id, resultat: rejouer(R, m.contenu, m.rediffusion) });
+    // Lot D3 : le même fil examine aussi un jour préparé (la preuve rejouée) : Rapier n'est chargé qu'ici, jamais dans le fil principal.
+    port.postMessage({ id: m.id, resultat: "examen" in m ? examinerSurPlace(R, m.examen.json, m.examen.jour) : rejouer(R, m.contenu, m.rediffusion) });
   } catch (e) {
     if (e instanceof ErreurRediffusion) port.postMessage({ id: m.id, refus: e.code });
     else port.postMessage({ id: m.id, panne: true });

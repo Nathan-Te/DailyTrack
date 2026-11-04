@@ -5,12 +5,13 @@ import { createApi } from "./api";
 import { ConfigError, adminTokenWarning, readConfig } from "./config";
 import { openLibsql } from "./libsql-open";
 import { consoleLog } from "./log";
+import { creerMesures } from "./mesures";
+import { DELAI_NIVEAU_MS, type DemandeNiveau, type ReponseNiveau } from "./niveauxFil";
 import { createNodeServer } from "./node-server";
 import { openSqlite } from "./node-sqlite";
 import { REPLAYS_PER_MINUTE } from "./platform";
 import { executeurFil } from "./jeux/fil";
-import type { DemandeRejeu } from "./towerRejeu";
-import type { Resultat } from "@cdj/tower-sim";
+import type { DemandeTower, ReponseTower } from "./towerRejeu";
 
 // Point d'entrée du serveur Node : conteneur Cloud Run (Turso) ou Docker / poste local (SQLite). Variables : voir `config.ts`.
 // **Aucune tâche de fond** n'est indispensable (Cloud Run éteint le conteneur sans requête, et n'alloue du calcul que pendant une requête) :
@@ -77,11 +78,26 @@ const towerFrozen = joursFiges.tower ?? {};
  */
 const towerFilFichier = new URL("./tower-fil.mjs", import.meta.url);
 const towerFil = existsSync(towerFilFichier);
-const towerExecuteur = towerFil ? executeurFil<DemandeRejeu, Resultat>(towerFilFichier) : undefined;
+const towerExecuteur = towerFil ? executeurFil<DemandeTower, ReponseTower>(towerFilFichier) : undefined;
 consoleLog("INFO", towerFil ? "Tower : les rejeux passent par le fil de calcul" : "Tower : les rejeux passent par le fil principal (repli, pas de tower-fil.mjs)", { fil: towerFil });
+
+// Lot D3 : les mesures de l'instance (retard de la boucle d'événements, étapes d'un envoi lent, ramasse-miettes) — des lignes de journal sans donnée personnelle.
+const mesures = creerMesures({ log: consoleLog });
+mesures.demarrer();
+
+/**
+ * Lot D3 (C9) : le niveau de Jump et le circuit de Track se calculent dans **un fil de calcul** (`niveaux-fil.mjs`, posé à côté de `server.mjs`) : 2 s de calcul qui ne bloquent plus le fil des joueurs. Sans le fichier
+ * (développement, tests) le calcul se fait sur place, comme avant. Une ligne de journal au démarrage dit lequel.
+ */
+const niveauxFilFichier = new URL("./niveaux-fil.mjs", import.meta.url);
+const niveauxFil = existsSync(niveauxFilFichier);
+const niveauxExecuteur = niveauxFil ? executeurFil<DemandeNiveau, ReponseNiveau>(niveauxFilFichier, { delaiMs: DELAI_NIVEAU_MS }) : undefined;
+consoleLog("INFO", niveauxFil ? "Niveaux du jour : le calcul passe par le fil de calcul" : "Niveaux du jour : le calcul se fait dans le fil principal (repli, pas de niveaux-fil.mjs)", { fil: niveauxFil });
 
 const api = createApi({
   db,
+  mesures,
+  niveauxExecuteur,
   environment: config.environment,
   jumpFrozen,
   towerFrozen,
