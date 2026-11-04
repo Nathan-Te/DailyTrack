@@ -37,6 +37,7 @@ export const FICHE_ESSAI = {
   etiquette: { fond: "#C9B6F2", coque: "#5B3FA3", police: '"Rubik Mono One", "Archivo", sans-serif', dessin: "generique" },
   etatDepart: "off",
   premierJour: "2026-11-09",
+  categorie: "jour", // lot A3 : champ obligatoire de la fiche
   classement: {
     colonnes: [
       { nom: "score", sens: "desc" },
