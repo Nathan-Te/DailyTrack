@@ -1,4 +1,5 @@
 import { boitesE, type Echelles, sinCos, type VuePartie, type VuePiece } from "@cdj/tower-sim";
+import type { Niveau } from "@cdj/visuels/blocs";
 
 // La panique des pièces (lot T5) — **de l'affichage seulement, dérivé de la vue de la partie** : ce module lit une `VuePartie` et rend, pour chaque pièce, un niveau de 0 (calme) à 3 (affolé).
 // La simulation ne lit rien de ce qui est calculé ici et rien d'ici n'entre dans une rediffusion. Aucun hasard, aucune horloge : seulement la vue et son numéro de tick.
@@ -11,7 +12,8 @@ import { boitesE, type Echelles, sinCos, type VuePartie, type VuePiece } from "@
 // La PIÈCE ACTIVE panique en approchant du vide : la part de sa largeur qui n'a rien dessous, d'autant plus qu'elle est près d'une surface (`vide` × proximité) ; posée bien à plat, elle se détend.
 // La valeur brute est lissée (monte vite, redescend lentement) puis rangée en quatre états, avec une petite hystérésis : les yeux ne scintillent pas.
 
-export type Niveau = 0 | 1 | 2 | 3;
+/** Le niveau d'une pièce (0 calme, 3 affolé) est un type du module commun des blocs : le dessin des yeux ne lit que lui. */
+export type { Niveau };
 export const NOMS_NIVEAUX = ["calme", "inquiet", "panique", "affole"] as const;
 /** Les valeurs qui font passer au niveau 1, 2 et 3. */
 export const SEUILS_PANIQUE = [0.18, 0.4, 0.65] as const;

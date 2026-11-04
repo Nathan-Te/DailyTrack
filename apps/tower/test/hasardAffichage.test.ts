@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { COMMANDE, empreinteVue, Partie, type Rapier, SCENARIO_ESSAI } from "@cdj/tower-sim";
 import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { graineDePiece, hasardAffichage } from "../src/hasardAffichage";
-import { Clignotement } from "../src/expression";
+import { Clignotement } from "@cdj/visuels/blocs";
 
 // Lot T5 — le hasard d'AFFICHAGE est séparé de la simulation : reproductible par sa graine, jamais `Math.random`, aucun import de la simulation ; en tirer ne change pas une partie.
 let R: Rapier;

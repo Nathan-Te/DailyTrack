@@ -1,9 +1,8 @@
-import type { ThemeTower } from "@cdj/tower-sim";
-import type { PaletteTheme } from "./palette";
+import type { PaletteTheme, ThemeBloc } from "./palettes";
 
-// Lot T3 — les cinq autres thèmes de Tower (le port est dans `palette.ts`). **Chargé à la demande** (`chargerPalette`) : il ne pèse pas sur le premier chargement. Tout est en aplats ;
-// lot T9 : le décor de fond de chaque thème est un module à part (`decorChantier.ts`…). `test/palettes.test.ts` vérifie le contraste de chaque pièce avec chaque fond de chaque thème.
-export const PALETTES: Record<Exclude<ThemeTower, "port">, PaletteTheme> = {
+// Les cinq autres thèmes (le port est dans `palettes.ts`). **À la demande** : ce fichier ne pèse rien tant qu'un jeu ne l'a pas demandé (`import("@cdj/visuels/blocs/themes")`).
+// Tout est en aplats ; le contraste de chaque pièce avec chaque fond d'un jeu est vérifié par le test de ce jeu (pour Tower : `apps/tower/test/palettes.test.ts`).
+export const PALETTES: Record<Exclude<ThemeBloc, "port">, PaletteTheme> = {
   chantier: {
     pieces: { I: "#E8731A", O: "#F2B705", T: "#8A5CC8", L: "#D9558F", J: "#2F6FC4", S: "#3F9F4A", Z: "#D63F37" },
     ciel: "#F6E7C8",

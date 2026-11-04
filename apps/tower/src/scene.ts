@@ -1,16 +1,14 @@
 import { boitesE, type Echelles, type Effet, type PieceKind, type Taille, type Visee, type VuePartie, type VuePiece } from "@cdj/tower-sim";
+import { BORD, centreDesYeux, Clignotement, decrirePiece, expressionDe, type Genre, interieur, LISERE, melanger, regardVers } from "@cdj/visuels/blocs";
+import { matiere, matiereTransparente, poserCouches, rect, Yeux } from "@cdj/visuels/blocs/three";
 import { BufferAttribute, BufferGeometry, Color, Group, Mesh, OrthographicCamera, PlaneGeometry, Scene, WebGLRenderer } from "three";
 import { contourDe, enQuads } from "./contour";
 import type { DecorScene } from "./decorScene";
-import { melanger } from "./couleurs";
-import { BORD, couchesDe, LISERE } from "./dessinPiece";
 import { avancerChute, type ChuteDecor, commencerChute, rayonDePiece } from "./chute";
-import { Clignotement, expressionDe, type Genre, regardVers } from "./expression";
 import type { FantomePiece } from "./fantomeLocal";
 import type { Habit, Soudure } from "./habits";
 import type { EffetsTaquet } from "./taquetFx";
 import type { EvenementJeu } from "./evenements";
-import { matiere, matiereTransparente, rect } from "./formes";
 import { Gerbe, VIE_ONDE } from "./gerbe";
 import { graineDePiece, hasardAffichage } from "./hasardAffichage";
 import { mouvementReduit } from "./mouvement";
@@ -18,7 +16,6 @@ import { EFFET_HALO, paletteCourante, SCENE } from "./palette";
 import { type Niveau, type PaniquePiece } from "./panique";
 import { NIVEAU_MER, Z } from "./profondeurs";
 import { Secousse } from "./secousse";
-import { Yeux } from "./yeux";
 
 // La scène de Tower (lot T1) : Three.js en projection orthographique, comme Jump — des aplats, aucun dégradé, aucune texture. Les pièces sont des boîtes de couleur bordées d'encre, avec
 // des yeux ; le ciel, la mer, la plateforme et ses nuages viennent de la maquette `tower-hud-paysage.html`. 1 unité = 1 mètre.
@@ -131,16 +128,13 @@ function construirePiece(kind: PieceKind, rot: number, taille: Taille, effet: Ef
   const glissante = effet === "glissante";
   const halo = glissante ? GLACE : fixe ? EFFET_HALO.figee : effet === "lierre" ? EFFET_HALO.lierre : effet === "figee" ? EFFET_HALO.figee : null;
   // Lot T6 : le dessin est le collider — l'encre est la forme physique, le liseré d'un effet puis la couleur de la pièce sont EN RETRAIT, tous à l'intérieur (`dessinPiece.ts`).
-  const couches = couchesDe(bs, halo !== null, taille === "geante" ? BORD_GEANTE : BORD, glissante ? LISERE_GLACE : LISERE);
   const base = paletteCourante().pieces[kind];
   const couleur = glissante ? melanger(base, "#FFFFFF", 0.55) : base;
-  for (const r of couches.encre) g.add(rect(SCENE.encre, r.cx, r.cy, r.w, r.h, 0));
-  if (halo) for (const r of couches.lisere) g.add(rect(halo, r.cx, r.cy, r.w, r.h, 0.005));
-  for (const r of couches.couleur) g.add(rect(couleur, r.cx, r.cy, r.w, r.h, 0.01));
+  poserCouches(g, decrirePiece(bs, { couleur, encre: SCENE.encre, halo, bord: taille === "geante" ? BORD_GEANTE : BORD, lisere: glissante ? LISERE_GLACE : LISERE }));
   const habit = habits && (effet !== null || fixe) ? habits.habiller(g, { bs, id, effet, fixe, taille, couleur: base }) : null;
   // Les yeux, dans la plus grande boîte, droits dans le repère de la pièce.
-  const grande = bs.reduce((a, b) => (Math.min(b.hw, b.hh) > Math.min(a.hw, a.hh) ? b : a));
-  const yeux = new Yeux(g, grande.cx / 8, grande.cy / 8, echelle, phase);
+  const centre = centreDesYeux(bs);
+  const yeux = new Yeux(g, centre.x, centre.y, echelle, phase);
   const demi = { x: Math.max(...bs.map((b) => Math.abs(b.cx) + b.hw)) / 8, y: Math.max(...bs.map((b) => Math.abs(b.cy) + b.hh)) / 8 };
   return { groupe: g, yeux, rayon: rayonDePiece(bs), habit, demi };
 }
@@ -554,7 +548,7 @@ export class Scene3D {
       }
       const { kind, rot, taille } = this.viseePiece;
       const bs = boitesE(kind, rot, taille, this.echelles);
-      for (const r of couchesDe(bs, false).couleur) {
+      for (const r of interieur(bs, BORD)) {
         const m = new Mesh(plan1, matiereTransparente(paletteCourante().pieces[kind], 0.22));
         m.position.set(r.cx, r.cy, 0);
         m.scale.set(r.w, r.h, 1);

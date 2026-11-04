@@ -1,9 +1,9 @@
-import type { Box8 } from "@cdj/tower-sim/lab/pieces";
+import type { Boite8 } from "./formes";
 
-// Lot T6 — le DESSIN d'une pièce, égal à son COLLIDER. Avant ce lot le trait d'encre était un rectangle plus grand que la boîte de Rapier (7 cm de chaque côté) : deux pièces qui se touchaient
+// Le RELIEF d'une pièce (lot T6 de Tower, repris par le module commun au lot DA1) — le DESSIN d'une pièce, égal à son COLLIDER. Avant ce lot le trait d'encre était un rectangle plus grand que la boîte de Rapier (7 cm de chaque côté) : deux pièces qui se touchaient
 // se recouvraient à l'écran (14 cm d'encre sur 14 cm de pièce) et le bord qu'on voyait n'était pas celui de la physique. Maintenant le trait d'encre est ENTIÈREMENT à l'intérieur de la forme physique :
 // l'encre est la forme elle-même (les boîtes du collider, à l'identique), la couleur de la pièce (et le liseré d'un effet) la recouvre en retrait de `BORD`. Deux pièces qui se touchent montrent
-// un seul trait double (2 × `BORD`), sans recouvrement ni jour. Fonction pure (mètres, repère de la pièce, centre de masse à l'origine), partagée par la scène et son test.
+// un seul trait double (2 × `BORD`), sans recouvrement ni jour. Fonction pure (mètres, repère de la pièce, centre de masse à l'origine), partagée par les dessinateurs (Three.js, Canvas 2D) et leurs tests.
 
 /** L'épaisseur du trait d'encre, en mètres (à l'intérieur de la forme). */
 export const BORD = 0.07;
@@ -19,17 +19,17 @@ export interface Rect {
 }
 
 const EPS = 1e-6;
-const bords = (b: Box8): { x0: number; x1: number; y0: number; y1: number } => ({ x0: (b.cx - b.hw) / 8, x1: (b.cx + b.hw) / 8, y0: (b.cy - b.hh) / 8, y1: (b.cy + b.hh) / 8 });
+const bords = (b: Boite8): { x0: number; x1: number; y0: number; y1: number } => ({ x0: (b.cx - b.hw) / 8, x1: (b.cx + b.hw) / 8, y0: (b.cy - b.hh) / 8, y1: (b.cy + b.hh) / 8 });
 const rect = (x0: number, x1: number, y0: number, y1: number): Rect => ({ cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: Math.max(0.001, x1 - x0), h: Math.max(0.001, y1 - y0) });
 
 /** Le collider : les boîtes de Rapier de la pièce, en mètres (ce que la scène dessine en encre, ni plus ni moins). */
-export const colliderDe = (bs: readonly Box8[]): Rect[] => bs.map((b) => ({ cx: b.cx / 8, cy: b.cy / 8, w: (2 * b.hw) / 8, h: (2 * b.hh) / 8 }));
+export const colliderDe = (bs: readonly Boite8[]): Rect[] => bs.map((b) => ({ cx: b.cx / 8, cy: b.cy / 8, w: (2 * b.hw) / 8, h: (2 * b.hh) / 8 }));
 
 /**
  * La forme rétrécie de `retrait` mètres tout autour (l'érosion de la forme) : chaque boîte rétrécie, plus un pont sur chaque arête que deux boîtes partagent (il recouvre l'encre qui, sans lui,
  * marquerait la jonction à l'intérieur de la pièce). Aux coins rentrants (un T, un L…) le pont s'arrête à `retrait` du coin : l'encre y tourne comme le contour.
  */
-export function interieur(bs: readonly Box8[], retrait: number): Rect[] {
+export function interieur(bs: readonly Boite8[], retrait: number): Rect[] {
   const b = bs.map(bords);
   const out: Rect[] = b.map((r) => rect(r.x0 + retrait, r.x1 - retrait, r.y0 + retrait, r.y1 - retrait));
   for (let i = 0; i < b.length; i++) {
@@ -57,6 +57,34 @@ export function interieur(bs: readonly Box8[], retrait: number): Rect[] {
  * Les trois couches d'une pièce, de bas en haut : l'encre (le collider), le liseré d'un effet (s'il y en a un), la couleur de la pièce. Toutes dans la forme physique.
  * Lot T9 : un effet peut changer l'épaisseur du trait d'encre (`bord` : la pièce géante) et celle du liseré (`lisere` : le bord de glace épais de la pièce glissante).
  */
-export function couchesDe(bs: readonly Box8[], avecLisere: boolean, bord = BORD, lisere = LISERE): { encre: Rect[]; lisere: Rect[]; couleur: Rect[] } {
+export function couchesDe(bs: readonly Boite8[], avecLisere: boolean, bord = BORD, lisere = LISERE): { encre: Rect[]; lisere: Rect[]; couleur: Rect[] } {
   return { encre: colliderDe(bs), lisere: avecLisere ? interieur(bs, bord) : [], couleur: interieur(bs, avecLisere ? bord + lisere : bord) };
+}
+
+/** Une couche du dessin d'une pièce : une couleur, ses rectangles (repère de la pièce, mètres) et sa profondeur (l'ordre d'empilement : plus grand = dessus ; le dessinateur Canvas peint dans l'ordre de la liste). */
+export interface CoucheRelief {
+  couleur: string;
+  rects: Rect[];
+  profondeur: number;
+}
+
+/** Ce qui change l'aspect d'une pièce : sa couleur, la couleur du trait d'encre (`ENCRE`, ou le jeton `dj-encre` du jeu : le module ne lit pas les jetons), le liseré d'un effet (une couleur, ou `null`), l'épaisseur du trait d'encre et celle du liseré. */
+export interface OptionsRelief {
+  couleur: string;
+  encre: string;
+  halo?: string | null;
+  bord?: number;
+  lisere?: number;
+}
+
+/**
+ * La description d'une pièce, **indépendante du moteur de rendu** : les couches de bas en haut — l'encre (le collider), le liseré (s'il y a un `halo`), la couleur de la pièce. Les dessinateurs la lisent tels quels
+ * (`dessinerCouches` de Three.js : un rectangle par rect, à sa profondeur ; celui de Canvas 2D : un chemin par couche), c'est ce qui garantit le même dessin.
+ */
+export function decrirePiece(bs: readonly Boite8[], o: OptionsRelief): CoucheRelief[] {
+  const bord = o.bord ?? BORD;
+  const couches: CoucheRelief[] = [{ couleur: o.encre, rects: colliderDe(bs), profondeur: 0 }];
+  if (o.halo) couches.push({ couleur: o.halo, rects: interieur(bs, bord), profondeur: 0.005 });
+  couches.push({ couleur: o.couleur, rects: interieur(bs, o.halo ? bord + (o.lisere ?? LISERE) : bord), profondeur: 0.01 });
+  return couches;
 }

@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, MeshBasicMaterial } from "three";
-import { ENCRE } from "./couleurs";
+import { ENCRE } from "@cdj/visuels/blocs";
 
 // Lot T9 — les formes en aplat de l'habillage des effets et du taquet (polygones, traits épais, étoiles, bordure d'encre). **Affichage seulement**, aucune texture, aucun dégradé. Ce module est chargé À LA DEMANDE avec
 // `habits.ts` et `taquetFx.ts` : il n'est ni dans l'accueil ni dans le jeu. Les matières sont partagées par couleur et opacité ; les deux faces sont dessinées (les polygones n'ont pas de sens imposé).

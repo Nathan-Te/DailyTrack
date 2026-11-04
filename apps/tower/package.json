@@ -17,6 +17,7 @@
     "@cdj/profile": "*",
     "@cdj/tower-sim": "*",
     "@cdj/ui": "*",
+    "@cdj/visuels": "*",
     "three": "^0.186.1"
   },
   "devDependencies": {

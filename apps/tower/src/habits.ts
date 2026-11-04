@@ -1,8 +1,7 @@
 import type { Box8 } from "@cdj/tower-sim/lab/pieces";
 import type { Effet, Taille } from "@cdj/tower-sim";
 import { Group } from "three";
-import { BORD } from "./dessinPiece";
-import { ENCRE, melanger } from "./couleurs";
+import { BORD, ENCRE, melanger } from "@cdj/visuels/blocs";
 import { boite, pointesEncre, poly, polyEncre, rond, rondEncre, trait } from "./polygones";
 
 // Lot T9 — **l'habit des effets** : la pièce porte son effet sur tout son corps, tant qu'il dure — ce n'est plus un liseré. Figée : un habit de CHANTIER boulonné (plaques d'acier aux coins, bande rayée jaune et noire,

@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry, Color, DoubleSide, Group, Mesh, MeshBasicMaterial } from "three";
 import { type Anim, decalageParallaxe, type DecorTheme, deplacer, type Forme, formesDeCiel, PARALLAXE, PX, semerCiel, TUILE_M, xEnMetres, yEnMetres, yEnPx, yPlan } from "./decorLogique";
-import { ENCRE } from "./couleurs";
+import { ENCRE } from "@cdj/visuels/blocs";
 
 // Lot T9 — les décors dans Three.js : **des aplats, aucun dégradé, aucune image**. Chaque plan est assemblé UNE fois, avec un seul maillage par couleur (le décor d'un thème coûte une dizaine d'appels de
 // dessin, pas des centaines) ; les formes d'un plan gardent leur ordre d'écriture (la profondeur `z` croît à chaque forme). **Affichage seulement** : rien ici ne lit la simulation. Ce module est chargé À LA DEMANDE

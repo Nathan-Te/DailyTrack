@@ -1,7 +1,7 @@
 import { PIECE_KINDS, THEMES_TOWER } from "@cdj/tower-sim";
 import { describe, expect, it } from "vitest";
-import { PALETTE_PORT, type PaletteTheme } from "../src/palette";
-import { PALETTES } from "../src/palettes";
+import { PALETTE_PORT, type PaletteTheme } from "@cdj/visuels/blocs";
+import { PALETTES } from "@cdj/visuels/blocs/themes";
 import { clarte, HEX } from "./_couleurs";
 
 // Lot T3 — les six palettes de Tower : un contraste de clarté minimal entre chaque pièce et chaque fond de chaque thème (des aplats bordés d'encre), des couleurs bien formées, aucun

@@ -1,6 +1,6 @@
 import { PIECE_KINDS, boites, boitesE, type Taille } from "@cdj/tower-sim";
 import { describe, expect, it } from "vitest";
-import { BORD, colliderDe, couchesDe, interieur, LISERE, type Rect } from "../src/dessinPiece";
+import { BORD, colliderDe, couchesDe, interieur, LISERE, type Rect } from "@cdj/visuels/blocs";
 
 // Lot T6 — le dessin est égal au collider. Avant ce lot le trait d'encre dépassait la boîte de Rapier de 7 cm de chaque côté (deux pièces qui se touchaient se recouvraient à l'écran). Maintenant :
 // l'encre est la forme physique elle-même, la couleur de la pièce et le liseré d'un effet sont EN RETRAIT, tout à l'intérieur. Vérifié « au pixel près à l'échelle de référence » : 20 pixels par mètre

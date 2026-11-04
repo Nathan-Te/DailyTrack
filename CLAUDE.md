@@ -19,7 +19,7 @@ Une ligne par dossier ; le texte long (contenu, particularités, Tower, Cibles) 
 | `packages/cibles-sim` · `apps/cibles` | « Cibles » : le jeu témoin, modèle du générateur de jeu | témoin | `docs/cibles/consignes.md` |
 | `apps/api` | serveur de la plateforme (registre, identité, classements, Salon, profil, portail, admin), déploiement, recette | **partagée** | `apps/api/CLAUDE.md` |
 | `packages/core` · `packages/clock` | socle sans logique de jeu ; jour de Paris | **partagée** | `packages/core/CLAUDE.md` · `apps/api/CLAUDE.md` « Jour de Paris » |
-| `packages/profile` · `packages/ui` · `packages/kit` | profil commun côté client ; socle de l'interface ; briques communes côté jeu | **partagée** | leurs `CLAUDE.md` |
+| `packages/profile` · `packages/ui` · `packages/kit` · `packages/visuels` | profil commun côté client ; socle de l'interface ; briques communes côté jeu ; visuels communs (les blocs de Tower : description, dessinateurs Three.js et Canvas 2D) | **partagée** | leurs `CLAUDE.md` |
 | `packages/musique` · `musique/` | la musique commune | **partagée** | `packages/musique/CLAUDE.md`, `docs/plateforme/musique.md` |
 | `apps/portail` | portail « Du Jour », mentions légales, `/admin/`, nouveautés | **partagée** | `apps/portail/CLAUDE.md` |
 | `.github/workflows/`, `scripts/`, `e2e/`, `config/` | CI, recette, production ; fiches des jeux (`config/jeux/`), date du lancement | **partagée** | ce fichier, `apps/api/CLAUDE.md` « Recette » |

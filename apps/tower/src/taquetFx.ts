@@ -1,6 +1,6 @@
 import { Group } from "three";
 import { pointesEncre, rondEncre, trait } from "./polygones";
-import { ENCRE } from "./couleurs";
+import { ENCRE } from "@cdj/visuels/blocs";
 
 // Lot T9 — **les effets du taquet** : le coup (traînées de vitesse cerclées d'encre, une bouffée d'air), le choc (un éclat étoilé jaune bordé d'encre au point d'impact, des éclats, deux confettis), la pièce calée (de la
 // poussière qui retombe, une étincelle) et le petit souffle d'un coup qui s'arrête dans le vide ; plus la poussière et les fissures de la pose d'une pièce géante. Des aplats bordés d'encre, sans dégradé ni image.

@@ -1,10 +1,12 @@
-// L'expression des yeux d'une pièce (lot T5), **pure** : de l'état de panique (0 à 3), du genre de la pièce (normal, chute, figée, soulagée, glissante), du regard et du clignement, elle
-// calcule comment dessiner les deux yeux. Aucun Three.js ici : `yeux.ts` ne fait que poser ces nombres. Affichage seulement.
+// L'expression des yeux d'une pièce (lot T5 de Tower, reprise par le module commun au lot DA1), **pure** : de l'état de panique (0 à 3), du genre de la pièce (normal, chute, figée, soulagée, glissante), du regard et du clignement, elle
+// calcule comment dessiner les deux yeux. Aucun moteur de rendu ici : `yeux.ts` en tire la géométrie des yeux, les dessinateurs la posent. Affichage seulement.
 //
 // Les quatre états : 0 calme (yeux normaux), 1 inquiet (des sourcils tombent vers le centre), 2 paniqué (yeux écarquillés, pupilles qui rétrécissent, un léger tremblement), 3 affolé (yeux
 // immenses, pupilles en points, sourcils très hauts, tremblement). La chute : yeux écarquillés, pupilles en points qui regardent vers le haut d'où la pièce est tombée. Pièce figée : yeux fermés.
 // Lierre : un air soulagé (paupières mi-closes, regard bas, sourcils détendus). Glissante : un air inquiet permanent, la pupille qui file d'un côté à l'autre. Lot T9, coup de vent : les yeux plissés.
-import type { Niveau } from "./panique";
+
+/** Le niveau de panique d'une pièce : 0 calme, 1 inquiet, 2 paniqué, 3 affolé. Le jeu le calcule comme il veut (Tower : `panique.ts`) ; le dessin ne lit que ce nombre. */
+export type Niveau = 0 | 1 | 2 | 3;
 
 export type Genre = "normal" | "chute" | "figee" | "soulage" | "glissante" | "plisse";
 
