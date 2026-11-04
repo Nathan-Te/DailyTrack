@@ -1,71 +1,71 @@
 {
   "_": "Golden de Blocks (lot B1). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
   "sim": 1,
-  "generateur": 1,
+  "generateur": 2,
   "jours": [
     {
       "date": "2026-11-02",
-      "empreinte": "ba1c6fe9"
+      "empreinte": "a8c52e5a"
     },
     {
       "date": "2026-11-05",
-      "empreinte": "b708d905"
+      "empreinte": "35f903c2"
     },
     {
       "date": "2026-11-08",
-      "empreinte": "eb07e54e"
+      "empreinte": "af5405d0"
     },
     {
       "date": "2026-11-11",
-      "empreinte": "6ef9e540"
+      "empreinte": "904c0256"
     },
     {
       "date": "2026-11-14",
-      "empreinte": "691490c3"
+      "empreinte": "ce27e68a"
     },
     {
       "date": "2026-11-17",
-      "empreinte": "651bf030"
+      "empreinte": "0338f14e"
     },
     {
       "date": "2026-11-20",
-      "empreinte": "615e5490"
+      "empreinte": "1c38b90a"
     },
     {
       "date": "2026-11-23",
-      "empreinte": "9809c77d"
+      "empreinte": "53d40d79"
     },
     {
       "date": "2026-11-26",
-      "empreinte": "78f827a6"
+      "empreinte": "d6c56f09"
     },
     {
       "date": "2026-11-29",
-      "empreinte": "63059bb1"
+      "empreinte": "0a8dafae"
     }
   ],
   "rediffusions": [
     {
       "nom": "glouton-jour-1",
       "date": "2026-11-02",
-      "g": 1,
-      "code": "AQEBAJeiAQAIGDI0MCsYISgREx0KFCkiJRgoLgAfBQ",
+      "g": 2,
+      "code": "AQECAJeiATAgBzUfABkIMxslIQM2EA",
       "resultat": {
-        "score": 353,
-        "combo": 4,
-        "poses": 24,
+        "score": 119,
+        "combo": 2,
+        "poses": 15,
         "raison": "bloquee"
       }
     },
     {
       "nom": "glouton-jour-4",
       "date": "2026-11-11",
-      "g": 1,
-      "code": "AQEBAKCiASgpBycAAgwiHBAFEgAdHxgMKy0",
+      "g": 2,
+      "code": "AQECAKCiAQA4MC0rAiEqEAooFBgFEB4AGhoqMwIJLSgdBRs",
       "resultat": {
-        "score": 146,
-        "combo": 3,
-        "poses": 19,
+        "score": 448,
+        "combo": 5,
+        "poses": 28,
         "raison": "bloquee"
       }
     },
@@ -73,12 +73,12 @@
       "nom": "glouton-presque-plein",
       "date": "1970-01-01",
       "scenario": "presque-plein",
-      "g": 1,
-      "code": "AQEBAQ1wcmVzcXVlLXBsZWluNQEQCQIYNSYKGzguGyw4HhQwDAULCiAAAiopHRADECANKTI9FQU0",
+      "g": 2,
+      "code": "AQECAQ1wcmVzcXVlLXBsZWluNQEQCQMKFCAFIQULCA4NMR4s",
       "resultat": {
-        "score": 774,
-        "combo": 7,
-        "poses": 39,
+        "score": 215,
+        "combo": 3,
+        "poses": 18,
         "raison": "bloquee"
       }
     },
@@ -86,8 +86,8 @@
       "nom": "blocage",
       "date": "1970-01-01",
       "scenario": "blocage",
-      "g": 1,
-      "code": "AQEBAQdibG9jYWdl",
+      "g": 2,
+      "code": "AQECAQdibG9jYWdl",
       "resultat": {
         "score": 0,
         "combo": 0,

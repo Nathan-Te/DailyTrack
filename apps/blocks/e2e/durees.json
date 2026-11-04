@@ -7,7 +7,8 @@
     "poids.spec.ts": 2,
     "glisser.spec.ts": 6,
     "scenarios.spec.ts": 5,
-    "disposition.spec.ts": 5
+    "disposition.spec.ts": 5,
+    "sensations.spec.ts": 15
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
@@ -16,6 +17,7 @@
     "poids.spec.ts": 2,
     "glisser.spec.ts": 6,
     "scenarios.spec.ts": 5,
-    "disposition.spec.ts": 5
+    "disposition.spec.ts": 5,
+    "sensations.spec.ts": 15
   }
 }

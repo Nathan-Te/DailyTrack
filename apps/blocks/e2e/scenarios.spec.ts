@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dailyBlocks, PIECES } from "@cdj/blocks-sim";
+import { BLOCKS_GENERATOR_VERSION, dailyBlocks, PIECES } from "@cdj/blocks-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
 import { API, appareil, lancer } from "./appareil";
@@ -65,7 +65,7 @@ test.describe("Blocks : les scénarios", () => {
     await expect(page.locator("#jeu-archive")).toBeVisible();
     await lancer(page);
     // La page prend la veille du 06/11/2026 : la suite est celle de ce jour avec la rampe 100, 1 (jamais celle du serveur).
-    const suite = dailyBlocks(parseDay("2026-11-05")!, 1, { pente: 100, rangMax: 1 }).suite;
+    const suite = dailyBlocks(parseDay("2026-11-05")!, BLOCKS_GENERATOR_VERSION, { pente: 100, rangMax: 1 }).suite;
     expect(await page.evaluate(() => [window.__blocks.piece(), window.__blocks.suivante()])).toEqual([PIECES[suite[0]!]!.nom, PIECES[suite[1]!]!.nom]);
     expect(await page.evaluate(() => window.location.search)).toContain("seed=2026-11-05");
     await context.close();

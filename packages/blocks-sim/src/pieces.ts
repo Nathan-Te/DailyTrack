@@ -1,6 +1,6 @@
 import { COLONNES, LIGNES } from "./constantes";
 
-// Le catalogue des pièces (seed § 4) : 37 pièces, **chaque orientation est une pièce distincte** (pas de rotation en jeu). Les formes sont écrites en art ASCII (`X` = case) puis tournées / retournées ICI,
+// Le catalogue des pièces (seed § 4) : 40 pièces, **chaque orientation est une pièce distincte** (pas de rotation en jeu). Les formes sont écrites en art ASCII (`X` = case) puis tournées / retournées ICI,
 // une fois, au chargement : l'ordre des pièces (donc leur `id`, qui est ce que la suite du jour contient) est fixe et ne change qu'avec `BLOCKS_GENERATOR_VERSION`.
 // Une pièce est ses `rangees` : un octet par ligne de la pièce, le bit `c` allumé = la case de la colonne `c` (0 = à gauche). Posée en (col, ligne), la rangée `k` va dans la ligne `ligne + k`, décalée de `col`.
 
@@ -21,7 +21,7 @@ export interface Piece {
   readonly poids: number;
   /** 0 : 1 à 3 cases ; 1 : 4 cases ; 2 : 5 cases ; 3 : 6 cases ou plus. La rampe n'augmente que le poids des pièces de grosseur > 0. */
   readonly grosseur: 0 | 1 | 2 | 3;
-  /** Sa boîte est de 3 × 3 (le carré 3 × 3 et les quatre grands L) : jamais deux de suite. */
+  /** Sa boîte est de 3 × 3 (le carré 3 × 3, les quatre grands L et les quatre grands T) : jamais deux de suite. */
   readonly boite33: boolean;
   /** « Très grosse » : **6 cases ou plus, ou boîte de 3 × 3**. Aucune parmi les 6 premières pièces. */
   readonly tresGrosse: boolean;
@@ -57,9 +57,8 @@ function orientations(base: Art, mode: "fixe" | "tour" | "tourEtMiroir"): Art[] 
   return out;
 }
 
-// [famille, nom, art de base, orientations, poids]. Poids (seed § 4) : petites faible, barres moyen, carrés moyen (2 × 2) / faible (3 × 3), coins moyen, L et J moyen, grand L faible, T S Z moyen, rectangles faible.
+// [famille, nom, art de base, orientations, poids]. Poids (seed § 4) : petites faible (les deux dominos : pas de pièce de 1 case), barres moyen, carrés moyen (2 × 2) / faible (3 × 3), coins moyen, L et J moyen, grand L et grand T faible (2), T S Z moyen, rectangles faible.
 const DEFINITIONS: readonly (readonly [Famille, string, Art, "fixe" | "tour" | "tourEtMiroir", number])[] = [
-  ["petite", "mono", ["X"], "fixe", 3],
   ["petite", "domino", ["XX"], "tour", 4],
   ["barre", "barre3", ["XXX"], "tour", 8],
   ["barre", "barre4", ["XXXX"], "tour", 6],
@@ -70,6 +69,7 @@ const DEFINITIONS: readonly (readonly [Famille, string, Art, "fixe" | "tour" | "
   ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 6],
   ["grandL", "grandl", ["X..", "X..", "XXX"], "tour", 2],
   ["tsz", "t", ["XXX", ".X."], "tour", 6],
+  ["tsz", "grandt", ["XXX", ".X.", ".X."], "tour", 2],
   ["tsz", "s", [".XX", "XX."], "tour", 5],
   ["tsz", "z", ["XX.", ".XX"], "tour", 5],
   ["rectangle", "rect", ["XXX", "XXX"], "tour", 3],

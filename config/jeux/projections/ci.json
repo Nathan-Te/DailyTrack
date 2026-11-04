@@ -1183,6 +1183,10 @@
           ],
           "disposition.spec.ts": [
             "blocks-jeu"
+          ],
+          "sensations.spec.ts": [
+            "blocks-sim",
+            "blocks-jeu"
           ]
         },
         "parts": {

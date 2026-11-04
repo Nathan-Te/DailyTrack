@@ -2631,7 +2631,15 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `hud.combo` | Combo ×{n} | Combo ×{n} |
+| `hud.score` | Score | Score |
+| `hud.combo` | Combo | Combo |
+| `hud.combo.lecteur` | Combo ×{n} | Combo ×{n} |
+| `hud.combo.annonce` | Combo ×{n} ! | Combo ×{n}! |
+| `hud.plateauVide` | Plateau vide ! +{n} | Board cleared! +{n} |
+| `hud.piece` | Ta pièce | Your piece |
+| `hud.suivante` | Suivante | Next |
+| `hud.aide.glisser` | Glisse la pièce dans la grille | Drag the piece onto the grid |
+| `hud.aide.bureau` | Glisse une pièce dans la grille, ou déplace l'ombre aux flèches | Drag a piece onto the grid, or move the shadow with the arrow keys |
 
 ### scene (`scene.*`, `apps/blocks/src/catalogue.*.ts`)
 
