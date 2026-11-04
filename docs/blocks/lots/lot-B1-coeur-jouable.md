@@ -46,9 +46,10 @@ Le glouton joue la position qui laisse la meilleure grille (effacement, cases is
 6. `docs/blocks/passation.md` (générée, régénérée ici par `--passation`) dit encore « squelette » et nomme Cibles : c'est le gabarit du générateur (`scripts/`, partagé).
 7. Le `CLAUDE.md` racine n'a pas de ligne Blocks dans sa carte du dépôt (zone partagée).
 
-## CI rouge : deux causes, hors de nos zones (non corrigées, règle d'arrêt)
-1. **`apps/portail/test/consignes.test.ts` (« la liste du test est celle du dépôt ») échoue déjà sur `main`** depuis B0, qui a créé `apps/blocks/CLAUDE.md` sans l'ajouter à la liste `CLAUDE_MD` du test. Elle fait rouges `unit (4/4)` et `jeu fictif (1/3)` (le jeu fictif rejoue la suite unitaire ; même et seule erreur). Correction : une ligne dans la liste du test (lot de plateforme).
-2. **Job `zones`** : `apps/api/src/fiches.generated.ts` n'est pas dans `EXCEPTIONS` de `scripts/zones-jeu.mjs` (les `fiches.generated.ts` des `packages/` y sont), alors que `npm run fiches` le réécrit à tout changement de fiche — ici les colonnes de classement (score, combo) et `rejeu.maxTicks`, inévitables. Un seul fichier hors zone, mécanique. Correction : l'ajouter aux exceptions.
+## CI : deux défauts de la plateforme corrigés sur demande de Nathan
+1. `apps/portail/test/consignes.test.ts` échouait déjà sur `main` (B0 a créé `apps/blocks/CLAUDE.md` sans l'ajouter à la liste) : une ligne ajoutée. Cela rendait rouges `unit (4/4)` et `jeu fictif (1/3)`.
+2. `apps/api/src/fiches.generated.ts` (réécrit par `npm run fiches` à tout changement de fiche) n'était pas dans les exceptions de `scripts/zones-jeu.mjs` : ajouté, avec la liste attendue par `apps/api/test/zonesJeu.test.ts`.
+**Reste rouge, par construction : le job `zones`.** Ces trois fichiers (`scripts/zones-jeu.mjs`, `apps/portail/test/consignes.test.ts`, `apps/api/test/zonesJeu.test.ts`) sont des zones partagées, qu'une PR de jeu ne peut pas toucher. Tous les autres jobs sont verts (run 41906872092). Pour un `zones` vert : fusionner ces trois lignes par une PR de la plateforme, puis fusionner `main` ici (`apps/api/src/fiches.generated.ts` n'est alors plus hors zone).
 
 ## Pour Nathan
 Teinte de l'étiquette, premier jour et plafond du budget restent les tiens. Avant `on`, un lot de plateforme décrit les clés `blocks:*` dans les mentions légales.
