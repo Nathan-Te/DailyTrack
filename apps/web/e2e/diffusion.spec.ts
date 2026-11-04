@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs";
 import { expect, newClockedContext, test } from "./fixtures";
 import { auditAxe } from "./axe";
 import { ADRESSE_ADMIN, demarrerPanneau, type Panneau } from "./adminPanneau";
 
 /** Axe lit les couleurs **calculées** : une transition de couleur d'un bouton qui vient de s'activer fausserait le contraste (vu en CI, plus lente) — on attend qu'aucune animation ne tourne. */
+// Lot K4f : « tous les endroits » = le portail et chaque jeu des fiches (un jeu neuf s'y ajoute sans toucher ce test).
+const DESTINATIONS = (JSON.parse(readFileSync(new URL("../../../config/jeux/projections/jeu.json", import.meta.url), "utf8")) as { ou: string[] }).ou;
 const apresTransitions = (page: import("@playwright/test").Page) => page.waitForFunction(() => document.getAnimations().length === 0);
 
 // Lot N2 (plateforme) : **un seul test dans le navigateur** (règle R13) — l'éditeur publie un message en direct depuis le panneau › il apparaît sur le portail (une seule requête au
@@ -177,7 +180,7 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   // `GET /api/annonce` seul : public, partagé 30 s par le cache de Hosting.
   const seule = await fetch("http://127.0.0.1:8812/api/annonce");
   expect(seule.headers.get("cache-control")).toBe("public, max-age=0, s-maxage=30");
-  expect((await seule.json()).annonce).toMatchObject({ ou: ["portail", "track", "jump", "tower"], ton: "information" });
+  expect((await seule.json()).annonce).toMatchObject({ ou: DESTINATIONS, ton: "information" });
 
   // --- Fermé, il ne revient pas au rechargement ; il revient quand le message change -----------------------------------------------------------------
   await bandeau.getByRole("button", { name: "Fermer le message" }).click();

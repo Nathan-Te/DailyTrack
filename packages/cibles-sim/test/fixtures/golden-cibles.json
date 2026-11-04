@@ -1,0 +1,85 @@
+{
+  "_": "Golden de Cibles (lot K4f). Régénérer : npm run golden:cibles -w @cdj/cibles-sim, seulement en montant la version concernée.",
+  "sim": 1,
+  "generateur": 1,
+  "jours": [
+    {
+      "date": "2026-11-02",
+      "empreinte": "46c944b8"
+    },
+    {
+      "date": "2026-11-05",
+      "empreinte": "69c0b6eb"
+    },
+    {
+      "date": "2026-11-08",
+      "empreinte": "44ed0925"
+    },
+    {
+      "date": "2026-11-11",
+      "empreinte": "8c82da8f"
+    },
+    {
+      "date": "2026-11-14",
+      "empreinte": "b2ccc459"
+    },
+    {
+      "date": "2026-11-17",
+      "empreinte": "4ad20e68"
+    },
+    {
+      "date": "2026-11-20",
+      "empreinte": "163a6ad9"
+    },
+    {
+      "date": "2026-11-23",
+      "empreinte": "42e381e9"
+    },
+    {
+      "date": "2026-11-26",
+      "empreinte": "d1637710"
+    },
+    {
+      "date": "2026-11-29",
+      "empreinte": "e60199c4"
+    }
+  ],
+  "rediffusions": [
+    {
+      "nom": "bot",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiASIpLA8oGioQKg4pLy0LKxEpJikGLCopBikmKQItDSYhKSsuIigFKik",
+      "resultat": {
+        "touches": 20,
+        "dernier": 832,
+        "ratees": 0,
+        "ticks": 900
+      }
+    },
+    {
+      "nom": "joueur-lent",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiARsqCSktDykaVg4qLx8MDwtWJhgHEgYtKj8nCiYqAi4NUSsvIhkGEAU",
+      "resultat": {
+        "touches": 15,
+        "dernier": 799,
+        "ratees": 5,
+        "ticks": 900
+      }
+    },
+    {
+      "nom": "vide",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiAQ",
+      "resultat": {
+        "touches": 0,
+        "dernier": 900,
+        "ratees": 0,
+        "ticks": 900
+      }
+    }
+  ]
+}

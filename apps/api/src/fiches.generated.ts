@@ -260,5 +260,71 @@ export const FICHES_SERVEUR = [
     "reglagesGardes": [],
     "messageOu": "tower",
     "zoneNouveautes": "tower"
+  },
+  {
+    "id": "cibles",
+    "code": "cibles",
+    "etatDepart": "off",
+    "premierJour": "2026-11-02",
+    "classement": {
+      "colonnes": [
+        {
+          "nom": "touches",
+          "sens": "desc"
+        },
+        {
+          "nom": "dernier",
+          "sens": "asc"
+        },
+        {
+          "nom": "submitted_at",
+          "sens": "asc"
+        },
+        {
+          "nom": "player_id",
+          "sens": "asc"
+        }
+      ],
+      "cumul": false,
+      "unite": "points",
+      "format": "entier"
+    },
+    "medailles": {
+      "methode": "pourcentage-diamant",
+      "bareme": [
+        50,
+        30,
+        15
+      ],
+      "plafondDiamant": 20
+    },
+    "versions": {
+      "sim": "packages/cibles-sim/src/constantes.ts:CIBLES_SIM_VERSION",
+      "generateur": "packages/cibles-sim/src/constantes.ts:CIBLES_GENERATOR_VERSION"
+    },
+    "jours": {
+      "mode": "fichier-par-jour",
+      "dossier": "apps/cibles/public/jours",
+      "preuveInterditeEnProd": true,
+      "fabrication": {
+        "empreinte": "apps/api/scripts/cibles-empreintes.ts",
+        "figer": {
+          "paquet": "@cdj/cibles-sim",
+          "script": "figer:cibles",
+          "forme": "jours-proteges"
+        }
+      }
+    },
+    "rejeu": {
+      "unitesServeur": 1,
+      "maxTicks": 900
+    },
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "prefixe": "cibles:",
+    "reglagesGardes": [],
+    "messageOu": "cibles",
+    "zoneNouveautes": "cibles",
+    "temoin": true
   }
 ] as const;

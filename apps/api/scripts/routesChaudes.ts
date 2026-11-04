@@ -9,6 +9,8 @@ import type { ClientCompte, Comptage } from "../src/comptage";
 import type { SqlDb } from "../src/db";
 import { referenceId } from "./baseDeReference";
 import { jouerScripte } from "./tower-aide";
+import { FICHES_SERVEUR } from "../src/fiches.generated";
+import { ESSAIS_DES_JEUX_NEUFS } from "./essais.generated";
 
 /**
  * Lot R14 — les routes les plus appelées, mesurées en lignes lues sur la base de référence (`baseDeReference.ts`, base libSQL locale comptée).
@@ -98,6 +100,30 @@ function tourDuJour(today: number): { replay: string } {
   return { replay: code };
 }
 
+/**
+ * Lot K4f — les routes des jeux neufs (table commune `resultats_jeu`), **en boucle sur les fiches** : le classement, le profil et un envoi, pour chaque jeu qui a écrit son module d'essais. Les versions de la partie
+ * scriptée sont celles que le jeu annonce (`GET /api/<jeu>/info`) ; l'envoi est d'un joueur inconnu, avec une partie qu'aucun joueur de la référence n'a jouée.
+ */
+async function routesDesJeuxNeufs(chaud: ReturnType<typeof createApi>, today: number): Promise<RouteSpec[]> {
+  const specs: RouteSpec[] = [];
+  for (const f of FICHES_SERVEUR.filter((x) => ESSAIS_DES_JEUX_NEUFS[x.id] !== undefined)) {
+    const info = await chaud.handle(new Request(`http://mesure.local/api/${f.id}/info`), { clientKey: "198.51.100.7" });
+    const versions = (await info.json()) as { simVersion: number; generatorVersion: number };
+    specs.push(
+      { nom: `${f.id} classement du jour`, methode: "GET", chemin: (d) => `/api/${f.id}/day/${d}/board`, joueur: 5 },
+      { nom: `${f.id} profil /api/${f.id}/me`, methode: "GET", chemin: () => `/api/${f.id}/me`, joueur: 5 },
+      {
+        nom: `${f.id} envoi d'une partie`,
+        methode: "POST",
+        chemin: () => `/api/${f.id}/submit`,
+        joueur: "ffffffffffffffffffffffffffff0004",
+        corps: () => ({ replay: ESSAIS_DES_JEUX_NEUFS[f.id]!.partie(today, versions, 777_001).rediffusion, name: "Nouveau joueur" }),
+      },
+    );
+  }
+  return specs;
+}
+
 export async function mesurerRoutes(db: SqlDb, compte: ClientCompte, today: number): Promise<MesureRoute[]> {
   const date = formatDay(today);
   const clock = parisDayStart(today) + 12 * 3_600_000;
@@ -113,10 +139,12 @@ export async function mesurerRoutes(db: SqlDb, compte: ClientCompte, today: numb
   };
   // Les circuits et niveaux du jour se calculent à la première requête du jour, puis restent en base : ce n'est pas le coût d'une route.
   const chaud = neuve();
-  for (const chemin of [`/api/day/${date}`, `/api/jump/day/${date}`, `/api/tower/day/${date}`]) await chaud.handle(new Request(`http://mesure.local${chemin}`), { clientKey: "198.51.100.7" }).then((r) => r.text());
-  const corps = new Map(ROUTES_CHAUDES.map((r) => [r.nom, r.corps ? r.corps(today) : undefined])); // préparés hors mesure (calcul de rediffusions)
+  const jeuxNeufs = await routesDesJeuxNeufs(chaud, today);
+  const routes = [...ROUTES_CHAUDES, ...jeuxNeufs];
+  for (const chemin of [`/api/day/${date}`, `/api/jump/day/${date}`, `/api/tower/day/${date}`, ...FICHES_SERVEUR.filter((x) => ESSAIS_DES_JEUX_NEUFS[x.id] !== undefined).map((x) => `/api/${x.id}/day/${date}`)]) await chaud.handle(new Request(`http://mesure.local${chemin}`), { clientKey: "198.51.100.7" }).then((r) => r.text());
+  const corps = new Map(routes.map((r) => [r.nom, r.corps ? r.corps(today) : undefined])); // préparés hors mesure (calcul de rediffusions)
   const sortie: MesureRoute[] = [];
-  for (const r of ROUTES_CHAUDES) {
+  for (const r of routes) {
     const spec = r.corps ? { ...r, corps: () => corps.get(r.nom) } : r;
     compte.remettre();
     const api = neuve();

@@ -1,0 +1,25 @@
+{
+  "name": "@cdj/cibles",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@cdj/cibles-sim": "*",
+    "@cdj/clock": "*",
+    "@cdj/core": "*",
+    "@cdj/kit": "*",
+    "@cdj/musique": "*",
+    "@cdj/profile": "*",
+    "@cdj/ui": "*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "vite": "^8.3.3"
+  }
+}

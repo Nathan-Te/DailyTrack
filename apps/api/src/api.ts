@@ -114,6 +114,8 @@ export interface ApiOptions {
   towerFrozen?: Readonly<Record<string, unknown>>;
   /** Lot TP : ce qui exécute les rejeux de Tower (le fil de calcul, `executeurFil`) ; absent : le fil principal (repli). */
   towerExecuteur?: ExecuteurRejeu;
+  /** Lot K4f : les jours figés de l'image de **tout autre jeu** (code du jeu → date → contenu du fichier), lus à la construction d'après les fiches (`jours.dossier`) ; le jeu les reçoit en option `frozen`. */
+  joursFiges?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   /**
    * Lot D3 : ce qui calcule le niveau de Jump et le circuit de Track d'un jour (le fil de calcul `niveaux-fil.mjs`, `server.ts`) ; absent : sur place dans le fil principal (tests, outils, développement),
    * comme avant le lot D3. Le niveau est le même ; seul le fil qui le calcule change.
@@ -177,6 +179,8 @@ export function createApi(options: ApiOptions) {
     jump: { frozen: options.jumpFrozen, niveaux: options.niveauxExecuteur } satisfies JumpOptions,
     tower: { frozen: options.towerFrozen, executeur: options.towerExecuteur } satisfies TowerOptions,
   };
+  // Lot K4f : un jeu neuf reçoit ses jours figés (`frozen`) sans que le serveur ne le nomme ; les trois premiers jeux gardent leurs options propres ci-dessus.
+  for (const [code, frozen] of Object.entries(options.joursFiges ?? {})) if (!(code in gameOptions)) gameOptions[code] = { frozen };
   // Lot K4e : le registre vient des fiches ; un jeu témoin n'est jamais dans celui d'un serveur de production.
   const jeux = options.games ?? jeuxPourEnvironnement(options.environment === "production" ? "production" : options.environment === "recette" ? "recette" : "local");
   for (const g of jeux) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });

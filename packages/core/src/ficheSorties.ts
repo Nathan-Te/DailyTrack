@@ -128,6 +128,26 @@ function registreServeur(fiches: readonly FicheJeu[]): string {
   );
 }
 
+
+/**
+ * Lot K4f — `apps/api/scripts/essais.generated.ts` : les **modules d'essais** des jeux neufs (ceux qui se classent sur la table commune), un par jeu qui a écrit `apps/api/scripts/<code>-essais.ts` (il exporte
+ * `ESSAIS_<CODE>`, voir `essais.ts`). `smoke`, `recette:seed` et `routesChaudes` jouent à leur place en bouclant dessus : **aucun script ne porte le nom d'un jeu neuf**. Un import ne se calcule pas : le fichier
+ * est écrit ici, comme le registre ; un jeu sans module d'essais n'y est pas (ses essais se limitent aux lectures).
+ */
+function essaisDesJeuxNeufs(fiches: readonly FicheJeu[], existe: (chemin: string) => boolean): string {
+  const nom = (f: FicheJeu) => `ESSAIS_${f.code.toUpperCase().replace(/-/g, "_")}`;
+  const jeux = fiches.filter((f) => f.donnees.tableCommune && existe(`apps/api/scripts/${f.code}-essais.ts`));
+  return (
+    ENTETE("serveur") +
+    `import type { ModuleEssais } from "./essais";\n` +
+    jeux.map((f) => `import { ${nom(f)} } from "./${f.code}-essais";\n`).join("") +
+    `\n// Le code (\`id\` de la fiche) → son module d'essais.\n` +
+    `export const ESSAIS_DES_JEUX_NEUFS: Readonly<Record<string, ModuleEssais>> = {\n` +
+    jeux.map((f) => `  ${lit(f.id)}: ${nom(f)},\n`).join("") +
+    `};\n`
+  );
+}
+
 /** Les trois jeux livrés, dont les catalogues sont listés à la main (par zone) : tout autre jeu des fiches est « neuf » et suit la convention `apps/<id>/src/catalogue.ts` → `CATALOGUE_<ID>`. */
 const JEUX_LIVRES = ["track", "jump", "tower"];
 
@@ -149,8 +169,8 @@ function cataloguesDesJeuxNeufs(fiches: readonly FicheJeu[], existe: (chemin: st
   );
 }
 
-/** Les fichiers produits, relatifs à la racine du dépôt. `existe` : le disque (un chemin relatif à la racine existe-t-il ?), pour les fichiers qui n'existent que si le jeu a déjà son application. */
-export function sorties(fiches: readonly FicheJeu[], existe: (chemin: string) => boolean = () => false): Record<string, string> {
+/** Les fichiers produits pour ces fiches (toutes, ou sans les témoins pour les variantes de production). */
+function sortiesDe(fiches: readonly FicheJeu[], existe: (chemin: string) => boolean): Record<string, string> {
   const jeu = projectionJeu(fiches);
   const s: Record<string, string> = {
     [`${DOSSIER_PROJECTIONS}/portail.json`]: jsonDeProjection(projectionPortail(fiches)),
@@ -183,6 +203,7 @@ export function sorties(fiches: readonly FicheJeu[], existe: (chemin: string) =>
   s["apps/portail/src/jeux.generated.css"] = cssPortail(fiches);
   s["apps/api/src/registre.generated.ts"] = registreServeur(fiches);
   s["scripts/catalogues-jeux.generated.ts"] = cataloguesDesJeuxNeufs(fiches, existe);
+  s["apps/api/scripts/essais.generated.ts"] = essaisDesJeuxNeufs(fiches, existe);
 
   const ids = fiches.map((f) => f.id);
   // Des constantes une à une (pas un objet) : un `r.tower.fond` écrit dans un jeton serait gardé par les constructions des jeux (un accès de propriété n'est pas « pur »), un identifiant se remplace par sa valeur.
@@ -208,5 +229,26 @@ export function sorties(fiches: readonly FicheJeu[], existe: (chemin: string) =>
     `// Ce que \`tous\` désigne : les jeux, pas le portail.\n` +
     `export const JEUX_DE_TOUS_GENERES = ${tuple(ids)};\n`;
 
+  return s;
+}
+
+/**
+ * Lot K4f — **la variante de production** d'un fichier généré : le même, écrit sans les jeux témoins (un témoin n'est jamais mis en production : il ne doit pas non plus peser sur le portail que les joueurs
+ * téléchargent). Le portail de la production et la mesure de son budget (`PORTAIL_TEMOINS=0`, `apps/portail/vite.config.ts`) lisent ces variantes à la place des fichiers complets (alias de la construction) ;
+ * la recette, les aperçus et le développement lisent les fichiers complets. `null` : ce fichier n'a pas de variante.
+ */
+export function varianteDeProduction(chemin: string): string | null {
+  if (chemin === `${DOSSIER_PROJECTIONS}/portail.json`) return `${DOSSIER_PROJECTIONS}/portail.production.json`;
+  if (/^(packages\/(core|profile|ui|musique)\/src\/fiches|packages\/ui\/src\/jeux|apps\/portail\/src\/jeux)\.generated\.(ts|css)$/.test(chemin)) return chemin.replace(".generated.", ".production.generated.");
+  return null;
+}
+
+/** Les fichiers produits, relatifs à la racine du dépôt. `existe` : le disque (un chemin relatif à la racine existe-t-il ?), pour les fichiers qui n'existent que si le jeu a déjà son application. */
+export function sorties(fiches: readonly FicheJeu[], existe: (chemin: string) => boolean = () => false): Record<string, string> {
+  const s = sortiesDe(fiches, existe);
+  for (const [chemin, contenu] of Object.entries(sortiesDe(fiches.filter((f) => !f.temoin), existe))) {
+    const variante = varianteDeProduction(chemin);
+    if (variante) s[variante] = contenu;
+  }
   return s;
 }

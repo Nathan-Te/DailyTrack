@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { openLibsql } from "../src/libsql-open";
 import { REFERENCE, REFERENCE_AUJOURDHUI, construireBaseDeReference } from "../scripts/baseDeReference";
 import { mesurerRoutes, type MesureRoute } from "../scripts/routesChaudes";
+import { FICHES_SERVEUR } from "../src/fiches.generated";
 import { TEST_DB } from "./helpers";
 
 // Lot R14 — le garde-fou des lignes lues. Turso facture les lignes **parcourues**, pas les lignes rendues, et le quota du mois est commun à toutes les bases : une route chaude qui se met à
@@ -20,7 +21,8 @@ import { TEST_DB } from "./helpers";
 //   - dans tous les cas : **au plus 10 lignes parcourues sans index** (un `SCAN`), au plus **30 instructions** (chaque instruction est un aller-retour réseau vers Turso).
 const PLAFOND_LECTURE = 100;
 const PLAFOND_CLASSEMENT_JOUR = 770;
-const PLAFOND_PARCOURUES = 10;
+// Lot K4f : la table `jeux` (une ligne par jeu, lue en entier à chaque instance neuve) compte dans les lignes parcourues : 7 de base + une par jeu de la référence (3 jeux : 10, comme avant ; 4 avec « Cibles » : 11).
+const PLAFOND_PARCOURUES = 7 + FICHES_SERVEUR.length;
 const PLAFOND_INSTRUCTIONS = 30;
 const CLASSEMENT = new Set(["portail jour (joueur)", "portail classement (cumul)"]);
 
@@ -31,7 +33,7 @@ describe.skipIf(TEST_DB === "libsql")("routes chaudes : lignes lues sur la base 
   beforeAll(async () => {
     dossier = mkdtempSync(join(tmpdir(), "cdj-chaudes-"));
     const db = await openLibsql({ url: `file:${join(dossier, "reference.db")}`, comptage: true });
-    await construireBaseDeReference(db, REFERENCE_AUJOURDHUI);
+    await construireBaseDeReference(db, REFERENCE_AUJOURDHUI, { avecJeuxNeufs: true });
     mesures = await mesurerRoutes(db, db.compte, REFERENCE_AUJOURDHUI);
     db.close();
   }, 180_000);

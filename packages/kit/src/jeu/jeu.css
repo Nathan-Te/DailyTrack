@@ -1,0 +1,314 @@
+@import "@cdj/ui/src/jeux.generated.css"; /* l'étiquette générique de la fiche du jeu (fond, police) */
+/* Lot K4f — la feuille commune des écrans d'un jeu neuf (`brancherJeu`) : l'accueil, la pause, l'arrivée, le classement, les Réglages, « Comment jouer », le HUD compact. Jetons de `@cdj/ui` seulement (aucune
+   couleur en dur) ; le jeu règle la couleur de son étiquette (`jeux.generated.css`, écrit de sa fiche) et habille sa scène. Marges de sécurité (`env(safe-area-inset-*)`) sur tout ce qui touche un bord. Cibles de 44 px. */
+:root {
+  --cadre-largeur: 460px;
+  --z-cadre: 20;
+  --z-cadre-haut: 30;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  overscroll-behavior: none;
+}
+#app {
+  position: fixed;
+  inset: 0;
+}
+/* Le corps d'un écran : un papier bordé d'encre, comme les étiquettes des jeux. */
+.jeu-ecran {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  box-sizing: border-box;
+  padding: var(--dj-espace-4) var(--dj-espace-5) var(--dj-espace-5);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.jeu-ecran > .jeu-etiquette {
+  flex: none;
+}
+.jeu-ecran__titre {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-24);
+  line-height: 1.1;
+}
+.jeu-replique,
+.jeu-message,
+.jeu-attente,
+.jeu-archive {
+  margin: 0;
+  font-size: var(--dj-taille-14);
+  color: var(--dj-encre-douce);
+}
+.jeu-archive {
+  font-weight: 700;
+  color: var(--dj-encre);
+}
+.jeu-tuiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dj-espace-3);
+}
+.jeu-tuile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--dj-espace-3);
+  background: var(--dj-blanc);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+}
+.jeu-tuile__legende {
+  font-size: var(--dj-taille-legende);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.jeu-tuile__valeur {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-21);
+  font-weight: 700;
+}
+.jeu-tuile__sous {
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.jeu-jouer {
+  min-height: 52px;
+  font-size: var(--dj-taille-21);
+  border-width: var(--dj-trait-fort);
+}
+.jeu-secondaires {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-2);
+}
+.jeu-secondaires > * {
+  flex: 1 1 120px;
+  min-height: 44px;
+}
+.jeu-rangs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rang {
+  display: grid;
+  grid-template-columns: 2.2em 1fr auto;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  padding: 6px var(--dj-espace-3);
+  background: var(--dj-blanc);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  font-size: var(--dj-taille-14);
+}
+.rang--moi {
+  background: var(--dj-moutarde);
+}
+.rang__rang,
+.rang__score {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+}
+.rang__nom,
+.rang__bouton {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.rang__bouton {
+  cursor: pointer;
+  text-decoration: underline;
+}
+.jeu-lien {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.jeu-pied {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  font-size: var(--dj-taille-14);
+}
+.jeu-decompte {
+  font-family: var(--dj-police-chiffres);
+}
+.jeu-fin__score {
+  margin: 0;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-64);
+  font-weight: 700;
+  line-height: 1;
+}
+.jeu-fin__rang {
+  margin: 0;
+  font-weight: 700;
+}
+.jeu-medailles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-2);
+}
+.jeu-medailles > h3 {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--dj-taille-14);
+}
+.jeu-pseudo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+}
+.jeu-pseudo__champ {
+  min-height: 44px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 var(--dj-espace-3);
+  font: inherit;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+}
+.jeu-aide {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+}
+.jeu-aide__commandes {
+  margin: 0;
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre-douce);
+}
+.jeu-reglages__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+}
+.jeu-reglages__section > h3 {
+  margin: 0;
+  font-size: var(--dj-taille-legende);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.jeu-reglages__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-2);
+}
+.jeu-reglages__liens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+  margin: 0;
+}
+.jeu-segment {
+  display: inline-flex;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  overflow: hidden;
+}
+.jeu-segment__bouton {
+  min-height: 44px;
+  padding: 0 var(--dj-espace-3);
+  background: var(--dj-blanc);
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.jeu-segment__bouton[aria-pressed="true"] {
+  background: var(--dj-moutarde);
+  font-weight: 700;
+}
+/* La scène : le plateau du jeu plein écran, le HUD compact en haut (bande de 44 px, marges de sécurité). */
+.jeu-scene {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--dj-papier);
+}
+.jeu-hud {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: max(4px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 4px max(10px, env(safe-area-inset-left));
+  background: var(--dj-creme);
+  border-bottom: var(--dj-trait) solid var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-16);
+}
+.jeu-hud__droite {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dj-espace-2);
+}
+.jeu-hud__bouton {
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--dj-blanc);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.jeu-hud__bouton[data-etat="aucun"] {
+  opacity: 0.6;
+}
+.jeu-plateau {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--dj-espace-2) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Le message en direct n'occupe aucune place tant qu'il est vide. */
+.message-direct:empty {
+  display: none;
+}
+/* Un écran fermé ne reçoit aucun appui : le cadre du socle est `display: flex`, qui l'emporte sur l'attribut `hidden`. */
+.cadre[hidden] {
+  display: none;
+}
