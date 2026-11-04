@@ -27,6 +27,7 @@ const CLAUDE_MD = [
   "packages/sim/CLAUDE.md",
   "packages/tower-sim/CLAUDE.md",
   "packages/ui/CLAUDE.md",
+  "packages/visuels/CLAUDE.md",
 ];
 const DOCUMENTS_DEPLACES = "docs/regles/deplacements.md";
 const REGLAGES = ".claude/settings.json";

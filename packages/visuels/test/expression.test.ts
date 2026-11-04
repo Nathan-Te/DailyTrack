@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Clignotement, expressionDe, type Genre, NIVEAUX, regardVers } from "../src/expression";
-import type { Niveau } from "../src/panique";
+import { Clignotement, expressionDe, type Genre, type Niveau, NIVEAUX, regardVers } from "../src/blocs/expression";
 
 // Lot T5 — l'expression des yeux : une fonction pure (état de panique, genre, regard, clignement) → comment dessiner.
 const regard = { x: 0.3, y: -0.4 };

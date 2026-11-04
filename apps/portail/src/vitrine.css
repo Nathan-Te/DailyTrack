@@ -190,3 +190,43 @@
   border-radius: var(--dj-rayon-bouton);
   box-shadow: 2px 2px 0 var(--dj-encre);
 }
+
+/* Lot DA1 : la planche des blocs (Canvas 2D et dessinateur de Tower côte à côte). */
+.vitrine-blocs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+}
+.vitrine-blocs__cles {
+  display: flex;
+  gap: var(--dj-espace-5);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.vitrine-blocs__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+}
+.vitrine-blocs__cellule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  margin: 0;
+}
+.vitrine-blocs__paire {
+  display: flex;
+  gap: var(--dj-espace-1);
+}
+.vitrine-blocs__canvas {
+  width: 112px;
+  height: 112px;
+  max-width: 44vw;
+  max-height: 44vw;
+  border: var(--dj-trait) solid var(--dj-encre);
+}
+.vitrine-blocs__legende {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--dj-taille-12);
+}

@@ -388,6 +388,10 @@ Constat de l'audit R7 (§ 7.1) : ≈ 35 000 minutes de jobs par semaine, 106 min
 5. **Nathan publie** depuis `/admin/` : `off` → `preview` → `on`. La liste des jeux du classement cumulé est un réglage à part.
 Ce qui reste à décider par Nathan au moment du lot 2 : la **teinte de l'étiquette** (la première libre est prise), le **premier jour**, le **plafond de budget** de la ligne `<id>.jsCss` (celui du modèle, à fixer avec la mesure du jeu).
 
+## 12 ter. Reprendre la direction artistique d'un jeu existant (lot DA1)
+
+**Reprendre la DA d'un jeu existant = extraire d'abord un module commun**, jamais copier. Un lot de plateforme sort les visuels du jeu d'origine dans `packages/visuels/src/<nom>/` en deux couches — **la description** (couleurs, géométrie, états, timings : sans moteur de rendu) et **un dessinateur par moteur** (celui du jeu d'origine, puis celui du nouveau jeu) —, le jeu d'origine s'y branche et perd ses copies (captures de référence identiques au pixel près, golden inchangés, budgets non relevés), une planche de la vitrine `/ui/` montre les dessinateurs côte à côte. Le nouveau jeu vient ensuite (premier cas : Blocks reprend les blocs de Tower, `packages/visuels/CLAUDE.md`, « Réutiliser un design »).
+
 ## 13. Index
 - `docs/seed.md` — vision, piliers, plan en lots (source de vérité)
 - `docs/lots/lot-0-socle.md` … `lot-22-nouveaux-themes.md` (et `lot-18b-cuves-rapides.md`), `lot-26-salon.md`, `lot-27-salon-serveur.md`, `lot-28-mise-en-ligne.md`, `lot-29-accueil-ux.md`, `lot-29b-ci-fiable.md`, `lot-30-pseudos.md` — le détail de chaque lot (livré, à tester, garde-fous, limites) ; `lot-7b-reglages.md`, `lot-9b-visuels.md`, `lot-10b-zones-tactiles.md` pour les retouches

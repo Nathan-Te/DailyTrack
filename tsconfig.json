@@ -32,6 +32,9 @@
       "path": "packages/kit"
     },
     {
+      "path": "packages/visuels"
+    },
+    {
       "path": "apps/web"
     },
     {

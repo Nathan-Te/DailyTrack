@@ -217,3 +217,29 @@ test("vitrine /ui/ : chaque composant en français et en anglais, sur crème et 
     }
   }
 });
+
+// Lot DA1 : la planche « Blocs » de la vitrine — chaque pièce dessinée en Canvas 2D et par le dessinateur de Tower (Three.js) à partir de la même description ; la vitrine mesure l'écart de pixels de chaque paire (`data-ecart`).
+// Le rendu doit être le même à l'œil : le crénelage des bords donne un peu d'écart (mesuré : 0,2 % au plus), un défaut de dessin (un œil recouvert, une couleur, un relief) en donne dix fois plus. Chromium seulement (WebGL). Régression (la nuit) : l'Essentiel d'une grosse PR tient dans son budget de specs (`ciZones.test.ts`), et la parité structurelle des deux dessinateurs est gardée par les unitaires de `packages/visuels`.
+test("vitrine /ui/ › Blocs : les pièces Canvas 2D et celles de Tower sont les mêmes, sur chaque thème, avec les états des yeux", { tag: "@regression" }, async ({ browser }) => {
+  const page = await (await newClockedContext(browser, { viewport: { width: 1280, height: 900 }, locale: "fr-FR" })).newPage();
+  await page.goto(`${SITE}/ui/`);
+  await page.waitForSelector("[data-blocs][data-pret=true]", { timeout: 60_000 });
+  const paires = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".vitrine-blocs__cellule")].map((c) => ({ theme: c.dataset.theme!, forme: c.dataset.forme!, etat: c.dataset.etat ?? null, ecart: c.dataset.ecart === undefined ? null : Number(c.dataset.ecart), canvas: c.querySelectorAll("canvas").length })));
+  // 6 thèmes × (7 formes + 12 états des yeux), chaque paire a ses deux canvas et son écart mesuré.
+  expect(paires).toHaveLength(6 * (7 + 12));
+  expect(new Set(paires.map((p) => p.theme))).toEqual(new Set(["port", "chantier", "canyon", "banquise", "jungle", "nuit"]));
+  expect(new Set(paires.map((p) => p.forme))).toEqual(new Set(["I", "O", "T", "L", "J", "S", "Z"]));
+  for (const p of paires) {
+    expect(p.canvas, `${p.theme} ${p.forme}`).toBe(2);
+    expect(p.ecart, `${p.theme} ${p.forme} ${p.etat}`).not.toBeNull();
+    expect(p.ecart!, `${p.theme} ${p.forme} ${p.etat}`).toBeLessThan(0.01);
+  }
+  // Une pièce vide ne passerait pas pour identique : chaque canvas montre bien autre chose que le ciel.
+  const nonVides = await page.evaluate(() => [...document.querySelectorAll<HTMLCanvasElement>(".vitrine-blocs__canvas")].every((c) => {
+    const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+    let autres = 0;
+    for (let i = 4; i < d.length; i += 4) if (d[i] !== d[0] || d[i + 1] !== d[1] || d[i + 2] !== d[2]) autres++;
+    return autres > 200;
+  }));
+  expect(nonVides).toBe(true);
+});

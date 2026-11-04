@@ -43,7 +43,7 @@
     "plein-ecran.spec.ts": 100,
     "portail-jour.spec.ts": 30,
     "portail-journee.spec.ts": 30,
-    "portail.spec.ts": 6,
+    "portail.spec.ts": 14,
     "post.spec.ts": 97,
     "profil.spec.ts": 160,
     "qualite.spec.ts": 151,

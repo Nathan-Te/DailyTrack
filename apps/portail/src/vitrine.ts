@@ -54,6 +54,7 @@ import {
 } from "@cdj/ui";
 import { CATALOGUE_VITRINE } from "./catalogueVitrine";
 import { remplirAmis } from "./vitrineAmis";
+import { remplirBlocs } from "./vitrineBlocs";
 import { stockageDuPortail } from "./stockage";
 
 // La vitrine des composants (`/ui/`, lot I1) : chaque composant de @cdj/ui dans tous ses états, en français ET en anglais (côte à côte), sur
@@ -365,6 +366,8 @@ function rendre(): void {
     el("p", { classe: "vitrine-intro", texte: t.t("vitrine.intro") }),
     el("div", { classe: "vitrine-langues" }, ...LANGUES.map(bloc)),
     el("div", { classe: "vitrine-section", attrs: { id: "couleurs-contrastes" } }, ...couleurs(t)),
+    // Lot DA1 : la planche des blocs (Canvas 2D et dessinateur de Tower côte à côte), à la suite des couleurs.
+    el("div", { classe: "vitrine-section", attrs: { id: "blocs" } }, section(t.t("vitrine.section.blocs"), "blocs-planche", remplirBlocs(langue, (cle) => t.t(cle as never)))),
   );
 }
 

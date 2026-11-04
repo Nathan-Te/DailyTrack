@@ -3,11 +3,11 @@ import { PIECE_KINDS, THEMES_TOWER, type ThemeTower } from "@cdj/tower-sim";
 import { describe, expect, it } from "vitest";
 import { ALTITUDE_MAX, ALTITUDE_REGISTRE, couleursDuTheme, DEMI_LARGEUR_CIEL, type DecorTheme, decalageParallaxe, formeValide, genresA, PARALLAXE, semerCiel, yPlan } from "../src/decorLogique";
 import { DecorScene } from "../src/decorScene";
-import { PALETTE_PORT, type PaletteTheme } from "../src/palette";
-import { PALETTES } from "../src/palettes";
+import { PALETTE_PORT, type PaletteTheme } from "@cdj/visuels/blocs";
+import { PALETTES } from "@cdj/visuels/blocs/themes";
 import { basDeVue, BAS_MIN, VUE_COURTE } from "../src/scene";
 import { valeurJeton } from "@cdj/ui";
-import { ENCRE } from "../src/couleurs";
+import { ENCRE } from "@cdj/visuels/blocs";
 import { clarte } from "./_couleurs";
 
 // Lot T9 — les décors : trois plans qui défilent à des vitesses différentes (parallaxe verticale), le registre d'altitude (un fond jamais vide, même à 50 m), le contraste des pièces sur TOUS les plans
@@ -169,7 +169,7 @@ describe("les décors sortent du premier chargement", () => {
 
   it("la palette n'a plus de décor ; le jeu ne les importe que par import() ; aucun module de décor n'est importé statiquement", () => {
     for (const th of THEMES_TOWER) expect(Object.keys(PALETTES_TOUTES[th]).sort(), th).toEqual(["ciel", "pieces", "pilier", "plateforme", "plateformeReflet", "sol", "vague"]);
-    for (const f of ["main.ts", "accueil.ts", "jeu.ts", "scene.ts", "palette.ts", "palettes.ts", "preparation.ts"]) {
+    for (const f of ["main.ts", "accueil.ts", "jeu.ts", "scene.ts", "palette.ts", "preparation.ts"]) {
       expect(src(f), f).not.toMatch(/^import (?!type )[^\n]*from "\.\/decor(Scene|Logique|Port|Chantier|Canyon|Banquise|Jungle|Nuit)"/m);
     }
     const decors = src("decors.ts");

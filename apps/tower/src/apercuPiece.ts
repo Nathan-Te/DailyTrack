@@ -1,6 +1,6 @@
 import { boites, type PieceKind } from "@cdj/tower-sim";
 import { svg } from "@cdj/ui";
-import { melanger } from "./couleurs";
+import { melanger } from "@cdj/visuels/blocs";
 import { paletteCourante } from "./palette";
 import { type Plaque } from "./tampon";
 

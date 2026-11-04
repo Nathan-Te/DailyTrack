@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1825 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1849 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -816,6 +816,30 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.amis.ajout` | Ajout par pseudo et lien d'invitation | Add by name and invitation link |
 | `vitrine.amis.carte` | Carte d'invitation (avec et sans profil) | Invitation card (with and without a profile) |
 | `vitrine.amis.vide` | Classement « Amis » sans ami | “Friends” leaderboard with no friend |
+| `vitrine.section.blocs` | Blocs | Blocks |
+| `vitrine.blocs.intro` | Une pièce de chaque forme, par thème du jour, avec les états des yeux : dessinée en Canvas 2D (pour un jeu en grille) à gauche, et par le dessinateur de Tower (Three.js) à droite. Les deux lisent la même description ; l'écart mesuré est la part de pixels qui diffèrent nettement (le crénelage des bords en donne un peu). | One piece of every shape, per theme of the day, with the eye states: drawn in Canvas 2D (for a grid game) on the left, and by Tower's drawer (Three.js) on the right. Both read the same description; the measured gap is the share of pixels that clearly differ (edge anti-aliasing accounts for a little). |
+| `vitrine.blocs.canvas` | Canvas 2D | Canvas 2D |
+| `vitrine.blocs.tower` | Tower (Three.js) | Tower (Three.js) |
+| `vitrine.blocs.ecart` | écart | gap |
+| `vitrine.blocs.sansWebgl` | WebGL indisponible : seul le Canvas 2D est montré | WebGL unavailable: only Canvas 2D is shown |
+| `vitrine.blocs.theme.port` | Port | Harbour |
+| `vitrine.blocs.theme.chantier` | Chantier | Building site |
+| `vitrine.blocs.theme.canyon` | Canyon | Canyon |
+| `vitrine.blocs.theme.banquise` | Banquise | Ice floe |
+| `vitrine.blocs.theme.jungle` | Jungle | Jungle |
+| `vitrine.blocs.theme.nuit` | Nuit | Night |
+| `vitrine.blocs.etat.calme` | calme | calm |
+| `vitrine.blocs.etat.inquiet` | inquiet | worried |
+| `vitrine.blocs.etat.panique` | paniqué | panicking |
+| `vitrine.blocs.etat.affole` | affolé | frantic |
+| `vitrine.blocs.etat.chute` | chute | falling |
+| `vitrine.blocs.etat.figee` | figée | frozen |
+| `vitrine.blocs.etat.soulage` | soulagée | relieved |
+| `vitrine.blocs.etat.glissante` | glissante | slippery |
+| `vitrine.blocs.etat.plisse` | coup de vent | windblown |
+| `vitrine.blocs.etat.clin` | clin d'œil | blink |
+| `vitrine.blocs.etat.regardGauche` | regard à gauche | looking left |
+| `vitrine.blocs.etat.regardDroite` | regard à droite | looking right |
 
 ## Track
 
