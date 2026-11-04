@@ -44,4 +44,6 @@
 2. Jouer 30 s : score accepté ; classement (Tous, Amis, Mon groupe), arrivée, partage, menu à la manette, accueil complet sur téléphone en portrait. `playdujour.com/cibles/` reste « Bientôt ».
 
 ## Vérifié / non vérifié
-*(runs de CI : voir la PR)*
+- **CI de PR** : voir le dernier run de la PR #259 (verte au dernier commit).
+- **Run en mode `main` forcé une fois** (forçage de `ci.yml` retiré ensuite) : **vert, 10 min** — https://github.com/Nathan-Te/DailyTrack/actions/runs/41800982466 : jeu fictif (3 parts), Budgets, api-image, unitaires, Essentiel de tous les specs (Track 3 parts, Jump, Tower, **Cibles**), petit ensemble **Firefox et WebKit** (dont `determinisme` de Cibles). Le premier run forcé (41799407323) n'avait qu'un rouge : `diffusion.spec` attendait en dur les quatre destinations du message en direct ; il lit maintenant celles des fiches (hors zone de Cibles, corrigé ici).
+- **Non vérifié** : l'image Docker réelle du serveur avec Cibles (le job `api-image` est vert, il la construit et la lance) ; la recette elle-même et le lien d'aperçu (après la fusion) ; le jeu à la manette physique (les écrans sont déclarés, `ECRANS_MANETTE` du kit) ; l'anglais n'a pas de spec dédié (parité des catalogues testée).
