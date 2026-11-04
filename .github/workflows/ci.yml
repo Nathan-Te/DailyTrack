@@ -198,7 +198,6 @@ jobs:
           fi
           # pr (filtré, Chromium, quarantaine non bloquante) | main (chaque fusion : l'Essentiel de tout, lot R13) | complet (« Run workflow ») | nuit.
           mode=pr; [ -n "$full" ] && mode=complet; [ "$EVENT" = push ] && [ "$REF" = refs/heads/main ] && mode=main; [ "$EVENT" = schedule ] && mode=nuit
-          full="--full"; mode=main # FORÇAGE TEMPORAIRE (lot K4g) : un run en mode main, à retirer aussitôt après
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           node scripts/ci-scope.mjs $full < "$RUNNER_TEMP/files.txt" | tee -a "$GITHUB_OUTPUT" > "$RUNNER_TEMP/scope.txt"
           node scripts/ci-zones.mjs --mode "$mode" < "$RUNNER_TEMP/files.txt" >> "$GITHUB_OUTPUT" 2> "$RUNNER_TEMP/zones.txt"
