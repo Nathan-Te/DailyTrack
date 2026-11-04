@@ -146,6 +146,9 @@ export async function mesurerRoutes(db: SqlDb, compte: ClientCompte, today: numb
   const sortie: MesureRoute[] = [];
   for (const r of routes) {
     const spec = r.corps ? { ...r, corps: () => corps.get(r.nom) } : r;
+    // Chaque route laisse des lignes de débit dans `rate` ; le ménage d'une instance neuve (`DELETE FROM rate WHERE bucket < ?`) les parcourt. Sans cette remise à zéro, la mesure d'un envoi grandit de 2 lignes par route mesurée avant lui
+    // (donc avec chaque jeu neuf ajouté aux fiches) : un artefact de la mesure, pas le coût d'un envoi. Hors comptage (`remettre` suit).
+    await db.run("DELETE FROM rate");
     compte.remettre();
     const api = neuve();
     const statut = await appel(api, spec);

@@ -13,6 +13,9 @@ Commande : `npm run nouveau-jeu -- --id blocks --nom "Blocks" --classement score
 ## Vérifié en local
 `npm run fiches -- --verifier` et `npm run traductions -- --verifier` à jour ; `npm run typecheck` vert ; Vitest (sim, app, API de Blocks) : 6 fichiers, 63 tests verts.
 
+## Correctif après la première CI (rouge)
+Trois tests nommaient les jeux un par un : `miseEnProduction.test.ts` (liste des fiches), `fiches.test.ts` (regex) et `routesChaudes` (mesure de `rate` qui grossissait avec chaque route ; `DELETE FROM rate` avant chaque route, plafonds inchangés). **Ce dernier touche la garde R14 (zone partagée) : à valider par Nathan.**
+
 ## Non vérifié / à décider
 - La phrase de `passation.md` qui dit « seed à écrire par Nathan » est du texte fixe du générateur (régénérée, inchangée) : elle est périmée mais je ne retouche pas un fichier généré.
 - CI de la PR (« Kit de bout en bout » compris) : à lire sur la PR ; e2e Chromium non lancés en local.
