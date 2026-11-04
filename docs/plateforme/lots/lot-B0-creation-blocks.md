@@ -1,23 +1,16 @@
 # Lot B0 — création du jeu « Blocks » (plateforme, court)
 
-Commande : `npm run nouveau-jeu -- --id blocks --nom "Blocks" --classement score --categorie arcade` (sortie complète : 53 fichiers créés, 9 fichiers partagés avec des lignes mécaniques, puis `npm run fiches`, `golden:blocks` et `npm run traductions`).
+Commande : `npm run nouveau-jeu -- --id blocks --nom "Blocks" --classement score --categorie arcade` (53 fichiers créés, 9 fichiers partagés avec des lignes mécaniques, puis `fiches`, `golden:blocks`, `traductions`).
 
 ## Livré
-- Fiche `config/jeux/blocks.json` : état `off`, `categorie: arcade`, `classement.cumul: false`, ordre 5. Projections et `*.generated.*` régénérés.
-- Seed de Nathan versé tel quel dans `docs/blocks/seed.md` (octet pour octet, `cmp` identique au fichier reçu).
-- Teinte provisoire du générateur (`#B8D8F4` / `#1F4E79`) : **à choisir par Nathan** (Blocks reprendra la DA de Tower).
-- Plafond de budget provisoire : ligne `blocks.jsCss` de `budgets.md` = celle du modèle (45 Ko) ; à fixer avec la mesure du jeu.
-- Premier jour : `2026-11-02` (celui du modèle) ; **à fixer par Nathan avant `preview`**.
-- `docs/blocks/passation.md` et `consignes.md` générés. Aucun `CLAUDE.md` modifié par moi.
-
-## Vérifié en local
-`npm run fiches -- --verifier` et `npm run traductions -- --verifier` à jour ; `npm run typecheck` vert ; Vitest (sim, app, API de Blocks) : 6 fichiers, 63 tests verts.
+- Fiche `config/jeux/blocks.json` : `off`, `categorie: arcade`, `cumul: false`, ordre 5. Seed de Nathan versé tel quel (`docs/blocks/seed.md`) ; `passation.md` et `consignes.md` générés ; aucun `CLAUDE.md` modifié.
+- **À fixer par Nathan** : teinte provisoire (`#B8D8F4` / `#1F4E79`), plafond `blocks.jsCss` (45 Ko, celui du modèle), premier jour (`2026-11-02`, avant `preview`).
 
 ## Correctif après la première CI (rouge)
-Trois tests nommaient les jeux un par un : `miseEnProduction.test.ts` (liste des fiches), `fiches.test.ts` (regex) et `routesChaudes` (mesure de `rate` qui grossissait avec chaque route ; `DELETE FROM rate` avant chaque route, plafonds inchangés). **Ce dernier touche la garde R14 (zone partagée) : à valider par Nathan.**
+Trois tests nommaient les jeux un par un : `miseEnProduction.test.ts`, `fiches.test.ts` et `routesChaudes` (la mesure de `rate` grossissait avec chaque route : `DELETE FROM rate` avant chaque route, plafonds inchangés). **Le dernier touche la garde R14 (zone partagée) : à valider par Nathan.**
 
-## Non vérifié / à décider
-- La phrase de `passation.md` qui dit « seed à écrire par Nathan » est du texte fixe du générateur (régénérée, inchangée) : elle est périmée mais je ne retouche pas un fichier généré.
-- CI de la PR (« Kit de bout en bout » compris) : à lire sur la PR ; e2e Chromium non lancés en local.
+## Vérifié / non vérifié
+- Local : `fiches` et `traductions` à jour, typage vert, tests de Blocks (63), `miseEnProduction`, `fiches`, `routesChaudes` verts. CI de la PR et e2e Chromium : à lire sur la PR.
+- La phrase de `passation.md` « seed à écrire par Nathan » est du texte fixe du générateur, périmée.
 
 Pour les joueurs : rien.
