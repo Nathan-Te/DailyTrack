@@ -1,7 +1,8 @@
 // Les polices de la charte (docs/plateforme/identite.md, § 4), hébergées sur le site (lot I1 de la plateforme) :
 //   node packages/ui/scripts/polices.mjs            → récupère les paquets @fontsource (versions épinglées ci-dessous) avec `npm pack`,
-//                                                     copie les fichiers woff2 du sous-ensemble latin et les licences OFL dans packages/ui/polices/,
-//                                                     et écrit packages/ui/polices/sources.json (paquet, version, fichier, taille, SHA-256).
+//                                                     copie les fichiers woff2 du sous-ensemble latin dans packages/ui/polices/originaux/ (les ORIGINAUX, jamais servis tels quels : lot B1),
+//                                                     les licences OFL dans packages/ui/polices/, et écrit packages/ui/polices/sources.json (paquet, version, fichier, taille, SHA-256 des originaux).
+// Lot B1 : les fichiers servis sont les originaux **découpés aux caractères utilisés** — `node scripts/polices/decouper.mjs` (à relancer après ce script).
 // Les fichiers sont gardés dans le dépôt (aucune dépendance npm ajoutée) ; le test packages/ui/test/polices.test.ts vérifie leurs empreintes,
 // leur taille et qu'ils couvrent le français (accents, œ, « », espaces insécables). Changer de version = relancer ce script et relire le test.
 import { execFileSync } from "node:child_process";
@@ -28,7 +29,7 @@ if (isMain) {
   const tmp = mkdtempSync(join(tmpdir(), "polices-"));
   const sources = [];
   try {
-    mkdirSync(OUT, { recursive: true });
+    mkdirSync(join(OUT, "originaux"), { recursive: true });
     for (const p of POLICES) {
       const spec = `@fontsource/${p.paquet}@${p.version}`;
       const tgz = execFileSync("npm", ["pack", spec, "--silent", "--pack-destination", tmp], { encoding: "utf8" }).trim().split("\n").pop();
@@ -38,8 +39,8 @@ if (isMain) {
       copyFileSync(join(dir, "package/LICENSE"), join(OUT, `${p.paquet}-OFL.txt`));
       for (const f of p.fichiers) {
         const name = `${p.paquet}-latin-${f}.woff2`;
-        copyFileSync(join(dir, "package/files", name), join(OUT, name));
-        const data = readFileSync(join(OUT, name));
+        copyFileSync(join(dir, "package/files", name), join(OUT, "originaux", name));
+        const data = readFileSync(join(OUT, "originaux", name));
         sources.push({ fichier: name, famille: p.famille, paquet: spec, licence: `${p.paquet}-OFL.txt`, octets: data.length, sha256: createHash("sha256").update(data).digest("hex") });
       }
     }

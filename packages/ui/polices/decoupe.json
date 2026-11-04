@@ -1,0 +1,72 @@
+{
+  "outil": "pyftsubset (fonttools 4.68.0)",
+  "caracteres": 214,
+  "polices": [
+    {
+      "fichier": "archivo-black-latin-400-normal.woff2",
+      "avant": 18604,
+      "apres": 16284,
+      "sha256": "1fe1c7586b6527714f1bcb396939d92af04e9e9c7665c72b0cff1952b9d38940"
+    },
+    {
+      "fichier": "archivo-latin-400-normal.woff2",
+      "avant": 14700,
+      "apres": 11432,
+      "sha256": "69a1e9461724d69d854f0cbb9c3cd94b47791a684ad72975f4a72b3ef93c64aa"
+    },
+    {
+      "fichier": "archivo-latin-600-normal.woff2",
+      "avant": 13820,
+      "apres": 10800,
+      "sha256": "d2ecc7f5dc7786dabe6981db63aadcbe9c8d20449253bef153ad597af051fec1"
+    },
+    {
+      "fichier": "archivo-latin-700-normal.woff2",
+      "avant": 14508,
+      "apres": 11364,
+      "sha256": "702a8911e106008ed748e00e8a8b6b396633b6989ff8b6d8a4081b772d16f164"
+    },
+    {
+      "fichier": "barlow-condensed-latin-600-normal.woff2",
+      "avant": 22308,
+      "apres": 18812,
+      "sha256": "54ffd34592b31304a558f1d84f8326563bdcff46d9b3c08c0245b4904cc3f90c"
+    },
+    {
+      "fichier": "barlow-condensed-latin-700-italic.woff2",
+      "avant": 23796,
+      "apres": 20008,
+      "sha256": "c768a15d18b6d6acb0542175067a92f5d056e42e88a0f9eedd3eebe877ca1357"
+    },
+    {
+      "fichier": "barlow-condensed-latin-800-italic.woff2",
+      "avant": 23780,
+      "apres": 20004,
+      "sha256": "df18768448603ae5dbbed0abc4109159911268ca5b14ec62224be8e4aa1e7a33"
+    },
+    {
+      "fichier": "jetbrains-mono-latin-500-normal.woff2",
+      "avant": 21832,
+      "apres": 18788,
+      "sha256": "a843a5e4a328c757eb580c0288473d72c407857cf24967efdc9425050620b14b"
+    },
+    {
+      "fichier": "jetbrains-mono-latin-700-normal.woff2",
+      "avant": 21908,
+      "apres": 18892,
+      "sha256": "d3091586eb28c928210649d89666a5c6b9ca31a1e7f05fd943be181f03b22132"
+    },
+    {
+      "fichier": "lilita-one-latin-400-normal.woff2",
+      "avant": 10672,
+      "apres": 9040,
+      "sha256": "938735feab893cf77dca9e91f33025dcc14b7c3c290e49ed2b09d6b82a4564db"
+    },
+    {
+      "fichier": "rubik-mono-one-latin-400-normal.woff2",
+      "avant": 12752,
+      "apres": 10524,
+      "sha256": "d8f0fc9709de70e2455d87f4c5281ab636fd4c1b3452135a01bc124e8327845a"
+    }
+  ]
+}

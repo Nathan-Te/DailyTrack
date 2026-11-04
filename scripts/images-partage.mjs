@@ -31,8 +31,8 @@ export const ICONES = [
   { nom: "icone-512", section: "#icone", taille: 512 },
 ];
 
-/** Poids maximal d'une image de partage (les messageries refusent ou réduisent les images lourdes). */
-export const POIDS_MAX = 150 * 1024;
+/** Poids maximal d'une image de partage (les messageries refusent ou réduisent les images lourdes). **Lot B1 : le plafond de la ligne `partage.image` de docs/plateforme/budgets.md** (mesure + 10 %, 48 Ko, 1 Ko = 1 000 o ; avant : 150 Kio). */
+export const POIDS_MAX = 48_000;
 
 /** Largeur et hauteur d'un PNG (en-tête IHDR), ou une erreur si ce n'est pas un PNG. Pur, testé. */
 export function taillePng(octets) {

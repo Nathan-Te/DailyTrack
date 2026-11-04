@@ -5,22 +5,20 @@ import { describe, expect, it } from "vitest";
 import { POIDS_MAX } from "../../../scripts/images-partage.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { CLES_MESUREES, LIGNES_JUMP, LIGNES_TOWER, LIGNES_TRACK } from "../../../scripts/budgets.mjs";
-import { HORS_JOB, lirePlafonds } from "../../../scripts/budgets-controle.mjs";
+import { FAMILLES, HORS_JOB, KO, lireLignes, lirePlafonds, lireReleves, plafondKo } from "../../../scripts/budgets-controle.mjs";
 import { lireFichesBrutes } from "../../../scripts/fiches-brutes.mjs";
 
 // Lot I6 (plateforme) : docs/plateforme/budgets.md est la référence des budgets. Lot R17 : c'est aussi la SEULE source des plafonds — le job « Budgets » de la CI
 // (scripts/budgets-controle.mjs) les lit ici et les compare à `mesuresParLigne` (scripts/budgets.mjs) ; plus aucun test n'en écrit de copie. Ce test vérifie que le tableau et la mesure
-// parlent des mêmes lignes (une ligne ajoutée au tableau sans mesure, ou l'inverse, échoue), que chaque ligne est cohérente (marge = budget − après), et qu'aucun spec ne ramène un plafond.
+// parlent des mêmes lignes (une ligne ajoutée au tableau sans mesure, ou l'inverse, échoue), que chaque ligne est cohérente, et qu'aucun spec ne ramène un plafond.
+// Lot B1 : les plafonds sont en Ko, posés une fois par la règle (famille : premier chargement +5 % et 2 Ko, à la demande +10 % et 1 Ko, polices et images +10 %) ; un plafond au-dessus de la règle est un
+// relèvement de Nathan, écrit avec sa raison dans la section « Relèvements » de budgets.md.
 const ROOT = join(__dirname, "../../..");
 const lire = (f: string) => readFileSync(join(ROOT, f), "utf8");
-const nombre = (s: string) => Number(s.replace(/[\s ]/g, ""));
-
 const doc = lire("docs/plateforme/budgets.md");
 const plafonds: Record<string, number> = lirePlafonds(doc);
-/** Les lignes du grand tableau (celles qui portent « avant », « après » et « marge »). */
-const lignes = new Map(
-  [...doc.matchAll(/^\| `([a-z.A-Z0-9]+)` \| [^|]+\| [^|]+\| ([\d\s]+) \| [^|]+\| ([\d\s]+)[^|]*\| ([\d\s]+) \|/gm)].map((m) => [m[1]!, { budget: nombre(m[2]!), apres: nombre(m[3]!), marge: nombre(m[4]!) }]),
-);
+const lignes = lireLignes(doc) as Record<string, { plafond: number; plafondKo: number; famille: keyof typeof FAMILLES; mesure: number }>;
+const releves = lireReleves(doc) as Record<string, { date: string; de: number; a: number; raison: string }[]>;
 
 describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule source des plafonds", () => {
   it("chaque ligne du tableau a sa mesure dans le job « Budgets », et chaque mesure sa ligne", () => {
@@ -38,13 +36,36 @@ describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule 
     expect(plafonds["partage.image"]).toBe(POIDS_MAX);
   });
 
-  it("chaque ligne est cohérente : marge = budget − après, et l'après tient dans le budget", () => {
-    expect(lignes.size).toBeGreaterThan(30);
-    for (const [cle, l] of lignes) {
-      expect(l.budget, cle).toBe(plafonds[cle]);
-      expect(l.marge, cle).toBe(l.budget - l.apres);
-      expect(l.apres, cle).toBeLessThanOrEqual(l.budget);
+  it("chaque ligne a sa famille ; son plafond est en Ko entiers et vaut la règle (mesure à la pose + marge), ou un relèvement de Nathan écrit avec sa raison", () => {
+    expect(Object.keys(lignes).length).toBeGreaterThan(30);
+    expect(Object.keys(lignes).sort()).toEqual(Object.keys(plafonds).sort());
+    for (const [cle, l] of Object.entries(lignes)) {
+      expect(Object.keys(FAMILLES), `${cle} : famille`).toContain(l.famille);
+      expect(l.plafond, cle).toBe(l.plafondKo * KO);
+      const regle = plafondKo(l.famille, l.mesure);
+      expect(l.plafondKo, `${cle} : un plafond sous la règle (mesure + marge) n'a pas de raison d'être`).toBeGreaterThanOrEqual(regle);
+      if (l.plafondKo > regle) {
+        const dernier = (releves[cle] ?? []).at(-1);
+        expect(dernier, `${cle} : ${l.plafondKo} Ko au-dessus de la règle (${regle} Ko) : un relèvement décidé par Nathan s'écrit dans « Relèvements » avec sa raison`).toBeDefined();
+        expect(dernier!.a, `${cle} : le dernier relèvement écrit`).toBe(l.plafondKo);
+        expect(dernier!.raison.length, `${cle} : la raison`).toBeGreaterThan(10);
+      }
     }
+    // Les familles de la règle : le premier chargement des applications ; les polices et images ; tout le reste « à la demande ».
+    for (const cle of ["portail.premier", "track.jsCss", "track.js", "track.horsThree", "jump.jsCss", "tower.jsCss"]) expect(lignes[cle]!.famille, cle).toBe("premier");
+    for (const [cle, l] of Object.entries(lignes)) if (cle.endsWith(".polices") || cle === "partage.image") expect(l.famille, cle).toBe("police");
+    expect(Object.values(FAMILLES).map((f) => [f.pct, f.plancherKo])).toEqual([[5, 2], [10, 1], [10, 0]]);
+  });
+
+  it("la règle : mesure + 5 % et 2 Ko au moins (premier chargement), + 10 % et 1 Ko au moins (à la demande), + 10 % (polices et images), au Ko supérieur", () => {
+    expect(plafondKo("premier", 296_956)).toBe(312);
+    expect(plafondKo("premier", 35_189)).toBe(38); // 5 % = 1,8 Ko : le plancher de 2 Ko s'applique
+    expect(plafondKo("premier", 39_633)).toBe(42);
+    expect(plafondKo("premier", 382_856)).toBe(402);
+    expect(plafondKo("demande", 149)).toBe(2); // 149 + 1 000 = 1 149 → 2 Ko
+    expect(plafondKo("demande", 10_000)).toBe(11);
+    expect(plafondKo("police", 100_000)).toBe(110);
+    expect(plafondKo("premier", 40_000)).toBe(42); // pile : 40 000 + 2 000 = 42 000 → 42 Ko, pas 43
   });
 
   it("aucun spec ni test ne garde de copie d'un plafond en octets : le contrôle est le job « Budgets »", () => {
