@@ -1,7 +1,10 @@
 // Lot I6 (plateforme) : les chiffres de docs/plateforme/budgets.md, mesurés comme les tests qui les gardent — Track : apps/web/e2e/perf.spec.ts (qui importe ce fichier : une seule mesure) ;
 // Jump : apps/jump/e2e/poids.spec.ts ; portail : apps/portail/test/construction.test.ts (premier chargement de la page d'accueil, construction de
 // production). Octets compressés (gzip, niveau par défaut de zlib pour les jeux, 9 pour le portail : la méthode de chaque test, inchangée).
-//   npm run build && node scripts/budgets.mjs        → les chiffres, à recopier dans docs/plateforme/budgets.md
+//   npm run build && npm run budgets                 → les chiffres mesurés (JSON)
+//   npm run budgets -- --recaler                      → (lot B1) les plafonds de docs/plateforme/budgets.md que la règle (mesure + 5 % / 10 %) donnerait aujourd'hui, pour les lignes dont la mesure a
+//                                                       baissé de plus que leur marge : une PROPOSITION, rien n'est écrit (un lot l'applique quand Nathan le veut)
+// Lot B1 : les plafonds sont posés une fois, en Ko ; un lot n'a plus à recopier ses chiffres dans budgets.md (le job « Budgets » compare, il ne relève jamais).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -292,7 +295,10 @@ export function mesuresParLigne({ portail = mesurePortail } = {}) {
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
-if (isMain) {
+if (isMain && process.argv.includes("--recaler")) {
+  for (const app of ["web", "jump"]) if (!existsSync(join(ROOT, "apps", app, "dist/index.html"))) throw new Error(`apps/${app} n'est pas construit : npm run build`);
+  await (await import("./budgets-controle.mjs")).recalerCli(mesuresParLigne());
+} else if (isMain) {
   for (const app of ["web", "jump"]) if (!existsSync(join(ROOT, "apps", app, "dist/index.html"))) throw new Error(`apps/${app} n'est pas construit : npm run build`);
   const { fichiers, gz: _tous, ...track } = mesureTrack();
   const { fichiers: _t, ...tower } = existsSync(join(ROOT, "apps/tower/dist/index.html")) ? mesureTower() : { fichiers: [] };

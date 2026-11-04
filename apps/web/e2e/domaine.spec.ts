@@ -227,7 +227,7 @@ async function balises(chemin: string): Promise<Map<string, string>> {
   return new Map([...html.matchAll(/<meta (?:property|name)="([^"]+)" content="([^"]*)"/g)].map((m) => [m[1]!, m[2]!]));
 }
 
-test("lot I6 : aperçus de partage de /, /track/ et /jump/ — balises, adresses absolues de ce site, images 1200 × 630 de moins de 150 ko", async () => {
+test("lot I6 : aperçus de partage de /, /track/ et /jump/ — balises, adresses absolues de ce site, images 1200 × 630 de moins de 48 Ko", async () => {
   const attendus = [
     { chemin: "/", image: "portail", titre: "Du Jour — les jeux du jour" },
     { chemin: "/track/", image: "track", titre: "Track — Du Jour" },
@@ -252,7 +252,7 @@ test("lot I6 : aperçus de partage de /, /track/ et /jump/ — balises, adresses
     expect(image.headers.get("content-type")).toBe("image/png");
     const octets = Buffer.from(await image.arrayBuffer());
     expect([octets.readUInt32BE(16), octets.readUInt32BE(20)], a.image).toEqual([1200, 630]);
-    expect(octets.length, a.image).toBeLessThanOrEqual(150 * 1024);
+    expect(octets.length, a.image).toBeLessThanOrEqual(48_000);
   }
   // Plus aucun jeton d'origine dans les pages du site.
   for (const chemin of ["/", "/track/", "/jump/", "/profil/", "/classement/", "/mentions-legales/", "/legal/", "/404.html"]) {

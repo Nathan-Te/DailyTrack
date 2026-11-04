@@ -63,10 +63,10 @@ describe("lot I6 : chaque page partagée déclare ses balises de partage", () =>
     expect(vite, page).toContain("...CATALOGUE_APERCU.fr");
   });
 
-  it("les images : 1200 × 630, au plus 150 ko ; les icônes 180, 192 et 512 ; la source est dans le dépôt, sans ressource extérieure", () => {
+  it("les images : 1200 × 630, au plus 48 Ko (`partage.image`) ; les icônes 180, 192 et 512 ; la source est dans le dépôt, sans ressource extérieure", () => {
     for (const i of IMAGES_PARTAGE) expect([i.largeur, i.hauteur], i.nom).toEqual([1200, 630]);
     expect(ICONES.map((i: { taille: number }) => i.taille)).toEqual([180, 192, 512]);
-    expect(POIDS_MAX).toBe(150 * 1024);
+    expect(POIDS_MAX).toBe(48_000);
     const source = lire(SOURCE_IMAGES);
     expect(source).not.toMatch(/(?:href|src)="https?:/);
     expect(source).not.toMatch(/url\(["']?https?:/);

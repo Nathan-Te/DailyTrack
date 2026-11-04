@@ -2,11 +2,21 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+// @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
+import { BASE, caracteresEcrits } from "../../../scripts/polices/caracteres.mjs";
+import { cataloguesApplications } from "./applications";
+import { CATALOGUE_COMMUN } from "../src/catalogue";
+import { CATALOGUE_AMIS } from "../src/catalogue.amis";
+import { CATALOGUE_RETOURS } from "../src/catalogue.retours";
 import { caracteresCouverts } from "./woff2";
 
 // Lot I1 (charte § 4) : les polices hébergées sur le site — woff2, sous-ensemble latin, `font-display: swap`, licence OFL à côté, et le
 // français couvert (accents, œ, guillemets « », espaces insécables). Fichiers copiés des paquets @fontsource (scripts/polices.mjs).
+// Lot B1 : ces fichiers d'origine sont dans `polices/originaux/` ; **les fichiers servis (`polices/*.woff2`) en sont la découpe aux caractères utilisés** (`node scripts/polices/decouper.mjs`,
+// `polices/decoupe.json`). Le test garde : (1) les originaux (empreintes) ; (2) la découpe (empreintes, jamais plus gros) ; (3) qu'**aucun caractère utilisé n'a été perdu** par la découpe ;
+// (4) que **chaque caractère des catalogues fr et en et des pages fixes existe dans la police qui l'affiche** ; (5) le français couvert.
 const DIR = join(__dirname, "../polices");
+const ORIGINAUX = join(DIR, "originaux");
 const CSS = join(__dirname, "../src/polices");
 type Source = { fichier: string; famille: string; paquet: string; licence: string; octets: number; sha256: string };
 const SOURCES: Source[] = JSON.parse(readFileSync(join(DIR, "sources.json"), "utf8"));
@@ -33,13 +43,64 @@ describe("polices hébergées", () => {
       "Rubik Mono One 400-normal",
     ]);
     for (const s of SOURCES) {
-      const data = readFileSync(join(DIR, s.fichier));
+      const data = readFileSync(join(ORIGINAUX, s.fichier));
       expect(data.toString("latin1", 0, 4), s.fichier).toBe("wOF2");
       expect(data.length, s.fichier).toBe(s.octets);
       expect(createHash("sha256").update(data).digest("hex"), s.fichier).toBe(s.sha256);
       expect(s.paquet, s.fichier).toMatch(/^@fontsource\/[a-z-]+@\d+\.\d+\.\d+$/);
     }
-    expect(readdirSync(DIR).filter((f) => f.endsWith(".woff2")).sort()).toEqual(SOURCES.map((s) => s.fichier).sort());
+    expect(readdirSync(ORIGINAUX).filter((f) => f.endsWith(".woff2")).sort()).toEqual(SOURCES.map((s) => s.fichier).sort());
+    expect(readdirSync(DIR).filter((f) => f.endsWith(".woff2")).sort(), "une police servie par original, rien d'autre").toEqual(SOURCES.map((s) => s.fichier).sort());
+  });
+
+  it("la découpe : chaque fichier servi est celui que `decoupe.json` décrit, et plus léger que son original", () => {
+    const decoupe: { polices: { fichier: string; avant: number; apres: number; sha256: string }[] } = JSON.parse(readFileSync(join(DIR, "decoupe.json"), "utf8"));
+    expect(decoupe.polices.map((p) => p.fichier).sort()).toEqual(SOURCES.map((s) => s.fichier).sort());
+    for (const p of decoupe.polices) {
+      const data = readFileSync(join(DIR, p.fichier));
+      expect(data.toString("latin1", 0, 4), p.fichier).toBe("wOF2");
+      expect(data.length, `${p.fichier} : relance \`node scripts/polices/decouper.mjs\``).toBe(p.apres);
+      expect(createHash("sha256").update(data).digest("hex"), p.fichier).toBe(p.sha256);
+      expect(p.apres, p.fichier).toBeLessThan(SOURCES.find((s) => s.fichier === p.fichier)!.octets);
+    }
+  });
+
+  it("la découpe ne perd aucun caractère utilisé : tout ce que la base et le projet écrivent, et que l'original porte, est dans la police servie", () => {
+    const ecrits = caracteresEcrits() as Map<string, string[]>;
+    const voulus = [...new Set<string>([...(BASE as Set<string>), ...ecrits.keys()])];
+    for (const s of SOURCES) {
+      const original = caracteresCouverts(readFileSync(join(ORIGINAUX, s.fichier)));
+      const servi = caracteresCouverts(readFileSync(join(DIR, s.fichier)));
+      const perdus = voulus.filter((c) => original.has(c.codePointAt(0)!) && !servi.has(c.codePointAt(0)!));
+      expect(perdus.map((c) => `${c} (U+${c.codePointAt(0)!.toString(16)}, lu dans ${(ecrits.get(c) ?? ["la base"])[0]})`), `${s.fichier} : un caractère utilisé n'est plus dans la police — relance \`node scripts/polices/decouper.mjs\``).toEqual([]);
+    }
+  });
+
+  // Les polices du texte courant : Archivo (400, 600, 700) affiche toute chaîne d'un catalogue ; les polices d'affichage (Archivo Black, Rubik Mono One, Lilita One, Barlow Condensed, JetBrains
+  // Mono) n'en montrent qu'une partie (titres, chiffres) mais sur le même jeu de caractères : on vérifie la base ci-dessus pour toutes, et les catalogues pour Archivo.
+  /** Les signes qu'aucune police du site n'a (l'original d'Archivo ne les porte pas non plus) : le navigateur prend la police du système, comme avant la découpe. Un nouveau signe se décide ici, en le voyant. */
+  const SIGNES_DU_SYSTEME = new Set([..."←→↗⟳⤓⚠✓✕●○▲▼≈≥ᵉ¼½‰µ²\u0300\u036f\uffff\u202f"]);
+  it("chaque caractère des catalogues fr et en existe dans la police du texte courant (Archivo), ou est un signe connu du système — le message dit la clé et le caractère", async () => {
+    const archivo = ["archivo-latin-400-normal.woff2", "archivo-latin-600-normal.woff2", "archivo-latin-700-normal.woff2"].map((f) => ({ f, cmap: caracteresCouverts(readFileSync(join(DIR, f))), original: caracteresCouverts(readFileSync(join(ORIGINAUX, f))) }));
+    const catalogues: [string, Record<string, unknown>][] = [];
+    const tous = [["commun", CATALOGUE_COMMUN], ["amis", CATALOGUE_AMIS], ["retours", CATALOGUE_RETOURS], ...(await cataloguesApplications())] as [string, { fr: Record<string, unknown>; en: Record<string, unknown> }][];
+    for (const [nom, cat] of tous) for (const l of ["fr", "en"] as const) catalogues.push([`${nom} ${l}`, cat[l]]);
+    const manquants: string[] = [];
+    for (const [nom, cat] of catalogues) {
+      for (const [cle, v] of Object.entries(cat)) {
+        const textes = typeof v === "string" ? [v] : Object.values(v as object).map(String);
+        for (const c of new Set(textes.join("").normalize("NFC"))) {
+          const cp = c.codePointAt(0)!;
+          if (cp < 0x20 || SIGNES_DU_SYSTEME.has(c) || cp > 0xffff) continue; // (emojis : jamais dans l'interface, charte § 6)
+          for (const a of archivo) {
+            if (a.cmap.has(cp)) continue;
+            manquants.push(a.original.has(cp) ? `${nom} › ${cle} : « ${c} » (U+${cp.toString(16)}) manque à ${a.f} : relance \`node scripts/polices/decouper.mjs\`` : `${nom} › ${cle} : « ${c} » (U+${cp.toString(16)}) n'est dans aucune police : change le texte ou ajoute le signe à SIGNES_DU_SYSTEME`);
+            break;
+          }
+        }
+      }
+    }
+    expect(manquants).toEqual([]);
   });
 
   it("une licence SIL OFL à côté de chaque famille", () => {
