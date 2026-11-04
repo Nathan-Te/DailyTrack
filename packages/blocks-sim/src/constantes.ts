@@ -2,8 +2,11 @@
 
 /** La version des RÈGLES (la pose, l'effacement, le barème, la fin). Elle monte à tout changement qui change une partie rejouée. */
 export const BLOCKS_SIM_VERSION = 1;
-/** La version du TIRAGE (la suite du jour : catalogue, poids, rampe, garde-fous). Elle monte à tout changement de ce que `dailyBlocks` produit. v2 (lot B2) : 40 pièces (grand T ajouté, pièce de 1 case retirée). */
-export const BLOCKS_GENERATOR_VERSION = 2;
+/** La version du TIRAGE (la suite du jour : catalogue, poids, rampe, garde-fous). Elle monte à tout changement de ce que `dailyBlocks` produit. v2 (lot B2) : 40 pièces (grand T ajouté, pièce de 1 case retirée). v3 (lot B3) : poids de base et rampe recalibrés avec le bot Diamant (`pieces.ts`, `RAMPE_PAR_DEFAUT`). */
+export const BLOCKS_GENERATOR_VERSION = 3;
+
+/** La version du BOT DIAMANT (`diamant.ts` : sa logique et ses poids). Le bot fait partie des règles du classement (les seuils des médailles en dépendent) : elle monte à tout changement de ce qu'il joue. */
+export const BLOCKS_BOT_VERSION = 1;
 
 export const COLONNES = 8;
 export const LIGNES = 8;
@@ -31,4 +34,4 @@ export interface Rampe {
   /** Le rang où la rampe s'arrête (le poids ne grossit plus ensuite). */
   rangMax: number;
 }
-export const RAMPE_PAR_DEFAUT: Rampe = { pente: 4, rangMax: 80 };
+export const RAMPE_PAR_DEFAUT: Rampe = { pente: 1, rangMax: 140 };

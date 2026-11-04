@@ -1,10 +1,11 @@
 import { actionDe, BONUS_PLATEAU_VIDE, COLONNES, LIGNES, NB_CASES, Partie, PIECES, POSES_SANS_EFFACEMENT_MAX, VARIANTE, caseOccupee, enregistrer, grilleEnTexte, type Contenu, type Piece } from "@cdj/blocks-sim";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
+import { coupDuDiamant } from "@cdj/blocks-sim/diamant";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { centreDesYeux, Clignotement, decrirePiece, disposerYeux, ENCRE, expressionDe, regardVers, type CoucheRelief, type Niveau, type PoseOeil } from "@cdj/visuels/blocs";
 import { dessinerPiece, placer } from "@cdj/visuels/blocs/canvas";
 import { boitesDeCases, boitesDePiece, casesDe, type Case } from "./boites";
-import { COULEUR_DEPART, couleurDeFamille } from "./couleurs";
+import { type CouleursTheme, couleursDeTheme, paletteCourante } from "./couleurs";
 import { type Annonce, bosse, type CaseEffacee, DUREE_GAIN, eclater, etatAnnonce, etatGain, etatParticule, type GainFlottant, hasardAffichage, illumination, illuminationFinie, type Particule } from "./effets";
 import { lireEssai } from "./essai";
 import { musiqueDuKit } from "./kitSon";
@@ -21,7 +22,7 @@ import { caseDesYeux, morceaux } from "./yeuxBlocks";
 // Le geste (seed § 6, B2) : la pièce saisie grossit à la taille des cases et **reste sous le doigt, au point exact où on l'a touchée** (aucun décalage, souris comme doigt) ; une ombre hachurée est aimantée à la case la plus
 // proche ; les lignes et colonnes qui seraient effacées s'allument ; relâcher hors d'un endroit valide renvoie la pièce. Clavier et manette (M1, M2) : déplacer l'ombre case par case (`gauche` … `bas`), `poser`.
 // Les effets ne bloquent jamais la pose suivante : ils sont de l'affichage pur, animé à l'horloge de l'écran (60 images par seconde), jamais aux pas de la simulation.
-// Hors lot : fantôme (B4), bot Diamant, médailles, palettes par thème du jour (B3). Aucune couleur écrite ici hors la palette commune : les fonds sont les jetons de `@cdj/ui`.
+// Lot B3 : les couleurs viennent de la palette du thème du jour (module commun, `couleurs.ts`) et le bot Diamant peut jouer à la place du joueur (`&bot`, essai local). Hors lot : fantôme (B4). Aucune couleur écrite ici : le thème, ou les jetons de `@cdj/ui`.
 
 /** Les actions de « Blocks » : l'ombre au clavier et à la manette, et `poser` ; `pose:<colonne>:<ligne>` pose directement (tests, outils). */
 export const ACTIONS_SCENE = ["gauche", "droite", "haut", "bas", "poser"] as const;
@@ -39,6 +40,9 @@ const VOLUME_AVANT_LECTEUR = 0.8;
 
 const jeton = (nom: string): string => getComputedStyle(document.documentElement).getPropertyValue(`--dj-${nom}`).trim() || "currentColor";
 interface Palette {
+  /** Le fond de toute la scène (le ciel du thème). */
+  ciel: string;
+  /** Le fond de la grille, entre les cases (le sol du thème). */
   fond: string;
   case: string;
   trait: string;
@@ -54,11 +58,20 @@ interface Palette {
   famille: string;
   texteFamille: string;
 }
-function palette(theme: string): Palette {
+/** Les couleurs de la scène : celles du thème du jour (la palette commune, `couleurs.ts`) et, pour l'encre, le papier et les textes, les jetons de la charte. */
+function palette(th: CouleursTheme): Palette {
   const base = { surligne: jeton("moutarde"), papier: jeton("papier"), encre: jeton("encre"), terre: jeton("terre"), plaque: jeton("papier"), famille: jeton("police-chiffres") || "monospace", texteFamille: jeton("police-texte") || "sans-serif" };
-  return theme === "sombre"
-    ? { ...base, fond: jeton("encre"), case: jeton("encre-douce"), trait: jeton("creme-2"), zone: jeton("creme"), zoneSuivante: jeton("encre-douce"), texte: jeton("creme"), texteDouce: jeton("creme-2") }
-    : { ...base, fond: jeton("creme-2"), case: jeton("creme"), trait: jeton("encre"), zone: jeton("papier"), zoneSuivante: jeton("creme-2"), texte: jeton("encre"), texteDouce: jeton("encre-douce") };
+  return {
+    ...base,
+    ciel: th.fond,
+    fond: th.grille,
+    case: th.caseVide,
+    trait: th.cadre,
+    zone: th.zone,
+    zoneSuivante: th.zoneSuivante,
+    texte: th.sombre ? jeton("creme") : jeton("encre"),
+    texteDouce: th.sombre ? jeton("creme-2") : jeton("encre-douce"),
+  };
 }
 
 /** La porte des tests de navigateur (`window.__blocks`, `?debug` seulement) : positions en coordonnées de la page. */
@@ -96,10 +109,18 @@ export interface PorteBlocks {
   sons(): SonJoue[];
 }
 
-export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
+/** Ce que la scène reçoit en plus du kit : le bot Diamant qui joue à la place du joueur (`&bot`, essai local, jamais classé) à `vitesse` poses par seconde. */
+export interface OptionsScene {
+  bot?: { vitesse: number } | null;
+}
+
+export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: OptionsPartie, extra: OptionsScene = {}): PartieDuJeu {
   const partie = new Partie(contenu);
   const actions: number[] = [];
-  const couleurs = palette(o.theme);
+  const theme = couleursDeTheme(paletteCourante()); // la palette du jour, posée par `corps.ts` avant la scène
+  const couleurs = palette(theme);
+  const couleurDeFamille = (f: Piece["famille"]): string => theme.familles[f];
+  const COULEUR_DEPART = theme.depart;
   const canvas = document.createElement("canvas");
   canvas.className = "blocks-plateau";
   canvas.setAttribute("role", "img");
@@ -107,6 +128,9 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   hote.append(canvas);
   const g = canvas.getContext("2d")!;
   void document.fonts?.load?.(`700 20px ${couleurs.famille}`).catch(() => undefined);
+
+  const bot = extra.bot ?? null;
+  const cadence = bot ? Math.max(1, Math.round(30 / bot.vitesse)) : 0;
 
   // --- Le son : le volume et le « couper » du kit (le lecteur de la musique commune) ---
   let lecteur: { reglages(): { volume: number; coupee: boolean } } | null = null;
@@ -544,6 +568,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     while (annonces.length > 0 && maintenant - annonces[0]!.t0 > annonces[0]!.duree) annonces.shift();
 
     g.clearRect(0, 0, largeur, hauteur);
+    g.fillStyle = couleurs.ciel; // le ciel du thème, sous tout
+    g.fillRect(0, 0, largeur, hauteur);
     g.save();
     g.translate(decalageBord.x, decalageBord.y);
     const { grille, cote } = mep;
@@ -812,6 +838,11 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   return {
     avancer() {
       t++;
+      // Le bot Diamant (`&bot`) : une pose toutes les `cadence` ticks, tant qu'on ne tient pas une pièce. Les poses passent par `poser`, comme celles d'un joueur : mêmes effets, mêmes sons, même rediffusion.
+      if (bot && !partie.finie && !saisie && t % cadence === 0) {
+        const coup = coupDuDiamant(partie);
+        if (coup) poser(coup.col, coup.ligne);
+      }
     },
     // La partie est finie pour le kit une seconde après la dernière pose possible : « Plus de place ! » reste à l'écran.
     finie: () => partie.finie && tFin >= 0 && t - tFin >= TICKS_PLUS_DE_PLACE,

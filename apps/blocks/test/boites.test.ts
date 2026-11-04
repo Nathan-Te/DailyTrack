@@ -23,7 +23,7 @@ describe("les boîtes du dessin", () => {
     expect(boitesDePiece(PIECES.find((p) => p.nom === "barre5-0")!)).toHaveLength(1);
     expect(boitesDeCases([{ col: 0, ligne: 0 }, { col: 2, ligne: 0 }], 0, 0)).toHaveLength(2); // deux cases séparées : deux boîtes
   });
-  it("chaque famille a une couleur de la palette de Tower", () => {
-    for (const p of PIECES) expect(Object.values(PALETTE_PORT.pieces)).toContain(couleurDeFamille(p.famille));
+  it("chaque famille a une couleur de la palette de Tower (le rectangle, un mélange de deux d'entre elles : voir palettes.test.ts)", () => {
+    for (const p of PIECES.filter((x) => x.famille !== "rectangle")) expect(Object.values(PALETTE_PORT.pieces)).toContain(couleurDeFamille(PALETTE_PORT, p.famille));
   });
 });

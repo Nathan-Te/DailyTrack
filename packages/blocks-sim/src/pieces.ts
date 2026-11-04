@@ -57,22 +57,23 @@ function orientations(base: Art, mode: "fixe" | "tour" | "tourEtMiroir"): Art[] 
   return out;
 }
 
-// [famille, nom, art de base, orientations, poids]. Poids (seed § 4) : petites faible (les deux dominos : pas de pièce de 1 case), barres moyen, carrés moyen (2 × 2) / faible (3 × 3), coins moyen, L et J moyen, grand L et grand T faible (2), T S Z moyen, rectangles faible.
+// [famille, nom, art de base, orientations, poids]. Poids de base (seed § 4, recalibrés au tirage v3, lot B3 : le bot Diamant sert de référence haute, voir le README du lot) : au début de la suite, les pièces de 2 et 3 cases (dominos, barres de 3, coins) dominent ;
+// la rampe (`suite.ts`) fait monter les pièces de 4 cases et plus avec le rang. Petites : dominos 8 ; barres 12 (3), 5 (4), 3 (5) ; carrés 6 (2 × 2), 2 (3 × 3) ; coins 14 ; L et J 4 ; grand L et grand T 2 ; T 4 ; S et Z 3 ; rectangles 2.
 const DEFINITIONS: readonly (readonly [Famille, string, Art, "fixe" | "tour" | "tourEtMiroir", number])[] = [
-  ["petite", "domino", ["XX"], "tour", 4],
-  ["barre", "barre3", ["XXX"], "tour", 8],
-  ["barre", "barre4", ["XXXX"], "tour", 6],
-  ["barre", "barre5", ["XXXXX"], "tour", 4],
-  ["carre", "carre2", ["XX", "XX"], "fixe", 9],
-  ["carre", "carre3", ["XXX", "XXX", "XXX"], "fixe", 3],
-  ["coin", "coin", ["X.", "XX"], "tour", 8],
-  ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 6],
+  ["petite", "domino", ["XX"], "tour", 8],
+  ["barre", "barre3", ["XXX"], "tour", 12],
+  ["barre", "barre4", ["XXXX"], "tour", 5],
+  ["barre", "barre5", ["XXXXX"], "tour", 3],
+  ["carre", "carre2", ["XX", "XX"], "fixe", 6],
+  ["carre", "carre3", ["XXX", "XXX", "XXX"], "fixe", 2],
+  ["coin", "coin", ["X.", "XX"], "tour", 14],
+  ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 4],
   ["grandL", "grandl", ["X..", "X..", "XXX"], "tour", 2],
-  ["tsz", "t", ["XXX", ".X."], "tour", 6],
+  ["tsz", "t", ["XXX", ".X."], "tour", 4],
   ["tsz", "grandt", ["XXX", ".X.", ".X."], "tour", 2],
-  ["tsz", "s", [".XX", "XX."], "tour", 5],
-  ["tsz", "z", ["XX.", ".XX"], "tour", 5],
-  ["rectangle", "rect", ["XXX", "XXX"], "tour", 3],
+  ["tsz", "s", [".XX", "XX."], "tour", 3],
+  ["tsz", "z", ["XX.", ".XX"], "tour", 3],
+  ["rectangle", "rect", ["XXX", "XXX"], "tour", 2],
 ];
 
 function construire(): Piece[] {

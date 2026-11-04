@@ -1,3 +1,4 @@
+import { FRACTIONS_MEDAILLES } from "./medailles";
 import type { Resultat } from "./partie";
 
 // LA VARIANTE de Blocks : `score` (lot B1). Le seul endroit qui sait comment ce jeu se classe : le score ↓, puis le combo maximal ↓, puis le premier arrivé (les deux départages ultimes de toute table :
@@ -8,6 +9,8 @@ export interface FicheVariante {
   colonnes: readonly { nom: string; sens: "asc" | "desc" }[];
   unite: "points";
   format: "entier";
+  /** Or, argent et bronze en pour cent du Diamant (le `bareme` de la fiche, `pourcentage-diamant`), dans cet ordre : ceux de `medailles.ts`. */
+  bareme: readonly number[];
 }
 export interface Variante {
   nom: NomVariante;
@@ -19,7 +22,7 @@ export interface Variante {
 
 const SCORE: Variante = {
   nom: "score",
-  fiche: { colonnes: [{ nom: "score", sens: "desc" }, { nom: "combo", sens: "desc" }], unite: "points", format: "entier" },
+  fiche: { colonnes: [{ nom: "score", sens: "desc" }, { nom: "combo", sens: "desc" }], unite: "points", format: "entier", bareme: [FRACTIONS_MEDAILLES.gold, FRACTIONS_MEDAILLES.silver, FRACTIONS_MEDAILLES.bronze] },
   score: (r) => [r.score, r.combo],
 };
 

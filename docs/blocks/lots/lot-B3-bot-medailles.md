@@ -1,0 +1,58 @@
+# Lot B3 — Blocks : bot Diamant, médailles, thèmes du jour et calibrage
+
+Branche `ccr-8995af25-rq2r91` (celle que la session impose ; le prompt disait `blocks/b3-bot-medailles`), PR brouillon `jeu:blocks`. Jeu `off` : « Pour les joueurs » = `rien`. Partie de `main` à jour (B2 fusionné, PR #271 et #272).
+
+## Ce qui est fait
+- **Bot Diamant** (`packages/blocks-sim/src/diamant.ts`, hors de l'index : `@cdj/blocks-sim/diamant`) : pour chaque position légale de la pièce du moment, toutes celles de la suivante ; il garde la meilleure grille. **Pur, déterministe, sans aléa** (égalité : la première position, rang = octet d'action), n'essaie que des actions légales ; sa partie est une rediffusion valide, rejouée par `jouer`. **Séparé du glouton** (outil de test, inchangé).
+- **Évaluation** (poids entiers, `POIDS_DIAMANT`, réglables) : 10 × points gagnés (combo compris) ; par case occupée −4 ; vide isolée −90 ; vide enfermée de trois côtés −22 ; périmètre −16 par côté ; ligne ou colonne à 6 ou 7 cases +18 ; boîte libre de 3 × 3 +8. Les 12 meilleurs enchaînements sont départagés à −40 par pièce du catalogue qui ne tient plus nulle part. Rien n'est calculé hors des octets de la grille (huit lignes, pas d'allocation pendant le choix).
+- **Médailles** : Diamant = score du bot (clé `auteur`) ; **or 60 %, argent 20 %, bronze 8 %** du Diamant (`FRACTIONS_MEDAILLES`, `medailles.ts` ; `bareme` de la fiche à jour), strictement croissants. Serveur : `seuils` de `apps/api/src/blocks.ts` (gardés en mémoire par suite du jour et version du bot). Client : le corps du jeu les calcule à l'idle de l'accueil ; l'écran de fin du kit affiche de vraies valeurs.
+- **Rampe et tirage v3** : poids de base et rampe recalibrés (tableaux plus bas). **Défaut : pente 1, rang maximal 140.** `BLOCKS_GENERATOR_VERSION` = 3, **`BLOCKS_BOT_VERSION` = 1** (nouveau ; `versions.medailles` de la fiche), règles inchangées (v1). Golden régénéré (empreintes, seuils des dix jours, trois parties du bot).
+- **Thèmes** : les six de Tower, **mêmes palettes** (`@cdj/visuels/blocs`), tirés par le sac commun (`themes.ts`, sel propre) ; ciel = fond de la scène, sol = fond de la grille ; la nuit passe cadre et textes en clair. Fiche, `FICHE.themes`, catalogues fr + en (nom et phrase de chaque thème) et scènes de musique à jour (`clair` / `sombre` ont disparu).
+- **8 familles, 7 formes** : chaque famille prend la couleur de sa forme ; **le rectangle prend le mélange à parts égales de J et S** (bleu-vert, ΔE ≥ 25 de toutes les autres dans les six thèmes). Aucune couleur écrite : tout vient du module ou de `melanger`.
+- **Essais** : `&bot` (3 poses par seconde ; `&bot=<n>`, 1 à 30), `?theme=<id>` ; jamais classés ni sur la production. Les scénarios de B1 et B2 sont intacts.
+
+## Calibrage de la rampe (1 000 jours, du 2026-11-02 ; `npm run mesure:rampe`)
+Pièces : min · Q1 · médiane · Q3 · max. **Avant** = B2 (tirage v2, rampe 4 / 80). Cibles : bot médiane 80–150, glouton médiane ≥ 30, aucun jour du bot sous 25 pièces.
+| bot | configuration | pièces | score (médiane · max) | jours < 25 |
+|---|---|---|---|---|
+| glouton | **avant** (v2, 4 / 80) | 8 · 20 · **27** · 38 · 95 | 388 · 3 522 | 401 |
+| Diamant | **avant** | 9 · 43 · **60** · 83 · 242 | 2 756 · 45 227 | 22 |
+| glouton | **après** (v3, 1 / 140) | 9 · 28 · **40** · 59 · 172 | 605 · 4 880 | 178 |
+| Diamant | **après** | 22 · 89 · **130** · 187 · 635 | 7 544 · 136 409 | **2** |
+Quelques autres réglages mesurés (Diamant, poids de base v3) : 4 / 80 : médiane 77, 7 jours courts · 2 / 80 : 98, 6 · 1 / 60 : 168 (max 1 517) · 1 / 80 : 142 · 1 / 100 : 133 (max 868) · **1 / 140 : 130 (max 635)**. Sans rampe (poids v2, bot avant son départage `sansPlace`), le Diamant joue 138 pièces en médiane mais jusqu'à 1 142 : la rampe borne la queue.
+**Poids de base v3** (la pente seule ne suffisait pas : le Diamant s'éteignait vers 60 pièces, sur des suites de tétrominos) : dominos 8 (avant 4), barres de 3 : 12 (8), de 4 : 5 (6), de 5 : 3 (4), carré 2 × 2 : 6 (9), 3 × 3 : 2 (3), coins 14 (8), L et J : 4 (6), grand L et grand T : 2 (2), T : 4 (6), S et Z : 3 (5), rectangles 2 (3). Les pièces de 2 et 3 cases dominent au début, les tétrominos montent avec le rang.
+
+## Les jours trop courts — **proposition pour Nathan (rien n'est filtré)**
+Après calibrage, **2 jours sur 1 000** font mourir le Diamant avant 25 pièces (22 et 24), 7 avant 30, 32 avant 40. Aucune règle de filtrage n'est codée. **Règle proposée** (déterministe, sans lire de grille) : *si le bot Diamant meurt avant 25 pièces, la graine du jour est re-mélangée* (`mixSeed(graine, 1)`, puis 2… jusqu'à 3 essais). **Mesure** : sur les 7 jours sous 30 pièces, un seul re-mélange donne 132 à 314 pièces (jamais un deuxième). Coût : le serveur et le client calculent le bot avant de servir la suite (déjà fait pour les seuils : 21 ms en médiane) ; il faut monter `BLOCKS_GENERATOR_VERSION` et figer les jours dans les fichiers. **À toi de décider** : le seed interdit un tirage qui aide le joueur, et choisir la graine d'un jour est un choix éditorial.
+
+## Médailles : calibrage et fractions (`npm run calibrer:medailles`, 1 000 jours)
+Part du Diamant que fait le glouton, par jour : Q1 3 %, **médiane 8 %**, **Q3 20 %** ; le Diamant lui-même : médiane 7 544, Q3 14 437. Fractions : bronze = médiane (8 %), argent = Q3 (20 %), or à mi-chemin entre l'argent et le Diamant (60 %). **Part des jours où le glouton obtient la médaille** : bronze **49,8 %** · argent **25,4 %** · or **6,8 %** · Diamant **2,5 %**. Le bot fait au moins aussi bien que le glouton 97,5 % des jours (test : ≥ 95 %). Les cibles de départ sont à confirmer : les trois nombres sont ceux de `FRACTIONS_MEDAILLES` (les changer monte la version du bot).
+
+## Temps mesurés (Node 22, 1 000 jours, un seul processus)
+**Bot, partie entière : 21 ms en médiane, 109 ms au pire** (sous les 200 ms demandés ; une partie de 635 pièces) ; glouton : 1,2 ms · 9 ms. Le serveur garde les seuils en mémoire (le module des jeux les demande à chaque envoi et lecture) ; un test vérifie < 200 ms puis le même objet rendu. Sous Vitest (transformé, machine chargée) c'est 3 à 4 fois plus lent : seuil de test de 200 ms en médiane, 1 s au pire. **Sur téléphone : non mesuré** (le calcul se fait à l'idle de l'accueil, jamais en partie).
+
+## Vérifié
+- Unitaires : déterminisme (ordre des jours indifférent), actions légales jusqu'à la fin, rediffusion rejouée par `jouer`, scénarios, pureté, bot ≥ glouton sur ≥ 95 % de 120 jours (mesuré 97,5 % sur 1 000), seuils croissants (même pour un Diamant de 0 à 99), golden du bot et des seuils, sac de thèmes (jamais deux jours de suite le même, un par cycle), palettes (huit couleurs à ΔE ≥ 25, clarté contre ciel et sol, nuit sombre), `?theme=` et `&bot` (`essai.test.ts`), accord fiche / sim, serveur : `/day` donne les seuils, la partie du bot envoyée rend `author`.
+- E2E (`bot-themes.spec.ts`, 13 tests) : le bot joue 3 poses par seconde et ses 9 premières poses sont celles de la simulation ; sa partie va au bout, son score est le Diamant, l'écran de fin montre les quatre seuils et reste « non classée » ; un jour passé ; les six thèmes (ciel du canevas = ciel du module, nom et phrase) ; thème du jour sans `?theme=` ; une partie du glouton montre de vrais seuils. **Les tests de B1 et B2 sont inchangés** (seule la valeur attendue de `rampe=7` suit le nouveau rang maximal par défaut ; `boites.test.ts` suit la signature de `couleurDeFamille` et garde son contrôle sur sept familles).
+- `npm run verifier` : typecheck, unitaires SQLite et libSQL, constructions, **e2e Track (22 specs) verts** ; **e2e Jump : `profil-commun.spec.ts` échoue, aussi sur `main` intact** (délai de 60 s, constaté ici avec et sans mon travail ; zone non touchée, non corrigé). Les e2e de Blocks passent à la main (**47 tests**, deux fois de suite) ; Tower et Cibles non relancés (zones non touchées). `npm run traductions` et `npm run fiches` faits. 3 captures regardées (nuit, canyon, banquise) : les couleurs lues dans les pixels (ciel de chaque thème) sont celles du module.
+- **Un test de B1 retouché sans l'affaiblir** : `classement.spec.ts` appelle `GET /api/portail/jour` avant le parcours. Sa première lecture coûte ≈ 3 s à froid sur le serveur d'essai (mesuré sur `main` intact aussi) ; lancé après un autre spec, le second appareil chargeait pendant ce calcul, la lecture de l'interrupteur dépassait ses 5 s et la page montrait « Bientôt ». Une course d'essai, pas une règle du jeu ; les assertions sont inchangées. À corriger au fond côté plateforme (la première lecture du portail).
+
+## Non vérifié
+- **Aucun essai sur un vrai téléphone** ; les thèmes n'ont été vus que sur 3 captures (nuit, canyon, banquise) ; le bot à 3 poses par seconde n'a été regardé que par ses états, pas à l'œil.
+- **Le son n'a jamais été écouté** (B2). **Aucune musique de Blocks** n'existe encore (`musique/musiques.json` n'a aucun morceau « blocks » : les scènes `theme:<id>` sont déclarées, silencieuses).
+- Le calibrage dit ce que font deux bots, pas des joueurs : la rampe se confirme à la main (`&bot`, `?debug&tune&rampe=1,140`).
+
+## Manques du kit, du module commun et de la plateforme (rien codé hors zone)
+1. **`?theme=` n'est pas dans le kit** : chaque jeu le lit (Tower le fait de même). Blocks passe `def.themeDuJour` par son propre `essai.ts` ; un kit qui lirait `?theme=` éviterait un exemplaire par jeu.
+2. **Le kit calcule les seuils côté client** (`def.seuils(contenu)`, synchrone) au lieu de les lire dans `/day` (`medals`) : le bot tourne donc des deux côtés. Un seuil servi par le serveur et lu par le kit éviterait ce calcul au client (Tower les lit dans le fichier du jour).
+3. **Le Diamant n'est pas figé dans le fichier de jour** (`jours/AAAA-MM-JJ.json` ne porte que la suite) : un changement du bot (version) changerait les seuils d'un jour déjà servi. À décider avec Nathan : ajouter `diamant` au fichier figé (un entier), ou ne figer qu'avec la version du bot.
+4. **Module commun** : aucun manque bloquant ; **7 formes pour 8 familles** → la huitième couleur est un mélange (voir ci-dessus). Une huitième forme dans le module la remplacerait.
+5. Hérités de B2 : vibration, réglage des effets sonores, HUD à plaques, plein écran, dessin de l'étiquette.
+6. Un scénario d'essai affiche les seuils de **son** contenu (ex. `blocage` : 1, 2, 3, 4).
+
+## Poids et budget
+**Premier chargement inchangé** : `main-*.js` 32,96 Ko (gzip 11,9 Ko, 32,97 / 11,91 avant : les thèmes et les fractions ajoutent quelques dizaines d'octets, les catalogues restent dans la même enveloppe). **Tout le reste est dans le chunk à la demande `corps-`** : 32,7 Ko bruts (gzip 13,6 Ko) pour le tirage, la scène, le bot Diamant et les palettes du port ; les cinq autres palettes sont dans `@cdj/visuels/blocs/themes`, chargé à la demande (un chunk à part, seulement si le thème du jour n'est pas le port). **Aucune ligne de `budgets.md` à changer** (`budgets.md` n'est pas modifié). **Constat** : le job « Budgets » ne mesure pas `blocks.jsCss` (`scripts/budgets.mjs`, `CLES_MESUREES` : erreur « plomberie » déjà présente sur `main`, zone de la plateforme) ; je n'ai donc pas de chiffre au même format que les 44 893 o de B2.
+
+## Pour Nathan
+(1) Confirmer ou changer **les fractions 60 / 20 / 8** et les cibles de rampe (médiane du bot 130 pièces). (2) **Décider la règle des jours courts** ci-dessus. (3) Figer ou non le Diamant dans les jours. (4) Musique de Blocks. (5) Dessin propre de l'étiquette, vibration (B2).
+**Zones** : `config/jeux/blocks.json` (+ projections et `*.generated.*`), `docs/plateforme/traductions.md` régénéré (exceptions permises) ; rien d'autre hors zone.

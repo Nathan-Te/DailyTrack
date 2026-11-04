@@ -31,6 +31,9 @@ async function choisirPseudo(page: Page, pseudo: string): Promise<void> {
 // Un seul parcours, dans cet ordre : le classement du jour que le portail garde par fenêtre de 45 s (`CLASSEMENT_FENETRE_MS`) se calcule au premier appel qui en a besoin — l'arrivée du premier joueur — : les autres
 // joueurs doivent donc déjà y être, sinon « Amis » lirait un classement d'avant eux.
 test("une partie scriptée est classée par le serveur, sa copie est refusée, et le parcours Amis du classement", async ({ browser }) => {
+  // Échauffement du serveur : sa première lecture de `/api/portail/jour` calcule les jours de tous les jeux (≈ 3 s à froid, mesuré sur `main` aussi) ; si elle tombait pendant que le second appareil charge, sa lecture des jeux
+  // dépasserait le délai de 5 s de l'interrupteur et la page afficherait « Bientôt ». Une attente de course, pas une règle du jeu : on la sort du parcours.
+  await fetch(`${API}/api/portail/jour`);
   await joueurDeLApi("Carla", 3);
   await joueurDeLApi("Denis", 5);
   const pseudo = `Eve${Date.now() % 100000}`;

@@ -1,8 +1,9 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { actionDe, BLOCKS_GENERATOR_VERSION, decoderRediffusion, BLOCKS_SIM_VERSION, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, figerJour, jouer, PLAFOND_PIECES, scoreParColonnes, themeDuJour, VARIANTE } from "@cdj/blocks-sim";
+import { actionDe, BLOCKS_GENERATOR_VERSION, decoderRediffusion, BLOCKS_SIM_VERSION, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, figerJour, jouer, PLAFOND_PIECES, medailleDe, scoreParColonnes, themeDuJour, VARIANTE } from "@cdj/blocks-sim";
+import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_BLOCKS } from "../scripts/blocks-essais";
-import { contenuDeBlocks } from "../src/blocks";
+import { contenuDeBlocks, seuilsDeBlocks } from "../src/blocks";
 import { crc32Hex } from "../src/identity";
 import { GAMES } from "../src/registry";
 import { DAY_MS, makeApi, ouvrirJeu, playerId, type TestApi } from "./helpers";
@@ -35,13 +36,18 @@ describe("Blocks sur le serveur", () => {
     expect(new Set(essais.map((e) => e.rediffusion)).size).toBe(12);
   });
 
-  it("sert la suite du jour de la simulation (serveur = jeu), jamais de preuve ; pas de médaille avant B3", async () => {
+  it("sert la suite du jour de la simulation (serveur = jeu), jamais de preuve, avec les seuils des médailles du bot Diamant (lot B3)", async () => {
     const t = await monter();
     const info = await t.call("GET", "/api/blocks/info");
     expect(info.body).toMatchObject({ game: "blocks", simVersion: BLOCKS_SIM_VERSION, generatorVersion: BLOCKS_GENERATOR_VERSION, today: DATE });
     const jour = await t.call("GET", `/api/blocks/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
+    const s = seuilsDe(dailyBlocks(JOUR));
+    expect(jour.body.medals).toEqual({ author: s.author, gold: s.gold, silver: s.silver, bronze: s.bronze });
+    expect(s.bronze).toBeLessThan(s.silver);
+    expect(s.silver).toBeLessThan(s.gold);
+    expect(s.gold).toBeLessThan(s.author);
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/blocks/day/2026-11-11")).status).toBe(404);
   });
@@ -53,7 +59,7 @@ describe("Blocks sur le serveur", () => {
       const r = await envoyer(t, i + 1, v);
       expect(r.status, JSON.stringify(r.body)).toBe(200);
       expect(r.body.score).toEqual(essais[v]!.attendu);
-      expect(r.body.medal).toBeNull();
+      expect(r.body.medal).toBe(medailleDe([essais[v]!.attendu.score!], seuilsDe(dailyBlocks(JOUR)))); // le code commun de la médaille (author, gold, silver, bronze) ou null
     }
     const attendu = variantes.map((v, i) => ({ nom: `Joueur${i + 1}`, score: essais[v]!.attendu.score!, combo: essais[v]!.attendu.combo! })).sort((a, b) => b.score - a.score || b.combo - a.combo);
     const board = await t.call("GET", `/api/blocks/day/${DATE}/board`, undefined, { headers: entete(3) });
@@ -195,3 +201,24 @@ describe("Blocks sur le serveur", () => {
 function decoderActions(texte: string): number[] {
   return decoderRediffusion(texte).actions;
 }
+
+describe("Blocks : les médailles du bot Diamant (lot B3)", () => {
+  it("la partie du bot, envoyée par un joueur, rapporte le Diamant (`author`) : le serveur la rejoue comme n'importe quelle partie", async () => {
+    const t = await monter();
+    const bot = jouerDiamant(dailyBlocks(JOUR));
+    const r = await envoyerTexte(t, 1, enregistrer(dailyBlocks(JOUR), bot.actions));
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.medal).toBe("author");
+    expect(r.body.score).toMatchObject({ score: bot.resultat.score, combo: bot.resultat.combo });
+  });
+
+  it("calcule les seuils d'un jour en moins de 200 ms, puis les rend de la mémoire (le même objet)", () => {
+    const contenu = dailyBlocks(daysFromCivil(2026, 12, 25));
+    const t0 = performance.now();
+    const s = seuilsDeBlocks(contenu);
+    expect(performance.now() - t0).toBeLessThan(200);
+    const t1 = performance.now();
+    expect(seuilsDeBlocks(contenu)).toBe(s);
+    expect(performance.now() - t1).toBeLessThan(5);
+  });
+});
