@@ -31,7 +31,7 @@ Le glouton joue la position qui laisse la meilleure grille (effacement, cases is
 - `npm run typecheck` ; tests unitaires SQLite et libSQL (blocks-sim : 70+ tests dont pureté, déterminisme, garde-fous et rampe sur 1 000 graines, rejeu et refus des rediffusions trichées ; serveur : classement, copies, aperçu, effacement, groupe ; app : fiche, mise en page, options d'essai, boîtes).
 - e2e Chromium (`apps/blocks/e2e`, 7 specs (25 tests), déclarés dans la fiche et `durees.json`) : `partie`, `glisser` (souris, **événements tactiles par CDP**, clavier, retour de la pièce), `scenarios` (dont « jamais classé » avec un vrai serveur), `disposition` (390 × 844, 360 × 640, 844 × 390, 1280 × 720), `classement`, `determinisme`, `poids`.
 - Budget : `blocks.jsCss` **44 574 octets** mesurés. Le corps du jeu (tirage, scène, blocs communs) est un chunk à la demande `corps-` (nommé dans `budget.aLaDemande` de la fiche) ; sans ce découpage : 47 919. **La ligne passe de 45 à 47 Ko** : le plafond de 45 Ko était celui du modèle (« à fixer avec la mesure du jeu »), et la règle de `budgets.md` (mesure + 5 % et 2 Ko, au Ko supérieur ; `apps/portail/test/budgets.test.ts`) donne 47 Ko pour 44 574. C'est une décision de budget pour Nathan : ligne `blocks.jsCss` de `docs/plateforme/budgets.md`.
-- Résultat de `npm run verifier` et de la CI de la PR : voir la fin de ce fichier.
+- `npm run verifier` : typecheck, tests unitaires SQLite et libSQL, constructions, budgets, e2e Blocks verts, **sauf le test de `consignes` ci-dessous**. CI de la PR (run 41901251453) : tout vert **sauf trois jobs rouges qui viennent de deux défauts de la plateforme, pas de ce lot** (voir « CI rouge »).
 
 ## Non vérifié
 - **Aucun essai sur un vrai téléphone** : le geste tactile est émulé (CDP) ; la sensation du décalage (1,3 case) est à juger au doigt. Firefox et WebKit : le spec `@navigateurs` n'a pas été lancé ici (Chromium seul installé).
@@ -45,6 +45,10 @@ Le glouton joue la position qui laisse la meilleure grille (effacement, cases is
 5. **Module commun** : quatre cases autour d'un même point laissent un point d'encre au milieu d'un bloc (les ponts de `interieur` s'arrêtent à `retrait` du point). Contourné en dessinant **une boîte par suite de cases d'une ligne** (`boites.ts`) ; un correctif serait dans `relief.ts`. Les palettes de Tower ont 7 couleurs (une par forme de Tower) : les 8 familles de Blocks en partagent (`couleurs.ts`) ; les palettes par thème viennent en B3.
 6. `docs/blocks/passation.md` (générée, régénérée ici par `--passation`) dit encore « squelette » et nomme Cibles : c'est le gabarit du générateur (`scripts/`, partagé).
 7. Le `CLAUDE.md` racine n'a pas de ligne Blocks dans sa carte du dépôt (zone partagée).
+
+## CI rouge : deux causes, hors de nos zones (non corrigées, règle d'arrêt)
+1. **`apps/portail/test/consignes.test.ts` (« la liste du test est celle du dépôt ») échoue déjà sur `main`** depuis B0, qui a créé `apps/blocks/CLAUDE.md` sans l'ajouter à la liste `CLAUDE_MD` du test. Elle fait rouges `unit (4/4)` et `jeu fictif (1/3)` (le jeu fictif rejoue la suite unitaire ; même et seule erreur). Correction : une ligne dans la liste du test (lot de plateforme).
+2. **Job `zones`** : `apps/api/src/fiches.generated.ts` n'est pas dans `EXCEPTIONS` de `scripts/zones-jeu.mjs` (les `fiches.generated.ts` des `packages/` y sont), alors que `npm run fiches` le réécrit à tout changement de fiche — ici les colonnes de classement (score, combo) et `rejeu.maxTicks`, inévitables. Un seul fichier hors zone, mécanique. Correction : l'ajouter aux exceptions.
 
 ## Pour Nathan
 Teinte de l'étiquette, premier jour et plafond du budget restent les tiens. Avant `on`, un lot de plateforme décrit les clés `blocks:*` dans les mentions légales.
