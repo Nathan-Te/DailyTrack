@@ -46,6 +46,10 @@ export interface OptionsMesures {
   releveMs?: number;
   /** Les 24 h du tableau de bord se comptent par tranches de cette durée (60 000 ms). */
   trancheMs?: number;
+  /** Lot D3b — l'horloge monotone en ms (`performance.now`) : un test la donne pour ne dépendre d'aucune durée réelle. */
+  horloge?: () => number;
+  /** Lot D3b — le temps de processeur du fil principal en µs (`cpuDuFil`) : un test le donne pour la même raison. */
+  cpu?: () => number;
 }
 
 /** Ce que le tableau de bord de `/admin/` lit : l'instance qui répond (une instance de Cloud Run ne voit pas les autres). */
@@ -57,14 +61,40 @@ export interface InstantaneMesures {
   blocages24h: number;
 }
 
+/** Ce que `process` sait lire du processeur (injectable : un test donne un `process` avec ou sans `threadCpuUsage`). */
+export interface LecteurCpu {
+  threadCpuUsage?: () => { user: number; system: number };
+  cpuUsage: () => { user: number; system: number };
+}
+
 /**
  * Le temps de processeur consommé **par le fil principal** (µs). `process.threadCpuUsage` (Node ≥ 22.19) ne compte que ce fil ; sans lui `process.cpuUsage` compte aussi les fils de calcul et du ramasse-miettes, donc
  * un fil principal gelé pendant qu'un fil de calcul travaille passerait pour « occupé » : le type `calcul` n'est alors fiable que pour un processus sans fil de calcul actif.
  */
-const cpuDuFil = (): number => {
-  const c = (process as { threadCpuUsage?: () => { user: number; system: number } }).threadCpuUsage?.() ?? process.cpuUsage();
+export function cpuDuFil(proc: LecteurCpu = process): number {
+  const c = proc.threadCpuUsage?.() ?? proc.cpuUsage();
   return c.user + c.system;
-};
+}
+
+export type TypeBlocage = "calcul" | "attente";
+
+/**
+ * **La décision** (lot D3b, séparée de la mesure pour être testée sur des valeurs injectées) : un écart entre deux passages de la sentinelle est un `calcul` si le processeur consommé par le fil couvre au moins la moitié de
+ * l'écart (le fil de Node était occupé : un calcul ou le ramasse-miettes), sinon une `attente` (il n'a presque rien consommé : conteneur gelé hors requête, hôte surchargé).
+ * @param cpuMs le processeur consommé par le fil pendant l'écart (ms)
+ * @param ecartMs la durée de l'écart entre les deux passages (ms, pas de la sentinelle compris)
+ */
+export function typeDeBlocage(cpuMs: number, ecartMs: number): TypeBlocage {
+  return cpuMs >= 0.5 * ecartMs ? "calcul" : "attente";
+}
+
+/** Ce que la sentinelle déduit d'un passage, à partir de ses seuls arguments (aucune horloge lue ici). Temps en ms, processeur en µs. */
+export function analyserPassage(a: { maintenant: number; dernier: number; pasMs: number; cpu: number; dernierCpu: number }): { retardMs: number; ecartMs: number; cpuMs: number; type: TypeBlocage } {
+  const ecartMs = a.maintenant - a.dernier;
+  const retardMs = Math.max(0, ecartMs - a.pasMs);
+  const cpuMs = (a.cpu - a.dernierCpu) / 1000;
+  return { retardMs, ecartMs, cpuMs, type: typeDeBlocage(cpuMs, ecartMs) };
+}
 
 const LIGNES_PAR_MINUTE = { blocage: 10, envoi: 20, gc: 10 } as const;
 const mo = (octets: number): number => Math.round((octets / 1_048_576) * 10) / 10;
@@ -78,6 +108,8 @@ export function creerMesures(options: OptionsMesures) {
   const seuilGc = options.seuilGcMs ?? 500;
   const releveMs = options.releveMs ?? 60_000;
   const tranche = options.trancheMs ?? 60_000;
+  const horloge = options.horloge ?? (() => performance.now());
+  const cpu = options.cpu ?? (() => cpuDuFil());
   const contexte = new AsyncLocalStorage<Requete>();
   const enCours = new Set<Requete>();
   const demarreA = Date.now();
@@ -113,19 +145,18 @@ export function creerMesures(options: OptionsMesures) {
   }
 
   // --- La sentinelle ---
-  let dernier = performance.now();
-  let dernierCpu = cpuDuFil();
+  let dernier = horloge();
+  let dernierCpu = cpu();
   let enRequeteAvant = false;
   let minuteur: ReturnType<typeof setInterval> | null = null;
   let releve: ReturnType<typeof setInterval> | null = null;
 
   function sentinelle(): void {
-    const t = performance.now();
-    const retard = Math.max(0, t - dernier - pas);
-    const cpuMs = (cpuDuFil() - dernierCpu) / 1000;
-    const ecart = t - dernier;
+    const t = horloge();
+    const cpuMaintenant = cpu();
+    const { retardMs: retard, cpuMs, type } = analyserPassage({ maintenant: t, dernier, pasMs: pas, cpu: cpuMaintenant, dernierCpu });
     dernier = t;
-    dernierCpu = cpuDuFil();
+    dernierCpu = cpuMaintenant;
     // Une requête en cours au passage précédent **et** à celui-ci : Cloud Run allouait du processeur tout l'écart. Une requête arrivée à la fin d'un gel (qui réveille le minuteur) n'en fait pas un blocage de requête.
     const enRequete = enCours.size > 0 && enRequeteAvant;
     const gc = gcDepuisSentinelle;
@@ -146,7 +177,7 @@ export function creerMesures(options: OptionsMesures) {
       log("WARNING", "blocage de la boucle d'événements", {
         retardMs: Math.round(retard),
         cpuMs: Math.round(cpuMs),
-        type: cpuMs >= 0.5 * ecart ? "calcul" : "attente",
+        type,
         gcMs: Math.round(gc),
         enRequete,
         enCours: enCours.size,
@@ -191,8 +222,8 @@ export function creerMesures(options: OptionsMesures) {
   function demarrer(): void {
     if (minuteur) return;
     histo.enable();
-    dernier = performance.now();
-    dernierCpu = cpuDuFil();
+    dernier = horloge();
+    dernierCpu = cpu();
     minuteur = setInterval(sentinelle, pas);
     minuteur.unref();
     releve = setInterval(releverMinute, releveMs);
@@ -229,22 +260,22 @@ export function creerMesures(options: OptionsMesures) {
   function marquer(etape: EtapeEnvoi): void {
     const r = contexte.getStore();
     if (!r || ORDRE.indexOf(etape) <= ORDRE.indexOf(r.etape)) return; // les étapes ne reculent jamais
-    const t = performance.now();
+    const t = horloge();
     r.etapes[r.etape] += t - r.depuisEtape;
     r.etape = etape;
     r.depuisEtape = t;
   }
 
   function suivre<T>(route: string, fn: () => Promise<T>): Promise<T> {
-    const t = performance.now();
+    const t = horloge();
     const r: Requete = { route, debut: t, etape: "lecture", depuisEtape: t, etapes: { lecture: 0, controles: 0, rejeu: 0, ecriture: 0 }, sqlMs: 0, sqlN: 0, retardMs: 0 };
     enCours.add(r);
     requetesMinute++;
     if (enCours.size > enCoursMax) enCoursMax = enCours.size;
     const fin = (): void => {
       enCours.delete(r);
-      const total = performance.now() - r.debut;
-      r.etapes[r.etape] += performance.now() - r.depuisEtape;
+      const total = horloge() - r.debut;
+      r.etapes[r.etape] += horloge() - r.depuisEtape;
       if (total >= seuilEnvoi && route.endsWith("/submit") && lignes.envoi < LIGNES_PAR_MINUTE.envoi) {
         lignes.envoi++;
         log("WARNING", "envoi lent", {
@@ -269,12 +300,12 @@ export function creerMesures(options: OptionsMesures) {
     async function chrono<T>(ecriture: boolean, f: () => Promise<T>): Promise<T> {
       const r = contexte.getStore();
       if (r && ecriture && r.etape === "rejeu") marquer("ecriture");
-      const t = performance.now();
+      const t = horloge();
       try {
         return await f();
       } finally {
         if (r) {
-          r.sqlMs += performance.now() - t;
+          r.sqlMs += horloge() - t;
           r.sqlN++;
         }
       }
@@ -300,7 +331,8 @@ export function creerMesures(options: OptionsMesures) {
     return { depuisMs: Date.now() - demarreA, memoire: { rssMo: mo(m.rss), tasMo: mo(m.heapUsed), externeMo: mo(m.external) }, retardMax24hMs: Math.round(retard), blocages24h: blocages };
   }
 
-  return { demarrer, arreter, marquer, suivre, envelopper, instantane, enCours: () => enCours.size };
+  // `passage` et `releve` : la sentinelle et le relevé d'une minute, appelables à la main (lot D3b : un test les pilote avec une horloge injectée, sans attendre de minuteur).
+  return { demarrer, arreter, marquer, suivre, envelopper, instantane, enCours: () => enCours.size, passage: sentinelle, releve: releverMinute };
 }
 
 export type Mesures = ReturnType<typeof creerMesures>;
