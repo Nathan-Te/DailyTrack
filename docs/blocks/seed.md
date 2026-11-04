@@ -30,16 +30,16 @@ Chaque jour, la même suite de pièces pour tout le monde. On pose une pièce à
 - **Aucun autre mécanisme** au premier jalon : pas de bonus, pas de joker, pas de seconde chance.
 
 ## 4. Le catalogue de pièces
-Une vingtaine de formes de 1 à 9 cases, chacune avec un poids de tirage. Point de départ, à calibrer :
+Une vingtaine de formes de 2 à 9 cases (40 pièces en comptant chaque orientation), chacune avec un poids de tirage. **Pas de pièce de 1 case.** Point de départ, à calibrer :
 
 | Famille | Pièces | Poids |
 |---|---|---|
-| Petites | 1 case ; 2 cases horizontale et verticale | faible |
+| Petites | 2 cases horizontale et verticale | faible |
 | Barres | 3, 4 et 5 cases, horizontales et verticales | moyen |
 | Carrés | 2 × 2 ; 3 × 3 | moyen / faible |
 | Coins | 3 cases en L (4 orientations) | moyen |
 | L et J | 4 cases (8 orientations) ; grand L de 5 cases, 3 × 3 (4 orientations) | moyen / faible |
-| T, S et Z | 4 cases dans leurs orientations | moyen |
+| T, S et Z | 4 cases dans leurs orientations ; grand T de 5 cases, 3 × 3 (4 orientations) | moyen / faible |
 | Rectangles | 2 × 3 et 3 × 2 | faible |
 
 - **La suite est fixe**, tirée de la graine, **indépendante de la grille du joueur** : pas de tirage « qui aide ».
@@ -61,7 +61,7 @@ Les valeurs sont un point de départ, à calibrer en jouant. Le score est un ent
 - **Fantôme** : le bouton fantôme montre la grille de sa meilleure partie, en transparence, à la même pièce.
 
 ## 6. Prise en main
-- **Glisser-déposer** : on saisit la pièce du moment. Elle grossit à la taille de la grille et **flotte au-dessus du doigt**, pour que le doigt ne la cache pas.
+- **Glisser-déposer** : on saisit la pièce du moment. Elle grossit à la taille de la grille et **reste sous le doigt, au point où on l'a saisie** (aucun décalage).
   - Une **ombre** montre où elle tombera, aimantée à la case la plus proche.
   - Les lignes et colonnes **qui seraient effacées** s'allument pendant le survol.
 - Relâcher hors d'un endroit valide la renvoie à sa place, sans pénalité.
