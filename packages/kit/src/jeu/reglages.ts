@@ -45,7 +45,15 @@ export function monterReglages<C>(c: ContexteJeu<C>): { ouvrir(): void } {
   cadre.corps.append(
     el("h2", { classe: "jeu-ecran__titre", texte: t("kit.reglages.titre") }),
     el("section", { classe: "jeu-reglages__section" }, el("h3", { texte: t("kit.reglages.son") }), placeMusique),
-    el("section", { classe: "jeu-reglages__section" }, el("h3", { texte: t("kit.reglages.affichage") }), ligne("kit.reglages.mouvement", segment("mouvement", [{ valeur: "normal", cle: "kit.reglages.mouvement.normal" }, { valeur: "reduit", cle: "kit.reglages.mouvement.reduit" }])), ligne("kit.reglages.fantome", segment("fantome", [{ valeur: "aucun", cle: "kit.reglages.fantome.aucun" }, { valeur: "meilleure", cle: "kit.reglages.fantome.meilleure" }]))),
+    el(
+      "section",
+      { classe: "jeu-reglages__section" },
+      el("h3", { texte: t("kit.reglages.affichage") }),
+      ligne("kit.reglages.mouvement", segment("mouvement", [{ valeur: "normal", cle: "kit.reglages.mouvement.normal" }, { valeur: "reduit", cle: "kit.reglages.mouvement.reduit" }])),
+      ligne("kit.reglages.fantome", segment("fantome", [{ valeur: "aucun", cle: "kit.reglages.fantome.aucun" }, { valeur: "meilleure", cle: "kit.reglages.fantome.meilleure" }])),
+      // Lot B1 : le réglage de la vibration n'est montré que si le jeu vibre ET que l'appareil sait vibrer (jamais sur un iPhone ni au bureau : un réglage sans effet).
+      ...(c.def.vibration && c.donnees.tactile && typeof navigator !== "undefined" && typeof navigator.vibrate === "function" ? [ligne("kit.reglages.vibration", segment("vibration", [{ valeur: "oui", cle: "kit.reglages.vibration.oui" }, { valeur: "non", cle: "kit.reglages.vibration.non" }]))] : []),
+    ),
     el("section", { classe: "jeu-reglages__section" }, el("h3", { texte: t("kit.reglages.commandes") }), hoteCommandes),
     el("p", { classe: "jeu-reglages__liens" }, el("a", { classe: "jeu-lien", attrs: { href: `../profil/?retour=/${c.fiche.id}/`, id: "jeu-reglages-profil" }, texte: t("kit.reglages.profil") }), el("a", { classe: "jeu-lien", attrs: { href: cheminMentions(c.i18n.langue, "../"), id: "jeu-reglages-mentions" }, texte: t("kit.reglages.mentions") }), retours),
   );

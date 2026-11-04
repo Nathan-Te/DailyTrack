@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validerFiche } from "@cdj/core/fiche";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { ENTREES_MECANIQUES, TEINTES, choisirTeinte, cloner, construirePassation, fichesExistantes, fichiersDuModele, lireOptions, planifier, portsLibres, principal, renommer, resume, verifierId } from "../../../scripts/nouveau-jeu.mjs";
+import { ENTREES_MECANIQUES, TEINTES, choisirTeinte, cloner, construirePassation, etatDuJeu, fichesExistantes, fichiersDuModele, lireOptions, planifier, portsLibres, principal, renommer, resume, verifierId } from "../../../scripts/nouveau-jeu.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { classer, contient } from "../../../scripts/kit-bout-en-bout.mjs";
 
@@ -126,7 +126,28 @@ describe("le plan à blanc, sur le dépôt réel", () => {
   });
 });
 
+describe("lot B1 : un jeu neuf déclare d'office @cdj/visuels", () => {
+  it("son package.json, sa référence TypeScript et sa ligne du verrou", async () => {
+    const plan = await planifier({ id: "banctest", nom: "Banctest", classement: "score", aBlanc: true, passation: false, sansCommandes: true, racine: RACINE });
+    const pj = JSON.parse(plan.creations.find((f: { chemin: string }) => f.chemin === "apps/banctest/package.json").contenu as string);
+    expect(Object.keys(pj.dependencies)).toEqual([...Object.keys(pj.dependencies)].sort((a, b) => a.localeCompare(b, "en")));
+    expect(pj.dependencies["@cdj/visuels"]).toBe("*");
+    const ts = JSON.parse(plan.creations.find((f: { chemin: string }) => f.chemin === "apps/banctest/tsconfig.json").contenu as string);
+    expect(ts.references.map((r: { path: string }) => r.path)).toContain("../../packages/visuels");
+    const verrou = plan.editions.find((e: { chemin: string }) => e.chemin === "package-lock.json").apres as string;
+    expect(JSON.parse(verrou).packages["apps/banctest"].dependencies["@cdj/visuels"]).toBe("*");
+  });
+});
+
 describe("la passation, tenue à jour depuis les CLAUDE.md", () => {
+  it("lot B1 : un jeu qui a dépassé son squelette n'est plus dit « squelette » et ne nomme plus le modèle ; un jeu neuf l'est", () => {
+    expect(etatDuJeu(RACINE, "banctest")).toEqual({ squelette: true, seedVide: true }); // il n'existe pas : l'état de départ
+    expect(etatDuJeu(RACINE, "blocks")).toEqual({ squelette: false, seedVide: false });
+    const fiche = JSON.parse(readFileSync(join(RACINE, "config/jeux/blocks.json"), "utf8"));
+    const texte: string = construirePassation(RACINE, fiche, { classement: "score", teinte: [fiche.etiquette.fond, fiche.etiquette.coque] });
+    expect(texte).toContain("dépassé son squelette");
+    expect(texte).not.toMatch(/est un squelette|copié du jeu témoin|celui du modèle|à écrire par Nathan/i);
+  });
   it("reprend les zones de la fiche, les intitulés des règles du CLAUDE.md racine et la méthode ; rien n'est inventé à la main", async () => {
     const plan = await planifier({ id: "banctest", nom: "Banctest", classement: "temps", aBlanc: true, passation: false, sansCommandes: true, racine: RACINE });
     const texte: string = construirePassation(RACINE, plan.fiche, { classement: "temps", teinte: plan.teinte });

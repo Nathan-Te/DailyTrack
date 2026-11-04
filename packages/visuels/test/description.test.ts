@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { boitesDeForme, BORD, centreDesYeux, couchesDe, decrirePiece, disposerYeux, ENCRE, expressionDe, FORMES, LISERE, melanger, PALETTE_PORT, PAPIER, THEMES_BLOCS } from "../src/blocs";
+import { boitesDeForme, BORD, centreDesYeux, couchesDe, decrirePiece, disposerYeux, ENCRE, expressionDe, FORMES, interieur, LISERE, melanger, PALETTE_PORT, PAPIER, THEMES_BLOCS } from "../src/blocs";
 import { PALETTES } from "../src/blocs/themes";
 
 // Lot DA1 — la DESCRIPTION des blocs : aucun moteur de rendu (ni Three.js, ni DOM, ni Canvas), des palettes bien formées, des formes exactes, un relief à l'intérieur de la forme, des yeux dont la géométrie est une fonction pure.
@@ -73,6 +73,41 @@ describe("le relief : l'encre est la forme, le liseré et la couleur sont à l'i
     expect(lis!.rects[0]!.w).toBeCloseTo(2 - 0.2, 12);
     expect(col!.rects[0]!.w).toBeCloseTo(2 - 0.6, 12);
     expect(LISERE).toBeGreaterThan(0);
+  });
+});
+
+describe("l'intérieur d'une forme n'a pas de trou (le point d'encre au croisement de quatre cases)", () => {
+  const couvert = (rs: ReturnType<typeof interieur>, x: number, y: number): boolean => rs.some((r) => Math.abs(x - r.cx) <= r.w / 2 + 1e-9 && Math.abs(y - r.cy) <= r.h / 2 + 1e-9);
+  const trous = (bs: Parameters<typeof interieur>[0], vide: (x: number, y: number) => boolean, retrait = BORD): [number, number][] => {
+    const rs = interieur(bs, retrait);
+    const sortie: [number, number][] = [];
+    // Tous les points de la forme à plus de `retrait` de son bord (échantillon de 1 cm) doivent être couverts.
+    for (let x = -2; x <= 2; x += 0.01) for (let y = -2; y <= 2; y += 0.01) if (vide(x, y) && !couvert(rs, x, y)) sortie.push([x, y]);
+    return sortie;
+  };
+  // Quatre cases d'un mètre autour de l'origine : le carré [-1, 1]², érodé de `retrait`.
+  const quatre = [{ cx: -4, cy: -4, hw: 4, hh: 4 }, { cx: 4, cy: -4, hw: 4, hh: 4 }, { cx: -4, cy: 4, hw: 4, hh: 4 }, { cx: 4, cy: 4, hw: 4, hh: 4 }];
+  it("quatre cases autour d'un même point : le carré du milieu est recouvert", () => {
+    expect(trous(quatre, (x, y) => Math.abs(x) <= 1 - BORD && Math.abs(y) <= 1 - BORD)).toEqual([]);
+  });
+  it("deux cases appuyées sur une troisième (un T de trois boîtes) : le point de jonction est recouvert", () => {
+    // Une barre de deux mètres (y de -1 à 0) sous deux cases (y de 0 à 1) : la jonction est en (0, 0).
+    const t = [{ cx: 0, cy: -4, hw: 8, hh: 4 }, { cx: -4, cy: 4, hw: 4, hh: 4 }, { cx: 4, cy: 4, hw: 4, hh: 4 }];
+    expect(trous(t, (x, y) => Math.abs(x) <= 1 - BORD && y >= -1 + BORD && y <= 1 - BORD)).toEqual([]);
+  });
+  it("un coin rentrant reste un coin : un L de trois cases n'y gagne aucun carré", () => {
+    const l = [{ cx: -4, cy: -4, hw: 4, hh: 4 }, { cx: 4, cy: -4, hw: 4, hh: 4 }, { cx: -4, cy: 4, hw: 4, hh: 4 }];
+    expect(interieur(l, BORD).filter((r) => Math.abs(r.w - 2 * BORD) < 1e-9 && Math.abs(r.h - 2 * BORD) < 1e-9)).toEqual([]);
+  });
+  it("les sept formes de Tower, aux quatre quarts de tour, ne reçoivent aucun carré de plus : leur rendu est inchangé", () => {
+    for (const f of FORMES) {
+      for (let rot = 0; rot < 4; rot++) {
+        const bs = boitesDeForme(f, rot);
+        // Une boîte rétrécie chacune, plus un pont par arête partagée : une seule boîte (I, O) n'a pas de pont, les autres formes en ont un.
+        expect(interieur(bs, BORD), `${f}${rot}`).toHaveLength(bs.length === 1 ? 1 : bs.length + 1);
+        expect(interieur(bs, BORD + LISERE), `${f}${rot} liseré`).toHaveLength(bs.length === 1 ? 1 : bs.length + 1);
+      }
+    }
   });
 });
 

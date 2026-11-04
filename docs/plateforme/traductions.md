@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1956 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1964 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2436,6 +2436,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.fin.pseudo.valider` | Valider | Confirm |
 | `kit.fin.pseudo.suggestions` | Libres : | Available: |
 | `kit.fin.archive` | Archive : partie non classée. | Archive: game not ranked. |
+| `kit.fin.essai` | Partie d'essai : non classée. | Practice game: not ranked. |
 | `kit.envoi.enCours` | Envoi en cours… | Sending… |
 | `kit.envoi.attente` | Envoi en attente : ta partie sera prise en compte dès que possible. | Sending is pending: your game will count as soon as possible. |
 | `kit.envoi.deja` | Partie déjà enregistrée. | Game already recorded. |
@@ -2449,6 +2450,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.reglages.mouvement` | Animations | Animations |
 | `kit.reglages.mouvement.normal` | Normales | Normal |
 | `kit.reglages.mouvement.reduit` | Réduites | Reduced |
+| `kit.reglages.vibration` | Vibration | Vibration |
+| `kit.reglages.vibration.oui` | Activée | On |
+| `kit.reglages.vibration.non` | Coupée | Off |
 | `kit.reglages.fantome` | Fantôme au départ | Ghost at the start |
 | `kit.reglages.fantome.aucun` | Aucun | None |
 | `kit.reglages.fantome.meilleure` | Ma meilleure | My best |
@@ -2579,6 +2583,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.fin.pseudo.valider` | Valider | Confirm |
 | `kit.fin.pseudo.suggestions` | Libres : | Available: |
 | `kit.fin.archive` | Archive : partie non classée. | Archive: game not ranked. |
+| `kit.fin.essai` | Partie d'essai : non classée. | Practice game: not ranked. |
 | `kit.envoi.enCours` | Envoi en cours… | Sending… |
 | `kit.envoi.attente` | Envoi en attente : ta partie sera prise en compte dès que possible. | Sending is pending: your game will count as soon as possible. |
 | `kit.envoi.deja` | Partie déjà enregistrée. | Game already recorded. |
@@ -2592,6 +2597,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.reglages.mouvement` | Animations | Animations |
 | `kit.reglages.mouvement.normal` | Normales | Normal |
 | `kit.reglages.mouvement.reduit` | Réduites | Reduced |
+| `kit.reglages.vibration` | Vibration | Vibration |
+| `kit.reglages.vibration.oui` | Activée | On |
+| `kit.reglages.vibration.non` | Coupée | Off |
 | `kit.reglages.fantome` | Fantôme au départ | Ghost at the start |
 | `kit.reglages.fantome.aucun` | Aucun | None |
 | `kit.reglages.fantome.meilleure` | Ma meilleure | My best |

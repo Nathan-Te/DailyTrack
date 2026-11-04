@@ -2,7 +2,7 @@ import { daysFromCivil, formatDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import { ACTIONS_KIT, cleAction } from "../src/jeu/commandes";
 import { CATALOGUE_KIT_EN, CATALOGUE_KIT_FR } from "../src/jeu/catalogue";
-import { lireReglages } from "../src/jeu/reglagesJoueur";
+import { creerVibreur, lireReglages } from "../src/jeu/reglagesJoueur";
 import { baseApi, choisirJour, lireOptions, serieLocale } from "../src/jeu/session";
 
 // Lot K4f — les parties pures de `brancherJeu` (le DOM est essayé par les specs de « Cibles », le premier jeu assemblé par le kit).
@@ -47,10 +47,45 @@ describe("les réglages du joueur", () => {
   const stock = (v: string | null) => ({ getItem: () => v });
   it("des défauts sûrs : stockage vide, abîmé ou refusé", () => {
     const f = { fiche: { prefixe: "cibles:" } };
-    expect(lireReglages(f, stock(null))).toEqual({ v: 1, mouvement: "normal", fantome: "aucun" });
-    expect(lireReglages(f, stock("pas du json"))).toEqual({ v: 1, mouvement: "normal", fantome: "aucun" });
-    expect(lireReglages(f, stock(JSON.stringify({ mouvement: "reduit", fantome: "meilleure" })))).toEqual({ v: 1, mouvement: "reduit", fantome: "meilleure" });
-    expect(lireReglages(f, { getItem: () => { throw new Error("refusé"); } })).toEqual({ v: 1, mouvement: "normal", fantome: "aucun" });
+    expect(lireReglages(f, stock(null))).toEqual({ v: 1, mouvement: "normal", fantome: "aucun", vibration: "oui" });
+    expect(lireReglages(f, stock("pas du json"))).toEqual({ v: 1, mouvement: "normal", fantome: "aucun", vibration: "oui" });
+    expect(lireReglages(f, stock(JSON.stringify({ mouvement: "reduit", fantome: "meilleure" })))).toEqual({ v: 1, mouvement: "reduit", fantome: "meilleure", vibration: "oui" });
+    expect(lireReglages(f, stock(JSON.stringify({ vibration: "non" }))).vibration).toBe("non"); // lot B1 : la même donnée de stockage, une clé de plus
+    expect(lireReglages(f, stock(JSON.stringify({ vibration: "peut-être" }))).vibration).toBe("oui");
+    expect(lireReglages(f, { getItem: () => { throw new Error("refusé"); } })).toEqual({ v: 1, mouvement: "normal", fantome: "aucun", vibration: "oui" });
+  });
+});
+
+describe("la vibration (lot B1)", () => {
+  const reglage = (vibration: "oui" | "non") => () => ({ v: 1 as const, mouvement: "normal" as const, fantome: "aucun" as const, vibration });
+  const faux = () => {
+    const appels: unknown[] = [];
+    return { appels, nav: { vibrate: (m: number | number[]) => (appels.push(m), true) } };
+  };
+  it("vibre quand le réglage est « oui », sur un appareil tactile qui sait vibrer ; le motif est copié", () => {
+    const { appels, nav } = faux();
+    const vibrer = creerVibreur(reglage("oui"), nav, true);
+    vibrer(20);
+    vibrer([10, 30, 10]);
+    expect(appels).toEqual([20, [10, 30, 10]]);
+  });
+  it("ne fait rien : réglage « non » (lu à chaque appel), pas tactile, pas de `vibrate` (iPhone), navigateur absent", () => {
+    const { appels, nav } = faux();
+    let r = reglage("oui");
+    const vibrer = creerVibreur(() => r(), nav, true);
+    r = reglage("non");
+    vibrer(20);
+    creerVibreur(reglage("oui"), nav, false)(20);
+    creerVibreur(reglage("oui"), {}, true)(20);
+    creerVibreur(reglage("oui"), null, true)(20);
+    expect(appels).toEqual([]);
+    r = reglage("oui");
+    vibrer(20); // un réglage changé en pause vaut tout de suite
+    expect(appels).toEqual([20]);
+  });
+  it("un navigateur qui refuse la vibration ne casse pas la partie", () => {
+    const vibrer = creerVibreur(reglage("oui"), { vibrate: () => { throw new Error("refusé"); } }, true);
+    expect(() => vibrer(20)).not.toThrow();
   });
 });
 

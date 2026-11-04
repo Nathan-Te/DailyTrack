@@ -5,7 +5,7 @@ import { liaisonTenue } from "@cdj/ui/src/commandes";
 import { suivantDisponible } from "../fantome";
 import { ligneParDefaut, textePartage, adresseDePartage } from "../partage";
 import { commandesDuJeu } from "./commandes";
-import { lireReglages } from "./reglagesJoueur";
+import { creerVibreur, lireReglages } from "./reglagesJoueur";
 import type { CodeMedaille, ContextePartie, PartieDuJeu } from "./types";
 
 // La partie d'un jeu neuf (à la demande, préchargée par l'accueil) : la boucle à pas fixe, le HUD compact, la pause, l'arrivée, l'envoi (la file hors ligne du kit), les records, le classement, la ligne à partager,
@@ -35,7 +35,8 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const commandes = commandesDuJeu(fiche, def, c.i18n);
   const reglages = lireReglages(c, d.stockage);
   const reduit = reglages.mouvement === "reduit" || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const classable = !c.archive;
+  const classable = !c.archive && !c.essai;
+  const vibrer = creerVibreur(() => lireReglages(c, d.stockage), typeof navigator === "undefined" ? null : navigator, d.tactile);
   c.musique.scene(`theme:${c.theme}`);
   c.musique.baisser(0.6);
 
@@ -71,7 +72,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   let partie: PartieDuJeu = nouvelle();
   function nouvelle(): PartieDuJeu {
     plateau.replaceChildren();
-    return def.nouvellePartie(c.contenu, plateau, { theme: c.theme, reduit, tactile: d.tactile, libelle: t("scene.aria"), fantome: rediffusionDe(fantome) });
+    return def.nouvellePartie(c.contenu, plateau, { theme: c.theme, reduit, tactile: d.tactile, libelle: t("scene.aria"), fantome: rediffusionDe(fantome), langue: c.i18n.langue, t: (cle, params) => c.i18n.t(cle, params), vibrer });
   }
   majFantomeBtn();
   let phase: "jeu" | "pause" | "fin" = "jeu";
@@ -218,8 +219,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     phase = "fin";
     resultat = partie.resultat();
     c.musique.baisser(1);
-    const s = def.seuils(c.contenu);
-    const med = def.medaille(resultat.score, s);
+    const med = def.sansMedaille ? null : def.medaille(resultat.score, def.seuils(c.contenu)); // lot B1 : un jeu sans médaille n'appelle ni l'un ni l'autre
     let nouveau = false;
     if (classable) {
       const r = d.records.proposer(d.stockage, c.date, { score: resultat.score, medaille: med, rediffusion: resultat.rediffusion });
@@ -257,14 +257,16 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     const lu = d.envoi.resultats.get(c.date);
     const e = d.envoi.state;
     const score = def.formatScore(resultat.score, c.i18n.langue);
-    const s = def.seuils(c.contenu);
-    const reste = el("div", { classe: "jeu-medailles" }, el("h3", { texte: t("kit.fin.medailles") }));
-    for (const m of ["author", "gold", "silver", "bronze"] as const) reste.append(medailleUi(c.i18n.socle() as unknown as TraducteurCommun, { type: TYPE[m], obtenue: med !== null && ["author", "gold", "silver", "bronze"].indexOf(m) >= ["author", "gold", "silver", "bronze"].indexOf(med), forme: "case", jeu: fiche.id as Jeu, valeur: String(s[m]) }));
+    const s = def.sansMedaille ? null : def.seuils(c.contenu);
+    const reste = s ? el("div", { classe: "jeu-medailles" }, el("h3", { texte: t("kit.fin.medailles") })) : null;
+    if (s && reste) {
+      for (const m of ["author", "gold", "silver", "bronze"] as const) reste.append(medailleUi(c.i18n.socle() as unknown as TraducteurCommun, { type: TYPE[m], obtenue: med !== null && ["author", "gold", "silver", "bronze"].indexOf(m) >= ["author", "gold", "silver", "bronze"].indexOf(med), forme: "case", jeu: fiche.id as Jeu, valeur: String(s[m]) }));
+    }
     const sens = fiche.colonnes[0]!.sens;
     const premier = resultat.score[0] ?? 0;
-    const suivante = (["bronze", "silver", "gold", "author"] as const).find((m) => (sens === "desc" ? s[m] > premier : s[m] < premier));
-    const encore = suivante ? el("p", { classe: "jeu-message", attrs: { id: "jeu-fin-encore" }, texte: t("kit.fin.medaille.encore", { medaille: c.i18n.t(`medaille.${TYPE[suivante]}`), reste: Math.abs(s[suivante] - premier) }) }) : null;
-    const rang = el("p", { classe: "jeu-fin__rang", attrs: { id: "jeu-fin-rang", role: "status" }, texte: lu ? t("kit.fin.rang", { rang: lu.rank, n: lu.participants }) + (lu.improved ? ` · ${t("kit.fin.record.nouveau")}` : lu.deja ? "" : ` · ${t("kit.fin.record.pasMieux")}`) : classable ? (messageEnvoi() || t("kit.fin.rang.attente")) : t("kit.fin.archive") });
+    const suivante = s ? (["bronze", "silver", "gold", "author"] as const).find((m) => (sens === "desc" ? s[m] > premier : s[m] < premier)) : undefined;
+    const encore = s && suivante ? el("p", { classe: "jeu-message", attrs: { id: "jeu-fin-encore" }, texte: t("kit.fin.medaille.encore", { medaille: c.i18n.t(`medaille.${TYPE[suivante]}`), reste: Math.abs(s[suivante] - premier) }) }) : null;
+    const rang = el("p", { classe: "jeu-fin__rang", attrs: { id: "jeu-fin-rang", role: "status" }, texte: lu ? t("kit.fin.rang", { rang: lu.rank, n: lu.participants }) + (lu.improved ? ` · ${t("kit.fin.record.nouveau")}` : lu.deja ? "" : ` · ${t("kit.fin.record.pasMieux")}`) : classable ? (messageEnvoi() || t("kit.fin.rang.attente")) : t(c.archive ? "kit.fin.archive" : "kit.fin.essai") });
     const pseudo = e.statut === "name" ? formulairePseudo(e.code, e.suggestions) : null;
     const partager = bouton1("jeu-partager", "kit.fin.partager", () => void partagerLigne(med, lu?.rank, lu?.participants));
     const etatPartage = el("p", { classe: "jeu-message", attrs: { id: "jeu-partage-etat", role: "status" } });
@@ -278,7 +280,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
       ...(pseudo ? [pseudo] : []),
       ...(nouveau && !lu ? [el("p", { classe: "jeu-message", texte: t("kit.fin.record.nouveau") })] : []),
       ...(encore ? [encore] : []),
-      reste,
+      ...(reste ? [reste] : []),
       el("div", { classe: "jeu-secondaires" }, bouton1("jeu-rejouer", "kit.fin.rejouer", () => recommencer(), "marque"), partager, bouton1("jeu-fin-classement", "kit.fin.classement", () => void ouvrirClassement()), bouton1("jeu-fin-accueil", "kit.fin.accueil", () => c.retour())),
       etatPartage,
     );

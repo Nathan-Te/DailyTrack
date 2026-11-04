@@ -37,6 +37,14 @@ export interface OptionsPartie {
   libelle: string;
   /** Le fantôme choisi : la rediffusion à montrer (la meilleure partie du joueur, ou celle du Diamant), ou `null`. */
   fantome: string | null;
+  /** Lot B1 (retours de Blocks) — la langue du joueur et le traducteur de la partie : un jeu qui écrit un texte en scène (« +120 », « Plus de place ! ») le prend ici, dans son catalogue (celui du jeu et celui du kit, réunis). */
+  langue: "fr" | "en";
+  t(cle: string, params?: Readonly<Record<string, string | number>>): string;
+  /**
+   * Lot B1 — une vibration (téléphone), **respectant le réglage « Vibration » du joueur** (lu à chaque appel : un réglage changé en pause vaut tout de suite). Ne fait rien sans réglage « oui », sans `navigator.vibrate` (iPhone) ni sur un appareil sans écran tactile.
+   * Le jeu qui s'en sert déclare `vibration: true` dans sa définition (le réglage n'apparaît dans les Réglages que pour lui). Un motif est une durée en ms, ou une suite durée / pause.
+   */
+  vibrer(motif: number | readonly number[]): void;
 }
 
 /** Une partie en cours, côté jeu : son état, son rendu et ses entrées de scène. Le kit en tient la boucle, le HUD, la pause et la fin. */
@@ -81,6 +89,16 @@ export interface DefinitionJeu<C> {
   scorePartage(score: readonly number[], langue: "fr" | "en"): string;
   /** Les « points » de l'aide « Comment jouer » (clés du catalogue du jeu), dans l'ordre. */
   aide: readonly string[];
+  /**
+   * Lot B1 — **cette partie est-elle classable ?** Reçoit l'adresse de la page (`location.search`). `false` : une partie d'essai (scénario, réglage `?debug&tune`…) — le kit ne la classe pas, ne l'envoie pas,
+   * ne la garde pas dans les records et le dit au joueur (« Partie d'essai : non classée »), **sans passer la page en archive**. Absente : toute partie du jour est classable. Un jeu ne répond `false` que hors production
+   * (les outils d'essai y sont fermés, règle R9) ; le serveur refuse de toute façon la rediffusion d'un essai.
+   */
+  classable?(adresse: string): boolean;
+  /** Lot B1 — **un jeu sans médaille** : l'écran de fin n'affiche ni la liste des médailles ni « encore … », `seuils` et `medaille` ne sont pas appelées et le record garde `medaille: null`. Absente : `false`. */
+  sansMedaille?: boolean;
+  /** Lot B1 — le jeu fait vibrer l'appareil (`OptionsPartie.vibrer`) : le réglage « Vibration » (oui / non) apparaît dans ses Réglages. Absente : `false`. */
+  vibration?: boolean;
 }
 
 export interface CataloguesJeu {
@@ -116,6 +134,8 @@ export interface ContexteJeu<C> {
   theme: string;
   /** Un jour passé (`?seed=`) : jamais classé. */
   archive: boolean;
+  /** Lot B1 — une partie d'essai (`DefinitionJeu.classable` a dit `false`) : jamais classée non plus, mais le jour joué reste celui d'aujourd'hui. */
+  essai: boolean;
   musique: import("@cdj/musique/branche").Musique;
 }
 export interface ContextePartie<C> extends ContexteJeu<C> {

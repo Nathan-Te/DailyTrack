@@ -16,6 +16,7 @@ Une ligne par dossier ; le texte long (contenu, particularités, Tower, Cibles) 
 | `packages/sim` · `apps/web` | simulation pure ; le jeu (Vite + Three.js), e2e | Track | `packages/sim/CLAUDE.md` · `apps/web/CLAUDE.md` |
 | `packages/jump-sim` · `apps/jump` | simulation du saut ; le jeu | Jump | `packages/jump-sim/CLAUDE.md` · `apps/jump/CLAUDE.md` |
 | `packages/tower-sim` · `apps/tower` | simulation (Rapier) ; le jeu — 3ᵉ jeu, branché sur la plateforme, `off` jusqu'à ce que Nathan le publie | Tower | `packages/tower-sim/CLAUDE.md` · `apps/tower/CLAUDE.md` · index `docs/tower/consignes.md` |
+| `packages/blocks-sim` · `apps/blocks` | simulation (grille 8 × 8, pièces posées au doigt) ; le jeu — 4ᵉ jeu, branché sur la plateforme par le kit (`brancherJeu`), arcade, `off` jusqu'à ce que Nathan le publie ; blocs du module commun `@cdj/visuels` | Blocks | `apps/blocks/CLAUDE.md` · index `docs/blocks/consignes.md` |
 | `packages/cibles-sim` · `apps/cibles` | « Cibles » : le jeu témoin, modèle du générateur de jeu | témoin | `docs/cibles/consignes.md` |
 | `apps/api` | serveur de la plateforme (registre, identité, classements, Salon, profil, portail, admin), déploiement, recette | **partagée** | `apps/api/CLAUDE.md` |
 | `packages/core` · `packages/clock` | socle sans logique de jeu ; jour de Paris | **partagée** | `packages/core/CLAUDE.md` · `apps/api/CLAUDE.md` « Jour de Paris » |
