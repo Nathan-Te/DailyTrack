@@ -55,4 +55,4 @@ Part du Diamant que fait le glouton, par jour : Q1 3 %, **médiane 8 %**, **Q3 2
 
 ## Pour Nathan
 (1) Confirmer ou changer **les fractions 60 / 20 / 8** et les cibles de rampe (médiane du bot 130 pièces). (2) **Décider la règle des jours courts** ci-dessus. (3) Figer ou non le Diamant dans les jours. (4) Musique de Blocks. (5) Dessin propre de l'étiquette, vibration (B2).
-**Zones** : `config/jeux/blocks.json` (+ projections et `*.generated.*`), `docs/plateforme/traductions.md` régénéré (exceptions permises) ; rien d'autre hors zone.
+**Zones** : `config/jeux/blocks.json` (+ projections et `*.generated.*`), `docs/plateforme/traductions.md` régénéré (exceptions permises). **Deux fichiers hors zone, forcés par les six thèmes, que le job `zones` signalera** : `apps/portail/src/catalogue.ts` (les clés `portail.theme.blocks.*` : les deux de B0 étaient des « (à remplacer) » pour `clair` / `sombre` ; sans les six noms le test `apps/portail/test/jeuxFiches.test.ts` échoue) et `packages/musique/src/fiches.production.generated.ts` (produit par `npm run fiches` ; hors de la liste d'exceptions). À valider par Nathan, ou à reprendre dans un lot de la plateforme.
