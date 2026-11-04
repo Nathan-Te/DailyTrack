@@ -219,8 +219,8 @@ test("vitrine /ui/ : chaque composant en français et en anglais, sur crème et 
 });
 
 // Lot DA1 : la planche « Blocs » de la vitrine — chaque pièce dessinée en Canvas 2D et par le dessinateur de Tower (Three.js) à partir de la même description ; la vitrine mesure l'écart de pixels de chaque paire (`data-ecart`).
-// Le rendu doit être le même à l'œil : le crénelage des bords donne un peu d'écart (mesuré : 0,2 % au plus), un défaut de dessin (un œil recouvert, une couleur, un relief) en donne dix fois plus. Chromium seulement (WebGL).
-test("vitrine /ui/ › Blocs : les pièces Canvas 2D et celles de Tower sont les mêmes, sur chaque thème, avec les états des yeux", async ({ browser }) => {
+// Le rendu doit être le même à l'œil : le crénelage des bords donne un peu d'écart (mesuré : 0,2 % au plus), un défaut de dessin (un œil recouvert, une couleur, un relief) en donne dix fois plus. Chromium seulement (WebGL). Régression (la nuit) : l'Essentiel d'une grosse PR tient dans son budget de specs (`ciZones.test.ts`), et la parité structurelle des deux dessinateurs est gardée par les unitaires de `packages/visuels`.
+test("vitrine /ui/ › Blocs : les pièces Canvas 2D et celles de Tower sont les mêmes, sur chaque thème, avec les états des yeux", { tag: "@regression" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser, { viewport: { width: 1280, height: 900 }, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/ui/`);
   await page.waitForSelector("[data-blocs][data-pret=true]", { timeout: 60_000 });
