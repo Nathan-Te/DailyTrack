@@ -211,7 +211,7 @@ export function preparerCopie(src, { dansConfig }) {
   const b = readFileSync(budgets, "utf8");
   const ancre = b.indexOf("\n| `tower.jsCss`");
   const finLigne = b.indexOf("\n", ancre + 1);
-  writeFileSync(budgets, b.slice(0, finLigne) + "\n| `essai.jsCss` | Essai | JS + CSS du premier chargement du jeu fictif | premier | 40 Ko | 30 000 | 10 000 |" + b.slice(finLigne));
+  writeFileSync(budgets, b.slice(0, finLigne) + "\n| `essai.jsCss` | Essai | JS + CSS du premier chargement du jeu fictif | premier | 32 Ko | 30 000 | 2 000 |" + b.slice(finLigne));
   const ui = join(copie, "packages/ui/src");
   inserer(join(ui, "catalogue.ts"), '"jeu.tower.nom"', CLES_COMMUN.fr, 0);
   inserer(join(ui, "catalogue.en.ts"), '"jeu.tower.nom"', CLES_COMMUN.en, 0);
