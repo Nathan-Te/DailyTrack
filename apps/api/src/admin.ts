@@ -5,6 +5,7 @@ import { SESSION_MS, cookieDe, cookieEfface, cookieOuvert, createSessions, type 
 import { WithHeaders } from "./cache";
 import type { Diffusion } from "./diffusion";
 import type { Jeux } from "./jeux";
+import type { Mesures } from "./mesures";
 import type { Retours } from "./retours";
 import type { Avatars } from "./avatars";
 import type { Groupes } from "./groupes";
@@ -83,6 +84,8 @@ export interface AdminDeps {
   allowedOrigins?: readonly string[];
   /** La révision déployée (Cloud Run). */
   revision?: string;
+  /** Lot D3 : les mesures de l'instance (mémoire, retard de la boucle d'événements) pour le tableau de bord ; absentes (tests, outils) : le tableau n'a pas ce bloc. */
+  mesures?: Mesures;
   /** Vide la mémoire de l'instance après une action (classements gardés du portail). */
   oublier: () => void;
   /** Lot N2 : les nouveautés et le message en direct (leurs routes d'administration). */
@@ -435,6 +438,8 @@ export function createAdmin(deps: AdminDeps) {
         erreurs24h: { serveur: erreurs.serveur, rediffusions: erreurs.rediffusions, perimes: erreurs.perimes, limites: erreurs.limites },
         /** Lot D2 (C1) : les refus par cause et par jeu, sur 24 h et sur 7 jours, avec le détail par code. */
         refus,
+        /** Lot D3 : l'instance qui répond (une instance de Cloud Run ne voit pas les autres) : sa mémoire et son plus grand retard de boucle pendant une requête, sur 24 h ; absent si l'instance n'est pas mesurée. */
+        ...(deps.mesures ? { instance: deps.mesures.instantane() } : {}),
         /** La place des « PR depuis la dernière mise en production » (lot N2) : pas de chiffre ici. */
         prDepuisMiseEnProduction: null,
       },

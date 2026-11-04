@@ -36,3 +36,10 @@ describe("le Dockerfile de l'image du serveur nomme chaque jeu des fiches (lot K
     });
   }
 });
+
+describe("le Dockerfile pose le fil de calcul des niveaux du jour (lot D3)", () => {
+  it("niveaux-fil.mjs est construit par build-node.mjs et copié à côté de server.mjs (sans lui, le calcul du niveau retombe dans le fil principal)", () => {
+    expect(dockerfile).toContain("COPY --from=build /app/apps/api/dist/niveaux-fil.mjs ./niveaux-fil.mjs");
+    expect(readFileSync(join(ROOT, "apps/api/scripts/build-node.mjs"), "utf8")).toContain('outfile: "dist/niveaux-fil.mjs"');
+  });
+});

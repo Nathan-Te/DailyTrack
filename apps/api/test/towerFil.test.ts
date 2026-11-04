@@ -5,16 +5,16 @@ import { build } from "esbuild";
 import { dailyTower, decoderRediffusion, encoderRediffusion, rejouer, TOWER_GENERATOR_VERSION } from "@cdj/tower-sim";
 import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { jouerScripte } from "../scripts/tower-aide";
+import { fixtureJour, jouerScripte } from "../scripts/tower-aide";
 import { D, monterTower } from "../scripts/tower-test";
 import { HttpError } from "../src/errors";
 import { executeurFil } from "../src/jeux/fil";
 import { CODES_ERREUR } from "../src/codesErreur";
 import { RefusJeu } from "../src/jeux/contrat";
-import { type DemandeRejeu, executeurPrincipal, rejouerTower, UNITES_REJEU_TOWER } from "../src/towerRejeu";
-import type { Resultat } from "@cdj/tower-sim";
+import { type DemandeRejeu, type DemandeTower, type ReponseTower, examinerParLeFil, examinerSurPlace, executeurPrincipal, rejouerTower, UNITES_REJEU_TOWER } from "../src/towerRejeu";
 
-const fil_ = (fichier: string, options?: { fileMax?: number; delaiMs?: number }) => executeurFil<DemandeRejeu, Resultat>(fichier, options);
+
+const fil_ = (fichier: string, options?: { fileMax?: number; delaiMs?: number }) => executeurFil<DemandeTower, ReponseTower>(fichier, options);
 import { playerId, TEST_DB } from "./helpers";
 
 // Lot T4 — le rejeu serveur de Tower : un seul point d'entrée (`rejouerTower`), derrière lequel le calcul tourne dans le fil principal (repli) ou dans un fil de calcul (`worker_threads`).
@@ -118,6 +118,26 @@ describe(`Tower : le rejeu serveur (${TEST_DB})`, () => {
       const rb = await b.call("POST", "/api/tower/submit", { replay: code, name: "A" }, { headers: { "X-Player-Id": playerId(1) } });
       expect(ra.status, JSON.stringify(ra.body)).toBe(200);
       expect(ra.body).toEqual(rb.body);
+    } finally {
+      await fil.fermer?.();
+    }
+  });
+
+  it("lot D3 : l'examen d'un jour préparé passe par le fil et donne la même réponse qu'en place (le Rapier du fil principal n'est pas chargé pour lui)", async () => {
+    const date = "2026-11-07";
+    const json = fixtureJour(date);
+    const jour = D(date);
+    const enPlace = examinerSurPlace(R, json, jour);
+    expect("lu" in enPlace).toBe(true);
+    const fil = fil_(fichier);
+    try {
+      expect(await examinerParLeFil(fil, json, jour)).toEqual(enPlace);
+      // un jour qui ne se vérifie pas : le même refus des deux côtés
+      const refus = await examinerParLeFil(fil, { ...json, medailles: null }, jour);
+      expect(refus).toEqual(examinerSurPlace(R, { ...json, medailles: null }, jour));
+      expect(refus).toHaveProperty("refus");
+      // le repli (pas de fil) n'examine pas par le fil : l'appelant le fait sur place
+      expect(await examinerParLeFil(executeurPrincipal(), json, jour)).toBeNull();
     } finally {
       await fil.fermer?.();
     }

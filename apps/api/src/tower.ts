@@ -22,13 +22,14 @@ import {
   lireJour,
   ErreurRediffusion,
 } from "@cdj/tower-sim";
-import { examinerJourPrepare } from "@cdj/tower-sim/bot";
 import { FICHES_SERVEUR } from "./fiches.generated";
 import type { GameDefinition, GameInstance, Platform } from "./games";
 import { inputsHash } from "./copies";
 import { type AdaptateurTable, type ContratJeu, creerJeu, type LigneBrute, type LigneNiveau, RefusJeu } from "./jeux/index";
 import { sha256Hex } from "./players";
-import { type ExecuteurRejeu, UNITES_REJEU_TOWER, executeurPrincipal, refusDeRediffusion, rejouerTower } from "./towerRejeu";
+import { type ExecuteurRejeu, UNITES_REJEU_TOWER, examinerParLeFil, examinerSurPlace, executeurPrincipal, refusDeRediffusion, rejouerTower, silhouetteDe } from "./towerRejeu";
+
+export { silhouetteDe };
 
 // Tower (`tower`) : le serveur du 3ᵉ jeu (lot T4), **depuis le lot K2 un jeu du module des jeux** (`jeux/`). Ce fichier ne garde que ce qui est propre à Tower : son **contrat** (`contratTower` : le contenu du jour, la rediffusion,
 // le rejeu, les médailles, le fantôme Diamant, le format de ses réponses) et son **adaptateur de table** (`ADAPTATEUR_TOWER` : `tower_results`, hauteur ↓, vies ↓, ticks ↑). Les routes, l'ordre de validation d'un envoi, le
@@ -246,11 +247,6 @@ export function towerInputs(plages: readonly Plage[]): string {
   return `tower|${out.join(";")}`;
 }
 
-/** La silhouette d'une vue finale : les pièces encore sur la tour. */
-export function silhouetteDe(vue: Pick<VuePartie, "pieces">): PieceSilhouette[] {
-  return vue.pieces.filter((p) => p.etat === "libre").map((p) => ({ kind: p.kind, rot: p.rot, taille: p.taille, x: p.x, y: p.y, angle: p.angle }));
-}
-
 const par = (m: Medailles) => ({ author: m.auteur, gold: m.or, silver: m.argent, bronze: m.bronze });
 const msOfTicks = (ticks: number) => Math.round((ticks * 1000) / 60);
 const n = (v: unknown): number => Number(v);
@@ -332,15 +328,16 @@ export function contratTower(platform: Platform, options: TowerOptions | undefin
     async calculer(day) {
       const raw = frozen[formatDay(day)];
       if (raw !== undefined) {
-        const ex = examinerJourPrepare(await chargerR(), raw, day);
-        if (typeof ex !== "string") {
+        // Lot D3 : par le fil de calcul s'il y en a un (Rapier n'est alors chargé que dans le fil), sinon sur place.
+        const ex = (await examinerParLeFil(executeur, raw, day)) ?? examinerSurPlace(await chargerR(), raw, day);
+        if (!("refus" in ex)) {
           const rediffusion = decoderRediffusion(ex.lu.preuve);
           const niveau: Niveau = {
             info: infoDe(day, ex.lu.contenu, ex.lu.medailles, "prepare"),
             contenu: ex.lu.contenu,
             medailles: ex.lu.medailles,
             authorHash: await inputsHash(towerInputs(rediffusion.plages)),
-            silhouette: silhouetteDe(ex.rejeu.vue),
+            silhouette: ex.silhouette,
           };
           return { niveau, ligne: ligneDe(niveau, true) };
         }
@@ -351,7 +348,7 @@ export function contratTower(platform: Platform, options: TowerOptions | undefin
           const niveau: Niveau = { info: infoDe(day, lu.contenu, m, "genere"), contenu: lu.contenu, medailles: m, authorHash: null, silhouette: null };
           return { niveau, ligne: ligneDe(niveau, true) };
         }
-        log("WARNING", "DailyTower : fichier du jour refusé, jour généré", { day: formatDay(day), reason: ex.slice(0, 120) });
+        log("WARNING", "DailyTower : fichier du jour refusé, jour généré", { day: formatDay(day), reason: ex.refus.slice(0, 120) });
       }
       const contenu = dailyTower(day, TOWER_GENERATOR_VERSION, 0);
       const m = estimationGeometrique(contenu);

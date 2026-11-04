@@ -1,4 +1,6 @@
-import { ErreurRediffusion, type Resultat, type Rapier, type Scenario, rejouer } from "@cdj/tower-sim";
+import { ErreurRediffusion, type Resultat, type Rapier, type Scenario, type VuePartie, rejouer } from "@cdj/tower-sim";
+import { examinerJourPrepare } from "@cdj/tower-sim/bot";
+import type { PieceSilhouette } from "./tower";
 import { RefusJeu } from "./jeux/contrat";
 import { type ExecuteurRejeu as ExecuteurGenerique, RefusDuFil } from "./jeux/fil";
 
@@ -26,8 +28,36 @@ export interface DemandeRejeu {
   rediffusion: string;
 }
 
+/** La silhouette d'une vue finale : les pièces encore sur la tour. */
+export function silhouetteDe(vue: Pick<VuePartie, "pieces">): PieceSilhouette[] {
+  return vue.pieces.filter((p) => p.etat === "libre").map((p) => ({ kind: p.kind, rot: p.rot, taille: p.taille, x: p.x, y: p.y, angle: p.angle }));
+}
+
+/**
+ * Lot D3 (C10) — **l'examen d'un jour préparé** (le fichier se relit, se régénère, et sa preuve rejouée donne le Diamant écrit : `examinerJourPrepare`) est un rejeu comme les autres : avec un fil de calcul il y passe,
+ * pour que **le WebAssembly de Rapier ne soit chargé qu'une fois par processus** (dans le fil), jamais aussi dans le fil principal (deux moteurs côte à côte : mesuré, c'était la moitié de la mémoire de Tower).
+ * La demande et la réponse sont des données (elles traversent le fil).
+ */
+export interface DemandeExamen {
+  examen: { json: unknown; jour: number };
+}
+export type ExamenJour = Exclude<ReturnType<typeof examinerJourPrepare>, string>;
+export type ReponseExamen = { refus: string } | { lu: ExamenJour["lu"]; silhouette: PieceSilhouette[] };
+
+/** Ce que le fil de calcul reçoit : un rejeu, ou l'examen d'un jour préparé. */
+export type DemandeTower = DemandeRejeu | DemandeExamen;
+
+/** Ce que le fil de calcul rend : le résultat d'un rejeu, ou la réponse d'un examen. */
+export type ReponseTower = Resultat | ReponseExamen;
+
 /** Ce qui exécute un rejeu de Tower : le fil principal, ou le fil de calcul (`executeurFil` de `jeux/fil.ts`). */
-export type ExecuteurRejeu = ExecuteurGenerique<DemandeRejeu, Resultat>;
+export type ExecuteurRejeu = ExecuteurGenerique<DemandeTower, ReponseTower>;
+
+/** L'examen en place, avec le Rapier donné (le fil de calcul, ou le repli dans le fil principal). */
+export function examinerSurPlace(R: Rapier, json: unknown, jour: number): ReponseExamen {
+  const ex = examinerJourPrepare(R, json, jour);
+  return typeof ex === "string" ? { refus: ex } : { lu: ex.lu, silhouette: silhouetteDe(ex.rejeu.vue) };
+}
 
 /** Le repli : le rejeu dans le fil principal. Rapier est chargé une fois, à la demande (`@cdj/tower-sim/rapier`). */
 export function executeurPrincipal(): ExecuteurRejeu {
@@ -37,6 +67,7 @@ export function executeurPrincipal(): ExecuteurRejeu {
     async rejouer(d) {
       pret ??= import("@cdj/tower-sim/rapier").then((m) => m.chargerRapier());
       const R = await pret;
+      if ("examen" in d) return examinerSurPlace(R, d.examen.json, d.examen.jour);
       return rejouer(R, d.contenu, d.rediffusion);
     },
   };
@@ -64,10 +95,19 @@ export function refusDeRediffusion(code: string): RefusJeu {
  */
 export async function rejouerTower(executeur: ExecuteurRejeu, d: DemandeRejeu): Promise<Resultat> {
   try {
-    return await executeur.rejouer(d);
+    return (await executeur.rejouer(d)) as Resultat;
   } catch (e) {
     if (e instanceof ErreurRediffusion) throw refusDeRediffusion(e.code);
     if (e instanceof RefusDuFil) throw refusDeRediffusion(e.code);
     throw e;
   }
+}
+
+/**
+ * Lot D3 : examine un jour préparé **par le fil de calcul** quand il y en a un (`executeur.nom === "fil"`), sinon rend `null` : l'appelant l'examine en place (repli, tests, exécuteurs de test qui comptent les rejeux
+ * de joueurs). Un fil occupé ou en panne lève `503 busy` comme pour un rejeu.
+ */
+export async function examinerParLeFil(executeur: ExecuteurRejeu, json: unknown, jour: number): Promise<ReponseExamen | null> {
+  if (executeur.nom !== "fil") return null;
+  return (await executeur.rejouer({ examen: { json, jour } })) as ReponseExamen;
 }

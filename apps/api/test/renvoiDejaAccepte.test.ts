@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { jouerScripte } from "../scripts/tower-aide";
 import { D, monterTower } from "../scripts/tower-test";
 import { replayUnits } from "../src/replayCost";
-import { UNITES_REJEU_TOWER, type ExecuteurRejeu } from "../src/towerRejeu";
+import { UNITES_REJEU_TOWER, type DemandeRejeu, type ExecuteurRejeu } from "../src/towerRejeu";
 import { DAY, TEST_DB, makeApi, parisDayStart, pilotReplay, playerId } from "./helpers";
 
 // Lot D2 (C5) — un renvoi déjà accepté répond AVANT le rejeu : même joueur, même jour, même rediffusion que le résultat écrit → 200 `deja: true`, `improved: false`, le résultat existant, sans
@@ -90,7 +90,8 @@ describe(`C5 — Tower : le renvoi déjà accepté (${TEST_DB})`, () => {
   const executeur: ExecuteurRejeu = {
     async rejouer(d) {
       appels++;
-      return rejouer(await chargerRapier(), d.contenu, d.rediffusion);
+      const demande = d as DemandeRejeu; // lot D3 : l'exécuteur reçoit aussi des examens de jour, ici seuls des rejeux arrivent
+      return rejouer(await chargerRapier(), demande.contenu, demande.rediffusion);
     },
   };
   beforeAll(async () => {

@@ -34,6 +34,9 @@ const commun = {
 // Lot K4e : `src/<id>FilTravail.ts` → `dist/<id>-fil.mjs`, pour chaque fiche qui le demande.
 for (const f of fiches.filter((x) => x.rejeu.fil)) await build({ ...commun, entryPoints: [`src/${f.id}FilTravail.ts`], outfile: `dist/${f.id}-fil.mjs` });
 
+// Lot D3 (C9) : le fil de calcul des niveaux du jour (Jump, Track), commun à la plateforme : `dist/niveaux-fil.mjs`, posé à côté de `server.mjs`.
+await build({ ...commun, entryPoints: ["src/niveauxFilTravail.ts"], outfile: "dist/niveaux-fil.mjs" });
+
 await build({
   entryPoints: ["src/server.ts"],
   bundle: true,

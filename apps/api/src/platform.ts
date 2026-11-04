@@ -60,6 +60,8 @@ export interface PlatformOptions {
   /** Lot R5 : multiple des limites par adresse pour l'adresse de connexion (`PEER_FACTOR` par défaut ; 0 : coupé). */
   peerFactor?: number;
   demoPlayers: boolean;
+  /** Lot D3 : les mesures de l'instance (étapes d'un envoi) ; absentes : rien n'est mesuré. */
+  etape?: (e: "controles" | "rejeu") => void;
   /** Lot R9 : voir `ApiOptions.allowCopies` (défaut : faux, les copies sont refusées). */
   allowCopies: boolean;
   /** Les lignes des jeux qui suivent un « Changer mon code » (dans la même transaction que la plateforme). */
@@ -190,6 +192,7 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
   let replayMinute = -1;
   let replaysThisMinute = 0;
   function spendReplays(units = 1): void {
+    options.etape?.("rejeu"); // lot D3 : le plafond est franchi juste avant le rejeu, quel que soit le jeu
     const cap = options.replaysPerMinute;
     if (cap === undefined || !Number.isFinite(cap)) return;
     const minute = Math.floor(now() / 60_000);
@@ -228,7 +231,10 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
     }
     try {
       const body: unknown = JSON.parse(text);
-      if (body && typeof body === "object" && !Array.isArray(body)) return body as Record<string, unknown>;
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        options.etape?.("controles"); // lot D3 : fin de la lecture (débit et corps), début des contrôles
+        return body as Record<string, unknown>;
+      }
     } catch {
       /* tombe sur l'erreur ci-dessous */
     }
