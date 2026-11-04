@@ -4,6 +4,7 @@ import { medalFor, medalsFor, replayTicks, resumeRegistreTrack } from "@cdj/sim"
 import { dailyLevel, jumpMedalFor, TICK_RATE, type DailyLevel } from "@cdj/jump-sim";
 import { SESSION_MS } from "../src/adminSession";
 import { inputsHash, trackInputs } from "../src/copies";
+import { creerMesures } from "../src/mesures";
 import { SCHEMA } from "../src/db";
 import { refOfPlayer } from "../src/players";
 import { nameKey } from "../src/pseudos";
@@ -288,6 +289,25 @@ describe(`panneau : tableau de bord (${TEST_DB})`, () => {
     const t = await adminApi();
     for (const p of ["/api/admin/tableau", "/api/admin/joueurs", "/api/admin/joueurs/000000000000", "/api/admin/journal"]) expect((await t.call("GET", p)).status, p).toBe(401);
     expect((await t.call("POST", "/api/admin/joueurs/000000000000/masquer", { masque: true, ...confirmer })).status).toBe(401);
+  });
+
+  it("lot D3 : l'instance qui répond donne sa mémoire et son plus grand retard de boucle sur 24 h — seulement quand elle est mesurée", async () => {
+    const sans = await adminApi();
+    const rSans = await (await connecte(sans)).adm("GET", "/api/admin/tableau");
+    expect(rSans.status).toBe(200);
+    expect((rSans.body as { etat: Record<string, unknown> }).etat).not.toHaveProperty("instance");
+
+    const mesures = creerMesures({ log: () => {} });
+    const avec = await adminApi({ mesures });
+    const r = await (await connecte(avec)).adm("GET", "/api/admin/tableau");
+    const instance = (r.body as { etat: { instance?: { depuisMs: number; memoire: { rssMo: number; tasMo: number; externeMo: number }; retardMax24hMs: number; blocages24h: number } } }).etat.instance;
+    expect(instance).toBeDefined();
+    expect(instance!.memoire.rssMo).toBeGreaterThan(10);
+    expect(instance!.memoire.tasMo).toBeGreaterThan(1);
+    expect(instance!.retardMax24hMs).toBe(0);
+    expect(instance!.blocages24h).toBe(0);
+    // Rien de personnel : seulement des nombres.
+    expect(JSON.stringify(instance)).toMatch(/^[\d{}":,.a-zA-Z]+$/);
   });
 
   it("les chiffres du jour : joueurs distincts des deux jeux, hier, nouveaux profils, Track finis, Jump finis et leurs morts", async () => {
