@@ -46,10 +46,12 @@ export async function monterGroupes(zone: HTMLElement, o: OptionsGroupes): Promi
   const onglets = el(
     "div",
     { classe: "groupes-bascule", attrs: { role: "radiogroup", "aria-label": t("classement.vues.aria"), id: "groupes-vues" } },
-    ...c.vues.map((v) => {
+    ...c.vues.flatMap((v) => {
       const b = el("button", { classe: "dj-bouton dj-bouton--secondaire", attrs: { type: "button", role: "radio", "aria-checked": String(v === c.vue), id: `groupes-vue-${v}` }, texte: nomDeVue(v) });
       b.addEventListener("click", () => o.surVue(v));
-      return b;
+      // Lot A3 : les jeux d'arcade viennent après un séparateur « Arcade ».
+      const premierArcade = c.arcade?.[0] === v;
+      return premierArcade ? [el("span", { classe: "classement-vues__sep", attrs: { role: "presentation" }, texte: t("classement.vues.arcade") }), b] : [b];
     }),
   );
   const lien = (g: { nom: string; id: string; avatar?: string }) =>

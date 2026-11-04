@@ -18,6 +18,7 @@
       "id": "tower",
       "accroche": "portail.tower.accroche",
       "cumul": false,
+      "categorie": "arcade",
       "format": "hauteur"
     }
   ]

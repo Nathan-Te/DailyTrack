@@ -45,6 +45,9 @@ export interface FabricationJours {
   apresPose?: { paquet: string; script: string; sorties: string[] };
 }
 
+import type { CategorieJeu } from "./jeux";
+export type { CategorieJeu };
+
 export interface FicheJeu {
   /** Le dossier du jeu sur le site (`/tower/`), son préfixe de route (`/api/tower/`) et son nom de dossier (`apps/tower`). `a-z`, `0-9`, `-`. */
   id: string;
@@ -73,6 +76,16 @@ export interface FicheJeu {
   etatDepart: "off" | "on";
   /** Le premier jour du jeu (AAAA-MM-JJ) ; sa numérotation. */
   premierJour: string;
+  /**
+   * Lot A3 : la catégorie du jeu. `jour` (Track, Jump) compte dans la journée (journée parfaite, série, ligne de partage du portail) et peut entrer au cumul ; `arcade` (Tower) a son niveau du jour et son
+   * classement, mais **ne compte ni dans la journée ni dans le cumul** (`classement.cumul: false` obligatoire).
+   */
+  categorie: CategorieJeu;
+  /**
+   * Lot A3 : le premier jour (AAAA-MM-JJ) où `categorie` s'applique ; **avant, c'était l'autre catégorie**. Absent : depuis toujours (un jeu qui naît dans sa catégorie). Changer la catégorie d'un jeu qui a déjà
+   * des journées acquises = écrire ici **le lendemain de la fusion** (comme `live_from`, lot P) : les journées et séries déjà acquises ne bougent pas (`categorieLe`, `@cdj/core/categorie`).
+   */
+  categorieDepuis?: string;
   classement: {
     /** Le tri, départages compris. */
     colonnes: { nom: string; sens: SensClassement }[];
@@ -253,6 +266,8 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
 
   if (f.etatDepart !== "off" && f.etatDepart !== "on") ko("etatDepart", "`off` ou `on`");
   if (typeof f.premierJour !== "string" || !JOUR.test(f.premierJour)) ko("premierJour", "AAAA-MM-JJ");
+  if (f.categorie !== "jour" && f.categorie !== "arcade") ko("categorie", "`jour` ou `arcade`");
+  if (f.categorieDepuis !== undefined && (typeof f.categorieDepuis !== "string" || !JOUR.test(f.categorieDepuis))) ko("categorieDepuis", "AAAA-MM-JJ, ou absent");
 
   const c = f.classement;
   if (!estObjet(c)) ko("classement", "objet attendu");
@@ -262,6 +277,7 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
     if (!["ms", "ticks", "mm", "points"].includes(c.unite as string)) ko("classement.unite", "ms, ticks, mm ou points");
     if (!["temps", "hauteur", "entier"].includes(c.format as string)) ko("classement.format", "temps, hauteur ou entier");
     if (c.cumul === true && c.unite !== "ms" && c.unite !== "ticks") ko("classement.cumul", "seul un jeu au temps entre dans le cumul");
+    if (f.categorie === "arcade" && c.cumul !== false) ko("classement.cumul", "un jeu d'arcade n'entre jamais dans le cumul (false)");
   }
 
   const m = f.medailles;
@@ -459,6 +475,9 @@ export interface ProjectionPortail {
     premierJour?: string;
     /** Absent : vrai (un jeu au temps entre dans le cumul) ; `false` pour un jeu hors du cumul. */
     cumul?: false;
+    /** Lot A3 : absent = `jour` ; `arcade` : hors journée et hors cumul. `categorieDepuis` : le premier jour de la catégorie (voir la fiche). */
+    categorie?: "arcade";
+    categorieDepuis?: string;
     /** Absent : `temps`. */
     format?: FormatScore;
   }[];
@@ -474,6 +493,8 @@ export function projectionPortail(fiches: readonly FicheJeu[]): ProjectionPortai
       ...(f.accrocheTheme !== undefined ? { accrocheTheme: f.accrocheTheme } : {}),
       ...(f.etatDepart === "on" ? { premierJour: f.premierJour } : {}),
       ...(f.classement.cumul ? {} : { cumul: false }),
+      ...(f.categorie === "arcade" ? { categorie: "arcade" as const } : {}),
+      ...(f.categorieDepuis !== undefined ? { categorieDepuis: f.categorieDepuis } : {}),
       ...(f.classement.format !== "temps" ? { format: f.classement.format } : {}),
     })),
   };
@@ -486,6 +507,9 @@ export interface ProjectionServeur {
     code: string;
     etatDepart: "off" | "on";
     premierJour: string;
+    /** Lot A3 : la catégorie (`jour` ou `arcade`) et le premier jour où elle s'applique (absent : depuis toujours). */
+    categorie: CategorieJeu;
+    categorieDepuis?: string;
     classement: FicheJeu["classement"];
     medailles: FicheJeu["medailles"];
     versions: FicheJeu["versions"];
@@ -509,6 +533,8 @@ export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeu
       code: f.code,
       etatDepart: f.etatDepart,
       premierJour: f.premierJour,
+      categorie: f.categorie,
+      ...(f.categorieDepuis !== undefined ? { categorieDepuis: f.categorieDepuis } : {}),
       classement: f.classement,
       medailles: f.medailles,
       versions: f.versions,

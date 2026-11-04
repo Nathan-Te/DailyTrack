@@ -45,10 +45,10 @@ import {
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
-import { choixPourDemain, repartir } from "./mesJeux";
+import { choixPourDemain, ordonnerArcade, repartir } from "./mesJeux";
 import { dans, nonLue } from "./nouveautesDonnees";
 import { boutonRetours } from "./retoursLien";
-import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
+import { categorieDuJeu, ficheDuJeu, titreDeCarte } from "./jeuxFiches";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
 import { construireOptions, nomDuJeu } from "./partageDuJour";
 import { tuileDuClassement } from "./classementVues";
@@ -289,7 +289,7 @@ function ligneNouveautes(t: T): HTMLElement | null {
 }
 
 /** Une étagère de cartouches (celle de « Mes jeux », ou celle des compactes de « Les autres jeux »). */
-function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string, JeuDuJour>, jour: Lecture["jour"] | undefined, neuf: boolean, o: { id: string; epingle: boolean; compacte?: boolean }): HTMLElement {
+function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string, JeuDuJour>, jour: Lecture["jour"] | undefined, neuf: boolean, o: { id: string; epingle: boolean; compacte?: boolean; epingleDe?: (code: string) => boolean }): HTMLElement {
   return el(
     "div",
     { classe: ["portail-etagere", o.compacte && "portail-etagere--compacte"], attrs: { id: o.id } },
@@ -297,7 +297,7 @@ function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string
       const j = parJeu.get(c.jeu);
       // Un joueur inconnu du serveur n'a rien joué : « Pas encore joué » ; sans identité, pareil (rien à attendre).
       const etat = j?.etat ?? (jour && neuf && lecture?.erreur !== "code_revoked" ? ({ statut: "pas_joue" } as const) : undefined);
-      return cartoucheDe(c, t, j ? { ...j, etat } : etat ? { jeu: c.jeu, numero: c.numero, theme: null, seuils: null, premierJour: "", etat } : undefined, { epingle: o.epingle, compacte: o.compacte });
+      return cartoucheDe(c, t, j ? { ...j, etat } : etat ? { jeu: c.jeu, numero: c.numero, theme: null, seuils: null, premierJour: "", etat } : undefined, { epingle: o.epingleDe ? o.epingleDe(c.code) : o.epingle, compacte: o.compacte });
     }),
   );
 }
@@ -381,12 +381,16 @@ function rendre(): void {
   const identite = readIdentity(stockage);
   const parJeu = new Map((jour?.jeux ?? []).map((j) => [j.jeu, j]));
   // Les cartouches que le portail sait dessiner, dans l'ordre du serveur quand il a répondu.
-  const montrees = cartes(day).filter((c) => (jour ? parJeu.has(c.jeu) : c.numero > 0));
+  const toutes = cartes(day).filter((c) => (jour ? parJeu.has(c.jeu) : c.numero > 0));
+  // Lot A3 : les jeux d'arcade ont leur section ; ils ne comptent ni dans « n fini sur m », ni dans « Mes jeux » de la journée, ni dans la ligne de partage.
+  const estArcade = (c: CarteJeu) => categorieDuJeu(c.code, day, parJeu.get(c.jeu)) === "arcade";
+  const montrees = toutes.filter((c) => !estArcade(c));
   const statuts = jour?.joueur ? montrees.map((c) => parJeu.get(c.jeu)!) : [];
   const { finis, total } = avancement(statuts, jour?.joueur?.jeuxDuJour);
   // Lot F1 : mes jeux (épinglés) en cartouches pleines en haut, les autres en compactes dessous ; sans favori, l'accueil d'avant.
   const favoris = listeAffichee(jour?.joueur?.favoris, !!jour?.joueur, favorisLocaux);
   const { sansFavori, mes, autres } = repartir(montrees, favoris);
+  const arcade = ordonnerArcade(toutes.filter(estArcade), favoris);
   const pourDemain = !!jour?.joueur && choixPourDemain(favoris, statuts.filter(compteAujourdhui).map((j) => j.site ?? ""), jour.joueur.jeuxDuJour);
   const neuf = !identite.exists || lecture?.erreur === "unknown_player";
   const journee = jour ? (jour.journee ?? null) : numeroDeJournee(day);
@@ -435,6 +439,17 @@ function rendre(): void {
             { classe: "portail-jeux", attrs: { "aria-labelledby": "portail-autres-titre" } },
             el("div", { classe: "portail-jeux__tete" }, el("h2", { classe: "portail-jeux__titre", attrs: { id: "portail-autres-titre" }, texte: t.t("portail.autresJeux.titre") })),
             etagereDe(t, autres, parJeu, jour, neuf, { id: "autres-jeux", epingle: false, compacte: true }),
+          ),
+        ]
+      : []),
+    // Lot A3 : la section « Arcade » sous les jeux du jour — des cartouches compactes aux couleurs de leur jeu, avec l'étoile ; les favoris d'arcade en tête.
+    ...(arcade.length > 0
+      ? [
+          el(
+            "section",
+            { classe: "portail-jeux", attrs: { "aria-labelledby": "portail-arcade-titre" } },
+            el("div", { classe: "portail-jeux__tete" }, el("h2", { classe: "portail-jeux__titre", attrs: { id: "portail-arcade-titre" }, texte: t.t("portail.arcade.titre") })),
+            etagereDe(t, arcade, parJeu, jour, neuf, { id: "arcade", epingle: false, compacte: true, epingleDe: (code) => favoris.includes(code) }),
           ),
         ]
       : []),

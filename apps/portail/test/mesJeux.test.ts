@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { avancement, type JeuDuJour } from "../src/jour";
-import { choixPourDemain, repartir } from "../src/mesJeux";
+import { choixPourDemain, ordonnerArcade, repartir } from "../src/mesJeux";
 
 // Lot F1 : la répartition « Mes jeux / Les autres jeux » de l'accueil et le compte « n fini sur m » sur mes jeux. Pur.
 const cartes = [{ code: "track" }, { code: "jump" }, { code: "tower" }];
@@ -74,5 +74,30 @@ describe("« à partir de demain »", () => {
   it("un favori éteint (le serveur ne retient aucun jeu montré) : rien à signaler", () => {
     expect(choixPourDemain(["tower"], comptent, [])).toBe(false);
     expect(choixPourDemain(["tower"], comptent, ["track", "jump"])).toBe(false);
+  });
+});
+
+describe("la section Arcade (lot A3)", () => {
+  const arcade = [{ code: "tower" }, { code: "blocks" }, { code: "cibles" }];
+  it("les favoris d'arcade montent en tête de leur section, chaque groupe dans l'ordre de la plateforme", () => {
+    expect(codes(ordonnerArcade(arcade, []))).toEqual(["tower", "blocks", "cibles"]);
+    expect(codes(ordonnerArcade(arcade, ["cibles"]))).toEqual(["cibles", "tower", "blocks"]);
+    expect(codes(ordonnerArcade(arcade, ["cibles", "tower"]))).toEqual(["tower", "cibles", "blocks"]);
+  });
+  it("un favori d'arcade ne change pas « Mes jeux » de la journée : les jeux du jour sont répartis sans lui", () => {
+    const duJour = [{ code: "track" }, { code: "jump" }];
+    const r = repartir(duJour, ["tower"]);
+    expect(r.sansFavori).toBe(true);
+    expect(codes(r.mes)).toEqual(["track", "jump"]);
+  });
+  it("« n fini sur m » ne compte pas un jeu d'arcade (le serveur le marque `compte: false`), épinglé ou non", () => {
+    const fini = { statut: "fini", rang: 1, classes: 1, tempsMs: 1, medaille: null } as const;
+    const jeux = [
+      { jeu: "cdj", site: "track", numero: 1, theme: null, seuils: null, premierJour: "x", etat: fini },
+      { jeu: "jump", site: "jump", numero: 1, theme: null, seuils: null, premierJour: "x", etat: { statut: "pas_joue" } },
+      { jeu: "tower", site: "tower", numero: 1, theme: null, seuils: null, premierJour: "x", etat: fini, compte: false, categorie: "arcade" },
+    ] as unknown as JeuDuJour[];
+    expect(avancement(jeux)).toEqual({ finis: 1, total: 2 });
+    expect(avancement(jeux, ["tower"])).toEqual({ finis: 1, total: 2 }); // épinglé : il ne compte toujours pas
   });
 });

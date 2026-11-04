@@ -17,6 +17,7 @@
   },
   "etatDepart": "on",
   "premierJour": "2026-10-16",
+  "categorie": "jour",
   "classement": {
     "colonnes": [
       {

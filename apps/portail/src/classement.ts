@@ -176,7 +176,9 @@ function barreDesVues(t: T, c: Classement | null): HTMLElement {
     });
     return b;
   });
-  barre.append(...boutons);
+  // Lot A3 : le séparateur « Arcade » avant le premier onglet d'un jeu d'arcade (hors de l'ordre de tabulation : seuls les onglets y sont).
+  const premierArcade = liste.findIndex((o) => o.arcade);
+  barre.append(...boutons.flatMap((b, i) => (i === premierArcade ? [el("span", { classe: "classement-vues__sep", attrs: { role: "presentation" }, texte: t.t("classement.vues.arcade") }), b] : [b])));
   return barre;
 }
 

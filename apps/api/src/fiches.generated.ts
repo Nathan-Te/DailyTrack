@@ -6,6 +6,7 @@ export const FICHES_SERVEUR = [
     "code": "cdj",
     "etatDepart": "on",
     "premierJour": "2026-10-13",
+    "categorie": "jour",
     "classement": {
       "colonnes": [
         {
@@ -100,6 +101,7 @@ export const FICHES_SERVEUR = [
     "code": "jump",
     "etatDepart": "on",
     "premierJour": "2026-10-16",
+    "categorie": "jour",
     "classement": {
       "colonnes": [
         {
@@ -181,6 +183,7 @@ export const FICHES_SERVEUR = [
     "code": "tower",
     "etatDepart": "off",
     "premierJour": "2026-11-02",
+    "categorie": "arcade",
     "classement": {
       "colonnes": [
         {
@@ -266,6 +269,7 @@ export const FICHES_SERVEUR = [
     "code": "cibles",
     "etatDepart": "off",
     "premierJour": "2026-11-02",
+    "categorie": "jour",
     "classement": {
       "colonnes": [
         {
