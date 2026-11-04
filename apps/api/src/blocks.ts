@@ -12,31 +12,27 @@ import {
   rejouer,
   type Resultat,
   scoreParColonnes,
-  seuilsDe,
   themeDuJour,
-  touchesDuBot,
 } from "@cdj/blocks-sim";
-import { inputsHash } from "./copies";
-import { FICHES_SERVEUR } from "./fiches.generated";
 import type { GameDefinition } from "./games";
+import { FICHES_SERVEUR } from "./fiches.generated";
 import { type ContratMinimal, definirJeuNeuf, type FicheServeur, RefusJeu, type RejeuNeuf } from "./jeux/index";
 
-// « Blocks » (`blocks`) : le serveur du jeu témoin du kit (lot K4f). **C'est le contrat minimal d'un jeu neuf**, rien d'autre : le niveau du jour (le fichier figé de l'image s'il se relit et se régénère
-// à l'identique, sinon le générateur courant), le décodage et le rejeu de la rediffusion, les colonnes de classement de la fiche (blocks touchées ↓, tick de la dernière touche ↑), les seuils des médailles
-// (le Diamant est la partie du bot), l'empreinte des entrées. Les routes, l'ordre de validation, le classement, les copies, l'aperçu, l'effacement et les crochets sont ceux du module des jeux (`jeux/`),
-// la table est la table commune `resultats_jeu`. Jamais en production : la fiche dit `temoin: true` (le registre d'un serveur de production ne le monte pas).
+// « Blocks » (`blocks`) : le serveur du jeu (lot B1). **C'est le contrat minimal d'un jeu neuf**, rien d'autre : le niveau du jour (la suite de pièces : le fichier figé de l'image s'il se relit et se régénère à
+// l'identique, sinon le générateur courant), le décodage et le rejeu de la rediffusion (la liste des poses, un octet chacune), les colonnes de classement de la fiche (score ↓, combo maximal ↓ ; puis le premier
+// arrivé, `submitted_at`, que toute table de résultats départage nativement). Le serveur REFUSE une pose illégale, une pose après la fin, une suite au-delà du plafond de 2 000 pièces et une partie non terminée
+// (`invalid_replay`). Les routes, l'ordre de validation, le classement, les copies, l'aperçu, l'effacement et les crochets sont ceux du module des jeux (`jeux/`) ; la table est la table commune `resultats_jeu`.
+// Médailles : aucune avant le lot B3 (le bot Diamant) — `seuils` rend `null`.
 
 const fiche = FICHES_SERVEUR.find((f) => f.id === "blocks") as unknown as FicheServeur;
 
 interface Niveau {
   jour: number;
   contenu: Contenu;
-  /** L'empreinte des entrées de la partie de l'auteur (le bot) : une partie qui la porte est une copie. */
-  authorHash: string;
 }
 type Mesure = Resultat;
 interface Rejeu extends RejeuNeuf {
-  touches: Rediffusion["touches"];
+  actions: Rediffusion["actions"];
 }
 
 /** Les options propres de « Blocks » : les jours figés de l'image (date → contenu du fichier). */
@@ -44,7 +40,8 @@ export interface BlocksOptions {
   frozen?: Readonly<Record<string, unknown>>;
 }
 
-const texteDesEntrees = (touches: readonly { tick: number; c: number }[]): string => `blocks|${touches.map((t) => `${t.tick}:${t.c}`).join(",")}`;
+/** Les entrées effectivement jouées, en texte canonique (le module en prend l'empreinte pour refuser les copies). */
+const texteDesEntrees = (actions: readonly number[]): string => `blocks|${actions.join(",")}`;
 
 /** Le contenu d'un jour : le fichier figé s'il se vérifie, sinon le générateur courant. */
 export function contenuDeBlocks(jour: number, frozen: Readonly<Record<string, unknown>> = {}): Contenu {
@@ -64,10 +61,7 @@ const refus = (e: unknown): never => {
 
 export const contratBlocks = (o: BlocksOptions = {}): ContratMinimal<Niveau, Rejeu, Mesure> => ({
   versions: () => ({ simVersion: BLOCKS_SIM_VERSION, generatorVersion: BLOCKS_GENERATOR_VERSION }),
-  async niveauDuJour(jour) {
-    const contenu = contenuDeBlocks(jour, o.frozen);
-    return { jour, contenu, authorHash: await inputsHash(texteDesEntrees(touchesDuBot(contenu))) };
-  },
+  niveauDuJour: (jour) => ({ jour, contenu: contenuDeBlocks(jour, o.frozen) }),
   decoder(texte) {
     try {
       return decoderRediffusion(texte);
@@ -83,12 +77,10 @@ export const contratBlocks = (o: BlocksOptions = {}): ContratMinimal<Niveau, Rej
     }
   },
   score: (m) => scoreParColonnes(m), // les colonnes de la fiche, selon la variante du jeu (`variante.ts`)
-  seuils: (niveau) => seuilsDe(niveau.contenu),
-  entrees: (r) => texteDesEntrees(r.touches),
+  seuils: () => null, // pas de médaille avant le lot B3
+  entrees: (r) => texteDesEntrees(r.actions),
   theme: (niveau) => themeDuJour(niveau.jour),
-  empreinteAuteur: (niveau) => niveau.authorHash,
-  mesures: (m) => ({ ratees: m.ratees }),
-  ticksParSeconde: 30,
+  mesures: (m) => ({ poses: m.poses }),
   joursFiges: Object.keys(o.frozen ?? {}).sort(),
 });
 

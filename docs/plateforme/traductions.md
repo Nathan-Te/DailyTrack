@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1953 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1956 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2495,26 +2495,32 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `accueil.phrase.clair` | À remplacer : une phrase d'accroche pour le thème « Clair ». | To replace: a tagline for the “Light” theme. |
-| `accueil.phrase.sombre` | À remplacer : une phrase d'accroche pour le thème « Sombre ». | To replace: a tagline for the “Dark” theme. |
+| `accueil.phrase.clair` | Pose, efface, enchaîne : la même suite de pièces pour tout le monde. | Place, clear, chain: the same run of pieces for everyone. |
+| `accueil.phrase.sombre` | Un coup d'œil, un geste : la grille t'attend, la même pour tous. | One glance, one gesture: the grid is waiting, the same for all. |
 
 ### Commandes (`commandes.*`, `apps/blocks/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `commandes.action.gauche` | Curseur à gauche | Cursor left |
-| `commandes.action.droite` | Curseur à droite | Cursor right |
-| `commandes.action.haut` | Curseur en haut | Cursor up |
-| `commandes.action.bas` | Curseur en bas | Cursor down |
-| `commandes.action.toucher` | Toucher la case | Hit the square |
+| `commandes.action.gauche` | Ombre à gauche | Shadow left |
+| `commandes.action.droite` | Ombre à droite | Shadow right |
+| `commandes.action.haut` | Ombre en haut | Shadow up |
+| `commandes.action.bas` | Ombre en bas | Shadow down |
+| `commandes.action.poser` | Poser la pièce | Place the piece |
 
 ### Comment jouer (`aide.*`, `apps/blocks/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `aide.point1` | À remplacer : le but du jeu en une phrase. | To replace: the goal of the game in one sentence. |
-| `aide.point2` | À remplacer : ce que fait le joueur, en une phrase. | To replace: what the player does, in one sentence. |
-| `aide.point3` | À remplacer : comment les égalités se départagent. | To replace: how ties are broken. |
+| `aide.point1` | Fais glisser la pièce du moment dans la grille de 8 × 8 : chaque ligne ou colonne remplie disparaît. | Drag the current piece into the 8 × 8 grid: every full row or column disappears. |
+| `aide.point2` | Enchaîne les effacements pour faire monter le combo : il survit à deux poses sans effacement. | Chain clears to build your combo: it survives two placements without a clear. |
+| `aide.point3` | La suite de pièces est la même pour tous aujourd'hui. À score égal, le plus grand combo l'emporte. | Everyone gets the same run of pieces today. On equal scores, the bigger combo wins. |
+
+### Fin de partie (`fin.*`, `apps/blocks/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `fin.plusDePlace` | Plus de place ! | No room left! |
 
 ### kit (`kit.*`, `apps/blocks/src/catalogue.*.ts`)
 
@@ -2613,15 +2619,27 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `page.titre` | Blocks — Du Jour | Blocks — Du Jour |
 
+### Partie (surimpressions) (`hud.*`, `apps/blocks/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `hud.combo` | Combo ×{n} | Combo ×{n} |
+
 ### scene (`scene.*`, `apps/blocks/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `scene.aria` | Plateau de jeu (texte à remplacer) | Game board (text to replace) |
+| `scene.aria` | Grille de 8 sur 8 : fais glisser la pièce du moment pour la poser. | 8 by 8 grid: drag the current piece to place it. |
+
+### score (`score.*`, `apps/blocks/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `score.valeur` | {n} pts | {n} pts |
 
 ### Thèmes (`theme.*`, `apps/blocks/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `theme.clair` | Clair (à remplacer) | Light (to replace) |
-| `theme.sombre` | Sombre (à remplacer) | Dark (to replace) |
+| `theme.clair` | Clair | Light |
+| `theme.sombre` | Sombre | Dark |

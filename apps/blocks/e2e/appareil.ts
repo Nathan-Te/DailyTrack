@@ -1,4 +1,6 @@
-import { dailyBlocks, jouer, VARIANTE, type Resultat } from "@cdj/blocks-sim";
+import { dailyBlocks, type Resultat } from "@cdj/blocks-sim";
+import { jouerGlouton } from "@cdj/blocks-sim/glouton";
+import type { PorteBlocks } from "../src/scene";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -18,6 +20,7 @@ export interface Porte {
 declare global {
   interface Window {
     __jeu: Porte;
+    __blocks: PorteBlocks;
   }
 }
 
@@ -53,21 +56,26 @@ export async function lancer(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as { __jeu?: unknown }).__jeu);
 }
 
-/**
- * Joue la partie du jour à la main, pas à pas : une touche sur la case de chaque cible, `delai` ticks après son apparition (la rediffusion du jeu est donc la suite de ces touches). `sauf` : les rangs des blocks
- * qu'on laisse filer (variante « score ») ou sur lesquelles on hésite (variante « temps »). Rend ce que la simulation (Node, la même) attend de ces touches.
- */
-export async function jouerLeJour(page: Page, delai = 15, sauf: readonly number[] = []): Promise<Resultat> {
-  const contenu = dailyBlocks(parseDay(JOUR)!);
-  const touches = VARIANTE.joueur(contenu, () => delai, (i) => sauf.includes(i));
-  await page.evaluate((touches) => {
-    let t = 0;
-    for (const x of touches) {
-      window.__jeu.avancer(x.tick - t);
-      t = x.tick;
-      window.__jeu.action(`case:${x.c}`);
-    }
-    window.__jeu.avancer(1000);
-  }, touches);
-  return jouer(contenu, touches);
+/** La partie du glouton simple sur le jour d'essai (06/11/2026) : ses poses, et ce que la simulation (Node, la même) en attend. */
+export function partieDuGlouton(): { actions: number[]; resultat: Resultat } {
+  const { actions, resultat } = jouerGlouton(dailyBlocks(parseDay(JOUR)!));
+  return { actions, resultat };
+}
+
+/** Pose, dans le navigateur, une suite d'actions (`ligne × 8 + colonne`) par la porte du jeu, puis laisse passer « Plus de place ! » (le kit termine la partie une seconde après la dernière pose). */
+export async function poserLesActions(page: Page, actions: readonly number[], terminer = true): Promise<void> {
+  await page.evaluate(
+    ({ actions, terminer }) => {
+      for (const a of actions) window.__jeu.action(`pose:${a % 8}:${Math.floor(a / 8)}`);
+      if (terminer) window.__jeu.avancer(100);
+    },
+    { actions, terminer },
+  );
+}
+
+/** Joue la partie du jour du glouton jusqu'à sa fin ; rend ce que la simulation attend. */
+export async function jouerLeJour(page: Page): Promise<Resultat> {
+  const { actions, resultat } = partieDuGlouton();
+  await poserLesActions(page, actions);
+  return resultat;
 }

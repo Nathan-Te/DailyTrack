@@ -1,16 +1,13 @@
-import type { Resultat } from "./partie";
-import { partieDuBot } from "./bot";
 import type { Contenu } from "./generateur";
-import { VARIANTE, type Medaille, type Seuils, type Variante } from "./variante";
 
-// Les médailles : le Diamant est la partie du bot, l'or, l'argent et le bronze s'en déduisent selon la variante (`variante.ts` : pourcentages du Diamant, `pourcentage-diamant` de la fiche).
-export type { Medaille, Seuils };
-export const BAREME_PCT = VARIANTE.fiche.bareme;
-
-export const seuilsDe = (contenu: Contenu, variante: Variante = VARIANTE): Seuils => variante.seuils(partieDuBot(contenu, variante));
-
-/** La médaille d'un score (les colonnes de classement, dans l'ordre de la fiche). */
-export const medailleDe = (score: readonly number[], s: Seuils, variante: Variante = VARIANTE): Medaille | null => variante.medaille(score, s);
-
-/** La médaille d'un résultat rejoué. */
-export const medailleDeResultat = (r: Pick<Resultat, "touches" | "dernier">, s: Seuils, variante: Variante = VARIANTE): Medaille | null => variante.medaille(variante.score(r), s);
+// Les MÉDAILLES attendent le lot B3 (le bot Diamant, ses seuils). En attendant (lot B1), un jour n'a pas de médaille : les seuils sont à zéro et `medailleDe` ne rend rien. Le serveur dit la même chose
+// (`apps/api/src/blocks.ts` : `seuils` rend `null`). Le Diamant sera la partie d'un bot : pour chaque pièce, il essaiera toutes les positions en regardant la pièce suivante.
+export type Medaille = "author" | "gold" | "silver" | "bronze";
+export interface Seuils {
+  author: number;
+  gold: number;
+  silver: number;
+  bronze: number;
+}
+export const seuilsDe = (_contenu: Contenu): Seuils => ({ author: 0, gold: 0, silver: 0, bronze: 0 });
+export const medailleDe = (_score: readonly number[], _s: Seuils): Medaille | null => null;
