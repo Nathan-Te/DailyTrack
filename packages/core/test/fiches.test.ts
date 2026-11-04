@@ -32,19 +32,27 @@ describe("les fiches du dépôt", () => {
   it("les fichiers générés (projections et vues des paquets) sont à jour : `npm run fiches` sinon", () => {
     const attendu = sorties(fiches(), (chemin) => existsSync(join(RACINE, chemin)));
     expect(Object.keys(attendu).sort()).toEqual([
+      "apps/api/scripts/essais.generated.ts", // lot K4f : les modules d'essais des jeux neufs
       "apps/api/src/fiches.generated.ts",
       "apps/api/src/registre.generated.ts",
       "apps/portail/src/jeux.generated.css",
+      "apps/portail/src/jeux.production.generated.css", // lot K4f : les variantes de production (sans les jeux témoins), lues par le portail de la production
       "config/jeux/projections/ci.json",
       "config/jeux/projections/jeu.json",
       "config/jeux/projections/portail.json",
+      "config/jeux/projections/portail.production.json",
       "config/jeux/projections/serveur.json",
       "packages/core/src/fiches.generated.ts",
+      "packages/core/src/fiches.production.generated.ts",
       "packages/musique/src/fiches.generated.ts",
+      "packages/musique/src/fiches.production.generated.ts",
       "packages/profile/src/fiches.generated.ts",
+      "packages/profile/src/fiches.production.generated.ts",
       "packages/ui/src/amis.generated.css",
       "packages/ui/src/fiches.generated.ts",
+      "packages/ui/src/fiches.production.generated.ts",
       "packages/ui/src/jeux.generated.css",
+      "packages/ui/src/jeux.production.generated.css",
       "scripts/catalogues-jeux.generated.ts",
     ]);
     for (const [chemin, contenu] of Object.entries(attendu)) {
@@ -55,7 +63,7 @@ describe("les fiches du dépôt", () => {
 
   it("aucune fiche ne reste orpheline : un fichier de projection d'un jeu supprimé n'existe pas", () => {
     const dossier = join(RACINE, DOSSIER_FICHES, "projections");
-    expect(readdirSync(dossier).sort()).toEqual(["ci.json", "jeu.json", "portail.json", "serveur.json"]);
+    expect(readdirSync(dossier).sort()).toEqual(["ci.json", "jeu.json", "portail.json", "portail.production.json", "serveur.json"]);
   });
 });
 
@@ -341,6 +349,6 @@ describe("les fiches d'un dossier de plus (lot K4e, essais seulement)", () => {
     expect(m.dossiersSupplementaires({ CDJ_FICHES_SUPPLEMENTAIRES: "/x:/y", CDJ_MODE_ESSAI: "1" })).toEqual(["/x", "/y"]);
     expect(m.dossiersSupplementaires({ CDJ_FICHES_SUPPLEMENTAIRES: "/x", NODE_ENV: "test" })).toEqual(["/x"]);
     expect(m.dossiersSupplementaires({})).toEqual([]);
-    expect(() => m.lireFichesBrutes(RACINE, { CDJ_FICHES_SUPPLEMENTAIRES: join(RACINE, DOSSIER_FICHES), CDJ_MODE_ESSAI: "1" })).toThrow(/deux fiches pour le jeu « jump »/);
+    expect(() => m.lireFichesBrutes(RACINE, { CDJ_FICHES_SUPPLEMENTAIRES: join(RACINE, DOSSIER_FICHES), CDJ_MODE_ESSAI: "1" })).toThrow(/deux fiches pour le jeu « (cibles|jump|tower|track) »/);
   });
 });

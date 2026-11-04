@@ -1,1 +1,40 @@
 /* GÉNÉRÉ par `npm run fiches` (lot K4e : config/jeux/<id>.json → ui) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */
+/* L'étiquette générique : un papier de la couleur du jeu, bordé d'encre, le nom dans la police du jeu. */
+.jeu-etiquette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-1);
+  background: var(--jeu-fond);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  padding: var(--dj-espace-3) var(--dj-espace-5);
+  min-height: 92px;
+}
+.jeu-etiquette__tete {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--dj-espace-4);
+}
+.jeu-etiquette__titre {
+  font-family: var(--jeu-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-22);
+  line-height: 1;
+}
+.jeu-etiquette__numero {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+}
+.jeu-etiquette__texte {
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+.jeu-etiquette--cibles {
+  --jeu-fond: #F4A6B8;
+  --jeu-police: "Rubik Mono One", "Archivo", sans-serif;
+}
+.dj-cartouche--cibles {
+  background: #8E2C4A;
+}

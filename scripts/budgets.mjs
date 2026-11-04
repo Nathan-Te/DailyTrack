@@ -173,7 +173,7 @@ export function mesurePortail() {
   try {
     execFileSync("npx", ["vite", "build", "-c", "apps/portail/vite.config.ts", "--logLevel", "error", "--outDir", tmp, "--emptyOutDir"], {
       cwd: ROOT,
-      env: { ...process.env, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true", PORTAIL_VITRINE: "0" },
+      env: { ...process.env, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true", PORTAIL_VITRINE: "0", PORTAIL_TEMOINS: "0" }, // la production : ni la vitrine, ni un jeu témoin (lot K4f)
       stdio: "pipe",
     });
     const html = readFileSync(join(tmp, "index.html"), "utf8");

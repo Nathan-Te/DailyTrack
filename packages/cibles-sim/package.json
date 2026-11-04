@@ -1,0 +1,21 @@
+{
+  "name": "@cdj/cibles-sim",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "dependencies": {
+    "@cdj/core": "*"
+  },
+  "scripts": {
+    "figer:cibles": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
+    "golden:cibles": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./calendrier": "./src/calendrier.ts",
+    "./bot": "./src/bot.ts"
+  }
+}

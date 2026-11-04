@@ -11,7 +11,7 @@ import { mesurerRoutes, tableau } from "./routesChaudes";
 const dossier = mkdtempSync(join(tmpdir(), "cdj-lignes-"));
 try {
   const db = await openLibsql({ url: `file:${join(dossier, "reference.db")}`, comptage: true });
-  const ecrit = await construireBaseDeReference(db, REFERENCE_AUJOURDHUI);
+  const ecrit = await construireBaseDeReference(db, REFERENCE_AUJOURDHUI, { avecJeuxNeufs: true });
   console.log(`Base de référence : ${REFERENCE.joueurs} joueurs, ${REFERENCE.jours} jours — ${ecrit.results} résultats Track, ${ecrit.jump_results} résultats Jump.\n`);
   const mesures = await mesurerRoutes(db, db.compte, REFERENCE_AUJOURDHUI);
   console.log(tableau(mesures));

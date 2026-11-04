@@ -9,7 +9,9 @@
   "dependencies": {
     "@cdj/core": "*",
     "@cdj/profile": "*",
-    "@cdj/ui": "*"
+    "@cdj/ui": "*",
+    "@cdj/clock": "*",
+    "@cdj/musique": "*"
   },
   "exports": {
     ".": "./src/index.ts",
@@ -27,6 +29,9 @@
     "./envoi": "./src/envoi.ts",
     "./version": "./src/version.ts",
     "./amis": "./src/amis.ts",
-    "./amisDom": "./src/amisDom.ts"
+    "./amisDom": "./src/amisDom.ts",
+    "./jeu": "./src/jeu/index.ts",
+    "./jeu/*": "./src/jeu/*.ts",
+    "./jeu.css": "./src/jeu/jeu.css"
   }
 }

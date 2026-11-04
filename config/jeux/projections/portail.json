@@ -19,6 +19,12 @@
       "accroche": "portail.tower.accroche",
       "cumul": false,
       "format": "hauteur"
+    },
+    {
+      "id": "cibles",
+      "accroche": "portail.cibles.accroche",
+      "cumul": false,
+      "format": "entier"
     }
   ]
 }

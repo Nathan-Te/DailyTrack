@@ -24,6 +24,7 @@ import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, declareFrozenGenerators, decodeReplay, demoAttempts, encodeReplay as encodeJump, jumpMedalFor, lifeReplay, repriseParPhase, replayAttempt } from "@cdj/jump-sim";
 import { dailyTower, PREMIER_JOUR_TOWER } from "@cdj/tower-sim";
 import { FICHES_SERVEUR } from "../src/fiches.generated";
+import { ESSAIS_DES_JEUX_NEUFS } from "./essais.generated";
 import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { jumpDailyOf } from "../src/jump";
 import { jouerScripte } from "./tower-aide";
@@ -388,6 +389,23 @@ for (const f of FICHES_SERVEUR.filter((x) => !["track", "jump", "tower"].include
   check(`${nom} : jour, jamais la preuve de l'auteur`, nday.status === 200 && !JSON.stringify(nday.body).includes("preuve"), `${nday.status}`);
   const nboard = await tcall("GET", `/api/${f.id}/day/${date}/board`);
   check(`${nom} : classement du jour`, nboard.status === 200 && Array.isArray(nboard.body.top), `${nboard.status}`);
+  // Lot K4f : un jeu qui a écrit son module d'essais (`<code>-essais.ts`) est joué pour de vrai — une partie scriptée que le serveur rejoue. **Aucun script ne porte le nom du jeu** : la boucle suit les fiches.
+  // Hors production seulement (le jeu est un aperçu : sa partie est rangée à part). La variante est tirée au hasard : la recette garde les parties des passages d'avant, et une copie est refusée.
+  const essais = ESSAIS_DES_JEUX_NEUFS[f.id];
+  if (!essais) continue;
+  const partie = essais.partie(day, { simVersion: ninfo.body.simVersion, generatorVersion: ninfo.body.generatorVersion }, 1000 + Math.floor(Math.random() * 1_000_000));
+  const nsub = await tcall("POST", `/api/${f.id}/submit`, { replay: partie.rediffusion, name: NAME }, true);
+  check(
+    `${nom} : une partie scriptée est rejouée par le serveur, qui garde son résultat`,
+    nsub.status === 200 && nsub.body.accepted === true && Object.entries(partie.attendu).every(([k, v]) => nsub.body.score?.[k] === v),
+    `${nsub.status} ${JSON.stringify(nsub.body.score ?? nsub.body.error)}`,
+  );
+  const nmal = await tcall("POST", `/api/${f.id}/submit`, { replay: "pas-une-rediffusion", name: NAME }, true);
+  check(`${nom} : une rediffusion illisible est refusée (400 invalid_replay)`, nmal.status === 400 && nmal.body.error === "invalid_replay", `${nmal.status} ${String(nmal.body.error)}`);
+  const nme = await tcall("GET", `/api/${f.id}/me`, undefined, true);
+  check(`${nom} : le profil rend la partie du jour du joueur d'essai`, nme.status === 200 && nme.body.days?.some((d: { date: string }) => d.date === date), `${nme.status} ${nme.body.days?.length ?? 0} jour(s)`);
+  const nboard2 = await tcall("GET", `/api/${f.id}/day/${date}/board`, undefined, true);
+  check(`${nom} : classement du jour, ta ligne (ton identifiant n'y est jamais)`, nboard2.status === 200 && nboard2.body.me?.name === NAME && !JSON.stringify(nboard2.body).includes(player), `${nboard2.status} ${String(nboard2.body.participants)} classé(s)`);
 }
 
 // --- Lot I2 : le portail (la route regroupée de l'accueil et le profil commun) ---------------------------------------------------------

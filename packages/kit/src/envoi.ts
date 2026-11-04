@@ -58,6 +58,8 @@ export class FileEnvoi<T extends { date: string }> {
   /** La dernière réponse du serveur par jour : ce que l'écran d'arrivée affiche. */
   readonly resultats = new Map<string, T>();
   readonly profile: Profile;
+  /** Lot K4f : un refus qui dit « version » (l'onglet est resté sur un jeu périmé) : le jeu allume son bandeau « Nouvelle version en ligne » (`version.ts`). */
+  surRefus?: (code: string) => void;
   private enCours: Promise<void> | null = null;
   private minuterie: unknown = null;
   private essais = 0;
@@ -152,6 +154,7 @@ export class FileEnvoi<T extends { date: string }> {
         return;
       }
       if (code === "version") {
+        this.surRefus?.(code);
         records.noterEnvoye(this.deps.stockage(), date, record.score); // il ne passera jamais : on ne le renvoie plus
         this.poser({ statut: "version", code: "version", suggestions: [] });
         continue;

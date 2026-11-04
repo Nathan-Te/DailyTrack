@@ -12,6 +12,7 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "jeu.jump.nom": "Jump",
   "jeu.jump.titre": "JUMP",
   "jeu.tower.nom": "Tower",
+  "jeu.cibles.nom": "Targets",
   "barre.retour": "DU JOUR",
   "barre.retour.aria": "Back to Du Jour",
   "barre.jour": "{date} · {numero}",

@@ -38,6 +38,8 @@ import { estLocale, exigerDistant } from "../src/distant";
 import { dailyTower, PREMIER_JOUR_TOWER, TOWER_GENERATOR_VERSION, TOWER_SIM_VERSION } from "@cdj/tower-sim";
 import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { jouerScripte, type Placement } from "./tower-aide";
+import { FICHES_SERVEUR } from "../src/fiches.generated";
+import { ESSAIS_DES_JEUX_NEUFS } from "./essais.generated";
 
 const HOUR_MS = 3_600_000;
 
@@ -233,6 +235,46 @@ if (!demoSeulement && today >= PREMIER_JOUR_TOWER) {
       console.log(`Tower ${dateDuJour} : ${acceptes} joueur(s) classé(s) (parties scriptées rejouées par le serveur) en ${((Date.now() - towerStarted) / 1000).toFixed(0)} s${refusTower ? `, ${refusTower} refus` : ""}.`);
     }
   }
+}
+
+// Lot K4f : les jeux neufs qui ont écrit leur module d'essais (`<code>-essais.ts`, généré dans `essais.generated.ts`) : même principe que Tower, **sans qu'aucun script ne porte leur nom**. Seulement si le jeu est
+// `on` (un jeu `off` ou en aperçu : sauté, dit en clair). Une partie par variante du module, jouée par un joueur « Démo … » (les entrées de deux joueurs ne sont jamais les mêmes).
+for (const f of FICHES_SERVEUR.filter((x) => ESSAIS_DES_JEUX_NEUFS[x.id] !== undefined)) {
+  const essais = ESSAIS_DES_JEUX_NEUFS[f.id]!;
+  if (demoSeulement || today < parseDay(f.premierJour)!) continue;
+  const segment = `${f.id}:${dateDuJour}`;
+  const empreinte = empreinteDuSeed(`${f.id} ${f.versions.sim} ${f.versions.generateur} v${essais.variantes}`);
+  if (!aFaire(segment, empreinte)) {
+    saut++;
+    console.log(`${f.id} ${dateDuJour} : déjà fait (marqueur ${segment})`);
+    continue;
+  }
+  clock = parisDayStart(today) + 12 * HOUR_MS;
+  const jourDuJeu = await api.handle(new Request(`http://recette.local/api/${f.id}/day/${dateDuJour}`));
+  const corpsJour = (await jourDuJeu.json()) as Record<string, any>;
+  if (jourDuJeu.status !== 200) {
+    console.log(`${f.id} ${dateDuJour} : sauté (${jourDuJeu.status} ${String(corpsJour.error ?? "")} — le jeu n'est pas \`on\` sur cette recette ; l'interrupteur est à l'éditeur)`);
+    continue;
+  }
+  const debut = Date.now();
+  const noms = new Rng(mixSeed(today, 0x6e75)).shuffle(FICTIONAL_NAMES).slice(0, Math.min(8, essais.variantes));
+  let acceptes = 0;
+  let refus = 0;
+  for (let i = 0; i < noms.length; i++) {
+    const partie = essais.partie(today, { simVersion: corpsJour.simVersion, generatorVersion: corpsJour.generatorVersion }, i);
+    clock = parisDayStart(today) + 12 * HOUR_MS + (i + 1) * 1000;
+    const res = await api.handle(
+      new Request(`http://recette.local/api/${f.id}/submit`, { method: "POST", headers: { "Content-Type": "application/json", "X-Player-Id": fictionalId(noms[i]!) }, body: JSON.stringify({ replay: partie.rediffusion, name: noms[i] }) }),
+    );
+    const corps = (await res.json()) as Record<string, unknown>;
+    if (res.status === 200) acceptes++;
+    else {
+      refus++;
+      if (refus === 1) console.log(`  ${f.id} ${dateDuJour} : refus du serveur (${res.status} ${String(corps.error ?? "")}) — la partie ne compte pas`);
+    }
+  }
+  if (!refus) await marqueurs.poser(segment, empreinte);
+  console.log(`${f.id} ${dateDuJour} : ${acceptes} joueur(s) classé(s) (parties scriptées rejouées par le serveur) en ${((Date.now() - debut) / 1000).toFixed(0)} s${refus ? `, ${refus} refus` : ""}.`);
 }
 
 // Lot I3 : les joueurs du classement du jour (avant « Démo » : son rang du jour se lit parmi eux).

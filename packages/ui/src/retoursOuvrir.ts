@@ -1,6 +1,7 @@
 import { CATALOGUE_RETOURS } from "./catalogue.retours";
 import { dialogueRetour, type ContexteAffiche, type DialogueRetour, type TypeDeRetour } from "./retours";
 import { traducteur } from "./i18n";
+import type { Jeu } from "./composants";
 
 // Lot C1, partie A : le seul morceau qui relie le dialogue « Un bug ? Une idée ? » au client des routes (`@cdj/profile/src/retours`) — **commun au portail et aux trois jeux** : chaque application ne garde qu'un
 // petit module à la demande (`retoursJeu.ts`) qui lui passe son identité, son adresse de serveur et son module de profil. `@cdj/ui` ne dépend pas de `@cdj/profile` : le client est reçu en paramètre (sa
@@ -17,7 +18,7 @@ export interface ProfilRetours {
 }
 
 export interface OptionsOuvrirRetour {
-  jeu: "portail" | "track" | "jump" | "tower";
+  jeu: "portail" | Jeu;
   langue: "fr" | "en";
   /** L'adresse du serveur (`baseApi` de l'application). */
   base: string;
@@ -55,7 +56,7 @@ export function ouvrirRetour(o: OptionsOuvrirRetour): DialogueRetour {
     t,
     contexte: base,
     sansProfil: o.playerId === null,
-    jeu: o.jeu === "portail" ? undefined : o.jeu,
+    jeu: o.jeu === "portail" ? undefined : (o.jeu as "track" | "jump" | "tower"), // un jeu neuf (fiche) n'a pas de couleur propre : la classe sans règle laisse le dialogue crème
     hrefMessages: o.hrefMessages,
     parent: o.parent,
     onFermer: o.onFermer,
