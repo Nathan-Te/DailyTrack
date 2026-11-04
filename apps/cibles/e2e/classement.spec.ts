@@ -1,4 +1,4 @@
-import { CIBLES_GENERATOR_VERSION, CIBLES_SIM_VERSION } from "@cdj/cibles-sim";
+import { CIBLES_GENERATOR_VERSION, CIBLES_SIM_VERSION, VARIANTE } from "@cdj/cibles-sim";
 import { expect, test, type Page } from "@playwright/test";
 import { ESSAIS_CIBLES } from "../../api/scripts/cibles-essais";
 import { API, appareil, jouerLeJour, lancer } from "./appareil";
@@ -40,7 +40,7 @@ test("une partie scriptée est classée par le serveur, sa copie est refusée, e
   await choisirPseudo(a.page, pseudo);
   await expect(a.page.locator("#jeu-fin-rang")).toContainText("e sur 3", { timeout: 20_000 }); // classée parmi Carla, Denis et elle
   expect(await a.page.evaluate(() => window.__jeu.envoi().statut)).toBe("ranked");
-  await expect(a.page.locator("#jeu-fin-score")).toHaveText(`${attendu.touches} / 20`);
+  await expect(a.page.locator("#jeu-fin-score")).toHaveText(VARIANTE.formatScore(VARIANTE.score(attendu), "fr"));
 
   // La même partie, d'un autre appareil : le serveur reconnaît la copie et la refuse.
   const b = await appareil(browser);

@@ -11,6 +11,7 @@ import {
   type Rediffusion,
   rejouer,
   type Resultat,
+  scoreParColonnes,
   seuilsDe,
   themeDuJour,
   touchesDuBot,
@@ -81,7 +82,7 @@ export const contratCibles = (o: CiblesOptions = {}): ContratMinimal<Niveau, Rej
       return refus(e);
     }
   },
-  score: (m) => ({ touches: m.touches, dernier: m.dernier }),
+  score: (m) => scoreParColonnes(m), // les colonnes de la fiche, selon la variante du jeu (`variante.ts`)
   seuils: (niveau) => seuilsDe(niveau.contenu),
   entrees: (r) => texteDesEntrees(r.touches),
   theme: (niveau) => themeDuJour(niveau.jour),

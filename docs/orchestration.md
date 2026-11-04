@@ -378,6 +378,16 @@ Constat de l'audit R7 (§ 7.1) : ≈ 35 000 minutes de jobs par semaine, 106 min
 4. **Le garde-fou des jours** (lots R6 et R11) est refait par le bouton ; le lot vérifie à l'avance ce qui l'arrêterait : `apps/api/test/jours-passes.test.ts` vert, l'ancienne version du générateur toujours dans le code si le registre la nomme, les migrations en avant seulement (`migrations.test.ts`). **Un lot de Track qui change le générateur monte `GENERATOR_VERSION` et n'écrit plus aucune date** : le jour de bascule est celui de la mise en production.
 5. Après la fusion, Nathan rappuie sur le bouton.
 
+## 12 bis. Créer un jeu : `npm run nouveau-jeu` (lot K4g)
+
+**Un 4ᵉ jeu (ou un 5ᵉ) se crée en 5 étapes, dont une seule commande.** Le détail des règles est dans le `CLAUDE.md` racine (« Créer un jeu ») ; la conception du kit dans `docs/plateforme/kit-de-jeu.md` ; le rapport du lot dans `docs/plateforme/lots/lot-K4g-generateur-et-bout-en-bout.md`.
+1. **Nathan écrit le seed** dans la conversation de la plateforme (le jeu, les piliers, une partie, le classement) ; on peut partir du gabarit `docs/<id>/seed.md` (les titres du seed de Tower).
+2. **Un lot court de la plateforme** : `npm run nouveau-jeu -- --id <id> --classement score|temps` (d'abord `--a-blanc`), puis versement du seed dans `docs/<id>/seed.md`. PR brouillon, étiquette de plateforme (le lot touche les fichiers partagés), « Pour les joueurs : rien ». L'agent s'arrête quand le job « Kit de bout en bout » et la CI de la PR sont verts.
+3. **Nathan ouvre la conversation d'orchestration du jeu** en collant `docs/<id>/passation.md` et le seed.
+4. **Les lots du jeu**, dans ses zones (`docs/<id>/passation.md`, § 3) : simulation, rendu, sensations ; maquettes d'abord pour l'étiquette et le HUD ; chaque lot dit ses mesures de budget.
+5. **Nathan publie** depuis `/admin/` : `off` → `preview` → `on`. La liste des jeux du classement cumulé est un réglage à part.
+Ce qui reste à décider par Nathan au moment du lot 2 : la **teinte de l'étiquette** (la première libre est prise), le **premier jour**, le **plafond de budget** de la ligne `<id>.jsCss` (celui du modèle, à fixer avec la mesure du jeu).
+
 ## 13. Index
 - `docs/seed.md` — vision, piliers, plan en lots (source de vérité)
 - `docs/lots/lot-0-socle.md` … `lot-22-nouveaux-themes.md` (et `lot-18b-cuves-rapides.md`), `lot-26-salon.md`, `lot-27-salon-serveur.md`, `lot-28-mise-en-ligne.md`, `lot-29-accueil-ux.md`, `lot-29b-ci-fiable.md`, `lot-30-pseudos.md` — le détail de chaque lot (livré, à tester, garde-fous, limites) ; `lot-7b-reglages.md`, `lot-9b-visuels.md`, `lot-10b-zones-tactiles.md` pour les retouches

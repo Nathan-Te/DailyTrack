@@ -10,7 +10,6 @@ import {
   MAX_TOUCHES,
   NB_CASES,
   NB_CIBLES,
-  Partie,
   caseAuPoint,
   dailyCibles,
   decoderRediffusion,
@@ -20,12 +19,11 @@ import {
   figerJour,
   jouer,
   lireJourFige,
-  medailleDe,
   partieDuBot,
   rejouer,
-  seuilsDe,
   themeDuJour,
   touchesDuBot,
+  VARIANTE,
 } from "../src/index";
 
 const J = daysFromCivil(2026, 11, 4);
@@ -59,33 +57,18 @@ describe("le contenu du jour", () => {
   });
 });
 
-describe("la partie", () => {
+describe("la partie (ce qui vaut pour toutes les variantes)", () => {
   const c = dailyCibles(J);
-  it("compte une cible touchée dans sa fenêtre, ignore le reste", () => {
-    const p = new Partie(c);
-    const x = c.cibles[0]!;
-    while (p.tick < x.d - 1) p.avancer();
-    expect(p.toucher(x.c)).toBe(false); // pas encore apparue
-    p.avancer();
-    expect(p.toucher((x.c + 1) % NB_CASES)).toBe(false); // mauvaise case
-    expect(p.toucher(x.c)).toBe(true);
-    expect(p.toucher(x.c)).toBe(false); // déjà touchée
-    const r = p.resultat();
-    expect({ touches: r.touches, dernier: r.dernier, ratees: r.ratees }).toEqual({ touches: 1, dernier: x.d, ratees: 3 });
-  });
   it("une partie vide finit avec zéro touche et le départage maximal", () => {
-    expect(jouer(c, [])).toEqual({ touches: 0, dernier: DUREE_TICKS, ratees: 0, ticks: DUREE_TICKS });
+    const r = jouer(c, []);
+    expect({ touches: r.touches, dernier: r.dernier, ratees: r.ratees }).toEqual({ touches: 0, dernier: DUREE_TICKS, ratees: 0 });
+    expect(r.ticks).toBe(DUREE_TICKS);
   });
-  it("le bot touche tout, 12 ticks après l'apparition de chaque cible", () => {
+  it("le bot touche tout, sans rien rater", () => {
     const r = partieDuBot(c);
     expect(r.touches).toBe(NB_CIBLES);
-    expect(r.dernier).toBe(c.cibles[NB_CIBLES - 1]!.d + DELAI_BOT);
     expect(r.ratees).toBe(0);
-  });
-  it("une touche après la cible ne compte plus", () => {
-    const x = c.cibles[0]!;
-    expect(jouer(c, [{ tick: x.f, c: x.c }]).touches).toBe(0);
-    expect(jouer(c, [{ tick: x.f - 1, c: x.c }]).touches).toBe(1);
+    expect(VARIANTE.score(r)).toEqual(VARIANTE.score(jouer(c, touchesDuBot(c))));
   });
   it("la case sous un point du plateau", () => {
     expect(caseAuPoint(0, 0, 80, 60, LIGNES)).toBe(0);
@@ -129,13 +112,8 @@ describe("la rediffusion", () => {
   });
 });
 
-describe("les médailles et les jours figés", () => {
+describe("les jours figés", () => {
   const c = dailyCibles(J);
-  it("le Diamant est la partie du bot, plafonnée ; or, argent et bronze à 50, 30 et 15 %", () => {
-    expect(seuilsDe(c)).toEqual({ author: 20, gold: 10, silver: 6, bronze: 3 });
-    const s = seuilsDe(c);
-    expect([20, 10, 9, 5, 3, 2].map((touches) => medailleDe({ touches }, s))).toEqual(["author", "gold", "silver", "bronze", "bronze", null]);
-  });
   it("un jour figé se relit et se régénère à l'identique ; un fichier abîmé est refusé", () => {
     const f = figerJour(J);
     expect(lireJourFige(JSON.parse(JSON.stringify(f)))).toEqual(c);

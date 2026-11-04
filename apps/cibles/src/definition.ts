@@ -1,4 +1,4 @@
-import { CIBLES_GENERATOR_VERSION, CIBLES_SIM_VERSION, NB_CIBLES, TICKS_PAR_SECONDE, dailyCibles, lireJourFige, medailleDe, numeroCibles, seuilsDe, themeDuJour, touchesDuBot, enregistrer, type Contenu } from "@cdj/cibles-sim";
+import { CIBLES_GENERATOR_VERSION, CIBLES_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, dailyCibles, lireJourFige, medailleDe, numeroCibles, seuilsDe, themeDuJour, touchesDuBot, enregistrer, type Contenu } from "@cdj/cibles-sim";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
@@ -35,11 +35,11 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   themeDuJour,
   numero: numeroCibles,
   contenuDuJour,
-  seuils: seuilsDe,
-  medaille: (score, s) => medailleDe({ touches: score[0] ?? 0 }, s),
+  seuils: (c) => seuilsDe(c),
+  medaille: (score, s) => medailleDe(score, s),
   nouvellePartie: nouvellePartieCibles,
   rediffusionDiamant: (c) => enregistrer(c, touchesDuBot(c)),
-  formatScore: (score) => `${score[0] ?? 0} / ${NB_CIBLES}`,
-  scorePartage: (score) => `${score[0] ?? 0}/${NB_CIBLES}`,
+  formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
+  scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),
   aide: ["aide.point1", "aide.point2", "aide.point3"],
 };

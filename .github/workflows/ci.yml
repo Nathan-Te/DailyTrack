@@ -103,7 +103,7 @@ jobs:
   # Lot R10 : `unit` est sauté quand il n'y a rien à lancer (docs seuls) : « sauté » est un succès ici, mais jamais si `scope` a échoué.
   # Retouche du lot I6 : il porte aussi le verdict de `zones` (une PR de jeu restée dans ses zones).
   test:
-    needs: [scope, unit, zones, budgets, jeu-fictif]
+    needs: [scope, unit, zones, budgets, jeu-fictif, kit-bout-en-bout]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -113,6 +113,8 @@ jobs:
           case "${{ needs.budgets.result }}" in success|skipped) ;; *) echo "::error::un budget dépasse son plafond (job Budgets, docs/plateforme/budgets.md)"; exit 1;; esac
           # Lot K4e : un jeu fictif qui casse un test ou le typage bloque la fusion (le job est sauté quand la PR ne touche rien de ce que lisent les fiches).
           case "${{ needs.jeu-fictif.result }}" in success|skipped) ;; *) echo "::error::un jeu fictif ne passe pas la suite (job jeu fictif, scripts/jeu-fictif.mjs : la plateforme lit un jeu en dur)"; exit 1;; esac
+          # Lot K4g : un jeu généré par `npm run nouveau-jeu` qui casse le typage, un test, la construction, un budget, l'e2e ou les zones bloque la fusion (job « Kit de bout en bout »).
+          case "${{ needs.kit-bout-en-bout.result }}" in success|skipped) ;; *) echo "::error::le kit ne tient plus de bout en bout (job Kit de bout en bout, scripts/kit-bout-en-bout.mjs : un jeu généré ne passe pas)"; exit 1;; esac
           case "${{ needs.unit.result }}" in success|skipped) ;; *) echo "::error::une part des tests unitaires a échoué (jobs unit)"; exit 1;; esac
           [ "${{ needs.zones.result }}" = success ] || { echo "::error::une PR de jeu sort de ses zones (job zones, docs/orchestration.md « Lots en parallèle »)"; exit 1; }
           [ "${{ needs.unit.result }}" != skipped ] || echo "### test : aucun test unitaire concerné (docs seuls) — verdict vert" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -167,6 +169,7 @@ jobs:
       e2e_complet_matrice: ${{ steps.scope.outputs.e2e_complet_matrice }}
       budgets_actif: ${{ steps.scope.outputs.budgets_actif }}
       jeu_fictif: ${{ steps.fictif.outputs.jeu_fictif }}
+      kit_bout_en_bout: ${{ steps.kit.outputs.kit_bout_en_bout }}
       durees: ${{ steps.durees.outputs.durees }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -217,6 +220,17 @@ jobs:
           if [ "$MODE" != pr ]; then actif=true; fi
           if grep -Eq '^(config/jeux/|packages/(core|ui|musique|profile|kit)/|apps/portail/|apps/api/(src|scripts|test)/|apps/api/Dockerfile|scripts/|apps/web/test/|e2e/|vitest\.config\.ts|package(-lock)?\.json|\.github/workflows/ci\.yml)' "$RUNNER_TEMP/files.txt"; then actif=true; fi
           echo "jeu_fictif=$actif" >> "$GITHUB_OUTPUT"
+      # Lot K4g — « Kit de bout en bout » (scripts/kit-bout-en-bout.mjs) : toute CI qui n'est pas celle d'une PR courte (main, complet, nuit : donc aussi le bouton « Mettre en production »), et une PR qui touche
+      # le kit, le module serveur des jeux, le noyau, les fiches, le jeu témoin « Cibles » (le modèle du générateur), le générateur lui-même, le Dockerfile ou le verrou.
+      - name: Le kit de bout en bout est-il à lancer ?
+        id: kit
+        env:
+          MODE: ${{ steps.scope.outputs.mode }}
+        run: |
+          actif=false
+          if [ "$MODE" != pr ]; then actif=true; fi
+          if grep -Eq '^(packages/(kit|core)/|apps/api/src/jeux/|config/jeux/|apps/cibles/|packages/cibles-sim/|apps/api/(src|scripts|test)/cibles|scripts/(nouveau-jeu|kit-bout-en-bout|jeu-fictif|fiches|e2e-suite|ci-zones)|packages/ui/src/(catalogue|fiches)|apps/portail/src/catalogue\.ts|docs/plateforme/budgets\.md|apps/api/Dockerfile|package(-lock)?\.json|\.github/workflows/ci\.yml)' "$RUNNER_TEMP/files.txt"; then actif=true; fi
+          echo "kit_bout_en_bout=$actif" >> "$GITHUB_OUTPUT"
       # Lot R16 : les parts de la CI complète et de main sont composées avec les durées MESURÉES par le dernier run de nuit de main (artefact `durees-e2e`,
       # scripts/durees-e2e.mjs), validées ici une fois puis passées à toutes les parts (`E2E_DUREES`) : chacune compose les mêmes parts. Rien de lisible : durees.json
       # du dépôt, comme avant (jamais d'arrêt pour cela). Une PR n'en a pas besoin (ses specs viennent de ses zones).
@@ -269,6 +283,57 @@ jobs:
       - run: npm ci
       - name: Un jeu fictif dans une copie du dépôt (fiches, typage, suite unitaire)
         run: node scripts/jeu-fictif.mjs --part "$PART"
+
+  # Lot K4g — **le test de bout en bout du kit** : `scripts/kit-bout-en-bout.mjs` copie le dépôt, y génère `essai` (classé au score) et `essaitemps` (classé au temps) par `npm run nouveau-jeu`, puis lance le typage, les
+  # fiches, les unitaires des deux jeux et des tests de la plateforme qui lisent les fiches (SQLite, puis libSQL `file:`), la construction, les budgets, l'Essentiel e2e des deux jeux en Chromium (partie scriptée, envoi
+  # rejoué et classé, Amis ; Mon groupe, aperçu, effacement et jour figé sont des tests du serveur) et vérifie qu'AUCUN fichier n'est créé ou modifié hors des zones des jeux, de leurs fiches, des fichiers générés et des
+  # entrées mécaniques (lignes ajoutées seulement). Rouge = le kit, le générateur ou le modèle « Cibles » ne tiennent plus ensemble. Il ne remplace PAS `jeu-fictif` : celui-ci lance TOUTE la suite unitaire (trois parts) sur une
+  # fiche minimale, pour prouver que la plateforme ne nomme aucun jeu ; celui-là prouve qu'un jeu complet, généré, tient debout (typage, construction, e2e). Aucune base distante (R14), aucun secret, rien n'est versé au dépôt.
+  kit-bout-en-bout:
+    needs: scope
+    if: needs.scope.outputs.kit_bout_en_bout == 'true'
+    name: Kit de bout en bout
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
+      - run: npx playwright install chromium
+        working-directory: apps/web
+        if: steps.browsers.outputs.cache-hit != 'true'
+      - name: Clé des paquets système
+        id: paquets
+        run: |
+          pw="$(node -p 'require("./node_modules/@playwright/test/package.json").version')"
+          echo "prefixe=paquets-${{ runner.os }}-chromium-pw$pw-$ImageOS-" >> "$GITHUB_OUTPUT"
+          echo "cle=paquets-${{ runner.os }}-chromium-pw$pw-$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        id: paquets-cache
+        with:
+          path: ~/paquets-playwright
+          key: ${{ steps.paquets.outputs.cle }}
+          restore-keys: ${{ steps.paquets.outputs.prefixe }}
+      - name: Paquets système de Playwright
+        run: bash scripts/paquets-playwright.sh chromium "$HOME/paquets-playwright"
+        timeout-minutes: 15
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        if: steps.paquets-cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/paquets-playwright
+          key: ${{ steps.paquets.outputs.cle }}
+      - name: Deux jeux générés dans une copie du dépôt (typage, unitaires, construction, budgets, e2e, zones)
+        run: node scripts/kit-bout-en-bout.mjs
 
   # Lot R17 — les budgets de TOUS les jeux et du portail, sur chaque PR qui touche ce que charge un joueur (scripts/ci-zones.mjs, `budgetsPour`). Pas de navigateur : on construit (comme les e2e,
   # avec la date de lancement de test : les plafonds ont été posés sur cette construction) et `scripts/budgets-controle.mjs` compare chaque ligne de docs/plateforme/budgets.md à sa mesure ; il échoue

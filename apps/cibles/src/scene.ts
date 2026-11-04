@@ -1,4 +1,4 @@
-import { COLONNES, DUREE_TICKS, LIGNES, MAX_TOUCHES, NB_CASES, NB_CIBLES, Partie, TICKS_PAR_SECONDE, caseAuPoint, decoderRediffusion, enregistrer, type Contenu, type Touche } from "@cdj/cibles-sim";
+import { COLONNES, LIGNES, MAX_TOUCHES, NB_CASES, Partie, VARIANTE, caseAuPoint, decoderRediffusion, enregistrer, type Contenu, type Touche } from "@cdj/cibles-sim";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 
 // Le rendu et les entrées de « Cibles » : un plateau de 8 × 6 cases en Canvas 2D (pas de Three.js), la cible visible, le curseur du clavier et de la manette, le fantôme. **De l'affichage seulement** : la partie est
@@ -97,14 +97,8 @@ export function nouvellePartieCibles(contenu: Contenu, hote: HTMLElement, o: Opt
       else if (id === "bas") curseur = ((y + 1) % LIGNES) * COLONNES + x;
       else if (id === "toucher") toucher(curseur);
     },
-    hud() {
-      const reste = Math.max(0, Math.ceil((DUREE_TICKS - partie.tick) / TICKS_PAR_SECONDE));
-      return { principal: `${partie.touches} / ${NB_CIBLES}`, secondaire: `0:${String(reste).padStart(2, "0")}` };
-    },
-    resultat() {
-      const r = partie.resultat();
-      return { score: [r.touches, r.dernier], rediffusion: enregistrer(contenu, touches) };
-    },
+    hud: () => VARIANTE.hud(partie.touches, partie.tick),
+    resultat: () => ({ score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, touches) }),
     fantome: lireFantome,
     dessiner() {
       g.clearRect(0, 0, canvas.width, canvas.height);
@@ -133,7 +127,7 @@ export function nouvellePartieCibles(contenu: Contenu, hote: HTMLElement, o: Opt
       if (v >= 0) {
         const cible = contenu.cibles[v]!;
         const [cx, cy] = centre(cible.c);
-        const reste = (cible.f - partie.tick) / (cible.f - cible.d);
+        const reste = VARIANTE.fraction(partie.etat, v);
         g.fillStyle = palette.cible;
         g.beginPath();
         g.arc(cx, cy, cote * 0.34, 0, Math.PI * 2);
