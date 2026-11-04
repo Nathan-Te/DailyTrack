@@ -7,30 +7,30 @@ import { ENTREES_MECANIQUES, TEINTES, choisirTeinte, cloner, construirePassation
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { classer, contient } from "../../../scripts/kit-bout-en-bout.mjs";
 
-// Lot K4g — le générateur `npm run nouveau-jeu` (scripts/nouveau-jeu.mjs) : ses règles pures, son plan à blanc sur le dépôt réel (rien n'est écrit) et la preuve que ce qu'il ferait reste dans les zones du jeu.
+// Lot K4g — (l'identifiant `banctest` : `scripts/jeu-fictif.mjs` pose lui-même un jeu `essai` dans sa copie) le générateur `npm run nouveau-jeu` (scripts/nouveau-jeu.mjs) : ses règles pures, son plan à blanc sur le dépôt réel (rien n'est écrit) et la preuve que ce qu'il ferait reste dans les zones du jeu.
 // Le vrai passage (génération, typage, tests, construction, e2e) est celui du job « Kit de bout en bout » (scripts/kit-bout-en-bout.mjs), sur une copie du dépôt.
 const RACINE = join(import.meta.dirname, "../../..");
-const c = { id: "essai", nom: "Essai", ident: "Essai", majuscules: "ESSAI", sel: "0x123456", ports: { site: 4999, serveur: 8999 } };
+const c = { id: "banctest", nom: "Banctest", ident: "Banctest", majuscules: "BANCTEST", sel: "0x123456", ports: { site: 4999, serveur: 8999 } };
 const globVersRegExp = (glob: string) => new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\u0000").replace(/\*/g, "[^/]*").replace(/\u0000/g, ".*")}$`);
 
 describe("l'identifiant et les options", () => {
   it("refuse un tiret, une majuscule, un nom trop court, un nom réservé, le modèle et un jeu qui existe", () => {
-    for (const id of ["essai-temps", "Essai", "ab", "web", "cibles", "tower", "1jeu", "a".repeat(21)]) expect(() => verifierId(id, RACINE), id).toThrow();
-    expect(() => verifierId("essaitemps", RACINE)).not.toThrow();
+    for (const id of ["banctest-temps", "Banctest", "ab", "web", "cibles", "tower", "1jeu", "a".repeat(21)]) expect(() => verifierId(id, RACINE), id).toThrow();
+    expect(() => verifierId("banctesttemps", RACINE)).not.toThrow();
   });
   it("lit les options : le nom par défaut est l'identifiant en majuscule initiale, le classement score par défaut", () => {
-    const o = lireOptions(["--id", "essai"]);
-    expect({ id: o.id, nom: o.nom, classement: o.classement, aBlanc: o.aBlanc }).toEqual({ id: "essai", nom: "Essai", classement: "score", aBlanc: false });
+    const o = lireOptions(["--id", "banctest"]);
+    expect({ id: o.id, nom: o.nom, classement: o.classement, aBlanc: o.aBlanc }).toEqual({ id: "banctest", nom: "Banctest", classement: "score", aBlanc: false });
     expect(lireOptions(["--id", "z4x", "--nom", "Zèbre 4", "--classement", "temps", "--a-blanc"])).toMatchObject({ nom: "Zèbre 4", classement: "temps", aBlanc: true });
     expect(() => lireOptions([])).toThrow(/--id/);
-    expect(() => lireOptions(["--id", "essai", "--classement", "hauteur"])).toThrow(/score|temps/);
+    expect(() => lireOptions(["--id", "banctest", "--classement", "hauteur"])).toThrow(/score|temps/);
   });
 });
 
 describe("le renommage", () => {
   it("renomme l'identité du jeu partout (chemins, paquets, constantes, identifiants, préfixes) et le nom affiché", () => {
     const t = renommer('import { CIBLES_SIM_VERSION, dailyCibles } from "@cdj/cibles-sim"; // « Cibles » : apps/cibles, cibles:records, "sable" 0xc1b1e5 4176 8793', c);
-    expect(t).toBe('import { ESSAI_SIM_VERSION, dailyEssai } from "@cdj/essai-sim"; // « Essai » : apps/essai, essai:records, "clair" 0x123456 4999 8999');
+    expect(t).toBe('import { BANCTEST_SIM_VERSION, dailyBanctest } from "@cdj/banctest-sim"; // « Banctest » : apps/banctest, banctest:records, "clair" 0x123456 4999 8999');
     expect(renommer("disabled ardoise", c)).toBe("disabled sombre"); // le mot « sable » de « disabled » n'est pas un thème
   });
   it("le modèle, une fois renommé, ne garde aucun nom de « Cibles » dans ses fichiers copiés", () => {
@@ -71,35 +71,35 @@ describe("cloner, teintes, ports", () => {
 describe("le plan à blanc, sur le dépôt réel", () => {
   for (const classement of ["score", "temps"] as const) {
     it(`« ${classement} » : une fiche valide, des fichiers dans les zones du jeu, des lignes ajoutées aux seules entrées mécaniques`, async () => {
-      const plan = await planifier({ id: "essai", nom: "Essai", classement, aBlanc: true, passation: false, sansCommandes: true, racine: RACINE });
-      expect(validerFiche(plan.fiche, "essai")).toEqual([]);
-      expect(plan.fiche).toMatchObject({ id: "essai", etatDepart: "off", temoin: false, etiquette: { dessin: "generique" } });
+      const plan = await planifier({ id: "banctest", nom: "Banctest", classement, aBlanc: true, passation: false, sansCommandes: true, racine: RACINE });
+      expect(validerFiche(plan.fiche, "banctest")).toEqual([]);
+      expect(plan.fiche).toMatchObject({ id: "banctest", etatDepart: "off", temoin: false, etiquette: { dessin: "generique" } });
       expect(plan.fiche.classement.format).toBe(classement === "temps" ? "temps" : "entier");
       expect(plan.fiche.classement.colonnes.map((k: { nom: string }) => k.nom)).toEqual(classement === "temps" ? ["temps", "submitted_at", "player_id"] : ["touches", "dernier", "submitted_at", "player_id"]);
       const zones = (plan.fiche.zones.jeu as string[]).map(globVersRegExp);
-      const hors = plan.creations.map((f: { chemin: string }) => f.chemin).filter((ch: string) => !zones.some((z: RegExp) => z.test(ch)) && ch !== "config/jeux/essai.json");
+      const hors = plan.creations.map((f: { chemin: string }) => f.chemin).filter((ch: string) => !zones.some((z: RegExp) => z.test(ch)) && ch !== "config/jeux/banctest.json");
       expect(hors).toEqual([]);
       expect(plan.editions.map((e: { chemin: string }) => e.chemin).sort()).toEqual([...ENTREES_MECANIQUES].sort());
       for (const e of plan.editions) expect(e.apres.length, e.chemin).toBeGreaterThan(e.avant.length);
       const variante = plan.creations.find((f: { chemin: string }) => f.chemin.endsWith("src/variante.ts")).contenu as string;
       expect(variante).toContain(`export const VARIANTE_NOM: NomVariante = "${classement}";`);
       // Le texte visible ne garde rien de « Cibles » : nom, phrases, aide « à remplacer ».
-      const fr = plan.creations.find((f: { chemin: string }) => f.chemin === "apps/essai/src/catalogue.fr.ts").contenu as string;
+      const fr = plan.creations.find((f: { chemin: string }) => f.chemin === "apps/banctest/src/catalogue.fr.ts").contenu as string;
       expect(fr).toContain("À remplacer");
       expect(fr).not.toMatch(/[Cc]ible/);
       // Rien n'est écrit par un plan.
-      expect(existsSync(join(RACINE, "apps/essai"))).toBe(false);
+      expect(existsSync(join(RACINE, "apps/banctest"))).toBe(false);
     });
   }
   it("`principal --a-blanc` liste ce qu'il créerait, affiche les 5 étapes et n'écrit rien", async () => {
-    const lignes: string[] = await principal(["--id", "essai", "--a-blanc"]);
+    const lignes: string[] = await principal(["--id", "banctest", "--a-blanc"]);
     const texte = lignes.join("\n");
     expect(texte).toMatch(/À BLANC/);
-    expect(texte).toContain("+ apps/essai/src/ (");
+    expect(texte).toContain("+ apps/banctest/src/ (");
     expect(texte).toContain("main.ts");
     expect(texte).toContain("~ apps/api/Dockerfile");
     for (let i = 1; i <= 5; i++) expect(texte).toContain(`  ${i}. `);
-    expect(existsSync(join(RACINE, "docs/essai"))).toBe(false);
+    expect(existsSync(join(RACINE, "docs/banctest"))).toBe(false);
   });
   it("refuse un jeu qui existe (le modèle, une fiche)", async () => {
     await expect(principal(["--id", "cibles", "--a-blanc"])).rejects.toThrow();
@@ -109,9 +109,9 @@ describe("le plan à blanc, sur le dépôt réel", () => {
 
 describe("la passation, tenue à jour depuis les CLAUDE.md", () => {
   it("reprend les zones de la fiche, les règles du CLAUDE.md racine et la méthode ; rien n'est inventé à la main", async () => {
-    const plan = await planifier({ id: "essai", nom: "Essai", classement: "temps", aBlanc: true, passation: false, sansCommandes: true, racine: RACINE });
+    const plan = await planifier({ id: "banctest", nom: "Banctest", classement: "temps", aBlanc: true, passation: false, sansCommandes: true, racine: RACINE });
     const texte: string = construirePassation(RACINE, plan.fiche, { classement: "temps", teinte: plan.teinte });
-    for (const t of ["# Passation — Essai", "## 1. Où en est ce jeu", "## 2. La plateforme en bref", "## 3. Tes zones", "## 5. Les règles de la plateforme", "## 6. La charte visuelle", "## 7. La méthode", "`apps/essai/**`", "à choisir par Nathan", "off` → `preview` → `on`"]) expect(texte, t).toContain(t);
+    for (const t of ["# Passation — Banctest", "## 1. Où en est ce jeu", "## 2. La plateforme en bref", "## 3. Tes zones", "## 5. Les règles de la plateforme", "## 6. La charte visuelle", "## 7. La méthode", "`apps/banctest/**`", "à choisir par Nathan", "off` → `preview` → `on`"]) expect(texte, t).toContain(t);
     // Les règles viennent du CLAUDE.md racine : sa première puce « Un lot = une session » y est (résumée).
     expect(texte).toContain("Un lot = une session = une branche = une PR brouillon");
     expect(texte.length).toBeGreaterThan(5_000);
@@ -134,8 +134,8 @@ describe("le contrôle des fichiers hors zones du job de bout en bout", () => {
   });
   it("`classer` range ce qui a changé : zones du jeu, fiche et fichiers générés passent ; un autre fichier est signalé", () => {
     const avant = new Map([["README.md", "1"], ["apps/api/Dockerfile", "1"]]);
-    const apres = new Map([["README.md", "2"], ["apps/api/Dockerfile", "2"], ["apps/essai/src/main.ts", "1"], ["config/jeux/essai.json", "1"], ["packages/ui/src/fiches.generated.ts", "2"], ["scripts/fiches.ts", "9"]]);
-    const r = classer(avant, apres, RACINE, RACINE, [["apps/essai/**"]]);
+    const apres = new Map([["README.md", "2"], ["apps/api/Dockerfile", "2"], ["apps/banctest/src/main.ts", "1"], ["config/jeux/banctest.json", "1"], ["packages/ui/src/fiches.generated.ts", "2"], ["scripts/fiches.ts", "9"]]);
+    const r = classer(avant, apres, RACINE, RACINE, [["apps/banctest/**"]]);
     expect(r.horsDesZones.sort()).toEqual(["README.md", "scripts/fiches.ts"].sort());
   });
 });
