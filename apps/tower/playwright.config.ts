@@ -22,7 +22,7 @@ export default defineConfig({
   testDir: "e2e",
   timeout: 180_000,
   retries: CI ? 1 : 0,
-  reporter: CI ? [["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }], ["list"]] : "list",
+  reporter: CI ? [["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }], ["list"]] : process.env.CDJ_BAVARD ? "list" : "dot", // lot T1 : en local, des points et les échecs en entier ; `CDJ_BAVARD=1` ou `--reporter=list` pour une ligne par test
   use: { baseURL: "http://localhost:4175", locale: "fr-FR", trace: CI ? { mode: "retain-on-failure", screenshots: false, snapshots: false } : "off" },
   projects,
   webServer: [

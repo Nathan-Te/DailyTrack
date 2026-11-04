@@ -7,6 +7,7 @@
 //   npm run verifier -- --sans-e2e                typecheck, construction et tests unitaires seulement (lot R17 : et les budgets, si la PR touche ce que charge un joueur)
 //   npm run verifier -- --regression              lot R13 : les tests `@regression` des specs choisis aussi (la CI de PR ne lance que l'Essentiel, docs/tests.md)
 //   npm run verifier -- --base=origin/main --fichiers=a.ts,b.ts
+//   npm run verifier -- --bavard                  lot T1 : le journal COMPLET de chaque étape (sinon : une ligne par étape, et la fin du journal de celle qui échoue)
 // Code de sortie : 0 si tout est vert, 1 au premier échec (le suivant n'est pas lancé : on corrige, on relance).
 
 import { spawnSync } from "node:child_process";
@@ -91,6 +92,7 @@ function main(argv) {
     console.error(`zone(s) inconnue(s) : ${extra.inconnues.join(", ")} (zones de e2e/zones.json : ${Object.keys(table.zones).join(", ")})`);
     process.exit(2);
   }
+  const bavard = argv.includes("--bavard");
   const plan = etapes(d, { sansE2e: argv.includes("--sans-e2e"), extra, regression: argv.includes("--regression") });
   console.log(`verifier : ${fichiers.length} fichier(s) modifié(s) depuis ${base}${d.docsSeuls ? " (documents seuls)" : ""}`);
   if (argv.includes("--liste")) {
@@ -105,14 +107,14 @@ function main(argv) {
   const debut = Date.now();
   for (const [i, e] of plan.entries()) {
     const t0 = Date.now();
-    const r = spawnSync(e.cmd, e.args, { cwd: ROOT, encoding: "utf8", maxBuffer: 512 * 1024 * 1024, env: { ...process.env, FORCE_COLOR: "0", ...e.env } });
+    const r = spawnSync(e.cmd, e.args, { cwd: ROOT, encoding: "utf8", maxBuffer: 512 * 1024 * 1024, env: { ...process.env, FORCE_COLOR: "0", ...(bavard ? { CDJ_BAVARD: "1" } : {}), ...e.env } });
     const sortie = `${r.stdout ?? ""}${r.stderr ?? ""}`;
     const log = join(LOGS, `${String(i + 1).padStart(2, "0")}.log`);
     writeFileSync(log, sortie);
     const s = Math.round((Date.now() - t0) / 1000);
-    if (r.status === 0) console.log(`  ✔ ${e.nom} (${s} s)`);
+    if (r.status === 0) console.log(`  ✔ ${e.nom} (${s} s)${bavard ? `\n${finDuJournal(sortie, Infinity).replace(/^/gm, "    ")}` : ""}`);
     else {
-      console.log(`  ✘ ${e.nom} (${s} s) — journal complet : ${log.replace(`${ROOT}/`, "")}\n${finDuJournal(sortie).replace(/^/gm, "    ")}`);
+      console.log(`  ✘ ${e.nom} (${s} s) — journal complet : ${log.replace(`${ROOT}/`, "")}\n${finDuJournal(sortie, bavard ? Infinity : LIGNES_D_ECHEC).replace(/^/gm, "    ")}`);
       process.exit(1);
     }
   }

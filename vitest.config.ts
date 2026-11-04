@@ -8,9 +8,15 @@ import { defineConfig } from "vitest/config";
 // gardent leurs propres seuils, par exemple le pire jour de génération) : un test bloqué échoue toujours, à 30 s.
 const DELAI_TEST_MS = 30_000;
 
+// Lot T1 (économie de jetons) : en local, un résumé et les échecs (rapporteur « agent » de Vitest : ni une ligne par fichier, ni les tests réussis) ;
+// l'échec garde son message complet. Le détail se demande : `CDJ_BAVARD=1 npm test` (ou `npx vitest run --reporter=default|verbose`, qui l'emporte).
+// En CI (`CI` vaut `true` sur GitHub Actions) rien ne change : les rapporteurs par défaut, dont celui des annotations.
+const REPORTERS = process.env.CI || process.env.CDJ_BAVARD ? undefined : ["agent"];
+
 export default defineConfig({
   test: {
     testTimeout: DELAI_TEST_MS,
+    ...(REPORTERS ? { reporters: REPORTERS } : {}),
     projects: [
       { test: { name: "sqlite", testTimeout: DELAI_TEST_MS, include: ["packages/*/test/**/*.test.ts", "apps/*/test/**/*.test.ts"] } },
       // Lot R13 (docs/tests.md) : les jeux de données fictives de la recette (joueur démo du portail, joueurs fictifs de Jump et du classement) ne tournent que

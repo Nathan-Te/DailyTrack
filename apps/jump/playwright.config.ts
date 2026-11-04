@@ -40,7 +40,7 @@ export default defineConfig({
   // CI : une seule relance, comme DailyTrack ; une réussite à la relance est SIGNALÉE (« instable », résumé du job `e2e`), jamais cachée.
   retries: CI ? 1 : 0,
   // CI : rapport « blob » par part (`E2E_BLOB_NAME` : un nom propre à chaque part), fusionné avec ceux de DailyTrack par le job `e2e`.
-  reporter: CI ? [["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }], ["list"]] : "list",
+  reporter: CI ? [["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }], ["list"]] : process.env.CDJ_BAVARD ? "list" : "dot", // lot T1 : en local, des points et les échecs en entier ; `CDJ_BAVARD=1` ou `--reporter=list` pour une ligne par test
   use: {
     baseURL: "http://localhost:4174",
     // Lot I5 : Jump suit la langue de la plateforme (`cdj:langue`, sinon celle du navigateur) ; les tests tournent en français (comme Track au lot I4) ; un

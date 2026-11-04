@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./package-lock.json)",
+      "Read(./apps/api/test/fixtures/banc-*.json)",
+      "Read(./packages/*/test/fixtures/**/*golden*.json)",
+      "Read(./packages/jump-sim/test/fixtures/themes-avant-lot13.json)",
+      "Read(./config/jeux/projections/**)",
+      "Read(./**/*.generated.ts)",
+      "Read(./**/*.generated.css)",
+      "Read(./docs/plateforme/traductions.md)",
+      "Read(./packages/jump-sim/modules/*.json)",
+      "Read(./apps/jump/public/levels/**)",
+      "Read(./apps/jump/public/outils/**)",
+      "Read(./docs/plateforme/budgets-historique.md)",
+      "Read(./docs/lots/lot-41-garage/maquettes.html)",
+      "Read(./docs/lots/lot-52-commandes/maquettes.html)",
+      "Read(./docs/lots/lot-55/maquettes-fantomes.html)"
+    ]
+  }
+}

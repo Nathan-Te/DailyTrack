@@ -108,14 +108,14 @@ describe("le plan à blanc, sur le dépôt réel", () => {
 });
 
 describe("la passation, tenue à jour depuis les CLAUDE.md", () => {
-  it("reprend les zones de la fiche, les règles du CLAUDE.md racine et la méthode ; rien n'est inventé à la main", async () => {
+  it("reprend les zones de la fiche, les intitulés des règles du CLAUDE.md racine et la méthode ; rien n'est inventé à la main", async () => {
     const plan = await planifier({ id: "banctest", nom: "Banctest", classement: "temps", aBlanc: true, passation: false, sansCommandes: true, racine: RACINE });
     const texte: string = construirePassation(RACINE, plan.fiche, { classement: "temps", teinte: plan.teinte });
     for (const t of ["# Passation — Banctest", "## 1. Où en est ce jeu", "## 2. La plateforme en bref", "## 3. Tes zones", "## 5. Les règles de la plateforme", "## 6. La charte visuelle", "## 7. La méthode", "`apps/banctest/**`", "à choisir par Nathan", "off` → `preview` → `on`"]) expect(texte, t).toContain(t);
     // Les règles viennent du CLAUDE.md racine : sa première puce « Un lot = une session » y est (résumée).
     expect(texte).toContain("Un lot = une session = une branche = une PR brouillon");
-    expect(texte.length).toBeGreaterThan(5_000);
-    expect(texte.length).toBeLessThan(45_000); // à coller dans une conversation : pas un livre
+    expect(texte.length).toBeGreaterThan(3_000);
+    expect(Buffer.byteLength(texte)).toBeLessThan(8_000); // lot T1 : à coller dans une conversation, elle renvoie aux consignes au lieu de les résumer (22 Ko avant)
   });
   it("`resume` garde les puces de premier niveau d'une section et coupe les longues à la fin d'une phrase", () => {
     const md = "## Titre\n- **A** court.\n  suite indentée ignorée\n- " + "mot ".repeat(200) + "\n## Autre\n- hors section";

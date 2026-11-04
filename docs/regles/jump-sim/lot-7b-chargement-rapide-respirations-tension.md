@@ -1,0 +1,8 @@
+# Lot 7b — chargement rapide, respirations, tension
+
+> Déplacé **mot pour mot** de `packages/jump-sim/CLAUDE.md` (lot T1, économie de jetons) : rien n'est réécrit, les règles sont en vigueur. Le renvoi est dans [`packages/jump-sim/CLAUDE.md`](../../../packages/jump-sim/CLAUDE.md).
+
+## Lot 7b — chargement rapide, respirations, tension
+- **Une respiration n'est jamais exigeante** : toute variante d'un morceau étiqueté `respiration` a une exigence de **2 au plus aux deux entrées** (`MAX_REST_EXIGENCE`, `modules.ts` ; test dans `modules.test.ts` sur tout le catalogue). Un morceau étiqueté `respiration` dont une variante dépasse 2 est adouci puis re-résolu (`solve:modules -- --only=<id>`), sinon il perd l'étiquette. Lot 7b : `tunnel` (bosses espacées, plafond plus haut) et `escalier` (deux variantes à 4 et 5 retirées, remplacées) ont été adoucis.
+- **Règle de tension retenue : le dernier tiers est au moins aussi exigeant que le deuxième**, en plus de « dernier tiers ≥ premier tiers » (`TENSION_RISES`, `dailyProblems`). Mesurée sur 120 dates avant d'être appliquée (critères : tirages validés ≥ 60 %, secours 0) : seule, elle faisait tomber les tirages validés à 42 % ; avec le pilotage ajusté (**`PROFILE_END` 36, `EXIGENCE_STEER` 100, `STEER_FROM` 600** : la correction ne joue que sur le dernier tiers) 61,8 %, secours 0. Chiffres : `docs/jump/lots/lot-7b-retouches.md`. `JUMP_GENERATOR_VERSION` valait 4 au lot 7b ; **5** depuis le lot 8c (identifiants `…-g5`), `JUMP_SIM_VERSION` reste 3.
+- **Tout changement du pilotage de l'exigence ou d'une règle de `dailyProblems` se juge à `npm run measure:jump -w @cdj/jump-sim`** (taux de tirages validés, secours, exigence par tiers) sur 120 dates, pas seulement aux tests.
