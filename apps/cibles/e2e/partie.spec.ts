@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { VARIANTE, VARIANTE_NOM } from "@cdj/cibles-sim";
 import { appareil, jouerLeJour, lancer } from "./appareil";
 
 // « Cibles » — LE parcours de joueur du jeu témoin, sans serveur : l'accueil (l'étiquette, JOUER, les plaques Discord et Ko-fi), une partie jouée touche par touche, le HUD, la pause (le temps s'arrête), l'arrivée avec son
@@ -19,10 +20,10 @@ test.describe("Cibles : une partie", () => {
     await page.locator("#jeu-reprendre").click();
     expect(await page.evaluate(() => window.__jeu.phase())).toBe("jeu");
     const attendu = await jouerLeJour(page, 15, [3, 7]);
-    expect(attendu.touches).toBe(18);
+    expect(attendu.touches).toBe(VARIANTE_NOM === "score" ? 18 : 20); // `score` : deux cibles filées ; `temps` : deux hésitations, mais toutes touchées
     await expect(page.locator("#jeu-fin")).toBeVisible();
-    await expect(page.locator("#jeu-fin-score")).toHaveText("18 / 20");
-    expect(await page.evaluate(() => window.__jeu.score())).toEqual([attendu.touches, attendu.dernier]);
+    await expect(page.locator("#jeu-fin-score")).toHaveText(VARIANTE.formatScore(VARIANTE.score(attendu), "fr"));
+    expect(await page.evaluate(() => window.__jeu.score())).toEqual(VARIANTE.score(attendu));
     await expect(page.locator("#jeu-fin .dj-medaille--pastille.dj-medaille--obtenue")).toBeVisible();
     // Hors ligne (aucun serveur) : on le dit, et on garde le record dans le navigateur.
     await expect(page.locator("#jeu-fin-rang")).toContainText("Hors ligne");

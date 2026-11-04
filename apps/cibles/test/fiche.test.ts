@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CIBLES_GENERATOR_VERSION, CIBLES_SIM_VERSION, dailyCibles, numeroCibles, PREMIER_JOUR_CIBLES, themeDuJour } from "@cdj/cibles-sim";
+import { CIBLES_GENERATOR_VERSION, CIBLES_SIM_VERSION, dailyCibles, numeroCibles, partieDuBot, PREMIER_JOUR_CIBLES, themeDuJour, VARIANTE } from "@cdj/cibles-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_CIBLES } from "../src/catalogue";
 import { DEFINITION } from "../src/definition";
@@ -14,7 +14,6 @@ const fiche = JSON.parse(readFileSync(new URL("../../../config/jeux/cibles.json"
   premierJour: string;
   classement: { colonnes: { nom: string; sens: "asc" | "desc" }[] };
   donnees: { stockage: { prefixe: string } };
-  temoin: boolean;
   etiquette: { dessin: string };
   versions: { sim: string; generateur: string };
 };
@@ -29,8 +28,7 @@ describe("« Cibles » : le client suit sa fiche", () => {
     expect(FICHE.colonnes).toEqual(fiche.classement.colonnes.filter((c) => c.nom !== "submitted_at" && c.nom !== "player_id"));
     expect(PREMIER_JOUR_CIBLES).toBe(parseDay(fiche.premierJour));
   });
-  it("un jeu témoin, à l'étiquette générique ; ses versions sont celles de la simulation", () => {
-    expect(fiche.temoin).toBe(true);
+  it("l'étiquette générique ; ses versions sont celles de la simulation", () => {
     expect(fiche.etiquette.dessin).toBe("generique");
     expect(DEFINITION.versions).toEqual({ simVersion: CIBLES_SIM_VERSION, generatorVersion: CIBLES_GENERATOR_VERSION });
     expect(fiche.versions.sim).toMatch(/CIBLES_SIM_VERSION$/);
@@ -49,8 +47,11 @@ describe("« Cibles » : le client suit sa fiche", () => {
     expect(DEFINITION.themeDuJour(J)).toBe(themeDuJour(J));
     const c = dailyCibles(J);
     const s = DEFINITION.seuils(c);
-    expect([20, 10, 6, 3, 2].map((n) => DEFINITION.medaille([n, 100], s))).toEqual(["author", "gold", "silver", "bronze", null]);
-    expect(DEFINITION.formatScore([17, 300], "fr")).toBe("17 / 20");
-    expect(DEFINITION.scorePartage([17, 300], "en")).toBe("17/20");
+    // La médaille et les textes du score viennent de la variante du jeu (`variante.ts`) : la définition ne fait que les brancher.
+    expect(DEFINITION.medaille(VARIANTE.score(partieDuBot(c)), s)).toBe("author");
+    expect(DEFINITION.medaille(VARIANTE.score({ touches: 0, dernier: 900 }), s)).toBeNull();
+    const exemple = VARIANTE.score({ touches: 17, dernier: 300 });
+    expect(DEFINITION.formatScore(exemple, "fr")).toBe(VARIANTE.formatScore(exemple, "fr"));
+    expect(DEFINITION.scorePartage(exemple, "en")).toBe(VARIANTE.scorePartage(exemple, "en"));
   });
 });

@@ -7,3 +7,4 @@ export * from "./bot";
 export * from "./medailles";
 export * from "./themes";
 export * from "./jours";
+export * from "./variante";

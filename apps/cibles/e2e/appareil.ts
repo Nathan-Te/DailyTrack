@@ -1,4 +1,4 @@
-import { dailyCibles, jouer, type Resultat, type Touche } from "@cdj/cibles-sim";
+import { dailyCibles, jouer, VARIANTE, type Resultat } from "@cdj/cibles-sim";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -55,11 +55,11 @@ export async function lancer(page: Page): Promise<void> {
 
 /**
  * Joue la partie du jour à la main, pas à pas : une touche sur la case de chaque cible, `delai` ticks après son apparition (la rediffusion du jeu est donc la suite de ces touches). `sauf` : les rangs des cibles
- * qu'on laisse filer. Rend ce que la simulation (Node, la même) attend de ces touches.
+ * qu'on laisse filer (variante « score ») ou sur lesquelles on hésite (variante « temps »). Rend ce que la simulation (Node, la même) attend de ces touches.
  */
 export async function jouerLeJour(page: Page, delai = 15, sauf: readonly number[] = []): Promise<Resultat> {
   const contenu = dailyCibles(parseDay(JOUR)!);
-  const touches: Touche[] = contenu.cibles.flatMap((x, i) => (sauf.includes(i) ? [] : [{ tick: x.d + delai, c: x.c }]));
+  const touches = VARIANTE.joueur(contenu, () => delai, (i) => sauf.includes(i));
   await page.evaluate((touches) => {
     let t = 0;
     for (const x of touches) {
