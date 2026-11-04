@@ -112,6 +112,32 @@ describe("la validation refuse ce qui sortirait du jeu", () => {
   it("un jeu à la hauteur n'entre pas dans le cumul au temps", () => {
     refuse((f) => (f.classement.cumul = true), "seul un jeu au temps entre dans le cumul");
   });
+  it("lot A3 : la catégorie est `jour` ou `arcade` ; un jeu d'arcade n'entre jamais dans le cumul ; `categorieDepuis` est une date", () => {
+    refuse((f) => delete f.categorie, "categorie");
+    refuse((f) => (f.categorie = "tournoi"), "categorie : `jour` ou `arcade`");
+    refuse((f) => (f.categorieDepuis = "demain"), "categorieDepuis");
+    refuse((f) => (f.categorieDepuis = 20261103), "categorieDepuis");
+    // Un jeu d'arcade a `classement.cumul: false` (règle de la catégorie, en plus de celle de l'unité).
+    refuse((f) => {
+      f.categorie = "arcade";
+      f.classement.cumul = true;
+    }, "un jeu d'arcade n'entre jamais dans le cumul");
+    const ok = (modif: (f: Record<string, any>) => void, id = "tower") => {
+      const f = structuredClone(brut(id));
+      modif(f);
+      return validerFiche(f, id);
+    };
+    expect(ok((f) => (f.categorieDepuis = "2026-11-05"))).toEqual([]);
+    expect(ok((f) => (f.categorie = "jour"))).toEqual([]); // un jeu au score peut être du jour (hors cumul)
+  });
+  it("lot A3 : Track et Jump sont du jour, Tower est d'arcade (hors cumul), et la projection du portail n'écrit que l'arcade", () => {
+    const parId = Object.fromEntries(fiches().map((f) => [f.id, f.categorie]));
+    expect(parId).toMatchObject({ track: "jour", jump: "jour", tower: "arcade" });
+    for (const f of fiches().filter((x) => x.categorie === "arcade")) expect(f.classement.cumul, f.id).toBe(false);
+    const p = projectionPortail(fiches());
+    expect(p.jeux.find((j) => j.id === "track")).not.toHaveProperty("categorie");
+    expect(p.jeux.find((j) => j.id === "tower")).toMatchObject({ categorie: "arcade" });
+  });
   it("une couleur, un état, une scène, un spec sans zone : refusés", () => {
     refuse((f) => (f.etiquette.fond = "menthe"), "etiquette.fond");
     refuse((f) => (f.etiquette.police = "x; } body { display: none"), "etiquette.police");
@@ -223,8 +249,8 @@ describe("les projections", () => {
   it("le portail ne reçoit que ce qu'il dessine (ni zones, ni tables, ni versions, ni thèmes : un octet de plus pèse sur son budget)", () => {
     const p = projectionPortail(fiches());
     // Seul ce qui s'écarte de l'usage est écrit (code ≠ id, titre, accrocheTheme, premierJour, cumul faux, format ≠ temps) : un octet de JSON pèse sur le budget du portail.
-    for (const j of p.jeux) expect(Object.keys(j).every((k) => ["accroche", "accrocheTheme", "code", "cumul", "format", "id", "premierJour", "titre"].includes(k)), j.id).toBe(true);
-    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", accroche: "portail.tower.accroche", cumul: false, format: "hauteur" }); // code = id, absent
+    for (const j of p.jeux) expect(Object.keys(j).every((k) => ["accroche", "accrocheTheme", "categorie", "categorieDepuis", "code", "cumul", "format", "id", "premierJour", "titre"].includes(k)), j.id).toBe(true);
+    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", accroche: "portail.tower.accroche", cumul: false, categorie: "arcade", format: "hauteur" }); // code = id, absent ; lot A3 : seule l'arcade est écrite (`jour` est l'usage)
     expect(p.jeux.find((j) => j.id === "jump")).toEqual({ id: "jump", accroche: "portail.jump.accroche", titre: "jeu.jump.titre", accrocheTheme: "jump.replique.", premierJour: "2026-10-16" }); // code = id, cumul vrai et format `temps` : les défauts, absents
   });
   // Lot K4e : les trois jeux livrés (leurs listes historiques sont écrites en toutes lettres) ; les listes de TOUTES les fiches sont vérifiées juste après.

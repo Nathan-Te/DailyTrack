@@ -36,6 +36,8 @@ export interface JeuDuJour {
    * le lendemain) : il est quand même jouable. Absent (serveur plus ancien) : il compte.
    */
   compte?: boolean;
+  /** Lot A3 : `arcade` quand le jeu est d'arcade aujourd'hui (niveau du jour et classement, hors journée et hors cumul) ; absent : un jeu du jour. */
+  categorie?: "arcade";
   /** Lot P : présent seulement sur un aperçu de PR, pour un jeu pas encore `on` : le badge « Brouillon ». */
   brouillon?: boolean;
   /** Lot F1 : présent (et vrai) pendant les 7 jours qui suivent l'ouverture du jeu : la pastille « Nouveau ». */

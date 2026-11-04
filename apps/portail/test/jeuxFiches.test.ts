@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { CATALOGUE_COMMUN } from "@cdj/ui";
 import { tuilesDesJeux, nomDuJeuAdmin, type Chiffres } from "../src/adminDonnees";
 import { CATALOGUE_PORTAIL } from "../src/catalogue";
-import { FICHES, ficheDuJeu, ficheDuRegistre, titreDeCarte } from "../src/jeuxFiches";
+import { FICHES, categorieDuJeu, ficheDuJeu, ficheDuRegistre, titreDeCarte } from "../src/jeuxFiches";
 import { cartes } from "../src/jours";
 import { daysFromCivil } from "@cdj/core";
 import { JEUX_SANS_NOM_DE_THEME, clesManquantes } from "@cdj/core/fiche";
@@ -108,5 +108,20 @@ describe("le tableau de bord : une tuile par jeu, le bon nom de jeu", () => {
     expect(nomDuJeuAdmin("cdj")).toBe("Track");
     expect(nomDuJeuAdmin("jump")).toBe("Jump");
     expect(nomDuJeuAdmin("autre")).toBe("autre"); // un jeu inconnu garde son code : jamais « Track » par défaut
+  });
+});
+
+describe("la catégorie d'un jeu (lot A3)", () => {
+  const JOUR = daysFromCivil(2026, 11, 4);
+  it("la fiche dit la catégorie quand le serveur n'a pas répondu : Track et Jump du jour, Tower d'arcade", () => {
+    expect(ficheDuJeu("track")?.categorie).toBe("jour");
+    expect(ficheDuJeu("tower")?.categorie).toBe("arcade");
+    expect(categorieDuJeu("track", JOUR)).toBe("jour");
+    expect(categorieDuJeu("tower", JOUR)).toBe("arcade");
+    expect(categorieDuJeu("inconnu", JOUR)).toBe("jour");
+  });
+  it("le serveur a le dernier mot (il n'écrit `categorie` que pour l'arcade) : sa réponse sans catégorie = un jeu du jour", () => {
+    expect(categorieDuJeu("tower", JOUR, {})).toBe("jour");
+    expect(categorieDuJeu("track", JOUR, { categorie: "arcade" })).toBe("arcade");
   });
 });

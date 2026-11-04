@@ -225,7 +225,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
         journee: numeroDeJournee(day, v.premierJour),
         ouvert,
         vue: vueNom,
-        jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(v.estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}) })),
+        jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(v.estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}), ...(v.estArcade(j, day) ? { categorie: "arcade" as const } : {}) })),
         filtre,
         classes,
         amis: amis.length,

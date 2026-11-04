@@ -31,3 +31,11 @@ export function choixPourDemain(favoris: readonly string[], comptentAujourdhui: 
   const reels = jeuxDuJour.filter((j) => comptentAujourdhui.includes(j));
   return voulus.length !== reels.length || voulus.some((j) => !reels.includes(j));
 }
+
+/**
+ * Lot A3 : les jeux d'arcade dans leur section — **les favoris d'abord**, puis les autres, chaque groupe dans l'ordre de la plateforme. Les favoris d'arcade ne changent jamais « Mes jeux »
+ * de la journée (un jeu d'arcade n'y compte pas).
+ */
+export function ordonnerArcade<T extends { code: string }>(arcade: readonly T[], favoris: readonly string[]): T[] {
+  return [...arcade.filter((c) => favoris.includes(c.code)), ...arcade.filter((c) => !favoris.includes(c.code))];
+}

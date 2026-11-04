@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1847 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1849 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -454,6 +454,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.egaliteHauteur` | À la hauteur. À égalité : plus de vies, puis plus vite. | By height. Tie: more lives, then faster. |
 | `classement.egalitePoints` | Aux points. À égalité : le premier arrivé à ce score. | By points. Tie: whoever got there first. |
 | `classement.vues.aria` | Vues du classement | Leaderboard views |
+| `classement.vues.arcade` | Arcade | Arcade |
 | `classement.vue.cumul` | Cumulé | Combined |
 | `classement.separation` | Un jeu sur deux | One game out of two |
 | `classement.veille` | ‹ Veille | ‹ Previous day |
@@ -618,6 +619,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.brouillon` | Brouillon | Draft |
 | `portail.mesJeux.titre` | Mes jeux | My games |
 | `portail.autresJeux.titre` | Les autres jeux | Other games |
+| `portail.arcade.titre` | Arcade | Arcade |
 | `portail.favoris.invite` | Touche l'étoile pour garder tes jeux en haut. | Tap the star to keep your games at the top. |
 | `portail.favoris.demain` | Ton choix compte pour ta journée à partir de demain. | Your choice counts for your day from tomorrow. |
 | `portail.favoris.echec` | Ton choix n'a pas pu être enregistré. Réessaie dans un instant. | Your choice couldn't be saved. Try again in a moment. |

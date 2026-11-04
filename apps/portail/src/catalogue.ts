@@ -15,6 +15,7 @@ const fr = {
   // Lot F1 : « Mes jeux » — les jeux épinglés en haut, les autres en cartouches compactes.
   "portail.mesJeux.titre": "Mes jeux",
   "portail.autresJeux.titre": "Les autres jeux",
+  "portail.arcade.titre": "Arcade",
   "portail.favoris.invite": "Touche l'étoile pour garder tes jeux en haut.",
   "portail.favoris.demain": "Ton choix compte pour ta journée à partir de demain.",
   "portail.favoris.echec": "Ton choix n'a pas pu être enregistré. Réessaie dans un instant.",
@@ -103,6 +104,7 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.brouillon": "Draft",
   "portail.mesJeux.titre": "My games",
   "portail.autresJeux.titre": "Other games",
+  "portail.arcade.titre": "Arcade",
   "portail.favoris.invite": "Tap the star to keep your games at the top.",
   "portail.favoris.demain": "Your choice counts for your day from tomorrow.",
   "portail.favoris.echec": "Your choice couldn't be saved. Try again in a moment.",

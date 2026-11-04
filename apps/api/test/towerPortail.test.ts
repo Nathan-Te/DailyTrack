@@ -59,7 +59,7 @@ describe(`Tower sur le portail : un jeu classé à la hauteur (${TEST_DB})`, () 
     const jeux = r.body.jeux as Record<string, unknown>[];
     expect(jeux.map((j) => j.jeu)).toEqual(["cdj", "jump", "tower"]);
     const tower = jeux[2]!;
-    expect(tower).toMatchObject({ jeu: "tower", site: "tower", nom: "Tower", unite: "mm", compte: true });
+    expect(tower).toMatchObject({ jeu: "tower", site: "tower", nom: "Tower", unite: "mm", compte: false, categorie: "arcade" }); // lot A3 : Tower est d'arcade, il ne compte pas dans la journée
     expect(tower.numero).toBe(JOUR - PREMIER_JOUR_TOWER + 1);
     const seuils = tower.seuils as Record<string, number>;
     expect(Object.keys(seuils).sort()).toEqual(["author", "bronze", "gold", "silver"]);
@@ -145,36 +145,35 @@ describe(`Tower sur le portail : un jeu classé à la hauteur (${TEST_DB})`, () 
     expect(lui.body.jeux.find((j: { jeu: string }) => j.jeu === "tower").etat.statut).toBe("fini");
   });
 
-  it("la journée parfaite et la série comptent Tower (à partir de son `live_from`), jamais le cumul", async () => {
+  it("lot A3 : Tower est d'arcade — ni la journée parfaite, ni la série ne le comptent (épinglé ou non), jamais le cumul ; Track et Jump gardent leur journée", async () => {
     const t = await api();
     await joueur(t, 1, "Alice");
     await joueur(t, 2, "Bruno");
-    for (const n of [1, 2]) {
-      await track(t, n, 60_000);
-      await jump(t, n, 2400);
-    }
-    await partie(t, 1, 30_000, 2, 3000); // Alice a fini les trois jeux, Bruno deux
+    for (const n of [1, 2]) await track(t, n, 60_000);
+    await jump(t, 1, 2400);
+    await partie(t, 1, 30_000, 2, 3000); // Alice a fini les trois jeux, Bruno seulement Track
     const a = await t.call("GET", "/api/portail/jour", undefined, as(1));
     const b = await t.call("GET", "/api/portail/jour", undefined, as(2));
-    expect(a.body.joueur).toMatchObject({ aujourdhuiParfaite: true, journeesParfaites: 1, serie: 1 });
+    // Alice : Track et Jump finis = la journée parfaite (Tower n'est pas exigé) ; Bruno : Track seul, pas parfaite.
+    expect(a.body.joueur).toMatchObject({ aujourdhuiParfaite: true, journeesParfaites: 1, serie: 1, jeuxDuJour: ["track", "jump"] });
     expect(b.body.joueur).toMatchObject({ aujourdhuiParfaite: false, journeesParfaites: 0, serie: 1 });
-    // Un joueur qui n'a fini que Tower a une série de 1 (un jeu fini suffit).
+    // Un joueur qui n'a fini que Tower n'a ni série ni journée : un jeu d'arcade ne compte pas dans la journée.
     await joueur(t, 3, "Chloé");
     await partie(t, 3, 12_000, 1, 3000);
-    expect((await t.call("GET", "/api/portail/jour", undefined, as(3))).body.joueur).toMatchObject({ serie: 1, aujourdhuiParfaite: false });
-    // Le jour de l'activation, Tower est présent mais ne compte pas : la journée parfaite n'exige pas Tower.
-    const neuf = await makeApi({ seed: false });
-    neuf.clock.now = MIDI;
-    await neuf.call("GET", "/api/health");
-    await ouvrirJeu(neuf, "track");
-    await ouvrirJeu(neuf, "jump");
-    await ouvrirJeu(neuf, "tower", JOUR + 1); // il comptera demain
-    await joueur(neuf, 1, "Alice");
-    await track(neuf, 1, 60_000);
-    await jump(neuf, 1, 2400);
-    const jour = await neuf.call("GET", "/api/portail/jour", undefined, as(1));
-    expect(jour.body.jeux.find((j: { jeu: string }) => j.jeu === "tower").compte).toBe(false);
-    expect(jour.body.joueur.aujourdhuiParfaite).toBe(true);
+    expect((await t.call("GET", "/api/portail/jour", undefined, as(3))).body.joueur).toMatchObject({ serie: 0, aujourdhuiParfaite: false, journeesParfaites: 0 });
+    // ... que le joueur ait épinglé Tower ou non : l'épingle ne le fait pas entrer dans sa journée.
+    const epingle = await t.call("PUT", "/api/portail/favoris", { favoris: ["tower"] }, as(3));
+    expect(epingle.status).toBe(200);
+    expect((await t.call("GET", "/api/portail/jour", undefined, as(3))).body.joueur).toMatchObject({ serie: 0, aujourdhuiParfaite: false, favoris: ["tower"] });
+    // Tower garde son niveau, son état et sa vue de classement (hors cumul) : il reste dans les jeux du jour, marqué `arcade`.
+    const jeux = (await t.call("GET", "/api/portail/jour", undefined, as(3))).body.jeux as { jeu: string; categorie?: string; compte?: boolean; etat?: { statut: string } }[];
+    expect(jeux.find((j) => j.jeu === "tower")).toMatchObject({ categorie: "arcade", compte: false, etat: { statut: "fini" } });
+    for (const j of jeux.filter((x) => x.jeu !== "tower")) expect("categorie" in j).toBe(false);
+    const vue = await t.call("GET", "/api/portail/classement?vue=tower");
+    expect(vue.status).toBe(200);
+    const cumul = await t.call("GET", "/api/portail/classement");
+    expect((cumul.body.jeux as { jeu: string; categorie?: string }[]).find((j) => j.jeu === "tower")).toMatchObject({ categorie: "arcade" });
+    expect(cumul.body.top.every((l: { resultats: Record<string, unknown> }) => !("tower" in l.resultats))).toBe(true);
   });
 
   it("le profil commun : jours finis, médailles et meilleure place de Tower", async () => {
