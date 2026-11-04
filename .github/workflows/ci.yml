@@ -435,8 +435,10 @@ jobs:
         id: browsers
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browser }}
-      - run: npx playwright install ${{ matrix.browser }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browser }}${{ matrix.browser != 'chromium' && '-avec-chromium' || '' }}
+      # Lot B1b : les images de partage sont dessinées par Chromium et lui seul (scripts/images-partage.mjs, appelé par scripts/site.mjs, que des specs lancent
+      # pour assembler le site) : Firefox et WebKit installent donc aussi Chromium (sans lui, Firefox dessinait un PNG de 75 Ko au lieu de 42 Ko).
+      - run: npx playwright install ${{ matrix.browser != 'chromium' && format('{0} chromium', matrix.browser) || 'chromium' }}
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit != 'true'
       # Lot R12 : les paquets système du navigateur SANS apt (le miroir d'apt prenait jusqu'à 10 min sur un runner sur cinq, lot R13). Clé : le navigateur,
@@ -446,8 +448,8 @@ jobs:
         id: paquets
         run: |
           pw="$(node -p 'require("./node_modules/@playwright/test/package.json").version')"
-          echo "prefixe=paquets-${{ runner.os }}-${{ matrix.browser }}-pw$pw-$ImageOS-" >> "$GITHUB_OUTPUT"
-          echo "cle=paquets-${{ runner.os }}-${{ matrix.browser }}-pw$pw-$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+          echo "prefixe=paquets-${{ runner.os }}-${{ matrix.browser }}${{ matrix.browser != 'chromium' && '-avec-chromium' || '' }}-pw$pw-$ImageOS-" >> "$GITHUB_OUTPUT"
+          echo "cle=paquets-${{ runner.os }}-${{ matrix.browser }}${{ matrix.browser != 'chromium' && '-avec-chromium' || '' }}-pw$pw-$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         id: paquets-cache
         with:
@@ -455,7 +457,7 @@ jobs:
           key: ${{ steps.paquets.outputs.cle }}
           restore-keys: ${{ steps.paquets.outputs.prefixe }}
       - name: Paquets système de Playwright
-        run: bash scripts/paquets-playwright.sh ${{ matrix.browser }} "$HOME/paquets-playwright"
+        run: bash scripts/paquets-playwright.sh ${{ matrix.browser }} "$HOME/paquets-playwright" ${{ matrix.browser != 'chromium' && 'chromium' || '' }}
         timeout-minutes: 15
       - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         if: steps.paquets-cache.outputs.cache-hit != 'true'

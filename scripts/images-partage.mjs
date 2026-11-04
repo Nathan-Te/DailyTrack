@@ -3,11 +3,13 @@
 // de Playwright déjà présent pour les tests (aucune image extérieure, aucun service tiers, aucune dépendance ajoutée). Appelé par
 // `scripts/site.mjs site` ; ligne de commande pour les regarder :
 //   node scripts/images-partage.mjs <dossier>     → <dossier>/portail.png, track.png, jump.png (1200 × 630), icone-180.png, icone-192.png, icone-512.png
-// Navigateur : Chromium (celui de Playwright, ou CHROMIUM_PATH) ; s'il manque (une part Firefox ou WebKit de la CI, qui assemble le site pour ses
-// tests), le navigateur de Playwright installé, quel qu'il soit : les images sont des aplats et des polices du site, le rendu est le même.
-import { mkdirSync, statSync } from "node:fs";
+// Navigateur : Chromium, et lui seul (celui de Playwright, ou CHROMIUM_PATH), quel que soit le job qui assemble le site — lot B1b. Un autre navigateur
+// dessinait la même page en PNG de 75 Ko au lieu de 42 Ko (Firefox : RGBA, compression plus faible) : les jobs Firefox et WebKit de la CI installent
+// donc Chromium en plus du leur. Pas de repli : sans Chromium la construction échoue, avec la commande qui le donne.
+import { mkdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { lirePlafonds } from "./budgets-controle.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -31,8 +33,12 @@ export const ICONES = [
   { nom: "icone-512", section: "#icone", taille: 512 },
 ];
 
-/** Poids maximal d'une image de partage (les messageries refusent ou réduisent les images lourdes). **Lot B1 : le plafond de la ligne `partage.image` de docs/plateforme/budgets.md** (mesure + 10 %, 48 Ko, 1 Ko = 1 000 o ; avant : 150 Kio). */
-export const POIDS_MAX = 48_000;
+/**
+ * Poids maximal d'une image de partage (les messageries refusent ou réduisent les images lourdes). **Lot B1b : le plafond de la ligne `partage.image` de
+ * docs/plateforme/budgets.md, lu là, jamais recopié** (règle du lot B1 : mesure + 10 %, en Ko, 1 Ko = 1 000 o) — un seul plafond pour la même image.
+ */
+export const POIDS_MAX = lirePlafonds(readFileSync(join(ROOT, "docs/plateforme/budgets.md"), "utf8"))["partage.image"];
+if (!(POIDS_MAX > 0)) throw new Error("docs/plateforme/budgets.md : la ligne `partage.image` manque ou n'est pas lisible");
 
 /** Largeur et hauteur d'un PNG (en-tête IHDR), ou une erreur si ce n'est pas un PNG. Pur, testé. */
 export function taillePng(octets) {
@@ -41,28 +47,20 @@ export function taillePng(octets) {
   return { largeur: octets.readUInt32BE(16), hauteur: octets.readUInt32BE(20) };
 }
 
-/** Le navigateur pour photographier : Chromium d'abord (CHROMIUM_PATH ou celui de Playwright), sinon un autre navigateur de Playwright installé. */
+/** Le navigateur qui dessine : Chromium, jamais un autre (même page, même PNG, même poids : lot B1b). */
 async function lancerNavigateur() {
   const pw = await import("@playwright/test");
-  const essais = [
-    () => pw.chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox", "--font-render-hinting=none"] }),
-    () => pw.firefox.launch(),
-    () => pw.webkit.launch(),
-  ];
-  const erreurs = [];
-  for (const essai of essais) {
-    try {
-      return await essai();
-    } catch (e) {
-      erreurs.push(e instanceof Error ? e.message.split("\n")[0] : String(e));
-    }
+  try {
+    return await pw.chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox", "--font-render-hinting=none"] });
+  } catch (e) {
+    const cause = e instanceof Error ? e.message.split("\n")[0] : String(e);
+    throw new Error(`Chromium est requis pour dessiner les images de partage (npx playwright install chromium, ou CHROMIUM_PATH) : ${cause}`);
   }
-  throw new Error(`aucun navigateur de Playwright pour produire les images de partage (npx playwright install chromium) : ${erreurs.join(" · ")}`);
 }
 
 /**
  * Produit les images de partage et les icônes dans `sortie` ; rend la liste `{ nom, fichier, largeur, hauteur, octets }`. Échoue si une police
- * de la page n'est pas chargée (une image sans la police de la charte), si une image n'a pas sa taille ou dépasse `POIDS_MAX`.
+ * de la page n'est pas chargée (une image sans la police de la charte), si une image n'a pas sa taille ou dépasse `POIDS_MAX` (la ligne `partage.image` de budgets.md).
  */
 export async function produireImages(sortie) {
   mkdirSync(sortie, { recursive: true });
@@ -95,7 +93,6 @@ export async function produireImages(sortie) {
   } finally {
     await navigateur.close();
   }
-  const { readFileSync } = await import("node:fs");
   for (const f of faites) {
     const t = taillePng(readFileSync(f.fichier));
     if (t.largeur !== f.largeur || t.hauteur !== f.hauteur) throw new Error(`${f.nom}.png : ${t.largeur} × ${t.hauteur}, attendu ${f.largeur} × ${f.hauteur}`);
