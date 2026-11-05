@@ -33,8 +33,17 @@ export function creerFond(peau: PeauJeu | undefined, theme: string): HTMLElement
   return fond;
 }
 
-/** L'illustration du titre de l'accueil, dans son habillage décoratif ; `null` si le jeu n'en donne pas. */
-export function creerDessin(peau: PeauJeu | undefined): HTMLElement | null {
+/**
+ * L'illustration du titre de l'accueil, dans son habillage décoratif. Celle que donne `DefinitionJeu.peau.dessin` d'abord ; sinon **le fichier `illustration.svg` du jeu** (`apps/<id>/public/`, champ `identite.illustration` de sa fiche, servi à côté de la page), posé
+ * comme une image décorative (`alt` vide, `aria-hidden`) : elle se retire seule si le fichier manque (un jeu en cours de route n'a pas de trou).
+ */
+export function creerDessin(peau: PeauJeu | undefined): HTMLElement {
   const d = peau?.dessin?.();
-  return d ? el("span", { classe: "jeu-accueil__dessin", attrs: { "aria-hidden": "true" } }, d) : null;
+  const c = el("span", { classe: "jeu-accueil__dessin", attrs: { "aria-hidden": "true" } }, d);
+  if (!d) {
+    const image = el("img", { classe: "jeu-accueil__image", attrs: { src: "illustration.svg", alt: "" } });
+    image.onerror = () => c.remove();
+    c.append(image);
+  }
+  return c;
 }

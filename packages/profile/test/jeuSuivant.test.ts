@@ -92,3 +92,15 @@ describe("suiteDuJour sur « mes jeux » (lot F1)", () => {
     expect(suiteDuJour(monde({ track: fini, jump: pasJoue, tower: pasJoue }, []), "cdj")).toMatchObject({ kind: "suivant", jeu: "jump" });
   });
 });
+
+// Lot K5 : un jeu d'arcade ne compte pas dans la journée — le serveur le dit (`categorie: "arcade"`), et il n'annonce jamais « Journée parfaite ! » ; le jeu suivant, lui, reste proposé.
+describe("suiteDuJour : un jeu d'arcade", () => {
+  const arcade = (etat: unknown) => ({ jeu: "blocks", site: "blocks", nom: "Blocks", categorie: "arcade", compte: false, etat });
+  const track = (etat: unknown) => ({ jeu: "cdj", site: "track", nom: "Track", etat });
+  it("tout est fini : ni journée parfaite ni bouton", () => {
+    expect(suiteDuJour({ date: "2026-11-05", jeux: [track(fini), arcade(fini)] }, "blocks")).toBeNull();
+  });
+  it("un jeu du jour reste à jouer : il est proposé", () => {
+    expect(suiteDuJour({ date: "2026-11-05", jeux: [track(pasJoue), arcade(fini)] }, "blocks")).toEqual({ kind: "suivant", jeu: "cdj", nom: "Track", href: "../track/" });
+  });
+});

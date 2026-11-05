@@ -9,7 +9,7 @@
 // la police de repli (comme un caractère qu'une police n'a jamais eu).
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { jeuDeCaracteres, pointsDeCode } from "./caracteres.mjs";
@@ -32,14 +32,32 @@ if (version.error) {
 }
 const fonttools = execFileSync("python3", ["-c", "import fontTools, brotli; print(fontTools.version)"], { encoding: "utf8" }).trim();
 
-const resultats = [];
-for (const f of readdirSync(join(POLICES, "originaux")).filter((x) => x.endsWith(".woff2")).sort()) {
+// Lot K5 — `--seulement=<morceau du nom>` : ne découpe que les polices dont le nom contient ce morceau et laisse les autres lignes de `decoupe.json` (et leurs fichiers) intactes — ajouter une face ne
+// change l'empreinte d'aucune autre. Les découpes « profil » (plus bas) sont toujours refaites.
+const seulement = process.argv.find((a) => a.startsWith("--seulement="))?.slice("--seulement=".length);
+const ancien = seulement ? JSON.parse(readFileSync(join(POLICES, "decoupe.json"), "utf8")) : null;
+const resultats = ancien ? ancien.polices.filter((r) => !r.fichier.includes(seulement)) : [];
+for (const f of readdirSync(join(POLICES, "originaux")).filter((x) => x.endsWith(".woff2") && (!seulement || x.includes(seulement))).sort()) {
   const source = join(POLICES, "originaux", f);
   const sortie = join(POLICES, f);
   execFileSync("pyftsubset", [source, `--unicodes=${unicodes}`, "--flavor=woff2", "--layout-features=*", "--name-IDs=*", "--notdef-outline", `--output-file=${sortie}`], { stdio: "inherit" });
   resultats.push({ fichier: f, avant: statSync(source).size, apres: statSync(sortie).size, sha256: sha(sortie) });
   console.log(`${f} : ${resultats.at(-1).avant} → ${resultats.at(-1).apres} o`);
 }
+// Lot K5 — **les découpes « profil »** : hors du jeu (le profil commun, les cartouches compactes) la voix d'un jeu n'écrit que son nom, un numéro, des chiffres : les capitales, les chiffres, l'espace et quelques signes
+// (de l'ordre de 3 à 4 Ko au lieu de 10 : seul le crénage est gardé, sans les instructions de hinting). Elles sont servies depuis `polices/profil/` (même nom que l'original) et décrites dans `decoupe.json` (`profil`). Une police de jeu s'y ajoute en nommant son fichier ici.
+const PROFIL = ["rubik-mono-one-latin-400-normal.woff2", "bungee-latin-400-normal.woff2"];
+const CARACTERES_PROFIL = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -'·.:", ...Array.from({ length: 0xde - 0xc0 + 1 }, (_, i) => String.fromCodePoint(0xc0 + i)).filter((c) => c !== "×"), "Œ"];
+const unicodesProfil = CARACTERES_PROFIL.map((c) => `U+${c.codePointAt(0).toString(16)}`).join(",");
+mkdirSync(join(POLICES, "profil"), { recursive: true });
+const profil = [];
+for (const f of PROFIL) {
+  const source = join(POLICES, "originaux", f);
+  const sortie = join(POLICES, "profil", f);
+  execFileSync("pyftsubset", [source, `--unicodes=${unicodesProfil}`, "--flavor=woff2", "--layout-features=kern", "--no-hinting", "--name-IDs=*", "--notdef-outline", `--output-file=${sortie}`], { stdio: "inherit" });
+  profil.push({ fichier: f, avant: statSync(source).size, apres: statSync(sortie).size, sha256: sha(sortie) });
+  console.log(`profil/${f} : ${profil.at(-1).avant} → ${profil.at(-1).apres} o`);
+}
 const total = (k) => resultats.reduce((n, r) => n + r[k], 0);
-writeFileSync(join(POLICES, "decoupe.json"), JSON.stringify({ outil: `pyftsubset (fonttools ${fonttools})`, caracteres: jeu.size, polices: resultats }, null, 2) + "\n");
+writeFileSync(join(POLICES, "decoupe.json"), JSON.stringify({ outil: `pyftsubset (fonttools ${fonttools})`, caracteres: jeu.size, polices: resultats, profil: { caracteres: CARACTERES_PROFIL.length, polices: profil } }, null, 2) + "\n");
 console.log(`${resultats.length} polices : ${total("avant")} → ${total("apres")} o (${total("avant") - total("apres")} o de moins)`);

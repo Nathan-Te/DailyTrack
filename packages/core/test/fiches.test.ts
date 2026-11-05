@@ -51,6 +51,9 @@ describe("les fiches du dépôt", () => {
       "packages/ui/src/amis.generated.css",
       "packages/ui/src/fiches.generated.ts",
       "packages/ui/src/fiches.production.generated.ts",
+      "packages/ui/src/identites/blocks.generated.css", // lot K5 : la peau d'identité (police, motif) de chaque jeu générique, un fichier par jeu
+      "packages/ui/src/identites/cibles.generated.css",
+      "packages/ui/src/identites/rush.generated.css",
       "packages/ui/src/jeux.generated.css",
       "packages/ui/src/jeux.production.generated.css",
       "scripts/catalogues-jeux.generated.ts",
@@ -249,8 +252,8 @@ describe("les projections", () => {
   it("le portail ne reçoit que ce qu'il dessine (ni zones, ni tables, ni versions, ni thèmes : un octet de plus pèse sur son budget)", () => {
     const p = projectionPortail(fiches());
     // Seul ce qui s'écarte de l'usage est écrit (code ≠ id, titre, accrocheTheme, premierJour, cumul faux, format ≠ temps) : un octet de JSON pèse sur le budget du portail.
-    for (const j of p.jeux) expect(Object.keys(j).every((k) => ["accroche", "accrocheTheme", "categorie", "categorieDepuis", "code", "cumul", "format", "id", "premierJour", "titre"].includes(k)), j.id).toBe(true);
-    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", accroche: "portail.tower.accroche", cumul: false, categorie: "arcade", format: "hauteur" }); // code = id, absent ; lot A3 : seule l'arcade est écrite (`jour` est l'usage)
+    for (const j of p.jeux) expect(Object.keys(j).every((k) => ["accroche", "accrocheTheme", "categorie", "categorieDepuis", "code", "cumul", "format", "id", "illustration", "premierJour", "titre"].includes(k)), j.id).toBe(true);
+    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", accroche: "portail.tower.accroche", cumul: false, categorie: "arcade", format: "hauteur", illustration: true }); // lot K5 : Tower a un fichier d\'illustration, posé sur sa carte du profil ; code = id, absent ; lot A3 : seule l'arcade est écrite (`jour` est l'usage)
     expect(p.jeux.find((j) => j.id === "jump")).toEqual({ id: "jump", accroche: "portail.jump.accroche", titre: "jeu.jump.titre", accrocheTheme: "jump.replique.", premierJour: "2026-10-16" }); // code = id, cumul vrai et format `temps` : les défauts, absents
   });
   // Lot K4e : les trois jeux livrés (leurs listes historiques sont écrites en toutes lettres) ; les listes de TOUTES les fiches sont vérifiées juste après.

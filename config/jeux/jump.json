@@ -15,6 +15,12 @@
     "police": "\"Lilita One\", \"Archivo\", sans-serif",
     "dessin": "propre"
   },
+  "identite": {
+    "police": "Lilita One",
+    "motif": "uni",
+    "illustration": "propre",
+    "aujourdhui": true
+  },
   "etatDepart": "on",
   "premierJour": "2026-10-16",
   "categorie": "jour",

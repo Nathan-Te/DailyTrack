@@ -22,15 +22,19 @@ export const POLICES = [
   { paquet: "barlow-condensed", famille: "Barlow Condensed", version: "5.3.0", fichiers: ["600-normal", "700-italic", "800-italic"] },
   { paquet: "lilita-one", famille: "Lilita One", version: "5.3.0", fichiers: ["400-normal"] },
   { paquet: "rubik-mono-one", famille: "Rubik Mono One", version: "5.3.0", fichiers: ["400-normal"] },
+  // Lot K5 : la voix de Rush (provisoire, charte § 4).
+  { paquet: "bungee", famille: "Bungee", version: "5.3.0", fichiers: ["400-normal"] },
 ];
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (isMain) {
   const tmp = mkdtempSync(join(tmpdir(), "polices-"));
-  const sources = [];
+  // `--seulement=<paquet>` (lot K5) : ne récupère que ce paquet et l'ajoute à `sources.json` (les autres lignes, leurs empreintes et leurs fichiers ne bougent pas).
+  const seulement = process.argv.find((a) => a.startsWith("--seulement="))?.slice("--seulement=".length);
+  const sources = seulement ? JSON.parse(readFileSync(join(OUT, "sources.json"), "utf8")).filter((x) => x.paquet.split("@")[1] !== `fontsource/${seulement}`) : [];
   try {
     mkdirSync(join(OUT, "originaux"), { recursive: true });
-    for (const p of POLICES) {
+    for (const p of POLICES.filter((x) => !seulement || x.paquet === seulement)) {
       const spec = `@fontsource/${p.paquet}@${p.version}`;
       const tgz = execFileSync("npm", ["pack", spec, "--silent", "--pack-destination", tmp], { encoding: "utf8" }).trim().split("\n").pop();
       const dir = join(tmp, p.paquet);

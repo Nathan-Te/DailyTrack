@@ -26,6 +26,8 @@ Révision 16 (accueil des jeux sur téléphone, 02/11/2026, lot S1b) : voile à 
 
 Révision 17 (demande de Nathan, 03/11/2026, lot C1) : avatars des joueurs, emblèmes des groupes, bouton « Un bug ? Une idée ? » et « Mes messages » (§ 9). (Le fichier de charte fourni avec le lot l'appelait « révision 16 » sur une base plus ancienne que ce dépôt ; seuls ses trois passages du § 9 sont repris ici.)
 
+Révision 18 (05/11/2026, lot K5) : chaque jeu a sa police, son motif et son illustration ; accueil d'un jeu aux proportions de Tower ; cases de médailles pleines au profil (§ 4, § 5, § 9). Inclut le passage de la révision 17 du fichier fourni : les commandes tactiles se choisissent par jeu, le joystick virtuel est permis pour un déplacement libre (§ 9). (Le fichier de charte fourni l'appelait « révision 18 » sur une base plus ancienne que ce dépôt : seuls ses passages sur ces points sont repris ici.)
+
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
 Chaque règle porte sa raison. Une règle dont la raison ne s'applique plus se discute avec Nathan ; elle ne se contourne pas.
@@ -128,9 +130,11 @@ Raison : la menthe et le vert sapin évoquent la boîte d'un jeu de construction
 | Chiffres, dates, numéros du jour, temps | JetBrains Mono | 500, 700 | partout |
 | Voix de Track | Barlow Condensed | 600 droit, 700 et 800 italique | étiquette Track |
 | Voix de Jump | Lilita One | 400 | étiquette Jump |
-| Voix de Tower | Rubik Mono One | 400 | étiquette Tower |
+| Voix de Tower et de Blocks | Rubik Mono One | 400 | étiquettes Tower et Blocks |
+| Voix de Rush (provisoire) | Bungee | 400 | étiquette Rush |
 
 - **Hébergées sur le site** (fichiers `woff2`, sous-ensemble latin qui couvre le français), `font-display: swap`. Aucun appel à un service de polices externe : rapidité et confidentialité (rien n'est envoyé à un tiers).
+- **Chaque jeu a sa voix** (révision 18) : une police de titre, déclarée dans sa fiche. Hors du jeu (profil, cartouches compactes), on charge seulement un **sous-ensemble réduit** de cette police (capitales, chiffres, lettres du nom), de quelques Ko.
 - Toutes sous licence SIL Open Font License ; les fichiers de licence accompagnent les polices.
 - **Budget** : le portail charge au plus 150 Ko de polices ; seules Archivo Black et Archivo 400 sont préchargées.
 - Les **chiffres** (temps, compte à rebours, rangs dans les tableaux) sont en JetBrains Mono ou dans la police du jeu, jamais dans une police à chasse variable sans chiffres tabulaires : un temps qui change ne doit pas faire bouger la ligne.
@@ -155,6 +159,9 @@ Raison : Archivo Black donne le côté boîte de jeu imprimée ; la mono donne l
 - **Coins** : jamais uniformes partout. 3 px (boutons, étiquettes), 4 px (tuiles), 6 px (afficheur), 12/3 px (coques), cercle (avatar uniquement).
 - **Bandes de livrée Track** : rayures obliques à 115°, 10-12 px d'orange pour 8-10 px de vide, sur le bord droit de l'étiquette.
 - **Jump** : bordures épaisses (3 px), petites inclinaisons (−2° à +6°) pour les autocollants et pastilles, texte à ombre nette papier sur le titre.
+- **Motif d'étiquette** (révision 18) : chaque jeu a le sien, dessiné en CSS net (rayures obliques, lignes, quadrillage, losanges, ou uni), dans deux tons proches de sa teinte. Jamais de dégradé.
+- **Illustration d'un jeu** : un petit dessin SVG dans la DA du jeu (aplats, contour encre, petits yeux pour les jeux à personnages ou à blocs), sur son accueil et sur sa carte du profil. Décorative (`aria-hidden`).
+- **Cases de médailles** : **remplies de la couleur de la médaille** (Diamant, or, argent, bronze), bordure 3 px encre, texte encre ; jamais une simple bordure colorée sur fond crème.
 - **Tower** : l'étiquette de Tower garde sa coque vert sapin ; son décor est une petite pile de pièces à yeux.
 
 Raison : les ombres nettes et les coques dissymétriques font « objet » ; le flou et la translucidité font « gabarit d'interface ».
@@ -195,7 +202,7 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
   - **Une seule bande** au centre en haut, **30 px de haut** (téléphone en paysage) : chronomètre · point de contrôle / de passage · écart signé (`+` / `−`), collés en une plaque. Rien d'empilé dessous en permanence.
   - En haut à gauche : pause (44 px), et pour Track les deux actions de course (dernier point de contrôle, recommencer) en boutons de 44 px. En haut à droite : objectif de médaille (pastille + seuil, sans le mot « Objectif ») ; Track : le rang du jour en pastille qui s'ouvre au toucher ; Jump : l'autocollant des morts.
   - **Le centre de l'écran reste libre** pendant la partie : aucune plaque permanente, aucun panneau. Le titre du circuit ou du niveau ne s'affiche qu'au départ, quelques secondes. Une aide s'affiche en une ligne courte sous la bande, puis disparaît.
-  - Commandes tactiles **aux bords** de l'écran (direction en bas à gauche, frein et gaz / saut en bas à droite), jamais devant le véhicule ou le personnage ; par défaut, les **boutons** (pas de joystick).
+  - Commandes tactiles **aux bords** de l'écran (direction en bas à gauche, frein et gaz / saut en bas à droite), jamais devant le véhicule ou le personnage ; par défaut, les **boutons** (pas de joystick) **pour un jeu à directions discrètes** (Track, Jump, Tower, Blocks). **Un jeu à déplacement libre** (combat vu de dessus) utilise un **joystick virtuel** à gauche, et ses actions en boutons à droite (révision 17).
   - Les actions rares (graphismes, son) vont dans la pause. **Restent en vue en partie** (demandes de Nathan) : le plein écran, la caméra de Track et **le fantôme** (un bouton de 44 px qui passe d'un fantôme au suivant, « Aucun » compris) ; ils restent aussi dans la pause.
     - Place du bouton fantôme (lot G1) : Jump, en haut à gauche après le plein écran ; Track, dans le groupe de droite devant l'objectif de médaille (à 740 × 360, la caméra et le fantôme côte à côte). Nom lu « Fantôme : {nom} », mis à jour à chaque appui ; le centre reste libre, la bande du haut ne change pas.
   - Bordures de 2 px, ombre nette de 2 px. Maquettes : `track-hud-paysage.html` (compact, retenu), `jump-hud.html`.
@@ -221,7 +228,12 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - **Avatar d'un joueur** : un **rond**, bordure 2 px encre, image recadrée carrée ; tailles 24 px (lignes de classement), 32 px (listes), 44 px (barre du portail, profil), 96 px (page de profil). Sans image : ses initiales sur une couleur tirée de sa référence publique parmi les couleurs de la charte (contraste vérifié).
 - **Emblème d'un groupe** : un **carré à coins de 3 px**, bordure 2 px encre, ombre nette de 2 px ; mêmes tailles. Sans image : les deux premières lettres du nom sur une couleur de la charte. Un rond = une personne, un carré = un groupe.
 - **« Un bug ? Une idée ? »** : un lien discret en pied de portail, et une entrée dans la pause et les réglages de chaque jeu ; il ouvre un dialogue (type, message, contexte joint montré au joueur). « Mes messages » dans le profil, avec une pastille `--dj-terre` quand une réponse attend.
-- **Profil commun** : une étiquette par jeu (la cartouche agrandie, § 1) porte ses statistiques ; médailles en cases, deux par ligne.
+- **Profil commun** : une étiquette par jeu (la cartouche agrandie, § 1) porte ses statistiques ; médailles en cases pleines, deux par ligne. Chaque étiquette a **la police, le motif et l'illustration de son jeu** : aucune carte générique (révision 18).
+- **Accueil d'un jeu (référence : Tower)** : barre des jeux en plaque crème, puis l'étiquette dans sa coque, en **deux colonnes équilibrées**.
+  - À gauche, l'identité : titre dans la police du jeu, « Partie n° *N* · Thème » dessous (jamais « #N » collé au titre), illustration, réplique du thème, tuiles record et série, « Jouer » (56-62 px), puis Comment jouer · Archives · Réglages.
+  - À droite : le panneau **« Aujourd'hui »**, propre au jeu (pièces, boss, paliers…), le classement du jour avec ta ligne, et le pied (« Prochaine partie dans », « Mon profil Du Jour › »).
+  - Sous 760 px de large, les deux colonnes s'empilent dans cet ordre. Un jeu d'arcade n'affiche pas « Journée parfaite ». Les pluriels sont écrits (« 1 jour », « 17 classés »), jamais « (s) ».
+  - Maquette : `jeux-du-kit-au-niveau.html`.
 
 ## 10. Accessibilité
 

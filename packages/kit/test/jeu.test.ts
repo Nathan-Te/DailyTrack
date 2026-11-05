@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import { ACTIONS_KIT, cleAction } from "../src/jeu/commandes";
-import { CATALOGUE_KIT_EN, CATALOGUE_KIT_FR } from "../src/jeu/catalogue";
+import { traducteur } from "@cdj/ui";
+import { CATALOGUE_KIT_PLURIELS_EN } from "../src/jeu/catalogue.en";
+import { CATALOGUE_KIT_EN, CATALOGUE_KIT_FR, CATALOGUE_KIT_PLURIELS_FR } from "../src/jeu/catalogue";
 import { creerVibreur, creerVolumeEffets, lireReglages, volumeEffetsLu } from "../src/jeu/reglagesJoueur";
 import { commandesDuJeu } from "../src/jeu/commandes";
 import { ligneParDefaut } from "../src/partage";
@@ -189,5 +191,29 @@ describe("les actions du kit et son vocabulaire", () => {
     expect(Object.keys(CATALOGUE_KIT_EN).sort()).toEqual(Object.keys(CATALOGUE_KIT_FR).sort());
     const params = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
     for (const [k, v] of Object.entries(CATALOGUE_KIT_FR)) expect(params(CATALOGUE_KIT_EN[k as keyof typeof CATALOGUE_KIT_EN]), k).toEqual(params(v));
+  });
+});
+
+// Lot K5 — des pluriels écrits, jamais « (s) » : « 1 jour » / « 17 jours », « 1 classé » / « 17 classés » (formes `{ one, other }` des catalogues, choisies par `Intl.PluralRules`).
+describe("les pluriels du kit", () => {
+  const fr = traducteur("fr", { fr: CATALOGUE_KIT_PLURIELS_FR, en: CATALOGUE_KIT_PLURIELS_EN } as never);
+  const en = traducteur("en", { fr: CATALOGUE_KIT_PLURIELS_FR, en: CATALOGUE_KIT_PLURIELS_EN } as never);
+  it("français : « 1 jour », « 0 jour », « 17 jours » ; « 1 classé », « 17 classés »", () => {
+    expect([0, 1, 2, 17].map((n) => (fr.t as (c: string, p: object) => string)("kit.accueil.serie.jours", { n }))).toEqual(["0 jour", "1 jour", "2 jours", "17 jours"]);
+    expect([0, 1, 17].map((n) => (fr.t as (c: string, p: object) => string)("kit.classement.participants", { n }))).toEqual(["0 classé", "1 classé", "17 classés"]);
+  });
+  it("anglais : « 1 day », « 17 days » ; « 17 ranked »", () => {
+    expect([0, 1, 17].map((n) => (en.t as (c: string, p: object) => string)("kit.accueil.serie.jours", { n }))).toEqual(["0 days", "1 day", "17 days"]);
+    expect((en.t as (c: string, p: object) => string)("kit.classement.participants", { n: 17 })).toBe("17 ranked");
+  });
+  it("aucun « (s) » dans les catalogues du kit, ni dans ses pluriels, et les deux langues ont les mêmes clés et les mêmes paramètres", () => {
+    const tout = [CATALOGUE_KIT_FR, CATALOGUE_KIT_EN, CATALOGUE_KIT_PLURIELS_FR, CATALOGUE_KIT_PLURIELS_EN].flatMap((c) => Object.values(c as Record<string, unknown>).flatMap((v) => (typeof v === "string" ? [v] : Object.values(v as object).map(String))));
+    expect(tout.filter((t) => /\(s\)/.test(t))).toEqual([]);
+    expect(Object.keys(CATALOGUE_KIT_PLURIELS_EN).sort()).toEqual(Object.keys(CATALOGUE_KIT_PLURIELS_FR).sort());
+    // Les pluriels français ne sont pas aussi dans le catalogue des textes : un pluriel n'est écrit qu'une fois.
+    for (const cle of Object.keys(CATALOGUE_KIT_PLURIELS_FR)) expect(CATALOGUE_KIT_FR, cle).not.toHaveProperty([cle]);
+  });
+  it("l'accueil a son bouton « Archives » (désactivé, « Bientôt ») et le panneau « Aujourd'hui »", () => {
+    for (const c of [CATALOGUE_KIT_FR, CATALOGUE_KIT_EN]) for (const k of ["kit.accueil.archives", "kit.accueil.bientot", "kit.accueil.aujourdhui"]) expect(c).toHaveProperty([k]);
   });
 });

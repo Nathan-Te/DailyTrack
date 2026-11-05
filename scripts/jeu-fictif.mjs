@@ -35,6 +35,8 @@ export const FICHE_ESSAI = {
   nom: { fr: "Essai", en: "Trial" },
   accroche: "portail.essai.accroche",
   etiquette: { fond: "#C9B6F2", coque: "#5B3FA3", police: '"Rubik Mono One", "Archivo", sans-serif', dessin: "generique" },
+  // Lot K5 : une identité complète (le jeu fictif est essayé en aperçu) ; son panneau « Aujourd'hui » n'est pas fourni (témoin : exempté du test).
+  identite: { police: "Rubik Mono One", motif: "rayures", illustration: "apps/essai/public/illustration.svg", aujourdhui: false },
   etatDepart: "off",
   premierJour: "2026-11-09",
   categorie: "jour", // lot A3 : champ obligatoire de la fiche
@@ -135,6 +137,7 @@ export const ESSAI_GAME: GameDefinition<never> = definirJeuNeuf<Niveau, Rejeu, M
   "apps/essai/e2e/durees.json": JSON.stringify({ _: "Durées du jeu fictif.", secondes: { "partie.spec.ts": 5 }, essentiel: { "partie.spec.ts": 5 } }, null, 2) + "\n",
   "apps/essai/package.json": JSON.stringify({ name: "@cdj/essai", private: true, version: "0.0.0", type: "module" }, null, 2) + "\n",
   "apps/essai/public/jours/.gitkeep": "",
+  "apps/essai/public/illustration.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" fill="#FFF6E0" stroke="#2A1E16" stroke-width="3"/></svg>\n',
   "apps/essai/index.html": "<!doctype html><title>Essai</title>\n",
   "apps/essai/src/jeu.ts": "export {};\n",
 };

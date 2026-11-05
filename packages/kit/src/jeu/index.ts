@@ -22,14 +22,14 @@ import type { DefinitionJeu, FicheClient, OptionsBrancher } from "./types";
 export const DELAI_REESSAI_CLASSEMENT_MS = 2000;
 
 /** Les ids que la manette et les tests visent. */
-export const IDS = { accueil: "jeu-accueil", jouer: "jeu-jouer", aide: "jeu-bouton-aide", reglages: "jeu-bouton-reglages", classement: "jeu-tout-le-classement" } as const;
+export const IDS = { accueil: "jeu-accueil", jouer: "jeu-jouer", aide: "jeu-bouton-aide", archives: "jeu-bouton-archives", reglages: "jeu-bouton-reglages", classement: "jeu-tout-le-classement" } as const;
 
 export interface JeuBranche {
   i18n: I18n;
   options: OptionsUrl;
 }
 
-export async function brancherJeu<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsBrancher): Promise<JeuBranche> {
+export async function brancherJeu<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsBrancher<C>): Promise<JeuBranche> {
   const options = lireOptions(location.search);
   noterGeneration(() => options.api === "demo");
   // La manette : le moteur des menus se charge à la première manette (jamais avant).
@@ -51,7 +51,7 @@ export async function brancherJeu<C>(fiche: FicheClient, def: DefinitionJeu<C>, 
 
 const communs = (i18n: I18n): TraducteurCommun => i18n.socle() as unknown as TraducteurCommun;
 
-async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsBrancher, options: OptionsUrl, i18n: I18n): Promise<void> {
+async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsBrancher<C>, options: OptionsUrl, i18n: I18n): Promise<void> {
   const { t } = i18n;
   const musique = o.musique;
   musique.scene("menu");
@@ -71,7 +71,6 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   const tour = def.numero(jour);
   const etiquette = etiquetteDe(fiche.id as Jeu, {
     titre: t(`jeu.${fiche.id}.nom`).toUpperCase(),
-    ...(tour >= 1 ? { numero: `#${tour}` } : {}),
     texte: tour >= 1 ? t("kit.accueil.numero", { numero: tour, theme: t(`theme.${theme}`) }) : t("kit.accueil.sansNumero", { theme: t(`theme.${theme}`) }),
   });
   const replique = el("p", { classe: "jeu-replique", texte: t(`accueil.phrase.${theme}`) });
@@ -93,6 +92,13 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
     return b;
   };
   const aide = secondaire(IDS.aide, "kit.accueil.aide");
+  // Lot K5 : « Archives » — le jeu dit ce qu'il ouvre (`o.archives`) ; sans lui le bouton est désactivé (charte § 5 : aplat, bordure pointillée) et dit « Bientôt ».
+  const archives = secondaire(IDS.archives, "kit.accueil.archives");
+  if (o.archives) archives.addEventListener("click", o.archives);
+  else {
+    archives.disabled = true;
+    archives.append(el("small", { texte: t("kit.accueil.bientot") }));
+  }
   const reglages = secondaire(IDS.reglages, "kit.accueil.reglages");
   const attente = el("p", { classe: "jeu-attente", attrs: { role: "status", id: "jeu-attente" } });
   // Lot B1 : une partie d'essai (scénario, réglage…) que le jeu déclare non classable — le jour reste celui d'aujourd'hui, la partie n'est ni classée ni envoyée.
@@ -112,15 +118,29 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
     barre: () => barreJeu(communs(i18n), { href: "../", jour, ...(tour >= 1 ? { numero: tour } : {}), pleinEcran: true }),
     aria: () => t("kit.accueil.aria"),
   });
-  // Lot « écrans du kit » — l'accueil sur le modèle de celui de Tower : en haut, à gauche le titre (et l'illustration du jeu), la réplique, le record et la série, à droite le classement du jour, le décompte et le profil ; en bas,
-  // sur toute la largeur de la carte, JOUER et les boutons. Une seule colonne sous 700 px de large (JOUER avant le classement). Le décor du thème du jour est derrière, sous le voile à rayures ; il reste derrière les écrans que l'accueil ouvre.
+  // Lot K5 — l'accueil aux proportions de celui de Tower (charte § 9, planche 1 de `jeux-du-kit-au-niveau.html`) : deux colonnes équilibrées dans l'étiquette. À gauche l'identité : le titre dans la police du jeu, « Partie n° N · Thème »,
+  // l'illustration, la réplique, le record et la série, JOUER puis Comment jouer · Archives · Réglages. À droite : le panneau « Aujourd'hui » (propre au jeu : `o.aujourdhui`), le classement du jour avec ta ligne, le pied.
+  // Sous 760 px les deux colonnes s'empilent dans cet ordre. Le décor du thème du jour est derrière, sous le voile à rayures ; il reste derrière les écrans que l'accueil ouvre.
   const dessin = creerDessin(def.peau);
-  const gauche = el("div", { classe: "jeu-accueil__gauche" }, hoteMessage, el("div", { classe: "jeu-accueil__tete" }, etiquette, dessin), replique, tuiles, ...(noteArchive ? [noteArchive] : []));
-  const bas = el("div", { classe: "jeu-accueil__bas" }, jouer, attente, el("div", { classe: "jeu-secondaires" }, aide, reglages));
+  // Le panneau « Aujourd'hui » : la légende porte le thème ; le jeu remplit le corps. Sans `o.aujourdhui`, le panneau montre seulement le thème et la réplique (le kit ne dessine rien de propre au jeu).
+  const aujourdhuiCorps = el("div", { classe: "jeu-aujourdhui__corps" }, ...(o.aujourdhui ? [] : [replique]));
+  const panneauAujourdhui = el("section", { classe: "jeu-tuile" }, el("span", { classe: "jeu-tuile__legende", texte: `${t("kit.accueil.aujourdhui")} · ${t(`theme.${theme}`)}` }), aujourdhuiCorps);
+  const gauche = el(
+    "div",
+    { classe: "jeu-accueil__gauche" },
+    hoteMessage,
+    el("div", { classe: "jeu-accueil__tete" }, etiquette, dessin),
+    ...(o.aujourdhui ? [replique] : []),
+    tuiles,
+    ...(noteArchive ? [noteArchive] : []),
+    jouer,
+    attente,
+    el("div", { classe: "jeu-secondaires" }, aide, archives, reglages),
+  );
   const panneau = el("section", { classe: "jeu-tuile jeu-accueil__classement", attrs: { "aria-label": t("kit.accueil.classement") } }, classementTitre, classementMessage, classementListe, toutLeClassement);
-  const droite = el("div", { classe: "jeu-accueil__droite" }, panneau, el("div", { classe: "jeu-pied" }, el("span", {}, `${t("kit.accueil.prochaine")} `, decompte), profil));
+  const droite = el("div", { classe: "jeu-accueil__droite" }, panneauAujourdhui, panneau, el("div", { classe: "jeu-pied" }, el("span", {}, `${t("kit.accueil.prochaine")} `, decompte), profil));
   cadre.corps.classList.add("jeu-accueil");
-  cadre.corps.append(gauche, bas, droite);
+  cadre.corps.append(gauche, droite);
   cadre.pied.append(suite);
   cadre.racine.hidden = false;
   const fond = creerFond(def.peau, theme);
@@ -149,6 +169,8 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   let classement: ClassementJeu | null = null;
   const contenuP = def.contenuDuJour(jour, document.baseURI, theme);
   contenuP.catch(() => undefined);
+  // Lot K5 : le panneau « Aujourd'hui » se remplit quand le contenu du jour est lu ; une erreur du jeu ne casse jamais l'accueil.
+  if (o.aujourdhui) void contenuP.then((c) => o.aujourdhui!(c, aujourdhuiCorps, { t, langue: i18n.langue, theme, jour, date })).catch(() => undefined);
 
   const idJoueur = (): string | null => readPlayerId(stockage ?? { getItem: () => null });
   const dessinerClassement = (indisponible = false): void => {

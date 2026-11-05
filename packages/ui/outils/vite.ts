@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 import { valeurJeton, type NomJeton } from "../src/jetons";
 import type { Catalogue } from "../src/i18n";
@@ -47,6 +50,14 @@ export function remplirHtml(html: string, catalogue: Catalogue): string {
 export function pagesDuSocle(o: { catalogue: Catalogue; prechargees?: readonly string[]; absolues?: boolean }): Plugin {
   return {
     name: "cdj-pages-du-socle",
+    // Lot K5 : **la peau d'identité du jeu construit** — `@cdj/ui/identite-du-jeu.css` (importée par l'accueil du kit) désigne `packages/ui/src/identites/<dossier de l'application>.generated.css` (la face de sa police et le motif de son
+    // étiquette, tirés de sa fiche par `npm run fiches`), ou `aucune.css` pour une application qui n'en a pas : chaque jeu ne charge que la sienne. Un alias, pas un `resolveId` : l'`@import` d'une feuille ne passe que par les alias.
+    config(c) {
+      const racine = resolve(c.root ?? process.cwd());
+      const identites = join(dirname(fileURLToPath(import.meta.url)), "../src/identites");
+      const fichier = join(identites, `${basename(racine)}.generated.css`);
+      return { resolve: { alias: [{ find: /^@cdj\/ui\/identite-du-jeu\.css$/, replacement: existsSync(fichier) ? fichier : join(identites, "aucune.css") }] } };
+    },
     transformIndexHtml: {
       order: "post",
       handler(html, ctx) {

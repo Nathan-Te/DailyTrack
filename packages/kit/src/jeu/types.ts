@@ -18,6 +18,8 @@ export interface FicheClient {
   prefixe: string;
   /** Le premier jour du jeu (`AAAA-MM-JJ`). */
   premierJour: string;
+  /** Lot K5 — la catégorie de la fiche : un jeu `arcade` ne compte pas dans la journée, son accueil et son arrivée n'annoncent donc jamais « Journée parfaite ». Absente : `jour`. */
+  categorie?: "jour" | "arcade";
 }
 
 export type CodeMedaille = "author" | "gold" | "silver" | "bronze";
@@ -149,8 +151,27 @@ export interface CataloguesJeu {
   chargerEn(): Promise<{ jeu: Catalogue; commun: Catalogue }>;
 }
 
-export interface OptionsBrancher {
+/** Lot K5 — ce que le kit donne à `aujourdhui` : le traducteur et la langue du jeu, le thème, le jour (numéro civil) et sa date. */
+export interface ContexteAujourdhui {
+  t: Traduire;
+  langue: "fr" | "en";
+  theme: string;
+  jour: number;
+  date: string;
+}
+
+export interface OptionsBrancher<C = unknown> {
   catalogues: CataloguesJeu;
+  /**
+   * Lot K5 — **le panneau « Aujourd'hui »** de l'accueil (à droite, au-dessus du classement) : ce qui est propre au jour du jeu (les pièces de Blocks, le boss, les paliers…). Le kit pose le cadre, la légende
+   * « Aujourd'hui · {thème} » et l'espace réservé ; le jeu **remplit `hote`** (`textContent` et SVG du socle, jamais `innerHTML`) à partir du contenu du jour, quand il est lu. Sans cette fonction le panneau montre
+   * seulement le thème et la réplique : le kit ne dessine rien de propre au jeu. La fiche dit `identite.aujourdhui: true` quand le jeu la fournit.
+   */
+  aujourdhui?(contenu: C, hote: HTMLElement, ctx: ContexteAujourdhui): void;
+  /**
+   * Lot K5 — **le bouton « Archives »** de l'accueil : le jeu dit ce qu'il ouvre (sa page d'archives). Sans lui le bouton est là mais désactivé, avec « Bientôt » (charte § 5) : le kit n'a pas encore de page d'archives.
+   */
+  archives?(): void;
   /** La musique commune (`brancherMusique(id, gameStorage)`), une seule instance. */
   musique: import("@cdj/musique/branche").Musique;
   /** L'élément racine de la page (`<div id="app">`). */

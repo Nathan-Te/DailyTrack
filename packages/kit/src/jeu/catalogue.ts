@@ -5,11 +5,13 @@ export const CATALOGUE_KIT_FR = {
   "kit.accueil.jouer": "Jouer",
   "kit.accueil.aide": "Comment jouer",
   "kit.accueil.reglages": "Réglages",
+  "kit.accueil.archives": "Archives",
+  "kit.accueil.bientot": "Bientôt",
+  "kit.accueil.aujourdhui": "Aujourd'hui",
   "kit.accueil.record": "Ton record",
   "kit.accueil.record.aucun": "Pas encore joué aujourd'hui",
   "kit.accueil.record.sous": "{medaille} · {envoi}",
   "kit.accueil.serie": "Ta série",
-  "kit.accueil.serie.jours": "{n} jour(s)",
   "kit.accueil.classement": "Classement du jour",
   "kit.accueil.toutLeClassement": "Tout le classement ›",
   "kit.accueil.prochaine": "Prochaine partie dans",
@@ -24,7 +26,6 @@ export const CATALOGUE_KIT_FR = {
   "kit.classement.chargement": "Chargement du classement…",
   "kit.classement.indisponible": "Classement indisponible pour le moment.",
   "kit.classement.fermer": "Fermer",
-  "kit.classement.participants": "{n} classé(s)",
   "kit.pause.aria": "Pause",
   "kit.pause.titre": "Pause",
   "kit.pause.reprendre": "Reprendre",
@@ -99,11 +100,13 @@ export const CATALOGUE_KIT_EN: { readonly [K in keyof typeof CATALOGUE_KIT_FR]: 
   "kit.accueil.jouer": "Play",
   "kit.accueil.aide": "How to play",
   "kit.accueil.reglages": "Settings",
+  "kit.accueil.archives": "Archives",
+  "kit.accueil.bientot": "Soon",
+  "kit.accueil.aujourdhui": "Today",
   "kit.accueil.record": "Your record",
   "kit.accueil.record.aucun": "Not played yet today",
   "kit.accueil.record.sous": "{medaille} · {envoi}",
   "kit.accueil.serie": "Your streak",
-  "kit.accueil.serie.jours": "{n} day(s)",
   "kit.accueil.classement": "Today's ranking",
   "kit.accueil.toutLeClassement": "Full ranking ›",
   "kit.accueil.prochaine": "Next game in",
@@ -118,7 +121,6 @@ export const CATALOGUE_KIT_EN: { readonly [K in keyof typeof CATALOGUE_KIT_FR]: 
   "kit.classement.chargement": "Loading the ranking…",
   "kit.classement.indisponible": "Ranking unavailable for now.",
   "kit.classement.fermer": "Close",
-  "kit.classement.participants": "{n} ranked",
   "kit.pause.aria": "Pause",
   "kit.pause.titre": "Pause",
   "kit.pause.reprendre": "Resume",
@@ -187,3 +189,10 @@ export const CATALOGUE_KIT_EN: { readonly [K in keyof typeof CATALOGUE_KIT_FR]: 
   "kit.commandes.tactile": "On a touch screen, just tap the screen.",
   "kit.suite.legende": "Next game of the day",
 };
+
+// Lot K5 — **les pluriels du kit** : « 1 jour » / « 17 jours », « 1 classé » / « 17 classés », jamais « (s) ». Ce sont des formes plurielles (`{ one, other }`, choisies par `Intl.PluralRules` sur le paramètre `n`), réunies au catalogue
+// du jeu par `creerI18n` (un catalogue de textes reste un catalogue de textes : un jeu n'a rien à écrire). L'anglais est dans `catalogue.en.ts` (son nom commence par « catalogue.en » : le budget le compte à la demande, avec l'anglais), chargé avec l'anglais seulement.
+export const CATALOGUE_KIT_PLURIELS_FR = {
+  "kit.accueil.serie.jours": { one: "{n} jour", other: "{n} jours" },
+  "kit.classement.participants": { one: "{n} classé", other: "{n} classés" },
+} as const;

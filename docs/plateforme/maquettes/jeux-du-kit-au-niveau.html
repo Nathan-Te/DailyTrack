@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jeux du kit au niveau</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&family=Barlow+Condensed:ital,wght@1,800&family=Lilita+One&family=Rubik+Mono+One&family=Bungee&display=swap">
+<style>
+:root{--creme:#EDE3CF;--encre:#2A1E16;--terre:#C2401F;--moutarde:#E8B23A;--papier:#FFF6E0;--diamant:#4FC3DC;--or:#D9A21B;--argent:#A7A9AC;--bronze:#C07A42}
+*{box-sizing:border-box}
+body{margin:0;background:#D8CCB3;color:var(--encre);font-family:Archivo,sans-serif;padding:24px 16px 60px}
+h1{font-family:'Archivo Black';font-size:24px;margin:0 0 6px}
+.intro,.planche{max-width:1060px;margin:0 auto 34px}
+.planche h2{font-family:'Archivo Black';font-size:15px;letter-spacing:1px;text-transform:uppercase;margin:0 0 4px}
+.planche p{font-size:13px;line-height:1.45;margin:0 0 12px;color:#4A3A2C;max-width:900px}
+.mono{font-family:'JetBrains Mono',monospace}
+.scene{background:repeating-linear-gradient(135deg,#2B3A3F 0 14px,#33444A 14px 28px);padding:34px 40px;border:3px solid var(--encre);border-radius:12px}
+.barre{background:var(--creme);border:3px solid var(--encre);height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;max-width:900px;margin:0 auto 12px;box-shadow:3px 3px 0 var(--encre)}
+.barre b{font-family:'Archivo Black';font-size:14px}
+.coque{max-width:900px;margin:0 auto;border:3px solid var(--encre);border-radius:12px 12px 4px 4px;box-shadow:5px 5px 0 var(--encre);padding:0 10px 10px}
+.peigne{height:12px;margin:0 50px 6px;background:repeating-linear-gradient(90deg,var(--encre) 0 3px,transparent 3px 8px);opacity:.75}
+.etiquette{border:3px solid var(--encre);padding:18px 20px;display:grid;grid-template-columns:1.05fr 1fr;gap:20px;position:relative;overflow:hidden}
+.titre{font-family:'Rubik Mono One';font-size:52px;line-height:1;letter-spacing:1px;text-shadow:3px 3px 0 var(--papier)}
+.sous{font-family:'Rubik Mono One';font-size:14px;letter-spacing:2px;margin-top:6px}
+.replique{font-size:16px;line-height:1.4;margin:14px 0}
+.tuiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tuile{border:3px solid var(--encre);padding:10px 12px;background:var(--papier)}
+.tuile.noire{background:var(--encre);color:var(--papier);transform:rotate(-1deg)}
+.petit{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.gros{font-family:'Rubik Mono One';font-size:20px;margin:4px 0}
+.jouer{margin-top:12px;height:62px;background:var(--encre);color:var(--papier);display:grid;place-items:center;font-family:'Rubik Mono One';font-size:26px;letter-spacing:3px;box-shadow:3px 3px 0 rgba(0,0,0,.35)}
+.btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.btns span{height:42px;border:3px solid var(--encre);background:var(--creme);display:grid;place-items:center;font-weight:700;font-size:14px;box-shadow:2px 2px 0 var(--encre)}
+.panneau{border:3px solid var(--encre);background:var(--papier);padding:10px 12px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+td{padding:6px 2px;border-bottom:1px solid #D8CCB3}
+tr.moi td{background:var(--moutarde);font-weight:700}
+.pied{display:flex;justify-content:space-between;font-size:13px;margin-top:10px;font-weight:600}
+.note{max-width:1060px;margin:10px auto 0;background:var(--papier);border:2px dashed var(--encre);padding:10px 12px;font-size:12.5px;line-height:1.5}
+.cartes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.carte{border:3px solid var(--encre);border-radius:6px;padding:14px;box-shadow:4px 4px 0 var(--encre);position:relative;overflow:hidden;min-height:250px}
+.carte .nom{font-size:34px;line-height:1}
+.carte .meta{font-family:'JetBrains Mono';font-size:12px;margin-left:8px}
+.carte .ligne{font-size:13px;margin:8px 0 12px;font-weight:600}
+.cases{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:62%}
+.case{border:3px solid var(--encre);padding:7px 9px;font-size:11px;font-weight:700;letter-spacing:1px;height:56px}
+.case b{display:block;font-family:'JetBrains Mono';font-size:15px;margin-top:4px}
+.illus{position:absolute;right:10px;bottom:12px}
+@media (max-width:760px){
+  .scene{padding:12px}
+  .barre{height:auto;padding:8px 10px;gap:8px}
+  .coque{padding:0 6px 6px}.peigne{margin:0 20px 6px}
+  .etiquette{grid-template-columns:minmax(0,1fr);padding:12px}
+  .etiquette>div{min-width:0}
+  .panneau svg{width:100%;height:auto}
+  .pied{flex-wrap:wrap;gap:6px}
+  .titre{font-size:34px}
+  .btns span{font-size:12px;text-align:center}
+  .cartes{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Les jeux du kit au niveau de Track, Jump et Tower</h1>
+  Maquettes à valider. <b>Référence de proportions : l'accueil de Tower</b>. Exemple : Blocks (DA de Tower, teinte bleue). Ce que le kit doit donner à <b>chaque</b> jeu neuf : sa police de titre, son motif d'étiquette, son illustration dessinée en code, et les mêmes proportions que Tower.
+</div>
+
+<section class="planche">
+  <h2>1 · Accueil de Blocks, aux proportions de Tower</h2>
+  <p>Deux colonnes équilibrées dans l'étiquette, comme Tower : à gauche l'identité (titre dans <b>la police du jeu</b>, numéro et thème, réplique du thème, record, série, « Jouer », trois boutons) ; à droite « Aujourd'hui » (ce qui est propre au jeu : ici, les 6 premières pièces de la suite) et le classement. Pas de « Journée parfaite / Du Jour » : Blocks est un jeu d'arcade. Pas de « #4 » collé au titre. Pluriels écrits (« 1 jour », « 17 classés »), jamais « (s) ».</p>
+  <div class="scene">
+    <div class="barre"><b>‹ DU JOUR</b><span class="mono" style="font-size:13px;font-weight:700">Jeu. 5 nov. · n° 4 <span style="display:inline-grid;place-items:center;width:34px;height:34px;border:2px solid var(--encre);margin-left:8px;background:var(--papier)">⛶</span></span></div>
+    <div class="coque" style="background:#2C5A8C">
+      <div class="peigne"></div>
+      <div class="etiquette" style="background:#BCD8F2">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div><div class="titre">BLOCKS</div><div class="sous">PARTIE N° 4 · BANQUISE</div></div>
+            <svg width="96" height="80" viewBox="0 0 96 80" aria-hidden="true">
+              <rect x="6" y="70" width="84" height="6" fill="#2A1E16"/>
+              <rect x="10" y="46" width="24" height="24" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/>
+              <rect x="34" y="46" width="24" height="24" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/>
+              <rect x="34" y="22" width="24" height="24" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/>
+              <rect x="58" y="46" width="24" height="24" fill="#7C6BE0" stroke="#2A1E16" stroke-width="3"/>
+              <rect x="58" y="22" width="24" height="24" fill="#7C6BE0" stroke="#2A1E16" stroke-width="3"/>
+              <circle cx="18" cy="56" r="4" fill="#fff" stroke="#2A1E16" stroke-width="1.5"/><circle cx="26" cy="56" r="4" fill="#fff" stroke="#2A1E16" stroke-width="1.5"/><circle cx="19" cy="57" r="1.8" fill="#2A1E16"/><circle cx="27" cy="57" r="1.8" fill="#2A1E16"/>
+            </svg>
+          </div>
+          <div class="replique">« Sur la banquise, tout glisse sauf les pièces. Elles tombent dans le même ordre pour tous. »</div>
+          <div class="tuiles">
+            <div class="tuile"><div class="petit">Ton record</div><div class="gros">90 PTS</div><div style="font-size:12px">Partie déjà enregistrée</div></div>
+            <div class="tuile noire"><div class="petit">Série Blocks</div><div class="gros">1 JOUR</div><div style="font-size:12px">0 médaille</div></div>
+          </div>
+          <div class="jouer">JOUER</div>
+          <div class="btns"><span>Comment jouer</span><span>Archives</span><span>Réglages</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="panneau">
+            <div class="petit" style="margin-bottom:8px">Aujourd'hui · suite du jour · grille 8 × 8</div>
+            <div style="display:flex;gap:10px;align-items:flex-end">
+              <svg width="300" height="54" viewBox="0 0 300 54" aria-hidden="true">
+                <g stroke="#2A1E16" stroke-width="2.5">
+                  <rect x="2" y="30" width="20" height="20" fill="#E8B23A"/><rect x="22" y="30" width="20" height="20" fill="#E8B23A"/><rect x="42" y="30" width="20" height="20" fill="#E8B23A"/>
+                  <rect x="76" y="10" width="20" height="20" fill="#7C6BE0"/><rect x="76" y="30" width="20" height="20" fill="#7C6BE0"/><rect x="96" y="30" width="20" height="20" fill="#7C6BE0"/>
+                  <rect x="130" y="30" width="20" height="20" fill="#4FB37A"/><rect x="150" y="30" width="20" height="20" fill="#4FB37A"/><rect x="130" y="10" width="20" height="20" fill="#4FB37A"/><rect x="150" y="10" width="20" height="20" fill="#4FB37A"/>
+                  <rect x="184" y="30" width="20" height="20" fill="#E46FA0"/>
+                  <rect x="218" y="30" width="20" height="20" fill="#F08A4B"/><rect x="238" y="30" width="20" height="20" fill="#F08A4B"/><rect x="238" y="10" width="20" height="20" fill="#F08A4B"/>
+                  <rect x="272" y="10" width="20" height="20" fill="#5BA8E0"/><rect x="272" y="30" width="20" height="20" fill="#5BA8E0"/>
+                </g>
+              </svg>
+            </div>
+            <div style="font-size:12px;margin-top:6px">Les 6 premières pièces, les mêmes pour tous. La suite devient plus dure.</div>
+          </div>
+          <div class="panneau" style="flex:1">
+            <div class="petit" style="margin-bottom:6px">Classement du jour · 17 classés</div>
+            <table>
+              <tr><td class="mono">1er</td><td>Démo Biscotte</td><td class="mono" style="text-align:right;font-weight:700">2 643 pts</td></tr>
+              <tr><td class="mono">2e</td><td>Démo Galet</td><td class="mono" style="text-align:right;font-weight:700">876 pts</td></tr>
+              <tr><td class="mono">3e</td><td>Fumée7700</td><td class="mono" style="text-align:right;font-weight:700">220 pts</td></tr>
+              <tr class="moi"><td class="mono">13e</td><td>Toi</td><td class="mono" style="text-align:right">90 pts</td></tr>
+            </table>
+            <div style="margin-top:8px;font-weight:700;text-decoration:underline;font-size:14px">Tout le classement ›</div>
+          </div>
+          <div class="pied"><span>Prochaine partie dans <span class="mono">08:41:15</span></span><span style="text-decoration:underline">Mon profil Du Jour ›</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="planche">
+  <h2>2 · Profil › Par jeu : chaque jeu avec sa police, son motif et son illustration</h2>
+  <p>Comme Track (asphalte rayé, Barlow italique) et Jump (coque, Lilita, personnage) : le nom du jeu dans <b>sa police</b>, un <b>motif</b> propre sur l'étiquette, une <b>illustration</b> dessinée en code, et des cases de médailles <b>remplies de la couleur de la médaille</b> (et non une bordure colorée sur fond crème).</p>
+  <div class="cartes">
+    <div class="carte" style="background:#A8D8C0">
+      <div><span class="nom" style="font-family:'Rubik Mono One';font-size:30px">TOWER</span><span class="meta">0 jour fini</span></div>
+      <div class="ligne">Pas encore classé</div>
+      <div class="cases">
+        <div class="case" style="background:var(--diamant)">DIAMANT<b>0</b></div><div class="case" style="background:var(--or)">OR<b>0</b></div>
+        <div class="case" style="background:var(--argent)">ARGENT<b>0</b></div><div class="case" style="background:var(--bronze)">BRONZE<b>0</b></div>
+      </div>
+      <svg class="illus" width="70" height="80" viewBox="0 0 70 80"><rect x="2" y="72" width="66" height="6" fill="#2A1E16"/><g stroke="#2A1E16" stroke-width="3"><rect x="10" y="52" width="48" height="20" fill="#5BA8E0"/><rect x="14" y="34" width="20" height="18" fill="#E8B23A"/><rect x="34" y="40" width="16" height="12" fill="#C2401F"/><rect x="26" y="16" width="16" height="18" fill="#E8B23A"/></g><circle cx="20" cy="43" r="3.5" fill="#fff" stroke="#2A1E16" stroke-width="1.5"/><circle cx="28" cy="43" r="3.5" fill="#fff" stroke="#2A1E16" stroke-width="1.5"/></svg>
+    </div>
+    <div class="carte" style="background:repeating-linear-gradient(0deg,#BCD8F2 0 22px,#B0CFEC 22px 23px),#BCD8F2;background-blend-mode:normal">
+      <div><span class="nom" style="font-family:'Rubik Mono One';font-size:30px">BLOCKS</span><span class="meta">1 jour fini</span></div>
+      <div class="ligne">Meilleure place : 13e sur 17, jeu. 5 nov.</div>
+      <div class="cases">
+        <div class="case" style="background:var(--diamant)">DIAMANT<b>0</b></div><div class="case" style="background:var(--or)">OR<b>0</b></div>
+        <div class="case" style="background:var(--argent)">ARGENT<b>0</b></div><div class="case" style="background:var(--bronze)">BRONZE<b>0</b></div>
+      </div>
+      <svg class="illus" width="74" height="60" viewBox="0 0 74 60"><rect x="2" y="52" width="70" height="6" fill="#2A1E16"/><g stroke="#2A1E16" stroke-width="3"><rect x="6" y="32" width="20" height="20" fill="#E8B23A"/><rect x="26" y="32" width="20" height="20" fill="#E8B23A"/><rect x="26" y="12" width="20" height="20" fill="#E46FA0"/><rect x="46" y="32" width="20" height="20" fill="#7C6BE0"/></g><circle cx="12" cy="41" r="3.5" fill="#fff" stroke="#2A1E16" stroke-width="1.5"/><circle cx="20" cy="41" r="3.5" fill="#fff" stroke="#2A1E16" stroke-width="1.5"/></svg>
+    </div>
+    <div class="carte" style="background:repeating-linear-gradient(45deg,#D8C6EE 0 10px,#CFBBE8 10px 20px)">
+      <div><span class="nom" style="font-family:'Bungee';font-size:32px">RUSH</span><span class="meta">1 jour fini</span></div>
+      <div class="ligne">Meilleure place : 2e sur 14, jeu. 5 nov.</div>
+      <div class="cases">
+        <div class="case" style="background:var(--diamant)">DIAMANT<b>0</b></div><div class="case" style="background:var(--or)">OR<b>0</b></div>
+        <div class="case" style="background:var(--argent)">ARGENT<b>0</b></div><div class="case" style="background:var(--bronze)">BRONZE<b>0</b></div>
+      </div>
+      <svg class="illus" width="70" height="86" viewBox="0 0 70 86"><ellipse cx="35" cy="80" rx="22" ry="4" fill="#2A1E16" opacity=".3"/><g stroke="#2A1E16" stroke-width="3"><rect x="22" y="40" width="26" height="34" rx="10" fill="#C9D2DE"/><circle cx="35" cy="28" r="14" fill="#C9D2DE"/><path d="M35 6 l5 10 h-10z" fill="#C2401F"/><rect x="50" y="22" width="6" height="40" fill="#EEF2F6" transform="rotate(20 53 42)"/><circle cx="18" cy="52" r="9" fill="#C2401F"/></g><circle cx="30" cy="29" r="3.5" fill="#fff" stroke="#2A1E16" stroke-width="1.5"/><circle cx="40" cy="29" r="3.5" fill="#fff" stroke="#2A1E16" stroke-width="1.5"/></svg>
+    </div>
+  </div>
+</section>
+
+<div class="note">
+  <b>Ce que le kit doit imposer à chaque jeu neuf</b> (champs de fiche, vérifiés par un test) : <b>police du titre</b> (une police de la charte ou une nouvelle, servie dans <span class="mono">/assets/</span>) ; <b>motif d'étiquette</b> (rayures, quadrillage, losanges, uni… dessiné en CSS) ; <b>illustration</b> (une fonction SVG dans la zone du jeu, sur l'accueil et la carte du profil) ; <b>panneau « Aujourd'hui »</b> (ce qui est propre au jour : pièces, boss, paliers…) ; textes des pluriels. Sans eux, le générateur refuse de passer le jeu en <span class="mono">preview</span>.
+</div>
+</body>
+</html>

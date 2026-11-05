@@ -13,6 +13,12 @@
     "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
     "dessin": "generique"
   },
+  "identite": {
+    "police": "Rubik Mono One",
+    "motif": "lignes",
+    "illustration": "apps/blocks/public/illustration.svg",
+    "aujourdhui": false
+  },
   "etatDepart": "off",
   "premierJour": "2026-11-02",
   "categorie": "arcade",

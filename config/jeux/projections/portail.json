@@ -19,26 +19,30 @@
       "accroche": "portail.tower.accroche",
       "cumul": false,
       "categorie": "arcade",
-      "format": "hauteur"
+      "format": "hauteur",
+      "illustration": true
     },
     {
       "id": "cibles",
       "accroche": "portail.cibles.accroche",
       "cumul": false,
-      "format": "entier"
+      "format": "entier",
+      "illustration": true
     },
     {
       "id": "blocks",
       "accroche": "portail.blocks.accroche",
       "cumul": false,
       "categorie": "arcade",
-      "format": "entier"
+      "format": "entier",
+      "illustration": true
     },
     {
       "id": "rush",
       "accroche": "portail.rush.accroche",
       "cumul": false,
-      "categorie": "arcade"
+      "categorie": "arcade",
+      "illustration": true
     }
   ]
 }

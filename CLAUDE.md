@@ -72,7 +72,7 @@ Ces fichiers sont gros, produits ou historiques : les lire coûte des milliers d
 Un 4ᵉ jeu n'écrit plus une ligne à son nom hors de ses zones : la fiche suffit ; tout test parcourt « les jeux des fiches ». → [ajouter-une-fiche-suffit.md](docs/regles/racine/ajouter-une-fiche-suffit.md)
 
 ## Créer un jeu (lot K4g) — `npm run nouveau-jeu`, en 5 étapes
-Un jeu neuf s'obtient en une commande (`npm run nouveau-jeu -- --id <id> --classement score|temps`), sans retouche à la main ; « Cibles » en est le modèle. → [creer-un-jeu.md](docs/regles/racine/creer-un-jeu.md)
+Un jeu neuf s'obtient en une commande (`npm run nouveau-jeu -- --id <id> --classement score|temps`), sans retouche à la main ; « Cibles » en est le modèle. **Lot K5 : le premier lot d'un jeu remplit le bloc `identite` de sa fiche** (police, motif, illustration `apps/<id>/public/illustration.svg`, panneau « Aujourd'hui »), d'après une maquette validée par Nathan ; `nouveau-jeu` l'écrit « à choisir » et **il n'y a pas de `preview` ni de `on` sans identité complète** (test des fiches, administration). → [creer-un-jeu.md](docs/regles/racine/creer-un-jeu.md)
 
 ## Retours, images des joueurs et groupes (lot C1)
 Une image venue d'un joueur n'est jamais affichée sans les contrôles du serveur et reste signalable. → [retours-images-et-groupes.md](docs/regles/racine/retours-images-et-groupes.md)

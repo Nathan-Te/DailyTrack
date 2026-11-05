@@ -378,6 +378,76 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Lot K5 (charte rév. 18, § 5 et § 9) : la carte d'un jeu au profil, tirée de sa fiche — le nom dans la police du jeu, le motif de son étiquette (`--jeu-motif`, deux tons de sa teinte), ses médailles en cases pleines, son illustration en bas à droite. */
+.profil-jeu {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  min-height: 250px;
+  padding: var(--dj-espace-6);
+  overflow: hidden;
+  background: var(--jeu-motif, var(--jeu-fond));
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-afficheur);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.profil-jeu__tete {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--dj-espace-3);
+}
+.profil-jeu__titre {
+  margin: 0;
+  font-family: var(--jeu-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-32);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.profil-jeu__numero {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+}
+.profil-jeu__rang {
+  margin: 0;
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+.profil-jeu .profil-medailles {
+  width: 62%;
+  margin-top: var(--dj-espace-3);
+}
+.profil-jeu__dessin {
+  position: absolute;
+  right: var(--dj-espace-4);
+  bottom: var(--dj-espace-5);
+  display: block;
+  width: auto;
+  max-width: 34%;
+  height: 80px;
+}
+/* Les cases de médailles du profil sont **remplies de la couleur de la médaille** (Diamant, or, argent, bronze), bordure de 3 px encre, texte encre — pour tous les jeux, Track et Jump compris : jamais une simple bordure colorée sur fond crème. */
+.profil-jeux .profil-medailles > .dj-medaille--case[role="group"] {
+  min-height: 56px;
+  padding: var(--dj-espace-2) var(--dj-espace-3);
+  background: var(--medaille);
+  color: var(--medaille-texte);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: 0;
+}
+.profil-jeux .profil-medailles > .dj-medaille--case[role="group"] > .dj-medaille__nom {
+  color: inherit;
+  font-size: var(--dj-taille-legende);
+  letter-spacing: 1px;
+}
+.profil-jeux .profil-medailles > .dj-medaille--case[role="group"] > .dj-medaille__valeur {
+  font-size: var(--dj-taille-15);
+}
 /* Les médailles par type : deux par ligne (le nom de chaque médaille tient en entier, même sur l'étiquette Track et sa livrée). */
 .profil-medailles {
   display: grid;
