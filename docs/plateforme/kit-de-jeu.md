@@ -268,3 +268,19 @@ Rapport : `docs/plateforme/lots/lot-K4g-generateur-et-bout-en-bout.md`. **`npm r
 - **Un jeu au temps** : l'arrivée écrit les seuils des médailles en ticks tels quels (une brique du kit à polir) ; le temps rejoué, lui, est affiché en secondes (`variante.ts`).
 - **`jeu-fictif` reste** à côté du job de bout en bout : il lance TOUTE la suite unitaire (trois parts) sur une fiche minimale, pour prouver que la plateforme ne nomme aucun jeu ; le bout en bout prouve qu'un jeu complet, généré, tient debout (typage, construction, budgets, e2e, zones) mais ne relance pas toute la suite.
 
+
+## Écrans et peau d'un jeu (lot « écrans du kit », novembre 2026)
+*Pour l'auteur d'un jeu branché par `brancherJeu`. La règle entière est dans `packages/kit/CLAUDE.md`, « Écrans et peau du jeu ».*
+
+**Ce que le kit fait pour vous.** Tous les écrans (accueil, « Comment jouer », Réglages, pause, fin, classement) sont écrits par le kit **sur le modèle de ceux de Tower**, déjà validés : une coque de la couleur de coque de la fiche, des stries, un panneau de la teinte de l'étiquette, un titre dans la police du jeu, des tuiles papier, un bouton principal en plaque d'encre, le tout sur le décor du thème du jour et sous le voile à rayures du socle. Sur PC l'accueil est la carte de Tower (900 px) : titre, réplique, record et série à gauche, classement du jour à droite, JOUER et les boutons sur toute la largeur ; sur téléphone une seule colonne. Au grand écran (2 560 × 1 440) les écrans sont agrandis d'un quart pour garder la même proportion de l'écran. **Un jeu qui ne fournit rien a déjà des écrans soignés.**
+
+**Ce qui vient de la fiche** (`config/jeux/<id>.json`, `etiquette`) : `fond` (la teinte du panneau, du décor et du texte des boutons), `coque` (la coque, l'épaisseur du bouton, la bande de sol du décor), `police` (titres, valeurs, boutons). Choisir ces trois valeurs, c'est choisir la peau du jeu ; `npm run fiches` les écrit (`--jeu-fond`, `--jeu-coque`, `--jeu-police`).
+
+**Ce que la définition peut fournir en plus** (`DefinitionJeu.peau`, tout facultatif, couleurs en `#RRGGBB` seulement) :
+- `dessin(): SVGElement` — l'illustration du jeu, à droite du titre de l'accueil (Tower y met sa petite tour) ; un dessin décoratif aux traits de la charte, de l'ordre de 90 × 70 px, jamais une image externe ;
+- `fond(theme): { ciel, sol }` — le décor du thème du jour derrière les écrans de l'accueil (deux aplats, comme le fait Tower) ; sans lui, la teinte et la coque de la fiche ;
+- `accent` — la couleur du texte des boutons principaux, des pastilles actives et de la tuile inversée ; sans lui, la teinte de la fiche.
+
+**Ce qu'un jeu ne fait pas.** Il n'écrit aucune règle d'écran dans ses feuilles (ni largeur, ni zoom, ni couleur de bouton) et ne cache aucun élément du kit par CSS : un manque se corrige dans le kit (`packages/kit`), pour tous les jeux. Pour ne pas montrer un élément, une option de la définition existe (`sansFantome`, `sansMedaille`…).
+
+**L'échelle d'espacement** (jetons `--dj-espace-*` de `@cdj/ui`, variables `--jeu-esp-*` de la feuille du kit) : 12 px entre deux blocs, **8 px entre deux boutons (jamais collés)**, 6 px entre une légende et sa liste, 16 px le retrait d'une carte, 24 px entre deux colonnes ; des cibles de 44 px au moins ; des marges de sécurité sur tout ce qui touche un bord. Ces règles sont gardées par `apps/cibles/e2e/ecrans-kit.spec.ts` (six tailles, du 2 560 × 1 440 au 360 × 640).

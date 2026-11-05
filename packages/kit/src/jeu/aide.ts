@@ -16,6 +16,7 @@ export function monterAide<C>(c: ContexteJeu<C>): { ouvrir(): void } {
   const { t } = c.i18n;
   const ok = bouton({ texte: t("kit.aide.ok"), variante: "marque" }) as HTMLButtonElement;
   ok.id = "jeu-aide-ok";
+  ok.classList.add("jeu-jouer", "jeu-jouer--petit");
   const cadre = creerCadre({
     id: "jeu-aide",
     haut: true,
@@ -28,7 +29,12 @@ export function monterAide<C>(c: ContexteJeu<C>): { ouvrir(): void } {
     cadre.corps.replaceChildren(
       el("h2", { classe: "jeu-ecran__titre", texte: t("kit.aide.titre") }),
       el("ul", { classe: "jeu-aide" }, ...c.def.aide.map((cle) => el("li", { texte: t(cle) }))),
-      el("p", { classe: "jeu-aide__commandes" }, [...c.def.actions, ...[{ id: "pause" }]].map((a) => `${t(cleAction(a.id))} : ${touches.texteTouches(a.id, c.i18n.langue)}`).join(" · ")),
+      // Lot « écrans du kit » : le rappel des commandes en schéma, une ligne par action, ses touches en petites touches (comme « Comment jouer » de Tower).
+      el(
+        "ul",
+        { classe: "jeu-aide__commandes" },
+        ...[...c.def.actions, ...[{ id: "pause" }]].map((a) => el("li", { classe: "jeu-aide__commande" }, el("span", { texte: t(cleAction(a.id)) }), el("span", { classe: "jeu-aide__touches" }, ...touches.nomsTouches(a.id, c.i18n.langue).map((n) => el("kbd", { classe: "jeu-touche", texte: n }))))),
+      ),
       ok,
     );
   }

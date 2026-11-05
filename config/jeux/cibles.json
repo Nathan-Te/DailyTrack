@@ -162,13 +162,20 @@
       "poids.spec.ts": [
         "cibles-jeu",
         "ui"
+      ],
+      "ecrans-kit.spec.ts": [
+        "cibles-jeu",
+        "ui"
       ]
     },
     "parts": {
       "main": 1,
       "complet": 1,
       "nuit": 1
-    }
+    },
+    "regression": [
+      "ecrans-kit.spec.ts"
+    ]
   },
   "budget": {
     "lignes": [

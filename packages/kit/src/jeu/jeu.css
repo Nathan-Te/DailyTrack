@@ -1,8 +1,8 @@
-@import "@cdj/ui/src/jeux.generated.css"; /* l'étiquette générique de la fiche du jeu (fond, police) */
+@import "@cdj/ui/src/jeux.generated.css"; /* l'étiquette générique de la fiche du jeu (fond, coque, police) */
+/* **Cette feuille est celle du premier chargement : l'accueil.** Les autres écrans (« Comment jouer », Réglages, classement, pause, fin) et la scène de la partie sont dans `ecrans.css`, chargée à la demande avec la partie. */
 /* Lot K4f — la feuille commune des écrans d'un jeu neuf (`brancherJeu`) : l'accueil, la pause, l'arrivée, le classement, les Réglages, « Comment jouer », le HUD compact. Jetons de `@cdj/ui` seulement (aucune
    couleur en dur) ; le jeu règle la couleur de son étiquette (`jeux.generated.css`, écrit de sa fiche) et habille sa scène. Marges de sécurité (`env(safe-area-inset-*)`) sur tout ce qui touche un bord. Cibles de 44 px. */
 :root {
-  --cadre-largeur: 460px;
   --z-cadre: 20;
   --z-cadre-haut: 30;
 }
@@ -19,82 +19,267 @@ body {
   position: fixed;
   inset: 0;
 }
-/* Le corps d'un écran : un papier bordé d'encre, comme les étiquettes des jeux. */
+/* Lot « écrans du kit » — **les écrans d'un jeu neuf au niveau de ceux de Tower** (modèle : `apps/tower/src/{base,accueil,ecrans}.css`, charte « Cartouches »). Un écran est une coque (la coque de la fiche, ses stries) qui porte
+   un panneau de la teinte de l'étiquette de la fiche, sur le décor du thème du jour, sous le voile à rayures du socle. **La peau vient de la fiche** (`--jeu-fond`, `--jeu-coque`, `--jeu-police` : `jeux.generated.css`, classe
+   `jeu-etiquette--<id>` posée sur la page par `habillerPage`) **et, au besoin, de `DefinitionJeu.peau`** (`--peau-accent`, `--peau-ciel`, `--peau-sol`) : un jeu n'écrit aucune règle d'écran. */
+:root {
+  /* L'échelle d'espacement des écrans (jetons `--dj-espace-*` seulement) : entre deux blocs, entre deux boutons (jamais collés), entre une légende et sa liste, le retrait d'une carte. */
+  --jeu-esp-bloc: var(--dj-espace-5);
+  --jeu-esp-boutons: var(--dj-espace-3);
+  --jeu-esp-serre: var(--dj-espace-2);
+  --jeu-esp-carte: var(--dj-espace-7);
+  --jeu-esp-grand: var(--dj-espace-8);
+}
+/* La largeur d'un écran : l'accueil est la carte de Tower (900 px), les autres écrans ceux de Tower (640 px). Réglée sur le cadre lui-même : elle prime sur une valeur posée plus haut. */
+.cadre {
+  --cadre-largeur: 640px;
+}
+#jeu-accueil {
+  --cadre-largeur: 900px;
+}
+/* Au grand écran (2 560 × 1 440) les écrans sont agrandis (`zoom` : textes, boutons et marges ensemble) pour garder la proportion de ceux de Tower à 1 920 (≈ 47 % de la largeur). */
+@media (min-width: 2200px) and (min-height: 1200px) {
+  :root {
+    --zoom-cadre: 1.25;
+  }
+}
+.cadre > .dj-barre-jeu,
+.cadre__defile {
+  zoom: var(--zoom-cadre, 1);
+}
+/* Le décor du thème du jour derrière l'accueil : un aplat de ciel et une bande de sol, sous le voile à rayures. Sans peau, la teinte et la coque de l'étiquette. */
+.jeu-fond {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-cadre) - 1);
+  background: var(--peau-ciel, var(--jeu-fond));
+  pointer-events: none;
+}
+.jeu-fond::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 7.4%;
+  background: var(--peau-sol, var(--jeu-coque));
+}
+/* La coque : la couleur de coque de la fiche, ses stries de préhension, une ombre nette. Le panneau (`.etiquette__corps`) porte la teinte de l'étiquette. */
 .jeu-ecran {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 var(--jeu-esp-bloc) var(--jeu-esp-bloc);
+  background: var(--jeu-coque);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: 6px 6px 0 var(--dj-encre);
+}
+.jeu-ecran::before {
+  content: "";
+  display: block;
+  height: 14px;
+  margin: 0 var(--dj-stries-retrait);
+  background: repeating-linear-gradient(90deg, var(--dj-encre) 0 3px, transparent 3px 8px);
+}
+.jeu-ecran > .etiquette__corps {
   display: flex;
   flex-direction: column;
-  gap: var(--dj-espace-3);
+  gap: var(--jeu-esp-bloc);
   box-sizing: border-box;
-  padding: var(--dj-espace-4) var(--dj-espace-5) var(--dj-espace-5);
-  background: var(--dj-creme);
-  color: var(--dj-encre);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-coque);
-  box-shadow: var(--dj-ombre-cartouche);
-}
-.jeu-ecran > .jeu-etiquette {
-  flex: none;
+  padding: var(--jeu-esp-carte);
+  background: var(--jeu-fond);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
 }
 .jeu-ecran__titre {
   margin: 0;
-  font-family: var(--dj-police-marque);
-  font-size: var(--dj-taille-24);
-  line-height: 1.1;
+  font-family: var(--jeu-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-38);
+  line-height: 0.95;
+  text-shadow: var(--dj-ombre-titre);
+  overflow-wrap: anywhere;
 }
 .jeu-replique,
 .jeu-message,
-.jeu-attente,
-.jeu-archive {
+.jeu-attente {
   margin: 0;
   font-size: var(--dj-taille-14);
-  color: var(--dj-encre-douce);
-}
-.jeu-archive {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--dj-encre);
+}
+.jeu-replique {
+  font-size: var(--dj-taille-16);
+  line-height: 1.3;
+}
+.jeu-attente:empty {
+  display: none;
+}
+/* Une partie qui ne compte pas (archive, essai) : une plaque d'encre à l'accent du jeu. */
+.jeu-archive {
+  margin: 0;
+  padding: var(--dj-espace-2) var(--dj-espace-4);
+  background: var(--dj-encre);
+  color: var(--peau-accent, var(--jeu-fond));
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+/* --- L'accueil : deux colonnes dès 700 px de large, une seule en dessous --- */
+.jeu-accueil__gauche,
+.jeu-accueil__droite,
+.jeu-accueil__bas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jeu-esp-bloc);
+  min-width: 0;
+}
+.jeu-accueil__tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+}
+/* L'étiquette générique n'est plus une boîte : c'est le titre posé sur le panneau. */
+.jeu-accueil__tete .jeu-etiquette {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--dj-espace-2);
+  min-height: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+.jeu-accueil__tete .jeu-etiquette__titre {
+  font-size: clamp(var(--dj-taille-38), 12vw, var(--dj-taille-64));
+  line-height: 0.95;
+  text-shadow: var(--dj-ombre-titre);
+  overflow-wrap: anywhere;
+}
+.jeu-accueil__tete .jeu-etiquette__texte {
+  font-family: var(--jeu-police);
+  font-size: var(--dj-taille-14);
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.jeu-accueil__dessin {
+  flex: none;
+  display: inline-flex;
+}
+/* Avec une illustration (90 px de large) le titre prend ce qui reste de la colonne, sans jamais couper un mot : sa taille suit la largeur de la colonne (unités de conteneur). */
+.jeu-accueil__gauche {
+  container-type: inline-size;
+}
+.jeu-accueil__tete:has(.jeu-accueil__dessin) .jeu-etiquette__titre {
+  font-size: clamp(var(--dj-taille-32), calc((100cqi - 110px) / 5.4), var(--dj-taille-64));
+}
+@media (min-width: 700px) {
+  .jeu-ecran > .jeu-accueil.etiquette__corps {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: var(--jeu-esp-grand);
+    padding: var(--jeu-esp-carte) var(--jeu-esp-grand);
+  }
+  .jeu-accueil__gauche {
+    grid-area: 1 / 1;
+  }
+  .jeu-accueil__droite {
+    grid-area: 1 / 2;
+  }
+  .jeu-accueil__bas {
+    grid-area: 2 / 1 / 3 / 3;
+  }
 }
 .jeu-tuiles {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--dj-espace-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dj-espace-4);
 }
 .jeu-tuile {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--dj-espace-3);
-  background: var(--dj-blanc);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-tuile);
+  gap: var(--dj-espace-1);
+  min-width: 0;
+  padding: var(--dj-espace-3) var(--dj-espace-5);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.jeu-tuile--serie {
+  background: var(--dj-encre);
+  color: var(--peau-accent, var(--jeu-fond));
+  transform: rotate(-1.5deg);
+}
+.jeu-tuile--serie .jeu-tuile__legende,
+.jeu-tuile--serie .jeu-tuile__sous {
+  color: var(--dj-papier);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jeu-tuile--serie {
+    transform: none;
+  }
 }
 .jeu-tuile__legende {
   font-size: var(--dj-taille-legende);
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--dj-encre-douce);
 }
 .jeu-tuile__valeur {
-  font-family: var(--dj-police-chiffres);
-  font-size: var(--dj-taille-21);
-  font-weight: 700;
+  font-family: var(--jeu-police);
+  font-size: var(--dj-taille-22);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 .jeu-tuile__sous {
   font-size: var(--dj-taille-12);
-  color: var(--dj-encre-douce);
+  min-height: 1em;
 }
-.jeu-jouer {
-  min-height: 52px;
-  font-size: var(--dj-taille-21);
-  border-width: var(--dj-trait-fort);
-}
-.jeu-secondaires {
-  display: flex;
-  flex-wrap: wrap;
+.jeu-accueil__classement {
   gap: var(--dj-espace-2);
 }
+/* Le bouton principal d'un écran, à la façon de JOUER chez Tower : une plaque d'encre, le texte à l'accent du jeu, dans sa police, sur une épaisseur de la coque. */
+.dj-bouton.jeu-jouer {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(var(--dj-cible-jeu) + var(--dj-espace-3));
+  padding: 0 var(--dj-espace-7);
+  background: var(--dj-encre);
+  color: var(--peau-accent, var(--jeu-fond));
+  border: 0;
+  border-radius: var(--dj-rayon-tuile);
+  font-family: var(--jeu-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-24);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 5px 0 var(--jeu-coque);
+}
+.dj-bouton.jeu-jouer:hover {
+  color: var(--dj-papier);
+}
+.dj-bouton.jeu-jouer:active {
+  transform: translateY(var(--dj-enfonce));
+  box-shadow: 0 3px 0 var(--jeu-coque);
+}
+.dj-bouton.jeu-jouer--petit {
+  min-height: var(--dj-cible-jeu);
+  font-size: var(--dj-taille-16);
+  letter-spacing: 1px;
+}
+.dj-bouton.jeu-jouer:disabled {
+  box-shadow: none;
+}
+/* Les boutons d'une rangée ne se touchent jamais (`--jeu-esp-boutons`), chacun de 44 px au moins, et se répartissent la largeur. */
+.jeu-secondaires {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  gap: var(--jeu-esp-boutons);
+}
 .jeu-secondaires > * {
-  flex: 1 1 120px;
-  min-height: 44px;
+  min-width: 0;
+  min-height: var(--dj-cible);
+  padding-inline: var(--dj-espace-2);
 }
 .jeu-rangs {
   list-style: none;
@@ -102,30 +287,35 @@ body {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dj-espace-1);
 }
 .rang {
   display: grid;
-  grid-template-columns: 2.2em 1fr auto;
+  grid-template-columns: 2.2em minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--dj-espace-2);
-  padding: 6px var(--dj-espace-3);
-  background: var(--dj-blanc);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-tuile);
+  min-height: 32px;
+  padding: 0 var(--dj-espace-2);
+  border-bottom: 1px solid var(--dj-creme-2);
   font-size: var(--dj-taille-14);
 }
 .rang--moi {
+  min-height: 36px;
   background: var(--dj-moutarde);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+  font-weight: 700;
 }
 .rang__rang,
 .rang__score {
   font-family: var(--dj-police-chiffres);
   font-weight: 700;
 }
-.rang__nom,
+.rang__nom {
+  overflow-wrap: anywhere;
+}
 .rang__bouton {
-  min-height: 44px;
+  min-height: var(--dj-cible);
   display: inline-flex;
   align-items: center;
   background: none;
@@ -135,13 +325,11 @@ body {
   color: inherit;
   text-align: left;
   overflow-wrap: anywhere;
-}
-.rang__bouton {
   cursor: pointer;
   text-decoration: underline;
 }
 .jeu-lien {
-  min-height: 44px;
+  min-height: var(--dj-cible);
   display: inline-flex;
   align-items: center;
   padding: 0;
@@ -159,150 +347,12 @@ body {
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: var(--dj-espace-2);
-  font-size: var(--dj-taille-14);
+  gap: var(--dj-espace-2) var(--dj-espace-4);
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
 }
 .jeu-decompte {
   font-family: var(--dj-police-chiffres);
-}
-.jeu-fin__score {
-  margin: 0;
-  font-family: var(--dj-police-chiffres);
-  font-size: var(--dj-taille-64);
-  font-weight: 700;
-  line-height: 1;
-}
-.jeu-fin__rang {
-  margin: 0;
-  font-weight: 700;
-}
-.jeu-medailles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--dj-espace-2);
-}
-.jeu-medailles > h3 {
-  flex: 1 1 100%;
-  margin: 0;
-  font-size: var(--dj-taille-14);
-}
-.jeu-pseudo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dj-espace-2);
-}
-.jeu-pseudo__champ {
-  min-height: 44px;
-  box-sizing: border-box;
-  width: 100%;
-  padding: 0 var(--dj-espace-3);
-  font: inherit;
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-}
-.jeu-aide {
-  margin: 0;
-  padding-left: 1.2em;
-  display: flex;
-  flex-direction: column;
-  gap: var(--dj-espace-2);
-}
-.jeu-aide__commandes {
-  margin: 0;
-  font-size: var(--dj-taille-13);
-  color: var(--dj-encre-douce);
-}
-.jeu-reglages__section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dj-espace-2);
-}
-.jeu-reglages__section > h3 {
-  margin: 0;
-  font-size: var(--dj-taille-legende);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.jeu-reglages__ligne {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--dj-espace-2);
-}
-.jeu-reglages__liens {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--dj-espace-4);
-  margin: 0;
-}
-.jeu-segment {
-  display: inline-flex;
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  overflow: hidden;
-}
-.jeu-segment__bouton {
-  min-height: 44px;
-  padding: 0 var(--dj-espace-3);
-  background: var(--dj-blanc);
-  border: 0;
-  font: inherit;
-  cursor: pointer;
-}
-.jeu-segment__bouton[aria-pressed="true"] {
-  background: var(--dj-moutarde);
-  font-weight: 700;
-}
-/* La scène : le plateau du jeu plein écran, le HUD compact en haut (bande de 44 px, marges de sécurité). */
-.jeu-scene {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--dj-papier);
-}
-.jeu-hud {
-  flex: none;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: var(--dj-espace-2);
-  box-sizing: border-box;
-  min-height: 44px;
-  padding: max(4px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 4px max(10px, env(safe-area-inset-left));
-  background: var(--dj-creme);
-  border-bottom: var(--dj-trait) solid var(--dj-encre);
-  font-family: var(--dj-police-chiffres);
-  font-weight: 700;
-  font-size: var(--dj-taille-16);
-}
-.jeu-hud__droite {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--dj-espace-2);
-}
-.jeu-hud__bouton {
-  min-width: 44px;
-  min-height: 44px;
-  background: var(--dj-blanc);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-.jeu-hud__bouton[data-etat="aucun"] {
-  opacity: 0.6;
-}
-.jeu-plateau {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: var(--dj-espace-2) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 /* Le message en direct n'occupe aucune place tant qu'il est vide. */
 .message-direct:empty {
@@ -312,24 +362,28 @@ body {
 .cadre[hidden] {
   display: none;
 }
-
-/* Lot « manques de Blocks » : le curseur « Volume des effets » des Réglages (un jeu qui joue des effets), sur la ligne des autres réglages. */
-.jeu-reglages__curseur {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 44px;
-  accent-color: var(--dj-encre);
+/* Un téléphone en portrait : la coque et le panneau se resserrent (le bouton principal garde presque toute la largeur de la fenêtre), les tuiles du record et de la série serrent leur valeur. */
+@media (max-width: 520px) {
+  .jeu-ecran {
+    padding: 0 var(--dj-espace-3) var(--dj-espace-3);
+  }
+  .jeu-ecran > .etiquette__corps {
+    padding: var(--dj-espace-4);
+  }
+  .jeu-tuile__valeur {
+    font-size: var(--dj-taille-16);
+  }
 }
-.jeu-reglages__valeur {
-  min-width: 4ch;
-  text-align: right;
-  font-family: var(--dj-police-chiffres);
-  font-weight: 700;
-}
-
-/* Lot « manques de Blocks » : sur un aperçu (clé d'aperçu ou PR), le bandeau « Aperçu » est fixé en haut de la page (`@cdj/ui`, `.dj-apercu`). La scène lui RÉSERVE sa place (`--dj-apercu-reserve`, posée par la classe
-   `dj-avec-apercu` de la page) au lieu de passer dessous : le HUD, les plaques et les boutons ne sont plus recouverts, en portrait comme en paysage. Hors aperçu la variable n'existe pas : rien ne change. */
-.jeu-scene {
-  padding-top: var(--dj-apercu-reserve, 0px);
-  box-sizing: border-box;
+/* Un écran bas (téléphone en paysage) : le titre, le panneau et le bouton principal se resserrent. */
+@media (max-height: 520px) {
+  .jeu-ecran__titre {
+    font-size: var(--dj-taille-32);
+  }
+  .jeu-ecran > .etiquette__corps {
+    padding: var(--jeu-esp-bloc) var(--jeu-esp-carte);
+  }
+  .dj-bouton.jeu-jouer {
+    min-height: var(--dj-cible-jeu);
+    font-size: var(--dj-taille-21);
+  }
 }
