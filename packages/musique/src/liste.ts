@@ -13,7 +13,12 @@ function piste(p: unknown): PisteServie | null {
   const scenes = Array.isArray(o.scenes) ? o.scenes.filter((s): s is string => typeof s === "string" && /^[a-z0-9]+(:[a-z0-9-]+)?$/.test(s)) : [];
   const nombre = (v: unknown, defaut: number) => (typeof v === "number" && Number.isFinite(v) ? v : defaut);
   const poids = nombre(o.poids, 1);
-  return { id: o.id, titre: o.titre, artiste: o.artiste, credit: o.credit, fichier: o.fichier, jeux, scenes, sha: typeof o.sha === "string" ? o.sha : "", poids: poids > 0 ? poids : 1, volumeDb: nombre(o.volumeDb, 0), duree: nombre(o.duree, 0) };
+  const r: PisteServie = { id: o.id, titre: o.titre, artiste: o.artiste, credit: o.credit, fichier: o.fichier, jeux, scenes, sha: typeof o.sha === "string" ? o.sha : "", poids: poids > 0 ? poids : 1, volumeDb: nombre(o.volumeDb, 0), duree: nombre(o.duree, 0) };
+  // La couleur du morceau (lot B6) : valable seulement si le tempo et la tonique sont de vrais nombres ; sinon le morceau n'a pas de couche.
+  const bpm = nombre(o.bpm, 0);
+  const tonique = nombre(o.tonique, -1);
+  if (bpm >= 30 && bpm <= 300 && tonique >= 0 && tonique <= 127) Object.assign(r, { bpm, tonique, ...(typeof o.gamme === "string" ? { gamme: o.gamme } : {}) });
+  return r;
 }
 
 /** La liste servie, ou `null` si ce n'en est pas une. Les morceaux illisibles sont écartés. */

@@ -265,12 +265,18 @@ export function chip(f) {
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 /**
  * Fiche `calme` : { bpm, graine, tonique, gamme, prog:[4 degrés, deux mesures chacun], perc:"aucune"|"doux"|"tribal"|"tic", pluck:{ wave, gain, duty? }, cloche:{ wave, gain },
- * nappe:{ wave, gain }, salle, echo }. 24 mesures : trois fois les quatre accords.
+ * nappe:{ wave, gain }, salle, echo, barres }. `barres` (défaut 24, un multiple de 8) : 24 mesures = trois fois les quatre accords ; 40 = cinq fois (Blocks : plus de 90 s avant la répétition).
+ * Les 2 premières et les 2 dernières mesures sont des nappes seules ; la cloche joue le motif A (mesures 8 à 16), un second motif A au-delà de 24 mesures (16 à finA), puis le motif B jusqu'à barres - 2.
+ * Pour `barres: 24` le rendu est identique, à l'octet, à celui d'avant le paramètre (lot B6 : empreintes des boucles de Tower dans le README du lot).
  */
 export function calme(f) {
   const accords = accordsDe(f);
+  const N = f.barres ?? 24;
+  const finA = 16 + (N - 24) / 2; // 24 → 16 ; 40 → 24
   const mA = melodie(f, f.graine + 3, { barres: 8, parAccord: 2, rythmes: "lent", centre: f.tonique + 19 });
   const mB = melodie(f, f.graine + 29, { barres: 8, parAccord: 2, rythmes: "lent", centre: f.tonique + 22 });
+  // Au-delà de 24 mesures, le motif A n'est pas rejoué à l'identique : une seconde mélodie (un hasard à part, qui ne touche pas le flux des autres) tient la mesure 16 à `finA`.
+  const mA2 = N > 24 ? melodie(f, f.graine + 53, { barres: 8, parAccord: 2, rythmes: "lent", centre: f.tonique + 21 }) : mA;
   const pluck = { wave: "tri", gain: 0.07, ...f.pluck };
   const cloche = { wave: "sine", gain: 0.11, ...f.cloche };
   const nappe = { wave: "saw", gain: 0.05, ...f.nappe };
@@ -278,30 +284,33 @@ export function calme(f) {
   return {
     id: f.id,
     bpm: f.bpm,
-    barres: 24,
+    barres: N,
     graine: f.graine,
+    // La tonalité, pour qui la lit (le test de `musiques.json` : `bpm`, `tonique`, `gamme` de `liste.json` en viennent) ; le rendu ne les lit pas.
+    tonique: f.tonique,
+    gamme: f.gamme,
     bus: ["kick", "perc", "bass", "pad", "pluck", "cloche"],
     compose({ bus, t, rnd, pasSec }) {
       const kicks = [];
-      for (let b = 0; b < 24; b++) {
+      for (let b = 0; b < N; b++) {
         const c = accords[Math.floor(b / 2) % accords.length];
         if (b % 2 === 0)
           c.accord.forEach((m, i) => note(bus.pad, t(b), 2 * PAS_PAR_BARRE * pasSec, { wave: nappe.wave, f: hz(m), detune: [-7, 0, 7], gain: nappe.gain, a: 1.4, d: 0.6, s: 0.85, r: 2, lp: { f0: 1300, f1: 800, tau: 1 }, pan: (i - 1) * 0.4 }));
         // Basse : une note longue par mesure, douce.
-        if (dans(b, 2, 22)) note(bus.bass, t(b), PAS_PAR_BARRE * pasSec * 0.98, { wave: "sine", f: hz(c.basse), gain: 0.34, a: 0.03, d: 0.2, s: 0.85, r: 0.2 });
+        if (dans(b, 2, N - 2)) note(bus.bass, t(b), PAS_PAR_BARRE * pasSec * 0.98, { wave: "sine", f: hz(c.basse), gain: 0.34, a: 0.03, d: 0.2, s: 0.85, r: 0.2 });
         // Notes pincées : croches arpégées.
-        if (dans(b, 2, 22)) {
+        if (dans(b, 2, N - 2)) {
           const tones = [c.accord[0] + 12, c.accord[1] + 12, c.accord[2] + 12];
           for (let i = 0; i < 8; i++)
             note(bus.pluck, t(b, i * 2), pasSec * 1.5, { wave: pluck.wave, duty: pluck.duty ?? 0.5, f: hz(tones[motif[i]]), gain: i % 4 === 0 ? pluck.gain : pluck.gain * 0.7, a: 0.003, d: 0.18, s: 0.05, r: 0.1, lp: { f0: 3600, f1: 1000, tau: 0.12 }, pan: i % 2 ? 0.35 : -0.35 });
         }
         // Cloche : le crochet, rare et long.
-        const section = dans(b, 8, 16) ? mA : dans(b, 16, 22) ? mB : null;
+        const section = dans(b, 8, 16) ? mA : dans(b, 16, finA) ? mA2 : dans(b, finA, N - 2) ? mB : null;
         if (section)
           for (const [s, m, l] of section[b % 8])
             note(bus.cloche, t(b, s), pasSec * l, { wave: cloche.wave, detune: [-4, 4], f: hz(m), gain: cloche.gain, a: 0.006, d: 0.5, s: 0.25, r: 0.9, vib: { rate: 4.6, depth: 0.004, delay: 0.3 }, pan: 0.1 });
         // Percussions très douces.
-        if (dans(b, 4, 22) && f.perc && f.perc !== "aucune") {
+        if (dans(b, 4, N - 2) && f.perc && f.perc !== "aucune") {
           if (f.perc === "doux") {
             for (const s of [0, 10]) {
               batterie.kick(bus.kick, t(b, s), 0.42, rnd);

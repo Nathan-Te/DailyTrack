@@ -37,6 +37,13 @@ export interface PisteDescription {
   poids?: number;
   /** Correction de volume en décibels (0 par défaut) : après l'harmonisation automatique, pour un morceau qui reste trop fort ou trop doux. */
   volumeDb?: number;
+  /**
+   * La couleur du morceau, pour la couche que le jeu ajoute (`couche(true)`, lot B6) : le tempo (temps par minute, 4 temps par mesure, la première mesure commence au début du fichier), la
+   * tonique (note MIDI, 60 = do central) et la gamme (`maj`, `min`, `dor`, `mix`, `lyd`, `phr`). Sans `bpm` et `tonique`, le morceau n'a pas de couche. Les trois vont ensemble.
+   */
+  bpm?: number;
+  tonique?: number;
+  gamme?: string;
 }
 
 /** Le fichier `musique/musiques.json`. */
@@ -62,6 +69,10 @@ export interface PisteServie {
   volumeDb: number;
   /** Durée en secondes (mesurée à la préparation). */
   duree: number;
+  /** Tempo, tonique (MIDI) et gamme, quand la description les donne (voir `PisteDescription`). */
+  bpm?: number;
+  tonique?: number;
+  gamme?: string;
 }
 
 /** La liste servie au jeu. */

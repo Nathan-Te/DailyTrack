@@ -96,3 +96,25 @@ describe("les scènes d'un morceau (menu, un thème de niveaux)", () => {
     }
   });
 });
+
+describe("la couleur d'un morceau (lot B6) : tempo, tonique, gamme", () => {
+  it("accepte les trois, ou le tempo et la tonique seuls ; refuse un tempo seul, une tonique hors MIDI, une gamme inconnue", () => {
+    expect(erreursDe({ ...bon, bpm: 88, tonique: 48, gamme: "maj" })).toBe("");
+    expect(erreursDe({ ...bon, bpm: 88, tonique: 48 })).toBe("");
+    expect(erreursDe({ ...bon, bpm: 88 })).toContain("tonique");
+    expect(erreursDe({ ...bon, tonique: 48 })).toContain("bpm");
+    expect(erreursDe({ ...bon, bpm: 10, tonique: 48 })).toContain("tempo");
+    expect(erreursDe({ ...bon, bpm: 88, tonique: 48.5 })).toContain("tonique");
+    expect(erreursDe({ ...bon, bpm: 88, tonique: 200 })).toContain("tonique");
+    expect(erreursDe({ ...bon, bpm: 88, tonique: 48, gamme: "blues" })).toContain("gamme");
+  });
+
+  it("la liste servie ne garde la couleur que complète et valable", async () => {
+    const { lireListe } = await import("../src/liste");
+    const brut = (o: object) => ({ version: 1, pistes: [{ ...piste("a", { jeux: ["blocks"] }), ...o }] });
+    expect(lireListe(brut({ bpm: 90, tonique: 48, gamme: "dor" }))!.pistes[0]).toMatchObject({ bpm: 90, tonique: 48, gamme: "dor" });
+    expect(lireListe(brut({ bpm: 90 }))!.pistes[0]!.bpm).toBeUndefined();
+    expect(lireListe(brut({ bpm: "vite", tonique: 48 }))!.pistes[0]!.bpm).toBeUndefined();
+    expect(lireListe(brut({}))!.pistes[0]).not.toHaveProperty("tonique");
+  });
+});
