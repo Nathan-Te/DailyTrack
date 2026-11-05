@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2126 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2130 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2717,7 +2717,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `aide.point1` | Fais tomber le golem le plus vite possible : ton temps est ton score. | Bring the golem down as fast as you can: your time is your score. |
-| `aide.point2` | Frappe pour enchaîner trois coups, esquive pour passer à travers les attaques : un cercle rouge au sol annonce chaque coup du golem. | Hit to chain three strikes, dodge to roll through attacks: a red circle on the ground warns you before every golem blow. |
+| `aide.point2` | Vise à la souris et clique pour frapper (maintenu, ça enchaîne trois coups), Espace pour esquiver à travers les attaques, Z Q S D pour bouger. Au doigt : le joystick, « Coup » et « Esquive ». Un cercle rouge au sol annonce chaque coup du golem. | Aim with the mouse and click to strike (hold to chain three strikes), Space to dodge through attacks, Z Q S D to move. On touch: joystick, Strike and Dodge. A red circle on the ground warns you before every golem blow. |
 | `aide.point3` | Tu as trois cœurs. Les gelées et les chauves-souris font mal aussi. | You have three hearts. Slimes and bats hurt too. |
 
 ### golem (`golem.*`, `apps/rush/src/catalogue.*.ts`)
@@ -2834,6 +2834,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `hud.golem` | Golem {pct} % | Golem {pct}% |
+| `hud.phase` | Phase {n} | Phase {n} |
 | `hud.tues` | Tués {n} | Kills {n} |
 | `hud.coeurs` | Cœurs : {n} sur {total} | Hearts: {n} of {total} |
 
@@ -2870,8 +2871,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `tune.fenetreEsquive` | Invincibilité de l'esquive (ticks) | Dodge invincibility (ticks) |
 | `tune.golemVie` | Vie du golem | Golem health |
 | `tune.golemCadence` | Repos du golem (ticks) | Golem rest (ticks) |
+| `tune.rythme` | Rythme des ennemis (%, 100 = défaut) | Enemy tempo (%, 100 = default) |
 | `tune.arretImage` | Arrêt sur image (ms) | Hit stop (ms) |
 | `tune.secousse` | Secousse de caméra (%) | Camera shake (%) |
 | `tune.eclats` | Éclats (%) | Particles (%) |
-| `tune.vue` | Vue (mètres) | View (meters) |
+| `tune.angle` | Caméra : angle (° au-dessus de l'horizon) | Camera: angle (° above the horizon) |
+| `tune.distance` | Caméra : distance de base (m) | Camera: base distance (m) |
+| `tune.champ` | Caméra : champ (°) | Camera: field of view (°) |
 | `tune.eclair` | Éclair blanc (images) | White flash (frames) |

@@ -1,7 +1,8 @@
-import { CircleGeometry, Color, DoubleSide, DynamicDrawUsage, Group, IcosahedronGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, PlaneGeometry, Quaternion, RingGeometry, ShaderMaterial, Vector3 } from "three";
+import { CanvasTexture, CircleGeometry, Color, DoubleSide, DynamicDrawUsage, Group, IcosahedronGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, PlaneGeometry, Quaternion, RingGeometry, ShaderMaterial, SRGBColorSpace, Vector3 } from "three";
+import { fusionner, teindre } from "./formes";
 import { COULEURS } from "./palette";
 
-// Les effets de Rush : les éclats (un seul tas de petits solides), l'arc du coup, les cercles rouges annoncés au sol, les ondes du golem, les ombres. **Rien ici ne touche à la simulation** : le rendu lit les
+// Les effets de Rush : les éclats (un seul tas de petits solides), l'arc du coup, les cercles rouges annoncés au sol, les ondes du golem, les ombres douces, les lignes de vitesse de l'esquive, le réticule de la souris. **Rien ici ne touche à la simulation** : le rendu lit les
 // événements et l'état, et pose des choses qui durent quelques images.
 
 // --- Les éclats --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -97,7 +98,7 @@ export class Eclats {
 }
 
 // --- Les ombres ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-/** Les ombres portées : un seul appel de dessin pour tous les disques sombres posés sous les personnages. */
+/** Les ombres portées : un seul appel de dessin pour tous les disques sombres posés sous les personnages. Le bord est DOUX (un dégradé radial peint une fois sur un petit canvas), comme les ombres de la maquette. */
 export class Ombres {
   readonly maillage: InstancedMesh;
   private n = 0;
@@ -108,7 +109,19 @@ export class Ombres {
   constructor(capacite = 96) {
     const g = new CircleGeometry(1, 20);
     g.rotateX(-Math.PI / 2);
-    this.maillage = new InstancedMesh(g, new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false }), capacite);
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const x = c.getContext("2d")!;
+    const d = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    d.addColorStop(0, "rgba(26,18,12,0.5)");
+    d.addColorStop(0.55, "rgba(26,18,12,0.34)");
+    d.addColorStop(1, "rgba(26,18,12,0)");
+    x.fillStyle = d;
+    x.fillRect(0, 0, 64, 64);
+    const t = new CanvasTexture(c);
+    t.colorSpace = SRGBColorSpace;
+    // Les UV d'un cercle vont de 0 à 1 : le dégradé remplit le disque.
+    this.maillage = new InstancedMesh(g, new MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }), capacite);
     this.maillage.instanceMatrix.setUsage(DynamicDrawUsage);
     this.maillage.frustumCulled = false;
     this.maillage.renderOrder = 1;
@@ -132,7 +145,7 @@ export class Ombres {
 // --- Les cercles rouges annoncés au sol -----------------------------------------------------------------------------------------------------------------------------------------------------------
 const VERTEX_PLAN = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
 
-/** Un cercle d'annonce : le bord reste plein, le disque se remplit du centre vers le bord (la durée qu'il reste), les rayures défilent, et le tout clignote juste avant le coup. */
+/** Un cercle d'annonce (lot BR0b, la cible : `cible-ia.png`) : un disque rouge translucide PLEIN, un bord épais, et un remplissage plus soutenu qui grandit du centre jusqu'au bord à l'instant du coup (la maquette) ; il clignote juste avant. */
 export class Annonces {
   readonly groupe = new Group();
   private readonly libres: Mesh[] = [];
@@ -149,12 +162,13 @@ export class Annonces {
         fragmentShader: `varying vec2 vUv; uniform float p; uniform float t; uniform float flash; uniform vec3 col;
           void main(){
             vec2 q = vUv * 2.0 - 1.0; float d = length(q); if (d > 1.0) discard;
-            float bord = smoothstep(0.88, 0.9, d);
-            float rempli = step(d, p);
-            float rayure = step(0.5, fract((q.x + q.y) * 5.0 - t * 0.7));
-            vec3 c = mix(col * 0.72, col, rayure);
+            float bord = smoothstep(0.9, 0.915, d);
+            float rempli = 1.0 - smoothstep(p - 0.012, p, d);
+            float front = smoothstep(p - 0.05, p - 0.02, d) * (1.0 - smoothstep(p - 0.02, p, d));
+            vec3 c = mix(col, col * 0.78, bord);
+            c = mix(c, vec3(1.0, 0.82, 0.72), front * 0.55);
             c = mix(c, vec3(1.0, 0.93, 0.85), flash);
-            float a = bord * 0.95 + (1.0 - bord) * (rempli * (0.5 + 0.18 * rayure) + (1.0 - rempli) * 0.14);
+            float a = bord * 0.92 + (1.0 - bord) * (0.3 + rempli * 0.26);
             gl_FragColor = vec4(c, a);
           }`,
       });
@@ -181,7 +195,7 @@ export class Annonces {
     m.position.set(x, 0.03, z);
     m.scale.set(rayon, 1, rayon);
     const u = (m.material as ShaderMaterial).uniforms;
-    u.p!.value = Math.min(1, p) * 0.88;
+    u.p!.value = Math.min(1, p) * 0.9;
     u.t!.value = temps;
     u.flash!.value = p > 0.8 ? (Math.floor(temps * 18) % 2 === 0 ? 0.65 : 0) : 0;
   }
@@ -287,5 +301,81 @@ export class ArcCoup {
     this.maillage.scale.setScalar(0.85 + 0.25 * u);
     this.matiere.opacity = Math.max(0, 1 - u * u * 1.1);
     if (this.reste <= 0) this.maillage.visible = false;
+  }
+}
+
+// --- Les lignes de vitesse de l'esquive ----------------------------------------------------------------------------------------------------------------------------------------------------------
+/** Les traits blancs que laisse une esquive : quelques bandes fines, couchées, derrière le chevalier, le long de sa course, qui s'allongent et s'éteignent en un quart de seconde. Un seul appel de dessin. */
+export class Traits {
+  readonly maillage: InstancedMesh;
+  private readonly matiere = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: DoubleSide });
+  private readonly m = new Matrix4();
+  private readonly q = new Quaternion();
+  private readonly s = new Vector3();
+  private readonly p = new Vector3();
+  private readonly lignes: { x: number; z: number; cap: number; ecart: number; haut: number; longueur: number }[] = [];
+  /** Les secondes restantes et la durée totale. */
+  private reste = 0;
+  private static readonly DUREE = 0.28;
+  private static readonly N = 6;
+  constructor() {
+    const g = new PlaneGeometry(1, 1);
+    g.rotateX(-Math.PI / 2);
+    g.translate(-0.5, 0, 0); // la bande part de l'origine vers l'arrière (−x local)
+    this.maillage = new InstancedMesh(g, this.matiere, Traits.N);
+    this.maillage.instanceMatrix.setUsage(DynamicDrawUsage);
+    this.maillage.frustumCulled = false;
+    this.maillage.renderOrder = 5;
+    this.maillage.visible = false;
+  }
+  /** Une esquive au point (x, z), vers le cap (radians dans le repère x, z : 0 vers +x, π/2 vers +z). */
+  lancer(x: number, z: number, cap: number): void {
+    this.lignes.length = 0;
+    const decalages = [-0.42, -0.24, -0.06, 0.12, 0.3, 0.46];
+    for (let i = 0; i < Traits.N; i++) this.lignes.push({ x, z, cap, ecart: decalages[i]!, haut: 0.18 + ((i * 37) % 7) * 0.1, longueur: 1.1 + ((i * 53) % 5) * 0.28 });
+    this.reste = Traits.DUREE;
+    this.maillage.visible = true;
+  }
+  maj(dt: number): void {
+    if (this.reste <= 0) {
+      this.maillage.visible = false;
+      return;
+    }
+    this.reste -= dt;
+    const u = 1 - Math.max(0, this.reste) / Traits.DUREE;
+    this.matiere.opacity = Math.max(0, 0.9 * (1 - u * u));
+    this.lignes.forEach((l, i) => {
+      // la bande se détache du chevalier (elle reste où elle est née) et s'étire vers l'arrière
+      const lon = l.longueur * (0.5 + u);
+      const ax = Math.cos(l.cap);
+      const az = Math.sin(l.cap);
+      this.q.setFromAxisAngle(this.p.set(0, 1, 0), -l.cap);
+      this.m.compose(this.p.set(l.x - az * l.ecart - ax * 0.2 * u, l.haut, l.z + ax * l.ecart - az * 0.2 * u), this.q, this.s.set(lon, 1, 0.05));
+      this.maillage.setMatrixAt(i, this.m);
+    });
+    this.maillage.instanceMatrix.needsUpdate = true;
+    if (this.reste <= 0) this.maillage.visible = false;
+  }
+}
+
+// --- Le réticule de la souris ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/** Le réticule discret posé au sol sous le curseur (PC seulement) : un petit anneau et un point, blancs, translucides. Un seul appel de dessin ; rien de visible au doigt. */
+export class Reticule {
+  readonly maillage: Mesh;
+  constructor() {
+    const anneau = new RingGeometry(0.24, 0.31, 28);
+    const point = new CircleGeometry(0.05, 12);
+    const g = fusionner([teindre(anneau, 0xffffff), teindre(point, 0xffffff)]);
+    g.rotateX(-Math.PI / 2);
+    this.maillage = new Mesh(g, new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false, depthTest: false, vertexColors: true }));
+    this.maillage.renderOrder = 6;
+    this.maillage.visible = false;
+  }
+  poser(x: number, z: number): void {
+    this.maillage.position.set(x, 0.05, z);
+    this.maillage.visible = true;
+  }
+  cacher(): void {
+    this.maillage.visible = false;
   }
 }

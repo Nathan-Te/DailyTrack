@@ -56,6 +56,59 @@ test.describe("Rush : une partie", () => {
     await context.close();
   });
 
+  test("à la souris : le chevalier vise le point du sol sous le curseur, le clic frappe (maintenu, il enchaîne les trois coups), Espace esquive", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=boss");
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await lancer(page);
+    const scene = (await page.locator(".rush-monde__scene").boundingBox())!;
+    const vers = async (fx: number, fy: number): Promise<number> => {
+      await page.mouse.move(scene.x + scene.width * fx, scene.y + scene.height * fy);
+      await page.evaluate(() => window.__jeu.avancer(1));
+      return page.evaluate(() => window.__rush.visee());
+    };
+    // Le chevalier est dans le tiers inférieur : un curseur en haut de l'écran vise vers le haut (24), à gauche vers la gauche (16), à droite vers la droite (0), tout en bas vers le bas (8).
+    expect(Math.abs((await vers(0.5, 0.05)) - 24)).toBeLessThanOrEqual(2);
+    expect(Math.abs((await vers(0.02, 0.5)) - 16)).toBeLessThanOrEqual(4);
+    const droite = await vers(0.98, 0.5);
+    expect(Math.min(droite, 32 - droite)).toBeLessThanOrEqual(4);
+    expect(Math.abs((await vers(0.5, 0.995)) - 8)).toBeLessThanOrEqual(3);
+    // Le chevalier regarde où il vise, sans marcher.
+    await vers(0.5, 0.05);
+    await page.evaluate(() => window.__jeu.avancer(3));
+    expect(await page.evaluate(() => window.__rush.partie().c.dir)).toBeGreaterThan(90);
+    expect(await page.evaluate(() => window.__rush.partie().c.dir)).toBeLessThan(102);
+    // Le clic gauche frappe ; MAINTENU, il enchaîne (coup 1, 2, puis 3, puis encore le 1).
+    await page.mouse.down();
+    await page.evaluate(() => window.__jeu.avancer(100));
+    await page.mouse.up();
+    const sons = await page.evaluate(() => window.__rush.sons());
+    expect(sons.filter((s) => s === "coup1").length).toBeGreaterThanOrEqual(2);
+    expect(sons).toEqual(expect.arrayContaining(["coup1", "coup2", "coup3"]));
+    // Une visée est une entrée de la rediffusion : l'octet haut du changement la porte.
+    const ch = await page.evaluate(() => window.__rush.changements());
+    expect(ch.some((c) => (c.e >> 8) > 0)).toBe(true);
+    // Espace esquive.
+    await page.keyboard.press("Space");
+    await page.evaluate(() => window.__jeu.avancer(40)); // l'arrêt sur image d'un coup qui touche retient quelques appels
+    expect((await page.evaluate(() => window.__rush.sons())).slice(-8)).toContain("esquive");
+    await context.close();
+  });
+
+  test("la vitrine est une scène figée (le golem annonce un coup, quatre gelées, deux chauves-souris) qui ne joue pas", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=vitrine");
+    await lancer(page);
+    await expect(page.locator(".rush-boss")).toBeVisible();
+    await expect(page.locator(".rush-boss__phase")).toHaveText("Phase 1");
+    await expect(page.locator("#jeu-hud-score")).toHaveText("Golem 60 %");
+    const avant = await page.evaluate(() => ({ tick: window.__rush.partie().tick, monstres: window.__rush.partie().monstres.length }));
+    await page.evaluate(() => window.__jeu.avancer(300));
+    const apres = await page.evaluate(() => ({ tick: window.__rush.partie().tick, monstres: window.__rush.partie().monstres.length }));
+    expect(apres).toEqual(avant);
+    expect(avant.monstres).toBe(6);
+    expect(await page.evaluate(() => window.__rush.calls())).toBeLessThan(120);
+    await context.close();
+  });
+
   test("une partie d'essai (scénario) n'est pas classable ; le joueur en est averti", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=arene");
     await lancer(page);

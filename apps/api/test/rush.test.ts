@@ -31,7 +31,7 @@ describe("Rush sur le serveur", () => {
     const t = await monter();
     const c = dailyRush(JOUR);
     const info = await t.call("GET", "/api/rush/info");
-    expect(info.body).toMatchObject({ game: "rush", simVersion: 1, generatorVersion: 1, today: DATE });
+    expect(info.body).toMatchObject({ game: "rush", simVersion: RUSH_SIM_VERSION, generatorVersion: RUSH_GENERATOR_VERSION, today: DATE });
     const jour = await t.call("GET", `/api/rush/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.medals).toEqual(seuilsDe(c));
