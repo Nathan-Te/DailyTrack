@@ -21,7 +21,7 @@ Titre et identifiant provisoires. Le jeu est **`off`**, catégorie **arcade**. P
 | **Images par seconde**, 30 monstres | **non mesurables sur un téléphone ici.** Chromium sans GPU (rastériseur logiciel), processeur ralenti ×4 : 20 i/s, mais c'est le rastériseur. À lire : **7 ms de dessin côté processeur** sous ralenti ×4 (1,3 ms sans), pour 16,7 ms disponibles ; **~317 appels, 37 à 47 mille triangles**. À confirmer sur un vrai téléphone : `?debug&fps&scenario=arene&monstres=30` |
 
 ## Ce que je ne peux pas dire
-- **Le combat est-il bon dans les mains ?** Je n'ai pas de main : j'ai vérifié que ça marche (le pilote bat le golem en ~22 s, un joueur immobile perd en ~9 s, chaque annonce précède son coup de 50 ticks au moins, l'esquive rend invincible) mais pas que ça se sent bien. C'est le but de `?debug&tune`.
+- **Le combat est-il bon dans les mains ?** Je n'ai pas de main : j'ai vérifié que ça marche (le pilote bat le golem en ~22 s, un joueur immobile perd en ~9 s, chaque annonce précède son coup de 50 ticks au moins (22 pour le second coup de la phase 2), l'esquive rend invincible) mais pas que ça se sent bien. C'est le but de `?debug&tune`.
 - **La maquette `maquettes/boss-rush-3d.html` ne m'est pas parvenue** (seule la charte l'était) : elle n'est pas dans `docs/rush/maquettes/`, et la DA est écrite **d'après la description** (aplats, contour noir, petits yeux, caméra haute, famille crème / moutarde / terre cuite). À comparer avec la maquette.
 - Captures et GIF (`docs/rush/lots/`) : rendus par un Chromium sans GPU, vues en paysage 844 × 390.
 
@@ -32,6 +32,9 @@ Titre et identifiant provisoires. Le jeu est **`off`**, catégorie **arcade**. P
 - Deux thèmes (`clair`, `sombre`) : seulement le sol et la lumière.
 - Le HUD est celui du kit (bande de 44 px) + cœurs et vie du golem ; la charte vise une bande de 30 px : question de plateforme.
 - `PAS_MIN_DIRECTION` : une direction change au plus tous les 3 ticks, pour borner la rediffusion.
+
+## Hors des zones du jeu (création d'un jeu : lot de plateforme)
+Lignes mécaniques du générateur (Dockerfile, tsconfig, catalogues, `budgets.md`) et leurs fichiers produits (`npm run fiches`, `npm run traductions`) ; `apps/portail/src/catalogue.ts` (accroche et thèmes de Rush, textes provisoires) ; **`apps/portail/test/miseEnProduction.test.ts`** (deux listes qui nommaient les jeux un par un, comme au lot B0) ; `docs/plateforme/budgets.md` (plafond de `rush.jsCss` : 44 Ko, provisoire) ; `package-lock.json` (liens des deux paquets, `three` déjà dans l'arbre).
 
 ## Questions pour Nathan
 **DA** : le golem se lit-il (pile de cailloux ou boss) ? Le contour de 4,5 cm, la caméra à 60°, 13 m de sol dans la hauteur : trop loin sur téléphone ? Faut-il des ombres portées plus nettes, des visages plus expressifs (yeux du golem) ? Le sol damier, ou un décor par thème ? Les cercles rouges (bord plein, rayures qui avancent, clignotement final) sont-ils assez clairs sur le sol clair ?
