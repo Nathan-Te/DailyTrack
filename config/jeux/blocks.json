@@ -207,8 +207,7 @@
         "api-jeux"
       ],
       "musique.spec.ts": [
-        "blocks-jeu",
-        "ui"
+        "blocks-jeu"
       ]
     },
     "parts": {
