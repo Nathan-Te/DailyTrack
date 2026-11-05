@@ -23,6 +23,8 @@ export interface Disposition {
   /** Les plaques du score et du combo. */
   score: Rect;
   combo: Rect;
+  /** Lot B4 — la plaque du fantôme (son score à ce rang, l'écart avec le tien) : seulement quand il y a un fantôme (`disposer(…, true)`), sinon `null` et rien ne change. */
+  fantome: Rect | null;
   /** La ligne d'aide (avant la première pose). */
   aide: Rect;
   /** Là où le kit pose ses deux boutons (fantôme, pause) : rien d'autre n'y est dessiné. */
@@ -41,7 +43,7 @@ export const BOUTON = 44;
 const ETIQUETTE = 24;
 const ECART = 12;
 
-export function disposer(largeur: number, hauteur: number): Disposition {
+export function disposer(largeur: number, hauteur: number, avecFantome = false): Disposition {
   const portrait = hauteur >= largeur * 0.95;
   const boutons: Rect = { x: Math.max(0, largeur - (2 * BOUTON + MARGE)), y: 0, w: 2 * BOUTON + MARGE, h: BOUTON };
   let cote: number;
@@ -51,10 +53,14 @@ export function disposer(largeur: number, hauteur: number): Disposition {
   let score: Rect;
   let combo: Rect;
   let aide: Rect;
+  let fantome: Rect | null = null;
   if (portrait) {
-    const plaque = Math.max(60, Math.floor((largeur - boutons.w - 2 * MARGE) / 2));
+    // La rangée du haut : score, combo, (fantôme,) puis les deux boutons du kit. Avec un fantôme, trois plaques se partagent la place.
+    const n = avecFantome ? 3 : 2;
+    const plaque = Math.max(avecFantome ? 56 : 60, Math.floor((largeur - boutons.w - n * MARGE) / n));
     score = { x: 0, y: 0, w: plaque, h: BOUTON };
     combo = { x: plaque + MARGE, y: 0, w: plaque, h: BOUTON };
+    if (avecFantome) fantome = { x: 2 * (plaque + MARGE), y: 0, w: plaque, h: BOUTON };
     const zoneMin = Math.max(120, Math.floor(hauteur * 0.22));
     cote = Math.max(1, Math.floor(Math.min(largeur / COLONNES, (hauteur - BOUTON - 2 * ECART - zoneMin) / COLONNES)));
     const g = cote * COLONNES;
@@ -69,7 +75,9 @@ export function disposer(largeur: number, hauteur: number): Disposition {
     const colonne = Math.max(120, Math.min(200, Math.round(largeur * 0.2)));
     score = { x: 0, y: 0, w: colonne, h: 56 };
     combo = { x: 0, y: 64, w: colonne, h: 56 };
-    aide = { x: 0, y: 128, w: colonne, h: Math.max(0, hauteur - 128) };
+    if (avecFantome) fantome = { x: 0, y: 128, w: colonne, h: 56 };
+    const hautAide = avecFantome ? 192 : 128;
+    aide = { x: 0, y: hautAide, w: colonne, h: Math.max(0, hauteur - hautAide) };
     cote = Math.max(1, Math.min(72, Math.floor(Math.min(hauteur / COLONNES, (largeur - colonne - 2 * ECART - 140) / COLONNES))));
     const g = cote * COLONNES;
     grille = { x: colonne + ECART, y: Math.floor((hauteur - g) / 2), w: g, h: g };
@@ -89,6 +97,7 @@ export function disposer(largeur: number, hauteur: number): Disposition {
     suivante,
     score,
     combo,
+    fantome,
     aide,
     boutons,
     coteMain,

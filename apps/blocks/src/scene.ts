@@ -1,4 +1,4 @@
-import { actionDe, BONUS_PLATEAU_VIDE, COLONNES, LIGNES, NB_CASES, Partie, PIECES, POSES_SANS_EFFACEMENT_MAX, VARIANTE, caseOccupee, enregistrer, grilleEnTexte, type Contenu, type Piece } from "@cdj/blocks-sim";
+import { actionDe, BONUS_PLATEAU_VIDE, colonneDe, COLONNES, ligneDe, LIGNES, NB_CASES, Partie, PIECES, POSES_SANS_EFFACEMENT_MAX, VARIANTE, caseOccupee, enregistrer, grilleEnTexte, type Contenu, type Piece } from "@cdj/blocks-sim";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { coupDuDiamant } from "@cdj/blocks-sim/diamant";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -6,13 +6,14 @@ import { centreDesYeux, Clignotement, decrirePiece, disposerYeux, ENCRE, express
 import { dessinerPiece, placer } from "@cdj/visuels/blocs/canvas";
 import { boitesDeCases, boitesDePiece, casesDe, type Case } from "./boites";
 import { type CouleursTheme, couleursDeTheme, paletteCourante } from "./couleurs";
+import { creerFantome, ecartFantome, type Fantome } from "./fantome";
 import { type Annonce, bosse, type CaseEffacee, DUREE_GAIN, eclater, etatAnnonce, etatGain, etatParticule, type GainFlottant, hasardAffichage, illumination, illuminationFinie, type Particule } from "./effets";
 import { lireEssai } from "./essai";
 import { musiqueDuKit } from "./kitSon";
 import { coteEnMain, coteEnSuivante, dans, disposer, type Disposition, type Rect } from "./miseEnPage";
 import { Sons, type SonJoue } from "./sons";
 import { type Evenement, niveauEffets } from "./sonsLogique";
-import { ecrireScore, langueCourante, texte } from "./textes";
+import { ecrireScore, formaterNombre, langueCourante, texte } from "./textes";
 import { caseDesYeux, morceaux } from "./yeuxBlocks";
 
 // Le rendu et les entrées de « Blocks » (lots B1 et B2) : la grille de 8 × 8, la pièce du moment dans une grande zone de saisie, la pièce suivante petite (non saisissable), en Canvas 2D avec les blocs communs
@@ -22,7 +23,7 @@ import { caseDesYeux, morceaux } from "./yeuxBlocks";
 // Le geste (seed § 6, B2) : la pièce saisie grossit à la taille des cases et **reste sous le doigt, au point exact où on l'a touchée** (aucun décalage, souris comme doigt) ; une ombre hachurée est aimantée à la case la plus
 // proche ; les lignes et colonnes qui seraient effacées s'allument ; relâcher hors d'un endroit valide renvoie la pièce. Clavier et manette (M1, M2) : déplacer l'ombre case par case (`gauche` … `bas`), `poser`.
 // Les effets ne bloquent jamais la pose suivante : ils sont de l'affichage pur, animé à l'horloge de l'écran (60 images par seconde), jamais aux pas de la simulation.
-// Lot B3 : les couleurs viennent de la palette du thème du jour (module commun, `couleurs.ts`) et le bot Diamant peut jouer à la place du joueur (`&bot`, essai local). Hors lot : fantôme (B4). Aucune couleur écrite ici : le thème, ou les jetons de `@cdj/ui`.
+// Lot B3 : les couleurs viennent de la palette du thème du jour (module commun, `couleurs.ts`) et le bot Diamant peut jouer à la place du joueur (`&bot`, essai local). Lot B4 : le fantôme (`fantome.ts`, pur) est dessiné en transparence sous les blocs, à travers lequel on pose (rien ne prend les gestes). Aucune couleur écrite ici : le thème, ou les jetons de `@cdj/ui`.
 
 /** Les actions de « Blocks » : l'ombre au clavier et à la manette, et `poser` ; `pose:<colonne>:<ligne>` pose directement (tests, outils). */
 export const ACTIONS_SCENE = ["gauche", "droite", "haut", "bas", "poser"] as const;
@@ -84,6 +85,8 @@ export interface PorteBlocks {
     suivante: Rect;
     score: Rect;
     combo: Rect;
+    /** Lot B4 — la plaque du fantôme (seulement quand il y en a un), sinon `null`. */
+    fantome: Rect | null;
     boutons: Rect;
     coteMain: number;
     centreMain: { x: number; y: number };
@@ -101,6 +104,8 @@ export interface PorteBlocks {
   etat(): { score: number; combo: number; comboMax: number; poses: number; sansEffacement: number; fin: string | null };
   /** Ce que le HUD dessine : le score écrit, le combo écrit (ou `null`), les carrés pleins (poses sans effacement encore permises), la couleur de la plaque du combo. */
   hud(): { score: string; combo: string | null; carres: number; moutarde: boolean };
+  /** Lot B4 — le fantôme au rang du joueur : son score, l'écart écrit (« +240 »), sa grille, et s'il est fini (sa partie s'est arrêtée) ; `null` sans fantôme. */
+  fantome(): { score: number; ecart: string; grille: string[]; fini: boolean; rang: number; poses: number } | null;
   /** Les effets vivants : cases en cours d'illumination, particules, annonces et gains affichés. */
   effets(): { effacees: number; fermees: number; particules: number; annonces: string[]; gains: string[] };
   /** Les yeux : le nombre de paires dessinées et où elles regardent (le premier œil : vecteur de norme ≤ 1). */
@@ -112,6 +117,10 @@ export interface PorteBlocks {
 /** Ce que la scène reçoit en plus du kit : le bot Diamant qui joue à la place du joueur (`&bot`, essai local, jamais classé) à `vitesse` poses par seconde. */
 export interface OptionsScene {
   bot?: { vitesse: number } | null;
+  /** Lot B4 — `?scenario=partage` : les poses du résultat d'exemple, appliquées d'emblée ; la partie est donnée pour finie une seconde après (l'écran de fin du kit s'ouvre tout de suite). Essai local, jamais classé. */
+  exemple?: readonly number[] | null;
+  /** Lot B4 — `?scenario=fantome` : la rediffusion du fantôme d'essai. Le bouton du kit n'a pas d'état pour elle (il ne connaît que la meilleure partie et le Diamant, que l'essai ne débloque pas) : un « aucun » la cache, le suivant la remontre. */
+  fantomeEssai?: string | null;
 }
 
 export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: OptionsPartie, extra: OptionsScene = {}): PartieDuJeu {
@@ -181,6 +190,10 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   let dernierRegard: { x: number; y: number } | null = null;
   let nbPaires = 0;
 
+  // --- Le fantôme (lot B4) : une autre partie du même jour, rejouée, qu'on montre au même rang de pièce ---
+  let fantome: Fantome | null = creerFantome(contenu, o.fantome);
+  let essaiCache = false;
+
   // --- La mise en page ---
   let mep: Disposition = disposer(1, 1);
   let largeur = 1;
@@ -203,7 +216,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     canvas.style.height = `${hauteur}px`;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     decalageBord = { x: gauche, y: haut };
-    mep = disposer(w, h);
+    mep = disposer(w, h, fantome !== null);
   };
   const observateur = new ResizeObserver(redimensionner);
   observateur.observe(hote);
@@ -443,8 +456,9 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   }
 
   /** Une plaque de la charte (bordure de 2 px, ombre nette de 2 px) : le score et le combo. */
-  function plaque(r: Rect, fond: string, etiquette: string, valeur: string, opts: { echelle?: number; secousse?: number; carres?: { pleins: number; total: number } } = {}): void {
+  function plaque(r: Rect, fond: string, etiquette: string, valeur: string, opts: { echelle?: number; secousse?: number; carres?: { pleins: number; total: number }; droite?: string; estompe?: boolean } = {}): void {
     g.save();
+    if (opts.estompe) g.globalAlpha = 0.6;
     g.translate(r.x + r.w / 2 + (opts.secousse ?? 0), r.y + r.h / 2);
     const e = opts.echelle ?? 1;
     g.scale(e, e);
@@ -459,10 +473,21 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     g.textBaseline = "alphabetic";
     g.textAlign = "left";
     g.fillStyle = jeton("encre-douce");
-    g.font = policeTexte(r.h >= 50 ? 11 : 9);
+    let tailleEtiquette = r.h >= 50 ? 11 : 9;
     (g as unknown as { letterSpacing: string }).letterSpacing = "1px";
+    g.font = policeTexte(tailleEtiquette);
+    // Une plaque étroite (le fantôme, à côté du score et du combo) rétrécit son étiquette plutôt que de déborder.
+    const ecartDroite = (): number => (opts.droite ? g.measureText(opts.droite).width + 10 : 0);
+    while (tailleEtiquette > 6 && g.measureText(etiquette.toUpperCase()).width + ecartDroite() > r.w - 18) g.font = policeTexte(--tailleEtiquette);
     g.fillText(etiquette.toUpperCase(), 9, r.h >= 50 ? 20 : 15);
     (g as unknown as { letterSpacing: string }).letterSpacing = "0px";
+    if (opts.droite) {
+      g.textAlign = "right";
+      g.fillStyle = couleurs.encre;
+      g.fillText(opts.droite, r.w - 9, r.h >= 50 ? 20 : 15);
+      g.textAlign = "left";
+      g.fillStyle = jeton("encre-douce");
+    }
     g.fillStyle = couleurs.encre;
     let taille = r.h >= 50 ? 28 : 21;
     const place = r.w - 18 - (opts.carres ? 26 : 0);
@@ -603,6 +628,12 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       g.fillText("—", mep.combo.x + 9, mep.combo.y + mep.combo.h - 8);
     }
 
+    // Le fantôme (lot B4) : sa plaque (son score à ce rang et l'écart avec le tien) ; sa partie finie, la plaque s'estompe et dit « Fin du fantôme ».
+    const etatF = fantome ? fantome.etat(partie.poses) : null;
+    if (etatF && mep.fantome) {
+      plaque(mep.fantome, couleurs.plaque, texte(etatF.fini ? "hud.fantome.fin" : "hud.fantome"), formaterNombre(etatF.score), { droite: etatF.fini ? undefined : ecartFantome(partie.score, etatF.score, langueCourante()), estompe: etatF.fini });
+    }
+
     // L'aide d'avant la première pose.
     if (partie.poses === 0 && !partie.finie && mep.aide.h >= 24) {
       g.fillStyle = couleurs.texteDouce;
@@ -622,6 +653,23 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
         g.fillStyle = allumee ? couleurs.papier : couleurs.case;
         g.fillRect(grille.x + c * cote + 1, grille.y + l * cote + 1, cote - 2, cote - 2);
       }
+    }
+    // Le fantôme, sous les blocs : sa grille au même rang, en transparence (plus pâle encore quand sa partie est finie). Le canevas ne prend aucun geste de plus : on pose à travers lui.
+    if (etatF) {
+      g.save();
+      g.globalAlpha = etatF.fini ? 0.16 : 0.34;
+      g.fillStyle = couleurs.texte;
+      g.strokeStyle = couleurs.texte;
+      g.lineWidth = 2;
+      g.setLineDash([5, 3]);
+      for (let l = 0; l < LIGNES; l++) {
+        for (let c = 0; c < COLONNES; c++) {
+          if (!caseOccupee(etatF.grille, c, l)) continue;
+          g.fillRect(grille.x + c * cote + 3, grille.y + l * cote + 3, cote - 6, cote - 6);
+          g.strokeRect(grille.x + c * cote + 2, grille.y + l * cote + 2, cote - 4, cote - 4);
+        }
+      }
+      g.restore();
     }
     // « Plus de place ! » : les rares cases vides clignotent en pointillés.
     if (partie.finie && !o.reduit && Math.floor(maintenant * 4) % 2 === 0) {
@@ -672,6 +720,16 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     }
     nbPaires = paires;
 
+    // Là où le fantôme recouvre un de tes blocs, son contour reste visible par-dessus.
+    if (etatF) {
+      g.save();
+      g.globalAlpha = etatF.fini ? 0.3 : 0.7;
+      g.strokeStyle = couleurs.texte;
+      g.lineWidth = 2;
+      g.setLineDash([5, 3]);
+      for (let l = 0; l < LIGNES; l++) for (let c = 0; c < COLONNES; c++) if (caseOccupee(etatF.grille, c, l) && caseOccupee(partie.grille, c, l)) g.strokeRect(grille.x + c * cote + 4, grille.y + l * cote + 4, cote - 8, cote - 8);
+      g.restore();
+    }
     // Les lignes et colonnes qui seraient effacées : un anneau moutarde doublé de papier (la forme, pas seulement la couleur).
     if (apercu) {
       for (let l = 0; l < LIGNES; l++) {
@@ -783,7 +841,20 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     if (partie.finie) pastille(texte("fin.plusDePlace"), centreGrille.x, centreGrille.y, 1, 1, "fin");
     g.restore();
   }
-  const ecrireNombre = (n: number): string => new Intl.NumberFormat(langueCourante() === "en" ? "en-US" : "fr-FR").format(n).replace(/[\u202f\u2009]/g, "\u00a0");
+  const ecrireNombre = (n: number): string => formaterNombre(n);
+
+  // `?scenario=partage` (lot B4) : les poses du résultat d'exemple, appliquées d'emblée et sans effets (l'écran de fin s'ouvre dessus) ; la partie est alors donnée pour finie.
+  const exempleFin = !!extra.exemple;
+  for (const a of extra.exemple ?? []) {
+    const p = partie.piece;
+    const pose = p ? partie.poser(colonneDe(a), ligneDe(a)) : null;
+    if (!p || !pose) break;
+    actions.push(a);
+    familles[actions.length - 1] = p.famille;
+    for (const c of casesDe(p)) poseDe[(pose.ligne + c.ligne) * COLONNES + pose.col + c.col] = actions.length;
+    for (let i = 0; i < NB_CASES; i++) if ((pose.lignes >> Math.floor(i / COLONNES)) & 1 || (pose.colonnes >> i % COLONNES) & 1) poseDe[i] = 0;
+  }
+  if (exempleFin) reconstruire();
 
   // La porte des tests de navigateur (`?debug`, jamais en production) : de quoi viser la grille et la zone de saisie en coordonnées de la page, et lire ce que le joueur voit.
   if (!BUILD_RESTRICTED && new URLSearchParams(location.search).has("debug")) {
@@ -797,7 +868,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     };
     const porte: PorteBlocks = {
       disposition() {
-        return { portrait: mep.portrait, cote: mep.cote, grille: page(mep.grille), main: page(mep.main), suivante: page(mep.suivante), score: page(mep.score), combo: page(mep.combo), boutons: page(mep.boutons), coteMain: mep.coteMain, centreMain: pt(mep.centreMain.x, mep.centreMain.y), coteSuivante: mep.coteSuivante };
+        return { portrait: mep.portrait, cote: mep.cote, grille: page(mep.grille), main: page(mep.main), suivante: page(mep.suivante), score: page(mep.score), combo: page(mep.combo), fantome: mep.fantome ? page(mep.fantome) : null, boutons: page(mep.boutons), coteMain: mep.coteMain, centreMain: pt(mep.centreMain.x, mep.centreMain.y), coteSuivante: mep.coteSuivante };
       },
       piece: () => partie.piece?.nom ?? null,
       suivante: () => partie.suivante?.nom ?? null,
@@ -822,6 +893,11 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       grille: () => grilleEnTexte(partie.grille),
       etat: () => ({ score: partie.score, combo: partie.combo, comboMax: partie.comboMax, poses: partie.poses, sansEffacement: partie.sansEffacement, fin: partie.fin }),
       hud: () => ({ score: ecrireNombre(partie.score), combo: partie.combo > 0 ? `×${partie.combo}` : null, carres: partie.combo > 0 ? POSES_SANS_EFFACEMENT_MAX - 1 - Math.min(partie.sansEffacement, POSES_SANS_EFFACEMENT_MAX - 1) : 0, moutarde: partie.combo >= 2 }),
+      fantome() {
+        if (!fantome) return null;
+        const e = fantome.etat(partie.poses);
+        return { score: e.score, ecart: ecartFantome(partie.score, e.score, langueCourante()), grille: grilleEnTexte(e.grille), fini: e.fini, rang: partie.poses, poses: fantome.poses };
+      },
       effets: () => ({
         effacees: effacees.length,
         fermees: effacees.filter((c) => c.yeux).length,
@@ -845,7 +921,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       }
     },
     // La partie est finie pour le kit une seconde après la dernière pose possible : « Plus de place ! » reste à l'écran.
-    finie: () => partie.finie && tFin >= 0 && t - tFin >= TICKS_PLUS_DE_PLACE,
+    finie: () => (partie.finie && tFin >= 0 && t - tFin >= TICKS_PLUS_DE_PLACE) || (exempleFin && t >= 1),
     action(id) {
       if (id.startsWith("pose:")) {
         const [c, l] = id.slice(5).split(":").map(Number);
@@ -868,13 +944,25 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       bornes();
     },
     // Ce que lit un lecteur d'écran (la plaque du kit, cachée à la vue : le HUD est dessiné par la scène) : le score et le combo.
-    hud: () => ({ principal: ecrireScore(partie.score), secondaire: partie.combo > 0 ? texte("hud.combo.lecteur", { n: partie.combo }) : "" }),
+    hud: () => {
+      const e = fantome ? fantome.etat(partie.poses) : null;
+      const combo = partie.combo > 0 ? texte("hud.combo.lecteur", { n: partie.combo }) : "";
+      const lui = e ? (e.fini ? texte("hud.fantome.fin") : texte("hud.fantome.lecteur", { score: ecrireScore(e.score), ecart: ecartFantome(partie.score, e.score, langueCourante()) })) : "";
+      return { principal: ecrireScore(partie.score), secondaire: [combo, lui].filter(Boolean).join(" · ") };
+    },
     resultat: () => {
       const r = partie.resultat() ?? { score: partie.score, combo: partie.comboMax, poses: partie.poses, raison: "bloquee" as const };
       return { score: VARIANTE.score(r), rediffusion: enregistrer(contenu, actions) };
     },
-    fantome() {
-      /* le fantôme vient au lot B4 */
+    // Le kit change de fantôme (aucun, ma meilleure, le Diamant) : la rediffusion à montrer, ou `null`. La plaque apparaît ou disparaît, la grille ne bouge pas.
+    fantome(rediffusion) {
+      let r = rediffusion;
+      if (r === null && extra.fantomeEssai) {
+        essaiCache = !essaiCache; // l'essai `?scenario=fantome` : « aucun » cache le fantôme d'essai, le suivant le remontre
+        r = essaiCache ? null : extra.fantomeEssai;
+      }
+      fantome = creerFantome(contenu, r);
+      redimensionner();
     },
     dessiner,
     detruire() {

@@ -58,7 +58,7 @@ Les valeurs sont un point de départ, à calibrer en jouant. Le score est un ent
 - **Classement du jour** : score ↓ ; départage par le plus grand combo, puis par le premier arrivé.
 - **Médailles** : Bronze, Argent, Or, **Diamant**. Le Diamant est le score d'un bot : pour chaque pièce, il essaie toutes les positions, en regardant la pièce suivante, et garde la meilleure grille selon une évaluation. Dans les données, sa clé reste `auteur`. Les écarts sont à calibrer.
 - **Ligne à partager** : `Du Jour · Blocks #5 — 4 582 pts — 🥈 — combo ×7`.
-- **Fantôme** : le bouton fantôme montre la grille de sa meilleure partie, en transparence, à la même pièce.
+- **Pas de fantôme en partie** : une grille en transparence est illisible. Hors partie, on peut **revoir la partie du n° 1 du jour** (si la plateforme la sert) et celle du Diamant, en rediffusion à vitesse lisible.
 
 ## 6. Prise en main
 - **Glisser-déposer** : on saisit la pièce du moment. Elle grossit à la taille de la grille et **reste sous le doigt, au point où on l'a saisie** (aucun décalage).
@@ -77,7 +77,9 @@ Les valeurs sont un point de départ, à calibrer en jouant. Le score est un ent
   - un plateau vide déclenche une petite célébration ;
   - une vibration courte sur téléphone, qu'on peut couper.
 - Sons Web Audio procéduraux : prise, pose, effacement, combo, fin.
-- Toute la charte de la plateforme : HUD compact, écrans sur la scène, plein écran, fantôme en vue, FR et EN.
+- **Des décors détaillés pour chaque thème**, au niveau de ceux de Tower (plans, motifs, petits éléments propres au thème), toujours plus calmes que la grille et les pièces.
+- **Lisible partout** : la grille est la vedette, au téléphone comme sur un grand écran de PC ; HUD et écrans à l'échelle de ceux des autres jeux.
+- Toute la charte de la plateforme : HUD compact, écrans sur la scène, plein écran, FR et EN.
 
 ## 8. Contraintes techniques
 - **Simulation pure et déterministe**. L'état = grille, index de la pièce, score, combo. Une action = (colonne, ligne) de la pièce du moment. **La rediffusion est minuscule et son rejeu quasi gratuit** pour le serveur.
@@ -99,4 +101,5 @@ Rotation des pièces, choix entre plusieurs pièces, bonus et jokers, seconde ch
 1. **Le cœur jouable** : grille, une pièce et la suivante, glisser-déposer, effacement, fin, suite du jour et sa rampe, rendu avec les blocs communs. **À tester** : `/blocks/?seed=<date>` au téléphone.
 2. **Score, combos et sensations** : barème, combo, plateau vide, effets, sons, yeux. **À tester** : `?scenario=presque-plein`.
 3. **Bot, médailles, thèmes** : Diamant, seuils, thème du jour. **À tester** : `?seed=…&bot`.
-4. **Branchement fin** : classement Arcade, partage, fantôme, `preview`. **À tester** : le lien d'aperçu au téléphone.
+4. **Branchement fin** : classement Arcade, partage, `preview`. **À tester** : le lien d'aperçu au téléphone.
+5. **Lisibilité et décors** : mise en page au PC et au téléphone, décors des thèmes, fantôme retiré. **À tester** : la recette au PC, puis au téléphone, et `?theme=<id>`.

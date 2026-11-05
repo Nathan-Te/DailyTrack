@@ -9,7 +9,11 @@
     "scenarios.spec.ts": 5,
     "disposition.spec.ts": 5,
     "sensations.spec.ts": 15,
-    "bot-themes.spec.ts": 10
+    "bot-themes.spec.ts": 10,
+    "fantome.spec.ts": 8,
+    "partage.spec.ts": 6,
+    "arcade.spec.ts": 2,
+    "apercu.spec.ts": 6
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
@@ -20,6 +24,10 @@
     "scenarios.spec.ts": 5,
     "disposition.spec.ts": 5,
     "sensations.spec.ts": 15,
-    "bot-themes.spec.ts": 10
+    "bot-themes.spec.ts": 10,
+    "fantome.spec.ts": 8,
+    "partage.spec.ts": 6,
+    "arcade.spec.ts": 2,
+    "apercu.spec.ts": 6
   }
 }
