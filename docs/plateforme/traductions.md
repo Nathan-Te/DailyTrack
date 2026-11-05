@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1984 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1988 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2635,6 +2635,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `page.titre` | Blocks — Du Jour | Blocks — Du Jour |
 
+### Partage de la journée (`partage.*`, `apps/blocks/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `partage.combo` | combo ×{n} | combo ×{n} |
+
 ### Partie (surimpressions) (`hud.*`, `apps/blocks/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -2642,6 +2648,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.score` | Score | Score |
 | `hud.combo` | Combo | Combo |
 | `hud.combo.lecteur` | Combo ×{n} | Combo ×{n} |
+| `hud.fantome` | Fantôme | Ghost |
+| `hud.fantome.fin` | Fin du fantôme | Ghost finished |
+| `hud.fantome.lecteur` | Fantôme : {score} ({ecart}) | Ghost: {score} ({ecart}) |
 | `hud.combo.annonce` | Combo ×{n} ! | Combo ×{n}! |
 | `hud.plateauVide` | Plateau vide ! +{n} | Board cleared! +{n} |
 | `hud.piece` | Ta pièce | Your piece |

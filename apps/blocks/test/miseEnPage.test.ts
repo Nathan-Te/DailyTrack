@@ -64,3 +64,18 @@ describe("la mise en page (maquette A)", () => {
     }
   });
 });
+
+describe("la plaque du fantôme (lot B4)", () => {
+  it.each(TAILLES)("%s : sans fantôme rien ne change (pas de plaque) ; avec, elle est dans l'écran et ne recouvre ni la grille, ni les zones, ni les autres plaques, ni les boutons du kit", (_nom, w, h) => {
+    const sans = disposer(w, h);
+    expect(sans.fantome).toBeNull();
+    expect(disposer(w, h, false)).toEqual(sans);
+    const d = disposer(w, h, true);
+    const f = d.fantome!;
+    expect(f).not.toBeNull();
+    const ecran = { x: 0, y: 0, w, h };
+    expect(dedans(ecran, f.x, f.y) && dedans(ecran, f.x + f.w, f.y + f.h)).toBe(true);
+    for (const [nom, r] of [["grille", d.grille], ["main", d.main], ["suivante", d.suivante], ["score", d.score], ["combo", d.combo], ["boutons", d.boutons]] as [string, Rect][]) expect(sechevauchent(f, r), `fantôme / ${nom}`).toBe(false);
+    expect(d.grille).toEqual(sans.grille); // la grille ne bouge pas quand un fantôme apparaît
+  });
+});

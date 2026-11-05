@@ -3,7 +3,7 @@ import { defineConfig, devices, type Project } from "@playwright/test";
 // Tests de navigateur de « Blocks » (lot K4f) : ils portent sur l'essai construit (`npm run build -w @cdj/blocks`) servi par `vite preview`, port 4179 (Track 4173, Jump 4174, Tower 4175).
 //   npm run e2e -w @cdj/blocks                       → Chromium
 //   E2E_ALL_BROWSERS=1 npm run e2e -w @cdj/blocks    → + Firefox et WebKit (petit ensemble `@navigateurs`)
-// Un second serveur : le VRAI serveur de l'API monté par le registre des fiches (`apps/api/scripts/blocks-serveur-essai.ts`, SQLite en mémoire, port 8794, refus des copies actif), dont le jour est le 06/11/2026
+// Un second serveur : le VRAI serveur de l'API monté par le registre des fiches (`apps/api/scripts/blocks-serveur-essai.ts`, SQLite en mémoire, port 8794, refus des copies actif ; lot B4 : port 8800, Blocks en `preview`), dont le jour est le 06/11/2026
 // (la page prend la même horloge : `e2e/classement.spec.ts`). Même nommage des projets que les autres jeux : en CI le projet porte le jeu (`blocks-chromium`…).
 const CI = !!process.env.CI;
 const name = (browser: string) => (CI ? `blocks-${browser}` : browser);
@@ -35,6 +35,15 @@ export default defineConfig({
       url: "http://127.0.0.1:8794/api/health",
       reuseExistingServer: false,
       env: { PORT: "8794", NODE_NO_WARNINGS: "1", BLOCKS_AUJOURDHUI: "2026-11-06" },
+    },
+    // Lot B4 : un troisième serveur, le même mais Blocks y est en `preview` (clé d'aperçu `CLE_APERCU` de `e2e/apercu.spec.ts`) : le jeu jouable par son lien, absent de l'accueil.
+    {
+      command:
+        "npx esbuild scripts/blocks-serveur-essai.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/blocks-serveur-apercu.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && node dist/blocks-serveur-apercu.mjs",
+      cwd: "../api",
+      url: "http://127.0.0.1:8800/api/health",
+      reuseExistingServer: false,
+      env: { PORT: "8800", NODE_NO_WARNINGS: "1", BLOCKS_AUJOURDHUI: "2026-11-06", BLOCKS_APERCU: "cle-apercu-blocks-essai-0123456789" },
     },
   ],
 });

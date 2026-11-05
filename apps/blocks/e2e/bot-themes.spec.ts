@@ -100,12 +100,9 @@ test.describe("Blocks : les thèmes du jour", () => {
       await expect(page.locator(".jeu-replique")).not.toBeEmpty();
       await lancer(page);
       // Le ciel du thème est le fond de toute la scène : le pixel (2, 2) du canevas.
-      const pixel = await page.evaluate(() => {
-        const c = document.querySelector<HTMLCanvasElement>(".blocks-plateau")!;
-        return [...c.getContext("2d")!.getImageData(2, 2, 1, 1).data];
-      });
-      expect(pixel.slice(0, 3)).toEqual(rgb(PALETTES_TOUTES[th].ciel));
-      expect(pixel[3]).toBe(255);
+      // La première image est peinte à l'image d'écran suivante : on l'attend (le canevas vaut 0, 0, 0, 0 avant), sans relâcher l'assertion.
+      const lire = () => page.evaluate(() => [...document.querySelector<HTMLCanvasElement>(".blocks-plateau")!.getContext("2d")!.getImageData(2, 2, 1, 1).data]);
+      await expect.poll(lire).toEqual([...rgb(PALETTES_TOUTES[th].ciel), 255]);
       await context.close();
     });
   }

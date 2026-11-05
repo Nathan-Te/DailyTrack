@@ -1,5 +1,5 @@
-import { BLOCKS_GENERATOR_VERSION, contenuDeScenario, dailyBlocks, lireJourFige, type Contenu, type Seuils } from "@cdj/blocks-sim";
-import { seuilsDe } from "@cdj/blocks-sim/diamant";
+import { BLOCKS_GENERATOR_VERSION, contenuDeScenario, dailyBlocks, enregistrer, lireJourFige, type Contenu, type Seuils } from "@cdj/blocks-sim";
+import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
 import { parisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
@@ -7,14 +7,33 @@ import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { chargerPalette, poserPalette } from "./couleurs";
 import { lireEssai } from "./essai";
+import { exempleDePartage } from "./exemple";
 import { nouvellePartieBlocks as scene } from "./scene";
 import { themeAffiche } from "./themeAffiche";
 
 // LE CORPS du jeu (chargé à la demande : `definition.ts` l'importe par `import()` au premier appel de `contenuDuJour`, que l'accueil lance dès son premier dessin, donc avant JOUER) : le tirage de la suite, les scénarios,
 // la scène et les blocs communs. Il n'est pas dans le premier chargement (ligne de budget `blocks.jsCss`, préfixe `corps-` de `budget.aLaDemande` de la fiche).
 
-/** Une partie : la scène, avec le bot Diamant si l'adresse le demande (`&bot`, essai local : jamais en production). */
-export const nouvellePartieBlocks = (contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu => scene(contenu, hote, o, { bot: lireEssai(location.search, BUILD_RESTRICTED, parisDay(Date.now())).bot });
+/**
+ * Une partie : la scène, avec le bot Diamant si l'adresse le demande (`&bot`, essai local : jamais en production). Lot B4 — `?scenario=fantome` : la partie du bot est le fantôme dès la première pose ; `?scenario=partage` : la
+ * partie finit tout de suite sur un résultat d'exemple. Deux essais locaux, jamais classés.
+ */
+export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
+  const essai = lireEssai(location.search, BUILD_RESTRICTED, parisDay(Date.now()));
+  const fantomeEssai = essai.mode === "fantome" ? rediffusionDuDiamant(contenu) : null;
+  return scene(contenu, hote, { ...o, fantome: o.fantome ?? fantomeEssai }, { bot: essai.bot, fantomeEssai, exemple: essai.mode === "partage" ? exempleDePartage(contenu, essai.exemple ?? "argent") : null });
+}
+
+/** La rediffusion de la partie du bot Diamant sur la suite du jour (une rediffusion valide, rejouée par `jouer`) : le fantôme « Diamant ». Gardée par suite du jour. */
+const diamantsGardes = new WeakMap<Contenu, string>();
+export function rediffusionDuDiamant(contenu: Contenu): string {
+  let r = diamantsGardes.get(contenu);
+  if (r === undefined) {
+    r = enregistrer(contenu, jouerDiamant(contenu).actions);
+    diamantsGardes.set(contenu, r);
+  }
+  return r;
+}
 
 declare const __JOURS_FIGES__: readonly string[] | undefined;
 const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? [] : __JOURS_FIGES__;
