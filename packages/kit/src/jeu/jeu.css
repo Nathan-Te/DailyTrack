@@ -165,6 +165,13 @@ body {
   flex: none;
   display: inline-flex;
 }
+/* Avec une illustration (90 px de large) le titre prend ce qui reste de la colonne, sans jamais couper un mot : sa taille suit la largeur de la colonne (unités de conteneur). */
+.jeu-accueil__gauche {
+  container-type: inline-size;
+}
+.jeu-accueil__tete:has(.jeu-accueil__dessin) .jeu-etiquette__titre {
+  font-size: clamp(var(--dj-taille-32), calc((100cqi - 110px) / 5.4), var(--dj-taille-64));
+}
 @media (min-width: 700px) {
   .jeu-ecran > .jeu-accueil.etiquette__corps {
     display: grid;

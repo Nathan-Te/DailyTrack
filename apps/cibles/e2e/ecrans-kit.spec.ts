@@ -5,6 +5,8 @@ import { appareil, lancer } from "./appareil";
 // lui, ses écrans sont essayés par ceux de Cibles). Six tailles : 2 560 × 1 440, 1 920 × 1 080, 1 366 × 768 (PC), 844 × 390 (téléphone en paysage), 390 × 844 et 360 × 640 (téléphone en portrait). Pour chaque écran :
 // aucun recouvrement entre deux éléments touchables, un espace minimal entre deux boutons (l'échelle d'espacement du kit), des cibles d'au moins 44 px, une carte dans la fenêtre et — au PC — d'une largeur bornée.
 
+// **Famille « Régression »** (`e2e.regression` de la fiche de Cibles, `docs/tests.md` : les mises en page ne tournent que dans la CI complète de `main` et la nuit, ou quand ce spec est modifié par la PR) : le budget de 900 s de la CI d'une PR large
+// n'a plus une seconde de marge (`apps/web/test/ciZones.test.ts`).
 const TAILLES = [
   { nom: "2560 × 1440", width: 2560, height: 1440, pc: true },
   { nom: "1920 × 1080", width: 1920, height: 1080, pc: true },
