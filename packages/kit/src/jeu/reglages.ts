@@ -42,7 +42,7 @@ export function monterReglages<C>(c: ContexteJeu<C>): { ouvrir(): void } {
       valeur.textContent = `${s.effets} %`;
       ecrire(c, c.donnees.stockage, s);
     });
-    return el("div", { classe: "jeu-reglages__ligne" }, el("span", { texte: t("kit.reglages.effets") }), entree, valeur);
+    return el("div", { classe: "jeu-reglages__ligne jeu-reglages__ligne--curseur" }, el("span", { texte: t("kit.reglages.effets") }), entree, valeur);
   };
   const placeMusique = el("div", { classe: "jeu-reglages__musique" });
   void import("@cdj/ui/src/panneauMusique").then((m) => m.monterPanneau(() => c.musique.lecteur() as never, placeMusique), () => undefined);

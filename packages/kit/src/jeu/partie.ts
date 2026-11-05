@@ -1,3 +1,4 @@
+import "./ecrans.css"; // lot « écrans du kit » : la feuille des écrans à la demande (« Comment jouer », Réglages, classement, pause, fin, scène), dans le morceau de la partie : hors du premier chargement. **Elle n'est importée qu'ici** — importée par deux morceaux, elle ferait un morceau à part, compté dans le premier chargement (`budget.aLaDemande`)
 import { readPlayerId, type OuAnnonce } from "@cdj/profile";
 import { barreJeu, bouton, boutonFantome, boutonPleinEcran, cheminMentions, creerCadre, el, medaille as medailleUi, type Jeu, type TraducteurCommun, type TypeMedaille } from "@cdj/ui";
 import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
@@ -157,6 +158,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const bouton1 = (id: string, cle: string, fn: () => void, variante: "marque" | "secondaire" = "secondaire"): HTMLButtonElement => {
     const b = bouton({ texte: t(cle), variante }) as HTMLButtonElement;
     b.id = id;
+    if (variante === "marque") b.classList.add("jeu-jouer", "jeu-jouer--petit"); // lot « écrans du kit » : le bouton principal de l'écran, à la façon de JOUER
     b.addEventListener("click", fn);
     return b;
   };
@@ -278,14 +280,14 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     const hoteSuite = el("div", { classe: "suite-du-jour", attrs: { hidden: true, id: "jeu-fin-suite" } });
     finCadre.corps.replaceChildren(
       el("h2", { classe: "jeu-ecran__titre", texte: t("kit.fin.titre") }),
-      el("p", { classe: "jeu-fin__score", attrs: { id: "jeu-fin-score" }, texte: score }),
-      ...(med ? [medailleUi(c.i18n.socle() as unknown as TraducteurCommun, { type: TYPE[med], obtenue: true, jeu: fiche.id as Jeu })] : []),
-      rang,
+      // Lot « écrans du kit » : le score, la médaille et le rang dans une tuile (papier bordé d'encre), puis le reste.
+      el("section", { classe: "jeu-tuile jeu-resume" }, el("p", { classe: "jeu-fin__score", attrs: { id: "jeu-fin-score" }, texte: score }), ...(med ? [medailleUi(c.i18n.socle() as unknown as TraducteurCommun, { type: TYPE[med], obtenue: true, jeu: fiche.id as Jeu })] : []), rang),
       ...(pseudo ? [pseudo] : []),
       ...(nouveau && !lu ? [el("p", { classe: "jeu-message", texte: t("kit.fin.record.nouveau") })] : []),
       ...(encore ? [encore] : []),
       ...(reste ? [reste] : []),
-      el("div", { classe: "jeu-secondaires" }, bouton1("jeu-rejouer", "kit.fin.rejouer", () => recommencer(), "marque"), partager, bouton1("jeu-fin-classement", "kit.fin.classement", () => void ouvrirClassement()), bouton1("jeu-fin-accueil", "kit.fin.accueil", () => c.retour())),
+      bouton1("jeu-rejouer", "kit.fin.rejouer", () => recommencer(), "marque"),
+      el("div", { classe: "jeu-secondaires" }, partager, bouton1("jeu-fin-classement", "kit.fin.classement", () => void ouvrirClassement()), bouton1("jeu-fin-accueil", "kit.fin.accueil", () => c.retour())),
       etatPartage,
     );
     finCadre.pied.replaceChildren(hoteSuite);

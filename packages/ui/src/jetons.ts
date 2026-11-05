@@ -115,6 +115,8 @@ export const OMBRES = {
   "dj-ombre-logo": "3px 3px 0 var(--dj-terre)",
   "dj-ombre-bouton": "2px 2px 0 var(--dj-encre)",
   "dj-ombre-afficheur": "inset 0 3px 0 var(--dj-ecran-ombre), inset 0 -2px 0 var(--dj-ecran-reflet)",
+  // Lot « écrans du kit » : l'ombre du titre des écrans d'un jeu neuf — la valeur de `jump-ombre-titre` et de `tower-ombre-titre` (le titre posé sur sa couleur, une ombre papier décalée).
+  "dj-ombre-titre": "4px 4px 0 var(--dj-papier)",
   "track-epaisseur-courir": "0 4px 0 var(--track-livree-ombre)",
   "jump-epaisseur-jouer": "0 5px 0 var(--dj-terre)",
   "jump-ombre-titre": "4px 4px 0 var(--dj-papier)",

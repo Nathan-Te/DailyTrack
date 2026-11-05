@@ -162,6 +162,10 @@
       "poids.spec.ts": [
         "cibles-jeu",
         "ui"
+      ],
+      "ecrans-kit.spec.ts": [
+        "cibles-jeu",
+        "ui"
       ]
     },
     "parts": {
