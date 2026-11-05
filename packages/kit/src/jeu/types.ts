@@ -54,6 +54,11 @@ export interface PartieDuJeu {
   /** Dessine l'état courant (à chaque image). */
   dessiner(): void;
   finie(): boolean;
+  /**
+   * Facultatif (lot B6) : la partie est jouée (plus de coup possible) mais `finie()` ne l'est pas encore parce que le jeu montre sa fin (« Plus de place ! » chez Blocks). Le kit fait **retomber la musique**
+   * dès que c'est vrai, puis la remonte à l'écran de fin. Sans lui, la musique retombe et remonte à l'ouverture de l'écran de fin.
+   */
+  finEnCours?(): boolean;
   /** Une action discrète : une des actions du jeu (clavier, manette) — l'identifiant est celui de `DefinitionJeu.actions`. */
   action(id: string): void;
   /** Ce que le HUD compact montre : le score et le temps restant, déjà formatés. */

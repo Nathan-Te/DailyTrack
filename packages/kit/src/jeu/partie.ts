@@ -5,6 +5,7 @@ import { liaisonTenue } from "@cdj/ui/src/commandes";
 import { suivantDisponible } from "../fantome";
 import { ligneParDefaut, textePartage, adresseDePartage } from "../partage";
 import { commandesDuJeu } from "./commandes";
+import { creerFondFin } from "./fondFin";
 import { creerVibreur, lireReglages } from "./reglagesJoueur";
 import type { CodeMedaille, ContextePartie, PartieDuJeu } from "./types";
 
@@ -39,6 +40,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const vibrer = creerVibreur(() => lireReglages(c, d.stockage), typeof navigator === "undefined" ? null : navigator, d.tactile);
   c.musique.scene(`theme:${c.theme}`);
   c.musique.baisser(0.6);
+  const fondFin = creerFondFin(c.musique, (ms, fn) => void setTimeout(fn, ms)); // lot B6 : la musique retombe à la fin de la partie et remonte à l'écran de fin
 
   // --- La scène et le HUD compact ---
   const plateau = el("div", { classe: "jeu-plateau" });
@@ -99,6 +101,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     dernier = now;
     partie.dessiner();
     majHud();
+    if (phase === "jeu" && partie.finEnCours?.()) fondFin.retomber(); // la partie est jouée, sa fin se montre encore : la musique retombe
     if (phase === "jeu" && partie.finie()) terminer();
   }
   requestAnimationFrame(image);
@@ -218,7 +221,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   function terminer(): void {
     phase = "fin";
     resultat = partie.resultat();
-    c.musique.baisser(1);
+    fondFin.remonter();
     const med = def.sansMedaille ? null : def.medaille(resultat.score, def.seuils(c.contenu)); // lot B1 : un jeu sans médaille n'appelle ni l'un ni l'autre
     let nouveau = false;
     if (classable) {
@@ -343,6 +346,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     phase = "jeu";
     acc = 0;
     dernier = performance.now();
+    fondFin.reinitialiser();
     c.musique.baisser(0.6);
   }
 
