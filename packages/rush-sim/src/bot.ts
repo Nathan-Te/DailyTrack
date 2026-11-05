@@ -7,7 +7,7 @@ import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
 // Le pilote : un joueur automatique qui lit l'état de la partie et rend l'octet d'entrée du tick. Il sert à trois choses : le Diamant provisoire du prototype (sa partie du jour), les mesures (une partie de
 // plusieurs minutes dont les entrées ressemblent à celles d'un joueur) et les tests. **Ce n'est pas la méthode des médailles de la suite** (le README du lot BR0 la recommande). Il ne triche pas : il lit ce que lit le
-// rendu (positions, cercles annoncés) et n'a que les trois entrées d'un joueur.
+// rendu (positions, cercles annoncés) et n'a que les entrées d'un joueur au doigt : le déplacement, le coup (tenu), l'esquive, sans visée (visée assistée).
 
 /** La direction de la croix (0 à 31) la plus proche d'un vecteur. */
 const croix = (dx: number, dy: number): number => Math.trunc((dirVers(dx, dy) + 2) / 4) % 32;
@@ -24,8 +24,8 @@ export function pilote(p: Partie): number {
     const reste = z.ti - tick;
     const d = distance(c.x, c.y, z.x, z.y);
     if (z.type === ONDE) {
-      // L'anneau part du bord du golem à `ti` et file à 9,5 m/s : on esquive quand il est à moins de six ticks de nous.
-      const arrivee = reste + Math.max(0, Math.trunc((d - RAYON_GOLEM) / Math.trunc(cm(950) / 60)));
+      // L'anneau part du bord du golem à `ti` et file à la vitesse de l'onde (`vOnde`, 9,5 m/s au rythme 100 %) : on esquive quand il est à moins de trois ticks de nous.
+      const arrivee = reste + Math.max(0, Math.trunc((d - RAYON_GOLEM) / p.vOnde()));
       if (arrivee <= 3 && d < z.r) {
         esquiver = true;
         dirEsquive = croix(z.x - c.x, z.y - c.y); // à travers l'anneau, vers le golem
@@ -77,7 +77,8 @@ export function pilote(p: Partie): number {
     if (d > portee) direction = croix(cible.x - c.x, cible.y - c.y);
     else coup = true;
   }
-  const bouton = coup && tick % 6 < 3;
+  // Le coup est TENU : la simulation enchaîne les trois coups en boucle (lot BR0b).
+  const bouton = coup;
   const esq = esquiver && c.attente === 0;
   const dirFinale = esq && dirEsquive >= 0 ? dirEsquive : esq && direction < 0 ? croix(c.x - (p.golem?.x ?? 0), c.y - (p.golem?.y ?? 0)) : direction;
   return entree(dirFinale, bouton, esq);

@@ -1,6 +1,5 @@
-import { AmbientLight, CanvasTexture, CircleGeometry, Color, DirectionalLight, Group, Mesh, MeshToonMaterial, NearestFilter, PerspectiveCamera, RepeatWrapping, Scene, SRGBColorSpace, TorusGeometry, WebGLRenderer, CylinderGeometry, DoubleSide, type Object3D } from "three";
+import { AmbientLight, Color, DirectionalLight, Group, Mesh, MeshToonMaterial, Scene, WebGLRenderer, type Object3D } from "three";
 import { formatDay } from "@cdj/core";
-import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import {
   CHAUVE,
   DUREE_TICKS,
@@ -10,7 +9,6 @@ import {
   PIERRES,
   POING,
   RAYON_ARENE,
-  RAYON_CHEVALIER,
   RAYON_GOLEM,
   REGLAGES_DEFAUT,
   RUSH_GENERATOR_VERSION,
@@ -52,17 +50,20 @@ import {
   type ChevalierVu,
   type GolemVu,
 } from "./acteurs";
-import { eclair, piece, plat } from "./cel";
+import { CameraRush, type PointCadre } from "./camera";
+import { eclair } from "./cel";
+import { monterDecor } from "./decor";
 import { FICHE } from "./fiche";
 import { Controles } from "./controles";
-import { Annonces, Anneaux, ArcCoup, Eclats, Ombres } from "./effets";
+import { Annonces, Anneaux, ArcCoup, Eclats, Ombres, Reticule, Traits } from "./effets";
 import { lireEssai } from "./essai";
 import { monterInterface } from "./interface";
-import { PALETTES, ENCRE, type PaletteMonde } from "./palette";
+import { PALETTES } from "./palette";
 import { SENSATIONS_DEFAUT, sensationsDe, type Sensations } from "./sensations";
 import { musiqueDuKit as musique } from "./kitSon";
 import { Sons, niveauEffets, type SonNom } from "./sons";
 import { monterTune } from "./tune";
+import { directionDeVisee, pointSurLeSol, ZONE_MORTE_VISEE } from "./visee";
 
 // Le corps de Rush, chargé à la demande (Three.js, la scène, les sons) : l'accueil n'en paie pas le poids. `nouvellePartieRush` assemble la partie : la simulation (`@cdj/rush-sim`, 60 Hz, entière), la scène 3D qui la
 // lit, les effets de sensation (arrêt sur image, secousse, éclair blanc, éclats, sons) qui ne touchent jamais à la simulation, les commandes et les surimpressions. Le kit appelle `avancer()` 60 fois par seconde et
@@ -117,34 +118,6 @@ interface ActeurBete {
   yaw: number;
 }
 
-function textureSol(a: PaletteMonde): CanvasTexture {
-  const c = document.createElement("canvas");
-  c.width = c.height = 256;
-  const g = c.getContext("2d")!;
-  const css = (n: number): string => `#${n.toString(16).padStart(6, "0")}`;
-  g.fillStyle = css(a.sol);
-  g.fillRect(0, 0, 256, 256);
-  g.fillStyle = css(a.sol2);
-  g.fillRect(0, 0, 128, 128);
-  g.fillRect(128, 128, 128, 128);
-  g.strokeStyle = css(a.mur);
-  g.globalAlpha = 0.18;
-  g.lineWidth = 3;
-  g.strokeRect(1.5, 1.5, 253, 253);
-  g.beginPath();
-  g.moveTo(128, 0);
-  g.lineTo(128, 256);
-  g.moveTo(0, 128);
-  g.lineTo(256, 128);
-  g.stroke();
-  const t = new CanvasTexture(c);
-  t.wrapS = t.wrapT = RepeatWrapping;
-  t.repeat.set(6, 6);
-  t.colorSpace = SRGBColorSpace;
-  t.magFilter = NearestFilter;
-  return t;
-}
-
 export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   const manuel = new URLSearchParams(location.search).has("manuel");
@@ -160,6 +133,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   addEventListener("pointerdown", geste);
   addEventListener("keydown", geste);
   const son = (n: SonNom, h = 1): void => sonsAvecKit.jouer(n, h);
+
+  const figee = contenu.scenario === "vitrine";
 
   // --- Les commandes et l'interface ---
   const commandes = (() => {
@@ -188,30 +163,17 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   renderer.domElement.setAttribute("aria-hidden", "true");
   ui.zone3d.append(renderer.domElement);
   const scene = new Scene();
-  const camera = new PerspectiveCamera(30, 2, 1, 120);
+  const rig = new CameraRush();
+  const camera = rig.camera;
   scene.add(new AmbientLight(palette.ambiance, palette.intensiteAmbiance));
   const soleil = new DirectionalLight(palette.lumiere, palette.intensiteLumiere);
   soleil.position.set(-6, 14, 8);
   scene.add(soleil);
 
   const R = metres(RAYON_ARENE);
-  const sol = new Mesh(new CircleGeometry(R, 72).rotateX(-Math.PI / 2), new MeshToonMaterial({ map: textureSol(palette), color: 0xffffff }));
-  scene.add(sol);
-  const mur = new Mesh(new CylinderGeometry(R + 0.45, R + 0.45, 0.9, 72, 1, true), new MeshToonMaterial({ color: palette.mur, side: DoubleSide }));
-  mur.position.y = 0.45;
-  scene.add(mur);
-  const bord = new Mesh(new TorusGeometry(R + 0.45, 0.2, 8, 72).rotateX(Math.PI / 2), plat(palette.murHaut));
-  bord.position.y = 0.9;
-  scene.add(bord);
-  const piliers = new Group();
-  for (let i = 0; i < 10; i++) {
-    const p = piece(new RoundedBoxGeometry(0.95, 1.9, 0.95, 2, 0.12), palette.murHaut);
-    const a = (i / 10) * Math.PI * 2 + 0.2;
-    p.groupe.position.set(Math.cos(a) * (R + 0.55), 0.95, Math.sin(a) * (R + 0.55));
-    p.groupe.rotation.y = -a;
-    piliers.add(p.groupe);
-  }
-  scene.add(piliers);
+  const decor = monterDecor(R, palette);
+  scene.background = decor.ciel;
+  scene.add(decor.groupe);
 
   const ombres = new Ombres();
   scene.add(ombres.maillage);
@@ -224,15 +186,19 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   scene.add(anneaux.groupe);
   const arc = new ArcCoup();
   scene.add(arc.maillage);
+  const traits = new Traits();
+  scene.add(traits.maillage);
+  const reticule = new Reticule();
+  scene.add(reticule.maillage);
 
   const chevalier: ChevalierVu = creerChevalier();
   scene.add(chevalier.racine);
   const sChev = suivi(partie.c.x, partie.c.y);
-  let yawChev = Math.PI / 2;
+  let yawChev = Math.atan2(Math.cos((partie.c.dir * Math.PI * 2) / 128), Math.sin((partie.c.dir * Math.PI * 2) / 128));
   const golemVu: GolemVu | null = partie.golem ? creerGolem() : null;
   if (golemVu) scene.add(golemVu.racine);
   const sGolem = suivi(partie.golem?.x ?? 0, partie.golem?.y ?? 0);
-  let yawGolem = Math.PI / 2;
+  let yawGolem = partie.golem ? Math.atan2(partie.c.x - partie.golem.x, partie.c.y - partie.golem.y) : Math.PI / 2;
   const fantomeVu: ChevalierVu = creerChevalier();
   fantomeVu.racine.visible = false;
   fantomeVu.racine.traverse((n: Object3D) => {
@@ -271,8 +237,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   let dernierDessin = performance.now();
   let dernierTick = performance.now();
   let ticksDepuisDessin = 0;
-  let camX = 0;
-  let camZ = 0;
+  let dernierPas = 0; // le moment (ms) de la dernière poussière de pas
   let fpsMoy = 60;
   const reduit = o.reduit;
 
@@ -350,6 +315,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       }
       case "esquive":
         son("esquive");
+        traits.lancer(x, z, (e.a * Math.PI * 2) / 128);
         eclats.gerbe("poussiere", x, 0.15, z, 8, { vitesse: 3, taille: 0.12, haut: 1.4, duree: 0.4, gravite: 5 });
         break;
       case "frole":
@@ -371,8 +337,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         break;
       case "impact": {
         const poing = e.a === POING;
-        eclats.gerbe("poussiere", x, 0.2, z, poing ? 26 : 16, { vitesse: poing ? 7 : 5, taille: poing ? 0.22 : 0.18, haut: 3, duree: 0.7, gravite: 7 });
-        eclats.gerbe("pierre", x, 0.3, z, poing ? 12 : 8, { vitesse: 6, taille: 0.15, haut: 6 });
+        eclats.gerbe("poussiere", x, 0.2, z, poing ? 34 : 20, { vitesse: poing ? 7.5 : 5, taille: poing ? 0.26 : 0.2, haut: 3, duree: 0.85, gravite: 6 });
+        eclats.gerbe("pierre", x, 0.3, z, poing ? 18 : 10, { vitesse: 7, taille: 0.17, haut: 7, duree: 0.9 });
         secouer(poing ? 0.7 : 0.45);
         son(poing ? "impact" : "pierre");
         arreter(poing ? 60 : 35);
@@ -454,6 +420,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     pousser(sChev, partie.c.x, partie.c.y);
     finDepuis = -1;
     gel = 0;
+    rig.recommencer();
   };
 
   // --- Le tune ---
@@ -498,24 +465,50 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   observateur.observe(ui.zone3d);
   redimensionner();
 
-  const ELEVATION = (60 * Math.PI) / 180; // la caméra regarde le sol depuis 60° : haute, comme la maquette
-  const facteurHauteur = Math.sin(ELEVATION);
-  const placerCamera = (dt: number, cx: number, cz: number, golemX: number, golemZ: number): void => {
-    // Le cadre suit le chevalier en regardant un peu vers le golem ; l'arène reste dans l'image.
-    const but = { x: cx + (golemX - cx) * 0.45, z: cz + (golemZ - cz) * 0.45 - 0.9 };
-    const reste = R - 2.5;
-    const n = Math.hypot(but.x, but.z);
-    if (n > reste) {
-      but.x *= reste / n;
-      but.z *= reste / n;
+  // --- La souris (PC, lot BR0b) : elle VISE (le point du sol sous le curseur), le clic gauche frappe (maintenu, il enchaîne) ---
+  let souris: { x: number; y: number } | null = null; // le curseur, en coordonnées d'écran de la scène (de −1 à 1, y vers le haut) ; `null` tant que le joueur n'a pas pris la souris
+  let derniereVisee = -1;
+  const surPointeur = (e: PointerEvent): void => {
+    if (e.pointerType !== "mouse") {
+      souris = null; // un doigt reprend la main : plus de visée à la souris
+      return;
     }
-    const k = 1 - Math.exp(-dt * 7);
-    camX = lerp(camX, but.x, k);
-    camZ = lerp(camZ, but.z, k);
-    const aspect = camera.aspect;
-    const vue = Math.max(etat.sensations.vue, 13 / aspect);
-    const dist = (vue * facteurHauteur) / 2 / Math.tan((camera.fov * Math.PI) / 360);
-    const el = ELEVATION;
+    const r = ui.zone3d.getBoundingClientRect();
+    souris = { x: ((e.clientX - r.left) / Math.max(1, r.width)) * 2 - 1, y: -(((e.clientY - r.top) / Math.max(1, r.height)) * 2 - 1) };
+  };
+  const clicBas = (e: PointerEvent): void => {
+    surPointeur(e);
+    if (e.pointerType === "mouse" && e.button === 0) {
+      controles.boutonSouris = true;
+      controles.action("coup"); // un clic plus bref qu'un arrêt sur image ne se perd pas
+    }
+  };
+  const clicHaut = (e: PointerEvent): void => {
+    if (e.pointerType === "mouse" && e.button === 0) controles.boutonSouris = false;
+  };
+  const clicPerdu = (): void => {
+    controles.boutonSouris = false;
+  };
+  const pasDeMenu = (e: Event): void => e.preventDefault();
+  ui.zone3d.addEventListener("pointermove", surPointeur);
+  ui.zone3d.addEventListener("pointerdown", clicBas);
+  ui.zone3d.addEventListener("contextmenu", pasDeMenu);
+  addEventListener("pointerup", clicHaut);
+  addEventListener("blur", clicPerdu);
+  controles.visee = () => {
+    if (!souris) return -1;
+    const p = pointSurLeSol(camera, souris.x, souris.y);
+    if (!p) return derniereVisee;
+    const dx = p.x - metres(partie.c.x);
+    const dz = p.z - metres(partie.c.y);
+    if (Math.hypot(dx, dz) < ZONE_MORTE_VISEE) return derniereVisee;
+    derniereVisee = directionDeVisee(dx, dz);
+    return derniereVisee;
+  };
+
+  // La caméra basse (lot BR0b) : `CameraRush` suit le chevalier (cadré dans le tiers inférieur) et recule juste assez pour garder le golem (jusqu'à sa tête) et les cercles qui vont tomber dans l'image.
+  const garder: PointCadre[] = [];
+  const placerCamera = (dt: number, cx: number, cz: number, golem: { x: number; z: number } | null): void => {
     let sx = 0;
     let sz = 0;
     if (trauma > 0) {
@@ -523,8 +516,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       sx = (Math.sin(temps * 91.7) + Math.sin(temps * 53.3)) * 0.5 * a + kickX;
       sz = (Math.sin(temps * 77.1 + 1) + Math.sin(temps * 61.9)) * 0.5 * a + kickZ;
     }
-    camera.position.set(camX + sx, Math.sin(el) * dist, camZ + Math.cos(el) * dist + sz);
-    camera.lookAt(camX + sx * 0.4, 0, camZ + sz * 0.4);
+    garder.length = 0;
+    if (golem) garder.push({ x: golem.x, z: golem.z, haut: 5.1, r: 3.0 }); // la tête et les épaules, les bras écartés ; le poing levé de l'annonce peut sortir par le haut
+    for (const z of partie.zones) if (z.type === POING) garder.push({ x: metres(z.x), z: metres(z.y), r: metres(z.r) }); // le coup de poing ; les pierres tombent près du chevalier, l'onde part du golem
+    if (figee) rig.recommencer(); // la vitrine est figée : la caméra est posée d'un coup, sans amorti
+    rig.maj(dt, etat.sensations, camera.aspect, cx, cz, golem, garder, { x: sx, z: sz });
   };
 
   const yawVers = (actuel: number, but: number, dt: number, vitesse: number): number => {
@@ -577,6 +573,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       chevalier.pivot.position.y = 0.6 - u * 0.22;
     } else chevalier.pivot.rotation.z = 0;
     if (c.etat === 2 && !fige && Math.random() < 0.6) eclats.gerbe("poussiere", cx, 0.12, cz, 1, { vitesse: 1, taille: 0.1, haut: 0.6, duree: 0.3, gravite: 3 });
+    else if (c.marche && c.etat !== 2 && !fige && !partie.finie && now - dernierPas > 150) {
+      // la poussière des pas : un petit nuage derrière le pied qui se lève
+      dernierPas = now;
+      const arriere = ((c.dir * Math.PI * 2) / 128) + Math.PI;
+      eclats.gerbe("poussiere", cx + Math.cos(arriere) * 0.25, 0.1, cz + Math.sin(arriere) * 0.25, 2, { vitesse: 1.2, taille: 0.09, haut: 0.7, duree: 0.35, gravite: 3 });
+    }
 
     // Le fantôme.
     if (fantomeSim) {
@@ -620,8 +622,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       const vers = m.type === GELEE && (m.cx !== 0 || m.cy !== 0) ? Math.atan2(m.cx, m.cy) : Math.atan2(c.x - m.x, c.y - m.y);
       a.yaw = yawVers(a.yaw, vers, dt, 12);
       a.vue.racine.rotation.y = a.yaw;
-      if (m.type === GELEE) animerGelee(a.vue, m, temps, partie.tick);
-      else animerChauve(a.vue, m, temps, partie.tick);
+      if (m.type === GELEE) animerGelee(a.vue, m, temps, partie.tick, partie.durees);
+      else animerChauve(a.vue, m, temps, partie.tick, partie.durees);
       if (a.eclair > 0) a.eclair -= dt * 60;
       eclair(a.vue.matieres, a.eclair > 0 ? 0.9 : 0);
       const haut = m.type === CHAUVE ? 0.9 : 0;
@@ -656,13 +658,18 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     ombres.fin();
 
     arc.maj(dtMonde, cx, cz);
+    traits.maj(fige ? 0 : dt);
     eclats.maj(fige ? dt * 0.15 : dt * (0.4 + 0.6 * ralenti));
-    placerCamera(dt, cx, cz, g ? gx : cx, g ? gz : cz);
+    placerCamera(dt, cx, cz, g ? { x: gx, z: gz } : null);
+    // Le réticule : seulement à la souris, et pas dans la vitrine.
+    const visee = souris && !figee ? pointSurLeSol(camera, souris.x, souris.y) : null;
+    if (visee) reticule.poser(visee.x, visee.z);
+    else reticule.cacher();
 
     // L'interface.
     ui.coeurs(c.coeurs);
-    if (g) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase === 2);
-    else ui.boss(null, false);
+    if (g) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase);
+    else ui.boss(null, 1);
 
     renderer.render(scene, camera);
     if (essai.fps) {
@@ -685,6 +692,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       sons: () => sonsAvecKit.joues,
       calls: () => renderer.info.render.calls,
       redemarrer,
+      /** Pose le curseur de la souris en coordonnées d'écran de la scène (de −1 à 1) : de quoi viser dans un test. `null` : plus de souris. */
+      souris: (x: number | null, y = 0) => {
+        souris = x === null ? null : { x, y };
+      },
+      visee: () => controles.visee(),
+      camera: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z, fov: camera.fov }),
       piloter: () => pilote(partie),
       /** Joue `n` ticks au plus avec le pilote de la simulation (pas à pas, sans dessin) : de quoi finir une partie entière dans un test. */
       jouerPilote: (n: number, attente = 0) => {
@@ -703,7 +716,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
   return {
     avancer() {
-      if (partie.finie) return;
+      if (partie.finie || figee) return; // la vitrine est une scène figée : elle ne joue pas
       if (gel > 0) {
         gel--;
         return;
@@ -735,6 +748,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     detruire() {
       removeEventListener("pointerdown", geste);
       removeEventListener("keydown", geste);
+      removeEventListener("pointerup", clicHaut);
+      removeEventListener("blur", clicPerdu);
+      ui.zone3d.removeEventListener("pointermove", surPointeur);
+      ui.zone3d.removeEventListener("pointerdown", clicBas);
+      ui.zone3d.removeEventListener("contextmenu", pasDeMenu);
+      decor.detruire();
       observateur.disconnect();
       controles.detruire();
       tune?.detruire();

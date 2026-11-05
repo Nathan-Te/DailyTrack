@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { contenuScenario, dailyRush, empreinteContenu, encoderRediffusion, enregistrer, entree, jouer, jouerJusqua, jouerLePilote, RUSH_SIM_VERSION, type Changement } from "../src/index";
+import { contenuScenario, dailyRush, empreinteContenu, encoderRediffusion, enregistrer, entree, jouer, jouerJusqua, jouerLePilote, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, type Changement } from "../src/index";
 
 // Le golden de Rush : `npm run golden:rush -w @cdj/rush-sim`. Dix jours (l'empreinte de leur contenu) et trois rediffusions de référence (le pilote, un joueur agité, une partie vide) et deux scénarios (le golem, l'arène à 30 monstres) joués 3 000 ticks.
 // Il ne se régénère jamais sans monter la version concernée (`RUSH_SIM_VERSION` pour les rediffusions, `RUSH_GENERATOR_VERSION` pour le contenu).
@@ -8,8 +8,8 @@ const jours = Array.from({ length: 10 }, (_, i) => daysFromCivil(2026, 11, 2) + 
 
 const jourRef = jours[0]!;
 const contenu = dailyRush(jourRef);
-// Un joueur qui court en rond, frappe et esquive sans jamais viser : il exerce les monstres, les ondes et les dégâts.
-const joueurAgite: Changement[] = Array.from({ length: 400 }, (_, i) => ({ tick: i * 9, e: entree((i * 5) % 32, i % 3 === 0, i % 7 === 0) }));
+// Un joueur qui court en rond, frappe (le coup est tenu : il enchaîne), esquive et vise sans jamais viser juste : il exerce les monstres, les ondes, les dégâts et la visée (lot BR0b : une visée sur deux, l'autre sans visée).
+const joueurAgite: Changement[] = Array.from({ length: 400 }, (_, i) => ({ tick: i * 9, e: entree((i * 5) % 32, i % 3 === 0, i % 7 === 0, i % 2 === 0 ? (i * 3) % 32 : -1) }));
 const reds = [
   { nom: "pilote", changements: jouerLePilote(contenu).changements },
   { nom: "agite", changements: joueurAgite },
@@ -24,8 +24,8 @@ const scenarios = (["boss", "arene"] as const).map((nom) => {
 
 const sortie = {
   _: "Golden de Rush (lot K4f). Régénérer : npm run golden:rush -w @cdj/rush-sim, seulement en montant la version concernée.",
-  sim: 1,
-  generateur: 1,
+  sim: RUSH_SIM_VERSION,
+  generateur: RUSH_GENERATOR_VERSION,
   jours: jours.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyRush(j)) })),
   rediffusions: reds,
   scenarios,

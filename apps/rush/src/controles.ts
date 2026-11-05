@@ -1,10 +1,13 @@
-import { entree, PAS_MIN_DIRECTION } from "@cdj/rush-sim";
+import { entree, PAS_MIN_DIRECTION, PAS_MIN_VISEE } from "@cdj/rush-sim";
 import { liaisonTenue } from "@cdj/ui/src/commandes";
 import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
 import type { Commandes } from "@cdj/ui/src/commandes";
 
 // Les commandes de Rush : clavier, manette, doigts. **Le jeu ne lit jamais une touche en dur** (règle M2) : il déclare ses actions (`ACTIONS_RUSH`) et le kit les rend réglables ; ici seulement la lecture de ce qui est tenu.
-// Le résultat de chaque tick est l'octet d'entrée de la simulation (`entree` de `@cdj/rush-sim`) : une direction parmi 32, le coup, l'esquive.
+// Le résultat de chaque tick est l'entrée de la simulation (`entree` de `@cdj/rush-sim`) : une direction parmi 32 (le déplacement), le coup, l'esquive et (lot BR0b) la VISÉE, séparée du déplacement :
+//   · PC : la souris vise (le point du sol sous le curseur, calculé par la scène : `visee`), le clic gauche frappe (maintenu = enchaînement), Espace esquive, ZQSD/WASD (lus par `event.code`) et les flèches déplacent ;
+//   · manette : le stick gauche ou la croix déplacent, le stick droit VISE s'il est poussé (sinon visée assistée), A frappe (maintenu = enchaînement), B esquive ;
+//   · doigt : le joystick déplace, « Coup » (maintenu = enchaînement) et « Esquive » ; pas de visée (assistée).
 
 /** La direction de la croix (0 à 31, 0 vers la droite, 8 vers le bas) d'un déplacement (dx, dy) en axes d'écran, ou −1. */
 export function directionDe8(dx: number, dy: number): number {
@@ -28,6 +31,10 @@ export class Controles {
   /** Les boutons tactiles (un appui est aussi gardé quelques ticks : `appuyer`). */
   boutonCoup = false;
   boutonEsquive = false;
+  /** Le clic gauche de la souris (tenu : il enchaîne). */
+  boutonSouris = false;
+  /** La visée de la souris (0 à 31), ou −1 tant que le joueur n'a pas la souris : la scène la calcule (rayon sur le plan du sol). */
+  visee: () => number = () => -1;
   /** Un appui bref (une action du kit, une porte d'essai) : tenu encore quelques ticks. */
   private impulsionCoup = 0;
   private impulsionEsquive = 0;
@@ -35,6 +42,8 @@ export class Controles {
   forcee: { e: number; reste: number } | null = null;
   private derniereDirection = -1;
   private tickDirection = -1000;
+  private derniereVisee = -1;
+  private tickVisee = -1000;
   private readonly ecoutes: [string, EventListener][] = [];
 
   constructor(private readonly commandes: Commandes | null) {
@@ -57,6 +66,9 @@ export class Controles {
     if (!this.commandes) return;
     const id = this.commandes.actionDeTouche(e.code);
     if (!id || !["haut", "bas", "gauche", "droite", "coup", "esquive"].includes(id)) return;
+    // Espace ne fait ni défiler la page ni cliquer sur le bouton qui a le focus ; une touche tapée dans un champ (le panneau des réglages) reste à ce champ.
+    const cible = e.target as HTMLElement | null;
+    if (!(cible && /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(cible.tagName))) e.preventDefault();
     if (appui) {
       // Un appui très bref (moins d'un arrêt sur image) ne doit pas se perdre : il est gardé quelques ticks.
       if (!this.tenues.has(id)) this.action(id);
@@ -78,11 +90,12 @@ export class Controles {
     }
     let dx = (this.tenues.has("droite") ? 1 : 0) - (this.tenues.has("gauche") ? 1 : 0);
     let dy = (this.tenues.has("bas") ? 1 : 0) - (this.tenues.has("haut") ? 1 : 0);
-    let coup = this.tenues.has("coup") || this.boutonCoup || this.impulsionCoup > 0;
+    let coup = this.tenues.has("coup") || this.boutonCoup || this.boutonSouris || this.impulsionCoup > 0;
     let esquive = this.tenues.has("esquive") || this.boutonEsquive || this.impulsionEsquive > 0;
     if (this.impulsionCoup > 0) this.impulsionCoup--;
     if (this.impulsionEsquive > 0) this.impulsionEsquive--;
     let direction = directionDe8(dx, dy);
+    let visee = this.visee();
     // Le doigt prend la place du clavier ; la manette complète.
     const pad = padPourLeJeu(typeof navigator !== "undefined" ? navigator.getGamepads?.()[0] ?? undefined : undefined);
     if (pad) {
@@ -90,6 +103,9 @@ export class Controles {
       const sy = pad.axes[1] ?? 0;
       dx = (pad.buttons[15]?.pressed ? 1 : 0) - (pad.buttons[14]?.pressed ? 1 : 0);
       dy = (pad.buttons[13]?.pressed ? 1 : 0) - (pad.buttons[12]?.pressed ? 1 : 0);
+      // Le stick droit VISE s'il est poussé ; sinon (et sans souris) la visée reste assistée.
+      const droite = directionAnalogique(pad.axes[2] ?? 0, pad.axes[3] ?? 0, 0.35);
+      if (droite >= 0) visee = droite;
       const analogique = directionAnalogique(sx, sy);
       const croix = directionDe8(dx, dy);
       if (analogique >= 0) direction = analogique;
@@ -110,6 +126,14 @@ export class Controles {
         this.tickDirection = tick;
       }
     }
-    return entree(this.derniereDirection, coup, esquive);
+    // La visée change au plus tous les `PAS_MIN_VISEE` ticks, pour la même raison.
+    if (visee !== this.derniereVisee) {
+      const libre = visee < 0 || this.derniereVisee < 0 || tick - this.tickVisee >= PAS_MIN_VISEE;
+      if (libre) {
+        this.derniereVisee = visee;
+        this.tickVisee = tick;
+      }
+    }
+    return entree(this.derniereDirection, coup, esquive, this.derniereVisee);
   }
 }

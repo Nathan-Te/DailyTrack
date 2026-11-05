@@ -1,8 +1,8 @@
 import { BORNES, REGLAGES_DEFAUT, type Reglages } from "@cdj/rush-sim";
 import { BORNES_SENSATIONS, SENSATIONS_DEFAUT, type Sensations } from "./sensations";
 
-// Le panneau des sensations (`?debug&tune`, jamais en production) : des curseurs pour la simulation (vitesse, portée, cadence du coup, recul, fenêtre d'esquive, vie et cadence du golem — changer l'un relance la
-// partie, qui n'est alors pas classable) et pour ce que le joueur voit (arrêt sur image, secousse, éclats, vue, éclair — en direct). « Exporter » écrit les réglages en JSON, que Nathan colle dans un lot (ou dans
+// Le panneau des sensations (`?debug&tune`, jamais en production) : des curseurs pour la simulation (vitesse, portée, cadence du coup, recul, fenêtre d'esquive, vie et cadence du golem, RYTHME des ennemis — changer l'un relance
+// la partie, qui n'est alors pas classable) et pour ce que le joueur voit (arrêt sur image, secousse, éclats, caméra : angle, distance, champ ; éclair — en direct). « Exporter » écrit les réglages en JSON, que Nathan colle dans un lot (ou dans
 // l'adresse : `&reglages=`).
 type Traduire = (cle: string, params?: Readonly<Record<string, string | number>>) => string;
 
@@ -22,10 +22,13 @@ const CURSEURS: Curseur[] = [
   { cle: "fenetreEsquive", groupe: "sim", libelle: "tune.fenetreEsquive", min: BORNES.fenetreEsquive[0], max: BORNES.fenetreEsquive[1] },
   { cle: "golemVie", groupe: "sim", libelle: "tune.golemVie", min: BORNES.golemVie[0], max: BORNES.golemVie[1] },
   { cle: "golemCadence", groupe: "sim", libelle: "tune.golemCadence", min: BORNES.golemCadence[0], max: BORNES.golemCadence[1] },
+  { cle: "rythme", groupe: "sim", libelle: "tune.rythme", min: BORNES.rythme[0], max: BORNES.rythme[1] },
   { cle: "arretImage", groupe: "vue", libelle: "tune.arretImage", min: BORNES_SENSATIONS.arretImage[0], max: BORNES_SENSATIONS.arretImage[1] },
   { cle: "secousse", groupe: "vue", libelle: "tune.secousse", min: BORNES_SENSATIONS.secousse[0], max: BORNES_SENSATIONS.secousse[1] },
   { cle: "eclats", groupe: "vue", libelle: "tune.eclats", min: BORNES_SENSATIONS.eclats[0], max: BORNES_SENSATIONS.eclats[1] },
-  { cle: "vue", groupe: "vue", libelle: "tune.vue", min: BORNES_SENSATIONS.vue[0], max: BORNES_SENSATIONS.vue[1] },
+  { cle: "angle", groupe: "vue", libelle: "tune.angle", min: BORNES_SENSATIONS.angle[0], max: BORNES_SENSATIONS.angle[1] },
+  { cle: "distance", groupe: "vue", libelle: "tune.distance", min: BORNES_SENSATIONS.distance[0], max: BORNES_SENSATIONS.distance[1] },
+  { cle: "champ", groupe: "vue", libelle: "tune.champ", min: BORNES_SENSATIONS.champ[0], max: BORNES_SENSATIONS.champ[1] },
   { cle: "eclair", groupe: "vue", libelle: "tune.eclair", min: BORNES_SENSATIONS.eclair[0], max: BORNES_SENSATIONS.eclair[1] },
 ];
 

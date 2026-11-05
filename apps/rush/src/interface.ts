@@ -18,14 +18,15 @@ function svg(chemin: string, classe: string): SVGSVGElement {
   return s;
 }
 const CHEMIN_COEUR = "M12 21 C5 15 2.5 11.5 2.5 8 C2.5 5 4.8 3 7.4 3 C9.3 3 11 4 12 5.8 C13 4 14.7 3 16.6 3 C19.2 3 21.5 5 21.5 8 C21.5 11.5 19 15 12 21 Z";
-const CHEMIN_EPEE = "M5 19 L9 15 M7 17 L4 20 M9 15 L19 5 L20 4 L19 10 L13 16 Z";
-const CHEMIN_ESQUIVE = "M4 12 L16 12 M11 6 L17 12 L11 18 M20 6 L20 18";
+// Une épée en diagonale (la lame, la garde, la poignée) et un coureur (la tête, le buste penché, les bras et les jambes en foulée) : des traits, comme tous les pictogrammes du jeu.
+const CHEMIN_EPEE = "M20 4 L20.4 9.6 L12 18 L6 12 L14.4 3.6 Z M5 19 L9 15 M3 21 L6 18";
+const CHEMIN_ESQUIVE = "M15.4 4.4 A1.7 1.7 0 1 1 15.39 4.4 M13.6 8.2 L11.4 13 M13.6 8.2 L17.6 10.6 M13 9 L8.6 10.4 M11.4 13 L15 15.6 L13.4 20.4 M11.4 13 L8 16.6 L4.4 15.6";
 
 export interface Interface {
   racine: HTMLElement;
   zone3d: HTMLElement;
   coeurs(n: number): void;
-  boss(fraction: number | null, phase2: boolean): void;
+  boss(fraction: number | null, phase: number): void;
   degats(): void;
   fps(texte: string): void;
   detruire(): void;
@@ -36,7 +37,12 @@ function bouton(classe: string, chemin: string, libelle: string, quand: (tenu: b
   b.type = "button";
   b.className = `rush-bouton ${classe}`;
   b.setAttribute("aria-label", libelle);
-  b.append(svg(chemin, "rush-bouton__icone"));
+  // Un pictogramme et son nom dessous (la cible : « Coup » et « Esquive » côte à côte, chacun avec son icône).
+  const nom = document.createElement("span");
+  nom.className = "rush-bouton__nom";
+  nom.textContent = libelle;
+  nom.setAttribute("aria-hidden", "true");
+  b.append(svg(chemin, "rush-bouton__icone"), nom);
   const tenir = (e: PointerEvent): void => {
     e.preventDefault();
     try {
@@ -82,6 +88,9 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   const nom = document.createElement("span");
   nom.className = "rush-boss__nom";
   nom.textContent = t("golem.nom");
+  const phase = document.createElement("span");
+  phase.className = "rush-boss__phase";
+  phase.textContent = t("hud.phase", { n: 1 });
   const piste = document.createElement("div");
   piste.className = "rush-boss__piste";
   piste.setAttribute("role", "progressbar");
@@ -93,7 +102,7 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   const marque = document.createElement("div");
   marque.className = "rush-boss__moitie";
   piste.append(vie, marque);
-  boss.append(nom, piste);
+  boss.append(nom, piste, phase);
   const vignette = document.createElement("div");
   vignette.className = "rush-vignette";
   const fps = document.createElement("div");
@@ -179,13 +188,16 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
       coeurs.forEach((c, i) => c.classList.toggle("rush-coeur--vide", i >= n));
       bloc.setAttribute("aria-label", t("hud.coeurs", { n, total: COEURS }));
     },
-    boss(fraction, phase2) {
+    boss(fraction, numero) {
       if (fraction === null) {
         boss.hidden = true;
         return;
       }
       boss.hidden = false;
-      boss.dataset.phase = phase2 ? "2" : "1";
+      if (boss.dataset.phase !== String(numero)) {
+        boss.dataset.phase = String(numero);
+        phase.textContent = t("hud.phase", { n: numero });
+      }
       vie.style.transform = `scaleX(${Math.max(0, Math.min(1, fraction))})`;
       piste.setAttribute("aria-valuenow", String(Math.round(fraction * 100)));
     },

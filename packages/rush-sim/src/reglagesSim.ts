@@ -18,6 +18,8 @@ export interface Reglages {
   golemVie: number;
   /** Le repos du golem entre deux attaques, en ticks (phase 1 ; il est réduit d'un tiers en phase 2). */
   golemCadence: number;
+  /** Le rythme des ennemis, en % (lot BR0b) : 100 = les valeurs par défaut. Il multiplie d'un coup les vitesses (×rythme/100) et divise toutes les durées (annonces, récupérations, repos, cycles) de tous les ennemis. */
+  rythme: number;
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -29,6 +31,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   fenetreEsquive: 16,
   golemVie: 120,
   golemCadence: 80,
+  rythme: 100,
 };
 
 /** Les bornes de chaque réglage (le curseur de `?tune` et la validation d'un JSON collé). */
@@ -41,6 +44,7 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   fenetreEsquive: [6, 36],
   golemVie: [10, 400],
   golemCadence: [20, 240],
+  rythme: [40, 200],
 };
 
 export const CLES_REGLAGES = Object.keys(REGLAGES_DEFAUT) as (keyof Reglages)[];
