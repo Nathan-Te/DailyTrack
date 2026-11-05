@@ -1226,6 +1226,108 @@
         "corps-"
       ],
       "outilsAdmin": false
+    },
+    {
+      "id": "rush",
+      "zones": {
+        "jeu": [
+          "apps/rush/**",
+          "packages/rush-sim/**",
+          "apps/api/src/rush*.ts",
+          "apps/api/test/rush*.test.ts",
+          "apps/api/scripts/rush-*.ts",
+          "docs/rush/**"
+        ],
+        "serveur": [
+          "apps/api/src/rush*.ts",
+          "apps/api/test/rush*.test.ts",
+          "apps/api/scripts/rush-*.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/rush/e2e",
+        "suite": "rush",
+        "fumee": [
+          "determinisme.spec.ts",
+          "partie.spec.ts",
+          "poids.spec.ts"
+        ],
+        "zones": {
+          "rush-sim": {
+            "globs": [
+              "packages/rush-sim/**"
+            ]
+          },
+          "rush-jeu": {
+            "globs": [
+              "apps/rush/index.html",
+              "apps/rush/vite.config.ts",
+              "apps/rush/verify.html",
+              "apps/rush/src/*"
+            ]
+          },
+          "api-rush": {
+            "globs": [
+              "apps/api/src/rush*.ts",
+              "apps/api/scripts/rush-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "determinisme.spec.ts": [
+            "rush-sim",
+            "rush-jeu",
+            "core-clock"
+          ],
+          "partie.spec.ts": [
+            "rush-sim",
+            "rush-jeu",
+            "ui"
+          ],
+          "classement.spec.ts": [
+            "rush-sim",
+            "rush-jeu",
+            "api-rush",
+            "api-jeux"
+          ],
+          "poids.spec.ts": [
+            "rush-jeu",
+            "ui"
+          ]
+        },
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        }
+      },
+      "app": "rush",
+      "jours": {
+        "dossier": "apps/rush/public/jours",
+        "registre": null,
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/rush-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/rush-sim",
+            "script": "figer:rush",
+            "forme": "jours-proteges"
+          }
+        }
+      },
+      "sim": "rush-sim",
+      "budget": [
+        "rush.jsCss"
+      ],
+      "budgetALaDemande": [
+        "corps-",
+        "partie-",
+        "classement-",
+        "reglages-",
+        "retours-",
+        "version-"
+      ],
+      "outilsAdmin": false
     }
   ]
 }

@@ -396,5 +396,66 @@ export const FICHES_SERVEUR = [
     "reglagesGardes": [],
     "messageOu": "blocks",
     "zoneNouveautes": "blocks"
+  },
+  {
+    "id": "rush",
+    "code": "rush",
+    "etatDepart": "off",
+    "premierJour": "2026-11-02",
+    "categorie": "arcade",
+    "classement": {
+      "colonnes": [
+        {
+          "nom": "temps",
+          "sens": "asc"
+        },
+        {
+          "nom": "submitted_at",
+          "sens": "asc"
+        },
+        {
+          "nom": "player_id",
+          "sens": "asc"
+        }
+      ],
+      "cumul": false,
+      "unite": "ticks",
+      "format": "temps"
+    },
+    "medailles": {
+      "methode": "pourcentage-diamant",
+      "bareme": [
+        130,
+        160,
+        200
+      ]
+    },
+    "versions": {
+      "sim": "packages/rush-sim/src/constantes.ts:RUSH_SIM_VERSION",
+      "generateur": "packages/rush-sim/src/constantes.ts:RUSH_GENERATOR_VERSION"
+    },
+    "jours": {
+      "mode": "fichier-par-jour",
+      "dossier": "apps/rush/public/jours",
+      "preuveInterditeEnProd": true,
+      "fabrication": {
+        "empreinte": "apps/api/scripts/rush-empreintes.ts",
+        "figer": {
+          "paquet": "@cdj/rush-sim",
+          "script": "figer:rush",
+          "forme": "jours-proteges"
+        }
+      }
+    },
+    "rejeu": {
+      "unitesServeur": 1,
+      "maxTicks": 36000
+    },
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "prefixe": "rush:",
+    "reglagesGardes": [],
+    "messageOu": "rush",
+    "zoneNouveautes": "rush"
   }
 ] as const;

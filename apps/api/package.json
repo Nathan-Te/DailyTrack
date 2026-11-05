@@ -38,6 +38,7 @@
     "@cdj/sim": "*",
     "@cdj/tower-sim": "*",
     "@cdj/cibles-sim": "*",
+    "@cdj/rush-sim": "*",
     "@cdj/blocks-sim": "*",
     "@libsql/client": "^0.18.0"
   },

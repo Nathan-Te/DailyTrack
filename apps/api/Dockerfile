@@ -24,6 +24,9 @@ COPY apps/tower/package.json apps/tower/
 # Cibles (lot K4f, jeu témoin : sans effet en production, le registre ne le monte pas) : de même.
 COPY apps/cibles/package.json apps/cibles/
 COPY packages/cibles-sim/package.json packages/cibles-sim/
+# Rush (généré par `npm run nouveau-jeu`) : le verrou liste l'espace de travail du jeu.
+COPY apps/rush/package.json apps/rush/
+COPY packages/rush-sim/package.json packages/rush-sim/
 # Blocks (généré par `npm run nouveau-jeu`) : le verrou liste l'espace de travail du jeu.
 COPY apps/blocks/package.json apps/blocks/
 COPY packages/blocks-sim/package.json packages/blocks-sim/
@@ -44,6 +47,9 @@ COPY apps/jump/public/levels apps/jump/public/levels
 # Lot K4f : la simulation de Cibles (le serveur rejoue ses parties) et ses jours figés.
 COPY packages/cibles-sim packages/cibles-sim
 COPY apps/cibles/public/jours apps/cibles/public/jours
+# Rush : sa simulation (le serveur rejoue ses parties) et ses jours figés.
+COPY packages/rush-sim packages/rush-sim
+COPY apps/rush/public/jours apps/rush/public/jours
 # Blocks : sa simulation (le serveur rejoue ses parties) et ses jours figés.
 COPY packages/blocks-sim packages/blocks-sim
 COPY apps/blocks/public/jours apps/blocks/public/jours
