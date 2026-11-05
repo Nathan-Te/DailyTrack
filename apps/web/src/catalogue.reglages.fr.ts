@@ -25,6 +25,7 @@ export const fr = {
   "reglages.graphismes.actuel": "Choisie pour cet appareil : {niveau}.",
   "reglages.graphismes.attente": "Appliqué à la fin de la course.",
   "reglages.graphismes.tropLourd": "Trop lourd pour cet appareil : Auto allégerait l'image.",
+  "reglages.bridage": "Ton appareil limite l'affichage à 30 images par seconde (économie d'énergie). Le jeu est plus fluide sans.",
   "reglages.graphismes.detail.economie": "Décor simple, le plus fluide : pour les appareils modestes ou pour économiser la batterie.",
   "reglages.graphismes.detail.equilibree": "Décor soigné et vivant : drapeaux, foule, nuages, reflets.",
   "reglages.graphismes.detail.maximale": "Tout ce que ton appareil supporte : ombres, brume, finitions.",

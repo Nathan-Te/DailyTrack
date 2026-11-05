@@ -24,6 +24,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "reglages.effets.reduit": "Reduced",
   "reglages.effets.aucun": "None",
   "reglages.effets.aide": "Paint stains always stay.",
+  "reglages.bridage": "Your device is limiting the display to 30 frames per second (power saving). The game runs smoother without it.",
   "reglages.premier": "First place's ghost",
   "reglages.premier.aide": "Today's best run, in purple, with its name, next to your own ghost (cyan). The ghost (yours, first place, none): the button at the top left, the pause, or the G key.",
   "reglages.taches": "Everyone's stains",

@@ -502,37 +502,67 @@ export class Effects {
   }
 }
 
+/** Travail moyen du fil principal par image (le rendu, ms) au-delà duquel on allège : 12 ms, comme le carnage de Jump (`CarnageGovernor`) — le budget d'une image à 60 i/s est 16,7 ms. */
+export const GOVERNOR_WORK_LIMIT_MS = 12;
+/** Travail moyen sous lequel on remonte : 8 ms (l'écart avec la limite évite le va-et-vient). */
+export const GOVERNOR_WORK_FAST_MS = 8;
 /**
- * Qualité automatique : si les images sont trop lentes (intervalle moyen au-dessus de `slowMs`), on réduit particules et
- * traces ; si elles sont rapides pendant un moment, on remonte. Ne touche qu'aux effets, jamais à la simulation.
+ * Intervalle moyen (ms) qui allège **quel que soit le travail** : 50 ms, sous 20 images/s. Un appareil bridé à 30 i/s (33 ms) n'y est pas ; un
+ * processeur graphique qui ne suit pas (le travail du fil principal est court, l'attente est ailleurs) y est.
+ */
+export const GOVERNOR_INTERVAL_LIMIT_MS = 50;
+
+/**
+ * Qualité automatique (lot 9, refaite au lot Q1) : si le **travail du fil principal par image** (le rendu) est trop lourd, on réduit particules, traces et — en
+ * Auto seulement, voir `niveauScene` de `main.ts` — la scène ; s'il est léger pendant un moment, on remonte. Elle ne décide **plus sur l'intervalle entre images
+ * seul** : un appareil bridé à 30 images/s (économie d'énergie) a 33 ms d'intervalle et presque rien à faire, ce n'est pas un appareil lent. Ne touche qu'aux
+ * effets et à la scène, jamais à la simulation.
  */
 export class QualityGovernor {
   level: Quality = 2;
-  /** Intervalle moyen entre images (ms), lissé. */
+  /** Dernières moyennes d'une fenêtre d'une seconde : intervalle entre images (ms) et travail du rendu (ms ; `null` : aucune image dessinée). */
   average = 16.7;
+  work: number | null = null;
   private since = 0;
+  private frames = 0;
+  private workSum = 0;
+  private workFrames = 0;
   private fast = 0;
 
   constructor(
-    private readonly slowMs = 26,
-    private readonly fastMs = 19,
+    private readonly workLimitMs = GOVERNOR_WORK_LIMIT_MS,
+    private readonly workFastMs = GOVERNOR_WORK_FAST_MS,
     /** `true` : qualité figée (`?quality=`). */
     public locked = false,
+    private readonly intervalLimitMs = GOVERNOR_INTERVAL_LIMIT_MS,
   ) {}
 
-  /** `ms` : durée de l'image qui vient de s'écouler. Renvoie vrai si le niveau a changé. */
-  observe(ms: number): boolean {
+  /**
+   * `ms` : durée de l'image qui vient de s'écouler ; `workMs` : travail du rendu de l'image précédente (`null` ou absent : elle n'a pas été dessinée, l'accueil
+   * saute des images). Renvoie vrai si le niveau a changé.
+   */
+  observe(ms: number, workMs: number | null = null): boolean {
     if (this.locked || ms <= 0 || ms > 500) return false; // 500 ms : onglet en pause, pas une mesure
-    this.average += (ms - this.average) * 0.08;
     this.since += ms;
+    this.frames++;
+    if (workMs !== null && workMs >= 0) {
+      this.workSum += workMs;
+      this.workFrames++;
+    }
     if (this.since < 1000) return false;
+    this.average = this.since / this.frames;
+    this.work = this.workFrames > 0 ? this.workSum / this.workFrames : null;
     this.since = 0;
-    if (this.average > this.slowMs && this.level > 0) {
+    this.frames = 0;
+    this.workSum = 0;
+    this.workFrames = 0;
+    const heavy = (this.work !== null && this.work > this.workLimitMs) || this.average > this.intervalLimitMs;
+    if (heavy && this.level > 0) {
       this.level = (this.level - 1) as Quality;
       this.fast = 0;
       return true;
     }
-    this.fast = this.average < this.fastMs ? this.fast + 1 : 0;
+    this.fast = this.work !== null && this.work < this.workFastMs && this.average <= this.intervalLimitMs ? this.fast + 1 : 0;
     if (this.fast >= 4 && this.level < 2) {
       this.level = (this.level + 1) as Quality;
       this.fast = 0;

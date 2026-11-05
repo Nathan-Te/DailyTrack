@@ -18,6 +18,20 @@ export type ChoixGraphismes = "auto" | "economie" | "equilibree" | "maximale";
 export const CHOIX_GRAPHISMES: readonly ChoixGraphismes[] = ["auto", "economie", "equilibree", "maximale"];
 export const NIVEAU_DU_CHOIX: Record<ChoixGraphismes, NiveauQualite | null> = { auto: null, economie: 1, equilibree: 2, maximale: 3 };
 
+/**
+ * Lot Q1 — **le choix du joueur fait foi** : le niveau de la scène (décor, ombres, halos : 0 les cache, 1 et 2 les montrent) que le régulateur de fluidité (`QualityGovernor`) laisse
+ * au rendu. Avec « Économie », « Équilibrée » ou « Maximale » il ne touche plus à la scène (niveau 2 du palier choisi) et n'allège que les particules ; en « Auto » il garde son
+ * rôle, comme avec `?quality=` (`figee`), qui fige la qualité pour les essais.
+ */
+export const niveauDeScene = (choix: ChoixGraphismes, regulateur: 0 | 1 | 2, figee = false): 0 | 1 | 2 => (choix === "auto" || figee ? regulateur : 2);
+
+/**
+ * Lot Q1 : derrière l'accueil la scène ne dépasse pas « moyenne » (« basse » sur appareil tactile : la batterie d'abord) — **sauf en « Maximale »** : la cadence réduite de l'accueil
+ * (20 images/s sur téléphone, 30 sur ordinateur) suffit à économiser ; `?quality=` (`figee`) garde le plafond pour les essais.
+ */
+export const niveauALAccueil = (niveau: 0 | 1 | 2, choix: ChoixGraphismes, tactile: boolean, figee = false): 0 | 1 | 2 =>
+  choix === "maximale" && !figee ? niveau : (Math.min(niveau, tactile ? 0 : 1) as 0 | 1 | 2);
+
 /** Remesurer après une semaine, ou si l'écran change de taille d'un facteur 1,5 (en pixels dessinés). */
 export const VALIDITE_MS = 7 * 86_400_000;
 export const FACTEUR_ECRAN = 1.5;

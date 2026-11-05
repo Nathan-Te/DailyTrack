@@ -8,6 +8,9 @@ Socle sans logique de jeu (PRNG, calendrier, codage d'octets, sac de thèmes, da
 - **Validation = garde de la règle des zones** : le lot d'un jeu écrit sa fiche ; la validation refuse des zones de CI, des tables (`<id>_…`), un préfixe de stockage, une destination de message ou des lignes de budget qui ne seraient pas ceux de ce jeu. Une règle nouvelle de la fiche s'ajoute ici avec son test.
 - **Ajouter un champ** : le type, la validation, la projection qui le porte (la plus petite possible ; la projection du portail n'écrit que ce qui s'écarte de l'usage), les fiches des trois jeux, `npm run fiches`, un test. Ne jamais lire une fiche depuis un jeu : un jeu ne s'importe pas lui-même par la plateforme.
 
+## Appareil bridé à 30 images/s (lot Q1)
+`src/bridage.ts` (`@cdj/core/bridage`) : `bridePar30`, `DetecteurBridage` — pur, testé sous Node. Règle, usage et message au joueur : `docs/plateforme/bridage-30-images.md`.
+
 ## L'enveloppe de rediffusion commune (lot K4c)
 - **`src/enveloppe.ts`** (`@cdj/core/enveloppe`) : `encoderEnveloppe` / `decoderEnveloppe`, `ErreurEnveloppe` (`format_illisible`, `version_inconnue`, `trop_longue`). Une rediffusion d'un **jeu neuf** = `[format 1][sim][générateur][genre : jour | scénario]` + le jour (ou le nom du scénario) + **la charge** (les octets que le jeu comprend seul), en `base64url` sans remplissage. Le texte est borné **avant** d'être lu ; les versions inconnues sont refusées ; jamais d'exception brute. **Les simulations existantes (Track, Jump, Tower) gardent leur format et ne sont pas touchées.**
 - **Fiche** : le champ facultatif `donnees.tableCommune: "resultats_jeu"` dit qu'un jeu range ses résultats dans la table commune de la plateforme ; sa liste `tables` peut alors être vide (toute autre table doit toujours commencer par `<id>_`).

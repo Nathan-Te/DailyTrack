@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHOIX_GRAPHISMES, NIVEAU_DU_CHOIX, POST_DANS_AUTO, VALIDITE_MS, chaineAuChargement, depart, lireMemoire, memoireValable, palierAuChargement, passesPermises, postVoulu, type Appareil, type MemoireQualite } from "../src/qualite";
+import { CHOIX_GRAPHISMES, NIVEAU_DU_CHOIX, POST_DANS_AUTO, VALIDITE_MS, chaineAuChargement, depart, lireMemoire, memoireValable, niveauALAccueil, niveauDeScene, palierAuChargement, passesPermises, postVoulu, type Appareil, type MemoireQualite } from "../src/qualite";
 import { DESCENDRE_MS, ECARTEES, FENETRE_COURSE_MS, INTERVALLES, MONTER_MS, MesureImages, SerieMesures, SurveillanceCourse, apresMesure, descenteCourse, frequenceEcran, mediane, memoireNeuve, seuils, verdict } from "../src/qualiteMesure";
 import { DEFAULT_SETTINGS, parseSettings } from "../src/settings";
 
@@ -231,5 +231,26 @@ describe("lot 50 : la règle surveille aussi la course ; le post-traitement dans
     expect(chaineAuChargement({ adresse: null, choix: "auto", ordinateur: true, memoire: m0, dansAuto: true })).toBe(true);
     expect(chaineAuChargement({ adresse: null, choix: "auto", ordinateur: true, memoire: { ...m0, palier: 2 }, dansAuto: true }), "Auto au palier 2").toBe(false);
     expect(chaineAuChargement({ adresse: null, choix: "auto", ordinateur: true, memoire: { ...m0, sansPost: true }, dansAuto: true }), "refusé par cet appareil").toBe(false);
+  });
+});
+
+describe("lot Q1 : le choix du joueur fait foi", () => {
+  it("Économie, Équilibrée et Maximale : le régulateur ne touche plus à la scène (niveau 2), quel que soit son niveau", () => {
+    for (const choix of ["economie", "equilibree", "maximale"] as const) for (const regulateur of [0, 1, 2] as const) expect(niveauDeScene(choix, regulateur), `${choix} ${regulateur}`).toBe(2);
+  });
+  it("Auto : le régulateur garde son rôle", () => {
+    for (const regulateur of [0, 1, 2] as const) expect(niveauDeScene("auto", regulateur)).toBe(regulateur);
+  });
+  it("`?quality=` fige la scène même avec un choix (essais)", () => {
+    expect(niveauDeScene("maximale", 0, true)).toBe(0);
+  });
+  it("à l'accueil : le plafond reste (1 sur ordinateur, 0 sur téléphone), sauf en Maximale", () => {
+    for (const choix of ["auto", "economie", "equilibree"] as const) {
+      expect(niveauALAccueil(2, choix, true)).toBe(0);
+      expect(niveauALAccueil(2, choix, false)).toBe(1);
+    }
+    expect(niveauALAccueil(2, "maximale", true)).toBe(2); // le décor est là sur téléphone : 20 images/s à l'accueil économisent déjà
+    expect(niveauALAccueil(2, "maximale", false)).toBe(2);
+    expect(niveauALAccueil(2, "maximale", true, true)).toBe(0); // `?quality=` : le plafond des essais
   });
 });
