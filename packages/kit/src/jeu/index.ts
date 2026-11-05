@@ -7,6 +7,7 @@ import { noterGeneration, brancherInterrupteur, messageALaDemande } from "../bra
 import { gameStorage } from "../stockage";
 import type { Donnees } from "./donnees";
 import { creerI18n, type I18n } from "./i18n";
+import { creerDessin, creerFond, habillerPage } from "./peau";
 import { baseDeLaPage, choisirJour, lireOptions, serieLocale, type OptionsUrl } from "./session";
 import type { ClassementJeu } from "./source";
 import type { DefinitionJeu, FicheClient, OptionsBrancher } from "./types";
@@ -43,6 +44,7 @@ export async function brancherJeu<C>(fiche: FicheClient, def: DefinitionJeu<C>, 
   await i18n.charger();
   document.documentElement.lang = i18n.langue;
   document.title = i18n.t("page.titre");
+  habillerPage(fiche.id, def.peau); // lot « écrans du kit » : la peau du jeu (étiquette de la fiche, accent)
   void accueil(fiche, def, o, options, i18n);
   return { i18n, options };
 }
@@ -80,7 +82,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
     "div",
     { classe: "jeu-tuiles" },
     el("div", { classe: "jeu-tuile" }, el("span", { classe: "jeu-tuile__legende", texte: t("kit.accueil.record") }), recordValeur, recordSous),
-    el("div", { classe: "jeu-tuile" }, el("span", { classe: "jeu-tuile__legende", texte: t("kit.accueil.serie") }), serieValeur),
+    el("div", { classe: "jeu-tuile jeu-tuile--serie" }, el("span", { classe: "jeu-tuile__legende", texte: t("kit.accueil.serie") }), serieValeur),
   );
   const jouer = bouton({ texte: t("kit.accueil.jouer"), variante: "marque" }) as HTMLButtonElement;
   jouer.id = IDS.jouer;
@@ -110,10 +112,19 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
     barre: () => barreJeu(communs(i18n), { href: "../", jour, ...(tour >= 1 ? { numero: tour } : {}), pleinEcran: true }),
     aria: () => t("kit.accueil.aria"),
   });
-  cadre.corps.append(hoteMessage, etiquette, replique, tuiles, ...(noteArchive ? [noteArchive] : []), jouer, attente, el("div", { classe: "jeu-secondaires" }, aide, reglages), classementTitre, classementMessage, classementListe, toutLeClassement, el("div", { classe: "jeu-pied" }, el("span", {}, `${t("kit.accueil.prochaine")} `, decompte), profil));
+  // Lot « écrans du kit » — l'accueil sur le modèle de celui de Tower : en haut, à gauche le titre (et l'illustration du jeu), la réplique, le record et la série, à droite le classement du jour, le décompte et le profil ; en bas,
+  // sur toute la largeur de la carte, JOUER et les boutons. Une seule colonne sous 700 px de large (JOUER avant le classement). Le décor du thème du jour est derrière, sous le voile à rayures ; il reste derrière les écrans que l'accueil ouvre.
+  const dessin = creerDessin(def.peau);
+  const gauche = el("div", { classe: "jeu-accueil__gauche" }, hoteMessage, el("div", { classe: "jeu-accueil__tete" }, etiquette, dessin), replique, tuiles, ...(noteArchive ? [noteArchive] : []));
+  const bas = el("div", { classe: "jeu-accueil__bas" }, jouer, attente, el("div", { classe: "jeu-secondaires" }, aide, reglages));
+  const panneau = el("section", { classe: "jeu-tuile jeu-accueil__classement", attrs: { "aria-label": t("kit.accueil.classement") } }, classementTitre, classementMessage, classementListe, toutLeClassement);
+  const droite = el("div", { classe: "jeu-accueil__droite" }, panneau, el("div", { classe: "jeu-pied" }, el("span", {}, `${t("kit.accueil.prochaine")} `, decompte), profil));
+  cadre.corps.classList.add("jeu-accueil");
+  cadre.corps.append(gauche, bas, droite);
   cadre.pied.append(suite);
   cadre.racine.hidden = false;
-  o.racine.append(cadre.racine);
+  const fond = creerFond(def.peau, theme);
+  o.racine.append(fond, cadre.racine);
   document.documentElement.dataset.ready = "true";
   void import("@cdj/ui/src/liensCommunauteJeu").then((m) => cadre.racine.append(m.liensCommunaute()));
 
@@ -204,8 +215,13 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   // --- « Comment jouer » : une fois au premier lancement, puis à la demande ; Réglages ; le classement en dialogue (modules à la demande) ---
   const ctx = () => ({ fiche, def, o, options, i18n, donnees: donnees!, jour, date, theme, archive: choix.archive, essai, musique });
   let aideMontee: Awaited<ReturnType<typeof import("./aide")["monterAide"]>> | null = null;
-  const ouvrirAide = async (): Promise<void> => {
+  // Lot « écrans du kit » : la feuille de ces écrans est celle du morceau de la partie (préchargé dès l'accueil) : on l'attend avant de les ouvrir.
+  const feuilles = async (): Promise<void> => {
     await prets;
+    await ctxPartie.catch(() => undefined);
+  };
+  const ouvrirAide = async (): Promise<void> => {
+    await feuilles();
     const m = await import("./aide");
     aideMontee ??= m.monterAide(ctx());
     aideMontee.ouvrir();
@@ -217,14 +233,14 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   });
   let reglagesMontes: Awaited<ReturnType<typeof import("./reglages")["monterReglages"]>> | null = null;
   reglages.addEventListener("click", async () => {
-    await prets;
+    await feuilles();
     const m = await import("./reglages");
     reglagesMontes ??= m.monterReglages(ctx());
     reglagesMontes.ouvrir();
   });
   let dialogue: Awaited<ReturnType<typeof import("./classement")["monterClassement"]>> | null = null;
   toutLeClassement.addEventListener("click", async () => {
-    await prets;
+    await feuilles();
     const m = await import("./classement");
     dialogue ??= m.monterClassement(ctx(), () => idJoueur());
     dialogue.ouvrir(classement);
@@ -244,6 +260,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
       clearInterval(minuteur);
       message?.montrer(null);
       cadre.racine.remove();
+      fond.remove();
       await partie.demarrerPartie({ ...ctx(), contenu, classementConnu: classement?.me != null, retour: () => location.reload() });
     } catch {
       clearTimeout(lent);

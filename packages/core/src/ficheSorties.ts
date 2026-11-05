@@ -63,7 +63,7 @@ function cssUi(fiches: readonly FicheJeu[]): string {
 }
 `;
   const parJeu = g
-    .map((f) => `.jeu-etiquette--${f.id} {\n  --jeu-fond: ${f.etiquette.fond};\n  --jeu-police: ${f.etiquette.police};\n}\n.dj-cartouche--${f.id} {\n  background: ${f.etiquette.coque};\n}\n`)
+    .map((f) => `.jeu-etiquette--${f.id} {\n  --jeu-fond: ${f.etiquette.fond};\n  --jeu-coque: ${f.etiquette.coque};\n  --jeu-police: ${f.etiquette.police};\n}\n.dj-cartouche--${f.id} {\n  background: ${f.etiquette.coque};\n}\n`)
     .join("");
   return ENTETE_CSS("ui") + structure + parJeu;
 }

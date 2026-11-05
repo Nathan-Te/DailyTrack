@@ -124,6 +124,22 @@ export interface DefinitionJeu<C> {
   effets?: boolean;
   /** Lot B1 — le jeu fait vibrer l'appareil (`OptionsPartie.vibrer`) : le réglage « Vibration » (oui / non) apparaît dans ses Réglages. Absente : `false`. */
   vibration?: boolean;
+  /** Lot « écrans du kit » — la peau du jeu (illustration du titre, décor du thème, accent des boutons) : voir `PeauJeu`. Absente : la peau tirée de la fiche. */
+  peau?: PeauJeu;
+}
+
+/**
+ * Lot « écrans du kit » — **la peau du jeu** : ce que le jeu ajoute, s'il le veut, à l'habillage que le kit tire de sa fiche. **Tout est facultatif** : sans rien, les écrans ont déjà la teinte et la coque de l'étiquette de
+ * la fiche, sa police, le décor du thème en aplats de ces deux couleurs et des boutons à l'accent de l'étiquette. Les couleurs sont des `#RRGGBB` (tout le reste est refusé : une couleur de la définition ne vient jamais
+ * d'une donnée) ; **le kit les pose en variables CSS, le jeu ne touche à aucune feuille des écrans**.
+ */
+export interface PeauJeu {
+  /** L'illustration du jeu, posée à droite du titre de l'accueil (un dessin décoratif, de l'ordre de 90 × 70 : `<svg>` aux traits de la charte, jamais d'image externe). Rien : pas d'illustration. */
+  dessin?(): SVGElement;
+  /** Le décor de scène du thème du jour, derrière les écrans de l'accueil (deux aplats : le ciel et le sol). Rien : la couleur et la coque de l'étiquette de la fiche. */
+  fond?(theme: string): { ciel: string; sol: string };
+  /** La couleur des boutons principaux, des pastilles actives et des tuiles inversées. Rien : la couleur de l'étiquette de la fiche. */
+  accent?: string;
 }
 
 export interface CataloguesJeu {

@@ -82,6 +82,7 @@
   --dj-ombre-logo: 3px 3px 0 var(--dj-terre);
   --dj-ombre-bouton: 2px 2px 0 var(--dj-encre);
   --dj-ombre-afficheur: inset 0 3px 0 var(--dj-ecran-ombre), inset 0 -2px 0 var(--dj-ecran-reflet);
+  --dj-ombre-titre: 4px 4px 0 var(--dj-papier);
   --track-epaisseur-courir: 0 4px 0 var(--track-livree-ombre);
   --jump-epaisseur-jouer: 0 5px 0 var(--dj-terre);
   --jump-ombre-titre: 4px 4px 0 var(--dj-papier);

@@ -175,7 +175,7 @@ describe("le bandeau « Aperçu » réserve sa place à la scène (lot « manque
     const racine = join(__dirname, "../../..");
     expect(readFileSync(join(racine, "packages/ui/src/interrupteur.ts"), "utf8")).toContain('classList.add("dj-avec-apercu")');
     expect(readFileSync(join(racine, "packages/ui/src/interrupteur.css"), "utf8")).toMatch(/html\.dj-avec-apercu \{\s*--dj-apercu-reserve: \d+px;/);
-    expect(readFileSync(join(racine, "packages/kit/src/jeu/jeu.css"), "utf8")).toMatch(/\.jeu-scene \{\s*padding-top: var\(--dj-apercu-reserve, 0px\);/);
+    expect(readFileSync(join(racine, "packages/kit/src/jeu/ecrans.css"), "utf8")).toMatch(/\.jeu-scene \{\s*padding-top: var\(--dj-apercu-reserve, 0px\);/);
   });
 });
 

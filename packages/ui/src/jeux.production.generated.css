@@ -33,6 +33,7 @@
 }
 .jeu-etiquette--blocks {
   --jeu-fond: #B8D8F4;
+  --jeu-coque: #1F4E79;
   --jeu-police: "Rubik Mono One", "Archivo", sans-serif;
 }
 .dj-cartouche--blocks {
@@ -40,6 +41,7 @@
 }
 .jeu-etiquette--rush {
   --jeu-fond: #D9C4F0;
+  --jeu-coque: #4B2E83;
   --jeu-police: "Rubik Mono One", "Archivo", sans-serif;
 }
 .dj-cartouche--rush {
