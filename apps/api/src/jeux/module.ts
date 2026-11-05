@@ -381,6 +381,19 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     return contrat.fantome!.lire(await getNiveau(day), day);
   }
 
+  // --- La rediffusion du n° 1 du jour (lot « manques de Blocks ») ----------------------------------------------------------------------
+  /** Le premier du classement et sa rediffusion. Jour ouvert : 403 `not_ranked` pour qui n'est pas classé (on le débloque en finissant, comme le fantôme) ; 404 `no_ghost` si personne n'est classé. */
+  async function premier(day: number, id: string | null): Promise<unknown> {
+    if (isOpen(day)) {
+      if (!id) throw new HttpError(400, "invalid_player", "Identifiant de joueur attendu");
+      await players.assertActive(id);
+      if (!(await db.first(sql.classe, [day, id]))) throw new HttpError(403, "not_ranked", "La partie du premier se débloque quand tu es classé ce jour-là");
+    }
+    const ligne = await db.first<LigneBrute>(sql.premier, [day]);
+    if (!ligne) throw new HttpError(404, "no_ghost", "Personne n'est encore classé ce jour-là");
+    return { date: formatDay(day), name: ligne.name, replay: ligne.replay, simVersion: ligne.sim_version, generatorVersion: ligne.generator_version, mine: id !== null && ligne.player_id === id };
+  }
+
   // --- Le profil --------------------------------------------------------------------------------------------------------------------------
   async function myProfile(id: string, info: RequestInfo): Promise<unknown> {
     await platform.readHitAddress(info, debit.profilAdresse, config.lecturesParAdresse);
@@ -403,7 +416,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
 
   // --- Les routes -----------------------------------------------------------------------------------------------------------------------
   const echapper = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
-  const cheminJour = new RegExp(`^${echapper(prefixe)}/day/([^/]+)(/board${contrat.fantome ? `|/${echapper(contrat.fantome.route)}` : ""})?$`);
+  const cheminJour = new RegExp(`^${echapper(prefixe)}/day/([^/]+)(/board${contrat.fantome ? `|/${echapper(contrat.fantome.route)}` : ""}${contrat.premier ? "|/first" : ""})?$`);
 
   /** Les outils que le module prête aux routes propres et aux extensions du jeu. */
   const outils: OutilsModule<Niveau> = { niveau: getNiveau, dayOf, ouvert: isOpen, limiterLectures: limitReads, joueurEntete: headerPlayer, classement: board, rang: rankOf, classes: participants };
@@ -437,6 +450,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
         const day = dayOf(date);
         const open = isOpen(day);
         if (m[2] === "/board") return new WithHeaders(await board(day, headerPlayer(req, false)), cacheHeaders({ open, perPlayer: true }));
+        if (m[2] === "/first") return new WithHeaders(await premier(day, headerPlayer(req, false)), cacheHeaders({ open, perPlayer: true }));
         if (m[2] !== undefined) return new WithHeaders(await fantome(day, headerPlayer(req, true)!), cacheHeaders({ open, perPlayer: true }));
         return new WithHeaders(await getInfo(day), cacheHeaders({ open, perPlayer: false }));
       }

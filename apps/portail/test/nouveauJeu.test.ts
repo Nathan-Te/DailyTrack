@@ -86,6 +86,12 @@ describe("le plan à blanc, sur le dépôt réel", () => {
       expect(hors).toEqual([]);
       expect(plan.editions.map((e: { chemin: string }) => e.chemin).sort()).toEqual([...ENTREES_MECANIQUES].sort());
       for (const e of plan.editions) expect(e.apres.length, e.chemin).toBeGreaterThan(e.avant.length);
+      // Lot « manques de Blocks » : la carte du dépôt du CLAUDE.md racine gagne la ligne du jeu (avant celle du témoin), d'office.
+      const carte = (plan.editions.find((e: { chemin: string }) => e.chemin === "CLAUDE.md").apres as string).split("\n");
+      const ligne = carte.findIndex((l) => l.startsWith("| `packages/banctest-sim` · `apps/banctest`"));
+      expect(ligne).toBeGreaterThan(0);
+      expect(carte[ligne]).toContain("| Banctest |");
+      expect(carte[ligne + 1]).toMatch(/^\| `packages\/cibles-sim`/);
       const variante = plan.creations.find((f: { chemin: string }) => f.chemin.endsWith("src/variante.ts")).contenu as string;
       expect(variante).toContain(`export const VARIANTE_NOM: NomVariante = "${classement}";`);
       // Le texte visible ne garde rien de « Cibles » : nom, phrases, aide « à remplacer ».

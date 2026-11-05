@@ -28,6 +28,9 @@ export interface Seuils {
   bronze: number;
 }
 
+/** Un traducteur : une clé du catalogue du jeu (celui du kit y est réuni) et ses paramètres. */
+export type Traduire = (cle: string, params?: Readonly<Record<string, string | number>>) => string;
+
 export interface OptionsPartie {
   theme: string;
   /** `prefers-reduced-motion` ou le réglage du joueur. */
@@ -39,12 +42,17 @@ export interface OptionsPartie {
   fantome: string | null;
   /** Lot B1 (retours de Blocks) — la langue du joueur et le traducteur de la partie : un jeu qui écrit un texte en scène (« +120 », « Plus de place ! ») le prend ici, dans son catalogue (celui du jeu et celui du kit, réunis). */
   langue: "fr" | "en";
-  t(cle: string, params?: Readonly<Record<string, string | number>>): string;
+  t: Traduire;
   /**
    * Lot B1 — une vibration (téléphone), **respectant le réglage « Vibration » du joueur** (lu à chaque appel : un réglage changé en pause vaut tout de suite). Ne fait rien sans réglage « oui », sans `navigator.vibrate` (iPhone) ni sur un appareil sans écran tactile.
    * Le jeu qui s'en sert déclare `vibration: true` dans sa définition (le réglage n'apparaît dans les Réglages que pour lui). Un motif est une durée en ms, ou une suite durée / pause.
    */
   vibrer(motif: number | readonly number[]): void;
+  /**
+   * Lot « manques de Blocks » — le volume des **effets sonores** du joueur, de 0 à 1, **séparé de la musique** (réglage « Volume des effets », `<id>:reglages`, 100 par défaut) ; lu à chaque appel : un réglage changé en pause vaut tout de suite.
+   * Le jeu qui a des effets sonores le multiplie à son propre gain et déclare `effets: true` dans sa définition (le réglage n'apparaît dans les Réglages que pour lui).
+   */
+  volumeEffets(): number;
 }
 
 /** Une partie en cours, côté jeu : son état, son rendu et ses entrées de scène. Le kit en tient la boucle, le HUD, la pause et la fin. */
@@ -76,17 +84,22 @@ export interface DefinitionJeu<C> {
   /** Le numéro de la partie d'un jour (≤ 0 avant le premier jour). */
   numero(jour: number): number;
   /** Le contenu d'un jour : son fichier figé s'il existe, sinon le générateur. */
-  contenuDuJour(jour: number, base: string): Promise<C>;
+  contenuDuJour(jour: number, base: string, theme: string): Promise<C>;
   seuils(contenu: C): Seuils;
   medaille(score: readonly number[], seuils: Seuils): CodeMedaille | null;
   /** Une partie neuve, dessinée dans `hote`. */
   nouvellePartie(contenu: C, hote: HTMLElement, o: OptionsPartie): PartieDuJeu;
-  /** La rediffusion du Diamant (la partie de l'auteur), montrée par le fantôme « Diamant ». */
+  /** La rediffusion du Diamant (la partie de l'auteur), montrée par le fantôme « Diamant ». Jamais appelée par un jeu `sansFantome`. */
   rediffusionDiamant(contenu: C): string;
-  /** Un score écrit pour un joueur (`17 / 20`). */
-  formatScore(score: readonly number[], langue: "fr" | "en"): string;
+  /** Un score écrit pour un joueur (`17 / 20`). `t` (lot « manques de Blocks ») : le traducteur de la langue en cours, pour un jeu dont le score s'écrit par son catalogue. */
+  formatScore(score: readonly number[], langue: "fr" | "en", t: Traduire): string;
   /** Un score écrit pour la ligne à partager (court). */
-  scorePartage(score: readonly number[], langue: "fr" | "en"): string;
+  scorePartage(score: readonly number[], langue: "fr" | "en", t: Traduire): string;
+  /**
+   * Lot « manques de Blocks » — ce que la ligne à partager ajoute **après la médaille** (`combo ×7`), dans l'ordre : `Du Jour · Blocks #5 — 4 582 pts — 🥈 — combo ×7 — 3e/128`. Passé aux `extras` de `ligneParDefaut` ; une chaîne vide est ignorée.
+   * Absent : rien. Le gabarit, les séparateurs et les émojis restent ceux du kit.
+   */
+  extrasPartage?(score: readonly number[], langue: "fr" | "en", t: Traduire): string[];
   /** Les « points » de l'aide « Comment jouer » (clés du catalogue du jeu), dans l'ordre. */
   aide: readonly string[];
   /**
@@ -97,6 +110,13 @@ export interface DefinitionJeu<C> {
   classable?(adresse: string): boolean;
   /** Lot B1 — **un jeu sans médaille** : l'écran de fin n'affiche ni la liste des médailles ni « encore … », `seuils` et `medaille` ne sont pas appelées et le record garde `medaille: null`. Absente : `false`. */
   sansMedaille?: boolean;
+  /**
+   * Lot « manques de Blocks » — **un jeu sans fantôme** : ni bouton fantôme au HUD, ni ligne « Fantôme au départ » des Réglages, ni commande « Fantôme » (touche G, manette) ; `rediffusionDiamant` n'est pas appelée et
+   * `PartieDuJeu.fantome` non plus. Absente : `false`.
+   */
+  sansFantome?: boolean;
+  /** Lot « manques de Blocks » — le jeu joue des effets sonores (`OptionsPartie.volumeEffets`) : le réglage « Volume des effets » apparaît dans ses Réglages. Absente : `false`. */
+  effets?: boolean;
   /** Lot B1 — le jeu fait vibrer l'appareil (`OptionsPartie.vibrer`) : le réglage « Vibration » (oui / non) apparaît dans ses Réglages. Absente : `false`. */
   vibration?: boolean;
 }

@@ -1,10 +1,18 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatDay } from "@cdj/core";
-import { BLOCKS_GENERATOR_VERSION, dailyBlocks, empreinteContenu, lireJourFige } from "@cdj/blocks-sim";
+import { BLOCKS_GENERATOR_VERSION, dailyBlocks, empreinteContenu, lireJourFige, type Contenu } from "@cdj/blocks-sim";
+import { seuilsDuJour } from "@cdj/blocks-sim/diamant";
 import { sha, type EmpreinteJour } from "./empreintes";
 
 // L'empreinte de ce que « Blocks » SERT pour un jour (module de sa fiche, `jours.fabrication.empreinte` ; lot K4b) : le fichier du jour s'il se relit et se régénère à l'identique, sinon le générateur courant.
+// **Elle couvre les seuils des médailles** (le Diamant, partie du bot, et l'or, l'argent, le bronze) : ceux du fichier pour un jour figé, ceux du bot du code pour un jour généré. Un changement du bot qui
+// changerait les seuils d'un jour protégé sans fichier arrête donc la mise en production (règle « un jour figé fige ses seuils », `CLAUDE.md` racine).
+const textesDesSeuils = (c: Contenu): string => {
+  const s = seuilsDuJour(c);
+  return `${s.bronze},${s.silver},${s.gold},${s.author}`;
+};
+
 export function empreinteJour(day: number, dossier: string | null): EmpreinteJour {
   const date = formatDay(day);
   const fichier = dossier ? join(dossier, `${date}.json`) : null;
@@ -13,7 +21,7 @@ export function empreinteJour(day: number, dossier: string | null): EmpreinteJou
       const c = lireJourFige(JSON.parse(readFileSync(fichier, "utf8")) as unknown);
       if (c) {
         const id = `blocks-${date}-g${c.g}`;
-        return { id, h: sha([id, empreinteContenu(c), "fige"]), ok: true };
+        return { id, h: sha([id, empreinteContenu(c), textesDesSeuils(c), "fige"]), ok: true };
       }
     } catch {
       /* un fichier illisible n'est pas servi : le jour est généré */
@@ -21,5 +29,5 @@ export function empreinteJour(day: number, dossier: string | null): EmpreinteJou
   }
   const c = dailyBlocks(day, BLOCKS_GENERATOR_VERSION);
   const id = `blocks-${date}-g${c.g}`;
-  return { id, h: sha([id, empreinteContenu(c), "genere"]), ok: true };
+  return { id, h: sha([id, empreinteContenu(c), textesDesSeuils(c), "genere"]), ok: true };
 }

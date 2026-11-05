@@ -51,7 +51,7 @@ describe("« Cibles » : le client suit sa fiche", () => {
     expect(DEFINITION.medaille(VARIANTE.score(partieDuBot(c)), s)).toBe("author");
     expect(DEFINITION.medaille(VARIANTE.score({ touches: 0, dernier: 900 }), s)).toBeNull();
     const exemple = VARIANTE.score({ touches: 17, dernier: 300 });
-    expect(DEFINITION.formatScore(exemple, "fr")).toBe(VARIANTE.formatScore(exemple, "fr"));
-    expect(DEFINITION.scorePartage(exemple, "en")).toBe(VARIANTE.scorePartage(exemple, "en"));
+    expect(DEFINITION.formatScore(exemple, "fr", (cle) => cle)).toBe(VARIANTE.formatScore(exemple, "fr"));
+    expect(DEFINITION.scorePartage(exemple, "en", (cle) => cle)).toBe(VARIANTE.scorePartage(exemple, "en"));
   });
 });

@@ -312,3 +312,24 @@ body {
 .cadre[hidden] {
   display: none;
 }
+
+/* Lot « manques de Blocks » : le curseur « Volume des effets » des Réglages (un jeu qui joue des effets), sur la ligne des autres réglages. */
+.jeu-reglages__curseur {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  accent-color: var(--dj-encre);
+}
+.jeu-reglages__valeur {
+  min-width: 4ch;
+  text-align: right;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+}
+
+/* Lot « manques de Blocks » : sur un aperçu (clé d'aperçu ou PR), le bandeau « Aperçu » est fixé en haut de la page (`@cdj/ui`, `.dj-apercu`). La scène lui RÉSERVE sa place (`--dj-apercu-reserve`, posée par la classe
+   `dj-avec-apercu` de la page) au lieu de passer dessous : le HUD, les plaques et les boutons ne sont plus recouverts, en portrait comme en paysage. Hors aperçu la variable n'existe pas : rien ne change. */
+.jeu-scene {
+  padding-top: var(--dj-apercu-reserve, 0px);
+  box-sizing: border-box;
+}

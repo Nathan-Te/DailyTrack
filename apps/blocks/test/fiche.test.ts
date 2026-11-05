@@ -4,6 +4,8 @@ import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, dailyBlocks, medailleDe, 
 import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_BLOCKS } from "../src/catalogue";
+import { CATALOGUE_EN } from "../src/catalogue.en";
+import { CATALOGUE_FR } from "../src/catalogue.fr";
 import { DEFINITION } from "../src/definition";
 import { FICHE } from "../src/fiche";
 
@@ -47,7 +49,7 @@ describe("« Blocks » : le client suit sa fiche", () => {
     expect(DEFINITION.numero(J)).toBe(numeroBlocks(J));
     expect(DEFINITION.numero(J)).toBe(4);
     expect(DEFINITION.themeDuJour(J)).toBe(themeDuJour(J));
-    const c = await DEFINITION.contenuDuJour(J, "http://localhost/blocks/"); // charge le corps du jeu (palette, bot), comme l'accueil
+    const c = await DEFINITION.contenuDuJour(J, "http://localhost/blocks/", DEFINITION.themeDuJour(J)); // charge le corps du jeu (palette, bot), comme l'accueil
     expect(c.suite).toEqual(dailyBlocks(J).suite);
     const s = DEFINITION.seuils(c);
     expect(s).toEqual(seuilsDe(c)); // les seuils du serveur : le Diamant est la partie du bot
@@ -59,9 +61,13 @@ describe("« Blocks » : le client suit sa fiche", () => {
     expect(DEFINITION.classable!("?theme=nuit")).toBe(true); // un thème forcé ne change rien à la partie
     expect(DEFINITION.classable!("?scenario=fantome")).toBe(true); // lot B5 : l'essai du fantôme n'existe plus, ce n'est qu'une partie ordinaire
     expect(DEFINITION.classable!("?scenario=partage")).toBe(false); // lot B4 : l'essai du partage n'est jamais classé
-    // Sans traducteur (Node) : le français du catalogue, « 4 582 pts » (le nombre au format de la langue est celui de `remplir`).
-    expect(DEFINITION.formatScore([120, 3], "fr")).toBe("120 pts");
-    expect(DEFINITION.scorePartage([120, 3], "en")).toBe("120 pts — combo ×3"); // lot B4 : la ligne à partager porte le combo maximal (seed § 5) ; avant, elle ne portait que le score
+    // Le traducteur est celui que le kit donne (lot « manques de Blocks ») : ici le catalogue de la langue.
+    const t = (cat: Readonly<Record<string, string>>) => (cle: string, params?: Readonly<Record<string, string | number>>) => (cat[cle] ?? cle).replace(/\{(\w+)\}/g, (tout, nom: string) => (params?.[nom] === undefined ? tout : String(params[nom])));
+    expect(DEFINITION.formatScore([120, 3], "fr", t(CATALOGUE_FR))).toBe("120 pts");
+    expect(DEFINITION.scorePartage([120, 3], "en", t(CATALOGUE_EN))).toBe("120 pts"); // le combo maximal est un extra, après la médaille (seed § 5)
+    expect(DEFINITION.extrasPartage!([120, 3], "en", t(CATALOGUE_EN))).toEqual(["combo ×3"]);
+    expect(DEFINITION.extrasPartage!([120, 0], "en", t(CATALOGUE_EN))).toEqual([""]); // sans combo : rien (le kit ignore la chaîne vide)
+    expect(DEFINITION.sansFantome).toBe(true);
     vi.unstubAllGlobals();
   });
 });

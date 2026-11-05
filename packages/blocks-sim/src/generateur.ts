@@ -1,5 +1,6 @@
 import { BLOCKS_GENERATOR_VERSION, PLAFOND_PIECES, RAMPE_PAR_DEFAUT, type Rampe } from "./constantes";
 import { type Grille } from "./grille";
+import type { Seuils } from "./medailles";
 import { genererSuite, graineDuJour } from "./suite";
 
 // Le contenu du jour : la suite des pièces (ids du catalogue), `PLAFOND_PIECES` rangs. **Pure** : la graine vient du numéro de jour civil, jamais d'une horloge.
@@ -18,6 +19,8 @@ export interface Contenu {
   scenario?: string;
   /** La rampe, quand elle n'est pas celle du jeu : le contenu est alors « réglé » et ne se classe pas. */
   rampe?: Rampe;
+  /** Les seuils des médailles **figés avec le jour** (fichier de jour, format 2) : quand ils sont là, ils font foi et le bot n'est pas appelé — un changement du bot ne change jamais un jour figé. */
+  seuilsFiges?: Seuils;
 }
 
 export class ErreurGenerateur extends Error {

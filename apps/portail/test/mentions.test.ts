@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SALON_SESSION_MS } from "@cdj/sim";
@@ -275,6 +275,44 @@ describe("lot I6 : les mentions en anglais (/legal/), traduction fidèle de la p
     expect(readFileSync(join(ROOT, "apps/jump/src/pauseMenu.ts"), "utf8")).toMatch(/lierMentions\(lier\(el\("a", \{ classe: "pause__lien", attrs: \{ id: "menu-mentions"/);
     expect(readFileSync(join(ROOT, "apps/jump/src/settingsUi.ts"), "utf8")).toMatch(/lierMentions\(lienFleche\("settings-mentions"/);
     for (const f of ["apps/web/src/i18n.ts", "apps/jump/src/i18n.ts"]) expect(readFileSync(join(ROOT, f), "utf8"), f).toContain('querySelectorAll<HTMLElement>("[data-mentions]")) e.setAttribute("href", cheminMentions(langue, "../"))');
+  });
+});
+
+// Lot « manques de Blocks » : les clés du navigateur d'un jeu construit sur le kit (`brancherJeu`) sont nommées dans les DEUX pages dès qu'il est dans le dépôt et n'est pas un jeu témoin. Les suffixes sont lus dans
+// le source du kit (une clé ajoutée au kit sans la page échoue ici) ; la liste des jeux est celle des fiches du dépôt (pas celle d'un jeu fictif d'essai) : un jeu neuf (`npm run nouveau-jeu`) échoue ici tant que
+// ses clés ne sont pas décrites, au lieu d'être découvert au dernier lot (règle de fidélité du lot R5).
+describe("lot « manques de Blocks » : les clés des jeux du kit sont décrites (fr et en)", () => {
+  const { lireFichesBrutes } = require(join(ROOT, "scripts/fiches-brutes.mjs")) as typeof import("../../../scripts/fiches-brutes.mjs");
+  const jeux = lireFichesBrutes(ROOT, {})
+    .map((f) => f.brut as { id: string; temoin?: boolean; donnees: { stockage: { prefixe: string } } })
+    .filter((f) => !f.temoin);
+  const duKit = jeux.filter((j) => existsSync(join(ROOT, "apps", j.id, "src/main.ts")) && /brancherJeu/.test(readFileSync(join(ROOT, "apps", j.id, "src/main.ts"), "utf8")));
+  /** Les suffixes de clé que le kit écrit sous le préfixe d'un jeu (`${…prefixe}records`, `…reglages`, `…aide:vu`, `…identite:vue`). */
+  const suffixes = (): string[] => {
+    const out = new Set<string>();
+    for (const f of ["donnees.ts", "reglagesJoueur.ts", "aide.ts", "index.ts"]) {
+      for (const m of readFileSync(join(ROOT, "packages/kit/src/jeu", f), "utf8").matchAll(/\$\{[\w.]*prefixe\}([a-z:]+)/g)) out.add(m[1]);
+    }
+    return [...out].sort();
+  };
+
+  it("le kit écrit quatre clés sous le préfixe d'un jeu (si ce nombre change, la page change)", () => {
+    expect(suffixes()).toEqual(["aide:vu", "identite:vue", "records", "reglages"]);
+  });
+
+  it("chaque jeu du dépôt (hors témoin) nomme sa famille de clés, et chaque jeu du kit ses quatre clés, dans les deux pages", () => {
+    expect(jeux.length).toBeGreaterThan(0);
+    for (const j of jeux) for (const page of [PAGE, PAGE_EN]) expect(page, `${j.id} : ${j.donnees.stockage.prefixe}…`).toContain(`<code>${j.donnees.stockage.prefixe}…</code>`);
+    expect(duKit.map((j) => j.id)).toContain("blocks");
+    for (const j of duKit) {
+      for (const s of suffixes()) for (const page of [PAGE, PAGE_EN]) expect(page, `${j.id} : ${j.donnees.stockage.prefixe}${s}`).toContain(`<code>${j.donnees.stockage.prefixe}${s}</code>`);
+      // La clé d'aperçu de l'appareil et celle des commandes : la forme générique est nommée (`<jeu>`), l'exemple de Blocks aussi.
+    }
+    for (const [page, jeu] of [[PAGE, "&lt;jeu&gt;"], [PAGE_EN, "&lt;game&gt;"]] as const) {
+      expect(page).toContain(`<code>cdj:apercu:${jeu}</code>`);
+      expect(page).toContain(`<code>cdj:commandes:${jeu}</code>`);
+      expect(page).toContain("<code>cdj:apercu:blocks</code>");
+    }
   });
 });
 
