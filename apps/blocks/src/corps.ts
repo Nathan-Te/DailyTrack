@@ -5,7 +5,9 @@ import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
+import type { ThemeBlocks } from "@cdj/blocks-sim";
 import { chargerPalette, poserPalette } from "./couleurs";
+import { chargerDecorTheme, poserDecor } from "./decors/index";
 import { lireEssai } from "./essai";
 import { exempleDePartage } from "./exemple";
 import { nouvellePartieBlocks as scene } from "./scene";
@@ -15,16 +17,15 @@ import { themeAffiche } from "./themeAffiche";
 // la scène et les blocs communs. Il n'est pas dans le premier chargement (ligne de budget `blocks.jsCss`, préfixe `corps-` de `budget.aLaDemande` de la fiche).
 
 /**
- * Une partie : la scène, avec le bot Diamant si l'adresse le demande (`&bot`, essai local : jamais en production). Lot B4 — `?scenario=fantome` : la partie du bot est le fantôme dès la première pose ; `?scenario=partage` : la
+ * Une partie : la scène, avec le bot Diamant si l'adresse le demande (`&bot`, essai local : jamais en production). Lot B4 — `?scenario=partage` : la
  * partie finit tout de suite sur un résultat d'exemple. Deux essais locaux, jamais classés.
  */
 export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
   const essai = lireEssai(location.search, BUILD_RESTRICTED, parisDay(Date.now()));
-  const fantomeEssai = essai.mode === "fantome" ? rediffusionDuDiamant(contenu) : null;
-  return scene(contenu, hote, { ...o, fantome: o.fantome ?? fantomeEssai }, { bot: essai.bot, fantomeEssai, exemple: essai.mode === "partage" ? exempleDePartage(contenu, essai.exemple ?? "argent") : null });
+  return scene(contenu, hote, o, { bot: essai.bot, exemple: essai.mode === "partage" ? exempleDePartage(contenu, essai.exemple ?? "argent") : null });
 }
 
-/** La rediffusion de la partie du bot Diamant sur la suite du jour (une rediffusion valide, rejouée par `jouer`) : le fantôme « Diamant ». Gardée par suite du jour. */
+/** La rediffusion de la partie du bot Diamant sur la suite du jour (une rediffusion valide, rejouée par `jouer`) : la partie qu'on revoit (lot B5 : plus de fantôme). Gardée par suite du jour. */
 const diamantsGardes = new WeakMap<Contenu, string>();
 export function rediffusionDuDiamant(contenu: Contenu): string {
   let r = diamantsGardes.get(contenu);
@@ -40,7 +41,11 @@ const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? 
 
 /** Le contenu d'un jour : un scénario d'essai ou une rampe réglée si l'adresse le demande (jamais en production), sinon le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
 export async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
-  poserPalette(await chargerPalette(themeAffiche(jour))); // la palette du thème (celui du jour, ou `?theme=`) est prête avant la scène
+  const theme = themeAffiche(jour);
+  // La palette et le décor du thème (celui du jour, ou `?theme=`) sont prêts avant la scène ; un décor qui ne charge pas laisse le ciel en aplat.
+  const [palette, decor] = await Promise.all([chargerPalette(theme), chargerDecorTheme(theme as ThemeBlocks).catch(() => null)]);
+  poserPalette(palette);
+  poserDecor(decor);
   const contenu = await contenuSansPalette(jour, base);
   // Le Diamant (le bot joue la partie entière : quelques dizaines de millisecondes) se calcule pendant que l'accueil attend, jamais en pleine partie ; l'écran de fin le trouve prêt.
   const plusTard: (f: () => void) => void = typeof requestIdleCallback === "function" ? (f) => requestIdleCallback(f, { timeout: 3000 }) : (f) => void setTimeout(f, 300);

@@ -60,3 +60,45 @@
 .jeu-fin__score {
   font-size: min(var(--dj-taille-64), 11vw);
 }
+
+/* Lot B5 — PAS DE FANTÔME (seed § 5 : une grille en transparence est illisible). Le kit n'a pas d'option « sans fantôme » (manque décrit dans le README du lot B5) : on cache le moins mal possible ce qu'il montre —
+   le bouton du HUD, la ligne « Fantôme au départ » des Réglages et la ligne « Fantôme » de l'écran des commandes. La touche G existe encore côté kit, sans effet : la scène ne dessine aucun fantôme. */
+#jeu-hud-fantome,
+.jeu-reglages__ligne:has([data-setting="fantome"]),
+.dj-commande[data-action="fantome"] {
+  display: none;
+}
+
+/* Lot B5 — LES ÉCRANS à l'échelle des autres jeux. Le kit les fait de 460 px de large (`--cadre-largeur`), contre 760 px chez Jump et 940 px chez Track (1 160 px au grand écran) : sur un écran de PC l'accueil de Blocks n'était
+   qu'une petite carte perdue. Le jeu règle sa largeur (`cadre.css`) : 760 px dès 700 px de large (un téléphone en paysage compris, comme Jump), 940 px au grand écran. La feuille du kit passe avant celle-ci (même poids, la nôtre vient après). */
+:root {
+  --cadre-largeur: 460px;
+}
+@media (min-width: 700px) {
+  :root {
+    --cadre-largeur: 760px;
+  }
+}
+@media (min-width: 1700px) and (min-height: 900px) {
+  :root {
+    --cadre-largeur: 940px;
+  }
+}
+
+/* Le bouton JOUER prend toute la largeur de l'écran (comme chez Tower), et, sur un grand écran, les écrans du kit sont agrandis (`zoom` : textes, boutons et marges ensemble) pour rester lisibles à 1 920 et 2 560 px de large. */
+.jeu-jouer {
+  box-sizing: border-box;
+  width: 100%;
+}
+@media (min-width: 1700px) and (min-height: 900px) {
+  .cadre > .dj-barre-jeu,
+  .cadre__defile {
+    zoom: 1.25;
+  }
+}
+@media (min-width: 2200px) and (min-height: 1200px) {
+  .cadre > .dj-barre-jeu,
+  .cadre__defile {
+    zoom: 1.5;
+  }
+}

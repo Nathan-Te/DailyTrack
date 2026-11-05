@@ -6,14 +6,14 @@ import { centreDesYeux, Clignotement, decrirePiece, disposerYeux, ENCRE, express
 import { dessinerPiece, placer } from "@cdj/visuels/blocs/canvas";
 import { boitesDeCases, boitesDePiece, casesDe, type Case } from "./boites";
 import { type CouleursTheme, couleursDeTheme, paletteCourante } from "./couleurs";
-import { creerFantome, ecartFantome, type Fantome } from "./fantome";
+import { decorCourant } from "./decors/index";
 import { type Annonce, bosse, type CaseEffacee, DUREE_GAIN, eclater, etatAnnonce, etatGain, etatParticule, type GainFlottant, hasardAffichage, illumination, illuminationFinie, type Particule } from "./effets";
 import { lireEssai } from "./essai";
 import { musiqueDuKit } from "./kitSon";
-import { coteEnMain, coteEnSuivante, dans, disposer, type Disposition, type Rect } from "./miseEnPage";
+import { coteEnMain, coteEnSuivante, dans, disposer, type Disposition, type Rect, ETIQUETTE, metriquesPlaque, VALEUR_MIN } from "./miseEnPage";
 import { Sons, type SonJoue } from "./sons";
 import { type Evenement, niveauEffets } from "./sonsLogique";
-import { ecrireScore, formaterNombre, langueCourante, texte } from "./textes";
+import { ecrireScore, formaterNombre, texte } from "./textes";
 import { caseDesYeux, morceaux } from "./yeuxBlocks";
 
 // Le rendu et les entrées de « Blocks » (lots B1 et B2) : la grille de 8 × 8, la pièce du moment dans une grande zone de saisie, la pièce suivante petite (non saisissable), en Canvas 2D avec les blocs communs
@@ -23,7 +23,7 @@ import { caseDesYeux, morceaux } from "./yeuxBlocks";
 // Le geste (seed § 6, B2) : la pièce saisie grossit à la taille des cases et **reste sous le doigt, au point exact où on l'a touchée** (aucun décalage, souris comme doigt) ; une ombre hachurée est aimantée à la case la plus
 // proche ; les lignes et colonnes qui seraient effacées s'allument ; relâcher hors d'un endroit valide renvoie la pièce. Clavier et manette (M1, M2) : déplacer l'ombre case par case (`gauche` … `bas`), `poser`.
 // Les effets ne bloquent jamais la pose suivante : ils sont de l'affichage pur, animé à l'horloge de l'écran (60 images par seconde), jamais aux pas de la simulation.
-// Lot B3 : les couleurs viennent de la palette du thème du jour (module commun, `couleurs.ts`) et le bot Diamant peut jouer à la place du joueur (`&bot`, essai local). Lot B4 : le fantôme (`fantome.ts`, pur) est dessiné en transparence sous les blocs, à travers lequel on pose (rien ne prend les gestes). Aucune couleur écrite ici : le thème, ou les jetons de `@cdj/ui`.
+// Lot B3 : les couleurs viennent de la palette du thème du jour (module commun, `couleurs.ts`) et le bot Diamant peut jouer à la place du joueur (`&bot`, essai local). Lot B5 : la mise en page est refaite à l'échelle du PC et du téléphone (`miseEnPage.ts`), les décors des thèmes sont dessinés derrière la grille (`decors/`), le fantôme est retiré (seed § 5). Aucune couleur écrite ici : le thème, ou les jetons de `@cdj/ui`.
 
 /** Les actions de « Blocks » : l'ombre au clavier et à la manette, et `poser` ; `pose:<colonne>:<ligne>` pose directement (tests, outils). */
 export const ACTIONS_SCENE = ["gauche", "droite", "haut", "bas", "poser"] as const;
@@ -85,8 +85,6 @@ export interface PorteBlocks {
     suivante: Rect;
     score: Rect;
     combo: Rect;
-    /** Lot B4 — la plaque du fantôme (seulement quand il y en a un), sinon `null`. */
-    fantome: Rect | null;
     boutons: Rect;
     coteMain: number;
     centreMain: { x: number; y: number };
@@ -104,8 +102,10 @@ export interface PorteBlocks {
   etat(): { score: number; combo: number; comboMax: number; poses: number; sansEffacement: number; fin: string | null };
   /** Ce que le HUD dessine : le score écrit, le combo écrit (ou `null`), les carrés pleins (poses sans effacement encore permises), la couleur de la plaque du combo. */
   hud(): { score: string; combo: string | null; carres: number; moutarde: boolean };
-  /** Lot B4 — le fantôme au rang du joueur : son score, l'écart écrit (« +240 »), sa grille, et s'il est fini (sa partie s'est arrêtée) ; `null` sans fantôme. */
-  fantome(): { score: number; ecart: string; grille: string[]; fini: boolean; rang: number; poses: number } | null;
+  /** Lot B5 — les plus petites polices (px CSS) dessinées à la dernière image : les valeurs du HUD (jamais sous 18) et les étiquettes (plaques et zones, jamais sous 12). */
+  polices(): { valeur: number; etiquette: number };
+  /** Lot B5 — le décor du thème est-il posé derrière la grille ? */
+  decor(): boolean;
   /** Les effets vivants : cases en cours d'illumination, particules, annonces et gains affichés. */
   effets(): { effacees: number; fermees: number; particules: number; annonces: string[]; gains: string[] };
   /** Les yeux : le nombre de paires dessinées et où elles regardent (le premier œil : vecteur de norme ≤ 1). */
@@ -119,8 +119,6 @@ export interface OptionsScene {
   bot?: { vitesse: number } | null;
   /** Lot B4 — `?scenario=partage` : les poses du résultat d'exemple, appliquées d'emblée ; la partie est donnée pour finie une seconde après (l'écran de fin du kit s'ouvre tout de suite). Essai local, jamais classé. */
   exemple?: readonly number[] | null;
-  /** Lot B4 — `?scenario=fantome` : la rediffusion du fantôme d'essai. Le bouton du kit n'a pas d'état pour elle (il ne connaît que la meilleure partie et le Diamant, que l'essai ne débloque pas) : un « aucun » la cache, le suivant la remontre. */
-  fantomeEssai?: string | null;
 }
 
 export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: OptionsPartie, extra: OptionsScene = {}): PartieDuJeu {
@@ -128,6 +126,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   const actions: number[] = [];
   const theme = couleursDeTheme(paletteCourante()); // la palette du jour, posée par `corps.ts` avant la scène
   const couleurs = palette(theme);
+  const decor = decorCourant(); // le décor du thème (derrière la grille), posé par `corps.ts` ; absent : le ciel en aplat
   const couleurDeFamille = (f: Piece["famille"]): string => theme.familles[f];
   const COULEUR_DEPART = theme.depart;
   const canvas = document.createElement("canvas");
@@ -190,10 +189,6 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   let dernierRegard: { x: number; y: number } | null = null;
   let nbPaires = 0;
 
-  // --- Le fantôme (lot B4) : une autre partie du même jour, rejouée, qu'on montre au même rang de pièce ---
-  let fantome: Fantome | null = creerFantome(contenu, o.fantome);
-  let essaiCache = false;
-
   // --- La mise en page ---
   let mep: Disposition = disposer(1, 1);
   let largeur = 1;
@@ -216,7 +211,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     canvas.style.height = `${hauteur}px`;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     decalageBord = { x: gauche, y: haut };
-    mep = disposer(w, h, fantome !== null);
+    mep = disposer(w, h);
+    decor?.dimensionner(largeur, hauteur, dpr);
   };
   const observateur = new ResizeObserver(redimensionner);
   observateur.observe(hote);
@@ -392,6 +388,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   canvas.addEventListener("pointercancel", () => relacher(false));
 
   // --- Le dessin ---
+  let policesVues = { valeur: Infinity, etiquette: Infinity };
   const police = (px: number): string => `700 ${Math.round(px)}px ${couleurs.famille}`;
   const policeTexte = (px: number): string => `700 ${Math.round(px)}px ${couleurs.texteFamille}`;
   const hachures = (couleur: string, fond: string): CanvasPattern | null => {
@@ -455,55 +452,47 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     return clavier ? { col: curseur.col, ligne: curseur.ligne, legale: partie.legale(curseur.col, curseur.ligne) } : null;
   }
 
-  /** Une plaque de la charte (bordure de 2 px, ombre nette de 2 px) : le score et le combo. */
-  function plaque(r: Rect, fond: string, etiquette: string, valeur: string, opts: { echelle?: number; secousse?: number; carres?: { pleins: number; total: number }; droite?: string; estompe?: boolean } = {}): void {
+  /** Une plaque de la charte (bordure et ombre nette, à l'échelle de la plaque) : le score et le combo. Étiquette jamais sous 12 px, valeur jamais sous 18 px. */
+  function plaque(r: Rect, fond: string, etiquette: string, valeur: string, opts: { echelle?: number; secousse?: number; carres?: { pleins: number; total: number } } = {}): void {
+    const m = metriquesPlaque(r.h);
     g.save();
-    if (opts.estompe) g.globalAlpha = 0.6;
     g.translate(r.x + r.w / 2 + (opts.secousse ?? 0), r.y + r.h / 2);
     const e = opts.echelle ?? 1;
     g.scale(e, e);
     g.translate(-r.w / 2, -r.h / 2);
     g.fillStyle = couleurs.encre;
-    g.fillRect(2, 2, r.w, r.h);
+    g.fillRect(m.trait, m.trait, r.w, r.h);
     g.fillStyle = fond;
     g.fillRect(0, 0, r.w, r.h);
     g.strokeStyle = couleurs.encre;
-    g.lineWidth = 2;
-    g.strokeRect(1, 1, r.w - 2, r.h - 2);
+    g.lineWidth = m.trait;
+    g.strokeRect(m.trait / 2, m.trait / 2, r.w - m.trait, r.h - m.trait);
     g.textBaseline = "alphabetic";
     g.textAlign = "left";
     g.fillStyle = jeton("encre-douce");
-    let tailleEtiquette = r.h >= 50 ? 11 : 9;
     (g as unknown as { letterSpacing: string }).letterSpacing = "1px";
-    g.font = policeTexte(tailleEtiquette);
-    // Une plaque étroite (le fantôme, à côté du score et du combo) rétrécit son étiquette plutôt que de déborder.
-    const ecartDroite = (): number => (opts.droite ? g.measureText(opts.droite).width + 10 : 0);
-    while (tailleEtiquette > 6 && g.measureText(etiquette.toUpperCase()).width + ecartDroite() > r.w - 18) g.font = policeTexte(--tailleEtiquette);
-    g.fillText(etiquette.toUpperCase(), 9, r.h >= 50 ? 20 : 15);
+    g.font = policeTexte(m.etiquette);
+    policesVues.etiquette = Math.min(policesVues.etiquette, m.etiquette);
+    g.fillText(etiquette.toUpperCase(), m.pad, m.pad + m.etiquette * 0.8);
     (g as unknown as { letterSpacing: string }).letterSpacing = "0px";
-    if (opts.droite) {
-      g.textAlign = "right";
-      g.fillStyle = couleurs.encre;
-      g.fillText(opts.droite, r.w - 9, r.h >= 50 ? 20 : 15);
-      g.textAlign = "left";
-      g.fillStyle = jeton("encre-douce");
-    }
     g.fillStyle = couleurs.encre;
-    let taille = r.h >= 50 ? 28 : 21;
-    const place = r.w - 18 - (opts.carres ? 26 : 0);
+    let taille = m.valeur;
+    const place = r.w - 2 * m.pad - (opts.carres ? opts.carres.total * (m.carre + m.carre * 0.3) + m.pad : 0);
     g.font = police(taille);
-    while (taille > 10 && g.measureText(valeur).width > place) g.font = police(--taille);
-    g.fillText(valeur, 9, r.h - 8);
+    while (taille > VALEUR_MIN && g.measureText(valeur).width > place) g.font = police(--taille);
+    policesVues.valeur = Math.min(policesVues.valeur, taille);
+    g.fillText(valeur, m.pad, r.h - m.pad * 0.8);
     if (opts.carres) {
+      const ecart = Math.round(m.carre * 0.3);
       for (let k = 0; k < opts.carres.total; k++) {
-        const x = r.w - 10 - 10 * (opts.carres.total - k) - 3 * (opts.carres.total - 1 - k);
-        const y = r.h - 17;
+        const x = r.w - m.pad - (m.carre + ecart) * (opts.carres.total - k) + ecart;
+        const y = r.h - m.pad - m.carre;
         g.strokeStyle = couleurs.encre;
-        g.lineWidth = 2;
-        g.strokeRect(x + 1, y + 1, 8, 8);
+        g.lineWidth = Math.max(2, Math.round(m.carre / 6));
+        g.strokeRect(x + g.lineWidth / 2, y + g.lineWidth / 2, m.carre - g.lineWidth, m.carre - g.lineWidth);
         if (k < opts.carres.pleins) {
           g.fillStyle = couleurs.encre;
-          g.fillRect(x + 1, y + 1, 8, 8);
+          g.fillRect(x + g.lineWidth / 2, y + g.lineWidth / 2, m.carre - g.lineWidth, m.carre - g.lineWidth);
         }
       }
     }
@@ -552,9 +541,11 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     g.textAlign = "left";
     g.textBaseline = "alphabetic";
     g.fillStyle = jeton("encre-douce");
-    g.font = policeTexte(10);
+    const px = Math.max(12, Math.min(18, Math.round(mep.cote * 0.17))); // l'étiquette d'une zone : jamais sous 12 px
+    policesVues.etiquette = Math.min(policesVues.etiquette, px);
+    g.font = policeTexte(px);
     (g as unknown as { letterSpacing: string }).letterSpacing = "1px";
-    g.fillText(etiquette.toUpperCase(), r.x + 10, r.y + 16);
+    g.fillText(etiquette.toUpperCase(), r.x + 12, r.y + ETIQUETTE - 7);
     (g as unknown as { letterSpacing: string }).letterSpacing = "0px";
     g.restore();
   }
@@ -576,12 +567,22 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     lignes.push(courante);
     const hl = taille * 1.35;
     const haut = r.y + r.h / 2 - ((lignes.length - 1) * hl) / 2;
+    // Une plaque de papier sous le texte : l'aide reste lisible sur n'importe quel décor.
+    const large = Math.max(...lignes.map((l) => g.measureText(l).width)) + taille * 1.6;
+    const hauteurPlaque = lignes.length * hl + taille * 0.9;
+    g.save();
+    g.globalAlpha = 0.9;
+    g.fillStyle = couleurs.papier;
+    g.fillRect(r.x + r.w / 2 - large / 2, haut - hl / 2 - taille * 0.2, large, hauteurPlaque);
+    g.restore();
+    g.fillStyle = jeton("encre-douce");
     lignes.forEach((l, i) => g.fillText(l, r.x + r.w / 2, haut + i * hl));
   }
 
   function dessiner(): void {
     const instant = performance.now();
     maintenant = (instant - t0) / 1000;
+    policesVues = { valeur: Infinity, etiquette: Infinity };
     // Les effets finis disparaissent : les cases illuminées éclatent en particules de leur couleur.
     if (effacees.some((c) => illuminationFinie(maintenant - c.t0))) {
       const finies = effacees.filter((c) => illuminationFinie(maintenant - c.t0));
@@ -593,8 +594,11 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     while (annonces.length > 0 && maintenant - annonces[0]!.t0 > annonces[0]!.duree) annonces.shift();
 
     g.clearRect(0, 0, largeur, hauteur);
-    g.fillStyle = couleurs.ciel; // le ciel du thème, sous tout
-    g.fillRect(0, 0, largeur, hauteur);
+    if (decor) decor.dessiner(g, maintenant, !!o.reduit); // le décor du thème, sous tout (lot B5)
+    else {
+      g.fillStyle = couleurs.ciel; // le ciel du thème, sous tout
+      g.fillRect(0, 0, largeur, hauteur);
+    }
     g.save();
     g.translate(decalageBord.x, decalageBord.y);
     const { grille, cote } = mep;
@@ -619,25 +623,20 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       // Le moutarde s'éclaircit vers le papier pendant que le compteur retombe.
       g.globalAlpha = Math.min(1, (maintenant - perteCombo) / DUREE_PERTE_COMBO);
       g.fillStyle = couleurs.plaque;
-      g.fillRect(mep.combo.x + 3, mep.combo.y + 3, mep.combo.w - 6, mep.combo.h - 6);
+      const mc = metriquesPlaque(mep.combo.h);
+      g.fillRect(mep.combo.x + mc.trait + 1, mep.combo.y + mc.trait + 1, mep.combo.w - 2 * mc.trait - 2, mep.combo.h - 2 * mc.trait - 2);
       g.globalAlpha = 1;
       g.fillStyle = couleurs.encre;
-      g.font = police(mep.combo.h >= 50 ? 28 : 21);
+      g.font = police(mc.valeur);
       g.textAlign = "left";
       g.textBaseline = "alphabetic";
-      g.fillText("—", mep.combo.x + 9, mep.combo.y + mep.combo.h - 8);
-    }
-
-    // Le fantôme (lot B4) : sa plaque (son score à ce rang et l'écart avec le tien) ; sa partie finie, la plaque s'estompe et dit « Fin du fantôme ».
-    const etatF = fantome ? fantome.etat(partie.poses) : null;
-    if (etatF && mep.fantome) {
-      plaque(mep.fantome, couleurs.plaque, texte(etatF.fini ? "hud.fantome.fin" : "hud.fantome"), formaterNombre(etatF.score), { droite: etatF.fini ? undefined : ecartFantome(partie.score, etatF.score, langueCourante()), estompe: etatF.fini });
+      g.fillText("—", mep.combo.x + mc.pad, mep.combo.y + mep.combo.h - mc.pad * 0.8);
     }
 
     // L'aide d'avant la première pose.
     if (partie.poses === 0 && !partie.finie && mep.aide.h >= 24) {
       g.fillStyle = couleurs.texteDouce;
-      texteEnLignes(texte(o.tactile ? "hud.aide.glisser" : "hud.aide.bureau"), mep.aide, mep.aide.h >= 40 ? 14 : 12);
+      texteEnLignes(texte(o.tactile ? "hud.aide.glisser" : "hud.aide.bureau"), mep.aide, mep.portrait ? (mep.aide.h >= 40 ? 14 : 12) : Math.max(13, Math.min(24, Math.round(mep.cote * 0.2))));
     }
 
     // Les deux zones : « Ta pièce » (saisissable) et « Suivante » (pour information : pointillés, sans ombre).
@@ -653,23 +652,6 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
         g.fillStyle = allumee ? couleurs.papier : couleurs.case;
         g.fillRect(grille.x + c * cote + 1, grille.y + l * cote + 1, cote - 2, cote - 2);
       }
-    }
-    // Le fantôme, sous les blocs : sa grille au même rang, en transparence (plus pâle encore quand sa partie est finie). Le canevas ne prend aucun geste de plus : on pose à travers lui.
-    if (etatF) {
-      g.save();
-      g.globalAlpha = etatF.fini ? 0.16 : 0.34;
-      g.fillStyle = couleurs.texte;
-      g.strokeStyle = couleurs.texte;
-      g.lineWidth = 2;
-      g.setLineDash([5, 3]);
-      for (let l = 0; l < LIGNES; l++) {
-        for (let c = 0; c < COLONNES; c++) {
-          if (!caseOccupee(etatF.grille, c, l)) continue;
-          g.fillRect(grille.x + c * cote + 3, grille.y + l * cote + 3, cote - 6, cote - 6);
-          g.strokeRect(grille.x + c * cote + 2, grille.y + l * cote + 2, cote - 4, cote - 4);
-        }
-      }
-      g.restore();
     }
     // « Plus de place ! » : les rares cases vides clignotent en pointillés.
     if (partie.finie && !o.reduit && Math.floor(maintenant * 4) % 2 === 0) {
@@ -720,16 +702,6 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     }
     nbPaires = paires;
 
-    // Là où le fantôme recouvre un de tes blocs, son contour reste visible par-dessus.
-    if (etatF) {
-      g.save();
-      g.globalAlpha = etatF.fini ? 0.3 : 0.7;
-      g.strokeStyle = couleurs.texte;
-      g.lineWidth = 2;
-      g.setLineDash([5, 3]);
-      for (let l = 0; l < LIGNES; l++) for (let c = 0; c < COLONNES; c++) if (caseOccupee(etatF.grille, c, l) && caseOccupee(partie.grille, c, l)) g.strokeRect(grille.x + c * cote + 4, grille.y + l * cote + 4, cote - 8, cote - 8);
-      g.restore();
-    }
     // Les lignes et colonnes qui seraient effacées : un anneau moutarde doublé de papier (la forme, pas seulement la couleur).
     if (apercu) {
       for (let l = 0; l < LIGNES; l++) {
@@ -868,7 +840,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     };
     const porte: PorteBlocks = {
       disposition() {
-        return { portrait: mep.portrait, cote: mep.cote, grille: page(mep.grille), main: page(mep.main), suivante: page(mep.suivante), score: page(mep.score), combo: page(mep.combo), fantome: mep.fantome ? page(mep.fantome) : null, boutons: page(mep.boutons), coteMain: mep.coteMain, centreMain: pt(mep.centreMain.x, mep.centreMain.y), coteSuivante: mep.coteSuivante };
+        return { portrait: mep.portrait, cote: mep.cote, grille: page(mep.grille), main: page(mep.main), suivante: page(mep.suivante), score: page(mep.score), combo: page(mep.combo), boutons: page(mep.boutons), coteMain: mep.coteMain, centreMain: pt(mep.centreMain.x, mep.centreMain.y), coteSuivante: mep.coteSuivante };
       },
       piece: () => partie.piece?.nom ?? null,
       suivante: () => partie.suivante?.nom ?? null,
@@ -893,11 +865,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       grille: () => grilleEnTexte(partie.grille),
       etat: () => ({ score: partie.score, combo: partie.combo, comboMax: partie.comboMax, poses: partie.poses, sansEffacement: partie.sansEffacement, fin: partie.fin }),
       hud: () => ({ score: ecrireNombre(partie.score), combo: partie.combo > 0 ? `×${partie.combo}` : null, carres: partie.combo > 0 ? POSES_SANS_EFFACEMENT_MAX - 1 - Math.min(partie.sansEffacement, POSES_SANS_EFFACEMENT_MAX - 1) : 0, moutarde: partie.combo >= 2 }),
-      fantome() {
-        if (!fantome) return null;
-        const e = fantome.etat(partie.poses);
-        return { score: e.score, ecart: ecartFantome(partie.score, e.score, langueCourante()), grille: grilleEnTexte(e.grille), fini: e.fini, rang: partie.poses, poses: fantome.poses };
-      },
+      polices: () => ({ ...policesVues }),
+      decor: () => decor !== null,
       effets: () => ({
         effacees: effacees.length,
         fermees: effacees.filter((c) => c.yeux).length,
@@ -944,26 +913,13 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       bornes();
     },
     // Ce que lit un lecteur d'écran (la plaque du kit, cachée à la vue : le HUD est dessiné par la scène) : le score et le combo.
-    hud: () => {
-      const e = fantome ? fantome.etat(partie.poses) : null;
-      const combo = partie.combo > 0 ? texte("hud.combo.lecteur", { n: partie.combo }) : "";
-      const lui = e ? (e.fini ? texte("hud.fantome.fin") : texte("hud.fantome.lecteur", { score: ecrireScore(e.score), ecart: ecartFantome(partie.score, e.score, langueCourante()) })) : "";
-      return { principal: ecrireScore(partie.score), secondaire: [combo, lui].filter(Boolean).join(" · ") };
-    },
+    hud: () => ({ principal: ecrireScore(partie.score), secondaire: partie.combo > 0 ? texte("hud.combo.lecteur", { n: partie.combo }) : "" }),
     resultat: () => {
       const r = partie.resultat() ?? { score: partie.score, combo: partie.comboMax, poses: partie.poses, raison: "bloquee" as const };
       return { score: VARIANTE.score(r), rediffusion: enregistrer(contenu, actions) };
     },
-    // Le kit change de fantôme (aucun, ma meilleure, le Diamant) : la rediffusion à montrer, ou `null`. La plaque apparaît ou disparaît, la grille ne bouge pas.
-    fantome(rediffusion) {
-      let r = rediffusion;
-      if (r === null && extra.fantomeEssai) {
-        essaiCache = !essaiCache; // l'essai `?scenario=fantome` : « aucun » cache le fantôme d'essai, le suivant le remontre
-        r = essaiCache ? null : extra.fantomeEssai;
-      }
-      fantome = creerFantome(contenu, r);
-      redimensionner();
-    },
+    // Lot B5 : plus de fantôme (seed § 5). Le kit appelle encore cette méthode (son bouton est caché par `blocks.css`, la touche G et le réglage « Fantôme » existent) : elle ne fait rien.
+    fantome() {},
     dessiner,
     detruire() {
       removeEventListener("keydown", geste);
