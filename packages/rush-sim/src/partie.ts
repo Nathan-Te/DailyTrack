@@ -9,7 +9,8 @@ import { COS, SIN } from "./trig";
 // La partie de Rush : 60 Hz, tout en entiers, l'état d'un seul tenant. À chaque tick, `avancer(entree)` applique l'octet d'entrée du tick (voir `entrees.ts`) puis fait avancer le monde : le chevalier, les apparitions,
 // les monstres, le golem, les zones annoncées, les ondes, les contacts. **Le même code joue la partie du joueur et la rediffusion du serveur** ; la vue (`apps/rush`) ne fait que lire cet état.
 // Le hasard (apparitions, pierres) vient d'une graine du contenu et n'est tiré qu'à des ticks fixés par l'état : une rediffusion refait les mêmes tirages.
-// Lot BR0b : l'entrée porte une VISÉE séparée du déplacement (le chevalier regarde et frappe où il vise, il marche où il veut) ; un coup TENU enchaîne ; le rythme des ennemis est ralenti et se règle d'un coup (`reglages.rythme`).
+// Lot BR0c : le coup du chevalier est plus lent et plus lourd (30 ticks, le coup final 42 ; anticipation, impact, récupération ; dégâts ×1,6 et ×2,5 au coup final ; il s'engage à 40 % de sa vitesse ; recul plus fort, les monstres glissent puis titubent) ;
+// les points de vie sont en dixièmes (un coup ordinaire ôte 16, la gelée en a 30). Lot BR0b : l'entrée porte une VISÉE séparée du déplacement (le chevalier regarde et frappe où il vise, il marche où il veut) ; un coup TENU enchaîne ; le rythme des ennemis est ralenti et se règle d'un coup (`reglages.rythme`).
 
 // --- Les types lus par le rendu -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 export const LIBRE = 0;
@@ -158,16 +159,23 @@ export interface Resultat {
 // --- Les constantes des règles --------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const DUREE_ESQUIVE = 12;
 const ATTENTE_ESQUIVE = 40;
-const DUREE_TAMPON = 10;
+const DUREE_TAMPON = 16;
 const DUREE_TAMPON_ESQUIVE = 6;
-const DUREE_REPRISE = 24;
-const DEGATS_COUP = [1, 1, 2] as const;
-const ELAN_COUP_CM = [30, 30, 80] as const;
+const DUREE_REPRISE = 30;
+/** La phase active d'un coup (ticks après l'impact) : le chevalier s'engage tant qu'elle dure. */
+const PHASE_ACTIVE = 4;
+/** Les ticks où une cible touchée titube (elle ne fait rien) après avoir glissé : le coup ordinaire, le coup final. */
+const TITUBE = [16, 16, 32] as const;
+/** Le dégât de base (un « point » du jeu) : un coup ordinaire en ôte `degats` % (160 % → 16). */
+const POINT = 10;
 const RAYON_ZONE_POING = cm(250);
 const RAYON_ZONE_PIERRE = cm(150);
 const RAYON_ONDE = cm(760);
-const VIE_GELEE = 3;
-const VIE_CHAUVE = 1;
+const VIE_GELEE = 30;
+const VIE_CHAUVE = 10;
+/** Le scénario `mannequin` : six gelées qui ne bougent pas (positions en cm, chacune rentre chez elle après un coup) et un golem qui ne frappe pas ; rien ne meurt. */
+const MANNEQUINS: readonly (readonly [number, number])[] = [[-330, 330], [-170, 250], [0, 210], [170, 250], [330, 330], [0, 60]];
+const GOLEM_MANNEQUIN: readonly [number, number] = [0, -450];
 const ARRET_DEGAT = 90;
 
 // Le rythme des ennemis (lot BR0b : le prototype BR0 était trop rapide). Toutes ces durées sont des ticks et toutes ces vitesses des cm/s AU RYTHME 100 % ; `reglages.rythme` les met à l'échelle (`dur`, `vit`).
@@ -247,18 +255,20 @@ export class Partie {
     this.vit = idiv(cm(reglages.vitesse), 60);
     this.rt = reglages.rythme;
     this.durees = { geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
-    this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine";
+    this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin";
     this.c = { x: 0, y: cm(520), dir: 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false };
     if (contenu.scenario === "arene") this.golem = null;
     else {
       const hpMax = reglages.golemVie;
-      this.golem = { x: 0, y: -cm(300), hp: contenu.phase2 ? idiv(hpMax, 2) : hpMax, hpMax, phase: contenu.phase2 ? 2 : 1, etat: MARCHE, t: 0, duree: 0, t1: 0, attaque: 0, repos: this.dur(contenu.phase2 ? 50 : 150), compteur: 0, flash: 0, dir: 32, recup: 0, coup: 0 };
+      const [gx, gy] = contenu.scenario === "mannequin" ? GOLEM_MANNEQUIN : [0, -300];
+      this.golem = { x: cm(gx), y: cm(gy), hp: contenu.phase2 ? idiv(hpMax, 2) : hpMax, hpMax, phase: contenu.phase2 ? 2 : 1, etat: MARCHE, t: 0, duree: 0, t1: 0, attaque: 0, repos: this.dur(contenu.phase2 ? 50 : 150), compteur: 0, flash: 0, dir: 32, recup: 0, coup: 0 };
     }
     if (contenu.scenario === "arene") {
       this.apparaitre(contenu.monstres > 0 ? Math.min(contenu.monstres, 6) : 4);
       this.vague = 1;
     }
     if (contenu.scenario === "vitrine") this.monterVitrine();
+    if (contenu.scenario === "mannequin") this.monterMannequin();
   }
 
   /** Une durée en ticks au rythme de la partie (arrondie, au moins 1) : plus le rythme est haut, plus c'est court. */
@@ -274,18 +284,18 @@ export class Partie {
   private monterVitrine(): void {
     this.tick = TICK_VITRINE;
     const g = this.golem!;
-    g.x = cm(40);
-    g.y = -cm(260);
+    g.x = cm(60);
+    g.y = -cm(150);
     g.hp = idiv(g.hpMax * 3, 5);
     g.etat = ANNONCE;
     g.attaque = POING;
     g.duree = g.t1 = this.dur(ANNONCE_GOLEM[0]);
     g.t = g.duree + 1; // le poing vient de s'abattre (le golem de la cible a les poings au sol) ; le cercle, lui, est annoncé aux trois cinquièmes
     g.dir = 32;
-    this.zones.push({ type: POING, x: cm(40), y: -cm(60), r: RAYON_ZONE_POING, t0: this.tick - idiv(g.duree * 6, 10), ti: this.tick + g.duree - idiv(g.duree * 6, 10), rang: 0 });
-    this.c.x = -cm(390);
-    this.c.y = cm(130);
-    this.c.dir = 112;
+    this.zones.push({ type: POING, x: cm(60), y: cm(50), r: RAYON_ZONE_POING, t0: this.tick - idiv(g.duree * 6, 10), ti: this.tick + g.duree - idiv(g.duree * 6, 10), rang: 0 });
+    this.c.x = -cm(400);
+    this.c.y = cm(250);
+    this.c.dir = 52; // il regarde vers le bas à gauche, l'épée devant lui : son visage se voit
     this.c.marche = true;
     this.monstres = [];
     const bete = (type: number, x: number, y: number, t: number, a = 0): void => {
@@ -297,6 +307,13 @@ export class Partie {
     bete(GELEE, 480, 560, 33);
     bete(CHAUVE, -490, -300, 0, 20);
     bete(CHAUVE, 770, -270, 0, 90);
+  }
+
+  /** Le scénario `mannequin` (lot BR0c) : le chevalier face à six gelées immobiles et à un golem qui ne frappe pas, pour juger le coup, l'impact et l'enchaînement tenu. Rien ne meurt, rien ne blesse. */
+  private monterMannequin(): void {
+    this.c.y = cm(520);
+    this.c.dir = 96;
+    for (const [x, y] of MANNEQUINS) this.monstres.push({ id: this.prochainId++, type: GELEE, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: VIE_GELEE, flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0 });
   }
 
   get finie(): boolean {
@@ -388,7 +405,7 @@ export class Partie {
     }
 
     if (c.etat === ESQUIVE) {
-      const v = idiv(this.vit * 26, 10);
+      const v = idiv(this.vit * 29, 10); // la marche est plus lente depuis BR0c (−10 %) : la course de l'esquive garde sa longueur
       this.deplacer(c, idiv(COS[c.dir]! * v, 1024), idiv(SIN[c.dir]! * v, 1024));
       c.marche = true;
       if (++c.t >= DUREE_ESQUIVE) {
@@ -396,18 +413,26 @@ export class Partie {
         c.t = 0;
       }
     } else if (c.etat === COUP) {
+      // Le coup (lot BR0c) : anticipation (jusqu'à l'impact), phase active (4 ticks), récupération jusqu'au bout. Il s'engage : à `engagement` % de sa vitesse, dans la direction tenue, sinon vers où il frappe tant que dure la phase active.
       const impact = this.impactCoup(c.combo);
-      if (c.t <= impact) {
-        const elan = idiv(cm(ELAN_COUP_CM[c.combo]!), impact + 1);
+      const v = idiv(this.vit * this.reglages.engagement, 100);
+      if (direction >= 0) {
+        this.deplacer(c, idiv(COS[direction * 4]! * v, 1024), idiv(SIN[direction * 4]! * v, 1024));
+        c.marche = true;
+      } else if (c.t <= impact + PHASE_ACTIVE) {
+        const elan = c.combo === 2 ? idiv(v * 3, 2) : v;
         this.deplacer(c, idiv(COS[c.dir]! * elan, 1024), idiv(SIN[c.dir]! * elan, 1024));
       }
       if (c.t === impact) this.frapper();
       c.t++;
-      if (c.tampon > 0 && c.t > impact + 2) this.commencerCoup((c.combo + 1) % 3, direction, visee);
-      else if (c.t >= dureeCoup) {
-        c.etat = LIBRE;
-        c.t = 0;
-        c.reprise = DUREE_REPRISE;
+      if (c.t >= dureeCoup) {
+        // Le coup tenu (ou un appui gardé en mémoire) enchaîne à la fin du coup, jamais avant : l'enchaînement garde le rythme du coup.
+        if (c.tampon > 0) this.commencerCoup((c.combo + 1) % 3, direction, visee);
+        else {
+          c.etat = LIBRE;
+          c.t = 0;
+          c.reprise = DUREE_REPRISE;
+        }
       }
     } else {
       // Libre : marcher, ou commencer un coup. Avec une visée, le chevalier regarde où il vise (même à l'arrêt) et marche où il veut ; sans visée, il regarde où il va.
@@ -432,8 +457,14 @@ export class Partie {
   dureeCoup(s: number): number {
     return s === 2 ? idiv(this.reglages.cadence * 14, 10) : this.reglages.cadence;
   }
+  /** Le tick de l'impact dans le coup : la fin de l'anticipation (le coup final prend 4/3 de temps pour lever l'épée). */
   impactCoup(s: number): number {
-    return Math.max(2, idiv(this.dureeCoup(s) * 3, 10));
+    return Math.max(2, s === 2 ? idiv(this.reglages.anticipation * 4, 3) : this.reglages.anticipation);
+  }
+  /** Les dégâts d'un coup (en dixièmes de point de vie) : ordinaire `degats` % du point, le coup final `coupFinal` % de cela. */
+  degatsCoup(s: number): number {
+    const base = idiv(POINT * this.reglages.degats, 100);
+    return s === 2 ? idiv(base * this.reglages.coupFinal, 100) : base;
   }
 
   private commencerCoup(s: number, direction: number, visee: number): void {
@@ -493,13 +524,15 @@ export class Partie {
       // Le centre doit être dans l'arc, élargi de la taille de la cible (un grand corps est touché de plus loin sur le côté).
       return dx * fx + dy * fy >= seuil * d - r * 1024;
     };
-    const degats = DEGATS_COUP[s]!;
-    const force = idiv(cm(this.reglages.recul) * (s === 2 ? 18 : 10), 10);
+    const degats = this.degatsCoup(s);
+    const force = idiv(cm(this.reglages.recul) * (s === 2 ? 20 : 10), 10);
+    const mannequin = this.contenu.scenario === "mannequin";
     for (const m of this.monstres) {
       if (m.hp <= 0 || m.coup === this.coupId || !dans(m.x, m.y, rayonDe(m.type))) continue;
       m.coup = this.coupId;
       m.hp -= degats;
       m.flash = 7;
+      m.gel = Math.max(m.gel, TITUBE[s]!); // elle glisse (le recul) puis titube
       const [ux, uy] = unitaire(m.x - c.x, m.y - c.y);
       const ex = ux === 0 && uy === 0 ? COS[c.dir]! : ux;
       const ey = ux === 0 && uy === 0 ? SIN[c.dir]! : uy;
@@ -509,7 +542,8 @@ export class Partie {
         m.etat = REPOS;
         m.t = 0;
       }
-      this.ev("touche", m.x, m.y, degats, m.type);
+      this.ev("touche", m.x, m.y, s, m.type);
+      if (mannequin) m.hp = VIE_GELEE; // le mannequin ne meurt pas
       if (m.hp <= 0) {
         this.tues++;
         this.ev("mort", m.x, m.y, m.type, s);
@@ -522,8 +556,10 @@ export class Partie {
       else {
         g.hp -= degats;
         g.flash = 7;
-        this.ev("touche", g.x, g.y, degats, 2);
-        if (g.phase === 1 && g.hp > 0 && g.hp * 2 <= g.hpMax) this.entrerPhase2(g);
+        const phase2 = g.phase === 1 && g.hp > 0 && g.hp * 2 <= g.hpMax;
+        this.ev("touche", g.x, g.y, s, phase2 ? 3 : 2); // b : 2 = le golem, 3 = le golem qui passe en phase 2 par ce coup
+        if (mannequin) g.hp = g.hpMax; // le mannequin ne meurt pas
+        else if (phase2) this.entrerPhase2(g);
       }
     }
   }
@@ -575,6 +611,18 @@ export class Partie {
     }
     if (m.gel > 0) {
       m.gel--;
+      return;
+    }
+    if (this.contenu.scenario === "mannequin") {
+      // Le mannequin ne bouge pas : après un coup (glissade, puis titubement) il rentre à sa place, sans attaquer.
+      const [hx, hy] = MANNEQUINS[(m.id - 1) % MANNEQUINS.length]!;
+      const d = distance(m.x, m.y, cm(hx), cm(hy));
+      if (d > 0) {
+        const v = Math.min(d, this.vitesse(180));
+        m.x += idiv((cm(hx) - m.x) * v, d);
+        m.y += idiv((cm(hy) - m.y) * v, d);
+      }
+      m.t = 0;
       return;
     }
     if (m.type === GELEE) {
@@ -702,6 +750,7 @@ export class Partie {
     const dy = c.y - g.y;
     const d = isqrt(dx * dx + dy * dy);
     g.dir = dirVers(dx, dy);
+    if (this.contenu.scenario === "mannequin") return; // le mannequin ne marche pas et ne frappe pas : il regarde le chevalier
     if (d > RAYON_GOLEM + RAYON_CHEVALIER + cm(60)) {
       const v = this.vitesse(g.phase === 2 ? 150 : 105);
       g.x += idiv(idiv(dx * 1024, d) * v, 1024);
@@ -824,7 +873,7 @@ export class Partie {
 
   private contacts(): void {
     const c = this.c;
-    if (!this.vulnerable()) return;
+    if (!this.vulnerable() || this.contenu.scenario === "mannequin") return;
     for (const m of this.monstres) {
       if (m.hp <= 0 || m.gel > 0) continue;
       if (m.type === CHAUVE && m.etat === REPOS) continue;

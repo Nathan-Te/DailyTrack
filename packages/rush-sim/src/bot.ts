@@ -2,7 +2,7 @@ import { RAYON_CHEVALIER, RAYON_GOLEM, cm } from "./constantes";
 import { entree, type Changement } from "./entrees";
 import type { Contenu } from "./generateur";
 import { distance, dirVers } from "./maths";
-import { CHAUVE, ONDE, PLONGEON, Partie, type Resultat } from "./partie";
+import { CHAUVE, COUP, ONDE, PLONGEON, Partie, type Resultat } from "./partie";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
 // Le pilote : un joueur automatique qui lit l'état de la partie et rend l'octet d'entrée du tick. Il sert à trois choses : le Diamant provisoire du prototype (sa partie du jour), les mesures (une partie de
@@ -25,16 +25,18 @@ export function pilote(p: Partie): number {
     const d = distance(c.x, c.y, z.x, z.y);
     if (z.type === ONDE) {
       // L'anneau part du bord du golem à `ti` et file à la vitesse de l'onde (`vOnde`, 9,5 m/s au rythme 100 %) : on esquive quand il est à moins de trois ticks de nous.
-      const arrivee = reste + Math.max(0, Math.trunc((d - RAYON_GOLEM) / p.vOnde()));
+      // (lot BR0c : le bord de l'anneau touche dès qu'il est à ~80 cm : collé au golem, le chevalier doit déjà esquiver à l'instant où l'onde part)
+      const arrivee = reste + Math.max(0, Math.trunc((d - RAYON_GOLEM - cm(80)) / p.vOnde()));
       if (arrivee <= 3 && d < z.r) {
         esquiver = true;
         dirEsquive = croix(z.x - c.x, z.y - c.y); // à travers l'anneau, vers le golem
       }
       continue;
     }
-    if (reste <= 48 && d < z.r + cm(110)) {
+    // Lot BR0c : un coup dure 30 ticks et engage le chevalier (il ne marche qu'à 40 % de sa vitesse tant qu'il frappe) : il part dès que le cercle est posé, et esquive (ce qui coupe le coup) s'il est encore dedans à l'approche.
+    if (reste <= 80 && d < z.r + cm(150)) {
       fuite = { x: z.x, y: z.y };
-      if (reste <= 7 && d < z.r) esquiver = true;
+      if (reste <= (c.etat === COUP ? 16 : 8) && d < z.r) esquiver = true;
     }
   }
   // 2. Les ondes : l'esquive quand l'anneau arrive.
@@ -45,9 +47,10 @@ export function pilote(p: Partie): number {
       dirEsquive = croix(o.x - c.x, o.y - c.y);
     }
   }
-  // 3. Une chauve-souris qui plonge sur nous.
+  // 3. Un monstre qui fonce sur nous : l'esquive est gardée pour l'onde quand elle approche (lot BR0c : l'esquive met 40 ticks à revenir).
+  const ondeProche = p.zones.some((z) => z.type === ONDE && z.ti - tick <= 60) || p.ondes.some((o) => !o.touche);
   for (const m of p.monstres) {
-    if (c.degat > 0 || m.gel > 0) continue;
+    if (c.degat > 0 || m.gel > 0 || ondeProche) continue;
     const d = distance(c.x, c.y, m.x, m.y);
     if (m.type === CHAUVE ? m.etat === PLONGEON && d < cm(230) : d < cm(48 + 42 + 35)) esquiver = true;
   }

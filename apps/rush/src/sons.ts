@@ -107,26 +107,31 @@ export class Sons {
     switch (son) {
       case "coup1":
       case "coup2":
-        this.souffle(c, t, { duree: 0.14, vol: 0.28, filtre: son === "coup1" ? 2400 : 3200, filtreVers: son === "coup1" ? 700 : 900, q: 0.8 });
-        this.ton(c, t, { de: son === "coup1" ? 340 : 400, vers: 160, duree: 0.09, type: "triangle", vol: 0.1 });
+        // Le souffle de l'épée SUIT l'anticipation (le geste part ~0,08 s plus tard) : il monte, puis retombe, plus long qu'au BR0b.
+        this.souffle(c, t, { duree: 0.3, vol: 0.3, filtre: son === "coup1" ? 500 : 650, filtreVers: son === "coup1" ? 2600 : 3200, q: 0.9, retard: 0.07 });
+        this.souffle(c, t, { duree: 0.2, vol: 0.18, filtre: 2800, filtreVers: 600, q: 0.8, retard: 0.17 });
+        this.ton(c, t, { de: son === "coup1" ? 300 : 360, vers: 150, duree: 0.16, type: "triangle", vol: 0.09, retard: 0.09 });
         break;
       case "coup3":
-        this.souffle(c, t, { duree: 0.26, vol: 0.4, filtre: 1800, filtreVers: 260, q: 0.7 });
-        this.ton(c, t, { de: 260, vers: 70, duree: 0.2, type: "sawtooth", vol: 0.14 });
+        this.souffle(c, t, { duree: 0.38, vol: 0.4, filtre: 320, filtreVers: 2200, q: 0.8, retard: 0.1 });
+        this.souffle(c, t, { duree: 0.3, vol: 0.22, filtre: 2000, filtreVers: 260, q: 0.7, retard: 0.3 });
+        this.ton(c, t, { de: 240, vers: 70, duree: 0.34, type: "sawtooth", vol: 0.13, retard: 0.14 });
         break;
       case "touche":
-        this.ton(c, t, { de: 520 * h, vers: 180, duree: 0.09, type: "square", vol: 0.22 });
-        this.souffle(c, t, { duree: 0.08, vol: 0.25, filtre: 3000, q: 0.6 });
+        // Un impact a une COUCHE GRAVE (le « poids ») sous le claquement.
+        this.ton(c, t, { de: 520 * h, vers: 180, duree: 0.09, type: "square", vol: 0.2 });
+        this.ton(c, t, { de: 120 * h, vers: 52, duree: 0.2, type: "sine", vol: 0.5 });
+        this.souffle(c, t, { duree: 0.1, vol: 0.25, filtre: 2600, q: 0.6 });
         break;
       case "toucheFort":
-        this.ton(c, t, { de: 320 * h, vers: 90, duree: 0.2, type: "sawtooth", vol: 0.3 });
-        this.ton(c, t, { de: 90, vers: 40, duree: 0.25, type: "sine", vol: 0.5 });
-        this.souffle(c, t, { duree: 0.14, vol: 0.4, filtre: 2500, q: 0.6 });
+        this.ton(c, t, { de: 320 * h, vers: 90, duree: 0.2, type: "sawtooth", vol: 0.28 });
+        this.ton(c, t, { de: 95, vers: 34, duree: 0.42, type: "sine", vol: 0.75 });
+        this.souffle(c, t, { duree: 0.24, vol: 0.45, filtre: 1800, filtreVers: 240, q: 0.6 });
         break;
       case "toucheGolem":
-        this.ton(c, t, { de: 140 * h, vers: 55, duree: 0.28, type: "sawtooth", vol: 0.34 });
-        this.ton(c, t, { de: 70, vers: 38, duree: 0.3, type: "sine", vol: 0.55 });
-        this.souffle(c, t, { duree: 0.2, vol: 0.4, filtre: 1100, filtreVers: 300, q: 0.9 });
+        this.ton(c, t, { de: 140 * h, vers: 55, duree: 0.3, type: "sawtooth", vol: 0.32 });
+        this.ton(c, t, { de: 80, vers: 30, duree: 0.45, type: "sine", vol: 0.8 });
+        this.souffle(c, t, { duree: 0.26, vol: 0.45, filtre: 1100, filtreVers: 220, q: 0.9 });
         break;
       case "mort":
         this.ton(c, t, { de: 620, vers: 90, duree: 0.22, type: "square", vol: 0.2 });

@@ -25,6 +25,9 @@ export interface PorteScene {
   changements(): Changement[];
   sons(): string[];
   calls(): number;
+  qualite(): "haute" | "basse";
+  definirQualite(q: "haute" | "basse"): void;
+  dessinerMaintenant(): void;
   jouerPilote(ticks: number, attente?: number): void;
 }
 declare global {
@@ -67,7 +70,7 @@ export async function lancer(page: Page): Promise<void> {
 }
 
 /**
- * Joue la partie du jour avec le pilote de la simulation (pas à pas, dans la page ; `attente` ticks immobile d'abord, pour ne pas jouer exactement la partie du Diamant, que le serveur refuserait comme une copie ; le pilote n'est pas parfait : 5 ticks d'attente le 06/11/2026 donnent une victoire à trois cœurs, 7 une défaite — le lot BR0b a changé le rythme du golem), puis rend ce que la simulation (Node, la même) trouve en rejouant les changements d'entrée que la page a enregistrés : c'est la preuve que
+ * Joue la partie du jour avec le pilote de la simulation (pas à pas, dans la page ; `attente` ticks immobile d'abord, pour ne pas jouer exactement la partie du Diamant, que le serveur refuserait comme une copie ; le pilote n'est pas parfait : 5 ticks d'attente le 06/11/2026 donnent une victoire (vérifié au lot BR0c)), puis rend ce que la simulation (Node, la même) trouve en rejouant les changements d'entrée que la page a enregistrés : c'est la preuve que
  * ce que le joueur a fait dans le navigateur est exactement ce que le serveur rejouera.
  */
 export async function jouerLeJour(page: Page, attente = 5): Promise<Resultat> {

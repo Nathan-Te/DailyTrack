@@ -4,6 +4,7 @@ import "@cdj/ui/src/polices/rubik-mono-one-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
 import "@cdj/ui/src/polices/archivo-700.css";
+import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/kit/jeu.css";
 import "./rush.css";

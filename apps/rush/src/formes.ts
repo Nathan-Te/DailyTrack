@@ -1,5 +1,6 @@
 import { BufferAttribute, BufferGeometry, Color, Euler, IcosahedronGeometry, Matrix4, Quaternion, Vector3 } from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 // Les briques de formes de Rush (lot BR0b) : des ROCHERS anguleux (icosaèdres déformés), la coloration par sommet, la fusion de géométries (un seul appel de dessin pour tout un décor ou tout un membre). Tout est code :
 // aucun fichier de modèle. Le hasard n'est jamais `Math.random` ici : une graine, pour que la forme soit la même à chaque lancement (et sur chaque machine).
@@ -141,6 +142,76 @@ export function colorierParFace(forme: BufferGeometry, choisir: (centre: Vector3
       c[(f + k) * 3 + 1] = tmp.g;
       c[(f + k) * 3 + 2] = tmp.b;
     }
+  }
+  g.setAttribute("color", new BufferAttribute(c, 3));
+  return g;
+}
+
+// --- Les BLOCS arrondis (lot BR0c) : le golem et le décor en gros volumes lisses, légèrement irréguliers ---------------------------------------------------------------------------------------
+/** Un bruit doux (somme de sinus à des phases tirées de la graine) de −1 à 1 : il ne dépend que de la position, deux sommets au même endroit se déplacent pareil. */
+export function bruitDoux(graine: number): (x: number, y: number, z: number) => number {
+  const r = aleatoire(graine * 7 + 3);
+  const ph = Array.from({ length: 6 }, () => r() * Math.PI * 2);
+  return (x, y, z) => (Math.sin(x * 1.9 + ph[0]! + Math.sin(y * 1.3 + ph[1]!)) + Math.sin(y * 2.3 + ph[2]! + z * 0.9) * Math.cos(z * 1.7 + ph[3]!) + Math.sin((x + z) * 1.1 + ph[4]!) * 0.6 + Math.cos((y - x) * 1.5 + ph[5]!) * 0.5) / 2.6;
+}
+
+export interface OptionsBloc {
+  /** Le rayon d'arrondi des arêtes (mètres). */
+  rayon?: number;
+  /** L'irrégularité : le déplacement des sommets le long de leur normale, en part de la plus petite dimension (0,06 : visible, doux). */
+  irregulier?: number;
+  graine?: number;
+  /** Les segments d'arrondi (4 : le golem ; 2 : un décor lointain, moins de triangles). */
+  segments?: number;
+  /** La couleur et sa variation lisse (0,1 : ±10 % de clarté selon la position). */
+  couleur: number;
+  variation?: number;
+  /** Une seconde couleur vers laquelle le dessus du bloc s'éclaircit (l'ombrage lisse d'un bloc : la lumière du ciel sur le haut). */
+  dessus?: number;
+}
+
+const lissage01 = (x: number): number => {
+  const t = Math.min(1, Math.max(0, x));
+  return t * t * (3 - 2 * t);
+};
+
+/** Une BOÎTE ARRONDIE un peu irrégulière à l'ombrage LISSE (normales calculées après la déformation, sommets soudés), colorée par sommet : un bloc de pierre. Rend une forme INDEXÉE avec `normal` et `color`. */
+export function bloc(largeur: number, hauteur: number, profondeur: number, o: OptionsBloc): BufferGeometry {
+  const petit = Math.min(largeur, hauteur, profondeur);
+  const rayon = Math.min(o.rayon ?? petit * 0.3, petit * 0.48);
+  const g0 = new RoundedBoxGeometry(largeur, hauteur, profondeur, o.segments ?? 4, rayon);
+  g0.deleteAttribute("uv");
+  g0.deleteAttribute("normal");
+  const g = mergeVertices(g0, 1e-4);
+  g.computeVertexNormals();
+  const bruit = bruitDoux(o.graine ?? 1);
+  const bruitC = bruitDoux((o.graine ?? 1) + 40);
+  const p = g.getAttribute("position");
+  const n = g.getAttribute("normal");
+  const force = (o.irregulier ?? 0.07) * petit;
+  const v = new Vector3();
+  const nv = new Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    nv.fromBufferAttribute(n, i);
+    const f = bruit(v.x, v.y, v.z) * force;
+    p.setXYZ(i, v.x + nv.x * f, v.y + nv.y * f, v.z + nv.z * f);
+  }
+  g.computeVertexNormals();
+  const c = new Float32Array(p.count * 3);
+  const base = new Color(o.couleur);
+  const haut = new Color(o.dessus ?? o.couleur);
+  const t = new Color();
+  const variation = o.variation ?? 0.1;
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    nv.fromBufferAttribute(g.getAttribute("normal"), i);
+    t.copy(base).lerp(haut, Math.max(0, nv.y) * 0.9);
+    t.multiplyScalar(0.76 + 0.24 * lissage01(v.y / hauteur + 0.5)); // le bas du bloc est plus sombre : du volume sans dégradé de lumière
+    t.multiplyScalar(1 + bruitC(v.x * 1.4, v.y * 1.4, v.z * 1.4) * variation);
+    c[i * 3] = t.r;
+    c[i * 3 + 1] = t.g;
+    c[i * 3 + 2] = t.b;
   }
   g.setAttribute("color", new BufferAttribute(c, 3));
   return g;
