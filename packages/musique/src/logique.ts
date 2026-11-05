@@ -194,7 +194,7 @@ export function debutMesure(visee: number, c: number, t0: number, bpm: number): 
   return visee - (reste < m / 2 ? reste : reste - m);
 }
 
-/** Les huit croches de l'arpège d'une mesure, **à contretemps** (une double-croche après chaque croche du morceau) : tonique, quinte et octave seulement, qui vont avec tous les accords de la gamme. */
+/** Les huit croches de l'arpège d'une mesure, **à contretemps** (une double-croche après chaque croche du morceau) : tonique, quinte, octave (et la quinte de l'octave) seulement, qui vont avec tous les accords de la gamme. */
 export function arpegeDeMesure(tonique: number, bpm: number, mesure: number): NoteCouche[] {
   const pas = mesureSec(bpm) / 8;
   const motif = mesure % 2 === 0 ? [0, 7, 12, 7, 0, 7, 12, 7] : [7, 12, 7, 0, 7, 12, 19, 12];

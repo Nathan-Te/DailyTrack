@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Le branchement d'un jeu : il n'écoute que le premier geste ; rien n'est chargé ni demandé avant. Le lecteur (`demarrage.ts`) est remplacé par un faux qui compte.
-const demarrer = vi.fn((_jeu: string, _stockage: unknown, init: { baisse: number; sourdine: boolean; scene: string | null }) => ({ baisser: vi.fn(), sourdine: vi.fn(), scene: vi.fn(), init }));
+const demarrer = vi.fn((_jeu: string, _stockage: unknown, init: { baisse: number; sourdine: boolean; scene: string | null }) => ({ baisser: vi.fn(), sourdine: vi.fn(), scene: vi.fn(), couche: vi.fn(), init }));
 vi.mock("../src/demarrage", () => ({ demarrer }));
 
 const ecouteurs = new Map<string, (() => void)[]>();
@@ -42,12 +42,26 @@ describe("brancherMusique : la musique ne démarre qu'au premier geste", () => {
     m.scene("theme:nuit");
     geste("pointerdown");
     await vi.waitFor(() => expect(demarrer).toHaveBeenCalled());
-    expect(demarrer.mock.calls[0]![2]).toEqual({ baisse: 0.4, sourdine: true, scene: "theme:nuit" });
+    expect(demarrer.mock.calls[0]![2]).toEqual({ baisse: 0.4, sourdine: true, scene: "theme:nuit", couche: false });
     const lecteur = demarrer.mock.results[0]!.value as { baisser: ReturnType<typeof vi.fn> };
     m.baisser(1);
-    expect(lecteur.baisser).toHaveBeenCalledWith(1);
+    expect(lecteur.baisser).toHaveBeenCalledWith(1, undefined);
     m.scene("menu");
     expect((lecteur as unknown as { scene: ReturnType<typeof vi.fn> }).scene).toHaveBeenCalledWith("menu");
+  });
+
+  it("lot B6 : la durée d'un fondu de niveau et la couche demandées avant le chargement sont données au lecteur, puis transmises en direct", async () => {
+    const { brancherMusique } = await import("../src/branche");
+    const m = brancherMusique("blocks");
+    m.couche(true);
+    geste("pointerdown");
+    await vi.waitFor(() => expect(demarrer).toHaveBeenCalled());
+    expect(demarrer.mock.calls[0]![2]).toMatchObject({ couche: true });
+    const lecteur = demarrer.mock.results[0]!.value as { baisser: ReturnType<typeof vi.fn>; couche: ReturnType<typeof vi.fn> };
+    m.baisser(0.35, 1.2);
+    expect(lecteur.baisser).toHaveBeenCalledWith(0.35, 1.2);
+    m.couche(false);
+    expect(lecteur.couche).toHaveBeenCalledWith(false);
   });
 
   it("ouvrir les réglages (`lecteur()`) charge le lecteur s'il ne l'est pas, sans en créer un second", async () => {

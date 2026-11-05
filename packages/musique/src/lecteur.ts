@@ -1,3 +1,4 @@
+import { type Couche, creerCouche } from "./couche";
 import { lireListe, pistesDuJeu } from "./liste";
 import {
   CLE_REGLAGES,
@@ -55,6 +56,13 @@ export interface NoeudAudio {
 export interface GainAudio extends NoeudAudio {
   gain: ParamAudio;
 }
+/** Un oscillateur (la couche du jeu : lot B6). */
+export interface OscAudio extends NoeudAudio {
+  type: string;
+  frequency: ParamAudio;
+  start(t: number): void;
+  stop(t: number): void;
+}
 export interface ContexteAudio {
   readonly state: string;
   readonly currentTime: number;
@@ -63,6 +71,8 @@ export interface ContexteAudio {
   suspend(): Promise<void>;
   createGain(): GainAudio;
   createMediaElementSource(el: unknown): NoeudAudio;
+  /** Sans lui, la couche du jeu reste muette. */
+  createOscillator?(): OscAudio;
   /** Le compresseur commun (sans lui, la musique passerait telle quelle). */
   createDynamicsCompressor?(): NoeudAudio & { threshold: ParamAudio; ratio: ParamAudio; knee: ParamAudio; attack: ParamAudio; release: ParamAudio };
 }
@@ -132,7 +142,10 @@ export interface Lecteur {
   enCours(): PisteServie | null;
   reglages(): Reglages;
   regler(patch: Partial<Reglages>): void;
-  baisser(niveau: number): void;
+  /** Le niveau demandé par le jeu (0 à 1). Avec `duree` (secondes), le niveau y arrive **en fondu** (95 % à la fin de la durée) ; sans, en un clin d'œil (60 ms). */
+  baisser(niveau: number, duree?: number): void;
+  /** La couche du jeu (arpège ou nappe, voir `couche.ts`) entre en fondu (`true`) ou en sort (`false`) : environ 1 s. Rien ne se passe si le morceau en cours n'a pas de tempo et de tonique (`liste.json`). */
+  couche(actif: boolean): void;
   /** La scène du jeu (`menu`, `theme:nuit`…) ; `null` : aucune (tous les morceaux du jeu). Un changement fait passer, en fondu, à un morceau de la nouvelle scène (s'il y en a un) ; le morceau en cours est gardé s'il y passe aussi. */
   scene(nom: string | null): void;
   /** Il y a quelque chose à écouter dans ce jeu : la liste est chargée, elle n'est pas vide et le contexte existe. */
@@ -166,6 +179,8 @@ export function creerLecteur(d: Dependances): Lecteur {
   const abonnes = new Set<() => void>();
   const desabonner: (() => void)[] = [];
   let arrete = false;
+  let couche: Couche | undefined;
+  let coucheVoulue = false;
 
   const prevenir = () => abonnes.forEach((f) => f());
   const voixActive = (): Voix | undefined => voix[active];
@@ -186,9 +201,9 @@ export function creerLecteur(d: Dependances): Lecteur {
     }
   }
 
-  function appliquerNiveau(): void {
+  function appliquerNiveau(duree?: number): void {
     if (!ctx || !bus) return;
-    bus.gain.setTargetAtTime(niveauFinal({ reglages, baisse, sourdine }), ctx.currentTime, 0.06);
+    bus.gain.setTargetAtTime(niveauFinal({ reglages, baisse, sourdine }), ctx.currentTime, duree ? duree / 3 : 0.06);
   }
 
   function noterReprise(force = false): void {
@@ -288,7 +303,9 @@ export function creerLecteur(d: Dependances): Lecteur {
 
   /** `timeupdate` de la voix active : la fin approche (fondu) ; la position est notée. */
   function surTemps(v: Voix): void {
-    if (v !== voixActive() || fondu || enPause) return;
+    if (v !== voixActive() || enPause) return;
+    couche?.lire(v.genre, v.el.currentTime - ctx!.currentTime, v.el.currentTime);
+    if (fondu) return;
     noterReprise();
     const dur = v.el.duration;
     if (Number.isFinite(dur) && dur > 0 && dur - v.el.currentTime <= FONDU_S + 0.15) enchainer(FONDU_S);
@@ -375,6 +392,21 @@ export function creerLecteur(d: Dependances): Lecteur {
       return v;
     });
     appliquerNiveau();
+    if (c.createOscillator) {
+      couche = creerCouche({
+        ctx: c,
+        bus,
+        piste: () => voixActive()?.piste ?? null,
+        flux: () => {
+          const v = voixActive();
+          return v?.piste && !v.el.paused ? { genre: v.genre, t: v.el.currentTime } : null;
+        },
+        audible: () => !enPause && !d.cachee() && c.state === "running" && niveauFinal({ reglages, baisse, sourdine }) > 0,
+        hasard: d.hasard,
+        planifier: d.planifier,
+      });
+      couche.regler(coucheVoulue);
+    }
     for (const g of GESTES) retraits.push(d.ecouter("fenetre", g, reveiller));
     desabonner.push(d.ecouter("document", "visibilitychange", arrierePlan), d.ecouter("fenetre", "pagehide", () => noterReprise(true)));
     const choix = departDeLaPage(candidats(), lireReprise(lire(d.session, CLE_REPRISE)), d.maintenant(), d.hasard);
@@ -413,11 +445,15 @@ export function creerLecteur(d: Dependances): Lecteur {
       appliquerNiveau();
       prevenir();
     },
-    baisser(n) {
+    baisser(n, duree) {
       const b = Math.min(1, Math.max(0, n));
       if (b === baisse) return; // un jeu peut le dire à chaque image
       baisse = b;
-      appliquerNiveau();
+      appliquerNiveau(duree);
+    },
+    couche(a) {
+      coucheVoulue = a;
+      couche?.regler(a);
     },
     actif: () => toutes.length > 0 && ctx !== null,
     scene(nom) {

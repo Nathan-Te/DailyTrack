@@ -1,4 +1,4 @@
-import type { ContexteAudio, Dependances, ElementAudio, GainAudio, ParamAudio, StockageMin } from "../src/lecteur";
+import type { ContexteAudio, Dependances, ElementAudio, GainAudio, OscAudio, ParamAudio, StockageMin } from "../src/lecteur";
 import type { JeuMusique, ListeServie, PisteServie } from "../src/types";
 
 // Des faux navigateurs pour tester le lecteur sans navigateur : un élément audio que le test fait avancer, un contexte qui note ce qu'on lui demande, un stockage en mémoire.
@@ -31,6 +31,29 @@ export class FauxGain implements GainAudio {
   connect(v: unknown) {
     this.vers.push(v);
     return v;
+  }
+}
+
+/** Un oscillateur de la couche : note ce qu'on lui demande (forme, hauteurs, début, fin). */
+export class FauxOsc implements OscAudio {
+  type = "sine";
+  frequency = new FauxParam();
+  vers: unknown[] = [];
+  debut: number | null = null;
+  fin: number | null = null;
+  connect(v: unknown) {
+    this.vers.push(v);
+    return v;
+  }
+  start(t: number) {
+    this.debut = t;
+  }
+  stop(t: number) {
+    this.fin = t;
+  }
+  /** La hauteur demandée (Hz). */
+  get hz(): number {
+    return (this.frequency.appels.find((a) => a[0] === "valeur")?.[1] as number) ?? 0;
   }
 }
 
@@ -68,6 +91,7 @@ export class FauxContexte implements ContexteAudio {
   destination = { destination: true };
   gains: FauxGain[] = [];
   sources: { el: unknown; vers: unknown[] }[] = [];
+  oscillateurs: FauxOsc[] = [];
   suspendus = 0;
   repris = 0;
   async resume() {
@@ -82,6 +106,11 @@ export class FauxContexte implements ContexteAudio {
     const g = new FauxGain();
     this.gains.push(g);
     return g;
+  }
+  createOscillator() {
+    const o = new FauxOsc();
+    this.oscillateurs.push(o);
+    return o;
   }
   createMediaElementSource(el: unknown) {
     const s = { el, vers: [] as unknown[], connect(v: unknown) { this.vers.push(v); return v; } };

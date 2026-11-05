@@ -8,8 +8,10 @@ import type { JeuMusique } from "./types";
 export interface Musique {
   /** Où en est le jeu : `menu` (l'accueil) ou `theme:<code>` (un niveau de ce thème) ; `null` : nulle part en particulier. La musique suit en fondu (`docs/plateforme/musique.md`). */
   scene(nom: string | null): void;
-  /** Le niveau demandé par le jeu, de 0 à 1 (1 : pleine). Garde la dernière valeur jusqu'au chargement du lecteur. */
-  baisser(niveau: number): void;
+  /** Le niveau demandé par le jeu, de 0 à 1 (1 : pleine). Garde la dernière valeur jusqu'au chargement du lecteur. Avec `duree` (secondes), le niveau y arrive en fondu. */
+  baisser(niveau: number, duree?: number): void;
+  /** La couche du jeu (un arpège léger, ou une nappe) entre en fondu ou en sort (≈ 1 s) : `docs/plateforme/musique.md`. */
+  couche(actif: boolean): void;
   /** Le son du jeu est coupé : la musique aussi. */
   sourdine(coupe: boolean): void;
   /** Le lecteur (le charge s'il ne l'est pas : à appeler depuis un geste, par exemple l'ouverture des réglages). */
@@ -19,7 +21,7 @@ export interface Musique {
 const GESTES = ["pointerdown", "keydown", "touchend", "click"];
 
 export function brancherMusique(jeu: JeuMusique, stockage?: () => StockageMin | null): Musique {
-  const q = { baisse: 1, sourdine: false, scene: null as string | null };
+  const q = { baisse: 1, sourdine: false, scene: null as string | null, couche: false };
   let l: Lecteur | undefined;
   let p: Promise<Lecteur> | undefined;
   const charger = () => (p ??= import("./demarrage").then((m) => (l = m.demarrer(jeu, stockage?.() ?? null, q))));
@@ -29,7 +31,8 @@ export function brancherMusique(jeu: JeuMusique, stockage?: () => StockageMin | 
   };
   for (const g of GESTES) addEventListener(g, demarrer, { passive: true });
   return {
-    baisser: (n) => ((q.baisse = n), l?.baisser(n)),
+    baisser: (n, d) => ((q.baisse = n), l?.baisser(n, d)),
+    couche: (a) => ((q.couche = a), l?.couche(a)),
     sourdine: (s) => ((q.sourdine = s), l?.sourdine(s)),
     scene: (n) => ((q.scene = n), l?.scene(n)),
     lecteur: charger,

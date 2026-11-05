@@ -10,6 +10,7 @@ export interface Initial {
   baisse: number;
   sourdine: boolean;
   scene: string | null;
+  couche?: boolean;
 }
 
 /** Crée le lecteur de la page (une seule fois) et lui donne ce que le jeu a déjà demandé. */
@@ -18,6 +19,7 @@ export function demarrer(jeu: JeuMusique, stockage: StockageMin | null, initial:
   lecteur.baisser(initial.baisse);
   lecteur.sourdine(initial.sourdine);
   lecteur.scene(initial.scene);
+  lecteur.couche(initial.couche ?? false);
   return lecteur;
 }
 
