@@ -10,6 +10,7 @@ import { type CouleursTheme, couleursDeTheme, paletteCourante } from "./couleurs
 import { decorCourant } from "./decors/index";
 import { type Annonce, bosse, type CaseEffacee, DUREE_GAIN, eclater, etatAnnonce, etatGain, etatParticule, type GainFlottant, hasardAffichage, illumination, illuminationFinie, type Particule } from "./effets";
 import { lireEssai } from "./essai";
+import { suivreCouche } from "./coucheLogique";
 import { musiqueDuKit } from "./kitSon";
 import { coteEnMain, coteEnSuivante, dans, disposer, type Disposition, type Rect, ETIQUETTE, metriquesPlaque, VALEUR_MIN } from "./miseEnPage";
 import { Sons, type SonJoue } from "./sons";
@@ -113,6 +114,8 @@ export interface PorteBlocks {
   yeux(): { paires: number; regard: { x: number; y: number } | null };
   /** Les sons demandés (le dernier en dernier) : leur nom et la hauteur de leur première note (Hz). */
   sons(): SonJoue[];
+  /** Lot B6 — la couche de la musique (arpège ou nappe) est-elle demandée ? Vrai du combo ×3 à la perte du combo ou à la fin de la partie. */
+  couche(): boolean;
 }
 
 /** Ce que la scène reçoit en plus du kit : le bot Diamant qui joue à la place du joueur (`&bot`, essai local, jamais classé) à `vitesse` poses par seconde. */
@@ -146,6 +149,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   void musiqueDuKit()?.lecteur().then((l) => (lecteur = l), () => undefined);
   const sons = new Sons({ niveau: () => (lecteur ? niveauEffets(lecteur.reglages().volume, lecteur.reglages().coupee) : niveauEffets(VOLUME_AVANT_LECTEUR, false)) });
   const jouerSon = (e: Evenement, retard = 0): void => sons.jouer(e, retard);
+  // La couche de la musique (lot B6) : elle entre au combo ×3 et sort à la perte du combo ou à la fin de la partie (`coucheLogique.ts`).
+  const couche = suivreCouche(musiqueDuKit());
   const geste = (): void => sons.deverrouiller();
   addEventListener("keydown", geste, { passive: true });
 
@@ -326,6 +331,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     }
     reconstruire();
     bosseScore = maintenant;
+    couche.maj(partie.combo, partie.finie);
     if (partie.finie) {
       tFin = t;
       jouerSon({ son: "fin" }, pose.n > 0 ? 0.45 : 0.1);
@@ -877,6 +883,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       }),
       yeux: () => ({ paires: nbPaires, regard: dernierRegard }),
       sons: () => [...sons.joues],
+      couche: () => couche.actif(),
     };
     (window as unknown as { __blocks?: PorteBlocks }).__blocks = porte;
   }
@@ -892,6 +899,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     },
     // La partie est finie pour le kit une seconde après la dernière pose possible : « Plus de place ! » reste à l'écran.
     finie: () => (partie.finie && tFin >= 0 && t - tFin >= TICKS_PLUS_DE_PLACE) || (exempleFin && t >= 1),
+    // Lot B6 : la partie est jouée, « Plus de place ! » est encore à l'écran : le kit fait retomber la musique avant l'écran de fin.
+    finEnCours: () => partie.finie && tFin >= 0,
     action(id) {
       if (id.startsWith("pose:")) {
         const [c, l] = id.slice(5).split(":").map(Number);
@@ -923,6 +932,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     fantome() {},
     dessiner,
     detruire() {
+      couche.arreter();
       removeEventListener("keydown", geste);
       observateur.disconnect();
       canvas.remove();
