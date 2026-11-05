@@ -280,12 +280,14 @@ describe("lot I6 : les mentions en anglais (/legal/), traduction fidèle de la p
 
 // Lot « manques de Blocks » : les clés du navigateur d'un jeu construit sur le kit (`brancherJeu`) sont nommées dans les DEUX pages dès qu'il est dans le dépôt et n'est pas un jeu témoin. Les suffixes sont lus dans
 // le source du kit (une clé ajoutée au kit sans la page échoue ici) ; la liste des jeux est celle des fiches du dépôt (pas celle d'un jeu fictif d'essai) : un jeu neuf (`npm run nouveau-jeu`) échoue ici tant que
-// ses clés ne sont pas décrites, au lieu d'être découvert au dernier lot (règle de fidélité du lot R5).
+// ses clés ne sont pas décrites, au lieu d'être découvert au dernier lot (règle de fidélité du lot R5). **Seul un jeu qui a dépassé son squelette est concerné** : tant que son catalogue porte encore les textes « À remplacer » du
+// générateur (`etatDuJeu` de `scripts/nouveau-jeu.mjs`), le jeu n'est qu'un gabarit (le job « Kit de bout en bout » en génère deux dans une copie du dépôt, sans pages légales à jour).
 describe("lot « manques de Blocks » : les clés des jeux du kit sont décrites (fr et en)", () => {
   const { lireFichesBrutes } = require(join(ROOT, "scripts/fiches-brutes.mjs")) as typeof import("../../../scripts/fiches-brutes.mjs");
   const jeux = lireFichesBrutes(ROOT, {})
     .map((f) => f.brut as { id: string; temoin?: boolean; donnees: { stockage: { prefixe: string } } })
-    .filter((f) => !f.temoin);
+    .filter((f) => !f.temoin)
+    .filter((f) => !existsSync(join(ROOT, "apps", f.id, "src/catalogue.fr.ts")) || !/À remplacer/.test(readFileSync(join(ROOT, "apps", f.id, "src/catalogue.fr.ts"), "utf8")));
   const duKit = jeux.filter((j) => existsSync(join(ROOT, "apps", j.id, "src/main.ts")) && /brancherJeu/.test(readFileSync(join(ROOT, "apps", j.id, "src/main.ts"), "utf8")));
   /** Les suffixes de clé que le kit écrit sous le préfixe d'un jeu (`${…prefixe}records`, `…reglages`, `…aide:vu`, `…identite:vue`). */
   const suffixes = (): string[] => {
@@ -300,7 +302,7 @@ describe("lot « manques de Blocks » : les clés des jeux du kit sont décrites
     expect(suffixes()).toEqual(["aide:vu", "identite:vue", "records", "reglages"]);
   });
 
-  it("chaque jeu du dépôt (hors témoin) nomme sa famille de clés, et chaque jeu du kit ses quatre clés, dans les deux pages", () => {
+  it("chaque jeu du dépôt (hors témoin, hors squelette) nomme sa famille de clés, et chaque jeu du kit ses quatre clés, dans les deux pages", () => {
     expect(jeux.length).toBeGreaterThan(0);
     for (const j of jeux) for (const page of [PAGE, PAGE_EN]) expect(page, `${j.id} : ${j.donnees.stockage.prefixe}…`).toContain(`<code>${j.donnees.stockage.prefixe}…</code>`);
     expect(duKit.map((j) => j.id)).toContain("blocks");
