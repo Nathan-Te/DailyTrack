@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1988 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2123 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -299,6 +299,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `jeu.jump.titre` | JUMP | JUMP |
 | `jeu.tower.nom` | Tower | Tower |
 | `jeu.cibles.nom` | Cibles | Targets |
+| `jeu.rush.nom` | Rush | Rush |
 | `jeu.blocks.nom` | Blocks | Blocks |
 
 ### nouveauDepart (`nouveauDepart.*`, `packages/ui/src/catalogue.ts`)
@@ -631,6 +632,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.jump.accroche` | Un niveau de plateforme par jour, le même pour tous. | One platform level a day, the same for everyone. |
 | `portail.tower.accroche` | Une tour par jour, les mêmes pièces pour tous. | One tower a day, the same pieces for everyone. |
 | `portail.cibles.accroche` | Trente secondes, vingt cibles, les mêmes pour tous. | Thirty seconds, twenty targets, the same for everyone. |
+| `portail.rush.accroche` | Un chevalier, des gelées, un golem : bats le boss le plus vite possible. | A knight, some slimes, a golem: take the boss down as fast as you can. |
 | `portail.blocks.accroche` | À remplacer : l'accroche de Blocks. | To replace: the tagline of Blocks. |
 | `portail.jouer` | Jouer | Play |
 | `portail.jouer.aria` | Jouer à {jeu} | Play {jeu} |
@@ -682,6 +684,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.tower.nuit` | Nuit | Night |
 | `portail.theme.cibles.sable` | Sable | Sand |
 | `portail.theme.cibles.ardoise` | Ardoise | Slate |
+| `portail.theme.rush.clair` | Arène de jour | Day arena |
+| `portail.theme.rush.sombre` | Arène de nuit | Night arena |
 | `portail.theme.blocks.port` | Port | Harbour |
 | `portail.theme.blocks.chantier` | Chantier | Building site |
 | `portail.theme.blocks.canyon` | Canyon | Canyon |
@@ -2680,3 +2684,191 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `theme.banquise` | Banquise | Ice floe |
 | `theme.jungle` | Jungle | Jungle |
 | `theme.nuit` | Nuit | Night |
+
+## Rush
+
+### Accueil (`accueil.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `accueil.phrase.clair` | Le golem t'attend au milieu de l'arène. Fais-le tomber avant les autres. | The golem is waiting in the middle of the arena. Bring it down before everyone else does. |
+| `accueil.phrase.sombre` | La nuit tombe sur l'arène. Le golem n'a pas sommeil. | Night falls on the arena. The golem isn't sleepy. |
+
+### Commandes (`commandes.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `commandes.action.haut` | Aller en haut | Move up |
+| `commandes.action.bas` | Aller en bas | Move down |
+| `commandes.action.gauche` | Aller à gauche | Move left |
+| `commandes.action.droite` | Aller à droite | Move right |
+| `commandes.action.coup` | Coup | Strike |
+| `commandes.action.esquive` | Esquive | Dodge |
+
+### Commandes tactiles (`tactile.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `tactile.stick` | Joystick de déplacement | Movement joystick |
+
+### Comment jouer (`aide.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `aide.point1` | Fais tomber le golem le plus vite possible : ton temps est ton score. | Bring the golem down as fast as you can: your time is your score. |
+| `aide.point2` | Frappe pour enchaîner trois coups, esquive pour passer à travers les attaques : un cercle rouge au sol annonce chaque coup du golem. | Hit to chain three strikes, dodge to roll through attacks: a red circle on the ground warns you before every golem blow. |
+| `aide.point3` | Tu as trois cœurs. Les gelées et les chauves-souris font mal aussi. | You have three hearts. Slimes and bats hurt too. |
+
+### golem (`golem.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `golem.nom` | Golem | Golem |
+
+### kit (`kit.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `kit.accueil.aria` | Accueil du jeu | Game home |
+| `kit.accueil.jouer` | Jouer | Play |
+| `kit.accueil.aide` | Comment jouer | How to play |
+| `kit.accueil.reglages` | Réglages | Settings |
+| `kit.accueil.record` | Ton record | Your record |
+| `kit.accueil.record.aucun` | Pas encore joué aujourd'hui | Not played yet today |
+| `kit.accueil.record.sous` | {medaille} · {envoi} | {medaille} · {envoi} |
+| `kit.accueil.serie` | Ta série | Your streak |
+| `kit.accueil.serie.jours` | {n} jour(s) | {n} day(s) |
+| `kit.accueil.classement` | Classement du jour | Today's ranking |
+| `kit.accueil.toutLeClassement` | Tout le classement › | Full ranking › |
+| `kit.accueil.prochaine` | Prochaine partie dans | Next game in |
+| `kit.accueil.profil` | Mon profil Du Jour › | My Du Jour profile › |
+| `kit.accueil.attente` | Chargement du jeu… | Loading the game… |
+| `kit.accueil.echec` | Le jeu n'a pas pu se charger. Réessaie. | The game could not load. Try again. |
+| `kit.accueil.numero` | Partie n° {numero} · {theme} | Game no. {numero} · {theme} |
+| `kit.accueil.sansNumero` | {theme} | {theme} |
+| `kit.accueil.pasEncore` | Cette partie n'est pas encore sortie : voici celle d'aujourd'hui. | That game is not out yet: here is today's. |
+| `kit.classement.titre` | Classement | Ranking |
+| `kit.classement.vide` | Personne n'est encore classé aujourd'hui. | Nobody is ranked yet today. |
+| `kit.classement.chargement` | Chargement du classement… | Loading the ranking… |
+| `kit.classement.indisponible` | Classement indisponible pour le moment. | Ranking unavailable for now. |
+| `kit.classement.fermer` | Fermer | Close |
+| `kit.classement.participants` | {n} classé(s) | {n} ranked |
+| `kit.pause.aria` | Pause | Pause |
+| `kit.pause.titre` | Pause | Pause |
+| `kit.pause.reprendre` | Reprendre | Resume |
+| `kit.pause.recommencer` | Recommencer | Restart |
+| `kit.pause.aide` | Comment jouer | How to play |
+| `kit.pause.reglages` | Réglages | Settings |
+| `kit.pause.accueil` | Accueil | Home |
+| `kit.pause.retours` | Un bug ? Une idée ? | A bug? An idea? |
+| `kit.pause.mentions` | Mentions légales | Legal notice |
+| `kit.pause.etat` | Score : {score} | Score: {score} |
+| `kit.fin.aria` | Fin de la partie | End of the game |
+| `kit.fin.titre` | Partie terminée | Game over |
+| `kit.fin.rang` | {rang}e sur {n} | {rang} of {n} |
+| `kit.fin.rang.attente` | Classement en cours… | Ranking in progress… |
+| `kit.fin.record.nouveau` | Nouveau record | New record |
+| `kit.fin.record.pasMieux` | Pas mieux que ton record du jour | Not better than today's record |
+| `kit.fin.horsLigne` | Hors ligne, non classé : ta partie sera envoyée. | Offline, not ranked: your game will be sent. |
+| `kit.fin.medailles` | Médailles du jour | Today's medals |
+| `kit.fin.medaille.encore` | {medaille} : encore {reste} | {medaille}: {reste} to go |
+| `kit.fin.partager` | Partager | Share |
+| `kit.fin.partage.copie` | Copié | Copied |
+| `kit.fin.partage.echec` | Copie impossible : sélectionne le texte. | Could not copy: select the text. |
+| `kit.fin.rejouer` | Rejouer | Play again |
+| `kit.fin.accueil` | Accueil | Home |
+| `kit.fin.classement` | Classement | Ranking |
+| `kit.fin.pseudo.label` | Choisis un pseudo pour être classé | Pick a nickname to be ranked |
+| `kit.fin.pseudo.valider` | Valider | Confirm |
+| `kit.fin.pseudo.suggestions` | Libres : | Available: |
+| `kit.fin.archive` | Archive : partie non classée. | Archive: game not ranked. |
+| `kit.fin.essai` | Partie d'essai : non classée. | Practice game: not ranked. |
+| `kit.envoi.enCours` | Envoi en cours… | Sending… |
+| `kit.envoi.attente` | Envoi en attente : ta partie sera prise en compte dès que possible. | Sending is pending: your game will count as soon as possible. |
+| `kit.envoi.deja` | Partie déjà enregistrée. | Game already recorded. |
+| `kit.envoi.version` | Nouvelle version en ligne : recharge la page. | A new version is online: reload the page. |
+| `kit.envoi.refuse` | Partie refusée par le serveur. | Game refused by the server. |
+| `kit.envoi.revoque` | Ce code n'est plus valide. | This code is no longer valid. |
+| `kit.reglages.aria` | Réglages | Settings |
+| `kit.reglages.titre` | Réglages | Settings |
+| `kit.reglages.son` | Son | Sound |
+| `kit.reglages.affichage` | Affichage | Display |
+| `kit.reglages.mouvement` | Animations | Animations |
+| `kit.reglages.mouvement.normal` | Normales | Normal |
+| `kit.reglages.mouvement.reduit` | Réduites | Reduced |
+| `kit.reglages.vibration` | Vibration | Vibration |
+| `kit.reglages.vibration.oui` | Activée | On |
+| `kit.reglages.vibration.non` | Coupée | Off |
+| `kit.reglages.fantome` | Fantôme au départ | Ghost at the start |
+| `kit.reglages.fantome.aucun` | Aucun | None |
+| `kit.reglages.fantome.meilleure` | Ma meilleure | My best |
+| `kit.reglages.commandes` | Commandes | Controls |
+| `kit.reglages.profil` | Mon profil Du Jour › | My Du Jour profile › |
+| `kit.reglages.mentions` | Mentions légales | Legal notice |
+| `kit.reglages.retours` | Un bug ? Une idée ? | A bug? An idea? |
+| `kit.aide.aria` | Comment jouer | How to play |
+| `kit.aide.titre` | Comment jouer | How to play |
+| `kit.aide.ok` | C'est parti | Let's go |
+| `kit.hud.pause` | Pause | Pause |
+| `kit.hud.fantome` | Fantôme : {nom} | Ghost: {nom} |
+| `kit.fantome.aucun` | aucun | none |
+| `kit.fantome.meilleure` | ma meilleure | my best |
+| `kit.fantome.diamant` | Diamant | Diamond |
+| `kit.commandes.action.pause` | Pause | Pause |
+| `kit.commandes.action.recommencer` | Recommencer | Restart |
+| `kit.commandes.action.fantome` | Fantôme | Ghost |
+| `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
+| `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
+
+### Page (titre, chargement) (`page.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `page.titre` | Rush — Du Jour | Rush — Du Jour |
+
+### Partie (surimpressions) (`hud.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `hud.golem` | Golem {pct} % | Golem {pct}% |
+| `hud.tues` | Tués {n} | Kills {n} |
+| `hud.coeurs` | Cœurs : {n} sur {total} | Hearts: {n} of {total} |
+
+### scene (`scene.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `scene.aria` | L'arène : un chevalier face à un golem et à ses monstres | The arena: a knight facing a golem and its monsters |
+
+### Thèmes (`theme.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `theme.clair` | Arène de jour | Day arena |
+| `theme.sombre` | Arène de nuit | Night arena |
+
+### tune (`tune.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `tune.ouvrir` | Réglages | Tuning |
+| `tune.titre` | Sensations | Feel |
+| `tune.note` | Un réglage de la simulation relance la partie, qui n'est plus classable. | Changing a simulation setting restarts the run, which is then not ranked. |
+| `tune.json` | Réglages à copier | Settings to copy |
+| `tune.exporter` | Exporter | Export |
+| `tune.copie` | Copié | Copied |
+| `tune.retablir` | Rétablir | Reset |
+| `tune.fermer` | Fermer | Close |
+| `tune.vitesse` | Vitesse du chevalier (cm/s) | Knight speed (cm/s) |
+| `tune.portee` | Portée du coup (cm) | Strike reach (cm) |
+| `tune.arc` | Demi-ouverture de l'arc (°) | Half arc (°) |
+| `tune.cadence` | Durée d'un coup (ticks) | Strike length (ticks) |
+| `tune.recul` | Recul des monstres | Monster knockback |
+| `tune.fenetreEsquive` | Invincibilité de l'esquive (ticks) | Dodge invincibility (ticks) |
+| `tune.golemVie` | Vie du golem | Golem health |
+| `tune.golemCadence` | Repos du golem (ticks) | Golem rest (ticks) |
+| `tune.arretImage` | Arrêt sur image (ms) | Hit stop (ms) |
+| `tune.secousse` | Secousse de caméra (%) | Camera shake (%) |
+| `tune.eclats` | Éclats (%) | Particles (%) |
+| `tune.vue` | Vue (mètres) | View (meters) |
+| `tune.eclair` | Éclair blanc (images) | White flash (frames) |

@@ -184,6 +184,36 @@
         "theme:jungle",
         "theme:nuit"
       ]
+    },
+    {
+      "id": "rush",
+      "code": "rush",
+      "ordre": 6,
+      "nom": {
+        "fr": "Rush",
+        "en": "Rush"
+      },
+      "etiquette": {
+        "fond": "#D9C4F0",
+        "coque": "#4B2E83",
+        "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+        "dessin": "generique"
+      },
+      "etatDepart": "off",
+      "format": "temps",
+      "unite": "ticks",
+      "prefixe": "rush:",
+      "messageOu": "rush",
+      "zoneNouveautes": "rush",
+      "themes": [
+        "clair",
+        "sombre"
+      ],
+      "scenes": [
+        "menu",
+        "theme:clair",
+        "theme:sombre"
+      ]
     }
   ],
   "publics": [
@@ -195,7 +225,8 @@
     "jump:",
     "tower:",
     "cibles:",
-    "blocks:"
+    "blocks:",
+    "rush:"
   ],
   "ou": [
     "portail",
@@ -203,7 +234,8 @@
     "jump",
     "tower",
     "cibles",
-    "blocks"
+    "blocks",
+    "rush"
   ],
   "zones": [
     "dujour",
@@ -211,7 +243,8 @@
     "jump",
     "tower",
     "cibles",
-    "blocks"
+    "blocks",
+    "rush"
   ],
   "nomsDeZones": {
     "dujour": "Du Jour",
@@ -219,6 +252,7 @@
     "jump": "Jump",
     "tower": "Tower",
     "cibles": "Cibles",
-    "blocks": "Blocks"
+    "blocks": "Blocks",
+    "rush": "Rush"
   }
 }

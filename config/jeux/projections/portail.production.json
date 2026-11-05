@@ -27,6 +27,12 @@
       "cumul": false,
       "categorie": "arcade",
       "format": "entier"
+    },
+    {
+      "id": "rush",
+      "accroche": "portail.rush.accroche",
+      "cumul": false,
+      "categorie": "arcade"
     }
   ]
 }

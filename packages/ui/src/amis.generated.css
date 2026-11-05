@@ -9,3 +9,8 @@
   --sel-actif-fond: var(--dj-encre);
   --sel-actif-texte: #B8D8F4;
 }
+.dj-amis-selecteur.dj-amis-selecteur--rush {
+  --sel-fond: #D9C4F0;
+  --sel-actif-fond: var(--dj-encre);
+  --sel-actif-texte: #D9C4F0;
+}

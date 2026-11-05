@@ -45,3 +45,10 @@
 .dj-cartouche--blocks {
   background: #1F4E79;
 }
+.jeu-etiquette--rush {
+  --jeu-fond: #D9C4F0;
+  --jeu-police: "Rubik Mono One", "Archivo", sans-serif;
+}
+.dj-cartouche--rush {
+  background: #4B2E83;
+}
