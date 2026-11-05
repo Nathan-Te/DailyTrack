@@ -5,6 +5,7 @@ import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { centreDesYeux, Clignotement, decrirePiece, disposerYeux, ENCRE, expressionDe, regardVers, type CoucheRelief, type Niveau, type PoseOeil } from "@cdj/visuels/blocs";
 import { dessinerPiece, placer } from "@cdj/visuels/blocs/canvas";
 import { boitesDeCases, boitesDePiece, casesDe, type Case } from "./boites";
+import "./partie.css"; // la feuille de la partie : à la demande, avec le corps du jeu (hors du premier chargement)
 import { type CouleursTheme, couleursDeTheme, paletteCourante } from "./couleurs";
 import { decorCourant } from "./decors/index";
 import { type Annonce, bosse, type CaseEffacee, DUREE_GAIN, eclater, etatAnnonce, etatGain, etatParticule, type GainFlottant, hasardAffichage, illumination, illuminationFinie, type Particule } from "./effets";

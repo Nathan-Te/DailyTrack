@@ -1,0 +1,59 @@
+/* « Blocks » — la feuille de la PARTIE (lot B5) : chargée avec le corps du jeu (`corps-`, à la demande), pas avec l'accueil : elle ne pèse rien au premier chargement (ligne de budget `blocks.jsCss`, que `main` laissait à moins de 200 o du plafond). Ce qui sert dès l'accueil (largeur des écrans, bouton JOUER) est dans `blocks.css`. */
+.blocks-plateau {
+  position: absolute;
+  inset: 0;
+  display: block;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Le HUD de la maquette A (lot B2) : le score et le combo sont des plaques dessinées par la scène ; les deux boutons du kit (fantôme, pause) se posent en haut à droite, sur la scène, au style des plaques de la charte.
+   Les textes du kit (`#jeu-hud-score`, `#jeu-hud-temps`) restent pour les lecteurs d'écran, cachés à la vue. Marges de 8 px (la grille en pleine largeur) et de sécurité (`env(safe-area-inset-*)`) sur tout ce qui touche un bord. */
+.jeu-scene .jeu-hud {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: auto;
+  z-index: 2;
+  display: flex;
+  gap: var(--dj-espace-3);
+  min-height: 0;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 0 0;
+  background: none;
+  border: 0;
+  pointer-events: none;
+}
+.jeu-scene .jeu-hud__gauche,
+.jeu-scene .jeu-hud__centre {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.jeu-scene .jeu-hud__bouton {
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  pointer-events: auto;
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.jeu-scene .jeu-plateau {
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+}
+
+/* Lot B4 : le score de l'écran de fin porte maintenant ses séparateurs de milliers (« 136 409 pts ») : sa taille suit la largeur de l'écran pour tenir sur une ligne (jamais plus grande que celle du kit). */
+.jeu-fin__score {
+  font-size: min(var(--dj-taille-64), 11vw);
+}
+
+/* Lot B5 — PAS DE FANTÔME (seed § 5 : une grille en transparence est illisible). Le kit n'a pas d'option « sans fantôme » (manque décrit dans le README du lot B5) : on cache le moins mal possible ce qu'il montre —
+   le bouton du HUD, la ligne « Fantôme au départ » des Réglages et la ligne « Fantôme » de l'écran des commandes. La touche G existe encore côté kit, sans effet : la scène ne dessine aucun fantôme. */
+#jeu-hud-fantome,
+.jeu-reglages__ligne:has([data-setting="fantome"]),
+.dj-commande[data-action="fantome"] {
+  display: none;
+}
