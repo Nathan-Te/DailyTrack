@@ -45,7 +45,7 @@ describe("les feuilles des écrans du kit (jeu.css : l'accueil, premier chargeme
     expect(css).toMatch(/\.jeu-secondaires\s*>\s*\*\s*\{[^}]*min-height:\s*var\(--dj-cible\)/); // 44 px
   });
   it("la peau vient de la fiche : la feuille générée porte la coque du jeu, et la feuille des écrans ne nomme aucun jeu", () => {
-    const gen = lire("packages/ui/src/jeux.generated.css");
+    const gen = lire("packages/ui/src/identites/cibles.generated.css"); // lot K5 : la peau de chaque jeu est dans son fichier (alias `identite-du-jeu.css`)
     expect(gen).toMatch(/\.jeu-etiquette--cibles\s*\{[^}]*--jeu-fond:[^}]*--jeu-coque:[^}]*--jeu-police:/);
     for (const jeu of ["track", "jump", "tower", "cibles", "blocks", "rush"]) expect(css, jeu).not.toMatch(new RegExp(`\\b${jeu}\\b`, "i"));
   });

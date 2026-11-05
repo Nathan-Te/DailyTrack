@@ -14,14 +14,14 @@
 - **Archives** : `brancherJeu(…, { archives })` ; sans lui, bouton désactivé (charte § 5) avec « Bientôt ». **« Aujourd'hui »** : `brancherJeu(…, { aujourdhui(contenu, hote, ctx) })` ; sans lui, le thème et la réplique (la réplique quitte alors la colonne de gauche pour ne pas être écrite deux fois).
 
 ## Partie 2 — l'identité de chaque jeu, et le profil
-- **Fiche** : bloc `identite` (`police`, `motif`, `illustration`, `aujourdhui`) validé par `validerFiche`. `npm run fiches` écrit `packages/ui/src/identites/<id>.generated.css` (face de la police, motif à deux tons : teinte + 7 % d'encre) ; `pagesDuSocle` l'aliase pour le jeu construit : **chaque jeu ne charge que le sien** (budgets). Track et Jump : `illustration: "propre"`.
+- **Fiche** : bloc `identite` (`police`, `motif`, `illustration`, `aujourdhui`) validé par `validerFiche`. `npm run fiches` écrit `packages/ui/src/identites/<id>.generated.css` (face de la police, motif à deux tons : teinte + 7 % d'encre) ; `pagesDuSocle` l'aliase pour le jeu construit : **chaque jeu ne charge que le sien** (couleurs, face, motif, plus la structure `jeux.structure.generated.css`, partagée) : un jeu de plus ne grossit pas les autres (le « Kit de bout en bout » en génère deux). Track et Jump : `illustration: "propre"`.
 - **`nouveau-jeu`** écrit « à choisir » (sans copier l'illustration de Cibles) ; passation, `CLAUDE.md`, `orchestration.md`, `creer-un-jeu.md` portent la règle.
 - **Pas de `preview` ni de `on` sans identité complète** : `etatPermis`, `packages/core/test/identite.test.ts` (exemptions `aujourdhui: false` : Blocks et Rush, « à fournir par la conversation du jeu »), refus de l'administration (`apps/api/src/jeux.ts`, `invalid_action`).
 - **Profil › Par jeu** : cartes tirées de la fiche pour Tower, Blocks, Rush, Cibles ; **cases de médailles pleines pour tous** (Track et Jump compris). Découpe « profil » des polices : 3,6 Ko (Rubik Mono One), 4,1 Ko (Bungee). **Bungee** ajoutée (OFL) ; Rush passe à Bungee. Quatre `illustration.svg` (Cibles dessinée pour l'occasion).
 
 ## Écarts et décisions à relire
 - **Hors « seuls fichiers dans les zones des jeux »** : `apps/blocks/e2e/disposition.spec.ts` (il exigeait que JOUER prenne toute la carte : le défaut que le lot corrige ; il exige maintenant la largeur de sa colonne). Rien d'autre.
-- **Budgets** : Cibles 44,99 / 45,00 Ko et Blocks 46,87 / 47,00 Ko (marges de 0,01 et 0,13 Ko) ; Rush 42,91 / 44. Je n'ai rien relevé : si le lot suivant les dépasse, c'est à Nathan de décider.
+- **Budgets** : Cibles 44,93 / 45,00 Ko et Blocks 46,80 / 47,00 Ko (marges de 0,07 et 0,20 Ko) ; Rush 43,06 / 44. Je n'ai rien relevé : si le lot suivant les dépasse, c'est à Nathan de décider.
 - **Charte** : le fichier fourni numérote « 18 » sur une base plus ancienne que le dépôt (déjà à 17) ; seuls ses passages sur ce lot sont repris (dont le joystick, § 9). Cases pleines : au profil seulement (les grilles de seuils gardent « obtenue / pas encore »).
 - **Golden** : aucun golden d'écran dans le dépôt ; ceux des simulations (Track, Jump, Tower, Blocks, Cibles) ne bougent pas.
 - Cibles : motif `uni` (budget). Le sous-titre « PARTIE N° 4 · BANQUISE » passe sur deux lignes à côté de l'illustration.

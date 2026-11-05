@@ -31,7 +31,11 @@ describe("les fiches du dépôt", () => {
 
   it("les fichiers générés (projections et vues des paquets) sont à jour : `npm run fiches` sinon", () => {
     const attendu = sorties(fiches(), (chemin) => existsSync(join(RACINE, chemin)));
+    // Lot K5 : la peau d'identité (police, motif) de chaque jeu générique — un fichier par jeu, donc un par jeu fictif du job « jeu-fictif » et du « Kit de bout en bout » aussi.
+    const identites = fiches().filter((f) => f.etiquette.dessin === "generique").map((f) => `packages/ui/src/identites/${f.id}.generated.css`);
+    expect(identites.length).toBeGreaterThanOrEqual(3);
     expect(Object.keys(attendu).sort()).toEqual([
+      ...[
       "apps/api/scripts/essais.generated.ts", // lot K4f : les modules d'essais des jeux neufs
       "apps/api/src/fiches.generated.ts",
       "apps/api/src/registre.generated.ts",
@@ -51,13 +55,11 @@ describe("les fiches du dépôt", () => {
       "packages/ui/src/amis.generated.css",
       "packages/ui/src/fiches.generated.ts",
       "packages/ui/src/fiches.production.generated.ts",
-      "packages/ui/src/identites/blocks.generated.css", // lot K5 : la peau d'identité (police, motif) de chaque jeu générique, un fichier par jeu
-      "packages/ui/src/identites/cibles.generated.css",
-      "packages/ui/src/identites/rush.generated.css",
       "packages/ui/src/jeux.generated.css",
+      "packages/ui/src/jeux.structure.generated.css", // lot K5 : la structure de l'étiquette générique, partagée
       "packages/ui/src/jeux.production.generated.css",
       "scripts/catalogues-jeux.generated.ts",
-    ]);
+    ], ...identites].sort());
     for (const [chemin, contenu] of Object.entries(attendu)) {
       expect(existsSync(join(RACINE, chemin)), chemin).toBe(true);
       expect(readFileSync(join(RACINE, chemin), "utf8"), `${chemin} n'est pas à jour : npm run fiches`).toBe(contenu);

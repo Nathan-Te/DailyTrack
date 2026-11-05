@@ -1,5 +1,4 @@
-@import "@cdj/ui/src/jeux.generated.css"; /* l'étiquette générique de la fiche du jeu (fond, coque, police) */
-@import "@cdj/ui/identite-du-jeu.css"; /* lot K5 : la face de la police du jeu construit et le motif de son étiquette (identite de sa fiche) — un alias de `pagesDuSocle`, chaque jeu ne charge que le sien */
+@import "@cdj/ui/identite-du-jeu.css"; /* lot K5 : **la peau du jeu construit, tirée de sa fiche** — la structure de l'étiquette générique, ses couleurs (fond, coque, police), la face de sa police et le motif de son étiquette : un alias de `pagesDuSocle`, chaque jeu ne charge que les siennes (un jeu de plus ne grossit pas les autres) */
 /* **Cette feuille est celle du premier chargement : l'accueil.** Les autres écrans (« Comment jouer », Réglages, classement, pause, fin) et la scène de la partie sont dans `ecrans.css`, chargée à la demande avec la partie. */
 /* Lot K4f — la feuille commune des écrans d'un jeu neuf (`brancherJeu`) : l'accueil, la pause, l'arrivée, le classement, les Réglages, « Comment jouer », le HUD compact. Jetons de `@cdj/ui` seulement (aucune
    couleur en dur) ; le jeu règle la couleur de son étiquette (`jeux.generated.css`, écrit de sa fiche) et habille sa scène. Marges de sécurité (`env(safe-area-inset-*)`) sur tout ce qui touche un bord. Cibles de 44 px. */
