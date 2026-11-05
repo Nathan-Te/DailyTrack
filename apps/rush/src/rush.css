@@ -1,0 +1,302 @@
+/* « Rush » : seulement ce qui est propre au jeu — la scène 3D, ses surimpressions (cœurs, vie du golem), les commandes des doigts et le panneau des sensations. Les écrans sont ceux du kit (`@cdj/kit/jeu.css`).
+   Charte (révision 7, 17) : compact ; le centre reste libre ; commandes aux bords, joystick à gauche, « Coup » et « Esquive » à droite ; bordures de 2 px, ombre nette. Aucune couleur écrite ici : les jetons seulement. */
+.rush-monde {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.rush-monde__scene {
+  position: absolute;
+  inset: 0;
+}
+.rush-monde__scene canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Les surimpressions --- */
+.rush-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.rush-coeurs {
+  position: absolute;
+  top: var(--dj-espace-2);
+  left: max(var(--dj-espace-2), env(safe-area-inset-left));
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  box-shadow: 2px 2px 0 var(--dj-encre);
+}
+.rush-coeur {
+  width: 22px;
+  height: 22px;
+  fill: var(--dj-terre);
+  stroke: var(--dj-encre);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.rush-coeur--vide {
+  fill: var(--dj-creme-2);
+}
+.rush-boss {
+  position: absolute;
+  top: var(--dj-espace-2);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(34vw, 280px);
+  display: grid;
+  gap: 2px;
+  padding: 3px 8px 6px;
+  background: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  box-shadow: 2px 2px 0 var(--dj-terre);
+}
+.rush-boss[hidden] {
+  display: none;
+}
+.rush-boss__nom {
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-12);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dj-creme);
+}
+.rush-boss__piste {
+  position: relative;
+  height: 12px;
+  background: var(--dj-ecran);
+  border: var(--dj-trait) solid var(--dj-creme);
+  border-radius: var(--dj-rayon-etiquette);
+  overflow: hidden;
+}
+.rush-boss__vie {
+  position: absolute;
+  inset: 0;
+  background: var(--dj-ambre);
+  transform-origin: left center;
+}
+.rush-boss[data-phase="2"] .rush-boss__vie {
+  background: var(--dj-terre);
+}
+.rush-boss__moitie {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--dj-creme);
+}
+.rush-vignette {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  box-shadow: inset 0 0 0 10px var(--dj-terre);
+}
+.rush-vignette--coup {
+  animation: rush-coup 0.45s steps(6, end) 1;
+}
+@keyframes rush-coup {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.rush-fps {
+  position: absolute;
+  bottom: var(--dj-espace-2);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  white-space: pre;
+}
+
+/* --- Les doigts --- */
+.rush-tactile {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.rush-stick {
+  position: absolute;
+  left: max(var(--dj-espace-3), env(safe-area-inset-left));
+  bottom: max(var(--dj-espace-3), env(safe-area-inset-bottom));
+  width: 168px;
+  height: 168px;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+.rush-stick__base {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-papier);
+  box-shadow: 2px 2px 0 var(--dj-encre);
+  display: grid;
+  place-items: center;
+  opacity: 0.8;
+}
+.rush-stick__pouce {
+  width: 56px;
+  height: 56px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-moutarde);
+}
+.rush-actions {
+  position: absolute;
+  right: max(var(--dj-espace-3), env(safe-area-inset-right));
+  bottom: max(var(--dj-espace-3), env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-end;
+  gap: var(--dj-espace-3);
+}
+.rush-bouton {
+  pointer-events: auto;
+  touch-action: none;
+  display: grid;
+  place-items: center;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  box-shadow: 2px 2px 0 var(--dj-encre);
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.rush-bouton--coup {
+  width: 84px;
+  height: 84px;
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+}
+.rush-bouton--esquive {
+  width: 62px;
+  height: 62px;
+  margin-bottom: 70px;
+}
+.rush-bouton[data-tenu] {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--dj-encre);
+}
+.rush-bouton__icone {
+  width: 54%;
+  height: 54%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+/* --- Le panneau des sensations (`?debug&tune`) --- */
+.rush-tune {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  width: min(300px, 46vw);
+  max-height: calc(100% - 16px);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-12);
+  pointer-events: auto;
+}
+.rush-tune[hidden] {
+  display: none;
+}
+.rush-tune h3 {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-13);
+  text-transform: uppercase;
+}
+.rush-tune label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 6px;
+  align-items: center;
+}
+.rush-tune label span:last-child {
+  font-family: var(--dj-police-chiffres);
+}
+.rush-tune input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 24px;
+  accent-color: var(--dj-terre);
+}
+.rush-tune__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rush-tune button {
+  min-height: 44px;
+  padding: 0 10px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font: inherit;
+  cursor: pointer;
+}
+.rush-tune textarea {
+  width: 100%;
+  min-height: 90px;
+  box-sizing: border-box;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+}
+.rush-tune__ouvrir {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+  min-width: 44px;
+  min-height: 44px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rush-vignette--coup {
+    animation: none;
+    opacity: 0.35;
+  }
+}
