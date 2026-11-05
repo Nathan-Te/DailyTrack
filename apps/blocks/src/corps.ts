@@ -1,6 +1,5 @@
 import { BLOCKS_GENERATOR_VERSION, contenuDeScenario, dailyBlocks, enregistrer, lireJourFige, type Contenu, type Seuils } from "@cdj/blocks-sim";
-import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
-import { parisDay } from "@cdj/clock";
+import { jouerDiamant, seuilsDuJour } from "@cdj/blocks-sim/diamant";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
@@ -11,7 +10,6 @@ import { chargerDecorTheme, poserDecor } from "./decors/index";
 import { lireEssai } from "./essai";
 import { exempleDePartage } from "./exemple";
 import { nouvellePartieBlocks as scene } from "./scene";
-import { themeAffiche } from "./themeAffiche";
 
 // LE CORPS du jeu (chargé à la demande : `definition.ts` l'importe par `import()` au premier appel de `contenuDuJour`, que l'accueil lance dès son premier dessin, donc avant JOUER) : le tirage de la suite, les scénarios,
 // la scène et les blocs communs. Il n'est pas dans le premier chargement (ligne de budget `blocks.jsCss`, préfixe `corps-` de `budget.aLaDemande` de la fiche).
@@ -21,7 +19,7 @@ import { themeAffiche } from "./themeAffiche";
  * partie finit tout de suite sur un résultat d'exemple. Deux essais locaux, jamais classés.
  */
 export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
-  const essai = lireEssai(location.search, BUILD_RESTRICTED, parisDay(Date.now()));
+  const essai = lireEssai(location.search, BUILD_RESTRICTED);
   return scene(contenu, hote, o, { bot: essai.bot, exemple: essai.mode === "partage" ? exempleDePartage(contenu, essai.exemple ?? "argent") : null });
 }
 
@@ -40,9 +38,8 @@ declare const __JOURS_FIGES__: readonly string[] | undefined;
 const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? [] : __JOURS_FIGES__;
 
 /** Le contenu d'un jour : un scénario d'essai ou une rampe réglée si l'adresse le demande (jamais en production), sinon le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
-export async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
-  const theme = themeAffiche(jour);
-  // La palette et le décor du thème (celui du jour, ou `?theme=`) sont prêts avant la scène ; un décor qui ne charge pas laisse le ciel en aplat.
+export async function contenuDuJour(jour: number, base: string, theme: string): Promise<Contenu> {
+  // La palette et le décor du thème (celui du jour, ou `?theme=` : le kit le donne) sont prêts avant la scène ; un décor qui ne charge pas laisse le ciel en aplat.
   const [palette, decor] = await Promise.all([chargerPalette(theme), chargerDecorTheme(theme as ThemeBlocks).catch(() => null)]);
   poserPalette(palette);
   poserDecor(decor);
@@ -54,7 +51,7 @@ export async function contenuDuJour(jour: number, base: string): Promise<Contenu
 }
 
 async function contenuSansPalette(jour: number, base: string): Promise<Contenu> {
-  const essai = lireEssai(location.search, BUILD_RESTRICTED, parisDay(Date.now()));
+  const essai = lireEssai(location.search, BUILD_RESTRICTED);
   if (essai.scenario) return contenuDeScenario(essai.scenario);
   if (essai.rampe) return dailyBlocks(jour, BLOCKS_GENERATOR_VERSION, essai.rampe);
   const date = formatDay(jour);
@@ -69,12 +66,12 @@ async function contenuSansPalette(jour: number, base: string): Promise<Contenu> 
   return dailyBlocks(jour, BLOCKS_GENERATOR_VERSION);
 }
 
-/** Les seuils des médailles d'un jour : le Diamant est la partie du bot (`@cdj/blocks-sim/diamant`), le reste s'en déduit. Gardés par suite du jour ; calculés au premier appel (quelques millisecondes à quelques dizaines). */
+/** Les seuils des médailles d'un jour (**ceux du fichier de jour s'il y en a un : un jour figé fige ses seuils**) : le Diamant est la partie du bot (`@cdj/blocks-sim/diamant`), le reste s'en déduit. Gardés par suite du jour ; calculés au premier appel (quelques millisecondes à quelques dizaines). */
 const seuilsGardes = new WeakMap<Contenu, Seuils>();
 export function seuilsDeBlocks(contenu: Contenu): Seuils {
   let s = seuilsGardes.get(contenu);
   if (!s) {
-    s = seuilsDe(contenu);
+    s = seuilsDuJour(contenu); // ceux figés avec le jour (fichier de jour), sinon ceux du bot d'aujourd'hui
     seuilsGardes.set(contenu, s);
   }
   return s;

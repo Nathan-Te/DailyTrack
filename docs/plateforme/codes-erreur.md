@@ -71,7 +71,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `track_mismatch` | 409 | DailyTrack : la rediffusion n'est pas celle du circuit de ce jour ou de cette session. | `POST /api/submit`, `/api/salon/<n>/submit` |
 | `not_finished` | 422 | La rediffusion, rejouée par le serveur, n'arrive pas au bout. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit`, `/api/tower/submit` |
 | `replay_copy` | 409 | Les entrées de la rediffusion sont identiques à celles de l'auteur du niveau ou d'une course (ou d'une partie de Tower) déjà classée d'un autre joueur ce jour-là (une copie) : classements du jour seulement (lot R9). | `POST /api/submit`, `POST /api/jump/submit`, `POST /api/tower/submit` |
-| `no_ghost` | 404 | Pas de fantôme : personne de classé, pas de temps pour ce joueur, ou personne devant lui. | `GET /api/day/<j>/ghost`, `GET /api/jump/day/<j>/ghost/first` |
+| `no_ghost` | 404 | Pas de fantôme : personne de classé, pas de temps pour ce joueur, ou personne devant lui. | `GET /api/day/<j>/ghost`, `GET /api/jump/day/<j>/ghost/first`, `GET /api/blocks/day/<j>/first` |
 | `invalid_kind` | 400 | DailyTrack : fantôme demandé avec un `kind` autre que `first` ou `ahead`. | `GET /api/day/<j>/ghost` |
 | `not_ranked` | 403 | Tower (lot T4) : la tour du Diamant ne se rend qu'à un joueur classé ce jour-là (règle G1 : on la débloque en finissant). | `GET /api/tower/day/<j>/diamant` |
 | `invalid_friend` | 400 | Amis (lot F2) : référence ou pseudo d'ami absent, mal formé, ou les deux à la fois. | `POST /api/amis`, `DELETE /api/amis/<ref>`, `GET /api/amis/fiche/<ref>` |

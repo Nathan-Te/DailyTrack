@@ -1,5 +1,7 @@
 import { BONUS_PLATEAU_VIDE, COLONNES, LIGNE_PLEINE, LIGNES, POINTS_EFFACEMENT, POSES_SANS_EFFACEMENT_MAX } from "./constantes";
-import type { Contenu } from "./generateur";
+import { BLOCKS_GENERATOR_VERSION } from "./constantes";
+import { dailyBlocks, type Contenu } from "./generateur";
+import { figerJour, type JourFige } from "./jours";
 import { PIECES, type Piece } from "./pieces";
 import { Partie, type Resultat } from "./partie";
 import { seuilsDepuis, type Seuils } from "./medailles";
@@ -245,3 +247,14 @@ export const partieDuDiamant = (contenu: Pick<Contenu, "suite" | "depart">): Res
 
 /** Les seuils des médailles d'un jour : le Diamant est la partie du bot, le reste s'en déduit (`medailles.ts`). Pur et déterministe ; quelques millisecondes (médiane) à quelques dizaines (pire cas) par jour. */
 export const seuilsDe = (contenu: Pick<Contenu, "suite" | "depart">): Seuils => seuilsDepuis(partieDuDiamant(contenu).score);
+
+/**
+ * **Les seuils d'un jour tel qu'on le sert** : ceux **figés avec le jour** s'il vient d'un fichier de jour (`Contenu.seuilsFiges`, `jours.ts`), sinon ceux du bot d'aujourd'hui (`seuilsDe`). Le serveur et le jeu
+ * passent par cette seule fonction : un changement du bot (`BLOCKS_BOT_VERSION`) ne change donc jamais un jour déjà figé.
+ */
+export const seuilsDuJour = (contenu: Pick<Contenu, "suite" | "depart" | "seuilsFiges">): Seuils => contenu.seuilsFiges ?? seuilsDe(contenu);
+
+/** Le fichier à figer pour un jour : sa suite **et** ses seuils, calculés par le bot de cette version du code (l'outil `figer:blocks` et « Mettre en production » écrivent ce fichier, jamais deux fois). */
+export function figerJourDuDiamant(jour: number, version: number = BLOCKS_GENERATOR_VERSION): JourFige {
+  return figerJour(jour, seuilsDe(dailyBlocks(jour, version)), version);
+}

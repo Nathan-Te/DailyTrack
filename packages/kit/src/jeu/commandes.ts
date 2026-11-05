@@ -16,7 +16,7 @@ const memoire = new Map<string, Commandes>();
 export function commandesDuJeu<C>(fiche: FicheClient, def: DefinitionJeu<C>, i18n: I18n): Commandes {
   let c = memoire.get(fiche.id);
   if (!c) {
-    c = new Commandes(fiche.id, [...def.actions, ...ACTIONS_KIT]);
+    c = new Commandes(fiche.id, [...def.actions, ...ACTIONS_KIT.filter((a) => !(def.sansFantome && a.id === "fantome"))]); // lot « manques de Blocks » : un jeu sans fantôme n'a pas la commande
     memoire.set(fiche.id, c);
     const commandes = c;
     // Les aides citent les touches choisies (`{pause}`, `{m_pause}`…).

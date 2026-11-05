@@ -44,9 +44,9 @@ test.describe("Blocks : `?scenario=partage`", () => {
     await expect(page.locator("#jeu-fin-rang")).toHaveText("Partie d'essai : non classée."); // un essai local, jamais envoyé
     expect(await page.evaluate(() => window.__jeu.envoi().statut)).not.toBe("ranked");
     const adresse = await page.evaluate(() => location.origin + location.pathname);
-    // Le titre vient du numéro du jour (#5 : le 6 novembre, quatre jours après le premier), puis le score, le combo maximal et la médaille.
+    // Le titre vient du numéro du jour (#5 : le 6 novembre, quatre jours après le premier), puis le score, la médaille et le combo maximal (les extras du kit, après la médaille).
     expect(numeroBlocks(jour)).toBe(5);
-    expect(await ligneCopiee(page)).toBe(`Du Jour · Blocks #5 — ${nombre(ex.score, "fr")} pts — combo ×${ex.combo} — ${EMOJI.silver}\n${adresse}`);
+    expect(await ligneCopiee(page)).toBe(`Du Jour · Blocks #5 — ${nombre(ex.score, "fr")} pts — ${EMOJI.silver} — combo ×${ex.combo}\n${adresse}`);
     await context.close();
   });
 
@@ -55,7 +55,7 @@ test.describe("Blocks : `?scenario=partage`", () => {
     const ex = attendu("or");
     await expect(page.locator("#jeu-fin-score")).toHaveText(`${nombre(ex.score, "en")} pts`);
     const ligne = (await ligneCopiee(page)).split("\n")[0]!;
-    expect(ligne).toBe(`Du Jour · Blocks #5 — ${nombre(ex.score, "en")} pts — combo ×${ex.combo} — ${EMOJI.gold}`);
+    expect(ligne).toBe(`Du Jour · Blocks #5 — ${nombre(ex.score, "en")} pts — ${EMOJI.gold} — combo ×${ex.combo}`);
     expect(ex.score).toBeGreaterThanOrEqual(1000); // un grand nombre : « 1,234 » et non « 1 234 »
     expect(ligne).toMatch(/\d,\d{3} pts/);
     await context.close();
@@ -75,7 +75,7 @@ test.describe("Blocks : `?scenario=partage`", () => {
     const { context, page } = await ouvrir(browser, "diamant");
     const ex = attendu("diamant");
     expect(ex.medaille).toBe(EMOJI.author);
-    expect((await ligneCopiee(page)).split("\n")[0]).toBe(`Du Jour · Blocks #5 — ${nombre(ex.score, "fr")} pts — combo ×${ex.combo} — ${EMOJI.author}`);
+    expect((await ligneCopiee(page)).split("\n")[0]).toBe(`Du Jour · Blocks #5 — ${nombre(ex.score, "fr")} pts — ${EMOJI.author} — combo ×${ex.combo}`);
     await context.close();
   });
 });

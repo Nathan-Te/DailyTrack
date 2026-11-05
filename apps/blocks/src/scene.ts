@@ -9,12 +9,11 @@ import "./partie.css"; // la feuille de la partie : à la demande, avec le corps
 import { type CouleursTheme, couleursDeTheme, paletteCourante } from "./couleurs";
 import { decorCourant } from "./decors/index";
 import { type Annonce, bosse, type CaseEffacee, DUREE_GAIN, eclater, etatAnnonce, etatGain, etatParticule, type GainFlottant, hasardAffichage, illumination, illuminationFinie, type Particule } from "./effets";
-import { lireEssai } from "./essai";
 import { musiqueDuKit } from "./kitSon";
 import { coteEnMain, coteEnSuivante, dans, disposer, type Disposition, type Rect, ETIQUETTE, metriquesPlaque, VALEUR_MIN } from "./miseEnPage";
 import { Sons, type SonJoue } from "./sons";
 import { type Evenement, niveauEffets } from "./sonsLogique";
-import { ecrireScore, formaterNombre, texte } from "./textes";
+import { ecrireScore, formaterNombre } from "./textes";
 import { caseDesYeux, morceaux } from "./yeuxBlocks";
 
 // Le rendu et les entrées de « Blocks » (lots B1 et B2) : la grille de 8 × 8, la pièce du moment dans une grande zone de saisie, la pièce suivante petite (non saisissable), en Canvas 2D avec les blocs communs
@@ -310,12 +309,12 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       jouerSon({ son: "effacement", n: pose.n, combo: pose.combo });
       if (pose.combo >= 2) {
         jouerSon({ son: "combo", combo: pose.combo });
-        annonces.push({ texte: texte("hud.combo.annonce", { n: pose.combo }), t0: maintenant, duree: 1.1, genre: "combo" });
+        annonces.push({ texte: o.t("hud.combo.annonce", { n: pose.combo }), t0: maintenant, duree: 1.1, genre: "combo" });
       }
       if (pose.combo !== avant.combo) bosseCombo = maintenant;
       if (pose.plateauVide) {
         jouerSon({ son: "plateauVide" });
-        annonces.push({ texte: texte("hud.plateauVide", { n: BONUS_PLATEAU_VIDE }), t0: maintenant + 0.15, duree: 1.8, genre: "plateau" });
+        annonces.push({ texte: o.t("hud.plateauVide", { n: BONUS_PLATEAU_VIDE }), t0: maintenant + 0.15, duree: 1.8, genre: "plateau" });
         if (!o.reduit) {
           const confettis = Array.from({ length: NB_CASES }, (_, i) => ({ col: i % COLONNES, ligne: Math.floor(i / COLONNES), couleur: couleurDeFamille(PIECES[Math.floor(hasard() * PIECES.length)]!.famille) }));
           particules.push(...eclater(confettis, maintenant + 0.15, hasard, particules.length));
@@ -613,8 +612,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     const carres = partie.combo > 0 ? POSES_SANS_EFFACEMENT_MAX - 1 - sansEff : 0;
     const perdu = perteCombo >= 0 && maintenant - perteCombo < DUREE_PERTE_COMBO;
     const moutarde = partie.combo >= 2;
-    plaque(mep.score, couleurs.plaque, texte("hud.score"), ecrireNombre(partie.score), { echelle: o.reduit ? 1 : 1 + 0.05 * bosse(maintenant - bosseScore) });
-    plaque(mep.combo, moutarde || perdu ? couleurs.surligne : couleurs.plaque, texte("hud.combo"), partie.combo > 0 ? `×${partie.combo}` : "—", {
+    plaque(mep.score, couleurs.plaque, o.t("hud.score"), ecrireNombre(partie.score), { echelle: o.reduit ? 1 : 1 + 0.05 * bosse(maintenant - bosseScore) });
+    plaque(mep.combo, moutarde || perdu ? couleurs.surligne : couleurs.plaque, o.t("hud.combo"), partie.combo > 0 ? `×${partie.combo}` : "—", {
       echelle: o.reduit ? 1 : 1 + 0.1 * bosse(maintenant - bosseCombo),
       // Un combo perdu se voit sans punir : la plaque se vide en douceur (un léger tremblement qui s'éteint), sans son ni message.
       secousse: perdu && !o.reduit ? Math.sin((maintenant - perteCombo) * 38) * 3 * (1 - (maintenant - perteCombo) / DUREE_PERTE_COMBO) : 0,
@@ -637,12 +636,12 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     // L'aide d'avant la première pose.
     if (partie.poses === 0 && !partie.finie && mep.aide.h >= 24) {
       g.fillStyle = couleurs.texteDouce;
-      texteEnLignes(texte(o.tactile ? "hud.aide.glisser" : "hud.aide.bureau"), mep.aide, mep.portrait ? (mep.aide.h >= 40 ? 14 : 12) : Math.max(13, Math.min(24, Math.round(mep.cote * 0.2))));
+      texteEnLignes(o.t(o.tactile ? "hud.aide.glisser" : "hud.aide.bureau"), mep.aide, mep.portrait ? (mep.aide.h >= 40 ? 14 : 12) : Math.max(13, Math.min(24, Math.round(mep.cote * 0.2))));
     }
 
     // Les deux zones : « Ta pièce » (saisissable) et « Suivante » (pour information : pointillés, sans ombre).
-    carte(mep.main, couleurs.zone, texte("hud.piece"), true);
-    carte(mep.suivante, couleurs.zoneSuivante, texte("hud.suivante"), false);
+    carte(mep.main, couleurs.zone, o.t("hud.piece"), true);
+    carte(mep.suivante, couleurs.zoneSuivante, o.t("hud.suivante"), false);
 
     // La grille : les cases vides ; celles que le survol ferait effacer s'éclaircissent.
     g.fillStyle = couleurs.fond;
@@ -811,10 +810,10 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       if (e) pastille(a.texte, centreGrille.x, centreGrille.y + (a.genre === "combo" ? -cote * 1.6 : a.genre === "plateau" ? -cote * 0.4 : 0), o.reduit ? 1 : e.echelle, e.alpha, a.genre);
     }
     // « Plus de place ! » : environ 1 s avant l'écran de fin.
-    if (partie.finie) pastille(texte("fin.plusDePlace"), centreGrille.x, centreGrille.y, 1, 1, "fin");
+    if (partie.finie) pastille(o.t("fin.plusDePlace"), centreGrille.x, centreGrille.y, 1, 1, "fin");
     g.restore();
   }
-  const ecrireNombre = (n: number): string => formaterNombre(n);
+  const ecrireNombre = (n: number): string => formaterNombre(n, o.langue);
 
   // `?scenario=partage` (lot B4) : les poses du résultat d'exemple, appliquées d'emblée et sans effets (l'écran de fin s'ouvre dessus) ; la partie est alors donnée pour finie.
   const exempleFin = !!extra.exemple;
@@ -914,7 +913,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       bornes();
     },
     // Ce que lit un lecteur d'écran (la plaque du kit, cachée à la vue : le HUD est dessiné par la scène) : le score et le combo.
-    hud: () => ({ principal: ecrireScore(partie.score), secondaire: partie.combo > 0 ? texte("hud.combo.lecteur", { n: partie.combo }) : "" }),
+    hud: () => ({ principal: ecrireScore(partie.score, o.t, o.langue), secondaire: partie.combo > 0 ? o.t("hud.combo.lecteur", { n: partie.combo }) : "" }),
     resultat: () => {
       const r = partie.resultat() ?? { score: partie.score, combo: partie.comboMax, poses: partie.poses, raison: "bloquee" as const };
       return { score: VARIANTE.score(r), rediffusion: enregistrer(contenu, actions) };

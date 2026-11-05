@@ -51,6 +51,7 @@ export interface ContratMinimal<Niveau, Rejeu extends RejeuNeuf, Mesure> {
   ticksParSeconde?: number;
   /** Le fantôme réservé aux classés. */
   fantome?: ContratJeu<Niveau, Rejeu, Mesure>["fantome"];
+  premier?: boolean;
   /** Le jour que cette image sert (fichiers figés), défaut : aucun. */
   joursFiges?: readonly string[];
 }
@@ -139,6 +140,7 @@ export function contratDeFiche<Niveau, Rejeu extends RejeuNeuf, Mesure>(fiche: F
       return parTemps ? { tempsMs: tempsMs(v), ticks: fiche.classement.unite === "ticks" ? v : undefined } : { tempsMs: 0, score: { unite: unitePortail, valeur: v, vies: 0 } };
     },
     ...(c.fantome ? { fantome: c.fantome } : {}),
+    ...(c.premier ? { premier: true } : {}),
   };
 }
 

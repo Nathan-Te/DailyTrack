@@ -19,6 +19,8 @@ export interface OptionsUrl {
   tactile: "1" | "0" | null;
   /** `?seed=AAAA-MM-JJ` : jouer un jour passé (archive, jamais classé). Sur la production, une date future est refusée. */
   seed: number | null;
+  /** Lot « manques de Blocks » — `?theme=<code>` : force le thème pour l'essayer (palette, décor, nom et phrase de l'accueil), **hors production seulement**, **local et jamais classé**. Le code est validé contre les thèmes de la fiche (`brancherJeu`). */
+  theme: string | null;
 }
 
 export function lireOptions(search: string, restreint: boolean = BUILD_RESTRICTED): OptionsUrl {
@@ -33,6 +35,7 @@ export function lireOptions(search: string, restreint: boolean = BUILD_RESTRICTE
     simuler: !restreint && q.has("debug") && (simuler === "lent" || simuler === "perime") ? simuler : null,
     tactile: tactile === "1" || tactile === "0" ? tactile : null,
     seed: parseDay(q.get("seed") ?? ""),
+    theme: !restreint ? q.get("theme") || null : null,
   };
 }
 

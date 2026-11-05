@@ -168,6 +168,12 @@ export interface ContratJeu<Niveau, Rejeu, Mesure> {
   /** Le temps de la partie (ms), le score et les pas d'une ligne : ce que le portail et l'administration lisent. */
   versPortail(brute: LigneBrute): { tempsMs: number; score?: ScorePortail; ticks?: number };
 
+  /**
+   * Lot « manques de Blocks » — **la rediffusion du n° 1 du jour** (`GET <jeu>/day/<date>/first`) : le pseudo du premier, sa rediffusion et les versions qui l'ont rejouée, `mine` si c'est le joueur (`X-Player-Id`).
+   * Réservée, pour un jour ouvert, à qui est classé ce jour-là (règle G1 : on la débloque en finissant) ; publique une fois le jour fermé. 404 `no_ghost` si personne n'est classé. Absent : le jeu n'a pas cette route.
+   */
+  premier?: boolean;
+
   /** Le fantôme réservé aux classés (`GET <jeu>/day/<date>/<route>`) ; absent : le jeu n'en a pas. */
   fantome?: {
     route: string;

@@ -275,6 +275,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     at: number;
     pending: Promise<ClassementDuJour>;
     noms: Map<string, Promise<Map<string, { name: string; ref: string; avatar: string | null }>>>;
+    /** Lot « manques de Blocks » : le calcul est fini et n'a trouvé aucun classé (dans aucune vue). Un classement vide d'un jour ouvert n'est pas gardé : il ne coûte aucune ligne à refaire. */
+    vide?: boolean;
   }
   const classements = new Map<number, Gardee>();
   let calculs = 0;
@@ -286,7 +288,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   function gardeeDe(day: number): Gardee {
     const kept = classements.get(day);
     const duree = jourOuvert(day) ? CLASSEMENT_FENETRE_MS : CLASSEMENT_JOUR_FERME_MS;
-    if (kept && now() - kept.at < duree) return kept;
+    // Lot « manques de Blocks » : un classement **vide** d'un jour ouvert n'est pas gardé — sinon la première lecture (avant que personne ait joué) figeait le portail 45 s, et le premier classé n'apparaissait qu'à la fenêtre suivante. Le refaire ne lit aucune ligne.
+    if (kept && now() - kept.at < duree && !(kept.vide && jourOuvert(day))) return kept;
     calculs++;
     const ouverts = comptes(day);
     // Lot TP : le cumul au temps ne lit que les jeux au temps ; un jeu classé à la hauteur rend ses classés à part (sa vue).
@@ -299,6 +302,9 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     if (classements.size >= CLASSEMENT_JOURS_GARDES) for (const [d] of classements) if (d !== day) { classements.delete(d); break; }
     const neuve: Gardee = { at: now(), pending, noms: new Map() };
     classements.set(day, neuve);
+    void pending.then((c) => {
+      neuve.vide = c.cumul.length === 0 && (c.hauteurs ?? []).every((h) => h.classes.length === 0) && c.parJeu.every((l) => l.length === 0);
+    }, () => undefined);
     // Un calcul qui échoue n'est pas gardé : la requête suivante réessaie.
     pending.catch(() => {
       if (classements.get(day) === neuve) classements.delete(day);

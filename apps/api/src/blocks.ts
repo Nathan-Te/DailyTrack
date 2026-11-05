@@ -17,7 +17,7 @@ import {
   type Seuils,
   themeDuJour,
 } from "@cdj/blocks-sim";
-import { seuilsDe } from "@cdj/blocks-sim/diamant";
+import { seuilsDe, seuilsDuJour } from "@cdj/blocks-sim/diamant";
 import type { GameDefinition } from "./games";
 import { FICHES_SERVEUR } from "./fiches.generated";
 import { type ContratMinimal, definirJeuNeuf, type FicheServeur, RefusJeu, type RejeuNeuf } from "./jeux/index";
@@ -57,8 +57,9 @@ export function contenuDeBlocks(jour: number, frozen: Readonly<Record<string, un
 
 const MEMO_MAX = 64;
 const memoSeuils = new Map<string, Seuils>();
-/** Les seuils des médailles d'un jour (bot Diamant), calculés une fois par suite du jour et version du bot. */
+/** Les seuils des médailles d'un jour : **ceux figés avec le jour** s'il vient d'un fichier de jour (le bot n'est pas appelé : un changement du bot ne change jamais un jour figé), sinon ceux du bot (bot Diamant), calculés une fois par suite du jour et version du bot. */
 export function seuilsDeBlocks(contenu: Contenu): Seuils {
+  if (contenu.seuilsFiges) return seuilsDuJour(contenu);
   const cle = `${BLOCKS_BOT_VERSION}:${empreinteContenu(contenu)}`;
   let s = memoSeuils.get(cle);
   if (!s) {
@@ -101,6 +102,7 @@ export const contratBlocks = (o: BlocksOptions = {}): ContratMinimal<Niveau, Rej
   theme: (niveau) => themeDuJour(niveau.jour),
   mesures: (m) => ({ poses: m.poses }),
   joursFiges: Object.keys(o.frozen ?? {}).sort(),
+  premier: true, // `GET /api/blocks/day/<date>/first` : la partie du n° 1 du jour, pour la revoir (lot « manques de Blocks »)
 });
 
 export const BLOCKS_GAME: GameDefinition<BlocksOptions> = definirJeuNeuf<Niveau, Rejeu, Mesure, BlocksOptions>({ fiche, nom: "Blocks" }, (_platform, o) => contratBlocks(o ?? {}));

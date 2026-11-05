@@ -42,6 +42,11 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   pointer-events: none;
+  white-space: nowrap; /* centré à 50 % de la largeur, il se coupait en deux lignes sur un téléphone (42 px de haut) : une seule ligne */
+}
+/* Lot « manques de Blocks » : la hauteur que prend le bandeau (une ligne de 12 px, 2 px de marge, le trait). Lue par la scène des jeux du kit (`packages/kit/src/jeu/jeu.css`). */
+html.dj-avec-apercu {
+  --dj-apercu-reserve: 26px;
 }
 .dj-apercu--brouillon {
   background: var(--dj-papier);

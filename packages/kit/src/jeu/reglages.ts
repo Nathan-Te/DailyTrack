@@ -1,6 +1,6 @@
 import { barreJeu, cheminMentions, creerCadre, el, type TraducteurCommun } from "@cdj/ui";
 import { cleAction, commandesDuJeu } from "./commandes";
-import { ecrire, lireReglages, type ReglagesJoueur } from "./reglagesJoueur";
+import { ecrire, lireReglages, volumeEffetsLu, type ReglagesJoueur } from "./reglagesJoueur";
 import type { ContexteJeu } from "./types";
 
 // Réglages (à la demande), le cadre commun : **Son** (le bloc commun de la musique : volume, couper, morceau suivant), **Affichage** (les animations réduites, le fantôme au départ), **Commandes** (l'écran du socle :
@@ -15,7 +15,7 @@ export function monterReglages<C>(c: ContexteJeu<C>): { ouvrir(): void } {
     barre: () => barreJeu(c.i18n.socle() as unknown as TraducteurCommun, { href: "../", jour: c.jour, retour: { texte: t(`jeu.${c.fiche.id}.nom`).toUpperCase(), ariaLabel: t("kit.reglages.titre"), onClick: () => (cadre.racine.hidden = true) } }),
     aria: () => t("kit.reglages.aria"),
   });
-  const segment = <K extends keyof Omit<ReglagesJoueur, "v">>(quoi: K, choix: readonly { valeur: ReglagesJoueur[K]; cle: string }[]): HTMLElement => {
+  const segment = <K extends "mouvement" | "fantome" | "vibration">(quoi: K, choix: readonly { valeur: ReglagesJoueur[K]; cle: string }[]): HTMLElement => {
     const groupe = el("div", { classe: "jeu-segment", attrs: { role: "group", "data-setting": quoi, "aria-label": t(`kit.reglages.${quoi}`) } });
     const boutons = choix.map((x) => {
       const b = el("button", { classe: "jeu-segment__bouton", attrs: { type: "button", "data-value": String(x.valeur) }, texte: t(x.cle) });
@@ -32,6 +32,18 @@ export function monterReglages<C>(c: ContexteJeu<C>): { ouvrir(): void } {
     return groupe;
   };
   const ligne = (cleNom: string, g: HTMLElement): HTMLElement => el("div", { classe: "jeu-reglages__ligne" }, el("span", { texte: t(cleNom) }), g);
+  // Lot « manques de Blocks » : le volume des effets sonores, séparé de la musique (un curseur de 0 à 100 par pas de 5), seulement pour un jeu qui joue des effets (`DefinitionJeu.effets`).
+  const curseurEffets = (): HTMLElement => {
+    const entree = el("input", { classe: "jeu-reglages__curseur", attrs: { type: "range", min: "0", max: "100", step: "5", id: "jeu-reglages-effets", "data-setting": "effets", "aria-label": t("kit.reglages.effets") } }) as HTMLInputElement;
+    entree.value = String(s.effets);
+    const valeur = el("output", { classe: "jeu-reglages__valeur", attrs: { for: "jeu-reglages-effets" }, texte: `${s.effets} %` });
+    entree.addEventListener("input", () => {
+      s = { ...s, effets: volumeEffetsLu(Number(entree.value)) };
+      valeur.textContent = `${s.effets} %`;
+      ecrire(c, c.donnees.stockage, s);
+    });
+    return el("div", { classe: "jeu-reglages__ligne" }, el("span", { texte: t("kit.reglages.effets") }), entree, valeur);
+  };
   const placeMusique = el("div", { classe: "jeu-reglages__musique" });
   void import("@cdj/ui/src/panneauMusique").then((m) => m.monterPanneau(() => c.musique.lecteur() as never, placeMusique), () => undefined);
   const hoteCommandes = el("div", { classe: "jeu-reglages__commandes", attrs: { id: "jeu-reglages-commandes" } });
@@ -44,13 +56,14 @@ export function monterReglages<C>(c: ContexteJeu<C>): { ouvrir(): void } {
   retours.addEventListener("click", () => void import("@cdj/ui/src/retoursOuvrir").then(() => import("./retours")).then((m) => m.ouvrirRetours(c.fiche.id, c.donnees.base, c.donnees.stockage)));
   cadre.corps.append(
     el("h2", { classe: "jeu-ecran__titre", texte: t("kit.reglages.titre") }),
-    el("section", { classe: "jeu-reglages__section" }, el("h3", { texte: t("kit.reglages.son") }), placeMusique),
+    el("section", { classe: "jeu-reglages__section" }, el("h3", { texte: t("kit.reglages.son") }), placeMusique, ...(c.def.effets ? [curseurEffets()] : [])),
     el(
       "section",
       { classe: "jeu-reglages__section" },
       el("h3", { texte: t("kit.reglages.affichage") }),
       ligne("kit.reglages.mouvement", segment("mouvement", [{ valeur: "normal", cle: "kit.reglages.mouvement.normal" }, { valeur: "reduit", cle: "kit.reglages.mouvement.reduit" }])),
-      ligne("kit.reglages.fantome", segment("fantome", [{ valeur: "aucun", cle: "kit.reglages.fantome.aucun" }, { valeur: "meilleure", cle: "kit.reglages.fantome.meilleure" }])),
+      // Lot « manques de Blocks » : un jeu sans fantôme n'a pas la ligne « Fantôme au départ ».
+      ...(c.def.sansFantome ? [] : [ligne("kit.reglages.fantome", segment("fantome", [{ valeur: "aucun", cle: "kit.reglages.fantome.aucun" }, { valeur: "meilleure", cle: "kit.reglages.fantome.meilleure" }]))]),
       // Lot B1 : le réglage de la vibration n'est montré que si le jeu vibre ET que l'appareil sait vibrer (jamais sur un iPhone ni au bureau : un réglage sans effet).
       ...(c.def.vibration && c.donnees.tactile && typeof navigator !== "undefined" && typeof navigator.vibrate === "function" ? [ligne("kit.reglages.vibration", segment("vibration", [{ valeur: "oui", cle: "kit.reglages.vibration.oui" }, { valeur: "non", cle: "kit.reglages.vibration.non" }]))] : []),
     ),

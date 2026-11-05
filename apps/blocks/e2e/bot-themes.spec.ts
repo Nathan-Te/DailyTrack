@@ -116,9 +116,10 @@ test.describe("Blocks : les thèmes du jour", () => {
     await autre.context.close();
   });
 
-  test("un thème forcé ne change ni la suite ni le classement : la partie n'est pas un essai", async ({ browser }) => {
+  test("un thème forcé ne change pas la suite, mais la partie est un essai local, jamais classé (le kit lit `?theme=`, lot « manques de Blocks »)", async ({ browser }) => {
     const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&theme=nuit`);
-    await expect(page.locator("#jeu-archive")).toHaveCount(0);
+    await expect(page.locator("#jeu-archive")).toHaveText("Partie d'essai : non classée.");
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("nuit");
     await lancer(page);
     const suite = dailyBlocks(jour).suite;
     expect(await page.evaluate(() => window.__blocks.piece())).toBe(PIECES[suite[0]!]!.nom);
