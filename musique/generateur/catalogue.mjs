@@ -88,4 +88,32 @@ export const TOWER = [
   }),
 ];
 
-export const GENEREES = [...TRACK, ...JUMP, ...TOWER];
+// ——— Blocks : réfléchir, pas réagir (lot B6) — la même famille « calme » que Tower, **tout sur Do** (ou La mineur, son relatif, pour la nuit) ———
+// Les effets de Blocks (`apps/blocks/src/sonsLogique.ts`) partent de Do₅ et montent d'un demi-ton par palier du combo jusqu'à l'octave : sur une musique en Do, le palier 1 et l'octave tombent justes, et le palier 3 (Ré₅, où la
+// couche du combo entre) est un degré de la gamme. `tonique: 48` = Do₃ (Tower est sur 52 à 57). 40 mesures : de 96 s (100 BPM) à 113 s (85 BPM) avant de se répéter à l'identique.
+// Les huit accords d'un cycle (`prog`) sont rejoués cinq fois ; la cloche n'a pas le même motif au second tour (voir `calme`).
+export const BLOCKS = [
+  piece(calme, "blocks", ["menu"], "Pièce par pièce", {
+    id: "blocks-menu", barres: 40, bpm: 88, graine: 8101, tonique: 48, gamme: "maj", prog: [0, 4, 5, 3], perc: "aucune", pluck: { wave: "tri", gain: 0.06 }, cloche: { wave: "sine", gain: 0.1 },
+  }),
+  piece(calme, "blocks", ["theme:port"], "Brise du quai", {
+    id: "blocks-port", barres: 40, bpm: 92, graine: 8202, tonique: 48, gamme: "mix", prog: [0, 6, 3, 0], perc: "doux", pluck: { wave: "tri", gain: 0.065 }, cloche: { wave: "sine", gain: 0.11 }, echo: 0.45,
+  }),
+  piece(calme, "blocks", ["theme:chantier"], "Pose à pose", {
+    id: "blocks-chantier", barres: 40, bpm: 100, graine: 8303, tonique: 48, gamme: "dor", prog: [0, 3, 6, 3], perc: "tic", pluck: { wave: "pulse", gain: 0.055, duty: 0.3 }, cloche: { wave: "tri", gain: 0.085 },
+  }),
+  piece(calme, "blocks", ["theme:canyon"], "Poussière d'or", {
+    id: "blocks-canyon", barres: 40, bpm: 84, graine: 8404, tonique: 48, gamme: "dor", prog: [0, 6, 0, 3], perc: "tribal", pluck: { wave: "tri", gain: 0.065 }, cloche: { wave: "sine", gain: 0.11 }, salle: 0.93,
+  }),
+  piece(calme, "blocks", ["theme:banquise"], "Givre", {
+    id: "blocks-banquise", barres: 40, bpm: 88, graine: 8505, tonique: 48, gamme: "lyd", prog: [0, 1, 0, 4], perc: "aucune", pluck: { wave: "sine", gain: 0.08 }, cloche: { wave: "tri", gain: 0.1 }, salle: 0.94, echo: 0.5,
+  }),
+  piece(calme, "blocks", ["theme:jungle"], "Sous les lianes", {
+    id: "blocks-jungle", barres: 40, bpm: 96, graine: 8606, tonique: 48, gamme: "mix", prog: [0, 3, 4, 3], perc: "tribal", pluck: { wave: "pulse", gain: 0.052, duty: 0.2 }, cloche: { wave: "sine", gain: 0.095 },
+  }),
+  piece(calme, "blocks", ["theme:nuit"], "Lumières de la ville", {
+    id: "blocks-nuit", barres: 40, bpm: 85, graine: 8707, tonique: 57, gamme: "min", prog: [0, 5, 2, 6], perc: "aucune", pluck: { wave: "sine", gain: 0.075 }, cloche: { wave: "sine", gain: 0.11 }, salle: 0.93,
+  }),
+];
+
+export const GENEREES = [...TRACK, ...JUMP, ...TOWER, ...BLOCKS];

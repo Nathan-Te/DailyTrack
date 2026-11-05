@@ -11,14 +11,14 @@ const { rendre, versWav, SR } = (await import(/* @vite-ignore */ join(RACINE, "m
   SR: number;
 };
 const { MORCEAUX } = (await import(/* @vite-ignore */ join(RACINE, "musique/generateur/morceaux.mjs"))) as {
-  MORCEAUX: Record<string, { id: string; bpm: number; barres: number; jeu: string; scenes: string[]; titre: string }>;
+  MORCEAUX: Record<string, { id: string; bpm: number; barres: number; jeu: string; scenes: string[]; titre: string; tonique?: number; gamme?: string }>;
 };
 const { SCENES } = await import("../src/scenes");
 
 describe("les boucles générées", () => {
-  it("une boucle pour chaque scène de Track, de Jump et de Tower (le menu et chaque thème), un nombre de mesures multiple de huit", () => {
+  it("une boucle pour chaque scène de Track, de Jump, de Tower et de Blocks (le menu et chaque thème), un nombre de mesures multiple de huit", () => {
     const jouees = new Set(Object.values(MORCEAUX).flatMap((m) => m.scenes.map((s) => `${m.jeu}/${s}`)));
-    for (const jeu of ["track", "jump", "tower"] as const) for (const scene of SCENES[jeu]) expect(jouees.has(`${jeu}/${scene}`), `${jeu}/${scene}`).toBe(true);
+    for (const jeu of ["track", "jump", "tower", "blocks"] as const) for (const scene of SCENES[jeu]) expect(jouees.has(`${jeu}/${scene}`), `${jeu}/${scene}`).toBe(true);
     // Et rien qui ne soit une scène d'un jeu : le test des scènes inconnues est dans `description.test.ts`, ici on garde la liste juste.
     for (const m of Object.values(MORCEAUX)) {
       expect(m.barres % 8, m.id).toBe(0);
@@ -69,9 +69,39 @@ describe("les boucles générées", () => {
   it("musiques.json couvre chaque scène (menu et thèmes) : un morceau généré ou, une fois remplacé à la main, un morceau acheté", async () => {
     const { readFileSync } = await import("node:fs");
     const d = JSON.parse(readFileSync(join(RACINE, "musique/musiques.json"), "utf8")) as { pistes: { id: string; jeux: string[]; scenes?: string[]; licence: string }[] };
-    for (const jeu of ["track", "jump", "tower"] as const)
+    for (const jeu of ["track", "jump", "tower", "blocks"] as const)
       for (const scene of SCENES[jeu]) expect(d.pistes.some((p) => p.jeux.includes(jeu) && p.scenes?.includes(scene)), `${jeu}/${scene}`).toBe(true);
     // Chaque entrée générée porte les mêmes jeux et scènes que sa fiche (tant qu'elle n'a pas été remplacée : sa source dit alors autre chose).
     for (const p of d.pistes.filter((x) => MORCEAUX[x.id] && x.licence === "mienne")) expect([p.jeux, p.scenes], p.id).toEqual([[MORCEAUX[p.id]!.jeu], MORCEAUX[p.id]!.scenes]);
   });
+
+  // Lot B6 : `barres` est un paramètre de la fiche `calme` (24 par défaut). Blocks joue 40 mesures : au moins 90 s avant de se répéter à l'identique, à chaque tempo.
+  it("les boucles de Blocks durent au moins 90 s ; celles de Tower gardent leurs 24 mesures", () => {
+    for (const m of Object.values(MORCEAUX).filter((x) => x.jeu === "blocks")) expect((m.barres * 240) / m.bpm, m.id).toBeGreaterThanOrEqual(90);
+    for (const m of Object.values(MORCEAUX).filter((x) => x.jeu === "tower")) expect(m.barres, m.id).toBe(24);
+  });
+
+  it("musiques.json dit la tonalité de chaque boucle de Blocks comme sa fiche (tempo, tonique, gamme) : tout sur Do, ou La mineur pour la nuit", async () => {
+    const { readFileSync } = await import("node:fs");
+    const d = JSON.parse(readFileSync(join(RACINE, "musique/musiques.json"), "utf8")) as { pistes: { id: string; jeux: string[]; bpm?: number; tonique?: number; gamme?: string }[] };
+    const blocks = d.pistes.filter((p) => p.jeux.includes("blocks"));
+    expect(blocks.length).toBe(SCENES.blocks.length);
+    for (const p of blocks) {
+      const f = MORCEAUX[p.id]!;
+      expect([p.bpm, p.tonique, p.gamme], p.id).toEqual([f.bpm, f.tonique, f.gamme]);
+      expect(f.tonique! % 12 === 0 || (f.tonique === 57 && f.gamme === "min"), `${p.id} : sur Do (ou La mineur)`).toBe(true);
+    }
+  });
+
+  // **Les empreintes** (lot B6) : le rendu entier d'une boucle de Tower ou de Blocks est celui dont `musique/servi/liste.json` a gardé l'empreinte (SHA-256 du WAV). Si le générateur change un octet d'une boucle de Tower, ce test
+  // échoue : un changement du modèle `calme` (comme le paramètre `barres`) ne doit pas toucher les boucles déjà livrées. Pour un changement voulu : `npm run musique:generer`, `npm run musique`, et on le dit au lot.
+  for (const id of Object.keys(MORCEAUX).filter((i) => i.startsWith("tower-") || i.startsWith("blocks-"))) {
+    it(`${id} : le rendu entier a l'empreinte de la liste servie`, async () => {
+      const { createHash } = await import("node:crypto");
+      const { readFileSync } = await import("node:fs");
+      const liste = JSON.parse(readFileSync(join(RACINE, "musique/servi/liste.json"), "utf8")) as { pistes: { id: string; sha: string }[] };
+      const sha = createHash("sha256").update(versWav(rendre(MORCEAUX[id]!))).digest("hex");
+      expect(sha).toBe(liste.pistes.find((p) => p.id === id)!.sha);
+    }, 120_000);
+  }
 });

@@ -12,7 +12,8 @@
     "bot-themes.spec.ts": 10,
     "partage.spec.ts": 6,
     "arcade.spec.ts": 2,
-    "apercu.spec.ts": 6
+    "apercu.spec.ts": 6,
+    "musique.spec.ts": 13
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
@@ -26,6 +27,7 @@
     "bot-themes.spec.ts": 10,
     "partage.spec.ts": 6,
     "arcade.spec.ts": 2,
-    "apercu.spec.ts": 6
+    "apercu.spec.ts": 6,
+    "musique.spec.ts": 13
   }
 }

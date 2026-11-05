@@ -86,6 +86,7 @@ export function construireListe(desc: Description, infos: ReadonlyMap<string, In
       poids: p.poids ?? 1,
       volumeDb: p.volumeDb ?? 0,
       duree: Math.round(info.duree * 10) / 10,
+      ...(p.bpm !== undefined && p.tonique !== undefined ? { bpm: p.bpm, tonique: p.tonique, ...(p.gamme !== undefined ? { gamme: p.gamme } : {}) } : {}),
     };
   });
   return { version: 1, debit: DEBIT, pistes };
@@ -140,7 +141,7 @@ export function ecartsAvecLaListe(desc: Description, listeActuelle: ListeServie 
     if (actuel.fichier !== attendu) ecarts.push(`« ${p.id} » : la source ou la préparation a changé depuis la dernière préparation`);
     if (!servis.has(attendu)) ecarts.push(`« ${p.id} » : le fichier préparé ${attendu} manque`);
     const voulu = construireListe({ pistes: [p] }, new Map([[p.id, { fichier: actuel.fichier, duree: actuel.duree, sha }]])).pistes[0]!;
-    const cles = ["titre", "artiste", "credit", "jeux", "scenes", "poids", "volumeDb", "sha"] as const;
+    const cles = ["titre", "artiste", "credit", "jeux", "scenes", "poids", "volumeDb", "sha", "bpm", "tonique", "gamme"] as const;
     if (cles.some((k) => JSON.stringify(voulu[k]) !== JSON.stringify(actuel[k]))) ecarts.push(`« ${p.id} » : sa description (titre, jeux, scènes, licence…) n'est plus celle de la liste : relance \`npm run musique\``);
   }
   for (const id of parId.keys()) if (!desc.pistes.some((p) => p.id === id)) ecarts.push(`« ${id} » est dans la liste servie mais plus dans musiques.json`);

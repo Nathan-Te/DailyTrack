@@ -375,6 +375,146 @@
       "poids": 1,
       "volumeDb": 0,
       "duree": 82.3
+    },
+    {
+      "id": "blocks-menu",
+      "titre": "Pièce par pièce",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Pièce par pièce » — Du Jour (généré par le code)",
+      "fichier": "blocks-menu-33492b5f.m4a",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "sha": "2db3a15dfee2beb90ad5f9ca08b193bc1112bd18bc5ab5cf834eb01583c708dc",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 109.1,
+      "bpm": 88,
+      "tonique": 48,
+      "gamme": "maj"
+    },
+    {
+      "id": "blocks-port",
+      "titre": "Brise du quai",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Brise du quai » — Du Jour (généré par le code)",
+      "fichier": "blocks-port-b4f5bb3a.m4a",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:port"
+      ],
+      "sha": "4f54ecea7b74d2979a0db41be869385fb76c9a0e3a759999705971e041da89a8",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 104.3,
+      "bpm": 92,
+      "tonique": 48,
+      "gamme": "mix"
+    },
+    {
+      "id": "blocks-chantier",
+      "titre": "Pose à pose",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Pose à pose » — Du Jour (généré par le code)",
+      "fichier": "blocks-chantier-853892b3.m4a",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:chantier"
+      ],
+      "sha": "66665df1d6101feba5b2eb3afc3579904e6323e38737741c61ed09ecfabfc549",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 96,
+      "bpm": 100,
+      "tonique": 48,
+      "gamme": "dor"
+    },
+    {
+      "id": "blocks-canyon",
+      "titre": "Poussière d'or",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Poussière d'or » — Du Jour (généré par le code)",
+      "fichier": "blocks-canyon-c9e8c18e.m4a",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:canyon"
+      ],
+      "sha": "c5687f7a8d5d812b6519d9ef7460a632bab79a22e37f8c85ea57dfc76d698288",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 114.3,
+      "bpm": 84,
+      "tonique": 48,
+      "gamme": "dor"
+    },
+    {
+      "id": "blocks-banquise",
+      "titre": "Givre",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Givre » — Du Jour (généré par le code)",
+      "fichier": "blocks-banquise-9cd9e9b7.m4a",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:banquise"
+      ],
+      "sha": "1e5988de416e234084169202a29b2584f7d5a165bd7f6eaf667a5cd65f68af3e",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 109.1,
+      "bpm": 88,
+      "tonique": 48,
+      "gamme": "lyd"
+    },
+    {
+      "id": "blocks-jungle",
+      "titre": "Sous les lianes",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Sous les lianes » — Du Jour (généré par le code)",
+      "fichier": "blocks-jungle-380638e7.m4a",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:jungle"
+      ],
+      "sha": "01992ed49a08d1fcaa5ef70f89156970a8901a62209e7238458d2d1f0839ca31",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 100,
+      "bpm": 96,
+      "tonique": 48,
+      "gamme": "mix"
+    },
+    {
+      "id": "blocks-nuit",
+      "titre": "Lumières de la ville",
+      "artiste": "Du Jour (généré par le code)",
+      "credit": "« Lumières de la ville » — Du Jour (généré par le code)",
+      "fichier": "blocks-nuit-d68c496f.m4a",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "sha": "1ebc4282cbe809418fbc3c4186ef6cac53522f623eb3bb33a8ed23eab4ee1418",
+      "poids": 1,
+      "volumeDb": 0,
+      "duree": 112.9,
+      "bpm": 85,
+      "tonique": 57,
+      "gamme": "min"
     }
   ]
 }

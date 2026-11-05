@@ -1,3 +1,4 @@
+import { GAMMES } from "./logique";
 import { FORMAT_SCENE, SCENES, sceneConnue } from "./scenes";
 import { JEUX_DE_TOUS, JEUX_MUSIQUE, LICENCES, type Description, type JeuMusique, type Licence, type PisteDescription } from "./types";
 
@@ -7,7 +8,7 @@ import { JEUX_DE_TOUS, JEUX_MUSIQUE, LICENCES, type Description, type JeuMusique
 
 export const EXTENSIONS_SOURCE = ["mp3", "wav", "flac", "ogg", "m4a", "aac", "opus"] as const;
 export const ID_VALIDE = /^[a-z0-9][a-z0-9-]{1,39}$/;
-const CHAMPS = ["id", "titre", "artiste", "fichier", "jeux", "scenes", "licence", "credit", "source", "poids", "volumeDb"];
+const CHAMPS = ["id", "titre", "artiste", "fichier", "jeux", "scenes", "licence", "credit", "source", "poids", "volumeDb", "bpm", "tonique", "gamme"];
 /** Les licences qui exigent de dire d'où vient le morceau. */
 const SOURCE_EXIGEE: readonly Licence[] = ["CC0", "CC-BY-4.0", "achetee"];
 
@@ -90,6 +91,12 @@ export function verifierDescription(brut: unknown, opts: OptionsVerification): V
     if (o.credit !== undefined && !texte(o.credit)) err("« credit » ne peut pas être vide");
     if (o.poids !== undefined && !(typeof o.poids === "number" && Number.isFinite(o.poids) && o.poids > 0 && o.poids <= POIDS_MAX)) err(`« poids » : un nombre de 0 (exclu) à ${POIDS_MAX}`);
     if (o.volumeDb !== undefined && !(typeof o.volumeDb === "number" && Number.isFinite(o.volumeDb) && Math.abs(o.volumeDb) <= VOLUME_DB_MAX)) err(`« volumeDb » : un nombre de décibels entre −${VOLUME_DB_MAX} et ${VOLUME_DB_MAX}`);
+    // La couleur du morceau (lot B6) : le tempo et la tonique vont ensemble ; la gamme est facultative (majeure par défaut).
+    if (o.bpm !== undefined || o.tonique !== undefined || o.gamme !== undefined) {
+      if (!(typeof o.bpm === "number" && Number.isFinite(o.bpm) && o.bpm >= 30 && o.bpm <= 300)) err("« bpm » : un tempo de 30 à 300 temps par minute (avec « tonique »)");
+      if (!(typeof o.tonique === "number" && Number.isInteger(o.tonique) && o.tonique >= 0 && o.tonique <= 127)) err("« tonique » : une note MIDI entière de 0 à 127, 60 = do central (avec « bpm »)");
+      if (o.gamme !== undefined && !(typeof o.gamme === "string" && o.gamme in GAMMES)) err(`« gamme » : une de ${Object.keys(GAMMES).join(", ")}`);
+    }
     pistes.push(o as unknown as PisteDescription);
   });
   return { erreurs, pistes };

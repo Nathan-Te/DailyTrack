@@ -307,6 +307,125 @@
       ],
       "licence": "mienne",
       "source": "généré par le code : musique/generateur/ (npm run musique:generer)"
+    },
+    {
+      "id": "blocks-menu",
+      "titre": "Pièce par pièce",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "blocks-menu.wav",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "menu"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)",
+      "bpm": 88,
+      "tonique": 48,
+      "gamme": "maj"
+    },
+    {
+      "id": "blocks-port",
+      "titre": "Brise du quai",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "blocks-port.wav",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:port"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)",
+      "bpm": 92,
+      "tonique": 48,
+      "gamme": "mix"
+    },
+    {
+      "id": "blocks-chantier",
+      "titre": "Pose à pose",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "blocks-chantier.wav",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:chantier"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)",
+      "bpm": 100,
+      "tonique": 48,
+      "gamme": "dor"
+    },
+    {
+      "id": "blocks-canyon",
+      "titre": "Poussière d'or",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "blocks-canyon.wav",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:canyon"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)",
+      "bpm": 84,
+      "tonique": 48,
+      "gamme": "dor"
+    },
+    {
+      "id": "blocks-banquise",
+      "titre": "Givre",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "blocks-banquise.wav",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:banquise"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)",
+      "bpm": 88,
+      "tonique": 48,
+      "gamme": "lyd"
+    },
+    {
+      "id": "blocks-jungle",
+      "titre": "Sous les lianes",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "blocks-jungle.wav",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:jungle"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)",
+      "bpm": 96,
+      "tonique": 48,
+      "gamme": "mix"
+    },
+    {
+      "id": "blocks-nuit",
+      "titre": "Lumières de la ville",
+      "artiste": "Du Jour (généré par le code)",
+      "fichier": "blocks-nuit.wav",
+      "jeux": [
+        "blocks"
+      ],
+      "scenes": [
+        "theme:nuit"
+      ],
+      "licence": "mienne",
+      "source": "généré par le code : musique/generateur/ (npm run musique:generer)",
+      "bpm": 85,
+      "tonique": 57,
+      "gamme": "min"
     }
   ]
 }

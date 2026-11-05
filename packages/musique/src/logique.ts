@@ -150,3 +150,66 @@ export function departDeLaPage(pistes: readonly PisteServie[], reprise: Reprise 
   const piste = choisirSuivante(pistes, reprise && maintenant - reprise.at <= VALIDITE_REPRISE_MS ? reprise.id : null, hasard);
   return piste ? { piste, depart: 0, repris: false } : null;
 }
+
+// ——— La couche d'un jeu (lot B6) : un arpège ou une nappe, **synthétisés** par le lecteur sur son contexte audio, qui s'ajoutent au morceau en cours quand le jeu le demande (`couche(true)`). ———
+// Tout ce qui se décide est ici (pur) ; `couche.ts` ne fait que le lire dans Web Audio.
+
+/** Entrée et sortie en fondu de la couche (secondes) : le niveau est atteint à 95 % au bout de cette durée. */
+export const COUCHE_FONDU_S = 1;
+/** L'écart de l'horloge du flux (secondes) au-dessous duquel l'arpège peut se caler sur le morceau ; au-dessus, la couche est une nappe sans pulsation. */
+export const COUCHE_ECART_MAX_S = 0.02;
+/** Le nombre de lectures de l'horloge du flux dont on tire cet écart (une toutes les 125 ms). */
+export const COUCHE_LECTURES = 12;
+
+/** Les gammes des fiches du générateur (`musique/generateur/modeles.mjs`) : les demi-tons de chaque degré. */
+export const GAMMES: Readonly<Record<string, readonly number[]>> = {
+  maj: [0, 2, 4, 5, 7, 9, 11],
+  min: [0, 2, 3, 5, 7, 8, 10],
+  dor: [0, 2, 3, 5, 7, 9, 10],
+  mix: [0, 2, 4, 5, 7, 9, 10],
+  lyd: [0, 2, 4, 6, 7, 9, 11],
+  phr: [0, 1, 3, 5, 7, 8, 10],
+};
+
+export const hzDeMidi = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
+
+/** Une note de la couche : `dt` secondes après le début de la mesure, hauteur MIDI, durée et niveau. */
+export interface NoteCouche {
+  dt: number;
+  midi: number;
+  duree: number;
+  gain: number;
+}
+
+/** La durée d'une mesure à quatre temps (secondes). */
+export const mesureSec = (bpm: number): number => 240 / bpm;
+
+/**
+ * Le **calage** : l'horloge du flux valait `c` (secondes du fichier) quand celle du contexte valait `t0` ; rend l'instant (horloge du contexte) où commence la mesure du morceau la plus proche de
+ * `visee`. Appelé à chaque mesure, il reprend l'avance ou le retard que les deux horloges ont pris depuis la précédente.
+ */
+export function debutMesure(visee: number, c: number, t0: number, bpm: number): number {
+  const m = mesureSec(bpm);
+  const reste = (((c + (visee - t0)) % m) + m) % m;
+  return visee - (reste < m / 2 ? reste : reste - m);
+}
+
+/** Les huit croches de l'arpège d'une mesure, **à contretemps** (une double-croche après chaque croche du morceau) : tonique, quinte, octave (et la quinte de l'octave) seulement, qui vont avec tous les accords de la gamme. */
+export function arpegeDeMesure(tonique: number, bpm: number, mesure: number): NoteCouche[] {
+  const pas = mesureSec(bpm) / 8;
+  const motif = mesure % 2 === 0 ? [0, 7, 12, 7, 0, 7, 12, 7] : [7, 12, 7, 0, 7, 12, 19, 12];
+  return motif.map((d, i) => ({ dt: i * pas + pas / 2, midi: tonique + 12 + d, duree: pas * 1.6, gain: i % 4 === 0 ? 0.05 : 0.034 }));
+}
+
+/** La nappe sans pulsation : deux sons tenus (tonique et quinte) ; `etincelle` tire une note aiguë et claire de temps en temps (`r1`, `r2` ∈ [0, 1[, le hasard du lecteur). */
+export const nappeTenue = (tonique: number): number[] => [tonique + 12, tonique + 19];
+export function etincelle(tonique: number, gamme: string | undefined, r1: number, r2: number): { midi: number; attente: number; gain: number } {
+  const g = GAMMES[gamme ?? "maj"] ?? GAMMES.maj!;
+  const degre = g[[0, 1, 4][Math.floor(r1 * 3) % 3]!]!;
+  return { midi: tonique + 24 + degre + (r2 < 0.3 ? 12 : 0), attente: 0.6 + r2 * 1.2, gain: 0.03 };
+}
+
+/** L'écart de l'horloge du flux : de combien la différence « horloge du flux − horloge du contexte » a varié sur les lectures (secondes). Un flux lu par bonds (mobile) donne un grand écart. */
+export function ecartHorloge(lectures: readonly number[]): number {
+  return lectures.length === 0 ? Infinity : Math.max(...lectures) - Math.min(...lectures);
+}
