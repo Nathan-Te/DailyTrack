@@ -7,10 +7,9 @@
     "poids.spec.ts": 2,
     "glisser.spec.ts": 6,
     "scenarios.spec.ts": 5,
-    "disposition.spec.ts": 5,
+    "disposition.spec.ts": 14,
     "sensations.spec.ts": 15,
     "bot-themes.spec.ts": 10,
-    "fantome.spec.ts": 8,
     "partage.spec.ts": 6,
     "arcade.spec.ts": 2,
     "apercu.spec.ts": 6
@@ -22,10 +21,9 @@
     "poids.spec.ts": 2,
     "glisser.spec.ts": 6,
     "scenarios.spec.ts": 5,
-    "disposition.spec.ts": 5,
+    "disposition.spec.ts": 14,
     "sensations.spec.ts": 15,
     "bot-themes.spec.ts": 10,
-    "fantome.spec.ts": 8,
     "partage.spec.ts": 6,
     "arcade.spec.ts": 2,
     "apercu.spec.ts": 6

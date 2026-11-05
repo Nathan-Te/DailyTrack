@@ -1,62 +1,29 @@
-/* « Blocks » : seulement ce qui est propre au jeu — la scène en Canvas, qui remplit toute la zone de jeu (la grille, la zone de saisie et la pièce suivante y sont dessinées). Les écrans sont ceux du kit (`@cdj/kit/jeu.css`). */
-.blocks-plateau {
-  position: absolute;
-  inset: 0;
-  display: block;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
+/* « Blocks » : seulement ce qui est propre au jeu et sert dès l'accueil — la largeur et l'échelle des écrans du kit (`@cdj/kit/jeu.css`). La scène, le HUD et le fantôme caché sont dans `partie.css` (à la demande, avec le corps du jeu). */
+/* Lot B5 — LES ÉCRANS à l'échelle des autres jeux. Le kit les fait de 460 px de large (`--cadre-largeur`), contre 760 px chez Jump et 940 px chez Track (1 160 px au grand écran) : sur un écran de PC l'accueil de Blocks n'était
+   qu'une petite carte perdue. Le jeu règle sa largeur (`cadre.css`) : 760 px dès 700 px de large (un téléphone en paysage compris, comme Jump), 940 px au grand écran. La feuille du kit passe avant celle-ci (même poids, la nôtre vient après). */
+@media (min-width: 700px) {
+  :root {
+    --cadre-largeur: 760px;
+  }
+}
+@media (min-width: 1700px) and (min-height: 900px) {
+  :root {
+    --cadre-largeur: 940px;
+    --zoom-cadre: 1.25;
+  }
+}
+@media (min-width: 2200px) and (min-height: 1200px) {
+  :root {
+    --zoom-cadre: 1.5;
+  }
 }
 
-/* Le HUD de la maquette A (lot B2) : le score et le combo sont des plaques dessinées par la scène ; les deux boutons du kit (fantôme, pause) se posent en haut à droite, sur la scène, au style des plaques de la charte.
-   Les textes du kit (`#jeu-hud-score`, `#jeu-hud-temps`) restent pour les lecteurs d'écran, cachés à la vue. Marges de 8 px (la grille en pleine largeur) et de sécurité (`env(safe-area-inset-*)`) sur tout ce qui touche un bord. */
-.jeu-scene .jeu-hud {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: auto;
-  z-index: 2;
-  display: flex;
-  gap: var(--dj-espace-3);
-  min-height: 0;
-  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 0 0;
-  background: none;
-  border: 0;
-  pointer-events: none;
+/* Le bouton JOUER prend toute la largeur de l'écran (comme chez Tower), et, sur un grand écran, les écrans du kit sont agrandis (`zoom` : textes, boutons et marges ensemble) pour rester lisibles à 1 920 et 2 560 px de large. */
+.jeu-jouer {
+  box-sizing: border-box;
+  width: 100%;
 }
-.jeu-scene .jeu-hud__gauche,
-.jeu-scene .jeu-hud__centre {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-.jeu-scene .jeu-hud__bouton {
-  width: var(--dj-cible);
-  height: var(--dj-cible);
-  padding: 0;
-  pointer-events: auto;
-  background: var(--dj-papier);
-  box-shadow: var(--dj-ombre-bouton);
-}
-.jeu-scene .jeu-hud__bouton[data-etat="aucun"] {
-  opacity: 1;
-  border-style: dashed;
-  box-shadow: none;
-}
-.jeu-scene .jeu-hud__bouton[data-etat="meilleure"] {
-  background: var(--dj-moutarde);
-}
-.jeu-scene .jeu-hud__bouton[data-etat="diamant"] {
-  background: var(--dj-diamant);
-}
-.jeu-scene .jeu-plateau {
-  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
-}
-
-/* Lot B4 : le score de l'écran de fin porte maintenant ses séparateurs de milliers (« 136 409 pts ») : sa taille suit la largeur de l'écran pour tenir sur une ligne (jamais plus grande que celle du kit). */
-.jeu-fin__score {
-  font-size: min(var(--dj-taille-64), 11vw);
+.cadre > .dj-barre-jeu,
+.cadre__defile {
+  zoom: var(--zoom-cadre, 1);
 }

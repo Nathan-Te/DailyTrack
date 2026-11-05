@@ -57,8 +57,8 @@ describe("« Blocks » : le client suit sa fiche", () => {
     expect(DEFINITION.classable!("?seed=2026-11-02&bot")).toBe(false); // `&bot` : jamais classée
     expect(DEFINITION.classable!("?seed=2026-11-02")).toBe(true);
     expect(DEFINITION.classable!("?theme=nuit")).toBe(true); // un thème forcé ne change rien à la partie
-    expect(DEFINITION.classable!("?scenario=fantome")).toBe(false); // lot B4 : les deux essais de la partie du jour ne sont jamais classés
-    expect(DEFINITION.classable!("?scenario=partage")).toBe(false);
+    expect(DEFINITION.classable!("?scenario=fantome")).toBe(true); // lot B5 : l'essai du fantôme n'existe plus, ce n'est qu'une partie ordinaire
+    expect(DEFINITION.classable!("?scenario=partage")).toBe(false); // lot B4 : l'essai du partage n'est jamais classé
     // Sans traducteur (Node) : le français du catalogue, « 4 582 pts » (le nombre au format de la langue est celui de `remplir`).
     expect(DEFINITION.formatScore([120, 3], "fr")).toBe("120 pts");
     expect(DEFINITION.scorePartage([120, 3], "en")).toBe("120 pts — combo ×3"); // lot B4 : la ligne à partager porte le combo maximal (seed § 5) ; avant, elle ne portait que le score

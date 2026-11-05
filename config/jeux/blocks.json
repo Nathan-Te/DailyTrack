@@ -191,10 +191,6 @@
         "blocks-sim",
         "blocks-jeu"
       ],
-      "fantome.spec.ts": [
-        "blocks-sim",
-        "blocks-jeu"
-      ],
       "partage.spec.ts": [
         "blocks-sim",
         "blocks-jeu"
@@ -227,7 +223,8 @@
       "reglages-",
       "retours-",
       "version-",
-      "corps-"
+      "corps-",
+      "decor-"
     ]
   },
   "temoin": false

@@ -30,10 +30,10 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   seuils: (c) => corps!.seuilsDeBlocks(c), // le Diamant (bot) et ses fractions, dans le corps du jeu (à la demande)
   medaille: (score, s) => medailleDe(score, s),
   nouvellePartie: (c, hote, o) => corps!.nouvellePartieBlocks(c, hote, o),
-  rediffusionDiamant: (c) => corps!.rediffusionDuDiamant(c), // lot B4 : la partie du bot, rejouée par le fantôme « Diamant » (le corps du jeu est chargé : une partie ne vient qu'après)
+  rediffusionDiamant: (c) => corps!.rediffusionDuDiamant(c), // la partie du bot (le kit l'exige ; lot B5 : plus de fantôme, la partie du Diamant se revoit hors partie)
   classable: (adresse) => {
     const essai = lireEssai(adresse, BUILD_RESTRICTED, parisDay(Date.now()));
-    return essai.bot === null && essai.mode === undefined; // `&bot`, `?scenario=fantome|partage` : des essais locaux, jamais classés
+    return essai.bot === null && essai.mode === undefined; // `&bot`, `?scenario=partage` : des essais locaux, jamais classés
   },
   formatScore: (score) => ecrireScore(score[0] ?? 0),
   // La ligne à partager (lot B4, seed § 5) : `Du Jour · Blocks #5 — 4 582 pts — 🥈 — combo ×7`. Le gabarit est celui du kit (`ligneParDefaut`) : le titre, le score, la médaille, puis le rang. Le kit n'offre pas encore d'« extras » à un

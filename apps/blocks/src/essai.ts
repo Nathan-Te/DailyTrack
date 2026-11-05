@@ -5,7 +5,6 @@ import { estScenario, estTheme, RAMPE_PAR_DEFAUT, type NomScenario, type Rampe, 
 //   · `?scenario=presque-plein|blocage|plateau-vide|combo` : une grille de départ fixée (seed § 9 ; `combo` : quatre poses qui effacent chacune une ligne) ;
 //   · `?theme=port|chantier|canyon|banquise|jungle|nuit` (lot B3) : force le thème (palette de la scène, fonds, nom et phrase de l'accueil) pour les essayer en un clic ; il ne change ni la suite ni le classement ;
 //   · `&bot` (lot B3), avec `?seed=AAAA-MM-JJ` : le bot Diamant joue à la place du joueur (`&bot=<n>` : n poses par seconde, de 1 à 30 ; 3 par défaut). **La partie n'est jamais classée** (`classable` de la définition) ;
-//   · `?scenario=fantome` (lot B4) : la partie du jour, avec la partie du bot Diamant comme fantôme dès la première pose (on n'a pas à avoir joué avant) ;
 //   · `?scenario=partage` (lot B4) : l'écran de fin tout de suite, avec un résultat d'exemple (le début de la partie du bot, arrêté dans la bande d'une médaille : `&medaille=aucune|bronze|argent|or|diamant`, argent par défaut)
 //     pour essayer la ligne à partager en français et en anglais ;
 //   · `?debug&tune` : règle la rampe (`&rampe=<pente>,<rangMax>`, défaut `4,80`). (Le décalage de la pièce au-dessus du doigt n'existe plus depuis B2 : elle reste sous le doigt.)
@@ -23,8 +22,8 @@ export interface Essai {
   theme: ThemeBlocks | null;
   /** `&bot` : le bot Diamant joue ; sa vitesse en poses par seconde. `null` : le joueur joue. */
   bot: { vitesse: number } | null;
-  /** Lot B4 — `?scenario=fantome` ou `?scenario=partage` (deux essais de la partie du jour, jamais classés ; la page n'est pas mise en archive) ; absent sinon. */
-  mode?: "fantome" | "partage";
+  /** Lot B4 — `?scenario=partage` (un essai de la partie du jour, jamais classé ; la page n'est pas mise en archive ; lot B5 : `?scenario=fantome` n'existe plus avec le fantôme) ; absent sinon. */
+  mode?: "partage";
   /** Lot B4 — pour `partage` : la médaille du résultat d'exemple. */
   exemple?: MedailleExemple;
   /** L'adresse à poser avant que le kit ne la lise (`search`, avec `?`), ou `null` si elle ne change pas. */
@@ -43,7 +42,7 @@ export function lireEssai(search: string, restreint: boolean, aujourdhui: number
   const bot = q.has("bot") ? { vitesse: Math.min(30, Math.max(1, Math.round(nombre(q.get("bot") || undefined) ?? VITESSE_BOT))) } : null;
   const nom = q.get("scenario") ?? "";
   const scenario = estScenario(nom) ? nom : null;
-  const mode: "fantome" | "partage" | null = nom === "fantome" || nom === "partage" ? nom : null;
+  const mode: "partage" | null = nom === "partage" ? nom : null;
   const voulue = q.get("medaille") ?? "";
   const exemple: MedailleExemple = (MEDAILLES_EXEMPLE as readonly string[]).includes(voulue) ? (voulue as MedailleExemple) : "argent";
   const plus = mode === "partage" ? { mode, exemple } : mode ? { mode } : {};

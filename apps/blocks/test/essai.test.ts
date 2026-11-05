@@ -52,22 +52,20 @@ describe("les options d'essai", () => {
   });
 });
 
-describe("les essais du lot B4 : `?scenario=fantome` et `?scenario=partage`", () => {
-  it("`fantome` : la partie du jour, sans archive (la page n'est pas changée), jamais classée par la définition", () => {
+describe("l'essai du lot B4 : `?scenario=partage` (lot B5 : `?scenario=fantome` n'existe plus)", () => {
+  it("`?scenario=fantome` n'est plus un essai : la partie du jour, ordinaire (le fantôme est retiré)", () => {
     const e = lireEssai("?scenario=fantome", false, AUJOURDHUI);
-    expect(e.mode).toBe("fantome");
+    expect(e.mode).toBeUndefined();
     expect(e.scenario).toBeNull();
     expect(e.adresse).toBeNull();
-    expect(e.exemple).toBeUndefined();
   });
   it("`partage` : la médaille d'exemple vaut « argent » par défaut, `&medaille=` en choisit une autre, un mot inconnu retombe sur l'argent", () => {
     expect(lireEssai("?scenario=partage", false, AUJOURDHUI)).toMatchObject({ mode: "partage", exemple: "argent", adresse: null });
     for (const m of ["aucune", "bronze", "argent", "or", "diamant"]) expect(lireEssai(`?scenario=partage&medaille=${m}`, false, AUJOURDHUI).exemple).toBe(m);
     expect(lireEssai("?scenario=partage&medaille=platine", false, AUJOURDHUI).exemple).toBe("argent");
   });
-  it("sur la production (`restreint`) rien ne s'ouvre ; ils se cumulent avec `?theme=`", () => {
-    expect(lireEssai("?scenario=fantome", true, AUJOURDHUI).mode).toBeUndefined();
+  it("sur la production (`restreint`) rien ne s'ouvre ; il se cumule avec `?theme=`", () => {
     expect(lireEssai("?scenario=partage", true, AUJOURDHUI).mode).toBeUndefined();
-    expect(lireEssai("?scenario=fantome&theme=nuit", false, AUJOURDHUI)).toMatchObject({ mode: "fantome", theme: "nuit" });
+    expect(lireEssai("?scenario=partage&theme=nuit", false, AUJOURDHUI)).toMatchObject({ mode: "partage", theme: "nuit" });
   });
 });
