@@ -10,6 +10,7 @@
     "./lancement": "./src/lancement.ts",
     "./nouveautes": "./src/nouveautes.ts",
     "./zones-nouveautes": "./src/zonesNouveautes.ts",
+    "./bridage": "./src/bridage.ts",
     "./jeux": "./src/jeux.ts",
     "./fiche": "./src/fiche.ts",
     "./fiche-sorties": "./src/ficheSorties.ts",

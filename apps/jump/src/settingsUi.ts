@@ -24,6 +24,8 @@ export interface SettingsUiOptions {
   canVibrate: boolean;
   /** `../profil/?retour=/jump/` : le profil commun du portail, avec le retour au jeu. */
   profilHref: string;
+  /** Lot Q1 : l'appareil est bridé à 30 images/s (la ligne des Réglages, tant que c'est vrai). */
+  bridage?(): boolean;
   /** Lot C1 : « Un bug ? Une idée ? » (le dialogue de la plateforme, à la demande). */
   onRetours(): void;
   /** L'écran est ouvert ou fermé (la pause du jeu suit). */
@@ -34,6 +36,8 @@ export interface SettingsUi {
   readonly isOpen: boolean;
   open(): void;
   close(): void;
+  /** Lot Q1 : le verdict de la détection « bridé à 30 images/s » a changé. */
+  majBridage(): void;
   /** Les réglages ont changé ailleurs (la pause : fantôme, son) : l'écran se remet à jour. */
   set(s: PlayerSettings): void;
 }
@@ -49,6 +53,13 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
 
   const section = (cle: string, ...enfants: (Node | null)[]) => el("section", { classe: "reglages__section" }, lier(el("h2", { classe: "reglages__titre" }), cle), ...enfants);
   const aide = (cle: string) => lier(el("p", { classe: "reglages__aide" }), cle);
+  // Lot Q1 : « Ton appareil limite l'affichage à 30 images par seconde… », sous les effets visuels, tant que c'est vrai.
+  const bridageNote = aide("reglages.bridage");
+  bridageNote.id = "settings-bridage";
+  const majBridage = () => {
+    bridageNote.hidden = !opts.bridage?.();
+  };
+  majBridage();
 
   // Un curseur (volume) : sa ligne est un vrai `label`, la valeur à droite en mono.
   const curseur = (key: "volume" | "sfx" | "ambience", cle: string) => {
@@ -143,6 +154,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
       aide("reglages.mouvement.aide"),
       el("div", { classe: "reglages__ligne" }, lier(el("span", { classe: "reglages__nom" }), "reglages.effets"), segment("effects", "reglages.effets", EFFECTS.map((e) => ({ valeur: e, cle: `reglages.effets.${e}` })))),
       aide("reglages.effets.aide"),
+      bridageNote,
     ),
     section("reglages.premier", segment("firstGhost", "reglages.premier", [{ valeur: true, cle: "commun.montrer" }, { valeur: false, cle: "commun.cacher" }], "reglages-premier"), aide("reglages.premier.aide")),
     section("reglages.taches", segment("othersStains", "reglages.taches", [{ valeur: true, cle: "commun.montrer" }, { valeur: false, cle: "commun.cacher" }], "reglages-taches"), aide("reglages.taches.aide")),
@@ -175,6 +187,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
     open() {
       if (open) return;
       open = true;
+      majBridage();
       chargerMusique?.();
       cadre.racine.hidden = false;
       monterCommandes();
@@ -189,6 +202,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
       cadre.racine.hidden = true;
       opts.onToggle?.(false);
     },
+    majBridage,
     set(next) {
       s = { ...next };
       shows.forEach((f) => f());

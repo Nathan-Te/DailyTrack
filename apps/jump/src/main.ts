@@ -3,6 +3,7 @@ import "./interrupteurInit";
 import { activerManette } from "@cdj/ui/src/manetteLien"; // lot M1 : les menus à la manette (chargés à la première manette)
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
+import { DetecteurBridage } from "@cdj/core/bridage";
 import {
   ATTEMPT_DEAD,
   ATTEMPT_FINISHED,
@@ -2712,10 +2713,12 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
 // commandes, langue, « Mon profil Du Jour › » (le profil commun du portail : plus de profil dans le jeu) et les mentions légales.
 // Lot C1 : « Un bug ? Une idée ? » (pause et Réglages) : le dialogue de la plateforme, à la demande.
 const ouvrirRetours = (): void => void import("./retoursJeu").then((m) => m.ouvrir(apiBase, store));
+const bridage = new DetecteurBridage();
 const settingsUi = mountSettings({
   settings,
   musique: () => musique.lecteur(),
   canVibrate: typeof navigator.vibrate === "function",
+  bridage: () => bridage.bride,
   onChange: applySettings,
   profilHref: profil,
   onRetours: () => ouvrirRetours(),
@@ -3169,6 +3172,11 @@ if (!scene) {
     workStats.draws++;
     frameWork.push(t2 - t0);
     if (frameWork.length > 600) frameWork.shift();
+    // Lot Q1 : un appareil bridé à 30 images/s (économie d'énergie) n'est pas lent : on le dit à l'accueil (une fois) et dans les Réglages (tant que c'est vrai).
+    if (!manual && !document.hidden && bridage.observe(interval, t2 - t0)) {
+      home?.bridage(bridage.bride);
+      settingsUi.majBridage();
+    }
     // Lot P4 : le carnage de tout le monde s'adapte à l'appareil (pas en pas à pas : les tests et la mesure imposent leur palier).
     const c = carnage;
     if (c?.governor && !manual && c.governor.observe(t2 - t0, interval, now)) applyGovernor(c);

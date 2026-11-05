@@ -106,6 +106,7 @@ import type { GarageUi } from "./garage";
 import { chargerMateriaux2 } from "./voiture/modeles";
 import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
+import { DetecteurBridage } from "@cdj/core/bridage";
 import { Effects, QualityGovernor, type Quality } from "./fx";
 import { createTelemetry, readTelemetry } from "./telemetry";
 import { formatDelta, formatTime } from "./format";
@@ -129,7 +130,7 @@ import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { LOOKS, type TrackScene } from "./trackMesh";
 import { GROUPE_VIE_CIEL, PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Palier } from "./scene/socle";
-import { NIVEAU_DU_CHOIX, QUALITE_KEY, chaineAuChargement, lireMemoire, palierAuChargement, passesPermises, postVoulu, type Appareil, type ChoixGraphismes, type MemoireQualite, type NiveauQualite } from "./qualite";
+import { NIVEAU_DU_CHOIX, QUALITE_KEY, chaineAuChargement, lireMemoire, niveauALAccueil, niveauDeScene, palierAuChargement, passesPermises, postVoulu, type Appareil, type ChoixGraphismes, type MemoireQualite, type NiveauQualite } from "./qualite";
 import type { SerieMesures } from "./qualiteMesure";
 import type { PostJeu, RaisonCoupure } from "./scene/postJeu";
 import { chargerDecor, decorPret, instantsDecor } from "./scene/decor";
@@ -503,10 +504,14 @@ effects.enabled = params.get("fx") !== "off";
 const settings: GameSettings = loadSettings();
 const qualityParam = params.get("quality");
 const qualityStart = qualityPlan(qualityParam);
-const governor = new QualityGovernor(26, 19, qualityStart.fixed);
+const governor = new QualityGovernor(undefined, undefined, qualityStart.fixed);
 governor.level = qualityStart.level;
 effects.quality = governor.level;
-view.setQuality(governor.level, settings.shadows);
+view.setQuality(niveauScene(), settings.shadows);
+// Lot Q1 : un appareil bridé à 30 images/s (économie d'énergie) n'est pas un appareil lent : `@cdj/core/bridage` le détecte, le jeu le dit à l'accueil et dans les Réglages.
+const bridage = new DetecteurBridage();
+/** Travail de rendu de l'image qui vient d'être dessinée (ms), lu à l'image suivante par le régulateur et le détecteur ; `null` : aucune image dessinée (accueil, pas à pas). */
+let travailImage: number | null = null;
 effects.particlesOn = settings.particles;
 effects.skidMarksOn = settings.skids;
 let shakeScale = params.get("shake") === "0" || !settings.shake ? 0 : 1;
@@ -916,11 +921,19 @@ function applySettings(patch: Partial<GameSettings> = {}) {
   settingsPanel?.sync();
 }
 
-/** Qualité de la scène : celle du jeu, sauf derrière l'accueil, où elle ne dépasse pas « moyenne » (« basse » sur appareil tactile : la batterie d'abord). */
+/**
+ * Lot Q1 : **le choix du joueur fait foi.** Avec « Économie », « Équilibrée » ou « Maximale », le régulateur ne touche plus à la scène (décor, ombres, halos : niveau 2
+ * du palier choisi) ; il n'allège que les particules (`effects.quality`). Il ne décide de la scène qu'en « Auto » — et pour les essais `?quality=`, qui la figent.
+ */
+function niveauScene(): Quality {
+  return niveauDeScene(settings.graphismes, governor.level, qualityStart.fixed);
+}
+
+/** Qualité de la scène : celle du jeu, sauf derrière l'accueil, où elle ne dépasse pas « moyenne » (« basse » sur appareil tactile : la batterie d'abord) — **sauf en « Maximale »** (lot Q1 : la cadence réduite de l'accueil, 20 images/s, suffit à économiser). */
 function syncSceneQuality() {
   // Lot 45 : pendant la mesure de la règle de qualité, la scène de l'accueil est celle de la course (on mesure ce que l'appareil aura à dessiner).
-  const level = (homeOpen && !mesureEnCours() ? Math.min(governor.level, touchMode ? 0 : 1) : governor.level) as Quality;
-  view.setQuality(level, settings.shadows);
+  const niveau = niveauScene();
+  view.setQuality(homeOpen && !mesureEnCours() ? niveauALAccueil(niveau, settings.graphismes, touchMode, qualityStart.fixed) : niveau, settings.shadows);
 }
 
 function setCameraByName(name: string) {
@@ -942,7 +955,7 @@ settingsPanel = mountSettings(document.body, {
   camera: () => CAMERAS[cameraIndex]!.name,
   setCamera: setCameraByName,
   touch: touchPad ? { pad: touchPad, changed: () => touchUi?.refresh() } : null,
-  graphismes: () => ({ enAttente: graphismesEnAttente, niveau: ({ P1: 1, P2: 2, P3: 3 } as Record<string, NiveauQualite>)[reconstructeur.palier()] ?? null, trop: !!memoireQualite?.trop }),
+  graphismes: () => ({ bride: bridage.bride, enAttente: graphismesEnAttente, niveau: ({ P1: 1, P2: 2, P3: 3 } as Record<string, NiveauQualite>)[reconstructeur.palier()] ?? null, trop: !!memoireQualite?.trop }),
   openHowto: () => howto.open(),
 });
 // Lot 49 : la page des nouvelles figures (`?scenario=figures`), posée sur le tour des figures ; ouverte au chargement, le jeu est gelé tant qu'elle l'est.
@@ -2181,9 +2194,16 @@ function frame(now: number) {
   if (homeOpen) homeSpin += Math.min(frameMs, 100) / 1000;
   suivreQualite(frameMs); // lot 45 : la mesure de l'accueil (règle automatique) et le réglage « Qualité graphique », hors course
   surveillerCourse(frameMs, frozen); // lot 50 : la règle surveille la course (rien n'y change : la descente attend l'arrêt)
-  if (!frozen && !manual && governor.observe(frameMs)) {
+  const travail = travailImage;
+  travailImage = null;
+  // Lot Q1 : le régulateur décide sur le travail de rendu par image, non sur l'intervalle seul (un appareil bridé à 30 images/s n'est pas lent) ; la scène, elle, ne suit qu'en Auto.
+  if (!frozen && !manual && governor.observe(frameMs, travail)) {
     effects.quality = governor.level;
-    syncSceneQuality(); // qualité basse : décor, ombres et halos allégés (téléphone lent)
+    syncSceneQuality(); // qualité basse : décor, ombres et halos allégés (Auto, téléphone lent)
+    if (settingsPanel?.isOpen()) settingsPanel.sync();
+  }
+  if (!manual && !document.hidden && bridage.observe(frameMs, travail ?? 0)) {
+    homeUi.bridage(bridage.bride);
     if (settingsPanel?.isOpen()) settingsPanel.sync();
   }
 
@@ -2526,7 +2546,8 @@ function frame(now: number) {
     view.animer?.(now / 1000, camera, window.innerHeight * renderer.getPixelRatio());
     // Lot 47 : la chaîne dessine l'image (halo, étalonnage, FXAA) ; elle rend faux si elle n'a pas pu, ou n'existe plus : on dessine alors directement.
     if (!post?.dessiner(view.scene, camera, scenePalette, view.look.exposure)) renderer.render(view.scene, camera);
-    renderCost.ms += performance.now() - t0;
+    travailImage = performance.now() - t0;
+    renderCost.ms += travailImage;
     renderCost.frames++;
     if (homeOpen) {
       lastHomeRender = now;
@@ -2570,7 +2591,7 @@ function adopterScene(next: TrackScene) {
   next.scene.add(carMesh, carShadow, ghostMesh);
   if (ghostField) next.scene.add(ghostField.group);
   effects.attach(next.scene);
-  next.setQuality(governor.level, settings.shadows);
+  next.setQuality(niveauScene(), settings.shadows);
   next.reflets?.(renderer, carMesh); // lot 45 : la carte d'environnement de la nouvelle scène sur la voiture (ou retirée, au palier 1), avant que l'ancienne soit libérée
   view = next;
   if (post) void post.preparer(view.scene, camera, scenePalette); // lot 50 : les programmes de la nouvelle scène dans la cible, compilés à l'arrêt
@@ -2608,7 +2629,7 @@ function poserDecorArrive() {
       poseurDe(view)!(m);
       if (post) void post.preparer(view.scene, camera, scenePalette); // lot 50 : le décor compilé à l'arrêt, pas à sa première apparition en course
       decorDansVue = true;
-      view.setQuality(governor.level, settings.shadows);
+      view.setQuality(niveauScene(), settings.shadows);
       etatDecor.poseMs = performance.now();
       etatDecor.poseDureeMs = etatDecor.poseMs - debut;
       etatDecor.posePhase = homeOpen ? "accueil" : paused ? "pause" : phase === "finished" ? "arrivee" : "arret";

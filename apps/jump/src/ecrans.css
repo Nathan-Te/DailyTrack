@@ -85,6 +85,12 @@
   font-size: var(--dj-taille-16);
   line-height: 1.2;
 }
+/* Lot Q1 : la ligne « Ton appareil limite l'affichage à 30 images par seconde… » : discrète, une fois par session. */
+.accueil__bridage {
+  font-size: var(--dj-taille-12);
+  font-weight: 500;
+  line-height: 1.3;
+}
 .accueil__tuiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

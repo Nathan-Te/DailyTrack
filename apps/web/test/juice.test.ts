@@ -93,36 +93,62 @@ describe("rendu : suspension et dérive", () => {
   });
 });
 
-describe("qualité automatique", () => {
-  const run = (g: QualityGovernor, ms: number, seconds: number) => {
+describe("qualité automatique (lot Q1 : sur le travail par image, non sur l'intervalle seul)", () => {
+  /** `seconds` de jeu à `ms` entre deux images et `work` ms de rendu par image ; rend le nombre de changements de niveau. */
+  const run = (g: QualityGovernor, ms: number, work: number | null, seconds: number) => {
     let changes = 0;
-    for (let t = 0; t < seconds * 1000; t += ms) if (g.observe(ms)) changes++;
+    for (let t = 0; t < seconds * 1000; t += ms) if (g.observe(ms, work)) changes++;
     return changes;
   };
-  it("baisse quand les images sont lentes, jusqu'au plancher", () => {
+  it("16 ms (60 images/s) avec peu de travail : rien ne bouge", () => {
     const g = new QualityGovernor();
-    run(g, 60, 20);
-    expect(g.level).toBe(0);
-  });
-  it("remonte quand c'est fluide, mais pas tout de suite", () => {
-    const g = new QualityGovernor();
-    run(g, 60, 10);
-    expect(g.level).toBe(0);
-    run(g, 8, 3);
-    expect(g.level).toBe(0); // pas de yo-yo
-    run(g, 8, 30);
+    expect(run(g, 16.7, 4, 30)).toBe(0);
     expect(g.level).toBe(2);
   });
-  it("ne bouge pas à 60 images/s ni quand elle est figée", () => {
+  it("33 ms bridé (économie d'énergie, 3 ms de travail) : ne descend plus", () => {
     const g = new QualityGovernor();
-    expect(run(g, 16.7, 30)).toBe(0);
-    const locked = new QualityGovernor(26, 19, true);
-    expect(run(locked, 80, 30)).toBe(0);
+    expect(run(g, 33.3, 3, 60)).toBe(0);
+    expect(g.level).toBe(2);
+  });
+  it("33 ms chargé (25 ms de travail) : descend jusqu'au plancher", () => {
+    const g = new QualityGovernor();
+    run(g, 33.3, 25, 20);
+    expect(g.level).toBe(0);
+  });
+  it("sans mesure du travail (accueil, aucune image dessinée), 33 ms ne descend pas ; 60 ms, si", () => {
+    const g = new QualityGovernor();
+    expect(run(g, 33.3, null, 20)).toBe(0);
+    run(g, 60, null, 20);
+    expect(g.level).toBe(0); // sous 20 images/s : le processeur graphique ne suit pas, quel que soit le travail
+  });
+  it("un processeur graphique qui ne suit pas (60 ms, peu de travail) descend aussi", () => {
+    const g = new QualityGovernor();
+    run(g, 60, 3, 20);
+    expect(g.level).toBe(0);
+  });
+  it("remonte quand le travail redevient léger, même à 33 ms, mais pas tout de suite", () => {
+    const g = new QualityGovernor();
+    run(g, 33.3, 25, 10);
+    expect(g.level).toBe(0);
+    run(g, 33.3, 3, 3);
+    expect(g.level).toBe(0); // pas de yo-yo
+    run(g, 33.3, 3, 30); // le mode économie d'énergie reste : le travail est léger, la scène revient
+    expect(g.level).toBe(2);
+  });
+  it("entre les deux seuils de travail (8 à 12 ms), le niveau ne bouge pas", () => {
+    const g = new QualityGovernor();
+    g.level = 1;
+    expect(run(g, 16.7, 10, 30)).toBe(0);
+    expect(g.level).toBe(1);
+  });
+  it("figé (`?quality=`) : jamais de changement", () => {
+    const locked = new QualityGovernor(undefined, undefined, true);
+    expect(run(locked, 80, 40, 30)).toBe(0);
     expect(locked.level).toBe(2);
   });
   it("ignore un onglet resté en arrière-plan", () => {
     const g = new QualityGovernor();
-    for (let i = 0; i < 50; i++) g.observe(2000);
+    for (let i = 0; i < 50; i++) g.observe(2000, 1);
     expect(g.level).toBe(2);
   });
 });

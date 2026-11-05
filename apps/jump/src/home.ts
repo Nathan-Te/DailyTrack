@@ -68,6 +68,8 @@ export interface Home {
   setCountdown(text: string): void;
   /** Remet le focus sur Jouer (fermeture d'un écran ouvert depuis l'accueil). */
   focus(): void;
+  /** Lot Q1 : l'appareil est (ou n'est plus) bridé à 30 images/s ; la ligne n'est montrée qu'**une fois par session**, à l'accueil ouvert. */
+  bridage(bride: boolean): void;
   /** Lot N2 : l'emplacement du message en direct (sous la barre des jeux) ; vide, il n'occupe aucune place. */
   readonly hoteMessage: HTMLElement;
 }
@@ -135,7 +137,9 @@ export function mountHome(opts: HomeOptions): Home {
   const astuce = opts.store ? astuceIphone({ textes: () => ({ astuce: t("pleinEcran.iphone"), fermer: t("pleinEcran.iphone.fermer") }), stockage: opts.store }) : null;
   // Lot R8 : « Nouveau départ… », une fois, après la remise à zéro du lancement (le drapeau est retiré à la lecture).
   const depart = opts.store && lireNouveauDepart(opts.store) ? avisNouveauDepart(traducteurDuSocle()) : null;
-  const gauche = el("div", { classe: "accueil__gauche" }, el("div", { classe: "accueil__tete" }, title, subtitle), depart, astuce, replique, tuiles, status, play, el("div", { classe: "accueil__actions" }, archives, help, settings), revoked);
+  // Lot Q1 : « Ton appareil limite l'affichage à 30 images par seconde… » — une ligne discrète, une fois par session, jamais en partie.
+  const bridageNote = el("p", { classe: "accueil__bridage", attrs: { id: "home-bridage", hidden: true } });
+  const gauche = el("div", { classe: "accueil__gauche" }, el("div", { classe: "accueil__tete" }, title, subtitle), depart, astuce, bridageNote, replique, tuiles, status, play, el("div", { classe: "accueil__actions" }, archives, help, settings), revoked);
 
   // ——— Colonne de droite : le carnage du jour, le classement, le compte à rebours, le profil ———
   const carnageMorts = el("span", { classe: "carnage-jour__morts" });
@@ -185,6 +189,15 @@ export function mountHome(opts: HomeOptions): Home {
   let open = false;
   let ready = false;
   let view: HomeView | null = null;
+  let bride = false;
+  let bridageDit = false;
+  let bridageMontree = false;
+  const majBridage = () => {
+    if (!open || !bride) bridageMontree = false;
+    else if (!bridageDit) bridageDit = bridageMontree = true;
+    bridageNote.textContent = bridageMontree ? t("reglages.bridage") : "";
+    bridageNote.hidden = !bridageMontree;
+  };
   const changed = () => opts.onChange?.();
 
   const show = (v: HomeView) => {
@@ -204,6 +217,7 @@ export function mountHome(opts: HomeOptions): Home {
     rank.textContent = v.rank;
     rank.hidden = v.rank === "";
     countdown.textContent = v.countdown;
+    if (bridageMontree) bridageNote.textContent = t("reglages.bridage");
     revoked.hidden = !v.revoked;
     if (v.revoked) revoked.textContent = t("erreur.code_revoked");
     carnage.hidden = v.carnage === null;
@@ -234,9 +248,14 @@ export function mountHome(opts: HomeOptions): Home {
     get ready() {
       return ready;
     },
+    bridage(v) {
+      bride = v;
+      majBridage();
+    },
     open(v) {
       show(v);
       open = true;
+      majBridage();
       root.hidden = false;
       document.body.classList.add("home-open");
       if (ready) focusJouer();
@@ -244,6 +263,7 @@ export function mountHome(opts: HomeOptions): Home {
     },
     close() {
       open = false;
+      majBridage();
       root.hidden = true;
       document.body.classList.remove("home-open");
       (document.activeElement as HTMLElement | null)?.blur?.();

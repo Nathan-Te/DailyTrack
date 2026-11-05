@@ -16,7 +16,7 @@ Chargé quand on lit un fichier de `apps/web`. Le jeu affiche ce que calcule `pa
 **Lot 52 — quatre façons de tourner sur téléphone.** **→ Détail : [docs/regles/web/commandes-tactiles-lot-10.md](../../docs/regles/web/commandes-tactiles-lot-10.md)**
 
 ## Rendu, effets et sons (lot 9)
-**Règle : le rendu ne modifie jamais un résultat de sim ; la télémétrie est en lecture seule.** Tout est dans `apps/web` ; `packages/sim` n'a pas bougé (golden inchangés). **→ Détail : [docs/regles/web/rendu-effets-et-sons-lot-9.md](../../docs/regles/web/rendu-effets-et-sons-lot-9.md)**
+**Règle : le rendu ne modifie jamais un résultat de sim ; la télémétrie est en lecture seule.** Tout est dans `apps/web` ; `packages/sim` n'a pas bougé (golden inchangés). **Lot Q1 : le choix de « Qualité graphique » fait foi ; le régulateur (`QualityGovernor`) ne décide de la scène qu'en Auto, et sur le travail de rendu par image, jamais sur l'intervalle seul (un appareil bridé à 30 images/s n'est pas lent).** → « Scène » ci-dessous et `docs/plateforme/bridage-30-images.md`. **→ Détail : [docs/regles/web/rendu-effets-et-sons-lot-9.md](../../docs/regles/web/rendu-effets-et-sons-lot-9.md)**
 
 ## Graphismes, ambiance et caméras (lot 23)
 **Règle : rendu seul, `packages/sim` n'a pas bougé** (golden et versions inchangés). **→ Détail : [docs/regles/web/graphismes-ambiance-et-cameras-lot-23.md](../../docs/regles/web/graphismes-ambiance-et-cameras-lot-23.md)**

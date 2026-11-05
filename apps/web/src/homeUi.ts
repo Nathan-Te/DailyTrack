@@ -63,6 +63,8 @@ export interface HomeHost {
 export interface HomeUi {
   /** Redessine ce qui vient des records (ton temps, médailles) sans recharger le Salon (après une synchronisation) ; `board` : relit aussi le classement du jour (ta place vient peut-être d'arriver). */
   refresh(options?: { board?: boolean }): void;
+  /** Lot Q1 : l'appareil est (ou n'est plus) bridé à 30 images/s ; la ligne n'est montrée qu'**une fois par session**, à l'accueil ouvert. */
+  bridage(bride: boolean): void;
   open(): void;
   close(): void;
   isOpen(): boolean;
@@ -171,6 +173,19 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   playDaily.classList.add("play-daily");
   const touchNote = el("p", "note home-tactile");
   touchNote.hidden = !host.touch;
+  // Lot Q1 : « Ton appareil limite l'affichage à 30 images par seconde… » — une ligne discrète, une fois par session, jamais en partie.
+  const bridageNote = el("p", "note home-bridage");
+  bridageNote.id = "home-bridage";
+  bridageNote.hidden = true;
+  let bride = false;
+  let bridageDit = false;
+  let bridageMontree = false;
+  const majBridage = () => {
+    if (!open || !bride) bridageMontree = false;
+    else if (!bridageDit) bridageDit = bridageMontree = true;
+    bridageNote.textContent = bridageMontree ? t("reglages.bridage") : "";
+    bridageNote.hidden = !bridageMontree;
+  };
   const nextDay = el("p", "note next-day");
   nextDay.id = "home-nextday";
   nextDay.hidden = true;
@@ -190,7 +205,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   const astuce = astuceIphone({ textes: () => ({ astuce: t("pleinEcran.iphone"), fermer: t("pleinEcran.iphone.fermer") }), stockage: { getItem: (k) => gameStorage().getItem(k), setItem: (k, v) => gameStorage().setItem(k, v) } });
   // Lot R8 : « Nouveau départ… », une fois, après la remise à zéro du lancement.
   const depart = avisDeNouveauDepart();
-  cadre.corps.append(tete, ...(depart ? [depart] : []), ...(astuce ? [astuce] : []), grille, touchNote, nextDay, actions);
+  cadre.corps.append(tete, ...(depart ? [depart] : []), ...(astuce ? [astuce] : []), grille, touchNote, bridageNote, nextDay, actions);
   // Lot S1 : Discord et Ko-fi, deux plaques discrètes en bas à gauche de l'accueil (à la demande ; jamais en course : elles sont dans l'écran d'accueil).
   void import("@cdj/ui/src/liensCommunauteJeu").then((m) => {
     const poser = () => {
@@ -221,6 +236,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
     profileLink.textContent = t("accueil.profil");
     links.setAttribute("aria-label", t("accueil.liens"));
     touchNote.textContent = t("accueil.tactile");
+    if (bridageMontree) bridageNote.textContent = t("reglages.bridage");
     apercu.setAttribute("role", "img");
     apercu.setAttribute("aria-label", t("accueil.apercu.aria", { theme: nomTheme(d.theme) }));
   }
@@ -411,8 +427,13 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
       renderToday();
       if (options.board) void loadBoard(generation);
     },
+    bridage(v) {
+      bride = v;
+      majBridage();
+    },
     open() {
       open = true;
+      majBridage();
       generation++;
       lastRank = null;
       root.hidden = false;
@@ -443,6 +464,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
     },
     close() {
       open = false;
+      majBridage();
       generation++;
       clearInterval(timer);
       root.hidden = true;

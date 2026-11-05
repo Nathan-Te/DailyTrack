@@ -41,7 +41,7 @@ export interface SettingsHost {
   /** Commandes tactiles (appareil tactile seulement) ; `changed` redessine les aides à l'écran. */
   touch: { pad: TouchPad; changed(): void } | null;
   /** Lot 45 : la « Qualité graphique » — un choix qui attend la fin de la course, le palier de la scène en ce moment (1 à 3). */
-  graphismes(): { enAttente: boolean; niveau: NiveauQualite | null; trop?: boolean };
+  graphismes(): { bride?: boolean; enAttente: boolean; niveau: NiveauQualite | null; trop?: boolean };
   openHowto(): void;
 }
 
@@ -78,6 +78,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
   let chargerCommandes: (() => void) | null = null;
   let ecranCommandes: { racine: HTMLElement; detruire(): void; annuler(): void } | null = null;
   let graphismesNote: HTMLElement;
+  let bridageNote: HTMLElement;
   let tabButtons = new Map<SettingsTab, HTMLButtonElement>();
   let pages: Record<SettingsTab, HTMLElement>;
 
@@ -96,11 +97,14 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     // Lot 45 : la « Qualité graphique » (le palier de la scène), le seul réglage de qualité : la fluidité dans un palier est toujours automatique (`QualityGovernor`, lot 9).
     const graphismes = reg(segmented<ChoixGraphismes>(CHOIX_GRAPHISMES.map((c) => [c, t(`reglages.graphismes.${c}`)] as const), () => s.graphismes, (v) => host.apply({ graphismes: v }), t("reglages.graphismes.nom")));
     graphismesNote = el("p", "note");
+    bridageNote = el("p", "note"); // lot Q1 : « Ton appareil limite l'affichage à 30 images par seconde… », tant que c'est vrai
+    bridageNote.id = "settings-bridage";
     const speedFeel = reg(segmented(SPEED_FEEL_CHOICES.map((v) => [v, t(SPEED_FEEL_KEY[v])] as const), () => s.speedFeel, (v) => host.apply({ speedFeel: v }), t("reglages.sensation.nom")));
     const graphics = el("div", "reglages__page");
     graphics.append(
       row(t("reglages.graphismes.nom"), graphismes.box, t("reglages.graphismes.aide")),
       graphismesNote,
+      bridageNote,
       row(t("reglages.particules.nom"), bool("particles", t("reglages.particules.nom")).box, t("reglages.particules.aide")),
       row(t("reglages.traces.nom"), bool("skids", t("reglages.traces.nom")).box),
       row(t("reglages.secousses.nom"), bool("shake", t("reglages.secousses.nom")).box, t("reglages.secousses.aide")),
@@ -281,6 +285,8 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     // Lot 50 : une course trop lente pour ce qui était dessiné — Auto a déjà allégé l'image ; un autre choix la garde, la note le dit.
     if (g.trop && !g.enAttente && s.graphismes !== "auto" && s.graphismes !== "economie") graphismesNote.textContent += ` ${t("reglages.graphismes.tropLourd")}`;
     graphismesNote.hidden = !graphismesNote.textContent;
+    bridageNote.textContent = g.bride ? t("reglages.bridage") : "";
+    bridageNote.hidden = !g.bride;
   }
 
   build();
