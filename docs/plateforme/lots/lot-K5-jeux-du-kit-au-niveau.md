@@ -27,6 +27,6 @@
 - Cibles : motif `uni` (budget). Le sous-titre « PARTIE N° 4 · BANQUISE » passe sur deux lignes à côté de l'illustration.
 
 ## Vérifié
-- Unitaires SQLite complets (498 fichiers, 6 981 tests) avant les dernières retouches ; `packages` + `apps/portail` relancés après. `tsc -b` vert ; `npm run consignes`, `npm run fiches`, `npm run traductions` à jour. Budgets : `budgets-controle.mjs` sans dépassement.
+- Unitaires SQLite complets après la fusion de `main` (500 fichiers, 7 017 tests). `tsc -b` vert ; `npm run consignes`, `npm run fiches`, `npm run traductions` à jour. Budgets : `budgets-controle.mjs` sans dépassement.
 - e2e Chromium verts : Cibles (kit, partie, poids, déterminisme, classement), Blocks (disposition, partie, poids, arcade, classement, bot-themes, partage, aperçu), Rush, Tower, vitrine et accessibilité du portail.
 - **Non vérifié** : le job « Kit de bout en bout » et « jeu-fictif » (la CI le dit) ; libSQL. `apps/web/e2e/profil.spec.ts` › « un record fait sur un appareil… » (course Track) échoue **aussi sur la base non modifiée** dans ce bac à sable (deux essais chacun) : non corrigé, hors zone.
