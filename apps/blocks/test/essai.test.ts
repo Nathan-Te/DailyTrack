@@ -14,7 +14,7 @@ describe("les options d'essai", () => {
     expect(DEFINITION.classable!("?scenario=blocage&seed=2026-11-02")).toBe(false);
   });
   it("les quatre scénarios sont reconnus, un autre nom non", () => {
-    for (const n of ["presque-plein", "blocage", "plateau-vide", "combo"]) expect(lireEssai(`?scenario=${n}`, false).scenario).toBe(n);
+    for (const n of ["presque-plein", "blocage", "plateau-vide", "combo", "suivantes"]) expect(lireEssai(`?scenario=${n}`, false).scenario).toBe(n);
     expect(lireEssai("?scenario=inconnu", false)).toEqual({ scenario: null, rampe: null, bot: null });
   });
   it("`?debug&tune` règle la rampe (le décalage n'existe plus : le paramètre est ignoré) et la partie n'est pas classable ; sans `tune` ou sans `debug`, rien", () => {

@@ -1,7 +1,7 @@
 import { estScenario, RAMPE_PAR_DEFAUT, type NomScenario, type Rampe } from "@cdj/blocks-sim";
 
 // Les options d'ESSAI de Blocks, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9) :
-//   · `?scenario=presque-plein|blocage|plateau-vide|combo` : une grille de départ fixée (seed § 9 ; `combo` : quatre poses qui effacent chacune une ligne) ;
+//   · `?scenario=presque-plein|blocage|plateau-vide|combo` : une grille de départ fixée (seed § 9 ; `combo` : quatre poses qui effacent chacune une ligne ; lot B7, `suivantes` : une grille vide et une suite qui alterne petites et grosses pièces, pour voir la suivante à sa vraie taille) ;
 //   · (`?theme=` n'est plus ici : le kit le lit pour tous les jeux — `OptionsUrl.theme`, local et jamais classé ; lot « manques de Blocks ».)
 //   · `&bot` (lot B3), avec `?seed=AAAA-MM-JJ` : le bot Diamant joue à la place du joueur (`&bot=<n>` : n poses par seconde, de 1 à 30 ; 3 par défaut). **La partie n'est jamais classée** (`classable` de la définition) ;
 //   · `?scenario=partage` (lot B4) : l'écran de fin tout de suite, avec un résultat d'exemple (le début de la partie du bot, arrêté dans la bande d'une médaille : `&medaille=aucune|bronze|argent|or|diamant`, argent par défaut)

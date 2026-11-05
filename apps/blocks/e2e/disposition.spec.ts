@@ -56,17 +56,18 @@ for (const [nom, largeur, hauteur, portrait] of ECRANS) {
     expect(d.grille.w / Math.min(largeur, hauteur)).toBeGreaterThanOrEqual(0.7);
     if (!portrait) {
       expect(d.grille.h / hauteur).toBeGreaterThan(0.74);
-      expect(Math.abs(d.grille.x + d.grille.w / 2 - largeur / 2)).toBeLessThanOrEqual(2);
+      expect(Math.abs(d.grille.x + d.grille.w / 2 - largeur / 2), "centrée, à quelques pour cent près (lot B7 : la colonne des pièces, à leur échelle fixe, la pousse un peu vers la gauche)").toBeLessThanOrEqual(0.03 * largeur);
       expect(d.main.x).toBeGreaterThanOrEqual(d.grille.x + d.grille.w);
       expect(d.score.x + d.score.w).toBeLessThanOrEqual(d.grille.x);
-    } else expect(d.grille.w).toBeGreaterThan(largeur - 40);
+    } else expect(d.grille.w / largeur, "en portrait, la grille garde presque toute la largeur (lot B7 : les deux zones tiennent côte à côte à leur échelle fixe)").toBeGreaterThanOrEqual(0.88);
     for (const z of [d.main, d.suivante]) {
       expect(z.w).toBeLessThanOrEqual(d.grille.w);
       expect(z.h).toBeLessThanOrEqual(d.grille.h);
     }
     expect(d.main.w * d.main.h + d.suivante.w * d.suivante.h).toBeLessThan(d.grille.w * d.grille.h);
-    expect(d.coteMain).toBeLessThanOrEqual(d.cote);
-    expect(d.coteSuivante).toBeLessThan(d.coteMain);
+    // Lot B7 — échelle fixe : la pièce du moment à la taille des cases de la grille, la suivante à 60 % de cette taille.
+    expect(d.coteMain).toBe(d.cote);
+    expect(d.coteSuivante).toBeCloseTo(d.cote * 0.6, 5);
     // Le HUD est lisible : ce que la scène dessine vraiment (valeurs du HUD au moins 18 px, étiquettes au moins 12 px).
     await page.waitForTimeout(150);
     const polices = await page.evaluate(() => window.__blocks.polices());

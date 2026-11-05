@@ -11,7 +11,7 @@ import { decorCourant } from "./decors/index";
 import { type Annonce, bosse, type CaseEffacee, DUREE_GAIN, eclater, etatAnnonce, etatGain, etatParticule, type GainFlottant, hasardAffichage, illumination, illuminationFinie, type Particule } from "./effets";
 import { suivreCouche } from "./coucheLogique";
 import { musiqueDuKit } from "./kitSon";
-import { coteEnMain, coteEnSuivante, dans, disposer, type Disposition, type Rect, ETIQUETTE, metriquesPlaque, VALEUR_MIN } from "./miseEnPage";
+import { dans, disposer, type Disposition, type Rect, ETIQUETTE, metriquesPlaque, VALEUR_MIN } from "./miseEnPage";
 import { Sons, type SonJoue } from "./sons";
 import { type Evenement, niveauEffets } from "./sonsLogique";
 import { ecrireScore, formaterNombre } from "./textes";
@@ -84,15 +84,19 @@ export interface PorteBlocks {
     grille: Rect;
     main: Rect;
     suivante: Rect;
+    gabarit: Rect;
     score: Rect;
     combo: Rect;
     boutons: Rect;
     coteMain: number;
     centreMain: { x: number; y: number };
     coteSuivante: number;
+    centreSuivante: { x: number; y: number };
   };
   piece(): string | null;
   suivante(): string | null;
+  /** Lot B7 — la pièce suivante telle qu'elle est dessinée : son rectangle (page) et le côté de ses cases (le même pour toutes les pièces). */
+  reposSuivante(): { rect: Rect; cote: number } | null;
   ombre(): { col: number; ligne: number; legale: boolean } | null;
   surlignage(): { lignes: number; colonnes: number } | null;
   /** La pièce du moment au repos dans la zone de saisie : son rectangle (page) et le côté de ses cases. */
@@ -243,7 +247,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
 
   /** Le côté d'une case de la pièce saisie : de sa taille au repos à celle des cases de la grille, en un instant (tout de suite avec « mouvements réduits »). */
   const coteSaisie = (p: Piece): number => {
-    const repos = coteEnMain(mep, p);
+    const repos = mep.coteMain;
     const age = o.reduit || !saisie ? 1 : Math.min(1, (performance.now() - saisie.depuis) / 90);
     return repos + (mep.cote - repos) * age;
   };
@@ -345,7 +349,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   };
   /** Où la pièce du moment est posée au repos dans la zone de saisie : son coin haut-gauche et le côté de ses cases. */
   const reposDe = (p: Piece): { x: number; y: number; cote: number } => {
-    const cote = coteEnMain(mep, p);
+    const cote = mep.coteMain;
     return { x: mep.centreMain.x - (p.largeur * cote) / 2, y: mep.centreMain.y - (p.hauteur * cote) / 2, cote };
   };
   canvas.addEventListener("pointerdown", (e) => {
@@ -555,6 +559,38 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     (g as unknown as { letterSpacing: string }).letterSpacing = "0px";
     g.restore();
   }
+  /** Lot B7 — le gabarit de 5 × 5 cases derrière la pièce suivante, à la même échelle qu'elle : très discret (pointillés fins), il rend la taille comparable d'une pièce à l'autre. */
+  function gabarit(): void {
+    const r = mep.gabarit;
+    const n = r.w / mep.coteSuivante;
+    g.save();
+    g.globalAlpha = 0.3;
+    g.strokeStyle = jeton("encre-douce");
+    g.lineWidth = 1;
+    g.setLineDash([2, 3]);
+    g.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const d = i * mep.coteSuivante;
+      g.moveTo(Math.round(r.x + d) + 0.5, r.y);
+      g.lineTo(Math.round(r.x + d) + 0.5, r.y + r.h);
+      g.moveTo(r.x, Math.round(r.y + d) + 0.5);
+      g.lineTo(r.x + r.w, Math.round(r.y + d) + 0.5);
+    }
+    g.stroke();
+    g.restore();
+  }
+  /** Lot B7 — le contour de chaque case de la pièce suivante (un trait fin sombre, posé sur le dessin du module commun) : on compte les cases d'un coup d'œil. */
+  function contourDesCases(p: Piece): void {
+    const cote = mep.coteSuivante;
+    const x0 = mep.centreSuivante.x - (p.largeur * cote) / 2;
+    const y0 = mep.centreSuivante.y - (p.hauteur * cote) / 2;
+    g.save();
+    g.globalAlpha = 0.55;
+    g.strokeStyle = ENCRE;
+    g.lineWidth = 1;
+    for (const c of casesDe(p)) g.strokeRect(x0 + c.col * cote + 0.5, y0 + c.ligne * cote + 0.5, cote - 1, cote - 1);
+    g.restore();
+  }
   /** Du texte sur plusieurs lignes, centré dans un rectangle (la ligne d'aide d'avant la première pose). */
   function texteEnLignes(txt: string, r: Rect, taille: number): void {
     g.font = policeTexte(taille);
@@ -753,8 +789,13 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     }
 
     // La pièce suivante (petite, non saisissable) et la pièce du moment.
+    // Lot B7 — échelle fixe : le gabarit de 5 × 5 cases, puis la pièce à 60 % de la taille des cases (la même pour les 40 pièces), centrée dans le gabarit, chaque case avec son contour.
+    gabarit();
     const suivante = partie.suivante;
-    if (suivante) pieceEn(suivante, mep.centreSuivante.x, mep.centreSuivante.y, coteEnSuivante(mep, suivante));
+    if (suivante) {
+      pieceEn(suivante, mep.centreSuivante.x, mep.centreSuivante.y, mep.coteSuivante);
+      contourDesCases(suivante);
+    }
     if (enMain) {
       const r = reposDe(enMain);
       if (saisie && p) {
@@ -846,10 +887,16 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     };
     const porte: PorteBlocks = {
       disposition() {
-        return { portrait: mep.portrait, cote: mep.cote, grille: page(mep.grille), main: page(mep.main), suivante: page(mep.suivante), score: page(mep.score), combo: page(mep.combo), boutons: page(mep.boutons), coteMain: mep.coteMain, centreMain: pt(mep.centreMain.x, mep.centreMain.y), coteSuivante: mep.coteSuivante };
+        return { portrait: mep.portrait, cote: mep.cote, grille: page(mep.grille), main: page(mep.main), suivante: page(mep.suivante), gabarit: page(mep.gabarit), score: page(mep.score), combo: page(mep.combo), boutons: page(mep.boutons), coteMain: mep.coteMain, centreMain: pt(mep.centreMain.x, mep.centreMain.y), coteSuivante: mep.coteSuivante, centreSuivante: pt(mep.centreSuivante.x, mep.centreSuivante.y) };
       },
       piece: () => partie.piece?.nom ?? null,
       suivante: () => partie.suivante?.nom ?? null,
+      reposSuivante() {
+        const p = partie.suivante;
+        if (!p) return null;
+        const cote = mep.coteSuivante;
+        return { rect: page({ x: mep.centreSuivante.x - (p.largeur * cote) / 2, y: mep.centreSuivante.y - (p.hauteur * cote) / 2, w: p.largeur * cote, h: p.hauteur * cote }), cote };
+      },
       ombre: () => ombreCourante(),
       surlignage: () => {
         const ombre = ombreCourante();

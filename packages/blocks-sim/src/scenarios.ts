@@ -32,6 +32,12 @@ const DEFINITIONS: Record<NomScenario, Definition> = {
     depart: ["X.......", "........", "........", "........", "XXXXXX..", "XXXXXX..", "XXXXXX..", "XXXXXX.."],
     debut: ["domino-0", "domino-0", "domino-0", "domino-0", "barre3-0"],
   },
+  // Lot B7 — la pièce suivante à sa vraie taille : une grille vide et une suite qui alterne petites et grosses pièces (domino, carré 3 × 3, coin, barre de 5, carré 2 × 2, grand L, puis la barre de 5 debout, le grand T…),
+  // pour voir à chaque pose que la suivante garde la même échelle (60 % des cases) quelle que soit sa taille. On pose sans contrainte : la grille a toute la place.
+  suivantes: {
+    depart: ["........", "........", "........", "........", "........", "........", "........", "........"],
+    debut: ["domino-0", "carre3-0", "coin-0", "barre5-0", "carre2-0", "grandl-0", "domino-1", "barre5-1", "coin-2", "grandt-0", "barre4-0", "carre3-0"],
+  },
 };
 
 /** Le contenu d'un scénario : la grille de départ, le début de la suite, puis la suite du jour 0. */
