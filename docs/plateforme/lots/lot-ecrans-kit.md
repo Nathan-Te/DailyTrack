@@ -32,6 +32,8 @@ interface PeauJeu {
 - Tests unitaires (`packages/kit/test/peau.test.ts`) : validation des couleurs, décor par thème, feuilles sans couleur ni police en dur, **chaque `gap` vient d'un jeton**, `ecrans.css` importée par `partie.ts` seul. Navigation clavier : la même (ids et ordre des boutons inchangés ; manette : `manette.ts` inchangé).
 - **Budgets** (premier chargement, `budgets-controle.mjs`) : Cibles +0,68 Ko, Rush +0,69 Ko, Blocks +0,64 Ko (marges restantes : 0,45 / 1,63 / 0,66 Ko) ; portail +22 o, Track +1 o, Jump +3 o, Tower −1 o. Sans le découpage en `ecrans.css`, +1,3 Ko : Cibles et Blocks dépassaient.
 
+- **`npm run verifier` complet vert en local** (typecheck, unitaires SQLite et libSQL, constructions, e2e Track, Jump, Tower, Cibles, Blocks, Rush, budgets). **CI de la PR, 1ʳᵉ poussée** : tout vert sauf un test de Track, `apps/web/e2e/profil.spec.ts:144` (« un record fait sur un appareil apparaît sur l'autre », `#finish .online .rank` introuvable en 30 s) : zone que ce lot ne touche pas, 7/7 verts en local (`npm run e2e -w @cdj/web -- e2e/profil.spec.ts`) ; relancé par la poussée suivante (règle d'arrêt, `CLAUDE.md` racine) — résultat dans la PR.
+
 ## Non vérifié
 - **Aucun appareil réel** : Chromium (Playwright) seulement ; `zoom` au grand écran à regarder sur Firefox et Safari ; pas d'iPhone.
 - `peau.dessin`, `peau.fond` et `peau.accent` **ne sont exercés par aucun jeu** : leur validation est testée en unitaire ; leur rendu a été regardé une fois avec une définition d'essai sur Cibles (illustration, décor de nuit, accent jaune : le titre tient à côté d'une illustration de 90 px grâce à une unité de conteneur), **non commitée** — aucun test ne le garde.
