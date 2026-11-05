@@ -75,6 +75,8 @@ export interface SqlDuJeu {
   /** Les parties d'un jour, masquées comprises (le tableau de bord de l'administration). */
   compteJour: string;
   top: string;
+  /** Lot « manques de Blocks » : le premier du classement avec sa rediffusion et les versions qui l'ont rejouée (route `day/<date>/first`). Paramètre : le jour. */
+  premier: string;
   moi: string;
   precedent: string;
   /** Lot D2 (C5) : la partie déjà écrite de ce joueur ce jour-là **si c'est exactement cette rediffusion** (même texte) : le renvoi répond avant le rejeu. Paramètres : jour, joueur, aperçu, texte. */
@@ -167,6 +169,8 @@ export function sqlDe(a: AdaptateurTable): SqlDuJeu {
     participants: `SELECT COUNT(*) AS n FROM ${T} WHERE ${P}day = ? AND hidden = 0`,
     compteJour: `SELECT COUNT(*) AS n FROM ${T} WHERE ${P}day = ?`,
     top: `SELECT ${brutR}, p.name AS name, p.ref AS ref FROM ${T} r JOIN players p ON p.id = r.player_id WHERE ${porteeR}r.day = ? AND r.hidden = 0 ORDER BY ${ordreR} LIMIT ?`,
+    // Lot « manques de Blocks » : la partie du n° 1 du jour (sa rediffusion et les versions qui l'ont rejouée), pour la route `day/<date>/first` d'un contrat qui la déclare (`premier`). Même ordre que le classement (index `by_rank`).
+    premier: `SELECT r.player_id AS player_id, p.name AS name, r.replay AS replay, r.sim_version AS sim_version, r.generator_version AS generator_version, ${brutR} FROM ${T} r JOIN players p ON p.id = r.player_id WHERE ${porteeR}r.day = ? AND r.hidden = 0 ORDER BY ${ordreR} LIMIT 1`,
     moi: `SELECT ${brutR}, r.submitted_at AS submitted_at, p.name AS name, p.ref AS ref FROM ${T} r JOIN players p ON p.id = r.player_id WHERE ${porteeR}r.day = ? AND r.player_id = ?`,
     precedent: `SELECT ${brutPlus}, submitted_at FROM ${T} WHERE ${P}day = ? AND player_id = ? AND apercu = ?`,
     deja: `SELECT ${[brutPlus, ...(a.lecturesDeja ?? []).map(ident)].join(", ")}, submitted_at FROM ${T} WHERE ${P}day = ? AND player_id = ? AND apercu = ? AND replay = ?`,

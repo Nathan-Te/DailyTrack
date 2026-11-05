@@ -2,10 +2,10 @@ import { expect, test } from "@playwright/test";
 import { BLOCKS_GENERATOR_VERSION, dailyBlocks, PIECES } from "@cdj/blocks-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
-import { API, appareil, lancer } from "./appareil";
+import { API, appareil, JOUR, lancer } from "./appareil";
 
 // « Blocks » — les scénarios d'essai (seed § 9), locaux et jamais classés : `?scenario=presque-plein` (une pose efface 2 lignes et 1 colonne), `blocage` (la pièce ne rentre nulle part : fin immédiate), `plateau-vide`
-// (une pose vide la grille). Une partie de scénario est en archive : elle ne se classe pas et ne s'envoie pas, même avec un serveur.
+// (une pose vide la grille). Une partie de scénario est un essai (`classable` de la définition, lot « manques de Blocks » : plus de passage en archive) : elle ne se classe pas et ne s'envoie pas, même avec un serveur.
 test.describe("Blocks : les scénarios", () => {
   test("presque-plein : une pose, 2 lignes et 1 colonne, 96 points, combo 1", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=presque-plein");
@@ -44,7 +44,7 @@ test.describe("Blocks : les scénarios", () => {
     await lancer(page);
     await page.evaluate(() => window.__jeu.avancer(60));
     await expect(page.locator("#jeu-fin")).toBeVisible();
-    await expect(page.locator("#jeu-fin-rang")).toHaveText(CATALOGUE_KIT_FR["kit.fin.archive"]);
+    await expect(page.locator("#jeu-fin-rang")).toHaveText(CATALOGUE_KIT_FR["kit.fin.essai"]);
     expect(await page.evaluate(() => window.__jeu.envoi().statut)).not.toBe("ranked");
     await context.close();
   });
@@ -60,14 +60,15 @@ test.describe("Blocks : les scénarios", () => {
     }
   });
 
-  test("`?debug&tune` : la rampe réglée change la suite, la page est en archive (une partie réglée n'est jamais envoyée)", async ({ browser }) => {
+  test("`?debug&tune` : la rampe réglée change la suite du jour d'aujourd'hui, la partie est un essai (jamais classée ni envoyée), sans passer en archive", async ({ browser }) => {
     const { context, page } = await appareil(browser, `/?api=${API}&debug&manuel&tactile=0&tune&rampe=100,1`);
-    await expect(page.locator("#jeu-archive")).toBeVisible();
+    await expect(page.locator("#jeu-archive")).toHaveText(CATALOGUE_KIT_FR["kit.fin.essai"]);
     await lancer(page);
-    // La page prend la veille du 06/11/2026 : la suite est celle de ce jour avec la rampe 100, 1 (jamais celle du serveur).
-    const suite = dailyBlocks(parseDay("2026-11-05")!, BLOCKS_GENERATOR_VERSION, { pente: 100, rangMax: 1 }).suite;
+    // Le jour reste celui d'aujourd'hui (06/11/2026) : la suite est celle de ce jour avec la rampe 100, 1 (jamais celle du serveur).
+    const suite = dailyBlocks(parseDay(JOUR)!, BLOCKS_GENERATOR_VERSION, { pente: 100, rangMax: 1 }).suite;
     expect(await page.evaluate(() => [window.__blocks.piece(), window.__blocks.suivante()])).toEqual([PIECES[suite[0]!]!.nom, PIECES[suite[1]!]!.nom]);
-    expect(await page.evaluate(() => window.location.search)).toContain("seed=2026-11-05");
+    expect(await page.evaluate(() => window.location.search)).not.toContain("seed="); // l'adresse n'est plus réécrite
+    expect(await page.evaluate(() => window.__jeu.envoi().statut)).not.toBe("ranked");
     await context.close();
   });
 });

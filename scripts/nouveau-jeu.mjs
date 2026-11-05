@@ -28,6 +28,7 @@ export const ENTREES_MECANIQUES = [
   "packages/ui/src/catalogue.en.ts",
   "apps/portail/src/catalogue.ts",
   "docs/plateforme/budgets.md",
+  "CLAUDE.md", // lot « manques de Blocks » : la ligne du jeu dans la carte du dépôt
 ];
 /** Les fichiers que `npm run fiches` et `npm run traductions` écrivent (générés : jamais à la main). */
 export const FICHIERS_GENERES = [/\.generated\.[a-z]+$/, /^config\/jeux\/projections\//, /^docs\/plateforme\/traductions\.md$/];
@@ -326,7 +327,14 @@ export function entreesMecaniques(racine, c) {
       ),
     ),
   );
+  // Lot « manques de Blocks » : la carte du dépôt du `CLAUDE.md` racine gagne la ligne du jeu (avant celle du jeu témoin), au lieu de l'attendre d'un lot de la plateforme.
   ed.push(
+    editerLignes(racine, "CLAUDE.md", c, (t) => {
+      const modele = t.split("\n").find((l) => l.startsWith(`| \`packages/${MODELE}-sim\` · \`apps/${MODELE}\``));
+      if (!modele) throw new Error("CLAUDE.md : la ligne du jeu témoin n'est plus dans la carte du dépôt, le générateur doit suivre");
+      const ligne = `| \`packages/${c.id}-sim\` · \`apps/${c.id}\` | simulation ; le jeu — jeu neuf, branché sur la plateforme par le kit (\`brancherJeu\`), \`off\` jusqu'à ce que Nathan le publie | ${c.nom} | index \`docs/${c.id}/consignes.md\` |`;
+      return { texte: t.replace(modele, `${ligne}\n${modele}`), ajouts: 1 };
+    }),
     editerLignes(racine, "docs/plateforme/budgets.md", c, (t) =>
       cloner(t, (l) => l.startsWith(`| \`${MODELE}.jsCss\``), (run) =>
         run.map((l) => {
@@ -509,7 +517,7 @@ Chargé par lecture des fichiers du jeu (zone \`docs/${c.id}/**\`). Réponses et
 ## Règles
 - Les zones, la méthode et les règles de la plateforme sont dans \`docs/${c.id}/passation.md\` (générée) et le \`CLAUDE.md\` racine. Un lot de ce jeu reste dans ses zones et déclare tout nouveau spec e2e dans sa fiche (\`e2e.specs\`) **et** dans \`apps/${c.id}/e2e/durees.json\`.
 - **Rien ne s'ajoute au premier chargement** qui ne soit pas à la demande (ligne de budget \`${c.id}.jsCss\`) ; un budget ne se relève qu'avec Nathan.
-- Les deux pages de mentions légales (\`apps/portail/mentions-legales/index.html\`, \`apps/portail/legal/index.html\`) ne nomment pas les clés \`${c.id}:*\` du jeu tant qu'il est \`off\` ; **avant de le passer en \`on\`, un lot de la plateforme les décrit** (règle de fidélité du lot R5).
+- **Mentions légales (règle de fidélité du lot R5)** : le jeu écrit dans le navigateur quatre clés, \`${c.id}:records\`, \`${c.id}:reglages\`, \`${c.id}:aide:vu\` et \`${c.id}:identite:vue\` (plus \`cdj:apercu:${c.id}\` et \`cdj:commandes:${c.id}\`). Les deux pages (\`apps/portail/mentions-legales/index.html\`, \`apps/portail/legal/index.html\`) doivent les décrire : **le test \`apps/portail/test/mentions.test.ts\` échoue tant qu'elles ne le font pas** dès que le jeu a dépassé son squelette (son catalogue n'a plus de texte « À remplacer ») et n'est pas un témoin. C'est un lot de la plateforme (zone partagée) : le proposer dans le README du premier lot du jeu, ne pas attendre le dernier.
 `;
 
 // --- Le plan et son exécution ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -622,6 +630,7 @@ export async function principal(argv) {
     }
     sortie.push(`${relative(process.cwd(), join(opts.racine, "docs", c.id)) || `docs/${c.id}`} : seed.md (vide), consignes.md, passation.md`);
   }
+  sortie.push("", `À décrire dans les mentions légales (fr et en) dès que le jeu a dépassé son squelette (catalogue sans « À remplacer ») — le test de apps/portail/test/mentions.test.ts échoue sinon : ${c.id}:records, ${c.id}:reglages, ${c.id}:aide:vu, ${c.id}:identite:vue (et cdj:apercu:${c.id}, cdj:commandes:${c.id}).`);
   sortie.push("", ...cinqEtapes(c.id, opts.classement));
   return sortie;
 }

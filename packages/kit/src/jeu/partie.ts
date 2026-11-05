@@ -6,7 +6,7 @@ import { suivantDisponible } from "../fantome";
 import { ligneParDefaut, textePartage, adresseDePartage } from "../partage";
 import { commandesDuJeu } from "./commandes";
 import { creerFondFin } from "./fondFin";
-import { creerVibreur, lireReglages } from "./reglagesJoueur";
+import { creerVibreur, creerVolumeEffets, lireReglages } from "./reglagesJoueur";
 import type { CodeMedaille, ContextePartie, PartieDuJeu } from "./types";
 
 // La partie d'un jeu neuf (à la demande, préchargée par l'accueil) : la boucle à pas fixe, le HUD compact, la pause, l'arrivée, l'envoi (la file hors ligne du kit), les records, le classement, la ligne à partager,
@@ -37,6 +37,8 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const reglages = lireReglages(c, d.stockage);
   const reduit = reglages.mouvement === "reduit" || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const classable = !c.archive && !c.essai;
+  const sansFantome = def.sansFantome === true; // lot « manques de Blocks » : ni bouton, ni commande, ni rediffusion du Diamant
+  const volumeEffets = creerVolumeEffets(() => lireReglages(c, d.stockage));
   const vibrer = creerVibreur(() => lireReglages(c, d.stockage), typeof navigator === "undefined" ? null : navigator, d.tactile);
   c.musique.scene(`theme:${c.theme}`);
   c.musique.baisser(0.6);
@@ -47,24 +49,26 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const principal = el("span", { classe: "jeu-hud__principal", attrs: { id: "jeu-hud-score" } });
   const secondaire = el("span", { classe: "jeu-hud__secondaire", attrs: { id: "jeu-hud-temps" } });
   const nomFantome = (e: EtatFantome): string => t(`kit.fantome.${e}`);
-  const fantomeBtn = boutonFantome({ id: "jeu-hud-fantome", classe: "jeu-hud__bouton", onClick: () => changerFantome() });
+  const fantomeBtn = sansFantome ? null : boutonFantome({ id: "jeu-hud-fantome", classe: "jeu-hud__bouton", onClick: () => changerFantome() });
   const pauseBtn = el("button", { classe: "jeu-hud__bouton jeu-hud__pause", attrs: { type: "button", id: "jeu-hud-pause", "aria-label": t("kit.hud.pause") }, texte: "II" });
   pauseBtn.addEventListener("click", () => ouvrirPause());
   pauseBtn.addEventListener("pointerup", () => pauseBtn.blur());
-  const scene = el("div", { classe: "jeu-scene", attrs: { id: "jeu-scene" } }, el("div", { classe: "jeu-hud" }, el("div", { classe: "jeu-hud__gauche" }, principal), el("div", { classe: "jeu-hud__centre" }, secondaire), el("div", { classe: "jeu-hud__droite" }, fantomeBtn, pauseBtn)), plateau);
+  const scene = el("div", { classe: "jeu-scene", attrs: { id: "jeu-scene" } }, el("div", { classe: "jeu-hud" }, el("div", { classe: "jeu-hud__gauche" }, principal), el("div", { classe: "jeu-hud__centre" }, secondaire), el("div", { classe: "jeu-hud__droite" }, ...(fantomeBtn ? [fantomeBtn] : []), pauseBtn)), plateau);
   c.o.racine.append(scene);
 
   // --- Le fantôme : Aucun → Ma meilleure → Diamant ---
   const records = () => d.records.lire(d.stockage);
   const meilleure = (): string | null => records()[c.date]?.rediffusion ?? null;
-  let fantome: EtatFantome = reglages.fantome === "meilleure" && meilleure() ? "meilleure" : "aucun";
-  const rediffusionDe = (e: EtatFantome): string | null => (e === "meilleure" ? meilleure() : e === "diamant" ? c.def.rediffusionDiamant(c.contenu) : null);
+  let fantome: EtatFantome = !sansFantome && reglages.fantome === "meilleure" && meilleure() ? "meilleure" : "aucun";
+  const rediffusionDe = (e: EtatFantome): string | null => (sansFantome ? null : e === "meilleure" ? meilleure() : e === "diamant" ? c.def.rediffusionDiamant(c.contenu) : null);
   const disponible = (e: EtatFantome): boolean => e === "aucun" || (e === "meilleure" && meilleure() !== null) || (e === "diamant" && meilleure() !== null && classable); // le Diamant se débloque en jouant le jour
   function majFantomeBtn(): void {
+    if (!fantomeBtn) return;
     fantomeBtn.setAttribute("aria-label", t("kit.hud.fantome", { nom: nomFantome(fantome) }));
     fantomeBtn.dataset.etat = fantome;
   }
   function changerFantome(): void {
+    if (sansFantome) return;
     fantome = suivantDisponible(ORDRE_FANTOME, fantome, disponible, "aucun");
     majFantomeBtn();
     partie.fantome(rediffusionDe(fantome));
@@ -74,7 +78,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   let partie: PartieDuJeu = nouvelle();
   function nouvelle(): PartieDuJeu {
     plateau.replaceChildren();
-    return def.nouvellePartie(c.contenu, plateau, { theme: c.theme, reduit, tactile: d.tactile, libelle: t("scene.aria"), fantome: rediffusionDe(fantome), langue: c.i18n.langue, t: (cle, params) => c.i18n.t(cle, params), vibrer });
+    return def.nouvellePartie(c.contenu, plateau, { theme: c.theme, reduit, tactile: d.tactile, libelle: t("scene.aria"), fantome: rediffusionDe(fantome), langue: c.i18n.langue, t: (cle, params) => c.i18n.t(cle, params), vibrer, volumeEffets });
   }
   majFantomeBtn();
   let phase: "jeu" | "pause" | "fin" = "jeu";
@@ -136,7 +140,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     const pad = padPourLeJeu(brut ?? undefined);
     const maintenant = new Set<string>();
     if (pad) {
-      for (const a of [...def.actions, ...[{ id: "recommencer" }, { id: "fantome" }]]) {
+      for (const a of [...def.actions, ...(sansFantome ? [{ id: "recommencer" }] : [{ id: "recommencer" }, { id: "fantome" }])]) {
         const l = commandes.liaison(a.id);
         if (l && liaisonTenue(l, pad)) maintenant.add(a.id);
       }
@@ -259,7 +263,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     if (!resultat) return;
     const lu = d.envoi.resultats.get(c.date);
     const e = d.envoi.state;
-    const score = def.formatScore(resultat.score, c.i18n.langue);
+    const score = def.formatScore(resultat.score, c.i18n.langue, t);
     const s = def.sansMedaille ? null : def.seuils(c.contenu);
     const reste = s ? el("div", { classe: "jeu-medailles" }, el("h3", { texte: t("kit.fin.medailles") })) : null;
     if (s && reste) {
@@ -317,7 +321,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   }
   async function partagerLigne(med: CodeMedaille | null, rang?: number, participants?: number): Promise<void> {
     if (!resultat) return;
-    const ligne = ligneParDefaut({ nom: t(`jeu.${fiche.id}.nom`), numero: def.numero(c.jour), date: c.date, score: def.scorePartage(resultat.score, c.i18n.langue), medaille: med ? EMOJI[med] : null, rang: rang ? t("kit.fin.rang", { rang, n: participants ?? rang }) : null });
+    const ligne = ligneParDefaut({ nom: t(`jeu.${fiche.id}.nom`), numero: def.numero(c.jour), date: c.date, score: def.scorePartage(resultat.score, c.i18n.langue, t), extras: def.extrasPartage?.(resultat.score, c.i18n.langue, t) ?? [], medaille: med ? EMOJI[med] : null, rang: rang ? t("kit.fin.rang", { rang, n: participants ?? rang }) : null });
     const texte = textePartage(ligne, adresseDePartage(location));
     const natif = d.tactile && typeof navigator.share === "function";
     let r = "echec";

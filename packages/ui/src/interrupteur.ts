@@ -34,5 +34,7 @@ export function bandeauApercu(o: { brouillon: boolean }): HTMLElement {
   const e = h("div", o.brouillon ? "dj-apercu dj-apercu--brouillon" : "dj-apercu", texte(o.brouillon ? "apercu.brouillon" : "apercu.bandeau"));
   e.setAttribute("role", "status");
   e.setAttribute("data-apercu", o.brouillon ? "brouillon" : "cle");
+  // Lot « manques de Blocks » : la page sait qu'un bandeau est posé en haut (`--dj-apercu-reserve`, `interrupteur.css`) : la scène d'un jeu du kit lui réserve sa place au lieu de passer dessous.
+  if (typeof document !== "undefined") document.documentElement.classList.add("dj-avec-apercu");
   return e;
 }

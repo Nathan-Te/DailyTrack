@@ -12,7 +12,7 @@
    Les textes du kit (`#jeu-hud-score`, `#jeu-hud-temps`) restent pour les lecteurs d'écran, cachés à la vue. Marges de 8 px (la grille en pleine largeur) et de sécurité (`env(safe-area-inset-*)`) sur tout ce qui touche un bord. */
 .jeu-scene .jeu-hud {
   position: absolute;
-  top: 0;
+  top: var(--dj-apercu-reserve, 0px); /* lot « manques de Blocks » : sous le bandeau « Aperçu », que la scène du kit n'est plus recouverte */
   right: 0;
   left: auto;
   z-index: 2;
@@ -48,12 +48,4 @@
 /* Lot B4 : le score de l'écran de fin porte maintenant ses séparateurs de milliers (« 136 409 pts ») : sa taille suit la largeur de l'écran pour tenir sur une ligne (jamais plus grande que celle du kit). */
 .jeu-fin__score {
   font-size: min(var(--dj-taille-64), 11vw);
-}
-
-/* Lot B5 — PAS DE FANTÔME (seed § 5 : une grille en transparence est illisible). Le kit n'a pas d'option « sans fantôme » (manque décrit dans le README du lot B5) : on cache le moins mal possible ce qu'il montre —
-   le bouton du HUD, la ligne « Fantôme au départ » des Réglages et la ligne « Fantôme » de l'écran des commandes. La touche G existe encore côté kit, sans effet : la scène ne dessine aucun fantôme. */
-#jeu-hud-fantome,
-.jeu-reglages__ligne:has([data-setting="fantome"]),
-.dj-commande[data-action="fantome"] {
-  display: none;
 }

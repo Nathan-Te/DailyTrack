@@ -1,10 +1,7 @@
-import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, medailleDe, numeroBlocks, type Contenu, type Seuils } from "@cdj/blocks-sim";
-import { parisDay } from "@cdj/clock";
+import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, medailleDe, numeroBlocks, themeDuJour, type Contenu } from "@cdj/blocks-sim";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
-import { assemblerLigne } from "@cdj/kit/partage";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { lireEssai } from "./essai";
-import { themeAffiche } from "./themeAffiche";
 import { ecrireComboPartage, ecrireScore } from "./textes";
 
 // La définition de « Blocks » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Le corps du jeu (le tirage de la suite, les scénarios, la scène, les blocs communs) est à la demande**
@@ -21,23 +18,26 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
     { id: "bas", clavier: ["ArrowDown", "KeyS"], manette: null },
     { id: "poser", clavier: ["Space", "Enter"], manette: "b0" },
   ],
-  themeDuJour: themeAffiche, // le thème du jour (sac commun), ou `?theme=` hors production
+  themeDuJour, // le thème du jour (sac commun) ; `?theme=` (hors production) est géré par le kit
   numero: numeroBlocks,
-  async contenuDuJour(jour, base) {
+  async contenuDuJour(jour, base, theme) {
     corps ??= await import("./corps");
-    return corps.contenuDuJour(jour, base);
+    return corps.contenuDuJour(jour, base, theme);
   },
   seuils: (c) => corps!.seuilsDeBlocks(c), // le Diamant (bot) et ses fractions, dans le corps du jeu (à la demande)
   medaille: (score, s) => medailleDe(score, s),
   nouvellePartie: (c, hote, o) => corps!.nouvellePartieBlocks(c, hote, o),
   rediffusionDiamant: (c) => corps!.rediffusionDuDiamant(c), // la partie du bot (le kit l'exige ; lot B5 : plus de fantôme, la partie du Diamant se revoit hors partie)
+  // Lot « manques de Blocks » : tout essai local est une partie non classable — un scénario, une rampe réglée (`?debug&tune`), `&bot`, `?scenario=partage` ; le kit ne la classe ni ne l'envoie, sans passer la page en archive.
   classable: (adresse) => {
-    const essai = lireEssai(adresse, BUILD_RESTRICTED, parisDay(Date.now()));
-    return essai.bot === null && essai.mode === undefined; // `&bot`, `?scenario=partage` : des essais locaux, jamais classés
+    const essai = lireEssai(adresse, BUILD_RESTRICTED);
+    return essai.scenario === null && essai.rampe === null && essai.bot === null && essai.mode === undefined;
   },
-  formatScore: (score) => ecrireScore(score[0] ?? 0),
-  // La ligne à partager (lot B4, seed § 5) : `Du Jour · Blocks #5 — 4 582 pts — 🥈 — combo ×7`. Le gabarit est celui du kit (`ligneParDefaut`) : le titre, le score, la médaille, puis le rang. Le kit n'offre pas encore d'« extras » à un
-  // jeu neuf : le combo maximal part donc avec le score, AVANT la médaille (`4 582 pts — combo ×7 — 🥈`) — manque de la plateforme, voir le README du lot B4.
-  scorePartage: (score, langue) => assemblerLigne([ecrireScore(score[0] ?? 0, langue), ecrireComboPartage(score[1] ?? 0)]),
+  sansFantome: true, // lot « manques de Blocks » : l'option du kit remplace le bouton, la ligne des Réglages et la commande cachés par `partie.css` (seed § 5 : une grille en transparence est illisible)
+  formatScore: (score, langue, t) => ecrireScore(score[0] ?? 0, t, langue),
+  // La ligne à partager (lot B4, seed § 5) : `Du Jour · Blocks #5 — 4 582 pts — 🥈 — combo ×7`. Le gabarit est celui du kit (`ligneParDefaut` : le titre, le score, la médaille, les extras, puis le rang) ; le jeu ne donne que le score
+  // et, **après la médaille**, le combo maximal (`extrasPartage`, lot « manques de Blocks » : l'exception acceptée à la zone du jeu, une ligne).
+  scorePartage: (score, langue, t) => ecrireScore(score[0] ?? 0, t, langue),
+  extrasPartage: (score, _langue, t) => [ecrireComboPartage(score[1] ?? 0, t) ?? ""],
   aide: ["aide.point1", "aide.point2", "aide.point3"],
 };

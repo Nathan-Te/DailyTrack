@@ -42,6 +42,28 @@ test("par son lien : sans clé, « Bientôt » ; avec `?apercu=`, le bandeau « 
   await context.close();
 });
 
+test("le bandeau « Aperçu » ne recouvre rien en portrait : la scène lui réserve sa place (lot « manques de Blocks »)", async ({ browser }) => {
+  const { context, page } = await appareil(browser, `/?api=${APERCU}&debug&manuel&tactile=0&apercu=${CLE}`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('[data-apercu="cle"]')).toBeVisible();
+  await lancer(page);
+  const rect = async (sel: string) => (await page.locator(sel).boundingBox())!;
+  const bandeau = await rect('[data-apercu="cle"]');
+  const pause = await rect("#jeu-hud-pause");
+  const plateau = await rect(".jeu-plateau");
+  expect(bandeau.y + bandeau.height, "le plateau (grille et plaques du HUD) commence sous le bandeau").toBeLessThanOrEqual(plateau.y + 0.5);
+  expect(bandeau.y + bandeau.height, "le bouton pause est sous le bandeau").toBeLessThanOrEqual(pause.y + 0.5);
+  // La grille tient toujours dans la largeur : rien ne déborde.
+  expect(plateau.x + plateau.width).toBeLessThanOrEqual(390.5);
+  await context.close();
+  // Sans aperçu (ni clé, ni PR), la scène n'a rien de réservé : la même page commence en haut.
+  const sans = await appareil(browser, `/?debug&manuel&tactile=0`);
+  await sans.page.setViewportSize({ width: 390, height: 844 });
+  await lancer(sans.page);
+  expect(await sans.page.evaluate(() => getComputedStyle(document.querySelector(".jeu-scene")!).paddingTop)).toBe("0px");
+  await sans.context.close();
+});
+
 test("un envoi en aperçu est rangé à part : ni classement public ni nombre de classés", async () => {
   const jour = parseDay(JOUR)!;
   const envoi = await fetch(`${APERCU}/api/blocks/submit`, {

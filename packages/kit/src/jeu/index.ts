@@ -17,6 +17,9 @@ import type { DefinitionJeu, FicheClient, OptionsBrancher } from "./types";
 // file, records, classement avec Amis et Mon groupe, ligne à partager, « Jeu suivant du jour »), la manette (M1) et les commandes réglables (M2). **Le premier chargement est l'accueil seul.**
 // Track, Jump et Tower ne l'utilisent pas.
 
+/** Le délai avant l'unique nouvel essai de la lecture du classement de l'accueil (lot « manques de Blocks »). */
+export const DELAI_REESSAI_CLASSEMENT_MS = 2000;
+
 /** Les ids que la manette et les tests visent. */
 export const IDS = { accueil: "jeu-accueil", jouer: "jeu-jouer", aide: "jeu-bouton-aide", reglages: "jeu-bouton-reglages", classement: "jeu-tout-le-classement" } as const;
 
@@ -56,7 +59,9 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   const jour = choix.jour;
   const date = formatDay(jour);
   const stockage = gameStorage();
-  const theme = def.themeDuJour(jour);
+  // Lot « manques de Blocks » : `?theme=<code>` (hors production, code de la fiche) force le thème de la page — pour l'essayer en un clic, pour tout jeu branché ; la partie qui en résulte est un essai, jamais classé.
+  const themeForce = options.theme !== null && fiche.themes.includes(options.theme) ? options.theme : null;
+  const theme = themeForce ?? def.themeDuJour(jour);
   document.documentElement.dataset.theme = theme;
 
   // --- Le squelette, dessiné tout de suite ---
@@ -89,7 +94,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   const reglages = secondaire(IDS.reglages, "kit.accueil.reglages");
   const attente = el("p", { classe: "jeu-attente", attrs: { role: "status", id: "jeu-attente" } });
   // Lot B1 : une partie d'essai (scénario, réglage…) que le jeu déclare non classable — le jour reste celui d'aujourd'hui, la partie n'est ni classée ni envoyée.
-  const essai = def.classable?.(location.search) === false;
+  const essai = def.classable?.(location.search) === false || themeForce !== null;
   const noteArchive = choix.archive || choix.refuse || essai ? el("p", { classe: "jeu-archive", attrs: { role: "status", id: "jeu-archive" }, texte: choix.refuse ? t("kit.accueil.pasEncore") : choix.archive ? t("kit.fin.archive") : t("kit.fin.essai") }) : null;
   const suite = el("div", { classe: "suite-du-jour", attrs: { hidden: true, id: "suite-du-jour" } });
   const classementTitre = el("span", { classe: "jeu-tuile__legende", texte: t("kit.accueil.classement") });
@@ -131,7 +136,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   const ctxPartie = import("./partie"); // préchargé : JOUER n'attend plus que le contenu du jour
   ctxPartie.catch(() => undefined);
   let classement: ClassementJeu | null = null;
-  const contenuP = def.contenuDuJour(jour, document.baseURI);
+  const contenuP = def.contenuDuJour(jour, document.baseURI, theme);
   contenuP.catch(() => undefined);
 
   const idJoueur = (): string | null => readPlayerId(stockage ?? { getItem: () => null });
@@ -150,7 +155,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
     if (classement.me && !lignes.some((l) => l.rank === classement!.me!.rank)) lignes.push(classement.me);
     for (const l of lignes) {
       const moi = classement.me?.rank === l.rank && classement.me?.name === l.name;
-      classementListe.append(el("li", { classe: ["rang", moi && "rang--moi"] }, el("span", { classe: "rang__rang", texte: String(l.rank) }), el("span", { classe: "rang__nom", texte: l.name }), el("span", { classe: "rang__score", texte: def.formatScore(fiche.colonnes.map((c) => Number(l[c.nom] ?? 0)), i18n.langue) })));
+      classementListe.append(el("li", { classe: ["rang", moi && "rang--moi"] }, el("span", { classe: "rang__rang", texte: String(l.rank) }), el("span", { classe: "rang__nom", texte: l.name }), el("span", { classe: "rang__score", texte: def.formatScore(fiche.colonnes.map((c) => Number(l[c.nom] ?? 0)), i18n.langue, i18n.t) })));
     }
     toutLeClassement.hidden = classement.participants === 0;
   };
@@ -166,14 +171,19 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
     const records = d.records.lire(stockage);
     const r = records[date];
     if (r) {
-      recordValeur.textContent = def.formatScore(r.score, i18n.langue);
+      recordValeur.textContent = def.formatScore(r.score, i18n.langue, i18n.t);
       recordSous.textContent = r.medaille ? t("kit.accueil.record.sous", { medaille: t(`medaille.${r.medaille === "author" ? "diamant" : r.medaille === "gold" ? "or" : r.medaille === "silver" ? "argent" : "bronze"}`), envoi: t(r.envoye ? "kit.envoi.deja" : "kit.fin.horsLigne") }) : t(r.envoye ? "kit.envoi.deja" : "kit.fin.horsLigne");
     }
     serieValeur.textContent = t("kit.accueil.serie.jours", { n: serieLocale(Object.keys(records), aujourdhui) });
     if (!d.source) return dessinerClassement(true);
     const pid = idJoueur();
     if (pid) d.envoi.offrir(); // ce qui attendait d'être envoyé (une partie jouée hors ligne) repart
-    const [b, moi] = await Promise.all([d.source.board(date, pid), pid ? d.source.moi(pid) : Promise.resolve(null)]);
+    let [b, moi] = await Promise.all([d.source.board(date, pid), pid ? d.source.moi(pid) : Promise.resolve(null)]);
+    // Lot « manques de Blocks » (« Classement indisponible pour le moment » vu en recette) : une panne passagère — l'instance du serveur qui se réveille, un délai dépassé — se réessaie UNE fois, 2 s plus tard, avant de dire « indisponible » ; l'accueil reste « Chargement… » entre-temps.
+    if (!b.ok) {
+      await new Promise((r) => setTimeout(r, DELAI_REESSAI_CLASSEMENT_MS));
+      b = await d.source.board(date, pid);
+    }
     if (b.ok) {
       d.suivreGeneration(b.data);
       classement = b.data;

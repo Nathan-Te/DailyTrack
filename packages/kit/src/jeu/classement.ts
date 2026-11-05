@@ -28,7 +28,7 @@ export function monterClassement<C>(c: ContexteJeu<C>, idJoueur: () => string | 
   cadre.racine.hidden = true;
 
   // Une ligne « Tous » porte les colonnes de la fiche à plat ; une ligne « Amis » ou « Mon groupe » (`LigneAmis`) les range dans `score`.
-  const score = (l: LigneJeu & { score?: Record<string, number> }): string => c.def.formatScore(c.fiche.colonnes.map((k) => Number(l.score?.[k.nom] ?? l[k.nom] ?? 0)), c.i18n.langue);
+  const score = (l: LigneJeu & { score?: Record<string, number> }): string => c.def.formatScore(c.fiche.colonnes.map((k) => Number(l.score?.[k.nom] ?? l[k.nom] ?? 0)), c.i18n.langue, c.i18n.t);
   const ligne = (l: { rank?: number; rang?: number; name?: string; pseudo?: string; ref?: string } & Record<string, unknown>, moi: boolean): HTMLElement => {
     const li = el("li", { classe: ["rang", moi && "rang--moi"] }, el("span", { classe: "rang__rang", texte: String(l.rank ?? l.rang ?? "") }), el("span", { classe: "rang__nom", texte: String(l.name ?? l.pseudo ?? "") }), el("span", { classe: "rang__score", texte: score(l as LigneJeu) }));
     if (l.ref) li.dataset.ref = String(l.ref);

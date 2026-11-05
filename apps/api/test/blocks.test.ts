@@ -1,6 +1,11 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { actionDe, BLOCKS_GENERATOR_VERSION, decoderRediffusion, BLOCKS_SIM_VERSION, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, figerJour, jouer, PLAFOND_PIECES, medailleDe, scoreParColonnes, themeDuJour, VARIANTE } from "@cdj/blocks-sim";
-import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
+import { actionDe, BLOCKS_GENERATOR_VERSION, decoderRediffusion, BLOCKS_SIM_VERSION, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, jouer, PLAFOND_PIECES, medailleDe, scoreParColonnes, themeDuJour, VARIANTE } from "@cdj/blocks-sim";
+import { figerJourDuDiamant, jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
+import { seuilsDepuis } from "@cdj/blocks-sim";
+import { empreinteJour } from "../scripts/blocks-empreintes";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_BLOCKS } from "../scripts/blocks-essais";
 import { contenuDeBlocks, seuilsDeBlocks } from "../src/blocks";
@@ -134,13 +139,64 @@ describe("Blocks sur le serveur", () => {
   });
 
   it("lit le jour figé de l'image s'il se vérifie, l'ignore sinon", async () => {
-    const fige = figerJour(JOUR);
-    expect(contenuDeBlocks(JOUR, { [DATE]: fige })).toEqual(dailyBlocks(JOUR));
+    const fige = figerJourDuDiamant(JOUR);
+    expect(contenuDeBlocks(JOUR, { [DATE]: fige })).toEqual({ ...dailyBlocks(JOUR), seuilsFiges: seuilsDe(dailyBlocks(JOUR)) });
     const abime = { ...fige, contenu: { suite: fige.contenu.suite.slice(1) + "0" } };
     expect(empreinteContenu(contenuDeBlocks(JOUR, { [DATE]: abime }))).toBe(empreinteContenu(dailyBlocks(JOUR)));
     const t = await monter({ frozen: { [DATE]: fige } });
     const info = await t.call("GET", "/api/blocks/info");
     expect(info.body.frozenDays).toEqual([DATE]);
+  });
+
+  it("un jour figé fige ses seuils : le serveur sert et rend ceux du fichier, même si le bot d'aujourd'hui en calcule d'autres ; l'empreinte du jour les couvre", async () => {
+    const ancien = seuilsDepuis(7000); // un fichier figé par un bot plus ancien
+    expect(ancien.author).not.toBe(seuilsDe(dailyBlocks(JOUR)).author);
+    const fige = { ...figerJourDuDiamant(JOUR), bot: 0, seuils: ancien };
+    expect(seuilsDeBlocks(contenuDeBlocks(JOUR, { [DATE]: fige }))).toEqual(ancien);
+    const t = await monter({ frozen: { [DATE]: fige } });
+    const jour = await t.call("GET", `/api/blocks/day/${DATE}`);
+    expect(jour.body.medals).toEqual({ author: ancien.author, gold: ancien.gold, silver: ancien.silver, bronze: ancien.bronze });
+    // Sans fichier : le bot d'aujourd'hui.
+    expect(seuilsDeBlocks(contenuDeBlocks(JOUR))).toEqual(seuilsDe(dailyBlocks(JOUR)));
+    // L'empreinte (comparée à chaque mise en production) change si les seuils changent : un fichier de seuils différents n'a pas l'empreinte du jour généré.
+    const dossier = mkdtempSync(join(tmpdir(), "blocks-jours-"));
+    try {
+      const jourDuBot = empreinteJour(JOUR, dossier); // aucun fichier : généré
+      writeFileSync(join(dossier, `${DATE}.json`), JSON.stringify(fige));
+      const avecAncien = empreinteJour(JOUR, dossier);
+      expect(avecAncien.h).not.toBe(jourDuBot.h);
+      writeFileSync(join(dossier, `${DATE}.json`), JSON.stringify(figerJourDuDiamant(JOUR)));
+      expect(empreinteJour(JOUR, dossier).h).not.toBe(avecAncien.h);
+    } finally {
+      rmSync(dossier, { recursive: true, force: true });
+    }
+  });
+
+  it("la partie du n° 1 du jour (`/first`) : débloquée en finissant, rejouable, publique une fois le jour fermé", async () => {
+    const t = await monter();
+    expect((await t.call("GET", `/api/blocks/day/${DATE}/first`)).body.error).toBe("invalid_player"); // jour ouvert : il faut un joueur
+    expect((await t.call("GET", `/api/blocks/day/${DATE}/first`, undefined, { headers: entete(1) })).body.error).toBe("not_ranked"); // pas classé
+    await envoyer(t, 1, 0);
+    await envoyer(t, 2, 4);
+    await envoyer(t, 3, 2);
+    const scores = [0, 4, 2].map((v) => Number(essais[v]!.attendu.score));
+    const meilleur = scores.indexOf(Math.max(...scores));
+    const premier = [0, 4, 2][meilleur]!;
+    // Pas classé : refusé. Classé : la partie du premier, avec les versions qui l'ont rejouée.
+    expect((await t.call("GET", `/api/blocks/day/${DATE}/first`, undefined, { headers: entete(9) })).body.error).toBe("not_ranked");
+    const r = await t.call("GET", `/api/blocks/day/${DATE}/first`, undefined, { headers: entete(1) });
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body).toMatchObject({ date: DATE, name: `Joueur${[1, 2, 3][meilleur]}`, replay: essais[premier]!.rediffusion, simVersion: BLOCKS_SIM_VERSION, generatorVersion: BLOCKS_GENERATOR_VERSION, mine: meilleur === 0 });
+    // Ce que le serveur a rendu se rejoue sur le contenu du jour (c'est une rediffusion valide).
+    expect(jouer(dailyBlocks(JOUR), decoderActions(r.body.replay)).score).toBe(essais[premier]!.attendu.score);
+    // Jour fermé (le lendemain, grâce passée) : publique, sans identifiant.
+    t.clock.now = (JOUR + 2) * DAY_MS + 12 * 3_600_000;
+    const ferme = await t.call("GET", `/api/blocks/day/${DATE}/first`);
+    expect(ferme.status).toBe(200);
+    expect(ferme.body.replay).toBe(essais[premier]!.rediffusion);
+    expect(ferme.body.mine).toBe(false);
+    // Un jour sans classé : 404 no_ghost.
+    expect((await t.call("GET", `/api/blocks/day/${formatDay(JOUR - 1)}/first`)).body.error).toBe("no_ghost");
   });
 
   it("le profil du joueur et le jeu fermé (`off`) répondent comme les autres jeux", async () => {
