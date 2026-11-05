@@ -1,13 +1,14 @@
 import { CodecError, pushVarint, readVarint } from "@cdj/core";
 import { decoderEnveloppe, encoderEnveloppe, ErreurEnveloppe, type ContenuEnveloppe } from "@cdj/core/enveloppe";
-import { DUREE_TICKS, MAX_CARACTERES, MAX_CHANGEMENTS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION } from "./constantes";
+import { DUREE_TICKS, MASQUE_VISEE, MAX_CARACTERES, MAX_CHANGEMENTS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION } from "./constantes";
 import type { Changement } from "./entrees";
 import { dailyRush, type Contenu } from "./generateur";
 import { Partie, type Resultat } from "./partie";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
-// La rediffusion d'une partie de Rush : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe`) et, pour charge, **la suite des changements de l'octet d'entrée** : pour chacun, le nombre de ticks depuis le changement
-// précédent (entier de longueur variable) puis l'octet (direction, coup, esquive : `entrees.ts`). Une partie est la suite de ses entrées : tout le reste se rejoue. Un octet qui ne change pas ne s'écrit pas.
+// La rediffusion d'une partie de Rush : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe`) et, pour charge, **la suite des changements de l'entrée** : pour chacun, le nombre de ticks depuis le changement
+// précédent (entier de longueur variable) puis l'entrée sur deux octets (lot BR0b : l'octet bas = direction, coup, esquive ; l'octet haut = la visée ; `entrees.ts`). Une partie est la suite de ses entrées : tout le reste
+// se rejoue. Une entrée qui ne change pas ne s'écrit pas.
 
 export const LIMITES = { maxCaracteres: MAX_CARACTERES, sims: [RUSH_SIM_VERSION], generateurs: [RUSH_GENERATOR_VERSION] } as const;
 
@@ -35,7 +36,7 @@ export function chargeDe(changements: readonly Changement[]): number[] {
   let avant = 0;
   for (const t of changements) {
     pushVarint(o, t.tick - avant);
-    o.push(t.e);
+    o.push(t.e & 255, (t.e >> 8) & 255);
     avant = t.tick;
   }
   return o;
@@ -52,7 +53,10 @@ export function lireCharge(charge: readonly number[]): Changement[] {
   try {
     while (i < charge.length) {
       tick += readVarint(suivant, 14);
-      const e = suivant();
+      const bas = suivant();
+      const haut = suivant();
+      if (haut > MASQUE_VISEE) throw new ErreurRediffusion("format_illisible", "visée illisible");
+      const e = bas | (haut << 8);
       if (tick >= DUREE_TICKS) throw new ErreurRediffusion("format_illisible", "changement après la fin de la partie");
       if (changements.length >= MAX_CHANGEMENTS) throw new ErreurRediffusion("trop_longue", "trop de changements");
       changements.push({ tick, e });

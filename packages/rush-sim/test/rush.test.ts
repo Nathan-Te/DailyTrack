@@ -12,7 +12,13 @@ import {
   ErreurGenerateur,
   GELEE,
   MAX_CHANGEMENTS,
+  MAX_MONSTRES_VAGUE,
+  ONDE,
+  PAS_MIN_VISEE,
+  PIERRES,
   PLONGEON,
+  POING,
+  RECUPERE,
   Partie,
   REGLAGES_DEFAUT,
   SIN,
@@ -38,6 +44,7 @@ import {
   seuilsDe,
   themeDuJour,
   unitaire,
+  viseeDe,
   cm,
   type Changement,
   type Monstre,
@@ -68,12 +75,19 @@ describe("les outils entiers", () => {
     expect(unitaire(0, 0)).toEqual([0, 0]);
     expect(unitaire(3000, 0)).toEqual([1024, 0]);
   });
-  it("l'octet d'entrée : direction, coup, esquive", () => {
+  it("l'entrée : direction, coup, esquive dans l'octet bas ; la visée, séparée, dans l'octet haut", () => {
     expect(directionDe(entree(-1))).toBe(-1);
+    expect(viseeDe(entree(-1))).toBe(-1);
     for (let d = 0; d < 32; d++) expect(directionDe(entree(d, true, true))).toBe(d);
+    for (let v = 0; v < 32; v++) {
+      const e = entree(31 - v, v % 2 === 0, v % 3 === 0, v);
+      expect([viseeDe(e), directionDe(e)]).toEqual([v, 31 - v]); // la visée ne touche pas à la direction
+    }
     expect(entree(5, true, false) & BIT_COUP).toBe(BIT_COUP);
     expect(entree(5, false, true) & BIT_ESQUIVE).toBe(BIT_ESQUIVE);
-    expect(entree(31, true, true)).toBeLessThan(256);
+    expect(entree(31, true, true)).toBeLessThan(256); // sans visée, l'octet bas suffit
+    expect(entree(31, true, true, 31)).toBeLessThan(1 << 14);
+    expect(viseeDe(63 << 8)).toBe(-1); // une visée hors des 32 directions n'est pas une visée
   });
 });
 
@@ -180,15 +194,49 @@ describe("le chevalier", () => {
 });
 
 describe("les monstres", () => {
-  it("la gelée avance par bonds vers le chevalier", () => {
+  it("la gelée s'écrase environ 30 ticks avant de bondir vers le chevalier, par bonds", () => {
     const p = new Partie(contenuScenario("arene"));
     p.monstres = [];
     const g = monstre(GELEE, 0, -cm(800));
     g.t = 0;
     p.monstres.push(g);
     const d0 = Math.hypot(g.x - p.c.x, g.y - p.c.y);
-    avancerN(p, 80, entree(-1));
-    expect(Math.hypot(g.x - p.c.x, g.y - p.c.y)).toBeLessThan(d0 - cm(150));
+    avancerN(p, p.durees.geleeAnnonce - 1, entree(-1));
+    expect(Math.hypot(g.x - p.c.x, g.y - p.c.y)).toBeCloseTo(d0, -1); // elle s'écrase : elle n'avance pas
+    expect(p.durees.geleeAnnonce).toBe(30);
+    avancerN(p, 160, entree(-1));
+    expect(Math.hypot(g.x - p.c.x, g.y - p.c.y)).toBeLessThan(d0 - cm(250));
+  });
+  it("les monstres vont 30 % moins vite qu'au prototype (gelée 3,36 m/s, chauve-souris 3,92 m/s, plongeon 8,05 m/s)", () => {
+    const p = new Partie(contenuScenario("arene"));
+    p.monstres = [];
+    const g = monstre(GELEE, 0, -cm(800));
+    g.t = p.durees.geleeAnnonce - 1; // le bond part au tick suivant
+    g.cx = 0;
+    g.cy = 1024;
+    p.monstres.push(g);
+    const y0 = g.y;
+    avancerN(p, 6, entree(-1));
+    const v = ((g.y - y0) / 6 / 4096) * 60; // m/s
+    expect(v).toBeGreaterThan(3.3);
+    expect(v).toBeLessThan(3.4);
+  });
+  it("la chauve-souris s'annonce 45 ticks avant de plonger", () => {
+    const p = new Partie(contenuScenario("arene"));
+    expect(p.durees.chauveAnnonce).toBe(45);
+    p.monstres = [];
+    const b = monstre(CHAUVE, cm(450), 0);
+    b.duree = 5;
+    p.monstres.push(b);
+    let debut = -1;
+    let fin = -1;
+    for (let i = 0; i < 200 && fin < 0; i++) {
+      p.c.degat = 99;
+      p.avancer(0);
+      if (b.etat === 1 && debut < 0) debut = p.tick;
+      if (b.etat === PLONGEON && fin < 0) fin = p.tick;
+    }
+    expect(fin - debut).toBe(45);
   });
   it("la chauve-souris tourne, s'annonce, plonge puis se repose", () => {
     const p = new Partie(contenuScenario("arene"));
@@ -197,7 +245,7 @@ describe("les monstres", () => {
     b.duree = 20;
     p.monstres.push(b);
     const etats = new Set<number>();
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 260; i++) {
       p.c.degat = 99; // pas de dégât pendant l'essai
       p.avancer(0);
       etats.add(b.etat);
@@ -222,11 +270,80 @@ describe("le golem", () => {
     expect([...vus].sort()).toEqual([0, 1, 2]);
     const annonces = p.evenements.filter((e) => e.k === "annonce").map((e) => e.a);
     expect(new Set(annonces)).toEqual(new Set([0, 1, 2]));
-    // une annonce précède toujours son impact d'au moins 40 ticks
+    // une annonce précède toujours son impact
     for (const imp of p.evenements.filter((e) => e.k === "impact")) {
       const avant = p.evenements.filter((e) => e.k === "annonce" && e.tick < imp.tick);
       expect(avant.length).toBeGreaterThan(0);
     }
+  });
+  /** Joue le golem face à un chevalier immobile et invincible : rend, pour chaque cercle annoncé (à sa pose), la phase, le rang, son annonce, et pour chaque récupération sa durée. */
+  function observerGolem(phase2: boolean, ticks: number, reglages = REGLAGES_DEFAUT): { annonces: { phase: number; type: number; rang: number; annonce: number }[]; recups: { phase: number; duree: number }[]; ondes: number[]; coupsDuGolem: number } {
+    const p = new Partie(contenuScenario("boss", { phase2 }), reglages, true);
+    const vus = new Set<object>();
+    const annonces: { phase: number; type: number; rang: number; annonce: number }[] = [];
+    const recups: { phase: number; duree: number }[] = [];
+    const ondes: number[] = [];
+    let recup = 0;
+    for (let i = 0; i < ticks && !p.finie; i++) {
+      p.c.degat = 999;
+      p.avancer(0);
+      for (const z of p.zones) if (!vus.has(z)) {
+        vus.add(z);
+        annonces.push({ phase: p.golem!.phase, type: z.type, rang: z.rang, annonce: z.ti - z.t0 });
+      }
+      if (p.golem!.etat === RECUPERE) recup++;
+      else if (recup > 0) {
+        recups.push({ phase: p.golem!.phase, duree: recup });
+        recup = 0;
+      }
+      for (const e of p.evenements) if (e.k === "onde") ondes.push(e.tick);
+      p.vider();
+    }
+    return { annonces, recups, ondes, coupsDuGolem: p.evenements.length };
+  }
+  it("annonce chaque attaque d'au moins 70 ticks en phase 1 et 50 en phase 2, second coup compris", () => {
+    const un = observerGolem(false, 2400);
+    const types1 = new Set(un.annonces.filter((a) => a.phase === 1).map((a) => a.type));
+    expect(types1).toEqual(new Set([POING, ONDE, PIERRES]));
+    for (const a of un.annonces.filter((a) => a.phase === 1)) expect(a.annonce).toBeGreaterThanOrEqual(70);
+    const deux = observerGolem(true, 3000);
+    for (const a of deux.annonces) expect(a.annonce).toBeGreaterThanOrEqual(50);
+    expect(deux.annonces.some((a) => a.type === POING && a.rang === 1)).toBe(true); // le second coup est annoncé, lui aussi
+    expect(deux.annonces.filter((a) => a.type === POING && a.rang === 1).every((a) => a.annonce >= 50)).toBe(true);
+  });
+  it("récupère au moins 80 ticks après chaque attaque en phase 1 et 55 en phase 2, sans frapper", () => {
+    const un = observerGolem(false, 2400);
+    expect(un.recups.length).toBeGreaterThanOrEqual(3);
+    for (const r of un.recups) expect(r.duree).toBeGreaterThanOrEqual(80);
+    const deux = observerGolem(true, 3000);
+    expect(deux.recups.length).toBeGreaterThanOrEqual(3);
+    for (const r of deux.recups) expect(r.duree).toBeGreaterThanOrEqual(55);
+    // Aucun cercle n'est posé pendant une récupération.
+    const p = new Partie(BOSS, REGLAGES_DEFAUT, true);
+    for (let i = 0; i < 2400; i++) {
+      p.c.degat = 999;
+      p.avancer(0);
+      if (p.golem!.etat === RECUPERE) expect(p.zones.every((z) => z.ti >= p.tick - 1)).toBe(true);
+    }
+  });
+  it("les deux ondes de la phase 2 sont espacées de 70 ticks", () => {
+    const o = observerGolem(true, 3000).ondes;
+    expect(o.length).toBeGreaterThanOrEqual(2);
+    expect(o[1]! - o[0]!).toBe(70);
+  });
+  it("le curseur « rythme » multiplie d'un coup les durées (et les vitesses) des ennemis", () => {
+    const lent = observerGolem(false, 3000, { ...REGLAGES_DEFAUT, rythme: 50 });
+    const normal = observerGolem(false, 3000);
+    const vite = observerGolem(false, 3000, { ...REGLAGES_DEFAUT, rythme: 200 });
+    expect(lent.annonces[0]!.annonce).toBe(normal.annonces[0]!.annonce * 2);
+    expect(vite.annonces[0]!.annonce).toBe(Math.round(normal.annonces[0]!.annonce / 2));
+    expect(lent.recups[0]!.duree).toBe(normal.recups[0]!.duree * 2);
+    const p100 = new Partie(contenuScenario("arene"));
+    const p200 = new Partie(contenuScenario("arene"), { ...REGLAGES_DEFAUT, rythme: 200 });
+    expect(p200.durees.geleeCycle).toBeLessThan(p100.durees.geleeCycle);
+    expect(Math.abs(p200.vOnde() - p100.vOnde() * 2)).toBeLessThanOrEqual(1);
+    expect(reglagesDe({ rythme: 5 }).rythme).toBe(40);
+    expect(reglagesDe({ rythme: 999 }).rythme).toBe(200);
   });
   it("la phase 2 commence sous 50 % de vie (le golem rugit, invulnérable)", () => {
     const p = new Partie(BOSS, REGLAGES_DEFAUT, true);
@@ -255,11 +372,140 @@ describe("le golem", () => {
     const { resultat, ticks } = jouerLePilote(BOSS);
     expect(resultat.victoire).toBe(true);
     expect(resultat.ticks).toBe(ticks);
-    expect(resultat.ticks).toBeGreaterThan(600); // jamais en moins de dix secondes
+    expect(resultat.ticks).toBeGreaterThan(900); // jamais en moins de quinze secondes (le golem ne tombe pas aussi vite qu'au prototype)
+  });
+  it("un joueur immobile met plus de dix secondes à perdre (les attaques sont plus lentes qu'au prototype)", () => {
+    const r = jouer(BOSS, []);
+    expect(r.ticks).toBeGreaterThan(600);
+  });
+});
+
+describe("la visée et le coup tenu (lot BR0b)", () => {
+  const nu = (): Partie => {
+    const p = new Partie(contenuScenario("arene"), REGLAGES_DEFAUT, true);
+    p.monstres = [];
+    return p;
+  };
+  it("avec une visée, le chevalier regarde où il vise, même à l'arrêt, et marche où il veut", () => {
+    const p = nu();
+    avancerN(p, 1, entree(-1, false, false, 8)); // il vise vers le bas de l'écran
+    expect(p.c.dir).toBe(32);
+    const x0 = p.c.x;
+    avancerN(p, 30, entree(0, false, false, 8)); // il marche vers la droite en regardant vers le bas
+    expect(p.c.x).toBeGreaterThan(x0 + cm(200));
+    expect(p.c.dir).toBe(32);
+    avancerN(p, 1, entree(0, false, false, 24)); // la visée tourne : il regarde vers le haut
+    expect(p.c.dir).toBe(96);
+  });
+  it("sans visée, il regarde où il va (comme au prototype)", () => {
+    const p = nu();
+    avancerN(p, 2, entree(8));
+    expect(p.c.dir).toBe(32);
+  });
+  it("le coup part où il vise, pas où il marche", () => {
+    const p = nu();
+    const cible = monstre(GELEE, p.c.x, p.c.y + cm(140)); // en bas
+    cible.hp = 99;
+    p.monstres.push(cible);
+    avancerN(p, 1, entree(24, true, false, 8)); // il marche vers le haut, vise vers le bas, frappe
+    avancerN(p, 8, entree(24, false, false, 8));
+    expect(cible.hp).toBeLessThan(99);
+    expect(p.evenements.find((e) => e.k === "coup")!.b).toBe(32);
+  });
+  it("la visée est exacte : pas d'assistance vers un ennemi proche", () => {
+    const p = nu();
+    p.monstres.push(monstre(GELEE, p.c.x + cm(150), p.c.y)); // à droite
+    avancerN(p, 1, entree(-1, true, false, 8)); // il vise vers le bas
+    expect(p.evenements.find((e) => e.k === "coup")!.b).toBe(32);
+  });
+  it("sans visée, la visée est assistée vers l'ennemi proche", () => {
+    const p = nu();
+    p.monstres.push(monstre(GELEE, p.c.x + cm(150), p.c.y));
+    avancerN(p, 1, entree(-1, true));
+    expect(p.evenements.find((e) => e.k === "coup")!.b).toBe(0);
+  });
+  it("l'esquive part dans la direction du déplacement ; à l'arrêt, vers la visée", () => {
+    const a = nu();
+    avancerN(a, 1, entree(0, false, true, 24)); // il marche à droite, vise en haut
+    expect(a.evenements.find((e) => e.k === "esquive")!.a).toBe(0);
+    const b = nu();
+    avancerN(b, 1, entree(-1, false, true, 24)); // à l'arrêt, vise en haut
+    expect(b.evenements.find((e) => e.k === "esquive")!.a).toBe(96);
+    const c = nu();
+    const dir0 = c.c.dir;
+    avancerN(c, 1, entree(-1, false, true)); // ni déplacement ni visée : où il regarde
+    expect(c.evenements.find((e) => e.k === "esquive")!.a).toBe(dir0);
+  });
+  it("un coup TENU enchaîne les trois coups en boucle, à la cadence du combo ; relâché, il s'arrête", () => {
+    const p = nu();
+    p.c.dir = 0;
+    avancerN(p, 1, entree(-1, true)); // un seul changement d'entrée : le bit reste tenu
+    avancerN(p, 239, entree(-1, true));
+    const coups = p.evenements.filter((e) => e.k === "coup");
+    expect(coups.slice(0, 7).map((e) => e.a)).toEqual([0, 1, 2, 0, 1, 2, 0]);
+    // Les coups se suivent sans trou : jamais plus d'un coup + 4 ticks entre deux départs.
+    const ecarts = coups.slice(1, 7).map((e, i) => e.tick - coups[i]!.tick);
+    for (const e of ecarts) expect(e).toBeLessThanOrEqual(REGLAGES_DEFAUT.cadence * 1.4 + 4);
+    const avant = coups.length;
+    avancerN(p, 60, 0); // relâché
+    p.vider();
+    avancerN(p, 60, 0);
+    expect(p.evenements.filter((e) => e.k === "coup").length).toBe(0);
+    expect(avant).toBeGreaterThanOrEqual(7);
+  });
+  it("un simple appui bref ne donne qu'un coup", () => {
+    const p = nu();
+    avancerN(p, 1, entree(-1, true));
+    avancerN(p, 150, 0);
+    expect(p.evenements.filter((e) => e.k === "coup").length).toBe(1);
+  });
+  it("la rediffusion garde la visée : une partie avec visée se rejoue exactement", () => {
+    const changements: Changement[] = Array.from({ length: 300 }, (_, i) => ({ tick: i * 7, e: entree((i * 5) % 32, i % 3 === 0, i % 11 === 0, i % 4 === 0 ? -1 : (i * 3) % 32) }));
+    const a = jouer(dailyRush(J), changements);
+    const texte = enregistrer(dailyRush(J), changements);
+    expect(decoderRediffusion(texte).changements).toEqual(changements);
+    expect(rejouer(dailyRush(J), texte)).toEqual(a);
+    const sansVisee = changements.map((c) => ({ ...c, e: c.e & 255 }));
+    expect(jouer(dailyRush(J), sansVisee)).not.toEqual(a); // la visée change la partie
+  });
+  it("refuse un octet de visée hors des 64 valeurs, et la visée ne change pas plus d'une fois tous les 4 ticks côté jeu", () => {
+    expect(() => decoderRediffusion(encoderEnveloppe({ sim: 2, g: 1, contenu: { jour: J }, charge: [5, 17, 200] }))).toThrow();
+    expect(PAS_MIN_VISEE).toBe(4);
   });
 });
 
 describe("l'arène", () => {
+  it("par défaut, des vagues d'au plus 8 monstres à la fois, avec une pause entre deux vagues", () => {
+    const p = new Partie(contenuScenario("arene"), REGLAGES_DEFAUT, true);
+    let max = 0;
+    let vagues = 0;
+    let avant = p.monstres.length;
+    for (let i = 0; i < 6000; i++) {
+      p.avancer(0);
+      max = Math.max(max, p.monstres.length);
+      if (p.monstres.length > avant) vagues++;
+      avant = p.monstres.length;
+      // le chevalier élimine tout ce qui approche : la vague suivante vient après une pause
+      if (i % 600 === 599) for (const m of p.monstres) m.hp = 0;
+    }
+    expect(max).toBeLessThanOrEqual(MAX_MONSTRES_VAGUE);
+    expect(vagues).toBeGreaterThanOrEqual(2);
+  });
+  it("une vague ne vient pas tant que le terrain n'est pas presque vide, et seulement après la pause", () => {
+    const p = new Partie(contenuScenario("arene"), REGLAGES_DEFAUT, true);
+    avancerN(p, 3000, 0); // le chevalier immobile n'élimine rien
+    expect(p.monstres.length).toBeLessThanOrEqual(4);
+    for (const m of p.monstres) m.hp = 0;
+    p.monstres = [];
+    const t0 = p.tick;
+    let t1 = -1;
+    for (let i = 0; i < 400 && t1 < 0; i++) {
+      p.avancer(0);
+      if (p.monstres.length > 0) t1 = p.tick;
+    }
+    expect(t1 - t0).toBeGreaterThanOrEqual(150); // la pause
+    expect(t1).toBeGreaterThan(0);
+  });
   it("garde les monstres vivants au nombre demandé, borné à 40", () => {
     const p = new Partie(contenuScenario("arene", { monstres: 30 }));
     avancerN(p, 3600, 0);
@@ -270,6 +516,18 @@ describe("l'arène", () => {
       q.avancer(0);
     }
     expect(q.monstres.length).toBeGreaterThanOrEqual(25);
+  });
+  it("la vitrine est une scène figée qui reproduit la cible (un golem qui annonce, quatre gelées, deux chauves-souris)", () => {
+    const p = new Partie(contenuScenario("vitrine"), REGLAGES_DEFAUT, true);
+    expect(p.monstres.filter((m) => m.type === GELEE).length).toBe(4);
+    expect(p.monstres.filter((m) => m.type === CHAUVE).length).toBe(2);
+    expect(p.golem!.attaque).toBe(POING);
+    expect(p.zones.length).toBe(1);
+    expect(p.zones[0]!.ti).toBeGreaterThan(p.tick); // le cercle n'a pas encore frappé
+    expect(p.zones[0]!.t0).toBeLessThan(p.tick);
+    expect(Math.floor(p.tick / 60)).toBe(21); // le chrono de la cible : 00:21
+    expect(p.finie).toBe(false);
+    expect(p.immortel).toBe(true);
   });
   it("le chevalier ne meurt pas dans l'arène : il retrouve ses cœurs", () => {
     const p = new Partie(contenuScenario("arene"));

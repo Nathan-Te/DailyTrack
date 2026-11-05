@@ -29,6 +29,15 @@ describe("les actions du jeu", () => {
     expect(boutons).not.toContain("b2"); // « Recommencer » du kit
     expect(boutons).not.toContain("b3"); // « Fantôme » du kit
   });
+  it("Espace esquive ; le coup est au clic gauche (maintenu : il enchaîne) et sur J ; ZQSD et WASD sont les mêmes touches (event.code), plus les flèches", () => {
+    const touches = (id: string): readonly string[] => ACTIONS_RUSH.find((a) => a.id === id)!.clavier;
+    expect(touches("esquive")).toContain("Space");
+    expect(touches("coup")).not.toContain("Space");
+    for (const [id, code, fleche] of [["haut", "KeyW", "ArrowUp"], ["bas", "KeyS", "ArrowDown"], ["gauche", "KeyA", "ArrowLeft"], ["droite", "KeyD", "ArrowRight"]] as const) {
+      expect(touches(id)).toContain(code); // Z, Q, S, D sur AZERTY sont les codes KeyW, KeyA, KeyS, KeyD
+      expect(touches(id)).toContain(fleche);
+    }
+  });
 });
 
 describe("l'adresse d'essai", () => {
@@ -56,6 +65,6 @@ describe("l'adresse d'essai", () => {
   });
   it("les sensations collées restent dans leurs bornes", () => {
     expect(sensationsDe(null)).toEqual(SENSATIONS_DEFAUT);
-    expect(sensationsDe({ secousse: 9999, vue: 1, inconnu: 3 })).toEqual({ ...SENSATIONS_DEFAUT, secousse: 300, vue: 9 });
+    expect(sensationsDe({ secousse: 9999, angle: 1, champ: 999, inconnu: 3 })).toEqual({ ...SENSATIONS_DEFAUT, secousse: 300, angle: 20, champ: 60 });
   });
 });

@@ -1,6 +1,6 @@
 import { Rng } from "@cdj/core";
-import { COEURS, DUREE_TICKS, MAX_MONSTRES, RAYON_ARENE, RAYON_CHAUVE, RAYON_CHEVALIER, RAYON_GELEE, RAYON_GOLEM, cm } from "./constantes";
-import { coupDe, directionDe, esquiveDe } from "./entrees";
+import { COEURS, DUREE_TICKS, MAX_MONSTRES, MAX_MONSTRES_VAGUE, RAYON_ARENE, RAYON_CHAUVE, RAYON_CHEVALIER, RAYON_GELEE, RAYON_GOLEM, cm } from "./constantes";
+import { coupDe, directionDe, esquiveDe, viseeDe } from "./entrees";
 import type { Contenu } from "./generateur";
 import { distance, distance2, idiv, isqrt, unitaire, dirVers, modDir } from "./maths";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
@@ -9,6 +9,7 @@ import { COS, SIN } from "./trig";
 // La partie de Rush : 60 Hz, tout en entiers, l'état d'un seul tenant. À chaque tick, `avancer(entree)` applique l'octet d'entrée du tick (voir `entrees.ts`) puis fait avancer le monde : le chevalier, les apparitions,
 // les monstres, le golem, les zones annoncées, les ondes, les contacts. **Le même code joue la partie du joueur et la rediffusion du serveur** ; la vue (`apps/rush`) ne fait que lire cet état.
 // Le hasard (apparitions, pierres) vient d'une graine du contenu et n'est tiré qu'à des ticks fixés par l'état : une rediffusion refait les mêmes tirages.
+// Lot BR0b : l'entrée porte une VISÉE séparée du déplacement (le chevalier regarde et frappe où il vise, il marche où il veut) ; un coup TENU enchaîne ; le rythme des ennemis est ralenti et se règle d'un coup (`reglages.rythme`).
 
 // --- Les types lus par le rendu -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 export const LIBRE = 0;
@@ -94,8 +95,10 @@ export interface Golem {
   phase: number;
   etat: number;
   t: number;
-  /** La durée de l'annonce (pour la fraction qui avance). */
+  /** La durée de l'annonce (pour la fraction qui avance). Avec deux coups (phase 2 : deux poings, deux ondes) elle les compte tous les deux. */
   duree: number;
+  /** Le tick (depuis le début de l'annonce) du premier impact : `duree` pour une seule frappe. */
+  t1: number;
   attaque: number;
   /** Les ticks de marche avant la prochaine attaque. */
   repos: number;
@@ -116,6 +119,8 @@ export interface Zone {
   r: number;
   t0: number;
   ti: number;
+  /** 0 pour le premier coup d'une attaque, 1 pour le second (phase 2). */
+  rang: number;
 }
 /** Une onde du golem : un anneau qui s'élargit depuis son centre. */
 export interface OndeGolem {
@@ -164,9 +169,43 @@ const RAYON_ONDE = cm(760);
 const VIE_GELEE = 3;
 const VIE_CHAUVE = 1;
 const ARRET_DEGAT = 90;
-const ECART_ONDES = 48;
+
+// Le rythme des ennemis (lot BR0b : le prototype BR0 était trop rapide). Toutes ces durées sont des ticks et toutes ces vitesses des cm/s AU RYTHME 100 % ; `reglages.rythme` les met à l'échelle (`dur`, `vit`).
+/** L'annonce de chaque attaque du golem (phase 1, phase 2), second coup compris ; le second poing est posé à l'impact du premier. */
+const ANNONCE_GOLEM: readonly [number, number] = [70, 50];
+/** La récupération après chaque attaque, sans frapper : la fenêtre pour taper. */
+const RECUP_GOLEM = { [POING]: [90, 60], [ONDE]: [100, 65], [PIERRES]: [80, 55] } as const;
+/** Les deux ondes de la phase 2 sont séparées de ce nombre de ticks (assez pour refaire une esquive). */
+const ECART_ONDES = 70;
+const ECART_PIERRES = 12;
+/** La gelée s'écrase (annonce) puis bondit puis se repose. */
+const GELEE_ANNONCE = 30;
+const GELEE_BOND = 24;
+const GELEE_REPOS = 10;
+const GELEE_VITESSE = 336;
+/** La direction du bond est verrouillée un peu avant qu'il parte : on a le temps de se décaler. */
+const GELEE_VERROU = 6;
+/** La chauve-souris tourne, s'annonce (45), plonge (34), se repose (60). */
+const CHAUVE_ANNONCE = 45;
+const CHAUVE_PLONGEON = 34;
+const CHAUVE_REPOS = 60;
+const CHAUVE_VITESSE = 392;
+const CHAUVE_VITESSE_PLONGEON = 805;
+/** Une vague d'arène : la pause avant la suivante quand le terrain est presque vide. */
+const PAUSE_VAGUE = 180;
+/** Le moment de la partie figée de la vitrine (le chrono de `cible-ia.png`). */
+const TICK_VITRINE = 1306;
 
 const rayonDe = (type: number): number => (type === GELEE ? RAYON_GELEE : RAYON_CHAUVE);
+
+/** Les durées des ennemis, mises au rythme de la partie : ce que le rendu lit pour animer (jamais lu par la simulation autrement). */
+export interface Durees {
+  geleeAnnonce: number;
+  geleeBond: number;
+  geleeCycle: number;
+  chauveAnnonce: number;
+  chauvePlongeon: number;
+}
 
 export class Partie {
   tick = 0;
@@ -192,6 +231,12 @@ export class Partie {
   private finTick = -1;
   /** La vitesse de marche du chevalier, en unités par tick. */
   private readonly vit: number;
+  /** Le rythme des ennemis, en %. */
+  private readonly rt: number;
+  /** Les durées des ennemis, au rythme de la partie. */
+  readonly durees: Durees;
+  /** Les ticks depuis que l'arène s'est presque vidée (−1 : elle ne l'est pas) : la pause entre deux vagues. */
+  private videDepuis = -1;
 
   constructor(
     readonly contenu: Contenu,
@@ -200,14 +245,58 @@ export class Partie {
   ) {
     this.rng = new Rng(contenu.graine);
     this.vit = idiv(cm(reglages.vitesse), 60);
-    this.immortel = contenu.scenario === "arene";
+    this.rt = reglages.rythme;
+    this.durees = { geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
+    this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine";
     this.c = { x: 0, y: cm(520), dir: 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false };
     if (contenu.scenario === "arene") this.golem = null;
     else {
       const hpMax = reglages.golemVie;
-      this.golem = { x: 0, y: -cm(300), hp: contenu.phase2 ? idiv(hpMax, 2) : hpMax, hpMax, phase: contenu.phase2 ? 2 : 1, etat: MARCHE, t: 0, duree: 0, attaque: 0, repos: contenu.phase2 ? 40 : 120, compteur: 0, flash: 0, dir: 32, recup: 0, coup: 0 };
+      this.golem = { x: 0, y: -cm(300), hp: contenu.phase2 ? idiv(hpMax, 2) : hpMax, hpMax, phase: contenu.phase2 ? 2 : 1, etat: MARCHE, t: 0, duree: 0, t1: 0, attaque: 0, repos: this.dur(contenu.phase2 ? 50 : 150), compteur: 0, flash: 0, dir: 32, recup: 0, coup: 0 };
     }
-    if (contenu.scenario === "arene") this.apparaitre(contenu.monstres > 0 ? Math.min(contenu.monstres, 6) : 4);
+    if (contenu.scenario === "arene") {
+      this.apparaitre(contenu.monstres > 0 ? Math.min(contenu.monstres, 6) : 4);
+      this.vague = 1;
+    }
+    if (contenu.scenario === "vitrine") this.monterVitrine();
+  }
+
+  /** Une durée en ticks au rythme de la partie (arrondie, au moins 1) : plus le rythme est haut, plus c'est court. */
+  dur(n: number): number {
+    return Math.max(1, idiv(n * 100 + idiv(this.rt, 2), this.rt));
+  }
+  /** Une vitesse en cm/s → unités par tick au rythme de la partie. */
+  private vitesse(cmParSeconde: number): number {
+    return idiv(cm(cmParSeconde) * this.rt, 6000);
+  }
+
+  /** La scène figée de la vitrine : la composition de `docs/rush/maquettes/cible-ia.png` (le golem au centre avec un cercle d'annonce, le chevalier à gauche, quatre gelées, deux chauves-souris). Le jeu ne la fait pas avancer. */
+  private monterVitrine(): void {
+    this.tick = TICK_VITRINE;
+    const g = this.golem!;
+    g.x = cm(40);
+    g.y = -cm(260);
+    g.hp = idiv(g.hpMax * 3, 5);
+    g.etat = ANNONCE;
+    g.attaque = POING;
+    g.duree = g.t1 = this.dur(ANNONCE_GOLEM[0]);
+    g.t = g.duree + 1; // le poing vient de s'abattre (le golem de la cible a les poings au sol) ; le cercle, lui, est annoncé aux trois cinquièmes
+    g.dir = 32;
+    this.zones.push({ type: POING, x: cm(40), y: -cm(60), r: RAYON_ZONE_POING, t0: this.tick - idiv(g.duree * 6, 10), ti: this.tick + g.duree - idiv(g.duree * 6, 10), rang: 0 });
+    this.c.x = -cm(390);
+    this.c.y = cm(130);
+    this.c.dir = 112;
+    this.c.marche = true;
+    this.monstres = [];
+    const bete = (type: number, x: number, y: number, t: number, a = 0): void => {
+      this.monstres.push({ id: this.prochainId++, type, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: 0, a, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0 });
+    };
+    bete(GELEE, -140, -520, 12);
+    bete(GELEE, -560, 330, 40);
+    bete(GELEE, 700, 20, 3);
+    bete(GELEE, 480, 560, 33);
+    bete(CHAUVE, -490, -300, 0, 20);
+    bete(CHAUVE, 770, -270, 0, 90);
   }
 
   get finie(): boolean {
@@ -257,7 +346,7 @@ export class Partie {
     const coupFront = front(coupDe(entree), coupDe(this.entreePrecedente));
     const esquiveFront = front(esquiveDe(entree), esquiveDe(this.entreePrecedente));
     this.entreePrecedente = entree;
-    this.mouvementChevalier(directionDe(entree), coupFront, esquiveFront);
+    this.mouvementChevalier(directionDe(entree), viseeDe(entree), coupFront, coupDe(entree), esquiveFront);
     this.apparitions();
     for (const m of this.monstres) this.mouvementMonstre(m);
     this.separer();
@@ -270,10 +359,11 @@ export class Partie {
   }
 
   // --- Le chevalier ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  private mouvementChevalier(direction: number, coupFront: boolean, esquiveFront: boolean): void {
+  private mouvementChevalier(direction: number, visee: number, coupFront: boolean, coupTenu: boolean, esquiveFront: boolean): void {
     const c = this.c;
     if (c.tampon > 0) c.tampon--;
-    if (coupFront) c.tampon = DUREE_TAMPON;
+    // Un appui est gardé en mémoire ; un coup TENU l'est à chaque tick : il enchaîne les trois coups en boucle, à la cadence du combo.
+    if (coupFront || coupTenu) c.tampon = DUREE_TAMPON;
     if (c.tampEsq > 0) c.tampEsq--;
     if (esquiveFront) c.tampEsq = DUREE_TAMPON_ESQUIVE;
     if (c.attente > 0) c.attente--;
@@ -286,7 +376,8 @@ export class Partie {
     const dureeCoup = this.dureeCoup(c.combo);
     if (c.tampEsq > 0 && c.attente === 0 && c.etat !== ESQUIVE) {
       c.tampEsq = 0;
-      const d = direction >= 0 ? direction * 4 : c.dir;
+      // L'esquive part dans la direction du déplacement ; à l'arrêt, vers la visée ; sinon où le chevalier regarde.
+      const d = direction >= 0 ? direction * 4 : visee >= 0 ? visee * 4 : c.dir;
       c.dir = d;
       c.etat = ESQUIVE;
       c.t = 0;
@@ -312,19 +403,21 @@ export class Partie {
       }
       if (c.t === impact) this.frapper();
       c.t++;
-      if (c.tampon > 0 && c.t > impact + 2) this.commencerCoup((c.combo + 1) % 3, direction);
+      if (c.tampon > 0 && c.t > impact + 2) this.commencerCoup((c.combo + 1) % 3, direction, visee);
       else if (c.t >= dureeCoup) {
         c.etat = LIBRE;
         c.t = 0;
         c.reprise = DUREE_REPRISE;
       }
     } else {
-      // Libre : marcher, ou commencer un coup.
-      if (c.tampon > 0) this.commencerCoup(c.reprise > 0 ? (c.combo + 1) % 3 : 0, direction);
+      // Libre : marcher, ou commencer un coup. Avec une visée, le chevalier regarde où il vise (même à l'arrêt) et marche où il veut ; sans visée, il regarde où il va.
+      if (visee >= 0) c.dir = visee * 4;
+      if (c.tampon > 0) this.commencerCoup(c.reprise > 0 ? (c.combo + 1) % 3 : 0, direction, visee);
       else if (direction >= 0) {
-        c.dir = direction * 4;
+        const marche = direction * 4;
+        if (visee < 0) c.dir = marche;
         c.marche = true;
-        this.deplacer(c, idiv(COS[c.dir]! * this.vit, 1024), idiv(SIN[c.dir]! * this.vit, 1024));
+        this.deplacer(c, idiv(COS[marche]! * this.vit, 1024), idiv(SIN[marche]! * this.vit, 1024));
       }
     }
     // Le recul : il s'ajoute au mouvement et s'éteint.
@@ -343,7 +436,7 @@ export class Partie {
     return Math.max(2, idiv(this.dureeCoup(s) * 3, 10));
   }
 
-  private commencerCoup(s: number, direction: number): void {
+  private commencerCoup(s: number, direction: number, visee: number): void {
     const c = this.c;
     c.etat = COUP;
     c.t = 0;
@@ -351,9 +444,10 @@ export class Partie {
     c.tampon = 0;
     c.reprise = 0;
     this.coupId++;
-    // Il se tourne vers ce que le joueur tient ; sans direction (ou presque en face d'un ennemi), vers l'ennemi le plus proche.
+    // Il frappe où le joueur VISE (la souris, le stick droit) ; sans visée, vers ce que le joueur tient ; sans direction (ou presque en face d'un ennemi), vers l'ennemi le plus proche (visée assistée).
     const cible = this.plusProche(cm(420));
-    if (direction >= 0) {
+    if (visee >= 0) c.dir = visee * 4;
+    else if (direction >= 0) {
       c.dir = direction * 4;
       if (cible) {
         const v = dirVers(cible.x - c.x, cible.y - c.y);
@@ -451,12 +545,23 @@ export class Partie {
   private apparitions(): void {
     const k = this.contenu.scenario;
     if (k === "arene") {
-      const cible = this.contenu.monstres > 0 ? this.contenu.monstres : Math.min(30, 6 + 2 * this.vague);
-      if (this.tick % 90 === 0) {
-        this.vague++;
-        if (this.monstres.length < cible) this.apparaitre(Math.min(5, cible - this.monstres.length));
+      if (this.contenu.monstres > 0) {
+        // Le test de charge : l'arène garde `monstres` monstres en vie, cinq de plus toutes les 1,5 s.
+        if (this.tick % 90 === 0) {
+          this.vague++;
+          if (this.monstres.length < this.contenu.monstres) this.apparaitre(Math.min(5, this.contenu.monstres - this.monstres.length));
+        }
+        return;
       }
-    } else if (k === "jour" && this.tick >= 240 && (this.tick - 240) % 480 === 0 && this.monstres.length < 5) this.apparaitre(3);
+      // Par défaut : des vagues (au plus `MAX_MONSTRES_VAGUE` à la fois). La suivante ne vient qu'après une pause, quand le terrain est presque vide.
+      if (this.monstres.length > 1) this.videDepuis = -1;
+      else if (this.videDepuis < 0) this.videDepuis = this.tick;
+      else if (this.tick - this.videDepuis >= this.dur(PAUSE_VAGUE)) {
+        this.vague++;
+        this.apparaitre(Math.min(MAX_MONSTRES_VAGUE - this.monstres.length, 3 + this.vague));
+        this.videDepuis = -1;
+      }
+    } else if (k === "jour" && this.tick >= 240 && (this.tick - 240) % 600 === 0 && this.monstres.length < 4) this.apparaitre(3);
   }
 
   private mouvementMonstre(m: Monstre): void {
@@ -473,14 +578,16 @@ export class Partie {
       return;
     }
     if (m.type === GELEE) {
-      m.t = (m.t + 1) % 40;
-      if (m.t === 10) {
+      // Elle s'écrase (annonce), vise juste avant de bondir, bondit, se repose.
+      const d = this.durees;
+      m.t = (m.t + 1) % d.geleeCycle;
+      if (m.t === Math.max(1, d.geleeAnnonce - GELEE_VERROU)) {
         const [ux, uy] = unitaire(c.x - m.x, c.y - m.y);
         m.cx = ux;
         m.cy = uy;
       }
-      if (m.t >= 10 && m.t < 28) {
-        const v = idiv(cm(480), 60);
+      if (m.t >= d.geleeAnnonce && m.t < d.geleeAnnonce + d.geleeBond) {
+        const v = this.vitesse(GELEE_VITESSE);
         this.deplacer(m, idiv(m.cx * v, 1024), idiv(m.cy * v, 1024));
       }
       return;
@@ -493,14 +600,14 @@ export class Partie {
       const tx = c.x + idiv(COS[m.a]! * rayon, 1024);
       const ty = c.y + idiv(SIN[m.a]! * rayon, 1024);
       const d = distance(m.x, m.y, tx, ty);
-      const v = Math.min(d, idiv(cm(560), 60));
+      const v = Math.min(d, this.vitesse(CHAUVE_VITESSE));
       if (d > 0) this.deplacer(m, idiv((tx - m.x) * v, d), idiv((ty - m.y) * v, d));
       if (m.t >= m.duree) {
         m.etat = ANNONCE_PLONGEON;
         m.t = 0;
       }
     } else if (m.etat === ANNONCE_PLONGEON) {
-      if (m.t >= 22) {
+      if (m.t >= this.durees.chauveAnnonce) {
         const [ux, uy] = unitaire(c.x - m.x, c.y - m.y);
         m.cx = ux;
         m.cy = uy;
@@ -508,13 +615,13 @@ export class Partie {
         m.t = 0;
       }
     } else if (m.etat === PLONGEON) {
-      const v = idiv(cm(1150), 60);
+      const v = this.vitesse(CHAUVE_VITESSE_PLONGEON);
       this.deplacer(m, idiv(m.cx * v, 1024), idiv(m.cy * v, 1024));
-      if (m.t >= 26) {
+      if (m.t >= this.durees.chauvePlongeon) {
         m.etat = REPOS;
         m.t = 0;
       }
-    } else if (m.t >= 45) {
+    } else if (m.t >= this.dur(CHAUVE_REPOS)) {
       m.etat = ORBITE;
       m.t = 0;
       m.a = dirVers(m.x - c.x, m.y - c.y);
@@ -555,9 +662,9 @@ export class Partie {
     g.phase = 2;
     g.etat = RUGIT;
     g.t = 0;
-    g.duree = 100;
+    g.duree = this.dur(100);
     this.zones = [];
-    this.zones.push({ type: ONDE, x: g.x, y: g.y, r: RAYON_ONDE, t0: this.tick, ti: this.tick + 70 });
+    this.zones.push({ type: ONDE, x: g.x, y: g.y, r: RAYON_ONDE, t0: this.tick, ti: this.tick + this.dur(70), rang: 0 });
     this.ev("phase2", g.x, g.y);
   }
 
@@ -570,7 +677,7 @@ export class Partie {
       if (g.t >= g.duree) {
         g.etat = MARCHE;
         g.t = 0;
-        g.repos = 45;
+        g.repos = this.dur(60);
       }
       return;
     }
@@ -578,7 +685,7 @@ export class Partie {
       if (g.t >= g.duree) {
         g.etat = RECUPERE;
         g.t = 0;
-        g.recup = g.attaque === POING ? 50 : g.attaque === ONDE ? 55 : 40;
+        g.recup = this.dur(RECUP_GOLEM[g.attaque as 0 | 1 | 2][g.phase === 2 ? 1 : 0]);
       }
       return;
     }
@@ -586,7 +693,7 @@ export class Partie {
       if (g.t >= g.recup) {
         g.etat = MARCHE;
         g.t = 0;
-        g.repos = idiv(this.reglages.golemCadence * (g.phase === 2 ? 62 : 100), 100);
+        g.repos = this.dur(idiv(this.reglages.golemCadence * (g.phase === 2 ? 62 : 100), 100));
       }
       return;
     }
@@ -596,7 +703,7 @@ export class Partie {
     const d = isqrt(dx * dx + dy * dy);
     g.dir = dirVers(dx, dy);
     if (d > RAYON_GOLEM + RAYON_CHEVALIER + cm(60)) {
-      const v = idiv(cm(g.phase === 2 ? 150 : 105), 60);
+      const v = this.vitesse(g.phase === 2 ? 150 : 105);
       g.x += idiv(idiv(dx * 1024, d) * v, 1024);
       g.y += idiv(idiv(dy * 1024, d) * v, 1024);
     }
@@ -614,23 +721,23 @@ export class Partie {
     g.etat = ANNONCE;
     g.t = 0;
     const maintenant = this.tick;
+    const annonce = this.dur(ANNONCE_GOLEM[g.phase === 2 ? 1 : 0]);
+    g.t1 = annonce;
     if (a === POING) {
       // Le cercle est posé là où le chevalier se tient : il a le temps de partir.
       const tx = c.x;
       const ty = c.y;
-      this.zones.push({ type: POING, x: tx, y: ty, r: RAYON_ZONE_POING, t0: maintenant, ti: maintenant + 50 });
-      g.duree = 50;
-      if (g.phase === 2) {
-        // Le second coup est posé sur le chevalier à l'impact du premier : voir `resoudreZones`.
-        g.duree = 72;
-      }
+      this.zones.push({ type: POING, x: tx, y: ty, r: RAYON_ZONE_POING, t0: maintenant, ti: maintenant + annonce, rang: 0 });
+      // Phase 2 : le second coup est annoncé à l'impact du premier, sur le chevalier (voir `resoudreZones`), avec la même annonce.
+      g.duree = g.phase === 2 ? annonce * 2 : annonce;
       this.ev("annonce", tx, ty, POING);
     } else if (a === ONDE) {
-      this.zones.push({ type: ONDE, x: g.x, y: g.y, r: RAYON_ONDE, t0: maintenant, ti: maintenant + 55 });
-      g.duree = g.phase === 2 ? 55 + ECART_ONDES : 55;
+      this.zones.push({ type: ONDE, x: g.x, y: g.y, r: RAYON_ONDE, t0: maintenant, ti: maintenant + annonce, rang: 0 });
+      g.duree = g.phase === 2 ? annonce + this.dur(ECART_ONDES) : annonce;
       this.ev("annonce", g.x, g.y, ONDE);
     } else {
       const n = g.phase === 2 ? 5 : 3;
+      const ecart = this.dur(ECART_PIERRES);
       for (let i = 0; i < n; i++) {
         let x = c.x;
         let y = c.y;
@@ -646,9 +753,9 @@ export class Partie {
             y = idiv(y * max, d);
           }
         }
-        this.zones.push({ type: PIERRES, x, y, r: RAYON_ZONE_PIERRE, t0: maintenant, ti: maintenant + 60 + i * 9 });
+        this.zones.push({ type: PIERRES, x, y, r: RAYON_ZONE_PIERRE, t0: maintenant, ti: maintenant + annonce + i * ecart, rang: 0 });
       }
-      g.duree = 60 + (n - 1) * 9;
+      g.duree = annonce + (n - 1) * ecart;
       this.ev("annonce", c.x, c.y, PIERRES);
     }
   }
@@ -663,18 +770,23 @@ export class Partie {
       }
       const g = this.golem;
       if (z.type === ONDE) {
-        this.ondes.push({ x: z.x, y: z.y, r: RAYON_GOLEM, vitesse: idiv(cm(950), 60), epaisseur: cm(110), rMax: z.r + cm(80), touche: false });
+        this.ondes.push({ x: z.x, y: z.y, r: RAYON_GOLEM, vitesse: this.vOnde(), epaisseur: cm(110), rMax: z.r + cm(80), touche: false });
         this.ev("onde", z.x, z.y);
         // Phase 2 : une seconde onde, `ECART_ONDES` ticks plus tard (plus que l'attente de l'esquive : elle doit pouvoir se refaire).
-        if (g && g.phase === 2 && g.etat === ANNONCE && g.attaque === ONDE && z.ti === z.t0 + 55) restantes.push({ type: ONDE, x: z.x, y: z.y, r: z.r, t0: this.tick, ti: this.tick + ECART_ONDES });
+        if (g && g.phase === 2 && g.etat === ANNONCE && g.attaque === ONDE && z.rang === 0) restantes.push({ type: ONDE, x: z.x, y: z.y, r: z.r, t0: this.tick, ti: this.tick + this.dur(ECART_ONDES), rang: 1 });
         continue;
       }
       this.ev("impact", z.x, z.y, z.type, z.r);
       if (distance2(this.c.x, this.c.y, z.x, z.y) < z.r * z.r) this.blesser(z.x, z.y, 1);
-      // Phase 2 : le second coup de poing tombe sur le chevalier, tout de suite après le premier.
-      if (z.type === POING && g && g.phase === 2 && g.etat === ANNONCE && z.ti === z.t0 + 50) restantes.push({ type: POING, x: this.c.x, y: this.c.y, r: RAYON_ZONE_POING, t0: this.tick, ti: this.tick + 22 });
+      // Phase 2 : le second coup de poing est annoncé sur le chevalier, là où il se tient à l'impact du premier, avec la même annonce.
+      if (z.type === POING && g && g.phase === 2 && g.etat === ANNONCE && z.rang === 0) restantes.push({ type: POING, x: this.c.x, y: this.c.y, r: RAYON_ZONE_POING, t0: this.tick, ti: this.tick + g.t1, rang: 1 });
     }
     this.zones = restantes;
+  }
+
+  /** La vitesse d'une onde du golem, en unités par tick (au rythme de la partie) : le pilote la lit. */
+  vOnde(): number {
+    return this.vitesse(950);
   }
 
   private avancerOndes(): void {

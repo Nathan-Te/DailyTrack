@@ -2,13 +2,13 @@
   "_": "Durées des specs de « Rush » (secondes, estimées avant la première mesure en CI) : la CI compose ses parts avec elles. `essentiel` : la durée des tests sans `@regression` (aucun test de Rush n'est « Régression »).",
   "secondes": {
     "determinisme.spec.ts": 3,
-    "partie.spec.ts": 60,
+    "partie.spec.ts": 80,
     "classement.spec.ts": 60,
     "poids.spec.ts": 2
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
-    "partie.spec.ts": 60,
+    "partie.spec.ts": 80,
     "classement.spec.ts": 60,
     "poids.spec.ts": 2
   }
