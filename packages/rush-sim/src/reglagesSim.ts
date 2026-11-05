@@ -8,13 +8,21 @@ export interface Reglages {
   portee: number;
   /** La demi-ouverture de l'arc du coup, en degrés (30 à 90). */
   arc: number;
-  /** La cadence des coups : la durée d'un coup (premier et deuxième), en ticks. Le troisième dure 40 % de plus. */
+  /** La cadence des coups : la durée d'un coup (premier et deuxième), en ticks (lot BR0c : 30, soit une demi-seconde). Le troisième, le coup final, dure 40 % de plus (42). */
   cadence: number;
-  /** La force du recul infligé aux monstres, en cm par tick au premier tick (il décroît de 20 % par tick). */
+  /** L'anticipation d'un coup (lot BR0c) : les ticks avant l'impact (l'épée ramenée en arrière, le corps qui pivote) ; le coup final en prend 4/3 (8). Le reste du coup est la phase active puis la récupération. */
+  anticipation: number;
+  /** Les dégâts d'un coup, en % du dégât de base (lot BR0c : 160 = ×1,6 ; un point de vie du jeu vaut 10 unités). */
+  degats: number;
+  /** Le coup final (le troisième) frappe ce % d'un coup ordinaire (lot BR0c : 250 = ×2,5). */
+  coupFinal: number;
+  /** L'engagement (lot BR0c) : pendant un coup le chevalier avance à ce % de sa vitesse de marche (dans la direction tenue, sinon vers où il frappe jusqu'à la fin de la phase active). */
+  engagement: number;
+  /** La force du recul infligé aux monstres, en cm par tick au premier tick (il décroît de 20 % par tick) ; le coup final repousse deux fois plus fort (lot BR0c). */
   recul: number;
   /** La fenêtre d'invincibilité de l'esquive, en ticks (la course de l'esquive en dure 12). */
   fenetreEsquive: number;
-  /** Les points de vie du golem. */
+  /** Les points de vie du golem (lot BR0c : un coup ordinaire en ôte 16, le coup final 40 ; la gelée en a 30, la chauve-souris 10). */
   golemVie: number;
   /** Le repos du golem entre deux attaques, en ticks (phase 1 ; il est réduit d'un tiers en phase 2). */
   golemCadence: number;
@@ -23,13 +31,17 @@ export interface Reglages {
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
-  vitesse: 520,
+  vitesse: 468,
   portee: 240,
   arc: 60,
-  cadence: 17,
-  recul: 36,
+  cadence: 30,
+  anticipation: 6,
+  degats: 160,
+  coupFinal: 250,
+  engagement: 40,
+  recul: 48,
   fenetreEsquive: 16,
-  golemVie: 120,
+  golemVie: 1000,
   golemCadence: 80,
   rythme: 100,
 };
@@ -39,10 +51,14 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   vitesse: [300, 900],
   portee: [140, 400],
   arc: [30, 90],
-  cadence: [8, 36],
+  cadence: [10, 60],
+  anticipation: [2, 14],
+  degats: [50, 400],
+  coupFinal: [100, 500],
+  engagement: [0, 100],
   recul: [0, 90],
   fenetreEsquive: [6, 36],
-  golemVie: [10, 400],
+  golemVie: [100, 4000],
   golemCadence: [20, 240],
   rythme: [40, 200],
 };

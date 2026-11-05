@@ -4,8 +4,10 @@ import { CAMERA_DEFAUT } from "./camera";
 // réglages de la simulation (`reglages` de `@cdj/rush-sim`) en un seul JSON que Nathan colle dans un lot.
 
 export interface Sensations {
-  /** L'arrêt sur image à chaque coup qui touche, en millisecondes (le golem, un coup fort ou une mise à mort l'allongent). */
+  /** L'arrêt sur image du coup FINAL (le troisième), en millisecondes (lot BR0c : 90). Les coups 1 et 2 n'en ont PAS : leur impact passe par l'éclair, l'écrasement, le recul, la poussée de caméra et les éclats. */
   arretImage: number;
+  /** L'arrêt sur image du coup qui fait passer le golem en phase 2, en millisecondes (150). Jamais plus d'un arrêt par coup, et au moins 300 ms entre deux. */
+  arretPhase: number;
   /** La force de la secousse de caméra, en % (100 : celle du prototype). */
   secousse: number;
   /** La quantité d'éclats (étincelles, poussière), en %. */
@@ -20,14 +22,15 @@ export interface Sensations {
   eclair: number;
 }
 
-export const SENSATIONS_DEFAUT: Sensations = { arretImage: 70, secousse: 100, eclats: 100, angle: CAMERA_DEFAUT.angle, distance: CAMERA_DEFAUT.distance, champ: CAMERA_DEFAUT.champ, eclair: 6 };
+export const SENSATIONS_DEFAUT: Sensations = { arretImage: 90, arretPhase: 150, secousse: 100, eclats: 100, angle: CAMERA_DEFAUT.angle, distance: CAMERA_DEFAUT.distance, champ: CAMERA_DEFAUT.champ, eclair: 4 };
 export const BORNES_SENSATIONS: Readonly<Record<keyof Sensations, readonly [number, number]>> = {
   arretImage: [0, 200],
+  arretPhase: [0, 300],
   secousse: [0, 300],
   eclats: [0, 300],
   angle: [20, 75],
-  distance: [8, 30],
-  champ: [20, 60],
+  distance: [8, 60],
+  champ: [15, 60],
   eclair: [0, 14],
 };
 export const CLES_SENSATIONS = Object.keys(SENSATIONS_DEFAUT) as (keyof Sensations)[];

@@ -2869,12 +2869,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `tune.portee` | Portée du coup (cm) | Strike reach (cm) |
 | `tune.arc` | Demi-ouverture de l'arc (°) | Half arc (°) |
 | `tune.cadence` | Durée d'un coup (ticks) | Strike length (ticks) |
+| `tune.anticipation` | Anticipation du coup (ticks) | Strike wind-up (ticks) |
+| `tune.degats` | Dégâts d'un coup (%) | Strike damage (%) |
+| `tune.coupFinal` | Coup final (% d'un coup) | Finisher (% of a strike) |
+| `tune.engagement` | Engagement dans le coup (%) | Lunge during a strike (%) |
 | `tune.recul` | Recul des monstres | Monster knockback |
 | `tune.fenetreEsquive` | Invincibilité de l'esquive (ticks) | Dodge invincibility (ticks) |
 | `tune.golemVie` | Vie du golem | Golem health |
 | `tune.golemCadence` | Repos du golem (ticks) | Golem rest (ticks) |
 | `tune.rythme` | Rythme des ennemis (%, 100 = défaut) | Enemy tempo (%, 100 = default) |
-| `tune.arretImage` | Arrêt sur image (ms) | Hit stop (ms) |
+| `tune.arretImage` | Arrêt du coup final (ms) | Finisher hit stop (ms) |
+| `tune.arretPhase` | Arrêt de la phase 2 (ms) | Phase 2 hit stop (ms) |
 | `tune.secousse` | Secousse de caméra (%) | Camera shake (%) |
 | `tune.eclats` | Éclats (%) | Particles (%) |
 | `tune.angle` | Caméra : angle (° au-dessus de l'horizon) | Camera: angle (° above the horizon) |

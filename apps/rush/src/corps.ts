@@ -1,9 +1,10 @@
-import { AmbientLight, Color, DirectionalLight, Group, Mesh, MeshToonMaterial, Scene, WebGLRenderer, type Object3D } from "three";
+import { Color, DirectionalLight, Fog, Group, HemisphereLight, Mesh, MeshToonMaterial, PCFShadowMap, Scene, WebGLRenderer, type Material, type Object3D } from "three";
 import { formatDay } from "@cdj/core";
 import {
   CHAUVE,
   DUREE_TICKS,
   GELEE,
+  MARCHE,
   MAX_CHANGEMENTS,
   ONDE,
   PIERRES,
@@ -55,9 +56,10 @@ import { eclair } from "./cel";
 import { monterDecor } from "./decor";
 import { FICHE } from "./fiche";
 import { Controles } from "./controles";
-import { Annonces, Anneaux, ArcCoup, Eclats, Ombres, Reticule, Traits } from "./effets";
+import { Annonces, Anneaux, ArcCoup, Cratere, Eclats, Ombres, Reticule, Traits } from "./effets";
 import { lireEssai } from "./essai";
 import { monterInterface } from "./interface";
+import { Rendu, type Qualite } from "./rendu";
 import { PALETTES } from "./palette";
 import { SENSATIONS_DEFAUT, sensationsDe, type Sensations } from "./sensations";
 import { musiqueDuKit as musique } from "./kitSon";
@@ -116,6 +118,9 @@ interface ActeurBete {
   suivi: Suivi;
   eclair: number;
   yaw: number;
+  /** L'écrasement sous un coup, de 0 (juste touché) à 1 (fini), et son amplitude. */
+  ecrase: number;
+  force: number;
 }
 
 export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
@@ -158,25 +163,58 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
   // --- La scène ---
   const renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, o.tactile ? 1.5 : 2));
+  const ratio = Math.min(devicePixelRatio || 1, o.tactile ? 1.5 : 2);
+  renderer.setPixelRatio(ratio);
   renderer.setClearColor(new Color(palette.fond));
+  renderer.shadowMap.type = PCFShadowMap;
+  renderer.info.autoReset = false; // le pipeline dessine plusieurs fois par image (ombres, scène, passes) : on remet les compteurs à zéro nous-mêmes, une fois par image
   renderer.domElement.setAttribute("aria-hidden", "true");
   ui.zone3d.append(renderer.domElement);
   const scene = new Scene();
   const rig = new CameraRush();
   const camera = rig.camera;
-  scene.add(new AmbientLight(palette.ambiance, palette.intensiteAmbiance));
+  // La lumière (lot BR0c) : une hémisphérique (le ciel bleu, le sable chaud), le soleil (de droite et un peu de face) et son OMBRE PORTÉE : une carte de 1 024 serrée sur l'arène, au bord adouci.
+  scene.add(new HemisphereLight(palette.hemiCiel, palette.hemiSol, palette.intensiteAmbiance));
   const soleil = new DirectionalLight(palette.lumiere, palette.intensiteLumiere);
-  soleil.position.set(-6, 14, 8);
-  scene.add(soleil);
+  soleil.position.set(9, 18, 4);
+  soleil.castShadow = true;
+  soleil.shadow.mapSize.set(1024, 1024);
+  const cs = soleil.shadow.camera;
+  cs.left = -15;
+  cs.right = 15;
+  cs.top = 15;
+  cs.bottom = -15;
+  cs.near = 2;
+  cs.far = 50;
+  soleil.shadow.radius = 3.5;
+  soleil.shadow.bias = -0.0005;
+  soleil.shadow.normalBias = 0.04;
+  scene.add(soleil, soleil.target);
+  scene.fog = new Fog(palette.brume, 55, 150); // une brume légère vers l'horizon
 
+  // Le niveau de rendu (lot BR0c) : `?qualite=` l'impose ; sinon haute, avec un passage automatique en basse si les images par seconde chutent (jamais de retour en haute dans la partie).
+  let qualite: Qualite = essai.qualite ?? "haute";
+  const rendu = new Rendu(renderer, scene, camera, qualite);
+  const appliquerQualite = (q: Qualite): void => {
+    qualite = q;
+    rendu.definir(q);
+    soleil.castShadow = q === "haute";
+    ombres.maillage.visible = q === "basse";
+    scene.traverse((n: Object3D) => {
+      const m = (n as Mesh).material as Material | Material[] | undefined;
+      if (Array.isArray(m)) for (const x of m) x.needsUpdate = true;
+      else if (m) m.needsUpdate = true;
+    });
+  };
   const R = metres(RAYON_ARENE);
   const decor = monterDecor(R, palette);
   scene.background = decor.ciel;
   scene.add(decor.groupe);
 
-  const ombres = new Ombres();
+  const ombres = new Ombres(); // les ombres en disques : la basse qualité (en haute, de vraies ombres portées)
   scene.add(ombres.maillage);
+  const cratere = new Cratere();
+  scene.add(cratere.groupe);
   const eclats = new Eclats();
   eclats.quantite = etat.sensations.eclats / 100;
   scene.add(eclats.maillage);
@@ -225,6 +263,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
   // --- Les sensations en cours ---
   let gel = 0; // l'arrêt sur image : des ticks de simulation retenus
+  let dernierArretCoup = -1; // le dernier coup qui a eu son arrêt sur image : un seul par coup
+  let dernierArretMs = -1e9; // et au moins 300 ms entre deux arrêts
   let credit = 1; // le ralenti : la part de tick qu'on laisse passer
   let ralenti = 1;
   let ralentiFin = 0;
@@ -251,6 +291,20 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     const ticks = Math.round(ms / PAS_MS);
     if (ticks > gel) gel = ticks;
   };
+  /** L'arrêt sur image est RARE (lot BR0c : les coups 1 et 2 n'en ont pas) : jamais plus d'un par coup (même s'il touche cinq monstres), et au moins 300 ms entre deux. */
+  const arretDuCoup = (ms: number): void => {
+    const maintenant = performance.now();
+    if (partie.coupId === dernierArretCoup || maintenant - dernierArretMs < 300) return;
+    dernierArretCoup = partie.coupId;
+    dernierArretMs = maintenant;
+    arreter(ms);
+  };
+  /** La poussée de la caméra dans le sens du coup (quelques centimètres) : elle revient en une dizaine d'images. */
+  const pousserCamera = (dx: number, dz: number, m: number): void => {
+    if (reduit) return;
+    kickX += dx * m;
+    kickZ += dz * m;
+  };
   const ralentir = (facteur: number, duree: number): void => {
     ralenti = facteur;
     ralentiFin = performance.now() + duree;
@@ -264,7 +318,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       vue.aleatoire = (m.id * 0.37) % 7;
       vue.racine.visible = true;
       scene.add(vue.racine);
-      a = { vue, suivi: suivi(m.x, m.y), eclair: 0, yaw: 0 };
+      a = { vue, suivi: suivi(m.x, m.y), eclair: 0, yaw: 0, ecrase: 1, force: 0 };
       bêtes.set(m.id, a);
     }
     return a;
@@ -288,28 +342,41 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     const [ax, az] = direction(x - metres(partie.c.x), z - metres(partie.c.y));
     switch (e.k) {
       case "coup":
+        // Le souffle de l'épée suit l'anticipation ; l'arc ne paraît qu'à la phase active.
         son(e.a === 0 ? "coup1" : e.a === 1 ? "coup2" : "coup3");
-        arc.lancer(metres(partie.c.x), metres(partie.c.y), (e.b * Math.PI * 2) / 128, metres((etat.reglages.portee * M) / 100) * (e.a === 2 ? 1.25 : 1), (Math.min(90, etat.reglages.arc + (e.a === 2 ? 30 : 0)) * Math.PI) / 180, e.a);
+        arc.lancer(metres(partie.c.x), metres(partie.c.y), (e.b * Math.PI * 2) / 128, metres((etat.reglages.portee * M) / 100) * (e.a === 2 ? 1.25 : 1), (Math.min(90, etat.reglages.arc + (e.a === 2 ? 30 : 0)) * Math.PI) / 180, e.a, partie.impactCoup(e.a));
         break;
       case "touche": {
-        const fort = e.a >= 2;
-        const golem = e.b === 2;
-        const base = etat.sensations.arretImage * (fort ? 1.7 : 1) * (golem ? 1.35 : 1);
-        arreter(base);
-        eclats.gerbe("etincelle", x, 0.9, z, golem ? 14 : 9, { vitesse: 6.5, dx: ax, dz: az, eventail: 1.1, taille: 0.1, haut: 3 });
-        if (golem) eclats.gerbe("pierre", x, 1.6, z, 5, { vitesse: 4, taille: 0.14, dx: ax, dz: az });
-        secouer(golem ? 0.34 : 0.2 * (fort ? 1.6 : 1), ax, az);
-        son(golem ? "toucheGolem" : fort ? "toucheFort" : "touche", 1 + Math.random() * 0.15);
-        for (const m of partie.monstres) if (m.flash === 7) trouverBete(m).eclair = etat.sensations.eclair;
-        if (partie.golem && partie.golem.flash === 7) golemEclair = etat.sensations.eclair;
+        // L'IMPACT (lot BR0c). Coups 1 et 2 : PAS d'arrêt sur image — l'éclair blanc de la cible, son écrasement, le recul (la simulation), une poussée de la caméra et des éclats. Le 3ᵉ coup (le coup final) a la secousse et un arrêt de 90 ms ;
+        // le coup qui fait passer le golem en phase 2 a le sien (150 ms). Jamais plus d'un arrêt par coup, au moins 300 ms entre deux.
+        const final = e.a === 2;
+        const golem = e.b >= 2;
+        if (final) arretDuCoup(etat.sensations.arretImage);
+        if (e.b === 3) arretDuCoup(etat.sensations.arretPhase);
+        eclats.gerbe("etincelle", x, 0.9, z, (golem ? 14 : 9) * (final ? 1.7 : 1), { vitesse: final ? 8 : 6.5, dx: ax, dz: az, eventail: 1.1, taille: 0.1, haut: 3 });
+        if (golem) eclats.gerbe("pierre", x, 1.6, z, final ? 9 : 5, { vitesse: 4, taille: 0.14, dx: ax, dz: az });
+        if (final) {
+          secouer(golem ? 0.4 : 0.3, ax, az);
+          eclats.gerbe("poussiere", x, 0.3, z, 8, { vitesse: 3.5, taille: 0.14, haut: 1.5, duree: 0.45, gravite: 5 });
+        }
+        pousserCamera(ax, az, final ? 0.16 : 0.07);
+        son(golem ? "toucheGolem" : final ? "toucheFort" : "touche", 1 + Math.random() * 0.15);
+        for (const m of partie.monstres) if (m.flash === 7) {
+          const a = trouverBete(m);
+          a.eclair = etat.sensations.eclair;
+          a.ecrase = 0;
+          a.force = final ? 1.5 : 1;
+        }
+        if (partie.golem && partie.golem.flash === 7) {
+          golemEclair = etat.sensations.eclair;
+          golemSursaut = 1;
+        }
         break;
       }
       case "mort": {
-        arreter(etat.sensations.arretImage * 0.8);
         const g = e.a === GELEE ? "gelee" : "chauve";
         eclats.gerbe(g, x, 0.6, z, 22, { vitesse: 6, taille: 0.16, haut: 5 });
         eclats.gerbe("etincelle", x, 0.7, z, 8, { vitesse: 7, taille: 0.09, haut: 4 });
-        secouer(0.2);
         son("mort", 0.9 + Math.random() * 0.3);
         break;
       }
@@ -324,8 +391,6 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         eclats.gerbe("etincelle", x, 0.9, z, 14, { vitesse: 5, taille: 0.08, haut: 2.5 });
         break;
       case "degats":
-        arreter(100);
-        secouer(0.75, ax, az);
         son("degats");
         ui.degats();
         o.vibrer([60, 40, 90]);
@@ -337,11 +402,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         break;
       case "impact": {
         const poing = e.a === POING;
-        eclats.gerbe("poussiere", x, 0.2, z, poing ? 34 : 20, { vitesse: poing ? 7.5 : 5, taille: poing ? 0.26 : 0.2, haut: 3, duree: 0.85, gravite: 6 });
-        eclats.gerbe("pierre", x, 0.3, z, poing ? 18 : 10, { vitesse: 7, taille: 0.17, haut: 7, duree: 0.9 });
+        eclats.gerbe("poussiere", x, 0.2, z, poing ? 44 : 24, { vitesse: poing ? 7.5 : 5, taille: poing ? 0.32 : 0.24, haut: 3.4, duree: 0.95, gravite: 5 });
+        eclats.gerbe("pierre", x, 0.3, z, poing ? 22 : 10, { vitesse: 7, taille: 0.2, haut: 7.5, duree: 1.0 });
         secouer(poing ? 0.7 : 0.45);
         son(poing ? "impact" : "pierre");
-        arreter(poing ? 60 : 35);
+        cratere.poser(x, z, metres(e.b) * (poing ? 0.62 : 0.8) + 0.15, poing ? 6 : 4);
+        eclats.gerbe("poussiere", x, 0.25, z, poing ? 20 : 8, { vitesse: poing ? 11 : 6, taille: 0.2, haut: 1.2, duree: 1.0, gravite: 1.5 });
         break;
       }
       case "onde":
@@ -357,7 +423,6 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         break;
       case "victoire":
         son("victoire");
-        arreter(220);
         secouer(1);
         ralentir(0.3, 1500);
         eclats.gerbe("pierre", x, 2, z, 80, { vitesse: 9, taille: 0.3, haut: 10, duree: 1.3 });
@@ -382,6 +447,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     }
   };
   let golemEclair = 0;
+  let golemSursaut = 0;
 
   // --- Un tick de simulation ---
   const pasDeSimulation = (): void => {
@@ -458,6 +524,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     const l = Math.max(2, Math.floor(r.width));
     const h = Math.max(2, Math.floor(r.height));
     renderer.setSize(l, h, false);
+    rendu.taille(l, h, ratio);
     camera.aspect = l / h;
     camera.updateProjectionMatrix();
   };
@@ -521,6 +588,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     for (const z of partie.zones) if (z.type === POING) garder.push({ x: metres(z.x), z: metres(z.y), r: metres(z.r) }); // le coup de poing ; les pierres tombent près du chevalier, l'onde part du golem
     if (figee) rig.recommencer(); // la vitrine est figée : la caméra est posée d'un coup, sans amorti
     rig.maj(dt, etat.sensations, camera.aspect, cx, cz, golem, garder, { x: sx, z: sz });
+    if (cameraLibre) {
+      // La porte d'essai (`?debug`) peut poser la caméra où elle veut (un gros plan d'un coup, par exemple).
+      camera.position.set(cameraLibre.p[0], cameraLibre.p[1], cameraLibre.p[2]);
+      camera.lookAt(cameraLibre.v[0], cameraLibre.v[1], cameraLibre.v[2]);
+    }
   };
 
   const yawVers = (actuel: number, but: number, dt: number, vitesse: number): number => {
@@ -529,7 +601,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     return actuel + d;
   };
 
+  let cameraLibre: { p: [number, number, number]; v: [number, number, number] } | null = null;
   let msDessin = 0;
+  let imagesVues = 0;
+  let lenteurs = 0;
+  let dernierReel = performance.now();
+  appliquerQualite(qualite);
   const dessiner = (): void => {
     const now = performance.now();
     let dt = Math.min(0.05, (now - dernierDessin) / 1000);
@@ -563,6 +640,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       temps,
       duree: partie.dureeCoup(partie.c.combo),
       impact: partie.impactCoup(partie.c.combo),
+      ticks: c.t + alpha,
       cache: c.degat > 0 && c.esq === 0 && Math.floor(now / 70) % 2 === 0 && !partie.perdue,
     });
     if (flashChev > 0) flashChev -= dt * 60;
@@ -586,7 +664,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       const fz = metres(lerp(sFantome.y0, sFantome.y1, alpha));
       fantomeVu.racine.position.set(fx, 0, fz);
       fantomeVu.racine.rotation.y = Math.atan2(Math.cos((fantomeSim.c.dir * Math.PI * 2) / 128), Math.sin((fantomeSim.c.dir * Math.PI * 2) / 128));
-      animerChevalier(fantomeVu, fantomeSim.c, { dt: dtMonde, temps, duree: fantomeSim.dureeCoup(fantomeSim.c.combo), impact: fantomeSim.impactCoup(fantomeSim.c.combo), cache: false });
+      animerChevalier(fantomeVu, fantomeSim.c, { dt: dtMonde, temps, duree: fantomeSim.dureeCoup(fantomeSim.c.combo), impact: fantomeSim.impactCoup(fantomeSim.c.combo), ticks: fantomeSim.c.t + alpha, cache: false });
     }
 
     ombres.debut();
@@ -602,10 +680,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       golemVu.racine.position.set(gx, 0, gz);
       const dx = c.x - g.x;
       const dz = c.y - g.y;
-      yawGolem = yawVers(yawGolem, Math.atan2(dx, dz), dt, g.etat === 1 ? 2 : 4);
+      // La vitrine fige le golem de face (à peine tourné vers la droite) : la composition de la cible ; en partie, il se tourne vers le chevalier.
+      yawGolem = figee ? 0.1 : yawVers(yawGolem, Math.atan2(dx, dz), dt, g.etat === 1 ? 2 : 4);
       golemVu.racine.rotation.y = yawGolem;
       const deplace = Math.hypot(sGolem.x1 - sGolem.x0, sGolem.y1 - sGolem.y0) > 20;
-      animerGolem(golemVu, g, { dt: dtMonde, temps, t: g.t, vivant: g.hp > 0, mort: finDepuis >= 0 && g.hp <= 0 ? (now - finDepuis) / PAS_MS : 0, marche: deplace });
+      golemSursaut = Math.max(0, golemSursaut - dtMonde * 7);
+      animerGolem(golemVu, figee ? { ...g, etat: MARCHE } : g, { dt: dtMonde, temps, t: g.t, vivant: g.hp > 0, mort: finDepuis >= 0 && g.hp <= 0 ? (now - finDepuis) / PAS_MS : 0, marche: deplace, sursaut: golemSursaut });
       if (golemEclair > 0) golemEclair -= dt * 60;
       eclair(golemVu.matieres, golemEclair > 0 ? 0.85 : 0);
       ombres.poser(gx, gz, metres(RAYON_GOLEM) * 1.15);
@@ -624,6 +704,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       a.vue.racine.rotation.y = a.yaw;
       if (m.type === GELEE) animerGelee(a.vue, m, temps, partie.tick, partie.durees);
       else animerChauve(a.vue, m, temps, partie.tick, partie.durees);
+      if (a.ecrase < 1) {
+        // L'écrasement sous un coup : la cible s'aplatit puis rebondit (un ressort amorti), en un quart de seconde.
+        a.ecrase = Math.min(1, a.ecrase + dtMonde * 4.2);
+        const q = Math.exp(-5.5 * a.ecrase) * Math.cos(a.ecrase * 10) * 0.42 * a.force;
+        a.vue.corps.scale.multiply(a.vue.corps.scale.clone().set(1 + q * 0.55, 1 - q, 1 + q * 0.55));
+      }
       if (a.eclair > 0) a.eclair -= dt * 60;
       eclair(a.vue.matieres, a.eclair > 0 ? 0.9 : 0);
       const haut = m.type === CHAUVE ? 0.9 : 0;
@@ -657,6 +743,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     for (const o2 of partie.ondes) anneaux.poser(metres(o2.x), metres(o2.y), metres(o2.r), metres(o2.epaisseur));
     ombres.fin();
 
+    cratere.maj(dt);
     arc.maj(dtMonde, cx, cz);
     traits.maj(fige ? 0 : dt);
     eclats.maj(fige ? dt * 0.15 : dt * (0.4 + 0.6 * ralenti));
@@ -671,11 +758,22 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     if (g) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase);
     else ui.boss(null, 1);
 
-    renderer.render(scene, camera);
+    renderer.info.reset();
+    rendu.dessiner();
+    // Le passage automatique en basse qualité : les images par seconde (mesurées sur le temps réel entre deux images, jamais en pas à pas) sont restées sous 30 pendant une seconde et demie.
+    if (!manuel && !figee && essai.qualite === null && qualite === "haute" && document.visibilityState === "visible") {
+      imagesVues++;
+      const reel = (now - dernierReel) / 1000;
+      dernierReel = now;
+      if (imagesVues > 90) {
+        lenteurs = reel > 1 / 30 ? lenteurs + 1 : Math.max(0, lenteurs - 2);
+        if (lenteurs > 45) appliquerQualite("basse");
+      }
+    } else dernierReel = now;
     if (essai.fps) {
       fpsMoy = lerp(fpsMoy, 1 / Math.max(dt, 0.001), 0.05);
       msDessin = lerp(msDessin, performance.now() - now, 0.05);
-      ui.fps(`${fpsMoy.toFixed(0)} i/s · ${msDessin.toFixed(1)} ms de dessin · ${renderer.info.render.calls} appels · ${renderer.info.render.triangles} triangles · ${partie.monstres.length} monstres`);
+      ui.fps(`${qualite} · ${fpsMoy.toFixed(0)} i/s · ${msDessin.toFixed(1)} ms de dessin · ${renderer.info.render.calls} appels · ${renderer.info.render.triangles} triangles · ${partie.monstres.length} monstres`);
     }
   };
 
@@ -691,6 +789,15 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       changements: () => changements,
       sons: () => sonsAvecKit.joues,
       calls: () => renderer.info.render.calls,
+      /** Pose la caméra (position, point regardé) pour un gros plan ; `null` : la caméra du jeu. */
+      cameraLibre: (p: [number, number, number] | null, v: [number, number, number] = [0, 0, 0]) => {
+        cameraLibre = p ? { p, v } : null;
+      },
+      scene: () => scene,
+      qualite: () => qualite,
+      definirQualite: (q: Qualite) => appliquerQualite(q),
+      /** Une image dessinée tout de suite (de quoi compter les appels de dessin d'une qualité). */
+      dessinerMaintenant: () => dessiner(),
       redemarrer,
       /** Pose le curseur de la souris en coordonnées d'écran de la scène (de −1 à 1) : de quoi viser dans un test. `null` : plus de souris. */
       souris: (x: number | null, y = 0) => {
@@ -754,6 +861,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       ui.zone3d.removeEventListener("pointerdown", clicBas);
       ui.zone3d.removeEventListener("contextmenu", pasDeMenu);
       decor.detruire();
+      rendu.detruire();
       observateur.disconnect();
       controles.detruire();
       tune?.detruire();

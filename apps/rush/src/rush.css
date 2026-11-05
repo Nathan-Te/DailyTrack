@@ -1,3 +1,7 @@
+/* Lot BR0c : les PASTILLES du HUD (cœurs, barre du golem, boutons) suivent la cible `docs/rush/maquettes/cible-ia.png` : un bord d'encre épais (3 px), des coins ronds, un fond crème, le nom en Archivo Black (`--dj-police-marque`). La bande du haut (chrono, pause) est celle du kit. */
+.rush-monde {
+  --rush-bord: calc(var(--dj-trait) + 1px); /* 3 px */
+}
 /* « Rush » : seulement ce qui est propre au jeu — la scène 3D, ses surimpressions (cœurs en haut à gauche, barre du golem en bas au centre), les commandes des doigts et le panneau des sensations. Les écrans sont ceux du kit (`@cdj/kit/jeu.css`).
    Charte (révision 7, 17) et cible `docs/rush/maquettes/cible-ia.png` : compact ; le centre reste libre ; commandes aux bords, joystick à gauche, « Coup » et « Esquive » côte à côte à droite, chacun avec son icône ; bordures de 2 px, ombre nette. Aucune couleur écrite ici : les jetons seulement. */
 .rush-monde {
@@ -31,19 +35,19 @@
   top: var(--dj-espace-2);
   left: max(var(--dj-espace-2), env(safe-area-inset-left));
   display: flex;
-  gap: 4px;
-  padding: 4px 6px;
-  background: var(--dj-papier);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-etiquette);
-  box-shadow: 2px 2px 0 var(--dj-encre);
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--dj-creme);
+  border: var(--rush-bord) solid var(--dj-encre);
+  border-radius: 16px;
+  box-shadow: 2px 3px 0 var(--dj-encre);
 }
 .rush-coeur {
-  width: 22px;
-  height: 22px;
+  width: 34px;
+  height: 34px;
   fill: var(--dj-terre);
   stroke: var(--dj-encre);
-  stroke-width: 2;
+  stroke-width: 2.2;
   stroke-linejoin: round;
 }
 .rush-coeur--vide {
@@ -55,18 +59,18 @@
   bottom: max(var(--dj-espace-2), env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
-  width: min(44vw, 420px);
+  width: min(54vw, 600px);
   box-sizing: border-box;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--dj-espace-3);
-  padding: 5px 10px;
-  background: var(--dj-papier);
+  padding: 8px 14px;
+  background: var(--dj-creme);
   color: var(--dj-encre);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-etiquette);
-  box-shadow: var(--dj-ombre-bouton);
+  border: var(--rush-bord) solid var(--dj-encre);
+  border-radius: 14px;
+  box-shadow: 2px 3px 0 var(--dj-encre);
 }
 .rush-boss[hidden] {
   display: none;
@@ -74,20 +78,20 @@
 .rush-boss__nom,
 .rush-boss__phase {
   font-family: var(--dj-police-marque);
-  font-size: var(--dj-taille-13);
-  letter-spacing: 0.04em;
+  font-size: var(--dj-taille-16);
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .rush-boss__phase {
-  font-size: var(--dj-taille-legende);
+  font-size: var(--dj-taille-13);
 }
 .rush-boss__piste {
   position: relative;
-  height: 14px;
+  height: 24px;
   background: var(--dj-ecran);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-etiquette);
+  border: var(--rush-bord) solid var(--dj-encre);
+  border-radius: 12px;
   overflow: hidden;
 }
 .rush-boss__vie {
@@ -147,8 +151,8 @@
   position: absolute;
   left: max(var(--dj-espace-3), env(safe-area-inset-left));
   bottom: max(var(--dj-espace-3), env(safe-area-inset-bottom));
-  width: 168px;
-  height: 168px;
+  width: 188px;
+  height: 188px;
   display: grid;
   place-items: center;
   pointer-events: auto;
@@ -156,20 +160,20 @@
 }
 .rush-stick__base {
   position: relative;
-  width: 128px;
-  height: 128px;
-  border: var(--dj-trait) solid var(--dj-encre);
+  width: 148px;
+  height: 148px;
+  border: var(--rush-bord) solid var(--dj-encre);
   border-radius: var(--dj-rayon-avatar);
-  background: var(--dj-papier);
-  box-shadow: 2px 2px 0 var(--dj-encre);
+  background: var(--dj-creme);
+  box-shadow: 2px 3px 0 var(--dj-encre);
   display: grid;
   place-items: center;
   opacity: 0.8;
 }
 .rush-stick__pouce {
-  width: 56px;
-  height: 56px;
-  border: var(--dj-trait) solid var(--dj-encre);
+  width: 64px;
+  height: 64px;
+  border: var(--rush-bord) solid var(--dj-encre);
   border-radius: var(--dj-rayon-avatar);
   background: var(--dj-moutarde);
 }
@@ -186,24 +190,22 @@
   touch-action: none;
   display: grid;
   place-items: center;
-  border: var(--dj-trait) solid var(--dj-encre);
+  border: var(--rush-bord) solid var(--dj-encre);
   border-radius: var(--dj-rayon-avatar);
-  background: var(--dj-papier);
+  background: var(--dj-creme);
   color: var(--dj-encre);
-  box-shadow: 2px 2px 0 var(--dj-encre);
+  box-shadow: 2px 3px 0 var(--dj-encre);
   cursor: pointer;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
 .rush-bouton--coup {
-  width: 84px;
-  height: 84px;
-  background: var(--dj-terre);
-  color: var(--dj-terre-texte);
+  width: 112px;
+  height: 112px;
 }
 .rush-bouton--esquive {
-  width: 72px;
-  height: 72px;
+  width: 104px;
+  height: 104px;
 }
 .rush-bouton {
   align-content: center;
@@ -211,7 +213,7 @@
 }
 .rush-bouton__nom {
   font-family: var(--dj-police-marque);
-  font-size: var(--dj-taille-legende-petite);
+  font-size: var(--dj-taille-13);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1;
@@ -221,11 +223,11 @@
   box-shadow: 0 0 0 var(--dj-encre);
 }
 .rush-bouton__icone {
-  width: 46%;
-  height: 46%;
+  width: 54%;
+  height: 54%;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.2;
+  stroke-width: 2.4;
   stroke-linecap: square;
   stroke-linejoin: miter;
 }

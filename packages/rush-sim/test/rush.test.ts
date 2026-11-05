@@ -36,6 +36,7 @@ import {
   idiv,
   isqrt,
   jouer,
+  jouerJusqua,
   jouerLePilote,
   lireJourFige,
   reglagesDe,
@@ -53,7 +54,7 @@ import {
 const J = daysFromCivil(2026, 11, 4);
 const BOSS = contenuScenario("boss");
 
-const monstre = (type: number, x: number, y: number): Monstre => ({ id: 900, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? 3 : 1, flash: 0, etat: 0, t: 0, age: 0, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0 });
+const monstre = (type: number, x: number, y: number): Monstre => ({ id: 900, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? 30 : 10, flash: 0, etat: 0, t: 0, age: 0, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0 });
 const avancerN = (p: Partie, n: number, e = 0): void => {
   for (let i = 0; i < n; i++) p.avancer(e);
 };
@@ -135,31 +136,106 @@ describe("le chevalier", () => {
     derriere.id = 901;
     p.monstres.push(devant, derriere);
     avancerN(p, 1, entree(-1, true));
-    avancerN(p, 8, 0);
-    expect(devant.hp).toBe(2);
+    avancerN(p, 12, 0);
+    expect(devant.hp).toBe(30 - 16);
     expect(devant.x).toBeGreaterThan(p.c.x + cm(150));
-    expect(derriere.hp).toBe(3);
+    expect(derriere.hp).toBe(30);
     expect(p.evenements.some((e) => e.k === "touche")).toBe(true);
   });
-  it("un coup ne touche qu'une fois, les trois coups de l'enchaînement font 1, 1 puis 2 dégâts", () => {
+  it("un coup ne touche qu'une fois ; l'enchaînement tenu fait 16, 16 puis 40 de dégâts (×1,6, le coup final ×2,5)", () => {
     const p = new Partie(contenuScenario("arene"), REGLAGES_DEFAUT, true);
     p.monstres = [];
     p.c.dir = 0;
     const m = monstre(GELEE, p.c.x + cm(120), p.c.y);
-    m.hp = 99;
+    m.hp = 9999;
     p.monstres.push(m);
-    // un appui toutes les 6 ticks : trois coups enchaînés
-    for (let t = 0; t < 60; t++) {
-      p.avancer(t % 6 < 2 ? entree(-1, true) : 0);
+    const pv: number[] = [];
+    for (let t = 0; t < 120; t++) {
+      p.avancer(entree(-1, true)); // le bouton reste tenu : un seul changement d'entrée
+      if (p.evenements.some((e) => e.k === "touche" && e.tick === p.tick)) pv.push(m.hp);
       m.x = p.c.x + cm(120); // le monstre reste à portée
       m.y = p.c.y;
       m.kx = 0;
       m.ky = 0;
+      m.gel = 0;
     }
     const coups = p.evenements.filter((e) => e.k === "coup").map((e) => e.a);
     expect(coups.slice(0, 4)).toEqual([0, 1, 2, 0]);
-    const degats = p.evenements.filter((e) => e.k === "touche").map((e) => e.a);
-    expect(degats.slice(0, 3)).toEqual([1, 1, 2]);
+    const touches = p.evenements.filter((e) => e.k === "touche").map((e) => e.a);
+    expect(touches.slice(0, 3)).toEqual([0, 1, 2]); // un seul « touche » par coup
+    expect(9999 - pv[0]!).toBe(16);
+    expect(pv[0]! - pv[1]!).toBe(16);
+    expect(pv[1]! - pv[2]!).toBe(40);
+  });
+  it("un coup dure 30 ticks (le coup final 42) : anticipation de 6 ticks, impact, récupération qui va au bout ; la boucle tenue garde ce rythme", () => {
+    const p = new Partie(contenuScenario("mannequin"), REGLAGES_DEFAUT, true);
+    expect(p.dureeCoup(0)).toBe(30);
+    expect(p.dureeCoup(2)).toBe(42);
+    expect(p.impactCoup(0)).toBe(6);
+    expect(p.impactCoup(2)).toBe(8);
+    p.c.x = 0;
+    p.c.y = cm(900); // loin de tout : seul le rythme compte
+    for (let i = 0; i < 400; i++) p.avancer(entree(-1, true));
+    const coups = p.evenements.filter((e) => e.k === "coup");
+    expect(coups.slice(0, 7).map((e) => e.a)).toEqual([0, 1, 2, 0, 1, 2, 0]);
+    expect(coups.slice(1, 7).map((e, i) => e.tick - coups[i]!.tick)).toEqual([30, 30, 42, 30, 30, 42]);
+  });
+  it("un appui isolé ne se perd pas mais n'écourte pas le coup en cours : le coup suivant part à la fin du premier", () => {
+    const p = new Partie(contenuScenario("mannequin"), REGLAGES_DEFAUT, true);
+    p.c.y = cm(900);
+    avancerN(p, 1, entree(-1, true));
+    avancerN(p, 19, 0);
+    avancerN(p, 1, entree(-1, true)); // second appui au tick 20 du premier coup
+    avancerN(p, 60, 0);
+    const coups = p.evenements.filter((e) => e.k === "coup");
+    expect(coups.map((e) => e.a)).toEqual([0, 1]);
+    expect(coups[1]!.tick - coups[0]!.tick).toBe(30);
+  });
+  it("pendant un coup, le chevalier avance à 40 % de sa vitesse dans la direction tenue (il s'engage), puis la marche reprend à sa vitesse", () => {
+    const p = new Partie(contenuScenario("mannequin"), REGLAGES_DEFAUT, true);
+    p.c.x = 0;
+    p.c.y = cm(900);
+    p.c.dir = 0;
+    const x0 = p.c.x;
+    avancerN(p, 30, entree(0, true)); // un coup (tenu) en marchant à droite : le premier coup dure 30 ticks
+    const pendantLeCoup = (p.c.x - x0) / 30;
+    const marche = idiv(cm(REGLAGES_DEFAUT.vitesse), 60);
+    expect(pendantLeCoup).toBeGreaterThan(marche * 0.38);
+    expect(pendantLeCoup).toBeLessThan(marche * 0.42);
+    expect(REGLAGES_DEFAUT.vitesse).toBe(468); // la marche est 10 % moins vite qu'au BR0b (520)
+  });
+  it("le recul est fort, surtout au coup final : la cible glisse puis titube, sans rien faire", () => {
+    const p = new Partie(contenuScenario("mannequin"), REGLAGES_DEFAUT, true);
+    p.c.x = 0;
+    p.c.y = cm(900);
+    p.c.dir = 96;
+    const cible = p.monstres[2]!; // (0, 210) cm : on l'amène à portée
+    cible.x = 0;
+    cible.y = p.c.y - cm(150);
+    p.monstres.length = 0;
+    p.monstres.push(cible);
+    const y0 = cible.y;
+    avancerN(p, 1, entree(-1, true));
+    avancerN(p, 12, entree(-1, true));
+    expect(y0 - cible.y).toBeGreaterThan(cm(120)); // glissade dans le sens du coup (vers le haut de l'écran)
+    expect(cible.gel).toBeGreaterThan(0); // il titube
+    // le coup final : encore plus loin
+    const q = new Partie(contenuScenario("mannequin"), REGLAGES_DEFAUT, true);
+    q.c.x = 0;
+    q.c.y = cm(900);
+    q.c.dir = 96;
+    const c2 = q.monstres[2]!;
+    q.monstres.length = 0;
+    q.monstres.push(c2);
+    let dmax = 0;
+    for (let i = 0; i < 110; i++) {
+      c2.x = 0;
+      if (q.evenements.length === 0 || q.evenements.filter((e) => e.k === "coup").length < 3) c2.y = q.c.y - cm(140);
+      q.avancer(entree(-1, true));
+      const touches = q.evenements.filter((e) => e.k === "touche");
+      if (touches.length === 3) dmax = Math.max(dmax, q.c.y - cm(140) - c2.y);
+    }
+    expect(dmax).toBeGreaterThan(cm(250));
   });
   it("l'esquive rend invincible pendant sa fenêtre, puis plus", () => {
     const p = new Partie(contenuScenario("arene"), REGLAGES_DEFAUT, true);
@@ -352,8 +428,9 @@ describe("le golem", () => {
     p.c.y = p.golem!.y + cm(300);
     p.c.dir = 96;
     avancerN(p, 1, entree(-1, true));
-    avancerN(p, 6, 0);
+    avancerN(p, 12, 0);
     expect(p.golem!.phase).toBe(2);
+    expect(p.evenements.find((e) => e.k === "touche")!.b).toBe(3); // le coup qui fait passer le golem en phase 2 le dit (le jeu y met son arrêt sur image)
     expect(p.evenements.some((e) => e.k === "phase2")).toBe(true);
   });
   it("le scénario de phase 2 commence à 50 % de vie", () => {
@@ -466,7 +543,7 @@ describe("la visée et le coup tenu (lot BR0b)", () => {
     expect(decoderRediffusion(texte).changements).toEqual(changements);
     expect(rejouer(dailyRush(J), texte)).toEqual(a);
     const sansVisee = changements.map((c) => ({ ...c, e: c.e & 255 }));
-    expect(jouer(dailyRush(J), sansVisee)).not.toEqual(a); // la visée change la partie
+    expect(jouerJusqua(dailyRush(J), sansVisee, 500).empreinte).not.toBe(jouerJusqua(dailyRush(J), changements, 500).empreinte); // la visée change la partie
   });
   it("refuse un octet de visée hors des 64 valeurs, et la visée ne change pas plus d'une fois tous les 4 ticks côté jeu", () => {
     expect(() => decoderRediffusion(encoderEnveloppe({ sim: 2, g: 1, contenu: { jour: J }, charge: [5, 17, 200] }))).toThrow();

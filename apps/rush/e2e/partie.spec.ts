@@ -66,7 +66,7 @@ test.describe("Rush : une partie", () => {
       await page.evaluate(() => window.__jeu.avancer(1));
       return page.evaluate(() => window.__rush.visee());
     };
-    // Le chevalier est dans le tiers inférieur : un curseur en haut de l'écran vise vers le haut (24), à gauche vers la gauche (16), à droite vers la droite (0), tout en bas vers le bas (8).
+    // Le chevalier est dans la moitié basse de l'image : un curseur en haut de l'écran vise vers le haut (24), à gauche vers la gauche (16), à droite vers la droite (0), tout en bas vers le bas (8).
     expect(Math.abs((await vers(0.5, 0.05)) - 24)).toBeLessThanOrEqual(2);
     expect(Math.abs((await vers(0.02, 0.5)) - 16)).toBeLessThanOrEqual(4);
     const droite = await vers(0.98, 0.5);
@@ -79,7 +79,7 @@ test.describe("Rush : une partie", () => {
     expect(await page.evaluate(() => window.__rush.partie().c.dir)).toBeLessThan(102);
     // Le clic gauche frappe ; MAINTENU, il enchaîne (coup 1, 2, puis 3, puis encore le 1).
     await page.mouse.down();
-    await page.evaluate(() => window.__jeu.avancer(100));
+    await page.evaluate(() => window.__jeu.avancer(170));
     await page.mouse.up();
     const sons = await page.evaluate(() => window.__rush.sons());
     expect(sons.filter((s) => s === "coup1").length).toBeGreaterThanOrEqual(2);
@@ -153,6 +153,41 @@ test.describe("Rush : une partie", () => {
     const ch = await page.evaluate(() => window.__rush.changements());
     expect(ch.length).toBeGreaterThanOrEqual(1);
     expect(ch[0]!.e & 63).toBe(1); // direction 0 (vers la droite) = 1
+    await context.close();
+  });
+
+  test("le mannequin (lot BR0c) : un coup tenu enchaîne à la cadence lourde, rien ne meurt, un seul arrêt sur image par coup final", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=mannequin");
+    await lancer(page);
+    expect(await page.evaluate(() => window.__rush.partie().monstres.length)).toBe(6);
+    await page.evaluate(() => window.__rush.forcer(64, 100000)); // le coup tenu
+    await page.evaluate(() => window.__jeu.avancer(260));
+    const sons = await page.evaluate(() => window.__rush.sons());
+    expect(sons).toEqual(expect.arrayContaining(["coup1", "coup2", "coup3"]));
+    const p = await page.evaluate(() => ({ monstres: window.__rush.partie().monstres.length, golem: window.__rush.partie().golem!.hp, coeurs: window.__rush.partie().c.coeurs }));
+    expect(p.monstres).toBe(6); // aucun ne meurt
+    expect(p.coeurs).toBe(3); // aucun ne blesse
+    await context.close();
+  });
+
+  test("deux niveaux de qualité (lot BR0c) : ?qualite= l'impose, la basse se passe du post-traitement, les deux dessinent sous 200 appels", async ({ browser }) => {
+    for (const q of ["haute", "basse"] as const) {
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&scenario=arene&monstres=30&qualite=${q}`);
+      await lancer(page);
+      await page.evaluate(() => window.__jeu.avancer(600));
+      expect(await page.evaluate(() => window.__rush.qualite())).toBe(q);
+      await page.evaluate(() => window.__rush.dessinerMaintenant());
+      expect(await page.evaluate(() => window.__rush.calls())).toBeLessThan(200);
+      await expect(page.locator(".rush-monde canvas")).toBeVisible();
+      await context.close();
+    }
+    // En cours de partie, on peut passer de l'une à l'autre (la chute des images par seconde le fait toute seule).
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=boss");
+    await lancer(page);
+    expect(await page.evaluate(() => window.__rush.qualite())).toBe("haute");
+    await page.evaluate(() => window.__rush.definirQualite("basse"));
+    await page.evaluate(() => window.__rush.dessinerMaintenant());
+    expect(await page.evaluate(() => window.__rush.qualite())).toBe("basse");
     await context.close();
   });
 });

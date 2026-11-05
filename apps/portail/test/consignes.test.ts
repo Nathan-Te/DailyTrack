@@ -18,6 +18,7 @@ const CLAUDE_MD = [
   "apps/blocks/CLAUDE.md",
   "apps/jump/CLAUDE.md",
   "apps/portail/CLAUDE.md",
+  "apps/rush/CLAUDE.md",
   "apps/tower/CLAUDE.md",
   "apps/web/CLAUDE.md",
   "packages/core/CLAUDE.md",
