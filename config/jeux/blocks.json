@@ -190,6 +190,25 @@
       "bot-themes.spec.ts": [
         "blocks-sim",
         "blocks-jeu"
+      ],
+      "fantome.spec.ts": [
+        "blocks-sim",
+        "blocks-jeu"
+      ],
+      "partage.spec.ts": [
+        "blocks-sim",
+        "blocks-jeu"
+      ],
+      "arcade.spec.ts": [
+        "blocks-jeu",
+        "api-blocks",
+        "api-jeux"
+      ],
+      "apercu.spec.ts": [
+        "blocks-sim",
+        "blocks-jeu",
+        "api-blocks",
+        "api-jeux"
       ]
     },
     "parts": {

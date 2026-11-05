@@ -5,7 +5,8 @@
 //     "--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);" && PORT=8794 node dist/blocks-serveur-essai.mjs
 //
 // Variables : PORT (8794) · BLOCKS_AUJOURDHUI=AAAA-MM-JJ (le jour de Paris du serveur : son horloge part de midi UTC de ce jour et avance en temps réel ; sinon l'heure réelle) · BLOCKS_COPIES=1 (laisse passer
-// les copies : essais seulement) · BLOCKS_FERME=1 (le jeu reste `off`) · DB_PATH (défaut `:memory:`).
+// les copies : essais seulement) · BLOCKS_FERME=1 (le jeu reste `off`) · BLOCKS_APERCU=<clé> (lot B4 : le jeu est en `preview`, ouvert seulement avec cette clé d'aperçu, en en-tête `X-Preview-Key` ; le lien est `/?apercu=<clé>`) · DB_PATH (défaut `:memory:`).
+import { createHash } from "node:crypto";
 import { parseDay } from "@cdj/core";
 import { createApi } from "../src/api";
 import { ensureSchemaOn } from "../src/db";
@@ -32,5 +33,8 @@ if (process.env.BLOCKS_AUJOURDHUI) {
 const db = openSqlite(process.env.DB_PATH ?? ":memory:");
 const api = createApi({ db, now, testClock: now !== undefined, environment: "local", allowOrigin: "*", allowCopies: process.env.BLOCKS_COPIES === "1", log: consoleLog });
 await ensureSchemaOn(db);
-if (process.env.BLOCKS_FERME !== "1") await db.run("INSERT OR REPLACE INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES ('blocks', 'on', 0, '[[0,null]]', 0)");
+if (process.env.BLOCKS_APERCU) {
+  // Lot B4 : l'aperçu par clé. Le serveur n'en garde que l'empreinte (comme en production : `/admin/` › Jeux).
+  await db.run("INSERT OR REPLACE INTO jeux (jeu, etat, live_from, periodes, cle_hash, modifie_le) VALUES ('blocks', 'preview', 0, '[]', ?, 0)", [createHash("sha256").update(process.env.BLOCKS_APERCU).digest("hex")]);
+} else if (process.env.BLOCKS_FERME !== "1") await db.run("INSERT OR REPLACE INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES ('blocks', 'on', 0, '[[0,null]]', 0)");
 createNodeServer(api, {}).listen(port, () => consoleLog("INFO", "Serveur d'essai de Blocks prêt", { port, copies: process.env.BLOCKS_COPIES === "1", ouvert: process.env.BLOCKS_FERME !== "1" }));

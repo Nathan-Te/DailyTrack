@@ -55,3 +55,8 @@
 .jeu-scene .jeu-plateau {
   padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
 }
+
+/* Lot B4 : le score de l'écran de fin porte maintenant ses séparateurs de milliers (« 136 409 pts ») : sa taille suit la largeur de l'écran pour tenir sur une ligne (jamais plus grande que celle du kit). */
+.jeu-fin__score {
+  font-size: min(var(--dj-taille-64), 11vw);
+}

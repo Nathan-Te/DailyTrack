@@ -17,7 +17,13 @@ const repli = (cle: string, params?: Readonly<Record<string, string | number>>):
 export const texte = (cle: string, params?: Readonly<Record<string, string | number>>): string => (courant ? courant.t(cle, params) : repli(cle, params));
 
 /** Un score écrit pour un joueur : `4 582 pts` (le nombre au format de la langue : « 4 582 » ou « 4,582 »). */
-export const ecrireScore = (n: number): string => texte("score.valeur", { n });
+export const ecrireScore = (n: number, langue: string = langueCourante()): string => texte("score.valeur", { n: formaterNombre(n, langue) });
 
 /** La langue courante (`fr` sans traducteur) : pour écrire un nombre au format de la langue. */
 export const langueCourante = (): string => courant?.langue ?? "fr";
+
+/** Un nombre au format de la langue (« 4 582 » en français, « 4,582 » en anglais), avec une espace insécable : il ne se coupe jamais en bout de ligne. */
+export const formaterNombre = (n: number, langue: string = langueCourante()): string => new Intl.NumberFormat(langue === "en" ? "en-US" : "fr-FR").format(n).replace(/[\u202f\u2009]/g, "\u00a0");
+
+/** La part « combo ×7 » de la ligne à partager ; rien sans combo (un combo de 0 n'est pas à montrer). */
+export const ecrireComboPartage = (combo: number): string | null => (combo > 0 ? texte("partage.combo", { n: combo }) : null);

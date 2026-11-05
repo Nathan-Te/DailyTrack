@@ -24,8 +24,8 @@ declare global {
   }
 }
 
-export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0`, aideVue = true): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4179", locale: "fr-FR", permissions: ["clipboard-read", "clipboard-write"] });
+export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0`, aideVue = true, attendreJouer = true, locale = "fr-FR"): Promise<{ context: BrowserContext; page: Page }> {
+  const context = await browser.newContext({ baseURL: "http://localhost:4179", locale, permissions: ["clipboard-read", "clipboard-write"] });
   const decalage = Date.UTC(2026, 10, 6, 12) - Date.now();
   await context.addInitScript(
     ({ decalage, aideVue }) => {
@@ -46,7 +46,7 @@ export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&m
   );
   const page = await context.newPage();
   await page.goto(adresse);
-  await page.waitForSelector("#jeu-jouer", { state: "attached" });
+  if (attendreJouer) await page.waitForSelector("#jeu-jouer", { state: "attached" });
   return { context, page };
 }
 
