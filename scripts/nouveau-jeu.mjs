@@ -120,7 +120,8 @@ export function fichiersDuModele(racine) {
     for (const f of readdirSync(join(racine, dossier))) if (motif.test(f)) tous.push(`${dossier}/${f}`);
   }
   return tous
-    .filter((c) => !/\.tsbuildinfo$/.test(c) && !/\/e2e\/captures-/.test(c) && !(c.includes("/public/jours/") && !c.endsWith("/.gitkeep")))
+    // Lot K5 : l'illustration du modèle (une cible) n'est pas celle du jeu neuf — son fichier est à dessiner d'après une maquette validée par Nathan (`identite.illustration`).
+    .filter((c) => !/\.tsbuildinfo$/.test(c) && !/\/e2e\/captures-/.test(c) && !(c.includes("/public/jours/") && !c.endsWith("/.gitkeep")) && !c.endsWith("/public/illustration.svg"))
     .sort();
 }
 
@@ -254,6 +255,8 @@ export async function construireFiche(racine, c, classement, categorie = "jour")
   modele.medailles = { methode: modele.medailles.methode, bareme: [...v.bareme], ...(v.plafondDiamant !== undefined ? { plafondDiamant: v.plafondDiamant } : {}) };
   modele.temoin = false;
   modele.etatDepart = "off";
+  // Lot K5 : l'identité (police, motif, illustration) est à choisir d'après une maquette validée par Nathan ; tant qu'un champ vaut « à choisir », le jeu ne passe ni en `preview` ni en `on` (`etatPermis`, test des fiches, administration).
+  modele.identite = { police: "à choisir", motif: "à choisir", illustration: "à choisir", aujourdhui: false };
   // Lot A3 : la catégorie se choisit à la création (`jour` par défaut) ; elle naît avec le jeu, sans `categorieDepuis`. Un jeu d'arcade a `classement.cumul: false` (déjà le cas de tout jeu neuf).
   modele.categorie = categorie;
   delete modele.categorieDepuis;
@@ -426,6 +429,7 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
       ? `- **Vision** : \`docs/${id}/seed.md\` — **à écrire par Nathan** (un gabarit vide avec ses titres). Tant qu'il est vide, le jeu de départ n'a pas de direction.`
       : `- **Vision** : \`docs/${id}/seed.md\` (**ne pas modifier**, c'est Nathan qui le fait).`,
     `- **Teinte de l'étiquette** : ${teinte[0]} / ${teinte[1]} — **à choisir par Nathan** (charte § 3 ; la fiche, \`etiquette\`)${squelette ? " ; le générateur a pris la première teinte qu'aucun jeu n'utilise" : ""}.`,
+    `- **Identité** : \`identite\` de la fiche (police, motif, illustration, panneau « Aujourd'hui ») vaut « à choisir » — **le premier lot du jeu la remplit d'après une maquette validée par Nathan, illustration comprise** (\`apps/${id}/public/illustration.svg\`, charte rév. 18 § 4, § 5 et § 9). Pas de \`preview\` ni de \`on\` sans identité complète (test des fiches ; l'administration le refuse). \`aujourdhui: false\` n'est permis qu'avec une ligne de la liste d'exemptions du test (\`packages/core/test/identite.test.ts\`), raison « à fournir par la conversation du jeu » ; le panneau se branche par \`brancherJeu(…, { aujourdhui })\`. Une police nouvelle demande aussi sa découpe « profil » (\`scripts/polices/decouper.mjs\`) et ses deux feuilles (\`packages/ui/src/polices/\`, \`polices-profil/\`).`,
     `- **Premier jour** : ${squelette ? "celui du modèle, " : ""}\`${fiche.premierJour}\` — à régler au lancement du jeu (\`premierJour\` de la fiche, une ligne).`,
     "",
     "## 2. La plateforme en bref — et où lire les règles (elles ne sont pas recopiées ici)",

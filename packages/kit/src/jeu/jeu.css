@@ -1,4 +1,4 @@
-@import "@cdj/ui/src/jeux.generated.css"; /* l'étiquette générique de la fiche du jeu (fond, coque, police) */
+@import "@cdj/ui/identite-du-jeu.css"; /* lot K5 : **la peau du jeu construit, tirée de sa fiche** — la structure de l'étiquette générique, ses couleurs (fond, coque, police), la face de sa police et le motif de son étiquette : un alias de `pagesDuSocle`, chaque jeu ne charge que les siennes (un jeu de plus ne grossit pas les autres) */
 /* **Cette feuille est celle du premier chargement : l'accueil.** Les autres écrans (« Comment jouer », Réglages, classement, pause, fin) et la scène de la partie sont dans `ecrans.css`, chargée à la demande avec la partie. */
 /* Lot K4f — la feuille commune des écrans d'un jeu neuf (`brancherJeu`) : l'accueil, la pause, l'arrivée, le classement, les Réglages, « Comment jouer », le HUD compact. Jetons de `@cdj/ui` seulement (aucune
    couleur en dur) ; le jeu règle la couleur de son étiquette (`jeux.generated.css`, écrit de sa fiche) et habille sa scène. Marges de sécurité (`env(safe-area-inset-*)`) sur tout ce qui touche un bord. Cibles de 44 px. */
@@ -86,7 +86,7 @@ body {
   gap: var(--jeu-esp-bloc);
   box-sizing: border-box;
   padding: var(--jeu-esp-carte);
-  background: var(--jeu-fond);
+  background: var(--jeu-motif, var(--jeu-fond)); /* lot K5 : le motif du jeu (rayures, lignes, quadrillage, losanges, uni), en deux tons de sa teinte */
   border: var(--dj-trait-fort) solid var(--dj-encre);
   border-radius: var(--dj-rayon-etiquette);
 }
@@ -123,10 +123,10 @@ body {
   font-size: var(--dj-taille-13);
   font-weight: 700;
 }
-/* --- L'accueil : deux colonnes dès 700 px de large, une seule en dessous --- */
+/* --- L'accueil (lot K5, charte § 9 : les proportions de Tower) : deux colonnes équilibrées dans l'étiquette dès 760 px de large — et dès 560 px en paysage, pour un téléphone qui a la place —, une seule en dessous.
+   À gauche l'identité (titre, numéro et thème, illustration, réplique, record et série, JOUER, trois boutons) ; à droite « Aujourd'hui », le classement du jour et le pied. --- */
 .jeu-accueil__gauche,
-.jeu-accueil__droite,
-.jeu-accueil__bas {
+.jeu-accueil__droite {
   display: flex;
   flex-direction: column;
   gap: var(--jeu-esp-bloc);
@@ -154,9 +154,10 @@ body {
   text-shadow: var(--dj-ombre-titre);
   overflow-wrap: anywhere;
 }
+/* « Partie n° N · Thème » sous le titre, dans la police du jeu, jamais collé au titre. */
 .jeu-accueil__tete .jeu-etiquette__texte {
   font-family: var(--jeu-police);
-  font-size: var(--dj-taille-14);
+  font-size: var(--dj-taille-13);
   font-weight: 400;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -165,29 +166,29 @@ body {
   flex: none;
   display: inline-flex;
 }
-/* Avec une illustration (90 px de large) le titre prend ce qui reste de la colonne, sans jamais couper un mot : sa taille suit la largeur de la colonne (unités de conteneur). */
+.jeu-accueil__image {
+  height: 80px;
+  max-width: 110px;
+}
+/* Avec une illustration (≈ 100 px de large) le titre prend ce qui reste de la colonne, sans jamais couper un mot : sa taille suit la largeur de la colonne (unités de conteneur). */
 .jeu-accueil__gauche {
   container-type: inline-size;
 }
 .jeu-accueil__tete:has(.jeu-accueil__dessin) .jeu-etiquette__titre {
-  font-size: clamp(var(--dj-taille-32), calc((100cqi - 110px) / 5.4), var(--dj-taille-64));
+  font-size: clamp(var(--dj-taille-32), calc((100cqi - 120px) / 5.4), var(--dj-taille-64));
 }
-@media (min-width: 700px) {
+@media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
   .jeu-ecran > .jeu-accueil.etiquette__corps {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     gap: var(--jeu-esp-grand);
     padding: var(--jeu-esp-carte) var(--jeu-esp-grand);
+    align-items: start;
   }
-  .jeu-accueil__gauche {
-    grid-area: 1 / 1;
-  }
-  .jeu-accueil__droite {
-    grid-area: 1 / 2;
-  }
-  .jeu-accueil__bas {
-    grid-area: 2 / 1 / 3 / 3;
-  }
+}
+/* Le panneau « Aujourd'hui » : la légende porte le thème ; le corps est rempli par le jeu (ou porte la réplique). Sa hauteur est réservée avant l'arrivée du contenu. */
+.jeu-aujourdhui__corps {
+  min-height: 3em;
 }
 .jeu-tuiles {
   display: grid;
@@ -273,13 +274,19 @@ body {
 /* Les boutons d'une rangée ne se touchent jamais (`--jeu-esp-boutons`), chacun de 44 px au moins, et se répartissent la largeur. */
 .jeu-secondaires {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr));
   gap: var(--jeu-esp-boutons);
 }
 .jeu-secondaires > * {
   min-width: 0;
   min-height: var(--dj-cible);
   padding-inline: var(--dj-espace-2);
+}
+/* « Archives » sans page d'archives : désactivé selon la charte (aplat, texte doux, bordure pointillée, sans ombre), « Bientôt » en petit dessous. */
+.jeu-secondaires > :disabled {
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
 }
 .jeu-rangs {
   list-style: none;

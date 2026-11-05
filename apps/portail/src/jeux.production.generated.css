@@ -1,4 +1,7 @@
 /* GÉNÉRÉ par `npm run fiches` (lot K4e : config/jeux/<id>.json → portail) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */
+.jeu-etiquette--tower{--jeu-fond:#9ED9BE;--jeu-coque:#2F7D62;--jeu-police:"Rubik Mono One", "Archivo", sans-serif;}
+.jeu-etiquette--blocks{--jeu-motif:repeating-linear-gradient(0deg,#b8d8f4 0 22px,#aecbe4 22px 23px)}
+.jeu-etiquette--rush{--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0}
 .admin-zone.admin-zone--blocks {
   background: #B8D8F4;
   color: var(--dj-encre);

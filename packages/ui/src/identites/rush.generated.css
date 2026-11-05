@@ -1,0 +1,4 @@
+/* GÉNÉRÉ par `npm run fiches` (lot K4e : config/jeux/<id>.json → ui, identité) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */
+@import "../jeux.structure.generated.css";
+@import "../polices/bungee-400.css";
+.jeu-etiquette--rush{--jeu-fond:#D9C4F0;--jeu-coque:#4B2E83;--jeu-police:"Bungee", "Archivo", sans-serif;--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0}

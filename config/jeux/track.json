@@ -18,6 +18,12 @@
     "police": "\"Barlow Condensed\", \"Archivo\", sans-serif",
     "dessin": "propre"
   },
+  "identite": {
+    "police": "Barlow Condensed",
+    "motif": "rayures",
+    "illustration": "propre",
+    "aujourdhui": true
+  },
   "etatDepart": "on",
   "premierJour": "2026-10-13",
   "categorie": "jour",

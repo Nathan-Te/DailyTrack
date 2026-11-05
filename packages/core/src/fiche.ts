@@ -48,6 +48,24 @@ export interface FabricationJours {
 import type { CategorieJeu } from "./jeux";
 export type { CategorieJeu };
 
+/** Lot K5 — les motifs d'étiquette de la charte (rév. 18, § 5) : dessinés en CSS net, en deux tons tirés de la teinte du jeu, jamais de dégradé. */
+export const MOTIFS = ["rayures", "lignes", "quadrillage", "losanges", "uni"] as const;
+export type Motif = (typeof MOTIFS)[number];
+/** Lot K5 — la valeur que `npm run nouveau-jeu` écrit dans le bloc `identite` d'un jeu neuf : elle bloque `preview` et `on`. */
+export const A_CHOISIR = "à choisir";
+/** Lot K5 — l'illustration d'un jeu dont la carte est dessinée à la main dans `@cdj/ui` (Track et Jump) : pas de fichier SVG. */
+export const ILLUSTRATION_PROPRE = "propre";
+export interface IdentiteJeu {
+  /** Le nom d'une police hébergée sur le site (`woff2` sous licence OFL, avec sa licence : `packages/ui/polices/sources.json`), ou « à choisir ». */
+  police: string;
+  /** Le motif de l'étiquette, ou « à choisir ». */
+  motif: Motif | typeof A_CHOISIR;
+  /** Le chemin du fichier SVG de l'illustration dans la zone du jeu (`apps/<id>/public/illustration.svg`), `propre` (carte dessinée à la main, Track et Jump) ou « à choisir ». */
+  illustration: string;
+  /** Le jeu fournit-il son panneau « Aujourd'hui » (`brancherJeu({ aujourdhui })`) ? Faux : voir `AUJOURDHUI_EXEMPTES` (test de la fiche). */
+  aujourdhui: boolean;
+}
+
 export interface FicheJeu {
   /** Le dossier du jeu sur le site (`/tower/`), son préfixe de route (`/api/tower/`) et son nom de dossier (`apps/tower`). `a-z`, `0-9`, `-`. */
   id: string;
@@ -72,6 +90,8 @@ export interface FicheJeu {
     /** `propre` : un dessin écrit dans `@cdj/ui` (Tower) ; `generique` : l'étiquette sans dessin (jeu neuf, lot K3). */
     dessin: "propre" | "generique";
   };
+  /** Lot K5 : l'identité du jeu (police, motif, illustration, panneau « Aujourd'hui »). */
+  identite: IdentiteJeu;
   /** Un nouveau jeu naît `off` ; Track et Jump sont `on` (hérité de l'arrivée de l'interrupteur). */
   etatDepart: "off" | "on";
   /** Le premier jour du jeu (AAAA-MM-JJ) ; sa numérotation. */
@@ -262,6 +282,18 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
     for (const c of ["fond", "coque"] as const) if (typeof e[c] !== "string" || !COULEUR.test(e[c] as string)) ko(`etiquette.${c}`, "couleur #RRGGBB");
     if (!estTexte(e.police) || /[;{}<>]/.test(e.police as string)) ko("etiquette.police", "une liste de polices (sans ; { } < >)");
     if (e.dessin !== "propre" && e.dessin !== "generique") ko("etiquette.dessin", "`propre` ou `generique`");
+  }
+
+  const idt = f.identite;
+  if (!estObjet(idt)) ko("identite", "objet attendu { police, motif, illustration, aujourdhui }");
+  else {
+    if (!estTexte(idt.police) || /[;{}<>"']/.test(idt.police as string)) ko("identite.police", "le nom d'une police hébergée sur le site (sans ; { } < > \" '), ou « à choisir »");
+    if (idt.motif !== A_CHOISIR && !(MOTIFS as readonly string[]).includes(idt.motif as string)) ko("identite.motif", `${MOTIFS.join(", ")} ou « à choisir »`);
+    const dessinAttendu = `apps/${dossiers?.app ?? id}/public/illustration.svg`;
+    if (idt.illustration !== A_CHOISIR && idt.illustration !== ILLUSTRATION_PROPRE && idt.illustration !== dessinAttendu) ko("identite.illustration", `« ${dessinAttendu} » (le fichier SVG du jeu), « propre » (carte dessinée à la main) ou « à choisir »`);
+    if (typeof idt.aujourdhui !== "boolean") ko("identite.aujourdhui", "booléen");
+    // La voix du jeu est une seule : la police de l'étiquette (la liste de polices, repli compris) commence par celle de l'identité.
+    if (estObjet(f.etiquette) && typeof f.etiquette.police === "string" && estTexte(idt.police) && idt.police !== A_CHOISIR && !(f.etiquette.police as string).startsWith(`"${idt.police}"`)) ko("etiquette.police", `doit commencer par la police de l'identité : "${idt.police}"`);
   }
 
   if (f.etatDepart !== "off" && f.etatDepart !== "on") ko("etatDepart", "`off` ou `on`");
@@ -456,6 +488,20 @@ export function validerEnsemble(fiches: readonly FicheJeu[]): string[] {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
+// Lot K5 — l'identité d'un jeu
+
+/** Les champs de l'identité qui valent encore « à choisir » (liste vide : l'identité est complète). */
+export function identiteAChoisir(f: Pick<FicheJeu, "identite">): string[] {
+  return (["police", "motif", "illustration"] as const).filter((k) => f.identite[k] === A_CHOISIR).map((k) => `identite.${k}`);
+}
+/** L'identité est-elle complète ? (aucun champ « à choisir ».) */
+export const identiteComplete = (f: Pick<FicheJeu, "identite">): boolean => identiteAChoisir(f).length === 0;
+/** `preview` et `on` sont refusés à un jeu dont l'identité n'est pas complète ; `off` est toujours permis. Lu par le test des fiches et par le serveur (changement d'état par l'administration). */
+export const etatPermis = (f: Pick<FicheJeu, "identite">, etat: "off" | "preview" | "on"): boolean => etat === "off" || identiteComplete(f);
+/** Le fichier SVG de l'illustration d'un jeu (chemin dans le dépôt), ou `null` (carte dessinée à la main, ou « à choisir »). */
+export const fichierIllustration = (f: Pick<FicheJeu, "identite">): string | null => (f.identite.illustration === A_CHOISIR || f.identite.illustration === ILLUSTRATION_PROPRE ? null : f.identite.illustration);
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
 // Les projections : ce que chaque lecteur reçoit, et rien de plus.
 
 const parOrdre = <T extends { ordre: number }>(l: readonly T[]): T[] => [...l].sort((a, b) => a.ordre - b.ordre);
@@ -480,6 +526,8 @@ export interface ProjectionPortail {
     categorieDepuis?: string;
     /** Absent : `temps`. */
     format?: FormatScore;
+    /** Lot K5 : le jeu a un fichier SVG d'illustration (`<id>/illustration.svg`, posé sur sa carte du profil) ; absent : carte dessinée à la main (Track, Jump). */
+    illustration?: true;
   }[];
 }
 export function projectionPortail(fiches: readonly FicheJeu[]): ProjectionPortail {
@@ -496,6 +544,7 @@ export function projectionPortail(fiches: readonly FicheJeu[]): ProjectionPortai
       ...(f.categorie === "arcade" ? { categorie: "arcade" as const } : {}),
       ...(f.categorieDepuis !== undefined ? { categorieDepuis: f.categorieDepuis } : {}),
       ...(f.classement.format !== "temps" ? { format: f.classement.format } : {}),
+      ...(fichierIllustration(f) ? { illustration: true as const } : {}),
     })),
   };
 }
@@ -524,6 +573,8 @@ export interface ProjectionServeur {
     zoneNouveautes: string;
     /** Lot K4e : un jeu témoin (jamais en production). */
     temoin?: true;
+    /** Lot K5 : l'identité du jeu n'est pas complète (un champ vaut « à choisir ») : l'administration refuse `preview` et `on`. Absent : complète. */
+    identiteIncomplete?: true;
   }[];
 }
 export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeur {
@@ -547,6 +598,7 @@ export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeu
       messageOu: f.message.ou,
       zoneNouveautes: f.zoneNouveautes,
       ...(f.temoin ? { temoin: true as const } : {}),
+      ...(identiteComplete(f) ? {} : { identiteIncomplete: true as const }),
     })),
   };
 }

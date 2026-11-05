@@ -1,0 +1,4 @@
+/* GÉNÉRÉ par `npm run fiches` (lot K4e : config/jeux/<id>.json → ui, identité) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */
+@import "../jeux.structure.generated.css";
+@import "../polices/rubik-mono-one-400.css";
+.jeu-etiquette--cibles{--jeu-fond:#F4A6B8;--jeu-coque:#8E2C4A;--jeu-police:"Rubik Mono One", "Archivo", sans-serif;}

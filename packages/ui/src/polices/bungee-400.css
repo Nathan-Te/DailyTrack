@@ -1,0 +1,7 @@
+/* Bungee 400 (@fontsource/bungee@5.3.0, sous-ensemble latin ; licence SIL OFL 1.1 : polices/bungee-OFL.txt). Lot K5, charte rév. 18 § 4 : la voix de Rush (provisoire). */
+@font-face {
+  font-family: "Bungee";
+  font-display: swap;
+  src: url("../../polices/bungee-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0152-0153;
+}

@@ -22,10 +22,12 @@ for (const [nom, largeur, hauteur, portrait] of ECRANS) {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1&scenario=presque-plein", true, false);
     await page.setViewportSize({ width: largeur, height: hauteur });
     await page.waitForSelector("#jeu-jouer", { state: "attached" });
-    // L'accueil : le bouton JOUER prend la largeur de la carte ; la carte est celle des autres jeux (760 px chez Jump, 940 chez Track), agrandie sur un grand écran ; la page ne défile jamais de côté.
+    // L'accueil (lot K5, charte rév. 18 § 9) : le bouton JOUER prend la largeur de **sa colonne** (les deux colonnes de Tower : l'identité à gauche, « Aujourd'hui » et le classement à droite) ; sous 700 px, celle de la carte
+    // entière ; la carte est celle de Tower (900 px), agrandie sur un grand écran ; la page ne défile jamais de côté.
     const jouer = (await page.locator("#jeu-jouer").boundingBox())!;
-    const minimum = largeur >= 1700 ? 900 : largeur >= 700 ? 700 : largeur - 80;
-    expect(jouer.width, "JOUER prend la largeur de la carte").toBeGreaterThanOrEqual(minimum);
+    const minimum = largeur >= 1700 ? 450 : largeur >= 700 ? 300 : largeur - 80;
+    expect(jouer.width, "JOUER prend la largeur de sa colonne").toBeGreaterThanOrEqual(minimum);
+    expect(jouer.width, "JOUER ne prend pas toute la carte quand il y a deux colonnes").toBeLessThanOrEqual(largeur >= 700 ? largeur * 0.6 : largeur);
     expect(jouer.x).toBeGreaterThanOrEqual(0);
     expect(jouer.x + jouer.width).toBeLessThanOrEqual(largeur);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

@@ -1,6 +1,6 @@
 {
   "outil": "pyftsubset (fonttools 4.68.0)",
-  "caracteres": 214,
+  "caracteres": 216,
   "polices": [
     {
       "fichier": "archivo-black-latin-400-normal.woff2",
@@ -67,6 +67,29 @@
       "avant": 12752,
       "apres": 10524,
       "sha256": "d8f0fc9709de70e2455d87f4c5281ab636fd4c1b3452135a01bc124e8327845a"
+    },
+    {
+      "fichier": "bungee-latin-400-normal.woff2",
+      "avant": 14344,
+      "apres": 11596,
+      "sha256": "5ca5ff78cfa7e1d93b3a2d0ae8c4cd344681efe09fc712d2813d81f48efe7e02"
     }
-  ]
+  ],
+  "profil": {
+    "caracteres": 73,
+    "polices": [
+      {
+        "fichier": "rubik-mono-one-latin-400-normal.woff2",
+        "avant": 12752,
+        "apres": 3592,
+        "sha256": "9bcb61e63b8b6da0f279b64c3ee6ac0e5ec2390912d6008c46c66b40c95e3d93"
+      },
+      {
+        "fichier": "bungee-latin-400-normal.woff2",
+        "avant": 14344,
+        "apres": 4108,
+        "sha256": "278fd62e12dbb3e5270d93c01465a2e14210efb01ea45ab38ccdb1a3c9475dcd"
+      }
+    ]
+  }
 }

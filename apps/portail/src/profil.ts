@@ -8,6 +8,9 @@ import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
+// Lot K5 : la voix des jeux hors de leur page — la découpe « profil » (capitales, chiffres : 3 à 4 Ko) de la police de chaque jeu qui a une carte pilotée par sa fiche, et le motif de son étiquette (feuille du portail, `jeux.generated.css`).
+import "@cdj/ui/src/polices-profil/rubik-mono-one-400.css";
+import "@cdj/ui/src/polices-profil/bungee-400.css";
 import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
@@ -172,11 +175,26 @@ function blocJeu(t: T, j: ProfilJeu): HTMLElement | null {
     }),
   );
   // Lots K1 à K1c : la fiche d'un jeu donne son titre (à défaut, son nom en capitales : Tower n'a pas de `jeu.tower.titre`, comme sur l'accueil, `portail.ts`).
-  const titre = titreDeCarte(ficheDuJeu(carte.code)!, t, t.t(`jeu.${carte.code}.nom` as const));
+  const fiche = ficheDuJeu(carte.code)!;
+  // Lot K5 : un jeu qui a un fichier d'illustration (Tower, Blocks, Rush…) a une carte tirée de sa fiche — sa police, son motif, son illustration (charte rév. 18 § 9) ; Track et Jump gardent leurs cartes faites à la main.
+  if (fiche.illustration) return carteDuProfil(carte.code, titreDeCarte(fiche, t, t.t(`jeu.${carte.code}.nom` as const)), numero, rang, medailles);
+  const titre = titreDeCarte(fiche, t, t.t(`jeu.${carte.code}.nom` as const));
   const o = { titre, numero, texte: rang, suite: medailles, niveau: "h3" as const };
   const e = etiquetteDe(carte.code, o);
   e.setAttribute("data-jeu", carte.code);
   return e;
+}
+
+/** Lot K5 : la carte d'un jeu au profil (planche 2 de `jeux-du-kit-au-niveau.html`) — le nom dans la police du jeu, le motif de son étiquette, ses médailles en cases pleines, son illustration en bas à droite (décorative). */
+function carteDuProfil(code: string, titre: string, numero: string, rang: string, medailles: HTMLElement): HTMLElement {
+  return el(
+    "article",
+    { classe: ["profil-jeu", `jeu-etiquette--${code}`], attrs: { "data-jeu": code, "aria-label": titre } },
+    el("div", { classe: "profil-jeu__tete" }, el("h3", { classe: "profil-jeu__titre", texte: titre }), el("span", { classe: "profil-jeu__numero", texte: numero })),
+    el("p", { classe: "profil-jeu__rang", texte: rang }),
+    medailles,
+    el("img", { classe: "profil-jeu__dessin", attrs: { src: `../${code}/illustration.svg`, alt: "", "aria-hidden": "true", decoding: "async" } }),
+  );
 }
 
 function section(titre: string, id: string, ...enfants: (Node | null)[]): HTMLElement {

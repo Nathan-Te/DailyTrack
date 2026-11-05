@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2127 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2130 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2395,11 +2395,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.accueil.jouer` | Jouer | Play |
 | `kit.accueil.aide` | Comment jouer | How to play |
 | `kit.accueil.reglages` | Réglages | Settings |
+| `kit.accueil.archives` | Archives | Archives |
+| `kit.accueil.bientot` | Bientôt | Soon |
+| `kit.accueil.aujourdhui` | Aujourd'hui | Today |
 | `kit.accueil.record` | Ton record | Your record |
 | `kit.accueil.record.aucun` | Pas encore joué aujourd'hui | Not played yet today |
 | `kit.accueil.record.sous` | {medaille} · {envoi} | {medaille} · {envoi} |
 | `kit.accueil.serie` | Ta série | Your streak |
-| `kit.accueil.serie.jours` | {n} jour(s) | {n} day(s) |
 | `kit.accueil.classement` | Classement du jour | Today's ranking |
 | `kit.accueil.toutLeClassement` | Tout le classement › | Full ranking › |
 | `kit.accueil.prochaine` | Prochaine partie dans | Next game in |
@@ -2414,7 +2416,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.classement.chargement` | Chargement du classement… | Loading the ranking… |
 | `kit.classement.indisponible` | Classement indisponible pour le moment. | Ranking unavailable for now. |
 | `kit.classement.fermer` | Fermer | Close |
-| `kit.classement.participants` | {n} classé(s) | {n} ranked |
 | `kit.pause.aria` | Pause | Pause |
 | `kit.pause.titre` | Pause | Pause |
 | `kit.pause.reprendre` | Reprendre | Resume |
@@ -2547,11 +2548,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.accueil.jouer` | Jouer | Play |
 | `kit.accueil.aide` | Comment jouer | How to play |
 | `kit.accueil.reglages` | Réglages | Settings |
+| `kit.accueil.archives` | Archives | Archives |
+| `kit.accueil.bientot` | Bientôt | Soon |
+| `kit.accueil.aujourdhui` | Aujourd'hui | Today |
 | `kit.accueil.record` | Ton record | Your record |
 | `kit.accueil.record.aucun` | Pas encore joué aujourd'hui | Not played yet today |
 | `kit.accueil.record.sous` | {medaille} · {envoi} | {medaille} · {envoi} |
 | `kit.accueil.serie` | Ta série | Your streak |
-| `kit.accueil.serie.jours` | {n} jour(s) | {n} day(s) |
 | `kit.accueil.classement` | Classement du jour | Today's ranking |
 | `kit.accueil.toutLeClassement` | Tout le classement › | Full ranking › |
 | `kit.accueil.prochaine` | Prochaine partie dans | Next game in |
@@ -2566,7 +2569,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.classement.chargement` | Chargement du classement… | Loading the ranking… |
 | `kit.classement.indisponible` | Classement indisponible pour le moment. | Ranking unavailable for now. |
 | `kit.classement.fermer` | Fermer | Close |
-| `kit.classement.participants` | {n} classé(s) | {n} ranked |
 | `kit.pause.aria` | Pause | Pause |
 | `kit.pause.titre` | Pause | Pause |
 | `kit.pause.reprendre` | Reprendre | Resume |
@@ -2732,11 +2734,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.accueil.jouer` | Jouer | Play |
 | `kit.accueil.aide` | Comment jouer | How to play |
 | `kit.accueil.reglages` | Réglages | Settings |
+| `kit.accueil.archives` | Archives | Archives |
+| `kit.accueil.bientot` | Bientôt | Soon |
+| `kit.accueil.aujourdhui` | Aujourd'hui | Today |
 | `kit.accueil.record` | Ton record | Your record |
 | `kit.accueil.record.aucun` | Pas encore joué aujourd'hui | Not played yet today |
 | `kit.accueil.record.sous` | {medaille} · {envoi} | {medaille} · {envoi} |
 | `kit.accueil.serie` | Ta série | Your streak |
-| `kit.accueil.serie.jours` | {n} jour(s) | {n} day(s) |
 | `kit.accueil.classement` | Classement du jour | Today's ranking |
 | `kit.accueil.toutLeClassement` | Tout le classement › | Full ranking › |
 | `kit.accueil.prochaine` | Prochaine partie dans | Next game in |
@@ -2751,7 +2755,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.classement.chargement` | Chargement du classement… | Loading the ranking… |
 | `kit.classement.indisponible` | Classement indisponible pour le moment. | Ranking unavailable for now. |
 | `kit.classement.fermer` | Fermer | Close |
-| `kit.classement.participants` | {n} classé(s) | {n} ranked |
 | `kit.pause.aria` | Pause | Pause |
 | `kit.pause.titre` | Pause | Pause |
 | `kit.pause.reprendre` | Reprendre | Resume |

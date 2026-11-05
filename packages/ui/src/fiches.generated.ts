@@ -20,7 +20,7 @@ export const ETIQUETTE_BLOCKS_COQUE = "#1F4E79";
 export const ETIQUETTE_BLOCKS_POLICE = "\"Rubik Mono One\", \"Archivo\", sans-serif";
 export const ETIQUETTE_RUSH_FOND = "#D9C4F0";
 export const ETIQUETTE_RUSH_COQUE = "#4B2E83";
-export const ETIQUETTE_RUSH_POLICE = "\"Rubik Mono One\", \"Archivo\", sans-serif";
+export const ETIQUETTE_RUSH_POLICE = "\"Bungee\", \"Archivo\", sans-serif";
 // Lot K4e : y a-t-il un jeu à étiquette générique ? Tant que non, le dessin générique de `composants.ts` est du code mort que l'empaqueteur retire (aucun octet de plus dans les applications).
 export const A_DES_JEUX_GENERIQUES = true;
 export const ETIQUETTES_FICHES = { "track": { fond: ETIQUETTE_TRACK_FOND, coque: ETIQUETTE_TRACK_COQUE, police: ETIQUETTE_TRACK_POLICE, dessin: "propre" }, "jump": { fond: ETIQUETTE_JUMP_FOND, coque: ETIQUETTE_JUMP_COQUE, police: ETIQUETTE_JUMP_POLICE, dessin: "propre" }, "tower": { fond: ETIQUETTE_TOWER_FOND, coque: ETIQUETTE_TOWER_COQUE, police: ETIQUETTE_TOWER_POLICE, dessin: "propre" }, "cibles": { fond: ETIQUETTE_CIBLES_FOND, coque: ETIQUETTE_CIBLES_COQUE, police: ETIQUETTE_CIBLES_POLICE, dessin: "generique" }, "blocks": { fond: ETIQUETTE_BLOCKS_FOND, coque: ETIQUETTE_BLOCKS_COQUE, police: ETIQUETTE_BLOCKS_POLICE, dessin: "generique" }, "rush": { fond: ETIQUETTE_RUSH_FOND, coque: ETIQUETTE_RUSH_COQUE, police: ETIQUETTE_RUSH_POLICE, dessin: "generique" } } as const;

@@ -21,7 +21,7 @@ export function suiteDuJour(corps: unknown, courant: string): Suite | null {
   // Lot F1 : « Mes jeux » — les jeux du jour de ce joueur (`joueur.jeuxDuJour`, leurs dossiers) : le jeu suivant et la journée parfaite ne portent que sur eux. Absent (serveur plus ancien) ou vide : tous les jeux.
   const mes = (corps as { joueur?: { jeuxDuJour?: unknown } } | null)?.joueur?.jeuxDuJour;
   const miens = Array.isArray(mes) && mes.length > 0 ? mes : null;
-  const lus = jeux.filter((j): j is { jeu: string; site?: unknown; nom?: unknown; compte?: unknown; etat?: { statut?: unknown } } => !!j && typeof (j as { jeu?: unknown }).jeu === "string");
+  const lus = jeux.filter((j): j is { jeu: string; site?: unknown; nom?: unknown; compte?: unknown; categorie?: unknown; etat?: { statut?: unknown } } => !!j && typeof (j as { jeu?: unknown }).jeu === "string");
   const fini = (j: { etat?: { statut?: unknown } }) => j.etat?.statut === "fini";
   const moi = lus.find((j) => j.jeu === courant);
   if (!moi || !fini(moi)) return null;
@@ -29,6 +29,8 @@ export function suiteDuJour(corps: unknown, courant: string): Suite | null {
   // Le premier jeu du jour qui reste à jouer (dans l'ordre du serveur).
   const suivant = autres.find((j) => !fini(j) && typeof j.site === "string" && j.site !== "" && typeof j.nom === "string" && j.nom !== "");
   if (suivant) return { kind: "suivant", jeu: suivant.jeu, nom: suivant.nom as string, href: `../${encodeURIComponent(suivant.site as string)}/` };
+  // Lot K5 : un jeu d'arcade ne compte pas dans la journée (le serveur le dit : `categorie: "arcade"`) — il n'annonce jamais « Journée parfaite ! ».
+  if (moi.categorie === "arcade") return null;
   // Lot P : « Journée parfaite ! » ne demande que les jeux qui comptent aujourd'hui (un jeu activé aujourd'hui est jouable, mais ne compte que dès demain).
   return autres.filter((j) => j.compte !== false).every(fini) ? { kind: "parfaite", href: "../" } : null;
 }

@@ -6,7 +6,7 @@
 //   - **les vues TypeScript** des paquets qui n'importent ni `@cdj/core` ni un fichier hors d'eux (`@cdj/profile`, `@cdj/ui`, `@cdj/musique` : tests de pureté et `rootDir`) et celle de `@cdj/core` :
 //     des constantes **écrites en toutes lettres**, identiques à ce que le code contenait, pour qu'**aucun octet** ne soit ajouté à un jeu (les budgets sont serrés) et que les types restent
 //     des unions de littéraux (`ZoneNouveaute`, `OuAnnonce`, `Jeu`).
-import { jsonDeProjection, projectionCI, projectionJeu, projectionPortail, projectionServeur, type FicheJeu } from "./fiche";
+import { A_CHOISIR, fichierIllustration, jsonDeProjection, projectionCI, projectionJeu, projectionPortail, projectionServeur, type FicheJeu, type Motif } from "./fiche";
 
 export const DOSSIER_FICHES = "config/jeux";
 export const DOSSIER_PROJECTIONS = "config/jeux/projections";
@@ -26,10 +26,9 @@ const ENTETE_CSS = (lecteur: string) =>
 const generiques = (fiches: readonly FicheJeu[]) => fiches.filter((f) => f.etiquette.dessin === "generique");
 
 /** `packages/ui/src/jeux.generated.css` : l'étiquette générique (structure, une fois) et, par jeu générique, ses couleurs et la coque de sa cartouche. */
-function cssUi(fiches: readonly FicheJeu[]): string {
-  const g = generiques(fiches);
-  if (g.length === 0) return ENTETE_CSS("ui");
-  const structure = `/* L'étiquette générique : un papier de la couleur du jeu, bordé d'encre, le nom dans la police du jeu. */
+function cssStructure(fiches: readonly FicheJeu[]): string {
+  if (generiques(fiches).length === 0) return ENTETE_CSS("ui");
+  return ENTETE_CSS("ui, structure") + `/* L'étiquette générique : un papier de la couleur du jeu, bordé d'encre, le nom dans la police du jeu. */
 .jeu-etiquette {
   display: flex;
   flex-direction: column;
@@ -62,10 +61,76 @@ function cssUi(fiches: readonly FicheJeu[]): string {
   font-weight: 600;
 }
 `;
+}
+
+/** `packages/ui/src/jeux.generated.css` : la structure de l'étiquette générique (importée) et, par jeu générique, ses couleurs et la coque de sa cartouche (le portail). */
+function cssUi(fiches: readonly FicheJeu[]): string {
+  const g = generiques(fiches);
+  if (g.length === 0) return ENTETE_CSS("ui");
   const parJeu = g
     .map((f) => `.jeu-etiquette--${f.id} {\n  --jeu-fond: ${f.etiquette.fond};\n  --jeu-coque: ${f.etiquette.coque};\n  --jeu-police: ${f.etiquette.police};\n}\n.dj-cartouche--${f.id} {\n  background: ${f.etiquette.coque};\n}\n`)
     .join("");
-  return ENTETE_CSS("ui") + structure + parJeu;
+  return ENTETE_CSS("ui") + `@import "./jeux.structure.generated.css";\n` + parJeu;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// Lot K5 — l'identité d'un jeu (charte rév. 18, § 5) : le motif de son étiquette, en deux tons tirés de sa teinte.
+
+/** L'encre de la charte (`--dj-encre`) : le second ton d'un motif est la teinte du jeu assombrie d'un peu d'encre. Une couleur de la charte écrite ici parce que ce module est pur (aucune lecture de `jetons.ts`) : `fiches.test.ts` la compare au jeton. */
+export const ENCRE_DU_MOTIF = "#2A1E16";
+/** La part d'encre du second ton d'un motif (7 %) : assez pour se voir, assez peu pour que le texte d'encre reste lisible (4,5:1, vérifié par le test des fiches). */
+export const PART_ENCRE_DU_MOTIF = 0.07;
+
+const canal = (hex: string, i: number): number => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
+/** Mélange `part` de `avec` dans `couleur` (deux `#RRGGBB`) ; majuscules, arrondi au plus proche. */
+export function melanger(couleur: string, avec: string, part: number): string {
+  return "#" + [0, 1, 2].map((i) => Math.round(canal(couleur, i) * (1 - part) + canal(avec, i) * part).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+/** Les deux tons d'un motif : la teinte du jeu, et la même un peu plus sombre. */
+export const tonsDuMotif = (fond: string): [string, string] => [fond.toUpperCase(), melanger(fond, ENCRE_DU_MOTIF, PART_ENCRE_DU_MOTIF)];
+
+/** Le fond d'un motif (valeur de `background`) : rayures, lignes, quadrillage et losanges se dessinent en CSS net, avec des arrêts francs (jamais de dégradé) ; `uni` est la teinte seule. */
+export function fondDuMotif(motif: Motif, [t1, t2]: [string, string]): string {
+  const [c1, c2] = [t1.toLowerCase(), t2.toLowerCase()];
+  switch (motif) {
+    case "uni":
+      return c1;
+    case "rayures":
+      return `repeating-linear-gradient(45deg,${c1} 0 10px,${c2} 10px 20px)`;
+    case "lignes":
+      return `repeating-linear-gradient(0deg,${c1} 0 22px,${c2} 22px 23px)`;
+    case "quadrillage":
+      return `repeating-linear-gradient(0deg,${c2} 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,${c2} 0 1px,transparent 1px 24px),${c1}`;
+    case "losanges":
+      return `linear-gradient(45deg,${c2} 25%,transparent 25% 75%,${c2} 75%) 0 0/24px 24px,linear-gradient(45deg,${c2} 25%,transparent 25% 75%,${c2} 75%) 12px 12px/24px 24px,${c1}`;
+  }
+}
+/** Les règles d'un jeu pour sa carte du profil ou son accueil : le motif de son étiquette (`--jeu-motif`, lu par l'accueil du kit et par la carte du profil) et, s'il n'est pas générique, ses couleurs. Écrit au plus court (le CSS d'un jeu pèse sur son premier chargement). */
+const reglesDIdentite = (f: FicheJeu, avecCouleurs: boolean): string => {
+  const couleurs = avecCouleurs ? `--jeu-fond:${f.etiquette.fond};--jeu-coque:${f.etiquette.coque};--jeu-police:${f.etiquette.police};` : "";
+  const m = f.identite.motif !== A_CHOISIR && f.identite.motif !== "uni" ? `--jeu-motif:${fondDuMotif(f.identite.motif, tonsDuMotif(f.etiquette.fond))}` : ""; // `uni` : c'est la teinte, rien à écrire
+  return couleurs + m ? `.jeu-etiquette--${f.id}{${couleurs}${m}}\n` : "";
+};
+
+/** Les jeux dont la carte du profil prend son identité de la fiche : ceux qui ont un fichier d'illustration (Track et Jump gardent leurs cartes faites à la main). */
+const pourLeProfil = (fiches: readonly FicheJeu[]) => fiches.filter((f) => fichierIllustration(f) !== null);
+
+/** Le nom du fichier de feuille d'une police (`Rubik Mono One` → `rubik-mono-one`). */
+export const slugDePolice = (famille: string): string => famille.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/**
+ * `packages/ui/src/identites/<id>.generated.css` : **la peau d'un jeu générique tirée de son identité** — la face de sa police (`@import` de la feuille de la police, si elle est hébergée), ses couleurs et le motif de son étiquette (`--jeu-motif` ;
+ * `uni` n'écrit rien : c'est la teinte), avec la structure de l'étiquette générique (partagée). Un fichier **par jeu**, parce que chaque jeu ne charge que le sien : l'accueil du kit importe `@cdj/ui/identite-du-jeu.css`, que `pagesDuSocle` (`packages/ui/outils/vite.ts`) fait pointer sur
+ * le fichier du jeu construit — les octets de Blocks ne portent ni le motif de Rush ni la police de Cibles (les budgets sont serrés).
+ */
+function identitesDesJeux(fiches: readonly FicheJeu[], existe: (chemin: string) => boolean): Record<string, string> {
+  const s: Record<string, string> = {};
+  for (const f of generiques(fiches)) {
+    const slug = slugDePolice(f.identite.police);
+    const face = f.identite.police !== A_CHOISIR && existe(`packages/ui/src/polices/${slug}-400.css`) ? `@import "../polices/${slug}-400.css";\n` : "";
+    s[`packages/ui/src/identites/${f.id}.generated.css`] = ENTETE_CSS("ui, identité") + `@import "../jeux.structure.generated.css";\n` + face + reglesDIdentite(f, true);
+  }
+  return s;
 }
 
 /** `packages/ui/src/amis.generated.css` : le sélecteur « Tous / Amis » de chaque jeu générique (importé par `amis.css`, à la demande avec lui). */
@@ -81,7 +146,9 @@ function cssAmis(fiches: readonly FicheJeu[]): string {
 /** `apps/portail/src/jeux.generated.css` : les étiquettes de zone (panneau d'administration, nouveautés) et la mise en page de l'étiquette générique sur l'étagère du portail. */
 function cssPortail(fiches: readonly FicheJeu[]): string {
   const g = generiques(fiches);
-  if (g.length === 0) return ENTETE_CSS("portail");
+  // Lot K5 : la carte du profil d'un jeu qui a une illustration prend son motif ici (et ses couleurs, si elles ne viennent pas de l'étiquette générique : Tower).
+  const profil = pourLeProfil(fiches).map((f) => reglesDIdentite(f, f.etiquette.dessin !== "generique")).join("");
+  if (g.length === 0) return ENTETE_CSS("portail") + profil;
   const zones = g
     .map(
       (f) =>
@@ -90,6 +157,7 @@ function cssPortail(fiches: readonly FicheJeu[]): string {
     .join("");
   return (
     ENTETE_CSS("portail") +
+    profil +
     zones +
     `/* L'étiquette générique sur l'étagère : le numéro et le thème sous le nom, l'accroche sur deux lignes réservées ; en cartouche compacte, le nom et le numéro côte à côte. */
 .portail-etagere .jeu-etiquette__tete {
@@ -199,7 +267,9 @@ function sortiesDe(fiches: readonly FicheJeu[], existe: (chemin: string) => bool
     ENTETE("serveur") + `export const FICHES_SERVEUR = ${JSON.stringify(projectionServeur(fiches).jeux, null, 2)} as const;\n`;
 
   s["packages/ui/src/jeux.generated.css"] = cssUi(fiches);
+  s["packages/ui/src/jeux.structure.generated.css"] = cssStructure(fiches); // lot K5 : la structure, partagée par le portail et par chaque jeu du kit (qui ne charge que ses propres couleurs)
   s["packages/ui/src/amis.generated.css"] = cssAmis(fiches);
+  Object.assign(s, identitesDesJeux(fiches, existe));
   s["apps/portail/src/jeux.generated.css"] = cssPortail(fiches);
   s["apps/api/src/registre.generated.ts"] = registreServeur(fiches);
   s["scripts/catalogues-jeux.generated.ts"] = cataloguesDesJeuxNeufs(fiches, existe);

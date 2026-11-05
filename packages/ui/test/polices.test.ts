@@ -41,6 +41,7 @@ describe("polices hébergées", () => {
       "Barlow Condensed 800-italic",
       "Lilita One 400-normal",
       "Rubik Mono One 400-normal",
+      "Bungee 400-normal", // lot K5 : la voix de Rush (provisoire)
     ]);
     for (const s of SOURCES) {
       const data = readFileSync(join(ORIGINAUX, s.fichier));
@@ -150,5 +151,37 @@ describe("polices hébergées", () => {
       expect(css, f).not.toMatch(/https?:/);
     }
     expect(declares.sort()).toEqual(SOURCES.map((s) => s.fichier).sort());
+  });
+
+  // Lot K5 (charte rév. 18, § 4) : hors du jeu — le profil commun, les cartouches compactes — la police d'un jeu est chargée en **sous-ensemble réduit** (capitales, chiffres, quelques signes : de l'ordre de
+  // 4 Ko) ; `polices/profil/<nom>.woff2`, décrite par `decoupe.json` (`profil`), servie par une feuille de `src/polices-profil/`.
+  it("la découpe « profil » : capitales et chiffres seulement, de quelques Ko, chaque fichier décrit par `decoupe.json` et déclaré par une feuille", () => {
+    const decoupe: { profil: { caracteres: number; polices: { fichier: string; avant: number; apres: number; sha256: string }[] } } = JSON.parse(readFileSync(join(DIR, "decoupe.json"), "utf8"));
+    const fichiers = readdirSync(join(DIR, "profil")).sort();
+    expect(decoupe.profil.polices.map((p) => p.fichier).sort()).toEqual(fichiers);
+    for (const p of decoupe.profil.polices) {
+      const data = readFileSync(join(DIR, "profil", p.fichier));
+      expect(data.toString("latin1", 0, 4), p.fichier).toBe("wOF2");
+      expect(data.length, `${p.fichier} : relance \`node scripts/polices/decouper.mjs\``).toBe(p.apres);
+      expect(createHash("sha256").update(data).digest("hex"), p.fichier).toBe(p.sha256);
+      expect(p.apres, `${p.fichier} : quelques Ko`).toBeLessThan(5_000);
+      const couverts = caracteresCouverts(data);
+      for (const c of "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ") expect(couverts.has(c.codePointAt(0)!), `${p.fichier} : « ${c} »`).toBe(true);
+      expect(couverts.has("a".codePointAt(0)!), `${p.fichier} : pas de minuscules`).toBe(false);
+      expect(SOURCES.find((s) => s.fichier === p.fichier), p.fichier).toBeDefined();
+    }
+    const feuilles = join(__dirname, "../src/polices-profil");
+    const declares: string[] = [];
+    for (const f of readdirSync(feuilles)) {
+      const css = readFileSync(join(feuilles, f), "utf8");
+      expect(css.match(/@font-face\s*{[^}]*}/g)?.length, f).toBe(1);
+      expect(css, f).toContain("font-display: swap;");
+      expect(css, f).not.toMatch(/https?:/);
+      const url = /url\("\.\.\/\.\.\/polices\/profil\/([^"]+\.woff2)"\) format\("woff2"\)/.exec(css);
+      expect(url, f).not.toBeNull();
+      declares.push(url![1]!);
+      expect(css, f).toContain(`font-family: "${SOURCES.find((s) => s.fichier === url![1])!.famille}";`);
+    }
+    expect(declares.sort()).toEqual(fichiers);
   });
 });

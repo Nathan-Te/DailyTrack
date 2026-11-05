@@ -1,5 +1,6 @@
 import { lireLangue } from "@cdj/profile";
 import { CATALOGUE_COMMUN_FR, traducteur, type Catalogue, type Langue, type Parametres, type Traducteur } from "@cdj/ui";
+import { CATALOGUE_KIT_PLURIELS_FR } from "./catalogue";
 import type { CataloguesJeu } from "./types";
 
 // La langue d'un jeu neuf : celle de la plateforme (`cdj:langue`, `lireLangue` de `@cdj/profile`), le catalogue du jeu (le kit y est réuni) puis le commun de `@cdj/ui`. L'anglais est chargé à la demande (un
@@ -20,8 +21,9 @@ export function creerI18n(catalogues: CataloguesJeu, stockage: Storage | null): 
   let langue: Langue = lireLangue(stockage, typeof navigator === "undefined" ? [] : navigator.languages).langue;
   let anglais: Catalogue | null = null;
   let communAnglais: Catalogue | null = null;
+  let pluriels: Catalogue = {};
   let params: (() => Parametres) | null = null;
-  const creer = (l: Langue): Traducteur => traducteur(l, { fr: catalogues.fr, en: anglais ?? {} } as never, { fr: CATALOGUE_COMMUN_FR, en: communAnglais ?? {} } as never);
+  const creer = (l: Langue): Traducteur => traducteur(l, { fr: { ...catalogues.fr, ...CATALOGUE_KIT_PLURIELS_FR }, en: { ...(anglais ?? {}), ...pluriels } } as never, { fr: CATALOGUE_COMMUN_FR, en: communAnglais ?? {} } as never);
   let courant = creer(langue);
   return {
     get langue() {
@@ -36,7 +38,8 @@ export function creerI18n(catalogues: CataloguesJeu, stockage: Storage | null): 
     async charger() {
       if (langue === "fr" || anglais) return;
       try {
-        const m = await catalogues.chargerEn();
+        const [m, p] = await Promise.all([catalogues.chargerEn(), import("./catalogue.en")]);
+        pluriels = p.CATALOGUE_KIT_PLURIELS_EN;
         anglais = m.jeu;
         communAnglais = m.commun;
         courant = creer(langue);

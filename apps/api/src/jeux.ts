@@ -1,6 +1,7 @@
 import { formatDay } from "@cdj/core";
 import { compteLe as compteDansPeriodes, etatDe, liveFromDe, lirePeriodes, periodesApres, type EtatJeu, type PeriodeJeu } from "@cdj/core/jeux";
 import { WithHeaders } from "./cache";
+import { FICHES_SERVEUR } from "./fiches.generated";
 import { HttpError } from "./errors";
 import type { Platform, RequestInfo, Statement } from "./games";
 import { ecrireJournal } from "./journaux";
@@ -219,6 +220,8 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
     const j = jeuDe(site);
     if (corps.etat !== "off" && corps.etat !== "preview" && corps.etat !== "on") throw new HttpError(400, "invalid_action", "État attendu : off, preview ou on");
     const apres: EtatJeu = corps.etat;
+    // Lot K5 : un jeu dont l'identité (police, motif, illustration) vaut encore « à choisir » ne passe ni en `preview` ni en `on` (`etatPermis`, `@cdj/core/fiche`) ; `off` est toujours permis.
+    if (apres !== "off" && (FICHES_SERVEUR.find((f) => f.id === site) as { identiteIncomplete?: true } | undefined)?.identiteIncomplete) throw new HttpError(400, "invalid_action", "L'identité du jeu n'est pas complète (police, motif ou illustration « à choisir ») : elle est à remplir dans sa fiche avant l'aperçu.");
     const avant = await ligne(site);
     const etatAvant: EtatJeu = avant?.etat ?? "off";
     if (apres === etatAvant) return await lister(); // rien à changer : pas de ligne de journal pour rien
