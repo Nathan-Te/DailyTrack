@@ -1,4 +1,4 @@
-import { VARIANTE } from "@cdj/rush-sim";
+import { VARIANTE } from "@cdj/rush-sim/variante";
 import type { FicheClient } from "@cdj/kit/jeu/types";
 
 // La fiche de « Rush » telle que le client la lit : le sous-ensemble de `config/jeux/rush.json` dont `brancherJeu` a besoin. **`packages/kit/test/fiche.test.ts` vérifie qu'elle dit la même chose que la fiche** (les fiches ne se lisent

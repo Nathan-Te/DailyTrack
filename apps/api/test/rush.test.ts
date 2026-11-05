@@ -54,7 +54,7 @@ describe("Rush sur le serveur", () => {
     const lignes = board.body.top as ({ name: string; medal: string | null } & Record<string, number>)[];
     expect(lignes.map((l) => l.name)).toEqual(["Joueur2", "Joueur1", "Joueur3"]);
     // La première colonne de la fiche range le classement, dans son sens.
-    for (let i = 1; i < lignes.length; i++) expect(PREMIERE.sens === "desc" ? lignes[i - 1]![PREMIERE.nom]! >= lignes[i]![PREMIERE.nom]! : lignes[i - 1]![PREMIERE.nom]! <= lignes[i]![PREMIERE.nom]!).toBe(true);
+    for (let i = 1; i < lignes.length; i++) expect(lignes[i - 1]![PREMIERE.nom]! <= lignes[i]![PREMIERE.nom]!).toBe(true); // le temps, en croissant
     expect(lignes[0]!.medal).not.toBeNull();
     expect(board.body.me).toMatchObject({ name: "Joueur3", rank: 3 });
   });

@@ -498,10 +498,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   observateur.observe(ui.zone3d);
   redimensionner();
 
-  const facteurHauteur = Math.sin((55 * Math.PI) / 180);
+  const ELEVATION = (60 * Math.PI) / 180; // la caméra regarde le sol depuis 60° : haute, comme la maquette
+  const facteurHauteur = Math.sin(ELEVATION);
   const placerCamera = (dt: number, cx: number, cz: number, golemX: number, golemZ: number): void => {
     // Le cadre suit le chevalier en regardant un peu vers le golem ; l'arène reste dans l'image.
-    const but = { x: cx + (golemX - cx) * 0.42, z: cz + (golemZ - cz) * 0.42 };
+    const but = { x: cx + (golemX - cx) * 0.45, z: cz + (golemZ - cz) * 0.45 - 0.9 };
     const reste = R - 2.5;
     const n = Math.hypot(but.x, but.z);
     if (n > reste) {
@@ -514,7 +515,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     const aspect = camera.aspect;
     const vue = Math.max(etat.sensations.vue, 13 / aspect);
     const dist = (vue * facteurHauteur) / 2 / Math.tan((camera.fov * Math.PI) / 360);
-    const el = (55 * Math.PI) / 180;
+    const el = ELEVATION;
     let sx = 0;
     let sz = 0;
     if (trauma > 0) {
@@ -532,6 +533,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     return actuel + d;
   };
 
+  let msDessin = 0;
   const dessiner = (): void => {
     const now = performance.now();
     let dt = Math.min(0.05, (now - dernierDessin) / 1000);
@@ -665,7 +667,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     renderer.render(scene, camera);
     if (essai.fps) {
       fpsMoy = lerp(fpsMoy, 1 / Math.max(dt, 0.001), 0.05);
-      ui.fps(`${fpsMoy.toFixed(0)} i/s · ${renderer.info.render.calls} appels · ${partie.monstres.length} monstres`);
+      msDessin = lerp(msDessin, performance.now() - now, 0.05);
+      ui.fps(`${fpsMoy.toFixed(0)} i/s · ${msDessin.toFixed(1)} ms de dessin · ${renderer.info.render.calls} appels · ${renderer.info.render.triangles} triangles · ${partie.monstres.length} monstres`);
     }
   };
 

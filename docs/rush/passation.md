@@ -3,13 +3,13 @@
 > **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/rush/seed.md`). Générée par `npm run nouveau-jeu` à partir des `CLAUDE.md` du dépôt : **ne pas la retoucher à la main** ; pour la mettre à jour après un changement des règles de la plateforme : `npm run nouveau-jeu -- --id rush --passation`.
 
 ## 1. Où en est ce jeu
-- **Rush** (`rush`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). Il vient d'être créé par le générateur : l'état est `off` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis `/admin/` › Jeux : `off` → `preview` → `on`**.
-- **Le jeu de départ est un squelette** : « toucher des cibles » (classé au temps croissant : toucher les 20 cibles le plus vite possible), copié du jeu témoin « Cibles ». Il est jouable, classé et rejoué par le serveur, avec tous les écrans de la plateforme ; **sa simulation, son rendu et ses textes sont à remplacer** par ceux du vrai jeu. Son vocabulaire (« rush » pour des cibles dans le code) n'est pas à garder.
+- **Rush** (`rush`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). L'état de départ est `off` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis `/admin/` › Jeux : `off` → `preview` → `on`**.
+- **Le jeu a dépassé son squelette** : sa simulation, son rendu et ses textes sont ceux de Rush. L'état exact (ce qui est fait, ce qui reste, les décisions à relire) est dans `docs/rush/consignes.md`, `apps/rush/CLAUDE.md` et les README de `docs/rush/lots/` ; **cette passation ne le résume pas**.
 - **Classement** : `temps` ↑ (fiche `config/jeux/rush.json`). Variante de départ : `temps` (`packages/rush-sim/src/variante.ts` : tout ce qui dépend du sens du classement y est rangé).
 - **Catégorie** : `arcade` (fiche, lot A3) — un jeu d'arcade a son niveau du jour et son classement, mais ne compte ni dans la journée (journée parfaite, série, ligne de partage), ni dans le classement cumulé ; il a sa section « Arcade » sur l'accueil et ses onglets après le séparateur « Arcade » de /classement/.
-- **Vision** : `docs/rush/seed.md` — **à écrire par Nathan** (un gabarit vide avec ses titres). Tant qu'il est vide, le jeu de départ n'a pas de direction.
-- **Teinte de l'étiquette** : #D9C4F0 / #4B2E83 — **à choisir par Nathan** (charte § 3 ; la fiche, `etiquette`) ; le générateur a pris la première teinte qu'aucun jeu n'utilise.
-- **Premier jour** : celui du modèle, `2026-11-02` — à régler au lancement du jeu (`premierJour` de la fiche, une ligne).
+- **Vision** : `docs/rush/seed.md` (**ne pas modifier**, c'est Nathan qui le fait).
+- **Teinte de l'étiquette** : #D9C4F0 / #4B2E83 — **à choisir par Nathan** (charte § 3 ; la fiche, `etiquette`).
+- **Premier jour** : `2026-11-02` — à régler au lancement du jeu (`premierJour` de la fiche, une ligne).
 
 ## 2. La plateforme en bref — et où lire les règles (elles ne sont pas recopiées ici)
 - **Du Jour** : un portail (`playdujour.com`) et des jeux quotidiens (un niveau par jour, identique pour tous, minuit à Paris), un profil commun, un serveur unique (`apps/api`) qui **rejoue chaque partie** pour classer. Un monorepo ; français et anglais.

@@ -155,8 +155,14 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
     const droite = document.createElement("div");
     droite.className = "rush-actions";
     droite.append(
-      bouton("rush-bouton--esquive", CHEMIN_ESQUIVE, t("commandes.action.esquive"), (v) => (controles.boutonEsquive = v)),
-      bouton("rush-bouton--coup", CHEMIN_EPEE, t("commandes.action.coup"), (v) => (controles.boutonCoup = v)),
+      bouton("rush-bouton--esquive", CHEMIN_ESQUIVE, t("commandes.action.esquive"), (v) => {
+        controles.boutonEsquive = v;
+        if (v) controles.action("esquive");
+      }),
+      bouton("rush-bouton--coup", CHEMIN_EPEE, t("commandes.action.coup"), (v) => {
+        controles.boutonCoup = v;
+        if (v) controles.action("coup");
+      }),
     );
     tactileRacine.append(zone, droite);
     racine.append(tactileRacine);

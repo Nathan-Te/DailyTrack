@@ -1,39 +1,42 @@
 # Rush — seed (vision du jeu)
 
-> **À écrire par Nathan.** Le générateur n'invente pas la vision. Ce gabarit donne les titres ; le seed de Tower (`docs/tower/seed.md`) est un exemple rempli. Tant qu'il est vide, le jeu de départ (un squelette) n'a pas de direction.
+> **Version provisoire du lot BR0** (prototype), écrite à partir de la demande de Nathan. **Nathan l'écrira en entier après le prototype** (les titres sont ceux du gabarit ; ce qui n'est pas encore décidé est dit). Titre et identifiant (`rush`) provisoires.
 
 ## 1. Le jeu en une phrase
 
-*(à écrire)*
+Un jeu de **boss rush** pour Du Jour : chaque jour, le même niveau pour tous ; on le termine en battant son boss **le plus vite possible**. Inspirations : *TinyLegends Crazy Knight*, *Minigore*.
 
 ## 2. Les piliers
 
-*(trois à cinq principes que chaque lot doit respecter)*
+- **Le choix du joueur** : monter en puissance (tuer des monstres, gagner de l'XP et des niveaux, choisir une amélioration parmi trois) **ou** foncer au boss pour le chrono.
+- **Un jeu ambitieux** : les sensations visuelles et la qualité comptent avant tout (arrêt sur image, recul, secousse, éclats, sons).
+- **La direction artistique, en 3D sans aucun asset** (tout en code), dans la famille du site : formes simples, ombrage en aplats (cel), contour noir, petits yeux. Maquette de référence : `maquettes/boss-rush-3d.html` (trois scènes animées, en code seulement) ; Nathan juge la DA **en mouvement**, sur le prototype.
+- Catégorie **Arcade** (lot A3) : le jeu a son classement mais ne compte ni dans la journée ni dans le cumul.
 
 ## 3. Une partie
 
-*(ce que fait le joueur, du premier geste à l'arrivée ; la durée ; ce qui rend le jour différent d'hier)*
+*(à écrire par Nathan)* Prototype BR0 : une arène, un chevalier (déplacement libre, coup en arc en enchaînement de trois, esquive avec un court instant d'invincibilité, trois cœurs), deux monstres (une gelée qui fonce, une chauve-souris qui tourne autour puis plonge) et un boss, le golem, aux trois attaques **annoncées par un cercle rouge au sol** (coup de poing en zone, onde, chute de pierres) et à la phase 2 sous 50 % de vie. Le chrono s'arrête à la chute du golem.
 
 ## 4. Le classement et les médailles
 
-*(ce qui se classe — un score ou un temps —, le départage, le Diamant : qui le fixe, comment ; les seuils or, argent, bronze)*
+Le **temps** de la chute du boss, le plus court gagne. Les médailles (méthode : robot, temps théorique ou autre) sont **à décider** : voir les questions du README du lot BR0.
 
 ## 5. Le contenu du jour
 
-*(ce qui est tiré de la graine du jour, ce qui ne l'est jamais ; les thèmes)*
+*(à écrire)* Prévu : un niveau avec un chemin et des détours, une réserve de boss dont un est tiré chaque jour.
 
 ## 6. Les commandes
 
-*(clavier, manette, tactile)*
+Au doigt : un joystick virtuel à gauche, « Coup » et « Esquive » en boutons à droite (charte, révision 17). Au clavier et à la manette : les mêmes, réglables (règles M1 et M2).
 
 ## 7. L'identité visuelle et sonore
 
-*(l'étiquette, le HUD, l'ambiance ; une direction par maquette)*
+Voir le point 2 et `docs/rush/consignes.md` (la DA du prototype). Sons : Web Audio procédural.
 
 ## 8. Ce que le jeu n'est pas
 
-*(ce qu'on refuse)*
+*(à écrire)*
 
 ## 9. Plan en lots
 
-*(l'ordre proposé)*
+Prototype (lot BR0) puis la proposition de découpage du README `docs/rush/lots/lot-BR0-prototype.md`.

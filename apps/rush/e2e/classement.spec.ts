@@ -23,7 +23,7 @@ async function joueurDeLApi(nom: string, variante: number): Promise<void> {
 }
 
 async function choisirPseudo(page: Page, pseudo: string): Promise<void> {
-  await expect(page.locator("#jeu-pseudo-form")).toBeVisible();
+  await expect(page.locator("#jeu-pseudo-form")).toBeVisible({ timeout: 20_000 }); // l'arrivée attend la chute du golem (2,8 s) : de la marge pour une machine chargée
   await page.locator("#jeu-pseudo").fill(pseudo);
   await page.locator("#jeu-pseudo-ok").click();
 }

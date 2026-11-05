@@ -1,4 +1,8 @@
-import { RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, numeroRush, themeDuJour, type Contenu } from "@cdj/rush-sim";
+import { numeroRush } from "@cdj/rush-sim/calendrier";
+import { RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, TICKS_PAR_SECONDE } from "@cdj/rush-sim/constantes";
+import { themeDuJour } from "@cdj/rush-sim/themes";
+import { VARIANTE } from "@cdj/rush-sim/variante";
+import type { Contenu } from "@cdj/rush-sim";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { ACTIONS_RUSH } from "./actions";

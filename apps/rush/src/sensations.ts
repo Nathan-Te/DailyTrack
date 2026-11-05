@@ -14,7 +14,7 @@ export interface Sensations {
   eclair: number;
 }
 
-export const SENSATIONS_DEFAUT: Sensations = { arretImage: 70, secousse: 100, eclats: 100, vue: 17, eclair: 6 };
+export const SENSATIONS_DEFAUT: Sensations = { arretImage: 70, secousse: 100, eclats: 100, vue: 13, eclair: 6 };
 export const BORNES_SENSATIONS: Readonly<Record<keyof Sensations, readonly [number, number]>> = {
   arretImage: [0, 200],
   secousse: [0, 300],

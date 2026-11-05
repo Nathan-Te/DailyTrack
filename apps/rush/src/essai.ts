@@ -1,4 +1,5 @@
-import { SCENARIOS, reglagesDe, sontLesReglagesParDefaut, type Reglages, type Scenario } from "@cdj/rush-sim";
+import { SCENARIOS, type Scenario } from "@cdj/rush-sim/constantes";
+import { reglagesDe, sontLesReglagesParDefaut, type Reglages } from "@cdj/rush-sim/reglagesSim";
 
 // Les options d'ESSAI de Rush, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9) :
 //   · `?scenario=arene|boss` : l'arène sans fin (des vagues de gelées et de chauves-souris) ou le golem tout de suite ; `&phase=2` : le golem à 50 % de vie ; `&monstres=30` : l'arène garde 30 monstres en vie ;

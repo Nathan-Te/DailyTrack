@@ -25,7 +25,7 @@ export class Controles {
   private readonly tenues = new Set<string>();
   /** Un vecteur de joystick tactile, dans le repère de l'écran (y vers le bas), de norme ≤ 1. */
   stick = { x: 0, y: 0 };
-  /** Les boutons tactiles. */
+  /** Les boutons tactiles (un appui est aussi gardé quelques ticks : `appuyer`). */
   boutonCoup = false;
   boutonEsquive = false;
   /** Un appui bref (une action du kit, une porte d'essai) : tenu encore quelques ticks. */
@@ -35,7 +35,6 @@ export class Controles {
   forcee: { e: number; reste: number } | null = null;
   private derniereDirection = -1;
   private tickDirection = -1000;
-  private padAvant = { coup: false, esquive: false };
   private readonly ecoutes: [string, EventListener][] = [];
 
   constructor(private readonly commandes: Commandes | null) {
@@ -58,14 +57,17 @@ export class Controles {
     if (!this.commandes) return;
     const id = this.commandes.actionDeTouche(e.code);
     if (!id || !["haut", "bas", "gauche", "droite", "coup", "esquive"].includes(id)) return;
-    if (appui) this.tenues.add(id);
-    else this.tenues.delete(id);
+    if (appui) {
+      // Un appui très bref (moins d'un arrêt sur image) ne doit pas se perdre : il est gardé quelques ticks.
+      if (!this.tenues.has(id)) this.action(id);
+      this.tenues.add(id);
+    } else this.tenues.delete(id);
   }
 
-  /** Une action du kit (touche pressée, bouton de manette pressé) : un appui bref de plus. */
+  /** Un appui (touche, bouton de manette ou de l'écran, action du kit) : tenu encore quelques ticks, pour qu'un appui plus bref qu'un arrêt sur image ne se perde pas. */
   action(id: string): void {
-    if (id === "coup") this.impulsionCoup = 3;
-    else if (id === "esquive") this.impulsionEsquive = 3;
+    if (id === "coup") this.impulsionCoup = 4;
+    else if (id === "esquive") this.impulsionEsquive = 4;
   }
 
   /** L'entrée du tick `tick` : la direction ne change pas plus d'une fois tous les `PAS_MIN_DIRECTION` ticks (la rediffusion reste courte). */
