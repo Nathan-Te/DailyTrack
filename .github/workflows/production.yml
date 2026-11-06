@@ -314,10 +314,23 @@ jobs:
         env:
           REFERENCE: ${{ needs.verifier.outputs.reference }}
           VEILLE: ${{ needs.verifier.outputs.veille }}
+          BASCULE: ${{ needs.verifier.outputs.bascule_le }}
+          INSTANT: ${{ needs.verifier.outputs.instant }}
         run: |
+          # Lot 33 (incident du 06/11/2026) : un jeu à fichiers par jour fige TOUT jour non figé jusqu'à DEMAIN avec le code en production (outil d'aujourd'hui), compare chaque fichier à ce que ce code sert sans lui,
+          # refuse le calendrier des bascules du générateur fixé à aujourd'hui ou avant, et s'arrête s'il reste un jour déjà servi sans fichier figé.
           node scripts/mise-en-production.mjs figer-jeux --prod "$GITHUB_WORKSPACE/prod" --cible "$GITHUB_WORKSPACE/cible" --proteges "$RUNNER_TEMP/proteges.json" \
-            --veille "$VEILLE" --reference "$REFERENCE" --jusqua origin/main --sortie "$RUNNER_TEMP/jours" --temp "$RUNNER_TEMP" --resume "$GITHUB_STEP_SUMMARY" \
-            || { echo "::error title=Mise en production arrêtée::un jour d'un jeu ne s'accorde pas avec ce que la production sert, ou n'a pas pu être figé avec le code en production : la liste est dans ce job et dans le résumé du run"; exit 1; }
+            --veille "$VEILLE" --bascule "$BASCULE" --instant "$INSTANT" --reference "$REFERENCE" --jusqua origin/main --sortie "$RUNNER_TEMP/jours" --temp "$RUNNER_TEMP" --resume "$GITHUB_STEP_SUMMARY" \
+            || { echo "::error title=Mise en production arrêtée::un jour d'un jeu ne s'accorde pas avec ce que la production sert, n'a pas pu être figé avec le code en production, reste servi sans fichier figé, ou le calendrier des bascules du générateur est refusé : la liste est dans ce job et dans le résumé du run"; exit 1; }
+      # Lot 33 : en production, les jours qu'on vient de figer (jusqu'à aujourd'hui) sont comparés, en lecture seule, au niveau que le serveur de production sert EN CE MOMENT. (Essai et répétition : la recette n'est pas
+      # la production ; le même contrôle y est fait par les empreintes de l'image d'avant, dans l'étape précédente.)
+      - name: Les jours figés sont-ils les niveaux que la production sert en ce moment ? (lecture seule)
+        if: ${{ inputs.mode == 'production' }}
+        env:
+          INSTANT: ${{ needs.verifier.outputs.instant }}
+        run: |
+          node outils/scripts/mise-en-production.mjs servi-verifier --sortie "$RUNNER_TEMP/jours" --origine "$(node outils/scripts/domaine.mjs adresse production)" --instant "$INSTANT" --resume "$GITHUB_STEP_SUMMARY" \
+            || { echo "::error title=Mise en production arrêtée::un jour figé n'est pas le niveau que la production sert en ce moment (voir le résumé) : rien n'est parti"; exit 1; }
       - name: Les empreintes des jours (code en production, puis nouvelle construction) — rien avant la bascule ne doit changer
         id: empreintes
         env:

@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "lib": ["ES2022"], "types": ["node"], "outDir": "dist", "rootDir": "." },
-  "include": ["src", "test", "tools"],
+  "compilerOptions": { "lib": ["ES2022"], "types": ["node"], "outDir": "dist", "rootDir": ".", "resolveJsonModule": true },
+  "include": ["src", "src/bascules.json", "test", "tools"],
   "references": [{ "path": "../core" }]
 }

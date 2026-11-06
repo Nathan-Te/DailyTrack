@@ -1,0 +1,26 @@
+diff --git a/packages/jump-sim/src/bascules.json b/packages/jump-sim/src/bascules.json
+index e72bb96d..20ad7953 100644
+--- a/packages/jump-sim/src/bascules.json
++++ b/packages/jump-sim/src/bascules.json
+@@ -1,6 +1,7 @@
+ {
+  "format": 1,
+  "bascules": [
+-  { "depuis": "2026-10-16", "generateur": 26 }
++  { "depuis": "2026-10-16", "generateur": 26 },
++  { "depuis": "2026-11-07", "generateur": 27 }
+  ]
+ }
+diff --git a/packages/jump-sim/src/constants.ts b/packages/jump-sim/src/constants.ts
+index 6b8e9556..32f30f68 100644
+--- a/packages/jump-sim/src/constants.ts
++++ b/packages/jump-sim/src/constants.ts
+@@ -148,7 +148,7 @@ export const JUMP_MICRO_MAX = 4;
+  * 26 depuis le lot 32 (niveaux en sim v14 : un point de passage ne se valide que sur son palier ; règle « aucun raccourci par point de passage » : le puits d'un palier est fermé à
+  * `PALIER_HEADROOM_ROWS` rangées, une zone ne s'atteint que par la portion qui la précède ou par sa voie lente ; un niveau g25 se rejoue tel quel en v13).
+  */
+-export const JUMP_GENERATOR_VERSION = 26;
++export const JUMP_GENERATOR_VERSION = 27;
+ 
+ /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
+ export const UNITS_PER_TILE = 4096;
