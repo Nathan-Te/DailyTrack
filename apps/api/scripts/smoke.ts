@@ -338,9 +338,16 @@ const tcall = async (method: string, path: string, body?: unknown, avecJoueur = 
   });
   return { status: res.status, body: (await lireJson(res, method, base + path)) as any, headers: res.headers };
 };
+// Répétition du 06/11/2026 (« Mettre en production », recette-verification) : par le site (Firebase Hosting), l'hôte d'aperçu de PR ci-dessus est RÉÉCRIT par Hosting : un jeu `off` sur la recette (Cibles, jamais
+// ouvert là) répond alors `404 game_unavailable`, ce qui est son bon état (« un nouveau jeu naît `off` »), pas une panne. Directement sur le service (`*.run.app`, serveur local), l'en-tête passe : un 404 y reste
+// un échec. `fermeParLeSite` : cette adresse est celle d'un site ET le jeu est fermé ; le jeu est alors noté « fermé » et ses routes ne se jouent pas.
+const parLeSite = !/(^|\.)run\.app$|^(localhost|127\.0\.0\.1|\[::1\])$/.test(new URL(base).hostname);
+const fermeParLeSite = (r: { status: number; body: any }): boolean => environnement !== "production" && parLeSite && r.status === 404 && r.body?.error === "game_unavailable";
 const tinfo = await tcall("GET", "/api/tower/info");
 if (environnement === "production") {
   check("Tower : fermé (`off`) sur un serveur de production : 404 game_unavailable", tinfo.status === 404 && tinfo.body.error === "game_unavailable", `${tinfo.status} ${String(tinfo.body.error)}`);
+} else if (fermeParLeSite(tinfo)) {
+  check("Tower : fermé (`off`) sur la recette, que l'aperçu de PR ne rouvre pas par le site : 404 game_unavailable, rien à jouer", true, "fermé");
 } else {
   check("Tower : /api/tower/info (versions, jour de Paris, environnement)", tinfo.status === 200 && tinfo.body.today === date && Number.isInteger(tinfo.body.simVersion) && Number.isInteger(tinfo.body.generatorVersion), `simulation v${String(tinfo.body.simVersion)}, générateur v${String(tinfo.body.generatorVersion)}, ${tinfo.body.frozenDays?.length ?? 0} jour(s) préparé(s)`);
   const tday = await tcall("GET", `/api/tower/day/${date}`);
@@ -382,6 +389,10 @@ for (const f of FICHES_SERVEUR.filter((x) => !["track", "jump", "tower"].include
   if (environnement === "production") {
     const attendu = "temoin" in f && f.temoin === true ? ninfo.status === 404 : ninfo.status === 404 && ninfo.body.error === "game_unavailable";
     check(`${nom} : ${"temoin" in f && f.temoin === true ? "jeu témoin, absent du serveur de production (404)" : "fermé (`off`) sur un serveur de production : 404 game_unavailable"}`, attendu, `${ninfo.status} ${String(ninfo.body.error)}`);
+    continue;
+  }
+  if (fermeParLeSite(ninfo)) {
+    check(`${nom} : fermé (\`off\`) sur la recette, que l'aperçu de PR ne rouvre pas par le site : 404 game_unavailable, rien à jouer`, true, "fermé");
     continue;
   }
   check(`${nom} : /api/${f.id}/info (versions, jour de Paris)`, ninfo.status === 200 && Number.isInteger(ninfo.body.simVersion) && Number.isInteger(ninfo.body.generatorVersion) && ninfo.body.today === date, `${ninfo.status}`);
