@@ -21,10 +21,12 @@ const reds = [
 // Les scénarios ne se rejouent pas par le serveur : leur résultat, au bit près, est gardé pour les trois navigateurs.
 // Lot BR2 : le scénario du golem avec toutes les améliorations (le tourbillon, l'onde d'épée, l'esquive tranchante, les paliers de force) exerce leurs effets au bit près.
 const TOUT = ["lame-lourde", "lame-lourde", "allonge", "cadence", "tourbillon", "onde-epee", "bottes-legeres", "esquive-longue", "esquive-vive", "esquive-tranchante", "coeur-en-plus", "vol-de-vie", "brise-pierre", "aimant"];
-const scenarios = ([["boss", [] as string[]], ["arene", [] as string[]], ["boss", TOUT], ["cartes", ["soin"]]] as const).map(([nom, ameliorations], i) => {
-  const c = contenuScenario(nom, { monstres: nom === "arene" ? 30 : 0, ameliorations, nv: 5 });
+// Lot BR3 : un scénario par boss (la reine, le grand-duc, le bélier, le chêne ; le golem est « boss »), en phase 2 pour deux d'entre eux.
+const BOSS_REFS = [["reine", 1, false], ["grand-duc", 2, true], ["belier", 3, false], ["chene", 4, true]] as const;
+const scenarios = ([["boss", [] as string[], 0, false], ["arene", [] as string[], 0, false], ["boss", TOUT, 0, false], ["cartes", ["soin"], 0, false], ...BOSS_REFS.map(([, b, p2]) => ["boss", [] as string[], b, p2] as const)] as const).map(([nom, ameliorations, boss, phase2], i) => {
+  const c = contenuScenario(nom, { monstres: nom === "arene" ? 30 : 0, ameliorations, nv: 5, boss, phase2 });
   const r = jouerLePilote(c, undefined, 3000);
-  return { nom: i === 2 ? "boss-ameliore" : nom, scenario: nom, monstres: c.monstres, ameliorations: [...ameliorations], nv: nom === "cartes" ? 5 : 0, code: encoderRediffusion({ sim: RUSH_SIM_VERSION, g: c.g, contenu: { scenario: nom }, changements: r.changements, choix: r.choix }), ticks: 3000, ...(({ empreinte, resultat }) => ({ empreinte, resultat }))(jouerJusqua(c, r.changements, 3000, undefined, r.choix)) };
+  return { nom: i === 2 ? "boss-ameliore" : i >= 4 ? `boss-${BOSS_REFS[i - 4]![0]}` : nom, scenario: nom, monstres: c.monstres, ameliorations: [...ameliorations], nv: nom === "cartes" ? 5 : 0, boss, phase2, code: encoderRediffusion({ sim: RUSH_SIM_VERSION, g: c.g, contenu: { scenario: nom }, changements: r.changements, choix: r.choix }), ticks: 3000, ...(({ empreinte, resultat }) => ({ empreinte, resultat }))(jouerJusqua(c, r.changements, 3000, undefined, r.choix)) };
 });
 
 const sortie = {

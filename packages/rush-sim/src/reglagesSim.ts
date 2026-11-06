@@ -71,6 +71,8 @@ export interface Reglages {
   briseDegats: number;
   /** Aimant : + % de rayon par palier. */
   aimantGain: number;
+  /** Lot BR3 — l'AFFINITÉ du boss : chaque palier d'une carte que le boss favorise (`bosses.ts`, hors Brise-pierre qui a la sienne) MULTIPLIE les dégâts contre lui par (100 + ce %) / 100 : les paliers se composent. */
+  affinite: number;
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -97,7 +99,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   xpCaisse: 16,
   xpBase: 40,
   xpPas: 20,
-  xpCamp: 300,
+  xpCamp: 450,
   aimant: 300,
   lourdeDegats: 70,
   lourdeLenteur: 5,
@@ -113,6 +115,7 @@ export const REGLAGES_DEFAUT: Reglages = {
   volVie: 8,
   briseDegats: 90,
   aimantGain: 33,
+  affinite: 30,
 };
 
 /** Les bornes de chaque réglage (le curseur de `?tune` et la validation d'un JSON collé). */
@@ -156,6 +159,7 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   volVie: [1, 30],
   briseDegats: [0, 100],
   aimantGain: [0, 100],
+  affinite: [0, 100],
 };
 
 export const CLES_REGLAGES = Object.keys(REGLAGES_DEFAUT) as (keyof Reglages)[];

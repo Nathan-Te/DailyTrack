@@ -4,6 +4,7 @@ import { encoderEnveloppe } from "@cdj/core/enveloppe";
 import {
   AMELIORATIONS,
   ErreurRediffusion,
+  idiv,
   MAX_CHOIX,
   NB_AMELIORATIONS,
   NB_CARTES,
@@ -356,11 +357,15 @@ describe("chacune des améliorations", () => {
     expect(p.c.coeurs).toBe(2);
   });
   it("Brise-pierre : plus de dégâts contre le golem seulement", () => {
-    const a = pal([]);
-    const b = pal(["brise-pierre", "brise-pierre"]);
+    const golem = { ...jour(), boss: 0 };
+    const a = pal([], golem);
+    const b = pal(["brise-pierre", "brise-pierre"], golem);
     expect(b.degatsContreGolem(100)).toBe(100 + 2 * REGLAGES_DEFAUT.briseDegats);
     expect(a.degatsContreGolem(100)).toBe(100);
     expect(b.degatsCoup(0)).toBe(a.degatsCoup(0));
+    // lot BR3 : les autres boss l'encaissent mal (35 %), sauf le bélier de carrière (la pierre, 100 %)
+    expect(pal(["brise-pierre", "brise-pierre"], { ...jour(), boss: 1 }).degatsContreGolem(100)).toBe(100 + idiv(2 * REGLAGES_DEFAUT.briseDegats * 35, 100));
+    expect(pal(["brise-pierre", "brise-pierre"], { ...jour(), boss: 3 }).degatsContreGolem(100)).toBe(100 + 2 * REGLAGES_DEFAUT.briseDegats);
   });
   it("Aimant : le rayon des gemmes grandit (×2 au maximum)", () => {
     for (const [ids, ramasse] of [[[], false], [["aimant", "aimant", "aimant"], true]] as const) {
