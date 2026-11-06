@@ -656,6 +656,8 @@
 }
 .salle-pied {
   margin-top: auto;
+  /* Lot 53 : rien sous la barre d'accueil de l'iPhone (le pied est le dernier bloc de la page). */
+  padding-bottom: max(var(--dj-espace-8), env(safe-area-inset-bottom, 0px));
 }
 @media (max-width: 759px) {
   .salle-pied {

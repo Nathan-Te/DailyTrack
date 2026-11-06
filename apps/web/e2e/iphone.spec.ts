@@ -273,9 +273,9 @@ for (const format of FORMES) {
     expect(await dansLesMarges(page, FORMATS[format].marges, { defile: true })).toEqual([]);
     await page.evaluate(() => scrollTo(0, 0));
     await capture(page, `application-portail-${format}`);
-    // La preuve que le contrôle n'est pas vide : sans la marge du haut (portrait) la barre du portail y serait.
+    // La preuve que le contrôle n'est pas vide : sans la marge du haut (portrait) le logo de la barre du portail y serait (lot U1 : la barre pleine largeur porte la marge dans son remplissage).
     await page.evaluate(() => scrollTo(0, 0));
-    const barre = (await page.locator("#portail .salle-barre").first().boundingBox())!;
+    const barre = (await page.locator("#portail .salle-barre .dj-logo").first().boundingBox())!;
     expect(barre.y).toBeGreaterThanOrEqual(FORMATS[format].marges.top - 0.5);
     expect(barre.x).toBeGreaterThanOrEqual(FORMATS[format].marges.left - 0.5);
     await context.close();

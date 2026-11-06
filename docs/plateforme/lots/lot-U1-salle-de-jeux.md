@@ -28,6 +28,6 @@
 - Specs adaptés : un clic de langue sur l'accueil se fait sur ≥ 760 px (`choisirLangue`) ; aucune nouvelle spec (la cloche est couverte par `diffusion.spec.ts` et `retours.spec.ts`).
 
 ## Vérifié / non vérifié
-- Vérifié : `tsc` (portail, API), tests unitaires du portail, du socle et du noyau, tests de l'API (portail, amis, groupes, plans, erreurs, démonstration ; SQLite et libSQL), `npm run consignes`, `npm run traductions`, e2e Chromium `portail`, `portail-jour`, `portail-journee`, `diffusion`, `retours`, `groupes`, `domaine`.
+- Vérifié : `tsc` (portail, API), tests unitaires du portail, du socle et du noyau, tests de l'API (portail, amis, groupes, plans, erreurs, démonstration ; SQLite et libSQL), `npm run consignes`, `npm run traductions`, e2e Chromium `portail`, `portail-jour`, `portail-journee`, `diffusion`, `retours`, `groupes`, `domaine`, `iphone` (marges de sécurité).
 - **Captures** (`lot-U1-captures/`, à côté de la maquette) : produites sur le serveur de démonstration **avec la réponse du serveur complétée par interception** (arcade, amis, groupe, semaine : la base locale n'a que Track et Jump). Sur l'aperçu de la PR, `/?demo=joueur` montre les vraies données.
-- Non vérifié : Firefox et WebKit ; `iphone.spec.ts` ; l'aperçu de la PR et la CI complète (la CI dira).
+- Non vérifié : Firefox et WebKit ; l’aperçu de la PR et la CI complète (la CI dira).
