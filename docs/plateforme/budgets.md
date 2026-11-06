@@ -13,7 +13,7 @@ Posé le 04/11/2026 (lot B1) sur la construction des e2e, polices découpées co
 
 | Clé | Application | Ce qui est mesuré | Famille | Plafond | Mesure à la pose (o) | Marge à la pose (o) |
 |---|---|---|---|---:|---:|---:|
-| `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | premier | 38 Ko | 35 193 | 2 807 |
+| `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) ; lot U1 : la salle de jeux (barre, cloche, fronton, deux colonnes, arcade, colonne de droite) — **plafond proposé, à valider par Nathan** | premier | 47 Ko | 44 527 | 2 473 |
 | `portail.polices` | Portail | polices de l'accueil | police | 120 Ko | 108 340 | 11 660 |
 | `track.jsCss` | Track | JS + CSS du premier chargement | premier | 312 Ko | 296 957 | 15 043 |
 | `track.js` | Track | JS du premier chargement | premier | 300 Ko | 284 811 | 15 189 |
@@ -55,6 +55,8 @@ Posé le 04/11/2026 (lot B1) sur la construction des e2e, polices découpées co
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | police | 48 Ko | 42 752 | 5 248 |
 
 **L'image de partage (`partage.image`, lot B1b) : un seul plafond, un seul navigateur.** Le plafond de la ligne (48 Ko) **est lu ici** par `scripts/images-partage.mjs` (`POIDS_MAX`, jamais recopié ; `apps/portail/test/budgets.test.ts` vérifie l'égalité) et la construction du site échoue au-dessus. **Les images sont dessinées par Chromium et lui seul**, quel que soit le job qui assemble le site (pas de repli sur un autre navigateur) : la même page pèse 42 752 o dessinée par Chromium (PNG RGB) et 75 742 o par Firefox (PNG RGBA, compression plus faible) ; les jobs Firefox et WebKit de la CI installent donc Chromium en plus du leur. Le texte de l'image (« DU JOUR », « TRACK », « JUMP ») est couvert par la découpe des polices (`packages/ui/test/polices.test.ts`). Aucun plafond n'est relevé.
+
+**Lot U1 (06/11/2026) — `portail.premier` : 38 Ko → 47 Ko, à valider par Nathan.** L'accueil est devenu une salle de jeux : la mesure passe de 35 193 à 44 527 o (+9 334 o : le code de la barre, de la cloche, du fronton, des quatre panneaux de la colonne de droite ≈ +3,5 Ko ; la feuille de la salle ≈ +3 Ko ; le module de la manette qui sert la navigation ≈ +1 Ko ; la feuille des photos des amis et le sous-ensemble de Bungee ≈ +0,6 Ko). Le plafond proposé suit la règle de la famille « premier » (mesure + 5 %, arrondi au Ko supérieur : 46 753 o → 47 Ko) ; **les illustrations des jeux sont des fichiers à part** (lot K5) et n'y entrent pas. Aucun autre plafond ne bouge (jeux : la mesure de chaque ligne est inchangée).
 
 ## Relèvements décidés par Nathan
 

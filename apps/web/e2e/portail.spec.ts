@@ -177,6 +177,14 @@ test("aucune cible tactile sous 44 px sur le portail, en portrait et en paysage"
       expect(c.l, `${nom} ${c.quoi}`).toBeGreaterThanOrEqual(44);
       expect(c.h, `${nom} ${c.quoi}`).toBeGreaterThanOrEqual(44);
     }
+    // Lot U1 : la barre (logo, navigation, langue, cloche, avatar) ne se chevauche pas à 844 px ; sur téléphone la navigation du haut est remplacée par la barre d'onglets du bas.
+    if (nom === "paysage") {
+      const boites = await page.locator(".salle-barre .dj-logo, .salle-nav a, .salle-barre__outils > *").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => [Math.round(r.left), Math.round(r.right)]));
+      for (let i = 1; i < boites.length; i++) expect(boites[i]![0], `${nom} élément ${i} de la barre`).toBeGreaterThanOrEqual(boites[i - 1]![1] - 1);
+    } else {
+      await expect(page.locator(".salle-nav")).toBeHidden();
+      await expect(page.locator(".salle-onglets")).toBeVisible();
+    }
     // Aucun défilement horizontal ; lot U1 : à 844 px la colonne de droite prend 360 px, les deux cartouches se superposent (de même taille).
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), nom).toBe(true);
     const [a, b] = await page.locator("#jeux .dj-cartouche").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));

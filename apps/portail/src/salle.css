@@ -78,6 +78,29 @@
   }
 }
 
+/* Entre 760 et 960 px la barre est étroite (logo, quatre onglets, langue, cloche, avatar) : onglets et espaces se resserrent pour que rien ne se chevauche. */
+@media (min-width: 760px) and (max-width: 959px) {
+  .salle-barre {
+    gap: var(--dj-espace-4);
+    padding-inline: max(var(--dj-espace-7), env(safe-area-inset-left, 0px)) max(var(--dj-espace-7), env(safe-area-inset-right, 0px));
+  }
+  .salle-barre .dj-logo--grand {
+    font-size: var(--dj-taille-16);
+  }
+  .salle-nav {
+    min-width: 0;
+    gap: 0;
+  }
+  .salle-nav a {
+    padding: 0 var(--dj-espace-3);
+    font-size: var(--dj-taille-13);
+    letter-spacing: 0;
+  }
+  .salle-barre__outils {
+    gap: var(--dj-espace-3);
+  }
+}
+
 /* La cloche et sa petite feuille. */
 .salle-cloche {
   position: relative;

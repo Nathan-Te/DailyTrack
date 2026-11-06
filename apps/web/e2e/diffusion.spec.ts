@@ -148,8 +148,8 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await apresTransitions(portail);
   await auditAxe(portail, "nouveautes");
   await portail.goBack();
-  await expect(portail.locator("#nouveautes")).toBeVisible();
-  await expect(portail.locator("#nouveautes-point")).toHaveCount(0); // lue sur cet appareil
+  await expect(portail.locator("#cloche")).toBeVisible();
+  await expect(portail.locator("#cloche-point")).toHaveCount(0); // lue sur cet appareil (lot U1 : le point de la cloche)
 
   // --- Message en direct : écrire, mettre à jour ------------------------------------------------------------------------------------------------------
   await admin.locator('[data-menu="message"]').click();
