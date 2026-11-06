@@ -288,7 +288,8 @@ export class Partie {
   readonly niveau: Niveau | null;
   /** Lot BR1b : les obstacles du niveau (ceux qui ont cédé sont retirés) et les cases qu'ils occupent. */
   obstacles: ObstacleVivant[] = [];
-  private bloquees = new Set<number>();
+  /** Un octet par case : 1 tant qu'un obstacle la tient (un tableau, pas un ensemble : `marchable` est appelé des millions de fois dans un rejeu). */
+  private bloquees: Uint8Array;
   readonly ax: number;
   readonly ay: number;
   barriere = -1;
@@ -304,6 +305,7 @@ export class Partie {
     this.ax = this.niveau ? this.niveau.arene.x : 0;
     this.ay = this.niveau ? this.niveau.arene.y : 0;
     this.porte = new Set(this.niveau ? this.niveau.porte : []);
+    this.bloquees = new Uint8Array(this.niveau ? this.niveau.l * this.niveau.h : 0);
     this.vit = idiv(cm(reglages.vitesse), 60);
     this.rt = reglages.rythme;
     this.durees = { geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
@@ -345,7 +347,7 @@ export class Partie {
     }
     n.obstacles.forEach((o, id) => {
       this.obstacles.push({ id, genre: o.genre, x: o.x, y: o.y, r: o.r, hp: o.coups, hpMax: o.coups, flash: 0, coup: 0, cases: o.cases, butin: o.butin });
-      for (const k of o.cases) this.bloquees.add(k);
+      for (const k of o.cases) this.bloquees[k] = 1;
     });
   }
 
@@ -696,7 +698,7 @@ export class Partie {
       o.flash = 7;
       this.ev("obstacle", o.x, o.y, s, o.genre);
       if (o.hp <= 0) {
-        for (const k of o.cases) this.bloquees.delete(k);
+        for (const k of o.cases) this.bloquees[k] = 0;
         this.ev("brise", o.x, o.y, o.genre, o.id);
       }
     }
@@ -1160,7 +1162,7 @@ export class Partie {
     const idx = caseDe(n, x, y);
     if (idx < 0) return false;
     const c = n.cases[idx]!;
-    return (c === SOL || c === PONT) && !(this.barriere >= 0 && this.porte.has(idx)) && !this.bloquees.has(idx);
+    return (c === SOL || c === PONT) && !(this.barriere >= 0 && this.porte.has(idx)) && this.bloquees[idx] !== 1;
   }
 
   /** Un disque de rayon `r` tient en (x, y) : les quatre coins de son carré sont sur des cases marchables (une case fait 2 m, plus que tout corps). */

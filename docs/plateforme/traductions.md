@@ -2704,7 +2704,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `carte.titre` | Les {n} prochains jours | The next {n} days |
-| `carte.legende` | {date} · {theme} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · {o} obstacles · sans rencontre {sr} s au plus · foncer {t} · tout nettoyer {tn}{fin} | {date} · {theme} — {m} m · {d} detours ({b} loops) · {tue} monsters · {o} obstacles · {sr} s at most without an encounter · rush {t} · clear all {tn}{fin} |
+| `carte.legende` | {date} · {theme} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · obstacles : {o} · sans rencontre {sr} s au plus · foncer {t} · tout nettoyer {tn}{fin} | {date} · {theme} — {m} m · {d} detours ({b} loops) · {tue} monsters · obstacles: {o} · {sr} s at most without an encounter · rush {t} · clear all {tn}{fin} |
 | `carte.perdu` |  · perdu |  · lost |
 
 ### Commandes (`commandes.*`, `apps/rush/src/catalogue.*.ts`)
