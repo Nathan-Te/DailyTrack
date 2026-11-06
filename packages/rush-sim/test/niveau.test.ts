@@ -7,11 +7,19 @@ import {
   CHAUVE,
   GELEE,
   INACCESSIBLE,
+  OBSTACLE_RONCES,
   LAISSE,
   MUR,
   PONT,
   PREMIER_JOUR_RUSH,
   RAYON_ARENE,
+  RUSH_GENERATOR_VERSION,
+  RUSH_SIM_VERSION,
+  Z_CHEMIN,
+  Z_PONT,
+  Z_CLAIRIERE,
+  rencontresDuChemin,
+  tempsSansRencontre,
   RAYON_CHEVALIER,
   REGLAGES_DEFAUT,
   RUGIT,
@@ -56,22 +64,24 @@ describe("le générateur du niveau (lot BR1)", () => {
   it("365 graines donnent 365 niveaux valides (chemin du départ à l'arène, longueur, détours, camps, monstres épars, aucune case isolée, rien près du départ)", () => {
     for (const n of niveaux) expect(problemesDuNiveau(n)).toEqual([]);
   });
-  it("le chemin principal fait 120 à 160 m ; 2 à 4 détours, chacun à 20-40 m du chemin, menant à un camp de 4 à 8 monstres ; 3 à 5 monstres épars", () => {
+  it("le chemin principal fait 70 à 100 m ; 2 à 4 détours, chacun à 17-85 m du chemin, menant à un camp de 8 à 11 monstres ; 0 à 3 monstres épars ; 2 à 4 groupes", () => {
     for (const n of niveaux) {
-      expect(n.longueurCm).toBeGreaterThanOrEqual(BORNES_NIVEAU.longueurMin);
-      expect(n.longueurCm).toBeLessThanOrEqual(BORNES_NIVEAU.longueurMax);
+      expect(n.longueurCm).toBeGreaterThanOrEqual(7000);
+      expect(n.longueurCm).toBeLessThanOrEqual(10000);
+      expect(BORNES_NIVEAU.longueurMin).toBe(7000);
+      expect(BORNES_NIVEAU.longueurMax).toBe(10000);
       expect(n.detours.length).toBeGreaterThanOrEqual(2);
       expect(n.detours.length).toBeLessThanOrEqual(4);
       for (const d of n.detours) {
-        expect(d.distanceCm).toBeGreaterThanOrEqual(2000);
-        expect(d.distanceCm).toBeLessThanOrEqual(4000);
+        expect(d.distanceCm).toBeGreaterThanOrEqual(BORNES_NIVEAU.detourMin);
+        expect(d.distanceCm).toBeLessThanOrEqual(BORNES_NIVEAU.detourMax);
         const k = n.monstres.filter((m) => m.camp === d.camp).length;
-        expect(k).toBeGreaterThanOrEqual(4);
-        expect(k).toBeLessThanOrEqual(8);
+        expect(k).toBeGreaterThanOrEqual(BORNES_NIVEAU.campMin);
+        expect(k).toBeLessThanOrEqual(BORNES_NIVEAU.campMax);
       }
-      const epars = n.monstres.filter((m) => m.camp < 0).length;
-      expect(epars).toBeGreaterThanOrEqual(3);
-      expect(epars).toBeLessThanOrEqual(5);
+      const epars = n.monstres.filter((m) => m.camp < 0 && m.groupe < 0).length;
+      expect(epars).toBeLessThanOrEqual(3);
+      expect(n.monstres.length).toBeLessThanOrEqual(BORNES_NIVEAU.monstresMax);
     }
   });
   it("aucune case accessible n'est isolée : tout le sol touche le champ de distance à l'arène ; aucun monstre à moins de 15 m du départ ni sur un mur", () => {
@@ -123,7 +133,9 @@ describe("le générateur du niveau (lot BR1)", () => {
     const c = dailyRush(J0);
     expect(c.niveau).not.toBeNull();
     expect(c.theme).toBe(themeDuJour(J0));
-    expect(c.g).toBe(2);
+    expect(c.g).toBe(RUSH_GENERATOR_VERSION);
+    expect(RUSH_GENERATOR_VERSION).toBe(3);
+    expect(RUSH_SIM_VERSION).toBe(5);
   });
 });
 
@@ -314,19 +326,264 @@ describe("le pilote dans le niveau (lot BR1)", () => {
     }
     expect(victoires).toBeGreaterThanOrEqual(58);
     expect(Math.min(...temps)).toBeGreaterThan(40);
-    expect(Math.max(...temps)).toBeLessThan(100);
+    expect(Math.max(...temps)).toBeLessThan(80);
+    // lot BR1b : « foncer » prend ~45 à 60 s au total, golem compris
+    const tri = [...temps].sort((x, y) => x - y);
+    expect(tri[Math.floor(tri.length / 2)]!).toBeGreaterThan(45);
+    expect(tri[Math.floor(tri.length / 2)]!).toBeLessThan(62);
   });
   it("tout nettoyer prend nettement plus de temps que foncer (et tue plus)", () => {
     const c = dailyRush(J0 + 3);
     const f = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "foncer");
     const n = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "nettoyer");
     expect(n.resultat.tues).toBeGreaterThan(f.resultat.tues + 5);
-    if (n.resultat.victoire) expect(n.ticks).toBeGreaterThan(f.ticks + 30 * 60);
+    if (n.resultat.victoire) expect(n.ticks).toBeGreaterThan(f.ticks + 40 * 60);
   });
   it("la rediffusion du pire pilote tient dans les limites", () => {
     const c = dailyRush(J0 + 7);
     const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "nettoyer");
-    const texte = encoderRediffusion({ sim: 4, g: 2, contenu: { jour: c.jour }, changements: r.changements });
+    const texte = encoderRediffusion({ sim: RUSH_SIM_VERSION, g: RUSH_GENERATOR_VERSION, contenu: { jour: c.jour }, changements: r.changements });
     expect(texte.length).toBeLessThan(40000);
+  });
+});
+
+// --- Lot BR1b : un niveau dense, des détours en boucle, des obstacles cassables ----------------------------------------------------------------------------------------------------------------------
+describe("un niveau compact et dense (lot BR1b)", () => {
+  const niveaux = Array.from({ length: 365 }, (_, i) => genererNiveau(graine(daysFromCivil(2026, 11, 2) + i)));
+
+  it("la règle de densité : jamais plus de ~4 s de course sans rencontre sur le chemin principal (le générateur la vérifie, la mesure est donnée par jour)", () => {
+    for (const n of niveaux) {
+      expect(n.sansRencontreCm).toBeLessThanOrEqual(BORNES_NIVEAU.sansRencontreMax);
+      expect(tempsSansRencontre(n)).toBeLessThanOrEqual(4.01);
+      expect(n.sansRencontreCm).toBeGreaterThan(0);
+      // la valeur du niveau est celle qu'on recalcule sur sa grille
+      expect(rencontresDuChemin(n).sansRencontreCm).toBe(n.sansRencontreCm);
+      expect(n.rencontres.length).toBeGreaterThanOrEqual(3); // deux groupes et un obstacle au moins
+    }
+    // un niveau qui dépasse la règle est refusé par `problemesDuNiveau`
+    const trop = { ...niveaux[0]!, sansRencontreCm: BORNES_NIVEAU.sansRencontreMax + 1 };
+    expect(problemesDuNiveau(trop).some((m) => m.includes("sans rencontre"))).toBe(true);
+  });
+  it("une clairière ou une rencontre tous les 15 à 20 m en moyenne", () => {
+    for (const n of niveaux) {
+      const etapes = n.clairieres.filter((c) => c.genre === "etape").length;
+      const pas = n.longueurCm / 100 / (etapes + n.rencontres.length + 1);
+      expect(pas).toBeGreaterThan(8);
+      expect(pas).toBeLessThan(22);
+    }
+    const moyenne = niveaux.reduce((a, n) => a + n.longueurCm / 100 / (n.clairieres.filter((c) => c.genre === "etape").length + n.rencontres.length + 1), 0) / niveaux.length;
+    expect(moyenne).toBeGreaterThan(11);
+    expect(moyenne).toBeLessThan(20);
+  });
+  it("des groupes de 2 à 4 monstres, l'alerte de 10 à 12 m, en travers du chemin (pas dans une clairière), loin du départ", () => {
+    for (const n of niveaux) {
+      const ids = new Set(n.monstres.filter((m) => m.groupe >= 0).map((m) => m.groupe));
+      expect(ids.size).toBeGreaterThanOrEqual(2);
+      expect(ids.size).toBeLessThanOrEqual(4);
+      for (const g of ids) {
+        const k = n.monstres.filter((m) => m.groupe === g);
+        expect(k.length).toBeGreaterThanOrEqual(2);
+        expect(k.length).toBeLessThanOrEqual(4);
+        for (const m of k) {
+          expect(m.alerte).toBeGreaterThanOrEqual(cm(1000));
+          expect(m.alerte).toBeLessThanOrEqual(cm(1200));
+          expect(m.alerte).toBeGreaterThan(ALERTE_GELEE);
+          expect(m.camp).toBe(-1);
+          const zone = n.zones[caseDe(n, m.x, m.y)];
+          expect(zone === Z_CHEMIN || zone === Z_PONT || zone === Z_CLAIRIERE).toBe(true);
+          expect(distance(m.x, m.y, k[0]!.x, k[0]!.y)).toBeLessThan(cm(600)); // un groupe se tient groupé (4 monstres en travers du chemin : ~5 m)
+          expect(distance(m.x, m.y, n.depart.x, n.depart.y)).toBeGreaterThanOrEqual(cm(1600));
+        }
+      }
+    }
+    // la plupart des membres sont sur un lien (là où le chemin est étroit)
+    let sur = 0;
+    let tous = 0;
+    for (const n of niveaux) for (const m of n.monstres) if (m.groupe >= 0) { tous++; const z = n.zones[caseDe(n, m.x, m.y)]; if (z === Z_CHEMIN || z === Z_PONT) sur++; }
+    expect(sur / tous).toBeGreaterThan(0.7);
+  });
+  it("au moins la moitié des détours rejoignent le chemin principal plus loin (une boucle), la plupart quand la géométrie le permet", () => {
+    let boucles = 0;
+    let tous = 0;
+    for (const n of niveaux) {
+      const b = n.detours.filter((d) => d.hub2 >= 0).length;
+      expect(b * 2).toBeGreaterThanOrEqual(n.detours.length);
+      boucles += b;
+      tous += n.detours.length;
+      for (const d of n.detours) {
+        const camp = n.clairieres[d.camp]!;
+        expect(camp.genre).toBe("camp");
+        const liens = n.liens.filter((l) => l.a === d.camp || l.b === d.camp);
+        expect(liens.length).toBe(d.hub2 >= 0 ? 2 : 1);
+        if (d.hub2 >= 0) {
+          expect(d.hub2).toBeGreaterThan(d.hub);
+          // une boucle ne passe pas par l'arène : elle revient à une étape
+          expect(n.clairieres[d.hub2]!.genre).not.toBe("arene");
+          expect(liens.map((l) => (l.a === d.camp ? l.b : l.a)).sort()).toEqual([d.hub, d.hub2].sort());
+        }
+      }
+      // le chemin principal reste le plus court : il ne passe pas par un camp
+      const sol = new Set<number>();
+      let idx = caseDe(n, n.depart.x, n.depart.y);
+      while (n.dist[idx]! > 0) {
+        const s = descendre(n, n.dist, idx);
+        sol.add(n.zones[s]!);
+        idx = s;
+      }
+      for (const d of n.detours) {
+        const camp = n.clairieres[d.camp]!;
+        const [px, py] = [camp.x, camp.y];
+        let k = caseDe(n, n.depart.x, n.depart.y);
+        let passe = false;
+        while (n.dist[k]! > 0) {
+          const c = descendre(n, n.dist, k);
+          const i = c % n.l;
+          const cx = n.ox + i * CASE + CASE / 2;
+          const cy = n.oy + ((c - i) / n.l) * CASE + CASE / 2;
+          if (distance(cx, cy, px, py) < camp.r) passe = true;
+          k = c;
+        }
+        expect(passe).toBe(false);
+      }
+    }
+    expect(boucles / tous).toBeGreaterThan(0.7);
+  });
+  it("des obstacles cassables (ronces : 1 coup, caisses : 2) sur des cases du chemin, qui ne donnent rien (le butin est prévu, vide) ; un obstacle qui laisse un passage l'allonge", () => {
+    let contournables = 0;
+    let nObstacles = 0;
+    for (const n of niveaux) {
+      expect(n.obstacles.length).toBeGreaterThanOrEqual(1);
+      expect(n.obstacles.length).toBeLessThanOrEqual(3);
+      for (const o of n.obstacles) {
+        nObstacles++;
+        expect(o.coups).toBe(o.genre === OBSTACLE_RONCES ? 1 : 2);
+        expect(o.butin).toBe(0);
+        expect(o.cases.length).toBeGreaterThanOrEqual(2);
+        for (const k of o.cases) {
+          expect(n.zones[k]).toBe(Z_CHEMIN);
+          expect(n.cases[k]).toBe(SOL);
+        }
+        // sans lui, le chemin principal existe ; avec lui, le chemin est allongé de `surcoutCm` (ou barré)
+        const bloque = new Uint8Array(n.cases);
+        for (const k of o.cases) bloque[k] = MUR;
+        const arene: number[] = [];
+        n.zones.forEach((z, k) => z === 4 && arene.push(k));
+        const v = champDeDistance({ l: n.l, h: n.h, cases: bloque }, arene)[caseDe(n, n.depart.x, n.depart.y)]!;
+        if (o.contournable) {
+          contournables++;
+          expect(v).not.toBe(INACCESSIBLE);
+          expect((v - n.dist[caseDe(n, n.depart.x, n.depart.y)]!) * 40).toBe(o.surcoutCm);
+          expect(o.surcoutCm).toBeGreaterThanOrEqual(120);
+        } else expect(v).toBe(INACCESSIBLE);
+      }
+    }
+    // des deux sortes (il faut le casser, ou le contourner par un passage plus étroit et plus long)
+    expect(contournables).toBeGreaterThan(nObstacles * 0.3);
+    expect(contournables).toBeLessThan(nObstacles * 0.9);
+  });
+  it("génère un niveau en peu de tentatives (le coût est mesuré en tentatives, pas en millisecondes : la CI est lente et variable)", () => {
+    const essais = niveaux.map((n) => n.essais);
+    expect(Math.max(...essais)).toBeLessThan(1500);
+    expect(essais.reduce((a, b) => a + b, 0) / essais.length).toBeLessThan(120);
+  });
+});
+
+describe("les obstacles cassables dans la partie (lot BR1b)", () => {
+  /** Une partie du jour, le chevalier posé sur une case libre voisine du premier obstacle, tourné vers lui. */
+  const devantUnObstacle = (j = J0): { p: Partie; dir: number; o: Partie["obstacles"][number] } => {
+    const p = new Partie(dailyRush(j), REGLAGES_DEFAUT);
+    const n = p.niveau!;
+    const o = p.obstacles[0]!;
+    const pris = new Set(o.cases);
+    for (const k of o.cases) {
+      const i = k % n.l;
+      const jj = (k - i) / n.l;
+      for (const [di, dj] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+        const q = (jj + dj) * n.l + i + di;
+        if (pris.has(q) || n.cases[q] !== SOL || n.zones[q] !== Z_CHEMIN) continue;
+        p.c.x = n.ox + (i + di) * CASE + CASE / 2;
+        p.c.y = n.oy + (jj + dj) * CASE + CASE / 2;
+        return { p, dir: croix(-di, -dj), o };
+      }
+    }
+    throw new Error("pas de case libre voisine");
+  };
+  it("il barre le passage : tant qu'il tient, le chevalier ne le traverse pas ; un monstre au sol non plus", () => {
+    const { p, dir, o } = devantUnObstacle();
+    const n = p.niveau!;
+    for (let t = 0; t < 120; t++) {
+      p.c.coeurs = 3;
+      p.avancer(entree(dir));
+      expect(o.cases.includes(caseDe(n, p.c.x, p.c.y))).toBe(false);
+    }
+    expect(p.obstacles.length).toBe(n.obstacles.length);
+  });
+  it("il cède en 1 ou 2 coups (un coup tenu enchaîne), l'événement « brise » part, les cases se libèrent et le chevalier passe", () => {
+    for (let k = 0; k < 12; k++) {
+      const { p, dir, o } = devantUnObstacle(J0 + k);
+      const pj = new Partie(p.contenu, REGLAGES_DEFAUT, true);
+      pj.c.x = p.c.x;
+      pj.c.y = p.c.y;
+      const n = pj.niveau!;
+      const coups = o.hpMax;
+      let brise = false;
+      let touches = 0;
+      for (let t = 0; t < 400 && !brise; t++) {
+        pj.c.coeurs = 3;
+        pj.avancer(entree(dir, true));
+        for (const ev of pj.evenements) {
+          if (ev.k === "obstacle") touches++;
+          if (ev.k === "brise") brise = true;
+        }
+        pj.vider();
+      }
+      expect(brise).toBe(true);
+      expect(touches).toBeLessThanOrEqual(coups);
+      expect(pj.obstacles.some((q) => q.id === o.id)).toBe(false);
+      // les cases sont libres : on marche dedans
+      pj.c.x = n.ox + (o.cases[0]! % n.l) * CASE + CASE / 2;
+      pj.c.y = n.oy + Math.floor(o.cases[0]! / n.l) * CASE + CASE / 2;
+      pj.avancer(entree(dir));
+      expect(pj.c.x).not.toBeNaN();
+    }
+  });
+  it("le coup final en vaut deux : une caisse cède au coup final seul", () => {
+    for (let k = 0; k < 40; k++) {
+      const { p, dir, o } = devantUnObstacle(J0 + k);
+      if (o.hpMax !== 2) continue;
+      const pj = new Partie(p.contenu, REGLAGES_DEFAUT, true);
+      pj.c.x = p.c.x;
+      pj.c.y = p.c.y;
+      pj.obstacles[0]!.hp = 2;
+      let brise = false;
+      let touches = 0;
+      for (let t = 0; t < 200 && !brise; t++) {
+        pj.c.coeurs = 3;
+        pj.avancer(entree(dir, true));
+        for (const ev of pj.evenements) {
+          if (ev.k === "obstacle") touches++;
+          if (ev.k === "brise") brise = true;
+        }
+        pj.vider();
+      }
+      expect(brise).toBe(true);
+      expect(touches).toBeLessThanOrEqual(2);
+      return;
+    }
+    throw new Error("aucune caisse trouvée");
+  });
+  it("l'emplacement du butin est prévu (rien dedans dans ce lot) et fait partie de l'état", () => {
+    const p = new Partie(dailyRush(J0), REGLAGES_DEFAUT);
+    for (const o of p.obstacles) expect(o.butin).toBe(0);
+    const avant = p.empreinte();
+    p.obstacles[0]!.hp--;
+    expect(p.empreinte()).not.toBe(avant);
+  });
+  it("le pilote qui fonce brise les obstacles qui lui barrent la route (et gagne)", () => {
+    for (let k = 0; k < 6; k++) {
+      const c = dailyRush(J0 + k);
+      const r = jouerLePilote(c);
+      expect(r.resultat.victoire).toBe(true);
+    }
   });
 });

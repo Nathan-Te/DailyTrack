@@ -201,6 +201,8 @@ export interface EntreeChevalier {
   ticks: number;
   /** Vrai si le rendu doit le cacher cette image (clignement après un dégât). */
   cache: boolean;
+  /** Lot BR1b : la course hors combat, de 0 (la marche) à 1 (la pleine course) : le chevalier se penche en avant et allonge sa foulée. */
+  course?: number;
 }
 
 /** La phase active d'un coup, en ticks après l'impact : l'épée balaie. Le reste du coup est la récupération, qui va au bout du mouvement. */
@@ -209,12 +211,13 @@ export const PHASE_ACTIVE = 4;
 export function animerChevalier(a: ChevalierVu, c: Chevalier, e: EntreeChevalier): void {
   a.racine.visible = !e.cache;
   const marche = c.marche && (c.etat !== ESQUIVE);
-  if (marche) a.phase += e.dt * 13;
+  if (marche) a.phase += e.dt * (13 + 5 * Math.min(1, Math.max(0, e.course ?? 0)));
   const p = a.phase;
   let rouleau = 0;
   let saut = 0;
   let ecrase = 1;
-  let penche = marche ? 0.14 : 0;
+  const vite = marche ? Math.min(1, Math.max(0, e.course ?? 0)) : 0;
+  let penche = marche ? 0.14 + 0.34 * vite : 0;
   // Au repos : la respiration. En marche : le rebond.
   let hauteur = marche ? Math.abs(Math.sin(p)) * 0.08 : 0;
   ecrase = marche ? 1 - Math.abs(Math.sin(p)) * 0.04 : 1 + Math.sin(e.temps * 3.2) * 0.02;

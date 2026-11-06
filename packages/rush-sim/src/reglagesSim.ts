@@ -28,6 +28,14 @@ export interface Reglages {
   golemCadence: number;
   /** Le rythme des ennemis, en % (lot BR0b) : 100 = les valeurs par défaut. Il multiplie d'un coup les vitesses (×rythme/100) et divise toutes les durées (annonces, récupérations, repos, cycles) de tous les ennemis. */
   rythme: number;
+  /** La course hors combat (lot BR1b) : les ticks sans frapper, sans être touché et sans ennemi alerté à moins de `courseRayon` avant que la vitesse monte (72 = 1,2 s). */
+  courseDelai: number;
+  /** La montée de la vitesse jusqu'au facteur de la course, en ticks (24 = 0,4 s), tant que le chevalier marche. */
+  courseMontee: number;
+  /** La vitesse de course, en % de la marche (160 = ×1,6). 100 : pas de course. */
+  courseFacteur: number;
+  /** Le rayon, en cm, autour du chevalier où un ennemi alerté interdit la course (1 000 = 10 m). */
+  courseRayon: number;
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -44,6 +52,10 @@ export const REGLAGES_DEFAUT: Reglages = {
   golemVie: 1000,
   golemCadence: 80,
   rythme: 100,
+  courseDelai: 72,
+  courseMontee: 24,
+  courseFacteur: 160,
+  courseRayon: 1000,
 };
 
 /** Les bornes de chaque réglage (le curseur de `?tune` et la validation d'un JSON collé). */
@@ -61,6 +73,10 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   golemVie: [100, 4000],
   golemCadence: [20, 240],
   rythme: [40, 200],
+  courseDelai: [0, 300],
+  courseMontee: [1, 120],
+  courseFacteur: [100, 250],
+  courseRayon: [200, 2500],
 };
 
 export const CLES_REGLAGES = Object.keys(REGLAGES_DEFAUT) as (keyof Reglages)[];

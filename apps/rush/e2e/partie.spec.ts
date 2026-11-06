@@ -199,8 +199,8 @@ test.describe("Rush : une partie", () => {
     await page.evaluate(() => window.__jeu.avancer(2));
     await expect(pastille).toBeVisible();
     const avant = Number(((await pastille.textContent()) ?? "").match(/(\d+) m/)?.[1]);
-    expect(avant).toBeGreaterThan(100);
-    expect(avant).toBeLessThan(175);
+    expect(avant).toBeGreaterThan(55); // lot BR1b : le chemin principal fait 70 à 100 m
+    expect(avant).toBeLessThan(110);
     // Sur le chemin : il marche vers l'arène, la distance diminue et le golem dort (pas de barre de vie).
     await page.evaluate(() => window.__rush.aller(...(window.__rush.pointSurLeChemin(0.5) as [number, number])));
     await page.evaluate(() => window.__jeu.avancer(2));
@@ -219,6 +219,53 @@ test.describe("Rush : une partie", () => {
     expect(barriere.eveille).toBe(true);
     await expect(pastille).toBeHidden();
     await expect(page.locator(".rush-boss")).toBeVisible();
+    await context.close();
+  });
+
+  test("la course hors combat et un obstacle cassable (lot BR1b) : les lignes de vitesse paraissent quand il court, l'obstacle cède sous les coups", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=jour");
+    await lancer(page);
+    // la course : au calme et en marche, la vitesse monte ; les lignes de vitesse sont visibles
+    const course = await page.evaluate(() => {
+      const p = window.__rush.partie() as unknown as { c: { elan: number; calme: number }; course: number };
+      p.c.calme = 72;
+      window.__rush.forcer(window.__rush.versLArene(), 40);
+      window.__jeu.avancer(30);
+      window.__rush.dessinerMaintenant();
+      const lignes = window.__rush.scene().getObjectByName("lignes-course");
+      return { elan: p.c.elan, course: p.course, lignes: lignes?.visible ?? null };
+    });
+    expect(course.elan).toBeGreaterThan(0);
+    expect(course.course).toBeGreaterThan(0);
+    expect(course.lignes).toBe(true);
+    // un obstacle : on pose le chevalier contre lui et on frappe jusqu'à ce qu'il cède
+    const cede = await page.evaluate(() => {
+      const p = window.__rush.partie() as unknown as { niveau: { l: number; ox: number; oy: number; cases: Uint8Array; zones: Uint8Array }; obstacles: { cases: number[]; x: number; y: number }[]; c: { coeurs: number } };
+      const n = p.niveau;
+      const avant = p.obstacles.length;
+      const o = p.obstacles[0]!;
+      const pris = new Set(o.cases);
+      let pose: [number, number, number] | null = null;
+      for (const k of o.cases) {
+        const i = k % n.l;
+        const j = (k - i) / n.l;
+        for (const [di, dj] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+          const q = (j + dj) * n.l + i + di;
+          if (pris.has(q) || n.cases[q] !== 0 || n.zones[q] !== 2 || pose) continue;
+          pose = [(n.ox + (i + di) * 8192 + 4096) / 4096, (n.oy + (j + dj) * 8192 + 4096) / 4096, (Math.round((Math.atan2(-dj, -di) / (Math.PI * 2)) * 32) + 32) % 32];
+        }
+      }
+      if (!pose) return { avant, apres: avant, pose: false };
+      window.__rush.aller(pose[0], pose[1]);
+      window.__rush.forcer((pose[2] + 1) | 64, 200);
+      for (let t = 0; t < 200; t++) {
+        p.c.coeurs = 3;
+        window.__jeu.avancer(1);
+      }
+      return { avant, apres: p.obstacles.length, pose: true };
+    });
+    expect(cede.pose).toBe(true);
+    expect(cede.apres).toBe(cede.avant - 1);
     await context.close();
   });
 

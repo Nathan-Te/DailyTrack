@@ -10,6 +10,8 @@ import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 // plusieurs minutes dont les entrées ressemblent à celles d'un joueur) et les tests. **Ce n'est pas la méthode des médailles de la suite** (le README du lot BR0 la recommande). Il ne triche pas : il lit ce que lit le
 // rendu (positions, cercles annoncés) et n'a que les entrées d'un joueur au doigt : le déplacement, le coup (tenu), l'esquive, sans visée (visée assistée).
 // Lot BR1 : il NAVIGUE dans le niveau — le chemin le plus court sur la grille jusqu'à l'arène (le champ de distance du niveau), et il ne combat que ce qui lui barre la route : c'est le Diamant provisoire, « foncer ».
+// Lot BR1b : il casse l'obstacle qui barre les pas qui viennent (le chemin le plus court passe par lui : 1 ou 2 coups) au lieu de le contourner ; la COURSE hors combat lui vient d'elle-même (il marche sans cesse et ne frappe que ce qui barre
+// la route : la simulation fait monter sa vitesse après ~1,2 s de calme) ; la stratégie « nettoyer » peut ne viser que les monstres d'UN camp (la mesure du coût d'un détour : `jouerLePilote(…, camp)`).
 // La stratégie « nettoyer » (une mesure, pas un Diamant) va d'abord à chaque monstre, du plus proche au plus loin, puis à l'arène : elle donne l'écart de temps entre foncer et tout nettoyer.
 
 /** La direction de la croix (0 à 31) la plus proche d'un vecteur. */
@@ -24,8 +26,13 @@ export interface EtatPilote {
   champ: Uint16Array | null;
   champCase: number;
   champDepuis: number;
+  /** « nettoyer » : −2, tous les monstres ; un indice de clairière : seulement les monstres de ce camp ; −1 : seulement ceux du chemin principal (groupes et épars). */
+  camp: number;
 }
-export const etatPilote = (strategie: Strategie = "foncer"): EtatPilote => ({ strategie, cible: -1, champ: null, champCase: -1, champDepuis: -1e9 });
+export const etatPilote = (strategie: Strategie = "foncer", camp = -2): EtatPilote => ({ strategie, cible: -1, champ: null, champCase: -1, champDepuis: -1e9, camp });
+
+/** Le camp d'un monstre du niveau (ses identifiants suivent l'ordre du niveau). */
+const campDe = (p: Partie, id: number): number => p.niveau!.monstres[id - 1]?.camp ?? -1;
 
 /** La direction (0 à 31) du pas vers la case voisine qui descend le champ de distance ; −1 si on y est. */
 function pasVers(p: Partie, champ: Uint16Array): number {
@@ -74,16 +81,30 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
     return d > portee ? { direction: croix(b.x - c.x, b.y - c.y), coup: false } : { direction: -1, coup: true };
   };
   if (bloque) return frapper(bloque);
-  if (etat.strategie === "nettoyer" && p.monstres.some((m) => m.hp > 0)) {
+  // Lot BR1b : un obstacle sur les pas qui viennent le long d'un champ de distance : on le brise.
+  const obstacleSur = (champ: Uint16Array): { x: number; y: number; r: number } | null => {
+    if (p.obstacles.length === 0 || idx < 0) return null;
+    let k = idx;
+    for (let i = 0; i < 3; i++) {
+      const s = descendre(n, champ, k);
+      if (s < 0) break;
+      k = s;
+      const o = p.obstacles.find((q) => q.cases.includes(k));
+      if (o) return { x: o.x, y: o.y, r: o.r };
+    }
+    return null;
+  };
+  const vises = (m: { id: number; hp: number }): boolean => m.hp > 0 && (etat.camp === -2 || campDe(p, m.id) === etat.camp);
+  if (etat.strategie === "nettoyer" && p.monstres.some(vises)) {
     // Le monstre le plus proche par le chemin : un champ de distance depuis la case du chevalier.
-    let cible = p.monstres.find((m) => m.id === etat.cible && m.hp > 0);
+    let cible = p.monstres.find((m) => m.id === etat.cible && vises(m));
     if (!cible) {
       const depuis = champDeDistance(n, idx >= 0 ? [idx] : []);
       let dm = Infinity;
       for (const m of p.monstres) {
         const k = caseDe(n, m.x, m.y);
         const dk = k >= 0 ? depuis[k]! : INACCESSIBLE;
-        if (m.hp > 0 && dk < dm) {
+        if (vises(m) && dk < dm) {
           dm = dk;
           cible = m;
         }
@@ -98,10 +119,14 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
         etat.champCase = kc;
         etat.champDepuis = p.tick;
       }
+      const gene = etat.champ ? obstacleSur(etat.champ) : null;
+      if (gene) return frapper(gene);
       const d = etat.champ ? pasVers(p, etat.champ) : -1;
       return { direction: d >= 0 ? d : croix(cible.x - c.x, cible.y - c.y), coup: false };
     }
   }
+  const gene = obstacleSur(n.dist);
+  if (gene) return frapper(gene);
   return { direction: aLArene(), coup: false };
 }
 
@@ -188,10 +213,10 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
 }
 
 /** La partie du pilote sur un contenu : ses changements d'entrée (la rediffusion) et son résultat. `max` borne le nombre de ticks (les mesures de plusieurs minutes). */
-export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer"): { changements: Changement[]; resultat: Resultat; ticks: number } {
+export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer", camp = -2): { changements: Changement[]; resultat: Resultat; ticks: number } {
   const p = new Partie(contenu, reglages);
   const changements: Changement[] = [];
-  const etat = etatPilote(strategie);
+  const etat = etatPilote(strategie, camp);
   let avant = 0;
   while (!p.finie && p.tick < max) {
     const e = pilote(p, etat);

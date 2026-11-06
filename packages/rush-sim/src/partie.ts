@@ -10,6 +10,8 @@ import { COS, SIN } from "./trig";
 // La partie de Rush : 60 Hz, tout en entiers, l'état d'un seul tenant. À chaque tick, `avancer(entree)` applique l'octet d'entrée du tick (voir `entrees.ts`) puis fait avancer le monde : le chevalier, les apparitions,
 // les monstres, le golem, les zones annoncées, les ondes, les contacts. **Le même code joue la partie du joueur et la rediffusion du serveur** ; la vue (`apps/rush`) ne fait que lire cet état.
 // Le hasard (apparitions, pierres) vient d'une graine du contenu et n'est tiré qu'à des ticks fixés par l'état : une rediffusion refait les mêmes tirages.
+// Lot BR1b : la COURSE hors combat (la vitesse monte de ×1,6 après ~1,2 s sans frapper, sans être touché et sans ennemi alerté à moins de 10 m ; elle retombe au premier coup, à la première alerte, au premier dégât ; pas de course dans l'arène),
+// des monstres à l'alerte propre (les groupes : 10 à 12 m) et des OBSTACLES cassables (ronces : 1 coup, caisses : 2 coups ; le coup final en vaut 2) qui occupent des cases du chemin tant qu'ils tiennent.
 // Lot BR0c : le coup du chevalier est plus lent et plus lourd (30 ticks, le coup final 42 ; anticipation, impact, récupération ; dégâts ×1,6 et ×2,5 au coup final ; il s'engage à 40 % de sa vitesse ; recul plus fort, les monstres glissent puis titubent) ;
 // les points de vie sont en dixièmes (un coup ordinaire ôte 16, la gelée en a 30). Lot BR0b : l'entrée porte une VISÉE séparée du déplacement (le chevalier regarde et frappe où il vise, il marche où il veut) ; un coup TENU enchaîne ; le rythme des ennemis est ralenti et se règle d'un coup (`reglages.rythme`).
 
@@ -60,6 +62,10 @@ export interface Chevalier {
   ky: number;
   /** Il bouge à ce tick (pour l'animation). */
   marche: boolean;
+  /** Lot BR1b : les ticks calmes (sans coup, sans dégât, sans ennemi alerté à moins de `courseRayon`), plafonnés à `courseDelai`. */
+  calme: number;
+  /** Lot BR1b : la montée de la course, de 0 (la marche) à `courseMontee` (la vitesse de course) ; il ne monte qu'en marchant. */
+  elan: number;
 }
 
 export interface Monstre {
@@ -92,6 +98,27 @@ export interface Monstre {
   hy: number;
   alerte: number;
   laisse: number;
+  /** Lot BR1b : son rayon d'alerte propre en unités (un groupe : 10 à 12 m), ou 0 : celui de son type. */
+  ra: number;
+}
+
+/** Lot BR1b : un obstacle cassable du niveau, vivant tant que `hp` > 0 ; il occupe `cases`. */
+export interface ObstacleVivant {
+  /** Son indice dans `niveau.obstacles`. */
+  id: number;
+  genre: number;
+  x: number;
+  y: number;
+  r: number;
+  hp: number;
+  hpMax: number;
+  /** Les ticks restants de l'éclair après un coup. */
+  flash: number;
+  /** Le dernier coup qui l'a touché : un coup ne touche qu'une fois. */
+  coup: number;
+  cases: number[];
+  /** Ce qu'il contient (lot BR2) : 0, rien. */
+  butin: number;
 }
 
 export interface Golem {
@@ -140,7 +167,7 @@ export interface OndeGolem {
   touche: boolean;
 }
 
-export type GenreEvenement = "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil";
+export type GenreEvenement = "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "obstacle" | "brise";
 /** Ce que le rendu doit savoir d'un tick (sons, éclats, secousse) : jamais lu par la simulation. */
 export interface Evenement {
   k: GenreEvenement;
@@ -259,6 +286,10 @@ export class Partie {
   private videDepuis = -1;
   /** Lot BR1 : le niveau du jour (grille), le centre de l'arène, le tick où la barrière s'est refermée (−1 : ouverte) et les cases de la porte. */
   readonly niveau: Niveau | null;
+  /** Lot BR1b : les obstacles du niveau (ceux qui ont cédé sont retirés) et les cases qu'ils occupent. */
+  obstacles: ObstacleVivant[] = [];
+  /** Un octet par case : 1 tant qu'un obstacle la tient (un tableau, pas un ensemble : `marchable` est appelé des millions de fois dans un rejeu). */
+  private bloquees: Uint8Array;
   readonly ax: number;
   readonly ay: number;
   barriere = -1;
@@ -274,11 +305,12 @@ export class Partie {
     this.ax = this.niveau ? this.niveau.arene.x : 0;
     this.ay = this.niveau ? this.niveau.arene.y : 0;
     this.porte = new Set(this.niveau ? this.niveau.porte : []);
+    this.bloquees = new Uint8Array(this.niveau ? this.niveau.l * this.niveau.h : 0);
     this.vit = idiv(cm(reglages.vitesse), 60);
     this.rt = reglages.rythme;
     this.durees = { geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
     this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin";
-    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false };
+    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false, calme: 0, elan: 0 };
     if (contenu.scenario === "arene") this.golem = null;
     else {
       const hpMax = reglages.golemVie;
@@ -311,8 +343,12 @@ export class Partie {
   private monterNiveau(n: Niveau): void {
     for (const m of n.monstres) {
       const gelee = m.type === GELEE;
-      this.monstres.push({ id: this.prochainId++, type: m.type, x: m.x, y: m.y, kx: 0, ky: 0, hp: gelee ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t: 0, age: -100, a: this.rng.int(128), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: m.x, hy: m.y, alerte: 0, laisse: LAISSE });
+      this.monstres.push({ id: this.prochainId++, type: m.type, x: m.x, y: m.y, kx: 0, ky: 0, hp: gelee ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t: 0, age: -100, a: this.rng.int(128), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: m.x, hy: m.y, alerte: 0, laisse: LAISSE, ra: m.alerte });
     }
+    n.obstacles.forEach((o, id) => {
+      this.obstacles.push({ id, genre: o.genre, x: o.x, y: o.y, r: o.r, hp: o.coups, hpMax: o.coups, flash: 0, coup: 0, cases: o.cases, butin: o.butin });
+      for (const k of o.cases) this.bloquees[k] = 1;
+    });
   }
 
   /** Le golem dort tant que la barrière de l'arène est ouverte. */
@@ -339,7 +375,7 @@ export class Partie {
     this.c.marche = true;
     this.monstres = [];
     const bete = (type: number, x: number, y: number, t: number, a = 0): void => {
-      this.monstres.push({ id: this.prochainId++, type, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: 0, a, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0 });
+      this.monstres.push({ id: this.prochainId++, type, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: 0, a, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0, ra: 0 });
     };
     bete(GELEE, -140, -520, 12);
     bete(GELEE, -560, 330, 40);
@@ -353,7 +389,7 @@ export class Partie {
   private monterMannequin(): void {
     this.c.y = cm(520);
     this.c.dir = 96;
-    for (const [x, y] of MANNEQUINS) this.monstres.push({ id: this.prochainId++, type: GELEE, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: VIE_GELEE, flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0 });
+    for (const [x, y] of MANNEQUINS) this.monstres.push({ id: this.prochainId++, type: GELEE, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: VIE_GELEE, flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0, ra: 0 });
   }
 
   get finie(): boolean {
@@ -384,6 +420,11 @@ export class Partie {
     for (const m of this.monstres) objet(m);
     for (const z of this.zones) objet(z);
     for (const o of this.ondes) objet(o);
+    for (const o of this.obstacles) {
+      nombre(o.id);
+      nombre(o.hp);
+      nombre(o.flash);
+    }
     return h.toString(16).padStart(8, "0");
   }
 
@@ -408,6 +449,7 @@ export class Partie {
     if (this.niveau && this.barriere < 0 && distance(this.c.x, this.c.y, this.ax, this.ay) < RAYON_ARENE - ENTREE_ARENE) this.fermerBarriere();
     this.apparitions();
     for (const m of this.monstres) this.mouvementMonstre(m);
+    for (const o of this.obstacles) if (o.flash > 0) o.flash--;
     this.separer();
     if (this.golem && this.golemEveille) this.mouvementGolem(this.golem);
     this.resoudreZones();
@@ -444,6 +486,7 @@ export class Partie {
     if (c.degat > 0) c.degat--;
     if (c.reprise > 0 && --c.reprise === 0 && c.etat === LIBRE) c.combo = 0;
     c.marche = false;
+    this.majCourse(direction >= 0 && c.etat === LIBRE);
 
     // L'esquive coupe un coup à n'importe quel moment (survivre passe avant) ; un appui un peu trop tôt est gardé en mémoire.
     const dureeCoup = this.dureeCoup(c.combo);
@@ -498,7 +541,8 @@ export class Partie {
         const marche = direction * 4;
         if (visee < 0) c.dir = marche;
         c.marche = true;
-        this.deplacer(c, idiv(COS[marche]! * this.vit, 1024), idiv(SIN[marche]! * this.vit, 1024));
+        const v = this.vitesseCourse();
+        this.deplacer(c, idiv(COS[marche]! * v, 1024), idiv(SIN[marche]! * v, 1024));
       }
     }
     // Le recul : il s'ajoute au mouvement et s'éteint.
@@ -508,6 +552,40 @@ export class Partie {
       c.ky = amortir(c.ky);
     }
     this.pousserHorsDuGolem(c);
+  }
+
+  /**
+   * La course hors combat (lot BR1b), une fois par tick : le chevalier se calme (`calme` compte les ticks tranquilles) ; passé `courseDelai`, sa vitesse monte en `courseMontee` ticks (tant qu'il marche) jusqu'à `courseFacteur` % de la marche.
+   * Tout ce qui est du combat la coupe d'un coup : un coup (`commencerCoup`), un dégât (`blesser`), un ennemi qui s'alerte (`veille`), un ennemi déjà alerté à moins de `courseRayon`. Pas de course hors du niveau, ni une fois la barrière fermée.
+   */
+  private majCourse(marche: boolean): void {
+    const c = this.c;
+    const r = this.reglages;
+    if (!this.niveau || this.barriere >= 0 || c.etat === COUP) {
+      c.calme = 0;
+      c.elan = 0;
+      return;
+    }
+    const rayon = cm(r.courseRayon);
+    const menace = this.monstres.some((m) => m.hp > 0 && m.alerte === 1 && distance2(m.x, m.y, c.x, c.y) < rayon * rayon);
+    if (menace) {
+      c.calme = 0;
+      c.elan = 0;
+    } else if (c.calme < r.courseDelai) c.calme++;
+    else if (marche && c.elan < r.courseMontee) c.elan++;
+  }
+
+  /** La vitesse de marche du tick, en unités par tick : la marche, ou la course qui monte (jamais lue par la vue autrement que par `elan`). */
+  private vitesseCourse(): number {
+    const c = this.c;
+    const r = this.reglages;
+    if (c.elan <= 0) return this.vit;
+    return idiv(this.vit * (100 * r.courseMontee + (r.courseFacteur - 100) * c.elan), 100 * r.courseMontee);
+  }
+
+  /** La course en cours, de 0 (la marche) à 100 (la pleine course) : la vue penche le chevalier et trace les lignes de vitesse d'après elle. */
+  get course(): number {
+    return idiv(this.c.elan * 100, Math.max(1, this.reglages.courseMontee));
   }
 
   dureeCoup(s: number): number {
@@ -530,6 +608,8 @@ export class Partie {
     c.combo = s;
     c.tampon = 0;
     c.reprise = 0;
+    c.calme = 0;
+    c.elan = 0;
     this.coupId++;
     // Il frappe où le joueur VISE (la souris, le stick droit) ; sans visée, vers ce que le joueur tient ; sans direction (ou presque en face d'un ennemi), vers l'ennemi le plus proche (visée assistée).
     const cible = this.plusProche(cm(420));
@@ -558,6 +638,7 @@ export class Partie {
       }
     };
     for (const m of this.monstres) if (m.hp > 0) essayer(m.x, m.y, rayonDe(m.type));
+    for (const o of this.obstacles) essayer(o.x, o.y, o.r);
     if (this.golem && this.golem.hp > 0) essayer(this.golem.x, this.golem.y, RAYON_GOLEM);
     return meilleur;
   }
@@ -609,6 +690,19 @@ export class Partie {
         this.ev("mort", m.x, m.y, m.type, s);
       }
     }
+    // Lot BR1b : un obstacle cassable cède en 1 ou 2 coups (le coup final en vaut 2) ; ce qu'il contient (lot BR2) tombe à sa place.
+    for (const o of this.obstacles) {
+      if (o.coup === this.coupId || !dans(o.x, o.y, o.r)) continue;
+      o.coup = this.coupId;
+      o.hp -= s === 2 ? 2 : 1;
+      o.flash = 7;
+      this.ev("obstacle", o.x, o.y, s, o.genre);
+      if (o.hp <= 0) {
+        for (const k of o.cases) this.bloquees[k] = 0;
+        this.ev("brise", o.x, o.y, o.genre, o.id);
+      }
+    }
+    this.obstacles = this.obstacles.filter((o) => o.hp > 0);
     const g = this.golem;
     if (g && g.hp > 0 && g.coup !== this.coupId && dans(g.x, g.y, RAYON_GOLEM)) {
       g.coup = this.coupId;
@@ -633,7 +727,7 @@ export class Partie {
       const x = idiv(COS[angle]! * r, 1024);
       const y = idiv(SIN[angle]! * r, 1024);
       const t = this.rng.int(40);
-      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x - this.c.x, y - this.c.y), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: x, hy: y, alerte: 1, laisse: 0 });
+      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x - this.c.x, y - this.c.y), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0 });
       this.ev("apparition", x, y, type);
     }
   }
@@ -749,11 +843,13 @@ export class Partie {
   private veille(m: Monstre): void {
     const c = this.c;
     const dc = distance(m.x, m.y, c.x, c.y);
-    const alerte = m.type === CHAUVE ? ALERTE_CHAUVE : ALERTE_GELEE;
+    const alerte = m.ra > 0 ? m.ra : m.type === CHAUVE ? ALERTE_CHAUVE : ALERTE_GELEE;
     if (m.alerte === 0) {
       if (this.barriere < 0 && dc < alerte) {
         m.alerte = 1;
         m.t = 0;
+        c.calme = 0; // lot BR1b : un ennemi qui s'alerte coupe la course
+        c.elan = 0;
         this.ev("alerte", m.x, m.y, m.type);
       }
     } else if (m.alerte === 1) {
@@ -997,6 +1093,8 @@ export class Partie {
     c.coeurs -= n;
     this.subis += n;
     c.degat = ARRET_DEGAT;
+    c.calme = 0;
+    c.elan = 0;
     const [ux, uy] = unitaire(c.x - sx, c.y - sy);
     const dx = ux === 0 && uy === 0 ? 0 : ux;
     const dy = ux === 0 && uy === 0 ? 1024 : uy;
@@ -1064,7 +1162,7 @@ export class Partie {
     const idx = caseDe(n, x, y);
     if (idx < 0) return false;
     const c = n.cases[idx]!;
-    return (c === SOL || c === PONT) && !(this.barriere >= 0 && this.porte.has(idx));
+    return (c === SOL || c === PONT) && !(this.barriere >= 0 && this.porte.has(idx)) && this.bloquees[idx] !== 1;
   }
 
   /** Un disque de rayon `r` tient en (x, y) : les quatre coins de son carré sont sur des cases marchables (une case fait 2 m, plus que tout corps). */
