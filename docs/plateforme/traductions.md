@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2143 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2144 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -684,8 +684,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.tower.nuit` | Nuit | Night |
 | `portail.theme.cibles.sable` | Sable | Sand |
 | `portail.theme.cibles.ardoise` | Ardoise | Slate |
-| `portail.theme.rush.clair` | Arène de jour | Day arena |
-| `portail.theme.rush.sombre` | Arène de nuit | Night arena |
+| `portail.theme.rush.prairie` | Prairie | Meadow |
+| `portail.theme.rush.carriere` | Carrière | Quarry |
+| `portail.theme.rush.sousbois` | Sous-bois | Woods |
 | `portail.theme.blocks.port` | Port | Harbour |
 | `portail.theme.blocks.chantier` | Chantier | Building site |
 | `portail.theme.blocks.canyon` | Canyon | Canyon |
@@ -2696,15 +2697,15 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `accueil.phrase.prairie` | Suis le chemin jusqu'à l'arène. Le golem t'attend. | Follow the path to the arena. The golem is waiting. |
 | `accueil.phrase.carriere` | Des monstres rôdent. Fonce, ou nettoie. | Monsters lurk. Rush, or clear them. |
-| `accueil.phrase.sous-bois` | Le sous-bois grouille de bêtes. Le golem attend au bout. | The woods swarm with beasts. The golem waits at the end. |
+| `accueil.phrase.sousbois` | Le sous-bois grouille de bêtes. Le golem attend au bout. | The woods swarm with beasts. The golem waits at the end. |
 
 ### carte (`carte.*`, `apps/rush/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
 | `carte.titre` | Les {n} prochains jours | The next {n} days |
-| `carte.legende` | {m} m · {d} détours · {tue} monstres · pilote {t} | {m} m · {d} detours · {tue} monsters · pilot {t} |
-| `carte.perdu` | perdu | lost |
+| `carte.legende` | {date} · {theme} — {m} m · {d} détours · {tue} monstres · pilote {t}{fin} | {date} · {theme} — {m} m · {d} detours · {tue} monsters · pilot {t}{fin} |
+| `carte.perdu` |  · perdu |  · lost |
 
 ### Commandes (`commandes.*`, `apps/rush/src/catalogue.*.ts`)
 
@@ -2862,7 +2863,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `theme.prairie` | Prairie | Meadow |
 | `theme.carriere` | Carrière | Quarry |
-| `theme.sous-bois` | Sous-bois | Woods |
+| `theme.sousbois` | Sous-bois | Woods |
 
 ### tune (`tune.*`, `apps/rush/src/catalogue.*.ts`)
 

@@ -7,7 +7,7 @@ export const FICHE: FicheClient = {
   id: "rush",
   nom: "Rush",
   colonnes: VARIANTE.fiche.colonnes, // la variante (`variante.ts`) est le seul endroit qui sait comment ce jeu se classe
-  themes: ["prairie", "carriere", "sous-bois"],
+  themes: ["prairie", "carriere", "sousbois"],
   prefixe: "rush:",
   premierJour: "2026-11-02",
 };

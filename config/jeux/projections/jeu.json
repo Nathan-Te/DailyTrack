@@ -208,13 +208,13 @@
       "themes": [
         "prairie",
         "carriere",
-        "sous-bois"
+        "sousbois"
       ],
       "scenes": [
         "menu",
         "theme:prairie",
         "theme:carriere",
-        "theme:sous-bois"
+        "theme:sousbois"
       ]
     }
   ],

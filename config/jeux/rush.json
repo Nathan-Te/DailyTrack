@@ -55,7 +55,7 @@
   "themes": [
     "prairie",
     "carriere",
-    "sous-bois"
+    "sousbois"
   ],
   "versions": {
     "sim": "packages/rush-sim/src/constantes.ts:RUSH_SIM_VERSION",
@@ -95,7 +95,7 @@
       "menu",
       "theme:prairie",
       "theme:carriere",
-      "theme:sous-bois"
+      "theme:sousbois"
     ]
   },
   "admin": {

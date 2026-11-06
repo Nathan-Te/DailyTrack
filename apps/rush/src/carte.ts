@@ -118,7 +118,7 @@ export function carteDesJours(jour: number, nombre: number, hote: HTMLElement, o
     f.className = "rush-carte__jour";
     const cap = document.createElement("figcaption");
     const temps = formatTemps(pilote.ticks, o.langue);
-    cap.textContent = `${formatDay(c.jour)} · ${o.t(`theme.${c.theme}`)} — ${o.t("carte.legende", { m: Math.round((n.longueurCm) / 100), d: n.detours.length, tue: n.monstres.length, t: temps })}${pilote.resultat.victoire ? "" : ` · ${o.t("carte.perdu")}`}`;
+    cap.textContent = o.t("carte.legende", { date: formatDay(c.jour), theme: o.t(`theme.${c.theme}`), m: Math.round(n.longueurCm / 100), d: n.detours.length, tue: n.monstres.length, t: temps, fin: pilote.resultat.victoire ? "" : o.t("carte.perdu") });
     f.append(dessiner(c, c.theme), cap);
     grille.append(f);
   }

@@ -31,7 +31,7 @@ const plusPetit = (couleur: number, p: (typeof PALETTES)[string]): number => Mat
 
 describe("la lisibilité sur chaque thème (lot BR1)", () => {
   it("il y a trois thèmes", () => {
-    expect(Object.keys(PALETTES).sort()).toEqual(["carriere", "prairie", "sous-bois"]);
+    expect(Object.keys(PALETTES).sort()).toEqual(["carriere", "prairie", "sousbois"]);
   });
   for (const [nom, p] of Object.entries(PALETTES)) {
     describe(nom, () => {

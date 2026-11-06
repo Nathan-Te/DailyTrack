@@ -18,7 +18,7 @@ const CM = CASE / M; // la case, en mètres (2)
 export const MUR_MAX = 1.3;
 const EPAISSEUR = 1.6;
 
-export type ThemeVu = "prairie" | "carriere" | "sous-bois";
+export type ThemeVu = "prairie" | "carriere" | "sousbois";
 
 const hash = (i: number, j: number, graine = 0): number => {
   let h = Math.imul((i * 73856093) ^ (j * 19349663) ^ (graine * 83492791), 0x45d9f3b);
@@ -61,7 +61,7 @@ function modeles(theme: ThemeVu, a: PaletteMonde): Modeles {
       ],
     };
   }
-  const sombre = theme === "sous-bois";
+  const sombre = theme === "sousbois";
   const murs = variantes(6, (k) => bloc(1.7 + rnd() * 0.2, 0.85 + rnd() * 0.35, 1.7 + rnd() * 0.2, { couleur: a.mur, dessus: a.murHaut, variation: 0.14, graine: 300 + k, rayon: 0.55, irregulier: 0.14, segments: 1 }));
   if (theme === "prairie") {
     return {
@@ -422,4 +422,4 @@ export function monterNiveauVu(n: Niveau, a: PaletteMonde, theme: ThemeVu = them
 }
 
 /** Pour les tests : le thème de chaque palette connue. */
-export const THEMES_VUS: readonly ThemeVu[] = ["prairie", "carriere", "sous-bois"];
+export const THEMES_VUS: readonly ThemeVu[] = ["prairie", "carriere", "sousbois"];

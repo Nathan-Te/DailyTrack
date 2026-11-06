@@ -45,7 +45,7 @@ export const PALETTES: Readonly<Record<string, PaletteMonde>> = {
     fond: 0xe6cfae, sol: 0xf0f3f4, sol2: 0xdde4e8, mur: 0x8a7f72, murHaut: 0xa89d8e, lumiere: 0xfff0d2, ambiance: 0xf0e2cc, intensiteLumiere: 2.1, intensiteAmbiance: 1.3, hemiCiel: 0xeee4d6, hemiSol: 0xd8cbb8, brume: 0xeed9bb,
     tranche: 0x9a8f80, falaise: 0x7a6e60, falaise2: 0x978b7a, herbe: 0xa7a46a, herbe2: 0x8c8b58, bois: 0xa5733f, bois2: 0x74502e, nuage: 0xfdf3e3, cielHaut: 0xe9b98a, cielBas: 0xf6e3c8,
   },
-  "sous-bois": {
+  "sousbois": {
     fond: 0xb9d6b4, sol: 0xd6e3a6, sol2: 0xc3d58c, mur: 0x3e7a3c, murHaut: 0x5a9a4c, lumiere: 0xfff4cf, ambiance: 0xe6efc8, intensiteLumiere: 2.0, intensiteAmbiance: 1.35, hemiCiel: 0xdfeccc, hemiSol: 0xc9d79a, brume: 0xc6e0c0,
     tranche: 0x8f8a58, falaise: 0x6e5f44, falaise2: 0x8a7a58, herbe: 0x6fae5a, herbe2: 0x4f9148, bois: 0x8e5f36, bois2: 0x62412a, nuage: 0xf6fff0, cielHaut: 0x9cc8c0, cielBas: 0xdcebd0,
   },
