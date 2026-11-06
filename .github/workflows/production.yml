@@ -317,7 +317,7 @@ jobs:
           BASCULE: ${{ needs.verifier.outputs.bascule_le }}
           INSTANT: ${{ needs.verifier.outputs.instant }}
         run: |
-          # Lot 33 (incident du 06/11/2026) : Jump fige TOUT jour non figé jusqu'à DEMAIN avec le code en production (outil d'aujourd'hui), compare chaque fichier à ce que ce code sert sans lui,
+          # Lot 33 (incident du 06/11/2026) : un jeu à fichiers par jour fige TOUT jour non figé jusqu'à DEMAIN avec le code en production (outil d'aujourd'hui), compare chaque fichier à ce que ce code sert sans lui,
           # refuse le calendrier des bascules du générateur fixé à aujourd'hui ou avant, et s'arrête s'il reste un jour déjà servi sans fichier figé.
           node scripts/mise-en-production.mjs figer-jeux --prod "$GITHUB_WORKSPACE/prod" --cible "$GITHUB_WORKSPACE/cible" --proteges "$RUNNER_TEMP/proteges.json" \
             --veille "$VEILLE" --bascule "$BASCULE" --instant "$INSTANT" --reference "$REFERENCE" --jusqua origin/main --sortie "$RUNNER_TEMP/jours" --temp "$RUNNER_TEMP" --resume "$GITHUB_STEP_SUMMARY" \
