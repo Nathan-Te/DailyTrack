@@ -16,6 +16,11 @@ Run analysé : https://github.com/Nathan-Te/DailyTrack/actions/runs/42198926108 
 
 Contournement sans code, si besoin : `/admin/` › Jeux, passer Cibles en `preview` sur la **recette**.
 
+## Troisième run (42224083377, `main` à `a029ebf`) : `recette-verification` encore, autre cause
+| Job rouge | Cause | Correction |
+|---|---|---|
+| `recette-verification` (smoke complet) : `409 name_taken` dès le premier envoi, tout le reste en cascade | Le pseudo du smoke (`Fumée` + 4 chiffres, 9 000 possibilités) est retombé sur celui d'un passage précédent, que la base de la recette garde (une recette reçoit un smoke par fusion dans `main` et deux par bouton). Un tirage malchanceux, pas un défaut du serveur ; il reviendrait de plus en plus souvent. | `smoke.ts` : `Fumée` + 8 caractères aléatoires (36⁸ ≈ 2,8·10¹², 13 caractères, limite 20). |
+
 ## Vérifié / non vérifié
 - Vérifié en local : `npm run verifier -- --sans-e2e` (typecheck, 126 fichiers SQLite, 76 libSQL, verts) ; `vitest apps/api` complet (946 tests) ; `jump/e2e/smoke.spec.ts` (6, Chromium) ; `tower/e2e/classement.spec.ts` (5, Chromium).
 - Deuxième run : site de production assemblé en local (`VITE_PRODUCTION=1 npm run build`, `scripts/site.mjs --production` : 18 niveaux figés vérifiés) ; regex d'adresse contrôlée sur les six adresses (service, site, local, production).

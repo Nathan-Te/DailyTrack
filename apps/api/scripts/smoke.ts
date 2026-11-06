@@ -88,7 +88,9 @@ function check(label: string, ok: boolean, detail = ""): void {
 
 const player = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 // Un pseudo appartient à son premier propriétaire (lot 30) : chaque exécution prend le sien, pour qu'on puisse relancer l'essai sur la même base.
-const NAME = `Fumée${Math.floor(1000 + Math.random() * 9000)}`;
+// Run « Mettre en production » du 06/11/2026 : quatre chiffres (9 000 pseudos) finissent par retomber sur le pseudo d'un passage précédent, que la base de la recette garde (409 `name_taken`, et tout le smoke en cascade) :
+// huit caractères tirés au hasard (36 puissance 8, soit 2,8 · 10^12), pour 13 caractères en tout (la limite est de 20).
+const NAME = `Fumée${Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("")}`;
 
 // Garde-fou (lot P1, lot P4) : le mode complet jamais contre la production (sauf l'image lancée en local par la CI, contre son propre sqld) ;
 // contre la production, seul `--lecture-seule` est permis (`smokeRefusal`, testé).
