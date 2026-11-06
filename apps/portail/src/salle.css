@@ -471,6 +471,7 @@
 .salle-etagere.portail-etagere {
   position: relative;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-auto-rows: 1fr; /* de même taille aussi quand elles se superposent (téléphone) : toutes les lignes ont la hauteur de la plus haute */
   gap: 22px;
   align-items: stretch;
   padding-bottom: 16px;

@@ -167,10 +167,12 @@ test("aucune cible tactile sous 44 px sur le portail, en portrait et en paysage"
     await page.goto(`${SITE}/`);
     await expect(page.locator("#jeux .dj-cartouche")).toHaveCount(2);
     const cibles = await page.locator("a[href], button, [tabindex]").evaluateAll((els) =>
-      els.map((e) => {
-        const r = e.getBoundingClientRect();
-        return { quoi: e.id || e.getAttribute("data-langue") || e.textContent?.trim() || e.tagName, l: r.width, h: r.height };
-      }),
+      els
+        .filter((e) => e.getClientRects().length > 0) // lot U1 : ce qui est caché (la navigation du haut sur téléphone, la barre d'onglets sur ordinateur) n'est pas une cible
+        .map((e) => {
+          const r = e.getBoundingClientRect();
+          return { quoi: e.id || e.getAttribute("data-langue") || e.textContent?.trim() || e.tagName, l: r.width, h: r.height };
+        }),
     );
     expect(cibles.length, nom).toBeGreaterThanOrEqual(5);
     for (const c of cibles) {
