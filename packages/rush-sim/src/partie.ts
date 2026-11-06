@@ -1,15 +1,18 @@
 import { Rng } from "@cdj/core";
+import { AMELIORATIONS, NB_AMELIORATIONS, indiceAmelioration, tirageDeCartes } from "./ameliorations";
 import { COEURS, DUREE_TICKS, MAX_MONSTRES, MAX_MONSTRES_VAGUE, RAYON_ARENE, RAYON_CHAUVE, RAYON_CHEVALIER, RAYON_GELEE, RAYON_GOLEM, cm } from "./constantes";
 import { coupDe, directionDe, esquiveDe, viseeDe } from "./entrees";
 import type { Contenu } from "./generateur";
 import { distance, distance2, idiv, isqrt, unitaire, dirVers, modDir } from "./maths";
-import { PONT, SOL, caseDe, type Niveau } from "./niveau";
+import { OBSTACLE_RONCES, PONT, SOL, caseDe, type Niveau } from "./niveau";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 import { COS, SIN } from "./trig";
 
 // La partie de Rush : 60 Hz, tout en entiers, l'état d'un seul tenant. À chaque tick, `avancer(entree)` applique l'octet d'entrée du tick (voir `entrees.ts`) puis fait avancer le monde : le chevalier, les apparitions,
 // les monstres, le golem, les zones annoncées, les ondes, les contacts. **Le même code joue la partie du joueur et la rediffusion du serveur** ; la vue (`apps/rush`) ne fait que lire cet état.
 // Le hasard (apparitions, pierres) vient d'une graine du contenu et n'est tiré qu'à des ticks fixés par l'état : une rediffusion refait les mêmes tirages.
+// Lot BR2 : l'XP et les AMÉLIORATIONS. Un monstre tué ou un obstacle brisé lâche une gemme d'XP (elle vole vers le chevalier dans le rayon d'aimant et ne disparaît jamais) ; chaque niveau gagné FIGE le monde (`avancer` ne fait plus rien, le chrono
+// non plus : il compte les ticks) jusqu'à ce que le joueur choisisse une carte parmi trois (`choisir`, un événement d'entrée de la rediffusion que le serveur valide). Le tirage est celui de la graine du jour et du numéro du niveau (`ameliorations.ts`).
 // Lot BR1b : la COURSE hors combat (la vitesse monte de ×1,6 après ~1,2 s sans frapper, sans être touché et sans ennemi alerté à moins de 10 m ; elle retombe au premier coup, à la première alerte, au premier dégât ; pas de course dans l'arène),
 // des monstres à l'alerte propre (les groupes : 10 à 12 m) et des OBSTACLES cassables (ronces : 1 coup, caisses : 2 coups ; le coup final en vaut 2) qui occupent des cases du chemin tant qu'ils tiennent.
 // Lot BR0c : le coup du chevalier est plus lent et plus lourd (30 ticks, le coup final 42 ; anticipation, impact, récupération ; dégâts ×1,6 et ×2,5 au coup final ; il s'engage à 40 % de sa vitesse ; recul plus fort, les monstres glissent puis titubent) ;
@@ -66,6 +69,8 @@ export interface Chevalier {
   calme: number;
   /** Lot BR1b : la montée de la course, de 0 (la marche) à `courseMontee` (la vitesse de course) ; il ne monte qu'en marchant. */
   elan: number;
+  /** Lot BR2 : le nombre de cœurs au plus (3, et « Cœur en plus »). */
+  coeursMax: number;
 }
 
 export interface Monstre {
@@ -121,6 +126,36 @@ export interface ObstacleVivant {
   butin: number;
 }
 
+/** Lot BR2 : une gemme d'XP posée au sol (un octaèdre ambre), qui vaut `v` points. Aimantée (`vers`), elle vole vers le chevalier jusqu'à être ramassée. */
+export interface Gemme {
+  id: number;
+  x: number;
+  y: number;
+  v: number;
+  vers: boolean;
+  /** Le tick où elle est tombée (l'animation d'apparition). */
+  age: number;
+}
+
+/** Lot BR2 : le choix en attente, au niveau `nv` gagné : trois cartes (des indices du catalogue). */
+export interface ChoixOuvert {
+  nv: number;
+  cartes: number[];
+}
+
+/** Lot BR2 : l'onde de l'épée (« Onde d'épée » : le 3ᵉ coup la lance) : une courte lame qui file droit et blesse une fois chaque cible. */
+export interface OndeEpee {
+  x: number;
+  y: number;
+  dir: number;
+  /** La distance parcourue (unités) et la portée. */
+  d: number;
+  portee: number;
+  degats: number;
+  /** Ce qu'elle a déjà touché : monstres (identifiants), obstacles (−1 − indice), le golem (0). */
+  touches: number[];
+}
+
 export interface Golem {
   x: number;
   y: number;
@@ -167,7 +202,7 @@ export interface OndeGolem {
   touche: boolean;
 }
 
-export type GenreEvenement = "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "obstacle" | "brise";
+export type GenreEvenement = "gemme" | "ramasse" | "niveau" | "carte" | "ondeEpee" | "tranchant" | "soin" | "tourbillon" | "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "obstacle" | "brise";
 /** Ce que le rendu doit savoir d'un tick (sons, éclats, secousse) : jamais lu par la simulation. */
 export interface Evenement {
   k: GenreEvenement;
@@ -187,6 +222,9 @@ export interface Resultat {
   tues: number;
   /** Les dégâts reçus. */
   subis: number;
+  /** Lot BR2 : le niveau atteint et l'XP ramassée. */
+  nv: number;
+  xp: number;
 }
 
 // --- Les constantes des règles --------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -243,6 +281,29 @@ const PAUSE_VAGUE = 180;
 /** Le moment de la partie figée de la vitrine (le chrono de `cible-ia.png`). */
 const TICK_VITRINE = 1306;
 
+// Lot BR2 : les indices des améliorations dans le catalogue.
+const A_LOURDE = indiceAmelioration("lame-lourde");
+const A_ALLONGE = indiceAmelioration("allonge");
+const A_CADENCE = indiceAmelioration("cadence");
+const A_TOURBILLON = indiceAmelioration("tourbillon");
+const A_ONDE = indiceAmelioration("onde-epee");
+const A_BOTTES = indiceAmelioration("bottes-legeres");
+const A_LONGUE = indiceAmelioration("esquive-longue");
+const A_VIVE = indiceAmelioration("esquive-vive");
+const A_TRANCHANTE = indiceAmelioration("esquive-tranchante");
+const A_COEUR = indiceAmelioration("coeur-en-plus");
+const A_SOIN = indiceAmelioration("soin");
+const A_VOL = indiceAmelioration("vol-de-vie");
+const A_BRISE = indiceAmelioration("brise-pierre");
+const A_AIMANT = indiceAmelioration("aimant");
+/** Une gemme est ramassée à cette distance du chevalier (bord à bord) ; aimantée, elle vole à cette vitesse (cm/s, plus vite que la pleine course même avec les bottes). */
+const RAMASSE = cm(70);
+const VITESSE_GEMME = 1300;
+/** L'onde d'épée file à cette vitesse (cm/s) ; elle touche à cette distance (cm) de son centre. */
+const VITESSE_ONDE_EPEE = 1500;
+const LARGEUR_ONDE_EPEE = cm(70);
+
+const carre = (n: number): number => n * n;
 const rayonDe = (type: number): number => (type === GELEE ? RAYON_GELEE : RAYON_CHAUVE);
 
 /** Les durées des ennemis, mises au rythme de la partie : ce que le rendu lit pour animer (jamais lu par la simulation autrement). */
@@ -276,8 +337,17 @@ export class Partie {
   private entreePrecedente = 0;
   private vague = 0;
   private finTick = -1;
-  /** La vitesse de marche du chevalier, en unités par tick. */
-  private readonly vit: number;
+  /** La vitesse de marche du chevalier, en unités par tick (celle des réglages, puis « Bottes légères »). */
+  private vit: number;
+  private readonly vitBase: number;
+  /** Lot BR2 : l'XP ramassée, le niveau (1 au départ), les gemmes au sol, les ondes d'épée, le choix en attente (`null` : le monde tourne) et les paliers pris de chaque amélioration (indices du catalogue). */
+  xp = 0;
+  nv = 1;
+  gemmes: Gemme[] = [];
+  ondesEpee: OndeEpee[] = [];
+  choix: ChoixOuvert | null = null;
+  readonly paliers: number[] = new Array<number>(NB_AMELIORATIONS).fill(0);
+  private prochaineGemme = 1;
   /** Le rythme des ennemis, en %. */
   private readonly rt: number;
   /** Les durées des ennemis, au rythme de la partie. */
@@ -306,11 +376,12 @@ export class Partie {
     this.ay = this.niveau ? this.niveau.arene.y : 0;
     this.porte = new Set(this.niveau ? this.niveau.porte : []);
     this.bloquees = new Uint8Array(this.niveau ? this.niveau.l * this.niveau.h : 0);
-    this.vit = idiv(cm(reglages.vitesse), 60);
+    this.vitBase = idiv(cm(reglages.vitesse), 60);
+    this.vit = this.vitBase;
     this.rt = reglages.rythme;
     this.durees = { geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
     this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin";
-    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false, calme: 0, elan: 0 };
+    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false, calme: 0, elan: 0, coeursMax: COEURS };
     if (contenu.scenario === "arene") this.golem = null;
     else {
       const hpMax = reglages.golemVie;
@@ -326,6 +397,13 @@ export class Partie {
       this.vague = 1;
     }
     if (this.niveau) this.monterNiveau(this.niveau);
+    // Lot BR2 : les améliorations d'un scénario d'essai, puis (`?scenario=cartes`) le choix ouvert tout de suite au niveau demandé.
+    for (const id of contenu.ameliorations) this.prendre(indiceAmelioration(id), false);
+    if (contenu.scenario === "cartes" && this.niveau) {
+      this.nv = contenu.nv - 1;
+      this.xp = this.xpSeuil(contenu.nv);
+      this.verifierNiveau();
+    }
     if (contenu.scenario === "vitrine") this.monterVitrine();
     if (contenu.scenario === "mannequin") this.monterMannequin();
   }
@@ -346,7 +424,8 @@ export class Partie {
       this.monstres.push({ id: this.prochainId++, type: m.type, x: m.x, y: m.y, kx: 0, ky: 0, hp: gelee ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t: 0, age: -100, a: this.rng.int(128), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: m.x, hy: m.y, alerte: 0, laisse: LAISSE, ra: m.alerte });
     }
     n.obstacles.forEach((o, id) => {
-      this.obstacles.push({ id, genre: o.genre, x: o.x, y: o.y, r: o.r, hp: o.coups, hpMax: o.coups, flash: 0, coup: 0, cases: o.cases, butin: o.butin });
+      // Lot BR2 : ce qu'il contient, en points d'XP (les réglages).
+      this.obstacles.push({ id, genre: o.genre, x: o.x, y: o.y, r: o.r, hp: o.coups, hpMax: o.coups, flash: 0, coup: 0, cases: o.cases, butin: o.genre === OBSTACLE_RONCES ? this.reglages.xpRonces : this.reglages.xpCaisse });
       for (const k of o.cases) this.bloquees[k] = 1;
     });
   }
@@ -397,7 +476,7 @@ export class Partie {
   }
 
   resultat(): Resultat {
-    return { victoire: this.victoire, ticks: this.finTick >= 0 ? this.finTick : this.tick, coeurs: this.c.coeurs, tues: this.tues, subis: this.subis };
+    return { victoire: this.victoire, ticks: this.finTick >= 0 ? this.finTick : this.tick, coeurs: this.c.coeurs, tues: this.tues, subis: this.subis, nv: this.nv, xp: this.xp };
   }
 
   /** L'empreinte de tout l'état (FNV-1a 32 bits sur ses entiers) : deux parties identiques ont la même à chaque tick. Les essais de déterminisme (Node, trois navigateurs) la comparent. */
@@ -415,6 +494,16 @@ export class Partie {
     nombre(this.subis);
     nombre(this.coupId);
     nombre(this.barriere);
+    nombre(this.xp);
+    nombre(this.nv);
+    nombre(this.choix ? this.choix.nv : 0);
+    for (const n of this.paliers) nombre(n);
+    for (const g of this.gemmes) objet(g);
+    for (const o of this.ondesEpee) {
+      nombre(o.x);
+      nombre(o.y);
+      nombre(o.d);
+    }
     objet(this.c);
     objet(this.golem);
     for (const m of this.monstres) objet(m);
@@ -439,7 +528,7 @@ export class Partie {
 
   // --- Un tick -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   avancer(entree: number): void {
-    if (this.finie) return;
+    if (this.finie || this.choix) return; // lot BR2 : un niveau gagné fige le monde jusqu'au choix
     this.tick++;
     const front = (bit: boolean, avant: boolean): boolean => bit && !avant;
     const coupFront = front(coupDe(entree), coupDe(this.entreePrecedente));
@@ -455,8 +544,11 @@ export class Partie {
     this.resoudreZones();
     this.avancerOndes();
     this.contacts();
+    this.avancerOndesEpee();
+    this.ramasser();
     this.monstres = this.monstres.filter((m) => m.hp > 0);
     if (this.golem && this.golem.hp <= 0 && !this.victoire) this.gagner();
+    if (!this.finie) this.verifierNiveau();
   }
 
   /** Le chevalier entre dans l'arène : la barrière se referme derrière lui et le golem se réveille (il rugit, invulnérable, un instant). */
@@ -498,15 +590,18 @@ export class Partie {
       c.etat = ESQUIVE;
       c.t = 0;
       c.esq = this.reglages.fenetreEsquive;
-      c.attente = ATTENTE_ESQUIVE;
+      c.attente = Math.max(8, ATTENTE_ESQUIVE - this.paliers[A_VIVE]! * this.reglages.esquiveVive);
+      if (this.paliers[A_TRANCHANTE]! > 0) this.coupId++; // l'esquive est un « coup » : chaque cible n'y est blessée qu'une fois
       c.tampon = 0;
       this.ev("esquive", c.x, c.y, d);
     }
 
     if (c.etat === ESQUIVE) {
-      const v = idiv(this.vit * 29, 10); // la marche est plus lente depuis BR0c (−10 %) : la course de l'esquive garde sa longueur
+      // la marche est plus lente depuis BR0c (−10 %) : la course de l'esquive garde sa longueur (lot BR2 : « Esquive longue » l'allonge, les « Bottes légères » non)
+      const v = idiv(idiv(this.vitBase * 29, 10) * (100 + this.paliers[A_LONGUE]! * this.reglages.esquiveLongue), 100);
       this.deplacer(c, idiv(COS[c.dir]! * v, 1024), idiv(SIN[c.dir]! * v, 1024));
       c.marche = true;
+      if (this.paliers[A_TRANCHANTE]! > 0) this.tranchant();
       if (++c.t >= DUREE_ESQUIVE) {
         c.etat = LIBRE;
         c.t = 0;
@@ -588,17 +683,38 @@ export class Partie {
     return idiv(this.c.elan * 100, Math.max(1, this.reglages.courseMontee));
   }
 
+  /** Le pourcentage de durée d'un coup (lot BR2) : « Lame lourde » l'allonge, « Cadence » le raccourcit (jamais sous la moitié). */
+  private pctDuree(): number {
+    const r = this.reglages;
+    return Math.max(50, 100 + this.paliers[A_LOURDE]! * r.lourdeLenteur - this.paliers[A_CADENCE]! * r.cadenceGain);
+  }
   dureeCoup(s: number): number {
-    return s === 2 ? idiv(this.reglages.cadence * 14, 10) : this.reglages.cadence;
+    const base = s === 2 ? idiv(this.reglages.cadence * 14, 10) : this.reglages.cadence;
+    return Math.max(8, idiv(base * this.pctDuree() + 50, 100));
   }
   /** Le tick de l'impact dans le coup : la fin de l'anticipation (le coup final prend 4/3 de temps pour lever l'épée). */
   impactCoup(s: number): number {
-    return Math.max(2, s === 2 ? idiv(this.reglages.anticipation * 4, 3) : this.reglages.anticipation);
+    const base = Math.max(2, s === 2 ? idiv(this.reglages.anticipation * 4, 3) : this.reglages.anticipation);
+    return Math.max(2, idiv(base * this.pctDuree() + 50, 100));
   }
-  /** Les dégâts d'un coup (en dixièmes de point de vie) : ordinaire `degats` % du point, le coup final `coupFinal` % de cela. */
+  /** Les dégâts d'un coup (en dixièmes de point de vie) : ordinaire `degats` % du point, le coup final `coupFinal` % de cela, puis « Lame lourde ». */
   degatsCoup(s: number): number {
     const base = idiv(POINT * this.reglages.degats, 100);
-    return s === 2 ? idiv(base * this.reglages.coupFinal, 100) : base;
+    const d = s === 2 ? idiv(base * this.reglages.coupFinal, 100) : base;
+    return idiv(d * (100 + this.paliers[A_LOURDE]! * this.reglages.lourdeDegats), 100);
+  }
+  /** Les dégâts contre le golem : « Brise-pierre » les augmente. */
+  degatsContreGolem(d: number): number {
+    return idiv(d * (100 + this.paliers[A_BRISE]! * this.reglages.briseDegats), 100);
+  }
+  /** La portée du coup `s` (unités) : le coup final porte 25 % plus loin ; « Allonge ». */
+  porteeCoup(s: number): number {
+    return idiv(cm(this.reglages.portee) * (s === 2 ? 125 : 100) * (100 + this.paliers[A_ALLONGE]! * this.reglages.allongePortee), 10000);
+  }
+  /** La demi-ouverture de l'arc du coup `s` (degrés) : le coup final 30° de plus ; « Allonge » ; « Tourbillon » : 180 (tout autour). */
+  arcCoup(s: number): number {
+    if (s === 2 && this.paliers[A_TOURBILLON]! > 0) return 180;
+    return Math.min(120, this.reglages.arc + (s === 2 ? 30 : 0) + this.paliers[A_ALLONGE]! * this.reglages.allongeArc);
   }
 
   private commencerCoup(s: number, direction: number, visee: number): void {
@@ -647,9 +763,10 @@ export class Partie {
   private frapper(): void {
     const c = this.c;
     const s = c.combo;
-    const portee = idiv(cm(this.reglages.portee) * (s === 2 ? 125 : 100), 100);
-    const demi = Math.min(90, this.reglages.arc + (s === 2 ? 30 : 0));
-    const seuil = COS[Math.min(32, idiv(demi * 128, 360))]!;
+    const portee = this.porteeCoup(s);
+    const demi = this.arcCoup(s);
+    const tout = demi >= 180;
+    const seuil = COS[Math.min(64, idiv(demi * 128, 360))]!;
     const fx = COS[c.dir]!;
     const fy = SIN[c.dir]!;
     const dans = (x: number, y: number, r: number): boolean => {
@@ -657,65 +774,217 @@ export class Partie {
       const dy = y - c.y;
       const d = isqrt(dx * dx + dy * dy);
       if (d - r > portee) return false;
-      if (d <= r) return true;
+      if (d <= r || tout) return true;
       // Le centre doit être dans l'arc, élargi de la taille de la cible (un grand corps est touché de plus loin sur le côté).
       return dx * fx + dy * fy >= seuil * d - r * 1024;
     };
     const degats = this.degatsCoup(s);
     const force = idiv(cm(this.reglages.recul) * (s === 2 ? 20 : 10), 10);
-    const mannequin = this.contenu.scenario === "mannequin";
+    if (tout) this.ev("tourbillon", c.x, c.y, s);
     for (const m of this.monstres) {
       if (m.hp <= 0 || m.coup === this.coupId || !dans(m.x, m.y, rayonDe(m.type))) continue;
-      m.coup = this.coupId;
-      if (m.laisse > 0 && m.alerte !== 1) {
-        m.alerte = 1;
-        m.t = 0;
-      }
-      m.hp -= degats;
-      m.flash = 7;
-      m.gel = Math.max(m.gel, TITUBE[s]!); // elle glisse (le recul) puis titube
-      const [ux, uy] = unitaire(m.x - c.x, m.y - c.y);
-      const ex = ux === 0 && uy === 0 ? COS[c.dir]! : ux;
-      const ey = ux === 0 && uy === 0 ? SIN[c.dir]! : uy;
-      m.kx = idiv(ex * force, 1024);
-      m.ky = idiv(ey * force, 1024);
-      if (m.type === CHAUVE && (m.etat === PLONGEON || m.etat === ANNONCE_PLONGEON)) {
-        m.etat = REPOS;
-        m.t = 0;
-      }
-      this.ev("touche", m.x, m.y, s, m.type);
-      if (mannequin) m.hp = VIE_GELEE; // le mannequin ne meurt pas
-      if (m.hp <= 0) {
-        this.tues++;
-        this.ev("mort", m.x, m.y, m.type, s);
-      }
+      this.toucherMonstre(m, degats, s, force, c.x, c.y);
     }
-    // Lot BR1b : un obstacle cassable cède en 1 ou 2 coups (le coup final en vaut 2) ; ce qu'il contient (lot BR2) tombe à sa place.
+    // Lot BR1b : un obstacle cassable cède en 1 ou 2 coups (le coup final en vaut 2) ; ce qu'il contient (lot BR2 : des gemmes d'XP) tombe à sa place.
     for (const o of this.obstacles) {
       if (o.coup === this.coupId || !dans(o.x, o.y, o.r)) continue;
       o.coup = this.coupId;
-      o.hp -= s === 2 ? 2 : 1;
-      o.flash = 7;
-      this.ev("obstacle", o.x, o.y, s, o.genre);
-      if (o.hp <= 0) {
-        for (const k of o.cases) this.bloquees[k] = 0;
-        this.ev("brise", o.x, o.y, o.genre, o.id);
-      }
+      this.frapperObstacle(o, s === 2 ? 2 : 1, s);
     }
     this.obstacles = this.obstacles.filter((o) => o.hp > 0);
     const g = this.golem;
-    if (g && g.hp > 0 && g.coup !== this.coupId && dans(g.x, g.y, RAYON_GOLEM)) {
-      g.coup = this.coupId;
-      if (g.etat === RUGIT) this.ev("bloque", g.x, g.y);
-      else {
-        g.hp -= degats;
-        g.flash = 7;
-        const phase2 = g.phase === 1 && g.hp > 0 && g.hp * 2 <= g.hpMax;
-        this.ev("touche", g.x, g.y, s, phase2 ? 3 : 2); // b : 2 = le golem, 3 = le golem qui passe en phase 2 par ce coup
-        if (mannequin) g.hp = g.hpMax; // le mannequin ne meurt pas
-        else if (phase2) this.entrerPhase2(g);
+    if (g && g.hp > 0 && g.coup !== this.coupId && dans(g.x, g.y, RAYON_GOLEM)) this.toucherGolem(g, degats, s);
+    // Lot BR2 : « Onde d'épée » — le 3ᵉ coup lance une courte lame devant lui.
+    if (s === 2 && this.paliers[A_ONDE]! > 0) {
+      this.ondesEpee.push({ x: c.x, y: c.y, dir: c.dir, d: 0, portee: cm(this.reglages.ondePortee), degats: idiv(degats * this.reglages.ondeDegats, 100), touches: [] });
+      this.ev("ondeEpee", c.x, c.y, c.dir);
+    }
+  }
+
+  /** Un monstre touché par `degats` (le coup `s`, l'esquive, l'onde) : l'éclair, le recul qui le repousse depuis (sx, sy), le titubement, l'alerte, la mort (et ses gemmes). */
+  private toucherMonstre(m: Monstre, degats: number, s: number, force: number, sx: number, sy: number): void {
+    const c = this.c;
+    m.coup = this.coupId;
+    if (m.laisse > 0 && m.alerte !== 1) {
+      m.alerte = 1;
+      m.t = 0;
+    }
+    m.hp -= degats;
+    m.flash = 7;
+    m.gel = Math.max(m.gel, TITUBE[s]!); // elle glisse (le recul) puis titube
+    const [ux, uy] = unitaire(m.x - sx, m.y - sy);
+    const ex = ux === 0 && uy === 0 ? COS[c.dir]! : ux;
+    const ey = ux === 0 && uy === 0 ? SIN[c.dir]! : uy;
+    m.kx = idiv(ex * force, 1024);
+    m.ky = idiv(ey * force, 1024);
+    if (m.type === CHAUVE && (m.etat === PLONGEON || m.etat === ANNONCE_PLONGEON)) {
+      m.etat = REPOS;
+      m.t = 0;
+    }
+    this.ev("touche", m.x, m.y, s, m.type);
+    if (this.contenu.scenario === "mannequin") m.hp = VIE_GELEE; // le mannequin ne meurt pas
+    if (m.hp <= 0) {
+      this.tues++;
+      this.ev("mort", m.x, m.y, m.type, s);
+      const base = m.type === GELEE ? this.reglages.xpGelee : this.reglages.xpChauve;
+      const camp = (this.niveau?.monstres[m.id - 1]?.camp ?? -1) >= 0; // un monstre d'un camp (au bout d'un détour) vaut plus : le détour est un pari
+      this.lacher(m.x, m.y, camp ? idiv(base * this.reglages.xpCamp, 100) : base);
+      // « Vol de vie » : un cœur tous les N monstres tués.
+      if (this.paliers[A_VOL]! > 0 && this.tues % this.reglages.volVie === 0) this.soigner(1);
+    }
+  }
+
+  private frapperObstacle(o: ObstacleVivant, n: number, s: number): void {
+    o.hp -= n;
+    o.flash = 7;
+    this.ev("obstacle", o.x, o.y, s, o.genre);
+    if (o.hp <= 0) {
+      for (const k of o.cases) this.bloquees[k] = 0;
+      this.ev("brise", o.x, o.y, o.genre, o.id);
+      this.lacher(o.x, o.y, o.butin);
+    }
+  }
+
+  private toucherGolem(g: Golem, degats: number, s: number): void {
+    g.coup = this.coupId;
+    if (g.etat === RUGIT) return void this.ev("bloque", g.x, g.y);
+    g.hp -= this.degatsContreGolem(degats);
+    g.flash = 7;
+    const phase2 = g.phase === 1 && g.hp > 0 && g.hp * 2 <= g.hpMax;
+    this.ev("touche", g.x, g.y, s, phase2 ? 3 : 2); // b : 2 = le golem, 3 = le golem qui passe en phase 2 par ce coup
+    if (this.contenu.scenario === "mannequin") g.hp = g.hpMax; // le mannequin ne meurt pas
+    else if (phase2) this.entrerPhase2(g);
+  }
+
+  /** « Esquive tranchante » : pendant la course de l'esquive, ce qui est au contact du chevalier est blessé (une fois par esquive). */
+  private tranchant(): void {
+    const c = this.c;
+    const degats = idiv(idiv(POINT * this.reglages.degats, 100) * this.reglages.tranchanteDegats * (100 + this.paliers[A_LOURDE]! * this.reglages.lourdeDegats), 10000);
+    for (const m of this.monstres) {
+      if (m.hp <= 0 || m.coup === this.coupId) continue;
+      const somme = rayonDe(m.type) + RAYON_CHEVALIER + cm(35);
+      if (distance2(c.x, c.y, m.x, m.y) >= somme * somme) continue;
+      this.ev("tranchant", m.x, m.y);
+      this.toucherMonstre(m, degats, 0, cm(this.reglages.recul), c.x, c.y);
+    }
+    const g = this.golem;
+    if (g && g.hp > 0 && g.coup !== this.coupId && distance2(c.x, c.y, g.x, g.y) < carre(RAYON_GOLEM + RAYON_CHEVALIER + cm(35))) {
+      this.ev("tranchant", g.x, g.y);
+      this.toucherGolem(g, degats, 0);
+    }
+  }
+
+  /** Les ondes d'épée avancent et blessent une fois chaque cible qu'elles croisent. */
+  private avancerOndesEpee(): void {
+    if (this.ondesEpee.length === 0) return;
+    const v = idiv(cm(VITESSE_ONDE_EPEE), 60);
+    for (const o of this.ondesEpee) {
+      o.d += v;
+      const x = o.x + idiv(COS[o.dir]! * o.d, 1024);
+      const y = o.y + idiv(SIN[o.dir]! * o.d, 1024);
+      for (const m of this.monstres) {
+        if (m.hp <= 0 || o.touches.includes(m.id)) continue;
+        const somme = rayonDe(m.type) + LARGEUR_ONDE_EPEE;
+        if (distance2(x, y, m.x, m.y) >= somme * somme) continue;
+        o.touches.push(m.id);
+        this.toucherMonstre(m, o.degats, 0, cm(this.reglages.recul), o.x, o.y);
+      }
+      for (const ob of this.obstacles) {
+        if (o.touches.includes(-1 - ob.id)) continue;
+        const somme = ob.r + LARGEUR_ONDE_EPEE;
+        if (distance2(x, y, ob.x, ob.y) >= somme * somme) continue;
+        o.touches.push(-1 - ob.id);
+        this.frapperObstacle(ob, 1, 0);
+      }
+      this.obstacles = this.obstacles.filter((q) => q.hp > 0);
+      const g = this.golem;
+      if (g && g.hp > 0 && !o.touches.includes(0) && distance2(x, y, g.x, g.y) < carre(RAYON_GOLEM + LARGEUR_ONDE_EPEE)) {
+        o.touches.push(0);
+        const avant = g.coup;
+        this.toucherGolem(g, o.degats, 0);
+        g.coup = avant;
       }
     }
+    this.ondesEpee = this.ondesEpee.filter((o) => o.d < o.portee);
+  }
+
+  // --- L'XP et les améliorations (lot BR2) ---------------------------------------------------------------------------------------------------------------------------------------------------------
+  /** L'XP cumulée qu'il faut pour ATTEINDRE le niveau `n` (le niveau 1 : 0) : le niveau suivant coûte `xpBase`, puis `xpPas` de plus à chaque niveau. */
+  xpSeuil(n: number): number {
+    if (n <= 1) return 0;
+    return (n - 1) * this.reglages.xpBase + this.reglages.xpPas * idiv((n - 1) * (n - 2), 2);
+  }
+
+  /** Une gemme tombe (seulement dans le niveau du jour : les scénarios d'essai n'ont pas d'XP). */
+  private lacher(x: number, y: number, v: number): void {
+    if (!this.niveau || v <= 0) return;
+    this.gemmes.push({ id: this.prochaineGemme++, x, y, v, vers: false, age: this.tick });
+    this.ev("gemme", x, y, v);
+  }
+
+  /** Les gemmes dans le rayon d'aimant volent vers le chevalier (et ne s'arrêtent plus) ; au contact, elles sont ramassées. */
+  private ramasser(): void {
+    if (this.gemmes.length === 0) return;
+    const c = this.c;
+    const rayon = idiv(cm(this.reglages.aimant) * (100 + this.paliers[A_AIMANT]! * this.reglages.aimantGain), 100);
+    const v = idiv(cm(VITESSE_GEMME), 60);
+    const reste: Gemme[] = [];
+    for (const g of this.gemmes) {
+      const d = distance(g.x, g.y, c.x, c.y);
+      if (d < rayon) g.vers = true;
+      if (g.vers && d > 0) {
+        const pas = Math.min(d, v);
+        g.x += idiv((c.x - g.x) * pas, d);
+        g.y += idiv((c.y - g.y) * pas, d);
+      }
+      if (distance(g.x, g.y, c.x, c.y) <= RAMASSE) {
+        this.xp += g.v;
+        this.ev("ramasse", g.x, g.y, g.v);
+      } else reste.push(g);
+    }
+    this.gemmes = reste;
+  }
+
+  /** L'XP atteint le niveau suivant : le niveau monte et le choix s'ouvre (trois cartes tirées de la graine du jour et du niveau). Une fois à la fois. */
+  private verifierNiveau(): void {
+    if (this.choix || !this.niveau || this.xp < this.xpSeuil(this.nv + 1)) return;
+    this.nv++;
+    this.choix = { nv: this.nv, cartes: tirageDeCartes(this.contenu.graine, this.nv, this.paliers) };
+    this.ev("niveau", this.c.x, this.c.y, this.nv);
+  }
+
+  /**
+   * Le joueur choisit la carte `index` (0 à 2) du niveau `nv`. **Un événement d'entrée de la rediffusion** : refusé (rend `false`, rien ne change) quand aucun niveau n'est gagné, quand `nv` n'est pas celui du choix en attente ou quand la carte n'existe pas.
+   * Le monde repart ; si l'XP déjà ramassée donne un autre niveau, un nouveau choix s'ouvre aussitôt.
+   */
+  choisir(nv: number, index: number): boolean {
+    const ch = this.choix;
+    if (!ch || ch.nv !== nv || !Number.isInteger(index) || index < 0 || index >= ch.cartes.length) return false;
+    this.choix = null;
+    this.prendre(ch.cartes[index]!, true);
+    this.ev("carte", this.c.x, this.c.y, ch.cartes[index]!, nv);
+    this.verifierNiveau();
+    return true;
+  }
+
+  /** Une amélioration prise : son palier monte et son effet joue (les effets de durée se lisent dans les accesseurs ; les cœurs et la vitesse changent ici). */
+  private prendre(i: number, joue: boolean): void {
+    if (i < 0 || i >= NB_AMELIORATIONS || this.paliers[i]! >= AMELIORATIONS[i]!.max) return;
+    if (i !== A_SOIN) this.paliers[i]!++;
+    const c = this.c;
+    if (i === A_BOTTES) this.vit = idiv(this.vitBase * (100 + this.paliers[A_BOTTES]! * this.reglages.bottesVitesse), 100);
+    else if (i === A_COEUR) {
+      c.coeursMax++;
+      c.coeurs++;
+    } else if (i === A_SOIN && joue) this.soigner(1);
+    else if (i === A_SOIN) c.coeurs = Math.min(c.coeursMax, c.coeurs + 1);
+  }
+
+  private soigner(n: number): void {
+    const c = this.c;
+    if (c.coeurs >= c.coeursMax) return;
+    c.coeurs = Math.min(c.coeursMax, c.coeurs + n);
+    this.ev("soin", c.x, c.y, c.coeurs);
   }
 
   // --- Les monstres ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1108,7 +1377,7 @@ export class Partie {
     this.ev("degats", c.x, c.y, c.coeurs);
     if (c.coeurs <= 0) {
       if (this.immortel) {
-        c.coeurs = COEURS;
+        c.coeurs = c.coeursMax;
         c.degat = 150;
         this.ev("sauve", c.x, c.y);
       } else {

@@ -1,9 +1,11 @@
+import { indiceAmelioration } from "./ameliorations";
 import { RAYON_CHEVALIER, RAYON_GOLEM, cm } from "./constantes";
 import { entree, type Changement } from "./entrees";
 import type { Contenu } from "./generateur";
 import { distance, dirVers } from "./maths";
 import { caseDe, centreDeCase, champDeDistance, descendre, INACCESSIBLE } from "./niveau";
 import { CHAUVE, COUP, ONDE, PLONGEON, Partie, type Resultat } from "./partie";
+import type { Choix } from "./rediffusion";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
 // Le pilote : un joueur automatique qui lit l'état de la partie et rend l'octet d'entrée du tick. Il sert à trois choses : le Diamant provisoire du prototype (sa partie du jour), les mesures (une partie de
@@ -12,12 +14,23 @@ import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 // Lot BR1 : il NAVIGUE dans le niveau — le chemin le plus court sur la grille jusqu'à l'arène (le champ de distance du niveau), et il ne combat que ce qui lui barre la route : c'est le Diamant provisoire, « foncer ».
 // Lot BR1b : il casse l'obstacle qui barre les pas qui viennent (le chemin le plus court passe par lui : 1 ou 2 coups) au lieu de le contourner ; la COURSE hors combat lui vient d'elle-même (il marche sans cesse et ne frappe que ce qui barre
 // la route : la simulation fait monter sa vitesse après ~1,2 s de calme) ; la stratégie « nettoyer » peut ne viser que les monstres d'UN camp (la mesure du coût d'un détour : `jouerLePilote(…, camp)`).
-// La stratégie « nettoyer » (une mesure, pas un Diamant) va d'abord à chaque monstre, du plus proche au plus loin, puis à l'arène : elle donne l'écart de temps entre foncer et tout nettoyer.
+// Lot BR2 : TROIS stratégies — FONCER (le Diamant provisoire : aucun détour), UN PEU D'XP (les monstres du chemin et les camps proches du chemin : `SEUIL_PEU_CM`) et BEAUCOUP D'XP (tous les camps) — chacune avec sa liste de priorités pour choisir
+// une carte (`PRIORITES`, la première de la liste qui est proposée). Elles servent à l'ÉQUILIBRE : aucune ne doit gagner tous les jours (`tools/mesures.ts`, `test/equilibre.test.ts`).
+// La stratégie « nettoyer » d'avant (une mesure, pas un Diamant) va d'abord à chaque monstre, du plus proche au plus loin, puis à l'arène : elle donne l'écart de temps entre foncer et tout nettoyer.
 
 /** La direction de la croix (0 à 31) la plus proche d'un vecteur. */
 const croix = (dx: number, dy: number): number => Math.trunc((dirVers(dx, dy) + 2) / 4) % 32;
 
-export type Strategie = "foncer" | "nettoyer";
+export type Strategie = "foncer" | "peu" | "beaucoup";
+export const STRATEGIES: readonly Strategie[] = ["foncer", "peu", "beaucoup"];
+/** « Un peu d'XP » : un camp est « proche » quand le détour qui y mène est à cette distance (cm) du chemin principal au plus. */
+export const SEUIL_PEU_CM = 2500;
+/** Les cartes de chaque stratégie, de la plus voulue à la moins voulue (la première proposée est prise ; sinon la première carte offerte). */
+export const PRIORITES: Readonly<Record<Strategie, readonly string[]>> = {
+  foncer: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "esquive-vive", "tourbillon", "onde-epee", "allonge", "coeur-en-plus", "soin", "esquive-longue", "vol-de-vie", "esquive-tranchante", "aimant"],
+  peu: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "tourbillon", "onde-epee", "allonge", "esquive-vive", "coeur-en-plus", "soin", "vol-de-vie", "esquive-longue", "esquive-tranchante", "aimant"],
+  beaucoup: ["bottes-legeres", "tourbillon", "cadence", "lame-lourde", "brise-pierre", "onde-epee", "allonge", "vol-de-vie", "aimant", "coeur-en-plus", "soin", "esquive-vive", "esquive-longue", "esquive-tranchante"],
+};
 /** Ce que le pilote retient d'un tick à l'autre (la stratégie « foncer » n'en a pas besoin). */
 export interface EtatPilote {
   strategie: Strategie;
@@ -26,10 +39,30 @@ export interface EtatPilote {
   champ: Uint16Array | null;
   champCase: number;
   champDepuis: number;
-  /** « nettoyer » : −2, tous les monstres ; un indice de clairière : seulement les monstres de ce camp ; −1 : seulement ceux du chemin principal (groupes et épars). */
+  /** « peu » et « beaucoup » : −2, tous les monstres ; un indice de clairière : seulement les monstres de ce camp ; −1 : seulement ceux du chemin principal (groupes et épars). */
   camp: number;
+  /** « peu » : les camps proches (indices de clairière), en plus des monstres du chemin ; `null` : on s'en tient à `camp`. */
+  camps: ReadonlySet<number> | null;
+  /** Anti-blocage : où il était au tick d'avant et depuis combien de ticks il veut avancer sans bouger (un coin de mur le retient). */
+  px: number;
+  py: number;
+  immobile: number;
 }
-export const etatPilote = (strategie: Strategie = "foncer", camp = -2): EtatPilote => ({ strategie, cible: -1, champ: null, champCase: -1, champDepuis: -1e9, camp });
+export const etatPilote = (strategie: Strategie = "foncer", camp = -2, p?: Partie, seuilPeu = SEUIL_PEU_CM): EtatPilote => ({
+  strategie,
+  cible: -1,
+  champ: null,
+  champCase: -1,
+  champDepuis: -1e9,
+  camp: strategie === "peu" ? -1 : camp,
+  px: -1,
+  py: -1,
+  immobile: 0,
+  camps: strategie === "peu" && p?.niveau ? new Set(p.niveau.detours.filter((d) => d.distanceCm <= seuilPeu).map((d) => d.camp)) : null,
+});
+
+/** Les gemmes que le pilote qui chasse ramasse : celles à moins de ce chemin (cm) de lui. */
+const RAYON_GEMMES = 700;
 
 /** Le camp d'un monstre du niveau (ses identifiants suivent l'ordre du niveau). */
 const campDe = (p: Partie, id: number): number => p.niveau!.monstres[id - 1]?.camp ?? -1;
@@ -69,16 +102,19 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
   for (const m of p.monstres) {
     if (m.hp <= 0) continue;
     const d = distance(c.x, c.y, m.x, m.y);
-    const barre = etat.strategie === "nettoyer" ? d < cm(360) : d < cm(170) || (d < cm(300) && distance(m.x, m.y, devant[0], devant[1]) < cm(240));
+    const barre = etat.strategie !== "foncer" ? d < cm(360) : d < cm(170) || (d < cm(300) && distance(m.x, m.y, devant[0], devant[1]) < cm(240));
     if (barre && d < meilleur) {
       meilleur = d;
       bloque = { x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : cm(48) };
     }
   }
-  const portee = cm(p.reglages.portee) - cm(50);
-  const frapper = (b: { x: number; y: number; r: number }): { direction: number; coup: boolean } => {
+  const portee = p.porteeCoup(0) - cm(50);
+  // `champ` : un obstacle encore loin se rejoint en suivant le champ de distance (la ligne droite peut buter sur un mur et le bloquer pour toujours).
+  const frapper = (b: { x: number; y: number; r: number }, champ?: Uint16Array): { direction: number; coup: boolean } => {
     const d = distance(c.x, c.y, b.x, b.y) - b.r - RAYON_CHEVALIER;
-    return d > portee ? { direction: croix(b.x - c.x, b.y - c.y), coup: false } : { direction: -1, coup: true };
+    if (d <= portee) return { direction: -1, coup: true };
+    const pas = champ ? pasVers(p, champ) : -1;
+    return { direction: pas >= 0 ? pas : croix(b.x - c.x, b.y - c.y), coup: false };
   };
   if (bloque) return frapper(bloque);
   // Lot BR1b : un obstacle sur les pas qui viennent le long d'un champ de distance : on le brise.
@@ -94,17 +130,24 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
     }
     return null;
   };
-  const vises = (m: { id: number; hp: number }): boolean => m.hp > 0 && (etat.camp === -2 || campDe(p, m.id) === etat.camp);
-  if (etat.strategie === "nettoyer" && p.monstres.some(vises)) {
-    // Le monstre le plus proche par le chemin : un champ de distance depuis la case du chevalier.
-    let cible = p.monstres.find((m) => m.id === etat.cible && vises(m));
+  const vises = (m: { id: number; hp: number }): boolean => m.hp > 0 && (etat.camps ? campDe(p, m.id) === -1 || etat.camps.has(campDe(p, m.id)) : etat.camp === -2 || campDe(p, m.id) === etat.camp);
+  // Lot BR2 : qui chasse ramasse aussi les gemmes proches (l'aimant n'en prend que dans 3 m : un monstre repoussé meurt parfois plus loin). Une gemme est une cible d'identifiant négatif.
+  const GEMME = -1000;
+  const gemmesProches = etat.strategie !== "foncer" ? p.gemmes.filter((g) => distance(c.x, c.y, g.x, g.y) < cm(RAYON_GEMMES)) : [];
+  if (etat.strategie !== "foncer" && (p.monstres.some(vises) || gemmesProches.length > 0)) {
+    // La cible la plus proche par le chemin (monstre visé ou gemme) : un champ de distance depuis la case du chevalier.
+    type Cible = { id: number; x: number; y: number };
+    const toutes: Cible[] = [...p.monstres.filter(vises), ...gemmesProches.map((g) => ({ id: GEMME - g.id, x: g.x, y: g.y }))];
+    let cible: Cible | undefined = toutes.find((m) => m.id === etat.cible);
     if (!cible) {
       const depuis = champDeDistance(n, idx >= 0 ? [idx] : []);
       let dm = Infinity;
-      for (const m of p.monstres) {
+      for (const m of toutes) {
         const k = caseDe(n, m.x, m.y);
-        const dk = k >= 0 ? depuis[k]! : INACCESSIBLE;
-        if (vises(m) && dk < dm) {
+        // Le détour que la cible coûte : le chemin jusqu'à elle PLUS ce qui lui reste jusqu'à l'arène (la moins coûteuse à insérer sur la route ; une cible qu'on ne peut pas rejoindre ne compte pas).
+        const dk = k >= 0 && depuis[k]! !== INACCESSIBLE ? depuis[k]! + n.dist[k]! : INACCESSIBLE;
+        // une gemme avant un monstre à coût égal : l'XP posée au sol est la plus sûre
+        if (dk < dm || (dk === dm && m.id <= GEMME)) {
           dm = dk;
           cible = m;
         }
@@ -120,19 +163,18 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
         etat.champDepuis = p.tick;
       }
       const gene = etat.champ ? obstacleSur(etat.champ) : null;
-      if (gene) return frapper(gene);
+      if (gene) return frapper(gene, etat.champ ?? undefined);
       const d = etat.champ ? pasVers(p, etat.champ) : -1;
       return { direction: d >= 0 ? d : croix(cible.x - c.x, cible.y - c.y), coup: false };
     }
   }
   const gene = obstacleSur(n.dist);
-  if (gene) return frapper(gene);
+  if (gene) return frapper(gene, n.dist);
   return { direction: aLArene(), coup: false };
 }
 
 export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   const c = p.c;
-  const reg = p.reglages;
   const tick = p.tick;
   // 1. Les cercles qui vont tomber : partir, et esquiver au dernier moment.
   let fuite: { x: number; y: number } | null = null;
@@ -176,6 +218,11 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   // 4. Dans le niveau, avant l'arène : naviguer (et ne frapper que ce qui barre la route). Dans l'arène : le combat.
   if (p.niveau && p.barriere < 0) {
     const nav = naviguer(p, etat);
+    // Coincé contre le coin d'un mur en voulant avancer : il se décale de côté (alternativement) jusqu'à repartir.
+    etat.immobile = nav.direction >= 0 && !nav.coup && c.x === etat.px && c.y === etat.py ? etat.immobile + 1 : 0;
+    etat.px = c.x;
+    etat.py = c.y;
+    if (etat.immobile > 12 && nav.direction >= 0) nav.direction = (nav.direction + (etat.immobile % 48 < 24 ? 6 : 26)) % 32;
     const esq = esquiver && c.attente === 0;
     const dirNav = esq && dirEsquive >= 0 ? dirEsquive : esq && nav.direction < 0 ? croix(c.x - (p.niveau.arene.x), c.y - p.niveau.arene.y) : nav.direction;
     return entree(dirNav, nav.coup, esq);
@@ -201,7 +248,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   if (fuite) direction = croix(c.x - fuite.x, c.y - fuite.y);
   else if (cible) {
     const d = distance(c.x, c.y, cible.x, cible.y) - cible.r - RAYON_CHEVALIER;
-    const portee = cm(reg.portee) - cm(50);
+    const portee = p.porteeCoup(0) - cm(50);
     if (d > portee) direction = croix(cible.x - c.x, cible.y - c.y);
     else coup = true;
   }
@@ -212,13 +259,50 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   return entree(dirFinale, bouton, esq);
 }
 
-/** La partie du pilote sur un contenu : ses changements d'entrée (la rediffusion) et son résultat. `max` borne le nombre de ticks (les mesures de plusieurs minutes). */
-export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer", camp = -2): { changements: Changement[]; resultat: Resultat; ticks: number } {
+/** La carte que la stratégie prend parmi les trois proposées (l'index 0 à 2) : la première de sa liste de priorités qui est offerte, sinon la première carte. */
+export function choisirCarte(p: Partie, strategie: Strategie): number {
+  const cartes = p.choix?.cartes ?? [];
+  let meilleur = 0;
+  let rang = Infinity;
+  cartes.forEach((carte, i) => {
+    const r = PRIORITES[strategie].findIndex((id) => indiceAmelioration(id) === carte);
+    if ((r < 0 ? 1e6 : r) < rang) {
+      rang = r < 0 ? 1e6 : r;
+      meilleur = i;
+    }
+  });
+  return meilleur;
+}
+
+/**
+ * Un pas du pilote (lot BR2) : si la partie attend un choix d'amélioration, il le fait (la carte de sa stratégie ; `choix` le note) ; puis il rend l'entrée du tick et la partie avance. La partie n'avance pas d'un tick quand elle vient de s'ouvrir un choix : un
+ * appel suivant joue le choix, puis le tick.
+ */
+export function pasDuPilote(p: Partie, etat: EtatPilote, choix?: Choix[]): number {
+  while (p.choix) {
+    const carte = choisirCarte(p, etat.strategie);
+    choix?.push({ tick: p.tick, nv: p.choix.nv, carte });
+    p.choisir(p.choix.nv, carte);
+  }
+  const e = pilote(p, etat);
+  p.avancer(e);
+  return e;
+}
+
+/** La partie du pilote sur un contenu : ses changements d'entrée et ses choix (la rediffusion) et son résultat. `max` borne le nombre de ticks (les mesures de plusieurs minutes). */
+export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer", camp = -2): { changements: Changement[]; choix: Choix[]; resultat: Resultat; ticks: number } {
   const p = new Partie(contenu, reglages);
   const changements: Changement[] = [];
-  const etat = etatPilote(strategie, camp);
+  const choix: Choix[] = [];
+  const etat = etatPilote(strategie, camp, p);
   let avant = 0;
   while (!p.finie && p.tick < max) {
+    // Les choix d'abord (le monde est figé), puis l'entrée du tick.
+    while (p.choix) {
+      const carte = choisirCarte(p, strategie);
+      choix.push({ tick: p.tick, nv: p.choix.nv, carte });
+      p.choisir(p.choix.nv, carte);
+    }
     const e = pilote(p, etat);
     if (e !== avant) {
       changements.push({ tick: p.tick, e });
@@ -226,8 +310,13 @@ export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DE
     }
     p.avancer(e);
   }
-  return { changements, resultat: p.resultat(), ticks: p.tick };
+  return { changements, choix, resultat: p.resultat(), ticks: p.tick };
 }
 
 export const touchesDuBot = (contenu: Contenu): Changement[] => jouerLePilote(contenu).changements;
+/** La partie du Diamant provisoire (foncer) : ses changements d'entrée ET ses choix d'amélioration. */
+export const entreesDuBot = (contenu: Contenu): { changements: Changement[]; choix: Choix[] } => {
+  const { changements, choix } = jouerLePilote(contenu);
+  return { changements, choix };
+};
 export const partieDuBot = (contenu: Contenu): Resultat => jouerLePilote(contenu).resultat;

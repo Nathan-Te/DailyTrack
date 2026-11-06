@@ -1,8 +1,8 @@
 import { cpus } from "node:os";
 import { daysFromCivil } from "@cdj/core";
-import { REGLAGES_DEFAUT, MAX_CHANGEMENTS, PAS_MIN_DIRECTION, PAS_MIN_VISEE, Partie, contenuScenario, dailyRush, encoderRediffusion, entree, etatPilote, jouer, jouerLePilote, pilote, tempsSansRencontre, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, type Changement } from "../src/index";
+import { REGLAGES_DEFAUT, MAX_CHANGEMENTS, PAS_MIN_DIRECTION, PAS_MIN_VISEE, Partie, contenuScenario, dailyRush, encoderRediffusion, entree, etatPilote, jouer, jouerLePilote, pasDuPilote, tempsSansRencontre, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, type Changement, type Choix } from "../src/index";
 
-// Les mesures des lots BR0 à BR1b : `npm run mesures:rush -w @cdj/rush-sim` (Node seulement ; aucune base, aucun réseau). Le coût du rejeu d'une partie de 2 et de 5 minutes, la taille de la rediffusion, le coût par tick d'un jeu à
+// Les mesures des lots BR0 à BR2 (l'ÉQUILIBRE des trois stratégies est dans `tools/equilibre.ts` : `npm run equilibre:rush -w @cdj/rush-sim`) : `npm run mesures:rush -w @cdj/rush-sim` (Node seulement ; aucune base, aucun réseau). Le coût du rejeu d'une partie de 2 et de 5 minutes, la taille de la rediffusion, le coût par tick d'un jeu à
 // 30 monstres. Le texte imprimé est celui que le README du lot recopie.
 const mediane = (v: number[]): number => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
 function chrono(f: () => unknown, passes = 7): number {
@@ -15,7 +15,7 @@ function chrono(f: () => unknown, passes = 7): number {
   }
   return mediane(t);
 }
-const taille = (c: Changement[], contenu: { scenario: string }): number => encoderRediffusion({ sim: RUSH_SIM_VERSION, g: RUSH_GENERATOR_VERSION, contenu: { scenario: contenu.scenario }, changements: c }).length;
+const taille = (c: Changement[], contenu: { scenario: string }, choix: Choix[] = []): number => encoderRediffusion({ sim: RUSH_SIM_VERSION, g: RUSH_GENERATOR_VERSION, contenu: { scenario: contenu.scenario }, changements: c, choix }).length;
 
 console.log(`Machine : ${cpus()[0]!.model.trim()} (${cpus().length} cœurs), Node ${process.version}`);
 console.log(`Rush v${RUSH_SIM_VERSION} · 60 ticks par seconde · pas de changement de direction plus d'une fois tous les ${PAS_MIN_DIRECTION} ticks, de visée plus d'une fois tous les ${PAS_MIN_VISEE} ticks · plafond ${MAX_CHANGEMENTS} changements\n`);
@@ -63,7 +63,7 @@ const quantiles = (v: number[]): string => {
   return `${t[0]!.toFixed(1)} / ${t[Math.floor(t.length / 2)]!.toFixed(1)} / ${t[t.length - 1]!.toFixed(1)}`;
 };
 const ecarts: number[] = [];
-for (const strategie of ["foncer", "nettoyer"] as const) {
+for (const strategie of ["foncer", "peu", "beaucoup"] as const) {
   const temps: number[] = [];
   let victoires = 0;
   let subis = 0;
@@ -76,15 +76,17 @@ for (const strategie of ["foncer", "nettoyer"] as const) {
       temps.push(r.ticks / 60);
     }
     subis += r.resultat.subis;
-    pireTaille = Math.max(pireTaille, taille(r.changements, { scenario: "jour" }));
-    if (strategie === "nettoyer" && r.resultat.victoire) ecarts.push(r.ticks / 60 - jouerLePilote(c).ticks / 60);
+    pireTaille = Math.max(pireTaille, taille(r.changements, { scenario: "jour" }, r.choix));
+    if (strategie === "beaucoup" && r.resultat.victoire) ecarts.push(r.ticks / 60 - jouerLePilote(c).ticks / 60);
   }
   console.log(`Pilote « ${strategie} », 60 jours : ${victoires}/60 victoires · temps min / médiane / max ${quantiles(temps)} s · ${(subis / 60).toFixed(2)} dégât(s) subi(s) en moyenne · rediffusion ${pireTaille} caractères au plus`);
 }
-console.log(`Écart nettoyer − foncer (parties gagnées des deux côtés, min / médiane / max) : ${quantiles(ecarts)} s`);
+console.log(`Écart beaucoup − foncer (parties gagnées des deux côtés, min / médiane / max) : ${quantiles(ecarts)} s`);
 const jour = dailyRush(daysFromCivil(2026, 11, 5));
 const bot = jouerLePilote(jour);
-console.log(`Partie du jour (2026-11-05), le pilote qui fonce : ${bot.ticks} ticks (${(bot.ticks / 60).toFixed(1)} s), rejeu ${chrono(() => jouer(jour, bot.changements)).toFixed(2)} ms · ${bot.changements.length} changements · ${taille(bot.changements, { scenario: "jour" })} caractères`);
+const botTout = jouerLePilote(jour, REGLAGES_DEFAUT, Infinity, "beaucoup");
+console.log(`Partie du jour (2026-11-05), le pilote qui fonce : ${bot.ticks} ticks (${(bot.ticks / 60).toFixed(1)} s), rejeu ${chrono(() => jouer(jour, bot.changements, REGLAGES_DEFAUT, bot.choix)).toFixed(2)} ms · ${bot.changements.length} changements, ${bot.choix.length} choix · ${taille(bot.changements, { scenario: "jour" }, bot.choix)} caractères`);
+console.log(`Partie du jour (2026-11-05), le pilote « beaucoup d'XP » : ${botTout.ticks} ticks (${(botTout.ticks / 60).toFixed(1)} s), niveau ${botTout.resultat.nv}, rejeu ${chrono(() => jouer(jour, botTout.changements, REGLAGES_DEFAUT, botTout.choix)).toFixed(2)} ms · ${botTout.changements.length} changements, ${botTout.choix.length} choix · ${taille(botTout.changements, { scenario: "jour" }, botTout.choix)} caractères`);
 const pireJour = chrono(() => {
   const p = new Partie(jour, REGLAGES_DEFAUT);
   let t = 0;
@@ -92,9 +94,9 @@ const pireJour = chrono(() => {
   while (!p.finie) {
     p.c.coeurs = 3;
     p.c.degat = 0;
+    if (p.choix) p.choisir(p.choix.nv, 0);
     p.avancer(entree((t >> 5) % 32, false, false));
     t++;
-    void pilote;
   }
 }, 3);
 console.log(`Pire rejeu du jour (10 minutes, chevalier invincible qui court en rond) : ${pireJour.toFixed(0)} ms`);
@@ -102,10 +104,10 @@ console.log(`Pire rejeu du jour (10 minutes, chevalier invincible qui court en r
 let pireNettoyage = 0;
 for (let k = 0; k < 60; k++) {
   const c = dailyRush(PREMIER + k);
-  const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "nettoyer");
-  pireNettoyage = Math.max(pireNettoyage, chrono(() => jouer(c, r.changements), 3));
+  const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "beaucoup");
+  pireNettoyage = Math.max(pireNettoyage, chrono(() => jouer(c, r.changements, REGLAGES_DEFAUT, r.choix), 3));
 }
-console.log(`Rejeu de la pire partie « tout nettoyer » sur 60 jours : ${pireNettoyage.toFixed(1)} ms`);
+console.log(`Rejeu de la pire partie « beaucoup d'XP » sur 60 jours : ${pireNettoyage.toFixed(1)} ms`);
 
 // 4. Lot BR1b : la densité, les boucles, la course et le coût d'un détour (le pilote sur 60 jours).
 {
@@ -133,7 +135,7 @@ console.log(`Rejeu de la pire partie « tout nettoyer » sur 60 jours : ${pireNe
     let avant = 0;
     let run = 0;
     while (!p.finie) {
-      p.avancer(pilote(p, et));
+      pasDuPilote(p, et);
       if (p.barriere < 0) {
         avant++;
         if (p.c.elan > 0) run++;
@@ -146,18 +148,18 @@ console.log(`Rejeu de la pire partie « tout nettoyer » sur 60 jours : ${pireNe
       arrivee.push(avant / 60);
       course.push((100 * run) / Math.max(1, avant));
     }
-    const rn = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "nettoyer");
+    const rn = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "beaucoup");
     if (rn.resultat.victoire) {
       vn++;
       nt.push(rn.ticks / 60);
     }
     for (const d of c.niveau!.detours) {
-      const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "nettoyer", d.camp);
+      const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "beaucoup", d.camp);
       if (r.resultat.victoire && p.victoire) det.push((r.ticks - p.tick) / 60);
     }
   }
   const med = (v: number[]): number => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
   console.log(`  pilote « foncer », 60 jours : ${vf}/60 victoires · total min / médiane / max ${q3(f)} s (golem compris) · à la barrière ${q3(arrivee)} s · course ${q3(course, 0)} % du trajet · ${(subisF.reduce((a, b) => a + b, 0) / 60).toFixed(2)} dégât(s) subi(s) en moyenne`);
-  console.log(`  pilote « tout nettoyer » : ${vn}/60 victoires · ${q3(nt)} s · écart médian avec foncer ${(med(nt) - med(f)).toFixed(1)} s`);
+  console.log(`  pilote « beaucoup d'XP » : ${vn}/60 victoires · ${q3(nt)} s · écart médian avec foncer ${(med(nt) - med(f)).toFixed(1)} s`);
   console.log(`  coût d'un détour pris seul (camp compris, par rapport à foncer) : ${q3(det)} s (${det.length} détours)`);
 }

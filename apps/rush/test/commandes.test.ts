@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REGLAGES_DEFAUT } from "@cdj/rush-sim";
+import { REGLAGES_DEFAUT, reglagesDe, sontLesReglagesParDefaut } from "@cdj/rush-sim";
 import { ACTIONS_RUSH } from "../src/actions";
 import { directionAnalogique, directionDe8 } from "../src/controles";
 import { lireEssai } from "../src/essai";
@@ -56,12 +56,21 @@ describe("l'adresse d'essai", () => {
     expect(lireEssai("?tune", false).tune).toBe(false); // il faut `?debug`
     const json = encodeURIComponent(JSON.stringify({ reglages: { vitesse: 700, portee: 99999 }, sensations: { arretImage: 120 } }));
     const e = lireEssai(`?reglages=${json}`, false);
-    expect(e.reglages).toEqual({ ...REGLAGES_DEFAUT, vitesse: 700, portee: 400 }); // une valeur hors bornes est ramenée dans ses bornes
+    expect(reglagesDe(e.reglages)).toEqual({ ...REGLAGES_DEFAUT, vitesse: 700, portee: 400 }); // une valeur hors bornes est ramenée dans ses bornes (lot BR2 : par `reglagesDe`, à la demande — `essai.ts` est dans le premier chargement et ne l'embarque plus)
     expect(e.essai).toBe(true);
     expect(sensationsDe(e.sensations).arretImage).toBe(120);
     expect(lireEssai("?reglages=pas-du-json", false).reglages).toBeNull();
-    // des réglages égaux aux défauts ne font pas une partie d'essai
-    expect(lireEssai(`?reglages=${encodeURIComponent(JSON.stringify(REGLAGES_DEFAUT))}`, false).essai).toBe(false);
+    // lot BR2 : des réglages collés font toujours une partie d'essai, même égaux aux défauts (`essai.ts` ne connaît plus les défauts : il est dans le premier chargement, qui n'a plus de place pour eux)
+    expect(lireEssai(`?reglages=${encodeURIComponent(JSON.stringify(REGLAGES_DEFAUT))}`, false).essai).toBe(true);
+    expect(sontLesReglagesParDefaut(reglagesDe(lireEssai(`?reglages=${encodeURIComponent(JSON.stringify(REGLAGES_DEFAUT))}`, false).reglages))).toBe(true);
+  });
+  it("lot BR2 : `&ameliorations=` et le scénario `cartes` (`&nv=`) sont des options d'essai, jamais lues sur la production", () => {
+    expect(lireEssai("?scenario=mannequin&ameliorations=tourbillon,lame-lourde", false)).toMatchObject({ scenario: "mannequin", ameliorations: ["tourbillon", "lame-lourde"], essai: true });
+    expect(lireEssai("?scenario=cartes&nv=5", false)).toMatchObject({ scenario: "cartes", nv: 5, essai: true });
+    expect(lireEssai("?scenario=cartes", false).nv).toBe(2);
+    expect(lireEssai("?scenario=cartes&nv=1", false).nv).toBe(2);
+    expect(lireEssai("?ameliorations=aimant", false).essai).toBe(true);
+    expect(lireEssai("?scenario=cartes&nv=5&ameliorations=aimant", true)).toMatchObject({ scenario: null, ameliorations: [], essai: false });
   });
   it("les sensations collées restent dans leurs bornes", () => {
     expect(sensationsDe(null)).toEqual(SENSATIONS_DEFAUT);

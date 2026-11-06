@@ -16,6 +16,7 @@ export * from "./demo";
 export * from "./demoPhases";
 export * from "./themes";
 export * from "./modules";
+export * from "./bascules";
 export * from "./daily";
 export * from "./frozen";
 export * from "./lives";

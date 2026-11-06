@@ -1,7 +1,7 @@
 // Les sons de Rush : Web Audio **procédural, sans fichier** (oscillateurs et bruit filtré). Aucun son avant le premier geste du joueur (règle des navigateurs et d'iOS). Le niveau est le volume du kit
 // (la musique commune en tient le réglage) ; à 0, rien ne se joue. La musique a son propre contexte : un effet ne la coupe jamais.
 
-export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque";
+export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque" | "ramasse" | "niveau" | "carte" | "soin" | "ondeEpee";
 
 type Ctx = AudioContext;
 interface Ton {
@@ -186,6 +186,24 @@ export class Sons {
         break;
       case "bloque":
         this.ton(c, t, { de: 900, vers: 700, duree: 0.07, type: "square", vol: 0.16 });
+        break;
+      // Lot BR2 : une gemme ramassée (un petit tintement qui monte à chaque gemme de suite : `hauteur`), un niveau gagné (une montée de quatre notes), la carte choisie, un cœur rendu, l'onde de l'épée.
+      case "ramasse":
+        this.ton(c, t, { de: 880 * h, vers: 1320 * h, duree: 0.09, type: "triangle", vol: 0.13 });
+        break;
+      case "niveau":
+        for (const [i, f] of [523, 659, 784, 1047].entries()) this.ton(c, t, { de: f, duree: 0.22, type: "triangle", vol: 0.2, retard: i * 0.09 });
+        break;
+      case "carte":
+        this.ton(c, t, { de: 660, vers: 990, duree: 0.12, type: "square", vol: 0.12 });
+        this.ton(c, t, { de: 1320, duree: 0.2, type: "triangle", vol: 0.16, retard: 0.08 });
+        break;
+      case "soin":
+        for (const [i, f] of [392, 523, 659].entries()) this.ton(c, t, { de: f, duree: 0.18, type: "sine", vol: 0.18, retard: i * 0.07 });
+        break;
+      case "ondeEpee":
+        this.souffle(c, t, { duree: 0.4, vol: 0.35, filtre: 900, filtreVers: 3600, q: 1.1 });
+        this.ton(c, t, { de: 300, vers: 900, duree: 0.3, type: "sawtooth", vol: 0.08 });
         break;
     }
   }

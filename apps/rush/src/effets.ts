@@ -1,4 +1,4 @@
-import { CanvasTexture, CircleGeometry, Color, DoubleSide, DynamicDrawUsage, Group, IcosahedronGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, PlaneGeometry, Quaternion, RingGeometry, ShaderMaterial, SRGBColorSpace, Vector3 } from "three";
+import { BackSide, CanvasTexture, CircleGeometry, Color, DoubleSide, DynamicDrawUsage, Group, IcosahedronGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, OctahedronGeometry, PlaneGeometry, Quaternion, RingGeometry, ShaderMaterial, SRGBColorSpace, Vector3 } from "three";
 import { fusionner, teindre } from "./formes";
 import { COULEURS } from "./palette";
 
@@ -497,5 +497,85 @@ export class Cratere {
       (e.m.material as MeshBasicMaterial).opacity = Math.min(1, u * 2.2);
       if (e.vie <= 0) e.m.visible = false;
     }
+  }
+}
+
+// --- Lot BR2 : les gemmes d'XP et l'onde de l'épée -----------------------------------------------------------------------------------------------------------------------------------------------
+const MAX_GEMMES = 96;
+/** Les gemmes d'XP : des OCTAÈDRES ambre (comme dans la maquette), un seul tas (un appel de dessin) ; elles tournent, flottent un peu et jaillissent à leur chute. Un aplat sans lumière, un peu au-dessus de 1 : le bloom les fait briller. */
+export class Gemmes {
+  readonly maillage: InstancedMesh;
+  /** Le liseré d'encre qui les détache du sable (la lisibilité : l'ambre sur le sable ne se lit pas) : la même forme, plus grosse, vue de dos. */
+  readonly contour: InstancedMesh;
+  readonly groupe = new Group();
+  private readonly m = new Matrix4();
+  private readonly q = new Quaternion();
+  private readonly p = new Vector3();
+  private readonly s = new Vector3();
+  private readonly axe = new Vector3(0, 1, 0);
+  constructor() {
+    const geo = new OctahedronGeometry(0.3, 0);
+    this.maillage = new InstancedMesh(geo, new MeshBasicMaterial({ color: new Color(COULEURS.lueur).multiplyScalar(1.25), fog: false }), MAX_GEMMES);
+    this.contour = new InstancedMesh(geo, new MeshBasicMaterial({ color: COULEURS.encre, side: BackSide, fog: false }), MAX_GEMMES);
+    for (const mm of [this.maillage, this.contour]) {
+      mm.instanceMatrix.setUsage(DynamicDrawUsage);
+      mm.frustumCulled = false;
+      mm.count = 0;
+      this.groupe.add(mm);
+    }
+  }
+  /** Pose les gemmes de la simulation (mètres = unités / 4096) ; `tick` : le tick courant (l'âge d'une gemme), `temps` : les secondes du jeu (la rotation). */
+  maj(gemmes: readonly { id: number; x: number; y: number; v: number; vers: boolean; age: number }[], tick: number, temps: number, metres: (u: number) => number): void {
+    const n = Math.min(MAX_GEMMES, gemmes.length);
+    for (let i = 0; i < n; i++) {
+      const g = gemmes[i]!;
+      const age = tick - g.age;
+      // à sa chute elle jaillit (un petit saut), puis flotte
+      const saut = age < 18 ? Math.sin((age / 18) * Math.PI) * 0.7 : 0;
+      const taille = (0.9 + Math.min(0.9, Math.sqrt(g.v) * 0.05)) * Math.min(1, 0.35 + age / 10);
+      this.p.set(metres(g.x), 0.6 + saut + Math.sin(temps * 3 + g.id) * 0.06, metres(g.y));
+      this.q.setFromAxisAngle(this.axe, temps * 2.2 + g.id);
+      this.s.setScalar(taille);
+      this.m.compose(this.p, this.q, this.s);
+      this.maillage.setMatrixAt(i, this.m);
+      this.s.setScalar(taille * 1.28);
+      this.m.compose(this.p, this.q, this.s);
+      this.contour.setMatrixAt(i, this.m);
+    }
+    this.maillage.count = this.contour.count = n;
+    this.maillage.instanceMatrix.needsUpdate = this.contour.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/** L'onde de l'épée (« Onde d'épée ») : un croissant à plat sur le sol qui file droit devant le chevalier ; quatre au plus à la fois. */
+export class OndesEpee {
+  readonly groupe = new Group();
+  private readonly pool: Mesh[] = [];
+  constructor() {
+    const geo = new RingGeometry(0.7, 1.0, 24, 1, -0.9, 1.8);
+    geo.rotateX(-Math.PI / 2);
+    for (let i = 0; i < 4; i++) {
+      const m = new Mesh(geo, new MeshBasicMaterial({ color: new Color(0xfff2a8).multiplyScalar(1.6), transparent: true, side: DoubleSide, depthWrite: false, fog: false }));
+      m.visible = false;
+      m.renderOrder = 4;
+      this.groupe.add(m);
+      this.pool.push(m);
+    }
+  }
+  maj(ondes: readonly { x: number; y: number; dir: number; d: number; portee: number }[], metres: (u: number) => number): void {
+    this.pool.forEach((m, i) => {
+      const o = ondes[i];
+      if (!o) {
+        m.visible = false;
+        return;
+      }
+      const a = (o.dir * Math.PI * 2) / 128;
+      const d = metres(o.d);
+      m.visible = true;
+      m.position.set(metres(o.x) + Math.cos(a) * d, 0.5, metres(o.y) + Math.sin(a) * d);
+      m.rotation.y = -a;
+      m.scale.setScalar(1.1 + (o.d / o.portee) * 0.5);
+      (m.material as MeshBasicMaterial).opacity = Math.max(0, 1 - (o.d / o.portee) ** 2);
+    });
   }
 }

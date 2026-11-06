@@ -22,6 +22,7 @@ import { variantUsable } from "./usable";
 import { checkpointShortcutProblems } from "./passages";
 import { BLADE_TIGHT } from "./lameTable";
 import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, soloLevel, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
+import { verifierGenerateurDuJour } from "./bascules";
 import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, auChangementDesJoursAnciens, jumpThemeOfSim, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
 import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpReplay } from "./replay";
@@ -340,7 +341,7 @@ export function varietyNeighbours(day: number, simVersion = CHECKPOINT_ZONE_VERS
 export function dailyBaseIds(day: number, simVersion = CHECKPOINT_ZONE_VERSION): readonly string[] {
   // Lot 25 : la table des jours figés couvre les `VARIETY_DAYS − 1` jours d'avant l'origine (W = 4) ; une version à W = 3 (g14 à g18) n'en lit que les deux derniers, comme avant le lot.
   const frozen = day < VARIETY_ORIGIN && VARIETY_ORIGIN - day < varietyDays(simVersion) ? VARIETY_FROZEN[formatDay(day)] : undefined;
-  return frozen ?? dailyLevel(day, null, simVersion).pieces.map((p) => p.id);
+  return frozen ?? calculerNiveau(day, null, simVersion).pieces.map((p) => p.id);
 }
 
 /** Les morceaux de base que le niveau v4 du jour `day` ne peut pas poser (lot 19). */
@@ -2138,6 +2139,16 @@ auChangementDesJoursAnciens(forgetDailyLevels);
  * 5 (défaut) : le niveau du générateur g15, en version 5.
  */
 export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = CHECKPOINT_ZONE_VERSION): DailyLevel {
+  // Lot 33 : un jour ne se génère qu'avec le générateur en vigueur à sa date (calendrier des bascules, `bascules.ts`) ; les références des versions d'avant (`simVersion` < 14) sont des rendus à part.
+  if (simVersion >= CHECKPOINT_ZONE_VERSION) verifierGenerateurDuJour(day);
+  return calculerNiveau(day, forced, simVersion);
+}
+
+/**
+ * Le calcul du niveau d'un jour, **sans le garde du calendrier**. Seul `dailyBaseIds` l'appelle en dehors de `dailyLevel` : la règle de variété lit les morceaux de base des jours voisins
+ * « comme ce générateur les calcule » (c'est la définition du niveau d'un jour de ce générateur), même si ces voisins, servis par un générateur d'avant, viennent d'un fichier figé.
+ */
+function calculerNiveau(day: number, forced: JumpThemeName | null, simVersion: number): DailyLevel {
   const natural = jumpThemeOfSim(day, simVersion);
   const theme = forced ?? natural;
   const isForced = theme !== natural;

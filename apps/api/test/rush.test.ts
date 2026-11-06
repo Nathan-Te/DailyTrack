@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { DUREE_TICKS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, VARIANTE, dailyRush, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, themeDuJour, touchesDuBot } from "@cdj/rush-sim";
+import { DUREE_TICKS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, VARIANTE, dailyRush, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, themeDuJour, entreesDuBot } from "@cdj/rush-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_RUSH } from "../scripts/rush-essais";
 import { contenuDeRush } from "../src/rush";
@@ -35,7 +35,7 @@ describe("Rush sur le serveur", () => {
     const jour = await t.call("GET", `/api/rush/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.medals).toEqual(seuilsDe(c));
-    expect(jour.body.medals.author).toBe(VARIANTE.seuils(jouer(c, touchesDuBot(c))).author);
+    expect(jour.body.medals.author).toBe(VARIANTE.seuils(jouer(c, entreesDuBot(c).changements, undefined, entreesDuBot(c).choix)).author);
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/rush/day/2026-11-11")).status).toBe(404);
@@ -73,7 +73,7 @@ describe("Rush sur le serveur", () => {
   it("refuse les copies (la partie du bot, deux fois les mêmes touches), les illisibles et les autres jours", async () => {
     const t = await monter({ copies: false });
     const c = dailyRush(JOUR);
-    const bot = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, touchesDuBot(c)), name: "Copieur" }, { headers: entete(1) });
+    const bot = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, entreesDuBot(c).changements, entreesDuBot(c).choix), name: "Copieur" }, { headers: entete(1) });
     expect(bot.status).toBe(409);
     expect(bot.body.error).toBe("replay_copy");
     expect((await envoyer(t, 2, 1)).status).toBe(200);
@@ -82,6 +82,27 @@ describe("Rush sur le serveur", () => {
     expect((await t.call("POST", "/api/rush/submit", { replay: "pas-une-rediffusion", name: "Zéro" }, { headers: entete(4) })).body.error).toBe("invalid_replay");
     const autreJour = enregistrer(dailyRush(JOUR - 1), []);
     expect((await t.call("POST", "/api/rush/submit", { replay: autreJour, name: "Hier" }, { headers: entete(5) })).status).toBe(409);
+  });
+
+  it("valide les choix d'amélioration (lot BR2) : un choix n'est accepté qu'à un niveau gagné, au bon niveau, avec une carte qui existe ; il en manque un ou il y en a un de trop : refusé", async () => {
+    const t = await monter();
+    const c = dailyRush(JOUR);
+    const bot = entreesDuBot(c);
+    expect(bot.choix.length).toBeGreaterThanOrEqual(1);
+    const poster = async (n: number, choix: typeof bot.choix) => t.call("POST", "/api/rush/submit", { replay: enregistrer(c, bot.changements, choix), name: `Joueur${n}` }, { headers: entete(n) });
+    expect((await poster(1, bot.choix)).status).toBe(200);
+    for (const [n, choix] of [
+      [2, []], // aucun choix alors que des niveaux sont gagnés
+      [3, bot.choix.slice(0, -1)], // le dernier niveau gagné n'a pas de choix
+      [4, [...bot.choix, { tick: 30000, nv: bot.choix.length + 2, carte: 0 }]], // un choix sans niveau gagné
+      [5, bot.choix.map((x, i) => (i === 0 ? { ...x, nv: x.nv + 1 } : x))], // le mauvais niveau
+    ] as const) {
+      const r = await poster(n, [...choix]);
+      expect(r.status, `joueur ${n}`).toBe(400);
+      expect(r.body.error).toBe("invalid_replay");
+    }
+    // une autre carte valable est acceptée (c'est une autre partie, pas une erreur)
+    expect((await poster(6, bot.choix.map((x, i) => (i === 0 ? { ...x, carte: (x.carte + 1) % 3 } : x)))).status).toBe(200);
   });
 
   it("une partie vide est classée la dernière, sans médaille", async () => {

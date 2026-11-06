@@ -636,13 +636,14 @@ describe("le déterminisme", () => {
 });
 
 describe("la rediffusion", () => {
-  const { changements, resultat } = jouerLePilote(dailyRush(J));
-  const texte = enregistrer(dailyRush(J), changements);
+  const { changements, choix, resultat } = jouerLePilote(dailyRush(J));
+  const texte = enregistrer(dailyRush(J), changements, choix);
   it("se rejoue au bit près et donne le score classé", () => {
     expect(rejouer(dailyRush(J), texte)).toEqual(resultat);
     expect(scoreParColonnes(resultat)).toEqual({ temps: resultat.ticks });
     const r = decoderRediffusion(texte);
     expect(r.changements).toEqual(changements);
+    expect(r.choix).toEqual(choix);
     expect(encoderRediffusion(r)).toBe(texte);
   });
   it("est refusée sur un autre jour, sur un scénario, ou si elle est illisible", () => {

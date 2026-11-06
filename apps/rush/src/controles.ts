@@ -82,6 +82,12 @@ export class Controles {
     else if (id === "esquive") this.impulsionEsquive = 4;
   }
 
+  /** Lot BR2 : les appuis gardés en mémoire sont oubliés (un appui qui a servi à choisir une carte ne doit pas frapper à la reprise du monde). */
+  effacerAppuis(): void {
+    this.impulsionCoup = 0;
+    this.impulsionEsquive = 0;
+  }
+
   /** L'entrée du tick `tick` : la direction ne change pas plus d'une fois tous les `PAS_MIN_DIRECTION` ticks (la rediffusion reste courte). */
   lire(tick: number): number {
     if (this.forcee && this.forcee.reste > 0) {

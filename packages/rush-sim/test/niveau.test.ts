@@ -64,7 +64,7 @@ describe("le générateur du niveau (lot BR1)", () => {
   it("365 graines donnent 365 niveaux valides (chemin du départ à l'arène, longueur, détours, camps, monstres épars, aucune case isolée, rien près du départ)", () => {
     for (const n of niveaux) expect(problemesDuNiveau(n)).toEqual([]);
   });
-  it("le chemin principal fait 70 à 100 m ; 2 à 4 détours, chacun à 17-85 m du chemin, menant à un camp de 8 à 11 monstres ; 0 à 3 monstres épars ; 2 à 4 groupes", () => {
+  it("le chemin principal fait 70 à 100 m ; 2 à 4 détours, chacun à 17-45 m du chemin (lot BR2 : des camps plus proches), menant à un camp de 8 à 11 monstres ; 0 à 3 monstres épars ; 2 à 4 groupes", () => {
     for (const n of niveaux) {
       expect(n.longueurCm).toBeGreaterThanOrEqual(7000);
       expect(n.longueurCm).toBeLessThanOrEqual(10000);
@@ -134,8 +134,8 @@ describe("le générateur du niveau (lot BR1)", () => {
     expect(c.niveau).not.toBeNull();
     expect(c.theme).toBe(themeDuJour(J0));
     expect(c.g).toBe(RUSH_GENERATOR_VERSION);
-    expect(RUSH_GENERATOR_VERSION).toBe(3);
-    expect(RUSH_SIM_VERSION).toBe(5);
+    expect(RUSH_GENERATOR_VERSION).toBe(4);
+    expect(RUSH_SIM_VERSION).toBe(6);
   });
 });
 
@@ -320,29 +320,30 @@ describe("le pilote dans le niveau (lot BR1)", () => {
         temps.push(r.ticks / 60);
       }
       if (k < 3) {
-        const rj = rejouer(c, enregistrer(c, r.changements));
+        const rj = rejouer(c, enregistrer(c, r.changements, r.choix));
         expect(rj).toEqual(r.resultat);
       }
     }
     expect(victoires).toBeGreaterThanOrEqual(58);
     expect(Math.min(...temps)).toBeGreaterThan(40);
-    expect(Math.max(...temps)).toBeLessThan(80);
-    // lot BR1b : « foncer » prend ~45 à 60 s au total, golem compris
+    expect(Math.max(...temps)).toBeLessThan(95);
+    // lot BR2 : « foncer » prend ~55 à 75 s au total, golem compris (le golem a plus de vie : le combat sans carte dure ~45 s)
     const tri = [...temps].sort((x, y) => x - y);
-    expect(tri[Math.floor(tri.length / 2)]!).toBeGreaterThan(45);
-    expect(tri[Math.floor(tri.length / 2)]!).toBeLessThan(62);
+    expect(tri[Math.floor(tri.length / 2)]!).toBeGreaterThan(55);
+    expect(tri[Math.floor(tri.length / 2)]!).toBeLessThan(75);
   });
-  it("tout nettoyer prend nettement plus de temps que foncer (et tue plus)", () => {
+  it("tout nettoyer tue plus que foncer et gagne bien plus de niveaux (lot BR2)", () => {
     const c = dailyRush(J0 + 3);
     const f = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "foncer");
-    const n = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "nettoyer");
+    const n = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "beaucoup");
     expect(n.resultat.tues).toBeGreaterThan(f.resultat.tues + 5);
-    if (n.resultat.victoire) expect(n.ticks).toBeGreaterThan(f.ticks + 40 * 60);
+    // lot BR2 : l'XP des camps donne des niveaux (donc des cartes) : tout nettoyer monte bien plus haut que foncer
+    expect(n.resultat.nv).toBeGreaterThan(f.resultat.nv + 3);
   });
   it("la rediffusion du pire pilote tient dans les limites", () => {
     const c = dailyRush(J0 + 7);
-    const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "nettoyer");
-    const texte = encoderRediffusion({ sim: RUSH_SIM_VERSION, g: RUSH_GENERATOR_VERSION, contenu: { jour: c.jour }, changements: r.changements });
+    const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "beaucoup");
+    const texte = encoderRediffusion({ sim: RUSH_SIM_VERSION, g: RUSH_GENERATOR_VERSION, contenu: { jour: c.jour }, changements: r.changements, choix: r.choix });
     expect(texte.length).toBeLessThan(40000);
   });
 });
@@ -448,7 +449,7 @@ describe("un niveau compact et dense (lot BR1b)", () => {
     }
     expect(boucles / tous).toBeGreaterThan(0.7);
   });
-  it("des obstacles cassables (ronces : 1 coup, caisses : 2) sur des cases du chemin, qui ne donnent rien (le butin est prévu, vide) ; un obstacle qui laisse un passage l'allonge", () => {
+  it("des obstacles cassables (ronces : 1 coup, caisses : 2) sur des cases du chemin, qui contiennent de l'XP (lot BR2 : le butin, selon le genre) ; un obstacle qui laisse un passage l'allonge", () => {
     let contournables = 0;
     let nObstacles = 0;
     for (const n of niveaux) {
@@ -457,7 +458,7 @@ describe("un niveau compact et dense (lot BR1b)", () => {
       for (const o of n.obstacles) {
         nObstacles++;
         expect(o.coups).toBe(o.genre === OBSTACLE_RONCES ? 1 : 2);
-        expect(o.butin).toBe(0);
+        expect(o.butin).toBe(0); // le niveau ne porte pas l'XP : c'est la partie qui la donne selon les réglages
         expect(o.cases.length).toBeGreaterThanOrEqual(2);
         for (const k of o.cases) {
           expect(n.zones[k]).toBe(Z_CHEMIN);
@@ -572,9 +573,9 @@ describe("les obstacles cassables dans la partie (lot BR1b)", () => {
     }
     throw new Error("aucune caisse trouvée");
   });
-  it("l'emplacement du butin est prévu (rien dedans dans ce lot) et fait partie de l'état", () => {
+  it("le butin d'un obstacle est de l'XP (ronces ou caisse, selon les réglages) et fait partie de l'état", () => {
     const p = new Partie(dailyRush(J0), REGLAGES_DEFAUT);
-    for (const o of p.obstacles) expect(o.butin).toBe(0);
+    for (const o of p.obstacles) expect(o.butin).toBe(o.genre === OBSTACLE_RONCES ? REGLAGES_DEFAUT.xpRonces : REGLAGES_DEFAUT.xpCaisse);
     const avant = p.empreinte();
     p.obstacles[0]!.hp--;
     expect(p.empreinte()).not.toBe(avant);

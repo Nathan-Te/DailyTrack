@@ -9,6 +9,7 @@
 - **Catégorie** : `arcade` (fiche, lot A3) — un jeu d'arcade a son niveau du jour et son classement, mais ne compte ni dans la journée (journée parfaite, série, ligne de partage), ni dans le classement cumulé ; il a sa section « Arcade » sur l'accueil et ses onglets après le séparateur « Arcade » de /classement/.
 - **Vision** : `docs/rush/seed.md` (**ne pas modifier**, c'est Nathan qui le fait).
 - **Teinte de l'étiquette** : #D9C4F0 / #4B2E83 — **à choisir par Nathan** (charte § 3 ; la fiche, `etiquette`).
+- **Identité** : `identite` de la fiche (police, motif, illustration, panneau « Aujourd'hui ») vaut « à choisir » — **le premier lot du jeu la remplit d'après une maquette validée par Nathan, illustration comprise** (`apps/rush/public/illustration.svg`, charte rév. 18 § 4, § 5 et § 9). Pas de `preview` ni de `on` sans identité complète (test des fiches ; l'administration le refuse). `aujourdhui: false` n'est permis qu'avec une ligne de la liste d'exemptions du test (`packages/core/test/identite.test.ts`), raison « à fournir par la conversation du jeu » ; le panneau se branche par `brancherJeu(…, { aujourdhui })`. Une police nouvelle demande aussi sa découpe « profil » (`scripts/polices/decouper.mjs`) et ses deux feuilles (`packages/ui/src/polices/`, `polices-profil/`).
 - **Premier jour** : `2026-11-02` — à régler au lancement du jeu (`premierJour` de la fiche, une ligne).
 
 ## 2. La plateforme en bref — et où lire les règles (elles ne sont pas recopiées ici)
@@ -42,6 +43,7 @@
 - Tests jamais affaiblis
 - Zones partagées
 - Toute nouvelle table liée à un joueur ou à une partie rejoint la liste de la remise à […]
+- Un jour figé fige aussi ses seuils (lot « manques de Blocks »)
 - Mentions légales et confidentialité (lot R5 ; lot I6 : aussi en anglais)
 - Sécurité (lot R7)
 - « Pour les joueurs » dans toute PR de lot (lot N2) — obligatoire

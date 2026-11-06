@@ -16,8 +16,10 @@
 //   node scripts/mise-en-production.mjs empreintes-fusion <existant.json> <nouveau.json> [--jusqua <jour>]  → ajoute les jours nouveaux, refuse un jour qui change
 // Lot K4b (la chaîne lit les fiches : `jours.fabrication`, aucun jeu n'est nommé ici) :
 //   node scripts/mise-en-production.mjs jeux [--mode registre|fichier-par-jour]      → les identifiants des jeux de la chaîne
-//   node scripts/mise-en-production.mjs figer-jeux --prod <dépôt> --cible <dépôt> --proteges <f> --veille <jour> --reference <réf> --sortie <dossier> [--temp <dossier>] [--resume <f>]
+//   node scripts/mise-en-production.mjs figer-jeux --prod <dépôt> --cible <dépôt> --proteges <f> --veille <jour> --reference <réf> --sortie <dossier> [--temp <dossier>] [--resume <f>] [--bascule <jour>] [--instant <ms>]
 //                                                                                     → pour chaque jeu : registre ou jours figés avec le code en production, superposés à la cible ; écrit l'artefact `jours`
+//   node scripts/mise-en-production.mjs servi-verifier --sortie <dossier de l'artefact `jours`> --origine <url> [--instant <ms>] [--resume <f>]   (lot 33)
+//                                                                                     → les jours figés à nouveau (jusqu'à aujourd'hui) sont comparés, en lecture seule, au niveau que le serveur de production sert
 //   node scripts/mise-en-production.mjs preparer-jeux --cible <dépôt> --proteges <f> --veille <jour> --bascule <jour> --sortie <dossier> [--resume <f>] [--github-sortie <f>]
 //                                                                                     → les jours que préparent certains jeux (plan, préparation, garde-fou), avec le code déployé
 //   node scripts/mise-en-production.mjs poser-jours <dossier de l'artefact `jours`> [--resume <f>]  → pose dans le dépôt courant ce que la mise en production a produit pour chaque jeu
@@ -30,7 +32,7 @@
 //                                                                                     refuse un jour qui change ou un jour du dépôt au-delà de la veille de la bascule
 //   node scripts/mise-en-production.mjs inventaire <de> <à> [--resume <fichier>]     → « Ce qui part » : PR, versions, migrations, routes
 import { execFileSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -588,6 +590,101 @@ export function resumeProteges(proteges, du, au) {
  */
 export const niveauxAEffacer = (fichiers, proteges) => fichiers.filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f) && !estProtege(proteges, f.slice(0, 10)));
 
+// ——— Lot 33 (incident du 06/11/2026) : un jour servi ne change jamais ————————————————————————————————————————————————————————————————————————————
+// Le 06/11/2026 la mise en production a figé les jours 03 à 06/11 de Jump avec un outil qui ne déclarait pas les niveaux déjà figés d'un ancien générateur : les fichiers n'étaient pas les niveaux que la
+// production avait servis, et le niveau du jour (et trois archives) a changé alors que des temps étaient enregistrés. Le garde-fou ne le voyait pas : il comparait des fichiers à des fichiers. Désormais, pour
+// un jeu à fichiers de la forme `jusqu-a-la-veille` (Jump) : (1) tout jour non figé, du dernier jour figé à DEMAIN, est figé avec le code en production (aucun retrait des jours sans résultat) ;
+// (2) chaque fichier écrit est comparé à ce que le code en production sert SANS lui (les empreintes de l'image d'avant) ; (3) en production, au niveau que le serveur sert en ce moment (`servi-verifier`) ;
+// (4) la mise en production refuse de déployer s'il reste un jour déjà servi sans fichier figé ; (5) le calendrier des bascules du générateur (`bascules.json`) refuse une bascule fixée à aujourd'hui ou avant.
+
+/** Les jours (de `du` à `au`, comprises) qui n'ont pas de fichier : `fichiers` = les dates (AAAA-MM-JJ) qui en ont. Un jour servi sans fichier est un jour qui peut changer au prochain déploiement. */
+export function joursSansFichier({ du, au, fichiers }) {
+  const ont = new Set(fichiers);
+  const manquants = [];
+  for (let d = du; d <= au; d = ajouterJours(d, 1)) if (!ont.has(d)) manquants.push(d);
+  return manquants;
+}
+
+/** Le dernier jour à figer : demain (jour de Paris), la veille de la bascule, ou la veille de la plus lointaine bascule de générateur annoncée (les jours d'avant sont du générateur actuel : le code déployé ne les rend plus). */
+export function dernierJourAFiger({ veille, demain, nouvelles = [] }) {
+  return [veille, demain, ...nouvelles.map((b) => ajouterJours(b.depuis, -1))].reduce((a, b) => (b > a ? b : a));
+}
+
+/** Plus lointaine bascule acceptée : au-delà, trop de jours seraient figés à l'avance par l'ancien code (ceux d'avant la bascule). */
+export const BASCULE_MAX_JOURS = JOURS_REGENERES;
+
+/**
+ * **Le calendrier des bascules du générateur** (`bascules.json` à côté du fichier de versions du jeu : `{ bascules: [{ depuis, generateur }] }`). `avant` et `apres` : son contenu dans le code en production et dans le
+ * code à déployer (`null` : le code n'en a pas — le code en production d'avant le lot 33) ; `generateurAvant` et `generateurApres` : les versions du générateur de chaque code ; `bascule` : le jour de bascule de ce
+ * déploiement (le premier jour de Paris qui commence après lui). Rend `{ nouvelles, problemes }` : les entrées que ce déploiement ajoute (un générateur plus récent que celui de la production), et ce qui les refuse :
+ *   - **une bascule fixée à aujourd'hui ou avant** (`depuis` avant le jour de bascule) : un jour déjà ouvert serait régénéré ;
+ *   - une bascule trop lointaine (plus de `BASCULE_MAX_JOURS` jours après le jour de bascule) ;
+ *   - un générateur qui change sans entrée au calendrier, ou une dernière entrée qui n'est pas le générateur du code.
+ */
+export function verifierBascules({ avant, apres, generateurAvant, generateurApres, bascule }) {
+  const problemes = [];
+  const entrees = Array.isArray(apres?.bascules) ? apres.bascules : [];
+  const connus = Math.max(generateurAvant ?? 0, ...(Array.isArray(avant?.bascules) ? avant.bascules.map((b) => b.generateur) : [0]));
+  const nouvelles = entrees.filter((b) => b.generateur > connus);
+  if (generateurApres !== null && generateurApres !== undefined) {
+    if (entrees.length === 0 && generateurApres !== generateurAvant) problemes.push(`le générateur passe de g${generateurAvant} à g${generateurApres} mais le code déployé n'a pas de calendrier des bascules (bascules.json)`);
+    if (entrees.length > 0 && entrees.at(-1).generateur !== generateurApres) problemes.push(`la dernière entrée du calendrier est g${entrees.at(-1).generateur}, le code déployé est g${generateurApres}`);
+    if (generateurApres !== generateurAvant && !nouvelles.some((b) => b.generateur === generateurApres)) problemes.push(`le générateur passe de g${generateurAvant} à g${generateurApres} sans entrée de g${generateurApres} au calendrier des bascules`);
+  }
+  for (const b of nouvelles) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(b.depuis ?? "")) problemes.push(`g${b.generateur} : date de bascule illisible « ${b.depuis} »`);
+    else if (b.depuis < bascule) problemes.push(`g${b.generateur} est fixé au ${b.depuis} : un nouveau générateur ne s'applique qu'à partir de DEMAIN au plus tôt (jour de bascule de ce déploiement : ${bascule}) — fixer la bascule au ${bascule} ou après`);
+    else if (b.depuis > ajouterJours(bascule, BASCULE_MAX_JOURS)) problemes.push(`g${b.generateur} est fixé au ${b.depuis}, plus de ${BASCULE_MAX_JOURS} jours après le jour de bascule (${bascule}) : rapprocher la date`);
+  }
+  return { nouvelles, problemes };
+}
+
+/** Compare les niveaux figés (`attendus` : `{ date: { id, hash } }`) à ce que le serveur sert (`servis`, même forme). Rend les différences en phrases (liste vide : tout s'accorde). */
+export function comparerAuServi(attendus, servis) {
+  const diffs = [];
+  for (const [date, a] of Object.entries(attendus)) {
+    const s = servis[date];
+    if (!s) diffs.push(`${date} : le serveur ne sert aucun niveau`);
+    else if (s.id !== a.id || s.hash !== a.hash) diffs.push(`${date} : le fichier figé est ${a.id} (${a.hash}), le serveur sert ${s.id} (${s.hash})`);
+  }
+  return diffs;
+}
+
+/**
+ * Lit, **en lecture seule**, le niveau que le serveur de `origine` sert pour chaque date (`GET /api/jump/day/<date>` : identifiant et empreinte, aucune donnée de joueur). Tout ce qui n'est pas la réponse
+ * attendue (un serveur injoignable, une route absente) lève une erreur : sans cette lecture, on ne sait pas ce que les joueurs ont vu. `route` : le chemin du jeu (`/api/jump/day`).
+ */
+export async function lireNiveauxServis(origine, dates, { route = "/api/jump/day", fetchImpl = fetch, attendre = (ms) => new Promise((r) => setTimeout(r, ms)), essais = 5 } = {}) {
+  const base = origine.replace(/\/+$/, "");
+  const servis = {};
+  for (const date of dates) {
+    for (let essai = 1; ; essai++) {
+      let res;
+      try {
+        res = await fetchImpl(`${base}${route}/${date}`, { method: "GET", headers: { Accept: "application/json" } });
+      } catch (e) {
+        if (essai >= essais) throw new Error(`lecture du niveau servi le ${date} impossible (${e instanceof Error ? e.message : e})`);
+        await attendre(2000 * essai);
+        continue;
+      }
+      if (res.status === 200) {
+        const corps = await res.json();
+        if (typeof corps?.id !== "string" || typeof corps?.hash !== "string") throw new Error(`lecture du niveau servi le ${date} : réponse inattendue (ni identifiant ni empreinte)`);
+        servis[date] = { id: corps.id, hash: corps.hash };
+        break;
+      }
+      if ((res.status === 429 || res.status >= 500) && essai < essais) {
+        const apres = Number(res.headers?.get?.("Retry-After"));
+        await attendre(res.status === 429 && Number.isFinite(apres) && apres > 0 ? apres * 1000 : 2000 * essai);
+        continue;
+      }
+      if (res.status === 404) break; // un jour que le serveur ne connaît pas (avant son premier niveau, ou à venir) : rien n'est servi
+      throw new Error(`lecture du niveau servi le ${date} : le serveur répond ${res.status}`);
+    }
+  }
+  return servis;
+}
+
 // ——— L'inventaire : « Ce qui part » ————————————————————————————————————————————————————————————————————————————————————————
 
 // Lot K4 : les versions de chaque jeu viennent de sa fiche (`versions.sim` et `versions.generateur`, « fichier:CONSTANTE »).
@@ -775,6 +872,69 @@ export function registreDuDepot(jeu, depot, du, au, proteges, sortie) {
   writeFileSync(resolve(sortie), JSON.stringify(registreDesJours(Object.fromEntries(gardes), au), null, 1) + "\n");
 }
 
+/** Les empreintes des jours de `du` à `au` d'un jeu pour le code de `depot` (module de jeu et pilote copiés dans `depot`, compilés là), ajoutées à `sortie` ; `jours` : le dossier de ses fichiers par jour. */
+export function empreintesDuJeu(depot, jeu, { du, au, sortie, jours }) {
+  depot = resolve(depot);
+  const dossier = join(depot, "apps/api/scripts");
+  mkdirSync(dossier, { recursive: true });
+  const module_ = basename(jeu.moduleEmpreinte, ".ts");
+  for (const f of ["empreintes.ts", "empreintes-jours.ts", `${module_}.ts`]) copierSiAutre(join(SCRIPTS_ICI, f), join(dossier, f));
+  writeFileSync(join(dossier, `empreintes-entree-${jeu.id}.ts`), `import { empreinteJour } from "./${module_}";\nimport { executer } from "./empreintes-jours";\n\nexecuter(empreinteJour, ${JSON.stringify(jeu.id)});\n`);
+  compilerEtLancer(depot, `empreintes-entree-${jeu.id}`, ["--du", du, "--au", au, "--sortie", resolve(sortie), ...(jours ? ["--jours", resolve(jours)] : [])]);
+}
+
+const RACINE_DES_OUTILS = fileURLToPath(new URL("../", import.meta.url));
+
+/** Le dossier d'un paquet de l'espace de travail (`@cdj/jump` → `apps/jump`) dans `depot`, ou `null`. */
+function dossierDuPaquet(depot, nom) {
+  for (const sous of ["apps", "packages"]) {
+    const base = join(depot, sous);
+    if (!existsSync(base)) continue;
+    for (const d of readdirSync(base)) {
+      try {
+        if (JSON.parse(readFileSync(join(base, d, "package.json"), "utf8")).name === nom) return join(sous, d);
+      } catch {
+        /* pas un paquet */
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * **L'outil de figeage est celui d'AUJOURD'HUI, pas celui du code en production** (lot 33) : le code en production peut avoir un outil qui se trompe (celui du 06/11/2026 ne déclarait pas les niveaux déjà figés).
+ * Le fichier d'entrée du script npm de la fiche (`figer.script` de `figer.paquet` : `esbuild tools/freeze-days.ts …`) est copié des outils dans le dépôt du code en production, qui le compile avec ses propres
+ * paquets (comme les modules d'empreintes). Rend le chemin copié (relatif au dépôt), ou `null` si le script n'a pas de fichier d'entrée connu.
+ */
+export function installerOutilDeFigeage(jeu, prod, outils = RACINE_DES_OUTILS) {
+  const dir = dossierDuPaquet(outils, jeu.figer.paquet);
+  if (!dir) return null;
+  const script = JSON.parse(readFileSync(join(outils, dir, "package.json"), "utf8")).scripts?.[jeu.figer.script] ?? "";
+  const entree = /esbuild\s+(\S+\.ts)/.exec(script)?.[1];
+  if (!entree || !existsSync(join(outils, dir, entree))) return null;
+  const dirProd = dossierDuPaquet(prod, jeu.figer.paquet);
+  if (!dirProd) return null;
+  mkdirSync(dirname(join(prod, dirProd, entree)), { recursive: true });
+  copierSiAutre(join(outils, dir, entree), join(prod, dirProd, entree));
+  return join(dirProd, entree);
+}
+
+/** Le calendrier des bascules du générateur d'un jeu (`bascules.json` à côté de son fichier de versions) dans `depot` : son contenu, ou `null`. */
+export function calendrierDesBascules(jeu, depot) {
+  const fichier = jeu.versions?.generateur?.split(":")[0];
+  if (!fichier) return null;
+  const f = join(depot, dirname(fichier), "bascules.json");
+  return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
+}
+
+/** La version du générateur d'un jeu dans `depot` (`versions.generateur` de sa fiche : « fichier:CONSTANTE »), ou `null`. */
+export function generateurDuDepot(jeu, depot) {
+  const [fichier, nom] = (jeu.versions?.generateur ?? "").split(":");
+  if (!fichier || !existsSync(join(depot, fichier))) return null;
+  const m = new RegExp(`export const ${nom}\\s*=\\s*(\\d+)`).exec(readFileSync(join(depot, fichier), "utf8"));
+  return m ? Number(m[1]) : null;
+}
+
 /**
  * **Le garde-fou des jours, jeu par jeu** (lots R6, R11 et R16 ; lot K4b : lu dans les fiches). Pour chaque jeu de la chaîne :
  *  - **à registre** (Track) : ce que le code en production sert de la veille du lancement à la veille de la bascule s'ajoute au registre du dépôt visé ; un jour qui diffère arrête ;
@@ -783,7 +943,7 @@ export function registreDuDepot(jeu, depot, du, au, proteges, sortie) {
  *  - **à fichiers, forme `jours-proteges`** (Tower) : les jours protégés qui n'ont pas de fichier sont figés avec le code en production puis posés dans le dépôt visé ; s'il en manque un, arrêt.
  * Écrit l'artefact `jours` dans `sortie` : `proteges.json` et, pour chaque jeu, `<id>/` (son registre, ou `jours/*.json`).
  */
-export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, sortie, temp, resume }) {
+export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, sortie, temp, resume, bascule, instant }) {
   prod = resolve(prod);
   cible = resolve(cible);
   sortie = resolve(sortie);
@@ -808,17 +968,49 @@ export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, so
       writeFileSync(join(cible, jeu.registre), JSON.stringify(fusion, null, 1) + "\n");
       copyFileSync(join(cible, jeu.registre), join(sortieJeu, basename(jeu.registre)));
     } else if (jeu.figer.forme === "jusqu-a-la-veille") {
+      // Lot 33 (incident du 06/11/2026) : un jour servi ne change jamais. Chaque jour non figé, du dernier jour figé à DEMAIN, est figé avec le code en production (l'outil d'aujourd'hui, installé dans
+      // son dépôt) — les jours sans résultat aussi : un jour que personne n'a encore joué a peut-être été ouvert, et demain doit être celui que le code en production sert. Chaque fichier écrit est comparé à
+      // ce que ce code sert SANS lui ; la mise en production s'arrête s'il reste un jour déjà servi sans fichier, ou si le calendrier des bascules du générateur est refusé.
       mkdirSync(join(sortieJeu, "jours"), { recursive: true });
       const dossierProd = join(prod, jeu.dossier);
       const dossierCible = join(cible, jeu.dossier);
       joursServis(jeu, reference, dossierProd, jusqua);
-      execFileSync("npm", ["run", jeu.figer.script, "-w", jeu.figer.paquet, "--", veille], { cwd: prod, stdio: "inherit" });
-      // Les jours sans résultat ne sont pas figés (le nouveau code les régénère).
-      const retires = niveauxAEffacer(existsSync(dossierProd) ? readdirSync(dossierProd) : [], protege);
-      for (const f of retires) rmSync(join(dossierProd, f));
-      const texte = retires.length ? `fichiers de ${jeu.nom} retirés (jours sans résultat, régénérés par le nouveau code) : ${retires.join(" ")}` : `aucun fichier de ${jeu.nom} à retirer`;
-      console.log(texte);
-      if (resume) appendFileSync(resume, texte + "\n");
+      const aujourdhui = jourDeParis(instant ?? Date.now());
+      const demain = ajouterJours(aujourdhui, 1);
+      const verdict = verifierBascules({
+        avant: calendrierDesBascules(jeu, prod),
+        apres: calendrierDesBascules(jeu, cible),
+        generateurAvant: generateurDuDepot(jeu, prod),
+        generateurApres: generateurDuDepot(jeu, cible),
+        bascule: bascule ?? ajouterJours(aujourdhui, 1),
+      });
+      const ligneBascule = verdict.nouvelles.length ? `bascule du générateur de ${jeu.nom} : ${verdict.nouvelles.map((b) => `g${b.generateur} à partir du ${b.depuis}`).join(", ")}` : `aucune bascule du générateur de ${jeu.nom} dans ce déploiement`;
+      ajouterAuResume(resume, `- ${ligneBascule}\n`);
+      if (verdict.problemes.length) throw new Error(`calendrier des bascules du générateur de ${jeu.nom} refusé : ${verdict.problemes.join(" ; ")}`);
+      const dernierJour = dernierJourAFiger({ veille, demain, nouvelles: verdict.nouvelles });
+      const avantFigeage = new Set(datesDuDossier(dossierProd));
+      const copieAvant = join(temp, `${jeu.id}-image-avant`);
+      rmSync(copieAvant, { recursive: true, force: true });
+      mkdirSync(copieAvant, { recursive: true });
+      if (existsSync(dossierProd)) cpSync(dossierProd, copieAvant, { recursive: true });
+      const outil = installerOutilDeFigeage(jeu, prod);
+      if (outil) console.log(`outil de figeage d'aujourd'hui installé dans le code en production : ${outil}`);
+      execFileSync("npm", ["run", jeu.figer.script, "-w", jeu.figer.paquet, "--", dernierJour], { cwd: prod, stdio: "inherit" });
+      const ecrits = datesDuDossier(dossierProd).filter((d) => !avantFigeage.has(d)).sort();
+      // Chaque fichier écrit est ce que le code en production servait sans lui (empreintes de l'image d'avant, puis de l'image avec les fichiers).
+      if (ecrits.length) {
+        const sansFichier = join(temp, `${jeu.id}-empreintes-avant.json`);
+        const avecFichier = join(temp, `${jeu.id}-empreintes-apres.json`);
+        rmSync(sansFichier, { force: true });
+        rmSync(avecFichier, { force: true });
+        empreintesDuJeu(prod, jeu, { du: ecrits[0], au: ecrits.at(-1), sortie: sansFichier, jours: copieAvant });
+        empreintesDuJeu(prod, jeu, { du: ecrits[0], au: ecrits.at(-1), sortie: avecFichier, jours: dossierProd });
+        const lu = (f) => JSON.parse(readFileSync(f, "utf8"))[jeu.id] ?? {};
+        const diffs = ecrits.filter((d) => lu(sansFichier)[d]?.id !== lu(avecFichier)[d]?.id || lu(sansFichier)[d]?.h !== lu(avecFichier)[d]?.h);
+        if (diffs.length) throw new Error(`jour(s) de ${jeu.nom} dont le fichier figé n'est pas le niveau que le code en production sert sans lui : ${diffs.join(", ")} (un jour servi ne change jamais : corriger l'outil de figeage)`);
+        console.log(`jours de ${jeu.nom} figés avec le code en production : ${ecrits.length} (${ecrits.join(", ")}), tous identiques à ce qu'il servait sans fichier`);
+      } else console.log(`aucun jour de ${jeu.nom} à figer`);
+      writeFileSync(join(sortieJeu, "nouveaux.json"), JSON.stringify({ format: 1, jeu: jeu.id, dates: ecrits }, null, 1) + "\n");
       // Les jours figés s'accordent-ils avec le commit déployé ? Superposés au dépôt visé : c'est ce que le serveur et le site auront, et ce que ses empreintes liront.
       const { add, conflicts } = frozenOverlay(read(dossierProd), read(dossierCible));
       if (conflicts.length) throw new Error(`jour(s) figé(s) de ${jeu.nom} différent(s) entre le code en production et le commit déployé : ${conflicts.join(", ")} (un jour figé ne change jamais : voir docs/plateforme/domaine.md)`);
@@ -827,6 +1019,11 @@ export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, so
       const t = add.length ? `jours figés de ${jeu.nom} ajoutés : ${add.join(" ")}` : `aucun jour figé de ${jeu.nom} à ajouter`;
       console.log(t);
       if (resume) appendFileSync(resume, t + "\n");
+      // Plus aucun jour déjà servi sans fichier figé : de la première date figée à demain, la construction a tous ses fichiers.
+      const presents = datesDuDossier(dossierCible);
+      const manquants = presents.length ? joursSansFichier({ du: presents.slice().sort()[0], au: dernierJour, fichiers: presents }) : [];
+      if (manquants.length) throw new Error(`jour(s) de ${jeu.nom} déjà servi(s) ou à servir sans fichier figé : ${manquants.join(", ")} — la mise en production ne part pas (un jour servi ne change jamais ; il serait régénéré par le nouveau code)`);
+      if (resume) appendFileSync(resume, `- ${jeu.nom} : tous les jours jusqu'au ${dernierJour} ont leur fichier figé (${ecrits.length} figé(s) par cette mise en production)\n`);
       for (const f of datesDuDossier(dossierProd)) copyFileSync(join(dossierProd, `${f}.json`), join(sortieJeu, "jours", `${f}.json`));
     } else {
       // Lot R16 : les jours protégés sans fichier, figés avec le code en production.
@@ -1019,7 +1216,30 @@ if (isMain) {
       joursServis(jeuDeLaChaine(opt("--jeu")), a, b, opt("--jusqua") ?? "origin/main");
     } else if (cmd === "figer-jeux") {
       // Lot K4b : le garde-fou des jours, pour chaque jeu de la chaîne (lots R6, R11, R16). Se lance dans le dépôt des outils (tout l'historique : `jours-servis` le lit).
-      figerJeux({ prod: opt("--prod"), cible: opt("--cible"), proteges: opt("--proteges"), veille: opt("--veille"), reference: opt("--reference"), jusqua: opt("--jusqua") ?? "origin/main", sortie: opt("--sortie"), temp: opt("--temp"), resume: opt("--resume") });
+      figerJeux({ prod: opt("--prod"), cible: opt("--cible"), proteges: opt("--proteges"), veille: opt("--veille"), reference: opt("--reference"), jusqua: opt("--jusqua") ?? "origin/main", sortie: opt("--sortie"), temp: opt("--temp"), resume: opt("--resume"), bascule: opt("--bascule"), instant: opt("--instant") ? Number(opt("--instant")) : undefined });
+    } else if (cmd === "servi-verifier") {
+      // Lot 33 : les jours qu'on vient de figer avec le code en production sont comparés, en lecture seule, à ce que le serveur de production sert EN CE MOMENT (jusqu'à aujourd'hui compris : demain n'est pas servi).
+      // `--sortie` : l'artefact `jours` de `figer-jeux` (`<jeu>/nouveaux.json`, `<jeu>/jours/AAAA-MM-JJ.json`). Une différence arrête : le fichier n'est pas le niveau que les joueurs ont vu.
+      const aujourdhui = jourDeParis(opt("--instant") ? Number(opt("--instant")) : Date.now());
+      const lignes = [];
+      const diffs = [];
+      for (const jeu of CHAINE.filter((j) => j.figer?.forme === "jusqu-a-la-veille")) {
+        const f = join(resolve(opt("--sortie")), jeu.id, "nouveaux.json");
+        if (!existsSync(f)) continue;
+        const dates = JSON.parse(readFileSync(f, "utf8")).dates.filter((d) => d <= aujourdhui);
+        const attendus = Object.fromEntries(dates.map((d) => {
+          const fichier = JSON.parse(readFileSync(join(resolve(opt("--sortie")), jeu.id, "jours", `${d}.json`), "utf8"));
+          return [d, { id: fichier.id, hash: fichier.hash }];
+        }));
+        const servis = await lireNiveauxServis(opt("--origine"), dates, { route: `/api/${jeu.id}/day` });
+        const d = comparerAuServi(attendus, servis);
+        diffs.push(...d.map((x) => `${jeu.nom} ${x}`));
+        lignes.push(`- ${jeu.nom} : ${dates.length} jour(s) figé(s) à nouveau, comparés au niveau que ${opt("--origine")} sert : ${d.length ? `⛔ ${d.length} différence(s)` : "✅ identiques"}`);
+      }
+      const text = (lignes.length ? lignes.join("\n") : "- aucun jour figé à comparer au niveau servi") + "\n" + diffs.map((x) => `  - ${x}`).join("\n") + (diffs.length ? "\n" : "");
+      if (opt("--resume")) appendFileSync(opt("--resume"), text);
+      process.stdout.write(text);
+      if (diffs.length) throw new Error("un jour figé n'est pas le niveau que la production sert en ce moment : la mise en production ne part pas. Si la production sert encore le niveau de l'incident du 06/11/2026 (retour arrière pas encore fait), faire d'abord le retour arrière (workflow « Retour arrière »), puis relancer le bouton.");
     } else if (cmd === "preparer-jeux") {
       // Lot K4b : les jours que préparent certains jeux (le bot de Tower), avec le code DÉPLOYÉ (`--cible`), après la comparaison des empreintes.
       preparerJeux({ cible: opt("--cible"), proteges: opt("--proteges"), veille: opt("--veille"), bascule: opt("--bascule"), sortie: opt("--sortie"), resume: opt("--resume"), githubSortie: opt("--github-sortie") });
@@ -1042,12 +1262,7 @@ if (isMain) {
           console.log(`${jeu.nom} : absent de ce code, aucune empreinte (rien à conserver pour lui)`);
           continue;
         }
-        const dossier = join(depot, "apps/api/scripts");
-        mkdirSync(dossier, { recursive: true });
-        const module_ = basename(jeu.moduleEmpreinte, ".ts");
-        for (const f of ["empreintes.ts", "empreintes-jours.ts", `${module_}.ts`]) copierSiAutre(join(SCRIPTS_ICI, f), join(dossier, f));
-        writeFileSync(join(dossier, `empreintes-entree-${jeu.id}.ts`), `import { empreinteJour } from "./${module_}";\nimport { executer } from "./empreintes-jours";\n\nexecuter(empreinteJour, ${JSON.stringify(jeu.id)});\n`);
-        compilerEtLancer(depot, `empreintes-entree-${jeu.id}`, ["--du", opt("--du"), "--au", opt("--au"), "--sortie", resolve(opt("--sortie")), ...(jeu.dossier ? ["--jours", join(depot, jeu.dossier)] : [])]);
+        empreintesDuJeu(depot, jeu, { du: opt("--du"), au: opt("--au"), sortie: opt("--sortie"), jours: jeu.dossier ? join(depot, jeu.dossier) : null });
       }
     } else if (cmd === "registre") {
       // Le registre des jours d'un jeu à registre (`--jeu`) tel que le code du dépôt `a` les sert (`jours.fabrication.registre`, copié dans ce dépôt : le code en production ne l'a pas).
@@ -1127,7 +1342,7 @@ if (isMain) {
       process.stdout.write(text);
     } else {
       void rest;
-      console.error("usage : node scripts/mise-en-production.mjs etiquette | derniere | changements <de> <à> | jeux | registres | bascule | bascule-valide <jour> | comparer <prod> <cible> <bascule> | empreintes-fusion <fichier> <nouveau> | proteges | proteges-verifier <fichier> | jours-servis <réf> <cible> --jeu <id> | figer-jeux | preparer-jeux | poser-jours <dossier> | empreintes <dépôt> | registre --jeu <id> <dépôt> | registre-fusion <dépôt> <servi> | inventaire <de> <à>");
+      console.error("usage : node scripts/mise-en-production.mjs etiquette | derniere | changements <de> <à> | jeux | registres | bascule | bascule-valide <jour> | comparer <prod> <cible> <bascule> | empreintes-fusion <fichier> <nouveau> | proteges | proteges-verifier <fichier> | jours-servis <réf> <cible> --jeu <id> | figer-jeux | servi-verifier | preparer-jeux | poser-jours <dossier> | empreintes <dépôt> | registre --jeu <id> <dépôt> | registre-fusion <dépôt> <servi> | inventaire <de> <à>");
       process.exit(2);
     }
   } catch (e) {

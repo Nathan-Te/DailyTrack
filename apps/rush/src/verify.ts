@@ -17,6 +17,8 @@ export interface ScenarioReference {
   nom: string;
   scenario: Scenario;
   monstres: number;
+  ameliorations: string[];
+  nv: number;
   code: string;
   ticks: number;
 }
@@ -34,7 +36,8 @@ declare global {
 window.__rejouer = (references) => references.map((r) => ({ nom: r.nom, resultat: rejouer(dailyRush(parseDay(r.date)!, r.g), r.code) }));
 window.__scenarios = (references) =>
   references.map((r) => {
-    const jeu = jouerJusqua(contenuScenario(r.scenario, { monstres: r.monstres }), decoderRediffusion(r.code).changements, r.ticks);
+    const d = decoderRediffusion(r.code);
+    const jeu = jouerJusqua(contenuScenario(r.scenario, { monstres: r.monstres, ameliorations: r.ameliorations, nv: r.nv }), d.changements, r.ticks, undefined, d.choix);
     return { nom: r.nom, empreinte: jeu.empreinte, resultat: jeu.resultat };
   });
 document.documentElement.dataset.ready = "true";
