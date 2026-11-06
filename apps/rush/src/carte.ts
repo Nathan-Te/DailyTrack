@@ -1,5 +1,5 @@
 import { formatDay } from "@cdj/core";
-import { CM_PAR_CHANFREIN, M, MUR, PONT, SOL, tempsSansRencontre, Z_ARENE, Z_CHEMIN, Z_CLAIRIERE, Z_PORTE, caseDe, centreDeCase, dailyRush, descendre, formatTemps, jouerLePilote, type Contenu } from "@cdj/rush-sim";
+import { CM_PAR_CHANFREIN, DUREE_TICKS, M, MUR, STRATEGIES, TICKS_PAR_SECONDE, PONT, SOL, tempsSansRencontre, Z_ARENE, Z_CHEMIN, Z_CLAIRIERE, Z_PORTE, caseDe, centreDeCase, dailyRush, descendre, formatTemps, jouerLePilote, type Contenu } from "@cdj/rush-sim";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { PALETTES } from "./palette";
 
@@ -134,10 +134,15 @@ export function carteDesJours(jour: number, nombre: number, hote: HTMLElement, o
   for (let d = 0; d < nombre; d++) {
     const c = dailyRush(jour + d);
     const n = c.niveau!;
-    const pilote = jouerLePilote(c);
-    const nettoyer = jouerLePilote(c, undefined, Infinity, "nettoyer");
+    // Lot BR2 : les trois stratégies du pilote jouent le jour ; la plus rapide, et de combien elle l'est sur la suivante (une partie perdue vaut le pire temps).
+    const parties = STRATEGIES.map((s) => jouerLePilote(c, undefined, Infinity, s));
+    const temps3 = parties.map((q) => (q.resultat.victoire ? q.ticks : DUREE_TICKS));
+    const meilleur = temps3.indexOf(Math.min(...temps3));
+    const suivante = Math.min(...temps3.filter((_, i) => i !== meilleur));
+    const pilote = parties[0]!;
     const f = document.createElement("figure");
     f.className = "rush-carte__jour";
+    f.dataset.meilleure = STRATEGIES[meilleur]!;
     const cap = document.createElement("figcaption");
     const temps = formatTemps(pilote.ticks, o.langue);
     cap.textContent = o.t("carte.legende", {
@@ -150,8 +155,9 @@ export function carteDesJours(jour: number, nombre: number, hote: HTMLElement, o
       o: n.obstacles.length,
       sr: tempsSansRencontre(n).toFixed(1),
       t: temps,
-      tn: formatTemps(nettoyer.ticks, o.langue),
-      fin: pilote.resultat.victoire ? "" : o.t("carte.perdu"),
+      tp: formatTemps(parties[1]!.ticks, o.langue),
+      tn: formatTemps(parties[2]!.ticks, o.langue),
+      fin: (pilote.resultat.victoire ? "" : o.t("carte.perdu")) + o.t("carte.meilleure", { s: o.t(`strategie.${STRATEGIES[meilleur]!}`), ecart: ((suivante - temps3[meilleur]!) / TICKS_PAR_SECONDE).toFixed(1) }),
     });
     f.append(dessiner(c, c.theme), cap);
     grille.append(f);

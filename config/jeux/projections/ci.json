@@ -1319,6 +1319,10 @@
           "poids.spec.ts": [
             "rush-jeu",
             "ui"
+          ],
+          "choix.spec.ts": [
+            "rush-sim",
+            "rush-jeu"
           ]
         },
         "parts": {

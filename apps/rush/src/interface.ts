@@ -22,10 +22,29 @@ const CHEMIN_COEUR = "M12 21 C5 15 2.5 11.5 2.5 8 C2.5 5 4.8 3 7.4 3 C9.3 3 11 4
 const CHEMIN_EPEE = "M20 4 L20.4 9.6 L12 18 L6 12 L14.4 3.6 Z M5 19 L9 15 M3 21 L6 18";
 const CHEMIN_ESQUIVE = "M15.4 4.4 A1.7 1.7 0 1 1 15.39 4.4 M13.6 8.2 L11.4 13 M13.6 8.2 L17.6 10.6 M13 9 L8.6 10.4 M11.4 13 L15 15.6 L13.4 20.4 M11.4 13 L8 16.6 L4.4 15.6";
 
+/** Lot BR2 : une carte du choix d'amélioration, déjà écrite (les textes viennent du catalogue) : son identifiant, son nom, son effet en une ligne, son palier (« 2 / 3 »), le tracé de son icône et sa famille (la couleur de l'icône). */
+export interface CarteVue {
+  id: string;
+  nom: string;
+  effet: string;
+  palier: string;
+  icone: string;
+  famille: string;
+}
+
 export interface Interface {
   racine: HTMLElement;
   zone3d: HTMLElement;
-  coeurs(n: number): void;
+  /** Les cœurs : `n` pleins sur `max` (3, et « Cœur en plus »). */
+  coeurs(n: number, max?: number): void;
+  /** Lot BR2 : la pastille « Nv 4 » et sa barre d'XP (`xp` points dans le niveau sur `total`). */
+  niveau(nv: number | null, xp: number, total: number): void;
+  /** Lot BR2 : le voile à rayures et les trois cartes ; `choisir(i)` est appelé au toucher / clic d'une carte. */
+  ouvrirChoix(nv: number, cartes: readonly CarteVue[], choisir: (i: number) => void): void;
+  fermerChoix(): void;
+  /** La carte en surbrillance (clavier, manette), 0 à 2. */
+  selection(i: number): void;
+  choixOuvert(): boolean;
   boss(fraction: number | null, phase: number): void;
   /** Lot BR1 : la pastille « BOSS → 38 m » (la flèche tourne vers l'arène, `angle` en radians sur l'écran, 0 : vers la droite, π/2 : vers le bas) ; `null` : cachée. */
   cible(metres: number | null, angle?: number): void;
@@ -74,15 +93,32 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   zone3d.setAttribute("aria-label", libelleScene);
   const hud = document.createElement("div");
   hud.className = "rush-hud";
-  // Les cœurs.
+  // Les cœurs (lot BR2 : « Cœur en plus » en ajoute).
   const bloc = document.createElement("div");
   bloc.className = "rush-coeurs";
   bloc.setAttribute("role", "img");
-  const coeurs = Array.from({ length: COEURS }, () => {
-    const c = svg(CHEMIN_COEUR, "rush-coeur");
-    bloc.append(c);
-    return c;
-  });
+  const coeurs: SVGSVGElement[] = [];
+  const garnir = (max: number): void => {
+    while (coeurs.length < max) {
+      const c = svg(CHEMIN_COEUR, "rush-coeur");
+      bloc.append(c);
+      coeurs.push(c);
+    }
+  };
+  garnir(COEURS);
+  // Lot BR2 : le niveau et la barre d'XP, sous les cœurs.
+  const pastille = document.createElement("div");
+  pastille.className = "rush-niveau";
+  const nvTexte = document.createElement("span");
+  nvTexte.className = "rush-niveau__nv";
+  const piste2 = document.createElement("div");
+  piste2.className = "rush-niveau__piste";
+  piste2.setAttribute("role", "progressbar");
+  piste2.setAttribute("aria-valuemin", "0");
+  const xpBarre = document.createElement("div");
+  xpBarre.className = "rush-niveau__xp";
+  piste2.append(xpBarre);
+  pastille.append(nvTexte, piste2);
   // La barre de vie du golem.
   const boss = document.createElement("div");
   boss.className = "rush-boss";
@@ -118,8 +154,24 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   const fps = document.createElement("div");
   fps.className = "rush-fps";
   fps.hidden = true;
-  hud.append(bloc, boss, cible, vignette, fps);
+  hud.append(bloc, pastille, boss, cible, vignette, fps);
   racine.append(zone3d, hud);
+  // Lot BR2 : le choix d'une amélioration — un voile à rayures, un titre, trois cartes (des boutons : le doigt, la souris, le clavier et la manette les atteignent), une ligne d'aide.
+  const choix = document.createElement("div");
+  choix.className = "rush-choix";
+  choix.hidden = true;
+  choix.setAttribute("role", "group"); // pas « dialog » : le kit laisse alors les touches du jeu agir sur les cartes
+  const choixTitre = document.createElement("h2");
+  choixTitre.className = "rush-choix__titre";
+  const choixRang = document.createElement("div");
+  choixRang.className = "rush-choix__cartes";
+  const choixAide = document.createElement("p");
+  choixAide.className = "rush-choix__aide";
+  choixAide.textContent = t("choix.aide");
+  choix.append(choixTitre, choixRang, choixAide);
+  racine.append(choix);
+  let boutonsCartes: HTMLButtonElement[] = [];
+  let ouvert = false;
   // Les doigts.
   let tactileRacine: HTMLElement | null = null;
   if (tactile) {
@@ -188,15 +240,85 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   }
   hote.append(racine);
 
+  const selectionner = (i: number): void => boutonsCartes.forEach((b, k) => b.classList.toggle("rush-option--sel", k === i));
   let derniersCoeurs = -1;
+  let dernierMax = COEURS;
+  let dernierNiveau = "";
   return {
     racine,
     zone3d,
-    coeurs(n) {
-      if (n === derniersCoeurs) return;
+    coeurs(n, max = COEURS) {
+      if (n === derniersCoeurs && max === dernierMax) return;
       derniersCoeurs = n;
+      dernierMax = max;
+      garnir(max);
       coeurs.forEach((c, i) => c.classList.toggle("rush-coeur--vide", i >= n));
-      bloc.setAttribute("aria-label", t("hud.coeurs", { n, total: COEURS }));
+      bloc.setAttribute("aria-label", t("hud.coeurs", { n, total: max }));
+    },
+    niveau(nv, xp, total) {
+      pastille.hidden = nv === null; // les scénarios d'essai sans niveau du jour n'ont pas d'XP
+      if (nv === null) return;
+      const cle = `${nv}|${xp}|${total}`;
+      if (cle === dernierNiveau) return;
+      dernierNiveau = cle;
+      nvTexte.textContent = t("hud.niveau", { n: nv });
+      xpBarre.style.transform = `scaleX(${Math.max(0, Math.min(1, xp / Math.max(1, total)))})`;
+      piste2.setAttribute("aria-valuemax", String(total));
+      piste2.setAttribute("aria-valuenow", String(xp));
+      piste2.setAttribute("aria-label", t("hud.xp", { n: xp, total }));
+    },
+    ouvrirChoix(nv, cartes, choisir) {
+      choixTitre.textContent = t("choix.titre", { n: nv });
+      choix.setAttribute("aria-label", t("choix.aria", { n: nv }));
+      choixRang.replaceChildren();
+      boutonsCartes = cartes.map((c, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.tabIndex = -1;
+        b.className = "rush-option";
+        b.dataset.famille = c.famille;
+        b.dataset.carte = c.id;
+        const touche = document.createElement("span");
+        touche.className = "rush-option__touche";
+        touche.textContent = String(i + 1);
+        touche.setAttribute("aria-hidden", "true");
+        const ico = document.createElement("span");
+        ico.className = "rush-option__icone";
+        ico.append(svg(c.icone, "rush-option__dessin"));
+        const nom = document.createElement("b");
+        nom.className = "rush-option__nom";
+        nom.textContent = c.nom;
+        const effet = document.createElement("span");
+        effet.className = "rush-option__effet";
+        effet.textContent = c.effet;
+        const palier = document.createElement("span");
+        palier.className = "rush-option__palier";
+        palier.textContent = c.palier;
+        b.append(touche, ico, nom, effet, palier);
+        // Un toucher / un clic choisit ; le focus ne reste pas sur la carte (Espace et Entrée sont aux commandes du jeu, pas au bouton).
+        b.addEventListener("click", (e) => {
+          e.preventDefault();
+          choisir(i);
+        });
+        b.addEventListener("pointerenter", (e) => {
+          if (e.pointerType === "mouse") selectionner(i);
+        });
+        choixRang.append(b);
+        return b;
+      });
+      choix.hidden = false;
+      ouvert = true;
+      selectionner(0);
+    },
+    fermerChoix() {
+      choix.hidden = true;
+      ouvert = false;
+      boutonsCartes = [];
+      choixRang.replaceChildren();
+    },
+    selection: selectionner,
+    choixOuvert() {
+      return ouvert;
     },
     boss(fraction, numero) {
       if (fraction === null) {
