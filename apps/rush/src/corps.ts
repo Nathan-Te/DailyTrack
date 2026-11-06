@@ -64,7 +64,8 @@ import { monterNiveauVu } from "./niveauVue";
 import { FICHE } from "./fiche";
 import "./rush.css"; // le HUD, les boutons et la carte ne servent qu'en partie : leur feuille est chargée avec la scène (jamais dans le premier chargement)
 import { Controles } from "./controles";
-import { Annonces, Anneaux, ArcCoup, Cratere, Eclats, Ombres, Reticule, Traits } from "./effets";
+import { Annonces, Anneaux, ArcCoup, Cratere, Eclats, LignesCourse, Ombres, Reticule, Traits } from "./effets";
+import { monterObstacles } from "./obstaclesVue";
 import { carteDesJours } from "./carte";
 import { lireEssai } from "./essai";
 import { monterInterface } from "./interface";
@@ -225,6 +226,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const decor = niveau ? monterNiveauVu(niveau, palette) : monterDecor(R, palette);
   scene.background = decor.ciel;
   scene.add(decor.groupe);
+  const obstaclesVue = niveau ? monterObstacles(niveau, palette) : null; // lot BR1b : les ronces et les caisses du chemin
+  if (obstaclesVue) scene.add(obstaclesVue.groupe);
   const centreArene = niveau ? { x: metres(niveau.arene.x), z: metres(niveau.arene.y) } : { x: 0, z: 0 };
 
   const ombres = new Ombres(); // les ombres en disques : la basse qualité (en haute, de vraies ombres portées)
@@ -242,6 +245,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   scene.add(arc.maillage);
   const traits = new Traits();
   scene.add(traits.maillage);
+  const lignesCourse = new LignesCourse(); // lot BR1b : les lignes de vitesse de la course
+  scene.add(lignesCourse.maillage);
   const reticule = new Reticule();
   scene.add(reticule.maillage);
 
@@ -463,6 +468,17 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       case "alerte":
         // un monstre du niveau remarque le chevalier : un éclat jaune au-dessus de lui (le « ! »)
         eclats.gerbe("etincelle", x, e.a === CHAUVE ? 2.2 : 1.3, z, 5, { vitesse: 2.5, taille: 0.1, haut: 2.5, duree: 0.4 });
+        break;
+      case "obstacle":
+        // un coup sur un obstacle : il tremble (la vue), des éclats, un son sourd
+        son("touche");
+        eclats.gerbe(e.b === 0 ? "gelee" : "pierre", x, 0.8, z, 6, { vitesse: 3.5, taille: 0.12, haut: 2.2, dx: ax, dz: az, eventail: 1.2 });
+        break;
+      case "brise":
+        // il cède : un nuage et des morceaux
+        son("pierre");
+        eclats.gerbe("poussiere", x, 0.4, z, 18, { vitesse: 4, taille: 0.2, haut: 2.5, duree: 0.7, gravite: 4 });
+        eclats.gerbe(e.a === 0 ? "gelee" : "pierre", x, 0.8, z, 16, { vitesse: 5, taille: 0.16, haut: 4 });
         break;
       case "barriere":
         // la barrière se referme derrière le chevalier
@@ -690,7 +706,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       impact: partie.impactCoup(partie.c.combo),
       ticks: c.t + alpha,
       cache: c.degat > 0 && c.esq === 0 && Math.floor(now / 70) % 2 === 0 && !partie.perdue,
+      course: partie.course / 100,
     });
+    // La course (lot BR1b) : des lignes de vitesse derrière lui et plus de poussière.
+    const vitesseCourse = c.marche && c.etat === 0 && !fige && !partie.finie ? partie.course / 100 : 0;
+    lignesCourse.maj(cx, cz, (c.dir * Math.PI * 2) / 128, vitesseCourse, temps);
     if (flashChev > 0) flashChev -= dt * 60;
     eclair(chevalier.matieres, flashChev > 0 ? 0.9 : 0);
     if (partie.perdue) {
@@ -703,7 +723,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       // la poussière des pas : un petit nuage derrière le pied qui se lève
       dernierPas = now;
       const arriere = ((c.dir * Math.PI * 2) / 128) + Math.PI;
-      eclats.gerbe("poussiere", cx + Math.cos(arriere) * 0.25, 0.1, cz + Math.sin(arriere) * 0.25, 2, { vitesse: 1.2, taille: 0.09, haut: 0.7, duree: 0.35, gravite: 3 });
+      eclats.gerbe("poussiere", cx + Math.cos(arriere) * 0.25, 0.1, cz + Math.sin(arriere) * 0.25, vitesseCourse > 0.3 ? 4 : 2, { vitesse: vitesseCourse > 0.3 ? 2.2 : 1.2, taille: vitesseCourse > 0.3 ? 0.14 : 0.09, haut: 0.7, duree: 0.35, gravite: 3 });
     }
 
     // Le fantôme.
@@ -827,6 +847,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       }
       ui.cible(m, angle);
     } else ui.cible(null);
+    obstaclesVue?.maj(partie.obstacles, temps);
     decor.maj?.({ x: cx, z: cz }, camera.position, partie.barriere >= 0 ? Math.min(1, (partie.tick - partie.barriere + alpha) / 24) : 0);
 
     renderer.info.reset();

@@ -1,10 +1,10 @@
 import { formatDay } from "@cdj/core";
-import { CM_PAR_CHANFREIN, M, MUR, PONT, SOL, Z_ARENE, Z_CHEMIN, Z_CLAIRIERE, Z_PORTE, caseDe, centreDeCase, dailyRush, descendre, formatTemps, jouerLePilote, type Contenu } from "@cdj/rush-sim";
+import { CM_PAR_CHANFREIN, M, MUR, PONT, SOL, tempsSansRencontre, Z_ARENE, Z_CHEMIN, Z_CLAIRIERE, Z_PORTE, caseDe, centreDeCase, dailyRush, descendre, formatTemps, jouerLePilote, type Contenu } from "@cdj/rush-sim";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { PALETTES } from "./palette";
 
 // `?scenario=carte&jours=7` (lot BR1) : la vue de DESSUS des N prochains jours, pour juger la variété du générateur. Pour chaque jour : la grille (sol, murs bas, vide, ponts), le chemin principal (orange, le plus court sur la grille), les détours (bleu),
-// les camps (rouge, avec leur nombre de monstres), les monstres épars (jaune), le départ (S), l'arène du golem (G), la longueur du chemin et le temps du pilote (le Diamant provisoire : « foncer »). Jamais classé, jamais en production.
+// les camps (rouge, avec leur nombre de monstres), les groupes qui barrent le chemin (orange, avec le cercle de leur alerte), les obstacles cassables (marron), les monstres épars (jaune), le départ (S), l'arène du golem (G), la longueur du chemin et le temps du pilote (le Diamant provisoire : « foncer »). Jamais classé, jamais en production.
 
 const TAILLE = 360;
 const css = (n: number): string => `#${n.toString(16).padStart(6, "0")}`;
@@ -78,9 +78,30 @@ function dessiner(c: Contenu, theme: string): HTMLCanvasElement {
     g.textBaseline = "middle";
     g.fillText(String(n.monstres.filter((m) => m.camp === d.camp).length), px(cl.x), py(cl.y));
   }
+  // lot BR1b : les groupes (leur alerte large), les obstacles cassables, les épars
+  const alerteK = (u: number): number => (u / (2 * M)) * k;
+  for (const m of n.monstres) {
+    if (m.groupe < 0) continue;
+    g.strokeStyle = "rgba(255,150,40,0.55)";
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(px(m.x), py(m.y), alerteK(m.alerte), 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = "#ff8a1a";
+    g.beginPath();
+    g.arc(px(m.x), py(m.y), 3.2, 0, Math.PI * 2);
+    g.fill();
+  }
+  for (const o of n.obstacles) {
+    g.fillStyle = o.coups === 1 ? "#4f9a3a" : "#8a5a2b";
+    for (const idxO of o.cases) {
+      const [x, y] = centreDeCase(n, idxO);
+      g.fillRect(px(x) - k * 0.45, py(y) - k * 0.45, k * 0.9, k * 0.9);
+    }
+  }
   g.fillStyle = "#ffe14a";
   for (const m of n.monstres) {
-    if (m.camp >= 0) continue;
+    if (m.camp >= 0 || m.groupe >= 0) continue;
     g.beginPath();
     g.arc(px(m.x), py(m.y), 3, 0, Math.PI * 2);
     g.fill();
@@ -114,11 +135,24 @@ export function carteDesJours(jour: number, nombre: number, hote: HTMLElement, o
     const c = dailyRush(jour + d);
     const n = c.niveau!;
     const pilote = jouerLePilote(c);
+    const nettoyer = jouerLePilote(c, undefined, Infinity, "nettoyer");
     const f = document.createElement("figure");
     f.className = "rush-carte__jour";
     const cap = document.createElement("figcaption");
     const temps = formatTemps(pilote.ticks, o.langue);
-    cap.textContent = o.t("carte.legende", { date: formatDay(c.jour), theme: o.t(`theme.${c.theme}`), m: Math.round(n.longueurCm / 100), d: n.detours.length, tue: n.monstres.length, t: temps, fin: pilote.resultat.victoire ? "" : o.t("carte.perdu") });
+    cap.textContent = o.t("carte.legende", {
+      date: formatDay(c.jour),
+      theme: o.t(`theme.${c.theme}`),
+      m: Math.round(n.longueurCm / 100),
+      d: n.detours.length,
+      b: n.detours.filter((q) => q.hub2 >= 0).length,
+      tue: n.monstres.length,
+      o: n.obstacles.length,
+      sr: tempsSansRencontre(n).toFixed(1),
+      t: temps,
+      tn: formatTemps(nettoyer.ticks, o.langue),
+      fin: pilote.resultat.victoire ? "" : o.t("carte.perdu"),
+    });
     f.append(dessiner(c, c.theme), cap);
     grille.append(f);
   }

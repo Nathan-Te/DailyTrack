@@ -33,6 +33,7 @@ export interface PorteScene {
   changements(): Changement[];
   sons(): string[];
   calls(): number;
+  scene(): { getObjectByName(nom: string): { visible: boolean } | undefined };
   qualite(): "haute" | "basse";
   definirQualite(q: "haute" | "basse"): void;
   dessinerMaintenant(): void;
