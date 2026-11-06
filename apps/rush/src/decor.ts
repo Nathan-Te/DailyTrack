@@ -211,18 +211,18 @@ function ilesLointaines(a: PaletteMonde): BufferGeometry {
 }
 
 /** Les nuages : des paquets de sphères blanches aplaties, au loin et sous l'arène, en un seul maillage sans lumière. */
-export function nuages(a: PaletteMonde, zone?: { x0: number; x1: number; z0: number; z1: number }): BufferGeometry {
-  const rnd = aleatoire(13);
+export function nuages(a: PaletteMonde, zone?: { x0: number; x1: number; z0: number; z1: number }, graine = 13): BufferGeometry {
+  const rnd = aleatoire(graine);
   const formes: BufferGeometry[] = [];
   // Lot BR1 : dans un niveau, les nuages se répartissent sur toute son étendue (un tous les ~1 000 m²), pas seulement autour de l'arène.
-  const n = zone ? Math.max(14, Math.round(((zone.x1 - zone.x0) * (zone.z1 - zone.z0)) / 1000)) : 12;
+  const n = zone ? Math.max(2, Math.round(((zone.x1 - zone.x0) * (zone.z1 - zone.z0)) / 1400)) : 12;
   for (let i = 0; i < n; i++) {
     const cx = zone ? zone.x0 + rnd() * (zone.x1 - zone.x0) : (rnd() - 0.5) * 120;
     const cz = zone ? zone.z0 + rnd() * (zone.z1 - zone.z0) : -34 + rnd() * 76;
-    const cy = -16 - rnd() * 12;
+    const cy = (zone ? -32 : -16) - rnd() * 12;
     for (let k = 0; k < 4; k++) {
       const r = 2.6 + rnd() * 2.8;
-      formes.push(teindre(placer(new SphereGeometry(1, 12, 8), { x: cx + (k - 1.5) * 2.8, y: cy + rnd() * 1.4, z: cz + (rnd() - 0.5) * 2.4, s: [r * 1.5, r * 0.75, r] }), a.nuage));
+      formes.push(teindre(placer(new SphereGeometry(1, zone ? 8 : 12, zone ? 5 : 8), { x: cx + (k - 1.5) * 2.8, y: cy + rnd() * 1.4, z: cz + (rnd() - 0.5) * 2.4, s: [r * 1.5, r * 0.75, r] }), a.nuage));
     }
   }
   return fusionner(formes);

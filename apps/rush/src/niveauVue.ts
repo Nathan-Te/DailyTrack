@@ -41,7 +41,7 @@ interface Modeles {
   /** Le mur bas : quelques variantes (hauteur ≤ MUR_MAX). */
   murs: BufferGeometry[];
   /** Le décor posé sur un mur, de la plus rare à la plus fréquente : [probabilité cumulée, variantes, haut du mur en mètres où le poser]. */
-  decors: { jusqua: number; formes: BufferGeometry[]; haut: boolean }[];
+  decors: { jusqua: number; formes: BufferGeometry[]; haut: boolean; grand?: boolean }[];
 }
 
 const cone = (r: number, h: number, seg: number, p: { x?: number; y?: number; z?: number; rx?: number; rz?: number }, c: number): BufferGeometry => teindre(placer(new ConeGeometry(r, h, seg), { ...p, y: (p.y ?? 0) + h / 2 }), c);
@@ -68,11 +68,11 @@ function modeles(theme: ThemeVu, a: PaletteMonde): Modeles {
       murs,
       decors: [
         // un arbre : un tronc et une boule de feuilles
-        { jusqua: 0.1, haut: false, formes: variantes(3, (k) => fusionner([cyl(0.28, 0.2, 1.7 + k * 0.2, {}, a.bois2), sph(1.45 + k * 0.15, { y: 2.9 + k * 0.2, s: [1, 0.9, 1] }, a.herbe2), sph(0.95, { x: 0.7, y: 3.4, z: 0.2 }, a.herbe)])) },
+        { jusqua: 0.06, haut: false, grand: true, formes: variantes(3, (k) => fusionner([cyl(0.26, 0.18, 1.6 + k * 0.2, {}, a.bois2), sph(1.25 + k * 0.12, { y: 2.6 + k * 0.2, s: [1, 0.9, 1] }, a.herbe2), sph(0.8, { x: 0.6, y: 3.0, z: 0.2 }, a.herbe)])) },
         // des fleurs sur la haie
-        { jusqua: 0.28, haut: true, formes: variantes(3, (k) => fusionner([sph(0.13, { x: 0.3, z: 0.2 }, FLEUR[k % 3]!), sph(0.13, { x: -0.3, z: 0.3, y: 0.1 }, FLEUR[(k + 1) % 3]!), sph(0.13, { x: 0.05, z: -0.35 }, FLEUR[(k + 2) % 3]!), sph(0.13, { x: -0.4, z: -0.2, y: 0.05 }, FLEUR[k % 3]!)])) },
+        { jusqua: 0.24, haut: true, formes: variantes(3, (k) => fusionner([sph(0.13, { x: 0.3, z: 0.2 }, FLEUR[k % 3]!), sph(0.13, { x: -0.3, z: 0.3, y: 0.1 }, FLEUR[(k + 1) % 3]!), sph(0.13, { x: 0.05, z: -0.35 }, FLEUR[(k + 2) % 3]!), sph(0.13, { x: -0.4, z: -0.2, y: 0.05 }, FLEUR[k % 3]!)])) },
         // des touffes d'herbe
-        { jusqua: 0.55, haut: true, formes: variantes(3, (k) => fusionner([cone(0.1, 0.55, 4, { x: 0.2, z: 0.1, rz: 0.2 }, k % 2 ? a.herbe : a.herbe2), cone(0.1, 0.6, 4, { x: -0.15, z: 0.2, rx: 0.2 }, a.herbe2), cone(0.1, 0.5, 4, { x: 0.0, z: -0.25, rz: -0.2 }, a.herbe)])) },
+        { jusqua: 0.5, haut: true, formes: variantes(3, (k) => fusionner([cone(0.1, 0.55, 4, { x: 0.2, z: 0.1, rz: 0.2 }, k % 2 ? a.herbe : a.herbe2), cone(0.1, 0.6, 4, { x: -0.15, z: 0.2, rx: 0.2 }, a.herbe2), cone(0.1, 0.5, 4, { x: 0.0, z: -0.25, rz: -0.2 }, a.herbe)])) },
       ],
     };
   }
@@ -80,13 +80,25 @@ function modeles(theme: ThemeVu, a: PaletteMonde): Modeles {
     murs,
     decors: [
       // un sapin : trois étages de cônes sur un tronc
-      { jusqua: 0.14, haut: false, formes: variantes(3, (k) => fusionner([cyl(0.25, 0.2, 1.1, {}, a.bois2), cone(1.35 + k * 0.1, 1.9, 7, { y: 0.9 }, a.herbe2), cone(1.0 + k * 0.1, 1.7, 7, { y: 2.1 }, a.herbe), cone(0.65, 1.5, 7, { y: 3.2 }, a.herbe2)])) },
+      { jusqua: 0.08, haut: false, grand: true, formes: variantes(3, (k) => fusionner([cyl(0.25, 0.2, 1.1, {}, a.bois2), cone(1.35 + k * 0.1, 1.9, 7, { y: 0.9 }, a.herbe2), cone(1.0 + k * 0.1, 1.7, 7, { y: 2.1 }, a.herbe), cone(0.65, 1.5, 7, { y: 3.2 }, a.herbe2)])) },
       // des champignons sur la haie
-      { jusqua: 0.32, haut: true, formes: variantes(2, (k) => fusionner([cyl(0.09, 0.08, 0.35, { x: 0.25 }, CHAMPIGNON.pied), sph(0.24, { x: 0.25, y: 0.38, s: [1, 0.55, 1] }, CHAMPIGNON.chapeau), cyl(0.07, 0.06, 0.25, { x: -0.3, z: 0.25 }, CHAMPIGNON.pied), sph(0.17, { x: -0.3, y: 0.27, z: 0.25, s: [1, 0.55, 1] }, k ? 0xe6a23a : CHAMPIGNON.chapeau)])) },
+      { jusqua: 0.26, haut: true, formes: variantes(2, (k) => fusionner([cyl(0.09, 0.08, 0.35, { x: 0.25 }, CHAMPIGNON.pied), sph(0.24, { x: 0.25, y: 0.38, s: [1, 0.55, 1] }, CHAMPIGNON.chapeau), cyl(0.07, 0.06, 0.25, { x: -0.3, z: 0.25 }, CHAMPIGNON.pied), sph(0.17, { x: -0.3, y: 0.27, z: 0.25, s: [1, 0.55, 1] }, k ? 0xe6a23a : CHAMPIGNON.chapeau)])) },
       // des souches
-      { jusqua: sombre ? 0.44 : 0.4, haut: false, formes: variantes(2, (k) => fusionner([cyl(0.5 + k * 0.1, 0.42, 0.55, {}, a.bois2), teindre(placer(new CylinderGeometry(0.42, 0.42, 0.04, 8), { y: 0.57 }), a.bois)])) },
+      { jusqua: 0.38, haut: false, formes: variantes(2, (k) => fusionner([cyl(0.5 + k * 0.1, 0.42, 0.55, {}, a.bois2), teindre(placer(new CylinderGeometry(0.42, 0.42, 0.04, 8), { y: 0.57 }), a.bois)])) },
     ],
   };
+}
+
+/** La hauteur du centre d'un mur bas posé sur la case (les rochers sont plus aplatis que les haies). */
+const decalageMur = (theme: ThemeVu): number => (theme === "carriere" ? 0.3 : 0.5);
+/** Le sommet le plus haut d'un mur bas d'un thème, en mètres (≤ `MUR_MAX` : on voit toujours par-dessus). */
+export function hauteurDesMurs(theme: ThemeVu, a: PaletteMonde = PALETTES[theme]!): number {
+  let h = 0;
+  for (const g of modeles(theme, a).murs) {
+    g.computeBoundingBox();
+    h = Math.max(h, g.boundingBox!.max.y * 1.0 + decalageMur(theme));
+  }
+  return h;
 }
 
 // --- Les morceaux (sans navigateur : de la géométrie) --------------------------------------------------------------------------------------------------------------------------------------------------
@@ -94,7 +106,10 @@ export interface Morceau {
   ci: number;
   cj: number;
   sol: BufferGeometry | null;
+  /** Les murs bas, le décor bas et les ponts : opaques. */
   relief: BufferGeometry | null;
+  /** Ce qui est haut (les arbres) : s'efface (transparence) devant le chevalier. */
+  hauts: BufferGeometry | null;
 }
 export interface Construit {
   morceaux: Morceau[];
@@ -136,8 +151,9 @@ export function construireNiveau(n: Niveau, a: PaletteMonde, theme: ThemeVu = th
     nor: number[];
     sous: BufferGeometry[];
     relief: BufferGeometry[];
+    hauts: BufferGeometry[];
   }
-  const tas: Tas[] = Array.from({ length: nx * ny }, () => ({ pos: [], col: [], nor: [], sous: [], relief: [] }));
+  const tas: Tas[] = Array.from({ length: nx * ny }, () => ({ pos: [], col: [], nor: [], sous: [], relief: [], hauts: [] }));
   const dans = (x: number, z: number): Tas => tas[Math.min(ny - 1, Math.max(0, Math.floor((z - oy) / CM / PAS_MORCEAU))) * nx + Math.min(nx - 1, Math.max(0, Math.floor((x - ox) / CM / PAS_MORCEAU)))]!;
   const stats = { murs: 0, decors: 0, ponts: 0, decorsSurSol: 0 };
   const copie = (g: BufferGeometry, pose: Parameters<typeof placer>[1]): BufferGeometry => placer(g.clone(), pose);
@@ -170,7 +186,9 @@ export function construireNiveau(n: Niveau, a: PaletteMonde, theme: ThemeVu = th
         // Le plateau de l'arène est dessiné par `monterDecor` ; ses cases ne le sont que là où elles touchent le chemin (pas de trou entre le plateau et le chemin qui y entre).
         if (z === Z_ARENE && !voisin8(i, j, [Z_CHEMIN, Z_PORTE])) continue;
         const c = cSol[(i + j) % 2]!.clone().multiplyScalar(0.96 + hash(i, j) * 0.08);
-        quad([[x0, 0, z1], [x1, 0, z1], [x1, 0, z0], [x0, 0, z0]], 0, 1, 0, c);
+        // les cases d'arène qui touchent le chemin sont à peine sous le plateau (qui les recouvre : pas de scintillement, pas de trou)
+        const yy = z === Z_ARENE ? -0.04 : 0;
+        quad([[x0, yy, z1], [x1, yy, z1], [x1, yy, z0], [x0, yy, z0]], 0, 1, 0, c);
         flancs(cTranche, (di, dj) => type(i + di, j + dj) === VIDE);
       } else if (t === MUR) {
         // Sous un mur bas : un pan de roche (le mur ne flotte pas au-dessus du vide).
@@ -179,14 +197,14 @@ export function construireNiveau(n: Niveau, a: PaletteMonde, theme: ThemeVu = th
           stats.murs++;
           const h = hash(i, j, 5);
           const v = Math.floor(hash(i, j, 6) * mod.murs.length);
-          const mur = copie(mod.murs[v]!, { x: cx, y: theme === "carriere" ? 0.3 : 0.5, z: cz, ry: hash(i, j, 7) * 6.28, s: [0.95 + hash(i, j, 8) * 0.15, 1, 0.95 + hash(i, j, 9) * 0.15] });
+          const mur = copie(mod.murs[v]!, { x: cx, y: decalageMur(theme), z: cz, ry: hash(i, j, 7) * 6.28, s: [0.95 + hash(i, j, 8) * 0.15, 1, 0.95 + hash(i, j, 9) * 0.15] });
           T.relief.push(mur);
           const hMur = Math.min(MUR_MAX, theme === "carriere" ? 0.9 : 1.05);
           // le décor du thème : posé SUR un mur (jamais sur une case marchable)
           for (const d of mod.decors) {
             if (h >= d.jusqua) continue;
             const f = d.formes[Math.floor(hash(i, j, 11) * d.formes.length)]!;
-            T.relief.push(copie(f, { x: cx + (hash(i, j, 12) - 0.5) * 0.5, y: d.haut ? hMur - 0.1 : -0.05, z: cz + (hash(i, j, 13) - 0.5) * 0.5, ry: hash(i, j, 14) * 6.28 }));
+            (d.grand ? T.hauts : T.relief).push(copie(f, { x: cx + (hash(i, j, 12) - 0.5) * 0.5, y: d.haut ? hMur - 0.1 : -0.05, z: cz + (hash(i, j, 13) - 0.5) * 0.5, ry: hash(i, j, 14) * 6.28 }));
             stats.decors++;
             break;
           }
@@ -254,20 +272,21 @@ export function construireNiveau(n: Niveau, a: PaletteMonde, theme: ThemeVu = th
   tas.forEach((T, k) => {
     const sol = T.pos.length > 0 || T.sous.length > 0 ? fusionner([...(T.pos.length > 0 ? [geometrie(T.pos, T.col, T.nor)] : []), ...T.sous]) : null;
     const relief = T.relief.length > 0 ? fusionner(T.relief) : null;
-    if (!sol && !relief) return;
+    const hauts = T.hauts.length > 0 ? fusionner(T.hauts) : null;
+    if (!sol && !relief && !hauts) return;
     const ci = k % nx;
     const cj = Math.floor(k / nx);
     x0 = Math.min(x0, ox + ci * PAS_MORCEAU * CM);
     x1 = Math.max(x1, ox + (ci + 1) * PAS_MORCEAU * CM);
     z0 = Math.min(z0, oy + cj * PAS_MORCEAU * CM);
     z1 = Math.max(z1, oy + (cj + 1) * PAS_MORCEAU * CM);
-    morceaux.push({ ci, cj, sol, relief });
+    morceaux.push({ ci, cj, sol, relief, hauts });
   });
   return { morceaux, etendue: { x0, x1, z0, z1 }, stats };
 }
 
-// --- Le fondu des éléments entre la caméra et le chevalier (tramage de Bayer) --------------------------------------------------------------------------------------------------------------------------
-/** Ce qui s'efface : tout ce qui est à moins de `RAYON_FONDU` mètres du segment caméra → chevalier, et plus près de la caméra que lui. Il reste `OPACITE_FONDU` des pixels (un motif de Bayer 4 × 4). */
+// --- Le fondu des éléments entre la caméra et le chevalier --------------------------------------------------------------------------------------------------------------------------
+/** Ce qui s'efface : tout ce qui est HAUT (les arbres) et à moins de `RAYON_FONDU` mètres du segment caméra → chevalier, plus près de la caméra que lui, tombe à `OPACITE_FONDU` d'opacité. */
 export const RAYON_FONDU = 1.7;
 export const OPACITE_FONDU = 0.25;
 
@@ -276,30 +295,30 @@ interface UniformsFondu {
   uCam: { value: Vector3 };
 }
 
-/** Le matériau du relief : un toon à couleurs par sommet dont le fragment s'efface s'il est entre la caméra et le chevalier. */
-function matiereRelief(u: UniformsFondu): MeshToonMaterial {
+/** Le matériau de ce qui est HAUT (les arbres) : un toon à couleurs par sommet, transparent, dont l'opacité tombe à `OPACITE_FONDU` s'il est entre la caméra et le chevalier. Une vraie transparence (la profondeur est écrite : le contour par la profondeur
+ * cerne la silhouette de l'arbre, sans semer l'image de points d'encre). (Un tramage de Bayer par `discard` a été essayé : avec le contour par la profondeur il donne un nuage de points d'encre.) */
+function matiereHauts(u: UniformsFondu): MeshToonMaterial {
   const m = plat(0xffffff, true, 0);
+  m.transparent = true;
+  m.depthWrite = true;
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uChev = u.uChev;
     sh.uniforms.uCam = u.uCam;
     sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vMonde;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvMonde = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-    sh.fragmentShader = sh.fragmentShader
-      .replace("#include <common>", `#include <common>\nvarying vec3 vMonde; uniform vec3 uChev; uniform vec3 uCam;\nfloat bayer4(vec2 p){ ivec2 q = ivec2(mod(p, 4.0)); int i = q.x + q.y * 4; float m[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.); return (m[i] + 0.5) / 16.0; }`)
-      .replace(
-        "#include <clipping_planes_fragment>",
-        `#include <clipping_planes_fragment>
-        {
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vMonde; uniform vec3 uChev; uniform vec3 uCam;").replace(
+      "#include <opaque_fragment>",
+      `{
           vec3 ab = uChev - uCam; float L = length(ab); vec3 d = ab / L;
           float s = dot(vMonde - uCam, d);
           float r = length(vMonde - uCam - d * s);
           float proche = 1.0 - smoothstep(L - 1.6, L - 0.6, s);
           float dans = (1.0 - smoothstep(${RAYON_FONDU.toFixed(2)} - 0.5, ${RAYON_FONDU.toFixed(2)}, r)) * proche * step(0.0, s);
-          float opacite = mix(1.0, ${OPACITE_FONDU.toFixed(2)}, dans);
-          if (opacite < 0.999 && bayer4(floor(gl_FragCoord.xy)) > opacite) discard;
-        }`,
-      );
+          diffuseColor.a *= mix(1.0, ${OPACITE_FONDU.toFixed(2)}, dans);
+        }
+        #include <opaque_fragment>`,
+    );
   };
-  m.customProgramCacheKey = () => "rush-relief-fondu";
+  m.customProgramCacheKey = () => "rush-hauts-fondu";
   return m;
 }
 
@@ -316,7 +335,8 @@ export function monterNiveauVu(n: Niveau, a: PaletteMonde, theme: ThemeVu = them
   const groupe = new Group();
   const c = construireNiveau(n, a, theme);
   const uniforms: UniformsFondu = { uChev: { value: new Vector3() }, uCam: { value: new Vector3(0, 100, 100) } };
-  const mRelief = matiereRelief(uniforms);
+  const mRelief = plat(0xffffff, true, 0);
+  const mHauts = matiereHauts(uniforms);
   const mSol = plat(0xffffff, true, 0);
   const geos: BufferGeometry[] = [];
   for (const m of c.morceaux) {
@@ -333,13 +353,27 @@ export function monterNiveauVu(n: Niveau, a: PaletteMonde, theme: ThemeVu = them
       p.corps.receiveShadow = true;
       groupe.add(p.groupe);
     }
+    if (m.hauts) {
+      geos.push(m.hauts);
+      const h = new Mesh(m.hauts, mHauts);
+      h.castShadow = true;
+      h.receiveShadow = true;
+      h.renderOrder = 2;
+      groupe.add(h);
+    }
   }
-  // Les nuages lointains : sur toute l'étendue du niveau.
+  // Les nuages lointains : sur toute l'étendue du niveau, par blocs de 64 m (chacun son maillage : le moteur coupe ceux qui sortent du champ), à peu de triangles.
   const marge = 40;
-  const gn = nuages(a, { x0: c.etendue.x0 - marge, x1: c.etendue.x1 + marge, z0: c.etendue.z0 - marge, z1: c.etendue.z1 + marge });
-  geos.push(gn);
-  const nuage = new Mesh(gn, new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.94 }));
-  groupe.add(nuage);
+  const BLOC = 64;
+  const etendue = { x0: c.etendue.x0 - marge, x1: c.etendue.x1 + marge, z0: c.etendue.z0 - marge, z1: c.etendue.z1 + marge };
+  const mNuage = new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.94 });
+  for (let bz = etendue.z0, k = 0; bz < etendue.z1; bz += BLOC) {
+    for (let bx = etendue.x0; bx < etendue.x1; bx += BLOC, k++) {
+      const gn = nuages(a, { x0: bx, x1: Math.min(etendue.x1, bx + BLOC), z0: bz, z1: Math.min(etendue.z1, bz + BLOC) }, 13 + k);
+      geos.push(gn);
+      groupe.add(new Mesh(gn, mNuage));
+    }
+  }
   // La barrière de l'arène : une palissade de pieux pointus en travers de la porte, qui sort du sol quand elle se referme.
   const porte = new Group();
   const ax = n.arene.x / M;
@@ -350,13 +384,14 @@ export function monterNiveauVu(n: Niveau, a: PaletteMonde, theme: ThemeVu = them
   porte.rotation.y = -dirA;
   const pieux: BufferGeometry[] = [];
   for (let k = 0; k < 8; k++) {
-    const h = 3.0 + (k % 2) * 0.5;
+    const h = 1.9 + (k % 2) * 0.4;
     const z = (k - 3.5) * 0.92;
     pieux.push(teindre(placer(new BoxGeometry(0.62, h, 0.62), { x: 0, y: h / 2, z }), k % 2 ? a.bois : a.bois2), teindre(placer(new ConeGeometry(0.44, 0.7, 4), { x: 0, y: h + 0.35, z, ry: Math.PI / 4 }), a.bois2));
   }
-  pieux.push(teindre(placer(new BoxGeometry(0.4, 0.3, 7.6), { x: 0.3, y: 1.0 }), a.bois), teindre(placer(new BoxGeometry(0.4, 0.3, 7.6), { x: 0.3, y: 2.1 }), a.bois));
+  pieux.push(teindre(placer(new BoxGeometry(0.4, 0.3, 7.6), { x: 0.3, y: 0.7 }), a.bois), teindre(placer(new BoxGeometry(0.4, 0.3, 7.6), { x: 0.3, y: 1.4 }), a.bois));
   const gPorte = fusionner(pieux);
   geos.push(gPorte);
+  // La palissade reste OPAQUE (elle doit se lire) ; basse de deux mètres, on voit par-dessus.
   const palissade = piece(gPorte, 0xffffff, true, true, mRelief);
   palissade.corps.castShadow = true;
   porte.add(palissade.groupe);
@@ -378,6 +413,8 @@ export function monterNiveauVu(n: Niveau, a: PaletteMonde, theme: ThemeVu = them
     detruire() {
       for (const g of geos) g.dispose();
       mRelief.dispose();
+      mHauts.dispose();
+      mNuage.dispose();
       mSol.dispose();
       decor.detruire();
     },

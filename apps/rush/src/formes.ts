@@ -48,7 +48,7 @@ export function roche(rayon: number, graine: number, o: OptionsRoche = {}): Buff
   }
   g.deleteAttribute("uv");
   g.deleteAttribute("normal");
-  const plat = g.toNonIndexed();
+  const plat = g.index ? g.toNonIndexed() : g;
   plat.computeVertexNormals();
   return plat;
 }
