@@ -25,7 +25,7 @@ export const CATALOGUE_FR = {
   "hud.phase": "Phase {n}",
   "hud.tues": "Tués {n}",
   "carte.titre": "Les {n} prochains jours",
-  "carte.legende": "{date} · {theme} — {m} m · {d} détours · {tue} monstres · pilote {t}{fin}",
+  "carte.legende": "{date} · {theme} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · {o} obstacles · sans rencontre {sr} s au plus · foncer {t} · tout nettoyer {tn}{fin}",
   "carte.perdu": " · perdu",
   "hud.bossDistance": "BOSS {m} m",
   "hud.coeurs": "Cœurs : {n} sur {total}",

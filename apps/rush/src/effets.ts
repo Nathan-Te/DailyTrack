@@ -370,6 +370,49 @@ export class Traits {
   }
 }
 
+// --- Les lignes de vitesse de la course (lot BR1b) -------------------------------------------------------------------------------------------------------------------------------------------------
+/** Quelques bandes fines derrière le chevalier tant qu'il court : plus la course est pleine, plus elles sont longues et claires. Un seul appel de dessin ; rien tant qu'il marche. */
+export class LignesCourse {
+  readonly maillage: InstancedMesh;
+  private readonly matiere = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: DoubleSide });
+  private readonly m = new Matrix4();
+  private readonly q = new Quaternion();
+  private readonly s = new Vector3();
+  private readonly p = new Vector3();
+  private static readonly N = 5;
+  constructor() {
+    const g = new PlaneGeometry(1, 1);
+    g.rotateX(-Math.PI / 2);
+    g.translate(-0.5, 0, 0);
+    this.maillage = new InstancedMesh(g, this.matiere, LignesCourse.N);
+    this.maillage.name = "lignes-course";
+    this.maillage.instanceMatrix.setUsage(DynamicDrawUsage);
+    this.maillage.frustumCulled = false;
+    this.maillage.renderOrder = 5;
+    this.maillage.visible = false;
+  }
+  /** Le chevalier en (x, z), tourné vers `cap` (radians), à la course `u` (0 à 1) ; `temps` fait glisser les bandes. */
+  maj(x: number, z: number, cap: number, u: number, temps: number): void {
+    if (u <= 0.05) {
+      this.maillage.visible = false;
+      return;
+    }
+    this.maillage.visible = true;
+    this.matiere.opacity = 0.55 * u;
+    const ax = Math.cos(cap);
+    const az = Math.sin(cap);
+    this.q.setFromAxisAngle(this.p.set(0, 1, 0), -cap);
+    for (let i = 0; i < LignesCourse.N; i++) {
+      const ecart = (i - (LignesCourse.N - 1) / 2) * 0.3 + Math.sin(temps * 9 + i * 2.1) * 0.05;
+      const recul = 0.5 + ((temps * 6 + i * 0.37) % 1) * 0.9;
+      const lon = (0.9 + (i % 3) * 0.35) * u;
+      this.m.compose(this.p.set(x - ax * recul - az * ecart, 0.25 + (i % 3) * 0.28, z - az * recul + ax * ecart), this.q, this.s.set(lon, 1, 0.045));
+      this.maillage.setMatrixAt(i, this.m);
+    }
+    this.maillage.instanceMatrix.needsUpdate = true;
+  }
+}
+
 // --- Le réticule de la souris ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /** Le réticule discret posé au sol sous le curseur (PC seulement) : un petit anneau et un point, blancs, translucides. Un seul appel de dessin ; rien de visible au doigt. */
 export class Reticule {

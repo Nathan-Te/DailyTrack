@@ -27,14 +27,14 @@ describe("le décor du niveau (lot BR1)", () => {
         const cases = n.cases.reduce((s, k) => s + (k === SOL || k === MUR || k === PONT ? 1 : 0), 0);
         expect(maillages).toBeLessThan(cases / 8);
       });
-      it("pèse peu : le niveau entier tient sous 60 000 triangles et un morceau sous 12 000", () => {
+      it("pèse peu : le niveau entier tient sous 100 000 triangles (lot BR1b : les boucles étalent le niveau ; le moteur coupe les morceaux hors du champ) et un morceau sous 12 000", () => {
         let total = 0;
         for (const m of r.morceaux) {
           const t = triangles(m.sol) + triangles(m.relief) + triangles(m.hauts);
           total += t;
           expect(t).toBeLessThan(12000);
         }
-        expect(total).toBeLessThan(60000);
+        expect(total).toBeLessThan(100000);
       });
       it("les murs bas ne dépassent pas 1,3 m", () => {
         expect(hauteurDesMurs(theme)).toBeLessThanOrEqual(MUR_MAX);

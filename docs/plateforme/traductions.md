@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2144 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2148 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2704,7 +2704,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `carte.titre` | Les {n} prochains jours | The next {n} days |
-| `carte.legende` | {date} · {theme} — {m} m · {d} détours · {tue} monstres · pilote {t}{fin} | {date} · {theme} — {m} m · {d} detours · {tue} monsters · pilot {t}{fin} |
+| `carte.legende` | {date} · {theme} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · {o} obstacles · sans rencontre {sr} s au plus · foncer {t} · tout nettoyer {tn}{fin} | {date} · {theme} — {m} m · {d} detours ({b} loops) · {tue} monsters · {o} obstacles · {sr} s at most without an encounter · rush {t} · clear all {tn}{fin} |
 | `carte.perdu` |  · perdu |  · lost |
 
 ### Commandes (`commandes.*`, `apps/rush/src/catalogue.*.ts`)
@@ -2890,6 +2890,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `tune.golemVie` | Vie du golem | Golem health |
 | `tune.golemCadence` | Repos du golem (ticks) | Golem rest (ticks) |
 | `tune.rythme` | Rythme des ennemis (%, 100 = défaut) | Enemy tempo (%, 100 = default) |
+| `tune.courseDelai` | Course : délai sans combat (ticks) | Run: calm delay (ticks) |
+| `tune.courseMontee` | Course : montée (ticks) | Run: ramp-up (ticks) |
+| `tune.courseFacteur` | Course : vitesse (% de la marche) | Run: speed (% of walk) |
+| `tune.courseRayon` | Course : rayon d'alerte (cm) | Run: alert radius (cm) |
 | `tune.arretImage` | Arrêt du coup final (ms) | Finisher hit stop (ms) |
 | `tune.arretPhase` | Arrêt de la phase 2 (ms) | Phase 2 hit stop (ms) |
 | `tune.secousse` | Secousse de caméra (%) | Camera shake (%) |

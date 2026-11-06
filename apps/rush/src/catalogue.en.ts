@@ -28,7 +28,7 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "hud.phase": "Phase {n}",
   "hud.bossDistance": "BOSS {m} m",
   "carte.titre": "The next {n} days",
-  "carte.legende": "{date} · {theme} — {m} m · {d} detours · {tue} monsters · pilot {t}{fin}",
+  "carte.legende": "{date} · {theme} — {m} m · {d} detours ({b} loops) · {tue} monsters · {o} obstacles · {sr} s at most without an encounter · rush {t} · clear all {tn}{fin}",
   "carte.perdu": " · lost",
   "hud.tues": "Kills {n}",
   "hud.coeurs": "Hearts: {n} of {total}",
