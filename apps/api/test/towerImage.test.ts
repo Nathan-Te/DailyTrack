@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { parisDay } from "@cdj/clock";
+import { formatDay } from "@cdj/core";
 import { dailyTower, TOWER_GENERATOR_VERSION } from "@cdj/tower-sim";
 import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { afterAll, describe, expect, it } from "vitest";
@@ -64,9 +65,13 @@ describe.skipIf(TEST_DB !== "sqlite")("Tower : l'image construite rejoue dans le
     bd.exec("INSERT OR REPLACE INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES ('tower', 'on', 0, '[[0,null]]', 0)");
     bd.close();
 
+    // Le niveau du jour est **celui que le serveur sert** (un jour préparé peut porter un autre tirage que 0 : `apps/tower/public/jours/2026-11-07.json` a `tirage: 1`), pas « le tirage 0 du générateur courant » : on lit sa
+    // version de générateur et son tirage sur `GET /api/tower/day/<date>`, comme le fait le jeu. (Supposer le tirage 0 rendait le test rouge dès qu'un jour préparé tirait autrement.)
     const jour = parisDay(Date.now());
+    const jourServi = (await (await fetch(`${base}/api/tower/day/${formatDay(jour)}`)).json()) as { generatorVersion?: number; tirage?: number };
+    expect(jourServi.generatorVersion, JSON.stringify(jourServi)).toBe(TOWER_GENERATOR_VERSION);
     const R = await chargerRapier();
-    const { partie, code } = jouerScripte(R, dailyTower(jour, TOWER_GENERATOR_VERSION, 0));
+    const { partie, code } = jouerScripte(R, dailyTower(jour, jourServi.generatorVersion!, jourServi.tirage ?? 0));
     partie.dispose();
     const r = await fetch(`${base}/api/tower/submit`, {
       method: "POST",
