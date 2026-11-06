@@ -1,3 +1,4 @@
+import { parseDay } from "@cdj/core";
 import { SCENARIOS, type Scenario } from "@cdj/rush-sim/constantes";
 import { reglagesDe, sontLesReglagesParDefaut, type Reglages } from "@cdj/rush-sim/reglagesSim";
 
@@ -5,11 +6,16 @@ import { reglagesDe, sontLesReglagesParDefaut, type Reglages } from "@cdj/rush-s
 //   · `?scenario=arene|boss` : l'arène sans fin (des vagues de gelées et de chauves-souris) ou le golem tout de suite ; `&phase=2` : le golem à 50 % de vie ; `&monstres=30` : l'arène garde 30 monstres en vie ;
 //   · `?debug&tune` : le panneau des sensations ; `&reglages=<JSON>` : des réglages collés (ceux que le panneau exporte) ;
 //   · `?debug&fps` : l'affichage des images par seconde et des appels de dessin ;
+//   · `?scenario=jour&jour=AAAA-MM-JJ` (lot BR1) : le niveau d'un autre jour ; `?scenario=carte&jours=7` : la vue de dessus des 7 prochains jours (chemin, détours, camps, arène, pilote) ;
 //   · `?scenario=mannequin` (lot BR0c) : six gelées immobiles qui ne meurent pas et un golem qui ne frappe pas, pour juger le coup ; `?scenario=vitrine` : la composition de la cible, figée ;
 //   · `?qualite=haute|basse` (lot BR0c) : le niveau de rendu (haute : ombres portées, contour et bloom en post-traitement ; basse : ombres en disques, contour par coque). Sans le paramètre, haute avec un passage automatique en basse si les images par seconde chutent.
 // Une partie d'essai n'est JAMAIS classée (`classable` de la définition) ; la rediffusion d'un scénario nomme le scénario et le serveur la refuse.
 export interface Essai {
   scenario: Scenario | null;
+  /** Lot BR1 : `&jour=AAAA-MM-JJ` joue le niveau d'un autre jour (numéro de jour civil), ou `null`. */
+  jour: number | null;
+  /** Lot BR1 : `?scenario=carte&jours=7` : la vue de dessus des N prochains jours (le nombre de jours), ou `null`. */
+  carte: number | null;
   phase2: boolean;
   monstres: number;
   tune: boolean;
@@ -25,12 +31,15 @@ export interface Essai {
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { scenario: null, phase2: false, monstres: 0, tune: false, fps: false, qualite: null, reglages: null, sensations: null, essai: false };
+  const vide: Essai = { scenario: null, jour: null, carte: null, phase2: false, monstres: 0, tune: false, fps: false, qualite: null, reglages: null, sensations: null, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const nom = q.get("scenario") ?? "";
   const scenario = (SCENARIOS as readonly string[]).includes(nom) ? (nom as Scenario) : null;
   const debug = q.has("debug");
+  const jourBrut = q.get("jour");
+  const jour = jourBrut ? parseDay(jourBrut) : null;
+  const carte = nom === "carte" ? Math.min(14, Math.max(1, Math.trunc(Number(q.get("jours"))) || 7)) : null;
   let reglages: Reglages | null = null;
   let sensations: unknown = null;
   const brut = q.get("reglages");
@@ -48,6 +57,8 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   const nivQ = q.get("qualite");
   return {
     scenario,
+    jour,
+    carte,
     phase2: q.get("phase") === "2",
     monstres: Number.isInteger(monstres) && monstres > 0 ? Math.min(40, monstres) : 0,
     tune: debug && q.has("tune"),
@@ -55,6 +66,6 @@ export function lireEssai(search: string, restreint: boolean): Essai {
     qualite: nivQ === "haute" || nivQ === "basse" ? nivQ : null,
     reglages,
     sensations,
-    essai: scenario !== null || (debug && q.has("tune")) || reglages !== null,
+    essai: scenario !== null || jour !== null || carte !== null || (debug && q.has("tune")) || reglages !== null,
   };
 }

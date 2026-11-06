@@ -53,8 +53,9 @@
     "extras": []
   },
   "themes": [
-    "clair",
-    "sombre"
+    "prairie",
+    "carriere",
+    "sousbois"
   ],
   "versions": {
     "sim": "packages/rush-sim/src/constantes.ts:RUSH_SIM_VERSION",
@@ -92,8 +93,9 @@
   "musique": {
     "scenes": [
       "menu",
-      "theme:clair",
-      "theme:sombre"
+      "theme:prairie",
+      "theme:carriere",
+      "theme:sousbois"
     ]
   },
   "admin": {

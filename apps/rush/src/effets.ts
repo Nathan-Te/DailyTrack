@@ -14,7 +14,7 @@ const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
   etincelle: [COULEURS.etincelle, 0xffffff, 0xffd166],
   poussiere: [COULEURS.poussiere, 0xcdbb94, 0xf2e6c8],
   gelee: [COULEURS.gelee, COULEURS.geleeClair, 0x4fb583],
-  pierre: [COULEURS.golem, COULEURS.golemSombre, 0xb8a994],
+  pierre: [COULEURS.golem, COULEURS.golemSombre, 0x8a7a6c],
   chauve: [COULEURS.chauve, COULEURS.chauveClair, 0x4a2d7a],
   feu: [COULEURS.lueur, COULEURS.onde, 0xffe29a],
 };

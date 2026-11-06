@@ -14,7 +14,8 @@ export interface ReglageCamera {
   /** Le champ vertical, en degrés. */
   champ: number;
 }
-export const CAMERA_DEFAUT: ReglageCamera = { angle: 46, distance: 34, champ: 25 };
+// Lot BR1 : 41° (au lieu de 46°) pour que le chevalier montre son corps et sa direction ; l'arène reste cadrée (`test/camera.test.ts`).
+export const CAMERA_DEFAUT: ReglageCamera = { angle: 41, distance: 34, champ: 25 };
 
 /** Un point du monde à garder dans l'image : (x, z) au sol, `haut` en hauteur, `r` le rayon de marge autour de lui au sol. */
 export interface PointCadre {
@@ -83,15 +84,54 @@ export function facteurDeCadrage(c: PerspectiveCamera, points: readonly PointCad
   return Math.max(1, (e.ymax - e.ymin) / (BAS_MAX + HAUT_MAX), (e.xmax - e.xmin) / (2 * MARGE_X));
 }
 
+/** Le niveau du jour (lot BR1) : la caméra SUIT le chevalier le long du chemin (amorti, regard un peu en avant dans le sens du déplacement) et se fond dans le cadrage de l'arène quand il s'en approche. */
+export interface ModeNiveau {
+  /** Le centre de l'arène (mètres). */
+  arene: { x: number; z: number };
+  /** 0 : suit le chevalier ; 1 : cadre l'arène (comme au BR0c). */
+  melange: number;
+}
+/** Le regard en avant : la vitesse du chevalier (m/s) × ce temps, au plus `AVANCE_MAX` mètres. */
+const AVANCE_S = 0.6;
+const AVANCE_MAX = 3.4;
+/** En suivi, le point regardé est un peu devant le chevalier (vers le haut de l'écran) : on voit plus loin devant que derrière. */
+const DEVANT = 2.4;
+
 export class CameraRush {
   readonly camera = new PerspectiveCamera(CAMERA_DEFAUT.champ, 2, 0.5, 200);
   private tx = 0;
   private tz = 0;
   private dist = CAMERA_DEFAUT.distance;
   private neuf = true;
+  /** Lot BR1 : la vitesse lissée du chevalier (m/s), pour regarder devant. */
+  private px = 0;
+  private pz = 0;
+  private vx = 0;
+  private vz = 0;
+  private pose = false;
+
+  /** Où la caméra regarde, au sol (mètres) : de quoi suivre l'ombre portée du soleil. */
+  get regard(): { x: number; z: number } {
+    return { x: this.tx, z: this.tz };
+  }
+
+  /** Le point regardé et la distance en SUIVI (hors de l'arène) : devant le chevalier, dans le sens où il va. Pure. */
+  butSuivi(reg: ReglageCamera, aspect: number, cx: number, cz: number, vx: number, vz: number): { tx: number; tz: number; distance: number } {
+    const champ = reg.champ;
+    const largeurMin = LARGEUR_MIN / (2 * Math.tan((champ * RAD) / 2) * Math.max(0.3, aspect));
+    const vit = Math.hypot(vx, vz);
+    const avance = Math.min(AVANCE_MAX, vit * AVANCE_S);
+    const k = vit > 0.01 ? avance / vit : 0;
+    return { tx: cx + vx * k, tz: cz + vz * k - DEVANT, distance: Math.max(reg.distance, largeurMin) };
+  }
 
   /** Le point regardé et la distance voulus (sans amorti) pour un chevalier en (cx, cz) et ce qu'il faut garder dans l'image : une fonction pure de ses arguments, que les tests lisent. */
-  but(reg: ReglageCamera, aspect: number, cx: number, cz: number, golem: { x: number; z: number } | null, garder: readonly PointCadre[]): { tx: number; tz: number; distance: number } {
+  but(reg: ReglageCamera, aspect: number, cx: number, cz: number, golem: { x: number; z: number } | null, garder: readonly PointCadre[], arene?: { x: number; z: number }): { tx: number; tz: number; distance: number } {
+    if (arene && (arene.x !== 0 || arene.z !== 0)) {
+      // Le cadrage de l'arène se calcule autour de son centre.
+      const r = this.but(reg, aspect, cx - arene.x, cz - arene.z, golem ? { x: golem.x - arene.x, z: golem.z - arene.z } : null, garder.map((p) => ({ ...p, x: p.x - arene.x, z: p.z - arene.z })));
+      return { tx: r.tx + arene.x, tz: r.tz + arene.z, distance: r.distance };
+    }
     const champ = reg.champ;
     const largeurMin = LARGEUR_MIN / (2 * Math.tan((champ * RAD) / 2) * Math.max(0.3, aspect));
     const base = Math.max(reg.distance, largeurMin);
@@ -135,15 +175,33 @@ export class CameraRush {
   }
 
   /** Une image : amortit vers le but et pose la caméra. `secousse` décale le tout (mètres, au sol). */
-  maj(dt: number, reg: ReglageCamera, aspect: number, cx: number, cz: number, golem: { x: number; z: number } | null, garder: readonly PointCadre[], secousse: { x: number; z: number } = { x: 0, z: 0 }): void {
-    const b = this.but(reg, aspect, cx, cz, golem, garder);
+  maj(dt: number, reg: ReglageCamera, aspect: number, cx: number, cz: number, golem: { x: number; z: number } | null, garder: readonly PointCadre[], secousse: { x: number; z: number } = { x: 0, z: 0 }, niveau?: ModeNiveau): void {
+    // La vitesse lissée du chevalier (le regard en avant).
+    if (this.pose && dt > 0) {
+      const f = 1 - Math.exp(-dt * 4);
+      this.vx += ((cx - this.px) / dt - this.vx) * f;
+      this.vz += ((cz - this.pz) / dt - this.vz) * f;
+    }
+    this.px = cx;
+    this.pz = cz;
+    this.pose = true;
+    let b: { tx: number; tz: number; distance: number };
+    if (niveau) {
+      const a = this.but(reg, aspect, cx, cz, golem, garder, niveau.arene);
+      if (niveau.melange >= 1) b = a;
+      else {
+        const s = this.butSuivi(reg, aspect, cx, cz, this.vx, this.vz);
+        const m = niveau.melange;
+        b = { tx: s.tx + (a.tx - s.tx) * m, tz: s.tz + (a.tz - s.tz) * m, distance: s.distance + (a.distance - s.distance) * m };
+      }
+    } else b = this.but(reg, aspect, cx, cz, golem, garder);
     if (this.neuf) {
       this.tx = b.tx;
       this.tz = b.tz;
       this.dist = b.distance;
       this.neuf = false;
     } else {
-      const k = 1 - Math.exp(-dt * 7);
+      const k = 1 - Math.exp(-dt * (niveau && niveau.melange < 0.5 ? 5 : 7));
       const kd = 1 - Math.exp(-dt * (b.distance > this.dist ? 4 : 2));
       this.tx += (b.tx - this.tx) * k;
       this.tz += (b.tz - this.tz) * k;
@@ -161,5 +219,8 @@ export class CameraRush {
   /** La caméra est reposée d'un coup au prochain `maj` (un nouveau départ). */
   recommencer(): void {
     this.neuf = true;
+    this.pose = false;
+    this.vx = 0;
+    this.vz = 0;
   }
 }

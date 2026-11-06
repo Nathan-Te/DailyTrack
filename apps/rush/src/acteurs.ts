@@ -129,13 +129,14 @@ const EPEE = epeeFusionnee();
 /** Le casque : une grande sphère d'acier un peu aplatie, une FENTE sombre en travers du visage (les yeux y brillent) et un rebord. */
 function casque(): BufferGeometry {
   return fusionner([
-    teindre(placer(new SphereGeometry(0.5, 28, 18), { s: [1, 0.96, 1] }), COULEURS.acier),
-    teindre(placer(new RoundedBoxGeometry(0.66, 0.16, 0.3, 2, 0.06), { y: 0.0, z: 0.36 }), ENCRE),
-    teindre(placer(new RoundedBoxGeometry(0.98, 0.07, 0.98, 2, 0.03), { y: -0.2 }), 0xcfc7b4),
+    teindre(placer(new SphereGeometry(0.33, 28, 18), { s: [1, 0.96, 1] }), COULEURS.acier),
+    teindre(placer(new RoundedBoxGeometry(0.46, 0.12, 0.22, 2, 0.05), { y: 0.0, z: 0.24 }), ENCRE),
+    teindre(placer(new RoundedBoxGeometry(0.62, 0.05, 0.62, 2, 0.03), { y: -0.13 }), 0xcfc7b4),
   ]);
 }
 const CASQUE = casque();
-const CORPS_CHEVALIER = placer(bloc(0.5, 0.44, 0.4, { couleur: COULEURS.armure, dessus: 0xf6cc62, variation: 0.03, irregulier: 0, graine: 5, rayon: 0.17 }), {});
+// Lot BR1 : le casque est plus petit et un peu en arrière, le corps plus large : vu d'en haut on voit l'armure jaune et, devant, la direction (la fente, l'épée).
+const CORPS_CHEVALIER = placer(bloc(0.84, 0.56, 0.64, { couleur: COULEURS.armure, dessus: 0xf6cc62, variation: 0.03, irregulier: 0, graine: 5, rayon: 0.2 }), {});
 const PLUME = fusionner([teindre(placer(new ConeGeometry(0.13, 0.52, 10), { y: 0.26 }), COULEURS.plume), teindre(placer(sph(0.11, 10, 8), { y: 0.05, z: 0.02 }), COULEURS.plume)]);
 
 export interface ChevalierVu extends Acteur {
@@ -163,12 +164,12 @@ export function creerChevalier(): ChevalierVu {
     return p;
   };
   ajouter(interieur, noter(piece(CORPS_CHEVALIER, 0xffffff, true, true)), 0, 0.4, 0);
-  const tete = ajouter(interieur, noter(piece(CASQUE, 0xffffff, true, true)), 0, 0.95, 0.02);
+  const tete = ajouter(interieur, noter(piece(CASQUE, 0xffffff, true, true)), 0, 0.95, -0.16);
   tete.groupe.rotation.x = 0.1; // le casque penche un peu vers l'avant : la fente se voit d'en haut
-  const o = yeux(0.15, 1.0, 0.43, 0.065, 0.5);
+  const o = yeux(0.12, 0.97, 0.26, 0.05, 0.5);
   interieur.add(o.mesh);
   const plume = new Group();
-  plume.position.set(0, 1.4, -0.1);
+  plume.position.set(0, 1.24, -0.3);
   plume.add(noter(piece(PLUME, 0xffffff, true, true)).groupe);
   interieur.add(plume);
   // L'épée, tenue à droite : le groupe pivote autour de la main.
@@ -394,10 +395,12 @@ export interface GolemVu extends Acteur {
 }
 
 /** Les pierres du golem : un brun chaud, un dessus plus clair (la lumière du ciel), un brun sombre pour les arcades, les jambes et le dessous. */
-const PIERRE = { couleur: 0xa27048, dessus: 0xd0a06a };
-const PIERRE_SOMBRE = { couleur: 0x68472a, dessus: 0x8c6640 };
-const PIERRE_POING = { couleur: 0x80583a, dessus: 0xa97a4c };
-const PIERRE_CLAIRE = { couleur: 0xc19262, dessus: 0xe8c48c };
+// Lot BR1 (lisibilité) : une pierre GRIS-BRUN nettement plus sombre que tous les sols (le golem se détache sur chaque thème : `test/lisibilite.test.ts` mesure l'écart de couleur).
+export const PIERRE = { couleur: 0x6a5c52, dessus: 0x8a7a6c };
+export const PIERRE_SOMBRE = { couleur: 0x40352f, dessus: 0x5a4c43 };
+export const PIERRE_POING = { couleur: 0x54463e, dessus: 0x76675a };
+export const PIERRE_CLAIRE = { couleur: 0x7c6e63, dessus: 0xa09082 };
+export const PIERRE_TETE = { couleur: 0x84766a, dessus: 0xa89a8c };
 
 /** Le tronc : le bassin, le torse massif (penché en avant par le groupe qui le porte) et une bosse dans le dos, en gros blocs arrondis soudés en une forme. */
 function troncDuGolem(): BufferGeometry {
@@ -412,7 +415,7 @@ function troncDuGolem(): BufferGeometry {
 function teteDuGolem(): BufferGeometry {
   const sourcil = (s: 1 | -1, graine: number): BufferGeometry => placer(bloc(1.1, 0.38, 0.6, { ...PIERRE_SOMBRE, graine, rayon: 0.13, irregulier: 0.04 }), { x: s * 0.58, y: 0.38, z: 0.86, rz: s * 0.4 });
   return fusionner([
-    bloc(2.3, 1.75, 1.8, { couleur: 0xcb9d6a, dessus: 0xeccb94, graine: 21, rayon: 0.5, irregulier: 0.05 }),
+    bloc(2.3, 1.75, 1.8, { ...PIERRE_TETE, graine: 21, rayon: 0.5, irregulier: 0.05 }),
     placer(bloc(1.6, 0.7, 1.1, { ...PIERRE, graine: 22, rayon: 0.24 }), { y: -0.75, z: 0.4 }),
     placer(bloc(2.4, 0.38, 0.55, { ...PIERRE_SOMBRE, graine: 23, rayon: 0.14 }), { y: 0.18, z: 0.8 }),
     sourcil(-1, 24),

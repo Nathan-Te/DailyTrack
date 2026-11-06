@@ -206,13 +206,15 @@
       "messageOu": "rush",
       "zoneNouveautes": "rush",
       "themes": [
-        "clair",
-        "sombre"
+        "prairie",
+        "carriere",
+        "sousbois"
       ],
       "scenes": [
         "menu",
-        "theme:clair",
-        "theme:sombre"
+        "theme:prairie",
+        "theme:carriere",
+        "theme:sousbois"
       ]
     }
   ],

@@ -54,6 +54,40 @@
   fill: var(--dj-creme-2);
 }
 /* La barre du golem : en bas au centre, son nom, la barre (une marque à la moitié : la phase 2), la phase — dans un cartouche, comme les cœurs. */
+.rush-cible {
+  position: absolute;
+  top: var(--dj-espace-2);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  border: var(--rush-bord) solid var(--dj-encre);
+  border-radius: 16px;
+  box-shadow: 2px 3px 0 var(--dj-encre);
+  font-family: "Archivo Black", var(--dj-police-corps, sans-serif);
+  font-size: 16px;
+  line-height: 1;
+  pointer-events: none;
+}
+.rush-cible[hidden] {
+  display: none;
+}
+.rush-cible__fleche {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: var(--dj-encre);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rush-cible__texte {
+  white-space: nowrap;
+}
 .rush-boss {
   position: absolute;
   bottom: max(var(--dj-espace-2), env(safe-area-inset-bottom));
@@ -321,4 +355,28 @@
     animation: none;
     opacity: 0.35;
   }
+}
+
+/* La vue de dessus des jours (lot BR1, `?scenario=carte`) : un essai, jamais classé, jamais en production. */
+.rush-carte {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: var(--dj-espace-3);
+  background: #14121c;
+  color: #f5f0e6;
+}
+.rush-carte__titre {
+  margin: 0 0 var(--dj-espace-3);
+  font-size: 18px;
+}
+.rush-carte__grille {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+}
+.rush-carte__jour {
+  margin: 0;
+  max-width: 360px;
+  font-size: 13px;
 }

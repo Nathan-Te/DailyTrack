@@ -49,14 +49,46 @@ for (let t = 0, i = 0; t < 5 * 3600 && pire.length < MAX_CHANGEMENTS; t++) {
 }
 console.log(`Pire rediffusion permise (${pire.length} changements : une entrée toutes les fois que la direction (tous les ${PAS_MIN_DIRECTION} ticks) ou la visée (tous les ${PAS_MIN_VISEE}) peut changer) : ${taille(pire, { scenario: "arene" })} caractères (limite acceptée : 40 000)`);
 
-// 3. La partie du jour : un combat contre le golem. Le pilote la gagne en ~20 s ; un joueur qui esquive sans frapper peut durer jusqu'à 10 minutes (le pire coût d'un rejeu du jour).
+// 3. Le NIVEAU du jour (lot BR1) : le temps de génération, la longueur du chemin, le pilote (foncer : le Diamant provisoire ; nettoyer : une partie scriptée qui tue tout), le coût d'un rejeu.
+const PREMIER = daysFromCivil(2026, 11, 2);
+{
+  const t0 = performance.now();
+  const niveaux = Array.from({ length: 365 }, (_, i) => dailyRush(PREMIER + i).niveau!);
+  const ms = performance.now() - t0;
+  const long = niveaux.map((n) => n.longueurCm / 100);
+  console.log(`Générateur (version ${RUSH_GENERATOR_VERSION}) : 365 niveaux en ${ms.toFixed(0)} ms (${(ms / 365).toFixed(2)} ms chacun) · tentatives ${(niveaux.reduce((a, n) => a + n.essais, 0) / 365).toFixed(2)} en moyenne, ${Math.max(...niveaux.map((n) => n.essais))} au plus · chemin principal ${Math.min(...long).toFixed(0)}-${Math.max(...long).toFixed(0)} m · détours ${Math.min(...niveaux.map((n) => n.detours.length))}-${Math.max(...niveaux.map((n) => n.detours.length))} · monstres ${Math.min(...niveaux.map((n) => n.monstres.length))}-${Math.max(...niveaux.map((n) => n.monstres.length))} · grille ${Math.max(...niveaux.map((n) => n.l * n.h))} cases au plus`);
+}
+const quantiles = (v: number[]): string => {
+  const t = [...v].sort((a, b) => a - b);
+  return `${t[0]!.toFixed(1)} / ${t[Math.floor(t.length / 2)]!.toFixed(1)} / ${t[t.length - 1]!.toFixed(1)}`;
+};
+const ecarts: number[] = [];
+for (const strategie of ["foncer", "nettoyer"] as const) {
+  const temps: number[] = [];
+  let victoires = 0;
+  let subis = 0;
+  let pireTaille = 0;
+  for (let k = 0; k < 60; k++) {
+    const c = dailyRush(PREMIER + k);
+    const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, strategie);
+    if (r.resultat.victoire) {
+      victoires++;
+      temps.push(r.ticks / 60);
+    }
+    subis += r.resultat.subis;
+    pireTaille = Math.max(pireTaille, taille(r.changements, { scenario: "jour" }));
+    if (strategie === "nettoyer" && r.resultat.victoire) ecarts.push(r.ticks / 60 - jouerLePilote(c).ticks / 60);
+  }
+  console.log(`Pilote « ${strategie} », 60 jours : ${victoires}/60 victoires · temps min / médiane / max ${quantiles(temps)} s · ${(subis / 60).toFixed(2)} dégât(s) subi(s) en moyenne · rediffusion ${pireTaille} caractères au plus`);
+}
+console.log(`Écart nettoyer − foncer (parties gagnées des deux côtés, min / médiane / max) : ${quantiles(ecarts)} s`);
 const jour = dailyRush(daysFromCivil(2026, 11, 5));
 const bot = jouerLePilote(jour);
-console.log(`Partie du jour, le pilote : ${bot.ticks} ticks (${(bot.ticks / 60).toFixed(1)} s), rejeu ${chrono(() => jouer(jour, bot.changements)).toFixed(2)} ms · ${bot.changements.length} changements · ${taille(bot.changements, { scenario: "jour" })} caractères`);
+console.log(`Partie du jour (2026-11-05), le pilote qui fonce : ${bot.ticks} ticks (${(bot.ticks / 60).toFixed(1)} s), rejeu ${chrono(() => jouer(jour, bot.changements)).toFixed(2)} ms · ${bot.changements.length} changements · ${taille(bot.changements, { scenario: "jour" })} caractères`);
 const pireJour = chrono(() => {
   const p = new Partie(jour, REGLAGES_DEFAUT);
   let t = 0;
-  // Un chevalier qui ne meurt jamais et qui court en rond : le pire coût d'une rediffusion du jour (10 minutes, le golem et ses monstres en permanence).
+  // Un chevalier qui ne meurt jamais et qui court en rond (dans l'arène) : le pire coût d'une rediffusion du jour (10 minutes, le golem et ses monstres en permanence).
   while (!p.finie) {
     p.c.coeurs = 3;
     p.c.degat = 0;
@@ -65,4 +97,12 @@ const pireJour = chrono(() => {
     void pilote;
   }
 }, 3);
-console.log(`Pire rejeu du jour (10 minutes, chevalier invincible qui court en rond, golem et monstres) : ${pireJour.toFixed(0)} ms`);
+console.log(`Pire rejeu du jour (10 minutes, chevalier invincible qui court en rond) : ${pireJour.toFixed(0)} ms`);
+// Le pire jour en rejeu : le pilote « nettoyer » qui tue tout, puis le golem, sur 60 jours.
+let pireNettoyage = 0;
+for (let k = 0; k < 60; k++) {
+  const c = dailyRush(PREMIER + k);
+  const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "nettoyer");
+  pireNettoyage = Math.max(pireNettoyage, chrono(() => jouer(c, r.changements), 3));
+}
+console.log(`Rejeu de la pire partie « tout nettoyer » sur 60 jours : ${pireNettoyage.toFixed(1)} ms`);

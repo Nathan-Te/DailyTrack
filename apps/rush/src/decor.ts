@@ -1,4 +1,4 @@
-import { BoxGeometry, CanvasTexture, CircleGeometry, ConeGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, RepeatWrapping, SRGBColorSpace, SphereGeometry, type BufferGeometry, type Texture } from "three";
+import { Vector3, BoxGeometry, CanvasTexture, CircleGeometry, ConeGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, RepeatWrapping, SRGBColorSpace, SphereGeometry, type BufferGeometry, type Texture } from "three";
 import { aleatoire, bloc, colorier, fusionner, placer, teindre } from "./formes";
 import { piece, plat } from "./cel";
 import type { PaletteMonde } from "./palette";
@@ -99,22 +99,35 @@ function textureCiel(a: PaletteMonde): CanvasTexture {
 }
 
 /** Le muret de bois TRAPU : de GROS poteaux arrondis (un chapeau plus large) reliés par de minces planches, des touffes d'herbe au pied et des cailloux ; tout en un seul maillage coloré par sommet. */
-function muret(R: number, a: PaletteMonde): BufferGeometry {
+function muret(R: number, a: PaletteMonde, ouverture?: Ouverture): BufferGeometry {
   const rnd = aleatoire(77);
   const formes: BufferGeometry[] = [];
   const N = 18;
   const rayon = R + 0.55;
+  // Lot BR1 : une OUVERTURE dans le muret (l'entrée de l'arène) : ni poteau, ni planche, ni touffe dans l'angle ouvert.
+  const dansOuverture = (t: number): boolean => {
+    if (!ouverture) return false;
+    const d = Math.abs(((t - ouverture.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+    return d < ouverture.largeur / 2 / rayon;
+  };
   for (let i = 0; i < N; i++) {
     const t = (i / N) * Math.PI * 2;
     const x = Math.cos(t) * rayon;
     const z = Math.sin(t) * rayon;
     const h = 1.2 + rnd() * 0.4;
     const l = 0.8 + rnd() * 0.12;
+    if (dansOuverture(t) && dansOuverture(t + Math.PI / N)) {
+      rnd();
+      rnd();
+      rnd();
+      continue;
+    }
     // le poteau : un gros fût arrondi et un chapeau plus large
     formes.push(placer(bloc(l, h, l, { couleur: a.bois, dessus: a.bois, variation: 0.12, graine: 100 + i, rayon: 0.14, irregulier: 0.05, segments: 3 }), { x, y: h / 2, z, ry: -t + (rnd() - 0.5) * 0.15 }));
     formes.push(placer(bloc(l * 1.2, 0.26, l * 1.2, { couleur: a.bois2, dessus: a.bois, variation: 0.1, graine: 200 + i, rayon: 0.09, irregulier: 0.03, segments: 2 }), { x, y: h + 0.1, z, ry: -t }));
     // les planches (deux, minces) jusqu'au poteau suivant
     const t2 = ((i + 0.5) / N) * Math.PI * 2;
+    if (dansOuverture(t2)) continue;
     const cx = Math.cos(t2) * rayon;
     const cz = Math.sin(t2) * rayon;
     const corde = 2 * rayon * Math.sin(Math.PI / N);
@@ -125,6 +138,7 @@ function muret(R: number, a: PaletteMonde): BufferGeometry {
   for (let i = 0; i < 40; i++) {
     const t = rnd() * Math.PI * 2;
     const r = R + 0.05 + rnd() * 0.3;
+    if (dansOuverture(t)) continue;
     for (let k = 0; k < 4; k++) {
       const dx = (rnd() - 0.5) * 0.4;
       const dz = (rnd() - 0.5) * 0.4;
@@ -197,30 +211,45 @@ function ilesLointaines(a: PaletteMonde): BufferGeometry {
 }
 
 /** Les nuages : des paquets de sphères blanches aplaties, au loin et sous l'arène, en un seul maillage sans lumière. */
-function nuages(a: PaletteMonde): BufferGeometry {
-  const rnd = aleatoire(13);
+export function nuages(a: PaletteMonde, zone?: { x0: number; x1: number; z0: number; z1: number }, graine = 13): BufferGeometry {
+  const rnd = aleatoire(graine);
   const formes: BufferGeometry[] = [];
-  for (let i = 0; i < 12; i++) {
-    const cx = (rnd() - 0.5) * 120;
-    const cz = -34 + rnd() * 76;
-    const cy = -16 - rnd() * 12;
+  // Lot BR1 : dans un niveau, les nuages se répartissent sur toute son étendue (un tous les ~1 000 m²), pas seulement autour de l'arène.
+  const n = zone ? Math.max(2, Math.round(((zone.x1 - zone.x0) * (zone.z1 - zone.z0)) / 1400)) : 12;
+  for (let i = 0; i < n; i++) {
+    const cx = zone ? zone.x0 + rnd() * (zone.x1 - zone.x0) : (rnd() - 0.5) * 120;
+    const cz = zone ? zone.z0 + rnd() * (zone.z1 - zone.z0) : -34 + rnd() * 76;
+    const cy = (zone ? -32 : -16) - rnd() * 12;
     for (let k = 0; k < 4; k++) {
       const r = 2.6 + rnd() * 2.8;
-      formes.push(teindre(placer(new SphereGeometry(1, 12, 8), { x: cx + (k - 1.5) * 2.8, y: cy + rnd() * 1.4, z: cz + (rnd() - 0.5) * 2.4, s: [r * 1.5, r * 0.75, r] }), a.nuage));
+      formes.push(teindre(placer(new SphereGeometry(1, zone ? 8 : 12, zone ? 5 : 8), { x: cx + (k - 1.5) * 2.8, y: cy + rnd() * 1.4, z: cz + (rnd() - 0.5) * 2.4, s: [r * 1.5, r * 0.75, r] }), a.nuage));
     }
   }
   return fusionner(formes);
 }
 
+/** Une ouverture dans le muret de l'arène (lot BR1) : `angle` en radians de +x vers +z, `largeur` en mètres. */
+export interface Ouverture {
+  angle: number;
+  largeur: number;
+}
+export interface OptionsDecor {
+  ouverture?: Ouverture;
+  /** Dans le niveau : ni îles lointaines ni nuages (le niveau a les siens) ; le ciel et l'arène restent. */
+  niveau?: boolean;
+}
+
 export interface Decor {
   groupe: Group;
+  /** Rien dans le décor d'arène seule ; le décor du niveau (`niveauVue.ts`) lit le chevalier, la caméra et la barrière. */
+  maj?(chevalier: { x: number; z: number }, camera: Vector3, fermeture: number): void;
   /** La texture du ciel (`scene.background`). */
   ciel: Texture;
   detruire(): void;
 }
 
 /** Monte tout le décor de l'arène de rayon `R` (mètres) pour une palette. */
-export function monterDecor(R: number, a: PaletteMonde): Decor {
+export function monterDecor(R: number, a: PaletteMonde, opt: OptionsDecor = {}): Decor {
   const groupe = new Group();
   const textures: Texture[] = [];
   const sol = new Mesh(new CircleGeometry(R, 72).rotateX(-Math.PI / 2), plat(0xffffff, false, 0));
@@ -229,18 +258,22 @@ export function monterDecor(R: number, a: PaletteMonde): Decor {
   (sol.material as ReturnType<typeof plat>).map = carte;
   sol.receiveShadow = true;
   groupe.add(sol);
-  const mur = piece(muret(R, a), 0xffffff, true, true);
+  const mur = piece(muret(R, a, opt.ouverture), 0xffffff, true, true);
   mur.corps.castShadow = true;
   groupe.add(mur.groupe);
   const ile = piece(falaises(R, a), 0xffffff, true, true);
   ile.corps.castShadow = false;
   groupe.add(ile.groupe);
-  const loin = piece(ilesLointaines(a), 0xffffff, true, true);
-  loin.corps.castShadow = false;
-  groupe.add(loin.groupe);
+  if (!opt.niveau) {
+    const loin = piece(ilesLointaines(a), 0xffffff, true, true);
+    loin.corps.castShadow = false;
+    groupe.add(loin.groupe);
+  }
   const ciel = textureCiel(a);
-  const nuage = new Mesh(nuages(a), new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.94 }));
-  groupe.add(nuage);
+  if (!opt.niveau) {
+    const nuage = new Mesh(nuages(a), new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.94 }));
+    groupe.add(nuage);
+  }
   return {
     groupe,
     ciel,

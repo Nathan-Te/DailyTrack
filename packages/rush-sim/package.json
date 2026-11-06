@@ -21,6 +21,7 @@
     "./constantes": "./src/constantes.ts",
     "./variante": "./src/variante.ts",
     "./themes": "./src/themes.ts",
-    "./reglagesSim": "./src/reglagesSim.ts"
+    "./reglagesSim": "./src/reglagesSim.ts",
+    "./niveau": "./src/niveau.ts"
   }
 }
