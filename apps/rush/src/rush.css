@@ -362,10 +362,9 @@
   position: absolute;
   inset: 0;
   overflow: auto;
-  padding: var(--dj-espace-3) var(--dj-espace-3) var(--dj-espace-6);
+  padding: var(--dj-espace-3);
   background: #14121c;
   color: #f5f0e6;
-  font-family: var(--dj-police-corps, sans-serif);
 }
 .rush-carte__titre {
   margin: 0 0 var(--dj-espace-3);
@@ -379,9 +378,5 @@
 .rush-carte__jour {
   margin: 0;
   max-width: 360px;
-}
-.rush-carte__jour figcaption {
-  margin-top: 6px;
   font-size: 13px;
-  line-height: 1.35;
 }
