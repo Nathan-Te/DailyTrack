@@ -1427,6 +1427,40 @@
     "classesDuJour": null,
     "rangEntreAmis": null,
     "messagesNonLus": 0,
+    "semaine": [
+     {
+      "date": "2026-11-09",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-10",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-11",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-12",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-13",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-14",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-15",
+      "etat": "rien"
+     }
+    ],
+    "classementAmis": null,
+    "amisDuJour": [],
+    "nbAmis": 0,
+    "groupe": null,
     "favoris": null,
     "jeuxDuJour": [
      "track",
@@ -3473,6 +3507,45 @@
     "classesDuJour": null,
     "rangEntreAmis": null,
     "messagesNonLus": 0,
+    "semaine": [
+     {
+      "date": "2026-11-09",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-10",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-11",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-12",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-13",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-14",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-15",
+      "etat": "rien"
+     }
+    ],
+    "classementAmis": null,
+    "amisDuJour": [],
+    "nbAmis": 0,
+    "groupe": {
+     "nom": "Les Hauts",
+     "membres": 3,
+     "rang": null,
+     "sur": 0
+    },
     "favoris": null,
     "jeuxDuJour": [
      "track",
@@ -5365,6 +5438,40 @@
     "classesDuJour": null,
     "rangEntreAmis": null,
     "messagesNonLus": 0,
+    "semaine": [
+     {
+      "date": "2026-11-02",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-03",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-04",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-05",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-06",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-07",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-08",
+      "etat": "rien"
+     }
+    ],
+    "classementAmis": null,
+    "amisDuJour": [],
+    "nbAmis": 0,
+    "groupe": null,
     "favoris": null,
     "jeuxDuJour": [
      "track",

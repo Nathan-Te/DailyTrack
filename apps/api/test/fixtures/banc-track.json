@@ -2535,6 +2535,40 @@
     "classesDuJour": 6,
     "rangEntreAmis": null,
     "messagesNonLus": 0,
+    "semaine": [
+     {
+      "date": "2026-10-12",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-13",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-14",
+      "etat": "parfaite"
+     },
+     {
+      "date": "2026-10-15",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-16",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-17",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-18",
+      "etat": "rien"
+     }
+    ],
+    "classementAmis": null,
+    "amisDuJour": [],
+    "nbAmis": 0,
+    "groupe": null,
     "favoris": null,
     "jeuxDuJour": [
      "track"
@@ -5363,6 +5397,45 @@
     "classesDuJour": 4,
     "rangEntreAmis": null,
     "messagesNonLus": 0,
+    "semaine": [
+     {
+      "date": "2026-10-12",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-13",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-14",
+      "etat": "parfaite"
+     },
+     {
+      "date": "2026-10-15",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-16",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-17",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-18",
+      "etat": "rien"
+     }
+    ],
+    "classementAmis": null,
+    "amisDuJour": [],
+    "nbAmis": 0,
+    "groupe": {
+     "nom": "Les Hauts",
+     "membres": 3,
+     "rang": null,
+     "sur": 0
+    },
     "favoris": null,
     "jeuxDuJour": [
      "track"
@@ -7651,6 +7724,40 @@
     "classesDuJour": 1,
     "rangEntreAmis": null,
     "messagesNonLus": 0,
+    "semaine": [
+     {
+      "date": "2026-10-26",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-27",
+      "etat": "jouee"
+     },
+     {
+      "date": "2026-10-28",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-29",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-30",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-31",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-01",
+      "etat": "rien"
+     }
+    ],
+    "classementAmis": null,
+    "amisDuJour": [],
+    "nbAmis": 0,
+    "groupe": null,
     "favoris": null,
     "jeuxDuJour": [
      "track",
@@ -7937,6 +8044,40 @@
     "classesDuJour": 1,
     "rangEntreAmis": null,
     "messagesNonLus": 0,
+    "semaine": [
+     {
+      "date": "2026-10-26",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-27",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-28",
+      "etat": "jouee"
+     },
+     {
+      "date": "2026-10-29",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-30",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-31",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-01",
+      "etat": "rien"
+     }
+    ],
+    "classementAmis": null,
+    "amisDuJour": [],
+    "nbAmis": 0,
+    "groupe": null,
     "favoris": null,
     "jeuxDuJour": [
      "track",
@@ -8224,6 +8365,40 @@
     "classesDuJour": 1,
     "rangEntreAmis": null,
     "messagesNonLus": 0,
+    "semaine": [
+     {
+      "date": "2026-10-26",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-27",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-28",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-29",
+      "etat": "jouee"
+     },
+     {
+      "date": "2026-10-30",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-10-31",
+      "etat": "rien"
+     },
+     {
+      "date": "2026-11-01",
+      "etat": "rien"
+     }
+    ],
+    "classementAmis": null,
+    "amisDuJour": [],
+    "nbAmis": 0,
+    "groupe": null,
     "favoris": null,
     "jeuxDuJour": [
      "track",

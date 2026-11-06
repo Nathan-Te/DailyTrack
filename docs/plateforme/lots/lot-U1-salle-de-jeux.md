@@ -25,6 +25,7 @@
 - **Avatar de la barre à 44 px** (cible tactile, § 10) et non 42 px.
 - **Pages Classements, Amis et groupes, Profil** : leur barre « ‹ DU JOUR » **n'a pas changé** (la navigation et les onglets y viendront avec U2 et U3 : la flèche de retour sert B à la manette et leurs specs). Le prompt disait qu'elles « suivent » la partie 1 : à confirmer.
 - **Budget** : `portail.premier` 35 193 → 44 527 o (plafond 38 Ko dépassé). **Plafond proposé : 47 Ko (mesure + 5 %), à valider par Nathan** (`budgets.md`).
+- **Bancs de réponses réécrits** (`UPDATE_BANC=1`, différence voulue) : 12 réponses de `GET /api/portail/jour` (Track 5, Jump 4, Tower 3) gagnent les cinq clés `semaine`, `classementAmis`, `amisDuJour`, `nbAmis`, `groupe` ; vérifié clé par clé : aucune autre réponse ne change, aucune valeur existante non plus.
 - Specs adaptés : un clic de langue sur l'accueil se fait sur ≥ 760 px (`choisirLangue`) ; aucune nouvelle spec (la cloche est couverte par `diffusion.spec.ts` et `retours.spec.ts`).
 
 ## Vérifié / non vérifié
