@@ -1,6 +1,7 @@
 import "./generationInit";
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/avatar.css";
+import "@cdj/ui/src/avatar-liste.css"; // lot U1 : les photos et les initiales des amis de la colonne de droite
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -9,20 +10,22 @@ import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
 import "@cdj/ui/src/polices/rubik-mono-one-400.css";
+import "@cdj/ui/src/polices-profil/bungee-400.css"; // lot U1 : le nom de Rush sur sa cartouche d'arcade (sous-ensemble réduit, quelques Ko)
 import "./portail.css";
+import "./salle.css";
 import { parisDay } from "@cdj/clock";
-import { parseDay } from "@cdj/core";
+import { formatDay, parseDay } from "@cdj/core";
 import { NAME_KEY, adresseAvatar, aReprendre, appliquerGeneration, basculer, ecrireFavorisLocaux, ecrireLangue, generationDeReponse, lireFavorisLocaux, lireLangue, lireNouveauDepart, listeAffichee, readIdentity, readPlayerId, surveillerAnnonce, texteDeAnnonce, type Langue } from "@cdj/profile";
 import {
   CATALOGUE_COMMUN,
-  afficheur,
   astuceIphone,
   avisNouveauDepart,
   bandeauAnnonce,
-  barrePortail,
+  avatar,
   bouton,
   boutonFavori,
   cartouche,
+  choixLangue,
   el,
   etiquetteDe,
   formatDate,
@@ -33,6 +36,7 @@ import {
   formatScore,
   formatTemps,
   icone,
+  logo,
   medaille,
   modeApplication,
   traducteur,
@@ -44,8 +48,9 @@ import {
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
-import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
-import { choixPourDemain, ordonnerArcade, repartir } from "./mesJeux";
+import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type AmiDuJour, type Etat, type JeuDuJour, type JourDeSemaine, type Lecture, type LigneEntreAmis } from "./jour";
+import { choixPourDemain, epinglesEnTete } from "./mesJeux";
+import { barreSalle, cloche, compteDuFronton, emblemeDeGroupe, fronton, navigation, panneau, progression, selecteurDeVue, semaineEnLampes, titreDeZone, type Lampe } from "./salle";
 import { dans, nonLue } from "./nouveautesDonnees";
 import { boutonRetours } from "./retoursLien";
 import { categorieDuJeu, ficheDuJeu, titreDeCarte } from "./jeuxFiches";
@@ -91,6 +96,11 @@ const reseauFavoris = () => import("@cdj/profile/src/favorisReseau");
 let ecrituresFavoris: Promise<void> = Promise.resolve();
 /** Le message discret quand le choix n'a pas pu être enregistré (un code du serveur traduit, sinon l'échec du réseau). */
 let messageFavoris: string | null = null;
+
+/** Lot U1 : le classement montré dans la colonne de droite (`null` : le défaut, « Amis » quand le joueur a des amis, sinon « Tous »). */
+let vueClassement: "tous" | "amis" | "groupe" | null = null;
+/** Lot U1 : la petite feuille de la cloche est-elle ouverte ? (L'écran est redessiné à chaque changement : l'état vit ici.) */
+let clocheOuverte = false;
 
 // Lot N2 : le message en direct. Il arrive **dans la réponse de `GET /api/portail/jour`** (la seule requête du chargement : règle du lot I3) et est semé dans la surveillance ;
 // ensuite la page le relit toutes les 60 s, seulement visible (`GET /api/annonce`, partagée par le cache de Hosting). Fermé, il ne revient que si le message change.
@@ -144,43 +154,83 @@ function statut(t: T, c: CarteJeu, etat: Etat | undefined): HTMLElement {
 }
 
 interface OptionsCarte {
-  /** Lot F1 : la cartouche est-elle sous « Mes jeux » ? */
+  /** Lot F1 : le jeu est-il épinglé ? (Lot U1 : il passe alors en tête de sa zone.) */
   epingle: boolean;
-  /** Lot F1 : la variante compacte d'une ligne (« Les autres jeux »). */
-  compacte?: boolean;
 }
 
-function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: OptionsCarte = { epingle: false }): HTMLElement {
+/** Le numéro du jour et le thème sous le nom du jeu (« n° 8 · Nuit »), ou rien tant que le jeu n'a pas de numéro. */
+function numeroEtTheme(c: CarteJeu, t: T, jeu: JeuDuJour | undefined): string | undefined {
   const numero = (jeu?.numero ?? c.numero) > 0 ? formatNumeroJour(jeu?.numero ?? c.numero, langue) : undefined;
   const theme = nomTheme(t, c.jeu, jeu?.theme ?? null);
-  const numeroTheme = numero && theme ? t.t("portail.numeroTheme", { numero, theme }) : numero;
+  return numero && theme ? t.t("portail.numeroTheme", { numero, theme }) : numero;
+}
+
+/** Le bouton de la cartouche (« Jouer », « Continuer », « Rejouer ») : toute la largeur, la même hauteur quel que soit le statut. */
+function boutonDeCarte(c: CarteJeu, t: T, etat: Etat | undefined): HTMLElement {
+  const nom = t.t(nomCleDe(c.code));
+  const action =
+    etat?.statut === "fini"
+      ? bouton({ texte: t.t("portail.rejouer"), href: c.lien, variante: "secondaire", pleineLargeur: true, ariaLabel: t.t("portail.rejouer.aria", { jeu: nom }) })
+      : etat?.statut === "en_cours"
+        ? bouton({ texte: t.t("portail.continuer"), href: c.lien, variante: "marque", pleineLargeur: true, ariaLabel: t.t("portail.continuer.aria", { jeu: nom }) })
+        : bouton({ texte: t.t("portail.jouer"), href: c.lien, variante: "marque", pleineLargeur: true, ariaLabel: t.t("portail.jouer.aria", { jeu: nom }) });
+  action.setAttribute("data-cle", `jouer-${c.code}`);
+  return action;
+}
+
+/** Lot F1 : l'étoile (44 px) épingle ou retire le jeu ; son nom lu dit l'action. Après l'action dans l'ordre du clavier : « Jouer » reste l'action principale. */
+function etoileDe(c: CarteJeu, t: T, epingle: boolean): HTMLElement {
+  const favori = boutonFavori({ epingle, nom: t.t(epingle ? "portail.favoris.retirer" : "portail.favoris.ajouter", { jeu: t.t(nomCleDe(c.code)) }), place: "coin", onClick: () => basculerFavori(c.code) });
+  favori.setAttribute("data-cle", `favori-${c.code}`);
+  return favori;
+}
+
+/** Les pastilles « Brouillon » (aperçu de PR) et « Nouveau » (jeu ouvert depuis moins de 7 jours, tant que le joueur ne l'a pas épinglé), posées sur la coque. */
+function pastillesDe(carte: HTMLElement, t: T, jeu: JeuDuJour | undefined, epingle: boolean): HTMLElement {
+  // Lot P : sur un aperçu de PR, un jeu pas encore `on` se montre avec le badge « Brouillon ».
+  if (jeu?.brouillon) carte.prepend(el("span", { classe: "dj-badge-brouillon", attrs: { "data-brouillon": "" }, texte: t.t("portail.brouillon") }));
+  // Lot F1 : un jeu ouvert depuis moins de 7 jours porte « Nouveau » tant que le joueur ne l'a pas épinglé (le serveur compte les 7 jours).
+  if (jeu?.nouveau && !epingle) carte.prepend(el("span", { classe: "dj-badge-nouveau", attrs: { "data-nouveau": "" }, texte: t.t("portail.nouveau") }));
+  return carte;
+}
+
+/** Une cartouche des jeux du jour : l'étiquette du jeu (son dessin, sa police), l'accroche, le statut du joueur, puis le bouton sous l'étiquette. */
+function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: OptionsCarte = { epingle: false }): HTMLElement {
   const etat = jeu?.etat;
-  const compacte = opts.compacte === true;
   // Lots K1, K1b et K1c : la fiche d'un jeu donne son accroche (celle du thème du jour quand elle en a une : Jump, une réplique par thème, la même que dans le jeu, catalogue commun de @cdj/ui),
   // son titre et son étiquette.
   const fiche = ficheDuJeu(c.code)!;
   const parTheme = fiche.accrocheTheme && jeu?.theme ? cleConnue(fiche.accrocheTheme + jeu.theme) : null;
   const texte = t.t(parTheme ?? (cleConnue(fiche.accroche) as Cle));
   const titre = titreDeCarte(fiche, t, t.t(nomCleDe(c.code)));
-  // La variante compacte (lot F1) n'a que le nom et le numéro : ni accroche, ni statut (le statut d'un jeu qu'on n'a pas épinglé n'est pas ce qu'on vient chercher).
-  const etiquette = compacte ? etiquetteDe(c.code, { titre, numero: numeroTheme }) : etiquetteDe(c.code, { titre, numero: numeroTheme, texte, suite: statut(t, c, etat) });
-  const nom = t.t(nomCleDe(c.code));
-  const action =
-    etat?.statut === "fini"
-      ? bouton({ texte: t.t("portail.rejouer"), href: c.lien, variante: "secondaire", pleineLargeur: !compacte, ariaLabel: t.t("portail.rejouer.aria", { jeu: nom }) })
-      : etat?.statut === "en_cours"
-        ? bouton({ texte: t.t("portail.continuer"), href: c.lien, variante: compacte ? "secondaire" : "marque", pleineLargeur: !compacte, ariaLabel: t.t("portail.continuer.aria", { jeu: nom }) })
-        : bouton({ texte: t.t("portail.jouer"), href: c.lien, variante: compacte ? "secondaire" : "marque", pleineLargeur: !compacte, ariaLabel: t.t("portail.jouer.aria", { jeu: nom }) });
-  action.setAttribute("data-cle", `jouer-${c.code}`);
-  // Lot F1 : l'étoile (44 px) épingle ou retire le jeu ; son nom lu dit l'action. Après l'action dans l'ordre du clavier : « Jouer » reste l'action principale.
-  const favori = boutonFavori({ epingle: opts.epingle, nom: t.t(opts.epingle ? "portail.favoris.retirer" : "portail.favoris.ajouter", { jeu: nom }), place: compacte ? "ligne" : "coin", onClick: () => basculerFavori(c.code) });
-  favori.setAttribute("data-cle", `favori-${c.code}`);
-  const carte = cartouche({ jeu: c.code, etiquette, action, favori, compacte, attrs: { "data-jeu": c.code, "data-epingle": opts.epingle ? "oui" : "non" } });
-  // Lot P : sur un aperçu de PR, un jeu pas encore `on` se montre avec le badge « Brouillon ».
-  if (jeu?.brouillon) carte.prepend(el("span", { classe: "dj-badge-brouillon", attrs: { "data-brouillon": "" }, texte: t.t("portail.brouillon") }));
-  // Lot F1 : un jeu ouvert depuis moins de 7 jours porte « Nouveau » tant que le joueur ne l'a pas épinglé (le serveur compte les 7 jours).
-  if (jeu?.nouveau && !opts.epingle) carte.prepend(el("span", { classe: "dj-badge-nouveau", attrs: { "data-nouveau": "" }, texte: t.t("portail.nouveau") }));
-  return carte;
+  const etiquette = etiquetteDe(c.code, { titre, numero: numeroEtTheme(c, t, jeu), texte, suite: statut(t, c, etat) });
+  const carte = cartouche({ jeu: c.code, etiquette, action: boutonDeCarte(c, t, etat), favori: etoileDe(c, t, opts.epingle), attrs: { "data-jeu": c.code, "data-epingle": opts.epingle ? "oui" : "non" } });
+  return pastillesDe(carte, t, jeu, opts.epingle);
+}
+
+/**
+ * Lot U1 (charte rév. 19) — une cartouche de la salle d'arcade : l'illustration du jeu (son fichier `<jeu>/illustration.svg`, lot K5) sur le motif de son étiquette, son nom dans sa police, le numéro et
+ * le thème, le statut, puis le bouton **dans l'étiquette**. Sur téléphone elle passe à l'horizontale (illustration à gauche) : la feuille `salle.css`, le même contenu.
+ */
+function cartoucheArcade(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: OptionsCarte): HTMLElement {
+  const etat = jeu?.etat;
+  const fiche = ficheDuJeu(c.code)!;
+  const numeroTheme = numeroEtTheme(c, t, jeu);
+  const etiquette = el(
+    "div",
+    { classe: ["dj-etiquette", "salle-etiquette", `jeu-etiquette--${c.code}`] },
+    el("div", { classe: "salle-etiquette__art", attrs: { "aria-hidden": "true" } }, fiche.illustration ? el("img", { classe: "salle-etiquette__dessin", attrs: { src: `${c.code}/illustration.svg`, alt: "", decoding: "async" } }) : null),
+    el(
+      "div",
+      { classe: "salle-etiquette__info" },
+      el("h3", { classe: "salle-etiquette__nom", texte: titreDeCarte(fiche, t, t.t(nomCleDe(c.code))) }),
+      numeroTheme ? el("span", { classe: "salle-etiquette__numero", texte: numeroTheme }) : null,
+      statut(t, c, etat),
+      boutonDeCarte(c, t, etat),
+    ),
+  );
+  const carte = cartouche({ jeu: c.code, etiquette, favori: etoileDe(c, t, opts.epingle), attrs: { "data-jeu": c.code, "data-epingle": opts.epingle ? "oui" : "non" } });
+  return pastillesDe(carte, t, jeu, opts.epingle);
 }
 
 /** La tuile Série : flamme, « 5 jours », « 2 journées parfaites » ; à prolonger aujourd'hui ; journée parfaite du jour (sobre, sans animation). */
@@ -273,31 +323,198 @@ function bandeau(t: T): HTMLElement | null {
   return bandeauGarde.noeud;
 }
 
-/** La ligne « Nouveautés · 27 oct. » sous les tuiles : le titre de la dernière publiée, un point terre tant qu'elle n'est pas lue sur cet appareil. Aucune nouveauté : rien. */
-function ligneNouveautes(t: T): HTMLElement | null {
-  const n = lecture?.jour?.nouveaute;
-  if (!n) return null;
-  const jour = parseDay(n.date);
-  const date = jour === null ? n.date : formatDateCourte(jour, langue);
-  const point = nonLue(n, stockage);
-  return el(
-    "a",
-    { classe: "portail-nouveautes", attrs: { id: "nouveautes", href: "nouveautes/", "data-cle": "nouveautes", "data-non-lue": point ? "oui" : "non" } },
-    el("span", { classe: "portail-nouveautes__texte" }, el("span", { classe: "portail-nouveautes__legende", texte: t.t("portail.nouveautes.legende", { date }) }), el("span", { classe: "portail-nouveautes__titre", texte: dans(n.titre, langue) })),
-    point ? el("span", { classe: "portail-nouveautes__point", attrs: { id: "nouveautes-point" } }, el("span", { classe: "dj-cache", texte: t.t("portail.nouveautes.nonLue") })) : null,
+/**
+ * Lot U1 — la petite feuille de la cloche : la dernière nouveauté publiée (un point tant qu'elle n'est pas lue sur cet appareil) et, pour un joueur connu, les réponses non lues de « Mes messages ».
+ * Elle remplace la ligne « Nouveautés » de l'accueil et la pastille de l'avatar. `point` : quelque chose n'est pas lu.
+ */
+function clocheDuPortail(t: T): HTMLElement {
+  const jour = lecture?.jour;
+  const n = jour?.nouveaute ?? null;
+  const nouveauteNonLue = nonLue(n, stockage);
+  const reponses = jour?.joueur?.messagesNonLus ?? 0;
+  const lignes = [
+    ...(n
+      ? [
+          {
+            legende: t.t("portail.cloche.nouveaute", { date: (() => { const d = parseDay(n.date); return d === null ? n.date : formatDateCourte(d, langue); })() }),
+            texte: dans(n.titre, langue),
+            href: "nouveautes/",
+            nonLue: nouveauteNonLue,
+          },
+        ]
+      : []),
+    ...(jour?.joueur ? [{ legende: t.t("portail.cloche.messages"), texte: reponses > 0 ? t.t("portail.cloche.reponses", { n: reponses }) : t.t("portail.cloche.aucuneReponse"), href: "messages/", nonLue: reponses > 0 }] : []),
+  ];
+  const point = nouveauteNonLue || reponses > 0;
+  return cloche({
+    nom: t.t(point ? "portail.cloche.nonLu" : "portail.cloche.nom"),
+    point,
+    ouverte: clocheOuverte,
+    titre: t.t("portail.cloche.titre"),
+    fermer: t.t("portail.cloche.fermer"),
+    lignes,
+    vide: t.t("portail.cloche.vide"),
+    onBasculer: () => basculerCloche(),
+  });
+}
+
+/** Ouvre ou ferme la feuille de la cloche ; le focus entre dans la feuille à l'ouverture et revient à la cloche à la fermeture. */
+function basculerCloche(ouvrir = !clocheOuverte): void {
+  if (ouvrir === clocheOuverte) return;
+  clocheOuverte = ouvrir;
+  rendre();
+  const cible = ouvrir ? document.querySelector<HTMLElement>(".salle-feuille__ligne, .salle-feuille__fermer") : document.getElementById("cloche");
+  cible?.focus();
+}
+
+/** La semaine en lampes (7 jours, du lundi au dimanche) : celle du serveur (`joueur.semaine`) ; pour un visiteur, une semaine éteinte (c'est exact : il n'a rien joué) ; `null` tant que le serveur n'a pas répondu. */
+function lampesDeLaSemaine(t: T, day: number, semaine: readonly JourDeSemaine[] | undefined, neuf: boolean): Lampe[] | null {
+  const lundi = day - (((day + 4) % 7) + 6) % 7;
+  const jours: JourDeSemaine[] | null = semaine ? [...semaine] : neuf ? Array.from({ length: 7 }, (_, i) => ({ date: formatDay(lundi + i), etat: "rien" as const })) : null;
+  if (!jours) return null;
+  const locale = langue === "fr" ? "fr-FR" : "en-GB";
+  const lettre = new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "UTC" });
+  const nomDuJour = new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" });
+  return jours.map((j): Lampe => {
+    const d = parseDay(j.date) ?? day;
+    const instant = new Date(`${j.date}T12:00:00Z`);
+    const aujourdhui = d === day;
+    const etat = aujourdhui && j.etat === "jouee" ? "moitie" : j.etat === "parfaite" ? "parfaite" : j.etat === "jouee" ? "jouee" : "rien";
+    const cle = etat === "parfaite" ? "portail.semaine.parfaite" : etat === "moitie" ? "portail.semaine.encours" : etat === "jouee" ? "portail.semaine.jouee" : d > day ? "portail.semaine.avenir" : "portail.semaine.rien";
+    return { lettre: lettre.format(instant), nom: t.t("portail.semaine.nom", { jour: nomDuJour.format(instant), etat: t.t(cle) }), etat, aujourdhui };
+  });
+}
+
+// --- Lot U1, partie 2 : la colonne de droite ----------------------------------------------------------------------------------------------------------
+/** Une photo (ou les initiales) : l'avatar d'un joueur de la colonne de droite (décoratif : son pseudo est écrit à côté). */
+const avatarDe = (t: T, o: { pseudo: string; ref?: string; avatar?: string }): HTMLElement => avatar(t, { pseudo: o.pseudo, ref: o.ref, image: adresseAvatar(baseApi(), o.avatar), decoratif: true });
+
+/** Il y a combien de temps (« à l'instant », « il y a 12 min », « il y a 3 h »), sur l'heure du serveur. */
+function ilYa(t: T, at: number): string {
+  const minutes = Math.max(0, Math.floor((maintenant() - at) / 60_000));
+  if (minutes < 1) return t.t("portail.amis.alInstant");
+  return minutes < 60 ? t.t("portail.amis.minutes", { n: minutes }) : t.t("portail.amis.heures", { n: Math.floor(minutes / 60) });
+}
+
+/** « Ta journée » : la progression, la série et le classement du jour, « Partager ma journée ». Un visiteur : le mot de bienvenue. */
+function panneauJournee(t: T, o: { neuf: boolean; finis: number; total: number; avecStatuts: boolean }): HTMLElement {
+  const tuiles = el("div", { classe: "portail-tuiles" }, ...[o.neuf ? null : tuileSerie(t), tuileClassement(t, o.neuf)].filter((e): e is HTMLElement => e !== null));
+  return panneau(
+    { id: "panneau-journee", titre: t.t("portail.journee.titre") },
+    o.neuf ? el("p", { classe: "portail-accueil", attrs: { id: "accueil" }, texte: t.t("portail.accueil") }) : null,
+    o.avecStatuts && o.total > 0 ? progression({ total: o.total, finis: o.finis, aria: t.t("portail.avancement", { n: o.finis, total: o.total }) }) : null,
+    tuiles.childElementCount > 0 ? tuiles : null,
+    partage(t),
   );
 }
 
-/** Une étagère de cartouches (celle de « Mes jeux », ou celle des compactes de « Les autres jeux »). */
-function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string, JeuDuJour>, jour: Lecture["jour"] | undefined, neuf: boolean, o: { id: string; epingle: boolean; compacte?: boolean; epingleDe?: (code: string) => boolean }): HTMLElement {
+/** Une ligne du classement entre amis : le rang, la photo, le pseudo, le temps (ou « 1 sur 2 » tant que la journée n'est pas finie). */
+function ligneAmis(t: T, l: LigneEntreAmis, total: number): HTMLElement {
+  const temps = l.tempsMs !== null ? formatTemps(l.tempsMs, langue) : t.t("portail.vue.faits", { n: l.faits, total });
+  return el(
+    "li",
+    { classe: ["salle-rang", l.moi && "salle-rang--moi"], attrs: l.moi ? { "data-moi": "" } : {} },
+    el("span", { classe: "salle-rang__place", texte: l.rang !== null ? formatRang(l.rang, langue) : "–" }), // i18n-ok: le tiret des sans-rang
+    avatarDe(t, l),
+    el("span", { classe: "salle-rang__nom", texte: l.moi ? t.t("portail.vue.moi") : l.pseudo }),
+    el("span", { classe: "salle-rang__temps", texte: temps }),
+  );
+}
+
+/** « Classement du jour » : Tous · Amis · Mon groupe (Amis par défaut quand tu as des amis). Les 3 premiers entre amis et ta ligne ; « Tous » et « Mon groupe » donnent ta place et mènent au classement entier. */
+function panneauClassement(t: T, total: number): HTMLElement | null {
+  const joueur = lecture?.jour?.joueur;
+  if (!joueur) return null;
+  const amis = joueur.classementAmis ?? null;
+  const groupe = joueur.groupe ?? null;
+  const vue = vueClassement === "groupe" && !groupe ? null : vueClassement === "amis" && !amis ? null : vueClassement;
+  const actif = vue ?? (amis ? "amis" : "tous");
+  const choix = [{ id: "tous", texte: t.t("portail.vue.tous") }, ...(joueur.nbAmis ? [{ id: "amis", texte: t.t("portail.vue.amis") }] : []), ...(groupe ? [{ id: "groupe", texte: t.t("portail.vue.groupe") }] : [])];
+  let contenu: HTMLElement;
+  if (actif === "amis" && amis) {
+    const lignes = [...amis.top, ...(amis.top.some((l) => l.moi) ? [] : [amis.moi])];
+    contenu = el("ol", { classe: "salle-rangs", attrs: { id: "classement-amis-liste" } }, ...lignes.map((l) => ligneAmis(t, l, total)));
+  } else if (actif === "groupe" && groupe) {
+    contenu = el("p", { classe: "salle-vue-texte", attrs: { id: "classement-groupe-texte" }, texte: groupe.rang !== null ? t.t("portail.vue.groupeRang", { rang: formatRang(groupe.rang, langue), n: groupe.sur }) : t.t("portail.vue.groupeMoins") });
+  } else {
+    const rang = joueur.rangDuJour;
+    contenu = el("p", { classe: "salle-vue-texte", attrs: { id: "classement-tous-texte" }, texte: rang ? t.t("portail.statut.rang", { rang: formatRang(rang, langue), classes: formatNombre(joueur.classesDuJour ?? rang, langue) }) : t.t("portail.classement.inviter") });
+  }
+  return panneau(
+    { id: "panneau-classement", titre: t.t("portail.classement.legende") },
+    choix.length > 1 ? selecteurDeVue({ aria: t.t("portail.vue.aria"), choix, actif, onChoix: (id) => { vueClassement = id as typeof vueClassement; rendre(); } }) : null,
+    contenu,
+    el("a", { classe: "salle-lien", attrs: { href: actif === "groupe" ? "classement/?mode=groupes" : "classement/", id: "classement-tout" }, texte: t.t(actif === "groupe" ? "portail.vue.groupeVoir" : "portail.vue.toutVoir") }),
+  );
+}
+
+/** « Tes amis aujourd'hui » : jusqu'à 6 amis (photo de 48 px, ce qu'ils ont fait, un carré par jeu du jour). Sans ami : l'action qui manque, en une ligne. */
+function panneauAmis(t: T, jeuxDuJour: readonly CarteJeu[]): HTMLElement | null {
+  const joueur = lecture?.jour?.joueur;
+  if (!joueur) return null;
+  const amis = joueur.amisDuJour ?? [];
+  if (!joueur.nbAmis) return panneau({ id: "panneau-amis", titre: t.t("portail.amis.titre") }, el("a", { classe: "salle-lien salle-lien--seul", attrs: { href: "amis/", id: "amis-ajouter" }, texte: t.t("portail.amis.ajouter") }));
+  if (!joueur.amisDuJour) return null; // la copie gardée n'a pas la liste : la réponse fraîche l'apporte
+  const nomDuJeu_ = (site: string) => t.t(nomCleDe(site as Jeu));
+  const quand = (a: AmiDuJour): string =>
+    a.parfaite ? t.t("portail.amis.parfaite") : a.dernier ? t.t("portail.amis.dernier", { jeu: nomDuJeu_(a.dernier.site), quand: ilYa(t, a.dernier.at) }) : t.t("portail.statut.pasJoue");
+  return panneau(
+    { id: "panneau-amis", titre: t.t("portail.amis.titre") },
+    el(
+      "ul",
+      { classe: "salle-amis", attrs: { id: "amis-du-jour" } },
+      ...amis.map((a) =>
+        el(
+          "li",
+          { classe: "salle-ami" },
+          avatarDe(t, a),
+          el("span", { classe: "salle-ami__texte" }, el("span", { classe: "salle-ami__nom", texte: a.pseudo }), el("small", { texte: quand(a) })),
+          el(
+            "span",
+            { classe: "salle-ami__jeux" },
+            ...jeuxDuJour.map((c) => {
+              const fait = a.faits.includes(c.code);
+              return el("i", { classe: fait ? "on" : undefined, attrs: { role: "img", "aria-label": t.t(fait ? "portail.amis.fait" : "portail.amis.pasFait", { jeu: nomDuJeu_(c.code) }) } }, nomDuJeu_(c.code).charAt(0).toLocaleUpperCase());
+            }),
+          ),
+        ),
+      ),
+    ),
+    el("a", { classe: "salle-lien", attrs: { href: "amis/", id: "amis-liste" }, texte: t.t("portail.amis.liste") }),
+  );
+}
+
+/** « Ton groupe » : l'emblème, le nom, les membres et la place du jour. Sans groupe : l'action qui manque, en une ligne. */
+function panneauGroupe(t: T): HTMLElement | null {
+  const joueur = lecture?.jour?.joueur;
+  if (!joueur || joueur.groupe === undefined) return null;
+  const g = joueur.groupe;
+  if (!g) return panneau({ id: "panneau-groupe", titre: t.t("portail.groupe.titre") }, el("a", { classe: "salle-lien salle-lien--seul", attrs: { href: "profil/", id: "groupe-creer" }, texte: t.t("portail.groupe.aucun") }));
+  const rang = g.rang !== null ? t.t("portail.vue.groupeRang", { rang: formatRang(g.rang, langue), n: g.sur }) : t.t("portail.vue.groupeMoins");
+  return panneau(
+    { id: "panneau-groupe", titre: t.t("portail.groupe.titre") },
+    el(
+      "div",
+      { classe: "salle-groupe" },
+      emblemeDeGroupe({ initiales: [...g.nom.replace(/[^\p{L}\p{N}]/gu, "")].slice(0, 2).join("").toLocaleUpperCase(langue === "fr" ? "fr-FR" : "en-US"), image: adresseAvatar(baseApi(), g.avatar) }),
+      el("span", { classe: "salle-groupe__texte" }, el("span", { classe: "salle-groupe__nom", texte: g.nom }), el("small", { texte: t.t("portail.groupe.ligne", { membres: t.t("portail.groupe.membres", { n: g.membres }), rang }) })),
+    ),
+    el("a", { classe: "salle-lien", attrs: { href: `groupe/${encodeURIComponent(g.nom)}`, id: "groupe-voir" }, texte: t.t("portail.groupe.voir") }),
+  );
+}
+
+/** Une étagère de cartouches (celle des jeux du jour, ou celle de la salle d'arcade) : les jeux épinglés d'abord, tous de la même taille. */
+function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string, JeuDuJour>, jour: Lecture["jour"] | undefined, neuf: boolean, o: { id: string; favoris: readonly string[]; arcade?: boolean }): HTMLElement {
   return el(
     "div",
-    { classe: ["portail-etagere", o.compacte && "portail-etagere--compacte"], attrs: { id: o.id } },
+    { classe: ["portail-etagere", "salle-etagere", o.arcade && "salle-etagere--arcade"], attrs: { id: o.id } },
     ...cartesMontrees.map((c) => {
       const j = parJeu.get(c.jeu);
       // Un joueur inconnu du serveur n'a rien joué : « Pas encore joué » ; sans identité, pareil (rien à attendre).
       const etat = j?.etat ?? (jour && neuf && lecture?.erreur !== "code_revoked" ? ({ statut: "pas_joue" } as const) : undefined);
-      return cartoucheDe(c, t, j ? { ...j, etat } : etat ? { jeu: c.jeu, numero: c.numero, theme: null, seuils: null, premierJour: "", etat } : undefined, { epingle: o.epingleDe ? o.epingleDe(c.code) : o.epingle, compacte: o.compacte });
+      const jeu = j ? { ...j, etat } : etat ? { jeu: c.jeu, numero: c.numero, theme: null, seuils: null, premierJour: "", etat } : undefined;
+      const opts = { epingle: o.favoris.includes(c.code) };
+      return o.arcade ? cartoucheArcade(c, t, jeu, opts) : cartoucheDe(c, t, jeu, opts);
     }),
   );
 }
@@ -382,88 +599,105 @@ function rendre(): void {
   const parJeu = new Map((jour?.jeux ?? []).map((j) => [j.jeu, j]));
   // Les cartouches que le portail sait dessiner, dans l'ordre du serveur quand il a répondu.
   const toutes = cartes(day).filter((c) => (jour ? parJeu.has(c.jeu) : c.numero > 0));
-  // Lot A3 : les jeux d'arcade ont leur section ; ils ne comptent ni dans « n fini sur m », ni dans « Mes jeux » de la journée, ni dans la ligne de partage.
+  // Lot A3 : les jeux d'arcade ont leur salle ; ils ne comptent ni dans « n fini sur m », ni dans la journée, ni dans la ligne de partage.
   const estArcade = (c: CarteJeu) => categorieDuJeu(c.code, day, parJeu.get(c.jeu)) === "arcade";
   const montrees = toutes.filter((c) => !estArcade(c));
   const statuts = jour?.joueur ? montrees.map((c) => parJeu.get(c.jeu)!) : [];
   const { finis, total } = avancement(statuts, jour?.joueur?.jeuxDuJour);
-  // Lot F1 : mes jeux (épinglés) en cartouches pleines en haut, les autres en compactes dessous ; sans favori, l'accueil d'avant.
+  // Lot U1 : plus de section « Mes jeux » — un jeu épinglé passe en tête de sa zone (jeux du jour, ou salle d'arcade).
   const favoris = listeAffichee(jour?.joueur?.favoris, !!jour?.joueur, favorisLocaux);
-  const { sansFavori, mes, autres } = repartir(montrees, favoris);
-  const arcade = ordonnerArcade(toutes.filter(estArcade), favoris);
+  const duJour = epinglesEnTete(montrees, favoris);
+  const arcade = epinglesEnTete(toutes.filter(estArcade), favoris);
+  const sansFavori = !duJour.some((c) => favoris.includes(c.code));
   const pourDemain = !!jour?.joueur && choixPourDemain(favoris, statuts.filter(compteAujourdhui).map((j) => j.site ?? ""), jour.joueur.jeuxDuJour);
   const neuf = !identite.exists || lecture?.erreur === "unknown_player";
   const journee = jour ? (jour.journee ?? null) : numeroDeJournee(day);
   const texteMessage = message(t);
-  racine.replaceChildren(
-    ...[bandeau(t)].filter((e): e is HTMLElement => e !== null),
-    el("h1", { classe: "dj-cache", texte: t.t("portail.titre") }),
-    barrePortail(t, {
-      langue,
-      onLangue: changerLangue,
-      pseudo: identite.exists ? identite.name : null,
-      profil: "profil/",
-      image: adresseAvatar(baseApi(), jour?.joueur?.avatar), // lot C1, partie B : son image (absente : ses initiales)
-      // Lot C1 : une réponse de l'éditeur attend dans « Mes messages » : la pastille de l'avatar, et son nom lu le dit.
-      ...((jour?.joueur?.messagesNonLus ?? 0) > 0 && identite.exists ? { pastille: true, nomAvatar: t.t("portail.messages.nonLu", { nom: identite.name ?? "" }) } : {}),
-    }),
+  const items = [
+    { id: "aujourdhui" as const, texte: t.t("portail.nav.aujourdhui"), court: t.t("portail.nav.aujourdhui") },
+    { id: "classements" as const, texte: t.t("portail.nav.classements"), court: t.t("portail.nav.classements") },
+    { id: "amis" as const, texte: t.t("portail.nav.amis"), court: t.t("portail.nav.amis.court") },
+    { id: "profil" as const, texte: t.t("portail.nav.profil"), court: t.t("portail.nav.profil") },
+  ];
+  const joueur = jour?.joueur;
+  const lampes = lampesDeLaSemaine(t, day, joueur?.semaine, neuf);
+  const legendeSemaine = joueur ? t.t("portail.semaine.legende", { serie: t.t("portail.semaine.serie", { n: joueur.serie }), parfaites: t.t("portail.serie.parfaites", { n: joueur.journeesParfaites }) }) : "";
+  const bandeauAnnonce_ = bandeau(t);
+  const avis = [
     ...(nouveauDepart ? [avisNouveauDepart(t, { onFermer: () => (nouveauDepart = false) })] : []),
     // Lot 53 : sur iPhone, hors du mode application, la ligne « Partager › Sur l'écran d'accueil » (une seule fois : fermée, elle ne revient pas).
     ...[stockage ? astuceIphone({ textes: () => ({ astuce: t.t("pleinEcran.iphone"), fermer: t.t("pleinEcran.iphone.fermer") }), stockage }) : null].filter((e): e is HTMLElement => e !== null),
+  ];
+  racine.replaceChildren(
+    ...(bandeauAnnonce_ ? [el("div", { classe: "salle-avis" }, bandeauAnnonce_)] : []),
+    el("h1", { classe: "dj-cache", texte: t.t("portail.titre") }),
+    barreSalle({
+      logo: logo(t),
+      navigation: navigation({ items, ici: "aujourdhui", aria: t.t("portail.nav.aria"), place: "haut" }),
+      langue: choixLangue(t, { langue, onChange: changerLangue }),
+      cloche: clocheDuPortail(t),
+      avatar: avatar(t, {
+        pseudo: identite.exists ? identite.name : null,
+        href: "profil/",
+        image: adresseAvatar(baseApi(), joueur?.avatar), // lot C1, partie B : son image (absente : ses initiales)
+      }),
+    }),
+    ...(avis.length > 0 ? [el("div", { classe: "salle-avis" }, ...avis)] : []),
+    fronton({
+      date: formatDate(day, langue, { capitale: true }),
+      // Lot I3 : le numéro de la journée commune (le serveur fait foi ; sinon la constante recopiée) ; rien avant le 23/10/2026.
+      journee: journee ? t.t("portail.journee", { numero: formatNumeroJour(journee, langue) }) : null,
+      semaine: semaineEnLampes({ lampes, legende: legendeSemaine, aria: t.t("portail.semaine.aria") }),
+      compte: compteDuFronton({ legende: t.t("portail.compte.legende"), valeur: formatCompte(prochainMinuit(lecture?.jour ?? null, maintenant()) - maintenant()) }),
+    }),
     el(
       "div",
-      { classe: "portail-date" },
-      el("p", { classe: "portail-date__jour", attrs: { id: "date" }, texte: formatDate(day, langue, { capitale: true }) }),
-      // Lot I3 : le numéro de la journée commune, à droite de la date (le serveur fait foi ; sinon la constante recopiée) ; rien avant le 23/10/2026.
-      journee ? el("span", { classe: "portail-date__journee", attrs: { id: "journee" }, texte: t.t("portail.journee", { numero: formatNumeroJour(journee, langue) }) }) : null,
-    ),
-    afficheurDuCompte(t),
-    el(
-      "section",
-      { classe: "portail-jeux", attrs: { "aria-labelledby": "portail-jeux-titre" } },
+      { classe: "salle-page" },
       el(
         "div",
-        { classe: "portail-jeux__tete" },
-        el("h2", { classe: "portail-jeux__titre", attrs: { id: "portail-jeux-titre" }, texte: t.t(sansFavori ? "portail.jeux.titre" : "portail.mesJeux.titre") }),
-        el("span", { classe: "portail-jeux__avancement", attrs: { id: "avancement" }, texte: statuts.length ? t.t("portail.avancement", { n: finis, total }) : "" }),
+        { classe: "salle-gauche" },
+        el(
+          "section",
+          { classe: "salle-zone", attrs: { "aria-labelledby": "portail-jeux-titre" } },
+          titreDeZone({
+            id: "portail-jeux-titre",
+            texte: t.t("portail.jeux.titre"),
+            droite: el("span", { classe: "portail-jeux__avancement", attrs: { id: "avancement" }, texte: statuts.length ? t.t("portail.avancement", { n: finis, total }) : "" }),
+          }),
+          // Sans favori : la ligne courte qui invite à épingler (inutile avec un seul jeu). Avec des favoris : le choix qui vient d'être fait compte dès demain.
+          sansFavori && montrees.length > 1 ? el("p", { classe: "portail-favoris__note", attrs: { id: "favoris-invite" }, texte: t.t("portail.favoris.invite") }) : null,
+          pourDemain ? el("p", { classe: "portail-favoris__note", attrs: { id: "favoris-demain", role: "status" }, texte: t.t("portail.favoris.demain") }) : null,
+          etagereDe(t, duJour, parJeu, jour, neuf, { id: "jeux", favoris }),
+        ),
+        // Lot A3 (refait au lot U1) : la salle d'arcade — un fond rayé de deux tons sombres, les cartouches claires dessus ; sur téléphone elles passent à l'horizontale.
+        ...(arcade.length > 0
+          ? [
+              el(
+                "section",
+                { classe: "salle-arcade", attrs: { "aria-labelledby": "portail-arcade-titre" } },
+                el("div", { classe: "salle-arcade__tete" }, el("h2", { classe: "salle-arcade__titre", attrs: { id: "portail-arcade-titre" }, texte: t.t("portail.arcade.titre") }), el("p", { classe: "salle-arcade__texte", texte: t.t("portail.arcade.sous") })),
+                etagereDe(t, arcade, parJeu, jour, neuf, { id: "arcade", favoris, arcade: true }),
+              ),
+            ]
+          : []),
+        ...(texteMessage ? [el("p", { classe: "portail-message", attrs: { id: "message", role: "status" }, texte: texteMessage })] : []),
+        ...(messageFavoris ? [el("p", { classe: "portail-message", attrs: { id: "message-favoris", role: "status" }, texte: messageFavoris })] : []),
       ),
-      // Sans favori : la ligne courte qui invite à épingler (inutile avec un seul jeu). Avec des favoris : le choix qui vient d'être fait compte dès demain.
-      sansFavori && montrees.length > 1 ? el("p", { classe: "portail-favoris__note", attrs: { id: "favoris-invite" }, texte: t.t("portail.favoris.invite") }) : null,
-      pourDemain ? el("p", { classe: "portail-favoris__note", attrs: { id: "favoris-demain", role: "status" }, texte: t.t("portail.favoris.demain") }) : null,
-      etagereDe(t, mes, parJeu, jour, neuf, { id: "jeux", epingle: !sansFavori }),
+      // La colonne de droite (360 px sur grand écran, sous les jeux sur téléphone) : Ta journée, Classement du jour, Tes amis aujourd'hui, Ton groupe (lot U1, partie 2).
+      el(
+        "aside",
+        { classe: "salle-droite", attrs: { "aria-label": t.t("portail.journee.titre") } },
+        panneauJournee(t, { neuf, finis, total, avecStatuts: statuts.length > 0 }),
+        panneauClassement(t, total),
+        panneauAmis(t, montrees),
+        panneauGroupe(t),
+        // Lot C1 : « Un bug ? Une idée ? » en bouton visible (plus seulement un lien du pied).
+        boutonRetours(t.t("portail.retours.lien"), langue),
+      ),
     ),
-    ...(autres.length > 0
-      ? [
-          el(
-            "section",
-            { classe: "portail-jeux", attrs: { "aria-labelledby": "portail-autres-titre" } },
-            el("div", { classe: "portail-jeux__tete" }, el("h2", { classe: "portail-jeux__titre", attrs: { id: "portail-autres-titre" }, texte: t.t("portail.autresJeux.titre") })),
-            etagereDe(t, autres, parJeu, jour, neuf, { id: "autres-jeux", epingle: false, compacte: true }),
-          ),
-        ]
-      : []),
-    // Lot A3 : la section « Arcade » sous les jeux du jour — des cartouches compactes aux couleurs de leur jeu, avec l'étoile ; les favoris d'arcade en tête.
-    ...(arcade.length > 0
-      ? [
-          el(
-            "section",
-            { classe: "portail-jeux", attrs: { "aria-labelledby": "portail-arcade-titre" } },
-            el("div", { classe: "portail-jeux__tete" }, el("h2", { classe: "portail-jeux__titre", attrs: { id: "portail-arcade-titre" }, texte: t.t("portail.arcade.titre") })),
-            etagereDe(t, arcade, parJeu, jour, neuf, { id: "arcade", epingle: false, compacte: true, epingleDe: (code) => favoris.includes(code) }),
-          ),
-        ]
-      : []),
-    ...(neuf ? [el("p", { classe: "portail-accueil", attrs: { id: "accueil" }, texte: t.t("portail.accueil") })] : []),
-    ...[el("div", { classe: "portail-tuiles" }, ...[neuf ? null : tuileSerie(t), tuileClassement(t, neuf)].filter((e): e is HTMLElement => e !== null))].filter((g) => g.childElementCount > 0),
-    ...[ligneNouveautes(t)].filter((e): e is HTMLElement => e !== null),
-    ...[partage(t)].filter((e): e is HTMLElement => e !== null),
-    // Lot C1 : « Un bug ? Une idée ? » en bouton visible (plus seulement un lien du pied).
-    boutonRetours(t.t("portail.retours.lien"), langue),
-    ...(texteMessage ? [el("p", { classe: "portail-message", attrs: { id: "message", role: "status" }, texte: texteMessage })] : []),
-    ...(messageFavoris ? [el("p", { classe: "portail-message", attrs: { id: "message-favoris", role: "status" }, texte: messageFavoris })] : []),
     el(
       "footer",
-      { classe: "portail-pied" },
+      { classe: "portail-pied salle-pied" },
       el("p", { texte: t.t("portail.pied") }),
       el(
         "div",
@@ -473,6 +707,8 @@ function rendre(): void {
       ),
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue), hreflang: langue }, texte: t.t("portail.mentions") }),
     ),
+    // La barre d'onglets du téléphone (fixe, en bas) : la même navigation, avec des icônes.
+    navigation({ items, ici: "aujourdhui", aria: t.t("portail.nav.aria"), place: "bas" }),
   );
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
 }
@@ -484,18 +720,12 @@ const lienKofi = (texte: string): HTMLElement => lienCommunaute("kofi", texte, "
 // --- Le compte à rebours (heure du serveur) -----------------------------------------------------------------------------------
 let minuterie: ReturnType<typeof setTimeout> | null = null;
 
-function afficheurDuCompte(t: T): HTMLElement {
-  const a = afficheur({ legende: t.t("portail.compte.legende"), valeur: formatCompte(prochainMinuit(lecture?.jour ?? null, maintenant()) - maintenant()) });
-  a.id = "compte";
-  return a;
-}
-
 /** Une seconde de plus : le chiffre change (sans animation) ; à zéro, le nouveau jour est relu. */
 function battre(): void {
   if (minuterie) clearTimeout(minuterie);
   const fin = prochainMinuit(lecture?.jour ?? null, maintenant());
   const reste = fin - maintenant();
-  const valeur = document.querySelector("#compte .dj-afficheur__valeur");
+  const valeur = document.querySelector("#compte .salle-compte__valeur");
   if (valeur) valeur.textContent = formatCompte(reste);
   if (reste <= 0 && !chargement) {
     void charger(lecture?.jour?.date ?? null);
@@ -572,7 +802,18 @@ function proposerRetrouver(): void {
   );
 }
 
+/** Échap ferme la feuille de la cloche, un toucher ailleurs aussi (une seule fois, au démarrage). */
+function surveillerCloche(): void {
+  document.addEventListener("keydown", (e) => {
+    if (clocheOuverte && e.key === "Escape") basculerCloche(false);
+  });
+  document.addEventListener("click", (e) => {
+    if (clocheOuverte && e.target instanceof Element && !e.target.closest(".salle-cloche")) basculerCloche(false);
+  });
+}
+
 async function demarrer(): Promise<void> {
+  surveillerCloche();
   // Recette et aperçus seulement : `/?demo=joueur` installe le joueur de démonstration (absent de la construction de production).
   if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).get("demo") === "joueur") {
     const racine = document.getElementById("portail");

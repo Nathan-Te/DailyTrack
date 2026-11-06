@@ -1,33 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { avancement, type JeuDuJour } from "../src/jour";
-import { choixPourDemain, ordonnerArcade, repartir } from "../src/mesJeux";
+import { choixPourDemain, epinglesEnTete } from "../src/mesJeux";
 
-// Lot F1 : la répartition « Mes jeux / Les autres jeux » de l'accueil et le compte « n fini sur m » sur mes jeux. Pur.
+// Lot F1 (lot U1 : les épinglés en tête de leur zone, plus de section « Mes jeux ») : l'ordre des cartouches de l'accueil et le compte « n fini sur m » sur mes jeux. Pur.
 const cartes = [{ code: "track" }, { code: "jump" }, { code: "tower" }];
 const codes = (l: { code: string }[]) => l.map((c) => c.code);
 
-describe("répartir les cartouches", () => {
-  it("sans favori : tous les jeux en cartouches pleines, comme aujourd'hui", () => {
-    const r = repartir(cartes, []);
-    expect(r.sansFavori).toBe(true);
-    expect(codes(r.mes)).toEqual(["track", "jump", "tower"]);
-    expect(r.autres).toEqual([]);
+describe("épingler : le jeu passe en tête de sa zone", () => {
+  it("sans favori : l'ordre de la plateforme", () => {
+    expect(codes(epinglesEnTete(cartes, []))).toEqual(["track", "jump", "tower"]);
   });
-  it("des favoris : eux en haut, dans l'ordre de la plateforme (jamais l'ordre du clic), les autres dessous", () => {
-    const r = repartir(cartes, ["tower", "track"]);
-    expect(r.sansFavori).toBe(false);
-    expect(codes(r.mes)).toEqual(["track", "tower"]);
-    expect(codes(r.autres)).toEqual(["jump"]);
+  it("des favoris : eux en tête, dans l'ordre de la plateforme (jamais l'ordre du clic), les autres à la suite", () => {
+    expect(codes(epinglesEnTete(cartes, ["tower", "jump"]))).toEqual(["jump", "tower", "track"]);
+    expect(codes(epinglesEnTete(cartes, ["tower"]))).toEqual(["tower", "track", "jump"]);
   });
-  it("tous les jeux épinglés : rien sous « Les autres jeux »", () => {
-    const r = repartir(cartes, ["jump", "track", "tower"]);
-    expect(codes(r.mes)).toEqual(["track", "jump", "tower"]);
-    expect(r.autres).toEqual([]);
-    expect(r.sansFavori).toBe(false);
+  it("tous les jeux épinglés : l'ordre de la plateforme", () => {
+    expect(codes(epinglesEnTete(cartes, ["jump", "track", "tower"]))).toEqual(["track", "jump", "tower"]);
   });
-  it("un favori qui n'est pas montré (jeu repassé à off) disparaît sans message ; s'il était le seul, l'accueil est celui d'avant", () => {
-    expect(codes(repartir(cartes, ["tower", "puzzle"]).mes)).toEqual(["tower"]);
-    expect(repartir([{ code: "track" }, { code: "jump" }], ["tower"]).sansFavori).toBe(true);
+  it("un favori qui n'est pas dans la zone (un autre jeu, ou un jeu repassé à off) ne change rien", () => {
+    expect(codes(epinglesEnTete(cartes, ["puzzle"]))).toEqual(["track", "jump", "tower"]);
+    expect(codes(epinglesEnTete([{ code: "tower" }, { code: "blocks" }, { code: "rush" }], ["rush"]))).toEqual(["rush", "tower", "blocks"]);
   });
 });
 
@@ -80,15 +72,13 @@ describe("« à partir de demain »", () => {
 describe("la section Arcade (lot A3)", () => {
   const arcade = [{ code: "tower" }, { code: "blocks" }, { code: "cibles" }];
   it("les favoris d'arcade montent en tête de leur section, chaque groupe dans l'ordre de la plateforme", () => {
-    expect(codes(ordonnerArcade(arcade, []))).toEqual(["tower", "blocks", "cibles"]);
-    expect(codes(ordonnerArcade(arcade, ["cibles"]))).toEqual(["cibles", "tower", "blocks"]);
-    expect(codes(ordonnerArcade(arcade, ["cibles", "tower"]))).toEqual(["tower", "cibles", "blocks"]);
+    expect(codes(epinglesEnTete(arcade, []))).toEqual(["tower", "blocks", "cibles"]);
+    expect(codes(epinglesEnTete(arcade, ["cibles"]))).toEqual(["cibles", "tower", "blocks"]);
+    expect(codes(epinglesEnTete(arcade, ["cibles", "tower"]))).toEqual(["tower", "cibles", "blocks"]);
   });
-  it("un favori d'arcade ne change pas « Mes jeux » de la journée : les jeux du jour sont répartis sans lui", () => {
+  it("un favori d'arcade ne change pas l'ordre des jeux du jour : chaque zone ne lit que ses propres jeux", () => {
     const duJour = [{ code: "track" }, { code: "jump" }];
-    const r = repartir(duJour, ["tower"]);
-    expect(r.sansFavori).toBe(true);
-    expect(codes(r.mes)).toEqual(["track", "jump"]);
+    expect(codes(epinglesEnTete(duJour, ["tower"]))).toEqual(["track", "jump"]);
   });
   it("« n fini sur m » ne compte pas un jeu d'arcade (le serveur le marque `compte: false`), épinglé ou non", () => {
     const fini = { statut: "fini", rang: 1, classes: 1, tempsMs: 1, medaille: null } as const;

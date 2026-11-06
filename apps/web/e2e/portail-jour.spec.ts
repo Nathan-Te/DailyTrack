@@ -16,11 +16,20 @@ import { startSite } from "./domaine-serveurs";
 //   - **minuit** : le compte à rebours passe zéro, le nouveau jour se charge sans recharger la page, la série s'ajuste ;
 //   - **le 25 octobre** (journée de 25 h) : le compte à rebours dépasse 24 h.
 // Captures (portrait 390 × 844, paysage 844 × 390, FR et EN) jointes au rapport ; avec `CAPTURES=1`, écrites dans docs/plateforme/lots/img/.
-// Lot F1 (« Mes jeux ») : le joueur de démonstration a Track en favori, pas Jump (Jump est dessous, en cartouche compacte) ; un seul test épingle Jump, recharge, et l'ordre est gardé.
+// Lot F1 (« Mes jeux ») : le joueur de démonstration a Track en favori, pas Jump (lot U1 : Track est en tête, Jump à côté, de la même taille) ; un seul test épingle Jump, recharge, et l'ordre est gardé.
 // Serveurs lancés ici : site 4179, API 8794 (midi), 8795 (minuit), 8796 (25 octobre) — ports réservés à ce fichier.
 test.describe.configure({ mode: "serial" });
 test.setTimeout(120_000);
 const expect = baseExpect.configure({ timeout: 20_000 });
+
+/** Lot U1 : le choix de langue n'est plus dans la barre d'un téléphone (il est dans le profil, charte rév. 19) : un clic de langue sur l'accueil se fait sur une fenêtre de 760 px au moins, puis la fenêtre revient. */
+async function choisirLangue(page: Page, langue: "fr" | "en"): Promise<void> {
+  const vue = page.viewportSize();
+  const etroite = !!vue && vue.width < 760;
+  if (etroite) await page.setViewportSize({ width: 800, height: vue!.height });
+  await page.locator(`.dj-choix-langue [data-langue="${langue}"]`).click();
+  if (etroite) await page.setViewportSize(vue!);
+}
 
 const ROOT = resolve("../..");
 const PORTRAIT = { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true };
@@ -103,7 +112,7 @@ async function avecDemo(context: BrowserContext): Promise<Page> {
   return page;
 }
 
-test("portail plein (joueur de démonstration) : compte à rebours, Track fini (or, rang), Jump dessous en cartouche compacte, série, journées parfaites ; une requête", async ({ browser }) => {
+test("portail plein (joueur de démonstration) : compte à rebours, Track fini (or, rang), Jump à côté (même taille), série, journées parfaites ; une requête", async ({ browser }) => {
   const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
   const page = await context.newPage();
   const vues = requetesApi(page);
@@ -115,13 +124,15 @@ test("portail plein (joueur de démonstration) : compte à rebours, Track fini (
   expect(new URL(page.url()).search).toBe("");
   expect(await page.evaluate(() => [localStorage.getItem("cdj:player"), localStorage.getItem("cdj:name")])).toEqual([DEMO_ID, "Démo"]);
   // Le compte à rebours : minuit de Paris dans environ 10 h (l'horloge de test : midi UTC, 14 h à Paris).
-  await expect(page.locator("#compte .dj-afficheur__legende")).toHaveText("Prochains niveaux dans");
-  await expect(page.locator("#compte .dj-afficheur__valeur")).toHaveText(/^(09|10):\d\d:\d\d$/);
-  // Lot F1 : « Mes jeux » = Track (le favori du joueur de démonstration) ; Jump est sous « Les autres jeux », en cartouche compacte (nom, numéro, « Jouer », étoile).
-  await expect(page.locator("#portail-jeux-titre")).toHaveText("Mes jeux");
-  await expect(page.locator("#portail-autres-titre")).toHaveText("Les autres jeux");
-  await expect(page.locator("#jeux [data-jeu]")).toHaveCount(1);
-  await expect(page.locator("#autres-jeux [data-jeu]")).toHaveCount(1);
+  await expect(page.locator("#compte .salle-compte__legende")).toHaveText("Prochains niveaux dans");
+  await expect(page.locator("#compte .salle-compte__valeur")).toHaveText(/^(09|10):\d\d:\d\d$/);
+  // Lot U1 : plus de section « Mes jeux » — Track (le favori du joueur de démonstration) est en tête des jeux du jour, Jump à côté, de la même taille.
+  await expect(page.locator("#portail-jeux-titre")).toHaveText("Les jeux du jour");
+  await expect(page.locator("#jeux [data-jeu]")).toHaveCount(2);
+  await expect(page.locator("#jeux [data-jeu]").first()).toHaveAttribute("data-jeu", "track");
+  await expect(page.locator("#portail-autres-titre")).toHaveCount(0);
+  const [tailleTrack, tailleJump] = await page.locator("#jeux [data-jeu]").evaluateAll((els) => els.map((e) => [Math.round(e.getBoundingClientRect().width), Math.round(e.getBoundingClientRect().height)]));
+  expect(tailleJump).toEqual(tailleTrack);
   await expect(track.getByRole("button", { name: "Retirer Track de mes jeux" })).toHaveAttribute("aria-pressed", "true");
   await expect(jump.getByRole("button", { name: "Ajouter Jump à mes jeux" })).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#avancement")).toHaveText("1 fini sur 1");
@@ -137,30 +148,29 @@ test("portail plein (joueur de démonstration) : compte à rebours, Track fini (
   await expect(page.locator("#serie .dj-tuile__valeur")).toHaveText("5 jours");
   await expect(page.locator("#serie .dj-tuile__sous-texte")).toHaveText("3 journées parfaites"); // lot F1 : aujourd'hui, Track (mon seul jeu) est fini : journée parfaite
   await expect(page.locator("#serie")).not.toContainText("Joue aujourd'hui");
-  await expect(page.locator(".dj-avatar")).toHaveText("DÉ");
+  await expect(page.locator(".salle-barre .dj-avatar")).toHaveText("DÉ");
   await expect(page.locator("#message")).toHaveCount(0);
   // Une seule requête à l'API au chargement, avec l'identifiant en en-tête (jamais dans l'adresse).
   await page.waitForTimeout(1500); // rien d'autre ne doit partir pendant ce temps
   expect(vues).toEqual([{ url: "/api/portail/jour", joueur: DEMO_ID }]);
   await capture(page, "portail-plein-portrait-fr");
-  await page.locator('.dj-choix-langue [data-langue="en"]').click();
+  await choisirLangue(page, "en");
   await expect(page.locator("#avancement")).toHaveText("1 of 1 done");
-  await expect(page.locator("#portail-jeux-titre")).toHaveText("My games");
-  await expect(page.locator("#portail-autres-titre")).toHaveText("Other games");
+  await expect(page.locator("#portail-jeux-titre")).toHaveText("Today's games");
   await expect(jump.getByRole("button", { name: "Add Jump to my games" })).toBeVisible();
   await expect(track.locator(".dj-medaille")).toHaveAccessibleName("Gold: earned");
   await expect(track.locator(".portail-statut__rang")).toHaveText("1st of 1");
   await expect(page.locator("#serie .dj-tuile__valeur")).toHaveText("5 days");
-  await expect(page.locator("#compte .dj-afficheur__legende")).toHaveText("Next levels in");
+  await expect(page.locator("#compte .salle-compte__legende")).toHaveText("Next levels in");
   await capture(page, "portail-plein-portrait-en");
   expect(vues).toHaveLength(1); // changer de langue ne relit rien
 
   const paysage = await avecDemo(await newClockedContext(browser, { ...PAYSAGE, locale: "fr-FR" }));
-  // Paysage : « Mes jeux » (Track) puis la ligne compacte de Jump dessous, rien ne dépasse de l'écran.
-  expect(await paysage.locator("#autres-jeux [data-jeu]").count()).toBe(1);
+  // Paysage : Track (épinglé) puis Jump, rien ne dépasse de l'écran.
+  expect(await paysage.locator("#jeux [data-jeu]").count()).toBe(2);
   expect(await paysage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await capture(paysage, "portail-plein-paysage-fr");
-  await paysage.locator('.dj-choix-langue [data-langue="en"]').click();
+  await choisirLangue(paysage, "en");
   await expect(paysage.locator("#avancement")).toHaveText("1 of 1 done");
   await capture(paysage, "portail-plein-paysage-en");
 });
@@ -195,22 +205,23 @@ test("accueil instantané : à la deuxième visite, la page est complète (Track
   await context.close();
 });
 
-test("Mes jeux : épingler Jump le fait monter sous « Mes jeux », l'ordre est gardé au rechargement, et le choix compte dès demain", async ({ browser }) => {
+test("Mes jeux : épingler Jump l'épingle (étoile pleine), l'ordre est gardé au rechargement, et le choix compte dès demain", async ({ browser }) => {
   // Le choix s'écrit pour de bon dans la base du serveur de midi (il compte dès demain : les autres tests de ce fichier, qui lisent la journée d'aujourd'hui, n'en voient rien).
   const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
   const page = await context.newPage();
   await page.goto(`http://localhost:${SITES.midi}/?demo=joueur`);
   await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
-  // Avant : Track seul sous « Mes jeux », Jump dessous (compact).
-  await expect(page.locator("#jeux [data-jeu]")).toHaveText([/TRACK/i]);
-  await expect(page.locator("#autres-jeux [data-jeu]")).toHaveCount(1);
+  // Avant : Track épinglé en tête, Jump à côté, pas épinglé.
+  await expect(page.locator("#jeux [data-jeu]")).toHaveCount(2);
+  await expect(page.locator('[data-jeu="track"]')).toHaveAttribute("data-epingle", "oui");
+  await expect(page.locator('[data-jeu="jump"]')).toHaveAttribute("data-epingle", "non");
   const ecrit = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/portail/favoris" && r.request().method() === "PUT");
   await page.getByRole("button", { name: "Ajouter Jump à mes jeux" }).click();
-  // Après : Jump monte, en cartouche pleine avec son statut, dans l'ordre de la plateforme (Track, Jump) ; plus de « Les autres jeux » ; le focus a suivi l'étoile.
+  // Après : Jump est épinglé aussi, dans l'ordre de la plateforme (Track, Jump) ; le focus a suivi l'étoile.
+  await expect(page.locator('[data-jeu="jump"]')).toHaveAttribute("data-epingle", "oui");
   await expect(page.locator("#jeux [data-jeu]")).toHaveCount(2);
   await expect(page.locator("#jeux [data-jeu]").nth(1)).toHaveAttribute("data-jeu", "jump");
   await expect(page.locator('[data-jeu="jump"] .portail-statut')).toHaveText("En cours · 12 morts");
-  await expect(page.locator("#autres-jeux")).toHaveCount(0);
   await expect(page.locator('[data-jeu="jump"]').getByRole("button", { name: "Retirer Jump de mes jeux" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator('[data-cle="favori-jump"]')).toBeFocused();
   // Le choix compte à partir de demain : « 1 fini sur 1 » aujourd'hui, et la ligne le dit.
@@ -282,7 +293,7 @@ test("serveur injoignable : cartouches sans statut, compte à rebours sur l'heur
       await expect(page.locator("#message")).toHaveText(langue === "fr" ? "Serveur injoignable : tes statuts reviendront dès qu'il répondra." : "Can't reach the server: your progress will show up once it's back.");
       await expect(page.locator(".portail-statut")).toHaveCount(2);
       for (const s of await page.locator(".portail-statut").all()) await expect(s).toHaveAttribute("data-statut", "inconnu");
-      await expect(page.locator("#compte .dj-afficheur__valeur")).toHaveText(/^(09|10):\d\d:\d\d$/);
+      await expect(page.locator("#compte .salle-compte__valeur")).toHaveText(/^(09|10):\d\d:\d\d$/);
       await expect(page.locator('[data-jeu="track"] a.dj-bouton')).toHaveAttribute("href", "track/");
       await capture(page, `portail-injoignable-${nom}-${langue}`);
     }
@@ -292,7 +303,7 @@ test("serveur injoignable : cartouches sans statut, compte à rebours sur l'heur
 test("profil commun (/profil/) : l'avatar y mène ; pseudo, code de transfert, série, statistiques par jeu, langue", { tag: "@regression" }, async ({ browser }) => {
   for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
     const page = await avecDemo(await newClockedContext(browser, { ...options, locale: "fr-FR" }));
-    await page.locator(".dj-avatar").click();
+    await page.locator(".salle-barre .dj-avatar").click();
     await expect(page).toHaveURL(`http://localhost:${SITES.midi}/profil/`);
     await expect(page.locator("#pseudo-actuel")).toHaveText("Démo");
     await expect(page.locator("#code")).toHaveText(/^CDJ2\.de30de30de30de30de30de30de30de30\.[0-9a-f]{8}$/);
@@ -302,13 +313,13 @@ test("profil commun (/profil/) : l'avatar y mène ; pseudo, code de transfert, s
     await expect(page.locator(".profil-tuiles .dj-tuile").first()).toContainText("5 jours");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await capture(page, `profil-${nom}-fr`);
-    await page.locator('.dj-choix-langue [data-langue="en"]').click();
+    await choisirLangue(page, "en");
     await expect(page.locator("h1")).toHaveText("Your profile");
     await expect(page.locator('[data-jeu="track"] .track-etiquette__numero')).toHaveText("5 days done");
     await capture(page, `profil-${nom}-en`);
     // Retour au portail par « ‹ DU JOUR » : la langue suit (même stockage).
     await page.locator(".dj-barre-jeu__retour").click();
-    await expect(page.locator("#portail-jeux-titre")).toHaveText("My games");
+    await expect(page.locator("#portail-jeux-titre")).toHaveText("Today's games");
   }
 });
 
@@ -321,7 +332,7 @@ test("profil commun : ?retour= ramène au jeu d'où l'on vient (un chemin du sit
   await expect(retour).toHaveAttribute("href", "/track/");
   await expect(retour).toContainText("TRACK");
   await expect(retour).toHaveAttribute("aria-label", "Retour à Track");
-  await page.locator('.dj-choix-langue [data-langue="en"]').click();
+  await choisirLangue(page, "en");
   await expect(retour).toHaveAttribute("aria-label", "Back to Track");
   // Tout le reste est ignoré : le retour par défaut, vers le portail.
   for (const hostile of ["https://evil.example/track/", "//evil.example/", "javascript:alert(1)", "/track/../../x", "/%2e%2e/"]) {
@@ -370,7 +381,7 @@ test("minuit : le compte à rebours passe zéro, le nouveau jour se charge sans 
   await page.goto(`http://localhost:${SITES.minuit}/`);
   await page.evaluate(() => ((window as unknown as { __sansRechargement: boolean }).__sansRechargement = true));
   await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
-  await expect(page.locator("#compte .dj-afficheur__valeur")).toHaveText(/^00:00:[0-3]\d$/);
+  await expect(page.locator("#compte .salle-compte__valeur")).toHaveText(/^00:00:[0-3]\d$/);
   await expect(page.locator("#date")).toHaveText("Mardi 20 octobre");
   await expect(page.locator("#serie .dj-tuile__valeur")).toHaveText("5 jours");
   // Après minuit : le 21, numéros suivants, rien de joué, la série court jusqu'à hier et demande à être prolongée.
@@ -378,10 +389,10 @@ test("minuit : le compte à rebours passe zéro, le nouveau jour se charge sans 
   await expect(page.locator('[data-jeu="track"] .track-etiquette__numero')).toHaveText(/^n°\s9 · \S/);
   await expect(page.locator('[data-jeu="jump"] .jump-etiquette__numero')).toHaveText(/^n°\s6 · \S/);
   await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveText("Pas encore joué");
-  await expect(page.locator("#avancement")).toHaveText("0 fini sur 1"); // lot F1 : Track est le seul jeu de ma journée ; Jump est sous « Les autres jeux »
+  await expect(page.locator("#avancement")).toHaveText("0 fini sur 1"); // lot F1 : Track est le seul jeu de ma journée (Jump n'est pas épinglé)
   await expect(page.locator("#serie .dj-tuile__valeur")).toHaveText("5 jours");
   await expect(page.locator("#serie")).toContainText("Joue aujourd'hui pour la garder");
-  await expect(page.locator("#compte .dj-afficheur__valeur")).toHaveText(/^23:59:\d\d$/);
+  await expect(page.locator("#compte .salle-compte__valeur")).toHaveText(/^23:59:\d\d$/);
   expect(await page.evaluate(() => (window as unknown as { __sansRechargement?: boolean }).__sansRechargement)).toBe(true);
   expect(vues.length).toBeGreaterThanOrEqual(2);
   expect(vues.every((v) => v.url === "/api/portail/jour")).toBe(true);
@@ -396,5 +407,5 @@ test("25 octobre (journée de 25 h) : à 0 h 30, le compte à rebours dit 24 h 3
   await page.goto(`http://localhost:${SITES.octobre}/`);
   await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveText("Pas encore joué");
   await expect(page.locator("#date")).toHaveText("Dimanche 25 octobre");
-  await expect(page.locator("#compte .dj-afficheur__valeur")).toHaveText(/^24:29:\d\d$/);
+  await expect(page.locator("#compte .salle-compte__valeur")).toHaveText(/^24:29:\d\d$/);
 });

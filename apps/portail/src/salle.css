@@ -1,0 +1,856 @@
+/* Lot U1 (charte rév. 19, § 1 et § 9) : l'accueil devient une salle de jeux — la barre et sa navigation, la barre d'onglets du téléphone, le fronton et ses lampes, deux colonnes sur grand écran, la salle d'arcade.
+   Mobile d'abord (390 px, marges de 16 px) ; à partir de 760 px, deux colonnes (contenu de 1 208 px au plus, la colonne de droite fait 360 px). Valeurs : jetons de @cdj/ui seulement. */
+
+/* La page n'a plus la colonne de 720 px : chaque bloc se centre et prend ses marges (les marges de sécurité de l'iPhone en font partie). */
+.portail.salle {
+  --salle-x: var(--dj-marge);
+  max-width: none;
+  gap: 0;
+  padding: 0;
+}
+@media (min-width: 760px) {
+  .portail.salle {
+    --salle-x: 36px;
+  }
+}
+.salle-barre,
+.salle-avis,
+.salle-fronton,
+.salle-page,
+.salle-pied {
+  padding-inline: max(var(--salle-x), env(safe-area-inset-left, 0px)) max(var(--salle-x), env(safe-area-inset-right, 0px));
+}
+
+/* --- La barre ------------------------------------------------------------------------------------------------------------------ */
+.salle-barre {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding-top: max(var(--dj-espace-5), env(safe-area-inset-top, 0px));
+  padding-bottom: var(--dj-espace-5);
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.salle-barre .dj-logo--grand {
+  flex: none;
+}
+.salle-nav {
+  display: none;
+  flex: 1;
+  gap: var(--dj-espace-1);
+}
+.salle-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-6);
+  border: var(--dj-trait) solid transparent;
+  border-radius: var(--dj-rayon-bouton);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-15);
+  letter-spacing: 0.3px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.salle-nav a.ici {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.salle-nav a:not(.ici):hover {
+  border-color: var(--dj-encre);
+}
+.salle-barre__outils {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-4);
+  margin-left: auto;
+}
+/* La langue ne se choisit pas dans la barre d'un téléphone : elle est dans le profil. */
+.salle-barre .dj-choix-langue {
+  display: none;
+}
+@media (min-width: 760px) {
+  .salle-nav {
+    display: flex;
+  }
+  .salle-barre .dj-choix-langue {
+    display: flex;
+  }
+}
+
+/* La cloche et sa petite feuille. */
+.salle-cloche {
+  position: relative;
+  flex: none;
+}
+.salle-cloche__bouton {
+  display: grid;
+  place-items: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  cursor: pointer;
+}
+.salle-cloche__bouton[aria-expanded="true"] {
+  background: var(--dj-moutarde);
+}
+.salle-cloche__point {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border: var(--dj-trait) solid var(--dj-creme);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-terre);
+  pointer-events: none;
+}
+.salle-feuille {
+  position: absolute;
+  top: calc(var(--dj-cible) + var(--dj-espace-3));
+  right: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 2 * var(--dj-marge)));
+  padding: var(--dj-espace-5);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.salle-feuille__tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+}
+.salle-feuille__titre {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-15);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.salle-feuille__fermer {
+  display: grid;
+  place-items: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  margin: calc(-1 * var(--dj-espace-3)) calc(-1 * var(--dj-espace-3)) 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dj-encre);
+  cursor: pointer;
+}
+.salle-feuille__liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  margin: var(--dj-espace-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.salle-feuille__ligne {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: var(--dj-cible);
+  box-sizing: border-box;
+  padding: var(--dj-espace-3) var(--dj-espace-6) var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-creme-2);
+  color: var(--dj-encre);
+  text-decoration: none;
+}
+.salle-feuille__legende {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.salle-feuille__texte {
+  font-size: var(--dj-taille-14);
+  font-weight: 700;
+}
+.salle-feuille__point {
+  position: absolute;
+  top: var(--dj-espace-4);
+  right: var(--dj-espace-4);
+  width: 10px;
+  height: 10px;
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-terre);
+}
+.salle-feuille__vide {
+  margin: var(--dj-espace-3) 0 0;
+  font-size: var(--dj-taille-14);
+  color: var(--dj-encre-douce);
+}
+
+/* --- La barre d'onglets du téléphone --------------------------------------------------------------------------------------------- */
+.salle-onglets {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  padding: var(--dj-espace-2) var(--dj-espace-1) max(var(--dj-espace-4), env(safe-area-inset-bottom, 0px));
+  padding-inline: max(var(--dj-espace-1), env(safe-area-inset-left, 0px)) max(var(--dj-espace-1), env(safe-area-inset-right, 0px));
+  border-top: var(--dj-trait-fort) solid var(--dj-encre);
+  background: var(--dj-creme);
+}
+.salle-onglets a {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: var(--dj-cible);
+  color: var(--dj-encre-douce);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-legende);
+  text-decoration: none;
+}
+.salle-onglets a.ici {
+  color: var(--dj-encre);
+}
+.salle-onglets a.ici .dj-icone {
+  color: var(--dj-terre);
+}
+@media (min-width: 760px) {
+  .salle-onglets {
+    display: none;
+  }
+}
+
+/* --- Le fronton ------------------------------------------------------------------------------------------------------------------ */
+.salle-fronton {
+  position: relative;
+  padding-top: 26px;
+  padding-bottom: 20px;
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+/* La rangée d'ampoules : un motif net (ronds moutarde tous les 22 px), sans lueur ni animation. */
+.salle-fronton::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 0;
+  left: 0;
+  height: 10px;
+  background: radial-gradient(circle, var(--dj-moutarde) 3px, transparent 3.6px) 6px 0 / 22px 10px repeat-x;
+}
+.salle-fronton__dedans {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--dj-espace-6) var(--dj-espace-4);
+  align-items: center;
+  max-width: 1208px;
+  margin: 0 auto;
+}
+.salle-fronton__titre {
+  min-width: 0;
+}
+.salle-fronton__date {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-22);
+  line-height: 1.05;
+}
+.salle-fronton__journee {
+  display: block;
+  margin-top: 6px;
+  color: var(--dj-moutarde);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  font-variant-numeric: tabular-nums;
+}
+.salle-semaine {
+  grid-column: 1 / -1;
+  order: 3;
+  min-width: 0;
+}
+.salle-lampes {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+  min-height: 46px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.salle-lampe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--dj-ecran-texte);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-legende);
+}
+.salle-lampe > i {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  border: var(--dj-trait-fort) solid var(--dj-ecran-reflet);
+  border-radius: var(--dj-rayon-avatar);
+  overflow: hidden;
+}
+.salle-lampe--jouee > i,
+.salle-lampe--moitie > i {
+  border-color: var(--dj-moutarde);
+}
+.salle-lampe--parfaite > i {
+  border-color: var(--dj-moutarde);
+  background: var(--dj-moutarde);
+}
+/* Aujourd'hui en cours : la moitié gauche pleine. */
+.salle-lampe--moitie > i::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 50%;
+  bottom: 0;
+  left: 0;
+  background: var(--dj-moutarde);
+}
+.salle-lampe--ajd {
+  color: var(--dj-moutarde);
+}
+.salle-semaine__legende {
+  min-height: 18px;
+  margin: 6px 0 0;
+  color: var(--dj-ecran-texte);
+  font-size: var(--dj-taille-12);
+}
+.salle-compte {
+  text-align: right;
+}
+.salle-compte__legende {
+  display: block;
+  color: var(--dj-ecran-texte);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-legende-petite);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.salle-compte__valeur {
+  display: block;
+  color: var(--dj-moutarde);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 760px) {
+  .salle-fronton__dedans {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 36px;
+  }
+  .salle-semaine {
+    grid-column: auto;
+    order: 0;
+  }
+  .salle-lampes {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .salle-semaine__legende {
+    text-align: center;
+  }
+  .salle-fronton__date {
+    font-size: 34px;
+  }
+  .salle-fronton__journee {
+    font-size: var(--dj-taille-15);
+  }
+  .salle-compte__valeur {
+    font-size: 42px;
+  }
+}
+
+/* --- Les deux colonnes -------------------------------------------------------------------------------------------------------------- */
+.salle-avis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.salle-avis:empty {
+  display: none;
+}
+.salle-avis > * {
+  margin-top: var(--dj-espace-4);
+}
+.salle-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(1208px + 2 * var(--salle-x));
+  margin: 0 auto;
+  padding-top: 18px;
+  padding-bottom: 36px;
+}
+@media (min-width: 760px) {
+  .salle-page {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 30px;
+    padding-top: 26px;
+  }
+}
+.salle-gauche,
+.salle-droite {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.salle-droite {
+  gap: 20px;
+}
+.salle-titre {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+  min-height: 28px;
+  margin-bottom: 16px;
+  padding-bottom: 5px;
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.salle-titre__texte {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* L'étagère : des cartouches de même taille posées sur une planche d'encre. */
+.salle-etagere.portail-etagere {
+  position: relative;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 22px;
+  align-items: stretch;
+  padding-bottom: 16px;
+}
+.salle-etagere::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  bottom: 0;
+  left: -8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--dj-encre);
+}
+.salle-etagere > .dj-cartouche {
+  height: 100%;
+  box-sizing: border-box;
+}
+.salle-etagere > .dj-cartouche > .dj-etiquette,
+.salle-etagere > .dj-cartouche > .salle-etiquette {
+  flex: 1;
+}
+
+/* --- La salle d'arcade ----------------------------------------------------------------------------------------------------------- */
+.salle-arcade {
+  margin-top: 34px;
+  padding: 22px 22px 18px;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-afficheur);
+  background: repeating-linear-gradient(135deg, var(--dj-encre) 0 16px, var(--dj-salle) 16px 32px);
+  box-shadow: 5px 5px 0 var(--dj-terre);
+}
+.salle-arcade__tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 26px;
+}
+.salle-arcade__titre {
+  margin: 0;
+  color: var(--dj-moutarde);
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--dj-terre);
+}
+.salle-arcade__texte {
+  max-width: 360px;
+  margin: 0;
+  color: var(--dj-ecran-texte);
+  font-size: var(--dj-taille-14);
+  text-align: right;
+}
+.salle-arcade .salle-etagere.portail-etagere {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.salle-arcade .salle-etagere::after {
+  background: var(--dj-moutarde);
+}
+.salle-arcade .dj-cartouche {
+  box-shadow: 5px 5px 0 var(--dj-salle-ombre);
+}
+
+/* La cartouche d'arcade : l'illustration du jeu sur le motif de son étiquette, son nom dans sa police, puis le statut et le bouton. */
+.salle-etiquette {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--jeu-fond, var(--dj-papier));
+  color: var(--dj-encre);
+}
+.salle-etiquette__art {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  height: 104px;
+  padding: var(--dj-espace-3) var(--dj-espace-5) 0;
+  border-bottom: var(--dj-trait) solid var(--dj-encre);
+  background: var(--jeu-motif, var(--jeu-fond, var(--dj-papier)));
+}
+.salle-etiquette__dessin {
+  display: block;
+  width: auto;
+  max-width: 45%;
+  height: 92px;
+  object-fit: contain;
+  object-position: right bottom;
+}
+.salle-etiquette__nom {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  margin: 0;
+  font-family: var(--jeu-police, var(--dj-police-marque));
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1;
+  text-shadow: 3px 3px 0 var(--dj-papier);
+  overflow-wrap: anywhere;
+}
+.salle-etiquette__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px 12px;
+}
+.salle-etiquette__numero {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 600;
+  font-size: var(--dj-taille-12);
+}
+.salle-etiquette__info .dj-bouton {
+  width: 100%;
+  margin-top: auto;
+  min-height: var(--dj-cible-portail);
+}
+
+/* --- Le téléphone : l'arcade passe à l'horizontale, les marges de la page à 16 px, la place des onglets du bas ---------------------------------------------- */
+@media (max-width: 759px) {
+  .salle-arcade {
+    margin-inline: calc(-1 * var(--salle-x));
+    padding: 18px var(--salle-x) 16px;
+    border-inline: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .salle-arcade__tete {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 22px;
+  }
+  .salle-arcade__titre {
+    font-size: 28px;
+  }
+  .salle-arcade__texte {
+    text-align: left;
+  }
+  .salle-arcade .salle-etagere.portail-etagere {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .salle-arcade .dj-cartouche__stries {
+    display: none;
+  }
+  .salle-arcade .dj-cartouche {
+    padding: 7px;
+  }
+  .salle-arcade .salle-etiquette {
+    flex-direction: row;
+  }
+  .salle-arcade .salle-etiquette__art {
+    flex: none;
+    width: 96px;
+    height: auto;
+    padding: var(--dj-espace-3);
+    border-right: var(--dj-trait) solid var(--dj-encre);
+    border-bottom: 0;
+    align-items: center;
+    justify-content: center;
+  }
+  .salle-arcade .salle-etiquette__dessin {
+    max-width: 100%;
+    height: 70px;
+  }
+  .salle-arcade .salle-etiquette__nom {
+    position: static;
+    font-size: 22px;
+    text-shadow: none;
+  }
+  .salle-arcade .salle-etiquette__info {
+    min-width: 0;
+  }
+}
+.salle-pied {
+  margin-top: auto;
+}
+@media (max-width: 759px) {
+  .salle-pied {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* --- La colonne de droite (lot U1, partie 2) ----------------------------------------------------------------------------------------------- */
+.salle-panneau {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+  padding: var(--dj-espace-7);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-afficheur);
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.salle-panneau__titre {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 17px;
+  text-transform: uppercase;
+}
+.salle-panneau .dj-bouton {
+  width: 100%;
+}
+.salle-progres {
+  display: flex;
+  gap: var(--dj-espace-2);
+}
+.salle-progres > i {
+  flex: 1;
+  height: 14px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 2px;
+  background: var(--dj-creme);
+}
+.salle-progres > i.on {
+  background: var(--dj-diamant);
+}
+.salle-lien {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: var(--dj-cible);
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-14);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: var(--dj-trait);
+  text-underline-offset: 3px;
+}
+.salle-vue-texte {
+  margin: 0;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-16);
+}
+
+/* Le sélecteur de vue : Tous · Amis · Mon groupe. */
+.salle-seg {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  overflow: hidden;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+}
+.salle-seg__bouton {
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-2);
+  border: 0;
+  background: transparent;
+  color: var(--dj-encre);
+  font-family: inherit;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  cursor: pointer;
+}
+.salle-seg__bouton + .salle-seg__bouton {
+  border-left: var(--dj-trait) solid var(--dj-encre);
+}
+.salle-seg__bouton[aria-pressed="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+
+/* Les rangs : ta ligne en moutarde, bordure de 3 px et ombre nette (charte § 9). */
+.salle-rangs,
+.salle-amis {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.salle-rang {
+  display: grid;
+  grid-template-columns: 38px 30px minmax(0, 1fr) auto;
+  gap: var(--dj-espace-3);
+  align-items: center;
+  padding: 7px var(--dj-espace-2);
+  border-bottom: 1px solid var(--dj-creme-2);
+  font-size: var(--dj-taille-14);
+}
+.salle-rang .dj-avatar {
+  width: 30px;
+  height: 30px;
+}
+.salle-rang__place {
+  color: var(--dj-encre-douce);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+}
+.salle-rang__nom {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.salle-rang__temps {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  font-variant-numeric: tabular-nums;
+}
+.salle-rang--moi {
+  margin: 2px 0;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  background: var(--dj-moutarde);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.salle-rang--moi .salle-rang__place {
+  color: var(--dj-encre);
+}
+
+/* Tes amis aujourd'hui : la photo de 48 px, ce qu'ils ont fait, un carré par jeu du jour. */
+.salle-ami {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-4);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--dj-creme-2);
+}
+.salle-ami .dj-avatar {
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+.salle-ami__texte,
+.salle-groupe__texte {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.salle-ami__nom,
+.salle-groupe__nom {
+  overflow: hidden;
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.salle-ami small,
+.salle-groupe small {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+}
+.salle-ami__jeux {
+  display: flex;
+  gap: var(--dj-espace-1);
+}
+.salle-ami__jeux > i {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-style: normal;
+  font-weight: 700;
+  font-size: var(--dj-taille-legende-petite);
+}
+.salle-ami__jeux > i.on {
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
+}
+
+/* Ton groupe : l'emblème est un carré (un rond = une personne, un carré = un groupe). */
+.salle-groupe {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-5);
+}
+.salle-embleme {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-afficheur);
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-16);
+}
+.salle-embleme img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

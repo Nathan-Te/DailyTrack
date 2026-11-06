@@ -173,7 +173,7 @@ test("iPhone : la pastille « Partager › Sur l'écran d'accueil » du portail 
   await expect(pastille).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("cdj:astuce:plein-ecran"))).toBe("1");
   await page.reload();
-  await expect(page.locator("#portail .portail-date")).toBeVisible();
+  await expect(page.locator("#portail #date")).toBeVisible();
   await expect(page.locator(".dj-astuce")).toHaveCount(0);
   await context.close();
 });
@@ -266,7 +266,7 @@ for (const format of FORMES) {
     await avecProfil(context);
     const page = await context.newPage();
     await page.goto(`${SITE}/`);
-    await expect(page.locator("#portail .portail-date")).toBeVisible();
+    await expect(page.locator("#portail #date")).toBeVisible();
     await expect(page.locator(".dj-astuce")).toHaveCount(0);
     await expect(page.locator(".dj-modale")).toHaveCount(0); // un profil existe : rien à retrouver
     await expect(page.locator(".dj-plein-ecran")).toHaveCount(0);
@@ -275,7 +275,7 @@ for (const format of FORMES) {
     await capture(page, `application-portail-${format}`);
     // La preuve que le contrôle n'est pas vide : sans la marge du haut (portrait) la barre du portail y serait.
     await page.evaluate(() => scrollTo(0, 0));
-    const barre = (await page.locator("#portail .dj-barre-portail").first().boundingBox())!;
+    const barre = (await page.locator("#portail .salle-barre").first().boundingBox())!;
     expect(barre.y).toBeGreaterThanOrEqual(FORMATS[format].marges.top - 0.5);
     expect(barre.x).toBeGreaterThanOrEqual(FORMATS[format].marges.left - 0.5);
     await context.close();
@@ -375,7 +375,7 @@ for (const format of FORMES) {
     expect(await page.evaluate(() => [localStorage.getItem("cdj:name"), localStorage.getItem("cdj:retrouver:vu"), localStorage.getItem("cdj:identite:code")])).toEqual([PSEUDO, "1", "1"]);
     // La page repart avec le profil retrouvé : plus de carte, et l'avatar du portail porte les initiales du pseudo.
     await expect(page.locator(".dj-modale")).toHaveCount(0);
-    await expect(page.locator("#portail .portail-date")).toBeVisible();
+    await expect(page.locator("#portail #date")).toBeVisible();
     await expect(page.getByRole("link", { name: /profil/i }).first()).toBeVisible();
     await context.close();
   });
@@ -393,14 +393,14 @@ test("application : « Commencer sans profil » ne revient pas ; un code inconnu
   await dialogue.getByRole("button", { name: "Commencer sans profil" }).click();
   await expect(page.locator(".dj-modale")).toHaveCount(0);
   await page.reload();
-  await expect(page.locator("#portail .portail-date")).toBeVisible();
+  await expect(page.locator("#portail #date")).toBeVisible();
   await expect(page.locator(".dj-modale")).toHaveCount(0);
   await context.close();
 
   const safari = await iphone(browser, "portrait");
   const p2 = await safari.newPage();
   await p2.goto(`${SITE}/`);
-  await expect(p2.locator("#portail .portail-date")).toBeVisible();
+  await expect(p2.locator("#portail #date")).toBeVisible();
   await expect(p2.locator(".dj-modale")).toHaveCount(0);
   await safari.close();
 });

@@ -2,7 +2,6 @@ import { HttpError } from "./errors";
 import type { GameInstance, Platform, RequestInfo } from "./games";
 import { nameKey } from "./pseudos";
 import { refOfPlayer, sha256Hex, REF_LENGTH, type PlayerRow } from "./players";
-import { rangEntreAmis, type ClassementDuJour, type LigneDuJour } from "./classementDuJour";
 import { creerClassementAmis, type FormatClassement } from "./classementAmis";
 import type { VuePartagee } from "./portail";
 
@@ -69,9 +68,9 @@ export interface AmisLecture {
   liste(id: string): Promise<AmiLu[]>;
 }
 
-/** Ce que le portail demande aux amis (« 3e entre amis » de la tuile d'accueil). */
+/** Ce que le portail demande aux amis (lot U1 : toute la colonne de droite de l'accueil : « 3e entre amis », le classement entre amis, tes amis aujourd'hui) : ta liste (masqués écartés, tri par pseudo), une requête. */
 export interface AmisPourPortail {
-  rangCumul(id: string, c: ClassementDuJour, bilan: LigneDuJour): Promise<{ rang: number; sur: number } | null>;
+  liste(id: string): Promise<AmiLu[]>;
 }
 
 const base64url = (octets: Uint8Array): string => btoa(String.fromCharCode(...octets)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -418,12 +417,7 @@ export function createAmis(
     throw new HttpError(404, "not_found", "Route inconnue");
   }
 
-  const pourPortail: AmisPourPortail = {
-    async rangCumul(id, c, bilan) {
-      const amis = await db.all<{ ami: string }>("SELECT ami FROM amities WHERE joueur = ?", [id]);
-      return amis.length === 0 ? null : rangEntreAmis(c, bilan, amis.map((a) => a.ami));
-    },
-  };
+  const pourPortail: AmisPourPortail = { liste: (id) => lecture.liste(id) };
 
   return { route, classementJeu, pourPortail, lecture };
 }

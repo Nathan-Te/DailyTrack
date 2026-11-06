@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { formatDay } from "@cdj/core";
 import { PREMIER_JOUR_TOWER } from "@cdj/tower-sim";
 import { AMIS_MAX, JETON_OCTETS, SUGGESTIONS_JOURS, SUGGESTIONS_MAX } from "../src/amis";
-import { classerLaJournee, rangEntreAmis, ligneDe } from "../src/classementDuJour";
+import { classerEntreAmis, classerLaJournee, rangEntreAmis, ligneDe } from "../src/classementDuJour";
 import { crc32Hex } from "../src/identity";
 import { nameKey } from "../src/pseudos";
 import { refOfPlayer } from "../src/players";
@@ -702,6 +702,78 @@ describe(`amis : « 3e entre amis » dans /api/portail/jour (${TEST_DB})`, () =>
     expect(rangEntreAmis(c, ligneDe("c", [res(3, 200, 0)]), ["b"])).toEqual({ rang: 2, sur: 2 });
     expect(rangEntreAmis(c, ligneDe("b", [res(2, 200, 0)]), ["masque", "inconnu"])).toBeNull();
     expect(rangEntreAmis(c, ligneDe("b", [res(2, 200, 0)]), [])).toBeNull();
+  });
+});
+
+describe(`accueil (lot U1) : la colonne de droite de /api/portail/jour (${TEST_DB})`, () => {
+  const corps = async (t: TestApi, n: number) => (await get(t, n, "/api/portail/jour")).body.joueur;
+
+  it("le classement du jour entre amis (les 3 premiers et ta ligne), tes amis aujourd'hui (jeux faits), aucun identifiant secret", { timeout: 60_000 }, async () => {
+    const t = await decor();
+    const alice = await corps(t, 1);
+    // Cumul : Bruno 53 333 (devant), Alice 56 000, Chloé partielle (Track seul) ; Denis n'a rien fini, il n'a pas de rang.
+    expect(alice.classementAmis.sur).toBe(4);
+    expect(alice.classementAmis.top.map((l: { rang: number; pseudo: string; faits: number; moi?: boolean }) => [l.rang, l.pseudo, l.faits, l.moi ?? false])).toEqual([
+      [1, "Bruno", 2, false],
+      [2, "Alice", 2, true],
+      [3, "Chloe", 1, false],
+    ]);
+    expect(alice.classementAmis.top[0]).toMatchObject({ tempsMs: 53_333, ref: refDe(2) });
+    expect(alice.classementAmis.top[2].tempsMs).toBeNull(); // Chloé n'a pas tout fini : pas de temps cumulé
+    expect(alice.classementAmis.moi).toMatchObject({ rang: 2, pseudo: "Alice", tempsMs: 56_000, moi: true, ref: refDe(1) });
+    // Tes amis aujourd'hui : ceux qui ont joué d'abord, Denis (rien joué) en dernier ; la journée parfaite de Bruno (Track et Jump).
+    const parPseudo = Object.fromEntries(alice.amisDuJour.map((a: { pseudo: string }) => [a.pseudo, a]));
+    expect(alice.amisDuJour.map((a: { pseudo: string }) => a.pseudo).pop()).toBe("Denis");
+    expect(parPseudo.Bruno).toMatchObject({ faits: ["track", "jump"], parfaite: true, ref: refDe(2) });
+    expect(parPseudo.Chloe).toMatchObject({ faits: ["track"], parfaite: false });
+    expect(parPseudo.Denis).toMatchObject({ faits: [], parfaite: false });
+    expect(parPseudo.Denis.dernier).toBeUndefined();
+    expect(alice.nbAmis).toBe(3);
+    expect(alice.groupe).toBeNull();
+    // Tower est d'arcade : il ne compte pas dans les jeux faits.
+    expect(JSON.stringify(alice.amisDuJour)).not.toContain("tower");
+    sansSecret(alice, 1, 2, 3, 4, 5);
+  });
+
+  it("sans ami : pas de classement entre amis, aucun ami aujourd'hui ; 6 amis au plus", { timeout: 60_000 }, async () => {
+    const t = await decor();
+    const eva = await corps(t, 5);
+    expect(eva).toMatchObject({ classementAmis: null, amisDuJour: [], nbAmis: 0, groupe: null });
+    for (let n = 10; n < 18; n++) {
+      await joueur(t, n, `Ami${n}`);
+      await amitie(t, 5, n);
+    }
+    const apres = await corps(t, 5);
+    expect(apres.nbAmis).toBe(8);
+    expect(apres.amisDuJour).toHaveLength(6);
+    // Eva a tout fini (Track et Jump), ses 8 amis n'ont rien joué : elle est 1re, seule dans le haut du classement, et eux n'ont ni rang ni temps.
+    expect(apres.classementAmis.sur).toBe(9);
+    expect(apres.classementAmis.top).toHaveLength(1);
+    expect(apres.classementAmis.moi).toMatchObject({ rang: 1, faits: 2, moi: true });
+    expect(apres.amisDuJour.every((a: { faits: string[] }) => a.faits.length === 0)).toBe(true);
+  });
+
+  it("ton groupe : nom, nombre de membres, rang du jour (null sous 3 classés) ; sans groupe, null", { timeout: 60_000 }, async () => {
+    const t = await decor();
+    expect((await post(t, 1, "/api/groupes", { nom: "Les Tests" })).status).toBe(200);
+    const g = (await corps(t, 1)).groupe;
+    expect(g).toEqual({ nom: "Les Tests", membres: 1, rang: null, sur: 0 });
+    expect((await corps(t, 2)).groupe).toBeNull();
+    // Un deuxième membre : le groupe compte 2 membres (le classement exige 3 classés au moins).
+    const moi = (await get(t, 1, "/api/groupes/moi")).body.groupe;
+    expect((await post(t, 2, "/api/groupes/rejoindre", { jeton: moi.invitation })).status).toBe(200);
+    expect((await corps(t, 2)).groupe).toMatchObject({ nom: "Les Tests", membres: 2 });
+  });
+
+  it("la fonction pure : toi arrivé le dernier à ton temps, les amis sans cumul en bas sans rang, un visiteur sans bilan en tête des sans-rang", () => {
+    const res = (rang: number, tempsMs: number, at: number) => ({ rang, tempsMs, medaille: null, at });
+    const lignes = [ligneDe("a", [res(1, 100, 10)]), ligneDe("b", [res(2, 200, 20)]), ligneDe("c", [res(3, 200, 30)])];
+    const c = classerLaJournee([{ jeu: "cdj", classes: lignes.map((l) => ({ playerId: l.id, tempsMs: l.resultats[0]!.tempsMs, medaille: null, at: l.resultats[0]!.at })) }]);
+    const ordre = classerEntreAmis(c, "moi", ligneDe("moi", [res(2, 200, 0)]), ["a", "b", "inconnu", "c", "moi"]);
+    // « moi » vaut 200 comme b et c, mais il est arrivé le dernier à ce temps.
+    expect(ordre.map((x) => [x.id, x.rang])).toEqual([["a", 1], ["b", 2], ["c", 3], ["moi", 4], ["inconnu", null]]);
+    // Rien fini : sa ligne est là, sans rang, avant les amis qui n'ont rien fini non plus.
+    expect(classerEntreAmis(c, "moi", null, ["a", "inconnu"]).map((x) => [x.id, x.rang])).toEqual([["a", 1], ["moi", null], ["inconnu", null]]);
   });
 });
 

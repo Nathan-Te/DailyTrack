@@ -192,12 +192,16 @@ export function demarrerManette(options: OptionsManette, brancher?: Branchement)
   const listeOnglets = (p: HTMLElement): HTMLElement[] => {
     const barres = [...p.querySelectorAll<HTMLElement>('[role="tablist"]')].filter(visible);
     const barre = barres.find((b) => document.activeElement && b.contains(document.activeElement)) ?? barres[0];
-    return barre ? [...barre.querySelectorAll<HTMLElement>('[role="tab"]')].filter(visible) : [];
+    if (barre) return [...barre.querySelectorAll<HTMLElement>('[role="tab"]')].filter(visible);
+    // Lot U1 : sans onglets dans la page, LB / RB passent d'une page du portail à l'autre (la navigation du haut ou la barre du bas, selon celle qui se voit).
+    const nav = [...p.querySelectorAll<HTMLElement>("[data-nav-onglets]")].find(visible);
+    return nav ? [...nav.querySelectorAll<HTMLElement>("a[href]")].filter(visible) : [];
   };
+  const estChoisi = (e: HTMLElement) => e.getAttribute("aria-selected") === "true" || e.getAttribute("aria-current") === "page";
   const onglet = (p: HTMLElement, delta: number) => {
     const tous = listeOnglets(p);
     if (tous.length < 2) return;
-    const i = tous.findIndex((t) => t.getAttribute("aria-selected") === "true");
+    const i = tous.findIndex(estChoisi);
     const suivant = tous[(i < 0 ? 0 : i) + delta];
     if (!suivant) return;
     const avait = tous.some((t) => t === document.activeElement);

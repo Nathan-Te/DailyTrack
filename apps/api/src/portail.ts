@@ -4,8 +4,9 @@ import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "@cdj/core/lancement";
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { estNouveau, favorisLe, jeuxDeLaBase, jourDEffet, listeApresChoix, listeDeFavoris, mesJeuxDuJour, type PeriodeFavoris } from "@cdj/core/favoris";
 import { WithHeaders } from "./cache";
-import { classerLaJournee, ligneDe, placer, rangEntreAmis, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
-import type { AmisPourPortail } from "./amis";
+import { classerEntreAmis, classerLaJournee, ligneDe, placer, rangEntreAmis, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
+import type { AmiLu as AmiPortail, AmisPourPortail } from "./amis";
+import type { GroupePourPortail } from "./groupes";
 import type { RetoursPourPortail } from "./retours";
 import { HttpError } from "./errors";
 import type { Diffusion } from "./diffusion";
@@ -71,6 +72,9 @@ export const CLASSEMENT_JOUR_FERME_MS = 10 * 60_000;
 export const CLASSEMENT_JOURS_GARDES = 16;
 /** Lot I3 : les premiers de la page de classement. */
 export const CLASSEMENT_TOP = 50;
+/** Lot U1 : le classement du jour entre amis de l'accueil rend les 3 premiers (et ta ligne) ; « tes amis aujourd'hui » en montre 6 au plus. */
+export const CLASSEMENT_AMIS_TOP = 3;
+export const AMIS_DU_JOUR_MAX = 6;
 /** Lot I3 : cache public de la page de classement du jour en cours (au plus, et jamais au-delà de minuit) ; un jour fermé : 24 h comme les autres lectures. */
 export const CLASSEMENT_PUBLIC_MAX_S = 30;
 export const CLASSEMENT_FERME_MAX_S = 86_400;
@@ -133,7 +137,10 @@ export interface Serie {
  * La série tous jeux confondus et les journées parfaites, à partir des jours finis de chaque jeu (numéros de jours de Paris). Pure (testée sur
  * les changements d'heure : un numéro de jour est un jour, quelle que soit sa durée).
  */
-export function serieEtParfaites(today: number, jeux: readonly { premierJour: number; finis: ReadonlySet<number>; compte?: (jour: number) => boolean }[]): Serie {
+type JeuxFinis = readonly { premierJour: number; finis: ReadonlySet<number>; compte?: (jour: number) => boolean }[];
+
+/** Un jour est-il « fini » (au moins un jeu qui compte ce jour-là) ou « parfait » (tous les jeux qui comptent ce jour-là) ? Lot P : un jeu ne compte dans une journée que les jours où l'interrupteur le compte. */
+function jugerLesJours(jeux: JeuxFinis) {
   // Lot P : un jeu ne compte dans une journée que les jours où l'interrupteur le compte (`compte` : à partir du premier jour entier où il est `on`, plus après sa désactivation) ;
   // un résultat d'un jour où il ne compte pas n'est ni un jour fini ni une journée parfaite. Sans `compte`, il compte dès son premier jour.
   const compte = (j: (typeof jeux)[number], d: number) => j.premierJour <= d && (j.compte ? j.compte(d) : true);
@@ -142,6 +149,33 @@ export function serieEtParfaites(today: number, jeux: readonly { premierJour: nu
     const existants = jeux.filter((j) => compte(j, d));
     return existants.length > 0 && existants.every((j) => j.finis.has(d));
   };
+  return { compte, fini, parfaite };
+}
+
+/** Lot U1 : un jour de la semaine en lampes de l'accueil. */
+export interface JourDeSemaine {
+  /** AAAA-MM-JJ. */
+  date: string;
+  /** `parfaite` : tous les jeux de la journée finis ; `jouee` : au moins un ; `rien` : aucun (et tout jour à venir). */
+  etat: "parfaite" | "jouee" | "rien";
+}
+
+/**
+ * Lot U1 — la semaine en lampes : les 7 jours de la semaine de Paris qui contient `today`, du lundi au dimanche, chacun « parfaite », « jouée » ou « rien » (un jour à venir est « rien »). Pure ; les mêmes jours finis
+ * et la même règle de journée parfaite que la série (un numéro de jour est un jour, quelle qu'en soit la durée : testé sur les changements d'heure).
+ */
+export function semaineDe(today: number, jeux: JeuxFinis): JourDeSemaine[] {
+  const { fini, parfaite } = jugerLesJours(jeux);
+  const jourDeSemaine = (((today + 4) % 7) + 7) % 7; // 1970-01-01 était un jeudi ; 0 = dimanche
+  const lundi = today - ((jourDeSemaine + 6) % 7);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = lundi + i;
+    return { date: formatDay(d), etat: d > today || !fini(d) ? ("rien" as const) : parfaite(d) ? ("parfaite" as const) : ("jouee" as const) };
+  });
+}
+
+export function serieEtParfaites(today: number, jeux: JeuxFinis): Serie {
+  const { compte, fini, parfaite } = jugerLesJours(jeux);
   const finiAujourdhui = fini(today);
   let serie = 0;
   for (let d = finiAujourdhui ? today : today - 1; fini(d); d--) serie++;
@@ -152,7 +186,7 @@ export function serieEtParfaites(today: number, jeux: readonly { premierJour: nu
   return { serie, aProlonger: !finiAujourdhui && serie > 0, journeesParfaites, aujourdhuiParfaite: parfaite(today) };
 }
 
-export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux, amis?: AmisPourPortail, retours?: RetoursPourPortail) {
+export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR, diffusion?: Diffusion, etats?: Jeux, amis?: AmisPourPortail, retours?: RetoursPourPortail, groupes?: GroupePourPortail) {
   const { now, log, today, players, hashKey, readHit, playerIdOf } = platform;
 
   // --- Lot P : l'interrupteur des jeux ---------------------------------------------------------------------------------------------
@@ -239,12 +273,15 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     return comptent.filter((j) => choisis.has(j.portail.site));
   };
 
-  async function serieDe(id: string, day: number, periodes?: readonly PeriodeFavoris[]): Promise<Serie> {
+  /** Les jours finis de chaque jeu pour ce joueur (un parcours d'index par jeu) et la règle qui dit si le jeu compte ce jour-là pour lui. */
+  async function finisDe(id: string, periodes?: readonly PeriodeFavoris[]) {
     const mes = periodes ?? (await favorisDe(id));
     // Chaque jour est jugé avec la liste qui était la sienne : un jeu compte ce jour-là s'il compte pour la plateforme ET s'il est dans les jeux du joueur.
     const dansMesJeux = (j: JeuPortail, d: number) => mes.length === 0 || jeuxDe(mes, d).includes(j);
-    const finis = await Promise.all(jeux.map(async (j) => ({ premierJour: j.portail.premierJour, finis: new Set(await j.portail.joursFinis(id)), compte: (d: number) => compteJournee(j, d) && dansMesJeux(j, d) })));
-    return serieEtParfaites(day, finis);
+    return Promise.all(jeux.map(async (j) => ({ premierJour: j.portail.premierJour, finis: new Set(await j.portail.joursFinis(id)), compte: (d: number) => compteJournee(j, d) && dansMesJeux(j, d) })));
+  }
+  async function serieDe(id: string, day: number, periodes?: readonly PeriodeFavoris[]): Promise<Serie> {
+    return serieEtParfaites(day, await finisDe(id, periodes));
   }
 
   /** Ce que le portail sait des jeux épinglés d'un joueur : sa liste (`null` : jamais choisie) et les jeux qui comptent pour lui aujourd'hui (les jeux visibles, dans l'ordre de la plateforme). */
@@ -351,6 +388,39 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   const resultatsCorps = (jeuxDuJour: readonly string[], resultats: readonly (ResultatJeu | null)[]) =>
     Object.fromEntries(jeuxDuJour.map((code, g) => [code, resultats[g] ? { rang: resultats[g]!.rang, tempsMs: resultats[g]!.tempsMs, medaille: resultats[g]!.medaille } : null]));
 
+  /**
+   * Lot U1 — la colonne de droite de l'accueil, **dans la même réponse** (une seule requête au chargement) : le classement du jour entre amis (les 3 premiers et ta ligne), « tes amis aujourd'hui » (6 au plus) et
+   * le résumé de ton groupe. Tout vient du classement gardé et de la liste des amis : aucune requête par ami ; le groupe ne coûte que trois lectures indexées (et son rang du jour est celui que la page des groupes garde).
+   */
+  async function colonneDeDroite(id: string, row: { name: string; avatar: string | null }, day: number, c: ClassementDuJour, bilan: LigneDuJour | null, listeAmis: readonly AmiPortail[], presents: readonly string[]) {
+    const duJour = comptesJournee(day).filter((j) => presents.includes(j.code));
+    const sites = duJour.map((j) => c.jeux.indexOf(j.code));
+    /** Les jeux de la journée que cette ligne a finis, et l'instant du dernier. */
+    const faitsDe = (l: LigneDuJour | null | undefined) => {
+      const faits = duJour.flatMap((j, i) => (l && sites[i]! >= 0 && l.resultats[sites[i]!] ? [{ site: j.portail.site, at: l.resultats[sites[i]!]!.at }] : []));
+      return { faits, dernier: faits.reduce<{ site: string; at: number } | null>((m, f) => (!m || f.at > m.at ? f : m), null) };
+    };
+    let classementAmis: unknown = null;
+    if (listeAmis.length > 0) {
+      const qui = new Map(listeAmis.map((a) => [a.id, a] as const));
+      const ordre = classerEntreAmis(c, id, bilan, listeAmis.map((a) => a.id));
+      const maRef = await refOfPlayer(id);
+      const corps = (x: { id: string; rang: number | null; ligne: LigneDuJour | null }) => {
+        const a = x.id === id ? { name: row.name, ref: maRef, avatar: row.avatar } : qui.get(x.id)!;
+        return { rang: x.rang, pseudo: a.name, ref: a.ref, ...(a.avatar ? { avatar: a.avatar } : {}), tempsMs: x.ligne?.complet ? x.ligne.cumulMs : null, faits: faitsDe(x.ligne).faits.length, ...(x.id === id ? { moi: true as const } : {}) };
+      };
+      classementAmis = { sur: ordre.length, top: ordre.filter((x) => x.rang !== null).slice(0, CLASSEMENT_AMIS_TOP).map(corps), moi: corps(ordre.find((x) => x.id === id)!) };
+    }
+    // Tes amis aujourd'hui : ceux qui ont joué d'abord (le plus récent en tête), puis les autres dans l'ordre du pseudo.
+    const amisDuJour = listeAmis
+      .map((a, i) => ({ a, i, ...faitsDe(c.lignes.get(a.id)) }))
+      .sort((x, y) => (y.dernier?.at ?? -1) - (x.dernier?.at ?? -1) || x.i - y.i)
+      .slice(0, AMIS_DU_JOUR_MAX)
+      .map(({ a, faits, dernier }) => ({ pseudo: a.name, ref: a.ref, ...(a.avatar ? { avatar: a.avatar } : {}), faits: faits.map((f) => f.site), parfaite: duJour.length > 0 && faits.length === duJour.length, ...(dernier ? { dernier } : {}) }));
+    const groupe = groupes ? await groupes.resume(id, day) : null;
+    return { classementAmis, amisDuJour, nbAmis: listeAmis.length, groupe };
+  }
+
   async function jour(req: Request, info: RequestInfo): Promise<WithHeaders> {
     const id = joueurDe(req);
     await limiter(info, id);
@@ -371,7 +441,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     // son cumul est exact (ses états à l'instant). Aucun jeu fini aujourd'hui : pas de rang.
     const c = await classementDe(day);
     const periodes = await favorisDe(id);
-    const [etatsJoueur, serie] = await Promise.all([etatsDe(id, day, ouverts, c), serieDe(id, day, periodes)]);
+    const [etatsJoueur, finis] = await Promise.all([etatsDe(id, day, ouverts, c), finisDe(id, periodes)]);
+    const serie = serieEtParfaites(day, finis);
     const etatDe = new Map<string, EtatPortail>(ouverts.map((j, i) => [j.code, etatsJoueur[i]!] as const));
     // Un jeu présent à l'accueil mais qui ne compte pas encore (activé aujourd'hui) a quand même son état : le joueur peut y jouer.
     await Promise.all(
@@ -382,18 +453,21 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     let classesDuJour: number | null = null;
     let entreAmis: { rang: number; sur: number } | null = null;
     const bilan = bilanDe(id, etatsJoueur, ouverts);
+    // Lot U1 : tes amis (une lecture indexée) — « 3e entre amis », le classement du jour entre amis, « tes amis aujourd'hui » : tout se lit dans le classement gardé, aucune requête par ami.
+    const listeAmis = amis ? await amis.liste(id) : [];
     // Lot C1 : les réponses de l'éditeur qui attendent (« Mes messages »), une lecture indexée — la pastille de l'avatar, sans requête de plus.
     const messagesNonLus = retours ? await retours.nonLus(id) : 0;
     if (bilan) {
       cumulMs = bilan.cumulMs;
       ({ rang: rangDuJour, classes: classesDuJour } = placer(c, bilan));
       // Lot F2 : « 3e entre amis » — une seule lecture (la liste des amis, indexée) et le classement gardé ; rien tant que le joueur n'a rien fini.
-      if (amis) entreAmis = await amis.rangCumul(id, c, bilan);
+      if (listeAmis.length > 0) entreAmis = rangEntreAmis(c, bilan, listeAmis.map((a) => a.id));
     }
+    const colonne = await colonneDeDroite(id, row, day, c, bilan, listeAmis, publique.jeux.map((p) => p.jeu));
     const body = {
       ...publique,
       jeux: publique.jeux.map((j) => ({ ...j, etat: etatDe.get(j.jeu) ?? { statut: "pas_joue" } })),
-      joueur: { pseudo: row.name, ...(row.avatar ? { avatar: row.avatar } : {}), ...serie, cumulMs, rangDuJour, classesDuJour, rangEntreAmis: entreAmis, messagesNonLus, ...etatFavoris(periodes, day, (j) => toutVoir || surLeSite(j)) },
+      joueur: { pseudo: row.name, ...(row.avatar ? { avatar: row.avatar } : {}), ...serie, cumulMs, rangDuJour, classesDuJour, rangEntreAmis: entreAmis, messagesNonLus, semaine: semaineDe(day, finis), ...colonne, ...etatFavoris(periodes, day, (j) => toutVoir || surLeSite(j)) },
     };
     return new WithHeaders(body, { "Cache-Control": "private, no-cache", Vary: "X-Player-Id" });
   }

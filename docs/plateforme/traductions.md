@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2148 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2194 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -619,8 +619,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.description` | Du Jour : un jeu par jour, le même pour tous. Track et Jump. | Du Jour: one game a day, the same for everyone. Track and Jump. |
 | `portail.jeux.titre` | Les jeux du jour | Today's games |
 | `portail.brouillon` | Brouillon | Draft |
-| `portail.mesJeux.titre` | Mes jeux | My games |
-| `portail.autresJeux.titre` | Les autres jeux | Other games |
 | `portail.arcade.titre` | Arcade | Arcade |
 | `portail.favoris.invite` | Touche l'étoile pour garder tes jeux en haut. | Tap the star to keep your games at the top. |
 | `portail.favoris.demain` | Ton choix compte pour ta journée à partir de demain. | Your choice counts for your day from tomorrow. |
@@ -639,7 +637,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.pied` | Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux. | A new day at midnight, Paris time. Your profile is the same in every game. |
 | `portail.mentions` | Mentions légales et confidentialité | Legal notice and privacy |
 | `portail.retours.lien` | Un bug ? Une idée ? | Found a bug? Got an idea? |
-| `portail.messages.nonLu` | Ton profil : {nom} — une réponse t'attend dans Mes messages | Your profile: {nom} — a reply is waiting in My messages |
 | `portail.discord` | Rejoindre le Discord | Join the Discord |
 | `portail.kofi` | Me soutenir sur Ko-fi | Support me on Ko-fi |
 | `portail.compte.legende` | Prochains niveaux dans | Next levels in |
@@ -703,8 +700,57 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.partage.partage` | Journée partagée. | Day shared. |
 | `portail.partage.copie` | Ligne copiée : colle-la où tu veux. | Line copied: paste it wherever you like. |
 | `portail.partage.pasDeCopie` | Copie impossible ici : sélectionne la ligne à la main. | Can't copy here: select the line by hand. |
-| `portail.nouveautes.legende` | Nouveautés · {date} | What's new · {date} |
-| `portail.nouveautes.nonLue` | Nouveau | New |
+| `portail.nav.aria` | Navigation du portail | Site navigation |
+| `portail.nav.aujourdhui` | Aujourd'hui | Today |
+| `portail.nav.classements` | Classements | Leaderboards |
+| `portail.nav.amis` | Amis et groupes | Friends and groups |
+| `portail.nav.profil` | Profil | Profile |
+| `portail.nav.amis.court` | Amis | Friends |
+| `portail.cloche.nom` | Nouveautés et messages | News and messages |
+| `portail.cloche.nonLu` | Nouveautés et messages : quelque chose n'est pas lu | News and messages: something is unread |
+| `portail.cloche.titre` | Nouveautés et messages | News and messages |
+| `portail.cloche.fermer` | Fermer | Close |
+| `portail.cloche.nouveaute` | Dernière nouveauté · {date} | Latest news · {date} |
+| `portail.cloche.messages` | Mes messages | My messages |
+| `portail.cloche.reponses` | one : {n} réponse à lire · other : {n} réponses à lire | one : {n} reply to read · other : {n} replies to read |
+| `portail.cloche.aucuneReponse` | Aucune réponse à lire | No replies to read |
+| `portail.cloche.vide` | Rien de nouveau pour l'instant. | Nothing new for now. |
+| `portail.semaine.aria` | Ta semaine | Your week |
+| `portail.semaine.serie` | one : Série de {n} jour · other : Série de {n} jours | one : {n}-day streak · other : {n}-day streak |
+| `portail.semaine.legende` | {serie}, {parfaites} | {serie}, {parfaites} |
+| `portail.semaine.nom` | {jour} : {etat} | {jour}: {etat} |
+| `portail.semaine.parfaite` | journée parfaite | perfect day |
+| `portail.semaine.jouee` | journée jouée | day played |
+| `portail.semaine.encours` | aujourd'hui, en cours | today, in progress |
+| `portail.semaine.rien` | rien de joué | nothing played |
+| `portail.semaine.avenir` | à venir | coming up |
+| `portail.arcade.sous` | Un classement par jeu, pour le plaisir. Ces jeux ne comptent pas dans ta journée. | A leaderboard for each game, just for fun. These games don't count towards your day. |
+| `portail.journee.titre` | Ta journée | Your day |
+| `portail.vue.aria` | Classement à montrer | Leaderboard to show |
+| `portail.vue.tous` | Tous | Everyone |
+| `portail.vue.amis` | Amis | Friends |
+| `portail.vue.groupe` | Mon groupe | My group |
+| `portail.vue.faits` | {n} sur {total} | {n} of {total} |
+| `portail.vue.toutVoir` | Tout le classement › | Full leaderboard › |
+| `portail.vue.groupeRang` | one : {rang} sur {n} groupe · other : {rang} sur {n} groupes | one : {rang} of {n} group · other : {rang} of {n} groups |
+| `portail.vue.groupeMoins` | Moins de 3 classés | Fewer than 3 ranked |
+| `portail.vue.groupeVoir` | Le classement des groupes › | The groups leaderboard › |
+| `portail.vue.moi` | Toi | You |
+| `portail.amis.titre` | Tes amis aujourd'hui | Your friends today |
+| `portail.amis.parfaite` | Journée parfaite | Perfect day |
+| `portail.amis.dernier` | {jeu} {quand} | {jeu} {quand} |
+| `portail.amis.alInstant` | à l'instant | just now |
+| `portail.amis.minutes` | il y a {n} min | {n} min ago |
+| `portail.amis.heures` | il y a {n} h | {n} h ago |
+| `portail.amis.fait` | {jeu} : fini | {jeu}: done |
+| `portail.amis.pasFait` | {jeu} : pas fini | {jeu}: not done |
+| `portail.amis.liste` | Mes amis et mes groupes › | My friends and groups › |
+| `portail.amis.ajouter` | Ajouter un ami › | Add a friend › |
+| `portail.groupe.titre` | Ton groupe | Your group |
+| `portail.groupe.membres` | one : {n} membre · other : {n} membres | one : {n} member · other : {n} members |
+| `portail.groupe.ligne` | {membres} · {rang} | {membres} · {rang} |
+| `portail.groupe.voir` | Voir le groupe | View the group |
+| `portail.groupe.aucun` | Créer ou rejoindre un groupe › | Create or join a group › |
 
 ### Profil (`profil.*`, `apps/portail/src/cataloguePages.ts`)
 
