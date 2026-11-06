@@ -27,7 +27,7 @@ L'identifiant (`jour-AAAA-MM-JJ-g26`) est le **même** dans les deux cas : c'est
 **Jours touchés** : le jour même (06/11) et **trois archives** (03, 04, 05/11). Aucune autre archive : les 18 fichiers du 16/10 au 02/11 sont intacts. Au moment du diagnostic **le retour arrière n'avait pas été fait** (aucun run « Retour arrière », la production sert toujours les niveaux de l'incident).
 
 ## 2. Réparation des jours servis
-- `apps/jump/public/levels/2026-11-03.json` … `2026-11-06.json`, **figés avec la révision d'avant** (`prod-2026-11-02-1604`) par l'outil corrigé (`freeze:days`, qui déclare désormais les jours figés) : hashs `be47f97c`, `3c564234`, `37283e5a`, `29108be0` (= ce que le serveur d'avant servait sans fichier, test `apps/api/test/jourServiImmuable.test.ts`).
+- `apps/jump/public/levels/2026-11-03.json` … `2026-11-06.json`, **figés avec la révision d'avant** (`prod-2026-11-02-1604`) par l'outil corrigé (`freeze:days`, qui déclare désormais les jours figés) : hashs `be47f97c`, `3c564234`, `37283e5a`, `29108be0` (= ce que le serveur d'avant servait sans fichier, test `apps/api/test/jumpJourServiImmuable.test.ts`).
 - **Vérifié en lecture seule** contre les résultats enregistrés : le premier fantôme de chaque jour (03 à 06/11, tel que la production le sert) se rejoue **jusqu'à l'arrivée, au temps enregistré, sur chacun de ces quatre fichiers** (`thawLevel` + `replayAttempt`) : 3 399, 3 505, 3 744 et 3 432 pas. Sur les fichiers de l'incident, aucun n'arrive (ou pas au même pas).
 - **À ne pas faire : fusionner la PR #291 « Jours figés — prod-2026-11-06-1556 »** (ouverte par la mise en production, le versement a échoué) : elle contient les **mauvais** fichiers (`a1ecd408`…). La fermer ; elle bloque d'ailleurs le bouton tant qu'elle est ouverte. Les jours de Track et de Tower qu'elle versait (registre, empreintes) seront reversés par la mise en production suivante.
 - **Mise en œuvre** : fusionner cette PR, **faire le retour arrière** (la production sert le niveau d'incident), puis lancer « Mettre en production » : `servi-verifier` compare les fichiers au niveau que la production sert et s'arrête si la production sert encore l'incident.
@@ -40,7 +40,7 @@ L'identifiant (`jour-AAAA-MM-JJ-g26`) est le **même** dans les deux cas : c'est
 - **Calendrier des bascules du générateur** (`packages/jump-sim/src/bascules.json`, `bascules.ts`) : un jour se génère avec le générateur actif **à sa date** ; `dailyLevel` lève `GenerateurDuJourError` pour un jour sans fichier d'un autre générateur que celui du code, et le serveur répond `503 level_unavailable` (journalisé) au lieu de servir un autre niveau. La règle de variété garde son calcul interne (`calculerNiveau`).
 - **Une bascule fixée à aujourd'hui ou avant est refusée** : `verifierBascules` (au clic, avec le jour de bascule) ; bascule à demain au plus tôt, 14 jours au plus.
 - **Outil de figeage corrigé** : `freeze:days` déclare les jours figés ; `apps/jump/test/figeageDeclare.test.ts` le lance pour de vrai (sans la correction : `a1ecd408` au lieu de `be47f97c` — l'incident reproduit).
-- Tests : `packages/jump-sim/test/bascules.test.ts` (« un générateur g27 déployé alors qu'aujourd'hui n'est pas figé ne génère ni aujourd'hui ni aucun jour passé »), `apps/api/test/jourServiImmuable.test.ts` (les fichiers = ce que le serveur d'avant servait ; refus 503 ; un jour figé reste tel quel).
+- Tests : `packages/jump-sim/test/bascules.test.ts` (« un générateur g27 déployé alors qu'aujourd'hui n'est pas figé ne génère ni aujourd'hui ni aucun jour passé »), `apps/api/test/jumpJourServiImmuable.test.ts` (les fichiers = ce que le serveur d'avant servait ; refus 503 ; un jour figé reste tel quel).
 
 ## 4. Chaîne de mise en production (exception de Nathan : `scripts/`, `.github/`)
 Nouveau déroulé pour Jump (détail : `docs/orchestration.md` § 12) :
@@ -49,7 +49,7 @@ Nouveau déroulé pour Jump (détail : `docs/orchestration.md` § 12) :
 3. en production : `servi-verifier` compare ces fichiers (jusqu'à aujourd'hui) au niveau que le serveur sert, en lecture seule ;
 4. **refus de déployer** s'il reste un jour déjà servi (ou demain) sans fichier figé ;
 5. le calendrier des bascules est vérifié (bascule à aujourd'hui ou avant : refus).
-Tests : `apps/portail/test/miseEnProduction.test.ts` (« lot 33 »).
+Tests : `apps/jump/test/jourServiChaine.test.ts`.
 
 **Track — même risque ?** Non, pas par ce mécanisme : Track n'a aucun état déclaré (le registre `jours-track.json` est une donnée du dépôt, la version d'un jour en vient) et il n'a pas d'outil de figeage de fichiers. Mesuré : les empreintes de Track du 02 au 08/11 sont identiques entre `prod-2026-11-02-1604` et `prod-2026-11-06-1556`. Reste une règle, voulue par Nathan (R11), qui n'est pas ce bug : **un circuit de Track sans résultat est régénéré par le code déployé** ; un jour ouvert mais pas joué peut changer. À Nathan de dire s'il veut aussi figer tous les jours jusqu'à demain pour Track (décision de produit, pas du correctif).
 
@@ -65,3 +65,8 @@ Tests : `apps/portail/test/miseEnProduction.test.ts` (« lot 33 »).
 - le niveau du jour : <https://recette.playdujour.com/jump/?debug> — la ligne « origine » doit dire « fichier figé » et le niveau `jour-2026-11-06-g26` (empreinte `29108be0`, thème usine) ;
 - une archive : <https://recette.playdujour.com/jump/?debug&seed=2026-11-04> — « fichier figé », `jour-2026-11-04-g26` (`3c564234`, nuit).
 Avant la répétition la recette sert ces mêmes niveaux **générés** (relevé à 16 h 10 : `29108be0` et `3c564234`, `source: "genere"`) : l'identifiant et l'empreinte ne bougent pas, seule l'origine passe de « généré » à « fichier figé ». Contrôle sans navigateur : `curl https://recette.playdujour.com/api/jump/day/2026-11-06` (`source`, `id`, `hash`).
+
+## 6. État de la CI et décisions pour Nathan
+- CI de la PR : tout est vert (unitaires, e2e-pr, jeu fictif, api-image, budgets) **sauf le job `zones`** (donc `test`, qui le résume) : il refuse trois fichiers hors des zones de Jump — `.github/workflows/production.yml`, `scripts/mise-en-production.mjs` (l'exception que tu as accordée) et `docs/orchestration.md` (la règle que tu m'as demandé d'y écrire). Je n'ai pas élargi la garde (`scripts/zones-jeu.mjs`) : ce serait affaiblir une protection sans que tu l'aies décidé. Pour passer au vert : retirer l'étiquette `jeu:jump` (la PR devient une PR de la plateforme, sans garde de zones), ou ajouter ces trois fichiers aux exceptions de `zones-jeu.mjs`.
+- Les tests de la chaîne sont dans `apps/jump/test/jourServiChaine.test.ts` et `apps/api/test/jumpJourServiImmuable.test.ts` (dans les zones de Jump) ; `docs/plateforme/mise-en-production.md` n'est pas modifié (zone de la plateforme) : y ajouter, au prochain lot de la plateforme, la ligne de `servi-verifier` et la phrase de `figer-jeux` (voir `docs/orchestration.md` § 12).
+- À décider : fermer la PR #291 ; les 4 fichiers du 03 au 06/11 sont-ils servis tels quels (retour arrière puis bouton) ; que faire des résultats du 06/11 posés après 15 h 17 UTC ; figer aussi Track jusqu'à demain (R11) ?

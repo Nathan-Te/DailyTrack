@@ -124,8 +124,7 @@ Seulement ensuite, fusionner. Les commandes que le workflow lance (toutes lisent
 | commande | ce qu'elle fait |
 |---|---|
 | `jeux [--mode registre\|fichier-par-jour]` | les jeux de la chaîne, dans l'ordre des fiches |
-| `figer-jeux --prod … --cible … --proteges … --veille … --bascule … --instant … --reference … --sortie <dossier>` | pour chaque jeu, avec le code en production : registre, jours figés (Jump, lot 33 : **tout jour non figé jusqu'à demain**, comparé à ce que le code en production sert sans fichier, refus s'il en reste un sans fichier ou si la bascule du générateur est fixée à aujourd'hui ou avant) ou jours protégés sans fichier ; superpose à la cible ; écrit l'artefact `jours` |
-| `servi-verifier --sortie <artefact jours> --origine <url>` | (lot 33, production) compare, en lecture seule, les jours figés à nouveau au niveau que le serveur de production sert en ce moment |
+| `figer-jeux --prod … --cible … --proteges … --veille … --reference … --sortie <dossier>` | pour chaque jeu, avec le code en production : registre, jours figés (les jours sans résultat sont retirés) ou jours protégés sans fichier ; superpose à la cible ; écrit l'artefact `jours` |
 | `empreintes <dépôt> --du … --au … --sortie <fichier>` | les empreintes des jours de chaque jeu (une clé par jeu) ; un jeu absent du code n'a rien à conserver |
 | `preparer-jeux --cible … --proteges … --veille … --bascule … --sortie <dossier>` | les jours que préparent certains jeux (`preparer` de la fiche), avec le code déployé ; sortie `preparation` |
 | `poser-jours <dossier de l'artefact>` | pose, dans le dépôt courant, le registre et les jours de chaque jeu (serveur, site, `main`) |
