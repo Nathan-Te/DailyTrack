@@ -368,7 +368,9 @@ for (const format of FORMES) {
     await expect(dialogue.getByLabel("Ou colle ton code ici")).toBeVisible();
     await dialogue.getByLabel("Ou colle ton code ici").fill(encodeTransfer(ID));
     await dialogue.getByRole("button", { name: "Vérifier" }).click();
+    const rechargee = page.waitForEvent("load"); // adopter le profil recharge la page (`location.reload()`) : on lit le stockage une fois rechargée, pas pendant
     await dialogue.getByRole("button", { name: "Reprendre ce profil" }).click();
+    await rechargee;
     await page.waitForFunction((id) => localStorage.getItem("cdj:player") === id, ID);
     expect(await page.evaluate(() => [localStorage.getItem("cdj:name"), localStorage.getItem("cdj:retrouver:vu"), localStorage.getItem("cdj:identite:code")])).toEqual([PSEUDO, "1", "1"]);
     // La page repart avec le profil retrouvé : plus de carte, et l'avatar du portail porte les initiales du pseudo.
@@ -413,7 +415,11 @@ test("application : Track et Jump ouverts directement proposent aussi « Retrouv
     await dialogue.getByLabel("Ou colle ton code ici").fill(encodeTransfer(ID));
     await dialogue.getByRole("button", { name: "Vérifier" }).click();
     await expect(dialogue.locator('[role="status"]')).toContainText(PSEUDO);
+    // Adopter le profil ferme la modale PUIS recharge la page (`onRetrouve: location.reload()`, `retrouverJeu.ts`) : le stockage est écrit avant le rechargement, donc l'attendre ne suffit pas, et le `goto` suivant
+    // était interrompu par ce rechargement (« Navigation … is interrupted by another navigation », WebKit, run « Mettre en production » du 06/11/2026, deux essais sur deux). On attend la page rechargée.
+    const rechargee = page.waitForEvent("load");
     await dialogue.getByRole("button", { name: "Reprendre ce profil" }).click();
+    await rechargee;
     await page.waitForFunction((id) => localStorage.getItem("cdj:player") === id, ID);
     // L'autre jeu, même origine : le profil y est (le stockage de l'application est partagé par ses pages).
     await page.goto(`${SITE}/`);
