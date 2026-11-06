@@ -39,7 +39,7 @@ Chemin le plus court sur la grille (champ de distance), ne combat que ce qui lui
 | camp 1 | 38 appels · 25 k · 5,2 ms · 21 i/s | 51 · 36 k · 3,2 ms · 21 i/s |
 | devant l'arène | 38 · 107 k · 7,6 ms · 25 i/s | 49 · 131 k · 6,8 ms · 26 i/s |
   Le sous-agent du décor a mesuré, sur trois jours et tous les carrefours, **56 à 78 appels** (haute) et 54 à 76 (basse) pour l'image entière, 28 à 55 k triangles dans le niveau et **117 à 137 k triangles dans l'arène** (le golem et l'île du BR0c : 123 à 148 k alors). **Moins de 200 appels partout** (spec e2e). Les i/s sont ceux d'un rastériseur logiciel ralenti, **pas ceux d'un téléphone**. Regroupement : morceaux de 16 × 16 cases (≤ 3 maillages chacun, coupés hors du champ), nuages en blocs de 64 m, carte d'ombre calée sur la caméra, seul le relief projette ; construction du décor 70 à 150 ms par niveau.
-- **Poids** : premier chargement **44,00 Ko gzip pour 44** (marge nulle : j'ai raccourci des chaînes du catalogue pour tenir, 44,11 d'abord) ; **à la demande** : scène `corps-` **179,7 Ko** gzip (174,8 au BR0c), simulation `rediffusion-` **12,3 Ko** (le générateur et le pilote y sont).
+- **Poids** : premier chargement **42,82 Ko gzip pour 44** (il dépassait : 44,11 puis 44,01 ; j'ai raccourci des chaînes du catalogue et **déplacé `rush.css`, qui ne sert qu'en partie, dans la partie à la demande** : `corps-*.css` 1,7 Ko gzip) ; **à la demande** : scène `corps-` **179,7 Ko** gzip (174,8 au BR0c), simulation `rediffusion-` **12,3 Ko** (le générateur et le pilote y sont).
 - **Rejeu** (Cloud Run estimé 2 à 3 fois plus) : partie du jour du pilote 8 ms ; **pire jour** (10 min, chevalier invincible) **83 ms** ; pire partie « tout nettoyer » sur 60 jours **44 ms** ; **taille de la rediffusion d'une partie « tout nettoyer » : 8 927 caractères au plus** ; génération du niveau 1,3 ms.
 
 ## 8. Scénarios à 2 clics (en local : `npm run dev -w @cdj/rush`, puis JOUER ; `&api=…` d'essai comme les autres)
@@ -55,7 +55,6 @@ Chemin le plus court sur la grille (champ de distance), ne combat que ce qui lui
 ## Questions pour Nathan
 - **Médailles** : « foncer » reste le Diamant provisoire. Pour BR4, les trois stratégies (foncer, nettoyer à moitié, tout nettoyer) sont prêtes dans le pilote ; l'écart mesuré (~55 s) est un peu court : veux-tu plus de monstres ou des camps plus loin ?
 - **Alerte** : 7 m et 10 m, laisse 20 m : le pilote subit presque aucun coup en fonçant (0,05). Plus de danger (rayons plus grands, chauves-souris plus nombreuses) ou on laisse l'XP du BR2 en faire le prix ?
-- **Premier chargement** à 44,00 Ko : plafond à relever, ou retirer ailleurs ?
 - **Triangles de l'arène** (107 à 137 k) : toujours à décider avec une mesure sur téléphone (BR-A).
 - **Thèmes** : veux-tu aussi des variantes de lumière (jour / nuit) en plus des trois décors ?
 - **Racine** : `CLAUDE.md` n'a toujours pas de ligne « Rush » dans sa carte du dépôt (hors zone).

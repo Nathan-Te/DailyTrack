@@ -7,7 +7,6 @@ import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/kit/jeu.css";
-import "./rush.css";
 import { brancherJeu } from "@cdj/kit/jeu";
 import { gameStorage } from "@cdj/kit/stockage";
 import { brancherMusique } from "@cdj/musique/branche";

@@ -62,6 +62,7 @@ import { eclair } from "./cel";
 import { monterDecor } from "./decor";
 import { monterNiveauVu } from "./niveauVue";
 import { FICHE } from "./fiche";
+import "./rush.css"; // le HUD, les boutons et la carte ne servent qu'en partie : leur feuille est chargée avec la scène (jamais dans le premier chargement)
 import { Controles } from "./controles";
 import { Annonces, Anneaux, ArcCoup, Cratere, Eclats, Ombres, Reticule, Traits } from "./effets";
 import { carteDesJours } from "./carte";
