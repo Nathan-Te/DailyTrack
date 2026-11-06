@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import {
   BASCULE_MAX_JOURS,
   ajouterJours,
@@ -14,6 +13,7 @@ import {
   joursSansFichier,
   lireNiveauxServis,
   verifierBascules,
+// @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 } from "../../../scripts/mise-en-production.mjs";
 
 // Lot 33 (incident du 06/11/2026) : les pièces de « Mettre en production » qui garantissent qu'un jour déjà servi de Jump ne change jamais (`scripts/mise-en-production.mjs`).
