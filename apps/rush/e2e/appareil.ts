@@ -17,7 +17,7 @@ export interface Porte {
 }
 /** La porte d'essai de la scène (`?debug`) : l'état de la simulation et le pilote automatique. */
 export interface PorteScene {
-  partie(): { tick: number; c: { coeurs: number; dir: number }; golem: { hp: number } | null; monstres: unknown[]; barriere: number; golemEveille: boolean; niveau: { empreinte: number } | null };
+  partie(): { tick: number; c: { coeurs: number; dir: number }; golem: { hp: number; kind: number; etat: number; attaque: number; phase: number; sol: number; x: number; y: number } | null; monstres: unknown[]; zones: { type: number }[]; nuages: unknown[]; barriere: number; golemEveille: boolean; niveau: { empreinte: number } | null };
   /** Lot BR1 (niveau du jour) : pose le chevalier en (x, z) mètres, recadre la caméra ; les points utiles du niveau (mètres) pour les captures et les tests. */
   aller(x: number, z: number): void;
   recadrer(): void;

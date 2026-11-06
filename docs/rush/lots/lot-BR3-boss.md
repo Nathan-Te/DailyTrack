@@ -1,0 +1,60 @@
+# Lot BR3 — Rush : la réserve de boss (un par jour)
+
+Suite de BR2 (fusionné). Jeu `off` : golden **régénéré**, `RUSH_SIM_VERSION` 6 → **7**, `RUSH_GENERATOR_VERSION` 4 → **5** (ni l'une ni l'autre n'a été servie). **Pour les joueurs : rien** (jeu `off`). **DA figée** : formes simples en blocs, lisibilité seulement (la beauté vient en BR-A). Règles qui en sont issues : `docs/rush/consignes.md` (« La réserve de boss (lot BR3) »), `apps/rush/CLAUDE.md` (liste des boss, liste de contrôle « ajouter un boss », tirage, scénarios). Décisions de Nathan reprises du prompt : chrono arrêté pendant le choix (confirmé) ; camps à 17-45 m, golem à 1 400 PV, cartes rares par niveau minimal (confirmés, provisoires jusqu'aux tests en main).
+
+## 1. Le bestiaire final
+Points de vie = % de ceux du golem (1 400). « Combat » = durée du combat du pilote qui FONCE contre le boss seul, médiane de 60 jours forcés (`npm run boss:rush -w @cdj/rush-sim -- --jours=60`), sans carte puis avec la **construction adaptée** (`--auto=6` : ses deux cartes favorites à deux paliers chacune, bottes légères, cadence).
+
+| Boss | Corps | PV | Ce qu'il apprend | Attaques (toutes annoncées) | Phase 2 | Favorise | Sans carte | 6 cartes adaptées |
+|---|---|---|---|---|---|---|---|---|
+| **Golem** | 1,7 m | 1 400 (100 %) | se placer | poing en zone, onde, chute de pierres | inchangée (BR0c) | Brise-pierre, Lame lourde | 45,1 s | 7,6 s (4 cartes : 8,7 s) |
+| **Reine gelée** | 2,0 m | 1 400 (100 %) | gérer une foule | bond écrasant (cercle de 3,3 m, elle saute dessus) ; se divise en 3 petites gelées à 75 %, 50 %, 37,5 %, 25 %, 12,5 % | second bond annoncé sur le chevalier à l'impact du premier ; repos plus court | Tourbillon, Onde d'épée | 46,2 s | 16,8 s |
+| **Grand-duc** | 1,4 m | 812 (58 %) | punir au bon moment | plongeon en ligne le long d'une bande annoncée ; **en vol il n'encaisse qu'un quart, il se POSE ensuite** (récupération 100 ticks) | deux plongeons croisés annoncés ensemble ; il se pose après le second (70 ticks) | Esquive vive, Cadence | 45,3 s | 10,9 s |
+| **Bélier de carrière** | 1,8 m | 1 400 (100 %) | utiliser l'arène | charge en ligne droite (+5 m derrière le chevalier) ; **si le muret est juste derrière lui il s'y écrase : étourdi 2 s** | charges enchaînées (la seconde annoncée 50 ticks), 3 éclats de pierre annoncés au choc | Bottes légères, Esquive longue | 46,7 s (10 chocs par combat) | 14,8 s |
+| **Vieux chêne** | 2,0 m | 980 (70 %) | rester mobile | racines en ligne (2) et en cercles (4), nuage de spores (3 m, 4,5 s au sol), invoque 2 ou 3 gelées | racines en étoile (6), spores de 4 m | Allonge, Vol de vie | 48,5 s | 14,1 s |
+
+- **Écart avec la cible du prompt** : « ~10 à 15 s avec une construction complète adaptée » — la reine (16,8 s) est au-dessus, le golem (7,6 s) et le grand-duc (10,9 s) au-dessous ou dedans ; les chiffres ne se règlent que par les points de vie (qui fixent aussi le « sans carte ») et par l'affinité. Le chêne et le bélier ont un temps « sans carte » à variance forte (35,8 à 80 s pour le chêne) : le pilote perd du temps à contourner les nuages.
+- **Règles communes testées pour chaque boss** (`test/bosses.test.ts`, 66 tests) : annonce ≥ 70 ticks en phase 1 et ≥ 50 en phase 2 (second coup compris ; pour une course l'annonce compte avant le départ) ; récupération ≥ 80 / ≥ 55 ; phase 2 sous 50 % avec le coup qui le dit (`touche` b = 3 : arrêt sur image de 150 ms) ; réveil à la fermeture de la barrière, rugissement de 60 ticks invulnérable (l'entrée en scène, la pastille du nom est côté vue) ; pilote ≥ 58 victoires sur 60.
+- **L'affinité** (ajout du lot, `Reglages.affinite` = 30, curseur de `?debug&tune`) : chaque palier d'une carte favorite multiplie les dégâts contre CE boss par 1,3 (composé ; pas pour le golem, qui a déjà Brise-pierre, +90 % par palier). Brise-pierre vaut 100 % contre le golem et le bélier (la pierre) et 35 % contre les trois autres. Le prompt demandait que « le bon choix dépende du boss » : sans cela, seules les mécaniques (Tourbillon contre les petites gelées, Esquive vive contre les plongeons…) le faisaient. **Le pilote joue le boss du jour** : sa liste de cartes met les favorites du boss devant (`prioritesContre`).
+- **Pas de piliers pour le bélier** (« un boss peut y ajouter des éléments » : facultatif) : le seul élément d'arène est le muret ; les piliers demandaient une collision et une validation du générateur qui dépassent ce lot.
+- **Entrée en scène** : le réveil de BR1 (60 ticks invulnérable) sert à tous les boss ; la pastille « nom du boss » ~1 s est dans la vue.
+
+## 2. Le tirage
+`bossDuJour(jour)` (`bosses.ts`) : graine du jour avec son sel propre (donc indépendant du thème), plus une mémoire des jours d'avant calculée depuis le premier jour de Rush : un boss absent depuis 5 jours passe d'abord (le plus en retard), sinon on tire parmi ceux qui ne sont pas venus ces deux derniers jours. **Testé sur deux ans (730 jours)** : jamais deux jours de suite le même ; toute fenêtre de 7 jours les contient tous les cinq ; 146 jours chacun à ±40 ; les 15 couples (boss, thème) arrivent. La rediffusion et le serveur n'apprennent rien de plus : le boss vient du niveau du jour.
+
+## 3. Le pilote et l'équilibre
+- **Victoires, 60 jours forcés** (`boss:rush`, sans carte) : golem 60/60, reine 58/60, grand-duc 60/60, bélier 60/60, chêne 59/60 ; avec 6 cartes adaptées : 60/60 partout.
+- **Ce que le pilote a appris** : lire les bandes (distance au segment, esquive à travers si besoin), glisser le long du muret au lieu de s'y coincer, ne pas poursuivre le grand-duc en vol mais se poster à côté de l'endroit où il va se poser (45 s → 41 s à PV égaux), **attirer la charge du bélier contre le muret** (il y est étourdi 10 fois par combat), esquiver un nuage de spores en coupant son coup.
+- **Répartition des stratégies** (la plus rapide de chaque jour ; `npm run equilibre:rush -- --jours=365`) :
+
+| | 365 jours | temps min / médiane / max | niveaux | combat du boss (médiane) |
+|---|---|---|---|---|
+| foncer | **31 %** (112 j, écart médian 6,9 s) | 37,5 / 61,3 / 87,8 s, 358/365 | 1 / 2 / 3 | 37,9 s |
+| un peu d'XP | **57 %** (208 j, 3,4 s) | 34,3 / 56,5 / 125,5 s, 365/365 | 2 / 10 / 14 | 10,6 s |
+| beaucoup d'XP | **12 %** (45 j, 1,2 s) | 43,1 / 60,5 / 122,4 s, 365/365 | 8 / 11 / 14 | 9,6 s |
+
+Par boss (foncer / peu / beaucoup) : golem 25 / 58 / 18 % · reine 23 / 63 / 14 % · grand-duc 49 / 44 / 7 % · bélier 19 / 67 / 14 % · chêne 37 / 53 / 10 %. **Aucune stratégie ne dépasse 60 % sur l'ensemble (57 %) ; « beaucoup » est à 12 %, sous la cible de ~15 %** (le plateau : voir ci-dessous). Valeurs réglées dans ce lot pour y arriver : `xpCamp` 300 → **450** % (un camp rapporte plus), `SEUIL_PEU_CM` 2 500 → **3 200** (le pilote « peu » va jusqu'aux camps à 32 m), affinité 30.
+- **Ce qui a été essayé pour monter « beaucoup » sans y arriver** (365 jours) : affinité de 20 à 80 (aucun effet sur la répartition : les construction du pilote « peu » en profitent autant) ; `xpCamp` 200 à 500 (beaucoup 5 % → 13 %) ; seuil de « peu » 1 800 à 3 400 (déplace des jours entre foncer et peu seulement) ; `xpPas` 30 (aggrave). Le plafond de « beaucoup » est de ~13 % : ses détours coûtent ~12 s de plus que ceux de « peu » pour un gain de combat de ~1 s. **Pour monter plus haut il faudrait changer l'économie du niveau (moins de monstres sur le chemin, camps encore plus proches), pas les boss** — décision pour Nathan (§6).
+- 7 défaites de « foncer » sur 365 jours (3 reines, 3 chênes, 1 golem) ; 2 jours à plus de 120 s (jour 295 : le pilote reste coincé 30 s dans une clairière avant la barrière — défaut du pilote existant, hors boss).
+
+## 4. Scénarios à 2 clics (en local : `npm run dev -w @cdj/rush`)
+(à compléter avec les liens et les captures)
+
+## 5. Mesures
+- **Rejeu, pire jour** (10 minutes, chevalier invincible qui court en rond, le boss immortel ; Node, `npm run mesures:rush`) : golem **226 ms**, reine **220 ms**, grand-duc **233 ms**, bélier **244 ms**, chêne **237 ms** (BR2 : 248 ms) ; estimation Cloud Run ×3 : ~700 à 730 ms. Le budget du kit est `rejeu.unitesServeur` = **1** (une unité du plafond global ≈ 15 ms de calcul, lot R7) : ces rejeux valent **~15 unités**, un rejeu normal du pilote (~20 ms) ~1,5. **Il faut soit `ticksParUnite` (fiche, comme Track : p. ex. 2 500 ticks par unité → 36 000 ticks = 14 unités, une partie de 3 500 ticks = 2), soit 2 unités par défaut** : décision pour Nathan (§6) ; rien n'est changé dans la fiche.
+- **Taille de la rediffusion** (pilote qui fonce, 60 jours forcés) : au plus 788 (golem), 684 (reine), 840 (grand-duc), 1 266 (bélier), 8 134 (chêne : un combat de 80 s où le pilote contourne beaucoup) caractères, pour 40 000 permis.
+- **Générateur** : inchangé hors le tirage du boss (pur, en cache : 730 jours en < 1 ms).
+(à compléter : appels de dessin, triangles, poids)
+
+## 6. Questions pour Nathan
+- **« Beaucoup d'XP » plafonne à ~12 %** (cible ~15 %) : `xpCamp` 450 % et le seuil de « peu » à 32 m ne suffisent pas. Veux-tu un niveau avec moins de monstres sur le chemin (donc moins d'XP gratuite pour « peu »), ou acceptes-tu 12 % ?
+- **`xpCamp` passe de 300 à 450 %** et **`SEUIL_PEU_CM` de 2 500 à 3 200 cm** : ce sont des valeurs de BR2 retouchées pour l'équilibre. À confirmer.
+- **Le poids d'un rejeu** : `unitesServeur` 1 ou `ticksParUnite` ? (§5).
+- **L'affinité** (×1,3 par palier de carte favorite, 30 %) : ajout hors prompt, utile pour que le choix de carte dépende du boss. Trop ou pas assez ?
+- **Brise-pierre** ne vaut plus que 35 % contre la reine, le grand-duc et le chêne : le nom dit « pierre ». À garder ?
+- **Piliers du bélier** non faits (facultatif) : on les fait en BR-A / BR4 ?
+- Hors lot (noté pour BR5) : actions `carte1` à `carte3` réglables (règle M2) et déclaration de l'écran du choix dans `manette.ts` du kit (règle M1).
+
+## 7. Tests et ce qui n'est pas vérifié
+- **Sim** : `test/bosses.test.ts` (66 tests : catalogue, tirage sur deux ans, règles communes × 5 boss, mécaniques propres, affinité, pilote × 5 sur 60 jours forcés, rediffusion d'une semaine) ; golden **régénéré** (+ 4 scénarios, un par nouveau boss, deux en phase 2) ; `xp.test.ts` (équilibre sur 45 jours) et les 177 tests existants passent. **API** : `rush.test.ts` (12) passe.
+- **Non vérifié** : le **ressenti** (rien n'a été joué à la main : la lisibilité des annonces en mouvement, la force de l'affinité, le plaisir de chaque boss) ; l'équilibre contre de vrais joueurs (c'est celui du **pilote**, qui connaît le boss du jour et joue sans erreur de lecture) ; une vraie manette, un vrai téléphone ; Firefox et WebKit (le golden des nouveaux scénarios n'est lancé que dans Chromium par `determinisme.spec`) ; l'anglais n'a pas été relu par un humain.

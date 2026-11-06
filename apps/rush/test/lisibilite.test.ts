@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { BOSS_IDS } from "@cdj/rush-sim";
 import { PIERRE, PIERRE_CLAIRE, PIERRE_POING, PIERRE_SOMBRE, PIERRE_TETE } from "../src/acteurs";
+import { DOMINANTES_BOSS } from "../src/bosses";
+import { ALPHAS_ANNONCE } from "../src/effets";
 import { COULEURS, PALETTES } from "../src/palette";
 
 // La LISIBILITÉ sur chaque thème (lot BR1) : le golem, les ennemis, le chevalier et les cercles d'annonce se détachent du sol de CHAQUE thème. Sans navigateur : l'écart de couleur CIELAB (ΔE76, un écart de 2,3 se voit à peine,
@@ -50,6 +53,44 @@ describe("la lisibilité sur chaque thème (lot BR1)", () => {
       });
       it("les murs bas se distinguent du sol (on ne les prend pas pour du chemin)", () => {
         expect(plusPetit(p.mur, p)).toBeGreaterThanOrEqual(25);
+      });
+    });
+  }
+});
+
+// Lot BR3 : les CINQ boss et les nouvelles annonces (bande, spores, nuage, anneau d'invocation) sur chaque thème. Même mesure : l'écart de couleur CIELAB (ΔE76) contre les DEUX tons du sol ; une annonce translucide est mélangée au sol à sa transparence.
+describe("la lisibilité des cinq boss et de leurs annonces sur chaque thème (lot BR3)", () => {
+  it("il y a cinq boss, chacun avec ses couleurs dominantes", () => {
+    expect(BOSS_IDS).toHaveLength(5);
+    expect(DOMINANTES_BOSS).toHaveLength(5);
+    for (const d of DOMINANTES_BOSS) expect(d.length).toBeGreaterThanOrEqual(1);
+  });
+  for (const [nom, p] of Object.entries(PALETTES)) {
+    describe(nom, () => {
+      it("chaque boss : sa couleur dominante (et ses autres grandes masses) tranche sur les deux tons du sol, écart ≥ 40 comme le golem", () => {
+        BOSS_IDS.forEach((id, k) => DOMINANTES_BOSS[k]!.forEach((c, i) => expect(plusPetit(c, p), `${id} (couleur ${i}) sur ${nom}`).toBeGreaterThanOrEqual(40)));
+      });
+      const opaque = ALPHAS_ANNONCE.fond + ALPHAS_ANNONCE.rempli; // le disque rempli, juste avant l'impact
+      const cercle = (sol: number): number => ecart(melange(sol, COULEURS.corail, opaque), sol);
+      it("la bande d'annonce (corail, les transparences du cercle) tranche au moins autant que le cercle actuel, et le liseré aussi", () => {
+        for (const sol of [p.sol, p.sol2]) {
+          const bande = ecart(melange(sol, COULEURS.corail, opaque), sol); // la même couleur et les mêmes transparences que le cercle : le même écart
+          expect(bande).toBeGreaterThanOrEqual(cercle(sol));
+          expect(bande).toBeGreaterThanOrEqual(25);
+          expect(ecart(melange(sol, COULEURS.corailClair, ALPHAS_ANNONCE.bord), sol), "liseré").toBeGreaterThanOrEqual(25);
+        }
+      });
+      it("le nuage de spores (vert-jaune sombre, PAS corail) tranche sur le sol : le corps ≥ 30, son liseré ≥ 40 ; il n'est pas rouge", () => {
+        for (const sol of [p.sol, p.sol2]) {
+          expect(ecart(melange(sol, COULEURS.spores, 0.72), sol), "corps du nuage").toBeGreaterThanOrEqual(30);
+          expect(ecart(melange(sol, COULEURS.sporesLisere, 0.92), sol), "liseré du nuage").toBeGreaterThanOrEqual(40);
+        }
+        const [, a] = lab(COULEURS.spores);
+        expect(a, "le nuage est vert (a* < 0), jamais rouge").toBeLessThan(0);
+      });
+      it("l'anneau d'invocation (violet, PAS un danger) se lit sur le sol : liseré ≥ 40 ; il n'est pas dans la famille du corail", () => {
+        for (const sol of [p.sol, p.sol2]) expect(ecart(melange(sol, COULEURS.invocationClair, ALPHAS_ANNONCE.bord), sol)).toBeGreaterThanOrEqual(40);
+        expect(ecart(COULEURS.invocationClair, COULEURS.corail)).toBeGreaterThanOrEqual(40);
       });
     });
   }

@@ -768,7 +768,7 @@ export class Partie {
     const brise = idiv(this.paliers[A_BRISE]! * this.reglages.briseDegats * (g ? BOSS[g.kind]!.brise : 100), 100);
     // l'affinité : chaque palier d'une carte que ce boss favorise (Brise-pierre a déjà la sienne) ajoute `affinite` %
     let plein = idiv(d * (100 + brise), 100);
-    if (g) for (const id of BOSS[g.kind]!.favorise) if (id !== "brise-pierre") for (let k = this.paliers[indiceAmelioration(id)]!; k > 0; k--) plein = idiv(plein * (100 + this.reglages.affinite), 100);
+    if (g && BOSS[g.kind]!.affin) for (const id of BOSS[g.kind]!.favorise) if (id !== "brise-pierre") for (let k = this.paliers[indiceAmelioration(id)]!; k > 0; k--) plein = idiv(plein * (100 + this.reglages.affinite), 100);
     return g && g.kind === B_DUC && g.sol === 0 ? idiv(plein * DUC_EN_VOL, 100) : plein;
   }
   /** La portée du coup `s` (unités) : le coup final porte 25 % plus loin ; « Allonge ». */

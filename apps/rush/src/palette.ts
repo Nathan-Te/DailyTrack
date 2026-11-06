@@ -74,6 +74,12 @@ export const COULEURS = {
   corail: 0xf0604e,
   corailClair: 0xff9c88,
   onde: 0xff7a3c,
+  /** Lot BR3 : les nuages de spores du vieux chêne (un vert-jaune sombre, un liseré olive : PAS un danger rouge, mais un danger tout de même) et l'anneau d'invocation (violet pâle : ce n'est pas un danger). */
+  spores: 0x4f8010,
+  sporesClair: 0xc6d94a,
+  sporesLisere: 0x2f5a08,
+  invocation: 0x8f6fd6,
+  invocationClair: 0x9b7de0,
   poussiere: 0xe6d6b4,
   etincelle: 0xfff2a8,
 } as const;

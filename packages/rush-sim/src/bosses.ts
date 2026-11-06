@@ -56,14 +56,16 @@ export interface DefinitionBoss {
   brise: number;
   /** Son repos entre deux attaques en % de celui du golem (`reglages.golemCadence`). */
   repos: number;
+  /** Si l'affinité (`reglages.affinite`) joue contre lui : 0 pour le golem, dont Brise-pierre est déjà l'affinité (+90 % par palier, en plus de la Lame lourde). */
+  affin: boolean;
 }
 
 export const BOSS: readonly DefinitionBoss[] = [
-  { id: "golem", rayon: cm(170), vie: 100, favorise: ["brise-pierre", "lame-lourde"], brise: 100, repos: 100 },
-  { id: "reine", rayon: cm(200), vie: 100, favorise: ["tourbillon", "onde-epee"], brise: 35, repos: 150 },
-  { id: "grand-duc", rayon: cm(140), vie: 58, favorise: ["esquive-vive", "cadence"], brise: 35, repos: 100 },
-  { id: "belier", rayon: cm(180), vie: 100, favorise: ["bottes-legeres", "esquive-longue"], brise: 100, repos: 100 },
-  { id: "chene", rayon: cm(200), vie: 70, favorise: ["allonge", "vol-de-vie"], brise: 35, repos: 140 },
+  { id: "golem", rayon: cm(170), vie: 100, favorise: ["brise-pierre", "lame-lourde"], brise: 100, repos: 100, affin: false },
+  { id: "reine", rayon: cm(200), vie: 100, favorise: ["tourbillon", "onde-epee"], brise: 35, repos: 150, affin: true },
+  { id: "grand-duc", rayon: cm(140), vie: 58, favorise: ["esquive-vive", "cadence"], brise: 35, repos: 100, affin: true },
+  { id: "belier", rayon: cm(180), vie: 100, favorise: ["bottes-legeres", "esquive-longue"], brise: 100, repos: 100, affin: true },
+  { id: "chene", rayon: cm(200), vie: 70, favorise: ["allonge", "vol-de-vie"], brise: 35, repos: 140, affin: true },
 ];
 
 // --- Le tirage du boss du jour -------------------------------------------------------------------------------------------------------------------------------------------------------------------

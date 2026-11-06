@@ -1,6 +1,6 @@
 import { cpus } from "node:os";
 import { daysFromCivil } from "@cdj/core";
-import { REGLAGES_DEFAUT, MAX_CHANGEMENTS, PAS_MIN_DIRECTION, PAS_MIN_VISEE, Partie, contenuScenario, dailyRush, encoderRediffusion, entree, etatPilote, jouer, jouerLePilote, pasDuPilote, tempsSansRencontre, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, type Changement, type Choix } from "../src/index";
+import { BOSS_IDS, REGLAGES_DEFAUT, MAX_CHANGEMENTS, PAS_MIN_DIRECTION, PAS_MIN_VISEE, Partie, contenuScenario, dailyRush, encoderRediffusion, entree, etatPilote, jouer, jouerLePilote, pasDuPilote, tempsSansRencontre, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, type Changement, type Choix } from "../src/index";
 
 // Les mesures des lots BR0 à BR2 (l'ÉQUILIBRE des trois stratégies est dans `tools/equilibre.ts` : `npm run equilibre:rush -w @cdj/rush-sim`) : `npm run mesures:rush -w @cdj/rush-sim` (Node seulement ; aucune base, aucun réseau). Le coût du rejeu d'une partie de 2 et de 5 minutes, la taille de la rediffusion, le coût par tick d'un jeu à
 // 30 monstres. Le texte imprimé est celui que le README du lot recopie.
@@ -162,4 +162,32 @@ console.log(`Rejeu de la pire partie « beaucoup d'XP » sur 60 jours : ${pireNe
   console.log(`  pilote « foncer », 60 jours : ${vf}/60 victoires · total min / médiane / max ${q3(f)} s (golem compris) · à la barrière ${q3(arrivee)} s · course ${q3(course, 0)} % du trajet · ${(subisF.reduce((a, b) => a + b, 0) / 60).toFixed(2)} dégât(s) subi(s) en moyenne`);
   console.log(`  pilote « beaucoup d'XP » : ${vn}/60 victoires · ${q3(nt)} s · écart médian avec foncer ${(med(nt) - med(f)).toFixed(1)} s`);
   console.log(`  coût d'un détour pris seul (camp compris, par rapport à foncer) : ${q3(det)} s (${det.length} détours)`);
+}
+
+// 5. Lot BR3 : les cinq boss. Pour chacun, sur le même jour du niveau : le PIRE rejeu (10 minutes, chevalier invincible qui court en rond, le boss et ses sbires en permanence) à comparer au budget du kit (`rejeu.unitesServeur` de la fiche : une
+// unité du plafond global ≈ 15 ms de calcul, lot R7), et la taille de la rediffusion du pilote qui fonce sur 60 jours forcés (scénario `boss`).
+for (let b = 0; b < BOSS_IDS.length; b++) {
+  const jourB = { ...dailyRush(daysFromCivil(2026, 11, 5)), boss: b };
+  const pire5 = chrono(() => {
+    const p = new Partie(jourB, REGLAGES_DEFAUT);
+    let t = 0;
+    while (!p.finie) {
+      p.c.coeurs = 3;
+      p.c.degat = 0;
+      if (p.choix) p.choisir(p.choix.nv, 0);
+      p.avancer(entree((t >> 5) % 32, t % 7 === 0, false));
+      // le boss et ses sbires restent vivants : on ne laisse pas le chevalier tomber le boss
+      if (p.golem) p.golem.hp = p.golem.hpMax;
+      t++;
+    }
+  }, 3);
+  let tailleMax = 0;
+  let ticksMax = 0;
+  for (let k = 0; k < 60; k++) {
+    const c = contenuScenario("boss", { boss: b, jour: k });
+    const r = jouerLePilote(c);
+    tailleMax = Math.max(tailleMax, taille(r.changements, { scenario: "boss" }, r.choix));
+    ticksMax = Math.max(ticksMax, r.ticks);
+  }
+  console.log(`${BOSS_IDS[b]!.padEnd(10)} : pire rejeu du jour (10 min, boss immortel) ${pire5.toFixed(0)} ms (≈ ${(pire5 / 15).toFixed(1)} unités de 15 ms) · rediffusion du pilote (60 jours forcés) ${tailleMax} caractères au plus, ${ticksMax} ticks au plus`);
 }
