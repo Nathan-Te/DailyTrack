@@ -21,7 +21,15 @@ Contournement sans code, si besoin : `/admin/` › Jeux, passer Cibles en `previ
 |---|---|---|
 | `recette-verification` (smoke complet) : `409 name_taken` dès le premier envoi, tout le reste en cascade | Le pseudo du smoke (`Fumée` + 4 chiffres, 9 000 possibilités) est retombé sur celui d'un passage précédent, que la base de la recette garde (une recette reçoit un smoke par fusion dans `main` et deux par bouton). Un tirage malchanceux, pas un défaut du serveur ; il reviendrait de plus en plus souvent. | `smoke.ts` : `Fumée` + 8 caractères aléatoires (36⁸ ≈ 2,8·10¹², 13 caractères, limite 20). |
 
+## Quatrième run (42228313704, `main` à `a42ceef`) : `recette-verification` verte ; reste un test WebKit
+| Job rouge | Cause | Correction |
+|---|---|---|
+| `e2e-parts (navigateurs webkit)` : `apps/web/e2e/iphone.spec.ts:406` « Track et Jump ouverts directement proposent aussi « Retrouver mon profil » » (`@navigateurs @regression`), 2 essais sur 2 : « page.goto("/") is interrupted by another navigation to /track/?debug&api=%2F » | **Course dans le test.** Adopter un profil ferme la modale puis recharge la page (`onRetrouve: location.reload()`, `retrouverJeu.ts`) ; le stockage est écrit avant le rechargement. Le test attendait seulement le stockage, puis naviguait : le rechargement interrompait le `goto`. Sans lien avec les changements du jour (le test était vert aux deux runs précédents : course de temps). | Le test attend l'événement `load` du rechargement avant de continuer ; même attente dans le test voisin (portail, ligne 371), qui lisait le stockage pendant le rechargement. Assertions inchangées. |
+
+`ci / e2e` et `ci-verdict` sont dérivés. Les jobs `serveur`, `site`, `verification`, `etiquette` et `depot` n'ont toujours pas tourné (ils attendent le verdict de la CI complète).
+
 ## Vérifié / non vérifié
 - Vérifié en local : `npm run verifier -- --sans-e2e` (typecheck, 126 fichiers SQLite, 76 libSQL, verts) ; `vitest apps/api` complet (946 tests) ; `jump/e2e/smoke.spec.ts` (6, Chromium) ; `tower/e2e/classement.spec.ts` (5, Chromium).
 - Deuxième run : site de production assemblé en local (`VITE_PRODUCTION=1 npm run build`, `scripts/site.mjs --production` : 18 niveaux figés vérifiés) ; regex d'adresse contrôlée sur les six adresses (service, site, local, production).
+- Quatrième run : les 17 tests de `apps/web/e2e/iphone.spec.ts` sous Chromium, deux fois de suite (la course ne se reproduit qu'avec le temps de WebKit).
 - **Non vérifié** : WebKit (absent ici) et l'échec Tower, qui ne se reproduit pas en local (il ne dépend que de la lenteur de l'exécuteur) ; le smoke contre la vraie recette (un agent ne lance pas de workflow).
