@@ -126,6 +126,24 @@ describe("Rush sur le serveur", () => {
     expect((await t.call("GET", `/api/rush/day/${DATE}/board`, undefined, { headers: { ...hotePr, ...entete(2) } })).body).toMatchObject({ participants: 0, top: [] });
   });
 
+  it("arcade : Rush a sa vue au temps, mais ne fait jamais le cumul du jour (smoke de la recette du 06/11/2026 : « 666496 ms cumulées »)", async () => {
+    const t = await monter();
+    expect((await envoyer(t, 1, 3)).status).toBe(200);
+    const portail = await t.call("GET", "/api/portail/jour", undefined, { headers: entete(1) });
+    expect(portail.status, JSON.stringify(portail.body)).toBe(200);
+    // Rien fini hors Rush : ni cumul, ni place au cumul (avant, le temps de Rush y entrait).
+    expect(portail.body.joueur).toMatchObject({ cumulMs: null, rangDuJour: null, classesDuJour: null });
+    const cumul = await t.call("GET", "/api/portail/classement", undefined, { headers: entete(1) });
+    expect(cumul.status, JSON.stringify(cumul.body)).toBe(200);
+    expect(cumul.body.top).toEqual([]);
+    expect(cumul.body.moi ?? null).toBeNull();
+    // Sa vue à lui existe, avec le joueur.
+    const vue = await t.call("GET", "/api/portail/classement?vue=rush", undefined, { headers: entete(1) });
+    expect(vue.status, JSON.stringify(vue.body)).toBe(200);
+    expect((vue.body.top as unknown[]).length).toBe(1);
+    expect(vue.body.moi).toMatchObject({ rang: 1 });
+  });
+
   it("effacement d'un joueur : ses parties (crochet `erase`), le classement se recalcule sans lui", async () => {
     const TOKEN = "jeton-admin-de-test-assez-long-pour-passer";
     const t = await monter({ adminToken: TOKEN });

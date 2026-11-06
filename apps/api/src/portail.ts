@@ -97,7 +97,7 @@ export interface VuePartagee {
   estArcade(j: JeuPortail, day: number): boolean;
   classementDe(day: number): Promise<ClassementDuJour>;
   etatsDe(id: string, day: number, ouverts: readonly JeuPortail[], c?: ClassementDuJour): Promise<EtatPortail[]>;
-  bilanDe(id: string, etats: readonly EtatPortail[], ouverts: readonly JeuPortail[]): LigneDuJour | null;
+  bilanDe(id: string, etats: readonly EtatPortail[], ouverts: readonly JeuPortail[], toutJeu?: boolean): LigneDuJour | null;
   resultatsCorps(jeuxDuJour: readonly string[], resultats: readonly (ResultatJeu | null)[]): Record<string, unknown>;
   charger(): Promise<void>;
 }
@@ -171,6 +171,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   const comptesJournee = (day: number): JeuPortail[] => jeux.filter((j) => compteJournee(j, day));
   /** Lot TP : un jeu classé à la hauteur (Tower) a sa vue ; il n'entre jamais dans le cumul au temps. */
   const estHauteur = (j: JeuPortail): boolean => j.portail.classement === "hauteur";
+  /** Un jeu au temps que la fiche tient hors du cumul (`classement.cumul: false`, Rush en arcade) : sa vue existe (`parJeu`), mais ni le cumul, ni « tout fini » ne le comptent. */
+  const horsCumul = (j: JeuPortail): boolean => j.portail.cumul === false;
   const charger = async (): Promise<void> => {
     await etats?.charger();
   };
@@ -293,7 +295,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     calculs++;
     const ouverts = comptes(day);
     // Lot TP : le cumul au temps ne lit que les jeux au temps ; un jeu classé à la hauteur rend ses classés à part (sa vue).
-    const pending = Promise.all(ouverts.map(async (j) => ({ jeu: j.code, hauteur: estHauteur(j), classes: await j.portail.classes(day) }))).then((tous) => {
+    const pending = Promise.all(ouverts.map(async (j) => ({ jeu: j.code, hauteur: estHauteur(j), horsCumul: horsCumul(j), classes: await j.portail.classes(day) }))).then((tous) => {
       const c = classerLaJournee(tous.filter((t) => !t.hauteur));
       const hauteurs = tous.filter((t) => t.hauteur);
       if (hauteurs.length > 0) c.hauteurs = hauteurs.map((t) => ({ jeu: t.jeu, classes: t.classes, index: new Map(t.classes.map((x, i) => [x.playerId, i] as const)) }));
@@ -314,12 +316,15 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   const classementDe = (day: number): Promise<ClassementDuJour> => gardeeDe(day).pending;
 
   /** Ce que le joueur a fait ce jour-là, à partir de ses états exacts dans chaque jeu du jour (`null` : rien fini). Son `at` ne sert à rien (`placer` le fait passer après les égaux). */
-  function bilanDe(id: string, etats: readonly EtatPortail[], ouverts: readonly JeuPortail[]): LigneDuJour | null {
+  function bilanDe(id: string, etats: readonly EtatPortail[], ouverts: readonly JeuPortail[], toutJeu = false): LigneDuJour | null {
     // Lot TP : seuls les jeux au temps entrent dans le cumul.
+    const auTemps = ouverts.filter((j) => !estHauteur(j));
     const resultats = etats
       .filter((_, i) => !estHauteur(ouverts[i]!))
       .map<ResultatJeu | null>((e) => (e.statut === "fini" ? { rang: e.rang, tempsMs: e.tempsMs, medaille: e.medaille, at: 0 } : null));
-    return resultats.some((r) => r !== null) ? ligneDe(id, resultats) : null;
+    const hors = auTemps.map(horsCumul);
+    // Un joueur qui n'a fini que des jeux hors cumul n'a pas de bilan au cumul (pas de rang) ; `toutJeu` : la vue d'**un** jeu, qui lit sa ligne même si ce jeu est hors cumul.
+    return resultats.some((r, g) => r !== null && (toutJeu || !hors[g])) ? ligneDe(id, resultats, hors) : null;
   }
 
   /**
@@ -327,7 +332,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
    * place et ses classés sans les recompter (le coût d'une visite ne croît plus avec le nombre de joueurs) ; absent du classement (il vient de finir) : le jeu compte.
    */
   const etatsDe = (id: string, day: number, ouverts: readonly JeuPortail[], c?: ClassementDuJour) => {
-    const ligne = c && c.index.has(id) ? c.cumul[c.index.get(id)!]! : null;
+    const ligne = c?.lignes.get(id) ?? null;
     return Promise.all(
       ouverts.map((j) => {
         // Lot TP : un jeu à la hauteur prend sa place dans la liste gardée de sa vue ; un jeu au temps, dans le cumul gardé (par son code : `jeux` du classement ne compte que les jeux au temps).
@@ -482,9 +487,9 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       const e = etatsMoi[ouverts.indexOf(jeuVue!)]!;
       if (e.statut === "fini") moi = { ...ligneHauteur(e, e.rang, row.name, maRef, row.avatar), classes: Math.max(hauteur.classes.length + (hauteur.index.has(id) ? 0 : 1), e.rang) };
     } else {
-      const bilan = bilanDe(id, etatsMoi, ouverts);
+      const bilan = bilanDe(id, etatsMoi, ouverts, g >= 0);
       if (bilan && (g < 0 || bilan.resultats[g])) {
-        const place = g < 0 ? placer(c, bilan) : { rang: bilan.resultats[g]!.rang, classes: Math.max(liste.length + (c.index.has(id) && c.cumul[c.index.get(id)!]!.resultats[g] ? 0 : 1), bilan.resultats[g]!.rang) };
+        const place = g < 0 ? placer(c, bilan) : { rang: bilan.resultats[g]!.rang, classes: Math.max(liste.length + (c.lignes.get(id)?.resultats[g] ? 0 : 1), bilan.resultats[g]!.rang) };
         moi = { ...ligneCorps(bilan, place.rang, row.name, maRef, row.avatar), classes: place.classes };
       }
     }

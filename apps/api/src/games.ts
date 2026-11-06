@@ -165,6 +165,8 @@ export interface PortailDuJeu {
    * il a sa propre vue (son dossier sur le site), classée par son crochet (`classes`, dans l'ordre de son classement), et compte quand même dans la journée (série, journée parfaite, partage).
    */
   classement?: "temps" | "hauteur";
+  /** `false` : un jeu au temps que la fiche tient hors du cumul (`classement.cumul: false`, Rush en arcade) ; absent = il y entre (Track, Jump). Sa vue au temps reste. */
+  cumul?: false;
   /**
    * Lot A3 : la catégorie du jeu (fiche). Absente : `jour`. Un jeu `arcade` a son niveau du jour et son classement, mais **ne compte ni dans la journée (journée parfaite, série, ligne de partage) ni dans le
    * cumul** ; `categorieDepuis` (numéro de jour) : le premier jour où `categorie` s'applique, avant c'était l'autre (`categorieLe` de `@cdj/core/jeux`).

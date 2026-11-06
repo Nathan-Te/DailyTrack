@@ -81,6 +81,12 @@ async function jouerUnePartie(page: Page, v: number): Promise<void> {
   await expect(page.locator("#fin-ecran")).toBeVisible();
 }
 
+/**
+ * Le délai de l'ÉTAT qui suit l'envoi (le rang, « nouveau record », « copie ») : la page, occupée 5 à 16 s après la fin de partie (rendu logiciel), n'envoie qu'ensuite (lot T6) ; sur un exécuteur lent de la
+ * CI complète, « Envoi de ta partie… » durait plus que les 5 s par défaut de l'assertion (run « Mettre en production » du 06/11/2026, 2 essais sur 2). L'assertion ne change pas, seule l'attente.
+ */
+const ENVOI = { timeout: 40_000 };
+
 /** Le premier envoi : le serveur ne connaît pas encore le joueur, le formulaire du pseudo s'ouvre (pseudo propre à l'essai : la base est la même d'un essai à l'autre). */
 async function choisirPseudo(page: Page, base: string, v: number): Promise<void> {
   const pseudo = `${base}${v}x${test.info().retry}`;
@@ -111,8 +117,8 @@ test("une partie scriptée est envoyée, rejouée par le serveur et classée ; l
   expect((await inconnu.json()).error).toBe("not_ranked");
 
   await choisirPseudo(page, "Pistache", v);
-  await expect(page.locator("#fin-rang")).toHaveText(/^\d+(er|e|st|nd|rd|th)$/);
-  await expect(page.locator("#fin-rang-statut")).toContainText(/nouveau record/);
+  await expect(page.locator("#fin-rang")).toHaveText(/^\d+(er|e|st|nd|rd|th)$/, ENVOI);
+  await expect(page.locator("#fin-rang-statut")).toContainText(/nouveau record/, ENVOI);
   expect(await page.evaluate(() => window.__tower.envoi())).toMatchObject({ statut: "ranked" });
   await expect(page.locator("#fin-posees")).toContainText("/40");
   await expect(page.locator("#fin-paliers")).not.toBeEmpty();
@@ -181,13 +187,13 @@ test("une copie est refusée : la même suite de commandes qu'un autre joueur ne
   const premier = await appareil(browser);
   await jouerUnePartie(premier.page, v);
   await choisirPseudo(premier.page, "Kiwi", v);
-  await expect(premier.page.locator("#fin-rang-statut")).toContainText(/nouveau record/);
+  await expect(premier.page.locator("#fin-rang-statut")).toContainText(/nouveau record/, ENVOI);
   await premier.context.close();
   // Le second joue exactement la même suite : le serveur la rejoue, reconnaît les mêmes entrées et la refuse.
   const { context, page } = await appareil(browser);
   await jouerUnePartie(page, v);
   await choisirPseudo(page, "Mangue", v);
-  await expect(page.locator("#fin-rang-statut")).toContainText(/copie|copy/i);
+  await expect(page.locator("#fin-rang-statut")).toContainText(/copie|copy/i, ENVOI);
   expect(await page.evaluate(() => window.__tower.envoi())).toMatchObject({ statut: "refused", code: "replay_copy" });
   await context.close();
 });

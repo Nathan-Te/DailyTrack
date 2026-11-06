@@ -128,7 +128,8 @@ export function creerClassementAmis(d: DepsClassementAmis) {
 
     // Ce que le joueur a fait à l'instant (ses états exacts, une lecture par jeu) : ce qu'il vient de finir figure tout de suite dans sa liste.
     const etatsMoi = ouverts.length ? await v.etatsDe(id, day, ouverts, c) : [];
-    const bilan = v.bilanDe(id, etatsMoi, ouverts);
+    // Vue d'un jeu : sa ligne est lue même si ce jeu est hors cumul (Rush) ; vue du cumul : seulement s'il a fini un jeu du cumul.
+    const bilan = v.bilanDe(id, etatsMoi, ouverts, jeuVue !== undefined);
 
     const hauteur = jeuVue && v.estHauteur(jeuVue) ? c.hauteurs?.find((h) => h.jeu === jeuVue!.code) : undefined;
     const g = jeuVue && !hauteur ? c.jeux.indexOf(jeuVue.code) : -1;
@@ -159,8 +160,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
             rangGeneral = i + 1;
           }
         } else {
-          const i = c.index.get(a.id);
-          ligne = i === undefined ? null : c.cumul[i]!;
+          ligne = c.lignes.get(a.id) ?? null;
           const r = ligne?.resultats[g];
           if (r) {
             res = { tempsMs: r.tempsMs, medaille: r.medaille, score: r.score, ticks: r.ticks };
@@ -263,6 +263,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
     if (!cible) throw new HttpError(404, "unknown_friend", "Aucun joueur pour cette référence");
     const [c, monLien, sonLien] = await Promise.all([v.classementDe(day), d.origineDe(id, cible.id), d.origineDe(cible.id, id)]);
     const i = c.index.get(cible.id);
+    const sa = c.lignes.get(cible.id); // toutes ses lignes : ses jeux hors cumul y sont aussi
     const jeux: { jeu: string; site: string; nom: string; unite: "temps" | "hauteur" | "entier"; valeur: number; medaille: MedaillePortail | null; rang: number }[] = [];
     for (const j of ouverts) {
       const entete = { jeu: j.code, site: j.portail.site, nom: j.portail.nom };
@@ -271,7 +272,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
         const k = h?.index.get(cible.id);
         if (h && k !== undefined) jeux.push({ ...entete, unite: j.portail.unite === "points" ? "entier" : "hauteur", valeur: h.classes[k]!.score?.valeur ?? 0, medaille: h.classes[k]!.medaille, rang: k + 1 });
       } else {
-        const r = i === undefined ? undefined : c.cumul[i]!.resultats[c.jeux.indexOf(j.code)];
+        const r = sa?.resultats[c.jeux.indexOf(j.code)];
         if (r) jeux.push({ ...entete, unite: "temps", valeur: r.tempsMs, medaille: r.medaille, rang: r.rang });
       }
     }

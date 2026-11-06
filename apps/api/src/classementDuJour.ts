@@ -54,21 +54,31 @@ export interface ClassementDuJour {
   /** Identifiant → position dans `cumul`. */
   index: Map<string, number>;
   /**
+   * Toutes les lignes par identifiant, y compris celles qui ne sont pas dans `cumul` (un joueur qui n'a fini qu'un jeu hors cumul, Rush en arcade) : les vues **par jeu** lisent ici, jamais dans `cumul`.
+   */
+  lignes: Map<string, LigneDuJour>;
+  /**
    * Lot TP : les jeux classés à la **hauteur** (Tower), chacun avec ses classés dans l'ordre de son classement. Ils n'entrent ni dans `jeux`, ni dans `cumul` : le cumul au temps les ignore.
    * Absent (jamais posé par `classerLaJournee`) pour un classement qui n'en a pas : `portail.ts` le pose.
    */
   hauteurs?: { jeu: string; classes: readonly ClasseDuJour[]; index: Map<string, number> }[];
 }
 
-/** Les champs dérivés d'une ligne, à partir de ses résultats. `at` : l'instant le plus tardif de ses essais classés. */
-export function ligneDe(id: string, resultats: (ResultatJeu | null)[]): LigneDuJour {
+/**
+ * Les champs dérivés d'une ligne, à partir de ses résultats. `at` : l'instant le plus tardif de ses essais classés.
+ * `horsCumul[g]` : le jeu n° g a un classement au temps mais **n'entre pas dans le cumul** (fiche `classement.cumul: false`, Rush en arcade) : son résultat reste dans `resultats` (sa vue le lit),
+ * mais il ne fait ni `complet`, ni `cumulMs`, ni le meilleur rang du joueur partiel.
+ */
+export function ligneDe(id: string, resultats: (ResultatJeu | null)[], horsCumul?: readonly boolean[]): LigneDuJour {
+  const dansLeCumul = (g: number): boolean => !horsCumul?.[g];
   const finis = resultats.filter((r): r is ResultatJeu => r !== null);
-  const complet = finis.length > 0 && finis.length === resultats.length;
+  const finisDuCumul = resultats.filter((r, g): r is ResultatJeu => r !== null && dansLeCumul(g));
+  const complet = finisDuCumul.length > 0 && finisDuCumul.length === resultats.filter((_, g) => dansLeCumul(g)).length;
   let meilleurJeu = 0;
   let meilleurRang = 0;
   if (!complet) {
     resultats.forEach((r, g) => {
-      if (r && (meilleurRang === 0 || r.rang < meilleurRang)) {
+      if (r && dansLeCumul(g) && (meilleurRang === 0 || r.rang < meilleurRang)) {
         meilleurRang = r.rang;
         meilleurJeu = g;
       }
@@ -78,7 +88,7 @@ export function ligneDe(id: string, resultats: (ResultatJeu | null)[]): LigneDuJ
     id,
     resultats,
     complet,
-    cumulMs: complet ? finis.reduce((s, r) => s + r.tempsMs, 0) : null,
+    cumulMs: complet ? finisDuCumul.reduce((s, r) => s + r.tempsMs, 0) : null,
     at: finis.reduce((m, r) => Math.max(m, r.at), 0),
     meilleurRang,
     meilleurJeu,
@@ -95,7 +105,8 @@ export function comparer(a: LigneDuJour, b: LigneDuJour): number {
 }
 
 /** Le classement du jour à partir des classés de chaque jeu du jour. Pur. */
-export function classerLaJournee(jeux: readonly { jeu: string; classes: readonly ClasseDuJour[] }[]): ClassementDuJour {
+export function classerLaJournee(jeux: readonly { jeu: string; classes: readonly ClasseDuJour[]; horsCumul?: boolean }[]): ClassementDuJour {
+  const horsCumul = jeux.map((j) => j.horsCumul === true);
   const parJoueur = new Map<string, (ResultatJeu | null)[]>();
   jeux.forEach((j, g) => {
     j.classes.forEach((c, i) => {
@@ -107,10 +118,11 @@ export function classerLaJournee(jeux: readonly { jeu: string; classes: readonly
       resultats[g] = { rang: i + 1, tempsMs: c.tempsMs, medaille: c.medaille, at: c.at, ...(c.score ? { score: c.score } : {}), ...(c.ticks !== undefined ? { ticks: c.ticks } : {}) };
     });
   });
-  const lignes = new Map([...parJoueur].map(([id, r]) => [id, ligneDe(id, r)] as const));
+  const lignes = new Map([...parJoueur].map(([id, r]) => [id, ligneDe(id, r, horsCumul)] as const));
   const parJeu = jeux.map((j, g) => j.classes.map((c) => lignes.get(c.playerId)!).filter((l) => l.resultats[g] !== null));
-  const cumul = [...lignes.values()].sort(comparer);
-  return { jeux: jeux.map((j) => j.jeu), classesParJeu: jeux.map((j) => j.classes.length), parJeu, cumul, index: new Map(cumul.map((l, i) => [l.id, i])) };
+  // Un joueur qui n'a fini que des jeux hors cumul a sa place dans la vue de ces jeux (`parJeu`), pas dans le cumul.
+  const cumul = [...lignes.values()].filter((l) => l.resultats.some((r, g) => r !== null && !horsCumul[g])).sort(comparer);
+  return { jeux: jeux.map((j) => j.jeu), classesParJeu: jeux.map((j) => j.classes.length), parJeu, cumul, index: new Map(cumul.map((l, i) => [l.id, i])), lignes };
 }
 
 /**
