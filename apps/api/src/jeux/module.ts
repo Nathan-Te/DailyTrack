@@ -489,6 +489,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     categorie: fiche.categorie,
     ...(categorieDepuis !== undefined ? { categorieDepuis } : {}),
     ...(fiche.classement.format !== "temps" ? { unite: fiche.classement.unite === "mm" ? ("mm" as const) : ("points" as const) } : {}),
+    ...(fiche.classement.format === "temps" && !fiche.classement.cumul ? { cumul: false as const } : {}), // un jeu au temps hors du cumul (arcade) : sa vue reste, le cumul ne le compte pas
     classement: fiche.classement.format === "temps" ? "temps" : "hauteur", // lot K4c : tout jeu classé à un score (hauteur, points) compte dans la journée mais jamais dans le cumul au temps
     async jour(day) {
       return contrat.portailJour(await getNiveau(day), day);

@@ -35,6 +35,23 @@ describe("le classement du jour au chrono (pur)", () => {
     expect(r.index.has("z")).toBe(false); // un joueur qui n'a rien fini n'est pas là
   });
 
+  it("un jeu au temps hors du cumul (Rush, arcade) garde sa vue, mais ne fait ni le cumul, ni « tout fini », ni le meilleur rang", () => {
+    const r = classerLaJournee([
+      { jeu: "cdj", classes: [c("a", 28_000), c("b", 30_000)] },
+      { jeu: "jump", classes: [c("a", 20_000), c("b", 24_000)] },
+      { jeu: "rush", horsCumul: true, classes: [c("z", 10_000), c("a", 36_000)] },
+    ]);
+    // a : Track + Jump = 48 000 (le temps de Rush n'y est pas) ; b : 54 000 ; z n'a fini que Rush : sa place est dans la vue de Rush, pas au cumul.
+    expect(r.cumul.map((l) => [l.id, l.complet, l.cumulMs])).toEqual([["a", true, 48_000], ["b", true, 54_000]]);
+    expect(r.index.has("z")).toBe(false);
+    expect(r.parJeu[2]!.map((l) => [l.id, l.resultats[2]!.rang])).toEqual([["z", 1], ["a", 2]]);
+    // Un joueur qui n'a fini que Rush et un jeu du cumul est partiel : son meilleur rang ignore Rush.
+    const p = ligneDe("p", [null, null, { rang: 1, tempsMs: 5_000, medaille: null, at: 1 }], [false, false, true]);
+    expect([p.complet, p.cumulMs, p.meilleurRang]).toEqual([false, null, 0]);
+    const q = ligneDe("q", [{ rang: 4, tempsMs: 5_000, medaille: null, at: 1 }, null, { rang: 1, tempsMs: 5_000, medaille: null, at: 2 }], [false, false, true]);
+    expect([q.complet, q.meilleurRang, q.meilleurJeu, q.at]).toEqual([false, 4, 0, 2]);
+  });
+
   it("un joueur lent aux deux jeux passe avant un joueur rapide à un seul : un jeu non fini ne compte jamais pour un temps", () => {
     const r = classerLaJournee([
       { jeu: "cdj", classes: [c("rapide", 10_000), c("lent", 90_000)] },

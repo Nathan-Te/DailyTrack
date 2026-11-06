@@ -22,7 +22,9 @@ const hasWebGL = (page: Page): Promise<boolean> =>
   });
 
 test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en coin", { tag: "@navigateurs" }, async ({ page }) => {
-  await page.goto("/?debug");
+  // Le niveau est FIGÉ sur une date (et non « aujourd'hui ») : la part de fond dépend du niveau et de son thème, donc du jour. Mesuré le 06/11/2026 sur 25 jours (Chromium, rendu logiciel) : de 0,247 à 0,88 ;
+  // le seul jour sous 0,21 était celui de la mise en production (usine : 0,2006 en Chromium, 0,1979 en WebKit), qui faisait échouer ce test le temps d'une journée. Les seuils ne changent pas.
+  await page.goto("/?debug&seed=2026-11-03"); // usine : 0,51 en Chromium, avec de la marge des deux côtés
   test.skip(!(await hasWebGL(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
 
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
