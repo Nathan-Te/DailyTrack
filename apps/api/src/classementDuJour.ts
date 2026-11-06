@@ -172,3 +172,29 @@ export function rangEntreAmis(c: ClassementDuJour, moi: LigneDuJour, amis: Itera
   }
   return presents === 0 ? null : { rang: devant + 1, sur: presents + 1 };
 }
+
+/** Une ligne du classement entre amis de l'accueil : son rang entre amis (`null` : rien fini au cumul), et sa ligne du classement du jour (`null` : rien fini). */
+export interface LigneEntreAmis {
+  id: string;
+  rang: number | null;
+  ligne: LigneDuJour | null;
+}
+
+/**
+ * Lot U1 — le classement du jour **entre amis** de l'accueil : toi (ton bilan exact : tu te places comme `rangEntreAmis`, arrivé le dernier à ton temps) et tes amis, dans l'ordre du cumul du classement
+ * gardé ; ceux qui n'ont rien fini au cumul viennent après, sans rang, dans l'ordre reçu (celui du pseudo). Pur ; aucune requête par ami (le classement gardé et la liste des amis suffisent).
+ */
+export function classerEntreAmis(c: ClassementDuJour, moiId: string, moi: LigneDuJour | null, amis: readonly string[]): LigneEntreAmis[] {
+  const classes: LigneEntreAmis[] = [];
+  const sans: LigneEntreAmis[] = [];
+  for (const id of amis) {
+    if (id === moiId) continue;
+    const i = c.index.get(id);
+    (i === undefined ? sans : classes).push({ id, rang: null, ligne: i === undefined ? (c.lignes.get(id) ?? null) : c.cumul[i]! });
+  }
+  if (moi) classes.push({ id: moiId, rang: null, ligne: ligneDeTri(c, moi) });
+  else sans.unshift({ id: moiId, rang: null, ligne: null });
+  classes.sort((a, b) => comparer(a.ligne!, b.ligne!));
+  classes.forEach((x, i) => (x.rang = i + 1));
+  return [...classes, ...sans];
+}

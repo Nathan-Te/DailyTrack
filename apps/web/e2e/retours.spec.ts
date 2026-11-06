@@ -8,7 +8,7 @@ import { startSite } from "./domaine-serveurs";
 
 // Lot C1, partie A (plateforme) : « Un bug ? Une idée ? » et « Mes messages » — **un seul parcours** (règle R13 : le reste est en unitaire, `apps/api/test/retours.test.ts`, `packages/ui/test/retours.test.ts`,
 // `packages/profile/test/retours.test.ts`). Le joueur de démonstration de la recette (« Démo », qui a déjà un retour avec la réponse de l'éditeur à lire) :
-//   - sur l'accueil du portail, la pastille de son avatar dit qu'une réponse attend (une seule requête au chargement : `GET /api/portail/jour`) ;
+//   - sur l'accueil du portail, le point de la cloche dit qu'une réponse attend (une seule requête au chargement : `GET /api/portail/jour`) ;
 //   - le lien du pied ouvre le dialogue : le contexte joint est montré avant l'envoi ; il écrit un message (un piège HTML qui reste du texte) et l'envoie ;
 //   - « Mes messages » : ses deux fils, la réponse de l'éditeur est dans le fil (et marquée lue : la pastille disparaît), il répond ;
 //   - l'identifiant secret n'est jamais dans une adresse.
@@ -64,7 +64,7 @@ interface Fil {
   messages: number;
 }
 
-test("Démo : la pastille de l'avatar › le dialogue (contexte montré) › « Mes messages » : la réponse de l'éditeur, puis la sienne", async ({ browser }) => {
+test("Démo : le point de la cloche › le dialogue (contexte montré) › « Mes messages » : la réponse de l'éditeur, puis la sienne", async ({ browser }) => {
   const entetes = { "X-Player-Id": DEMO_ID };
   const avant = (await (await fetch(`${API}/api/retours`, { headers: entetes })).json()) as { fils: Fil[]; nonLus: number };
   expect(avant.nonLus).toBe(1);
@@ -76,11 +76,13 @@ test("Démo : la pastille de l'avatar › le dialogue (contexte montré) › « 
     if (u.pathname.startsWith("/api/")) requetes.push(`${r.method()} ${u.pathname}${u.search}`);
   });
 
-  // L'accueil : une seule requête (le jour), la pastille sur l'avatar et son nom lu qui dit pourquoi.
+  // L'accueil : une seule requête (le jour), le point de la cloche et son nom lu qui dit qu'il y a quelque chose à lire (lot U1 : la cloche remplace la pastille de l'avatar) ; sa feuille compte les réponses.
   await page.goto(`${SITE}/?demo=joueur`);
-  const avatar = page.locator("a.dj-avatar--lien");
-  await expect(avatar.locator(".dj-avatar__pastille")).toBeVisible();
-  await expect(avatar).toHaveAttribute("aria-label", /réponse t'attend/);
+  await expect(page.locator("#cloche-point")).toBeVisible();
+  await expect(page.locator("#cloche")).toHaveAccessibleName(/pas lu/);
+  await page.locator("#cloche").click();
+  await expect(page.locator('.salle-feuille__ligne[href="messages/"]')).toContainText("1 réponse à lire");
+  await page.locator(".salle-feuille__fermer").click();
   expect(requetes.filter((r) => r.startsWith("GET /api/portail/jour"))).toHaveLength(1);
 
   // Le dialogue : tout le contexte joint est montré, rien de caché.

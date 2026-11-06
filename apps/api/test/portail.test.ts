@@ -4,7 +4,7 @@ import { PREMIER_JOUR, circuitNumber, medalFor, medalsFor, themeForDay } from "@
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, TICK_RATE, dailyLevel, demoAttempts, encodeReplay, jumpMedalFor, lifeReplay, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
 import type { GameDefinition, PortailDuJeu } from "../src/games";
 import { GRACE_MS } from "../src/cdj";
-import { PORTAIL_PUBLIC_MAX_S, PORTAIL_READS_PER_CLIENT, PREMIER_JOUR_DU_JOUR, serieEtParfaites } from "../src/portail";
+import { PORTAIL_PUBLIC_MAX_S, PORTAIL_READS_PER_CLIENT, PREMIER_JOUR_DU_JOUR, semaineDe, serieEtParfaites } from "../src/portail";
 import { GAMES } from "../src/registry";
 import { circuitOf, makeApi, ouvrirJeu, parisDay, parisDayStart, pilotReplay, playerId, TEST_DB } from "./helpers";
 
@@ -111,6 +111,34 @@ describe("série tous jeux confondus et journées parfaites (pur)", () => {
   });
 });
 
+describe("la semaine en lampes (pur, lot U1)", () => {
+  const jeu = (premierJour: number, finis: number[]) => ({ premierJour, finis: new Set(finis) });
+  // Le vendredi 6 novembre 2026 : la semaine va du lundi 2 au dimanche 8.
+  const VENDREDI = daysFromCivil(2026, 11, 6);
+  it("7 jours du lundi au dimanche : parfaite, jouée, rien ; les jours à venir sont « rien »", () => {
+    const track = jeu(0, [VENDREDI - 4, VENDREDI - 3, VENDREDI - 2, VENDREDI - 1, VENDREDI]);
+    const jump = jeu(0, [VENDREDI - 4, VENDREDI - 2, VENDREDI - 1]);
+    const s = semaineDe(VENDREDI, [track, jump]);
+    expect(s.map((j) => j.date)).toEqual(["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08"]);
+    expect(s.map((j) => j.etat)).toEqual(["parfaite", "jouee", "parfaite", "parfaite", "jouee", "rien", "rien"]);
+  });
+  it("le lundi et le dimanche : la semaine est toujours celle de Paris qui contient le jour", () => {
+    expect(semaineDe(VENDREDI - 4, []).map((j) => j.date)[0]).toBe("2026-11-02");
+    expect(semaineDe(VENDREDI + 2, []).map((j) => j.date)[6]).toBe("2026-11-08");
+    expect(semaineDe(VENDREDI + 3, []).map((j) => j.date)[0]).toBe("2026-11-09");
+  });
+  it("même règle que la série : un jeu qui ne compte pas ce jour-là (interrupteur) n'empêche pas la journée parfaite ; un jeu pas encore né non plus", () => {
+    const track = jeu(0, [VENDREDI]);
+    const jump = { premierJour: 0, finis: new Set<number>(), compte: (d: number) => d < VENDREDI }; // activé aujourd'hui : il compte dès demain
+    const tard = jeu(VENDREDI + 1, []);
+    expect(semaineDe(VENDREDI, [track, jump, tard])[4]!.etat).toBe("parfaite");
+  });
+  it("changement d'heure : la semaine du 25/10/2026 (journée de 25 h) a ses 7 jours", () => {
+    const dimanche = daysFromCivil(2026, 10, 25);
+    expect(semaineDe(dimanche, []).map((j) => j.date)).toEqual(["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"]);
+  });
+});
+
 describe(`portail : GET /api/portail/jour sans joueur (${TEST_DB})`, () => {
   it("les jeux du jour (numéro, thème, seuils en ms, premier jour), l'heure du serveur, le prochain minuit de Paris ; publique, 60 s au plus", async () => {
     const t = await portailApi();
@@ -196,7 +224,7 @@ describe(`portail : GET /api/portail/jour avec un joueur (${TEST_DB})`, () => {
     expect(cdj.etat).toEqual({ statut: "fini", tempsMs: s.body.ms, medaille: medalFor(s.body.ms, medalsFor(circuitOf(TODAY).authorMs)), rang: 1, classes: 1 });
     expect(jump.etat).toEqual({ statut: "pas_joue" });
     // Lot A1 : un seul jeu fini, donc pas de temps cumulé ; sa place (sous « un jeu sur deux ») existe quand même.
-    expect(r.body.joueur).toEqual({ pseudo: "Alice", serie: 1, aProlonger: false, journeesParfaites: 0, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: 1, classesDuJour: 1, rangEntreAmis: null, messagesNonLus: 0, favoris: null, jeuxDuJour: ["track", "jump"] }); // lot F1 : sans favori, tous les jeux
+    expect(r.body.joueur).toEqual({ pseudo: "Alice", serie: 1, aProlonger: false, journeesParfaites: 0, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: 1, classesDuJour: 1, rangEntreAmis: null, messagesNonLus: 0, semaine: expect.any(Array), classementAmis: null, amisDuJour: [], nbAmis: 0, groupe: null, favoris: null, jeuxDuJour: ["track", "jump"] }); // lot F1 : sans favori, tous les jeux
     expect(r.headers.get("cache-control")).toBe("private, no-cache");
     expect(r.headers.get("vary")).toContain("X-Player-Id");
     // DailyJump en cours : des morts envoyées (rejouées), aucun essai classé.
@@ -224,7 +252,7 @@ describe(`portail : GET /api/portail/jour avec un joueur (${TEST_DB})`, () => {
     const r = await t.call("GET", "/api/portail/jour", undefined, as(7));
     // Parfaites : hier, avant-hier, et le 15/10 (la veille du premier jour de Jump : Track seul existait) ; pas le 16 (Jump existait, pas fini).
     expect(formatDay(TODAY - 5)).toBe("2026-10-15");
-    expect(r.body.joueur).toEqual({ pseudo: "J0007", serie: 5, aProlonger: true, journeesParfaites: 3, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: null, classesDuJour: null, rangEntreAmis: null, messagesNonLus: 0, favoris: null, jeuxDuJour: ["track", "jump"] });
+    expect(r.body.joueur).toEqual({ pseudo: "J0007", serie: 5, aProlonger: true, journeesParfaites: 3, aujourdhuiParfaite: false, cumulMs: null, rangDuJour: null, classesDuJour: null, rangEntreAmis: null, messagesNonLus: 0, semaine: expect.any(Array), classementAmis: null, amisDuJour: [], nbAmis: 0, groupe: null, favoris: null, jeuxDuJour: ["track", "jump"] });
     expect(r.body.jeux.map((j: { etat: { statut: string } }) => j.etat.statut)).toEqual(["pas_joue", "pas_joue"]);
   });
 

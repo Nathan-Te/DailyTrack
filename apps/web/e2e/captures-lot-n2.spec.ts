@@ -82,10 +82,11 @@ for (const format of [
 
     const portail = await context.newPage();
     await portail.goto(`${panneau.site}/`);
-    await expect(portail.locator("#nouveautes-point")).toBeVisible();
+    await expect(portail.locator("#cloche-point")).toBeVisible(); // lot U1 : la cloche remplace la ligne « Nouveautés »
     await expect(portail.locator(".dj-bandeau")).toBeVisible();
     await portail.screenshot({ path: join(OUT, `lot-N2-portail-${format.slug}.png`), fullPage: true });
-    await portail.locator("#nouveautes").click();
+    await portail.locator("#cloche").click();
+    await portail.locator('.salle-feuille__ligne[href="nouveautes/"]').click();
     await expect(portail.locator("article.nouveautes-mise-a-jour")).toBeVisible();
     await portail.screenshot({ path: join(OUT, `lot-N2-nouveautes-${format.slug}.png`), fullPage: true });
     // On nettoie pour le format suivant : message retiré, nouveauté supprimée.

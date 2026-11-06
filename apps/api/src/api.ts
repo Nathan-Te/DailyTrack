@@ -222,6 +222,7 @@ export function createApi(options: ApiOptions) {
     interrupteur,
     amis.pourPortail,
     retours.pourPortail,
+    groupes.pourPortail,
   );
   portailPartage = portail;
   // Lot R8 : la remise à zéro du lancement vide la base ; une instance qui voit la génération changer oublie sa mémoire (comme après un effacement).

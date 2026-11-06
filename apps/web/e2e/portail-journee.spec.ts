@@ -24,6 +24,15 @@ test.describe.configure({ mode: "serial" });
 test.setTimeout(150_000);
 const expect = baseExpect.configure({ timeout: 25_000 });
 
+/** Lot U1 : le choix de langue n'est plus dans la barre d'un téléphone (il est dans le profil, charte rév. 19) : un clic de langue sur l'accueil se fait sur une fenêtre de 760 px au moins, puis la fenêtre revient. */
+async function choisirLangue(page: Page, langue: "fr" | "en"): Promise<void> {
+  const vue = page.viewportSize();
+  const etroite = !!vue && vue.width < 760;
+  if (etroite) await page.setViewportSize({ width: 800, height: vue!.height });
+  await page.locator(`.dj-choix-langue [data-langue="${langue}"]`).click();
+  if (etroite) await page.setViewportSize(vue!);
+}
+
 const ROOT = resolve("../..");
 const PORTRAIT = { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true };
 const PAYSAGE = { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true };
@@ -127,12 +136,12 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   const vues = requetesApi(page);
   await page.goto(`${SITE_24}/?demo=joueur`);
   await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
-  // « Journée n° 2 » à droite de la date, sur la même ligne.
+  // Lot U1 : « Journée n° 2 » sous la date, dans le fronton, alignée à gauche avec elle.
   await expect(page.locator("#date")).toHaveText("Samedi 24 octobre");
   await expect(page.locator("#journee")).toHaveText("Journée n° 2");
   const [d, j] = await Promise.all([page.locator("#date").boundingBox(), page.locator("#journee").boundingBox()]);
-  expect(j!.x).toBeGreaterThan(d!.x + d!.width - 1);
-  expect(Math.abs(j!.y + j!.height / 2 - (d!.y + d!.height / 2))).toBeLessThan(d!.height);
+  expect(j!.y).toBeGreaterThan(d!.y + d!.height - 1);
+  expect(Math.abs(j!.x - d!.x)).toBeLessThan(2);
   // Les deux tuiles côte à côte : Série et Classement du jour (sa place, son temps cumulé).
   await expect(page.locator("#serie .dj-tuile__valeur")).toHaveText(`${demo.joueur.serie} jours`);
   await expect(page.locator("#classement .dj-tuile__legende")).toHaveText("Classement du jour");
@@ -167,7 +176,7 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   expect(await page.evaluate(() => (window as unknown as { __copied?: string }).__copied)).toBe(`${ligne}\n${SITE_24}/`);
   expect(vues).toHaveLength(1); // partager ne relit rien
 
-  await page.locator('.dj-choix-langue [data-langue="en"]').click();
+  await choisirLangue(page, "en");
   await expect(page.locator("#journee")).toHaveText("Day #2");
   await expect(page.locator("#date")).toHaveText("Saturday, October 24");
   await expect(page.locator("#classement .dj-tuile__legende")).toHaveText("Today's leaderboard");
@@ -186,7 +195,7 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   await expect(paysage.locator("#classement")).toBeVisible();
   expect(await paysage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await capture(paysage, "portail-plein-paysage-fr");
-  await paysage.locator('.dj-choix-langue [data-langue="en"]').click();
+  await choisirLangue(paysage, "en");
   await expect(paysage.locator("#journee")).toHaveText("Day #2");
   await capture(paysage, "portail-plein-paysage-en");
 });
@@ -319,13 +328,13 @@ for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as c
     // Une requête par jour affiché, avec l'identifiant en en-tête.
     expect(vues.filter((v) => v.url === "/api/portail/classement")).toEqual([{ url: "/api/portail/classement", joueur: DEMO_ID }]);
     await capture(page, `classement-${nom}-fr`);
-    await page.locator('.dj-choix-langue [data-langue="en"]').click();
+    await choisirLangue(page, "en");
     await expect(page.locator("h1")).toHaveText("Today's leaderboard");
     await expect(page.locator("#classement-compte")).toHaveText(`${total} players ranked`);
     await expect(moi.locator(".classement-toi")).toHaveText("You");
     await expect(page.locator("#veille")).toHaveText("‹ Previous day");
     await capture(page, `classement-${nom}-en`);
-    await page.locator('.dj-choix-langue [data-langue="fr"]').click();
+    await choisirLangue(page, "fr");
 
     // Ta ligne hors du haut : séparée par « … », à sa vraie place (57ᵉ sur 212), surlignée. (Réponse fabriquée : la recette n'a pas 50 classés.)
     await page.route("**/api/portail/classement*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(classementFabrique()) }));
@@ -339,7 +348,7 @@ for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as c
     await expect(horsHaut.locator(".classement-coupure")).toHaveText("…");
     await expect(page.locator('#classement-liste li[data-moi="oui"]')).toHaveCount(0); // pas dans le haut
     await capture(page, `classement-hors-haut-${nom}-fr`);
-    await page.locator('.dj-choix-langue [data-langue="en"]').click();
+    await choisirLangue(page, "en");
     await expect(horsHaut.locator(".classement-toi")).toHaveText("You");
     await capture(page, `classement-hors-haut-${nom}-en`);
   });
@@ -403,7 +412,7 @@ test("/classement/ : les onglets Cumulé · Track · Jump changent l'ordre, la s
   await page.goto(`${SITE_24}/classement/?vue=points`);
   await expect(page.locator("#vue-cumul")).toHaveAttribute("aria-selected", "true");
   // Anglais : les noms des onglets et de la séparation.
-  await page.locator('.dj-choix-langue [data-langue="en"]').click();
+  await choisirLangue(page, "en");
   await expect(onglets).toHaveText(["Combined", "Track", "Jump"]);
   await expect(page.locator("#classement-separation")).toHaveText("One game out of two");
   await capture(page, "classement-cumul-portrait-en");

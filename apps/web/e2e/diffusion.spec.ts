@@ -10,7 +10,7 @@ const apresTransitions = (page: import("@playwright/test").Page) => page.waitFor
 
 // Lot N2 (plateforme) : **un seul test dans le navigateur** (règle R13) — l'éditeur publie un message en direct depuis le panneau › il apparaît sur le portail (une seule requête au
 // chargement, rien relu avant 60 s), se ferme, ne revient que s'il change ; au passage la rédaction d'une nouveauté à partir d'une PR de GitHub (réponse de GitHub simulée : la CSP
-// de `/admin/` est celle de `firebase.json`, donc `api.github.com` y est vraiment autorisé) › la ligne « Nouveautés » avec son point › la page `/nouveautes/`. Tout le reste est testé en
+// de `/admin/` est celle de `firebase.json`, donc `api.github.com` y est vraiment autorisé) › la cloche avec son point et sa feuille › la page `/nouveautes/`. Tout le reste est testé en
 // unitaire : lecture d'une ligne « Pour les joueurs », publication bloquée sans anglais, fin du message, en-têtes de cache (`apps/api/test/diffusion.test.ts`, `packages/core/test/nouveautes.test.ts`,
 // `packages/profile/test/annonce.test.ts`, `apps/portail/test/nouveautes.test.ts`, `adminGithub.test.ts`). Ports 4192 et 8812 réservés.
 test.describe.configure({ mode: "serial" });
@@ -59,7 +59,7 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await portail.goto(`${panneau.site}/`);
   await expect(portail.locator("#jeux .dj-cartouche, #jeux [data-jeu]").first()).toBeVisible();
   await expect(portail.locator(".dj-bandeau")).toHaveCount(0);
-  await expect(portail.locator("#nouveautes")).toHaveCount(0);
+  await expect(portail.locator("#cloche-point")).toHaveCount(0); // lot U1 : la cloche remplace la ligne « Nouveautés » ; rien de non lu
   await portail.waitForTimeout(1500); // « rien ne doit arriver » : aucune relecture avant la première minute
   expect(requetes.filter((p) => p === "/api/portail/jour")).toHaveLength(1);
   expect(requetes).not.toContain("/api/annonce");
@@ -131,11 +131,15 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await expect(admin.locator('#nouveautes-gestion [data-statut="brouillon"]')).toHaveCount(1);
   await expect(admin.locator('#nouveautes-gestion [data-statut="publiee"]')).toHaveCount(1); // rien n'a été publié par l'import
 
-  // --- Le portail : la ligne « Nouveautés » avec son point, puis la page ----------------------------------------------------------------------------
+  // --- Le portail : la cloche avec son point et sa feuille, puis la page ----------------------------------------------------------------------------
   await portail.reload();
-  const ligne = portail.locator("#nouveautes");
+  // Lot U1 : la cloche (et son point terre) remplace la ligne « Nouveautés » ; sa petite feuille porte la dernière nouveauté.
+  await expect(portail.locator("#cloche-point")).toBeVisible();
+  await expect(portail.locator("#cloche")).toHaveAccessibleName(/pas lu/);
+  await portail.locator("#cloche").click();
+  const ligne = portail.locator('.salle-feuille__ligne[href="nouveautes/"]');
   await expect(ligne).toContainText("Le bouton caméra revient");
-  await expect(portail.locator("#nouveautes-point")).toBeVisible();
+  await expect(ligne).toHaveAttribute("data-non-lue", "oui");
   await ligne.click();
   await expect(portail).toHaveURL(/\/nouveautes\/$/);
   await expect(portail.locator("article.nouveautes-mise-a-jour h3")).toHaveText("Le bouton caméra revient");
@@ -144,8 +148,8 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await apresTransitions(portail);
   await auditAxe(portail, "nouveautes");
   await portail.goBack();
-  await expect(portail.locator("#nouveautes")).toBeVisible();
-  await expect(portail.locator("#nouveautes-point")).toHaveCount(0); // lue sur cet appareil
+  await expect(portail.locator("#cloche")).toBeVisible();
+  await expect(portail.locator("#cloche-point")).toHaveCount(0); // lue sur cet appareil (lot U1 : le point de la cloche)
 
   // --- Message en direct : écrire, mettre à jour ------------------------------------------------------------------------------------------------------
   await admin.locator('[data-menu="message"]').click();

@@ -29,6 +29,9 @@ export const COULEURS = {
   // de 35 % et éclairci de 8 %, comme la maquette.
   "dj-ecran-ombre": "#261D15",
   "dj-ecran-reflet": "#4A3D32",
+  // Lot U1 (charte rév. 19, § 9) : la salle d'arcade du portail — le second ton des rayures (l'autre est `--dj-encre`, bandes de 16 px à 135°) et l'ombre nette des cartouches posées dessus.
+  "dj-salle": "#33251B",
+  "dj-salle-ombre": "#120C08",
   // 3.2 Médailles (communes à tous les jeux)
   "dj-diamant": "#4FC3DC",
   "dj-diamant-texte": "#0B2530",

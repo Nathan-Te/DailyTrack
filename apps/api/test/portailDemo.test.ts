@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { daysFromCivil } from "@cdj/core";
+import { daysFromCivil, formatDay } from "@cdj/core";
 import { decodeTransfer } from "@cdj/profile";
 import { BASCULE_LOT_35, GENERATOR_MEDAILLES_G1, dailyCircuit, generatorVersionOf, medalFor, medalsFor, runPilot } from "@cdj/sim";
 import { DEMO_GARAGE, DEMO_JOUEUR_CODE, DEMO_JOUEUR_ID, DEMO_MORTS, planGarage, seedPortailDemo } from "../src/portailDemo";
@@ -26,7 +26,10 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
     let r = await t.call("GET", "/api/portail/jour", undefined, as);
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     // Lot F1 : Track en favori (dès aujourd'hui) : sa journée est Track, fini, donc parfaite (la troisième journée parfaite) ; les jours d'avant restent jugés sur tous les jeux (2 journées parfaites).
-    expect(r.body.joueur).toEqual({ pseudo: "Démo", serie: 5, aProlonger: false, journeesParfaites: 3, aujourdhuiParfaite: true, cumulMs: null, rangDuJour: 1, classesDuJour: 1, rangEntreAmis: null, messagesNonLus: 0, favoris: ["track"], jeuxDuJour: ["track"] }); // lot A1 : Jump n'est pas fini, pas de temps cumulé
+    expect(r.body.joueur).toEqual({ pseudo: "Démo", serie: 5, aProlonger: false, journeesParfaites: 3, aujourdhuiParfaite: true, cumulMs: null, rangDuJour: 1, classesDuJour: 1, rangEntreAmis: null, messagesNonLus: 0, semaine: expect.any(Array), classementAmis: null, amisDuJour: [], nbAmis: 0, groupe: null, favoris: ["track"], jeuxDuJour: ["track"] }); // lot A1 : Jump n'est pas fini, pas de temps cumulé
+    // Lot U1 : la semaine en lampes (7 jours, du lundi au dimanche) : aujourd'hui, Track fini est sa journée parfaite ; la série de 5 jours est jouée les jours d'avant de la semaine.
+    expect(r.body.joueur.semaine).toHaveLength(7);
+    expect(r.body.joueur.semaine.find((j: { date: string }) => j.date === formatDay(TODAY)).etat).toBe("parfaite");
     expect(r.body.jeux[0].etat).toMatchObject({ statut: "fini", medaille: "gold", rang: 1 });
     expect(r.body.jeux[1].etat).toEqual({ statut: "en_cours", morts: DEMO_MORTS });
     expect(await t.db.first("SELECT demo FROM players WHERE id = ?", [DEMO_JOUEUR_ID])).toEqual({ demo: 1 });
