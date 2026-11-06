@@ -481,10 +481,10 @@ describe("un niveau compact et dense (lot BR1b)", () => {
     expect(contournables).toBeGreaterThan(nObstacles * 0.3);
     expect(contournables).toBeLessThan(nObstacles * 0.9);
   });
-  it("génère un niveau en quelques millisecondes (365 jours en moins de 8 s)", () => {
-    const t0 = performance.now();
-    for (let i = 0; i < 365; i++) genererNiveau(graine(daysFromCivil(2027, 3, 1) + i));
-    expect(performance.now() - t0).toBeLessThan(8000);
+  it("génère un niveau en peu de tentatives (le coût est mesuré en tentatives, pas en millisecondes : la CI est lente et variable)", () => {
+    const essais = niveaux.map((n) => n.essais);
+    expect(Math.max(...essais)).toBeLessThan(1500);
+    expect(essais.reduce((a, b) => a + b, 0) / essais.length).toBeLessThan(120);
   });
 });
 
