@@ -108,9 +108,9 @@ export interface Piece {
 }
 
 /** Une pièce : la forme ombrée (elle porte une ombre) et sa coque de contour (calque de la basse qualité), dans un groupe qu'on déplace et qu'on déforme d'un bloc. `couleurs` : la géométrie porte l'attribut `color` (pièces fusionnées). */
-export function piece(g: BufferGeometry, couleur: number, avecContour = true, couleurs = false): Piece {
+export function piece(g: BufferGeometry, couleur: number, avecContour = true, couleurs = false, matiereDonnee?: MeshToonMaterial): Piece {
   const groupe = new Group();
-  const matiere = plat(couleur, couleurs);
+  const matiere = matiereDonnee ?? plat(couleur, couleurs);
   const corps = new Mesh(g, matiere);
   corps.castShadow = true;
   groupe.add(corps);

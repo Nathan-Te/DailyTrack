@@ -4,6 +4,7 @@ export * from "./trig";
 export * from "./maths";
 export * from "./entrees";
 export * from "./reglagesSim";
+export * from "./niveau";
 export * from "./generateur";
 export * from "./partie";
 export * from "./rediffusion";

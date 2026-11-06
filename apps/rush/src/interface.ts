@@ -27,6 +27,8 @@ export interface Interface {
   zone3d: HTMLElement;
   coeurs(n: number): void;
   boss(fraction: number | null, phase: number): void;
+  /** Lot BR1 : la pastille « BOSS → 38 m » (la flèche tourne vers l'arène, `angle` en radians sur l'écran, 0 : vers la droite, π/2 : vers le bas) ; `null` : cachée. */
+  cible(metres: number | null, angle?: number): void;
   degats(): void;
   fps(texte: string): void;
   detruire(): void;
@@ -103,12 +105,20 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   marque.className = "rush-boss__moitie";
   piste.append(vie, marque);
   boss.append(nom, piste, phase);
+  // La pastille de l'arène (lot BR1) : une flèche qui tourne et la distance.
+  const cible = document.createElement("div");
+  cible.className = "rush-cible";
+  cible.hidden = true;
+  const fleche = svg("M3 12 L19 12 M13 5 L20 12 L13 19", "rush-cible__fleche");
+  const distanceTexte = document.createElement("span");
+  distanceTexte.className = "rush-cible__texte";
+  cible.append(fleche, distanceTexte);
   const vignette = document.createElement("div");
   vignette.className = "rush-vignette";
   const fps = document.createElement("div");
   fps.className = "rush-fps";
   fps.hidden = true;
-  hud.append(bloc, boss, vignette, fps);
+  hud.append(bloc, boss, cible, vignette, fps);
   racine.append(zone3d, hud);
   // Les doigts.
   let tactileRacine: HTMLElement | null = null;
@@ -200,6 +210,19 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
       }
       vie.style.transform = `scaleX(${Math.max(0, Math.min(1, fraction))})`;
       piste.setAttribute("aria-valuenow", String(Math.round(fraction * 100)));
+    },
+    cible(metres, angle = 0) {
+      if (metres === null) {
+        cible.hidden = true;
+        return;
+      }
+      cible.hidden = false;
+      const texte = t("hud.bossDistance", { m: metres });
+      if (distanceTexte.textContent !== texte) {
+        distanceTexte.textContent = texte;
+        cible.setAttribute("aria-label", texte);
+      }
+      fleche.style.transform = `rotate(${angle.toFixed(3)}rad)`;
     },
     degats() {
       vignette.classList.remove("rush-vignette--coup");

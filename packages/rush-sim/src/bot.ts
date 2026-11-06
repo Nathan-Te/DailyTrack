@@ -2,17 +2,110 @@ import { RAYON_CHEVALIER, RAYON_GOLEM, cm } from "./constantes";
 import { entree, type Changement } from "./entrees";
 import type { Contenu } from "./generateur";
 import { distance, dirVers } from "./maths";
+import { caseDe, centreDeCase, champDeDistance, descendre, INACCESSIBLE } from "./niveau";
 import { CHAUVE, COUP, ONDE, PLONGEON, Partie, type Resultat } from "./partie";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
 // Le pilote : un joueur automatique qui lit l'état de la partie et rend l'octet d'entrée du tick. Il sert à trois choses : le Diamant provisoire du prototype (sa partie du jour), les mesures (une partie de
 // plusieurs minutes dont les entrées ressemblent à celles d'un joueur) et les tests. **Ce n'est pas la méthode des médailles de la suite** (le README du lot BR0 la recommande). Il ne triche pas : il lit ce que lit le
 // rendu (positions, cercles annoncés) et n'a que les entrées d'un joueur au doigt : le déplacement, le coup (tenu), l'esquive, sans visée (visée assistée).
+// Lot BR1 : il NAVIGUE dans le niveau — le chemin le plus court sur la grille jusqu'à l'arène (le champ de distance du niveau), et il ne combat que ce qui lui barre la route : c'est le Diamant provisoire, « foncer ».
+// La stratégie « nettoyer » (une mesure, pas un Diamant) va d'abord à chaque monstre, du plus proche au plus loin, puis à l'arène : elle donne l'écart de temps entre foncer et tout nettoyer.
 
 /** La direction de la croix (0 à 31) la plus proche d'un vecteur. */
 const croix = (dx: number, dy: number): number => Math.trunc((dirVers(dx, dy) + 2) / 4) % 32;
 
-export function pilote(p: Partie): number {
+export type Strategie = "foncer" | "nettoyer";
+/** Ce que le pilote retient d'un tick à l'autre (la stratégie « foncer » n'en a pas besoin). */
+export interface EtatPilote {
+  strategie: Strategie;
+  /** « nettoyer » : le monstre visé, le champ de distance vers sa case et la case pour laquelle il a été calculé. */
+  cible: number;
+  champ: Uint16Array | null;
+  champCase: number;
+  champDepuis: number;
+}
+export const etatPilote = (strategie: Strategie = "foncer"): EtatPilote => ({ strategie, cible: -1, champ: null, champCase: -1, champDepuis: -1e9 });
+
+/** La direction (0 à 31) du pas vers la case voisine qui descend le champ de distance ; −1 si on y est. */
+function pasVers(p: Partie, champ: Uint16Array): number {
+  const n = p.niveau!;
+  const idx = caseDe(n, p.c.x, p.c.y);
+  const s = idx < 0 ? -1 : descendre(n, champ, idx);
+  if (s < 0) return -1;
+  const [tx, ty] = centreDeCase(n, s);
+  return croix(tx - p.c.x, ty - p.c.y);
+}
+
+/** Dans le niveau, avant l'arène : où aller et quoi frapper. */
+function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boolean } {
+  const n = p.niveau!;
+  const c = p.c;
+  const aLArene = (): number => {
+    const d = pasVers(p, n.dist);
+    return d >= 0 ? d : croix(n.arene.x - c.x, n.arene.y - c.y);
+  };
+  // Les monstres qui barrent la route : tout proches, ou sur les quelques pas qui viennent.
+  const idx = caseDe(n, c.x, c.y);
+  let devant: [number, number] = [c.x, c.y];
+  if (idx >= 0) {
+    let k = idx;
+    for (let i = 0; i < 3; i++) {
+      const s = descendre(n, n.dist, k);
+      if (s < 0) break;
+      k = s;
+    }
+    devant = centreDeCase(n, k);
+  }
+  let bloque: { x: number; y: number; r: number } | null = null;
+  let meilleur = Infinity;
+  for (const m of p.monstres) {
+    if (m.hp <= 0) continue;
+    const d = distance(c.x, c.y, m.x, m.y);
+    const barre = etat.strategie === "nettoyer" ? d < cm(360) : d < cm(170) || (d < cm(300) && distance(m.x, m.y, devant[0], devant[1]) < cm(240));
+    if (barre && d < meilleur) {
+      meilleur = d;
+      bloque = { x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : cm(48) };
+    }
+  }
+  const portee = cm(p.reglages.portee) - cm(50);
+  const frapper = (b: { x: number; y: number; r: number }): { direction: number; coup: boolean } => {
+    const d = distance(c.x, c.y, b.x, b.y) - b.r - RAYON_CHEVALIER;
+    return d > portee ? { direction: croix(b.x - c.x, b.y - c.y), coup: false } : { direction: -1, coup: true };
+  };
+  if (bloque) return frapper(bloque);
+  if (etat.strategie === "nettoyer" && p.monstres.some((m) => m.hp > 0)) {
+    // Le monstre le plus proche par le chemin : un champ de distance depuis la case du chevalier.
+    let cible = p.monstres.find((m) => m.id === etat.cible && m.hp > 0);
+    if (!cible) {
+      const depuis = champDeDistance(n, idx >= 0 ? [idx] : []);
+      let dm = Infinity;
+      for (const m of p.monstres) {
+        const k = caseDe(n, m.x, m.y);
+        const dk = k >= 0 ? depuis[k]! : INACCESSIBLE;
+        if (m.hp > 0 && dk < dm) {
+          dm = dk;
+          cible = m;
+        }
+      }
+      etat.cible = cible ? cible.id : -1;
+      etat.champCase = -1;
+    }
+    if (cible) {
+      const kc = caseDe(n, cible.x, cible.y);
+      if (kc >= 0 && (kc !== etat.champCase || p.tick - etat.champDepuis > 60)) {
+        etat.champ = champDeDistance(n, [kc]);
+        etat.champCase = kc;
+        etat.champDepuis = p.tick;
+      }
+      const d = etat.champ ? pasVers(p, etat.champ) : -1;
+      return { direction: d >= 0 ? d : croix(cible.x - c.x, cible.y - c.y), coup: false };
+    }
+  }
+  return { direction: aLArene(), coup: false };
+}
+
+export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   const c = p.c;
   const reg = p.reglages;
   const tick = p.tick;
@@ -55,7 +148,14 @@ export function pilote(p: Partie): number {
     if (m.type === CHAUVE ? m.etat === PLONGEON && d < cm(230) : d < cm(48 + 42 + 35)) esquiver = true;
   }
 
-  // 4. Où frapper : les monstres tout proches d'abord, sinon le golem.
+  // 4. Dans le niveau, avant l'arène : naviguer (et ne frapper que ce qui barre la route). Dans l'arène : le combat.
+  if (p.niveau && p.barriere < 0) {
+    const nav = naviguer(p, etat);
+    const esq = esquiver && c.attente === 0;
+    const dirNav = esq && dirEsquive >= 0 ? dirEsquive : esq && nav.direction < 0 ? croix(c.x - (p.niveau.arene.x), c.y - p.niveau.arene.y) : nav.direction;
+    return entree(dirNav, nav.coup, esq);
+  }
+  // Où frapper : les monstres tout proches d'abord, sinon le golem.
   let cible: { x: number; y: number; r: number } | null = null;
   let meilleur = Infinity;
   for (const m of p.monstres) {
@@ -88,12 +188,13 @@ export function pilote(p: Partie): number {
 }
 
 /** La partie du pilote sur un contenu : ses changements d'entrée (la rediffusion) et son résultat. `max` borne le nombre de ticks (les mesures de plusieurs minutes). */
-export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity): { changements: Changement[]; resultat: Resultat; ticks: number } {
+export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer"): { changements: Changement[]; resultat: Resultat; ticks: number } {
   const p = new Partie(contenu, reglages);
   const changements: Changement[] = [];
+  const etat = etatPilote(strategie);
   let avant = 0;
   while (!p.finie && p.tick < max) {
-    const e = pilote(p);
+    const e = pilote(p, etat);
     if (e !== avant) {
       changements.push({ tick: p.tick, e });
       avant = e;

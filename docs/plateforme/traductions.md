@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2132 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2144 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2694,8 +2694,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `accueil.phrase.clair` | Le golem t'attend au milieu de l'arène. Fais-le tomber avant les autres. | The golem is waiting in the middle of the arena. Bring it down before everyone else does. |
-| `accueil.phrase.sombre` | La nuit tombe sur l'arène. Le golem n'a pas sommeil. | Night falls on the arena. The golem isn't sleepy. |
+| `accueil.phrase.prairie` | Suis le chemin de la prairie jusqu'à l'arène. Le golem t'y attend ; fais-le tomber avant les autres. | Follow the meadow path to the arena. The golem is waiting there; bring it down before everyone else does. |
+| `accueil.phrase.carriere` | La carrière cache ses monstres entre les rochers. Fonce au golem, ou nettoie d'abord. | The quarry hides its monsters among the rocks. Rush the golem, or clear the camps first. |
+| `accueil.phrase.sous-bois` | Le sous-bois est plein de bêtes. Le golem, lui, attend au bout du chemin. | The woods are full of beasts. The golem waits at the end of the path. |
+
+### carte (`carte.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `carte.titre` | Les {n} prochains jours (vue de dessus) | The next {n} days (top view) |
+| `carte.legende` | chemin {m} m · {d} détours · {tue} monstres · pilote {t} | path {m} m · {d} detours · {tue} monsters · pilot {t} |
+| `carte.perdu` | pilote battu | pilot lost |
 
 ### Commandes (`commandes.*`, `apps/rush/src/catalogue.*.ts`)
 
@@ -2838,20 +2847,23 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.golem` | Golem {pct} % | Golem {pct}% |
 | `hud.phase` | Phase {n} | Phase {n} |
 | `hud.tues` | Tués {n} | Kills {n} |
+| `hud.boss` | BOSS | BOSS |
+| `hud.bossDistance` | BOSS {m} m | BOSS {m} m |
 | `hud.coeurs` | Cœurs : {n} sur {total} | Hearts: {n} of {total} |
 
 ### scene (`scene.*`, `apps/rush/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `scene.aria` | L'arène : un chevalier face à un golem et à ses monstres | The arena: a knight facing a golem and its monsters |
+| `scene.aria` | Le niveau du jour : un chevalier suit un chemin jusqu'à l'arène du golem, entre des camps de monstres | Today's level: a knight follows a path to the golem's arena, past monster camps |
 
 ### Thèmes (`theme.*`, `apps/rush/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `theme.clair` | Arène de jour | Day arena |
-| `theme.sombre` | Arène de nuit | Night arena |
+| `theme.prairie` | Prairie | Meadow |
+| `theme.carriere` | Carrière | Quarry |
+| `theme.sous-bois` | Sous-bois | Woods |
 
 ### tune (`tune.*`, `apps/rush/src/catalogue.*.ts`)
 

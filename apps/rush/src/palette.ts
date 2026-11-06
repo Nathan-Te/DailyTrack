@@ -36,13 +36,18 @@ export interface PaletteMonde {
 }
 
 export const PALETTES: Readonly<Record<string, PaletteMonde>> = {
-  clair: {
-    fond: 0xbfe1f4, sol: 0xf3e2ba, sol2: 0xe3c995, mur: 0x8c6d54, murHaut: 0xb08a68, lumiere: 0xfff1d6, ambiance: 0xf4e6c8, intensiteLumiere: 2.1, intensiteAmbiance: 1.3, hemiCiel: 0xe9e4d8, hemiSol: 0xefd9ae, brume: 0xcfe8f7,
+  // Lot BR1 : trois thèmes purement visuels (palette du sol, couleur des murs bas, décor). `mur` / `murHaut` : le mur bas (haie, rochers, muret) et son dessus.
+  prairie: {
+    fond: 0xbfe1f4, sol: 0xf8edcf, sol2: 0xefdcb0, mur: 0x5f9f4f, murHaut: 0x7cbc62, lumiere: 0xfff1d6, ambiance: 0xf4e6c8, intensiteLumiere: 2.1, intensiteAmbiance: 1.3, hemiCiel: 0xe9e4d8, hemiSol: 0xefd9ae, brume: 0xcfe8f7,
     tranche: 0xcfae78, falaise: 0x8a6a4c, falaise2: 0xa88660, herbe: 0x86c06c, herbe2: 0x6aa857, bois: 0xb07a43, bois2: 0x7c5230, nuage: 0xffffff, cielHaut: 0x8fcdf0, cielBas: 0xd6edf8,
   },
-  sombre: {
-    fond: 0x2a2050, sol: 0x54465f, sol2: 0x473a52, mur: 0x1f1826, murHaut: 0x5a4a66, lumiere: 0xb9b0ff, ambiance: 0x6a5f8c, intensiteLumiere: 2.1, intensiteAmbiance: 1.3, hemiCiel: 0x6a62c0, hemiSol: 0x7a6490, brume: 0x4a3c78,
-    tranche: 0x34293f, falaise: 0x2a2233, falaise2: 0x3d324c, herbe: 0x4a7a68, herbe2: 0x3a6656, bois: 0x6a5278, bois2: 0x42324f, nuage: 0x7a6e9c, cielHaut: 0x1b1540, cielBas: 0x5b4b86,
+  carriere: {
+    fond: 0xe6cfae, sol: 0xf0f3f4, sol2: 0xdde4e8, mur: 0x8a7f72, murHaut: 0xa89d8e, lumiere: 0xfff0d2, ambiance: 0xf0e2cc, intensiteLumiere: 2.1, intensiteAmbiance: 1.3, hemiCiel: 0xeee4d6, hemiSol: 0xd8cbb8, brume: 0xeed9bb,
+    tranche: 0x9a8f80, falaise: 0x7a6e60, falaise2: 0x978b7a, herbe: 0xa7a46a, herbe2: 0x8c8b58, bois: 0xa5733f, bois2: 0x74502e, nuage: 0xfdf3e3, cielHaut: 0xe9b98a, cielBas: 0xf6e3c8,
+  },
+  "sous-bois": {
+    fond: 0xb9d6b4, sol: 0xd6e3a6, sol2: 0xc3d58c, mur: 0x3e7a3c, murHaut: 0x5a9a4c, lumiere: 0xfff4cf, ambiance: 0xe6efc8, intensiteLumiere: 2.0, intensiteAmbiance: 1.35, hemiCiel: 0xdfeccc, hemiSol: 0xc9d79a, brume: 0xc6e0c0,
+    tranche: 0x8f8a58, falaise: 0x6e5f44, falaise2: 0x8a7a58, herbe: 0x6fae5a, herbe2: 0x4f9148, bois: 0x8e5f36, bois2: 0x62412a, nuage: 0xf6fff0, cielHaut: 0x9cc8c0, cielBas: 0xdcebd0,
   },
 };
 
@@ -58,8 +63,8 @@ export const COULEURS = {
   geleeClair: 0xc9f5de,
   chauve: 0x7a4fb5,
   chauveClair: 0xb48ee6,
-  golem: 0xa0734c,
-  golemSombre: 0x6c4a30,
+  golem: 0x6a5c52,
+  golemSombre: 0x40352f,
   golemMousse: 0x7f9a5a,
   lueur: 0xf2b544,
   danger: 0xe2382a,

@@ -1,8 +1,10 @@
-import { Color, DirectionalLight, Fog, Group, HemisphereLight, Mesh, MeshToonMaterial, PCFShadowMap, Scene, WebGLRenderer, type Material, type Object3D } from "three";
+import { Color, DirectionalLight, Fog, Group, HemisphereLight, Mesh, MeshToonMaterial, PCFShadowMap, Scene, Vector3, WebGLRenderer, type Material, type Object3D } from "three";
 import { formatDay } from "@cdj/core";
 import {
   CHAUVE,
+  CM_PAR_CHANFREIN,
   DUREE_TICKS,
+  INACCESSIBLE,
   GELEE,
   MARCHE,
   MAX_CHANGEMENTS,
@@ -17,13 +19,17 @@ import {
   VARIANTE,
   M,
   Partie,
+  caseDe,
+  centreDeCase,
   contenuScenario,
   dailyRush,
   decoderRediffusion,
+  descendre,
   enregistrer,
   formatTemps,
   lireJourFige,
   pilote,
+  pointDevant,
   seuilsDe,
   touchesDuBot,
   type Changement,
@@ -51,12 +57,14 @@ import {
   type ChevalierVu,
   type GolemVu,
 } from "./acteurs";
-import { CameraRush, type PointCadre } from "./camera";
+import { CameraRush, type ModeNiveau, type PointCadre } from "./camera";
 import { eclair } from "./cel";
 import { monterDecor } from "./decor";
+import { monterNiveauVu } from "./niveauVue";
 import { FICHE } from "./fiche";
 import { Controles } from "./controles";
 import { Annonces, Anneaux, ArcCoup, Cratere, Eclats, Ombres, Reticule, Traits } from "./effets";
+import { carteDesJours } from "./carte";
 import { lireEssai } from "./essai";
 import { monterInterface } from "./interface";
 import { Rendu, type Qualite } from "./rendu";
@@ -78,6 +86,9 @@ const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? 
 export async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour });
+  // Lot BR1 : `?scenario=jour&jour=AAAA-MM-JJ` (ou `?scenario=carte`) joue un autre jour que celui d'aujourd'hui : un essai, jamais classé, jamais en production.
+  if (essai.jour !== null) return dailyRush(essai.jour, RUSH_GENERATOR_VERSION);
+  if (essai.carte !== null) return dailyRush(jour, RUSH_GENERATOR_VERSION);
   const date = formatDay(jour);
   if (dateDemandable(date, import.meta.env.VITE_PRODUCTION === "1", JOURS_FIGES)) {
     try {
@@ -125,10 +136,11 @@ interface ActeurBete {
 
 export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
+  if (essai.carte !== null) return carteDesJours(contenu.jour, essai.carte, hote, o);
   const manuel = new URLSearchParams(location.search).has("manuel");
   const debug = !BUILD_RESTRICTED && new URLSearchParams(location.search).has("debug");
   const t = o.t;
-  const palette = PALETTES[o.theme] ?? PALETTES.clair!;
+  const palette = PALETTES[o.theme] ?? PALETTES.prairie!;
   const etat = { reglages: (essai.reglages ?? REGLAGES_DEFAUT) as Reglages, sensations: sensationsDe(essai.sensations) as Sensations };
   let lecteur: { reglages(): { volume: number; coupee: boolean } } | null = null;
   void musique()?.lecteur().then((l) => (lecteur = l as unknown as typeof lecteur), () => undefined);
@@ -180,12 +192,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   soleil.castShadow = true;
   soleil.shadow.mapSize.set(1024, 1024);
   const cs = soleil.shadow.camera;
-  cs.left = -15;
-  cs.right = 15;
-  cs.top = 15;
-  cs.bottom = -15;
+  // L'ombre SUIT la caméra (lot BR1 : la carte est plus grande que l'arène) : une carte de 1 024 sur ~36 m autour du point regardé, calée sur la grille des texels (pas de scintillement).
+  cs.left = -18;
+  cs.right = 18;
+  cs.top = 18;
+  cs.bottom = -18;
   cs.near = 2;
-  cs.far = 50;
+  cs.far = 60;
   soleil.shadow.radius = 3.5;
   soleil.shadow.bias = -0.0005;
   soleil.shadow.normalBias = 0.04;
@@ -207,9 +220,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     });
   };
   const R = metres(RAYON_ARENE);
-  const decor = monterDecor(R, palette);
+  const niveau = contenu.niveau;
+  const decor = niveau ? monterNiveauVu(niveau, palette) : monterDecor(R, palette);
   scene.background = decor.ciel;
   scene.add(decor.groupe);
+  const centreArene = niveau ? { x: metres(niveau.arene.x), z: metres(niveau.arene.y) } : { x: 0, z: 0 };
 
   const ombres = new Ombres(); // les ombres en disques : la basse qualité (en haute, de vraies ombres portées)
   scene.add(ombres.maillage);
@@ -444,6 +459,22 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       case "sauve":
         eclats.gerbe("etincelle", x, 1, z, 30, { vitesse: 6, taille: 0.1, haut: 5 });
         break;
+      case "alerte":
+        // un monstre du niveau remarque le chevalier : un éclat jaune au-dessus de lui (le « ! »)
+        eclats.gerbe("etincelle", x, e.a === CHAUVE ? 2.2 : 1.3, z, 5, { vitesse: 2.5, taille: 0.1, haut: 2.5, duree: 0.4 });
+        break;
+      case "barriere":
+        // la barrière se referme derrière le chevalier
+        son("impact");
+        secouer(0.5);
+        eclats.gerbe("poussiere", x, 0.3, z, 26, { vitesse: 5, taille: 0.22, haut: 2.5, duree: 0.8, gravite: 4 });
+        break;
+      case "eveil":
+        // le golem se réveille
+        son("phase2");
+        secouer(0.7);
+        eclats.gerbe("feu", x, 2.5, z, 24, { vitesse: 6, taille: 0.18, haut: 6, duree: 0.7 });
+        break;
     }
   };
   let golemEclair = 0;
@@ -587,7 +618,23 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     if (golem) garder.push({ x: golem.x, z: golem.z, haut: 5.1, r: 3.0 }); // la tête et les épaules, les bras écartés ; le poing levé de l'annonce peut sortir par le haut
     for (const z of partie.zones) if (z.type === POING) garder.push({ x: metres(z.x), z: metres(z.y), r: metres(z.r) }); // le coup de poing ; les pierres tombent près du chevalier, l'onde part du golem
     if (figee) rig.recommencer(); // la vitrine est figée : la caméra est posée d'un coup, sans amorti
-    rig.maj(dt, etat.sensations, camera.aspect, cx, cz, golem, garder, { x: sx, z: sz });
+    let mode: ModeNiveau | undefined;
+    if (niveau) {
+      // Dans le niveau : elle suit le chevalier le long du chemin, puis se fond dans le cadrage de l'arène quand il s'en approche (à 24 m du centre, fondue à 13 m) ; la barrière fermée, c'est l'arène.
+      const d = Math.hypot(cx - centreArene.x, cz - centreArene.z);
+      mode = { arene: centreArene, melange: partie.barriere >= 0 ? 1 : Math.max(0, Math.min(1, (24 - d) / 11)) };
+    }
+    rig.maj(dt, etat.sensations, camera.aspect, cx, cz, golem, garder, { x: sx, z: sz }, mode);
+    {
+      // Le soleil et sa carte d'ombre suivent le point regardé (calés sur les texels).
+      const r = rig.regard;
+      const pas = 36 / 1024;
+      const tx = Math.round(r.x / pas) * pas;
+      const tz = Math.round(r.z / pas) * pas;
+      soleil.target.position.set(tx, 0, tz);
+      soleil.position.set(tx + 9, 18, tz + 4);
+      soleil.target.updateMatrixWorld();
+    }
     if (cameraLibre) {
       // La porte d'essai (`?debug`) peut poser la caméra où elle veut (un gros plan d'un coup, par exemple).
       camera.position.set(cameraLibre.p[0], cameraLibre.p[1], cameraLibre.p[2]);
@@ -685,7 +732,16 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       golemVu.racine.rotation.y = yawGolem;
       const deplace = Math.hypot(sGolem.x1 - sGolem.x0, sGolem.y1 - sGolem.y0) > 20;
       golemSursaut = Math.max(0, golemSursaut - dtMonde * 7);
-      animerGolem(golemVu, figee ? { ...g, etat: MARCHE } : g, { dt: dtMonde, temps, t: g.t, vivant: g.hp > 0, mort: finDepuis >= 0 && g.hp <= 0 ? (now - finDepuis) / PAS_MS : 0, marche: deplace, sursaut: golemSursaut });
+      const dort = !partie.golemEveille;
+      animerGolem(golemVu, figee || dort ? { ...g, etat: MARCHE } : g, { dt: dtMonde, temps, t: g.t, vivant: g.hp > 0, mort: finDepuis >= 0 && g.hp <= 0 ? (now - finDepuis) / PAS_MS : 0, marche: deplace && !dort, sursaut: golemSursaut });
+      if (dort) {
+        // il dort : les yeux éteints
+        for (const y of golemVu.yeux) y.visible = false;
+        for (const h of golemVu.halos) h.visible = false;
+      } else if (!golemVu.yeux[0]!.visible) {
+        for (const y of golemVu.yeux) y.visible = true;
+        for (const h of golemVu.halos) h.visible = true;
+      }
       if (golemEclair > 0) golemEclair -= dt * 60;
       eclair(golemVu.matieres, golemEclair > 0 ? 0.85 : 0);
       ombres.poser(gx, gz, metres(RAYON_GOLEM) * 1.15);
@@ -755,8 +811,22 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
     // L'interface.
     ui.coeurs(c.coeurs);
-    if (g) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase);
+    if (g && partie.golemEveille) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase);
     else ui.boss(null, 1);
+    if (niveau && partie.barriere < 0 && !partie.finie) {
+      // « BOSS → 38 m » : la distance par le chemin jusqu'à l'arène, et la flèche vers le point du chemin qui vient (projeté à l'écran).
+      const k = caseDe(niveau, c.x, c.y);
+      const m = k >= 0 && niveau.dist[k]! !== INACCESSIBLE ? Math.round((niveau.dist[k]! * CM_PAR_CHANFREIN) / 100) : null;
+      const devant = pointDevant(niveau, niveau.dist, c.x, c.y, 5);
+      let angle = 0;
+      if (devant) {
+        const a = new Vector3(cx, 0, cz).project(camera);
+        const b = new Vector3(metres(devant[0]), 0, metres(devant[1])).project(camera);
+        angle = Math.atan2(-(b.y - a.y), (b.x - a.x) * camera.aspect);
+      }
+      ui.cible(m, angle);
+    } else ui.cible(null);
+    decor.maj?.({ x: cx, z: cz }, camera.position, partie.barriere >= 0 ? Math.min(1, (partie.tick - partie.barriere + alpha) / 24) : 0);
 
     renderer.info.reset();
     rendu.dessiner();
@@ -799,6 +869,47 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       /** Une image dessinée tout de suite (de quoi compter les appels de dessin d'une qualité). */
       dessinerMaintenant: () => dessiner(),
       redemarrer,
+      /** Le niveau du jour (grille, clairières, monstres), ou `null` dans un scénario. */
+      niveau: () => partie.niveau,
+      /** Pose le chevalier en (x, z) mètres (les captures : un chemin, un camp, l'entrée de l'arène) ; la caméra est reposée d'un coup. */
+      aller: (x: number, z: number) => {
+        partie.c.x = Math.round(x * M);
+        partie.c.y = Math.round(z * M);
+        pousser(sChev, partie.c.x, partie.c.y);
+        pousser(sChev, partie.c.x, partie.c.y);
+        rig.recommencer();
+      },
+      /** Pose la caméra de suivi tout de suite. */
+      recadrer: () => rig.recommencer(),
+      /** Un point du chemin principal à cette fraction (0 : le départ, 1 : l'arène), en mètres : on remonte le champ de distance depuis le départ. */
+      pointSurLeChemin: (fraction: number): [number, number] => {
+        const n = partie.niveau!;
+        let idx = caseDe(n, n.depart.x, n.depart.y);
+        const total = n.dist[idx]!;
+        for (let i = 0; i < 5000 && n.dist[idx]! > total * (1 - fraction); i++) {
+          const s = descendre(n, n.dist, idx);
+          if (s < 0) break;
+          idx = s;
+        }
+        const [x, y] = centreDeCase(n, idx);
+        return [metres(x), metres(y)];
+      },
+      /** Un point du chemin, dehors, à `m` mètres du bord de l'arène (sur l'axe de la porte). */
+      avantLArene: (m: number): [number, number] => {
+        const n = partie.niveau!;
+        const a = (n.arene.dir * Math.PI * 2) / 128;
+        return [metres(n.arene.x) + Math.cos(a) * (R + m), metres(n.arene.y) + Math.sin(a) * (R + m)];
+      },
+      centreDuCamp: (i: number): [number, number] => {
+        const n = partie.niveau!;
+        const camps = n.clairieres.filter((c) => c.genre === "camp");
+        const c = camps[i % camps.length]!;
+        return [metres(c.x), metres(c.y)];
+      },
+      versLArene: (): number => {
+        const n = partie.niveau!;
+        return ((Math.trunc(((n.arene.dir + 64) % 128) / 4) % 32) + 1) | 0;
+      },
       /** Pose le curseur de la souris en coordonnées d'écran de la scène (de −1 à 1) : de quoi viser dans un test. `null` : plus de souris. */
       souris: (x: number | null, y = 0) => {
         souris = x === null ? null : { x, y };
@@ -844,7 +955,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     },
     dessiner,
     hud() {
-      const g = partie.golem;
+      const g = partie.golem && partie.golemEveille ? partie.golem : null;
       const principal = g ? t("hud.golem", { pct: Math.max(0, Math.ceil((g.hp * 100) / g.hpMax)) }) : t("hud.tues", { n: partie.tues });
       return { principal, secondaire: formatTemps(Math.min(partie.tick, DUREE_TICKS), o.langue) };
     },

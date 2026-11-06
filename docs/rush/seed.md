@@ -23,7 +23,7 @@ Le **temps** de la chute du boss, le plus court gagne. Les médailles (méthode 
 
 ## 5. Le contenu du jour
 
-*(à écrire)* Prévu : un niveau avec un chemin et des détours, une réserve de boss dont un est tiré chaque jour.
+*(provisoire, lot BR1 ; Nathan l'écrira)* Un **niveau**, le même pour tous, tiré de la graine du jour : on part d'un point de départ, on suit un **chemin** (une suite de clairières reliées par des chemins ou des ponts) jusqu'à l'**arène du golem**, et **2 à 4 détours** (à 20-40 m du chemin) mènent à des **camps** de 4 à 8 monstres ; quelques monstres sont épars sur le chemin principal (on peut les contourner en prenant un risque). Les monstres ont un rayon d'alerte et une laisse : ils ne poursuivent pas sur toute la carte, et un joueur qui file doit pouvoir passer au prix de quelques coups. En entrant dans l'arène, une barrière se referme derrière le chevalier et le golem se réveille. **Foncer ≈ 1 min à 1 min 15** (golem compris), **tout nettoyer ≈ +1 min** ; le choix « monter en puissance ou foncer » est posé, même si l'XP n'arrive qu'au lot BR2. Trois **thèmes** purement visuels (prairie, carrière, sous-bois). Prévu ensuite : une réserve de boss dont un est tiré chaque jour (BR3).
 
 ## 6. Les commandes
 
@@ -39,4 +39,10 @@ Voir le point 2 et `docs/rush/consignes.md` (la DA du prototype). Sons : Web Aud
 
 ## 9. Plan en lots
 
-Prototype (lot BR0) puis la proposition de découpage du README `docs/rush/lots/lot-BR0-prototype.md`.
+Prototype (lots BR0, BR0b, BR0c : voir les README `docs/rush/lots/`), puis :
+- **BR1** — le niveau du jour (grille de collision, chemin, détours, camps, arène, barrière, générateur sur 365 graines, trois thèmes visuels, caméra qui suit, pilote qui navigue). **DA figée** : lisibilité seulement.
+- **BR2** — l'XP, les niveaux, les améliorations (une parmi trois) : le choix « monter en puissance ou foncer » prend son sens.
+- **BR3** — les autres boss (la réserve de boss, un tiré chaque jour).
+- **BR4** — les médailles (les trois stratégies du pilote : foncer, nettoyer à moitié, tout nettoyer ; le Diamant définitif).
+- **BR-A** — la **passe artistique** : modèles faits dans Blender pour le golem, les boss et le chevalier, budget de triangles mesuré sur téléphone, réglage de qualité.
+- **BR5** — la publication (mentions légales, passage `preview` puis `on` par Nathan).

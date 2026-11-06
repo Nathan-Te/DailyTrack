@@ -1,10 +1,10 @@
-// « Rush » (lots BR0, BR0b et BR0c, prototype) — un chevalier, des gelées, des chauves-souris et un golem. Tout est entier, à pas fixe de 60 Hz. Le prototype répond à trois questions (le combat, la direction artistique, le rejeu) :
+// « Rush » (lots BR0, BR0b, BR0c et BR1) — un chevalier, des gelées, des chauves-souris et un golem. Tout est entier, à pas fixe de 60 Hz. Le prototype répond à trois questions (le combat, la direction artistique, le rejeu) :
 // aucune règle ici n'est définitive. Les unités : 1 mètre = 4 096 unités (comme les tuiles de Jump), le temps en ticks, les vitesses en unités par tick.
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée. */
-export const RUSH_SIM_VERSION = 3;
+export const RUSH_SIM_VERSION = 4;
 /** La version du générateur du contenu du jour. Elle monte à tout changement de ce que `dailyRush` produit. */
-export const RUSH_GENERATOR_VERSION = 1;
+export const RUSH_GENERATOR_VERSION = 2;
 
 export const TICKS_PAR_SECONDE = 60;
 /** Une partie dure au plus 10 minutes ; au-delà elle est perdue (le pire temps). */

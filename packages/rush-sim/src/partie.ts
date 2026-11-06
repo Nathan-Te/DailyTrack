@@ -3,6 +3,7 @@ import { COEURS, DUREE_TICKS, MAX_MONSTRES, MAX_MONSTRES_VAGUE, RAYON_ARENE, RAY
 import { coupDe, directionDe, esquiveDe, viseeDe } from "./entrees";
 import type { Contenu } from "./generateur";
 import { distance, distance2, idiv, isqrt, unitaire, dirVers, modDir } from "./maths";
+import { PONT, SOL, caseDe, type Niveau } from "./niveau";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 import { COS, SIN } from "./trig";
 
@@ -86,6 +87,11 @@ export interface Monstre {
   duree: number;
   /** Le dernier coup qui l'a touché : un coup ne touche qu'une fois. */
   coup: number;
+  /** Lot BR1 : sa place (le camp), son état de veille — 0 au repos, 1 en alerte (il poursuit), 2 de retour — et sa laisse (unités autour de sa place ; 0 : il poursuit partout, comme dans les scénarios d'essai). */
+  hx: number;
+  hy: number;
+  alerte: number;
+  laisse: number;
 }
 
 export interface Golem {
@@ -134,7 +140,7 @@ export interface OndeGolem {
   touche: boolean;
 }
 
-export type GenreEvenement = "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve";
+export type GenreEvenement = "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil";
 /** Ce que le rendu doit savoir d'un tick (sons, éclats, secousse) : jamais lu par la simulation. */
 export interface Evenement {
   k: GenreEvenement;
@@ -199,6 +205,12 @@ const CHAUVE_PLONGEON = 34;
 const CHAUVE_REPOS = 60;
 const CHAUVE_VITESSE = 392;
 const CHAUVE_VITESSE_PLONGEON = 805;
+/** Lot BR1 : un monstre du niveau remarque le chevalier à ce rayon (autour de lui) ; il le lâche quand il s'est éloigné de sa place de `LAISSE` ou que le chevalier est à deux fois le rayon d'alerte. */
+export const ALERTE_GELEE = cm(700);
+export const ALERTE_CHAUVE = cm(1000);
+export const LAISSE = cm(2000);
+/** Le chevalier est dans l'arène (la barrière se referme derrière lui) quand il est à cette distance du bord. */
+const ENTREE_ARENE = cm(200);
 /** Une vague d'arène : la pause avant la suivante quand le terrain est presque vide. */
 const PAUSE_VAGUE = 180;
 /** Le moment de la partie figée de la vitrine (le chrono de `cible-ia.png`). */
@@ -245,6 +257,12 @@ export class Partie {
   readonly durees: Durees;
   /** Les ticks depuis que l'arène s'est presque vidée (−1 : elle ne l'est pas) : la pause entre deux vagues. */
   private videDepuis = -1;
+  /** Lot BR1 : le niveau du jour (grille), le centre de l'arène, le tick où la barrière s'est refermée (−1 : ouverte) et les cases de la porte. */
+  readonly niveau: Niveau | null;
+  readonly ax: number;
+  readonly ay: number;
+  barriere = -1;
+  private readonly porte: ReadonlySet<number>;
 
   constructor(
     readonly contenu: Contenu,
@@ -252,21 +270,30 @@ export class Partie {
     readonly journal = false,
   ) {
     this.rng = new Rng(contenu.graine);
+    this.niveau = contenu.niveau;
+    this.ax = this.niveau ? this.niveau.arene.x : 0;
+    this.ay = this.niveau ? this.niveau.arene.y : 0;
+    this.porte = new Set(this.niveau ? this.niveau.porte : []);
     this.vit = idiv(cm(reglages.vitesse), 60);
     this.rt = reglages.rythme;
     this.durees = { geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
     this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin";
-    this.c = { x: 0, y: cm(520), dir: 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false };
+    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false };
     if (contenu.scenario === "arene") this.golem = null;
     else {
       const hpMax = reglages.golemVie;
       const [gx, gy] = contenu.scenario === "mannequin" ? GOLEM_MANNEQUIN : [0, -300];
-      this.golem = { x: cm(gx), y: cm(gy), hp: contenu.phase2 ? idiv(hpMax, 2) : hpMax, hpMax, phase: contenu.phase2 ? 2 : 1, etat: MARCHE, t: 0, duree: 0, t1: 0, attaque: 0, repos: this.dur(contenu.phase2 ? 50 : 150), compteur: 0, flash: 0, dir: 32, recup: 0, coup: 0 };
+      // Dans le niveau, le golem dort au fond de l'arène, du côté opposé à l'entrée.
+      const n = this.niveau;
+      const px = n ? n.arene.x - idiv(COS[n.arene.dir]! * cm(300), 1024) : cm(gx);
+      const py = n ? n.arene.y - idiv(SIN[n.arene.dir]! * cm(300), 1024) : cm(gy);
+      this.golem = { x: px, y: py, hp: contenu.phase2 ? idiv(hpMax, 2) : hpMax, hpMax, phase: contenu.phase2 ? 2 : 1, etat: MARCHE, t: 0, duree: 0, t1: 0, attaque: 0, repos: this.dur(contenu.phase2 ? 50 : 150), compteur: 0, flash: 0, dir: n ? n.arene.dir : 32, recup: 0, coup: 0 };
     }
     if (contenu.scenario === "arene") {
       this.apparaitre(contenu.monstres > 0 ? Math.min(contenu.monstres, 6) : 4);
       this.vague = 1;
     }
+    if (this.niveau) this.monterNiveau(this.niveau);
     if (contenu.scenario === "vitrine") this.monterVitrine();
     if (contenu.scenario === "mannequin") this.monterMannequin();
   }
@@ -278,6 +305,19 @@ export class Partie {
   /** Une vitesse en cm/s → unités par tick au rythme de la partie. */
   private vitesse(cmParSeconde: number): number {
     return idiv(cm(cmParSeconde) * this.rt, 6000);
+  }
+
+  /** Les monstres du niveau : chacun à sa place, au repos, avec sa laisse. */
+  private monterNiveau(n: Niveau): void {
+    for (const m of n.monstres) {
+      const gelee = m.type === GELEE;
+      this.monstres.push({ id: this.prochainId++, type: m.type, x: m.x, y: m.y, kx: 0, ky: 0, hp: gelee ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t: 0, age: -100, a: this.rng.int(128), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: m.x, hy: m.y, alerte: 0, laisse: LAISSE });
+    }
+  }
+
+  /** Le golem dort tant que la barrière de l'arène est ouverte. */
+  get golemEveille(): boolean {
+    return !this.niveau || this.barriere >= 0;
   }
 
   /** La scène figée de la vitrine : la composition de `docs/rush/maquettes/cible-ia.png` (le golem au centre avec un cercle d'annonce, le chevalier à gauche, quatre gelées, deux chauves-souris). Le jeu ne la fait pas avancer. */
@@ -299,7 +339,7 @@ export class Partie {
     this.c.marche = true;
     this.monstres = [];
     const bete = (type: number, x: number, y: number, t: number, a = 0): void => {
-      this.monstres.push({ id: this.prochainId++, type, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: 0, a, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0 });
+      this.monstres.push({ id: this.prochainId++, type, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: 0, a, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0 });
     };
     bete(GELEE, -140, -520, 12);
     bete(GELEE, -560, 330, 40);
@@ -313,7 +353,7 @@ export class Partie {
   private monterMannequin(): void {
     this.c.y = cm(520);
     this.c.dir = 96;
-    for (const [x, y] of MANNEQUINS) this.monstres.push({ id: this.prochainId++, type: GELEE, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: VIE_GELEE, flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0 });
+    for (const [x, y] of MANNEQUINS) this.monstres.push({ id: this.prochainId++, type: GELEE, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: VIE_GELEE, flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0 });
   }
 
   get finie(): boolean {
@@ -338,6 +378,7 @@ export class Partie {
     nombre(this.tues);
     nombre(this.subis);
     nombre(this.coupId);
+    nombre(this.barriere);
     objet(this.c);
     objet(this.golem);
     for (const m of this.monstres) objet(m);
@@ -364,15 +405,30 @@ export class Partie {
     const esquiveFront = front(esquiveDe(entree), esquiveDe(this.entreePrecedente));
     this.entreePrecedente = entree;
     this.mouvementChevalier(directionDe(entree), viseeDe(entree), coupFront, coupDe(entree), esquiveFront);
+    if (this.niveau && this.barriere < 0 && distance(this.c.x, this.c.y, this.ax, this.ay) < RAYON_ARENE - ENTREE_ARENE) this.fermerBarriere();
     this.apparitions();
     for (const m of this.monstres) this.mouvementMonstre(m);
     this.separer();
-    if (this.golem) this.mouvementGolem(this.golem);
+    if (this.golem && this.golemEveille) this.mouvementGolem(this.golem);
     this.resoudreZones();
     this.avancerOndes();
     this.contacts();
     this.monstres = this.monstres.filter((m) => m.hp > 0);
     if (this.golem && this.golem.hp <= 0 && !this.victoire) this.gagner();
+  }
+
+  /** Le chevalier entre dans l'arène : la barrière se referme derrière lui et le golem se réveille (il rugit, invulnérable, un instant). */
+  private fermerBarriere(): void {
+    const n = this.niveau!;
+    this.barriere = this.tick;
+    this.ev("barriere", n.arene.ex, n.arene.ey);
+    const g = this.golem;
+    if (g && g.hp > 0) {
+      g.etat = RUGIT;
+      g.t = 0;
+      g.duree = this.dur(60);
+      this.ev("eveil", g.x, g.y);
+    }
   }
 
   // --- Le chevalier ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -530,6 +586,10 @@ export class Partie {
     for (const m of this.monstres) {
       if (m.hp <= 0 || m.coup === this.coupId || !dans(m.x, m.y, rayonDe(m.type))) continue;
       m.coup = this.coupId;
+      if (m.laisse > 0 && m.alerte !== 1) {
+        m.alerte = 1;
+        m.t = 0;
+      }
       m.hp -= degats;
       m.flash = 7;
       m.gel = Math.max(m.gel, TITUBE[s]!); // elle glisse (le recul) puis titube
@@ -573,7 +633,7 @@ export class Partie {
       const x = idiv(COS[angle]! * r, 1024);
       const y = idiv(SIN[angle]! * r, 1024);
       const t = this.rng.int(40);
-      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x - this.c.x, y - this.c.y), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0 });
+      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x - this.c.x, y - this.c.y), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: x, hy: y, alerte: 1, laisse: 0 });
       this.ev("apparition", x, y, type);
     }
   }
@@ -597,7 +657,7 @@ export class Partie {
         this.apparaitre(Math.min(MAX_MONSTRES_VAGUE - this.monstres.length, 3 + this.vague));
         this.videDepuis = -1;
       }
-    } else if (k === "jour" && this.tick >= 240 && (this.tick - 240) % 600 === 0 && this.monstres.length < 4) this.apparaitre(3);
+    }
   }
 
   private mouvementMonstre(m: Monstre): void {
@@ -613,6 +673,7 @@ export class Partie {
       m.gel--;
       return;
     }
+    if (m.laisse > 0) this.veille(m);
     if (this.contenu.scenario === "mannequin") {
       // Le mannequin ne bouge pas : après un coup (glissade, puis titubement) il rentre à sa place, sans attaquer.
       const [hx, hy] = MANNEQUINS[(m.id - 1) % MANNEQUINS.length]!;
@@ -626,11 +687,16 @@ export class Partie {
       return;
     }
     if (m.type === GELEE) {
-      // Elle s'écrase (annonce), vise juste avant de bondir, bondit, se repose.
+      // Au repos (lot BR1), elle reste à sa place. En alerte elle s'écrase (annonce), vise juste avant de bondir, bondit, se repose ; de retour, elle bondit vers sa place.
+      if (m.laisse > 0 && m.alerte === 0) {
+        m.t = 0;
+        return;
+      }
+      const but = m.alerte === 2 ? { x: m.hx, y: m.hy } : c;
       const d = this.durees;
       m.t = (m.t + 1) % d.geleeCycle;
       if (m.t === Math.max(1, d.geleeAnnonce - GELEE_VERROU)) {
-        const [ux, uy] = unitaire(c.x - m.x, c.y - m.y);
+        const [ux, uy] = unitaire(but.x - m.x, but.y - m.y);
         m.cx = ux;
         m.cy = uy;
       }
@@ -644,13 +710,15 @@ export class Partie {
     m.t++;
     if (m.etat === ORBITE) {
       if (m.t % 2 === 0) m.a = modDir(m.a + m.sens);
-      const rayon = cm(450);
-      const tx = c.x + idiv(COS[m.a]! * rayon, 1024);
-      const ty = c.y + idiv(SIN[m.a]! * rayon, 1024);
+      // Elle tourne autour du chevalier (en alerte) ; au repos, autour de sa place, de près ; de retour, elle rentre.
+      const sur = m.laisse === 0 || m.alerte === 1;
+      const rayon = sur ? cm(450) : m.alerte === 2 ? 0 : cm(150);
+      const tx = (sur ? c.x : m.hx) + idiv(COS[m.a]! * rayon, 1024);
+      const ty = (sur ? c.y : m.hy) + idiv(SIN[m.a]! * rayon, 1024);
       const d = distance(m.x, m.y, tx, ty);
       const v = Math.min(d, this.vitesse(CHAUVE_VITESSE));
       if (d > 0) this.deplacer(m, idiv((tx - m.x) * v, d), idiv((ty - m.y) * v, d));
-      if (m.t >= m.duree) {
+      if (sur && m.t >= m.duree) {
         m.etat = ANNONCE_PLONGEON;
         m.t = 0;
       }
@@ -677,6 +745,32 @@ export class Partie {
     }
   }
 
+  /** La veille d'un monstre du niveau : il remarque le chevalier à son rayon d'alerte, le poursuit tant qu'il reste dans sa laisse, puis rentre à sa place (et ne regarde plus le chevalier avant d'y être). */
+  private veille(m: Monstre): void {
+    const c = this.c;
+    const dc = distance(m.x, m.y, c.x, c.y);
+    const alerte = m.type === CHAUVE ? ALERTE_CHAUVE : ALERTE_GELEE;
+    if (m.alerte === 0) {
+      if (this.barriere < 0 && dc < alerte) {
+        m.alerte = 1;
+        m.t = 0;
+        this.ev("alerte", m.x, m.y, m.type);
+      }
+    } else if (m.alerte === 1) {
+      if (distance(m.x, m.y, m.hx, m.hy) > m.laisse || dc > alerte * 2 || this.barriere >= 0) {
+        m.alerte = 2;
+        if (m.type === CHAUVE) {
+          m.etat = ORBITE;
+          m.t = 0;
+        }
+      }
+    } else if (distance(m.x, m.y, m.hx, m.hy) < cm(100)) {
+      m.alerte = 0;
+      m.t = 0;
+      if (m.type === CHAUVE) m.etat = ORBITE;
+    }
+  }
+
   /** Les monstres (et le golem) ne se superposent pas : ils se repoussent. */
   private separer(): void {
     const ms = this.monstres;
@@ -687,6 +781,7 @@ export class Partie {
       for (let j = i + 1; j < ms.length; j++) {
         const b = ms[j]!;
         if (b.hp <= 0) continue;
+        if (this.niveau && (a.type === CHAUVE || b.type === CHAUVE)) continue; // dans le niveau, la chauve-souris vole par-dessus les autres
         const somme = ra + rayonDe(b.type);
         const dx = b.x - a.x;
         const dy = b.y - a.y;
@@ -695,10 +790,8 @@ export class Partie {
         const d = isqrt(d2);
         const recouvre = idiv(somme - d, 2);
         const [ux, uy] = d === 0 ? [1024, 0] : unitaire(dx, dy);
-        a.x -= idiv(ux * recouvre, 1024);
-        a.y -= idiv(uy * recouvre, 1024);
-        b.x += idiv(ux * recouvre, 1024);
-        b.y += idiv(uy * recouvre, 1024);
+        this.pousserMonstre(a, -idiv(ux * recouvre, 1024), -idiv(uy * recouvre, 1024));
+        this.pousserMonstre(b, idiv(ux * recouvre, 1024), idiv(uy * recouvre, 1024));
       }
       this.pousserHorsDuGolem(a, ra);
       this.dansArene(a, ra);
@@ -725,7 +818,7 @@ export class Partie {
       if (g.t >= g.duree) {
         g.etat = MARCHE;
         g.t = 0;
-        g.repos = this.dur(60);
+        g.repos = this.dur(g.phase === 2 ? 60 : this.niveau ? 100 : 60);
       }
       return;
     }
@@ -795,11 +888,13 @@ export class Partie {
           const r = cm(200) + this.rng.int(cm(450));
           x += idiv(COS[ang]! * r, 1024);
           y += idiv(SIN[ang]! * r, 1024);
-          const d = isqrt(x * x + y * y);
+          const dx = x - this.ax;
+          const dy = y - this.ay;
+          const d = isqrt(dx * dx + dy * dy);
           const max = RAYON_ARENE - cm(100);
           if (d > max) {
-            x = idiv(x * max, d);
-            y = idiv(y * max, d);
+            x = this.ax + idiv(dx * max, d);
+            y = this.ay + idiv(dy * max, d);
           }
         }
         this.zones.push({ type: PIERRES, x, y, r: RAYON_ZONE_PIERRE, t0: maintenant, ti: maintenant + annonce + i * ecart, rang: 0 });
@@ -927,19 +1022,79 @@ export class Partie {
   }
 
   // --- Les déplacements ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  /**
+   * Un déplacement. Sans niveau (les scénarios) : le disque de l'arène. Dans le niveau (lot BR1) : la GRILLE — le chevalier et les gelées glissent le long des murs, du vide et des bords de pont (un axe après l'autre), la chauve-souris vole
+   * par-dessus — puis, une fois la barrière refermée, le disque de l'arène retient le chevalier (et ce qui est dans l'arène).
+   */
   private deplacer(e: { x: number; y: number }, dx: number, dy: number): void {
-    e.x += dx;
-    e.y += dy;
-    this.dansArene(e, e === this.c ? RAYON_CHEVALIER : 0);
+    if (!this.niveau) {
+      e.x += dx;
+      e.y += dy;
+      this.dansArene(e, e === this.c ? RAYON_CHEVALIER : 0);
+      return;
+    }
+    if (e === this.c) {
+      if (this.barriere >= 0) {
+        e.x += dx;
+        e.y += dy;
+        this.dansArene(e, RAYON_CHEVALIER);
+      } else this.glisser(e, dx, dy, RAYON_CHEVALIER);
+      return;
+    }
+    const m = e as Monstre;
+    if (m.type === CHAUVE) {
+      e.x += dx;
+      e.y += dy;
+    } else this.glisser(e, dx, dy, RAYON_GELEE);
+    if (this.barriere >= 0) this.dansArene(e, 0);
+  }
+
+  /** Les monstres qui se repoussent : dans le niveau, un monstre au sol ne traverse pas les murs. */
+  private pousserMonstre(m: Monstre, dx: number, dy: number): void {
+    if (this.niveau) this.deplacer(m, dx, dy);
+    else {
+      m.x += dx;
+      m.y += dy;
+    }
+  }
+
+  /** La case sous le point est marchable (et la porte est fermée ou non). */
+  private marchable(x: number, y: number): boolean {
+    const n = this.niveau!;
+    const idx = caseDe(n, x, y);
+    if (idx < 0) return false;
+    const c = n.cases[idx]!;
+    return (c === SOL || c === PONT) && !(this.barriere >= 0 && this.porte.has(idx));
+  }
+
+  /** Un disque de rayon `r` tient en (x, y) : les quatre coins de son carré sont sur des cases marchables (une case fait 2 m, plus que tout corps). */
+  private libre(x: number, y: number, r: number): boolean {
+    return this.marchable(x - r, y - r) && this.marchable(x + r, y - r) && this.marchable(x - r, y + r) && this.marchable(x + r, y + r);
+  }
+
+  private glisser(e: { x: number; y: number }, dx: number, dy: number, r: number): void {
+    // Coincé dans un mur (la porte vient de se fermer sur lui) : on le laisse sortir.
+    if (!this.libre(e.x, e.y, r)) {
+      e.x += dx;
+      e.y += dy;
+      return;
+    }
+    if (this.libre(e.x + dx, e.y, r)) e.x += dx;
+    if (this.libre(e.x, e.y + dy, r)) e.y += dy;
   }
 
   private dansArene(e: { x: number; y: number }, rayon: number): void {
+    if (this.niveau && this.barriere < 0) return;
     const max = RAYON_ARENE - rayon;
-    const d2 = e.x * e.x + e.y * e.y;
+    const dx = e.x - this.ax;
+    const dy = e.y - this.ay;
+    const d2 = dx * dx + dy * dy;
+    // Dans le niveau, ce qui est resté dehors (un monstre poursuivant) n'est pas ramené dans l'arène.
+    if (this.niveau && e !== this.c && d2 > (RAYON_ARENE + cm(100)) * (RAYON_ARENE + cm(100))) return;
     if (d2 > max * max) {
       const d = isqrt(d2);
-      e.x = idiv(e.x * max, d);
-      e.y = idiv(e.y * max, d);
+      e.x = this.ax + idiv(dx * max, d);
+      e.y = this.ay + idiv(dy * max, d);
     }
   }
 

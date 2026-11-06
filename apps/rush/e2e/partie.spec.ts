@@ -14,8 +14,9 @@ test.describe("Rush : une partie", () => {
     await expect(page.locator("#communaute")).toBeHidden(); // jamais en partie
     await expect(page.locator(".rush-monde canvas")).toBeVisible();
     await expect(page.locator(".rush-coeur")).toHaveCount(3);
-    await expect(page.locator(".rush-boss")).toBeVisible();
-    await expect(page.locator("#jeu-hud-score")).toHaveText("Golem 100 %");
+    await expect(page.locator(".rush-boss")).toBeHidden(); // lot BR1 : le golem dort au fond de l'arène ; la barre de vie ne vient qu'avec lui
+    await expect(page.locator(".rush-cible")).toBeVisible(); // « BOSS → … m »
+    await expect(page.locator("#jeu-hud-score")).toHaveText("Tués 0");
     expect(await page.evaluate(() => window.__rush.calls())).toBeGreaterThan(5); // la scène a dessiné
     // La pause arrête le temps : aucun tick n'est joué, la reprise le relance.
     await page.locator("#jeu-hud-pause").click();
@@ -32,7 +33,7 @@ test.describe("Rush : une partie", () => {
     await expect(page.locator("#jeu-fin-rang")).toContainText("Hors ligne");
     await page.locator("#jeu-rejouer").click();
     await expect(page.locator("#jeu-fin")).toBeHidden();
-    await expect(page.locator("#jeu-hud-score")).toHaveText("Golem 100 %");
+    await expect(page.locator("#jeu-hud-score")).toHaveText("Tués 0");
     await context.close();
   });
 
@@ -189,5 +190,70 @@ test.describe("Rush : une partie", () => {
     await page.evaluate(() => window.__rush.dessinerMaintenant());
     expect(await page.evaluate(() => window.__rush.qualite())).toBe("basse");
     await context.close();
+  });
+
+  test("le niveau du jour (lot BR1) : la pastille « BOSS » donne la distance, la barrière se referme à l'entrée de l'arène et le golem se réveille", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
+    await lancer(page);
+    const pastille = page.locator(".rush-cible");
+    await page.evaluate(() => window.__jeu.avancer(2));
+    await expect(pastille).toBeVisible();
+    const avant = Number(((await pastille.textContent()) ?? "").match(/(\d+) m/)?.[1]);
+    expect(avant).toBeGreaterThan(100);
+    expect(avant).toBeLessThan(175);
+    // Sur le chemin : il marche vers l'arène, la distance diminue et le golem dort (pas de barre de vie).
+    await page.evaluate(() => window.__rush.aller(...(window.__rush.pointSurLeChemin(0.5) as [number, number])));
+    await page.evaluate(() => window.__jeu.avancer(2));
+    const milieu = Number(((await pastille.textContent()) ?? "").match(/(\d+) m/)?.[1]);
+    expect(milieu).toBeLessThan(avant);
+    await expect(page.locator(".rush-boss")).toBeHidden();
+    // À 6 m de l'arène, dehors : il y entre ; la barrière se referme, le golem se réveille, la pastille s'éteint, la barre de vie apparaît.
+    const barriere = await page.evaluate(() => {
+      window.__rush.aller(...(window.__rush.avantLArene(6) as [number, number]));
+      window.__rush.forcer(window.__rush.versLArene(), 600);
+      window.__jeu.avancer(300);
+      const p = window.__rush.partie();
+      return { barriere: p.barriere, eveille: p.golemEveille };
+    });
+    expect(barriere.barriere).toBeGreaterThan(0);
+    expect(barriere.eveille).toBe(true);
+    await expect(pastille).toBeHidden();
+    await expect(page.locator(".rush-boss")).toBeVisible();
+    await context.close();
+  });
+
+  test("le niveau d'un autre jour et la carte des jours (lot BR1) : ?jour= change le niveau, ?scenario=carte montre les sept prochains jours ; jamais classés", async ({ browser }) => {
+    const a = await appareil(browser, "/?debug&manuel&tactile=0&scenario=jour&jour=2026-11-10");
+    await lancer(a.page);
+    const niveauA = await a.page.evaluate(() => window.__rush.partie().niveau!.empreinte);
+    await a.page.locator("#jeu-hud-pause").click();
+    await expect(a.page.locator("#jeu-pause")).toBeVisible();
+    await a.context.close();
+    const b = await appareil(browser, "/?debug&manuel&tactile=0&scenario=jour&jour=2026-11-11");
+    await lancer(b.page);
+    expect(await b.page.evaluate(() => window.__rush.partie().niveau!.empreinte)).not.toBe(niveauA);
+    await b.context.close();
+    const c = await appareil(browser, "/?debug&manuel&tactile=0&scenario=carte&jours=7");
+    await c.page.locator("#jeu-jouer").click();
+    await expect(c.page.locator(".rush-carte__jour")).toHaveCount(7);
+    await expect(c.page.locator(".rush-carte__jour canvas")).toHaveCount(7);
+    await c.context.close();
+  });
+
+  test("le niveau dessine sous 200 appels, en haute comme en basse qualité, au carrefour d'un camp et devant l'arène (lot BR1)", async ({ browser }) => {
+    for (const q of ["haute", "basse"] as const) {
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&scenario=jour&qualite=${q}`);
+      await lancer(page);
+      for (const lieu of ["camp", "arene"] as const) {
+        await page.evaluate((lieu) => {
+          window.__rush.aller(...(lieu === "camp" ? (window.__rush.centreDuCamp(0) as [number, number]) : (window.__rush.avantLArene(4) as [number, number])));
+          window.__rush.recadrer();
+          window.__jeu.avancer(30);
+          window.__rush.dessinerMaintenant();
+        }, lieu);
+        expect(await page.evaluate(() => window.__rush.calls())).toBeLessThan(200);
+      }
+      await context.close();
+    }
   });
 });

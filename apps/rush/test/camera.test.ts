@@ -15,12 +15,12 @@ describe("la caméra haute et lointaine (lot BR0c)", () => {
     const p = new Vector3(x, y, z).project(c);
     return [p.x, p.y];
   };
-  it("regarde le sol sous 46° avec un champ de 25° depuis 34 m, par défaut (on voit presque toute l'arène)", () => {
-    expect(CAMERA_DEFAUT).toEqual({ angle: 46, distance: 34, champ: 25 });
+  it("regarde le sol sous 41° avec un champ de 25° depuis 34 m, par défaut (lot BR1 : 41°, pour voir le corps du chevalier) (on voit presque toute l'arène)", () => {
+    expect(CAMERA_DEFAUT).toEqual({ angle: 41, distance: 34, champ: 25 });
     const c = poser(0, 5, null);
     const dir = new Vector3();
     c.getWorldDirection(dir);
-    expect(Math.round((Math.asin(-dir.y) * 180) / Math.PI)).toBe(46);
+    expect(Math.round((Math.asin(-dir.y) * 180) / Math.PI)).toBe(41);
     expect(c.fov).toBe(25);
   });
   it("le chevalier (1,5 m) fait environ 8 % de la hauteur de l'écran à 16:9 : la cible", () => {
