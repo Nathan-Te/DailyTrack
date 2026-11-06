@@ -1,0 +1,507 @@
+/* Lot U2 (charte rév. 19, § 1 et § 9) : `/classement/` devient une page de la salle de jeux — le fronton « CLASSEMENTS », les onglets de vue à pastille de la couleur du jeu, le podium, des lignes à photo de 48 px, le panneau des groupes.
+   Importée APRÈS `salle.css` (qui porte la barre, le fronton, la barre d'onglets du téléphone) et `amisPortail.css`. Mobile d'abord (390 px) ; à partir de 760 px, la liste a son panneau à droite. Valeurs : jetons de @cdj/ui seulement. */
+
+/* --- Le fronton d'une page --------------------------------------------------------------------------------------------------------- */
+.classement-fronton .salle-fronton__dedans {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.classement-fronton__titre {
+  margin: 0;
+  color: var(--dj-moutarde);
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-24);
+  line-height: 1.05;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--dj-terre);
+}
+.classement-fronton__date {
+  margin-top: var(--dj-espace-3);
+  color: var(--dj-ecran-texte);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 500;
+  font-size: var(--dj-taille-13);
+}
+@media (min-width: 760px) {
+  .classement-fronton__titre {
+    font-size: var(--dj-taille-32);
+  }
+  .classement-fronton__date {
+    font-size: var(--dj-taille-14);
+  }
+}
+
+/* --- La page : filtres pleine largeur, puis la liste et, à droite, les groupes -------------------------------------------------------- */
+.salle-page.classement-page {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+}
+.classement-filtres {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+}
+.classement-ligne-f {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+}
+.classement-ligne-f__choix {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-4);
+}
+.classement-grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.classement-gauche {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+  min-width: 0;
+}
+.classement-gauche > .classement-etat,
+.classement-gauche > .classement-egalite,
+.classement-gauche > .classement-compte {
+  margin: 0;
+}
+@media (min-width: 760px) {
+  .salle-page.classement-page {
+    gap: 26px;
+  }
+  .classement-ligne-f {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .classement-jours {
+    margin-left: auto;
+  }
+  .classement-grille {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 30px;
+    align-items: start;
+  }
+}
+
+/* --- Les onglets de vue : le cumul, un par jeu du jour, puis l'arcade ------------------------------------------------------------------ */
+.classement-vues {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-3);
+}
+.classement-vue {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 8px 8px 3px 3px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  font-size: var(--dj-taille-15);
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--dj-encre);
+}
+.classement-vue b {
+  font-weight: 700;
+}
+.classement-vue i {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 3px;
+  background: var(--vue-teinte, var(--dj-moutarde));
+}
+.classement-vue.ici {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.classement-vue.ici i {
+  border-color: var(--dj-creme);
+}
+@media (max-width: 759px) {
+  .classement-vues {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: calc(-1 * var(--salle-x));
+    padding: 0 var(--salle-x) 6px;
+  }
+}
+
+/* --- Le podium : trois grandes photos, la place en pastille moutarde, des marches d'encre ------------------------------------------------- */
+.classement-podium {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  align-items: end;
+  gap: 14px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+/* L'ordre du DOM est celui du classement (1er, 2e, 3e) ; à l'écran le 1er est au milieu. */
+.classement-place--1 {
+  order: 2;
+}
+.classement-place--2 {
+  order: 1;
+}
+.classement-place--3 {
+  order: 3;
+}
+.classement-podium > .classement-ligne {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.classement-place .classement-place__corps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+.classement-place__photo {
+  position: relative;
+  display: inline-flex;
+  margin-bottom: var(--dj-espace-3);
+}
+.classement-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-15);
+}
+.classement-place .classement-pseudo {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--dj-espace-2);
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-16);
+}
+.classement-place .classement-toi {
+  margin-left: 0;
+}
+.classement-place.classement-ligne--moi .classement-pseudo {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--dj-moutarde);
+}
+.classement-place .classement-temps {
+  margin: 2px 0 10px;
+  font-size: var(--dj-taille-16);
+}
+.classement-marche {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: var(--dj-encre);
+  color: var(--dj-moutarde);
+  font-family: var(--dj-police-marque);
+  font-size: 30px;
+  text-shadow: 2px 2px 0 var(--dj-terre);
+}
+.classement-place--1 .classement-marche {
+  height: 100px;
+}
+.classement-place--2 .classement-marche {
+  height: 70px;
+}
+.classement-place--3 .classement-marche {
+  height: 48px;
+}
+@media (max-width: 759px) {
+  .classement-podium {
+    gap: 8px;
+  }
+  /* Sur téléphone, le podium passe à 84 px (1er) et 68 px (2e et 3e). */
+  .classement-place .dj-avatar--t112 {
+    width: 84px;
+    height: 84px;
+  }
+  .classement-place .dj-avatar--t92 {
+    width: 68px;
+    height: 68px;
+  }
+  .classement-badge {
+    width: 28px;
+    height: 28px;
+    font-size: var(--dj-taille-13);
+  }
+  .classement-place .classement-pseudo {
+    font-size: var(--dj-taille-14);
+  }
+  .classement-place .classement-temps {
+    font-size: var(--dj-taille-13);
+  }
+  .classement-marche {
+    font-size: 24px;
+  }
+  .classement-place--1 .classement-marche {
+    height: 76px;
+  }
+  .classement-place--2 .classement-marche {
+    height: 54px;
+  }
+  .classement-place--3 .classement-marche {
+    height: 38px;
+  }
+}
+
+/* --- La liste : la place, la photo de 48 px (44 px sur téléphone), le pseudo et l'emblème de son groupe, une colonne par jeu, le temps ---------------- */
+#classement-liste[data-jeux="1"],
+#classement-moi[data-jeux="1"] {
+  --colonnes-jeux: 118px;
+}
+#classement-liste[data-jeux="2"],
+#classement-moi[data-jeux="2"] {
+  --colonnes-jeux: 118px 118px;
+}
+#classement-liste[data-jeux="3"],
+#classement-moi[data-jeux="3"] {
+  --colonnes-jeux: 118px 118px 118px;
+}
+#classement-liste[data-jeux="4"],
+#classement-moi[data-jeux="4"] {
+  --colonnes-jeux: 118px 118px 118px 118px;
+}
+#classement-liste[data-jeux="5"],
+#classement-moi[data-jeux="5"] {
+  --colonnes-jeux: 118px 118px 118px 118px 118px;
+}
+#classement-liste[data-jeux="6"],
+#classement-moi[data-jeux="6"] {
+  --colonnes-jeux: 118px 118px 118px 118px 118px 118px;
+}
+.classement-liste {
+  gap: 6px;
+}
+.classement-ligne {
+  padding: 0;
+  background: var(--dj-papier);
+}
+.classement-ligne__corps {
+  display: grid;
+  grid-template-columns: 30px 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--dj-cible);
+  padding: 7px 10px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.classement-ligne__bouton {
+  cursor: pointer;
+}
+.classement-ligne .dj-avatar--t48 {
+  width: 44px;
+  height: 44px;
+}
+.classement-ligne .classement-pseudo {
+  min-width: 0;
+  gap: var(--dj-espace-3);
+  font-size: var(--dj-taille-15);
+}
+.classement-ligne .classement-pseudo .salle-embleme {
+  flex: none;
+}
+.classement-ligne .classement-rang {
+  color: var(--dj-encre-douce);
+}
+.classement-ligne--moi .classement-rang {
+  color: var(--dj-encre);
+}
+.classement-ligne .classement-temps {
+  justify-self: end;
+  text-align: right;
+}
+.classement-ligne__jeux,
+.classement-entetes {
+  display: none;
+}
+.classement-ligne__corps--absent {
+  grid-template-columns: 30px 44px minmax(0, 1fr) auto;
+}
+@media (min-width: 760px) {
+  .classement-ligne__corps {
+    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+    gap: 12px;
+    padding: 8px 12px;
+  }
+  .classement-ligne .dj-avatar--t48 {
+    width: 48px;
+    height: 48px;
+  }
+  .classement-ligne__corps--absent {
+    grid-template-columns: 44px 48px minmax(0, 1fr) auto;
+  }
+  /* Les cases des jeux deviennent des colonnes de la ligne ; le nom du jeu est dans l'en-tête (il reste lu dans chaque case). */
+  .classement-ligne__jeux {
+    display: contents;
+  }
+  .classement-jeu {
+    flex-direction: column;
+    align-items: flex-end;
+    justify-self: end;
+    gap: 2px;
+    text-align: right;
+  }
+  .classement-jeu__nom {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .classement-entetes {
+    display: grid;
+    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+    align-items: end;
+    gap: 12px;
+    margin: 0 0 var(--dj-espace-3);
+    padding: 0 calc(12px + var(--dj-trait));
+    color: var(--dj-encre-douce);
+    font-size: var(--dj-taille-12);
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .classement-entetes > span:nth-child(n + 4) {
+    text-align: right;
+  }
+}
+#classement-liste > .classement-podium + .classement-entetes {
+  margin-top: var(--dj-espace-2);
+}
+.classement-ligne--absente {
+  background: transparent;
+}
+.classement-hors-haut {
+  margin-top: var(--dj-espace-3);
+}
+.classement-invite {
+  margin: var(--dj-espace-4) 0 0;
+}
+
+/* --- Le panneau des groupes : à droite de la liste sur ordinateur, sous elle sur téléphone --------------------------------------------------------- */
+.classement-droite {
+  gap: var(--dj-espace-3);
+}
+.groupes-panneau {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.groupes-panneau__ligne {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-4);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--dj-creme-2);
+}
+.groupes-panneau__ligne.groupes-ligne--moi {
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: 4px;
+  background: var(--dj-moutarde);
+}
+.groupes-panneau__ligne .groupes-ligne__rang {
+  flex: none;
+  width: 28px;
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-14);
+}
+.groupes-panneau__texte {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.groupes-panneau__texte .groupes-ligne__nom {
+  min-width: 0;
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-15);
+  overflow-wrap: anywhere;
+}
+.groupes-panneau__texte small {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+}
+.groupes-panneau__ligne .groupes-ligne__score {
+  flex: none;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+}
+.classement-groupes__tous {
+  align-self: flex-start;
+  min-height: var(--dj-cible);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dj-encre);
+  font: inherit;
+  font-size: var(--dj-taille-14);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: var(--dj-trait);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* --- Les emblèmes de groupe (toujours carrés) : 22 px à côté d'un pseudo, 48 px dans les listes, 72 px en tête d'un groupe ---------------------------------- */
+.salle-embleme--t22 {
+  width: 22px;
+  height: 22px;
+  border-width: var(--dj-trait);
+  border-radius: 4px;
+  font-size: 9px;
+}
+.salle-embleme--t48 {
+  width: 48px;
+  height: 48px;
+  font-size: var(--dj-taille-14);
+}
+.salle-embleme--t72 {
+  width: 72px;
+  height: 72px;
+  font-size: var(--dj-taille-22);
+}

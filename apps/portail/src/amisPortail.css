@@ -10,28 +10,13 @@
 .classement-ligne--touchable {
   padding: 0;
 }
-.classement-ligne__bouton {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dj-espace-2);
-  width: 100%;
-  min-height: var(--dj-cible);
-  padding: var(--dj-espace-3) var(--dj-espace-4);
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
 .classement-ligne__bouton:focus-visible {
   outline-offset: calc(-1 * var(--dj-trait-fort));
 }
 .classement-ligne--absente {
   border-style: dashed;
 }
-.classement-ligne__tete--absent .classement-rang,
+.classement-ligne--absente .classement-rang,
 .classement-pas-joue {
   color: var(--dj-encre-douce);
 }

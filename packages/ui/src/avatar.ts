@@ -23,8 +23,8 @@ export interface OptionsAvatar {
   /** Lot C1, partie B : la référence publique du joueur (sa couleur d'initiales en dérive) et l'adresse de son image (absente : les initiales). */
   ref?: string;
   image?: string;
-  /** Taille en pixels (charte § 9) : 24 (lignes de classement), 32 (listes), 44 (défaut : barre, profil), 96 (page de profil). */
-  taille?: 24 | 32 | 44 | 96;
+  /** Taille en pixels (charte § 9, révision 19) : 24 (anciennes lignes), 32 (listes), 44 (défaut : barre), 48 (lignes de classement, amis de l'accueil), 52 (membres d'un groupe), 68 · 84 (podium sur téléphone), 88 (cartes d'amis, feuille d'un joueur), 92 · 112 (podium), 96 · 128 (profil). Les tailles de 48 px et plus sont dans `avatar-grand.css` (que l'accueil du portail ne paie pas). */
+  taille?: 24 | 32 | 44 | 48 | 52 | 68 | 84 | 88 | 92 | 96 | 112 | 128;
   /** Décoratif (une ligne de classement dit déjà le pseudo) : masqué aux lecteurs d'écran. */
   decoratif?: boolean;
 }
