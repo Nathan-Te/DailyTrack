@@ -14,6 +14,7 @@ import {
   replayAttempt,
   textHash,
   thawLevel,
+  verifierGenerateurDuJour,
   type DailyLevel,
   type JumpMedal,
   type JumpMedals,
@@ -355,6 +356,12 @@ export const ADAPTATEUR_JUMP: AdaptateurTable = {
   niveaux: { table: "jump_levels", colonnes: ["level_id", "hash", "author_ticks", "medals", "theme", "source", "ascii", "author_hash"] },
 };
 
+/** Lot 33 : le refus d'un niveau que le code ne peut pas rendre (générateur plus récent que celui de la date) ; le détail est journalisé, jamais rendu. */
+function refusGenerateur(e: unknown, day: number, log: Platform["log"]): RefusJeu {
+  log("ERROR", "DailyJump : niveau sans fichier figé d'un générateur que ce code ne rend pas, refusé", { day: formatDay(day), reason: (e instanceof Error ? e.message : String(e)).slice(0, 160) });
+  return new RefusJeu("level_unavailable", "Niveau du jour indisponible : le générateur de cette date n'est pas celui de ce code et le jour n'est pas figé");
+}
+
 const versionRefus = (detail: string) => new RefusJeu("version", `Une nouvelle version du jeu est disponible : recharge la page (${detail})`);
 
 /**
@@ -413,7 +420,22 @@ export function contratJump(platform: Platform, options: JumpOptions): ContratJe
     async calculer(day) {
       // Lot D3 : par le fil de calcul quand il y en a un (le fil principal reste libre pendant les 2 s du niveau), sinon sur place.
       const fige = frozen[formatDay(day)];
-      const c = niveaux ? ((await niveaux.rejouer({ jeu: "jump", day, fige, generateurs })) as ReturnType<typeof computeJumpDay>) : computeJumpDay(day, fige);
+      // Lot 33 (incident du 06/11/2026) : un jour sans fichier figé ne se génère qu'avec le générateur en vigueur à sa date (calendrier des bascules). Sinon le serveur REFUSE (503
+      // `level_unavailable`, journalisé) au lieu de servir en silence un autre niveau que celui que les joueurs ont vu ; la mise en production refuse de déployer dans ce cas (jours figés avant).
+      if (fige === undefined) {
+        try {
+          verifierGenerateurDuJour(day);
+        } catch (e) {
+          throw refusGenerateur(e, day, log);
+        }
+      }
+      let c: ReturnType<typeof computeJumpDay>;
+      try {
+        c = niveaux ? ((await niveaux.rejouer({ jeu: "jump", day, fige, generateurs })) as ReturnType<typeof computeJumpDay>) : computeJumpDay(day, fige);
+      } catch (e) {
+        if (e instanceof Error && e.name === "GenerateurDuJourError") throw refusGenerateur(e, day, log);
+        throw e;
+      }
       const authorHash = await inputsHash(c.authorInputs);
       if (c.frozenMiss) log("WARNING", "DailyJump : niveau figé refusé, niveau généré", { day: c.info.date, reason: c.frozenMiss.slice(0, 120) });
       const niveau: NiveauJump = { info: c.info, ascii: c.ascii, authorHash, level: null };

@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parisDay } from "@cdj/clock";
 import { formatDay, parseDay } from "@cdj/core";
+import * as jumpSim from "@cdj/jump-sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, dailyLevel } from "@cdj/jump-sim";
 import { freezeLevel, frozenJson, thawLevel } from "../src/frozen";
 
@@ -12,6 +13,12 @@ import { freezeLevel, frozenJson, thawLevel } from "../src/frozen";
 //   npm run freeze:days -w @cdj/jump -- 2026-11-30      jusqu'au 30/11/2026 compris
 //   npm run freeze:days -w @cdj/jump -- demain          jusqu'à demain (date de Paris) compris : la règle avant un changement de version
 //   … -- demain --dir=/tmp/essai                         ailleurs que dans public/levels (essais)
+//
+// **Lot 33 (incident du 06/11/2026) : les niveaux figés d'un générateur d'avant le sac de thèmes (g22 et avant) sont déclarés à la simulation AVANT de générer** (`declareFrozenGenerators`,
+// comme le serveur de la production et le jeu le font à leur démarrage). Sans cela (la construction du jeu définit la liste ; cet outil, lancé dans Node, non), le thème et la variété des jours
+// qui suivent un jour figé d'un ancien générateur étaient calculés SANS ce jour : le fichier figé n'était pas le niveau que la production avait servi, et la mise en production du 06/11 a
+// changé le niveau du jour (diagnostic : `docs/jump/lots/lot-33-incident.md`). Cet outil est copié dans le code en production par « Mettre en production » (qui peut être plus ancien que lui) :
+// il n'importe donc par son nom aucune fonction plus récente que ce code (comme `apps/api/scripts/jump-empreintes.ts`).
 
 const args = process.argv.slice(2);
 const target = args.find((a) => !a.startsWith("--"));
@@ -31,6 +38,16 @@ if (last === null) {
 }
 
 mkdirSync(dir, { recursive: true });
+// Ce que le serveur de la production sait des niveaux déjà figés : le générateur de chaque fichier (un code d'avant le lot V1 n'a pas la déclaration et n'en a pas besoin).
+const declareFrozenGenerators = Reflect.get(jumpSim, "declareFrozenGenerators") as ((generateurs: Record<string, number>) => void) | undefined;
+if (declareFrozenGenerators) {
+  const generateurs: Record<string, number> = {};
+  for (const f of readdirSync(dir)) {
+    const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+    if (date) generateurs[date] = (JSON.parse(readFileSync(join(dir, f), "utf8")) as { generatorVersion: number }).generatorVersion;
+  }
+  declareFrozenGenerators(generateurs);
+}
 console.log(`Niveaux figés dans ${dir} (sim v${JUMP_SIM_VERSION}, générateur g${JUMP_GENERATOR_VERSION}), du ${formatDay(PREMIER_JOUR_JUMP)} au ${formatDay(last)}.`);
 let written = 0;
 let kept = 0;
@@ -50,7 +67,7 @@ for (let day = PREMIER_JOUR_JUMP; day <= last; day++) {
   if (typeof back === "string") throw new Error(`${date} : le fichier écrit ne se relit pas (${back})`);
   writeFileSync(file, frozenJson(frozen));
   written++;
-  console.log(`  ${date}  ${frozen.id}  auteur ${(frozen.auteur / 120).toFixed(3)} s  ${frozenJson(frozen).length} octets`);
+  console.log(`  ${date}  ${frozen.id}  ${level.hash}  auteur ${(frozen.auteur / 120).toFixed(3)} s  ${frozenJson(frozen).length} octets`);
 }
 console.log(`${written} écrit(s), ${kept} déjà figé(s) et relu(s).`);
 if (broken.length > 0) {
