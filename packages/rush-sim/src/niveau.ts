@@ -136,6 +136,9 @@ export const INACCESSIBLE = 65535;
 /** 1 unité de chanfrein = 2/5 de mètre = 40 cm. */
 export const CM_PAR_CHANFREIN = 40;
 
+/** Lot BR2 : un camp en boucle est posé de côté à ce pourcentage (+ 0 à 60) de la longueur du lien qu'il double (180 au BR1b : à 22-84 m du chemin). Mesuré : à 60, 18-44 m (médiane 28 m), un détour en boucle coûte ~10 s à ~7,5 m/s. */
+export const DECALAGE_CAMP = 60;
+
 // --- Les bornes du plan (centimètres) ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 export const BORNES_NIVEAU = {
   /** Le chemin principal mesuré sur la grille, du départ au bord de l'arène (lot BR1b : 70 à 100 m ; 120 à 160 m au BR1). */
@@ -158,9 +161,9 @@ export const BORNES_NIVEAU = {
   /** Les obstacles cassables du chemin principal. */
   obstaclesMin: 1,
   obstaclesMax: 3,
-  /** Un détour : le camp est à 17-85 m du chemin principal (20-40 m au BR1). */
+  /** Un détour : le camp est à 17-45 m du chemin principal (17-85 m au BR1b, 20-40 m au BR1). Lot BR2 : des camps plus proches, pour que le détour soit un pari et non une perte sûre (voir `DECALAGE_CAMP`). */
   detourMin: 1700,
-  detourMax: 8500,
+  detourMax: 4500,
   /** Aucun monstre du chemin à moins de 16 m du départ. */
   loinDuDepart: 1600,
   /** La règle de densité : au plus 3 000 cm de chemin sans rencontre, soit ~4 s de course (7,49 m/s). */
@@ -452,7 +455,7 @@ function tenter(rng: Rng): Plan | null {
         const u = 44 + rng.int(13);
         const [ux, uy] = unitaire(Bc.x - A.x, Bc.y - A.y);
         const s = rng.int(2) === 0 ? 1 : -1;
-        const D = idiv(longueur * (180 + rng.int(61)), 100);
+        const D = idiv(longueur * (DECALAGE_CAMP + rng.int(61)), 100);
         camp = { x: A.x + idiv(ux * idiv(longueur * u, 100), 1024) + idiv(-uy * s * D, 1024), y: A.y + idiv(uy * idiv(longueur * u, 100), 1024) + idiv(ux * s * D, 1024), r, genre: "camp" };
       } else {
         hub = rng.int(nSeg);

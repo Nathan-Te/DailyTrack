@@ -1,10 +1,10 @@
-// « Rush » (lots BR0, BR0b, BR0c, BR1 et BR1b) — un chevalier, des gelées, des chauves-souris et un golem. Tout est entier, à pas fixe de 60 Hz. Le prototype répond à trois questions (le combat, la direction artistique, le rejeu) :
+// « Rush » (lots BR0, BR0b, BR0c, BR1, BR1b et BR2) — un chevalier, des gelées, des chauves-souris et un golem. Tout est entier, à pas fixe de 60 Hz. Le prototype répond à trois questions (le combat, la direction artistique, le rejeu) :
 // aucune règle ici n'est définitive. Les unités : 1 mètre = 4 096 unités (comme les tuiles de Jump), le temps en ticks, les vitesses en unités par tick.
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée. */
-export const RUSH_SIM_VERSION = 5;
+export const RUSH_SIM_VERSION = 6;
 /** La version du générateur du contenu du jour. Elle monte à tout changement de ce que `dailyRush` produit. */
-export const RUSH_GENERATOR_VERSION = 3;
+export const RUSH_GENERATOR_VERSION = 4;
 
 export const TICKS_PAR_SECONDE = 60;
 /** Une partie dure au plus 10 minutes ; au-delà elle est perdue (le pire temps). */
@@ -49,6 +49,11 @@ export const MAX_MONSTRES = 40;
 /** Les vagues de l'arène d'essai (`?scenario=arene`, sans `&monstres=`) : au plus autant de monstres en même temps, puis une pause avant la suivante. `&monstres=N` garde N monstres en vie (le test de charge). */
 export const MAX_MONSTRES_VAGUE = 8;
 
+/** Lot BR2 : au plus autant de choix d'amélioration dans une rediffusion (un par niveau gagné ; on n'en gagne jamais autant). */
+export const MAX_CHOIX = 40;
+/** Lot BR2 : le nombre de cartes proposées à chaque niveau gagné. */
+export const NB_CARTES = 3;
+
 /** Les contenus qu'une partie peut jouer : `jour` (le contenu du jour) et les scénarios d'essai (jamais classés). `vitrine` est une scène figée (lot BR0b) qui sert à comparer le rendu à `docs/rush/maquettes/cible-ia.png` ; `mannequin` (lot BR0c) : six gelées immobiles qui ne meurent pas et un golem qui ne frappe pas, pour juger le coup. */
-export type Scenario = "jour" | "arene" | "boss" | "vitrine" | "mannequin";
-export const SCENARIOS: readonly Scenario[] = ["jour", "arene", "boss", "vitrine", "mannequin"];
+export type Scenario = "jour" | "arene" | "boss" | "vitrine" | "mannequin" | "cartes";
+export const SCENARIOS: readonly Scenario[] = ["jour", "arene", "boss", "vitrine", "mannequin", "cartes"];

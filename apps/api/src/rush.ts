@@ -15,7 +15,7 @@ import {
   scoreParColonnes,
   seuilsDe,
   themeDuJour,
-  touchesDuBot,
+  entreesDuBot,
 } from "@cdj/rush-sim";
 import { inputsHash } from "./copies";
 import { FICHES_SERVEUR } from "./fiches.generated";
@@ -24,7 +24,8 @@ import { type ContratMinimal, definirJeuNeuf, type FicheServeur, RefusJeu, type 
 
 // « Rush » (`rush`) : le serveur du prototype de boss rush (lot BR0). **C'est le contrat minimal d'un jeu neuf**, rien d'autre : le niveau du jour (le fichier figé de l'image s'il se relit et se régénère
 // à l'identique, sinon le générateur courant), le décodage et le rejeu de la rediffusion (la suite des changements d'entrée), la colonne de classement de la fiche (le temps de la chute du golem, ↑), les seuils
-// des médailles (le Diamant est la partie du pilote, provisoire), l'empreinte des entrées. Les routes, l'ordre de validation, le classement, les copies, l'aperçu, l'effacement et les crochets sont ceux du module
+// des médailles (le Diamant est la partie du pilote, provisoire), l'empreinte des entrées. **Lot BR2 : les choix d'amélioration font partie des entrées** ; `rejouer` les valide (un choix n'est accepté qu'à un niveau gagné, au niveau qui vient
+// d'être gagné, avec une carte qui existe ; un choix manquant ou en trop : la rediffusion est refusée, `invalid_replay`). Les routes, l'ordre de validation, le classement, les copies, l'aperçu, l'effacement et les crochets sont ceux du module
 // des jeux (`jeux/`), la table est la table commune `resultats_jeu`. Le jeu naît `off` : le registre le monte, l'état de la table `jeux` le ferme.
 
 const fiche = FICHES_SERVEUR.find((f) => f.id === "rush") as unknown as FicheServeur;
@@ -38,6 +39,8 @@ interface Niveau {
 type Mesure = Resultat;
 interface Rejeu extends RejeuNeuf {
   changements: Rediffusion["changements"];
+  /** Lot BR2 : les choix d'amélioration (le niveau gagné et la carte choisie) : un événement d'entrée comme les autres. */
+  choix: Rediffusion["choix"];
 }
 
 /** Les options propres de « Rush » : les jours figés de l'image (date → contenu du fichier). */
@@ -45,7 +48,8 @@ export interface RushOptions {
   frozen?: Readonly<Record<string, unknown>>;
 }
 
-const texteDesEntrees = (changements: readonly { tick: number; e: number }[]): string => `rush|${changements.map((t) => `${t.tick}:${t.e}`).join(",")}`;
+const texteDesEntrees = (r: { changements: readonly { tick: number; e: number }[]; choix: readonly { tick: number; nv: number; carte: number }[] }): string =>
+  `rush|${r.changements.map((t) => `${t.tick}:${t.e}`).join(",")}|${r.choix.map((c) => `${c.tick}:${c.nv}.${c.carte}`).join(",")}`;
 
 /** Le contenu d'un jour : le fichier figé s'il se vérifie, sinon le générateur courant. */
 export function contenuDeRush(jour: number, frozen: Readonly<Record<string, unknown>> = {}): Contenu {
@@ -67,7 +71,7 @@ export const contratRush = (o: RushOptions = {}): ContratMinimal<Niveau, Rejeu, 
   versions: () => ({ simVersion: RUSH_SIM_VERSION, generatorVersion: RUSH_GENERATOR_VERSION }),
   async niveauDuJour(jour) {
     const contenu = contenuDeRush(jour, o.frozen);
-    return { jour, contenu, authorHash: await inputsHash(texteDesEntrees(touchesDuBot(contenu))) };
+    return { jour, contenu, authorHash: await inputsHash(texteDesEntrees(entreesDuBot(contenu))) };
   },
   decoder(texte) {
     try {
@@ -85,7 +89,7 @@ export const contratRush = (o: RushOptions = {}): ContratMinimal<Niveau, Rejeu, 
   },
   score: (m) => scoreParColonnes(m), // les colonnes de la fiche, selon la variante du jeu (`variante.ts`)
   seuils: (niveau) => seuilsDe(niveau.contenu),
-  entrees: (r) => texteDesEntrees(r.changements),
+  entrees: (r) => texteDesEntrees(r),
   theme: (niveau) => themeDuJour(niveau.jour),
   empreinteAuteur: (niveau) => niveau.authorHash,
   mesures: (m) => ({ subis: m.subis, tues: m.tues }),

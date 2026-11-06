@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2148 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2209 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2703,9 +2703,48 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
+| `carte.lame_lourde.nom` | Lame lourde | Heavy blade |
+| `carte.lame_lourde.effet` | +{n} % de dégâts. Coups un peu plus lents. | +{n}% damage. Slightly slower strikes. |
+| `carte.allonge.nom` | Allonge | Reach |
+| `carte.allonge.effet` | +{n} % de portée, arc plus large. | +{n}% range, wider arc. |
+| `carte.cadence.nom` | Cadence | Tempo |
+| `carte.cadence.effet` | Coups {n} % plus rapides. | Strikes {n}% faster. |
+| `carte.tourbillon.nom` | Tourbillon | Whirlwind |
+| `carte.tourbillon.effet` | Le 3ᵉ coup frappe tout autour. | The 3rd strike hits all around. |
+| `carte.onde_epee.nom` | Onde d'épée | Sword wave |
+| `carte.onde_epee.effet` | Le 3ᵉ coup lance une onde courte. | The 3rd strike sends a short wave. |
+| `carte.bottes_legeres.nom` | Bottes légères | Light boots |
+| `carte.bottes_legeres.effet` | +{n} % de vitesse. Pour foncer au boss. | +{n}% speed. To rush the boss. |
+| `carte.esquive_longue.nom` | Esquive longue | Long dodge |
+| `carte.esquive_longue.effet` | L'esquive va {n} % plus loin. | The dodge goes {n}% farther. |
+| `carte.esquive_vive.nom` | Esquive vive | Quick dodge |
+| `carte.esquive_vive.effet` | Attente de l'esquive : −{n} s. | Dodge cooldown: −{n} s. |
+| `carte.esquive_tranchante.nom` | Esquive tranchante | Cutting dodge |
+| `carte.esquive_tranchante.effet` | L'esquive blesse ce qu'elle traverse. | The dodge hurts what it crosses. |
+| `carte.coeur_en_plus.nom` | Cœur en plus | Extra heart |
+| `carte.coeur_en_plus.effet` | +1 cœur maximum, et un cœur rendu. | +1 max heart, and one heart restored. |
+| `carte.soin.nom` | Soin | Heal |
+| `carte.soin.effet` | Rend 1 cœur. Peut revenir. | Restores 1 heart. May come back. |
+| `carte.vol_de_vie.nom` | Vol de vie | Life steal |
+| `carte.vol_de_vie.effet` | 1 cœur tous les {n} monstres tués. | 1 heart every {n} monsters slain. |
+| `carte.brise_pierre.nom` | Brise-pierre | Stonebreaker |
+| `carte.brise_pierre.effet` | +{n} % de dégâts contre le boss. | +{n}% damage against the boss. |
+| `carte.aimant.nom` | Aimant | Magnet |
+| `carte.aimant.effet` | Les gemmes viennent de {n} % plus loin. | Gems come from {n}% farther. |
 | `carte.titre` | Les {n} prochains jours | The next {n} days |
-| `carte.legende` | {date} · {theme} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · obstacles : {o} · sans rencontre {sr} s au plus · foncer {t} · tout nettoyer {tn}{fin} | {date} · {theme} — {m} m · {d} detours ({b} loops) · {tue} monsters · obstacles: {o} · {sr} s at most without an encounter · rush {t} · clear all {tn}{fin} |
+| `carte.legende` | {date} · {theme} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · obstacles : {o} · sans rencontre {sr} s au plus · foncer {t} · un peu d'XP {tp} · beaucoup d'XP {tn}{fin} | {date} · {theme} — {m} m · {d} detours ({b} loops) · {tue} monsters · obstacles: {o} · {sr} s at most without an encounter · rush {t} · a little XP {tp} · lots of XP {tn}{fin} |
 | `carte.perdu` |  · perdu |  · lost |
+| `carte.meilleure` |  → la plus rapide : {s} (+{ecart} s sur la suivante) |  → fastest: {s} (+{ecart} s on the next) |
+
+### choix (`choix.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `choix.titre` | NIVEAU {n} ! | LEVEL {n}! |
+| `choix.aria` | Niveau {n} : choisis une amélioration | Level {n}: pick an upgrade |
+| `choix.aide` | Touche une carte · 1 2 3, ← → puis Entrée · croix puis A | Tap a card · 1 2 3, ← → then Enter · d-pad then A |
+| `choix.palier` | {n} / {max} | {n} / {max} |
+| `choix.unique` | Une seule fois | One time only |
 
 ### Commandes (`commandes.*`, `apps/rush/src/catalogue.*.ts`)
 
@@ -2848,6 +2887,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.golem` | Golem {pct} % | Golem {pct}% |
 | `hud.phase` | Phase {n} | Phase {n} |
 | `hud.tues` | Tués {n} | Kills {n} |
+| `hud.niveau` | Nv {n} | Lv {n} |
+| `hud.xp` | XP {n} sur {total} | XP {n} of {total} |
 | `hud.bossDistance` | BOSS {m} m | BOSS {m} m |
 | `hud.coeurs` | Cœurs : {n} sur {total} | Hearts: {n} of {total} |
 
@@ -2856,6 +2897,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `scene.aria` | Le niveau du jour : un chevalier, un chemin, l'arène du golem | Today's level: a knight, a path, the golem's arena |
+
+### strategie (`strategie.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `strategie.foncer` | foncer | rush |
+| `strategie.peu` | un peu d'XP | a little XP |
+| `strategie.beaucoup` | beaucoup d'XP | lots of XP |
 
 ### Thèmes (`theme.*`, `apps/rush/src/catalogue.*.ts`)
 
@@ -2894,6 +2943,28 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `tune.courseMontee` | Course : montée (ticks) | Run: ramp-up (ticks) |
 | `tune.courseFacteur` | Course : vitesse (% de la marche) | Run: speed (% of walk) |
 | `tune.courseRayon` | Course : rayon d'alerte (cm) | Run: alert radius (cm) |
+| `tune.xpGelee` | XP d'une gelée | Slime XP |
+| `tune.xpChauve` | XP d'une chauve-souris | Bat XP |
+| `tune.xpRonces` | XP des ronces | Brambles XP |
+| `tune.xpCaisse` | XP d'une caisse | Crate XP |
+| `tune.xpBase` | XP du niveau 2 | XP for level 2 |
+| `tune.xpPas` | XP en plus par niveau | Extra XP per level |
+| `tune.xpCamp` | XP d'un camp (% du chemin) | Camp XP (% of the path's) |
+| `tune.aimant` | Aimant des gemmes (cm) | Gem magnet (cm) |
+| `tune.lourdeDegats` | Lame lourde : dégâts (%/palier) | Heavy blade: damage (%/tier) |
+| `tune.lourdeLenteur` | Lame lourde : lenteur (%/palier) | Heavy blade: slowness (%/tier) |
+| `tune.allongePortee` | Allonge : portée (%/palier) | Reach: range (%/tier) |
+| `tune.allongeArc` | Allonge : arc (°/palier) | Reach: arc (°/tier) |
+| `tune.cadenceGain` | Cadence : gain (%/palier) | Tempo: gain (%/tier) |
+| `tune.ondeDegats` | Onde d'épée : dégâts (% du 3ᵉ coup) | Sword wave: damage (% of the 3rd strike) |
+| `tune.ondePortee` | Onde d'épée : portée (cm) | Sword wave: range (cm) |
+| `tune.bottesVitesse` | Bottes : vitesse (%/palier) | Boots: speed (%/tier) |
+| `tune.esquiveLongue` | Esquive longue (%/palier) | Long dodge (%/tier) |
+| `tune.esquiveVive` | Esquive vive (ticks/palier) | Quick dodge (ticks/tier) |
+| `tune.tranchanteDegats` | Esquive tranchante : dégâts (%) | Cutting dodge: damage (%) |
+| `tune.volVie` | Vol de vie : monstres par cœur | Life steal: monsters per heart |
+| `tune.briseDegats` | Brise-pierre : boss (%/palier) | Stonebreaker: boss (%/tier) |
+| `tune.aimantGain` | Aimant : rayon (%/palier) | Magnet: radius (%/tier) |
 | `tune.arretImage` | Arrêt du coup final (ms) | Finisher hit stop (ms) |
 | `tune.arretPhase` | Arrêt de la phase 2 (ms) | Phase 2 hit stop (ms) |
 | `tune.secousse` | Secousse de caméra (%) | Camera shake (%) |

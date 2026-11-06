@@ -4,12 +4,14 @@
     "determinisme.spec.ts": 3,
     "partie.spec.ts": 120,
     "classement.spec.ts": 60,
-    "poids.spec.ts": 2
+    "poids.spec.ts": 2,
+    "choix.spec.ts": 40
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
     "partie.spec.ts": 120,
     "classement.spec.ts": 60,
-    "poids.spec.ts": 2
+    "poids.spec.ts": 2,
+    "choix.spec.ts": 40
   }
 }

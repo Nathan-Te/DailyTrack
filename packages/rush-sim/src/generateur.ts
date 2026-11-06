@@ -1,5 +1,6 @@
 import { mixSeed } from "@cdj/core";
 import { RUSH_GENERATOR_VERSION, SCENARIOS, type Scenario } from "./constantes";
+import { ameliorationsDe, indiceAmelioration } from "./ameliorations";
 import { genererNiveau, type Niveau } from "./niveau";
 import { themeDuJour, type ThemeRush } from "./themes";
 
@@ -22,6 +23,10 @@ export interface Contenu {
   niveau: Niveau | null;
   /** Le thème visuel du jour. */
   theme: ThemeRush;
+  /** Lot BR2 — scénarios d'essai seulement (jamais classés) : les améliorations déjà prises (`&ameliorations=tourbillon,lame-lourde` ; un identifiant répété les cumule). Le jour n'en a jamais. */
+  ameliorations: string[];
+  /** Lot BR2 — `?scenario=cartes&nv=5` : le niveau dont le choix est ouvert tout de suite (2 par défaut) ; 0 hors de ce scénario. */
+  nv: number;
 }
 
 export class ErreurGenerateur extends Error {
@@ -34,17 +39,23 @@ export class ErreurGenerateur extends Error {
 /** Sel de la graine de Rush (propre au jeu). */
 const SEL = 0x3f91d3;
 
-/** Le contenu d'un jour. Les anciennes versions du générateur restent appelables tant qu'un jour figé les nomme (ici : une seule — les 1 et 2 n'ont jamais été servies : jeu `off`, aucun jour figé). */
+/** Le contenu d'un jour. Les anciennes versions du générateur restent appelables tant qu'un jour figé les nomme (ici : une seule — les 1 à 3 n'ont jamais été servies : jeu `off`, aucun jour figé). */
 export function dailyRush(jour: number, version: number = RUSH_GENERATOR_VERSION): Contenu {
-  if (version !== 3) throw new ErreurGenerateur(`version de générateur inconnue : ${version}`);
+  if (version !== 4) throw new ErreurGenerateur(`version de générateur inconnue : ${version}`);
   const graine = mixSeed(jour, SEL);
-  return { jour, g: version, scenario: "jour", phase2: false, graine, monstres: 0, niveau: genererNiveau(graine), theme: themeDuJour(jour) };
+  return { jour, g: version, scenario: "jour", phase2: false, graine, monstres: 0, niveau: genererNiveau(graine), theme: themeDuJour(jour), ameliorations: [], nv: 0 };
 }
 
 /** Un scénario d'essai (jamais classé). La graine est fixe : un scénario se rejoue à l'identique. */
-export function contenuScenario(scenario: Scenario, o: { phase2?: boolean; monstres?: number; jour?: number } = {}): Contenu {
+export function contenuScenario(scenario: Scenario, o: { phase2?: boolean; monstres?: number; jour?: number; ameliorations?: readonly string[]; nv?: number } = {}): Contenu {
   const jour = o.jour ?? 0;
-  return { jour, g: RUSH_GENERATOR_VERSION, scenario, phase2: o.phase2 === true, graine: mixSeed(jour + 77, SEL), monstres: Math.max(0, Math.min(40, Math.trunc(o.monstres ?? 0))), niveau: null, theme: themeDuJour(jour) };
+  const ameliorations = ameliorationsDe(o.ameliorations ?? []);
+  // Lot BR2 : le scénario `cartes` est le niveau du jour (la graine du jour tire les cartes) avec un choix déjà ouvert au niveau `nv`.
+  if (scenario === "cartes") {
+    const c = dailyRush(jour);
+    return { ...c, scenario, ameliorations, nv: Math.max(2, Math.min(30, Math.trunc(o.nv ?? 2))) };
+  }
+  return { jour, g: RUSH_GENERATOR_VERSION, scenario, phase2: o.phase2 === true, graine: mixSeed(jour + 77, SEL), monstres: Math.max(0, Math.min(40, Math.trunc(o.monstres ?? 0))), niveau: null, theme: themeDuJour(jour), ameliorations, nv: 0 };
 }
 
 /** L'empreinte du contenu (FNV-1a 32 bits sur ses entiers) : un texte de huit hexadécimaux. */
@@ -53,7 +64,9 @@ export function empreinteContenu(contenu: Contenu): string {
   const octet = (n: number): void => {
     h = Math.imul(h ^ (n & 0xff), 0x01000193) >>> 0;
   };
-  for (const n of [contenu.jour, contenu.g, SCENARIOS.indexOf(contenu.scenario), contenu.phase2 ? 1 : 0, contenu.graine, contenu.monstres, contenu.niveau ? contenu.niveau.empreinte : 0]) {
+  // Lot BR2 : les améliorations et le niveau d'un scénario n'entrent dans l'empreinte que s'il y en a (l'empreinte d'un jour du jeu ne change pas).
+  const extra = contenu.ameliorations.length > 0 || contenu.nv > 0 ? [contenu.nv, ...contenu.ameliorations.map((id) => indiceAmelioration(id) + 1)] : [];
+  for (const n of [contenu.jour, contenu.g, SCENARIOS.indexOf(contenu.scenario), contenu.phase2 ? 1 : 0, contenu.graine, contenu.monstres, contenu.niveau ? contenu.niveau.empreinte : 0, ...extra]) {
     octet(n);
     octet(n >>> 8);
     octet(n >>> 16);

@@ -8,6 +8,7 @@ import {
   GELEE,
   MARCHE,
   MAX_CHANGEMENTS,
+  MAX_CHOIX,
   ONDE,
   PIERRES,
   POING,
@@ -19,20 +20,26 @@ import {
   VARIANTE,
   M,
   Partie,
+  AMELIORATIONS,
+  ameliorationsDe,
   caseDe,
   centreDeCase,
+  choisirCarte,
   contenuScenario,
   dailyRush,
   decoderRediffusion,
   descendre,
   enregistrer,
+  entreesDuBot,
   formatTemps,
   lireJourFige,
   pilote,
   pointDevant,
+  reglagesDe,
   seuilsDe,
-  touchesDuBot,
+  sontLesReglagesParDefaut,
   type Changement,
+  type Choix,
   type Contenu,
   type Evenement,
   type Monstre,
@@ -64,7 +71,8 @@ import { monterNiveauVu } from "./niveauVue";
 import { FICHE } from "./fiche";
 import "./rush.css"; // le HUD, les boutons et la carte ne servent qu'en partie : leur feuille est chargée avec la scène (jamais dans le premier chargement)
 import { Controles } from "./controles";
-import { Annonces, Anneaux, ArcCoup, Cratere, Eclats, LignesCourse, Ombres, Reticule, Traits } from "./effets";
+import { Annonces, Anneaux, ArcCoup, Cratere, Eclats, Gemmes, LignesCourse, OndesEpee, Ombres, Reticule, Traits } from "./effets";
+import { carteVue } from "./cartes";
 import { monterObstacles } from "./obstaclesVue";
 import { carteDesJours } from "./carte";
 import { lireEssai } from "./essai";
@@ -87,24 +95,31 @@ const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? 
 /** Le contenu d'un jour : un scénario d'essai de l'adresse, sinon le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
 export async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
-  if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour });
+  const { ameliorations } = essai;
+  // Lot BR2 : `?scenario=cartes` (le choix s'ouvre tout de suite, `&nv=` : à quel niveau) ; `&ameliorations=` : des améliorations données au départ de n'importe quel scénario.
+  if (essai.scenario === "cartes") return contenuScenario("cartes", { jour: essai.jour ?? jour, nv: essai.nv, ameliorations });
+  if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour, ameliorations });
   // Lot BR1 : `?scenario=jour&jour=AAAA-MM-JJ` (ou `?scenario=carte`) joue un autre jour que celui d'aujourd'hui : un essai, jamais classé, jamais en production.
-  if (essai.jour !== null) return dailyRush(essai.jour, RUSH_GENERATOR_VERSION);
+  if (essai.jour !== null) return { ...dailyRush(essai.jour, RUSH_GENERATOR_VERSION), ameliorations: ameliorationsDe(ameliorations) };
   if (essai.carte !== null) return dailyRush(jour, RUSH_GENERATOR_VERSION);
   const date = formatDay(jour);
+  const nouveau = (c: Contenu): Contenu => (ameliorations.length > 0 ? { ...c, ameliorations: ameliorationsDe(ameliorations) } : c);
   if (dateDemandable(date, import.meta.env.VITE_PRODUCTION === "1", JOURS_FIGES)) {
     try {
       const lu = lireJourFige(await lireFichierDeJour("jours", date, base, 4000));
-      if (lu) return lu;
+      if (lu) return nouveau(lu);
     } catch {
       /* absent ou abîmé : le générateur */
     }
   }
-  return dailyRush(jour, RUSH_GENERATOR_VERSION);
+  return nouveau(dailyRush(jour, RUSH_GENERATOR_VERSION));
 }
 
 export const seuilsDeRush = (c: Contenu): Seuils => seuilsDe(c);
-export const rediffusionDiamantRush = (c: Contenu): string => enregistrer(c, touchesDuBot(c));
+export const rediffusionDiamantRush = (c: Contenu): string => {
+  const bot = entreesDuBot(c);
+  return enregistrer(c, bot.changements, bot.choix);
+};
 
 const mod = (x: number, n: number): number => ((x % n) + n) % n;
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
@@ -143,7 +158,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const debug = !BUILD_RESTRICTED && new URLSearchParams(location.search).has("debug");
   const t = o.t;
   const palette = PALETTES[o.theme] ?? PALETTES.prairie!;
-  const etat = { reglages: (essai.reglages ?? REGLAGES_DEFAUT) as Reglages, sensations: sensationsDe(essai.sensations) as Sensations };
+  const collees = essai.reglages === null ? REGLAGES_DEFAUT : reglagesDe(essai.reglages);
+  const etat = { reglages: (sontLesReglagesParDefaut(collees) ? REGLAGES_DEFAUT : collees) as Reglages, sensations: sensationsDe(essai.sensations) as Sensations };
   let lecteur: { reglages(): { volume: number; coupee: boolean } } | null = null;
   void musique()?.lecteur().then((l) => (lecteur = l as unknown as typeof lecteur), () => undefined);
   const sonsAvecKit = new Sons(() => (lecteur ? niveauEffets(lecteur.reglages().volume, lecteur.reglages().coupee) : 0.8));
@@ -174,6 +190,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   let fantomeChangements: Changement[] = [];
   let fantomeIndex = 0;
   let fantomeEntree = 0;
+  // Lot BR2 : les choix d'amélioration faits (une partie sauvée les emporte : c'est un événement d'entrée de la rediffusion), ceux du fantôme, et la carte en surbrillance.
+  let choixFaits: Choix[] = [];
+  let fantomeChoix: Choix[] = [];
+  let fantomeIndexChoix = 0;
+  let selectionChoix = 0;
 
   // --- La scène ---
   const renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -247,6 +268,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   scene.add(traits.maillage);
   const lignesCourse = new LignesCourse(); // lot BR1b : les lignes de vitesse de la course
   scene.add(lignesCourse.maillage);
+  const gemmesVue = new Gemmes(); // lot BR2 : les gemmes d'XP
+  scene.add(gemmesVue.groupe);
+  const ondesEpeeVue = new OndesEpee(); // lot BR2 : l'onde de l'épée
+  scene.add(ondesEpeeVue.groupe);
   const reticule = new Reticule();
   scene.add(reticule.maillage);
 
@@ -365,7 +390,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       case "coup":
         // Le souffle de l'épée suit l'anticipation ; l'arc ne paraît qu'à la phase active.
         son(e.a === 0 ? "coup1" : e.a === 1 ? "coup2" : "coup3");
-        arc.lancer(metres(partie.c.x), metres(partie.c.y), (e.b * Math.PI * 2) / 128, metres((etat.reglages.portee * M) / 100) * (e.a === 2 ? 1.25 : 1), (Math.min(90, etat.reglages.arc + (e.a === 2 ? 30 : 0)) * Math.PI) / 180, e.a, partie.impactCoup(e.a));
+        arc.lancer(metres(partie.c.x), metres(partie.c.y), (e.b * Math.PI * 2) / 128, metres(partie.porteeCoup(e.a)), (partie.arcCoup(e.a) * Math.PI) / 180, e.a, partie.impactCoup(e.a)); // lot BR2 : la portée et l'arc comptent les améliorations
         break;
       case "touche": {
         // L'IMPACT (lot BR0c). Coups 1 et 2 : PAS d'arrêt sur image — l'éclair blanc de la cible, son écrasement, le recul (la simulation), une poussée de la caméra et des éclats. Le 3ᵉ coup (le coup final) a la secousse et un arrêt de 90 ms ;
@@ -480,6 +505,47 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         eclats.gerbe("poussiere", x, 0.4, z, 18, { vitesse: 4, taille: 0.2, haut: 2.5, duree: 0.7, gravite: 4 });
         eclats.gerbe(e.a === 0 ? "gelee" : "pierre", x, 0.8, z, 16, { vitesse: 5, taille: 0.16, haut: 4 });
         break;
+      case "gemme":
+        // une gemme jaillit de ce qui vient de céder
+        eclats.gerbe("etincelle", x, 0.6, z, 5, { vitesse: 2.6, taille: 0.07, haut: 3.2, duree: 0.35 });
+        break;
+      case "ramasse": {
+        // un tintement qui monte quand on en ramasse plusieurs de suite
+        const maintenant = performance.now();
+        chaineGemmes = maintenant - dernierRamasse < 320 ? Math.min(8, chaineGemmes + 1) : 0;
+        dernierRamasse = maintenant;
+        if (maintenant - dernierSonRamasse > 45) {
+          dernierSonRamasse = maintenant;
+          son("ramasse", 1 + chaineGemmes * 0.07);
+        }
+        eclats.gerbe("etincelle", metres(partie.c.x), 1, metres(partie.c.y), 3, { vitesse: 2, taille: 0.06, haut: 2.4, duree: 0.3 });
+        break;
+      }
+      case "niveau":
+        // un niveau gagné : le monde se fige, des étincelles autour du chevalier
+        son("niveau");
+        o.vibrer([30, 30, 70]);
+        eclats.gerbe("etincelle", x, 1, z, 30, { vitesse: 6, taille: 0.1, haut: 6, duree: 0.7 });
+        eclats.gerbe("feu", x, 0.4, z, 14, { vitesse: 4, taille: 0.14, haut: 3, duree: 0.5 });
+        break;
+      case "carte":
+        son("carte");
+        eclats.gerbe("etincelle", x, 1, z, 22, { vitesse: 5, taille: 0.09, haut: 5, duree: 0.6 });
+        break;
+      case "ondeEpee":
+        son("ondeEpee");
+        break;
+      case "tourbillon":
+        // le 3ᵉ coup frappe tout autour : un nuage d'étincelles en couronne
+        eclats.gerbe("etincelle", x, 0.8, z, 22, { vitesse: 7, taille: 0.1, haut: 1.2, duree: 0.45 });
+        break;
+      case "tranchant":
+        eclats.gerbe("etincelle", x, 0.9, z, 8, { vitesse: 5, taille: 0.08, haut: 2.5 });
+        break;
+      case "soin":
+        son("soin");
+        eclats.gerbe("etincelle", x, 1, z, 16, { vitesse: 3, taille: 0.09, haut: 4, duree: 0.6 });
+        break;
       case "barriere":
         // la barrière se referme derrière le chevalier
         son("impact");
@@ -496,6 +562,48 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   };
   let golemEclair = 0;
   let golemSursaut = 0;
+  let dernierRamasse = -1e9;
+  let dernierSonRamasse = -1e9;
+  let chaineGemmes = 0;
+
+  // --- Le choix d'une amélioration (lot BR2) : le monde est figé (la simulation n'avance plus, le chrono non plus) jusqu'à ce que le joueur ait choisi une carte ---
+  const ouvrirChoixVue = (): void => {
+    const ch = partie.choix;
+    if (!ch) return;
+    selectionChoix = 0;
+    ui.ouvrirChoix(ch.nv, ch.cartes.map((i) => carteVue(i, partie.paliers[i]!, etat.reglages, t)), (i) => valider(i));
+  };
+  /** Le joueur choisit la carte `i` : un événement d'entrée (noté pour la rediffusion), la simulation repart — ou ouvre aussitôt le choix du niveau suivant. */
+  const valider = (i: number): void => {
+    const ch = partie.choix;
+    if (!ch || !ui.choixOuvert()) return;
+    if (choixFaits.length >= MAX_CHOIX || !partie.choisir(ch.nv, i)) return;
+    choixFaits.push({ tick: partie.tick, nv: ch.nv, carte: i });
+    controles.effacerAppuis();
+    ui.fermerChoix();
+    for (const ev of partie.evenements) traiter(ev);
+    partie.vider();
+    if (partie.choix) ouvrirChoixVue();
+  };
+  const deplacerSelection = (pas: number): void => {
+    const n = partie.choix?.cartes.length ?? 0;
+    if (n === 0) return;
+    selectionChoix = (selectionChoix + pas + n) % n;
+    ui.selection(selectionChoix);
+  };
+  /** Pendant le choix, 1 2 3 choisissent la carte, Entrée la carte en surbrillance (les flèches, ZQSD et la manette déplacent la surbrillance par les actions du kit : `action`). Écouteur en CAPTURE : Entrée est « Recommencer » pour le kit, il ne doit pas la lui laisser. */
+  const surTouchePendantChoix = (e: KeyboardEvent): void => {
+    if (!ui.choixOuvert() || e.ctrlKey || e.metaKey || e.altKey) return;
+    const m = /^(?:Digit|Numpad)([1-3])$/.exec(e.code);
+    const entree = e.code === "Enter" || e.code === "NumpadEnter";
+    if (!m && !entree) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.repeat) return;
+    valider(m ? Number(m[1]) - 1 : selectionChoix);
+  };
+  addEventListener("keydown", surTouchePendantChoix, true);
+  if (partie.choix) ouvrirChoixVue(); // `?scenario=cartes` : le choix est ouvert dès le départ
 
   // --- Un tick de simulation ---
   const pasDeSimulation = (): void => {
@@ -509,10 +617,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       }
     }
     partie.avancer(e);
-    if (fantomeSim && !fantomeSim.finie) {
-      while (fantomeIndex < fantomeChangements.length && fantomeChangements[fantomeIndex]!.tick <= fantomeSim.tick) fantomeEntree = fantomeChangements[fantomeIndex++]!.e;
-      fantomeSim.avancer(fantomeEntree);
-    }
+    avancerFantome();
     pousser(sChev, partie.c.x, partie.c.y);
     if (partie.golem) pousser(sGolem, partie.golem.x, partie.golem.y);
     if (fantomeSim) pousser(sFantome, fantomeSim.c.x, fantomeSim.c.y);
@@ -521,13 +626,32 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     dernierTick = performance.now();
     for (const ev of partie.evenements) traiter(ev);
     partie.vider();
+    if (partie.choix && !ui.choixOuvert()) ouvrirChoixVue(); // un niveau gagné : le monde se fige, les trois cartes s'affichent
     if (partie.finie && finDepuis < 0) finDepuis = performance.now();
   };
+  /** Le fantôme joue la même partie que le joueur à qui il appartient, tick pour tick : à un niveau gagné, il fait SON choix tout de suite (le monde figé ne fait pas passer de ticks). */
+  function avancerFantome(): void {
+    const f = fantomeSim;
+    if (!f || f.finie) return;
+    while (f.choix) {
+      const c = fantomeChoix[fantomeIndexChoix++];
+      if (!c || !f.choisir(c.nv, c.carte)) {
+        fantomeSim = null;
+        fantomeVu.racine.visible = false;
+        return;
+      }
+    }
+    while (fantomeIndex < fantomeChangements.length && fantomeChangements[fantomeIndex]!.tick <= f.tick) fantomeEntree = fantomeChangements[fantomeIndex++]!.e;
+    f.avancer(fantomeEntree);
+  }
 
   const redemarrer = (): void => {
     partie = new Partie(contenu, etat.reglages, true);
     changements = [];
+    choixFaits = [];
     derniere = 0;
+    ui.fermerChoix();
+    if (partie.choix) ouvrirChoixVue();
     for (const a of bêtes.values()) rendre(a);
     bêtes.clear();
     pousser(sChev, partie.c.x, partie.c.y);
@@ -544,7 +668,9 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const lireFantome = (r: string | null): void => {
     fantomeSim = null;
     fantomeChangements = [];
+    fantomeChoix = [];
     fantomeIndex = 0;
+    fantomeIndexChoix = 0;
     fantomeEntree = 0;
     fantomeVu.racine.visible = false;
     if (!r) return;
@@ -552,11 +678,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       const d = decoderRediffusion(r);
       if (!("jour" in d.contenu) || contenu.scenario !== "jour") return;
       fantomeChangements = d.changements;
+      fantomeChoix = d.choix;
       fantomeSim = new Partie(contenu, REGLAGES_DEFAUT, false);
-      while (fantomeSim.tick < partie.tick && !fantomeSim.finie) {
-        while (fantomeIndex < fantomeChangements.length && fantomeChangements[fantomeIndex]!.tick <= fantomeSim.tick) fantomeEntree = fantomeChangements[fantomeIndex++]!.e;
-        fantomeSim.avancer(fantomeEntree);
-      }
+      while (fantomeSim && fantomeSim.tick < partie.tick && !fantomeSim.finie) avancerFantome();
+      if (!fantomeSim) return;
       sFantome.x0 = sFantome.x1 = fantomeSim.c.x;
       sFantome.y0 = sFantome.y1 = fantomeSim.c.y;
       fantomeVu.racine.visible = true;
@@ -830,8 +955,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     if (visee) reticule.poser(visee.x, visee.z);
     else reticule.cacher();
 
-    // L'interface.
-    ui.coeurs(c.coeurs);
+    // L'interface (lot BR2 : le niveau et l'XP ; les cœurs comptent « Cœur en plus »).
+    ui.coeurs(c.coeurs, c.coeursMax);
+    if (niveau) ui.niveau(partie.nv, partie.xp - partie.xpSeuil(partie.nv), partie.xpSeuil(partie.nv + 1) - partie.xpSeuil(partie.nv));
+    else ui.niveau(null, 0, 1);
+    gemmesVue.maj(partie.gemmes, partie.tick, temps, metres);
+    ondesEpeeVue.maj(partie.ondesEpee, metres);
     if (g && partie.golemEveille) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase);
     else ui.boss(null, 1);
     if (niveau && partie.barriere < 0 && !partie.finie) {
@@ -879,6 +1008,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       },
       empreinte: () => partie.empreinte(),
       changements: () => changements,
+      /** Lot BR2 : les choix d'amélioration faits (la rediffusion les emporte), le choix en attente (`null` : le monde tourne), la carte en surbrillance, et de quoi choisir. */
+      choix: () => choixFaits,
+      choixEnAttente: () => (partie.choix ? { nv: partie.choix.nv, cartes: partie.choix.cartes.map((i) => AMELIORATIONS[i]!.id) } : null),
+      selection: () => selectionChoix,
+      choisir: (i: number) => valider(i),
       sons: () => sonsAvecKit.joues,
       calls: () => renderer.info.render.calls,
       /** Pose la caméra (position, point regardé) pour un gros plan ; `null` : la caméra du jeu. */
@@ -947,6 +1081,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
           pasDeSimulation();
         }
         for (let i = 0; i < n && !partie.finie; i++) {
+          // lot BR2 : le pilote fait ses choix d'amélioration (ceux de « foncer »)
+          for (let garde = 0; partie.choix && ui.choixOuvert() && garde < 50; garde++) valider(choisirCarte(partie, "foncer"));
           controles.forcee = { e: pilote(partie), reste: 1 };
           pasDeSimulation();
         }
@@ -957,6 +1093,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   return {
     avancer() {
       if (partie.finie || figee) return; // la vitrine est une scène figée : elle ne joue pas
+      if (partie.choix) return; // lot BR2 : un niveau gagné fige le monde (et le chrono, qui compte les ticks) jusqu'au choix
       if (gel > 0) {
         gel--;
         return;
@@ -973,6 +1110,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     },
     action(id) {
       sonsAvecKit.deverrouiller();
+      // Lot BR2 : pendant le choix, les flèches / ZQSD / la croix / le stick (les actions de déplacement du kit) déplacent la surbrillance, « coup » (A, J) valide la carte en surbrillance.
+      if (ui.choixOuvert()) {
+        if (id === "gauche" || id === "haut") deplacerSelection(-1);
+        else if (id === "droite" || id === "bas") deplacerSelection(1);
+        else if (id === "coup") valider(selectionChoix);
+        return;
+      }
       controles.action(id);
     },
     dessiner,
@@ -982,12 +1126,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       return { principal, secondaire: formatTemps(Math.min(partie.tick, DUREE_TICKS), o.langue) };
     },
     resultat() {
-      return { score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, changements) };
+      return { score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, changements, choixFaits) };
     },
     fantome: lireFantome,
     detruire() {
       removeEventListener("pointerdown", geste);
       removeEventListener("keydown", geste);
+      removeEventListener("keydown", surTouchePendantChoix, true);
       removeEventListener("pointerup", clicHaut);
       removeEventListener("blur", clicPerdu);
       ui.zone3d.removeEventListener("pointermove", surPointeur);

@@ -1,4 +1,4 @@
-import { dailyRush, jouer, type Changement, type Resultat } from "@cdj/rush-sim";
+import { dailyRush, jouer, type Changement, type Choix, type Resultat } from "@cdj/rush-sim";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -31,6 +31,11 @@ export interface PorteScene {
   forcer(octet: number, ticks: number): void;
   empreinte(): string;
   changements(): Changement[];
+  /** Lot BR2 : les choix d'amélioration faits (un événement d'entrée de la rediffusion), le choix en attente (les identifiants des trois cartes) et la carte en surbrillance ; `choisir(i)` choisit la carte `i`. */
+  choix(): Choix[];
+  choixEnAttente(): { nv: number; cartes: string[] } | null;
+  selection(): number;
+  choisir(i: number): void;
   sons(): string[];
   calls(): number;
   scene(): { getObjectByName(nom: string): { visible: boolean } | undefined };
@@ -83,9 +88,9 @@ export async function lancer(page: Page): Promise<void> {
  * ce que le joueur a fait dans le navigateur est exactement ce que le serveur rejouera.
  */
 export async function jouerLeJour(page: Page, attente = 5): Promise<Resultat> {
-  const changements = await page.evaluate((attente) => {
+  const { changements, choix } = await page.evaluate((attente) => {
     window.__rush.jouerPilote(40_000, attente);
-    return window.__rush.changements();
+    return { changements: window.__rush.changements(), choix: window.__rush.choix() };
   }, attente);
-  return jouer(dailyRush(parseDay(JOUR)!), changements);
+  return jouer(dailyRush(parseDay(JOUR)!), changements, undefined, choix);
 }

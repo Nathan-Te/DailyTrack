@@ -380,3 +380,198 @@
   max-width: 360px;
   font-size: 13px;
 }
+
+/* --- Lot BR2 : le niveau et l'XP (sous les cœurs), le choix d'une amélioration (le voile à rayures et trois cartes) --- */
+.rush-niveau {
+  position: absolute;
+  top: calc(var(--dj-espace-2) + 62px);
+  left: max(var(--dj-espace-2), env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  border: var(--rush-bord) solid var(--dj-encre);
+  border-radius: 14px;
+  box-shadow: 2px 3px 0 var(--dj-encre);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-16);
+  line-height: 1;
+  white-space: nowrap;
+}
+.rush-niveau__piste {
+  position: relative;
+  width: 84px;
+  height: 14px;
+  background: var(--dj-ecran);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.rush-niveau__xp {
+  position: absolute;
+  inset: 0;
+  background: var(--dj-ambre);
+  transform-origin: left center;
+  transition: transform 0.12s ease-out;
+}
+.rush-choix {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dj-espace-3);
+  padding: max(var(--dj-espace-3), env(safe-area-inset-top)) max(var(--dj-espace-3), env(safe-area-inset-right)) max(var(--dj-espace-3), env(safe-area-inset-bottom)) max(var(--dj-espace-3), env(safe-area-inset-left));
+  box-sizing: border-box;
+  background: var(--dj-voile);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.rush-choix[hidden] {
+  display: none;
+}
+.rush-choix__titre {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-32);
+  letter-spacing: 0.04em;
+  color: var(--dj-papier);
+  text-shadow: 2px 3px 0 var(--dj-encre);
+}
+.rush-choix__cartes {
+  display: flex;
+  gap: var(--dj-espace-3);
+  align-items: stretch;
+  justify-content: center;
+  max-width: 100%;
+}
+.rush-choix__aide {
+  margin: 0;
+  color: var(--dj-papier);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-13);
+  text-shadow: 1px 2px 0 var(--dj-encre);
+  text-align: center;
+}
+.rush-option {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  justify-items: start;
+  gap: 6px;
+  width: min(210px, 28vw);
+  min-height: 44px;
+  padding: 12px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--rush-bord, 3px) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  box-shadow: 4px 4px 0 var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  text-align: left;
+  cursor: pointer;
+}
+.rush-option--sel {
+  outline: 3px solid var(--dj-encre);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--dj-moutarde), 4px 4px 0 3px var(--dj-encre);
+}
+.rush-option__touche {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-family: var(--dj-police-chiffres, var(--dj-police-marque));
+  font-size: var(--dj-taille-13);
+  opacity: 0.55;
+}
+.rush-option__icone {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: var(--dj-moutarde);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 6px;
+}
+.rush-option[data-famille="mouvement"] .rush-option__icone {
+  background: var(--dj-kofi);
+}
+.rush-option[data-famille="survie"] .rush-option__icone {
+  background: var(--dj-terre);
+}
+.rush-option[data-famille="survie"] .rush-option__dessin {
+  stroke: var(--dj-terre-texte);
+}
+.rush-option[data-famille="special"] .rush-option__icone {
+  background: var(--dj-diamant);
+}
+.rush-option__dessin {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: var(--dj-encre);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rush-option__nom {
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-15);
+  line-height: 1.1;
+}
+.rush-option__effet {
+  font-size: var(--dj-taille-13);
+  line-height: 1.3;
+}
+.rush-option__palier {
+  font-family: var(--dj-police-chiffres, var(--dj-police-marque));
+  font-size: var(--dj-taille-12);
+  opacity: 0.7;
+}
+/* Un écran bas (un téléphone en paysage, 844 × 390) : des cartes plus compactes, l'icône à côté du nom. */
+@media (max-height: 460px) {
+  .rush-choix {
+    gap: var(--dj-espace-2);
+  }
+  .rush-choix__titre {
+    font-size: var(--dj-taille-24);
+  }
+  .rush-option {
+    width: min(200px, 29vw);
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  .rush-option__icone {
+    width: 34px;
+    height: 34px;
+  }
+  .rush-option__dessin {
+    width: 22px;
+    height: 22px;
+  }
+  .rush-option__effet {
+    font-size: var(--dj-taille-12);
+  }
+}
+/* Un écran étroit (un téléphone en portrait) : les cartes s'empilent. */
+@media (max-width: 520px) {
+  .rush-choix__cartes {
+    flex-direction: column;
+    align-items: center;
+  }
+  .rush-option {
+    width: min(320px, 90vw);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rush-niveau__xp {
+    transition: none;
+  }
+}
+.rush-niveau[hidden] {
+  display: none;
+}

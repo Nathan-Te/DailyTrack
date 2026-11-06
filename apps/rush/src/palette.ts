@@ -67,6 +67,8 @@ export const COULEURS = {
   golemSombre: 0x40352f,
   golemMousse: 0x7f9a5a,
   lueur: 0xf2b544,
+  /** Le liseré d'encre des gemmes (lot BR2). */
+  encre: 0x2a1e16,
   danger: 0xe2382a,
   /** Les cercles d'annonce de la cible : un rouge corail translucide, un bord plus clair. */
   corail: 0xf0604e,
