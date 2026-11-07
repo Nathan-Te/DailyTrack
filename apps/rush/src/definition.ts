@@ -22,13 +22,12 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
     corps ??= await import("./corps");
     return corps.contenuDuJour(jour, base);
   },
-  seuils: (c) => corps!.seuilsDeRush(c), // le Diamant provisoire : la partie du pilote
+  seuils: (c) => corps!.seuilsDeRush(c), // lot BR4 : le Diamant est la plus rapide des trois stratégies du pilote ; or, argent et bronze en sont des pourcentages (la fiche) ; un jour figé garde ses seuils
   medaille: (score, s) => VARIANTE.medaille(score, s),
   nouvellePartie: (c, hote, o) => corps!.nouvellePartieRush(c, hote, o),
   rediffusionDiamant: (c) => corps!.rediffusionDiamantRush(c),
   // Une partie d'essai (scénario, sensations réglées) n'est jamais classée ; en production ces options n'existent pas.
   classable: (adresse) => !lireEssai(adresse, BUILD_RESTRICTED).essai,
-  sansMedaille: true, // prototype : pas de médaille avant la décision de Nathan sur leur méthode
   vibration: true,
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
   scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),

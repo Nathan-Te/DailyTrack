@@ -76,6 +76,7 @@
   },
   "rejeu": {
     "unitesServeur": 1,
+    "ticksParUnite": 2500,
     "maxTicks": 36000
   },
   "donnees": {
@@ -171,6 +172,10 @@
         "rush-jeu"
       ],
       "boss.spec.ts": [
+        "rush-sim",
+        "rush-jeu"
+      ],
+      "medailles.spec.ts": [
         "rush-sim",
         "rush-jeu"
       ]

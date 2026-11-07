@@ -43,6 +43,7 @@ import {
   rejouer,
   scoreParColonnes,
   seuilsDe,
+  STRATEGIES,
   themeDuJour,
   unitaire,
   viseeDe,
@@ -109,7 +110,8 @@ describe("le contenu", () => {
   });
   it("un jour figé se relit, un fichier altéré non", () => {
     const f = figerJour(J);
-    expect(lireJourFige(f)).toEqual(dailyRush(J));
+    // lot BR4 : le fichier fige aussi les seuils des médailles ; le contenu rendu les porte
+    expect(lireJourFige(f)).toEqual({ ...dailyRush(J), seuilsFiges: f.seuils });
     expect(lireJourFige({ ...f, contenu: { graine: f.contenu.graine + 1 } })).toBeNull();
     expect(lireJourFige({ ...f, sim: 99 })).toBeNull();
     expect(lireJourFige(null)).toBeNull();
@@ -677,9 +679,10 @@ describe("le temps et les médailles", () => {
     expect(formatTemps(0, "fr")).toBe("0:00,00");
     expect(formatTemps(DUREE_TICKS, "fr")).toBe("10:00,00");
   });
-  it("le Diamant est le temps du pilote ; or, argent, bronze à 130, 160 et 200 %", () => {
+  it("le Diamant est le meilleur temps des trois stratégies du pilote ; or, argent, bronze à 130, 160 et 200 % (la fiche)", () => {
     const s = seuilsDe(dailyRush(J));
     const a = s.author;
+    expect(a).toBe(Math.min(...STRATEGIES.map((x) => VARIANTE.score(jouerLePilote(dailyRush(J), undefined, Infinity, x).resultat)[0]!)));
     expect(s).toEqual({ author: a, gold: idiv(a * 130, 100), silver: idiv(a * 160, 100), bronze: idiv(a * 200, 100) });
     expect([a, a + 1, s.gold + 1, s.silver + 1, s.bronze + 1].map((t) => VARIANTE.medaille([t], s))).toEqual(["author", "gold", "silver", "bronze", null]);
   });

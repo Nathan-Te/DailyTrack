@@ -1,4 +1,5 @@
-import { AMELIORATIONS, type Famille, type Reglages } from "@cdj/rush-sim";
+import { AMELIORATIONS, BOSS, BOSS_IDS, idiv, type Famille, type Reglages } from "@cdj/rush-sim";
+import { cleBoss } from "./bosses";
 import type { CarteVue } from "./interface";
 
 // Les cartes du choix d'amélioration (lot BR2), côté vue : l'icône de chacune (un tracé dans une grille de 24, des traits comme tous les pictogrammes du jeu), les nombres que son effet écrit (lus dans les RÉGLAGES de la partie : un curseur
@@ -30,17 +31,21 @@ const NOMBRES: Readonly<Record<string, (r: Reglages) => Record<string, number | 
   "esquive-longue": (r) => ({ n: r.esquiveLongue }),
   "esquive-vive": (r) => ({ n: (r.esquiveVive / 60).toFixed(1) }),
   "vol-de-vie": (r) => ({ n: r.volVie }),
-  "brise-pierre": (r) => ({ n: r.briseDegats }),
   aimant: (r) => ({ n: r.aimantGain }),
 };
 
 type Traduire = (cle: string, params?: Readonly<Record<string, string | number>>) => string;
 
-/** La carte `i` du catalogue, prête à afficher ; `palier` : combien de fois elle est déjà prise. */
-export function carteVue(i: number, palier: number, r: Reglages, t: Traduire): CarteVue {
+/**
+ * La carte `i` du catalogue, prête à afficher ; `palier` : combien de fois elle est déjà prise. `boss` (lot BR4) : l'indice du boss du jour — « Brise-pierre » dit sa valeur CONTRE CE BOSS (« +90 % contre le golem », « +31 % contre la reine gelée » :
+ * le pourcentage par palier est `briseDegats` × la part que le boss encaisse, `BOSS[].brise`, comme la simulation le compte) ; sans boss (aucun : un essai sans combat), « le boss du jour » et le plein pourcentage.
+ */
+export function carteVue(i: number, palier: number, r: Reglages, t: Traduire, boss = -1): CarteVue {
   const a = AMELIORATIONS[i]!;
+  const def = BOSS[boss];
   const famille: Famille = a.famille;
   const cle = a.id.replace(/-/g, "_"); // une clé de catalogue n'a pas de tiret
   const place = a.max === Infinity ? "" : a.max === 1 ? t("choix.unique") : t("choix.palier", { n: palier + 1, max: a.max });
-  return { id: a.id, nom: t(`carte.${cle}.nom`), effet: t(`carte.${cle}.effet`, NOMBRES[a.id]?.(r) ?? {}), palier: place, icone: ICONES[a.id]!, famille };
+  const nombres = a.id === "brise-pierre" ? { n: idiv(r.briseDegats * (def?.brise ?? 100), 100), boss: t(`boss.contre.${def ? cleBoss(BOSS_IDS[boss]!) : "tous"}`) } : (NOMBRES[a.id]?.(r) ?? {});
+  return { id: a.id, nom: t(`carte.${cle}.nom`), effet: t(`carte.${cle}.effet`, nombres), palier: place, icone: ICONES[a.id]!, famille };
 }

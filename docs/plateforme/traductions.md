@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2285 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2304 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2779,6 +2779,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `boss.nom.grandDuc` | Grand-duc | Great horned owl |
 | `boss.nom.belier` | Bélier de carrière | Quarry ram |
 | `boss.nom.chene` | Vieux chêne | Old oak |
+| `boss.contre.golem` | le golem | the golem |
+| `boss.contre.reine` | la reine gelée | the frozen queen |
+| `boss.contre.grandDuc` | le grand-duc | the great horned owl |
+| `boss.contre.belier` | le bélier | the quarry ram |
+| `boss.contre.chene` | le vieux chêne | the old oak |
+| `boss.contre.tous` | le boss du jour | the boss of the day |
 
 ### carte (`carte.*`, `apps/rush/src/catalogue.*.ts`)
 
@@ -2809,7 +2815,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `carte.vol_de_vie.nom` | Vol de vie | Life steal |
 | `carte.vol_de_vie.effet` | 1 cœur tous les {n} monstres tués. | 1 heart every {n} monsters slain. |
 | `carte.brise_pierre.nom` | Brise-pierre | Stonebreaker |
-| `carte.brise_pierre.effet` | +{n} % de dégâts contre le boss. | +{n}% damage against the boss. |
+| `carte.brise_pierre.effet` | +{n} % de dégâts contre {boss}. | +{n}% damage against {boss}. |
 | `carte.aimant.nom` | Aimant | Magnet |
 | `carte.aimant.effet` | Les gemmes viennent de {n} % plus loin. | Gems come from {n}% farther. |
 | `carte.titre` | Les {n} prochains jours | The next {n} days |
@@ -2851,6 +2857,15 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.point1` | Fais tomber le boss du jour le plus vite possible : ton temps est ton score. | Bring down the boss of the day as fast as you can: your time is your score. |
 | `aide.point2` | Vise à la souris et clique pour frapper (maintenu, ça enchaîne trois coups), Espace pour esquiver à travers les attaques, Z Q S D pour bouger. Au doigt : le joystick, « Coup » et « Esquive ». Une zone rouge au sol annonce chaque coup du boss. | Aim with the mouse and click to strike (hold to chain three strikes), Space to dodge through attacks, Z Q S D to move. On touch: joystick, Strike and Dodge. A red zone on the ground warns you before every boss blow. |
 | `aide.point3` | Tu as trois cœurs. Les gelées et les chauves-souris font mal aussi. | You have three hearts. Slimes and bats hurt too. |
+
+### Fin de partie (`fin.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `fin.boss` | Boss du jour : {boss} | Boss of the day: {boss} |
+| `fin.cartes` | Cartes choisies : {liste} | Cards picked: {liste} |
+| `fin.aucuneCarte` | Aucune carte choisie | No card picked |
+| `fin.diamant` | Le Diamant : {temps}{strategie} | The Diamond: {temps}{strategie} |
 
 ### kit (`kit.*`, `apps/rush/src/catalogue.*.ts`)
 
@@ -2948,6 +2963,20 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.commandes.action.fantome` | Fantôme | Ghost |
 | `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
 | `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
+
+### medailles (`medailles.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `medailles.titre` | Médailles des {n} prochains jours | Medals for the next {n} days |
+| `medailles.col.jour` | Jour | Day |
+| `medailles.col.pilote` | Pilote de référence | Reference pilot |
+| `medailles.col.seuils` | Médailles | Medals |
+| `medailles.col.humain` | Pilote humanisé | Humanised pilot |
+| `medailles.diamant` | Diamant | Diamond |
+| `medailles.or` | Or | Gold |
+| `medailles.argent` | Argent | Silver |
+| `medailles.bronze` | Bronze | Bronze |
 
 ### Page (titre, chargement) (`page.*`, `apps/rush/src/catalogue.*.ts`)
 
