@@ -111,6 +111,15 @@ test.describe("Rush : les cinq boss", () => {
     const erreurs = espionner(page);
     await lancer(page);
     const kind = await page.evaluate(() => window.__rush.partie().golem!.kind);
+    // La pastille ne reste que ~1,25 s (temps réel) : sur une machine lente le rendu de 120 ticks la dépasse. On l'observe donc depuis avant l'entrée (un observateur de mutations note chaque fois qu'elle s'affiche et ce qu'elle dit).
+    await page.evaluate(() => {
+      const w = window as unknown as { __vuesPresentation: string[] };
+      w.__vuesPresentation = [];
+      const el = document.querySelector<HTMLElement>(".rush-presentation")!;
+      new MutationObserver(() => {
+        if (!el.hidden) w.__vuesPresentation.push(el.textContent ?? "");
+      }).observe(el, { attributes: true, childList: true, characterData: true, subtree: true });
+    });
     await page.evaluate(() => {
       window.__rush.aller(...(window.__rush.avantLArene(6) as [number, number]));
       window.__rush.forcer(window.__rush.versLArene(), 600);
@@ -118,8 +127,10 @@ test.describe("Rush : les cinq boss", () => {
     });
     await expect(page.locator(".rush-boss")).toBeVisible();
     await expect(page.locator(".rush-boss__nom")).toHaveText(NOMS[BOSS_IDS[kind]!]!);
-    await expect(page.locator(".rush-presentation")).toBeVisible(); // il rugit, invulnérable : son nom est au centre-haut…
-    await expect(page.locator(".rush-presentation")).toHaveText(NOMS[BOSS_IDS[kind]!]!);
+    // il rugit, invulnérable : son nom s'est affiché au centre-haut (la pastille a dit son nom)…
+    const vues = await page.evaluate(() => (window as unknown as { __vuesPresentation: string[] }).__vuesPresentation);
+    expect(vues.length).toBeGreaterThan(0);
+    expect(new Set(vues)).toEqual(new Set([NOMS[BOSS_IDS[kind]!]!]));
     await expect(page.locator(".rush-presentation")).toBeHidden({ timeout: 4000 }); // … ~1 s, puis disparaît
     expect(erreurs).toEqual([]);
     await context.close();
