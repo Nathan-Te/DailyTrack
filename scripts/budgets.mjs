@@ -170,7 +170,10 @@ function polices(dist) {
   return [...faces].reduce((n, f) => n + readFileSync(join(dist, f)).length, 0);
 }
 
-/** Portail : la page d'accueil, ses scripts (et leurs imports statiques) et ses feuilles, hors polices (construction de production). */
+/**
+ * Portail : le premier chargement d'une page (son HTML, ses scripts et leurs imports statiques, ses feuilles) et les polices que ses feuilles déclarent (construction de production). Lot U2 : l'accueil
+ * (`portail.premier`, `portail.polices`) et la page `/classement/` (`portail.classement`).
+ */
 export function mesurePortail() {
   const tmp = mkdtempSync(join(tmpdir(), "budgets-"));
   try {
@@ -179,19 +182,23 @@ export function mesurePortail() {
       env: { ...process.env, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true", PORTAIL_VITRINE: "0", PORTAIL_TEMOINS: "0" }, // la production : ni la vitrine, ni un jeu témoin (lot K4f)
       stdio: "pipe",
     });
-    const html = readFileSync(join(tmp, "index.html"), "utf8");
-    const vus = new Set();
-    const file = [...html.matchAll(/<(?:script[^>]*\ssrc|link[^>]*\srel="(?:stylesheet|modulepreload)"[^>]*\shref)="\.\/([^"]+)"/g)].map((m) => m[1]);
-    while (file.length) {
-      const f = file.shift();
-      if (vus.has(f)) continue;
-      vus.add(f);
-      if (f.endsWith(".js")) for (const m of readFileSync(join(tmp, f), "utf8").matchAll(/(?:from|import)\s*["']\.\/([^"']+\.js)["']/g)) file.push(join(dirname(f), m[1]));
-    }
-    // Les polices que déclarent les feuilles de la page d'accueil (comme construction.test.ts).
-    const faces = new Set();
-    for (const f of vus) if (f.endsWith(".css")) for (const m of readFileSync(join(tmp, f), "utf8").matchAll(/url\(["']?\.?\/?([^)"']+\.woff2)["']?\)/g)) faces.add(join(dirname(f), m[1]));
-    return { premierChargement: ["index.html", ...vus].reduce((n, f) => n + gz(join(tmp, f), 9), 0), polices: [...faces].reduce((n, f) => n + readFileSync(join(tmp, f)).length, 0) };
+    const mesure = (page) => {
+      const html = readFileSync(join(tmp, page), "utf8");
+      const vus = new Set();
+      // Les ressources de la page sont `./assets/…` (accueil) ou `../assets/…` (une page d'un dossier) : des chemins depuis la racine du site construit.
+      const file = [...html.matchAll(/<(?:script[^>]*\ssrc|link[^>]*\srel="(?:stylesheet|modulepreload)"[^>]*\shref)="\.{1,2}\/([^"]+)"/g)].map((m) => m[1]);
+      while (file.length) {
+        const f = file.shift();
+        if (vus.has(f)) continue;
+        vus.add(f);
+        if (f.endsWith(".js")) for (const m of readFileSync(join(tmp, f), "utf8").matchAll(/(?:from|import)\s*["']\.\/([^"']+\.js)["']/g)) file.push(join(dirname(f), m[1]));
+      }
+      // Les polices que déclarent les feuilles de la page (comme construction.test.ts).
+      const faces = new Set();
+      for (const f of vus) if (f.endsWith(".css")) for (const m of readFileSync(join(tmp, f), "utf8").matchAll(/url\(["']?\.?\/?([^)"']+\.woff2)["']?\)/g)) faces.add(join(dirname(f), m[1]));
+      return { premierChargement: [page, ...vus].reduce((n, f) => n + gz(join(tmp, f), 9), 0), polices: [...faces].reduce((n, f) => n + readFileSync(join(tmp, f)).length, 0) };
+    };
+    return { ...mesure("index.html"), classement: mesure("classement/index.html").premierChargement };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -239,7 +246,7 @@ export const ENTREES_TRACK_A_LA_DEMANDE = {
  * `CLES_MESUREES` sont celles du tableau, moins `partage.image` (il faut Chromium pour dessiner les images : `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts`).
  */
 export const CLES_MESUREES = [
-  "portail.premier", "portail.polices",
+  "portail.premier", "portail.polices", "portail.classement",
   "track.jsCss", "track.js", "track.horsThree", "track.anglais", "track.miniatures", "track.salon", "track.admin", "track.decor", "track.palier2", "track.vieCiel", "track.post", "track.qualiteMesure", "track.garage", "track.polices",
   "track.ombres", "track.fantomes", "track.son", "track.sonBoucles", "track.steerSlider", "track.steerWheel", "track.steerGyro", "track.touchReglages",
   "jump.jsCss", "jump.anglais", "jump.polices",
@@ -256,6 +263,7 @@ export function mesuresParLigne({ portail = mesurePortail } = {}) {
   const lignes = {
     "portail.premier": null,
     "portail.polices": null,
+    "portail.classement": null,
     "track.jsCss": t.jsCss,
     "track.js": t.js,
     "track.horsThree": t.horsThree,
@@ -291,6 +299,7 @@ export function mesuresParLigne({ portail = mesurePortail } = {}) {
   const p = portail();
   lignes["portail.premier"] = p.premierChargement;
   lignes["portail.polices"] = p.polices;
+  lignes["portail.classement"] = p.classement;
   return lignes;
 }
 

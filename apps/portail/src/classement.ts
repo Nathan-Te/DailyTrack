@@ -1,6 +1,7 @@
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/avatar.css";
 import "@cdj/ui/src/avatar-liste.css";
+import "@cdj/ui/src/avatar-grand.css"; // lot U2 : les photos de 48 à 128 px (l'accueil ne les paie pas)
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -10,10 +11,13 @@ import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
 import "./amisPortail.css";
+import "./salle.css"; // lot U2 : la barre, le fronton et la barre d'onglets de la salle de jeux
+import "./classementSalle.css";
 import { parisDay } from "@cdj/clock";
 import { formatDay, parseDay } from "@cdj/core";
-import { adresseAvatar, clientAmis, clientAvatar, ecrireLangue, lireFiltre, lireLangue, readPlayerId, type FiltreAmis, type Langue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, avatar, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatNombre, formatScore, formatTemps, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
+import { adresseAvatar, clientAmis, clientAvatar, ecrireLangue, lireFiltre, lireLangue, readIdentity, readPlayerId, type FiltreAmis, type Langue } from "@cdj/profile";
+import { CATALOGUE_COMMUN, avatar, cheminMentions, bouton, choixLangue, el, formatDate, formatNombre, formatNumeroJour, formatRang, formatScore, formatTemps, logo, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
+import { initiales } from "@cdj/ui/src/avatar";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { FICHES, ficheDuRegistre } from "./jeuxFiches";
 import { formatDeVue } from "./formatDeVue";
@@ -21,7 +25,12 @@ import { CATALOGUE_PAGES } from "./cataloguePages";
 import { lireClassement, type AmiAbsent, type Classement, type LectureClassement, type LigneClassement, type ResultatClassement } from "./classementDonnees";
 import { absentsLisibles, adresseDuClassement, filtreEffectif, ficheAffichee, ligneTouchable, nombreDAmis, sansAmi } from "./classementAmis";
 import { lienRetours } from "./retoursLien";
-import { baseApi } from "./jour";
+import { baseApi, formatCompte, prochainMinuit } from "./jour";
+import { jourGarde } from "./cacheJour";
+import { nonLue } from "./nouveautesDonnees";
+import { barreSalle, emblemeDeGroupe, navigation } from "./salle";
+import { clocheLien, frontonDePage, itemsDeNavigation, podium, type PlacePodium } from "./classementSalle";
+import { EMBLEME_LIGNE, groupeDeLigne, jeuxDuCumul, lignesDuPodium, nombreDeColonnes, resteDuHaut } from "./classementPodium";
 import { VUE_CUMUL, aSeparation, ongletVoisin, onglets, vueDeLAdresse } from "./classementVues";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "./jours";
 import { stockageDuPortail } from "./stockage";
@@ -98,51 +107,60 @@ function caseDeJeu(t: T, jeu: { jeu: string; nom: string }, r: ResultatClassemen
   );
 }
 
+/** Le temps de la vue d'une ligne, déjà formaté (la hauteur ou les points d'un jeu qui n'est pas au chrono) ; `null` : pas de résultat (au cumul, un joueur qui n'a pas tout fini). */
+const texteDeLigne = (c: Classement, l: LigneClassement): string | null =>
+  l.score ? formatScore(formatDeVue(c.vue, "hauteur"), l.score.valeur, langue) : l.tempsMs === null ? null : formatTemps(l.tempsMs, langue);
+
+function tempsDeLigne(t: T, c: Classement, l: LigneClassement): HTMLElement {
+  const texte = texteDeLigne(c, l);
+  return texte === null
+    ? el("span", { classe: "classement-temps" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: t.t("classement.pasFini") }))
+    : el("span", { classe: ["classement-temps", l.score && "classement-hauteur"], texte });
+}
+
+/** Lot U2 : l'emblème du groupe (22 px, carré) à côté du pseudo — seulement quand le serveur dit le groupe de la ligne. */
+function emblemeDeLigne(l: LigneClassement): HTMLElement | null {
+  const g = groupeDeLigne(l);
+  return g ? emblemeDeGroupe({ initiales: initiales(g.nom, langue), image: adresseAvatar(baseApi(), g.avatar), taille: EMBLEME_LIGNE }) : null;
+}
+
 /**
- * Une ligne : la place, le pseudo, le temps de la vue (« — » au cumul d'un joueur qui n'a pas tout fini) ; dessous le résultat de chaque jeu. Lot F2 : la ligne d'un autre joueur est un
- * bouton (sa feuille s'ouvre), la tienne reste un texte ; dans « Amis », la place est le rang entre amis.
+ * Une ligne (lot U2) : la place, la photo de 48 px (44 px sur téléphone), le pseudo avec l'emblème de son groupe, une colonne par jeu du jour (ordinateur ; le nom du jeu est lu, la médaille dite), puis le temps de la vue
+ * (« — » au cumul d'un joueur qui n'a pas tout fini). Lot F2 : la ligne d'un autre joueur est un bouton (sa feuille s'ouvre), la tienne reste un texte ; dans « Amis », la place est le rang entre amis.
  */
 function ligne(t: T, c: Classement, l: LigneClassement, moi: boolean): HTMLElement {
   const cumul = c.vue === VUE_CUMUL;
   // Lot TP : le cumul ne montre que les jeux au temps (un jeu à la hauteur n'y entre jamais).
-  const jeux = cumul ? c.jeux.filter((j) => !j.unite) : c.jeux.filter((j) => j.site === c.vue);
-  const tete = el(
-    "span",
-    { classe: "classement-ligne__tete" },
-    el("span", { classe: "classement-rang", texte: formatNombre(l.rang, langue) }),
-    el("span", { classe: "classement-pseudo" }, l.pseudo, avatar(t, { pseudo: l.pseudo, ref: l.ref, image: adresseAvatar(baseApi(), l.avatar), taille: 24, decoratif: true }), moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
-    l.score
-      ? el("span", { classe: "classement-temps classement-hauteur", texte: formatScore(formatDeVue(c.vue, "hauteur"), l.score.valeur, langue) })
-      : l.tempsMs === null
-      ? el("span", { classe: "classement-temps" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: t.t("classement.pasFini") }))
-      : el("span", { classe: "classement-temps", texte: formatTemps(l.tempsMs, langue) }),
-  );
-  const cases = el("span", { classe: "classement-ligne__jeux" }, ...jeux.map((j) => caseDeJeu(t, j, l.resultats[j.jeu] ?? null, cumul)));
+  const jeux = cumul ? jeuxDuCumul(c.jeux) : c.jeux.filter((j) => j.site === c.vue);
   const touchable = ligneTouchable(l);
+  const corps = [
+    el("span", { classe: "classement-rang", texte: formatNombre(l.rang, langue) }),
+    avatar(t, { pseudo: l.pseudo, ref: l.ref, image: adresseAvatar(baseApi(), l.avatar), taille: 48, decoratif: true }),
+    el("span", { classe: "classement-pseudo" }, l.pseudo, emblemeDeLigne(l), moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
+    el("span", { classe: "classement-ligne__jeux" }, ...jeux.map((j) => caseDeJeu(t, j, l.resultats[j.jeu] ?? null, cumul))),
+    tempsDeLigne(t, c, l),
+  ];
   const contenu = touchable
-    ? el("button", { classe: "classement-ligne__bouton", attrs: { type: "button", "aria-haspopup": "dialog", "data-cle": `ligne-${l.ref}` } }, tete, cases)
-    : null;
-  contenu?.addEventListener("click", () => void ouvrirFiche(l.ref!, l.pseudo));
+    ? el("button", { classe: "classement-ligne__corps classement-ligne__bouton", attrs: { type: "button", "aria-haspopup": "dialog", "data-cle": `ligne-${l.ref}` } }, ...corps)
+    : el("div", { classe: "classement-ligne__corps" }, ...corps);
+  if (touchable) contenu.addEventListener("click", () => void ouvrirFiche(l.ref!, l.pseudo));
   return el(
     "li",
     { classe: ["classement-ligne", moi && "classement-ligne--moi", touchable && "classement-ligne--touchable"], attrs: { "data-rang": String(l.rang), ...(moi ? { "data-moi": "oui", "aria-current": "true" } : {}) } },
-    ...(contenu ? [contenu] : [tete, cases]),
+    contenu,
   );
 }
 
-/** Lot F2 : un ami qui n'a rien fini ce jour-là, en bas de « Amis » : son pseudo et « pas encore joué » (sans temps) ; un bouton, comme les autres lignes. */
-function ligneAbsente(a: AmiAbsent): HTMLElement {
+/** Lot F2 : un ami qui n'a rien fini ce jour-là, en bas de « Amis » : sa photo (ses initiales : le serveur ne dit pas son image), son pseudo et « pas encore joué » (sans temps) ; un bouton, comme les autres lignes. */
+function ligneAbsente(t: T, a: AmiAbsent): HTMLElement {
   const textes = amisPret!.ui.textesAmis(traducteurAmis());
   const bouton = el(
     "button",
-    { classe: "classement-ligne__bouton", attrs: { type: "button", "aria-haspopup": "dialog", "data-cle": `ligne-${a.ref}` } },
-    el(
-      "span",
-      { classe: "classement-ligne__tete classement-ligne__tete--absent" },
-      el("span", { classe: "classement-rang", attrs: { "aria-hidden": "true" }, texte: "—" }),
-      el("span", { classe: "classement-pseudo", texte: a.pseudo }),
-      el("span", { classe: "classement-pas-joue", texte: textes.pasJoue() }),
-    ),
+    { classe: "classement-ligne__corps classement-ligne__bouton classement-ligne__corps--absent", attrs: { type: "button", "aria-haspopup": "dialog", "data-cle": `ligne-${a.ref}` } },
+    el("span", { classe: "classement-rang", attrs: { "aria-hidden": "true" }, texte: "—" }),
+    avatar(t, { pseudo: a.pseudo, ref: a.ref, taille: 48, decoratif: true }),
+    el("span", { classe: "classement-pseudo", texte: a.pseudo }),
+    el("span", { classe: "classement-pas-joue", texte: textes.pasJoue() }),
   );
   bouton.addEventListener("click", () => void ouvrirFiche(a.ref, a.pseudo));
   return el("li", { classe: "classement-ligne classement-ligne--touchable classement-ligne--absente", attrs: { "data-ref": a.ref } }, bouton);
@@ -152,22 +170,26 @@ function ligneAbsente(a: AmiAbsent): HTMLElement {
 const nomOnglet = (t: T, o: { jeu?: string; nom?: string }): string => (o.jeu ? nomDuJeu(t, { jeu: o.jeu, nom: o.nom ?? o.jeu }) : t.t("classement.vue.cumul"));
 
 /**
- * Les onglets (rôle `tablist`, un seul dans l'ordre de tabulation, flèches pour passer de l'un à l'autre) : Cumulé, puis un jeu par jeu du jour. Avant la
- * réponse du serveur : Cumulé, puis les jeux au temps (lots K1 à K1c : le champ `cumul` de la fiche d'un jeu). Un jeu hors du cumul (Tower, lot TP) n'y est jamais d'avance : il n'est dans le classement du jour qu'à partir de son premier jour entier
- * `on`, et un onglet dessiné puis retiré à la réponse clignoterait ; il apparaît avec la réponse du serveur, quand il est là.
+ * Les onglets de vue (rôle `tablist`, un seul dans l'ordre de tabulation, flèches pour passer de l'un à l'autre) : Cumulé, puis un par jeu du jour, puis — après « Arcade » — ceux des jeux d'arcade. Lot U2 : chacun porte la
+ * pastille de la couleur de son jeu (`--vue-teinte`, tirée de la fiche par `npm run fiches` : `.classement-vue--<jeu>`) ; le nom est toujours écrit, la couleur ne porte rien seule. Avant la
+ * réponse du serveur : Cumulé, puis les jeux au temps (lots K1 à K1c : le champ `cumul` de la fiche d'un jeu). Un jeu hors du cumul (Tower, lot TP) n'y est jamais d'avance : il n'est dans le classement du jour qu'à partir
+ * de son premier jour entier `on`, et un onglet dessiné puis retiré à la réponse clignoterait ; il apparaît avec la réponse du serveur, quand il est là.
  */
 function barreDesVues(t: T, c: Classement | null): HTMLElement {
   const liste = c ? onglets(c.jeux) : onglets(FICHES.filter((f) => f.cumul).map((f) => ({ jeu: f.code, site: f.id, nom: f.code })));
   const actif = liste.some((o) => o.vue === vueAffichee) ? vueAffichee : VUE_CUMUL;
   const barre = el("div", { classe: "classement-vues", attrs: { role: "tablist", "aria-label": t.t("classement.vues.aria") } });
   const boutons = liste.map((o) => {
-    const b = bouton({ texte: nomOnglet(t, o), variante: o.vue === actif ? "marque" : "secondaire", onClick: () => changerVue(o.vue) });
-    b.setAttribute("role", "tab");
-    b.setAttribute("id", `vue-${o.vue}`);
-    b.setAttribute("aria-selected", String(o.vue === actif));
-    b.setAttribute("aria-controls", "classement-panneau");
-    b.setAttribute("tabindex", o.vue === actif ? "0" : "-1");
-    b.setAttribute("data-cle", `vue-${o.vue}`);
+    const b = el(
+      "button",
+      {
+        classe: ["classement-vue", o.vue !== VUE_CUMUL && `classement-vue--${o.vue}`, o.vue === actif && "ici"],
+        attrs: { type: "button", role: "tab", id: `vue-${o.vue}`, "aria-selected": String(o.vue === actif), "aria-controls": "classement-panneau", tabindex: o.vue === actif ? "0" : "-1", "data-cle": `vue-${o.vue}` },
+      },
+      el("i", { attrs: { "aria-hidden": "true" } }),
+      el("b", { texte: nomOnglet(t, o) }),
+    );
+    b.addEventListener("click", () => changerVue(o.vue));
     b.addEventListener("keydown", (e) => {
       const suivant = ongletVoisin(boutons.indexOf(b), boutons.length, (e as KeyboardEvent).key);
       if (suivant === null) return;
@@ -185,21 +207,61 @@ function barreDesVues(t: T, c: Classement | null): HTMLElement {
 /** La vue réellement affichée : celle de l'adresse si le jour a ce jeu, sinon le cumul. */
 const vueActive = (c: Classement | null): string => (c && !onglets(c.jeux).some((o) => o.vue === vueAffichee) ? VUE_CUMUL : vueAffichee);
 
-/**
- * Le haut du classement. Au cumul, les joueurs qui n'ont pas tout fini viennent sous un titre « Un jeu sur deux » : deux listes numérotées qui se
- * suivent (une liste ne contient que des éléments de liste).
- */
-function listeDuHaut(t: T, c: Classement): HTMLElement {
-  const coupe = aSeparation(c);
-  const lignes = c.top.map((l) => ligne(t, c, l, l.moi === true));
-  if (coupe === null) return el("div", { attrs: { id: "classement-liste" } }, el("ol", { classe: "classement-liste" }, ...lignes));
+/** L'en-tête des colonnes (ordinateur seulement, masqué aux lecteurs d'écran : chaque case dit déjà son jeu) : le nom de chaque jeu du jour, puis le cumul — ou, dans la vue d'un jeu, son résultat. */
+function entetesDeColonnes(t: T, c: Classement): HTMLElement {
+  const cumul = c.vue === VUE_CUMUL;
+  const jeux = cumul ? jeuxDuCumul(c.jeux) : c.jeux.filter((j) => j.site === c.vue);
+  const dernier = cumul ? t.t("classement.vue.cumul") : t.t(c.unite ? "classement.colonne.resultat" : "classement.colonne.temps");
   return el(
     "div",
-    { attrs: { id: "classement-liste" } },
-    coupe > 0 ? el("ol", { classe: "classement-liste" }, ...lignes.slice(0, coupe)) : null,
-    el("h2", { classe: "classement-separation", attrs: { id: "classement-separation" }, texte: t.t("classement.separation") }),
-    el("ol", { classe: "classement-liste", attrs: { start: String(c.top[coupe]!.rang) } }, ...lignes.slice(coupe)),
+    { classe: "classement-entetes", attrs: { "aria-hidden": "true" } },
+    el("span"),
+    el("span"),
+    el("span", { texte: t.t("classement.colonne.joueur") }),
+    ...jeux.map((j) => el("span", { classe: "classement-entetes__jeu", texte: cumul ? nomDuJeu(t, j) : "" })),
+    el("span", { texte: dernier }),
   );
+}
+
+/** Le podium de la vue : les trois premières lignes, leurs photos en grand. */
+function podiumDe(t: T, c: Classement, lignes: readonly LigneClassement[]): HTMLElement {
+  const places: PlacePodium[] = lignes.map((l) => ({
+    rang: l.rang,
+    pseudo: l.pseudo,
+    ref: l.ref,
+    image: adresseAvatar(baseApi(), l.avatar),
+    valeur: texteDeLigne(c, l) ?? "—", // i18n-ok: le tiret des sans-résultat (le podium n'en a jamais : voir `lignesDuPodium`)
+    moi: l.moi === true,
+    toi: l.moi === true ? t.t("classement.toi") : null,
+    rangLu: formatRang(l.rang, langue),
+    embleme: emblemeDeLigne(l),
+    ouvrir: ligneTouchable(l) ? () => void ouvrirFiche(l.ref!, l.pseudo) : null,
+  }));
+  return podium(t, places);
+}
+
+/**
+ * Le haut du classement. Lot U2 : avec au moins 3 classés, le podium (1er, 2e, 3e) ; la liste garde le reste. Au cumul, les joueurs qui n'ont pas tout fini viennent sous un titre « Un jeu sur deux » : deux listes
+ * numérotées qui se suivent (une liste ne contient que des éléments de liste).
+ */
+function listeDuHaut(t: T, c: Classement): HTMLElement {
+  const places = lignesDuPodium(c);
+  const reste = resteDuHaut(c);
+  const coupe = aSeparation(reste);
+  const lignes = reste.top.map((l) => ligne(t, c, l, l.moi === true));
+  const colonnes = nombreDeColonnes(c.vue === VUE_CUMUL ? jeuxDuCumul(c.jeux).length : 1);
+  const enfants: (HTMLElement | null)[] = [places ? podiumDe(t, c, places) : null];
+  if (lignes.length > 0) {
+    enfants.push(entetesDeColonnes(t, c));
+    if (coupe === null) enfants.push(el("ol", { classe: "classement-liste" }, ...lignes));
+    else
+      enfants.push(
+        coupe > 0 ? el("ol", { classe: "classement-liste" }, ...lignes.slice(0, coupe)) : null,
+        el("h2", { classe: "classement-separation", attrs: { id: "classement-separation" }, texte: t.t("classement.separation") }),
+        el("ol", { classe: "classement-liste", attrs: { start: String(reste.top[coupe]!.rang) } }, ...lignes.slice(coupe)),
+      );
+  }
+  return el("div", { attrs: { id: "classement-liste", "data-jeux": String(colonnes) } }, ...enfants);
 }
 
 /** Le jour d'avant / d'après ; `null` hors des bornes (avant la journée n° 1 — lot R8 : les archives commencent au lancement —, après aujourd'hui). */
@@ -289,6 +351,7 @@ async function ouvrirFiche(ref: string, pseudo: string): Promise<void> {
   const feuille = amisPret.ui.feuilleJoueur({
     t: traducteurAmis(),
     pseudo,
+    taillePhoto: 88, // lot U2 : sa photo en grand, en tête de la feuille
     onAjouter: async () => {
       const r = await client.ajouterAmi({ ref });
       if (r.ok) modifie(r.data.total);
@@ -317,6 +380,12 @@ async function ouvrirFiche(ref: string, pseudo: string): Promise<void> {
   void lire();
 }
 
+/** Lot U2 : ce que la barre sait sans demander au serveur — la copie de l'accueil gardée dans le navigateur (le point de la cloche, l'image de l'avatar). */
+function copieDeLAccueil(): ReturnType<typeof jourGarde> {
+  const maintenant = Date.now();
+  return jourGarde(stockage, parisDay(maintenant), maintenant, identifiant() !== null);
+}
+
 function rendre(): void {
   const racine = document.getElementById("classement");
   if (!racine) return;
@@ -336,14 +405,15 @@ function rendre(): void {
   if (!lecture) etat = t.t("classement.chargement");
   else if (lecture.erreur && !c) etat = lecture.erreur === "delai" ? t.t("portail.delai") : t.t(cleConnue(`erreur.${lecture.erreur}`) ?? "portail.horsLigne");
 
-  const navigation = el(
+  // Le sélecteur de journée existe depuis le lot I3 : ‹ Veille · la date · Lendemain ›.
+  const navigationJours = el(
     "nav",
     { classe: "classement-jours", attrs: { "aria-label": t.t("classement.titre") } },
     bouton({ texte: t.t("classement.veille"), variante: "secondaire", desactive: !veille, ariaLabel: t.t("classement.veille.aria"), onClick: () => veille && aller(veille) }),
-    el("span", { classe: "classement-jours__date", attrs: { id: "classement-date" }, texte: formatDateCourte(day, langue, { capitale: true }) }),
+    el("span", { classe: "classement-jours__date", attrs: { id: "classement-date" }, texte: formatDate(day, langue, { capitale: true }) }),
     bouton({ texte: t.t("classement.lendemain"), variante: "secondaire", desactive: !lendemain, ariaLabel: t.t("classement.lendemain.aria"), onClick: () => lendemain && aller(lendemain) }),
   );
-  navigation.querySelectorAll("button").forEach((b, i) => {
+  navigationJours.querySelectorAll("button").forEach((b, i) => {
     b.setAttribute("data-cle", i === 0 ? "veille" : "lendemain");
     b.id = i === 0 ? "veille" : "lendemain";
   });
@@ -358,24 +428,31 @@ function rendre(): void {
   const sansAmis = surAmis && sansAmi(c!);
   const textesDesAmis = amisPret ? amisPret.ui.textesAmis(traducteurAmis()) : null;
   const groupes = modeAffiche === "groupes";
-  const enfants: (HTMLElement | null)[] = groupes
-    ? [
-        barreJeu(t, { href: "../", jour: day, numero: numeroDeJournee(day) ?? undefined }),
-        el("h1", { classe: "classement-titre", texte: t.t("classement.titre") }),
-        navigation,
-        commutateurMode(t),
-        el("div", { classe: "classement-panneau", attrs: { id: "groupes-zone" } }),
-        el("section", { classe: "profil-section", attrs: { "aria-labelledby": "titre-langue" } }, el("h2", { classe: "profil-section__titre", attrs: { id: "titre-langue" }, texte: t.t("profil.langue.titre") }), choixLangue(t, { langue, onChange: changerLangue })),
-        el("footer", { classe: "portail-pied" }, el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }), lienRetours(t.t("portail.retours.lien"), langue, "../")),
-      ]
-    : [
-    barreJeu(t, { href: "../", jour: day, numero: numeroDeJournee(day) ?? undefined }),
-    el("h1", { classe: "classement-titre", texte: t.t("classement.titre") }),
-    navigation,
-    commutateurMode(t),
-    barreDesVues(t, c),
-    identifie ? el("div", { classe: "classement-filtre", attrs: { id: "classement-filtre" } }, selecteurDesAmis()) : null,
-    amisIndispo ? el("p", { classe: "classement-etat classement-amis-indispo", attrs: { id: "classement-amis-indispo", role: "status" }, texte: t.t("classement.amis.indispo") }) : null,
+
+  // --- Lot U2 : la salle — la barre, le fronton, les onglets de vue, puis la liste et, à droite (sous la liste sur téléphone), les groupes ---
+  const identite = readIdentity(stockage);
+  const copie = copieDeLAccueil();
+  const reponses = copie?.joueur?.messagesNonLus ?? 0;
+  const nouveaute = nonLue(copie?.nouveaute, stockage);
+  const items = itemsDeNavigation((cle) => t.t(cle));
+  const barre = barreSalle({
+    logo: logo(t),
+    navigation: navigation({ items, ici: "classements", aria: t.t("portail.nav.aria"), place: "haut", racine: "../" }),
+    langue: choixLangue(t, { langue, onChange: changerLangue }),
+    cloche: clocheLien({ nom: t.t(nouveaute || reponses > 0 ? "portail.cloche.nonLu" : "portail.cloche.nom"), nonLu: nouveaute || reponses > 0, href: !nouveaute && reponses > 0 ? "../messages/" : "../nouveautes/" }),
+    avatar: avatar(t, { pseudo: identite.exists ? identite.name : null, href: "../profil/", image: adresseAvatar(baseApi(), c?.moi?.avatar ?? copie?.joueur?.avatar) }),
+  });
+  const numero = numeroDeJournee(day);
+  const maintenant = Date.now();
+  const fronton = frontonDePage({
+    titre: t.t("classement.fronton"),
+    date: formatDate(day, langue, { capitale: true }),
+    journee: numero ? t.t("portail.journee", { numero: formatNumeroJour(numero, langue) }) : null,
+    legende: t.t("portail.compte.legende"),
+    compte: formatCompte(prochainMinuit(null, maintenant) - maintenant),
+  });
+
+  const liste: (HTMLElement | null)[] = [
     etat ? el("p", { classe: "classement-etat", attrs: { id: "classement-etat", role: "status" }, texte: etat }) : null,
     c ? el("p", { classe: "classement-egalite", texte: t.t(c.unite === "mm" ? "classement.egaliteHauteur" : c.unite === "points" ? "classement.egalitePoints" : "classement.egalite") }) : null,
     c
@@ -387,7 +464,7 @@ function rendre(): void {
         )
       : null,
     c && c.top.length === 0 && !sansAmis ? el("p", { classe: "classement-vide", attrs: { id: "classement-vide" }, texte: t.t("classement.vide") }) : null,
-    // Le panneau de la vue : le haut (au cumul, scindé par « Un jeu sur deux »), puis ta ligne, même hors du haut (séparée par « … », à sa vraie place).
+    // Le panneau de la vue : le podium et le haut (au cumul, scindé par « Un jeu sur deux »), puis ta ligne, même hors du haut (séparée par « … », à sa vraie place).
     el(
       "div",
       { classe: "classement-panneau", attrs: { id: "classement-panneau", role: "tabpanel", "aria-labelledby": `vue-${vueActive(c)}` } },
@@ -395,7 +472,7 @@ function rendre(): void {
       c?.moi && !topMoi
         ? el(
             "div",
-            { classe: "classement-hors-haut", attrs: { id: "classement-moi" } },
+            { classe: "classement-hors-haut", attrs: { id: "classement-moi", "data-jeux": String(nombreDeColonnes(c.vue === VUE_CUMUL ? jeuxDuCumul(c.jeux).length : 1)) } },
             el("p", { classe: "classement-coupure", attrs: { "aria-hidden": "true" }, texte: "…" }),
             el("ol", { classe: "classement-liste", attrs: { start: String(c.moi.rang) } }, ligne(t, c, c.moi, true)),
           )
@@ -406,26 +483,56 @@ function rendre(): void {
             "section",
             { classe: "classement-absents", attrs: { id: "classement-absents", "aria-labelledby": "classement-absents-titre" } },
             el("h2", { classe: "classement-separation", attrs: { id: "classement-absents-titre" }, texte: textesDesAmis.absents() }),
-            el("ul", { classe: "classement-liste" }, ...absents.map(ligneAbsente)),
+            el("ul", { classe: "classement-liste" }, ...absents.map((a) => ligneAbsente(t, a))),
           )
         : null,
       sansAmis && amisPret ? amisPret.ui.classementAmisVide(traducteurAmis(), { href: "../amis/" }) : null,
       surAmis && !sansAmis && amisPret ? amisPret.ui.lienAmis(traducteurAmis(), { href: "../amis/" }) : null,
     ),
-    el("section", { classe: "profil-section", attrs: { "aria-labelledby": "titre-langue" } }, el("h2", { classe: "profil-section__titre", attrs: { id: "titre-langue" }, texte: t.t("profil.langue.titre") }), choixLangue(t, { langue, onChange: changerLangue })),
+  ];
+  const filtres = el(
+    "div",
+    { classe: "classement-filtres" },
+    groupes ? null : barreDesVues(t, c),
+    el(
+      "div",
+      { classe: "classement-ligne-f" },
+      el("div", { classe: "classement-ligne-f__choix" }, commutateurMode(t), groupes || !identifie ? null : el("div", { classe: "classement-filtre", attrs: { id: "classement-filtre" } }, selecteurDesAmis())),
+      navigationJours,
+    ),
+    groupes || !amisIndispo ? null : el("p", { classe: "classement-etat classement-amis-indispo", attrs: { id: "classement-amis-indispo", role: "status" }, texte: t.t("classement.amis.indispo") }),
+  );
+  const page = el(
+    "div",
+    { classe: ["salle-page", "classement-page", groupes && "classement-page--groupes"] },
+    filtres,
+    groupes
+      ? el("div", { classe: "classement-panneau", attrs: { id: "groupes-zone" } })
+      : el(
+          "div",
+          { classe: "classement-grille" },
+          el("div", { classe: "classement-gauche" }, ...liste),
+          el("aside", { classe: "classement-droite salle-panneau", attrs: { id: "classement-groupes", "aria-labelledby": "classement-groupes-titre" } }, el("h2", { classe: "salle-panneau__titre", attrs: { id: "classement-groupes-titre" }, texte: t.t("classement.groupes.titre") }), el("div", { attrs: { id: "classement-groupes-zone" } })),
+        ),
+  );
+  racine.replaceChildren(
+    barre,
+    fronton,
+    page,
     el(
       "footer",
-      { classe: "portail-pied" },
+      { classe: "portail-pied salle-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
       lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
-  ];
-  racine.replaceChildren(...enfants.filter((e): e is HTMLElement => e !== null));
+    // La barre d'onglets du téléphone (fixe, en bas) : la même navigation, avec des icônes.
+    navigation({ items, ici: "classements", aria: t.t("portail.nav.aria"), place: "bas", racine: "../" }),
+  );
+  const options = { tr: t, langue, base: baseApi(), id: identifiant(), date: jourAffiche, vue: vueAffichee, surVue: changerVue };
   const zoneGroupes = racine.querySelector<HTMLElement>("#groupes-zone");
-  if (zoneGroupes) {
-    const id = identifiant();
-    void import("./classementGroupes").then((m) => m.monterGroupes(zoneGroupes, { tr: t, langue, base: baseApi(), id, date: jourAffiche, vue: vueAffichee, surVue: changerVue }));
-  }
+  if (zoneGroupes) void import("./classementGroupes").then((m) => m.monterGroupes(zoneGroupes, options));
+  const zonePanneau = racine.querySelector<HTMLElement>("#classement-groupes-zone");
+  if (zonePanneau) void import("./classementGroupes").then((m) => m.monterPanneau(zonePanneau, { ...options, surTous: () => changerMode("groupes") }));
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
   else if (surSelecteur) racine.querySelector<HTMLElement>('#classement-selecteur [aria-checked="true"]')?.focus();
 }
@@ -547,15 +654,37 @@ function changerLangue(l: Langue): void {
   document.querySelector<HTMLElement>(`.dj-choix-langue [data-langue="${l}"]`)?.focus();
 }
 
+/**
+ * Lot U2 : le compte à rebours du fronton (« Prochains niveaux dans »), sur l'horloge de l'appareil recalée sur Paris (`prochainMinuit(null, …)` : la page ne reçoit pas l'heure du serveur). À zéro, si le jour affiché est
+ * celui d'aujourd'hui, le classement du nouveau jour est relu — une fois par minuit, jamais en boucle : l'échéance suivante est celle du minuit d'après.
+ */
+function battre(): void {
+  let echeance = prochainMinuit(null, Date.now());
+  setInterval(() => {
+    const maintenant = Date.now();
+    const valeur = document.querySelector(".salle-compte__valeur");
+    if (valeur) valeur.textContent = formatCompte(echeance - maintenant);
+    if (maintenant < echeance) return;
+    echeance = prochainMinuit(null, maintenant);
+    if (jourAffiche !== null || modeAffiche === "groupes") return;
+    aujourdhui = formatDay(parisDay(maintenant));
+    lecture = null;
+    totalTous = null;
+    rendre();
+    void charger(null);
+  }, 1000);
+}
+
 async function demarrer(): Promise<void> {
-  // Recette et aperçus seulement : `/classement/?demo=joueur` installe le joueur de démonstration (absent de la construction de production), comme l'accueil.
-  if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).get("demo") === "joueur") {
+  // Recette et aperçus seulement : `/classement/?demo` (ou `?demo=joueur`) installe le joueur de démonstration (absent de la construction de production), comme l'accueil.
+  if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).has("demo")) { // `?demo` ou `?demo=joueur` (lot U2 : les deux ouvrent le joueur de démonstration)
     const racine = document.getElementById("classement");
     const { lienDemo } = await import("./demo");
     if (racine) await lienDemo(stockage, langue, racine);
   }
   rendre();
   void charger(jourAffiche);
+  battre();
   // Lot F2 : avec une identité, les composants des amis arrivent en arrière-plan (le sélecteur prend sa place réservée) et le nombre d'amis est lu une fois.
   if (identifiant()) {
     void preparerAmis().then(rendre);

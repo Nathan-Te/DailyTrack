@@ -1,5 +1,6 @@
 import "./avatar.css";
 import "./avatar-liste.css";
+import "./avatar-grand.css"; // lot U2 : la photo de 88 px de la feuille d'un joueur
 import "./amis.css";
 import type { CleAmis } from "./catalogue.amis";
 import type { CleCommune } from "./catalogue";
@@ -260,6 +261,8 @@ export interface OptionsFeuilleJoueur {
   onFermer?: () => void;
   /** Où la poser (par défaut `document.body`) ; elle couvre l'écran en bas (`position: fixed`). */
   parent?: HTMLElement;
+  /** Lot U2 : la taille de la photo en tête (44 par défaut : les classements des jeux ; 88 sur `/classement/`). */
+  taillePhoto?: 44 | 88;
 }
 export interface FeuilleJoueur {
   racine: HTMLElement;
@@ -349,7 +352,7 @@ export function feuilleJoueur(o: OptionsFeuilleJoueur): FeuilleJoueur {
     } else {
       const f = etat.fiche;
       titre.textContent = f.pseudo;
-      portrait.replaceChildren(avatar(t, { pseudo: f.pseudo, ref: f.ref, image: f.image, taille: 44, decoratif: true }));
+      portrait.replaceChildren(avatar(t, { pseudo: f.pseudo, ref: f.ref, image: f.image, taille: o.taillePhoto ?? 44, decoratif: true }));
       if (f.rang !== null && f.classes !== null) rang.textContent = t.t("amis.feuille.rang", { rang: formatRang(f.rang, t.langue), classes: formatNombre(f.classes, t.langue) });
       enfants.push(tableau(f));
       if (f.ami) enfants.push(el("p", { classe: "dj-feuille__relation", texte: f.reciproque ? t.t("amis.reciproque") : t.t("amis.ajouteParToi") }));

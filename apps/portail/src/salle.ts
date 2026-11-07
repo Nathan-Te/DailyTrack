@@ -29,7 +29,7 @@ const TRACES: Record<PageNav | "cloche" | "fermer", readonly string[]> = {
   cloche: ["M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z", "M10 20.5a2.2 2.2 0 0 0 4 0"],
 };
 
-function pictogramme(nom: keyof typeof TRACES, taille: number): SVGSVGElement {
+export function pictogramme(nom: keyof typeof TRACES, taille: number): SVGSVGElement {
   return svg(
     "svg",
     { classe: ["dj-icone", `dj-icone--${nom}`], attrs: { viewBox: "0 0 24 24", width: taille, height: taille, fill: "none", stroke: "currentColor", "stroke-width": 2.2, "stroke-linecap": "square", "stroke-linejoin": "miter", focusable: "false", "aria-hidden": "true" } },
@@ -223,7 +223,8 @@ export function selecteurDeVue(o: { aria: string; choix: readonly ChoixVue[]; ac
   );
 }
 
-/** L'emblème d'un groupe : un carré à coins de 8 px, son image ou les deux premières lettres de son nom (décoratif : le nom est écrit à côté). */
-export function emblemeDeGroupe(o: { initiales: string; image?: string }): HTMLElement {
-  return el("span", { classe: "salle-embleme", attrs: { "aria-hidden": "true" } }, o.image ? el("img", { attrs: { src: o.image, alt: "", width: 52, height: 52, loading: "lazy", decoding: "async" } }) : o.initiales);
+/** L'emblème d'un groupe : un carré à coins de 8 px, son image ou les deux premières lettres de son nom (décoratif : le nom est écrit à côté). Lot U2 : `taille` (22 · 48 · 52 · 72, charte § 9) ; 52 par défaut. */
+export function emblemeDeGroupe(o: { initiales: string; image?: string; taille?: 22 | 48 | 52 | 72 }): HTMLElement {
+  const px = o.taille ?? 52;
+  return el("span", { classe: ["salle-embleme", o.taille && `salle-embleme--t${o.taille}`], attrs: { "aria-hidden": "true" } }, o.image ? el("img", { attrs: { src: o.image, alt: "", width: px, height: px, loading: "lazy", decoding: "async" } }) : o.initiales);
 }

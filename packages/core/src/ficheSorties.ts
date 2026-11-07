@@ -147,7 +147,9 @@ function cssAmis(fiches: readonly FicheJeu[]): string {
 function cssPortail(fiches: readonly FicheJeu[]): string {
   const g = generiques(fiches);
   // Lot K5 : la carte du profil d'un jeu qui a une illustration prend son motif ici (et ses couleurs, si elles ne viennent pas de l'étiquette générique : Tower).
-  const profil = pourLeProfil(fiches).map((f) => reglesDIdentite(f, f.etiquette.dessin !== "generique")).join("");
+  // Lot U2 : la teinte de chaque jeu (celle de son étiquette) pour la pastille de son onglet de `/classement/` — `--vue-teinte`, une ligne par jeu, jamais une couleur écrite à la main côté portail.
+  const teintes = fiches.map((f) => `.classement-vue--${f.id}{--vue-teinte:${f.etiquette.fond}}\n`).join("");
+  const profil = teintes + pourLeProfil(fiches).map((f) => reglesDIdentite(f, f.etiquette.dessin !== "generique")).join("");
   if (g.length === 0) return ENTETE_CSS("portail") + profil;
   const zones = g
     .map(
