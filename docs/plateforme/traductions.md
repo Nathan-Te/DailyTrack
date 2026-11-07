@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2281 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2285 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2595,14 +2595,19 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commandes.action.haut` | Ombre en haut | Shadow up |
 | `commandes.action.bas` | Ombre en bas | Shadow down |
 | `commandes.action.poser` | Poser la pièce | Place the piece |
+| `commandes.action.piece1` | Choisir la pièce 1 | Pick piece 1 |
+| `commandes.action.piece2` | Choisir la pièce 2 | Pick piece 2 |
+| `commandes.action.piece3` | Choisir la pièce 3 | Pick piece 3 |
+| `commandes.action.pieceAvant` | Pièce précédente | Previous piece |
+| `commandes.action.pieceApres` | Pièce suivante | Next piece |
 
 ### Comment jouer (`aide.*`, `apps/blocks/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `aide.point1` | Fais glisser la pièce du moment dans la grille de 8 × 8 : chaque ligne ou colonne remplie disparaît. | Drag the current piece into the 8 × 8 grid: every full row or column disappears. |
-| `aide.point2` | Enchaîne les effacements pour faire monter le combo : il survit à deux poses sans effacement. | Chain clears to build your combo: it survives two placements without a clear. |
-| `aide.point3` | La suite de pièces est la même pour tous aujourd'hui. À score égal, le plus grand combo l'emporte. | Everyone gets the same run of pieces today. On equal scores, the bigger combo wins. |
+| `aide.point1` | Pose les trois pièces dans l'ordre que tu veux : fais-les glisser dans la grille de 8 × 8. | Place the three pieces in any order you like: drag them into the 8 × 8 grid. |
+| `aide.point2` | Chaque ligne ou colonne remplie disparaît. Enchaîne les effacements pour faire monter le combo : il survit à deux poses sans effacement. | Every full row or column disappears. Chain clears to build your combo: it survives two placements without a clear. |
+| `aide.point3` | Les séries de pièces sont les mêmes pour tous aujourd'hui. À score égal, le plus grand combo l'emporte. | Everyone gets the same sets of pieces today. On equal scores, the bigger combo wins. |
 
 ### Fin de partie (`fin.*`, `apps/blocks/src/catalogue.*.ts`)
 
@@ -2728,16 +2733,15 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.combo.lecteur` | Combo ×{n} | Combo ×{n} |
 | `hud.combo.annonce` | Combo ×{n} ! | Combo ×{n}! |
 | `hud.plateauVide` | Plateau vide ! +{n} | Board cleared! +{n} |
-| `hud.piece` | Ta pièce | Your piece |
-| `hud.suivante` | Suivante | Next |
-| `hud.aide.glisser` | Glisse la pièce dans la grille | Drag the piece onto the grid |
-| `hud.aide.bureau` | Glisse une pièce dans la grille, ou déplace l'ombre aux flèches | Drag a piece onto the grid, or move the shadow with the arrow keys |
+| `hud.pieces` | Tes pièces | Your pieces |
+| `hud.aide.glisser` | Glisse une des trois pièces dans la grille | Drag one of the three pieces onto the grid |
+| `hud.aide.bureau` | Glisse une pièce dans la grille, ou choisis-la (1, 2, 3) et déplace l'ombre aux flèches | Drag a piece onto the grid, or pick it (1, 2, 3) and move the shadow with the arrow keys |
 
 ### scene (`scene.*`, `apps/blocks/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `scene.aria` | Grille de 8 sur 8 : fais glisser la pièce du moment pour la poser. | 8 by 8 grid: drag the current piece to place it. |
+| `scene.aria` | Grille de 8 sur 8 : fais glisser une des trois pièces pour la poser. | 8 by 8 grid: drag one of the three pieces to place it. |
 
 ### score (`score.*`, `apps/blocks/src/catalogue.*.ts`)
 

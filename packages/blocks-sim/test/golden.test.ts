@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
 import { BLOCKS_BOT_VERSION, BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, estScenario, rejouer } from "../src/index";
 import { jouerDiamant, seuilsDe } from "../src/diamant";
+import { jouerFaible } from "../src/faible";
+import { jouerGlouton } from "../src/glouton";
 
 // Le golden : produit par `npm run golden:blocks` (jamais écrit à la main), rejoué ici par Node et dans Chromium, Firefox et WebKit par `apps/blocks/e2e/determinisme.spec.ts`.
 const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-blocks.json", import.meta.url), "utf8")) as {
@@ -23,10 +25,10 @@ describe("golden de Blocks", () => {
   it.each(golden.jours.map((j) => [j.date, j.seuils]))("le bot Diamant donne au %s les seuils %j", (date, seuils) => {
     expect(seuilsDe(dailyBlocks(parseDay(date as string)!))).toEqual(seuils);
   });
-  it.each(golden.rediffusions.filter((r) => r.nom.startsWith("diamant")).map((r) => [r.nom, r]))("le bot Diamant rejoue « %s » exactement : mêmes poses, même code", (_nom, r) => {
+  it.each(golden.rediffusions.filter((r) => /^(diamant|moyen|faible)/.test(r.nom)).map((r) => [r.nom, r]))("le bot « %s » rejoue exactement : mêmes poses, même code", (_nom, r) => {
     const ref = r as (typeof golden.rediffusions)[number];
     const contenu = ref.scenario && estScenario(ref.scenario) ? contenuDeScenario(ref.scenario) : dailyBlocks(parseDay(ref.date)!, ref.g);
-    const bot = jouerDiamant(contenu);
+    const bot = ref.nom.startsWith("diamant") ? jouerDiamant(contenu) : ref.nom.startsWith("moyen") ? jouerGlouton(contenu) : jouerFaible(contenu);
     expect(enregistrer(contenu, bot.actions)).toBe(ref.code);
     expect(bot.resultat).toEqual(ref.resultat);
   });

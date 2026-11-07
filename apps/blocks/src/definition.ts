@@ -1,7 +1,6 @@
-import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, medailleDe, numeroBlocks, themeDuJour, type Contenu } from "@cdj/blocks-sim";
+import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, estScenario, medailleDe, numeroBlocks, themeDuJour, type Contenu } from "@cdj/blocks-sim";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
-import { lireEssai } from "./essai";
 import { ecrireComboPartage, ecrireScore } from "./textes";
 
 // La définition de « Blocks » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Le corps du jeu (le tirage de la suite, les scénarios, la scène, les blocs communs) est à la demande**
@@ -17,6 +16,10 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
     { id: "haut", clavier: ["ArrowUp", "KeyW"], manette: null },
     { id: "bas", clavier: ["ArrowDown", "KeyS"], manette: null },
     { id: "poser", clavier: ["Space", "Enter"], manette: "b0" },
+    // Lot B8 : choisir l'une des trois pièces (touches 1 à 3), ou passer de l'une à l'autre avec les boutons d'épaule (Q et E au clavier, comme Tower).
+    ...[1, 2, 3].map((n) => ({ id: `piece${n}`, clavier: [`Digit${n}`, `Numpad${n}`], manette: null })),
+    { id: "pieceAvant", clavier: ["KeyQ"], manette: "b4" },
+    { id: "pieceApres", clavier: ["KeyE"], manette: "b5" },
   ],
   themeDuJour, // le thème du jour (sac commun) ; `?theme=` (hors production) est géré par le kit
   numero: numeroBlocks,
@@ -29,9 +32,13 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   nouvellePartie: (c, hote, o) => corps!.nouvellePartieBlocks(c, hote, o),
   rediffusionDiamant: (c) => corps!.rediffusionDuDiamant(c), // la partie du bot (le kit l'exige ; lot B5 : plus de fantôme, la partie du Diamant se revoit hors partie)
   // Lot « manques de Blocks » : tout essai local est une partie non classable — un scénario, une rampe réglée (`?debug&tune`), `&bot`, `?scenario=partage` ; le kit ne la classe ni ne l'envoie, sans passer la page en archive.
+  // (Écrit ici, court, plutôt que par `lireEssai` (`essai.ts`) : celui-ci est dans le corps du jeu, à la demande, et n'a pas à entrer dans le premier chargement — budget `blocks.jsCss` ; `essai.test.ts` garde les deux d'accord.)
   classable: (adresse) => {
-    const essai = lireEssai(adresse, BUILD_RESTRICTED);
-    return essai.scenario === null && essai.rampe === null && essai.bot === null && essai.mode === undefined;
+    if (BUILD_RESTRICTED) return true;
+    const q = new URLSearchParams(adresse);
+    const nom = q.get("scenario") ?? "";
+    const rampe = q.has("debug") && q.has("tune") && (q.get("rampe") ?? "").split(",").some((x) => /^\d+(\.\d+)?$/.test(x));
+    return !(estScenario(nom) || nom === "partage" || q.has("bot") || rampe);
   },
   sansFantome: true, // lot « manques de Blocks » : l'option du kit remplace le bouton, la ligne des Réglages et la commande cachés par `partie.css` (seed § 5 : une grille en transparence est illisible)
   formatScore: (score, langue, t) => ecrireScore(score[0] ?? 0, t, langue),

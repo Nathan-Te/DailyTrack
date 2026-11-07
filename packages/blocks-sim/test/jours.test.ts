@@ -3,7 +3,7 @@ import { daysFromCivil, formatDay } from "@cdj/core";
 import { BLOCKS_BOT_VERSION, dailyBlocks, figerJour, FORMAT_JOUR_FIGE, lireJourFige, seuilsDepuis, seuilsValides } from "../src/index";
 import { figerJourDuDiamant, seuilsDe, seuilsDuJour } from "../src/diamant";
 
-// Les jours figés (règle R11) et leurs SEUILS : un jour figé fige aussi ses médailles, comme Jump et Tower. Un changement du bot (ou des fractions) ne change jamais un jour déjà figé.
+// Les jours figés (règle R11) et leurs SEUILS : un jour figé fige aussi ses médailles, comme Jump et Tower. Un changement du bot (ou des références) ne change jamais un jour déjà figé.
 const JOUR = daysFromCivil(2026, 11, 6);
 
 describe("le fichier d'un jour figé (format 2)", () => {
@@ -40,11 +40,12 @@ describe("le fichier d'un jour figé (format 2)", () => {
 });
 
 describe("seuilsDuJour : un jour figé garde ses seuils, quoi que dise le bot d'aujourd'hui", () => {
-  it("sans fichier de jour, ce sont ceux du bot ; avec, ceux du fichier — même s'ils diffèrent (le bot ou ses fractions ont changé depuis)", () => {
+  it("sans fichier de jour, ce sont ceux du bot ; avec, ceux du fichier — même s'ils diffèrent (le bot ou ses références ont changé depuis)", () => {
     const c = dailyBlocks(JOUR);
     expect(seuilsDuJour(c)).toEqual(seuilsDe(c));
     // Un fichier figé « par un bot plus ancien » : un Diamant de 7 000 au lieu du score d'aujourd'hui.
     const ancien = seuilsDepuis(7000);
+    expect(ancien).toEqual({ author: 7000, gold: 5000, silver: 3500, bronze: 1200 });
     expect(ancien.author).not.toBe(seuilsDe(c).author);
     const f = { ...figerJourDuDiamant(JOUR), bot: BLOCKS_BOT_VERSION - 1, seuils: ancien };
     const lu = lireJourFige(JSON.parse(JSON.stringify(f)))!;

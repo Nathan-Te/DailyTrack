@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { colonneDe, dailyBlocks, grilleEnTexte, ligneDe, medailleDe, Partie, PIECES, PREMIER_JOUR_BLOCKS, THEMES_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
+import { dailyBlocks, grilleEnTexte, medailleDe, Partie, PIECES, PREMIER_JOUR_BLOCKS, THEMES_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
 import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
@@ -28,7 +28,7 @@ test.describe("Blocks : le bot Diamant (&bot)", () => {
     // Ce sont bien les poses du Diamant (celles de la simulation, Node), dans l'ordre.
     const bot = jouerDiamant(dailyBlocks(jour));
     const attendue = new Partie(dailyBlocks(jour));
-    for (const a of bot.actions.slice(0, 9)) attendue.poser(colonneDe(a), ligneDe(a));
+    for (const a of bot.actions.slice(0, 9)) attendue.jouerAction(a);
     expect(await page.evaluate(() => window.__blocks.grille())).toEqual(grilleEnTexte(attendue.grille));
     expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ score: attendue.score, combo: attendue.combo, poses: 9 });
     await context.close();
@@ -122,7 +122,7 @@ test.describe("Blocks : les thèmes du jour", () => {
     expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("nuit");
     await lancer(page);
     const suite = dailyBlocks(jour).suite;
-    expect(await page.evaluate(() => window.__blocks.piece())).toBe(PIECES[suite[0]!]!.nom);
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual([0, 1, 2].map((k) => PIECES[suite[k]!]!.nom)); // la première série, aucune pièce suivante
     await context.close();
   });
 });

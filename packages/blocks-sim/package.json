@@ -19,6 +19,8 @@
     ".": "./src/index.ts",
     "./calendrier": "./src/calendrier.ts",
     "./glouton": "./src/glouton.ts",
-    "./diamant": "./src/diamant.ts"
+    "./faible": "./src/faible.ts",
+    "./diamant": "./src/diamant.ts",
+    "./v1": "./src/v1.ts"
   }
 }

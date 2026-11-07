@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { colonneDe, dailyBlocks, ligneDe, medailleDe, numeroBlocks, Partie, PREMIER_JOUR_BLOCKS, seuilsDepuis } from "@cdj/blocks-sim";
+import { dailyBlocks, medailleDe, numeroBlocks, Partie, PREMIER_JOUR_BLOCKS, seuilsDepuis } from "@cdj/blocks-sim";
 import { jouerDiamant } from "@cdj/blocks-sim/diamant";
 import { adresseDePartage, ligneParDefaut, textePartage } from "@cdj/kit/partage";
 import { CATALOGUE_EN } from "../src/catalogue.en";
@@ -86,7 +86,7 @@ describe("le résultat d'exemple de `?scenario=partage`", () => {
   it("chaque médaille voulue tombe dans sa bande (ou, faute de bande, au-dessus) ; « aucune » reste sous le bronze", () => {
     const de = (poses: number[]): number => {
       const p = new Partie(contenu);
-      for (const a of poses) p.poser(colonneDe(a), ligneDe(a));
+      for (const a of poses) p.jouerAction(a);
       return p.score;
     };
     expect(MEDAILLES_EXEMPLE).toEqual(["aucune", "bronze", "argent", "or", "diamant"]);
