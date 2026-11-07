@@ -108,7 +108,7 @@ export interface PorteBlocks {
   /** Une pièce au repos dans son emplacement : son rectangle (page) et le côté de ses cases (le même pour toutes). `null` si l'emplacement est vide. */
   repos(emplacement: number): { rect: Rect; cote: number } | null;
   /** La pièce saisie : l'emplacement d'où elle vient, le point touché, son rectangle (page), le côté de ses cases et la case touchée (`u`, `v`, en cases depuis son coin haut-gauche). */
-  saisie(): { emplacement: number; doigt: { x: number; y: number }; piece: Rect; cote: number; u: number; v: number } | null;
+  saisie(): { dessinee: boolean; emplacement: number; doigt: { x: number; y: number }; piece: Rect; cote: number; u: number; v: number } | null;
   grille(): string[];
   etat(): { score: number; combo: number; comboMax: number; poses: number; serie: number; sansEffacement: number; fin: string | null };
   /** Ce que le HUD dessine : le score écrit, le combo écrit (ou `null`), les carrés pleins (poses sans effacement encore permises), la couleur de la plaque du combo. */
@@ -205,6 +205,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   let retour: { depart: { x: number; y: number }; cote: number; piece: Piece; emplacement: number; t0: number } | null = null;
   /** L'instant (horloge d'affichage) où la série en cours est arrivée : les pièces entrent l'une après l'autre (`DUREE_ARRIVEE`). */
   let debutSerie = 0;
+  /** La pièce saisie a-t-elle été dessinée à la dernière image ? (`__blocks.saisie().dessinee` : elle ne doit jamais disparaître pendant qu'on la tient.) */
+  let tenueDessinee = false;
   let dernierRegard: { x: number; y: number } | null = null;
   let nbPaires = 0;
 
@@ -724,7 +726,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     g.translate(decalageBord.x, decalageBord.y);
     const { grille, cote } = mep;
     const ombre = ombreCourante();
-    const p = ombre ? partie.piece(ombre.emplacement) : null; // la pièce que l'ombre ou la main déplace
+    // La pièce que la main tient (saisie : toujours dessinée, même quand aucune position légale n'est proche et que l'ombre n'existe pas) ou que l'ombre du clavier déplace.
+    const p = saisie ? partie.piece(saisie.emplacement) : ombre ? partie.piece(ombre.emplacement) : null;
     const apercu = p && ombre?.legale ? partie.apercu(ombre.emplacement, ombre.col, ombre.ligne) : null;
 
     // Le HUD : les plaques du score et du combo (la maquette A).
@@ -874,6 +877,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       pieceEn(retour.piece, retour.depart.x + (repos.x - retour.depart.x) * e + (retour.piece.largeur * cote2) / 2, retour.depart.y + (repos.y - retour.depart.y) * e + (retour.piece.hauteur * cote2) / 2, cote2, { yeux: true });
     }
     // La pièce saisie : à la taille des cases, SOUS le doigt, au point exact où on l'a touchée ; ses yeux regardent l'ombre.
+    tenueDessinee = !!(p && saisie);
     if (p && saisie) {
       const cotePiece = coteSaisie();
       const coin = coinSaisi(cotePiece)!;
@@ -968,7 +972,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
         if (!p) return null;
         const cotePiece = coteSaisie();
         const coin = coinSaisi(cotePiece)!;
-        return { emplacement: saisie.emplacement, doigt: pt(saisie.x, saisie.y), piece: page({ x: coin.x, y: coin.y, w: p.largeur * cotePiece, h: p.hauteur * cotePiece }), cote: cotePiece, u: saisie.u, v: saisie.v };
+        return { dessinee: tenueDessinee, emplacement: saisie.emplacement, doigt: pt(saisie.x, saisie.y), piece: page({ x: coin.x, y: coin.y, w: p.largeur * cotePiece, h: p.hauteur * cotePiece }), cote: cotePiece, u: saisie.u, v: saisie.v };
       },
       grille: () => grilleEnTexte(partie.grille),
       etat: () => ({ score: partie.score, combo: partie.combo, comboMax: partie.comboMax, poses: partie.poses, serie: partie.serie, sansEffacement: partie.sansEffacement, fin: partie.fin }),

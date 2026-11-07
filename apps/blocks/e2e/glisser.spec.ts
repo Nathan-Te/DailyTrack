@@ -81,6 +81,30 @@ test.describe("Blocks : le geste", () => {
     await context.close();
   });
 
+  test("la pièce saisie reste DESSINÉE pendant tout le geste, même sans position légale proche (à la prise, au-dessus de son emplacement, hors de la grille)", async ({ browser }) => {
+    const { context, page } = await appareil(browser, PRESQUE_PLEIN);
+    await lancer(page);
+    const d = await page.evaluate(() => window.__blocks.disposition());
+    const tenue = async (): Promise<boolean> => {
+      await page.waitForTimeout(60); // une image de plus
+      return page.evaluate(() => window.__blocks.saisie()!.dessinee);
+    };
+    for (const e of [0, 1, 2]) {
+      const c = d.centresMain[e]!;
+      await page.mouse.move(c.x, c.y);
+      await page.mouse.down();
+      expect(await page.evaluate(() => window.__blocks.ombre()), `emplacement ${e} : aucune ombre à la prise`).toBeNull();
+      expect(await tenue(), `emplacement ${e} : dessinée à la prise`).toBe(true);
+      await page.mouse.move(c.x + 5, c.y - 5, { steps: 3 }); // au survol de son emplacement
+      expect(await tenue(), `emplacement ${e} : dessinée au survol de son emplacement`).toBe(true);
+      await page.mouse.move(d.grille.x + d.grille.w + 20, d.grille.y - 20, { steps: 4 }); // hors de la grille
+      expect(await tenue(), `emplacement ${e} : dessinée hors de la grille`).toBe(true);
+      await page.mouse.up();
+      expect(await page.evaluate((k) => window.__blocks.pieces()[k], e)).not.toBeNull(); // rien n'a été posé
+    }
+    await context.close();
+  });
+
   test("relâcher hors d'un endroit valide renvoie la pièce à sa place, sans pénalité (et le son de la pose refusée est demandé)", async ({ browser }) => {
     const { context, page } = await appareil(browser, PRESQUE_PLEIN);
     await lancer(page);
