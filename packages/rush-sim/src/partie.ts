@@ -1,5 +1,6 @@
 import { Rng } from "@cdj/core";
 import { AMELIORATIONS, NB_AMELIORATIONS, indiceAmelioration, tirageDeCartes } from "./ameliorations";
+import { BOSS, B_BELIER, B_CHENE, B_DUC, B_GOLEM, B_REINE, BOND, CHARGE, ETOURDI, INVOCATION, MARCHE, ANNONCE, ONDE, PIERRES, PLONGEON_DUC, POING, RACINES_CERCLES, RACINES_LIGNES, RECUPERE, RUGIT, SPORES, Z_BANDE, Z_INVOCATION, Z_SPORES } from "./bosses";
 import { COEURS, DUREE_TICKS, MAX_MONSTRES, MAX_MONSTRES_VAGUE, RAYON_ARENE, RAYON_CHAUVE, RAYON_CHEVALIER, RAYON_GELEE, RAYON_GOLEM, cm } from "./constantes";
 import { coupDe, directionDe, esquiveDe, viseeDe } from "./entrees";
 import type { Contenu } from "./generateur";
@@ -29,14 +30,8 @@ export const ORBITE = 0;
 export const ANNONCE_PLONGEON = 1;
 export const PLONGEON = 2;
 export const REPOS = 3;
-// Le golem.
-export const MARCHE = 0;
-export const ANNONCE = 1;
-export const RECUPERE = 2;
-export const RUGIT = 3;
-export const POING = 0;
-export const ONDE = 1;
-export const PIERRES = 2;
+// Le boss (états, attaques, zones) : `bosses.ts`, réexportés ici.
+export { ANNONCE, BOND, CHARGE, ETOURDI, INVOCATION, MARCHE, ONDE, PIERRES, PLONGEON_DUC, POING, RACINES_CERCLES, RACINES_LIGNES, RECUPERE, RUGIT, SPORES, Z_BANDE, Z_INVOCATION, Z_SPORES } from "./bosses";
 
 export interface Chevalier {
   x: number;
@@ -105,6 +100,8 @@ export interface Monstre {
   laisse: number;
   /** Lot BR1b : son rayon d'alerte propre en unités (un groupe : 10 à 12 m), ou 0 : celui de son type. */
   ra: number;
+  /** Lot BR3 : 0, un monstre du niveau ; 1, un sbire invoqué par un boss (le vieux chêne) ; 2, une petite gelée née de la reine : ni l'un ni l'autre ne lâche d'XP. */
+  sbire: number;
 }
 
 /** Lot BR1b : un obstacle cassable du niveau, vivant tant que `hp` > 0 ; il occupe `cases`. */
@@ -178,9 +175,20 @@ export interface Golem {
   recup: number;
   /** Le dernier coup qui l'a touché. */
   coup: number;
+  /** Lot BR3 : lequel des cinq boss (`BOSS`), le rayon de son corps, s'il est au sol (le grand-duc en vol ne l'est pas : il encaisse peu, rien ne le pousse), le nombre de divisions déjà faites (la reine), l'angle de son vol (le grand-duc),
+   * la fin de sa dernière course (point et tick : le grand-duc et le bélier) et si la charge en cours finit contre le muret (le bélier). */
+  kind: number;
+  r: number;
+  sol: number;
+  div: number;
+  a: number;
+  ex: number;
+  ey: number;
+  ft: number;
+  mur: number;
 }
 
-/** Un cercle rouge au sol : il frappe à `ti`. */
+/** Un cercle rouge au sol : il frappe à `ti`. Lot BR3 : une BANDE (`Z_BANDE`) est un segment large de (x, y) à (x2, y2), `r` sa demi-largeur ; `dash` est la durée de la course du boss qui la parcourt (la fin de la bande, `ti`, est son arrivée). */
 export interface Zone {
   type: number;
   x: number;
@@ -190,6 +198,17 @@ export interface Zone {
   ti: number;
   /** 0 pour le premier coup d'une attaque, 1 pour le second (phase 2). */
   rang: number;
+  x2: number;
+  y2: number;
+  dash: number;
+}
+/** Lot BR3 : un nuage de spores du vieux chêne, au sol jusqu'à `fin` : qui y reste perd un cœur (puis l'invincibilité des dégâts). */
+export interface Nuage {
+  x: number;
+  y: number;
+  r: number;
+  t0: number;
+  fin: number;
 }
 /** Une onde du golem : un anneau qui s'élargit depuis son centre. */
 export interface OndeGolem {
@@ -202,7 +221,7 @@ export interface OndeGolem {
   touche: boolean;
 }
 
-export type GenreEvenement = "gemme" | "ramasse" | "niveau" | "carte" | "ondeEpee" | "tranchant" | "soin" | "tourbillon" | "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "obstacle" | "brise";
+export type GenreEvenement = "division" | "choc" | "nuage" | "invoque" | "gemme" | "ramasse" | "niveau" | "carte" | "ondeEpee" | "tranchant" | "soin" | "tourbillon" | "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "obstacle" | "brise";
 /** Ce que le rendu doit savoir d'un tick (sons, éclats, secousse) : jamais lu par la simulation. */
 export interface Evenement {
   k: GenreEvenement;
@@ -257,6 +276,40 @@ const RECUP_GOLEM = { [POING]: [90, 60], [ONDE]: [100, 65], [PIERRES]: [80, 55] 
 /** Les deux ondes de la phase 2 sont séparées de ce nombre de ticks (assez pour refaire une esquive). */
 const ECART_ONDES = 70;
 const ECART_PIERRES = 12;
+
+// --- Lot BR3 : les quatre autres boss. Durées en ticks et vitesses en cm/s AU RYTHME 100 % (comme celles du golem) ; rayons en unités. ---
+/** La récupération après chaque attaque (indice = l'attaque de `bosses.ts`), phase 1 et phase 2 : la fenêtre pour taper. Jamais moins de 80 et 55 (golem : 90 / 60 au poing). */
+const RECUP_BOSS: readonly (readonly [number, number])[] = [[90, 60], [100, 65], [80, 55], [90, 60], [100, 70], [90, 60], [90, 60], [90, 60], [90, 60], [100, 65]];
+/** La reine gelée : son bond écrasant (rayon du cercle), son élan (les ticks avant l'impact où elle saute), sa marche, ses divisions (‰ de vie : un quart, la moitié = la phase 2, puis tous les huitièmes) et leurs petites gelées. */
+const REINE_ZONE = cm(330);
+const REINE_ELAN = 24;
+const REINE_VITESSE: readonly [number, number] = [90, 130];
+const REINE_SEUILS: readonly number[] = [750, 500, 375, 250, 125];
+const REINE_PETITES = 3;
+const VIE_PETITE = 10;
+/** Le grand-duc : la demi-largeur de sa bande, sa vitesse de plongeon, ce dont il dépasse le chevalier, le vol (son orbite autour du centre de l'arène : rayon, vitesse), le transit entre deux plongeons (ticks) et ce qu'il encaisse en vol (%). */
+const DUC_BANDE = cm(130);
+const DUC_VITESSE_PLONGEON = 2200;
+const DUC_DEPASSE = cm(450);
+const DUC_ORBITE = cm(600);
+const DUC_VITESSE = 260;
+const DUC_TRANSIT = 20;
+const DUC_EN_VOL = 25;
+/** Le bélier : la demi-largeur de sa ligne, sa vitesse de charge, ce dont il dépasse le chevalier (il ne touche le muret que si celui-ci est derrière le chevalier, à cette distance), sa marche, son étourdissement contre le muret (120 ticks). */
+const BELIER_BANDE = cm(170);
+const BELIER_VITESSE_CHARGE = 1800;
+const BELIER_DEPASSE = cm(500);
+const BELIER_VITESSE: readonly [number, number] = [120, 160];
+const BELIER_ETOURDI = 120;
+const BELIER_ECLATS = 3;
+/** Le vieux chêne : sa suite d'attaques par phase, la demi-largeur et la longueur d'une racine, le rayon d'un cercle de racines, le rayon des spores par phase et leur durée au sol (ticks). */
+const SUITE_CHENE: readonly (readonly number[])[] = [[RACINES_LIGNES, SPORES, INVOCATION, RACINES_CERCLES], [RACINES_LIGNES, SPORES, RACINES_CERCLES, INVOCATION, SPORES]];
+const CHENE_BANDE = cm(110);
+const CHENE_LONGUEUR = cm(1300);
+const CHENE_CERCLE = cm(190);
+const CHENE_SPORES: readonly [number, number] = [cm(300), cm(400)];
+const SPORES_DUREE = 270;
+const ECART_CERCLES = 14;
 /** La gelée s'écrase (annonce) puis bondit puis se repose. */
 const GELEE_ANNONCE = 30;
 const GELEE_BOND = 24;
@@ -322,6 +375,8 @@ export class Partie {
   readonly golem: Golem | null;
   zones: Zone[] = [];
   ondes: OndeGolem[] = [];
+  /** Lot BR3 : les nuages de spores au sol. */
+  nuages: Nuage[] = [];
   /** Le coup en cours (numéro croissant). */
   coupId = 0;
   tues = 0;
@@ -380,17 +435,20 @@ export class Partie {
     this.vit = this.vitBase;
     this.rt = reglages.rythme;
     this.durees = { geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
-    this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin";
+    this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin" || contenu.scenario === "bestiaire";
     this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false, calme: 0, elan: 0, coeursMax: COEURS };
-    if (contenu.scenario === "arene") this.golem = null;
+    if (contenu.scenario === "arene" || contenu.scenario === "bestiaire") this.golem = null;
     else {
-      const hpMax = reglages.golemVie;
+      // Lot BR3 : le boss du jour (le golem pour les scénarios d'essai qui n'en demandent pas un autre) ; ses points de vie sont un % de ceux du golem.
+      const kind = contenu.boss;
+      const hpMax = idiv(reglages.golemVie * BOSS[kind]!.vie, 100);
       const [gx, gy] = contenu.scenario === "mannequin" ? GOLEM_MANNEQUIN : [0, -300];
-      // Dans le niveau, le golem dort au fond de l'arène, du côté opposé à l'entrée.
+      // Dans le niveau, le boss dort au fond de l'arène, du côté opposé à l'entrée.
       const n = this.niveau;
       const px = n ? n.arene.x - idiv(COS[n.arene.dir]! * cm(300), 1024) : cm(gx);
       const py = n ? n.arene.y - idiv(SIN[n.arene.dir]! * cm(300), 1024) : cm(gy);
-      this.golem = { x: px, y: py, hp: contenu.phase2 ? idiv(hpMax, 2) : hpMax, hpMax, phase: contenu.phase2 ? 2 : 1, etat: MARCHE, t: 0, duree: 0, t1: 0, attaque: 0, repos: this.dur(contenu.phase2 ? 50 : 150), compteur: 0, flash: 0, dir: n ? n.arene.dir : 32, recup: 0, coup: 0 };
+      const phase2 = contenu.phase2;
+      this.golem = { x: px, y: py, hp: phase2 ? idiv(hpMax, 2) : hpMax, hpMax, phase: phase2 ? 2 : 1, etat: MARCHE, t: 0, duree: 0, t1: 0, attaque: 0, repos: this.dur(phase2 ? 50 : 150), compteur: 0, flash: 0, dir: n ? n.arene.dir : 32, recup: 0, coup: 0, kind, r: BOSS[kind]!.rayon, sol: kind === B_DUC && !n ? 0 : 1, div: phase2 ? 2 : 0, a: dirVers(px - this.ax, py - this.ay), ex: px, ey: py, ft: 0, mur: 0 };
     }
     if (contenu.scenario === "arene") {
       this.apparaitre(contenu.monstres > 0 ? Math.min(contenu.monstres, 6) : 4);
@@ -421,7 +479,7 @@ export class Partie {
   private monterNiveau(n: Niveau): void {
     for (const m of n.monstres) {
       const gelee = m.type === GELEE;
-      this.monstres.push({ id: this.prochainId++, type: m.type, x: m.x, y: m.y, kx: 0, ky: 0, hp: gelee ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t: 0, age: -100, a: this.rng.int(128), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: m.x, hy: m.y, alerte: 0, laisse: LAISSE, ra: m.alerte });
+      this.monstres.push({ id: this.prochainId++, type: m.type, x: m.x, y: m.y, kx: 0, ky: 0, hp: gelee ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t: 0, age: -100, a: this.rng.int(128), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: m.x, hy: m.y, alerte: 0, laisse: LAISSE, ra: m.alerte, sbire: 0 });
     }
     n.obstacles.forEach((o, id) => {
       // Lot BR2 : ce qu'il contient, en points d'XP (les réglages).
@@ -447,14 +505,14 @@ export class Partie {
     g.duree = g.t1 = this.dur(ANNONCE_GOLEM[0]);
     g.t = g.duree + 1; // le poing vient de s'abattre (le golem de la cible a les poings au sol) ; le cercle, lui, est annoncé aux trois cinquièmes
     g.dir = 32;
-    this.zones.push({ type: POING, x: cm(60), y: cm(50), r: RAYON_ZONE_POING, t0: this.tick - idiv(g.duree * 6, 10), ti: this.tick + g.duree - idiv(g.duree * 6, 10), rang: 0 });
+    this.zones.push({ type: POING, x: cm(60), y: cm(50), r: RAYON_ZONE_POING, t0: this.tick - idiv(g.duree * 6, 10), ti: this.tick + g.duree - idiv(g.duree * 6, 10), rang: 0, x2: 0, y2: 0, dash: 0 });
     this.c.x = -cm(400);
     this.c.y = cm(250);
     this.c.dir = 52; // il regarde vers le bas à gauche, l'épée devant lui : son visage se voit
     this.c.marche = true;
     this.monstres = [];
     const bete = (type: number, x: number, y: number, t: number, a = 0): void => {
-      this.monstres.push({ id: this.prochainId++, type, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: 0, a, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0, ra: 0 });
+      this.monstres.push({ id: this.prochainId++, type, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: 0, a, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0, ra: 0, sbire: 0 });
     };
     bete(GELEE, -140, -520, 12);
     bete(GELEE, -560, 330, 40);
@@ -468,7 +526,7 @@ export class Partie {
   private monterMannequin(): void {
     this.c.y = cm(520);
     this.c.dir = 96;
-    for (const [x, y] of MANNEQUINS) this.monstres.push({ id: this.prochainId++, type: GELEE, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: VIE_GELEE, flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0, ra: 0 });
+    for (const [x, y] of MANNEQUINS) this.monstres.push({ id: this.prochainId++, type: GELEE, x: cm(x), y: cm(y), kx: 0, ky: 0, hp: VIE_GELEE, flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: cm(x), hy: cm(y), alerte: 1, laisse: 0, ra: 0, sbire: 0 });
   }
 
   get finie(): boolean {
@@ -509,6 +567,7 @@ export class Partie {
     for (const m of this.monstres) objet(m);
     for (const z of this.zones) objet(z);
     for (const o of this.ondes) objet(o);
+    for (const n of this.nuages) objet(n);
     for (const o of this.obstacles) {
       nombre(o.id);
       nombre(o.hp);
@@ -543,6 +602,7 @@ export class Partie {
     if (this.golem && this.golemEveille) this.mouvementGolem(this.golem);
     this.resoudreZones();
     this.avancerOndes();
+    this.majNuages();
     this.contacts();
     this.avancerOndesEpee();
     this.ramasser();
@@ -703,9 +763,13 @@ export class Partie {
     const d = s === 2 ? idiv(base * this.reglages.coupFinal, 100) : base;
     return idiv(d * (100 + this.paliers[A_LOURDE]! * this.reglages.lourdeDegats), 100);
   }
-  /** Les dégâts contre le golem : « Brise-pierre » les augmente. */
-  degatsContreGolem(d: number): number {
-    return idiv(d * (100 + this.paliers[A_BRISE]! * this.reglages.briseDegats), 100);
+  /** Les dégâts contre le boss : « Brise-pierre » les augmente (autant que l'affinité du boss le dit : tout contre le golem et le bélier de carrière, peu contre les autres) ; le grand-duc en vol n'en encaisse qu'un quart. */
+  degatsContreGolem(d: number, g: Golem | null = this.golem): number {
+    const brise = idiv(this.paliers[A_BRISE]! * this.reglages.briseDegats * (g ? BOSS[g.kind]!.brise : 100), 100);
+    // l'affinité : chaque palier d'une carte que ce boss favorise (Brise-pierre a déjà la sienne) ajoute `affinite` %
+    let plein = idiv(d * (100 + brise), 100);
+    if (g && BOSS[g.kind]!.affin) for (const id of BOSS[g.kind]!.favorise) if (id !== "brise-pierre") for (let k = this.paliers[indiceAmelioration(id)]!; k > 0; k--) plein = idiv(plein * (100 + this.reglages.affinite), 100);
+    return g && g.kind === B_DUC && g.sol === 0 ? idiv(plein * DUC_EN_VOL, 100) : plein;
   }
   /** La portée du coup `s` (unités) : le coup final porte 25 % plus loin ; « Allonge ». */
   porteeCoup(s: number): number {
@@ -755,7 +819,7 @@ export class Partie {
     };
     for (const m of this.monstres) if (m.hp > 0) essayer(m.x, m.y, rayonDe(m.type));
     for (const o of this.obstacles) essayer(o.x, o.y, o.r);
-    if (this.golem && this.golem.hp > 0) essayer(this.golem.x, this.golem.y, RAYON_GOLEM);
+    if (this.golem && this.golem.hp > 0) essayer(this.golem.x, this.golem.y, this.golem.r);
     return meilleur;
   }
 
@@ -793,7 +857,7 @@ export class Partie {
     }
     this.obstacles = this.obstacles.filter((o) => o.hp > 0);
     const g = this.golem;
-    if (g && g.hp > 0 && g.coup !== this.coupId && dans(g.x, g.y, RAYON_GOLEM)) this.toucherGolem(g, degats, s);
+    if (g && g.hp > 0 && g.coup !== this.coupId && dans(g.x, g.y, g.r)) this.toucherGolem(g, degats, s);
     // Lot BR2 : « Onde d'épée » — le 3ᵉ coup lance une courte lame devant lui.
     if (s === 2 && this.paliers[A_ONDE]! > 0) {
       this.ondesEpee.push({ x: c.x, y: c.y, dir: c.dir, d: 0, portee: cm(this.reglages.ondePortee), degats: idiv(degats * this.reglages.ondeDegats, 100), touches: [] });
@@ -828,7 +892,7 @@ export class Partie {
       this.ev("mort", m.x, m.y, m.type, s);
       const base = m.type === GELEE ? this.reglages.xpGelee : this.reglages.xpChauve;
       const camp = (this.niveau?.monstres[m.id - 1]?.camp ?? -1) >= 0; // un monstre d'un camp (au bout d'un détour) vaut plus : le détour est un pari
-      this.lacher(m.x, m.y, camp ? idiv(base * this.reglages.xpCamp, 100) : base);
+      if (m.sbire === 0) this.lacher(m.x, m.y, camp ? idiv(base * this.reglages.xpCamp, 100) : base); // lot BR3 : les sbires d'un boss ne lâchent rien
       // « Vol de vie » : un cœur tous les N monstres tués.
       if (this.paliers[A_VOL]! > 0 && this.tues % this.reglages.volVie === 0) this.soigner(1);
     }
@@ -848,12 +912,17 @@ export class Partie {
   private toucherGolem(g: Golem, degats: number, s: number): void {
     g.coup = this.coupId;
     if (g.etat === RUGIT) return void this.ev("bloque", g.x, g.y);
-    g.hp -= this.degatsContreGolem(degats);
+    g.hp -= this.degatsContreGolem(degats, g);
     g.flash = 7;
     const phase2 = g.phase === 1 && g.hp > 0 && g.hp * 2 <= g.hpMax;
     this.ev("touche", g.x, g.y, s, phase2 ? 3 : 2); // b : 2 = le golem, 3 = le golem qui passe en phase 2 par ce coup
     if (this.contenu.scenario === "mannequin") g.hp = g.hpMax; // le mannequin ne meurt pas
     else if (phase2) this.entrerPhase2(g);
+    // La reine se divise à chaque seuil de vie franchi.
+    if (g.kind === B_REINE) while (g.div < REINE_SEUILS.length && g.hp > 0 && g.hp * 1000 <= g.hpMax * REINE_SEUILS[g.div]!) {
+      g.div++;
+      this.diviser(g);
+    }
   }
 
   /** « Esquive tranchante » : pendant la course de l'esquive, ce qui est au contact du chevalier est blessé (une fois par esquive). */
@@ -868,7 +937,7 @@ export class Partie {
       this.toucherMonstre(m, degats, 0, cm(this.reglages.recul), c.x, c.y);
     }
     const g = this.golem;
-    if (g && g.hp > 0 && g.coup !== this.coupId && distance2(c.x, c.y, g.x, g.y) < carre(RAYON_GOLEM + RAYON_CHEVALIER + cm(35))) {
+    if (g && g.hp > 0 && g.coup !== this.coupId && distance2(c.x, c.y, g.x, g.y) < carre(g.r + RAYON_CHEVALIER + cm(35))) {
       this.ev("tranchant", g.x, g.y);
       this.toucherGolem(g, degats, 0);
     }
@@ -898,7 +967,7 @@ export class Partie {
       }
       this.obstacles = this.obstacles.filter((q) => q.hp > 0);
       const g = this.golem;
-      if (g && g.hp > 0 && !o.touches.includes(0) && distance2(x, y, g.x, g.y) < carre(RAYON_GOLEM + LARGEUR_ONDE_EPEE)) {
+      if (g && g.hp > 0 && !o.touches.includes(0) && distance2(x, y, g.x, g.y) < carre(g.r + LARGEUR_ONDE_EPEE)) {
         o.touches.push(0);
         const avant = g.coup;
         this.toucherGolem(g, o.degats, 0);
@@ -996,7 +1065,7 @@ export class Partie {
       const x = idiv(COS[angle]! * r, 1024);
       const y = idiv(SIN[angle]! * r, 1024);
       const t = this.rng.int(40);
-      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x - this.c.x, y - this.c.y), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0 });
+      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x - this.c.x, y - this.c.y), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0, sbire: 0 });
       this.ev("apparition", x, y, type);
     }
   }
@@ -1163,19 +1232,20 @@ export class Partie {
     }
   }
 
-  // --- Le golem -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // --- Le boss : le golem de BR0 et, depuis BR3, la reine gelée, le grand-duc, le bélier et le vieux chêne ---------------------------------------------------------------------------------------
   private entrerPhase2(g: Golem): void {
     g.phase = 2;
     g.etat = RUGIT;
     g.t = 0;
     g.duree = this.dur(100);
+    g.sol = 1;
     this.zones = [];
-    this.zones.push({ type: ONDE, x: g.x, y: g.y, r: RAYON_ONDE, t0: this.tick, ti: this.tick + this.dur(70), rang: 0 });
+    // Seul le golem rugit en lançant une onde ; les autres rugissent, invulnérables, sans rien lancer.
+    if (g.kind === B_GOLEM) this.zones.push({ type: ONDE, x: g.x, y: g.y, r: RAYON_ONDE, t0: this.tick, ti: this.tick + this.dur(70), rang: 0, x2: 0, y2: 0, dash: 0 });
     this.ev("phase2", g.x, g.y);
   }
 
   private mouvementGolem(g: Golem): void {
-    const c = this.c;
     if (g.flash > 0) g.flash--;
     if (g.hp <= 0) return;
     g.t++;
@@ -1184,41 +1254,169 @@ export class Partie {
         g.etat = MARCHE;
         g.t = 0;
         g.repos = this.dur(g.phase === 2 ? 60 : this.niveau ? 100 : 60);
+        if (g.kind === B_DUC) g.sol = 0; // il prend l'air
       }
       return;
     }
     if (g.etat === ANNONCE) {
-      if (g.t >= g.duree) {
-        g.etat = RECUPERE;
-        g.t = 0;
-        g.recup = this.dur(RECUP_GOLEM[g.attaque as 0 | 1 | 2][g.phase === 2 ? 1 : 0]);
-      }
+      this.courseDuBoss(g);
+      if (g.t >= g.duree) this.finAnnonce(g);
       return;
     }
     if (g.etat === RECUPERE) {
       if (g.t >= g.recup) {
         g.etat = MARCHE;
         g.t = 0;
-        g.repos = this.dur(idiv(this.reglages.golemCadence * (g.phase === 2 ? 62 : 100), 100));
+        g.repos = this.dur(idiv(this.reglages.golemCadence * (g.phase === 2 ? 62 : 100) * BOSS[g.kind]!.repos, 10000));
+        if (g.kind === B_DUC) g.sol = 0;
       }
       return;
     }
-    // Il marche vers le chevalier, puis choisit son attaque.
+    if (g.etat === ETOURDI) {
+      if (g.t >= g.duree) {
+        g.etat = MARCHE;
+        g.t = 0;
+        g.repos = this.dur(60);
+      }
+      return;
+    }
+    // Il marche vers le chevalier (le grand-duc tourne en l'air, le chêne ne bouge pas), puis choisit son attaque.
+    const c = this.c;
     const dx = c.x - g.x;
     const dy = c.y - g.y;
     const d = isqrt(dx * dx + dy * dy);
     g.dir = dirVers(dx, dy);
     if (this.contenu.scenario === "mannequin") return; // le mannequin ne marche pas et ne frappe pas : il regarde le chevalier
-    if (d > RAYON_GOLEM + RAYON_CHEVALIER + cm(60)) {
-      const v = this.vitesse(g.phase === 2 ? 150 : 105);
+    const ph = g.phase === 2 ? 1 : 0;
+    if (g.kind === B_DUC) this.voler(g);
+    else if (g.kind !== B_CHENE && d > g.r + RAYON_CHEVALIER + cm(60)) {
+      const v = this.vitesse(g.kind === B_REINE ? REINE_VITESSE[ph]! : g.kind === B_BELIER ? BELIER_VITESSE[ph]! : g.phase === 2 ? 150 : 105);
       g.x += idiv(idiv(dx * 1024, d) * v, 1024);
       g.y += idiv(idiv(dy * 1024, d) * v, 1024);
+      if (g.kind !== B_GOLEM) this.dansArene(g, g.r);
     }
     if (g.repos > 0) g.repos--;
     if (g.repos === 0) this.lancerAttaque(g, d);
   }
 
+  /** Le grand-duc en l'air tourne autour du centre de l'arène (il se rend à son orbite depuis où il a atterri). */
+  private voler(g: Golem): void {
+    if (this.tick % 3 === 0) g.a = modDir(g.a + 1);
+    const tx = this.ax + idiv(COS[g.a]! * DUC_ORBITE, 1024);
+    const ty = this.ay + idiv(SIN[g.a]! * DUC_ORBITE, 1024);
+    const d = distance(g.x, g.y, tx, ty);
+    if (d === 0) return;
+    const v = Math.min(d, this.vitesse(DUC_VITESSE));
+    g.x += idiv((tx - g.x) * v, d);
+    g.y += idiv((ty - g.y) * v, d);
+  }
+
+  /** Pendant l'annonce, le boss se déplace d'après les zones : la reine saute vers son cercle dans les derniers ticks ; le grand-duc et le bélier parcourent leur bande (le duc passe de l'une à l'autre en transit). */
+  private courseDuBoss(g: Golem): void {
+    if (g.kind === B_REINE) {
+      let z: Zone | null = null;
+      for (const q of this.zones) if (q.type === POING && q.ti > this.tick && (!z || q.ti < z.ti)) z = q;
+      if (z && z.ti - this.tick <= this.dur(REINE_ELAN)) {
+        const reste = z.ti - this.tick;
+        g.x += idiv(z.x - g.x, reste);
+        g.y += idiv(z.y - g.y, reste);
+      }
+    } else if (g.kind === B_DUC || g.kind === B_BELIER) {
+      for (const z of this.zones) {
+        if (z.type !== Z_BANDE) continue;
+        const debut = z.ti - z.dash;
+        if (this.tick >= debut) {
+          const k = this.tick - debut;
+          g.x = z.x + idiv((z.x2 - z.x) * k, z.dash);
+          g.y = z.y + idiv((z.y2 - z.y) * k, z.dash);
+        } else if (g.kind === B_DUC && g.ft > 0) {
+          // transit entre deux plongeons : de la fin du premier au début du second
+          const k = this.tick - g.ft;
+          const n = Math.max(1, debut - g.ft);
+          g.x = g.ex + idiv((z.x - g.ex) * k, n);
+          g.y = g.ey + idiv((z.y - g.ey) * k, n);
+        }
+        return;
+      }
+    }
+  }
+
+  /** La fin de l'annonce : le bélier qui a percuté le muret est étourdi (et lâche des éclats en phase 2) ; les autres récupèrent (la fenêtre pour taper) ; le grand-duc se pose. */
+  private finAnnonce(g: Golem): void {
+    const ph = g.phase === 2 ? 1 : 0;
+    if (g.kind === B_BELIER && g.mur === 1) {
+      g.mur = 0;
+      g.etat = ETOURDI;
+      g.t = 0;
+      g.duree = this.dur(BELIER_ETOURDI);
+      this.ev("choc", g.x, g.y, g.phase);
+      if (g.phase === 2) {
+        // « éclats au choc » : des pierres annoncées tombent autour de lui pendant qu'il est étourdi
+        const annonce = this.dur(ANNONCE_GOLEM[1]);
+        for (let i = 0; i < BELIER_ECLATS; i++) {
+          const ang = this.rng.int(128);
+          const r = cm(300) + this.rng.int(cm(300));
+          const [x, y] = this.dansLArene(g.x + idiv(COS[ang]! * r, 1024), g.y + idiv(SIN[ang]! * r, 1024), cm(100));
+          this.zones.push({ type: PIERRES, x, y, r: RAYON_ZONE_PIERRE, t0: this.tick, ti: this.tick + annonce + i * this.dur(ECART_PIERRES), rang: 0, x2: 0, y2: 0, dash: 0 });
+        }
+      }
+      return;
+    }
+    if (g.kind === B_DUC) g.sol = 1;
+    g.etat = RECUPERE;
+    g.t = 0;
+    g.recup = this.dur(RECUP_BOSS[g.attaque]![ph]!);
+  }
+
+  /** Un point ramené dans le disque de l'arène (à `marge` du bord). */
+  private dansLArene(x: number, y: number, marge: number): [number, number] {
+    const dx = x - this.ax;
+    const dy = y - this.ay;
+    const d = isqrt(dx * dx + dy * dy);
+    const max = RAYON_ARENE - marge;
+    return d > max ? [this.ax + idiv(dx * max, d), this.ay + idiv(dy * max, d)] : [x, y];
+  }
+
+  /** La distance, depuis (px, py) dans la direction `u` (vecteur de 1 024), jusqu'au bord de l'arène (à `marge` du bord). */
+  private jusquAuBord(px: number, py: number, ux: number, uy: number, marge: number): number {
+    const R = RAYON_ARENE - marge;
+    const qx = px - this.ax;
+    const qy = py - this.ay;
+    const b = idiv(qx * ux + qy * uy, 1024);
+    const disc = b * b - (qx * qx + qy * qy - R * R);
+    return disc < 0 ? 0 : Math.max(0, -b + isqrt(disc));
+  }
+
+  /** La course qui part de (px, py) vers (tx, ty) et dépasse la cible de `depasse`, arrêtée au bord de l'arène (à `marge`) : où elle finit, sa longueur et si elle finit CONTRE le bord. */
+  private finDeCourse(px: number, py: number, tx: number, ty: number, depasse: number, marge: number): { x2: number; y2: number; len: number; mur: boolean } {
+    let [ux, uy] = unitaire(tx - px, ty - py);
+    if (ux === 0 && uy === 0) [ux, uy] = [1024, 0];
+    const voulu = distance(px, py, tx, ty) + depasse;
+    const bord = this.jusquAuBord(px, py, ux, uy, marge);
+    const len = Math.min(voulu, bord);
+    return { x2: px + idiv(ux * len, 1024), y2: py + idiv(uy * len, 1024), len, mur: voulu >= bord - cm(30) };
+  }
+
+  /** Des gelées naissent : invoquées par le chêne (`sbire` 1) ou issues de la reine qui se divise (2, plus petites). Elles poursuivent le chevalier partout et ne lâchent pas d'XP. */
+  private naitre(x: number, y: number, sbire: number): void {
+    if (this.monstres.length >= MAX_MONSTRES) return;
+    const [nx, ny] = this.dansLArene(x, y, cm(60));
+    this.monstres.push({ id: this.prochainId++, type: GELEE, x: nx, y: ny, kx: 0, ky: 0, hp: sbire === 2 ? VIE_PETITE : VIE_GELEE, flash: 0, etat: ORBITE, t: this.rng.int(20), age: this.tick, a: 0, sens: 1, cx: 0, cy: 0, gel: sbire === 2 ? 300 : 60, duree: 999, coup: 0, hx: nx, hy: ny, alerte: 1, laisse: 0, ra: 0, sbire });
+  }
+
+  /** La reine se divise à chaque seuil de vie franchi (un quart, la moitié, puis chaque huitième) : trois petites gelées naissent autour d'elle. */
+  private diviser(g: Golem): void {
+    const base = this.rng.int(128);
+    for (let i = 0; i < REINE_PETITES; i++) {
+      const ang = modDir(base + idiv(i * 128, REINE_PETITES));
+      const r = g.r + cm(150);
+      this.naitre(g.x + idiv(COS[ang]! * r, 1024), g.y + idiv(SIN[ang]! * r, 1024), 2);
+    }
+    this.ev("division", g.x, g.y, REINE_PETITES);
+  }
+
   private lancerAttaque(g: Golem, dChevalier: number): void {
+    if (g.kind !== B_GOLEM) return this.lancerAutre(g);
     const c = this.c;
     const suite = g.phase === 2 ? [POING, ONDE, PIERRES, POING, PIERRES, ONDE] : [POING, PIERRES, POING, ONDE];
     let a = suite[g.compteur % suite.length]!;
@@ -1234,12 +1432,12 @@ export class Partie {
       // Le cercle est posé là où le chevalier se tient : il a le temps de partir.
       const tx = c.x;
       const ty = c.y;
-      this.zones.push({ type: POING, x: tx, y: ty, r: RAYON_ZONE_POING, t0: maintenant, ti: maintenant + annonce, rang: 0 });
+      this.zones.push({ type: POING, x: tx, y: ty, r: RAYON_ZONE_POING, t0: maintenant, ti: maintenant + annonce, rang: 0, x2: 0, y2: 0, dash: 0 });
       // Phase 2 : le second coup est annoncé à l'impact du premier, sur le chevalier (voir `resoudreZones`), avec la même annonce.
       g.duree = g.phase === 2 ? annonce * 2 : annonce;
       this.ev("annonce", tx, ty, POING);
     } else if (a === ONDE) {
-      this.zones.push({ type: ONDE, x: g.x, y: g.y, r: RAYON_ONDE, t0: maintenant, ti: maintenant + annonce, rang: 0 });
+      this.zones.push({ type: ONDE, x: g.x, y: g.y, r: RAYON_ONDE, t0: maintenant, ti: maintenant + annonce, rang: 0, x2: 0, y2: 0, dash: 0 });
       g.duree = g.phase === 2 ? annonce + this.dur(ECART_ONDES) : annonce;
       this.ev("annonce", g.x, g.y, ONDE);
     } else {
@@ -1262,10 +1460,136 @@ export class Partie {
             y = this.ay + idiv(dy * max, d);
           }
         }
-        this.zones.push({ type: PIERRES, x, y, r: RAYON_ZONE_PIERRE, t0: maintenant, ti: maintenant + annonce + i * ecart, rang: 0 });
+        this.zones.push({ type: PIERRES, x, y, r: RAYON_ZONE_PIERRE, t0: maintenant, ti: maintenant + annonce + i * ecart, rang: 0, x2: 0, y2: 0, dash: 0 });
       }
       g.duree = annonce + (n - 1) * ecart;
       this.ev("annonce", c.x, c.y, PIERRES);
+    }
+  }
+
+  /** L'attaque de la reine, du grand-duc, du bélier ou du chêne. **Toute annonce dure 70 ticks en phase 1 et 50 en phase 2 au moins** (celle d'une course compte avant le départ du boss), comme celle du golem. */
+  private lancerAutre(g: Golem): void {
+    const c = this.c;
+    const ph2 = g.phase === 2;
+    const maintenant = this.tick;
+    const annonce = this.dur(ANNONCE_GOLEM[ph2 ? 1 : 0]);
+    g.etat = ANNONCE;
+    g.t = 0;
+    g.t1 = annonce;
+    g.ft = 0;
+    g.mur = 0;
+    const zone = (type: number, x: number, y: number, r: number, ti: number, rang = 0, x2 = 0, y2 = 0, dash = 0): void => void this.zones.push({ type, x, y, r, t0: maintenant, ti, rang, x2, y2, dash });
+    if (g.kind === B_REINE) {
+      // Un bond écrasant sur le chevalier ; en phase 2, un second bond annoncé sur lui à l'impact du premier (comme le poing du golem).
+      g.attaque = BOND;
+      zone(POING, c.x, c.y, REINE_ZONE, maintenant + annonce);
+      g.duree = ph2 ? annonce * 2 : annonce;
+      this.ev("annonce", c.x, c.y, BOND);
+    } else if (g.kind === B_DUC) {
+      // Un plongeon en ligne vers le chevalier (la bande est posée là où il se tient) ; en phase 2 un second, croisé, annoncé en même temps.
+      g.attaque = PLONGEON_DUC;
+      const v = this.vitesse(DUC_VITESSE_PLONGEON);
+      const t1 = this.finDeCourse(g.x, g.y, c.x, c.y, DUC_DEPASSE, g.r + cm(60));
+      const d1 = Math.max(12, idiv(t1.len + v - 1, v));
+      const ti1 = maintenant + annonce + d1;
+      zone(Z_BANDE, g.x, g.y, DUC_BANDE, ti1, 0, t1.x2, t1.y2, d1);
+      g.duree = annonce + d1;
+      this.ev("annonce", c.x, c.y, PLONGEON_DUC);
+      if (ph2) {
+        // la seconde bande traverse la première, à angle droit, par la place du chevalier
+        let [ux, uy] = unitaire(t1.x2 - g.x, t1.y2 - g.y);
+        if (ux === 0 && uy === 0) [ux, uy] = [1024, 0];
+        const signe = this.rng.int(2) === 0 ? 1 : -1;
+        const wx = -uy * signe;
+        const wy = ux * signe;
+        const avant = Math.min(cm(1200), this.jusquAuBord(c.x, c.y, wx, wy, g.r + cm(60)));
+        const px = c.x + idiv(wx * avant, 1024);
+        const py = c.y + idiv(wy * avant, 1024);
+        const t2 = this.finDeCourse(px, py, c.x, c.y, DUC_DEPASSE, g.r + cm(60));
+        const d2 = Math.max(12, idiv(t2.len + v - 1, v));
+        const ti2 = ti1 + this.dur(DUC_TRANSIT) + d2;
+        zone(Z_BANDE, px, py, DUC_BANDE, ti2, 1, t2.x2, t2.y2, d2);
+        g.duree = ti2 - maintenant;
+      }
+    } else if (g.kind === B_BELIER) {
+      // Une charge en ligne droite vers le chevalier ; contre le muret il est étourdi (voir `finAnnonce`) ; en phase 2, si elle ne l'a pas atteint, une seconde enchaînée (voir `resoudreBande`).
+      g.attaque = CHARGE;
+      const t1 = this.finDeCourse(g.x, g.y, c.x, c.y, BELIER_DEPASSE, g.r);
+      const d1 = Math.max(12, idiv(t1.len + this.vitesse(BELIER_VITESSE_CHARGE) - 1, this.vitesse(BELIER_VITESSE_CHARGE)));
+      g.mur = t1.mur ? 1 : 0;
+      zone(Z_BANDE, g.x, g.y, BELIER_BANDE, maintenant + annonce + d1, 0, t1.x2, t1.y2, d1);
+      g.duree = annonce + d1 + 1; // un tick de plus : la charge enchaînée se décide à l'arrivée, avant la fin de l'annonce
+      this.ev("annonce", c.x, c.y, CHARGE);
+    } else {
+      // Le vieux chêne : une suite d'attaques, sans bouger.
+      const suite = SUITE_CHENE[ph2 ? 1 : 0]!;
+      const a = suite[g.compteur % suite.length]!;
+      g.compteur++;
+      g.attaque = a;
+      g.duree = annonce;
+      if (a === RACINES_LIGNES) {
+        // une racine droit sur le chevalier et une de travers ; en phase 2, six en étoile
+        const k0 = dirVers(c.x - g.x, c.y - g.y);
+        const sens = this.rng.int(2) === 0 ? 1 : -1;
+        const angles = ph2 ? [0, 21, 43, 64, 85, 107] : [0, 14 * sens];
+        for (const da of angles) {
+          const k = modDir(k0 + da);
+          zone(Z_BANDE, g.x, g.y, CHENE_BANDE, maintenant + annonce, 0, g.x + idiv(COS[k]! * CHENE_LONGUEUR, 1024), g.y + idiv(SIN[k]! * CHENE_LONGUEUR, 1024), 0);
+        }
+        this.ev("annonce", c.x, c.y, RACINES_LIGNES);
+      } else if (a === RACINES_CERCLES) {
+        const ecart = this.dur(ECART_CERCLES);
+        for (let i = 0; i < 4; i++) {
+          let x = c.x;
+          let y = c.y;
+          if (i > 0) {
+            const ang = this.rng.int(128);
+            const r = cm(200) + this.rng.int(cm(450));
+            [x, y] = this.dansLArene(x + idiv(COS[ang]! * r, 1024), y + idiv(SIN[ang]! * r, 1024), cm(100));
+          }
+          zone(PIERRES, x, y, CHENE_CERCLE, maintenant + annonce + i * ecart);
+        }
+        g.duree = annonce + 3 * ecart;
+        this.ev("annonce", c.x, c.y, RACINES_CERCLES);
+      } else if (a === SPORES) {
+        zone(Z_SPORES, c.x, c.y, CHENE_SPORES[ph2 ? 1 : 0]!, maintenant + annonce);
+        this.ev("annonce", c.x, c.y, SPORES);
+      } else {
+        // 2 ou 3 gelées naîtront autour de lui
+        const n = 2 + this.rng.int(2);
+        const base = this.rng.int(128);
+        for (let i = 0; i < n; i++) {
+          const ang = modDir(base + idiv(i * 128, n));
+          const r = g.r + cm(280);
+          const [x, y] = this.dansLArene(g.x + idiv(COS[ang]! * r, 1024), g.y + idiv(SIN[ang]! * r, 1024), cm(100));
+          zone(Z_INVOCATION, x, y, cm(90), maintenant + annonce);
+        }
+        this.ev("annonce", g.x, g.y, INVOCATION);
+      }
+    }
+  }
+
+  /** Une bande arrive à son terme : qui y est encore est blessé ; le boss qui la parcourait est arrivé (le bélier de phase 2 enchaîne une seconde charge s'il n'a pas touché le muret). */
+  private resoudreBande(z: Zone, g: Golem | null, restantes: Zone[]): void {
+    const c = this.c;
+    const [px, py] = pointDuSegment(c.x, c.y, z.x, z.y, z.x2, z.y2);
+    this.ev("impact", z.x2, z.y2, Z_BANDE, z.r);
+    if (distance2(c.x, c.y, px, py) < z.r * z.r) this.blesser(px, py, 1);
+    if (!g || z.dash === 0) return;
+    g.x = z.x2;
+    g.y = z.y2;
+    g.ex = z.x2;
+    g.ey = z.y2;
+    g.ft = this.tick;
+    if (g.kind === B_BELIER && g.phase === 2 && g.mur === 0 && z.rang === 0 && g.etat === ANNONCE) {
+      const annonce = this.dur(ANNONCE_GOLEM[1]);
+      const v = this.vitesse(BELIER_VITESSE_CHARGE);
+      const t2 = this.finDeCourse(g.x, g.y, c.x, c.y, BELIER_DEPASSE, g.r);
+      const d2 = Math.max(12, idiv(t2.len + v - 1, v));
+      g.mur = t2.mur ? 1 : 0;
+      restantes.push({ type: Z_BANDE, x: g.x, y: g.y, r: BELIER_BANDE, t0: this.tick, ti: this.tick + annonce + d2, rang: 1, x2: t2.x2, y2: t2.y2, dash: d2 });
+      g.duree = g.t + annonce + d2 + 1;
+      this.ev("annonce", c.x, c.y, CHARGE);
     }
   }
 
@@ -1279,18 +1603,40 @@ export class Partie {
       }
       const g = this.golem;
       if (z.type === ONDE) {
-        this.ondes.push({ x: z.x, y: z.y, r: RAYON_GOLEM, vitesse: this.vOnde(), epaisseur: cm(110), rMax: z.r + cm(80), touche: false });
+        this.ondes.push({ x: z.x, y: z.y, r: g ? g.r : RAYON_GOLEM, vitesse: this.vOnde(), epaisseur: cm(110), rMax: z.r + cm(80), touche: false });
         this.ev("onde", z.x, z.y);
         // Phase 2 : une seconde onde, `ECART_ONDES` ticks plus tard (plus que l'attente de l'esquive : elle doit pouvoir se refaire).
-        if (g && g.phase === 2 && g.etat === ANNONCE && g.attaque === ONDE && z.rang === 0) restantes.push({ type: ONDE, x: z.x, y: z.y, r: z.r, t0: this.tick, ti: this.tick + this.dur(ECART_ONDES), rang: 1 });
+        if (g && g.phase === 2 && g.etat === ANNONCE && g.attaque === ONDE && z.rang === 0) restantes.push({ type: ONDE, x: z.x, y: z.y, r: z.r, t0: this.tick, ti: this.tick + this.dur(ECART_ONDES), rang: 1, x2: 0, y2: 0, dash: 0 });
+        continue;
+      }
+      if (z.type === Z_BANDE) {
+        this.resoudreBande(z, g, restantes);
+        continue;
+      }
+      if (z.type === Z_SPORES) {
+        this.nuages.push({ x: z.x, y: z.y, r: z.r, t0: this.tick, fin: this.tick + this.dur(SPORES_DUREE) });
+        this.ev("nuage", z.x, z.y, z.r);
+        continue;
+      }
+      if (z.type === Z_INVOCATION) {
+        this.naitre(z.x, z.y, 1);
+        this.ev("invoque", z.x, z.y);
         continue;
       }
       this.ev("impact", z.x, z.y, z.type, z.r);
       if (distance2(this.c.x, this.c.y, z.x, z.y) < z.r * z.r) this.blesser(z.x, z.y, 1);
-      // Phase 2 : le second coup de poing est annoncé sur le chevalier, là où il se tient à l'impact du premier, avec la même annonce.
-      if (z.type === POING && g && g.phase === 2 && g.etat === ANNONCE && z.rang === 0) restantes.push({ type: POING, x: this.c.x, y: this.c.y, r: RAYON_ZONE_POING, t0: this.tick, ti: this.tick + g.t1, rang: 1 });
+      // Phase 2 : le second coup (poing du golem, bond de la reine) est annoncé sur le chevalier, là où il se tient à l'impact du premier, avec la même annonce.
+      if (z.type === POING && g && g.phase === 2 && g.etat === ANNONCE && z.rang === 0) restantes.push({ type: z.type, x: this.c.x, y: this.c.y, r: z.r, t0: this.tick, ti: this.tick + g.t1, rang: 1, x2: 0, y2: 0, dash: 0 });
     }
     this.zones = restantes;
+  }
+
+  /** Les nuages de spores : qui reste dedans perd un cœur (l'invincibilité des dégâts le protège ensuite 1,5 s) ; ils s'éteignent à leur fin. */
+  private majNuages(): void {
+    if (this.nuages.length === 0) return;
+    const c = this.c;
+    this.nuages = this.nuages.filter((n) => this.tick < n.fin);
+    for (const n of this.nuages) if (distance2(c.x, c.y, n.x, n.y) < n.r * n.r) this.blesser(n.x, n.y, 1);
   }
 
   /** La vitesse d'une onde du golem, en unités par tick (au rythme de la partie) : le pilote la lit. */
@@ -1323,6 +1669,7 @@ export class Partie {
     this.finTick = this.tick;
     this.zones = [];
     this.ondes = [];
+    this.nuages = [];
     if (this.golem) this.ev("victoire", this.golem.x, this.golem.y);
   }
 
@@ -1467,8 +1814,8 @@ export class Partie {
 
   private pousserHorsDuGolem(e: { x: number; y: number }, rayon = RAYON_CHEVALIER): void {
     const g = this.golem;
-    if (!g || g.hp <= 0) return;
-    const somme = RAYON_GOLEM + rayon;
+    if (!g || g.hp <= 0 || g.sol === 0) return; // le grand-duc en vol ne pousse personne
+    const somme = g.r + rayon;
     const dx = e.x - g.x;
     const dy = e.y - g.y;
     const d2 = dx * dx + dy * dy;
@@ -1485,4 +1832,15 @@ export class Partie {
 function amortir(v: number): number {
   const n = v - idiv(v, 5);
   return Math.abs(n) < 8 ? 0 : n;
+}
+
+/** Le point du segment (ax, ay)-(bx, by) le plus proche de (px, py). */
+export function pointDuSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): [number, number] {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return [ax, ay];
+  // t en 1 024es, borné à [0, 1 024]
+  const t = Math.max(0, Math.min(1024, idiv(((px - ax) * dx + (py - ay) * dy) * 1024, l2)));
+  return [ax + idiv(dx * t, 1024), ay + idiv(dy * t, 1024)];
 }

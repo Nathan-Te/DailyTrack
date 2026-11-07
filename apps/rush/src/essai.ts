@@ -2,7 +2,8 @@ import { parseDay } from "@cdj/core";
 import { SCENARIOS, type Scenario } from "@cdj/rush-sim/constantes";
 
 // Les options d'ESSAI de Rush, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9) :
-//   · `?scenario=arene|boss` : l'arène sans fin (des vagues de gelées et de chauves-souris) ou le golem tout de suite ; `&phase=2` : le golem à 50 % de vie ; `&monstres=30` : l'arène garde 30 monstres en vie ;
+//   · `?scenario=arene|boss` : l'arène sans fin (des vagues de gelées et de chauves-souris) ou le boss tout de suite (le golem ; lot BR3 : `&boss=golem|reine|grand-duc|belier|chene` choisit lequel des cinq) ; `&phase=2` : le boss à 50 % de vie ; `&monstres=30` : l'arène garde 30 monstres en vie ;
+//   · `?scenario=bestiaire` (lot BR3) : les CINQ boss côte à côte, figés, sur le sol du thème (`&theme=prairie|carriere|sousbois`), leur nom dessous, la caméra fixe à la même échelle : de quoi juger silhouettes et contrastes ; `?scenario=carte&jours=14` écrit aussi le boss de chaque jour ;
 //   · `?debug&tune` : le panneau des sensations ; `&reglages=<JSON>` : des réglages collés (ceux que le panneau exporte) ;
 //   · `?debug&fps` : l'affichage des images par seconde et des appels de dessin ;
 //   · `?scenario=jour&jour=AAAA-MM-JJ` (lot BR1) : le niveau d'un autre jour ; `?scenario=carte&jours=7` : la vue de dessus des 7 prochains jours (chemin, détours, camps, arène, pilote) ;
@@ -18,6 +19,8 @@ export interface Essai {
   /** Lot BR1 : `?scenario=carte&jours=7` : la vue de dessus des N prochains jours (le nombre de jours), ou `null`. */
   carte: number | null;
   phase2: boolean;
+  /** Lot BR3 : `&boss=<identifiant>` du scénario `boss` (l'indice est cherché à la demande : `indiceBoss`, dans le corps du jeu), ou `null` (le golem). */
+  boss: string | null;
   monstres: number;
   tune: boolean;
   fps: boolean;
@@ -36,7 +39,7 @@ export interface Essai {
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { scenario: null, jour: null, carte: null, phase2: false, monstres: 0, tune: false, fps: false, qualite: null, reglages: null, ameliorations: [], nv: 2, sensations: null, essai: false };
+  const vide: Essai = { scenario: null, jour: null, carte: null, phase2: false, boss: null, monstres: 0, tune: false, fps: false, qualite: null, reglages: null, ameliorations: [], nv: 2, sensations: null, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const nom = q.get("scenario") ?? "";
@@ -66,6 +69,7 @@ export function lireEssai(search: string, restreint: boolean): Essai {
     jour,
     carte,
     phase2: q.get("phase") === "2",
+    boss: q.get("boss"),
     monstres: Number.isInteger(monstres) && monstres > 0 ? Math.min(40, monstres) : 0,
     tune: debug && q.has("tune"),
     fps: debug && q.has("fps"),

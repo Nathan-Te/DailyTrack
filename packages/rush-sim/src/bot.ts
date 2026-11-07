@@ -1,10 +1,12 @@
 import { indiceAmelioration } from "./ameliorations";
-import { RAYON_CHEVALIER, RAYON_GOLEM, cm } from "./constantes";
+import { ANNONCE, BOSS, B_BELIER, B_DUC, MARCHE, Z_BANDE, Z_INVOCATION, Z_SPORES } from "./bosses";
+import { RAYON_ARENE, RAYON_CHEVALIER, cm } from "./constantes";
 import { entree, type Changement } from "./entrees";
 import type { Contenu } from "./generateur";
-import { distance, dirVers } from "./maths";
+import { distance, dirVers, unitaire } from "./maths";
+import { COS, SIN } from "./trig";
 import { caseDe, centreDeCase, champDeDistance, descendre, INACCESSIBLE } from "./niveau";
-import { CHAUVE, COUP, ONDE, PLONGEON, Partie, type Resultat } from "./partie";
+import { CHAUVE, COUP, ONDE, PLONGEON, Partie, pointDuSegment, type Resultat } from "./partie";
 import type { Choix } from "./rediffusion";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
@@ -24,7 +26,7 @@ const croix = (dx: number, dy: number): number => Math.trunc((dirVers(dx, dy) + 
 export type Strategie = "foncer" | "peu" | "beaucoup";
 export const STRATEGIES: readonly Strategie[] = ["foncer", "peu", "beaucoup"];
 /** « Un peu d'XP » : un camp est « proche » quand le détour qui y mène est à cette distance (cm) du chemin principal au plus. */
-export const SEUIL_PEU_CM = 2500;
+export const SEUIL_PEU_CM = 3200;
 /** Les cartes de chaque stratégie, de la plus voulue à la moins voulue (la première proposée est prise ; sinon la première carte offerte). */
 export const PRIORITES: Readonly<Record<Strategie, readonly string[]>> = {
   foncer: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "esquive-vive", "tourbillon", "onde-epee", "allonge", "coeur-en-plus", "soin", "esquive-longue", "vol-de-vie", "esquive-tranchante", "aimant"],
@@ -173,6 +175,36 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
   return { direction: aLArene(), coup: false };
 }
 
+/**
+ * La direction pour s'éloigner d'un point : parmi 16 directions, celle qui, un pas plus loin, est la plus éloignée du danger sans entrer dans le boss ni sortir de l'arène (contre le muret ou le boss, partir tout droit ne mène nulle part :
+ * on glisse le long). Hors de l'arène (avant la barrière), tout droit.
+ */
+function fuirDe(p: Partie, de: { x: number; y: number }): number {
+  const c = p.c;
+  const fx = c.x - de.x;
+  const fy = c.y - de.y;
+  if (p.niveau && p.barriere < 0) return croix(fx, fy);
+  const g = p.golem;
+  const pas = cm(160);
+  let meilleur = croix(fx, fy);
+  let note = -Infinity;
+  for (let k = 0; k < 32; k += 2) {
+    const nx = c.x + Math.trunc((COS[k * 4]! * pas) / 1024);
+    const ny = c.y + Math.trunc((SIN[k * 4]! * pas) / 1024);
+    let n = distance(nx, ny, de.x, de.y);
+    if (distance(nx, ny, p.ax, p.ay) > RAYON_ARENE - RAYON_CHEVALIER - cm(20)) n -= cm(600);
+    if (g && g.hp > 0 && g.sol === 1 && distance(nx, ny, g.x, g.y) < g.r + RAYON_CHEVALIER + cm(20)) n -= cm(600);
+    // à égalité, on préfère le centre de l'arène (on y a de la place)
+    // (face au bélier, c'est l'inverse : on reste contre le muret pour que sa charge s'y écrase)
+    n -= Math.trunc((distance(nx, ny, p.ax, p.ay) / 40) * (g && g.kind === B_BELIER ? -1 : 1));
+    if (n > note) {
+      note = n;
+      meilleur = k;
+    }
+  }
+  return meilleur;
+}
+
 export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   const c = p.c;
   const tick = p.tick;
@@ -182,11 +214,34 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   let dirEsquive = -1;
   for (const z of p.zones) {
     const reste = z.ti - tick;
+    if (z.type === Z_INVOCATION) continue; // un anneau qui annonce une naissance : aucun danger
+    if (z.type === Z_BANDE) {
+      // Lot BR3 : une bande (plongeon, charge, racines) : on s'en écarte par le côté ; on esquive à travers si on y est encore à l'arrivée.
+      const [bx, by] = pointDuSegment(c.x, c.y, z.x, z.y, z.x2, z.y2);
+      const db = distance(c.x, c.y, bx, by);
+      if (reste <= 90 && db < z.r + cm(130)) {
+        // sur la ligne même : on part de travers
+        fuite = db > 0 ? { x: bx, y: by } : { x: c.x - (z.y2 - z.y), y: c.y + (z.x2 - z.x) };
+        if (reste <= (c.etat === COUP ? 16 : 8) && db < z.r) esquiver = true;
+      }
+      continue;
+    }
     const d = distance(c.x, c.y, z.x, z.y);
+    if (z.type === Z_SPORES) {
+      if (reste <= 90 && d < z.r + cm(150)) {
+        fuite = { x: z.x, y: z.y };
+        // un coup en cours retient (40 % de la vitesse) : l'esquive le coupe et emporte hors du nuage
+        if (d < z.r && (reste <= 22 || (reste <= 55 && c.etat === COUP))) {
+          esquiver = true;
+          dirEsquive = croix(c.x - z.x, c.y - z.y);
+        }
+      }
+      continue;
+    }
     if (z.type === ONDE) {
       // L'anneau part du bord du golem à `ti` et file à la vitesse de l'onde (`vOnde`, 9,5 m/s au rythme 100 %) : on esquive quand il est à moins de trois ticks de nous.
       // (lot BR0c : le bord de l'anneau touche dès qu'il est à ~80 cm : collé au golem, le chevalier doit déjà esquiver à l'instant où l'onde part)
-      const arrivee = reste + Math.max(0, Math.trunc((d - RAYON_GOLEM - cm(80)) / p.vOnde()));
+      const arrivee = reste + Math.max(0, Math.trunc((d - (p.golem?.r ?? cm(170)) - cm(80)) / p.vOnde()));
       if (arrivee <= 3 && d < z.r) {
         esquiver = true;
         dirEsquive = croix(z.x - c.x, z.y - c.y); // à travers l'anneau, vers le golem
@@ -194,7 +249,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
       continue;
     }
     // Lot BR0c : un coup dure 30 ticks et engage le chevalier (il ne marche qu'à 40 % de sa vitesse tant qu'il frappe) : il part dès que le cercle est posé, et esquive (ce qui coupe le coup) s'il est encore dedans à l'approche.
-    if (reste <= 80 && d < z.r + cm(150)) {
+    if (reste <= 80 && d < z.r + cm(z.r > cm(300) ? 70 : 150)) {
       fuite = { x: z.x, y: z.y };
       if (reste <= (c.etat === COUP ? 16 : 8) && d < z.r) esquiver = true;
     }
@@ -207,6 +262,8 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
       dirEsquive = croix(o.x - c.x, o.y - c.y);
     }
   }
+  // Lot BR3 : un nuage de spores : on n'y reste pas.
+  for (const n of p.nuages) if (distance(c.x, c.y, n.x, n.y) < n.r + cm(120)) fuite = { x: n.x, y: n.y };
   // 3. Un monstre qui fonce sur nous : l'esquive est gardée pour l'onde quand elle approche (lot BR0c : l'esquive met 40 ticks à revenir).
   const ondeProche = p.zones.some((z) => z.type === ONDE && z.ti - tick <= 60) || p.ondes.some((o) => !o.touche);
   for (const m of p.monstres) {
@@ -237,7 +294,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
       cible = { x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : cm(48) };
     }
   }
-  if (!cible && p.golem && p.golem.hp > 0) cible = { x: p.golem.x, y: p.golem.y, r: RAYON_GOLEM };
+  if (!cible && p.golem && p.golem.hp > 0) cible = { x: p.golem.x, y: p.golem.y, r: p.golem.r };
   if (!cible && p.monstres.length > 0) {
     const m = p.monstres[0]!;
     cible = { x: m.x, y: m.y, r: cm(40) };
@@ -245,11 +302,52 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
 
   let direction = -1;
   let coup = false;
-  if (fuite) direction = croix(c.x - fuite.x, c.y - fuite.y);
+  const g = p.golem;
+  // Lot BR3 — le bélier : sa charge file droit sur le chevalier et ne s'arrête qu'au muret si celui-ci est juste derrière lui. Le pilote l'ATTIRE : il se tient contre le muret, du côté opposé au bélier, s'écarte de la ligne annoncée, puis
+  // profite de l'étourdissement. (Pendant que le bélier marche ou annonce, il n'attaque que ce qui est à portée.)
+  let lureX = 0;
+  let lureY = 0;
+  let leurre = false;
+  if (g && g.kind === B_BELIER && g.hp > 0 && (g.etat === MARCHE || g.etat === ANNONCE)) {
+    const [ux, uy] = unitaire(c.x - g.x, c.y - g.y);
+    lureX = c.x + ux * 2;
+    lureY = c.y + uy * 2;
+    const dx = lureX - p.ax;
+    const dy = lureY - p.ay;
+    const dd = distance(lureX, lureY, p.ax, p.ay);
+    const max = RAYON_ARENE - cm(250);
+    if (dd > max) {
+      lureX = p.ax + Math.trunc((dx * max) / dd);
+      lureY = p.ay + Math.trunc((dy * max) / dd);
+    }
+    leurre = true;
+  }
+  // Lot BR3 — le grand-duc : pendant qu'il plonge, le pilote file se poster à côté de l'endroit où il va se poser (au bout de la dernière bande), hors des bandes ; dès qu'il est à terre il frappe.
+  let postX = 0;
+  let postY = 0;
+  let poster = false;
+  if (g && g.kind === B_DUC && g.hp > 0 && g.etat === ANNONCE) {
+    let derniere: (typeof p.zones)[number] | null = null;
+    for (const z of p.zones) if (z.type === Z_BANDE && (!derniere || z.ti > derniere.ti)) derniere = z;
+    if (derniere) {
+      const [ux, uy] = unitaire(derniere.x2 - derniere.x, derniere.y2 - derniere.y);
+      // à côté du point d'atterrissage, du côté du chevalier, à une demi-largeur de bande + 1,3 m
+      const cote = (c.x - derniere.x2) * -uy + (c.y - derniere.y2) * ux >= 0 ? 1 : -1;
+      const dec = derniere.r + cm(140);
+      postX = derniere.x2 + Math.trunc((-uy * cote * dec) / 1024);
+      postY = derniere.y2 + Math.trunc((ux * cote * dec) / 1024);
+      poster = true;
+    }
+  }
+  if (fuite) direction = fuirDe(p, fuite);
+  else if (poster) direction = distance(c.x, c.y, postX, postY) > cm(100) ? croix(postX - c.x, postY - c.y) : -1;
+  else if (leurre && distance(c.x, c.y, lureX, lureY) > cm(120) && !(cible && cible !== null && g && distance(c.x, c.y, cible.x, cible.y) - cible.r - RAYON_CHEVALIER <= p.porteeCoup(0) - cm(50))) direction = croix(lureX - c.x, lureY - c.y);
   else if (cible) {
     const d = distance(c.x, c.y, cible.x, cible.y) - cible.r - RAYON_CHEVALIER;
     const portee = p.porteeCoup(0) - cm(50);
-    if (d > portee) direction = croix(cible.x - c.x, cible.y - c.y);
+    // le grand-duc en l'air n'encaisse qu'un quart : on ne le poursuit pas, on l'attend (on le frappe s'il passe à portée, et surtout à terre)
+    const attendre = g && g.kind === B_DUC && g.sol === 0 && cible.x === g.x && cible.y === g.y;
+    if (d > portee) direction = leurre || attendre ? -1 : croix(cible.x - c.x, cible.y - c.y);
     else coup = true;
   }
   // Le coup est TENU : la simulation enchaîne les trois coups en boucle (lot BR0b).
@@ -259,13 +357,26 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   return entree(dirFinale, bouton, esq);
 }
 
-/** La carte que la stratégie prend parmi les trois proposées (l'index 0 à 2) : la première de sa liste de priorités qui est offerte, sinon la première carte. */
+/**
+ * La liste de priorités d'une stratégie CONTRE un boss (lot BR3) : la première carte de la stratégie, puis les cartes que le boss favorise, puis le reste ; « Brise-pierre » passe en dernier contre un boss qui l'encaisse mal.
+ * Le boss du jour est connu de tous les joueurs : un bon choix en tient compte.
+ */
+export function prioritesContre(strategie: Strategie, boss: number): readonly string[] {
+  const base = PRIORITES[strategie];
+  const def = BOSS[boss]!;
+  const reste = base.filter((id) => !def.favorise.includes(id) && !(id === "brise-pierre" && def.brise < 100));
+  const mal = def.brise < 100 && !def.favorise.includes("brise-pierre") ? ["brise-pierre"] : [];
+  return [...reste.slice(0, 1), ...def.favorise, ...reste.slice(1), ...mal];
+}
+
+/** La carte que la stratégie prend parmi les trois proposées (l'index 0 à 2) : la première de sa liste de priorités contre le boss du jour qui est offerte, sinon la première carte. */
 export function choisirCarte(p: Partie, strategie: Strategie): number {
   const cartes = p.choix?.cartes ?? [];
+  const liste = prioritesContre(strategie, p.golem?.kind ?? 0);
   let meilleur = 0;
   let rang = Infinity;
   cartes.forEach((carte, i) => {
-    const r = PRIORITES[strategie].findIndex((id) => indiceAmelioration(id) === carte);
+    const r = liste.findIndex((id) => indiceAmelioration(id) === carte);
     if ((r < 0 ? 1e6 : r) < rang) {
       rang = r < 0 ? 1e6 : r;
       meilleur = i;

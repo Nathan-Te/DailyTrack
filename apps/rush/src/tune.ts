@@ -53,6 +53,7 @@ const CURSEURS: Curseur[] = [
   { cle: "volVie", groupe: "sim", libelle: "tune.volVie", min: BORNES.volVie[0], max: BORNES.volVie[1] },
   { cle: "briseDegats", groupe: "sim", libelle: "tune.briseDegats", min: BORNES.briseDegats[0], max: BORNES.briseDegats[1] },
   { cle: "aimantGain", groupe: "sim", libelle: "tune.aimantGain", min: BORNES.aimantGain[0], max: BORNES.aimantGain[1] },
+  { cle: "affinite", groupe: "sim", libelle: "tune.affinite", min: BORNES.affinite[0], max: BORNES.affinite[1] },
   { cle: "arretImage", groupe: "vue", libelle: "tune.arretImage", min: BORNES_SENSATIONS.arretImage[0], max: BORNES_SENSATIONS.arretImage[1] },
   { cle: "arretPhase", groupe: "vue", libelle: "tune.arretPhase", min: BORNES_SENSATIONS.arretPhase[0], max: BORNES_SENSATIONS.arretPhase[1] },
   { cle: "secousse", groupe: "vue", libelle: "tune.secousse", min: BORNES_SENSATIONS.secousse[0], max: BORNES_SENSATIONS.secousse[1] },

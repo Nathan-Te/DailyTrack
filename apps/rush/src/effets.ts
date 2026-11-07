@@ -1,4 +1,5 @@
-import { BackSide, CanvasTexture, CircleGeometry, Color, DoubleSide, DynamicDrawUsage, Group, IcosahedronGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, OctahedronGeometry, PlaneGeometry, Quaternion, RingGeometry, ShaderMaterial, SRGBColorSpace, Vector3 } from "three";
+import { BackSide, CanvasTexture, CircleGeometry, Color, ConeGeometry, DoubleSide, DynamicDrawUsage, Euler, Group, IcosahedronGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, OctahedronGeometry, PlaneGeometry, Quaternion, RingGeometry, ShaderMaterial, SRGBColorSpace, Vector3 } from "three";
+import { plat } from "./cel";
 import { fusionner, teindre } from "./formes";
 import { COULEURS } from "./palette";
 
@@ -7,7 +8,7 @@ import { COULEURS } from "./palette";
 
 // --- Les éclats --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const MAX_ECLATS = 600;
-export type GenreEclat = "etincelle" | "poussiere" | "gelee" | "pierre" | "chauve" | "feu";
+export type GenreEclat = "etincelle" | "poussiere" | "gelee" | "pierre" | "chauve" | "feu" | "spore" | "reine";
 /** Les éclats LUMINEUX (étincelles, feu) dépassent 1 : le post-traitement les fait fleurir (bloom) ; les autres restent des couleurs mates. */
 const LUEUR: Partial<Record<GenreEclat, number>> = { etincelle: 2.2, feu: 1.9 };
 const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
@@ -17,6 +18,9 @@ const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
   pierre: [COULEURS.golem, COULEURS.golemSombre, 0x8a7a6c],
   chauve: [COULEURS.chauve, COULEURS.chauveClair, 0x4a2d7a],
   feu: [COULEURS.lueur, COULEURS.onde, 0xffe29a],
+  // Lot BR3 : les volutes de spores du vieux chêne (vert-jaune) et l'éclaboussure de la reine gelée qui se divise (bleu).
+  spore: [COULEURS.sporesClair, 0x9dbb2a, 0xe4ee86],
+  reine: [0x2f78b8, 0xa6d6f2, 0x6fb0e0],
 };
 
 export class Eclats {
@@ -148,6 +152,9 @@ export class Ombres {
 // --- Les cercles rouges annoncés au sol -----------------------------------------------------------------------------------------------------------------------------------------------------------
 const VERTEX_PLAN = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
 
+/** Les transparences d'une annonce au sol (le fond du disque, avec le remplissage en plus ; le liseré) : le test de lisibilité les lit pour mesurer l'écart contre chaque sol. Lot BR3 : la bande a les mêmes. */
+export const ALPHAS_ANNONCE = { fond: 0.26, fondInvocation: 0.16, rempli: 0.2, bord: 0.9 } as const;
+
 /** Un cercle d'annonce (lot BR0c, la cible : `cible-ia.png`) : un disque rouge CORAIL translucide, un bord plus clair et fin (moins sombre qu'au BR0b), et un remplissage plus soutenu qui grandit du centre jusqu'au bord à l'instant du coup ; il clignote juste avant. */
 export class Annonces {
   readonly groupe = new Group();
@@ -160,18 +167,18 @@ export class Annonces {
       const mat = new ShaderMaterial({
         transparent: true,
         depthWrite: false,
-        uniforms: { p: { value: 0 }, t: { value: 0 }, flash: { value: 0 }, col: { value: new Color(COULEURS.corail) }, bordCol: { value: new Color(COULEURS.corailClair) } },
+        uniforms: { p: { value: 0 }, t: { value: 0 }, flash: { value: 0 }, col: { value: new Color(COULEURS.corail) }, bordCol: { value: new Color(COULEURS.corailClair) }, fond: { value: ALPHAS_ANNONCE.fond }, gain: { value: 1.35 } },
         vertexShader: VERTEX_PLAN,
-        fragmentShader: `varying vec2 vUv; uniform float p; uniform float t; uniform float flash; uniform vec3 col; uniform vec3 bordCol;
+        fragmentShader: `varying vec2 vUv; uniform float p; uniform float t; uniform float flash; uniform vec3 col; uniform vec3 bordCol; uniform float fond; uniform float gain;
           void main(){
             vec2 q = vUv * 2.0 - 1.0; float d = length(q); if (d > 1.0) discard;
             float bord = smoothstep(0.925, 0.94, d);
             float rempli = 1.0 - smoothstep(p - 0.012, p, d);
             float front = smoothstep(p - 0.05, p - 0.02, d) * (1.0 - smoothstep(p - 0.02, p, d));
-            vec3 c = mix(col, bordCol * 1.35, bord);
+            vec3 c = mix(col, bordCol * gain, bord);
             c = mix(c, vec3(1.0, 0.86, 0.78), front * 0.5);
             c = mix(c, vec3(1.0, 0.95, 0.9), flash);
-            float a = bord * 0.9 + (1.0 - bord) * (0.26 + rempli * 0.2);
+            float a = bord * 0.9 + (1.0 - bord) * (fond + rempli * 0.2);
             gl_FragColor = vec4(c, a);
             #include <colorspace_fragment>
           }`,
@@ -190,8 +197,8 @@ export class Annonces {
     }
     this.utilises.length = 0;
   }
-  /** Pose un cercle : `p` de 0 (juste annoncé) à 1 (il frappe). */
-  poser(x: number, z: number, rayon: number, p: number, temps: number): void {
+  /** Pose un cercle : `p` de 0 (juste annoncé) à 1 (il frappe). Lot BR3 : `invocation` est l'anneau où une gelée va naître — violet pâle, plus léger, qui ne clignote pas : ce n'est PAS un danger (le corail est réservé au danger). */
+  poser(x: number, z: number, rayon: number, p: number, temps: number, invocation = false): void {
     const m = this.libres.pop();
     if (!m) return;
     this.utilises.push(m);
@@ -201,7 +208,11 @@ export class Annonces {
     const u = (m.material as ShaderMaterial).uniforms;
     u.p!.value = Math.min(1, p) * 0.9;
     u.t!.value = temps;
-    u.flash!.value = p > 0.8 ? (Math.floor(temps * 18) % 2 === 0 ? 0.65 : 0) : 0;
+    u.flash!.value = !invocation && p > 0.8 ? (Math.floor(temps * 18) % 2 === 0 ? 0.65 : 0) : 0;
+    (u.col!.value as Color).set(invocation ? COULEURS.invocation : COULEURS.corail);
+    (u.bordCol!.value as Color).set(invocation ? COULEURS.invocationClair : COULEURS.corailClair);
+    u.fond!.value = invocation ? ALPHAS_ANNONCE.fondInvocation : ALPHAS_ANNONCE.fond;
+    u.gain!.value = invocation ? 1 : 1.35;
   }
 }
 
@@ -577,5 +588,214 @@ export class OndesEpee {
       m.scale.setScalar(1.1 + (o.d / o.portee) * 0.5);
       (m.material as MeshBasicMaterial).opacity = Math.max(0, 1 - (o.d / o.portee) ** 2);
     });
+  }
+}
+
+// --- Lot BR3 : les bandes, les nuages de spores et les racines ----------------------------------------------------------------------------------------------------------------------------------
+/** Une BANDE annoncée au sol (le plongeon du grand-duc, la charge du bélier, les racines du chêne) : le même langage que les cercles — un rectangle corail translucide, un bord plus clair, un remplissage qui AVANCE le long de la bande jusqu'à l'impact, un clignotement juste avant. Un appel de dessin par bande (huit au plus : six racines en étoile en phase 2 + les autres). */
+export class Bandes {
+  readonly groupe = new Group();
+  private readonly libres: Mesh[] = [];
+  private readonly utilises: Mesh[] = [];
+  constructor(n = 8) {
+    for (let i = 0; i < n; i++) {
+      const g = new PlaneGeometry(1, 1);
+      g.rotateX(-Math.PI / 2);
+      const mat = new ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: { p: { value: 0 }, flash: { value: 0 }, len: { value: 1 }, demi: { value: 1 }, fond: { value: ALPHAS_ANNONCE.fond }, col: { value: new Color(COULEURS.corail) }, bordCol: { value: new Color(COULEURS.corailClair) } },
+        vertexShader: VERTEX_PLAN,
+        fragmentShader: `varying vec2 vUv; uniform float p; uniform float flash; uniform float len; uniform float demi; uniform float fond; uniform vec3 col; uniform vec3 bordCol;
+          void main(){
+            float along = vUv.x;
+            float across = abs(vUv.y * 2.0 - 1.0) * demi;
+            float de = min(along * len, (1.0 - along) * len);
+            float bord = max(smoothstep(demi - 0.2, demi - 0.12, across), 1.0 - smoothstep(0.08, 0.2, de));
+            float rempli = 1.0 - smoothstep(p - 0.012, p, along);
+            float front = smoothstep(p - 0.05, p - 0.02, along) * (1.0 - smoothstep(p - 0.02, p, along));
+            vec3 c = mix(col, bordCol * 1.35, bord);
+            c = mix(c, vec3(1.0, 0.86, 0.78), front * 0.5);
+            c = mix(c, vec3(1.0, 0.95, 0.9), flash);
+            float a = bord * ${ALPHAS_ANNONCE.bord.toFixed(2)} + (1.0 - bord) * (fond + rempli * ${ALPHAS_ANNONCE.rempli.toFixed(2)});
+            gl_FragColor = vec4(c, a);
+            #include <colorspace_fragment>
+          }`,
+      });
+      const m = new Mesh(g, mat);
+      m.renderOrder = 2;
+      m.visible = false;
+      this.groupe.add(m);
+      this.libres.push(m);
+    }
+  }
+  debut(): void {
+    for (const m of this.utilises) {
+      m.visible = false;
+      this.libres.push(m);
+    }
+    this.utilises.length = 0;
+  }
+  /** Pose la bande de (x, z) à (x2, z2) (mètres), de demi-largeur `demi` ; `p` de 0 (annoncée) à 1 (elle frappe). */
+  poser(x: number, z: number, x2: number, z2: number, demi: number, p: number, temps: number): void {
+    const m = this.libres.pop();
+    if (!m) return;
+    this.utilises.push(m);
+    const dx = x2 - x;
+    const dz = z2 - z;
+    const len = Math.max(0.01, Math.hypot(dx, dz));
+    m.visible = true;
+    m.position.set((x + x2) / 2, 0.03, (z + z2) / 2);
+    m.rotation.y = -Math.atan2(dz, dx);
+    m.scale.set(len, 1, demi * 2);
+    const u = (m.material as ShaderMaterial).uniforms;
+    u.p!.value = Math.min(1, p) * 1.02;
+    u.flash!.value = p > 0.8 ? (Math.floor(temps * 18) % 2 === 0 ? 0.65 : 0) : 0;
+    u.len!.value = len;
+    u.demi!.value = demi;
+  }
+}
+
+/** Les NUAGES de spores du vieux chêne : un disque vert-jaune sombre aux volutes plus claires, un liseré olive, qui paraît à l'éclatement des spores, reste, puis s'estompe avant `fin`. **Pas rouge** (le rouge est le danger d'une annonce ; un nuage qui reste n'est plus annoncé) mais il se lit sur chaque sol. Un appel de dessin par nuage (trois au plus). */
+export class Nuages {
+  readonly groupe = new Group();
+  private readonly libres: Mesh[] = [];
+  private readonly utilises: Mesh[] = [];
+  constructor(n = 3) {
+    for (let i = 0; i < n; i++) {
+      const g = new PlaneGeometry(2, 2);
+      g.rotateX(-Math.PI / 2);
+      const mat = new ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: { t: { value: 0 }, u: { value: 1 }, col: { value: new Color(COULEURS.spores) }, clair: { value: new Color(COULEURS.sporesClair) }, lisere: { value: new Color(COULEURS.sporesLisere) } },
+        vertexShader: VERTEX_PLAN,
+        fragmentShader: `varying vec2 vUv; uniform float t; uniform float u; uniform vec3 col; uniform vec3 clair; uniform vec3 lisere;
+          void main(){
+            vec2 q = vUv * 2.0 - 1.0; float d = length(q); if (d > 1.0) discard;
+            float a = atan(q.y, q.x);
+            float volute = 0.5 + 0.5 * sin(a * 3.0 + d * 8.0 - t * 1.4) * sin(a * 2.0 - d * 5.0 + t * 0.9);
+            float bord = smoothstep(0.86, 0.91, d) * (1.0 - smoothstep(0.97, 1.0, d));
+            vec3 c = mix(col, clair, volute * 0.5 * (1.0 - d * 0.5));
+            c = mix(c, lisere, bord);
+            float alpha = mix(0.72 + 0.08 * volute, 0.92, bord) * u;
+            gl_FragColor = vec4(c, alpha);
+            #include <colorspace_fragment>
+          }`,
+      });
+      const m = new Mesh(g, mat);
+      m.renderOrder = 2;
+      m.visible = false;
+      this.groupe.add(m);
+      this.libres.push(m);
+    }
+  }
+  debut(): void {
+    for (const m of this.utilises) {
+      m.visible = false;
+      this.libres.push(m);
+    }
+    this.utilises.length = 0;
+  }
+  /** Pose un nuage de rayon `rayon` ; `opacite` de 0 à 1 (il paraît, reste, s'estompe). */
+  poser(x: number, z: number, rayon: number, opacite: number, temps: number): void {
+    const m = this.libres.pop();
+    if (!m) return;
+    this.utilises.push(m);
+    m.visible = true;
+    m.position.set(x, 0.04, z);
+    m.scale.set(rayon, 1, rayon);
+    const u = (m.material as ShaderMaterial).uniforms;
+    u.t!.value = temps;
+    u.u!.value = opacite;
+  }
+}
+
+/** Les RACINES qui jaillissent du sol (le vieux chêne) : des pointes de bois brun, un seul tas (un appel de dessin), qui poussent en un clin d'œil le long de la bande puis se rétractent. */
+const MAX_RACINES = 96;
+export class Racines {
+  readonly maillage: InstancedMesh;
+  private readonly x = new Float32Array(MAX_RACINES);
+  private readonly z = new Float32Array(MAX_RACINES);
+  private readonly h = new Float32Array(MAX_RACINES);
+  private readonly r = new Float32Array(MAX_RACINES);
+  private readonly inclinaison = new Float32Array(MAX_RACINES * 2);
+  private readonly delai = new Float32Array(MAX_RACINES);
+  private readonly age = new Float32Array(MAX_RACINES).fill(99);
+  private suivant = 0;
+  private readonly duree = 1.15;
+  private readonly m = new Matrix4();
+  private readonly q = new Quaternion();
+  private readonly e = new Euler();
+  private readonly s = new Vector3();
+  private readonly pos = new Vector3();
+  private readonly c = new Color();
+  constructor() {
+    const g = new ConeGeometry(1, 1, 7);
+    g.translate(0, 0.5, 0);
+    this.maillage = new InstancedMesh(g, plat(0xffffff, false, 0.18), MAX_RACINES);
+    this.maillage.instanceMatrix.setUsage(DynamicDrawUsage);
+    this.maillage.frustumCulled = false;
+    this.maillage.castShadow = true;
+    this.maillage.count = 0;
+    for (let i = 0; i < MAX_RACINES; i++) this.maillage.setColorAt(i, this.c.set(0x5a3d26));
+  }
+  private pointe(x: number, z: number, h: number, r: number, delai: number): void {
+    const i = this.suivant;
+    this.suivant = (this.suivant + 1) % MAX_RACINES;
+    this.x[i] = x;
+    this.z[i] = z;
+    this.h[i] = h;
+    this.r[i] = r;
+    this.inclinaison[i * 2] = (Math.random() - 0.5) * 0.5;
+    this.inclinaison[i * 2 + 1] = (Math.random() - 0.5) * 0.5;
+    this.delai[i] = delai;
+    this.age[i] = 0;
+    this.maillage.setColorAt(i, this.c.set(Math.random() < 0.5 ? 0x5a3d26 : 0x3f2a1a));
+    if (this.maillage.instanceColor) this.maillage.instanceColor.needsUpdate = true;
+  }
+  /** Des racines tout le long de la bande de (x, z) à (x2, z2) (mètres), de demi-largeur `demi` : elles poussent à la file, depuis le départ. */
+  bande(x: number, z: number, x2: number, z2: number, demi: number): void {
+    const dx = x2 - x;
+    const dz = z2 - z;
+    const len = Math.max(0.01, Math.hypot(dx, dz));
+    const n = Math.max(2, Math.min(10, Math.round(len / 1.3)));
+    const nx = -dz / len;
+    const nz = dx / len;
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const lateral = (i % 2 === 0 ? 1 : -1) * demi * 0.45 * (0.3 + Math.random() * 0.7);
+      this.pointe(x + dx * t + nx * lateral, z + dz * t + nz * lateral, 1.6 + Math.random() * 1.1, 0.5 + Math.random() * 0.2, t * 0.3);
+    }
+  }
+  /** Des racines dans un disque (la chute de « pierres » du chêne : ici des racines). */
+  cercle(x: number, z: number, rayon: number): void {
+    this.pointe(x, z, 2.0 + Math.random() * 0.6, 0.62, 0);
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + Math.random() * 0.5;
+      this.pointe(x + Math.cos(a) * rayon * 0.62, z + Math.sin(a) * rayon * 0.62, 1.2 + Math.random() * 0.9, 0.45 + Math.random() * 0.15, 0.04 + Math.random() * 0.1);
+    }
+  }
+  maj(dt: number): void {
+    let max = 0;
+    for (let i = 0; i < MAX_RACINES; i++) {
+      if (this.age[i]! >= this.duree + this.delai[i]!) {
+        this.s.set(0, 0, 0);
+        this.m.compose(this.pos.set(0, -50, 0), this.q.identity(), this.s);
+        this.maillage.setMatrixAt(i, this.m);
+        continue;
+      }
+      max = i + 1;
+      this.age[i] = this.age[i]! + dt;
+      const u = Math.max(0, this.age[i]! - this.delai[i]!) / this.duree;
+      const pousse = Math.min(1, u / 0.14);
+      const rentre = u > 0.7 ? 1 - (u - 0.7) / 0.3 : 1;
+      const k = Math.max(0.001, pousse * (2 - pousse) * rentre);
+      this.q.setFromEuler(this.e.set(this.inclinaison[i * 2]!, 0, this.inclinaison[i * 2 + 1]!));
+      this.m.compose(this.pos.set(this.x[i]!, 0, this.z[i]!), this.q, this.s.set(this.r[i]! * Math.min(1, 0.4 + k), this.h[i]! * k, this.r[i]! * Math.min(1, 0.4 + k)));
+      this.maillage.setMatrixAt(i, this.m);
+    }
+    this.maillage.count = max;
+    this.maillage.instanceMatrix.needsUpdate = true;
   }
 }
