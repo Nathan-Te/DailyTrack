@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actionDe, BONUS_PLATEAU_VIDE, caseOccupee, contenuDeScenario, effacer, grilleDepuis, grilleEnTexte, jouer, NB_PIECES, Partie, peutPoser, PIECES, PLAFOND_PIECES, pieceParNom, pleines, tientQuelquePart, VIDE, ErreurRejeu } from "../src/index";
+import { actionDe, BONUS_PLATEAU_VIDE, caseOccupee, colonneDe, contenuDeScenario, dailyBlocks, effacer, emplacementDe, ErreurRejeu, grilleDepuis, grilleEnTexte, jouer, ligneDe, NB_PIECES, Partie, peutPoser, PIECES, PLAFOND_PIECES, pieceParNom, pleines, tientQuelquePart, VIDE } from "../src/index";
 import { contenuDEssai, pieceDeForme } from "./aide";
 
 describe("le catalogue (seed § 4)", () => {
@@ -55,113 +55,162 @@ describe("la grille en bits", () => {
   });
 });
 
-describe("l'effacement et le barème (seed § 3 et 5)", () => {
+describe("les séries de trois (règles v2, lot B8)", () => {
+  it("la partie reçoit trois pièces, dans trois emplacements ; la suite est lue par séries de trois", () => {
+    const p = new Partie(contenuDEssai(["coin-0", "domino-0", "barre3-0", "domino-1", "carre2-0", "coin-1"]));
+    expect(p.pieces.map((x) => x?.nom)).toEqual(["coin-0", "domino-0", "barre3-0"]);
+    expect(p.serie).toBe(0);
+    expect(p.restantesCount).toBe(3);
+  });
+  it("on pose dans l'ordre qu'on veut : un emplacement posé reste VIDE, les autres ne bougent pas", () => {
+    const p = new Partie(contenuDEssai(["coin-0", "domino-0", "barre3-0"]));
+    const r = p.poser(1, 0, 0)!;
+    expect(r).toMatchObject({ emplacement: 1, cases: 2, serieNouvelle: false });
+    expect(p.pieces.map((x) => x?.nom ?? null)).toEqual(["coin-0", null, "barre3-0"]);
+    expect(p.piece(1)).toBeNull();
+    expect(p.restantesCount).toBe(2);
+    expect(p.poser(2, 0, 2)).not.toBeNull();
+    expect(p.pieces.map((x) => x?.nom ?? null)).toEqual(["coin-0", null, null]);
+    expect(p.serie).toBe(0);
+  });
+  it("la série suivante arrive quand la troisième est posée, et seulement alors ; aucune pièce suivante n'est montrée avant", () => {
+    const p = new Partie(contenuDEssai(["coin-0", "domino-0", "barre3-0", "domino-1", "carre2-0", "coin-1"]));
+    p.poser(2, 0, 0);
+    p.poser(0, 4, 0);
+    expect(p.pieces.map((x) => x?.nom ?? null)).toEqual([null, "domino-0", null]);
+    expect(p.serie).toBe(0); // la série suivante n'est pas encore là
+    const derniere = p.poser(1, 0, 5)!;
+    expect(derniere.serieNouvelle).toBe(true);
+    expect(p.serie).toBe(1);
+    expect(p.pieces.map((x) => x?.nom)).toEqual(["domino-1", "carre2-0", "coin-1"]);
+    expect(p.poses).toBe(3);
+    expect("suivante" in p).toBe(false); // plus de pièce suivante dans l'état
+  });
+  it("l'action est (emplacement, colonne, ligne) sur un octet : emplacement × 64 + ligne × 8 + colonne", () => {
+    expect(actionDe(0, 0, 0)).toBe(0);
+    expect(actionDe(2, 7, 7)).toBe(191);
+    expect(actionDe(1, 3, 5)).toBe(64 + 5 * 8 + 3);
+    for (const [e, c, l] of [[0, 0, 0], [1, 3, 5], [2, 7, 7], [2, 0, 3]] as const) {
+      const a = actionDe(e, c, l);
+      expect([emplacementDe(a), colonneDe(a), ligneDe(a)]).toEqual([e, c, l]);
+    }
+    const p = new Partie(contenuDEssai(["coin-0", "domino-0", "barre3-0"]));
+    expect(p.jouerAction(actionDe(1, 2, 3))).toMatchObject({ emplacement: 1, col: 2, ligne: 3 });
+    expect(p.jouerAction(192)).toBeNull();
+    expect(p.jouerAction(-1)).toBeNull();
+    expect(p.jouerAction(1.5)).toBeNull();
+  });
+  it("une action illégale est rejetée SANS changer l'état : emplacement vide, case occupée, hors de la grille, emplacement inconnu", () => {
+    const p = new Partie(contenuDEssai(["domino-0", "domino-0", "domino-0", "domino-0"]));
+    p.poser(0, 0, 0);
+    const photo = (): string => JSON.stringify([p.grille, p.serie, p.poses, p.score, p.combo, p.sansEffacement, p.comboMax, p.fin, p.pieces.map((x) => x?.id ?? null)]);
+    const avant = photo();
+    expect(p.poser(0, 4, 4)).toBeNull(); // l'emplacement 0 est vide : la pièce est déjà posée
+    expect(p.poser(1, 0, 0)).toBeNull(); // recouvre le domino posé
+    expect(p.poser(1, 7, 0)).toBeNull(); // déborde à droite
+    expect(p.poser(1, -1, 0)).toBeNull();
+    expect(p.poser(1, 0, 8)).toBeNull();
+    expect(p.poser(1, 1.5, 0)).toBeNull();
+    expect(p.poser(3, 0, 4)).toBeNull(); // pas d'emplacement 3
+    expect(p.poser(-1, 0, 4)).toBeNull();
+    expect(photo()).toBe(avant);
+  });
+  it("une pièce qui ne rentre nulle part est grisée ; la partie continue tant qu'une autre rentre, et la grisée ne se pose pas", () => {
+    // Le damier laisse (0, 0) et (1, 0) côte à côte : seul le domino horizontal y tient ; la barre de 3 et le coin ne tiennent nulle part.
+    const depart = ["..X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X"];
+    const p = new Partie(contenuDEssai(["barre3-0", "domino-0", "coin-0"], depart));
+    expect([p.grisee(0), p.grisee(1), p.grisee(2)]).toEqual([true, false, true]);
+    expect(p.finie).toBe(false);
+    expect(p.poser(0, 0, 0)).toBeNull(); // grisée : elle ne se pose pas
+    expect(p.poser(1, 0, 0)).not.toBeNull();
+    // Les deux autres restent grisées : plus rien ne tient, la partie finit (« Plus de place ! »).
+    expect(p.finie).toBe(true);
+    expect(p.resultat()).toMatchObject({ raison: "bloquee", poses: 1 });
+    expect(p.pieces.every((x) => x === null)).toBe(true);
+    expect(p.dernieresPieces.map((x) => x?.nom ?? null)).toEqual(["barre3-0", null, "coin-0"]); // la fin les montre encore
+  });
+  it("une grille où rien ne tient finit tout de suite : les trois pièces sont grisées (scénario « blocage »)", () => {
+    const p = new Partie(contenuDeScenario("blocage"));
+    expect(p.finie).toBe(true);
+    expect([0, 1, 2].map((e) => p.grisee(e))).toEqual([true, true, true]);
+    expect(p.resultat()).toEqual({ score: 0, combo: 0, poses: 0, raison: "bloquee" });
+    expect(p.poser(0, 1, 1)).toBeNull();
+  });
+  it("la partie ne finit PAS tant qu'une pièce restante rentre, même si la pièce « du moment » ne rentre plus (il n'y en a plus)", () => {
+    const depart = ["XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXX.."];
+    const p = new Partie(contenuDEssai(["barre5-0", "domino-0", "barre4-0"], depart));
+    expect(p.grisee(0)).toBe(true);
+    expect(p.finie).toBe(false);
+    p.poser(1, 6, 7); // les lignes et colonnes pleines partent : la grille se vide, la barre de 5 tient de nouveau
+    expect(p.finie).toBe(false);
+    expect(p.grisee(0)).toBe(false);
+  });
+  it("le plafond arrête la partie à la 2 000ᵉ pose (la 667ᵉ série n'a que deux pièces)", () => {
+    const p = new Partie(contenuDEssai([]));
+    p.poses = PLAFOND_PIECES - 1;
+    expect(p.poser(0, 0, 0)).not.toBeNull();
+    expect(p.resultat()).toMatchObject({ raison: "plafond", poses: PLAFOND_PIECES });
+    expect(p.pieces.every((x) => x === null)).toBe(true);
+    expect(dailyBlocks(1).suite).toHaveLength(PLAFOND_PIECES);
+    expect(PLAFOND_PIECES % 3).toBe(2);
+  });
+});
+
+describe("l'effacement et le barème (seed § 3 et 5), inchangés par les séries", () => {
   it("+1 point par case posée, sans effacement : le combo ne bouge pas", () => {
     const p = new Partie(contenuDEssai(["coin-0"]));
-    const r = p.poser(2, 2)!;
+    const r = p.poser(0, 2, 2)!;
     expect(r).toMatchObject({ cases: 3, n: 0, effacement: 0, gain: 3, combo: 0 });
     expect(p.score).toBe(3);
   });
   it("ligne ET colonne effacées ensemble : la case au croisement compte pour les deux (n = 2, pas 3)", () => {
-    // La ligne 0 et la colonne 0 sont pleines sauf le coin (0, 0), (1, 0) et (0, 1) : le coin de trois cases, posé en (0, 0), les achève.
     const coin = pieceDeForme(["XX", "X."]).nom;
     const depart = ["..XXXXXX", ".......".padEnd(8, "."), ...Array(6).fill("X.......")];
     const p = new Partie(contenuDEssai([coin], depart));
-    const r = p.poser(0, 0)!;
+    const r = p.poser(0, 0, 0)!;
     expect(r).toMatchObject({ n: 2, lignes: 1, colonnes: 1, effacement: 40, gain: 3 + 40 + BONUS_PLATEAU_VIDE, combo: 1, plateauVide: true });
     expect(p.score).toBe(3 + 40 + BONUS_PLATEAU_VIDE);
   });
   it("effacements multiples : 2 lignes et 1 colonne d'un coup (scénario « presque-plein »)", () => {
     const p = new Partie(contenuDeScenario("presque-plein"));
-    const r = p.poser(5, 6)!;
+    const r = p.poser(0, 5, 6)!;
     expect(r).toMatchObject({ n: 3, lignes: 0b11000000, colonnes: 0b10000000, cases: 6, effacement: 90, gain: 96, combo: 1, plateauVide: false });
     expect(grilleEnTexte(p.grille)).toEqual(["X.......", "X.......", "........", "........", "........", "........", "........", "........"]);
   });
   it("le combo multiplie l'effacement : 10 × n × n × combo (deux effacements de suite : 10 puis 20)", () => {
     const p = new Partie(contenuDEssai(["domino-0", "domino-0"], ["XXXXXX..", "XXXXXX..", "........", "........", "........", "X.......", "........", "........"]));
-    expect(p.poser(6, 0)).toMatchObject({ n: 1, effacement: 10, combo: 1, gain: 12 });
-    expect(p.poser(6, 1)).toMatchObject({ n: 1, effacement: 20, combo: 2, gain: 22 });
+    expect(p.poser(0, 6, 0)).toMatchObject({ n: 1, effacement: 10, combo: 1, gain: 12 });
+    expect(p.poser(1, 6, 1)).toMatchObject({ n: 1, effacement: 20, combo: 2, gain: 22 });
     expect(p.score).toBe(34);
   });
-  it("le combo survit à 2 poses sans effacement et se perd à la 3ᵉ", () => {
+  it("le combo survit à 2 poses sans effacement et se perd à la 3ᵉ (même d'une série à l'autre)", () => {
     const depart = [".XXXXXXX", ...Array(7).fill("........")];
     const p = new Partie(contenuDEssai(["domino-1", "domino-0", "domino-0", "domino-0"], depart));
-    expect(p.poser(0, 0)).toMatchObject({ n: 1, combo: 1, effacement: 10 });
-    expect(p.poser(0, 3)).toMatchObject({ n: 0, combo: 1, comboPerdu: false });
-    expect(p.poser(2, 3)).toMatchObject({ n: 0, combo: 1, comboPerdu: false }); // 2 poses sans effacement : il survit
-    expect(p.poser(4, 3)).toMatchObject({ n: 0, combo: 0, comboPerdu: true }); // la 3ᵉ : perdu
+    expect(p.poser(0, 0, 0)).toMatchObject({ n: 1, combo: 1, effacement: 10 });
+    expect(p.poser(1, 0, 3)).toMatchObject({ n: 0, combo: 1, comboPerdu: false });
+    expect(p.poser(2, 2, 3)).toMatchObject({ n: 0, combo: 1, comboPerdu: false, serieNouvelle: true }); // 2 poses sans effacement : il survit
+    expect(p.poser(0, 4, 3)).toMatchObject({ n: 0, combo: 0, comboPerdu: true }); // la 3ᵉ : perdu
     expect(p.comboMax).toBe(1);
   });
   it("un effacement à la 3ᵉ pose sans effacement garde le combo : il passe à 2, et le maximal avec lui", () => {
     const depart = ["XXXXXX..", "XXXXXXX.", ...Array(6).fill("........")];
     const q = new Partie(contenuDEssai(["domino-0", "domino-0", "domino-0", "domino-1"], depart));
-    expect(q.poser(6, 0)).toMatchObject({ n: 1, combo: 1, effacement: 10 });
-    expect(q.poser(0, 4)).toMatchObject({ n: 0 });
-    expect(q.poser(2, 4)).toMatchObject({ n: 0, combo: 1 }); // deux poses sans effacement : le combo (1) est encore là
-    expect(q.poser(7, 1)).toMatchObject({ n: 1, combo: 2, effacement: 20 }); // la ligne 1 s'achève : combo 2, 10 × 1 × 1 × 2
+    expect(q.poser(0, 6, 0)).toMatchObject({ n: 1, combo: 1, effacement: 10 });
+    expect(q.poser(1, 0, 4)).toMatchObject({ n: 0 });
+    expect(q.poser(2, 2, 4)).toMatchObject({ n: 0, combo: 1 });
+    expect(q.poser(0, 7, 1)).toMatchObject({ n: 1, combo: 2, effacement: 20 });
     expect(q.comboMax).toBe(2);
   });
   it("plateau vide : +300 fixe, sans multiplicateur (scénario « plateau-vide »)", () => {
     const p = new Partie(contenuDeScenario("plateau-vide"));
-    const r = p.poser(7, 6)!;
+    const r = p.poser(0, 7, 6)!;
     expect(r).toMatchObject({ n: 2, effacement: 40, plateauVide: true, gain: 2 + 40 + 300 });
     expect(grilleEnTexte(p.grille).every((l) => l === "........")).toBe(true);
     expect(p.finie).toBe(false);
   });
   it("pas de +300 quand la grille est vide sans effacement (début de partie)", () => {
     const p = new Partie(contenuDEssai(["domino-0"]));
-    expect(p.poser(0, 0)!.plateauVide).toBe(false);
-  });
-});
-
-describe("actions illégales et fin de partie", () => {
-  it("une action illégale est rejetée SANS changer l'état", () => {
-    const p = new Partie(contenuDEssai(["domino-0", "domino-0"]));
-    p.poser(0, 0);
-    const avant = JSON.stringify([p.grille, p.rang, p.score, p.combo, p.sansEffacement, p.comboMax, p.fin]);
-    expect(p.poser(0, 0)).toBeNull(); // recouvre le domino
-    expect(p.poser(8, 0)).toBeNull();
-    expect(p.poser(-1, 0)).toBeNull();
-    expect(p.poser(0, 8)).toBeNull();
-    expect(p.poser(1.5, 0)).toBeNull();
-    expect(JSON.stringify([p.grille, p.rang, p.score, p.combo, p.sansEffacement, p.comboMax, p.fin])).toBe(avant);
-  });
-  it("la partie finit dès que la pièce du moment ne tient nulle part (scénario « blocage » : tout de suite)", () => {
-    const p = new Partie(contenuDeScenario("blocage"));
-    expect(p.finie).toBe(true);
-    expect(p.resultat()).toEqual({ score: 0, combo: 0, poses: 0, raison: "bloquee" });
-    expect(p.poser(0, 1)).toBeNull();
-  });
-  it("la fin se détecte après la pose qui bouche la dernière place pour la pièce suivante", () => {
-    // Un damier où seuls (0, 0) et (1, 0) se touchent : le domino y tient, et le suivant ne tient plus nulle part.
-    const depart = ["..X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X", "X.X.X.X.", ".X.X.X.X"];
-    const p = new Partie(contenuDEssai(["domino-0", "domino-0"], depart));
-    expect(p.finie).toBe(false);
-    expect(p.poser(0, 0)).toMatchObject({ n: 0 });
-    expect(p.resultat()).toMatchObject({ raison: "bloquee", poses: 1 });
-    expect(p.piece).toBeNull();
-  });
-  it("la pose d'une pièce qui tient encore ailleurs ne finit pas la partie", () => {
-    const depart = ["XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXX.."];
-    const p = new Partie(contenuDEssai(["domino-0", "domino-0"], depart));
-    expect(p.finie).toBe(false);
-    p.poser(6, 7); // les lignes et colonnes pleines partent : la grille se vide
-    expect(p.finie).toBe(false);
-    expect(p.piece).not.toBeNull();
-  });
-  it("le plafond arrête la partie à la 2 000ᵉ pièce", () => {
-    const p = new Partie(contenuDEssai([]));
-    p.rang = PLAFOND_PIECES - 1;
-    expect(p.poser(0, 0)).not.toBeNull();
-    expect(p.resultat()).toMatchObject({ raison: "plafond", poses: PLAFOND_PIECES });
-    expect(p.piece).toBeNull();
-    expect(p.suivante).toBeNull();
-  });
-  it("la pièce suivante est celle d'après (information seulement)", () => {
-    const p = new Partie(contenuDEssai(["domino-0", "barre3-1"]));
-    expect([p.piece!.nom, p.suivante!.nom]).toEqual(["domino-0", "barre3-1"]);
-    p.poser(0, 0);
-    expect(p.piece!.nom).toBe("barre3-1");
+    expect(p.poser(0, 0, 0)!.plateauVide).toBe(false);
   });
 });
 
@@ -170,7 +219,22 @@ describe("le rejeu", () => {
     const c = contenuDeScenario("blocage");
     expect(jouer(c, [])).toEqual({ score: 0, combo: 0, poses: 0, raison: "bloquee" });
     const nonTerminee = contenuDEssai(["domino-0"]);
-    expect(() => jouer(nonTerminee, [actionDe(0, 0)])).toThrow(ErreurRejeu);
+    expect(() => jouer(nonTerminee, [actionDe(0, 0, 0)])).toThrow(ErreurRejeu);
     expect(VIDE.lo).toBe(0);
+  });
+  it("refuse une action sur un emplacement déjà posé, hors de la grille ou mal écrite, et une action après la fin", () => {
+    const c = contenuDEssai(["domino-0", "domino-0", "domino-0"]);
+    const code = (f: () => unknown): string => {
+      try {
+        f();
+      } catch (e) {
+        return e instanceof ErreurRejeu ? e.code : "autre";
+      }
+      return "accepté";
+    };
+    expect(code(() => jouer(c, [actionDe(0, 0, 0), actionDe(0, 2, 0)]))).toBe("action_illegale");
+    expect(code(() => jouer(c, [192]))).toBe("action_illegale");
+    expect(code(() => jouer(c, [actionDe(0, 0, 0), actionDe(1, 0, 0)]))).toBe("action_illegale");
+    expect(code(() => jouer(contenuDeScenario("blocage"), [0]))).toBe("apres_la_fin");
   });
 });

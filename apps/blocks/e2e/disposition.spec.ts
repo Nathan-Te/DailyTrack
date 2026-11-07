@@ -5,7 +5,7 @@ import { PALETTES } from "@cdj/visuels/blocs/themes";
 import { appareil, lancer } from "./appareil";
 
 // « Blocks » — la LISIBILITÉ au PC et au téléphone (lot B5) : la mise en page de la partie (trois colonnes autour d'une grille haute d'environ 80 % de l'écran en paysage, grille en pleine largeur en portrait), l'accueil du jeu à l'échelle des
-// autres jeux, le fantôme retiré, les décors des six thèmes. Les sept tailles de la recette : 2560 × 1440, 1920 × 1080, 1366 × 768, 1280 × 720, 844 × 390, 390 × 844, 360 × 640. Rien ne déborde ni ne se recouvre.
+// autres jeux, le fantôme retiré, les décors des six thèmes ; lot B8 : le plateau des trois pièces (à la place de « Ta pièce » et « Suivante »). Les sept tailles de la recette : 2560 × 1440, 1920 × 1080, 1366 × 768, 1280 × 720, 844 × 390, 390 × 844, 360 × 640. Rien ne déborde ni ne se recouvre.
 const ECRANS: [string, number, number, boolean][] = [
   ["2560 × 1440", 2560, 1440, false],
   ["1920 × 1080", 1920, 1080, false],
@@ -37,7 +37,7 @@ for (const [nom, largeur, hauteur, portrait] of ECRANS) {
     const d = await page.evaluate(() => window.__blocks.disposition());
     expect(d.portrait).toBe(portrait);
     const ecran = { x: 0, y: 0, w: largeur, h: hauteur };
-    const rects = [["score", d.score], ["combo", d.combo], ["grille", d.grille], ["main", d.main], ["suivante", d.suivante], ["pause", d.boutons]] as const;
+    const rects = [["score", d.score], ["combo", d.combo], ["grille", d.grille], ["plateau", d.plateau], ["pause", d.boutons]] as const;
     for (const [n, r] of rects) {
       expect(r.x, n).toBeGreaterThanOrEqual(0);
       expect(r.y, n).toBeGreaterThanOrEqual(0);
@@ -52,22 +52,34 @@ for (const [nom, largeur, hauteur, portrait] of ECRANS) {
     expect(pause.x + pause.width).toBeLessThanOrEqual(largeur);
     for (const [n, r] of rects.filter(([n]) => n !== "pause")) expect(chevauche(r, { x: pause.x, y: pause.y, w: 44, h: 44 }), `pause / ${n}`).toBe(false);
     await expect(page.locator("#jeu-hud-fantome")).toBeHidden();
-    // La grille est la vedette : au moins 70 % de la plus petite dimension ; en paysage, environ 80 % de la hauteur, centrée, avec la pièce du moment et la suivante dans une colonne qui ne dépasse jamais la grille.
+    // La grille est la vedette : au moins 70 % de la plus petite dimension ; en paysage, environ 80 % de la hauteur, centrée, avec le plateau des trois pièces dans une colonne à sa droite.
     expect(d.grille.w / Math.min(largeur, hauteur)).toBeGreaterThanOrEqual(0.7);
     if (!portrait) {
       expect(d.grille.h / hauteur).toBeGreaterThan(0.74);
-      expect(Math.abs(d.grille.x + d.grille.w / 2 - largeur / 2), "centrée, à quelques pour cent près (lot B7 : la colonne des pièces, à leur échelle fixe, la pousse un peu vers la gauche)").toBeLessThanOrEqual(0.03 * largeur);
-      expect(d.main.x).toBeGreaterThanOrEqual(d.grille.x + d.grille.w);
+      expect(Math.abs(d.grille.x + d.grille.w / 2 - largeur / 2), "centrée, à quelques pour cent près (la colonne des pièces la pousse au besoin vers la gauche)").toBeLessThanOrEqual(0.03 * largeur);
+      expect(d.plateau.x).toBeGreaterThanOrEqual(d.grille.x + d.grille.w);
       expect(d.score.x + d.score.w).toBeLessThanOrEqual(d.grille.x);
-    } else expect(d.grille.w / largeur, "en portrait, la grille garde presque toute la largeur (lot B7 : les deux zones tiennent côte à côte à leur échelle fixe)").toBeGreaterThanOrEqual(0.88);
-    for (const z of [d.main, d.suivante]) {
-      expect(z.w).toBeLessThanOrEqual(d.grille.w);
-      expect(z.h).toBeLessThanOrEqual(d.grille.h);
+    } else expect(d.grille.w / largeur, "en portrait, la grille garde presque toute la largeur (les trois emplacements tiennent côte à côte à leur échelle fixe)").toBeGreaterThanOrEqual(0.88);
+    expect(d.plateau.w * d.plateau.h).toBeLessThan(d.grille.w * d.grille.h);
+    // Les trois emplacements : de la même taille, rangés (côte à côte en portrait, l'un sous l'autre sinon), dans le plateau, sans se toucher ; chacun est une grande cible tactile (au moins 44 px dans les deux sens, même pour un domino).
+    expect(d.emplacements).toHaveLength(3);
+    for (const [k, e] of d.emplacements.entries()) {
+      expect([e.w, e.h], `emplacement ${k}`).toEqual([d.emplacements[0]!.w, d.emplacements[0]!.h]);
+      expect(e.w).toBeGreaterThanOrEqual(44);
+      expect(e.h).toBeGreaterThanOrEqual(44);
+      expect(e.x).toBeGreaterThanOrEqual(d.plateau.x);
+      expect(e.x + e.w).toBeLessThanOrEqual(d.plateau.x + d.plateau.w);
+      expect(e.y + e.h).toBeLessThanOrEqual(d.plateau.y + d.plateau.h);
+      if (k > 0) expect(chevauche(e, d.emplacements[k - 1]!), `emplacements ${k - 1} / ${k}`).toBe(false);
+      if (portrait) expect(e.y).toBe(d.emplacements[0]!.y);
+      else expect(e.x).toBe(d.emplacements[0]!.x);
     }
-    expect(d.main.w * d.main.h + d.suivante.w * d.suivante.h).toBeLessThan(d.grille.w * d.grille.h);
-    // Lot B7 — échelle fixe : la pièce du moment à la taille des cases de la grille, la suivante à 60 % de cette taille.
-    expect(d.coteMain).toBe(d.cote);
-    expect(d.coteSuivante).toBeCloseTo(d.cote * 0.6, 5);
+    // Échelle fixe : les trois pièces au repos ont le même côté de case, une fraction constante (0,46) de celle de la grille, jamais ajustée à leur taille ; saisie, la pièce grossit à la taille des cases.
+    expect(d.coteMain).toBeCloseTo(d.cote * 0.46, 5);
+    const reposes = await page.evaluate(() => [0, 1, 2].map((e) => window.__blocks.repos(e)));
+    for (const r of reposes) expect(r!.cote).toBeCloseTo(d.coteMain, 5);
+    // Plus de zone « Suivante » : aucune pièce suivante n'est dessinée ni exposée.
+    expect(await page.evaluate(() => "suivante" in window.__blocks)).toBe(false);
     // Le HUD est lisible : ce que la scène dessine vraiment (valeurs du HUD au moins 18 px, étiquettes au moins 12 px).
     await page.waitForTimeout(150);
     const polices = await page.evaluate(() => window.__blocks.polices());

@@ -6,7 +6,12 @@ import { appareil, lancer } from "./appareil";
 const COMBO = "/?debug&manuel&tactile=0&scenario=combo";
 const DEMI_TON = 2 ** (1 / 12);
 
-const poser = (page: Page, col: number, ligne: number) => page.evaluate(([c, l]) => window.__jeu.action(`pose:${c}:${l}`), [col, ligne]);
+/** Pose la première pièce restante de la série (l'emplacement le plus à gauche qui n'est pas vide) en (col, ligne). */
+const poser = (page: Page, col: number, ligne: number) =>
+  page.evaluate(([c, l]) => {
+    const e = window.__blocks.pieces().findIndex((p) => p !== null);
+    window.__jeu.action(`pose:${e}:${c}:${l}`);
+  }, [col, ligne]);
 
 test.describe("Blocks : les sensations", () => {
   test("combo : quatre effacements de suite, le combo monte jusqu'à ×4 (HUD, carrés, annonce) et le son monte d'un demi-ton à chaque palier", async ({ browser }) => {
@@ -54,7 +59,7 @@ test.describe("Blocks : les sensations", () => {
   test("effacement : la ligne s'illumine (ses yeux se ferment), puis éclate en particules ; le gain flotte à l'endroit de l'effacement", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=presque-plein");
     await lancer(page);
-    await page.evaluate(() => window.__jeu.action("pose:5:6"));
+    await page.evaluate(() => window.__jeu.action("pose:0:5:6"));
     const tot = await page.evaluate(() => window.__blocks.effets());
     expect(tot.effacees).toBe(16 + 8 - 2); // deux lignes de 8 et une colonne de 8, sans compter deux fois les deux croisements
     expect(tot.gains).toEqual(["+96"]); // le gain total : ce dont le score monte
@@ -72,9 +77,9 @@ test.describe("Blocks : les sensations", () => {
     await lancer(page);
     await poser(page, 6, 4);
     await expect.poll(() => page.evaluate(() => window.__blocks.effets().effacees + window.__blocks.effets().particules)).toBeGreaterThan(0); // des effets sont en cours
-    // Sans attendre : on saisit la pièce du moment à la souris, on la glisse sur la ligne 5 et on la pose.
+    // Sans attendre : on saisit la deuxième pièce de la série à la souris, on la glisse sur la ligne 5 et on la pose.
     const pose = await page.evaluate(() => {
-      const r = window.__blocks.repos()!;
+      const r = window.__blocks.repos(1)!;
       const d = window.__blocks.disposition();
       return { de: { x: r.rect.x + r.cote / 2, y: r.rect.y + r.cote / 2 }, vers: { x: d.grille.x + 6.5 * d.cote, y: d.grille.y + 5.5 * d.cote } };
     });
@@ -90,19 +95,19 @@ test.describe("Blocks : les sensations", () => {
   });
 
   test("les yeux : une paire par pièce posée, qui regardent la pièce qu'on déplace", async ({ browser }) => {
-    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=plateau-vide");
     await lancer(page);
-    await page.evaluate(() => window.__jeu.action("pose:0:0"));
-    await page.evaluate(() => window.__jeu.action("pose:0:3"));
+    await poser(page, 0, 0);
+    await poser(page, 0, 3);
     await page.waitForTimeout(100);
     expect((await page.evaluate(() => window.__blocks.yeux())).paires).toBe(2);
     // Au repos : le regard est droit devant (rien à regarder).
     expect((await page.evaluate(() => window.__blocks.yeux())).regard).toEqual({ x: 0, y: 0 });
-    // On saisit la pièce du moment et on la tient dans le coin bas-droit de la grille : le regard du dernier œil dessiné se tourne vers elle.
+    // On saisit la dernière pièce de la série (la barre de 3) et on la tient en bas à droite, sur une place où elle tient : le regard du dernier œil dessiné se tourne vers elle.
     const r = await page.evaluate(() => {
-      const rp = window.__blocks.repos()!;
+      const rp = window.__blocks.repos(2)!;
       const d = window.__blocks.disposition();
-      return { de: { x: rp.rect.x + rp.cote / 2, y: rp.rect.y + rp.cote / 2 }, vers: { x: d.grille.x + d.grille.w - d.cote, y: d.grille.y + d.grille.h - d.cote } };
+      return { de: { x: rp.rect.x + rp.cote / 2, y: rp.rect.y + rp.cote / 2 }, vers: { x: d.grille.x + 4.5 * d.cote, y: d.grille.y + 5.5 * d.cote } };
     });
     await page.mouse.move(r.de.x, r.de.y);
     await page.mouse.down();
@@ -119,7 +124,7 @@ test.describe("Blocks : les sensations", () => {
   test("plateau vide : l'annonce, le +300 (dans le gain affiché), les sons de l'effacement et du plateau vide", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=plateau-vide");
     await lancer(page);
-    await page.evaluate(() => window.__jeu.action("pose:7:6"));
+    await page.evaluate(() => window.__jeu.action("pose:0:7:6"));
     expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ score: 2 + 40 + 300 });
     expect((await page.evaluate(() => window.__blocks.effets())).gains).toEqual(["+342"]);
     await expect.poll(() => page.evaluate(() => window.__blocks.effets().annonces), { timeout: 2000 }).toEqual(["Plateau vide ! +300"]);
@@ -128,7 +133,7 @@ test.describe("Blocks : les sensations", () => {
     await context.close();
   });
 
-  test("plus de place : « Plus de place ! », le son de la fin, puis l'écran de fin (la pièce qui ne rentre nulle part reste en main)", async ({ browser }) => {
+  test("plus de place : « Plus de place ! », le son de la fin, puis l'écran de fin (les trois pièces, grisées, restent sur le plateau)", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=blocage");
     await lancer(page);
     expect(await page.evaluate(() => window.__blocks.etat().fin)).toBe("bloquee");

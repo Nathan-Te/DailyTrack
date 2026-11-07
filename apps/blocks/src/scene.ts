@@ -1,4 +1,4 @@
-import { actionDe, BONUS_PLATEAU_VIDE, colonneDe, COLONNES, ligneDe, LIGNES, NB_CASES, Partie, PIECES, POSES_SANS_EFFACEMENT_MAX, VARIANTE, caseOccupee, enregistrer, grilleEnTexte, type Contenu, type Piece } from "@cdj/blocks-sim";
+import { actionDe, BONUS_PLATEAU_VIDE, COLONNES, LIGNES, NB_CASES, Partie, PIECES, POSES_SANS_EFFACEMENT_MAX, TAILLE_SERIE, VARIANTE, caseOccupee, enregistrer, grilleEnTexte, type Contenu, type Piece } from "@cdj/blocks-sim";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { coupDuDiamant } from "@cdj/blocks-sim/diamant";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -17,17 +17,18 @@ import { type Evenement, niveauEffets } from "./sonsLogique";
 import { ecrireScore, formaterNombre } from "./textes";
 import { caseDesYeux, morceaux } from "./yeuxBlocks";
 
-// Le rendu et les entrées de « Blocks » (lots B1 et B2) : la grille de 8 × 8, la pièce du moment dans une grande zone de saisie, la pièce suivante petite (non saisissable), en Canvas 2D avec les blocs communs
+// Le rendu et les entrées de « Blocks » (lots B1 et B2, refait au lot B8) : la grille de 8 × 8 et le plateau des TROIS pièces de la série (trois emplacements, à une même échelle fixe ; on saisit n'importe laquelle des pièces restantes, une pièce qui ne rentre
+// nulle part est grisée et ne se saisit pas ; aucune pièce suivante n'est montrée), en Canvas 2D avec les blocs communs
 // (`@cdj/visuels/blocs`, la direction artistique de Tower), le HUD de la maquette A de B0 (plaques du score et du combo ; le fantôme et la pause sont les boutons du kit, `blocks.css`) et les sensations du seed § 7.
-// **De l'affichage seulement** : la partie est `Partie` de `@cdj/blocks-sim` ; une pose est une action `ligne × 8 + colonne`, et cette suite d'actions est la rediffusion. Aucun effet, aucun son, aucun regard ne change un
+// **De l'affichage seulement** : la partie est `Partie` de `@cdj/blocks-sim` ; une pose est une action `emplacement × 64 + ligne × 8 + colonne`, et cette suite d'actions est la rediffusion. Aucun effet, aucun son, aucun regard ne change un
 // octet d'une partie.
 // Le geste (seed § 6, B2) : la pièce saisie grossit à la taille des cases et **reste sous le doigt, au point exact où on l'a touchée** (aucun décalage, souris comme doigt) ; une ombre hachurée est aimantée à la case la plus
 // proche ; les lignes et colonnes qui seraient effacées s'allument ; relâcher hors d'un endroit valide renvoie la pièce. Clavier et manette (M1, M2) : déplacer l'ombre case par case (`gauche` … `bas`), `poser`.
 // Les effets ne bloquent jamais la pose suivante : ils sont de l'affichage pur, animé à l'horloge de l'écran (60 images par seconde), jamais aux pas de la simulation.
 // Lot B3 : les couleurs viennent de la palette du thème du jour (module commun, `couleurs.ts`) et le bot Diamant peut jouer à la place du joueur (`&bot`, essai local). Lot B5 : la mise en page est refaite à l'échelle du PC et du téléphone (`miseEnPage.ts`), les décors des thèmes sont dessinés derrière la grille (`decors/`), le fantôme est retiré (seed § 5). Aucune couleur écrite ici : le thème, ou les jetons de `@cdj/ui`.
 
-/** Les actions de « Blocks » : l'ombre au clavier et à la manette, et `poser` ; `pose:<colonne>:<ligne>` pose directement (tests, outils). */
-export const ACTIONS_SCENE = ["gauche", "droite", "haut", "bas", "poser"] as const;
+/** Les actions de « Blocks » : choisir l'emplacement (`piece1` à `piece3`, ou `pieceAvant` / `pieceApres` : les boutons d'épaule), l'ombre au clavier et à la manette, et `poser` ; `pose:<emplacement>:<colonne>:<ligne>` pose directement (tests, outils). */
+export const ACTIONS_SCENE = ["gauche", "droite", "haut", "bas", "poser", "piece1", "piece2", "piece3", "pieceAvant", "pieceApres"] as const;
 
 /** Combien de ticks (30 Hz) « Plus de place ! » reste affiché avant l'écran de fin (environ 1 s). */
 export const TICKS_PLUS_DE_PLACE = 30;
@@ -36,6 +37,9 @@ const PORTEE_AIMANT = 1;
 /** Le doigt doit avoir bougé de cette fraction de case pour qu'un relâcher hors d'une position valide soit une « pose refusée » (un simple appui n'en est pas une). */
 const SEUIL_GLISSE = 0.4;
 const DUREE_RETOUR = 0.16;
+/** L'arrivée d'une nouvelle série : chaque pièce entre en 0,3 s, la suivante 0,08 s après la précédente. Elle ne bloque rien : on saisit une pièce pendant qu'elle arrive. */
+const DUREE_ARRIVEE = 0.3;
+const DECALAGE_ARRIVEE = 0.08;
 const DUREE_PERTE_COMBO = 0.7;
 /** Le niveau des effets tant que le lecteur du kit n'est pas chargé. */
 const VOLUME_AVANT_LECTEUR = 0.8;
@@ -82,29 +86,31 @@ export interface PorteBlocks {
     portrait: boolean;
     cote: number;
     grille: Rect;
-    main: Rect;
-    suivante: Rect;
-    gabarit: Rect;
+    plateau: Rect;
+    /** Les trois emplacements (page). */
+    emplacements: Rect[];
     score: Rect;
     combo: Rect;
     boutons: Rect;
     coteMain: number;
-    centreMain: { x: number; y: number };
-    coteSuivante: number;
-    centreSuivante: { x: number; y: number };
+    centresMain: { x: number; y: number }[];
   };
-  piece(): string | null;
-  suivante(): string | null;
-  /** Lot B7 — la pièce suivante telle qu'elle est dessinée : son rectangle (page) et le côté de ses cases (le même pour toutes les pièces). */
-  reposSuivante(): { rect: Rect; cote: number } | null;
-  ombre(): { col: number; ligne: number; legale: boolean } | null;
+  /** Les noms des pièces des trois emplacements (`null` : emplacement vide, la pièce est posée). */
+  pieces(): (string | null)[];
+  /** Pour chaque emplacement : la pièce est-elle grisée (elle ne rentre nulle part, on ne la saisit pas) ? */
+  grisees(): boolean[];
+  /** Le rang de la série en cours (0 pour la première). */
+  serie(): number;
+  /** L'emplacement choisi au clavier ou à la manette (celui dont l'ombre est montrée), ou `null` tant qu'on n'a rien touché. */
+  selection(): number | null;
+  ombre(): { emplacement: number; col: number; ligne: number; legale: boolean } | null;
   surlignage(): { lignes: number; colonnes: number } | null;
-  /** La pièce du moment au repos dans la zone de saisie : son rectangle (page) et le côté de ses cases. */
-  repos(): { rect: Rect; cote: number } | null;
-  /** La pièce saisie : le point touché, son rectangle (page), le côté de ses cases et la case touchée (`u`, `v`, en cases depuis son coin haut-gauche). */
-  saisie(): { doigt: { x: number; y: number }; piece: Rect; cote: number; u: number; v: number } | null;
+  /** Une pièce au repos dans son emplacement : son rectangle (page) et le côté de ses cases (le même pour toutes). `null` si l'emplacement est vide. */
+  repos(emplacement: number): { rect: Rect; cote: number } | null;
+  /** La pièce saisie : l'emplacement d'où elle vient, le point touché, son rectangle (page), le côté de ses cases et la case touchée (`u`, `v`, en cases depuis son coin haut-gauche). */
+  saisie(): { emplacement: number; doigt: { x: number; y: number }; piece: Rect; cote: number; u: number; v: number } | null;
   grille(): string[];
-  etat(): { score: number; combo: number; comboMax: number; poses: number; sansEffacement: number; fin: string | null };
+  etat(): { score: number; combo: number; comboMax: number; poses: number; serie: number; sansEffacement: number; fin: string | null };
   /** Ce que le HUD dessine : le score écrit, le combo écrit (ou `null`), les carrés pleins (poses sans effacement encore permises), la couleur de la plaque du combo. */
   hud(): { score: string; combo: string | null; carres: number; moutarde: boolean };
   /** Lot B5 — les plus petites polices (px CSS) dessinées à la dernière image : les valeurs du HUD (jamais sous 18) et les étiquettes (plaques et zones, jamais sous 12). */
@@ -119,6 +125,8 @@ export interface PorteBlocks {
   sons(): SonJoue[];
   /** Lot B6 — la couche de la musique (arpège ou nappe) est-elle demandée ? Vrai du combo ×3 à la perte du combo ou à la fin de la partie. */
   couche(): boolean;
+  /** Lot B8 — l'arrivée d'une série : 0 quand elle commence, 1 une fois les trois pièces en place (toujours 1 avec « mouvements réduits »). */
+  arrivee(): number;
 }
 
 /** Ce que la scène reçoit en plus du kit : le bot Diamant qui joue à la place du joueur (`&bot`, essai local, jamais classé) à `vitesse` poses par seconde. */
@@ -194,7 +202,9 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   let bosseScore = -1;
   let tFin = partie.finie ? 0 : -1; // les ticks de la scène (30 Hz) : seulement la durée de « Plus de place ! »
   let t = 0;
-  let retour: { depart: { x: number; y: number }; cote: number; piece: Piece; t0: number } | null = null;
+  let retour: { depart: { x: number; y: number }; cote: number; piece: Piece; emplacement: number; t0: number } | null = null;
+  /** L'instant (horloge d'affichage) où la série en cours est arrivée : les pièces entrent l'une après l'autre (`DUREE_ARRIVEE`). */
+  let debutSerie = 0;
   let dernierRegard: { x: number; y: number } | null = null;
   let nbPaires = 0;
 
@@ -227,67 +237,89 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   observateur.observe(hote);
   redimensionner();
 
-  // --- Le glisser-déposer, le clavier ---
+  // --- Le glisser-déposer, le clavier et la manette ---
   // `x`, `y` : le point touché, en coordonnées de la mise en page ; `u`, `v` : la case touchée, en cases depuis le coin haut-gauche de la boîte de la pièce (elle reste sous le doigt pendant tout le glisser).
-  let saisie: { x: number; y: number; souris: boolean; depuis: number; u: number; v: number; x0: number; y0: number; bouge: boolean } | null = null;
+  // `emplacement` : d'où vient la pièce saisie (n'importe laquelle des pièces restantes de la série, sauf une grisée).
+  let saisie: { emplacement: number; x: number; y: number; souris: boolean; depuis: number; u: number; v: number; x0: number; y0: number; bouge: boolean } | null = null;
   let clavier = false;
+  /** L'emplacement choisi au clavier ou à la manette (touches 1 à 3, boutons d'épaule) : c'est sa pièce que l'ombre déplace. */
+  let selection = 0;
   const curseur = { col: 0, ligne: 0 };
-  const premiereLegale = (): void => {
-    const p = partie.piece;
-    if (!p) return;
-    for (let l = 0; l + p.hauteur <= LIGNES; l++) for (let c = 0; c + p.largeur <= COLONNES; c++) if (partie.legale(c, l)) return void Object.assign(curseur, { col: c, ligne: l });
+  /** L'emplacement saisissable (une pièce, non grisée) à partir de `depart`, en avançant de `pas` ; -1 s'il n'y en a aucun. */
+  const emplacementSaisissable = (depart: number, pas = 1): number => {
+    for (let i = 0; i < TAILLE_SERIE; i++) {
+      const e = (((depart + i * pas) % TAILLE_SERIE) + TAILLE_SERIE) % TAILLE_SERIE;
+      if (partie.piece(e) && !partie.grisee(e)) return e;
+    }
+    return -1;
   };
-  premiereLegale();
+  const premiereLegale = (): void => {
+    const p = partie.piece(selection);
+    if (!p) return;
+    for (let l = 0; l + p.hauteur <= LIGNES; l++) for (let c = 0; c + p.largeur <= COLONNES; c++) if (partie.legale(selection, c, l)) return void Object.assign(curseur, { col: c, ligne: l });
+  };
   const bornes = (): void => {
-    const p = partie.piece;
+    const p = partie.piece(selection);
     if (!p) return;
     curseur.col = Math.max(0, Math.min(COLONNES - p.largeur, curseur.col));
     curseur.ligne = Math.max(0, Math.min(LIGNES - p.hauteur, curseur.ligne));
   };
+  /** Choisit un emplacement (au clavier) : le curseur reste où il est tant que la pièce y tient, sinon il va à sa première position légale. */
+  const choisir = (e: number): void => {
+    selection = e;
+    bornes();
+    if (!partie.legale(selection, curseur.col, curseur.ligne)) premiereLegale();
+  };
+  /** Après une pose : si l'emplacement choisi est vide ou grisé, on passe au suivant qui se saisit. */
+  const normaliserSelection = (): void => {
+    if (partie.piece(selection) && !partie.grisee(selection)) return;
+    const e = emplacementSaisissable(selection + 1);
+    if (e >= 0) choisir(e);
+  };
+  {
+    const e = emplacementSaisissable(0);
+    if (e >= 0) choisir(e);
+  }
 
   /** Le côté d'une case de la pièce saisie : de sa taille au repos à celle des cases de la grille, en un instant (tout de suite avec « mouvements réduits »). */
-  const coteSaisie = (p: Piece): number => {
+  const coteSaisie = (): number => {
     const repos = mep.coteMain;
     const age = o.reduit || !saisie ? 1 : Math.min(1, (performance.now() - saisie.depuis) / 90);
     return repos + (mep.cote - repos) * age;
   };
   /** Le coin haut-gauche de la pièce saisie, en pixels de la mise en page : la case touchée est sous le doigt. */
-  const coinSaisi = (p: Piece, cote = coteSaisie(p)): { x: number; y: number } | null => (saisie ? { x: saisie.x - saisie.u * cote, y: saisie.y - saisie.v * cote } : null);
+  const coinSaisi = (cote = coteSaisie()): { x: number; y: number } | null => (saisie ? { x: saisie.x - saisie.u * cote, y: saisie.y - saisie.v * cote } : null);
   /** Le coin haut-gauche de la pièce saisie, en cases de la grille (fractionnaire), à la taille finale des cases. */
   const positionSaisie = (): { cx: number; cy: number } | null => {
-    const p = partie.piece;
-    if (!saisie || !p) return null;
-    const coin = coinSaisi(p, mep.cote)!;
+    if (!saisie) return null;
+    const coin = coinSaisi(mep.cote)!;
     return { cx: (coin.x - mep.grille.x) / mep.cote, cy: (coin.y - mep.grille.y) / mep.cote };
   };
   /** L'ombre aimantée : la position légale la plus proche, à moins d'une case. */
   const aimante = (): { col: number; ligne: number } | null => {
     const pos = positionSaisie();
-    if (!pos) return null;
+    if (!pos || !saisie) return null;
     let meilleur: { col: number; ligne: number } | null = null;
     let dist = Infinity;
     for (const col of [Math.floor(pos.cx), Math.ceil(pos.cx)]) {
       for (const ligne of [Math.floor(pos.cy), Math.ceil(pos.cy)]) {
-        if (!partie.legale(col, ligne)) continue;
+        if (!partie.legale(saisie.emplacement, col, ligne)) continue;
         const d = Math.hypot(col - pos.cx, ligne - pos.cy);
         if (d <= PORTEE_AIMANT && d < dist) {
           dist = d;
-          meilleur = { col, ligne };
+          meilleur = { col: col + 0, ligne: ligne + 0 }; // « + 0 » : Math.ceil(−0,2) vaut −0
         }
       }
     }
     return meilleur;
   };
 
-  /** Le centre d'une case de la grille, en pixels de la mise en page. */
-  const centreDeCase = (col: number, ligne: number): { x: number; y: number } => ({ x: mep.grille.x + (col + 0.5) * mep.cote, y: mep.grille.y + (ligne + 0.5) * mep.cote });
-
-  function poser(col: number, ligne: number): boolean {
-    const p = partie.piece;
+  function poser(emplacement: number, col: number, ligne: number): boolean {
+    const p = partie.piece(emplacement);
     const avant = { combo: partie.combo };
-    const pose = partie.poser(col, ligne);
+    const pose = partie.poser(emplacement, col, ligne);
     if (!p || !pose) return false;
-    actions.push(actionDe(col, ligne));
+    actions.push(actionDe(emplacement, col, ligne));
     const index = actions.length; // l'index de la pose + 1
     familles[index - 1] = p.famille;
     for (const c of casesDe(p)) poseDe[(ligne + c.ligne) * COLONNES + col + c.col] = index;
@@ -334,11 +366,14 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     }
     reconstruire();
     bosseScore = maintenant;
+    // La troisième pièce posée : la série suivante arrive (son entrée ne bloque rien).
+    if (pose.serieNouvelle && !partie.finie) debutSerie = maintenant;
     couche.maj(partie.combo, partie.finie);
     if (partie.finie) {
       tFin = t;
       jouerSon({ son: "fin" }, pose.n > 0 ? 0.45 : 0.1);
     }
+    normaliserSelection();
     bornes();
     return true;
   }
@@ -347,24 +382,32 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     const r = canvas.getBoundingClientRect();
     return { x: e.clientX - r.left - decalageBord.x, y: e.clientY - r.top - decalageBord.y };
   };
-  /** Où la pièce du moment est posée au repos dans la zone de saisie : son coin haut-gauche et le côté de ses cases. */
-  const reposDe = (p: Piece): { x: number; y: number; cote: number } => {
+  /** Où une pièce est posée au repos dans son emplacement : son coin haut-gauche et le côté de ses cases (le même pour toutes les pièces). */
+  const reposDe = (emplacement: number, p: Piece): { x: number; y: number; cote: number } => {
     const cote = mep.coteMain;
-    return { x: mep.centreMain.x - (p.largeur * cote) / 2, y: mep.centreMain.y - (p.hauteur * cote) / 2, cote };
+    const c = mep.centresMain[emplacement]!;
+    return { x: c.x - (p.largeur * cote) / 2, y: c.y - (p.hauteur * cote) / 2, cote };
   };
   canvas.addEventListener("pointerdown", (e) => {
     geste();
-    const p = partie.piece;
-    if (!p || saisie) return;
+    if (saisie) return;
     const { x, y } = point(e);
-    if (!dans(mep.main, x, y)) return;
+    const k = mep.emplacements.findIndex((r) => dans(r, x, y));
+    const p = k >= 0 ? partie.piece(k) : null;
+    if (k < 0 || !p) return; // hors des emplacements, ou un emplacement vide (sa pièce est posée)
+    if (partie.grisee(k)) {
+      // Une pièce grisée ne se saisit pas : elle ne rentre nulle part.
+      jouerSon({ son: "refus" });
+      return;
+    }
     e.preventDefault();
     canvas.setPointerCapture?.(e.pointerId);
-    // La case touchée : le point exact où on a saisi la pièce, ramené dans sa boîte si on a touché la zone à côté d'elle. Elle reste sous le doigt pendant tout le glisser.
-    const r = reposDe(p);
+    // La case touchée : le point exact où on a saisi la pièce, ramené dans sa boîte si on a touché son emplacement à côté d'elle. Elle reste sous le doigt pendant tout le glisser.
+    const r = reposDe(k, p);
     const u = Math.max(0, Math.min(p.largeur, (x - r.x) / r.cote));
     const v = Math.max(0, Math.min(p.hauteur, (y - r.y) / r.cote));
-    saisie = { x, y, souris: e.pointerType === "mouse", depuis: performance.now(), u, v, x0: x, y0: y, bouge: false };
+    saisie = { emplacement: k, x, y, souris: e.pointerType === "mouse", depuis: performance.now(), u, v, x0: x, y0: y, bouge: false };
+    selection = k;
     clavier = false;
     retour = null;
     jouerSon({ son: "prise" });
@@ -378,19 +421,19 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   });
   const relacher = (pose: boolean): void => {
     if (!saisie) return;
-    const p = partie.piece;
-    const cible = pose ? aimante() : null;
     const s = saisie;
+    const p = partie.piece(s.emplacement);
+    const cible = pose ? aimante() : null;
     saisie = null;
     if (cible) {
-      poser(cible.col, cible.ligne);
+      poser(s.emplacement, cible.col, cible.ligne);
       curseur.col = cible.col;
       curseur.ligne = cible.ligne;
       bornes();
     } else if (p && s.bouge) {
       // La pièce retourne à sa place, sans pénalité : un petit vol de retour et deux notes qui descendent.
       const cote = Math.max(1, mep.cote);
-      retour = { depart: { x: s.x - s.u * cote, y: s.y - s.v * cote }, cote, piece: p, t0: maintenant };
+      retour = { depart: { x: s.x - s.u * cote, y: s.y - s.v * cote }, cote, piece: p, emplacement: s.emplacement, t0: maintenant };
       jouerSon({ son: "refus" });
     }
   };
@@ -439,10 +482,10 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     dernierRegard = { x: x.regardX, y: x.regardY };
     return disposerYeux(centre.x, centre.y, 1, x, maintenant, col * 1.3 + ligne * 2.1);
   }
-  /** Une pièce entière (en main, saisie ou à l'ombre) : ses couches et ses yeux, posés au centre de sa plus grande boîte. */
-  function pieceEn(p: Piece, x: number, y: number, cote: number, opts: { yeux?: boolean; regard?: { x: number; y: number } | null; niveau?: Niveau } = {}): void {
+  /** Une pièce entière (dans son emplacement ou saisie) : ses couches et ses yeux, posés au centre de sa plus grande boîte. `grise` : la pièce ne rentre nulle part (lot B8) — la couleur des cases de départ, des hachures dessus, les yeux inquiets ; elle ne se saisit pas. */
+  function pieceEn(p: Piece, x: number, y: number, cote: number, opts: { yeux?: boolean; regard?: { x: number; y: number } | null; niveau?: Niveau; grise?: boolean } = {}): void {
     const boites = boitesDePiece(p);
-    const couches = decrirePiece(boites, { couleur: couleurDeFamille(p.famille), encre: ENCRE });
+    const couches = decrirePiece(boites, { couleur: opts.grise ? COULEUR_DEPART : couleurDeFamille(p.famille), encre: ENCRE });
     let yeux: PoseOeil[] | undefined;
     if (opts.yeux) {
       const c = centreDesYeux(boites);
@@ -451,15 +494,25 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       yeux = disposerYeux(c.x, c.y, 1, expressionDe({ niveau, genre: "normal", regard, clignement: clignement(-1 - p.id, niveau), t: maintenant }), maintenant, p.id * 1.7);
     }
     dessinerPiece(g, { x, y, pxParMetre: cote }, couches, yeux);
+    if (opts.grise && ombreLegale) {
+      // Le grisé se lit à la forme, pas seulement à la couleur : des hachures sur chaque case.
+      const x0 = x - (p.largeur * cote) / 2;
+      const y0 = y - (p.hauteur * cote) / 2;
+      g.save();
+      g.globalAlpha = 0.55;
+      g.fillStyle = ombreLegale;
+      for (const c of casesDe(p)) g.fillRect(x0 + c.col * cote + 1, y0 + c.ligne * cote + 1, cote - 2, cote - 2);
+      g.restore();
+    }
   }
   /** L'ombre à montrer : celle du glisser-déposer (aimantée, toujours légale) ou celle du clavier (légale ou non). */
-  function ombreCourante(): { col: number; ligne: number; legale: boolean } | null {
-    if (!partie.piece) return null;
+  function ombreCourante(): { emplacement: number; col: number; ligne: number; legale: boolean } | null {
+    if (partie.finie) return null;
     if (saisie) {
       const a = aimante();
-      return a ? { ...a, legale: true } : null;
+      return a ? { emplacement: saisie.emplacement, ...a, legale: true } : null;
     }
-    return clavier ? { col: curseur.col, ligne: curseur.ligne, legale: partie.legale(curseur.col, curseur.ligne) } : null;
+    return clavier && partie.piece(selection) ? { emplacement: selection, col: curseur.col, ligne: curseur.ligne, legale: partie.legale(selection, curseur.col, curseur.ligne) } : null;
   }
 
   /** Une plaque de la charte (bordure et ombre nette, à l'échelle de la plaque) : le score et le combo. Étiquette jamais sous 12 px, valeur jamais sous 18 px. */
@@ -559,37 +612,63 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     (g as unknown as { letterSpacing: string }).letterSpacing = "0px";
     g.restore();
   }
-  /** Lot B7 — le gabarit de 5 × 5 cases derrière la pièce suivante, à la même échelle qu'elle : très discret (pointillés fins), il rend la taille comparable d'une pièce à l'autre. */
-  function gabarit(): void {
-    const r = mep.gabarit;
-    const n = r.w / mep.coteSuivante;
-    g.save();
-    g.globalAlpha = 0.3;
-    g.strokeStyle = jeton("encre-douce");
-    g.lineWidth = 1;
-    g.setLineDash([2, 3]);
-    g.beginPath();
-    for (let i = 0; i <= n; i++) {
-      const d = i * mep.coteSuivante;
-      g.moveTo(Math.round(r.x + d) + 0.5, r.y);
-      g.lineTo(Math.round(r.x + d) + 0.5, r.y + r.h);
-      g.moveTo(r.x, Math.round(r.y + d) + 0.5);
-      g.lineTo(r.x + r.w, Math.round(r.y + d) + 0.5);
-    }
-    g.stroke();
-    g.restore();
-  }
-  /** Lot B7 — le contour de chaque case de la pièce suivante (un trait fin sombre, posé sur le dessin du module commun) : on compte les cases d'un coup d'œil. */
-  function contourDesCases(p: Piece): void {
-    const cote = mep.coteSuivante;
-    const x0 = mep.centreSuivante.x - (p.largeur * cote) / 2;
-    const y0 = mep.centreSuivante.y - (p.hauteur * cote) / 2;
-    g.save();
-    g.globalAlpha = 0.55;
-    g.strokeStyle = ENCRE;
-    g.lineWidth = 1;
-    for (const c of casesDe(p)) g.strokeRect(x0 + c.col * cote + 0.5, y0 + c.ligne * cote + 0.5, cote - 1, cote - 1);
-    g.restore();
+  /** Une pièce entre dans son emplacement (lot B8) : 0 → 1 en `DUREE_ARRIVEE`, la suivante `DECALAGE_ARRIVEE` après la précédente ; toujours 1 avec « mouvements réduits ». */
+  const arriveeDe = (k: number): number => (o.reduit ? 1 : Math.max(0, Math.min(1, (maintenant - debutSerie - k * DECALAGE_ARRIVEE) / DUREE_ARRIVEE)));
+  /** Le plateau des trois pièces : la carte, les trois emplacements (cibles larges), et dans chacun sa pièce — au repos, grisée, saisie (sa place reste en pointillés), qui revient, ou qui arrive. */
+  function plateau(): void {
+    carte(mep.plateau, couleurs.zone, o.t("hud.pieces"), true);
+    const fini = partie.finie;
+    mep.emplacements.forEach((r, k) => {
+      const p = partie.dernieresPieces[k] ?? null;
+      const grise = p !== null && (fini || partie.grisee(k));
+      g.save();
+      g.fillStyle = couleurs.zoneSuivante;
+      g.fillRect(r.x, r.y, r.w, r.h);
+      g.strokeStyle = jeton("encre-douce");
+      g.globalAlpha = p === null ? 0.35 : 0.7;
+      g.lineWidth = 1.5;
+      g.setLineDash([5, 4]);
+      g.strokeRect(r.x + 0.75, r.y + 0.75, r.w - 1.5, r.h - 1.5);
+      g.restore();
+      // L'emplacement choisi au clavier ou à la manette : un anneau, plus épais que le pointillé.
+      if (clavier && !saisie && !fini && k === selection && p !== null && !grise) {
+        g.save();
+        g.strokeStyle = couleurs.surligne;
+        g.lineWidth = 4;
+        g.strokeRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
+        g.strokeStyle = couleurs.encre;
+        g.lineWidth = 1.5;
+        g.strokeRect(r.x - 0.5, r.y - 0.5, r.w + 1, r.h + 1);
+        g.restore();
+      }
+      if (p === null) return;
+      const centre = mep.centresMain[k]!;
+      const repos = reposDe(k, p);
+      if (saisie && saisie.emplacement === k) {
+        // Sa place reste en pointillés dans son emplacement pendant qu'on la tient.
+        g.save();
+        g.strokeStyle = couleurs.texteDouce === couleurs.texte ? couleurs.encre : jeton("encre-douce");
+        g.lineWidth = 2;
+        g.setLineDash([4, 3]);
+        for (const c of casesDe(p)) g.strokeRect(repos.x + c.col * repos.cote + 2, repos.y + c.ligne * repos.cote + 2, repos.cote - 4, repos.cote - 4);
+        g.restore();
+      } else if (retour && retour.emplacement === k && !o.reduit && maintenant - retour.t0 < DUREE_RETOUR) {
+        // Elle est en plein vol de retour : on la dessine plus tard, par-dessus la grille (`volDeRetour`).
+      } else {
+        // L'arrivée : la pièce monte et grossit en place (elle se saisit déjà, à son emplacement fixe).
+        const a = arriveeDe(k);
+        const e = 1 - (1 - a) * (1 - a) * (1 - a);
+        g.save();
+        g.globalAlpha = a < 1 ? Math.min(1, e * 1.4) : 1;
+        if (a < 1) {
+          g.translate(centre.x, centre.y + (1 - e) * mep.cote * 0.9);
+          g.scale(0.55 + 0.45 * e, 0.55 + 0.45 * e);
+          g.translate(-centre.x, -centre.y);
+        }
+        pieceEn(p, centre.x, centre.y, repos.cote, grise ? { yeux: true, niveau: fini ? 3 : 2, grise: true } : { yeux: true });
+        g.restore();
+      }
+    });
   }
   /** Du texte sur plusieurs lignes, centré dans un rectangle (la ligne d'aide d'avant la première pose). */
   function texteEnLignes(txt: string, r: Rect, taille: number): void {
@@ -644,10 +723,9 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     g.save();
     g.translate(decalageBord.x, decalageBord.y);
     const { grille, cote } = mep;
-    const p = partie.piece;
-    const enMain = p ?? (partie.finie ? PIECES[contenu.suite[partie.rang]!]! : null); // à la fin, la pièce qui ne rentre nulle part reste en main (elle panique)
     const ombre = ombreCourante();
-    const apercu = p && ombre?.legale ? partie.apercu(ombre.col, ombre.ligne) : null;
+    const p = ombre ? partie.piece(ombre.emplacement) : null; // la pièce que l'ombre ou la main déplace
+    const apercu = p && ombre?.legale ? partie.apercu(ombre.emplacement, ombre.col, ombre.ligne) : null;
 
     // Le HUD : les plaques du score et du combo (la maquette A).
     const sansEff = Math.min(partie.sansEffacement, POSES_SANS_EFFACEMENT_MAX - 1);
@@ -681,9 +759,8 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       texteEnLignes(o.t(o.tactile ? "hud.aide.glisser" : "hud.aide.bureau"), mep.aide, mep.portrait ? (mep.aide.h >= 40 ? 14 : 12) : Math.max(13, Math.min(24, Math.round(mep.cote * 0.2))));
     }
 
-    // Les deux zones : « Ta pièce » (saisissable) et « Suivante » (pour information : pointillés, sans ombre).
-    carte(mep.main, couleurs.zone, o.t("hud.piece"), true);
-    carte(mep.suivante, couleurs.zoneSuivante, o.t("hud.suivante"), false);
+    // Le plateau des trois pièces (lot B8) : trois emplacements, chacun une cible large ; aucune pièce suivante n'est montrée.
+    plateau();
 
     // La grille : les cases vides ; celles que le survol ferait effacer s'éclaircissent.
     g.fillStyle = couleurs.fond;
@@ -788,37 +865,18 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       g.restore();
     }
 
-    // La pièce suivante (petite, non saisissable) et la pièce du moment.
-    // Lot B7 — échelle fixe : le gabarit de 5 × 5 cases, puis la pièce à 60 % de la taille des cases (la même pour les 40 pièces), centrée dans le gabarit, chaque case avec son contour.
-    gabarit();
-    const suivante = partie.suivante;
-    if (suivante) {
-      pieceEn(suivante, mep.centreSuivante.x, mep.centreSuivante.y, mep.coteSuivante);
-      contourDesCases(suivante);
-    }
-    if (enMain) {
-      const r = reposDe(enMain);
-      if (saisie && p) {
-        // Sa place reste en pointillés dans la zone de saisie pendant qu'on la tient.
-        g.save();
-        g.strokeStyle = couleurs.texteDouce === couleurs.texte ? couleurs.encre : jeton("encre-douce");
-        g.lineWidth = 2;
-        g.setLineDash([4, 3]);
-        for (const c of casesDe(enMain)) g.strokeRect(r.x + c.col * r.cote + 2, r.y + c.ligne * r.cote + 2, r.cote - 4, r.cote - 4);
-        g.restore();
-      } else if (retour && !o.reduit && maintenant - retour.t0 < DUREE_RETOUR) {
-        const k = (maintenant - retour.t0) / DUREE_RETOUR;
-        const e = 1 - (1 - k) * (1 - k);
-        const cote2 = retour.cote + (r.cote - retour.cote) * e;
-        pieceEn(enMain, retour.depart.x + (r.x - retour.depart.x) * e + (enMain.largeur * cote2) / 2, retour.depart.y + (r.y - retour.depart.y) * e + (enMain.hauteur * cote2) / 2, cote2, { yeux: true });
-      } else {
-        pieceEn(enMain, mep.centreMain.x, mep.centreMain.y, r.cote, { yeux: true, niveau: partie.finie ? 3 : 0 });
-      }
+    // La pièce qui revient à son emplacement (relâchée hors d'un endroit valide) : un petit vol, par-dessus la grille.
+    if (retour && !o.reduit && maintenant - retour.t0 < DUREE_RETOUR && partie.piece(retour.emplacement) === retour.piece) {
+      const repos = reposDe(retour.emplacement, retour.piece);
+      const q = (maintenant - retour.t0) / DUREE_RETOUR;
+      const e = 1 - (1 - q) * (1 - q);
+      const cote2 = retour.cote + (repos.cote - retour.cote) * e;
+      pieceEn(retour.piece, retour.depart.x + (repos.x - retour.depart.x) * e + (retour.piece.largeur * cote2) / 2, retour.depart.y + (repos.y - retour.depart.y) * e + (retour.piece.hauteur * cote2) / 2, cote2, { yeux: true });
     }
     // La pièce saisie : à la taille des cases, SOUS le doigt, au point exact où on l'a touchée ; ses yeux regardent l'ombre.
     if (p && saisie) {
-      const cotePiece = coteSaisie(p);
-      const coin = coinSaisi(p, cotePiece)!;
+      const cotePiece = coteSaisie();
+      const coin = coinSaisi(cotePiece)!;
       const regard = ombre ? { x: ombre.col + p.largeur / 2, y: ombre.ligne + p.hauteur / 2 } : null;
       const centre = { x: coin.x + (p.largeur * cotePiece) / 2, y: coin.y + (p.hauteur * cotePiece) / 2 };
       const versOmbre = regard ? { x: regard.x - (centre.x - grille.x) / cote, y: -(regard.y - (centre.y - grille.y) / cote) } : null;
@@ -865,9 +923,9 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   // `?scenario=partage` (lot B4) : les poses du résultat d'exemple, appliquées d'emblée et sans effets (l'écran de fin s'ouvre dessus) ; la partie est alors donnée pour finie.
   const exempleFin = !!extra.exemple;
   for (const a of extra.exemple ?? []) {
-    const p = partie.piece;
-    const pose = p ? partie.poser(colonneDe(a), ligneDe(a)) : null;
-    if (!p || !pose) break;
+    const pose = partie.jouerAction(a);
+    if (!pose) break;
+    const p = pose.piece;
     actions.push(a);
     familles[actions.length - 1] = p.famille;
     for (const c of casesDe(p)) poseDe[(pose.ligne + c.ligne) * COLONNES + pose.col + c.col] = actions.length;
@@ -887,36 +945,33 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     };
     const porte: PorteBlocks = {
       disposition() {
-        return { portrait: mep.portrait, cote: mep.cote, grille: page(mep.grille), main: page(mep.main), suivante: page(mep.suivante), gabarit: page(mep.gabarit), score: page(mep.score), combo: page(mep.combo), boutons: page(mep.boutons), coteMain: mep.coteMain, centreMain: pt(mep.centreMain.x, mep.centreMain.y), coteSuivante: mep.coteSuivante, centreSuivante: pt(mep.centreSuivante.x, mep.centreSuivante.y) };
+        return { portrait: mep.portrait, cote: mep.cote, grille: page(mep.grille), plateau: page(mep.plateau), emplacements: mep.emplacements.map(page), score: page(mep.score), combo: page(mep.combo), boutons: page(mep.boutons), coteMain: mep.coteMain, centresMain: mep.centresMain.map((c) => pt(c.x, c.y)) };
       },
-      piece: () => partie.piece?.nom ?? null,
-      suivante: () => partie.suivante?.nom ?? null,
-      reposSuivante() {
-        const p = partie.suivante;
-        if (!p) return null;
-        const cote = mep.coteSuivante;
-        return { rect: page({ x: mep.centreSuivante.x - (p.largeur * cote) / 2, y: mep.centreSuivante.y - (p.hauteur * cote) / 2, w: p.largeur * cote, h: p.hauteur * cote }), cote };
-      },
+      pieces: () => partie.dernieresPieces.map((p) => p?.nom ?? null),
+      grisees: () => [0, 1, 2].map((e) => partie.grisee(e)),
+      serie: () => partie.serie,
+      selection: () => (clavier ? selection : null),
       ombre: () => ombreCourante(),
       surlignage: () => {
         const ombre = ombreCourante();
-        return ombre?.legale ? partie.apercu(ombre.col, ombre.ligne) : null;
+        return ombre?.legale ? partie.apercu(ombre.emplacement, ombre.col, ombre.ligne) : null;
       },
-      repos() {
-        const p = partie.piece;
+      repos(emplacement) {
+        const p = partie.piece(emplacement);
         if (!p) return null;
-        const r = reposDe(p);
+        const r = reposDe(emplacement, p);
         return { rect: page({ x: r.x, y: r.y, w: p.largeur * r.cote, h: p.hauteur * r.cote }), cote: r.cote };
       },
       saisie() {
-        const p = partie.piece;
-        if (!saisie || !p) return null;
-        const cotePiece = coteSaisie(p);
-        const coin = coinSaisi(p, cotePiece)!;
-        return { doigt: pt(saisie.x, saisie.y), piece: page({ x: coin.x, y: coin.y, w: p.largeur * cotePiece, h: p.hauteur * cotePiece }), cote: cotePiece, u: saisie.u, v: saisie.v };
+        if (!saisie) return null;
+        const p = partie.piece(saisie.emplacement);
+        if (!p) return null;
+        const cotePiece = coteSaisie();
+        const coin = coinSaisi(cotePiece)!;
+        return { emplacement: saisie.emplacement, doigt: pt(saisie.x, saisie.y), piece: page({ x: coin.x, y: coin.y, w: p.largeur * cotePiece, h: p.hauteur * cotePiece }), cote: cotePiece, u: saisie.u, v: saisie.v };
       },
       grille: () => grilleEnTexte(partie.grille),
-      etat: () => ({ score: partie.score, combo: partie.combo, comboMax: partie.comboMax, poses: partie.poses, sansEffacement: partie.sansEffacement, fin: partie.fin }),
+      etat: () => ({ score: partie.score, combo: partie.combo, comboMax: partie.comboMax, poses: partie.poses, serie: partie.serie, sansEffacement: partie.sansEffacement, fin: partie.fin }),
       hud: () => ({ score: ecrireNombre(partie.score), combo: partie.combo > 0 ? `×${partie.combo}` : null, carres: partie.combo > 0 ? POSES_SANS_EFFACEMENT_MAX - 1 - Math.min(partie.sansEffacement, POSES_SANS_EFFACEMENT_MAX - 1) : 0, moutarde: partie.combo >= 2 }),
       polices: () => ({ ...policesVues }),
       decor: () => decor !== null,
@@ -930,6 +985,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       yeux: () => ({ paires: nbPaires, regard: dernierRegard }),
       sons: () => [...sons.joues],
       couche: () => couche.actif(),
+      arrivee: () => (o.reduit ? 1 : Math.max(0, Math.min(1, (maintenant - debutSerie) / (DUREE_ARRIVEE + 2 * DECALAGE_ARRIVEE)))),
     };
     (window as unknown as { __blocks?: PorteBlocks }).__blocks = porte;
   }
@@ -940,7 +996,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
       // Le bot Diamant (`&bot`) : une pose toutes les `cadence` ticks, tant qu'on ne tient pas une pièce. Les poses passent par `poser`, comme celles d'un joueur : mêmes effets, mêmes sons, même rediffusion.
       if (bot && !partie.finie && !saisie && t % cadence === 0) {
         const coup = coupDuDiamant(partie);
-        if (coup) poser(coup.col, coup.ligne);
+        if (coup) poser(coup.emplacement, coup.col, coup.ligne);
       }
     },
     // La partie est finie pour le kit une seconde après la dernière pose possible : « Plus de place ! » reste à l'écran.
@@ -949,16 +1005,33 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     finEnCours: () => partie.finie && tFin >= 0,
     action(id) {
       if (id.startsWith("pose:")) {
-        const [c, l] = id.slice(5).split(":").map(Number);
-        poser(c!, l!);
+        const [e, c, l] = id.slice(5).split(":").map(Number);
+        poser(e!, c!, l!);
         return;
       }
-      const p = partie.piece;
-      if (!p) return;
+      if (partie.finie) return;
       geste();
+      // Choisir l'emplacement : les touches 1 à 3, ou les boutons d'épaule (de pièce en pièce, en sautant les emplacements vides et les pièces grisées).
+      if (id === "piece1" || id === "piece2" || id === "piece3") {
+        const e = Number(id.slice(5)) - 1;
+        if (partie.piece(e) && !partie.grisee(e)) {
+          clavier = true;
+          choisir(e);
+        }
+        return;
+      }
+      if (id === "pieceAvant" || id === "pieceApres") {
+        const pas = id === "pieceApres" ? 1 : -1;
+        const e = emplacementSaisissable(selection + pas, pas);
+        clavier = true;
+        if (e >= 0) choisir(e);
+        return;
+      }
+      if (!partie.piece(selection) || partie.grisee(selection)) normaliserSelection();
+      if (!partie.piece(selection) || partie.grisee(selection)) return;
       if (id === "poser") {
         clavier = true;
-        poser(curseur.col, curseur.ligne);
+        poser(selection, curseur.col, curseur.ligne);
         return;
       }
       clavier = true;

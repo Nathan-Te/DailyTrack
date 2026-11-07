@@ -2,29 +2,34 @@ import { writeFileSync } from "node:fs";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { BLOCKS_BOT_VERSION, BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, jouer } from "../src/index";
 import { jouerDiamant, seuilsDe } from "../src/diamant";
+import { jouerFaible } from "../src/faible";
 import { jouerGlouton } from "../src/glouton";
 
-// Le golden de Blocks : `npm run golden:blocks -w @cdj/blocks-sim`. Dix jours (l'empreinte de leur suite et les seuils des médailles que le bot Diamant leur donne) et sept rediffusions de référence : le glouton sur deux jours et sur le scénario
-// « presque-plein », le scénario « blocage » (fin immédiate, aucune pose), et **le bot Diamant** sur deux jours et sur « presque-plein ». Il ne se régénère jamais sans monter la version concernée (`BLOCKS_SIM_VERSION` pour les règles,
-// `BLOCKS_GENERATOR_VERSION` pour la suite, `BLOCKS_BOT_VERSION` pour le bot et les fractions des médailles).
+// Le golden de Blocks : `npm run golden:blocks -w @cdj/blocks-sim`. Dix jours (l'empreinte de leur suite et les seuils des médailles que le bot Diamant leur donne) et des rediffusions de référence : les bots faible et moyen sur deux jours et sur
+// un scénario, les trois scénarios qui se jouent (« blocage » : fin immédiate, aucune pose), et **le bot Diamant** sur deux jours et sur « presque-plein » et « ordre ». Il ne se régénère jamais sans monter la version concernée
+// (`BLOCKS_SIM_VERSION` pour les règles, `BLOCKS_GENERATOR_VERSION` pour la suite, `BLOCKS_BOT_VERSION` pour les bots et les références des médailles).
 const jours = Array.from({ length: 10 }, (_, i) => daysFromCivil(2026, 11, 2) + i * 3);
 
+const bots = { faible: jouerFaible, moyen: jouerGlouton, diamant: jouerDiamant } as const;
 const parties = [
-  { nom: "glouton-jour-1", jour: jours[0]!, scenario: undefined },
-  { nom: "glouton-jour-4", jour: jours[3]!, scenario: undefined },
-  { nom: "glouton-presque-plein", jour: 0, scenario: "presque-plein" as const },
-  { nom: "blocage", jour: 0, scenario: "blocage" as const },
-  { nom: "diamant-jour-1", jour: jours[0]!, scenario: undefined, bot: true },
-  { nom: "diamant-jour-4", jour: jours[3]!, scenario: undefined, bot: true },
-  { nom: "diamant-presque-plein", jour: 0, scenario: "presque-plein" as const, bot: true },
+  { nom: "faible-jour-1", jour: jours[0]!, bot: "faible" as const },
+  { nom: "moyen-jour-1", jour: jours[0]!, bot: "moyen" as const },
+  { nom: "moyen-jour-4", jour: jours[3]!, bot: "moyen" as const },
+  { nom: "moyen-presque-plein", jour: 0, scenario: "presque-plein" as const, bot: "moyen" as const },
+  { nom: "blocage", jour: 0, scenario: "blocage" as const, bot: null },
+  { nom: "diamant-jour-1", jour: jours[0]!, bot: "diamant" as const },
+  { nom: "diamant-jour-4", jour: jours[3]!, bot: "diamant" as const },
+  { nom: "diamant-presque-plein", jour: 0, scenario: "presque-plein" as const, bot: "diamant" as const },
+  { nom: "diamant-ordre", jour: 0, scenario: "ordre" as const, bot: "diamant" as const },
 ].map((p) => {
-  const contenu = p.scenario ? contenuDeScenario(p.scenario) : dailyBlocks(p.jour);
-  const actions = p.nom === "blocage" ? [] : ("bot" in p ? jouerDiamant(contenu) : jouerGlouton(contenu)).actions;
-  return { nom: p.nom, date: formatDay(p.jour), ...(p.scenario ? { scenario: p.scenario } : {}), g: contenu.g, code: enregistrer(contenu, actions), resultat: jouer(contenu, actions) };
+  const scenario = "scenario" in p ? p.scenario : undefined;
+  const contenu = scenario ? contenuDeScenario(scenario) : dailyBlocks(p.jour);
+  const actions = p.bot === null ? [] : bots[p.bot](contenu).actions;
+  return { nom: p.nom, date: formatDay(p.jour), ...(scenario ? { scenario } : {}), g: contenu.g, code: enregistrer(contenu, actions), resultat: jouer(contenu, actions) };
 });
 
 const sortie = {
-  _: "Golden de Blocks (lots B1 et B3). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
+  _: "Golden de Blocks (lots B1, B3 et B8). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
   sim: BLOCKS_SIM_VERSION,
   generateur: BLOCKS_GENERATOR_VERSION,
   bot: BLOCKS_BOT_VERSION,

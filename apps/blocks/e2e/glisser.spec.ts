@@ -1,19 +1,19 @@
 import { expect, test, type Page } from "@playwright/test";
 import { appareil, lancer } from "./appareil";
 
-// « Blocks » — LE geste (seed § 6, B2) : glisser-déposer à la souris et au doigt, **la pièce reste sous le doigt, au point exact où on l'a touchée** (aucun décalage), ombre aimantée, lignes et colonnes qui seraient
-// effacées allumées, relâcher hors d'un endroit valide renvoie la pièce ; clavier : déplacer l'ombre case par case, puis poser. Le scénario « presque-plein » (une pose du rectangle 3 × 2 en colonne 5, ligne 6 efface 2 lignes
-// et 1 colonne) donne une pose connue.
+// « Blocks » — LE geste (seed § 6, B2, refait au lot B8) : glisser-déposer à la souris et au doigt de n'importe laquelle des trois pièces, **la pièce reste sous le doigt, au point exact où on l'a touchée** (aucun décalage), ombre
+// aimantée, lignes et colonnes qui seraient effacées allumées, relâcher hors d'un endroit valide renvoie la pièce ; clavier : choisir l'emplacement (1, 2, 3, Q, E), déplacer l'ombre case par case, puis poser. Le scénario
+// « presque-plein » (la série rect-0, domino-0, coin-0 ; une pose du rectangle 3 × 2 en colonne 5, ligne 6 efface 2 lignes et 1 colonne) donne une pose connue.
 const PRESQUE_PLEIN = "/?debug&manuel&tactile=0&scenario=presque-plein";
 
-/** Le point de la page au centre d'une case de la pièce du moment, au repos dans la zone de saisie (`cx`, `cy` : la case, depuis son coin haut-gauche). */
-async function surLaPiece(page: Page, cx: number, cy: number): Promise<{ x: number; y: number }> {
+/** Le point de la page au centre d'une case d'une pièce, au repos dans son emplacement (`cx`, `cy` : la case, depuis son coin haut-gauche ; `emplacement` : 0 à 2). */
+async function surLaPiece(page: Page, cx: number, cy: number, emplacement = 0): Promise<{ x: number; y: number }> {
   return page.evaluate(
-    ({ cx, cy }) => {
-      const r = window.__blocks.repos()!;
+    ({ cx, cy, emplacement }) => {
+      const r = window.__blocks.repos(emplacement)!;
       return { x: r.rect.x + (cx + 0.5) * r.cote, y: r.rect.y + (cy + 0.5) * r.cote };
     },
-    { cx, cy },
+    { cx, cy, emplacement },
   );
 }
 /** Le centre d'une case de la grille, en coordonnées de la page. */
@@ -32,7 +32,10 @@ test.describe("Blocks : le geste", () => {
     const { context, page } = await appareil(browser, PRESQUE_PLEIN);
     await lancer(page);
     const d = await page.evaluate(() => window.__blocks.disposition());
-    expect(await page.evaluate(() => window.__blocks.piece())).toBe("rect-0");
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(["rect-0", "domino-0", "coin-0"]);
+    // Au repos, la pièce est à l'échelle fixe du plateau (une fraction des cases de la grille) ; saisie, elle grossit à la taille des cases.
+    expect((await page.evaluate(() => window.__blocks.repos(0)))!.cote).toBeCloseTo(d.coteMain, 5);
+    expect(d.coteMain).toBeLessThan(d.cote);
     // On saisit la case (1, 1) du rectangle 3 × 2 (au milieu de sa rangée du bas), pas son centre : le point touché est exact.
     const prise = await surLaPiece(page, 1, 1);
     await page.mouse.move(prise.x, prise.y);
@@ -53,11 +56,12 @@ test.describe("Blocks : le geste", () => {
     expect(sous(s).u).toBeCloseTo(1.5, 1); // pendant tout le glisser, la même case est sous le pointeur
     expect(sous(s).v).toBeCloseTo(1.5, 1);
     expect(s.piece.y + s.piece.h).toBeGreaterThan(s.doigt.y); // plus de flottement : le doigt est DANS la pièce, jamais au-dessous
-    expect(await page.evaluate(() => window.__blocks.ombre())).toEqual({ col: 5, ligne: 6, legale: true });
+    expect(await page.evaluate(() => window.__blocks.ombre())).toEqual({ emplacement: 0, col: 5, ligne: 6, legale: true });
     expect(await page.evaluate(() => window.__blocks.surlignage())).toEqual({ lignes: 0b11000000, colonnes: 0b10000000 }); // 2 lignes et 1 colonne s'allument
     await page.mouse.up();
     await expect(page.locator("#jeu-hud-score")).toHaveText(/^96\s*pts$/);
-    expect(await page.evaluate(() => window.__blocks.piece())).toBe("domino-0");
+    // L'emplacement de la pièce posée est VIDE ; les deux autres n'ont pas bougé.
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual([null, "domino-0", "coin-0"]);
     expect(await page.evaluate(() => window.__blocks.saisie())).toBeNull();
     await context.close();
   });
@@ -71,7 +75,7 @@ test.describe("Blocks : le geste", () => {
     const cible = await centreDeCase(page, 5, 6); // son coin tombe sur la case (5, 6) : boîte en (5, 6)
     await page.mouse.move(cible.x, cible.y, { steps: 6 });
     await page.waitForTimeout(150);
-    expect(await page.evaluate(() => window.__blocks.ombre())).toEqual({ col: 5, ligne: 6, legale: true });
+    expect(await page.evaluate(() => window.__blocks.ombre())).toEqual({ emplacement: 0, col: 5, ligne: 6, legale: true });
     await page.mouse.up();
     expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ poses: 1, score: 96 });
     await context.close();
@@ -81,24 +85,24 @@ test.describe("Blocks : le geste", () => {
     const { context, page } = await appareil(browser, PRESQUE_PLEIN);
     await lancer(page);
     const d = await page.evaluate(() => window.__blocks.disposition());
-    await page.mouse.move(d.centreMain.x, d.centreMain.y);
+    await page.mouse.move(d.centresMain[0]!.x, d.centresMain[0]!.y);
     await page.mouse.down();
     await page.mouse.move(d.grille.x + d.cote * 0.3, d.grille.y + d.cote * 3, { steps: 6 }); // recouvre la colonne 0 déjà occupée et déborde : aucune position légale à moins d'une case
     await page.waitForTimeout(120);
     expect(await page.evaluate(() => window.__blocks.ombre())).toBeNull();
     await page.mouse.up();
     expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ score: 0, poses: 0 });
-    expect(await page.evaluate(() => window.__blocks.piece())).toBe("rect-0");
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(["rect-0", "domino-0", "coin-0"]);
     expect((await page.evaluate(() => window.__blocks.sons())).map((x) => x.son)).toEqual(["prise", "refus"]);
     // Et la pièce se reprend aussitôt.
-    await page.mouse.move(d.centreMain.x, d.centreMain.y);
+    await page.mouse.move(d.centresMain[0]!.x, d.centresMain[0]!.y);
     await page.mouse.down();
     expect(await page.evaluate(() => window.__blocks.saisie())).not.toBeNull();
     await page.mouse.up();
     await context.close();
   });
 
-  test("on ne saisit pas la pièce suivante, ni la grille", async ({ browser }) => {
+  test("on ne saisit ni la grille, ni le plateau hors d'un emplacement ; un emplacement vide (sa pièce est posée) ne se saisit pas", async ({ browser }) => {
     const { context, page } = await appareil(browser, PRESQUE_PLEIN);
     await lancer(page);
     const d = await page.evaluate(() => window.__blocks.disposition());
@@ -106,10 +110,64 @@ test.describe("Blocks : le geste", () => {
     await page.mouse.down();
     expect(await page.evaluate(() => window.__blocks.saisie())).toBeNull();
     await page.mouse.up();
-    await page.mouse.move(d.suivante.x + d.suivante.w / 2, d.suivante.y + d.suivante.h / 2);
+    // Le titre du plateau, au-dessus des emplacements : rien à saisir.
+    await page.mouse.move(d.plateau.x + d.plateau.w / 2, d.plateau.y + 6);
     await page.mouse.down();
     expect(await page.evaluate(() => window.__blocks.saisie())).toBeNull();
     await page.mouse.up();
+    // On pose la première pièce : son emplacement est vide et ne se saisit plus.
+    await page.evaluate(() => window.__jeu.action("pose:0:5:6"));
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual([null, "domino-0", "coin-0"]);
+    await page.mouse.move(d.centresMain[0]!.x, d.centresMain[0]!.y);
+    await page.mouse.down();
+    expect(await page.evaluate(() => window.__blocks.saisie())).toBeNull();
+    await page.mouse.up();
+    await context.close();
+  });
+
+  test("on saisit n'importe laquelle des trois pièces, dans le désordre ; chaque emplacement posé reste vide sans décaler les autres, et la série suivante arrive après la troisième", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=plateau-vide");
+    await lancer(page);
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(["domino-1", "domino-0", "barre3-0"]);
+    // Les trois pièces sont à la même échelle fixe, quelle que soit leur taille.
+    const echelles = await page.evaluate(() => [0, 1, 2].map((e) => window.__blocks.repos(e)!.cote));
+    expect(new Set(echelles.map((c) => c.toFixed(3))).size).toBe(1);
+    const glisser = async (emplacement: number, col: number, ligne: number): Promise<void> => {
+      const prise = await surLaPiece(page, 0, 0, emplacement);
+      await page.mouse.move(prise.x, prise.y);
+      await page.mouse.down();
+      const cible = await centreDeCase(page, col, ligne);
+      await page.mouse.move(cible.x, cible.y, { steps: 6 });
+      await page.waitForTimeout(120);
+      expect(await page.evaluate(() => window.__blocks.saisie())!.then((x) => x!.emplacement)).toBe(emplacement);
+      expect(await page.evaluate(() => window.__blocks.ombre())).toMatchObject({ emplacement, col, ligne, legale: true });
+      await page.mouse.up();
+    };
+    // La troisième d'abord (la barre de 3), puis la première (le domino debout), puis la deuxième : dans le désordre.
+    await glisser(2, 0, 0);
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(["domino-1", "domino-0", null]);
+    await glisser(0, 4, 2);
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual([null, "domino-0", null]);
+    expect(await page.evaluate(() => window.__blocks.etat().serie)).toBe(0); // la série suivante n'est pas encore là
+    await glisser(1, 0, 4);
+    expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ poses: 3, serie: 1 });
+    expect((await page.evaluate(() => window.__blocks.pieces())).every((x) => x !== null)).toBe(true); // trois nouvelles pièces
+    await context.close();
+  });
+
+  test("une pièce grisée (qui ne rentre nulle part) ne se saisit pas : « blocage », les trois pièces sont grisées dès le départ", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=blocage");
+    await lancer(page);
+    expect(await page.evaluate(() => window.__blocks.grisees())).toEqual([true, true, true]);
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(["domino-0", "domino-1", "barre3-0"]); // la fin les montre encore, grisées
+    const d = await page.evaluate(() => window.__blocks.disposition());
+    for (const c of d.centresMain) {
+      await page.mouse.move(c.x, c.y);
+      await page.mouse.down();
+      expect(await page.evaluate(() => window.__blocks.saisie())).toBeNull();
+      await page.mouse.up();
+    }
+    expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ poses: 0, fin: "bloquee" });
     await context.close();
   });
 
@@ -131,7 +189,7 @@ test.describe("Blocks : le geste", () => {
     // Le doigt est au centre de la case (2, 0) de la pièce : aucun flottement au-dessus.
     expect((s.doigt.x - s.piece.x) / s.cote).toBeCloseTo(2.5, 1);
     expect((s.doigt.y - s.piece.y) / s.cote).toBeCloseTo(0.5, 1);
-    expect(await page.evaluate(() => window.__blocks.ombre())).toEqual({ col: 5, ligne: 6, legale: true });
+    expect(await page.evaluate(() => window.__blocks.ombre())).toEqual({ emplacement: 0, col: 5, ligne: 6, legale: true });
     await touche("touchEnd", cible.x, cible.y);
     await expect(page.locator("#jeu-hud-score")).toHaveText(/^96\s*pts$/);
     await context.close();
@@ -141,12 +199,13 @@ test.describe("Blocks : le geste", () => {
     const { context, page } = await appareil(browser, PRESQUE_PLEIN);
     await lancer(page);
     expect(await page.evaluate(() => window.__blocks.ombre())).toBeNull(); // pas d'ombre tant qu'on n'a pas touché au clavier
+    expect(await page.evaluate(() => window.__blocks.selection())).toBeNull();
     await page.keyboard.press("ArrowRight");
     const depart = (await page.evaluate(() => window.__blocks.ombre()))!;
     for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight"); // butée à droite : la boîte de 3 cases tient jusqu'à la colonne 5
     expect(await page.evaluate(() => window.__blocks.ombre())).toMatchObject({ col: 5, ligne: depart.ligne });
     for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowDown"); // butée en bas : la boîte de 2 lignes tient jusqu'à la ligne 6
-    expect(await page.evaluate(() => window.__blocks.ombre())).toEqual({ col: 5, ligne: 6, legale: true });
+    expect(await page.evaluate(() => window.__blocks.ombre())).toEqual({ emplacement: 0, col: 5, ligne: 6, legale: true });
     expect(await page.evaluate(() => window.__blocks.surlignage())).toEqual({ lignes: 0b11000000, colonnes: 0b10000000 });
     await page.keyboard.press("ArrowLeft");
     expect(await page.evaluate(() => window.__blocks.ombre())).toMatchObject({ col: 4, ligne: 6, legale: false }); // recouvre : ombre grisée, pose refusée
@@ -155,6 +214,35 @@ test.describe("Blocks : le geste", () => {
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("Space");
     await expect(page.locator("#jeu-hud-score")).toHaveText(/^96\s*pts$/);
+    await context.close();
+  });
+
+  test("clavier : 1, 2 et 3 choisissent l'emplacement, Q et E passent d'une pièce à l'autre en sautant les emplacements vides ; l'ombre et Espace suivent la pièce choisie", async ({ browser }) => {
+    const { context, page } = await appareil(browser, PRESQUE_PLEIN);
+    await lancer(page);
+    const selection = (): Promise<number | null> => page.evaluate(() => window.__blocks.selection());
+    await page.keyboard.press("Digit3");
+    expect(await selection()).toBe(2);
+    expect(await page.evaluate(() => window.__blocks.ombre())).toMatchObject({ emplacement: 2, legale: true }); // le coin
+    await page.keyboard.press("KeyQ");
+    expect(await selection()).toBe(1);
+    await page.keyboard.press("KeyE");
+    await page.keyboard.press("KeyE");
+    expect(await selection()).toBe(0); // 2 → 0 : on repart du début
+    // Le domino (emplacement 2 − 1 = 1) à la ligne 3 : on le choisit, on descend l'ombre, on pose ; son emplacement devient vide.
+    await page.keyboard.press("Digit2");
+    for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowDown");
+    const ombre = (await page.evaluate(() => window.__blocks.ombre()))!;
+    expect(ombre.emplacement).toBe(1);
+    await page.keyboard.press("Space");
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(["rect-0", null, "coin-0"]);
+    expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ poses: 1 });
+    // L'emplacement vide ne se choisit plus ; E saute de 0 à 2.
+    await page.keyboard.press("Digit2");
+    expect(await selection()).not.toBe(1);
+    await page.keyboard.press("Digit1");
+    await page.keyboard.press("KeyE");
+    expect(await selection()).toBe(2);
     await context.close();
   });
 });

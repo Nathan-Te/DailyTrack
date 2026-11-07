@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COLONNES, PIECES } from "@cdj/blocks-sim";
-import { BOUTON, dans, disposer, ETIQUETTE, GABARIT, LONGUEUR_MAX, metriquesPlaque, PART_SUIVANTE, sechevauchent, VALEUR_MIN, type Rect } from "../src/miseEnPage";
+import { BOUTON, dans, disposer, ETIQUETTE, LONGUEUR_MAX, metriquesPlaque, PART_PLATEAU, sechevauchent, VALEUR_MIN, type Rect } from "../src/miseEnPage";
 
 // Lot B5 — la mise en page sur les sept tailles de la recette (2560 × 1440 … 360 × 640). Les entrées sont la zone UTILE de la scène : l'écran moins les marges de 8 px de chaque côté (`.jeu-plateau`).
 const MARGE_ECRAN = 8;
@@ -24,8 +24,7 @@ describe("la mise en page (maquette A, à l'échelle du PC et du téléphone)", 
     expect(d.grille.w).toBe(d.cote * COLONNES);
     expect(d.grille.h).toBe(d.grille.w);
     const ecran = { x: 0, y: 0, w, h };
-    const rects: [string, Rect][] = [["grille", d.grille], ["main", d.main], ["suivante", d.suivante], ["score", d.score], ["combo", d.combo], ["boutons", d.boutons]];
-    expect(dedans(d.suivante, d.gabarit.x, d.gabarit.y) && dedans(d.suivante, d.gabarit.x + d.gabarit.w, d.gabarit.y + d.gabarit.h), "le gabarit est dans la zone de la suivante").toBe(true);
+    const rects: [string, Rect][] = [["grille", d.grille], ["plateau", d.plateau], ["score", d.score], ["combo", d.combo], ["boutons", d.boutons]];
     for (const [nom, r] of rects) {
       expect(dedans(ecran, r.x, r.y), `${nom} : coin haut-gauche`).toBe(true);
       expect(dedans(ecran, r.x + r.w, r.y + r.h), `${nom} : coin bas-droit`).toBe(true);
@@ -41,21 +40,21 @@ describe("la mise en page (maquette A, à l'échelle du PC et du téléphone)", 
     if (!portrait) {
       expect(d.grille.h / h).toBeGreaterThan(0.77);
       expect(d.grille.h / h).toBeLessThanOrEqual(0.8);
-      // Centrée en hauteur ; en largeur aussi, à quelques pour cent près (lot B7 : la colonne des pièces, à leur échelle fixe, est plus large que celle du HUD : elle pousse la grille vers la gauche quand elle ne tient pas autrement).
+      // Centrée en hauteur ; en largeur aussi, à quelques pour cent près (la colonne des pièces peut pousser la grille vers la gauche quand elle ne tient pas autrement).
       expect(Math.abs(d.grille.x + d.grille.w / 2 - w / 2)).toBeLessThanOrEqual(0.03 * w);
       expect(Math.abs(d.grille.y + d.grille.h / 2 - h / 2)).toBeLessThanOrEqual(1);
     } else expect(d.grille.w / w, "en portrait, la grille garde au moins 90 % de la largeur utile").toBeGreaterThanOrEqual(0.9);
   });
 
-  it.each(TAILLES)("%s : les zones de la pièce du moment et de la suivante ne sont jamais plus grandes que la grille (ni en largeur, ni en hauteur, ni en surface)", (_nom, W, H) => {
+  it.each(TAILLES)("%s : le plateau des trois pièces et chacun de ses emplacements restent plus petits que la grille", (_nom, W, H) => {
     const [w, h] = utile(W, H);
     const d = disposer(w, h);
-    for (const z of [d.main, d.suivante]) {
-      expect(z.w).toBeLessThanOrEqual(d.grille.w);
-      expect(z.h).toBeLessThanOrEqual(d.grille.h);
-      expect(z.w * z.h).toBeLessThan(d.grille.w * d.grille.h);
+    expect(d.plateau.w * d.plateau.h).toBeLessThan(d.grille.w * d.grille.h);
+    expect(d.plateau.w).toBeLessThanOrEqual(Math.max(d.grille.w, w));
+    for (const e of d.emplacements) {
+      expect(e.w).toBeLessThanOrEqual(d.grille.w / 2);
+      expect(e.h).toBeLessThanOrEqual(d.grille.h / 2);
     }
-    expect(d.main.w * d.main.h + d.suivante.w * d.suivante.h).toBeLessThan(d.grille.w * d.grille.h); // à elles deux aussi : « Ta pièce » et « Suivante » n'occupent plus les deux tiers de l'écran
   });
 
   it.each(TAILLES)("%s : le HUD est lisible (valeurs au moins 18 px, étiquettes au moins 12 px) et ses plaques tiennent dans leur rectangle", (_nom, W, H) => {
@@ -71,7 +70,7 @@ describe("la mise en page (maquette A, à l'échelle du PC et du téléphone)", 
     }
   });
 
-  it("au PC en paysage, le HUD est collé à la grille (à gauche), et la pièce du moment avec la suivante à droite, au bord de la grille", () => {
+  it("au PC en paysage, le HUD est collé à la grille (à gauche), et le plateau des trois pièces à droite, au bord de la grille, les trois emplacements l'un sous l'autre", () => {
     for (const [W, H] of [[2560, 1440], [1920, 1080], [1366, 768], [1280, 720], [844, 390]] as const) {
       const [w, h] = utile(W, H);
       const d = disposer(w, h);
@@ -80,18 +79,20 @@ describe("la mise en page (maquette A, à l'échelle du PC et du téléphone)", 
       expect(ecart).toBeGreaterThanOrEqual(0);
       expect(ecart).toBeLessThanOrEqual(20);
       expect(d.combo.y).toBeGreaterThanOrEqual(d.score.y + d.score.h);
-      const ecartD = d.main.x - (d.grille.x + d.grille.w);
+      const ecartD = d.plateau.x - (d.grille.x + d.grille.w);
       expect(ecartD).toBeGreaterThanOrEqual(0);
       expect(ecartD).toBeLessThanOrEqual(20);
-      // Lot B7 : les deux zones sont dimensionnées pour la plus grande pièce à leur échelle fixe ; la colonne est centrée sur la grille et peut la dépasser un peu en haut et en bas (sans sortir de l'écran).
-      expect(d.suivante.y).toBeGreaterThanOrEqual(d.main.y + d.main.h);
-      expect(d.main.y).toBeGreaterThanOrEqual(0);
-      expect(d.suivante.y + d.suivante.h).toBeLessThanOrEqual(h);
-      expect(d.main.y + d.main.h / 2, "la colonne est à la hauteur de la grille").toBeLessThan(d.grille.y + d.grille.h / 2);
+      // La colonne est centrée sur la grille et peut la dépasser un peu en haut et en bas (sans sortir de l'écran) ; les emplacements sont rangés de haut en bas, sous l'étiquette, sans se toucher.
+      expect(d.plateau.y).toBeGreaterThanOrEqual(0);
+      expect(d.plateau.y + d.plateau.h).toBeLessThanOrEqual(h);
+      expect(d.emplacements[0].y).toBeGreaterThanOrEqual(d.plateau.y + ETIQUETTE);
+      for (let k = 1; k < 3; k++) expect(d.emplacements[k]!.y).toBeGreaterThan(d.emplacements[k - 1]!.y + d.emplacements[k - 1]!.h - 1);
+      expect(d.emplacements.every((e) => e.x === d.emplacements[0].x)).toBe(true);
+      expect(d.plateau.y + d.plateau.h / 2, "la colonne est à la hauteur de la grille").toBeLessThan(d.grille.y + d.grille.h / 2 + 1);
     }
   });
 
-  it("en portrait, la grille prend presque toute la largeur (lot B7 : les deux zones, à leur échelle fixe, tiennent côte à côte), plaques et pause sur une rangée au-dessus, les deux zones dessous côte à côte, la suivante plus étroite", () => {
+  it("en portrait, la grille prend presque toute la largeur, plaques et pause sur une rangée au-dessus, le plateau dessous avec ses trois emplacements côte à côte", () => {
     for (const [W, H] of [[390, 844], [360, 640]] as const) {
       const [w, h] = utile(W, H);
       const d = disposer(w, h);
@@ -100,74 +101,63 @@ describe("la mise en page (maquette A, à l'échelle du PC et du téléphone)", 
       expect(d.score.y).toBe(0);
       expect(d.combo.y).toBe(0);
       expect(d.grille.y).toBeGreaterThanOrEqual(d.score.h);
-      expect(d.main.y).toBeGreaterThanOrEqual(d.grille.y + d.grille.h);
-      expect(d.suivante.x).toBeGreaterThanOrEqual(d.main.x + d.main.w);
-      expect(d.suivante.w).toBeLessThan(d.main.w);
-      expect(d.main.y + d.main.h).toBeLessThanOrEqual(h);
+      expect(d.plateau.y).toBeGreaterThanOrEqual(d.grille.y + d.grille.h);
+      expect(d.plateau.y + d.plateau.h).toBeLessThanOrEqual(h);
+      for (let k = 1; k < 3; k++) expect(d.emplacements[k]!.x).toBeGreaterThan(d.emplacements[k - 1]!.x + d.emplacements[k - 1]!.w - 1);
+      expect(d.emplacements.every((e) => e.y === d.emplacements[0].y && e.w === d.emplacements[0].w)).toBe(true);
+      expect(d.emplacements[2].x + d.emplacements[2].w).toBeLessThanOrEqual(d.plateau.x + d.plateau.w);
     }
   });
 
-  // Lot B7 — ÉCHELLE FIXE : la pièce du moment à la taille des cases de la grille, la suivante à 60 % constants, le même pour les 40 pièces ; plus aucun ajustement à la zone.
-  it.each(TAILLES)("%s : la pièce du moment est à la taille exacte des cases de la grille, la suivante à 60 % de cette taille, et ces côtés ne dépendent d'aucune pièce", (_nom, W, H) => {
+  // Lot B8 — ÉCHELLE FIXE : les trois pièces à `PART_PLATEAU` des cases de la grille, le même pour les 40 pièces ; jamais ajustée à la taille de la pièce ni de l'emplacement.
+  it.each(TAILLES)("%s : les trois pièces sont à la même échelle fixe (PART_PLATEAU des cases), qui ne dépend d'aucune pièce", (_nom, W, H) => {
     const [w, h] = utile(W, H);
     const d = disposer(w, h);
-    expect(d.coteMain).toBe(d.cote);
-    expect(PART_SUIVANTE).toBe(0.6);
-    expect(d.coteSuivante).toBeCloseTo(d.cote * 0.6, 10);
-    // Les 40 pièces : la même taille de case (il n'y a plus de fonction qui l'ajuste à la zone : `Disposition` ne donne que ces deux côtés).
+    expect(PART_PLATEAU).toBe(0.46);
+    expect(d.coteMain).toBeCloseTo(d.cote * PART_PLATEAU, 10);
     expect(PIECES).toHaveLength(40);
-    for (const p of PIECES) {
-      expect(d.coteMain, p.nom).toBe(d.cote);
-      expect(d.coteSuivante, p.nom).toBe(d.cote * PART_SUIVANTE);
-    }
+    // Il n'y a plus de fonction qui ajuste le côté à la pièce : `Disposition` ne donne qu'un côté, le même pour les trois emplacements et les 40 pièces.
+    expect(d.centresMain).toHaveLength(3);
   });
 
-  it("le côté d'une case de la suivante est identique d'une taille d'écran à l'autre, à la taille de la grille près : toujours 60 % d'une case de la grille", () => {
+  it("le côté d'une case au repos vaut toujours PART_PLATEAU d'une case de la grille, d'une taille d'écran à l'autre", () => {
     for (const [, W, H] of TAILLES) {
       const [w, h] = utile(W, H);
       const d = disposer(w, h);
-      expect(d.coteSuivante / d.cote).toBeCloseTo(0.6, 10);
+      expect(d.coteMain / d.cote).toBeCloseTo(PART_PLATEAU, 10);
     }
   });
 
-  it.each(TAILLES)("%s : la plus grande pièce (barre de 5 couchée ou debout, carré 3 × 3, grand L) tient dans « Ta pièce » à la taille des cases, et dans le gabarit de « Suivante » à 60 %, sans déborder", (_nom, W, H) => {
+  it.each(TAILLES)("%s : la plus grande pièce (barre de 5 couchée ou debout, carré 3 × 3, grand L) tient dans chacun des trois emplacements à l'échelle fixe, sans déborder, sous l'étiquette", (_nom, W, H) => {
     const [w, h] = utile(W, H);
     const d = disposer(w, h);
     expect(LONGUEUR_MAX).toBe(Math.max(...PIECES.map((p) => Math.max(p.largeur, p.hauteur))));
-    for (const p of PIECES) {
-      // Au repos dans la zone de saisie : centrée, à la taille des cases, tout entière dans le rectangle de la zone, sous l'étiquette.
-      const lx = (p.largeur * d.coteMain) / 2;
-      const ly = (p.hauteur * d.coteMain) / 2;
-      expect(dedans(d.main, d.centreMain.x - lx, d.centreMain.y - ly), `${p.nom} (main, coin haut-gauche)`).toBe(true);
-      expect(dedans(d.main, d.centreMain.x + lx, d.centreMain.y + ly), `${p.nom} (main, coin bas-droit)`).toBe(true);
-      expect(d.centreMain.y - ly, `${p.nom} : sous l'étiquette`).toBeGreaterThanOrEqual(d.main.y + ETIQUETTE);
-      // Dans la zone de la suivante : centrée dans le gabarit, qui est dans la zone.
-      const sx = (p.largeur * d.coteSuivante) / 2;
-      const sy = (p.hauteur * d.coteSuivante) / 2;
-      expect(dedans(d.gabarit, d.centreSuivante.x - sx, d.centreSuivante.y - sy), `${p.nom} (suivante, coin haut-gauche)`).toBe(true);
-      expect(dedans(d.gabarit, d.centreSuivante.x + sx, d.centreSuivante.y + sy), `${p.nom} (suivante, coin bas-droit)`).toBe(true);
-      expect(d.centreSuivante.y - sy, `${p.nom} : sous l'étiquette`).toBeGreaterThanOrEqual(d.suivante.y + ETIQUETTE);
-    }
-    // Le gabarit : 5 × 5 cases de la suivante, centré sur la pièce.
-    expect(d.gabarit.w).toBeCloseTo(GABARIT * d.coteSuivante, 6);
-    expect(d.gabarit.h).toBeCloseTo(GABARIT * d.coteSuivante, 6);
-    expect(d.gabarit.x + d.gabarit.w / 2).toBeCloseTo(d.centreSuivante.x, 6);
-    expect(d.gabarit.y + d.gabarit.h / 2).toBeCloseTo(d.centreSuivante.y, 6);
-    // Les deux zones ne dépassent pas la grille (largeur, hauteur) — la plus grande pièce ne les fait pas grandir au-delà.
-    for (const z of [d.main, d.suivante]) {
-      expect(z.w).toBeLessThanOrEqual(d.grille.w);
-      expect(z.h).toBeLessThanOrEqual(d.grille.h);
-    }
+    d.emplacements.forEach((e, k) => {
+      const c = d.centresMain[k]!;
+      for (const p of PIECES) {
+        const lx = (p.largeur * d.coteMain) / 2;
+        const ly = (p.hauteur * d.coteMain) / 2;
+        expect(dedans(e, c.x - lx, c.y - ly), `${p.nom} (emplacement ${k}, coin haut-gauche)`).toBe(true);
+        expect(dedans(e, c.x + lx, c.y + ly), `${p.nom} (emplacement ${k}, coin bas-droit)`).toBe(true);
+      }
+      expect(e.y, `emplacement ${k} : sous l'étiquette`).toBeGreaterThanOrEqual(d.plateau.y + ETIQUETTE);
+      expect(dedans(d.plateau, e.x, e.y) && dedans(d.plateau, e.x + e.w, e.y + e.h), `emplacement ${k} dans le plateau`).toBe(true);
+    });
   });
 
-  it("l'étiquette d'une zone a sa place (12 px et sa marge) et une zone de saisie est tactile : au moins 44 px dans les deux sens, son centre est dedans", () => {
+  it("l'étiquette du plateau a sa place (12 px et sa marge) et chaque emplacement est une cible tactile large : au moins 44 px dans les deux sens, même pour un domino, son centre est dedans", () => {
     expect(ETIQUETTE).toBeGreaterThanOrEqual(12 + 8);
-    for (const [W, H] of [[360, 640], [844, 390]] as const) {
+    for (const [W, H] of [[360, 640], [844, 390], [390, 844]] as const) {
       const [w, h] = utile(W, H);
       const d = disposer(w, h);
-      expect(d.main.w).toBeGreaterThanOrEqual(BOUTON);
-      expect(d.main.h).toBeGreaterThanOrEqual(BOUTON);
-      expect(dans(d.main, d.centreMain.x, d.centreMain.y)).toBe(true);
+      d.emplacements.forEach((e, k) => {
+        expect(e.w).toBeGreaterThanOrEqual(BOUTON);
+        expect(e.h).toBeGreaterThanOrEqual(BOUTON);
+        expect(dans(e, d.centresMain[k]!.x, d.centresMain[k]!.y)).toBe(true);
+      });
+      // Un domino (2 cases) à l'échelle fixe reste petit dans une grande cible : sa zone de saisie est bien plus grande que lui.
+      const domino = PIECES.find((p) => p.nom === "domino-0")!;
+      expect(domino.largeur * d.coteMain * (domino.hauteur * d.coteMain)).toBeLessThan(d.emplacements[0].w * d.emplacements[0].h / 2);
     }
   });
 
@@ -175,7 +165,7 @@ describe("la mise en page (maquette A, à l'échelle du PC et du téléphone)", 
     for (const [W, H] of TAILLES.map(([, a, b]) => [a, b] as const)) {
       const [w, h] = utile(W, H);
       const d = disposer(w, h);
-      for (const r of [d.grille, d.main, d.suivante, d.score, d.combo]) expect(sechevauchent(r, d.boutons)).toBe(false);
+      for (const r of [d.grille, d.plateau, ...d.emplacements, d.score, d.combo]) expect(sechevauchent(r, d.boutons)).toBe(false);
     }
   });
 });

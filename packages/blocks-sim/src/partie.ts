@@ -1,22 +1,25 @@
-import { BONUS_PLATEAU_VIDE, COLONNES, PLAFOND_PIECES, POINTS_EFFACEMENT, POSES_SANS_EFFACEMENT_MAX } from "./constantes";
+import { BONUS_PLATEAU_VIDE, COLONNES, NB_ACTIONS, PLAFOND_PIECES, POINTS_EFFACEMENT, POSES_SANS_EFFACEMENT_MAX, TAILLE_SERIE } from "./constantes";
 import type { Contenu } from "./generateur";
 import { compterPleines, effacer, estVide, type Grille, peutPoser, pleines, poser, tientQuelquePart, VIDE } from "./grille";
 import { PIECES, type Piece } from "./pieces";
 
-// LA PARTIE (seed § 3 et 5). L'état : la grille (deux entiers), l'index de la pièce du moment, le score, le combo, les poses sans effacement depuis le dernier, le combo maximal atteint, la fin.
-// **Une action = la case (colonne, ligne) du coin haut-gauche de la boîte de la pièce du moment**, écrite sur un octet : `ligne × 8 + colonne` (0 à 63). Une action illégale est rejetée **sans changer l'état**.
-// Après chaque pose :
+// LA PARTIE (seed § 3 et 5, règles v2 du lot B8). L'état : la grille (deux entiers), le rang de la série, les pièces restantes de la série (trois emplacements, vides une fois posées), le score, le combo, les poses sans effacement
+// depuis le dernier, le combo maximal atteint, la fin. **On reçoit les pièces par séries de trois, et on les pose dans l'ordre qu'on veut** ; la série suivante arrive quand la troisième est posée (aucune pièce suivante n'est montrée).
+// **Une action = (emplacement 0 à 2, colonne, ligne)**, écrite sur un octet : `emplacement × 64 + ligne × 8 + colonne` (0 à 191), la case (colonne, ligne) étant le coin haut-gauche de la boîte de la pièce. Une action illégale
+// (emplacement vide, case occupée, pièce qui déborde) est rejetée **sans changer l'état**. Après chaque pose :
 //   1. +1 point par case posée ;
 //   2. toutes les lignes et colonnes pleines sont effacées ENSEMBLE (une case au croisement compte pour les deux) ; `n` = leur nombre ;
 //   3. si n > 0 : le combo augmente de 1, l'effacement rapporte `10 × n × n × combo`, le compteur de poses sans effacement repart à 0 ;
 //   4. sinon ce compteur augmente de 1 et, à la 3ᵉ pose sans effacement, le combo retombe à 0 ;
 //   5. si la grille est vide après un effacement : +300 (fixe).
-// Fin : dès que la pièce du moment ne tient nulle part, ou que le plafond de pièces est atteint.
+// Fin : dès qu'**aucune des pièces restantes** de la série ne tient nulle part (une pièce qui ne tient nulle part est « grisée » : `grisee`), ou que le plafond de pièces est atteint.
 
 export type Raison = "bloquee" | "plafond";
 
 /** Ce qu'une pose a fait : de quoi dessiner le gain, l'effacement et le combo (rien de ceci n'est classé). */
 export interface Pose {
+  /** L'emplacement (0 à 2) de la pièce posée dans la série. */
+  emplacement: number;
   col: number;
   ligne: number;
   piece: Piece;
@@ -37,6 +40,8 @@ export interface Pose {
   combo: number;
   /** Le combo a-t-il été perdu par cette pose (3ᵉ sans effacement, et il était > 0) ? */
   comboPerdu: boolean;
+  /** Cette pose était la dernière de sa série : une nouvelle série vient d'arriver (si la partie continue). */
+  serieNouvelle: boolean;
 }
 
 export interface Resultat {
@@ -48,56 +53,84 @@ export interface Resultat {
   raison: Raison;
 }
 
-export const actionDe = (col: number, ligne: number): number => ligne * COLONNES + col;
+/** L'action d'une pose : `emplacement × 64 + ligne × 8 + colonne`. */
+export const actionDe = (emplacement: number, col: number, ligne: number): number => emplacement * 64 + ligne * COLONNES + col;
+export const emplacementDe = (action: number): number => Math.floor(action / 64);
 export const colonneDe = (action: number): number => action % COLONNES;
-export const ligneDe = (action: number): number => Math.floor(action / COLONNES);
+export const ligneDe = (action: number): number => Math.floor((action % 64) / COLONNES);
+/** Une action est-elle écrite correctement (un entier de 0 à 191) ? Ce n'est pas dire qu'elle est légale. */
+export const actionBienFormee = (a: unknown): a is number => typeof a === "number" && Number.isInteger(a) && a >= 0 && a < NB_ACTIONS;
 
 export class Partie {
   grille: Grille;
-  /** L'index de la pièce du moment dans la suite = le nombre de poses faites. */
-  rang = 0;
+  /** Le nombre de poses faites (= l'index, dans la suite, de la prochaine pièce à tirer pour la série en cours : `3 × serie + 3`, à la fin d'une série). */
+  poses = 0;
+  /** Le rang de la série en cours (0 pour la première). */
+  serie = 0;
   score = 0;
   combo = 0;
   sansEffacement = 0;
   comboMax = 0;
   fin: Raison | null = null;
+  /** Les trois emplacements de la série en cours : la pièce, ou `null` une fois posée. */
+  private restantes: (Piece | null)[] = [];
 
   constructor(readonly contenu: Pick<Contenu, "suite" | "depart">) {
     this.grille = contenu.depart ?? VIDE;
+    this.remplir();
     this.verifierFin();
   }
 
-  /** La pièce du moment, ou `null` une fois la partie finie. */
-  get piece(): Piece | null {
-    return this.fin === null ? PIECES[this.contenu.suite[this.rang]!]! : null;
+  private remplir(): void {
+    this.restantes = [];
+    for (let k = 0; k < TAILLE_SERIE; k++) {
+      const id = this.contenu.suite[this.serie * TAILLE_SERIE + k];
+      this.restantes.push(id === undefined ? null : PIECES[id]!);
+    }
   }
-  /** La pièce suivante (information seulement), ou `null` s'il n'y en a plus. */
-  get suivante(): Piece | null {
-    return this.fin === null && this.rang + 1 < PLAFOND_PIECES ? PIECES[this.contenu.suite[this.rang + 1]!]! : null;
+
+  /** Les trois emplacements de la série en cours (une pièce, ou `null` quand elle est posée) ; vide une fois la partie finie. */
+  get pieces(): readonly (Piece | null)[] {
+    return this.fin === null ? this.restantes : [null, null, null];
+  }
+  /** La pièce d'un emplacement, ou `null` (posée, hors partie, ou partie finie). */
+  piece(emplacement: number): Piece | null {
+    return this.fin === null ? (this.restantes[emplacement] ?? null) : null;
+  }
+  /** Les pièces de la série en cours, même une fois la partie finie (la fin les montre grisées). */
+  get dernieresPieces(): readonly (Piece | null)[] {
+    return this.restantes;
   }
   get finie(): boolean {
     return this.fin !== null;
   }
-  get poses(): number {
-    return this.rang;
+  /** Combien de pièces restent à poser dans la série en cours. */
+  get restantesCount(): number {
+    return this.restantes.filter((p) => p !== null).length;
   }
 
-  /** La pièce du moment peut-elle se poser ici ? */
-  legale(col: number, ligne: number): boolean {
-    const p = this.piece;
+  /** Cette pièce ne tient nulle part : elle est grisée (et ne se saisit pas). Faux pour un emplacement vide. */
+  grisee(emplacement: number): boolean {
+    const p = this.restantes[emplacement];
+    return p != null && !tientQuelquePart(this.grille, p);
+  }
+
+  /** La pièce de cet emplacement peut-elle se poser ici ? */
+  legale(emplacement: number, col: number, ligne: number): boolean {
+    const p = this.piece(emplacement);
     return p !== null && peutPoser(this.grille, p, col, ligne);
   }
 
   /** Les lignes et colonnes qui seraient effacées par cette pose (pour les allumer pendant le survol), ou `null` si elle est illégale. */
-  apercu(col: number, ligne: number): { lignes: number; colonnes: number } | null {
-    const p = this.piece;
+  apercu(emplacement: number, col: number, ligne: number): { lignes: number; colonnes: number } | null {
+    const p = this.piece(emplacement);
     if (p === null || !peutPoser(this.grille, p, col, ligne)) return null;
     return pleines(poser(this.grille, p, col, ligne));
   }
 
-  /** Pose la pièce du moment ; rend ce qu'elle a fait, ou `null` (sans rien changer) si l'action est illégale ou la partie finie. */
-  poser(col: number, ligne: number): Pose | null {
-    const p = this.piece;
+  /** Pose la pièce de l'emplacement ; rend ce qu'elle a fait, ou `null` (sans rien changer) si l'action est illégale ou la partie finie. */
+  poser(emplacement: number, col: number, ligne: number): Pose | null {
+    const p = this.piece(emplacement);
     if (p === null || !peutPoser(this.grille, p, col, ligne)) return null;
     let g = poser(this.grille, p, col, ligne);
     const m = pleines(g);
@@ -122,18 +155,29 @@ export class Partie {
     const gain = p.cases + effacement + (plateauVide ? BONUS_PLATEAU_VIDE : 0);
     this.score += gain;
     this.grille = g;
-    this.rang++;
+    this.poses++;
+    this.restantes[emplacement] = null;
+    const serieNouvelle = this.restantes.every((x) => x === null);
+    if (serieNouvelle) {
+      this.serie++;
+      this.remplir();
+    }
     this.verifierFin();
-    return { col, ligne, piece: p, cases: p.cases, lignes: n > 0 ? m.lignes : 0, colonnes: n > 0 ? m.colonnes : 0, n, effacement, plateauVide, gain, combo: this.combo, comboPerdu };
+    return { emplacement, col, ligne, piece: p, cases: p.cases, lignes: n > 0 ? m.lignes : 0, colonnes: n > 0 ? m.colonnes : 0, n, effacement, plateauVide, gain, combo: this.combo, comboPerdu, serieNouvelle };
+  }
+
+  /** Joue une action (`emplacement × 64 + ligne × 8 + colonne`) ; `null` si elle est illégale (rien ne change). */
+  jouerAction(action: number): Pose | null {
+    return actionBienFormee(action) ? this.poser(emplacementDe(action), colonneDe(action), ligneDe(action)) : null;
   }
 
   private verifierFin(): void {
-    if (this.rang >= PLAFOND_PIECES) this.fin = "plafond";
-    else if (!tientQuelquePart(this.grille, PIECES[this.contenu.suite[this.rang]!]!)) this.fin = "bloquee";
+    if (this.poses >= PLAFOND_PIECES) this.fin = "plafond";
+    else if (!this.restantes.some((p) => p !== null && tientQuelquePart(this.grille, p))) this.fin = "bloquee";
   }
 
   resultat(): Resultat | null {
-    return this.fin === null ? null : { score: this.score, combo: this.comboMax, poses: this.rang, raison: this.fin };
+    return this.fin === null ? null : { score: this.score, combo: this.comboMax, poses: this.poses, raison: this.fin };
   }
 }
 
@@ -150,16 +194,15 @@ export class ErreurRejeu extends Error {
 }
 
 /**
- * Rejoue une partie entière : la suite des actions (octets `ligne × 8 + colonne`). Refuse — par une `ErreurRejeu` — une action illégale, une action après la fin, une suite au-delà du plafond et une partie qui
- * n'est pas terminée à la dernière action. C'est le code du jeu ET du serveur.
+ * Rejoue une partie entière : la suite des actions (octets `emplacement × 64 + ligne × 8 + colonne`). Refuse — par une `ErreurRejeu` — une action illégale (emplacement vide, case occupée, hors de la grille), une action après la fin,
+ * une suite au-delà du plafond et une partie qui n'est pas terminée à la dernière action. C'est le code du jeu ET du serveur.
  */
 export function jouer(contenu: Pick<Contenu, "suite" | "depart">, actions: readonly number[]): Resultat {
   if (actions.length > PLAFOND_PIECES) throw new ErreurRejeu("trop_longue", "trop de poses");
   const p = new Partie(contenu);
   for (let i = 0; i < actions.length; i++) {
     if (p.finie) throw new ErreurRejeu("apres_la_fin", `action ${i} après la fin de la partie`);
-    const a = actions[i]!;
-    if (!Number.isInteger(a) || a < 0 || a >= 64 || p.poser(colonneDe(a), ligneDe(a)) === null) throw new ErreurRejeu("action_illegale", `action ${i} illégale`);
+    if (p.jouerAction(actions[i]!) === null) throw new ErreurRejeu("action_illegale", `action ${i} illégale`);
   }
   const r = p.resultat();
   if (r === null) throw new ErreurRejeu("non_terminee", "la partie n'est pas terminée");
