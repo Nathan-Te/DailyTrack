@@ -1,10 +1,22 @@
 import { expect, test, type Page } from "@playwright/test";
-import { BOSS_IDS } from "@cdj/rush-sim";
-import { appareil, lancer } from "./appareil";
+import { parseDay } from "@cdj/core";
+import { BOSS_IDS, Partie, contenuScenario } from "@cdj/rush-sim";
+import { JOUR, appareil, lancer } from "./appareil";
 
 // « Rush » (lot BR3) — les CINQ boss côté vue : chacun se charge sans erreur dans la console, la barre de vie porte son nom et sa phase, sa présentation paraît, il annonce et frappe sans erreur, et la scène reste sous 200 appels de dessin dans les deux
 // niveaux de qualité. Le bestiaire montre les cinq côte à côte, figés, avec leur nom. Les règles du combat (zones, états, étourdissement) sont dans `packages/rush-sim/test`.
 const NOMS: Record<string, string> = { golem: "Golem", reine: "Reine gelée", "grand-duc": "Grand-duc", belier: "Bélier de carrière", chene: "Vieux chêne" };
+
+/** Les ticks que le boss met à commencer sa première annonce (la simulation, la même qu'en page, chevalier immobile) : la page les joue d'un seul appel — `avancer(n)` dessine UNE image par appel, et un dessin coûte cher sans carte graphique. */
+function ticksAvantAnnonce(id: string): number {
+  const p = new Partie(contenuScenario("boss", { jour: parseDay(JOUR)!, boss: BOSS_IDS.indexOf(id as (typeof BOSS_IDS)[number]) }));
+  let n = 0;
+  while (p.golem!.etat !== 1 && n < 1000) {
+    p.avancer(0);
+    n++;
+  }
+  return n;
+}
 
 /** Écoute la console et les erreurs de la page : les erreurs se lisent à la fin du test. */
 function espionner(page: Page): string[] {
@@ -30,10 +42,7 @@ test.describe("Rush : les cinq boss", () => {
       // sa présentation : une pastille avec son nom, ~1 s
       await expect(page.locator(".rush-presentation")).toHaveText(NOMS[id]!);
       // jusqu'à sa première annonce, puis au beau milieu : la scène se dessine, sous 200 appels (haute et basse qualité)
-      await page.evaluate(() => {
-        for (let i = 0; i < 400 && window.__rush.partie().golem!.etat !== 1; i++) window.__jeu.avancer(1);
-        window.__jeu.avancer(40);
-      });
+      await page.evaluate((n) => window.__jeu.avancer(n + 40), ticksAvantAnnonce(id));
       expect(await page.evaluate(() => window.__rush.partie().golem!.etat)).toBe(1);
       for (const q of ["haute", "basse"] as const) {
         const appels = await page.evaluate((q) => {
@@ -45,12 +54,10 @@ test.describe("Rush : les cinq boss", () => {
         expect(appels).toBeGreaterThan(10);
       }
       // il continue : ses attaques, ses impacts, sa récupération, sans erreur
-      await page.evaluate(() => {
-        for (let i = 0; i < 900; i++) {
-          window.__jeu.avancer(1);
-          if (i % 30 === 0) window.__rush.dessinerMaintenant();
-        }
-      });
+      for (let i = 0; i < 4; i++) {
+        await page.evaluate(() => window.__jeu.avancer(180));
+        await page.evaluate(() => window.__rush.dessinerMaintenant());
+      }
       expect(erreurs).toEqual([]);
       await context.close();
     });

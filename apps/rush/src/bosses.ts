@@ -110,7 +110,7 @@ export function cadreDuBoss(kind: number, haut = 0): { haut: number; r: number }
     case B_BELIER:
       return { haut: 3.8, r: 3.6 };
     case B_CHENE:
-      return { haut: 8.6, r: 3.4 };
+      return { haut: 8.2, r: 3.4 };
     default:
       return { haut: 5.1, r: 3.0 };
   }
@@ -357,8 +357,8 @@ function corpsDuBelier(): BufferGeometry {
 }
 function teteDuBelier(): BufferGeometry {
   const corne = (s: 1 | -1): BufferGeometry[] => [
-    cone(0.6, 1.9, 8, { x: s * 1.3, y: 0.5, z: 0.25, rz: -s * 1.15 }, B.corne),
-    cone(0.42, 1.8, 8, { x: s * 2.25, y: 0.75, z: 0.95, rz: -s * 0.25, rx: 1.15 }, B.corne),
+    cone(0.6, 1.9, 8, { x: s * 1.2, y: 0.6, z: 0.35, rz: -s * 0.85, rx: 0.35 }, B.corne),
+    cone(0.42, 1.8, 8, { x: s * 1.95, y: 1.15, z: 1.05, rz: -s * 0.2, rx: 1.25 }, B.corne),
   ];
   return fusionner([
     placer(bloc(1.9, 1.7, 1.7, { couleur: B.couleur, dessus: B.dessus, graine: 311, rayon: 0.55 }), { y: 0, z: 0.5 }),
@@ -528,7 +528,7 @@ function brasDuChene(s: 1 | -1): BufferGeometry {
 
 function creerChene(): CheneVu {
   const racine = new Group();
-  racine.scale.setScalar(0.85); // ~8,5 m de haut : plus grand que le golem, mais la caméra le garde dans l'image
+  racine.scale.setScalar(0.8); // ~8 m de haut : plus grand que le golem, mais la caméra le garde dans l'image
   const corps = new Group();
   racine.add(corps);
   const matieres: MeshToonMaterial[] = [];

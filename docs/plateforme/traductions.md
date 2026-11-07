@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2213 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2214 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2969,6 +2969,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `tune.volVie` | Vol de vie : monstres par cœur | Life steal: monsters per heart |
 | `tune.briseDegats` | Brise-pierre : boss (%/palier) | Stonebreaker: boss (%/tier) |
 | `tune.aimantGain` | Aimant : rayon (%/palier) | Magnet: radius (%/tier) |
+| `tune.affinite` | Affinité du boss (%/palier favori) | Boss affinity (%/favoured tier) |
 | `tune.arretImage` | Arrêt du coup final (ms) | Finisher hit stop (ms) |
 | `tune.arretPhase` | Arrêt de la phase 2 (ms) | Phase 2 hit stop (ms) |
 | `tune.secousse` | Secousse de caméra (%) | Camera shake (%) |

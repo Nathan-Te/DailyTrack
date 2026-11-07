@@ -19,6 +19,9 @@ export interface ScenarioReference {
   monstres: number;
   ameliorations: string[];
   nv: number;
+  /** Lot BR3 : le boss (indice) et la phase 2 du scénario `boss`. */
+  boss: number;
+  phase2: boolean;
   code: string;
   ticks: number;
 }
@@ -37,7 +40,7 @@ window.__rejouer = (references) => references.map((r) => ({ nom: r.nom, resultat
 window.__scenarios = (references) =>
   references.map((r) => {
     const d = decoderRediffusion(r.code);
-    const jeu = jouerJusqua(contenuScenario(r.scenario, { monstres: r.monstres, ameliorations: r.ameliorations, nv: r.nv }), d.changements, r.ticks, undefined, d.choix);
+    const jeu = jouerJusqua(contenuScenario(r.scenario, { monstres: r.monstres, ameliorations: r.ameliorations, nv: r.nv, boss: r.boss, phase2: r.phase2 }), d.changements, r.ticks, undefined, d.choix);
     return { nom: r.nom, empreinte: jeu.empreinte, resultat: jeu.resultat };
   });
 document.documentElement.dataset.ready = "true";

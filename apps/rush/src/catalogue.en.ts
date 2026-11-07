@@ -122,6 +122,7 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "tune.volVie": "Life steal: monsters per heart",
   "tune.briseDegats": "Stonebreaker: boss (%/tier)",
   "tune.aimantGain": "Magnet: radius (%/tier)",
+  "tune.affinite": "Boss affinity (%/favoured tier)",
   "tune.courseRayon": "Run: alert radius (cm)",
   "tune.arretImage": "Finisher hit stop (ms)",
   "tune.arretPhase": "Phase 2 hit stop (ms)",

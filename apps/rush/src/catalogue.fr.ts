@@ -120,6 +120,7 @@ export const CATALOGUE_FR = {
   "tune.volVie": "Vol de vie : monstres par cœur",
   "tune.briseDegats": "Brise-pierre : boss (%/palier)",
   "tune.aimantGain": "Aimant : rayon (%/palier)",
+  "tune.affinite": "Affinité du boss (%/palier favori)",
   "tune.arretImage": "Arrêt du coup final (ms)",
   "tune.arretPhase": "Arrêt de la phase 2 (ms)",
   "tune.secousse": "Secousse de caméra (%)",

@@ -646,7 +646,7 @@
   border-radius: 12px;
   box-shadow: 2px 3px 0 var(--dj-encre);
   font-family: "Archivo Black", var(--dj-police-corps, sans-serif);
-  font-size: clamp(12px, 1.5vw, 18px);
+  font-size: clamp(11px, 1.25vw, 16px);
   line-height: 1.1;
   letter-spacing: 0.03em;
   text-transform: uppercase;

@@ -54,10 +54,10 @@ describe("les cinq boss (lot BR3) : les tailles", () => {
     expect(T[3]!.y).toBeGreaterThan(3);
     expect(T[3]!.y).toBeLessThan(4.6);
   });
-  it("le vieux chêne : 7,5 à 9,5 m de haut, 6 à 10 m de large (cime, bras et racines)", () => {
-    expect(T[4]!.y).toBeGreaterThan(7.5);
+  it("le vieux chêne : 7 à 9,5 m de haut, 5,5 à 10 m de large (cime, bras et racines)", () => {
+    expect(T[4]!.y).toBeGreaterThan(7);
     expect(T[4]!.y).toBeLessThan(9.5);
-    expect(T[4]!.x).toBeGreaterThan(6);
+    expect(T[4]!.x).toBeGreaterThan(5.5);
     expect(T[4]!.x).toBeLessThan(10);
   });
   it("chaque boss est bien plus grand que le chevalier (1,5 m)", () => {
