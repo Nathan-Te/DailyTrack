@@ -41,7 +41,7 @@ export function pictogramme(nom: keyof typeof TRACES, taille: number): SVGSVGEle
  * La navigation : `haut` = les onglets de la barre (Archivo Black, l'onglet ouvert en encre plein) ; `bas` = la barre d'onglets du téléphone (icône et mot, l'onglet ouvert en encre avec
  * l'icône en terre). Une seule des deux se voit à la fois (la feuille de style). `data-nav-onglets` : LB et RB de la manette passent d'un lien à l'autre (`packages/ui/src/manette.ts`).
  */
-export function navigation(o: { items: readonly ItemNav[]; ici: PageNav; aria: string; place: "haut" | "bas"; racine?: string }): HTMLElement {
+export function navigation(o: { items: readonly ItemNav[]; ici: PageNav | null; aria: string; place: "haut" | "bas"; racine?: string }): HTMLElement {
   return el(
     "nav",
     { classe: o.place === "haut" ? "salle-nav" : "salle-onglets", attrs: { "aria-label": o.aria, "data-nav-onglets": o.place } },

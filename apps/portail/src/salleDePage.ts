@@ -20,8 +20,10 @@ export type TPage = ReturnType<typeof traducteurDePage>;
 export interface OptionsSalle {
   t: TPage;
   langue: Langue;
-  /** La page ouverte dans la navigation. */
-  ici: PageNav;
+  /** La page ouverte dans la navigation (`null` : une page qui n'est pas un onglet, comme les nouveautés). */
+  ici: PageNav | null;
+  /** Le chemin vers la racine du portail : `"../"` d'un dossier (défaut), `"/"` pour la page d'un groupe, servie à toute profondeur. */
+  racine?: string;
   stockage: KeyValueStore | null;
   /** Le joueur a-t-il une identité sur cet appareil ? */
   identifie: boolean;
@@ -39,25 +41,27 @@ export function barreDePage(o: OptionsSalle): HTMLElement {
   const nouveaute = nonLue(copie?.nouveaute, o.stockage);
   const identite = readIdentity(o.stockage);
   const items = itemsDeNavigation((cle) => t.t(cle));
+  const racine = o.racine ?? "../";
   return barreSalle({
     logo: logo(t),
-    navigation: navigation({ items, ici: o.ici, aria: t.t("portail.nav.aria"), place: "haut", racine: "../" }),
+    navigation: navigation({ items, ici: o.ici, aria: t.t("portail.nav.aria"), place: "haut", racine }),
     langue: choixLangue(t, { langue: o.langue, onChange: o.onLangue }),
     // Lot U4 : la cloche ouvre la même feuille que sur l'accueil (chargée à la demande, `clochePage.ts`) ; le point vient de la copie de l'accueil.
-    cloche: clocheDePage({ nom: t.t(nouveaute || reponses > 0 ? "portail.cloche.nonLu" : "portail.cloche.nom"), nonLu: nouveaute || reponses > 0, contexte: { t, langue: o.langue, stockage: o.stockage, identifiant: () => (o.stockage ? readPlayerId(o.stockage) : null), racine: "../" } }),
-    avatar: avatar(t, { pseudo: identite.exists ? identite.name : null, href: "../profil/", image: adresseAvatar(baseApi(), o.avatar ?? copie?.joueur?.avatar) }),
+    cloche: clocheDePage({ nom: t.t(nouveaute || reponses > 0 ? "portail.cloche.nonLu" : "portail.cloche.nom"), nonLu: nouveaute || reponses > 0, contexte: { t, langue: o.langue, stockage: o.stockage, identifiant: () => (o.stockage ? readPlayerId(o.stockage) : null), racine } }),
+    avatar: avatar(t, { pseudo: identite.exists ? identite.name : null, href: `${racine}profil/`, image: adresseAvatar(baseApi(), o.avatar ?? copie?.joueur?.avatar) }),
   });
 }
 
 /** La barre d'onglets du téléphone (fixe, en bas) : la même navigation, avec des icônes. */
-export const ongletsDuBas = (t: TPage, ici: PageNav): HTMLElement => navigation({ items: itemsDeNavigation((cle) => t.t(cle)), ici, aria: t.t("portail.nav.aria"), place: "bas", racine: "../" });
+export const ongletsDuBas = (t: TPage, ici: PageNav | null, racine = "../"): HTMLElement => navigation({ items: itemsDeNavigation((cle) => t.t(cle)), ici, aria: t.t("portail.nav.aria"), place: "bas", racine });
 
 /** Le fronton d'une page : son titre, la date, le numéro de la journée et le compte à rebours jusqu'aux prochains niveaux. */
-export function frontonDeLaPage(o: { t: TPage; langue: Langue; titre: string; jour: number }): HTMLElement {
+export function frontonDeLaPage(o: { t: TPage; langue: Langue; titre: string; jour: number; embleme?: HTMLElement }): HTMLElement {
   const numero = numeroDeJournee(o.jour);
   const maintenant = Date.now();
   return frontonDePage({
     titre: o.titre,
+    embleme: o.embleme,
     date: formatDate(o.jour, o.langue, { capitale: true }),
     journee: numero ? o.t.t("portail.journee", { numero: formatNumeroJour(numero, o.langue) }) : null,
     legende: o.t.t("portail.compte.legende"),

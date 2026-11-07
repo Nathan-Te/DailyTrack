@@ -1,6 +1,7 @@
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/avatar.css";
 import "@cdj/ui/src/avatar-liste.css";
+import "@cdj/ui/src/avatar-grand.css"; // lot U5 : les photos de 52 px des membres
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -10,17 +11,22 @@ import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
 import "./amisPortail.css";
+import "./salle.css"; // lot U5 : la barre, le fronton et la barre d'onglets de la salle de jeux
+import "./classementSalle.css";
 import "./groupesPortail.css";
+import "./pagesSalle.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
 import { adresseAvatar, clientAvatar, ecrireLangue, lireLangue, readPlayerId, type Langue } from "@cdj/profile";
 import { adresseInvitationGroupe, clientGroupes, nomDansLeChemin, retirerInvitationDeLAdresse, type Invitation, type MonGroupe, type PageGroupe } from "@cdj/profile/src/groupes";
-import { CATALOGUE_COMMUN, avatar, barreJeu, bouton, cheminMentions, choixLangue, el, formatDate, formatNombre, formatRang, formatScore, traducteur } from "@cdj/ui";
+import { CATALOGUE_COMMUN, avatar, bouton, cheminMentions, el, formatDate, formatNombre, formatRang, formatScore, traducteur } from "@cdj/ui";
+import { initiales } from "@cdj/ui/src/avatar";
 import { formatDeVue } from "./formatDeVue";
 import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
-import { numeroDeJournee } from "./jours";
+import { barreDePage, battre, frontonDeLaPage, ongletsDuBas, traducteurDePage } from "./salleDePage";
+import { emblemeDeGroupe, panneau } from "./salle";
 import { baseApi } from "./jour";
 import { lienRetours } from "./retoursLien";
 import { stockageDuPortail } from "./stockage";
@@ -105,10 +111,8 @@ function sectionClassement(t: ReturnType<typeof traduire>, p: PageGroupe): HTMLE
     const rang = r.rang !== null && r.score !== null ? `${t.t("groupePage.rang", { rang: formatRang(r.rang, langue), sur: formatNombre(r.sur, langue) })} · ${valeurDeVue({ vue: r.vue, sens: r.sens, score: r.score })}` : t.t("groupePage.moins", { min: p.min });
     return el("li", { classe: "groupe-rang", attrs: { "data-vue": r.vue } }, el("span", { classe: "groupe-rang__vue", texte: nomDeVue(t, r.vue) }), el("span", { classe: "groupe-rang__valeur dj-chiffres", texte: rang }));
   });
-  return el(
-    "section",
-    { classe: "profil-section", attrs: { "aria-labelledby": "groupe-classement-titre" } },
-    el("h2", { classe: "profil-section__titre", attrs: { id: "groupe-classement-titre" }, texte: t.t("groupePage.classement", { date: formatDate(parseDay(p.date) ?? parisDay(Date.now()), langue) }) }),
+  return panneau(
+    { id: "groupe-classement", titre: t.t("groupePage.classement", { date: formatDate(parseDay(p.date) ?? parisDay(Date.now()), langue) }) },
     lignes.length ? el("ul", { classe: "groupe-rangs", attrs: { id: "groupe-rangs" } }, ...lignes) : el("p", { classe: "profil-aide", texte: t.t("groupePage.aucunRang") }),
     el("p", { classe: "profil-aide", texte: t.t("groupePage.regle", { min: p.min }) }),
   );
@@ -121,39 +125,45 @@ function construire(): void {
   document.documentElement.lang = langue;
   document.title = page ? t.t("groupePage.titreNom", { nom: page.nom }) : t.t("groupePage.titre");
   const jour = parisDay(Date.now());
-  const enfants: (Node | null)[] = [
-    barreJeu(t, { href: "/", jour, numero: numeroDeJournee(jour) ?? undefined }),
-  ];
-  if (chargement) enfants.push(el("p", { classe: "profil-etat", attrs: { role: "status" }, texte: t.t("groupePage.chargement") }));
-  else if (!page) enfants.push(el("h1", { classe: "profil-titre", texte: t.t("groupePage.titre") }), el("p", { classe: "profil-etat", attrs: { role: "alert", id: "groupe-erreur" }, texte: erreur ?? t.t("groupePage.inconnu") }));
+  const salle = traducteurDePage(langue);
+  const corps: (Node | null)[] = [];
+  let embleme: HTMLElement | undefined;
+  if (chargement) corps.push(el("p", { classe: "profil-etat", attrs: { role: "status" }, texte: t.t("groupePage.chargement") }));
+  else if (!page) corps.push(el("p", { classe: "profil-etat", attrs: { role: "alert", id: "groupe-erreur" }, texte: erreur ?? t.t("groupePage.inconnu") }));
   else {
     const p = page;
     const membre = moi !== null && moi.id === p.id;
-    enfants.push(
-      el("div", { classe: "groupe-entete" }, avatar(t, { pseudo: p.nom, ref: p.id, image: adresseAvatar(baseApi(), p.avatar), taille: 96, decoratif: true }), el("div", { classe: "groupe-entete__texte" }, el("h1", { classe: "profil-titre", attrs: { id: "groupe-nom" }, texte: p.nom }), p.description ? el("p", { classe: "groupe-description", attrs: { id: "groupe-description" }, texte: p.description }) : null, el("p", { classe: "profil-aide" }, t.t("groupePage.membres", { n: p.membres.length, max: p.max })))),
-    );
-    enfants.push(messageInvitation ? el("p", { classe: ["profil-message", messageInvitation.echec && "profil-message--echec"], attrs: { role: messageInvitation.echec ? "alert" : "status", id: "groupe-message" }, texte: messageInvitation.texte }) : null);
-    enfants.push(carteInvitation(t));
-    enfants.push(sectionClassement(t, p));
-    enfants.push(
-      el(
-        "section",
-        { classe: "profil-section", attrs: { "aria-labelledby": "groupe-membres-titre" } },
-        el("h2", { classe: "profil-section__titre", attrs: { id: "groupe-membres-titre" }, texte: t.t("groupePage.membres.titre") }),
-        el("ul", { classe: "groupe-membres", attrs: { id: "groupe-membres" } }, ...p.membres.map((m) => el("li", { classe: "groupe-membre", attrs: { "data-ref": m.ref } }, avatar(t, { pseudo: m.pseudo, ref: m.ref, image: adresseAvatar(baseApi(), m.avatar), taille: 32, decoratif: true }), el("span", { classe: "groupe-membre__pseudo", texte: m.pseudo }), m.chef ? el("span", { classe: "groupe-membre__chef", texte: t.t("groupePage.chef") }) : null))),
-      ),
-    );
+    embleme = emblemeDeGroupe({ initiales: initiales(p.nom, langue), image: adresseAvatar(baseApi(), p.avatar), taille: 72 });
+    // « Rejoindre le groupe » reste en tête, sur toute la largeur, avant les membres.
+    corps.push(messageInvitation ? el("p", { classe: ["profil-message", messageInvitation.echec && "profil-message--echec"], attrs: { role: messageInvitation.echec ? "alert" : "status", id: "groupe-message" }, texte: messageInvitation.texte }) : null, carteInvitation(t));
     const actions: Node[] = [];
     if (membre && moi) actions.push(bouton({ texte: t.t("groupePage.partager"), variante: "secondaire", onClick: () => void partager(t) }), el("a", { classe: "dj-bouton dj-bouton--secondaire", attrs: { href: "/profil/#groupe" }, texte: t.t("groupePage.gerer") }));
     if (p.avatar) actions.push(bouton({ texte: t.t("amis.signaler"), variante: "secondaire", desactive: messageEmbleme !== null || identifiant() === null, onClick: () => void signaler(t) }));
-    if (actions.length) enfants.push(el("div", { classe: "profil-ligne groupe-actions" }, ...actions));
-    if (messageEmbleme) enfants.push(el("p", { classe: "profil-message", attrs: { role: "status" }, texte: messageEmbleme }));
+    corps.push(
+      el(
+        "div",
+        { classe: "groupe-gauche" },
+        // Chaque membre en photo de 52 px (comme « Mon groupe » du lot U3).
+        panneau(
+          { id: "groupe-membres-panneau", titre: t.t("groupePage.membres.titre") },
+          p.description ? el("p", { classe: "groupe-description", attrs: { id: "groupe-description" }, texte: p.description }) : null,
+          el("p", { classe: "profil-aide" }, t.t("groupePage.membres", { n: p.membres.length, max: p.max })),
+          el("ul", { classe: "groupe-membres", attrs: { id: "groupe-membres" } }, ...p.membres.map((m) => el("li", { classe: "groupe-membre", attrs: { "data-ref": m.ref } }, avatar(t, { pseudo: m.pseudo, ref: m.ref, image: adresseAvatar(baseApi(), m.avatar), taille: 52, decoratif: true }), el("span", { classe: "groupe-membre__pseudo", texte: m.pseudo }), m.chef ? el("span", { classe: "groupe-membre__chef", texte: t.t("groupePage.chef") }) : null))),
+        ),
+      ),
+      el("div", { classe: "groupe-droite" }, sectionClassement(t, p), actions.length ? el("div", { classe: "profil-ligne groupe-actions" }, ...actions) : null, messageEmbleme ? el("p", { classe: "profil-message", attrs: { role: "status" }, texte: messageEmbleme }) : null),
+    );
   }
-  enfants.push(
-    el("section", { classe: "profil-section", attrs: { "aria-labelledby": "titre-langue" } }, el("h2", { classe: "profil-section__titre", attrs: { id: "titre-langue" }, texte: t.t("profil.langue.titre") }), choixLangue(t, { langue, onChange: changerLangue })),
-    el("footer", { classe: "portail-pied" }, el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "/"), hreflang: langue }, texte: t.t("portail.mentions") }), lienRetours(t.t("portail.retours.lien"), langue, "/")),
+  // Lot U5 : la barre de la salle (« Amis et groupes » ouvert), le fronton au nom du groupe, la barre d'onglets du téléphone. Chemins absolus : la page est servie à toute profondeur.
+  const fronton = frontonDeLaPage({ t: salle, langue, titre: page ? page.nom : t.t("groupePage.titre"), jour, embleme });
+  fronton.querySelector("h1")?.setAttribute("id", "groupe-nom");
+  racine.replaceChildren(
+    barreDePage({ t: salle, langue, ici: "amis", racine: "/", stockage, identifie: identifiant() !== null, onLangue: changerLangue }),
+    fronton,
+    el("div", { classe: "salle-page groupe-page" }, ...corps.filter((e): e is Node => e !== null)),
+    el("footer", { classe: "portail-pied salle-pied" }, el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "/"), hreflang: langue }, texte: t.t("portail.mentions") }), lienRetours(t.t("portail.retours.lien"), langue, "/")),
+    ongletsDuBas(salle, "amis", "/"),
   );
-  racine.replaceChildren(...enfants.filter((e): e is Node => e !== null));
 }
 
 async function partager(t: ReturnType<typeof traduire>): Promise<void> {
@@ -205,4 +215,5 @@ async function lire(): Promise<void> {
 }
 
 construire();
+battre();
 void lire().then(construire);

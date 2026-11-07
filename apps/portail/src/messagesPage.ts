@@ -9,16 +9,19 @@ import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
+import "./salle.css"; // lot U5 : la barre, le fronton et la barre d'onglets de la salle de jeux
+import "./classementSalle.css";
 import "./messagesPortail.css";
+import "./pagesSalle.css";
 import { parisDay } from "@cdj/clock";
 import { ecrireLangue, lireLangue, readPlayerId, type Langue } from "@cdj/profile";
 import { clientRetours, RETOUR_TEXTE_MAX, type FilDetail, type FilResume } from "@cdj/profile/src/retours";
-import { CATALOGUE_COMMUN, barreJeu, bouton, cheminMentions, choixLangue, el, formatDateCourte, traducteur } from "@cdj/ui";
+import { CATALOGUE_COMMUN, bouton, cheminMentions, el, formatDateCourte, traducteur } from "@cdj/ui";
 import { CATALOGUE_RETOURS } from "@cdj/ui/src/catalogue.retours";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { baseApi } from "./jour";
-import { numeroDeJournee } from "./jours";
+import { barreDePage, battre, frontonDeLaPage, ongletsDuBas, traducteurDePage } from "./salleDePage";
 import { lienRetours } from "./retoursLien";
 import { stockageDuPortail } from "./stockage";
 import { activerManette } from "@cdj/ui/src/manetteLien";
@@ -129,17 +132,19 @@ function rendre(): void {
   document.querySelector('meta[name="description"]')?.setAttribute("content", t.t("messagesPage.description"));
   const corps = id === null ? [el("p", { classe: "profil-etat", attrs: { id: "messages-sans-profil" }, texte: t.t("messagesPage.sansProfil") })] : ouvert === null ? vueListe(t) : vueFil(t);
   const foyer = (document.activeElement as HTMLElement | null)?.id;
+  // Lot U5 : la barre de la salle (« Profil » reste l'onglet ouvert : on arrive de « Mes messages » du profil), le fronton « MES MESSAGES », la barre d'onglets du téléphone. La langue est dans le profil.
+  const salle = traducteurDePage(langue); // les pièces de la salle ne lisent que les catalogues du portail
   racine.replaceChildren(
-    barreJeu(t, { href: "../profil/", jour, numero: numeroDeJournee(jour) ?? undefined, retour: { texte: t.t("messagesPage.retour"), ariaLabel: t.t("messagesPage.retour.aria") } }),
-    el("h1", { classe: "profil-titre", texte: t.t("messagesPage.titre") }),
-    ...corps,
-    el("section", { classe: "profil-section", attrs: { "aria-labelledby": "titre-langue" } }, el("h2", { classe: "profil-section__titre", attrs: { id: "titre-langue" }, texte: t.t("profil.langue.titre") }), choixLangue(t, { langue, onChange: changerLangue })),
+    barreDePage({ t: salle, langue, ici: "profil", stockage, identifie: id !== null, onLangue: changerLangue }),
+    frontonDeLaPage({ t: salle, langue, titre: t.t("messagesPage.titre"), jour }),
+    el("div", { classe: "salle-page salle-page--lecture messages-page" }, ...corps),
     el(
       "footer",
-      { classe: "portail-pied" },
+      { classe: "portail-pied salle-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
       lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
+    ongletsDuBas(salle, "profil"),
   );
   if (foyer === "messages-reponse") document.getElementById("messages-reponse")?.focus();
 }
@@ -210,3 +215,4 @@ ouvert = lireAdresse();
 if (ouvert === null) void chargerListe();
 else void chargerFil(ouvert);
 rendre();
+battre();

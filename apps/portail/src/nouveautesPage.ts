@@ -9,15 +9,16 @@ import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
+import "./salle.css"; // lot U5 : la barre, le fronton et la barre d'onglets de la salle de jeux
+import "./classementSalle.css";
+import "./pagesSalle.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
 import { NOM_DE_ZONE } from "@cdj/core/nouveautes";
-import { ecrireLangue, lireLangue, type Langue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, barreJeu, bouton, choixLangue, cheminMentions, el, formatDate, traducteur } from "@cdj/ui";
-import { CATALOGUE_PORTAIL } from "./catalogue";
-import { CATALOGUE_PAGES } from "./cataloguePages";
+import { ecrireLangue, lireLangue, readPlayerId, type Langue } from "@cdj/profile";
+import { bouton, cheminMentions, el, formatDate } from "@cdj/ui";
 import { dans, lireNouveautes, noterNouveauteLue, parDate, type Nouveaute } from "./nouveautesDonnees";
-import { numeroDeJournee } from "./jours";
+import { barreDePage, battre, frontonDeLaPage, ongletsDuBas, traducteurDePage } from "./salleDePage";
 import { lienRetours } from "./retoursLien";
 import { stockageDuPortail } from "./stockage";
 import { activerManette } from "@cdj/ui/src/manetteLien";
@@ -31,8 +32,10 @@ activerManette(() => import("./manette").then((m) => m.pour("nouveautes")));
 // (un repère en `localStorage`, dans un try/catch : sans stockage, rien ne casse) : le point de l'accueil s'éteint.
 
 const stockage = stockageDuPortail();
+/** Le joueur a-t-il une identité sur cet appareil ? (la cloche et l'avatar de la barre lisent la copie de l'accueil, sans requête de plus). */
+const id = stockage ? readPlayerId(stockage) : null;
 let langue: Langue = lireLangue(stockage, navigator.languages).langue;
-const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_COMMUN);
+const traduire = traducteurDePage;
 type T = ReturnType<typeof traduire>;
 
 let nouveautes: Nouveaute[] = [];
@@ -71,9 +74,7 @@ function rendre(): void {
   document.querySelector('meta[name="description"]')?.setAttribute("content", t.t("nouveautes.description"));
   const jour = parisDay(Date.now());
   const groupes = parDate(nouveautes);
-  const enfants: (Node | null)[] = [
-    barreJeu(t, { href: "../", jour, numero: numeroDeJournee(jour) ?? undefined }),
-    el("h1", { classe: "nouveautes-titre", texte: t.t("nouveautes.titre") }),
+  const corps: (Node | null)[] = [
     etat === "chargement" ? el("p", { classe: "nouveautes-etat", attrs: { id: "nouveautes-etat", role: "status" }, texte: t.t("nouveautes.chargement") }) : null,
     etat === "erreur" ? el("p", { classe: "nouveautes-etat", attrs: { id: "nouveautes-etat", role: "status" }, texte: t.t("nouveautes.erreur") }) : null,
     etat === "ok" && nouveautes.length === 0 ? el("p", { classe: "nouveautes-etat", attrs: { id: "nouveautes-vide" }, texte: t.t("nouveautes.vide") }) : null,
@@ -89,13 +90,19 @@ function rendre(): void {
     suivante
       ? bouton({ texte: t.t("nouveautes.plusAnciennes"), variante: "secondaire", ariaLabel: t.t("nouveautes.plusAnciennes.aria"), pleineLargeur: true, onClick: () => void charger(suivante) })
       : null,
-    el("section", { classe: "profil-section", attrs: { "aria-labelledby": "titre-langue" } }, el("h2", { classe: "profil-section__titre", attrs: { id: "titre-langue" }, texte: t.t("profil.langue.titre") }), choixLangue(t, { langue, onChange: changerLangue })),
+  ];
+  // Lot U5 : la barre de la salle (pas d'onglet ouvert : on arrive des nouveautés de la cloche), le fronton « NOUVEAUTÉS » et, sur téléphone, la barre d'onglets. La langue est dans le profil (téléphone) ou la barre.
+  const enfants: (Node | null)[] = [
+    barreDePage({ t, langue, ici: null, stockage, identifie: id !== null, onLangue: changerLangue }),
+    frontonDeLaPage({ t, langue, titre: t.t("nouveautes.titre"), jour }),
+    el("div", { classe: "salle-page salle-page--lecture nouveautes-page" }, ...corps),
     el(
       "footer",
-      { classe: "portail-pied" },
+      { classe: "portail-pied salle-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
       lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
+    ongletsDuBas(t, null),
   ];
   racine.replaceChildren(...enfants.filter((e): e is Node => e !== null));
   const bouton_ = racine.querySelector<HTMLElement>(".dj-bouton");
@@ -129,4 +136,5 @@ function changerLangue(l: Langue): void {
 }
 
 rendre();
+battre();
 void charger(null);

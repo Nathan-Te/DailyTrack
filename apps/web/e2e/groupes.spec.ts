@@ -81,7 +81,7 @@ test("page publique d'un groupe › classement des groupes › Démo gère le si
   await expect(page.locator("#groupe-description")).toContainText("trois meilleurs");
   await expect(page.locator("#groupe-membres li")).toHaveCount(5);
   await expect(page.locator("#groupe-rangs li").first()).toBeVisible();
-  await expect(page.locator("main img.dj-avatar__img").first()).toHaveAttribute("src", /^\/api\/avatars\/[0-9a-f]{16}$/); // l'emblème
+  await expect(page.locator(".salle-fronton .salle-embleme img")).toHaveAttribute("src", /^\/api\/avatars\/[0-9a-f]{16}$/); // l'emblème (lot U5 : dans le fronton)
   await page.goto(`${SITE}/groupe/${encodeURIComponent("Les Deux")}`);
   await expect(page.locator("#groupe-rangs")).toContainText("Moins de 3 classés");
   await page.goto(`${SITE}/groupe/${encodeURIComponent("Nexiste pas")}`);

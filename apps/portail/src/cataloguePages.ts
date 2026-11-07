@@ -76,8 +76,6 @@ const fr = {
   // Lot C1 : « Mes messages » (la page /messages/, ouverte depuis le profil)
   "messagesPage.titre": "Mes messages",
   "messagesPage.description": "Tes messages à l'éditeur de Du Jour (bugs, idées) et ses réponses.",
-  "messagesPage.retour": "Profil",
-  "messagesPage.retour.aria": "Retour à ton profil",
   "messagesPage.sansProfil": "Pas encore de profil : finis un jeu pour l'ouvrir, tu pourras ensuite recevoir des réponses. Tu peux quand même écrire avec « Un bug ? Une idée ? ».",
   "messagesPage.chargement": "Chargement de tes messages…",
   "messages.vide": "Tu n'as encore rien envoyé. « Un bug ? Une idée ? » est en bas de chaque page.",
@@ -287,8 +285,6 @@ const en: Catalogues<typeof fr>["en"] = {
   "classement.amis.indispo": "Your friends' leaderboard isn't answering: here is everyone.",
   "messagesPage.titre": "My messages",
   "messagesPage.description": "Your messages to the Du Jour publisher (bugs, ideas) and the replies.",
-  "messagesPage.retour": "Profile",
-  "messagesPage.retour.aria": "Back to your profile",
   "messagesPage.sansProfil": "No profile yet: finish a game to open one, then you can get replies. You can still write with “Found a bug? Got an idea?”.",
   "messagesPage.chargement": "Loading your messages…",
   "messages.vide": "You haven't sent anything yet. “Found a bug? Got an idea?” is at the bottom of every page.",
