@@ -318,7 +318,7 @@ test("profil commun (/profil/) : l'avatar y mène ; pseudo, code de transfert, s
     await expect(page.locator('[data-jeu="track"] .track-etiquette__numero')).toHaveText("5 days done");
     await capture(page, `profil-${nom}-en`);
     // Retour au portail par la navigation (« Aujourd'hui », ou le logo sur téléphone) : la langue suit (même stockage).
-    await page.locator(".salle-nav a, .salle-onglets a").first().click();
+    await page.locator(".salle-nav a:visible, .salle-onglets a:visible").first().click();
     await expect(page.locator("#portail-jeux-titre")).toHaveText("Today's games");
   }
 });
