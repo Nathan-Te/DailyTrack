@@ -9,10 +9,10 @@ export const PAGES_MANETTE = {
   // Lot U1 : « Jouer » de la première cartouche (un jeu épinglé passe en tête) ; la navigation du haut ou la barre d'onglets du bas (LB / RB) et la cloche sont atteintes à la croix, comme tout lien.
   accueil: ".dj-cartouche .dj-bouton", // « Jouer » de la première cartouche
   classement: '[role="tab"][aria-selected="true"]', // l'onglet de la vue affichée ; LB / RB changent d'onglet
-  profil: "input", // le champ du pseudo ; A ouvre la saisie
+  profil: "#pseudo-lien", // lot U3 : « Changer de pseudo » (il ouvre le champ du pseudo) ; le crayon de la photo est atteint à la croix
   nouveautes: ".dj-barre-jeu__retour",
   // Lot F2 : « Mes amis » → le champ du pseudo à ajouter, ou « Accepter » quand une invitation est affichée ; la feuille d'un joueur (A valide, B ferme) est ajoutée par `optionsPage` (classement).
-  amis: ".dj-carte-invitation .dj-bouton, .dj-ajout-ami__champ",
+  amis: ".dj-carte-invitation .dj-bouton, .dj-ajout-ami__champ", // lot U3 : « Voir le profil » d'un ami ouvre la feuille d'un joueur (comme au classement)
   // Lot C1 : « Mes messages » → le premier message, ou le champ de réponse d'un fil ouvert.
   messages: ".messages-fil__ouvrir, .messages-reponse__champ",
   // Lot C1, partie C : la page d'un groupe → « Rejoindre le groupe » quand une invitation est affichée, sinon « Partager le lien d'invitation » d'un membre, sinon le lien de retour.
@@ -31,10 +31,10 @@ export const ECRAN_RETOUR: EcranManette = { ecran: ".dj-retour", principal: ".dj
 /** Lot U1 : la feuille de la cloche (nouveautés et messages), ouverte depuis la barre de l'accueil : A ouvre la ligne, B ferme. */
 export const ECRAN_CLOCHE: EcranManette = { ecran: ".salle-feuille", principal: ".salle-feuille__ligne, .salle-feuille__fermer", retour: ".salle-feuille__fermer" };
 
-/** Ce que le menu à la manette lit pour une page (chargé avec lui, à la première manette) ; le classement y ajoute la feuille d'un joueur. */
+/** Ce que le menu à la manette lit pour une page (chargé avec lui, à la première manette) ; le classement et (lot U3) « Amis et groupes » y ajoutent la feuille d'un joueur. */
 export const optionsPage = (page: keyof typeof PAGES_MANETTE): OptionsManette => ({
   page: true,
-  ecrans: [{ ecran: ":root", principal: PAGES_MANETTE[page] }, ECRAN_RETOUR, ...(page === "classement" ? [ECRAN_FEUILLE] : []), ...(page === "accueil" ? [ECRAN_CLOCHE] : [])],
+  ecrans: [{ ecran: ":root", principal: PAGES_MANETTE[page] }, ECRAN_RETOUR, ...(page === "classement" || page === "amis" ? [ECRAN_FEUILLE] : []), ...(page === "accueil" ? [ECRAN_CLOCHE] : [])],
 });
 
 /** Le module d'une page pour `activerManette` : ses déclarations et le moteur (un seul `import()` au premier chargement). */

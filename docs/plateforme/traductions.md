@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2266 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2281 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -422,10 +422,26 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `amisPage.titre` | Mes amis | My friends |
-| `amisPage.description` | Tes amis sur Du Jour : ajoute un pseudo ou envoie ton lien, et compare vos temps dans les classements. | Your friends on Du Jour: add a name or send your link, and compare your times in the leaderboards. |
-| `amisPage.retour` | Profil | Profile |
-| `amisPage.retour.aria` | Retour à ton profil | Back to your profile |
+| `amisPage.titre` | Amis et groupes | Friends & groups |
+| `amisPage.description` | Tes amis et ton groupe sur Du Jour : ce qu'ils ont joué aujourd'hui, un pseudo à ajouter, un lien à envoyer. | Your friends and your group on Du Jour: what they played today, a name to add, a link to send. |
+| `amisPage.mes.titre` | Mes amis | My friends |
+| `amisPage.mes.nombre` | one : {n} ami · other : {n} amis | one : {n} friend · other : {n} friends |
+| `amisPage.mes.joue` | one : {nombre}, {n} a joué aujourd'hui · other : {nombre}, {n} ont joué aujourd'hui | one : {nombre}, {n} has played today · other : {nombre}, {n} have played today |
+| `amisPage.mes.vide` | Pas encore d'ami : ajoute un pseudo ou envoie ton lien. | No friends yet: add a name or send your link. |
+| `amisPage.carte.profil` | Voir le profil | See profile |
+| `amisPage.carte.profil.aria` | Voir le profil de {pseudo} | See {pseudo}'s profile |
+| `amisPage.carte.rangTemps` | {rang} entre amis, {temps} | {rang} among friends, {temps} |
+| `amisPage.carte.faits` | one : {n} jeu sur {total} aujourd'hui · other : {n} jeux sur {total} aujourd'hui | one : {n} game of {total} today · other : {n} games of {total} today |
+| `amisPage.groupe.titre` | Mon groupe | My group |
+| `amisPage.groupe.chef` | Chef : {pseudo} | Leader: {pseudo} |
+| `amisPage.groupe.creer` | Créer un groupe | Create a group |
+| `amisPage.groupe.classement` | Classement | Leaderboard |
+| `amisPage.groupe.membres` | Les membres de ton groupe | Your group's members |
+| `amisPage.membre.toi` | Toi | You |
+| `amisPage.membre.chef` | chef | leader |
+| `amisPage.membre.parfaite` | parfaite | perfect |
+| `amisPage.membre.partiel` | {n} sur {total} | {n} of {total} |
+| `amisPage.membre.rien` | pas joué | not played |
 | `amisPage.sansProfil` | Pas encore de profil : finis un jeu pour l'ouvrir, tu pourras ensuite ajouter des amis. Un ami t'a invité ? Ouvre son lien. | No profile yet: finish a game to open one, then you can add friends. Did a friend invite you? Open their link. |
 | `amisPage.chargement` | Chargement de tes amis… | Loading your friends… |
 | `amisPage.invitation.chargement` | Lecture de l'invitation… | Reading the invitation… |
@@ -764,10 +780,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `profil.titre` | Ton profil | Your profile |
 | `profil.retour.aria` | Retour à {jeu} | Back to {jeu} |
-| `profil.description` | Ton profil Du Jour : pseudo, code de transfert, série et statistiques de chaque jeu. | Your Du Jour profile: name, transfer code, streak and stats for each game. |
+| `profil.description` | Ton profil Du Jour : ta photo, ton pseudo, ta série, tes médailles et les statistiques de chaque jeu. | Your Du Jour profile: your picture, name, streak, medals and stats for each game. |
 | `profil.sansProfil` | Pas encore de profil sur le serveur : finis un jeu pour l'ouvrir. Tu as un code ? Charge-le ci-dessous. | No profile on the server yet: finish a game to open one. Got a code? Load it below. |
 | `profil.inconnu` | Ce profil n'a encore aucun résultat : finis un jeu pour l'ouvrir. | This profile has no results yet: finish a game to open it. |
-| `profil.pseudo.titre` | Pseudo | Name |
+| `profil.pseudo.lien` | Changer de pseudo | Change name |
 | `profil.pseudo.champ` | Nouveau pseudo | New name |
 | `profil.pseudo.changer` | Changer | Change |
 | `profil.pseudo.change` | Pseudo changé : {nom}. | Name changed: {nom}. |
@@ -790,13 +806,15 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.serie.titre` | Tous les jeux | All games |
 | `profil.parfaites.legende` | Journées parfaites | Perfect days |
 | `profil.jeux.titre` | Par jeu | By game |
+| `profil.jeux.nombre` | one : {n} jeu · other : {n} jeux | one : {n} game · other : {n} games |
+| `profil.jeux.jour` | Jeux du jour | Today's games |
+| `profil.jeux.arcade` | Arcade | Arcade |
 | `profil.jours` | one : {n} jour fini · other : {n} jours finis | one : {n} day done · other : {n} days done |
 | `profil.meilleurRang` | Meilleure place : {rang} sur {classes}, {date} | Best place: {rang} of {classes}, {date} |
 | `profil.pasClasse` | Pas encore classé | Not ranked yet |
 | `profil.medailles` | Médailles | Medals |
 | `profil.langue.titre` | Langue | Language |
 | `profil.chargement` | Chargement du profil… | Loading your profile… |
-| `profil.avatar.titre` | Avatar | Avatar |
 | `profil.avatar.aide` | Choisis une image et recadre-la en carré : elle est réduite à 128 × 128 sur ton appareil, sans les informations de ta photo (lieu, appareil). | Pick an image and crop it to a square: it is shrunk to 128 × 128 on your device, without your photo's information (place, device). |
 | `profil.avatar.choisir` | Choisir une image | Pick an image |
 | `profil.avatar.apercu` | Aperçu du recadrage | Crop preview |
@@ -814,13 +832,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.avatar.regles` | Pas d'image qui blesse ou qui choque : on les retire sans délai. Voir les mentions légales. | No image that hurts or shocks: we remove them without delay. See the legal notice. |
 | `profil.messages.titre` | Mes messages | My messages |
 | `profil.messages.aide` | Les réponses de l'éditeur à tes bugs et à tes idées. | The publisher's replies to your bugs and ideas. |
-| `profil.messages.lien` | Mes messages | My messages |
+| `profil.messages.lien` | Lire mes messages | Read my messages |
 | `profil.messages.nonLu` | {n} réponse à lire | {n} reply to read |
 | `profil.groupe.titre` | Mon groupe | My group |
 | `profil.groupe.aide` | Crée un groupe ou rejoins-en un par lien d'invitation : tout le groupe a son classement, la moyenne de ses 3 meilleurs du jour. | Create a group or join one with an invitation link: each group has its own leaderboard, the average of its 3 best of the day. |
-| `profil.amis.titre` | Amis | Friends |
-| `profil.amis.aide` | Compare tes temps à ceux de tes amis dans les classements. | Compare your times with your friends' in the leaderboards. |
-| `profil.amis.lien` | Mes amis | My friends |
 
 ### Vitrine des composants (recette seulement) (`vitrine.*`, `apps/portail/src/catalogueVitrine.ts`)
 

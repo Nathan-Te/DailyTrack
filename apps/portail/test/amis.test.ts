@@ -59,7 +59,7 @@ describe("la page /amis/", () => {
 
 describe("les textes des pages des amis", () => {
   it("la page, le lien du profil et le message du classement existent en français et en anglais", () => {
-    const cles = ["amisPage.titre", "amisPage.description", "amisPage.retour", "amisPage.retour.aria", "amisPage.sansProfil", "amisPage.chargement", "amisPage.invitation.chargement", "profil.amis.titre", "profil.amis.aide", "profil.amis.lien", "classement.amis.indispo"] as const;
+    const cles = ["amisPage.titre", "amisPage.description", "amisPage.sansProfil", "amisPage.chargement", "amisPage.invitation.chargement", "amisPage.mes.titre", "amisPage.groupe.titre", "classement.amis.indispo"] as const;
     for (const langue of ["fr", "en"] as const) for (const cle of cles) expect((CATALOGUE_PAGES[langue] as Record<string, string>)[cle], `${langue} ${cle}`).toBeTruthy();
     expect(Object.keys(CATALOGUE_PAGES.fr).sort()).toEqual(Object.keys(CATALOGUE_PAGES.en).sort());
   });

@@ -14,10 +14,11 @@ describe("les pages du portail à la manette", () => {
     );
   });
 
-  it("lot F2 : la feuille d'un joueur est dans le menu du classement seulement, et c'est la ligne du socle", () => {
+  it("lot F2 : la feuille d'un joueur est dans le menu du classement et (lot U3) de « Amis et groupes » seulement, et c'est la ligne du socle", () => {
     expect(ECRAN_FEUILLE).toEqual(ECRAN_MANETTE_FEUILLE);
     expect(optionsPage("classement").ecrans).toContainEqual(ECRAN_FEUILLE);
-    for (const page of ["accueil", "amis", "groupe", "messages", "nouveautes", "profil"] as const) expect(optionsPage(page).ecrans).not.toContainEqual(ECRAN_FEUILLE);
+    expect(optionsPage("amis").ecrans).toContainEqual(ECRAN_FEUILLE);
+    for (const page of ["accueil", "groupe", "messages", "nouveautes", "profil"] as const) expect(optionsPage(page).ecrans).not.toContainEqual(ECRAN_FEUILLE);
     // « Mes amis » : le champ du pseudo, ou « Accepter » quand une invitation est affichée.
     expect(PAGES_MANETTE.amis).toContain(".dj-carte-invitation");
     expect(PAGES_MANETTE.amis).toContain(".dj-ajout-ami__champ");
