@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { ANNONCE, BOSS_IDS, ETOURDI, MARCHE, RECUPERE, RUGIT, Z_BANDE, type Golem, type Zone } from "@cdj/rush-sim";
 import { CATALOGUE_FR } from "../src/catalogue.fr";
 import { CATALOGUE_EN } from "../src/catalogue.en";
-import { animerBoss, bossFictif, capDuBoss, courseEnCours, creerBoss, prochaineCourse, type BossVu, type EntreeBoss } from "../src/bosses";
+import { animerBoss, bossFictif, capDuBoss, cleBoss, courseEnCours, creerBoss, prochaineCourse, type BossVu, type EntreeBoss } from "../src/bosses";
 import { cameraDuBestiaire, ECART_BESTIAIRE } from "../src/bestiaire";
 import { creerChevalier } from "../src/acteurs";
 
@@ -197,7 +197,7 @@ describe("la caméra du bestiaire", () => {
 describe("les textes des boss (fr et en)", () => {
   it("chaque boss a un nom en français et en anglais ; le HUD le compose avec son pourcentage", () => {
     for (const id of BOSS_IDS) {
-      const cle = `boss.nom.${id}` as keyof typeof CATALOGUE_FR;
+      const cle = `boss.nom.${cleBoss(id)}` as keyof typeof CATALOGUE_FR;
       expect(CATALOGUE_FR[cle], `fr ${id}`).toBeTruthy();
       expect(CATALOGUE_EN[cle as keyof typeof CATALOGUE_EN], `en ${id}`).toBeTruthy();
     }
@@ -209,7 +209,7 @@ describe("les textes des boss (fr et en)", () => {
     expect(CATALOGUE_EN["carte.legende"]).toContain("{boss}");
   });
   it("les noms se distinguent (français : cinq noms différents, anglais : cinq noms différents)", () => {
-    expect(new Set(BOSS_IDS.map((id) => CATALOGUE_FR[`boss.nom.${id}` as keyof typeof CATALOGUE_FR])).size).toBe(5);
-    expect(new Set(BOSS_IDS.map((id) => CATALOGUE_EN[`boss.nom.${id}` as keyof typeof CATALOGUE_EN])).size).toBe(5);
+    expect(new Set(BOSS_IDS.map((id) => CATALOGUE_FR[`boss.nom.${cleBoss(id)}` as keyof typeof CATALOGUE_FR])).size).toBe(5);
+    expect(new Set(BOSS_IDS.map((id) => CATALOGUE_EN[`boss.nom.${cleBoss(id)}` as keyof typeof CATALOGUE_EN])).size).toBe(5);
   });
 });

@@ -72,7 +72,7 @@ import {
   type BeteVue,
   type ChevalierVu,
 } from "./acteurs";
-import { animerBoss, cadreDuBoss, capDuBoss, creerBoss, type BossVu } from "./bosses";
+import { animerBoss, cadreDuBoss, capDuBoss, cleBoss, creerBoss, type BossVu } from "./bosses";
 import { monterBestiaire, RAYON_BESTIAIRE } from "./bestiaire";
 import { CameraRush, type ModeNiveau, type PointCadre } from "./camera";
 import { eclair } from "./cel";
@@ -265,7 +265,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const R = metres(RAYON_ARENE);
   const niveau = contenu.niveau;
   // Lot BR3 : le bestiaire pose les cinq boss sur un plateau plus large, avec leur nom dessous.
-  const salle = bestiaire ? monterBestiaire(ui.racine, palette, scene, (id) => t(`boss.nom.${id}`)) : null;
+  const salle = bestiaire ? monterBestiaire(ui.racine, palette, scene, (id) => t(`boss.nom.${cleBoss(id)}`)) : null;
   if (bestiaire) ui.racine.dataset.bestiaire = "1";
   const decor = salle ? salle.decor : niveau ? monterNiveauVu(niveau, palette) : monterDecor(R, palette);
   scene.background = decor.ciel;
@@ -312,7 +312,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const bossVu: BossVu | null = partie.golem ? creerBoss(partie.golem.kind) : null; // lot BR3 : l'un des cinq boss (le golem pour les anciens scénarios)
   if (bossVu) scene.add(bossVu.racine);
   const idBoss = partie.golem ? BOSS_IDS[partie.golem.kind]! : "golem";
-  const nomBoss = t(`boss.nom.${idBoss}`);
+  const nomBoss = t(`boss.nom.${cleBoss(idBoss)}`);
   if (contenu.scenario === "boss") ui.presenter(nomBoss); // le scénario `boss` n'a ni barrière ni réveil : le boss se présente dès le départ
   const sGolem = suivi(partie.golem?.x ?? 0, partie.golem?.y ?? 0);
   let yawGolem = partie.golem ? Math.atan2(partie.c.x - partie.golem.x, partie.c.y - partie.golem.y) : Math.PI / 2;

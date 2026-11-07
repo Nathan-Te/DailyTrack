@@ -1,3 +1,4 @@
+import { cleBoss } from "./bosses";
 import { formatDay } from "@cdj/core";
 import { BOSS_IDS, CM_PAR_CHANFREIN, DUREE_TICKS, M, MUR, STRATEGIES, TICKS_PAR_SECONDE, PONT, SOL, tempsSansRencontre, Z_ARENE, Z_CHEMIN, Z_CLAIRIERE, Z_PORTE, caseDe, centreDeCase, dailyRush, descendre, formatTemps, jouerLePilote, type Contenu } from "@cdj/rush-sim";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -149,7 +150,7 @@ export function carteDesJours(jour: number, nombre: number, hote: HTMLElement, o
     cap.textContent = o.t("carte.legende", {
       date: formatDay(c.jour),
       theme: o.t(`theme.${c.theme}`),
-      boss: o.t(`boss.nom.${BOSS_IDS[c.boss]!}`), // lot BR3 : le boss du jour
+      boss: o.t(`boss.nom.${cleBoss(BOSS_IDS[c.boss]!)}`), // lot BR3 : le boss du jour
       m: Math.round(n.longueurCm / 100),
       d: n.detours.length,
       b: n.detours.filter((q) => q.hub2 >= 0).length,

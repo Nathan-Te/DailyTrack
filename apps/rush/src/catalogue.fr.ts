@@ -22,7 +22,7 @@ export const CATALOGUE_FR = {
   "commandes.action.esquive": "Esquive",
   "boss.nom.golem": "Golem",
   "boss.nom.reine": "Reine gelée",
-  "boss.nom.grand-duc": "Grand-duc",
+  "boss.nom.grandDuc": "Grand-duc",
   "boss.nom.belier": "Bélier de carrière",
   "boss.nom.chene": "Vieux chêne",
   "hud.boss": "{nom} {pct} %",

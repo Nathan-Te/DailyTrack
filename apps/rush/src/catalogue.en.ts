@@ -25,7 +25,7 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "commandes.action.esquive": "Dodge",
   "boss.nom.golem": "Golem",
   "boss.nom.reine": "Frozen queen",
-  "boss.nom.grand-duc": "Great horned owl",
+  "boss.nom.grandDuc": "Great horned owl",
   "boss.nom.belier": "Quarry ram",
   "boss.nom.chene": "Old oak",
   "hud.boss": "{nom} {pct}%",

@@ -2757,7 +2757,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `boss.nom.golem` | Golem | Golem |
 | `boss.nom.reine` | Reine gelée | Frozen queen |
-| `boss.nom.grand-duc` | Grand-duc | Great horned owl |
+| `boss.nom.grandDuc` | Grand-duc | Great horned owl |
 | `boss.nom.belier` | Bélier de carrière | Quarry ram |
 | `boss.nom.chene` | Vieux chêne | Old oak |
 

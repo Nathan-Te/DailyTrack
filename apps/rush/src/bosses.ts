@@ -10,6 +10,9 @@ import { COULEURS } from "./palette";
 // reconnaît à sa silhouette. Tout est procédural : `animerBoss` pose le corps d'après l'état de la simulation (état, temps dans l'état, attaque, zones annoncées). Repères : le boss regarde vers +Z, l'unité est le mètre, les pieds
 // sont à y = 0 ; `racine.position.y` est la hauteur de vol (le grand-duc, le bond de la reine), lue par la scène pour l'ombre et la caméra.
 
+/** La clé de catalogue du nom d'un boss (`boss.nom.grandDuc` : une clé ne porte pas de tiret). */
+export const cleBoss = (id: string): string => id.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
+
 export const COULEURS_BOSS = {
   reine: { couleur: 0x2f78b8, clair: 0xa6d6f2, couronne: COULEURS.armure },
   duc: { couleur: 0x3a4a72, dessus: 0x5a6c9c, sombre: 0x252f4d, creme: 0xd9d0b8, bec: 0xe0a030, aile: 0x4a5c8c, oeil: 0xffd23a },
