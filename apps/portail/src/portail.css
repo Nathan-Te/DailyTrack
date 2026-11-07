@@ -507,11 +507,6 @@
   color: var(--dj-encre-douce);
   text-transform: uppercase;
 }
-.classement-vues .dj-bouton {
-  flex: 1 1 0;
-  min-width: 0;
-  padding-inline: var(--dj-espace-3);
-}
 /* « Un jeu sur deux » : le titre qui sépare ceux qui ont tout fini de ceux qui n'ont fini qu'un jeu. */
 .classement-separation {
   margin: var(--dj-espace-5) 0 var(--dj-espace-3);
