@@ -1,7 +1,7 @@
 import { COEURS } from "@cdj/rush-sim";
 import type { Controles } from "./controles";
 
-// L'interface de la partie, posée sur la scène 3D : les cœurs, la barre de vie du golem, le joystick et les deux boutons des doigts. **Aucun texte écrit ici** : le traducteur de la partie (`OptionsPartie.t`) les donne.
+// L'interface de la partie, posée sur la scène 3D : les cœurs, la barre de vie du boss (son nom, sa phase) et sa présentation (lot BR3), le joystick et les deux boutons des doigts. **Aucun texte écrit ici** : le traducteur de la partie (`OptionsPartie.t`) les donne.
 // Charte (révision 17) : joystick virtuel à gauche, « Coup » et « Esquive » en boutons à droite, aux bords, marges de sécurité de l'iPhone ; le centre de l'écran reste libre.
 
 type Traduire = (cle: string, params?: Readonly<Record<string, string | number>>) => string;
@@ -45,7 +45,10 @@ export interface Interface {
   /** La carte en surbrillance (clavier, manette), 0 à 2. */
   selection(i: number): void;
   choixOuvert(): boolean;
-  boss(fraction: number | null, phase: number): void;
+  /** La barre de vie du boss : sa fraction de vie, sa phase et son NOM (lot BR3 : cinq boss) ; `null` : cachée. */
+  boss(fraction: number | null, phase: number, nom?: string): void;
+  /** Lot BR3 : la pastille avec le nom du boss, ~1 s au centre-haut quand il entre en scène ; `null` : la retire tout de suite. */
+  presenter(nom: string | null): void;
   /** Lot BR1 : la pastille « BOSS → 38 m » (la flèche tourne vers l'arène, `angle` en radians sur l'écran, 0 : vers la droite, π/2 : vers le bas) ; `null` : cachée. */
   cible(metres: number | null, angle?: number): void;
   degats(): void;
@@ -125,7 +128,7 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   boss.hidden = true;
   const nom = document.createElement("span");
   nom.className = "rush-boss__nom";
-  nom.textContent = t("golem.nom");
+  nom.textContent = t("boss.nom.golem");
   const phase = document.createElement("span");
   phase.className = "rush-boss__phase";
   phase.textContent = t("hud.phase", { n: 1 });
@@ -134,7 +137,7 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   piste.setAttribute("role", "progressbar");
   piste.setAttribute("aria-valuemin", "0");
   piste.setAttribute("aria-valuemax", "100");
-  piste.setAttribute("aria-label", t("golem.nom"));
+  piste.setAttribute("aria-label", t("boss.nom.golem"));
   const vie = document.createElement("div");
   vie.className = "rush-boss__vie";
   const marque = document.createElement("div");
@@ -149,12 +152,18 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   const distanceTexte = document.createElement("span");
   distanceTexte.className = "rush-cible__texte";
   cible.append(fleche, distanceTexte);
+  // La présentation du boss (lot BR3) : une pastille au centre-haut, ~1 s, quand il entre en scène (la barrière se ferme, il rugit, invulnérable).
+  const presentation = document.createElement("div");
+  presentation.className = "rush-presentation";
+  presentation.hidden = true;
+  presentation.setAttribute("role", "status");
+  let minuteur = 0;
   const vignette = document.createElement("div");
   vignette.className = "rush-vignette";
   const fps = document.createElement("div");
   fps.className = "rush-fps";
   fps.hidden = true;
-  hud.append(bloc, pastille, boss, cible, vignette, fps);
+  hud.append(bloc, pastille, boss, cible, presentation, vignette, fps);
   racine.append(zone3d, hud);
   // Lot BR2 : le choix d'une amélioration — un voile à rayures, un titre, trois cartes (des boutons : le doigt, la souris, le clavier et la manette les atteignent), une ligne d'aide.
   const choix = document.createElement("div");
@@ -320,18 +329,35 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
     choixOuvert() {
       return ouvert;
     },
-    boss(fraction, numero) {
+    boss(fraction, numero, nomDuBoss) {
       if (fraction === null) {
         boss.hidden = true;
         return;
       }
       boss.hidden = false;
+      if (nomDuBoss !== undefined && nom.textContent !== nomDuBoss) {
+        nom.textContent = nomDuBoss;
+        piste.setAttribute("aria-label", nomDuBoss);
+      }
       if (boss.dataset.phase !== String(numero)) {
         boss.dataset.phase = String(numero);
         phase.textContent = t("hud.phase", { n: numero });
       }
       vie.style.transform = `scaleX(${Math.max(0, Math.min(1, fraction))})`;
       piste.setAttribute("aria-valuenow", String(Math.round(fraction * 100)));
+    },
+    presenter(nomDuBoss) {
+      clearTimeout(minuteur);
+      presentation.classList.remove("rush-presentation--vue");
+      if (nomDuBoss === null) {
+        presentation.hidden = true;
+        return;
+      }
+      presentation.textContent = nomDuBoss;
+      presentation.hidden = false;
+      void presentation.offsetWidth;
+      presentation.classList.add("rush-presentation--vue");
+      minuteur = window.setTimeout(() => (presentation.hidden = true), 1250);
     },
     cible(metres, angle = 0) {
       if (metres === null) {
@@ -356,6 +382,7 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
       fps.textContent = texte;
     },
     detruire() {
+      clearTimeout(minuteur);
       racine.remove();
     },
   };

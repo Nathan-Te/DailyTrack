@@ -9,26 +9,26 @@ import { BLANC, COULEURS, ENCRE } from "./palette";
 // chaque image, `animer*` pose le corps selon l'état de la simulation (balancement, écrasement, rotation, le coup en trois temps : anticipation, phase active, récupération), sans animation enregistrée. Les repères : le personnage regarde vers +Z,
 // l'unité est le mètre, les pieds sont à y = 0. Les pièces qui bougent ensemble sont FUSIONNÉES (une forme : un appel de dessin) ; le contour est celui du post-traitement (haute qualité) ou des coques (basse) : voir `cel.ts`.
 
-const sph = (r: number, l = 18, h = 12): SphereGeometry => new SphereGeometry(r, l, h);
-const bornes = (v: number, a: number, b: number): number => Math.min(b, Math.max(a, v));
-const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
-const sortie = (t: number): number => 1 - (1 - t) * (1 - t) * (1 - t);
-const entree = (t: number): number => t * t;
-const lisser = (a: number, b: number, x: number): number => {
+export const sph = (r: number, l = 18, h = 12): SphereGeometry => new SphereGeometry(r, l, h);
+export const bornes = (v: number, a: number, b: number): number => Math.min(b, Math.max(a, v));
+export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+export const sortie = (t: number): number => 1 - (1 - t) * (1 - t) * (1 - t);
+export const entree = (t: number): number => t * t;
+export const lisser = (a: number, b: number, x: number): number => {
   const t = bornes((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
 };
 
 // --- Les formes (construites une fois, partagées) ---------------------------------------------------------------------------------------------------------------------------------------------------
 /** Un dôme de gelée : une demi-sphère à l'ombrage lisse, un petit REFLET brillant en haut à gauche (un bouton de lumière, pas une grande tache), le bas un peu plus sombre. Posée au sol. */
-function geleeDome(): BufferGeometry {
+export function geleeDome(couleur: number = COULEURS.gelee, claire: number = COULEURS.geleeClair): BufferGeometry {
   const g = new SphereGeometry(0.5, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
   const p = g.getAttribute("position");
   const n = g.getAttribute("normal");
   const lumiere = new Vector3(-0.42, 0.78, 0.46).normalize();
   const c = new Float32Array(p.count * 3);
-  const base = new Color(COULEURS.gelee);
-  const clair = new Color(COULEURS.geleeClair);
+  const base = new Color(couleur);
+  const clair = new Color(claire);
   const reflet = new Color(0xffffff);
   const t = new Color();
   const v = new Vector3();
@@ -82,7 +82,7 @@ export interface Yeux {
   teinte(c: number): void;
 }
 const matiereYeux = new MeshBasicMaterial({ vertexColors: true });
-function yeux(ecart: number, y: number, z: number, r: number, pupille = 0.55): Yeux {
+export function yeux(ecart: number, y: number, z: number, r: number, pupille = 0.55): Yeux {
   const formes: BufferGeometry[] = [];
   for (const s of [-1, 1]) {
     formes.push(teindre(placer(sph(1, 10, 7), { x: s * ecart, s: r }), BLANC));
@@ -98,7 +98,7 @@ function yeux(ecart: number, y: number, z: number, r: number, pupille = 0.55): Y
 }
 
 /** Un clignement : 0 (ouvert) à 1 (fermé), toutes les ~3 s, décalé par `graine`. */
-function clignement(temps: number, graine: number): number {
+export function clignement(temps: number, graine: number): number {
   const t = (temps + graine * 1.7) % 3.1;
   return t < 0.12 ? Math.sin((t / 0.12) * Math.PI) : 0;
 }
@@ -108,7 +108,7 @@ export interface Acteur {
   matieres: MeshToonMaterial[];
 }
 
-function ajouter(parent: Group, p: Piece, x = 0, y = 0, z = 0): Piece {
+export function ajouter(parent: Group, p: Piece, x = 0, y = 0, z = 0): Piece {
   p.groupe.position.set(x, y, z);
   parent.add(p.groupe);
   return p;

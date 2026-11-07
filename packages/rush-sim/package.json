@@ -13,7 +13,8 @@
     "figer:rush": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
     "golden:rush": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs",
     "mesures:rush": "esbuild tools/mesures.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures.mjs --log-level=warning && node dist/mesures.mjs",
-    "equilibre:rush": "esbuild tools/equilibre.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/equilibre.mjs --log-level=warning && node dist/equilibre.mjs"
+    "equilibre:rush": "esbuild tools/equilibre.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/equilibre.mjs --log-level=warning && node dist/equilibre.mjs",
+    "boss:rush": "esbuild tools/boss.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/boss.mjs --log-level=warning && node dist/boss.mjs"
   },
   "exports": {
     ".": "./src/index.ts",

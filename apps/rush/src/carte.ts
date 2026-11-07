@@ -1,10 +1,11 @@
+import { cleBoss } from "./bosses";
 import { formatDay } from "@cdj/core";
-import { CM_PAR_CHANFREIN, DUREE_TICKS, M, MUR, STRATEGIES, TICKS_PAR_SECONDE, PONT, SOL, tempsSansRencontre, Z_ARENE, Z_CHEMIN, Z_CLAIRIERE, Z_PORTE, caseDe, centreDeCase, dailyRush, descendre, formatTemps, jouerLePilote, type Contenu } from "@cdj/rush-sim";
+import { BOSS_IDS, CM_PAR_CHANFREIN, DUREE_TICKS, M, MUR, STRATEGIES, TICKS_PAR_SECONDE, PONT, SOL, tempsSansRencontre, Z_ARENE, Z_CHEMIN, Z_CLAIRIERE, Z_PORTE, caseDe, centreDeCase, dailyRush, descendre, formatTemps, jouerLePilote, type Contenu } from "@cdj/rush-sim";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { PALETTES } from "./palette";
 
 // `?scenario=carte&jours=7` (lot BR1) : la vue de DESSUS des N prochains jours, pour juger la variété du générateur. Pour chaque jour : la grille (sol, murs bas, vide, ponts), le chemin principal (orange, le plus court sur la grille), les détours (bleu),
-// les camps (rouge, avec leur nombre de monstres), les groupes qui barrent le chemin (orange, avec le cercle de leur alerte), les obstacles cassables (marron), les monstres épars (jaune), le départ (S), l'arène du golem (G), la longueur du chemin et le temps du pilote (le Diamant provisoire : « foncer »). Jamais classé, jamais en production.
+// les camps (rouge, avec leur nombre de monstres), les groupes qui barrent le chemin (orange, avec le cercle de leur alerte), les obstacles cassables (marron), les monstres épars (jaune), le départ (S), l'arène du golem (G), la longueur du chemin, le temps du pilote (le Diamant provisoire : « foncer ») et (lot BR3) le NOM du boss du jour. Jamais classé, jamais en production.
 
 const TAILLE = 360;
 const css = (n: number): string => `#${n.toString(16).padStart(6, "0")}`;
@@ -143,11 +144,13 @@ export function carteDesJours(jour: number, nombre: number, hote: HTMLElement, o
     const f = document.createElement("figure");
     f.className = "rush-carte__jour";
     f.dataset.meilleure = STRATEGIES[meilleur]!;
+    f.dataset.boss = BOSS_IDS[c.boss]!;
     const cap = document.createElement("figcaption");
     const temps = formatTemps(pilote.ticks, o.langue);
     cap.textContent = o.t("carte.legende", {
       date: formatDay(c.jour),
       theme: o.t(`theme.${c.theme}`),
+      boss: o.t(`boss.nom.${cleBoss(BOSS_IDS[c.boss]!)}`), // lot BR3 : le boss du jour
       m: Math.round(n.longueurCm / 100),
       d: n.detours.length,
       b: n.detours.filter((q) => q.hub2 >= 0).length,
