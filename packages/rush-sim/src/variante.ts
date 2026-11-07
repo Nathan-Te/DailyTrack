@@ -37,7 +37,9 @@ export const VARIANTE = {
   score: (r: Pick<Resultat, "victoire" | "ticks">): number[] => [r.victoire ? r.ticks : DUREE_TICKS],
   seuils(bot: Pick<Resultat, "victoire" | "ticks">): Seuils {
     const author = VARIANTE.score(bot)[0]!;
-    return { author, gold: idiv(author * 130, 100), silver: idiv(author * 160, 100), bronze: idiv(author * 200, 100) };
+    // Lot BR4 : l'or, l'argent et le bronze sont des pourcentages du Diamant, ceux de la fiche (`medailles.bareme`) — jamais des nombres écrits ailleurs.
+    const b = VARIANTE.fiche.bareme;
+    return { author, gold: idiv(author * b[0]!, 100), silver: idiv(author * b[1]!, 100), bronze: idiv(author * b[2]!, 100) };
   },
   medaille(score: readonly number[], s: Seuils): Medaille | null {
     for (const m of ["author", "gold", "silver", "bronze"] as const) if ((score[0] ?? DUREE_TICKS) <= s[m]) return m;

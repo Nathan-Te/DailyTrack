@@ -189,6 +189,45 @@ export function choixParDefaut(contenu: Contenu, changements: readonly Changemen
   return choix;
 }
 
+/**
+ * **Le fantôme** (lot BR4) : une rediffusion rejouée tick pour tick À CÔTÉ de la partie du joueur — sa position et ses coups se lisent dans `partie`. À un niveau gagné il fait SON choix de carte tout de suite (le monde figé ne fait pas passer de
+ * ticks : le joueur voit l'écran des cartes, pas le fantôme). Il joue la même simulation, avec les mêmes réglages que la partie classée : il est donc identique à la partie qu'il rejoue, cartes comprises. `avancer` rend faux quand
+ * il a fini ou que sa rediffusion ne se laisse plus jouer (un choix refusé : le fantôme disparaît).
+ */
+export class Fantome {
+  readonly partie: Partie;
+  private readonly changements: readonly Changement[];
+  private readonly choix: readonly Choix[];
+  private k = 0;
+  private kc = 0;
+  private e = 0;
+  private cassee = false;
+  constructor(contenu: Contenu, rediffusion: string | Rediffusion) {
+    const r = typeof rediffusion === "string" ? decoderRediffusion(rediffusion) : rediffusion;
+    if (!("jour" in r.contenu) || contenu.scenario !== "jour" || r.contenu.jour !== contenu.jour || r.g !== contenu.g) throw new ErreurRediffusion("contenu_different", "cette rediffusion n'est pas celle de ce jour");
+    this.changements = r.changements;
+    this.choix = r.choix;
+    this.partie = new Partie(contenu, REGLAGES_DEFAUT, false);
+  }
+  get finie(): boolean {
+    return this.cassee || this.partie.finie;
+  }
+  /** Joue les choix en attente puis un tick. Faux : le fantôme a fini ou ne se laisse plus jouer. */
+  avancer(): boolean {
+    const p = this.partie;
+    if (this.finie) return false;
+    while (p.choix) {
+      if (!appliquerChoix(p, this.choix, this.kc++)) {
+        this.cassee = true;
+        return false;
+      }
+    }
+    while (this.k < this.changements.length && this.changements[this.k]!.tick <= p.tick) this.e = this.changements[this.k++]!.e;
+    p.avancer(this.e);
+    return true;
+  }
+}
+
 /** La rediffusion d'une partie du jour (le texte à envoyer). */
 export function enregistrer(contenu: Contenu, changements: readonly Changement[], choix: readonly Choix[] = []): string {
   return encoderRediffusion({ sim: RUSH_SIM_VERSION, g: contenu.g, contenu: { jour: contenu.jour }, changements: [...changements], choix: [...choix] });

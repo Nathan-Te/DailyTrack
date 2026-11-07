@@ -1,8 +1,8 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { DUREE_TICKS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, VARIANTE, dailyRush, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, themeDuJour, entreesDuBot } from "@cdj/rush-sim";
+import { DUREE_TICKS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, VARIANTE, dailyRush, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsDuJour, themeDuJour, entreesDuBot } from "@cdj/rush-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_RUSH } from "../scripts/rush-essais";
-import { contenuDeRush } from "../src/rush";
+import { contenuDeRush, contratRush, unitesDuRejeu } from "../src/rush";
 import { crc32Hex } from "../src/identity";
 import { GAMES } from "../src/registry";
 import { DAY_MS, makeApi, ouvrirJeu, playerId, type TestApi } from "./helpers";
@@ -34,7 +34,7 @@ describe("Rush sur le serveur", () => {
     expect(info.body).toMatchObject({ game: "rush", simVersion: RUSH_SIM_VERSION, generatorVersion: RUSH_GENERATOR_VERSION, today: DATE });
     const jour = await t.call("GET", `/api/rush/day/${DATE}`);
     expect(jour.status).toBe(200);
-    expect(jour.body.medals).toEqual(seuilsDe(c));
+    expect(jour.body.medals).toEqual(seuilsDe(c)); // lot BR4 : le Diamant est la plus rapide des trois stratégies du pilote
     expect(jour.body.medals.author).toBe(VARIANTE.seuils(jouer(c, entreesDuBot(c).changements, undefined, entreesDuBot(c).choix)).author);
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
@@ -116,12 +116,42 @@ describe("Rush sur le serveur", () => {
 
   it("lit le jour figé de l'image s'il se vérifie, l'ignore sinon", async () => {
     const fige = figerJour(JOUR);
-    expect(contenuDeRush(JOUR, { [DATE]: fige })).toEqual(dailyRush(JOUR));
+    expect(contenuDeRush(JOUR, { [DATE]: fige })).toEqual({ ...dailyRush(JOUR), seuilsFiges: fige.seuils }); // lot BR4 : un jour figé fige aussi ses seuils
     const abime = { ...fige, contenu: { graine: fige.contenu.graine + 1 } };
     expect(empreinteContenu(contenuDeRush(JOUR, { [DATE]: abime }))).toBe(empreinteContenu(dailyRush(JOUR)));
     const t = await monter({ frozen: { [DATE]: fige } });
     const info = await t.call("GET", "/api/rush/info");
     expect(info.body.frozenDays).toEqual([DATE]);
+  });
+
+  it("un jour figé sert SES seuils (ceux du fichier), même si le pilote en calculerait d'autres ; un jour non figé, ceux du pilote", async () => {
+    const fige = { ...figerJour(JOUR), bot: 0, seuils: { author: 4000, gold: 5200, silver: 6400, bronze: 8000 } };
+    const t = await monter({ frozen: { [DATE]: fige } });
+    expect((await t.call("GET", `/api/rush/day/${DATE}`)).body.medals).toEqual(fige.seuils);
+    expect(seuilsDuJour(contenuDeRush(JOUR, { [DATE]: fige }))).toEqual(fige.seuils);
+    const libre = await monter();
+    expect((await libre.call("GET", `/api/rush/day/${DATE}`)).body.medals).toEqual(seuilsDe(dailyRush(JOUR)));
+  });
+
+  it("le coût d'un rejeu suit sa durée (`rejeu.ticksParUnite` de la fiche) : une partie normale ~2 unités, la pire (10 minutes) ~15, au moins `unitesServeur`", async () => {
+    expect(unitesDuRejeu(100)).toBe(1);
+    expect(unitesDuRejeu(2500)).toBe(1);
+    expect(unitesDuRejeu(3500)).toBe(2);
+    expect(unitesDuRejeu(36000)).toBe(15);
+    // le contrat compte le reste juste après le rejeu : une partie du pilote (~3 500 ticks) coûte `unitesDuRejeu(ticks)` au total, dont `unitesServeur` déjà comptée par le module
+    const depenses: number[] = [];
+    const c = dailyRush(JOUR);
+    const contrat = contratRush({}, { spendReplays: (u = 1) => void depenses.push(u) });
+    const niveau = await contrat.niveauDuJour(JOUR);
+    const bot = entreesDuBot(c);
+    const mesure = await contrat.rejouer(niveau, enregistrer(c, bot.changements, bot.choix));
+    expect(depenses.reduce((a, b) => a + b, 1)).toBe(unitesDuRejeu(mesure.ticks));
+    expect(unitesDuRejeu(mesure.ticks)).toBeGreaterThanOrEqual(2);
+    // une partie vide (dix minutes à ne rien faire) pèse le plus lourd
+    const vide: number[] = [];
+    const m2 = await contratRush({}, { spendReplays: (u = 1) => void vide.push(u) }).rejouer(niveau, enregistrer(c, []));
+    expect(m2.ticks).toBe(DUREE_TICKS);
+    expect(vide.reduce((a, b) => a + b, 1)).toBe(15);
   });
 
   it("le profil du joueur et le jeu fermé (`off`) répondent comme les autres jeux", async () => {

@@ -44,7 +44,7 @@ Posé le 04/11/2026 (lot B1) sur la construction des e2e, polices découpées co
 | `tower.jsCss` | Tower | JS + CSS du premier chargement de la page du jeu = **l'accueil seul** (ni Three.js, ni la partie, ni Rapier) | premier | 42 Ko | 39 625 | 2 375 |
 | `tower.jeu` | Tower | le jeu à la demande, derrière l'accueil : JavaScript (Three.js compris) et sa feuille, sans la physique ni l'anglais | demande | 193 Ko | 174 711 | 18 289 |
 | `cibles.jsCss` | Cibles | JS + CSS du premier chargement de la page du jeu témoin (lot K4f) = l'accueil seul (le kit, le socle, l'identité, la file d'envoi, le catalogue français ; la partie, le classement, les Réglages, les retours et la version à la demande) ; jeu témoin, jamais en production | premier | 45 Ko | 42 695 | 2 305 |
-| `rush.jsCss` | Rush | JS + CSS du premier chargement de la page du jeu = l'accueil seul (le kit, le socle, l'identité, la file d'envoi, le catalogue français ; la partie, le classement, les Réglages, les retours et la version à la demande) ; lot BR0 : la scène 3D (`corps-`, Three.js, 587 Ko brut, 152 Ko gzip), la simulation (`rediffusion-`) et les sons sont à la demande ; plafond provisoire (mesure + 5 %, à confirmer par Nathan) | premier | 44 Ko | 41 411 | 2 589 |
+| `rush.jsCss` | Rush | JS + CSS du premier chargement de la page du jeu = l'accueil seul (le kit, le socle, l'identité, la file d'envoi, le catalogue français ; la partie, le classement, les Réglages, les retours et la version à la demande) ; lot BR0 : la scène 3D (`corps-`, Three.js, 587 Ko brut, 152 Ko gzip), la simulation (`rediffusion-`) et les sons sont à la demande ; plafond provisoire (mesure + 5 %, à confirmer par Nathan) | premier | 46 Ko | 41 411 | 2 589 |
 | `blocks.jsCss` | Blocks | JS + CSS du premier chargement de la page du jeu = l'accueil seul (le kit, le socle, l'identité, la file d'envoi, le catalogue français ; la partie, le classement, les Réglages, les retours et la version à la demande) ; généré par `npm run nouveau-jeu`, plafond de la ligne du modèle (à fixer par Nathan avec la mesure du jeu) | premier | 47 Ko | 44 574 | 2 426 |
 | `musique.lecteur` | Musique | le lecteur et le panneau des réglages de la musique commune (les morceaux ne sont pas comptés) | demande | 7 Ko | 5 937 | 1 063 |
 | `retours.dialogue` | Retours | le dialogue « Un bug ? Une idée ? » (`retoursJeu-*` et sa feuille) | demande | 8 Ko | 6 555 | 1 445 |
@@ -67,6 +67,7 @@ Un plafond au-dessus de ce que donne la règle (mesure à la pose + marge de sa 
 
 | Date | Clé | De | À | Raison |
 |---|---|---:|---:|---|
+| 2026-11-07 | `rush.jsCss` | 44 Ko | 46 Ko | Lot BR4 (relèvement prévu par le prompt du lot, « si c'est indispensable »). Mesure : 43 752 o avant le lot, 44 043 o après (la marge de BR3 : 248 o). Ce qui grossit est **le catalogue français, chargé en entier au premier chargement** : les textes de l'écran de fin (boss du jour, cartes choisies, le Diamant) et de la carte Brise-pierre qui dit sa valeur contre chacun des cinq boss (cinq noms de boss avec leur article), avec le tableau des médailles d'essai. Les chaînes d'essai ont été resserrées (17 clés → 13) et deux clés mortes retirées avant de relever. Le plafond précédent était provisoire (« mesure + 5 %, à confirmer par Nathan », lot BR0). |
 
 ## La musique (lot « musique »)
 

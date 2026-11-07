@@ -57,24 +57,24 @@ function orientations(base: Art, mode: "fixe" | "tour" | "tourEtMiroir"): Art[] 
   return out;
 }
 
-// [famille, nom, art de base, orientations, poids]. **Poids de base du tirage v4 (lot B8)**, trouvés en faisant jouer les trois bots de référence (faible, moyen, Diamant : README du lot B8) : au début de la suite, presque tout est
-// petit (dominos 66 %, barres de 3 15 %, coins 12 % des tirages) pour que le bot faible dure 40 séries au moins ; les pièces de 4 cases et plus ne pèsent presque rien au rang 0 (carrés 2 × 2, barres de 4 et 5, L et J, T, S et Z,
-// grands L et T, rectangles, carré 3 × 3) et la rampe (`suite.ts`) les fait monter avec le rang de la série. Dominos 480 ; barres 108 (3), 5 (4), 3 (5) ; carrés 3 (2 × 2), 4 (3 × 3) ; coins 43 ; L et J 6 ; grand L et grand T 2 ;
-// T 2 ; S et Z 1 ; rectangles 8. **Un poids est par orientation** : une famille de plusieurs orientations pèse plus.
+// [famille, nom, art de base, orientations, poids]. **Poids de base du tirage v5 (lot B8b)**, réglés **sur la répartition des pièces et rien d'autre** (seed § 4 ; aucune cible de survie d'un bot : `npm run mesure:repartition`,
+// README du lot B8b) : au début de la suite (séries 0 à 10) dominos 6 à 9 %, pièces de 3 cases 20 à 25 %, de 4 cases 40 à 50 %, de 5 cases ou plus 15 à 22 % ; au plafond de la rampe (`suite.ts`, série 80 et au-delà)
+// dominos 3 à 6 %, 3 cases 12 à 18 %, 4 cases 35 à 45 %, 5 cases ou plus 30 à 40 %. Dominos 15 ; barres 16 (3), 12 (4), 7 (5) ; carrés 10 (2 × 2), 7 (3 × 3) ; coins 14 ; L et J 7 ; grand L et grand T 7 ; T 7 ; S et Z 7 ;
+// rectangles 8. **Un poids est par orientation** : une famille de plusieurs orientations pèse plus.
 const DEFINITIONS: readonly (readonly [Famille, string, Art, "fixe" | "tour" | "tourEtMiroir", number])[] = [
-  ["petite", "domino", ["XX"], "tour", 480],
-  ["barre", "barre3", ["XXX"], "tour", 108],
-  ["barre", "barre4", ["XXXX"], "tour", 5],
-  ["barre", "barre5", ["XXXXX"], "tour", 3],
-  ["carre", "carre2", ["XX", "XX"], "fixe", 3],
-  ["carre", "carre3", ["XXX", "XXX", "XXX"], "fixe", 4],
-  ["coin", "coin", ["X.", "XX"], "tour", 43],
-  ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 6],
-  ["grandL", "grandl", ["X..", "X..", "XXX"], "tour", 2],
-  ["tsz", "t", ["XXX", ".X."], "tour", 2],
-  ["tsz", "grandt", ["XXX", ".X.", ".X."], "tour", 2],
-  ["tsz", "s", [".XX", "XX."], "tour", 1],
-  ["tsz", "z", ["XX.", ".XX"], "tour", 1],
+  ["petite", "domino", ["XX"], "tour", 15],
+  ["barre", "barre3", ["XXX"], "tour", 16],
+  ["barre", "barre4", ["XXXX"], "tour", 12],
+  ["barre", "barre5", ["XXXXX"], "tour", 7],
+  ["carre", "carre2", ["XX", "XX"], "fixe", 10],
+  ["carre", "carre3", ["XXX", "XXX", "XXX"], "fixe", 7],
+  ["coin", "coin", ["X.", "XX"], "tour", 14],
+  ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 7],
+  ["grandL", "grandl", ["X..", "X..", "XXX"], "tour", 7],
+  ["tsz", "t", ["XXX", ".X."], "tour", 7],
+  ["tsz", "grandt", ["XXX", ".X.", ".X."], "tour", 7],
+  ["tsz", "s", [".XX", "XX."], "tour", 7],
+  ["tsz", "z", ["XX.", ".XX"], "tour", 7],
   ["rectangle", "rect", ["XXX", "XXX"], "tour", 8],
 ];
 

@@ -14,6 +14,7 @@
     "golden:rush": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs",
     "mesures:rush": "esbuild tools/mesures.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures.mjs --log-level=warning && node dist/mesures.mjs",
     "equilibre:rush": "esbuild tools/equilibre.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/equilibre.mjs --log-level=warning && node dist/equilibre.mjs",
+    "medailles:rush": "esbuild tools/medailles.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/medailles.mjs --log-level=warning && node dist/medailles.mjs",
     "boss:rush": "esbuild tools/boss.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/boss.mjs --log-level=warning && node dist/boss.mjs"
   },
   "exports": {
@@ -22,6 +23,7 @@
     "./bot": "./src/bot.ts",
     "./constantes": "./src/constantes.ts",
     "./variante": "./src/variante.ts",
+    "./medailles": "./src/medailles.ts",
     "./themes": "./src/themes.ts",
     "./reglagesSim": "./src/reglagesSim.ts",
     "./niveau": "./src/niveau.ts"

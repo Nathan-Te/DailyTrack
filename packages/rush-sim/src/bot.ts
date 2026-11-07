@@ -10,14 +10,15 @@ import { CHAUVE, COUP, ONDE, PLONGEON, Partie, pointDuSegment, type Resultat } f
 import type { Choix } from "./rediffusion";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
-// Le pilote : un joueur automatique qui lit l'état de la partie et rend l'octet d'entrée du tick. Il sert à trois choses : le Diamant provisoire du prototype (sa partie du jour), les mesures (une partie de
-// plusieurs minutes dont les entrées ressemblent à celles d'un joueur) et les tests. **Ce n'est pas la méthode des médailles de la suite** (le README du lot BR0 la recommande). Il ne triche pas : il lit ce que lit le
+// Le pilote : un joueur automatique qui lit l'état de la partie et rend l'octet d'entrée du tick. Il sert à trois choses : le Diamant (lot BR4 : la plus rapide de ses trois stratégies, `medailles.ts` ; avant, « foncer » seule), les mesures (une partie de
+// plusieurs minutes dont les entrées ressemblent à celles d'un joueur) et les tests. Il ne triche pas : il lit ce que lit le
 // rendu (positions, cercles annoncés) et n'a que les entrées d'un joueur au doigt : le déplacement, le coup (tenu), l'esquive, sans visée (visée assistée).
-// Lot BR1 : il NAVIGUE dans le niveau — le chemin le plus court sur la grille jusqu'à l'arène (le champ de distance du niveau), et il ne combat que ce qui lui barre la route : c'est le Diamant provisoire, « foncer ».
+// Lot BR1 : il NAVIGUE dans le niveau — le chemin le plus court sur la grille jusqu'à l'arène (le champ de distance du niveau), et il ne combat que ce qui lui barre la route : c'est la stratégie « foncer ».
 // Lot BR1b : il casse l'obstacle qui barre les pas qui viennent (le chemin le plus court passe par lui : 1 ou 2 coups) au lieu de le contourner ; la COURSE hors combat lui vient d'elle-même (il marche sans cesse et ne frappe que ce qui barre
 // la route : la simulation fait monter sa vitesse après ~1,2 s de calme) ; la stratégie « nettoyer » peut ne viser que les monstres d'UN camp (la mesure du coût d'un détour : `jouerLePilote(…, camp)`).
-// Lot BR2 : TROIS stratégies — FONCER (le Diamant provisoire : aucun détour), UN PEU D'XP (les monstres du chemin et les camps proches du chemin : `SEUIL_PEU_CM`) et BEAUCOUP D'XP (tous les camps) — chacune avec sa liste de priorités pour choisir
+// Lot BR2 : TROIS stratégies — FONCER (aucun détour), UN PEU D'XP (les monstres du chemin et les camps proches du chemin : `SEUIL_PEU_CM`) et BEAUCOUP D'XP (tous les camps) — chacune avec sa liste de priorités pour choisir
 // une carte (`PRIORITES`, la première de la liste qui est proposée). Elles servent à l'ÉQUILIBRE : aucune ne doit gagner tous les jours (`tools/mesures.ts`, `test/equilibre.test.ts`).
+// Lot BR4 : il ne se laisse plus BLOQUER (`suivreLeProgres` : sans progrès pendant `BLOCAGE_TICKS`, il lâche ce qu'il visait) et il a une version HUMANISÉE (`HUMAIN`) qui sert à calibrer les médailles, jamais à les fixer. Tout changement du pilote monte `RUSH_BOT_VERSION`.
 // La stratégie « nettoyer » d'avant (une mesure, pas un Diamant) va d'abord à chaque monstre, du plus proche au plus loin, puis à l'arène : elle donne l'écart de temps entre foncer et tout nettoyer.
 
 /** La direction de la croix (0 à 31) la plus proche d'un vecteur. */
@@ -33,6 +34,29 @@ export const PRIORITES: Readonly<Record<Strategie, readonly string[]>> = {
   peu: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "tourbillon", "onde-epee", "allonge", "esquive-vive", "coeur-en-plus", "soin", "vol-de-vie", "esquive-longue", "esquive-tranchante", "aimant"],
   beaucoup: ["bottes-legeres", "tourbillon", "cadence", "lame-lourde", "brise-pierre", "onde-epee", "allonge", "vol-de-vie", "aimant", "coeur-en-plus", "soin", "esquive-vive", "esquive-longue", "esquive-tranchante"],
 };
+/**
+ * Lot BR4 — LE PILOTE HUMANISÉ : un joueur qui n'est pas parfait. Le pilote de référence lit les annonces sans erreur, répond au tick près et connaît le boss ; celui-ci a (1) une **réaction retardée** (`reaction`, 12 ticks = 200 ms : ce qui le surprend — un anneau, un monstre
+ * qui plonge ou qui arrive sur lui, une annonce qui apparaît — n'est traité qu'après cette durée), (2) une **lecture des annonces parfois tardive** (`tardifPct` % des annonces ne sont remarquées que
+ * `tardifMax` ticks au plus après leur apparition), (3) une **esquive imparfaite** (`gigue` ticks de part et d'autre du bon moment, `rateEsquivePct` % d'esquives oubliées) et (4) **aucune connaissance du boss ni des cartes à venir** : il n'attire pas le bélier,
+ * ne se poste pas pour le grand-duc, et choisit ses cartes dans la liste générale de sa stratégie. Tout le hasard vient d'une graine (celle du jour) : une partie humanisée se rejoue à l'identique. Il sert à CALIBRER les médailles
+ * (leçon de Blocks : le robot parfait est très loin des joueurs), jamais à les fixer : `tools/medailles.ts`.
+ */
+export interface ProfilHumain {
+  reaction: number;
+  tardifPct: number;
+  tardifMax: number;
+  rateEsquivePct: number;
+  gigue: number;
+}
+export const HUMAIN: ProfilHumain = { reaction: 12, tardifPct: 25, tardifMax: 40, rateEsquivePct: 10, gigue: 4 };
+/** Ce que le pilote humanisé a décidé d'une annonce, la première fois qu'il la voit. */
+interface VueZone {
+  vue: number;
+  retard: number;
+  gigue: number;
+  rate: boolean;
+}
+
 /** Ce que le pilote retient d'un tick à l'autre (la stratégie « foncer » n'en a pas besoin). */
 export interface EtatPilote {
   strategie: Strategie;
@@ -49,8 +73,26 @@ export interface EtatPilote {
   px: number;
   py: number;
   immobile: number;
+  /** Lot BR4 — anti-blocage GÉNÉRIQUE : l'ancre (où et quand le pilote a fait un progrès pour la dernière fois), la signature du progrès, ce que le pilote visait (`focus`, 0 : rien) et les cibles qu'il laisse tomber jusqu'à un tick (`ignores`). */
+  ancreX: number;
+  ancreY: number;
+  ancreT: number;
+  signature: number;
+  focus: number;
+  ignores: Map<number, number>;
+  /** Combien de blocages d'affilée sans cible à lâcher (le pilote pousse alors de côté, de plus en plus longtemps). */
+  contourne: number;
+  contourneJusqua: number;
+  /** Lot BR4 : combien de blocages le pilote a détectés dans la partie (un chiffre de mesure). */
+  blocages: number;
+  /** Lot BR4 — le pilote humanisé : son profil (`null` : le pilote de référence), son hasard, ce qu'il a décidé de chaque annonce et ce qu'il a fait il y a `reaction` ticks. */
+  humain: ProfilHumain | null;
+  alea: number;
+  vues: Map<string, VueZone>;
+  /** Depuis quand (et dernière fois vu) chaque chose que le pilote humanisé doit « remarquer » est là (`percu`). */
+  depuis: Map<string, [number, number]>;
 }
-export const etatPilote = (strategie: Strategie = "foncer", camp = -2, p?: Partie, seuilPeu = SEUIL_PEU_CM): EtatPilote => ({
+export const etatPilote = (strategie: Strategie = "foncer", camp = -2, p?: Partie, seuilPeu = SEUIL_PEU_CM, humain: ProfilHumain | null = null): EtatPilote => ({
   strategie,
   cible: -1,
   champ: null,
@@ -60,6 +102,19 @@ export const etatPilote = (strategie: Strategie = "foncer", camp = -2, p?: Parti
   px: -1,
   py: -1,
   immobile: 0,
+  ancreX: -1,
+  ancreY: -1,
+  ancreT: 0,
+  signature: -1,
+  focus: 0,
+  ignores: new Map(),
+  contourne: 0,
+  contourneJusqua: -1,
+  blocages: 0,
+  humain,
+  alea: ((p?.contenu.graine ?? 1) ^ 0x9e3779b9) >>> 0,
+  vues: new Map(),
+  depuis: new Map(),
   camps: strategie === "peu" && p?.niveau ? new Set(p.niveau.detours.filter((d) => d.distanceCm <= seuilPeu).map((d) => d.camp)) : null,
 });
 
@@ -77,6 +132,52 @@ function pasVers(p: Partie, champ: Uint16Array): number {
   if (s < 0) return -1;
   const [tx, ty] = centreDeCase(n, s);
   return croix(tx - p.c.x, ty - p.c.y);
+}
+
+/** Lot BR4 — « sans progrès pendant N ticks » : au bout de 2,5 s sans qu'un monstre, un obstacle, une gemme ou l'XP n'ait changé et sans s'être éloigné de plus de 1,5 m de son ancre, le pilote lâche ce qu'il visait. */
+export const BLOCAGE_TICKS = 150;
+const BLOCAGE_CM = 150;
+/** Une cible lâchée n'est plus visée pendant 15 s (un monstre derrière un mur peut l'attendre longtemps : il n'en est pas moins hors d'atteinte). */
+const IGNORE_TICKS = 900;
+const cleObstacle = (o: { x: number; y: number }): number => 1_000_000_000 + ((o.x * 31 + o.y) & 0xfffffff);
+const ignore = (p: Partie, etat: EtatPilote, id: number): boolean => (etat.ignores.get(id) ?? 0) > p.tick;
+
+/**
+ * Le suivi du progrès (lot BR4) : à appeler à chaque tick de navigation. Retourne vrai quand le pilote est bloqué depuis `BLOCAGE_TICKS` ; il a alors déjà décidé quoi faire : lâcher ce qu'il visait (il change de point de passage), sinon
+ * pousser de côté un moment, de plus en plus longtemps. (Le jour 295 de la mesure du lot BR3 : 30 s coincé devant un mur à viser deux gelées qui ne pouvaient pas l'atteindre.)
+ */
+function suivreLeProgres(p: Partie, etat: EtatPilote): void {
+  const c = p.c;
+  let vivants = 0;
+  let pvProches = 0;
+  for (const m of p.monstres) {
+    if (m.hp <= 0) continue;
+    vivants++;
+    if (distance(c.x, c.y, m.x, m.y) < cm(500)) pvProches += m.hp;
+  }
+  const signature = vivants * 1_000_000 + p.obstacles.length * 100_000 + p.xp * 7 + pvProches;
+  if (signature !== etat.signature || distance(c.x, c.y, etat.ancreX, etat.ancreY) > cm(BLOCAGE_CM)) {
+    etat.signature = signature;
+    etat.ancreX = c.x;
+    etat.ancreY = c.y;
+    etat.ancreT = p.tick;
+    etat.contourne = 0;
+    return;
+  }
+  if (p.tick - etat.ancreT < BLOCAGE_TICKS) return;
+  // bloqué : lâcher la cible, sinon contourner
+  etat.ancreT = p.tick;
+  etat.blocages++;
+  if (etat.focus !== 0) {
+    etat.ignores.set(etat.focus, p.tick + IGNORE_TICKS);
+    if (etat.cible === etat.focus) {
+      etat.cible = -1;
+      etat.champCase = -1;
+    }
+  } else {
+    etat.contourne++;
+    etat.contourneJusqua = p.tick + 30 * etat.contourne;
+  }
 }
 
 /** Dans le niveau, avant l'arène : où aller et quoi frapper. */
@@ -99,17 +200,18 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
     }
     devant = centreDeCase(n, k);
   }
-  let bloque: { x: number; y: number; r: number } | null = null;
+  let bloque: { x: number; y: number; r: number; id: number } | null = null;
   let meilleur = Infinity;
   for (const m of p.monstres) {
-    if (m.hp <= 0) continue;
+    if (m.hp <= 0 || ignore(p, etat, m.id)) continue;
     const d = distance(c.x, c.y, m.x, m.y);
     const barre = etat.strategie !== "foncer" ? d < cm(360) : d < cm(170) || (d < cm(300) && distance(m.x, m.y, devant[0], devant[1]) < cm(240));
     if (barre && d < meilleur) {
       meilleur = d;
-      bloque = { x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : cm(48) };
+      bloque = { x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : cm(48), id: m.id };
     }
   }
+  etat.focus = 0;
   const portee = p.porteeCoup(0) - cm(50);
   // `champ` : un obstacle encore loin se rejoint en suivant le champ de distance (la ligne droite peut buter sur un mur et le bloquer pour toujours).
   const frapper = (b: { x: number; y: number; r: number }, champ?: Uint16Array): { direction: number; coup: boolean } => {
@@ -118,9 +220,12 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
     const pas = champ ? pasVers(p, champ) : -1;
     return { direction: pas >= 0 ? pas : croix(b.x - c.x, b.y - c.y), coup: false };
   };
-  if (bloque) return frapper(bloque);
+  if (bloque) {
+    etat.focus = bloque.id;
+    return frapper(bloque);
+  }
   // Lot BR1b : un obstacle sur les pas qui viennent le long d'un champ de distance : on le brise.
-  const obstacleSur = (champ: Uint16Array): { x: number; y: number; r: number } | null => {
+  const obstacleSur = (champ: Uint16Array): { x: number; y: number; r: number; id: number } | null => {
     if (p.obstacles.length === 0 || idx < 0) return null;
     let k = idx;
     for (let i = 0; i < 3; i++) {
@@ -128,14 +233,14 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
       if (s < 0) break;
       k = s;
       const o = p.obstacles.find((q) => q.cases.includes(k));
-      if (o) return { x: o.x, y: o.y, r: o.r };
+      if (o && !ignore(p, etat, cleObstacle(o))) return { x: o.x, y: o.y, r: o.r, id: cleObstacle(o) };
     }
     return null;
   };
-  const vises = (m: { id: number; hp: number }): boolean => m.hp > 0 && (etat.camps ? campDe(p, m.id) === -1 || etat.camps.has(campDe(p, m.id)) : etat.camp === -2 || campDe(p, m.id) === etat.camp);
+  const vises = (m: { id: number; hp: number }): boolean => m.hp > 0 && !ignore(p, etat, m.id) && (etat.camps ? campDe(p, m.id) === -1 || etat.camps.has(campDe(p, m.id)) : etat.camp === -2 || campDe(p, m.id) === etat.camp);
   // Lot BR2 : qui chasse ramasse aussi les gemmes proches (l'aimant n'en prend que dans 3 m : un monstre repoussé meurt parfois plus loin). Une gemme est une cible d'identifiant négatif.
   const GEMME = -1000;
-  const gemmesProches = etat.strategie !== "foncer" ? p.gemmes.filter((g) => distance(c.x, c.y, g.x, g.y) < cm(RAYON_GEMMES)) : [];
+  const gemmesProches = etat.strategie !== "foncer" ? p.gemmes.filter((g) => distance(c.x, c.y, g.x, g.y) < cm(RAYON_GEMMES) && !ignore(p, etat, GEMME - g.id)) : [];
   if (etat.strategie !== "foncer" && (p.monstres.some(vises) || gemmesProches.length > 0)) {
     // La cible la plus proche par le chemin (monstre visé ou gemme) : un champ de distance depuis la case du chevalier.
     type Cible = { id: number; x: number; y: number };
@@ -165,13 +270,20 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
         etat.champDepuis = p.tick;
       }
       const gene = etat.champ ? obstacleSur(etat.champ) : null;
-      if (gene) return frapper(gene, etat.champ ?? undefined);
+      if (gene) {
+        etat.focus = gene.id;
+        return frapper(gene, etat.champ ?? undefined);
+      }
+      etat.focus = cible.id;
       const d = etat.champ ? pasVers(p, etat.champ) : -1;
       return { direction: d >= 0 ? d : croix(cible.x - c.x, cible.y - c.y), coup: false };
     }
   }
   const gene = obstacleSur(n.dist);
-  if (gene) return frapper(gene, n.dist);
+  if (gene) {
+    etat.focus = gene.id;
+    return frapper(gene, n.dist);
+  }
   return { direction: aLArene(), coup: false };
 }
 
@@ -205,9 +317,46 @@ function fuirDe(p: Partie, de: { x: number; y: number }): number {
   return meilleur;
 }
 
+/** Un entier tiré du hasard du pilote humanisé (congruentiel linéaire : ni `Math.random` ni horloge), de 0 à `n` − 1. */
+function tirer(etat: EtatPilote, n: number): number {
+  etat.alea = (Math.imul(etat.alea, 1664525) + 1013904223) >>> 0;
+  return (etat.alea >>> 8) % n;
+}
+/** Ce que le pilote humanisé a décidé d'une annonce : créé à la première vue, gardé tant qu'elle existe. */
+function vueDe(p: Partie, etat: EtatPilote, z: { type: number; ti: number; x: number; y: number }): VueZone {
+  const cle = `${z.type}:${z.ti}:${z.x}:${z.y}`;
+  let v = etat.vues.get(cle);
+  if (!v) {
+    const h = etat.humain!;
+    v = { vue: p.tick, retard: tirer(etat, 100) < h.tardifPct ? 10 + tirer(etat, Math.max(1, h.tardifMax - 9)) : 0, gigue: tirer(etat, 2 * h.gigue + 1) - h.gigue, rate: tirer(etat, 100) < h.rateEsquivePct };
+    etat.vues.set(cle, v);
+    if (etat.vues.size > 64) for (const [k] of etat.vues) { etat.vues.delete(k); if (etat.vues.size <= 32) break; }
+  }
+  return v;
+}
+/**
+ * La RÉACTION du pilote humanisé : ce qui le surprend (`vrai` : un monstre sur lui, un anneau qui approche…) n'est traité qu'après `reaction` ticks de présence continue ; le pilote de référence réagit à l'instant. À appeler à chaque tick pour la même `cle`.
+ */
+function percu(p: Partie, etat: EtatPilote, cle: string, vrai: boolean): boolean {
+  const h = etat.humain;
+  if (!h) return vrai;
+  if (!vrai) {
+    etat.depuis.delete(cle);
+    return false;
+  }
+  const v = etat.depuis.get(cle);
+  if (!v || p.tick - v[1] > 1) {
+    etat.depuis.set(cle, [p.tick, p.tick]);
+    return h.reaction <= 0;
+  }
+  v[1] = p.tick;
+  return p.tick - v[0] >= h.reaction;
+}
+
 export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   const c = p.c;
   const tick = p.tick;
+  const h = etat.humain;
   // 1. Les cercles qui vont tomber : partir, et esquiver au dernier moment.
   let fuite: { x: number; y: number } | null = null;
   let esquiver = false;
@@ -215,6 +364,11 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   for (const z of p.zones) {
     const reste = z.ti - tick;
     if (z.type === Z_INVOCATION) continue; // un anneau qui annonce une naissance : aucun danger
+    // Lot BR4 : le pilote humanisé remarque l'annonce après sa réaction (et parfois bien plus tard), anticipe le minuteur de sa réaction et de sa gigue, et oublie parfois d'esquiver.
+    const vz = h ? vueDe(p, etat, z) : null;
+    if (vz && tick - vz.vue < h!.reaction + vz.retard) continue;
+    const anti = vz ? vz.gigue : 0;
+    const peutEsquiver = !vz || !vz.rate;
     if (z.type === Z_BANDE) {
       // Lot BR3 : une bande (plongeon, charge, racines) : on s'en écarte par le côté ; on esquive à travers si on y est encore à l'arrivée.
       const [bx, by] = pointDuSegment(c.x, c.y, z.x, z.y, z.x2, z.y2);
@@ -222,7 +376,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
       if (reste <= 90 && db < z.r + cm(130)) {
         // sur la ligne même : on part de travers
         fuite = db > 0 ? { x: bx, y: by } : { x: c.x - (z.y2 - z.y), y: c.y + (z.x2 - z.x) };
-        if (reste <= (c.etat === COUP ? 16 : 8) && db < z.r) esquiver = true;
+        if (reste <= (c.etat === COUP ? 16 : 8) + anti && db < z.r && peutEsquiver) esquiver = true;
       }
       continue;
     }
@@ -231,7 +385,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
       if (reste <= 90 && d < z.r + cm(150)) {
         fuite = { x: z.x, y: z.y };
         // un coup en cours retient (40 % de la vitesse) : l'esquive le coupe et emporte hors du nuage
-        if (d < z.r && (reste <= 22 || (reste <= 55 && c.etat === COUP))) {
+        if (d < z.r && peutEsquiver && (reste <= 22 + anti || (reste <= 55 + anti && c.etat === COUP))) {
           esquiver = true;
           dirEsquive = croix(c.x - z.x, c.y - z.y);
         }
@@ -242,7 +396,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
       // L'anneau part du bord du golem à `ti` et file à la vitesse de l'onde (`vOnde`, 9,5 m/s au rythme 100 %) : on esquive quand il est à moins de trois ticks de nous.
       // (lot BR0c : le bord de l'anneau touche dès qu'il est à ~80 cm : collé au golem, le chevalier doit déjà esquiver à l'instant où l'onde part)
       const arrivee = reste + Math.max(0, Math.trunc((d - (p.golem?.r ?? cm(170)) - cm(80)) / p.vOnde()));
-      if (arrivee <= 3 && d < z.r) {
+      if (arrivee <= 3 + anti && d < z.r && peutEsquiver) {
         esquiver = true;
         dirEsquive = croix(z.x - c.x, z.y - c.y); // à travers l'anneau, vers le golem
       }
@@ -251,13 +405,15 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
     // Lot BR0c : un coup dure 30 ticks et engage le chevalier (il ne marche qu'à 40 % de sa vitesse tant qu'il frappe) : il part dès que le cercle est posé, et esquive (ce qui coupe le coup) s'il est encore dedans à l'approche.
     if (reste <= 80 && d < z.r + cm(z.r > cm(300) ? 70 : 150)) {
       fuite = { x: z.x, y: z.y };
-      if (reste <= (c.etat === COUP ? 16 : 8) && d < z.r) esquiver = true;
+      if (reste <= (c.etat === COUP ? 16 : 8) + anti && d < z.r && peutEsquiver) esquiver = true;
     }
   }
   // 2. Les ondes : l'esquive quand l'anneau arrive.
   for (const o of p.ondes) {
     const d = distance(c.x, c.y, o.x, o.y);
-    if (!o.touche && Math.abs(d - o.r) < cm(110) && o.r < d + cm(40)) {
+    // Lot BR4 : un anneau qui approche se voit venir de loin ; le pilote humanisé l'esquive avec la gigue de son geste (±4 ticks, 64 cm) et l'oublie parfois.
+    const vr = h ? vueDe(p, etat, { type: -1, ti: 0, x: o.x, y: o.y }) : null;
+    if (!o.touche && Math.abs(d - o.r) < cm(110) + (vr ? vr.gigue * cm(16) : 0) && o.r < d + cm(40) && !vr?.rate) {
       esquiver = true;
       dirEsquive = croix(o.x - c.x, o.y - c.y);
     }
@@ -269,12 +425,15 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   for (const m of p.monstres) {
     if (c.degat > 0 || m.gel > 0 || ondeProche) continue;
     const d = distance(c.x, c.y, m.x, m.y);
-    if (m.type === CHAUVE ? m.etat === PLONGEON && d < cm(230) : d < cm(48 + 42 + 35)) esquiver = true;
+    if (percu(p, etat, `e${m.id}`, m.type === CHAUVE ? m.etat === PLONGEON && d < cm(230) : d < cm(48 + 42 + 35))) esquiver = true;
   }
 
   // 4. Dans le niveau, avant l'arène : naviguer (et ne frapper que ce qui barre la route). Dans l'arène : le combat.
   if (p.niveau && p.barriere < 0) {
+    suivreLeProgres(p, etat);
     const nav = naviguer(p, etat);
+    // Lot BR4 : bloqué sans rien à lâcher : il pousse de côté un moment (le côté change à chaque fois).
+    if (p.tick < etat.contourneJusqua && nav.direction >= 0 && !nav.coup) nav.direction = (nav.direction + (etat.contourne % 2 === 0 ? 8 : 24)) % 32;
     // Coincé contre le coin d'un mur en voulant avancer : il se décale de côté (alternativement) jusqu'à repartir.
     etat.immobile = nav.direction >= 0 && !nav.coup && c.x === etat.px && c.y === etat.py ? etat.immobile + 1 : 0;
     etat.px = c.x;
@@ -308,7 +467,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   let lureX = 0;
   let lureY = 0;
   let leurre = false;
-  if (g && g.kind === B_BELIER && g.hp > 0 && (g.etat === MARCHE || g.etat === ANNONCE)) {
+  if (!h && g && g.kind === B_BELIER && g.hp > 0 && (g.etat === MARCHE || g.etat === ANNONCE)) {
     const [ux, uy] = unitaire(c.x - g.x, c.y - g.y);
     lureX = c.x + ux * 2;
     lureY = c.y + uy * 2;
@@ -326,7 +485,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   let postX = 0;
   let postY = 0;
   let poster = false;
-  if (g && g.kind === B_DUC && g.hp > 0 && g.etat === ANNONCE) {
+  if (!h && g && g.kind === B_DUC && g.hp > 0 && g.etat === ANNONCE) {
     let derniere: (typeof p.zones)[number] | null = null;
     for (const z of p.zones) if (z.type === Z_BANDE && (!derniere || z.ti > derniere.ti)) derniere = z;
     if (derniere) {
@@ -370,9 +529,10 @@ export function prioritesContre(strategie: Strategie, boss: number): readonly st
 }
 
 /** La carte que la stratégie prend parmi les trois proposées (l'index 0 à 2) : la première de sa liste de priorités contre le boss du jour qui est offerte, sinon la première carte. */
-export function choisirCarte(p: Partie, strategie: Strategie): number {
+export function choisirCarte(p: Partie, strategie: Strategie, humain = false): number {
   const cartes = p.choix?.cartes ?? [];
-  const liste = prioritesContre(strategie, p.golem?.kind ?? 0);
+  // Lot BR4 : le pilote humanisé ne connaît pas ce que le boss favorise : il suit la liste générale de sa stratégie.
+  const liste = humain ? PRIORITES[strategie] : prioritesContre(strategie, p.golem?.kind ?? 0);
   let meilleur = 0;
   let rang = Infinity;
   cartes.forEach((carte, i) => {
@@ -391,7 +551,7 @@ export function choisirCarte(p: Partie, strategie: Strategie): number {
  */
 export function pasDuPilote(p: Partie, etat: EtatPilote, choix?: Choix[]): number {
   while (p.choix) {
-    const carte = choisirCarte(p, etat.strategie);
+    const carte = choisirCarte(p, etat.strategie, etat.humain !== null);
     choix?.push({ tick: p.tick, nv: p.choix.nv, carte });
     p.choisir(p.choix.nv, carte);
   }
@@ -401,16 +561,16 @@ export function pasDuPilote(p: Partie, etat: EtatPilote, choix?: Choix[]): numbe
 }
 
 /** La partie du pilote sur un contenu : ses changements d'entrée et ses choix (la rediffusion) et son résultat. `max` borne le nombre de ticks (les mesures de plusieurs minutes). */
-export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer", camp = -2): { changements: Changement[]; choix: Choix[]; resultat: Resultat; ticks: number } {
+export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer", camp = -2, humain: ProfilHumain | null = null): { changements: Changement[]; choix: Choix[]; resultat: Resultat; ticks: number; blocages: number } {
   const p = new Partie(contenu, reglages);
   const changements: Changement[] = [];
   const choix: Choix[] = [];
-  const etat = etatPilote(strategie, camp, p);
+  const etat = etatPilote(strategie, camp, p, SEUIL_PEU_CM, humain);
   let avant = 0;
   while (!p.finie && p.tick < max) {
     // Les choix d'abord (le monde est figé), puis l'entrée du tick.
     while (p.choix) {
-      const carte = choisirCarte(p, strategie);
+      const carte = choisirCarte(p, strategie, humain !== null);
       choix.push({ tick: p.tick, nv: p.choix.nv, carte });
       p.choisir(p.choix.nv, carte);
     }
@@ -421,13 +581,5 @@ export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DE
     }
     p.avancer(e);
   }
-  return { changements, choix, resultat: p.resultat(), ticks: p.tick };
+  return { changements, choix, resultat: p.resultat(), ticks: p.tick, blocages: etat.blocages };
 }
-
-export const touchesDuBot = (contenu: Contenu): Changement[] => jouerLePilote(contenu).changements;
-/** La partie du Diamant provisoire (foncer) : ses changements d'entrée ET ses choix d'amélioration. */
-export const entreesDuBot = (contenu: Contenu): { changements: Changement[]; choix: Choix[] } => {
-  const { changements, choix } = jouerLePilote(contenu);
-  return { changements, choix };
-};
-export const partieDuBot = (contenu: Contenu): Resultat => jouerLePilote(contenu).resultat;

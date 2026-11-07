@@ -1,63 +1,66 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { arrondir, dailyBlocks, medailleDe, PART_DU_DIAMANT_MEDIAN, REFERENCES_MEDAILLES, seuilsDepuis } from "../src/index";
-import { jouerDiamant, seuilsDe } from "../src/diamant";
+import { arrondir, BOTS_DE_REFERENCE, dailyBlocks, medailleDe, PART_DU_DIAMANT_MEDIAN, PIECES_DU_DIAMANT, SEUILS_MEDAILLES, seuils, seuilsDuJour, TAILLE_SERIE } from "../src/index";
+import { jouerDiamant, partieDuDiamant } from "../src/diamant";
+import { jouerGlouton } from "../src/glouton";
 
-// Les médailles (lots B3 et B8) : le Diamant est le score du bot ; bronze, argent et or sont les références mesurées sur les bots de force graduée ; seuils strictement croissants, arrondis.
+// Les médailles (lots B3, B8 et B8b) : quatre constantes, les mêmes tous les jours d'une version de règles ; chacune est la médiane, sur 1 000 jours, du score d'un bot de référence arrêté après un nombre fixe de pièces
+// (`BOTS_DE_REFERENCE`) — la mesure complète est `npm run calibrer:medailles` (README du lot B8b) ; ici un échantillon de jours, pour qu'une constante qui s'éloigne de sa mesure fasse échouer le test.
+const PREMIER = daysFromCivil(2026, 11, 2);
+const mediane = (a: number[]): number => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)]!;
+
 describe("les seuils des médailles", () => {
-  it("le Diamant est le score du bot sur la suite du jour, arrondi vers le bas (clé `author`) : le bot gagne toujours son propre Diamant", () => {
-    for (const j of [daysFromCivil(2026, 11, 4), daysFromCivil(2026, 11, 8)]) {
-      const c = dailyBlocks(j);
-      const score = jouerDiamant(c).resultat.score;
-      const s = seuilsDe(c);
-      expect(s.author).toBe(arrondir(score));
-      expect(s.author).toBeLessThanOrEqual(score);
-      expect(medailleDe([score, 0], s)).toBe("author");
+  it("quatre constantes entières strictement croissantes, les mêmes tous les jours : bronze 1 100, argent 2 200, or 4 900, Diamant 11 500", () => {
+    expect(SEUILS_MEDAILLES).toEqual({ bronze: 1100, silver: 2200, gold: 4900, author: 11_500 });
+    expect(seuils()).toEqual(SEUILS_MEDAILLES);
+    expect(seuils()).not.toBe(SEUILS_MEDAILLES); // une copie : personne ne change la constante
+    const s = SEUILS_MEDAILLES;
+    expect(s.bronze).toBeGreaterThan(0);
+    expect(s.bronze < s.silver && s.silver < s.gold && s.gold < s.author).toBe(true);
+    for (let i = 0; i < 40; i++) expect(seuilsDuJour(dailyBlocks(PREMIER + i)), `jour ${i}`).toEqual(SEUILS_MEDAILLES);
+  });
+
+  it("arrondis : au plus proche, à 50 près sous 1 000, à 100 près jusqu'à 5 000, à 500 près au-delà", () => {
+    expect([0, 24, 25, 949, 975, 999, 1000, 1133, 1149, 1150, 2168, 4921, 5000, 5049, 5251, 11_573, 11_749, 11_750, 12_921].map(arrondir)).toEqual([0, 0, 50, 950, 1000, 1000, 1000, 1100, 1100, 1200, 2200, 4900, 5000, 5000, 5500, 11_500, 11_500, 12_000, 13_000]);
+    for (const v of Object.values(SEUILS_MEDAILLES)) expect(arrondir(v), `${v}`).toBe(v);
+  });
+
+  it("les rapports entre médailles sont dans la cible du seed : chacun entre 1,5 et 2,5", () => {
+    const s = SEUILS_MEDAILLES;
+    for (const [nom, r] of [["argent / bronze", s.silver / s.bronze], ["or / argent", s.gold / s.silver], ["Diamant / or", s.author / s.gold]] as const) {
+      expect(r, nom).toBeGreaterThanOrEqual(1.5);
+      expect(r, nom).toBeLessThanOrEqual(2.5);
     }
   });
 
-  it("bronze, argent et or sont les références, les mêmes tous les jours, tant que le Diamant est assez haut", () => {
-    expect(REFERENCES_MEDAILLES).toEqual({ bronze: 1200, silver: 7500, gold: 11000 });
-    expect(seuilsDepuis(32_142)).toEqual({ author: 32_000, gold: 11_000, silver: 7500, bronze: 1200 });
-    expect(seuilsDepuis(125_685)).toEqual({ author: 125_500, gold: 11_000, silver: 7500, bronze: 1200 });
-    expect(seuilsDepuis(15_000)).toEqual({ author: 15_000, gold: 11_000, silver: 7500, bronze: 1200 });
+  it("chaque seuil est le score médian de son bot de référence arrêté après son nombre de pièces (échantillon de 60 jours, marge de 20 %)", () => {
+    const jours = Array.from({ length: 60 }, (_, i) => dailyBlocks(PREMIER + i));
+    for (const nom of ["bronze", "silver", "gold", "author"] as const) {
+      const { bot, pieces } = BOTS_DE_REFERENCE[nom];
+      const scores = jours.map((c) => (bot === "moyen" ? jouerGlouton(c, pieces) : jouerDiamant(c, undefined, pieces)).resultat.score);
+      const m = mediane(scores);
+      expect(Math.abs(m - SEUILS_MEDAILLES[nom]) / SEUILS_MEDAILLES[nom], `${nom} : médiane ${m}`).toBeLessThanOrEqual(0.2);
+    }
+  }, 120_000);
+
+  it("les nombres de pièces sont des séries entières et le Diamant s'arrête au nombre de pièces de son seuil", () => {
+    for (const { pieces } of Object.values(BOTS_DE_REFERENCE)) expect(pieces % TAILLE_SERIE, `${pieces}`).toBe(0);
+    expect(PIECES_DU_DIAMANT).toBe(BOTS_DE_REFERENCE.author.pieces);
+    const c = dailyBlocks(PREMIER);
+    const { resultat, actions } = partieDuDiamant(c);
+    expect(resultat.poses).toBeLessThanOrEqual(PIECES_DU_DIAMANT);
+    expect(actions).toHaveLength(resultat.poses);
+    if (resultat.raison === "arret") expect(resultat.poses).toBe(PIECES_DU_DIAMANT);
   });
 
-  it("un Diamant faible ramène les autres sous lui, sans jamais les monter (or ≤ 3/4 du Diamant, argent ≤ 3/4 de l'or, bronze ≤ la moitié de l'argent)", () => {
-    expect(seuilsDepuis(9184)).toEqual({ author: 9000, gold: 6500, silver: 4500, bronze: 1200 });
-    expect(seuilsDepuis(5648)).toEqual({ author: 5500, gold: 4000, silver: 3000, bronze: 1200 });
-    expect(seuilsDepuis(2102)).toEqual({ author: 2000, gold: 1500, silver: 1100, bronze: 500 });
-    for (const d of [200, 500, 1000, 3000, 8000, 14_000]) {
-      const s = seuilsDepuis(d);
-      expect(s.bronze).toBeLessThanOrEqual(REFERENCES_MEDAILLES.bronze);
-      expect(s.silver).toBeLessThanOrEqual(REFERENCES_MEDAILLES.silver);
-      expect(s.gold).toBeLessThanOrEqual(REFERENCES_MEDAILLES.gold);
-      expect(s.author).toBeLessThanOrEqual(Math.max(d, 4));
-    }
-  });
-
-  it("arrondis : à 100 près jusqu'à 2 000, à 500 près au-delà, vers le bas", () => {
-    expect([0, 99, 100, 1234, 1999, 2000, 2001, 2499, 2500, 7425, 11_211, 32_142].map(arrondir)).toEqual([0, 0, 100, 1200, 1900, 2000, 2000, 2000, 2500, 7000, 11_000, 32_000]);
-    for (const j of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
-      const s = seuilsDe(dailyBlocks(daysFromCivil(2026, 11, 2) + j));
-      for (const v of [s.bronze, s.silver, s.gold, s.author]) expect(v % (v <= 2000 ? 100 : 500), `${v}`).toBe(0);
-    }
-  });
-
-  it("strictement croissants, bronze < argent < or < Diamant : pour 40 jours, et même pour un Diamant minuscule ou nul", () => {
-    for (let i = 0; i < 40; i++) {
-      const s = seuilsDe(dailyBlocks(daysFromCivil(2026, 11, 2) + i));
-      expect(s.bronze, `jour ${i}`).toBeGreaterThan(0);
-      expect(s.bronze).toBeLessThan(s.silver);
-      expect(s.silver).toBeLessThan(s.gold);
-      expect(s.gold).toBeLessThan(s.author);
-    }
-    for (const d of [0, 1, 2, 3, 4, 5, 9, 20, 99, 100, 101, 150, 199, 250, 600, 1500, 1999, 2000, 2400, 2600]) {
-      const s = seuilsDepuis(d);
-      expect(s.bronze, `diamant ${d}`).toBeGreaterThan(0);
-      expect(s.bronze < s.silver && s.silver < s.gold && s.gold < s.author, `diamant ${d}`).toBe(true);
-      expect(Object.values(s).every(Number.isInteger)).toBe(true);
-    }
+  it("un bot arrêté a le score qu'il avait en continuant : s'arrêter ne change pas une pose, et la partie entière fait au moins autant", () => {
+    const c = dailyBlocks(PREMIER + 3);
+    const entier = jouerDiamant(c);
+    const arrete = jouerDiamant(c, undefined, 90);
+    expect(arrete.actions).toEqual(entier.actions.slice(0, arrete.actions.length));
+    expect(entier.resultat.score).toBeGreaterThanOrEqual(arrete.resultat.score);
+    const glouton = jouerGlouton(c);
+    expect(jouerGlouton(c, 45).actions).toEqual(glouton.actions.slice(0, jouerGlouton(c, 45).actions.length));
   });
 
   it("la médaille d'un score : la plus haute dont le seuil est atteint", () => {
@@ -65,10 +68,10 @@ describe("les seuils des médailles", () => {
     expect([0, 109, 110, 329, 330, 669, 670, 999, 1000, 5000].map((v) => medailleDe([v, 3], s))).toEqual([null, null, "bronze", "bronze", "silver", "silver", "gold", "gold", "author", "author"]);
   });
 
-  it("la fiche ne porte qu'une indication : la part du Diamant médian que valent les références (34 %, 23 %, 4 %)", () => {
-    expect(PART_DU_DIAMANT_MEDIAN).toEqual({ gold: 34, silver: 23, bronze: 4 });
-    expect(Math.round((100 * REFERENCES_MEDAILLES.gold) / 32_142)).toBe(PART_DU_DIAMANT_MEDIAN.gold);
-    expect(Math.round((100 * REFERENCES_MEDAILLES.silver) / 32_142)).toBe(PART_DU_DIAMANT_MEDIAN.silver);
-    expect(Math.round((100 * REFERENCES_MEDAILLES.bronze) / 32_142)).toBe(PART_DU_DIAMANT_MEDIAN.bronze);
+  it("la fiche ne porte qu'une indication : la part du Diamant que valent les autres médailles (43 %, 19 %, 10 %)", () => {
+    expect(PART_DU_DIAMANT_MEDIAN).toEqual({ gold: 43, silver: 19, bronze: 10 });
+    expect(Math.round((100 * SEUILS_MEDAILLES.gold) / SEUILS_MEDAILLES.author)).toBe(PART_DU_DIAMANT_MEDIAN.gold);
+    expect(Math.round((100 * SEUILS_MEDAILLES.silver) / SEUILS_MEDAILLES.author)).toBe(PART_DU_DIAMANT_MEDIAN.silver);
+    expect(Math.round((100 * SEUILS_MEDAILLES.bronze) / SEUILS_MEDAILLES.author)).toBe(PART_DU_DIAMANT_MEDIAN.bronze);
   });
 });

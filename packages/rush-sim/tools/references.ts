@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { contenuScenario, dailyRush, empreinteContenu, encoderRediffusion, enregistrer, entree, jouer, jouerJusqua, jouerLePilote, choixParDefaut, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, type Changement, type Choix } from "../src/index";
+import { contenuScenario, dailyRush, diamantDuJour, empreinteContenu, encoderRediffusion, enregistrer, entree, entreesDuBot, jouer, jouerJusqua, jouerLePilote, choixParDefaut, RUSH_BOT_VERSION, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, seuilsDe, type Changement, type Choix } from "../src/index";
 
 // Le golden de Rush : `npm run golden:rush -w @cdj/rush-sim`. Dix jours (l'empreinte de leur contenu) et trois rediffusions de référence (le pilote, un joueur agité, une partie vide) et deux scénarios (le golem, l'arène à 30 monstres) joués 3 000 ticks.
 // Il ne se régénère jamais sans monter la version concernée (`RUSH_SIM_VERSION` pour les rediffusions, `RUSH_GENERATOR_VERSION` pour le contenu).
@@ -12,9 +12,12 @@ const contenu = dailyRush(jourRef);
 const joueurAgite: Changement[] = Array.from({ length: 400 }, (_, i) => ({ tick: i * 9, e: entree((i * 5) % 32, i % 3 === 0, i % 7 === 0, i % 2 === 0 ? (i * 3) % 32 : -1) }));
 const pilote = jouerLePilote(contenu);
 const beaucoup = jouerLePilote(contenu, undefined, Infinity, "beaucoup");
+// Lot BR4 : le Diamant du jour de référence (la partie la plus rapide des trois stratégies : le fantôme), avec ses choix de cartes.
+const diamant = entreesDuBot(contenu);
 const reds = [
   { nom: "pilote", changements: pilote.changements, choix: pilote.choix },
   { nom: "beaucoup", changements: beaucoup.changements, choix: beaucoup.choix },
+  { nom: "diamant", changements: diamant.changements, choix: diamant.choix },
   { nom: "agite", changements: joueurAgite, choix: choixParDefaut(contenu, joueurAgite) },
   { nom: "vide", changements: [] as Changement[], choix: [] as Choix[] },
 ].map((r) => ({ nom: r.nom, date: formatDay(jourRef), g: contenu.g, code: enregistrer(contenu, r.changements, r.choix), resultat: jouer(contenu, r.changements, undefined, r.choix) }));
@@ -33,7 +36,12 @@ const sortie = {
   _: "Golden de Rush (lot K4f). Régénérer : npm run golden:rush -w @cdj/rush-sim, seulement en montant la version concernée.",
   sim: RUSH_SIM_VERSION,
   generateur: RUSH_GENERATOR_VERSION,
-  jours: jours.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyRush(j)) })),
+  // Lot BR4 : le pilote fait partie des règles du classement (les médailles en viennent) : la version du pilote, et pour chaque jour sa stratégie du Diamant et les quatre seuils.
+  pilote: RUSH_BOT_VERSION,
+  jours: jours.map((j) => {
+    const c = dailyRush(j);
+    return { date: formatDay(j), empreinte: empreinteContenu(c), diamant: diamantDuJour(c).strategie, seuils: seuilsDe(c) };
+  }),
   rediffusions: reds,
   scenarios,
 };

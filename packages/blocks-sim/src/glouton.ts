@@ -2,7 +2,7 @@ import { BONUS_PLATEAU_VIDE, COLONNES, LIGNES, POINTS_EFFACEMENT, TAILLE_SERIE }
 import type { Contenu } from "./generateur";
 import { compterPleines, effacer, estVide, peutPoser, pleines, poser, rangee } from "./grille";
 import { evaluerGrille, POIDS_DIAMANT } from "./evaluation";
-import { actionDe, Partie, type Resultat } from "./partie";
+import { actionDe, Partie, type ResultatDeBot } from "./partie";
 
 // Le BOT MOYEN (lot B8 ; le glouton du lot B1, adapté aux séries) : la deuxième des trois références des médailles. Hors de l'index (`@cdj/blocks-sim/glouton`). **Ce n'est pas le Diamant** : il ne cherche ni l'ordre des pièces ni plus
 // loin que la grille juste après la pose. À chaque coup il essaie toutes les poses de toutes les pièces restantes de la série et joue la MEILLEURE POSE IMMÉDIATE : valeur = les points de la pose (cases, effacement et combo, plateau vide)
@@ -43,14 +43,14 @@ export function coupGlouton(partie: Pick<Partie, "grille" | "pieces" | "finie" |
   return meilleur === null ? null : { emplacement: meilleur.emplacement, col: meilleur.col, ligne: meilleur.ligne };
 }
 
-/** Joue une partie entière avec le bot moyen : le résultat et les actions (octets). */
-export function jouerGlouton(contenu: Pick<Contenu, "suite" | "depart">): { resultat: Resultat; actions: number[] } {
+/** Joue une partie avec le bot moyen : le résultat et les actions (octets). `jusqua` (lot B8b) : s'arrête après ce nombre de pièces posées (la partie, alors non finie, rend son score du moment : `raison` « arret »). */
+export function jouerGlouton(contenu: Pick<Contenu, "suite" | "depart">, jusqua: number = Infinity): { resultat: ResultatDeBot; actions: number[] } {
   const partie = new Partie(contenu);
   const actions: number[] = [];
-  while (!partie.finie) {
+  while (!partie.finie && partie.poses < jusqua) {
     const a = coupGlouton(partie)!;
     partie.poser(a.emplacement, a.col, a.ligne);
     actions.push(actionDe(a.emplacement, a.col, a.ligne));
   }
-  return { resultat: partie.resultat()!, actions };
+  return { resultat: partie.instantane(), actions };
 }

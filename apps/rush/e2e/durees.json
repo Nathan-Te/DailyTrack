@@ -6,7 +6,8 @@
     "classement.spec.ts": 60,
     "poids.spec.ts": 2,
     "choix.spec.ts": 40,
-    "boss.spec.ts": 90
+    "boss.spec.ts": 90,
+    "medailles.spec.ts": 60
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
@@ -14,6 +15,7 @@
     "classement.spec.ts": 60,
     "poids.spec.ts": 2,
     "choix.spec.ts": 40,
-    "boss.spec.ts": 90
+    "boss.spec.ts": 90,
+    "medailles.spec.ts": 60
   }
 }

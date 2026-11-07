@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AMELIORATIONS, REGLAGES_DEFAUT } from "@cdj/rush-sim";
+import { AMELIORATIONS, BOSS, Partie, REGLAGES_DEFAUT, contenuScenario } from "@cdj/rush-sim";
 import { carteVue } from "../src/cartes";
 import { CATALOGUE_RUSH } from "../src/catalogue";
 
@@ -43,6 +43,27 @@ describe("les cartes d'amélioration (lot BR2)", () => {
     const i = AMELIORATIONS.findIndex((a) => a.id === "lame-lourde");
     expect(carteVue(i, 0, { ...REGLAGES_DEFAUT, lourdeDegats: 42 }, t).effet).toContain("+42 %");
     expect(carteVue(i, 1, REGLAGES_DEFAUT, t).palier).toBe("2 / 3");
+  });
+  it("Brise-pierre dit sa valeur CONTRE LE BOSS DU JOUR (lot BR4) : +90 % contre le golem et le bélier, la part que les trois autres encaissent contre eux", () => {
+    const i = AMELIORATIONS.findIndex((a) => a.id === "brise-pierre");
+    const fr = traducteur("fr");
+    const dit = (boss: number): string => carteVue(i, 0, REGLAGES_DEFAUT, fr, boss).effet;
+    expect(dit(0)).toBe("+90 % de dégâts contre le golem.");
+    expect(dit(1)).toBe("+31 % de dégâts contre la reine gelée."); // 90 % × 35 % (BOSS[].brise), arrondi comme la simulation
+    expect(dit(2)).toBe("+31 % de dégâts contre le grand-duc.");
+    expect(dit(3)).toBe("+90 % de dégâts contre le bélier.");
+    expect(dit(4)).toBe("+31 % de dégâts contre le vieux chêne.");
+    expect(carteVue(i, 0, REGLAGES_DEFAUT, fr).effet).toBe("+90 % de dégâts contre le boss du jour."); // sans boss
+    expect(carteVue(i, 0, REGLAGES_DEFAUT, traducteur("en"), 1).effet).toBe("+31% damage against the frozen queen.");
+    // le texte est celui de la simulation : le pourcentage affiché est bien ce que la carte donne au premier palier
+    for (const boss of [0, 1, 2, 3, 4]) {
+      const p = new Partie(contenuScenario("boss", { boss }));
+      p.paliers[i] = 1;
+      // les dégâts contre CE boss avec un palier, sans l'affinité de ses cartes favorites (aucune prise) : cent dégâts deviennent 100 + n
+      expect(p.degatsContreGolem(100, { ...p.golem!, sol: 1 })).toBe(100 + Number(/\+(\d+)/.exec(dit(boss))![1]));
+    }
+    // un curseur de `?debug&tune` change la valeur
+    expect(carteVue(i, 0, { ...REGLAGES_DEFAUT, briseDegats: 50 }, fr, 0).effet).toContain("+50 %");
   });
   it("les textes du niveau et du choix existent dans les deux langues", () => {
     for (const cle of ["hud.niveau", "hud.xp", "choix.titre", "choix.aria", "choix.aide", "choix.palier", "choix.unique", "strategie.foncer", "strategie.peu", "strategie.beaucoup", "carte.meilleure"]) {

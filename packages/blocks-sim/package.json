@@ -13,7 +13,8 @@
     "figer:blocks": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
     "golden:blocks": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs",
     "calibrer:medailles": "esbuild tools/calibrer-medailles.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/calibrer-medailles.mjs --log-level=warning && node dist/calibrer-medailles.mjs",
-    "mesure:rampe": "esbuild tools/mesure-rampe.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesure-rampe.mjs --log-level=warning && node dist/mesure-rampe.mjs"
+    "mesure:rampe": "esbuild tools/mesure-rampe.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesure-rampe.mjs --log-level=warning && node dist/mesure-rampe.mjs",
+    "mesure:repartition": "esbuild tools/mesure-repartition.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesure-repartition.mjs --log-level=warning && node dist/mesure-repartition.mjs"
   },
   "exports": {
     ".": "./src/index.ts",

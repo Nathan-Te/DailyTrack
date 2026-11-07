@@ -1327,6 +1327,10 @@
           "boss.spec.ts": [
             "rush-sim",
             "rush-jeu"
+          ],
+          "medailles.spec.ts": [
+            "rush-sim",
+            "rush-jeu"
           ]
         },
         "parts": {

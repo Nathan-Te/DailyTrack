@@ -5,6 +5,8 @@
 export const RUSH_SIM_VERSION = 7;
 /** La version du générateur du contenu du jour. Elle monte à tout changement de ce que `dailyRush` produit. */
 export const RUSH_GENERATOR_VERSION = 5;
+/** Lot BR4 : la version du pilote (ses trois stratégies, leurs listes de cartes, son anti-blocage) ET du barème des médailles. Le Diamant est la partie du pilote : changer l'un ou l'autre change les médailles des jours non figés, donc elle monte. */
+export const RUSH_BOT_VERSION = 1;
 
 export const TICKS_PAR_SECONDE = 60;
 /** Une partie dure au plus 10 minutes ; au-delà elle est perdue (le pire temps). */

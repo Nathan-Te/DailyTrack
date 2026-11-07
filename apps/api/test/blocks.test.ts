@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { actionDe, BLOCKS_GENERATOR_VERSION, figerJour, decoderRediffusion, BLOCKS_SIM_VERSION, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, jouer, PLAFOND_PIECES, medailleDe, scoreParColonnes, themeDuJour, VARIANTE } from "@cdj/blocks-sim";
-import { figerJourDuDiamant, jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
-import { seuilsDepuis } from "@cdj/blocks-sim";
+import { figerJourDuDiamant, jouerDiamant } from "@cdj/blocks-sim/diamant";
+import { SEUILS_MEDAILLES } from "@cdj/blocks-sim";
 import { empreinteJour } from "../scripts/blocks-empreintes";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_BLOCKS } from "../scripts/blocks-essais";
@@ -48,7 +48,7 @@ describe("Blocks sur le serveur", () => {
     const jour = await t.call("GET", `/api/blocks/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
-    const s = seuilsDe(dailyBlocks(JOUR));
+    const s = SEUILS_MEDAILLES;
     expect(jour.body.medals).toEqual({ author: s.author, gold: s.gold, silver: s.silver, bronze: s.bronze });
     expect(s.bronze).toBeLessThan(s.silver);
     expect(s.silver).toBeLessThan(s.gold);
@@ -64,7 +64,7 @@ describe("Blocks sur le serveur", () => {
       const r = await envoyer(t, i + 1, v);
       expect(r.status, JSON.stringify(r.body)).toBe(200);
       expect(r.body.score).toEqual(essais[v]!.attendu);
-      expect(r.body.medal).toBe(medailleDe([essais[v]!.attendu.score!], seuilsDe(dailyBlocks(JOUR)))); // le code commun de la médaille (author, gold, silver, bronze) ou null
+      expect(r.body.medal).toBe(medailleDe([essais[v]!.attendu.score!], SEUILS_MEDAILLES)); // le code commun de la médaille (author, gold, silver, bronze) ou null
     }
     const attendu = variantes.map((v, i) => ({ nom: `Joueur${i + 1}`, score: essais[v]!.attendu.score!, combo: essais[v]!.attendu.combo! })).sort((a, b) => b.score - a.score || b.combo - a.combo);
     const board = await t.call("GET", `/api/blocks/day/${DATE}/board`, undefined, { headers: entete(3) });
@@ -140,7 +140,7 @@ describe("Blocks sur le serveur", () => {
 
   it("lit le jour figé de l'image s'il se vérifie, l'ignore sinon", async () => {
     const fige = figerJourDuDiamant(JOUR);
-    expect(contenuDeBlocks(JOUR, { [DATE]: fige })).toEqual({ ...dailyBlocks(JOUR), seuilsFiges: seuilsDe(dailyBlocks(JOUR)) });
+    expect(contenuDeBlocks(JOUR, { [DATE]: fige })).toEqual({ ...dailyBlocks(JOUR), seuilsFiges: SEUILS_MEDAILLES });
     const abime = { ...fige, contenu: { suite: fige.contenu.suite.slice(1) + "0" } };
     expect(empreinteContenu(contenuDeBlocks(JOUR, { [DATE]: abime }))).toBe(empreinteContenu(dailyBlocks(JOUR)));
     const t = await monter({ frozen: { [DATE]: fige } });
@@ -148,16 +148,16 @@ describe("Blocks sur le serveur", () => {
     expect(info.body.frozenDays).toEqual([DATE]);
   });
 
-  it("un jour figé fige ses seuils : le serveur sert et rend ceux du fichier, même si le bot d'aujourd'hui en calcule d'autres ; l'empreinte du jour les couvre", async () => {
-    const ancien = seuilsDepuis(7000); // un fichier figé par un bot plus ancien
-    expect(ancien.author).not.toBe(seuilsDe(dailyBlocks(JOUR)).author);
+  it("un jour figé fige ses seuils : le serveur sert et rend ceux du fichier, même si les constantes d'aujourd'hui sont d'autres ; l'empreinte du jour les couvre", async () => {
+    const ancien = { author: 7000, gold: 5000, silver: 3500, bronze: 1200 }; // un fichier figé par une version plus ancienne
+    expect(ancien.author).not.toBe(SEUILS_MEDAILLES.author);
     const fige = { ...figerJourDuDiamant(JOUR), bot: 0, seuils: ancien };
     expect(seuilsDeBlocks(contenuDeBlocks(JOUR, { [DATE]: fige }))).toEqual(ancien);
     const t = await monter({ frozen: { [DATE]: fige } });
     const jour = await t.call("GET", `/api/blocks/day/${DATE}`);
     expect(jour.body.medals).toEqual({ author: ancien.author, gold: ancien.gold, silver: ancien.silver, bronze: ancien.bronze });
-    // Sans fichier : le bot d'aujourd'hui.
-    expect(seuilsDeBlocks(contenuDeBlocks(JOUR))).toEqual(seuilsDe(dailyBlocks(JOUR)));
+    // Sans fichier : les constantes d'aujourd'hui.
+    expect(seuilsDeBlocks(contenuDeBlocks(JOUR))).toEqual(SEUILS_MEDAILLES);
     // L'empreinte (comparée à chaque mise en production) change si les seuils changent : un fichier de seuils différents n'a pas l'empreinte du jour généré.
     const dossier = mkdtempSync(join(tmpdir(), "blocks-jours-"));
     try {
@@ -259,28 +259,24 @@ function decoderActions(texte: string): number[] {
 }
 
 describe("Blocks : les médailles du bot Diamant (lot B3)", () => {
-  it("la partie du bot, envoyée par un joueur, rapporte le Diamant (`author`) : le serveur la rejoue comme n'importe quelle partie", async () => {
+  it("la partie du bot, envoyée par un joueur, rapporte la médaille que son score vaut (le Diamant s'il atteint le seuil) : le serveur la rejoue comme n'importe quelle partie", async () => {
     const t = await monter();
     const bot = jouerDiamant(dailyBlocks(JOUR));
     const r = await envoyerTexte(t, 1, enregistrer(dailyBlocks(JOUR), bot.actions));
     expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body.medal).toBe("author");
+    expect(r.body.medal).toBe(medailleDe([bot.resultat.score], SEUILS_MEDAILLES));
     expect(r.body.score).toMatchObject({ score: bot.resultat.score, combo: bot.resultat.combo });
   });
 
-  it("calcule les seuils d'un jour vite (médiane de 20 jours ; mesure du README du lot B8 : 53 ms en médiane, 152 ms au pire sur 1 000 jours), puis les rend de la mémoire (le même objet)", () => {
-    const temps = Array.from({ length: 20 }, (_, i) => {
+  it("sert les seuils sans calcul (lot B8b : des constantes, aucun bot appelé) : les mêmes pour tous les jours, d'un appel à l'autre", () => {
+    for (let i = 0; i < 20; i++) {
       const contenu = dailyBlocks(daysFromCivil(2026, 12, 1) + i);
       const t0 = performance.now();
       const s = seuilsDeBlocks(contenu);
-      const ms = performance.now() - t0;
-      const t1 = performance.now();
-      expect(seuilsDeBlocks(contenu)).toBe(s);
-      expect(performance.now() - t1).toBeLessThan(5);
-      return ms;
-    }).sort((x, y) => x - y);
-    expect(temps[10]!).toBeLessThan(2000); // la mesure de référence (seule, 1 000 jours : `npm run calibrer:medailles`) est de 53 ms en médiane ; sur la CI, partagée et lente, un test d'horloge ne vaut qu'à l'ordre de grandeur près (mesuré : 425 ms)
-    expect(temps[19]!).toBeLessThan(5000); // le pire cas, à froid, sur une machine chargée par d'autres tests : la mémoire (ci-dessus) évite de le payer deux fois
+      expect(performance.now() - t0).toBeLessThan(50);
+      expect(s).toEqual(SEUILS_MEDAILLES);
+      expect(seuilsDeBlocks(contenu)).toEqual(s);
+    }
   });
 });
 

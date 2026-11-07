@@ -1,0 +1,82 @@
+# Lot BR4 — Rush : les médailles, et un pilote fiable
+
+Suite de BR3 (fusionné). Jeu `off` : golden et format libres. `RUSH_SIM_VERSION` (7) et `RUSH_GENERATOR_VERSION` (5) **inchangées** (aucune règle de la simulation ne bouge) ; **`RUSH_BOT_VERSION` = 1, nouvelle** (le pilote fait désormais partie des règles du classement : les médailles en viennent). Golden régénéré (ajout : la stratégie du Diamant et les quatre seuils de chacun des dix jours, la rediffusion du Diamant). **Pour les joueurs : rien** (jeu `off`). Règles : `docs/rush/consignes.md` (« Les médailles, le pilote humanisé, le fantôme et l'écran de fin (lot BR4) »), `apps/rush/CLAUDE.md`.
+
+## 0. Décisions de Nathan sur BR3, reprises
+« Beaucoup d'XP » à 12 %, `xpCamp` 450 %, `SEUIL_PEU_CM` 3 200, affinité 30 %, Brise-pierre : **non touchés**. **Brise-pierre** : le texte de la carte donne maintenant **sa valeur contre le boss du jour** (`carteVue`, cinq clés `boss.contre.*` fr + en) : « +90 % de dégâts contre le golem » (et contre le bélier), **« +31 % contre la reine gelée »** (le grand-duc, le vieux chêne). Le prompt disait « +35 % » : c'est la part que ces boss encaissent (`BOSS[].brise`) ; la valeur réelle de la carte est 90 % × 35 % = 31 % par palier, comme la simulation le compte (testé contre `degatsContreGolem`). Piliers du bélier : en réserve.
+
+## 1. Un pilote fiable
+- **Cause du jour 295** (126 s « un peu d'XP », 122 s « beaucoup ») : deux gelées d'un camp lointain, alertées mais **derrière un mur**, barraient « la route » (distance < 3,6 m) ; le pilote les visait **en ligne droite**, contre le mur, pendant 30 s. Le détecteur de blocage existant (position strictement identique) ne le voyait pas : il glissait de 1 cm par tick.
+- **Détection générique** (`suivreLeProgres`, `BLOCAGE_TICKS` = 150) : sans progrès pendant 2,5 s (signature = monstres vivants, obstacles, XP, points de vie des monstres à moins de 5 m ; et moins de 1,5 m parcourus), le pilote **lâche ce qu'il visait** (monstre, gemme ou obstacle) pendant 15 s et change de point de passage ; sans cible à lâcher, il pousse de côté, de plus en plus longtemps. Jour 295 : 126 s → **96 s**, 122 s → **93 s** (le reste est un jour riche en monstres). Rien ne change ailleurs (répartition des stratégies identique).
+- **365 jours, pilote de référence** (`npm run medailles:rush -w @cdj/rush-sim -- --jours=365`) :
+
+| stratégie | victoires | temps min / médiane / p95 / max (s) | parties > 100 s | à > 40 s du meilleur du jour | blocages détectés |
+|---|---|---|---|---|---|
+| foncer | 358 / 365 | 37,5 / 61,3 / 71,7 / 87,8 | 7 (les 7 défaites : 3 reines, 3 chênes, 1 golem) | 7 (les mêmes) | 0 |
+| un peu d'XP | **365 / 365** | 34,3 / 56,5 / 70,3 / 96,2 | 0 (2 avant la correction) | 1 (jour 295) | 2 (1 jour) |
+| beaucoup d'XP | **365 / 365** | 43,1 / 60,5 / 74,5 / 92,8 | 0 (2 avant) | 1 (jour 295) | 2 (1 jour) |
+| **le meilleur des trois (le Diamant)** | **365 / 365** | **34,3 / 53,4 / 69,3** | — | — | — |
+
+Le Diamant existe tous les jours (`test/diamant365.test.ts`). Quelle stratégie le fait : foncer 112 jours (31 %), un peu d'XP 208 (57 %), beaucoup d'XP 45 (12 %) — **la répartition de BR3 est inchangée**. Les 7 défaites de « foncer » sont celles de BR3 (hors sujet : le Diamant les évite).
+
+## 2. Les médailles
+- **Diamant = le meilleur temps des trois stratégies** (`diamantDuJour`, `medailles.ts`) : une partie réelle, donc **toujours rejouable par le serveur** ; pas de « temps théorique » (le kit n'en demande pas). **Or, argent, bronze = 130, 160, 200 % du Diamant**, lus dans la **fiche** (`medailles.bareme` ; `VARIANTE.seuils` ne contient plus aucun nombre : un test vérifie l'accord avec `config/jeux/rush.json`).
+- **Calcul** (le même pour le jeu, le serveur, le tableau, l'outil) : déterministe, par jour, **refait à chaque lecture d'un jour non figé** → les jours à venir suivent d'eux-mêmes une version qui change (`RUSH_SIM_VERSION`, `RUSH_GENERATOR_VERSION`, `RUSH_BOT_VERSION`). **Un jour figé garde ses seuils** (règle de la racine « un jour figé fige aussi ses seuils », comme Blocks) : fichier de jour **format 2** (`seuils`, `bot`), `lireJourFige` rend `seuilsFiges`, `seuilsDuJour` les préfère au calcul (serveur et jeu) ; **l'empreinte du jour les couvre** (`rush-empreintes.ts`) ; `npm run figer:rush` les écrit (essayé). Un fichier d'une autre `sim` ou `g`, ou aux seuils abîmés, n'est pas lu.
+- **Client** : `definition.ts` n'est plus `sansMedaille` ; le kit montre la médaille, « encore … » et la liste des médailles.
+
+## 3. Le calibrage humain
+**Le pilote humanisé** (`HUMAIN`) : réaction de **200 ms** (12 ticks) à ce qui le surprend, annonces **lues parfois tard** (25 %, jusqu'à 40 ticks), esquive **imparfaite** (± 4 ticks, 10 % oubliées), **ni le boss ni les cartes à venir** (pas de leurre du bélier, pas de poste pour le grand-duc, listes de cartes générales). Hasard tiré de la graine du jour : rejouable, et sa rediffusion passe la validation du serveur (testé). Pour chaque jour : 3 parties de référence + 3 humanisées.
+
+**Constat — il ne s'écarte pas du Diamant.** Les deux points que Nathan soupçonnait (annonces lues sans erreur, boss connu) **ne suffisent pas** : le pilote humanisé gagne 365 jours sur 365 avec le meilleur de ses trois stratégies (« foncer » seul : 292 / 365 ; « un peu d'XP » 359 ; « beaucoup » 363) et **égale ou bat le Diamant 68 % des jours** (médiane 51,4 s contre 53,4 s). Même un profil très dégradé (réaction 400 ms, une annonce sur deux tardive, un quart des esquives oubliées) bat le Diamant 62 % des jours. **Ce qui sépare un joueur du robot est ailleurs** (trajectoires, hésitations, coups ratés, peur) : **ce pilote ne peut pas le mesurer, seuls les tests en main le diront.** Le Diamant n'est donc pas un plafond.
+
+| Boss (73 j) | Diamant | Or | Argent | Bronze | humanisé : meilleur des trois | humanisé : foncer | foncer humanisé ≤ bronze | meilleur des trois ≤ argent | ≤ or |
+|---|---|---|---|---|---|---|---|---|---|
+| golem | 54,3 | 70,5 | 86,8 | 108,5 | 51,6 | 59,3 | 67 % | 100 % | 100 % |
+| reine | 53,5 | 69,6 | 85,7 | 107,1 | 50,8 | 60,1 | 68 % | 100 % | 99 % |
+| grand-duc | 57,0 | 74,0 | 91,1 | 113,9 | 57,5 | 68,2 | 96 % | 100 % | 99 % |
+| bélier | 51,4 | 66,8 | 82,2 | 102,7 | 49,5 | 53,8 | 99 % | 100 % | 100 % |
+| chêne | 50,8 | 66,0 | 81,3 | 101,6 | 48,9 | 51,5 | 70 % | 100 % | 99 % |
+| **tous (365 j)** | **53,4** | **69,4** | **85,4** | **106,8** | **51,4** | **59,4** | **80 %** | **100 %** | **99 %** |
+
+(Médianes en secondes ; « ≤ » = part des jours où le temps du pilote humanisé atteint la médaille. Les 20 % de jours où « foncer » humanisé n'atteint pas le bronze sont des **défaites** (il ne connaît pas le boss) : quand il gagne, il atteint le bronze.) **Cibles indicatives** : bronze atteignable par l'humanisé qui fonce — **oui** (80 % des jours, 100 % de ses victoires) ; argent par le meilleur de ses trois — **oui** (100 %). Elles sont **trop faciles pour dire quelque chose** : voir la sensibilité.
+
+**Sensibilité (hypothèse, pas une mesure)** : si un vrai joueur est `k` fois plus lent que le pilote humanisé, part des jours où il atteint **or / argent / bronze** (meilleur de ses trois stratégies) :
+
+| barème (fiche) | ×1,25 | ×1,5 | ×1,75 | ×2 | ×2,5 |
+|---|---|---|---|---|---|
+| **130 / 160 / 200 %** (actuel) | 85 / 99 / 100 | 12 / 90 / 99 | 1 / 24 / 96 | 0 / 4 / 68 | 0 / 0 / 4 |
+| 140 / 180 / 240 % | 95 / 100 / 100 | 31 / 98 / 100 | 4 / 81 / 100 | 0 / 20 / 98 | 0 / 0 / 44 |
+| 150 / 200 / 300 % | 98 / 100 / 100 | 68 / 99 / 100 | 10 / 96 / 100 | 2 / 68 / 100 | 0 / 4 / 98 |
+
+**Proposition (je ne change rien dans la fiche)** : **garder 130 / 160 / 200 % pour les premiers tests en main** ; ils font de l'or un vrai but et du Diamant une rareté **si les joueurs sont ×1,5 à ×1,75 plus lents que le pilote humanisé**. Si les joueurs de test sont **×2 ou plus**, passer à **140 / 180 / 240 %** (bronze à 98 % à ×2) ou **150 / 200 / 300 %** (l'argent redevient atteignable : 68 % à ×2). Le seul réglage est `medailles.bareme` de `config/jeux/rush.json` (+ `npm run fiches`).
+
+## 4. Le fantôme du Diamant
+`Fantome` (`rediffusion.ts`, pur, testé) : la **rediffusion de la stratégie gagnante**, cartes comprises, rejouée tick pour tick à côté du joueur ; un **chevalier translucide** (35 %). À un niveau gagné il fait **son** choix tout de suite : l'écran des cartes n'est que celui du joueur (testé en navigateur). Le **bouton fantôme est dans l'interface en jeu** : c'est celui du kit, dans le HUD de la partie (Aucun → Ma meilleure → Diamant ; `#jeu-hud-fantome`, vérifié) — le fantôme existait déjà côté kit ; ce lot lui donne la bonne rediffusion et le refactorise (`corps.ts` n'a plus son propre rejeu). `&fantome=1` (essai) le montre dès le départ.
+
+## 5. L'écran de fin
+C'est celui du kit : le temps, la médaille obtenue, « encore … » jusqu'à la médaille suivante, le rang, la liste des médailles, « Rejouer », classement, partage. **Deux manques du kit** pour un jeu qui se classe au temps, que `fin.ts` comble **depuis le jeu, sans toucher au kit** : (1) le kit écrit **les seuils et « encore … » en ticks** (« encore 674 ») : le jeu les réécrit en `m:ss,cc` ; (2) il n'a pas d'emplacement propre au jeu : le jeu pose un bloc **Boss du jour · Cartes choisies · Le Diamant (avec sa stratégie)** sous la tuile du résultat. Le kit refait l'écran à chaque changement de l'envoi : le jeu le complète à chaque image tant que la partie est finie (idempotent, un seul bloc : testé). **C'est un contournement** : proposition de plateforme en §9.
+
+## 6. Scénarios à 2 clics (en local : `npm run dev -w @cdj/rush`, puis le port affiché)
+- **Le jour complet contre le fantôme du Diamant** : `/?debug&scenario=jour&fantome=1`
+- **Le tableau des médailles sur 7 jours** : `/?debug&scenario=medailles&jours=7` (le boss, le thème, les temps des trois stratégies — la plus rapide en gras —, les quatre seuils, les trois temps du pilote humanisé colorés par médaille atteinte ; en pied, le barème de la fiche)
+- **L'écran de fin à 1:05** : `/?debug&scenario=fin&temps=65000` (millisecondes ; `&jour=AAAA-MM-JJ` pour un autre jour)
+- **Captures** (`docs/rush/lots/`, `e2e/captures-lot-br4.spec.ts`, `CAPTURES=1`) : `br4-medailles-7-jours.png` (1280 × 720), `br4-fin-844.png` (844 × 390) et `br4-fin-pc.png` (1280 × 720), `br4-fantome.png` (844 × 390). Regardées : les quatre. À 844 × 390 l'écran de fin défile (le kit met « Rejouer » au focus : la capture est en bas) ; tout est lisible.
+
+## 7. Mesures
+- **Calcul des médailles d'un jour** (Node, cette machine, 60 jours) : **3 parties du pilote** (le Diamant, ce que le serveur et le jeu calculent) : médiane **68 ms**, p95 125 ms, max 327 ms ; **+ 3 humanisées** (le tableau) : médiane **138 ms**, p95 250, max 377. Le serveur le garde par instance (`niveauDuJour`) ; le jeu le paie une fois, à l'écran de fin.
+- **Poids du premier chargement** : **44 043 octets** gzip (43 752 avant : +291) pour un plafond de 44 000 → **plafond relevé à 46 Ko** (`docs/plateforme/budgets.md`, « Relèvements », raison écrite ; marge 1 957 o). Tout vient du **catalogue français, chargé en entier au premier chargement** : l'écran de fin (13 clés : boss, cartes, Diamant, et le tableau d'essai), puis le texte de Brise-pierre par boss (6 clés). **Sans la carte Brise-pierre par boss, 43 981 o** (19 o de marge) : j'avais d'abord essayé de tenir sous 44 Ko (la première version : 44 080 ; réduit en retirant les clés mortes et en fusionnant celles de la ligne du Diamant) ; la nouvelle ligne de Brise-pierre (demandée en §0 du prompt) l'a dépassé de 43 o. Aucun code de plus dans le premier chargement (variante, `essai.ts` : 0 o). Scène à la demande (`corps-`) : ~730 Ko brut, 198 Ko gzip (BR3 : 194 Ko).
+- **Coût d'un rejeu** : `rejeu.ticksParUnite` = **2 500** dans la fiche (Track et Jump : 5 000). Une partie normale (~3 500 ticks) pèse **2 unités**, la pire (36 000 ticks, une partie vide) **15** (`unitesDuRejeu`, testé). Le plafond global est de **600 unités par minute et par instance** (`REPLAYS_PER_MINUTE`) : il absorbe **300 parties normales ou 40 parties de dix minutes par minute** ; un rejeu normal (~20 ms) vaut ~1,3 unité de 15 ms, l'ordre de grandeur est bon. **Limite** : le contrat minimal des jeux neufs ne donne pas la durée avant de rejouer : le module compte `unitesServeur` avant, **le reste après** (une partie qui dépasse le plafond est refusée en 503 après avoir été jouée). Un `unites(rejeu)` dans `ContratMinimal` (plateforme) règlerait cela.
+
+## 8. Tests et ce qui n'est pas vérifié
+- **Sim** : `test/medailles.test.ts` (24 : Diamant = meilleur des trois, pourcentages de la fiche, déterminisme, rediffusion du Diamant valide, fichier de jour format 2 et seuils figés, jour 295 débloqué et détection, pilote humanisé déterministe / valide / sans connaissance du boss, fantôme au bit près cartes comprises) ; `test/diamant365.test.ts` (365 jours : un Diamant tous les jours, 6 tranches) ; golden **régénéré** (seuils et stratégie de dix jours, rediffusion du Diamant) ; les 283 tests de la sim passent. **API** : `rush.test.ts` (14 : seuils figés, `ticksParUnite`). **App** : `test/fin.test.ts` (9). **E2e** (Chromium, 35 au total) : `medailles.spec.ts` (le tableau égale la simulation, l'écran de fin à 65 s — temps, médaille, « encore » en temps, boss, cartes, Diamant —, un seul bloc, le fantôme : visible, translucide, au pas, choix sans écran des cartes, même fin que le Diamant, bouton du HUD) ; `partie`, `choix`, `boss`, `classement`, `determinisme`, `poids` verts.
+- **`npm run verifier`** (la CI de PR en local) : typecheck, **unitaires SQLite (139 fichiers) et libSQL (78) verts**, constructions, **e2e Track (12 specs) et Jump (8) verts**. **Tower** : `classement.spec.ts` « sans serveur » a échoué une fois sous charge (hors zone, une zone que ce lot ne touche pas) et **passe seul** ; la CI de la PR tranche.
+- **CI du premier push** (run 42414974577) : tout vert sauf « jeu fictif (3/3) » : `apps/api/test/blocks.test.ts` (« calcule les seuils d'un jour vite », mesure de temps : 6,2 ms pour une limite de 5) — **zone de Blocks, sans lien avec ce lot**, test de durée sensible à la charge ; relancé par un nouveau commit (cette note), comme le prévoit la règle d'arrêt.
+- **Non vérifié** : **le ressenti** (rien n'a été joué à la main : la vraie distance entre un joueur et le Diamant, donc les bons pourcentages) ; l'écran de fin sur un vrai téléphone ; Firefox et WebKit (seul `determinisme` y tourne) ; l'anglais de l'écran de fin et du tableau (relu par aucun humain) ; le coût réel d'un rejeu de dix minutes sur Cloud Run ; **le temps réel du calcul des seuils au navigateur sur un téléphone** (mesuré en Node seulement : jusqu'à ~330 ms le pire jour, ×3 à ×5 sur un téléphone, une fois à l'écran de fin d'un jour non figé) ; le pilote humanisé est **un** modèle de joueur (réaction, lecture, esquive), pas un joueur.
+
+## 9. Questions pour Nathan
+1. **Quels pourcentages ?** Garder 130 / 160 / 200 % pour les tests en main, puis ajuster d'après les temps réels de tes joueurs (§3 : la grille de sensibilité dit où ils tombent). Le pilote humanisé **ne dit rien de plus** : il bat le Diamant 68 % des jours.
+2. **Le Diamant est-il assez haut ?** Les listes de cartes générales du pilote humanisé font aussi bien que celles « contre le boss » du pilote de référence (< 1 s d'écart en moyenne). Un Diamant plus exigeant (une 4ᵉ stratégie, ou de meilleures cartes) serait un lot de pilote (`RUSH_BOT_VERSION`) + équilibre.
+3. **Kit** : (a) `DefinitionJeu.resumeFin?(contenu, résultat)` — un emplacement propre au jeu sur l'écran de fin ; (b) `formatSeuil` — les seuils et « encore … » d'un jeu au temps s'écrivent en ticks (« encore 674 ») ; `fin.ts` contourne les deux en réécrivant le DOM du kit. À faire côté plateforme, puis `fin.ts` disparaît. Et `ContratMinimal.unites(rejeu)` pour compter le coût d'un rejeu **avant** de le jouer (§7).
+4. **Brise-pierre** affiche **« +31 % contre la reine gelée »**, pas « +35 % » (voir §0) : tu préfères que la carte donne 35 % (`BOSS[].brise` à 39, donc `RUSH_SIM_VERSION` + équilibre) ou que le texte dise la valeur réelle (ce qui est fait) ?
+5. **Plafond du premier chargement relevé à 46 Ko** (44 043 o mesurés) : à valider ; il est écrit dans « Relèvements » de `budgets.md`.
+6. Hors lot (noté pour BR5) : actions `carte1` à `carte3` réglables (règle M2) et déclaration de l'écran du choix dans `manette.ts` du kit (règle M1), comme en BR3.

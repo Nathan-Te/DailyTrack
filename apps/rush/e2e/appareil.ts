@@ -43,6 +43,8 @@ export interface PorteScene {
   definirQualite(q: "haute" | "basse"): void;
   dessinerMaintenant(): void;
   jouerPilote(ticks: number, attente?: number): void;
+  /** Lot BR4 : le fantôme (`null` : aucun). */
+  fantome(): { tick: number; x: number; y: number; nv: number; visible: boolean; opacite: number; finie: boolean } | null;
 }
 declare global {
   interface Window {
