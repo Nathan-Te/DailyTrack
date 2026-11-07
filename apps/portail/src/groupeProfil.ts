@@ -3,6 +3,8 @@ import { baseApi } from "./jour"; // la feuille est importée par les modules à
 import { adresseAvatar, type Langue } from "@cdj/profile";
 import { adresseGroupe, adresseInvitationGroupe, clientGroupes, GROUPE_DESCRIPTION_MAX, GROUPE_NOM_MAX, type MonGroupe } from "@cdj/profile/src/groupes";
 import { avatar, bouton, el } from "@cdj/ui";
+import { initiales } from "@cdj/ui/src/avatar";
+import { emblemeDeGroupe } from "./salle";
 import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
 
 // Lot C1, partie C — « Profil › Mon groupe » (`/profil/`), chargé **à la demande** par la page du profil : créer un groupe, voir le sien (membres, lien d'invitation que tout membre peut montrer et partager) et,
@@ -16,6 +18,10 @@ export interface OptionsGroupeProfil {
   langue: Langue;
   base: string;
   id: string;
+  /** Lot U3 : ton groupe déjà lu par la page (`null` : aucun) — le module ne le relit pas au montage (l'en-tête du profil l'a demandé). Absent : il le lit. */
+  initial?: MonGroupe | null;
+  /** Lot U3 : ton groupe a changé (créé, renommé, quitté…) : la page remet à jour son en-tête. */
+  surChangement?: (groupe: MonGroupe | null) => void;
 }
 
 let etat: { genre: "chargement" } | { genre: "erreur"; code: string } | { genre: "ok"; groupe: MonGroupe | null } = { genre: "chargement" };
@@ -44,6 +50,7 @@ export function monterGroupe(zone: HTMLElement, o: OptionsGroupeProfil): void {
     const r = await client.moi();
     etat = r.ok ? { genre: "ok", groupe: r.data } : { genre: "erreur", code: r.code };
     dessiner();
+    if (r.ok) o.surChangement?.(r.data);
   };
   /** Une action : la première pression demande confirmation (sauf `directe`), la seconde la fait ; le résultat s'écrit en message. */
   const agir = (cle: string, libelle: string, faire: () => Promise<{ ok: boolean; code?: string }>, reussite: string, directe = false): HTMLElement => {
@@ -132,7 +139,7 @@ export function monterGroupe(zone: HTMLElement, o: OptionsGroupeProfil): void {
       el(
         "div",
         { classe: "groupe-entete" },
-        avatar(o.tr, { pseudo: g.nom, ref: g.id, image: adresseAvatar(o.base, g.avatar), taille: 96, decoratif: true }),
+        emblemeDeGroupe({ initiales: initiales(g.nom, o.langue), image: adresseAvatar(o.base, g.avatar), taille: 72 }), // lot U3 : un groupe est un carré (charte § 9)
         el("div", { classe: "groupe-entete__texte" }, el("a", { classe: "groupe-nom-lien", attrs: { id: "groupe-lien-page", href: adresseGroupe("", g.nom) }, texte: g.nom }), g.description ? el("p", { classe: "groupe-description", texte: g.description }) : null, el("p", { classe: "profil-aide", texte: t("groupePage.membres", { n: g.membres.length, max: g.max }) })),
       ),
       el("p", { classe: "profil-aide", texte: t("groupeProfil.arrivee", { date: g.arrivee }) }),
@@ -204,6 +211,8 @@ export function monterGroupe(zone: HTMLElement, o: OptionsGroupeProfil): void {
     );
   }
 
+  if (o.initial !== undefined) etat = { genre: "ok", groupe: o.initial };
+  else etat = { genre: "chargement" };
   dessiner();
-  void relire();
+  if (o.initial === undefined) void relire();
 }

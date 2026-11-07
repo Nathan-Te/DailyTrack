@@ -139,7 +139,7 @@ test("classement du 24/10 : toucher un joueur › Ajouter en ami › « Amis » 
   expect(requetes.join("\n")).not.toContain(DEMO_ID);
 
   await page.goto(`${SITE}/amis/`);
-  await expect(page.locator("#amis-gestion .dj-liste-amis__liste li")).toHaveCount(avant.total + 1);
+  await expect(page.locator("#amis-cartes li.amis-carte")).toHaveCount(avant.total + 1); // lot U3 : tes amis en cartes
   await page.goto(`${SITE}/classement/?filtre=amis`);
   await expect(page.locator("#classement-liste li")).not.toHaveCount(0);
 

@@ -1,0 +1,291 @@
+/* Lot U3 (charte rév. 19, § 9) : « Profil » dans la salle de jeux — ta photo en grand (128 px) avec le crayon moutarde, « Tous les jeux », « Par jeu » en cartouches horizontales, et à droite les messages, le code de
+   transfert, la langue et ton groupe (sous le reste sur téléphone). Feuille à part : seule la page `/profil/` la charge. Elle complète les règles `.profil-*` de `portail.css`. Valeurs : jetons de @cdj/ui seulement. */
+.salle-page.profil-page {
+  align-items: start;
+}
+@media (min-width: 760px) {
+  .salle-page.profil-page {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+.profil-gauche,
+.profil-droite {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--dj-espace-8);
+  min-width: 0;
+}
+.profil-droite {
+  gap: 18px;
+}
+.profil-retour {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding-inline: max(var(--salle-x), env(safe-area-inset-left, 0px));
+  font-weight: 700;
+}
+
+/* --- L'en-tête : la photo, le pseudo, le groupe, les amis --------------------------------------------------------------------------------------- */
+.profil-identite {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.profil-photo {
+  position: relative;
+  flex: none;
+}
+.profil-crayon {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: 50%;
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  cursor: pointer;
+}
+.profil-identite__texte {
+  min-width: 0;
+}
+.profil-identite__pseudo {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.profil-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-3) var(--dj-espace-4);
+  margin-top: var(--dj-espace-3);
+  font-size: var(--dj-taille-14);
+}
+.profil-meta .salle-embleme {
+  width: 34px;
+  height: 34px;
+  border-width: 2.5px;
+  border-radius: 6px;
+  font-size: var(--dj-taille-12);
+}
+.profil-groupe-nom,
+.profil-amis,
+.profil-lien {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dj-encre);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.profil-groupe-nom {
+  text-decoration: none;
+}
+@media (max-width: 759px) {
+  .profil-identite {
+    flex-direction: column;
+    gap: var(--dj-espace-5);
+    text-align: center;
+  }
+  .profil-identite__pseudo {
+    font-size: 28px;
+  }
+  .profil-meta {
+    justify-content: center;
+  }
+}
+
+/* --- Les titres de section ---------------------------------------------------------------------------------------------------------------- */
+.profil-titre-s {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+  margin-bottom: var(--dj-espace-7);
+  padding-bottom: 5px;
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.profil-titre-s h2 {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 17px;
+  text-transform: uppercase;
+}
+.profil-titre-s span {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+
+/* --- Tous les jeux : la série (tuile d'encre), les journées parfaites, les médailles en cases pleines ------------------------------------------------ */
+.profil-tous .profil-tuiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dj-espace-5);
+}
+.profil-tuile-medailles {
+  grid-column: 1 / -1;
+  padding: var(--dj-espace-5);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-papier);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+}
+@media (min-width: 760px) {
+  .profil-tous .profil-tuiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 2fr);
+  }
+  .profil-tuile-medailles {
+    grid-column: auto;
+  }
+}
+.profil-tuile--encre {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.profil-tuile--encre .dj-tuile__valeur {
+  color: var(--dj-moutarde);
+}
+.profil-tuile--encre .dj-tuile__legende,
+.profil-tuile--encre .dj-tuile__sous-texte {
+  color: var(--dj-creme-2);
+}
+.profil-medailles--tous {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 0;
+}
+.profil-medailles--tous > .dj-medaille--case[role="group"] {
+  min-height: 56px;
+  padding: var(--dj-espace-2) var(--dj-espace-3);
+  background: var(--medaille);
+  color: var(--medaille-texte);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: 0;
+}
+.profil-medailles--tous > .dj-medaille--case[role="group"] > .dj-medaille__nom {
+  color: inherit;
+  font-size: var(--dj-taille-legende-petite);
+  letter-spacing: 0.4px;
+}
+.profil-medailles--tous > .dj-medaille--case[role="group"] > .dj-medaille__valeur {
+  font-size: var(--dj-taille-15);
+}
+
+/* --- Par jeu : une cartouche par jeu (l'illustration à gauche), les jeux du jour d'abord, puis l'arcade ------------------------------------------------ */
+.profil-cat {
+  margin: var(--dj-espace-8) 0 var(--dj-espace-4);
+  color: var(--dj-encre-douce);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-legende);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.profil-titre-s + .profil-cat {
+  margin-top: 0;
+}
+.profil-par-jeu .profil-jeux {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+@media (min-width: 1100px) {
+  .profil-par-jeu .profil-jeux {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.profil-jeu {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+}
+.profil-jeu__dessin {
+  position: static;
+  grid-column: 1;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 120px;
+  object-fit: cover;
+  border-right: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.profil-jeu__corps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  min-width: 0;
+  padding: var(--dj-espace-5) var(--dj-espace-6);
+}
+.profil-jeu .profil-medailles {
+  width: 100%;
+}
+@media (max-width: 759px) {
+  .profil-jeu {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+}
+
+/* --- La colonne de droite ---------------------------------------------------------------------------------------------------------------- */
+.profil-panneau {
+  align-items: stretch;
+}
+.profil-panneau > * {
+  max-width: 100%;
+}
+.profil-panneau .profil-aide,
+.profil-panneau .profil-message {
+  margin: 0;
+}
+.profil-pastille {
+  display: inline-block;
+  margin-right: var(--dj-espace-3);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-12);
+}
+.profil-panneau .profil-code {
+  text-align: center;
+}
+
+/* « Mon groupe » dans une colonne de 340 px : un membre passe sur deux lignes (son nom, puis ses actions) au lieu d'écraser son pseudo lettre par lettre. */
+.profil-panneau .groupe-membre--gestion {
+  flex-wrap: wrap;
+  padding-block: var(--dj-espace-2);
+}
+.profil-panneau .groupe-membre--gestion .groupe-membre__pseudo {
+  flex: 1 1 calc(100% - 100px);
+}
+.profil-panneau .groupe-membre--gestion .dj-bouton {
+  flex: 1 1 8rem;
+  width: auto;
+}
+.profil-panneau .groupe-entete {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-5);
+}
+.profil-panneau .groupe-entete__texte {
+  min-width: 0;
+}
+.profil-panneau input[type="text"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
