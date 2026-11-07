@@ -36,8 +36,9 @@ import {
   choisirCarte,
   contenuScenario,
   dailyRush,
-  decoderRediffusion,
+  Fantome,
   descendre,
+  diamantDuJour,
   enregistrer,
   entreesDuBot,
   formatTemps,
@@ -46,7 +47,7 @@ import {
   pilote,
   pointDevant,
   reglagesDe,
-  seuilsDe,
+  seuilsDuJour,
   sontLesReglagesParDefaut,
   type Changement,
   type Choix,
@@ -85,6 +86,8 @@ import { Annonces, Anneaux, ArcCoup, Bandes, Cratere, Eclats, Gemmes, LignesCour
 import { carteVue } from "./cartes";
 import { monterObstacles } from "./obstaclesVue";
 import { carteDesJours } from "./carte";
+import { completerEcranDeFin, partieDeFin, type ResumeFin } from "./fin";
+import { tableauDesMedailles } from "./medaillesVue";
 import { lireEssai } from "./essai";
 import { monterInterface } from "./interface";
 import { Rendu, type Qualite } from "./rendu";
@@ -112,7 +115,9 @@ export async function contenuDuJour(jour: number, base: string): Promise<Contenu
   if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour, ameliorations, boss: essai.boss === null ? undefined : indiceBoss(essai.boss) });
   // Lot BR1 : `?scenario=jour&jour=AAAA-MM-JJ` (ou `?scenario=carte`) joue un autre jour que celui d'aujourd'hui : un essai, jamais classé, jamais en production.
   if (essai.jour !== null) return { ...dailyRush(essai.jour, RUSH_GENERATOR_VERSION), ameliorations: ameliorationsDe(ameliorations) };
-  if (essai.carte !== null) return dailyRush(jour, RUSH_GENERATOR_VERSION);
+  if (essai.carte !== null || essai.medailles !== null) return dailyRush(jour, RUSH_GENERATOR_VERSION);
+  // Lot BR4 : `?scenario=fin` joue le niveau du jour (ou `&jour=`), pour que l'écran de fin ait les médailles d'un vrai jour.
+  if (essai.fin !== null) return dailyRush(essai.jour ?? jour, RUSH_GENERATOR_VERSION);
   const date = formatDay(jour);
   const nouveau = (c: Contenu): Contenu => (ameliorations.length > 0 ? { ...c, ameliorations: ameliorationsDe(ameliorations) } : c);
   if (dateDemandable(date, import.meta.env.VITE_PRODUCTION === "1", JOURS_FIGES)) {
@@ -126,7 +131,8 @@ export async function contenuDuJour(jour: number, base: string): Promise<Contenu
   return nouveau(dailyRush(jour, RUSH_GENERATOR_VERSION));
 }
 
-export const seuilsDeRush = (c: Contenu): Seuils => seuilsDe(c);
+/** Les seuils du jour tel qu'il est servi (lot BR4) : ceux du fichier figé, sinon le Diamant du pilote (le meilleur des trois stratégies) et ses pourcentages. */
+export const seuilsDeRush = (c: Contenu): Seuils => seuilsDuJour(c);
 export const rediffusionDiamantRush = (c: Contenu): string => {
   const bot = entreesDuBot(c);
   return enregistrer(c, bot.changements, bot.choix);
@@ -165,6 +171,8 @@ interface ActeurBete {
 export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   if (essai.carte !== null) return carteDesJours(contenu.jour, essai.carte, hote, o);
+  if (essai.medailles !== null) return tableauDesMedailles(contenu.jour, essai.medailles, hote, o);
+  if (essai.fin !== null) return partieDeFin(contenu, essai.fin, o);
   const manuel = new URLSearchParams(location.search).has("manuel");
   const debug = !BUILD_RESTRICTED && new URLSearchParams(location.search).has("debug");
   const t = o.t;
@@ -205,14 +213,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   placerPourLeBestiaire();
   let changements: Changement[] = [];
   let derniere = 0;
+  // Lot BR4 : le fantôme est une `Fantome` de la simulation (la rediffusion rejouée tick pour tick, ses choix de cartes compris) ; `fantomeSim` est sa partie.
+  let fantome: Fantome | null = null;
   let fantomeSim: Partie | null = null;
-  let fantomeChangements: Changement[] = [];
-  let fantomeIndex = 0;
-  let fantomeEntree = 0;
-  // Lot BR2 : les choix d'amélioration faits (une partie sauvée les emporte : c'est un événement d'entrée de la rediffusion), ceux du fantôme, et la carte en surbrillance.
+  // Lot BR2 : les choix d'amélioration faits (une partie sauvée les emporte : c'est un événement d'entrée de la rediffusion), et la carte en surbrillance.
   let choixFaits: Choix[] = [];
-  let fantomeChoix: Choix[] = [];
-  let fantomeIndexChoix = 0;
   let selectionChoix = 0;
 
   // --- La scène ---
@@ -684,7 +689,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     const ch = partie.choix;
     if (!ch) return;
     selectionChoix = 0;
-    ui.ouvrirChoix(ch.nv, ch.cartes.map((i) => carteVue(i, partie.paliers[i]!, etat.reglages, t)), (i) => valider(i));
+    ui.ouvrirChoix(ch.nv, ch.cartes.map((i) => carteVue(i, partie.paliers[i]!, etat.reglages, t, partie.golem?.kind ?? -1)), (i) => valider(i));
   };
   /** Le joueur choisit la carte `i` : un événement d'entrée (noté pour la rediffusion), la simulation repart — ou ouvre aussitôt le choix du niveau suivant. */
   const valider = (i: number): void => {
@@ -743,23 +748,18 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     if (partie.choix && !ui.choixOuvert()) ouvrirChoixVue(); // un niveau gagné : le monde se fige, les trois cartes s'affichent
     if (partie.finie && finDepuis < 0) finDepuis = performance.now();
   };
-  /** Le fantôme joue la même partie que le joueur à qui il appartient, tick pour tick : à un niveau gagné, il fait SON choix tout de suite (le monde figé ne fait pas passer de ticks). */
+  /** Le fantôme joue la même partie que le joueur à qui il appartient, tick pour tick : à un niveau gagné, il fait SON choix tout de suite (le monde figé ne fait pas passer de ticks) ; l'écran des cartes n'est que celui du joueur. */
   function avancerFantome(): void {
-    const f = fantomeSim;
-    if (!f || f.finie) return;
-    while (f.choix) {
-      const c = fantomeChoix[fantomeIndexChoix++];
-      if (!c || !f.choisir(c.nv, c.carte)) {
-        fantomeSim = null;
-        fantomeVu.racine.visible = false;
-        return;
-      }
+    if (!fantome || fantome.finie) return;
+    if (!fantome.avancer() && fantome.finie && !fantome.partie.finie) {
+      fantome = null;
+      fantomeSim = null;
+      fantomeVu.racine.visible = false;
     }
-    while (fantomeIndex < fantomeChangements.length && fantomeChangements[fantomeIndex]!.tick <= f.tick) fantomeEntree = fantomeChangements[fantomeIndex++]!.e;
-    f.avancer(fantomeEntree);
   }
 
   const redemarrer = (): void => {
+    resumeFin = null;
     partie = new Partie(contenu, etat.reglages, true);
     placerPourLeBestiaire();
     changements = [];
@@ -781,30 +781,25 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
   // --- Le fantôme ---
   const lireFantome = (r: string | null): void => {
+    fantome = null;
     fantomeSim = null;
-    fantomeChangements = [];
-    fantomeChoix = [];
-    fantomeIndex = 0;
-    fantomeIndexChoix = 0;
-    fantomeEntree = 0;
     fantomeVu.racine.visible = false;
-    if (!r) return;
+    if (!r || contenu.scenario !== "jour") return;
     try {
-      const d = decoderRediffusion(r);
-      if (!("jour" in d.contenu) || contenu.scenario !== "jour") return;
-      fantomeChangements = d.changements;
-      fantomeChoix = d.choix;
-      fantomeSim = new Partie(contenu, REGLAGES_DEFAUT, false);
+      fantome = new Fantome(contenu, r);
+      fantomeSim = fantome.partie;
       while (fantomeSim && fantomeSim.tick < partie.tick && !fantomeSim.finie) avancerFantome();
       if (!fantomeSim) return;
       sFantome.x0 = sFantome.x1 = fantomeSim.c.x;
       sFantome.y0 = sFantome.y1 = fantomeSim.c.y;
       fantomeVu.racine.visible = true;
     } catch {
+      fantome = null;
       fantomeSim = null;
     }
   };
-  lireFantome(o.fantome);
+  // Lot BR4 : `?scenario=jour&fantome=1` (essai) montre le fantôme du Diamant dès le départ, sans avoir à jouer le jour pour le débloquer.
+  lireFantome(o.fantome ?? (essai.fantome && contenu.scenario === "jour" ? rediffusionDiamantRush(contenu) : null));
 
   // --- Le dessin ---
   const redimensionner = (): void => {
@@ -926,7 +921,15 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   let lenteurs = 0;
   let dernierReel = performance.now();
   appliquerQualite(qualite);
+  // Lot BR4 : la fin de partie. L'écran de fin est celui du kit ; le jeu y pose le boss du jour, les cartes choisies et le Diamant (`fin.ts`), à chaque image tant que la partie est finie (le kit refait l'écran à chaque changement de l'envoi).
+  let resumeFin: ResumeFin | null = null;
+  const completerLaFin = (): void => {
+    if (contenu.scenario !== "jour") return;
+    resumeFin ??= { boss: contenu.boss, paliers: partie.paliers, diamant: { ticks: seuilsDuJour(contenu).author, strategie: contenu.seuilsFiges ? undefined : diamantDuJour(contenu).strategie } };
+    completerEcranDeFin(resumeFin, o);
+  };
   const dessiner = (): void => {
+    if (partie.finie) completerLaFin();
     const now = performance.now();
     let dt = Math.min(0.05, (now - dernierDessin) / 1000);
     dernierDessin = now;
@@ -1193,6 +1196,16 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       /** Une image dessinée tout de suite (de quoi compter les appels de dessin d'une qualité). */
       dessinerMaintenant: () => dessiner(),
       redemarrer,
+      /** Lot BR4 : le fantôme (`null` : aucun) — son tick, sa position (unités), son niveau, s'il se voit et l'opacité la plus forte de ses matières (il est translucide). */
+      fantome: () => {
+        if (!fantomeSim) return null;
+        let opacite = 0;
+        fantomeVu.racine.traverse((n: Object3D) => {
+          const m = (n as Mesh).material as { opacity?: number; visible?: boolean } | undefined;
+          if (m && n.visible && typeof m.opacity === "number") opacite = Math.max(opacite, m.opacity);
+        });
+        return { tick: fantomeSim.tick, x: fantomeSim.c.x, y: fantomeSim.c.y, nv: fantomeSim.nv, visible: fantomeVu.racine.visible, opacite, finie: fantomeSim.finie };
+      },
       /** Le niveau du jour (grille, clairières, monstres), ou `null` dans un scénario. */
       niveau: () => partie.niveau,
       /** Pose le chevalier en (x, z) mètres (les captures : un chemin, un camp, l'entrée de l'arène) ; la caméra est reposée d'un coup. */

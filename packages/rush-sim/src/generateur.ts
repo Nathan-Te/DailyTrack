@@ -30,6 +30,8 @@ export interface Contenu {
   nv: number;
   /** Lot BR3 : le boss du jour (indice dans `BOSS`) ; un scénario d'essai le choisit (`?scenario=boss&boss=belier`), sinon le golem. */
   boss: number;
+  /** Lot BR4 — un jour figé fige aussi ses seuils (règle de la racine) : ceux du fichier du jour, que `seuilsDuJour` préfère au calcul du pilote. Absent : on les calcule. */
+  seuilsFiges?: { author: number; gold: number; silver: number; bronze: number };
 }
 
 export class ErreurGenerateur extends Error {

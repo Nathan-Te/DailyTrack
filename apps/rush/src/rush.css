@@ -381,6 +381,70 @@
   font-size: 13px;
 }
 
+/* Le tableau des médailles (lot BR4, `?scenario=medailles`) : un essai, jamais classé, jamais en production. */
+.rush-medailles {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: var(--dj-espace-3);
+  background: #14121c;
+  color: #f5f0e6;
+}
+.rush-medailles__titre {
+  margin: 0 0 var(--dj-espace-3);
+  font-size: 18px;
+}
+.rush-medailles__table {
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.rush-medailles__table th,
+.rush-medailles__table td {
+  padding: 4px 8px;
+  border: 1px solid #3a364a;
+  text-align: right;
+  white-space: nowrap;
+}
+.rush-medailles__table th {
+  background: #231f30;
+  text-align: center;
+}
+.rush-medailles__jour {
+  text-align: left !important;
+}
+.rush-medailles__diamant {
+  font-weight: 700;
+  background: #2c2740;
+}
+.rush-medailles__table td[data-medaille="author"] {
+  color: #8fe3ff;
+}
+.rush-medailles__table td[data-medaille="gold"] {
+  color: #ffd166;
+}
+.rush-medailles__table td[data-medaille="silver"] {
+  color: #d0d4dc;
+}
+.rush-medailles__table td[data-medaille="bronze"] {
+  color: #e0a070;
+}
+.rush-medailles__pied {
+  margin: var(--dj-espace-3) 0 0;
+  font-size: 13px;
+}
+
+/* Ce que le jeu pose sur l'écran de fin du kit (lot BR4) : le boss du jour, les cartes choisies, le Diamant. */
+.rush-fin {
+  display: grid;
+  gap: var(--dj-espace-1);
+  padding: var(--dj-espace-2) var(--dj-espace-3);
+}
+.rush-fin__ligne {
+  margin: 0;
+  font-size: var(--dj-taille-14);
+}
+
 /* --- Lot BR2 : le niveau et l'XP (sous les cœurs), le choix d'une amélioration (le voile à rayures et trois cartes) --- */
 .rush-niveau {
   position: absolute;
