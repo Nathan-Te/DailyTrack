@@ -607,6 +607,10 @@ button.dj-barre-jeu__retour {
   color: var(--dj-encre);
   font-family: var(--dj-police-marque);
   font-size: var(--dj-taille-14);
+  /* Les initiales tiennent sur une ligne, même larges (« WM ») : jamais coupées, même dans un parent en `overflow-wrap: anywhere`. */
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 .dj-avatar--vide {
   background: var(--dj-creme-2);

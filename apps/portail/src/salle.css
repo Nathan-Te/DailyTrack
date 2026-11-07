@@ -873,6 +873,9 @@
   color: var(--dj-encre);
   font-family: var(--dj-police-marque);
   font-size: var(--dj-taille-16);
+  white-space: nowrap; /* les deux lettres sur une ligne, même larges (« WM ») */
+  overflow-wrap: normal;
+  word-break: normal;
 }
 .salle-embleme img {
   display: block;
