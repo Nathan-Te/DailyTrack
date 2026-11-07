@@ -1,12 +1,12 @@
 import { estScenario, RAMPE_PAR_DEFAUT, type NomScenario, type Rampe } from "@cdj/blocks-sim";
 
 // Les options d'ESSAI de Blocks, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9) :
-//   · `?scenario=presque-plein|blocage|plateau-vide|combo` : une grille de départ fixée (seed § 9 ; `combo` : quatre poses qui effacent chacune une ligne ; lot B7, `suivantes` : une grille vide et une suite qui alterne petites et grosses pièces, pour voir la suivante à sa vraie taille) ;
+//   · `?scenario=presque-plein|blocage|plateau-vide|combo|ordre` : une grille de départ fixée (seed § 9 ; `combo` : quatre poses qui effacent chacune une ligne ; lot B8, `ordre` : une série où l'ordre des trois pièces décide de tout — `suivantes`, du lot B7, n'existe plus : plus de pièce suivante) ;
 //   · (`?theme=` n'est plus ici : le kit le lit pour tous les jeux — `OptionsUrl.theme`, local et jamais classé ; lot « manques de Blocks ».)
 //   · `&bot` (lot B3), avec `?seed=AAAA-MM-JJ` : le bot Diamant joue à la place du joueur (`&bot=<n>` : n poses par seconde, de 1 à 30 ; 3 par défaut). **La partie n'est jamais classée** (`classable` de la définition) ;
 //   · `?scenario=partage` (lot B4) : l'écran de fin tout de suite, avec un résultat d'exemple (le début de la partie du bot, arrêté dans la bande d'une médaille : `&medaille=aucune|bronze|argent|or|diamant`, argent par défaut)
 //     pour essayer la ligne à partager en français et en anglais ;
-//   · `?debug&tune` : règle la rampe (`&rampe=<pente>,<rangMax>`, défaut `4,80`). (Le décalage de la pièce au-dessus du doigt n'existe plus depuis B2 : elle reste sous le doigt.)
+//   · `?debug&tune` : règle la rampe (`&rampe=<pente>,<rangMax>`, défaut `4,450` : la rampe s'applique au rang de la série). (Le décalage de la pièce au-dessus du doigt n'existe plus depuis B2 : elle reste sous le doigt.)
 // Une partie d'essai n'est JAMAIS classée ni envoyée : `classable` de la définition (`definition.ts`) répond `false` pour un scénario, une rampe réglée, `&bot` et `?scenario=partage`, et le kit le dit au joueur
 // (« Partie d'essai : non classée ») sans passer la page en archive (lot « manques de Blocks » : l'ancien détour par `?seed=` de la veille n'existe plus) ; la rediffusion d'un scénario nomme le scénario et le serveur la refuse.
 // `?seed=AAAA-MM-JJ` (le jour d'une date) est celui du kit.

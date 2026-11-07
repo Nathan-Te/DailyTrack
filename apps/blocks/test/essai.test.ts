@@ -14,7 +14,7 @@ describe("les options d'essai", () => {
     expect(DEFINITION.classable!("?scenario=blocage&seed=2026-11-02")).toBe(false);
   });
   it("les quatre scénarios sont reconnus, un autre nom non", () => {
-    for (const n of ["presque-plein", "blocage", "plateau-vide", "combo", "suivantes"]) expect(lireEssai(`?scenario=${n}`, false).scenario).toBe(n);
+    for (const n of ["presque-plein", "blocage", "plateau-vide", "combo", "ordre"]) expect(lireEssai(`?scenario=${n}`, false).scenario).toBe(n);
     expect(lireEssai("?scenario=inconnu", false)).toEqual({ scenario: null, rampe: null, bot: null });
   });
   it("`?debug&tune` règle la rampe (le décalage n'existe plus : le paramètre est ignoré) et la partie n'est pas classable ; sans `tune` ou sans `debug`, rien", () => {
@@ -45,6 +45,16 @@ describe("les options d'essai", () => {
     expect(lireEssai("?scenario=combo&bot", false)).toMatchObject({ scenario: "combo", bot: { vitesse: 3 } });
     expect(DEFINITION.classable!("?seed=2026-11-02&bot")).toBe(false);
     expect(DEFINITION.classable!("?seed=2026-11-02")).toBe(true);
+  });
+});
+
+describe("`classable` (la définition, courte) est d'accord avec `lireEssai` (le corps du jeu) sur toute adresse d'essai", () => {
+  it("scénarios, partage, bot, rampe réglée ou mal réglée, thème, seed : mêmes réponses", () => {
+    const adresses = ["", "?seed=2026-11-02", "?theme=nuit", "?scenario=presque-plein", "?scenario=blocage&seed=2026-11-02", "?scenario=ordre", "?scenario=suivantes", "?scenario=inconnu", "?scenario=fantome", "?scenario=partage", "?scenario=partage&medaille=or", "?bot", "?bot=12", "?bot=vite", "?seed=2026-11-02&bot", "?scenario=combo&bot", "?debug&tune&rampe=2,40", "?debug&tune&rampe=7", "?debug&tune&rampe=,9", "?debug&tune&rampe=x,y", "?debug&tune&rampe=x", "?debug&tune", "?debug&rampe=2,40", "?tune&rampe=2,40", "?debug&tune&rampe=1.5,2.5"];
+    for (const a of adresses) {
+      const e = lireEssai(a, false);
+      expect(DEFINITION.classable!(a), a).toBe(e.scenario === null && e.rampe === null && e.bot === null && e.mode === undefined);
+    }
   });
 });
 

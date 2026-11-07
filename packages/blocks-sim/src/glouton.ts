@@ -1,44 +1,21 @@
-import { casesOccupees, COLONNES, compterPleines, effacer, estVide, type Grille, LIGNES, peutPoser, Partie, pleines, poser, rangee, type Contenu, type Resultat } from "./index";
+import { BONUS_PLATEAU_VIDE, COLONNES, LIGNES, POINTS_EFFACEMENT, TAILLE_SERIE } from "./constantes";
+import type { Contenu } from "./generateur";
+import { compterPleines, effacer, estVide, peutPoser, pleines, poser, rangee } from "./grille";
+import { evaluerGrille, POIDS_DIAMANT } from "./evaluation";
+import { actionDe, Partie, type Resultat } from "./partie";
 
-// Le bot GLOUTON SIMPLE des tests et de la mesure de la rampe (lot B1). Hors de l'index (`@cdj/blocks-sim/glouton`). **Ce n'est pas le Diamant** (le bot de l'auteur, lot B3, regarde aussi la pièce suivante) : il joue la position qui laisse la meilleure
-// grille après la pose, sans regarder plus loin. Évaluation : les points de la pose (effacement surtout), moins un malus par case vide isolée ou à demi enfermée, moins un petit malus par case occupée.
+// Le BOT MOYEN (lot B8 ; le glouton du lot B1, adapté aux séries) : la deuxième des trois références des médailles. Hors de l'index (`@cdj/blocks-sim/glouton`). **Ce n'est pas le Diamant** : il ne cherche ni l'ordre des pièces ni plus
+// loin que la grille juste après la pose. À chaque coup il essaie toutes les poses de toutes les pièces restantes de la série et joue la MEILLEURE POSE IMMÉDIATE : valeur = les points de la pose (cases, effacement et combo, plateau vide)
+// × `POIDS_DIAMANT.point` + l'évaluation de la grille obtenue — la même fonction (`evaluerGrille`) que le Diamant, qui, lui, regarde la série entière. À valeur égale : l'emplacement le plus à gauche, puis la première position
+// (lignes de haut en bas, puis colonnes de gauche à droite). Aucun aléa. (Le glouton du lot B1, avec sa propre évaluation, tenait 76 séries en médiane contre 40 pour le bot faible : sous la cible de 80 à 150 séries ; avec l'évaluation
+// du Diamant, 139 : README du lot B8.) **Il fait partie des règles du classement** (ses scores fixent l'argent et l'or) : tout changement monte `BLOCKS_BOT_VERSION`.
 
-/** Les voisins occupés d'une case vide (les bords comptent). */
-function enfermement(g: Grille): number {
-  let m = 0;
-  for (let l = 0; l < LIGNES; l++) {
-    const o = rangee(g, l);
-    for (let c = 0; c < COLONNES; c++) {
-      if (o & (1 << c)) continue;
-      const pris = (c === 0 || (o & (1 << (c - 1))) !== 0 ? 1 : 0) + (c === COLONNES - 1 || (o & (1 << (c + 1))) !== 0 ? 1 : 0) + (l === 0 || (rangee(g, l - 1) & (1 << c)) !== 0 ? 1 : 0) + (l === LIGNES - 1 || (rangee(g, l + 1) & (1 << c)) !== 0 ? 1 : 0);
-      if (pris >= 3) m += pris === 4 ? 4 : 1;
-    }
-  }
-  return m;
-}
-
-/** Le périmètre : les côtés entre une case occupée et une case vide (le bord de la grille compte comme occupé). Plus il est petit, plus la grille est compacte. */
-function perimetre(g: Grille): number {
-  let m = 0;
-  for (let l = 0; l < LIGNES; l++) {
-    const o = rangee(g, l);
-    for (let c = 0; c < COLONNES; c++) {
-      const vide = (o & (1 << c)) === 0;
-      const droite = c === COLONNES - 1 ? false : (o & (1 << (c + 1))) === 0;
-      const bas = l === LIGNES - 1 ? false : (rangee(g, l + 1) & (1 << c)) === 0;
-      if (c < COLONNES - 1 && vide !== droite) m++;
-      if (l < LIGNES - 1 && vide !== bas) m++;
-    }
-  }
-  return m;
-}
-
-/** La meilleure pose (col, ligne) de la pièce du moment, ou null. Sans aléa : à valeur égale, la première (lignes puis colonnes). */
-export function meilleurePose(partie: Partie): { col: number; ligne: number } | null {
-  const p = partie.piece;
+/** La meilleure pose de la pièce de cet emplacement et sa valeur, ou null si elle ne tient nulle part. */
+export function meilleurePose(partie: Pick<Partie, "grille" | "pieces" | "combo">, emplacement: number): { col: number; ligne: number; valeur: number } | null {
+  const p = partie.pieces[emplacement];
   if (!p) return null;
-  let meilleur: { col: number; ligne: number } | null = null;
-  let valeur = -Infinity;
+  const rangs = new Uint8Array(LIGNES);
+  let meilleur: { col: number; ligne: number; valeur: number } | null = null;
   for (let ligne = 0; ligne + p.hauteur <= LIGNES; ligne++) {
     for (let col = 0; col + p.largeur <= COLONNES; col++) {
       if (!peutPoser(partie.grille, p, col, ligne)) continue;
@@ -46,24 +23,34 @@ export function meilleurePose(partie: Partie): { col: number; ligne: number } | 
       const m = pleines(g);
       const n = compterPleines(m);
       if (n > 0) g = effacer(g, m.lignes, m.colonnes);
-      const v = n * n * 100 + (estVide(g) ? 500 : 0) - enfermement(g) * 12 - perimetre(g) * 3 - casesOccupees(g);
-      if (v > valeur) {
-        valeur = v;
-        meilleur = { col, ligne };
-      }
+      for (let l = 0; l < LIGNES; l++) rangs[l] = rangee(g, l);
+      const points = p.cases + (n > 0 ? POINTS_EFFACEMENT * n * n * (partie.combo + 1) + (estVide(g) ? BONUS_PLATEAU_VIDE : 0) : 0);
+      const v = POIDS_DIAMANT.point * points + evaluerGrille(rangs);
+      if (meilleur === null || v > meilleur.valeur) meilleur = { col, ligne, valeur: v };
     }
   }
   return meilleur;
 }
 
-/** Joue une partie entière avec le glouton : le résultat et les actions (octets). */
+/** Le coup du bot moyen : la meilleure pose immédiate, toutes pièces restantes confondues. */
+export function coupGlouton(partie: Pick<Partie, "grille" | "pieces" | "finie" | "combo">): { emplacement: number; col: number; ligne: number } | null {
+  if (partie.finie) return null;
+  let meilleur: { emplacement: number; col: number; ligne: number; valeur: number } | null = null;
+  for (let e = 0; e < TAILLE_SERIE; e++) {
+    const pose = meilleurePose(partie, e);
+    if (pose && (meilleur === null || pose.valeur > meilleur.valeur)) meilleur = { emplacement: e, ...pose };
+  }
+  return meilleur === null ? null : { emplacement: meilleur.emplacement, col: meilleur.col, ligne: meilleur.ligne };
+}
+
+/** Joue une partie entière avec le bot moyen : le résultat et les actions (octets). */
 export function jouerGlouton(contenu: Pick<Contenu, "suite" | "depart">): { resultat: Resultat; actions: number[] } {
   const partie = new Partie(contenu);
   const actions: number[] = [];
   while (!partie.finie) {
-    const a = meilleurePose(partie)!;
-    partie.poser(a.col, a.ligne);
-    actions.push(a.ligne * COLONNES + a.col);
+    const a = coupGlouton(partie)!;
+    partie.poser(a.emplacement, a.col, a.ligne);
+    actions.push(actionDe(a.emplacement, a.col, a.ligne));
   }
   return { resultat: partie.resultat()!, actions };
 }

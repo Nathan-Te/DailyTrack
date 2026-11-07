@@ -3,7 +3,7 @@ import { type Grille } from "./grille";
 import type { Seuils } from "./medailles";
 import { genererSuite, graineDuJour } from "./suite";
 
-// Le contenu du jour : la suite des pièces (ids du catalogue), `PLAFOND_PIECES` rangs. **Pure** : la graine vient du numéro de jour civil, jamais d'une horloge.
+// Le contenu du jour : la suite des pièces (ids du catalogue, série de trois après série de trois), `PLAFOND_PIECES` pièces. **Pure** : la graine vient du numéro de jour civil, jamais d'une horloge.
 // Un contenu peut aussi être un SCÉNARIO d'essai (`scenarios.ts` : grille de départ et début de suite fixés) ou porter une rampe réglée (`?debug&tune`) : jamais classé, jamais envoyé.
 
 export interface Contenu {
@@ -11,7 +11,7 @@ export interface Contenu {
   jour: number;
   /** La version du tirage qui l'a produit. */
   g: number;
-  /** Les ids des pièces, dans l'ordre : `suite[i]` est la pièce du moment après `i` poses. */
+  /** Les ids des pièces, dans l'ordre : la série `s` est `suite[3s]`, `suite[3s + 1]`, `suite[3s + 2]` (règles v2) ; en v1 (`g` 3, jour figé), `suite[i]` est la pièce du moment après `i` poses. */
   suite: readonly number[];
   /** La grille de départ d'un scénario (vide sinon). */
   depart?: Grille;
@@ -30,8 +30,18 @@ export class ErreurGenerateur extends Error {
   }
 }
 
-/** Le contenu d'un jour. Une seule version du tirage reste appelable (la v2) : la v1 (37 pièces) n'a jamais servi un jour classé, le jeu étant `off`. */
+/**
+ * Les ANCIENS tirages qu'on sait relire (le v3, règles v1) : `v1.ts` s'y inscrit quand le serveur appelle `activerReglesV1` (`@cdj/blocks-sim/v1`). **Le jeu ne les charge jamais** : il ne sait pas jouer les règles v1, et leur code ne doit pas
+ * alourdir son premier chargement. Sans inscription, un jour figé en v1 ne se relit pas (`lireJourFige` rend `null`).
+ */
+export const anciensTirages = new Map<number, (jour: number) => readonly number[]>();
+/** La version des règles qui va avec une version du tirage : v1 jusqu'au tirage v3, v2 depuis le tirage v4. */
+export const reglesDe = (g: number): number => (g >= 4 ? 2 : 1);
+
+/** Le contenu d'un jour. La version courante du tirage se joue ; la v3 (règles v1) ne se relit que pour rejouer un jour figé en v1, une fois `activerReglesV1` appelée (le serveur). Une rampe réglée ne s'applique qu'à la version courante. */
 export function dailyBlocks(jour: number, version: number = BLOCKS_GENERATOR_VERSION, rampe?: Rampe): Contenu {
+  const ancien = anciensTirages.get(version);
+  if (ancien) return { jour, g: version, suite: ancien(jour) };
   if (version !== BLOCKS_GENERATOR_VERSION) throw new ErreurGenerateur(`version de tirage inconnue : ${version}`);
   const regle = rampe && (rampe.pente !== RAMPE_PAR_DEFAUT.pente || rampe.rangMax !== RAMPE_PAR_DEFAUT.rangMax);
   return { jour, g: version, suite: genererSuite(graineDuJour(jour), rampe ?? RAMPE_PAR_DEFAUT, PLAFOND_PIECES), ...(regle ? { rampe } : {}) };

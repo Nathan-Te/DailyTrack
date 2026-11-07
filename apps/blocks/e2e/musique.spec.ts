@@ -123,7 +123,7 @@ test.describe("Blocks : la musique", () => {
     await expect.poll(() => p.evaluate(() => window.__audio.musique?.state), { timeout: 10_000 }).toBe("running");
     const poses = [[6, 4], [6, 5], [6, 6], [6, 7]] as const;
     for (const [i, [c, l]] of poses.entries()) {
-      await p.evaluate(([c, l]) => window.__jeu.action(`pose:${c}:${l}`), [c, l]);
+      await p.evaluate(([e, c, l]) => window.__jeu.action(`pose:${e}:${c}:${l}`), [i % 3, c, l]); // trois dominos dans la première série, le quatrième ouvre la suivante
       expect(await p.evaluate(() => window.__blocks.etat().combo)).toBe(i + 1);
       expect(await p.evaluate(() => window.__blocks.couche()), `couche au combo ×${i + 1}`).toBe(i + 1 >= 3);
     }
@@ -144,7 +144,7 @@ test.describe("Blocks : la musique", () => {
     await p.waitForSelector("#jeu-jouer", { state: "attached" });
     await lancer(p);
     await expect.poll(() => p.evaluate(() => window.__audio.musique?.state), { timeout: 10_000 }).toBe("running");
-    for (const [c, l] of [[6, 4], [6, 5], [6, 6]] as const) await p.evaluate(([c, l]) => window.__jeu.action(`pose:${c}:${l}`), [c, l]);
+    for (const [e, [c, l]] of ([[6, 4], [6, 5], [6, 6]] as const).entries()) await p.evaluate(([e, c, l]) => window.__jeu.action(`pose:${e}:${c}:${l}`), [e, c, l]);
     expect(await p.evaluate(() => window.__blocks.couche())).toBe(true); // la couche est demandée…
     await p.waitForTimeout(800);
     expect(await p.evaluate(() => window.__audio.musique?.oscillateurs ?? 0)).toBe(0); // …mais rien n'est synthétisé : la musique est coupée
