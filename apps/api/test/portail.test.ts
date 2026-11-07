@@ -4,7 +4,7 @@ import { PREMIER_JOUR, circuitNumber, medalFor, medalsFor, themeForDay } from "@
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, TICK_RATE, dailyLevel, demoAttempts, encodeReplay, jumpMedalFor, lifeReplay, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
 import type { GameDefinition, PortailDuJeu } from "../src/games";
 import { GRACE_MS } from "../src/cdj";
-import { PORTAIL_PUBLIC_MAX_S, PORTAIL_READS_PER_CLIENT, PREMIER_JOUR_DU_JOUR, semaineDe, serieEtParfaites } from "../src/portail";
+import { PORTAIL_PUBLIC_MAX_S, PORTAIL_READS_PER_CLIENT, PREMIER_JOUR_DU_JOUR, meilleureSerieDe, semaineDe, serieEtParfaites } from "../src/portail";
 import { GAMES } from "../src/registry";
 import { circuitOf, makeApi, ouvrirJeu, parisDay, parisDayStart, pilotReplay, playerId, TEST_DB } from "./helpers";
 
@@ -108,6 +108,37 @@ describe("série tous jeux confondus et journées parfaites (pur)", () => {
     expect(formatDay(d28)).toBe("2027-03-28");
     expect(parisDay(Date.parse("2027-03-28T22:30:00Z"))).toBe(d28 + 1); // 00 h 30 de Paris (heure d'été) : déjà le 29
     expect(serieEtParfaites(d28 + 1, jeux([d28 - 1, d28], [d28 - 1, d28]))).toEqual({ serie: 2, aProlonger: true, journeesParfaites: 2, aujourdhuiParfaite: false });
+  });
+});
+
+describe("la meilleure série (pur, lot U4)", () => {
+  const jeux = (track: number[], jump: number[]) => [
+    { premierJour: PREMIER_JOUR, finis: new Set(track) },
+    { premierJour: PREMIER_JOUR_JUMP, finis: new Set(jump) },
+  ];
+  const T = TODAY;
+  it("la plus longue suite de jours consécutifs où au moins un jeu est fini, passée comme en cours", () => {
+    expect(meilleureSerieDe(T, jeux([], []))).toBe(0);
+    expect(meilleureSerieDe(T, jeux([T], []))).toBe(1);
+    // Une série de 4 il y a longtemps, cassée, puis 2 jours : la meilleure est 4 (la série en cours est 2).
+    const r = jeux([T - 7, T - 6, T - 5, T - 4, T - 1, T], []);
+    expect(meilleureSerieDe(T, r)).toBe(4);
+    expect(serieEtParfaites(T, r).serie).toBe(2);
+    // Track un jour, Jump le suivant : la suite tient ; un trou la coupe.
+    expect(meilleureSerieDe(T, jeux([T - 6, T - 5, T - 4, T - 2], [T - 3, T - 1]))).toBe(6);
+    expect(meilleureSerieDe(T, jeux([T - 7, T - 6], [T - 4, T - 3, T - 2]))).toBe(3);
+    // Jamais moins que la série en cours, même si aujourd'hui n'est pas fini (`aProlonger`), et un jour à venir ne compte pas.
+    const encours = jeux([T - 2, T - 1], []);
+    expect(meilleureSerieDe(T, encours)).toBeGreaterThanOrEqual(serieEtParfaites(T, encours).serie);
+    expect(meilleureSerieDe(T, jeux([T + 1, T + 2], []))).toBe(0);
+  });
+  it("un jeu qui ne compte pas ce jour-là (interrupteur) n'y fait pas de jour fini", () => {
+    const track = { premierJour: PREMIER_JOUR, finis: new Set([T - 3, T - 2, T - 1]), compte: (d: number) => d !== T - 2 };
+    expect(meilleureSerieDe(T, [track])).toBe(1);
+  });
+  it("changements d'heure : le 25/10/2026 (25 h) compte pour un jour", () => {
+    const d25 = parisDay(Date.parse("2026-10-25T12:00:00Z"));
+    expect(meilleureSerieDe(d25 + 2, jeux([d25 - 1, d25, d25 + 1, d25 + 2], []))).toBe(4);
   });
 });
 
@@ -311,7 +342,7 @@ describe(`portail : le profil commun GET /api/portail/profil (${TEST_DB})`, () =
     expect((await t.call("POST", "/api/jump/submit", jumpBody({ replay: encodeReplay(J.replay), name: "Bruno" }), as(2))).status).toBe(200); // l'auteur : premier
     let r = await t.call("GET", "/api/portail/profil", undefined, as(1));
     expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body).toMatchObject({ pseudo: "Alice", renameRequired: false, date: DATE, serie: 1, aProlonger: false, journeesParfaites: 1, aujourdhuiParfaite: true });
+    expect(r.body).toMatchObject({ pseudo: "Alice", renameRequired: false, date: DATE, serie: 1, aProlonger: false, journeesParfaites: 1, aujourdhuiParfaite: true, meilleureSerie: 1 });
     const [cdj, jump] = r.body.jeux;
     expect(cdj).toMatchObject({ jeu: "cdj", joursFinis: 1, meilleurRang: { date: DATE, rang: 1, classes: 1 } });
     expect(jump).toMatchObject({ jeu: "jump", joursFinis: 1, meilleurRang: { date: DATE, rang: 2, classes: 2 } });
@@ -321,7 +352,7 @@ describe(`portail : le profil commun GET /api/portail/profil (${TEST_DB})`, () =
     t.clock.now = parisDayStart(TODAY + 1) + GRACE_MS + 1000;
     r = await t.call("GET", "/api/portail/profil", undefined, as(1));
     expect(r.body.jeux[1].meilleurRang).toEqual({ date: DATE, rang: 2, classes: 2 });
-    expect(r.body).toMatchObject({ serie: 1, aProlonger: true });
+    expect(r.body).toMatchObject({ serie: 1, aProlonger: true, meilleureSerie: 1 });
     expect(await t.db.first("SELECT final_rank, final_total FROM jump_results WHERE player_id = ?", [playerId(1)])).toEqual({ final_rank: 2, final_total: 2 });
     expect((await t.call("GET", "/api/portail/profil")).status).toBe(400);
     expect((await t.call("GET", "/api/portail/profil", undefined, as(98))).body.error).toBe("unknown_player");

@@ -1947,6 +1947,7 @@
      "rang": 1,
      "pseudo": "Joueur1",
      "ref": "e0cca2965509",
+     "groupe": null,
      "tempsMs": 46008,
      "complet": true,
      "resultats": {
@@ -1962,6 +1963,7 @@
      "rang": 2,
      "pseudo": "Joueur5",
      "ref": "2dc3b97b1e90",
+     "groupe": null,
      "tempsMs": 56008,
      "complet": true,
      "resultats": {
@@ -1977,6 +1979,7 @@
      "rang": 3,
      "pseudo": "Joueur4",
      "ref": "a20248c7f641",
+     "groupe": null,
      "tempsMs": 58017,
      "complet": true,
      "resultats": {
@@ -1992,6 +1995,7 @@
      "rang": 4,
      "pseudo": "Joueur3",
      "ref": "19d8d35c06ab",
+     "groupe": null,
      "tempsMs": 58033,
      "complet": true,
      "resultats": {
@@ -2007,6 +2011,7 @@
      "rang": 5,
      "pseudo": "Joueur2",
      "ref": "d2b1f1d83f0a",
+     "groupe": null,
      "tempsMs": 60042,
      "complet": true,
      "resultats": {
@@ -2052,6 +2057,7 @@
      "rang": 1,
      "pseudo": "Joueur1",
      "ref": "e0cca2965509",
+     "groupe": null,
      "tempsMs": 46008,
      "complet": true,
      "resultats": {
@@ -2067,6 +2073,7 @@
      "rang": 2,
      "pseudo": "Joueur5",
      "ref": "2dc3b97b1e90",
+     "groupe": null,
      "tempsMs": 56008,
      "complet": true,
      "resultats": {
@@ -2082,6 +2089,7 @@
      "rang": 3,
      "pseudo": "Joueur4",
      "ref": "a20248c7f641",
+     "groupe": null,
      "tempsMs": 58017,
      "complet": true,
      "resultats": {
@@ -2097,6 +2105,7 @@
      "rang": 4,
      "pseudo": "Joueur3",
      "ref": "19d8d35c06ab",
+     "groupe": null,
      "tempsMs": 58033,
      "complet": true,
      "resultats": {
@@ -2112,6 +2121,7 @@
      "rang": 5,
      "pseudo": "Joueur2",
      "ref": "d2b1f1d83f0a",
+     "groupe": null,
      "tempsMs": 60042,
      "complet": true,
      "resultats": {
@@ -2129,6 +2139,7 @@
     "rang": 5,
     "pseudo": "Joueur2",
     "ref": "d2b1f1d83f0a",
+    "groupe": null,
     "tempsMs": 60042,
     "complet": true,
     "resultats": {
@@ -2174,6 +2185,7 @@
      "rang": 1,
      "pseudo": "Joueur1",
      "ref": "e0cca2965509",
+     "groupe": null,
      "tempsMs": null,
      "complet": false,
      "resultats": {
@@ -2190,6 +2202,7 @@
      "rang": 2,
      "pseudo": "Joueur5",
      "ref": "2dc3b97b1e90",
+     "groupe": null,
      "tempsMs": null,
      "complet": false,
      "resultats": {
@@ -2205,6 +2218,7 @@
      "rang": 3,
      "pseudo": "Joueur4",
      "ref": "a20248c7f641",
+     "groupe": null,
      "tempsMs": null,
      "complet": false,
      "resultats": {
@@ -2220,6 +2234,7 @@
      "rang": 4,
      "pseudo": "Joueur3",
      "ref": "19d8d35c06ab",
+     "groupe": null,
      "tempsMs": null,
      "complet": false,
      "resultats": {
@@ -2235,6 +2250,7 @@
      "rang": 5,
      "pseudo": "Joueur2",
      "ref": "d2b1f1d83f0a",
+     "groupe": null,
      "tempsMs": null,
      "complet": false,
      "resultats": {
@@ -2251,6 +2267,7 @@
     "rang": 1,
     "pseudo": "Joueur1",
     "ref": "e0cca2965509",
+    "groupe": null,
     "tempsMs": null,
     "complet": false,
     "resultats": {
@@ -2281,6 +2298,7 @@
    "aProlonger": false,
    "journeesParfaites": 0,
    "aujourdhuiParfaite": false,
+   "meilleureSerie": 1,
    "messagesNonLus": 0,
    "jeux": [
     {
@@ -3335,6 +3353,7 @@
      "rangGeneral": 1,
      "ref": "e0cca2965509",
      "moi": true,
+     "groupe": null,
      "pseudo": "Joueur1",
      "tempsMs": 46008,
      "complet": true,
@@ -3351,6 +3370,7 @@
      "rang": 2,
      "rangGeneral": 5,
      "ref": "d2b1f1d83f0a",
+     "groupe": null,
      "pseudo": "Joueur2",
      "tempsMs": 60042,
      "complet": true,
@@ -3370,6 +3390,7 @@
     "rangGeneral": 1,
     "ref": "e0cca2965509",
     "moi": true,
+    "groupe": null,
     "pseudo": "Joueur1",
     "tempsMs": 46008,
     "complet": true,
@@ -4114,6 +4135,10 @@
      "rang": 1,
      "pseudo": "Joueur1",
      "ref": "e0cca2965509",
+     "groupe": {
+      "id": "<identifiant>",
+      "nom": "Les Hauts"
+     },
      "tempsMs": 46008,
      "complet": true,
      "resultats": {
@@ -4129,6 +4154,7 @@
      "rang": 2,
      "pseudo": "Joueur5",
      "ref": "2dc3b97b1e90",
+     "groupe": null,
      "tempsMs": 56008,
      "complet": true,
      "resultats": {
@@ -4144,6 +4170,10 @@
      "rang": 3,
      "pseudo": "Joueur4",
      "ref": "a20248c7f641",
+     "groupe": {
+      "id": "<identifiant>",
+      "nom": "Les Hauts"
+     },
      "tempsMs": 58017,
      "complet": true,
      "resultats": {
@@ -4159,6 +4189,10 @@
      "rang": 4,
      "pseudo": "Joueur3",
      "ref": "19d8d35c06ab",
+     "groupe": {
+      "id": "<identifiant>",
+      "nom": "Les Hauts"
+     },
      "tempsMs": 58033,
      "complet": true,
      "resultats": {

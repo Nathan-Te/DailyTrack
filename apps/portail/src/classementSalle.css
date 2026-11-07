@@ -560,7 +560,7 @@
   height: 22px;
   border-width: var(--dj-trait);
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 8px; /* deux lettres larges (« WM ») tiennent dans les 16 px utiles */
 }
 .salle-embleme--t48 {
   width: 48px;

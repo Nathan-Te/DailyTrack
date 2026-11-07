@@ -285,6 +285,78 @@ describe(`groupes : le filtre « Mon groupe » (${TEST_DB})`, () => {
   });
 });
 
+describe(`lot U4 : le groupe et le dernier jeu sur les lignes du classement du portail (${TEST_DB})`, () => {
+  type Ligne = { pseudo: string; groupe: { id: string; nom: string; avatar?: string } | null; dernier?: { site: string; at: number }; moi?: true };
+  const lignes = (b: { top: Ligne[] }) => Object.fromEntries(b.top.map((l) => [l.pseudo, l]));
+  const ami = (t: TestApi, de: number, a: number) => t.db.run("INSERT INTO amities (joueur, ami, origine, cree_le) VALUES (?, ?, 'ajout', 0)", [playerId(de), playerId(a)]);
+
+  it("Tous, Amis et Mon groupe : `groupe` (nom, emblème) sur chaque ligne, `null` sans groupe ; `dernier` sur celle d'un autre joueur", { timeout: 60_000 }, async () => {
+    const t = await api();
+    for (let n = 1; n <= 4; n++) await joueur(t, n, `Joueur${n}`);
+    const { id } = await groupe(t, "Les Amis", 1, [2]);
+    const empreinte = "ab".repeat(16);
+    await t.db.run("UPDATE groupes SET avatar = ? WHERE id = ?", [empreinte, id]);
+    // Joueur1 et Joueur2 (du groupe), Joueur3 (sans groupe) : Joueur2 finit Track à 1 000 puis Jump à 5 000 ; Joueur3 finit Track à 2 000.
+    for (const [n, ms, at] of [[1, 40_000, 3000], [2, 30_000, 1000], [3, 50_000, 2000]] as const) await t.db.run("INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, hidden) VALUES (?, ?, ?, '[]', 'x', 0, ?, 0)", [JOUR, playerId(n), ms, at]);
+    await jump(t, 2, 900);
+    await t.db.run("UPDATE jump_results SET submitted_at = 5000 WHERE player_id = ?", [playerId(2)]);
+    await ami(t, 1, 3);
+    await ami(t, 1, 2);
+    await ami(t, 1, 4); // n'a rien fini
+    t.clock.now += 60_000;
+    const emblemeAttendu = { id, nom: "Les Amis", avatar: empreinte };
+
+    // Tous : public, l'emblème se lit sur les lignes du haut ; toi aussi (`moi`).
+    const tous = await get(t, 1, `/api/portail/classement?date=${DATE}&vue=track`);
+    expect(tous.status, JSON.stringify(tous.body)).toBe(200);
+    expect(lignes(tous.body).Joueur2!.groupe).toEqual(emblemeAttendu);
+    expect(lignes(tous.body).Joueur3!.groupe).toBeNull();
+    expect(tous.body.moi.groupe).toEqual(emblemeAttendu);
+    expect(JSON.stringify(tous.body)).not.toContain(playerId(1));
+    const publique = await get(t, null, `/api/portail/classement?date=${DATE}&vue=track`);
+    expect(lignes(publique.body).Joueur1!.groupe).toEqual(emblemeAttendu);
+    // Un joueur sans groupe qui a fini : `moi.groupe` est `null`.
+    const sans = await get(t, 3, `/api/portail/classement?date=${DATE}&vue=track`);
+    expect(sans.body.moi.groupe).toBeNull();
+
+    // Amis (cumul) : le groupe de chaque ami, et `dernier` = le dernier jeu fini (Jump pour Joueur2), pas sur ta ligne.
+    const amis = await get(t, 1, `/api/portail/classement?date=${DATE}&filtre=amis`);
+    expect(amis.status, JSON.stringify(amis.body)).toBe(200);
+    const a = lignes(amis.body);
+    expect(a.Joueur2!.groupe).toEqual(emblemeAttendu);
+    expect(a.Joueur3!.groupe).toBeNull();
+    expect(a.Joueur1!.groupe).toEqual(emblemeAttendu);
+    expect(a.Joueur1!.dernier).toBeUndefined();
+    expect(a.Joueur2!.dernier).toEqual({ site: "jump", at: 5000 });
+    expect(a.Joueur3!.dernier).toEqual({ site: "track", at: 2000 });
+    expect(amis.body.absents.map((x: { pseudo: string }) => x.pseudo)).toEqual(["Joueur4"]);
+    // La vue d'un jeu : le groupe aussi.
+    const amisTrack = await get(t, 1, `/api/portail/classement?date=${DATE}&vue=track&filtre=amis`);
+    expect(lignes(amisTrack.body).Joueur2!.groupe).toEqual(emblemeAttendu);
+
+    // Mon groupe : tout le monde y a le même groupe.
+    const monGroupe = await get(t, 1, `/api/portail/classement?date=${DATE}&filtre=groupe`);
+    expect(monGroupe.body.top.map((l: Ligne) => l.groupe)).toEqual([emblemeAttendu, emblemeAttendu]);
+    // Sans groupe : toi seul, sans emblème.
+    const seul = await get(t, 3, `/api/portail/classement?date=${DATE}&filtre=groupe`);
+    expect(seul.body.top.map((l: Ligne) => l.groupe)).toEqual([null]);
+  });
+
+  it("un groupe quitté ou dissous ne laisse aucun emblème", { timeout: 60_000 }, async () => {
+    const t = await api();
+    await joueur(t, 1, "Joueur1");
+    await groupe(t, "Les Seuls", 1, []);
+    await t.db.run("INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, hidden) VALUES (?, ?, 40000, '[]', 'x', 0, 1000, 0)", [JOUR, playerId(1)]);
+    t.clock.now += 60_000;
+    expect((await get(t, 1, `/api/portail/classement?date=${DATE}&vue=track`)).body.moi.groupe).toMatchObject({ nom: "Les Seuls" });
+    expect((await post(t, 1, "/api/groupes/quitter")).status).toBe(200);
+    t.clock.now += 60_000;
+    const apres = await get(t, 1, `/api/portail/classement?date=${DATE}&vue=track`);
+    expect(apres.body.moi.groupe).toBeNull();
+    expect(apres.body.top[0].groupe).toBeNull();
+  });
+});
+
 describe(`groupes : l'emblème, l'effacement d'un profil, l'administration (${TEST_DB})`, () => {
   // Un petit WebP nu de 64 × 64 (le contrôle est celui des avatars, testé dans avatars.test.ts).
   const le32 = (n: number) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];

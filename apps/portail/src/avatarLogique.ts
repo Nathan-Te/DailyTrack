@@ -1,8 +1,8 @@
-// Lot C1, partie B — le recadrage de l'avatar, la logique pure (testée : `test/avatar.test.ts`). Le navigateur recadre l'image choisie en **carré**, la redimensionne à 128 × 128 et la réencode par un canvas
+// Lot C1, partie B — le recadrage de l'avatar, la logique pure (testée : `test/avatar.test.ts`). Le navigateur recadre l'image choisie en **carré**, la redimensionne à 256 × 256 (lot U4 : 128 avant, trop flou sur le podium d'un écran Retina) et la réencode par un canvas
 // (WebP, sinon JPEG si le navigateur n'encode pas le WebP) : ce réencodage retire aussi les métadonnées (position, appareil). Le serveur revérifie tout.
 
-export const COTE_SORTIE = 128;
-export const OCTETS_MAX = 20 * 1024;
+export const COTE_SORTIE = 256;
+export const OCTETS_MAX = 40 * 1024;
 export const ZOOM_MAX = 4;
 /** Les qualités essayées, de la meilleure à la plus faible, jusqu'à passer sous `OCTETS_MAX`. */
 export const QUALITES = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3] as const;
@@ -36,7 +36,7 @@ export function typeDeSortie(typeObtenu: string): "image/webp" | "image/jpeg" | 
   return typeObtenu === "image/webp" ? "image/webp" : typeObtenu === "image/jpeg" ? "image/jpeg" : null;
 }
 
-/** De la base64 d'octets (par morceaux : jamais un appel avec 20 000 arguments). */
+/** De la base64 d'octets (par morceaux : jamais un appel avec 40 000 arguments). */
 export function versBase64(octets: Uint8Array): string {
   let s = "";
   for (let i = 0; i < octets.length; i += 0x8000) s += String.fromCharCode(...octets.subarray(i, i + 0x8000));

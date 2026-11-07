@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2304 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2305 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -804,6 +804,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.code.deja` | C'est déjà le profil de cet appareil. | That's already this device's profile. |
 | `profil.code.illisible` | Ce code est illisible : copie-le en entier, sans rien ajouter. | This code can't be read: copy all of it, without adding anything. |
 | `profil.serie.titre` | Tous les jeux | All games |
+| `profil.meilleureSerie.legende` | Meilleure série | Best streak |
 | `profil.parfaites.legende` | Journées parfaites | Perfect days |
 | `profil.jeux.titre` | Par jeu | By game |
 | `profil.jeux.nombre` | one : {n} jeu · other : {n} jeux | one : {n} game · other : {n} games |
@@ -815,7 +816,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.medailles` | Médailles | Medals |
 | `profil.langue.titre` | Langue | Language |
 | `profil.chargement` | Chargement du profil… | Loading your profile… |
-| `profil.avatar.aide` | Choisis une image et recadre-la en carré : elle est réduite à 128 × 128 sur ton appareil, sans les informations de ta photo (lieu, appareil). | Pick an image and crop it to a square: it is shrunk to 128 × 128 on your device, without your photo's information (place, device). |
+| `profil.avatar.aide` | Choisis une image et recadre-la en carré : elle est réduite à 256 × 256 sur ton appareil, sans les informations de ta photo (lieu, appareil). | Pick an image and crop it to a square: it is shrunk to 256 × 256 on your device, without your photo's information (place, device). |
 | `profil.avatar.choisir` | Choisir une image | Pick an image |
 | `profil.avatar.apercu` | Aperçu du recadrage | Crop preview |
 | `profil.avatar.zoom` | Zoom | Zoom |
@@ -828,7 +829,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `profil.avatar.retiree` | Ton image est retirée : tes initiales reviennent. | Your image is removed: your initials are back. |
 | `profil.avatar.limite` | Un changement d'image par jour : reviens demain. | One image change a day: come back tomorrow. |
 | `profil.avatar.interdit` | L'envoi d'images est interdit sur ce profil. | Sending images is forbidden on this profile. |
-| `profil.avatar.refus` | Cette image est refusée (WebP ou JPEG, carrée, 20 Ko au plus, sans métadonnées). | This image is refused (WebP or JPEG, square, 20 KB at most, no metadata). |
+| `profil.avatar.refus` | Cette image est refusée (WebP ou JPEG, carrée, 40 Ko au plus, sans métadonnées). | This image is refused (WebP or JPEG, square, 40 KB at most, no metadata). |
 | `profil.avatar.regles` | Pas d'image qui blesse ou qui choque : on les retire sans délai. Voir les mentions légales. | No image that hurts or shocks: we remove them without delay. See the legal notice. |
 | `profil.messages.titre` | Mes messages | My messages |
 | `profil.messages.aide` | Les réponses de l'éditeur à tes bugs et à tes idées. | The publisher's replies to your bugs and ideas. |

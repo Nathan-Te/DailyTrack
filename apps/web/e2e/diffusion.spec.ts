@@ -151,6 +151,24 @@ test("publier un message › il apparaît sur le portail ; une nouveauté depuis
   await expect(portail.locator("#cloche")).toBeVisible();
   await expect(portail.locator("#cloche-point")).toHaveCount(0); // lue sur cet appareil (lot U1 : le point de la cloche)
 
+  // --- Lot U4 : la même feuille sur les autres pages, chargée à la demande (aucune requête de plus au chargement) ------------------------------------
+  for (const page of ["classement", "amis", "profil"]) {
+    requetes.length = 0;
+    await portail.goto(`${panneau.site}/${page}/`);
+    await expect(portail.locator("#cloche")).toBeVisible();
+    await expect(portail.locator("#cloche")).toHaveAttribute("aria-expanded", "false");
+    await expect(portail.locator("#salle-feuille")).toHaveCount(0);
+    await portail.locator("#cloche").click();
+    await expect(portail.locator("#cloche")).toHaveAttribute("aria-expanded", "true");
+    const ligneAutre = portail.locator('#salle-feuille .salle-feuille__ligne[href="../nouveautes/"]');
+    await expect(ligneAutre).toContainText("Le bouton caméra revient");
+    await expect(portail.locator("#salle-feuille :focus")).toHaveCount(1); // le focus entre dans la feuille
+    await portail.keyboard.press("Escape");
+    await expect(portail.locator("#salle-feuille")).toHaveCount(0);
+    await expect(portail.locator("#cloche")).toBeFocused();
+  }
+  await portail.goto(`${panneau.site}/`); // la suite se passe sur l'accueil
+
   // --- Message en direct : écrire, mettre à jour ------------------------------------------------------------------------------------------------------
   await admin.locator('[data-menu="message"]').click();
   await expect(admin.getByRole("heading", { level: 1, name: "Message en direct" })).toBeVisible();

@@ -91,7 +91,7 @@ export function choisirImage(t: Dire, parent: HTMLElement = document.body): Prom
     });
     for (const nom of ["pointerup", "pointercancel"]) canvas.addEventListener(nom, () => (doigt = null));
 
-    /** Recadre, redimensionne à 128 × 128 et réencode ; la qualité baisse jusqu'à passer sous 20 Ko. */
+    /** Recadre, redimensionne à 256 × 256 et réencode ; la qualité baisse jusqu'à passer sous 40 Ko. */
     async function valider(): Promise<void> {
       if (!image) return;
       const sortie = document.createElement("canvas");

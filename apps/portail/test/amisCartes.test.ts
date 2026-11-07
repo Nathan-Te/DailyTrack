@@ -57,6 +57,15 @@ describe("lot U3 : les cartes de tes amis", () => {
     expect(cartes.c!.dernier).toEqual({ site: "track", at: 5 });
     expect(cartes.b!.dernier).toBeNull();
   });
+  it("lot U4 : le dernier jeu joué vient d'abord de la ligne du classement, pour tous les amis ; la réponse du portail ne sert que de repli", () => {
+    const avecDernier = { ...classement, top: [ligne(1, "toi", { moi: true }), ligne(2, "b", { dernier: { site: "jump", at: 9 } }), top[2]!] };
+    const cartes = Object.fromEntries(
+      cartesDesAmis({ amis, classement: avecDernier, duJour: [{ pseudo: "P-b", ref: "b", faits: ["track"], parfaite: false, dernier: { site: "track", at: 5 } }, { pseudo: "P-c", ref: "c", faits: ["track"], parfaite: false, dernier: { site: "track", at: 6 } }], nom }).map((c) => [c.ref, c]),
+    );
+    expect(cartes.b!.dernier).toEqual({ site: "jump", at: 9 }); // la ligne l'emporte
+    expect(cartes.c!.dernier).toEqual({ site: "track", at: 6 }); // pas dans la ligne : le repli
+    expect(cartes.e!.dernier).toBeNull();
+  });
   it("sans classement : les amis dans l'ordre de la liste, journée inconnue, et pas de compte de joueurs du jour", () => {
     const cartes = cartesDesAmis({ amis, classement: null, duJour: null, nom });
     expect(cartes.map((c) => c.ref)).toEqual(["d", "c", "e", "b"]);

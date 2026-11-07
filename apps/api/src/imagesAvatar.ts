@@ -1,11 +1,11 @@
 // Lot C1, partie B (plateforme) — le contrôle d'une image d'avatar ou d'emblème **par le serveur**, sans dépendance : il lit lui-même les en-têtes. Une image envoyée est du WebP (RIFF, **un seul segment**
-// `VP8 ` ou `VP8L`) ou du JPEG, **sans segment EXIF, XMP ni ICC** (ni aucun autre segment qui porte des métadonnées), de 128 × 128 pixels au plus et de 20 Ko au plus. Pas de SVG, de PNG, de GIF ni de WebP animé
+// `VP8 ` ou `VP8L`) ou du JPEG, **sans segment EXIF, XMP ni ICC** (ni aucun autre segment qui porte des métadonnées), de 256 × 256 pixels au plus et de 40 Ko au plus (lot U4 : 128 et 20 Ko avant ; une image déjà envoyée en 128 reste valide). Pas de SVG, de PNG, de GIF ni de WebP animé
 // ou étendu (`VP8X`) : un format qui n'est pas dans cette liste est refusé tel quel. Le navigateur réencode l'image par un canvas avant l'envoi (ce qui retire déjà les métadonnées) ; **le serveur ne lui fait pas
 // confiance** et revérifie tout. Fonctions pures : testées octet par octet (`test/avatars.test.ts`).
 
-export const IMAGE_OCTETS_MAX = 20 * 1024;
-export const IMAGE_COTE_MAX = 128;
-/** Un côté plus petit n'est pas un avatar (et le canvas du navigateur sort toujours du 128 × 128). */
+export const IMAGE_OCTETS_MAX = 40 * 1024;
+export const IMAGE_COTE_MAX = 256;
+/** Un côté plus petit n'est pas un avatar (et le canvas du navigateur sort toujours du 256 × 256 ; une image de 128 × 128 envoyée avant le lot U4 reste valide). */
 export const IMAGE_COTE_MIN = 16;
 
 export type RaisonImage = "taille" | "format" | "metadonnees" | "dimensions";

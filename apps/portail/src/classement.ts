@@ -29,7 +29,7 @@ import { baseApi, formatCompte, prochainMinuit } from "./jour";
 import { jourGarde } from "./cacheJour";
 import { nonLue } from "./nouveautesDonnees";
 import { barreSalle, emblemeDeGroupe, navigation } from "./salle";
-import { clocheLien, frontonDePage, itemsDeNavigation, podium, type PlacePodium } from "./classementSalle";
+import { clocheDePage, frontonDePage, itemsDeNavigation, podium, type PlacePodium } from "./classementSalle";
 import { EMBLEME_LIGNE, groupeDeLigne, jeuxDuCumul, lignesDuPodium, nombreDeColonnes, resteDuHaut } from "./classementPodium";
 import { VUE_CUMUL, aSeparation, ongletVoisin, onglets, vueDeLAdresse } from "./classementVues";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "./jours";
@@ -439,7 +439,8 @@ function rendre(): void {
     logo: logo(t),
     navigation: navigation({ items, ici: "classements", aria: t.t("portail.nav.aria"), place: "haut", racine: "../" }),
     langue: choixLangue(t, { langue, onChange: changerLangue }),
-    cloche: clocheLien({ nom: t.t(nouveaute || reponses > 0 ? "portail.cloche.nonLu" : "portail.cloche.nom"), nonLu: nouveaute || reponses > 0, href: !nouveaute && reponses > 0 ? "../messages/" : "../nouveautes/" }),
+    // Lot U4 : la cloche ouvre la même feuille que sur l'accueil (chargée à la demande, `clochePage.ts`) ; le point vient de la copie de l'accueil.
+    cloche: clocheDePage({ nom: t.t(nouveaute || reponses > 0 ? "portail.cloche.nonLu" : "portail.cloche.nom"), nonLu: nouveaute || reponses > 0, contexte: { t, langue, stockage, identifiant, racine: "../" } }),
     avatar: avatar(t, { pseudo: identite.exists ? identite.name : null, href: "../profil/", image: adresseAvatar(baseApi(), c?.moi?.avatar ?? copie?.joueur?.avatar) }),
   });
   const numero = numeroDeJournee(day);

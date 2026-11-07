@@ -5,7 +5,7 @@ import type { AmiDuJour } from "./jour";
 
 // Lot U3 (charte rév. 19, § 9) — la logique pure de la page « Amis et groupes » : ce que chaque carte d'ami dit de sa journée (les pastilles des jeux faits, la journée parfaite, le dernier jeu joué) et ce que
 // chaque membre de ton groupe en dit. Sans DOM ni réseau, testée dans `test/amisCartes.test.ts`. **Rien n'est inventé** : les jeux faits viennent du classement du jour « Amis » (ou « Mon groupe ») — toi et
-// tous les tiens, sans limite —, le dernier jeu joué de `GET /api/portail/jour` (6 amis au plus : les autres n'ont pas de « il y a 12 min »).
+// tous les tiens, sans limite —, le dernier jeu joué de leur ligne du classement (lot U4 : tous les amis ; `GET /api/portail/jour`, 6 amis au plus, ne sert plus que de repli).
 
 /** Un jeu du jour dans une rangée de pastilles : sa lettre, son nom (lu), fait ou pas. */
 export interface PastilleJeu {
@@ -49,7 +49,7 @@ export function bilanDuJour(jeux: Classement["jeux"] | null, ligne: LigneClassem
 export interface CarteAmi {
   ref: string;
   pseudo: string;
-  /** L'empreinte de son image (`adresseAvatar`), absente : ses initiales. */
+  /** L'adresse de son image (déjà passée par `adresseAvatar`, `Ami.image`), absente : ses initiales. */
   avatar?: string;
   /** Il t'a aussi parmi ses amis (« vous deux »), sinon « ajouté par toi ». */
   reciproque: boolean;
@@ -57,7 +57,7 @@ export interface CarteAmi {
   /** Son rang entre amis au cumul du jour (toi compris) et son temps cumulé, quand il a tout fini. */
   rang: number | null;
   tempsMs: number | null;
-  /** Le dernier jeu qu'il a fini (son dossier sur le site) et l'instant (ms) — pour les 6 amis que `GET /api/portail/jour` détaille seulement. */
+  /** Le dernier jeu qu'il a fini (son dossier sur le site) et l'instant (ms) : sa ligne du classement « Amis » (lot U4, tous les amis) ; à défaut, `GET /api/portail/jour` (6 amis au plus). */
   dernier: { site: string; at: number } | null;
 }
 
@@ -89,7 +89,7 @@ export function cartesDesAmis(o: {
       bilan: bilanDuJour(o.classement ? o.classement.jeux : null, ligne, o.nom),
       rang: ligne && ligne.complet ? ligne.rang : null,
       tempsMs: ligne && ligne.complet ? ligne.tempsMs : null,
-      dernier: detail?.dernier ?? null,
+      dernier: ligne?.dernier ?? detail?.dernier ?? null,
     };
   });
 }

@@ -86,7 +86,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `unknown_feedback` | 404 | Retours (lot C1) : ce fil n'existe pas, ou n'est pas à ce joueur (un seul visage). | `GET /api/retours/<id>`, `POST /api/retours/<id>/messages`, `POST /api/retours/<id>/lu`, `GET /api/admin/retours/<id>` |
 | `feedback_limit` | 429 | Retours (lot C1) : 5 nouveaux fils par joueur et par jour de Paris atteints (`Retry-After` jusqu'à minuit). | `POST /api/retours` |
 | `feedback_full` | 409 | Retours (lot C1) : ce fil a atteint ses 100 messages. | `POST /api/retours/<id>/messages`, `POST /api/admin/retours/<id>/repondre` |
-| `invalid_image` | 400 | Avatars (lot C1) : image refusée par le serveur (`raison` : `taille` — 20 Ko au plus —, `format` — WebP ou JPEG seulement —, `metadonnees` — EXIF, XMP, ICC ou tout autre segment —, `dimensions` — carrée, 128 pixels au plus). | `POST /api/avatar` |
+| `invalid_image` | 400 | Avatars (lot C1) : image refusée par le serveur (`raison` : `taille` — 40 Ko au plus (lot U4) —, `format` — WebP ou JPEG seulement —, `metadonnees` — EXIF, XMP, ICC ou tout autre segment —, `dimensions` — carrée, 256 pixels au plus (lot U4 ; 128 reste valide)). | `POST /api/avatar` |
 | `avatar_limit` | 429 | Avatars (lot C1) : un seul changement d'image par jour et par joueur ou groupe (`Retry-After` jusqu'à minuit). | `POST /api/avatar` |
 | `avatar_banned` | 403 | Avatars (lot C1) : l'envoi d'images est interdit à ce joueur ou à ce groupe par l'administration. | `POST /api/avatar` |
 | `unknown_avatar` | 404 | Avatars (lot C1) : pas d'image à ce nom (jamais envoyée, retirée, ou masquée par signalements), ou aucun joueur de cette référence. | `GET /api/avatars/<empreinte>`, `POST /api/avatar/signaler`, `GET /api/admin/images/…` |

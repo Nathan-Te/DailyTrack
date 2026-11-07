@@ -28,13 +28,13 @@ export const ECRAN_FEUILLE: EcranManette = { ecran: ".dj-feuille", principal: ".
 /** Le dialogue « Un bug ? Une idée ? » (lot C1), ouvert depuis le pied de n'importe quelle page : A valide, B ferme. La même ligne que `ECRAN_MANETTE_RETOUR` de `@cdj/ui/src/retours` (testée égale, `test/manette.test.ts`) : elle n'est pas importée ici, ce qui ramènerait le dialogue dans le menu à la manette. */
 export const ECRAN_RETOUR: EcranManette = { ecran: ".dj-retour", principal: ".dj-retour__texte", retour: ".dj-retour__fermer" };
 
-/** Lot U1 : la feuille de la cloche (nouveautés et messages), ouverte depuis la barre de l'accueil : A ouvre la ligne, B ferme. */
+/** Lot U1 : la feuille de la cloche (nouveautés et messages), ouverte depuis la barre de l'accueil : A ouvre la ligne, B ferme. Lot U4 : la même sur toutes les pages (`clochePage.ts`). */
 export const ECRAN_CLOCHE: EcranManette = { ecran: ".salle-feuille", principal: ".salle-feuille__ligne, .salle-feuille__fermer", retour: ".salle-feuille__fermer" };
 
 /** Ce que le menu à la manette lit pour une page (chargé avec lui, à la première manette) ; le classement et (lot U3) « Amis et groupes » y ajoutent la feuille d'un joueur. */
 export const optionsPage = (page: keyof typeof PAGES_MANETTE): OptionsManette => ({
   page: true,
-  ecrans: [{ ecran: ":root", principal: PAGES_MANETTE[page] }, ECRAN_RETOUR, ...(page === "classement" || page === "amis" ? [ECRAN_FEUILLE] : []), ...(page === "accueil" ? [ECRAN_CLOCHE] : [])],
+  ecrans: [{ ecran: ":root", principal: PAGES_MANETTE[page] }, ECRAN_RETOUR, ...(page === "classement" || page === "amis" ? [ECRAN_FEUILLE] : []), ECRAN_CLOCHE],
 });
 
 /** Le module d'une page pour `activerManette` : ses déclarations et le moteur (un seul `import()` au premier chargement). */

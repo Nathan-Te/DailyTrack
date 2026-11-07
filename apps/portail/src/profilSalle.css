@@ -137,6 +137,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--dj-espace-5);
 }
+/* Lot U4 : trois tuiles de chiffres (série, meilleure série, journées parfaites) : sur téléphone les deux séries côte à côte, les journées parfaites sur toute la largeur. */
+.profil-tuile--large {
+  grid-column: 1 / -1;
+}
 .profil-tuile-medailles {
   grid-column: 1 / -1;
   padding: var(--dj-espace-5);
@@ -146,10 +150,11 @@
   box-shadow: 3px 3px 0 var(--dj-encre);
 }
 @media (min-width: 760px) {
+  /* Trois tuiles de chiffres côte à côte, les médailles dessous sur toute la largeur (quatre colonnes serraient la série et les cases de médailles). */
   .profil-tous .profil-tuiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 2fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .profil-tuile-medailles {
+  .profil-tuile--large {
     grid-column: auto;
   }
 }

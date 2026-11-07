@@ -4,6 +4,6 @@
 .dj-avatar--c3 { background: var(--dj-or); }
 .dj-avatar--c4 { background: var(--dj-argent); }
 .dj-avatar--c5 { background: var(--dj-bronze); }
-.dj-avatar--t24 { width: 24px; height: 24px; font-size: var(--dj-taille-12); }
+.dj-avatar--t24 { width: 24px; height: 24px; font-size: 10px; } /* deux lettres larges (« WM ») tiennent dans les 20 px utiles */
 .dj-avatar--t32 { width: 32px; height: 32px; font-size: var(--dj-taille-13); }
 .dj-avatar--t96 { width: 96px; height: 96px; font-size: 32px; }
