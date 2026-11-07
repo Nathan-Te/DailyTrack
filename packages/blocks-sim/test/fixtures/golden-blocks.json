@@ -2,7 +2,7 @@
   "_": "Golden de Blocks (lots B1, B3 et B8). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
   "sim": 2,
   "generateur": 5,
-  "bot": 3,
+  "bot": 4,
   "jours": [
     {
       "date": "2026-11-02",
@@ -95,9 +95,9 @@
       },
       "arrets": {
         "bronze": 1950,
-        "silver": 1507,
-        "gold": 3472,
-        "author": 10207
+        "silver": 1377,
+        "gold": 3822,
+        "author": 20647
       }
     },
     {
@@ -144,8 +144,8 @@
       "arrets": {
         "bronze": 1096,
         "silver": 2836,
-        "gold": 6476,
-        "author": 6476
+        "gold": 6150,
+        "author": 6150
       }
     },
     {
@@ -161,7 +161,7 @@
         "bronze": 1510,
         "silver": 1080,
         "gold": 5582,
-        "author": 9833
+        "author": 17297
       }
     }
   ],
@@ -270,11 +270,11 @@
       "date": "1970-01-01",
       "scenario": "ordre",
       "g": 5,
-      "code": "AQIFAQVvcmRyZbB3MC15rr4VRaElRydanhatRRyrapA4WGy1GWQanZpgAI4FWEibFiahcohYDXsklUSLIVYusBKCRYEDbYkNZ1yKEKJAF4wCaqBsLogZagGZW5YiZSmkUhCCU44DSKQaYECFJoNCBZQdaKFsBoNjJYwUeXKuBYkgbJJIG14cgoRMNGOaFkiLA1OkDoVdNVmWLyizbWCqCWOKHoBoNGKQKDGQbgZFplMtngKNVKxiDZpcLghzg6wYQQNF",
+      "code": "AQIFAQVvcmRyZbB3MC15rr4VRaElRydanhatRRyrapA4WGy1GWQanZpgAI4FWEibFiahcohYDXsklUSLIVYusBKCRYEDbYkNZ1yKEKJAF4wCaqBsLogZagGZW5YiZSmkUhCCU44DSKQaYECFJoNCFUmECiNYqhxipUC4AhF6gpINakgMqDRumAOAYgiGSglpgYUAQoxLLCeWRIwTcEaIK5wuTaIFbEKICUyGBKYbSVGgLB1IsAaLaKxAL3MthI4LbkgRqAioSQCYQFmtAVqhKQGZYwijW2ClFmoEjZ8tXSyCWpUMbRihXK0EXAWwaDSUUSKkbGAAjosEXIgRYEiEOIthLY1JBJRABQKaaKoZSEsBk6MCawuObRCpVW0Ak0mxNYNEHVOsNQVAggpyolODAk6GBABIorBQKEKyBnuaFJttNV0ulmixDSyraCiCeFABgG4EkZxDK1moKlolq61rIqgYQpgcdJodcItjEwNpsZRQAgCGSQ1HmACYaACDQAVDsBBBmZtYHZhCKjVdonYVhVqBFEaWLWKgHSVVs65qJUAZg1ioECiqbUUTuRpznFW8JGChGkCKA5YNSG-sBGQgsG6zIqtgPJ04cA9JuzZumIAAXZI3dUUujhhelJBgJA5KvASDTVMQgYdjBkgEi1oBq4QNUo5DCEsIpUEojFqoMpxzIyJttQ6ueYYdQFibKIFaGEMdg4IqQaglQSqeWVixNWWtIgGUWiCARwRNhr4ldXCRM0GFLgyxYqIYXi1EjJUbQFGUDV28IJAZQHizHkMZogJqsptjIblYLVIC",
       "resultat": {
-        "score": 17199,
-        "combo": 34,
-        "poses": 185,
+        "score": 61322,
+        "combo": 56,
+        "poses": 593,
         "raison": "bloquee"
       }
     }

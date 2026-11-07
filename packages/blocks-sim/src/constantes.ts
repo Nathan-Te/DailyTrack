@@ -5,8 +5,8 @@ export const BLOCKS_SIM_VERSION = 2;
 /** La version du TIRAGE (la suite du jour : catalogue, poids, rampe, garde-fous). Elle monte à tout changement de ce que `dailyBlocks` produit. v2 (lot B2) : 40 pièces (grand T ajouté, pièce de 1 case retirée). v3 (lot B3) : poids de base et rampe recalibrés avec le bot Diamant (`pieces.ts`, `RAMPE_PAR_DEFAUT`). v4 (lot B8) : des SÉRIES de trois pièces (garde-fous par série, rampe au rang de la série), poids et rampe recalibrés pour les trois bots de référence. v5 (lot B8b) : une suite variée (seed § 4) — au plus un domino, jamais deux fois la même pièce, au moins une pièce de 4 cases ou plus par série ; poids de base et rampe (pente 1, rang maximal 80) réglés sur la répartition des pièces, plus sur la survie des bots. */
 export const BLOCKS_GENERATOR_VERSION = 5;
 
-/** La version du BOT DIAMANT (`diamant.ts` : sa logique et ses poids). Le bot fait partie des règles du classement (les seuils des médailles en dépendent) : elle monte à tout changement de ce qu'il joue ou des seuils. v3 (lot B8b) : les seuils des médailles sont des constantes (`SEUILS_MEDAILLES` : score de bots arrêtés après un nombre fixe de pièces) et le Diamant s'arrête à `PIECES_DU_DIAMANT` pièces. */
-export const BLOCKS_BOT_VERSION = 3;
+/** La version du BOT DIAMANT (`diamant.ts` : sa logique et ses poids). Le bot fait partie des règles du classement (les seuils des médailles en dépendent) : elle monte à tout changement de ce qu'il joue ou des seuils. v3 (lot B8b) : les seuils des médailles sont des constantes (`SEUILS_MEDAILLES` : score de bots arrêtés après un nombre fixe de pièces) et le Diamant s'arrête à `PIECES_DU_DIAMANT` pièces. v4 (lot B8b) : le Diamant ne lit plus la série suivante (un joueur ne la voit pas) ; seuils recalibrés. */
+export const BLOCKS_BOT_VERSION = 4;
 
 /** Les pièces d'une série (lot B8) : on les pose dans l'ordre qu'on veut ; la série suivante arrive quand la troisième est posée. */
 export const TAILLE_SERIE = 3;

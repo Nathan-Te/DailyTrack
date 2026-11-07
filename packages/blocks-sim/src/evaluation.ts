@@ -21,8 +21,6 @@ export const POIDS_DIAMANT = {
   boites3: 8,
   /** Chaque pièce du catalogue (40 orientations) qui ne tient plus nulle part : seulement pour les finalistes (voir `planDuDiamant`). */
   sansPlace: -40,
-  /** Chaque pièce de la série SUIVANTE qui ne tient nulle part sur la grille obtenue en fin de série (la suite est connue). */
-  serieSansPlace: -60,
 } as const;
 const L = LIGNES;
 /** Le nombre de bits d'un octet. */

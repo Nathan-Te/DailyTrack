@@ -18,12 +18,8 @@ export { evaluerGrille, piecesSansPlace, POIDS_DIAMANT };
 // de chacune des pièces restantes, dans cet ordre : emplacement, puis ligne de haut en bas, puis colonne de gauche à droite — et on ne garde que les `K` MEILLEURES grilles (`LARGEUR_FAISCEAU`). Valeur d'une grille =
 //   POIDS.point × (points gagnés depuis la racine, combo compris) + évaluation de la grille.
 // **Départage fixe** : à valeur égale, l'enfant engendré en premier garde sa place ; deux chemins qui mènent à la même grille (même combo, mêmes pièces restantes) ne comptent qu'une fois (le meilleur, puis le premier). Une branche où il
-// reste une pièce mais où aucune ne tient est « morte » (la partie s'arrête là) : elle ne passe devant les autres que si toutes meurent. Au dernier niveau, la série suivante — connue : la suite est fixe — sert de garde-fou : une grille où
-// aucune de ses pièces ne tient vaut `MORT`, et chaque pièce qui ne tient pas coûte `serieSansPlace` ; les `FINALISTES` meilleures grilles sont départagées par le nombre de pièces du catalogue qui ne tiennent plus nulle part (`sansPlace`).
+// reste une pièce mais où aucune ne tient est « morte » (la partie s'arrête là) : elle ne passe devant les autres que si toutes meurent. **Il ne regarde jamais la série suivante** (lot B8b : un joueur ne la voit pas, seed § 3 — le bot qui donne les médailles doit jouer à armes égales) : il ne connaît que la grille et les pièces restantes de sa série. Au dernier niveau, les `FINALISTES` meilleures grilles sont départagées par le nombre de pièces du catalogue qui ne tiennent plus nulle part (`sansPlace`), qui ne dit rien d'une pièce à venir.
 // **L'évaluation de la grille** : `evaluation.ts` (partagée avec le bot moyen).
-/** La valeur d'une grille après laquelle aucune pièce ne tient plus : la partie s'arrête là. */
-const MORT = -1_000_000;
-
 const L = LIGNES;
 
 /** L'état d'une branche de la recherche : les huit lignes de la grille, le combo, les poses sans effacement depuis le dernier, les points gagnés depuis la racine. */
@@ -72,7 +68,7 @@ function tient(r: Uint8Array, p: Piece, col: number, ligne: number): boolean {
 
 /** La largeur du faisceau : combien de grilles on garde à chaque niveau. Fait partie du bot (`BLOCKS_BOT_VERSION`). Mesure (lot B8) : README du lot. */
 export const LARGEUR_FAISCEAU = 8;
-/** Les meilleures grilles de fin de série départagées par `sansPlace` et la série suivante. */
+/** Les meilleures grilles de fin de série départagées par `sansPlace`. */
 const FINALISTES = 6;
 const K_MAX = 256;
 
@@ -132,16 +128,6 @@ function proposer(f: Faisceau, k: number, valeur: number, e: Etat, reste: number
   f.sigHi[slot] = hi;
   for (let a = 0; a < niveau - 1; a++) f.acts[slot * TAILLE_SERIE + a] = parent.acts[pi * TAILLE_SERIE + a]!;
   f.acts[slot * TAILLE_SERIE + niveau - 1] = action;
-}
-
-/** Les pièces de la série qui suit celle de la partie (la suite est connue), pour le garde-fou de fin de série. */
-function serieSuivante(partie: Pick<Partie, "contenu" | "serie">): Piece[] {
-  const out: Piece[] = [];
-  for (let k = 0; k < TAILLE_SERIE; k++) {
-    const id = partie.contenu.suite[(partie.serie + 1) * TAILLE_SERIE + k];
-    if (id !== undefined) out.push(PIECES[id]!);
-  }
-  return out;
 }
 
 function tientQuelquePartRows(r: ArrayLike<number>, p: Piece): boolean {
@@ -222,19 +208,13 @@ export function planDuDiamant(partie: Pick<Partie, "grille" | "dernieresPieces" 
   // Le dernier niveau est complet si le faisceau a `aPoser` poses ; sinon (branches mortes) on joue la meilleure branche morte.
   const complet = courant.n > 0 && courant.reste[courant.ordre[0]!] === 0;
   if (!complet) return mortActs;
-  // Les finalistes : la meilleure valeur, corrigée par la série suivante (connue) et par le nombre de pièces du catalogue qui ne tiennent plus.
-  const prochaine = serieSuivante(partie);
+  // Les finalistes : la meilleure valeur, corrigée par le nombre de pièces du catalogue qui ne tiennent plus (aucune lecture de la suite : le bot ne voit pas les séries à venir).
   let choisi = -1;
   let meilleur = -Infinity;
   const finalistes = Math.min(courant.n, FINALISTES);
   for (let j = 0; j < finalistes; j++) {
     const s = courant.ordre[j]!;
-    const r = courant.rows.subarray(s * L, s * L + L);
-    let v = courant.val[s]!;
-    let nonPlacees = 0;
-    for (const p of prochaine) if (!tientQuelquePartRows(r, p)) nonPlacees++;
-    if (prochaine.length > 0 && nonPlacees === prochaine.length) v = MORT + P.point * courant.gain[s]!;
-    else v += P.serieSansPlace * nonPlacees + P.sansPlace * piecesSansPlace(r);
+    const v = courant.val[s]! + P.sansPlace * piecesSansPlace(courant.rows.subarray(s * L, s * L + L));
     if (v > meilleur) {
       meilleur = v;
       choisi = s;
