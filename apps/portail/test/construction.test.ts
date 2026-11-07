@@ -139,7 +139,7 @@ describe("construction du portail", () => {
   it("lot F2 : la page « Mes amis » /amis/ est dans la production comme dans la recette (balises de partage, noindex, aucune ressource extérieure) ; le code des amis est à la demande, hors du premier chargement", () => {
     for (const sortie of [sorties.production, sorties.recette]) {
       const html = readFileSync(join(sortie, "amis/index.html"), "utf8");
-      expect(html).toContain('<title data-t="amisPage.titre">Mes amis</title>');
+      expect(html).toContain('<title data-t="amisPage.titre">Amis et groupes</title>');
       expect(html).toContain('property="og:title"');
       expect(html).toContain('content="Rejoins-moi sur Du Jour"');
       expect(html).toContain('name="robots" content="noindex"');

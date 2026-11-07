@@ -27,7 +27,7 @@ async function choisirLangue(page: Page, langue: "fr" | "en"): Promise<void> {
   const vue = page.viewportSize();
   const etroite = !!vue && vue.width < 760;
   if (etroite) await page.setViewportSize({ width: 800, height: vue!.height });
-  await page.locator(`.dj-choix-langue [data-langue="${langue}"]`).click();
+  await page.locator(`.salle-barre .dj-choix-langue [data-langue="${langue}"]`).click(); // lot U3 : le profil a aussi son panneau « Langue » ; la barre est la même partout
   if (etroite) await page.setViewportSize(vue!);
 }
 
@@ -317,8 +317,8 @@ test("profil commun (/profil/) : l'avatar y mène ; pseudo, code de transfert, s
     await expect(page.locator("h1")).toHaveText("Your profile");
     await expect(page.locator('[data-jeu="track"] .track-etiquette__numero')).toHaveText("5 days done");
     await capture(page, `profil-${nom}-en`);
-    // Retour au portail par « ‹ DU JOUR » : la langue suit (même stockage).
-    await page.locator(".dj-barre-jeu__retour").click();
+    // Retour au portail par la navigation (« Aujourd'hui », ou le logo sur téléphone) : la langue suit (même stockage).
+    await page.locator(".salle-nav a, .salle-onglets a").first().click();
     await expect(page.locator("#portail-jeux-titre")).toHaveText("Today's games");
   }
 });
@@ -337,8 +337,7 @@ test("profil commun : ?retour= ramène au jeu d'où l'on vient (un chemin du sit
   // Tout le reste est ignoré : le retour par défaut, vers le portail.
   for (const hostile of ["https://evil.example/track/", "//evil.example/", "javascript:alert(1)", "/track/../../x", "/%2e%2e/"]) {
     await page.goto(`http://localhost:${SITES.midi}/profil/?retour=${encodeURIComponent(hostile)}`);
-    await expect(retour, hostile).toHaveAttribute("href", "../");
-    await expect(retour, hostile).toContainText(/DU JOUR/i);
+    await expect(retour, hostile).toHaveCount(0); // lot U3 : la barre de la salle n'a plus de flèche ; sans retour valide, rien ne mène à un autre site
   }
   await context.close();
 });

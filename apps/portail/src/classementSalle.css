@@ -527,6 +527,11 @@
   color: var(--dj-encre-douce);
   font-size: var(--dj-taille-12);
 }
+/* Ton groupe en moutarde : le texte en encre (l'encre douce sur la moutarde ne passe pas axe). */
+.groupes-ligne--moi .groupes-panneau__texte small,
+.groupes-ligne--moi .groupes-ligne__rang {
+  color: var(--dj-encre);
+}
 .groupes-panneau__ligne .groupes-ligne__score {
   flex: none;
   font-family: var(--dj-police-chiffres);
