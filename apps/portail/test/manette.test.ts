@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { verifierEcrans } from "../../../packages/ui/test/ecransManette";
 import { ECRAN_MANETTE_FEUILLE } from "../../../packages/ui/src/amis";
 import { ECRAN_MANETTE_RETOUR } from "../../../packages/ui/src/retours";
-import { ECRAN_FEUILLE, ECRAN_RETOUR, PAGES_MANETTE, optionsPage } from "../src/manette";
+import { ECRAN_CLOCHE, ECRAN_FEUILLE, ECRAN_RETOUR, PAGES_MANETTE, optionsPage } from "../src/manette";
 
 // Lot M1 : chaque page du portail déclare son action principale (`src/manette.ts`), et ce qu'elle nomme existe encore. L'administration n'en a pas (clavier et souris).
 describe("les pages du portail à la manette", () => {
@@ -21,6 +21,12 @@ describe("les pages du portail à la manette", () => {
     // « Mes amis » : le champ du pseudo, ou « Accepter » quand une invitation est affichée.
     expect(PAGES_MANETTE.amis).toContain(".dj-carte-invitation");
     expect(PAGES_MANETTE.amis).toContain(".dj-ajout-ami__champ");
+  });
+
+  it("lot U1 : la feuille de la cloche est dans le menu de l'accueil seulement (A ouvre la ligne, B ferme), et ce qu'elle nomme existe", () => {
+    expect(optionsPage("accueil").ecrans).toContainEqual(ECRAN_CLOCHE);
+    for (const page of ["amis", "classement", "groupe", "messages", "nouveautes", "profil"] as const) expect(optionsPage(page).ecrans).not.toContainEqual(ECRAN_CLOCHE);
+    verifierEcrans([ECRAN_CLOCHE], ["apps/portail/src"]);
   });
 
   it("lot C1 : le dialogue « Un bug ? Une idée ? » est dans le menu de toutes les pages, et c'est la ligne du socle", () => {

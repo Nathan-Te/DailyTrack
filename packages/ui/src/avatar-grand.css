@@ -1,0 +1,9 @@
+/* Lot U2 (charte rév. 19, § 9) : les photos se voient — feuille à part, que l'accueil du portail ne paie pas (`classement.ts`, `amis.ts`) : 48 (lignes de classement) · 52 (membres d'un groupe) · 68 · 84 (podium, téléphone) · 88 (cartes d'amis, feuille d'un joueur) · 92 · 112 (podium) · 128 (profil). Bordure de 3 px dès 48 px. Les initiales suivent la taille. */
+.dj-avatar--t48 { width: 48px; height: 48px; border-width: var(--dj-trait-fort); font-size: var(--dj-taille-16); }
+.dj-avatar--t52 { width: 52px; height: 52px; border-width: var(--dj-trait-fort); font-size: var(--dj-taille-16); }
+.dj-avatar--t68 { width: 68px; height: 68px; border-width: var(--dj-trait-fort); font-size: 24px; }
+.dj-avatar--t84 { width: 84px; height: 84px; border-width: var(--dj-trait-fort); font-size: 28px; }
+.dj-avatar--t88 { width: 88px; height: 88px; border-width: var(--dj-trait-fort); font-size: 30px; }
+.dj-avatar--t92 { width: 92px; height: 92px; border-width: var(--dj-trait-fort); font-size: 30px; }
+.dj-avatar--t112 { width: 112px; height: 112px; border-width: var(--dj-trait-fort); font-size: 36px; }
+.dj-avatar--t128 { width: 128px; height: 128px; border-width: var(--dj-trait-fort); font-size: 40px; }

@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portail : cartouches et salle d'arcade</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<style>
+  body{margin:0;background:#D8CCB3;color:#2A1E16;font:15px/1.5 Inter,system-ui,sans-serif;padding:28px 16px 80px}
+  .intro,.dir{max-width:1440px;margin:0 auto 34px}
+  h1{font-size:26px;margin:0 0 8px}
+  .intro p,.intro ul{max-width:820px;margin:0 0 10px}
+  .intro ul{padding-left:20px}
+  .ecrans{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+  .cadre{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 0 #B8AB90}
+  .cadre small{display:block;color:#666;margin:0 0 6px 2px}
+  .bureau{flex:1 1 640px;min-width:0}
+  .bureau .boite{overflow:hidden;position:relative}
+  .bureau iframe{width:1280px;transform-origin:0 0;border:0;display:block}
+  .mobile iframe{width:390px;border:0;display:block;border-radius:6px}
+  @media (max-width:700px){.mobile iframe{width:100%}}
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Portail : les cartouches dans une salle d'arcade</h1>
+  <p>Une synthèse de ta proposition générée, de la ludothèque et de R2. On garde la charte « Cartouches » : crème, encre, terre, moutarde, ombres nettes, et chaque jeu dans sa cartouche. On reprend la ludothèque : deux colonnes, les jeux sur des étagères, la navigation. Et R2 donne son ambiance à deux zones seulement, sombres et lisibles :</p>
+  <ul>
+    <li><b>Le fronton</b> en haut : date, compte à rebours en chiffres moutarde, et la semaine en lampes allumées (journée parfaite pleine, journée jouée en contour).</li>
+    <li><b>La salle d'arcade</b> : Tower, Blocks et Rush sur fond encre rayé, sous un titre de borne. Les étiquettes restent claires et le texte reste en encre, donc le contraste ne bouge pas.</li>
+  </ul>
+  <p>Les deux jeux du jour ont la même taille : Jump n'est plus une petite ligne sous Track. Ce que j'ai laissé de côté dans l'image générée : boutique, abonnement, tournois et discussions n'existent pas sur le site. La cloche regroupe les nouveautés et les réponses à « Mes messages » (le message en direct reste un bandeau).</p>
+</div>
+
+<section class="dir">
+  <div class="ecrans"><div class="cadre bureau"><small>Ordinateur, 1280 px</small><div class="boite"></div></div><div class="cadre mobile"><small>Téléphone, 390 px</small></div></div>
+</section>
+
+<script type="text/html" id="page">
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&family=Barlow+Condensed:ital,wght@1,800&family=Lilita+One&family=Rubik+Mono+One&family=Bungee&display=swap">
+<style>
+:root{--creme:#EDE3CF;--creme2:#E3D6BC;--papier:#FFF6E0;--encre:#2A1E16;--encre2:#3A2C22;--terre:#C2401F;--moutarde:#E8B23A;--gris:#6B5847;--diamant:#4FC3DC;--or:#D9A21B;--argent:#A7A9AC;--bronze:#C07A42}
+*{box-sizing:border-box}
+body{margin:0;background:var(--creme);color:var(--encre);font:15px/1.45 Archivo,sans-serif}
+a{color:inherit;text-decoration:none}
+.noir{font-family:'Archivo Black',sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+button{font:inherit;color:inherit}
+/* haut */
+.haut{display:flex;align-items:center;gap:26px;padding:14px 36px;border-bottom:3px solid var(--encre)}
+.logo{background:var(--encre);color:var(--creme);font:22px/1 'Archivo Black';letter-spacing:1px;padding:8px 12px 7px;border-radius:3px;box-shadow:3px 3px 0 var(--terre);flex:none}
+.nav{display:flex;gap:6px;flex:1}
+.nav a{padding:9px 14px;border:2px solid transparent;border-radius:3px;font:15px 'Archivo Black';letter-spacing:.3px}
+.nav a.ici{background:var(--encre);color:var(--creme)}
+.nav a:not(.ici):hover{border-color:var(--encre)}
+.outils{display:flex;align-items:center;gap:10px}
+.langue{display:flex;border:2px solid var(--encre);border-radius:3px;overflow:hidden;font-weight:700;font-size:13px}
+.langue span{padding:6px 9px}
+.langue span.on{background:var(--encre);color:var(--creme)}
+.rond{width:42px;height:42px;border-radius:50%;border:2px solid var(--encre);display:grid;place-items:center;background:var(--papier);position:relative;flex:none}
+.rond svg{width:20px;height:20px}
+.rond .point{position:absolute;right:-2px;top:-2px;width:12px;height:12px;border-radius:50%;background:var(--terre);border:2px solid var(--creme)}
+.av{width:42px;height:42px;border-radius:50%;border:2px solid var(--encre);background:var(--moutarde);display:grid;place-items:center;font:13px 'Archivo Black';flex:none}
+/* fronton */
+.fronton{background:var(--encre);color:var(--creme);position:relative;padding:26px 36px 20px}
+.fronton::before{content:"";position:absolute;left:0;right:0;top:7px;height:10px;background:radial-gradient(circle,var(--moutarde) 3px,transparent 3.6px) 6px 0/22px 10px repeat-x}
+.fronton .dedans{max-width:1208px;margin:0 auto;display:grid;grid-template-columns:1fr auto auto;gap:36px;align-items:center}
+.fronton h1{margin:0;font:34px/1.05 'Archivo Black'}
+.fronton .num{color:var(--moutarde);font-size:15px;margin-top:6px}
+.lampes{display:flex;gap:8px}
+.lampe{display:flex;flex-direction:column;align-items:center;gap:4px;font:700 11px 'JetBrains Mono';color:#B9A98F}
+.lampe i{width:26px;height:26px;border-radius:50%;border:2.5px solid #5A4838;display:block}
+.lampe.p i{background:var(--moutarde);border-color:var(--moutarde);box-shadow:0 0 0 3px #5A4317}
+.lampe.f i{border-color:var(--moutarde)}
+.lampe.d i{background:linear-gradient(90deg,var(--moutarde) 50%,transparent 50%);border-color:var(--moutarde)}
+.lampe.ajd{color:var(--moutarde)}
+.lampes-leg{font-size:12px;color:#B9A98F;margin-top:6px;text-align:center}
+.compte{text-align:right}
+.compte span{display:block;font:11px/1.2 'Archivo Black';letter-spacing:1px;color:#B9A98F}
+.compte b{font:700 42px/1 'JetBrains Mono';color:var(--moutarde);letter-spacing:1px}
+/* page */
+.page{max-width:1280px;margin:0 auto;padding:26px 36px 36px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:30px}
+.titre-s{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid var(--encre);padding-bottom:5px;margin-bottom:16px}
+.titre-s h2{margin:0;font:17px 'Archivo Black';letter-spacing:.5px}
+.titre-s span{font-size:13px;color:var(--gris);font-weight:600}
+/* cartouches */
+.etagere{display:grid;gap:22px;position:relative;padding-bottom:16px;align-items:end}
+.etagere::after{content:"";position:absolute;left:-8px;right:-8px;bottom:0;height:12px;background:var(--encre);border-radius:2px}
+.jour-jeux{grid-template-columns:1fr 1fr;align-items:stretch}
+.cart{border:3px solid var(--encre);border-radius:14px 14px 4px 4px;box-shadow:5px 5px 0 var(--encre);padding:0 9px 10px;position:relative;display:flex;flex-direction:column}
+.peigne{height:11px;margin:0 38px 6px;background:repeating-linear-gradient(90deg,var(--encre) 0 3px,transparent 3px 8px);opacity:.75}
+.etiq{border:2.5px solid var(--encre);border-radius:3px;overflow:hidden;display:flex;flex-direction:column}
+.etiq .art{height:150px;position:relative;border-bottom:2.5px solid var(--encre)}
+.etiq .art svg{position:absolute;inset:0;width:100%;height:100%}
+.etiq .nom{position:absolute;left:12px;top:10px;font-size:46px;line-height:1;color:var(--encre);text-shadow:3px 3px 0 var(--papier)}
+.etiq .info{padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px}
+.sous{font:500 12.5px 'JetBrains Mono';color:var(--gris)}
+.res{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pastille{font:700 11px 'Archivo';letter-spacing:.8px;padding:3px 7px;border:2px solid var(--encre);border-radius:3px;text-transform:uppercase}
+.pastille.fini{background:var(--diamant);color:#0B2530}
+.pastille.cours{background:var(--papier)}
+.temps{font:700 20px 'JetBrains Mono'}
+.med{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px}
+.med i{width:13px;height:13px;border-radius:50%;border:2px solid var(--encre);display:inline-block}
+.btn{height:44px;border:2px solid var(--encre);border-radius:3px;background:var(--creme);font-weight:700;font-size:15px;cursor:pointer;padding:0 16px;box-shadow:2px 2px 0 var(--encre)}
+.btn.p{background:var(--terre);color:#FFF4E0;font-family:'Archivo Black';letter-spacing:.5px}
+.cart>.btn{margin-top:auto;width:100%}
+.cart>.etiq{margin-bottom:9px}
+.etoile{position:absolute;right:-8px;top:-12px;width:42px;height:42px;border:2px solid var(--encre);border-radius:50%;background:var(--papier);display:grid;place-items:center;box-shadow:2px 2px 0 var(--encre);z-index:2}
+.etoile.on{background:var(--moutarde)}
+.etoile svg{width:20px;height:20px}
+.nouveau{position:absolute;left:10px;top:-13px;background:var(--terre);color:#FFF4E0;font:11px 'Archivo Black';letter-spacing:.8px;padding:3px 8px;border:2px solid var(--encre);border-radius:3px;z-index:2}
+/* salle d'arcade */
+.salle{margin-top:34px;background:repeating-linear-gradient(135deg,#2A1E16 0 16px,#33251B 16px 32px);border:3px solid var(--encre);border-radius:10px;padding:22px 22px 18px;box-shadow:5px 5px 0 var(--terre)}
+.salle-tete{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px;gap:20px}
+.salle-tete h2{margin:0;font:34px/1 'Archivo Black';color:var(--moutarde);text-shadow:3px 3px 0 var(--terre);letter-spacing:2px}
+.salle-tete p{margin:0;color:#E6D8BD;font-size:14px;max-width:360px;text-align:right}
+.salle .etagere{grid-template-columns:repeat(3,1fr)}
+.salle .etagere::after{background:var(--moutarde)}
+.salle .cart{box-shadow:5px 5px 0 #120C08}
+.salle .etiq .art{height:104px}
+.salle .etiq .nom{font-size:26px}
+.score{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+.score b{font:700 15px 'JetBrains Mono'}
+/* colonne droite */
+.droite{display:flex;flex-direction:column;gap:20px}
+.panneau{border:3px solid var(--encre);border-radius:6px;background:var(--papier);box-shadow:4px 4px 0 var(--encre);padding:16px}
+.panneau h2{margin:0 0 12px;font:17px 'Archivo Black'}
+.progres{display:flex;gap:6px;margin-bottom:6px}
+.progres i{flex:1;height:14px;border:2px solid var(--encre);border-radius:2px;background:var(--creme)}
+.progres i.on{background:var(--diamant)}
+.aide{margin:0 0 12px;font-size:14px;color:var(--gris)}
+.chiffres{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.chiffres div{background:var(--creme2);border:2px solid var(--encre);border-radius:4px;padding:8px 9px}
+.chiffres b{display:block;font:20px/1.1 'Archivo Black'}
+.chiffres span{font-size:12px;color:var(--gris)}
+.panneau .btn{width:100%}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:2px solid var(--encre);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.seg span{padding:7px 4px;text-align:center;font-weight:700;font-size:13px}
+.seg span+span{border-left:2px solid var(--encre)}
+.seg span.on{background:var(--encre);color:var(--creme)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:7px 4px;border-bottom:1px solid var(--creme2)}
+td.rang{width:36px;font:700 13px 'JetBrains Mono';color:var(--gris)}
+td.t{text-align:right;font:700 14px 'JetBrains Mono'}
+tr.moi td{background:var(--moutarde);font-weight:700;color:var(--encre)}
+tr.moi td.t{font:600 12px Archivo}
+.lien{display:block;margin-top:10px;font-weight:700;text-decoration:underline;font-size:14px}
+.amis{display:flex;flex-direction:column}
+.ami{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--creme2)}
+.ami .av{width:48px;height:48px;font-size:11px}
+.av.ph{overflow:hidden;background:var(--papier)}
+.av.ph svg{width:100%;height:100%;display:block}
+.mini-ph{display:inline-block;width:30px;height:30px;border-radius:50%;border:2px solid var(--encre);overflow:hidden;vertical-align:middle;margin-right:8px}
+.mini-ph svg{width:100%;height:100%;display:block}
+.ami span{flex:1;font-weight:700;font-size:14px}
+.ami small{display:block;font-weight:400;color:var(--gris);font-size:12px}
+.mt{display:flex;gap:4px}
+.mt i{width:24px;height:24px;border:2px solid var(--encre);border-radius:3px;display:grid;place-items:center;font:normal 700 10px 'Archivo';background:var(--creme)}
+.mt i.f{background:var(--diamant);color:#0B2530}
+.groupe{display:flex;gap:12px;align-items:center}
+.embleme{width:52px;height:52px;border:3px solid var(--encre);border-radius:6px;background:var(--moutarde);display:grid;place-items:center;font:18px 'Archivo Black';flex:none}
+.groupe>div:not(.embleme){flex:1}
+.groupe b{font-family:'Archivo Black';font-size:16px}
+.groupe small{display:block;color:var(--gris);font-size:13px}
+.groupe .btn{width:auto;height:38px;font-size:14px}
+.pied{max-width:1280px;margin:0 auto;padding:6px 36px 30px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--gris)}
+.pied .bulle{padding:7px 14px;border-radius:20px;font-weight:700;color:#fff;font-size:13px}
+.pied a.s{text-decoration:underline}
+.onglets{display:none}
+@media (max-width:760px){
+  .haut{padding:10px 14px;gap:10px}
+  .nav,.langue{display:none}
+  .outils{margin-left:auto}
+  .logo{font-size:18px;padding:7px 10px 6px}
+  .fronton{padding:22px 16px 16px}
+  .fronton .dedans{grid-template-columns:1fr auto;gap:14px 10px}
+  .fronton h1{font-size:22px}
+  .lampes-bloc{grid-column:1/-1;order:3}
+  .lampes{justify-content:space-between}
+  .lampes-leg{text-align:left}
+  .compte b{font-size:28px}
+  .compte span{font-size:9px}
+  .page{grid-template-columns:minmax(0,1fr);padding:18px 16px 96px;gap:24px}
+  .jour-jeux{gap:14px}
+  .cart{padding:0 6px 8px;box-shadow:4px 4px 0 var(--encre)}
+  .peigne{margin:0 22px 5px;height:9px}
+  .etiq .art{height:86px}
+  .etiq .nom{font-size:28px;left:8px;top:6px}
+  .etiq .info{padding:8px 8px 9px;gap:5px}
+  .sous{font-size:11px}
+  .temps{font-size:16px}
+  .med{font-size:12px}
+  .btn{height:42px;padding:0 10px;font-size:14px}
+  .etoile{width:36px;height:36px;right:-6px;top:-10px}
+  .salle{margin:28px -16px 0;border-radius:0;border-left:0;border-right:0;padding:18px 16px 16px;box-shadow:none}
+  .salle-tete{flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:22px}
+  .salle-tete h2{font-size:28px}
+  .salle-tete p{text-align:left}
+  .salle .etagere{grid-template-columns:minmax(0,1fr);gap:22px}
+  .salle .cart{padding:0 7px 7px}
+  .salle .peigne{display:none}
+  .salle .etiq{flex-direction:row;margin-top:7px}
+  .salle .etiq .art{height:auto;width:96px;flex:none;border-bottom:0;border-right:2.5px solid var(--encre)}
+  .salle .etiq .nom{display:none}
+  .salle .etiq .info{flex:1}
+  .salle .etiq .info .nomm{display:block}
+  .salle .cart .btn{display:none}
+  .salle .cart .ligne-btn{display:flex}
+  .onglets{display:flex;position:fixed;left:0;right:0;bottom:0;background:var(--creme);border-top:3px solid var(--encre);padding:7px 4px 13px}
+  .onglets a{flex:1;text-align:center;font:11px 'Archivo Black';color:var(--gris)}
+  .onglets a svg{display:block;margin:0 auto 3px;width:24px;height:24px}
+  .onglets a.ici{color:var(--encre)}
+  .onglets a.ici svg{color:var(--terre)}
+  .pied{padding:0 16px 100px}
+}
+.nomm{display:none;font-size:22px;line-height:1}
+.ligne-btn{display:none;gap:8px;align-items:center;margin-top:4px}
+.ligne-btn .btn{margin:0;flex:1;height:38px}
+</style></head><body>
+<header class="haut">
+  <div class="logo">DU JOUR</div>
+  <nav class="nav"><a class="ici" href="#">Aujourd'hui</a><a href="#">Classements</a><a href="#">Amis et groupes</a><a href="#">Profil</a></nav>
+  <div class="outils">
+    <div class="langue"><span class="on">FR</span><span>EN</span></div>
+    <span class="rond" aria-label="Nouveautés et invitations">%%CLOCHE%%<i class="point"></i></span>
+    <div class="av ph">%%AV_DE%%</div>
+  </div>
+</header>
+
+<section class="fronton">
+  <div class="dedans">
+    <div><h1>Vendredi 6 novembre</h1><div class="num mono">Journée n° 11</div></div>
+    <div class="lampes-bloc">
+      <div class="lampes" aria-label="Ta semaine">
+        <div class="lampe p"><i></i>L</div><div class="lampe f"><i></i>M</div><div class="lampe p"><i></i>M</div><div class="lampe p"><i></i>J</div><div class="lampe d ajd"><i></i>V</div><div class="lampe"><i></i>S</div><div class="lampe"><i></i>D</div>
+      </div>
+      <div class="lampes-leg">Série de 5 jours, 3 journées parfaites</div>
+    </div>
+    <div class="compte"><span>PROCHAINS NIVEAUX DANS</span><b>14:53:21</b></div>
+  </div>
+</section>
+
+<main class="page">
+  <div>
+    <div class="titre-s"><h2>JEUX DU JOUR</h2><span>1 fini sur 2</span></div>
+    <div class="etagere jour-jeux">
+      <article class="cart" style="background:#4A403A">
+        <span class="etoile on">%%ETOILE_PLEINE%%</span>
+        <div class="peigne"></div>
+        <div class="etiq" style="background:#1E1A17;color:#F4EFE6">
+          <div class="art">%%TRACK%%<div class="nom" style="font-family:'Barlow Condensed';font-style:italic;font-weight:800;color:#fff;text-shadow:3px 3px 0 #000">TRACK</div></div>
+          <div class="info">
+            <span class="sous" style="color:#C9BCA8">n° 25 · Col alpin</span>
+            <div class="res"><span class="pastille fini">Fini</span><span class="temps">34,774 s</span></div>
+            <span class="med"><i style="background:var(--bronze)"></i>Bronze · 2e sur 30</span>
+          </div>
+        </div>
+        <button class="btn">Rejouer</button>
+      </article>
+      <article class="cart" style="background:var(--moutarde)">
+        <span class="etoile">%%ETOILE%%</span>
+        <div class="peigne"></div>
+        <div class="etiq" style="background:var(--papier)">
+          <div class="art">%%JUMP%%<div class="nom" style="font-family:'Lilita One'">JUMP</div></div>
+          <div class="info">
+            <span class="sous">n° 22 · Usine</span>
+            <div class="res"><span class="pastille cours">En cours</span><span style="font-size:14px;font-weight:600">pas encore fini</span></div>
+            <span class="med" style="color:var(--gris);font-weight:600">Finis-le pour la journée parfaite</span>
+          </div>
+        </div>
+        <button class="btn p">Continuer</button>
+      </article>
+    </div>
+
+    <section class="salle">
+      <div class="salle-tete"><h2>ARCADE</h2><p>Un classement par jeu, pour le plaisir. Ces jeux ne comptent pas dans ta journée.</p></div>
+      <div class="etagere">
+        <article class="cart" style="background:#2E7D5B">
+          <span class="nouveau">NOUVEAU</span><span class="etoile">%%ETOILE%%</span>
+          <div class="peigne"></div>
+          <div class="etiq" style="background:#DDF2E8">
+            <div class="art">%%TOWER%%<div class="nom" style="font-family:'Rubik Mono One'">TOWER</div></div>
+            <div class="info"><span class="nomm" style="font-family:'Rubik Mono One'">TOWER</span><span class="sous">n° 5 · Banquise</span><div class="score"><span>Record du jour</span><b>412 pts</b></div><div class="ligne-btn"><button class="btn p">Jouer</button></div></div>
+          </div>
+          <button class="btn p">Jouer</button>
+        </article>
+        <article class="cart" style="background:#2C5A8C">
+          <span class="nouveau">NOUVEAU</span><span class="etoile">%%ETOILE%%</span>
+          <div class="peigne"></div>
+          <div class="etiq" style="background:#E2EEF9">
+            <div class="art">%%BLOCKS%%<div class="nom" style="font-family:'Rubik Mono One'">BLOCKS</div></div>
+            <div class="info"><span class="nomm" style="font-family:'Rubik Mono One'">BLOCKS</span><span class="sous">n° 5 · Chantier</span><div class="score"><span>Toi : 13e sur 17</span><b>90 pts</b></div><div class="ligne-btn"><button class="btn">Rejouer</button></div></div>
+          </div>
+          <button class="btn">Rejouer</button>
+        </article>
+        <article class="cart" style="background:#4A3590">
+          <span class="nouveau">NOUVEAU</span><span class="etoile">%%ETOILE%%</span>
+          <div class="peigne"></div>
+          <div class="etiq" style="background:#EEE6F8">
+            <div class="art">%%RUSH%%<div class="nom" style="font-family:'Bungee'">RUSH</div></div>
+            <div class="info"><span class="nomm" style="font-family:'Bungee'">RUSH</span><span class="sous">n° 5 · Arène de nuit</span><div class="score"><span>Record du jour</span><b>1:42,3</b></div><div class="ligne-btn"><button class="btn p">Jouer</button></div></div>
+          </div>
+          <button class="btn p">Jouer</button>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <aside class="droite">
+    <section class="panneau">
+      <h2>TA JOURNÉE</h2>
+      <div class="progres"><i class="on"></i><i></i></div>
+      <p class="aide">1 jeu du jour sur 2. Finis Jump pour entrer au classement cumulé.</p>
+      <div class="chiffres"><div><b>5 j.</b><span>de série</span></div><div><b>6e</b><span>sur Track</span></div><div><b>1er</b><span>entre amis</span></div></div>
+      <button class="btn p">PARTAGER MA JOURNÉE</button>
+    </section>
+    <section class="panneau">
+      <h2>CLASSEMENT DU JOUR</h2>
+      <div class="seg"><span>Tous</span><span class="on">Amis</span><span>Lève-tôt</span></div>
+      <table>
+        <tr><td class="rang">1er</td><td><span class="mini-ph">%%AV_BI%%</span>Biscotte</td><td class="t">1:14,2</td></tr>
+        <tr><td class="rang">2e</td><td><span class="mini-ph">%%AV_GA%%</span>Galet</td><td class="t">1:19,8</td></tr>
+        <tr><td class="rang">3e</td><td><span class="mini-ph">%%AV_LE%%</span>Léonie</td><td class="t">1:27,0</td></tr>
+        <tr class="moi"><td class="rang">–</td><td><span class="mini-ph">%%AV_DE%%</span>Toi</td><td class="t">finis Jump</td></tr>
+      </table>
+      <a class="lien" href="#">Tout le classement ›</a>
+    </section>
+    <section class="panneau">
+      <h2>TES AMIS AUJOURD'HUI</h2>
+      <div class="amis">
+        <div class="ami"><div class="av ph">%%AV_BI%%</div><span>Biscotte<small>Journée parfaite</small></span><div class="mt"><i class="f">T</i><i class="f">J</i></div></div>
+        <div class="ami"><div class="av ph">%%AV_GA%%</div><span>Galet<small>Journée parfaite</small></span><div class="mt"><i class="f">T</i><i class="f">J</i></div></div>
+        <div class="ami"><div class="av ph">%%AV_LE%%</div><span>Léonie<small>Track il y a 12 min</small></span><div class="mt"><i class="f">T</i><i>J</i></div></div>
+        <div class="ami"><div class="av ph">%%AV_MA%%</div><span>Marco<small>Pas encore joué</small></span><div class="mt"><i>T</i><i>J</i></div></div>
+      </div>
+      <a class="lien" href="#">Mes amis et mes groupes ›</a>
+    </section>
+    <section class="panneau">
+      <div class="groupe"><div class="embleme">LT</div><div><b>Les Lève-tôt</b><small>6 membres · 2es des groupes cette semaine</small></div><button class="btn">Inviter</button></div>
+    </section>
+  </aside>
+</main>
+<footer class="pied">
+  <span class="bulle" style="background:#5865F2">Rejoindre le Discord</span><span class="bulle" style="background:#29ABE0">Soutenir sur Ko-fi</span>
+  <a class="s" href="#">Un bug ? Une idée ?</a><a class="s" href="#">Mentions légales et confidentialité</a>
+  <span>Nouveaux niveaux à minuit, heure de Paris.</span>
+</footer>
+<nav class="onglets">%%ONGLETS%%</nav>
+</body></html>
+</script>
+
+<script>
+const ENCRE = '#2A1E16';
+function portrait(fond, peau, cheveux, haut, coiffure) {
+  const derriere = coiffure === 'long' ? `<path d="M14 34 C12 16 22 8 32 8 C43 8 52 16 50 34 L52 52 L12 52Z" fill="${cheveux}"/>` : '';
+  const dessus = {
+    court: `<path d="M18 28 C17 15 25 10 33 10 C42 10 47 16 46 28 C43 21 36 18 30 19 C24 20 20 23 18 28Z" fill="${cheveux}"/>`,
+    long: `<path d="M18 27 C18 15 25 11 32 11 C40 11 46 15 46 27 C40 20 30 18 18 27Z" fill="${cheveux}"/>`,
+    chignon: `<circle cx="32" cy="9" r="7" fill="${cheveux}"/><path d="M18 27 C18 15 25 12 32 12 C40 12 46 15 46 27 C42 19 24 19 18 27Z" fill="${cheveux}"/>`,
+    casquette: `<path d="M17 25 C17 13 25 9 32 9 C40 9 47 13 47 25Z" fill="${cheveux}"/><rect x="30" y="22" width="24" height="5" rx="2.5" fill="${cheveux}"/>`,
+    boucles: `<g fill="${cheveux}"><circle cx="21" cy="20" r="7"/><circle cx="29" cy="14" r="7"/><circle cx="38" cy="14" r="7"/><circle cx="45" cy="21" r="7"/></g>`,
+    rase: `<path d="M19 25 C19 16 25 12 32 12 C39 12 45 16 45 25 C40 20 24 20 19 25Z" fill="${cheveux}" opacity=".55"/>`,
+  }[coiffure];
+  return `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" fill="${fond}"/>${derriere}<path d="M8 66 C10 50 20 44 32 44 C44 44 54 50 56 66Z" fill="${haut}"/><rect x="28" y="36" width="8" height="10" fill="${peau}"/><ellipse cx="32" cy="28" rx="14" ry="15" fill="${peau}"/>${dessus}<ellipse cx="26.5" cy="29" rx="1.8" ry="2.2" fill="${ENCRE}"/><ellipse cx="37.5" cy="29" rx="1.8" ry="2.2" fill="${ENCRE}"/><path d="M27.5 35.5 Q32 38.5 36.5 35.5" stroke="${ENCRE}" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>`;
+}
+const ART = {
+  AV_DE: portrait('#E8B23A', '#F1C7A3', '#3B2416', '#C2401F', 'court'),
+  AV_BI: portrait('#9ED9C0', '#E9B48C', '#B5562A', '#2C5A8C', 'long'),
+  AV_GA: portrait('#BCD8F2', '#8D5B3B', '#1F1410', '#E8B23A', 'rase'),
+  AV_LE: portrait('#D8C6EE', '#F3D2B8', '#2A1E16', '#2E7D5B', 'chignon'),
+  AV_MA: portrait('#F6B3A4', '#C98E66', '#2A1E16', '#4A3590', 'casquette'),
+  TRACK: `<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="160" height="120" fill="#1E1A17"/><g fill="#E8542A"><polygon points="70,0 92,0 32,120 10,120"/><polygon points="114,0 136,0 76,120 54,120"/><polygon points="158,0 180,0 120,120 98,120"/></g><path d="M-5 104 C 40 96, 70 70, 165 52" stroke="#F4EFE6" stroke-width="4" stroke-dasharray="9 8" fill="none"/></svg>`,
+  JUMP: `<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="160" height="120" fill="#F2C230"/><rect y="92" width="160" height="28" fill="${ENCRE}"/><rect x="36" y="58" width="30" height="30" rx="4" fill="#FFF6E0" stroke="${ENCRE}" stroke-width="4"/><circle cx="46" cy="71" r="3.5" fill="${ENCRE}"/><circle cx="57" cy="71" r="3.5" fill="${ENCRE}"/><g transform="translate(116 82)"><circle r="17" fill="#E0473C" stroke="${ENCRE}" stroke-width="4" stroke-dasharray="7 4"/><circle r="5" fill="${ENCRE}"/></g></svg>`,
+  TOWER: `<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="160" height="120" fill="#9ED9C0"/><rect y="104" width="160" height="16" fill="${ENCRE}"/><g stroke="${ENCRE}" stroke-width="4"><rect x="46" y="78" width="68" height="26" fill="#5BA8E0"/><rect x="52" y="52" width="28" height="26" fill="#E8B23A"/><rect x="80" y="60" width="24" height="18" fill="#C2401F"/><rect x="66" y="26" width="24" height="26" fill="#E8B23A"/></g><circle cx="61" cy="64" r="4.5" fill="#fff" stroke="${ENCRE}" stroke-width="2"/><circle cx="71" cy="64" r="4.5" fill="#fff" stroke="${ENCRE}" stroke-width="2"/><circle cx="62" cy="65" r="2" fill="${ENCRE}"/><circle cx="72" cy="65" r="2" fill="${ENCRE}"/></svg>`,
+  BLOCKS: `<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="160" height="120" fill="#BCD8F2"/><rect y="104" width="160" height="16" fill="${ENCRE}"/><g stroke="${ENCRE}" stroke-width="4"><rect x="34" y="76" width="28" height="28" fill="#E8B23A"/><rect x="62" y="76" width="28" height="28" fill="#E8B23A"/><rect x="62" y="48" width="28" height="28" fill="#E46FA0"/><rect x="90" y="76" width="28" height="28" fill="#7C6BE0"/><rect x="90" y="48" width="28" height="28" fill="#7C6BE0"/><rect x="104" y="14" width="22" height="22" fill="#4FB37A"/></g><circle cx="43" cy="88" r="4.5" fill="#fff" stroke="${ENCRE}" stroke-width="2"/><circle cx="53" cy="88" r="4.5" fill="#fff" stroke="${ENCRE}" stroke-width="2"/><circle cx="44" cy="89" r="2" fill="${ENCRE}"/><circle cx="54" cy="89" r="2" fill="${ENCRE}"/></svg>`,
+  RUSH: `<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="160" height="120" fill="#D8C6EE"/><g opacity=".35" stroke="#B9A0DD" stroke-width="10"><line x1="-10" y1="40" x2="60" y2="-30"/><line x1="-10" y1="90" x2="110" y2="-30"/><line x1="20" y1="130" x2="170" y2="-20"/><line x1="70" y1="130" x2="190" y2="10"/></g><ellipse cx="80" cy="108" rx="34" ry="6" fill="${ENCRE}" opacity=".25"/><g stroke="${ENCRE}" stroke-width="4"><rect x="64" y="58" width="32" height="44" rx="12" fill="#C9D2DE"/><circle cx="80" cy="44" r="18" fill="#C9D2DE"/><path d="M80 16 l7 12 h-14z" fill="#C2401F"/><rect x="100" y="38" width="7" height="50" fill="#EEF2F6" transform="rotate(22 103 63)"/><circle cx="58" cy="76" r="12" fill="#C2401F"/></g><circle cx="74" cy="45" r="4.5" fill="#fff" stroke="${ENCRE}" stroke-width="2"/><circle cx="86" cy="45" r="4.5" fill="#fff" stroke="${ENCRE}" stroke-width="2"/><circle cx="75" cy="46" r="2" fill="${ENCRE}"/><circle cx="87" cy="46" r="2" fill="${ENCRE}"/></svg>`,
+  ETOILE: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 6 6.4.6-4.9 4.3 1.5 6.3L12 16.7 6.2 20l1.5-6.3L2.8 9.4l6.4-.6z" fill="none" stroke="${ENCRE}" stroke-width="2" stroke-linejoin="round"/></svg>`,
+  ETOILE_PLEINE: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 6 6.4.6-4.9 4.3 1.5 6.3L12 16.7 6.2 20l1.5-6.3L2.8 9.4l6.4-.6z" fill="${ENCRE}"/></svg>`,
+  CLOCHE: `<svg viewBox="0 0 24 24" fill="none" stroke="${ENCRE}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>`,
+};
+const ic = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+ART.ONGLETS = [
+  ['ici', "Aujourd'hui", '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'],
+  ['', 'Classements', '<path d="M6 21V11M12 21V5M18 21v-7"/>'],
+  ['', 'Amis', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.3.3 3.9 2 4.5 4.5"/>'],
+  ['', 'Profil', '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.2-6.5 8-6.5s7 2.5 8 6.5"/>'],
+].map(([c, t, d]) => `<a class="${c}" href="#">${ic(d)}${t}</a>`).join('');
+
+const html = document.getElementById('page').textContent.replace(/%%(\w+)%%/g, (_, k) => ART[k] ?? '');
+const sec = document.querySelector('.dir');
+const bureau = sec.querySelector('.bureau .boite');
+const mobile = sec.querySelector('.mobile');
+const fb = document.createElement('iframe'); fb.srcdoc = html; fb.title = 'Portail, ordinateur';
+const fm = document.createElement('iframe'); fm.srcdoc = html; fm.title = 'Portail, téléphone';
+bureau.appendChild(fb); mobile.appendChild(fm);
+const ajuster = () => {
+  const s = Math.min(1, bureau.clientWidth / 1280);
+  fb.style.transform = `scale(${s})`;
+  try { const h = fb.contentDocument.documentElement.scrollHeight; fb.style.height = h + 'px'; bureau.style.height = (h * s) + 'px'; } catch (e) {}
+  try { fm.style.height = fm.contentDocument.documentElement.scrollHeight + 'px'; } catch (e) {}
+};
+fb.addEventListener('load', () => { ajuster(); setTimeout(ajuster, 800); });
+fm.addEventListener('load', () => { ajuster(); setTimeout(ajuster, 800); });
+addEventListener('resize', ajuster);
+</script>
+</body>
+</html>

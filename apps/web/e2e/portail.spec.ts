@@ -58,7 +58,7 @@ test("portail en français : barre, date, une cartouche par jeu (numéro du jour
   await page.goto(`${SITE}/`);
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
   await expect(page).toHaveTitle("Du Jour");
-  await expect(page.locator(".dj-barre-portail .dj-logo")).toHaveText("DU JOUR");
+  await expect(page.locator(".salle-barre .dj-logo")).toHaveText("DU JOUR");
   await expect(page.locator("#date")).toHaveText("Mardi 20 octobre"); // TODAY = 20/10/2026, Paris
   await expect(page.locator("#portail-jeux-titre")).toHaveText("Les jeux du jour");
   await expect(page.locator('[data-jeu="track"] .track-etiquette__titre')).toHaveText("TRACK");
@@ -81,14 +81,15 @@ test("portail en français : barre, date, une cartouche par jeu (numéro du jour
   }
   expect(await page.evaluate(() => [...document.scripts].filter((s) => s.src && new URL(s.src).origin !== location.origin).length)).toBe(0);
   // Sans pseudo : l'icône profil (lot I2 : un lien vers le profil commun) ; les polices de la charte chargées (aucune police système).
-  await expect(page.locator(".dj-avatar")).toHaveAccessibleName("Ton profil");
-  await expect(page.locator(".dj-avatar")).toHaveAttribute("href", "profil/");
+  await expect(page.locator(".salle-barre .dj-avatar")).toHaveAccessibleName("Ton profil");
+  await expect(page.locator(".salle-barre .dj-avatar")).toHaveAttribute("href", "profil/");
   expect(await page.evaluate(async () => (await document.fonts.ready, ["Archivo Black", "Archivo", "JetBrains Mono", "Lilita One"].every((f) => document.fonts.check(`16px "${f}"`))))).toBe(true);
   await capture(page, "portail-portrait-fr");
 });
 
 test("langue : EN sans rechargement (lang, titre, textes, formats), gardée au rechargement, puis FR", async ({ browser }) => {
-  const page = await (await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" })).newPage();
+  // Lot U1 : le choix de langue est dans la barre à partir de 760 px (sur téléphone, il est dans le profil).
+  const page = await (await newClockedContext(browser, { ...PORTRAIT, viewport: { width: 800, height: 900 }, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
   await page.evaluate(() => ((window as unknown as { __sansRechargement: boolean }).__sansRechargement = true));
@@ -134,15 +135,15 @@ test("avatar : les initiales du pseudo du profil commun", { tag: "@regression" }
   });
   const page = await context.newPage();
   await page.goto(`${SITE}/`);
-  await expect(page.locator(".dj-avatar")).toHaveText("NA");
-  await expect(page.locator(".dj-avatar")).toHaveAccessibleName("Ton profil : Nathan");
+  await expect(page.locator(".salle-barre .dj-avatar")).toHaveText("NA");
+  await expect(page.locator(".salle-barre .dj-avatar")).toHaveAccessibleName("Ton profil : Nathan");
 });
 
 test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec un focus visible", { tag: "@regression" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser, { viewport: { width: 1024, height: 768 }, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("#jeux .dj-cartouche")).toHaveCount(2);
-  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', ".dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-cle="favori-track"]', '[data-jeu="jump"] a.dj-bouton', '[data-cle="favori-jump"]', "#retours", "#discord", "#kofi", "#mentions"]; // lot C1 : « Un bug ? Une idée ? » est un bouton visible avant le pied ; lot F1 : l'étoile de chaque cartouche suit son « Jouer » ; pied : Discord et Ko-fi (retouche) ; lot I3 : sans réponse du serveur (ici, aucun), la tuile « Classement du jour » n'est pas là
+  const attendus = ['[data-cle="nav-haut-aujourdhui"]', '[data-cle="nav-haut-classements"]', '[data-cle="nav-haut-amis"]', '[data-cle="nav-haut-profil"]', '[data-langue="fr"]', '[data-langue="en"]', "#cloche", ".salle-barre .dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-cle="favori-track"]', '[data-jeu="jump"] a.dj-bouton', '[data-cle="favori-jump"]', "#retours", "#discord", "#kofi", "#mentions"]; // lot U1 : la navigation du haut, puis la langue, la cloche et l'avatar ; lot C1 : « Un bug ? Une idée ? » est un bouton visible avant le pied ; lot F1 : l'étoile de chaque cartouche suit son « Jouer » ; pied : Discord et Ko-fi (retouche) ; lot I3 : sans réponse du serveur (ici, aucun), la tuile « Classement du jour » n'est pas là
   for (const sel of attendus) {
     await page.keyboard.press("Tab");
     await expect(page.locator(sel), sel).toBeFocused();
@@ -166,24 +167,33 @@ test("aucune cible tactile sous 44 px sur le portail, en portrait et en paysage"
     await page.goto(`${SITE}/`);
     await expect(page.locator("#jeux .dj-cartouche")).toHaveCount(2);
     const cibles = await page.locator("a[href], button, [tabindex]").evaluateAll((els) =>
-      els.map((e) => {
-        const r = e.getBoundingClientRect();
-        return { quoi: e.id || e.getAttribute("data-langue") || e.textContent?.trim() || e.tagName, l: r.width, h: r.height };
-      }),
+      els
+        .filter((e) => e.getClientRects().length > 0) // lot U1 : ce qui est caché (la navigation du haut sur téléphone, la barre d'onglets sur ordinateur) n'est pas une cible
+        .map((e) => {
+          const r = e.getBoundingClientRect();
+          return { quoi: e.id || e.getAttribute("data-langue") || e.textContent?.trim() || e.tagName, l: r.width, h: r.height };
+        }),
     );
     expect(cibles.length, nom).toBeGreaterThanOrEqual(5);
     for (const c of cibles) {
       expect(c.l, `${nom} ${c.quoi}`).toBeGreaterThanOrEqual(44);
       expect(c.h, `${nom} ${c.quoi}`).toBeGreaterThanOrEqual(44);
     }
-    // Aucun défilement horizontal ; en paysage, les cartouches côte à côte.
+    // Lot U1 : la barre (logo, navigation, langue, cloche, avatar) ne se chevauche pas à 844 px ; sur téléphone la navigation du haut est remplacée par la barre d'onglets du bas.
+    if (nom === "paysage") {
+      const boites = await page.locator(".salle-barre .dj-logo, .salle-nav a, .salle-barre__outils > *").evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => [Math.round(r.left), Math.round(r.right)]));
+      for (let i = 1; i < boites.length; i++) expect(boites[i]![0]!, `${nom} élément ${i} de la barre`).toBeGreaterThanOrEqual(boites[i - 1]![1]! - 1);
+    } else {
+      await expect(page.locator(".salle-nav")).toBeHidden();
+      await expect(page.locator(".salle-onglets")).toBeVisible();
+    }
+    // Aucun défilement horizontal ; lot U1 : à 844 px la colonne de droite prend 360 px, les deux cartouches se superposent (de même taille).
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), nom).toBe(true);
     const [a, b] = await page.locator("#jeux .dj-cartouche").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
-    if (nom === "paysage") expect(Math.abs(a! - b!), nom).toBeLessThan(2);
-    else expect(b!, nom).toBeGreaterThan(a!);
+    expect(b!, nom).toBeGreaterThan(a!);
     await capture(page, `portail-${nom}-fr`);
     if (nom === "paysage") {
-      await page.locator('.dj-choix-langue [data-langue="en"]').click();
+      await page.locator('.dj-choix-langue [data-langue="en"]').click(); // 844 px : la langue est dans la barre
       await expect(page.locator("html")).toHaveAttribute("lang", "en");
       await capture(page, "portail-paysage-en");
     }

@@ -96,8 +96,21 @@ interface VueGroupes {
   moins: { id: string; nom: string; avatar: string | null; classesN: number }[];
 }
 
+/** Lot U1 : le résumé de ton groupe pour l'accueil (`GET /api/portail/jour`, dans `joueur.groupe`). `rang` : sa place du jour au cumul (`null` : pas classé, ou classement masqué) sur `sur` groupes classés. */
+export interface ResumeGroupe {
+  nom: string;
+  /** L'empreinte de son emblème (absente : les deux premières lettres du nom). */
+  avatar?: string;
+  membres: number;
+  rang: number | null;
+  sur: number;
+}
+export interface GroupePourPortail {
+  resume(id: string, day: number): Promise<ResumeGroupe | null>;
+}
+
 export function createGroupes(platform: Platform, vue: () => VuePartagee, avatars: Avatars) {
-  const { db, now, players, hashKey, hit, hitAddress, readHitAddress, readJson, playerIdOf } = platform;
+  const { db, now, log, players, hashKey, hit, hitAddress, readHitAddress, readJson, playerIdOf } = platform;
   const idDe = (req: Request): string => playerIdOf(req.headers.get("x-player-id"));
   const ecrire = async (instructions: Statement[]) => {
     if (db.batch) await db.batch(instructions);
@@ -617,7 +630,31 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
     return m ? await nombreDeMembres(m.groupe) : null;
   }
 
-  return { route, routeAdmin, membresPourClassement, tailleDuGroupe, oublier: () => cacheGroupes.clear(), aujourdhuiDebut: () => parisDayStart(platform.today()) };
+  /**
+   * Lot U1 : ton groupe pour l'accueil — son nom, son emblème, son nombre de membres et sa place **du jour** au cumul (la même que sur sa page ; le classement des groupes se calcule une fois par fenêtre et par instance, `vuesDuJour`).
+   * Un joueur sans groupe ne coûte qu'une lecture indexée. Les lectures : l'appartenance (clé primaire), le groupe (clé primaire) et le nombre de membres (index `groupe_membres_by_groupe`).
+   */
+  const pourPortail: GroupePourPortail = {
+    async resume(id, day) {
+      const g = await groupeDe(id);
+      if (!g) return null;
+      const membres = await nombreDeMembres(g.groupe.id);
+      let rang: number | null = null;
+      let sur = 0;
+      if (g.groupe.classement_masque === 0 && g.arrivee <= day) {
+        try {
+          const cumul = (await vuesDuJour(day)).jours.find((x) => x.vue === "cumul");
+          rang = cumul?.classes.find((x) => x.id === g.groupe.id)?.rang ?? null;
+          sur = cumul?.classes.length ?? 0;
+        } catch (e) {
+          log("WARNING", "groupes : rang du jour indisponible", { error: e instanceof HttpError ? e.code : "inconnue" });
+        }
+      }
+      return { nom: g.groupe.name, ...(g.groupe.avatar ? { avatar: g.groupe.avatar } : {}), membres, rang, sur };
+    },
+  };
+
+  return { route, routeAdmin, pourPortail, membresPourClassement, tailleDuGroupe, oublier: () => cacheGroupes.clear(), aujourdhuiDebut: () => parisDayStart(platform.today()) };
 }
 
 export type Groupes = ReturnType<typeof createGroupes>;

@@ -94,7 +94,7 @@ test("page publique d'un groupe › classement des groupes › Démo gère le si
   await expect(page.locator("#groupes-moins")).toContainText("Moins de 3 classés");
   // Sur ce même classement, « Démo » (chef des Noctambules) trouve « Mon groupe » dans le sélecteur des joueurs.
   await page.goto(`${SITE}/?demo=joueur`);
-  await expect(page.locator("a.dj-avatar--lien")).toBeVisible();
+  await expect(page.locator(".salle-barre a.dj-avatar--lien")).toBeVisible();
   await page.goto(`${SITE}/classement/?date=2026-10-24`);
   await expect(page.locator('#classement-selecteur [data-filtre="groupe"]')).toBeVisible();
   await page.locator('#classement-selecteur [data-filtre="groupe"]').click();

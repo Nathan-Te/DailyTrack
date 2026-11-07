@@ -46,6 +46,48 @@ export interface JeuDuJour {
   etat?: Etat;
 }
 
+/** Lot U1 : un jour de la semaine en lampes — `parfaite` (tous les jeux de ses jeux du jour finis), `jouee` (au moins un), `rien`. */
+export interface JourDeSemaine {
+  /** AAAA-MM-JJ. */
+  date: string;
+  etat: "parfaite" | "jouee" | "rien";
+}
+
+/** Lot U1 : une ligne du classement du jour entre amis (toi, ou un ami) ; `rang` `null` : rien fini au cumul ; `tempsMs` `null` : pas tous les jeux finis. */
+export interface LigneEntreAmis {
+  rang: number | null;
+  pseudo: string;
+  ref: string;
+  avatar?: string;
+  tempsMs: number | null;
+  /** Combien de jeux de la journée il a finis. */
+  faits: number;
+  moi?: true;
+}
+export interface ClassementAmisAccueil {
+  /** Toi et tes amis (le nombre de lignes du classement). */
+  sur: number;
+  top: LigneEntreAmis[];
+  moi: LigneEntreAmis;
+}
+/** Lot U1 : un ami dans « tes amis aujourd'hui » : ses jeux du jour faits (leur dossier), le dernier (et son instant, en ms). */
+export interface AmiDuJour {
+  pseudo: string;
+  ref: string;
+  avatar?: string;
+  faits: string[];
+  parfaite: boolean;
+  dernier?: { site: string; at: number };
+}
+/** Lot U1 : ton groupe (nom, emblème, membres, ta place du jour au cumul sur `sur` groupes classés ; `rang` `null` : pas classé). */
+export interface GroupeAccueil {
+  nom: string;
+  avatar?: string;
+  membres: number;
+  rang: number | null;
+  sur: number;
+}
+
 export interface JoueurDuJour {
   pseudo: string;
   serie: number;
@@ -64,6 +106,13 @@ export interface JoueurDuJour {
   avatar?: string;
   /** Lot F1 : les jeux épinglés du joueur (leur dossier sur le site) — `null` : il n'a jamais rien choisi ; absent d'un serveur plus ancien. */
   favoris?: string[] | null;
+  /** Lot U1 : la colonne de droite — le classement entre amis (`null` : aucun ami), tes amis aujourd'hui (6 au plus), leur nombre, ton groupe (`null` : aucun) ; absents d'un serveur plus ancien. */
+  classementAmis?: ClassementAmisAccueil | null;
+  amisDuJour?: AmiDuJour[];
+  nbAmis?: number;
+  groupe?: GroupeAccueil | null;
+  /** Lot U1 : sa semaine, les 7 jours du lundi au dimanche (la semaine de Paris qui contient aujourd'hui) ; absent d'un serveur plus ancien. */
+  semaine?: JourDeSemaine[];
   /** Lot F1 : les jeux qui comptent pour sa journée aujourd'hui (journée parfaite, « n fini sur m », partage) ; un choix de favoris ne compte qu'à partir de demain. */
   jeuxDuJour?: string[];
 }

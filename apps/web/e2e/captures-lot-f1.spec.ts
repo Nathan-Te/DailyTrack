@@ -63,13 +63,12 @@ for (const format of FORMATS) {
     test(`accueil avec et sans favoris — ${format.slug} ${langue}`, async ({ browser }) => {
       for (const avec of [true, false]) {
         const context = await newClockedContext(browser, { viewport: format.viewport, hasTouch: true, isMobile: true, locale: langue === "fr" ? "fr-FR" : "en-GB" });
-        if (!avec) await context.addInitScript((l) => localStorage.setItem("cdj:langue", l), langue);
+        await context.addInitScript((l) => localStorage.setItem("cdj:langue", l), langue); // lot U1 : la langue n'est plus dans la barre d'un téléphone
         const page = await context.newPage();
         await page.goto(`http://localhost:${SITE}/${avec ? "?demo=joueur" : ""}`);
         if (avec) {
           await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
-          if (langue === "en") await page.locator('.dj-choix-langue [data-langue="en"]').click();
-          await expect(page.locator("#autres-jeux [data-jeu]")).toHaveCount(1);
+          await expect(page.locator("#jeux [data-jeu]")).toHaveCount(2); // lot U1 : plus de « Les autres jeux », les épinglés en tête
         } else {
           await expect(page.locator("#favoris-invite")).toBeVisible();
         }
