@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
 import { actionDe, contenuDeScenario, dailyBlocks, emplacementDe, jouer, Partie, PLAFOND_PIECES, SCENARIOS, TAILLE_SERIE } from "../src/index";
-import { coupDuDiamant, jouerDiamant, LARGEUR_FAISCEAU, piecesSansPlace, planDuDiamant, POIDS_DIAMANT, seuilsDe } from "../src/diamant";
+import { coupDuDiamant, jouerDiamant, LARGEUR_FAISCEAU, piecesSansPlace, planDuDiamant, partieDuDiamant, POIDS_DIAMANT } from "../src/diamant";
 import { jouerGlouton } from "../src/glouton";
 
 // Le bot Diamant (lots B3 et B8) : une recherche en faisceau série par série. Pur, déterministe, ne joue que des actions légales, rejoué par le code du serveur, plus fort que le bot moyen, et rapide.
@@ -112,11 +112,11 @@ describe("le bot Diamant (recherche en faisceau)", () => {
     expect(piecesSansPlace(new Uint8Array(8).fill(0xff))).toBe(40);
   });
 
-  it("calcule les seuils d'un jour vite : médiane de 40 jours sous 2 s ici (les tests de tous les paquets tournent en parallèle sur quelques cœurs : la mesure de référence, seule, est dans le README du lot B8 — 53 ms en médiane, 152 ms au pire sur 1 000 jours, sous les 200 ms demandés)", () => {
+  it("joue la partie du Diamant d'un jour (arrêtée à son nombre de pièces) vite : médiane de 40 jours sous 2 s ici (les tests de tous les paquets tournent en parallèle sur quelques cœurs : la mesure de référence, seule, est dans le README du lot B8 — 53 ms en médiane, 152 ms au pire sur 1 000 jours, sous les 200 ms demandés)", () => {
     const temps = jours(40).map((j) => {
       const c = dailyBlocks(j);
       const t0 = performance.now();
-      seuilsDe(c);
+      partieDuDiamant(c);
       return performance.now() - t0;
     });
     temps.sort((a, b) => a - b);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dailyBlocks, medailleDe, numeroBlocks, Partie, PREMIER_JOUR_BLOCKS, seuilsDepuis } from "@cdj/blocks-sim";
+import { dailyBlocks, medailleDe, numeroBlocks, Partie, PREMIER_JOUR_BLOCKS, SEUILS_MEDAILLES } from "@cdj/blocks-sim";
 import { jouerDiamant } from "@cdj/blocks-sim/diamant";
 import { adresseDePartage, ligneParDefaut, textePartage } from "@cdj/kit/partage";
 import { CATALOGUE_EN } from "../src/catalogue.en";
@@ -82,7 +82,7 @@ describe("la ligne à partager de Blocks", () => {
 describe("le résultat d'exemple de `?scenario=partage`", () => {
   const contenu = dailyBlocks(PREMIER_JOUR_BLOCKS + 4);
   const diamant = jouerDiamant(contenu);
-  const seuils = seuilsDepuis(diamant.resultat.score);
+  const seuils = SEUILS_MEDAILLES;
   it("chaque médaille voulue tombe dans sa bande (ou, faute de bande, au-dessus) ; « aucune » reste sous le bronze", () => {
     const de = (poses: number[]): number => {
       const p = new Partie(contenu);
@@ -99,7 +99,11 @@ describe("le résultat d'exemple de `?scenario=partage`", () => {
       const m = medailleDe([de(poses)], seuils);
       expect(["bronze", "silver", "gold", "author"].indexOf(m!), nom).toBeGreaterThanOrEqual(["bronze", "silver", "gold", "author"].indexOf(code));
     }
-    expect(exempleDePartage(contenu, "diamant")).toEqual(diamant.actions);
+    // « diamant » : le début de la partie du bot jusqu'au premier score qui atteint le Diamant (ou la partie entière, un jour où il ne l'atteint pas).
+    const poses = exempleDePartage(contenu, "diamant");
+    expect(poses).toEqual(diamant.actions.slice(0, poses.length));
+    if (diamant.resultat.score >= seuils.author) expect(medailleDe([de(poses)], seuils)).toBe("author");
+    else expect(poses).toEqual(diamant.actions);
   });
   it("déterministe : le même jour donne le même exemple", () => {
     expect(exempleDePartage(contenu, "argent")).toEqual(exempleDePartage(contenu, "argent"));

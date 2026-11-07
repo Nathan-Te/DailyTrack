@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { dailyBlocks, grilleEnTexte, medailleDe, Partie, PIECES, PREMIER_JOUR_BLOCKS, THEMES_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
-import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
+import { dailyBlocks, grilleEnTexte, medailleDe, Partie, PIECES, PIECES_DU_DIAMANT, PREMIER_JOUR_BLOCKS, SEUILS_MEDAILLES, THEMES_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
+import { partieDuDiamant } from "@cdj/blocks-sim/diamant";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
 import { PALETTE_PORT } from "@cdj/visuels/blocs";
@@ -26,7 +26,7 @@ test.describe("Blocks : le bot Diamant (&bot)", () => {
     await page.evaluate(() => window.__jeu.avancer(60)); // deux de plus
     expect((await page.evaluate(() => window.__blocks.etat())).poses).toBe(9);
     // Ce sont bien les poses du Diamant (celles de la simulation, Node), dans l'ordre.
-    const bot = jouerDiamant(dailyBlocks(jour));
+    const bot = partieDuDiamant(dailyBlocks(jour));
     const attendue = new Partie(dailyBlocks(jour));
     for (const a of bot.actions.slice(0, 9)) attendue.jouerAction(a);
     expect(await page.evaluate(() => window.__blocks.grille())).toEqual(grilleEnTexte(attendue.grille));
@@ -34,16 +34,17 @@ test.describe("Blocks : le bot Diamant (&bot)", () => {
     await context.close();
   });
 
-  test("la partie du bot va jusqu'au bout : son score est le Diamant, l'écran de fin montre les quatre seuils, la partie reste non classée", async ({ browser }) => {
+  test("la partie du bot s'arrête après PIECES_DU_DIAMANT pièces (ou plus tôt, s'il meurt) : l'écran de fin montre son score et les quatre seuils, la partie reste non classée", async ({ browser }) => {
     const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&bot=30`);
     await lancer(page);
     const contenu = dailyBlocks(jour);
-    const bot = jouerDiamant(contenu);
+    const bot = partieDuDiamant(contenu);
+    expect(bot.resultat.poses).toBeLessThanOrEqual(PIECES_DU_DIAMANT);
     await page.evaluate(() => window.__jeu.avancer(30 * 800));
     await expect(page.locator("#jeu-fin")).toBeVisible();
     expect(await page.evaluate(() => window.__jeu.score())).toEqual([bot.resultat.score, bot.resultat.combo]);
-    const s = seuilsDe(contenu);
-    expect(medailleDe([bot.resultat.score], s)).toBe("author"); // le bot obtient le Diamant, par définition
+    expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ poses: bot.resultat.poses });
+    const s = SEUILS_MEDAILLES;
     const medailles = await page.locator(".jeu-medailles").innerText();
     for (const v of [s.author, s.gold, s.silver, s.bronze]) expect(medailles).toContain(String(v));
     expect(s.bronze).toBeLessThan(s.silver);
@@ -57,7 +58,7 @@ test.describe("Blocks : le bot Diamant (&bot)", () => {
   test("un jour passé : `?seed=AAAA-MM-JJ&bot` joue la suite de ce jour-là", async ({ browser }) => {
     const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&seed=2026-11-02&bot=30`);
     await lancer(page);
-    const bot = jouerDiamant(dailyBlocks(PREMIER_JOUR_BLOCKS));
+    const bot = partieDuDiamant(dailyBlocks(PREMIER_JOUR_BLOCKS));
     await page.evaluate(() => window.__jeu.avancer(30 * 800));
     await expect(page.locator("#jeu-fin")).toBeVisible();
     expect(await page.evaluate(() => window.__jeu.score())).toEqual([bot.resultat.score, bot.resultat.combo]);
@@ -81,7 +82,7 @@ test.describe("Blocks : les médailles de l'écran de fin", () => {
     const glouton = jouerGlouton(contenu);
     await poserLesActions(page, glouton.actions);
     await expect(page.locator("#jeu-fin")).toBeVisible();
-    const s = seuilsDe(contenu);
+    const s = SEUILS_MEDAILLES;
     const medailles = await page.locator(".jeu-medailles").innerText();
     for (const v of [s.author, s.gold, s.silver, s.bronze]) expect(medailles).toContain(String(v));
     expect(medailles).not.toMatch(/\b0\b/);

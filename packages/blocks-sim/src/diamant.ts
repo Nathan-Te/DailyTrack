@@ -3,8 +3,8 @@ import { BLOCKS_GENERATOR_VERSION } from "./constantes";
 import { dailyBlocks, type Contenu } from "./generateur";
 import { figerJour, type JourFige } from "./jours";
 import { PIECES, type Piece } from "./pieces";
-import { actionDe, colonneDe, emplacementDe, ligneDe, Partie, type Resultat } from "./partie";
-import { seuilsDepuis, type Seuils } from "./medailles";
+import { actionDe, colonneDe, emplacementDe, ligneDe, Partie, type Resultat, type ResultatDeBot } from "./partie";
+import { PIECES_DU_DIAMANT, SEUILS_MEDAILLES, type Seuils } from "./medailles";
 import { BITS, evaluerGrille, piecesSansPlace, POIDS_DIAMANT } from "./evaluation";
 export { evaluerGrille, piecesSansPlace, POIDS_DIAMANT };
 
@@ -265,34 +265,30 @@ export function coupDuDiamant(partie: Partie): { emplacement: number; col: numbe
   return { emplacement: emplacementDe(a), col: colonneDe(a), ligne: ligneDe(a) };
 }
 
-/** Joue une partie entière avec le Diamant : le résultat et les actions (octets `emplacement × 64 + ligne × 8 + colonne`), une rediffusion valide. `k` : la largeur du faisceau (mesures). */
-export function jouerDiamant(contenu: Pick<Contenu, "suite" | "depart">, k: number = LARGEUR_FAISCEAU): { resultat: Resultat; actions: number[] } {
+/**
+ * Joue une partie avec le Diamant : le résultat et les actions (octets `emplacement × 64 + ligne × 8 + colonne`). `k` : la largeur du faisceau (mesures). **`jusqua` (lot B8b)** : s'arrête après ce nombre de pièces
+ * posées (une série entière à la fois : le bot planifie série par série) ; la partie n'est alors pas finie, le résultat est son score du moment (`raison` « arret ») et ses actions ne sont pas une rediffusion qu'on envoie.
+ * Sans `jusqua`, c'est la partie entière, une rediffusion valide.
+ */
+export function jouerDiamant(contenu: Pick<Contenu, "suite" | "depart">, k: number = LARGEUR_FAISCEAU, jusqua: number = Infinity): { resultat: ResultatDeBot; actions: number[] } {
   const partie = new Partie(contenu);
   const actions: number[] = [];
-  while (!partie.finie) {
+  while (!partie.finie && partie.poses < jusqua) {
     const plan = planDuDiamant(partie, k);
     if (plan.length === 0) break; // inatteignable : une partie non finie a toujours une pièce qui tient
     for (const a of plan) {
+      if (partie.poses >= jusqua) break;
       if (partie.jouerAction(a) === null) throw new Error("diamant : action illégale");
       actions.push(a);
     }
   }
-  return { resultat: partie.resultat()!, actions };
+  return { resultat: partie.instantane(), actions };
 }
 
-/** La partie du bot sur le contenu du jour. */
-export const partieDuDiamant = (contenu: Pick<Contenu, "suite" | "depart">): Resultat => jouerDiamant(contenu).resultat;
+/** La partie du Diamant sur le contenu du jour, arrêtée après `PIECES_DU_DIAMANT` pièces (ou plus tôt, s'il meurt) : celle qu'on regarde (`&bot`) et qu'on revoit. Pas une rediffusion qu'on envoie (la partie n'est pas finie). */
+export const partieDuDiamant = (contenu: Pick<Contenu, "suite" | "depart">): { resultat: ResultatDeBot; actions: number[] } => jouerDiamant(contenu, LARGEUR_FAISCEAU, PIECES_DU_DIAMANT);
 
-/** Les seuils des médailles d'un jour. Pur et déterministe ; le temps de calcul est mesuré dans le README du lot B8 (moins de 200 ms par jour côté serveur). */
-export const seuilsDe = (contenu: Pick<Contenu, "suite" | "depart">): Seuils => seuilsDepuis(partieDuDiamant(contenu).score);
-
-/**
- * **Les seuils d'un jour tel qu'on le sert** : ceux **figés avec le jour** s'il vient d'un fichier de jour (`Contenu.seuilsFiges`, `jours.ts`), sinon ceux du bot d'aujourd'hui (`seuilsDe`). Le serveur et le jeu
- * passent par cette seule fonction : un changement du bot (`BLOCKS_BOT_VERSION`) ne change donc jamais un jour déjà figé.
- */
-export const seuilsDuJour = (contenu: Pick<Contenu, "suite" | "depart" | "seuilsFiges">): Seuils => contenu.seuilsFiges ?? seuilsDe(contenu);
-
-/** Le fichier à figer pour un jour : sa suite **et** ses seuils, calculés par le bot de cette version du code (l'outil `figer:blocks` et « Mettre en production » écrivent ce fichier, jamais deux fois). */
+/** Le fichier à figer pour un jour : sa suite **et** ses seuils (ceux de cette version du code ; l'outil `figer:blocks` et « Mettre en production » écrivent ce fichier, jamais deux fois). */
 export function figerJourDuDiamant(jour: number, version: number = BLOCKS_GENERATOR_VERSION): JourFige {
-  return figerJour(jour, seuilsDe(dailyBlocks(jour, version)), version);
+  return figerJour(jour, { ...SEUILS_MEDAILLES }, version);
 }

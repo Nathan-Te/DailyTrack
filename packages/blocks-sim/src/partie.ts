@@ -15,6 +15,8 @@ import { PIECES, type Piece } from "./pieces";
 // Fin : dès qu'**aucune des pièces restantes** de la série ne tient nulle part (une pièce qui ne tient nulle part est « grisée » : `grisee`), ou que le plafond de pièces est atteint.
 
 export type Raison = "bloquee" | "plafond";
+/** Le résultat d'un bot, qui peut s'être arrêté avant la fin (lot B8b : un nombre fixe de pièces). Ce n'est jamais ce que le serveur classe. */
+export type ResultatDeBot = Omit<Resultat, "raison"> & { raison: Raison | "arret" };
 
 /** Ce qu'une pose a fait : de quoi dessiner le gain, l'effacement et le combo (rien de ceci n'est classé). */
 export interface Pose {
@@ -178,6 +180,11 @@ export class Partie {
 
   resultat(): Resultat | null {
     return this.fin === null ? null : { score: this.score, combo: this.comboMax, poses: this.poses, raison: this.fin };
+  }
+
+  /** Le résultat à cet instant, partie finie ou non (lot B8b : un bot arrêté après un nombre fixe de pièces rend son score du moment ; `raison` : `arret` s'il n'a pas fini). Ne se classe jamais. */
+  instantane(): ResultatDeBot {
+    return { score: this.score, combo: this.comboMax, poses: this.poses, raison: this.fin ?? "arret" };
   }
 }
 

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { actionDe, enregistrer, jouer, dailyBlocks } from "@cdj/blocks-sim";
+import { actionDe, emplacementDe, enregistrer, jouer, dailyBlocks } from "@cdj/blocks-sim";
 import { parseDay } from "@cdj/core";
 import { appareil, JOUR, lancer, partieDuGlouton, poserLesActions } from "./appareil";
 
@@ -51,7 +51,7 @@ test.describe("Blocks : une partie", () => {
     const { actions } = partieDuGlouton();
     await poserLesActions(page, actions.slice(0, 1), false);
     const avant = await page.evaluate(() => ({ grille: window.__blocks.grille(), etat: window.__blocks.etat(), pieces: window.__blocks.pieces() }));
-    await poserLesActions(page, [actions[0]!, actionDe(2, 7, 7) + 9, actionDe(0, 4, 4)], false); // la même pose (l'emplacement est vide) ; hors grille ; encore l'emplacement vide
+    await poserLesActions(page, [actions[0]!, actionDe(2, 7, 7) + 9, actionDe(emplacementDe(actions[0]!), 4, 4)], false); // la même pose (l'emplacement est vide) ; hors grille ; encore l'emplacement vide (celui de la première pose du bot, quel qu'il soit)
     expect(await page.evaluate(() => ({ grille: window.__blocks.grille(), etat: window.__blocks.etat(), pieces: window.__blocks.pieces() }))).toEqual(avant);
     await context.close();
   });
