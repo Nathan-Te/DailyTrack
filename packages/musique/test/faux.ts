@@ -1,7 +1,8 @@
-import type { ContexteAudio, Dependances, ElementAudio, GainAudio, OscAudio, ParamAudio, StockageMin } from "../src/lecteur";
+import { PAS_SURVEILLANCE_MS, type ContexteAudio, type Dependances, type GainAudio, type OscAudio, type ParamAudio, type SourceAudio, type StockageMin, type TamponAudio } from "../src/lecteur";
 import type { JeuMusique, ListeServie, PisteServie } from "../src/types";
 
-// Des faux navigateurs pour tester le lecteur sans navigateur : un élément audio que le test fait avancer, un contexte qui note ce qu'on lui demande, un stockage en mémoire.
+// Des faux navigateurs pour tester le lecteur sans navigateur (lot S2 : Web Audio seulement, jamais d'élément média) : un contexte dont le test fait avancer l'horloge et qui note ce qu'on lui demande
+// (morceaux décodés, lectures, gains), un téléchargement en mémoire, un stockage en mémoire.
 
 export class FauxParam implements ParamAudio {
   value = 0;
@@ -57,31 +58,48 @@ export class FauxOsc implements OscAudio {
   }
 }
 
-export class FauxElement implements ElementAudio {
-  src = "";
-  preload = "";
-  currentTime = 0;
-  duration = NaN;
-  paused = true;
-  lectures = 0;
-  private ecouteurs = new Map<string, (() => void)[]>();
-  async play() {
-    this.lectures++;
-    this.paused = false;
+/** Un morceau décodé : seule sa durée compte. `url` dit d'où il vient (de quoi compter les téléchargements). */
+export class FauxTampon implements TamponAudio {
+  constructor(
+    readonly url: string,
+    readonly duration: number,
+  ) {}
+}
+
+/** Une lecture d'un morceau décodé : note quand elle commence (horloge du contexte), à quelle position du fichier, et si on l'a arrêtée. */
+export class FauxSource implements SourceAudio {
+  buffer: TamponAudio | null = null;
+  onended: (() => void) | null = null;
+  vers: unknown[] = [];
+  debut: number | null = null;
+  decalage: number | null = null;
+  arrets = 0;
+  deconnectee = false;
+  connect(v: unknown) {
+    this.vers.push(v);
+    return v;
   }
-  pause() {
-    this.paused = true;
+  disconnect() {
+    this.deconnectee = true;
   }
-  addEventListener(type: string, fn: () => void) {
-    this.ecouteurs.set(type, [...(this.ecouteurs.get(type) ?? []), fn]);
+  start(quand?: number, decalage?: number) {
+    this.debut = quand ?? 0;
+    this.decalage = decalage ?? 0;
   }
-  emettre(type: string) {
-    for (const f of this.ecouteurs.get(type) ?? []) f();
+  stop() {
+    this.arrets++;
   }
-  /** Fait avancer la lecture jusqu'à `t` secondes et dit `timeupdate`. */
-  jusqua(t: number) {
-    this.currentTime = t;
-    this.emettre("timeupdate");
+  /** La lecture est arrivée au bout du fichier. */
+  finir() {
+    this.onended?.();
+  }
+  /** Elle joue encore : commencée et pas arrêtée. */
+  get joue(): boolean {
+    return this.debut !== null && this.arrets === 0;
+  }
+  /** Le fichier de ce qu'elle joue. */
+  get fichier(): string {
+    return (this.buffer as FauxTampon | null)?.url ?? "";
   }
 }
 
@@ -90,7 +108,9 @@ export class FauxContexte implements ContexteAudio {
   currentTime = 10;
   destination = { destination: true };
   gains: FauxGain[] = [];
-  sources: { el: unknown; vers: unknown[] }[] = [];
+  sources: FauxSource[] = [];
+  /** Les morceaux décodés, dans l'ordre. */
+  decodes: FauxTampon[] = [];
   oscillateurs: FauxOsc[] = [];
   suspendus = 0;
   repris = 0;
@@ -112,10 +132,18 @@ export class FauxContexte implements ContexteAudio {
     this.oscillateurs.push(o);
     return o;
   }
-  createMediaElementSource(el: unknown) {
-    const s = { el, vers: [] as unknown[], connect(v: unknown) { this.vers.push(v); return v; } };
+  createBufferSource() {
+    const s = new FauxSource();
     this.sources.push(s);
     return s;
+  }
+  /** Les « octets » sont l'adresse du fichier (voir `banc`) ; la durée est celle du morceau de la liste, ou 120 s. */
+  durees = new Map<string, number>();
+  async decodeAudioData(donnees: ArrayBuffer) {
+    const url = new TextDecoder().decode(donnees);
+    const t = new FauxTampon(url, this.durees.get(url) ?? 120);
+    this.decodes.push(t);
+    return t;
   }
 }
 
@@ -135,26 +163,33 @@ export const liste = (...pistes: PisteServie[]): ListeServie => ({ version: 1, d
 export interface Banc {
   deps: Dependances;
   ctx: FauxContexte;
-  elements: FauxElement[];
   stockage: StockageMemoire;
   session: StockageMemoire;
   /** Les rappels programmés, que le test fait sonner. */
   attente: { ms: number; fn: () => void }[];
   evenements: Map<string, (() => void)[]>;
-  etat: { cachee: boolean; maintenant: number; hasard: number[]; requetes: string[] };
+  etat: { cachee: boolean; maintenant: number; hasard: number[]; requetes: string[]; telechargements: string[]; retenir: boolean; echecs: Set<string> };
   emettre(cible: "fenetre" | "document", type: string): void;
   ecouteursDe(cible: "fenetre" | "document", type: string): number;
-  /** Laisse les promesses se résoudre (chargement de la liste). */
+  /** Laisse les promesses se résoudre (chargement de la liste, téléchargement et décodage des morceaux). */
   pret(): Promise<void>;
+  /** Les téléchargements retenus (`etat.retenir`) arrivent. */
+  livrer(): Promise<void>;
+  /** Fait avancer l'horloge du contexte de `s` secondes, par pas de la surveillance du lecteur (250 ms) : à chaque pas elle sonne, puis les promesses se résolvent. */
+  avancer(s: number): Promise<void>;
+  /** Fait sonner la surveillance du lecteur une fois. */
+  surveiller(): void;
 }
 
 /** Un banc d'essai : tout ce que le lecteur demande au navigateur, en mémoire. */
 export function banc(jeu: JeuMusique, contenu: unknown, o: { stockage?: StockageMemoire; session?: StockageMemoire; maintenant?: number; hasard?: number[] } = {}): Banc {
   const ctx = new FauxContexte();
-  const elements: FauxElement[] = [];
   const attente: { ms: number; fn: () => void }[] = [];
   const evenements = new Map<string, (() => void)[]>();
-  const etat = { cachee: false, maintenant: o.maintenant ?? 1_000_000, hasard: o.hasard ?? [0], requetes: [] as string[] };
+  const etat = { cachee: false, maintenant: o.maintenant ?? 1_000_000, hasard: o.hasard ?? [0], requetes: [] as string[], telechargements: [] as string[], retenir: false, echecs: new Set<string>() };
+  const retenus: (() => void)[] = [];
+  const pistes = ((contenu as { pistes?: PisteServie[] } | null)?.pistes ?? []).filter((p) => p && typeof p === "object");
+  for (const p of pistes) ctx.durees.set(`/musique/${p.fichier}`, p.duree);
   const stockage = o.stockage ?? new StockageMemoire();
   const session = o.session ?? new StockageMemoire();
   const deps: Dependances = {
@@ -166,10 +201,11 @@ export function banc(jeu: JeuMusique, contenu: unknown, o: { stockage?: Stockage
       etat.requetes.push(url);
       return contenu;
     },
-    creerAudio: () => {
-      const e = new FauxElement();
-      elements.push(e);
-      return e;
+    telecharger: async (url) => {
+      etat.telechargements.push(url);
+      if (etat.echecs.has(url)) throw new Error("réseau");
+      if (etat.retenir) await new Promise<void>((arrive) => retenus.push(arrive));
+      return new TextEncoder().encode(url).buffer as ArrayBuffer;
     },
     creerContexte: () => ctx,
     cachee: () => etat.cachee,
@@ -182,10 +218,16 @@ export function banc(jeu: JeuMusique, contenu: unknown, o: { stockage?: Stockage
     hasard: () => (etat.hasard.length > 1 ? etat.hasard.shift()! : etat.hasard[0]!),
     planifier: (ms, fn) => void attente.push({ ms, fn }),
   };
+  async function pret(): Promise<void> {
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+  }
+  function surveiller(): void {
+    const i = attente.findIndex((a) => a.ms === PAS_SURVEILLANCE_MS);
+    if (i >= 0) attente.splice(i, 1)[0]!.fn();
+  }
   return {
     deps,
     ctx,
-    elements,
     stockage,
     session,
     attente,
@@ -193,8 +235,18 @@ export function banc(jeu: JeuMusique, contenu: unknown, o: { stockage?: Stockage
     etat,
     emettre: (cible, type) => (evenements.get(`${cible}:${type}`) ?? []).forEach((f) => f()),
     ecouteursDe: (cible, type) => (evenements.get(`${cible}:${type}`) ?? []).length,
-    pret: async () => {
-      for (let i = 0; i < 5; i++) await Promise.resolve();
+    pret,
+    livrer: async () => {
+      while (retenus.length) retenus.shift()!();
+      await pret();
+    },
+    surveiller,
+    avancer: async (s) => {
+      for (let t = 0; t < s - 1e-9; t += 0.25) {
+        ctx.currentTime += 0.25;
+        surveiller();
+        await pret();
+      }
     },
   };
 }

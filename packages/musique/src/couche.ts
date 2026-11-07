@@ -3,10 +3,10 @@ import { COUCHE_ECART_MAX_S, COUCHE_FONDU_S, COUCHE_LECTURES, arpegeDeMesure, de
 import type { PisteServie } from "./types";
 
 // **La couche du jeu** (lot B6), chargée avec le lecteur (à la demande) : quand le jeu dit `couche(true)`, un **arpège** léger s'ajoute au morceau, synthétisé sur le contexte du lecteur, **calé sur la phase de la
-// boucle** (l'horloge du flux, relue à chaque mesure) ; il repart en fondu à `couche(false)`. Elle passe par le bus du lecteur : volume, « couper », baisse du jeu s'appliquent d'eux-mêmes, et rien n'est synthétisé
+// boucle** (la position du morceau, relue à chaque mesure) ; il repart en fondu à `couche(false)`. Elle passe par le bus du lecteur : volume, « couper », baisse du jeu s'appliquent d'eux-mêmes, et rien n'est synthétisé
 // quand le niveau est à zéro ou la page cachée.
 //
-// **Quand le calage n'est pas tenable** : l'horloge du flux (`currentTime` d'un élément audio) avance par bonds sur certains appareils (mobiles). Le lecteur mesure, sur les dernières lectures, de combien « horloge
+// **Quand le calage n'est pas tenable** : avant le lot S2, l'horloge du flux (`currentTime` d'un élément audio) avançait par bonds sur certains appareils (mobiles) ; depuis, le lecteur lit la position du morceau sur l'horloge même du contexte (Web Audio), donc l'écart est constant et l'arpège est calé dès les premières lectures. La garde reste (une horloge qui saute ferait basculer sur la nappe). Le lecteur mesure, sur les dernières lectures, de combien « horloge
 // du flux − horloge du contexte » varie ; au-dessus de `COUCHE_ECART_MAX_S` (20 ms), ou tant qu'il n'a pas assez de lectures, la couche est une **nappe sans pulsation** (deux sons tenus et des étincelles à des
 // instants tirés au hasard), qui n'a besoin d'aucun calage. Le choix se refait à chaque tick.
 
@@ -15,7 +15,7 @@ export interface PourCouche {
   /** Le bus du lecteur : la couche s'y branche. */
   bus: GainAudio;
   piste(): PisteServie | null;
-  /** L'horloge du flux de la voix qui joue : son numéro d'écoute et sa position (secondes du fichier), ou `null` si rien ne joue. */
+  /** La position de la voix qui joue : son numéro d'écoute et sa position (secondes du fichier), ou `null` si rien ne joue. */
   flux(): { genre: number; t: number } | null;
   /** On entendrait la couche : le niveau n'est pas nul, la page est visible, le contexte tourne. */
   audible(): boolean;
@@ -29,7 +29,7 @@ const AVANCE_S = 0.6;
 
 export interface Couche {
   regler(actif: boolean): void;
-  /** Une lecture de l'horloge du flux (à chaque `timeupdate` de la voix active) : `ecart` = flux − contexte. */
+  /** Une lecture de l'horloge du flux (à chaque pas de surveillance du lecteur) : `ecart` = flux − contexte. */
   lire(genre: number, ecart: number, t: number): void;
   /** Le calage est tenable : assez de lectures, et peu d'écart entre elles. */
   calee(): boolean;

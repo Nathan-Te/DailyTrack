@@ -6,6 +6,9 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "sideEffects": false,
+  "dependencies": {
+    "@cdj/core": "*"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./branche": "./src/branche.ts",

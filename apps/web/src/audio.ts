@@ -11,6 +11,7 @@ import {
   windGain,
   type AudioSettings,
 } from "./audioLogic";
+import { ouvrirContexteAudio } from "@cdj/core/audio";
 import { gameStorage } from "./storage";
 import type { ExtensionSon } from "./son/extension";
 
@@ -126,18 +127,15 @@ export class GameAudio {
       if (this.ctx.state === "suspended" && !document.hidden) void this.ctx.resume();
       return true;
     }
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return false;
     try {
-      const ctx = new Ctor();
+      const ctx = ouvrirContexteAudio<AudioContext>(); // lot S2 : session `ambient`, le son se mêle à celui du téléphone
+      if (!ctx) return false;
       this.ctx = ctx;
       ctx.onstatechange = () => {
         if (ctx.state !== "running") return;
         for (const off of this.listeners) off();
         this.listeners = [];
       };
-      const session = (navigator as { audioSession?: { type: string } }).audioSession;
-      if (session) session.type = "playback"; // iPhone : le son passe aussi quand l'interrupteur est sur silence
       this.master = ctx.createGain();
       this.master.gain.value = this.settings.volume;
       this.master.connect(ctx.destination);
