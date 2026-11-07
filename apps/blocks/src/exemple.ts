@@ -1,4 +1,4 @@
-import { colonneDe, ligneDe, medailleDe, Partie, seuilsDepuis, type Contenu, type Medaille } from "@cdj/blocks-sim";
+import { medailleDe, Partie, seuilsDepuis, type Contenu, type Medaille } from "@cdj/blocks-sim";
 import { jouerDiamant } from "@cdj/blocks-sim/diamant";
 import type { MedailleExemple } from "./essai";
 
@@ -17,8 +17,7 @@ export function exempleDePartage(contenu: Contenu, voulue: MedailleExemple): num
   const but = voulue === "aucune" ? null : CODE[voulue];
   let dernierSous = 0; // la dernière longueur de préfixe sans médaille (au moins une pose)
   for (let k = 1; k <= actions.length; k++) {
-    const a = actions[k - 1]!;
-    partie.poser(colonneDe(a), ligneDe(a));
+    partie.jouerAction(actions[k - 1]!);
     const m = medailleDe([partie.score], seuils);
     if (but === null) {
       if (m !== null) return actions.slice(0, Math.max(1, dernierSous));

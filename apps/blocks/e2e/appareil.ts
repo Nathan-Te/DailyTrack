@@ -56,17 +56,17 @@ export async function lancer(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as { __jeu?: unknown }).__jeu);
 }
 
-/** La partie du glouton simple sur le jour d'essai (06/11/2026) : ses poses, et ce que la simulation (Node, la même) en attend. */
+/** La partie du bot moyen (le « glouton ») sur le jour d'essai (06/11/2026) : ses poses, et ce que la simulation (Node, la même) en attend. */
 export function partieDuGlouton(): { actions: number[]; resultat: Resultat } {
   const { actions, resultat } = jouerGlouton(dailyBlocks(parseDay(JOUR)!));
   return { actions, resultat };
 }
 
-/** Pose, dans le navigateur, une suite d'actions (`ligne × 8 + colonne`) par la porte du jeu, puis laisse passer « Plus de place ! » (le kit termine la partie une seconde après la dernière pose). */
+/** Pose, dans le navigateur, une suite d'actions (`emplacement × 64 + ligne × 8 + colonne`) par la porte du jeu, puis laisse passer « Plus de place ! » (le kit termine la partie une seconde après la dernière pose). */
 export async function poserLesActions(page: Page, actions: readonly number[], terminer = true): Promise<void> {
   await page.evaluate(
     ({ actions, terminer }) => {
-      for (const a of actions) window.__jeu.action(`pose:${a % 8}:${Math.floor(a / 8)}`);
+      for (const a of actions) window.__jeu.action(`pose:${Math.floor(a / 64)}:${a % 8}:${Math.floor((a % 64) / 8)}`);
       if (terminer) window.__jeu.avancer(100);
     },
     { actions, terminer },

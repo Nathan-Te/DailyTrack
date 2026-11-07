@@ -1,4 +1,4 @@
-import { dailyBlocks, medailleDe, numeroBlocks, Partie, colonneDe, ligneDe, seuilsDepuis } from "@cdj/blocks-sim";
+import { dailyBlocks, medailleDe, numeroBlocks, Partie, seuilsDepuis } from "@cdj/blocks-sim";
 import { jouerDiamant } from "@cdj/blocks-sim/diamant";
 import { parseDay } from "@cdj/core";
 import { expect, test, type Page } from "@playwright/test";
@@ -17,7 +17,7 @@ const nombre = (n: number, langue: "fr" | "en"): string => new Intl.NumberFormat
 /** Ce que le résultat d'exemple vaut, par la simulation (Node). */
 function attendu(m: MedailleExemple): { score: number; combo: number; medaille: string | null } {
   const p = new Partie(contenu);
-  for (const a of exempleDePartage(contenu, m)) p.poser(colonneDe(a), ligneDe(a));
+  for (const a of exempleDePartage(contenu, m)) p.jouerAction(a);
   const code = medailleDe([p.score], seuils);
   return { score: p.score, combo: p.comboMax, medaille: code ? EMOJI[code]! : null };
 }

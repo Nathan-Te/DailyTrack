@@ -45,14 +45,14 @@ test.describe("Blocks : une partie", () => {
     await context.close();
   });
 
-  test("une pose illégale est ignorée : le score, la grille et la pièce ne bougent pas", async ({ browser }) => {
+  test("une pose illégale est ignorée : le score, la grille et les trois pièces ne bougent pas", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
     await lancer(page);
     const { actions } = partieDuGlouton();
     await poserLesActions(page, actions.slice(0, 1), false);
-    const avant = await page.evaluate(() => ({ grille: window.__blocks.grille(), etat: window.__blocks.etat(), piece: window.__blocks.piece() }));
-    await poserLesActions(page, [actions[0]!, actionDe(7, 7) + 9], false); // même place (recouvre) ; hors grille
-    expect(await page.evaluate(() => ({ grille: window.__blocks.grille(), etat: window.__blocks.etat(), piece: window.__blocks.piece() }))).toEqual(avant);
+    const avant = await page.evaluate(() => ({ grille: window.__blocks.grille(), etat: window.__blocks.etat(), pieces: window.__blocks.pieces() }));
+    await poserLesActions(page, [actions[0]!, actionDe(2, 7, 7) + 9, actionDe(0, 4, 4)], false); // la même pose (l'emplacement est vide) ; hors grille ; encore l'emplacement vide
+    expect(await page.evaluate(() => ({ grille: window.__blocks.grille(), etat: window.__blocks.etat(), pieces: window.__blocks.pieces() }))).toEqual(avant);
     await context.close();
   });
 
@@ -60,7 +60,7 @@ test.describe("Blocks : une partie", () => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=presque-plein");
     await lancer(page);
     await expect(page.locator("#jeu-hud-temps")).toHaveText("");
-    await page.evaluate(() => window.__jeu.action("pose:5:6"));
+    await page.evaluate(() => window.__jeu.action("pose:0:5:6"));
     await expect(page.locator("#jeu-hud-temps")).toHaveText("Combo ×1");
     await context.close();
   });

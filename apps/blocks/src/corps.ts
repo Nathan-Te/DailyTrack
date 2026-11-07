@@ -1,4 +1,5 @@
-import { BLOCKS_GENERATOR_VERSION, contenuDeScenario, dailyBlocks, enregistrer, lireJourFige, type Contenu, type Seuils } from "@cdj/blocks-sim";
+import { BLOCKS_GENERATOR_VERSION, contenuDeScenario, dailyBlocks, enregistrer, lireJourFige, rejouer, type Contenu, type Seuils } from "@cdj/blocks-sim";
+
 import { jouerDiamant, seuilsDuJour } from "@cdj/blocks-sim/diamant";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
@@ -10,6 +11,9 @@ import { chargerDecorTheme, poserDecor } from "./decors/index";
 import { lireEssai } from "./essai";
 import { exempleDePartage } from "./exemple";
 import { nouvellePartieBlocks as scene } from "./scene";
+
+/** Pour la page de vérification (`verify.ts`) : la simulation du corps du jeu, rien de plus. */
+export { contenuDeScenario, dailyBlocks, rejouer };
 
 // LE CORPS du jeu (chargé à la demande : `definition.ts` l'importe par `import()` au premier appel de `contenuDuJour`, que l'accueil lance dès son premier dessin, donc avant JOUER) : le tirage de la suite, les scénarios,
 // la scène et les blocs communs. Il n'est pas dans le premier chargement (ligne de budget `blocks.jsCss`, préfixe `corps-` de `budget.aLaDemande` de la fiche).

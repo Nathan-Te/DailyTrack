@@ -57,23 +57,25 @@ function orientations(base: Art, mode: "fixe" | "tour" | "tourEtMiroir"): Art[] 
   return out;
 }
 
-// [famille, nom, art de base, orientations, poids]. Poids de base (seed § 4, recalibrés au tirage v3, lot B3 : le bot Diamant sert de référence haute, voir le README du lot) : au début de la suite, les pièces de 2 et 3 cases (dominos, barres de 3, coins) dominent ;
-// la rampe (`suite.ts`) fait monter les pièces de 4 cases et plus avec le rang. Petites : dominos 8 ; barres 12 (3), 5 (4), 3 (5) ; carrés 6 (2 × 2), 2 (3 × 3) ; coins 14 ; L et J 4 ; grand L et grand T 2 ; T 4 ; S et Z 3 ; rectangles 2.
+// [famille, nom, art de base, orientations, poids]. **Poids de base du tirage v4 (lot B8)**, trouvés en faisant jouer les trois bots de référence (faible, moyen, Diamant : README du lot B8) : au début de la suite, presque tout est
+// petit (dominos 66 %, barres de 3 15 %, coins 12 % des tirages) pour que le bot faible dure 40 séries au moins ; les pièces de 4 cases et plus ne pèsent presque rien au rang 0 (carrés 2 × 2, barres de 4 et 5, L et J, T, S et Z,
+// grands L et T, rectangles, carré 3 × 3) et la rampe (`suite.ts`) les fait monter avec le rang de la série. Dominos 480 ; barres 108 (3), 5 (4), 3 (5) ; carrés 3 (2 × 2), 4 (3 × 3) ; coins 43 ; L et J 6 ; grand L et grand T 2 ;
+// T 2 ; S et Z 1 ; rectangles 8. **Un poids est par orientation** : une famille de plusieurs orientations pèse plus.
 const DEFINITIONS: readonly (readonly [Famille, string, Art, "fixe" | "tour" | "tourEtMiroir", number])[] = [
-  ["petite", "domino", ["XX"], "tour", 8],
-  ["barre", "barre3", ["XXX"], "tour", 12],
+  ["petite", "domino", ["XX"], "tour", 480],
+  ["barre", "barre3", ["XXX"], "tour", 108],
   ["barre", "barre4", ["XXXX"], "tour", 5],
   ["barre", "barre5", ["XXXXX"], "tour", 3],
-  ["carre", "carre2", ["XX", "XX"], "fixe", 6],
-  ["carre", "carre3", ["XXX", "XXX", "XXX"], "fixe", 2],
-  ["coin", "coin", ["X.", "XX"], "tour", 14],
-  ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 4],
+  ["carre", "carre2", ["XX", "XX"], "fixe", 3],
+  ["carre", "carre3", ["XXX", "XXX", "XXX"], "fixe", 4],
+  ["coin", "coin", ["X.", "XX"], "tour", 43],
+  ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 6],
   ["grandL", "grandl", ["X..", "X..", "XXX"], "tour", 2],
-  ["tsz", "t", ["XXX", ".X."], "tour", 4],
+  ["tsz", "t", ["XXX", ".X."], "tour", 2],
   ["tsz", "grandt", ["XXX", ".X.", ".X."], "tour", 2],
-  ["tsz", "s", [".XX", "XX."], "tour", 3],
-  ["tsz", "z", ["XX.", ".XX"], "tour", 3],
-  ["rectangle", "rect", ["XXX", "XXX"], "tour", 2],
+  ["tsz", "s", [".XX", "XX."], "tour", 1],
+  ["tsz", "z", ["XX.", ".XX"], "tour", 1],
+  ["rectangle", "rect", ["XXX", "XXX"], "tour", 8],
 ];
 
 function construire(): Piece[] {
