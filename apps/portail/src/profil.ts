@@ -1,6 +1,7 @@
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/avatar.css";
 import "@cdj/ui/src/avatar-liste.css";
+import "@cdj/ui/src/avatar-grand.css"; // lot U3 : la photo de 128 px
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -12,12 +13,18 @@ import "@cdj/ui/src/polices/lilita-one-400.css";
 import "@cdj/ui/src/polices-profil/rubik-mono-one-400.css";
 import "@cdj/ui/src/polices-profil/bungee-400.css";
 import "./portail.css";
+import "./salle.css"; // lot U3 : la barre, le fronton et la barre d'onglets de la salle de jeux
+import "./classementSalle.css";
+import "./profilSalle.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
 import {
   NAME_KEY,
   ProfileClient,
+  adresseAvatar,
   call,
+  clientAmis,
+  clientAvatar,
   decodeTransfer,
   ecrireLangue,
   encodeTransfer,
@@ -31,30 +38,17 @@ import {
   type ApiResult,
   type Langue,
 } from "@cdj/profile";
-import {
-  CATALOGUE_COMMUN,
-  avatar,
-  MEDAILLES,
-  barreJeu,
-  bouton,
-  choixLangue,
-  el,
-  etiquetteDe,
-  formatDateCourte,
-  formatNombre,
-  formatRang,
-  icone,
-  medaille,
-  traducteur,
-  tuile,
-  cheminMentions,
-} from "@cdj/ui";
+import { CATALOGUE_COMMUN, avatar, MEDAILLES, bouton, choixLangue, el, etiquetteDe, formatDateCourte, formatNombre, formatRang, icone, medaille, svg, traducteur, tuile, cheminMentions } from "@cdj/ui";
+import { initiales } from "@cdj/ui/src/avatar";
+import { adresseGroupe, clientGroupes, type MonGroupe } from "@cdj/profile/src/groupes";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
 import { CATALOGUE_PAGES } from "./cataloguePages";
-import { ficheDuJeu, titreDeCarte } from "./jeuxFiches";
+import { categorieDuJeu, ficheDuJeu, titreDeCarte } from "./jeuxFiches";
+import { medaillesTotales, rangerLesJeux } from "./profilDonnees";
+import { barreDePage, battre, frontonDeLaPage, ongletsDuBas } from "./salleDePage";
+import { emblemeDeGroupe } from "./salle";
 import { lienRetours } from "./retoursLien";
-import { adresseAvatar, clientAvatar } from "@cdj/profile";
 import { baseApi } from "./jour";
 import { cartes } from "./jours";
 import { lireRetour } from "./retour";
@@ -117,6 +111,13 @@ let messageCode: string | null = null;
 let apercu: { id: string; profil: Profil } | null = null;
 /** Lot C1, partie B : le dernier message de la section Avatar. */
 let messageAvatar: string | null = null;
+/** Lot U3 : ce que l'en-tête dit en plus de la réponse du profil — combien d'amis, et ton groupe (`undefined` : pas encore lu ; `null` : aucun). */
+let nbAmis: number | null = null;
+let groupe: MonGroupe | null | undefined;
+/** Lot U3 : l'en-tête (amis, groupe) est lu — le module « Mon groupe » ne relit pas ce qu'il sait déjà. */
+let enTeteLu = false;
+/** Lot U3 : « Changer de pseudo » ouvre le formulaire du pseudo sous l'en-tête. */
+let pseudoOuvert = false;
 
 /** Choisir et recadrer une image (module à la demande), l'envoyer, puis redessiner ; chaque refus du serveur a sa phrase. */
 async function changerAvatar(): Promise<void> {
@@ -185,20 +186,104 @@ function blocJeu(t: T, j: ProfilJeu): HTMLElement | null {
   return e;
 }
 
-/** Lot K5 : la carte d'un jeu au profil (planche 2 de `jeux-du-kit-au-niveau.html`) — le nom dans la police du jeu, le motif de son étiquette, ses médailles en cases pleines, son illustration en bas à droite (décorative). */
+/** Lot K5 : la carte d'un jeu au profil (planche 2 de `jeux-du-kit-au-niveau.html`) — le nom dans la police du jeu, le motif de son étiquette, ses médailles en cases pleines, son illustration à gauche (lot U3 : la cartouche est horizontale ; l'image est décorative). */
 function carteDuProfil(code: string, titre: string, numero: string, rang: string, medailles: HTMLElement): HTMLElement {
   return el(
     "article",
     { classe: ["profil-jeu", `jeu-etiquette--${code}`], attrs: { "data-jeu": code, "aria-label": titre } },
-    el("div", { classe: "profil-jeu__tete" }, el("h3", { classe: "profil-jeu__titre", texte: titre }), el("span", { classe: "profil-jeu__numero", texte: numero })),
-    el("p", { classe: "profil-jeu__rang", texte: rang }),
-    medailles,
     el("img", { classe: "profil-jeu__dessin", attrs: { src: `../${code}/illustration.svg`, alt: "", "aria-hidden": "true", decoding: "async" } }),
+    el("div", { classe: "profil-jeu__corps" }, el("div", { classe: "profil-jeu__tete" }, el("h3", { classe: "profil-jeu__titre", texte: titre }), el("span", { classe: "profil-jeu__numero", texte: numero })), el("p", { classe: "profil-jeu__rang", texte: rang }), medailles),
   );
 }
 
-function section(titre: string, id: string, ...enfants: (Node | null)[]): HTMLElement {
-  return el("section", { classe: "profil-section", attrs: { "aria-labelledby": id } }, el("h2", { classe: "profil-section__titre", attrs: { id }, texte: titre }), ...enfants);
+/** Un titre de section : un filet d'encre, le titre en Archivo Black et, à droite, un petit texte. */
+function titreDeSection(id: string, titre: string, droite?: string): HTMLElement {
+  return el("div", { classe: "profil-titre-s" }, el("h2", { attrs: { id }, texte: titre }), droite ? el("span", { texte: droite }) : null);
+}
+
+/** Un panneau de la colonne de droite (cadre papier, ombre nette). */
+function panneauDeDroite(id: string, titre: string, ...enfants: (Node | null)[]): HTMLElement {
+  return el("section", { classe: "salle-panneau profil-panneau", attrs: { id, "aria-labelledby": `${id}-titre` } }, el("h2", { classe: "salle-panneau__titre", attrs: { id: `${id}-titre` }, texte: titre }), ...enfants);
+}
+
+/** La photo en grand (128 px) avec le crayon moutarde : il ouvre le recadrage (choisir une image, la recadrer en carré, l'envoyer). */
+function photoDuProfil(t: T, pseudo: string, image: string | undefined): HTMLElement {
+  const crayon = el("button", { classe: "profil-crayon", attrs: { type: "button", "aria-label": t.t("profil.avatar.choisir"), title: t.t("profil.avatar.aide"), "data-cle": "avatar-choisir" } }, crayonDessin());
+  crayon.addEventListener("click", () => void changerAvatar());
+  return el("div", { classe: "profil-photo", attrs: { id: "photo-profil" } }, avatar(t, { pseudo, image, taille: 128, decoratif: true }), crayon);
+}
+/** Le crayon (grille de 24, trait de 2,4 px, encre) : le dessin du bouton qui change la photo. */
+const crayonDessin = (): SVGSVGElement =>
+  svg("svg", { attrs: { viewBox: "0 0 24 24", width: 18, height: 18, fill: "none", stroke: "currentColor", "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round", focusable: "false", "aria-hidden": "true" } }, svg("path", { attrs: { d: "M4 20l1-5L16 4l4 4L9 19z" } }));
+
+/** L'en-tête : la photo, le pseudo, l'emblème de ton groupe, le nombre d'amis, « Changer de pseudo ». */
+function entete(t: T, pseudo: string, p: Profil | null): HTMLElement {
+  const lien = el("button", { classe: "profil-lien", attrs: { type: "button", id: "pseudo-lien", "aria-expanded": String(pseudoOuvert), "aria-controls": "pseudo", "data-cle": "pseudo-lien" }, texte: t.t("profil.pseudo.lien") });
+  lien.addEventListener("click", () => {
+    pseudoOuvert = !pseudoOuvert;
+    rendre();
+    if (pseudoOuvert) document.getElementById("pseudo-champ")?.focus();
+  });
+  const meta: (Node | string | null)[] = [];
+  const separe = () => (meta.length > 0 ? el("span", { attrs: { "aria-hidden": "true" }, texte: "·" }) : null);
+  if (groupe) {
+    meta.push(
+      emblemeDeGroupe({ initiales: initiales(groupe.nom, langue), image: adresseAvatar(API, groupe.avatar), taille: 48 }),
+      el("a", { classe: "profil-groupe-nom", attrs: { href: adresseGroupe("", groupe.nom), id: "profil-groupe-nom" } }, groupe.nom),
+    );
+  }
+  if (nbAmis !== null) meta.push(separe(), el("a", { classe: "profil-amis", attrs: { href: "../amis/", id: "profil-amis" }, texte: t.t("amisPage.mes.nombre", { n: nbAmis }) }));
+  meta.push(separe(), lien);
+  return el(
+    "div",
+    { classe: "profil-identite" },
+    photoDuProfil(t, pseudo, p ? adresseAvatar(API, p.avatar) : undefined),
+    el("div", { classe: "profil-identite__texte" }, el("h2", { classe: "profil-identite__pseudo", attrs: { id: "pseudo-actuel" }, texte: pseudo }), el("div", { classe: "profil-meta" }, ...meta.filter((m): m is Node | string => m !== null))),
+  );
+}
+
+/** « Tous les jeux » : la série en cours (tuile d'encre), les journées parfaites et les médailles de tous les jeux en cases pleines. */
+function tousLesJeux(t: T, p: Profil): HTMLElement {
+  const total = medaillesTotales(p.jeux);
+  const serie = tuile({ legende: t.t("portail.serie.legende"), valeur: t.t("portail.serie.valeur", { n: p.serie }), sousTexte: p.aProlonger ? t.t("portail.serie.aProlonger") : undefined, icone: icone("flamme", { taille: 22 }) });
+  serie.classList.add("profil-tuile--encre");
+  const cases = el(
+    "div",
+    { classe: "profil-medailles profil-medailles--tous", attrs: { role: "group", "aria-label": t.t("profil.medailles") } },
+    ...MEDAILLES.map((type) => {
+      const cle = (Object.keys(MED) as (keyof typeof MED)[]).find((k) => MED[k] === type)!;
+      return medaille(t, { type, obtenue: total[cle] > 0, forme: "case", valeur: formatNombre(total[cle], langue) });
+    }),
+  );
+  return el(
+    "section",
+    { classe: "profil-tous", attrs: { "aria-labelledby": "titre-serie" } },
+    titreDeSection("titre-serie", t.t("profil.serie.titre")),
+    el(
+      "div",
+      { classe: "profil-tuiles" },
+      serie,
+      tuile({ legende: t.t("profil.parfaites.legende"), valeur: formatNombre(p.journeesParfaites, langue), sousTexte: p.aujourdhuiParfaite ? t.t("portail.serie.parfaiteAujourdhui") : undefined }),
+      el("div", { classe: "profil-tuile-medailles" }, cases),
+    ),
+  );
+}
+
+/** « Par jeu » : une cartouche par jeu, ceux du jour d'abord, puis l'arcade. */
+function parJeu(t: T, p: Profil, day: number): HTMLElement {
+  const rangs = rangerLesJeux(p.jeux, (j) => {
+    const c = cartes(0).find((x) => x.jeu === j.jeu);
+    return c && categorieDuJeu(c.code, day) === "arcade" ? "arcade" : "jour";
+  });
+  const groupeDe = (id: string, titre: string, jeux: ProfilJeu[]): (HTMLElement | null)[] =>
+    jeux.length === 0 ? [] : [el("p", { classe: "profil-cat", texte: titre }), el("div", { classe: "profil-jeux", attrs: { id } }, ...jeux.map((j) => blocJeu(t, j)))];
+  return el(
+    "section",
+    { classe: "profil-par-jeu", attrs: { "aria-labelledby": "titre-jeux" } },
+    titreDeSection("titre-jeux", t.t("profil.jeux.titre"), t.t("profil.jeux.nombre", { n: p.jeux.length })),
+    ...groupeDe("profil-jeux-jour", t.t("profil.jeux.jour"), rangs.jour),
+    ...groupeDe("profil-jeux-arcade", t.t("profil.jeux.arcade"), rangs.arcade),
+  );
 }
 
 function rendre(): void {
@@ -222,23 +307,16 @@ function rendre(): void {
   // Le pseudo : celui du serveur (il fait foi), sinon celui de cet appareil.
   const pseudo = p?.pseudo ?? identite.name;
   const champ = el("input", { classe: "profil-champ", attrs: { id: "pseudo-champ", name: "pseudo", type: "text", maxlength: 20, autocomplete: "nickname", value: pseudo ?? "", "data-cle": "pseudo-champ" } });
-  const formPseudo = p
-    ? el(
-        "form",
-        { classe: "profil-formulaire", attrs: { id: "pseudo" } },
-        el("label", { classe: "profil-etiquette-champ", attrs: { for: "pseudo-champ" }, texte: t.t("profil.pseudo.champ") }),
-        el("div", { classe: "profil-ligne" }, champ, bouton({ texte: t.t("profil.pseudo.changer"), variante: "secondaire" })),
-        el("p", { classe: "profil-aide", texte: t.t("profil.pseudo.regle") }),
-        messagePseudo ? el("p", { classe: "profil-message", attrs: { id: "pseudo-message", role: "status" }, texte: messagePseudo.texte }) : null,
-        messagePseudo?.suggestions?.length
-          ? el(
-              "div",
-              { classe: "profil-ligne", attrs: { role: "group", "aria-label": t.t("profil.pseudo.libres") } },
-              ...messagePseudo.suggestions.map((s) => bouton({ texte: s, variante: "secondaire", onClick: () => void renommer(s) })),
-            )
-          : null,
-      )
-    : null;
+  const formPseudo =
+    p && pseudoOuvert
+      ? el(
+          "form",
+          { classe: "profil-formulaire", attrs: { id: "pseudo" } },
+          el("label", { classe: "profil-etiquette-champ", attrs: { for: "pseudo-champ" }, texte: t.t("profil.pseudo.champ") }),
+          el("div", { classe: "profil-ligne" }, champ, bouton({ texte: t.t("profil.pseudo.changer"), variante: "secondaire" })),
+          el("p", { classe: "profil-aide", texte: t.t("profil.pseudo.regle") }),
+        )
+      : null;
   formPseudo?.querySelector("button")?.setAttribute("type", "submit");
   formPseudo?.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -260,53 +338,35 @@ function rendre(): void {
     void verifierCode((champCode as HTMLInputElement).value);
   });
 
-  const enfants: (HTMLElement | null)[] = [
-    barreJeu(t, { href: "../", jour: day, ...retourAuJeu(t) }),
-    el("h1", { classe: "profil-titre", texte: t.t("profil.titre") }),
+  const nonLus = p?.messagesNonLus ?? 0;
+  const gauche: (HTMLElement | null)[] = [
     etat ? el("p", { classe: "profil-etat", attrs: { id: "profil-etat", role: "status" }, texte: etat }) : null,
-    section(t.t("profil.pseudo.titre"), "titre-pseudo", el("p", { classe: "profil-pseudo", attrs: { id: "pseudo-actuel" }, texte: pseudo ?? "—" }), formPseudo),
-    p
-      ? section(
-          t.t("profil.serie.titre"),
-          "titre-serie",
-          el(
-            "div",
-            { classe: "profil-tuiles" },
-            tuile({ legende: t.t("portail.serie.legende"), valeur: t.t("portail.serie.valeur", { n: p.serie }), sousTexte: p.aProlonger ? t.t("portail.serie.aProlonger") : undefined, icone: icone("flamme", { taille: 22 }) }),
-            tuile({ legende: t.t("profil.parfaites.legende"), valeur: formatNombre(p.journeesParfaites, langue), sousTexte: p.aujourdhuiParfaite ? t.t("portail.serie.parfaiteAujourdhui") : undefined }),
-          ),
-        )
+    id && p ? entete(t, pseudo ?? "—", p) : id ? el("h2", { classe: "profil-identite__pseudo", attrs: { id: "pseudo-actuel" }, texte: pseudo ?? "—" }) : null,
+    p ? el("p", { classe: "profil-aide", texte: t.t("profil.avatar.regles") }) : null,
+    messageAvatar ? el("p", { classe: "profil-message", attrs: { id: "avatar-message", role: "status" }, texte: messageAvatar }) : null,
+    p && p.avatar ? bouton({ texte: t.t("profil.avatar.retirer"), variante: "secondaire", onClick: () => void retirerAvatar() }) : null,
+    formPseudo,
+    messagePseudo ? el("p", { classe: "profil-message", attrs: { id: "pseudo-message", role: "status" }, texte: messagePseudo.texte }) : null,
+    messagePseudo?.suggestions?.length
+      ? el("div", { classe: "profil-ligne", attrs: { role: "group", "aria-label": t.t("profil.pseudo.libres") } }, ...messagePseudo.suggestions.map((s) => bouton({ texte: s, variante: "secondaire", onClick: () => void renommer(s) })))
       : null,
-    p ? section(t.t("profil.jeux.titre"), "titre-jeux", el("div", { classe: "profil-jeux" }, ...p.jeux.map((j) => blocJeu(t, j)))) : null,
-    // Lot C1, partie B : l'avatar (96 px), choisir une image (recadrée dans le navigateur) ou la retirer.
-    id && p
-      ? section(
-          t.t("profil.avatar.titre"),
-          "titre-avatar",
-          avatar(t, { pseudo: p.pseudo, image: adresseAvatar(API, p.avatar), taille: 96, decoratif: true }),
-          el("p", { classe: "profil-aide", texte: t.t("profil.avatar.aide") }),
-          el("p", { classe: "profil-aide", texte: t.t("profil.avatar.regles") }),
-          el("div", { classe: "profil-ligne" }, bouton({ texte: t.t("profil.avatar.choisir"), variante: "secondaire", onClick: () => void changerAvatar() }), p.avatar ? bouton({ texte: t.t("profil.avatar.retirer"), variante: "secondaire", onClick: () => void retirerAvatar() }) : null),
-          messageAvatar ? el("p", { classe: "profil-message", attrs: { id: "avatar-message", role: "status" }, texte: messageAvatar }) : null,
-        )
-      : null,
+    p ? tousLesJeux(t, p) : null,
+    p ? parJeu(t, p, day) : null,
+  ];
+  const droite: (HTMLElement | null)[] = [
     // Lot C1 : « Mes messages » (la page `/messages/`) : les réponses de l'éditeur, avec le nombre de celles qui attendent.
     id
-      ? section(
+      ? panneauDeDroite(
+          "profil-messages",
           t.t("profil.messages.titre"),
-          "titre-messages",
           el("p", { classe: "profil-aide", texte: t.t("profil.messages.aide") }),
-          bouton({ texte: t.t("profil.messages.lien"), variante: "secondaire", href: "../messages/" }),
-          (p?.messagesNonLus ?? 0) > 0 ? el("p", { classe: "profil-message profil-messages-nonlu", attrs: { id: "messages-non-lus", role: "status" }, texte: t.t("profil.messages.nonLu", { n: p!.messagesNonLus! }) }) : null,
+          nonLus > 0 ? el("p", { classe: "profil-message profil-messages-nonlu", attrs: { id: "messages-non-lus", role: "status" } }, el("span", { classe: "profil-pastille", attrs: { "aria-hidden": "true" }, texte: formatNombre(nonLus, langue) }), t.t("profil.messages.nonLu", { n: nonLus })) : null,
+          bouton({ texte: t.t("profil.messages.lien"), variante: "marque", href: "../messages/" }),
         )
       : null,
-    // Lot C1, partie C : « Mon groupe » (créer, inviter, gérer, quitter), dessiné à la demande dans la zone ci-dessous (`groupeProfil.ts`).
-    id ? section(t.t("profil.groupe.titre"), "titre-groupe", el("p", { classe: "profil-aide", texte: t.t("profil.groupe.aide") }), el("div", { attrs: { id: "groupe-zone" } })) : null,
-    // Lot F2 : « Mes amis » (la page `/amis/` : ajouter, inviter, ta liste) ; aucune requête de plus ici.
-    id ? section(t.t("profil.amis.titre"), "titre-amis", el("p", { classe: "profil-aide", texte: t.t("profil.amis.aide") }), bouton({ texte: t.t("profil.amis.lien"), variante: "secondaire", href: "../amis/" })) : null,
-    section(
+    panneauDeDroite(
+      "profil-code",
       t.t("profil.code.titre"),
-      "titre-code",
       el("p", { classe: "profil-aide", texte: t.t("profil.code.aide") }),
       code ? el("code", { classe: "profil-code", attrs: { id: "code" }, texte: code }) : null,
       code ? bouton({ texte: t.t("profil.code.copier"), variante: "secondaire", onClick: () => void copier(code) }) : null,
@@ -317,29 +377,50 @@ function rendre(): void {
             "div",
             { classe: "profil-apercu", attrs: { id: "apercu", role: "group", "aria-labelledby": "apercu-texte" } },
             el("p", { attrs: { id: "apercu-texte" }, texte: t.t("profil.code.apercu", { nom: apercu.profil.pseudo, n: apercu.profil.jeux.reduce((s, j) => Math.max(s, j.joursFinis), 0) }) }),
-            el(
-              "div",
-              { classe: "profil-ligne" },
-              bouton({ texte: t.t("profil.code.confirmer"), variante: "marque", onClick: () => chargerCode() }),
-              bouton({ texte: t.t("profil.code.annuler"), variante: "secondaire", onClick: () => ((apercu = null), rendre()) }),
-            ),
+            el("div", { classe: "profil-ligne" }, bouton({ texte: t.t("profil.code.confirmer"), variante: "marque", onClick: () => chargerCode() }), bouton({ texte: t.t("profil.code.annuler"), variante: "secondaire", onClick: () => ((apercu = null), rendre()) })),
           )
         : null,
       messageCode ? el("p", { classe: "profil-message", attrs: { id: "code-message", role: "status" }, texte: messageCode }) : null,
     ),
-    section(t.t("profil.langue.titre"), "titre-langue", choixLangue(t, { langue, onChange: changerLangue })),
+    panneauDeDroite("profil-langue", t.t("profil.langue.titre"), choixLangue(t, { langue, onChange: changerLangue })),
+    // Lot C1, partie C : « Mon groupe » (créer, inviter, gérer, quitter), dessiné à la demande dans la zone ci-dessous (`groupeProfil.ts`) ; la gestion du chef reste ici (lot U3).
+    id ? panneauDeDroite("groupe", t.t("profil.groupe.titre"), el("p", { classe: "profil-aide", texte: t.t("profil.groupe.aide") }), el("div", { attrs: { id: "groupe-zone" } })) : null,
+  ];
+  const retourJeu = retourAuJeu(t);
+  const pieces: (Node | null)[] = [
+    barreDePage({ t, langue, ici: "profil", stockage, identifie: id !== null, avatar: p?.avatar, onLangue: changerLangue }),
+    frontonDeLaPage({ t, langue, titre: t.t("profil.titre"), jour: day }),
+    retourJeu.retour ? el("a", { classe: "dj-barre-jeu__retour profil-retour", attrs: { href: retourJeu.href ?? "../", "aria-label": retourJeu.retour.ariaLabel } }, `‹ ${retourJeu.retour.texte}`) : null,
+    el("div", { classe: "salle-page profil-page" }, el("div", { classe: "profil-gauche" }, ...gauche.filter((e): e is HTMLElement => e !== null)), el("aside", { classe: "profil-droite" }, ...droite.filter((e): e is HTMLElement => e !== null))),
     el(
       "footer",
-      { classe: "portail-pied" },
+      { classe: "portail-pied salle-pied" },
       el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
       lienRetours(t.t("portail.retours.lien"), langue, "../"),
     ),
+    ongletsDuBas(t, "profil"),
   ];
-  racine.replaceChildren(...enfants.filter((e): e is HTMLElement => e !== null));
+  racine.replaceChildren(...pieces.filter((e): e is Node => e !== null));
   if (focus) racine.querySelector<HTMLElement>(`[data-cle="${focus}"]`)?.focus();
   const zoneGroupe = racine.querySelector<HTMLElement>("#groupe-zone");
   const idGroupe = stockage ? readPlayerId(stockage) : null;
-  if (zoneGroupe && idGroupe) void import("./groupeProfil").then((m) => m.monterGroupe(zoneGroupe, { tr: t, langue, base: API, id: idGroupe }));
+  if (zoneGroupe && idGroupe && enTeteLu) {
+    void import("./groupeProfil").then((m) =>
+      m.monterGroupe(zoneGroupe, {
+        tr: t,
+        langue,
+        base: API,
+        id: idGroupe,
+        // Le groupe est déjà lu pour l'en-tête : le module ne le relit pas ; un changement (créé, renommé, quitté) remet l'en-tête à jour.
+        ...(groupe !== undefined ? { initial: groupe } : {}),
+        surChangement: (g) => {
+          const avant = groupe;
+          groupe = g;
+          if (avant === undefined || avant?.nom !== g?.nom || avant?.avatar !== g?.avatar) rendre();
+        },
+      }),
+    );
+  }
 }
 
 async function charger(): Promise<void> {
@@ -353,6 +434,16 @@ async function charger(): Promise<void> {
       /* stockage refusé */
     }
   }
+  rendre();
+  if (profil.ok) void lireEnTete(id);
+}
+
+/** Lot U3 : le nombre d'amis et ton groupe, pour l'en-tête (deux lectures, après le profil ; un échec n'ajoute simplement rien à l'en-tête). */
+async function lireEnTete(id: string): Promise<void> {
+  const [a, g] = await Promise.all([clientAmis({ base: API, playerId: id }).lireAmis(), clientGroupes({ base: API, playerId: id }).moi()]);
+  if (a.ok) nbAmis = a.data.total;
+  if (g.ok) groupe = g.data;
+  enTeteLu = true;
   rendre();
 }
 
@@ -369,6 +460,7 @@ async function renommer(saisi: string): Promise<void> {
   const r = await client.rename(id, nom);
   if (r.ok) {
     messagePseudo = { texte: t.t("profil.pseudo.change", { nom: r.data.name }) };
+    pseudoOuvert = false;
     try {
       stockage?.setItem(NAME_KEY, r.data.name);
     } catch {
@@ -434,13 +526,14 @@ function changerLangue(l: Langue): void {
 
 async function demarrer(): Promise<void> {
   // Recette et aperçus seulement : `/profil/?demo=joueur` installe le joueur de démonstration (absent de la construction de production), comme l'accueil.
-  if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).get("demo") === "joueur") {
+  if (__PORTAIL_DEMO__ && new URLSearchParams(location.search).has("demo")) {
     const racine = document.getElementById("profil");
     const { lienDemo } = await import("./demo");
     if (racine) await lienDemo(stockage, langue, racine);
   }
   rendre();
   void charger();
+  battre();
 }
 
 void demarrer();

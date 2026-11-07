@@ -97,19 +97,19 @@ test("le classement montre les images (adresse immuable) › un joueur sans imag
     localStorage.setItem("cdj:name", n!);
   }, [id, nom]);
   await page.goto(`${SITE}/profil/`);
-  await expect(page.locator("#titre-avatar")).toBeVisible();
-  await page.getByRole("button", { name: "Choisir une image" }).click();
+  await expect(page.locator("#photo-profil")).toBeVisible(); // lot U3 : la photo de 128 px et son crayon
+  await page.locator("#photo-profil button").click(); // le crayon moutarde
   await page.locator("#avatar-fichier").setInputFiles({ name: "moi.webp", mimeType: "image/webp", buffer: Buffer.from(WEBP_B, "base64") });
   await expect(page.locator("#avatar-utiliser")).toBeEnabled();
   // Sur un téléphone, glisser le doigt sur l'aperçu déplace la zone prise, pas la page : `touch-action: none`.
   expect(await page.locator(".avatar-edition__apercu").evaluate((e) => getComputedStyle(e).touchAction)).toBe("none");
   await page.locator("#avatar-utiliser").click();
   await expect(page.locator("#avatar-message")).toHaveText("Ton image est enregistrée.");
-  const sienne = await page.locator("#titre-avatar").locator("xpath=..").locator("img.dj-avatar__img").getAttribute("src");
+  const sienne = await page.locator("#photo-profil img.dj-avatar__img").getAttribute("src");
   expect(sienne).toMatch(/^\/api\/avatars\/[0-9a-f]{16}$/);
   expect((await fetch(`${SITE}${sienne}`)).status).toBe(200);
   // Le même jour, un second changement est refusé, avec la phrase du catalogue.
-  await page.getByRole("button", { name: "Choisir une image" }).click();
+  await page.locator("#photo-profil button").click();
   await page.locator("#avatar-fichier").setInputFiles({ name: "autre.webp", mimeType: "image/webp", buffer: Buffer.from(WEBP_A, "base64") });
   await page.locator("#avatar-utiliser").click();
   await expect(page.locator("#avatar-message")).toContainText("reviens demain");

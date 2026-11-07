@@ -1,0 +1,242 @@
+/* Lot U3 (charte rév. 19, § 9) : « Amis et groupes » dans la salle de jeux — l'ajout par pseudo en haut, tes amis en cartes à grande photo, ton groupe à droite (sous les amis sur téléphone).
+   Feuille à part : seule la page `/amis/` la charge. Valeurs : jetons de @cdj/ui seulement. */
+.salle-page.amis-page {
+  align-items: start;
+}
+@media (min-width: 760px) {
+  .salle-page.amis-page {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+}
+.amis-gauche,
+.amis-droite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-8);
+  min-width: 0;
+}
+.amis-droite[hidden] {
+  display: none;
+}
+.amis-gauche > .profil-etat {
+  margin: 0;
+}
+
+/* Le titre d'une section : un filet d'encre, le titre en Archivo Black et, à droite, un petit texte. */
+.amis-titre {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--dj-espace-4);
+  margin-bottom: var(--dj-espace-7);
+  padding-bottom: 5px;
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.amis-titre h2 {
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 17px;
+  text-transform: uppercase;
+}
+.amis-titre span {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+  text-align: right;
+}
+.amis-droite > .amis-titre {
+  margin-bottom: 0;
+}
+.amis-droite {
+  gap: var(--dj-espace-7);
+}
+
+/* --- Les cartes d'amis : trois par ligne sur ordinateur, deux sur téléphone ---------------------------------------------------------------- */
+.amis-cartes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dj-espace-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 760px) {
+  .amis-cartes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+.amis-carte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  min-width: 0;
+  padding: var(--dj-espace-7) var(--dj-espace-5) var(--dj-espace-5);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: 8px;
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+  text-align: center;
+}
+.amis-carte--parfaite {
+  background: var(--dj-creme-2);
+}
+.amis-carte .dj-avatar--t88 {
+  width: 88px;
+  height: 88px;
+}
+@media (max-width: 759px) {
+  .amis-carte {
+    padding-inline: var(--dj-espace-3);
+  }
+  .amis-carte .dj-avatar--t88 {
+    width: 76px;
+    height: 76px;
+  }
+}
+.amis-carte__pseudo {
+  max-width: 100%;
+  margin-top: var(--dj-espace-1);
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-16);
+  overflow-wrap: anywhere;
+}
+.amis-carte small {
+  max-width: 100%;
+  min-height: 18px;
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-13);
+  overflow-wrap: anywhere;
+}
+.amis-carte .dj-bouton {
+  width: 100%;
+  margin-top: var(--dj-espace-2);
+}
+/* Les jeux du jour faits : un carré par jeu, posé sur le bas de la photo. */
+.amis-pastilles {
+  display: flex;
+  gap: 5px;
+  margin-top: -16px;
+  position: relative;
+}
+.amis-pastilles i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2.5px solid var(--dj-encre);
+  border-radius: 4px;
+  background: var(--dj-creme);
+  color: var(--dj-encre-douce);
+  font: normal 11px var(--dj-police-marque);
+}
+.amis-pastilles i.f {
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
+}
+.amis-ruban {
+  padding: 2px 7px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 3px;
+  background: var(--dj-moutarde);
+  font-family: var(--dj-police-marque);
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.amis-vide {
+  margin: 0;
+  padding: var(--dj-espace-7);
+  border: 2.5px dashed var(--dj-encre);
+  border-radius: var(--dj-rayon-afficheur);
+  color: var(--dj-encre-douce);
+  text-align: center;
+}
+
+/* --- Mon groupe ---------------------------------------------------------------------------------------------------------------------------- */
+.amis-groupe__tete {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-6);
+}
+.amis-groupe__tete > div {
+  flex: 1;
+  min-width: 0;
+}
+.amis-groupe__nom {
+  display: block;
+  font-family: var(--dj-police-marque);
+  font-size: 19px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+.amis-groupe__nom:hover {
+  text-decoration: underline;
+}
+.amis-groupe__tete small {
+  display: block;
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-13);
+}
+.amis-groupe__aide {
+  margin: 0;
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-14);
+}
+.amis-membres {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--dj-espace-5) var(--dj-espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 759px) {
+  .amis-membres {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .amis-membres .dj-avatar--t52 {
+    width: 48px;
+    height: 48px;
+  }
+}
+.amis-membre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dj-espace-1);
+  min-width: 0;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  text-align: center;
+}
+.amis-membre__nom {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.amis-membre small {
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-12);
+  font-weight: 400;
+}
+.amis-groupe__pied {
+  display: flex;
+  gap: var(--dj-espace-3);
+}
+.amis-groupe__pied .dj-bouton {
+  flex: 1;
+  width: auto;
+}
+
+/* Le lien d'invitation n'est montré qu'à sa création : l'attribut `hidden` doit l'emporter sur le `display: flex` des composants des amis (sinon un champ vide et « Copier le lien » s'affichent d'emblée). */
+.amis-gestion [hidden] {
+  display: none;
+}
+.amis-groupe__pied .dj-bouton {
+  padding-inline: var(--dj-espace-3);
+  font-size: var(--dj-taille-13);
+  white-space: nowrap;
+}
