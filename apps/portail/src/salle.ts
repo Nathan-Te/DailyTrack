@@ -92,38 +92,41 @@ export interface OptionsCloche {
   onBasculer: () => void;
 }
 
+/** La petite feuille de la cloche (un dialogue non modal) : son titre, sa croix, une ligne par chose à lire (ou la phrase « rien »). Lot U4 : partagée par l'accueil (`cloche`) et les autres pages (`clochePage.ts`, chargée à la demande). */
+export function feuilleDeCloche(o: Pick<OptionsCloche, "titre" | "fermer" | "lignes" | "vide"> & { onFermer: () => void }): HTMLElement {
+  const fermer = el("button", { classe: "salle-feuille__fermer", attrs: { type: "button", "aria-label": o.fermer, "data-cle": "cloche-fermer" } }, pictogramme("fermer", 18));
+  fermer.addEventListener("click", o.onFermer);
+  return el(
+    "div",
+    { classe: "salle-feuille", attrs: { id: "salle-feuille", role: "dialog", "aria-label": o.titre } },
+    el("div", { classe: "salle-feuille__tete" }, el("p", { classe: "salle-feuille__titre", texte: o.titre }), fermer),
+    o.lignes.length > 0
+      ? el(
+          "ul",
+          { classe: "salle-feuille__liste" },
+          ...o.lignes.map((l) =>
+            el(
+              "li",
+              {},
+              el(
+                "a",
+                { classe: "salle-feuille__ligne", attrs: { href: l.href, "data-non-lue": l.nonLue ? "oui" : "non" } },
+                el("span", { classe: "salle-feuille__legende", texte: l.legende }),
+                el("span", { classe: "salle-feuille__texte", texte: l.texte }),
+                l.nonLue ? el("span", { classe: "salle-feuille__point", attrs: { "aria-hidden": "true" } }) : null,
+              ),
+            ),
+          ),
+        )
+      : el("p", { classe: "salle-feuille__vide", texte: o.vide }),
+  );
+}
+
 /** La cloche et sa petite feuille (la dernière nouveauté, les réponses non lues de « Mes messages »). Le bouton porte `aria-expanded` ; la feuille est un dialogue non modal fermé par Échap ou par la croix. */
 export function cloche(o: OptionsCloche): HTMLElement {
   const bouton = el("button", { classe: "salle-cloche__bouton", attrs: { type: "button", "aria-expanded": String(o.ouverte), "aria-controls": "salle-feuille", "aria-haspopup": "dialog", "aria-label": o.nom, "data-cle": "cloche", id: "cloche" } }, pictogramme("cloche", 22));
   bouton.addEventListener("click", o.onBasculer);
-  const fermer = el("button", { classe: "salle-feuille__fermer", attrs: { type: "button", "aria-label": o.fermer, "data-cle": "cloche-fermer" } }, pictogramme("fermer", 18));
-  fermer.addEventListener("click", o.onBasculer);
-  const feuille = o.ouverte
-    ? el(
-        "div",
-        { classe: "salle-feuille", attrs: { id: "salle-feuille", role: "dialog", "aria-label": o.titre } },
-        el("div", { classe: "salle-feuille__tete" }, el("p", { classe: "salle-feuille__titre", texte: o.titre }), fermer),
-        o.lignes.length > 0
-          ? el(
-              "ul",
-              { classe: "salle-feuille__liste" },
-              ...o.lignes.map((l) =>
-                el(
-                  "li",
-                  {},
-                  el(
-                    "a",
-                    { classe: "salle-feuille__ligne", attrs: { href: l.href, "data-non-lue": l.nonLue ? "oui" : "non" } },
-                    el("span", { classe: "salle-feuille__legende", texte: l.legende }),
-                    el("span", { classe: "salle-feuille__texte", texte: l.texte }),
-                    l.nonLue ? el("span", { classe: "salle-feuille__point", attrs: { "aria-hidden": "true" } }) : null,
-                  ),
-                ),
-              ),
-            )
-          : el("p", { classe: "salle-feuille__vide", texte: o.vide }),
-      )
-    : null;
+  const feuille = o.ouverte ? feuilleDeCloche({ titre: o.titre, fermer: o.fermer, lignes: o.lignes, vide: o.vide, onFermer: o.onBasculer }) : null;
   return el("div", { classe: "salle-cloche" }, bouton, o.point ? el("span", { classe: "salle-cloche__point", attrs: { "aria-hidden": "true", id: "cloche-point" } }) : null, feuille);
 }
 

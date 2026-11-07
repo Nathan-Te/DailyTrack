@@ -31,8 +31,10 @@ export interface LigneClassement {
   avatar?: string;
   /** Lot F2, filtre « Amis » : `rang` est le rang entre amis ; `rangGeneral` le rang dans le classement « Tous » de la même vue. */
   rangGeneral?: number;
-  /** Lot U2 : le groupe du joueur (son emblème de 22 px à côté du pseudo). **Le serveur ne l'envoie pas encore** : sans lui aucun emblème n'est dessiné (rien n'est inventé). */
-  groupe?: { id: string; nom: string; avatar?: string };
+  /** Lot U2 : le groupe du joueur (son emblème de 22 px à côté du pseudo). Lot U4 : le serveur l'envoie sur chaque ligne (`null` sans groupe) ; absent (vieux serveur) ou `null` : aucun emblème n'est dessiné. */
+  groupe?: { id: string; nom: string; avatar?: string } | null;
+  /** Lot U4 : le dernier jeu du jour qu'il a fini (son dossier sur le site) et l'instant (ms) — sur les lignes des autres joueurs du cumul « Amis » et « Mon groupe » : « Track il y a 12 min ». */
+  dernier?: { site: string; at: number };
 }
 
 /** Lot F2 : un ami qui n'a rien fini ce jour-là (dans la vue) : en bas de « Amis », sans temps. */

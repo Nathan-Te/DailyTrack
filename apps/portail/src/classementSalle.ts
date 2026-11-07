@@ -1,4 +1,6 @@
+import type { KeyValueStore, Langue } from "@cdj/profile";
 import { avatar, el, type TraducteurCommun } from "@cdj/ui";
+import type { TraducteurCloche } from "./clocheLignes";
 import { compteDuFronton, pictogramme, type ItemNav } from "./salle";
 import { photoDePlace } from "./classementPodium";
 
@@ -34,16 +36,37 @@ export function frontonDePage(o: { titre: string; date: string; journee: string 
 }
 
 /**
- * La cloche de la barre sur cette page : **un lien** (vers les nouveautés, ou vers « Mes messages » quand une réponse attend et qu'aucune nouveauté n'est à lire), avec le point terre quand quelque chose n'est pas lu.
- * Elle n'ouvre pas de feuille (celle de l'accueil est un écran du menu à la manette) et ne demande rien au serveur : ce qu'elle sait vient de la copie de l'accueil gardée dans le navigateur.
+ * Lot U4 — ce que la feuille de la cloche a besoin de savoir de la page qui l'ouvre (`clochePage.ts`, chargée à la demande) : le traducteur de la page, sa langue, le stockage du navigateur (le repère « nouveauté
+ * lue », la copie de l'accueil), l'identité de l'appareil (une lecture à l'ouverture seulement) et le chemin vers la racine du portail.
  */
-export function clocheLien(o: { nom: string; nonLu: boolean; href: string }): HTMLElement {
-  return el(
-    "div",
-    { classe: "salle-cloche" },
-    el("a", { classe: "salle-cloche__bouton", attrs: { href: o.href, "aria-label": o.nom, id: "cloche", "data-cle": "cloche" } }, pictogramme("cloche", 22)),
-    o.nonLu ? el("span", { classe: "salle-cloche__point", attrs: { "aria-hidden": "true", id: "cloche-point" } }) : null,
-  );
+export interface ContexteCloche {
+  t: TraducteurCloche;
+  langue: Langue;
+  stockage: KeyValueStore | null;
+  /** L'identifiant de l'appareil, `null` sans profil. */
+  identifiant: () => string | null;
+  /** `"../"` depuis `/classement/`, `/amis/`, `/profil/`. */
+  racine: string;
+}
+
+/** La feuille est-elle ouverte ? Les pages redessinent leur barre à chaque changement : l'état vit ici (et non dans le bouton), la barre neuve la rouvre. */
+export const etatCloche = { ouverte: false };
+
+/**
+ * La cloche de la barre sur `/classement/`, « Amis et groupes » et « Profil » (lot U4) : **un bouton qui ouvre la même feuille que sur l'accueil** (dernière nouveauté, réponses non lues), avec le point terre quand
+ * quelque chose n'est pas lu (d'après la copie de l'accueil du navigateur). La feuille est **chargée à la demande** (`clochePage.ts`, au premier toucher) et ne demande rien au serveur avant : à l'ouverture, elle
+ * montre la copie de l'accueil tout de suite, puis relit `GET /api/portail/jour` une fois. Écran du menu à la manette comme sur l'accueil (`ECRAN_CLOCHE`).
+ */
+export function clocheDePage(o: { nom: string; nonLu: boolean; contexte: ContexteCloche }): HTMLElement {
+  const bouton = el("button", { classe: "salle-cloche__bouton", attrs: { type: "button", "aria-expanded": "false", "aria-controls": "salle-feuille", "aria-haspopup": "dialog", "aria-label": o.nom, id: "cloche", "data-cle": "cloche" } }, pictogramme("cloche", 22));
+  const racine = el("div", { classe: "salle-cloche" }, bouton, o.nonLu ? el("span", { classe: "salle-cloche__point", attrs: { "aria-hidden": "true", id: "cloche-point" } }) : null);
+  const afficher = (deplacerLeFocus: boolean) => void import("./clochePage").then((m) => m.afficher(racine, o.contexte, deplacerLeFocus));
+  bouton.addEventListener("click", () => {
+    etatCloche.ouverte = !etatCloche.ouverte;
+    afficher(true);
+  });
+  if (etatCloche.ouverte) afficher(false); // la page s'est redessinée pendant que la feuille était ouverte
+  return racine;
 }
 
 /** Une place du podium, déjà prête (textes traduits, adresse de l'image, valeur formatée). */

@@ -29,7 +29,6 @@ import {
   el,
   etiquetteDe,
   formatDate,
-  formatDateCourte,
   formatNombre,
   formatNumeroJour,
   formatRang,
@@ -51,7 +50,7 @@ import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type AmiDuJour, type Etat, type JeuDuJour, type JourDeSemaine, type Lecture, type LigneEntreAmis } from "./jour";
 import { choixPourDemain, epinglesEnTete } from "./mesJeux";
 import { barreSalle, cloche, compteDuFronton, emblemeDeGroupe, fronton, navigation, panneau, progression, selecteurDeVue, semaineEnLampes, titreDeZone, type Lampe } from "./salle";
-import { dans, nonLue } from "./nouveautesDonnees";
+import { lignesDeCloche } from "./clocheLignes";
 import { boutonRetours } from "./retoursLien";
 import { categorieDuJeu, ficheDuJeu, titreDeCarte } from "./jeuxFiches";
 import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
@@ -328,24 +327,7 @@ function bandeau(t: T): HTMLElement | null {
  * Elle remplace la ligne « Nouveautés » de l'accueil et la pastille de l'avatar. `point` : quelque chose n'est pas lu.
  */
 function clocheDuPortail(t: T): HTMLElement {
-  const jour = lecture?.jour;
-  const n = jour?.nouveaute ?? null;
-  const nouveauteNonLue = nonLue(n, stockage);
-  const reponses = jour?.joueur?.messagesNonLus ?? 0;
-  const lignes = [
-    ...(n
-      ? [
-          {
-            legende: t.t("portail.cloche.nouveaute", { date: (() => { const d = parseDay(n.date); return d === null ? n.date : formatDateCourte(d, langue); })() }),
-            texte: dans(n.titre, langue),
-            href: "nouveautes/",
-            nonLue: nouveauteNonLue,
-          },
-        ]
-      : []),
-    ...(jour?.joueur ? [{ legende: t.t("portail.cloche.messages"), texte: reponses > 0 ? t.t("portail.cloche.reponses", { n: reponses }) : t.t("portail.cloche.aucuneReponse"), href: "messages/", nonLue: reponses > 0 }] : []),
-  ];
-  const point = nouveauteNonLue || reponses > 0;
+  const { lignes, point } = lignesDeCloche(t, langue, stockage, lecture?.jour ?? null, ""); // lot U4 : les lignes sont partagées avec les autres pages (`clocheLignes.ts`)
   return cloche({
     nom: t.t(point ? "portail.cloche.nonLu" : "portail.cloche.nom"),
     point,

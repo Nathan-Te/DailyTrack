@@ -17,7 +17,7 @@ README : `docs/plateforme/lots/lot-U2-classements.md` ; charte : `docs/plateform
 | emblème d'un groupe à côté d'un pseudo · dans le panneau des groupes | 22 px · 48 px (carré, jamais rond) |
 | photo en tête de la feuille d'un joueur | 88 px (`taillePhoto: 88` de `feuilleJoueur` ; les classements des jeux gardent 44) |
 - **Toujours ronde** pour un joueur, **toujours carrée** pour un groupe ; contour encre de 3 px dès 48 px. `avatar({ taille })` accepte 24 · 32 · 44 · 48 · 52 · 68 · 84 · 88 · 92 · 96 · 112 · 128 ; **les tailles de 48 px et plus sont dans `avatar-grand.css`**, que l'accueil ne paie pas (il importe `avatar-liste.css` seulement). L'emblème est `emblemeDeGroupe({ taille: 22 | 48 | 52 | 72 })` de `salle.ts`.
-- La source d'une photo envoyée reste de 128 × 128 (partie 2 du lot **non faite**, en attente de l'accord de Nathan : voir le README) : à 112 px elle est agrandie, sans erreur.
+- La source d'une photo envoyée était de 128 × 128 (partie 2 du lot non faite, faute d'accord de Nathan) ; **lot U4 : 256 × 256, 40 Ko**, validé par Nathan (les images de 128 déjà envoyées restent valides, agrandies sans erreur à 112 px) ; une photo neuve est nette sur le podium d'un écran Retina.
 
 ## Le podium
 - **Quand** : `lignesDuPodium` — au moins 3 classés ; au cumul, les trois premiers doivent avoir tout fini (sinon ils sont sous « Un jeu sur deux » et il n'y a pas de podium). Le podium montre le haut de `top` tel que le serveur le rend : il ne change aucun rang ; la liste garde le reste (`resteDuHaut`), ta ligne hors du haut reste à part, en moutarde, à sa vraie place.

@@ -276,7 +276,7 @@ export const PLATFORM_SCHEMA: string[] = [
   `CREATE INDEX IF NOT EXISTS retours_messages_by_retour ON retours_messages (retour_id, id)`,
   // --- Lot C1, partie B : les avatars et les emblèmes de groupe (`avatars.ts`). **Réversible** : trois tables nouvelles (l'ancien code les ignore) ; retour arrière : `DROP TABLE avatars`, `DROP TABLE avatar_signalements`,
   // `DROP TABLE avatar_interdits` (les index partent avec). `avatars` : une ligne par propriétaire (`kind` `joueur` | `groupe`, `owner` = l'identifiant interne du joueur ou du groupe) = l'image **contrôlée par le serveur**
-  // en base64 (≤ 20 Ko → ≈ 27 Ko), son empreinte (`hash` : la clé de l'adresse immuable `/api/avatars/<hash>`), son état (`visible` | `masque` — 3 signalements en attente — | `retire` — par l'administration, les octets sont
+  // en base64 (≤ 40 Ko → ≈ 54 Ko ; 20 Ko → ≈ 27 Ko avant le lot U4), son empreinte (`hash` : la clé de l'adresse immuable `/api/avatars/<hash>`), son état (`visible` | `masque` — 3 signalements en attente — | `retire` — par l'administration, les octets sont
   // effacés), `revu` (l'administration l'a vue : « garder »), `jour` (le jour de Paris du dernier changement : un changement par jour). `avatar_signalements` : un signalement par signalant et par image (`traite` : décidé par
   // l'administration, il ne compte plus). `avatar_interdits` : l'envoi d'images interdit à ce joueur ou ce groupe. Liées à un joueur : vidées par la remise à zéro, effacées avec lui, suivent « Changer mon code ».
   `CREATE TABLE IF NOT EXISTS avatars (

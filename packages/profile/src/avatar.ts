@@ -4,8 +4,8 @@ import { call, type ApiResult, type FetchLike } from "./client";
 // « Avatars (lot C1) »). Pur : réseau injecté. L'identifiant secret voyage dans l'en-tête `X-Player-Id`, jamais dans l'adresse ; une image se désigne par son empreinte, un joueur par sa référence publique.
 
 export const FORMAT_EMPREINTE = /^[0-9a-f]{16}$/;
-export const AVATAR_OCTETS_MAX = 20 * 1024;
-export const AVATAR_COTE = 128;
+export const AVATAR_OCTETS_MAX = 40 * 1024;
+export const AVATAR_COTE = 256;
 
 /** L'adresse de l'image d'une empreinte (`/api/avatars/<empreinte>`), ou `undefined` si ce n'en est pas une (on retombe sur les initiales). Une adresse de serveur `""` ou `"/"` : la même origine. */
 export function adresseAvatar(base: string, empreinte: unknown): string | undefined {

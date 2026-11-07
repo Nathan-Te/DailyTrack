@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { IMAGE_OCTETS_MAX, controlerImage, octetsDeBase64, ImageRefusee } from "../src/imagesAvatar";
+import { IMAGE_COTE_MAX, IMAGE_OCTETS_MAX, controlerImage, octetsDeBase64, ImageRefusee } from "../src/imagesAvatar";
 import { refOfPlayer } from "../src/players";
 import { nameKey } from "../src/pseudos";
 import { ADMIN_EMAIL, CLIENT_ID, SESSION_KEY } from "./adminHelpers";
@@ -45,7 +45,7 @@ const refus = (o: Uint8Array) => {
 };
 
 describe("controlerImage : ce que le serveur accepte et refuse", () => {
-  it("accepte du WebP avec perte, sans perte, et du JPEG (de 16 à 128, carrés)", () => {
+  it("accepte du WebP avec perte, sans perte, et du JPEG (de 16 à 256, carrés)", () => {
     expect(controlerImage(webpLossy(128))).toEqual({ mime: "image/webp", largeur: 128, hauteur: 128 });
     expect(controlerImage(webpLossy(64)).largeur).toBe(64);
     expect(controlerImage(webpLossless(96))).toEqual({ mime: "image/webp", largeur: 96, hauteur: 96 });
@@ -77,12 +77,26 @@ describe("controlerImage : ce que le serveur accepte et refuse", () => {
     expect(refus(jpeg(128, [], 0xc3))).toBe("format"); // sans perte
   });
 
-  it("refuse la taille (20 Ko) et les dimensions (carrée, de 16 à 128)", () => {
+  it("lot U4 : 256 × 256 et 40 Ko ; une image déjà envoyée en 128 × 128 reste valide", () => {
+    expect([IMAGE_COTE_MAX, IMAGE_OCTETS_MAX]).toEqual([256, 40 * 1024]);
+    expect(controlerImage(webpLossy(256))).toEqual({ mime: "image/webp", largeur: 256, hauteur: 256 });
+    expect(controlerImage(webpLossless(256))).toEqual({ mime: "image/webp", largeur: 256, hauteur: 256 });
+    expect(controlerImage(jpeg(256))).toEqual({ mime: "image/jpeg", largeur: 256, hauteur: 256 });
+    expect(controlerImage(webpLossy(128)).largeur).toBe(128);
+    expect(controlerImage(jpeg(128)).largeur).toBe(128);
+    // Pile 40 Ko (en-têtes compris) : accepté ; deux octets de plus : refusé.
+    const pleine = (total: number) => riff([chunk("VP8 ", [0x10, 0, 0, 0x9d, 1, 0x2a, 0, 1, 0, 1, ...Array(total - 20 - 10).fill(1)])]);
+    expect(pleine(IMAGE_OCTETS_MAX).length).toBe(IMAGE_OCTETS_MAX);
+    expect(controlerImage(pleine(IMAGE_OCTETS_MAX)).largeur).toBe(256);
+    expect(refus(pleine(IMAGE_OCTETS_MAX + 2))).toBe("taille");
+  });
+
+  it("refuse la taille (40 Ko) et les dimensions (carrée, de 16 à 256)", () => {
     expect(refus(riff([chunk("VP8 ", [0x10, 0, 0, 0x9d, 1, 0x2a, 128, 0, 128, 0, ...Array(IMAGE_OCTETS_MAX).fill(1)])]))).toBe("taille");
-    expect(refus(webpLossy(129))).toBe("dimensions");
-    expect(refus(webpLossy(256))).toBe("dimensions");
+    expect(refus(webpLossy(257))).toBe("dimensions");
+    expect(refus(webpLossy(300))).toBe("dimensions");
     expect(refus(webpLossy(8))).toBe("dimensions");
-    expect(refus(jpeg(200))).toBe("dimensions");
+    expect(refus(jpeg(512))).toBe("dimensions");
     const rect = webpLossy(128);
     rect[26] = 64; // largeur 64, hauteur 128
     expect(refus(rect)).toBe("dimensions");
@@ -90,7 +104,7 @@ describe("controlerImage : ce que le serveur accepte et refuse", () => {
 
   it("octetsDeBase64 : seulement de la base64 de bonne longueur", () => {
     expect(octetsDeBase64("AAEC")).toEqual(Uint8Array.from([0, 1, 2]));
-    for (const mauvais of ["", "AAE", "AA EC", "data:image/webp;base64,AAEC", 5, null, "A".repeat(30_000)]) expect(octetsDeBase64(mauvais)).toBeNull();
+    for (const mauvais of ["", "AAE", "AA EC", "data:image/webp;base64,AAEC", 5, null, "A".repeat(60_000)]) expect(octetsDeBase64(mauvais)).toBeNull();
   });
 });
 
@@ -154,7 +168,7 @@ describe(`avatars : l'envoi et l'image servie (${TEST_DB})`, () => {
     const exif = [0xff, 0xe1, 0, 8, ...ascii("Exif"), 0, 0];
     for (const [image, raison] of [
       [jpeg(128, [exif]), "metadonnees"],
-      [webpLossy(256), "dimensions"],
+      [webpLossy(257), "dimensions"],
       [new TextEncoder().encode("<svg/>"), "format"],
     ] as const) {
       const r = await envoi(t, 1, image);

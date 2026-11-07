@@ -7,6 +7,7 @@ import { HttpError } from "./errors";
 import type { MedaillePortail, Platform, RequestInfo, ScorePortail } from "./games";
 import { refOfPlayer, type PlayerRow } from "./players";
 import type { JeuPortail, VuePartagee } from "./portail";
+import { monEmbleme, type EmblemeGroupe } from "./groupeEmbleme";
 
 // Lot F2 — le filtre `filtre=amis` des quatre classements (portail et ses trois vues, Track, Jump, Tower) et la feuille d'un joueur (`GET /api/amis/fiche/<ref>`).
 //
@@ -50,6 +51,8 @@ interface Entree {
   ref: string;
   pseudo: string;
   avatar?: string | null;
+  /** Lot U4 : son groupe (l'emblème de la ligne du portail), `null` sans groupe. */
+  groupe: EmblemeGroupe | null;
   moi: boolean;
   /** Le rang dans le classement « Tous » de cette vue. */
   rangGeneral: number;
@@ -123,7 +126,13 @@ export function creerClassementAmis(d: DepsClassementAmis) {
       vueNom = jeu?.portail.site ?? options!.code;
     }
     const row = await d.joueurActif(id);
-    const [amis, c] = await Promise.all([filtre === "groupe" ? (d.groupe ? d.groupe(id, day) : Promise.resolve([])) : d.amis.liste(id), v.classementDe(day)]);
+    // Lot U4 (classement du portail seulement) : le groupe de chaque ligne. « Amis » : une jointure de plus dans la liste des amis ; « Mon groupe » : tous les membres ont le même groupe, le tien (une lecture) ; toi aussi.
+    const surPortail = format === "portail";
+    const [amis, c, monGroupe] = await Promise.all([
+      filtre === "groupe" ? (d.groupe ? d.groupe(id, day) : Promise.resolve([])) : d.amis.liste(id, { groupe: surPortail }),
+      v.classementDe(day),
+      surPortail ? monEmbleme(db, id) : Promise.resolve(null),
+    ]);
     const maRef = await refOfPlayer(id);
 
     // Ce que le joueur a fait à l'instant (ses états exacts, une lecture par jeu) : ce qu'il vient de finir figure tout de suite dans sa liste.
@@ -137,7 +146,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
 
     const entrees: Entree[] = [];
     const absents: { ref: string; pseudo: string }[] = [];
-    const commun = (a: AmiLu) => ({ id: a.id, ref: a.ref, pseudo: a.name, avatar: a.avatar, moi: false });
+    const commun = (a: AmiLu) => ({ id: a.id, ref: a.ref, pseudo: a.name, avatar: a.avatar, groupe: filtre === "groupe" ? monGroupe : (a.groupe ?? null), moi: false });
 
     if (cumul) {
       for (const a of amis) {
@@ -145,7 +154,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
         if (i === undefined) absents.push({ ref: a.ref, pseudo: a.name });
         else entrees.push({ ...commun(a), rangGeneral: i + 1, ligne: c.cumul[i]!, tri: c.cumul[i]!, res: null });
       }
-      if (bilan) entrees.push({ id, ref: maRef, pseudo: row.name, avatar: row.avatar, moi: true, rangGeneral: placer(c, bilan).rang, ligne: bilan, tri: ligneDeTri(c, bilan), res: null });
+      if (bilan) entrees.push({ id, ref: maRef, pseudo: row.name, avatar: row.avatar, groupe: monGroupe, moi: true, rangGeneral: placer(c, bilan).rang, ligne: bilan, tri: ligneDeTri(c, bilan), res: null });
       entrees.sort((x, y) => comparer(x.tri!, y.tri!));
     } else if (jeuVue) {
       for (const a of amis) {
@@ -172,7 +181,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
       }
       const e = etatsMoi[ouverts.indexOf(jeuVue)];
       if (e && e.statut === "fini") {
-        entrees.push({ id, ref: maRef, pseudo: row.name, avatar: row.avatar, moi: true, rangGeneral: e.rang, ligne: hauteur ? null : bilan, tri: null, res: { tempsMs: e.tempsMs, medaille: e.medaille, score: e.score } });
+        entrees.push({ id, ref: maRef, pseudo: row.name, avatar: row.avatar, groupe: monGroupe, moi: true, rangGeneral: e.rang, ligne: hauteur ? null : bilan, tri: null, res: { tempsMs: e.tempsMs, medaille: e.medaille, score: e.score } });
       }
       // Dans l'ordre du classement de la vue. Les amis gardent leur rang du classement gardé ; le joueur qui regarde est placé par son résultat exact (ce qu'il vient de finir peut devancer un ami que
       // le classement gardé n'avait pas encore dépassé), et passe après ceux qui font le même résultat.
@@ -190,15 +199,29 @@ export function creerClassementAmis(d: DepsClassementAmis) {
     const classes = entrees.length;
     const ouvert = v.jourOuvert(day);
 
+    // Lot U4 : le dernier jeu du jour qu'un joueur a fini (son dossier sur le site et l'instant de l'essai classé), lu dans la ligne du classement gardé : aucune requête. Comme « tes amis aujourd'hui » de l'accueil,
+    // ni l'arcade ni un jeu à la hauteur n'y comptent (ils ne comptent pas dans la journée) ; rien tant qu'il n'a fini aucun jeu du jour.
+    const pourDernier = ouverts.flatMap((j) => (v.estHauteur(j) || v.estArcade(j, day) || c.jeux.indexOf(j.code) < 0 ? [] : [{ site: j.portail.site, g: c.jeux.indexOf(j.code) }]));
+    const dernierDe = (l: LigneDuJour | null): { dernier?: { site: string; at: number } } => {
+      let m: { site: string; at: number } | null = null;
+      for (const { site, g } of pourDernier) {
+        const r = l?.resultats[g];
+        if (r && (!m || r.at > m.at)) m = { site, at: r.at };
+      }
+      return m ? { dernier: m } : {};
+    };
+
     // --- La mise en forme : « mêmes lignes qu'en Tous », plus le rang entre amis (`rang`), le rang général (`rangGeneral`) et `ref` ---
     const lignes = entrees.map((x, i) => {
       const rang = i + 1;
       const base = { rang, rangGeneral: x.rangGeneral, ref: x.ref, ...(x.avatar ? { avatar: x.avatar } : {}), ...(x.moi ? { moi: true } : {}) };
       switch (format) {
         case "portail": {
-          if (cumul) return { ...base, pseudo: x.pseudo, tempsMs: x.ligne!.cumulMs, complet: x.ligne!.complet, resultats: v.resultatsCorps(c.jeux, x.ligne!.resultats) };
-          if (hauteur) return { ...base, pseudo: x.pseudo, tempsMs: x.res!.tempsMs, complet: true, score: x.res!.score ?? null, resultats: { [jeuVue!.code]: { rang: x.rangGeneral, tempsMs: x.res!.tempsMs, medaille: x.res!.medaille, score: x.res!.score ?? null } } };
-          return { ...base, pseudo: x.pseudo, tempsMs: x.res!.tempsMs, complet: true, resultats: v.resultatsCorps(c.jeux, x.ligne!.resultats) };
+          // Lot U4 : `groupe` (l'emblème à côté du pseudo) sur chaque ligne ; `dernier` (le dernier jeu du jour fini, « Track il y a 12 min ») sur celle d'un autre joueur au cumul.
+          const portail = { ...base, groupe: x.groupe };
+          if (cumul) return { ...portail, pseudo: x.pseudo, tempsMs: x.ligne!.cumulMs, complet: x.ligne!.complet, resultats: v.resultatsCorps(c.jeux, x.ligne!.resultats), ...(x.moi ? {} : dernierDe(x.ligne)) };
+          if (hauteur) return { ...portail, pseudo: x.pseudo, tempsMs: x.res!.tempsMs, complet: true, score: x.res!.score ?? null, resultats: { [jeuVue!.code]: { rang: x.rangGeneral, tempsMs: x.res!.tempsMs, medaille: x.res!.medaille, score: x.res!.score ?? null } } };
+          return { ...portail, pseudo: x.pseudo, tempsMs: x.res!.tempsMs, complet: true, resultats: v.resultatsCorps(c.jeux, x.ligne!.resultats) };
         }
         case "cdj":
           return { rank: rang, ...base, name: x.pseudo, ms: x.res!.tempsMs, medal: x.res!.medaille };

@@ -3,6 +3,7 @@ import type { GameInstance, Platform, RequestInfo } from "./games";
 import { nameKey } from "./pseudos";
 import { refOfPlayer, sha256Hex, REF_LENGTH, type PlayerRow } from "./players";
 import { creerClassementAmis, type FormatClassement } from "./classementAmis";
+import { COLONNES_GROUPE, JOINTURE_GROUPE, emblemeDe, type ColonnesGroupe, type EmblemeGroupe } from "./groupeEmbleme";
 import type { VuePartagee } from "./portail";
 
 // Les amis (lot F2 de la plateforme) : `joueur` voit les temps de `ami`. README : `docs/plateforme/lots/lot-F2-amis.md` ; règles : `apps/api/CLAUDE.md`, « Amis (lot F2) ».
@@ -60,12 +61,17 @@ export interface AmiLu {
   name: string;
   ref: string;
   avatar?: string | null;
+  /** Lot U4 : son groupe (nom et emblème), présent seulement quand la liste a été lue `{ groupe: true }` ; `null` : sans groupe. */
+  groupe?: EmblemeGroupe | null;
 }
 
 /** Ce que le classement filtré lit des amitiés. */
 export interface AmisLecture {
-  /** Les amis non masqués d'un joueur, par ordre de pseudo, avec leur pseudo et leur référence. Une requête. */
-  liste(id: string): Promise<AmiLu[]>;
+  /**
+   * Les amis non masqués d'un joueur, par ordre de pseudo, avec leur pseudo et leur référence. Une requête.
+   * Lot U4 : `{ groupe: true }` ajoute le groupe de chacun (`AmiLu.groupe`) par une jointure sur deux clés primaires — le classement « Amis » du portail seul le demande (l'accueil ne paie rien de plus).
+   */
+  liste(id: string, o?: { groupe?: boolean }): Promise<AmiLu[]>;
 }
 
 /** Ce que le portail demande aux amis (lot U1 : toute la colonne de droite de l'accueil : « 3e entre amis », le classement entre amis, tes amis aujourd'hui) : ta liste (masqués écartés, tri par pseudo), une requête. */
@@ -124,7 +130,7 @@ export function createAmis(
       `SELECT a.ami AS id, p.name AS name, p.ref AS ref, p.avatar AS avatar, a.origine AS origine,
               EXISTS (SELECT 1 FROM amities b WHERE b.joueur = a.ami AND b.ami = a.joueur) AS reciproque
          FROM amities a JOIN players p ON p.id = a.ami
-        WHERE a.joueur = ? AND p.hidden = 0
+        WHERE a.joueur = ? AND +p.hidden = 0
         ORDER BY p.name_key`,
       [id],
     );
@@ -132,18 +138,25 @@ export function createAmis(
   }
 
   const lecture: AmisLecture = {
-    async liste(id) {
-      const rows = await db.all<{ id: string; name: string; ref: string | null }>(
-        "SELECT a.ami AS id, p.name AS name, p.ref AS ref FROM amities a JOIN players p ON p.id = a.ami WHERE a.joueur = ? AND p.hidden = 0 ORDER BY p.name_key",
+    async liste(id, o) {
+      if (o?.groupe) {
+        const rows = await db.all<{ id: string; name: string; ref: string | null; avatar: string | null } & ColonnesGroupe>(
+          `SELECT a.ami AS id, p.name AS name, p.ref AS ref, p.avatar AS avatar, ${COLONNES_GROUPE} FROM amities a JOIN players p ON p.id = a.ami ${JOINTURE_GROUPE} WHERE a.joueur = ? AND +p.hidden = 0 ORDER BY p.name_key`,
+          [id],
+        );
+        return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, ref: await refDe(r.id, r.ref), avatar: r.avatar, groupe: emblemeDe(r) })));
+      }
+      const rows = await db.all<{ id: string; name: string; ref: string | null; avatar: string | null }>(
+        "SELECT a.ami AS id, p.name AS name, p.ref AS ref, p.avatar AS avatar FROM amities a JOIN players p ON p.id = a.ami WHERE a.joueur = ? AND +p.hidden = 0 ORDER BY p.name_key",
         [id],
       );
-      return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, ref: await refDe(r.id, r.ref) })));
+      return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, ref: await refDe(r.id, r.ref), avatar: r.avatar })));
     },
   };
 
   /** Combien d'amis voit-on dans sa liste (les masqués n'y figurent pas). */
   async function totalVisible(id: string): Promise<number> {
-    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM amities a JOIN players p ON p.id = a.ami WHERE a.joueur = ? AND p.hidden = 0", [id]))?.n ?? 0;
+    return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM amities a JOIN players p ON p.id = a.ami WHERE a.joueur = ? AND +p.hidden = 0", [id]))?.n ?? 0;
   }
 
   /** Les lignes d'une liste (masqués compris) : ce qui borne à `AMIS_MAX`. */

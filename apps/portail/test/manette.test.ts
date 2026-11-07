@@ -24,9 +24,8 @@ describe("les pages du portail à la manette", () => {
     expect(PAGES_MANETTE.amis).toContain(".dj-ajout-ami__champ");
   });
 
-  it("lot U1 : la feuille de la cloche est dans le menu de l'accueil seulement (A ouvre la ligne, B ferme), et ce qu'elle nomme existe", () => {
-    expect(optionsPage("accueil").ecrans).toContainEqual(ECRAN_CLOCHE);
-    for (const page of ["amis", "classement", "groupe", "messages", "nouveautes", "profil"] as const) expect(optionsPage(page).ecrans).not.toContainEqual(ECRAN_CLOCHE);
+  it("lot U1 puis U4 : la feuille de la cloche est un écran du menu de toutes les pages (A ouvre la ligne, B ferme), et ce qu'elle nomme existe", () => {
+    for (const page of Object.keys(PAGES_MANETTE) as (keyof typeof PAGES_MANETTE)[]) expect(optionsPage(page).ecrans).toContainEqual(ECRAN_CLOCHE);
     verifierEcrans([ECRAN_CLOCHE], ["apps/portail/src"]);
   });
 

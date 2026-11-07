@@ -39,6 +39,7 @@ describe("lot U2 : le podium", () => {
     expect(groupeDeLigne(ligne(1))).toBeNull();
     expect(groupeDeLigne(ligne(1, { groupe: { id: "g1", nom: "Les Lève-tôt" } }))?.nom).toBe("Les Lève-tôt");
     expect(groupeDeLigne({ groupe: { id: 3, nom: "x" } as never })).toBeNull();
+    expect(groupeDeLigne(ligne(1, { groupe: null }))).toBeNull(); // lot U4 : `null` sans groupe
   });
   it("les colonnes du cumul : les jeux au temps du jour, ni un jeu à la hauteur ou aux points, ni un jeu d'arcade ; 6 colonnes au plus", () => {
     const jeux = [{ jeu: "cdj" }, { jeu: "jump" }, { jeu: "tower", unite: "mm", categorie: "arcade" }, { jeu: "blocks", unite: "points", categorie: "arcade" }, { jeu: "rush", categorie: "arcade" }];

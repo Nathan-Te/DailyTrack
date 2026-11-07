@@ -212,7 +212,7 @@ function carteAmi(t: ReturnType<typeof traduire>, c: CarteAmi): HTMLElement {
   return el(
     "li",
     { classe: ["amis-carte", c.bilan.etat === "parfaite" && "amis-carte--parfaite"], attrs: { "data-ref": c.ref, "data-etat": c.bilan.etat } },
-    avatar(t, { pseudo: c.pseudo, ref: c.ref, image: adresseAvatar(baseApi(), c.avatar), taille: 88, decoratif: true }),
+    avatar(t, { pseudo: c.pseudo, ref: c.ref, image: c.avatar, taille: 88, decoratif: true }), // `c.avatar` est déjà l'adresse de l'image (`adresseAvatar` à la lecture de la liste) : la reconvertir la perdait (les photos des cartes restaient des initiales)
     pastilles(t, c),
     el("b", { classe: "amis-carte__pseudo", texte: c.pseudo }),
     ...lignesDEtat(t, c),

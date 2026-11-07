@@ -1,18 +1,18 @@
 import { parisDay } from "@cdj/clock";
-import { adresseAvatar, readIdentity, type KeyValueStore, type Langue } from "@cdj/profile";
+import { adresseAvatar, readIdentity, readPlayerId, type KeyValueStore, type Langue } from "@cdj/profile";
 import { CATALOGUE_COMMUN, avatar, choixLangue, formatDate, formatNumeroJour, logo, traducteur } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { CATALOGUE_PAGES } from "./cataloguePages";
 import { jourGarde } from "./cacheJour";
-import { clocheLien, frontonDePage, itemsDeNavigation } from "./classementSalle";
+import { clocheDePage, frontonDePage, itemsDeNavigation } from "./classementSalle";
 import { baseApi, formatCompte, prochainMinuit } from "./jour";
 import { numeroDeJournee } from "./jours";
 import { nonLue } from "./nouveautesDonnees";
 import { barreSalle, navigation, type PageNav } from "./salle";
 
 // Lot U3 (charte rév. 19, § 1 et § 9) — ce que partagent les pages « Amis et groupes » et « Profil » de la salle de jeux : la barre (logo, navigation, langue, cloche, avatar), le fronton (titre, date, journée,
-// compte à rebours) et la barre d'onglets du téléphone. Des pièces de présentation : les textes viennent du catalogue du portail, le stockage est passé en paramètre, rien n'est demandé au serveur (la cloche lit la
-// copie de l'accueil gardée dans le navigateur, comme `/classement/`). Les pages Classements et accueil gardent leurs propres assemblages (lots U1 et U2).
+// compte à rebours) et la barre d'onglets du téléphone. Des pièces de présentation : les textes viennent du catalogue du portail, le stockage est passé en paramètre, rien n'est demandé au serveur au chargement (la cloche lit la
+// copie de l'accueil gardée dans le navigateur, comme `/classement/`, et ouvre sa feuille à la demande : lot U4). Les pages Classements et accueil gardent leurs propres assemblages (lots U1 et U2).
 
 export const traducteurDePage = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_COMMUN);
 export type TPage = ReturnType<typeof traducteurDePage>;
@@ -43,7 +43,8 @@ export function barreDePage(o: OptionsSalle): HTMLElement {
     logo: logo(t),
     navigation: navigation({ items, ici: o.ici, aria: t.t("portail.nav.aria"), place: "haut", racine: "../" }),
     langue: choixLangue(t, { langue: o.langue, onChange: o.onLangue }),
-    cloche: clocheLien({ nom: t.t(nouveaute || reponses > 0 ? "portail.cloche.nonLu" : "portail.cloche.nom"), nonLu: nouveaute || reponses > 0, href: !nouveaute && reponses > 0 ? "../messages/" : "../nouveautes/" }),
+    // Lot U4 : la cloche ouvre la même feuille que sur l'accueil (chargée à la demande, `clochePage.ts`) ; le point vient de la copie de l'accueil.
+    cloche: clocheDePage({ nom: t.t(nouveaute || reponses > 0 ? "portail.cloche.nonLu" : "portail.cloche.nom"), nonLu: nouveaute || reponses > 0, contexte: { t, langue: o.langue, stockage: o.stockage, identifiant: () => (o.stockage ? readPlayerId(o.stockage) : null), racine: "../" } }),
     avatar: avatar(t, { pseudo: identite.exists ? identite.name : null, href: "../profil/", image: adresseAvatar(baseApi(), o.avatar ?? copie?.joueur?.avatar) }),
   });
 }

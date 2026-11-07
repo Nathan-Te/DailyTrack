@@ -1,5 +1,5 @@
 // Lot U3 (charte rév. 19, § 9) — la logique pure de la page « Profil » : les médailles de tous les jeux (la somme de celles de chaque jeu) et le rangement des jeux (ceux du jour d'abord, puis l'arcade).
-// Sans DOM ni réseau, testée dans `test/profilDonnees.test.ts`. Rien n'est inventé : le serveur ne donne ni « meilleure série » ni dates de début, la page ne les montre pas.
+// Sans DOM ni réseau, testée dans `test/profilDonnees.test.ts`. Rien n'est inventé : la « meilleure série » vient du serveur (lot U4, `meilleureSerie`), les dates de début, il ne les donne pas : la page ne les montre pas.
 
 export type CleMedaille = "author" | "gold" | "silver" | "bronze";
 export const CLES_MEDAILLES: readonly CleMedaille[] = ["author", "gold", "silver", "bronze"];

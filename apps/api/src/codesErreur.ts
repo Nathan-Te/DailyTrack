@@ -79,7 +79,7 @@ export const CODES_ERREUR = {
   feedback_full: { status: 409, sens: "Retours (lot C1) : ce fil a atteint ses 100 messages." },
 
   // --- Avatars (lot C1, partie B) ----------------------------------------------------------------------------------------
-  invalid_image: { status: 400, sens: "Avatars (lot C1) : image refusée par le serveur (`raison` : `taille` — 20 Ko au plus —, `format` — WebP ou JPEG seulement —, `metadonnees` — EXIF, XMP, ICC ou tout autre segment —, `dimensions` — carrée, 128 pixels au plus)." },
+  invalid_image: { status: 400, sens: "Avatars (lot C1) : image refusée par le serveur (`raison` : `taille` — 40 Ko au plus —, `format` — WebP ou JPEG seulement —, `metadonnees` — EXIF, XMP, ICC ou tout autre segment —, `dimensions` — carrée, 256 pixels au plus)." },
   avatar_limit: { status: 429, sens: "Avatars (lot C1) : un seul changement d'image par jour et par joueur ou groupe (Retry-After jusqu'à minuit)." },
   avatar_banned: { status: 403, sens: "Avatars (lot C1) : l'envoi d'images est interdit à ce joueur ou à ce groupe par l'administration." },
   unknown_avatar: { status: 404, sens: "Avatars (lot C1) : pas d'image à ce nom (jamais envoyée, retirée, ou masquée par signalements), ou aucun joueur de cette référence." },

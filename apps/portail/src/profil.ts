@@ -95,6 +95,8 @@ interface Profil {
   aProlonger: boolean;
   journeesParfaites: number;
   aujourdhuiParfaite: boolean;
+  /** Lot U4 : la plus longue série de jours consécutifs (jamais moins que `serie`) ; absente d'un vieux serveur : la tuile n'est pas dessinée, rien n'est inventé. */
+  meilleureSerie?: number;
   /** Lot C1 : les réponses de l'éditeur qui attendent (« Mes messages »). */
   messagesNonLus?: number;
   /** Lot C1, partie B : l'empreinte de son image d'avatar (absente : ses initiales). */
@@ -247,6 +249,8 @@ function tousLesJeux(t: T, p: Profil): HTMLElement {
   const total = medaillesTotales(p.jeux);
   const serie = tuile({ legende: t.t("portail.serie.legende"), valeur: t.t("portail.serie.valeur", { n: p.serie }), sousTexte: p.aProlonger ? t.t("portail.serie.aProlonger") : undefined, icone: icone("flamme", { taille: 22 }) });
   serie.classList.add("profil-tuile--encre");
+  const parfaites = tuile({ legende: t.t("profil.parfaites.legende"), valeur: formatNombre(p.journeesParfaites, langue), sousTexte: p.aujourdhuiParfaite ? t.t("portail.serie.parfaiteAujourdhui") : undefined });
+  parfaites.classList.add("profil-tuile--large");
   const cases = el(
     "div",
     { classe: "profil-medailles profil-medailles--tous", attrs: { role: "group", "aria-label": t.t("profil.medailles") } },
@@ -263,7 +267,9 @@ function tousLesJeux(t: T, p: Profil): HTMLElement {
       "div",
       { classe: "profil-tuiles" },
       serie,
-      tuile({ legende: t.t("profil.parfaites.legende"), valeur: formatNombre(p.journeesParfaites, langue), sousTexte: p.aujourdhuiParfaite ? t.t("portail.serie.parfaiteAujourdhui") : undefined }),
+      // Lot U4 : la meilleure série, que le serveur calcule sur les jours déjà gardés.
+      typeof p.meilleureSerie === "number" ? tuile({ legende: t.t("profil.meilleureSerie.legende"), valeur: t.t("portail.serie.valeur", { n: Math.max(p.meilleureSerie, p.serie) }) }) : null,
+      parfaites,
       el("div", { classe: "profil-tuile-medailles" }, cases),
     ),
   );
