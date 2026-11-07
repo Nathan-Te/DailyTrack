@@ -82,6 +82,9 @@
   .classement-jours {
     margin-left: auto;
   }
+}
+/* Le panneau des groupes passe à droite de la liste seulement quand la page est assez large (1100 px) : entre 760 et 1100 px la liste prend toute la largeur et les groupes viennent dessous. */
+@media (min-width: 1100px) {
   .classement-grille {
     grid-template-columns: minmax(0, 1fr) 340px;
     gap: 30px;
@@ -143,7 +146,7 @@
 /* --- Le podium : trois grandes photos, la place en pastille moutarde, des marches d'encre ------------------------------------------------- */
 .classement-podium {
   display: grid;
-  grid-template-columns: 1fr 1.15fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); /* `minmax(0, …)` : un long pseudo ne doit jamais élargir sa colonne */
   align-items: end;
   gap: 14px;
   margin: 0 0 22px;
@@ -168,6 +171,7 @@
   box-shadow: none;
 }
 .classement-place .classement-place__corps {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -203,6 +207,9 @@
   font-size: var(--dj-taille-15);
 }
 .classement-place .classement-pseudo {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--dj-espace-2);
@@ -261,7 +268,7 @@
     font-size: var(--dj-taille-13);
   }
   .classement-place .classement-pseudo {
-    font-size: var(--dj-taille-14);
+    font-size: var(--dj-taille-13);
   }
   .classement-place .classement-temps {
     font-size: var(--dj-taille-13);
@@ -280,30 +287,35 @@
   }
 }
 
-/* --- La liste : la place, la photo de 48 px (44 px sur téléphone), le pseudo et l'emblème de son groupe, une colonne par jeu, le temps ---------------- */
+/* --- La liste : la place, la photo de 48 px (44 px quand la colonne est étroite), le pseudo et l'emblème de son groupe, une colonne par jeu, le temps ------------------------
+   La mise en page suit la largeur de **la colonne de la liste** (et non celle de l'écran : à côté du panneau des groupes la colonne est plus étroite que l'écran ne le laisse croire) : étroite = place, photo, pseudo,
+   temps ; assez large = les colonnes de jeu, d'autant plus tard qu'il y en a (le pseudo garde au moins ≈ 180 px). */
+.classement-gauche {
+  container: classement / inline-size;
+}
 #classement-liste[data-jeux="1"],
 #classement-moi[data-jeux="1"] {
-  --colonnes-jeux: 118px;
+  --colonnes-jeux: 104px;
 }
 #classement-liste[data-jeux="2"],
 #classement-moi[data-jeux="2"] {
-  --colonnes-jeux: 118px 118px;
+  --colonnes-jeux: 104px 104px;
 }
 #classement-liste[data-jeux="3"],
 #classement-moi[data-jeux="3"] {
-  --colonnes-jeux: 118px 118px 118px;
+  --colonnes-jeux: 104px 104px 104px;
 }
 #classement-liste[data-jeux="4"],
 #classement-moi[data-jeux="4"] {
-  --colonnes-jeux: 118px 118px 118px 118px;
+  --colonnes-jeux: 104px 104px 104px 104px;
 }
 #classement-liste[data-jeux="5"],
 #classement-moi[data-jeux="5"] {
-  --colonnes-jeux: 118px 118px 118px 118px 118px;
+  --colonnes-jeux: 104px 104px 104px 104px 104px;
 }
 #classement-liste[data-jeux="6"],
 #classement-moi[data-jeux="6"] {
-  --colonnes-jeux: 118px 118px 118px 118px 118px 118px;
+  --colonnes-jeux: 104px 104px 104px 104px 104px 104px;
 }
 .classement-liste {
   gap: 6px;
@@ -338,6 +350,7 @@
   min-width: 0;
   gap: var(--dj-espace-3);
   font-size: var(--dj-taille-15);
+  overflow-wrap: break-word; /* un long pseudo passe à la ligne ou se coupe en dernier recours, il n'écrase jamais la colonne */
 }
 .classement-ligne .classement-pseudo .salle-embleme {
   flex: none;
@@ -359,9 +372,24 @@
 .classement-ligne__corps--absent {
   grid-template-columns: 30px 44px minmax(0, 1fr) auto;
 }
-@media (min-width: 760px) {
-  .classement-ligne__corps {
-    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+#classement-liste > .classement-podium + .classement-entetes {
+  margin-top: var(--dj-espace-2);
+}
+.classement-ligne--absente {
+  background: transparent;
+}
+.classement-hors-haut {
+  margin-top: var(--dj-espace-3);
+}
+.classement-invite {
+  margin: var(--dj-espace-4) 0 0;
+}
+
+/* Colonne assez large pour la photo de 48 px et plus d'air. */
+@container classement (min-width: 520px) {
+  .classement-ligne__corps,
+  .classement-ligne__corps--absent {
+    grid-template-columns: 44px 48px minmax(0, 1fr) auto;
     gap: 12px;
     padding: 8px 12px;
   }
@@ -369,13 +397,55 @@
     width: 48px;
     height: 48px;
   }
-  .classement-ligne__corps--absent {
-    grid-template-columns: 44px 48px minmax(0, 1fr) auto;
+  .classement-ligne .classement-pseudo {
+    font-size: var(--dj-taille-16);
   }
-  /* Les cases des jeux deviennent des colonnes de la ligne ; le nom du jeu est dans l'en-tête (il reste lu dans chaque case). */
-  .classement-ligne__jeux {
+}
+/* Les colonnes de jeu : 1 ou 2 jeux dès 680 px de colonne, 3 dès 800 px, 4 à 6 dès 920 px. Le nom du jeu est dans l'en-tête (il reste lu dans chaque case). */
+@container classement (min-width: 680px) {
+  #classement-liste:is([data-jeux="0"], [data-jeux="1"], [data-jeux="2"]) .classement-ligne__corps:not(.classement-ligne__corps--absent),
+  #classement-moi:is([data-jeux="0"], [data-jeux="1"], [data-jeux="2"]) .classement-ligne__corps {
+    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+  }
+  #classement-liste:is([data-jeux="0"], [data-jeux="1"], [data-jeux="2"]) .classement-entetes {
+    display: grid;
+    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+  }
+  #classement-liste:is([data-jeux="0"], [data-jeux="1"], [data-jeux="2"]) .classement-ligne__jeux,
+  #classement-moi:is([data-jeux="0"], [data-jeux="1"], [data-jeux="2"]) .classement-ligne__jeux {
     display: contents;
   }
+}
+@container classement (min-width: 800px) {
+  #classement-liste[data-jeux="3"] .classement-ligne__corps:not(.classement-ligne__corps--absent),
+  #classement-moi[data-jeux="3"] .classement-ligne__corps {
+    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+  }
+  #classement-liste[data-jeux="3"] .classement-entetes {
+    display: grid;
+    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+  }
+  #classement-liste[data-jeux="3"] .classement-ligne__jeux,
+  #classement-moi[data-jeux="3"] .classement-ligne__jeux {
+    display: contents;
+  }
+}
+@container classement (min-width: 920px) {
+  #classement-liste:is([data-jeux="4"], [data-jeux="5"], [data-jeux="6"]) .classement-ligne__corps:not(.classement-ligne__corps--absent),
+  #classement-moi:is([data-jeux="4"], [data-jeux="5"], [data-jeux="6"]) .classement-ligne__corps {
+    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+  }
+  #classement-liste:is([data-jeux="4"], [data-jeux="5"], [data-jeux="6"]) .classement-entetes {
+    display: grid;
+    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
+  }
+  #classement-liste:is([data-jeux="4"], [data-jeux="5"], [data-jeux="6"]) .classement-ligne__jeux,
+  #classement-moi:is([data-jeux="4"], [data-jeux="5"], [data-jeux="6"]) .classement-ligne__jeux {
+    display: contents;
+  }
+}
+/* Les cases deviennent des colonnes ; les en-têtes et les cases se partagent les mêmes réglages. */
+@container classement (min-width: 680px) {
   .classement-jeu {
     flex-direction: column;
     align-items: flex-end;
@@ -392,8 +462,6 @@
     white-space: nowrap;
   }
   .classement-entetes {
-    display: grid;
-    grid-template-columns: 44px 48px minmax(0, 1fr) var(--colonnes-jeux, ) 110px;
     align-items: end;
     gap: 12px;
     margin: 0 0 var(--dj-espace-3);
@@ -408,17 +476,11 @@
     text-align: right;
   }
 }
-#classement-liste > .classement-podium + .classement-entetes {
-  margin-top: var(--dj-espace-2);
-}
-.classement-ligne--absente {
-  background: transparent;
-}
-.classement-hors-haut {
-  margin-top: var(--dj-espace-3);
-}
-.classement-invite {
-  margin: var(--dj-espace-4) 0 0;
+/* Le podium dans une colonne étroite : des noms plus petits, jamais coupés lettre à lettre. */
+@container classement (max-width: 560px) {
+  .classement-place .classement-pseudo {
+    font-size: var(--dj-taille-14);
+  }
 }
 
 /* --- Le panneau des groupes : à droite de la liste sur ordinateur, sous elle sur téléphone --------------------------------------------------------- */
