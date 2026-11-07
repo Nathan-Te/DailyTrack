@@ -45,6 +45,7 @@ Une vingtaine de formes de 2 à 9 cases (40 pièces en comptant chaque orientati
 
 - **La suite est fixe**, tirée de la graine, **indépendante de la grille du joueur** : pas de tirage « qui aide ».
 - **Garde-fous** :
+  - **une suite variée** : les dominos restent rares (moins de 10 % des pièces) ; au plus un domino par série ; jamais deux fois la même pièce dans une série ; au moins une pièce de 4 cases ou plus par série ;
   - au plus une pièce à boîte de 3 × 3 par série ;
   - pas de très grosse pièce dans les 2 premières séries ;
   - la rampe de difficulté est réglable (`?debug&tune`).
@@ -60,7 +61,10 @@ Les valeurs sont un point de départ, à calibrer en jouant. Le score est un ent
 - **Médailles** : Bronze, Argent, Or, **Diamant**. Dans les données, la clé du Diamant reste `auteur`.
   - **Le Diamant** est le score d'un bot fort : pour chaque série, il cherche le meilleur ordre et les meilleures positions des trois pièces, selon une évaluation de la grille.
   - **Les médailles doivent être atteignables par des humains.** Le Bronze est à la portée d'une première partie attentive ; l'Argent, d'un joueur régulier ; l'Or demande une très bonne partie ; le Diamant est exceptionnel, mais battable.
-  - Elles se calibrent sur des bots de force graduée, et **pas en simples fractions du Diamant**. Elles se recalent ensuite sur les vrais scores des joueurs de test. (Constat du 7 nov. 2026 : avec une pièce à la fois, les joueurs faisaient environ 900 points face à des médailles vers 10 000.)
+  - **Elles se mesurent sur une durée humaine**, pas sur la survie sans fin d'un bot. Chaque seuil est le score d'un bot de référence **arrêté après un nombre fixe de pièces**, qui figure une partie de quelques minutes. Un humain qui tient plus longtemps peut donc dépasser le Diamant.
+  - **Mêmes seuils tous les jours** d'une version de règles, arrondis : un seuil se retient d'un jour à l'autre.
+  - Elles se recalent ensuite sur les vrais scores des joueurs de test.
+  - Constats : le 7 nov. 2026, avec une pièce à la fois, les joueurs faisaient environ 900 points face à des médailles vers 10 000. Avec trois pièces, mesurées sur la survie des bots, on obtenait Bronze 1 200, Argent 7 500, Or 11 000 et Diamant 28 000, et une partie attentive faisait 2 230 points.
 - **Ligne à partager** : `Du Jour · Blocks #5 — 4 582 pts — 🥈 — combo ×7`.
 - **Pas de fantôme en partie** : une grille en transparence est illisible. Hors partie, on peut **revoir la partie du n° 1 du jour** (si la plateforme la sert) et celle du Diamant, en rediffusion à vitesse lisible.
 

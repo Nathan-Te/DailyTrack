@@ -363,9 +363,9 @@ export const FICHES_SERVEUR = [
     "medailles": {
       "methode": "pourcentage-diamant",
       "bareme": [
-        34,
-        23,
-        4
+        43,
+        19,
+        10
       ]
     },
     "versions": {

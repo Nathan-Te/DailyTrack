@@ -1,6 +1,6 @@
-import { BLOCKS_GENERATOR_VERSION, contenuDeScenario, dailyBlocks, enregistrer, lireJourFige, rejouer, type Contenu, type Seuils } from "@cdj/blocks-sim";
+import { BLOCKS_GENERATOR_VERSION, contenuDeScenario, dailyBlocks, enregistrer, lireJourFige, rejouer, seuilsDuJour, type Contenu, type Seuils } from "@cdj/blocks-sim";
 
-import { jouerDiamant, seuilsDuJour } from "@cdj/blocks-sim/diamant";
+import { partieDuDiamant } from "@cdj/blocks-sim/diamant";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
@@ -27,12 +27,12 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   return scene(contenu, hote, o, { bot: essai.bot, exemple: essai.mode === "partage" ? exempleDePartage(contenu, essai.exemple ?? "argent") : null });
 }
 
-/** La rediffusion de la partie du bot Diamant sur la suite du jour (une rediffusion valide, rejouée par `jouer`) : la partie qu'on revoit (lot B5 : plus de fantôme). Gardée par suite du jour. */
+/** La rediffusion de la partie du bot Diamant sur la suite du jour, **arrêtée après `PIECES_DU_DIAMANT` pièces** (lot B8b : la partie n'est pas finie, ce n'est donc pas une rediffusion que le serveur accepte) : la partie qu'on revoit (lot B5 : plus de fantôme). Gardée par suite du jour. */
 const diamantsGardes = new WeakMap<Contenu, string>();
 export function rediffusionDuDiamant(contenu: Contenu): string {
   let r = diamantsGardes.get(contenu);
   if (r === undefined) {
-    r = enregistrer(contenu, jouerDiamant(contenu).actions);
+    r = enregistrer(contenu, partieDuDiamant(contenu).actions);
     diamantsGardes.set(contenu, r);
   }
   return r;
@@ -48,9 +48,6 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
   poserPalette(palette);
   poserDecor(decor);
   const contenu = await contenuSansPalette(jour, base);
-  // Le Diamant (le bot joue la partie entière : quelques dizaines de millisecondes) se calcule pendant que l'accueil attend, jamais en pleine partie ; l'écran de fin le trouve prêt.
-  const plusTard: (f: () => void) => void = typeof requestIdleCallback === "function" ? (f) => requestIdleCallback(f, { timeout: 3000 }) : (f) => void setTimeout(f, 300);
-  plusTard(() => void seuilsDeBlocks(contenu));
   return contenu;
 }
 
@@ -70,13 +67,5 @@ async function contenuSansPalette(jour: number, base: string): Promise<Contenu> 
   return dailyBlocks(jour, BLOCKS_GENERATOR_VERSION);
 }
 
-/** Les seuils des médailles d'un jour (**ceux du fichier de jour s'il y en a un : un jour figé fige ses seuils**) : le Diamant est la partie du bot (`@cdj/blocks-sim/diamant`), le reste s'en déduit. Gardés par suite du jour ; calculés au premier appel (quelques millisecondes à quelques dizaines). */
-const seuilsGardes = new WeakMap<Contenu, Seuils>();
-export function seuilsDeBlocks(contenu: Contenu): Seuils {
-  let s = seuilsGardes.get(contenu);
-  if (!s) {
-    s = seuilsDuJour(contenu); // ceux figés avec le jour (fichier de jour), sinon ceux du bot d'aujourd'hui
-    seuilsGardes.set(contenu, s);
-  }
-  return s;
-}
+/** Les seuils des médailles d'un jour (**ceux du fichier de jour s'il y en a un : un jour figé fige ses seuils**), sinon les constantes de cette version des règles (lot B8b : plus aucun bot à appeler). */
+export const seuilsDeBlocks = (contenu: Contenu): Seuils => seuilsDuJour(contenu);

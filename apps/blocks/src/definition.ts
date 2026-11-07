@@ -27,7 +27,7 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
     corps ??= await import("./corps");
     return corps.contenuDuJour(jour, base, theme);
   },
-  seuils: (c) => corps!.seuilsDeBlocks(c), // le Diamant (bot) et ses fractions, dans le corps du jeu (à la demande)
+  seuils: (c) => corps!.seuilsDeBlocks(c), // les constantes des médailles (ou celles du fichier du jour), dans le corps du jeu (à la demande)
   medaille: (score, s) => medailleDe(score, s),
   nouvellePartie: (c, hote, o) => corps!.nouvellePartieBlocks(c, hote, o),
   rediffusionDiamant: (c) => corps!.rediffusionDuDiamant(c), // la partie du bot (le kit l'exige ; lot B5 : plus de fantôme, la partie du Diamant se revoit hors partie)

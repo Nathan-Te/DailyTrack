@@ -1,14 +1,38 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { actionDe, contenuDeScenario, dailyBlocks, emplacementDe, jouer, Partie, PLAFOND_PIECES, SCENARIOS, TAILLE_SERIE } from "../src/index";
-import { coupDuDiamant, jouerDiamant, LARGEUR_FAISCEAU, piecesSansPlace, planDuDiamant, POIDS_DIAMANT, seuilsDe } from "../src/diamant";
-import { jouerGlouton } from "../src/glouton";
+import { actionDe, contenuDeScenario, dailyBlocks, emplacementDe, jouer, Partie, PIECES, PLAFOND_PIECES, SCENARIOS, TAILLE_SERIE } from "../src/index";
+import { coupDuDiamant, jouerDiamant, LARGEUR_FAISCEAU, piecesSansPlace, planDuDiamant, partieDuDiamant, POIDS_DIAMANT } from "../src/diamant";
+import { coupGlouton, jouerGlouton } from "../src/glouton";
 
 // Le bot Diamant (lots B3 et B8) : une recherche en faisceau série par série. Pur, déterministe, ne joue que des actions légales, rejoué par le code du serveur, plus fort que le bot moyen, et rapide.
 const PREMIER = daysFromCivil(2026, 11, 2);
 const jours = (n: number): number[] => Array.from({ length: n }, (_, i) => PREMIER + i);
 
 describe("le bot Diamant (recherche en faisceau)", () => {
+  it("ne voit jamais les séries à venir (lot B8b) : changer toutes les pièces d'après la série en cours ne change pas son plan, ni celui du bot moyen", () => {
+    for (const j of jours(10)) {
+      const c = dailyBlocks(j);
+      for (const serie of Array.from({ length: 70 }, (_, i) => i)) {
+        // Les poses du Diamant jusqu'au début de la série `serie`, rejouées sur la suite réelle (p) et sur une suite qui n'en diffère que APRÈS la série en cours (q).
+        const p = new Partie(c);
+        const menant: number[] = [];
+        while (!p.finie && p.serie < serie) {
+          const a = planDuDiamant(p)[0]!;
+          menant.push(a);
+          p.jouerAction(a);
+        }
+        if (p.finie) continue;
+        const apres = (serie + 1) * TAILLE_SERIE;
+        const decalage = 1 + ((j + serie) % 39);
+        const q = new Partie({ ...c, suite: c.suite.map((id, i) => (i < apres ? id : (id + decalage) % PIECES.length)) });
+        for (const a of menant) q.jouerAction(a);
+        expect(q.serie).toBe(p.serie);
+        expect(planDuDiamant(q), `jour ${j}, série ${serie} : Diamant`).toEqual(planDuDiamant(p));
+        expect(coupGlouton(q), `jour ${j}, série ${serie} : bot moyen`).toEqual(coupGlouton(p));
+      }
+    }
+  });
+
   it("est déterministe : deux parties du même jour jouent les mêmes poses, dans n'importe quel ordre de jours", () => {
     const a = jours(6).map((j) => jouerDiamant(dailyBlocks(j)));
     const b = jours(6).reverse().map((j) => jouerDiamant(dailyBlocks(j))).reverse();
@@ -112,11 +136,11 @@ describe("le bot Diamant (recherche en faisceau)", () => {
     expect(piecesSansPlace(new Uint8Array(8).fill(0xff))).toBe(40);
   });
 
-  it("calcule les seuils d'un jour vite : médiane de 40 jours sous 2 s ici (les tests de tous les paquets tournent en parallèle sur quelques cœurs : la mesure de référence, seule, est dans le README du lot B8 — 53 ms en médiane, 152 ms au pire sur 1 000 jours, sous les 200 ms demandés)", () => {
+  it("joue la partie du Diamant d'un jour (arrêtée à son nombre de pièces) vite : médiane de 40 jours sous 2 s ici (les tests de tous les paquets tournent en parallèle sur quelques cœurs : la mesure de référence, seule, est dans le README du lot B8 — 53 ms en médiane, 152 ms au pire sur 1 000 jours, sous les 200 ms demandés)", () => {
     const temps = jours(40).map((j) => {
       const c = dailyBlocks(j);
       const t0 = performance.now();
-      seuilsDe(c);
+      partieDuDiamant(c);
       return performance.now() - t0;
     });
     temps.sort((a, b) => a - b);

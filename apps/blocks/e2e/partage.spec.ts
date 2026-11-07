@@ -1,5 +1,4 @@
-import { dailyBlocks, medailleDe, numeroBlocks, Partie, seuilsDepuis } from "@cdj/blocks-sim";
-import { jouerDiamant } from "@cdj/blocks-sim/diamant";
+import { dailyBlocks, medailleDe, numeroBlocks, Partie, SEUILS_MEDAILLES } from "@cdj/blocks-sim";
 import { parseDay } from "@cdj/core";
 import { expect, test, type Page } from "@playwright/test";
 import { exempleDePartage } from "../src/exemple";
@@ -10,7 +9,7 @@ import { appareil, JOUR, lancer } from "./appareil";
 // `Du Jour · Blocks #5 — 4 582 pts — combo ×7 — 🥈` — en français et en anglais. Le presse-papiers est celui du navigateur (droits donnés par `appareil`, ordinateur : pas de feuille de partage).
 const jour = parseDay(JOUR)!;
 const contenu = dailyBlocks(jour);
-const seuils = seuilsDepuis(jouerDiamant(contenu).resultat.score);
+const seuils = SEUILS_MEDAILLES;
 const EMOJI: Record<string, string> = { silver: "\u{1F948}", gold: "\u{1F947}", bronze: "\u{1F949}", author: "\u{1F48E}" };
 const nombre = (n: number, langue: "fr" | "en"): string => new Intl.NumberFormat(langue === "en" ? "en-US" : "fr-FR").format(n).replace(/[\u202f\u2009]/g, "\u00a0");
 

@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, dailyBlocks, medailleDe, numeroBlocks, PREMIER_JOUR_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
-import { jouerDiamant, seuilsDe } from "@cdj/blocks-sim/diamant";
+import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, dailyBlocks, medailleDe, numeroBlocks, PREMIER_JOUR_BLOCKS, SEUILS_MEDAILLES, themeDuJour } from "@cdj/blocks-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_BLOCKS } from "../src/catalogue";
 import { CATALOGUE_EN } from "../src/catalogue.en";
@@ -43,7 +42,7 @@ describe("« Blocks » : le client suit sa fiche", () => {
       for (const k of [...DEFINITION.aide, "page.titre", "scene.aria", ...DEFINITION.actions.map((a) => `commandes.action.${a.id}`)]) expect(c, `${lang} ${k}`).toHaveProperty([k]);
     }
   });
-  it("la définition : numéro, thème, médailles du bot Diamant, texte du score et du partage", async () => {
+  it("la définition : numéro, thème, médailles (constantes), texte du score et du partage", async () => {
     vi.stubGlobal("location", { search: "", pathname: "/" });
     const J = PREMIER_JOUR_BLOCKS + 3;
     expect(DEFINITION.numero(J)).toBe(numeroBlocks(J));
@@ -52,8 +51,8 @@ describe("« Blocks » : le client suit sa fiche", () => {
     const c = await DEFINITION.contenuDuJour(J, "http://localhost/blocks/", DEFINITION.themeDuJour(J)); // charge le corps du jeu (palette, bot), comme l'accueil
     expect(c.suite).toEqual(dailyBlocks(J).suite);
     const s = DEFINITION.seuils(c);
-    expect(s).toEqual(seuilsDe(c)); // les seuils du serveur : le Diamant est la partie du bot
-    expect(DEFINITION.medaille([jouerDiamant(c).resultat.score, 0], s)).toBe("author");
+    expect(s).toEqual(SEUILS_MEDAILLES); // les seuils du serveur : des constantes (lot B8b)
+    expect(DEFINITION.medaille([s.author, 0], s)).toBe("author");
     expect(DEFINITION.medaille([s.silver, 0], s)).toBe(medailleDe([s.silver, 0], s));
     expect(DEFINITION.medaille([0, 0], s)).toBeNull();
     expect(DEFINITION.classable!("?seed=2026-11-02&bot")).toBe(false); // `&bot` : jamais classée

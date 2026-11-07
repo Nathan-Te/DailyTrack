@@ -1,12 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatDay } from "@cdj/core";
-import { BLOCKS_GENERATOR_VERSION, dailyBlocks, empreinteContenu, lireJourFige, type Contenu } from "@cdj/blocks-sim";
-import { seuilsDuJour } from "@cdj/blocks-sim/diamant";
+import { BLOCKS_GENERATOR_VERSION, dailyBlocks, empreinteContenu, lireJourFige, seuilsDuJour, type Contenu } from "@cdj/blocks-sim";
 import { sha, type EmpreinteJour } from "./empreintes";
 
 // L'empreinte de ce que « Blocks » SERT pour un jour (module de sa fiche, `jours.fabrication.empreinte` ; lot K4b) : le fichier du jour s'il se relit et se régénère à l'identique, sinon le générateur courant.
-// **Elle couvre les seuils des médailles** (le Diamant, partie du bot, et l'or, l'argent, le bronze) : ceux du fichier pour un jour figé, ceux du bot du code pour un jour généré. Un changement du bot qui
+// **Elle couvre les seuils des médailles** (le Diamant, l'or, l'argent, le bronze) : ceux du fichier pour un jour figé, les constantes du code pour un jour généré. Un changement des seuils qui
 // changerait les seuils d'un jour protégé sans fichier arrête donc la mise en production (règle « un jour figé fige ses seuils », `CLAUDE.md` racine).
 const textesDesSeuils = (c: Contenu): string => {
   const s = seuilsDuJour(c);

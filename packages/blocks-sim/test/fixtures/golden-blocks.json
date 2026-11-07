@@ -1,107 +1,167 @@
 {
   "_": "Golden de Blocks (lots B1, B3 et B8). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
   "sim": 2,
-  "generateur": 4,
-  "bot": 2,
+  "generateur": 5,
+  "bot": 4,
   "jours": [
     {
       "date": "2026-11-02",
-      "empreinte": "684351a1",
+      "empreinte": "2c0aa937",
       "seuils": {
-        "author": 10500,
-        "gold": 7500,
-        "silver": 5500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 970,
+        "silver": 2054,
+        "gold": 3892,
+        "author": 9671
       }
     },
     {
       "date": "2026-11-05",
-      "empreinte": "e0724353",
+      "empreinte": "5c7a6cc0",
       "seuils": {
-        "author": 34000,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 333,
+        "silver": 1947,
+        "gold": 5230,
+        "author": 11913
       }
     },
     {
       "date": "2026-11-08",
-      "empreinte": "2842368e",
+      "empreinte": "b279ef91",
       "seuils": {
-        "author": 16500,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 1384,
+        "silver": 3322,
+        "gold": 9945,
+        "author": 15579
       }
     },
     {
       "date": "2026-11-11",
-      "empreinte": "cdb479ad",
+      "empreinte": "94308fb6",
       "seuils": {
-        "author": 65500,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 1515,
+        "silver": 1828,
+        "gold": 3156,
+        "author": 11895
       }
     },
     {
       "date": "2026-11-14",
-      "empreinte": "b103b302",
+      "empreinte": "3edf2df8",
       "seuils": {
-        "author": 35500,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 1262,
+        "silver": 1836,
+        "gold": 8902,
+        "author": 22779
       }
     },
     {
       "date": "2026-11-17",
-      "empreinte": "4cc6ebff",
+      "empreinte": "f95ed26f",
       "seuils": {
-        "author": 47000,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 1950,
+        "silver": 1377,
+        "gold": 3822,
+        "author": 20647
       }
     },
     {
       "date": "2026-11-20",
-      "empreinte": "2e417554",
+      "empreinte": "af913b35",
       "seuils": {
-        "author": 79000,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 1067,
+        "silver": 2320,
+        "gold": 10753,
+        "author": 29194
       }
     },
     {
       "date": "2026-11-23",
-      "empreinte": "0c9966f0",
+      "empreinte": "d0fa4d00",
       "seuils": {
-        "author": 43000,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 515,
+        "silver": 4340,
+        "gold": 5828,
+        "author": 11240
       }
     },
     {
       "date": "2026-11-26",
-      "empreinte": "495d9b5b",
+      "empreinte": "ec6048e8",
       "seuils": {
-        "author": 28500,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 1096,
+        "silver": 2836,
+        "gold": 6150,
+        "author": 6150
       }
     },
     {
       "date": "2026-11-29",
-      "empreinte": "fae45419",
+      "empreinte": "a39b7232",
       "seuils": {
-        "author": 43500,
-        "gold": 11000,
-        "silver": 7500,
-        "bronze": 1200
+        "bronze": 1100,
+        "silver": 2200,
+        "gold": 4900,
+        "author": 11500
+      },
+      "arrets": {
+        "bronze": 1510,
+        "silver": 1080,
+        "gold": 5582,
+        "author": 17297
       }
     }
   ],
@@ -109,36 +169,36 @@
     {
       "nom": "faible-jour-1",
       "date": "2026-11-02",
-      "g": 4,
-      "code": "AQIEAJeiATBxujx-uDJ7vTN2tzh6vHWwMyCqdStvt7AzbWw0tWAwrZs3azh6p2U8tqgydyxYtThyvqMnYihrrlSEO1Q4u3WEMEAsvGwgpBxesCBnqEAhmGgrsGUgo4FYAkCwAylgmkIpuQV1sEgAqFUYsDFhgSl6olkCs2oiuxpJs4BwMiBoszd4slI0tQt2g6MKTgBEkAhTl02C",
+      "g": 5,
+      "code": "AQIFAJeiATCjdG6YJFGBMQNrg02FOm0hnQlFtQ2T",
       "resultat": {
-        "score": 1377,
+        "score": 343,
         "combo": 4,
-        "poses": 149,
+        "poses": 23,
         "raison": "bloquee"
       }
     },
     {
       "nom": "moyen-jour-1",
       "date": "2026-11-02",
-      "g": 4,
-      "code": "AQIEAJeiAQBBggRGgAJDhQtOhwZAggSFQ00AsApCgAFChah1LguIajNEmACweIA6RAJ0qRRYgUQGgC92rK0DUDBAhrhYJWuCAE-IAkY7qE4dhRqualMLg7cwQDW2dWsIqCqyRgNYqzCAQpREBwVtvkaeMB9Auny-Nny4BWGuJWQeggSiciBop0YmpSCnQEOOADh2iSFitaZABDC2SJxSBYcWbncGqii7dK0CSwBQgW6wNzN1sJkrcoIkeSCwcbYuRia1eLdYJmAQpIURQBWWbHEAkWmXIylovC92sLA4cYBpNphIJnAzoiyuRrIgQDhCtViJFFAXkgxVpYVyBWgwgKdrDSh1tj6tXkavAJgyQmIUgwS-Z2YGjZZGIECSEIoOUohYKgJ4vUqCFARAoZZtKjBti5wFSKooWIkBS3k6o0i0BgSATjCZc0kCmDeFVrsRSDBqggFAgB1EtRBunrBxAKADSIBgIyNwiUauBY0yQJMPRX68IHAzgQKIQTqwQwBGs2YklEWEN0CTIKFFJjhxi7YCQEY1olAGnkiONqV9BGG3MEACrUCeDgpEqJgeYok6Rna1GE-GA5FIBkAznESbNyaeZkY0pWgYgVWONj5mpoACRgq3eJBUDHU7qKtNGKQsW1IEtYhgAHAomjOYcFYJgF8HgYgCVrJ8EpBtBV0ToEWtFSyAeFAItgBoqYJCBFUrhRhOpgiQXWoHghqvWGWmDJZBIABHhjhNqi5AhwFphBCAdUaBEIlZAAdSkYRbJS5wpHOtApQETIF4PYZIAmIehA6GVAqCQCFNiEWYJUAwn36GN7AzR0CoAHqIJWANhChvh5UAYIoCeJRXGjFQiCJQqEOWAohAERRcnUe2KwW0ZC2mRARolLR0ALAwWHA4oUCAEZgAUJtDBLAoQFgArrAzUQGHTJhsHUWlHRaQUSmoRRSATzigWilDjYlIAwCQSp1AGLACQAlHqAiLUQJGlABTgkcemBiASYwFXnAFiIImbRpqm2uDGiNulR2jcz5mvbdFDC5jqCFtlo0FQJ0geB9GmFMYgoBABUe6FWUCh71gBGEZnEGNKVAJt0CYGnMFgg9ynEACnEUaogaHbXcxsBhlg0CHDWyXEClohW2YMWqrCzqoTZZDA4hCOwCwRQBVpUoZtaU2XFgEtlSwAFi1AHiC",
+      "g": 5,
+      "code": "AQIFAJeiAXaHAEgDnjefcwaHRFyAA0WrLmqgAlm2BUowrCmVWoAcdWWMCqUrXSpSrphaK0M5gnwAhWOkBU6wFROdUoZJI0ADm3UirrMoREAKpUWcDBh9kaFBHimGQIJOE2gpq6ZtA6tcIVCSNIQAUZZTKBiBUFwMp0SVG7NZJGOrGxyDbQWbVboGWB6SaK5cH4It",
       "resultat": {
-        "score": 20981,
-        "combo": 18,
-        "poses": 872,
+        "score": 4108,
+        "combo": 17,
+        "poses": 140,
         "raison": "bloquee"
       }
     },
     {
       "nom": "moyen-jour-4",
       "date": "2026-11-11",
-      "g": 4,
-      "code": "AQIEAKCiAQCBQkWABwJGkApukRSMRB6GRGSOBhZUk6wDS2sFlAdXgqMdUJIITyaAdSVAgWg9pyZWhkaCEAe-eFenIjRytwJ8vrBHGow6YARhlwB4hie3R1-3KUcCl3KQADxBgkswkCGgdk0ErQW1QDhBg4IYUSdAklS6CJtWPgWmVhiBU18hmZhDCot9HWUFgDBAhk0EggtOllUInjZYnApFpRqGVgedQDxFgxeHSQuFR0anBGa2AHcCrR1VtQaFaDNwqT5AgkUJkE6HADt4oBmoaatFKIAYTK4xSANOkI8IRjBAkIoeXE0LqARYgypCklQAmUCIEChEo2yMBJNZDSJTg5kYSABQoHAAsIYYUXO2LEAwqbp9CG8AmgFwuRixWWwBhChAqrpTAocARhlBiUMAhgRGiwVOgwBBi41oKgJ3gD24Y34FgRhXnU6GMy6eeEAgrm2oOp9GNlipEIAeR6w4cGGFLSd3l5AJRUG-KClBggGAYHguhQi3aHOAJWMKnKAG",
+      "g": 5,
+      "code": "AQIFAKCiAQBCiEaABQ2RaEMYiEGwLTOFUYASQixbskCBKLAAaASjQYAobkOdEKgARYVACgJtk4VeBo1sAZVtDkQMnGU9oQM",
       "resultat": {
-        "score": 6416,
-        "combo": 14,
-        "poses": 380,
+        "score": 2096,
+        "combo": 15,
+        "poses": 64,
         "raison": "bloquee"
       }
     },
@@ -146,12 +206,12 @@
       "nom": "moyen-presque-plein",
       "date": "1970-01-01",
       "scenario": "presque-plein",
-      "g": 4,
-      "code": "AQIEAQ1wcmVzcXVlLXBsZWluNUGwEEOGAKBAMFiDh0kuSwWAaDCgOn64EFmuRqYdlgdSQJgASAmSMHiAMIhFBWC6qSJykRBwHneElFg9vh9erh5GTrY4hnoAAYNCqAJEBk6YCECwQCCQQIM2aIAGCJdWkhBQsEUYLkC8eACWsDp9OHq-QJACCoZFh3wlBn6HhThAcgG0tjVCHUO9N36HJ7dAnwVJgwdGDEClAbxgeL4JTgCDD0WABIhFQi2FFUeAX4cCRJgoC0CQlnkwFXeHOHqAfhaoKEaurQdGvHgAkEkAQ4YvVjaCeACJE1awF3yQvnggAHOhPrZFMGCYMF-kLm-tDbJoEIBDsAFoELZAjQdGIJhIOLprZR6cDmyFgChOmkIDC3SXNl6slQd3AEKHhEMARrUAgQlwELZzIHCARC2WBp1AjQJoWKApEIBMqHQ",
+      "g": 5,
+      "code": "AQIFAQ1wcmVzcXVlLXBsZWluNUGwEEOGQKAgAFC4gQVHJ1CFhiFCC0GxMkuRQIAKdjmpQYUOQCCeZACQtEoIUyG1nSFQYKAFphxDpTs",
       "resultat": {
-        "score": 5306,
-        "combo": 14,
-        "poses": 317,
+        "score": 1160,
+        "combo": 9,
+        "poses": 59,
         "raison": "bloquee"
       }
     },
@@ -159,8 +219,8 @@
       "nom": "blocage",
       "date": "1970-01-01",
       "scenario": "blocage",
-      "g": 4,
-      "code": "AQIEAQdibG9jYWdl",
+      "g": 5,
+      "code": "AQIFAQdibG9jYWdl",
       "resultat": {
         "score": 0,
         "combo": 0,
@@ -171,24 +231,24 @@
     {
       "nom": "diamant-jour-1",
       "date": "2026-11-02",
-      "g": 4,
-      "code": "AQIEAJeiAQBBggRGgEKEEEYAoANFigxOiLB7LkeAAEYOnXWGBQuDQDBQkQCgQosbXrBhGACwWEAEhkkQqD16hwBvnkyWAkY4iAdAiUsSmliXFQVGrQRNvLY6RQCCdQ9FjWajKJBAM74pWEkprR6uRWi3NnamBm6eFgCTUBWTVUcLgxmSSCZwsUAIt1EYtoBIARGDRo4FQIdEDR2YeItkBqgOVK0mdnY7vTdCi4AKSZVGMD54ujx-gFgogjKiYGgouTuqdLVYGEA0vjqwcCOoZDKCQ28hnymGTw5CiACHRYBDNoBBMJhBEGghsFgAgAlLsEqFAkadLm6AAnUwqyiSWCCiZLYfXjJgpgBuhyipRiJYrB6gdhalRoJSB0CEGJMLQp5AKD51sZ9zCIMORlwhhq4ASFgekEIFh5MASAtIlF8KrwSFUwZHhQWYYRarVh-7cHaxJTK3eLZwACBGjrAdVACaWKZ1HR2Yd4ZeLGi-ALhQMECIKZABdkMJho0FYABAsLMofjGyWDSgQqNhLih6gIkBQ4UAUFkAqDVFgwB4qlKZAwFxtDekQC5hqCBIiGqGAHCxCR5elgZDhEaRDABDmIFFAKgJRW2VHZBAGylBgbFGAIdDAUaeLYN1OL1qKylRgGitMXW8CASJQ5cEQoBIKLtVBTWJRnggiakaSXarMaZpGHkBjzBGli5tqZF7Bo0VQUEiiJUYcwVdnq0T",
+      "g": 5,
+      "code": "AQIFAJeiAUYEl0MIrnQenZhABT1AgkqFBkcUt3CyAHWzBQNLlaUwWbEqdYUYZS9gpHMou7FmBR-Zah2SYDW1TqUDdkKAGGaGBakKcmsUtBJilUcduGCRMSaGQRpcoaBJABiwYGUDoyOoUQFAsLMkYB5EkzaTRQhWpkAhhUmxGDuwd7IBQGydCRWibWirKBicVQVEqpIHQka1JEwKoIhJAHGgGSBosS5boIIeUoFjKq0uYCmqaxBogjlRmQFAqxBpg5pTAp0FWQxKjmcbgC1isihJgTSaewKNQwJirkgLgQtrmxlosiywYCm1aliIBSSRSo1CC6YpdHCBABKyU22EBFaVNBxuhY1BBYROLGYqqBCoQLNtAlkRlGKAJ02OCJJwJbMFTCxqk1CgCVUEiAVGoHaEA4UIRziwQI5YBgBJgZFTKBxKiIIQWEMjgaIFSYJGA0gMoFcUii5qtGSeDSSVaqBvKQ9akBpJgqtSCogAQZknZKlYBEWBFgWuTY1CAAqKTUS1G7kBRohRA6ElRpwGXoMrVGyMAEMDiYAaTawcZDKoaiuLW0WvAitatittljSNSCCtaBhUmpARRRxlkF2lAVKxOlkBgxRPrUWNCGaOJCGBWb1M",
       "resultat": {
-        "score": 10502,
-        "combo": 15,
-        "poses": 533,
+        "score": 27341,
+        "combo": 26,
+        "poses": 461,
         "raison": "bloquee"
       }
     },
     {
       "nom": "diamant-jour-4",
       "date": "2026-11-11",
-      "g": 4,
-      "code": "AQIEAKCiAQCBQkWABz5frwaDQYB2AoUMTocFQgZunoYKSE0HgBBXiwSJaEGPBieMQTdHgAlAiChxhwSJSHu-A0qHBACBRniZIYEDRUAggFGYKAFJvmoxsEcFhE6VHm41uGWmO0ABsH6YFVEwqQZmhSieXwa2aIAYYEa-Lg6AVq0FSGquBAa4aBxAsHw1vjtdgo5WJ0SGIABAuFm5LgFDhVcHoZ90LIAQRQ5WqDB-r0c4qFc2gBhJp50Qd14NtQaHaBencz54gDeQYIADTj12iJBwDm2lFoYVRU40rgZWljpurQdXhgB-lSaoR5YfRi5vnL4CWgV8q3iYLUCCB1cMmgSwUHIxunCANSxwsShqqHWzKLN2MH4wgAlpiFgAoYkoUEiFFYAtbpIxQLACRAayc5AoSgaAQhpAhAJJjIcFaEAfnkYNg7x2ChhwkmS-MngqiCNctLVpMyxEnXu1KhJDqAJghlILlhdngrEqRCJSgEUupIkxQI0KQp8ZW1ONBRWdcK5rBEIAlIUAWDRDixO-eLECanaWBwZAiCBEhEiOMACAYRioRnioAzeuZFUehaItQEUCgABFhnIrtrgiQoFjAH2DAS6oXQa-VjV0qCCcYJE4RQmMVSKuSyelbZRQKQBTliiqegOvR4And7MQaRljiYFoISCsWDi3cChHnjxGujZ3nn0FhQ54tXqxLQZWtgBYj3cotGolhwZWhYJAARNgsEAdiEggqoICWrUycIBoJ2CTALF4GHu2JAtFgKBwKgdElgV1omYuhkIaurIndBSPaKcqc4dWLQeAQq9GNqVMB610AIwJRByTXkUEgng9iC1drVmWB0QVgIVOOJcCRi17hwCGTYIISUwEnQ1AqFkoqitEnK1oAFiZAKhQIEA4hQ5ZgogBRVCJBECBAkUEiAOCQCGBQkCABS6WRYh4ITBZh5hoMAFAhG2sBFaGKy6gcT6YYii5QUAomAlhnGCACFiTNUWDGAxfiIBAEgGoeDpQsVEcgWApgkWELgFhl7hHCAuATk2dAbVtCLswRkwEkg6IWIBLBo4eeClIiFmDADuDRQNMmkiAB0IQgGg-lm0FhABEgQBOqAWzVZ8FTbVqOgBDhj6sRCZGjoBDI3AvrV4GuxhpgAS2RZ8mYmscqw2lfiauZAObQHi8IwVDmqAAZmosoBuEQkkYg2GhMnwMvhljoDahRV00rnC1L6A5QqotbUg6gYUEcAVVtUCoAEMEiQRwmECJBgeQQQWARFkInTVWhlMOgFMqhEsIkbBYEHgQsACBYLUicABJslQDg4ZQCThWroAwYUYJjJEUeb5oAQipQjVxrBSOZUuoKyuDYQpTgQVAqAhRsEIBuIAGTqhzBa0mVgJrkRCbXi6FcEcDkIBtHQ9Giw2FULJoLRJiqqMmXlaSG40wQlSsNQWHQEWtAJJWFUYoqWktrK5jJylYvrQwY61gKSiBURCCRp8QYJJqAChwgDdrhWUomJIqZqJdIDhxq0CLAwuCQwOcfmgznjRQjhNRgJFGBESsGalhAIIzRQhSi2IAgwJhth5FlZ1YAEa1PjaReIgxXAaeQmuBOgNGtiVoqnK6NT64cDN1vApNkZtzO5UDQEmFCA2LSBJwoAlqpWMMgUmyITlJrUISsROqdH6FEE8WjGSCGhhNiF2YCh6YXBJZuAiNQqsmVaBBIZIzV6p1B2AIsIYeW0wAjF-FLQKESkEDlYIYbLJgI2KBMHG0ACqadThonCBCimqqCq0CYkQVqFitMgJagKE1cABlhT1cq2YZ",
+      "g": 5,
+      "code": "AQIFAKCiAQBCiEYFi4BoMpBAICKtQChAqwuhSUUtrWAYkTKwRjRlqShpn4B4LUUKgoUNVSWOTIYQX1ihEXAtq6pANqgJQ7JsAa9tGoIGUksAiaZNKGegIyNqmWqWLLFnBgCAWRhgqA5JgplnHXEViAVklRGBbVCAIIQcRTVlhWUDq4VOHnWxGyBYiQKbeZpUHiKUQApZkV-LJDBJgGEuhkO8FHg9jqhQIIBZCJhBKQChQRuqU0UDgRiAcKBAIBJGgwtFrodeHoVkFGo8hFktp1UMpawzeLQASClxkoc3QUWJBkOrM0gLhGABnmMRiqklTnY0pVwEnLw2QAOFS5wteDNUkg-QUkkqsiBCpVkShYoIQIRVAK1QKWgFsq51BkMLop1aK5lIKg6dRRSKTQBYnrNDHIIEYkARhSCQcJBADW24EzyCaimGa1AoslEaioJbAAtIqU-iEUwJkAqDTV0FiDmBR0KABm4IhQmiR65pLWgasgJKhAZAm1gRgbFoAIQwRgmRQYoqYoBCCbBYBoQAaTVKiF-rLZgrYoJoLCFdmi5AhQJliDCAQ45GBQOAaGAJjA2AQFiF",
       "resultat": {
-        "score": 65876,
-        "combo": 56,
-        "poses": 1325,
+        "score": 29294,
+        "combo": 30,
+        "poses": 431,
         "raison": "bloquee"
       }
     },
@@ -196,12 +256,12 @@
       "nom": "diamant-presque-plein",
       "date": "1970-01-01",
       "scenario": "presque-plein",
-      "g": 4,
-      "code": "AQIEAQ1wcmVzcXVlLXBsZWluNUGwQ4YHAJBJoClBGFCxeCCAMKBAA0aAF2e3iFAAQweGXwOAOGiyAUCGN0igqDBxB0CQgUUEYSCASQGDuClomFACIkGAQIgYcACwAnGqGmiQIFGDQBCgkmEBa7AGQJgRaCiAiBhZA0uNSCm4CmGFDkmBQDCwKFCieqssLWSHJq52N4BeIHCuvjtwN6d4B5dAOn2fuDd2rGAGTgOFBrpAUCiGvg9duABJjEQsb6ozRy63RpAKTrYWYJsRRoAQnjhSBXq8BEGDAoBofgi4UaA4fC-4fgC6kChxNbxAmEEHMHiwdSCALWqyM1C4aIAwkGoocLQftz50M7Bxd70sM3S7vnAANrFYOXi7qHEAEJh4MKVgNYV3RhWecC-9nzhWUAW9dQ6yZQ29uClgN3arrF4FOkCArQNhC2WjmRFQaIMrQIE8CWq-ZAy2hl4ETR24kShBGHq4ikAFnW0Fh0IMBaZqgwJARgWIQJcQCpRVA2CQAECJSIEFBEqDgwBvAkCIM2OoA1qrGECwKlCYWBi9rCh4abMwAkCCSACFcACoUAaESaAtpRVwHnanhRVXhh5ocj21M7RSg0gYj2cwMYBBElG5GHWscD6HKXyxsDh6QCCXLYNGSw6APnyVs3Uuh2UBnW0FCphGBUGXW7UUBV2DQAKQig5GEUCDhh5bJZldNb1okGkdYps6chyAhV8MGLBwsBVddpAZAIB7VpEGDaZuMLRlPnWwhFQEcqwttitoeYAQFFWREEGoAESPjBRndoUEg2UWvi93azi1V4cou3McRBusqi1mrgBFGGiAPkaLgANFKYF1WJ0uVZAHRqUFEYhdjQ5FtRZtabwGrAVNH3qwbbgtQJkhL6hHMIFobhWFbTiCMrVAdz2HBaduBo5dVQCDV4UQAkCNSBCSjQJQKFmxA1OrRhenuGI6N22mnlwggFgGLphYhmw0RAusA5xAGmqDIqtxKGuetRZCBqhFHnmARzioVhWkm20CAEuEHJBoQBiwAG6jdCCdkGEBRYszCKh7kShDsApARQOOAIRGCVCEFINgVCyOll8yfK02hEgAL3S9R4AFnVwarTVJk1QCSBiLVRmYKKpGQJARKqhYbpUfhhBgnUQAQrAFVq4EFIZOPrVucoEAgkMGQACoK3a1K6hlpQNBR64SBk2EUC69FaVdLYN4tT5rQAykjgRAKJlFqxJcsWkgZzWAhQJDgFEokjpQbaoLs2YdBJZXB0aQiVsoiw5BPWiyrWwqQhqwAFmykxRHCG6zMXWNlDZCplMrRqgyZIgLUAizDm2imCVgoz5gbQOVG16oRrUqjCxAsC9pr3o-RoQcA2ugbB6khkALpUwtlBFQrnQwoCFqKLp-RIYAQx2ZtThAEGiFYy6nnhxHhkUYThK-FZJAQgOGSwCdgHUwKXGcWQauphVHRCSAqSFgLXSmPoFuWAa4K36kfA2FGp11nzN6TDioUYIpmEAYAahCsm4FBE2JYiyUJa1shEAABUKAKJJxdQWgpB1GOFiAjQxsL6FTMYNrKFCglABwLV-GTYYQRYgANWqyQgOGDkuED45mfiyUYK0iqHYFawCKiBFBgwVCgg1IAFGAqAhgDHCxQC6CXBaFaiuqGnKQHZVKmHggiSl7SCCttXQoEECNYDGAjWQLSCOShE4gAYhDCYNAgSFAgFUQqQFJWqkggEEtRoILNVyVMpNEbQSGA0CEQYAVXoU-rWwAhE0QXS2LKGuoZByEY60rqEU",
+      "g": 5,
+      "code": "AQIFAQ1wcmVzcXVlLXBsZWluNUGwQ4YHtnEGujRAULADAEmMgyBwQDK1QZQ4JHqtKHaiKHOtqBhqGZ1KoGw4AVmocgCDBUCUIEiNQTiMgGAsT4gliSliqG4gaqEjllkunlUbkkgYoiZAh20thkkZYDCGRJIQAUOAIoJkuxpmHkaQRZQDuHAgFWGDAECMiGAaaoICa4QVtiVsDEaEJrVcdDCRo1QXgxFCAGGxEUCpUJIckGQGM1OrBLZyrmgpsDNlSiC0L1uZHlSJV4QAKZlYkRVkbY4UqAJVHlqnO49JeCE",
       "resultat": {
-        "score": 44359,
-        "combo": 27,
-        "poses": 1301,
+        "score": 22284,
+        "combo": 55,
+        "poses": 206,
         "raison": "bloquee"
       }
     },
@@ -209,12 +269,12 @@
       "nom": "diamant-ordre",
       "date": "1970-01-01",
       "scenario": "ordre",
-      "g": 4,
-      "code": "AQIEAQVvcmRyZbB3MG2vOYQNYV0akIlyCkIHoABhhghwoJgJRIEAQgVXhwBAsAFDkE0HhSd3hRdHgJgAUAFwp1oet4MHVxiZcQBnt0YHn28zrDC2fqYOeHa3PRenbUUGlp5GM26eBZVdJgeedT5utn66KDh7qi1AgmOvMKtLPrN4GAioekAghnYXpxBwvAOYSQdAsTd0lwVCgCBwgIACcEQVjQaFRC-mZ3W6BwBBvV6FKja4UABmpSmoalEhowFKiBFcoB2DWHgghkCQIbgwYFiBCZIAQEKLLAhEhiuAfEM4ukCQCQqCfUQHgAFFjQOVTES0A5JrEEAqgkUAhwKDREagKAC4ewiAcQVHgQmLSJFUMANAghBhg2CcAGiQMARFgAiQUVm9I5VWBbsyUCK6QitTg0aGLThAgJ1EDlULkDGgRQqsVBCCRwCIUEwGhq5WJRFemBVSpzdGgChIgG2NBLBgBYAMSlaeID1vt6h6KaxCBlMDtHEwjgJBgHkKoqMQXyBJgQd3rl4lgBVFhgaOWEsDoBJJsEaCM3a-AIFHBhGoS1YEgJtwLZhJMZdGFkcAhJRrOHMwqCx0ny6QQ69HIDZBkQC9Zy5rqC5Ht3sFngBIqVsnhyV3lRdYnhBThYF1OH0AtGaGMSCtUJ5oKEQ1gBCoezhGjwK2QAlUpHMEhg51hTi8RR5Ag1CJAZt4AKggRn4ltQVMsoJPHoYwQAWDQJBjE0sZgEILoEMchoQYRACVXSpxsK10AKhQAxNjpqE4YKIidqtoMyhyhrA9ZXceji6pboBYBWYOhkCxHAu-aDZDtDpYoQmLXZolY3O2L2yEDAFQsgixRz5BsHO7HwaFXol-AA6YYI5uKwFxhjhoq6AAWWgYgjBztQBAkAaPaESBDgJDgVopiJQARmC1NCekWl6dIxBgnzewcTpougBgsy6sbagIUChoqxCBYFIVjkCRGD55h5sceIgAUoNKAHUIkFOGHiZgnG4QqIdEPmW1KjZgqBFBhQBGkJUAQqFKEABLvDmIcwlyoBBDk22jMABQqA2LUApAhCJBvDBymHQAgbAoYKxoCpBAKSuBQ5pZMXSvPbBQPgeAQ0YAqKBxEi9urJhWHZoDWAldnGENjBFWrgGGUARGgA51pVUcqIFUEDJUhCySXGEprrRFExGwRUeWCDVpgKh7IIINXTi6boZACAVDiVGrO2gBoq5AGqtyKShytZA4QCCzWGohsHQLggBBt2gakLRDJGsjgKhrLrBxKztDtQdGqAmCakI6kJEYRYgKYWo0rk4dgIwlbQuNRa9sATxQk3GoAZcMSBiISwWETlCTAEmPHYZeMLVlNDGjQG2rLSaYaFmIKSRhoCiyZkCEAm4omEAakDuwQEWMDhCVWmUgqAigfYMKchVltLBUEaJjGHGiMBhyn3UmjkCNAkUCqDVr",
+      "g": 5,
+      "code": "AQIFAQVvcmRyZbB3MC15rr4VRaElRydanhatRRyrapA4WGy1GWQanZpgAI4FWEibFiahcohYDXsklUSLIVYusBKCRYEDbYkNZ1yKEKJAF4wCaqBsLogZagGZW5YiZSmkUhCCU44DSKQaYECFJoNCFUmECiNYqhxipUC4AhF6gpINakgMqDRumAOAYgiGSglpgYUAQoxLLCeWRIwTcEaIK5wuTaIFbEKICUyGBKYbSVGgLB1IsAaLaKxAL3MthI4LbkgRqAioSQCYQFmtAVqhKQGZYwijW2ClFmoEjZ8tXSyCWpUMbRihXK0EXAWwaDSUUSKkbGAAjosEXIgRYEiEOIthLY1JBJRABQKaaKoZSEsBk6MCawuObRCpVW0Ak0mxNYNEHVOsNQVAggpyolODAk6GBABIorBQKEKyBnuaFJttNV0ulmixDSyraCiCeFABgG4EkZxDK1moKlolq61rIqgYQpgcdJodcItjEwNpsZRQAgCGSQ1HmACYaACDQAVDsBBBmZtYHZhCKjVdonYVhVqBFEaWLWKgHSVVs65qJUAZg1ioECiqbUUTuRpznFW8JGChGkCKA5YNSG-sBGQgsG6zIqtgPJ04cA9JuzZumIAAXZI3dUUujhhelJBgJA5KvASDTVMQgYdjBkgEi1oBq4QNUo5DCEsIpUEojFqoMpxzIyJttQ6ueYYdQFibKIFaGEMdg4IqQaglQSqeWVixNWWtIgGUWiCARwRNhr4ldXCRM0GFLgyxYqIYXi1EjJUbQFGUDV28IJAZQHizHkMZogJqsptjIblYLVIC",
       "resultat": {
-        "score": 32515,
-        "combo": 25,
-        "poses": 1064,
+        "score": 61322,
+        "combo": 56,
+        "poses": 593,
         "raison": "bloquee"
       }
     }

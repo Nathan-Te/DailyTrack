@@ -1,12 +1,10 @@
 import { formatDay } from "@cdj/core";
 import {
-  BLOCKS_BOT_VERSION,
   BLOCKS_GENERATOR_VERSION,
   BLOCKS_SIM_VERSION,
   type Contenu,
   dailyBlocks,
   decoderRediffusion,
-  empreinteContenu,
   ErreurGenerateur,
   ErreurRediffusion,
   lireJourFige,
@@ -15,9 +13,9 @@ import {
   type Resultat,
   scoreParColonnes,
   type Seuils,
+  seuilsDuJour,
   themeDuJour,
 } from "@cdj/blocks-sim";
-import { seuilsDe, seuilsDuJour } from "@cdj/blocks-sim/diamant";
 import { activerReglesV1 } from "@cdj/blocks-sim/v1";
 import type { GameDefinition } from "./games";
 import { FICHES_SERVEUR } from "./fiches.generated";
@@ -27,8 +25,8 @@ import { type ContratMinimal, definirJeuNeuf, type FicheServeur, RefusJeu, type 
 // l'identique, sinon le générateur courant), le décodage et le rejeu de la rediffusion (la liste des poses, un octet chacune : emplacement, ligne, colonne), les colonnes de classement de la fiche (score ↓, combo maximal ↓ ; puis le premier
 // arrivé, `submitted_at`, que toute table de résultats départage nativement). Le serveur REFUSE une pose illégale, une pose après la fin, une suite au-delà du plafond de 2 000 pièces et une partie non terminée
 // (`invalid_replay`). Les routes, l'ordre de validation, le classement, les copies, l'aperçu, l'effacement et les crochets sont ceux du module des jeux (`jeux/`) ; la table est la table commune `resultats_jeu`.
-// Médailles (lots B3 et B8) : le Diamant est la partie du bot de `@cdj/blocks-sim/diamant` sur la suite du jour (clé `auteur`), bronze / argent / or sont les références mesurées sur les bots faible et moyen (`medailles.ts`). **Le calcul (le
-// bot joue la partie entière, en faisceau : 53 ms en médiane, 152 ms au pire sur 1 000 jours) est gardé en mémoire**, par suite du jour et version du bot : le module des jeux demande les seuils à chaque envoi et à chaque lecture du portail.
+// Médailles (lots B3, B8 et B8b) : des **constantes** (`SEUILS_MEDAILLES`, `medailles.ts`) : le score de bots de référence arrêtés après un nombre fixe de pièces, les mêmes tous les jours d'une version de règles ; le Diamant est la clé `auteur`.
+// Aucun bot n'est appelé par le serveur. Un jour figé (fichier de jour) garde les seuils de son fichier (`seuilsDuJour`).
 // **Règles v1 (lot B8)** : le rejeu (`rejouer` de `@cdj/blocks-sim`) rejoue toujours les règles v1 pour un jour figé avant le lot B8 (fichier de jour `sim` 1, tirage 3) et ses seuils sont ceux du fichier ; v2 pour tous les autres jours.
 // La route d'envoi ne les accepte pourtant pas encore de bout en bout : le contrôle de version du module (`memeContenu`, `jeux/defauts.ts`, zone de la plateforme) compare la rediffusion au SEUL générateur courant — manque de plateforme, README du lot B8.
 
@@ -60,20 +58,8 @@ export function contenuDeBlocks(jour: number, frozen: Readonly<Record<string, un
   return fige && fige.jour === jour ? fige : dailyBlocks(jour);
 }
 
-const MEMO_MAX = 64;
-const memoSeuils = new Map<string, Seuils>();
-/** Les seuils des médailles d'un jour : **ceux figés avec le jour** s'il vient d'un fichier de jour (le bot n'est pas appelé : un changement du bot ne change jamais un jour figé), sinon ceux du bot (bot Diamant), calculés une fois par suite du jour et version du bot. */
-export function seuilsDeBlocks(contenu: Contenu): Seuils {
-  if (contenu.seuilsFiges) return seuilsDuJour(contenu);
-  const cle = `${BLOCKS_BOT_VERSION}:${empreinteContenu(contenu)}`;
-  let s = memoSeuils.get(cle);
-  if (!s) {
-    if (memoSeuils.size >= MEMO_MAX) memoSeuils.clear();
-    s = seuilsDe(contenu);
-    memoSeuils.set(cle, s);
-  }
-  return s;
-}
+/** Les seuils des médailles d'un jour : **ceux figés avec le jour** s'il vient d'un fichier de jour (un changement des seuils ne change jamais un jour figé), sinon les constantes de cette version des règles. */
+export const seuilsDeBlocks = (contenu: Contenu): Seuils => seuilsDuJour(contenu);
 
 const refus = (e: unknown): never => {
   if (e instanceof ErreurRediffusion) {

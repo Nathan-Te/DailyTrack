@@ -1,4 +1,4 @@
-import { actionDe, BONUS_PLATEAU_VIDE, COLONNES, LIGNES, NB_CASES, Partie, PIECES, POSES_SANS_EFFACEMENT_MAX, TAILLE_SERIE, VARIANTE, caseOccupee, enregistrer, grilleEnTexte, type Contenu, type Piece } from "@cdj/blocks-sim";
+import { actionDe, BONUS_PLATEAU_VIDE, COLONNES, LIGNES, NB_CASES, Partie, PIECES, PIECES_DU_DIAMANT, POSES_SANS_EFFACEMENT_MAX, TAILLE_SERIE, VARIANTE, caseOccupee, enregistrer, grilleEnTexte, type Contenu, type Piece } from "@cdj/blocks-sim";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { coupDuDiamant } from "@cdj/blocks-sim/diamant";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -200,6 +200,7 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
   let perteCombo = -1;
   let scoreAffiche = partie.score;
   let bosseScore = -1;
+  let tArretBot = -1; // lot B8b : le tick où le bot Diamant (`&bot`) s'est arrêté, ses `PIECES_DU_DIAMANT` pièces posées
   let tFin = partie.finie ? 0 : -1; // les ticks de la scène (30 Hz) : seulement la durée de « Plus de place ! »
   let t = 0;
   let retour: { depart: { x: number; y: number }; cote: number; piece: Piece; emplacement: number; t0: number } | null = null;
@@ -998,13 +999,15 @@ export function nouvellePartieBlocks(contenu: Contenu, hote: HTMLElement, o: Opt
     avancer() {
       t++;
       // Le bot Diamant (`&bot`) : une pose toutes les `cadence` ticks, tant qu'on ne tient pas une pièce. Les poses passent par `poser`, comme celles d'un joueur : mêmes effets, mêmes sons, même rediffusion.
-      if (bot && !partie.finie && !saisie && t % cadence === 0) {
+      // Lot B8b : il s'arrête après `PIECES_DU_DIAMANT` pièces (le nombre de pièces du seuil du Diamant) : la partie est alors donnée pour finie, une seconde après, sur le score du moment.
+      if (bot && !partie.finie && !saisie && partie.poses < PIECES_DU_DIAMANT && t % cadence === 0) {
         const coup = coupDuDiamant(partie);
         if (coup) poser(coup.emplacement, coup.col, coup.ligne);
       }
+      if (bot && !partie.finie && partie.poses >= PIECES_DU_DIAMANT && tArretBot < 0) tArretBot = t;
     },
     // La partie est finie pour le kit une seconde après la dernière pose possible : « Plus de place ! » reste à l'écran.
-    finie: () => (partie.finie && tFin >= 0 && t - tFin >= TICKS_PLUS_DE_PLACE) || (exempleFin && t >= 1),
+    finie: () => (partie.finie && tFin >= 0 && t - tFin >= TICKS_PLUS_DE_PLACE) || (exempleFin && t >= 1) || (tArretBot >= 0 && t - tArretBot >= TICKS_PLUS_DE_PLACE),
     // Lot B6 : la partie est jouée, « Plus de place ! » est encore à l'écran : le kit fait retomber la musique avant l'écran de fin.
     finEnCours: () => partie.finie && tFin >= 0,
     action(id) {

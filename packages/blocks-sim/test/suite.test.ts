@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
 import { jouerFaible } from "../src/faible";
 import { activerReglesV1 } from "../src/v1";
-import { BLOCKS_GENERATOR_VERSION, BOITES33_PAR_SERIE, dailyBlocks, empreinteContenu, estClassable, genererSuite, graineDuJour, NB_PIECES, PIECES, PLAFOND_PIECES, poidsDeSerie, RAMPE_PAR_DEFAUT, SERIES_SANS_TRES_GROSSE, serieAuRang, TAILLE_SERIE } from "../src/index";
+import { BLOCKS_GENERATOR_VERSION, BOITES33_PAR_SERIE, CASES_PIECE_GROSSE, dailyBlocks, DOMINOS_PAR_SERIE, empreinteContenu, estClassable, genererSuite, graineDuJour, NB_PIECES, PIECES, PLAFOND_PIECES, poidsDeSerie, RAMPE_PAR_DEFAUT, SERIES_SANS_TRES_GROSSE, serieAuRang, TAILLE_SERIE } from "../src/index";
 
 const JOUR = daysFromCivil(2026, 11, 2);
 activerReglesV1(); // seul le test du tirage v3 en a besoin
 const GRAINES = Array.from({ length: 1000 }, (_, i) => graineDuJour(JOUR + i));
 const serie = (suite: readonly number[], s: number): number[] => suite.slice(s * TAILLE_SERIE, (s + 1) * TAILLE_SERIE);
 
-describe("la suite du jour : des séries de trois (tirage v4, lot B8)", () => {
+describe("la suite du jour : des séries de trois, variées (tirage v5, lots B8 et B8b)", () => {
   it("déterministe : même jour, même suite ; jours différents, suites différentes ; PLAFOND_PIECES pièces", () => {
     const a = dailyBlocks(JOUR);
     expect(a.g).toBe(BLOCKS_GENERATOR_VERSION);
@@ -65,42 +65,89 @@ describe("la suite du jour : des séries de trois (tirage v4, lot B8)", () => {
     for (const p of PIECES) {
       let avant = -1;
       for (let rang = SERIES_SANS_TRES_GROSSE; rang < 600; rang++) {
-        const w = poidsDeSerie(p, rang, 0);
+        const w = poidsDeSerie(p, rang, []);
         expect(w).toBeGreaterThanOrEqual(avant);
         if (p.grosseur === 0) expect(w).toBe(p.poids * 100);
-        else if (rang <= RAMPE_PAR_DEFAUT.rangMax) expect(w).toBeGreaterThan(poidsDeSerie(p, rang - 1, 0));
+        else if (rang <= RAMPE_PAR_DEFAUT.rangMax) expect(w).toBeGreaterThan(poidsDeSerie(p, rang - 1, []));
         avant = w;
       }
-      expect(poidsDeSerie(p, RAMPE_PAR_DEFAUT.rangMax + 50, 0)).toBe(poidsDeSerie(p, RAMPE_PAR_DEFAUT.rangMax, 0));
+      expect(poidsDeSerie(p, RAMPE_PAR_DEFAUT.rangMax + 50, [])).toBe(poidsDeSerie(p, RAMPE_PAR_DEFAUT.rangMax, []));
     }
   });
 
   it("le garde-fou des boîtes de 3 × 3 vaut 0 dès qu'une est déjà dans la série", () => {
     const carre3 = PIECES.find((p) => p.nom === "carre3-0")!;
-    expect(poidsDeSerie(carre3, 10, 0)).toBeGreaterThan(0);
-    expect(poidsDeSerie(carre3, 10, 1)).toBe(0);
-    expect(poidsDeSerie(carre3, 0, 0)).toBe(0); // très grosse, série 0
+    const grandL = PIECES.find((p) => p.nom === "grandl-0")!;
+    expect(poidsDeSerie(carre3, 10, [])).toBeGreaterThan(0);
+    expect(poidsDeSerie(carre3, 10, [grandL])).toBe(0);
+    expect(poidsDeSerie(carre3, 0, [])).toBe(0); // très grosse, série 0
   });
 
-  it("sur 1 000 graines, la part des grosses pièces (5 cases ou plus) est plus grande plus loin dans la suite", () => {
-    const part = (de: number, a: number): number => {
-      let grosses = 0;
-      let total = 0;
-      for (const g of GRAINES) {
-        const s = genererSuite(g, RAMPE_PAR_DEFAUT, a * TAILLE_SERIE);
-        for (let i = de * TAILLE_SERIE; i < a * TAILLE_SERIE; i++) {
-          total++;
-          if (PIECES[s[i]!]!.grosseur >= 2) grosses++;
-        }
+  it("règles de série (lot B8b) sur 1 000 graines et 120 séries : au plus un domino, jamais deux fois la même pièce, au moins une pièce de 4 cases ou plus, au plus une boîte de 3 × 3", () => {
+    let dominos = 0;
+    let series = 0;
+    for (const g of GRAINES) {
+      const s = genererSuite(g, RAMPE_PAR_DEFAUT, 120 * TAILLE_SERIE);
+      for (let r = 0; r < 120; r++) {
+        const trio = serie(s, r).map((id) => PIECES[id]!);
+        series++;
+        const nd = trio.filter((p) => p.cases === 2).length;
+        dominos += nd;
+        expect(nd, `série ${r} : dominos`).toBeLessThanOrEqual(DOMINOS_PAR_SERIE);
+        expect(new Set(trio.map((p) => p.id)).size, `série ${r} : doublon`).toBe(TAILLE_SERIE);
+        expect(trio.some((p) => p.cases >= CASES_PIECE_GROSSE), `série ${r} : une pièce de ${CASES_PIECE_GROSSE} cases ou plus`).toBe(true);
+        expect(trio.filter((p) => p.boite33).length, `série ${r} : boîtes de 3 × 3`).toBeLessThanOrEqual(BOITES33_PAR_SERIE);
       }
-      return grosses / total;
-    };
-    const debut = part(3, 30);
-    const milieu = part(60, 120);
-    const fin = part(300, 400);
-    expect(milieu).toBeGreaterThan(debut);
-    expect(fin).toBeGreaterThan(milieu);
-    expect(debut).toBeLessThan(0.1); // au début, presque tout est petit
+    }
+    expect(dominos / (series * TAILLE_SERIE)).toBeLessThan(0.1); // les dominos restent rares (seed § 4 : moins de 10 % des pièces)
+  });
+
+  it("les règles de série sont dans le poids : un domino de plus, la même pièce ou une série sans pièce de 4 cases valent 0", () => {
+    const domino = PIECES.find((p) => p.nom === "domino-0")!;
+    const dominoDebout = PIECES.find((p) => p.nom === "domino-1")!;
+    const barre3 = PIECES.find((p) => p.nom === "barre3-0")!;
+    const coin = PIECES.find((p) => p.nom === "coin-0")!;
+    const l = PIECES.find((p) => p.nom === "l-0")!;
+    expect(poidsDeSerie(domino, 10, [barre3])).toBeGreaterThan(0);
+    expect(poidsDeSerie(dominoDebout, 10, [domino])).toBe(0); // un seul domino, quelle que soit son orientation
+    expect(poidsDeSerie(barre3, 10, [barre3])).toBe(0); // jamais deux fois la même pièce
+    expect(poidsDeSerie(coin, 10, [barre3])).toBeGreaterThan(0);
+    expect(poidsDeSerie(coin, 10, [barre3, domino])).toBe(0); // la dernière pièce d'une série sans pièce de 4 cases en est une
+    expect(poidsDeSerie(l, 10, [barre3, domino])).toBeGreaterThan(0);
+    expect(poidsDeSerie(coin, 10, [barre3, l])).toBeGreaterThan(0); // une pièce de 4 cases est déjà là
+  });
+
+  // La répartition (seed § 4), sur 1 000 jours : au début (séries 0 à 10) puis au plafond de la rampe (les 20 séries qui suivent `rangMax`). Les fourchettes sont celles du lot B8b ; la mesure entière est `npm run mesure:repartition`.
+  const famille = (cases: number): number => (cases <= 2 ? 0 : cases === 3 ? 1 : cases === 4 ? 2 : 3);
+  const repartition = (de: number, a: number): number[] => {
+    const c = [0, 0, 0, 0];
+    for (const g of GRAINES) {
+      const s = genererSuite(g, RAMPE_PAR_DEFAUT, a * TAILLE_SERIE);
+      for (let i = de * TAILLE_SERIE; i < a * TAILLE_SERIE; i++) c[famille(PIECES[s[i]!]!.cases)]!++;
+    }
+    const t = c.reduce((x, y) => x + y, 0);
+    return c.map((x) => (100 * x) / t);
+  };
+  const FOURCHETTES = {
+    debut: [[6, 9], [20, 25], [40, 50], [15, 22]],
+    plafond: [[3, 6], [12, 18], [35, 45], [30, 40]],
+  } as const;
+  const NOMS = ["dominos", "pièces de 3 cases", "pièces de 4 cases", "pièces de 5 cases ou plus"] as const;
+  it.each([["au début (séries 0 à 10)", 0, 11, "debut"], ["au plafond de la rampe (20 séries à partir de rangMax)", RAMPE_PAR_DEFAUT.rangMax, RAMPE_PAR_DEFAUT.rangMax + 20, "plafond"]] as const)("la répartition des pièces %s est dans les fourchettes du seed", (_nom, de, a, cle) => {
+    const part = repartition(de, a);
+    part.forEach((v, i) => {
+      const [min, max] = FOURCHETTES[cle][i]!;
+      expect(v, `${NOMS[i]} : ${v.toFixed(1)} %`).toBeGreaterThanOrEqual(min);
+      expect(v, `${NOMS[i]} : ${v.toFixed(1)} %`).toBeLessThanOrEqual(max);
+    });
+  });
+
+  it("la rampe fait monter la part des pièces de 5 cases ou plus avec la série et baisser celle des dominos et des pièces de 3 cases", () => {
+    const debut = repartition(0, 11);
+    const plafond = repartition(RAMPE_PAR_DEFAUT.rangMax, RAMPE_PAR_DEFAUT.rangMax + 20);
+    expect(plafond[3]!).toBeGreaterThan(debut[3]!);
+    expect(plafond[0]!).toBeLessThan(debut[0]!);
+    expect(plafond[1]!).toBeLessThan(debut[1]!);
   });
 
   it("une rampe réglée donne un contenu « réglé » (jamais classé) ; la rampe du jeu non", () => {
@@ -118,7 +165,7 @@ describe("la suite du jour : des séries de trois (tirage v4, lot B8)", () => {
     expect(mediane(RAMPE_PAR_DEFAUT.pente)).toBeLessThan(mediane(0));
   });
 
-  it("le tirage v3 (règles v1) se relit encore pour un jour figé, et diffère du v4", () => {
+  it("le tirage v3 (règles v1) se relit encore pour un jour figé, et diffère du v5", () => {
     const v3 = dailyBlocks(JOUR, 3);
     expect(v3.g).toBe(3);
     expect(v3.suite).toHaveLength(PLAFOND_PIECES);

@@ -1,4 +1,4 @@
-import { medailleDe, Partie, seuilsDepuis, type Contenu, type Medaille } from "@cdj/blocks-sim";
+import { medailleDe, Partie, seuilsDuJour, type Contenu, type Medaille } from "@cdj/blocks-sim";
 import { jouerDiamant } from "@cdj/blocks-sim/diamant";
 import type { MedailleExemple } from "./essai";
 
@@ -10,9 +10,9 @@ const RANG: readonly (Medaille | null)[] = [null, "bronze", "silver", "gold", "a
 
 /** Les poses (octets d'action) du résultat d'exemple pour la médaille voulue. */
 export function exempleDePartage(contenu: Contenu, voulue: MedailleExemple): number[] {
-  const { actions, resultat } = jouerDiamant(contenu);
-  if (voulue === "diamant") return actions;
-  const seuils = seuilsDepuis(resultat.score);
+  // Le bot joue la partie entière (sans s'arrêter à `PIECES_DU_DIAMANT`) : un jour où il n'atteint pas le Diamant, l'exemple « diamant » est la partie entière (au mieux).
+  const { actions } = jouerDiamant(contenu);
+  const seuils = seuilsDuJour(contenu);
   const partie = new Partie(contenu);
   const but = voulue === "aucune" ? null : CODE[voulue];
   let dernierSous = 0; // la dernière longueur de préfixe sans médaille (au moins une pose)

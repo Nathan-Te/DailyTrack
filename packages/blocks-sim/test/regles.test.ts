@@ -16,14 +16,14 @@ describe("le catalogue (seed § 4)", () => {
     expect(PIECES.filter((p) => p.famille === "petite").map((p) => p.nom)).toEqual(["domino-0", "domino-1"]);
     expect(() => pieceParNom("mono-0")).toThrow();
   });
-  it("le grand T : 5 cases, boîte 3 × 3, 4 orientations, famille T, poids 2, « très grosse » et boîte 3 × 3 (leurs garde-fous)", () => {
+  it("le grand T : 5 cases, boîte 3 × 3, 4 orientations, famille T, poids 7, « très grosse » et boîte 3 × 3 (leurs garde-fous)", () => {
     const grandsT = PIECES.filter((p) => p.nom.startsWith("grandt"));
     expect(grandsT).toHaveLength(4);
-    for (const p of grandsT) expect(p).toMatchObject({ famille: "tsz", cases: 5, largeur: 3, hauteur: 3, poids: 2, grosseur: 2, boite33: true, tresGrosse: true });
+    for (const p of grandsT) expect(p).toMatchObject({ famille: "tsz", cases: 5, largeur: 3, hauteur: 3, poids: 7, grosseur: 2, boite33: true, tresGrosse: true });
     // Une barre de 3 et une branche de 2 au milieu, dans les quatre sens.
     const formes = grandsT.map((p) => [...p.rangees].map((o) => Array.from({ length: 3 }, (_, c) => ((o >> c) & 1 ? "X" : ".")).join("")).join("/"));
     expect(new Set(formes)).toEqual(new Set(["XXX/.X./.X.", "..X/XXX/..X", ".X./.X./XXX", "X../XXX/X.."]));
-    expect(pieceParNom("grandl-0").poids).toBe(2);
+    expect(pieceParNom("grandl-0").poids).toBe(7);
   });
   it("nombre de cases, boîte et « très grosse » (6 cases ou plus, ou boîte de 3 × 3)", () => {
     expect(PIECES.every((p) => p.cases === p.rangees.reduce((n, o) => n + [...o.toString(2)].filter((b) => b === "1").length, 0))).toBe(true);
