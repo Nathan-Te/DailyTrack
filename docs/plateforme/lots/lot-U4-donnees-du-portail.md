@@ -16,7 +16,7 @@ Plateforme (serveur et portail). Branche `claude/lot-u4-portal-data-cp8x1j`, PR 
 
 ## Trouvé en chemin (corrigé, à relire)
 - Le plan de la liste des amis parcourait l'index `players_masques` en table directrice (tous les joueurs non masqués) : `AND +p.hidden = 0` sur les quatre requêtes de `amis.ts`.
-- La liste des amis de l'accueil n'envoyait pas `avatar` ; et les cartes d'« Amis et groupes » reconvertissaient une adresse déjà faite : les photos des amis restaient des initiales.
+- Le classement « Amis » n'envoyait pas `avatar` pour les amis (corrigé) ; l'accueil non plus (`amisDuJour`), laissé tel quel : ses images s'ajouteraient aux requêtes du premier chargement (`portail-journee.spec.ts`), à décider. Les cartes d'« Amis et groupes » reconvertissaient une adresse déjà faite : les photos des amis restaient des initiales.
 
 ## Pour Nathan
 - `docs/plateforme/identite.md` modifié (consigne explicite du lot : rang du jour, révision 20).

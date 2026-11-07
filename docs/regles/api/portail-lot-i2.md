@@ -32,7 +32,7 @@ Code : `groupeEmbleme.ts` (`JOINTURE_GROUPE`, `emblemeDe`, `monEmbleme`), `porta
 - **`dernier`** (`{ site, at }`) : le dernier jeu du jour fini, sur les lignes des **autres** joueurs du cumul filtré (la page « Amis et groupes » lit déjà ce classement : aucune requête). Même règle que `amisDuJour` : ni arcade ni hauteur.
 - **`meilleureSerie`** du profil : la plus longue suite de jours consécutifs finis (même règle que `serie`, `finisDe` lu une seule fois) ; jamais moins que `serie`.
 - **Plan des amis corrigé** : `AND +p.hidden = 0` (les quatre requêtes de la liste des amis de `amis.ts`). Sans le `+`, SQLite sans statistiques parcourait l'index `players_masques (hidden=?)` en table directrice, donc tous les joueurs non masqués, avant de chercher l'amitié.
-- La liste des amis de l'accueil rend aussi `avatar` (il manquait : les amis du jour n'avaient pas leur photo).
+- La liste des amis **du classement filtré** rend `avatar` (il manquait : les amis du classement « Amis » n'avaient pas leur photo). Celle de l'accueil ne le rend toujours pas (`amisDuJour` sans photo) : l'ajouter ferait charger les images des amis au premier chargement de l'accueil, ce que `portail-journee.spec.ts` (une seule requête) refuse ; décision à prendre.
 
 ### Lot U1 — la colonne de droite de l'accueil (`GET /api/portail/jour`, toujours une seule requête)
 Code : `portail.ts` (`colonneDeDroite`, `finisDe`, `semaineDe`), `classementDuJour.ts` (`classerEntreAmis`), `amis.ts` (`AmisPourPortail.liste`), `groupes.ts` (`GroupePourPortail.resume`) ; tests : `test/portail.test.ts` (semaine, pur), `test/amis.test.ts` (« accueil (lot U1) »), SQLite **et** libSQL. Avec `X-Player-Id`, `joueur` ajoute :
