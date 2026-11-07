@@ -42,6 +42,7 @@ Le point de départ du prompt (moyen 45 et 90, fort 150 et 240) **a été ajust�
 
 ## Vérifié, non vérifié
 - **Vérifié** : typecheck ; tests de `packages/blocks-sim`, `apps/blocks`, `apps/api/test/blocks.test.ts` (SQLite) ; e2e Blocks sous Chromium (85 tests, après correction de `partie.spec.ts`) ; `npm run consignes`.
+- **CI de la PR (1ʳᵉ poussée)** : tout vert sauf `e2e-pr (4/4)` : `apps/web/e2e/leaderboard.spec.ts:39` (Track, « deux appareils, deux temps, un classement ») attendait `vs ma sélection · 1` et a reçu `vs premier : Alice · 39,331 s → ma sélection · 1` ; zone non touchée par ce lot. Relancé par la poussée de ce commit ; s'il échoue encore, Nathan tranche.
 - **Non vérifié** : vrai téléphone et vraie partie humaine (les seuils sont à recaler sur les vrais scores) ; Firefox et WebKit ; le projet libSQL de l'API (pas de `sqld` ici) ; les captures.
 - **Aucun jour figé** (Blocks est `off`, `apps/blocks/public/jours/` vide) : les tirage v5 et bot v3 valent pour tous les jours, sans date de bascule. Le v4 n'est pas gardé.
 
