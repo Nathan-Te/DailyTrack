@@ -21,6 +21,7 @@ rien
 
 ## Vérifié
 Typecheck du portail, `vitest` portail et ui (581 tests), e2e Chromium : `groupes` (assertion de l'emblème mise à jour : il est dans le fronton), `retours`, `diffusion`, `iphone`, `portail`, `avatars` — verts. **Non vérifié** : l'aperçu sur un vrai téléphone ; la CI de la PR.
+**CI** : au premier passage, « jeu fictif (3/3) » a échoué sur `apps/api/test/api.test.ts › rejouer une course coûte quelques dizaines de millisecondes` (208 ms pour un seuil de 150, libSQL, run 42420694424) : un test de durée dans une zone que le lot ne touche pas ; la même part passe en local (0 échec sur 2 657 + 347 tests). Relancé une fois par ce commit ; s'il échoue encore, c'est à Nathan de trancher.
 **Hors lot** : les outils `captures-lot-c1` et `captures-lot-n2` échouent sur téléphone (ils attendent la pastille d'avatar, retirée au lot U1) ; je ne les ai pas touchés.
 
 ## Captures (`lot-U5-captures/`)
