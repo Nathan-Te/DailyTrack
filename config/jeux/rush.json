@@ -169,6 +169,10 @@
       "choix.spec.ts": [
         "rush-sim",
         "rush-jeu"
+      ],
+      "boss.spec.ts": [
+        "rush-sim",
+        "rush-jeu"
       ]
     },
     "parts": {

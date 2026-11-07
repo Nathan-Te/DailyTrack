@@ -54,7 +54,7 @@ import {
 const J = daysFromCivil(2026, 11, 4);
 const BOSS = contenuScenario("boss");
 
-const monstre = (type: number, x: number, y: number): Monstre => ({ id: 900, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? 30 : 10, flash: 0, etat: 0, t: 0, age: 0, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0 });
+const monstre = (type: number, x: number, y: number): Monstre => ({ id: 900, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? 30 : 10, flash: 0, etat: 0, t: 0, age: 0, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0, sbire: 0 });
 const avancerN = (p: Partie, n: number, e = 0): void => {
   for (let i = 0; i < n; i++) p.avancer(e);
 };

@@ -72,6 +72,16 @@ describe("l'adresse d'essai", () => {
     expect(lireEssai("?ameliorations=aimant", false).essai).toBe(true);
     expect(lireEssai("?scenario=cartes&nv=5&ameliorations=aimant", true)).toMatchObject({ scenario: null, ameliorations: [], essai: false });
   });
+  it("lot BR3 : `&boss=<identifiant>` choisit le boss du scénario `boss`, `?scenario=bestiaire` montre les cinq ; jamais lus sur la production", () => {
+    expect(lireEssai("?scenario=boss&boss=reine", false)).toMatchObject({ scenario: "boss", boss: "reine", essai: true });
+    expect(lireEssai("?scenario=boss&boss=grand-duc&phase=2", false)).toMatchObject({ boss: "grand-duc", phase2: true });
+    expect(lireEssai("?scenario=boss", false).boss).toBeNull(); // le golem
+    expect(lireEssai("?scenario=bestiaire&theme=sousbois", false)).toMatchObject({ scenario: "bestiaire", essai: true });
+    expect(lireEssai("?scenario=carte&jours=14", false)).toMatchObject({ carte: 14, essai: true });
+    expect(lireEssai("?scenario=carte&jours=99", false).carte).toBe(14);
+    expect(lireEssai("?scenario=boss&boss=chene", true)).toMatchObject({ scenario: null, boss: null, essai: false });
+    expect(lireEssai("?scenario=bestiaire", true)).toMatchObject({ scenario: null, essai: false });
+  });
   it("les sensations collées restent dans leurs bornes", () => {
     expect(sensationsDe(null)).toEqual(SENSATIONS_DEFAUT);
     expect(sensationsDe({ secousse: 9999, angle: 1, champ: 999, inconnu: 3 })).toEqual({ ...SENSATIONS_DEFAUT, secousse: 300, angle: 20, champ: 60 });

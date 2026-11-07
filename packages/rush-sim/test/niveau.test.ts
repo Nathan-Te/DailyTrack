@@ -134,8 +134,8 @@ describe("le générateur du niveau (lot BR1)", () => {
     expect(c.niveau).not.toBeNull();
     expect(c.theme).toBe(themeDuJour(J0));
     expect(c.g).toBe(RUSH_GENERATOR_VERSION);
-    expect(RUSH_GENERATOR_VERSION).toBe(4);
-    expect(RUSH_SIM_VERSION).toBe(6);
+    expect(RUSH_GENERATOR_VERSION).toBe(5);
+    expect(RUSH_SIM_VERSION).toBe(7);
   });
 });
 

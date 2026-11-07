@@ -575,3 +575,81 @@
 .rush-niveau[hidden] {
   display: none;
 }
+
+/* --- Lot BR3 : la présentation du boss et les étiquettes du bestiaire --- */
+/* Le nom du boss, ~1 s au centre-haut quand il entre en scène (la barrière se ferme, il rugit, invulnérable) : une pastille de la charte (bord d'encre de 3 px, fond crème, Archivo Black), plus grosse que « BOSS → 38 m ». */
+.rush-presentation {
+  position: absolute;
+  top: max(var(--dj-espace-2), env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90vw;
+  padding: 8px 22px;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  border: var(--rush-bord) solid var(--dj-encre);
+  border-radius: 16px;
+  box-shadow: 2px 3px 0 var(--dj-encre);
+  font-family: "Archivo Black", var(--dj-police-corps, sans-serif);
+  font-size: clamp(20px, 3.4vw, 30px);
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.rush-presentation[hidden] {
+  display: none;
+}
+.rush-presentation--vue {
+  animation: rush-presenter 1.2s ease-out both;
+}
+@keyframes rush-presenter {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.7);
+  }
+  14% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.07);
+  }
+  22% {
+    transform: translateX(-50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rush-presentation--vue {
+    animation: none;
+  }
+}
+/* Le bestiaire (`?scenario=bestiaire`) : les cinq boss côte à côte, leur nom dessous ; ni cœurs, ni XP, ni boutons. */
+.rush-monde[data-bestiaire] .rush-coeurs,
+.rush-monde[data-bestiaire] .rush-niveau,
+.rush-monde[data-bestiaire] .rush-tactile {
+  display: none;
+}
+.rush-etiquette {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 4px 12px;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  border: var(--rush-bord) solid var(--dj-encre);
+  border-radius: 12px;
+  box-shadow: 2px 3px 0 var(--dj-encre);
+  font-family: "Archivo Black", var(--dj-police-corps, sans-serif);
+  font-size: clamp(11px, 1.25vw, 16px);
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}

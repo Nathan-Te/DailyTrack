@@ -1,6 +1,10 @@
 import { Color, DirectionalLight, Fog, Group, HemisphereLight, Mesh, MeshToonMaterial, PCFShadowMap, Scene, Vector3, WebGLRenderer, type Material, type Object3D } from "three";
 import { formatDay } from "@cdj/core";
 import {
+  B_BELIER,
+  B_CHENE,
+  B_DUC,
+  B_REINE,
   CHAUVE,
   CM_PAR_CHANFREIN,
   DUREE_TICKS,
@@ -13,11 +17,16 @@ import {
   PIERRES,
   POING,
   RAYON_ARENE,
-  RAYON_GOLEM,
+  RECUPERE,
+  RUGIT,
   REGLAGES_DEFAUT,
   RUSH_GENERATOR_VERSION,
   TICKS_PAR_SECONDE,
   VARIANTE,
+  Z_BANDE,
+  Z_INVOCATION,
+  Z_SPORES,
+  BOSS_IDS,
   M,
   Partie,
   AMELIORATIONS,
@@ -32,6 +41,7 @@ import {
   enregistrer,
   entreesDuBot,
   formatTemps,
+  indiceBoss,
   lireJourFige,
   pilote,
   pointDevant,
@@ -45,6 +55,7 @@ import {
   type Monstre,
   type Reglages,
   type Seuils,
+  type Zone,
 } from "@cdj/rush-sim";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
@@ -54,16 +65,15 @@ import {
   animerChauve,
   animerChevalier,
   animerGelee,
-  animerGolem,
   creerChauve,
   creerChevalier,
   creerGelee,
-  creerGolem,
   creerRocher,
   type BeteVue,
   type ChevalierVu,
-  type GolemVu,
 } from "./acteurs";
+import { animerBoss, cadreDuBoss, capDuBoss, cleBoss, creerBoss, type BossVu } from "./bosses";
+import { monterBestiaire, RAYON_BESTIAIRE } from "./bestiaire";
 import { CameraRush, type ModeNiveau, type PointCadre } from "./camera";
 import { eclair } from "./cel";
 import { monterDecor } from "./decor";
@@ -71,7 +81,7 @@ import { monterNiveauVu } from "./niveauVue";
 import { FICHE } from "./fiche";
 import "./rush.css"; // le HUD, les boutons et la carte ne servent qu'en partie : leur feuille est chargée avec la scène (jamais dans le premier chargement)
 import { Controles } from "./controles";
-import { Annonces, Anneaux, ArcCoup, Cratere, Eclats, Gemmes, LignesCourse, OndesEpee, Ombres, Reticule, Traits } from "./effets";
+import { Annonces, Anneaux, ArcCoup, Bandes, Cratere, Eclats, Gemmes, LignesCourse, Nuages, OndesEpee, Ombres, Racines, Reticule, Traits } from "./effets";
 import { carteVue } from "./cartes";
 import { monterObstacles } from "./obstaclesVue";
 import { carteDesJours } from "./carte";
@@ -98,7 +108,8 @@ export async function contenuDuJour(jour: number, base: string): Promise<Contenu
   const { ameliorations } = essai;
   // Lot BR2 : `?scenario=cartes` (le choix s'ouvre tout de suite, `&nv=` : à quel niveau) ; `&ameliorations=` : des améliorations données au départ de n'importe quel scénario.
   if (essai.scenario === "cartes") return contenuScenario("cartes", { jour: essai.jour ?? jour, nv: essai.nv, ameliorations });
-  if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour, ameliorations });
+  // Lot BR3 : `?scenario=boss&boss=reine` joue l'un des cinq boss (un identifiant inconnu : le golem) ; `?scenario=bestiaire` les montre côte à côte.
+  if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour, ameliorations, boss: essai.boss === null ? undefined : indiceBoss(essai.boss) });
   // Lot BR1 : `?scenario=jour&jour=AAAA-MM-JJ` (ou `?scenario=carte`) joue un autre jour que celui d'aujourd'hui : un essai, jamais classé, jamais en production.
   if (essai.jour !== null) return { ...dailyRush(essai.jour, RUSH_GENERATOR_VERSION), ameliorations: ameliorationsDe(ameliorations) };
   if (essai.carte !== null) return dailyRush(jour, RUSH_GENERATOR_VERSION);
@@ -169,7 +180,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   addEventListener("keydown", geste);
   const son = (n: SonNom, h = 1): void => sonsAvecKit.jouer(n, h);
 
-  const figee = contenu.scenario === "vitrine";
+  const bestiaire = contenu.scenario === "bestiaire";
+  const figee = contenu.scenario === "vitrine" || bestiaire;
 
   // --- Les commandes et l'interface ---
   const commandes = (() => {
@@ -184,6 +196,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
   // --- La simulation ---
   let partie = new Partie(contenu, etat.reglages, true);
+  /** Le bestiaire : le chevalier se tient devant la rangée, à gauche, pour donner l'échelle (la partie est figée). */
+  const placerPourLeBestiaire = (): void => {
+    if (!bestiaire) return;
+    partie.c.x = Math.round(-12.4 * M);
+    partie.c.y = Math.round(6.5 * M);
+  };
+  placerPourLeBestiaire();
   let changements: Changement[] = [];
   let derniere = 0;
   let fantomeSim: Partie | null = null;
@@ -216,12 +235,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   soleil.shadow.mapSize.set(1024, 1024);
   const cs = soleil.shadow.camera;
   // L'ombre SUIT la caméra (lot BR1 : la carte est plus grande que l'arène) : une carte de 1 024 sur ~36 m autour du point regardé, calée sur la grille des texels (pas de scintillement).
-  cs.left = -18;
-  cs.right = 18;
-  cs.top = 18;
-  cs.bottom = -18;
+  const demiOmbre = bestiaire ? 27 : 18; // lot BR3 : la rangée du bestiaire est large
+  cs.left = -demiOmbre;
+  cs.right = demiOmbre;
+  cs.top = demiOmbre;
+  cs.bottom = -demiOmbre;
   cs.near = 2;
-  cs.far = 60;
+  cs.far = bestiaire ? 90 : 60;
   soleil.shadow.radius = 3.5;
   soleil.shadow.bias = -0.0005;
   soleil.shadow.normalBias = 0.04;
@@ -244,9 +264,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   };
   const R = metres(RAYON_ARENE);
   const niveau = contenu.niveau;
-  const decor = niveau ? monterNiveauVu(niveau, palette) : monterDecor(R, palette);
+  // Lot BR3 : le bestiaire pose les cinq boss sur un plateau plus large, avec leur nom dessous.
+  const salle = bestiaire ? monterBestiaire(ui.racine, palette, scene, (id) => t(`boss.nom.${cleBoss(id)}`)) : null;
+  if (bestiaire) ui.racine.dataset.bestiaire = "1";
+  const decor = salle ? salle.decor : niveau ? monterNiveauVu(niveau, palette) : monterDecor(R, palette);
   scene.background = decor.ciel;
   scene.add(decor.groupe);
+  if (salle) scene.add(salle.groupe);
   const obstaclesVue = niveau ? monterObstacles(niveau, palette) : null; // lot BR1b : les ronces et les caisses du chemin
   if (obstaclesVue) scene.add(obstaclesVue.groupe);
   const centreArene = niveau ? { x: metres(niveau.arene.x), z: metres(niveau.arene.y) } : { x: 0, z: 0 };
@@ -260,6 +284,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   scene.add(eclats.maillage);
   const annonces = new Annonces();
   scene.add(annonces.groupe);
+  const bandes = new Bandes(); // lot BR3 : plongeon, charge, racines
+  scene.add(bandes.groupe);
+  const nuages = new Nuages(); // lot BR3 : les spores du vieux chêne
+  scene.add(nuages.groupe);
+  const racines = new Racines();
+  scene.add(racines.maillage);
   const anneaux = new Anneaux();
   scene.add(anneaux.groupe);
   const arc = new ArcCoup();
@@ -279,8 +309,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   scene.add(chevalier.racine);
   const sChev = suivi(partie.c.x, partie.c.y);
   let yawChev = Math.atan2(Math.cos((partie.c.dir * Math.PI * 2) / 128), Math.sin((partie.c.dir * Math.PI * 2) / 128));
-  const golemVu: GolemVu | null = partie.golem ? creerGolem() : null;
-  if (golemVu) scene.add(golemVu.racine);
+  const bossVu: BossVu | null = partie.golem ? creerBoss(partie.golem.kind) : null; // lot BR3 : l'un des cinq boss (le golem pour les anciens scénarios)
+  if (bossVu) scene.add(bossVu.racine);
+  const idBoss = partie.golem ? BOSS_IDS[partie.golem.kind]! : "golem";
+  const nomBoss = t(`boss.nom.${cleBoss(idBoss)}`);
+  if (contenu.scenario === "boss") ui.presenter(nomBoss); // le scénario `boss` n'a ni barrière ni réveil : le boss se présente dès le départ
   const sGolem = suivi(partie.golem?.x ?? 0, partie.golem?.y ?? 0);
   let yawGolem = partie.golem ? Math.atan2(partie.c.x - partie.golem.x, partie.c.y - partie.golem.y) : Math.PI / 2;
   const fantomeVu: ChevalierVu = creerChevalier();
@@ -324,6 +357,9 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   let dernierTick = performance.now();
   let ticksDepuisDessin = 0;
   let dernierPas = 0; // le moment (ms) de la dernière poussière de pas
+  let dernierSpore = 0; // lot BR3 : la dernière volute de spores
+  let dernierSouffle = 0; // lot BR3 : la dernière bouffée du grand-duc essoufflé
+  let dernierGrattage = 0; // et du bélier qui gratte le sol
   let fpsMoy = 60;
   const reduit = o.reduit;
 
@@ -379,6 +415,37 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const direction = (dx: number, dz: number): [number, number] => {
     const n = Math.hypot(dx, dz) || 1;
     return [dx / n, dz / n];
+  };
+
+  // --- Les bandes : la simulation retire une zone au tick de son impact ; on garde celles qui existaient juste avant ce tick pour savoir d'où elle partait ---
+  let bandesAvant: Zone[] = [];
+  /** L'impact d'une bande (plongeon du grand-duc, charge du bélier, racines du chêne) : des éclats tout le long du segment, la secousse ; le chêne fait jaillir des racines. */
+  const impactDeBande = (e: Evenement, x: number, z: number, genre: number): void => {
+    const b = bandesAvant.find((q) => q.x2 === e.x && q.y2 === e.y);
+    const x0 = b ? metres(b.x) : x;
+    const z0 = b ? metres(b.y) : z;
+    const demi = metres(e.b);
+    if (genre === B_CHENE) {
+      racines.bande(x0, z0, x, z, demi);
+      secouer(0.45);
+      son("pierre");
+      for (let k = 0; k < 5; k++) {
+        const u = (k + 0.5) / 5;
+        eclats.gerbe("poussiere", x0 + (x - x0) * u, 0.2, z0 + (z - z0) * u, 5, { vitesse: 3.5, taille: 0.2, haut: 2.4, duree: 0.7, gravite: 5 });
+      }
+      eclats.gerbe("spore", x, 0.8, z, 8, { vitesse: 3, taille: 0.16, haut: 3, duree: 0.8, gravite: 3 });
+      return;
+    }
+    const lourd = genre === B_BELIER;
+    for (let k = 0; k < 6; k++) {
+      const u = (k + 0.5) / 6;
+      eclats.gerbe("poussiere", x0 + (x - x0) * u, 0.2, z0 + (z - z0) * u, lourd ? 7 : 5, { vitesse: 4, taille: lourd ? 0.28 : 0.22, haut: 2.2, duree: 0.8, gravite: 5 });
+    }
+    eclats.gerbe("poussiere", x, 0.3, z, 30, { vitesse: 7, taille: 0.3, haut: 3.2, duree: 0.9, gravite: 5 });
+    eclats.gerbe(lourd ? "pierre" : "etincelle", x, 0.5, z, lourd ? 18 : 12, { vitesse: 7.5, taille: lourd ? 0.22 : 0.09, haut: 6, duree: 0.8 });
+    secouer(lourd ? 0.6 : 0.55);
+    son(lourd ? "impact" : "pierre");
+    if (lourd) cratere.poser(x, z, demi * 0.9 + 0.2, 4);
   };
 
   // --- Les événements de la simulation → sons, éclats, secousses ---
@@ -447,15 +514,60 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         son("annonce");
         break;
       case "impact": {
+        const genre = partie.golem?.kind ?? 0;
+        if (e.a === Z_BANDE) {
+          impactDeBande(e, x, z, genre);
+          break;
+        }
+        if (genre === B_CHENE && e.a === PIERRES) {
+          // les « pierres » du vieux chêne sont des racines qui jaillissent du cercle
+          racines.cercle(x, z, metres(e.b));
+          eclats.gerbe("poussiere", x, 0.2, z, 20, { vitesse: 5, taille: 0.22, haut: 2.6, duree: 0.8, gravite: 5 });
+          eclats.gerbe("spore", x, 0.6, z, 6, { vitesse: 3, taille: 0.16, haut: 3, duree: 0.8, gravite: 4 });
+          secouer(0.4);
+          son("pierre");
+          break;
+        }
         const poing = e.a === POING;
         eclats.gerbe("poussiere", x, 0.2, z, poing ? 44 : 24, { vitesse: poing ? 7.5 : 5, taille: poing ? 0.32 : 0.24, haut: 3.4, duree: 0.95, gravite: 5 });
-        eclats.gerbe("pierre", x, 0.3, z, poing ? 22 : 10, { vitesse: 7, taille: 0.2, haut: 7.5, duree: 1.0 });
+        if (genre === B_REINE) eclats.gerbe("reine", x, 0.4, z, 26, { vitesse: 7, taille: 0.22, haut: 5, duree: 0.8 }); // le bond de la reine : une éclaboussure de gelée, pas des pierres
+        else eclats.gerbe("pierre", x, 0.3, z, poing ? 22 : 10, { vitesse: 7, taille: 0.2, haut: 7.5, duree: 1.0 });
         secouer(poing ? 0.7 : 0.45);
         son(poing ? "impact" : "pierre");
-        cratere.poser(x, z, metres(e.b) * (poing ? 0.62 : 0.8) + 0.15, poing ? 6 : 4);
+        cratere.poser(x, z, metres(e.b) * (poing ? 0.62 : 0.8) + 0.15, genre === B_REINE ? 3 : poing ? 6 : 4);
         eclats.gerbe("poussiere", x, 0.25, z, poing ? 20 : 8, { vitesse: poing ? 11 : 6, taille: 0.2, haut: 1.2, duree: 1.0, gravite: 1.5 });
         break;
       }
+      case "division":
+        // la reine se divise : une éclaboussure de gelée, elle ondule
+        son("mort", 0.7);
+        secouer(0.3);
+        golemSursaut = 1.8;
+        eclats.gerbe("reine", x, 1.4, z, 44, { vitesse: 7.5, taille: 0.24, haut: 6.5, duree: 0.85 });
+        eclats.gerbe("gelee", x, 0.8, z, 20, { vitesse: 6, taille: 0.16, haut: 4, duree: 0.7 });
+        break;
+      case "choc":
+        // le bélier percute le muret : des éclats de pierre, la poussière, la secousse
+        son("impact");
+        secouer(0.8);
+        golemSursaut = 1.6;
+        eclats.gerbe("pierre", x, 1.6, z, 36, { vitesse: 8, taille: 0.26, haut: 8, duree: 1.0 });
+        eclats.gerbe("poussiere", x, 0.5, z, 34, { vitesse: 6.5, taille: 0.3, haut: 3, duree: 0.9, gravite: 4 });
+        eclats.gerbe("etincelle", x, 1.4, z, 14, { vitesse: 7, taille: 0.1, haut: 4, duree: 0.5 });
+        cratere.poser(x, z, 2.2, 4);
+        break;
+      case "nuage":
+        // les spores éclatent : le nuage reste (dessiné d'après la simulation), un jet de volutes
+        son("onde");
+        secouer(0.25);
+        eclats.gerbe("spore", x, 0.6, z, 40, { vitesse: Math.max(2, metres(e.a) * 1.4), taille: 0.26, haut: 1.8, duree: 1.1, gravite: 0.6 });
+        break;
+      case "invoque":
+        // une gelée naît : une éclaboussure verte, un petit son
+        son("apparition");
+        eclats.gerbe("gelee", x, 0.5, z, 16, { vitesse: 4, taille: 0.16, haut: 3.4, duree: 0.55 });
+        eclats.gerbe("etincelle", x, 0.8, z, 8, { vitesse: 3, taille: 0.09, haut: 3, duree: 0.45 });
+        break;
       case "onde":
         son("onde");
         secouer(0.5);
@@ -553,7 +665,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         eclats.gerbe("poussiere", x, 0.3, z, 26, { vitesse: 5, taille: 0.22, haut: 2.5, duree: 0.8, gravite: 4 });
         break;
       case "eveil":
-        // le golem se réveille
+        // le boss se réveille : son nom paraît ~1 s (il rugit, invulnérable)
+        ui.presenter(nomBoss);
         son("phase2");
         secouer(0.7);
         eclats.gerbe("feu", x, 2.5, z, 24, { vitesse: 6, taille: 0.18, haut: 6, duree: 0.7 });
@@ -616,6 +729,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         derniere = e;
       }
     }
+    bandesAvant = partie.zones.length === 0 ? [] : partie.zones.filter((q) => q.type === Z_BANDE);
     partie.avancer(e);
     avancerFantome();
     pousser(sChev, partie.c.x, partie.c.y);
@@ -647,6 +761,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
   const redemarrer = (): void => {
     partie = new Partie(contenu, etat.reglages, true);
+    placerPourLeBestiaire();
     changements = [];
     choixFaits = [];
     derniere = 0;
@@ -757,9 +872,24 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       sz = (Math.sin(temps * 77.1 + 1) + Math.sin(temps * 61.9)) * 0.5 * a + kickZ;
     }
     garder.length = 0;
-    if (golem) garder.push({ x: golem.x, z: golem.z, haut: 5.1, r: 3.0 }); // la tête et les épaules, les bras écartés ; le poing levé de l'annonce peut sortir par le haut
-    for (const z of partie.zones) if (z.type === POING) garder.push({ x: metres(z.x), z: metres(z.y), r: metres(z.r) }); // le coup de poing ; les pierres tombent près du chevalier, l'onde part du golem
+    if (golem) {
+      // lot BR3 : ce que chaque boss prend (la tête et les épaules du golem, les bras écartés ; la cime du chêne ; le grand-duc en vol, ailes comprises)
+      const cadre = cadreDuBoss(partie.golem!.kind, bossVu?.haut ?? 0);
+      garder.push({ x: golem.x, z: golem.z, haut: cadre.haut, r: cadre.r }); // le poing levé de l'annonce peut sortir par le haut
+    }
+    for (const z of partie.zones) {
+      if (z.type === POING || z.type === Z_SPORES) garder.push({ x: metres(z.x), z: metres(z.y), r: metres(z.r) }); // le coup de poing ; les pierres tombent près du chevalier, l'onde part du golem
+      else if (z.type === Z_BANDE) garder.push({ x: metres(z.x2), z: metres(z.y2), r: metres(z.r) }); // lot BR3 : l'arrivée de la bande (son départ est le boss)
+    }
     if (figee) rig.recommencer(); // la vitrine est figée : la caméra est posée d'un coup, sans amorti
+    if (salle) {
+      // Le bestiaire : une caméra FIXE qui cadre les cinq boss à la même échelle (jamais de secousse).
+      salle.camera(camera, camera.aspect);
+      soleil.target.position.set(0, 0, 0);
+      soleil.position.set(9, 18, 4);
+      soleil.target.updateMatrixWorld();
+      return;
+    }
     let mode: ModeNiveau | undefined;
     if (niveau) {
       // Dans le niveau : elle suit le chevalier le long du chemin, puis se fond dans le cadrage de l'arène quand il s'en approche (à 24 m du centre, fondue à 13 m) ; la barrière fermée, c'est l'arène.
@@ -770,7 +900,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     {
       // Le soleil et sa carte d'ombre suivent le point regardé (calés sur les texels).
       const r = rig.regard;
-      const pas = 36 / 1024;
+      const pas = (2 * demiOmbre) / 1024;
       const tx = Math.round(r.x / pas) * pas;
       const tz = Math.round(r.z / pas) * pas;
       soleil.target.position.set(tx, 0, tz);
@@ -863,34 +993,56 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     ombres.debut();
     ombres.poser(cx, cz, 0.55);
 
-    // Le golem.
+    // Le boss (lot BR3 : l'un des cinq ; `partie.golem` garde son nom historique).
     let gx = 0;
     let gz = 0;
     const g = partie.golem;
-    if (g && golemVu) {
+    if (g && bossVu) {
       gx = metres(lerp(sGolem.x0, sGolem.x1, alpha));
       gz = metres(lerp(sGolem.y0, sGolem.y1, alpha));
-      golemVu.racine.position.set(gx, 0, gz);
-      const dx = c.x - g.x;
-      const dz = c.y - g.y;
-      // La vitrine fige le golem de face (à peine tourné vers la droite) : la composition de la cible ; en partie, il se tourne vers le chevalier.
-      yawGolem = figee ? 0.1 : yawVers(yawGolem, Math.atan2(dx, dz), dt, g.etat === 1 ? 2 : 4);
-      golemVu.racine.rotation.y = yawGolem;
+      bossVu.racine.position.set(gx, 0, gz);
+      // La vitrine fige le golem de face (à peine tourné vers la droite) : la composition de la cible ; en partie, il se tourne vers le chevalier — le grand-duc dans le sens de son vol, le bélier et le grand-duc qui annoncent le long de leur bande.
+      const cap = capDuBoss(g, partie.zones, c, { dx: sGolem.x1 - sGolem.x0, dy: sGolem.y1 - sGolem.y0 });
+      const vif = g.etat === 1 && (g.kind === B_DUC || g.kind === B_BELIER) ? 9 : g.etat === 1 ? 2 : 4;
+      yawGolem = figee ? 0.1 : yawVers(yawGolem, cap, dt, vif);
+      bossVu.racine.rotation.y = yawGolem;
       const deplace = Math.hypot(sGolem.x1 - sGolem.x0, sGolem.y1 - sGolem.y0) > 20;
       golemSursaut = Math.max(0, golemSursaut - dtMonde * 7);
       const dort = !partie.golemEveille;
-      animerGolem(golemVu, figee || dort ? { ...g, etat: MARCHE } : g, { dt: dtMonde, temps, t: g.t, vivant: g.hp > 0, mort: finDepuis >= 0 && g.hp <= 0 ? (now - finDepuis) / PAS_MS : 0, marche: deplace && !dort, sursaut: golemSursaut });
-      if (dort) {
-        // il dort : les yeux éteints
-        for (const y of golemVu.yeux) y.visible = false;
-        for (const h of golemVu.halos) h.visible = false;
-      } else if (!golemVu.yeux[0]!.visible) {
-        for (const y of golemVu.yeux) y.visible = true;
-        for (const h of golemVu.halos) h.visible = true;
-      }
+      const fraction = Math.max(0, g.t - 1 + alpha);
+      animerBoss(bossVu, figee || dort ? { ...g, etat: MARCHE } : g, {
+        dt: dtMonde,
+        temps,
+        t: g.kind === 0 ? g.t : fraction,
+        vivant: g.hp > 0,
+        mort: finDepuis >= 0 && g.hp <= 0 ? (now - finDepuis) / PAS_MS : 0,
+        marche: deplace && !dort,
+        sursaut: golemSursaut,
+        tick: partie.tick - 1 + alpha,
+        zones: partie.zones,
+        elan: partie.dur(24),
+        dort,
+      });
       if (golemEclair > 0) golemEclair -= dt * 60;
-      eclair(golemVu.matieres, golemEclair > 0 ? 0.85 : 0);
-      ombres.poser(gx, gz, metres(RAYON_GOLEM) * 1.15);
+      eclair(bossVu.matieres, Math.max(golemEclair > 0 ? 0.85 : 0, bossVu.reflet));
+      ombres.poser(gx, gz, g.r > 0 ? metres(g.r) * 1.15 : 2, bossVu.haut * 0.6);
+      // Le grand-duc posé, essoufflé : des bouffées de poussière (le moment où le frapper).
+      if (g.kind === B_DUC && g.sol === 1 && g.etat === RECUPERE && !fige && now - dernierSouffle > 330) {
+        dernierSouffle = now;
+        eclats.gerbe("poussiere", gx, 0.3, gz, 3, { vitesse: 2.6, taille: 0.16, haut: 1.2, duree: 0.45, gravite: 3 });
+      }
+      // Le bélier qui gratte le sol ou qui charge : de la poussière sous ses sabots.
+      if (g.kind === B_BELIER && g.etat === 1 && !fige && now - dernierGrattage > 110) {
+        dernierGrattage = now;
+        eclats.gerbe("poussiere", gx + Math.sin(yawGolem) * 2.6, 0.15, gz + Math.cos(yawGolem) * 2.6, 3, { vitesse: 3, taille: 0.2, haut: 1.4, duree: 0.45, gravite: 4 });
+      }
+    }
+    if (salle) {
+      // Le bestiaire : les cinq boss en attente, leur nom à sa place, l'ombre sous chacun.
+      const zone = ui.zone3d.getBoundingClientRect();
+      salle.camera(camera, camera.aspect); // la caméra d'abord : les étiquettes se projettent avec elle
+      salle.maj(dtMonde, temps, camera, zone.width, zone.height);
+      for (const q of salle.positions) ombres.poser(q.x, q.z, q.rayon, q.haut() * 0.6);
     }
 
     // Les monstres.
@@ -923,17 +1075,21 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       bêtes.delete(id);
     }
 
-    // Les cercles annoncés, les ondes, les pierres qui tombent.
+    // Les zones annoncées (cercles, bandes, anneaux d'invocation), les nuages, les ondes, les pierres qui tombent.
     annonces.debut();
+    bandes.debut();
+    nuages.debut();
     anneaux.debut();
     let nbRochers = 0;
+    const genreBoss = g ? g.kind : 0;
     for (const z of partie.zones) {
       const total = z.ti - z.t0;
       const p = 1 - (z.ti - partie.tick - (1 - alpha)) / total;
-      annonces.poser(metres(z.x), metres(z.y), metres(z.r), p, temps);
+      if (z.type === Z_BANDE) bandes.poser(metres(z.x), metres(z.y), metres(z.x2), metres(z.y2), metres(z.r), p, temps);
+      else annonces.poser(metres(z.x), metres(z.y), metres(z.r), p, temps, z.type === Z_INVOCATION); // lot BR3 : l'anneau d'invocation n'est pas un danger (violet pâle, sans clignotement)
       const reste = z.ti - partie.tick;
-      if (z.type === PIERRES && reste <= 26 && nbRochers < rochers.length) {
-        // la pierre tombe pendant les 26 derniers ticks de l'annonce
+      if (z.type === PIERRES && genreBoss !== B_CHENE && reste <= 26 && nbRochers < rochers.length) {
+        // la pierre tombe pendant les 26 derniers ticks de l'annonce (le chêne, lui, fait jaillir des racines)
         const u = 1 - reste / 26;
         const r = rochers[nbRochers++]!;
         r.groupe.visible = true;
@@ -943,9 +1099,21 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     }
     for (let i = nbRochers; i < rochers.length; i++) rochers[i]!.groupe.visible = false;
     for (const o2 of partie.ondes) anneaux.poser(metres(o2.x), metres(o2.y), metres(o2.r), metres(o2.epaisseur));
+    for (const n of partie.nuages) {
+      // il paraît à l'éclatement, reste, puis s'estompe avant sa fin ; des volutes y flottent
+      const opacite = Math.max(0, Math.min(1, (partie.tick - n.t0) / 16, (n.fin - partie.tick) / 50));
+      nuages.poser(metres(n.x), metres(n.y), metres(n.r), opacite, temps);
+      if (!fige && now - dernierSpore > 90) {
+        dernierSpore = now;
+        const a = Math.random() * Math.PI * 2;
+        const d = Math.sqrt(Math.random()) * metres(n.r) * 0.85;
+        eclats.gerbe("spore", metres(n.x) + Math.cos(a) * d, 0.3, metres(n.y) + Math.sin(a) * d, 1, { vitesse: 0.5, taille: 0.2, haut: 0.9, duree: 1.5, gravite: -0.3 });
+      }
+    }
     ombres.fin();
 
     cratere.maj(dt);
+    racines.maj(fige ? 0 : dt);
     arc.maj(dtMonde, cx, cz);
     traits.maj(fige ? 0 : dt);
     eclats.maj(fige ? dt * 0.15 : dt * (0.4 + 0.6 * ralenti));
@@ -961,7 +1129,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     else ui.niveau(null, 0, 1);
     gemmesVue.maj(partie.gemmes, partie.tick, temps, metres);
     ondesEpeeVue.maj(partie.ondesEpee, metres);
-    if (g && partie.golemEveille) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase);
+    if (g && partie.golemEveille) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase, nomBoss);
     else ui.boss(null, 1);
     if (niveau && partie.barriere < 0 && !partie.finie) {
       // « BOSS → 38 m » : la distance par le chemin jusqu'à l'arène, et la flèche vers le point du chemin qui vient (projeté à l'écran).
@@ -1122,7 +1290,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     dessiner,
     hud() {
       const g = partie.golem && partie.golemEveille ? partie.golem : null;
-      const principal = g ? t("hud.golem", { pct: Math.max(0, Math.ceil((g.hp * 100) / g.hpMax)) }) : t("hud.tues", { n: partie.tues });
+      const principal = g ? t("hud.boss", { nom: nomBoss, pct: Math.max(0, Math.ceil((g.hp * 100) / g.hpMax)) }) : t("hud.tues", { n: partie.tues });
       return { principal, secondaire: formatTemps(Math.min(partie.tick, DUREE_TICKS), o.langue) };
     },
     resultat() {
