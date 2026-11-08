@@ -189,8 +189,13 @@ export interface Track {
   cells: Map<number, Block>;
   gates: Gate[];
   spawn: Spawn;
-  /** Au-dessous de cette hauteur, la voiture est perdue (retour au dernier point de contrôle). */
+  /** Au-dessous de cette hauteur, la voiture est perdue (retour au dernier point de contrôle) ; le rendu y pose son sol lointain. */
   voidY: number;
+  /**
+   * Lot 58 : sur un circuit avec un virage très relevé (`/f`), dont le bord intérieur descend sous la route, la hauteur où la voiture est perdue (plus bas
+   * que `voidY`, qui reste celle du rendu : le sol lointain et le décor ne bougent pas). Absente partout ailleurs.
+   */
+  fallY?: number;
 }
 
 /** Lettre → type de bloc, dans la notation texte des circuits. */
@@ -869,8 +874,14 @@ export function parseTrack(id: string, spec: string): Track {
   const spawn: Spawn = { x: pt.x, y: first.y0, z: pt.z, yaw: DIR_YAW[first.dir] };
 
   let minY = 0;
-  for (const b of blocks) minY = Math.min(minY, b.y0, b.y0 + b.rise, b.steep ? b.y0 - (BANK_SLOPE_STEEP * b.w0) / 2 : 0);
-  return { id, blocks, cells, gates, spawn, voidY: minY - FALL_DEPTH };
+  let minRoad = 0;
+  for (const b of blocks) {
+    minY = Math.min(minY, b.y0, b.y0 + b.rise);
+    if (b.steep) minRoad = Math.min(minRoad, b.y0 - (BANK_SLOPE_STEEP * b.w0) / 2);
+  }
+  const track: Track = { id, blocks, cells, gates, spawn, voidY: minY - FALL_DEPTH };
+  if (minRoad < minY) track.fallY = minRoad - FALL_DEPTH;
+  return track;
 }
 
 // --- Ligne médiane ----------------------------------------------------------------------------

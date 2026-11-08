@@ -97,6 +97,12 @@ export interface GeometrieP1 {
 }
 
 /**
+ * Le sol lointain d'un circuit (le plan sous tout, où se posent les pieds des portiques et le décor) : `FALL_DEPTH` sous la hauteur où l'on est perdu. Lot 58 :
+ * sous un virage très relevé (son bord intérieur plus bas que la route), il passe 2 m sous ce bord ; ailleurs, comme avant.
+ */
+export const solLointain = (track: Track): number => Math.min(track.voidY - FALL_DEPTH, (track.fallY ?? Infinity) + FALL_DEPTH - 2);
+
+/**
  * Les formes du palier 1 d'un circuit, sans rien de la scène (ni lumière, ni ciel, ni texture : de quoi les mesurer dans un test, `log` et `headless`).
  * Le décor, si son module est donné (`options.decor`).
  */
@@ -105,7 +111,7 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
   const pal = paletteP1(palette, base);
   const tc = THEMES_C[palette];
   const look: Look = { ...LOOKS[palette], exposure: tc.exposition };
-  const floorY = track.voidY - FALL_DEPTH;
+  const floorY = solLointain(track);
   const aerien = !!options.aerial;
   const feux = aerien ? null : new FeuxDepart();
   const calques: Calques = {

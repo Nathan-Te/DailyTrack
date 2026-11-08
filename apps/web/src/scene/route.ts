@@ -5,6 +5,7 @@
 // **Lot 43 : la route du jeu** (palier 1, premier chargement). L'ancienne route de `trackMesh.ts` est partie avec l'ancienne scène dans `existant.ts`
 // (chargé à la demande) ; le garde-corps de la Ville (lot 37) est porté ici (`gardeCorps`), pour tous les styles.
 import {
+  BANK_SLOPE_STEEP,
   CELL,
   CUVE_LEFT,
   CUVE_RIGHT,
@@ -478,7 +479,9 @@ function addPillar(g: Builder, pal: Palette, b: Block, floorY: number, skirt: nu
   const mid = onBlock(b, 0, 0.5, 0);
   const half = blockHalfWidth(b, CELL / 2);
   const color = shade(skirt, 1.15);
-  const top = mid[1] - SLAB;
+  // Lot 58 : sous un virage très relevé, le pilier s'arrête sous le bord intérieur (le plus bas de la route), pas sous l'axe.
+  const top = mid[1] - SLAB - (b.steep ? BANK_SLOPE_STEEP * half : 0);
+  if (top - 1.4 <= floorY) return;
   const fwd = onBlock(b, 0, 0.56, 0);
   const back = onBlock(b, 0, 0.44, 0);
   const dx = fwd[0] - back[0];

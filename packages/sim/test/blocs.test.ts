@@ -231,6 +231,10 @@ describe("virage très relevé (lot 58)", () => {
     bankAt(b, 16 + 80 - 84 * Math.cos(a), 84 * Math.sin(a), bank);
     expect(Math.hypot(bank.gp, bank.gq)).toBeCloseTo(1, 2);
     expect(bank.h).toBeCloseTo(4, 2);
+    // Le bord intérieur descend 7 m sous la route (route étroite) : la voiture n'y est perdue que 4 m plus bas (`fallY`) ; le sol lointain du rendu ne bouge pas.
+    expect(t.voidY).toBe(-4);
+    expect(t.fallY).toBe(-11);
+    expect(parseTrack("plat", "S@start S S L3/b S S@finish").fallY).toBeUndefined();
     const temps = (v: string) => bestPilotRun(parseTrack(v, `S@start S S S S L3${v} S S S@finish`), { cut: false })!.finishMs;
     const fort = temps("/f");
     expect(fort).toBeLessThan(temps("/b"));

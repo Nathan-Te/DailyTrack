@@ -231,7 +231,7 @@ export function trackWorld(track: Track): World {
 
   const hasCuve = track.blocks.some((b) => b.cuve > 0);
   const world: World = {
-    voidY: track.voidY,
+    voidY: track.fallY ?? track.voidY,
     // Toujours présent (même forme d'objet pour tous les circuits : les appels `world.sample` restent monomorphes), vide sans cuve.
     shell: undefined,
 
