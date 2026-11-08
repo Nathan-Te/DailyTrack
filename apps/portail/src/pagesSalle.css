@@ -1,0 +1,130 @@
+/* Lot U5 (charte rév. 19, § 1 et § 9) : les dernières pages — « Nouveautés », « Mes messages » et la page publique d'un groupe — prennent la barre, le fronton et la barre d'onglets de la salle de jeux
+   (`salleDePage.ts`). Feuille à part, importée APRÈS `salle.css` et `classementSalle.css` : seules ces trois pages la chargent. Valeurs : jetons de @cdj/ui seulement. */
+
+/* Une colonne de lecture (les nouveautés et les messages se lisent sur 760 px au plus, alignés sur le titre du fronton). */
+.salle-page.salle-page--lecture {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+@media (min-width: 760px) {
+  .salle-page.salle-page--lecture {
+    grid-template-columns: minmax(0, 760px);
+  }
+}
+.salle-page--lecture > * {
+  min-width: 0;
+}
+.salle-page--lecture .nouveautes-date,
+.salle-page--lecture .messages-liste,
+.salle-page--lecture .messages-bulles {
+  min-width: 0;
+}
+
+/* --- La page d'un groupe : l'emblème de 72 px dans le fronton ----------------------------------------------------------------------------------------- */
+.classement-fronton--embleme .salle-fronton__dedans {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--dj-espace-5);
+}
+.classement-fronton--embleme .salle-embleme {
+  border-color: var(--dj-creme);
+  box-shadow: 3px 3px 0 var(--dj-terre);
+}
+.classement-fronton--embleme .classement-fronton__titre {
+  overflow-wrap: break-word;
+}
+/* Téléphone : l'emblème et le nom en haut, le compte à rebours dessous sur toute la largeur (sinon le nom se coupe en trois lignes). */
+@media (max-width: 759px) {
+  .classement-fronton--embleme .salle-fronton__dedans {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .classement-fronton--embleme .salle-compte {
+    grid-column: 1 / -1;
+  }
+}
+.groupe-fronton__aide {
+  margin: var(--dj-espace-2) 0 0;
+  color: var(--dj-ecran-texte);
+  font-size: var(--dj-taille-13);
+}
+@media (min-width: 760px) {
+  .classement-fronton--embleme .salle-fronton__dedans {
+    gap: var(--dj-espace-7);
+  }
+}
+
+/* --- La page d'un groupe : l'invitation en tête, puis les membres et le rang du jour ---------------------------------------------------------------------- */
+.salle-page.groupe-page {
+  align-items: start;
+}
+.groupe-page > .groupe-invitation,
+.groupe-page > .profil-message,
+.groupe-page > .profil-etat {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.groupe-page .groupe-invitation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+  background: var(--dj-moutarde);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.groupe-page .groupe-invitation .profil-section__titre,
+.groupe-page .groupe-invitation .profil-aide {
+  margin: 0;
+}
+.groupe-gauche,
+.groupe-droite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-8);
+  min-width: 0;
+}
+
+/* Les membres : chacun en photo de 52 px (48 sur téléphone, quatre par ligne), son nom dessous, « Chef » en pastille. */
+.groupe-page .groupe-membres {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--dj-espace-5) var(--dj-espace-3);
+}
+@media (max-width: 759px) {
+  .groupe-page .groupe-membres {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .groupe-page .groupe-membres .dj-avatar--t52 {
+    width: 48px;
+    height: 48px;
+  }
+}
+@media (min-width: 1000px) {
+  .groupe-page .groupe-membres {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+.groupe-page .groupe-membre {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--dj-espace-1);
+  min-width: 0;
+  min-height: 0;
+  border-bottom: 0;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  text-align: center;
+}
+.groupe-page .groupe-membre__pseudo {
+  flex: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.groupe-page .groupe-membre__chef {
+  font-size: var(--dj-taille-12);
+  font-weight: 400;
+}
+.groupe-page .groupe-actions {
+  display: flex;
+  gap: var(--dj-espace-3);
+}
+.groupe-page .groupe-actions > * {
+  flex: 1 1 auto;
+}
