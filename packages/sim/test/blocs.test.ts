@@ -9,9 +9,7 @@ import {
   FX_NO_BRAKE,
   FX_NO_STEER,
   TICK_RATE,
-  BOUCLE_LONGUEUR,
   BOUCLE_RAYON,
-  BOUCLE_VOIE,
   CELL,
   MUR_ROULABLE_BAS,
   bankAt,
@@ -24,6 +22,8 @@ import {
   createRace,
   cuveHeight,
   cuveRadius,
+  tableBoucle,
+  volantBoucle,
   decodeReplay,
   encodeReplay,
   liftAt,
@@ -378,51 +378,70 @@ describe("mur roulable (lot 58b)", () => {
   });
 });
 
-describe("boucle (lot 58b)", () => {
-  const spec = "S/e@start S S O S S S@finish";
-  /** Lancée à `v` m/s sur la voie de gauche, à 2 m du bloc de la boucle ; `gaz` : plein gaz ou roue libre. */
-  const essai = (v: number, gaz: boolean) => {
+describe("boucle (lot 58b) : pilotée, pas guidée", () => {
+  /**
+   * Lancée à `v` m/s sur la moitié ouverte de la route (`lat` m de l'axe), un bloc avant la boucle ; `gaz` : plein gaz ou roue libre ; dans la boucle, le
+   * volant vient de `volant` (le pilote : `volantBoucle` ; un conducteur qui lâche le volant : 0).
+   */
+  const essai = (spec: string, v: number, gaz: boolean, tenir: boolean, lat = 5) => {
     const race = lance(spec, v);
-    race.car.x = 16 + BOUCLE_VOIE;
-    race.car.z = 32 * 3 + 2;
-    let entree = -1;
+    race.car.x = 16 + lat;
+    race.car.z = 32 * 2 + 20;
     let haut = 0;
     let decroche = false;
+    let entre = false;
     for (let t = 0; t < 8 * TICK_RATE && race.finishMs < 0 && race.respawns === 0; t++) {
       const avant = race.car.loop;
-      stepRace(race, makeInput(0, gaz ? 1 : 0, 0));
-      if (race.car.loop && entree < 0) entree = race.car.loopV;
-      if (race.car.loop) haut = Math.max(haut, race.car.y);
-      if (avant && !race.car.loop && race.car.loopS > 1 && race.car.loopS < BOUCLE_LONGUEUR - 1) decroche = true;
+      const b = avant ? race.track.blocks[avant - 1]! : null;
+      stepRace(race, makeInput(b && tenir ? volantBoucle(race.car, b, P) : 0, gaz ? 1 : 0, 0));
+      if (race.car.loop) {
+        entre = true;
+        haut = Math.max(haut, race.car.y);
+      }
+      if (avant && !race.car.loop && race.car.loopS > 1 && race.car.loopS < tableBoucle(b!).longueur - 0.5) decroche = true;
     }
-    return { race, entree, haut, decroche };
+    return { race, haut, decroche, entre };
   };
+  const DROITE = "S/n@start S S O S S S@finish";
+  const VIRAGE = "S/n@start S S L2/O S S S@finish";
 
-  it("à 44 m/s plein gaz : on monte à 20 m (le diamètre), on ressort sur la voie de droite et l'on finit", () => {
-    const { race, haut, decroche } = essai(44, true);
-    expect(decroche).toBe(false);
-    expect(haut).toBeCloseTo(2 * BOUCLE_RAYON, 0);
-    expect(race.finishMs).toBeGreaterThan(0);
-    expect(race.car.x - 16).toBeLessThan(0); // la voie de droite (cap +z : la droite est −x)
+  it("tenue au volant, plein gaz : on monte à 26 m (le diamètre) et l'on finit ; volant lâché, la vrille du ruban fait tomber par le côté", () => {
+    const tenu = essai(DROITE, 44, true, true);
+    expect(tenu.decroche).toBe(false);
+    expect(tenu.haut).toBeCloseTo(2 * BOUCLE_RAYON, 0);
+    expect(tenu.race.finishMs).toBeGreaterThan(0);
+    const lache = essai(DROITE, 44, true, false);
+    expect(lache.entre).toBe(true);
+    expect(lache.decroche).toBe(true);
   });
 
-  it("trop lent (roue libre à 30 m/s) : la voiture décroche avant le haut et tombe", () => {
-    const { decroche, haut } = essai(30, false);
-    expect(decroche).toBe(true);
-    expect(haut).toBeLessThan(2 * BOUCLE_RAYON);
+  it("trop lent (roue libre à 36 m/s), la voiture décroche avant le haut ; à 32 m/s plein gaz, elle passe", () => {
+    const lent = essai(DROITE, 36, false, true);
+    expect(lent.decroche).toBe(true);
+    expect(lent.haut).toBeLessThan(2 * BOUCLE_RAYON);
+    expect(essai(DROITE, 32, true, true).race.finishMs).toBeGreaterThan(0);
   });
 
-  it("la voie de droite est fermée avant le pied : on n'évite pas la boucle par la droite", () => {
-    const race = lance(spec, 30);
-    race.car.x = 16 - BOUCLE_VOIE;
+  it("la boucle qui fait virage : il faut braquer (volant lâché, on tombe) ; tenue, on la passe et l'on finit", () => {
+    expect(essai(VIRAGE, 44, true, false, -5).decroche).toBe(true);
+    const tenu = essai(VIRAGE, 44, true, true, -5);
+    expect(tenu.decroche).toBe(false);
+    expect(tenu.race.finishMs).toBeGreaterThan(0);
+    expect(tableBoucle(parseTrack("v", VIRAGE).blocks[3]!).longueur).toBeGreaterThan(tableBoucle(parseTrack("d", DROITE).blocks[3]!).longueur + 30);
+  });
+
+  it("la moitié fermée de la route est murée à l'entrée : on n'y passe pas", () => {
+    const race = lance(DROITE, 30);
+    race.car.x = 16 - 5;
     jusqua(race, 32 * 4);
     expect(race.car.z).toBeLessThan(32 * 3 + 1);
   });
 
-  it("une boucle est sur la route étroite, sans repère ni bord ouvert ; un circuit sans boucle ne la regarde pas", () => {
-    expect(() => parseTrack("x", "S/n@start O S@finish")).toThrow();
-    expect(() => parseTrack("x", "S@start O/o S@finish")).toThrow();
-    expect(parseTrack("x", spec).boucles).toBe(true);
+  it("une boucle est sur la route normale, sur une droite ou un virage large ; un circuit sans boucle ne la regarde pas", () => {
+    expect(() => parseTrack("x", "S/e@start O S@finish")).toThrow();
+    expect(() => parseTrack("x", "S/n@start L/O S@finish")).toThrow();
+    expect(() => parseTrack("x", "S/n@start O/o S@finish")).toThrow();
+    expect(parseTrack("x", DROITE).boucles).toBe(true);
     expect(parseTrack("x", "S@start S S@finish").boucles).toBeUndefined();
   });
 });

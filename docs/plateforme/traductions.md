@@ -1393,7 +1393,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `figures.blocMur.titre` | Mur roulable | Wallride |
 | `figures.blocMur.quoi` | Le fond disparaît : monte sur la paroi avant le vide et longe-la à pleine vitesse. Trop bas tu tombes, trop haut tu passes par-dessus. Variante 2 : plus long. | The floor disappears: climb the wall before the gap and ride it flat out. Too low you fall, too high you go over. Variant 2: longer. |
 | `figures.blocBoucle.titre` | Boucle | Loop |
-| `figures.blocBoucle.quoi` | Une boucle de 10 m de rayon : entre par la voie de gauche, à fond ; trop lent, tu décroches en haut. Variante 2 : deux boucles à la suite. | A loop with a 10 m radius: go in on the left lane, flat out; too slow and you fall off at the top. Variant 2: two loops in a row. |
+| `figures.blocBoucle.quoi` | Une boucle de 13 m de rayon, la caméra passe au capot : entre par la moitié ouverte, à fond, et tiens le volant (la route vrille, rien ne te guide) ; trop lent, tu décroches en haut. Variante 2 : la boucle fait aussi virage. | A loop with a 13 m radius, seen from the bonnet: go in on the open half, flat out, and keep steering (the road twists, nothing guides you); too slow and you fall off at the top. Variant 2: the loop also turns. |
 
 ### garage (`garage.*`, `apps/web/src/catalogue.base.*.ts`)
 

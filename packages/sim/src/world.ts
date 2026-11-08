@@ -1,5 +1,4 @@
 import {
-  BOUCLE_Q,
   BOOST_HALF_LENGTH,
   CELL,
   FX_HALF_LENGTH,
@@ -27,6 +26,7 @@ import {
   dirX,
   dirZ,
   isCurve,
+  turnsLeft,
   type BankSample,
   type Block,
   type SurfaceKind,
@@ -252,6 +252,11 @@ export function trackWorld(track: Track): World {
         out.height = NO_GROUND;
         return;
       }
+      // Lot 58b — une boucle n'a pas de sol : la voiture y roule sur le ruban (boucle.ts) ; hors de lui, le vide.
+      if (b.loop) {
+        out.height = NO_GROUND;
+        return;
+      }
       const u = x - b.cx * CELL;
       const v = z - b.cz * CELL;
       const p = canonP(b.dir, u, v);
@@ -278,8 +283,7 @@ export function trackWorld(track: Track): World {
       } else {
         const lat = p - CELL / 2;
         const hw = blockHalfWidth(b, q);
-        // Lot 58b — boucle : la voie de gauche jusqu'à son pied, la voie de droite après.
-        onRoad = b.loop ? (q < BOUCLE_Q ? lat >= 0 && lat <= hw : lat <= 0 && lat >= -hw) : lat >= -hw && lat <= hw;
+        onRoad = lat >= -hw && lat <= hw;
         if (!onRoad) side = b.shoulder !== null && lat >= -SHOULDER_EDGE && lat <= SHOULDER_EDGE;
       }
       if (!onRoad && !side) {
@@ -329,6 +333,17 @@ export function trackWorld(track: Track): World {
       const v = z - b.cz * CELL;
       const p = canonP(b.dir, u, v);
       const q = canonQ(b.dir, u, v);
+      if (b.loop) {
+        // Lot 58b — boucle : un mur en travers de la moitié fermée, à l'entrée du bloc (on n'entre que par le côté du ruban) ; rien d'autre.
+        const lat = p - CELL / 2;
+        const ferme = (isCurve(b.kind) ? (turnsLeft(b.kind) ? 1 : -1) : -1) * lat;
+        if (q >= radius || q < 0 || ferme <= 0 || ferme > b.w0 / 2 || y - b.y0 > WALL_HEIGHT) return false;
+        canonVecToWorld(b.dir, 0, -1, wv);
+        out.nx = wv.x;
+        out.nz = wv.z;
+        out.depth = radius - q;
+        return true;
+      }
       // Au-dessus des rebords, on les survole (en virage relevé, le rebord extérieur est plus haut).
       let floor = blockHeight(b, q);
       if (b.banked) {
@@ -367,28 +382,7 @@ export function trackWorld(track: Track): World {
         const lat = p - CELL / 2;
         const hw = b.shoulder ? SHOULDER_EDGE : blockHalfWidth(b, q);
         const slope = b.shoulder ? 0 : blockHalfWidthSlope(b, q);
-        if (b.loop) {
-          // Lot 58b — boucle : les rebords de la voie ouverte (gauche avant le pied, droite après), et un bout de piste en travers de la voie de droite à
-          // l'entrée du bloc (on n'y passe pas sans la boucle).
-          const avant = q < BOUCLE_Q;
-          if (avant && lat < 0) {
-            // La voie de droite est fermée avant le pied : un mur en travers à l'entrée du bloc.
-            if (q < radius) {
-              depth = radius - q;
-              nq = -1;
-            }
-          } else if (avant || lat <= 0) {
-            const lo = avant ? 0 : -hw;
-            const hi = avant ? hw : 0;
-            if (lat > hi - radius) {
-              depth = lat - (hi - radius);
-              np = -1;
-            } else if (lat < lo + radius) {
-              depth = lo + radius - lat;
-              np = 1;
-            }
-          }
-        } else if (slope === 0) {
+        if (slope === 0) {
           const limit = hw - radius;
           if (lat > limit) {
             depth = lat - limit;

@@ -55,7 +55,6 @@ import {
   THEMES,
   createSurface,
   FX_BROKEN,
-  BOUCLE_RAYON,
   FX_CRUISE,
   FX_NO_BRAKE,
   TICK_RATE,
@@ -2073,8 +2072,20 @@ function poseEnBoucle(c: CarState) {
   boucleM.makeBasis(boucleG, boucleU, boucleF);
   carMesh.quaternion.setFromRotationMatrix(boucleM);
 }
-/** Lot 58b : la caméra d'une boucle — sur le côté, à cette distance (m) de son axe, à hauteur de son centre ; elle regarde la voiture. */
-const BOUCLE_CAMERA = 26;
+/**
+ * Lot 58b — dans une boucle, la vue capot est imposée (retour de Nathan) : la caméra d'avant est gardée ici le temps de la boucle, puis rendue (rien
+ * n'est enregistré ; si le joueur était déjà en vue capot, rien ne change).
+ */
+let cameraAvantBoucle: number | null = null;
+function cameraDeBoucle(enBoucle: boolean) {
+  if (enBoucle && cameraAvantBoucle === null && !CAMERAS[cameraIndex]!.mount) {
+    cameraAvantBoucle = cameraIndex;
+    cameraIndex = CAMERAS.findIndex((c) => c.mount);
+  } else if (!enBoucle && cameraAvantBoucle !== null) {
+    cameraIndex = cameraAvantBoucle;
+    cameraAvantBoucle = null;
+  }
+}
 // Vue capot : l'œil dans le repère de la voiture, et le regard « rivé à la caisse » (axe +z de la voiture = −z de la caméra).
 const hoodEye = new Vector3();
 const hoodBody = new Quaternion();
@@ -2460,6 +2471,7 @@ function frame(now: number) {
 
   // Caméra poursuite : cap, hauteur et position suivent la voiture avec un léger retard ; le champ de vision
   // s'ouvre avec la vitesse (sensation de vitesse).
+  cameraDeBoucle(car.loop > 0 && !(watch && freeCam));
   syncCameraButton();
   syncGhostButton();
   const rig = CAMERAS[cameraIndex]!;
@@ -2485,16 +2497,9 @@ function frame(now: number) {
   // Sur la paroi d'une cuve, la caméra penche avec la voiture (en partie) : son « haut » est entre la verticale et la normale.
   const camUp = carPose.cameraUp;
   camLift.copy(camUp).multiplyScalar(rig.height - (hood ? 0 : fastCam.lower));
-  let tx = x - Math.sin(camYaw) * back + camLift.x;
-  let ty = camBaseY + camLift.y;
-  let tz = z - Math.cos(camYaw) * back + camLift.z;
-  const vueBoucle = car.loop > 0 && !hood && !freeActive;
-  if (vueBoucle) {
-    // Lot 58b : dans la boucle, la caméra se met sur le côté (vers la sortie), au niveau du centre de la boucle, et regarde la voiture.
-    tx = x + car.nx * BOUCLE_RAYON - boucleG.x * BOUCLE_CAMERA;
-    ty = y + car.ny * BOUCLE_RAYON + 2;
-    tz = z + car.nz * BOUCLE_RAYON - boucleG.z * BOUCLE_CAMERA;
-  }
+  const tx = x - Math.sin(camYaw) * back + camLift.x;
+  const ty = camBaseY + camLift.y;
+  const tz = z - Math.cos(camYaw) * back + camLift.z;
   const follow = snapCamera ? 1 : 1 - Math.exp(-(rig.posLag - (hood ? 0 : fastCam.lag)) * elapsed);
   camPos.x += (tx - camPos.x) * follow;
   camPos.y += (ty - camPos.y) * follow;
@@ -2524,13 +2529,12 @@ function frame(now: number) {
     camera.quaternion.slerp(hoodBody, (rig.bodyFollow ?? 0.6) * (1 - airMix * 0.75));
     const excess = camera.quaternion.angleTo(hoodBody) - HOOD_MAX_TILT;
     if (excess > 0) camera.quaternion.rotateTowards(hoodBody, excess);
+    // Lot 58b : dans la boucle, le regard est celui de la caisse (à l'envers avec elle, comme au volant).
+    if (car.loop) camera.quaternion.copy(hoodBody);
   } else {
     camera.lookAt(x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight, camBaseY + camUp.y * rig.lookHeight, z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight);
   }
-  if (vueBoucle) {
-    camera.up.set(0, 1, 0);
-    camera.lookAt(x, y, z);
-  }
+
   if (freeActive) {
     // Caméra libre : sur une sphère autour de la voiture (lacet et hauteur au doigt, distance à la molette), le regard sur elle.
     const o = orbitOffset(orbit.yaw, orbit.pitch, orbit.dist);

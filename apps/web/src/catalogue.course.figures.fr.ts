@@ -128,5 +128,5 @@ export const fr = {
   "figures.blocMur.titre": "Mur roulable",
   "figures.blocMur.quoi": "Le fond disparaît : monte sur la paroi avant le vide et longe-la à pleine vitesse. Trop bas tu tombes, trop haut tu passes par-dessus. Variante 2 : plus long.",
   "figures.blocBoucle.titre": "Boucle",
-  "figures.blocBoucle.quoi": "Une boucle de 10 m de rayon : entre par la voie de gauche, à fond ; trop lent, tu décroches en haut. Variante 2 : deux boucles à la suite.",
+  "figures.blocBoucle.quoi": "Une boucle de 13 m de rayon, la caméra passe au capot : entre par la moitié ouverte, à fond, et tiens le volant (la route vrille, rien ne te guide) ; trop lent, tu décroches en haut. Variante 2 : la boucle fait aussi virage.",
 };

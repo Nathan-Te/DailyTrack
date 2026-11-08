@@ -136,7 +136,7 @@ export function stepRace(race: RaceState, input: CarInput): void {
     stepCar(car, input, race.world, race.params);
     if (race.track.boucles) {
       const b = race.track.cells.get(cellKey(Math.floor(car.x / CELL), Math.floor(car.z / CELL)));
-      if (b?.loop) entrerBoucle(car, b, px, pz);
+      if (b?.loop) entrerBoucle(car, b);
     }
   }
 

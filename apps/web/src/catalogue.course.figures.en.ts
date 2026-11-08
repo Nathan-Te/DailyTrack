@@ -129,5 +129,5 @@ export const en: Catalogues<typeof fr>["en"] = {
   "figures.blocMur.titre": "Wallride",
   "figures.blocMur.quoi": "The floor disappears: climb the wall before the gap and ride it flat out. Too low you fall, too high you go over. Variant 2: longer.",
   "figures.blocBoucle.titre": "Loop",
-  "figures.blocBoucle.quoi": "A loop with a 10 m radius: go in on the left lane, flat out; too slow and you fall off at the top. Variant 2: two loops in a row.",
+  "figures.blocBoucle.quoi": "A loop with a 13 m radius, seen from the bonnet: go in on the open half, flat out, and keep steering (the road twists, nothing guides you); too slow and you fall off at the top. Variant 2: the loop also turns.",
 };

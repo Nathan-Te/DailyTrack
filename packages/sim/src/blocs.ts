@@ -131,9 +131,10 @@ export const BLOCS_LOT58: readonly ElementBloc[] = [
     off: 0,
     variants: 2,
     themes: ["stade", "canyon"],
-    // Lot 58b : une boucle de 10 m de rayon, sur la route étroite (on la rejoint, puis on reprend la largeur d'avant). On y entre par la voie de gauche, on
-    // en sort par celle de droite ; trop lent (≈ 35 m/s en roue libre), on décroche en haut. Variante 1 : deux boucles à la suite.
-    build: (c) => [...reach(c.width, "e"), "S", "S", "O", ...(c.variant === 1 ? ["S", "S", "O"] : []), "S", "S", ...reach("e", c.width)],
+    // Lot 58b : une boucle de 13 m de rayon sur la route normale (on la rejoint, puis on reprend la largeur d'avant), un ruban de 10 m sans garde-corps :
+    // on entre par une moitié de la route, on sort par l'autre ; il faut la tenir au volant, et trop lent on décroche en haut. Variante 1 : la boucle qui
+    // tourne en même temps (sur un virage large).
+    build: (c) => [...reach(c.width, "n"), "S", "S", c.variant === 1 ? `${c.L}2/O` : "O", "S", "S", ...reach("n", c.width)],
   }),
 ];
 
