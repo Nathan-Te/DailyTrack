@@ -1,5 +1,5 @@
 import { DEFAULT_CAR_PARAMS, type CarParams } from "./car";
-import { CELL, KICK_START, LEVEL, isCurve, type Block, type Track } from "./track";
+import { CELL, CURVE_KICK, KICK_START, LEVEL, isCurve, type Block, type Track } from "./track";
 
 // Les sauts (lot 17) : une rampe `K`, un ou plusieurs vides `G`, puis la réception (une descente, un plat, parfois un niveau
 // plus bas ou plus haut). La voiture quitte la rampe avec sa vitesse et une pente de 0,25 (`LEVEL` sur `CELL − KICK_START`), puis
@@ -35,14 +35,16 @@ export interface JumpInfo {
   minSpeed: number;
   /** Vitesse maximale (m/s) au bord de la rampe : au-delà, on retomberait après la ligne droite de réception. */
   maxSpeed: number;
+  /** Lot 57 : pente de l'appel au bord (0,25 pour une rampe `K` ou un virage-tremplin, celle de la montée pour un appel sur une crête). */
+  slope: number;
 }
 
 /**
  * Vitesse minimale au bord de la rampe pour franchir un vide de `gap` mètres dont l'autre bord est `rise` mètres plus haut :
  * à l'abscisse `gap`, la parabole `pente × x − g/2 × (x / v)²` doit rester au-dessus de `rise − EDGE_TOLERANCE`.
  */
-export function jumpMinSpeed(gap: number, rise: number, params: Readonly<CarParams> = DEFAULT_CAR_PARAMS): number {
-  const lift = KICK_SLOPE * gap - (rise - EDGE_TOLERANCE); // marge verticale disponible pour la chute
+export function jumpMinSpeed(gap: number, rise: number, params: Readonly<CarParams> = DEFAULT_CAR_PARAMS, slope = KICK_SLOPE): number {
+  const lift = slope * gap - (rise - EDGE_TOLERANCE); // marge verticale disponible pour la chute
   if (lift <= 0) return Infinity;
   return Math.sqrt((params.gravity * gap * gap) / (2 * lift)) * LIP_MARGIN;
 }
@@ -51,21 +53,21 @@ export function jumpMinSpeed(gap: number, rise: number, params: Readonly<CarPara
  * Distance (m, depuis le bord de la rampe) où retombe la voiture sur une réception plane située `rise` m plus haut, à la
  * vitesse `v` : racine descendante de `pente × x − g/2 × (x / v)² = rise` après le vide.
  */
-export function jumpLandingDistance(v: number, rise: number, params: Readonly<CarParams> = DEFAULT_CAR_PARAMS): number {
+export function jumpLandingDistance(v: number, rise: number, params: Readonly<CarParams> = DEFAULT_CAR_PARAMS, slope = KICK_SLOPE): number {
   const a = params.gravity / (2 * v * v);
-  const disc = KICK_SLOPE * KICK_SLOPE - 4 * a * rise;
+  const disc = slope * slope - 4 * a * rise;
   if (disc <= 0) return Infinity;
-  return (KICK_SLOPE + Math.sqrt(disc)) / (2 * a);
+  return (slope + Math.sqrt(disc)) / (2 * a);
 }
 
 /** Vitesse au bord de la rampe qui fait retomber la voiture `reach` mètres plus loin que le bord d'en face (au plafond de la fenêtre). */
-function jumpMaxSpeed(gap: number, rise: number, runout: number, params: Readonly<CarParams>): number {
+function jumpMaxSpeed(gap: number, rise: number, runout: number, params: Readonly<CarParams>, slope = KICK_SLOPE): number {
   const limit = gap + runout;
   let lo = 10;
   let hi = 160;
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
-    if (jumpLandingDistance(mid, rise, params) * LANDING_STRETCH > limit) hi = mid;
+    if (jumpLandingDistance(mid, rise, params, slope) * LANDING_STRETCH > limit) hi = mid;
     else lo = mid;
   }
   return lo;
@@ -76,12 +78,26 @@ export const CURVE_LANDING = 32;
 
 const isLanding =(b: Block) => !isCurve(b.kind) && b.kind !== "gap" && b.kind !== "kick" && b.kind !== "jump";
 
-/** Les sauts d'un circuit (une rampe `K` suivie d'au moins un vide `G`), avec leur fenêtre de vitesse au bord de la rampe. */
+/**
+ * Pente au bord d'un bloc d'appel, ou 0 s'il n'en est pas un : la rampe `K` (droite ou en dévers, lot 57) ; le virage-tremplin (lot 57) ;
+ * une montée suivie d'un vide (lot 57 : l'appel sur une crête, sans tremplin). Aucun circuit d'avant le lot 57 n'a de vide derrière autre
+ * chose qu'une rampe `K` : leurs sauts ne changent pas.
+ */
+export function appelSlope(b: Block, next: Block | undefined): number {
+  if (next?.kind !== "gap") return 0;
+  if (b.kind === "kick") return KICK_SLOPE;
+  if (b.ramp) return b.rise / CURVE_KICK;
+  if (b.kind === "up") return b.rise / CELL;
+  return 0;
+}
+
+/** Les sauts d'un circuit (un appel suivi d'au moins un vide `G`), avec leur fenêtre de vitesse au bord de l'appel. */
 export function trackJumps(track: Track, params: Readonly<CarParams> = DEFAULT_CAR_PARAMS): JumpInfo[] {
   const out: JumpInfo[] = [];
   const blocks = track.blocks;
   for (const k of blocks) {
-    if (k.kind !== "kick") continue;
+    const slope = appelSlope(k, blocks[k.index + 1]);
+    if (slope === 0 && k.kind !== "kick") continue;
     let i = k.index + 1;
     let gapCells = 0;
     let rise = 0;
@@ -106,8 +122,9 @@ export function trackJumps(track: Track, params: Readonly<CarParams> = DEFAULT_C
       rise,
       landing: i,
       runout,
-      minSpeed: jumpMinSpeed(gap, rise, params),
-      maxSpeed: jumpMaxSpeed(gap, rise, Math.max(0, runout - 8), params),
+      minSpeed: jumpMinSpeed(gap, rise, params, slope || KICK_SLOPE),
+      maxSpeed: jumpMaxSpeed(gap, rise, Math.max(0, runout - 8), params, slope || KICK_SLOPE),
+      slope: slope || KICK_SLOPE,
     });
   }
   return out;

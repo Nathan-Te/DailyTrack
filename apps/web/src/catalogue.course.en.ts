@@ -33,6 +33,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "course.scenario.air": "Air track",
   "course.scenario.basCotes": "Shoulders and kerbs",
   "course.scenario.herbe": "Racing turf circuit",
+  "course.scenario.sauts": "Jumps and transitions",
   "course.scenario.figures": "The figures",
   "course.scenario.figure": "Figure: {nom}",
   "course.scenario.essai": "Test track",
