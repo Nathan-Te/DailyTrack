@@ -4,8 +4,7 @@ import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
 import { appelSlope, trackJumps, type JumpInfo } from "./jump";
-import { volantBoucle } from "./boucle";
-import { BOUCLE_LARGEUR, bankSlope as slopeOfBank, CELL, CURVE_KICK, bankFactor, blockCells, hasLift, liftAt, type Lift, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { bankSlope as slopeOfBank, CELL, CURVE_KICK, bankFactor, blockCells, hasLift, liftAt, type Lift, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
 import { cuveAmplitude } from "./cuve";
 import { SURFACES } from "./world";
 
@@ -221,31 +220,6 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
         const room = calm ? 0.5 : Math.min(floor, blockHalfWidth(b, q) - margin - open);
         push(CELL / 2, q, b, room, room, blockHalfWidth(b, q));
       }
-    }
-  }
-  // Lot 58b — boucle : le pilote rejoint la moitié ouverte de la route sur le bloc d'avant, suit la vrille du ruban (d'une moitié à l'autre) et revient à
-  // l'axe sur le bloc d'après ; aucune limite de vitesse dans ces trois blocs (la boucle veut de l'élan). Aucun circuit d'avant n'a de boucle.
-  for (const b of track.blocks) {
-    if (!b.loop) continue;
-    const ent = (isCurve(b.kind) && turnsLeft(b.kind) ? -1 : 1) * (BOUCLE_LARGEUR / 2);
-    const bornes = (k: number) => {
-      let a = -1;
-      let z = -1;
-      for (let i = 0; i < out.blk.length; i++) {
-        if (out.blk[i] !== k) continue;
-        if (a < 0) a = i;
-        z = i;
-      }
-      return [a, z] as const;
-    };
-    const [d0, d1] = bornes(b.index);
-    const [a0] = bornes(b.index - 1);
-    const [, s1] = bornes(b.index + 1);
-    for (let i = Math.max(0, a0); i <= Math.max(d1, s1); i++) {
-      if (i < d0) out.pin[i] = ent * smooth01((i - a0) / Math.max(1, d0 - a0));
-      else if (i <= d1) out.pin[i] = ent * (1 - (2 * (i - d0)) / Math.max(1, d1 - d0));
-      else out.pin[i] = -ent * (1 - smooth01((i - d1) / Math.max(1, s1 - d1)));
-      out.mur[i] = true;
     }
   }
   // Normales (vers la gauche) par différence centrée.
@@ -519,8 +493,6 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
 
   return function drive(race: RaceState): CarInput {
     const car = race.car;
-    // Lot 58b — sur une boucle (ruban, boucle.ts) : plein gaz, le volant ramène l'écart et le cap à zéro.
-    if (car.loop) return makeInput(volantBoucle(car, track.blocks[car.loop - 1]!, params), 1, 0);
     // Point le plus proche sur la trajectoire, en n'avançant que dans le sens du circuit.
     let best = idx;
     let bestD = Infinity;

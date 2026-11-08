@@ -26,7 +26,6 @@ import {
   dirX,
   dirZ,
   isCurve,
-  turnsLeft,
   type BankSample,
   type Block,
   type SurfaceKind,
@@ -252,11 +251,6 @@ export function trackWorld(track: Track): World {
         out.height = NO_GROUND;
         return;
       }
-      // Lot 58b — une boucle n'a pas de sol : la voiture y roule sur le ruban (boucle.ts) ; hors de lui, le vide.
-      if (b.loop) {
-        out.height = NO_GROUND;
-        return;
-      }
       const u = x - b.cx * CELL;
       const v = z - b.cz * CELL;
       const p = canonP(b.dir, u, v);
@@ -333,17 +327,6 @@ export function trackWorld(track: Track): World {
       const v = z - b.cz * CELL;
       const p = canonP(b.dir, u, v);
       const q = canonQ(b.dir, u, v);
-      if (b.loop) {
-        // Lot 58b — boucle : un mur en travers de la moitié fermée, à l'entrée du bloc (on n'entre que par le côté du ruban) ; rien d'autre.
-        const lat = p - CELL / 2;
-        const ferme = (isCurve(b.kind) ? (turnsLeft(b.kind) ? 1 : -1) : -1) * lat;
-        if (q >= radius || q < 0 || ferme <= 0 || ferme > b.w0 / 2 || y - b.y0 > WALL_HEIGHT) return false;
-        canonVecToWorld(b.dir, 0, -1, wv);
-        out.nx = wv.x;
-        out.nz = wv.z;
-        out.depth = radius - q;
-        return true;
-      }
       // Au-dessus des rebords, on les survole (en virage relevé, le rebord extérieur est plus haut).
       let floor = blockHeight(b, q);
       if (b.banked) {

@@ -21,7 +21,7 @@ function entree(track: Track, run: PilotRun): number {
   for (let t = 0; t < run.ticks; t++) {
     stepRace(race, drive(race));
     const b = track.cells.get(cellKey(Math.floor(race.car.x / CELL), Math.floor(race.car.z / CELL)));
-    if (b && (b.fx !== undefined || b.crown || b.steep || b.floorless || b.loop || b.surface === "sled")) return t;
+    if (b && (b.fx !== undefined || b.crown || b.steep || b.floorless || b.surface === "sled")) return t;
   }
   return Math.floor(run.ticks / 2);
 }

@@ -8,8 +8,8 @@ import type { ElementGrammaire } from "./grammaire";
 // par `?scenario=blocs`. Ils attendent le choix de Nathan (garder, retoucher, écarter) avant d'entrer dans le générateur.
 
 export interface ElementBloc extends ElementGrammaire {
-  /** La famille du catalogue (README du lot 58) : effet, bombee, releve, tube, mur et boucle (lot 58b). */
-  famille: "effet" | "bombee" | "releve" | "tube" | "mur" | "boucle";
+  /** La famille du catalogue (README du lot 58) : effet, bombee, releve, tube et mur (lot 58b). */
+  famille: "effet" | "bombee" | "releve" | "tube" | "mur";
 }
 
 const SINCE = 22;
@@ -123,18 +123,6 @@ export const BLOCS_LOT58: readonly ElementBloc[] = [
       const w = c.wall;
       return ["S", w, w, w, ...Array<string>(c.variant === 0 ? 3 : 4).fill(`${w}/m`), w, w, "S"];
     },
-  }),
-  bloc({
-    name: "bloc-boucle",
-    label: "Boucle",
-    famille: "boucle",
-    off: 0,
-    variants: 2,
-    themes: ["stade", "canyon"],
-    // Lot 58b : une boucle de 13 m de rayon sur la route normale (on la rejoint, puis on reprend la largeur d'avant), un ruban de 10 m sans garde-corps :
-    // on entre par une moitié de la route, on sort par l'autre ; il faut la tenir au volant, et trop lent on décroche en haut. Variante 1 : la boucle qui
-    // tourne en même temps (sur un virage large).
-    build: (c) => [...reach(c.width, "n"), "S", "S", c.variant === 1 ? `${c.L}2/O` : "O", "S", "S", ...reach("n", c.width)],
   }),
 ];
 

@@ -127,6 +127,4 @@ export const fr = {
   "figures.blocTube.quoi": "Façon bobsleigh : des demi-tubes sur la glace de piste. Monte sur la paroi extérieure des virages, redescends dans le tube. Variante 2 : des virages plus serrés.",
   "figures.blocMur.titre": "Mur roulable",
   "figures.blocMur.quoi": "Le fond disparaît : monte sur la paroi avant le vide et longe-la à pleine vitesse. Trop bas tu tombes, trop haut tu passes par-dessus. Variante 2 : plus long.",
-  "figures.blocBoucle.titre": "Boucle",
-  "figures.blocBoucle.quoi": "Une boucle de 13 m de rayon, la caméra passe au capot : entre par la moitié ouverte, à fond, et tiens le volant (la route vrille, rien ne te guide) ; trop lent, tu décroches en haut. Variante 2 : la boucle fait aussi virage.",
 };

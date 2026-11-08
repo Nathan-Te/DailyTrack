@@ -6,12 +6,7 @@
 // (chargé à la demande) ; le garde-corps de la Ville (lot 37) est porté ici (`gardeCorps`), pour tous les styles.
 import {
   BANK_SLOPE_STEEP,
-  BOUCLE_LARGEUR,
   CELL,
-  createPointBoucle,
-  PB_U,
-  pointBoucle,
-  tableBoucle,
   MUR_ROULABLE_BAS,
   MUR_ROULABLE_HAUT,
   CUVE_LEFT,
@@ -427,54 +422,6 @@ function addCuve(g: Builder, pal: Palette, style: StyleRoute, b: Block, color: n
   }
 }
 
-/**
- * Lot 58b — la boucle (bloc `O` sur une droite, `/O` sur un virage large) : le bloc n'a pas de sol, seulement le ruban (points de la table de la
- * simulation, `tableBoucle` : la voiture roule exactement dessus), bordé de bandes blanches et rouges (aucun garde-corps : on peut en tomber), sa face
- * extérieure 15 cm dessous ; un mur rayé d'alerte en travers de la moitié fermée de la route, à l'entrée, et des chevrons sur la moitié ouverte.
- */
-function addBoucle(g: Builder, pal: Palette, b: Block, color: number, skirt: number) {
-  const tb = tableBoucle(b);
-  const WARN = [0xffc21a, 0x16181f] as const;
-  for (let i = 0; i < 10; i++) {
-    const p0 = CELL / 2 - tb.cote * i;
-    const p1 = p0 - tb.cote;
-    g.quad(world(b, p0, 0, b.y0), world(b, p1, 0, b.y0), world(b, p1, 0, b.y0 + WALL_HEIGHT), world(b, p0, 0, b.y0 + WALL_HEIGHT), WARN[i % 2]!);
-  }
-  const N = 96;
-  const pb = createPointBoucle();
-  const bord = BOUCLE_LARGEUR / 2;
-  const ligne = (w: number, sous = 0): V3[] => {
-    const out: V3[] = [];
-    for (let i = 0; i <= N; i++) {
-      pointBoucle(tb, (tb.longueur * i) / N, w, pb);
-      out.push([pb[0]! - pb[PB_U]! * sous, pb[1]! - pb[PB_U + 1]! * sous, pb[2]! - pb[PB_U + 2]! * sous]);
-    }
-    return out;
-  };
-  const g0 = ligne(bord);
-  const g1 = ligne(bord - 0.7);
-  const d1 = ligne(-bord + 0.7);
-  const d0 = ligne(-bord);
-  const dessousG = ligne(bord, 0.15);
-  const dessousD = ligne(-bord, 0.15);
-  for (let i = 0; i < N; i++) {
-    const bande = i % 2 === 0 ? 0xf4f1e6 : ROUGE_BANDE;
-    g.quad(g1[i]!, d1[i]!, d1[i + 1]!, g1[i + 1]!, color);
-    g.quad(g0[i]!, g1[i]!, g1[i + 1]!, g0[i + 1]!, bande);
-    g.quad(d1[i]!, d0[i]!, d0[i + 1]!, d1[i + 1]!, bande);
-    g.quad(dessousG[i]!, dessousG[i + 1]!, dessousD[i + 1]!, dessousD[i]!, shade(skirt, 1.1));
-  }
-  // Chevrons sur la moitié ouverte, avant la boucle : on y entre.
-  for (const s of [3, 7]) {
-    const P = (dp: number, dq: number): V3 => world(b, CELL / 2 + tb.cote * (BOUCLE_LARGEUR / 2) + dp, s + dq - 10, b.y0 + 0.05);
-    for (const k of [-1, 1]) g.quad(P(0, 1.2), P(0, 0.4), P(k * 2.4, -0.8), P(k * 2.4, 0), 0xf4f1e6);
-  }
-  void pal;
-}
-
-/** Les bandes du bord d'une boucle : le rouge de la piste. */
-const ROUGE_BANDE = 0xc01818;
-
 function addJumpMarks(g: Builder, b: Block) {
   const WARN = [0xffc21a, 0x16181f] as const;
   const y = (q: number) => blockHeight(b, q) + 0.05;
@@ -684,8 +631,6 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
     rebords.push(!b.open && !b.shoulder && !b.cuve && b.kind !== "gap");
     if (b.cuve) {
       addCuve(g, pal, style, b, color, floorY);
-    } else if (b.loop) {
-      addBoucle(g, pal, b, color, skirt);
     } else if (b.kind === "gap") {
       // le vide d'un saut
     } else if (isCurve(b.kind)) {
@@ -740,10 +685,10 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       for (let k = b.index - 1; track.blocks[k]?.kind === "gap"; k--) drop -= track.blocks[k]!.rise;
       addLandingMarks(g, b, Math.max(0, drop));
     }
-    if (pillars && b.kind !== "gap" && !b.loop) addPillar(g, pal, b, floorY, skirt);
-    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut" || b.fx !== undefined || b.loop === true;
+    if (pillars && b.kind !== "gap") addPillar(g, pal, b, floorY, skirt);
+    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut" || b.fx !== undefined;
     if (b.surface === "road" && !effect && !b.bumpy && !b.floorless && b.kind !== "jump" && b.kind !== "bump" && b.kind !== "kick" && b.kind !== "gap") style.tirets(g, b, pal);
-    if (!b.loop) addSurfaceMarks(g, b);
+    addSurfaceMarks(g, b);
   }
   // Bouts fermés : un mur en travers de la route au départ et derrière l'arrivée.
   const first = track.blocks[0]!;
