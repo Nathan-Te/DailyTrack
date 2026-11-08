@@ -4,6 +4,7 @@
 // (`brancherComposeur("existant", …)`). Code déplacé tel quel de `trackMesh.ts` (route, marquages, cuves, ciel, montagnes, `trackGeometry`), de
 // `trackProps.ts` (arches, portes, panneaux sur poteau, bandeaux) et de `socle.ts` (l'assemblage) : mêmes objets, mêmes tirages, même image.
 // Lot 44 : le décor d'avant (`decorGeometry`, `addScenery`…) l'a rejoint, sorti de `trackMesh.ts` : le palier 1 a le sien, chargé à la demande par thème.
+import { solLointain } from "./sol";
 import {
   AdditiveBlending,
   AmbientLight,
@@ -33,7 +34,6 @@ import {
   CUT_HALF_LENGTH,
   CUVE_LEFT,
   CUVE_RIGHT,
-  FALL_DEPTH,
   KICK_START,
   JUMP_LIP,
   JUMP_RISE,
@@ -562,7 +562,7 @@ export interface DecorGeometry {
  */
 export function decorGeometry(track: Track, paletteName: PaletteName, options: TrackSceneOptions = {}): DecorGeometry {
   const pal = PALETTE_DEFS[paletteName];
-  const floorY = track.voidY - FALL_DEPTH;
+  const floorY = solLointain(track);
   const decorG = new Builder();
   const glowG = new Builder();
   const roulant = trackWorld(track);
@@ -1297,7 +1297,7 @@ export interface TrackGeometry {
  */
 export function trackGeometry(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackGeometry {
   const pal = PALETTE_DEFS[paletteName];
-  const floorY = track.voidY - FALL_DEPTH; // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
+  const floorY = solLointain(track); // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
   const g = new Builder();
   const speedG = new Builder();
   const neonG = new Builder(); // bordures néon au bord du vide (lot 21, Nuit) : lisibles, jamais masquées par la qualité
@@ -1658,7 +1658,7 @@ const HOOD_HEADLIGHT = 0.1;
 
 export function composerExistant(track: Track, paletteName: PaletteName, options: TrackSceneOptions): TrackScene {
   const pal = PALETTE_DEFS[paletteName];
-  const floorY = track.voidY - FALL_DEPTH; // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
+  const floorY = solLointain(track); // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
   const look = LOOKS[paletteName];
   const { g, speedG, neonG, props, decorG, glowG, denseG, denseGlow, signCount, rnd } = trackGeometry(track, paletteName, options);
 

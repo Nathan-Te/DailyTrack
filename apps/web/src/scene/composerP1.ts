@@ -37,7 +37,7 @@ import {
   type PerspectiveCamera,
   type Texture,
 } from "three";
-import { FALL_DEPTH, type PaletteName, type Track } from "@cdj/sim";
+import type { PaletteName, Track } from "@cdj/sim";
 import { buildHalos } from "../halo";
 import { Builder, mix, seeded } from "../meshKit";
 import { signsFor } from "../signage";
@@ -96,11 +96,9 @@ export interface GeometrieP1 {
   x: Contexte;
 }
 
-/**
- * Le sol lointain d'un circuit (le plan sous tout, où se posent les pieds des portiques et le décor) : `FALL_DEPTH` sous la hauteur où l'on est perdu. Lot 58 :
- * sous un virage très relevé (son bord intérieur plus bas que la route), il passe 2 m sous ce bord ; ailleurs, comme avant.
- */
-export const solLointain = (track: Track): number => Math.min(track.voidY - FALL_DEPTH, (track.fallY ?? Infinity) + FALL_DEPTH - 2);
+// Lot 58 : le sol lointain est dans `sol.ts` (le palier 1 et l'ancienne scène le partagent).
+export { solLointain } from "./sol";
+import { solLointain } from "./sol";
 
 /**
  * Les formes du palier 1 d'un circuit, sans rien de la scène (ni lumière, ni ciel, ni texture : de quoi les mesurer dans un test, `log` et `headless`).

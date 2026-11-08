@@ -541,7 +541,8 @@ export function eclairagePisteP(c: Calques, x: Contexte, couleur: number): Eclai
   const flaques: V3[] = [];
   const cap = x.pal.wallHeight ?? WALL_HEIGHT;
   for (const b of x.track.blocks) {
-    if (b.index % 2 !== 0 || !hasCap(b) || b.kind === "kick" || b.mark) continue;
+    // Lot 58 : ni sur une route bombée ni sur le bloc qui la raccorde (`crown`) : son bord descend avec l'arrondi, le pied flottait au-dessus du chapeau.
+    if (b.index % 2 !== 0 || !hasCap(b) || b.kind === "kick" || b.mark || b.crown !== undefined) continue;
     const cote = (b.index >> 1) % 2 === 0 ? 1 : -1;
     const hw = isCurve(b.kind) ? b.w0 / 2 : blockHalfWidth(b, CELL / 2);
     const pied = onRim(b, 0.5, cote, CHAPEAU / 2, cap);

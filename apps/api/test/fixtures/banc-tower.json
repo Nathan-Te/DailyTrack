@@ -1289,10 +1289,10 @@
      "numero": 29,
      "theme": "nuit",
      "seuils": {
-      "author": 35041,
-      "gold": 36618,
-      "silver": 37494,
-      "bronze": 39596
+      "author": 34430,
+      "gold": 35979,
+      "silver": 36840,
+      "bronze": 38906
      }
     },
     {
@@ -1357,10 +1357,10 @@
      "numero": 29,
      "theme": "nuit",
      "seuils": {
-      "author": 35041,
-      "gold": 36618,
-      "silver": 37494,
-      "bronze": 39596
+      "author": 34430,
+      "gold": 35979,
+      "silver": 36840,
+      "bronze": 38906
      },
      "etat": {
       "statut": "pas_joue"
@@ -3466,10 +3466,10 @@
      "numero": 29,
      "theme": "nuit",
      "seuils": {
-      "author": 35041,
-      "gold": 36618,
-      "silver": 37494,
-      "bronze": 39596
+      "author": 34430,
+      "gold": 35979,
+      "silver": 36840,
+      "bronze": 38906
      },
      "etat": {
       "statut": "pas_joue"
