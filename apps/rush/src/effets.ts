@@ -8,7 +8,7 @@ import { COULEURS } from "./palette";
 
 // --- Les éclats --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const MAX_ECLATS = 600;
-export type GenreEclat = "etincelle" | "poussiere" | "gelee" | "pierre" | "chauve" | "feu" | "spore" | "reine" | "gelaton" | "jarre" | "bois" | "planche" | "recharge" | "lame";
+export type GenreEclat = "etincelle" | "poussiere" | "gelee" | "pierre" | "chauve" | "feu" | "spore" | "reine" | "gelaton" | "jarre" | "bois" | "planche" | "recharge" | "lame" | "cracheur" | "chaman" | "totem" | "acier";
 /** Les éclats LUMINEUX (étincelles, feu) dépassent 1 : le post-traitement les fait fleurir (bloom) ; les autres restent des couleurs mates. */
 const LUEUR: Partial<Record<GenreEclat, number>> = { etincelle: 2.2, feu: 1.9, recharge: 1.8, lame: 1.9 };
 const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
@@ -28,6 +28,11 @@ const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
   planche: [0xd9a65f, 0x8f4a25, 0xb07a43],
   recharge: [COULEURS.recharge, COULEURS.rechargeClair, 0xffffff],
   lame: [COULEURS.lame, 0xffffff, 0xfff2a8],
+  // Lot BR6 : ce qui jaillit d'un cracheur (orange), d'un chaman (vert-de-gris et orbe), d'un totem (bois, ocre, violet) et d'un porte-bouclier (acier).
+  cracheur: [COULEURS.cracheur, COULEURS.cracheurClair, 0x8a4a14],
+  chaman: [COULEURS.chaman, COULEURS.chamanClair, COULEURS.orbe],
+  totem: [COULEURS.totemBois, COULEURS.totemOcre, COULEURS.invocation],
+  acier: [COULEURS.pbBouclier, 0xcfd8ea, COULEURS.pbCorps],
 };
 
 export class Eclats {
@@ -684,6 +689,68 @@ export class Bandes {
     u.flash!.value = p > 0.8 ? (Math.floor(temps * 18) % 2 === 0 ? 0.65 : 0) : 0;
     u.len!.value = len;
     u.demi!.value = demi;
+  }
+}
+
+/**
+ * Lot BR6 — le CÔNE annoncé du coup de bouclier d'un porte-bouclier : un secteur de disque (rayon, demi-ouverture) DEVANT lui, avec les couleurs et les transparences des cercles du boss (un danger : le corail), un remplissage qui avance du centre au bord.
+ * La zone dangereuse est exactement celle que la simulation touche (`PB_CONE` et `PB_CONE_COS`) : le chevalier à son flanc ou derrière est hors du dessin.
+ */
+export class Cones {
+  readonly groupe = new Group();
+  private readonly libres: Mesh[] = [];
+  private readonly utilises: Mesh[] = [];
+  constructor(n = 6) {
+    for (let i = 0; i < n; i++) {
+      const g = new PlaneGeometry(2, 2);
+      g.rotateX(-Math.PI / 2);
+      const mat = new ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: { p: { value: 0 }, flash: { value: 0 }, ouv: { value: 0.6 }, fond: { value: ALPHAS_ANNONCE.fond }, col: { value: new Color(COULEURS.corail) }, bordCol: { value: new Color(COULEURS.corailClair) } },
+        vertexShader: VERTEX_PLAN,
+        fragmentShader: `varying vec2 vUv; uniform float p; uniform float flash; uniform float ouv; uniform float fond; uniform vec3 col; uniform vec3 bordCol;
+          void main(){
+            vec2 q = vUv * 2.0 - 1.0; float d = length(q); if (d > 1.0 || d < 0.001) discard;
+            float c = q.x / d; if (c < ouv) discard;
+            float bord = max(smoothstep(0.925, 0.94, d), 1.0 - smoothstep(0.0, 0.035, c - ouv));
+            float rempli = 1.0 - smoothstep(p - 0.012, p, d);
+            float front = smoothstep(p - 0.05, p - 0.02, d) * (1.0 - smoothstep(p - 0.02, p, d));
+            vec3 k = mix(col, bordCol * 1.35, bord);
+            k = mix(k, vec3(1.0, 0.86, 0.78), front * 0.5);
+            k = mix(k, vec3(1.0, 0.95, 0.9), flash);
+            float a = bord * ${ALPHAS_ANNONCE.bord.toFixed(2)} + (1.0 - bord) * (fond + rempli * ${ALPHAS_ANNONCE.rempli.toFixed(2)});
+            gl_FragColor = vec4(k, a);
+            #include <colorspace_fragment>
+          }`,
+      });
+      const m = new Mesh(g, mat);
+      m.renderOrder = 2;
+      m.visible = false;
+      this.groupe.add(m);
+      this.libres.push(m);
+    }
+  }
+  debut(): void {
+    for (const m of this.utilises) {
+      m.visible = false;
+      this.libres.push(m);
+    }
+    this.utilises.length = 0;
+  }
+  /** Pose un cône de sommet (x, z) (mètres), tourné vers (dx, dz), de rayon `rayon` et de demi-ouverture dont le cosinus est `cosOuv` ; `p` de 0 (annoncé) à 1 (il frappe). */
+  poser(x: number, z: number, dx: number, dz: number, rayon: number, cosOuv: number, p: number, temps: number): void {
+    const m = this.libres.pop();
+    if (!m) return;
+    this.utilises.push(m);
+    m.visible = true;
+    m.position.set(x, 0.03, z);
+    m.rotation.y = -Math.atan2(dz, dx);
+    m.scale.set(rayon, 1, rayon);
+    const u = (m.material as ShaderMaterial).uniforms;
+    u.p!.value = Math.min(1, p) * 0.95;
+    u.flash!.value = p > 0.8 ? (Math.floor(temps * 18) % 2 === 0 ? 0.65 : 0) : 0;
+    u.ouv!.value = cosOuv;
   }
 }
 

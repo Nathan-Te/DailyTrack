@@ -363,7 +363,7 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
       }
       if (boss.dataset.phase !== String(numero)) {
         boss.dataset.phase = String(numero);
-        phase.textContent = t("hud.phase", { n: numero });
+        phase.textContent = numero === 0 ? "" : t("hud.phase", { n: numero }); // lot BR6 : 0, la salle d'épreuve (pas de phase)
       }
       vie.style.transform = `scaleX(${Math.max(0, Math.min(1, fraction))})`;
       piste.setAttribute("aria-valuenow", String(Math.round(fraction * 100)));

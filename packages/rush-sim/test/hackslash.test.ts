@@ -14,6 +14,7 @@ import {
   GELATON,
   GELEE,
   LIBRE,
+  MONSTRE_NEUTRE,
   Partie,
   PREMIER_JOUR_RUSH,
   RAYON_ARENE,
@@ -73,6 +74,7 @@ const monstre = (type: number, x: number, y: number, o: Partial<Monstre> = {}): 
   laisse: 0,
   ra: 0,
   sbire: 0,
+  ...MONSTRE_NEUTRE,
   ...o,
 });
 /** La horde d'essai vidée : le chevalier au centre-bas de l'arène, la compétence prête, regardant vers le haut (−y). */

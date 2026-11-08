@@ -24,6 +24,13 @@ const ICONES: Readonly<Record<string, string>> = {
   maitrise: "M12 3 L14.6 9 L21 9.6 L16.2 13.8 L17.6 20 L12 16.8 L6.4 20 L7.8 13.8 L3 9.6 L9.4 9 Z",
   echo: "M3 12 A9 9 0 0 1 12 3 M21 12 A9 9 0 0 1 12 21 M7 12 A5 5 0 0 1 12 7 M17 12 A5 5 0 0 1 12 17 M12 11 L12 13",
   signature: "M4 20 L8 20 L19 9 L15 5 L4 16 Z M13 7 L17 11",
+  // Lot BR6 : les cartes de fin de partie.
+  frenesie: "M13 2 L4 14 L10 14 L8 22 L20 9 L13 9 L16 2 Z",
+  "lame-enflammee": "M12 2 C14 6 18 8 18 13 A6 6 0 0 1 6 13 C6 10 8 9 9 7 C10 9 11 9 12 2 Z M12 20 L12 14",
+  ecrasement: "M5 4 L19 4 L19 9 L5 9 Z M12 9 L12 20 M7 20 L17 20",
+  "seconde-charge": "M6 4 A4 4 0 1 1 6 12 A4 4 0 1 1 6 4 M16 12 A4 4 0 1 1 16 20 A4 4 0 1 1 16 12 M9 10 L13 14",
+  "bond-sismique": "M3 18 Q12 0 21 18 M6 20 L18 20 M2 15 L5 17 M22 15 L19 17",
+  "bouclier-ricochet": "M5 5 L12 12 L5 19 M12 12 L19 5 M19 5 L19 10 M19 5 L14 5",
 };
 /** Lot BR5 : l'icône de chacune des trois compétences (dans l'ordre de `COMPETENCES`). */
 const ICONES_COMPETENCES: readonly string[] = ["M12 3 A9 9 0 1 1 3 12 M12 7 A5 5 0 1 1 7 12 M12 11 A1.5 1.5 0 1 1 10.5 12.5", "M3 18 Q12 -2 21 18 M17 14 L21 18 L15 19", "M12 3 L20 6 L20 12 C20 17 16 20 12 22 C8 20 4 17 4 12 L4 6 Z M12 7 L12 17"];
@@ -41,6 +48,9 @@ const NOMBRES: Readonly<Record<string, (r: Reglages) => Record<string, number | 
   aimant: (r) => ({ n: r.aimantGain }),
   "recharge-vive": (r) => ({ n: r.rechargeVive }),
   maitrise: (r) => ({ n: r.maitriseDegats, m: r.maitriseZone }),
+  frenesie: (r) => ({ n: r.frenesieGain }),
+  ecrasement: (r) => ({ n: r.ecrasementDegats }),
+  "bouclier-ricochet": (r) => ({ n: r.ricochetRebonds }),
 };
 
 type Traduire = (cle: string, params?: Readonly<Record<string, string | number>>) => string;

@@ -7,6 +7,18 @@ import {
   BOND_VOL,
   COMPETENCE,
   GELATON,
+  CHAMAN,
+  CRACHE_ANNONCE,
+  CRACHE_PORTEE,
+  CRACHEUR,
+  PB_ANNONCE,
+  PB_CONE,
+  PB_CONE_COS,
+  PORTE_BOUCLIER,
+  TOTEM,
+  TOTEM_ANNONCE,
+  TOTEM_PERIODE,
+  ANNONCE_PLONGEON,
   competenceDuPilote,
   etatPilote,
   type Strategie,
@@ -51,6 +63,7 @@ import {
   entreesDuBot,
   formatTemps,
   indiceBoss,
+  indiceMonstre,
   lireJourFige,
   pilote,
   pointDevant,
@@ -70,17 +83,8 @@ import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { commandesDuJeu } from "@cdj/kit/jeu/commandes";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
-import {
-  animerChauve,
-  animerChevalier,
-  animerGelee,
-  creerChauve,
-  creerChevalier,
-  creerGelee,
-  creerRocher,
-  type BeteVue,
-  type ChevalierVu,
-} from "./acteurs";
+import { bornes, animerChevalier, creerChevalier, creerRocher, type ChevalierVu } from "./acteurs";
+import { cameraDuBestiaireMonstres, MonstresVus, etiquettesDuBestiaire } from "./ennemisVue";
 import { animerBoss, cadreDuBoss, capDuBoss, cleBoss, creerBoss, type BossVu } from "./bosses";
 import { monterBestiaire, RAYON_BESTIAIRE } from "./bestiaire";
 import { CameraRush, type ModeNiveau, type PointCadre } from "./camera";
@@ -90,10 +94,9 @@ import { monterNiveauVu } from "./niveauVue";
 import { FICHE } from "./fiche";
 import "./rush.css"; // le HUD, les boutons et la carte ne servent qu'en partie : leur feuille est chargée avec la scène (jamais dans le premier chargement)
 import { Controles } from "./controles";
-import { Annonces, Anneaux, ArcCoup, Bandes, Cratere, Eclats, Gemmes, LignesCourse, Nuages, OndesEpee, Ombres, Racines, Reticule, Traits } from "./effets";
+import { Annonces, Anneaux, ArcCoup, Bandes, Cones, Cratere, Eclats, Gemmes, LignesCourse, Nuages, OndesEpee, Ombres, Racines, Reticule, Traits } from "./effets";
 import { carteVue, competenceVue } from "./cartes";
 import { monterVases, ECLATS_VASE } from "./vasesVue";
-import { attitudeGelaton, Gelatons } from "./gelatons";
 import { BouclierVu, CerclesJoueur, LameTourbillon, OndesChoc, TraineeElan } from "./competencesVue";
 import { carteDesJours } from "./carte";
 import { completerEcranDeFin, partieDeFin, type ResumeFin } from "./fin";
@@ -123,7 +126,7 @@ export async function contenuDuJour(jour: number, base: string): Promise<Contenu
   // Lot BR2 : `?scenario=cartes` (le choix s'ouvre tout de suite, `&nv=` : à quel niveau) ; `&ameliorations=` : des améliorations données au départ de n'importe quel scénario.
   if (essai.scenario === "cartes") return contenuScenario("cartes", { jour: essai.jour ?? jour, nv: essai.nv, ameliorations, competence: comp });
   // Lot BR3 : `?scenario=boss&boss=reine` joue l'un des cinq boss (un identifiant inconnu : le golem) ; `?scenario=bestiaire` les montre côte à côte.
-  if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour, ameliorations, boss: essai.boss === null ? undefined : indiceBoss(essai.boss), competence: comp });
+  if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour: essai.jour ?? jour, ameliorations, boss: essai.boss === null ? undefined : indiceBoss(essai.boss), competence: comp, ennemis: essai.ennemis.map(indiceMonstre).filter((k) => k >= 0), elite: essai.elite });
   // Lot BR1 : `?scenario=jour&jour=AAAA-MM-JJ` (ou `?scenario=carte`) joue un autre jour que celui d'aujourd'hui : un essai, jamais classé, jamais en production.
   if (essai.jour !== null) return { ...dailyRush(essai.jour, RUSH_GENERATOR_VERSION), ameliorations: ameliorationsDe(ameliorations), ...(comp !== undefined ? { competence: comp } : {}) };
   if (essai.carte !== null || essai.medailles !== null) return dailyRush(jour, RUSH_GENERATOR_VERSION);
@@ -149,6 +152,10 @@ export const rediffusionDiamantRush = (c: Contenu): string => {
   return enregistrer(c, bot.changements, bot.choix, bot.competence);
 };
 
+/** Les éclats d'un type de monstre qui meurt ou qui apparaît (lot BR6 : sept types). */
+const genreEclat = (type: number): "gelee" | "gelaton" | "chauve" | "cracheur" | "chaman" | "totem" | "acier" =>
+  type === GELEE ? "gelee" : type === GELATON ? "gelaton" : type === CRACHEUR ? "cracheur" : type === CHAMAN ? "chaman" : type === TOTEM ? "totem" : type === PORTE_BOUCLIER ? "acier" : "chauve";
+
 const mod = (x: number, n: number): number => ((x % n) + n) % n;
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 const metres = (u: number): number => u / M;
@@ -170,8 +177,6 @@ const pousser = (s: Suivi, x: number, y: number): void => {
 };
 
 interface ActeurBete {
-  /** `null` pour un gélaton : il n'a pas de maillage propre (un tas instancié : `Gelatons`). */
-  vue: BeteVue | null;
   suivi: Suivi;
   eclair: number;
   yaw: number;
@@ -201,7 +206,9 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const son = (n: SonNom, h = 1): void => sonsAvecKit.jouer(n, h);
 
   const bestiaire = contenu.scenario === "bestiaire";
-  const figee = contenu.scenario === "vitrine" || bestiaire;
+  // Lot BR6 : `?scenario=bestiaire-monstres` : les sept monstres et un élite de chaque, figés (la partie ne joue pas), une caméra fixe qui les cadre.
+  const bestiaireM = contenu.scenario === "bestiaire-monstres";
+  const figee = contenu.scenario === "vitrine" || bestiaire || bestiaireM;
 
   // --- Les commandes et l'interface ---
   const commandes = (() => {
@@ -292,8 +299,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   if (salle) scene.add(salle.groupe);
   const vasesVue = monterVases(); // lot BR5 : les groupes de vases (jarres, tonneaux, petites caisses)
   scene.add(vasesVue.groupe);
-  const gelatons = new Gelatons(); // lot BR5 : les gélatons, un seul tas instancié
-  scene.add(gelatons.corps, gelatons.coque);
+  // Lot BR6 : tous les monstres sont des tas instanciés (un appel de dessin par type et par pièce), élites, bulles du chaman et projectiles compris.
+  const monstresVus = new MonstresVus();
+  scene.add(monstresVus.groupe);
+  const etiquettesM = bestiaireM ? etiquettesDuBestiaire(ui.racine, t) : null;
   const centreArene = niveau ? { x: metres(niveau.arene.x), z: metres(niveau.arene.y) } : { x: 0, z: 0 };
 
   const ombres = new Ombres(); // les ombres en disques : la basse qualité (en haute, de vraies ombres portées)
@@ -306,7 +315,9 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const annonces = new Annonces();
   scene.add(annonces.groupe);
   const bandes = new Bandes(); // lot BR3 : plongeon, charge, racines
-  scene.add(bandes.groupe);
+  const lignesCrachat = new Bandes(10); // lot BR6 : la ligne de visée des cracheurs
+  const cones = new Cones(6); // lot BR6 : le cône du coup de bouclier d'un porte-bouclier
+  scene.add(bandes.groupe, lignesCrachat.groupe, cones.groupe);
   const nuages = new Nuages(); // lot BR3 : les spores du vieux chêne
   scene.add(nuages.groupe);
   const racines = new Racines();
@@ -359,7 +370,6 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   const sFantome = suivi(0, 0);
 
   const bêtes = new Map<number, ActeurBete>();
-  const reserve: Record<number, BeteVue[]> = { [GELEE]: [], [CHAUVE]: [] };
   const rochers: { groupe: Group; matiere: MeshToonMaterial }[] = [];
   for (let i = 0; i < 6; i++) {
     const r = creerRocher();
@@ -422,27 +432,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
   const trouverBete = (m: Monstre): ActeurBete => {
     let a = bêtes.get(m.id);
-    if (!a && m.type === GELATON) {
-      a = { vue: null, suivi: suivi(m.x, m.y), eclair: 0, yaw: 0, ecrase: 1, force: 0 };
-      bêtes.set(m.id, a);
-    }
     if (!a) {
-      const vue = reserve[m.type]!.pop() ?? (m.type === GELEE ? creerGelee() : creerChauve());
-      vue.racine.userData.type = m.type;
-      vue.aleatoire = (m.id * 0.37) % 7;
-      vue.racine.visible = true;
-      scene.add(vue.racine);
-      a = { vue, suivi: suivi(m.x, m.y), eclair: 0, yaw: 0, ecrase: 1, force: 0 };
+      a = { suivi: suivi(m.x, m.y), eclair: 0, yaw: 0, ecrase: 1, force: 0 };
       bêtes.set(m.id, a);
     }
     return a;
-  };
-
-  const rendre = (a: ActeurBete): void => {
-    if (!a.vue) return;
-    a.vue.racine.visible = false;
-    a.vue.racine.removeFromParent();
-    reserve[a.vue.racine.userData.type as number]?.push(a.vue);
   };
 
   const direction = (dx: number, dz: number): [number, number] => {
@@ -520,8 +514,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         break;
       }
       case "mort": {
-        const g = e.a === GELEE ? "gelee" : e.a === GELATON ? "gelaton" : "chauve";
-        eclats.gerbe(g, x, 0.6, z, e.a === GELATON ? 12 : 22, { vitesse: 6, taille: e.a === GELATON ? 0.12 : 0.16, haut: 5 });
+        const g = genreEclat(e.a);
+        eclats.gerbe(g, x, 0.6, z, e.a === GELATON ? 12 : e.a === TOTEM || e.a === PORTE_BOUCLIER ? 30 : 22, { vitesse: 6, taille: e.a === GELATON ? 0.12 : 0.16, haut: 5 });
         eclats.gerbe("etincelle", x, 0.7, z, 8, { vitesse: 7, taille: 0.09, haut: 4 });
         son("mort", 0.9 + Math.random() * 0.3);
         break;
@@ -596,7 +590,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         eclats.gerbe("spore", x, 0.6, z, 40, { vitesse: Math.max(2, metres(e.a) * 1.4), taille: 0.26, haut: 1.8, duree: 1.1, gravite: 0.6 });
         break;
       case "invoque":
-        // une gelée naît : une éclaboussure verte, un petit son
+        // une gelée naît : une éclaboussure verte, un petit son ; lot BR6 : le totem fait naître trois gélatons (un grondement violet, des éclats bleus et violets)
+        if (e.a === TOTEM) {
+          son("totem");
+          eclats.gerbe("totem", x, 0.8, z, 20, { vitesse: 4, taille: 0.14, haut: 3.6, duree: 0.6 });
+          eclats.gerbe("gelaton", x, 0.4, z, 14, { vitesse: 3.6, taille: 0.12, haut: 3, duree: 0.5 });
+          break;
+        }
         son("apparition");
         eclats.gerbe("gelee", x, 0.5, z, 16, { vitesse: 4, taille: 0.16, haut: 3.4, duree: 0.55 });
         eclats.gerbe("etincelle", x, 0.8, z, 8, { vitesse: 3, taille: 0.09, haut: 3, duree: 0.45 });
@@ -626,7 +626,69 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         ralentir(0.4, 900);
         break;
       case "apparition":
-        eclats.gerbe(e.a === GELEE ? "gelee" : e.a === GELATON ? "gelaton" : "chauve", x, 0.4, z, 7, { vitesse: 3, taille: 0.12, haut: 2.5, duree: 0.45 });
+        eclats.gerbe(genreEclat(e.a), x, 0.4, z, 7, { vitesse: 3, taille: 0.12, haut: 2.5, duree: 0.45 });
+        break;
+      // Lot BR6 : un coup PARÉ par un porte-bouclier (des étincelles d'acier et un clang aigu, distincts d'un coup qui touche), le crachat et son projectile, l'aura d'un chaman, le coup de bouclier, la salle d'épreuve, une vague, un élite qui tombe.
+      case "para":
+        son("para", 0.95 + Math.random() * 0.15);
+        eclats.gerbe("acier", x, 1.0, z, 10, { vitesse: 6, dx: ax, dz: az, eventail: 0.9, taille: 0.1, haut: 2.2, duree: 0.4 });
+        eclats.gerbe("etincelle", x, 1.0, z, 8, { vitesse: 7, dx: -ax, dz: -az, eventail: 1.3, taille: 0.08, haut: 2.5, duree: 0.35 });
+        pousserCamera(ax, az, 0.05);
+        break;
+      case "tir":
+        son("crache", 0.9 + Math.random() * 0.2);
+        eclats.gerbe("cracheur", x, 0.7, z, 8, { vitesse: 3, taille: 0.12, haut: 1.4, duree: 0.4 });
+        break;
+      case "projectileDetruit":
+        son("pop", e.b === 2 ? 1.2 : 0.9);
+        eclats.gerbe(e.b === 2 ? "etincelle" : "cracheur", x, 0.75, z, e.b === 2 ? 9 : 6, { vitesse: 4, taille: 0.1, haut: 1.8, duree: 0.35 });
+        break;
+      case "aura": {
+        const maintenant = performance.now();
+        if (maintenant - dernierSonAura > 500) {
+          dernierSonAura = maintenant;
+          son("aura");
+        }
+        eclats.gerbe("chaman", x, 1.5, z, 4, { vitesse: 1.6, taille: 0.07, haut: 1.4, duree: 0.5, gravite: -0.5 });
+        break;
+      }
+      case "coupBouclier": {
+        son("coupBouclier");
+        secouer(0.25);
+        const f = (e.a * Math.PI * 2) / 128;
+        eclats.gerbe("poussiere", x + Math.cos(f) * 1.5, 0.2, z + Math.sin(f) * 1.5, 12, { vitesse: 4.5, dx: Math.cos(f), dz: Math.sin(f), eventail: 1.1, taille: 0.2, haut: 1.4, duree: 0.6, gravite: 4 });
+        eclats.gerbe("acier", x + Math.cos(f) * 1.2, 0.8, z + Math.sin(f) * 1.2, 8, { vitesse: 5, dx: Math.cos(f), dz: Math.sin(f), eventail: 1.0, taille: 0.1, haut: 2, duree: 0.4 });
+        break;
+      }
+      case "epreuve":
+        // a = 1 : les portes de la salle se ferment ; 2 : elles se rouvrent
+        son(e.a === 1 ? "porte" : "niveau");
+        secouer(e.a === 1 ? 0.5 : 0.2);
+        ui.presenter(t(e.a === 1 ? "epreuve.debut" : "epreuve.fin"));
+        o.vibrer([40, 30, 90]);
+        break;
+      case "vague":
+        son("vague");
+        ui.presenter(t("epreuve.vague", { n: e.a, total: partie.niveau?.epreuve.vagues.length ?? 3 }));
+        break;
+      case "elite":
+        son("eliteMort");
+        secouer(0.35);
+        eclats.gerbe("etincelle", x, 1.2, z, 40, { vitesse: 8, taille: 0.12, haut: 7, duree: 0.9 });
+        eclats.gerbe("feu", x, 0.6, z, 18, { vitesse: 5, taille: 0.16, haut: 4, duree: 0.6 });
+        break;
+      case "brasier":
+        son("elan", 0.7);
+        eclats.gerbe("feu", x, 0.3, z, 16, { vitesse: 3, taille: 0.14, haut: 1.8, duree: 0.6 });
+        break;
+      case "sismique":
+        son("sismique");
+        secouer(0.3);
+        ondesChoc.lancer(x, z, metres(e.a));
+        eclats.gerbe("poussiere", x, 0.2, z, 22, { vitesse: 7, taille: 0.22, haut: 1.2, duree: 0.7, gravite: 3 });
+        break;
+      case "frenesie":
+        eclats.gerbe("etincelle", x, 1.6, z, 3 + e.a, { vitesse: 3, taille: 0.07, haut: 2, duree: 0.3 });
         break;
       case "bloque":
         son("bloque");
@@ -762,6 +824,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   let golemSursaut = 0;
   let dernierRamasse = -1e9;
   let dernierSonRamasse = -1e9;
+  let dernierSonAura = -1e9; // lot BR6 : l'aura d'un chaman tinte toutes les 40 ticks : un seul tintement par demi-seconde
   let chaineGemmes = 0;
 
   // --- Le choix d'une amélioration (lot BR2) : le monde est figé (la simulation n'avance plus, le chrono non plus) jusqu'à ce que le joueur ait choisi une carte ---
@@ -834,7 +897,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     pousser(sChev, partie.c.x, partie.c.y);
     if (partie.golem) pousser(sGolem, partie.golem.x, partie.golem.y);
     if (fantomeSim) pousser(sFantome, fantomeSim.c.x, fantomeSim.c.y);
-    for (const m of partie.monstres) pousser(trouverBete(m).suivi, m.x, m.y);
+    for (const m of partie.actifs) pousser(trouverBete(m).suivi, m.x, m.y); // les dormeurs ne bougent pas : leur suivi naît à leur place
     ticksDepuisDessin++;
     dernierTick = performance.now();
     for (const ev of partie.evenements) traiter(ev);
@@ -863,7 +926,6 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     competenceChoisie = partie.c.comp;
     if (partie.choix) ouvrirChoixVue();
     ouvrirDepartVue();
-    for (const a of bêtes.values()) rendre(a);
     bêtes.clear();
     pousser(sChev, partie.c.x, partie.c.y);
     pousser(sChev, partie.c.x, partie.c.y);
@@ -979,6 +1041,17 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       else if (z.type === Z_BANDE) garder.push({ x: metres(z.x2), z: metres(z.y2), r: metres(z.r) }); // lot BR3 : l'arrivée de la bande (son départ est le boss)
     }
     if (figee) rig.recommencer(); // la vitrine est figée : la caméra est posée d'un coup, sans amorti
+    if (bestiaireM) {
+      // Lot BR6 : le bestiaire des monstres : une caméra fixe qui cadre les sept (et leurs élites).
+      const k = cameraDuBestiaireMonstres(camera.aspect);
+      camera.position.set(...k.position);
+      camera.lookAt(...k.regard);
+      camera.updateMatrixWorld(true);
+      soleil.target.position.set(0, 0, 0);
+      soleil.position.set(9, 18, 4);
+      soleil.target.updateMatrixWorld();
+      return;
+    }
     if (salle) {
       // Le bestiaire : une caméra FIXE qui cadre les cinq boss à la même échelle (jamais de secousse).
       salle.camera(camera, camera.aspect);
@@ -1150,15 +1223,25 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       for (const q of salle.positions) ombres.poser(q.x, q.z, q.rayon, q.haut() * 0.6);
     }
 
-    // Les monstres. Lot BR5 : les gélatons n'ont pas de maillage propre (un tas instancié) ; les autres, oui.
+    // Les monstres (lot BR6) : tous en tas instanciés. Un dormeur à plus de 46 m du chevalier n'est ni suivi ni dessiné ; un actif l'est toujours (sa position se lisse d'un tick à l'autre).
     const vus = new Set<number>();
-    gelatons.debut();
+    monstresVus.debut();
+    const chamans = new Map<number, { x: number; z: number }>();
+    for (const m of partie.actifs) if (m.type === CHAMAN && m.hp > 0) chamans.set(m.id, { x: metres(m.x) + 0.44, z: metres(m.y) + 0.12 });
+    monstresVus.chamans = chamans;
+    lignesCrachat.debut();
+    cones.debut();
+    const portee2 = (46 * M) * (46 * M);
     for (const m of partie.monstres) {
+      if (m.hp <= 0) continue;
+      if (m.actif === 0 && (m.x - c.x) * (m.x - c.x) + (m.y - c.y) * (m.y - c.y) > portee2) continue;
       const a = trouverBete(m);
       vus.add(m.id);
       const mx = metres(lerp(a.suivi.x0, a.suivi.x1, alpha));
       const mz = metres(lerp(a.suivi.y0, a.suivi.y1, alpha));
-      const vers = m.type !== CHAUVE && (m.cx !== 0 || m.cy !== 0) ? Math.atan2(m.cx, m.cy) : Math.atan2(c.x - m.x, c.y - m.y);
+      // où il regarde : un cracheur dans sa visée et un gélaton/une gelée dans leur bond (la direction verrouillée), un porte-bouclier ou un chaman vers le chevalier, les autres vers le chevalier
+      const verrou = (m.type === CRACHEUR && m.etat === ANNONCE_PLONGEON) || ((m.type === GELEE || m.type === GELATON) && (m.cx !== 0 || m.cy !== 0));
+      const vers = verrou ? Math.atan2(m.cx, m.cy) : Math.atan2(c.x - m.x, c.y - m.y);
       a.yaw = yawVers(a.yaw, vers, dt, 12);
       let q = 0;
       if (a.ecrase < 1) {
@@ -1167,29 +1250,34 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         q = Math.exp(-5.5 * a.ecrase) * Math.cos(a.ecrase * 10) * 0.42 * a.force;
       }
       if (a.eclair > 0) a.eclair -= dt * 60;
-      if (!a.vue) {
-        gelatons.poser(mx, mz, a.yaw, attitudeGelaton(m, temps, partie.tick, partie.durees), a.eclair > 0 ? 0.9 : 0, q);
-        ombres.poser(mx, mz, 0.4);
-        continue;
+      monstresVus.poserMonstre(m, partie, mx, mz, a.yaw, a.eclair > 0 ? 0.9 : 0, q, temps);
+      const rm = metres(partie.rayonM(m));
+      ombres.poser(mx, mz, m.type === CHAUVE ? 0.38 : Math.max(0.4, rm * 1.3), m.type === CHAUVE ? 0.9 : 0);
+      // Les annonces des nouveaux ennemis (le rouge est réservé au danger : toutes sont des dangers) : la LIGNE du cracheur, le CÔNE du porte-bouclier, l'ANNEAU du totem.
+      if (m.type === CRACHEUR && m.etat === ANNONCE_PLONGEON) {
+        const ux = m.cx / 1024;
+        const uz = m.cy / 1024;
+        const longueur = Math.min(metres(CRACHE_PORTEE), 14);
+        lignesCrachat.poser(mx + ux * rm, mz + uz * rm, mx + ux * longueur, mz + uz * longueur, 0.28, bornes(m.t / partie.rapide(m, CRACHE_ANNONCE), 0, 1), temps);
+      } else if (m.type === PORTE_BOUCLIER && m.etat === ANNONCE_PLONGEON) {
+        const f = (m.face * Math.PI * 2) / 128;
+        cones.poser(mx, mz, Math.cos(f), Math.sin(f), metres(PB_CONE), PB_CONE_COS / 1024, bornes(m.t / partie.rapide(m, PB_ANNONCE), 0, 1), temps);
+      } else if (m.type === TOTEM && m.etat === ANNONCE_PLONGEON) {
+        annonces.poser(mx, mz, 1.6 * (m.elite === 1 ? 1.5 : 1), bornes((m.t - (TOTEM_PERIODE - TOTEM_ANNONCE)) / TOTEM_ANNONCE, 0, 1), temps, true);
       }
-      a.vue.racine.position.set(mx, 0, mz);
-      a.vue.racine.rotation.y = a.yaw;
-      if (m.type === GELEE) animerGelee(a.vue, m, temps, partie.tick, partie.durees);
-      else animerChauve(a.vue, m, temps, partie.tick, partie.durees);
-      if (q !== 0) a.vue.corps.scale.multiply(a.vue.corps.scale.clone().set(1 + q * 0.55, 1 - q, 1 + q * 0.55));
-      eclair(a.vue.matieres, a.eclair > 0 ? 0.9 : 0);
-      const haut = m.type === CHAUVE ? 0.9 : 0;
-      ombres.poser(mx, mz, m.type === GELEE ? 0.62 : 0.38, haut);
     }
-    gelatons.fin();
+    for (const q of partie.projectiles) {
+      const px = metres(q.x - q.vx * (1 - alpha));
+      const pz = metres(q.y - q.vy * (1 - alpha));
+      monstresVus.poserProjectile(q, px, pz, temps);
+      ombres.poser(px, pz, 0.25);
+    }
+    monstresVus.fin();
+    etiquettesM?.maj(partie, camera, ui.zone3d.getBoundingClientRect());
     // Les vases (lot BR5) : posés d'après la simulation ; leur ombre en disque en basse qualité.
     vasesVue.maj(partie.vases, temps);
     if (qualite === "basse") for (const v of partie.vases) if (v.id >= 0) ombres.poser(metres(v.x), metres(v.y), metres(v.r) * 1.25);
-    for (const [id, a] of bêtes) {
-      if (vus.has(id)) continue;
-      rendre(a);
-      bêtes.delete(id);
-    }
+    for (const id of bêtes.keys()) if (!vus.has(id)) bêtes.delete(id);
 
     // Les zones annoncées (cercles, bandes, anneaux d'invocation), les nuages, les ondes, les pierres qui tombent.
     annonces.debut();
@@ -1260,7 +1348,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     ui.recharge(1 - c.recharge / partie.rechargeMax(), partie.competencePrete);
     ondesEpeeVue.maj(partie.ondesEpee, metres);
     if (g && partie.golemEveille) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase, nomBoss);
-    else ui.boss(null, 1);
+    else if (partie.epreuve.etat === 1 && partie.niveau) {
+      // Lot BR6 : la salle d'épreuve : la barre se vide à mesure que la vague est vaincue (le nom dit laquelle).
+      const ep = partie.epreuve;
+      const taille = partie.niveau.epreuve.vagues[Math.max(0, ep.vague - 1)]?.length ?? 1;
+      ui.boss(ep.vague === 0 ? 1 : Math.min(1, ep.restants / taille), 0, t("epreuve.vague", { n: Math.max(1, ep.vague), total: partie.niveau.epreuve.vagues.length }));
+    } else ui.boss(null, 1);
     if (niveau && partie.barriere < 0 && !partie.finie) {
       // « BOSS → 38 m » : la distance par le chemin jusqu'à l'arène, et la flèche vers le point du chemin qui vient (projeté à l'écran).
       const k = caseDe(niveau, c.x, c.y);
@@ -1274,7 +1367,9 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       }
       ui.cible(m, angle);
     } else ui.cible(null);
-    decor.maj?.({ x: cx, z: cz }, camera.position, partie.barriere >= 0 ? Math.min(1, (partie.tick - partie.barriere + alpha) / 24) : 0);
+    // Lot BR6 : les portes de la salle d'épreuve montent à la fermeture (24 ticks) et redescendent à la réouverture.
+    const ferme = partie.epreuve.etat === 1 ? Math.min(1, (partie.tick - partie.epreuve.debut + alpha) / 24) : 0;
+    decor.maj?.({ x: cx, z: cz }, camera.position, partie.barriere >= 0 ? Math.min(1, (partie.tick - partie.barriere + alpha) / 24) : 0, ferme);
 
     renderer.info.reset();
     rendu.dessiner();

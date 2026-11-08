@@ -4,6 +4,7 @@ import {
   BORNES,
   GELEE,
   PREMIER_JOUR_RUSH,
+  MONSTRE_NEUTRE,
   Partie,
   REGLAGES_DEFAUT,
   contenuScenario,
@@ -43,7 +44,7 @@ function sur(reglages: Reglages = REGLAGES_DEFAUT, jour = J0): { p: Partie; pas:
 }
 const MARCHE = entree(8);
 /** Un monstre posé n'importe où, immobile (étourdi) ou non. */
-const monstre = (x: number, y: number, o: Partial<Monstre> = {}): Monstre => ({ id: 900, type: GELEE, x, y, kx: 0, ky: 0, hp: 30, flash: 0, etat: 0, t: 0, age: 0, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: x, hy: y, alerte: 0, laisse: 0, ra: 0, sbire: 0, ...o });
+const monstre = (x: number, y: number, o: Partial<Monstre> = {}): Monstre => ({ id: 900, type: GELEE, x, y, kx: 0, ky: 0, hp: 30, flash: 0, etat: 0, t: 0, age: 0, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: x, hy: y, alerte: 0, laisse: 0, ra: 0, sbire: 0, ...MONSTRE_NEUTRE, ...o });
 
 describe("la course hors combat (lot BR1b)", () => {
   it("les réglages par défaut (lot BR5) : 0,7 s de calme, 0,2 s de montée, ×1,6, rayon de 10 m ; les curseurs de ?debug&tune ont des bornes", () => {

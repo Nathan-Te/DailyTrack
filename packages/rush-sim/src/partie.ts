@@ -138,6 +138,9 @@ export interface Monstre {
   actif: number;
 }
 
+/** Les valeurs neutres des champs de BR6 d'un monstre (un test qui pose un monstre à la main, ou `resynchroniser`, les complète). */
+export const MONSTRE_NEUTRE = { elite: 0, prot: 0, lien: 0, parent: 0, face: 0, vuln: 0, etourdi: 0, xpx: 100, vague: 0, actif: 0 } as const;
+
 /** Ce qu'un site de création donne d'un monstre : les champs de BR6 (élite, bouclier, vague…) ont tous une valeur neutre (`Partie.ajouter`). */
 type MonstreBase = Omit<Monstre, "elite" | "prot" | "lien" | "parent" | "face" | "vuln" | "etourdi" | "xpx" | "vague" | "actif">;
 
@@ -436,11 +439,11 @@ const TICK_VITRINE = 1306;
 
 // --- Lot BR6 : les quatre nouveaux ennemis. Durées en ticks AU RYTHME 100 %, vitesses en cm/s ; aucun ne blesse au contact : le cracheur par son projectile, le porte-bouclier par son coup de bouclier. ---
 /** Le cracheur : il garde ses distances (recule sous `CRACHEUR_PROCHE`, approche au-delà de `CRACHEUR_LOIN`), vise (la ligne au sol) `CRACHE_ANNONCE` ticks dont les `CRACHE_VERROU` derniers sont figés, crache, puis se repose ; son projectile file à `CRACHE_VITESSE`. */
-const CRACHE_ANNONCE = 55;
-const CRACHE_VERROU = 14;
-const CRACHE_REPOS = 75;
+export const CRACHE_ANNONCE = 55;
+export const CRACHE_VERROU = 14;
+export const CRACHE_REPOS = 75;
 const CRACHE_VITESSE = 520;
-const CRACHE_PORTEE = cm(1500);
+export const CRACHE_PORTEE = cm(1500);
 const CRACHE_RAYON = cm(26);
 const CRACHEUR_PROCHE = cm(560);
 const CRACHEUR_LOIN = cm(950);
@@ -450,12 +453,12 @@ const CRACHEUR_RECUL = 340;
 /** Le chaman : il fuit sous `CHAMAN_FUITE`, pose son bouclier (`aura`) toutes les `CHAMAN_PAS` ticks sur les alliés à `CHAMAN_AURA`, pour `CHAMAN_PROT` ticks. */
 const CHAMAN_FUITE = cm(800);
 const CHAMAN_VITESSE = 360;
-const CHAMAN_AURA = cm(650);
-const CHAMAN_PAS = 40;
+export const CHAMAN_AURA = cm(650);
+export const CHAMAN_PAS = 40;
 const CHAMAN_PROT = 66;
 /** Le totem : fixe ; toutes les `TOTEM_PERIODE` ticks (annoncé `TOTEM_ANNONCE` ticks avant) il fait naître `TOTEM_NAISSANCES` gélatons, `TOTEM_MAX` vivants au plus. */
-const TOTEM_PERIODE = 360;
-const TOTEM_ANNONCE = 36;
+export const TOTEM_PERIODE = 360;
+export const TOTEM_ANNONCE = 36;
 const TOTEM_PREMIER = 100;
 const TOTEM_NAISSANCES = 3;
 const TOTEM_MAX = 12;
@@ -463,12 +466,12 @@ const TOTEM_MAX = 12;
 const PB_VITESSE = 210;
 const PB_TOURNE = 3;
 const PB_ARC = 265;
-const PB_PORTEE = cm(140);
-const PB_ANNONCE = 40;
-const PB_VERROU = 12;
-const PB_CONE = cm(260);
-const PB_CONE_COS = 590;
-const PB_OUVERT = 95;
+export const PB_PORTEE = cm(140);
+export const PB_ANNONCE = 40;
+export const PB_VERROU = 12;
+export const PB_CONE = cm(260);
+export const PB_CONE_COS = 590;
+export const PB_OUVERT = 95;
 /** Les attaques annoncées du chevalier à qui l'ennemi doit sa blessure : le dégât d'un coup de bouclier repousse de cette distance. */
 const PB_RECUL = cm(90);
 /** Le rayon d'activation (cm) : un monstre plus loin du chevalier que cela, qu'il dorme ou rentre chez lui, ne coûte RIEN (il n'est pas mis à jour). */
@@ -611,6 +614,9 @@ export class Partie {
   private readonly portesEpreuve: ReadonlySet<number>;
   private prochainProjectile = 1;
   private morts = false;
+  /** La liste de monstres et sa longueur telles que `ajouter` et `purger` les ont laissées : si l'une change sans eux (un essai qui compose sa scène à la main), `avancer` reconstruit les actifs (`resynchroniser`). */
+  private vuMonstres: Monstre[] | null = null;
+  private nVu = 0;
   /** Les durées d'un élite (celles des autres, × `eliteRapidite` %). */
   readonly dureesElite: Durees;
 
@@ -690,6 +696,27 @@ export class Partie {
     this.monstres = [];
     this.actifs = [];
     this.dormeurs.clear();
+    this.vuMonstres = this.monstres;
+    this.nVu = 0;
+  }
+
+  /** Reconstruit les actifs et les dormeurs d'après `monstres` (qui ont des champs manquants complétés) : pour un essai qui a posé ses monstres sans passer par `ajouter`. Jamais appelé dans une partie ordinaire. */
+  resynchroniser(): void {
+    this.actifs = [];
+    this.dormeurs.clear();
+    for (const m of this.monstres) {
+      const o = m as unknown as Record<string, number>;
+      for (const [k, v] of Object.entries(MONSTRE_NEUTRE)) if (o[k] === undefined) o[k] = v;
+      m.actif = 0;
+      if (m.laisse > 0 && m.alerte === 0) {
+        const k = this.cellule(m.hx, m.hy);
+        let l = this.dormeurs.get(k);
+        if (!l) this.dormeurs.set(k, (l = []));
+        l.push(m);
+      } else this.activer(m);
+    }
+    this.vuMonstres = this.monstres;
+    this.nVu = this.monstres.length;
   }
 
   /** Un monstre de plus : rangé parmi les ACTIFS, ou, s'il dort à sa place (une laisse et pas encore alerté), dans la cellule de 12 m où il dort. `extra` règle ce que `base` ne dit pas (un élite : sa vie est × `eliteVie`). */
@@ -697,6 +724,8 @@ export class Partie {
     const m: Monstre = { ...base, elite: 0, prot: 0, lien: 0, parent: 0, face: 0, vuln: 0, etourdi: 0, xpx: 100, vague: 0, actif: 0, ...extra };
     if (m.elite === 1) m.hp *= this.reglages.eliteVie;
     this.monstres.push(m);
+    this.vuMonstres = this.monstres;
+    this.nVu = this.monstres.length;
     if (m.laisse > 0 && m.alerte === 0) {
       const k = this.cellule(m.hx, m.hy);
       let l = this.dormeurs.get(k);
@@ -743,9 +772,9 @@ export class Partie {
     this.c.dir = 96;
     for (let rang = 0; rang < 2; rang++) {
       for (let t = 0; t < NB_TYPES; t++) {
-        const x = cm((t - (NB_TYPES - 1) / 2) * 190);
-        const y = cm(rang === 0 ? 120 : -250);
-        this.ajouter({ id: this.prochainId++, type: t, x, y, kx: 0, ky: 0, hp: viePar(t), flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0, sbire: 0 }, { elite: rang, face: 96 });
+        const x = cm((t - (NB_TYPES - 1) / 2) * 235);
+        const y = cm(rang === 0 ? 150 : -440);
+        this.ajouter({ id: this.prochainId++, type: t, x, y, kx: 0, ky: 0, hp: viePar(t), flash: 0, etat: ORBITE, t: 0, age: -100, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0, sbire: 0 }, { elite: rang, face: 32 });
       }
     }
   }
@@ -889,6 +918,7 @@ export class Partie {
   avancer(entree: number): void {
     if (this.finie || this.choix || this.attenteDepart) return; // lot BR2 : un niveau gagné fige le monde jusqu'au choix ; lot BR5 : la compétence se choisit avant de partir
     this.tick++;
+    if (this.monstres !== this.vuMonstres || this.monstres.length !== this.nVu) this.resynchroniser();
     const coupFront = coupDe(entree) && !coupDe(this.entreePrecedente);
     const esquiveFront = esquiveDe(entree) && !esquiveDe(this.entreePrecedente);
     const compFront = competenceDe(entree) && !competenceDe(this.entreePrecedente);
@@ -938,6 +968,7 @@ export class Partie {
     const ms = this.monstres;
     for (let r = 0; r < ms.length; r++) if (ms[r]!.hp > 0) ms[w++] = ms[r]!;
     ms.length = w;
+    this.nVu = w;
   }
 
   /** Lot BR6 — le chevalier réveille les dormeurs de sa cellule de 12 m et des huit voisines (le plus grand rayon d'alerte est de 12 m). Ceux qui dorment plus loin ne coûtent rien. */
@@ -2058,7 +2089,7 @@ export class Partie {
   }
 
   /** Une durée (ticks) au rythme de la partie ET à la rapidité du monstre : un élite attaque plus vite. */
-  private rapide(m: Monstre, n: number): number {
+  rapide(m: Monstre, n: number): number {
     return m.elite === 1 ? Math.max(1, idiv(this.dur(n) * this.reglages.eliteRapidite, 100)) : this.dur(n);
   }
 
