@@ -5,7 +5,7 @@ import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { PALETTES } from "./palette";
 
 // `?scenario=carte&jours=7` (lot BR1) : la vue de DESSUS des N prochains jours, pour juger la variété du générateur. Pour chaque jour : la grille (sol, murs bas, vide, ponts), le chemin principal (orange, le plus court sur la grille), les détours (bleu),
-// les camps (rouge, avec leur nombre de monstres), les groupes qui barrent le chemin (orange, avec le cercle de leur alerte), les obstacles cassables (marron), les monstres épars (jaune), le départ (S), l'arène du golem (G), la longueur du chemin, le temps du pilote (le Diamant provisoire : « foncer ») et (lot BR3) le NOM du boss du jour. Jamais classé, jamais en production.
+// les camps (rouge, avec leur nombre de monstres), les groupes qui barrent le chemin (orange, avec le cercle de leur alerte), les groupes de vases (terre cuite) et les meutes de gélatons (points bleus), les monstres épars (jaune), le départ (S), l'arène du golem (G), la longueur du chemin, le temps du pilote (le Diamant provisoire : « foncer ») et (lot BR3) le NOM du boss du jour. Jamais classé, jamais en production.
 
 const TAILLE = 360;
 const css = (n: number): string => `#${n.toString(16).padStart(6, "0")}`;
@@ -93,12 +93,17 @@ function dessiner(c: Contenu, theme: string): HTMLCanvasElement {
     g.arc(px(m.x), py(m.y), 3.2, 0, Math.PI * 2);
     g.fill();
   }
-  for (const o of n.obstacles) {
-    g.fillStyle = o.coups === 1 ? "#4f9a3a" : "#8a5a2b";
-    for (const idxO of o.cases) {
-      const [x, y] = centreDeCase(n, idxO);
-      g.fillRect(px(x) - k * 0.45, py(y) - k * 0.45, k * 0.9, k * 0.9);
-    }
+  // Lot BR5 : les groupes de vases (de petits carrés de terre cuite) et les gélatons (des points bleus, camps et meutes).
+  for (const v of n.vases) {
+    g.fillStyle = v.genre === 0 ? "#c9733e" : "#8a5a2b";
+    g.fillRect(px(v.x) - 1.6, py(v.y) - 1.6, 3.2, 3.2);
+  }
+  g.fillStyle = "#3f8fe0";
+  for (const m of n.monstres) {
+    if (m.type !== 2) continue;
+    g.beginPath();
+    g.arc(px(m.x), py(m.y), 1.8, 0, Math.PI * 2);
+    g.fill();
   }
   g.fillStyle = "#ffe14a";
   for (const m of n.monstres) {
@@ -155,7 +160,7 @@ export function carteDesJours(jour: number, nombre: number, hote: HTMLElement, o
       d: n.detours.length,
       b: n.detours.filter((q) => q.hub2 >= 0).length,
       tue: n.monstres.length,
-      o: n.obstacles.length,
+      o: n.vases.length,
       sr: tempsSansRencontre(n).toFixed(1),
       t: temps,
       tp: formatTemps(parties[1]!.ticks, o.langue),

@@ -222,7 +222,7 @@ test.describe("Rush : une partie", () => {
     await context.close();
   });
 
-  test("la course hors combat et un obstacle cassable (lot BR1b) : les lignes de vitesse paraissent quand il court, l'obstacle cède sous les coups", async ({ browser }) => {
+  test("la course hors combat (lot BR1b) et un vase (lot BR5) : les lignes de vitesse paraissent quand il court, un vase cède sous les coups", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=jour");
     await lancer(page);
     // la course : au calme et en marche, la vitesse monte ; les lignes de vitesse sont visibles
@@ -238,34 +238,23 @@ test.describe("Rush : une partie", () => {
     expect(course.elan).toBeGreaterThan(0);
     expect(course.course).toBeGreaterThan(0);
     expect(course.lignes).toBe(true);
-    // un obstacle : on pose le chevalier contre lui et on frappe jusqu'à ce qu'il cède
+    // un vase (lot BR5, à la place des obstacles en bloc) : on pose le chevalier contre un groupe et on frappe ; un coup en brise (au moins) un
     const cede = await page.evaluate(() => {
-      const p = window.__rush.partie() as unknown as { niveau: { l: number; ox: number; oy: number; cases: Uint8Array; zones: Uint8Array }; obstacles: { cases: number[]; x: number; y: number }[]; c: { coeurs: number } };
-      const n = p.niveau;
-      const avant = p.obstacles.length;
-      const o = p.obstacles[0]!;
-      const pris = new Set(o.cases);
-      let pose: [number, number, number] | null = null;
-      for (const k of o.cases) {
-        const i = k % n.l;
-        const j = (k - i) / n.l;
-        for (const [di, dj] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-          const q = (j + dj) * n.l + i + di;
-          if (pris.has(q) || n.cases[q] !== 0 || n.zones[q] !== 2 || pose) continue;
-          pose = [(n.ox + (i + di) * 8192 + 4096) / 4096, (n.oy + (j + dj) * 8192 + 4096) / 4096, (Math.round((Math.atan2(-dj, -di) / (Math.PI * 2)) * 32) + 32) % 32];
-        }
-      }
-      if (!pose) return { avant, apres: avant, pose: false };
-      window.__rush.aller(pose[0], pose[1]);
-      window.__rush.forcer((pose[2] + 1) | 64, 200);
-      for (let t = 0; t < 200; t++) {
+      const p = window.__rush.partie() as unknown as { vases: { x: number; y: number }[]; c: { coeurs: number; elan: number; calme: number } };
+      p.c.elan = 0; // la course est jugée plus haut ; ici un coup ordinaire (en pleine course, la fente du coup d'élan glisserait le long du vase)
+      p.c.calme = 0;
+      const avant = p.vases.length;
+      const v = p.vases[0]!;
+      window.__rush.aller(v.x / 4096, v.y / 4096 + 1.2);
+      window.__rush.forcer(64 | 25, 120);
+      for (let t = 0; t < 120; t++) {
         p.c.coeurs = 3;
         window.__jeu.avancer(1);
       }
-      return { avant, apres: p.obstacles.length, pose: true };
+      return { avant, apres: p.vases.length };
     });
-    expect(cede.pose).toBe(true);
-    expect(cede.apres).toBe(cede.avant - 1);
+    expect(cede.avant).toBeGreaterThanOrEqual(20);
+    expect(cede.apres).toBeLessThan(cede.avant);
     await context.close();
   });
 

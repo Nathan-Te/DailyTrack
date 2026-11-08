@@ -30,6 +30,7 @@ import { type ContratMinimal, definirJeuNeuf, type FicheServeur, RefusJeu, type 
 // **Lot BR4 : les médailles.** Le Diamant est la meilleure des trois parties du pilote (`diamantDuJour`) : les seuils sont ceux du fichier du jour s'il est figé (`seuilsDuJour`), sinon calculés par le pilote ; l'empreinte de l'auteur est celle de
 // SA rediffusion (celle du Diamant). **Le coût d'un rejeu est proportionnel à sa durée** (`rejeu.ticksParUnite` de la fiche, comme Track et Jump) : le module compte `unitesServeur` avant le rejeu, le reste est compté juste après (le contrat
 // minimal des jeux neufs ne donne pas la durée avant de rejouer).
+// **Lot BR5 : la COMPÉTENCE choisie au départ est un événement d'entrée** (le premier de la rediffusion, au tick 0) : `rejouer` la valide (absente ou refusée : `invalid_replay`) et elle entre dans l'empreinte des entrées (copies).
 
 const fiche = FICHES_SERVEUR.find((f) => f.id === "rush") as unknown as FicheServeur;
 
@@ -44,6 +45,8 @@ interface Rejeu extends RejeuNeuf {
   changements: Rediffusion["changements"];
   /** Lot BR2 : les choix d'amélioration (le niveau gagné et la carte choisie) : un événement d'entrée comme les autres. */
   choix: Rediffusion["choix"];
+  /** Lot BR5 : la compétence choisie au départ (0 à 2) : un événement d'entrée, le premier de la rediffusion. */
+  competence: number;
 }
 
 /** Les options propres de « Rush » : les jours figés de l'image (date → contenu du fichier). */
@@ -51,8 +54,8 @@ export interface RushOptions {
   frozen?: Readonly<Record<string, unknown>>;
 }
 
-const texteDesEntrees = (r: { changements: readonly { tick: number; e: number }[]; choix: readonly { tick: number; nv: number; carte: number }[] }): string =>
-  `rush|${r.changements.map((t) => `${t.tick}:${t.e}`).join(",")}|${r.choix.map((c) => `${c.tick}:${c.nv}.${c.carte}`).join(",")}`;
+const texteDesEntrees = (r: { changements: readonly { tick: number; e: number }[]; choix: readonly { tick: number; nv: number; carte: number }[]; competence: number }): string =>
+  `rush|${r.changements.map((t) => `${t.tick}:${t.e}`).join(",")}|${r.choix.map((c) => `${c.tick}:${c.nv}.${c.carte}`).join(",")}|${r.competence}`;
 
 /** Le contenu d'un jour : le fichier figé s'il se vérifie, sinon le générateur courant. */
 export function contenuDeRush(jour: number, frozen: Readonly<Record<string, unknown>> = {}): Contenu {

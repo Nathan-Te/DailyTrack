@@ -2,10 +2,10 @@ import { mixSeed, Rng } from "@cdj/core";
 import { NB_CARTES } from "./constantes";
 
 // Le catalogue des améliorations de Rush (lot BR2) : à chaque niveau gagné, le monde se fige et le joueur choisit UNE carte parmi trois. Ce fichier ne porte que l'IDENTITÉ des cartes (leur ordre, leur famille, leur nombre de paliers) et
-// le TIRAGE ; leur FORCE est dans les réglages (`reglagesSim.ts`, un entier par effet, tous des curseurs de `?debug&tune`) et leur effet dans `partie.ts`. **L'ordre de la liste ne change jamais sans monter `RUSH_SIM_VERSION`** (le tirage et la
+// le TIRAGE (lot BR5 : 18 cartes ; « Signature » est UNE carte dont l'effet dépend de la compétence choisie au départ : le tourbillon dure plus longtemps, le bond étourdit plus longtemps, le bouclier traverse plus de cibles) ; leur FORCE est dans les réglages (`reglagesSim.ts`, un entier par effet, tous des curseurs de `?debug&tune`) et leur effet dans `partie.ts`. **L'ordre de la liste ne change jamais sans monter `RUSH_SIM_VERSION`** (le tirage et la
 // rediffusion — l'index de la carte — en dépendent).
 
-export type Famille = "coup" | "mouvement" | "survie" | "special";
+export type Famille = "coup" | "mouvement" | "survie" | "special" | "competence";
 export interface Amelioration {
   id: string;
   famille: Famille;
@@ -19,7 +19,7 @@ export const AMELIORATIONS: readonly Amelioration[] = [
   { id: "lame-lourde", famille: "coup", max: 3, nvMin: 1 },
   { id: "allonge", famille: "coup", max: 3, nvMin: 1 },
   { id: "cadence", famille: "coup", max: 3, nvMin: 1 },
-  { id: "tourbillon", famille: "coup", max: 1, nvMin: 4 },
+  { id: "moulinet", famille: "coup", max: 1, nvMin: 4 },
   { id: "onde-epee", famille: "coup", max: 1, nvMin: 6 },
   { id: "bottes-legeres", famille: "mouvement", max: 3, nvMin: 1 },
   { id: "esquive-longue", famille: "mouvement", max: 3, nvMin: 1 },
@@ -30,6 +30,11 @@ export const AMELIORATIONS: readonly Amelioration[] = [
   { id: "vol-de-vie", famille: "survie", max: 1, nvMin: 5 },
   { id: "brise-pierre", famille: "special", max: 3, nvMin: 5 },
   { id: "aimant", famille: "special", max: 3, nvMin: 2 },
+  // Lot BR5 : les cartes de COMPÉTENCE (les trois compétences et leur temps de recharge choisies au départ). « Moulinet » est l'ancien « Tourbillon » (le 3ᵉ coup frappe tout autour) : le nom est libre pour la compétence.
+  { id: "recharge-vive", famille: "competence", max: 3, nvMin: 1 },
+  { id: "maitrise", famille: "competence", max: 3, nvMin: 2 },
+  { id: "echo", famille: "competence", max: 1, nvMin: 4 },
+  { id: "signature", famille: "competence", max: 2, nvMin: 3 },
 ];
 export const NB_AMELIORATIONS = AMELIORATIONS.length;
 /** L'indice d'une amélioration dans le catalogue, ou −1. */

@@ -1,12 +1,12 @@
 import { indiceAmelioration } from "./ameliorations";
-import { ANNONCE, BOSS, B_BELIER, B_DUC, MARCHE, Z_BANDE, Z_INVOCATION, Z_SPORES } from "./bosses";
-import { RAYON_ARENE, RAYON_CHEVALIER, cm } from "./constantes";
+import { ANNONCE, BOSS, B_BELIER, B_CHENE, B_DUC, B_REINE, MARCHE, Z_BANDE, Z_INVOCATION, Z_SPORES } from "./bosses";
+import { C_BOND, C_BOUCLIER, C_TOURBILLON, RAYON_ARENE, RAYON_CHEVALIER, cm } from "./constantes";
 import { entree, type Changement } from "./entrees";
 import type { Contenu } from "./generateur";
 import { distance, dirVers, unitaire } from "./maths";
 import { COS, SIN } from "./trig";
 import { caseDe, centreDeCase, champDeDistance, descendre, INACCESSIBLE } from "./niveau";
-import { CHAUVE, COUP, ONDE, PLONGEON, Partie, pointDuSegment, type Resultat } from "./partie";
+import { CHAUVE, COUP, GELATON, ONDE, PLONGEON, Partie, pointDuSegment, type Resultat } from "./partie";
 import type { Choix } from "./rediffusion";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
@@ -18,6 +18,7 @@ import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 // la route : la simulation fait monter sa vitesse après ~1,2 s de calme) ; la stratégie « nettoyer » peut ne viser que les monstres d'UN camp (la mesure du coût d'un détour : `jouerLePilote(…, camp)`).
 // Lot BR2 : TROIS stratégies — FONCER (aucun détour), UN PEU D'XP (les monstres du chemin et les camps proches du chemin : `SEUIL_PEU_CM`) et BEAUCOUP D'XP (tous les camps) — chacune avec sa liste de priorités pour choisir
 // une carte (`PRIORITES`, la première de la liste qui est proposée). Elles servent à l'ÉQUILIBRE : aucune ne doit gagner tous les jours (`tools/mesures.ts`, `test/equilibre.test.ts`).
+// Lot BR5 : il choisit sa COMPÉTENCE au départ d'après le boss du jour (`competenceDuPilote`) et la lance quand elle est rechargée et que la cible vaut le coup ; les vases du chemin se brisent d'un coup au passage.
 // Lot BR4 : il ne se laisse plus BLOQUER (`suivreLeProgres` : sans progrès pendant `BLOCAGE_TICKS`, il lâche ce qu'il visait) et il a une version HUMANISÉE (`HUMAIN`) qui sert à calibrer les médailles, jamais à les fixer. Tout changement du pilote monte `RUSH_BOT_VERSION`.
 // La stratégie « nettoyer » d'avant (une mesure, pas un Diamant) va d'abord à chaque monstre, du plus proche au plus loin, puis à l'arène : elle donne l'écart de temps entre foncer et tout nettoyer.
 
@@ -30,10 +31,20 @@ export const STRATEGIES: readonly Strategie[] = ["foncer", "peu", "beaucoup"];
 export const SEUIL_PEU_CM = 3200;
 /** Les cartes de chaque stratégie, de la plus voulue à la moins voulue (la première proposée est prise ; sinon la première carte offerte). */
 export const PRIORITES: Readonly<Record<Strategie, readonly string[]>> = {
-  foncer: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "esquive-vive", "tourbillon", "onde-epee", "allonge", "coeur-en-plus", "soin", "esquive-longue", "vol-de-vie", "esquive-tranchante", "aimant"],
-  peu: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "tourbillon", "onde-epee", "allonge", "esquive-vive", "coeur-en-plus", "soin", "vol-de-vie", "esquive-longue", "esquive-tranchante", "aimant"],
-  beaucoup: ["bottes-legeres", "tourbillon", "cadence", "lame-lourde", "brise-pierre", "onde-epee", "allonge", "vol-de-vie", "aimant", "coeur-en-plus", "soin", "esquive-vive", "esquive-longue", "esquive-tranchante"],
+  foncer: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "esquive-vive", "moulinet", "onde-epee", "maitrise", "allonge", "recharge-vive", "coeur-en-plus", "soin", "signature", "echo", "esquive-longue", "vol-de-vie", "esquive-tranchante", "aimant"],
+  peu: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "moulinet", "onde-epee", "maitrise", "allonge", "recharge-vive", "esquive-vive", "coeur-en-plus", "soin", "signature", "echo", "vol-de-vie", "esquive-longue", "esquive-tranchante", "aimant"],
+  beaucoup: ["bottes-legeres", "moulinet", "recharge-vive", "cadence", "lame-lourde", "maitrise", "brise-pierre", "onde-epee", "signature", "allonge", "echo", "vol-de-vie", "aimant", "coeur-en-plus", "soin", "esquive-vive", "esquive-longue", "esquive-tranchante"],
 };
+
+/**
+ * Lot BR5 — LA COMPÉTENCE du pilote, choisie au départ d'après le boss du jour (que tout le monde connaît) : la foule (la reine gelée, le vieux chêne et ses gelées) au tourbillon, le grand-duc (qui se joue à distance) au bouclier, le golem et le bélier
+ * (qu'il faut aborder) au bond. Le pilote humanisé ne connaît pas le boss : le tourbillon, la compétence de la horde.
+ */
+export function competenceDuPilote(boss: number, humain = false): number {
+  if (humain) return C_TOURBILLON;
+  return boss === B_REINE || boss === B_CHENE ? C_TOURBILLON : boss === B_DUC ? C_BOUCLIER : C_BOND;
+}
+
 /**
  * Lot BR4 — LE PILOTE HUMANISÉ : un joueur qui n'est pas parfait. Le pilote de référence lit les annonces sans erreur, répond au tick près et connaît le boss ; celui-ci a (1) une **réaction retardée** (`reaction`, 12 ticks = 200 ms : ce qui le surprend — un anneau, un monstre
  * qui plonge ou qui arrive sur lui, une annonce qui apparaît — n'est traité qu'après cette durée), (2) une **lecture des annonces parfois tardive** (`tardifPct` % des annonces ne sont remarquées que
@@ -139,7 +150,7 @@ export const BLOCAGE_TICKS = 150;
 const BLOCAGE_CM = 150;
 /** Une cible lâchée n'est plus visée pendant 15 s (un monstre derrière un mur peut l'attendre longtemps : il n'en est pas moins hors d'atteinte). */
 const IGNORE_TICKS = 900;
-const cleObstacle = (o: { x: number; y: number }): number => 1_000_000_000 + ((o.x * 31 + o.y) & 0xfffffff);
+const cleVase = (id: number): number => 1_000_000_000 + id;
 const ignore = (p: Partie, etat: EtatPilote, id: number): boolean => (etat.ignores.get(id) ?? 0) > p.tick;
 
 /**
@@ -155,7 +166,7 @@ function suivreLeProgres(p: Partie, etat: EtatPilote): void {
     vivants++;
     if (distance(c.x, c.y, m.x, m.y) < cm(500)) pvProches += m.hp;
   }
-  const signature = vivants * 1_000_000 + p.obstacles.length * 100_000 + p.xp * 7 + pvProches;
+  const signature = vivants * 1_000_000 + p.vases.length * 100_000 + p.xp * 7 + pvProches;
   if (signature !== etat.signature || distance(c.x, c.y, etat.ancreX, etat.ancreY) > cm(BLOCAGE_CM)) {
     etat.signature = signature;
     etat.ancreX = c.x;
@@ -202,16 +213,23 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
   }
   let bloque: { x: number; y: number; r: number; id: number } | null = null;
   let meilleur = Infinity;
+  // Lot BR5 : une meute qui arrive (trois ennemis éveillés à moins de 5 m) ne se traverse pas en marchant : même « foncer » s'arrête pour la faucher.
+  const mobbe = p.monstres.filter((m) => m.hp > 0 && m.alerte !== 0 && distance(c.x, c.y, m.x, m.y) < cm(500)).length >= 3;
   for (const m of p.monstres) {
     if (m.hp <= 0 || ignore(p, etat, m.id)) continue;
     const d = distance(c.x, c.y, m.x, m.y);
-    const barre = etat.strategie !== "foncer" ? d < cm(360) : d < cm(170) || (d < cm(300) && distance(m.x, m.y, devant[0], devant[1]) < cm(240));
+    const barre = etat.strategie !== "foncer" || mobbe ? d < cm(360) : d < cm(170) || (d < cm(300) && distance(m.x, m.y, devant[0], devant[1]) < cm(240));
     if (barre && d < meilleur) {
       meilleur = d;
       bloque = { x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : cm(48), id: m.id };
     }
   }
   etat.focus = 0;
+  // Lot BR5 : une meute ou un camp qui s'éveille à moins de 10 m et qui n'est pas encore sur nous : on freine et on tient sa ligne (la course s'arrête quand on s'arrête) au lieu de foncer dedans à 7,5 m/s.
+  if (p.course > 0 && !bloque) {
+    const eveilles = p.monstres.filter((m) => m.hp > 0 && m.alerte === 1 && distance(c.x, c.y, m.x, m.y) < cm(1000)).length;
+    if (eveilles >= 3) return { direction: -1, coup: false };
+  }
   const portee = p.porteeCoup(0) - cm(50);
   // `champ` : un obstacle encore loin se rejoint en suivant le champ de distance (la ligne droite peut buter sur un mur et le bloquer pour toujours).
   const frapper = (b: { x: number; y: number; r: number }, champ?: Uint16Array): { direction: number; coup: boolean } => {
@@ -222,25 +240,35 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
   };
   if (bloque) {
     etat.focus = bloque.id;
+    // Lot BR5 : on ne se jette pas dans une foule (le coup d'élan pousse le chevalier au milieu d'elle) : il freine d'abord, la course tombe en quelques ticks, puis il frappe.
+    if (mobbe && p.course >= 30) return { direction: -1, coup: false };
     return frapper(bloque);
   }
-  // Lot BR1b : un obstacle sur les pas qui viennent le long d'un champ de distance : on le brise.
+  // Lot BR5 : un vase sur les pas qui viennent le long d'un champ de distance (il est plein pour le chevalier) : on le brise, un coup suffit.
   const obstacleSur = (champ: Uint16Array): { x: number; y: number; r: number; id: number } | null => {
-    if (p.obstacles.length === 0 || idx < 0) return null;
+    if (p.vases.length === 0 || idx < 0) return null;
     let k = idx;
+    let [ax, ay] = [c.x, c.y];
     for (let i = 0; i < 3; i++) {
       const s = descendre(n, champ, k);
       if (s < 0) break;
       k = s;
-      const o = p.obstacles.find((q) => q.cases.includes(k));
-      if (o && !ignore(p, etat, cleObstacle(o))) return { x: o.x, y: o.y, r: o.r, id: cleObstacle(o) };
+      const [bx, by] = centreDeCase(n, k);
+      for (const v of p.vases) {
+        if (v.id < 0 || ignore(p, etat, cleVase(v.id))) continue;
+        const [qx, qy] = pointDuSegment(v.x, v.y, ax, ay, bx, by);
+        if (distance(v.x, v.y, qx, qy) < v.r + RAYON_CHEVALIER + cm(35)) return { x: v.x, y: v.y, r: v.r, id: cleVase(v.id) };
+      }
+      ax = bx;
+      ay = by;
     }
     return null;
   };
   const vises = (m: { id: number; hp: number }): boolean => m.hp > 0 && !ignore(p, etat, m.id) && (etat.camps ? campDe(p, m.id) === -1 || etat.camps.has(campDe(p, m.id)) : etat.camp === -2 || campDe(p, m.id) === etat.camp);
   // Lot BR2 : qui chasse ramasse aussi les gemmes proches (l'aimant n'en prend que dans 3 m : un monstre repoussé meurt parfois plus loin). Une gemme est une cible d'identifiant négatif.
   const GEMME = -1000;
-  const gemmesProches = etat.strategie !== "foncer" ? p.gemmes.filter((g) => distance(c.x, c.y, g.x, g.y) < cm(RAYON_GEMMES) && !ignore(p, etat, GEMME - g.id)) : [];
+  // (un cœur attend au sol tant que les cœurs sont pleins : le pilote ne le poursuit pas)
+  const gemmesProches = etat.strategie !== "foncer" ? p.gemmes.filter((g) => distance(c.x, c.y, g.x, g.y) < cm(RAYON_GEMMES) && !ignore(p, etat, GEMME - g.id) && !(g.k === 2 && c.coeurs >= c.coeursMax)) : [];
   if (etat.strategie !== "foncer" && (p.monstres.some(vises) || gemmesProches.length > 0)) {
     // La cible la plus proche par le chemin (monstre visé ou gemme) : un champ de distance depuis la case du chevalier.
     type Cible = { id: number; x: number; y: number };
@@ -353,6 +381,47 @@ function percu(p: Partie, etat: EtatPilote, cle: string, vrai: boolean): boolean
   return p.tick - v[0] >= h.reaction;
 }
 
+/** Un ennemi éveillé : un monstre qui poursuit (ou n'a pas de laisse) ou le boss réveillé. */
+const eveille = (m: { laisse: number; alerte: number }): boolean => m.laisse === 0 || m.alerte === 1;
+
+/**
+ * Lot BR5 — la compétence : le pilote la lance dès qu'elle est rechargée et que la cible vaut le coup. Rend la direction (0 à 31) vers laquelle appuyer — ou −2 pour « sans changer la direction » —, ou `null` pour ne rien lancer.
+ * Tourbillon : au moins trois ennemis éveillés tout autour, ou le boss à portée. Bond : un groupe (ou le boss) à 4 à 9 m, que l'onde de choc écrasera. Bouclier : un ennemi (ou deux alignés, ou le boss) à 3 à 9 m en ligne droite.
+ */
+function competenceDuMoment(p: Partie): number | null {
+  const c = p.c;
+  if (!p.competencePrete) return null;
+  const g = p.golem && p.golem.hp > 0 && p.golemEveille && p.golem.etat !== 3 ? p.golem : null;
+  const ennemis: { x: number; y: number; r: number; boss: boolean }[] = [];
+  for (const m of p.monstres) if (m.hp > 0 && eveille(m)) ennemis.push({ x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : m.type === GELATON ? cm(30) : cm(48), boss: false });
+  if (g) ennemis.push({ x: g.x, y: g.y, r: g.r, boss: true });
+  if (ennemis.length === 0) return null;
+  const d = (e: { x: number; y: number; r: number }): number => distance(c.x, c.y, e.x, e.y) - e.r;
+  if (c.comp === C_TOURBILLON) {
+    const rayon = p.rayonTourbillon() - cm(30);
+    const dedans = ennemis.filter((e) => d(e) <= rayon);
+    return dedans.length >= 3 || dedans.some((e) => e.boss) ? -2 : null;
+  }
+  let cible = ennemis[0]!;
+  for (const e of ennemis) if (d(e) < d(cible)) cible = e;
+  const v = croix(cible.x - c.x, cible.y - c.y);
+  if (c.comp === C_BOND) {
+    const portee = d(cible) + cible.r;
+    if (portee < cm(400) || portee > cm(900)) return null;
+    const autour = ennemis.filter((e) => distance(e.x, e.y, cible.x, cible.y) < p.rayonBond() - cm(40)).length;
+    return autour >= 2 || cible.boss ? v : null;
+  }
+  // bouclier
+  const portee = distance(c.x, c.y, cible.x, cible.y);
+  if (portee < cm(300) || portee > cm(850)) return null;
+  const [ux, uy] = unitaire(cible.x - c.x, cible.y - c.y);
+  const alignes = ennemis.filter((e) => {
+    const t = ((e.x - c.x) * ux + (e.y - c.y) * uy) / 1024;
+    return t > 0 && Math.abs(((e.x - c.x) * -uy + (e.y - c.y) * ux) / 1024) < e.r + cm(50);
+  }).length;
+  return alignes >= 2 || cible.boss ? v : null;
+}
+
 export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   const c = p.c;
   const tick = p.tick;
@@ -441,7 +510,8 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
     if (etat.immobile > 12 && nav.direction >= 0) nav.direction = (nav.direction + (etat.immobile % 48 < 24 ? 6 : 26)) % 32;
     const esq = esquiver && c.attente === 0;
     const dirNav = esq && dirEsquive >= 0 ? dirEsquive : esq && nav.direction < 0 ? croix(c.x - (p.niveau.arene.x), c.y - p.niveau.arene.y) : nav.direction;
-    return entree(dirNav, nav.coup, esq);
+    const comp = !fuite && !esquiver ? competenceDuMoment(p) : null;
+    return entree(comp !== null && comp >= 0 ? comp : dirNav, nav.coup, esq, -1, comp !== null);
   }
   // Où frapper : les monstres tout proches d'abord, sinon le golem.
   let cible: { x: number; y: number; r: number } | null = null;
@@ -513,7 +583,10 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   const bouton = coup;
   const esq = esquiver && c.attente === 0;
   const dirFinale = esq && dirEsquive >= 0 ? dirEsquive : esq && direction < 0 ? croix(c.x - (p.golem?.x ?? 0), c.y - (p.golem?.y ?? 0)) : direction;
-  return entree(dirFinale, bouton, esq);
+  // Lot BR5 : la compétence, sauf quand un cercle ou une onde oblige à fuir ou à esquiver (le boss d'abord) ; le pilote humanisé la lance aussi, mais après sa réaction.
+  let comp = !fuite && !esquiver && !poster && !leurre ? competenceDuMoment(p) : null;
+  if (comp !== null && !percu(p, etat, "competence", true)) comp = null;
+  return entree(comp !== null && comp >= 0 ? comp : dirFinale, comp !== null ? false : bouton, esq, -1, comp !== null);
 }
 
 /**
@@ -550,6 +623,7 @@ export function choisirCarte(p: Partie, strategie: Strategie, humain = false): n
  * appel suivant joue le choix, puis le tick.
  */
 export function pasDuPilote(p: Partie, etat: EtatPilote, choix?: Choix[]): number {
+  if (p.attenteDepart) p.choisirCompetence(competenceDuPilote(p.contenu.boss, etat.humain !== null));
   while (p.choix) {
     const carte = choisirCarte(p, etat.strategie, etat.humain !== null);
     choix?.push({ tick: p.tick, nv: p.choix.nv, carte });
@@ -561,8 +635,11 @@ export function pasDuPilote(p: Partie, etat: EtatPilote, choix?: Choix[]): numbe
 }
 
 /** La partie du pilote sur un contenu : ses changements d'entrée et ses choix (la rediffusion) et son résultat. `max` borne le nombre de ticks (les mesures de plusieurs minutes). */
-export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer", camp = -2, humain: ProfilHumain | null = null): { changements: Changement[]; choix: Choix[]; resultat: Resultat; ticks: number; blocages: number } {
+export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DEFAUT, max = Infinity, strategie: Strategie = "foncer", camp = -2, humain: ProfilHumain | null = null): { changements: Changement[]; choix: Choix[]; competence: number; resultat: Resultat; ticks: number; blocages: number } {
   const p = new Partie(contenu, reglages);
+  // Lot BR5 : la compétence se choisit avant de partir (le chrono ne tourne pas).
+  if (p.attenteDepart) p.choisirCompetence(competenceDuPilote(contenu.boss, humain !== null));
+  const competence = p.c.comp;
   const changements: Changement[] = [];
   const choix: Choix[] = [];
   const etat = etatPilote(strategie, camp, p, SEUIL_PEU_CM, humain);
@@ -581,5 +658,5 @@ export function jouerLePilote(contenu: Contenu, reglages: Reglages = REGLAGES_DE
     }
     p.avancer(e);
   }
-  return { changements, choix, resultat: p.resultat(), ticks: p.tick, blocages: etat.blocages };
+  return { changements, choix, competence, resultat: p.resultat(), ticks: p.tick, blocages: etat.blocages };
 }

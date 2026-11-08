@@ -14,22 +14,34 @@ const pilote = jouerLePilote(contenu);
 const beaucoup = jouerLePilote(contenu, undefined, Infinity, "beaucoup");
 // Lot BR4 : le Diamant du jour de référence (la partie la plus rapide des trois stratégies : le fantôme), avec ses choix de cartes.
 const diamant = entreesDuBot(contenu);
+// Lot BR5 : la compétence se choisit avant de partir (un événement d'entrée) : le joueur agité prend le bond, la partie vide le tourbillon.
 const reds = [
-  { nom: "pilote", changements: pilote.changements, choix: pilote.choix },
-  { nom: "beaucoup", changements: beaucoup.changements, choix: beaucoup.choix },
-  { nom: "diamant", changements: diamant.changements, choix: diamant.choix },
-  { nom: "agite", changements: joueurAgite, choix: choixParDefaut(contenu, joueurAgite) },
-  { nom: "vide", changements: [] as Changement[], choix: [] as Choix[] },
-].map((r) => ({ nom: r.nom, date: formatDay(jourRef), g: contenu.g, code: enregistrer(contenu, r.changements, r.choix), resultat: jouer(contenu, r.changements, undefined, r.choix) }));
+  { nom: "pilote", changements: pilote.changements, choix: pilote.choix, competence: pilote.competence },
+  { nom: "beaucoup", changements: beaucoup.changements, choix: beaucoup.choix, competence: beaucoup.competence },
+  { nom: "diamant", changements: diamant.changements, choix: diamant.choix, competence: diamant.competence },
+  { nom: "agite", changements: joueurAgite, choix: choixParDefaut(contenu, joueurAgite, 0, undefined, 1), competence: 1 },
+  { nom: "vide", changements: [] as Changement[], choix: [] as Choix[], competence: 0 },
+].map((r) => ({ nom: r.nom, date: formatDay(jourRef), g: contenu.g, code: enregistrer(contenu, r.changements, r.choix, r.competence), resultat: jouer(contenu, r.changements, undefined, r.choix, r.competence) }));
 // Les scénarios ne se rejouent pas par le serveur : leur résultat, au bit près, est gardé pour les trois navigateurs.
 // Lot BR2 : le scénario du golem avec toutes les améliorations (le tourbillon, l'onde d'épée, l'esquive tranchante, les paliers de force) exerce leurs effets au bit près.
-const TOUT = ["lame-lourde", "lame-lourde", "allonge", "cadence", "tourbillon", "onde-epee", "bottes-legeres", "esquive-longue", "esquive-vive", "esquive-tranchante", "coeur-en-plus", "vol-de-vie", "brise-pierre", "aimant"];
+const TOUT = ["lame-lourde", "lame-lourde", "allonge", "cadence", "moulinet", "onde-epee", "bottes-legeres", "esquive-longue", "esquive-vive", "esquive-tranchante", "coeur-en-plus", "vol-de-vie", "brise-pierre", "aimant", "rage-vive", "maitrise", "echo", "signature"];
 // Lot BR3 : un scénario par boss (la reine, le grand-duc, le bélier, le chêne ; le golem est « boss »), en phase 2 pour deux d'entre eux.
 const BOSS_REFS = [["reine", 1, false], ["grand-duc", 2, true], ["belier", 3, false], ["chene", 4, true]] as const;
-const scenarios = ([["boss", [] as string[], 0, false], ["arene", [] as string[], 0, false], ["boss", TOUT, 0, false], ["cartes", ["soin"], 0, false], ...BOSS_REFS.map(([, b, p2]) => ["boss", [] as string[], b, p2] as const)] as const).map(([nom, ameliorations, boss, phase2], i) => {
-  const c = contenuScenario(nom, { monstres: nom === "arene" ? 30 : 0, ameliorations, nv: 5, boss, phase2 });
+// Lot BR5 : la horde (30 gélatons, 10 gelées, des vases) avec chacune des trois compétences, et le bond sur le mannequin : la jauge des scénarios part pleine, le pilote lance la compétence dès qu'il y a de quoi la lancer.
+const COMPETENCES_REFS = [["horde-tourbillon", "horde", 0], ["horde-bond", "horde", 1], ["horde-bouclier", "horde", 2], ["boss-bouclier", "boss", 2]] as const;
+type Ligne = readonly [nom: string, scenario: "boss" | "arene" | "cartes" | "horde", ameliorations: readonly string[], boss: number, phase2: boolean, competence: number, nomRef: string];
+const lignes: Ligne[] = [
+  ["boss", "boss", [], 0, false, 0, "boss"],
+  ["arene", "arene", [], 0, false, 0, "arene"],
+  ["boss", "boss", TOUT, 0, false, 0, "boss-ameliore"],
+  ["cartes", "cartes", ["soin"], 0, false, 0, "cartes"],
+  ...BOSS_REFS.map(([nom, b, p2]): Ligne => [nom, "boss", [], b, p2, 0, `boss-${nom}`]),
+  ...COMPETENCES_REFS.map(([nom, sc, comp]): Ligne => [nom, sc, [], 0, false, comp, nom]),
+];
+const scenarios = lignes.map(([, nom, ameliorations, boss, phase2, competence, nomRef]) => {
+  const c = contenuScenario(nom, { monstres: nom === "arene" ? 30 : 0, ameliorations: [...ameliorations], nv: 5, boss, phase2, competence });
   const r = jouerLePilote(c, undefined, 3000);
-  return { nom: i === 2 ? "boss-ameliore" : i >= 4 ? `boss-${BOSS_REFS[i - 4]![0]}` : nom, scenario: nom, monstres: c.monstres, ameliorations: [...ameliorations], nv: nom === "cartes" ? 5 : 0, boss, phase2, code: encoderRediffusion({ sim: RUSH_SIM_VERSION, g: c.g, contenu: { scenario: nom }, changements: r.changements, choix: r.choix }), ticks: 3000, ...(({ empreinte, resultat }) => ({ empreinte, resultat }))(jouerJusqua(c, r.changements, 3000, undefined, r.choix)) };
+  return { nom: nomRef, scenario: nom, monstres: c.monstres, ameliorations: [...ameliorations], nv: nom === "cartes" ? 5 : 0, boss, phase2, competence, code: encoderRediffusion({ sim: RUSH_SIM_VERSION, g: c.g, contenu: { scenario: nom }, changements: r.changements, choix: r.choix }), ticks: 3000, ...(({ empreinte, resultat }) => ({ empreinte, resultat }))(jouerJusqua(c, r.changements, 3000, undefined, r.choix)) };
 });
 
 const sortie = {

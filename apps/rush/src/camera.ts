@@ -99,6 +99,8 @@ const DEVANT = 2.4;
 
 export class CameraRush {
   readonly camera = new PerspectiveCamera(CAMERA_DEFAUT.champ, 2, 0.5, 200);
+  /** Lot BR5 : degrés de champ en plus (la poussée de la pleine course et de la fente du coup d'élan), lissés par l'appelant. */
+  poussee = 0;
   private tx = 0;
   private tz = 0;
   private dist = CAMERA_DEFAUT.distance;
@@ -208,8 +210,9 @@ export class CameraRush {
       this.dist += (b.distance - this.dist) * kd;
     }
     const c = this.camera;
-    if (c.fov !== reg.champ || c.aspect !== aspect) {
-      c.fov = reg.champ;
+    const champ = reg.champ + this.poussee;
+    if (c.fov !== champ || c.aspect !== aspect) {
+      c.fov = champ;
       c.aspect = aspect;
       c.updateProjectionMatrix();
     }

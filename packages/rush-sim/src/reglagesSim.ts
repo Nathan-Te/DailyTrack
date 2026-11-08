@@ -28,9 +28,9 @@ export interface Reglages {
   golemCadence: number;
   /** Le rythme des ennemis, en % (lot BR0b) : 100 = les valeurs par défaut. Il multiplie d'un coup les vitesses (×rythme/100) et divise toutes les durées (annonces, récupérations, repos, cycles) de tous les ennemis. */
   rythme: number;
-  /** La course hors combat (lot BR1b) : les ticks sans frapper, sans être touché et sans ennemi alerté à moins de `courseRayon` avant que la vitesse monte (72 = 1,2 s). */
+  /** La course hors combat (lot BR1b) : les ticks sans frapper, sans être touché et sans ennemi alerté à moins de `courseRayon` avant que la vitesse monte (lot BR5 : 42 = 0,7 s ; 72 = 1,2 s au BR1b). */
   courseDelai: number;
-  /** La montée de la vitesse jusqu'au facteur de la course, en ticks (24 = 0,4 s), tant que le chevalier marche. */
+  /** La montée de la vitesse jusqu'au facteur de la course, en ticks (lot BR5 : 12 = 0,2 s, plus franche ; 24 = 0,4 s au BR1b), tant que le chevalier marche. */
   courseMontee: number;
   /** La vitesse de course, en % de la marche (160 = ×1,6). 100 : pas de course. */
   courseFacteur: number;
@@ -39,8 +39,6 @@ export interface Reglages {
   // --- Lot BR2 : l'XP. Un monstre tué et un obstacle brisé lâchent une gemme qui vaut ce nombre de points d'XP ; le niveau 2 s'atteint à `xpBase` points, puis chaque niveau coûte `xpPas` points de plus que le précédent. ---
   xpGelee: number;
   xpChauve: number;
-  xpRonces: number;
-  xpCaisse: number;
   xpBase: number;
   xpPas: number;
   /** L'XP d'un monstre d'un CAMP (au bout d'un détour) en % de celle d'un monstre du chemin : le détour est un pari, il rapporte plus. */
@@ -73,6 +71,43 @@ export interface Reglages {
   aimantGain: number;
   /** Lot BR3 — l'AFFINITÉ du boss : chaque palier d'une carte que le boss favorise (`bosses.ts`, hors Brise-pierre qui a la sienne) MULTIPLIE les dégâts contre lui par (100 + ce %) / 100 : les paliers se composent. */
   affinite: number;
+  // --- Lot BR5 : le TEMPS DE RECHARGE des compétences (une jauge de rage au premier jet, remplacée à la demande de Nathan par un délai, plus lisible). La compétence choisie au départ est prête au début ; la lancer la met en recharge (en ticks, selon la compétence ;
+  // « Recharge vive » le raccourcit, « Écho » en laisse une part la première fois) ; un vase peut rendre `rechargeVase` ticks. Dans un scénario d'essai le délai est divisé par 4 (de quoi juger une compétence à froid). ---
+  rechargeTourbillon: number;
+  rechargeBond: number;
+  rechargeBouclier: number;
+  rechargeVase: number;
+  /** Tourbillon : la durée (ticks), le rayon (cm), les dégâts de chaque passe en % d'un coup ordinaire (une passe tous les 12 ticks) et la vitesse de déplacement pendant la compétence en % de la marche. */
+  tourbillonDuree: number;
+  tourbillonRayon: number;
+  tourbillonDegats: number;
+  tourbillonVitesse: number;
+  /** Bond écrasant : la portée du saut (cm), le rayon de l'onde de choc (cm), ses dégâts en % d'un coup ordinaire, l'étourdissement des ennemis touchés (ticks). */
+  bondPortee: number;
+  bondRayon: number;
+  bondDegats: number;
+  bondEtourdi: number;
+  /** Lancer de bouclier : la portée (cm), le nombre de cibles qu'il traverse avant de revenir, ses dégâts en % d'un coup ordinaire. */
+  bouclierPortee: number;
+  bouclierCibles: number;
+  bouclierDegats: number;
+  /** Les VASES : la part (%) qui contient une gemme d'XP, la part (%) qui contient une recharge (le reste : un cœur, rarement) — le tirage de chaque vase est dans le niveau, ces seuils s'appliquent à la lecture — et l'XP d'un vase / d'un gélaton. */
+  vaseGemme: number;
+  vaseRecharge: number;
+  xpVase: number;
+  xpGelaton: number;
+  /** Le COUP D'ÉLAN : frapper en pleine course fait une fente de `elanDistance` cm, dégâts à `elanDegats` % et recul à `elanRecul` %. */
+  elanDistance: number;
+  elanDegats: number;
+  elanRecul: number;
+  /** Les cartes de compétence : Recharge vive (− % de temps de recharge par palier, jamais sous 40 %), Maîtrise (+ % de dégâts et + % de zone par palier), Écho (la part du temps de recharge à attendre après la première utilisation, en %), la carte propre à chaque compétence (Tourbillon : + % de durée ; Bond : + ticks d'étourdissement ; Bouclier : + cibles traversées, par palier). */
+  rechargeVive: number;
+  maitriseDegats: number;
+  maitriseZone: number;
+  echoRecharge: number;
+  signatureTourbillon: number;
+  signatureBond: number;
+  signatureBouclier: number;
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -86,20 +121,18 @@ export const REGLAGES_DEFAUT: Reglages = {
   engagement: 40,
   recul: 48,
   fenetreEsquive: 16,
-  golemVie: 1400,
+  golemVie: 2200,
   golemCadence: 80,
   rythme: 100,
-  courseDelai: 72,
-  courseMontee: 24,
+  courseDelai: 42,
+  courseMontee: 12,
   courseFacteur: 160,
   courseRayon: 1000,
-  xpGelee: 12,
-  xpChauve: 10,
-  xpRonces: 8,
-  xpCaisse: 16,
-  xpBase: 40,
-  xpPas: 20,
-  xpCamp: 450,
+  xpGelee: 8,
+  xpChauve: 7,
+  xpBase: 70,
+  xpPas: 25,
+  xpCamp: 600,
   aimant: 300,
   lourdeDegats: 70,
   lourdeLenteur: 5,
@@ -116,6 +149,35 @@ export const REGLAGES_DEFAUT: Reglages = {
   briseDegats: 90,
   aimantGain: 33,
   affinite: 30,
+  rechargeTourbillon: 900,
+  rechargeBond: 600,
+  rechargeBouclier: 480,
+  rechargeVase: 180,
+  tourbillonDuree: 72,
+  tourbillonRayon: 280,
+  tourbillonDegats: 100,
+  tourbillonVitesse: 45,
+  bondPortee: 700,
+  bondRayon: 380,
+  bondDegats: 250,
+  bondEtourdi: 90,
+  bouclierPortee: 900,
+  bouclierCibles: 3,
+  bouclierDegats: 220,
+  vaseGemme: 60,
+  vaseRecharge: 25,
+  xpVase: 3,
+  xpGelaton: 2,
+  elanDistance: 300,
+  elanDegats: 150,
+  elanRecul: 200,
+  rechargeVive: 15,
+  maitriseDegats: 30,
+  maitriseZone: 15,
+  echoRecharge: 50,
+  signatureTourbillon: 40,
+  signatureBond: 60,
+  signatureBouclier: 2,
 };
 
 /** Les bornes de chaque réglage (le curseur de `?tune` et la validation d'un JSON collé). */
@@ -139,11 +201,9 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   courseRayon: [200, 2500],
   xpGelee: [0, 200],
   xpChauve: [0, 200],
-  xpRonces: [0, 200],
-  xpCaisse: [0, 200],
   xpBase: [10, 1000],
   xpPas: [0, 500],
-  xpCamp: [50, 500],
+  xpCamp: [50, 1000],
   aimant: [100, 1500],
   lourdeDegats: [0, 100],
   lourdeLenteur: [0, 40],
@@ -160,6 +220,35 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   briseDegats: [0, 100],
   aimantGain: [0, 100],
   affinite: [0, 100],
+  rechargeTourbillon: [120, 3600],
+  rechargeBond: [120, 3600],
+  rechargeBouclier: [120, 3600],
+  rechargeVase: [0, 1200],
+  tourbillonDuree: [24, 180],
+  tourbillonRayon: [150, 500],
+  tourbillonDegats: [20, 400],
+  tourbillonVitesse: [0, 100],
+  bondPortee: [300, 1000],
+  bondRayon: [200, 700],
+  bondDegats: [50, 600],
+  bondEtourdi: [0, 240],
+  bouclierPortee: [400, 1500],
+  bouclierCibles: [1, 8],
+  bouclierDegats: [50, 600],
+  vaseGemme: [0, 100],
+  vaseRecharge: [0, 100],
+  xpVase: [0, 100],
+  xpGelaton: [0, 100],
+  elanDistance: [0, 600],
+  elanDegats: [100, 400],
+  elanRecul: [50, 500],
+  rechargeVive: [0, 30],
+  maitriseDegats: [0, 100],
+  maitriseZone: [0, 50],
+  echoRecharge: [0, 100],
+  signatureTourbillon: [0, 100],
+  signatureBond: [0, 200],
+  signatureBouclier: [0, 5],
 };
 
 export const CLES_REGLAGES = Object.keys(REGLAGES_DEFAUT) as (keyof Reglages)[];

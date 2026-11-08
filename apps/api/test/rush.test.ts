@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { DUREE_TICKS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, VARIANTE, dailyRush, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsDuJour, themeDuJour, entreesDuBot } from "@cdj/rush-sim";
+import { jouerLePilote, DUREE_TICKS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, VARIANTE, dailyRush, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsDuJour, themeDuJour, entreesDuBot } from "@cdj/rush-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_RUSH } from "../scripts/rush-essais";
 import { contenuDeRush, contratRush, unitesDuRejeu } from "../src/rush";
@@ -35,7 +35,7 @@ describe("Rush sur le serveur", () => {
     const jour = await t.call("GET", `/api/rush/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.medals).toEqual(seuilsDe(c)); // lot BR4 : le Diamant est la plus rapide des trois stratégies du pilote
-    expect(jour.body.medals.author).toBe(VARIANTE.seuils(jouer(c, entreesDuBot(c).changements, undefined, entreesDuBot(c).choix)).author);
+    expect(jour.body.medals.author).toBe(VARIANTE.seuils(jouer(c, entreesDuBot(c).changements, undefined, entreesDuBot(c).choix, entreesDuBot(c).competence)).author);
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/rush/day/2026-11-11")).status).toBe(404);
@@ -63,7 +63,7 @@ describe("Rush sur le serveur", () => {
     const t = await monter();
     const c = dailyRush(JOUR);
     const gagne = await t.call("POST", "/api/rush/submit", { replay: ESSAIS_RUSH.partie(JOUR, VERSIONS, 0).rediffusion, name: "Vainqueur" }, { headers: entete(1) });
-    const perdu = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, []), name: "Perdant" }, { headers: entete(2) });
+    const perdu = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, [], [], 0), name: "Perdant" }, { headers: entete(2) });
     expect(gagne.body.score.temps).toBeLessThan(perdu.body.score.temps);
     expect(perdu.body.score).toEqual({ temps: DUREE_TICKS });
     const board = await t.call("GET", `/api/rush/day/${DATE}/board`);
@@ -73,23 +73,23 @@ describe("Rush sur le serveur", () => {
   it("refuse les copies (la partie du bot, deux fois les mêmes touches), les illisibles et les autres jours", async () => {
     const t = await monter({ copies: false });
     const c = dailyRush(JOUR);
-    const bot = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, entreesDuBot(c).changements, entreesDuBot(c).choix), name: "Copieur" }, { headers: entete(1) });
+    const bot = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, entreesDuBot(c).changements, entreesDuBot(c).choix, entreesDuBot(c).competence), name: "Copieur" }, { headers: entete(1) });
     expect(bot.status).toBe(409);
     expect(bot.body.error).toBe("replay_copy");
     expect((await envoyer(t, 2, 1)).status).toBe(200);
     const copie = await envoyer(t, 3, 1);
     expect(copie.body.error).toBe("replay_copy");
     expect((await t.call("POST", "/api/rush/submit", { replay: "pas-une-rediffusion", name: "Zéro" }, { headers: entete(4) })).body.error).toBe("invalid_replay");
-    const autreJour = enregistrer(dailyRush(JOUR - 1), []);
+    const autreJour = enregistrer(dailyRush(JOUR - 1), [], [], 0);
     expect((await t.call("POST", "/api/rush/submit", { replay: autreJour, name: "Hier" }, { headers: entete(5) })).status).toBe(409);
   });
 
   it("valide les choix d'amélioration (lot BR2) : un choix n'est accepté qu'à un niveau gagné, au bon niveau, avec une carte qui existe ; il en manque un ou il y en a un de trop : refusé", async () => {
     const t = await monter();
     const c = dailyRush(JOUR);
-    const bot = entreesDuBot(c);
+    const bot = jouerLePilote(c, undefined, Infinity, "peu"); // (lot BR5 : le Diamant de ce jour peut être « foncer », qui ne gagne aucun niveau)
     expect(bot.choix.length).toBeGreaterThanOrEqual(1);
-    const poster = async (n: number, choix: typeof bot.choix) => t.call("POST", "/api/rush/submit", { replay: enregistrer(c, bot.changements, choix), name: `Joueur${n}` }, { headers: entete(n) });
+    const poster = async (n: number, choix: typeof bot.choix) => t.call("POST", "/api/rush/submit", { replay: enregistrer(c, bot.changements, choix, bot.competence), name: `Joueur${n}` }, { headers: entete(n) });
     expect((await poster(1, bot.choix)).status).toBe(200);
     for (const [n, choix] of [
       [2, []], // aucun choix alors que des niveaux sont gagnés
@@ -101,16 +101,31 @@ describe("Rush sur le serveur", () => {
       expect(r.status, `joueur ${n}`).toBe(400);
       expect(r.body.error).toBe("invalid_replay");
     }
-    // une autre carte valable est acceptée (c'est une autre partie, pas une erreur)
-    expect((await poster(6, bot.choix.map((x, i) => (i === 0 ? { ...x, carte: (x.carte + 1) % 3 } : x)))).status).toBe(200);
+    // une autre carte valable au dernier choix est acceptée (c'est une autre partie, pas une erreur ; lot BR5 : le dernier, pour ne pas changer les niveaux qui suivent)
+    expect((await poster(6, bot.choix.map((x, i, l) => (i === l.length - 1 ? { ...x, carte: (x.carte + 1) % 3 } : x)))).status).toBe(200);
+  });
+
+  it("valide la compétence choisie au départ (lot BR5) : absente, illisible ou autre jour : refusée ; chacune des trois est acceptée et change l'empreinte des entrées", async () => {
+    const t = await monter();
+    const c = dailyRush(JOUR);
+    const bot = entreesDuBot(c);
+    const poster = async (n: number, competence: number) => t.call("POST", "/api/rush/submit", { replay: enregistrer(c, bot.changements, bot.choix, competence), name: `Joueur${n}` }, { headers: entete(n) });
+    // sans compétence : refusée
+    const sans = await poster(1, -1);
+    expect(sans.status).toBe(400);
+    expect(sans.body.error).toBe("invalid_replay");
+    // une compétence qui n'existe pas ne s'écrit même pas : l'octet est illisible
+    const hors = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, bot.changements, bot.choix, 7), name: "Hors" }, { headers: entete(2) });
+    expect(hors.status).toBe(400);
+    for (const [n, k] of [[3, 0], [4, 1], [5, 2]] as const) expect((await poster(n, k)).status, `compétence ${k}`).toBe(200);
   });
 
   it("une partie vide est classée la dernière, sans médaille", async () => {
     const t = await monter();
     const c = dailyRush(JOUR);
-    const r = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, []), name: "Rêveur" }, { headers: entete(1) });
+    const r = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, [], [], 0), name: "Rêveur" }, { headers: entete(1) });
     expect(r.status).toBe(200);
-    expect(r.body.score).toEqual(scoreParColonnes(jouer(c, [])));
+    expect(r.body.score).toEqual(scoreParColonnes(jouer(c, [], undefined, [], 0)));
     expect(r.body.medal).toBeNull();
   });
 
@@ -135,23 +150,23 @@ describe("Rush sur le serveur", () => {
 
   it("le coût d'un rejeu suit sa durée (`rejeu.ticksParUnite` de la fiche) : une partie normale ~2 unités, la pire (10 minutes) ~15, au moins `unitesServeur`", async () => {
     expect(unitesDuRejeu(100)).toBe(1);
-    expect(unitesDuRejeu(2500)).toBe(1);
-    expect(unitesDuRejeu(3500)).toBe(2);
-    expect(unitesDuRejeu(36000)).toBe(15);
+    expect(unitesDuRejeu(1250)).toBe(1); // lot BR5 : 1 250 ticks par unité (2 500 au BR4 : un rejeu coûte ~2× plus par tick avec 60 monstres et des vases)
+    expect(unitesDuRejeu(3500)).toBe(3);
+    expect(unitesDuRejeu(36000)).toBe(29);
     // le contrat compte le reste juste après le rejeu : une partie du pilote (~3 500 ticks) coûte `unitesDuRejeu(ticks)` au total, dont `unitesServeur` déjà comptée par le module
     const depenses: number[] = [];
     const c = dailyRush(JOUR);
     const contrat = contratRush({}, { spendReplays: (u = 1) => void depenses.push(u) });
     const niveau = await contrat.niveauDuJour(JOUR);
     const bot = entreesDuBot(c);
-    const mesure = await contrat.rejouer(niveau, enregistrer(c, bot.changements, bot.choix));
+    const mesure = await contrat.rejouer(niveau, enregistrer(c, bot.changements, bot.choix, bot.competence));
     expect(depenses.reduce((a, b) => a + b, 1)).toBe(unitesDuRejeu(mesure.ticks));
     expect(unitesDuRejeu(mesure.ticks)).toBeGreaterThanOrEqual(2);
     // une partie vide (dix minutes à ne rien faire) pèse le plus lourd
     const vide: number[] = [];
-    const m2 = await contratRush({}, { spendReplays: (u = 1) => void vide.push(u) }).rejouer(niveau, enregistrer(c, []));
+    const m2 = await contratRush({}, { spendReplays: (u = 1) => void vide.push(u) }).rejouer(niveau, enregistrer(c, [], [], 0));
     expect(m2.ticks).toBe(DUREE_TICKS);
-    expect(vide.reduce((a, b) => a + b, 1)).toBe(15);
+    expect(vide.reduce((a, b) => a + b, 1)).toBe(29);
   });
 
   it("le profil du joueur et le jeu fermé (`off`) répondent comme les autres jeux", async () => {
