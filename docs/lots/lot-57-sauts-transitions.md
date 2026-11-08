@@ -3,7 +3,7 @@
 Branche `claude/wonderful-bell-vfr093`, PR brouillon. **Étape 2 livrée : prototypes jouables. Arrêt obligatoire : Nathan garde, retouche ou écarte chaque élément** ; l'étape 3 (le générateur) attend ses choix. Aucune version du générateur ni de la simulation ne change dans cette étape : `GENERATOR_VERSION` 21, `SIM_VERSION` 14, golden et rediffusions de référence identiques (suite de `packages/sim` verte, voir « Vérifié »). Prérequis : lot 49 fusionné ; la « bascule automatique » est celle du lot R11 (plateforme), confirmé par Nathan.
 
 ## Pour les joueurs
-rien (les prototypes ne se jouent que par `?scenario=…` ; seule la signalétique des réceptions change dans les circuits : voir plus bas)
+- [Track] Deux balises signalent la réception de chaque saut, visibles depuis la rampe. // Two beacons now mark where each jump lands, visible from the ramp.
 
 ## 1. L'état des lieux (v21, 200 circuits : 25 par thème à partir du 10/11/2026)
 Outil : `packages/sim/scripts/mesure-sauts.ts` (hors CI, ≈ 30 s ; commande en tête du fichier). Classement : `classerSauts` / `classerTransitions` (`sautsClasse.ts`).
