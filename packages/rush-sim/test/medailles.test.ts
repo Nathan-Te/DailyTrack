@@ -7,6 +7,7 @@ import {
   Fantome,
   HUMAIN,
   PRIORITES,
+  indiceAmelioration,
   RUSH_BOT_VERSION,
   RUSH_GENERATOR_VERSION,
   RUSH_SIM_VERSION,
@@ -71,11 +72,11 @@ describe("les médailles d'un jour", () => {
   it("la partie du Diamant est une rediffusion valide : le serveur la rejoue et trouve le même temps", () => {
     const c = dailyRush(J0 + 3);
     const bot = entreesDuBot(c);
-    const rejeu = rejouer(c, enregistrer(c, bot.changements, bot.choix));
+    const rejeu = rejouer(c, enregistrer(c, bot.changements, bot.choix, bot.competence));
     expect(rejeu.victoire).toBe(true);
     expect(rejeu.ticks).toBe(seuilsDe(c).author);
     expect(rejeu).toEqual(partieDuBot(c));
-    expect(jouer(c, bot.changements, undefined, bot.choix).ticks).toBe(rejeu.ticks);
+    expect(jouer(c, bot.changements, undefined, bot.choix, bot.competence).ticks).toBe(rejeu.ticks);
   });
 });
 
@@ -110,9 +111,10 @@ describe("recalculées quand la version change, figées quand le jour l'est", ()
   });
 });
 
-describe("le pilote ne se laisse plus bloquer (jour 295)", () => {
-  const J295 = daysFromCivil(2026, 11, 2) + 295;
-  it("« un peu d'XP » et « beaucoup d'XP » y mettaient 126 s et 122 s (30 s coincé devant un mur à viser deux gelées qui ne pouvaient pas l'atteindre) : moins de 100 s, et le blocage est détecté", () => {
+describe("le pilote ne se laisse plus bloquer (jour 112 : le jour 295 du lot BR4 n'existe plus avec le générateur du lot BR5)", () => {
+  // Lot BR5 : le générateur a changé (camps de 10 à 20, meutes, vases) ; le jour 112 est un jour où « un peu d'XP » et « beaucoup d'XP » sont bloqués (une fois) puis se dégagent.
+  const J295 = daysFromCivil(2026, 11, 2) + 112;
+  it("« un peu d'XP » et « beaucoup d'XP » : moins de 100 s, et le blocage est détecté (au BR4, le jour 295 les coinçait 30 s devant un mur à viser deux gelées qui ne pouvaient pas l'atteindre : 126 s et 122 s)", () => {
     const c = dailyRush(J295);
     for (const s of ["peu", "beaucoup"] as const) {
       const j = jouerLePilote(c, undefined, Infinity, s);
@@ -154,8 +156,7 @@ describe("le pilote humanisé", () => {
     expect(a.changements).toEqual(b.changements);
     expect(a.choix).toEqual(b.choix);
     expect(a.ticks).toBe(b.ticks);
-    expect(a.resultat.victoire).toBe(true);
-    expect(rejouer(c, enregistrer(c, a.changements, a.choix)).ticks).toBe(a.ticks); // le serveur la rejoue
+    expect(rejouer(c, enregistrer(c, a.changements, a.choix, a.competence))).toEqual(a.resultat); // le serveur la rejoue (qu'elle soit gagnée ou perdue : lot BR5)
   });
   it("n'est pas le pilote de référence : mêmes jours, autres parties", () => {
     const c = dailyRush(J0 + 4);
@@ -174,7 +175,7 @@ describe("le pilote humanisé", () => {
     const ouvre = (cartes: number[]): void => {
       (p as unknown as { choix: { nv: number; cartes: number[] } }).choix = { nv: 2, cartes };
     };
-    const i = (id: string): number => ["lame-lourde", "allonge", "cadence", "tourbillon", "onde-epee", "bottes-legeres", "esquive-longue", "esquive-vive", "esquive-tranchante", "coeur-en-plus", "soin", "vol-de-vie", "brise-pierre", "aimant"].indexOf(id);
+    const i = (id: string): number => indiceAmelioration(id);
     ouvre([i("lame-lourde"), i("esquive-vive"), i("aimant")]);
     expect(choisirCarte(p, "foncer", true)).toBe(0); // générale : lame lourde avant esquive vive
     expect(choisirCarte(p, "foncer", false)).toBe(1); // contre le grand-duc : esquive vive d'abord
@@ -195,7 +196,7 @@ describe("le fantôme du Diamant", () => {
       const c = dailyRush(J0 + k);
       const bot = entreesDuBot(c);
       expect(bot.choix.length).toBeGreaterThan(0); // un jour a des niveaux : il fait ses choix
-      const f = new Fantome(c, enregistrer(c, bot.changements, bot.choix));
+      const f = new Fantome(c, enregistrer(c, bot.changements, bot.choix, bot.competence));
       // à côté de la partie du pilote, pas à pas : la même position à chaque tick
       const p = new Partie(c);
       const etat = etatPilote(diamantDuJour(c).strategie, -2, p);
@@ -218,11 +219,11 @@ describe("le fantôme du Diamant", () => {
     const c = dailyRush(J0 + 1);
     const bot = entreesDuBot(c);
     const mauvais = bot.choix.map((x, i) => (i === 0 ? { ...x, carte: 2, nv: x.nv + 5 } : x));
-    const f = new Fantome(c, enregistrer(c, bot.changements, mauvais));
+    const f = new Fantome(c, enregistrer(c, bot.changements, mauvais, bot.competence));
     let tours = 0;
     while (f.avancer() && tours++ < 40000);
     expect(f.finie).toBe(true);
     expect(f.partie.finie).toBe(false);
-    expect(() => new Fantome(dailyRush(J0 + 2), enregistrer(c, bot.changements, bot.choix))).toThrow();
+    expect(() => new Fantome(dailyRush(J0 + 2), enregistrer(c, bot.changements, bot.choix, bot.competence))).toThrow();
   });
 });

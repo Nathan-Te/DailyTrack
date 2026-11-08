@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2303 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2322 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2795,8 +2795,16 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `carte.allonge.effet` | +{n} % de portée, arc plus large. | +{n}% range, wider arc. |
 | `carte.cadence.nom` | Cadence | Tempo |
 | `carte.cadence.effet` | Coups {n} % plus rapides. | Strikes {n}% faster. |
-| `carte.tourbillon.nom` | Tourbillon | Whirlwind |
-| `carte.tourbillon.effet` | Le 3ᵉ coup frappe tout autour. | The 3rd strike hits all around. |
+| `carte.moulinet.nom` | Moulinet | Windmill |
+| `carte.moulinet.effet` | Le 3ᵉ coup frappe tout autour. | The 3rd strike hits all around. |
+| `carte.recharge_vive.nom` | Recharge vive | Quick recharge |
+| `carte.recharge_vive.effet` | Ta compétence se recharge {n} % plus vite. | Your skill recharges {n} % faster. |
+| `carte.maitrise.nom` | Maîtrise | Mastery |
+| `carte.maitrise.effet` | Compétence : +{n} % de dégâts, +{m} % de zone. | Skill: +{n} % damage, +{m} % area. |
+| `carte.echo.nom` | Écho | Echo |
+| `carte.echo.effet` | Une seconde compétence pour moitié moins. | A second skill for half the price. |
+| `carte.signature.nom` | Signature | Signature |
+| `carte.signature.effet` | {sig} | {sig} |
 | `carte.onde_epee.nom` | Onde d'épée | Sword wave |
 | `carte.onde_epee.effet` | Le 3ᵉ coup lance une onde courte. | The 3rd strike sends a short wave. |
 | `carte.bottes_legeres.nom` | Bottes légères | Light boots |
@@ -2818,7 +2826,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `carte.aimant.nom` | Aimant | Magnet |
 | `carte.aimant.effet` | Les gemmes viennent de {n} % plus loin. | Gems come from {n}% farther. |
 | `carte.titre` | Les {n} prochains jours | The next {n} days |
-| `carte.legende` | {date} · {theme} · {boss} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · obstacles : {o} · sans rencontre {sr} s au plus · foncer {t} · un peu d'XP {tp} · beaucoup d'XP {tn}{fin} | {date} · {theme} · {boss} — {m} m · {d} detours ({b} loops) · {tue} monsters · obstacles: {o} · {sr} s at most without an encounter · rush {t} · a little XP {tp} · lots of XP {tn}{fin} |
+| `carte.legende` | {date} · {theme} · {boss} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · vases : {o} · sans rencontre {sr} s au plus · foncer {t} · un peu d'XP {tp} · beaucoup d'XP {tn}{fin} | {date} · {theme} · {boss} — {m} m · {d} detours ({b} loops) · {tue} monsters · vases: {o} · {sr} s at most without an encounter · rush {t} · a little XP {tp} · lots of XP {tn}{fin} |
 | `carte.perdu` |  · perdu |  · lost |
 | `carte.meilleure` |  → la plus rapide : {s} (+{ecart} s sur la suivante) |  → fastest: {s} (+{ecart} s on the next) |
 
@@ -2842,6 +2850,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commandes.action.droite` | Aller à droite | Move right |
 | `commandes.action.coup` | Coup | Strike |
 | `commandes.action.esquive` | Esquive | Dodge |
+| `commandes.action.competence` | Compétence | Skill |
 
 ### Commandes tactiles (`tactile.*`, `apps/rush/src/catalogue.*.ts`)
 
@@ -2854,14 +2863,33 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `aide.point1` | Fais tomber le boss du jour le plus vite possible : ton temps est ton score. | Bring down the boss of the day as fast as you can: your time is your score. |
-| `aide.point2` | Vise à la souris et clique pour frapper (maintenu, ça enchaîne trois coups), Espace pour esquiver à travers les attaques, Z Q S D pour bouger. Au doigt : le joystick, « Coup » et « Esquive ». Une zone rouge au sol annonce chaque coup du boss. | Aim with the mouse and click to strike (hold to chain three strikes), Space to dodge through attacks, Z Q S D to move. On touch: joystick, Strike and Dodge. A red zone on the ground warns you before every boss blow. |
+| `aide.point2` | Vise à la souris et clique pour frapper (maintenu, ça enchaîne trois coups), Espace pour esquiver, Z Q S D pour bouger, clic droit ou E pour ta compétence quand la jauge est pleine. Au doigt : le joystick, « Coup », « Esquive », « Compétence ». Une zone rouge au sol annonce chaque coup du boss. | Aim with the mouse and click to strike (hold to chain three strikes), Space to dodge, Z Q S D to move, right click or E for your skill when the gauge is full. On touch: joystick, Strike, Dodge, Skill. A red zone on the ground warns you before every boss blow. |
 | `aide.point3` | Tu as trois cœurs. Les gelées et les chauves-souris font mal aussi. | You have three hearts. Slimes and bats hurt too. |
+
+### comp (`comp.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `comp.tourbillon.nom` | Tourbillon | Whirlwind |
+| `comp.tourbillon.effet` | Tournoie {n} s et fauche tout autour. | Spins for {n} s, cutting down everything around. |
+| `comp.bond.nom` | Bond écrasant | Crushing leap |
+| `comp.bond.effet` | Saute de {n} m : onde de choc, ennemis étourdis. | Leaps {n} m: shockwave, enemies stunned. |
+| `comp.bouclier.nom` | Lancer de bouclier | Shield throw |
+| `comp.bouclier.effet` | Traverse {n} ennemis, puis revient. | Pierces {n} enemies, then comes back. |
+
+### depart (`depart.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `depart.titre` | TA COMPÉTENCE | YOUR SKILL |
+| `depart.aria` | Choisis ta compétence avant de partir | Pick your skill before you start |
 
 ### Fin de partie (`fin.*`, `apps/rush/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
 | `fin.boss` | Boss du jour : {boss} | Boss of the day: {boss} |
+| `fin.competence` | Compétence : {nom} | Skill: {nom} |
 | `fin.cartes` | Cartes choisies : {liste} | Cards picked: {liste} |
 | `fin.aucuneCarte` | Aucune carte choisie | No card picked |
 | `fin.diamant` | Le Diamant : {temps}{strategie} | The Diamond: {temps}{strategie} |
@@ -3001,6 +3029,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `scene.aria` | Le niveau du jour : un chevalier, un chemin, l'arène du boss | Today's level: a knight, a path, the boss's arena |
 
+### signature (`signature.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `signature.tourbillon` | Le tourbillon dure {n} % de plus. | The whirlwind lasts {n} % longer. |
+| `signature.bond` | Le bond étourdit {n} s de plus. | The leap stuns {n} s longer. |
+| `signature.bouclier` | Le bouclier traverse {n} ennemis de plus. | The shield pierces {n} more enemies. |
+
 ### strategie (`strategie.*`, `apps/rush/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -3048,8 +3084,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `tune.courseRayon` | Course : rayon d'alerte (cm) | Run: alert radius (cm) |
 | `tune.xpGelee` | XP d'une gelée | Slime XP |
 | `tune.xpChauve` | XP d'une chauve-souris | Bat XP |
-| `tune.xpRonces` | XP des ronces | Brambles XP |
-| `tune.xpCaisse` | XP d'une caisse | Crate XP |
 | `tune.xpBase` | XP du niveau 2 | XP for level 2 |
 | `tune.xpPas` | XP en plus par niveau | Extra XP per level |
 | `tune.xpCamp` | XP d'un camp (% du chemin) | Camp XP (% of the path's) |

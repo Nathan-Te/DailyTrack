@@ -6,6 +6,9 @@ import { JOUR, appareil, lancer } from "./appareil";
 // « Rush » (lot BR4) — les médailles, vues du navigateur : le tableau des médailles (`?scenario=medailles`), l'écran de fin à un temps donné (`?scenario=fin`, celui du kit complété par le jeu) et le fantôme du Diamant
 // (`?scenario=jour&fantome=1`, le bouton du kit dans l'interface en jeu). Les règles (Diamant = meilleur des trois stratégies, pourcentages de la fiche, jour figé) sont dans `packages/rush-sim/test/medailles.test.ts`.
 const jour = parseDay(JOUR)!;
+// lot BR5 (économie : « foncer » ne gagne plus de niveau) : les essais qui regardent les CARTES du Diamant prennent un jour où il farme un peu (le 7 novembre : « un peu d'XP », 9 niveaux)
+const JOUR_FARM = "2026-11-07";
+const jourFarm = parseDay(JOUR_FARM)!;
 const MEDAILLES = { author: "Diamant", gold: "Or", silver: "Argent", bronze: "Bronze" } as const;
 
 test.describe("Rush : les médailles", () => {
@@ -19,7 +22,7 @@ test.describe("Rush : les médailles", () => {
       const l = ligneDuJour(dailyRush(jour + k));
       const tr = lignes.nth(k);
       await expect(tr).toHaveAttribute("data-diamant", l.diamant);
-      for (const s of STRATEGIES) await expect(tr.locator(`td[data-strategie="${s}"]`)).toHaveText(formatTemps(l.temps[s], "fr"));
+      for (const s of STRATEGIES) await expect(tr.locator(`td[data-strategie="${s}"]`)).toHaveText(l.temps[s] >= 36000 ? "—" : formatTemps(l.temps[s], "fr")); // une partie perdue (le pire temps) s'écrit « — »
       // la cellule du Diamant est marquée, et le seuil « Diamant » est son temps
       await expect(tr.locator(`td.rush-medailles__diamant`)).toHaveAttribute("data-strategie", l.diamant);
       for (const m of ["author", "gold", "silver", "bronze"] as const) await expect(tr.locator(`td[data-seuil="${m}"]`)).toHaveText(formatTemps(l.seuils[m], "fr"));
@@ -31,10 +34,10 @@ test.describe("Rush : les médailles", () => {
   });
 
   test("l'écran de fin à 65 s : le temps, la médaille, l'écart avec la suivante en temps, le boss du jour, les cartes choisies et « Rejouer »", async ({ browser }) => {
-    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=fin&temps=65000");
+    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&scenario=fin&temps=65000&jour=${JOUR_FARM}`);
     await page.locator("#jeu-jouer").click();
     await expect(page.locator("#jeu-fin-score")).toHaveText("1:05,00", { timeout: 90_000 });
-    const s = seuilsDe(dailyRush(jour));
+    const s = seuilsDe(dailyRush(jourFarm));
     const med = medailleDe([65 * TICKS_PAR_SECONDE], s);
     // la liste des médailles : les quatre seuils, en temps (le kit les écrit en ticks : le jeu les réécrit)
     const valeurs = await page.locator("#jeu-fin .dj-medaille__valeur").allTextContents();
@@ -54,7 +57,7 @@ test.describe("Rush : les médailles", () => {
     await expect(bloc.locator('[data-role="boss"]')).toContainText("Boss du jour : ");
     await expect(bloc.locator('[data-role="cartes"]')).toContainText("Cartes choisies : ");
     await expect(bloc.locator('[data-role="diamant"]')).toContainText(formatTemps(s.author, "fr"));
-    await expect(bloc.locator('[data-role="diamant"]')).toContainText(`(${["foncer", "un peu d'XP", "beaucoup d'XP"][STRATEGIES.indexOf(diamantDuJour(dailyRush(jour)).strategie)]})`);
+    await expect(bloc.locator('[data-role="diamant"]')).toContainText(`(${["foncer", "un peu d'XP", "beaucoup d'XP"][STRATEGIES.indexOf(diamantDuJour(dailyRush(jourFarm)).strategie)]})`);
     // une partie d'essai : dite, jamais classée ; et on peut rejouer
     await expect(page.locator("#jeu-fin-rang")).toBeVisible();
     await expect(page.locator("#jeu-rejouer")).toBeVisible();
@@ -71,7 +74,7 @@ test.describe("Rush : les médailles", () => {
   });
 
   test("le fantôme du Diamant : visible dès le départ, translucide, au pas de la partie, fait ses choix de cartes sans montrer l'écran des cartes ; le bouton fantôme est dans l'interface en jeu", async ({ browser }) => {
-    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=jour&fantome=1");
+    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&scenario=jour&fantome=1&jour=${JOUR_FARM}`);
     await lancer(page);
     await expect(page.locator("#jeu-hud-fantome")).toBeVisible(); // le bouton du kit, dans le HUD de la partie (pas seulement dans la pause)
     const f0 = await page.evaluate(() => window.__rush.fantome());
@@ -88,7 +91,7 @@ test.describe("Rush : les médailles", () => {
     expect(await page.evaluate(() => window.__rush.fantome()!.nv)).toBeGreaterThanOrEqual(2);
     await expect(page.locator(".rush-choix")).toBeHidden();
     // le fantôme est la partie du Diamant : ce qu'il a fait est ce que le serveur rejouerait (même nombre de ticks à la fin)
-    const attendu = diamantDuJour(dailyRush(jour));
+    const attendu = diamantDuJour(dailyRush(jourFarm));
     const fin = attendu.parties[attendu.strategie].score;
     for (let i = 0; i < 40 && !(await page.evaluate(() => window.__rush.fantome()!.finie)); i++) await page.evaluate(() => window.__jeu.avancer(300));
     const f2 = await page.evaluate(() => window.__rush.fantome());

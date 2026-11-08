@@ -1,7 +1,7 @@
 // Les sons de Rush : Web Audio **procédural, sans fichier** (oscillateurs et bruit filtré). Aucun son avant le premier geste du joueur (règle des navigateurs et d'iOS). Le niveau est le volume du kit
 // (la musique commune en tient le réglage) ; à 0, rien ne se joue. La musique a son propre contexte : un effet ne la coupe jamais.
 
-export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque" | "ramasse" | "niveau" | "carte" | "soin" | "ondeEpee";
+export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque" | "ramasse" | "niveau" | "carte" | "soin" | "ondeEpee" | "jarre" | "bois" | "tourbillon" | "bond" | "atterri" | "bouclier" | "elan" | "prete";
 
 import { ouvrirContexteAudio } from "@cdj/core/audio";
 
@@ -200,6 +200,45 @@ export class Sons {
       case "ondeEpee":
         this.souffle(c, t, { duree: 0.4, vol: 0.35, filtre: 900, filtreVers: 3600, q: 1.1 });
         this.ton(c, t, { de: 300, vers: 900, duree: 0.3, type: "sawtooth", vol: 0.08 });
+        break;
+      // Lot BR5 : les vases (une jarre de céramique : deux tintements aigus qui se brisent et un éclat de bruit clair ; du bois : un claquement sourd, un bruit de planches), la fente du coup d'élan, la rage pleine et les trois compétences.
+      case "jarre":
+        this.ton(c, t, { de: 2100 * h, vers: 1500 * h, duree: 0.07, type: "triangle", vol: 0.14 });
+        this.ton(c, t, { de: 3100 * h, vers: 2300 * h, duree: 0.06, type: "sine", vol: 0.1, retard: 0.012 });
+        this.ton(c, t, { de: 1250 * h, vers: 700, duree: 0.12, type: "triangle", vol: 0.08, retard: 0.03 });
+        this.souffle(c, t, { duree: 0.2, vol: 0.28, filtre: 5200, filtreVers: 1800, q: 0.7, type: "highpass" });
+        break;
+      case "bois":
+        this.ton(c, t, { de: 200 * h, vers: 90, duree: 0.09, type: "square", vol: 0.12 });
+        this.ton(c, t, { de: 95, vers: 48, duree: 0.16, type: "sine", vol: 0.3 });
+        this.souffle(c, t, { duree: 0.2, vol: 0.34, filtre: 1700, filtreVers: 380, q: 0.8 });
+        this.souffle(c, t, { duree: 0.1, vol: 0.18, filtre: 3400, q: 1.4, retard: 0.05 });
+        break;
+      case "elan":
+        this.souffle(c, t, { duree: 0.26, vol: 0.42, filtre: 380, filtreVers: 4200, q: 1.3 });
+        this.ton(c, t, { de: 160, vers: 640, duree: 0.2, type: "sawtooth", vol: 0.08 });
+        break;
+      case "prete":
+        for (const [i, f] of [440, 660, 880].entries()) this.ton(c, t, { de: f, duree: 0.16, type: "triangle", vol: 0.14, retard: i * 0.055 });
+        break;
+      case "tourbillon":
+        this.souffle(c, t, { duree: 0.55, vol: 0.45, filtre: 420, filtreVers: 3000, q: 1.4 });
+        this.souffle(c, t, { duree: 0.5, vol: 0.32, filtre: 2800, filtreVers: 500, q: 1.2, retard: 0.45 });
+        this.ton(c, t, { de: 150, vers: 420, duree: 0.5, type: "sawtooth", vol: 0.1 });
+        break;
+      case "bond":
+        this.souffle(c, t, { duree: 0.34, vol: 0.38, filtre: 500, filtreVers: 2600, q: 1 });
+        this.ton(c, t, { de: 240, vers: 520, duree: 0.28, type: "sine", vol: 0.16 });
+        break;
+      case "atterri":
+        this.ton(c, t, { de: 120, vers: 34, duree: 0.5, type: "sine", vol: 0.9 });
+        this.souffle(c, t, { duree: 0.4, vol: 0.55, filtre: 1500, filtreVers: 140, q: 0.7 });
+        this.ton(c, t, { de: 420, vers: 110, duree: 0.18, type: "square", vol: 0.14 });
+        break;
+      case "bouclier":
+        this.souffle(c, t, { duree: 0.22, vol: 0.34, filtre: 1200, filtreVers: 3600, q: 1.5 });
+        this.ton(c, t, { de: 760, vers: 1180, duree: 0.18, type: "triangle", vol: 0.14 });
+        this.ton(c, t, { de: 1520, duree: 0.28, type: "sine", vol: 0.07, retard: 0.04 });
         break;
     }
   }

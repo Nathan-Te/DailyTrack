@@ -21,6 +21,8 @@ export interface PartieDuPilote {
   resultat: Resultat;
   changements: Changement[];
   choix: Choix[];
+  /** Lot BR5 : la compétence choisie au départ. */
+  competence: number;
   blocages: number;
 }
 export interface DiamantDuJour {
@@ -31,7 +33,7 @@ export interface DiamantDuJour {
 
 const partieDe = (contenu: Contenu, strategie: Strategie, humain: ProfilHumain | null = null): PartieDuPilote => {
   const j = jouerLePilote(contenu, undefined, Infinity, strategie, -2, humain);
-  return { strategie, score: VARIANTE.score(j.resultat)[0]!, resultat: j.resultat, changements: j.changements, choix: j.choix, blocages: j.blocages };
+  return { strategie, score: VARIANTE.score(j.resultat)[0]!, resultat: j.resultat, changements: j.changements, choix: j.choix, competence: j.competence, blocages: j.blocages };
 };
 const meilleure = (parties: Record<Strategie, PartieDuPilote>): Strategie => STRATEGIES.reduce((m, s) => (parties[s].score < parties[m].score ? s : m), STRATEGIES[0]!);
 
@@ -52,11 +54,11 @@ export const partieDuBot = (contenu: Contenu): Resultat => {
   const d = diamantDuJour(contenu);
   return d.parties[d.strategie].resultat;
 };
-/** Les entrées du Diamant : ses changements d'entrée ET ses choix de cartes (ce que le serveur compare, ce que le fantôme rejoue). */
-export const entreesDuBot = (contenu: Contenu): { changements: Changement[]; choix: Choix[] } => {
+/** Les entrées du Diamant : ses changements d'entrée, ses choix de cartes ET sa compétence (ce que le serveur compare, ce que le fantôme rejoue). */
+export const entreesDuBot = (contenu: Contenu): { changements: Changement[]; choix: Choix[]; competence: number } => {
   const d = diamantDuJour(contenu);
   const p = d.parties[d.strategie];
-  return { changements: p.changements, choix: p.choix };
+  return { changements: p.changements, choix: p.choix, competence: p.competence };
 };
 
 /** Les seuils CALCULÉS d'un contenu : le Diamant est la partie du pilote, les autres s'en déduisent. */

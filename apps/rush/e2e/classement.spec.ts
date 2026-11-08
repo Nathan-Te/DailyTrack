@@ -36,7 +36,7 @@ test("une partie scriptée est classée par le serveur, sa copie est refusée, e
   const pseudo = `Eve${Date.now() % 100000}`;
   const a = await appareil(browser);
   await lancer(a.page);
-  const attendu = await jouerLeJour(a.page);
+  const attendu = await jouerLeJour(a.page, 5, "foncer"); // lot BR5 : « foncer » (aucun écran de carte) : plus court, la CI est lente
   await choisirPseudo(a.page, pseudo);
   await expect(a.page.locator("#jeu-fin-rang")).toContainText("e sur 3", { timeout: 20_000 }); // classée parmi Carla, Denis et elle
   expect(await a.page.evaluate(() => window.__jeu.envoi().statut)).toBe("ranked");
@@ -45,7 +45,7 @@ test("une partie scriptée est classée par le serveur, sa copie est refusée, e
   // La même partie, d'un autre appareil : le serveur reconnaît la copie et la refuse.
   const b = await appareil(browser);
   await lancer(b.page);
-  await jouerLeJour(b.page);
+  await jouerLeJour(b.page, 5, "foncer");
   await choisirPseudo(b.page, `Bob${Date.now() % 100000}`);
   await expect.poll(() => b.page.evaluate(() => window.__jeu.envoi().statut), { timeout: 20_000 }).toBe("refused");
   await expect(b.page.locator("#jeu-fin-rang")).toContainText("refusée");

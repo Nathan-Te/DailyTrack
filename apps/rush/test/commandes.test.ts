@@ -21,11 +21,11 @@ describe("les directions", () => {
 });
 
 describe("les actions du jeu", () => {
-  it("six actions, chacune avec des touches d'origine ; le coup et l'esquive ont un bouton de manette qui laisse X, Y et Start au kit", () => {
-    expect(ACTIONS_RUSH.map((a) => a.id)).toEqual(["haut", "bas", "gauche", "droite", "coup", "esquive"]);
+  it("sept actions, chacune avec des touches d'origine ; le coup, l'esquive et la compétence (lot BR5 : RB) ont un bouton de manette qui laisse X, Y et Start au kit", () => {
+    expect(ACTIONS_RUSH.map((a) => a.id)).toEqual(["haut", "bas", "gauche", "droite", "coup", "esquive", "competence"]);
     for (const a of ACTIONS_RUSH) expect(a.clavier.length).toBeGreaterThanOrEqual(1);
     const boutons = ACTIONS_RUSH.map((a) => a.manette).filter(Boolean);
-    expect(boutons).toEqual(["b0", "b1"]);
+    expect(boutons).toEqual(["b0", "b1", "b5"]);
     expect(boutons).not.toContain("b2"); // « Recommencer » du kit
     expect(boutons).not.toContain("b3"); // « Fantôme » du kit
   });
@@ -50,7 +50,7 @@ describe("l'adresse d'essai", () => {
     expect(lireEssai("?debug", false).essai).toBe(false);
     expect(lireEssai("?scenario=boss&phase=2", false)).toMatchObject({ scenario: "boss", phase2: true, essai: true });
     expect(lireEssai("?scenario=arene&monstres=30", false)).toMatchObject({ scenario: "arene", monstres: 30 });
-    expect(lireEssai("?scenario=arene&monstres=999", false).monstres).toBe(40);
+    expect(lireEssai("?scenario=arene&monstres=999", false).monstres).toBe(80);
     expect(lireEssai("?scenario=inconnu", false).scenario).toBeNull();
     expect(lireEssai("?debug&tune", false)).toMatchObject({ tune: true, essai: true });
     expect(lireEssai("?tune", false).tune).toBe(false); // il faut `?debug`

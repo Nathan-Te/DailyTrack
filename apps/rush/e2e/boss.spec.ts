@@ -123,7 +123,7 @@ test.describe("Rush : les cinq boss", () => {
     await page.evaluate(() => {
       window.__rush.aller(...(window.__rush.avantLArene(6) as [number, number]));
       window.__rush.forcer(window.__rush.versLArene(), 600);
-      window.__jeu.avancer(120);
+      window.__jeu.avancer(240); // lot BR5 : une meute peut garder l'entrée (la course est coupée, on marche) : on lui laisse le temps
     });
     await expect(page.locator(".rush-boss")).toBeVisible();
     await expect(page.locator(".rush-boss__nom")).toHaveText(NOMS[BOSS_IDS[kind]!]!);

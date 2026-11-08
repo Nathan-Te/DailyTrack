@@ -8,16 +8,20 @@ import {
   REGLAGES_DEFAUT,
   contenuScenario,
   cm,
-  dailyRush,
+  dailyRush as dailyRushReel,
   distance,
   entree,
   idiv,
   reglagesDe,
   type Monstre,
   type Reglages,
+  type Contenu,
 } from "../src/index";
 
-// La course hors combat (lot BR1b) : ×1,6 la marche après ~1,2 s sans frapper, sans être touché et sans ennemi alerté à moins de 10 m ; coupée au premier coup, à la première alerte, au premier dégât ; jamais dans l'arène.
+// Lot BR5 : le jour demande de choisir une compétence au départ ; ces essais jouent la première (le tourbillon) sans écran de choix.
+const dailyRush = (jour: number, version?: number): Contenu => ({ ...dailyRushReel(jour, version), competence: 0 });
+
+// La course hors combat (lot BR1b ; lot BR5 : elle part après 0,7 s et monte en 0,2 s) : ×1,6 la marche après ~0,7 s sans frapper, sans être touché et sans ennemi alerté à moins de 10 m ; coupée au premier coup, à la première alerte, au premier dégât ; jamais dans l'arène.
 const J0 = PREMIER_JOUR_RUSH;
 const VIT = idiv(cm(REGLAGES_DEFAUT.vitesse), 60);
 
@@ -42,9 +46,9 @@ const MARCHE = entree(8);
 const monstre = (x: number, y: number, o: Partial<Monstre> = {}): Monstre => ({ id: 900, type: GELEE, x, y, kx: 0, ky: 0, hp: 30, flash: 0, etat: 0, t: 0, age: 0, a: 0, sens: 1, cx: 0, cy: 0, gel: 0, duree: 999, coup: 0, hx: x, hy: y, alerte: 0, laisse: 0, ra: 0, sbire: 0, ...o });
 
 describe("la course hors combat (lot BR1b)", () => {
-  it("les réglages par défaut : 1,2 s de calme, 0,4 s de montée, ×1,6, rayon de 10 m ; les curseurs de ?debug&tune ont des bornes", () => {
-    expect(REGLAGES_DEFAUT.courseDelai).toBe(72);
-    expect(REGLAGES_DEFAUT.courseMontee).toBe(24);
+  it("les réglages par défaut (lot BR5) : 0,7 s de calme, 0,2 s de montée, ×1,6, rayon de 10 m ; les curseurs de ?debug&tune ont des bornes", () => {
+    expect(REGLAGES_DEFAUT.courseDelai).toBe(42);
+    expect(REGLAGES_DEFAUT.courseMontee).toBe(12);
     expect(REGLAGES_DEFAUT.courseFacteur).toBe(160);
     expect(REGLAGES_DEFAUT.courseRayon).toBe(1000);
     for (const k of ["courseDelai", "courseMontee", "courseFacteur", "courseRayon"] as const) {
@@ -52,20 +56,22 @@ describe("la course hors combat (lot BR1b)", () => {
       expect(BORNES[k][1]).toBeGreaterThan(REGLAGES_DEFAUT[k]);
     }
     expect(reglagesDe({ courseFacteur: 9999 }).courseFacteur).toBe(BORNES.courseFacteur[1]);
-    expect(reglagesDe({}).courseDelai).toBe(72);
+    expect(reglagesDe({}).courseDelai).toBe(42);
   });
 
-  it("la marche pendant 1,2 s, puis la vitesse monte en 0,4 s jusqu'à ×1,6 et y reste", () => {
+  it("la marche pendant 0,7 s, puis la vitesse monte en 0,2 s jusqu'à ×1,6 et y reste", () => {
     const { pas } = sur();
     const pasN: number[] = [];
+    const D = REGLAGES_DEFAUT.courseDelai;
+    const M = REGLAGES_DEFAUT.courseMontee;
     for (let t = 1; t <= 140; t++) pasN.push(pas(MARCHE));
-    for (let t = 0; t < 72; t++) expect(pasN[t]).toBeLessThanOrEqual(VIT + 1); // la marche (468 cm/s)
-    for (let t = 72; t < 95; t++) {
+    for (let t = 0; t < D; t++) expect(pasN[t]).toBeLessThanOrEqual(VIT + 1); // la marche (468 cm/s)
+    for (let t = D; t < D + M - 1; t++) {
       expect(pasN[t]).toBeGreaterThan(pasN[t - 1]! - 1); // elle monte
       expect(pasN[t]).toBeGreaterThan(VIT + 1);
       expect(pasN[t]).toBeLessThan(Math.trunc(VIT * 1.6));
     }
-    for (let t = 95; t < 140; t++) {
+    for (let t = D + M; t < 140; t++) {
       expect(pasN[t]).toBeGreaterThanOrEqual(Math.trunc(VIT * 1.6) - 2);
       expect(pasN[t]).toBeLessThanOrEqual(Math.trunc(VIT * 1.6) + 2);
     }
@@ -83,7 +89,7 @@ describe("la course hors combat (lot BR1b)", () => {
     expect(p.course).toBe(100);
   });
 
-  it("un coup donné la coupe aussitôt, et il faut de nouveau 1,2 s de calme (après le coup)", () => {
+  it("un coup donné la coupe aussitôt, et il faut de nouveau 0,7 s de calme (après le coup)", () => {
     const { p, pas } = sur();
     for (let t = 0; t < 130; t++) pas(MARCHE);
     expect(p.c.elan).toBe(REGLAGES_DEFAUT.courseMontee);
@@ -95,14 +101,14 @@ describe("la course hors combat (lot BR1b)", () => {
       pas(entree(8, false));
       expect(p.c.elan).toBe(0);
     }
-    // le coup fini, la marche, puis 72 ticks plus tard la course repart
+    // le coup fini, la marche, puis `courseDelai` ticks plus tard la course repart
     let premier = -1;
     for (let t = 0; t < 400 && premier < 0; t++) {
       pas(MARCHE);
       if (p.c.elan > 0) premier = t;
     }
-    expect(premier).toBeGreaterThanOrEqual(70);
-    expect(premier).toBeLessThanOrEqual(80);
+    expect(premier).toBeGreaterThanOrEqual(REGLAGES_DEFAUT.courseDelai - 2);
+    expect(premier).toBeLessThanOrEqual(REGLAGES_DEFAUT.courseDelai + 8);
   });
 
   it("un dégât la coupe aussitôt", () => {
@@ -118,7 +124,7 @@ describe("la course hors combat (lot BR1b)", () => {
     expect(p.c.calme).toBe(0);
   });
 
-  it("un ennemi qui s'alerte la coupe aussitôt (événement « alerte »)", () => {
+  it("un ennemi qui s'alerte empêche d'en commencer une (calme remis à zéro) mais ne coupe PAS la course lancée : c'est ce qui rend le coup d'élan utile (lot BR5 ; au BR1b il la coupait aussitôt)", () => {
     const p = new Partie(dailyRush(J0), REGLAGES_DEFAUT, true);
     const g = p.monstres.find((m) => m.type === GELEE)!;
     // il fait calme et le chevalier court : on l'amène à la lisière du rayon d'alerte de la gelée
@@ -130,8 +136,8 @@ describe("la course hors combat (lot BR1b)", () => {
     p.avancer(MARCHE);
     expect(g.alerte).toBe(1);
     expect(p.evenements.some((e) => e.k === "alerte")).toBe(true);
-    expect(p.c.elan).toBe(0);
-    expect(p.c.calme).toBe(0);
+    expect(p.c.elan).toBe(REGLAGES_DEFAUT.courseMontee); // elle continue
+    expect(p.c.calme).toBe(0); // mais il faudra de nouveau du calme pour en recommencer une
   });
 
   it("un ennemi déjà alerté à moins de 10 m l'interdit ; à plus de 10 m non ; le rayon est un réglage", () => {

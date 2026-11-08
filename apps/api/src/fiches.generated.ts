@@ -449,7 +449,7 @@ export const FICHES_SERVEUR = [
     },
     "rejeu": {
       "unitesServeur": 1,
-      "ticksParUnite": 2500,
+      "ticksParUnite": 1250,
       "maxTicks": 36000
     },
     "tables": [],

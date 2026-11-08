@@ -3,6 +3,14 @@ import { formatDay } from "@cdj/core";
 import {
   B_BELIER,
   B_CHENE,
+  BOND_ANNONCE,
+  BOND_VOL,
+  COMPETENCE,
+  GELATON,
+  competenceDuPilote,
+  etatPilote,
+  type Strategie,
+  indiceCompetence,
   B_DUC,
   B_REINE,
   CHAUVE,
@@ -83,8 +91,10 @@ import { FICHE } from "./fiche";
 import "./rush.css"; // le HUD, les boutons et la carte ne servent qu'en partie : leur feuille est chargée avec la scène (jamais dans le premier chargement)
 import { Controles } from "./controles";
 import { Annonces, Anneaux, ArcCoup, Bandes, Cratere, Eclats, Gemmes, LignesCourse, Nuages, OndesEpee, Ombres, Racines, Reticule, Traits } from "./effets";
-import { carteVue } from "./cartes";
-import { monterObstacles } from "./obstaclesVue";
+import { carteVue, competenceVue } from "./cartes";
+import { monterVases, ECLATS_VASE } from "./vasesVue";
+import { attitudeGelaton, Gelatons } from "./gelatons";
+import { BouclierVu, CerclesJoueur, LameTourbillon, OndesChoc, TraineeElan } from "./competencesVue";
 import { carteDesJours } from "./carte";
 import { completerEcranDeFin, partieDeFin, type ResumeFin } from "./fin";
 import { tableauDesMedailles } from "./medaillesVue";
@@ -109,17 +119,18 @@ const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? 
 export async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   const { ameliorations } = essai;
+  const comp = essai.competence === null ? undefined : (indiceCompetence(essai.competence) >= 0 ? indiceCompetence(essai.competence) : undefined); // lot BR5 : `&competence=`
   // Lot BR2 : `?scenario=cartes` (le choix s'ouvre tout de suite, `&nv=` : à quel niveau) ; `&ameliorations=` : des améliorations données au départ de n'importe quel scénario.
-  if (essai.scenario === "cartes") return contenuScenario("cartes", { jour: essai.jour ?? jour, nv: essai.nv, ameliorations });
+  if (essai.scenario === "cartes") return contenuScenario("cartes", { jour: essai.jour ?? jour, nv: essai.nv, ameliorations, competence: comp });
   // Lot BR3 : `?scenario=boss&boss=reine` joue l'un des cinq boss (un identifiant inconnu : le golem) ; `?scenario=bestiaire` les montre côte à côte.
-  if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour, ameliorations, boss: essai.boss === null ? undefined : indiceBoss(essai.boss) });
+  if (essai.scenario !== null && essai.scenario !== "jour") return contenuScenario(essai.scenario, { phase2: essai.phase2, monstres: essai.monstres, jour, ameliorations, boss: essai.boss === null ? undefined : indiceBoss(essai.boss), competence: comp });
   // Lot BR1 : `?scenario=jour&jour=AAAA-MM-JJ` (ou `?scenario=carte`) joue un autre jour que celui d'aujourd'hui : un essai, jamais classé, jamais en production.
-  if (essai.jour !== null) return { ...dailyRush(essai.jour, RUSH_GENERATOR_VERSION), ameliorations: ameliorationsDe(ameliorations) };
+  if (essai.jour !== null) return { ...dailyRush(essai.jour, RUSH_GENERATOR_VERSION), ameliorations: ameliorationsDe(ameliorations), ...(comp !== undefined ? { competence: comp } : {}) };
   if (essai.carte !== null || essai.medailles !== null) return dailyRush(jour, RUSH_GENERATOR_VERSION);
   // Lot BR4 : `?scenario=fin` joue le niveau du jour (ou `&jour=`), pour que l'écran de fin ait les médailles d'un vrai jour.
   if (essai.fin !== null) return dailyRush(essai.jour ?? jour, RUSH_GENERATOR_VERSION);
   const date = formatDay(jour);
-  const nouveau = (c: Contenu): Contenu => (ameliorations.length > 0 ? { ...c, ameliorations: ameliorationsDe(ameliorations) } : c);
+  const nouveau = (c: Contenu): Contenu => (ameliorations.length > 0 || comp !== undefined ? { ...c, ...(ameliorations.length > 0 ? { ameliorations: ameliorationsDe(ameliorations) } : {}), ...(comp !== undefined ? { competence: comp } : {}) } : c);
   if (dateDemandable(date, import.meta.env.VITE_PRODUCTION === "1", JOURS_FIGES)) {
     try {
       const lu = lireJourFige(await lireFichierDeJour("jours", date, base, 4000));
@@ -135,7 +146,7 @@ export async function contenuDuJour(jour: number, base: string): Promise<Contenu
 export const seuilsDeRush = (c: Contenu): Seuils => seuilsDuJour(c);
 export const rediffusionDiamantRush = (c: Contenu): string => {
   const bot = entreesDuBot(c);
-  return enregistrer(c, bot.changements, bot.choix);
+  return enregistrer(c, bot.changements, bot.choix, bot.competence);
 };
 
 const mod = (x: number, n: number): number => ((x % n) + n) % n;
@@ -159,7 +170,8 @@ const pousser = (s: Suivi, x: number, y: number): void => {
 };
 
 interface ActeurBete {
-  vue: BeteVue;
+  /** `null` pour un gélaton : il n'a pas de maillage propre (un tas instancié : `Gelatons`). */
+  vue: BeteVue | null;
   suivi: Suivi;
   eclair: number;
   yaw: number;
@@ -219,6 +231,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   // Lot BR2 : les choix d'amélioration faits (une partie sauvée les emporte : c'est un événement d'entrée de la rediffusion), et la carte en surbrillance.
   let choixFaits: Choix[] = [];
   let selectionChoix = 0;
+  // Lot BR5 : la compétence choisie au départ (−1 tant que l'écran de choix est ouvert) : un événement d'entrée de la rediffusion.
+  let competenceChoisie = partie.c.comp;
 
   // --- La scène ---
   const renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -276,8 +290,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   scene.background = decor.ciel;
   scene.add(decor.groupe);
   if (salle) scene.add(salle.groupe);
-  const obstaclesVue = niveau ? monterObstacles(niveau, palette) : null; // lot BR1b : les ronces et les caisses du chemin
-  if (obstaclesVue) scene.add(obstaclesVue.groupe);
+  const vasesVue = monterVases(); // lot BR5 : les groupes de vases (jarres, tonneaux, petites caisses)
+  scene.add(vasesVue.groupe);
+  const gelatons = new Gelatons(); // lot BR5 : les gélatons, un seul tas instancié
+  scene.add(gelatons.corps, gelatons.coque);
   const centreArene = niveau ? { x: metres(niveau.arene.x), z: metres(niveau.arene.y) } : { x: 0, z: 0 };
 
   const ombres = new Ombres(); // les ombres en disques : la basse qualité (en haute, de vraies ombres portées)
@@ -307,6 +323,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   scene.add(gemmesVue.groupe);
   const ondesEpeeVue = new OndesEpee(); // lot BR2 : l'onde de l'épée
   scene.add(ondesEpeeVue.groupe);
+  // Lot BR5 : les compétences (la lame du tourbillon, le cercle d'atterrissage du bond — cyan, jamais rouge —, son onde de choc, le bouclier lancé) et la traînée du coup d'élan.
+  const lame = new LameTourbillon();
+  const cerclesJoueur = new CerclesJoueur();
+  const ondesChoc = new OndesChoc();
+  const bouclierVu = new BouclierVu();
+  const trainee = new TraineeElan();
+  scene.add(lame.groupe, cerclesJoueur.groupe, ondesChoc.groupe, bouclierVu.groupe, trainee.maillage);
   const reticule = new Reticule();
   scene.add(reticule.maillage);
 
@@ -399,6 +422,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
 
   const trouverBete = (m: Monstre): ActeurBete => {
     let a = bêtes.get(m.id);
+    if (!a && m.type === GELATON) {
+      a = { vue: null, suivi: suivi(m.x, m.y), eclair: 0, yaw: 0, ecrase: 1, force: 0 };
+      bêtes.set(m.id, a);
+    }
     if (!a) {
       const vue = reserve[m.type]!.pop() ?? (m.type === GELEE ? creerGelee() : creerChauve());
       vue.racine.userData.type = m.type;
@@ -412,6 +439,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   };
 
   const rendre = (a: ActeurBete): void => {
+    if (!a.vue) return;
     a.vue.racine.visible = false;
     a.vue.racine.removeFromParent();
     reserve[a.vue.racine.userData.type as number]?.push(a.vue);
@@ -492,8 +520,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         break;
       }
       case "mort": {
-        const g = e.a === GELEE ? "gelee" : "chauve";
-        eclats.gerbe(g, x, 0.6, z, 22, { vitesse: 6, taille: 0.16, haut: 5 });
+        const g = e.a === GELEE ? "gelee" : e.a === GELATON ? "gelaton" : "chauve";
+        eclats.gerbe(g, x, 0.6, z, e.a === GELATON ? 12 : 22, { vitesse: 6, taille: e.a === GELATON ? 0.12 : 0.16, haut: 5 });
         eclats.gerbe("etincelle", x, 0.7, z, 8, { vitesse: 7, taille: 0.09, haut: 4 });
         son("mort", 0.9 + Math.random() * 0.3);
         break;
@@ -598,7 +626,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         ralentir(0.4, 900);
         break;
       case "apparition":
-        eclats.gerbe(e.a === GELEE ? "gelee" : "chauve", x, 0.4, z, 7, { vitesse: 3, taille: 0.12, haut: 2.5, duree: 0.45 });
+        eclats.gerbe(e.a === GELEE ? "gelee" : e.a === GELATON ? "gelaton" : "chauve", x, 0.4, z, 7, { vitesse: 3, taille: 0.12, haut: 2.5, duree: 0.45 });
         break;
       case "bloque":
         son("bloque");
@@ -611,31 +639,32 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         // un monstre du niveau remarque le chevalier : un éclat jaune au-dessus de lui (le « ! »)
         eclats.gerbe("etincelle", x, e.a === CHAUVE ? 2.2 : 1.3, z, 5, { vitesse: 2.5, taille: 0.1, haut: 2.5, duree: 0.4 });
         break;
-      case "obstacle":
-        // un coup sur un obstacle : il tremble (la vue), des éclats, un son sourd
-        son("touche");
-        eclats.gerbe(e.b === 0 ? "gelee" : "pierre", x, 0.8, z, 6, { vitesse: 3.5, taille: 0.12, haut: 2.2, dx: ax, dz: az, eventail: 1.2 });
+      case "brise": {
+        // Lot BR5 — un VASE cède (a : le genre, b : ce qu'il contient). Le « retour » demandé : des éclats de terre cuite ou de bois qui volent, un son de céramique ou de bois, les voisins qui sursautent, ce qu'il contient qui jaillit.
+        // (Pas de secousse d'écran ni d'arrêt sur image : ils restent réservés au 3ᵉ coup et aux attaques du boss.)
+        const jarre = e.a === 0;
+        son(jarre ? "jarre" : "bois", 0.85 + Math.random() * 0.3);
+        eclats.gerbe(ECLATS_VASE[e.a] ?? "bois", x, 0.55, z, jarre ? 22 : 16, { vitesse: 6.5, taille: jarre ? 0.12 : 0.16, haut: 5.2, duree: 0.95, gravite: 16 });
+        eclats.gerbe(jarre ? "jarre" : "planche", x, 0.4, z, 9, { vitesse: 4, taille: jarre ? 0.2 : 0.22, haut: 3, duree: 0.8, dx: ax, dz: az, eventail: 1.4, gravite: 14 });
+        eclats.gerbe("poussiere", x, 0.25, z, 8, { vitesse: 2.6, taille: 0.2, haut: 1.2, duree: 0.6, gravite: 3 });
+        vasesVue.secouer(x, z, temps);
         break;
-      case "brise":
-        // il cède : un nuage et des morceaux
-        son("pierre");
-        eclats.gerbe("poussiere", x, 0.4, z, 18, { vitesse: 4, taille: 0.2, haut: 2.5, duree: 0.7, gravite: 4 });
-        eclats.gerbe(e.a === 0 ? "gelee" : "pierre", x, 0.8, z, 16, { vitesse: 5, taille: 0.16, haut: 4 });
-        break;
+      }
       case "gemme":
-        // une gemme jaillit de ce qui vient de céder
-        eclats.gerbe("etincelle", x, 0.6, z, 5, { vitesse: 2.6, taille: 0.07, haut: 3.2, duree: 0.35 });
+        // ce que le vase ou le monstre laissait jaillit : une gemme (étincelles dorées), une recharge (violet) ou un cœur (rose)
+        eclats.gerbe(e.b === 1 ? "recharge" : "etincelle", x, 0.6, z, 5, { vitesse: 2.6, taille: 0.07, haut: 3.2, duree: 0.35 });
         break;
       case "ramasse": {
-        // un tintement qui monte quand on en ramasse plusieurs de suite
+        // un tintement qui monte quand on en ramasse plusieurs de suite ; la recharge et le cœur ont le leur
         const maintenant = performance.now();
         chaineGemmes = maintenant - dernierRamasse < 320 ? Math.min(8, chaineGemmes + 1) : 0;
         dernierRamasse = maintenant;
-        if (maintenant - dernierSonRamasse > 45) {
+        if (e.b === 2) son("soin");
+        else if (maintenant - dernierSonRamasse > 45) {
           dernierSonRamasse = maintenant;
-          son("ramasse", 1 + chaineGemmes * 0.07);
+          son("ramasse", (e.b === 1 ? 1.4 : 1) + chaineGemmes * 0.07);
         }
-        eclats.gerbe("etincelle", metres(partie.c.x), 1, metres(partie.c.y), 3, { vitesse: 2, taille: 0.06, haut: 2.4, duree: 0.3 });
+        eclats.gerbe(e.b === 1 ? "recharge" : "etincelle", metres(partie.c.x), 1, metres(partie.c.y), 3, { vitesse: 2, taille: 0.06, haut: 2.4, duree: 0.3 });
         break;
       }
       case "niveau":
@@ -652,7 +681,58 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       case "ondeEpee":
         son("ondeEpee");
         break;
-      case "tourbillon":
+      case "competence": {
+        // Lot BR5 : la compétence part : son souffle, une gerbe d'étincelles autour du chevalier.
+        son(e.a === 0 ? "tourbillon" : e.a === 1 ? "bond" : "bouclier");
+        o.vibrer([25, 20, 25]);
+        eclats.gerbe("lame", x, 0.9, z, e.a === 0 ? 18 : 12, { vitesse: 5.5, taille: 0.1, haut: 2.4, duree: 0.5 });
+        break;
+      }
+      case "pulsation": {
+        // une passe du tourbillon : une couronne d'étincelles dorées au bord de la zone, qui partent vers l'extérieur
+        const R = metres(e.b) * 0.9;
+        for (let k = 0; k < 16; k++) {
+          const a = (k / 16) * Math.PI * 2 + e.a * 0.4;
+          eclats.gerbe("lame", x + Math.cos(a) * R, 0.6, z + Math.sin(a) * R, 1, { vitesse: 4, taille: 0.11, dx: Math.cos(a), dz: Math.sin(a), eventail: 0.5, haut: 1.6, duree: 0.4 });
+        }
+        eclats.gerbe("poussiere", x, 0.2, z, 6, { vitesse: 5, taille: 0.14, haut: 0.8, duree: 0.4, gravite: 3 });
+        break;
+      }
+      case "atterrissage": {
+        // le bond écrase le sol : l'onde de choc (cyan), la poussière en couronne, des éclats de pierre. (Ni secousse ni arrêt sur image : réservés au 3ᵉ coup et aux attaques du boss.)
+        son("atterri");
+        ondesChoc.lancer(x, z, metres(e.b));
+        eclats.gerbe("poussiere", x, 0.25, z, 36, { vitesse: 8, taille: 0.26, haut: 2.6, duree: 0.8, gravite: 5 });
+        eclats.gerbe("pierre", x, 0.3, z, 14, { vitesse: 6.5, taille: 0.16, haut: 6, duree: 0.8 });
+        eclats.gerbe("lame", x, 0.6, z, 14, { vitesse: 7, taille: 0.1, haut: 3, duree: 0.5 });
+        cratere.poser(x, z, 1.6, 3);
+        pousserCamera(0, 0.12, 1);
+        break;
+      }
+      case "bouclier":
+        son("bouclier");
+        break;
+      case "bouclierTouche":
+        son("touche", 1.2 + Math.random() * 0.15);
+        eclats.gerbe("etincelle", x, 0.9, z, 8, { vitesse: 5.5, taille: 0.09, haut: 2.5 });
+        break;
+      case "bouclierRetour":
+        eclats.gerbe("etincelle", x, 0.95, z, 6, { vitesse: 3, taille: 0.08, haut: 1.5, duree: 0.35 });
+        break;
+      case "elan": {
+        // le coup d'élan : la fente part (son, poussière, la traînée)
+        son("elan");
+        trainee.lancer(metres(partie.c.x), metres(partie.c.y), (e.a * Math.PI * 2) / 128);
+        const arriere = (e.a * Math.PI * 2) / 128 + Math.PI;
+        eclats.gerbe("poussiere", x + Math.cos(arriere) * 0.3, 0.12, z + Math.sin(arriere) * 0.3, 8, { vitesse: 3, taille: 0.14, haut: 0.9, duree: 0.4, gravite: 3 });
+        break;
+      }
+      case "prete":
+        // la compétence est rechargée : un tintement et des étincelles violettes (le bouton pulse)
+        son("prete");
+        eclats.gerbe("recharge", x, 1.1, z, 14, { vitesse: 3.5, taille: 0.1, haut: 3.5, duree: 0.5 });
+        break;
+      case "moulinet":
         // le 3ᵉ coup frappe tout autour : un nuage d'étincelles en couronne
         eclats.gerbe("etincelle", x, 0.8, z, 22, { vitesse: 7, taille: 0.1, haut: 1.2, duree: 0.45 });
         break;
@@ -689,10 +769,23 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     const ch = partie.choix;
     if (!ch) return;
     selectionChoix = 0;
-    ui.ouvrirChoix(ch.nv, ch.cartes.map((i) => carteVue(i, partie.paliers[i]!, etat.reglages, t, partie.golem?.kind ?? -1)), (i) => valider(i));
+    ui.ouvrirChoix(t("choix.titre", { n: ch.nv }), t("choix.aria", { n: ch.nv }), ch.cartes.map((i) => carteVue(i, partie.paliers[i]!, etat.reglages, t, partie.golem?.kind ?? -1, partie.c.comp)), (i) => valider(i));
+  };
+  // Lot BR5 : le choix de la compétence au départ — le même écran, avant que le chrono parte (le monde est figé) ; un événement d'entrée de la rediffusion.
+  const ouvrirDepartVue = (): void => {
+    if (!partie.attenteDepart) return;
+    selectionChoix = 0;
+    ui.ouvrirChoix(t("depart.titre"), t("depart.aria"), [0, 1, 2].map((i) => competenceVue(i, etat.reglages, t)), (i) => valider(i));
+  };
+  const validerDepart = (i: number): void => {
+    if (!partie.attenteDepart || !ui.choixOuvert() || !partie.choisirCompetence(i)) return;
+    competenceChoisie = i;
+    controles.effacerAppuis();
+    ui.fermerChoix();
   };
   /** Le joueur choisit la carte `i` : un événement d'entrée (noté pour la rediffusion), la simulation repart — ou ouvre aussitôt le choix du niveau suivant. */
   const valider = (i: number): void => {
+    if (partie.attenteDepart) return validerDepart(i);
     const ch = partie.choix;
     if (!ch || !ui.choixOuvert()) return;
     if (choixFaits.length >= MAX_CHOIX || !partie.choisir(ch.nv, i)) return;
@@ -704,7 +797,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     if (partie.choix) ouvrirChoixVue();
   };
   const deplacerSelection = (pas: number): void => {
-    const n = partie.choix?.cartes.length ?? 0;
+    const n = partie.attenteDepart ? 3 : (partie.choix?.cartes.length ?? 0);
     if (n === 0) return;
     selectionChoix = (selectionChoix + pas + n) % n;
     ui.selection(selectionChoix);
@@ -722,6 +815,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   };
   addEventListener("keydown", surTouchePendantChoix, true);
   if (partie.choix) ouvrirChoixVue(); // `?scenario=cartes` : le choix est ouvert dès le départ
+  ouvrirDepartVue(); // le jour : la compétence se choisit avant de partir
 
   // --- Un tick de simulation ---
   const pasDeSimulation = (): void => {
@@ -766,7 +860,9 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     choixFaits = [];
     derniere = 0;
     ui.fermerChoix();
+    competenceChoisie = partie.c.comp;
     if (partie.choix) ouvrirChoixVue();
+    ouvrirDepartVue();
     for (const a of bêtes.values()) rendre(a);
     bêtes.clear();
     pousser(sChev, partie.c.x, partie.c.y);
@@ -777,7 +873,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   };
 
   // --- Le tune ---
-  const tune = essai.tune ? monterTune(ui.racine, t, etat, (r) => { etat.reglages = r; redemarrer(); }, (s) => { etat.sensations = s; eclats.quantite = s.eclats / 100; }) : null;
+  const tune = essai.tune ? monterTune(ui.racine, t, etat, (r) => { etat.reglages = r; redemarrer(); }, (s) => { etat.sensations = s; eclats.quantite = s.eclats / 100; }, o.langue) : null;
 
   // --- Le fantôme ---
   const lireFantome = (r: string | null): void => {
@@ -832,12 +928,18 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       controles.boutonSouris = true;
       controles.action("coup"); // un clic plus bref qu'un arrêt sur image ne se perd pas
     }
+    if (e.pointerType === "mouse" && e.button === 2) {
+      controles.boutonSourisDroit = true; // lot BR5 : le clic droit lance la compétence
+      controles.action("competence");
+    }
   };
   const clicHaut = (e: PointerEvent): void => {
     if (e.pointerType === "mouse" && e.button === 0) controles.boutonSouris = false;
+    if (e.pointerType === "mouse" && e.button === 2) controles.boutonSourisDroit = false;
   };
   const clicPerdu = (): void => {
     controles.boutonSouris = false;
+    controles.boutonSourisDroit = false;
   };
   const pasDeMenu = (e: Event): void => e.preventDefault();
   ui.zone3d.addEventListener("pointermove", surPointeur);
@@ -925,7 +1027,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   let resumeFin: ResumeFin | null = null;
   const completerLaFin = (): void => {
     if (contenu.scenario !== "jour") return;
-    resumeFin ??= { boss: contenu.boss, paliers: partie.paliers, diamant: { ticks: seuilsDuJour(contenu).author, strategie: contenu.seuilsFiges ? undefined : diamantDuJour(contenu).strategie } };
+    resumeFin ??= { boss: contenu.boss, competence: competenceChoisie, paliers: partie.paliers, diamant: { ticks: seuilsDuJour(contenu).author, strategie: contenu.seuilsFiges ? undefined : diamantDuJour(contenu).strategie } };
     completerEcranDeFin(resumeFin, o);
   };
   const dessiner = (): void => {
@@ -1048,30 +1150,41 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       for (const q of salle.positions) ombres.poser(q.x, q.z, q.rayon, q.haut() * 0.6);
     }
 
-    // Les monstres.
+    // Les monstres. Lot BR5 : les gélatons n'ont pas de maillage propre (un tas instancié) ; les autres, oui.
     const vus = new Set<number>();
+    gelatons.debut();
     for (const m of partie.monstres) {
       const a = trouverBete(m);
       vus.add(m.id);
       const mx = metres(lerp(a.suivi.x0, a.suivi.x1, alpha));
       const mz = metres(lerp(a.suivi.y0, a.suivi.y1, alpha));
-      a.vue.racine.position.set(mx, 0, mz);
-      const vers = m.type === GELEE && (m.cx !== 0 || m.cy !== 0) ? Math.atan2(m.cx, m.cy) : Math.atan2(c.x - m.x, c.y - m.y);
+      const vers = m.type !== CHAUVE && (m.cx !== 0 || m.cy !== 0) ? Math.atan2(m.cx, m.cy) : Math.atan2(c.x - m.x, c.y - m.y);
       a.yaw = yawVers(a.yaw, vers, dt, 12);
-      a.vue.racine.rotation.y = a.yaw;
-      if (m.type === GELEE) animerGelee(a.vue, m, temps, partie.tick, partie.durees);
-      else animerChauve(a.vue, m, temps, partie.tick, partie.durees);
+      let q = 0;
       if (a.ecrase < 1) {
         // L'écrasement sous un coup : la cible s'aplatit puis rebondit (un ressort amorti), en un quart de seconde.
         a.ecrase = Math.min(1, a.ecrase + dtMonde * 4.2);
-        const q = Math.exp(-5.5 * a.ecrase) * Math.cos(a.ecrase * 10) * 0.42 * a.force;
-        a.vue.corps.scale.multiply(a.vue.corps.scale.clone().set(1 + q * 0.55, 1 - q, 1 + q * 0.55));
+        q = Math.exp(-5.5 * a.ecrase) * Math.cos(a.ecrase * 10) * 0.42 * a.force;
       }
       if (a.eclair > 0) a.eclair -= dt * 60;
+      if (!a.vue) {
+        gelatons.poser(mx, mz, a.yaw, attitudeGelaton(m, temps, partie.tick, partie.durees), a.eclair > 0 ? 0.9 : 0, q);
+        ombres.poser(mx, mz, 0.4);
+        continue;
+      }
+      a.vue.racine.position.set(mx, 0, mz);
+      a.vue.racine.rotation.y = a.yaw;
+      if (m.type === GELEE) animerGelee(a.vue, m, temps, partie.tick, partie.durees);
+      else animerChauve(a.vue, m, temps, partie.tick, partie.durees);
+      if (q !== 0) a.vue.corps.scale.multiply(a.vue.corps.scale.clone().set(1 + q * 0.55, 1 - q, 1 + q * 0.55));
       eclair(a.vue.matieres, a.eclair > 0 ? 0.9 : 0);
       const haut = m.type === CHAUVE ? 0.9 : 0;
       ombres.poser(mx, mz, m.type === GELEE ? 0.62 : 0.38, haut);
     }
+    gelatons.fin();
+    // Les vases (lot BR5) : posés d'après la simulation ; leur ombre en disque en basse qualité.
+    vasesVue.maj(partie.vases, temps);
+    if (qualite === "basse") for (const v of partie.vases) if (v.id >= 0) ombres.poser(metres(v.x), metres(v.y), metres(v.r) * 1.25);
     for (const [id, a] of bêtes) {
       if (vus.has(id)) continue;
       rendre(a);
@@ -1115,6 +1228,19 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     }
     ombres.fin();
 
+    // Les compétences (lot BR5) : la lame du tourbillon autour du chevalier, le cercle d'atterrissage du bond (cyan) dès l'accroupissement, l'onde de choc, les boucliers lancés, la traînée de la fente.
+    const comp = c.etat === COMPETENCE ? c.comp : -1;
+    const tc = c.t + alpha;
+    lame.maj(comp === 0 && !fige, cx, cz, metres(partie.rayonTourbillon()), tc, 1 - tc / partie.dureeTourbillon());
+    cerclesJoueur.debut();
+    if (comp === 1) cerclesJoueur.poser(metres(c.tx), metres(c.ty), metres(partie.rayonBond()), tc / (BOND_ANNONCE + BOND_VOL));
+    ondesChoc.maj(dtMonde);
+    for (const l of bouclierVu.maj(partie.boucliers, temps, metres)) if (!fige) eclats.gerbe("lame", l.x, 0.95, l.z, 1, { vitesse: 0.6, taille: 0.08, haut: 0.2, duree: 0.28, gravite: 0 });
+    trainee.maj(dt, cx, cz, c.fente > 0);
+    // La poussée du champ de la caméra : un peu plus large en pleine course, et pendant la fente (l'élan se sent) ; elle revient doucement.
+    const cibleChamp = (vitesseCourse > 0 ? vitesseCourse * 2.4 : 0) + (c.fente > 0 ? 2.2 : 0);
+    rig.poussee += (cibleChamp - rig.poussee) * (1 - Math.exp(-dt * (cibleChamp > rig.poussee ? 9 : 3.5)));
+
     cratere.maj(dt);
     racines.maj(fige ? 0 : dt);
     arc.maj(dtMonde, cx, cz);
@@ -1131,6 +1257,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     if (niveau) ui.niveau(partie.nv, partie.xp - partie.xpSeuil(partie.nv), partie.xpSeuil(partie.nv + 1) - partie.xpSeuil(partie.nv));
     else ui.niveau(null, 0, 1);
     gemmesVue.maj(partie.gemmes, partie.tick, temps, metres);
+    ui.recharge(1 - c.recharge / partie.rechargeMax(), partie.competencePrete);
     ondesEpeeVue.maj(partie.ondesEpee, metres);
     if (g && partie.golemEveille) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase, nomBoss);
     else ui.boss(null, 1);
@@ -1147,7 +1274,6 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       }
       ui.cible(m, angle);
     } else ui.cible(null);
-    obstaclesVue?.maj(partie.obstacles, temps);
     decor.maj?.({ x: cx, z: cz }, camera.position, partie.barriere >= 0 ? Math.min(1, (partie.tick - partie.barriere + alpha) / 24) : 0);
 
     renderer.info.reset();
@@ -1184,6 +1310,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       choixEnAttente: () => (partie.choix ? { nv: partie.choix.nv, cartes: partie.choix.cartes.map((i) => AMELIORATIONS[i]!.id) } : null),
       selection: () => selectionChoix,
       choisir: (i: number) => valider(i),
+      /** Lot BR5 : le choix de la compétence au départ — en attente ?, celle qui est choisie (−1 : aucune), et de quoi la choisir. */
+      attenteDepart: () => partie.attenteDepart,
+      competence: () => competenceChoisie,
+      choisirCompetence: (i?: number) => validerDepart(i ?? competenceDuPilote(partie.contenu.boss)),
       sons: () => sonsAvecKit.joues,
       calls: () => renderer.info.render.calls,
       /** Pose la caméra (position, point regardé) pour un gros plan ; `null` : la caméra du jeu. */
@@ -1255,7 +1385,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       camera: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z, fov: camera.fov }),
       piloter: () => pilote(partie),
       /** Joue `n` ticks au plus avec le pilote de la simulation (pas à pas, sans dessin) : de quoi finir une partie entière dans un test. */
-      jouerPilote: (n: number, attente = 0) => {
+      jouerPilote: (n: number, attente = 0, strategie: Strategie = "foncer") => {
+        const etatPil = etatPilote(strategie, -2, partie);
+        // lot BR5 : le pilote choisit sa compétence au départ (celle qu'il joue pour le boss du jour)
+        if (partie.attenteDepart) validerDepart(competenceDuPilote(partie.contenu.boss));
         // `attente` ticks immobile d'abord : une partie différente de celle du Diamant (qui serait refusée comme une copie)
         for (let i = 0; i < attente && !partie.finie; i++) {
           controles.forcee = { e: 0, reste: 1 };
@@ -1263,8 +1396,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         }
         for (let i = 0; i < n && !partie.finie; i++) {
           // lot BR2 : le pilote fait ses choix d'amélioration (ceux de « foncer »)
-          for (let garde = 0; partie.choix && ui.choixOuvert() && garde < 50; garde++) valider(choisirCarte(partie, "foncer"));
-          controles.forcee = { e: pilote(partie), reste: 1 };
+          for (let garde = 0; partie.choix && ui.choixOuvert() && garde < 50; garde++) valider(choisirCarte(partie, strategie));
+          controles.forcee = { e: pilote(partie, etatPil), reste: 1 };
           pasDeSimulation();
         }
       },
@@ -1274,7 +1407,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   return {
     avancer() {
       if (partie.finie || figee) return; // la vitrine est une scène figée : elle ne joue pas
-      if (partie.choix) return; // lot BR2 : un niveau gagné fige le monde (et le chrono, qui compte les ticks) jusqu'au choix
+      if (partie.choix || partie.attenteDepart) return; // lot BR2 : un niveau gagné fige le monde (et le chrono, qui compte les ticks) jusqu'au choix ; lot BR5 : le départ attend la compétence
       if (gel > 0) {
         gel--;
         return;
@@ -1307,7 +1440,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       return { principal, secondaire: formatTemps(Math.min(partie.tick, DUREE_TICKS), o.langue) };
     },
     resultat() {
-      return { score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, changements, choixFaits) };
+      return { score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, changements, choixFaits, competenceChoisie) };
     },
     fantome: lireFantome,
     detruire() {

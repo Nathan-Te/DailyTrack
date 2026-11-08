@@ -1,6 +1,6 @@
 import { CodecError, pushVarint, readVarint } from "@cdj/core";
 import { decoderEnveloppe, encoderEnveloppe, ErreurEnveloppe, type ContenuEnveloppe } from "@cdj/core/enveloppe";
-import { DUREE_TICKS, MASQUE_VISEE, MAX_CARACTERES, MAX_CHANGEMENTS, MAX_CHOIX, NB_CARTES, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION } from "./constantes";
+import { DUREE_TICKS, MAX_CARACTERES, MAX_CHANGEMENTS, MAX_CHOIX, NB_CARTES, NB_COMPETENCES, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION } from "./constantes";
 import type { Changement } from "./entrees";
 import { dailyRush, type Contenu } from "./generateur";
 import { Partie, type Resultat } from "./partie";
@@ -10,7 +10,8 @@ import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 // précédent (entier de longueur variable) puis l'entrée sur deux octets (lot BR0b : l'octet bas = direction, coup, esquive ; l'octet haut = la visée ; `entrees.ts`). Une partie est la suite de ses entrées : tout le reste
 // se rejoue. Une entrée qui ne change pas ne s'écrit pas.
 // **Lot BR2 : le CHOIX d'une amélioration est un événement d'entrée** (`Choix` : le niveau gagné et l'index de la carte choisie, 0 à 2). Dans la charge, c'est une entrée comme les autres (l'écart en ticks, puis deux octets) mais dont l'octet haut vaut
-// `64 + index` (une visée ne dépasse jamais 63) et l'octet bas le niveau. Le monde est figé pendant le choix : le tick d'un choix est celui du niveau gagné. **Le serveur le valide en rejouant** (`jouer`) : un choix n'est accepté qu'à un niveau
+// `128 + index` (une entrée ordinaire a l'octet haut sous 128 : la visée dans les bits 0 à 5, la compétence dans le bit 6 — lot BR5) et l'octet bas le niveau.
+// **Lot BR5 : le choix de la COMPÉTENCE au départ est un événement d'entrée** lui aussi : le premier de la charge (tick 0), octet bas 0 et octet haut `136 + index` (0 à 2). Le serveur le valide en rejouant : absent, refusé ou en trop, la rediffusion est refusée. Le monde est figé pendant le choix : le tick d'un choix est celui du niveau gagné. **Le serveur le valide en rejouant** (`jouer`) : un choix n'est accepté qu'à un niveau
 // gagné, au niveau qui vient d'être gagné, avec une carte qui existe ; il manque un choix, ou il en reste un de trop : la rediffusion est refusée.
 
 export const LIMITES = { maxCaracteres: MAX_CARACTERES, sims: [RUSH_SIM_VERSION], generateurs: [RUSH_GENERATOR_VERSION] } as const;
@@ -32,8 +33,9 @@ export interface Choix {
   nv: number;
   carte: number;
 }
-/** Le premier octet haut d'un choix (une visée est de 0 à 63). */
-const CHOIX_HAUT = 64;
+/** Le premier octet haut d'un événement (une entrée ordinaire a l'octet haut sous 128) : un choix de carte (`128 + index`) ou le choix de la compétence au départ (`DEPART_HAUT + index`). */
+const CHOIX_HAUT = 128;
+const DEPART_HAUT = 136;
 
 export interface Rediffusion {
   sim: number;
@@ -41,12 +43,18 @@ export interface Rediffusion {
   contenu: ContenuEnveloppe;
   changements: Changement[];
   choix: Choix[];
+  /** Lot BR5 : la compétence choisie au départ (0 à 2), ou −1 : la charge n'en porte pas. */
+  competence: number;
 }
 
 /** Les octets de la charge pour une suite de changements (ticks croissants) et les choix d'amélioration, fondus dans l'ordre des ticks (à tick égal, le choix d'abord : il a lieu entre deux ticks). */
-export function chargeDe(changements: readonly Changement[], choix: readonly Choix[] = []): number[] {
+export function chargeDe(changements: readonly Changement[], choix: readonly Choix[] = [], competence = -1): number[] {
   const o: number[] = [];
   let avant = 0;
+  if (competence >= 0) {
+    pushVarint(o, 0);
+    o.push(0, DEPART_HAUT + competence);
+  }
   let i = 0;
   let j = 0;
   while (i < changements.length || j < choix.length) {
@@ -65,9 +73,10 @@ export function chargeDe(changements: readonly Changement[], choix: readonly Cho
   return o;
 }
 
-export function lireCharge(charge: readonly number[]): { changements: Changement[]; choix: Choix[] } {
+export function lireCharge(charge: readonly number[]): { changements: Changement[]; choix: Choix[]; competence: number } {
   const changements: Changement[] = [];
   const choix: Choix[] = [];
+  let competence = -1;
   let i = 0;
   const suivant = (): number => {
     if (i >= charge.length) throw new CodecError("charge tronquée");
@@ -80,6 +89,12 @@ export function lireCharge(charge: readonly number[]): { changements: Changement
       const bas = suivant();
       const haut = suivant();
       if (tick >= DUREE_TICKS) throw new ErreurRediffusion("format_illisible", "changement après la fin de la partie");
+      if (haut >= DEPART_HAUT) {
+        // Lot BR5 : le choix de la compétence au départ — un seul, au tick 0, l'octet bas à 0.
+        if (haut >= DEPART_HAUT + NB_COMPETENCES || bas !== 0 || tick !== 0 || competence >= 0) throw new ErreurRediffusion("format_illisible", "choix de compétence illisible");
+        competence = haut - DEPART_HAUT;
+        continue;
+      }
       if (haut >= CHOIX_HAUT) {
         // Lot BR2 : un choix d'amélioration (le niveau gagné, la carte 0 à 2).
         if (haut >= CHOIX_HAUT + NB_CARTES || bas === 0) throw new ErreurRediffusion("format_illisible", "choix illisible");
@@ -87,7 +102,6 @@ export function lireCharge(charge: readonly number[]): { changements: Changement
         choix.push({ tick, nv: bas, carte: haut - CHOIX_HAUT });
         continue;
       }
-      if (haut > MASQUE_VISEE) throw new ErreurRediffusion("format_illisible", "visée illisible");
       if (changements.length >= MAX_CHANGEMENTS) throw new ErreurRediffusion("trop_longue", "trop de changements");
       changements.push({ tick, e: bas | (haut << 8) });
     }
@@ -95,11 +109,11 @@ export function lireCharge(charge: readonly number[]): { changements: Changement
     if (e instanceof CodecError) throw new ErreurRediffusion("format_illisible", e.message);
     throw e;
   }
-  return { changements, choix };
+  return { changements, choix, competence };
 }
 
-export function encoderRediffusion(r: Omit<Rediffusion, "choix"> & { choix?: readonly Choix[] }): string {
-  return encoderEnveloppe({ sim: r.sim, g: r.g, contenu: r.contenu, charge: chargeDe(r.changements, r.choix ?? []) });
+export function encoderRediffusion(r: Omit<Rediffusion, "choix" | "competence"> & { choix?: readonly Choix[]; competence?: number }): string {
+  return encoderEnveloppe({ sim: r.sim, g: r.g, contenu: r.contenu, charge: chargeDe(r.changements, r.choix ?? [], r.competence ?? -1) });
 }
 
 /** Le texte → la rediffusion, ou une `ErreurRediffusion` (jamais une exception brute). */
@@ -129,8 +143,10 @@ function verifierChoix(p: Partie, choix: readonly Choix[], consommes: number): v
 }
 
 /** Joue une partie entière : l'octet en vigueur à chaque tick est celui du dernier changement. La partie finit à la chute du golem, à la mort du chevalier ou à `DUREE_TICKS`. Lot BR2 : à chaque niveau gagné, le choix suivant de `choix` est appliqué ; un choix manquant, refusé ou en trop lève `choix_invalide`. */
-export function jouer(contenu: Contenu, changements: readonly Changement[], reglages: Reglages = REGLAGES_DEFAUT, choix: readonly Choix[] = []): Resultat {
+export function jouer(contenu: Contenu, changements: readonly Changement[], reglages: Reglages = REGLAGES_DEFAUT, choix: readonly Choix[] = [], competence = -1): Resultat {
   const p = new Partie(contenu, reglages);
+  // Lot BR5 : la compétence se choisit avant de partir ; absente ou refusée, la rediffusion est refusée.
+  if (p.attenteDepart && !p.choisirCompetence(competence)) throw new ErreurRediffusion("choix_invalide", "compétence absente ou refusée");
   let k = 0;
   let e = 0;
   let kc = 0;
@@ -148,8 +164,9 @@ export function jouer(contenu: Contenu, changements: readonly Changement[], regl
 }
 
 /** Joue `n` ticks au plus (une partie de scénario sans fin, un essai de mesure) et rend l'empreinte de l'état final avec le résultat. Un choix manquant arrête la partie à ce niveau gagné (aucune erreur : c'est un essai). */
-export function jouerJusqua(contenu: Contenu, changements: readonly Changement[], n: number, reglages: Reglages = REGLAGES_DEFAUT, choix: readonly Choix[] = []): { resultat: Resultat; empreinte: string; ticks: number } {
+export function jouerJusqua(contenu: Contenu, changements: readonly Changement[], n: number, reglages: Reglages = REGLAGES_DEFAUT, choix: readonly Choix[] = [], competence = 0): { resultat: Resultat; empreinte: string; ticks: number } {
   const p = new Partie(contenu, reglages);
+  if (p.attenteDepart) p.choisirCompetence(competence);
   let k = 0;
   let e = 0;
   let kc = 0;
@@ -168,12 +185,13 @@ export function jouerJusqua(contenu: Contenu, changements: readonly Changement[]
 export function rejouer(contenu: Contenu, rediffusion: string | Rediffusion): Resultat {
   const r = typeof rediffusion === "string" ? decoderRediffusion(rediffusion) : rediffusion;
   if (!("jour" in r.contenu) || contenu.scenario !== "jour" || r.contenu.jour !== contenu.jour || r.g !== contenu.g) throw new ErreurRediffusion("contenu_different", "cette rediffusion n'est pas celle de ce jour");
-  return jouer(contenu, r.changements, REGLAGES_DEFAUT, r.choix);
+  return jouer(contenu, r.changements, REGLAGES_DEFAUT, r.choix, r.competence);
 }
 
 /** Les choix d'un joueur qui prend toujours la même carte (`carte`, 0 à 2) à chaque niveau gagné, pour des entrées données (les essais du serveur, les références) : la partie est jouée jusqu'au bout pour les trouver. */
-export function choixParDefaut(contenu: Contenu, changements: readonly Changement[], carte = 0, reglages: Reglages = REGLAGES_DEFAUT): Choix[] {
+export function choixParDefaut(contenu: Contenu, changements: readonly Changement[], carte = 0, reglages: Reglages = REGLAGES_DEFAUT, competence = 0): Choix[] {
   const p = new Partie(contenu, reglages);
+  if (p.attenteDepart) p.choisirCompetence(competence);
   const choix: Choix[] = [];
   let k = 0;
   let e = 0;
@@ -208,6 +226,8 @@ export class Fantome {
     this.changements = r.changements;
     this.choix = r.choix;
     this.partie = new Partie(contenu, REGLAGES_DEFAUT, false);
+    // Lot BR5 : il fait SON choix de compétence tout de suite (le joueur voit l'écran de choix, pas le fantôme).
+    if (this.partie.attenteDepart && !this.partie.choisirCompetence(r.competence)) this.cassee = true;
   }
   get finie(): boolean {
     return this.cassee || this.partie.finie;
@@ -229,8 +249,8 @@ export class Fantome {
 }
 
 /** La rediffusion d'une partie du jour (le texte à envoyer). */
-export function enregistrer(contenu: Contenu, changements: readonly Changement[], choix: readonly Choix[] = []): string {
-  return encoderRediffusion({ sim: RUSH_SIM_VERSION, g: contenu.g, contenu: { jour: contenu.jour }, changements: [...changements], choix: [...choix] });
+export function enregistrer(contenu: Contenu, changements: readonly Changement[], choix: readonly Choix[] = [], competence = -1): string {
+  return encoderRediffusion({ sim: RUSH_SIM_VERSION, g: contenu.g, contenu: { jour: contenu.jour }, changements: [...changements], choix: [...choix], competence });
 }
 
 export { dailyRush };

@@ -4,6 +4,7 @@ import { DUREE_TICKS, SCENARIOS, TICKS_PAR_SECONDE, type Scenario } from "@cdj/r
 // Les options d'ESSAI de Rush, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9) :
 //   · `?scenario=arene|boss` : l'arène sans fin (des vagues de gelées et de chauves-souris) ou le boss tout de suite (le golem ; lot BR3 : `&boss=golem|reine|grand-duc|belier|chene` choisit lequel des cinq) ; `&phase=2` : le boss à 50 % de vie ; `&monstres=30` : l'arène garde 30 monstres en vie ;
 //   · `?scenario=bestiaire` (lot BR3) : les CINQ boss côte à côte, figés, sur le sol du thème (`&theme=prairie|carriere|sousbois`), leur nom dessous, la caméra fixe à la même échelle : de quoi juger silhouettes et contrastes ; `?scenario=carte&jours=14` écrit aussi le boss de chaque jour ;
+//   · `&competence=tourbillon|bond|bouclier` (lot BR5) : la compétence donnée au départ de `mannequin`, `boss`, `horde` (et de `jour`, sans l'écran de choix) ; `?scenario=horde` : 30 gélatons, 10 gelées et des groupes de vases, qui reviennent quand ils sont fauchés ; `&monstres=60` : jusqu'à 80 ;
 //   · `?debug&tune` : le panneau des sensations ; `&reglages=<JSON>` : des réglages collés (ceux que le panneau exporte) ;
 //   · `?debug&fps` : l'affichage des images par seconde et des appels de dessin ;
 //   · `?scenario=jour&jour=AAAA-MM-JJ` (lot BR1) : le niveau d'un autre jour ; `?scenario=carte&jours=7` : la vue de dessus des 7 prochains jours (chemin, détours, camps, arène, pilote) ;
@@ -30,6 +31,8 @@ export interface Essai {
   phase2: boolean;
   /** Lot BR3 : `&boss=<identifiant>` du scénario `boss` (l'indice est cherché à la demande : `indiceBoss`, dans le corps du jeu), ou `null` (le golem). */
   boss: string | null;
+  /** Lot BR5 : `&competence=` — l'identifiant de la compétence donnée au départ (l'indice est cherché par `indiceCompetence`), ou `null`. */
+  competence: string | null;
   monstres: number;
   tune: boolean;
   fps: boolean;
@@ -48,7 +51,7 @@ export interface Essai {
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { scenario: null, jour: null, carte: null, medailles: null, fin: null, fantome: false, phase2: false, boss: null, monstres: 0, tune: false, fps: false, qualite: null, reglages: null, ameliorations: [], nv: 2, sensations: null, essai: false };
+  const vide: Essai = { scenario: null, jour: null, carte: null, medailles: null, fin: null, fantome: false, phase2: false, boss: null, competence: null, monstres: 0, tune: false, fps: false, qualite: null, reglages: null, ameliorations: [], nv: 2, sensations: null, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const nom = q.get("scenario") ?? "";
@@ -86,7 +89,8 @@ export function lireEssai(search: string, restreint: boolean): Essai {
     fantome: q.get("fantome") === "1",
     phase2: q.get("phase") === "2",
     boss: q.get("boss"),
-    monstres: Number.isInteger(monstres) && monstres > 0 ? Math.min(40, monstres) : 0,
+    competence: q.get("competence"),
+    monstres: Number.isInteger(monstres) && monstres > 0 ? Math.min(80, monstres) : 0,
     tune: debug && q.has("tune"),
     fps: debug && q.has("fps"),
     qualite: nivQ === "haute" || nivQ === "basse" ? nivQ : null,
@@ -94,6 +98,6 @@ export function lireEssai(search: string, restreint: boolean): Essai {
     ameliorations,
     nv: nv >= 2 ? nv : 2,
     sensations,
-    essai: scenario !== null || ameliorations.length > 0 || jour !== null || carte !== null || medailles !== null || fin !== null || q.get("fantome") === "1" || (debug && q.has("tune")) || reglages !== null,
+    essai: scenario !== null || q.has("competence") || ameliorations.length > 0 || jour !== null || carte !== null || medailles !== null || fin !== null || q.get("fantome") === "1" || (debug && q.has("tune")) || reglages !== null,
   };
 }
