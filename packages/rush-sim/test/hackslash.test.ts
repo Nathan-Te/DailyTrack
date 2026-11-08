@@ -14,6 +14,7 @@ import {
   GELATON,
   GELEE,
   LIBRE,
+  MONSTRE_NEUTRE,
   Partie,
   PREMIER_JOUR_RUSH,
   RAYON_ARENE,
@@ -73,6 +74,7 @@ const monstre = (type: number, x: number, y: number, o: Partial<Monstre> = {}): 
   laisse: 0,
   ra: 0,
   sbire: 0,
+  ...MONSTRE_NEUTRE,
   ...o,
 });
 /** La horde d'essai vidée : le chevalier au centre-bas de l'arène, la compétence prête, regardant vers le haut (−y). */
@@ -296,7 +298,7 @@ describe("le tourbillon (lot BR5)", () => {
     const r = arene(C_TOURBILLON);
     r.avancer(COMP());
     tournerN(r, 4);
-    poser(r, GELEE, 60, 0, { gel: 0, alerte: 1 });
+    poser(r, GELEE, 60, 0, { gel: 0, alerte: 1, t: 30 }); // lot BR6 : en plein bond
     tournerN(r, 20);
     expect(r.c.coeurs).toBeLessThan(3);
     expect(r.c.etat).toBe(COMPETENCE);
@@ -420,12 +422,15 @@ describe("les cartes de compétence (lot BR5)", () => {
     p.avancer(COMP());
     expect(p.c.recharge).toBe(moitie - 1);
     p.c.recharge = 0;
+    p.c.charges = 1; // lot BR6 : la charge est rechargée
     tournerN(p, REGLAGES_DEFAUT.tourbillonDuree);
     p.c.recharge = 0;
+    p.c.charges = 1;
     p.avancer(COMP());
     expect(p.c.recharge).toBe(plein - 1);
     tournerN(p, REGLAGES_DEFAUT.tourbillonDuree);
     p.c.recharge = 0;
+    p.c.charges = 1;
     p.avancer(COMP());
     expect(p.c.recharge).toBe(moitie - 1);
   });
@@ -446,7 +451,7 @@ describe("les cartes de compétence (lot BR5)", () => {
       return 100 - m.hp;
     };
     expect(vie(maitre)).toBeGreaterThan(vie(base));
-    expect(AMELIORATIONS.filter((a) => a.famille === "competence")).toHaveLength(4);
+    expect(AMELIORATIONS.filter((a) => a.famille === "competence")).toHaveLength(7); // lot BR6 : + seconde charge, bond sismique, bouclier ricochet
     expect(indiceAmelioration("moulinet")).toBe(indiceAmelioration("moulinet"));
   });
 });

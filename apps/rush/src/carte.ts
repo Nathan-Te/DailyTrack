@@ -112,6 +112,33 @@ function dessiner(c: Contenu, theme: string): HTMLCanvasElement {
     g.arc(px(m.x), py(m.y), 3, 0, Math.PI * 2);
     g.fill();
   }
+  // Lot BR6 : les types de la courbe de difficulté (cracheur orange, chaman sarcelle, totem violet, porte-bouclier ardoise), les élites (un anneau d'or) et la SALLE D'ÉPREUVE (un cercle violet cerclé de ses deux portes).
+  const COUL = ["", "", "", "#e8873a", "#20b2a6", "#9b6bff", "#5b6f9a"];
+  for (const m of n.monstres) {
+    if (m.type >= 3) {
+      g.fillStyle = COUL[m.type]!;
+      g.beginPath();
+      g.arc(px(m.x), py(m.y), 2.6, 0, Math.PI * 2);
+      g.fill();
+    }
+    if (m.elite) {
+      g.strokeStyle = "#ffc93c";
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(px(m.x), py(m.y), 5, 0, Math.PI * 2);
+      g.stroke();
+    }
+  }
+  g.strokeStyle = "#9b6bff";
+  g.lineWidth = 2.4;
+  g.beginPath();
+  g.arc(px(n.epreuve.x), py(n.epreuve.y), (n.epreuve.r / (2 * M)) * k, 0, Math.PI * 2);
+  g.stroke();
+  g.fillStyle = "#9b6bff";
+  for (const idx of n.epreuve.portes) {
+    const [x, y] = centreDeCase(n, idx);
+    g.fillRect(px(x) - k / 2, py(y) - k / 2, k, k);
+  }
   const marque = (x: number, y: number, couleur: string, lettre: string): void => {
     g.fillStyle = couleur;
     g.beginPath();
@@ -123,6 +150,7 @@ function dessiner(c: Contenu, theme: string): HTMLCanvasElement {
   };
   marque(n.depart.x, n.depart.y, "#2f9e44", "S");
   marque(n.arene.x, n.arene.y, "#7048b6", "G");
+  marque(n.epreuve.x, n.epreuve.y, "#9b6bff", "É");
   return cv;
 }
 
@@ -160,6 +188,8 @@ export function carteDesJours(jour: number, nombre: number, hote: HTMLElement, o
       d: n.detours.length,
       b: n.detours.filter((q) => q.hub2 >= 0).length,
       tue: n.monstres.length,
+      el: n.monstres.filter((m) => m.elite).length,
+      ep: n.epreuve.prog,
       o: n.vases.length,
       sr: tempsSansRencontre(n).toFixed(1),
       t: temps,

@@ -173,14 +173,23 @@ test.describe("Rush : une partie", () => {
 
   test("deux niveaux de qualité (lot BR0c) : ?qualite= l'impose, la basse se passe du post-traitement, les deux dessinent sous 200 appels", async ({ browser }) => {
     for (const q of ["haute", "basse"] as const) {
-      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&scenario=arene&monstres=30&qualite=${q}`);
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&scenario=arene&monstres=60&qualite=${q}`); // lot BR6 : 60 monstres (les sept types, des élites), pas 30
       await lancer(page);
       await page.evaluate(() => window.__jeu.avancer(600));
       expect(await page.evaluate(() => window.__rush.qualite())).toBe(q);
       await page.evaluate(() => window.__rush.dessinerMaintenant());
-      expect(await page.evaluate(() => window.__rush.calls())).toBeLessThan(200);
+      const appels = await page.evaluate(() => window.__rush.calls());
+      expect(appels).toBeLessThan(200);
       await expect(page.locator(".rush-monde canvas")).toBeVisible();
       await context.close();
+      // lot BR6 : la salle d'épreuve en pleine vague (portes, horde) dessine sous 200 appels aussi
+      const e = await appareil(browser, `/?debug&manuel&tactile=0&scenario=epreuve&qualite=${q}`);
+      await lancer(e.page);
+      await e.page.evaluate(() => window.__jeu.avancer(900));
+      await e.page.evaluate(() => window.__rush.dessinerMaintenant());
+      const appelsEpreuve = await e.page.evaluate(() => window.__rush.calls());
+      expect(appelsEpreuve).toBeLessThan(200);
+      await e.context.close();
     }
     // En cours de partie, on peut passer de l'une à l'autre (la chute des images par seconde le fait toute seule).
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=boss");
@@ -199,10 +208,10 @@ test.describe("Rush : une partie", () => {
     await page.evaluate(() => window.__jeu.avancer(2));
     await expect(pastille).toBeVisible();
     const avant = Number(((await pastille.textContent()) ?? "").match(/(\d+) m/)?.[1]);
-    expect(avant).toBeGreaterThan(55); // lot BR1b : le chemin principal fait 70 à 100 m
-    expect(avant).toBeLessThan(110);
+    expect(avant).toBeGreaterThan(110); // lot BR6 : le chemin principal fait 140 à 205 m (70 à 100 m au lot BR1b)
+    expect(avant).toBeLessThan(215);
     // Sur le chemin : il marche vers l'arène, la distance diminue et le golem dort (pas de barre de vie).
-    await page.evaluate(() => window.__rush.aller(...(window.__rush.pointSurLeChemin(0.5) as [number, number])));
+    await page.evaluate(() => window.__rush.aller(...(window.__rush.pointSurLeChemin(0.3) as [number, number]))); // lot BR6 : à 0,5 c'est la salle d'épreuve, dont la barre réutilise .rush-boss
     await page.evaluate(() => window.__jeu.avancer(2));
     const milieu = Number(((await pastille.textContent()) ?? "").match(/(\d+) m/)?.[1]);
     expect(milieu).toBeLessThan(avant);

@@ -327,7 +327,8 @@ export interface NiveauVu {
   /** La texture du ciel (`scene.background`). */
   ciel: Texture;
   /** À chaque image : le chevalier et la caméra (mètres) pour le fondu des éléments entre eux, et la fermeture de la barrière (0 ouverte, 1 fermée). */
-  maj(chevalier: { x: number; z: number }, camera: Vector3, fermeture: number): void;
+  /** `fermeture` : la barrière de l'arène (0 à 1) ; `fermetureEpreuve` (lot BR6) : les deux portes de la salle d'épreuve (0 ouvertes, 1 fermées). */
+  maj(chevalier: { x: number; z: number }, camera: Vector3, fermeture: number, fermetureEpreuve?: number): void;
   detruire(): void;
 }
 
@@ -397,6 +398,24 @@ export function monterNiveauVu(n: Niveau, a: PaletteMonde, theme: ThemeVu = them
   porte.add(palissade.groupe);
   porte.visible = false;
   groupe.add(porte);
+  // Lot BR6 : les deux portes de la salle d'épreuve : la même palissade, en travers de chacun des deux liens du chemin principal qui touchent la salle, à 2 m du bord de la salle.
+  const portesEpreuve: Group[] = [];
+  const E = n.epreuve;
+  for (const k of n.liens) {
+    if (!k.principal || (k.a !== E.clairiere && k.b !== E.clairiere)) continue;
+    const autre = n.clairieres[k.a === E.clairiere ? k.b : k.a]!;
+    const dir = Math.atan2(autre.y - E.y, autre.x - E.x);
+    const g = new Group();
+    g.position.set(E.x / M + Math.cos(dir) * (E.r / M + 2.2), 0, E.y / M + Math.sin(dir) * (E.r / M + 2.2));
+    g.rotation.y = -dir;
+    g.scale.z = Math.max(0.6, (2 * k.l) / M / 7.6);
+    const pal = piece(gPorte, 0xffffff, true, true, mRelief);
+    pal.corps.castShadow = true;
+    g.add(pal.groupe);
+    g.visible = false;
+    groupe.add(g);
+    portesEpreuve.push(g);
+  }
   // L'arène : plateau, muret OUVERT à l'entrée (l'angle de la porte), île.
   const decor: Decor = monterDecor(R, a, { niveau: true, ouverture: { angle: dirA, largeur: 7.4 } });
   decor.groupe.position.set(ax, 0, az);
@@ -404,11 +423,15 @@ export function monterNiveauVu(n: Niveau, a: PaletteMonde, theme: ThemeVu = them
   return {
     groupe,
     ciel: decor.ciel,
-    maj(chev, cam, fermeture) {
+    maj(chev, cam, fermeture, fermetureEpreuve = 0) {
       uniforms.uChev.value.set(chev.x, 0.9, chev.z);
       uniforms.uCam.value.copy(cam);
       porte.visible = fermeture > 0.01;
       porte.scale.y = Math.max(0.01, Math.min(1, fermeture));
+      for (const g of portesEpreuve) {
+        g.visible = fermetureEpreuve > 0.01;
+        g.scale.y = Math.max(0.01, Math.min(1, fermetureEpreuve));
+      }
     },
     detruire() {
       for (const g of geos) g.dispose();

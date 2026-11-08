@@ -1,3 +1,4 @@
+import { readFileSync, writeFileSync } from "node:fs";
 import { daysFromCivil } from "@cdj/core";
 import { BOSS, BOSS_IDS, PRIORITES, Partie, REGLAGES_DEFAUT, STRATEGIES, dailyRush, etatPilote, pasDuPilote, reglagesDe, type Strategie } from "../src/index";
 
@@ -8,6 +9,10 @@ const PREMIER = daysFromCivil(2026, 11, 2);
 if (process.env.VIE) for (const [id, v] of Object.entries(JSON.parse(process.env.VIE) as Record<string, number>)) (BOSS[BOSS_IDS.indexOf(id as (typeof BOSS_IDS)[number])] as { vie: number }).vie = v;
 const arg = (nom: string, defaut: number): number => Number(process.argv.find((a) => a.startsWith(`--${nom}=`))?.slice(nom.length + 3) ?? defaut);
 const jours = arg("jours", 60);
+// Lot BR6 : `--debut=N` commence N jours après le premier jour ; `--sortie=fichier.json` écrit les parties (pour fusionner des tranches jouées en parallèle) ; `--fusion=a.json,b.json` lit ces fichiers au lieu de jouer (365 jours : quatre tranches de ~92).
+const debut = arg("debut", 0);
+const sortie = process.argv.find((a) => a.startsWith("--sortie="))?.slice(9);
+const fusion = process.argv.find((a) => a.startsWith("--fusion="))?.slice(9);
 const detail = process.argv.includes("--detail");
 const reglages = reglagesDe({ ...REGLAGES_DEFAUT, ...(process.env.REGLAGES ? (JSON.parse(process.env.REGLAGES) as object) : {}) });
 for (const s of STRATEGIES) {
@@ -36,16 +41,26 @@ const q = (v: number[], d = 1): string => {
   return t.length === 0 ? "—" : `${t[0]!.toFixed(d)} / ${t[Math.floor(t.length / 2)]!.toFixed(d)} / ${t[t.length - 1]!.toFixed(d)}`;
 };
 const resultats = new Map<Strategie, Partie1[]>();
-for (const s of STRATEGIES) resultats.set(s, Array.from({ length: jours }, (_, k) => jouer1(PREMIER + k, s)));
+if (fusion) {
+  for (const s of STRATEGIES) resultats.set(s, []);
+  for (const f of fusion.split(",")) {
+    const lu = JSON.parse(readFileSync(f, "utf8")) as Record<Strategie, Partie1[]>;
+    for (const s of STRATEGIES) resultats.get(s)!.push(...lu[s]!);
+  }
+} else {
+  for (const s of STRATEGIES) resultats.set(s, Array.from({ length: jours }, (_, k) => jouer1(PREMIER + debut + k, s)));
+  if (sortie) writeFileSync(sortie, JSON.stringify(Object.fromEntries(STRATEGIES.map((s) => [s, resultats.get(s)]))));
+}
+const nbJours = resultats.get("foncer")!.length;
 for (const s of STRATEGIES) {
   const r = resultats.get(s)!;
   const g = r.filter((x) => x.victoire);
-  console.log(`« ${s} » : ${g.length}/${jours} victoires · temps ${q(g.map((x) => x.s))} s · niveaux ${q(r.map((x) => x.nv), 0)} · combat du boss ${q(g.map((x) => x.combat))} s · dégâts subis ${(r.reduce((a, x) => a + x.subis, 0) / jours).toFixed(2)} · monstres tués ${q(r.map((x) => x.tues), 0)}`);
+  console.log(`« ${s} » : ${g.length}/${nbJours} victoires · temps ${q(g.map((x) => x.s))} s · niveaux ${q(r.map((x) => x.nv), 0)} · combat du boss ${q(g.map((x) => x.combat))} s · dégâts subis ${(r.reduce((a, x) => a + x.subis, 0) / nbJours).toFixed(2)} · monstres tués ${q(r.map((x) => x.tues), 0)}`);
 }
 // La plus rapide de chaque jour (une défaite vaut le pire temps) ; une égalité à 1 s près va à la stratégie la plus simple (foncer, puis peu).
 const gagnant = new Map<Strategie, number>(STRATEGIES.map((s) => [s, 0]));
 const ecarts = new Map<Strategie, number[]>(STRATEGIES.map((s) => [s, []]));
-for (let k = 0; k < jours; k++) {
+for (let k = 0; k < nbJours; k++) {
   const t = STRATEGIES.map((s) => {
     const x = resultats.get(s)![k]!;
     return x.victoire ? x.s : 600;
@@ -57,11 +72,11 @@ for (let k = 0; k < jours; k++) {
   ecarts.get(s)!.push(Math.min(...autres) - t[meilleur]!);
   if (detail) console.log(`  jour ${k + 1} : ${STRATEGIES.map((n, i) => `${n} ${t[i]!.toFixed(1)}`).join(" · ")} → ${s} (+${(Math.min(...autres) - t[meilleur]!).toFixed(1)} s sur la suivante)`);
 }
-console.log(`La plus rapide (${jours} jours) : ${STRATEGIES.map((s) => `${s} ${gagnant.get(s)} (${((100 * gagnant.get(s)!) / jours).toFixed(0)} %, écart médian ${q(ecarts.get(s)!).split(" / ")[1]} s)`).join(" · ")}`);
+console.log(`La plus rapide (${nbJours} jours) : ${STRATEGIES.map((s) => `${s} ${gagnant.get(s)} (${((100 * gagnant.get(s)!) / nbJours).toFixed(0)} %, écart médian ${q(ecarts.get(s)!).split(" / ")[1]} s)`).join(" · ")}`);
 
 // Lot BR3 : la répartition PAR BOSS (elle peut être déséquilibrée pour un boss, pas sur l'ensemble) et les temps de chaque stratégie contre chaque boss.
 for (let b = 0; b < BOSS_IDS.length; b++) {
-  const jb = Array.from({ length: jours }, (_, k) => k).filter((k) => resultats.get("foncer")![k]!.boss === b);
+  const jb = Array.from({ length: nbJours }, (_, k) => k).filter((k) => resultats.get("foncer")![k]!.boss === b);
   if (jb.length === 0) continue;
   const compte = STRATEGIES.map((s) => 0);
   for (const k of jb) {

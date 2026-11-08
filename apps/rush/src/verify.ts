@@ -24,6 +24,9 @@ export interface ScenarioReference {
   phase2: boolean;
   /** Lot BR5 : la compétence du scénario (`&competence=`, 0 : le tourbillon). */
   competence?: number;
+  /** Lot BR6 : les types des monstres du scénario `camp` et son élite. */
+  ennemis?: number[];
+  elite?: boolean;
   code: string;
   ticks: number;
 }
@@ -42,7 +45,7 @@ window.__rejouer = (references) => references.map((r) => ({ nom: r.nom, resultat
 window.__scenarios = (references) =>
   references.map((r) => {
     const d = decoderRediffusion(r.code);
-    const jeu = jouerJusqua(contenuScenario(r.scenario, { monstres: r.monstres, ameliorations: r.ameliorations, nv: r.nv, boss: r.boss, phase2: r.phase2, competence: r.competence }), d.changements, r.ticks, undefined, d.choix);
+    const jeu = jouerJusqua(contenuScenario(r.scenario, { monstres: r.monstres, ameliorations: r.ameliorations, nv: r.nv, boss: r.boss, phase2: r.phase2, competence: r.competence, ennemis: r.ennemis ?? [], elite: r.elite ?? false }), d.changements, r.ticks, undefined, d.choix);
     return { nom: r.nom, empreinte: jeu.empreinte, resultat: jeu.resultat };
   });
 document.documentElement.dataset.ready = "true";

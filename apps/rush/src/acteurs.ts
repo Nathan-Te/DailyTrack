@@ -66,7 +66,7 @@ function aileMembrane(cote: 1 | -1): BufferGeometry {
   return fusionner(formes);
 }
 
-const GEO = {
+export const GEO = {
   geleeD: geleeDome(),
   chauve: fusionner([teindre(sph(0.3, 16, 10), COULEURS.chauve), ...[-1, 1].map((s) => teindre(placer(new ConeGeometry(0.09, 0.24, 6), { x: s * 0.16, y: 0.3, z: -0.02, rz: -s * 0.25 }), COULEURS.chauve))]),
   aileG: aileMembrane(-1),

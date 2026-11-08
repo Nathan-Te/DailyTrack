@@ -132,3 +132,34 @@ describe("la lisibilité des compétences et du butin sur chaque thème (lot BR5
     });
   }
 });
+
+// Lot BR6 : les quatre nouveaux ennemis (cracheur, chaman, totem, porte-bouclier), la couronne des élites et le projectile du cracheur tranchent sur les DEUX tons du sol de CHAQUE thème : écart ≥ 40 (ΔE76), comme le golem et les boss. Leurs annonces au sol
+// (la ligne du cracheur, le cône du porte-bouclier) sont des BANDES et des SECTEURS du cercle d'annonce : la même couleur corail aux mêmes transparences (`ALPHAS_ANNONCE`), donc le même écart que le cercle (testé plus haut).
+describe("la lisibilité des quatre nouveaux ennemis sur chaque thème (lot BR6)", () => {
+  const DOMINANTES: Record<string, number[]> = {
+    cracheur: [COULEURS.cracheur],
+    chaman: [COULEURS.chaman, COULEURS.chamanSombre],
+    totem: [COULEURS.totemBois, COULEURS.totemSarcelle],
+    "porte-bouclier": [COULEURS.pbCorps, COULEURS.pbBouclier, COULEURS.pbBord],
+    elite: [COULEURS.elite],
+    projectile: [COULEURS.projectile],
+  };
+  for (const [nom, p] of Object.entries(PALETTES)) {
+    describe(nom, () => {
+      for (const [id, couleurs] of Object.entries(DOMINANTES)) {
+        it(`${id} : écart ≥ 40 contre les deux tons du sol`, () => {
+          couleurs.forEach((c, i) => expect(plusPetit(c, p), `${id} (couleur ${i}) sur ${nom}`).toBeGreaterThanOrEqual(40));
+        });
+      }
+      it("les nouveaux ennemis ne sont pas rouges (le rouge est réservé au danger) : aucune dominante ne tire vers la teinte du corail", () => {
+        const rouge = (c: number): boolean => {
+          const r = (c >> 16) & 255;
+          const g = (c >> 8) & 255;
+          const b = c & 255;
+          return r > 190 && g < 110 && b < 110;
+        };
+        for (const couleurs of Object.values(DOMINANTES)) for (const c of couleurs) expect(rouge(c)).toBe(false);
+      });
+    });
+  }
+});
