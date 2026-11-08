@@ -74,17 +74,25 @@ Page : **`/track/?scenario=sauts`** (deux touchers jusqu'à un élément ; « Es
 Captures (appel puis réception, palette du premier thème proposé) : `docs/lots/lot-57-sauts-transitions/captures/` (`CAPTURES=1 npx playwright test captures-lot57 --project=chromium`).
 
 ## Vérifié
-- `packages/sim` : suite complète (golden des versions publiées, rediffusions de référence, `figures`, `variete365`…) — résultat : voir la dernière ligne de la PR.
+- `packages/sim` : suite complète verte (626 tests : golden des versions publiées, rediffusions de référence, `figures`, `variete365`…) ; seul échec au premier passage, `legerete.test.ts` : `grammaire.ts` tire les figures, il rejoint la liste des fichiers lourds (il n'est jamais dans le premier chargement).
 - `test/grammaire.test.ts` : 18 éléments finis par le pilote dans chaque variante, deux sens, trois largeurs ; chaque saut se pose sur toute sa fenêtre de vitesse et d'angle.
 - `apps/web` : tests unitaires verts (1 237) ; captures produites, 5 regardées.
 - Budget (`node scripts/budgets.mjs` après `npm run build`) : voir « Budget ».
 
 ## Non vérifié
 - Le jeu au téléphone (à faire par Nathan, liens ci-dessous). L'écart pilote / humain sur ces sauts (étape 3, avec les circuits générés).
+- Le décor posé près d'un virage en pente : `decor/commun.ts`, `existant.ts` et `ville.ts` lisent la hauteur d'un virage à plat (`b.y0`, ou `b.y0 + b.rise / 2`) ; un arbre ou un immeuble peut flotter ou s'enfoncer d'un niveau au plus près des prototypes. À reprendre à l'étape 3 pour les éléments gardés (règles de pose du lot 37).
 - L'étape 3 entière : générateur, compatibilités, budget de technicité, poids par thème, golden de la nouvelle version, 60 circuits par thème, ressemblance et temps de génération avant / après.
 
-## Budget
-Voir la PR (mesure avant / après sur `main`).
+## Budget (`node scripts/budgets.mjs` après `npm run build`, `main` b725556 contre la branche)
+| mesure | `main` | lot 57 | écart | plafond |
+|---|---:|---:|---:|---:|
+| premier chargement JS + CSS | 298 087 | 299 086 | **+999 o** (cible ≤ +1,5 ko) | 312 Ko |
+| fil des circuits (miniatures, circuit du jour) | 29 472 | 30 187 | +715 | 33 Ko |
+| fil du Salon | 31 618 | 32 350 | +732 | 35 Ko |
+| catalogue anglais · admin | 7 990 · 12 278 | 8 006 · 12 361 | +16 · +83 | 9 · 14 Ko |
+
+Le premier chargement porte la géométrie (`liftAt`, lecture des modificateurs) et le rendu (balises, marques du virage-tremplin) ; la page et les textes des prototypes sont chargés avec les scénarios. `budgets.md` n'est pas retouché à cette étape (les chiffres bougeront à l'étape 3) ; sa ligne de Track (296 957) était déjà en retard sur `main` (298 087).
 
 ## Décisions pour Nathan
 1. Chaque saut et chaque transition : garder, retoucher, écarter.
