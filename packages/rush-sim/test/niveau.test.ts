@@ -343,7 +343,7 @@ describe("le pilote dans le niveau (lot BR1)", () => {
     const tri = [...temps].sort((x, y) => x - y);
     expect(tri[Math.floor(tri.length / 2)]!).toBeGreaterThan(150);
     expect(tri[Math.floor(tri.length / 2)]!).toBeLessThan(230);
-  });
+  }, 120_000); // lot BR6 : une rediffusion de 60 jours dépasse 30 s sur un job chargé de la CI (jeu fictif)
   it("tout nettoyer tue plus que foncer et gagne bien plus de niveaux (lot BR2)", () => {
     const c = dailyRush(J0 + 3);
     const f = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "foncer");
@@ -498,7 +498,7 @@ describe("un niveau compact et dense (lot BR1b)", () => {
     expect(contenus[1]! / total).toBeGreaterThan(0.18);
     expect(contenus[2]! / total).toBeGreaterThan(0.08);
     expect(contenus[2]! / total).toBeLessThan(0.22);
-  });
+  }, 120_000); // lot BR6 : une rediffusion de 60 jours dépasse 30 s sur un job chargé de la CI (jeu fictif)
   it("rien ne bloque le chemin : le chevalier rejoint l'arène et chaque monstre avec les vases pleins (grille fine) — et le validateur voit un mur de vases", () => {
     for (const n of niveaux) expect(passageBloque(n)).toBeNull();
     // un mur de vases en travers de l'entrée de l'arène barre le chemin : le validateur le voit

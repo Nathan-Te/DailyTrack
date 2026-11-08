@@ -56,7 +56,7 @@ describe("les médailles d'un jour", () => {
       expect(seuilsValides(s)).toBe(true);
       expect(diamantDuJour(c).strategie).toBe(STRATEGIES[temps.indexOf(s.author)]);
     }
-  });
+  }, 120_000); // lot BR6 : une rediffusion de 60 jours dépasse 30 s sur un job chargé de la CI (jeu fictif)
   it("sont déterministes : même jour, mêmes seuils, même Diamant (un contenu neuf ou celui d'avant)", () => {
     const a = dailyRush(J0 + 7);
     const b = dailyRush(J0 + 7);
@@ -190,7 +190,7 @@ describe("le pilote humanisé", () => {
       if (Math.min(...STRATEGIES.map((s) => l.humain[s])) < DUREE_TICKS) victoires++;
     }
     expect(victoires).toBeGreaterThanOrEqual(9); // lot BR6 : projectiles et porte-boucliers (365 sur 365 mesurés pour le Diamant du pilote de référence)
-  });
+  }, 120_000); // lot BR6 : une rediffusion de 60 jours dépasse 30 s sur un job chargé de la CI (jeu fictif)
 });
 
 describe("le fantôme du Diamant", () => {
