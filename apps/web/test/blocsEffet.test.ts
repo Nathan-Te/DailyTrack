@@ -4,6 +4,7 @@ import { BLOCS_LOT58, CELL, FX_RESET, NO_GROUND, bankAt, blockPoint, cellKey, cr
 import { DECORS_TEST } from "./decorChecks";
 import { Builder } from "../src/meshKit";
 import { geometrieP1 } from "../src/scene/composerP1";
+import { SURFACE_COLORS } from "../src/trackMesh";
 import { COULEURS_EFFET } from "../src/scene/palier1";
 import { MARQUE } from "../src/scene/pieces";
 import { LIVREE, ecartCouleurs } from "../src/voiture/livree";
@@ -75,4 +76,10 @@ describe("virage très relevé : la scène suit la route (retour de Nathan, 08/1
       }
     });
   }
+});
+
+describe("glace de piste (lot 58)", () => {
+  it("elle se distingue de la glace d'avant (ΔE 2000 > 12 pour ses deux tons)", () => {
+    for (const c of SURFACE_COLORS.sled) for (const g of SURFACE_COLORS.ice) expect(ecartCouleurs(c, g), `${c.toString(16)} / ${g.toString(16)}`).toBeGreaterThan(12);
+  });
 });

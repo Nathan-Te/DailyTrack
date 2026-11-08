@@ -107,6 +107,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "blocs.famille.effet": "effect block",
   "blocs.famille.bombee": "crowned road",
   "blocs.famille.releve": "steep banking",
+  "blocs.famille.tube": "ice tube",
   "figures.blocDirection.titre": "Steering locked",
   "figures.blocDirection.quoi": "The purple gantry locks the steering for 1.5 s: line up before the strip. Variant 2: a jump with the steering locked.",
   "figures.blocFreins.titre": "No brakes",
@@ -121,4 +122,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "figures.blocBombee.quoi": "A rounded road with no walls: the top holds you, the sides slide you towards the void. Variant 2: two corners.",
   "figures.blocReleveFort.titre": "45° banked corner",
   "figures.blocReleveFort.quoi": "A long corner banked at 45° is taken flat out, pressed into the slope. Variant 2: an S of two banked long corners.",
+  "figures.blocTube.titre": "Ice tube",
+  "figures.blocTube.quoi": "Bobsleigh style: half-pipes on track ice. Ride up the outer wall in the corners, drop back into the tube. Variant 2: tighter corners.",
 };

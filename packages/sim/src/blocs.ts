@@ -8,8 +8,8 @@ import type { ElementGrammaire } from "./grammaire";
 // par `?scenario=blocs`. Ils attendent le choix de Nathan (garder, retoucher, écarter) avant d'entrer dans le générateur.
 
 export interface ElementBloc extends ElementGrammaire {
-  /** La famille du catalogue (README du lot 58) : effet, bombee, releve. */
-  famille: "effet" | "bombee" | "releve";
+  /** La famille du catalogue (README du lot 58) : effet, bombee, releve, tube. */
+  famille: "effet" | "bombee" | "releve" | "tube";
 }
 
 const SINCE = 22;
@@ -95,6 +95,19 @@ export const BLOCS_LOT58: readonly ElementBloc[] = [
     // Un virage ample relevé à 45° : il se prend à fond, plaqué (seulement l'ample : sur un large, le relevé monte trop vite et la voiture décolle).
     // Variante 0 : un ample puis un ample de l'autre côté ; variante 1 : un S relevé de deux amples, sans droite entre eux.
     build: (c) => (c.variant === 0 ? ["S", s(c, "3/f"), "S", o(c, "3/f"), "S"] : ["S", s(c, "3/f"), o(c, "3/f"), "S"]),
+  }),
+  bloc({
+    name: "bloc-tube",
+    label: "Tube de glace",
+    famille: "tube",
+    cuve: true,
+    off: 0.2,
+    variants: 2,
+    themes: ["banquise"],
+    // Façon bobsleigh : des cuves sur la glace de piste (`q` : sans roulement, assez d'adhérence pour tenir la paroi). On monte sur la paroi extérieure des
+    // virages, on redescend dans le demi-tube. Variante 0 : deux amples ; variante 1 : deux larges enchaînés, plus serrés.
+    build: (c) =>
+      c.variant === 0 ? ["S", "V/q", "V/q", s(c, "3/cq"), "V/q", o(c, "3/cq"), "V/q", "S"] : ["S", "V/q", s(c, "2/cq"), "V/q", o(c, "2/cq"), o(c, "2/cq"), "V/q", "S"],
   }),
 ];
 

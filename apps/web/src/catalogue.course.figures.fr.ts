@@ -106,6 +106,7 @@ export const fr = {
   "blocs.famille.effet": "bloc à effet",
   "blocs.famille.bombee": "route bombée",
   "blocs.famille.releve": "virage très relevé",
+  "blocs.famille.tube": "tube de glace",
   "figures.blocDirection.titre": "Direction bloquée",
   "figures.blocDirection.quoi": "Le portique violet bloque le volant 1,5 s : sois aligné avant la bande. Variante 2 : on saute volant bloqué.",
   "figures.blocFreins.titre": "Freins coupés",
@@ -120,4 +121,6 @@ export const fr = {
   "figures.blocBombee.quoi": "Une chaussée arrondie, sans rebords : le sommet porte, les côtés font glisser vers le vide. Variante 2 : deux virages.",
   "figures.blocReleveFort.titre": "Virage relevé à 45°",
   "figures.blocReleveFort.quoi": "Un virage ample relevé à 45° se prend à fond, plaqué contre la pente. Variante 2 : un S de deux amples relevés.",
+  "figures.blocTube.titre": "Tube de glace",
+  "figures.blocTube.quoi": "Façon bobsleigh : des demi-tubes sur la glace de piste. Monte sur la paroi extérieure des virages, redescends dans le tube. Variante 2 : des virages plus serrés.",
 };

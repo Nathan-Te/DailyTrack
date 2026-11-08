@@ -93,12 +93,12 @@ export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "
  * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
  * est dans `SURFACES` (world.ts). Ajouter un revêtement = `SIM_VERSION` +1.
  */
-export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb" | "turf";
+export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb" | "turf" | "sled";
 /**
  * Revêtements d'un bloc (attribut `S/t`…) ; `gravel` et `snow` ne sont que des bas-côtés, `kerb` le vibreur d'un virage. Le sable (lot 22) est les deux.
  * `turf` (lot 48, `S/z`) : l'herbe de course, une piste en herbe rapide où l'on glisse (jamais un bas-côté : l'herbe hors piste reste `grass`).
  */
-export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand" | "turf";
+export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand" | "turf" | "sled";
 /** Revêtement d'un bas-côté (lot 21) : herbe, terre et gravier, neige poudreuse ; sable (lot 22). */
 export type ShoulderKind = "grass" | "gravel" | "snow" | "sand";
 /**
@@ -109,7 +109,7 @@ export type EdgeKind = ShoulderKind | "void" | "wall";
 /** Lettre de chaque bord dans la notation (`S/~h` : bas-côtés d'herbe à partir de ce bloc). */
 export const EDGE_LETTERS: Record<string, EdgeKind> = { h: "grass", t: "gravel", p: "snow", s: "sand", v: "void", r: "wall" };
 /** Lettre de chaque revêtement dans la notation texte (`S/t` : droite sur terre). */
-export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand", z: "turf" };
+export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand", z: "turf", q: "sled" };
 export type Mark = "start" | "checkpoint" | "finish";
 export type Dir = 0 | 1 | 2 | 3;
 

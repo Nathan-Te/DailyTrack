@@ -245,7 +245,7 @@ function shoulderColor(pal: Palette, kind: NonNullable<Block["shoulder"]>, i: nu
   return SURFACE_COLORS[kind][i % 2]!;
 }
 
-const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff };
+const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff, sled: 0x9fd3ec };
 
 /**
  * Lot 58 : la route bombée — la chaussée en `BANDES` bandes en travers qui suivent l'arrondi (`onBlock` lit `liftAt`), plus claires vers le sommet : la
@@ -506,7 +506,7 @@ function addSurfaceMarks(g: Builder, b: Block) {
         g.quad(onBlock(b, lat - 0.3, t0, lift), onBlock(b, lat + 0.3, t0, lift), onBlock(b, lat + 0.3, t1, lift), onBlock(b, lat - 0.3, t1, lift), color);
       }
     }
-  } else if (b.surface === "ice") {
+  } else if (b.surface === "ice" || b.surface === "sled") {
     for (let k = 0; k < 5; k++) {
       const t0 = (k + 0.2) / 5;
       const t1 = t0 + 0.06;

@@ -2092,7 +2092,7 @@ function cycleCamera() {
 // Indicateur d'effets (HUD) : super turbo, turbo, moteur coupé, et revêtement quand ce n'est pas la route.
 const hudFx = $("fx");
 const fxSample = createSurface();
-const SURFACES_HUD = new Set(["dirt", "ice", "grass", "sand", "gravel", "snow", "turf"]);
+const SURFACES_HUD = new Set(["dirt", "ice", "grass", "sand", "gravel", "snow", "turf", "sled"]);
 let fxShown = "";
 /** Lot 58 : l'effet vu à l'image d'avant — un effet qui commence s'annonce au milieu de l'écran (retour de Nathan du 08/11/2026). */
 let fxVu = 0;

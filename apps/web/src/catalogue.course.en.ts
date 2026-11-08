@@ -90,6 +90,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "course.sol.gravel": "Gravel",
   "course.sol.snow": "Powder snow",
   "course.sol.turf": "Racing turf",
+  "course.sol.sled": "Track ice",
   "pause.titre": "Pause",
   "pause.info.circuit": "Track {numero} · {theme}",
   "pause.info.circuitSansNumero": "{theme}",

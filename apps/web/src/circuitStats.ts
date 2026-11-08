@@ -32,7 +32,7 @@ export interface CircuitStats {
   checkpoints: number;
 }
 
-export const SURFACE_LABEL: Record<SurfaceKind, string> = { road: "route", dirt: "terre", ice: "glace", grass: "herbe", sand: "sable", gravel: "terre et gravier", snow: "neige poudreuse", kerb: "vibreur", turf: "herbe de course" };
+export const SURFACE_LABEL: Record<SurfaceKind, string> = { road: "route", dirt: "terre", ice: "glace", grass: "herbe", sand: "sable", gravel: "terre et gravier", snow: "neige poudreuse", kerb: "vibreur", turf: "herbe de course", sled: "glace de piste" };
 
 const SURFACE_ORDER: SurfaceKind[] = ["road", "dirt", "ice", "grass", "sand", "turf"];
 

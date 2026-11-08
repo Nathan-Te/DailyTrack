@@ -93,6 +93,7 @@ export const fr = {
   "course.sol.gravel": "Gravier",
   "course.sol.snow": "Neige poudreuse",
   "course.sol.turf": "Herbe de course",
+  "course.sol.sled": "Glace de piste",
   // --- Pause ---
   "pause.titre": "Pause",
   "pause.info.circuit": "Circuit {numero} · {theme}",

@@ -191,6 +191,7 @@ const SKID_STYLE: Record<SurfaceKind, { c: [number, number, number]; a: number }
   kerb: { c: [0.04, 0.04, 0.05], a: 0.5 },
   // Herbe de course (lot 48) : le gazon arraché laisse un sillon vert sombre et terreux.
   turf: { c: [0.16, 0.24, 0.08], a: 0.6 },
+  sled: { c: [0.96, 0.99, 1], a: 0.6 },
 };
 const SKID_WIDTH = 0.14; // demi-largeur d'une trace (m) : un pneu fait 0,3 m
 const SKID_STEP = 1.1; // distance minimale entre deux segments (m)
@@ -328,6 +329,8 @@ const DUST: Record<Exclude<SurfaceKind, "road">, { c: [number, number, number]; 
   kerb: { c: [0, 0, 0], a: 0, size: 0, grow: 0, life: 0, up: 0 },
   // Herbe de course (lot 48) : des brins clairs, seulement quand la voiture glisse (voir `update`).
   turf: { c: [0.55, 0.85, 0.3], a: 0.85, size: 0.2, grow: 0.1, life: 0.55, up: 3.4 },
+  // Glace de piste (lot 58) : des éclats de glace, comme la glace.
+  sled: { c: [0.88, 0.97, 1], a: 0.7, size: 0.26, grow: 0.2, life: 0.45, up: 2.4 },
 };
 
 export class Effects {

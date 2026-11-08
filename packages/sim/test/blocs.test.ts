@@ -285,6 +285,57 @@ describe("virage très relevé (lot 58)", () => {
   });
 });
 
+describe("tube de glace : la glace de piste (lot 58, retour de Nathan)", () => {
+  // Un conducteur simple, plein gaz, qui vise la ligne médiane : sur la glace de piste il passe le tube ; sur la glace d'avant (adhérence 0,3), la voiture ne
+  // tient pas la paroi et s'arrête (mesuré : 0,1 m/s au plus bas, jamais à l'arrivée en 15 s).
+  const conduire = (s: string) => {
+    const track = parseTrack("tube", `S/n@start S S S ${s} S S S@finish`);
+    const cl = trackCenterline(track);
+    const race = createRace(track);
+    race.car.vz = 40;
+    let vmin = Infinity;
+    for (let t = 0; t < 15 * TICK_RATE && race.finishMs < 0; t++) {
+      const c = race.car;
+      let k = 0;
+      let d = Infinity;
+      for (let i = 0; i < cl.x.length; i++) {
+        const e = (cl.x[i]! - c.x) ** 2 + (cl.z[i]! - c.z) ** 2;
+        if (e < d) [d, k] = [e, i];
+      }
+      const j = Math.min(cl.x.length - 1, k + 4);
+      let e = Math.atan2(cl.x[j]! - c.x, cl.z[j]! - c.z) - c.yaw;
+      while (e > Math.PI) e -= 2 * Math.PI;
+      while (e < -Math.PI) e += 2 * Math.PI;
+      stepRace(race, makeInput(Math.max(-1, Math.min(1, -3 * e)), 1, 0));
+      const b = track.cells.get(cellKey(Math.floor(c.x / CELL), Math.floor(c.z / CELL)));
+      if (b?.cuve) vmin = Math.min(vmin, carSpeed(c));
+    }
+    return { fin: race.finishMs, vmin, reprises: race.respawns };
+  };
+
+  it("plein gaz, la glace de piste passe le tube sans reprise, sans tomber sous 40 m/s ; la glace d'avant s'y arrête", () => {
+    const piste = conduire("V/q V/q L3/cq V/q R3/cq V/q");
+    expect(piste.fin).toBeGreaterThan(0);
+    expect(piste.reprises).toBe(0);
+    expect(piste.vmin).toBeGreaterThan(40);
+    const glace = conduire("V/g V/g L3/cg V/g R3/cg V/g");
+    expect(glace.fin).toBe(-1);
+    expect(glace.vmin).toBeLessThan(5);
+  });
+
+  it("la glace de piste glisse dans l'axe : aucun roulement (en roue libre, elle perd moins que la route)", () => {
+    const perte = (sol: string) => {
+      const b = sol ? `S/${sol}` : "S";
+      const race = lance(`S@start S S ${b} ${b} ${b} S S@finish`, 40);
+      jusqua(race, 32 * 3 + 2);
+      const v0 = carSpeed(race.car);
+      roule(race, makeInput(0, 0, 0), TICK_RATE);
+      return v0 - carSpeed(race.car);
+    };
+    expect(perte("q")).toBeLessThan(perte(""));
+  });
+});
+
 const WIDTHS: readonly WidthLetter[] = ["e", "n", "l"];
 
 describe("prototypes du lot 58", () => {

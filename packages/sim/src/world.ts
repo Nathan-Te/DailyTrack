@@ -88,6 +88,9 @@ export const SURFACES: Readonly<Record<SurfaceKind, Readonly<SurfaceParams>>> = 
   snow: Object.freeze({ grip: 0.42, traction: 0.5, rolling: 8, slick: 0, turf: 0 }),
   kerb: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0, turf: 0 }),
   turf: Object.freeze({ grip: 0.8, traction: 0.85, rolling: 0.6, slick: 0, turf: 1 }),
+  // Lot 58 — la glace de piste (`S/q`, le tube façon bobsleigh) : aucun roulement, peu de motricité, mais assez d'adhérence pour tenir la paroi d'une cuve
+  // (sur la glace d'avant, 0,3, la voiture n'y tient pas et s'arrête). Jamais sur un ancien circuit.
+  sled: Object.freeze({ grip: 0.75, traction: 0.6, rolling: 0, slick: 0, turf: 0 }),
 });
 
 /** Comportement du revêtement d'un échantillon de sol. */
