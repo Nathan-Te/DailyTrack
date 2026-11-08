@@ -46,7 +46,7 @@ export const TUNE_SLIDERS: readonly Slider[] = [
   { key: "turfSlideDrag", label: "Herbe de course : perte en glisse (× route)", min: 0, max: 4, step: 0.1 },
   { key: "turfSlideFree", label: "Herbe de course : glisse libre jusqu'à (pente)", min: 0, max: 0.4, step: 0.01 },
   { key: "turfScrub", label: "Herbe de course : labour au-delà (m/s²)", min: 0, max: 200, step: 5 },
-  // Lot 58 : les blocs à effet et l'eau (durées en pas : 120 par seconde).
+  // Lot 58 : les blocs à effet (durées en pas : 120 par seconde).
   { key: "fxSteerTicks", label: "Direction bloquée : durée (pas)", min: 60, max: 600, step: 12 },
   { key: "fxBrakeTicks", label: "Freins coupés : durée (pas)", min: 60, max: 960, step: 12 },
   { key: "fxCruiseTicks", label: "Régulateur : durée (pas)", min: 60, max: 960, step: 12 },
@@ -54,9 +54,7 @@ export const TUNE_SLIDERS: readonly Slider[] = [
   { key: "fxFragileTicks", label: "Fragile : durée (pas)", min: 120, max: 1920, step: 24 },
   { key: "fxFragileImpact", label: "Fragile : casse au-delà de (m/s contre le sol)", min: 8, max: 30, step: 0.5 },
   { key: "fxFragileMiss", label: "Fragile : casse de travers au-delà de (pentes)", min: 0, max: 1, step: 0.05 },
-  { key: "fxLiftTicks", label: "Propulseur : durée (pas)", min: 24, max: 240, step: 6 },
-  { key: "fxLift", label: "Propulseur : poussée (m/s², pesanteur 24,6)", min: 20, max: 70, step: 1 },
-  { key: "waterDrag", label: "Eau : traînée (1/s)", min: 0, max: 1.5, step: 0.02 },
+  { key: "fxFragileWall", label: "Fragile : casse contre un rebord au-delà de (m/s)", min: 3, max: 25, step: 0.5 },
   { key: "shellStickLo", label: "Cuve : décroche sous (m/s)", min: 10, max: 40, step: 0.5 },
   { key: "shellStickHi", label: "Cuve : tient au-dessus de (m/s)", min: 15, max: 50, step: 0.5 },
   { key: "shellDown", label: "Cuve : appui sur la paroi (× g)", min: 0, max: 3, step: 0.05 },

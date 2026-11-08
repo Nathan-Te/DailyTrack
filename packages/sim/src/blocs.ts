@@ -2,13 +2,14 @@ import type { FigureContext } from "./figures";
 import type { ElementGrammaire } from "./grammaire";
 
 // Lot 58 : des blocs plus complexes, à la Trackmania — **les idées seulement, jamais les fichiers, les modèles ni les noms** : tout est construit par le
-// code, avec nos noms. Les prototypes des familles nouvelles (blocs à effet, route bombée, virage très relevé, eau), même forme qu'une figure (`since:
+// code, avec nos noms. Les prototypes des familles nouvelles (blocs à effet, route bombée, virage très relevé ; le propulseur et l'eau écartés par
+// Nathan le 08/11/2026), même forme qu'une figure (`since:
 // 22` : aucun générateur publié ne les tire), jouables seuls par `?scenario=bloc-<nom>` (`&v=1`, `&m=1` ; `createFigureTrack`, circuits.ts) et listés
 // par `?scenario=blocs`. Ils attendent le choix de Nathan (garder, retoucher, écarter) avant d'entrer dans le générateur.
 
 export interface ElementBloc extends ElementGrammaire {
-  /** La famille du catalogue (README du lot 58) : effet, bombee, releve, eau. */
-  famille: "effet" | "bombee" | "releve" | "eau";
+  /** La famille du catalogue (README du lot 58) : effet, bombee, releve. */
+  famille: "effet" | "bombee" | "releve";
 }
 
 const SINCE = 22;
@@ -63,19 +64,6 @@ export const BLOCS_LOT58: readonly ElementBloc[] = [
     build: (c) => (c.variant === 0 ? ["S", "Ex", "S", "K", "GD", "S", "S", "U", "D", "S", "J", "S", "E0", "S"] : ["S", "Ex", "S/u", "S/u", "J", "S", "U", "D", "S", "E0", "S"]),
   }),
   bloc({
-    name: "bloc-propulseur",
-    label: "Propulseur",
-    famille: "effet",
-    category: "saut",
-    jump: true,
-    off: 0,
-    variants: 2,
-    themes: ["stade", "canyon"],
-    // Le propulseur pousse la voiture vers le haut 0,8 s : elle s'envole par-dessus un vide. Variante 0 : vers une route deux niveaux plus haut ; variante
-    // 1 : un long vide de deux cellules au même niveau.
-    build: (c) => (c.variant === 0 ? ["S", "S", "Ep", "GU", "GU", "S", "S"] : ["S", "S", "Ep", "G", "G", "S", "S"]),
-  }),
-  bloc({
     name: "bloc-remise",
     label: "Remise à zéro",
     famille: "effet",
@@ -104,19 +92,9 @@ export const BLOCS_LOT58: readonly ElementBloc[] = [
     variants: 2,
     banked: true,
     themes: ["stade", "nuit", "canyon"],
-    // Un virage relevé à 45° : il se prend à fond, plaqué. Variante 0 : un ample puis un ample de l'autre côté ; variante 1 : un S relevé de deux larges.
-    build: (c) => (c.variant === 0 ? ["S", s(c, "3/f"), "S", o(c, "3/f"), "S"] : ["S", s(c, "2/f"), o(c, "2/f"), "S"]),
-  }),
-  bloc({
-    name: "bloc-eau",
-    label: "Gué",
-    famille: "eau",
-    off: 0.2,
-    variants: 2,
-    themes: ["campagne", "rallye"],
-    // L'eau traîne en proportion de la vitesse (deux blocs : de 47 à 28 m/s). Variante 0 : un gué avant un virage large ; variante 1 : un saut au-dessus de
-    // l'eau — avec la plaque on passe, sans elle on retombe dedans.
-    build: (c) => (c.variant === 0 ? ["S", "S/w", "S/w", "S", s(c, "2"), "S"] : ["S", "P", "S", "K", "GD", "S/w", "S", "S"]),
+    // Un virage ample relevé à 45° : il se prend à fond, plaqué (seulement l'ample : sur un large, le relevé monte trop vite et la voiture décolle).
+    // Variante 0 : un ample puis un ample de l'autre côté ; variante 1 : un S relevé de deux amples, sans droite entre eux.
+    build: (c) => (c.variant === 0 ? ["S", s(c, "3/f"), "S", o(c, "3/f"), "S"] : ["S", s(c, "3/f"), o(c, "3/f"), "S"]),
   }),
 ];
 

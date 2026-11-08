@@ -75,7 +75,6 @@ export const MIX_SOL: Record<SurfaceKind, { roule: number; crepite: number; band
   snow: { roule: 0.8, crepite: 0.15, bande: 0, crisse: 0.25 },
   ice: { roule: 0.3, crepite: 0, bande: 0, crisse: 1.4 },
   kerb: { roule: 0.5, crepite: 0, bande: 1, crisse: 0.8 },
-  water: { roule: 1.2, crepite: 0.4, bande: 0, crisse: 0.2 },
 };
 
 /** Un tampon de crépitements : des petits claquements secs et épars (gravier, terre), lu plus vite quand on va plus vite. */

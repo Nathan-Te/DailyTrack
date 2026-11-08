@@ -223,9 +223,9 @@ export function arriveeP(c: Calques, x: Contexte, b: Block, q: number) {
 
 /**
  * Lot 58 — les couleurs des blocs à effet (indice : le code `FX_…`) : direction bloquée violet, freins coupés cyan, régulateur bleu, voiture fragile rose,
- * propulseur vert, remise à zéro crème. Jamais l'orange (ΔE 2000 > 12, `test/blocs.test.ts`), chacune loin des autres.
+ * remise à zéro crème. Jamais l'orange (ΔE 2000 > 12, `test/blocsEffet.test.ts`), chacune loin des autres.
  */
-export const COULEURS_EFFET: readonly number[] = [0, 0x8b5cf6, 0x16b8d4, 0x2f6fe8, 0xff5fa8, 0x7bd12f, MARQUE.creme];
+export const COULEURS_EFFET: readonly number[] = [0, 0x8b5cf6, 0x16b8d4, 0x2f6fe8, 0xff5fa8, MARQUE.creme];
 
 /**
  * Lot 58 — un bloc à effet : un portique de sa couleur au-dessus de la bande, son nom sur la poutre (lu de loin, avant d'y être), et la bande peinte

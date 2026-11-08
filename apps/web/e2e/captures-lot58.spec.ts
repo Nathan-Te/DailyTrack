@@ -14,14 +14,14 @@ test.use({ viewport: { width: 640, height: 360 } });
 const OUT = process.env.OUT ?? join(import.meta.dirname, "../../../docs/lots/lot-58-blocs-complexes/captures");
 const SCENE_SEULE = "body > *:not(canvas) { visibility: hidden !important; }";
 
-/** Le pas où la voiture entre dans le premier bloc nouveau (effet, bombé, très relevé, eau). */
+/** Le pas où la voiture entre dans le premier bloc nouveau (effet, bombé, très relevé). */
 function entree(track: Track, run: PilotRun): number {
   const race = createRace(track);
   const drive = createAutopilot(track, { grip: run.grip, wall: run.wall, cut: run.cut });
   for (let t = 0; t < run.ticks; t++) {
     stepRace(race, drive(race));
     const b = track.cells.get(cellKey(Math.floor(race.car.x / CELL), Math.floor(race.car.z / CELL)));
-    if (b && (b.fx !== undefined || b.crown || b.steep || b.surface === "water")) return t;
+    if (b && (b.fx !== undefined || b.crown || b.steep)) return t;
   }
   return Math.floor(run.ticks / 2);
 }

@@ -69,21 +69,21 @@ export const TILT_SLOPE = 0.25;
 export const CURVE_KICK = 16;
 /**
  * Lot 58 — des blocs plus complexes (inspirés de Trackmania pour les idées, jamais pour les fichiers ni les noms). Blocs à effet (`Ed`, `Ef`,
- * `Er`, `Ex`, `Ep`, `E0`) : une bande en travers de la route, de `FX_HALF_LENGTH` m de demi-longueur, comme le moteur coupé ; l'état est dans la
+ * `Er`, `Ex`, `E0`) : une bande en travers de la route, de `FX_HALF_LENGTH` m de demi-longueur, comme le moteur coupé ; l'état est dans la
  * voiture (`CarState.fx`). Route bombée (`/a`) : la chaussée s'arrondit, sa pente au bord vaut `CROWN_SLOPE` (sans rebords). Virage très relevé
- * (`/f`, virages large et ample) : pente `BANK_SLOPE_STEEP` (45°).
+ * (`/f`, virage ample seulement : sur un large, le relevé monte de 10 m en 37 m d'arc et la voiture décolle hors de l'axe) : pente
+ * `BANK_SLOPE_STEEP` (45°).
  */
 export const FX_HALF_LENGTH = 2;
 export const FX_NO_STEER = 1;
 export const FX_NO_BRAKE = 2;
 export const FX_CRUISE = 3;
 export const FX_FRAGILE = 4;
-export const FX_LIFT = 5;
-export const FX_RESET = 6;
+export const FX_RESET = 5;
 /** État seulement (jamais une bande) : la voiture fragile s'est cassée ; la course la renvoie au point de contrôle. */
-export const FX_BROKEN = 7;
-/** Lettres des blocs à effet : direction bloquée, freins coupés, régulateur, fragile, propulseur, remise à zéro. */
-export const EFFECT_LETTERS: Record<string, number> = { Ed: FX_NO_STEER, Ef: FX_NO_BRAKE, Er: FX_CRUISE, Ex: FX_FRAGILE, Ep: FX_LIFT, E0: FX_RESET };
+export const FX_BROKEN = 6;
+/** Lettres des blocs à effet : direction bloquée, freins coupés, régulateur, fragile, remise à zéro. */
+export const EFFECT_LETTERS: Record<string, number> = { Ed: FX_NO_STEER, Ef: FX_NO_BRAKE, Er: FX_CRUISE, Ex: FX_FRAGILE, E0: FX_RESET };
 export const CROWN_SLOPE = 0.4;
 export const BANK_SLOPE_STEEP = 1;
 
@@ -93,12 +93,12 @@ export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "
  * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
  * est dans `SURFACES` (world.ts). Ajouter un revêtement = `SIM_VERSION` +1.
  */
-export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb" | "turf" | "water";
+export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb" | "turf";
 /**
  * Revêtements d'un bloc (attribut `S/t`…) ; `gravel` et `snow` ne sont que des bas-côtés, `kerb` le vibreur d'un virage. Le sable (lot 22) est les deux.
  * `turf` (lot 48, `S/z`) : l'herbe de course, une piste en herbe rapide où l'on glisse (jamais un bas-côté : l'herbe hors piste reste `grass`).
  */
-export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand" | "turf" | "water";
+export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand" | "turf";
 /** Revêtement d'un bas-côté (lot 21) : herbe, terre et gravier, neige poudreuse ; sable (lot 22). */
 export type ShoulderKind = "grass" | "gravel" | "snow" | "sand";
 /**
@@ -109,7 +109,7 @@ export type EdgeKind = ShoulderKind | "void" | "wall";
 /** Lettre de chaque bord dans la notation (`S/~h` : bas-côtés d'herbe à partir de ce bloc). */
 export const EDGE_LETTERS: Record<string, EdgeKind> = { h: "grass", t: "gravel", p: "snow", s: "sand", v: "void", r: "wall" };
 /** Lettre de chaque revêtement dans la notation texte (`S/t` : droite sur terre). */
-export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand", z: "turf", w: "water" };
+export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand", z: "turf" };
 export type Mark = "start" | "checkpoint" | "finish";
 export type Dir = 0 | 1 | 2 | 3;
 
@@ -548,7 +548,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
   if ((tilt && (isCurve(kind) || kind === "gap" || kind === "jump" || cuveSides)) || ((ramp || climb) && (!isCurve(kind) || outerWall)) || (ramp && (climb || banked))) throw new Error(`Bloc impossible : ${token}`);
   // Lot 58 : la route bombée n'a ni rebords, ni dévers, ni relevé, ni cuve, ni pente de virage, ni tôle ondulée, ni transition de largeur ; le relevé fort
   // va aux virages large et ample.
-  if ((crown && (tilt || ramp || climb || banked || cuveSides || outerWall || bumpy || kind === "gap" || kind === "jump" || kind === "kick" || (width && width.w0 !== width.w1))) || (steep && (curveSize(kind) === 1 || !isCurve(kind) || outerWall))) throw new Error(`Bloc impossible : ${token}`);
+  if ((crown && (tilt || ramp || climb || banked || cuveSides || outerWall || bumpy || kind === "gap" || kind === "jump" || kind === "kick" || (width && width.w0 !== width.w1))) || (steep && (!isCurve(kind) || curveSize(kind) !== 3 || outerWall))) throw new Error(`Bloc impossible : ${token}`);
   let cuve = cuveSides ?? 0;
   if (outerWall) cuve = turnsLeft(kind) ? CUVE_RIGHT : CUVE_LEFT; // le mur est du côté opposé au centre du virage
   if (cuve) {

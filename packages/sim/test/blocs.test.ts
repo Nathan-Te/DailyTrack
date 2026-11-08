@@ -6,12 +6,14 @@ import {
   FX_BROKEN,
   FX_CRUISE,
   FX_FRAGILE,
-  FX_LIFT,
   FX_NO_BRAKE,
   FX_NO_STEER,
   TICK_RATE,
+  CELL,
   bankAt,
   bestPilotRun,
+  cellKey,
+  trackCenterline,
   buildFigure,
   carSpeed,
   createFigureTrack,
@@ -27,8 +29,8 @@ import {
   type WidthLetter,
 } from "../src/index";
 
-// Lot 58 : tests chiffrés des familles de blocs nouvelles (comme au lot 7) — chaque effet appliqué puis retiré, la glisse sur la route bombée, le
-// ralentissement dans l'eau, la tenue dans le virage très relevé — et les prototypes finis par le pilote. Les seuils sont recopiés dans le README du lot
+// Lot 58 : tests chiffrés des familles de blocs nouvelles (comme au lot 7) — chaque effet appliqué puis retiré, la glisse sur la route bombée, la
+// tenue dans le virage très relevé — et les prototypes finis par le pilote. Les seuils sont recopiés dans le README du lot
 // (`docs/lots/lot-58-blocs-complexes.md`) : s'ils changent, la sensation a changé.
 
 const GAS = makeInput(0, 1, 0);
@@ -136,19 +138,19 @@ describe("blocs à effet (lot 58) : chaque effet appliqué puis retiré", () => 
     expect(cassee).toBe(true);
   });
 
-  it("propulseur : la voiture monte d'au moins 6 m en 0,8 s, puis retombe", () => {
-    const race = lance("S@start S S Ep S S S S S S S S S S@finish", 40);
-    jusqua(race, apres(3));
-    expect(race.car.fx).toBe(FX_LIFT);
-    let haut = 0;
-    for (let i = 0; i < 2 * TICK_RATE; i++) {
-      stepRace(race, GAS);
-      haut = Math.max(haut, race.car.y);
+  it("voiture fragile : un rebord pris de face casse la voiture ; la même voiture sans l'effet repart", () => {
+    // Tout droit, sans braquer, dans le mur extérieur d'un virage serré.
+    const avec = lance("S@start S S Ex S S L S S@finish", 30);
+    let cassee = false;
+    for (let i = 0; i < 8 * TICK_RATE && !cassee; i++) {
+      stepRace(avec, GAS);
+      cassee = avec.car.fx === FX_BROKEN;
     }
-    expect(haut).toBeGreaterThan(6);
-    expect(race.car.fx).toBe(0);
-    roule(race, GAS, 2 * TICK_RATE);
-    expect(race.car.y).toBeLessThan(0.5);
+    expect(cassee).toBe(true);
+    const sans = lance("S@start S S S S S L S S@finish", 30);
+    roule(sans, GAS, 8 * TICK_RATE);
+    expect(sans.respawns).toBe(0);
+    expect(sans.fallTicks).toBe(0);
   });
 
   it("un seul effet à la fois : le dernier franchi remplace l'autre ; la remise à zéro les éteint tous, moteur coupé compris", () => {
@@ -218,20 +220,6 @@ describe("route bombée (lot 58)", () => {
   });
 });
 
-describe("eau (lot 58)", () => {
-  it("deux blocs d'eau ramènent de 46 à moins de 32 m/s, plein gaz ; la route garde la vitesse", () => {
-    const eau = lance("S@start S S S/w S/w S S S@finish", 46);
-    jusqua(eau, 32 * 3);
-    const v0 = carSpeed(eau.car);
-    jusqua(eau, 32 * 5);
-    expect(v0).toBeGreaterThan(44);
-    expect(carSpeed(eau.car)).toBeLessThan(32);
-    const route = lance("S@start S S S S S S S@finish", 46);
-    jusqua(route, 32 * 5);
-    expect(carSpeed(route.car)).toBeGreaterThan(44);
-  });
-});
-
 describe("virage très relevé (lot 58)", () => {
   it("pente 1 (45°) au milieu de l'arc ; le pilote prend l'ample plus vite que relevé (0,22) ou à plat", () => {
     const t = parseTrack("releve", "S@start S S L3/f S S@finish");
@@ -247,6 +235,49 @@ describe("virage très relevé (lot 58)", () => {
     const fort = temps("/f");
     expect(fort).toBeLessThan(temps("/b"));
     expect(fort).toBeLessThan(temps(""));
+  });
+
+  it("seulement sur un ample : un large ou un serré très relevé est refusé", () => {
+    expect(() => parseTrack("x", "S@start L2/f S@finish")).toThrow();
+    expect(() => parseTrack("x", "S@start L/f S@finish")).toThrow();
+  });
+
+  it("la caisse suit le relevé (retour de Nathan, 08/11/2026) : de 8 m à gauche à 8 m à droite de l'axe, roulis jamais au-delà de 1,15 (la pente du sol vaut 1 ; jusqu'à 1,5 sur l'ample et 8,4 sur un large avant la correction) posée (en l'air : moins de 2 % à l'intérieur, de 16 % vers l'extérieur, à la sortie)", () => {
+    for (const ecart of [-8, -5, 0, 5, 8]) {
+      const track = parseTrack("releve", "S/n@start S S S L3/f S S S S@finish");
+      const cl = trackCenterline(track);
+      const race = createRace(track);
+      race.car.vz = 44;
+      let pire = 0;
+      let enLAir = 0;
+      let dans = 0;
+      for (let t = 0; t < 8 * TICK_RATE && race.finishMs < 0; t++) {
+        const c = race.car;
+        // Un conducteur simple : il vise la ligne médiane décalée de `ecart` m, 4 points devant.
+        let k = 0;
+        let d = Infinity;
+        for (let i = 0; i < cl.x.length; i++) {
+          const e = (cl.x[i]! - c.x) ** 2 + (cl.z[i]! - c.z) ** 2;
+          if (e < d) [d, k] = [e, i];
+        }
+        const j = Math.min(cl.x.length - 1, k + 4);
+        const tx = cl.x[j]! - cl.x[k]!;
+        const tz = cl.z[j]! - cl.z[k]!;
+        const tl = Math.hypot(tx, tz) || 1;
+        let e = Math.atan2(cl.x[j]! + (ecart * tz) / tl - c.x, cl.z[j]! - (ecart * tx) / tl - c.z) - c.yaw;
+        while (e > Math.PI) e -= 2 * Math.PI;
+        while (e < -Math.PI) e += 2 * Math.PI;
+        stepRace(race, makeInput(Math.max(-1, Math.min(1, -3 * e)), 1, 0));
+        if (track.cells.get(cellKey(Math.floor(c.x / CELL), Math.floor(c.z / CELL)))?.index !== 4) continue;
+        dans++;
+        if (!c.grounded) enLAir++;
+        pire = Math.max(pire, Math.abs(c.roll));
+      }
+      expect(dans, `écart ${ecart}`).toBeGreaterThan(200);
+      expect(pire, `écart ${ecart}`).toBeLessThan(1.15);
+      // Mesuré : 14 % à 8 m vers l'extérieur (un petit envol à la sortie, quand le relevé retombe) ; sur l'axe et à l'intérieur, sous 2 %.
+      expect(enLAir / dans, `écart ${ecart}`).toBeLessThan(ecart > 0 ? 0.16 : 0.02);
+    }
   });
 });
 
@@ -277,7 +308,7 @@ describe("prototypes du lot 58", () => {
   }
 
   it("une rediffusion d'un prototype se rejoue au temps près (déterminisme)", () => {
-    for (const nom of ["bloc-fragile", "bloc-regulateur", "bloc-propulseur", "bloc-bombee"]) {
+    for (const nom of ["bloc-fragile", "bloc-regulateur", "bloc-releve-fort", "bloc-bombee"]) {
       const track = createFigureTrack(nom)!;
       const run = bestPilotRun(track, { cut: false })!;
       const again = replayRace(track, decodeReplay(encodeReplay(run.replay)));

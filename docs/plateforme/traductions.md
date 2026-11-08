@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2425 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2424 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1036,7 +1036,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `blocs.famille.effet` | bloc à effet | effect block |
 | `blocs.famille.bombee` | route bombée | crowned road |
 | `blocs.famille.releve` | virage très relevé | steep banking |
-| `blocs.famille.eau` | eau | water |
 
 ### Cadre des écrans (`cadre.*`, `apps/web/src/catalogue.base.*.ts`)
 
@@ -1237,7 +1236,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.portique.freins` | FREINS COUPÉS | NO BRAKES |
 | `course.portique.regulateur` | RÉGULATEUR | CRUISE CONTROL |
 | `course.portique.fragile` | FRAGILE | FRAGILE |
-| `course.portique.propulseur` | PROPULSEUR | THRUSTER |
 | `course.portique.remise` | REMISE À ZÉRO | RESET |
 | `course.chute` | Chute ! | Fall! |
 | `course.chronoTourne.tactile` | Le chrono tourne : GAZ, en bas à droite | The clock is running: GAS, bottom right |
@@ -1253,8 +1251,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.effet.freins` | Freins coupés {s} s | No brakes {s} s |
 | `course.effet.regulateur` | Régulateur {s} s | Cruise control {s} s |
 | `course.effet.fragile` | Fragile {s} s | Fragile {s} s |
-| `course.effet.propulseur` | Propulseur {s} s | Thruster {s} s |
 | `course.effet.casse` | Cassée ! | Broken! |
+| `course.annonce.direction` | Direction bloquée ! | Steering locked! |
+| `course.annonce.freins` | Freins coupés ! | No brakes! |
+| `course.annonce.regulateur` | Régulateur : la vitesse est tenue | Cruise control: speed held |
+| `course.annonce.fragile` | Voiture fragile : pas de choc ! | Fragile car: no knocks! |
+| `course.annonce.remise` | Remise à zéro | Reset |
+| `course.annonce.casse` | Voiture cassée ! | Car broken! |
+| `course.annonce.finEffet` | Effet terminé | Effect over |
 | `course.sol.dirt` | Terre | Dirt |
 | `course.sol.ice` | Glace | Ice |
 | `course.sol.grass` | Herbe | Grass |
@@ -1262,7 +1266,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.sol.gravel` | Gravier | Gravel |
 | `course.sol.snow` | Neige poudreuse | Powder snow |
 | `course.sol.turf` | Herbe de course | Racing turf |
-| `course.sol.water` | Eau | Water |
 
 ### Erreurs (`erreur.*`, `apps/web/src/catalogue.base.*.ts`)
 
@@ -1374,17 +1377,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `figures.blocRegulateur.titre` | Régulateur | Cruise control |
 | `figures.blocRegulateur.quoi` | 4 s à la vitesse que tu avais à la bande, gaz et frein sans effet : tu ne fais que tourner. Variante 2 : à la sortie d'un virage serré. | 4 s at the speed you had on the strip, gas and brake do nothing: you only steer. Variant 2: out of a tight corner. |
 | `figures.blocFragile.titre` | Voiture fragile | Fragile car |
-| `figures.blocFragile.quoi` | 8 s de voiture fragile : une réception brutale ou de travers la casse. Pose les sauts bien à plat, jusqu'à la remise à zéro. | 8 s of fragile car: a hard or crooked landing breaks it. Land the jumps flat, until the reset. |
-| `figures.blocPropulseur.titre` | Propulseur | Thruster |
-| `figures.blocPropulseur.quoi` | Le propulseur pousse la voiture vers le haut 0,8 s : par-dessus un vide, jusqu'à une route deux niveaux plus haut. Variante 2 : un long vide. | The thruster pushes the car up for 0.8 s: over a gap, up to a road two levels higher. Variant 2: a long gap. |
+| `figures.blocFragile.quoi` | 8 s de voiture fragile : une réception brutale ou de travers, ou un rebord pris de face, la casse. Pose les sauts bien à plat, jusqu'à la remise à zéro. | 8 s of fragile car: a hard or crooked landing, or hitting a wall head-on, breaks it. Land the jumps flat, until the reset. |
 | `figures.blocRemise.titre` | Remise à zéro | Reset |
 | `figures.blocRemise.quoi` | Freins coupés, puis le portique blanc de la remise à zéro les rend juste avant un virage serré : freine après lui. | No brakes, then the white reset gantry gives them back just before a tight corner: brake after it. |
 | `figures.blocBombee.titre` | Route bombée | Crowned road |
 | `figures.blocBombee.quoi` | Une chaussée arrondie, sans rebords : le sommet porte, les côtés font glisser vers le vide. Variante 2 : deux virages. | A rounded road with no walls: the top holds you, the sides slide you towards the void. Variant 2: two corners. |
 | `figures.blocReleveFort.titre` | Virage relevé à 45° | 45° banked corner |
-| `figures.blocReleveFort.quoi` | Un virage relevé à 45° se prend à fond, plaqué contre la pente. Variante 2 : un S relevé. | A corner banked at 45° is taken flat out, pressed into the slope. Variant 2: a banked S. |
-| `figures.blocEau.titre` | Gué | Ford |
-| `figures.blocEau.quoi` | L'eau freine d'autant plus qu'on va vite. Variante 2 : un saut au-dessus de l'eau — avec la plaque on passe, sans elle on retombe dedans. | Water slows you the more the faster you go. Variant 2: a jump over the water — with the pad you clear it, without it you land in it. |
+| `figures.blocReleveFort.quoi` | Un virage ample relevé à 45° se prend à fond, plaqué contre la pente. Variante 2 : un S de deux amples relevés. | A long corner banked at 45° is taken flat out, pressed into the slope. Variant 2: an S of two banked long corners. |
 
 ### garage (`garage.*`, `apps/web/src/catalogue.base.*.ts`)
 

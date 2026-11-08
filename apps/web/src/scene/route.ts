@@ -244,7 +244,7 @@ function shoulderColor(pal: Palette, kind: NonNullable<Block["shoulder"]>, i: nu
   return SURFACE_COLORS[kind][i % 2]!;
 }
 
-const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff, water: 0xd8ecf8 };
+const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff };
 
 /**
  * Lot 58 : la route bombée — la chaussée en `BANDES` bandes en travers qui suivent l'arrondi (`onBlock` lit `liftAt`), plus claires vers le sommet : la
@@ -512,13 +512,6 @@ function addSurfaceMarks(g: Builder, b: Block) {
     }
   } else if (b.surface === "turf") {
     addTurfMarks(g, b);
-  } else if (b.surface === "water") {
-    // Lot 58 : le clapotis du gué, des vaguelettes claires à plat (rien ne dépasse de l'eau).
-    for (let k = 0; k < 14; k++) {
-      const lat = (((k * 7 + b.index * 3) % 13) - 6) * (b.w0 / 14);
-      const t = (k + 0.5) / 14;
-      g.quad(onBlock(b, lat - 1.2, t, lift), onBlock(b, lat + 1.2, t, lift), onBlock(b, lat + 0.9, t + 0.012, lift), onBlock(b, lat - 0.9, t + 0.012, lift), color);
-    }
   } else {
     for (let k = 0; k < 9; k++) {
       const lat = (((k * 5 + b.index * 3) % 11) - 5) * 1.1;

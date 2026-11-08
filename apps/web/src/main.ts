@@ -55,6 +55,8 @@ import {
   THEMES,
   createSurface,
   FX_BROKEN,
+  FX_CRUISE,
+  FX_NO_BRAKE,
   TICK_RATE,
   FALL_TICKS,
   themeByName,
@@ -403,7 +405,11 @@ function lireMemoireQualite(): MemoireQualite | null {
 if (salon) await Promise.race([chargerDecor(salon.circuit.palette).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
 /** Les textes peints sur la scène (bandeaux des portiques), dans la langue du joueur ; les parties coupées par l'adresse. */
 /** Lot 58 : les noms des blocs à effet (indice : le code `FX_…` de la simulation), sur leurs portiques et dans le HUD. */
-const EFFETS = ["", "direction", "freins", "regulateur", "fragile", "propulseur", "remise"] as const;
+const EFFETS = ["", "direction", "freins", "regulateur", "fragile", "remise"] as const;
+/** Lot 58 : le frein agit (ni freins coupés, ni régulateur) — feux stop, crissement, « figer » en l'air n'en montrent que dans ce cas. */
+/** Lot 58 : ce que le moteur « appuie » sous le régulateur (pour le son), sur l'échelle de l'accélérateur. */
+const REGULATEUR_GAZ = 0.6;
+const freinOuvert = (car: CarState) => car.fx !== FX_NO_BRAKE && car.fx !== FX_CRUISE;
 const textesScene = () => ({ depart: t("course.portique.depart"), arrivee: t("course.portique.arrivee"), effets: EFFETS.map((e) => (e ? t(`course.portique.${e}`) : "")) });
 const optionsScene = () => ({ textes: textesScene(), ...(coupesScene.length > 0 ? { coupes: coupesScene } : {}) });
 const premierPalier: Palier = palierBranche(palierDepart) && pasDepartCharges ? palierDepart : PALIER_DEFAUT;
@@ -2086,13 +2092,21 @@ function cycleCamera() {
 // Indicateur d'effets (HUD) : super turbo, turbo, moteur coupé, et revêtement quand ce n'est pas la route.
 const hudFx = $("fx");
 const fxSample = createSurface();
-const SURFACES_HUD = new Set(["dirt", "ice", "grass", "sand", "gravel", "snow", "turf", "water"]);
+const SURFACES_HUD = new Set(["dirt", "ice", "grass", "sand", "gravel", "snow", "turf"]);
 let fxShown = "";
+/** Lot 58 : l'effet vu à l'image d'avant — un effet qui commence s'annonce au milieu de l'écran (retour de Nathan du 08/11/2026). */
+let fxVu = 0;
 function updateEffects() {
   const parts: string[] = [];
   let cut = false;
   if (race && phase !== "countdown") {
     const c = race.car;
+    if (c.fx !== fxVu) {
+      if (c.fx === FX_BROKEN) showBanner(t("course.annonce.casse"), 1.4);
+      else if (c.fx) showBanner(t(`course.annonce.${EFFETS[c.fx]}`), 2);
+      else if (fxVu !== FX_BROKEN) showBanner(t("course.annonce.finEffet"), 1, true);
+      fxVu = c.fx;
+    }
     if (c.cut) {
       parts.push(t("course.effet.moteurCoupe"));
       cut = true;
@@ -2340,7 +2354,7 @@ function frame(now: number) {
   const yaw = previous.yaw + wrapAngle(car.yaw - previous.yaw) * alpha;
   const speed = carSpeed(car);
   // Lot 19 : en l'air la caisse garde sa rotation ; le frein la fige. Petit indicateur discret tant que le frein agit (présentation seule).
-  const freezing = phase === "racing" && !frozen && !car.grounded && car.air > AIR_HOP_SUBSTEPS && lastInput.brake > 0;
+  const freezing = phase === "racing" && !frozen && !car.grounded && car.air > AIR_HOP_SUBSTEPS && lastInput.brake > 0 && freinOuvert(car);
   if (freezing !== hudFreeze.classList.contains("on")) hudFreeze.classList.toggle("on", freezing);
 
   // Voiture : tangage et roulis de la caisse calculés par la simulation (suspension), en pentes → angles ;
@@ -2368,7 +2382,7 @@ function frame(now: number) {
   }
   wheelPose.forward = tel.forward;
   wheelPose.steerAngle = -car.steer * steerLimit(tel.forward, carParams);
-  wheelPose.braking = phase !== "countdown" && lastInput.brake > 0;
+  wheelPose.braking = phase !== "countdown" && lastInput.brake > 0 && freinOuvert(car);
   wheelPose.dt = elapsed;
   carModel.update(wheelPose);
   let groundSum = 0;
@@ -2521,8 +2535,9 @@ function frame(now: number) {
   effects.update({ dt: elapsed, x, y, z, yaw, tel, braking: wheelPose.braking, boost: car.boost > 0, turbo: car.turbo > 0, racing: phase !== "countdown" });
   gameAudio.update({
     speed,
-    throttle: lastInput.throttle / AXIS_MAX,
-    brake: lastInput.brake > 0,
+    // Lot 58 : sous le régulateur, le moteur tient la vitesse tout seul (on l'entend appuyer, quoi que fasse le pied).
+    throttle: car.fx === FX_CRUISE ? REGULATEUR_GAZ : lastInput.throttle / AXIS_MAX,
+    brake: lastInput.brake > 0 && freinOuvert(car),
     slide: tel.slide,
     grounded: tel.grounded,
     surface: tel.surface,
