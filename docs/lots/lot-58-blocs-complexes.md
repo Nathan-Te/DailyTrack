@@ -2,7 +2,7 @@
 
 Branche `claude/lot-58-blocs-complexes-ubs6bq`, PR brouillon. **Étapes 1 et 2 livrées : catalogue chiffré et prototypes jouables ; premier retour de Nathan (08/11) appliqué (§ 2). Arrêt obligatoire : Nathan garde, retouche ou écarte chaque famille** ; l'étape 3 (le générateur) attend ses choix. Aucune version ne change : `GENERATOR_VERSION` 21, `SIM_VERSION` 14 ; golden des versions publiées et rediffusions de référence identiques (suite de `packages/sim` verte). Prérequis : lots 49 et 57 fusionnés ; la « bascule automatique » (lot 54 de l'énoncé) est celle du lot R11, comme l'a confirmé Nathan au lot 57.
 
-**On s'inspire de Trackmania pour les idées, jamais pour les fichiers ni les noms** : rien de Trackmania ni de sa communauté (objets, modèles, textures, noms) ; tout est construit par le code, avec nos noms. Règle : `docs/regles/sim/blocs-complexes-lot-58.md`.
+**On s'inspire de Trackmania pour les idées, jamais pour les fichiers ni les noms** : rien de Trackmania ni de sa communauté (objets, modèles, textures, noms) ; tout est construit par le code, avec nos noms. Règle : `packages/sim/CLAUDE.md`, « Blocs plus complexes, à la Trackmania (lot 58) » (pas dans `docs/regles/sim/` : zone partagée, hors des zones d'un lot de Track — le job `zones` l'a refusé ; un lot de la plateforme peut l'y déplacer).
 
 ## Pour les joueurs
 rien
