@@ -73,6 +73,9 @@ const WHEEL_REACH = 0.85;
  * du virage. Serré : tout en haut (c'est la paroi qui permet la vitesse) ; large et ample : à mi-pente (le trajet reste court, l'entrée et la sortie douces).
  */
 const CUVE_INSET = [0, 1, 1.5, 1.5] as const;
+/** Lot 58b — mur roulable : le pilote vise `MUR_MONTEE` m au-delà de la paroi pour y monter, puis `MUR_TENUE` m pour la longer. */
+const MUR_MONTEE = 3;
+const MUR_TENUE = 0.6;
 /** Cuve droite (lot 18b) : le pilote monte presque en haut du quart de cercle (distance en m au pied de la paroi verticale) et y reste : la paroi est une voie rapide. */
 const CUVE_INSET_STRAIGHT = 0.8;
 /** Largeur de la rampe d'entrée et de sortie d'une paroi sur une droite (m) : sur la sortie le pilote ne freine pas, la voiture redescend. */
@@ -118,6 +121,8 @@ interface Centerline {
   wall: number[];
   /** Vrai sur la rampe de sortie d'un virage en cuve : la paroi s'efface sous la voiture, qui ne freine plus. */
   wallExit: boolean[];
+  /** Lot 58b : vrai sur une série de murs latéraux qui porte un mur roulable — le pilote n'y freine pas (sous `shellStickHi`, la voiture glisserait). */
+  mur: boolean[];
 }
 
 /** Pente de la paroi d'une cuve de demi-largeur `W` au point visé (à `inset` du pied de la paroi verticale) : tangente de son angle. */
@@ -132,7 +137,7 @@ const liftS: Lift = { h: 0, gp: 0, gq: 0 };
 const RAMP_TAPER = 10;
 
 function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
-  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], roomR: [], half: [], blk: [], slope: [], pin: [], wall: [], wallExit: [] };
+  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], roomR: [], half: [], blk: [], slope: [], pin: [], wall: [], wallExit: [], mur: [] };
   const pt = { x: 0, z: 0 };
   const push = (p: number, q: number, b: Block, room: number, roomR = room, half = 0) => {
     blockPoint(b, p, q, pt);
@@ -142,6 +147,7 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
     out.roomR.push(roomR);
     out.half.push(half);
     out.blk.push(b.index);
+    out.mur.push(false);
     if (hasLift(b) && isCurve(b.kind)) {
       // Lot 57 : virage en pente ou virage-tremplin — la pente dans le sens de la marche (gradient · tangente de l'arc).
       const { cp } = curveCenter(b.kind);
@@ -241,6 +247,28 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
     }
     if (first < 0) continue;
     const target = b.w0 / 2 - cuveInset(b);
+    // Lot 58b — une série avec un mur roulable (sans fond) : le pilote vise au-delà de la paroi pour y monter avant le vide, la longe sur le mur roulable
+    // (nez à peine tourné vers lui : la vitesse le colle, il garde sa hauteur), puis redescend. Aucune série d'avant n'a de mur roulable.
+    const murs = chain.filter((k) => track.blocks[k]!.floorless);
+    if (murs.length > 0) {
+      let debut = -1;
+      let fin = -1;
+      for (let i = first; i <= last; i++) {
+        if (!murs.includes(out.blk[i]!)) continue;
+        if (debut < 0) debut = i;
+        fin = i;
+      }
+      const W = b.w0 / 2;
+      for (let i = first; i <= last; i++) {
+        let off: number;
+        if (i < debut) off = (W + MUR_MONTEE) * smooth01((i - first) / Math.max(1, (debut - first) * 0.8));
+        else if (i <= fin) off = W + MUR_TENUE;
+        else off = (W + MUR_TENUE) * (1 - smooth01((i - fin) / Math.max(1, (last - fin) * 0.7)));
+        out.pin[i] = sign * off;
+        out.mur[i] = true;
+      }
+      continue;
+    }
     // Les deux bouts restent libres (la relaxation y raccorde la trajectoire aux blocs voisins sans cassure de courbure).
     for (let i = first; i <= last; i++) {
       const f = ((i - first) / (last - first) - STRAIGHT_FREE) / (1 - 2 * STRAIGHT_FREE);
@@ -309,6 +337,7 @@ interface Path {
   slope: number[];
   /** Vrai là où la voiture est (ou peut être) en l'air à cause d'un saut : on n'y freine pas, la vitesse doit être bonne avant. */
   airborne: boolean[];
+  mur: boolean[];
 }
 const pathCaches = new Map<string, WeakMap<Track, Path>>();
 
@@ -385,7 +414,7 @@ function racingPath(track: Track, wall = false, cut = 0): Path {
   const zone = new Set<number>();
   for (const j of trackJumps(track)) for (let i = j.kick; i <= j.landing + 1; i++) zone.add(i);
   const airborne = c.blk.map((b, i) => zone.has(b) || c.wallExit[i]!);
-  const path = { x, z, s, grip, traction, rolling, bank, slick, slope: c.slope, airborne };
+  const path = { x, z, s, grip, traction, rolling, bank, slick, slope: c.slope, airborne, mur: c.mur };
   cache.set(track, path);
   return path;
 }
@@ -406,7 +435,7 @@ export function racingLine(
   wall = false,
   cut = 0,
 ): RacingLine {
-  const { x, z, s, grip, traction, rolling, bank, slick, slope, airborne } = racingPath(track, wall, cut);
+  const { x, z, s, grip, traction, rolling, bank, slick, slope, airborne, mur } = racingPath(track, wall, cut);
   const n = x.length;
   // Vitesse de passage : courbure sur une corde de ±2 points (≈ 8 m), v = √(adhérence / courbure).
   const speed = new Array<number>(n).fill(topSpeed);
@@ -421,7 +450,7 @@ export function racingLine(
     const cross = ax * bz - az * bx;
     const den = Math.sqrt((ax * ax + az * az) * (bx * bx + bz * bz) * (cx * cx + cz * cz));
     const k = den > 0 ? (2 * (cross < 0 ? -cross : cross)) / den : 0;
-    if (k > 1e-6) speed[i] = Math.min(topSpeed, Math.sqrt((gripAccel * (slick[i]! > 0 ? grip[i]! + slick[i]! * (iceCoastGrip - grip[i]!) : grip[i]!) + gravity * bank[i]!) / k));
+    if (k > 1e-6 && !mur[i]) speed[i] = Math.min(topSpeed, Math.sqrt((gripAccel * (slick[i]! > 0 ? grip[i]! + slick[i]! * (iceCoastGrip - grip[i]!) : grip[i]!) + gravity * bank[i]!) / k));
   }
   // Points de freinage : en remontant, on doit pouvoir freiner à temps pour la vitesse du point suivant.
   // Pas de freinage en l'air : sur la zone d'un saut, la vitesse visée ne peut pas baisser, donc elle doit être bonne avant.

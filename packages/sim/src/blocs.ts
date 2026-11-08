@@ -8,8 +8,8 @@ import type { ElementGrammaire } from "./grammaire";
 // par `?scenario=blocs`. Ils attendent le choix de Nathan (garder, retoucher, écarter) avant d'entrer dans le générateur.
 
 export interface ElementBloc extends ElementGrammaire {
-  /** La famille du catalogue (README du lot 58) : effet, bombee, releve, tube. */
-  famille: "effet" | "bombee" | "releve" | "tube";
+  /** La famille du catalogue (README du lot 58) : effet, bombee, releve, tube, mur (lot 58b). */
+  famille: "effet" | "bombee" | "releve" | "tube" | "mur";
 }
 
 const SINCE = 22;
@@ -108,6 +108,21 @@ export const BLOCS_LOT58: readonly ElementBloc[] = [
     // virages, on redescend dans le demi-tube. Variante 0 : deux amples ; variante 1 : deux larges enchaînés, plus serrés.
     build: (c) =>
       c.variant === 0 ? ["S", "V/q", "V/q", s(c, "3/cq"), "V/q", o(c, "3/cq"), "V/q", "S"] : ["S", "V/q", s(c, "2/cq"), "V/q", o(c, "2/cq"), o(c, "2/cq"), "V/q", "S"],
+  }),
+  bloc({
+    name: "bloc-mur",
+    label: "Mur roulable",
+    famille: "mur",
+    cuve: true,
+    off: 0,
+    variants: 2,
+    themes: ["stade", "nuit"],
+    // Lot 58b : un mur latéral dont le fond disparaît (`/m`) — il faut être monté sur la paroi avant le vide et la longer (au-dessus de 34 m/s la vitesse
+    // colle la voiture) ; trop bas on tombe, trop haut on passe par-dessus. Trois murs latéraux pour monter, puis trois (variante 1 : quatre) sans fond.
+    build: (c) => {
+      const w = c.wall;
+      return ["S", w, w, w, ...Array<string>(c.variant === 0 ? 3 : 4).fill(`${w}/m`), w, w, "S"];
+    },
   }),
 ];
 

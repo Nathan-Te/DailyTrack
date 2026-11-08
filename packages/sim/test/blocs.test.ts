@@ -10,6 +10,7 @@ import {
   FX_NO_STEER,
   TICK_RATE,
   CELL,
+  MUR_ROULABLE_BAS,
   bankAt,
   bestPilotRun,
   cellKey,
@@ -18,6 +19,8 @@ import {
   carSpeed,
   createFigureTrack,
   createRace,
+  cuveHeight,
+  cuveRadius,
   decodeReplay,
   encodeReplay,
   liftAt,
@@ -333,6 +336,42 @@ describe("tube de glace : la glace de piste (lot 58, retour de Nathan)", () => {
       return v0 - carSpeed(race.car);
     };
     expect(perte("q")).toBeLessThan(perte(""));
+  });
+});
+
+describe("mur roulable (lot 58b)", () => {
+  const spec = "S@start S S ML ML ML ML/m ML/m ML/m ML ML S S@finish";
+  /** Un conducteur simple, plein gaz, qui vise l'écart latéral `vise` (m, vers la gauche : le côté du mur) sur ce circuit droit. */
+  const conduire = (vise: number) => {
+    const race = lance(spec, 44);
+    let yMinMur = Infinity;
+    for (let t = 0; t < 10 * TICK_RATE && race.finishMs < 0 && race.respawns === 0; t++) {
+      const c = race.car;
+      const e = Math.atan2(vise - (c.x - 16), 12) - c.yaw;
+      stepRace(race, makeInput(Math.max(-1, Math.min(1, -3 * e)), 1, 0));
+      if (track(c)?.floorless) yMinMur = Math.min(yMinMur, c.y);
+    }
+    return { fin: race.finishMs, reprises: race.respawns, yMinMur };
+  };
+  const t = parseTrack("mur", spec);
+  const track = (c: { x: number; z: number }) => t.cells.get(cellKey(Math.floor(c.x / CELL), Math.floor(c.z / CELL)));
+
+  it("sans fond : rester sur l'axe, ou trop bas, c'est tomber ; monté sur la paroi (viser 1 m au-delà), on la longe et l'on passe", () => {
+    expect(conduire(0).reprises).toBe(1);
+    expect(conduire(5).reprises).toBe(1);
+    const mur = conduire(8);
+    expect(mur.reprises).toBe(0);
+    expect(mur.fin).toBeGreaterThan(0);
+    // Sur le mur roulable, la voiture reste au-dessus du bas de ce qui la porte (moitié du quart de cercle : 2,3 m sur une route étroite).
+    expect(mur.yMinMur).toBeGreaterThan(cuveRadius(7, 1) * MUR_ROULABLE_BAS);
+  });
+
+  it("le mur roulable n'a ni fond ni sol pour qui lit une hauteur ; un mur sans fond hors d'un mur latéral est refusé", () => {
+    const b = t.blocks[6]!;
+    expect(b.floorless).toBe(true);
+    expect(cuveHeight(b, 16, 16)).toBeNaN();
+    expect(() => parseTrack("x", "S@start V/m S@finish")).toThrow();
+    expect(() => parseTrack("x", "S@start S/m S@finish")).toThrow();
   });
 });
 

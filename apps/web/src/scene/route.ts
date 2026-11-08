@@ -7,6 +7,8 @@
 import {
   BANK_SLOPE_STEEP,
   CELL,
+  MUR_ROULABLE_BAS,
+  MUR_ROULABLE_HAUT,
   CUVE_LEFT,
   CUVE_RIGHT,
   JUMP_LIP,
@@ -330,8 +332,47 @@ function cuveProfile(W: number, aLeft: number, aRight: number): [number, number]
   return [...side(aLeft, 1), ...side(aRight, -1).reverse()];
 }
 
+/**
+ * Lot 58b — la coupe d'un mur roulable : du côté du mur seulement (`sign` : 1 à gauche), de sa crête (`MUR_ROULABLE_HAUT` au-dessus du quart de cercle) au
+ * bas de ce qui porte la voiture (`MUR_ROULABLE_BAS` du rayon) ; ni fond ni autre côté — le vide, comme dans la simulation.
+ */
+function murProfile(W: number, sign: 1 | -1): [number, number][] {
+  const R = cuveRadius(W, 1);
+  const f = W - R;
+  const pts: [number, number][] = [];
+  for (let i = CUVE_WALL_SEGMENTS; i >= 0; i--) pts.push([sign * W, R + (MUR_ROULABLE_HAUT * i) / CUVE_WALL_SEGMENTS]);
+  const bas = Math.acos(1 - MUR_ROULABLE_BAS); // l'angle où le quart de cercle est à `MUR_ROULABLE_BAS` × R
+  for (let i = CUVE_ARC_SEGMENTS - 1; i >= 0; i--) {
+    const phi = bas + (Math.PI / 2 - bas) * (i / CUVE_ARC_SEGMENTS);
+    pts.push([sign * (f + R * Math.sin(phi)), R - R * Math.cos(phi)]);
+  }
+  return pts;
+}
+
 function addCuve(g: Builder, pal: Palette, style: StyleRoute, b: Block, color: number, floorY: number): void {
   const W = b.w0 / 2;
+  if (b.floorless) {
+    // Lot 58b — mur roulable : la paroi seule, aux couleurs de la cuve, son chapeau et sa jupe du côté extérieur ; une bande d'alerte au bas.
+    const sign = b.cuve === CUVE_LEFT ? 1 : -1;
+    const [wa, wb] = style.cuve(pal);
+    const pts = murProfile(W, sign);
+    const rows = 12;
+    for (let i = 0; i < rows; i++) {
+      const q0 = (CELL * i) / rows;
+      const q1 = (CELL * (i + 1)) / rows;
+      const at = (q: number, [lam, y]: [number, number]): V3 => world(b, CELL / 2 + lam, q, b.y0 + y);
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const c = k === pts.length - 2 ? 0xffc21a : (k + i + b.index) % 2 === 0 ? wa : wb;
+        g.quad(at(q0, pts[k]!), at(q0, pts[k + 1]!), at(q1, pts[k + 1]!), at(q1, pts[k]!), c);
+        g.quad(at(q0, pts[k + 1]!), at(q0, pts[k]!), at(q1, pts[k]!), at(q1, pts[k + 1]!), shade(c, 0.6));
+      }
+      const top = pts[0]!;
+      const out: [number, number] = [top[0] + sign * 0.6, top[1]];
+      g.quad(at(q0, top), at(q1, top), at(q1, out), at(q0, out), wa);
+      g.quad(at(q0, out), at(q1, out), [...at(q1, out).slice(0, 1), floorY, at(q1, out)[2]] as V3, [...at(q0, out).slice(0, 1), floorY, at(q0, out)[2]] as V3, style.jupe(pal));
+    }
+    return;
+  }
   const curve = isCurve(b.kind);
   const left = curve && turnsLeft(b.kind);
   const { r: Rc } = curveCenter(b.kind);

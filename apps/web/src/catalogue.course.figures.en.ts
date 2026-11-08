@@ -108,6 +108,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "blocs.famille.bombee": "crowned road",
   "blocs.famille.releve": "steep banking",
   "blocs.famille.tube": "ice tube",
+  "blocs.famille.mur": "wallride",
   "figures.blocDirection.titre": "Steering locked",
   "figures.blocDirection.quoi": "The purple gantry locks the steering for 1.5 s: line up before the strip. Variant 2: a jump with the steering locked.",
   "figures.blocFreins.titre": "No brakes",
@@ -124,4 +125,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "figures.blocReleveFort.quoi": "A long corner banked at 45° is taken flat out, pressed into the slope. Variant 2: an S of two banked long corners.",
   "figures.blocTube.titre": "Ice tube",
   "figures.blocTube.quoi": "Bobsleigh style: half-pipes on track ice. Ride up the outer wall in the corners, drop back into the tube. Variant 2: tighter corners.",
+  "figures.blocMur.titre": "Wallride",
+  "figures.blocMur.quoi": "The floor disappears: climb the wall before the gap and ride it flat out. Too low you fall, too high you go over. Variant 2: longer.",
 };

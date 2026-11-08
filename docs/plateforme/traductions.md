@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2428 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2431 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1037,6 +1037,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `blocs.famille.bombee` | route bombée | crowned road |
 | `blocs.famille.releve` | virage très relevé | steep banking |
 | `blocs.famille.tube` | tube de glace | ice tube |
+| `blocs.famille.mur` | mur roulable | wallride |
 
 ### Cadre des écrans (`cadre.*`, `apps/web/src/catalogue.base.*.ts`)
 
@@ -1388,6 +1389,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `figures.blocReleveFort.quoi` | Un virage ample relevé à 45° se prend à fond, plaqué contre la pente. Variante 2 : un S de deux amples relevés. | A long corner banked at 45° is taken flat out, pressed into the slope. Variant 2: an S of two banked long corners. |
 | `figures.blocTube.titre` | Tube de glace | Ice tube |
 | `figures.blocTube.quoi` | Façon bobsleigh : des demi-tubes sur la glace de piste. Monte sur la paroi extérieure des virages, redescends dans le tube. Variante 2 : des virages plus serrés. | Bobsleigh style: half-pipes on track ice. Ride up the outer wall in the corners, drop back into the tube. Variant 2: tighter corners. |
+| `figures.blocMur.titre` | Mur roulable | Wallride |
+| `figures.blocMur.quoi` | Le fond disparaît : monte sur la paroi avant le vide et longe-la à pleine vitesse. Trop bas tu tombes, trop haut tu passes par-dessus. Variante 2 : plus long. | The floor disappears: climb the wall before the gap and ride it flat out. Too low you fall, too high you go over. Variant 2: longer. |
 
 ### garage (`garage.*`, `apps/web/src/catalogue.base.*.ts`)
 

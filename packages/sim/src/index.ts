@@ -6,7 +6,7 @@ export * from "./math";
 export * from "./car";
 export * from "./track";
 export * from "./world";
-export { cuveAmplitude, cuveHeight, cuveRadius, cuveTop, shellAt } from "./cuve";
+export { MUR_ROULABLE_BAS, MUR_ROULABLE_HAUT, cuveAmplitude, cuveHeight, cuveRadius, cuveTop, shellAt } from "./cuve";
 export * from "./race";
 export * from "./jump";
 export * from "./circuits";

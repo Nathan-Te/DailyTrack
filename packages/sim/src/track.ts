@@ -160,6 +160,8 @@ export interface Block {
   crown0?: number;
   /** Lot 58 — virage très relevé (`/f`) : pente `BANK_SLOPE_STEEP` au lieu de celle du virage. */
   steep?: true;
+  /** Lot 58b — mur roulable (`ML/m`, `MR/m`) : un mur latéral sans fond — on roule sur la paroi, ou l'on tombe. */
+  floorless?: true;
 }
 
 export interface Gate {
@@ -479,10 +481,11 @@ export interface ParsedToken {
   /** Lot 57 : dévers (pente en travers, positive = bord gauche plus haut), virage-tremplin. */
   tilt?: number;
   ramp?: true;
-  /** Lot 58 : bloc à effet, route bombée, virage très relevé. */
+  /** Lot 58 : bloc à effet, route bombée, virage très relevé ; lot 58b : mur roulable. */
   fx?: number;
   crown?: true;
   steep?: true;
+  floorless?: true;
 }
 
 /**
@@ -516,6 +519,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
   let climb = 0;
   let crown = false;
   let steep = false;
+  let floorless = false;
   for (const m of mods.match(/[enl]>[enl]|~.|./g) ?? []) {
     if (m === "i" || m === "j") {
       if (tilt) throw new Error(`Deux dévers : ${token}`);
@@ -523,6 +527,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
     } else if (m === "k") ramp = true;
     else if (m === "a") crown = true;
     else if (m === "f") steep = banked = true;
+    else if (m === "m") floorless = true;
     else if (m === "+") climb += SLOPE_RISE;
     else if (m === "-") climb -= SLOPE_RISE;
     else if (m[0] === "~") {
@@ -554,6 +559,8 @@ export function parseToken(token: string, index = 0): ParsedToken {
   // Lot 58 : la route bombée n'a ni rebords, ni dévers, ni relevé, ni cuve, ni pente de virage, ni tôle ondulée, ni transition de largeur ; le relevé fort
   // va aux virages large et ample.
   if ((crown && (tilt || ramp || climb || banked || cuveSides || outerWall || bumpy || kind === "gap" || kind === "jump" || kind === "kick" || (width && width.w0 !== width.w1))) || (steep && (!isCurve(kind) || curveSize(kind) !== 3 || outerWall))) throw new Error(`Bloc impossible : ${token}`);
+  // Lot 58b : un mur roulable est un mur latéral (`ML`, `MR`) sans fond, ni repère.
+  if (floorless && (cuveSides !== CUVE_LEFT && cuveSides !== CUVE_RIGHT)) throw new Error(`Bloc impossible : ${token}`);
   let cuve = cuveSides ?? 0;
   if (outerWall) cuve = turnsLeft(kind) ? CUVE_RIGHT : CUVE_LEFT; // le mur est du côté opposé au centre du virage
   if (cuve) {
@@ -566,7 +573,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
     kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}),
     ...(edge ? { edge } : {}), ...(bumpy ? { bumpy: true as const } : {}),
     ...(tilt ? { tilt } : {}), ...(ramp ? { ramp: true as const, rise: SLOPE_RISE } : {}), ...(climb ? { rise: climb } : {}),
-    ...(fx ? { fx } : {}), ...(crown ? { crown: true as const, open: true as const } : {}), ...(steep ? { steep: true as const } : {}),
+    ...(fx ? { fx } : {}), ...(crown ? { crown: true as const, open: true as const } : {}), ...(steep ? { steep: true as const } : {}), ...(floorless ? { floorless: true as const } : {}),
   };
 }
 
@@ -780,7 +787,7 @@ export function parseTrack(id: string, spec: string): Track {
   let edgeChain: EdgeKind = "wall";
 
   tokens.forEach((token, index) => {
-    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy, tilt, ramp, fx, crown, steep } = parseToken(token, index);
+    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy, tilt, ramp, fx, crown, steep, floorless } = parseToken(token, index);
     // Largeurs chaînées comme les hauteurs : un bloc sans largeur garde la sortie du précédent ; une largeur écrite doit
     // la prolonger exactement (seul le premier bloc la choisit), sinon la route aurait une marche.
     if (written && index > 0 && written.w0 !== width) {
@@ -818,6 +825,7 @@ export function parseTrack(id: string, spec: string): Track {
     // Lot 58 : bloc à effet, virage très relevé ; route bombée chaînée comme le dévers (elle naît et meurt sur une droite, un virage la garde).
     if (fx) block.fx = fx;
     if (steep) block.steep = true;
+    if (floorless) block.floorless = true;
     const crownIn = prevBlock && prevBlock.kind !== "gap" ? (prevBlock.crown ?? 0) : 0;
     if (crown || crownIn) {
       if (isCurve(kind) && crownIn !== (crown ? CROWN_SLOPE : 0)) throw new Error(`La route bombée naît et meurt sur une droite : ${token}`);
