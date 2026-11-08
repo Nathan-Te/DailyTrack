@@ -54,8 +54,13 @@ test.describe("l'accueil", () => {
     await expect(page.locator("#home-profile")).toHaveAttribute("href", /profil\/\?retour=/);
     for (const label of ["Archives", "Réglages", "Comment jouer"]) await expect(page.locator("#home .links").getByRole("button", { name: new RegExp(label) })).toBeVisible();
     // Lots S1 et S1b : Discord et Ko-fi, deux plaques de 44 px (l'icône seule, nom lu par `aria-label`) en bas à gauche, en liens sortants sans rien qui identifie le joueur ; elles ne chevauchent rien.
-    const plaques = await boxes(page, ["#communaute-discord", "#communaute-kofi", "#home-daily", "#home-salon", "#home-portail", "#home .links"]);
-    expect(plaques).toHaveLength(6);
+    // Lot 58 : avec des références publiques dans le classement (la démo régénérée les porte), l'accueil propose le choix des fantômes (lot 55) et dépasse 720 px ;
+    // les plaques passent alors à la fin du défilement (lot S1b) : le lien du portail se vérifie en haut, les plaques et ce qui les entoure au bout du défilement,
+    // comme au téléphone (`verifierAccueilTelephone`).
+    expectNoOverlap(await boxes(page, ["#home-portail"]), DESKTOP);
+    await page.evaluate(() => document.querySelector("#home .cadre__defile")?.scrollTo(0, 1e5));
+    const plaques = await boxes(page, ["#communaute-discord", "#communaute-kofi", "#home-daily", "#home-salon", "#home .links"]);
+    expect(plaques).toHaveLength(5);
     for (const b of plaques.slice(0, 2)) {
       expect(b.h).toBe(44);
       expect(b.w).toBe(44);
