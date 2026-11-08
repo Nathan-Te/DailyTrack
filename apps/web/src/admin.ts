@@ -40,6 +40,7 @@ const SCENARIOS: [Scenario, string][] = [
   ["bas-cotes", "Bas-côtés"],
   ["herbe", "Herbe de course"],
   ["figures", "Figures (tour)"],
+  ["sauts", "Sauts et transitions (lot 57)"],
   ["figure", "Une figure"],
   ["plat", "Terrain plat"],
 ];

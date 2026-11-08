@@ -1,4 +1,5 @@
 import { buildFigure, figureByName } from "./figures";
+import { elementGrammaire } from "./grammaire";
 import { parseTrack } from "./track";
 
 /**
@@ -130,7 +131,8 @@ export function createFiguresTrack() {
  * variante est impossible sur une route normale. Le circuit n'est jamais classé (c'est un essai, comme `?scenario=air`).
  */
 export function createFigureTrack(name: string, variant = 0, mirror = false) {
-  const figure = figureByName(name);
+  // Lot 57 : les éléments de la grammaire des sauts et des transitions (`saut-…`, `transition-…`) se jouent de la même façon.
+  const figure = figureByName(name) ?? elementGrammaire(name);
   if (!figure) return null;
   const body = buildFigure(figure, !mirror, "n", Math.max(0, Math.min(figure.variants - 1, Math.floor(variant))));
   if (!body) return null;

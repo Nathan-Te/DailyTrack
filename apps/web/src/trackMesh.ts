@@ -8,6 +8,9 @@ import {
   rippleAt,
   bankAt,
   blockHeight,
+  hasLift,
+  liftAt,
+  roadHeightAt,
   blockHalfWidth,
   curveCenter,
   isCurve,
@@ -225,8 +228,14 @@ export function arcPoint(b: Block, r: number, a: number, y: number): V3 {
     bankAt(b, p, q, bank);
     y += bank.h;
   }
+  // Lot 57 : virage en pente, virage-tremplin.
+  if (hasLift(b)) {
+    liftAt(b, p, q, liftT);
+    y += liftT.h;
+  }
   return world(b, p, q, y);
 }
+const liftT = { h: 0, gp: 0, gq: 0 };
 
 /** Hauteur de la route d'un bloc droit, tôle ondulée comprise (route bosselée, lot 21). */
 export function roadHeight(b: Block, q: number): number {
@@ -243,7 +252,7 @@ export function onBlock(b: Block, lat: number, t: number, lift: number): V3 {
     return arcPoint(b, turnsLeft(b.kind) ? R - lat : R + lat, t * (Math.PI / 2), b.y0 + lift);
   }
   const q = t * CELL;
-  return world(b, CELL / 2 + lat, q, blockHeight(b, q) + lift);
+  return world(b, CELL / 2 + lat, q, roadHeightAt(b, CELL / 2 + lat, q) + lift);
 }
 
 
