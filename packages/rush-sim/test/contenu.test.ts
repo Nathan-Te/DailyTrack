@@ -179,6 +179,16 @@ describe("le chaman : il protège, il fuit, il n'attaque pas (lot BR6)", () => {
     const dernier = poser(p, GELEE, 100, 0);
     expect(dernier).toBeTruthy();
   });
+  it("un chaman ne protège jamais un chaman : deux chamans côte à côte restent vulnérables, leurs autres alliés non", () => {
+    const p = salle();
+    const a = poser(p, CHAMAN, 400, 0, { gel: 0 });
+    const b = poser(p, CHAMAN, 450, 40, { gel: 0 });
+    const allie = poser(p, GELEE, 420, -60, { gel: 999 });
+    tourner(p, 90);
+    expect(a.prot).toBe(0);
+    expect(b.prot).toBe(0);
+    expect(allie.prot).toBeGreaterThan(0);
+  });
   it("il fuit le chevalier qui s'approche et ne blesse personne", () => {
     const p = salle();
     const ch = poser(p, CHAMAN, 300, 0);

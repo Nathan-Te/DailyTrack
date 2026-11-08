@@ -2192,7 +2192,8 @@ export class Partie {
     const portee2 = carre(CHAMAN_AURA);
     let n = 0;
     for (const a of this.actifs) {
-      if (a === m || a.hp <= 0 || distance2(a.x, a.y, m.x, m.y) > portee2) continue;
+      // un chaman ne protège jamais un chaman (lui-même ni un autre : deux chamans côte à côte se rendraient invulnérables)
+      if (a === m || a.type === CHAMAN || a.hp <= 0 || distance2(a.x, a.y, m.x, m.y) > portee2) continue;
       a.prot = CHAMAN_PROT;
       a.lien = m.id;
       n++;
