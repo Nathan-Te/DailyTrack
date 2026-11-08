@@ -90,4 +90,24 @@ export const COULEURS = {
   coeur: 0xff8fb3,
   bouclier: 0xcfe8ff,
   lame: 0xffe9a0,
+  // Lot BR6 — les quatre nouveaux ennemis (chacun sa teinte, sa silhouette, un écart ≥ 40 avec les deux tons du sol de CHAQUE thème : `test/lisibilite.test.ts`), les élites, le bouclier du chaman, le projectile du cracheur.
+  /** Le cracheur : un crapaud orangé aux yeux sur tiges, la bouche sombre ; le chaman : une robe vert-de-gris à capuche et une orbe claire ; le totem : un pieu de bois sombre aux bandes ocre et sarcelle ; le porte-bouclier : un colosse ardoise derrière un grand bouclier d'acier. */
+  cracheur: 0xb5651d,
+  cracheurClair: 0xf0a860,
+  cracheurBouche: 0x3a1a0c,
+  chaman: 0x14746f,
+  chamanSombre: 0x0d4f4b,
+  chamanClair: 0x6fd6c9,
+  orbe: 0xbff3ff,
+  totemBois: 0x5b3a22,
+  totemPierre: 0x6b5b4a,
+  totemOcre: 0xe0a030,
+  totemSarcelle: 0x1f8a82,
+  pbCorps: 0x3d4a63,
+  pbBouclier: 0x6c7fa3,
+  pbBord: 0x2b3447,
+  /** Un élite : sa couronne et son halo d'or ; le bouclier posé par un chaman (une bulle bleu clair) et son lien ; le projectile du cracheur (orange vif, comme un danger qui avance). */
+  elite: 0xffc93c,
+  bulle: 0x9fe6ff,
+  projectile: 0xff7a3c,
 } as const;

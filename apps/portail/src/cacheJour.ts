@@ -59,7 +59,7 @@ export function jourGarde(stockage: Stockage | null, jourLocal: number, maintena
     if (jour.joueur && !aIdentite) return oublier(stockage);
     if (!jour.joueur) return jour;
     // Lot U1 : de même, ce que les amis ont fait aujourd'hui a pu changer (leur classement, leurs jeux faits) : la copie ne le garde pas, la réponse fraîche l'apporte.
-    const { classementAmis: _classement, amisDuJour: _amis, ...joueur } = jour.joueur;
+    const { classementAmis: _classement, classementTous: _tous, amisDuJour: _amis, ...joueur } = jour.joueur;
     return { ...jour, joueur, jeux: jour.jeux.map(({ etat, ...jeu }) => (etat?.statut === "fini" ? { ...jeu, etat } : jeu)) };
   } catch {
     return null;

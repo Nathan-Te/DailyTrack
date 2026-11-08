@@ -15,6 +15,7 @@ import { DUREE_TICKS, SCENARIOS, TICKS_PAR_SECONDE, type Scenario } from "@cdj/r
 //   · `?scenario=medailles&jours=7` (lot BR4) : par jour, le boss, le thème, les temps des trois stratégies du pilote, la stratégie du Diamant, les quatre seuils et les temps du pilote humanisé ;
 //   · `?scenario=fin&temps=65000` (lot BR4) : l'écran de fin, tout de suite, à ce temps (en millisecondes) sur le niveau du jour (`&jour=`) : pour le juger sans jouer ;
 //   · `?qualite=haute|basse` (lot BR0c) : le niveau de rendu (haute : ombres portées, contour et bloom en post-traitement ; basse : ombres en disques, contour par coque). Sans le paramètre, haute avec un passage automatique en basse si les images par seconde chutent.
+//   · `?scenario=bestiaire-monstres` (lot BR6) : les sept monstres et un élite de chaque, figés, côte à côte (`&theme=`) ; `?scenario=camp&ennemis=cracheur,chaman,porte-bouclier,totem` : un camp composé à la main (`&elite=1` : l'un d'eux est un élite, `&competence=`) ; `?scenario=epreuve` : directement la salle d'épreuve du jour ;
 // Une partie d'essai n'est JAMAIS classée (`classable` de la définition) ; la rediffusion d'un scénario nomme le scénario et le serveur la refuse.
 export interface Essai {
   scenario: Scenario | null;
@@ -34,6 +35,9 @@ export interface Essai {
   /** Lot BR5 : `&competence=` — l'identifiant de la compétence donnée au départ (l'indice est cherché par `indiceCompetence`), ou `null`. */
   competence: string | null;
   monstres: number;
+  /** Lot BR6 : `&ennemis=cracheur,chaman` du scénario `camp` (identifiants bruts, validés par la simulation) et `&elite=1`. */
+  ennemis: string[];
+  elite: boolean;
   tune: boolean;
   fps: boolean;
   /** Le niveau de rendu imposé par l'adresse, ou `null` (haute, avec le passage automatique en basse). */
@@ -51,7 +55,7 @@ export interface Essai {
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { scenario: null, jour: null, carte: null, medailles: null, fin: null, fantome: false, phase2: false, boss: null, competence: null, monstres: 0, tune: false, fps: false, qualite: null, reglages: null, ameliorations: [], nv: 2, sensations: null, essai: false };
+  const vide: Essai = { scenario: null, jour: null, carte: null, medailles: null, fin: null, fantome: false, phase2: false, boss: null, competence: null, monstres: 0, ennemis: [], elite: false, tune: false, fps: false, qualite: null, reglages: null, ameliorations: [], nv: 2, sensations: null, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const nom = q.get("scenario") ?? "";
@@ -91,6 +95,8 @@ export function lireEssai(search: string, restreint: boolean): Essai {
     boss: q.get("boss"),
     competence: q.get("competence"),
     monstres: Number.isInteger(monstres) && monstres > 0 ? Math.min(80, monstres) : 0,
+    ennemis: (q.get("ennemis") ?? "").split(",").map((x) => x.trim()).filter((x) => x !== "").slice(0, 8),
+    elite: q.get("elite") === "1",
     tune: debug && q.has("tune"),
     fps: debug && q.has("fps"),
     qualite: nivQ === "haute" || nivQ === "basse" ? nivQ : null,

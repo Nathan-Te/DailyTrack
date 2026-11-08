@@ -1,7 +1,7 @@
 // Les sons de Rush : Web Audio **procédural, sans fichier** (oscillateurs et bruit filtré). Aucun son avant le premier geste du joueur (règle des navigateurs et d'iOS). Le niveau est le volume du kit
 // (la musique commune en tient le réglage) ; à 0, rien ne se joue. La musique a son propre contexte : un effet ne la coupe jamais.
 
-export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque" | "ramasse" | "niveau" | "carte" | "soin" | "ondeEpee" | "jarre" | "bois" | "tourbillon" | "bond" | "atterri" | "bouclier" | "elan" | "prete";
+export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque" | "ramasse" | "niveau" | "carte" | "soin" | "ondeEpee" | "jarre" | "bois" | "tourbillon" | "bond" | "atterri" | "bouclier" | "elan" | "prete" | "para" | "crache" | "pop" | "aura" | "coupBouclier" | "porte" | "vague" | "eliteMort" | "totem" | "sismique";
 
 import { ouvrirContexteAudio } from "@cdj/core/audio";
 
@@ -239,6 +239,55 @@ export class Sons {
         this.souffle(c, t, { duree: 0.22, vol: 0.34, filtre: 1200, filtreVers: 3600, q: 1.5 });
         this.ton(c, t, { de: 760, vers: 1180, duree: 0.18, type: "triangle", vol: 0.14 });
         this.ton(c, t, { de: 1520, duree: 0.28, type: "sine", vol: 0.07, retard: 0.04 });
+        break;
+      // Lot BR6 : le coup PARÉ par un porte-bouclier (un clang d'acier, sec et aigu : jamais confondu avec un coup qui touche), le crachat (un glouglou qui gicle), un projectile qui éclate, l'aura du chaman (un tintement de clochette),
+      // le coup de bouclier (un choc sourd), les portes de la salle (du bois qui claque, deux fois), une vague, un élite qui tombe (une fanfare courte), le totem qui invoque (un grondement violet), la seconde secousse du bond sismique.
+      case "para":
+        this.ton(c, t, { de: 1650 * h, vers: 1500, duree: 0.05, type: "square", vol: 0.16 });
+        this.ton(c, t, { de: 2450 * h, vers: 2200, duree: 0.2, type: "triangle", vol: 0.13, retard: 0.012 });
+        this.ton(c, t, { de: 3300, duree: 0.28, type: "sine", vol: 0.07, retard: 0.02 });
+        this.souffle(c, t, { duree: 0.09, vol: 0.2, filtre: 4800, q: 1.8, type: "highpass" });
+        break;
+      case "crache":
+        this.ton(c, t, { de: 180, vers: 520, duree: 0.16, type: "sine", vol: 0.2 });
+        this.ton(c, t, { de: 260, vers: 140, duree: 0.2, type: "triangle", vol: 0.1, retard: 0.08 });
+        this.souffle(c, t, { duree: 0.2, vol: 0.2, filtre: 700, filtreVers: 2200, q: 1.6 });
+        break;
+      case "pop":
+        this.ton(c, t, { de: 720 * h, vers: 240, duree: 0.08, type: "triangle", vol: 0.16 });
+        this.souffle(c, t, { duree: 0.08, vol: 0.14, filtre: 3000, q: 1 });
+        break;
+      case "aura":
+        this.ton(c, t, { de: 1320, duree: 0.3, type: "sine", vol: 0.07 });
+        this.ton(c, t, { de: 1980, duree: 0.34, type: "sine", vol: 0.05, retard: 0.06 });
+        break;
+      case "coupBouclier":
+        this.ton(c, t, { de: 150, vers: 48, duree: 0.28, type: "sine", vol: 0.6 });
+        this.ton(c, t, { de: 520, vers: 200, duree: 0.1, type: "square", vol: 0.14 });
+        this.souffle(c, t, { duree: 0.2, vol: 0.32, filtre: 1500, filtreVers: 260, q: 0.8 });
+        break;
+      case "porte":
+        for (const r of [0, 0.14]) {
+          this.ton(c, t, { de: 110, vers: 45, duree: 0.2, type: "sine", vol: 0.7, retard: r });
+          this.souffle(c, t, { duree: 0.2, vol: 0.4, filtre: 1500, filtreVers: 260, q: 0.8, retard: r });
+        }
+        break;
+      case "vague":
+        this.ton(c, t, { de: 196, vers: 294, duree: 0.34, type: "sawtooth", vol: 0.16, attaque: 0.08 });
+        this.ton(c, t, { de: 392, vers: 587, duree: 0.34, type: "square", vol: 0.07, attaque: 0.08 });
+        break;
+      case "eliteMort":
+        for (const [i, f] of [392, 494, 587, 784, 988].entries()) this.ton(c, t, { de: f, duree: 0.2, type: "triangle", vol: 0.2, retard: i * 0.07 });
+        this.ton(c, t, { de: 90, vers: 36, duree: 0.5, type: "sine", vol: 0.6 });
+        break;
+      case "totem":
+        this.ton(c, t, { de: 70, vers: 140, duree: 0.5, type: "sawtooth", vol: 0.18, attaque: 0.15 });
+        this.ton(c, t, { de: 280, vers: 420, duree: 0.4, type: "triangle", vol: 0.1, attaque: 0.12 });
+        this.souffle(c, t, { duree: 0.4, vol: 0.2, filtre: 260, filtreVers: 1500, q: 1.2 });
+        break;
+      case "sismique":
+        this.ton(c, t, { de: 90, vers: 28, duree: 0.6, type: "sine", vol: 0.75 });
+        this.souffle(c, t, { duree: 0.5, vol: 0.45, filtre: 1200, filtreVers: 100, q: 0.7 });
         break;
     }
   }

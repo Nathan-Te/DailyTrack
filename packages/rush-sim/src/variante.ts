@@ -32,16 +32,23 @@ export function formatTemps(ticks: number, langue: "fr" | "en"): string {
 export const VARIANTE = {
   nom: "temps" as const,
   /** Ce que la fiche dit du classement et des médailles (vérifié contre `config/jeux/rush.json` par `test/variante.test.ts`). */
-  fiche: { colonnes: [{ nom: "temps", sens: "asc" }], unite: "ticks", format: "temps", bareme: [130, 160, 200] } satisfies FicheVariante,
+  fiche: { colonnes: [{ nom: "temps", sens: "asc" }], unite: "ticks", format: "temps", bareme: [150, 200, 300] } satisfies FicheVariante,
   /** Le score : les colonnes de classement, dans l'ordre de la fiche. */
   score: (r: Pick<Resultat, "victoire" | "ticks">): number[] => [r.victoire ? r.ticks : DUREE_TICKS],
   seuils(bot: Pick<Resultat, "victoire" | "ticks">): Seuils {
     const author = VARIANTE.score(bot)[0]!;
     // Lot BR4 : l'or, l'argent et le bronze sont des pourcentages du Diamant, ceux de la fiche (`medailles.bareme`) — jamais des nombres écrits ailleurs.
     const b = VARIANTE.fiche.bareme;
-    return { author, gold: idiv(author * b[0]!, 100), silver: idiv(author * b[1]!, 100), bronze: idiv(author * b[2]!, 100) };
+    // Lot BR6 : le bronze (300 %) dépasserait dix minutes les jours où le Diamant dure plus de 3 min 20 : une partie perdue, qui vaut le pire temps (`DUREE_TICKS`), aurait alors une médaille. Les seuils sont donc plafonnés juste sous la durée maximale,
+    // en restant strictement croissants (le Diamant < l'or < l'argent < le bronze : `seuilsValides`).
+    const bronze = Math.min(idiv(author * b[2]!, 100), DUREE_TICKS - 1);
+    const silver = Math.min(idiv(author * b[1]!, 100), bronze - 1);
+    const gold = Math.min(idiv(author * b[0]!, 100), silver - 1);
+    return { author, gold, silver, bronze };
   },
   medaille(score: readonly number[], s: Seuils): Medaille | null {
+    // Lot BR6 : le bronze est à 300 % du Diamant et peut dépasser dix minutes les jours longs : une partie perdue (ou qui dépasse la durée maximale) vaut le pire temps et n'a JAMAIS de médaille.
+    if ((score[0] ?? DUREE_TICKS) >= DUREE_TICKS) return null;
     for (const m of ["author", "gold", "silver", "bronze"] as const) if ((score[0] ?? DUREE_TICKS) <= s[m]) return m;
     return null;
   },

@@ -29,7 +29,7 @@ const TOUT = ["lame-lourde", "lame-lourde", "allonge", "cadence", "moulinet", "o
 const BOSS_REFS = [["reine", 1, false], ["grand-duc", 2, true], ["belier", 3, false], ["chene", 4, true]] as const;
 // Lot BR5 : la horde (30 gélatons, 10 gelées, des vases) avec chacune des trois compétences, et le bond sur le mannequin : la jauge des scénarios part pleine, le pilote lance la compétence dès qu'il y a de quoi la lancer.
 const COMPETENCES_REFS = [["horde-tourbillon", "horde", 0], ["horde-bond", "horde", 1], ["horde-bouclier", "horde", 2], ["boss-bouclier", "boss", 2]] as const;
-type Ligne = readonly [nom: string, scenario: "boss" | "arene" | "cartes" | "horde", ameliorations: readonly string[], boss: number, phase2: boolean, competence: number, nomRef: string];
+type Ligne = readonly [nom: string, scenario: "boss" | "arene" | "cartes" | "horde" | "camp" | "epreuve" | "bestiaire-monstres", ameliorations: readonly string[], boss: number, phase2: boolean, competence: number, nomRef: string];
 const lignes: Ligne[] = [
   ["boss", "boss", [], 0, false, 0, "boss"],
   ["arene", "arene", [], 0, false, 0, "arene"],
@@ -37,11 +37,16 @@ const lignes: Ligne[] = [
   ["cartes", "cartes", ["soin"], 0, false, 0, "cartes"],
   ...BOSS_REFS.map(([nom, b, p2]): Ligne => [nom, "boss", [], b, p2, 0, `boss-${nom}`]),
   ...COMPETENCES_REFS.map(([nom, sc, comp]): Ligne => [nom, sc, [], 0, false, comp, nom]),
+  // Lot BR6 : un camp de cracheurs, de chamans, de totems et de porte-boucliers (dont un élite), la salle d'épreuve du jour (le pilote la joue), le bestiaire des monstres (figé).
+  ["camp", "camp", [], 0, false, 1, "camp"],
+  ["epreuve", "epreuve", [], 0, false, 0, "epreuve"],
+  ["bestiaire-monstres", "bestiaire-monstres", [], 0, false, 0, "bestiaire-monstres"],
 ];
 const scenarios = lignes.map(([, nom, ameliorations, boss, phase2, competence, nomRef]) => {
-  const c = contenuScenario(nom, { monstres: nom === "arene" ? 30 : 0, ameliorations: [...ameliorations], nv: 5, boss, phase2, competence });
+  const ennemis = nom === "camp" ? [3, 4, 5, 6] : [];
+  const c = contenuScenario(nom, { monstres: nom === "arene" ? 30 : 0, ameliorations: [...ameliorations], nv: 5, boss, phase2, competence, ennemis, elite: nom === "camp" });
   const r = jouerLePilote(c, undefined, 3000);
-  return { nom: nomRef, scenario: nom, monstres: c.monstres, ameliorations: [...ameliorations], nv: nom === "cartes" ? 5 : 0, boss, phase2, competence, code: encoderRediffusion({ sim: RUSH_SIM_VERSION, g: c.g, contenu: { scenario: nom }, changements: r.changements, choix: r.choix }), ticks: 3000, ...(({ empreinte, resultat }) => ({ empreinte, resultat }))(jouerJusqua(c, r.changements, 3000, undefined, r.choix)) };
+  return { nom: nomRef, scenario: nom, monstres: c.monstres, ennemis, elite: nom === "camp", ameliorations: [...ameliorations], nv: nom === "cartes" ? 5 : 0, boss, phase2, competence, code: encoderRediffusion({ sim: RUSH_SIM_VERSION, g: c.g, contenu: { scenario: nom }, changements: r.changements, choix: r.choix }), ticks: 3000, ...(({ empreinte, resultat }) => ({ empreinte, resultat }))(jouerJusqua(c, r.changements, 3000, undefined, r.choix)) };
 });
 
 const sortie = {

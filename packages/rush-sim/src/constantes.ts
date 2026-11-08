@@ -2,11 +2,11 @@
 // aucune règle ici n'est définitive. Les unités : 1 mètre = 4 096 unités (comme les tuiles de Jump), le temps en ticks, les vitesses en unités par tick.
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée. */
-export const RUSH_SIM_VERSION = 8;
+export const RUSH_SIM_VERSION = 9;
 /** La version du générateur du contenu du jour. Elle monte à tout changement de ce que `dailyRush` produit. */
-export const RUSH_GENERATOR_VERSION = 6;
+export const RUSH_GENERATOR_VERSION = 7;
 /** Lot BR4 : la version du pilote (ses trois stratégies, leurs listes de cartes, son anti-blocage) ET du barème des médailles. Le Diamant est la partie du pilote : changer l'un ou l'autre change les médailles des jours non figés, donc elle monte. */
-export const RUSH_BOT_VERSION = 2;
+export const RUSH_BOT_VERSION = 3;
 
 export const TICKS_PAR_SECONDE = 60;
 /** Une partie dure au plus 10 minutes ; au-delà elle est perdue (le pire temps). */
@@ -25,6 +25,11 @@ export const RAYON_CHEVALIER = cm(42);
 export const RAYON_GELEE = cm(48);
 export const RAYON_CHAUVE = cm(36);
 export const RAYON_GOLEM = cm(170);
+/** Lot BR6 : les rayons des quatre nouveaux ennemis (un élite a le sien × 1,5). */
+export const RAYON_CRACHEUR = cm(40);
+export const RAYON_CHAMAN = cm(40);
+export const RAYON_TOTEM = cm(55);
+export const RAYON_PORTE_BOUCLIER = cm(60);
 
 // Les entrées d'un tick (lot BR0b : deux octets) : l'octet bas porte la direction du DÉPLACEMENT (0 = aucune, 1 à 32 = les 32 directions de la croix), le coup (bit 6) et l'esquive (bit 7) ; l'octet haut
 // porte la VISÉE, séparée du déplacement (0 = pas de visée, 1 à 32 = les 32 directions : le chevalier regarde et frappe de ce côté). Sans visée (doigt, manette sans stick droit), le chevalier regarde où il va
@@ -70,6 +75,6 @@ export const C_BOUCLIER = 2;
 /** L'indice d'une compétence d'après son identifiant d'adresse (`&competence=bond`), ou −1. */
 export const indiceCompetence = (id: string): number => COMPETENCES.indexOf(id as CompetenceId);
 
-/** Les contenus qu'une partie peut jouer : `jour` (le contenu du jour) et les scénarios d'essai (jamais classés). `vitrine` est une scène figée (lot BR0b) qui sert à comparer le rendu à `docs/rush/maquettes/cible-ia.png` ; `mannequin` (lot BR0c) : six gelées immobiles qui ne meurent pas et un golem qui ne frappe pas, pour juger le coup ; `bestiaire` (lot BR3) : les cinq boss côte à côte, figés, pour juger leurs silhouettes ; `horde` (lot BR5) : 30 gélatons, 10 gelées et des groupes de vases, pour juger la fauche et les compétences. */
-export type Scenario = "jour" | "arene" | "boss" | "vitrine" | "mannequin" | "cartes" | "bestiaire" | "horde";
-export const SCENARIOS: readonly Scenario[] = ["jour", "arene", "boss", "vitrine", "mannequin", "cartes", "bestiaire", "horde"];
+/** Les contenus qu'une partie peut jouer : `jour` (le contenu du jour) et les scénarios d'essai (jamais classés). `vitrine` est une scène figée (lot BR0b) qui sert à comparer le rendu à `docs/rush/maquettes/cible-ia.png` ; `mannequin` (lot BR0c) : six gelées immobiles qui ne meurent pas et un golem qui ne frappe pas, pour juger le coup ; `bestiaire` (lot BR3) : les cinq boss côte à côte, figés, pour juger leurs silhouettes ; `horde` (lot BR5) : 30 gélatons, 10 gelées et des groupes de vases, pour juger la fauche et les compétences ; lot BR6 : `bestiaire-monstres` (tous les monstres et un élite de chaque, figés), `camp` (un camp composé à la main) et `epreuve` (directement la salle d'épreuve du jour). */
+export type Scenario = "jour" | "arene" | "boss" | "vitrine" | "mannequin" | "cartes" | "bestiaire" | "horde" | "bestiaire-monstres" | "camp" | "epreuve";
+export const SCENARIOS: readonly Scenario[] = ["jour", "arene", "boss", "vitrine", "mannequin", "cartes", "bestiaire", "horde", "bestiaire-monstres", "camp", "epreuve"];

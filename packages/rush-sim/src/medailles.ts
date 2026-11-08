@@ -7,7 +7,7 @@ import type { Choix } from "./rediffusion";
 import { VARIANTE, type Medaille, type Seuils } from "./variante";
 
 // **Les médailles de Rush (lot BR4).** Le Diamant est le MEILLEUR TEMPS DES TROIS STRATÉGIES du pilote (foncer, un peu d'XP, beaucoup d'XP) le jour même : une partie réelle, donc toujours rejouable par le serveur (pas de « temps
-// théorique »). L'or, l'argent et le bronze en sont des pourcentages (130, 160 et 200 %, ceux de la fiche : `medailles.bareme`, repris par `VARIANTE.seuils`). Tout est déterministe et calculé par jour ; il se recalcule quand la version
+// théorique »). L'or, l'argent et le bronze en sont des pourcentages (150, 200 et 300 %, ceux de la fiche : `medailles.bareme`, repris par `VARIANTE.seuils`). Tout est déterministe et calculé par jour ; il se recalcule quand la version
 // du jeu change (`RUSH_SIM_VERSION`, `RUSH_GENERATOR_VERSION`, `RUSH_BOT_VERSION`) puisque le calcul est refait à chaque lecture d'un jour non figé : les jours à venir se mettent à jour d'eux-mêmes. **Un jour figé garde ses seuils**
 // (règle de la racine « un jour figé fige aussi ses seuils » : `Contenu.seuilsFiges`, `seuilsDuJour`). Le calcul coûte trois parties du pilote (`diamantDuJour`, gardé par contenu).
 export type { Medaille, Seuils };

@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2434 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2457 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -2911,6 +2911,18 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
+| `carte.frenesie.nom` | Frénésie | Frenzy |
+| `carte.frenesie.effet` | Chaque coup qui touche accélère les suivants ({n} % par cran, 5 crans). | Every hit that lands speeds up the next ones ({n} % per stack, 5 stacks). |
+| `carte.lame_enflammee.nom` | Lame enflammée | Flaming blade |
+| `carte.lame_enflammee.effet` | Le 3ᵉ coup laisse une zone qui brûle. | The 3rd strike leaves a burning zone. |
+| `carte.ecrasement.nom` | Écrasement | Crush |
+| `carte.ecrasement.effet` | +{n} % de dégâts contre les étourdis. | +{n} % damage against stunned enemies. |
+| `carte.seconde_charge.nom` | Seconde charge | Second charge |
+| `carte.seconde_charge.effet` | Ta compétence se lance deux fois avant de se recharger. | Your skill can be cast twice before it recharges. |
+| `carte.bond_sismique.nom` | Bond sismique | Seismic leap |
+| `carte.bond_sismique.effet` | Le bond déclenche une seconde onde, plus large. | The leap triggers a second, wider shockwave. |
+| `carte.bouclier_ricochet.nom` | Bouclier ricochet | Ricochet shield |
+| `carte.bouclier_ricochet.effet` | Le bouclier rebondit d'un ennemi à l'autre ({n} rebonds). | The shield bounces from enemy to enemy ({n} bounces). |
 | `carte.lame_lourde.nom` | Lame lourde | Heavy blade |
 | `carte.lame_lourde.effet` | +{n} % de dégâts. Coups un peu plus lents. | +{n}% damage. Slightly slower strikes. |
 | `carte.allonge.nom` | Allonge | Reach |
@@ -2948,7 +2960,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `carte.aimant.nom` | Aimant | Magnet |
 | `carte.aimant.effet` | Les gemmes viennent de {n} % plus loin. | Gems come from {n}% farther. |
 | `carte.titre` | Les {n} prochains jours | The next {n} days |
-| `carte.legende` | {date} · {theme} · {boss} — {m} m · {d} détours ({b} en boucle) · {tue} monstres · vases : {o} · sans rencontre {sr} s au plus · foncer {t} · un peu d'XP {tp} · beaucoup d'XP {tn}{fin} | {date} · {theme} · {boss} — {m} m · {d} detours ({b} loops) · {tue} monsters · vases: {o} · {sr} s at most without an encounter · rush {t} · a little XP {tp} · lots of XP {tn}{fin} |
+| `carte.legende` | {date} · {theme} · {boss} — {m} m · {d} détours ({b} en boucle) · {tue} monstres dont {el} élites · épreuve à {ep} % · vases : {o} · sans rencontre {sr} s au plus · foncer {t} · un peu d'XP {tp} · beaucoup d'XP {tn}{fin} | {date} · {theme} · {boss} — {m} m · {d} detours ({b} loops) · {tue} monsters incl. {el} elites · trial room at {ep} % · vases: {o} · {sr} s at most without an encounter · rush {t} · a little XP {tp} · lots of XP {tn}{fin} |
 | `carte.perdu` |  · perdu |  · lost |
 | `carte.meilleure` |  → la plus rapide : {s} (+{ecart} s sur la suivante) |  → fastest: {s} (+{ecart} s on the next) |
 
@@ -3005,6 +3017,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `depart.titre` | TA COMPÉTENCE | YOUR SKILL |
 | `depart.aria` | Choisis ta compétence avant de partir | Pick your skill before you start |
+
+### epreuve (`epreuve.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `epreuve.debut` | SALLE D'ÉPREUVE | TRIAL ROOM |
+| `epreuve.vague` | VAGUE {n}/{total} | WAVE {n}/{total} |
+| `epreuve.fin` | SALLE VAINCUE | ROOM CLEARED |
 
 ### Fin de partie (`fin.*`, `apps/rush/src/catalogue.*.ts`)
 
@@ -3126,6 +3146,19 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `medailles.or` | Or | Gold |
 | `medailles.argent` | Argent | Silver |
 | `medailles.bronze` | Bronze | Bronze |
+
+### monstre (`monstre.*`, `apps/rush/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `monstre.nom.gelee` | Gelée | Jelly |
+| `monstre.nom.chauveSouris` | Chauve-souris | Bat |
+| `monstre.nom.gelaton` | Gélaton | Jellet |
+| `monstre.nom.cracheur` | Cracheur | Spitter |
+| `monstre.nom.chaman` | Chaman | Shaman |
+| `monstre.nom.totem` | Totem | Totem |
+| `monstre.nom.porteBouclier` | Porte-bouclier | Shield-bearer |
+| `monstre.elite` | Élite | Elite |
 
 ### Page (titre, chargement) (`page.*`, `apps/rush/src/catalogue.*.ts`)
 

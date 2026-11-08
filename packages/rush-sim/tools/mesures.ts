@@ -101,6 +101,18 @@ const pireJour = chrono(() => {
   }
 }, 3);
 console.log(`Pire rejeu du jour (10 minutes, chevalier invincible qui court en rond) : ${pireJour.toFixed(0)} ms`);
+// Lot BR6 : le VRAI pire rejeu — tous les monstres éveillés en même temps (l'arène d'essai à 80 monstres, le plafond du jeu), un chevalier invincible qui court en rond et frappe, dix minutes : un monstre qui dort ne coûte rien, celui-là coûte tout.
+const pireHorde = chrono(() => {
+  const p = new Partie(contenuScenario("arene", { monstres: 80 }), REGLAGES_DEFAUT);
+  let t = 0;
+  while (!p.finie) {
+    p.c.coeurs = 3;
+    p.c.degat = 0;
+    p.avancer(entree((t >> 5) % 32, t % 9 === 0, false));
+    t++;
+  }
+}, 3);
+console.log(`Pire rejeu absolu (10 minutes, 80 monstres éveillés en permanence, chevalier invincible) : ${pireHorde.toFixed(0)} ms`);
 // Le pire jour en rejeu : le pilote « nettoyer » qui tue tout, puis le golem, sur 60 jours.
 let pireNettoyage = 0;
 for (let k = 0; k < 60; k++) {

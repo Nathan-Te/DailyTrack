@@ -70,6 +70,12 @@ export interface ClassementAmisAccueil {
   top: LigneEntreAmis[];
   moi: LigneEntreAmis;
 }
+/** Aperçu de « Tous » à l'accueil : les 3 premiers du cumul du jour (mêmes lignes que les amis), ta ligne (`null` : rien fini), et le nombre de classés. Absent d'un serveur plus ancien. */
+export interface ClassementTousAccueil {
+  sur: number;
+  top: LigneEntreAmis[];
+  moi: LigneEntreAmis | null;
+}
 /** Lot U1 : un ami dans « tes amis aujourd'hui » : ses jeux du jour faits (leur dossier), le dernier (et son instant, en ms). */
 export interface AmiDuJour {
   pseudo: string;
@@ -108,6 +114,8 @@ export interface JoueurDuJour {
   favoris?: string[] | null;
   /** Lot U1 : la colonne de droite — le classement entre amis (`null` : aucun ami), tes amis aujourd'hui (6 au plus), leur nombre, ton groupe (`null` : aucun) ; absents d'un serveur plus ancien. */
   classementAmis?: ClassementAmisAccueil | null;
+  /** L'aperçu de « Tous » (`null` : personne n'a encore fini un jeu aujourd'hui). */
+  classementTous?: ClassementTousAccueil | null;
   amisDuJour?: AmiDuJour[];
   nbAmis?: number;
   groupe?: GroupeAccueil | null;

@@ -76,8 +76,8 @@ for (const k of [1, 1.25, 1.5, 1.75, 2]) {
   const cols = [`×${k}`, part("author"), part("gold"), part("silver"), part("bronze")];
   console.log(md ? `| ${cols.join(" | ")} |` : `×${k} : Diamant ${cols[1]} · or ${cols[2]} · argent ${cols[3]} · bronze ${cols[4]}`);
 }
-// 5. Des barèmes à comparer (propositions : la fiche garde 130 / 160 / 200 tant que Nathan n'a pas tranché) : pour chaque facteur de lenteur, la part des jours où le meilleur des trois humanisé × facteur atteint l'or / l'argent / le bronze.
-const candidats: [number, number, number][] = [[130, 160, 200], [140, 180, 240], [150, 200, 300]];
+// 5. Des barèmes à comparer (la fiche est à 150 / 200 / 300 depuis le lot BR6, décision de Nathan ; les autres sont des comparaisons) : pour chaque facteur de lenteur, la part des jours où le meilleur des trois humanisé × facteur atteint l'or / l'argent / le bronze.
+const candidats: [number, number, number][] = [[130, 160, 200], [150, 200, 300], [180, 250, 400]];
 console.log(`\n== 5. Barèmes : part des jours où « meilleur des trois humanisé × facteur » ≤ or / argent / bronze (pourcentages du Diamant) ==`);
 if (md) console.log("| barème | ×1,25 | ×1,5 | ×1,75 | ×2 | ×2,5 |\n|---|---|---|---|---|---|");
 for (const b of candidats) {
