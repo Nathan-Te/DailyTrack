@@ -4,6 +4,8 @@ Branche `claude/lot-58-blocs-complexes-ubs6bq`, PR brouillon. **Les trois étape
 
 **On s'inspire de Trackmania pour les idées, jamais pour les fichiers ni les noms** : rien de Trackmania ni de sa communauté (objets, modèles, textures, noms) ; tout est construit par le code, avec nos noms. Règle : `packages/sim/CLAUDE.md`, « Blocs plus complexes, à la Trackmania (lot 58) » (pas dans `docs/regles/sim/` : zone partagée, hors des zones d'un lot de Track — le job `zones` l'a refusé ; un lot de la plateforme peut l'y déplacer).
 
+**Tous les thèmes et tous les blocs du jeu à la fin du lot** (thèmes, notation des blocs, les 67 figures du générateur, ce qui reste hors du générateur) : [`lot-58-blocs-complexes/themes-et-blocs.md`](lot-58-blocs-complexes/themes-et-blocs.md).
+
 ## Pour les joueurs
 - [Track] De nouveaux blocs dans les circuits du jour : portiques à effet (direction bloquée, freins coupés, régulateur, voiture fragile) et leur remise à zéro, annoncés au milieu de l'écran. // New blocks in the daily tracks: effect gates (locked steering, no brakes, cruise control, fragile car) and their reset, announced mid-screen.
 - [Track] Route bombée sans rebords, virages relevés à 45°, tube de glace et mur roulable, selon le thème du jour. // Crowned road without kerbs, 45° banked turns, ice tube and wallride, depending on the day's theme.
