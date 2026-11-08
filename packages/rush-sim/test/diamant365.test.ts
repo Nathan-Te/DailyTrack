@@ -3,7 +3,7 @@ import { daysFromCivil, formatDay } from "@cdj/core";
 import { DUREE_TICKS, dailyRush, diamantDuJour } from "../src/index";
 
 // Lot BR4 — « un Diamant tous les jours » : sur 365 jours, au moins une des trois stratégies du pilote de référence gagne (sinon c'est un défaut du pilote ou du niveau, à corriger — pas à contourner). Un fichier à part : il joue
-// 365 × 3 parties (≈ 30 s) et tourne en parallèle des autres tests.
+// 365 × 3 parties (≈ 5 min en tout, 6 tranches en parallèle) et tourne en parallèle des autres tests.
 const J0 = daysFromCivil(2026, 11, 2);
 
 describe("un Diamant tous les jours, sur 365 jours", () => {
@@ -16,9 +16,9 @@ describe("un Diamant tous les jours, sur 365 jours", () => {
       const meilleur = d.parties[d.strategie];
       expect(meilleur.resultat.victoire, `jour ${k} (${formatDay(J0 + k)}) : aucune stratégie ne gagne`).toBe(true);
       expect(meilleur.score).toBeLessThan(DUREE_TICKS);
-      // aucune partie du pilote de référence ne s'éternise : pas plus de 100 s pour la meilleure, jamais un blocage de 30 s de plus
-      expect(meilleur.score, `jour ${k}`).toBeLessThan(100 * 60);
+      // aucune partie du pilote de référence ne s'éternise : lot BR6, la run est plus longue — pas plus de 5 min 30 pour la meilleure des trois (la médiane est ~2 min 50)
+      expect(meilleur.score, `jour ${k}`).toBeLessThan(330 * 60);
     }
-  }, 120_000);
+  }, 400_000);
 });
 

@@ -257,7 +257,7 @@ describe("le chevalier", () => {
     m.x = p.c.x;
     m.y = p.c.y;
     m.gel = 0;
-    m.t = 0;
+    m.t = 30; // lot BR6 : une gelée ne blesse que pendant son bond
     avancerN(p, 1, 0);
     expect(p.c.coeurs).toBe(COEURS - 1);
     expect(p.evenements.some((e) => e.k === "degats")).toBe(true);
@@ -265,10 +265,12 @@ describe("le chevalier", () => {
   it("après un dégât, le chevalier est invincible un moment (pas de dégât en rafale)", () => {
     const p = new Partie(BOSS);
     const m = monstre(GELEE, p.c.x, p.c.y);
+    m.t = 30; // lot BR6 : une gelée ne blesse que pendant son bond
     p.monstres.push(m);
     avancerN(p, 1, 0);
     expect(p.c.coeurs).toBe(COEURS - 1);
     m.gel = 0;
+    m.t = 30;
     m.x = p.c.x;
     m.y = p.c.y;
     avancerN(p, 1, 0);
@@ -685,11 +687,11 @@ describe("le temps et les médailles", () => {
     expect(formatTemps(0, "fr")).toBe("0:00,00");
     expect(formatTemps(DUREE_TICKS, "fr")).toBe("10:00,00");
   });
-  it("le Diamant est le meilleur temps des trois stratégies du pilote ; or, argent, bronze à 130, 160 et 200 % (la fiche)", () => {
+  it("le Diamant est le meilleur temps des trois stratégies du pilote ; or, argent, bronze à 150, 200 et 300 % (la fiche, lot BR6)", () => {
     const s = seuilsDe(dailyRush(J));
     const a = s.author;
     expect(a).toBe(Math.min(...STRATEGIES.map((x) => VARIANTE.score(jouerLePilote(dailyRush(J), undefined, Infinity, x).resultat)[0]!)));
-    expect(s).toEqual({ author: a, gold: idiv(a * 130, 100), silver: idiv(a * 160, 100), bronze: idiv(a * 200, 100) });
+    expect(s).toEqual({ author: a, gold: idiv(a * 150, 100), silver: idiv(a * 200, 100), bronze: idiv(a * 300, 100) });
     expect([a, a + 1, s.gold + 1, s.silver + 1, s.bronze + 1].map((t) => VARIANTE.medaille([t], s))).toEqual(["author", "gold", "silver", "bronze", null]);
   });
 });

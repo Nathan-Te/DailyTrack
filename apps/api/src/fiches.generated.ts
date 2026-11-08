@@ -425,9 +425,9 @@ export const FICHES_SERVEUR = [
     "medailles": {
       "methode": "pourcentage-diamant",
       "bareme": [
-        130,
-        160,
-        200
+        150,
+        200,
+        300
       ]
     },
     "versions": {
@@ -449,7 +449,7 @@ export const FICHES_SERVEUR = [
     },
     "rejeu": {
       "unitesServeur": 1,
-      "ticksParUnite": 1250,
+      "ticksParUnite": 2500,
       "maxTicks": 36000
     },
     "tables": [],

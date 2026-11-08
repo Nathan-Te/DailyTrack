@@ -168,7 +168,7 @@ export const INACCESSIBLE = 65535;
 export const CM_PAR_CHANFREIN = 40;
 
 /** Lot BR2 : un camp en boucle est posé de côté à ce pourcentage (+ 0 à 60) de la longueur du lien qu'il double (180 au BR1b : à 22-84 m du chemin). Mesuré : à 60, 18-44 m (médiane 28 m), un détour en boucle coûte ~10 s à ~7,5 m/s. */
-export const DECALAGE_CAMP = 60;
+export const DECALAGE_CAMP = 150;
 
 // --- Les bornes du plan (centimètres) ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 export const BORNES_NIVEAU = {
@@ -178,7 +178,7 @@ export const BORNES_NIVEAU = {
   detoursMin: 3,
   detoursMax: 5,
   /** Lot BR5 : un camp de 12 à 22 monstres (8 à 11 au BR1b ; 10 à 20 au premier jet du lot : il faut un peu plus d'unités à faucher pour avoir à farmer). */
-  campMin: 12,
+  campMin: 13,
   campMax: 22,
   /** Les monstres épars du chemin principal (hors groupes). */
   eparsMin: 0,
@@ -198,8 +198,8 @@ export const BORNES_NIVEAU = {
   vaseGroupeMax: 12,
   vasesMax: 170,
   /** Un détour : le camp est à 17-45 m du chemin principal (17-85 m au BR1b, 20-40 m au BR1). Lot BR2 : des camps plus proches, pour que le détour soit un pari et non une perte sûre (voir `DECALAGE_CAMP`). */
-  detourMin: 1700,
-  detourMax: 4500,
+  detourMin: 4000,
+  detourMax: 11000,
   /** Aucun monstre du chemin à moins de 16 m du départ. */
   loinDuDepart: 1600,
   /** La règle de densité : au plus 3 000 cm de chemin sans rencontre, soit ~4 s de course (7,49 m/s). */
@@ -212,8 +212,8 @@ export const BORNES_NIVEAU = {
   vagues: 3,
   vagueMin: 8,
   vagueMax: 15,
-  /** Lot BR6 : un camp à l'avancée de `PROG_ELITE` ou plus a un élite dans neuf cas sur dix (environ un camp sur deux au total). */
-  eliteChance: 90,
+  /** Lot BR6 : un camp à l'avancée de `PROG_ELITE` ou plus a un élite dans tous les cas (environ un camp sur deux au total). */
+  eliteChance: 100,
 } as const;
 
 /** La vitesse de course du pilote et du joueur par défaut, en cm/s (468 × 1,6) : la règle de densité la lit. */
@@ -497,7 +497,9 @@ function tenter(rng: Rng): Plan | null {
   for (let d = 0; d < voulus; d++) {
     let place = false;
     for (let essai = 0; essai < 76 && !place; essai++) {
-      const boucle = essai < 60;
+      // les deux premiers détours sont des camps de la SECONDE moitié du niveau (après la salle d'épreuve) : c'est là que viennent les types de la fin et les élites
+      const tard = d < 2;
+      const boucle = !tard && essai < 60;
       const r = 650 + rng.int(250); // lot BR5 : un camp de 10 à 20 monstres a besoin de place
       let hub: number;
       let hub2 = -1;
@@ -517,11 +519,11 @@ function tenter(rng: Rng): Plan | null {
         camp = { x: A.x + idiv(ux * idiv(longueur * u, 100), 1024) + idiv(-uy * s * D, 1024), y: A.y + idiv(uy * idiv(longueur * u, 100), 1024) + idiv(ux * s * D, 1024), r, genre: "camp" };
         sCamp = cum[hub]! + idiv((cum[hub2]! - cum[hub]!) * u, 100);
       } else {
-        hub = rng.int(nSeg);
+        hub = tard ? mid + 1 + rng.int(nEtapes - mid) : rng.int(nSeg);
         if (hub === mid || nb[hub]! >= 3) continue;
         const s = rng.int(2) === 0 ? 1 : -1;
         const angle = mod128(dirsSortie[hub]! + s * (24 + rng.int(24)));
-        const D = 2300 + rng.int(1100);
+        const D = 3600 + rng.int(3600);
         const H = cl[hub]!;
         camp = { x: H.x + idiv(COS[angle]! * D, 1024), y: H.y + idiv(SIN[angle]! * D, 1024), r, genre: "camp" };
         sCamp = cum[hub]!;
@@ -705,7 +707,7 @@ function construire(plan: Plan, graine: number, rng: Rng, essais: number): Nivea
     const j = Math.floor((y - oy) / CASE);
     if (i < 0 || j < 0 || i >= l || j >= h) return false;
     const k = j * l + i;
-    return (cases[k] === SOL || cases[k] === PONT) && zones[k] !== Z_ARENE && zones[k] !== Z_PORTE;
+    return (cases[k] === SOL || cases[k] === PONT) && zones[k] !== Z_ARENE && zones[k] !== Z_PORTE && zones[k] !== Z_PORTE_EPREUVE;
   };
   /** Un disque de rayon `r` tient en (x, y) : les quatre coins de son carré sont sur du sol libre. */
   const tient = (x: number, y: number, r: number): boolean => solLibre(x - r, y - r) && solLibre(x + r, y - r) && solLibre(x - r, y + r) && solLibre(x + r, y + r);
@@ -1248,8 +1250,6 @@ export function problemesDuNiveau(n: Niveau): string[] {
     if (k < B.vaseGroupeMin || k > B.vaseGroupeMax) p.push(`groupe de ${k} vases`);
   }
   if (n.vases.length > B.vasesMax) p.push("trop de vases");
-  const bloque = passageBloque(n);
-  if (bloque) p.push(bloque);
   if (n.monstres.length > B.monstresMax) p.push("trop de monstres");
   // Lot BR1b : la règle de densité — jamais plus de ~4 s de course sans rencontre sur le chemin principal.
   if (n.sansRencontreCm > B.sansRencontreMax) p.push(`${n.sansRencontreCm} cm de chemin sans rencontre`);
@@ -1278,11 +1278,29 @@ export function problemesDuNiveau(n: Niveau): string[] {
     if ((m.type === PORTE_BOUCLIER || m.type === TOTEM) && m.prog < PROG_TANK) p.push("un tank ou un totem avant ses deux tiers du niveau");
     if (m.type === TOTEM && m.camp < 0) p.push("un totem hors d'un camp");
   }
+  // le plus coûteux en dernier, et seulement si le reste tient : le chevalier rejoint l'arène et chaque monstre (grille fine)
+  if (p.length === 0) {
+    const bloque = passageBloque(n);
+    if (bloque) p.push(bloque);
+  }
   return [...new Set(p)];
 }
 
+/** Lot BR6 : les derniers niveaux générés, par graine (un niveau est immuable : la partie, le pilote et le rendu le lisent seulement). Générer un niveau coûte ~100 ms (le tirage retente jusqu'à en trouver un valide) : le serveur, le pilote qui joue trois parties du même jour et les tests le redemandent sans cesse. */
+const gardes = new Map<number, Niveau>();
+const GARDES_MAX = 64;
+
 /** Le niveau d'une graine : tente des plans jusqu'à en trouver un valide (les tentatives sont tirées de la graine : même résultat partout). */
 export function genererNiveau(graine: number): Niveau {
+  const deja = gardes.get(graine);
+  if (deja) return deja;
+  const n = genererSansCache(graine);
+  gardes.set(graine, n);
+  if (gardes.size > GARDES_MAX) gardes.delete(gardes.keys().next().value!);
+  return n;
+}
+
+function genererSansCache(graine: number): Niveau {
   for (let essai = 0; essai < MAX_ESSAIS; essai++) {
     const rng = new Rng(mixSeed(graine, SEL_NIVEAU + essai));
     const plan = tenter(rng);

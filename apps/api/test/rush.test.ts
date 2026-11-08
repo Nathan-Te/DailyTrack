@@ -117,7 +117,8 @@ describe("Rush sur le serveur", () => {
     // une compétence qui n'existe pas ne s'écrit même pas : l'octet est illisible
     const hors = await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, bot.changements, bot.choix, 7), name: "Hors" }, { headers: entete(2) });
     expect(hors.status).toBe(400);
-    for (const [n, k] of [[3, 0], [4, 1], [5, 2]] as const) expect((await poster(n, k)).status, `compétence ${k}`).toBe(200);
+    // lot BR6 : les choix de cartes du pilote dépendent de sa compétence (les cartes propres à une compétence ne sont tirées que pour elle) : on essaie chacune des trois avec une partie vide, qui ne dépend d'aucun choix
+    for (const [n, k] of [[3, 0], [4, 1], [5, 2]] as const) expect((await t.call("POST", "/api/rush/submit", { replay: enregistrer(c, [], [], k), name: `Joueur${n}` }, { headers: entete(n) })).status, `compétence ${k}`).toBe(200);
   });
 
   it("une partie vide est classée la dernière, sans médaille", async () => {
@@ -148,11 +149,11 @@ describe("Rush sur le serveur", () => {
     expect((await libre.call("GET", `/api/rush/day/${DATE}`)).body.medals).toEqual(seuilsDe(dailyRush(JOUR)));
   });
 
-  it("le coût d'un rejeu suit sa durée (`rejeu.ticksParUnite` de la fiche) : une partie normale ~2 unités, la pire (10 minutes) ~15, au moins `unitesServeur`", async () => {
+  it("le coût d'un rejeu suit sa durée (`rejeu.ticksParUnite` de la fiche) : une partie normale (~3 minutes) ~6 unités, la pire (10 minutes) 15, au moins `unitesServeur`", async () => {
     expect(unitesDuRejeu(100)).toBe(1);
-    expect(unitesDuRejeu(1250)).toBe(1); // lot BR5 : 1 250 ticks par unité (2 500 au BR4 : un rejeu coûte ~2× plus par tick avec 60 monstres et des vases)
-    expect(unitesDuRejeu(3500)).toBe(3);
-    expect(unitesDuRejeu(36000)).toBe(29);
+    expect(unitesDuRejeu(2500)).toBe(1); // lot BR6 : 2 500 ticks par unité (1 250 au BR5) : un tick coûte ~3 µs depuis que les monstres endormis ne coûtent plus rien (~10 µs au BR5)
+    expect(unitesDuRejeu(11000)).toBe(5);
+    expect(unitesDuRejeu(36000)).toBe(15);
     // le contrat compte le reste juste après le rejeu : une partie du pilote (~3 500 ticks) coûte `unitesDuRejeu(ticks)` au total, dont `unitesServeur` déjà comptée par le module
     const depenses: number[] = [];
     const c = dailyRush(JOUR);
@@ -166,7 +167,7 @@ describe("Rush sur le serveur", () => {
     const vide: number[] = [];
     const m2 = await contratRush({}, { spendReplays: (u = 1) => void vide.push(u) }).rejouer(niveau, enregistrer(c, [], [], 0));
     expect(m2.ticks).toBe(DUREE_TICKS);
-    expect(vide.reduce((a, b) => a + b, 1)).toBe(29);
+    expect(vide.reduce((a, b) => a + b, 1)).toBe(15);
   });
 
   it("le profil du joueur et le jeu fermé (`off`) répondent comme les autres jeux", async () => {

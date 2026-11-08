@@ -38,12 +38,12 @@ export const PROG_TANK = 65;
 export const PROG_ELITE = 45;
 /** Les poids de tirage d'un monstre de camp à l'avancée `prog` (même ordre que les types). */
 export function poidsAuProgres(prog: number, totem: boolean): readonly number[] {
-  if (prog < PROG_SOUTIEN) return [33, 22, 45, 0, 0, 0, 0];
-  if (prog < PROG_TANK) return [22, 14, 30, 20, 8, 0, 0];
-  return [16, 10, 24, 18, 8, totem ? 6 : 0, 16];
+  if (prog < PROG_SOUTIEN) return [35, 25, 40, 0, 0, 0, 0];
+  if (prog < PROG_TANK) return [22, 14, 22, 24, 10, 0, 0];
+  return [14, 10, 16, 20, 10, totem ? 8 : 0, 22];
 }
 /** Les plafonds par camp ou par vague : au plus ce nombre de chaque type (le chaman protège, mais deux suffisent ; le totem est unique). */
-export const PLAFOND_TYPE: readonly number[] = [99, 99, 99, 4, 2, 1, 3];
+export const PLAFOND_TYPE: readonly number[] = [99, 99, 99, 2, 2, 1, 2];
 /** Les poids d'un monstre ÉPARS (seul sur le chemin) : ni gélaton, ni chaman, ni totem. */
 export function poidsEpars(prog: number): readonly number[] {
   if (prog < PROG_SOUTIEN) return [70, 30, 0, 0, 0, 0, 0];

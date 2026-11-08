@@ -117,7 +117,7 @@ describe("la course hors combat (lot BR1b)", () => {
     for (let t = 0; t < 130; t++) pas(MARCHE);
     expect(p.c.elan).toBeGreaterThan(0);
     // une gelée qui n'est pas alertée (elle n'interdit pas la course d'avance) arrive sur le chevalier
-    p.monstres.push(monstre(x0, y0));
+    p.monstres.push(monstre(x0, y0, { t: 30 })); // lot BR6 : une gelée ne blesse que pendant son bond (elle s'écrase 30 ticks avant)
     const coeurs = p.c.coeurs;
     p.avancer(MARCHE);
     expect(p.c.coeurs).toBe(coeurs - 1);

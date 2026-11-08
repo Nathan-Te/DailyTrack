@@ -10,7 +10,7 @@ const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-rush.json", im
   pilote: number;
   jours: { date: string; empreinte: string; diamant: Strategie; seuils: Seuils }[];
   rediffusions: { nom: string; date: string; g: number; code: string; resultat: unknown }[];
-  scenarios: { nom: string; scenario: Scenario; monstres: number; ameliorations: string[]; nv: number; boss: number; phase2: boolean; competence: number; code: string; ticks: number; empreinte: string; resultat: unknown }[];
+  scenarios: { nom: string; scenario: Scenario; monstres: number; ennemis?: number[]; elite?: boolean; ameliorations: string[]; nv: number; boss: number; phase2: boolean; competence: number; code: string; ticks: number; empreinte: string; resultat: unknown }[];
 };
 
 describe("golden de Rush", () => {
@@ -33,7 +33,7 @@ describe("golden de Rush", () => {
   it.each(golden.scenarios.map((s) => [s.nom, s]))("le scénario « %s » donne la même empreinte d'état à %s ticks", (_nom, s) => {
     const ref = s as (typeof golden.scenarios)[number];
     const r = decoderRediffusion(ref.code);
-    const jeu = jouerJusqua(contenuScenario(ref.scenario, { monstres: ref.monstres, ameliorations: ref.ameliorations, nv: ref.nv, boss: ref.boss, phase2: ref.phase2, competence: ref.competence }), r.changements, ref.ticks, undefined, r.choix);
+    const jeu = jouerJusqua(contenuScenario(ref.scenario, { monstres: ref.monstres, ameliorations: ref.ameliorations, nv: ref.nv, boss: ref.boss, phase2: ref.phase2, competence: ref.competence, ennemis: ref.ennemis ?? [], elite: ref.elite ?? false }), r.changements, ref.ticks, undefined, r.choix);
     expect({ empreinte: jeu.empreinte, resultat: jeu.resultat }).toEqual({ empreinte: ref.empreinte, resultat: ref.resultat });
   });
 });

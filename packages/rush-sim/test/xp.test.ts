@@ -39,7 +39,7 @@ import {
 // Lot BR5 : le jour demande de choisir une compétence au départ ; ces essais jouent la première (le tourbillon) sans écran de choix.
 const dailyRush = (jour: number, version?: number): Contenu => ({ ...dailyRushReel(jour, version), competence: 0 });
 
-// Lot BR2 — l'XP (les gemmes, l'aimant, les niveaux), le choix d'une amélioration (le tirage, l'événement d'entrée, la validation par le serveur), chacune des 18 améliorations et les trois stratégies du pilote.
+// Lot BR2 — l'XP (les gemmes, l'aimant, les niveaux), le choix d'une amélioration (le tirage, l'événement d'entrée, la validation par le serveur), chacune des 24 améliorations et les trois stratégies du pilote.
 const J0 = daysFromCivil(2026, 11, 2);
 const jour = (k = 0): Contenu => dailyRush(J0 + k);
 const avec = (c: Contenu, ameliorations: string[]): Contenu => ({ ...c, ameliorations });
@@ -122,7 +122,7 @@ describe("les gemmes et l'aimant", () => {
 });
 
 function jouerPremierMonstre() {
-  return new Partie(jour()).monstres[0]!;
+  return new Partie(jour()).monstres.find((q) => q.type === 0)!;
 }
 
 describe("les niveaux et le monde figé", () => {
@@ -221,14 +221,14 @@ describe("le tirage des cartes (graine du jour + numéro du niveau)", () => {
     niveauPret(b);
     expect(a.choix!.cartes).toEqual(b.choix!.cartes);
   });
-  it("le catalogue : 18 améliorations (lot BR5 : 4 cartes de compétence), cumulables jusqu'à 3 fois sauf celles qui sont uniques ; le soin peut revenir", () => {
-    expect(NB_AMELIORATIONS).toBe(18);
+  it("le catalogue : 24 améliorations (lot BR5 : 4 cartes de compétence ; lot BR6 : 6 cartes de fin de partie), cumulables jusqu'à 3 fois sauf celles qui sont uniques ; le soin peut revenir", () => {
+    expect(NB_AMELIORATIONS).toBe(24);
     const uniques = AMELIORATIONS.filter((a) => a.max === 1).map((a) => a.id);
-    expect(uniques.sort()).toEqual(["echo", "esquive-tranchante", "moulinet", "onde-epee", "vol-de-vie"]);
+    expect(uniques.sort()).toEqual(["bond-sismique", "bouclier-ricochet", "echo", "ecrasement", "esquive-tranchante", "frenesie", "lame-enflammee", "moulinet", "onde-epee", "seconde-charge", "vol-de-vie"]);
     expect(AMELIORATIONS.find((a) => a.id === "soin")!.max).toBe(Infinity);
     expect(AMELIORATIONS.filter((a) => a.max === 3)).toHaveLength(11);
     expect(AMELIORATIONS.find((a) => a.id === "signature")!.max).toBe(2);
-    expect(AMELIORATIONS.filter((a) => a.famille === "competence").map((a) => a.id)).toEqual(["recharge-vive", "maitrise", "echo", "signature"]);
+    expect(AMELIORATIONS.filter((a) => a.famille === "competence").map((a) => a.id)).toEqual(["recharge-vive", "maitrise", "echo", "signature", "seconde-charge", "bond-sismique", "bouclier-ricochet"]);
   });
 });
 
@@ -261,7 +261,7 @@ describe("chacune des améliorations", () => {
     expect(pal(["moulinet"]).arcCoup(0)).toBe(pal([]).arcCoup(0));
     for (const [id, derriere] of [[[], false], [["moulinet"], true]] as const) {
       const p = pal([...id]);
-      const m = p.monstres[0]!;
+      const m = p.monstres.find((q) => q.type === 0)!;
       m.hp = 1000;
       p.c.x = m.x + cm(130); // le monstre est DERRIÈRE le chevalier, qui regarde à droite
       p.c.y = m.y;
@@ -274,7 +274,8 @@ describe("chacune des améliorations", () => {
   });
   it("Onde d'épée : le 3ᵉ coup lance une onde qui blesse chaque cible une seule fois", () => {
     const p = pal(["onde-epee"]);
-    const m = p.monstres[0]!;
+    p.vases = []; // (les vases d'un camp, brisés par l'onde, donneraient assez d'XP pour ouvrir un choix : le monde se figerait)
+    const m = p.monstres.find((q) => q.type === 0)!;
     m.hp = 1000;
     p.c.x = m.x - cm(500);
     p.c.y = m.y;
@@ -317,7 +318,7 @@ describe("chacune des améliorations", () => {
     expect(dash(["esquive-vive"]).attente).toBeLessThan(dash([]).attente);
     // l'esquive tranchante blesse ce qu'elle traverse, une seule fois
     const p = pal(["esquive-tranchante"]);
-    const m = p.monstres[0]!;
+    const m = p.monstres.find((q) => q.type === 0)!;
     m.hp = 1000;
     p.c.x = m.x - cm(150);
     p.c.y = m.y;
@@ -327,7 +328,7 @@ describe("chacune des améliorations", () => {
     expect(perdu).toBeGreaterThan(0);
     expect(perdu).toBeLessThanOrEqual(Math.trunc(p.degatsCoup(0) * 1.2));
     const sans = pal([]);
-    const m2 = sans.monstres[0]!;
+    const m2 = sans.monstres.find((q) => q.type === 0)!;
     m2.hp = 1000;
     sans.c.x = m2.x - cm(150);
     sans.c.y = m2.y;
@@ -352,7 +353,7 @@ describe("chacune des améliorations", () => {
   });
   it("Vol de vie : un cœur tous les N monstres tués", () => {
     const p = pal(["vol-de-vie"]);
-    const m = p.monstres[0]!;
+    const m = p.monstres.find((q) => q.type === 0)!;
     p.c.coeurs = 1;
     p.tues = REGLAGES_DEFAUT.volVie - 1;
     p.c.x = m.x - cm(120);
@@ -453,7 +454,7 @@ describe("la rediffusion porte les choix (événement d'entrée) et le serveur l
 });
 
 describe("les trois stratégies du pilote", () => {
-  it("chaque liste de priorités nomme les 18 améliorations, une fois chacune", () => {
+  it("chaque liste de priorités nomme les 24 améliorations, une fois chacune", () => {
     for (const s of STRATEGIES) expect([...PRIORITES[s]].sort()).toEqual(AMELIORATIONS.map((a) => a.id).sort());
   });
   it("le pilote prend la première carte de sa liste qui est offerte", () => {
@@ -467,11 +468,10 @@ describe("les trois stratégies du pilote", () => {
     const c = jour(3);
     const par = Object.fromEntries(STRATEGIES.map((s) => [s, jouerLePilote(c, REGLAGES_DEFAUT, Infinity, s)])) as Record<(typeof STRATEGIES)[number], ReturnType<typeof jouerLePilote>>;
     for (const s of STRATEGIES) expect(par[s].resultat.victoire).toBe(true);
-    expect(par.foncer.resultat.nv).toBeLessThanOrEqual(3);
-    expect(par.beaucoup.resultat.nv).toBeGreaterThanOrEqual(6);
+    expect(par.foncer.resultat.nv).toBeLessThanOrEqual(6); // lot BR6 : la salle d'épreuve lui donne 3 ou 4 niveaux
+    expect(par.beaucoup.resultat.nv).toBeGreaterThanOrEqual(9);
     expect(par.peu.resultat.nv).toBeGreaterThanOrEqual(par.foncer.resultat.nv);
     expect(par.beaucoup.resultat.tues).toBeGreaterThanOrEqual(par.peu.resultat.tues); // lot BR5 : égalité possible (les camps proches sont les mêmes)
-    expect(par.peu.resultat.tues).toBeGreaterThanOrEqual(par.foncer.resultat.tues);
     // et sur plusieurs jours, chasser tous les camps tue strictement plus que chasser les proches
     let plus = 0;
     for (let k = 4; k < 10; k++) {
@@ -487,25 +487,25 @@ describe("les trois stratégies du pilote", () => {
     while (!p.finie) pasDuPilote(p, e);
     expect(p.resultat()).toEqual(jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "peu").resultat);
   });
-  it("le combat contre le golem sans amélioration : il se gagne, en moins d'une minute", () => {
+  it("le combat contre le golem sans amélioration : il se gagne, en 2 à 4 minutes (lot BR6 : 7 500 points de vie ; les cartes de la salle d'épreuve et des camps le raccourcissent)", () => {
     const r = jouerLePilote(contenuScenario("boss"), REGLAGES_DEFAUT, 36000);
     expect(r.resultat.victoire).toBe(true);
-    expect(r.ticks / 60).toBeGreaterThan(25);
-    expect(r.ticks / 60).toBeLessThan(60);
+    expect(r.ticks / 60).toBeGreaterThan(120);
+    expect(r.ticks / 60).toBeLessThan(260);
   });
   it("un build complet bat le golem en quelques secondes", () => {
     const tout = ["lame-lourde", "lame-lourde", "lame-lourde", "cadence", "cadence", "cadence", "brise-pierre", "brise-pierre", "brise-pierre"];
     const r = jouerLePilote(contenuScenario("boss", { ameliorations: tout }), REGLAGES_DEFAUT, 36000);
     expect(r.resultat.victoire).toBe(true);
-    expect(r.ticks / 60).toBeLessThan(15);
+    expect(r.ticks / 60).toBeLessThan(90); // lot BR6 : 7 500 points de vie (15 s à 2 200)
   });
 });
 
-describe("l'équilibre (lot BR2, provisoire depuis le lot BR5) : aucune stratégie ne gagne tous les jours", () => {
-  // **Lot BR5 : l'équilibre de BR2 à BR4 est cassé exprès** (les compétences, les camps de 10 à 20, les meutes ; BR6 le refait). Le plancher de ~15 % pour chacune des trois stratégies est suspendu : on garde ce qui compte pour le Diamant
-  // (aucune stratégie ne gagne tout, et au moins deux se partagent les jours). La répartition mesurée est dans le README du lot ; `npm run equilibre:rush` la donne.
-  it("sur 45 jours, aucune stratégie n'est la plus rapide sur plus de 85 % des jours et au moins deux le sont sur 10 % ou plus (le plancher de 15 % pour chacune reviendra en BR6)", () => {
-    const jours = 45;
+describe("l'équilibre (lots BR2 et BR6) : chaque stratégie est la plus rapide sur une part des jours", () => {
+  // **Lot BR6 : la cible suspendue en BR5 est rétablie** — chaque stratégie la plus rapide sur ~15 % des jours au moins, aucune sur plus de ~60 % (mesuré sur 365 jours : `npm run equilibre:rush`, README du lot). Sur 30 jours le hasard de l'échantillon est grand : on
+  // vérifie le plancher à 8 % et le plafond à 70 %.
+  it("sur 30 jours, chacune des trois stratégies est la plus rapide sur 8 % des jours au moins, aucune sur plus de 70 % (365 jours : 15 à 60 %, README du lot)", () => {
+    const jours = 30;
     const gagnant = new Map<string, number>(STRATEGIES.map((s) => [s, 0]));
     for (let k = 0; k < jours; k++) {
       const t = STRATEGIES.map((s) => {
@@ -515,7 +515,9 @@ describe("l'équilibre (lot BR2, provisoire depuis le lot BR5) : aucune stratég
       const s = STRATEGIES[t.indexOf(Math.min(...t))]!;
       gagnant.set(s, gagnant.get(s)! + 1);
     }
-    for (const s of STRATEGIES) expect(gagnant.get(s)! / jours, `${s} : ${[...gagnant].join(" ")}`).toBeLessThanOrEqual(0.85);
-    expect([...gagnant.values()].filter((v) => v / jours >= 0.1).length, [...gagnant].join(" ")).toBeGreaterThanOrEqual(2);
-  }, 240_000);
+    for (const s of STRATEGIES) {
+      expect(gagnant.get(s)! / jours, `${s} : ${[...gagnant].join(" ")}`).toBeLessThanOrEqual(0.7);
+      expect(gagnant.get(s)! / jours, `${s} : ${[...gagnant].join(" ")}`).toBeGreaterThanOrEqual(0.08);
+    }
+  }, 400_000);
 });

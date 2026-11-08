@@ -30,7 +30,7 @@ test("le navigateur rejoue les rediffusions de référence et trouve exactement 
   expect(rejoue.map((r) => [r.nom, r.resultat])).toEqual(golden.rediffusions.map((r) => [r.nom, r.resultat]));
   expect(golden.rediffusions.length).toBeGreaterThanOrEqual(3);
 
-  const scenarios = await page.evaluate((refs) => (window as unknown as { __scenarios(r: unknown): { nom: string; empreinte: string; resultat: unknown }[] }).__scenarios(refs), golden.scenarios.map(({ nom, scenario, monstres, ameliorations, nv, boss, phase2, competence, code, ticks }: Record<string, unknown>) => ({ nom, scenario, monstres, ameliorations, nv, boss, phase2, competence, code, ticks })));
+  const scenarios = await page.evaluate((refs) => (window as unknown as { __scenarios(r: unknown): { nom: string; empreinte: string; resultat: unknown }[] }).__scenarios(refs), golden.scenarios.map(({ nom, scenario, monstres, ameliorations, nv, boss, phase2, competence, ennemis, elite, code, ticks }: Record<string, unknown>) => ({ nom, scenario, monstres, ameliorations, nv, boss, phase2, competence, ennemis, elite, code, ticks })));
   expect(scenarios.map((r) => [r.nom, r.empreinte, r.resultat])).toEqual(golden.scenarios.map((r) => [r.nom, r.empreinte, r.resultat]));
-  expect(golden.scenarios.length).toBe(12); // lot BR3 : les quatre scénarios du BR2 et un par boss (la reine, le grand-duc en phase 2, le bélier, le chêne en phase 2) ; lot BR5 : la horde avec chacune des trois compétences et un bouclier contre le grand-duc
+  expect(golden.scenarios.length).toBe(15); // lot BR3 : les quatre scénarios du BR2 et un par boss (la reine, le grand-duc en phase 2, le bélier, le chêne en phase 2) ; lot BR5 : la horde avec chacune des trois compétences et un bouclier contre le grand-duc ; lot BR6 : un camp (cracheur, chaman, totem, porte-bouclier, un élite), la salle d'épreuve et le bestiaire des monstres
 });

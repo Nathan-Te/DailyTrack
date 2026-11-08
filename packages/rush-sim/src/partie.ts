@@ -474,6 +474,8 @@ export const PB_CONE_COS = 590;
 export const PB_OUVERT = 95;
 /** Les attaques annoncées du chevalier à qui l'ennemi doit sa blessure : le dégât d'un coup de bouclier repousse de cette distance. */
 const PB_RECUL = cm(90);
+/** La plus grande somme de deux rayons de monstres (deux porte-boucliers élites : 2 × 90 cm), marge comprise : au-delà, deux monstres ne se touchent pas. */
+const SOMME_RAYONS_MAX = cm(200);
 /** Le rayon d'activation (cm) : un monstre plus loin du chevalier que cela, qu'il dorme ou rentre chez lui, ne coûte RIEN (il n'est pas mis à jour). */
 const CELLULE = cm(1200);
 /** La salle d'épreuve : les trois vagues, la pause avant que la suivante vienne quand la précédente est presque vaincue, et son plafond. */
@@ -584,6 +586,8 @@ export class Partie {
   choix: ChoixOuvert | null = null;
   readonly paliers: number[] = new Array<number>(NB_AMELIORATIONS).fill(0);
   private prochaineGemme = 1;
+  /** Lot BR6 : les cœurs laissés au centre de l'arène quand le boss passe sous 80, 60, 40 et 20 % de sa vie (le combat est long : jusqu'à 3 minutes) : combien sont déjà tombés. */
+  private quartsDonnes = 0;
   /** Le rythme des ennemis, en %. */
   private readonly rt: number;
   /** Les durées des ennemis, au rythme de la partie. */
@@ -944,7 +948,7 @@ export class Partie {
     if (this.c.sismique > 0 && this.tick >= this.c.sismique) this.secousse();
     this.ramasser();
     this.compacterActifs();
-    if (this.morts) this.purger();
+    if (this.morts || this.tick % 30 === 0) this.purger(); // (et tous les 30 ticks, par sûreté : un essai qui retire un monstre à la main)
     if (this.golem && this.golem.hp <= 0 && !this.victoire) this.gagner();
     if (!this.finie) this.verifierNiveau();
   }
@@ -1443,6 +1447,11 @@ export class Partie {
     // Lot BR6 : « Écrasement » double aussi les dégâts contre un boss étourdi (le bélier contre le muret).
     if (g.etat === ETOURDI && this.paliers[A_ECRASEMENT]! > 0) degats = idiv(degats * (100 + this.reglages.ecrasementDegats), 100);
     g.hp -= this.degatsContreGolem(degats, g);
+    // chaque cinquième de vie perdu laisse un cœur au centre de l'arène (il attend tant que les cœurs sont pleins)
+    while (this.quartsDonnes < 4 && g.hp > 0 && g.hp * 5 <= g.hpMax * (4 - this.quartsDonnes)) {
+      this.quartsDonnes++;
+      this.lacher(this.ax, this.ay, 1, GEMME_COEUR);
+    }
     g.flash = 7;
     const phase2 = g.phase === 1 && g.hp > 0 && g.hp * 2 <= g.hpMax;
     this.ev("touche", g.x, g.y, s, phase2 ? 3 : 2); // b : 2 = le golem, 3 = le golem qui passe en phase 2 par ce coup
@@ -1851,7 +1860,7 @@ export class Partie {
 
   /** Une gemme tombe (seulement dans le niveau du jour : les scénarios d'essai n'ont pas d'XP). */
   private lacher(x: number, y: number, v: number, k = GEMME_XP): void {
-    if ((!this.niveau && this.contenu.scenario !== "horde") || v <= 0) return;
+    if ((!this.niveau && this.contenu.scenario !== "horde" && !(k === GEMME_COEUR && this.golem)) || v <= 0) return;
     this.gemmes.push({ id: this.prochaineGemme++, x, y, v, k, vers: false, age: this.tick });
     this.ev("gemme", x, y, v, k);
   }
@@ -2335,12 +2344,23 @@ export class Partie {
   /** Les monstres ACTIFS (et le golem) ne se superposent pas : ils se repoussent. Un monstre qui dort n'est comparé à personne ; le totem est fixe (les autres le contournent). */
   private separer(): void {
     const ms = this.actifs;
+    // Balayage par abscisse : les actifs sont triés par x (un tri par insertion, presque trié d'un tick à l'autre : coût linéaire) et chacun n'est comparé qu'à ses voisins de moins de deux rayons de large — 80 monstres éveillés ne font plus 3 200 comparaisons.
+    for (let i = 1; i < ms.length; i++) {
+      const m = ms[i]!;
+      let k = i - 1;
+      while (k >= 0 && ms[k]!.x > m.x) {
+        ms[k + 1] = ms[k]!;
+        k--;
+      }
+      ms[k + 1] = m;
+    }
     for (let i = 0; i < ms.length; i++) {
       const a = ms[i]!;
       if (a.hp <= 0) continue;
       const ra = this.rayonM(a);
       for (let j = i + 1; j < ms.length; j++) {
         const b = ms[j]!;
+        if (b.x - a.x > SOMME_RAYONS_MAX) break;
         if (b.hp <= 0) continue;
         if (this.niveau && (a.type === CHAUVE || b.type === CHAUVE)) continue; // dans le niveau, la chauve-souris vole par-dessus les autres
         const somme = ra + this.rayonM(b);
@@ -2351,7 +2371,8 @@ export class Partie {
         if (d2 >= somme * somme) continue;
         const d = isqrt(d2);
         const recouvre = idiv(somme - d, 2);
-        const [ux, uy] = d === 0 ? [1024, 0] : unitaire(dx, dy);
+        const ux = d === 0 ? 1024 : idiv(dx * 1024, d); // (comme `unitaire`, sans refaire la racine ni allouer de tableau : c'est la boucle la plus chaude d'une horde)
+        const uy = d === 0 ? 0 : idiv(dy * 1024, d);
         const fixeA = a.type === TOTEM;
         const fixeB = b.type === TOTEM;
         if (fixeA && fixeB) continue;
@@ -2947,6 +2968,9 @@ export class Partie {
     } else if (restants === 0 && t >= EPREUVE_ECART) {
       e.etat = 2;
       this.ev("epreuve", ep.x, ep.y, 2);
+      // la récompense : deux cœurs au centre de la salle (ils attendent tant que les cœurs sont pleins)
+      this.lacher(ep.x - cm(60), ep.y, 1, GEMME_COEUR);
+      this.lacher(ep.x + cm(60), ep.y, 1, GEMME_COEUR);
     }
   }
 
@@ -2982,6 +3006,8 @@ export class Partie {
       this.ev("apparition", q.x, q.y, q.type);
     }
     this.ev("vague", ep.x, ep.y, e.vague);
+    // la vague précédente est vaincue (ou presque) : un cœur au centre de la salle (il attend tant que les cœurs sont pleins)
+    if (e.vague >= 2) this.lacher(ep.x + (e.vague === 2 ? -cm(120) : cm(120)), ep.y, 1, GEMME_COEUR);
   }
 
   /** Les portes de la salle sont fermées tant que l'épreuve est en cours. */

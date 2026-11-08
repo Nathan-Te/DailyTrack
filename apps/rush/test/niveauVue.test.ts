@@ -50,7 +50,8 @@ describe("le décor du niveau (lot BR1)", () => {
               const z = p.getZ(k);
               if (y < 0.3 || y > 1.8) continue;
               if (type(n, x, z) === SOL) {
-                const voisin = [[0.55, 0], [-0.55, 0], [0, 0.55], [0, -0.55]].some(([dx, dz]) => [MUR, PONT].includes(type(n, x + dx!, z + dz!)));
+                // (lot BR6 : un rocher isolé est posé à une case de tout mur et déborde de la sienne : avec 0,55 m, un jour de la carrière faisait échouer le test pour un rocher à une case d'une haie ; on vérifie qu'aucun élément ne se dresse à plus d'une case — 2 m — d'un mur)
+                const voisin = [[2.05, 0], [-2.05, 0], [0, 2.05], [0, -2.05], [0.55, 0], [-0.55, 0], [0, 0.55], [0, -0.55]].some(([dx, dz]) => [MUR, PONT].includes(type(n, x + dx!, z + dz!)));
                 expect(voisin, `un élément bas à (${x.toFixed(1)}, ${z.toFixed(1)}) sur le sol`).toBe(true);
               }
             }

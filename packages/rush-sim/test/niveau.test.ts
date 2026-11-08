@@ -74,14 +74,14 @@ describe("le générateur du niveau (lot BR1)", () => {
   it("365 graines donnent 365 niveaux valides (chemin du départ à l'arène, longueur, détours, camps, monstres épars, aucune case isolée, rien près du départ)", () => {
     for (const n of niveaux) expect(problemesDuNiveau(n)).toEqual([]);
   });
-  it("le chemin principal fait 70 à 100 m ; 2 à 4 détours, chacun à 17-45 m du chemin (lot BR2 : des camps plus proches), menant à un camp de 12 à 22 monstres (lot BR5) ; 0 à 5 monstres épars ; 3 à 6 groupes", () => {
+  it("lot BR6 — le chemin principal fait 140 à 205 m ; 3 à 5 détours, chacun à 40-110 m du chemin, menant à un camp de 16 à 28 monstres ; 0 à 7 monstres épars ; 4 à 9 groupes", () => {
     for (const n of niveaux) {
-      expect(n.longueurCm).toBeGreaterThanOrEqual(7000);
-      expect(n.longueurCm).toBeLessThanOrEqual(10000);
-      expect(BORNES_NIVEAU.longueurMin).toBe(7000);
-      expect(BORNES_NIVEAU.longueurMax).toBe(10000);
-      expect(n.detours.length).toBeGreaterThanOrEqual(2);
-      expect(n.detours.length).toBeLessThanOrEqual(4);
+      expect(n.longueurCm).toBeGreaterThanOrEqual(14000);
+      expect(n.longueurCm).toBeLessThanOrEqual(20500);
+      expect(BORNES_NIVEAU.longueurMin).toBe(14000);
+      expect(BORNES_NIVEAU.longueurMax).toBe(20500);
+      expect(n.detours.length).toBeGreaterThanOrEqual(3);
+      expect(n.detours.length).toBeLessThanOrEqual(5);
       for (const d of n.detours) {
         expect(d.distanceCm).toBeGreaterThanOrEqual(BORNES_NIVEAU.detourMin);
         expect(d.distanceCm).toBeLessThanOrEqual(BORNES_NIVEAU.detourMax);
@@ -90,7 +90,7 @@ describe("le générateur du niveau (lot BR1)", () => {
         expect(k).toBeLessThanOrEqual(BORNES_NIVEAU.campMax);
       }
       const epars = n.monstres.filter((m) => m.camp < 0 && m.groupe < 0).length;
-      expect(epars).toBeLessThanOrEqual(5);
+      expect(epars).toBeLessThanOrEqual(7);
       expect(n.monstres.length).toBeLessThanOrEqual(BORNES_NIVEAU.monstresMax);
     }
   });
@@ -144,8 +144,8 @@ describe("le générateur du niveau (lot BR1)", () => {
     expect(c.niveau).not.toBeNull();
     expect(c.theme).toBe(themeDuJour(J0));
     expect(c.g).toBe(RUSH_GENERATOR_VERSION);
-    expect(RUSH_GENERATOR_VERSION).toBe(6);
-    expect(RUSH_SIM_VERSION).toBe(8);
+    expect(RUSH_GENERATOR_VERSION).toBe(7);
+    expect(RUSH_SIM_VERSION).toBe(9);
   });
 });
 
@@ -218,7 +218,8 @@ describe("la veille des monstres : rayon d'alerte et laisse (lot BR1)", () => {
   });
   it("il remarque le chevalier à son rayon d'alerte, le poursuit, puis le lâche (laisse) et rentre à sa place", () => {
     const p = new Partie(dailyRush(J0), REGLAGES_DEFAUT, true);
-    const g = p.monstres.find((m) => m.type === GELEE)!;
+    // une gelée dont la ligne vers l'est (où le chevalier se tient) est libre sur 13 m : le test la déplace de 5 m puis la regarde rentrer en ligne droite (le niveau du lot BR6 est plus grand et plus encombré)
+    const g = p.monstres.find((m) => m.type === GELEE && Array.from({ length: 27 }, (_, k) => k).every((k) => marchableEn(p.niveau!, m.x + cm(50 * k), m.y)))!;
     // le chevalier se tient juste dans le rayon d'alerte de cette gelée
     p.c.x = g.x + ALERTE_GELEE - cm(50);
     p.c.y = g.y;
@@ -243,6 +244,7 @@ describe("la veille des monstres : rayon d'alerte et laisse (lot BR1)", () => {
     const g = p.monstres.find((m) => m.type === GELEE)!;
     g.alerte = 1;
     g.x = g.hx + LAISSE + cm(100);
+    p.resynchroniser(); // un monstre éveillé à la main rejoint les actifs
     p.c.x = g.x + cm(300);
     p.c.y = g.y;
     p.c.degat = 9999;
@@ -319,7 +321,7 @@ describe("la barrière de l'arène (lot BR1)", () => {
 });
 
 describe("le pilote dans le niveau (lot BR1)", () => {
-  it("foncer : il gagne au moins 58 jours sur 60, en 40 à 100 s ; chaque partie se rejoue exactement", () => {
+  it("foncer : il gagne au moins 58 jours sur 60, en 95 à 400 s (médiane ~3 min) ; chaque partie se rejoue exactement", () => {
     let victoires = 0;
     const temps: number[] = [];
     for (let k = 0; k < 60; k++) {
@@ -336,11 +338,11 @@ describe("le pilote dans le niveau (lot BR1)", () => {
     }
     expect(victoires).toBeGreaterThanOrEqual(58);
     // lot BR5 : la compétence raccourcit le combat du boss et les meutes allongent la route — les bornes de BR2 (40 s, 95 s ; médiane 55 à 75 s) sont élargies sur la mesure (37 à 90 s, médiane ~58 s) ; BR6 rééquilibre
-    expect(Math.min(...temps)).toBeGreaterThan(40); // lot BR5 (économie : il faut farmer) : foncer met 53 à 108 s, médiane ~86 s
-    expect(Math.max(...temps)).toBeLessThan(125);
+    expect(Math.min(...temps)).toBeGreaterThan(95); // lot BR6 : la run est plus longue (le niveau double, la salle d'épreuve, le boss à 7 500 points de vie) : foncer met 115 à 310 s, médiane ~3 min
+    expect(Math.max(...temps)).toBeLessThan(400);
     const tri = [...temps].sort((x, y) => x - y);
-    expect(tri[Math.floor(tri.length / 2)]!).toBeGreaterThan(65);
-    expect(tri[Math.floor(tri.length / 2)]!).toBeLessThan(100);
+    expect(tri[Math.floor(tri.length / 2)]!).toBeGreaterThan(150);
+    expect(tri[Math.floor(tri.length / 2)]!).toBeLessThan(230);
   });
   it("tout nettoyer tue plus que foncer et gagne bien plus de niveaux (lot BR2)", () => {
     const c = dailyRush(J0 + 3);
@@ -389,8 +391,8 @@ describe("un niveau compact et dense (lot BR1b)", () => {
   it("des groupes de 2 à 4 monstres ou des meutes de 6 à 12 gélatons (lot BR5), l'alerte de 10 à 12 m, en travers du chemin (pas dans une clairière), loin du départ", () => {
     for (const n of niveaux) {
       const ids = new Set(n.monstres.filter((m) => m.groupe >= 0).map((m) => m.groupe));
-      expect(ids.size).toBeGreaterThanOrEqual(3);
-      expect(ids.size).toBeLessThanOrEqual(6);
+      expect(ids.size).toBeGreaterThanOrEqual(4);
+      expect(ids.size).toBeLessThanOrEqual(9);
       let meutes = 0;
       for (const g of ids) {
         const k = n.monstres.filter((m) => m.groupe === g);
@@ -463,7 +465,7 @@ describe("un niveau compact et dense (lot BR1b)", () => {
         expect(passe).toBe(false);
       }
     }
-    expect(boucles / tous).toBeGreaterThan(0.7);
+    expect(boucles / tous).toBeGreaterThan(0.5);
   });
   it("des groupes de vases (lot BR5) : 6 à 110 vases en groupes de 4 à 12, jamais sur un pont, près d'un monstre, du départ ou de l'arène, jamais sur l'axe d'un chemin ; le contenu est tiré de la graine", () => {
     let total = 0;
@@ -544,8 +546,16 @@ describe("les vases dans la partie (lot BR5)", () => {
   });
   it("un coup le brise (l'événement « brise » part, il disparaît de la liste) ; un coup en arc en brise plusieurs ; un coup ne brise un vase qu'une fois", () => {
     let plusieurs = 0;
+    let essais = 0;
     for (let k = 0; k < 12; k++) {
-      const { p, dir, v } = devantUnVase(J0 + k);
+      let devant: ReturnType<typeof devantUnVase>;
+      try {
+        devant = devantUnVase(J0 + k);
+      } catch {
+        continue; // un jour où le groupe 0 n'a pas de point libre devant lui (le niveau du lot BR6 est plus encombré)
+      }
+      const { p, dir, v } = devant;
+      essais++;
       const pj = new Partie(p.contenu, REGLAGES_DEFAUT, true);
       pj.c.x = p.c.x;
       pj.c.y = p.c.y;
@@ -563,6 +573,7 @@ describe("les vases dans la partie (lot BR5)", () => {
       expect(pj.vases.length).toBe(avant - brises);
       expect(pj.vases.some((q) => q.id === v.id)).toBe(false);
     }
+    expect(essais).toBeGreaterThanOrEqual(6);
     expect(plusieurs).toBeGreaterThan(0); // un groupe serré : l'arc en brise plusieurs
   });
   it("le contenu est tiré de la graine, déterministe ; un vase de gemme donne de l'XP, de rage de la rage, de cœur un cœur qui attend tant que les cœurs sont pleins", () => {

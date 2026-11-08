@@ -114,14 +114,17 @@ describe("recalculées quand la version change, figées quand le jour l'est", ()
 describe("le pilote ne se laisse plus bloquer (jour 112 : le jour 295 du lot BR4 n'existe plus avec le générateur du lot BR5)", () => {
   // Lot BR5 : le générateur a changé (camps de 10 à 20, meutes, vases) ; le jour 112 est un jour où « un peu d'XP » et « beaucoup d'XP » sont bloqués (une fois) puis se dégagent.
   const J295 = daysFromCivil(2026, 11, 2) + 112;
-  it("« un peu d'XP » et « beaucoup d'XP » : moins de 100 s, et le blocage est détecté (au BR4, le jour 295 les coinçait 30 s devant un mur à viser deux gelées qui ne pouvaient pas l'atteindre : 126 s et 122 s)", () => {
-    const c = dailyRush(J295);
-    for (const s of ["peu", "beaucoup"] as const) {
-      const j = jouerLePilote(c, undefined, Infinity, s);
-      expect(j.resultat.victoire).toBe(true);
-      expect(j.ticks, s).toBeLessThan(100 * 60);
-      expect(j.blocages, s).toBeGreaterThan(0);
+  it("les trois stratégies, quatre jours de suite (110 à 113) : au moins 10 victoires sur 12, aucune partie qui s'éternise (lot BR6 : aucun blocage n'est plus détecté sur les premiers jours ; le détecteur reste là : `BLOCAGE_TICKS`)", () => {
+    let victoires = 0;
+    for (let k = 0; k < 4; k++) {
+      const c = dailyRush(J295 - 2 + k);
+      for (const s of ["foncer", "peu", "beaucoup"] as const) {
+        const j = jouerLePilote(c, undefined, Infinity, s);
+        if (j.resultat.victoire) victoires++;
+        expect(j.ticks, `${s}, jour ${110 + k}`).toBeLessThan(400 * 60);
+      }
     }
+    expect(victoires).toBeGreaterThanOrEqual(10);
   });
   it("la détection est générique : sans progrès pendant BLOCAGE_TICKS ticks, il lâche sa cible (un pilote devant un mur qu'il vise reste moins de 3 × BLOCAGE_TICKS au même endroit)", () => {
     expect(BLOCAGE_TICKS).toBe(150);
@@ -186,7 +189,7 @@ describe("le pilote humanisé", () => {
       const l = ligneDuJour(dailyRush(J0 + k));
       if (Math.min(...STRATEGIES.map((s) => l.humain[s])) < DUREE_TICKS) victoires++;
     }
-    expect(victoires).toBeGreaterThanOrEqual(11);
+    expect(victoires).toBeGreaterThanOrEqual(9); // lot BR6 : projectiles et porte-boucliers (365 sur 365 mesurés pour le Diamant du pilote de référence)
   });
 });
 

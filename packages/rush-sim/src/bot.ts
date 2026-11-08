@@ -6,7 +6,7 @@ import type { Contenu } from "./generateur";
 import { distance, distance2, dirVers, unitaire } from "./maths";
 import { COS, SIN } from "./trig";
 import { caseDe, centreDeCase, champDeDistance, descendre, INACCESSIBLE } from "./niveau";
-import { CHAMAN, CHAUVE, COUP, CRACHEUR, GELATON, GELEE, ONDE, PLONGEON, PORTE_BOUCLIER, TOTEM, Partie, pointDuSegment, type Monstre, type Resultat } from "./partie";
+import { ANNONCE_PLONGEON, CHAMAN, CHAUVE, COUP, CRACHEUR, GELATON, GELEE, ONDE, PB_ANNONCE, PB_CONE, PB_CONE_COS, PLONGEON, PORTE_BOUCLIER, TOTEM, Partie, pointDuSegment, type Monstre, type Resultat } from "./partie";
 import type { Choix } from "./rediffusion";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
@@ -30,12 +30,12 @@ const croix = (dx: number, dy: number): number => Math.trunc((dirVers(dx, dy) + 
 export type Strategie = "foncer" | "peu" | "beaucoup";
 export const STRATEGIES: readonly Strategie[] = ["foncer", "peu", "beaucoup"];
 /** « Un peu d'XP » : un camp est « proche » quand le détour qui y mène est à cette distance (cm) du chemin principal au plus. */
-export const SEUIL_PEU_CM = 3200;
+export const SEUIL_PEU_CM = 4800;
 /** Les cartes de chaque stratégie, de la plus voulue à la moins voulue (la première proposée est prise ; sinon la première carte offerte). */
 export const PRIORITES: Readonly<Record<Strategie, readonly string[]>> = {
-  foncer: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "esquive-vive", "moulinet", "onde-epee", "maitrise", "allonge", "recharge-vive", "coeur-en-plus", "soin", "signature", "echo", "esquive-longue", "vol-de-vie", "esquive-tranchante", "aimant"],
-  peu: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "moulinet", "onde-epee", "maitrise", "allonge", "recharge-vive", "esquive-vive", "coeur-en-plus", "soin", "signature", "echo", "vol-de-vie", "esquive-longue", "esquive-tranchante", "aimant"],
-  beaucoup: ["bottes-legeres", "moulinet", "recharge-vive", "cadence", "lame-lourde", "maitrise", "brise-pierre", "onde-epee", "signature", "allonge", "echo", "vol-de-vie", "aimant", "coeur-en-plus", "soin", "esquive-vive", "esquive-longue", "esquive-tranchante"],
+  foncer: ["bottes-legeres", "lame-lourde", "brise-pierre", "frenesie", "lame-enflammee", "bond-sismique", "bouclier-ricochet", "seconde-charge", "ecrasement", "cadence", "esquive-vive", "moulinet", "onde-epee", "maitrise", "allonge", "recharge-vive", "coeur-en-plus", "soin", "signature", "echo", "esquive-longue", "vol-de-vie", "esquive-tranchante", "aimant"],
+  peu: ["bottes-legeres", "coeur-en-plus", "lame-lourde", "brise-pierre", "frenesie", "lame-enflammee", "bond-sismique", "bouclier-ricochet", "seconde-charge", "ecrasement", "cadence", "moulinet", "onde-epee", "maitrise", "allonge", "recharge-vive", "esquive-vive", "soin", "signature", "echo", "vol-de-vie", "esquive-longue", "esquive-tranchante", "aimant"],
+  beaucoup: ["bottes-legeres", "coeur-en-plus", "moulinet", "recharge-vive", "frenesie", "lame-enflammee", "bond-sismique", "bouclier-ricochet", "seconde-charge", "ecrasement", "cadence", "lame-lourde", "maitrise", "brise-pierre", "onde-epee", "signature", "allonge", "echo", "vol-de-vie", "aimant", "soin", "esquive-vive", "esquive-longue", "esquive-tranchante"],
 };
 
 /**
@@ -268,6 +268,14 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
   };
   // Lot BR6 — la salle d'épreuve : les portes sont fermées, il chasse les vagues, le chaman et le totem d'abord ; entre deux vagues il attend au centre.
   if (p.epreuve.etat === 1) {
+    // un cœur tombé dans la salle (une vague vaincue) se ramasse quand il en manque et qu'aucun ennemi n'est à moins de 3 m
+    if (c.coeurs < c.coeursMax) {
+      let proche = false;
+      for (const m of p.actifs) if (m.hp > 0 && distance2(c.x, c.y, m.x, m.y) < cm(300) * cm(300)) proche = true;
+      if (!proche) {
+        for (const q of p.gemmes) if (q.k === 2 && distance(c.x, c.y, q.x, q.y) < cm(1000)) return { direction: croix(q.x - c.x, q.y - c.y), coup: false };
+      }
+    }
     let cible: Monstre | null = null;
     let note = Infinity;
     for (const m of p.actifs) {
@@ -558,6 +566,27 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   }
   // Lot BR3 : un nuage de spores : on n'y reste pas.
   for (const n of p.nuages) if (distance(c.x, c.y, n.x, n.y) < n.r + cm(120)) fuite = { x: n.x, y: n.y };
+  // Lot BR6 : le coup de bouclier d'un porte-bouclier — un cône devant lui : on en sort par le côté, et on esquive à travers s'il va tomber.
+  let lateral: { dx: number; dy: number } | null = null;
+  for (const m of p.actifs) {
+    if (m.type !== PORTE_BOUCLIER || m.etat !== ANNONCE_PLONGEON || m.hp <= 0) continue;
+    const dx = c.x - m.x;
+    const dy = c.y - m.y;
+    const d = distance(0, 0, dx, dy);
+    if (d - RAYON_CHEVALIER > PB_CONE + cm(60)) continue;
+    const fx = COS[m.face]!;
+    const fy = SIN[m.face]!;
+    if (d > 0 && dx * fx + dy * fy < (PB_CONE_COS - 110) * d) continue; // hors du cône (avec une marge)
+    if (!percu(p, etat, `pb${m.id}`, true)) continue;
+    const cote = dx * -fy + dy * fx >= 0 ? 1 : -1;
+    const lx = -fy * cote;
+    const ly = fx * cote;
+    const reste = p.rapide(m, PB_ANNONCE) - m.t;
+    if (reste <= 10 && c.attente === 0 && (!h || tirer(etat, 100) >= h.rateEsquivePct)) {
+      esquiver = true;
+      dirEsquive = croix(lx, ly);
+    } else lateral = { dx: lx, dy: ly };
+  }
   // 3. Un monstre qui fonce sur nous : l'esquive est gardée pour l'onde quand elle approche (lot BR0c : l'esquive met 40 ticks à revenir).
   const ondeProche = p.zones.some((z) => z.type === ONDE && z.ti - tick <= 60) || p.ondes.some((o) => !o.touche);
   // Lot BR6 : plus de dégât de contact — on esquive ce qui est ANNONCÉ et arrive : le bond d'une gelée ou d'un gélaton (pendant son bond), le plongeon d'une chauve-souris.
@@ -575,7 +604,6 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
     if (percu(p, etat, `e${m.id}`, danger)) esquiver = true;
   }
   // Lot BR6 : les projectiles des cracheurs — on se décale s'ils arrivent (de côté), on esquive au dernier moment ; un coup les détruit aussi, mais on ne parie pas dessus.
-  let lateral: { dx: number; dy: number } | null = null;
   for (const q of p.projectiles) {
     const rx = c.x - q.x;
     const ry = c.y - q.y;
@@ -585,7 +613,7 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
     if (tcpa < 0 || tcpa > 40) continue;
     const px = rx - q.vx * tcpa;
     const py = ry - q.vy * tcpa;
-    if (Math.hypot(px, py) > cm(26) + RAYON_CHEVALIER + cm(30)) continue;
+    if (distance(0, 0, px, py) > cm(26) + RAYON_CHEVALIER + cm(30)) continue;
     if (!percu(p, etat, `q${q.id}`, true)) continue;
     // le côté : celui où le chevalier se trouve déjà par rapport à la ligne du tir
     const cote = px * -q.vy + py * q.vx >= 0 ? 1 : -1;
@@ -673,7 +701,21 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
       poster = true;
     }
   }
+  // Lot BR6 : un cœur tombé dans l'arène (le boss perd un quart de sa vie) se ramasse quand il en manque et que rien ne presse.
+  let coeur: { x: number; y: number } | null = null;
+  if (c.coeurs < c.coeursMax) {
+    let dm = cm(1400);
+    for (const q of p.gemmes) {
+      if (q.k !== 2) continue;
+      const d = distance(c.x, c.y, q.x, q.y);
+      if (d < dm) {
+        dm = d;
+        coeur = q;
+      }
+    }
+  }
   if (fuite) direction = fuirDe(p, fuite);
+  else if (coeur && !poster && !leurre && !(cible && distance(c.x, c.y, cible.x, cible.y) - cible.r - RAYON_CHEVALIER <= p.porteeCoup(0) - cm(50))) direction = croix(coeur.x - c.x, coeur.y - c.y);
   else if (poster) direction = distance(c.x, c.y, postX, postY) > cm(100) ? croix(postX - c.x, postY - c.y) : -1;
   else if (leurre && distance(c.x, c.y, lureX, lureY) > cm(120) && !(cible && cible !== null && g && distance(c.x, c.y, cible.x, cible.y) - cible.r - RAYON_CHEVALIER <= p.porteeCoup(0) - cm(50))) direction = croix(lureX - c.x, lureY - c.y);
   else if (cible) {
