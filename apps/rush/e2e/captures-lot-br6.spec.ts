@@ -73,8 +73,8 @@ test.describe("captures du lot BR6", () => {
   test("la carte des 7 jours", async ({ browser }) => {
     const { context, page } = await appareil(browser, `${BASE}&scenario=carte&jours=7`);
     await page.setViewportSize({ width: 1500, height: 1100 });
-    await lancer(page, null);
-    await page.waitForSelector(".rush-carte__jour", { timeout: 100_000 });
+    await page.locator("#jeu-jouer").click();
+    await page.waitForSelector(".rush-carte__jour canvas", { timeout: 100_000 });
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${DOSSIER}/br6-carte-7-jours.png`, fullPage: true });
     await context.close();

@@ -1,5 +1,6 @@
 import { BoxGeometry, BufferGeometry, BufferAttribute, Color, ConeGeometry, CylinderGeometry, DoubleSide, DynamicDrawUsage, Group, InstancedMesh, LineBasicMaterial, LineSegments, Material, Matrix4, MeshBasicMaterial, Quaternion, RingGeometry, SphereGeometry, TorusGeometry, Vector3, type PerspectiveCamera } from "three";
 import { MONSTRES_IDS, ANNONCE_PLONGEON, CHAMAN, CHAUVE, CRACHE_ANNONCE, CRACHEUR, GELATON, GELEE, PB_ANNONCE, PB_OUVERT, PLONGEON, PORTE_BOUCLIER, REPOS, TOTEM, TOTEM_ANNONCE, TOTEM_PERIODE, type Durees, type Monstre, type Partie, type Projectile } from "@cdj/rush-sim";
+import { cleBoss } from "./bosses";
 import { CAMERA_DEFAUT } from "./camera";
 import { bornes, GEO, lerp, lisser, sortie, sph } from "./acteurs";
 import { CALQUE_COQUE, coqueInstanciee, lisse, plat } from "./cel";
@@ -584,7 +585,7 @@ export function etiquettesDuBestiaire(hote: HTMLElement, t: (cle: string) => str
           e = document.createElement("div");
           e.className = "rush-etiquette";
           e.dataset.monstre = MONSTRES_IDS[m.type] ?? "";
-          e.textContent = t(`monstre.nom.${MONSTRES_IDS[m.type] ?? "gelee"}`) + (m.elite === 1 ? ` · ${t("monstre.elite")}` : "");
+          e.textContent = t(`monstre.nom.${cleBoss(MONSTRES_IDS[m.type] ?? "gelee")}`) + (m.elite === 1 ? ` · ${t("monstre.elite")}` : "");
           hote.append(e);
           liste.set(m.id, e);
         }

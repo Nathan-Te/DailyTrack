@@ -276,6 +276,7 @@ describe("chacune des améliorations", () => {
     const p = pal(["onde-epee"]);
     p.vases = []; // (les vases d'un camp, brisés par l'onde, donneraient assez d'XP pour ouvrir un choix : le monde se figerait)
     const m = p.monstres.find((q) => q.type === 0)!;
+    p.monstres = [m]; // (lot BR6 : l'onde croise d'abord d'autres monstres du camp, dont la mort ouvrirait un choix de niveau et figerait le monde)
     m.hp = 1000;
     p.c.x = m.x - cm(500);
     p.c.y = m.y;

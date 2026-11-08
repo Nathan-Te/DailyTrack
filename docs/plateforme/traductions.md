@@ -3030,12 +3030,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `monstre.nom.gelee` | Gelée | Jelly |
-| `monstre.nom.chauve-souris` | Chauve-souris | Bat |
+| `monstre.nom.chauveSouris` | Chauve-souris | Bat |
 | `monstre.nom.gelaton` | Gélaton | Jellet |
 | `monstre.nom.cracheur` | Cracheur | Spitter |
 | `monstre.nom.chaman` | Chaman | Shaman |
 | `monstre.nom.totem` | Totem | Totem |
-| `monstre.nom.porte-bouclier` | Porte-bouclier | Shield-bearer |
+| `monstre.nom.porteBouclier` | Porte-bouclier | Shield-bearer |
 | `monstre.elite` | Élite | Elite |
 
 ### Page (titre, chargement) (`page.*`, `apps/rush/src/catalogue.*.ts`)
