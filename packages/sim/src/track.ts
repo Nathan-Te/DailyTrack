@@ -67,6 +67,25 @@ export const RIPPLE_LENGTH = 6;
  */
 export const TILT_SLOPE = 0.25;
 export const CURVE_KICK = 16;
+/**
+ * Lot 58 — des blocs plus complexes (inspirés de Trackmania pour les idées, jamais pour les fichiers ni les noms). Blocs à effet (`Ed`, `Ef`,
+ * `Er`, `Ex`, `Ep`, `E0`) : une bande en travers de la route, de `FX_HALF_LENGTH` m de demi-longueur, comme le moteur coupé ; l'état est dans la
+ * voiture (`CarState.fx`). Route bombée (`/a`) : la chaussée s'arrondit, sa pente au bord vaut `CROWN_SLOPE` (sans rebords). Virage très relevé
+ * (`/f`, virages large et ample) : pente `BANK_SLOPE_STEEP` (45°).
+ */
+export const FX_HALF_LENGTH = 2;
+export const FX_NO_STEER = 1;
+export const FX_NO_BRAKE = 2;
+export const FX_CRUISE = 3;
+export const FX_FRAGILE = 4;
+export const FX_LIFT = 5;
+export const FX_RESET = 6;
+/** État seulement (jamais une bande) : la voiture fragile s'est cassée ; la course la renvoie au point de contrôle. */
+export const FX_BROKEN = 7;
+/** Lettres des blocs à effet : direction bloquée, freins coupés, régulateur, fragile, propulseur, remise à zéro. */
+export const EFFECT_LETTERS: Record<string, number> = { Ed: FX_NO_STEER, Ef: FX_NO_BRAKE, Er: FX_CRUISE, Ex: FX_FRAGILE, Ep: FX_LIFT, E0: FX_RESET };
+export const CROWN_SLOPE = 0.4;
+export const BANK_SLOPE_STEEP = 1;
 
 export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "grandL" | "grandR" | "up" | "down" | "bump" | "jump" | "kick" | "gap" | "boost" | "turbo" | "cut";
 
@@ -74,12 +93,12 @@ export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "
  * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
  * est dans `SURFACES` (world.ts). Ajouter un revêtement = `SIM_VERSION` +1.
  */
-export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb" | "turf";
+export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb" | "turf" | "water";
 /**
  * Revêtements d'un bloc (attribut `S/t`…) ; `gravel` et `snow` ne sont que des bas-côtés, `kerb` le vibreur d'un virage. Le sable (lot 22) est les deux.
  * `turf` (lot 48, `S/z`) : l'herbe de course, une piste en herbe rapide où l'on glisse (jamais un bas-côté : l'herbe hors piste reste `grass`).
  */
-export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand" | "turf";
+export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand" | "turf" | "water";
 /** Revêtement d'un bas-côté (lot 21) : herbe, terre et gravier, neige poudreuse ; sable (lot 22). */
 export type ShoulderKind = "grass" | "gravel" | "snow" | "sand";
 /**
@@ -90,7 +109,7 @@ export type EdgeKind = ShoulderKind | "void" | "wall";
 /** Lettre de chaque bord dans la notation (`S/~h` : bas-côtés d'herbe à partir de ce bloc). */
 export const EDGE_LETTERS: Record<string, EdgeKind> = { h: "grass", t: "gravel", p: "snow", s: "sand", v: "void", r: "wall" };
 /** Lettre de chaque revêtement dans la notation texte (`S/t` : droite sur terre). */
-export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand", z: "turf" };
+export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand", z: "turf", w: "water" };
 export type Mark = "start" | "checkpoint" | "finish";
 export type Dir = 0 | 1 | 2 | 3;
 
@@ -134,6 +153,13 @@ export interface Block {
   tilt0?: number;
   /** Lot 57 — virage-tremplin (`/k`) : la fin du virage monte d'un niveau sur `CURVE_KICK` m, comme une rampe `K` ; on décolle en tournant. */
   ramp?: true;
+  /** Lot 58 — bloc à effet (sur une droite : `Ed`, `Ef`…) : le code de l'effet (`FX_NO_STEER`…). */
+  fx?: number;
+  /** Lot 58 — route bombée (`/a`) : pente au bord à la sortie du bloc et à son entrée (chaînée comme le dévers). */
+  crown?: number;
+  crown0?: number;
+  /** Lot 58 — virage très relevé (`/f`) : pente `BANK_SLOPE_STEEP` au lieu de celle du virage. */
+  steep?: true;
 }
 
 export interface Gate {
@@ -448,6 +474,10 @@ export interface ParsedToken {
   /** Lot 57 : dévers (pente en travers, positive = bord gauche plus haut), virage-tremplin. */
   tilt?: number;
   ramp?: true;
+  /** Lot 58 : bloc à effet, route bombée, virage très relevé. */
+  fx?: number;
+  crown?: true;
+  steep?: true;
 }
 
 /**
@@ -461,7 +491,8 @@ export function parseToken(token: string, index = 0): ParsedToken {
   const [letter = "", mods = ""] = body.split("/");
   const shaped = RISE_LETTERS[letter];
   const cuveSides = CUVE_LETTERS[letter];
-  const kind: BlockKind | undefined = shaped ? shaped.kind : cuveSides ? "straight" : BLOCK_LETTERS[letter];
+  const fx = EFFECT_LETTERS[letter];
+  const kind: BlockKind | undefined = shaped ? shaped.kind : cuveSides || fx ? "straight" : BLOCK_LETTERS[letter];
   if (!kind) throw new Error(`Bloc inconnu « ${token} » (position ${index})`);
   let mark: Mark | undefined;
   if (markName !== undefined) {
@@ -478,11 +509,15 @@ export function parseToken(token: string, index = 0): ParsedToken {
   let tilt = 0;
   let ramp = false;
   let climb = 0;
+  let crown = false;
+  let steep = false;
   for (const m of mods.match(/[enl]>[enl]|~.|./g) ?? []) {
     if (m === "i" || m === "j") {
       if (tilt) throw new Error(`Deux dévers : ${token}`);
       tilt = m === "i" ? -TILT_SLOPE : TILT_SLOPE;
     } else if (m === "k") ramp = true;
+    else if (m === "a") crown = true;
+    else if (m === "f") steep = banked = true;
     else if (m === "+") climb += SLOPE_RISE;
     else if (m === "-") climb -= SLOPE_RISE;
     else if (m[0] === "~") {
@@ -511,6 +546,9 @@ export function parseToken(token: string, index = 0): ParsedToken {
   if (outerWall && !isCurve(kind)) throw new Error(`Seul un virage prend un mur extérieur « /c » (${token}) : pour une droite, V, ML ou MR`);
   // Lot 57 : un dévers sur une droite seulement (un virage se relève) ; /+, /-, /k sur un virage seulement, sans cuve, et /k ni relevé ni en pente.
   if ((tilt && (isCurve(kind) || kind === "gap" || kind === "jump" || cuveSides)) || ((ramp || climb) && (!isCurve(kind) || outerWall)) || (ramp && (climb || banked))) throw new Error(`Bloc impossible : ${token}`);
+  // Lot 58 : la route bombée n'a ni rebords, ni dévers, ni relevé, ni cuve, ni pente de virage, ni tôle ondulée, ni transition de largeur ; le relevé fort
+  // va aux virages large et ample.
+  if ((crown && (tilt || ramp || climb || banked || cuveSides || outerWall || bumpy || kind === "gap" || kind === "jump" || kind === "kick" || (width && width.w0 !== width.w1))) || (steep && (curveSize(kind) === 1 || !isCurve(kind) || outerWall))) throw new Error(`Bloc impossible : ${token}`);
   let cuve = cuveSides ?? 0;
   if (outerWall) cuve = turnsLeft(kind) ? CUVE_RIGHT : CUVE_LEFT; // le mur est du côté opposé au centre du virage
   if (cuve) {
@@ -523,6 +561,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
     kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}),
     ...(edge ? { edge } : {}), ...(bumpy ? { bumpy: true as const } : {}),
     ...(tilt ? { tilt } : {}), ...(ramp ? { ramp: true as const, rise: SLOPE_RISE } : {}), ...(climb ? { rise: climb } : {}),
+    ...(fx ? { fx } : {}), ...(crown ? { crown: true as const, open: true as const } : {}), ...(steep ? { steep: true as const } : {}),
   };
 }
 
@@ -579,6 +618,9 @@ export function bankFactor(t: number, d?: { v: number }): number {
 
 const bankD = { v: 0 };
 
+/** Pente du relevé d'un virage relevé : serré, large, ou très relevé (lot 58). */
+export const bankSlope = (b: Block): number => (b.steep ? BANK_SLOPE_STEEP : isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT);
+
 /**
  * Relevé d'un virage au point canonique (p, q) : la route monte vers l'extérieur de `pente × part × (r − rayon de l'axe)`. La part
  * (`bankFactor`) ne dépend que de l'angle, par la fraction d'arc t = q / (q + |dp|) : le relevé naît et meurt en douceur, à l'entrée
@@ -593,7 +635,7 @@ export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
   const dp = p - cp;
   const r = Math.sqrt(dp * dp + q * q);
   if (r < 1e-6 || q < 0) return;
-  const slope = isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT;
+  const slope = bankSlope(b);
   const adp = dp < 0 ? -dp : dp;
   const sum = q + adp;
   const f = bankFactor(q / sum, bankD);
@@ -616,7 +658,7 @@ export interface Lift {
 }
 
 /** Vrai si le bloc a une géométrie du lot 57 (dévers, virage en pente ou virage-tremplin) : les autres n'appellent jamais `liftAt`. */
-export const hasLift = (b: Block): boolean => b.tilt !== undefined || (isCurve(b.kind) && b.rise !== 0);
+export const hasLift = (b: Block): boolean => b.tilt !== undefined || b.crown !== undefined || (isCurve(b.kind) && b.rise !== 0);
 
 /**
  * Hauteur ajoutée par la géométrie du lot 57 au point canonique (p, q) — zéro pour tout autre bloc :
@@ -629,6 +671,35 @@ export function liftAt(b: Block, p: number, q: number, out: Lift): void {
   out.h = 0;
   out.gp = 0;
   out.gq = 0;
+  if (b.crown !== undefined) {
+    // Lot 58 — route bombée : h = −k × e² ÷ (2 hw), e l'écart à l'axe (r − R dans un virage), k la pente au bord (lissage cubique d'un bloc à l'autre).
+    const hw = b.w0 / 2;
+    const c0 = b.crown0 ?? 0;
+    let k = b.crown;
+    let dk = 0;
+    if (c0 !== k) {
+      const x = q <= 0 ? 0 : q >= CELL ? 1 : q / CELL;
+      dk = q <= 0 || q >= CELL ? 0 : ((k - c0) * 6 * x * (1 - x)) / CELL;
+      k = c0 + (k - c0) * x * x * (3 - 2 * x);
+    }
+    let e = p - CELL / 2;
+    let ep = 1;
+    let eq = 0;
+    if (isCurve(b.kind)) {
+      const { cp, r: R } = curveCenter(b.kind);
+      const dp = p - cp;
+      const r = Math.sqrt(dp * dp + q * q);
+      if (r < 1e-6 || q < 0) return;
+      // L'écart compte vers l'extérieur d'un virage à droite comme à gauche : seule sa valeur au carré sert.
+      e = r - R;
+      ep = dp / r;
+      eq = q / r;
+    }
+    out.h = (-k * e * e) / (2 * hw);
+    out.gp = (-k * e * ep) / hw;
+    out.gq = (-k * e * eq) / hw - (dk * e * e) / (2 * hw);
+    return;
+  }
   if (b.tilt !== undefined) {
     const lat = p - CELL / 2;
     const t0 = b.tilt0 ?? 0;
@@ -704,7 +775,7 @@ export function parseTrack(id: string, spec: string): Track {
   let edgeChain: EdgeKind = "wall";
 
   tokens.forEach((token, index) => {
-    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy, tilt, ramp } = parseToken(token, index);
+    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy, tilt, ramp, fx, crown, steep } = parseToken(token, index);
     // Largeurs chaînées comme les hauteurs : un bloc sans largeur garde la sortie du précédent ; une largeur écrite doit
     // la prolonger exactement (seul le premier bloc la choisit), sinon la route aurait une marche.
     if (written && index > 0 && written.w0 !== width) {
@@ -739,6 +810,15 @@ export function parseTrack(id: string, spec: string): Track {
       block.tilt0 = tiltIn;
     }
     if (ramp) block.ramp = true;
+    // Lot 58 : bloc à effet, virage très relevé ; route bombée chaînée comme le dévers (elle naît et meurt sur une droite, un virage la garde).
+    if (fx) block.fx = fx;
+    if (steep) block.steep = true;
+    const crownIn = prevBlock && prevBlock.kind !== "gap" ? (prevBlock.crown ?? 0) : 0;
+    if (crown || crownIn) {
+      if (isCurve(kind) && crownIn !== (crown ? CROWN_SLOPE : 0)) throw new Error(`La route bombée naît et meurt sur une droite : ${token}`);
+      block.crown = crown ? CROWN_SLOPE : 0;
+      block.crown0 = crownIn;
+    }
     if (cuve && (index === 0 || index === tokens.length - 1)) throw new Error(`Le départ et l'arrivée gardent leurs rebords : pas de cuve (${token})`);
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
@@ -789,7 +869,7 @@ export function parseTrack(id: string, spec: string): Track {
   const spawn: Spawn = { x: pt.x, y: first.y0, z: pt.z, yaw: DIR_YAW[first.dir] };
 
   let minY = 0;
-  for (const b of blocks) minY = Math.min(minY, b.y0, b.y0 + b.rise);
+  for (const b of blocks) minY = Math.min(minY, b.y0, b.y0 + b.rise, b.steep ? b.y0 - (BANK_SLOPE_STEEP * b.w0) / 2 : 0);
   return { id, blocks, cells, gates, spawn, voidY: minY - FALL_DEPTH };
 }
 

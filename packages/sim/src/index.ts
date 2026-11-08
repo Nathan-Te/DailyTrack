@@ -30,4 +30,5 @@ export * from "./ressemblance";
 export * from "./rythmes";
 export * from "./variete";
 export * from "./grammaire";
+export * from "./blocs";
 export * from "./sautsClasse";

@@ -215,6 +215,8 @@ export const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, numbe
   kerb: [0xe8283a, 0xf4f4f4],
   // Herbe de course (lot 48) : vert tendre, plus clair et plus saturé que tout sol de la Campagne (ΔE 2000 > 12, test/herbe.test.ts) ; tondue en bandes.
   turf: [0x8fe04a, 0x8adb45],
+  // Eau (lot 58) : un gué bleu, deux tons (le clapotis : `SURFACE_MARKS` de route.ts).
+  water: [0x2f86c8, 0x2a7dbd],
 };
 const bank: BankSample = { h: 0, gp: 0, gq: 0 };
 

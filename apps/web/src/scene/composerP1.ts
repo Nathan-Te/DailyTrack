@@ -49,7 +49,7 @@ import { Affiches } from "./outils";
 import { ambianceDOrigine, ciel, silhouettes } from "./ciel";
 import { THEMES_C, occlusionSommets, textureFlaque } from "./lumiere";
 import { texturedCielC } from "./textures";
-import { FeuxDepart, arriveeP, coupureP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP, type EclairagePiste } from "./palier1";
+import { FeuxDepart, arriveeP, coupureP, effetP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP, type EclairagePiste } from "./palier1";
 import { atlasSponsors } from "./sponsors";
 import { HORIZONS, type Ambiance, type Calques, type CalquesDecor, type Contexte, type AnimationPas, type ModuleDecor, type PasScene, type Spectateur, type TribunePosee } from "./types";
 import type { Terrain } from "./decor/commun";
@@ -137,6 +137,7 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
     if (b.kind === "boost") plaqueP(calques, x, b);
     if (b.kind === "turbo") turboP(calques, x, b);
     if (b.kind === "cut") coupureP(calques, x, b);
+    if (b.fx !== undefined) effetP(calques, x, b);
     // Les repères et les arches de vitesse : dans le calque de la route (ils ne projettent pas d'ombre, comme les bornes de l'existant).
     if (!aerien) rythmeP({ ...calques, solide: calques.route }, x, b, fast[b.index] ?? false);
     if (b.mark === "checkpoint") porteP(calques, x, b);

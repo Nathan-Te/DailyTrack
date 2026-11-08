@@ -1,0 +1,26 @@
+# Blocs plus complexes, à la Trackmania (lot 58)
+
+> Règle du lot 58 (Track). Le renvoi est dans [`packages/sim/CLAUDE.md`](../../../packages/sim/CLAUDE.md). README : `docs/lots/lot-58-blocs-complexes.md`.
+> **État : prototypes jouables, en attente du choix de Nathan** (garder, retoucher, écarter). Le générateur ne les tire pas encore : aucune version publiée ne change (`GENERATOR_VERSION` 21, `SIM_VERSION` 14).
+
+## On s'inspire de Trackmania pour les idées, jamais pour les fichiers ni les noms
+Aucun objet, modèle, texture, nom de marque ni fichier de Trackmania ou de sa communauté (ils appartiennent à leurs auteurs et à Nadeo) : **tout est construit par le code**, avec nos noms (« direction bloquée », « régulateur », « route bombée »…), nos couleurs et nos textes du catalogue.
+
+## Blocs nouveaux (aucun circuit d'avant n'en a : anciens circuits et rediffusions au bit près)
+Champs **optionnels** de `Block` et de `ParsedToken` (absents des blocs d'avant) ; tout le reste du chemin de calcul est inchangé (golden des versions publiées et rediffusions de référence identiques).
+- **Blocs à effet** (`EFFECT_LETTERS`, `track.ts`) : `Ed` direction bloquée, `Ef` freins coupés, `Er` régulateur, `Ex` voiture fragile, `Ep` propulseur, `E0` remise à zéro. Ce sont des **droites** (`kind: "straight"`, `fx` = le code `FX_…`) : tout ce qui vaut pour une droite (largeur, revêtement, rebords, rendu, pilote) vaut pour eux. La bande fait `FX_HALF_LENGTH` (2 m) de demi-longueur, en travers de toute la route (`world.sample` → `Surface.fx`). Le moteur coupé (`C`, lot 8) reste ce qu'il était.
+- **Route bombée** `/a` (droites et virages) : `h = −k × e² ÷ (2 hw)`, e l'écart à l'axe (r − R dans un virage), k = `CROWN_SLOPE` (0,4 : la pente au bord ; 2 m de chute au bord d'une route normale). **Toujours sans rebords** (`/a` force `o`). **Chaînée comme le dévers** : un bloc part de la sortie du précédent (`crown0`) et va à la sienne (`crown`) en lissage cubique ; elle naît et meurt sur une droite (un virage la garde : `parseTrack` refuse sinon). Ni dévers, ni relevé, ni cuve, ni pente de virage, ni tôle ondulée, ni transition de largeur, ni rampe.
+- **Virage très relevé** `/f` (virages large et ample seulement) : relevé de pente `BANK_SLOPE_STEEP` (1 : 45°), même profil que `/b` (`bankSlope(b)`, lu par `bankAt` et le pilote). Le bord intérieur descend sous la route : `voidY` en tient compte (`parseTrack`).
+- **Eau** `S/w` (revêtement de bloc, jamais un bas-côté) : `SURFACES.water` (adhérence 0,8, motricité 0,8) et une traînée **en proportion de la vitesse**, `ax −= waterDrag × u` (`SurfaceParams.water`, `CarParams.waterDrag` 0,5 /s).
+
+## Les effets de la voiture (état, durée, remise à zéro)
+- **État** (`CarState`, rejoué à l'identique) : `fx` (l'effet, 0 = aucun), `fxTicks` (pas restants), `fxSpeed` (la vitesse que tient le régulateur). **Un seul effet à la fois** : le dernier franchi remplace l'autre (`takeEffect`, car.ts) ; tant qu'une roue est sur la bande, la durée repart en entier.
+- **Ce qu'ils font** (stepCar / substep) : direction bloquée = les roues reviennent droites, le volant n'agit plus ; freins coupés = ni frein, ni marche arrière, ni « figer » en l'air ; régulateur = ni gaz ni frein, l'accélération dans l'axe ramène la vitesse vers `fxSpeed` (`fxCruiseGain`, bornée par `brake`), même en montée ; voiture fragile = une réception (`land`) plus brutale que `fxFragileImpact` (20 m/s contre le sol) ou plus de travers que `fxFragileMiss` (0,25 au-delà de la tolérance) la **casse** (`fx = FX_BROKEN`) et la course la traite comme une chute (0,5 s sans commande, puis la reprise) ; propulseur = `fxLift` (40 m/s², la pesanteur est 24,6) vers le haut.
+- **Durée** (pas, `CarParams`, réglables dans `?debug&tune`) : direction 180 (1,5 s), freins 360 (3 s), régulateur 480 (4 s), fragile 960 (8 s), propulseur 96 (0,8 s).
+- **Fin** : la durée écoulée, **la remise à zéro** (`E0` : éteint tout, moteur coupé compris), **un point de contrôle** (comme le moteur coupé), l'arrivée (la voiture freine après la ligne), une reprise. Une voiture cassée reste cassée jusqu'à la reprise.
+
+## Les prototypes (`blocs.ts`)
+`BLOCS_LOT58` (9), même forme qu'une figure (`since: 22` : aucun générateur publié ne les tire), avec leur famille et des thèmes proposés. Chacun se joue seul : `?scenario=bloc-<nom>` (`&v=1`, `&m=1`) ; la page `?scenario=blocs` les liste. `test/blocs.test.ts` : comportement chiffré de chaque famille, et le pilote finit chaque variante, deux sens, trois largeurs.
+
+## À faire après le choix de Nathan (phase 3)
+Familles retenues dans le générateur, pondérées par thème (fiches du lot 49) ; règles d'équité (jamais d'effet qui rend la suite injouable — direction bloquée avant un virage serré, freins coupés avant un freinage obligatoire, régulateur à une vitesse qui ne passe pas la suite ; jamais deux effets qui se cumulent sans le vouloir ; une remise à zéro avant l'arrivée) ; nouvelle version du générateur (sans date, lot R11), golden par thème, ressemblance et temps de génération avant / après ; le décor posé près d'une route bombée ou d'un virage très relevé (règles de pose du lot 37).

@@ -41,6 +41,7 @@ const SCENARIOS: [Scenario, string][] = [
   ["herbe", "Herbe de course"],
   ["figures", "Figures (tour)"],
   ["sauts", "Sauts et transitions (lot 57)"],
+  ["blocs", "Blocs plus complexes (lot 58)"],
   ["figure", "Une figure"],
   ["plat", "Terrain plat"],
 ];

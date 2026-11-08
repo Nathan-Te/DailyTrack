@@ -60,6 +60,8 @@ export const SURFACE_SOUNDS: Record<SurfaceKind, SurfaceSound> = {
   kerb: { rollFreq: 140, rollGain: 0.16, skidFreq: 1500 },
   // Herbe de course (lot 48) : un froissement plus doux et plus aigu que l'herbe haute, un crissement étouffé.
   turf: { rollFreq: 760, rollGain: 0.07, skidFreq: 640 },
+  // Eau (lot 58) : un clapotis grave et large.
+  water: { rollFreq: 260, rollGain: 0.13, skidFreq: 380 },
 };
 
 /**

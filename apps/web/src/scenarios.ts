@@ -13,6 +13,8 @@ import {
   createTestTrack,
   createVitesseTrack,
   elementGrammaire,
+  elementBloc,
+  BLOCS_LOT58,
   figureByName,
   FIGURES_LOT49,
   SAUTS_LOT57,
@@ -33,7 +35,7 @@ import { fr as textesFr } from "./catalogue.course.figures.fr";
 // secours du générateur est nécessaire (`circuitEngine.ts`).
 
 /** Les scénarios connus de l'adresse (`?scenario=`), sauf `figure` et `figure-<nom>` (une figure à part, voir `scenarioTrack`). */
-export const SCENARIOS = ["figures", "sauts", "plat", "essai", "pilotage", "surfaces", "largeurs", "vitesse", "glace", "relief", "cuves", "air", "bas-cotes", "herbe"] as const;
+export const SCENARIOS = ["figures", "sauts", "blocs", "plat", "essai", "pilotage", "surfaces", "largeurs", "vitesse", "glace", "relief", "cuves", "air", "bas-cotes", "herbe"] as const;
 export type Scenario = (typeof SCENARIOS)[number] | "figure";
 
 /**
@@ -69,13 +71,17 @@ export function scenarioTrack(scenario: string, params: URLSearchParams): Track 
     case "sauts":
       // Lot 57 : la page des sauts et des transitions, posée sur le premier saut de la grammaire.
       return createFigureTrack(SAUTS_LOT57[0]!.name);
+    case "blocs":
+      // Lot 58 : la page des blocs plus complexes, posée sur le premier prototype.
+      return createFigureTrack(BLOCS_LOT58[0]!.name);
     case "figure":
       return createFigureTrack(params.get("f") ?? "", Number(params.get("v") ?? 0) || 0, params.get("m") === "1");
     default:
       // Lot 49 : `?scenario=figure-<nom>` (`&v=1` la variante, `&m=1` le miroir), le lien de la page des nouvelles figures.
       if (scenario.startsWith("figure-")) return createFigureTrack(scenario.slice(7), Number(params.get("v") ?? 0) || 0, params.get("m") === "1");
       // Lot 57 : `?scenario=saut-<nom>`, `?scenario=transition-<nom>` (`&v=`, `&m=1`).
-      if (elementGrammaire(scenario)) return createFigureTrack(scenario, Number(params.get("v") ?? 0) || 0, params.get("m") === "1");
+      // Lot 58 : `?scenario=bloc-<nom>` (`&v=`, `&m=1`).
+      if (elementGrammaire(scenario) || elementBloc(scenario)) return createFigureTrack(scenario, Number(params.get("v") ?? 0) || 0, params.get("m") === "1");
       return createTestTrack();
   }
 }
@@ -83,7 +89,7 @@ export function scenarioTrack(scenario: string, params: URLSearchParams): Track 
 /** La figure demandée par l'adresse : `?scenario=figure&f=<nom>` (lot 20) ou `?scenario=figure-<nom>` (lot 49) ; `null` sinon. */
 export function figureDemandee(scenario: string | null, params: URLSearchParams): string | null {
   if (scenario === "figure") return params.get("f") ?? "";
-  if (elementGrammaire(scenario)) return scenario;
+  if (elementGrammaire(scenario) || elementBloc(scenario)) return scenario;
   return scenario?.startsWith("figure-") ? scenario.slice(7) : null;
 }
 
@@ -98,12 +104,12 @@ export const TEXTES_FIGURES = { fr: textesFr, en: textesEn };
  * la bibliothèque (lot 20, en français).
  */
 export const figureLabel = (name: string | null, t?: (cle: string) => string): string =>
-  t && name && (FIGURES_LOT49.includes(name) || elementGrammaire(name)) ? t(`${cleFigure(name)}.titre`) : (figureByName(name)?.label ?? elementGrammaire(name)?.label ?? "");
+  t && name && (FIGURES_LOT49.includes(name) || elementGrammaire(name) || elementBloc(name)) ? t(`${cleFigure(name)}.titre`) : (figureByName(name)?.label ?? elementGrammaire(name)?.label ?? elementBloc(name)?.label ?? "");
 
 /** La palette d'une figure propre à un thème (`only`, lot 22) : on l'essaie contre son décor ; `null` pour une figure de tous les thèmes. */
 export function figurePalette(name: string | null): PaletteName | null {
   // Lot 57 : un élément de la grammaire se joue sur la palette du premier thème qu'on lui propose.
-  const only = (figureByName(name)?.only?.[0] ?? elementGrammaire(name)?.themes[0]) as ThemeName | undefined;
+  const only = (figureByName(name)?.only?.[0] ?? (elementGrammaire(name) ?? elementBloc(name))?.themes[0]) as ThemeName | undefined;
   return only ? THEMES[only].palette : null;
 }
 
@@ -120,8 +126,9 @@ export interface OutilsFigures {
  * qu'elle demande, ses thèmes, et deux liens (`?scenario=figure-<nom>`, la variante 2) qui gardent les autres paramètres de l'adresse (`debug`…).
  * Fermée (« ‹ TRACK », Échap, « Rouler le tour »), on roule le tour des figures. Deux clics du téléphone jusqu'à une figure.
  */
-export function pageFigures(o: OutilsFigures, search: string, sauts = false): { ouvert(): boolean; fermer(): void } {
-  const cadre = o.creerCadre({ id: "figures-index", titreAria: sauts ? "sauts.index.aria" : "figures.index.aria", retour: "jeu", onRetour: () => fermer() });
+export function pageFigures(o: OutilsFigures, search: string, page: "figures" | "sauts" | "blocs" = "figures"): { ouvert(): boolean; fermer(): void } {
+  const sauts = page !== "figures";
+  const cadre = o.creerCadre({ id: "figures-index", titreAria: page === "blocs" ? "blocs.index.aria" : page === "sauts" ? "sauts.index.aria" : "figures.index.aria", retour: "jeu", onRetour: () => fermer() });
   const lien = (nom: string, variante: number, miroir = false) => {
     const p = new URLSearchParams(search);
     for (const k of ["scenario", "f", "v", "m"]) p.delete(k);
@@ -142,6 +149,7 @@ export function pageFigures(o: OutilsFigures, search: string, sauts = false): { 
       { attrs: { "data-figure": e.name } },
       o.el("h2", { classe: "etiquette__sous-titre", texte: o.t(`${cleFigure(e.name)}.titre`) }),
       o.el("p", { classe: "note", texte: o.t(`${cleFigure(e.name)}.quoi`) }),
+      ...("famille" in e ? [o.el("p", { classe: "legende", texte: o.t("blocs.index.famille", { famille: o.t(`blocs.famille.${String(e.famille)}`) }) })] : []),
       ...(pa
         ? [o.el("p", { classe: "legende", texte: o.t("sauts.index.parties", { approche: pt(pa.approche), appel: pt(pa.appel), vol: pt(pa.vol), reception: pa.reception.map(pt).join(", "), sortie: pt(pa.sortie), vitesse: pt(pa.vitesse) }) })]
         : []),
@@ -150,6 +158,10 @@ export function pageFigures(o: OutilsFigures, search: string, sauts = false): { 
     );
   };
   const dessiner = () => {
+    if (page === "blocs") {
+      cadre.corps.replaceChildren(o.el("h1", { classe: "etiquette__titre", texte: o.t("blocs.index.titre") }), o.el("p", { classe: "note", texte: o.t("blocs.index.intro") }), ...BLOCS_LOT58.map(ligne));
+      return;
+    }
     if (sauts) {
       cadre.corps.replaceChildren(
         o.el("h1", { classe: "etiquette__titre", texte: o.t("sauts.index.titre") }),

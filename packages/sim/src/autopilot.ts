@@ -4,7 +4,7 @@ import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
 import { appelSlope, trackJumps, type JumpInfo } from "./jump";
-import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, CURVE_KICK, bankFactor, blockCells, hasLift, liftAt, type Lift, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { bankSlope as slopeOfBank, CELL, CURVE_KICK, bankFactor, blockCells, hasLift, liftAt, type Lift, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
 import { cuveAmplitude } from "./cuve";
 import { SURFACES } from "./world";
 
@@ -168,7 +168,7 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
       let bankSlope = 0;
       if (b.banked) {
         const adp = Math.abs(p - curveCenter(b.kind).cp);
-        bankSlope = (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) * bankFactor(q / (q + adp + 1e-9));
+        bankSlope = slopeOfBank(b) * bankFactor(q / (q + adp + 1e-9));
       }
       out.wall.push(bankSlope);
       out.wallExit.push(false);

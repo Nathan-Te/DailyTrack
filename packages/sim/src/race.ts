@@ -1,6 +1,6 @@
 import { TICK_RATE } from "./constants";
 import { AXIS_MAX, DEFAULT_CAR_PARAMS, NO_INPUT, copyCar, createCar, forwardSpeed, stepCar, type CarInput, type CarParams, type CarState } from "./car";
-import type { Gate, Track } from "./track";
+import { FX_BROKEN, type Gate, type Track } from "./track";
 import { trackWorld, type ShellHit, type World } from "./world";
 
 /**
@@ -54,6 +54,7 @@ function withoutEffects(world: World): World {
       out.boost = false;
       out.turbo = false;
       out.cut = false;
+      out.fx = 0;
     },
     collide: (x, z, y, radius, out) => world.collide(x, z, y, radius, out),
     ...(world.shell ? { shell: (x: number, z: number, y: number, out: ShellHit) => world.shell!(x, z, y, out) } : {}),
@@ -81,6 +82,8 @@ function respawn(race: RaceState): void {
     const s = race.track.spawn;
     copyCar(createCar(s.x, s.z, s.yaw, s.y), car);
   }
+  car.fx = 0; // lot 58 : la reprise repart sans effet (la voiture cassée est réparée)
+  car.fxTicks = 0;
   car.tick = tick + 1; // le chrono continue de tourner
   race.respawns += 1;
   race.fallTicks = 0;
@@ -133,11 +136,14 @@ export function stepRace(race: RaceState, input: CarInput): void {
     if (t >= 0) {
       race.nextGate += 1;
       car.cut = 0; // le point de contrôle rend le moteur (et la reprise repart donc moteur rendu)
+      // Lot 58 : il éteint aussi les effets (pas une voiture cassée : elle repart au point de contrôle d'avant).
+      if (car.fx !== FX_BROKEN) car.fx = car.fxTicks = 0;
       if (gate.kind === "finish") {
         race.finishMs = t;
         race.world = withoutEffects(race.world); // après la ligne, une plaque ne doit plus relancer la voiture à l'arrêt
         car.boost = 0;
         car.turbo = 0;
+        car.fx = car.fxTicks = 0; // lot 58 : la voiture freine après la ligne, même ses freins coupés
       }
       else {
         race.splits.push(t);
@@ -147,7 +153,8 @@ export function stepRace(race: RaceState, input: CarInput): void {
       }
     }
   }
-  if (car.y < race.world.voidY) race.fallTicks = 1;
+  // Lot 58 : une voiture fragile cassée à la réception est perdue comme si elle tombait (0,5 s sans commande, puis la reprise).
+  if (car.y < race.world.voidY || car.fx === FX_BROKEN) race.fallTicks = 1;
 }
 
 /** Durée écoulée, en ms (pour l'affichage du chrono en cours de course). */

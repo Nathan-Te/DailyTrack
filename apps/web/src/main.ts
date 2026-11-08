@@ -54,6 +54,8 @@ import {
   createCar,
   THEMES,
   createSurface,
+  FX_BROKEN,
+  TICK_RATE,
   FALL_TICKS,
   themeByName,
   dailyTrackId,
@@ -400,7 +402,9 @@ function lireMemoireQualite(): MemoireQualite | null {
 // petit morceau, souvent déjà en cache), pour que la première scène l'ait ; trop lent, elle se construit sans lui et il s'ajoutera à la prochaine arrivée.
 if (salon) await Promise.race([chargerDecor(salon.circuit.palette).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
 /** Les textes peints sur la scène (bandeaux des portiques), dans la langue du joueur ; les parties coupées par l'adresse. */
-const textesScene = () => ({ depart: t("course.portique.depart"), arrivee: t("course.portique.arrivee") });
+/** Lot 58 : les noms des blocs à effet (indice : le code `FX_…` de la simulation), sur leurs portiques et dans le HUD. */
+const EFFETS = ["", "direction", "freins", "regulateur", "fragile", "propulseur", "remise"] as const;
+const textesScene = () => ({ depart: t("course.portique.depart"), arrivee: t("course.portique.arrivee"), effets: EFFETS.map((e) => (e ? t(`course.portique.${e}`) : "")) });
 const optionsScene = () => ({ textes: textesScene(), ...(coupesScene.length > 0 ? { coupes: coupesScene } : {}) });
 const premierPalier: Palier = palierBranche(palierDepart) && pasDepartCharges ? palierDepart : PALIER_DEFAUT;
 const premierPlus = premierPalier === palierDepart ? plusDepart : [];
@@ -959,7 +963,7 @@ settingsPanel = mountSettings(document.body, {
   openHowto: () => howto.open(),
 });
 // Lot 49 : la page des nouvelles figures (`?scenario=figures`), posée sur le tour des figures ; ouverte au chargement, le jeu est gelé tant qu'elle l'est.
-const pageFigures = (scenario === "figures" || scenario === "sauts") && scenarios ? scenarios.pageFigures({ el: elDuSocle, creerCadre, t, onLangue }, location.search, scenario === "sauts") : null;
+const pageFigures = (scenario === "figures" || scenario === "sauts" || scenario === "blocs") && scenarios ? scenarios.pageFigures({ el: elDuSocle, creerCadre, t, onLangue }, location.search, scenario) : null;
 // Lot 41 : le Garage, chargé à la demande (`import()` : son code, sa feuille, ses textes) ; ouvert depuis l'accueil, la pause ou l'arrivée.
 let garageUi: GarageUi | null = null;
 const garageOuvert = () => !!garageUi?.estOuvert();
@@ -2082,7 +2086,7 @@ function cycleCamera() {
 // Indicateur d'effets (HUD) : super turbo, turbo, moteur coupé, et revêtement quand ce n'est pas la route.
 const hudFx = $("fx");
 const fxSample = createSurface();
-const SURFACES_HUD = new Set(["dirt", "ice", "grass", "sand", "gravel", "snow", "turf"]);
+const SURFACES_HUD = new Set(["dirt", "ice", "grass", "sand", "gravel", "snow", "turf", "water"]);
 let fxShown = "";
 function updateEffects() {
   const parts: string[] = [];
@@ -2091,6 +2095,11 @@ function updateEffects() {
     const c = race.car;
     if (c.cut) {
       parts.push(t("course.effet.moteurCoupe"));
+      cut = true;
+    }
+    // Lot 58 : l'effet d'un bloc à effet et le temps qu'il lui reste (« Freins coupés 2,4 s ») ; une voiture fragile cassée le dit.
+    if (c.fx) {
+      parts.push(t(c.fx === FX_BROKEN ? "course.effet.casse" : `course.effet.${EFFETS[c.fx]}`, { s: fNombre(c.fxTicks / TICK_RATE, 1) }));
       cut = true;
     }
     if (c.turbo > 0) parts.push(t("course.effet.superTurbo"));

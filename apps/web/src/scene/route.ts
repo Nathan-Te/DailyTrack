@@ -244,7 +244,26 @@ function shoulderColor(pal: Palette, kind: NonNullable<Block["shoulder"]>, i: nu
   return SURFACE_COLORS[kind][i % 2]!;
 }
 
-const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff };
+const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff, water: 0xd8ecf8 };
+
+/**
+ * Lot 58 : la route bombée — la chaussée en `BANDES` bandes en travers qui suivent l'arrondi (`onBlock` lit `liftAt`), plus claires vers le sommet : la
+ * forme se lit avant d'y être. Les bords (rangées de `addRoad`) sont déjà à la bonne hauteur ; la corde plate qu'il trace reste sous l'arrondi.
+ */
+const BANDES = 8;
+function addCrown(g: Builder, b: Block, color: number, rows: number) {
+  const hw = b.w0 / 2;
+  for (let j = 0; j < BANDES; j++) {
+    const l0 = -hw + (2 * hw * j) / BANDES;
+    const l1 = l0 + (2 * hw) / BANDES;
+    const tone = shade(color, 1.1 - (0.16 * Math.abs(l0 + l1)) / (2 * hw));
+    for (let i = 0; i < rows; i++) {
+      const t0 = i / rows;
+      const t1 = (i + 1) / rows;
+      g.quad(onBlock(b, l1, t0, 0.02), onBlock(b, l0, t0, 0.02), onBlock(b, l0, t1, 0.02), onBlock(b, l1, t1, 0.02), tone);
+    }
+  }
+}
 
 /** Herbe de course (lot 48) : une bande de tonte sur deux, assombrie d'autant, dans le sens de la course ; le bord net, une ligne blanche. */
 export const TONTE_SOMBRE = 0.9;
@@ -493,6 +512,13 @@ function addSurfaceMarks(g: Builder, b: Block) {
     }
   } else if (b.surface === "turf") {
     addTurfMarks(g, b);
+  } else if (b.surface === "water") {
+    // Lot 58 : le clapotis du gué, des vaguelettes claires à plat (rien ne dépasse de l'eau).
+    for (let k = 0; k < 14; k++) {
+      const lat = (((k * 7 + b.index * 3) % 13) - 6) * (b.w0 / 14);
+      const t = (k + 0.5) / 14;
+      g.quad(onBlock(b, lat - 1.2, t, lift), onBlock(b, lat + 1.2, t, lift), onBlock(b, lat + 0.9, t + 0.012, lift), onBlock(b, lat - 0.9, t + 0.012, lift), color);
+    }
   } else {
     for (let k = 0; k < 9; k++) {
       const lat = (((k * 5 + b.index * 3) % 11) - 5) * 1.1;
@@ -582,8 +608,9 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
         rows = curveRows(b, b.w0 / 2, 0, lissage);
         addRoad(c, pal, style, rows, color, floorY, true, b.surface === "road", skirt, base, run);
       }
-      if (b.surface === "road") style.vibreurs(c.lumineux, rows, pal);
+      if (b.surface === "road" && b.crown === undefined) style.vibreurs(c.lumineux, rows, pal);
       if (b.ramp) addCurveKickMarks(g, b);
+      if (b.crown !== undefined) addCrown(g, b, color, rows.length - 1);
     } else if (b.kind === "jump") {
       const swell = b.w0 !== b.w1 ? 8 : 1;
       addRoad(c, pal, style, straightRows(b, 0, JUMP_LIP, swell, (q) => blockHeight(b, q)), shade(color, 1.18), floorY, true, false, shade(skirt, 1.9), base, run);
@@ -603,9 +630,10 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q) + 0.03);
       addRoad(c, pal, style, rows, color, floorY, false, b.surface === "road", skirt, { bare: true }, run);
     } else {
-      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 || b.tilt !== undefined ? 16 : 1;
+      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 || b.tilt !== undefined || b.crown !== undefined ? 16 : 1;
       rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q));
       addRoad(c, pal, style, rows, color, floorY, true, b.surface === "road", skirt, base, run);
+      if (b.crown !== undefined) addCrown(g, b, color, 8);
     }
     if (b.shoulder) {
       const ein = neighborReach(prev, 1);
@@ -622,7 +650,7 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       addLandingMarks(g, b, Math.max(0, drop));
     }
     if (pillars && b.kind !== "gap") addPillar(g, pal, b, floorY, skirt);
-    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut";
+    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut" || b.fx !== undefined;
     if (b.surface === "road" && !effect && !b.bumpy && b.kind !== "jump" && b.kind !== "bump" && b.kind !== "kick" && b.kind !== "gap") style.tirets(g, b, pal);
     addSurfaceMarks(g, b);
   }

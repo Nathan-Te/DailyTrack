@@ -1,6 +1,7 @@
 import { DT } from "./constants";
 import { PI, TWO_PI, clamp, cos, sin } from "./math";
 import { FLAT_WORLD, SURFACES, createShellHit, createSurface, createWallHit, surfaceAt, type ShellHit, type World } from "./world";
+import { FX_BROKEN, FX_CRUISE, FX_FRAGILE, FX_LIFT, FX_NO_BRAKE, FX_NO_STEER, FX_RESET } from "./track";
 
 // Voiture arcade « à la Trackmania » (lot 7). Trois étages, tous déterministes (+ − × ÷ et √ seulement) :
 //
@@ -180,6 +181,23 @@ export interface CarParams {
   turfSlideFree: number;
   /** Coût de la dérive au-delà de `turfSlideFree` sur l'herbe de course (m/s² par unité de dérive en trop, au carré). */
   turfScrub: number;
+  /**
+   * Lot 58 — blocs à effet : durée (pas) de la direction bloquée, des freins coupés, du régulateur, de la voiture fragile et du propulseur (un point de
+   * contrôle ou la remise à zéro les éteint plus tôt) ; poussée du propulseur vers le haut (m/s², la pesanteur est `gravity`) ; une réception casse la
+   * voiture fragile au-delà de `fxFragileImpact` (m/s, vitesse d'impact contre le sol) ou de `fxFragileMiss` (écart d'alignement, pentes) ; le
+   * régulateur ramène la vitesse vers celle d'entrée à `fxCruiseGain` (1/s).
+   */
+  fxSteerTicks: number;
+  fxBrakeTicks: number;
+  fxCruiseTicks: number;
+  fxFragileTicks: number;
+  fxLiftTicks: number;
+  fxLift: number;
+  fxFragileImpact: number;
+  fxFragileMiss: number;
+  fxCruiseGain: number;
+  /** Lot 58 — l'eau : traînée (1/s) en proportion de la vitesse, `ax −= waterDrag × u`. */
+  waterDrag: number;
 }
 
 export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
@@ -245,6 +263,16 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   turfKeel: 1,
   turfSlideFree: 0.08,
   turfScrub: 60,
+  fxSteerTicks: 180,
+  fxBrakeTicks: 360,
+  fxCruiseTicks: 480,
+  fxFragileTicks: 960,
+  fxLiftTicks: 96,
+  fxLift: 40,
+  fxFragileImpact: 20,
+  fxFragileMiss: 0.25,
+  fxCruiseGain: 6,
+  waterDrag: 0.5,
 });
 
 /** Vrai si `p` diffère des réglages par défaut (course alors jamais classée). */
@@ -314,6 +342,13 @@ export interface CarState {
   cut: number;
   /** Dérapage déclenché au frein, ∈ [0, 1] (0 = adhérence normale). */
   drift: number;
+  /**
+   * Lot 58 — l'effet d'un bloc à effet (`FX_NO_STEER`… de track.ts, 0 = aucun : un seul à la fois, le dernier franchi remplace l'autre), ses pas
+   * restants, et la vitesse que tient le régulateur.
+   */
+  fx: number;
+  fxTicks: number;
+  fxSpeed: number;
   /** Normale de la surface sous la voiture (lot 18) : (0, 1, 0) sur la route, inclinée sur la paroi d'une cuve. */
   nx: number;
   ny: number;
@@ -323,7 +358,7 @@ export interface CarState {
 export function createCar(x = 0, z = 0, yaw = 0, y = 0): CarState {
   return {
     x, z, yaw, vx: 0, vz: 0, yawRate: 0, steer: 0, tick: 0, y, vy: 0,
-    pitch: 0, pitchRate: 0, roll: 0, rollRate: 0, grounded: 1, air: 0, boost: 0, turbo: 0, cut: 0, drift: 0, nx: 0, ny: 1, nz: 0,
+    pitch: 0, pitchRate: 0, roll: 0, rollRate: 0, grounded: 1, air: 0, boost: 0, turbo: 0, cut: 0, drift: 0, fx: 0, fxTicks: 0, fxSpeed: 0, nx: 0, ny: 1, nz: 0,
   };
 }
 
@@ -376,12 +411,14 @@ const gZ = [0, 0, 0, 0];
 const gBoost = [false, false, false, false];
 const gTurbo = [false, false, false, false];
 const gCut = [false, false, false, false];
+const gFx = [0, 0, 0, 0];
 /** Revêtement sous chaque roue : adhérence, motricité, roulement (`surfaceAt`). */
 const gGrip = [1, 1, 1, 1];
 const gTraction = [1, 1, 1, 1];
 const gRolling = [0, 0, 0, 0];
 const gSlick = [0, 0, 0, 0];
 const gTurf = [0, 0, 0, 0];
+const gWater = [0, 0, 0, 0];
 const load = [0, 0, 0, 0];
 
 function sampleWheels(car: CarState, world: World, fx: number, fz: number): void {
@@ -395,24 +432,44 @@ function sampleWheels(car: CarState, world: World, fx: number, fz: number): void
     gBoost[i] = surface.boost;
     gTurbo[i] = surface.turbo;
     gCut[i] = surface.cut;
+    gFx[i] = surface.fx;
     const m = surfaceAt(surface);
     gGrip[i] = m.grip;
     gTraction[i] = m.traction;
     gRolling[i] = m.rolling;
     gSlick[i] = m.slick;
     gTurf[i] = m.turf;
+    gWater[i] = m.water ?? 0;
   }
+}
+
+/**
+ * Lot 58 : la voiture franchit la bande d'un bloc à effet. La remise à zéro éteint tout (moteur coupé compris) ; une voiture cassée le reste ; un autre
+ * effet remplace le précédent (jamais deux à la fois) et repart pour toute sa durée tant qu'on est sur la bande ; le régulateur retient la vitesse
+ * d'entrée.
+ */
+function takeEffect(car: CarState, fx: number, u: number, p: Readonly<CarParams>): void {
+  if (car.fx === FX_BROKEN) return;
+  if (fx === FX_RESET) {
+    car.fx = car.fxTicks = car.cut = 0;
+    return;
+  }
+  if (fx === FX_CRUISE && car.fx !== FX_CRUISE) car.fxSpeed = u > 0 ? u : 0;
+  car.fx = fx;
+  car.fxTicks = fx === FX_NO_STEER ? p.fxSteerTicks : fx === FX_NO_BRAKE ? p.fxBrakeTicks : fx === FX_CRUISE ? p.fxCruiseTicks : fx === FX_FRAGILE ? p.fxFragileTicks : p.fxLiftTicks;
 }
 
 /** Avance la voiture d'un pas fixe (`DT`) dans `world`. Modifie `car` en place. */
 export function stepCar(car: CarState, input: CarInput, world: World = FLAT_WORLD, params: Readonly<CarParams> = DEFAULT_CAR_PARAMS): void {
   // Volant : va vers la consigne à vitesse bornée (clavier : plein braquage en quelques centièmes).
-  const target = clamp(input.steer, -AXIS_MAX, AXIS_MAX) / AXIS_MAX;
+  // Lot 58 : direction bloquée — les roues reviennent droites, le volant n'agit plus.
+  const target = car.fx === FX_NO_STEER ? 0 : clamp(input.steer, -AXIS_MAX, AXIS_MAX) / AXIS_MAX;
   const steerStep = params.steerSpeed * DT;
   car.steer += clamp(target - car.steer, -steerStep, steerStep);
   // Moteur coupé : l'accélérateur n'agit plus (le frein, si).
-  const throttle = car.cut ? 0 : clamp(input.throttle, 0, AXIS_MAX) / AXIS_MAX;
-  const brake = clamp(input.brake, 0, AXIS_MAX) / AXIS_MAX;
+  // Lot 58 : le régulateur tient la vitesse seul (ni gaz ni frein) ; freins coupés : ni frein, ni marche arrière, ni « figer » en l'air.
+  const throttle = car.cut || car.fx === FX_CRUISE ? 0 : clamp(input.throttle, 0, AXIS_MAX) / AXIS_MAX;
+  const brake = car.fx === FX_NO_BRAKE || car.fx === FX_CRUISE ? 0 : clamp(input.brake, 0, AXIS_MAX) / AXIS_MAX;
 
   // Dérapage : un coup de frein en virage rapide fait décrocher l'arrière ; on le tient à la direction. Lot 48 : pas sur l'herbe de course (le frein y
   // freine, c'est tout) — le sol sous la voiture n'est lu que quand le dérapage se déclencherait.
@@ -430,6 +487,7 @@ export function stepCar(car: CarState, input: CarInput, world: World = FLAT_WORL
   }
   if (car.boost > 0) car.boost -= 1;
   if (car.turbo > 0) car.turbo -= 1;
+  if (car.fxTicks > 0 && --car.fxTicks === 0 && car.fx !== FX_BROKEN) car.fx = 0;
   car.tick += 1;
 }
 
@@ -478,6 +536,8 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   let onBoost = false;
   let onTurbo = false;
   let onCut = false;
+  let onFx = 0;
+  let water = 0;
   let slopeSide = 0;
   let traction = 0;
   let rolling = 0;
@@ -503,6 +563,8 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     if (gBoost[i]) onBoost = true;
     if (gTurbo[i]) onTurbo = true;
     if (gCut[i]) onCut = true;
+    if (gFx[i]) onFx = gFx[i]!;
+    water += gWater[i]!;
   }
   const grounded = contacts > 0;
   if (grounded) {
@@ -521,6 +583,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   if (onBoost) car.boost = p.boostTicks;
   if (onTurbo) car.turbo = p.turboTicks;
   if (onCut) car.cut = 1;
+  if (onFx) takeEffect(car, onFx, u, p);
 
   let ax = 0; // accélérations le long du cap et vers la gauche
   let ay = 0;
@@ -638,6 +701,9 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
       const steered = car.steer < 0 ? -car.steer : car.steer;
       ax -= (p.slideDrag * (1 + turf * (p.turfSlideDrag - 1)) * slide + turf * p.turfSteerDrag * steered + (over > 0 ? turf * p.turfScrub * over * over : 0)) * sign;
     } else ax -= p.slideDrag * slide * sign;
+    // Lot 58 : l'eau traîne en proportion de la vitesse ; le régulateur remplace tout ce qui pousse ou retient la voiture dans l'axe.
+    if (water > 0) ax -= (p.waterDrag * water * u) / contacts;
+    if (car.fx === FX_CRUISE) ax = clamp((car.fxSpeed - u) * p.fxCruiseGain, -p.brake, p.brake);
   }
 
   // --- Intégration horizontale (Euler semi-implicite) --------------------------------------------
@@ -682,6 +748,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     rollM += WHEEL_L[i]! * load[i]!;
   }
   car.vy += (sumF - g) * H;
+  if (car.fx === FX_LIFT) car.vy += p.fxLift * H; // lot 58 : le propulseur pousse vers le haut
   if (grounded) {
     // L'inertie de la caisse, au-dessus des roues : accélérer lève le nez, tourner penche vers l'extérieur.
     car.pitchRate += ((pitchM + p.cgHeight * ax) / PITCH_INERTIA) * H;
@@ -1160,6 +1227,8 @@ function land(car: CarState, fx: number, fz: number, lx: number, lz: number, p: 
   car.vy = ty * keep + rest * ny;
   car.vz = tz * keep + rest * nz;
   car.yawRate *= keep;
+  // Lot 58 : la voiture fragile casse sur une réception brutale (trop vite contre le sol, ou de travers).
+  if (car.fx === FX_FRAGILE && (vn < -p.fxFragileImpact || miss > p.fxFragileMiss)) car.fx = FX_BROKEN;
   const calm = 1 - p.landAbsorb;
   car.pitchRate *= calm;
   car.rollRate *= calm;

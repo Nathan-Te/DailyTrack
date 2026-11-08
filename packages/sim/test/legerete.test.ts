@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 // en proche, aucun des fichiers « lourds » ci-dessous. Une fonction légère qui s'y glisserait (par exemple `medalFor` dans `generator.ts`) ramènerait tout le générateur
 // dans le premier chargement : `apps/web/e2e/perf.spec.ts` le verrait à la fin, ce test le dit à la source.
 const SRC = join(import.meta.dirname, "../src");
-const LOURDS = ["generator", "figures", "braking", "autopilot", "fictional", "circuits", "salonCircuit", "traps", "choices", "medalStats", "grammaire"]; // lot 57 : la grammaire tire les figures
+const LOURDS = ["generator", "figures", "braking", "autopilot", "fictional", "circuits", "salonCircuit", "traps", "choices", "medalStats", "grammaire", "blocs"]; // lot 57 : la grammaire tire les figures ; lot 58 : les prototypes des blocs aussi
 // `index.ts` rassemble tout (les outils et le serveur importent par lui) ; `jump.ts` n'est tiré que par le pilote.
 const EXCLUS = new Set(["index", ...LOURDS]);
 

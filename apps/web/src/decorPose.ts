@@ -7,7 +7,7 @@
 import type { Box, Builder, BuilderMark } from "./meshKit";
 
 /** Ce qu'est un élément : chaque type a UN rôle (signaler, marquer, habiller), sinon il n'a rien à faire dans la scène. */
-export type PoseKind = "poteau" | "panneau" | "arche-depart" | "arche-arrivee" | "arche-vitesse" | "porte" | "tribune" | "decor" | "lampadaire" | "sponsor";
+export type PoseKind = "poteau" | "panneau" | "arche-depart" | "arche-arrivee" | "arche-vitesse" | "arche-effet" | "porte" | "tribune" | "decor" | "lampadaire" | "sponsor";
 
 export type Role = "signaler" | "marquer" | "habiller";
 
@@ -15,6 +15,7 @@ export const ROLES: Record<PoseKind, Role> = {
   poteau: "signaler", // borne au bord d'une portion rapide : on lit la vitesse
   panneau: "signaler", // virage, saut, cuve à venir
   "arche-vitesse": "signaler", // portion rapide
+  "arche-effet": "signaler", // lot 58 : bloc à effet (son nom sur la poutre, sa couleur)
   "arche-depart": "marquer",
   "arche-arrivee": "marquer",
   porte: "marquer", // point de contrôle
