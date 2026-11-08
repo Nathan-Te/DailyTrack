@@ -14,7 +14,7 @@ import { FICHES_V21, POIDS_RYTHME, themeOfVersion, type Etiquette, type Poids } 
 import { GENERATOR_RYTHMES, rythmeDuJour, type Rythme } from "./rythmes";
 import { motifsBoostSerre } from "./variete";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
-import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, turnsLeft, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
+import { FX_CRUISE, FX_FRAGILE, FX_NO_BRAKE, FX_NO_STEER, FX_RESET, blockCells, cellKey, curveSize, exitDelta, isCurve, isWide, parseToken, parseTrack, turnsLeft, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
@@ -284,7 +284,7 @@ const BRAKING_SHORT = 6;
 const isFast = (f: Figure) => f.category === "rapide" || !!f.turbo;
 
 /** Figures d'un circuit, dans le désordre : signature, relief, saut, cuve, portion rapide, techniques, puis le reste au poids. */
-function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget: number, generator: number, vedette: string | null, poids?: readonly Poids[], sansMotif = false, sansFreinage = false): Figure[] | null {
+function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget: number, generator: number, vedette: string | null, poids?: readonly Poids[], sansMotif = false, sansFreinage = false, blocs?: readonly string[], tourBloc?: string): Figure[] | null {
   const banned = new Set(theme.figures.ban);
   const signature = figureByName(SIGNATURE_FIGURE[theme.signature])!;
   const chosen: Figure[] = [signature];
@@ -294,7 +294,9 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   // Les figures obligatoires du thème (lot 21) ne sont jamais au repos, comme la signature.
   // Lot 49 (v18) : la vedette du jour n'est jamais au repos ; les autres vedettes du thème attendent leur tour (`vedetteOf`).
   // Lot V2 (v21) : un jour où le motif « boost → longue ligne droite → virage serré » n'est pas permis, une figure qui le fait dans toutes ses variantes n'est pas tirée.
-  const usable = (f: Figure) => !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !otherVedette(f, theme, vedette) && !(sansMotif && toujoursMotif(f));
+  // Lot 58 (v22) : une famille de blocs nouveaux ne sort que par son tour (`tourBloc`, ci-dessous) ou comme vedette — tirée comme les autres figures, le mur
+  // roulable revenait comme cuve de la Nuit et du Stade presque chaque jour (la ressemblance d'un thème montait).
+  const usable = (f: Figure) => !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !otherVedette(f, theme, vedette) && !(sansMotif && toujoursMotif(f)) && (!f.bloc || f.name === vedette);
   // Lot V2 (v21) : « plaque puis virage », la plus courte des portions rapides sans épingle, se repose aussi un jour de repos sur deux (sinon elle était de 53 % des circuits).
   const reposPlus = (f: Figure) => generator >= GENERATOR_RYTHMES && f.name === "plaque-virage" && (((day % 2) + 2) % 2 === 1);
   const pool = FIGURES.filter((f) => usable(f) && (required.has(f.name) || requiredAlso.has(f.name) || f.name === vedette || (!isRested(f.name, day) && !reposPlus(f))));
@@ -332,6 +334,12 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   if (required.size > 0 && !chosen.some((f) => required.has(f.name)) && !add(pick((f) => required.has(f.name)))) return null;
   // Lot 48 (v17) : une seconde règle propre (Campagne : une figure d'herbe de course).
   if (requiredAlso.size > 0 && !chosen.some((f) => requiredAlso.has(f.name)) && !add(pick((f) => requiredAlso.has(f.name)))) return null;
+  // Lot 58 (v22) : une famille de blocs nouveaux du thème (`blocs` : celles du thème, sur les `TENTATIVES_BLOCS` premières tentatives du jour) ; au repos ce
+  // jour-là, elle sert quand même (un thème qui n'en a qu'une la pose chaque fois).
+  // À tour de rôle (`tourBloc`) ; si elle ne tient pas (plafonds du circuit), une autre famille du thème.
+  const estBloc = (f: Figure) => !!blocs?.includes(f.name);
+  const familles = blocs ? FIGURES.filter((f) => estBloc(f) && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator)) : [];
+  if (blocs && !chosen.some(estBloc) && !add(pick((f) => f.name === tourBloc, familles)) && !add(pick(estBloc, familles))) return null;
   // Un vrai saut et une cuve (selon le thème) : quand le thème veut les deux, une figure qui fait les deux à la fois (saut dans une cuve,
   // saut en sortie de paroi…) tient en moins de blocs que deux figures, et elle est préférée un peu plus d'une fois sur deux.
   const wantsJump = !signature.jump && wants.jump;
@@ -360,7 +368,8 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   if (!chosen.some(isFast) && !add(pick(isFast)) && !add(pick(isFast, rested))) return null;
   // Une figure favorite du thème (en plus de la signature), si elle tient dans le budget : c'est ce qui donne au thème sa couleur.
   const seconds = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
-  if (!chosen.some((f) => f !== signature && theme.figures.favor.includes(f.name))) add(pick((f) => theme.figures.favor.includes(f.name) && seconds() + figureSeconds(f) <= budget + FAVORITE_SLACK));
+  // Lot 58 (v22) : la famille de blocs nouveaux en tient lieu.
+  if (!chosen.some((f) => f !== signature && (theme.figures.favor.includes(f.name) || !!blocs?.includes(f.name)))) add(pick((f) => theme.figures.favor.includes(f.name) && seconds() + figureSeconds(f) <= budget + FAVORITE_SLACK));
   // Lot 49 (v18) : la vedette tient lieu d'une des deux techniques (elle est le moment fort du thème ; sans cela le circuit sort trop long).
   const minTechniques = vedette ? MIN_TECHNIQUES - 1 : MIN_TECHNIQUES;
   while (count_((f) => f.category === "technique") < minTechniques) if (!add(pick((f) => f.category === "technique"))) return null;
@@ -603,6 +612,16 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   // Lot V2 (v21) : le rythme du jour, les poids (rythme puis biome), le motif « boost → longue ligne droite → virage serré » (un jour rapide seulement, une fois) et la
   // plus longue ligne droite libre de la fiche du biome.
   const rules21 = generator >= GENERATOR_RYTHMES;
+  const rules58 = generator >= GENERATOR_BLOCS;
+  // Lot 58 (v22) : les familles de blocs nouveaux exigées du thème, sur les premières tentatives du jour seulement — certains jours, toutes les tentatives avec
+  // elles sortent trop longues (une figure de plus) ; plutôt qu'un circuit de secours, le jour reprend sans elles (mesuré : 3 jours sur 48 à la Ville et à la Nuit).
+  const blocsDuTheme = rules58 && attempt < TENTATIVES_BLOCS ? theme.figures.blocs : undefined;
+  // À tour de rôle : la famille suit le numéro d'apparition du thème (deux circuits consécutifs d'un thème n'ont pas la même) ; une famille qui ne tient pas
+  // en `TOUR_BLOCS` tentatives laisse sa place à la suivante.
+  const tour = occurrence + Math.floor(attempt / TOUR_BLOCS);
+  const tourBloc = blocsDuTheme ? blocsDuTheme[((tour % blocsDuTheme.length) + blocsDuTheme.length) % blocsDuTheme.length] : undefined;
+  // Un tour vide ("") : ce circuit n'en exige pas (un thème qui n'a qu'une famille la pose un circuit sur deux).
+  const blocs = tourBloc ? blocsDuTheme : undefined;
   const rythme: Rythme | null = rules21 ? rythmeDuJour(day, generator, theme.name) : null;
   const fiche = rules21 ? FICHES_V21[theme.name] : null;
   const poids = rythme && fiche ? [POIDS_RYTHME[rythme], fiche.poids] : undefined;
@@ -613,7 +632,10 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   const restDay = rules49 ? occurrence + Math.floor(occurrence / (theme.figures.vedettes?.length ?? 3)) : day;
   // Variante 0 : la graine d'origine. Variante n : une autre graine, décalée de n × 1000 tentatives (au plus `MAX_ATTEMPTS` = 40 sont
   // tirées : jamais de recoupement entre variantes).
-  const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
+  // Lot 58 (v22) : au-delà des tentatives qui exigent une famille, le repli reprend les graines du début (le jour retrouve le circuit qu'il aurait eu sans elle,
+  // au lieu de chercher plus loin : mesuré, un Stade passait de 8 à 64 tentatives).
+  const graine = rules58 && theme.figures.blocs && attempt >= TENTATIVES_BLOCS ? attempt - TENTATIVES_BLOCS : attempt;
+  const rng = new Rng(mixSeed(day, graine + 1 + variant * 1000));
   const count = FIGURES_MIN + rng.int(FIGURES_SPAN);
   // Plusieurs tirages de figures, le premier dont la durée estimée tient dans le budget l'emporte (sinon le plus court) : les figures
   // obligatoires d'un thème (saut, cuve, signature) pèsent lourd, et sept tirages sur dix donneraient un circuit trop long.
@@ -625,7 +647,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   let picked: Figure[] | null = null;
   let best = -Infinity;
   for (let tries = 0; tries < SELECTION_TRIES; tries++) {
-    const candidate = selectFigures(rng, theme, restDay, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator, vedette, poids, rules21 && motifPermis === 0, rythme === "vertical" || rythme === "aerien" || rythme === "technique");
+    const candidate = selectFigures(rng, theme, restDay, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator, vedette, poids, rules21 && motifPermis === 0, rythme === "vertical" || rythme === "aerien" || rythme === "technique", blocs, tourBloc);
     if (!candidate) continue;
     const seconds = candidate.reduce((sum, f) => sum + figureSeconds(f), 0);
     // Hors budget : on garde le plus court seulement faute de mieux ; dans le budget : celui où l'on lâche le plus le gaz (somme des `off` des figures).
@@ -658,6 +680,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   // Lot 34 : virages qui reçoivent un bas-côté, blocs d'approche protégés, un seul virage-piège (signature, ou Ville).
   const escapes = new Set<number>();
   const shielded = new Set<number>();
+  const sansBord = new Set<number>();
   const braking = { kept: 0, added: 0, escapes: 0 };
   const escapeKind = theme.shoulder.kind !== "void" && theme.shoulder.share > 0;
 
@@ -667,7 +690,8 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
     const alternatives = [order[i]!];
     // Lot V2 (v21) : la seconde règle propre du thème (`requireAlso` : l'herbe de course de la Campagne) ne se remplace pas non plus — la ligne droite libre plafonnée la faisait
     // parfois remplacer par une figure sans herbe.
-    const obligatoire = rules21 && !!theme.figures.requireAlso?.includes(order[i]!.name);
+    // Lot 58 (v22) : la famille de blocs nouveaux non plus (sinon le circuit pouvait la perdre).
+    const obligatoire = (rules21 && !!theme.figures.requireAlso?.includes(order[i]!.name)) || !!blocs?.includes(order[i]!.name);
     if (order[i]!.name !== signatureName && order[i]!.name !== vedette && !obligatoire) {
       const f0 = order[i]!;
       const banned = new Set(theme.figures.ban);
@@ -675,7 +699,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
       const prev = placed.length > 0 ? placed[placed.length - 1]!.name : null;
       const next = i + 1 < order.length ? order[i + 1]!.name : null;
       const keepsOrder = (f: Figure) => !order49 || ((prev === null || may(order49, prev, f.name)) && (next === null || may(order49, f.name, next)));
-      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !isRested(f.name, restDay) && !otherVedette(f, theme, vedette) && keepsOrder(f) && !(rules21 && motifPermis === 0 && toujoursMotif(f)));
+      const subs = FIGURES.filter((f) => !f.bloc && f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !isRested(f.name, restDay) && !otherVedette(f, theme, vedette) && keepsOrder(f) && !(rules21 && motifPermis === 0 && toujoursMotif(f)));
       alternatives.push(...rng.shuffle(subs).slice(0, 3));
     }
     let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number; fix: ReturnType<typeof secureBraking> } | null = null;
@@ -694,7 +718,8 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
         if (last) mirrors = turnsLeft(last) ? [false, true] : [true, false];
       }
       // Lot V2 (v21) : la signature et la vedette gardent leur dessin ; les autres figures prennent les traits du biome (`tournures`).
-      const traits = rules21 && fiche && figure.name !== signatureName && figure.name !== vedette && !figure.cuve;
+      // Lot 58 (v22) : une famille de blocs nouveaux non plus (un virage serré après la direction bloquée, une pente sous la route bombée : interdits).
+      const traits = rules21 && fiche && figure.name !== signatureName && figure.name !== vedette && !figure.cuve && !figure.bloc;
       outer: for (const withChange of target ? [true, false] : [false]) {
         const entry = withChange ? target! : width;
         const prefix = withChange ? [transition(width, target!)] : [];
@@ -748,6 +773,12 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
     }
     if (done.figure.relief && hillRise(done.tokens) >= MIN_RELIEF) majorHill = true;
     placed.push({ name: done.figure.name, variant: done.variant, left: done.left, from: done.before, to: w.tokens.length });
+    // Lot 58 (v22) : les blocs d'une famille nouvelle sont protégés des retouches du circuit fini (revêtement, bosses, rebords retirés, pente du biome).
+    // Ni bas-côté sur elle ni sur les deux blocs qui la suivent (mesuré : un bas-côté de vide juste après le mur roulable, et la voiture qui en redescend tombait).
+    if (rules58 && done.figure.bloc) {
+      for (let k = done.before; k < w.tokens.length; k++) shielded.add(k);
+      for (let k = done.before; k < w.tokens.length + 2; k++) sansBord.add(k);
+    }
     width = widthAfter(done.tokens, width);
     usedWidths.add(width);
   }
@@ -797,10 +828,60 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   if (theme.openChance > 0 && rng.chance(theme.openChance)) openSection(w.tokens, rng, rules34 ? shielded : undefined);
   // Identité du thème (lot 21) : route bosselée, puis bas-côtés.
   if (theme.bumpy[1] > 0) bumpySections(w.tokens, theme.bumpy, rng, rules34 ? shielded : undefined);
-  assignShoulders(w.tokens, theme.shoulder, rng, escapes);
+  assignShoulders(w.tokens, theme.shoulder, rng, escapes, rules58 ? sansBord : undefined);
   // Lot 49 (v18) : la Nuit (bas-côté de vide) a toujours de la route sans rebords — c'est sa fiche ; sinon, la graine voisine.
   if (rules49 && theme.shoulder.kind === "void" && !w.tokens.some((t) => parseToken(t).open || t.includes("~v"))) return null;
+  // Lot 58 (v22) : les règles d'équité des blocs à effet, sur le circuit fini (les figures les tiennent par construction : ceci les garde).
+  if (rules58 && fauteEffets(w.tokens)) return null;
   return { spec: w.tokens.join(" "), figures: placed, braking };
+}
+
+/** Lot 58 : première version du générateur qui pose les familles de blocs nouveaux (`Figure.bloc`, `Theme.figures.blocs`). */
+export const GENERATOR_BLOCS = 22;
+/** Lot 58 (v22) : tentatives d'un jour qui exigent une famille de blocs nouveaux (au-delà, elle n'est plus qu'une favorite : jamais de circuit de secours pour elle). */
+const TENTATIVES_BLOCS = 30;
+/** Lot 58 (v22) : tentatives d'un jour avec la même famille (son tour), avant de passer à la suivante. */
+const TOUR_BLOCS = 10;
+
+/**
+ * Lot 58 (v22) — **les règles d'équité des blocs à effet**, sur un circuit écrit (`null` s'il les tient, sinon la faute) : un effet (bande `Ed`, `Ef`, `Er`,
+ * `Ex`) est toujours éteint par une remise à zéro (`E0`) **avant** un autre effet et avant l'arrivée (jamais deux effets qui se cumulent, jamais d'effet sur
+ * la ligne) ; et jusqu'à sa remise à zéro, rien de ce qui le rendrait injouable : direction bloquée → aucun virage ; freins coupés → aucun virage serré ;
+ * régulateur → la vitesse tenue est celle d'un virage à au plus deux blocs avant la bande, et aucun virage plus petit que lui ne suit (il se passe à la
+ * vitesse tenue) ; voiture fragile → ni plaque ni super turbo (un saut à plus de ≈ 60 m/s), ni chute de deux niveaux ; aucun moteur coupé sous un effet.
+ */
+export function fauteEffets(tokens: readonly string[]): string | null {
+  let actif = 0;
+  let dernier = -10; // le dernier virage avant la bande, et sa taille (1 serré, 2 large, 3 ample)
+  let taille = 0;
+  let entree = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    const p = parseToken(tokens[i]!);
+    if (p.fx === FX_RESET) {
+      actif = 0;
+      continue;
+    }
+    if (p.fx) {
+      if (actif) return `deux effets sans remise à zéro (bloc ${i})`;
+      actif = p.fx;
+      if (actif === FX_CRUISE && i - dernier > 2) return `régulateur sans virage juste avant (bloc ${i})`;
+      entree = taille;
+      continue;
+    }
+    if (isCurve(p.kind)) {
+      dernier = i;
+      taille = curveSize(p.kind);
+    }
+    if (!actif) continue;
+    if (tokens[i]!.includes("@finish")) break;
+    const serre = isCurve(p.kind) && !isWide(p.kind);
+    if (p.kind === "cut") return `moteur coupé sous un effet (bloc ${i})`;
+    if (actif === FX_NO_STEER && isCurve(p.kind)) return `virage sous la direction bloquée (bloc ${i})`;
+    if (actif === FX_NO_BRAKE && serre) return `virage serré sans frein (bloc ${i})`;
+    if (actif === FX_CRUISE && isCurve(p.kind) && curveSize(p.kind) < entree) return `virage plus serré que la vitesse tenue (bloc ${i})`;
+    if (actif === FX_FRAGILE && (p.kind === "boost" || p.kind === "turbo" || (p.kind === "gap" && (p.rise ?? 0) <= -8))) return `élan ou chute qui casse la voiture fragile (bloc ${i})`;
+  }
+  return actif ? "un effet jusqu'à l'arrivée" : null;
 }
 
 /** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée (voir `composeFigures`). */
@@ -900,7 +981,7 @@ const EDGE_MOD: Record<Theme["shoulder"]["kind"], string> = { grass: "~h", grave
  * blocs prennent le bas-côté du thème avec la probabilité `share`. La notation est chaînée : `~x` sur le premier bloc de la série, `~r`
  * sur le bloc qui la suit.
  */
-function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng, forced?: ReadonlySet<number>): void {
+function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng, forced?: ReadonlySet<number>, sansBord?: ReadonlySet<number>): void {
   const n = tokens.length;
   const parsed = tokens.map((t) => parseToken(t));
   const eligible = (i: number): boolean => {
@@ -933,7 +1014,8 @@ function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng
     const take = rng.chance(shoulder.share);
     let j = i;
     while (j < n - 1 && j < i + length && eligible(j)) {
-      on[j] = take;
+      // Lot 58 (v22) : ni sur une famille de blocs nouveaux ni sur les deux blocs qui la suivent (`sansBord`) ; les dégagements exigés (`forced`) restent.
+      on[j] = take && !sansBord?.has(j);
       j++;
     }
     i = j;

@@ -21,6 +21,8 @@ import {
   createRace,
   cuveHeight,
   cuveRadius,
+  fauteEffets,
+  figureByName,
   decodeReplay,
   encodeReplay,
   liftAt,
@@ -407,6 +409,44 @@ describe("prototypes du lot 58", () => {
       const run = bestPilotRun(track, { cut: false })!;
       const again = replayRace(track, decodeReplay(encodeReplay(run.replay)));
       expect(again.finishMs, nom).toBe(run.finishMs);
+    }
+  });
+});
+
+describe("règles d'équité des blocs à effet (lot 58, générateur v22 : `fauteEffets`)", () => {
+  const f = (spec: string) => fauteEffets(spec.split(" "));
+  it("un effet est toujours éteint par une remise à zéro avant un autre effet et avant l'arrivée", () => {
+    expect(f("S@start S Ed S S E0 L2 S Ef S S E0 S@finish")).toBeNull();
+    expect(f("S@start S Ed S S Ef S S E0 S@finish")).toMatch(/deux effets/);
+    expect(f("S@start S Ed S S S@finish")).toMatch(/arrivée/);
+    expect(f("S@start S Ed S S")).toMatch(/arrivée/);
+  });
+  it("direction bloquée : aucun virage avant la remise à zéro ; freins coupés : aucun virage serré", () => {
+    expect(f("S@start L2 Ed S L2 E0 S@finish")).toMatch(/direction/);
+    expect(f("S@start S Ef S L2 R2 E0 S@finish")).toBeNull();
+    expect(f("S@start S Ef S L E0 S@finish")).toMatch(/serré/);
+  });
+  it("régulateur : la vitesse d'un virage juste avant la bande, et rien de plus serré que lui sous l'effet", () => {
+    expect(f("S@start L2 Er S U D R2 S E0 S@finish")).toBeNull();
+    expect(f("S@start L3 Er S R3 S E0 S@finish")).toBeNull();
+    expect(f("S@start S S S Er S R2 E0 S@finish")).toMatch(/sans virage/);
+    expect(f("S@start L3 Er S R2 E0 S@finish")).toMatch(/plus serré/);
+  });
+  it("voiture fragile : ni plaque ni super turbo, ni chute de deux niveaux ; aucun moteur coupé sous un effet", () => {
+    expect(f("S@start S Ex S K GD S S E0 S@finish")).toBeNull();
+    expect(f("S@start S Ex S P S J S E0 S@finish")).toMatch(/fragile/);
+    expect(f("S@start S Ex S K GD2 S S E0 S@finish")).toMatch(/fragile/);
+    expect(f("S@start S Ef S C S E0 S@finish")).toMatch(/moteur coupé/);
+  });
+  it("chaque famille à effet du générateur tient les règles par construction (variantes, deux sens, trois largeurs)", () => {
+    for (const nom of ["effet-direction", "effet-freins", "effet-regulateur", "effet-fragile"]) {
+      const fig = figureByName(nom)!;
+      for (let v = 0; v < fig.variants; v++)
+        for (const left of [true, false])
+          for (const w of ["e", "n", "l"] as const) {
+            const body = buildFigure(fig, left, w, v);
+            if (body) expect(fauteEffets(["S@start", ...body, "S@finish"]), `${nom} v${v}`).toBeNull();
+          }
     }
   });
 });

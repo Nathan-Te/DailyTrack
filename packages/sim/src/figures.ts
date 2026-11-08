@@ -52,6 +52,11 @@ export interface Figure {
   only?: readonly string[];
   /** Première version du générateur qui la tire (lot 48) : un générateur plus ancien ne la connaît pas (ses circuits ne changent pas). */
   since?: number;
+  /**
+   * Lot 58 (v22) : une famille de blocs nouveaux (bloc à effet, route bombée, virage relevé à 45°, tube de glace, mur roulable) — le générateur la pose telle
+   * qu'elle est écrite (ni traits du biome, ni revêtement, ni bosses, ni rebords retirés, ni pente : ses blocs sont protégés).
+   */
+  bloc?: boolean;
   build(c: FigureContext): string[] | null;
 }
 
@@ -822,11 +827,118 @@ export const FIGURES: readonly Figure[] = [
     relief: true,
     build: (c) => ["S", ...HILLS_STEEP[c.variant]!],
   },
+
+  // --- Lot 58 (générateur v22) : les familles gardées par Nathan, chacune dans ses thèmes (`only`). **Un bloc à effet vit dans sa figure** : la bande, ce
+  // qu'on y fait sous l'effet, puis la remise à zéro (`E0`) **avant** ce qui demanderait le volant, le frein ou une réception douce — rien ne déborde sur
+  // la figure suivante, jamais deux effets à la fois, jamais d'effet à l'arrivée (règles d'équité : `fauteEffets`, generator.ts). ---
+  {
+    name: "effet-direction",
+    label: "Direction bloquée",
+    category: "technique",
+    off: 0.2,
+    variants: 2,
+    only: ["stade", "nuit", "ville"],
+    since: 22,
+    bloc: true,
+    // Sortir aligné du virage avant le portique violet : 1,5 s volant inerte en ligne droite, la remise à zéro, puis le virage suivant.
+    build: (c) => (c.variant === 0 ? ["S", `${c.L}2`, "Ed", "S", "S", "E0", `${c.R}2`, "S"] : ["S", `${c.L}3`, "Ed", "S", "S", "E0", `${c.L}2`, "S"]),
+  },
+  {
+    name: "effet-freins",
+    label: "Freins coupés",
+    category: "technique",
+    off: 0.8,
+    variants: 2,
+    only: ["stade", "canyon"],
+    since: 22,
+    bloc: true,
+    // 3 s sans frein : lever le pied tôt pour un virage large (jamais un serré), puis la remise à zéro.
+    build: (c) => (c.variant === 0 ? ["S", "S", "Ef", "S", "D", `${c.L}2`, "S", "E0", "S"] : ["S", "Ef", "S", "S", `${c.L}2`, `${c.R}2`, "S", "E0", "S"]),
+  },
+  {
+    name: "effet-regulateur",
+    label: "Régulateur",
+    category: "technique",
+    off: 0.2,
+    variants: 2,
+    only: ["stade", "ville"],
+    since: 22,
+    bloc: true,
+    // 4 s à la vitesse de sortie d'un virage, gaz et frein sans effet : on ne fait que tourner (un virage de la même taille, une bosse), puis la remise à
+    // zéro. La vitesse tenue est celle que le virage d'avant permet : celui d'après se passe à cette vitesse (règle d'équité, `fauteEffets`).
+    build: (c) => (c.variant === 0 ? ["S", `${c.L}2`, "Er", "S", "U", "D", `${c.R}2`, "S", "E0", "S"] : ["S", `${c.L}3`, "Er", "S", `${c.R}3`, "S", "E0", "S"]),
+  },
+  {
+    name: "effet-fragile",
+    label: "Voiture fragile",
+    category: "saut",
+    jump: true,
+    off: 0.3,
+    variants: 2,
+    only: ["rallye"],
+    since: 22,
+    bloc: true,
+    // 8 s de voiture fragile : des sauts et des bosses à poser à plat (jamais une chute de deux niveaux ni un saut après une plaque), puis la remise à zéro.
+    build: (c) => (c.variant === 0 ? ["S", "Ex", "S", "K", "GD", "S", "S", "E0", "S"] : ["S", "Ex", "S/u", "S/u", "J", "S", "E0", "S"]),
+  },
+  {
+    name: "route-bombee",
+    label: "Route bombée",
+    category: "technique",
+    off: 0.5,
+    variants: 2,
+    only: ["nuit", "stade"],
+    since: 22,
+    bloc: true,
+    // Une chaussée arrondie sans rebords : le sommet porte, les côtés font glisser vers le vide (elle naît et meurt sur une droite).
+    build: (c) => (c.variant === 0 ? ["S", "S/a", "S/a", `${c.L}2/a`, "S/a", "S/a", "S"] : ["S", "S/a", "S/a", `${c.L}3/a`, "S/a", `${c.R}2/a`, "S/a", "S"]),
+  },
+  {
+    name: "releve-fort",
+    label: "Virages relevés à 45°",
+    category: "rapide",
+    off: 0.1,
+    variants: 2,
+    banked: true,
+    only: ["stade", "canyon"],
+    since: 22,
+    bloc: true,
+    // Des amples relevés à 45° (l'ample seulement : sur un large, la voiture décolle), à fond, plaqué.
+    build: (c) => (c.variant === 0 ? ["S", `${c.L}3/f`, "S", `${c.R}3/f`, "S"] : ["S", `${c.L}3/f`, `${c.R}3/f`, "S"]),
+  },
+  {
+    name: "tube-glace",
+    label: "Tube de glace",
+    category: "cuve",
+    cuve: true,
+    off: 0.2,
+    variants: 2,
+    only: ["banquise"],
+    since: 22,
+    bloc: true,
+    // Façon bobsleigh : des cuves sur la glace de piste, on monte sur la paroi extérieure des virages (court : la Banquise est déjà la plus lente des thèmes).
+    build: (c) => (c.variant === 0 ? ["S", "V/q", `${c.L}2/cq`, "V/q", "S"] : ["S", `${c.L}2/cq`, `${c.R}2/cq`, "S"]),
+  },
+  {
+    name: "mur-roulable",
+    label: "Mur roulable",
+    category: "cuve",
+    cuve: true,
+    off: 0,
+    variants: 2,
+    only: ["stade"],
+    since: 22,
+    bloc: true,
+    // Un mur latéral dont le fond disparaît : monter sur la paroi (trois murs latéraux) avant le vide, la longer, redescendre.
+    build: (c) => ["S", c.wall, c.wall, c.wall, ...Array<string>(c.variant === 0 ? 3 : 4).fill(`${c.wall}/m`), c.wall, c.wall, "S"],
+  },
 ];
 
 export const FIGURE_NAMES: readonly string[] = FIGURES.map((f) => f.name);
 /** Les nouveautés du lot 49 (générateur v18) : la page `?scenario=figures` les liste, chacune a son scénario `?scenario=figure-<nom>`. */
 export const FIGURES_LOT49: readonly string[] = FIGURES.filter((f) => f.since === 18).map((f) => f.name);
+/** Lot 58 : les familles de blocs nouveaux (générateur v22). */
+export const FIGURES_LOT58: readonly string[] = FIGURES.filter((f) => f.bloc).map((f) => f.name);
 const BY_NAME = new Map(FIGURES.map((f) => [f.name, f] as const));
 export const figureByName = (name: string | null | undefined): Figure | null => (name ? (BY_NAME.get(name) ?? null) : null);
 

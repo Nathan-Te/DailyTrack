@@ -98,7 +98,35 @@ export const FICHES_V21: Readonly<Record<ThemeName, FicheBiome>> = {
   ville: { rythme: RYTHME_DOMINANT.ville, poids: { tight: 1.5, technique: 1.5, relief: 0.5, saut: 0.5, rapide: 0.6 }, maxDroite: 4, serrer: 40 },
 };
 
-/** Le thème tel que le générateur `generator` le connaît (lot 48 : la Campagne roule sur l'herbe de course à partir de la v17 ; lot 49 : les fiches à partir de la v18 ; lot V2 : la fiche du biome à partir de la v21). */
+/**
+ * Lot 58 (générateur v22) — **les familles de blocs nouveaux gardées par Nathan**, par thème (les thèmes que le catalogue du lot 58 leur donne, d'après les
+ * fiches du lot 49 : les effets au Stade, la route bombée à la Nuit, le tube de glace à la Banquise…) : **chaque circuit d'un thème qui en a en pose une**
+ * (`blocs`, `selectFigures`). Le Col alpin et la Campagne n'en ont pas (aucune n'y a sa place : l'eau, prévue pour la Campagne, a été écartée).
+ */
+// À tour de rôle (`selectFigures`) : la famille d'un circuit suit le numéro d'apparition du thème. Au tirage au poids, le virage à 45° (relevé, rapide)
+// l'emportait et le mur roulable revenait comme cuve favorite du Stade : ses effets ne sortaient presque jamais (2 compositions sur 200). La voiture fragile
+// n'est pas au Canyon : sa signature et ses vedettes sont des sauts, le plafond de deux sauts par circuit la refusait toujours.
+export const BLOCS_V22: Readonly<Partial<Record<ThemeName, readonly string[]>>> = {
+  stade: ["effet-direction", "effet-freins", "effet-regulateur", "route-bombee", "releve-fort", "mur-roulable"],
+  // Sans le mur roulable (il reste au Stade) : à la Nuit, il rendait les circuits du thème plus semblables (jours consécutifs 0,125 → 0,182, mesuré).
+  nuit: ["route-bombee", "effet-direction"],
+  canyon: ["effet-freins", "releve-fort"],
+  ville: ["effet-regulateur", "effet-direction"],
+  // Une seule famille au Rallye : un circuit sur deux (le tour vide, ""), sinon chaque circuit du thème la répétait (ressemblance des jours consécutifs du
+  // Rallye 0,116 → 0,168, mesuré).
+  rallye: ["effet-fragile", ""],
+};
+/**
+ * Lot 58 (v22) : des familles qui deviennent **une vedette de plus du thème** (elles reviennent à tour de rôle, une apparition sur quatre ou cinq, et
+ * prennent la place d'une figure au lieu de s'ajouter) — obligatoires, elles faisaient tomber la validation : à la Banquise, la glace rend chaque figure
+ * plus longue et ses cinq figures exigées remplissent déjà la fenêtre de durée (2 tentatives valides sur 120, contre 15 en v21) ; au Rallye, la signature
+ * est déjà un saut et la voiture fragile en ajoutait un (22 sur 120, contre 55). Favorites seulement, elles ne sortaient presque jamais (0 et 1 circuit sur 12).
+ */
+export const BLOCS_VEDETTES_V22: Readonly<Partial<Record<ThemeName, readonly string[]>>> = {
+  banquise: ["tube-glace"],
+};
+
+/** Le thème tel que le générateur `generator` le connaît (lot 48 : la Campagne roule sur l'herbe de course à partir de la v17 ; lot 49 : les fiches à partir de la v18 ; lot V2 : la fiche du biome à partir de la v21 ; lot 58 : les blocs nouveaux à partir de la v22). */
 export function themeOfVersion(theme: Theme, generator: number): Theme {
   const changes = generator >= 17 ? THEMES_48[theme.name] : undefined;
   const t = changes ? { ...theme, ...changes } : theme;
@@ -107,5 +135,9 @@ export function themeOfVersion(theme: Theme, generator: number): Theme {
   const f = fiche.figures;
   const t49: Theme = { ...t, ...(fiche.zones ? { zones: fiche.zones } : {}), figures: { ...t.figures, favor: [...t.figures.favor, ...f.favor], ban: [...t.figures.ban, ...f.ban], vedettes: f.vedettes } };
   const v21 = generator >= 21 ? FICHES_V21[t.name] : undefined;
-  return v21 ? { ...t49, ...v21.theme, figures: { ...t49.figures, favor: [...t49.figures.favor, ...(v21.favor ?? [])], ...(v21.aussi ? { aussi: v21.aussi } : {}) } } : t49;
+  const t21 = v21 ? { ...t49, ...v21.theme, figures: { ...t49.figures, favor: [...t49.figures.favor, ...(v21.favor ?? [])], ...(v21.aussi ? { aussi: v21.aussi } : {}) } } : t49;
+  const blocs = generator >= 22 ? BLOCS_V22[t.name] : undefined;
+  const vedettes = generator >= 22 ? BLOCS_VEDETTES_V22[t.name] : undefined;
+  if (vedettes) return { ...t21, figures: { ...t21.figures, vedettes: [...(t21.figures.vedettes ?? []), ...vedettes] } };
+  return blocs ? { ...t21, figures: { ...t21.figures, blocs } } : t21;
 }
