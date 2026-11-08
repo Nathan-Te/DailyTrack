@@ -1458,6 +1458,7 @@
      }
     ],
     "classementAmis": null,
+    "classementTous": null,
     "amisDuJour": [],
     "nbAmis": 0,
     "groupe": null,
@@ -3566,6 +3567,7 @@
      }
     ],
     "classementAmis": null,
+    "classementTous": null,
     "amisDuJour": [],
     "nbAmis": 0,
     "groupe": {
@@ -5497,6 +5499,7 @@
      }
     ],
     "classementAmis": null,
+    "classementTous": null,
     "amisDuJour": [],
     "nbAmis": 0,
     "groupe": null,

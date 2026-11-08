@@ -141,6 +141,10 @@ test("portail plein (joueur de démonstration) : compte à rebours, Track fini (
   await expect(track.locator(".portail-statut__temps")).toHaveText(/^\d+,\d{3}\u00a0s$/);
   await expect(track.locator(".dj-medaille")).toHaveAccessibleName("Or : obtenue");
   await expect(track.locator(".portail-statut__rang")).toHaveText("1er sur 1");
+  // « Classement du jour », sans ami : « Tous » par défaut, avec l'aperçu (les premiers et ta ligne) au-dessus de « 1er sur 1 ».
+  await expect(page.locator("#classement-tous-liste .salle-rang")).toHaveCount(1);
+  await expect(page.locator("#classement-tous-liste .salle-rang--moi .salle-rang__nom")).toHaveText("Toi");
+  await expect(page.locator("#classement-tous-texte")).toHaveText("1er sur 1");
   await expect(track.locator("a.dj-bouton")).toHaveText("Rejouer");
   await expect(track.locator("a.dj-bouton")).toHaveAttribute("href", "track/");
   await expect(jump.locator("a.dj-bouton")).toHaveText("Continuer");

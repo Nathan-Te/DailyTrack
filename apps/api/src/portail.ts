@@ -419,16 +419,38 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       const faits = duJour.flatMap((j, i) => (l && sites[i]! >= 0 && l.resultats[sites[i]!] ? [{ site: j.portail.site, at: l.resultats[sites[i]!]!.at }] : []));
       return { faits, dernier: faits.reduce<{ site: string; at: number } | null>((m, f) => (!m || f.at > m.at ? f : m), null) };
     };
+    const maRef = await refOfPlayer(id);
+    /** Une ligne des deux classements de l'accueil (amis, tous) : le même format, `a` = pseudo, référence publique et image de celui qui la porte. */
+    const corps = (x: { id: string; rang: number | null; ligne: LigneDuJour | null }, a: { name: string; ref: string; avatar?: string | null }) => ({
+      rang: x.rang,
+      pseudo: a.name,
+      ref: a.ref,
+      ...(a.avatar ? { avatar: a.avatar } : {}),
+      tempsMs: x.ligne?.complet ? x.ligne.cumulMs : null,
+      faits: faitsDe(x.ligne).faits.length,
+      ...(x.id === id ? { moi: true as const } : {}),
+    });
+    const moiLu = { name: row.name, ref: maRef, avatar: row.avatar };
     let classementAmis: unknown = null;
     if (listeAmis.length > 0) {
       const qui = new Map(listeAmis.map((a) => [a.id, a] as const));
       const ordre = classerEntreAmis(c, id, bilan, listeAmis.map((a) => a.id));
-      const maRef = await refOfPlayer(id);
-      const corps = (x: { id: string; rang: number | null; ligne: LigneDuJour | null }) => {
-        const a = x.id === id ? { name: row.name, ref: maRef, avatar: row.avatar } : qui.get(x.id)!;
-        return { rang: x.rang, pseudo: a.name, ref: a.ref, ...(a.avatar ? { avatar: a.avatar } : {}), tempsMs: x.ligne?.complet ? x.ligne.cumulMs : null, faits: faitsDe(x.ligne).faits.length, ...(x.id === id ? { moi: true as const } : {}) };
-      };
-      classementAmis = { sur: ordre.length, top: ordre.filter((x) => x.rang !== null).slice(0, CLASSEMENT_AMIS_TOP).map(corps), moi: corps(ordre.find((x) => x.id === id)!) };
+      const lu = (x: { id: string }) => (x.id === id ? moiLu : qui.get(x.id)!);
+      classementAmis = { sur: ordre.length, top: ordre.filter((x) => x.rang !== null).slice(0, CLASSEMENT_AMIS_TOP).map((x) => corps(x, lu(x))), moi: corps(ordre.find((x) => x.id === id)!, moiLu) };
+    }
+    // Lot « classement Tous à l'accueil » : l'aperçu de « Tous » — les 3 premiers du cumul du jour (le classement gardé, le même que la page `/classement/`) et ta ligne. Rien tant que personne n'a fini un jeu.
+    // Les pseudos des 3 premiers sont lus avec le classement gardé (une requête sur la clé primaire par fenêtre et par instance, jamais par visite) ; un classé sans ligne lisible est laissé de côté.
+    let classementTous: unknown = null;
+    if (c.cumul.length > 0) {
+      const premiers = c.cumul.slice(0, CLASSEMENT_AMIS_TOP);
+      const ids = premiers.map((l) => l.id);
+      let noms = await nomsDe(gardeeDe(day), "#accueil", ids);
+      if (ids.some((x) => !noms.has(x))) noms = await pseudosDe(ids); // le classement gardé a changé entre deux lectures : la liste gardée n'est plus la bonne (rare), on relit sans la garder
+      const lignes = premiers.flatMap((l, i) => {
+        const a = l.id === id ? moiLu : noms.get(l.id);
+        return a ? [corps({ id: l.id, rang: i + 1, ligne: l }, a)] : [];
+      });
+      classementTous = { sur: c.cumul.length, top: lignes, moi: bilan ? corps({ id, rang: placer(c, bilan).rang, ligne: bilan }, moiLu) : null };
     }
     // Tes amis aujourd'hui : ceux qui ont joué d'abord (le plus récent en tête), puis les autres dans l'ordre du pseudo.
     const amisDuJour = listeAmis
@@ -437,7 +459,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       .slice(0, AMIS_DU_JOUR_MAX)
       .map(({ a, faits, dernier }) => ({ pseudo: a.name, ref: a.ref, ...(a.avatar ? { avatar: a.avatar } : {}), faits: faits.map((f) => f.site), parfaite: duJour.length > 0 && faits.length === duJour.length, ...(dernier ? { dernier } : {}) }));
     const groupe = groupes ? await groupes.resume(id, day) : null;
-    return { classementAmis, amisDuJour, nbAmis: listeAmis.length, groupe };
+    return { classementAmis, classementTous, amisDuJour, nbAmis: listeAmis.length, groupe };
   }
 
   async function jour(req: Request, info: RequestInfo): Promise<WithHeaders> {
@@ -504,6 +526,19 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     return new Map(await Promise.all(rows.map(async (r) => [r.id, { name: r.name, ref: r.ref ?? (await refOfPlayer(r.id)), avatar: r.avatar, groupe: emblemeDe(r) }] as const)));
   }
 
+  /** Les pseudos d'un haut de classement, lus **une fois par entrée gardée et par clé** (une clé = une liste d'identifiants : `vue` pour la page, `accueil` pour les 3 premiers de l'accueil). Un échec n'est pas gardé. */
+  function nomsDe(gardee: Gardee, cle: string, ids: readonly string[]) {
+    let noms = gardee.noms.get(cle);
+    if (!noms) {
+      noms = pseudosDe(ids).catch((e) => {
+        gardee.noms.delete(cle);
+        throw e;
+      });
+      gardee.noms.set(cle, noms);
+    }
+    return noms;
+  }
+
   /** `GET /api/portail/classement?date=&vue=` : les 50 premiers de la vue (le cumul, ou un jeu) et, avec `X-Player-Id`, ta ligne (exacte). */
   async function classement(req: Request, url: URL, info: RequestInfo): Promise<WithHeaders> {
     const id = joueurDe(req);
@@ -531,15 +566,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const gardes = liste.slice(0, CLASSEMENT_TOP);
     const idDe = (x: LigneDuJour | ClasseDuJour): string => ("playerId" in x ? x.playerId : x.id);
     // Les pseudos du haut de la vue sont lus une fois avec le classement (un changement de pseudo se voit à la fenêtre suivante, 45 s au plus).
-    let nomsVue = gardee.noms.get(vue);
-    if (!nomsVue) {
-      nomsVue = pseudosDe(gardes.map(idDe)).catch((e) => {
-        gardee.noms.delete(vue);
-        throw e;
-      });
-      gardee.noms.set(vue, nomsVue);
-    }
-    const noms = await nomsVue;
+    const noms = await nomsDe(gardee, vue, gardes.map(idDe));
     /** Une ligne : le temps de la vue (le cumul, ou le temps du jeu), si le joueur a tout fini (`complet` : toujours vrai dans la vue d'un jeu), et le résultat de chaque jeu. */
     const ligneCorps = (l: LigneDuJour, rang: number, pseudo: string, ref?: string, avatar?: string | null, groupe?: EmblemeGroupe | null) => ({
       rang,

@@ -2566,6 +2566,41 @@
      }
     ],
     "classementAmis": null,
+    "classementTous": {
+     "sur": 6,
+     "top": [
+      {
+       "rang": 1,
+       "pseudo": "Joueur3",
+       "ref": "19d8d35c06ab",
+       "tempsMs": 39000,
+       "faits": 1
+      },
+      {
+       "rang": 2,
+       "pseudo": "Joueur1",
+       "ref": "e0cca2965509",
+       "tempsMs": 39589,
+       "faits": 1,
+       "moi": true
+      },
+      {
+       "rang": 3,
+       "pseudo": "Joueur2",
+       "ref": "d2b1f1d83f0a",
+       "tempsMs": 40048,
+       "faits": 1
+      }
+     ],
+     "moi": {
+      "rang": 2,
+      "pseudo": "Joueur1",
+      "ref": "e0cca2965509",
+      "tempsMs": 39589,
+      "faits": 1,
+      "moi": true
+     }
+    },
     "amisDuJour": [],
     "nbAmis": 0,
     "groupe": null,
@@ -5466,6 +5501,41 @@
      }
     ],
     "classementAmis": null,
+    "classementTous": {
+     "sur": 4,
+     "top": [
+      {
+       "rang": 1,
+       "pseudo": "Troisieme",
+       "ref": "19d8d35c06ab",
+       "tempsMs": 39000,
+       "faits": 1,
+       "moi": true
+      },
+      {
+       "rang": 2,
+       "pseudo": "Joueur2",
+       "ref": "b7e3ee2c7b73",
+       "tempsMs": 40048,
+       "faits": 1
+      },
+      {
+       "rang": 3,
+       "pseudo": "Joueur6",
+       "ref": "d057527e4742",
+       "tempsMs": 40617,
+       "faits": 1
+      }
+     ],
+     "moi": {
+      "rang": 1,
+      "pseudo": "Troisieme",
+      "ref": "19d8d35c06ab",
+      "tempsMs": 39000,
+      "faits": 1,
+      "moi": true
+     }
+    },
     "amisDuJour": [],
     "nbAmis": 0,
     "groupe": {
@@ -7793,6 +7863,27 @@
      }
     ],
     "classementAmis": null,
+    "classementTous": {
+     "sur": 1,
+     "top": [
+      {
+       "rang": 1,
+       "pseudo": "Joueur1",
+       "ref": "e0cca2965509",
+       "tempsMs": null,
+       "faits": 1,
+       "moi": true
+      }
+     ],
+     "moi": {
+      "rang": 1,
+      "pseudo": "Joueur1",
+      "ref": "e0cca2965509",
+      "tempsMs": null,
+      "faits": 1,
+      "moi": true
+     }
+    },
     "amisDuJour": [],
     "nbAmis": 0,
     "groupe": null,
@@ -8113,6 +8204,27 @@
      }
     ],
     "classementAmis": null,
+    "classementTous": {
+     "sur": 1,
+     "top": [
+      {
+       "rang": 1,
+       "pseudo": "Joueur1",
+       "ref": "e0cca2965509",
+       "tempsMs": null,
+       "faits": 1,
+       "moi": true
+      }
+     ],
+     "moi": {
+      "rang": 1,
+      "pseudo": "Joueur1",
+      "ref": "e0cca2965509",
+      "tempsMs": null,
+      "faits": 1,
+      "moi": true
+     }
+    },
     "amisDuJour": [],
     "nbAmis": 0,
     "groupe": null,
@@ -8434,6 +8546,27 @@
      }
     ],
     "classementAmis": null,
+    "classementTous": {
+     "sur": 1,
+     "top": [
+      {
+       "rang": 1,
+       "pseudo": "Joueur1",
+       "ref": "e0cca2965509",
+       "tempsMs": null,
+       "faits": 1,
+       "moi": true
+      }
+     ],
+     "moi": {
+      "rang": 1,
+      "pseudo": "Joueur1",
+      "ref": "e0cca2965509",
+      "tempsMs": null,
+      "faits": 1,
+      "moi": true
+     }
+    },
     "amisDuJour": [],
     "nbAmis": 0,
     "groupe": null,
