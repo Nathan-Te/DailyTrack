@@ -735,6 +735,32 @@ describe(`accueil (lot U1) : la colonne de droite de /api/portail/jour (${TEST_D
     sansSecret(alice, 1, 2, 3, 4, 5);
   });
 
+  it("l'aperçu de « Tous » : les 3 premiers du cumul du jour et ta ligne, sans identifiant secret ; rien pour un visiteur", { timeout: 60_000 }, async () => {
+    const t = await decor();
+    // Cumul : Eva 52 750, Bruno 53 333, Alice 56 000, Chloé partielle (Track seul). Alice est dans le haut : sa ligne y est, une seule fois.
+    const alice = await corps(t, 1);
+    const ligne = (l: { rang: number; pseudo: string; faits: number; moi?: boolean }) => [l.rang, l.pseudo, l.faits, l.moi ?? false];
+    expect(alice.classementTous.sur).toBe(4);
+    expect(alice.classementTous.top.map(ligne)).toEqual([
+      [1, "Eva", 2, false],
+      [2, "Bruno", 2, false],
+      [3, "Alice", 2, true],
+    ]);
+    expect(alice.classementTous.top[0]).toMatchObject({ tempsMs: 52_750, ref: refDe(5) });
+    expect(alice.classementTous.moi).toMatchObject({ rang: 3, pseudo: "Alice", tempsMs: 56_000, moi: true, ref: refDe(1) });
+    // Chloé (4e, partielle) n'est pas dans le haut : sa ligne vient en plus, sans temps cumulé.
+    const chloe = await corps(t, 3);
+    expect(chloe.classementTous.top.map(ligne)).toEqual([[1, "Eva", 2, false], [2, "Bruno", 2, false], [3, "Alice", 2, false]]);
+    expect(chloe.classementTous.moi).toMatchObject({ rang: 4, pseudo: "Chloe", tempsMs: null, faits: 1, moi: true });
+    // Denis n'a rien fini : le haut du classement, pas de ligne pour lui.
+    const denis = await corps(t, 4);
+    expect(denis.classementTous.top).toHaveLength(3);
+    expect(denis.classementTous.moi).toBeNull();
+    sansSecret(chloe, 1, 2, 3, 4, 5);
+    const publique = await t.call("GET", "/api/portail/jour", undefined, { clientKey: ip() });
+    expect(publique.body.joueur).toBeUndefined();
+  });
+
   it("sans ami : pas de classement entre amis, aucun ami aujourd'hui ; 6 amis au plus", { timeout: 60_000 }, async () => {
     const t = await decor();
     const eva = await corps(t, 5);

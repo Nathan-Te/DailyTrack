@@ -712,6 +712,11 @@
   text-decoration-thickness: var(--dj-trait);
   text-underline-offset: 3px;
 }
+.salle-vue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+}
 .salle-vue-texte {
   margin: 0;
   font-family: var(--dj-police-chiffres);

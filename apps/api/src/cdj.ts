@@ -228,10 +228,15 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
   // --- Planning et circuit du jour (cache : le générateur est coûteux, le résultat est figé) -----------------
   /** Variante et thème imposé du planning pour un jour (`{ 0, null }` : le circuit d'origine). */
   async function planOf(day: number): Promise<{ variant: number; theme: ThemeName | null }> {
+    const fige = plansFiges.get(day);
+    if (fige) return fige;
     const row = await db.first<{ variant: number; theme: string | null }>("SELECT variant, theme FROM planning WHERE day = ?", [day]);
-    if (!row) return { variant: 0, theme: null };
-    return { variant: isVariant(row.variant) ? row.variant : 0, theme: themeByName(row.theme)?.name ?? null };
+    const plan = row ? { variant: isVariant(row.variant) ? row.variant : 0, theme: themeByName(row.theme)?.name ?? null } : { variant: 0, theme: null };
+    // **Un jour commencé est figé** (remplacement et retour à l'original refusés, 409 `day_started`) : sa ligne ne change plus, la requête du portail (qui demande le circuit du jour plusieurs fois, à la suite) ne la relit pas. Un jour à venir est toujours relu.
+    if (day <= today()) plansFiges.set(day, plan);
+    return plan;
   }
+  const plansFiges = new Map<number, { variant: number; theme: ThemeName | null }>();
 
   /**
    * Le circuit en vigueur ce jour-là : celui du planning s'il y en a un, sinon l'original. Toujours celui-là qui sert au
@@ -907,6 +912,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     );
     await storeCircuit(circuit);
     circuits.delete(day);
+    plansFiges.delete(day);
     log("INFO", "admin : circuit remplacé", { date: formatDay(day), variant: body.variant, theme }); // lot R7 : l'action, jamais le jeton ni l'adresse
     return { date: formatDay(day), variant: body.variant, theme, chosenAt, trackId: circuit.trackId, authorMs: circuit.authorMs };
   }
@@ -916,6 +922,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     await db.run("DELETE FROM planning WHERE day = ?", [day]);
     await db.run("DELETE FROM circuits WHERE day = ?", [day]); // régénéré à la demande, avec le circuit d'origine
     circuits.delete(day);
+    plansFiges.delete(day);
     log("INFO", "admin : circuit d'origine rétabli", { date: formatDay(day) });
     return { date: formatDay(day), variant: 0, theme: null, chosenAt: null };
   }

@@ -420,7 +420,11 @@ function panneauClassement(t: T, total: number): HTMLElement | null {
     contenu = el("p", { classe: "salle-vue-texte", attrs: { id: "classement-groupe-texte" }, texte: groupe.rang !== null ? t.t("portail.vue.groupeRang", { rang: formatRang(groupe.rang, langue), n: groupe.sur }) : t.t("portail.vue.groupeMoins") });
   } else {
     const rang = joueur.rangDuJour;
-    contenu = el("p", { classe: "salle-vue-texte", attrs: { id: "classement-tous-texte" }, texte: rang ? t.t("portail.statut.rang", { rang: formatRang(rang, langue), classes: formatNombre(joueur.classesDuJour ?? rang, langue) }) : t.t("portail.classement.inviter") });
+    const texte = el("p", { classe: "salle-vue-texte", attrs: { id: "classement-tous-texte" }, texte: rang ? t.t("portail.statut.rang", { rang: formatRang(rang, langue), classes: formatNombre(joueur.classesDuJour ?? rang, langue) }) : t.t("portail.classement.inviter") });
+    // L'aperçu : les 3 premiers de tous et ta ligne (la copie gardée ne l'a pas : le texte seul, puis la réponse fraîche apporte la liste).
+    const tous = joueur.classementTous ?? null;
+    const lignes = tous && tous.top.length > 0 ? [...tous.top, ...(tous.moi && !tous.top.some((l) => l.moi) ? [tous.moi] : [])] : [];
+    contenu = lignes.length > 0 ? el("div", { classe: "salle-vue" }, el("ol", { classe: "salle-rangs", attrs: { id: "classement-tous-liste" } }, ...lignes.map((l) => ligneAmis(t, l, total))), texte) : texte;
   }
   return panneau(
     { id: "panneau-classement", titre: t.t("portail.classement.legende") },
