@@ -39,8 +39,13 @@ Suite de BR5 (fusionné). Jeu `off` : golden **régénéré**, `RUSH_SIM_VERSION
 ## 5. Performance
 - Rejeu (Node, cette machine) : foncer (2026-11-05, 13 856 ticks) **25 ms** (≤ 60) ; beaucoup d'XP (17 793 ticks) **43 ms** (≤ 120) ; pire jour de niveau 27 ms ; pire absolu artificiel (80 monstres éveillés groupés, 10 min) **1,06 s** (budget 1 s : dépassé de 6 % sur un cas que le jeu ne produit pas ; les vrais jours restent à 27 ms). Leviers : monstres loin non mis à jour (`actifs`, cellules de 12 m), balayage trié, aucune allocation par tick.
 - Génération du niveau : ~50 ms en moyenne, cache de 64. Calcul des médailles d'un jour : 451 ms.
+- **Dessin** (`?debug&fps`, spec `partie.spec.ts` « deux niveaux de qualité », durci à 60 monstres) : arène à 60 monstres **23 appels en haute, 22 en basse** ; salle d'épreuve en pleine vague **74 / 73** (≤ 200). Les monstres sont instanciés par type (`Tas`), les lignes de crachat sont une seule `Bandes(10)`.
+- **Premier chargement** (`rush.jsCss`, gzip) : **45 238 o** pour un plafond de 46 080 (marge ~850 o ; 44 043 au BR4) : le contrôle de budgets (`budgets-controle.mjs`) passe. Tout le code des monstres est dans la partie à la demande (`corps-`).
 - Taille d'un rejeu de 3-5 min : ~12 à 16 k caractères (limite 40 000).
 - `ticksParUnite` 2 500 : une partie normale pèse ~6 unités (~100 parties / minute), « beaucoup d'XP » ~8, la pire 15 (~40 / minute).
+
+## 5 bis. La carte des 7 jours (`br6-carte-7-jours.png`)
+Elle montre l'épreuve (disque violet « É »), les élites par jour et les temps des trois stratégies. Sur les 7 jours montrés, « foncer » va de 2:11 à 4:12 : quelques jours dépassent nettement la cible de 2:30 (le 2026-11-10, vieux chêne, 4:12 ; je n'ai pas cherché la cause jour par jour).
 
 ## 6. Scénarios (liens dans la réponse finale)
 `bestiaire-monstres` (`&theme=`), `camp` (`&ennemis=…&elite=1&competence=`), `epreuve`, `jour`, `carte&jours=7`, `medailles&jours=7`. Captures : `docs/rush/lots/br6-*.png`.
