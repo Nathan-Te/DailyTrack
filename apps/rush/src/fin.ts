@@ -1,4 +1,4 @@
-import { AMELIORATIONS, BOSS_IDS, Fantome, diamantDuJour, enregistrer, formatTemps, type Contenu, type Strategie } from "@cdj/rush-sim";
+import { AMELIORATIONS, BOSS_IDS, COMPETENCES, Fantome, diamantDuJour, enregistrer, formatTemps, type Contenu, type Strategie } from "@cdj/rush-sim";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { cleBoss } from "./bosses";
 
@@ -16,6 +16,8 @@ export interface ResumeFin {
   paliers: readonly number[];
   /** Le temps du Diamant du jour, en ticks (le seuil `author` du jour servi), et — quand le pilote vient de le calculer — sa stratégie. Facultatif : la ligne « le Diamant » n'est pas posée sans lui. */
   diamant?: { ticks: number; strategie?: Strategie };
+  /** Lot BR5 : la compétence choisie au départ (indice de `COMPETENCES`), ou −1 : la ligne n'est pas posée. */
+  competence?: number;
 }
 
 type Traduire = OptionsPartie["t"];
@@ -33,10 +35,11 @@ export function cartesPrises(paliers: readonly number[], t: Traduire): string[] 
 }
 
 /** Les lignes que le jeu ajoute à l'écran de fin (textes déjà traduits). */
-export function lignesDeFin(r: ResumeFin, o: Pick<OptionsPartie, "t" | "langue">): { boss: string; cartes: string; diamant: string | null } {
+export function lignesDeFin(r: ResumeFin, o: Pick<OptionsPartie, "t" | "langue">): { boss: string; competence: string | null; cartes: string; diamant: string | null } {
   const cartes = cartesPrises(r.paliers, o.t);
   return {
     boss: o.t("fin.boss", { boss: o.t(`boss.nom.${cleBoss(BOSS_IDS[r.boss] ?? "golem")}`) }),
+    competence: r.competence !== undefined && COMPETENCES[r.competence] ? o.t("fin.competence", { nom: o.t(`comp.${COMPETENCES[r.competence]!}.nom`) }) : null,
     cartes: cartes.length > 0 ? o.t("fin.cartes", { liste: cartes.join(", ") }) : o.t("fin.aucuneCarte"),
     diamant: r.diamant ? o.t("fin.diamant", { temps: formatTemps(r.diamant.ticks, o.langue), strategie: r.diamant.strategie ? ` (${o.t(`strategie.${r.diamant.strategie}`)})` : "" }) : null,
   };
@@ -54,7 +57,7 @@ export function completerEcranDeFin(r: ResumeFin, o: Pick<OptionsPartie, "t" | "
     const l = lignesDeFin(r, o);
     const bloc = document.createElement("section");
     bloc.className = "jeu-tuile rush-fin";
-    for (const [role, texte] of [["boss", l.boss], ["cartes", l.cartes], ["diamant", l.diamant]] as const) {
+    for (const [role, texte] of [["boss", l.boss], ["competence", l.competence], ["cartes", l.cartes], ["diamant", l.diamant]] as const) {
       if (texte === null) continue;
       const p = document.createElement("p");
       p.className = "rush-fin__ligne";
@@ -84,9 +87,9 @@ export function completerEcranDeFin(r: ResumeFin, o: Pick<OptionsPartie, "t" | "
 export function partieDeFin(contenu: Contenu, ticks: number, o: OptionsPartie): PartieDuJeu {
   const d = diamantDuJour(contenu);
   const diamant = d.parties[d.strategie];
-  const f = new Fantome(contenu, enregistrer(contenu, diamant.changements, diamant.choix));
+  const f = new Fantome(contenu, enregistrer(contenu, diamant.changements, diamant.choix, diamant.competence));
   while (f.avancer()) if (f.partie.tick > 40000) break;
-  const resume: ResumeFin = { boss: contenu.boss, paliers: f.partie.paliers, diamant: { ticks: diamant.score, strategie: d.strategie } };
+  const resume: ResumeFin = { boss: contenu.boss, competence: diamant.competence, paliers: f.partie.paliers, diamant: { ticks: diamant.score, strategie: d.strategie } };
   return {
     avancer() {},
     dessiner() {

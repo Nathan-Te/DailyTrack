@@ -1,4 +1,4 @@
-import { BOSS, BOSS_IDS, Partie, REGLAGES_DEFAUT, contenuScenario, etatPilote, pasDuPilote, reglagesDe } from "../src/index";
+import { BOSS, BOSS_IDS, Partie, REGLAGES_DEFAUT, competenceDuPilote, contenuScenario, etatPilote, pasDuPilote, reglagesDe } from "../src/index";
 
 // LES BOSS (lot BR3) : `npm run boss:rush -w @cdj/rush-sim [-- --jours=60] [-- --boss=belier] [-- --cartes=lame-lourde,cadence] [-- --phase2]` (Node seulement). Pour chaque boss, le pilote le combat seul (`?scenario=boss`, jours de graines différentes) :
 // victoires, durée du combat (min / médiane / max), dégâts subis. `--cartes` donne des améliorations au départ (« une construction complète adaptée »), `--auto=N` prend les N premières cartes de la construction adaptée du boss.
@@ -28,7 +28,7 @@ for (let b = 0; b < BOSS_IDS.length; b++) {
   let totalChocs = 0;
   for (let k = 0; k < jours; k++) {
     const amelio = cartes.length > 0 ? cartes : auto > 0 ? construction(b).slice(0, auto) : [];
-    const p = new Partie(contenuScenario("boss", { boss: b, jour: k, phase2, ameliorations: amelio }), reglages, true);
+    const p = new Partie(contenuScenario("boss", { boss: b, jour: k, phase2, ameliorations: amelio, competence: competenceDuPilote(b) }), reglages, true);
     const etat = etatPilote("foncer", -2, p);
     let chocs = 0;
     while (!p.finie && p.tick < 36000) {

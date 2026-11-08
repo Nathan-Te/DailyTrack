@@ -1,17 +1,19 @@
 import { Rng } from "@cdj/core";
 import { AMELIORATIONS, NB_AMELIORATIONS, indiceAmelioration, tirageDeCartes } from "./ameliorations";
 import { BOSS, B_BELIER, B_CHENE, B_DUC, B_GOLEM, B_REINE, BOND, CHARGE, ETOURDI, INVOCATION, MARCHE, ANNONCE, ONDE, PIERRES, PLONGEON_DUC, POING, RACINES_CERCLES, RACINES_LIGNES, RECUPERE, RUGIT, SPORES, Z_BANDE, Z_INVOCATION, Z_SPORES } from "./bosses";
-import { COEURS, DUREE_TICKS, MAX_MONSTRES, MAX_MONSTRES_VAGUE, RAYON_ARENE, RAYON_CHAUVE, RAYON_CHEVALIER, RAYON_GELEE, RAYON_GOLEM, cm } from "./constantes";
-import { coupDe, directionDe, esquiveDe, viseeDe } from "./entrees";
+import { C_BOND, C_TOURBILLON, COEURS, DUREE_TICKS, MAX_MONSTRES, MAX_MONSTRES_VAGUE, MAX_SBIRES, NB_COMPETENCES, RAYON_ARENE, RAYON_CHAUVE, RAYON_CHEVALIER, RAYON_GELEE, RAYON_GOLEM, cm } from "./constantes";
+import { competenceDe, coupDe, directionDe, esquiveDe, viseeDe } from "./entrees";
 import type { Contenu } from "./generateur";
 import { distance, distance2, idiv, isqrt, unitaire, dirVers, modDir } from "./maths";
-import { OBSTACLE_RONCES, PONT, SOL, caseDe, type Niveau } from "./niveau";
+import { PONT, RAYON_VASE, SOL, caseDe, type Niveau } from "./niveau";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 import { COS, SIN } from "./trig";
 
 // La partie de Rush : 60 Hz, tout en entiers, l'état d'un seul tenant. À chaque tick, `avancer(entree)` applique l'octet d'entrée du tick (voir `entrees.ts`) puis fait avancer le monde : le chevalier, les apparitions,
 // les monstres, le golem, les zones annoncées, les ondes, les contacts. **Le même code joue la partie du joueur et la rediffusion du serveur** ; la vue (`apps/rush`) ne fait que lire cet état.
 // Le hasard (apparitions, pierres) vient d'une graine du contenu et n'est tiré qu'à des ticks fixés par l'état : une rediffusion refait les mêmes tirages.
+// Lot BR5 : un HACK & SLASH. La RAGE (une jauge qui monte aux coups, aux morts, aux vases et, très lentement, au temps) permet une COMPÉTENCE choisie au départ (tourbillon, bond écrasant, lancer de bouclier : `choisirCompetence`, un
+// événement d'entrée de la rediffusion que le serveur valide) ; les GÉLATONS (meutes de petites gelées, un coup chacun) ; les VASES (groupes de petits cassables d'un coup, au contenu tiré de la graine) ; le COUP D'ÉLAN (frapper en pleine course fait une fente).
 // Lot BR2 : l'XP et les AMÉLIORATIONS. Un monstre tué ou un obstacle brisé lâche une gemme d'XP (elle vole vers le chevalier dans le rayon d'aimant et ne disparaît jamais) ; chaque niveau gagné FIGE le monde (`avancer` ne fait plus rien, le chrono
 // non plus : il compte les ticks) jusqu'à ce que le joueur choisisse une carte parmi trois (`choisir`, un événement d'entrée de la rediffusion que le serveur valide). Le tirage est celui de la graine du jour et du numéro du niveau (`ameliorations.ts`).
 // Lot BR1b : la COURSE hors combat (la vitesse monte de ×1,6 après ~1,2 s sans frapper, sans être touché et sans ennemi alerté à moins de 10 m ; elle retombe au premier coup, à la première alerte, au premier dégât ; pas de course dans l'arène),
@@ -23,8 +25,12 @@ import { COS, SIN } from "./trig";
 export const LIBRE = 0;
 export const COUP = 1;
 export const ESQUIVE = 2;
+/** Lot BR5 : le chevalier lance sa compétence (`c.comp`, `c.t` ticks depuis le début). */
+export const COMPETENCE = 3;
 export const GELEE = 0;
 export const CHAUVE = 1;
+/** Lot BR5 : le gélaton — une petite gelée en meute (6 à 12), un coup chacun. */
+export const GELATON = 2;
 // La chauve-souris : tourne, s'annonce, plonge, se repose.
 export const ORBITE = 0;
 export const ANNONCE_PLONGEON = 1;
@@ -66,6 +72,18 @@ export interface Chevalier {
   elan: number;
   /** Lot BR2 : le nombre de cœurs au plus (3, et « Cœur en plus »). */
   coeursMax: number;
+  /** Lot BR5 : la jauge de rage (0 à `rageMax`), la compétence choisie (−1 : pas encore choisie), sa direction, les ticks restants de l'appui gardé en mémoire, l'« écho » armé (la prochaine utilisation ne rend rien), la fente du coup d'élan (les ticks restants)
+   * et, pour le bond, d'où il part et où il atterrit. */
+  rage: number;
+  comp: number;
+  cDir: number;
+  tampComp: number;
+  echo: number;
+  fente: number;
+  bx: number;
+  by: number;
+  tx: number;
+  ty: number;
 }
 
 export interface Monstre {
@@ -104,31 +122,30 @@ export interface Monstre {
   sbire: number;
 }
 
-/** Lot BR1b : un obstacle cassable du niveau, vivant tant que `hp` > 0 ; il occupe `cases`. */
-export interface ObstacleVivant {
-  /** Son indice dans `niveau.obstacles`. */
+/** Lot BR5 : un vase (jarre, tonneau, petite caisse) : un coup le brise, un coup en arc ou une compétence en brise plusieurs. Plein jusqu'à ce qu'on le brise ; `tirage` (0 à 99) donne son contenu. */
+export interface VaseVivant {
+  /** Son indice dans `niveau.vases` (ou dans la liste du scénario). */
   id: number;
   genre: number;
   x: number;
   y: number;
   r: number;
-  hp: number;
-  hpMax: number;
-  /** Les ticks restants de l'éclair après un coup. */
-  flash: number;
   /** Le dernier coup qui l'a touché : un coup ne touche qu'une fois. */
   coup: number;
-  cases: number[];
-  /** Ce qu'il contient (lot BR2) : 0, rien. */
-  butin: number;
+  tirage: number;
+  groupe: number;
 }
 
-/** Lot BR2 : une gemme d'XP posée au sol (un octaèdre ambre), qui vaut `v` points. Aimantée (`vers`), elle vole vers le chevalier jusqu'à être ramassée. */
+/** Lot BR2 : une gemme d'XP posée au sol (un octaèdre ambre), qui vaut `v` points. Aimantée (`vers`), elle vole vers le chevalier jusqu'à être ramassée. Lot BR5 : `k` dit ce qu'elle est — 0 une gemme d'XP, 1 de la rage (`v` points de jauge), 2 un cœur (elle attend au sol tant que le chevalier a tous ses cœurs). */
+export const GEMME_XP = 0;
+export const GEMME_RAGE = 1;
+export const GEMME_COEUR = 2;
 export interface Gemme {
   id: number;
   x: number;
   y: number;
   v: number;
+  k: number;
   vers: boolean;
   /** Le tick où elle est tombée (l'animation d'apparition). */
   age: number;
@@ -151,6 +168,27 @@ export interface OndeEpee {
   degats: number;
   /** Ce qu'elle a déjà touché : monstres (identifiants), obstacles (−1 − indice), le golem (0). */
   touches: number[];
+}
+
+/** Lot BR5 : le bouclier lancé : il part du chevalier, traverse jusqu'à `bouclierCibles` ennemis (les vases ne comptent pas), puis revient en blessant ce qu'il croise. */
+export interface Bouclier {
+  x: number;
+  y: number;
+  /** Où il est parti (unités), sa direction (0 à 127) et la distance parcourue à l'aller. */
+  ox: number;
+  oy: number;
+  dir: number;
+  d: number;
+  portee: number;
+  /** 0 à l'aller, 1 au retour. */
+  etat: number;
+  /** Combien d'ennemis il a traversés, ceux qu'il a touchés à l'aller et au retour (identifiants ; le boss : 0). */
+  cibles: number;
+  maxCibles: number;
+  touches: number[];
+  retour: number[];
+  degats: number;
+  age: number;
 }
 
 export interface Golem {
@@ -221,7 +259,7 @@ export interface OndeGolem {
   touche: boolean;
 }
 
-export type GenreEvenement = "division" | "choc" | "nuage" | "invoque" | "gemme" | "ramasse" | "niveau" | "carte" | "ondeEpee" | "tranchant" | "soin" | "tourbillon" | "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "obstacle" | "brise";
+export type GenreEvenement = "competence" | "pulsation" | "atterrissage" | "bouclier" | "bouclierRetour" | "bouclierTouche" | "elan" | "rage" | "division" | "choc" | "nuage" | "invoque" | "gemme" | "ramasse" | "niveau" | "carte" | "ondeEpee" | "tranchant" | "soin" | "moulinet" | "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "brise";
 /** Ce que le rendu doit savoir d'un tick (sons, éclats, secousse) : jamais lu par la simulation. */
 export interface Evenement {
   k: GenreEvenement;
@@ -263,6 +301,9 @@ const RAYON_ZONE_PIERRE = cm(150);
 const RAYON_ONDE = cm(760);
 const VIE_GELEE = 30;
 const VIE_CHAUVE = 10;
+/** Lot BR5 : le gélaton meurt en un coup (un coup ordinaire en ôte 16). */
+const VIE_GELATON = 10;
+const RAYON_GELATON = cm(30);
 /** Le scénario `mannequin` : six gelées qui ne bougent pas (positions en cm, chacune rentre chez elle après un coup) et un golem qui ne frappe pas ; rien ne meurt. */
 const MANNEQUINS: readonly (readonly [number, number])[] = [[-330, 330], [-170, 250], [0, 210], [170, 250], [330, 330], [0, 60]];
 const GOLEM_MANNEQUIN: readonly [number, number] = [0, -450];
@@ -310,6 +351,14 @@ const CHENE_CERCLE = cm(190);
 const CHENE_SPORES: readonly [number, number] = [cm(300), cm(400)];
 const SPORES_DUREE = 270;
 const ECART_CERCLES = 14;
+/** Lot BR5 : le gélaton s'écrase moins longtemps (22), bondit (14) plus vite (4,2 m/s) et se repose (6) : une meute se jette sur le chevalier ; il ne blesse que pendant son bond. */
+const GELATON_ANNONCE = 22;
+const GELATON_BOND = 14;
+const GELATON_REPOS = 6;
+const GELATON_VITESSE = 420;
+const GELATON_VERROU = 4;
+/** Une meute s'alerte d'un seul mouvement : les gélatons au repos à ce rayon (cm) du premier alerté le suivent. */
+const RAYON_MEUTE = cm(700);
 /** La gelée s'écrase (annonce) puis bondit puis se repose. */
 const GELEE_ANNONCE = 30;
 const GELEE_BOND = 24;
@@ -338,7 +387,7 @@ const TICK_VITRINE = 1306;
 const A_LOURDE = indiceAmelioration("lame-lourde");
 const A_ALLONGE = indiceAmelioration("allonge");
 const A_CADENCE = indiceAmelioration("cadence");
-const A_TOURBILLON = indiceAmelioration("tourbillon");
+const A_TOURBILLON = indiceAmelioration("moulinet");
 const A_ONDE = indiceAmelioration("onde-epee");
 const A_BOTTES = indiceAmelioration("bottes-legeres");
 const A_LONGUE = indiceAmelioration("esquive-longue");
@@ -349,6 +398,10 @@ const A_SOIN = indiceAmelioration("soin");
 const A_VOL = indiceAmelioration("vol-de-vie");
 const A_BRISE = indiceAmelioration("brise-pierre");
 const A_AIMANT = indiceAmelioration("aimant");
+const A_RAGE_VIVE = indiceAmelioration("rage-vive");
+const A_MAITRISE = indiceAmelioration("maitrise");
+const A_ECHO = indiceAmelioration("echo");
+const A_SIGNATURE = indiceAmelioration("signature");
 /** Une gemme est ramassée à cette distance du chevalier (bord à bord) ; aimantée, elle vole à cette vitesse (cm/s, plus vite que la pleine course même avec les bottes). */
 const RAMASSE = cm(70);
 const VITESSE_GEMME = 1300;
@@ -356,11 +409,34 @@ const VITESSE_GEMME = 1300;
 const VITESSE_ONDE_EPEE = 1500;
 const LARGEUR_ONDE_EPEE = cm(70);
 
+// --- Lot BR5 : les compétences. ---
+const DUREE_TAMPON_COMP = 6;
+/** Le tourbillon frappe tout autour toutes les 12 ticks (la première passe à 6). */
+const PAS_TOURBILLON = 12;
+const DEBUT_TOURBILLON = 6;
+/** Le bond : s'accroupir (annonce du cercle d'atterrissage), voler, se relever. */
+export const BOND_ANNONCE = 8;
+export const BOND_VOL = 20;
+const BOND_RECUP = 10;
+/** Le bouclier : le geste (il part au 5ᵉ tick) et la fin du geste. */
+const BOUCLIER_LANCE = 5;
+const BOUCLIER_FIN = 14;
+const VITESSE_BOUCLIER = 1500;
+const LARGEUR_BOUCLIER = cm(60);
+/** Le bouclier revient avec ce % de ses dégâts aux ennemis qu'il n'avait pas touchés à l'aller. */
+const RETOUR_BOUCLIER = 60;
+/** Le rayon (cm) où un ennemi touché par un effet de zone (tourbillon, bond) compte : de bord à bord. */
+const FENTE_PLUS = 2;
+
 const carre = (n: number): number => n * n;
-const rayonDe = (type: number): number => (type === GELEE ? RAYON_GELEE : RAYON_CHAUVE);
+const rayonDe = (type: number): number => (type === GELEE ? RAYON_GELEE : type === GELATON ? RAYON_GELATON : RAYON_CHAUVE);
+const viePar = (type: number): number => (type === GELEE ? VIE_GELEE : type === GELATON ? VIE_GELATON : VIE_CHAUVE);
 
 /** Les durées des ennemis, mises au rythme de la partie : ce que le rendu lit pour animer (jamais lu par la simulation autrement). */
 export interface Durees {
+  gelatonAnnonce: number;
+  gelatonBond: number;
+  gelatonCycle: number;
   geleeAnnonce: number;
   geleeBond: number;
   geleeCycle: number;
@@ -411,10 +487,14 @@ export class Partie {
   private videDepuis = -1;
   /** Lot BR1 : le niveau du jour (grille), le centre de l'arène, le tick où la barrière s'est refermée (−1 : ouverte) et les cases de la porte. */
   readonly niveau: Niveau | null;
-  /** Lot BR1b : les obstacles du niveau (ceux qui ont cédé sont retirés) et les cases qu'ils occupent. */
-  obstacles: ObstacleVivant[] = [];
-  /** Un octet par case : 1 tant qu'un obstacle la tient (un tableau, pas un ensemble : `marchable` est appelé des millions de fois dans un rejeu). */
-  private bloquees: Uint8Array;
+  /** Lot BR5 : les vases du niveau (ceux qu'on a brisés sont retirés), les boucliers lancés, la compétence à choisir avant de partir (`jour` seulement : le chrono ne démarre pas) et les gains de rage coupés pendant les coups d'une compétence. */
+  vases: VaseVivant[] = [];
+  boucliers: Bouclier[] = [];
+  attenteDepart = false;
+  private sansRage = false;
+  private prochainVase = 0;
+  /** Les scénarios d'essai (hors `jour`) remplissent la jauge vite : de quoi juger une compétence à froid. */
+  private readonly rageRapide: boolean;
   readonly ax: number;
   readonly ay: number;
   barriere = -1;
@@ -430,14 +510,15 @@ export class Partie {
     this.ax = this.niveau ? this.niveau.arene.x : 0;
     this.ay = this.niveau ? this.niveau.arene.y : 0;
     this.porte = new Set(this.niveau ? this.niveau.porte : []);
-    this.bloquees = new Uint8Array(this.niveau ? this.niveau.l * this.niveau.h : 0);
     this.vitBase = idiv(cm(reglages.vitesse), 60);
     this.vit = this.vitBase;
     this.rt = reglages.rythme;
-    this.durees = { geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
-    this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin" || contenu.scenario === "bestiaire";
-    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false, calme: 0, elan: 0, coeursMax: COEURS };
-    if (contenu.scenario === "arene" || contenu.scenario === "bestiaire") this.golem = null;
+    this.durees = { gelatonAnnonce: this.dur(GELATON_ANNONCE), gelatonBond: this.dur(GELATON_BOND), gelatonCycle: this.dur(GELATON_ANNONCE) + this.dur(GELATON_BOND) + this.dur(GELATON_REPOS), geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
+    this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin" || contenu.scenario === "bestiaire" || contenu.scenario === "horde";
+    this.rageRapide = contenu.scenario !== "jour" && contenu.scenario !== "cartes";
+    this.attenteDepart = contenu.scenario === "jour" && contenu.competence < 0;
+    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false, calme: 0, elan: 0, coeursMax: COEURS, rage: this.rageRapide ? reglages.rageMax : 0, comp: contenu.competence >= 0 ? contenu.competence : this.attenteDepart ? -1 : 0, cDir: 0, tampComp: 0, echo: 0, fente: 0, bx: 0, by: 0, tx: 0, ty: 0 };
+    if (contenu.scenario === "arene" || contenu.scenario === "bestiaire" || contenu.scenario === "horde") this.golem = null;
     else {
       // Lot BR3 : le boss du jour (le golem pour les scénarios d'essai qui n'en demandent pas un autre) ; ses points de vie sont un % de ceux du golem.
       const kind = contenu.boss;
@@ -454,6 +535,7 @@ export class Partie {
       this.apparaitre(contenu.monstres > 0 ? Math.min(contenu.monstres, 6) : 4);
       this.vague = 1;
     }
+    if (contenu.scenario === "horde") this.monterHorde();
     if (this.niveau) this.monterNiveau(this.niveau);
     // Lot BR2 : les améliorations d'un scénario d'essai, puis (`?scenario=cartes`) le choix ouvert tout de suite au niveau demandé.
     for (const id of contenu.ameliorations) this.prendre(indiceAmelioration(id), false);
@@ -464,6 +546,14 @@ export class Partie {
     }
     if (contenu.scenario === "vitrine") this.monterVitrine();
     if (contenu.scenario === "mannequin") this.monterMannequin();
+  }
+
+  /** La compétence est choisie au départ (`jour`) : un événement d'entrée de la rediffusion, validé par le serveur. Refusé (rend `false`, rien ne change) quand aucun choix n'est attendu ou que l'index n'est pas celui d'une compétence. */
+  choisirCompetence(index: number): boolean {
+    if (!this.attenteDepart || !Number.isInteger(index) || index < 0 || index >= NB_COMPETENCES) return false;
+    this.attenteDepart = false;
+    this.c.comp = index;
+    return true;
   }
 
   /** Une durée en ticks au rythme de la partie (arrondie, au moins 1) : plus le rythme est haut, plus c'est court. */
@@ -478,14 +568,9 @@ export class Partie {
   /** Les monstres du niveau : chacun à sa place, au repos, avec sa laisse. */
   private monterNiveau(n: Niveau): void {
     for (const m of n.monstres) {
-      const gelee = m.type === GELEE;
-      this.monstres.push({ id: this.prochainId++, type: m.type, x: m.x, y: m.y, kx: 0, ky: 0, hp: gelee ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t: 0, age: -100, a: this.rng.int(128), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: m.x, hy: m.y, alerte: 0, laisse: LAISSE, ra: m.alerte, sbire: 0 });
+      this.monstres.push({ id: this.prochainId++, type: m.type, x: m.x, y: m.y, kx: 0, ky: 0, hp: viePar(m.type), flash: 0, etat: ORBITE, t: 0, age: -100, a: this.rng.int(128), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: m.x, hy: m.y, alerte: 0, laisse: LAISSE, ra: m.alerte, sbire: 0 });
     }
-    n.obstacles.forEach((o, id) => {
-      // Lot BR2 : ce qu'il contient, en points d'XP (les réglages).
-      this.obstacles.push({ id, genre: o.genre, x: o.x, y: o.y, r: o.r, hp: o.coups, hpMax: o.coups, flash: 0, coup: 0, cases: o.cases, butin: o.genre === OBSTACLE_RONCES ? this.reglages.xpRonces : this.reglages.xpCaisse });
-      for (const k of o.cases) this.bloquees[k] = 1;
-    });
+    for (const v of n.vases) this.vases.push({ id: this.prochainVase++, genre: v.genre, x: v.x, y: v.y, r: RAYON_VASE[v.genre]!, coup: 0, tirage: v.tirage, groupe: v.groupe });
   }
 
   /** Le golem dort tant que la barrière de l'arène est ouverte. */
@@ -568,10 +653,16 @@ export class Partie {
     for (const z of this.zones) objet(z);
     for (const o of this.ondes) objet(o);
     for (const n of this.nuages) objet(n);
-    for (const o of this.obstacles) {
-      nombre(o.id);
-      nombre(o.hp);
-      nombre(o.flash);
+    for (const v of this.vases) {
+      nombre(v.id);
+      nombre(v.coup);
+    }
+    for (const b of this.boucliers) {
+      nombre(b.x);
+      nombre(b.y);
+      nombre(b.d);
+      nombre(b.etat);
+      nombre(b.cibles);
     }
     return h.toString(16).padStart(8, "0");
   }
@@ -587,17 +678,18 @@ export class Partie {
 
   // --- Un tick -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   avancer(entree: number): void {
-    if (this.finie || this.choix) return; // lot BR2 : un niveau gagné fige le monde jusqu'au choix
+    if (this.finie || this.choix || this.attenteDepart) return; // lot BR2 : un niveau gagné fige le monde jusqu'au choix ; lot BR5 : la compétence se choisit avant de partir
     this.tick++;
     const front = (bit: boolean, avant: boolean): boolean => bit && !avant;
     const coupFront = front(coupDe(entree), coupDe(this.entreePrecedente));
     const esquiveFront = front(esquiveDe(entree), esquiveDe(this.entreePrecedente));
+    const compFront = front(competenceDe(entree), competenceDe(this.entreePrecedente));
     this.entreePrecedente = entree;
-    this.mouvementChevalier(directionDe(entree), viseeDe(entree), coupFront, coupDe(entree), esquiveFront);
+    this.mouvementChevalier(directionDe(entree), viseeDe(entree), coupFront, coupDe(entree), esquiveFront, compFront);
+    if (this.tick % 60 === 0) this.gagnerRage(this.rageRapide ? idiv(this.reglages.rageMax, 6) : this.reglages.rageTemps);
     if (this.niveau && this.barriere < 0 && distance(this.c.x, this.c.y, this.ax, this.ay) < RAYON_ARENE - ENTREE_ARENE) this.fermerBarriere();
     this.apparitions();
     for (const m of this.monstres) this.mouvementMonstre(m);
-    for (const o of this.obstacles) if (o.flash > 0) o.flash--;
     this.separer();
     if (this.golem && this.golemEveille) this.mouvementGolem(this.golem);
     this.resoudreZones();
@@ -605,6 +697,7 @@ export class Partie {
     this.majNuages();
     this.contacts();
     this.avancerOndesEpee();
+    this.avancerBoucliers();
     this.ramasser();
     this.monstres = this.monstres.filter((m) => m.hp > 0);
     if (this.golem && this.golem.hp <= 0 && !this.victoire) this.gagner();
@@ -626,13 +719,15 @@ export class Partie {
   }
 
   // --- Le chevalier ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  private mouvementChevalier(direction: number, visee: number, coupFront: boolean, coupTenu: boolean, esquiveFront: boolean): void {
+  private mouvementChevalier(direction: number, visee: number, coupFront: boolean, coupTenu: boolean, esquiveFront: boolean, compFront = false): void {
     const c = this.c;
     if (c.tampon > 0) c.tampon--;
     // Un appui est gardé en mémoire ; un coup TENU l'est à chaque tick : il enchaîne les trois coups en boucle, à la cadence du combo.
     if (coupFront || coupTenu) c.tampon = DUREE_TAMPON;
     if (c.tampEsq > 0) c.tampEsq--;
     if (esquiveFront) c.tampEsq = DUREE_TAMPON_ESQUIVE;
+    if (c.tampComp > 0) c.tampComp--;
+    if (compFront) c.tampComp = DUREE_TAMPON_COMP;
     if (c.attente > 0) c.attente--;
     if (c.esq > 0) c.esq--;
     if (c.degat > 0) c.degat--;
@@ -642,7 +737,7 @@ export class Partie {
 
     // L'esquive coupe un coup à n'importe quel moment (survivre passe avant) ; un appui un peu trop tôt est gardé en mémoire.
     const dureeCoup = this.dureeCoup(c.combo);
-    if (c.tampEsq > 0 && c.attente === 0 && c.etat !== ESQUIVE) {
+    if (c.tampEsq > 0 && c.attente === 0 && c.etat !== ESQUIVE && !this.bondEnVol()) {
       c.tampEsq = 0;
       // L'esquive part dans la direction du déplacement ; à l'arrêt, vers la visée ; sinon où le chevalier regarde.
       const d = direction >= 0 ? direction * 4 : visee >= 0 ? visee * 4 : c.dir;
@@ -656,6 +751,9 @@ export class Partie {
       this.ev("esquive", c.x, c.y, d);
     }
 
+    // Lot BR5 : la compétence (jauge pleine) coupe un coup ; l'esquive, elle, passe avant (survivre) et la coupe aussi.
+    if (c.tampComp > 0 && c.comp >= 0 && c.rage >= this.reglages.rageMax && (c.etat === LIBRE || c.etat === COUP)) this.lancerCompetence(direction, visee);
+
     if (c.etat === ESQUIVE) {
       // la marche est plus lente depuis BR0c (−10 %) : la course de l'esquive garde sa longueur (lot BR2 : « Esquive longue » l'allonge, les « Bottes légères » non)
       const v = idiv(idiv(this.vitBase * 29, 10) * (100 + this.paliers[A_LONGUE]! * this.reglages.esquiveLongue), 100);
@@ -666,11 +764,18 @@ export class Partie {
         c.etat = LIBRE;
         c.t = 0;
       }
+    } else if (c.etat === COMPETENCE) {
+      this.majCompetence(direction);
     } else if (c.etat === COUP) {
       // Le coup (lot BR0c) : anticipation (jusqu'à l'impact), phase active (4 ticks), récupération jusqu'au bout. Il s'engage : à `engagement` % de sa vitesse, dans la direction tenue, sinon vers où il frappe tant que dure la phase active.
       const impact = this.impactCoup(c.combo);
       const v = idiv(this.vit * this.reglages.engagement, 100);
-      if (direction >= 0) {
+      if (c.fente > 0) {
+        // Lot BR5 — le COUP D'ÉLAN : une fente vers l'avant (`elanDistance`) jusqu'à un peu après l'impact, quoi que tienne le joueur.
+        c.fente--;
+        this.deplacer(c, idiv(COS[c.dir]! * idiv(cm(this.reglages.elanDistance), this.dureeFente(c.combo)), 1024), idiv(SIN[c.dir]! * idiv(cm(this.reglages.elanDistance), this.dureeFente(c.combo)), 1024));
+        c.marche = true;
+      } else if (direction >= 0) {
         this.deplacer(c, idiv(COS[direction * 4]! * v, 1024), idiv(SIN[direction * 4]! * v, 1024));
         c.marche = true;
       } else if (c.t <= impact + PHASE_ACTIVE) {
@@ -707,11 +812,12 @@ export class Partie {
       c.ky = amortir(c.ky);
     }
     this.pousserHorsDuGolem(c);
+    this.pousserHorsDesVases(c);
   }
 
   /**
    * La course hors combat (lot BR1b), une fois par tick : le chevalier se calme (`calme` compte les ticks tranquilles) ; passé `courseDelai`, sa vitesse monte en `courseMontee` ticks (tant qu'il marche) jusqu'à `courseFacteur` % de la marche.
-   * Tout ce qui est du combat la coupe d'un coup : un coup (`commencerCoup`), un dégât (`blesser`), un ennemi qui s'alerte (`veille`), un ennemi déjà alerté à moins de `courseRayon`. Pas de course hors du niveau, ni une fois la barrière fermée.
+   * Tout ce qui est du combat la coupe d'un coup : un coup (`commencerCoup`), un dégât (`blesser`) ; un ennemi qui s'alerte (`veille`) ou déjà alerté à moins de `courseRayon` empêche d'en commencer une (lot BR5 : il ne coupe plus celle qui est lancée). Pas de course hors du niveau, ni une fois la barrière fermée.
    */
   private majCourse(marche: boolean): void {
     const c = this.c;
@@ -723,11 +829,12 @@ export class Partie {
     }
     const rayon = cm(r.courseRayon);
     const menace = this.monstres.some((m) => m.hp > 0 && m.alerte === 1 && distance2(m.x, m.y, c.x, c.y) < rayon * rayon);
-    if (menace) {
-      c.calme = 0;
-      c.elan = 0;
-    } else if (c.calme < r.courseDelai) c.calme++;
+    // Lot BR5 : un ennemi alerté à moins du rayon empêche de COMMENCER une course, mais ne coupe plus celle qui est lancée : c'est ce qui permet le COUP D'ÉLAN (frapper en pleine course) pour ouvrir un combat.
+    if (menace) c.calme = 0;
+    else if (c.calme < r.courseDelai) c.calme++;
     else if (marche && c.elan < r.courseMontee) c.elan++;
+    // Lot BR5 : s'arrêter coupe la course (quelques ticks pour freiner) — le chevalier peut « tenir sa ligne » devant un groupe qui s'éveille au lieu de foncer dedans.
+    if (!marche && c.elan > 0) c.elan = Math.max(0, c.elan - 3);
   }
 
   /** La vitesse de marche du tick, en unités par tick : la marche, ou la course qui monte (jamais lue par la vue autrement que par `elan`). */
@@ -788,6 +895,8 @@ export class Partie {
     c.combo = s;
     c.tampon = 0;
     c.reprise = 0;
+    // Lot BR5 — frapper en PLEINE course (la montée à 70 % au moins : le pilote, qui frappe sans tenir de direction, a déjà freiné d'un cran) fait un coup d'élan : une fente vers l'avant. La course s'arrête ensuite, comme avant.
+    c.fente = this.course >= 70 && this.reglages.elanDistance > 0 ? this.dureeFente(s) : 0;
     c.calme = 0;
     c.elan = 0;
     this.coupId++;
@@ -803,6 +912,12 @@ export class Partie {
       }
     } else if (cible) c.dir = dirVers(cible.x - c.x, cible.y - c.y);
     this.ev("coup", c.x, c.y, s, c.dir);
+    if (c.fente > 0) this.ev("elan", c.x, c.y, c.dir);
+  }
+
+  /** La durée de la fente du coup d'élan : de l'anticipation à un peu après l'impact. */
+  private dureeFente(s: number): number {
+    return this.impactCoup(s) + FENTE_PLUS;
   }
 
   /** Le monstre (ou le golem) le plus proche à moins de `max` (bord à bord). */
@@ -818,7 +933,7 @@ export class Partie {
       }
     };
     for (const m of this.monstres) if (m.hp > 0) essayer(m.x, m.y, rayonDe(m.type));
-    for (const o of this.obstacles) essayer(o.x, o.y, o.r);
+    for (const v of this.vases) if (v.id >= 0) essayer(v.x, v.y, v.r);
     if (this.golem && this.golem.hp > 0) essayer(this.golem.x, this.golem.y, this.golem.r);
     return meilleur;
   }
@@ -842,20 +957,17 @@ export class Partie {
       // Le centre doit être dans l'arc, élargi de la taille de la cible (un grand corps est touché de plus loin sur le côté).
       return dx * fx + dy * fy >= seuil * d - r * 1024;
     };
-    const degats = this.degatsCoup(s);
-    const force = idiv(cm(this.reglages.recul) * (s === 2 ? 20 : 10), 10);
-    if (tout) this.ev("tourbillon", c.x, c.y, s);
+    // Lot BR5 : le coup d'élan frappe plus fort (×1,5) et repousse bien plus (le ×2 du recul).
+    const elan = c.fente > 0;
+    const degats = elan ? idiv(this.degatsCoup(s) * this.reglages.elanDegats, 100) : this.degatsCoup(s);
+    const force = idiv(cm(this.reglages.recul) * (s === 2 ? 20 : 10) * (elan ? this.reglages.elanRecul : 100), 1000);
+    if (tout) this.ev("moulinet", c.x, c.y, s);
     for (const m of this.monstres) {
       if (m.hp <= 0 || m.coup === this.coupId || !dans(m.x, m.y, rayonDe(m.type))) continue;
       this.toucherMonstre(m, degats, s, force, c.x, c.y);
     }
-    // Lot BR1b : un obstacle cassable cède en 1 ou 2 coups (le coup final en vaut 2) ; ce qu'il contient (lot BR2 : des gemmes d'XP) tombe à sa place.
-    for (const o of this.obstacles) {
-      if (o.coup === this.coupId || !dans(o.x, o.y, o.r)) continue;
-      o.coup = this.coupId;
-      this.frapperObstacle(o, s === 2 ? 2 : 1, s);
-    }
-    this.obstacles = this.obstacles.filter((o) => o.hp > 0);
+    // Lot BR5 : un vase cède d'un coup, et un coup en arc en brise plusieurs ; ce qu'il contient tombe à sa place.
+    this.casserLesVases((v) => v.coup !== this.coupId && dans(v.x, v.y, v.r));
     const g = this.golem;
     if (g && g.hp > 0 && g.coup !== this.coupId && dans(g.x, g.y, g.r)) this.toucherGolem(g, degats, s);
     // Lot BR2 : « Onde d'épée » — le 3ᵉ coup lance une courte lame devant lui.
@@ -872,9 +984,11 @@ export class Partie {
     if (m.laisse > 0 && m.alerte !== 1) {
       m.alerte = 1;
       m.t = 0;
+      this.alerterLaMeute(m);
     }
     m.hp -= degats;
     m.flash = 7;
+    if (!this.sansRage) this.gagnerRage(this.reglages.rageTouche);
     m.gel = Math.max(m.gel, TITUBE[s]!); // elle glisse (le recul) puis titube
     const [ux, uy] = unitaire(m.x - sx, m.y - sy);
     const ex = ux === 0 && uy === 0 ? COS[c.dir]! : ux;
@@ -890,7 +1004,8 @@ export class Partie {
     if (m.hp <= 0) {
       this.tues++;
       this.ev("mort", m.x, m.y, m.type, s);
-      const base = m.type === GELEE ? this.reglages.xpGelee : this.reglages.xpChauve;
+      if (!this.sansRage) this.gagnerRage(this.reglages.rageTue);
+      const base = m.type === GELEE ? this.reglages.xpGelee : m.type === GELATON ? this.reglages.xpGelaton : this.reglages.xpChauve;
       const camp = (this.niveau?.monstres[m.id - 1]?.camp ?? -1) >= 0; // un monstre d'un camp (au bout d'un détour) vaut plus : le détour est un pari
       if (m.sbire === 0) this.lacher(m.x, m.y, camp ? idiv(base * this.reglages.xpCamp, 100) : base); // lot BR3 : les sbires d'un boss ne lâchent rien
       // « Vol de vie » : un cœur tous les N monstres tués.
@@ -898,14 +1013,58 @@ export class Partie {
     }
   }
 
-  private frapperObstacle(o: ObstacleVivant, n: number, s: number): void {
-    o.hp -= n;
-    o.flash = 7;
-    this.ev("obstacle", o.x, o.y, s, o.genre);
-    if (o.hp <= 0) {
-      for (const k of o.cases) this.bloquees[k] = 0;
-      this.ev("brise", o.x, o.y, o.genre, o.id);
-      this.lacher(o.x, o.y, o.butin);
+  /** Brise les vases que `touche` désigne (une seule fois chacun), et ce qu'ils contiennent tombe ; les vases brisés sont retirés. */
+  private casserLesVases(touche: (v: VaseVivant) => boolean): void {
+    if (this.vases.length === 0) return;
+    let casse = false;
+    for (const v of this.vases) {
+      if (v.id < 0 || !touche(v)) continue;
+      v.coup = this.coupId;
+      this.casserVase(v);
+      casse = true;
+    }
+    if (casse) this.vases = this.vases.filter((v) => v.id >= 0);
+  }
+
+  /** Le contenu d'un vase d'après son tirage (0 une gemme d'XP, 1 de la rage, 2 un cœur) : les seuils sont des réglages, le tirage vient de la graine du jour. */
+  contenuDuVase(tirage: number): number {
+    const r = this.reglages;
+    return tirage < r.vaseGemme ? GEMME_XP : tirage < r.vaseGemme + r.vaseRage ? GEMME_RAGE : GEMME_COEUR;
+  }
+
+  private casserVase(v: VaseVivant): void {
+    const contenu = this.contenuDuVase(v.tirage);
+    v.id = -1 - v.id; // marqué brisé (retiré par `casserLesVases`)
+    this.ev("brise", v.x, v.y, v.genre, contenu);
+    if (!this.sansRage) this.gagnerRage(this.reglages.rageVase);
+    if (contenu === GEMME_XP) this.lacher(v.x, v.y, this.reglages.xpVase, GEMME_XP);
+    else if (contenu === GEMME_RAGE) this.lacher(v.x, v.y, this.reglages.rageButin, GEMME_RAGE);
+    else this.lacher(v.x, v.y, 1, GEMME_COEUR);
+  }
+
+  /** La jauge de rage monte de `n` (+ « Rage vive »), sans dépasser son maximum. */
+  private gagnerRage(n: number): void {
+    const c = this.c;
+    const max = this.reglages.rageMax;
+    if (n <= 0 || c.rage >= max) return;
+    const gain = idiv(n * (100 + this.paliers[A_RAGE_VIVE]! * this.reglages.rageVive), 100);
+    c.rage = Math.min(max, c.rage + gain);
+    if (c.rage >= max) this.ev("rage", c.x, c.y, max);
+  }
+
+  /** Les vases sont pleins pour le chevalier : il ne les traverse pas (les monstres, eux, passent). Il est repoussé le long du bord du vase. */
+  private pousserHorsDesVases(c: { x: number; y: number }): void {
+    for (const v of this.vases) {
+      if (v.id < 0) continue;
+      const somme = v.r + RAYON_CHEVALIER;
+      const dx = c.x - v.x;
+      const dy = c.y - v.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= somme * somme) continue;
+      const d = isqrt(d2);
+      const [ux, uy] = d === 0 ? [0, 1024] : unitaire(dx, dy);
+      c.x = v.x + idiv(ux * somme, 1024);
+      c.y = v.y + idiv(uy * somme, 1024);
     }
   }
 
@@ -914,6 +1073,7 @@ export class Partie {
     if (g.etat === RUGIT) return void this.ev("bloque", g.x, g.y);
     g.hp -= this.degatsContreGolem(degats, g);
     g.flash = 7;
+    if (!this.sansRage) this.gagnerRage(this.reglages.rageTouche);
     const phase2 = g.phase === 1 && g.hp > 0 && g.hp * 2 <= g.hpMax;
     this.ev("touche", g.x, g.y, s, phase2 ? 3 : 2); // b : 2 = le golem, 3 = le golem qui passe en phase 2 par ce coup
     if (this.contenu.scenario === "mannequin") g.hp = g.hpMax; // le mannequin ne meurt pas
@@ -936,6 +1096,7 @@ export class Partie {
       this.ev("tranchant", m.x, m.y);
       this.toucherMonstre(m, degats, 0, cm(this.reglages.recul), c.x, c.y);
     }
+    this.casserLesVases((v) => v.coup !== this.coupId && distance2(c.x, c.y, v.x, v.y) < carre(v.r + RAYON_CHEVALIER + cm(35)));
     const g = this.golem;
     if (g && g.hp > 0 && g.coup !== this.coupId && distance2(c.x, c.y, g.x, g.y) < carre(g.r + RAYON_CHEVALIER + cm(35))) {
       this.ev("tranchant", g.x, g.y);
@@ -958,14 +1119,7 @@ export class Partie {
         o.touches.push(m.id);
         this.toucherMonstre(m, o.degats, 0, cm(this.reglages.recul), o.x, o.y);
       }
-      for (const ob of this.obstacles) {
-        if (o.touches.includes(-1 - ob.id)) continue;
-        const somme = ob.r + LARGEUR_ONDE_EPEE;
-        if (distance2(x, y, ob.x, ob.y) >= somme * somme) continue;
-        o.touches.push(-1 - ob.id);
-        this.frapperObstacle(ob, 1, 0);
-      }
-      this.obstacles = this.obstacles.filter((q) => q.hp > 0);
+      this.casserLesVases((v) => !o.touches.includes(-1 - v.id) && distance2(x, y, v.x, v.y) < carre(v.r + LARGEUR_ONDE_EPEE) && (o.touches.push(-1 - v.id), true));
       const g = this.golem;
       if (g && g.hp > 0 && !o.touches.includes(0) && distance2(x, y, g.x, g.y) < carre(g.r + LARGEUR_ONDE_EPEE)) {
         o.touches.push(0);
@@ -977,6 +1131,293 @@ export class Partie {
     this.ondesEpee = this.ondesEpee.filter((o) => o.d < o.portee);
   }
 
+  // --- Les compétences (lot BR5) -------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  /** Le bond est en l'air : l'esquive ne le coupe pas (il est invulnérable). */
+  private bondEnVol(): boolean {
+    const c = this.c;
+    return c.etat === COMPETENCE && c.comp === C_BOND && c.t >= BOND_ANNONCE && c.t < BOND_ANNONCE + BOND_VOL;
+  }
+
+  /** Le palier de la carte « Maîtrise » en % de dégâts (lot BR5) et de zone. */
+  private pctMaitriseDegats(): number {
+    return 100 + this.paliers[A_MAITRISE]! * this.reglages.maitriseDegats;
+  }
+  private pctMaitriseZone(): number {
+    return 100 + this.paliers[A_MAITRISE]! * this.reglages.maitriseZone;
+  }
+  /** Les dégâts d'une frappe de compétence : `pct` % d'un coup ordinaire (Lame lourde comprise), + « Maîtrise ». */
+  private degatsCompetence(pct: number): number {
+    return idiv(idiv(this.degatsCoup(0) * pct, 100) * this.pctMaitriseDegats(), 100);
+  }
+  /** La durée du tourbillon en ticks (« Signature » l'allonge). */
+  dureeTourbillon(): number {
+    return idiv(this.reglages.tourbillonDuree * (100 + this.paliers[A_SIGNATURE]! * this.reglages.signatureTourbillon), 100);
+  }
+  /** Le rayon (unités) du tourbillon et de l'onde du bond, « Maîtrise » comprise. */
+  rayonTourbillon(): number {
+    return idiv(cm(this.reglages.tourbillonRayon) * this.pctMaitriseZone(), 100);
+  }
+  rayonBond(): number {
+    return idiv(cm(this.reglages.bondRayon) * this.pctMaitriseZone(), 100);
+  }
+  /** L'étourdissement du bond en ticks (« Signature »). */
+  etourdiBond(): number {
+    return this.reglages.bondEtourdi + this.paliers[A_SIGNATURE]! * this.reglages.signatureBond;
+  }
+  /** Le nombre d'ennemis que le bouclier traverse avant de revenir (« Signature »). */
+  ciblesBouclier(): number {
+    return this.reglages.bouclierCibles + this.paliers[A_SIGNATURE]! * this.reglages.signatureBouclier;
+  }
+  /** Le chevalier peut lancer sa compétence (jauge pleine, une compétence choisie, ni en esquive ni déjà en compétence). */
+  get competencePrete(): boolean {
+    const c = this.c;
+    return c.comp >= 0 && c.rage >= this.reglages.rageMax && (c.etat === LIBRE || c.etat === COUP);
+  }
+
+  /** Le chevalier lance sa compétence : la jauge se vide (« Écho » en rend une part, une fois sur deux), la direction est la visée, sinon ce que le joueur tient, sinon l'ennemi proche. */
+  private lancerCompetence(direction: number, visee: number): void {
+    const c = this.c;
+    const cible = this.plusProche(cm(900));
+    let d = c.dir;
+    if (visee >= 0) d = visee * 4;
+    else if (direction >= 0) {
+      d = direction * 4;
+      if (cible) {
+        const v = dirVers(cible.x - c.x, cible.y - c.y);
+        if (Math.min(modDir(v - d), modDir(d - v)) <= 12) d = v;
+      }
+    } else if (cible) d = dirVers(cible.x - c.x, cible.y - c.y);
+    c.dir = d;
+    c.cDir = d;
+    c.etat = COMPETENCE;
+    c.t = 0;
+    c.tampComp = 0;
+    c.tampon = 0;
+    c.reprise = 0;
+    c.combo = 0;
+    c.calme = 0;
+    c.elan = 0;
+    c.fente = 0;
+    // la jauge : vidée ; « Écho » en garde une part la première fois, rien la seconde (une seconde utilisation à moitié prix)
+    if (this.paliers[A_ECHO]! > 0 && c.echo === 0) {
+      c.rage = idiv(this.reglages.rageMax * this.reglages.echoRend, 100);
+      c.echo = 1;
+    } else {
+      c.rage = 0;
+      c.echo = 0;
+    }
+    c.bx = c.x;
+    c.by = c.y;
+    if (c.comp === C_BOND) this.viserLeBond();
+    this.ev("competence", c.x, c.y, c.comp, d);
+  }
+
+  /** Le point d'atterrissage du bond : à `bondPortee` dans la direction, mais pas dans un mur, hors de l'arène, dans le boss ni dans un vase (le dernier point libre du trajet). */
+  private viserLeBond(): void {
+    const c = this.c;
+    const portee = this.reglages.bondPortee;
+    let lx = c.x;
+    let ly = c.y;
+    for (let dcm = 25; dcm <= portee; dcm += 25) {
+      const x = c.x + idiv(COS[c.cDir]! * cm(dcm), 1024);
+      const y = c.y + idiv(SIN[c.cDir]! * cm(dcm), 1024);
+      if (!this.atterrissageLibre(x, y)) break;
+      lx = x;
+      ly = y;
+    }
+    c.tx = lx;
+    c.ty = ly;
+  }
+
+  private atterrissageLibre(x: number, y: number): boolean {
+    if (this.niveau && this.barriere < 0) {
+      if (!this.libre(x, y, RAYON_CHEVALIER)) return false;
+    } else if (distance(x, y, this.ax, this.ay) > RAYON_ARENE - RAYON_CHEVALIER) return false;
+    const g = this.golem;
+    if (g && g.hp > 0 && g.sol === 1 && distance2(x, y, g.x, g.y) < carre(g.r + RAYON_CHEVALIER + cm(20))) return false;
+    for (const v of this.vases) if (v.id >= 0 && distance2(x, y, v.x, v.y) < carre(v.r + RAYON_CHEVALIER)) return false;
+    return true;
+  }
+
+  /** Un tick de compétence : le tourbillon frappe autour (toutes les 12 ticks) et avance lentement ; le bond s'accroupit, vole, atterrit ; le bouclier part au 5ᵉ tick. */
+  private majCompetence(direction: number): void {
+    const c = this.c;
+    const r = this.reglages;
+    const t = c.t;
+    if (c.comp === C_TOURBILLON) {
+      if (direction >= 0 && r.tourbillonVitesse > 0) {
+        const v = idiv(this.vit * r.tourbillonVitesse, 100);
+        this.deplacer(c, idiv(COS[direction * 4]! * v, 1024), idiv(SIN[direction * 4]! * v, 1024));
+        c.marche = true;
+      }
+      if (t >= DEBUT_TOURBILLON && (t - DEBUT_TOURBILLON) % PAS_TOURBILLON === 0) this.pulsation(idiv(t - DEBUT_TOURBILLON, PAS_TOURBILLON));
+      c.t++;
+      if (c.t >= this.dureeTourbillon()) this.finirCompetence();
+    } else if (c.comp === C_BOND) {
+      if (t >= BOND_ANNONCE && t < BOND_ANNONCE + BOND_VOL) {
+        const k = t - BOND_ANNONCE + 1;
+        c.x = c.bx + idiv((c.tx - c.bx) * k, BOND_VOL);
+        c.y = c.by + idiv((c.ty - c.by) * k, BOND_VOL);
+        c.esq = Math.max(c.esq, 2); // invulnérable en l'air
+        if (k === BOND_VOL) this.atterrir();
+      }
+      c.t++;
+      if (c.t >= BOND_ANNONCE + BOND_VOL + BOND_RECUP) this.finirCompetence();
+    } else {
+      if (t === BOUCLIER_LANCE) this.lancerLeBouclier();
+      c.t++;
+      if (c.t >= BOUCLIER_FIN) this.finirCompetence();
+    }
+  }
+
+  private finirCompetence(): void {
+    const c = this.c;
+    c.etat = LIBRE;
+    c.t = 0;
+    c.reprise = 0;
+  }
+
+  /** Une passe du tourbillon : tout ce qui est autour du chevalier (monstres, vases, boss) est frappé, une fois par passe. */
+  private pulsation(i: number): void {
+    const c = this.c;
+    const rayon = this.rayonTourbillon();
+    const degats = this.degatsCompetence(this.reglages.tourbillonDegats);
+    const force = idiv(cm(this.reglages.recul) * 10, 100); // une poussée très légère : repoussés plus loin que le rayon, les ennemis échapperaient aux passes suivantes
+    this.coupId++;
+    this.sansRage = true;
+    this.ev("pulsation", c.x, c.y, i, rayon);
+    for (const m of this.monstres) if (m.hp > 0 && distance(c.x, c.y, m.x, m.y) - rayonDe(m.type) <= rayon) this.toucherMonstre(m, degats, 0, force, c.x, c.y);
+    this.casserLesVases((v) => distance(c.x, c.y, v.x, v.y) - v.r <= rayon);
+    const g = this.golem;
+    if (g && g.hp > 0 && g.coup !== this.coupId && distance(c.x, c.y, g.x, g.y) - g.r <= rayon) this.toucherGolem(g, degats, 0);
+    this.sansRage = false;
+  }
+
+  /** L'atterrissage du bond : une onde de choc écrase tout autour, les ennemis sont étourdis et repoussés. */
+  private atterrir(): void {
+    const c = this.c;
+    const rayon = this.rayonBond();
+    const degats = this.degatsCompetence(this.reglages.bondDegats);
+    const force = idiv(cm(this.reglages.recul) * 15, 10);
+    const etourdi = this.etourdiBond();
+    this.coupId++;
+    this.sansRage = true;
+    this.ev("atterrissage", c.x, c.y, rayon);
+    for (const m of this.monstres) {
+      if (m.hp <= 0 || distance(c.x, c.y, m.x, m.y) - rayonDe(m.type) > rayon) continue;
+      this.toucherMonstre(m, degats, 2, force, c.x, c.y);
+      if (m.hp > 0) m.gel = Math.max(m.gel, etourdi);
+    }
+    this.casserLesVases((v) => distance(c.x, c.y, v.x, v.y) - v.r <= rayon);
+    const g = this.golem;
+    if (g && g.hp > 0 && g.coup !== this.coupId && distance(c.x, c.y, g.x, g.y) - g.r <= rayon) this.toucherGolem(g, degats, 0);
+    this.sansRage = false;
+    this.pousserHorsDuGolem(c);
+    this.pousserHorsDesVases(c);
+  }
+
+  private lancerLeBouclier(): void {
+    const c = this.c;
+    const x = c.x + idiv(COS[c.cDir]! * cm(60), 1024);
+    const y = c.y + idiv(SIN[c.cDir]! * cm(60), 1024);
+    this.boucliers.push({ x, y, ox: x, oy: y, dir: c.cDir, d: 0, portee: cm(this.reglages.bouclierPortee), etat: 0, cibles: 0, maxCibles: this.ciblesBouclier(), touches: [], retour: [], degats: this.degatsCompetence(this.reglages.bouclierDegats), age: 0 });
+    this.ev("bouclier", x, y, c.cDir);
+  }
+
+  /** Les boucliers lancés : à l'aller ils traversent jusqu'à `maxCibles` ennemis (les vases se brisent sans compter) ; à `portee` ou après la dernière cible ils reviennent et blessent (à 60 %) ce qu'ils n'avaient pas touché. */
+  private avancerBoucliers(): void {
+    if (this.boucliers.length === 0) return;
+    const c = this.c;
+    const v = idiv(cm(VITESSE_BOUCLIER), 60);
+    this.sansRage = true;
+    for (const b of this.boucliers) {
+      b.age++;
+      if (b.etat === 0) {
+        b.d += v;
+        b.x = b.ox + idiv(COS[b.dir]! * b.d, 1024);
+        b.y = b.oy + idiv(SIN[b.dir]! * b.d, 1024);
+      } else {
+        const d = distance(b.x, b.y, c.x, c.y);
+        const pas = Math.min(d, v + idiv(v, 10));
+        if (d > 0) {
+          b.x += idiv((c.x - b.x) * pas, d);
+          b.y += idiv((c.y - b.y) * pas, d);
+        }
+      }
+      const retour = b.etat === 1;
+      const liste = retour ? b.retour : b.touches;
+      const degats = retour ? idiv(b.degats * RETOUR_BOUCLIER, 100) : b.degats;
+      for (const m of this.monstres) {
+        if (m.hp <= 0 || liste.includes(m.id) || (retour && b.touches.includes(m.id)) || distance2(b.x, b.y, m.x, m.y) >= carre(rayonDe(m.type) + LARGEUR_BOUCLIER)) continue;
+        liste.push(m.id);
+        if (!retour) b.cibles++;
+        this.coupId++;
+        this.toucherMonstre(m, degats, 0, cm(this.reglages.recul), b.x, b.y);
+        this.ev("bouclierTouche", m.x, m.y, retour ? 1 : 0);
+      }
+      const g = this.golem;
+      if (g && g.hp > 0 && !liste.includes(0) && !(retour && b.touches.includes(0)) && distance2(b.x, b.y, g.x, g.y) < carre(g.r + LARGEUR_BOUCLIER)) {
+        liste.push(0);
+        if (!retour) b.cibles++;
+        this.coupId++;
+        const avant = g.coup;
+        this.toucherGolem(g, degats, 0);
+        g.coup = avant;
+        this.ev("bouclierTouche", g.x, g.y, retour ? 1 : 0);
+      }
+      this.coupId++;
+      this.casserLesVases((q) => distance2(b.x, b.y, q.x, q.y) < carre(q.r + LARGEUR_BOUCLIER));
+      if (!retour && (b.d >= b.portee || b.cibles >= b.maxCibles)) {
+        b.etat = 1;
+        this.ev("bouclierRetour", b.x, b.y);
+      } else if (retour && distance(b.x, b.y, c.x, c.y) <= RAMASSE) b.age = 9999;
+    }
+    this.sansRage = false;
+    this.boucliers = this.boucliers.filter((b) => b.age < 240);
+  }
+
+  // --- La horde (lot BR5) --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  /** Le scénario `horde` : trente gélatons en couronne, dix gelées derrière, des groupes de vases autour de l'arène ; le chevalier au centre-bas, la jauge pleine. Quand la horde est fauchée, une autre arrive. */
+  private monterHorde(): void {
+    this.c.y = cm(300);
+    this.c.dir = 96;
+    this.monstres = [];
+    this.vases = [];
+    this.horde();
+    this.vasesDeLaHorde();
+  }
+
+  private horde(): void {
+    const nouveau = (type: number, x: number, y: number, t: number): void => {
+      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: viePar(type), flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x, y), sens: 1, cx: 0, cy: 0, gel: 0, duree: 120 + (t % 90), coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0, sbire: 0 });
+    };
+    for (let i = 0; i < 30; i++) {
+      const a = modDir(idiv(i * 128, 30) + 5);
+      const r = cm(620 + (i % 3) * 110);
+      nouveau(GELATON, idiv(COS[a]! * r, 1024), cm(-150) + idiv(SIN[a]! * r, 1024), (i * 7) % this.durees.gelatonCycle);
+    }
+    for (let i = 0; i < 10; i++) {
+      const a = modDir(idiv(i * 128, 10) + 9);
+      const r = cm(930);
+      nouveau(GELEE, idiv(COS[a]! * r, 1024), cm(-150) + idiv(SIN[a]! * r, 1024), (i * 13) % this.durees.geleeCycle);
+    }
+  }
+
+  /** Quatre groupes de vases aux quatre coins de l'arène d'essai : 6, 8, 10 et 12 vases. */
+  private vasesDeLaHorde(): void {
+    const groupes: readonly (readonly [number, number, number])[] = [[-640, 380, 6], [650, 360, 8], [-520, -640, 10], [560, -660, 12]];
+    let g = 0;
+    for (const [cx, cy, n] of groupes) {
+      for (let i = 0; i < n; i++) {
+        const a = modDir(idiv(i * 128, n) + g * 11);
+        const r = i === 0 ? 0 : cm(60 + (i % 3) * 38);
+        const genre = (i + g) % 3;
+        this.vases.push({ id: this.prochainVase++, genre, x: cm(cx) + idiv(COS[a]! * r, 1024), y: cm(cy) + idiv(SIN[a]! * r, 1024), r: RAYON_VASE[genre]!, coup: 0, tirage: (i * 37 + g * 11) % 100, groupe: g });
+      }
+      g++;
+    }
+  }
+
   // --- L'XP et les améliorations (lot BR2) ---------------------------------------------------------------------------------------------------------------------------------------------------------
   /** L'XP cumulée qu'il faut pour ATTEINDRE le niveau `n` (le niveau 1 : 0) : le niveau suivant coûte `xpBase`, puis `xpPas` de plus à chaque niveau. */
   xpSeuil(n: number): number {
@@ -985,10 +1426,10 @@ export class Partie {
   }
 
   /** Une gemme tombe (seulement dans le niveau du jour : les scénarios d'essai n'ont pas d'XP). */
-  private lacher(x: number, y: number, v: number): void {
-    if (!this.niveau || v <= 0) return;
-    this.gemmes.push({ id: this.prochaineGemme++, x, y, v, vers: false, age: this.tick });
-    this.ev("gemme", x, y, v);
+  private lacher(x: number, y: number, v: number, k = GEMME_XP): void {
+    if ((!this.niveau && this.contenu.scenario !== "horde") || v <= 0) return;
+    this.gemmes.push({ id: this.prochaineGemme++, x, y, v, k, vers: false, age: this.tick });
+    this.ev("gemme", x, y, v, k);
   }
 
   /** Les gemmes dans le rayon d'aimant volent vers le chevalier (et ne s'arrêtent plus) ; au contact, elles sont ramassées. */
@@ -1000,6 +1441,12 @@ export class Partie {
     const reste: Gemme[] = [];
     for (const g of this.gemmes) {
       const d = distance(g.x, g.y, c.x, c.y);
+      // un cœur attend au sol tant que le chevalier a tous les siens
+      if (g.k === GEMME_COEUR && c.coeurs >= c.coeursMax) {
+        g.vers = false;
+        reste.push(g);
+        continue;
+      }
       if (d < rayon) g.vers = true;
       if (g.vers && d > 0) {
         const pas = Math.min(d, v);
@@ -1007,8 +1454,10 @@ export class Partie {
         g.y += idiv((c.y - g.y) * pas, d);
       }
       if (distance(g.x, g.y, c.x, c.y) <= RAMASSE) {
-        this.xp += g.v;
-        this.ev("ramasse", g.x, g.y, g.v);
+        if (g.k === GEMME_RAGE) this.gagnerRage(g.v);
+        else if (g.k === GEMME_COEUR) this.soigner(g.v);
+        else this.xp += g.v;
+        this.ev("ramasse", g.x, g.y, g.v, g.k);
       } else reste.push(g);
     }
     this.gemmes = reste;
@@ -1060,18 +1509,34 @@ export class Partie {
   private apparaitre(n: number): void {
     for (let i = 0; i < n && this.monstres.length < MAX_MONSTRES; i++) {
       const angle = this.rng.int(128);
-      const type = this.rng.int(100) < 60 ? GELEE : CHAUVE;
+      const tirage = this.rng.int(100);
+      const type = tirage < 45 ? GELATON : tirage < 75 ? GELEE : CHAUVE; // lot BR5 : l'arène d'essai a des gélatons
       const r = RAYON_ARENE - cm(70);
       const x = idiv(COS[angle]! * r, 1024);
       const y = idiv(SIN[angle]! * r, 1024);
       const t = this.rng.int(40);
-      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: type === GELEE ? VIE_GELEE : VIE_CHAUVE, flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x - this.c.x, y - this.c.y), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0, sbire: 0 });
+      this.monstres.push({ id: this.prochainId++, type, x, y, kx: 0, ky: 0, hp: viePar(type), flash: 0, etat: ORBITE, t, age: this.tick, a: dirVers(x - this.c.x, y - this.c.y), sens: this.rng.int(2) === 0 ? 1 : -1, cx: 0, cy: 0, gel: 0, duree: 120 + this.rng.int(120), coup: 0, hx: x, hy: y, alerte: 1, laisse: 0, ra: 0, sbire: 0 });
       this.ev("apparition", x, y, type);
     }
   }
 
   private apparitions(): void {
     const k = this.contenu.scenario;
+    if (k === "horde") {
+      // La horde fauchée (il en reste quelques-uns), une autre arrive après une pause ; les vases aussi se refont quand il n'en reste plus.
+      if (this.monstres.length > 4) this.videDepuis = -1;
+      else if (this.videDepuis < 0) this.videDepuis = this.tick;
+      else if (this.tick - this.videDepuis >= 120) {
+        this.monstres = [];
+        this.horde();
+        if (this.vases.length < 12) {
+          this.vases = [];
+          this.vasesDeLaHorde();
+        }
+        this.videDepuis = -1;
+      }
+      return;
+    }
     if (k === "arene") {
       if (this.contenu.monstres > 0) {
         // Le test de charge : l'arène garde `monstres` monstres en vie, cinq de plus toutes les 1,5 s.
@@ -1118,22 +1583,26 @@ export class Partie {
       m.t = 0;
       return;
     }
-    if (m.type === GELEE) {
-      // Au repos (lot BR1), elle reste à sa place. En alerte elle s'écrase (annonce), vise juste avant de bondir, bondit, se repose ; de retour, elle bondit vers sa place.
+    if (m.type === GELEE || m.type === GELATON) {
+      // Au repos (lot BR1), elle reste à sa place. En alerte elle s'écrase (annonce), vise juste avant de bondir, bondit, se repose ; de retour, elle bondit vers sa place. (Lot BR5 : le gélaton fait de même, en plus court et plus vite.)
       if (m.laisse > 0 && m.alerte === 0) {
         m.t = 0;
         return;
       }
       const but = m.alerte === 2 ? { x: m.hx, y: m.hy } : c;
       const d = this.durees;
-      m.t = (m.t + 1) % d.geleeCycle;
-      if (m.t === Math.max(1, d.geleeAnnonce - GELEE_VERROU)) {
+      const gelaton = m.type === GELATON;
+      const cycle = gelaton ? d.gelatonCycle : d.geleeCycle;
+      const annonce = gelaton ? d.gelatonAnnonce : d.geleeAnnonce;
+      const bond = gelaton ? d.gelatonBond : d.geleeBond;
+      m.t = (m.t + 1) % cycle;
+      if (m.t === Math.max(1, annonce - (gelaton ? GELATON_VERROU : GELEE_VERROU))) {
         const [ux, uy] = unitaire(but.x - m.x, but.y - m.y);
         m.cx = ux;
         m.cy = uy;
       }
-      if (m.t >= d.geleeAnnonce && m.t < d.geleeAnnonce + d.geleeBond) {
-        const v = this.vitesse(GELEE_VITESSE);
+      if (m.t >= annonce && m.t < annonce + bond) {
+        const v = this.vitesse(gelaton ? GELATON_VITESSE : GELEE_VITESSE);
         this.deplacer(m, idiv(m.cx * v, 1024), idiv(m.cy * v, 1024));
       }
       return;
@@ -1185,10 +1654,10 @@ export class Partie {
     if (m.alerte === 0) {
       if (this.barriere < 0 && dc < alerte) {
         m.alerte = 1;
-        m.t = 0;
-        c.calme = 0; // lot BR1b : un ennemi qui s'alerte coupe la course
-        c.elan = 0;
+        m.t = m.type === GELATON ? (m.id * 7) % this.durees.gelatonCycle : 0; // une meute ne bondit pas d'un seul bloc
+        c.calme = 0; // lot BR1b : un ennemi qui s'alerte empêche d'en commencer une (lot BR5 : il ne coupe plus la course lancée)
         this.ev("alerte", m.x, m.y, m.type);
+        this.alerterLaMeute(m);
       }
     } else if (m.alerte === 1) {
       if (distance(m.x, m.y, m.hx, m.hy) > m.laisse || dc > alerte * 2 || this.barriere >= 0) {
@@ -1205,6 +1674,17 @@ export class Partie {
     }
   }
 
+  /** Lot BR5 — une meute s'alerte d'un seul mouvement : quand un gélaton s'alerte, ceux qui sont au repos à moins de 7 m de lui le suivent (ils se jettent en groupe). */
+  private alerterLaMeute(m: Monstre): void {
+    if (m.type !== GELATON) return;
+    for (const q of this.monstres) {
+      if (q === m || q.type !== GELATON || q.hp <= 0 || q.laisse === 0 || q.alerte !== 0 || distance2(q.x, q.y, m.x, m.y) > RAYON_MEUTE * RAYON_MEUTE) continue;
+      q.alerte = 1;
+      q.t = (q.id * 7) % this.durees.gelatonCycle;
+      this.ev("alerte", q.x, q.y, q.type);
+    }
+  }
+
   /** Les monstres (et le golem) ne se superposent pas : ils se repoussent. */
   private separer(): void {
     const ms = this.monstres;
@@ -1216,6 +1696,7 @@ export class Partie {
         const b = ms[j]!;
         if (b.hp <= 0) continue;
         if (this.niveau && (a.type === CHAUVE || b.type === CHAUVE)) continue; // dans le niveau, la chauve-souris vole par-dessus les autres
+        if (a.laisse > 0 && a.alerte === 0 && b.laisse > 0 && b.alerte === 0) continue; // lot BR5 : deux monstres au repos ne bougent pas et le générateur les a posés à l'écart (150 monstres : on ne compare pas leurs 11 000 paires à chaque tick)
         const somme = ra + rayonDe(b.type);
         const dx = b.x - a.x;
         const dy = b.y - a.y;
@@ -1399,7 +1880,7 @@ export class Partie {
 
   /** Des gelées naissent : invoquées par le chêne (`sbire` 1) ou issues de la reine qui se divise (2, plus petites). Elles poursuivent le chevalier partout et ne lâchent pas d'XP. */
   private naitre(x: number, y: number, sbire: number): void {
-    if (this.monstres.length >= MAX_MONSTRES) return;
+    if (this.monstres.filter((m) => m.sbire !== 0 && m.hp > 0).length >= MAX_SBIRES) return;
     const [nx, ny] = this.dansLArene(x, y, cm(60));
     this.monstres.push({ id: this.prochainId++, type: GELEE, x: nx, y: ny, kx: 0, ky: 0, hp: sbire === 2 ? VIE_PETITE : VIE_GELEE, flash: 0, etat: ORBITE, t: this.rng.int(20), age: this.tick, a: 0, sens: 1, cx: 0, cy: 0, gel: sbire === 2 ? 300 : 60, duree: 999, coup: 0, hx: nx, hy: ny, alerte: 1, laisse: 0, ra: 0, sbire });
   }
@@ -1684,6 +2165,8 @@ export class Partie {
     for (const m of this.monstres) {
       if (m.hp <= 0 || m.gel > 0) continue;
       if (m.type === CHAUVE && m.etat === REPOS) continue;
+      // Lot BR5 : un gélaton ne blesse que PENDANT SON BOND (le danger est annoncé, lisible) : on peut traverser une meute qui s'écrase ou se repose pour la faucher.
+      if (m.type === GELATON && !(m.t >= this.durees.gelatonAnnonce && m.t < this.durees.gelatonAnnonce + this.durees.gelatonBond)) continue;
       const somme = rayonDe(m.type) + RAYON_CHEVALIER;
       if (distance2(c.x, c.y, m.x, m.y) < somme * somme) {
         m.gel = 40;
@@ -1716,11 +2199,15 @@ export class Partie {
     const dy = ux === 0 && uy === 0 ? 1024 : uy;
     c.kx = idiv(dx * cm(48), 1024);
     c.ky = idiv(dy * cm(48), 1024);
-    c.etat = LIBRE;
-    c.t = 0;
+    // Lot BR5 : un dégât ne coupe pas une compétence (le tourbillon est un blindage ; le bond est invulnérable en l'air)
+    if (c.etat !== COMPETENCE) {
+      c.etat = LIBRE;
+      c.t = 0;
+    }
     c.tampon = 0;
     c.reprise = 0;
     c.combo = 0;
+    c.fente = 0;
     this.ev("degats", c.x, c.y, c.coeurs);
     if (c.coeurs <= 0) {
       if (this.immortel) {
@@ -1778,7 +2265,7 @@ export class Partie {
     const idx = caseDe(n, x, y);
     if (idx < 0) return false;
     const c = n.cases[idx]!;
-    return (c === SOL || c === PONT) && !(this.barriere >= 0 && this.porte.has(idx)) && this.bloquees[idx] !== 1;
+    return (c === SOL || c === PONT) && !(this.barriere >= 0 && this.porte.has(idx));
   }
 
   /** Un disque de rayon `r` tient en (x, y) : les quatre coins de son carré sont sur des cases marchables (une case fait 2 m, plus que tout corps). */

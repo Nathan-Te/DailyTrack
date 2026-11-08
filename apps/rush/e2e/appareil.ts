@@ -36,9 +36,14 @@ export interface PorteScene {
   choixEnAttente(): { nv: number; cartes: string[] } | null;
   selection(): number;
   choisir(i: number): void;
+  /** Lot BR5 : la compétence choisie au départ (−1 : pas encore), le choix en attente, et de quoi la choisir (`i` ; sans argument, celle que le pilote joue contre le boss du jour). */
+  competence(): number;
+  attenteDepart(): boolean;
+  choisirCompetence(i?: number): void;
   sons(): string[];
   calls(): number;
-  scene(): { getObjectByName(nom: string): { visible: boolean } | undefined };
+  scene(): { getObjectByName(nom: string): { visible: boolean } | undefined; traverse?(f: (o: never) => void): void };
+  camera(): { x: number; y: number; z: number; fov: number };
   qualite(): "haute" | "basse";
   definirQualite(q: "haute" | "basse"): void;
   dessinerMaintenant(): void;
@@ -80,9 +85,15 @@ export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&m
 }
 
 /** Lance la partie du jour (JOUER) : l'adresse porte `?debug&manuel`, la partie ne joue que pas à pas — rien ne dépend de l'horloge de la page. */
-export async function lancer(page: Page): Promise<void> {
+export async function lancer(page: Page, competence: number | "pilote" | null = "pilote"): Promise<void> {
   await page.locator("#jeu-jouer").click();
   await page.waitForFunction(() => !!(window as unknown as { __jeu?: unknown }).__jeu && !!(window as unknown as { __rush?: unknown }).__rush);
+  // Lot BR5 : le jour commence par le choix de la compétence (le chrono ne tourne pas) ; `null` laisse l'écran ouvert (les tests de l'écran lui-même).
+  if (competence !== null) {
+    await page.evaluate((c) => {
+      if (window.__rush.attenteDepart()) window.__rush.choisirCompetence(c === "pilote" ? undefined : c);
+    }, competence);
+  }
 }
 
 /**
@@ -90,9 +101,9 @@ export async function lancer(page: Page): Promise<void> {
  * ce que le joueur a fait dans le navigateur est exactement ce que le serveur rejouera.
  */
 export async function jouerLeJour(page: Page, attente = 5): Promise<Resultat> {
-  const { changements, choix } = await page.evaluate((attente) => {
+  const { changements, choix, competence } = await page.evaluate((attente) => {
     window.__rush.jouerPilote(40_000, attente);
-    return { changements: window.__rush.changements(), choix: window.__rush.choix() };
+    return { changements: window.__rush.changements(), choix: window.__rush.choix(), competence: window.__rush.competence() };
   }, attente);
-  return jouer(dailyRush(parseDay(JOUR)!), changements, undefined, choix);
+  return jouer(dailyRush(parseDay(JOUR)!), changements, undefined, choix, competence);
 }

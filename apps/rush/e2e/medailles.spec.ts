@@ -19,7 +19,7 @@ test.describe("Rush : les médailles", () => {
       const l = ligneDuJour(dailyRush(jour + k));
       const tr = lignes.nth(k);
       await expect(tr).toHaveAttribute("data-diamant", l.diamant);
-      for (const s of STRATEGIES) await expect(tr.locator(`td[data-strategie="${s}"]`)).toHaveText(formatTemps(l.temps[s], "fr"));
+      for (const s of STRATEGIES) await expect(tr.locator(`td[data-strategie="${s}"]`)).toHaveText(l.temps[s] >= 36000 ? "—" : formatTemps(l.temps[s], "fr")); // une partie perdue (le pire temps) s'écrit « — »
       // la cellule du Diamant est marquée, et le seuil « Diamant » est son temps
       await expect(tr.locator(`td.rush-medailles__diamant`)).toHaveAttribute("data-strategie", l.diamant);
       for (const m of ["author", "gold", "silver", "bronze"] as const) await expect(tr.locator(`td[data-seuil="${m}"]`)).toHaveText(formatTemps(l.seuils[m], "fr"));

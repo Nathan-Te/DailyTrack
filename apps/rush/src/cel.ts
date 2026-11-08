@@ -85,6 +85,28 @@ const matiereCoque = new ShaderMaterial({
   fog: false,
 });
 
+/** Lot BR5 : la coque de contour d'un tas INSTANCIÉ (les gélatons, les vases) : la même, mais le décalage suit la matrice de chaque instance. */
+export function coqueInstanciee(): ShaderMaterial {
+  return new ShaderMaterial({
+    side: BackSide,
+    uniforms: { pas: pasContour, c: { value: new Color(ENCRE) } },
+    vertexShader: `uniform vec2 pas;
+      void main(){
+        mat4 mv = modelViewMatrix;
+        #ifdef USE_INSTANCING
+          mv = modelViewMatrix * instanceMatrix;
+        #endif
+        vec4 p = projectionMatrix * mv * vec4(position, 1.0);
+        vec2 d = (projectionMatrix * vec4(normalize(mat3(mv) * normal), 0.0)).xy;
+        float n = length(d);
+        if (n > 1e-5) p.xy += d / n * pas * p.w;
+        gl_Position = p;
+      }`,
+    fragmentShader: "uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }",
+    fog: false,
+  });
+}
+
 const lisses = new WeakMap<BufferGeometry, BufferGeometry>();
 /** La même forme aux normales lissées (sans arête vive) : le contour d'un cube ou d'un cylindre ne se déchire pas aux angles. */
 export function lisse(g: BufferGeometry): BufferGeometry {

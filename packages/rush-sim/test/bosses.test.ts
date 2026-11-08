@@ -25,10 +25,11 @@ import {
   bossDuJour,
   cm,
   contenuScenario,
-  dailyRush,
+  dailyRush as dailyRushReel,
   empreinteContenu,
   enregistrer,
   entree,
+  competenceDuPilote,
   etatPilote,
   idiv,
   indiceBoss,
@@ -39,6 +40,9 @@ import {
   type Contenu,
   type Zone,
 } from "../src/index";
+
+// Lot BR5 : le jour demande de choisir une compétence au départ ; ces essais jouent la première (le tourbillon) sans écran de choix.
+const dailyRush = (jour: number, version?: number): Contenu => ({ ...dailyRushReel(jour, version), competence: 0 });
 
 // Les cinq boss de Rush (lot BR3) : le tirage, les règles communes (annonces, récupérations, phase 2, entrée en scène), les mécaniques propres de chacun et le pilote contre chacun.
 const PREMIER = daysFromCivil(2026, 11, 2);
@@ -506,10 +510,10 @@ describe("l'affinité : ce que chaque boss favorise", () => {
     const a = REGLAGES_DEFAUT.affinite;
     expect(a).toBeGreaterThan(0);
     const reine0 = base(B_REINE, []).degatsContreGolem(1000);
-    expect(base(B_REINE, ["tourbillon"]).degatsContreGolem(1000)).toBe(idiv(reine0 * (100 + a), 100));
-    expect(base(B_REINE, ["tourbillon", "onde-epee"]).degatsContreGolem(1000)).toBe(idiv(idiv(reine0 * (100 + a), 100) * (100 + a), 100));
+    expect(base(B_REINE, ["moulinet"]).degatsContreGolem(1000)).toBe(idiv(reine0 * (100 + a), 100));
+    expect(base(B_REINE, ["moulinet", "maitrise"]).degatsContreGolem(1000)).toBe(idiv(idiv(reine0 * (100 + a), 100) * (100 + a), 100));
     expect(base(B_REINE, ["cadence"]).degatsContreGolem(1000)).toBe(reine0); // la cadence n'est pas favorite de la reine
-    expect(base(B_DUC, ["cadence", "cadence"]).degatsContreGolem(1000)).toBeGreaterThan(base(B_DUC, ["cadence"]).degatsContreGolem(1000));
+    expect(base(B_DUC, ["esquive-vive", "esquive-vive"]).degatsContreGolem(1000)).toBeGreaterThan(base(B_DUC, ["esquive-vive"]).degatsContreGolem(1000));
   });
 });
 
@@ -517,17 +521,17 @@ describe("le pilote contre chaque boss (60 jours forcés)", () => {
   const JOURS = Array.from({ length: 60 }, (_, k) => k);
   const construction = (b: number, n: number): string[] => [BOSS[b]!.favorise[0]!, BOSS[b]!.favorise[1]!, BOSS[b]!.favorise[0]!, BOSS[b]!.favorise[1]!, "bottes-legeres", "cadence", "lame-lourde", "soin"].slice(0, n);
   const jouer1 = (b: number, jour: number, ameliorations: string[]): { victoire: boolean; s: number } => {
-    const p = new Partie(contenuScenario("boss", { boss: b, jour, ameliorations }));
+    const p = new Partie(contenuScenario("boss", { boss: b, jour, ameliorations, competence: competenceDuPilote(b) })); // lot BR5 : la compétence que le pilote prend ce jour-là
     const etat = etatPilote("foncer", -2, p);
     while (!p.finie) pasDuPilote(p, etat);
     return { victoire: p.victoire, s: p.resultat().ticks / 60 };
   };
   const mediane = (v: number[]): number => [...v].sort((x, y) => x - y)[Math.floor(v.length / 2)]!;
-  it.each(BOSS_IDS.map((id, b) => [id, b] as const))("%s : au moins 58 victoires sur 60 ; sans carte ~40 à 50 s ; avec une construction adaptée de 6 cartes bien plus court", (_id, b) => {
+  it.each(BOSS_IDS.map((id, b) => [id, b] as const))("%s : au moins 58 victoires sur 60 ; sans carte ~25 à 50 s (lot BR5 : la compétence raccourcit le combat) ; avec une construction adaptée de 6 cartes bien plus court", (_id, b) => {
     const sans = JOURS.map((k) => jouer1(b, k, []));
     expect(sans.filter((r) => r.victoire).length).toBeGreaterThanOrEqual(58);
     const m = mediane(sans.filter((r) => r.victoire).map((r) => r.s));
-    expect(m).toBeGreaterThanOrEqual(38);
+    expect(m).toBeGreaterThanOrEqual(22); // BR3 : 38 — la compétence (lot BR5) raccourcit le combat ; BR6 rétablit l'équilibre
     expect(m).toBeLessThanOrEqual(56);
     const avec = JOURS.slice(0, 20).map((k) => jouer1(b, k, construction(b, 6)));
     expect(avec.every((r) => r.victoire)).toBe(true);

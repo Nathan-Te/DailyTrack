@@ -105,7 +105,11 @@ describe("le contenu", () => {
   it("les scénarios ont leur contenu et ne dépendent pas du jour", () => {
     expect(contenuScenario("boss").scenario).toBe("boss");
     expect(contenuScenario("boss", { phase2: true }).phase2).toBe(true);
-    expect(contenuScenario("arene", { monstres: 99 }).monstres).toBe(40);
+    expect(contenuScenario("arene", { monstres: 99 }).monstres).toBe(80); // lot BR5 : 80 (40 au BR4)
+    expect(contenuScenario("horde").scenario).toBe("horde");
+    expect(contenuScenario("horde", { competence: 2 }).competence).toBe(2);
+    expect(contenuScenario("horde", { competence: 9 }).competence).toBe(0);
+    expect(dailyRush(J).competence).toBe(-1); // le jour : la compétence se choisit au départ
     expect(contenuScenario("arene")).toEqual(contenuScenario("arene"));
   });
   it("un jour figé se relit, un fichier altéré non", () => {
@@ -540,8 +544,8 @@ describe("la visée et le coup tenu (lot BR0b)", () => {
   });
   it("la rediffusion garde la visée : une partie avec visée se rejoue exactement", () => {
     const changements: Changement[] = Array.from({ length: 300 }, (_, i) => ({ tick: i * 7, e: entree((i * 5) % 32, i % 3 === 0, i % 11 === 0, i % 4 === 0 ? -1 : (i * 3) % 32) }));
-    const a = jouer(dailyRush(J), changements);
-    const texte = enregistrer(dailyRush(J), changements);
+    const a = jouer(dailyRush(J), changements, undefined, [], 0);
+    const texte = enregistrer(dailyRush(J), changements, [], 0);
     expect(decoderRediffusion(texte).changements).toEqual(changements);
     expect(rejouer(dailyRush(J), texte)).toEqual(a);
     const sansVisee = changements.map((c) => ({ ...c, e: c.e & 255 }));
@@ -585,10 +589,10 @@ describe("l'arène", () => {
     expect(t1 - t0).toBeGreaterThanOrEqual(150); // la pause
     expect(t1).toBeGreaterThan(0);
   });
-  it("garde les monstres vivants au nombre demandé, borné à 40", () => {
+  it("garde les monstres vivants au nombre demandé, borné à 80 (lot BR5 ; 40 au BR4)", () => {
     const p = new Partie(contenuScenario("arene", { monstres: 30 }));
     avancerN(p, 3600, 0);
-    expect(p.monstres.length).toBeLessThanOrEqual(40);
+    expect(p.monstres.length).toBeLessThanOrEqual(80);
     const q = new Partie(contenuScenario("arene", { monstres: 30 }));
     for (let i = 0; i < 4000; i++) {
       q.c.degat = 99;
@@ -638,8 +642,8 @@ describe("le déterminisme", () => {
 });
 
 describe("la rediffusion", () => {
-  const { changements, choix, resultat } = jouerLePilote(dailyRush(J));
-  const texte = enregistrer(dailyRush(J), changements, choix);
+  const { changements, choix, competence, resultat } = jouerLePilote(dailyRush(J));
+  const texte = enregistrer(dailyRush(J), changements, choix, competence);
   it("se rejoue au bit près et donne le score classé", () => {
     expect(rejouer(dailyRush(J), texte)).toEqual(resultat);
     expect(scoreParColonnes(resultat)).toEqual({ temps: resultat.ticks });
@@ -660,15 +664,16 @@ describe("la rediffusion", () => {
     expect(() => decoderRediffusion(encoderRediffusion({ sim: 1, g: 1, contenu: { jour: J }, changements: trop }))).toThrow();
   });
   it("une partie vide est valide et vaut le pire temps", () => {
-    const vide = jouer(dailyRush(J), []);
+    const vide = jouer(dailyRush(J), [], undefined, [], 0);
     expect(vide.victoire).toBe(false);
     expect(VARIANTE.score(vide)).toEqual([DUREE_TICKS]);
   });
   it("un réglage de la sensation change la partie (et donc n'est pas classable)", () => {
     expect(reglagesDe({ vitesse: 99999, inconnu: 3 }).vitesse).toBe(900);
     expect(reglagesDe(null)).toEqual(REGLAGES_DEFAUT);
-    const lent = jouer(BOSS, changements, { ...REGLAGES_DEFAUT, vitesse: 300 });
-    expect(lent).not.toEqual(jouer(BOSS, changements));
+    // (lot BR5 : le résumé d'une partie courte peut être le même — le chevalier meurt au même tick — ; l'empreinte de tout l'état, elle, change)
+    const lent = jouerJusqua(BOSS, changements, 600, { ...REGLAGES_DEFAUT, vitesse: 300 });
+    expect(lent.empreinte).not.toBe(jouerJusqua(BOSS, changements, 600).empreinte);
   });
 });
 

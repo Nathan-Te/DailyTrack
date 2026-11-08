@@ -17,7 +17,7 @@ const l0 = (o: { t: ReturnType<typeof traducteur>; langue: "fr" | "en" }): strin
 describe("les cartes choisies, au bas de l'écran de fin", () => {
   it("écrivent les cartes prises dans l'ordre du catalogue, avec ×n pour un palier au-delà du premier", () => {
     const t = traducteur("fr");
-    expect(cartesPrises(paliers({ "lame-lourde": 2, tourbillon: 1, "bottes-legeres": 3 }), t)).toEqual(["Lame lourde ×2", "Tourbillon", "Bottes légères ×3"]);
+    expect(cartesPrises(paliers({ "lame-lourde": 2, moulinet: 1, "bottes-legeres": 3 }), t)).toEqual(["Lame lourde ×2", "Moulinet", "Bottes légères ×3"]);
     expect(cartesPrises(paliers({}), t)).toEqual([]);
     expect(cartesPrises(new Array(NB_AMELIORATIONS).fill(0), traducteur("en"))).toEqual([]);
   });

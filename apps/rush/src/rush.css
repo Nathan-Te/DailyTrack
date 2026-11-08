@@ -256,6 +256,60 @@
   transform: translate(2px, 2px);
   box-shadow: 0 0 0 var(--dj-encre);
 }
+/* Lot BR5 : le bouton « Compétence » et sa jauge de rage (un anneau autour, --rage de 0 à 1) ; prêt, il s'illumine et pulse. Au doigt : au-dessus des deux autres ; au PC : une pastille ronde en bas à droite. Jamais de rouge (réservé au danger). */
+.rush-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 260px;
+}
+.rush-bouton--comp {
+  position: relative;
+  order: -1;
+  flex: 0 0 auto;
+  margin: 0 12px 14px auto;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+}
+.rush-bouton--comp::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  background: conic-gradient(var(--dj-diamant) calc(var(--rage, 0) * 360deg), var(--dj-papier) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  opacity: 0.95;
+  pointer-events: none;
+}
+.rush-bouton--comp[data-pret] {
+  background: var(--dj-moutarde);
+  animation: rush-pret 0.7s ease-in-out infinite alternate;
+}
+@keyframes rush-pret {
+  to {
+    transform: scale(1.1);
+  }
+}
+.rush-hud > .rush-bouton--comp {
+  position: absolute;
+  right: max(var(--dj-espace-5), env(safe-area-inset-right));
+  bottom: max(var(--dj-espace-5), env(safe-area-inset-bottom));
+  margin: 0;
+  width: 64px;
+  height: 64px;
+}
+.rush-hud > .rush-bouton--comp .rush-bouton__nom {
+  display: none;
+}
+.rush-option[data-famille="competence"] .rush-option__icone {
+  background: var(--dj-diamant);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rush-bouton--comp[data-pret] {
+    animation: none;
+  }
+}
 .rush-bouton__icone {
   width: 54%;
   height: 54%;

@@ -1,6 +1,6 @@
 import { cpus } from "node:os";
 import { daysFromCivil } from "@cdj/core";
-import { BOSS_IDS, REGLAGES_DEFAUT, MAX_CHANGEMENTS, PAS_MIN_DIRECTION, PAS_MIN_VISEE, Partie, contenuScenario, dailyRush, encoderRediffusion, entree, etatPilote, jouer, jouerLePilote, pasDuPilote, tempsSansRencontre, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, type Changement, type Choix } from "../src/index";
+import { BOSS_IDS, REGLAGES_DEFAUT, MAX_CHANGEMENTS, competenceDuPilote, PAS_MIN_DIRECTION, PAS_MIN_VISEE, Partie, contenuScenario, dailyRush, encoderRediffusion, entree, etatPilote, jouer, jouerLePilote, pasDuPilote, tempsSansRencontre, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, type Changement, type Choix } from "../src/index";
 
 // Les mesures des lots BR0 à BR2 (l'ÉQUILIBRE des trois stratégies est dans `tools/equilibre.ts` : `npm run equilibre:rush -w @cdj/rush-sim`) : `npm run mesures:rush -w @cdj/rush-sim` (Node seulement ; aucune base, aucun réseau). Le coût du rejeu d'une partie de 2 et de 5 minutes, la taille de la rediffusion, le coût par tick d'un jeu à
 // 30 monstres. Le texte imprimé est celui que le README du lot recopie.
@@ -85,10 +85,11 @@ console.log(`Écart beaucoup − foncer (parties gagnées des deux côtés, min 
 const jour = dailyRush(daysFromCivil(2026, 11, 5));
 const bot = jouerLePilote(jour);
 const botTout = jouerLePilote(jour, REGLAGES_DEFAUT, Infinity, "beaucoup");
-console.log(`Partie du jour (2026-11-05), le pilote qui fonce : ${bot.ticks} ticks (${(bot.ticks / 60).toFixed(1)} s), rejeu ${chrono(() => jouer(jour, bot.changements, REGLAGES_DEFAUT, bot.choix)).toFixed(2)} ms · ${bot.changements.length} changements, ${bot.choix.length} choix · ${taille(bot.changements, { scenario: "jour" }, bot.choix)} caractères`);
-console.log(`Partie du jour (2026-11-05), le pilote « beaucoup d'XP » : ${botTout.ticks} ticks (${(botTout.ticks / 60).toFixed(1)} s), niveau ${botTout.resultat.nv}, rejeu ${chrono(() => jouer(jour, botTout.changements, REGLAGES_DEFAUT, botTout.choix)).toFixed(2)} ms · ${botTout.changements.length} changements, ${botTout.choix.length} choix · ${taille(botTout.changements, { scenario: "jour" }, botTout.choix)} caractères`);
+console.log(`Partie du jour (2026-11-05), le pilote qui fonce : ${bot.ticks} ticks (${(bot.ticks / 60).toFixed(1)} s), rejeu ${chrono(() => jouer(jour, bot.changements, REGLAGES_DEFAUT, bot.choix, bot.competence)).toFixed(2)} ms · ${bot.changements.length} changements, ${bot.choix.length} choix · ${taille(bot.changements, { scenario: "jour" }, bot.choix)} caractères`);
+console.log(`Partie du jour (2026-11-05), le pilote « beaucoup d'XP » : ${botTout.ticks} ticks (${(botTout.ticks / 60).toFixed(1)} s), niveau ${botTout.resultat.nv}, rejeu ${chrono(() => jouer(jour, botTout.changements, REGLAGES_DEFAUT, botTout.choix, botTout.competence)).toFixed(2)} ms · ${botTout.changements.length} changements, ${botTout.choix.length} choix · ${taille(botTout.changements, { scenario: "jour" }, botTout.choix)} caractères`);
 const pireJour = chrono(() => {
   const p = new Partie(jour, REGLAGES_DEFAUT);
+  p.choisirCompetence(0); // lot BR5 : la compétence se choisit avant de partir (sinon la partie n'avance pas)
   let t = 0;
   // Un chevalier qui ne meurt jamais et qui court en rond (dans l'arène) : le pire coût d'une rediffusion du jour (10 minutes, le golem et ses monstres en permanence).
   while (!p.finie) {
@@ -105,7 +106,7 @@ let pireNettoyage = 0;
 for (let k = 0; k < 60; k++) {
   const c = dailyRush(PREMIER + k);
   const r = jouerLePilote(c, REGLAGES_DEFAUT, Infinity, "beaucoup");
-  pireNettoyage = Math.max(pireNettoyage, chrono(() => jouer(c, r.changements, REGLAGES_DEFAUT, r.choix), 3));
+  pireNettoyage = Math.max(pireNettoyage, chrono(() => jouer(c, r.changements, REGLAGES_DEFAUT, r.choix, r.competence), 3));
 }
 console.log(`Rejeu de la pire partie « beaucoup d'XP » sur 60 jours : ${pireNettoyage.toFixed(1)} ms`);
 
@@ -119,7 +120,7 @@ console.log(`Rejeu de la pire partie « beaucoup d'XP » sur 60 jours : ${pireNe
   const boucles = niveaux.reduce((a, n) => a + n.detours.filter((d) => d.hub2 >= 0).length, 0);
   const detoursTous = niveaux.reduce((a, n) => a + n.detours.length, 0);
   console.log(`BR1b, 365 niveaux : chemin principal ${q3(niveaux.map((n) => n.longueurCm / 100), 0)} m · plus long tronçon sans rencontre ${q3(niveaux.map((n) => tempsSansRencontre(n)))} s de course · rencontres ${q3(niveaux.map((n) => n.rencontres.length), 0)} · une clairière ou une rencontre tous les ${(niveaux.reduce((a, n) => a + n.longueurCm / 100 / (n.clairieres.filter((c) => c.genre === "etape").length + n.rencontres.length + 1), 0) / 365).toFixed(1)} m en moyenne`);
-  console.log(`  détours : ${boucles}/${detoursTous} en boucle (${((100 * boucles) / detoursTous).toFixed(0)} %), ${niveaux.filter((n) => n.detours.every((d) => d.hub2 >= 0)).length}/365 jours entièrement en boucle · obstacles ${q3(niveaux.map((n) => n.obstacles.length), 0)} (${niveaux.reduce((a, n) => a + n.obstacles.filter((o) => o.contournable).length, 0)}/${niveaux.reduce((a, n) => a + n.obstacles.length, 0)} contournables) · monstres ${q3(niveaux.map((n) => n.monstres.length), 0)}`);
+  console.log(`  détours : ${boucles}/${detoursTous} en boucle (${((100 * boucles) / detoursTous).toFixed(0)} %), ${niveaux.filter((n) => n.detours.every((d) => d.hub2 >= 0)).length}/365 jours entièrement en boucle · vases ${q3(niveaux.map((n) => n.vases.length), 0)} (min / médiane / max) · monstres ${q3(niveaux.map((n) => n.monstres.length), 0)} · camps de ${q3(niveaux.flatMap((n) => n.detours.map((d) => n.monstres.filter((m) => m.camp === d.camp).length)), 0)}`);
   const f: number[] = [];
   const nt: number[] = [];
   const arrivee: number[] = [];
@@ -131,6 +132,7 @@ console.log(`Rejeu de la pire partie « beaucoup d'XP » sur 60 jours : ${pireNe
   for (let k = 0; k < 60; k++) {
     const c = dailyRush(PREMIER + k);
     const p = new Partie(c, REGLAGES_DEFAUT);
+    p.choisirCompetence(competenceDuPilote(c.boss)); // lot BR5
     const et = etatPilote("foncer");
     let avant = 0;
     let run = 0;
@@ -170,6 +172,7 @@ for (let b = 0; b < BOSS_IDS.length; b++) {
   const jourB = { ...dailyRush(daysFromCivil(2026, 11, 5)), boss: b };
   const pire5 = chrono(() => {
     const p = new Partie(jourB, REGLAGES_DEFAUT);
+    p.choisirCompetence(0); // lot BR5
     let t = 0;
     while (!p.finie) {
       p.c.coeurs = 3;

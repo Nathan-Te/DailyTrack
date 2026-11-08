@@ -2,11 +2,11 @@
 // aucune règle ici n'est définitive. Les unités : 1 mètre = 4 096 unités (comme les tuiles de Jump), le temps en ticks, les vitesses en unités par tick.
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée. */
-export const RUSH_SIM_VERSION = 7;
+export const RUSH_SIM_VERSION = 8;
 /** La version du générateur du contenu du jour. Elle monte à tout changement de ce que `dailyRush` produit. */
-export const RUSH_GENERATOR_VERSION = 5;
+export const RUSH_GENERATOR_VERSION = 6;
 /** Lot BR4 : la version du pilote (ses trois stratégies, leurs listes de cartes, son anti-blocage) ET du barème des médailles. Le Diamant est la partie du pilote : changer l'un ou l'autre change les médailles des jours non figés, donc elle monte. */
-export const RUSH_BOT_VERSION = 1;
+export const RUSH_BOT_VERSION = 2;
 
 export const TICKS_PAR_SECONDE = 60;
 /** Une partie dure au plus 10 minutes ; au-delà elle est perdue (le pire temps). */
@@ -31,6 +31,8 @@ export const RAYON_GOLEM = cm(170);
 // et la visée est assistée (vers l'ennemi proche).
 export const BIT_COUP = 64;
 export const BIT_ESQUIVE = 128;
+/** Lot BR5 : la COMPÉTENCE (front montant, comme l'esquive) : le bit 6 de l'octet haut (l'entrée tient toujours sur deux octets ; la visée occupe les bits 0 à 5 de l'octet haut). */
+export const BIT_COMPETENCE = 1 << 14;
 export const MASQUE_DIRECTION = 63;
 export const NB_DIRECTIONS_ENTREE = 32;
 /** La visée occupe l'octet haut : `e >> DECALAGE_VISEE` (0 à 63, 0 = aucune). */
@@ -46,8 +48,10 @@ export const PAS_MIN_VISEE = 4;
 
 /** Le nombre de cœurs du chevalier. */
 export const COEURS = 3;
-/** Au plus autant de monstres vivants à la fois (le coût d'un tick reste borné). */
-export const MAX_MONSTRES = 40;
+/** Au plus autant de monstres vivants à la fois dans une arène d'essai (le coût d'un tick reste borné). Lot BR5 : 80 (la horde ; 40 au BR4). */
+export const MAX_MONSTRES = 80;
+/** Lot BR5 : au plus autant de petites gelées nées d'un boss (reine, chêne) à la fois (le niveau porte beaucoup de monstres endormis : les compter tous, comme avant, empêcherait le boss d'en faire naître ; 12 garde le combat de BR3). */
+export const MAX_SBIRES = 12;
 /** Les vagues de l'arène d'essai (`?scenario=arene`, sans `&monstres=`) : au plus autant de monstres en même temps, puis une pause avant la suivante. `&monstres=N` garde N monstres en vie (le test de charge). */
 export const MAX_MONSTRES_VAGUE = 8;
 
@@ -56,6 +60,16 @@ export const MAX_CHOIX = 40;
 /** Lot BR2 : le nombre de cartes proposées à chaque niveau gagné. */
 export const NB_CARTES = 3;
 
-/** Les contenus qu'une partie peut jouer : `jour` (le contenu du jour) et les scénarios d'essai (jamais classés). `vitrine` est une scène figée (lot BR0b) qui sert à comparer le rendu à `docs/rush/maquettes/cible-ia.png` ; `mannequin` (lot BR0c) : six gelées immobiles qui ne meurent pas et un golem qui ne frappe pas, pour juger le coup ; `bestiaire` (lot BR3) : les cinq boss côte à côte, figés, pour juger leurs silhouettes. */
-export type Scenario = "jour" | "arene" | "boss" | "vitrine" | "mannequin" | "cartes" | "bestiaire";
-export const SCENARIOS: readonly Scenario[] = ["jour", "arene", "boss", "vitrine", "mannequin", "cartes", "bestiaire"];
+/** Lot BR5 : les trois COMPÉTENCES (choisies au départ, avant que le chrono parte). L'ordre ne change jamais sans monter `RUSH_SIM_VERSION` : la rediffusion porte l'index. */
+export const COMPETENCES = ["tourbillon", "bond", "bouclier"] as const;
+export type CompetenceId = (typeof COMPETENCES)[number];
+export const NB_COMPETENCES = COMPETENCES.length;
+export const C_TOURBILLON = 0;
+export const C_BOND = 1;
+export const C_BOUCLIER = 2;
+/** L'indice d'une compétence d'après son identifiant d'adresse (`&competence=bond`), ou −1. */
+export const indiceCompetence = (id: string): number => COMPETENCES.indexOf(id as CompetenceId);
+
+/** Les contenus qu'une partie peut jouer : `jour` (le contenu du jour) et les scénarios d'essai (jamais classés). `vitrine` est une scène figée (lot BR0b) qui sert à comparer le rendu à `docs/rush/maquettes/cible-ia.png` ; `mannequin` (lot BR0c) : six gelées immobiles qui ne meurent pas et un golem qui ne frappe pas, pour juger le coup ; `bestiaire` (lot BR3) : les cinq boss côte à côte, figés, pour juger leurs silhouettes ; `horde` (lot BR5) : 30 gélatons, 10 gelées et des groupes de vases, pour juger la fauche et les compétences. */
+export type Scenario = "jour" | "arene" | "boss" | "vitrine" | "mannequin" | "cartes" | "bestiaire" | "horde";
+export const SCENARIOS: readonly Scenario[] = ["jour", "arene", "boss", "vitrine", "mannequin", "cartes", "bestiaire", "horde"];

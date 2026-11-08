@@ -1,4 +1,4 @@
-import { BackSide, CanvasTexture, CircleGeometry, Color, ConeGeometry, DoubleSide, DynamicDrawUsage, Euler, Group, IcosahedronGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, OctahedronGeometry, PlaneGeometry, Quaternion, RingGeometry, ShaderMaterial, SRGBColorSpace, Vector3 } from "three";
+import { BackSide, type BufferGeometry, CanvasTexture, CircleGeometry, Color, ConeGeometry, DoubleSide, DynamicDrawUsage, Euler, ExtrudeGeometry, Group, IcosahedronGeometry, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, OctahedronGeometry, PlaneGeometry, Quaternion, RingGeometry, ShaderMaterial, Shape, SRGBColorSpace, Vector3 } from "three";
 import { plat } from "./cel";
 import { fusionner, teindre } from "./formes";
 import { COULEURS } from "./palette";
@@ -8,9 +8,9 @@ import { COULEURS } from "./palette";
 
 // --- Les éclats --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const MAX_ECLATS = 600;
-export type GenreEclat = "etincelle" | "poussiere" | "gelee" | "pierre" | "chauve" | "feu" | "spore" | "reine";
+export type GenreEclat = "etincelle" | "poussiere" | "gelee" | "pierre" | "chauve" | "feu" | "spore" | "reine" | "gelaton" | "jarre" | "bois" | "planche" | "rage" | "lame";
 /** Les éclats LUMINEUX (étincelles, feu) dépassent 1 : le post-traitement les fait fleurir (bloom) ; les autres restent des couleurs mates. */
-const LUEUR: Partial<Record<GenreEclat, number>> = { etincelle: 2.2, feu: 1.9 };
+const LUEUR: Partial<Record<GenreEclat, number>> = { etincelle: 2.2, feu: 1.9, rage: 1.8, lame: 1.9 };
 const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
   etincelle: [COULEURS.etincelle, 0xffffff, 0xffd166],
   poussiere: [COULEURS.poussiere, 0xcdbb94, 0xf2e6c8],
@@ -21,6 +21,13 @@ const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
   // Lot BR3 : les volutes de spores du vieux chêne (vert-jaune) et l'éclaboussure de la reine gelée qui se divise (bleu).
   spore: [COULEURS.sporesClair, 0x9dbb2a, 0xe4ee86],
   reine: [0x2f78b8, 0xa6d6f2, 0x6fb0e0],
+  // Lot BR5 : un gélaton qui éclate (bleu), les morceaux d'une jarre (terre cuite) et d'un tonneau / d'une caisse (bois), la rage (violet) et l'or pâle du tourbillon.
+  gelaton: [0x3f8fe0, 0xb9dcff, 0x6fb4f0],
+  jarre: [0xc9733e, 0xe7a468, 0x8f4a25, 0xf0c9a0],
+  bois: [0xb07a43, 0x7c5230, 0xd2a468],
+  planche: [0xd9a65f, 0x8f4a25, 0xb07a43],
+  rage: [COULEURS.rage, COULEURS.rageClair, 0xffffff],
+  lame: [COULEURS.lame, 0xffffff, 0xfff2a8],
 };
 
 export class Eclats {
@@ -113,7 +120,7 @@ export class Ombres {
   private readonly q = new Quaternion();
   private readonly s = new Vector3();
   private readonly p = new Vector3();
-  constructor(capacite = 96) {
+  constructor(capacite = 256) {
     const g = new CircleGeometry(1, 20);
     g.rotateX(-Math.PI / 2);
     const c = document.createElement("canvas");
@@ -513,48 +520,72 @@ export class Cratere {
 
 // --- Lot BR2 : les gemmes d'XP et l'onde de l'épée -----------------------------------------------------------------------------------------------------------------------------------------------
 const MAX_GEMMES = 96;
-/** Les gemmes d'XP : des OCTAÈDRES ambre (comme dans la maquette), un seul tas (un appel de dessin) ; elles tournent, flottent un peu et jaillissent à leur chute. Un aplat sans lumière, un peu au-dessus de 1 : le bloom les fait briller. */
+/** Lot BR5 : trois sortes de butin — la gemme d'XP (octaèdre ambre), la RAGE (un cristal violet, plus haut) et le CŒUR (rose) ; chacune a son tas instancié et son liseré d'encre. */
+function formeCoeur(): BufferGeometry {
+  const f = new Shape();
+  f.moveTo(0, -0.3);
+  f.bezierCurveTo(-0.6, 0.1, -0.35, 0.5, 0, 0.24);
+  f.bezierCurveTo(0.35, 0.5, 0.6, 0.1, 0, -0.3);
+  const g = new ExtrudeGeometry(f, { depth: 0.16, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 1 });
+  g.translate(0, 0, -0.08);
+  return g;
+}
+export const GEMME_COULEURS = [new Color(COULEURS.lueur).multiplyScalar(1.25), new Color(COULEURS.rage).multiplyScalar(1.3), new Color(COULEURS.coeur).multiplyScalar(1.15)] as const;
+/** Les butins : des aplats sans lumière, un peu au-dessus de 1 : le bloom les fait briller. Elles tournent, flottent un peu et jaillissent à leur chute. */
 export class Gemmes {
   readonly maillage: InstancedMesh;
   /** Le liseré d'encre qui les détache du sable (la lisibilité : l'ambre sur le sable ne se lit pas) : la même forme, plus grosse, vue de dos. */
   readonly contour: InstancedMesh;
   readonly groupe = new Group();
+  private readonly corps: InstancedMesh[] = [];
+  private readonly contours: InstancedMesh[] = [];
   private readonly m = new Matrix4();
   private readonly q = new Quaternion();
   private readonly p = new Vector3();
   private readonly s = new Vector3();
   private readonly axe = new Vector3(0, 1, 0);
   constructor() {
-    const geo = new OctahedronGeometry(0.3, 0);
-    this.maillage = new InstancedMesh(geo, new MeshBasicMaterial({ color: new Color(COULEURS.lueur).multiplyScalar(1.25), fog: false }), MAX_GEMMES);
-    this.contour = new InstancedMesh(geo, new MeshBasicMaterial({ color: COULEURS.encre, side: BackSide, fog: false }), MAX_GEMMES);
-    for (const mm of [this.maillage, this.contour]) {
-      mm.instanceMatrix.setUsage(DynamicDrawUsage);
-      mm.frustumCulled = false;
-      mm.count = 0;
-      this.groupe.add(mm);
-    }
+    const formes: BufferGeometry[] = [new OctahedronGeometry(0.3, 0), new OctahedronGeometry(0.22, 0).scale(0.8, 1.9, 0.8), formeCoeur()];
+    formes.forEach((geo, k) => {
+      const c = new InstancedMesh(geo, new MeshBasicMaterial({ color: GEMME_COULEURS[k]!, fog: false }), MAX_GEMMES);
+      const o = new InstancedMesh(geo, new MeshBasicMaterial({ color: COULEURS.encre, side: BackSide, fog: false }), MAX_GEMMES);
+      for (const mm of [c, o]) {
+        mm.instanceMatrix.setUsage(DynamicDrawUsage);
+        mm.frustumCulled = false;
+        mm.count = 0;
+        this.groupe.add(mm);
+      }
+      this.corps.push(c);
+      this.contours.push(o);
+    });
+    this.maillage = this.corps[0]!;
+    this.contour = this.contours[0]!;
   }
-  /** Pose les gemmes de la simulation (mètres = unités / 4096) ; `tick` : le tick courant (l'âge d'une gemme), `temps` : les secondes du jeu (la rotation). */
-  maj(gemmes: readonly { id: number; x: number; y: number; v: number; vers: boolean; age: number }[], tick: number, temps: number, metres: (u: number) => number): void {
-    const n = Math.min(MAX_GEMMES, gemmes.length);
-    for (let i = 0; i < n; i++) {
-      const g = gemmes[i]!;
+  /** Pose les butins de la simulation (mètres = unités / 4096) ; `tick` : le tick courant (l'âge d'un butin), `temps` : les secondes du jeu (la rotation). `k` : 0 une gemme d'XP, 1 de la rage, 2 un cœur. */
+  maj(gemmes: readonly { id: number; x: number; y: number; v: number; k: number; vers: boolean; age: number }[], tick: number, temps: number, metres: (u: number) => number): void {
+    const n = [0, 0, 0];
+    for (const g of gemmes) {
+      const k = g.k;
+      const i = n[k]!;
+      if (i >= MAX_GEMMES) continue;
+      n[k]!++;
       const age = tick - g.age;
       // à sa chute elle jaillit (un petit saut), puis flotte
       const saut = age < 18 ? Math.sin((age / 18) * Math.PI) * 0.7 : 0;
-      const taille = (0.9 + Math.min(0.9, Math.sqrt(g.v) * 0.05)) * Math.min(1, 0.35 + age / 10);
+      const taille = (k === 0 ? 0.9 + Math.min(0.9, Math.sqrt(g.v) * 0.05) : k === 1 ? 1.15 : 1.1) * Math.min(1, 0.35 + age / 10);
       this.p.set(metres(g.x), 0.6 + saut + Math.sin(temps * 3 + g.id) * 0.06, metres(g.y));
-      this.q.setFromAxisAngle(this.axe, temps * 2.2 + g.id);
+      this.q.setFromAxisAngle(this.axe, temps * (k === 2 ? 1.6 : 2.2) + g.id);
       this.s.setScalar(taille);
       this.m.compose(this.p, this.q, this.s);
-      this.maillage.setMatrixAt(i, this.m);
+      this.corps[k]!.setMatrixAt(i, this.m);
       this.s.setScalar(taille * 1.28);
       this.m.compose(this.p, this.q, this.s);
-      this.contour.setMatrixAt(i, this.m);
+      this.contours[k]!.setMatrixAt(i, this.m);
     }
-    this.maillage.count = this.contour.count = n;
-    this.maillage.instanceMatrix.needsUpdate = this.contour.instanceMatrix.needsUpdate = true;
+    for (let k = 0; k < 3; k++) {
+      this.corps[k]!.count = this.contours[k]!.count = n[k]!;
+      this.corps[k]!.instanceMatrix.needsUpdate = this.contours[k]!.instanceMatrix.needsUpdate = true;
+    }
   }
 }
 

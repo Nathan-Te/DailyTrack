@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { BOSS_IDS } from "@cdj/rush-sim";
 import { PIERRE, PIERRE_CLAIRE, PIERRE_POING, PIERRE_SOMBRE, PIERRE_TETE } from "../src/acteurs";
 import { DOMINANTES_BOSS } from "../src/bosses";
+import { ALPHAS_JOUEUR } from "../src/competencesVue";
 import { ALPHAS_ANNONCE } from "../src/effets";
+import { GELATON_COULEUR } from "../src/gelatons";
 import { COULEURS, PALETTES } from "../src/palette";
 
 // La LISIBILITÉ sur chaque thème (lot BR1) : le golem, les ennemis, le chevalier et les cercles d'annonce se détachent du sol de CHAQUE thème. Sans navigateur : l'écart de couleur CIELAB (ΔE76, un écart de 2,3 se voit à peine,
@@ -91,6 +93,41 @@ describe("la lisibilité des cinq boss et de leurs annonces sur chaque thème (l
       it("l'anneau d'invocation (violet, PAS un danger) se lit sur le sol : liseré ≥ 40 ; il n'est pas dans la famille du corail", () => {
         for (const sol of [p.sol, p.sol2]) expect(ecart(melange(sol, COULEURS.invocationClair, ALPHAS_ANNONCE.bord), sol)).toBeGreaterThanOrEqual(40);
         expect(ecart(COULEURS.invocationClair, COULEURS.corail)).toBeGreaterThanOrEqual(40);
+      });
+    });
+  }
+});
+
+// Lot BR5 : ce qui est au JOUEUR se lit sur chaque thème sans jamais ressembler à un danger — le cercle d'atterrissage du bond (cyan), les gélatons (bleus, distincts des gelées vertes), la rage (violet), le cœur (rose). Même mesure : ΔE76 contre les deux tons du sol.
+describe("la lisibilité des compétences et du butin sur chaque thème (lot BR5)", () => {
+  const teinte = (c: number): number => {
+    const [, a, b] = lab(c);
+    return (Math.atan2(b, a) * 180) / Math.PI;
+  };
+  const ecartTeinte = (a: number, b: number): number => Math.abs(((teinte(a) - teinte(b) + 540) % 360) - 180);
+  it("rien de ce qui est au joueur n'est de la famille du corail (le rouge reste réservé au danger)", () => {
+    for (const [nom, c] of Object.entries({ joueur: COULEURS.joueur, joueurClair: COULEURS.joueurClair, rage: COULEURS.rage, lame: COULEURS.lame, bouclier: COULEURS.bouclier, gelaton: GELATON_COULEUR })) {
+      expect(ecart(c, COULEURS.corail), nom).toBeGreaterThanOrEqual(40);
+      expect(ecartTeinte(c, COULEURS.corail), `${nom} : la teinte s'écarte d'au moins 45° de celle du corail`).toBeGreaterThanOrEqual(45);
+    }
+    expect(ecart(COULEURS.joueurClair, COULEURS.corailClair)).toBeGreaterThanOrEqual(40);
+  });
+  for (const [nom, p] of Object.entries(PALETTES)) {
+    describe(nom, () => {
+      const opaque = ALPHAS_JOUEUR.fond + ALPHAS_JOUEUR.rempli;
+      it("le cercle d'atterrissage du bond (cyan translucide, son liseré) tranche sur le sol : disque ≥ 25, liseré ≥ 25", () => {
+        for (const sol of [p.sol, p.sol2]) {
+          expect(ecart(melange(sol, COULEURS.joueur, opaque), sol), "disque").toBeGreaterThanOrEqual(25);
+          expect(ecart(melange(sol, COULEURS.joueurClair, ALPHAS_JOUEUR.bord), sol), "liseré").toBeGreaterThanOrEqual(25);
+        }
+      });
+      it("les gélatons (bleus) tranchent sur le sol (≥ 25) et ne se confondent pas avec les gelées (≥ 25)", () => {
+        expect(plusPetit(GELATON_COULEUR, p), "gélaton").toBeGreaterThanOrEqual(25);
+        expect(ecart(GELATON_COULEUR, COULEURS.gelee), "gélaton contre gelée").toBeGreaterThanOrEqual(25);
+      });
+      it("la rage (violet) et le cœur (rose) tranchent sur le sol (≥ 25)", () => {
+        expect(plusPetit(COULEURS.rage, p), "rage").toBeGreaterThanOrEqual(25);
+        expect(plusPetit(COULEURS.coeur, p), "cœur").toBeGreaterThanOrEqual(25);
       });
     });
   }

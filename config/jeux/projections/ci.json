@@ -1331,6 +1331,10 @@
           "medailles.spec.ts": [
             "rush-sim",
             "rush-jeu"
+          ],
+          "competences.spec.ts": [
+            "rush-sim",
+            "rush-jeu"
           ]
         },
         "parts": {

@@ -1,6 +1,6 @@
 import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color, ConeGeometry, ExtrudeGeometry, Group, Mesh, MeshBasicMaterial, Shape, SphereGeometry, SRGBColorSpace, Sprite, SpriteMaterial, Vector3, type MeshToonMaterial } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { ANNONCE, ANNONCE_PLONGEON, CHAUVE, COUP, ESQUIVE, MARCHE, ONDE, PIERRES, PLONGEON, POING, RECUPERE, REPOS, RUGIT, type Chevalier, type Durees, type Golem, type Monstre } from "@cdj/rush-sim";
+import { ANNONCE, ANNONCE_PLONGEON, BOND_ANNONCE, BOND_VOL, CHAUVE, COMPETENCE, COUP, ESQUIVE, MARCHE, ONDE, PIERRES, PLONGEON, POING, RECUPERE, REPOS, RUGIT, type Chevalier, type Durees, type Golem, type Monstre } from "@cdj/rush-sim";
 import { aplat, piece, type Piece } from "./cel";
 import { bloc, fusionner, placer, teindre } from "./formes";
 import { BLANC, COULEURS, ENCRE } from "./palette";
@@ -21,8 +21,8 @@ export const lisser = (a: number, b: number, x: number): number => {
 
 // --- Les formes (construites une fois, partagées) ---------------------------------------------------------------------------------------------------------------------------------------------------
 /** Un dôme de gelée : une demi-sphère à l'ombrage lisse, un petit REFLET brillant en haut à gauche (un bouton de lumière, pas une grande tache), le bas un peu plus sombre. Posée au sol. */
-export function geleeDome(couleur: number = COULEURS.gelee, claire: number = COULEURS.geleeClair): BufferGeometry {
-  const g = new SphereGeometry(0.5, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
+export function geleeDome(couleur: number = COULEURS.gelee, claire: number = COULEURS.geleeClair, longitudes = 28, latitudes = 14): BufferGeometry {
+  const g = new SphereGeometry(0.5, longitudes, latitudes, 0, Math.PI * 2, 0, Math.PI / 2);
   const p = g.getAttribute("position");
   const n = g.getAttribute("normal");
   const lumiere = new Vector3(-0.42, 0.78, 0.46).normalize();
@@ -252,6 +252,37 @@ export function animerChevalier(a: ChevalierVu, c: Chevalier, e: EntreeChevalier
       avance = 0.25 * sortie(act) * (1 - entree(rec));
     }
     a.interieur.position.z = avance;
+  } else if (c.etat === COMPETENCE) {
+    // Lot BR5 : les compétences. Tourbillon : il tournoie, l'épée tendue ; bond : il s'accroupit, s'envole en arc, s'écrase à l'atterrissage ; bouclier : le bras ramené, puis lancé.
+    const t = e.ticks;
+    a.interieur.position.z = 0;
+    if (c.comp === 0) {
+      torsion = t * 0.62;
+      ex = 0;
+      ey = 0;
+      penche = 0.2;
+      ecrase = 1.04;
+    } else if (c.comp === 1) {
+      const vol = bornes((t - BOND_ANNONCE) / BOND_VOL, 0, 1);
+      if (t < BOND_ANNONCE) {
+        ecrase = 1 - 0.24 * sortie(t / BOND_ANNONCE);
+        penche = -0.12;
+      } else if (t < BOND_ANNONCE + BOND_VOL) {
+        saut = Math.sin(Math.PI * vol) * 1.7;
+        ecrase = 1 + 0.1 * Math.sin(Math.PI * vol);
+        penche = 0.34 * Math.cos(Math.PI * vol);
+        ex = -2.4;
+      } else {
+        ecrase = 1 - 0.26 * Math.exp(-(t - BOND_ANNONCE - BOND_VOL) * 0.35);
+        ex = 0.9;
+      }
+    } else {
+      const lance = bornes(t / 5, 0, 1);
+      ex = t < 5 ? lerp(-0.9, -1.7, lance) : lerp(-1.7, 0.2, sortie(bornes((t - 5) / 4, 0, 1)));
+      ey = t < 5 ? 0.8 * lance : lerp(0.8, -0.4, sortie(bornes((t - 5) / 4, 0, 1)));
+      penche = t < 5 ? -0.1 : 0.2;
+      torsion = t < 5 ? 0.4 * lance : 0.4 - 0.7 * sortie(bornes((t - 5) / 4, 0, 1));
+    }
   } else a.interieur.position.z = 0;
   a.interieur.rotation.y = torsion;
   if (c.etat === ESQUIVE) {

@@ -20,6 +20,8 @@ function svg(chemin: string, classe: string): SVGSVGElement {
 const CHEMIN_COEUR = "M12 21 C5 15 2.5 11.5 2.5 8 C2.5 5 4.8 3 7.4 3 C9.3 3 11 4 12 5.8 C13 4 14.7 3 16.6 3 C19.2 3 21.5 5 21.5 8 C21.5 11.5 19 15 12 21 Z";
 // Une épée en diagonale (la lame, la garde, la poignée) et un coureur (la tête, le buste penché, les bras et les jambes en foulée) : des traits, comme tous les pictogrammes du jeu.
 const CHEMIN_EPEE = "M20 4 L20.4 9.6 L12 18 L6 12 L14.4 3.6 Z M5 19 L9 15 M3 21 L6 18";
+// Lot BR5 : le bouton « Compétence » (un éclat) ; sa jauge de rage est un anneau autour (`--rage`, 0 à 1), qui s'illumine et pulse quand la compétence est prête (`data-pret`).
+const CHEMIN_COMPETENCE = "M12 2 L14 8 L20 6 L16 11 L22 14 L15 15 L16 22 L12 17 L8 22 L9 15 L2 14 L8 11 L4 6 L10 8 Z";
 const CHEMIN_ESQUIVE = "M15.4 4.4 A1.7 1.7 0 1 1 15.39 4.4 M13.6 8.2 L11.4 13 M13.6 8.2 L17.6 10.6 M13 9 L8.6 10.4 M11.4 13 L15 15.6 L13.4 20.4 M11.4 13 L8 16.6 L4.4 15.6";
 
 /** Lot BR2 : une carte du choix d'amélioration, déjà écrite (les textes viennent du catalogue) : son identifiant, son nom, son effet en une ligne, son palier (« 2 / 3 »), le tracé de son icône et sa famille (la couleur de l'icône). */
@@ -39,8 +41,10 @@ export interface Interface {
   coeurs(n: number, max?: number): void;
   /** Lot BR2 : la pastille « Nv 4 » et sa barre d'XP (`xp` points dans le niveau sur `total`). */
   niveau(nv: number | null, xp: number, total: number): void;
-  /** Lot BR2 : le voile à rayures et les trois cartes ; `choisir(i)` est appelé au toucher / clic d'une carte. */
-  ouvrirChoix(nv: number, cartes: readonly CarteVue[], choisir: (i: number) => void): void;
+  /** Lot BR2 : le voile à rayures et les trois cartes ; `choisir(i)` est appelé au toucher / clic d'une carte. Lot BR5 : le même écran sert au choix de la compétence au départ (`titre`, `aria` écrits par l'appelant). */
+  ouvrirChoix(titre: string, aria: string, cartes: readonly CarteVue[], choisir: (i: number) => void): void;
+  /** Lot BR5 : la jauge de rage (0 à 1) de l'anneau du bouton « Compétence » ; `pret` : elle est pleine et la compétence peut partir. */
+  rage(fraction: number, pret: boolean): void;
   fermerChoix(): void;
   /** La carte en surbrillance (clavier, manette), 0 à 2. */
   selection(i: number): void;
@@ -67,6 +71,7 @@ function bouton(classe: string, chemin: string, libelle: string, quand: (tenu: b
   nom.textContent = libelle;
   nom.setAttribute("aria-hidden", "true");
   b.append(svg(chemin, "rush-bouton__icone"), nom);
+  b.style.setProperty("--rage", "0");
   const tenir = (e: PointerEvent): void => {
     e.preventDefault();
     try {
@@ -163,7 +168,14 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
   const fps = document.createElement("div");
   fps.className = "rush-fps";
   fps.hidden = true;
+  // Lot BR5 : le bouton « Compétence » et sa jauge de rage : au doigt dans les boutons de droite, au PC en pastille ronde en bas à droite (on y clique aussi).
+  const boutonComp = bouton("rush-bouton--comp", CHEMIN_COMPETENCE, t("commandes.action.competence"), (v) => {
+    controles.boutonCompetence = v;
+    if (v) controles.action("competence");
+  });
+  boutonComp.dataset.rage = "0";
   hud.append(bloc, pastille, boss, cible, presentation, vignette, fps);
+  if (!tactile) hud.append(boutonComp);
   racine.append(zone3d, hud);
   // Lot BR2 : le choix d'une amélioration — un voile à rayures, un titre, trois cartes (des boutons : le doigt, la souris, le clavier et la manette les atteignent), une ligne d'aide.
   const choix = document.createElement("div");
@@ -235,6 +247,7 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
     const droite = document.createElement("div");
     droite.className = "rush-actions";
     droite.append(
+      boutonComp,
       bouton("rush-bouton--esquive", CHEMIN_ESQUIVE, t("commandes.action.esquive"), (v) => {
         controles.boutonEsquive = v;
         if (v) controles.action("esquive");
@@ -276,9 +289,18 @@ export function monterInterface(hote: HTMLElement, t: Traduire, tactile: boolean
       piste2.setAttribute("aria-valuenow", String(xp));
       piste2.setAttribute("aria-label", t("hud.xp", { n: xp, total }));
     },
-    ouvrirChoix(nv, cartes, choisir) {
-      choixTitre.textContent = t("choix.titre", { n: nv });
-      choix.setAttribute("aria-label", t("choix.aria", { n: nv }));
+    rage(fraction, pret) {
+      const f = Math.max(0, Math.min(1, fraction));
+      const cle = `${Math.round(f * 100)}${pret ? "!" : ""}`;
+      if (boutonComp.dataset.rage === cle) return;
+      boutonComp.dataset.rage = cle;
+      boutonComp.style.setProperty("--rage", f.toFixed(3));
+      boutonComp.toggleAttribute("data-pret", pret);
+      boutonComp.setAttribute("aria-label", `${t("commandes.action.competence")} ${Math.round(f * 100)} %`);
+    },
+    ouvrirChoix(titre, aria, cartes, choisir) {
+      choixTitre.textContent = titre;
+      choix.setAttribute("aria-label", aria);
       choixRang.replaceChildren();
       boutonsCartes = cartes.map((c, i) => {
         const b = document.createElement("button");

@@ -12,7 +12,10 @@ interface Curseur {
   libelle: string;
   min: number;
   max: number;
+  /** Lot BR5 : le nom du curseur en français et en anglais, quand il n'est pas dans le catalogue (le panneau d'essai ne pèse rien dans le premier chargement). */
+  noms?: readonly [string, string];
 }
+const nouveau = (cle: keyof Reglages, fr: string, en: string): Curseur => ({ cle, groupe: "sim", libelle: "", min: BORNES[cle][0], max: BORNES[cle][1], noms: [fr, en] });
 const CURSEURS: Curseur[] = [
   { cle: "vitesse", groupe: "sim", libelle: "tune.vitesse", min: BORNES.vitesse[0], max: BORNES.vitesse[1] },
   { cle: "portee", groupe: "sim", libelle: "tune.portee", min: BORNES.portee[0], max: BORNES.portee[1] },
@@ -33,8 +36,38 @@ const CURSEURS: Curseur[] = [
   { cle: "courseRayon", groupe: "sim", libelle: "tune.courseRayon", min: BORNES.courseRayon[0], max: BORNES.courseRayon[1] },
   { cle: "xpGelee", groupe: "sim", libelle: "tune.xpGelee", min: BORNES.xpGelee[0], max: BORNES.xpGelee[1] },
   { cle: "xpChauve", groupe: "sim", libelle: "tune.xpChauve", min: BORNES.xpChauve[0], max: BORNES.xpChauve[1] },
-  { cle: "xpRonces", groupe: "sim", libelle: "tune.xpRonces", min: BORNES.xpRonces[0], max: BORNES.xpRonces[1] },
-  { cle: "xpCaisse", groupe: "sim", libelle: "tune.xpCaisse", min: BORNES.xpCaisse[0], max: BORNES.xpCaisse[1] },
+  // Lot BR5 : la rage, les trois compétences, les vases, les gélatons, le coup d'élan et les cartes de compétence.
+  nouveau("rageMax", "Rage : jauge pleine", "Rage: full gauge"),
+  nouveau("rageTouche", "Rage : par coup donné", "Rage: per hit"),
+  nouveau("rageTue", "Rage : par monstre tué", "Rage: per kill"),
+  nouveau("rageVase", "Rage : par vase brisé", "Rage: per vase broken"),
+  nouveau("rageTemps", "Rage : par seconde", "Rage: per second"),
+  nouveau("rageButin", "Rage : butin d'un vase", "Rage: vase loot"),
+  nouveau("tourbillonDuree", "Tourbillon : durée (ticks)", "Whirlwind: duration (ticks)"),
+  nouveau("tourbillonRayon", "Tourbillon : rayon (cm)", "Whirlwind: radius (cm)"),
+  nouveau("tourbillonDegats", "Tourbillon : dégâts par passe (%)", "Whirlwind: damage per pass (%)"),
+  nouveau("tourbillonVitesse", "Tourbillon : vitesse (%)", "Whirlwind: speed (%)"),
+  nouveau("bondPortee", "Bond : portée (cm)", "Leap: range (cm)"),
+  nouveau("bondRayon", "Bond : onde de choc (cm)", "Leap: shockwave (cm)"),
+  nouveau("bondDegats", "Bond : dégâts (%)", "Leap: damage (%)"),
+  nouveau("bondEtourdi", "Bond : étourdissement (ticks)", "Leap: stun (ticks)"),
+  nouveau("bouclierPortee", "Bouclier : portée (cm)", "Shield: range (cm)"),
+  nouveau("bouclierCibles", "Bouclier : cibles traversées", "Shield: targets pierced"),
+  nouveau("bouclierDegats", "Bouclier : dégâts (%)", "Shield: damage (%)"),
+  nouveau("vaseGemme", "Vases : part de gemmes (%)", "Vases: gem share (%)"),
+  nouveau("vaseRage", "Vases : part de rage (%)", "Vases: rage share (%)"),
+  nouveau("xpVase", "XP d'un vase", "Vase XP"),
+  nouveau("xpGelaton", "XP d'un gélaton", "Gelaton XP"),
+  nouveau("elanDistance", "Coup d'élan : fente (cm)", "Charge strike: lunge (cm)"),
+  nouveau("elanDegats", "Coup d'élan : dégâts (%)", "Charge strike: damage (%)"),
+  nouveau("elanRecul", "Coup d'élan : recul (%)", "Charge strike: knockback (%)"),
+  nouveau("rageVive", "Rage vive (%/palier)", "Quick rage (%/tier)"),
+  nouveau("maitriseDegats", "Maîtrise : dégâts (%/palier)", "Mastery: damage (%/tier)"),
+  nouveau("maitriseZone", "Maîtrise : zone (%/palier)", "Mastery: area (%/tier)"),
+  nouveau("echoRend", "Écho : part rendue (%)", "Echo: share kept (%)"),
+  nouveau("signatureTourbillon", "Signature : tourbillon (%/palier)", "Signature: whirlwind (%/tier)"),
+  nouveau("signatureBond", "Signature : bond (ticks/palier)", "Signature: leap (ticks/tier)"),
+  nouveau("signatureBouclier", "Signature : bouclier (cibles/palier)", "Signature: shield (targets/tier)"),
   { cle: "xpBase", groupe: "sim", libelle: "tune.xpBase", min: BORNES.xpBase[0], max: BORNES.xpBase[1] },
   { cle: "xpPas", groupe: "sim", libelle: "tune.xpPas", min: BORNES.xpPas[0], max: BORNES.xpPas[1] },
   { cle: "xpCamp", groupe: "sim", libelle: "tune.xpCamp", min: BORNES.xpCamp[0], max: BORNES.xpCamp[1] },
@@ -72,7 +105,7 @@ export interface Tune {
   detruire(): void;
 }
 
-export function monterTune(hote: HTMLElement, t: Traduire, etat: EtatTune, surSimulation: (r: Reglages) => void, surSensations: (s: Sensations) => void): Tune {
+export function monterTune(hote: HTMLElement, t: Traduire, etat: EtatTune, surSimulation: (r: Reglages) => void, surSensations: (s: Sensations) => void, langue: "fr" | "en" = "fr"): Tune {
   const ouvrir = document.createElement("button");
   ouvrir.type = "button";
   ouvrir.className = "rush-tune__ouvrir";
@@ -91,7 +124,7 @@ export function monterTune(hote: HTMLElement, t: Traduire, etat: EtatTune, surSi
   for (const c of CURSEURS) {
     const l = document.createElement("label");
     const nom = document.createElement("span");
-    nom.textContent = t(c.libelle);
+    nom.textContent = c.noms ? c.noms[langue === "en" ? 1 : 0] : t(c.libelle);
     const v = document.createElement("span");
     const r = document.createElement("input");
     r.type = "range";

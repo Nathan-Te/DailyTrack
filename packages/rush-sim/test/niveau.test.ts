@@ -7,7 +7,9 @@ import {
   CHAUVE,
   GELEE,
   INACCESSIBLE,
-  OBSTACLE_RONCES,
+  RAYON_VASE,
+  passageBloque,
+  GELATON,
   LAISSE,
   MUR,
   PONT,
@@ -31,7 +33,7 @@ import {
   casesDeLArene,
   champDeDistance,
   cm,
-  dailyRush,
+  dailyRush as dailyRushVrai,
   descendre,
   dirVers,
   distance,
@@ -43,9 +45,17 @@ import {
   problemesDuNiveau,
   rejouer,
   themeDuJour,
+  type Contenu,
   type Niveau,
 } from "../src/index";
 
+import { COS, SIN } from "../src/index";
+const COS_DIR = (a: number): number => COS[a]!;
+const SIN_DIR = (a: number): number => SIN[a]!;
+
+// Lot BR5 : le jour demande de choisir une compétence au départ ; ces essais jouent la première (le tourbillon) sans écran de choix.
+const dailyRushReel = dailyRushVrai;
+const dailyRush = (jour: number, version?: number): Contenu => ({ ...dailyRushVrai(jour, version), competence: 0 });
 const SEL = 0x3f91d3;
 const graine = (j: number): number => mixSeed(j, SEL);
 const marchableEn = (n: Niveau, x: number, y: number): boolean => {
@@ -64,7 +74,7 @@ describe("le générateur du niveau (lot BR1)", () => {
   it("365 graines donnent 365 niveaux valides (chemin du départ à l'arène, longueur, détours, camps, monstres épars, aucune case isolée, rien près du départ)", () => {
     for (const n of niveaux) expect(problemesDuNiveau(n)).toEqual([]);
   });
-  it("le chemin principal fait 70 à 100 m ; 2 à 4 détours, chacun à 17-45 m du chemin (lot BR2 : des camps plus proches), menant à un camp de 8 à 11 monstres ; 0 à 3 monstres épars ; 2 à 4 groupes", () => {
+  it("le chemin principal fait 70 à 100 m ; 2 à 4 détours, chacun à 17-45 m du chemin (lot BR2 : des camps plus proches), menant à un camp de 10 à 20 monstres (lot BR5) ; 0 à 3 monstres épars ; 3 à 5 groupes", () => {
     for (const n of niveaux) {
       expect(n.longueurCm).toBeGreaterThanOrEqual(7000);
       expect(n.longueurCm).toBeLessThanOrEqual(10000);
@@ -134,8 +144,8 @@ describe("le générateur du niveau (lot BR1)", () => {
     expect(c.niveau).not.toBeNull();
     expect(c.theme).toBe(themeDuJour(J0));
     expect(c.g).toBe(RUSH_GENERATOR_VERSION);
-    expect(RUSH_GENERATOR_VERSION).toBe(5);
-    expect(RUSH_SIM_VERSION).toBe(7);
+    expect(RUSH_GENERATOR_VERSION).toBe(6);
+    expect(RUSH_SIM_VERSION).toBe(8);
   });
 });
 
@@ -325,11 +335,11 @@ describe("le pilote dans le niveau (lot BR1)", () => {
       }
     }
     expect(victoires).toBeGreaterThanOrEqual(58);
-    expect(Math.min(...temps)).toBeGreaterThan(40);
-    expect(Math.max(...temps)).toBeLessThan(95);
-    // lot BR2 : « foncer » prend ~55 à 75 s au total, golem compris (le golem a plus de vie : le combat sans carte dure ~45 s)
+    // lot BR5 : la compétence raccourcit le combat du boss et les meutes allongent la route — les bornes de BR2 (40 s, 95 s ; médiane 55 à 75 s) sont élargies sur la mesure (37 à 90 s, médiane ~58 s) ; BR6 rééquilibre
+    expect(Math.min(...temps)).toBeGreaterThan(30);
+    expect(Math.max(...temps)).toBeLessThan(100);
     const tri = [...temps].sort((x, y) => x - y);
-    expect(tri[Math.floor(tri.length / 2)]!).toBeGreaterThan(55);
+    expect(tri[Math.floor(tri.length / 2)]!).toBeGreaterThan(50);
     expect(tri[Math.floor(tri.length / 2)]!).toBeLessThan(75);
   });
   it("tout nettoyer tue plus que foncer et gagne bien plus de niveaux (lot BR2)", () => {
@@ -359,7 +369,7 @@ describe("un niveau compact et dense (lot BR1b)", () => {
       expect(n.sansRencontreCm).toBeGreaterThan(0);
       // la valeur du niveau est celle qu'on recalcule sur sa grille
       expect(rencontresDuChemin(n).sansRencontreCm).toBe(n.sansRencontreCm);
-      expect(n.rencontres.length).toBeGreaterThanOrEqual(3); // deux groupes et un obstacle au moins
+      expect(n.rencontres.length).toBeGreaterThanOrEqual(3); // trois groupes au moins (lot BR5)
     }
     // un niveau qui dépasse la règle est refusé par `problemesDuNiveau`
     const trop = { ...niveaux[0]!, sansRencontreCm: BORNES_NIVEAU.sansRencontreMax + 1 };
@@ -376,15 +386,20 @@ describe("un niveau compact et dense (lot BR1b)", () => {
     expect(moyenne).toBeGreaterThan(11);
     expect(moyenne).toBeLessThan(20);
   });
-  it("des groupes de 2 à 4 monstres, l'alerte de 10 à 12 m, en travers du chemin (pas dans une clairière), loin du départ", () => {
+  it("des groupes de 2 à 4 monstres ou des meutes de 6 à 12 gélatons (lot BR5), l'alerte de 10 à 12 m, en travers du chemin (pas dans une clairière), loin du départ", () => {
     for (const n of niveaux) {
       const ids = new Set(n.monstres.filter((m) => m.groupe >= 0).map((m) => m.groupe));
-      expect(ids.size).toBeGreaterThanOrEqual(2);
-      expect(ids.size).toBeLessThanOrEqual(4);
+      expect(ids.size).toBeGreaterThanOrEqual(3);
+      expect(ids.size).toBeLessThanOrEqual(5);
+      let meutes = 0;
       for (const g of ids) {
         const k = n.monstres.filter((m) => m.groupe === g);
         expect(k.length).toBeGreaterThanOrEqual(2);
-        expect(k.length).toBeLessThanOrEqual(4);
+        expect(k.length).toBeLessThanOrEqual(12);
+        if (k.length > 4) {
+          meutes++;
+          expect(k.every((m) => m.type === GELATON)).toBe(true); // une meute est faite de gélatons
+        }
         for (const m of k) {
           expect(m.alerte).toBeGreaterThanOrEqual(cm(1000));
           expect(m.alerte).toBeLessThanOrEqual(cm(1200));
@@ -392,10 +407,11 @@ describe("un niveau compact et dense (lot BR1b)", () => {
           expect(m.camp).toBe(-1);
           const zone = n.zones[caseDe(n, m.x, m.y)];
           expect(zone === Z_CHEMIN || zone === Z_PONT || zone === Z_CLAIRIERE).toBe(true);
-          expect(distance(m.x, m.y, k[0]!.x, k[0]!.y)).toBeLessThan(cm(600)); // un groupe se tient groupé (4 monstres en travers du chemin : ~5 m)
+          expect(distance(m.x, m.y, k[0]!.x, k[0]!.y)).toBeLessThan(cm(600)); // un groupe se tient groupé (une meute de 12 : ~4 m)
           expect(distance(m.x, m.y, n.depart.x, n.depart.y)).toBeGreaterThanOrEqual(cm(1600));
         }
       }
+      expect(meutes).toBeGreaterThanOrEqual(1); // au moins une meute de 6 à 12 gélatons par niveau
     }
     // la plupart des membres sont sur un lien (là où le chemin est étroit)
     let sur = 0;
@@ -449,38 +465,49 @@ describe("un niveau compact et dense (lot BR1b)", () => {
     }
     expect(boucles / tous).toBeGreaterThan(0.7);
   });
-  it("des obstacles cassables (ronces : 1 coup, caisses : 2) sur des cases du chemin, qui contiennent de l'XP (lot BR2 : le butin, selon le genre) ; un obstacle qui laisse un passage l'allonge", () => {
-    let contournables = 0;
-    let nObstacles = 0;
+  it("des groupes de vases (lot BR5) : 6 à 110 vases en groupes de 4 à 12, jamais sur un pont, près d'un monstre, du départ ou de l'arène, jamais sur l'axe d'un chemin ; le contenu est tiré de la graine", () => {
+    let total = 0;
+    const contenus = [0, 0, 0];
     for (const n of niveaux) {
-      expect(n.obstacles.length).toBeGreaterThanOrEqual(1);
-      expect(n.obstacles.length).toBeLessThanOrEqual(3);
-      for (const o of n.obstacles) {
-        nObstacles++;
-        expect(o.coups).toBe(o.genre === OBSTACLE_RONCES ? 1 : 2);
-        expect(o.butin).toBe(0); // le niveau ne porte pas l'XP : c'est la partie qui la donne selon les réglages
-        expect(o.cases.length).toBeGreaterThanOrEqual(2);
-        for (const k of o.cases) {
-          expect(n.zones[k]).toBe(Z_CHEMIN);
-          expect(n.cases[k]).toBe(SOL);
-        }
-        // sans lui, le chemin principal existe ; avec lui, le chemin est allongé de `surcoutCm` (ou barré)
-        const bloque = new Uint8Array(n.cases);
-        for (const k of o.cases) bloque[k] = MUR;
-        const arene: number[] = [];
-        n.zones.forEach((z, k) => z === 4 && arene.push(k));
-        const v = champDeDistance({ l: n.l, h: n.h, cases: bloque }, arene)[caseDe(n, n.depart.x, n.depart.y)]!;
-        if (o.contournable) {
-          contournables++;
-          expect(v).not.toBe(INACCESSIBLE);
-          expect((v - n.dist[caseDe(n, n.depart.x, n.depart.y)]!) * 40).toBe(o.surcoutCm);
-          expect(o.surcoutCm).toBeGreaterThanOrEqual(120);
-        } else expect(v).toBe(INACCESSIBLE);
+      const groupes = new Set(n.vases.map((v) => v.groupe));
+      expect(groupes.size).toBeGreaterThanOrEqual(BORNES_NIVEAU.vasesGroupesMin);
+      expect(n.vases.length).toBeLessThanOrEqual(BORNES_NIVEAU.vasesMax);
+      for (const g of groupes) {
+        const k = n.vases.filter((v) => v.groupe === g).length;
+        expect(k).toBeGreaterThanOrEqual(4);
+        expect(k).toBeLessThanOrEqual(12);
+      }
+      for (const v of n.vases) {
+        total++;
+        expect(v.genre).toBeGreaterThanOrEqual(0);
+        expect(v.genre).toBeLessThan(RAYON_VASE.length);
+        expect(v.tirage).toBeGreaterThanOrEqual(0);
+        expect(v.tirage).toBeLessThan(100);
+        expect(n.cases[caseDe(n, v.x, v.y)]).toBe(SOL);
+        expect(distance(v.x, v.y, n.depart.x, n.depart.y)).toBeGreaterThanOrEqual(cm(450));
+        expect(distance(v.x, v.y, n.arene.x, n.arene.y)).toBeGreaterThanOrEqual(RAYON_ARENE + cm(450));
+        for (const m of n.monstres) expect(distance(v.x, v.y, m.x, m.y)).toBeGreaterThanOrEqual(cm(120));
+        contenus[v.tirage < REGLAGES_DEFAUT.vaseGemme ? 0 : v.tirage < REGLAGES_DEFAUT.vaseGemme + REGLAGES_DEFAUT.vaseRage ? 1 : 2]!++;
       }
     }
-    // des deux sortes (il faut le casser, ou le contourner par un passage plus étroit et plus long)
-    expect(contournables).toBeGreaterThan(nObstacles * 0.3);
-    expect(contournables).toBeLessThan(nObstacles * 0.9);
+    // les contenus suivent les taux (une gemme le plus souvent, parfois de la rage, rarement un cœur)
+    expect(contenus[0]! / total).toBeGreaterThan(0.6);
+    expect(contenus[0]! / total).toBeLessThan(0.8);
+    expect(contenus[1]! / total).toBeGreaterThan(0.18);
+    expect(contenus[2]! / total).toBeGreaterThan(0.02);
+    expect(contenus[2]! / total).toBeLessThan(0.09);
+  });
+  it("rien ne bloque le chemin : le chevalier rejoint l'arène et chaque monstre avec les vases pleins (grille fine) — et le validateur voit un mur de vases", () => {
+    for (const n of niveaux) expect(passageBloque(n)).toBeNull();
+    // un mur de vases en travers de l'entrée de l'arène barre le chemin : le validateur le voit
+    const n = niveaux[0]!;
+    const dx = n.arene.ex - n.arene.x;
+    const dy = n.arene.ey - n.arene.y;
+    const d = Math.hypot(dx, dy);
+    const cx = n.arene.x + (dx / d) * (RAYON_ARENE + cm(700));
+    const cy = n.arene.y + (dy / d) * (RAYON_ARENE + cm(700));
+    const mur = Array.from({ length: 13 }, (_, i) => ({ genre: 0, x: Math.round(cx + (-dy / d) * cm(-480 + i * 80)), y: Math.round(cy + (dx / d) * cm(-480 + i * 80)), tirage: 0, groupe: 99 }));
+    expect(passageBloque({ ...n, vases: [...n.vases, ...mur] })).not.toBeNull();
   });
   it("génère un niveau en peu de tentatives (le coût est mesuré en tentatives, pas en millisecondes : la CI est lente et variable)", () => {
     const essais = niveaux.map((n) => n.essais);
@@ -489,100 +516,69 @@ describe("un niveau compact et dense (lot BR1b)", () => {
   });
 });
 
-describe("les obstacles cassables dans la partie (lot BR1b)", () => {
-  /** Une partie du jour, le chevalier posé sur une case libre voisine du premier obstacle, tourné vers lui. */
-  const devantUnObstacle = (j = J0): { p: Partie; dir: number; o: Partie["obstacles"][number] } => {
+describe("les vases dans la partie (lot BR5)", () => {
+  /** Une partie du jour, le chevalier posé à 1,6 m d'un vase du groupe `g`, tourné vers lui. */
+  const devantUnVase = (j = J0, g = 0): { p: Partie; dir: number; v: Partie["vases"][number] } => {
     const p = new Partie(dailyRush(j), REGLAGES_DEFAUT);
-    const n = p.niveau!;
-    const o = p.obstacles[0]!;
-    const pris = new Set(o.cases);
-    for (const k of o.cases) {
-      const i = k % n.l;
-      const jj = (k - i) / n.l;
-      for (const [di, dj] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-        const q = (jj + dj) * n.l + i + di;
-        if (pris.has(q) || n.cases[q] !== SOL || n.zones[q] !== Z_CHEMIN) continue;
-        p.c.x = n.ox + (i + di) * CASE + CASE / 2;
-        p.c.y = n.oy + (jj + dj) * CASE + CASE / 2;
-        return { p, dir: croix(-di, -dj), o };
-      }
+    const v = p.vases.find((q) => q.groupe === g)!;
+    // un point à 1,6 m du vase, sur du sol libre et sans autre vase à moins de 1,2 m
+    for (let a = 0; a < 128; a += 8) {
+      const x = v.x + Math.trunc((COS_DIR(a) * cm(160)) / 1024);
+      const y = v.y + Math.trunc((SIN_DIR(a) * cm(160)) / 1024);
+      if (!marchableEn(p.niveau!, x, y)) continue;
+      if (p.vases.some((q) => q !== v && distance(q.x, q.y, x, y) < cm(120))) continue;
+      p.c.x = x;
+      p.c.y = y;
+      return { p, dir: croix(v.x - x, v.y - y), v };
     }
-    throw new Error("pas de case libre voisine");
+    throw new Error("pas de point libre devant le vase");
   };
-  it("il barre le passage : tant qu'il tient, le chevalier ne le traverse pas ; un monstre au sol non plus", () => {
-    const { p, dir, o } = devantUnObstacle();
-    const n = p.niveau!;
+  it("il est plein pour le chevalier : tant qu'il tient, il ne le traverse pas", () => {
+    const { p, dir, v } = devantUnVase();
     for (let t = 0; t < 120; t++) {
       p.c.coeurs = 3;
       p.avancer(entree(dir));
-      expect(o.cases.includes(caseDe(n, p.c.x, p.c.y))).toBe(false);
+      expect(distance(p.c.x, p.c.y, v.x, v.y)).toBeGreaterThanOrEqual(v.r + RAYON_CHEVALIER - 8);
     }
-    expect(p.obstacles.length).toBe(n.obstacles.length);
+    expect(p.vases.includes(v)).toBe(true);
   });
-  it("il cède en 1 ou 2 coups (un coup tenu enchaîne), l'événement « brise » part, les cases se libèrent et le chevalier passe", () => {
+  it("un coup le brise (l'événement « brise » part, il disparaît de la liste) ; un coup en arc en brise plusieurs ; un coup ne brise un vase qu'une fois", () => {
+    let plusieurs = 0;
     for (let k = 0; k < 12; k++) {
-      const { p, dir, o } = devantUnObstacle(J0 + k);
+      const { p, dir, v } = devantUnVase(J0 + k);
       const pj = new Partie(p.contenu, REGLAGES_DEFAUT, true);
       pj.c.x = p.c.x;
       pj.c.y = p.c.y;
-      const n = pj.niveau!;
-      const coups = o.hpMax;
-      let brise = false;
-      let touches = 0;
-      for (let t = 0; t < 400 && !brise; t++) {
+      const avant = pj.vases.length;
+      let brises = 0;
+      for (let t = 0; t < 40; t++) {
         pj.c.coeurs = 3;
-        pj.avancer(entree(dir, true));
-        for (const ev of pj.evenements) {
-          if (ev.k === "obstacle") touches++;
-          if (ev.k === "brise") brise = true;
-        }
+        pj.avancer(entree(dir, t === 0));
+        for (const ev of pj.evenements) if (ev.k === "brise") brises++;
         pj.vider();
+        if (brises > 0) break;
       }
-      expect(brise).toBe(true);
-      expect(touches).toBeLessThanOrEqual(coups);
-      expect(pj.obstacles.some((q) => q.id === o.id)).toBe(false);
-      // les cases sont libres : on marche dedans
-      pj.c.x = n.ox + (o.cases[0]! % n.l) * CASE + CASE / 2;
-      pj.c.y = n.oy + Math.floor(o.cases[0]! / n.l) * CASE + CASE / 2;
-      pj.avancer(entree(dir));
-      expect(pj.c.x).not.toBeNaN();
+      expect(brises).toBeGreaterThanOrEqual(1);
+      if (brises >= 2) plusieurs++;
+      expect(pj.vases.length).toBe(avant - brises);
+      expect(pj.vases.some((q) => q.id === v.id)).toBe(false);
     }
+    expect(plusieurs).toBeGreaterThan(0); // un groupe serré : l'arc en brise plusieurs
   });
-  it("le coup final en vaut deux : une caisse cède au coup final seul", () => {
-    for (let k = 0; k < 40; k++) {
-      const { p, dir, o } = devantUnObstacle(J0 + k);
-      if (o.hpMax !== 2) continue;
-      const pj = new Partie(p.contenu, REGLAGES_DEFAUT, true);
-      pj.c.x = p.c.x;
-      pj.c.y = p.c.y;
-      pj.obstacles[0]!.hp = 2;
-      let brise = false;
-      let touches = 0;
-      for (let t = 0; t < 200 && !brise; t++) {
-        pj.c.coeurs = 3;
-        pj.avancer(entree(dir, true));
-        for (const ev of pj.evenements) {
-          if (ev.k === "obstacle") touches++;
-          if (ev.k === "brise") brise = true;
-        }
-        pj.vider();
-      }
-      expect(brise).toBe(true);
-      expect(touches).toBeLessThanOrEqual(2);
-      return;
-    }
-    throw new Error("aucune caisse trouvée");
-  });
-  it("le butin d'un obstacle est de l'XP (ronces ou caisse, selon les réglages) et fait partie de l'état", () => {
+  it("le contenu est tiré de la graine, déterministe ; un vase de gemme donne de l'XP, de rage de la rage, de cœur un cœur qui attend tant que les cœurs sont pleins", () => {
     const p = new Partie(dailyRush(J0), REGLAGES_DEFAUT);
-    for (const o of p.obstacles) expect(o.butin).toBe(o.genre === OBSTACLE_RONCES ? REGLAGES_DEFAUT.xpRonces : REGLAGES_DEFAUT.xpCaisse);
-    const avant = p.empreinte();
-    p.obstacles[0]!.hp--;
-    expect(p.empreinte()).not.toBe(avant);
+    const q = new Partie(dailyRush(J0), REGLAGES_DEFAUT);
+    expect(p.vases.map((v) => p.contenuDuVase(v.tirage))).toEqual(q.vases.map((v) => q.contenuDuVase(v.tirage)));
+    expect(p.contenuDuVase(0)).toBe(0);
+    expect(p.contenuDuVase(REGLAGES_DEFAUT.vaseGemme)).toBe(1);
+    expect(p.contenuDuVase(REGLAGES_DEFAUT.vaseGemme + REGLAGES_DEFAUT.vaseRage)).toBe(2);
+    // les taux sont des réglages
+    const r = new Partie(dailyRush(J0), { ...REGLAGES_DEFAUT, vaseGemme: 0, vaseRage: 100 });
+    expect(r.contenuDuVase(99)).toBe(1);
   });
-  it("le pilote qui fonce brise les obstacles qui lui barrent la route (et gagne)", () => {
+  it("le pilote qui fonce gagne ces jours-là (les vases du chemin ne le bloquent pas)", () => {
     for (let k = 0; k < 6; k++) {
-      const c = dailyRush(J0 + k);
+      const c = dailyRushReel(J0 + k);
       const r = jouerLePilote(c);
       expect(r.resultat.victoire).toBe(true);
     }

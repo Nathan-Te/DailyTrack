@@ -76,7 +76,7 @@
   },
   "rejeu": {
     "unitesServeur": 1,
-    "ticksParUnite": 2500,
+    "ticksParUnite": 1250,
     "maxTicks": 36000
   },
   "donnees": {
@@ -176,6 +176,10 @@
         "rush-jeu"
       ],
       "medailles.spec.ts": [
+        "rush-sim",
+        "rush-jeu"
+      ],
+      "competences.spec.ts": [
         "rush-sim",
         "rush-jeu"
       ]

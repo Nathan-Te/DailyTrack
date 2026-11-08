@@ -45,7 +45,7 @@ interface Modeles {
 }
 
 const cone = (r: number, h: number, seg: number, p: { x?: number; y?: number; z?: number; rx?: number; rz?: number }, c: number): BufferGeometry => teindre(placer(new ConeGeometry(r, h, seg), { ...p, y: (p.y ?? 0) + h / 2 }), c);
-const sph = (r: number, p: { x?: number; y?: number; z?: number; s?: [number, number, number] }, c: number): BufferGeometry => teindre(placer(new SphereGeometry(r, 7, 5), p), c);
+const sph = (r: number, p: { x?: number; y?: number; z?: number; s?: [number, number, number] }, c: number): BufferGeometry => teindre(placer(new SphereGeometry(r, r < 0.5 ? 6 : 7, r < 0.5 ? 4 : 5), p), c); // lot BR5 : les petites boules (fleurs) un peu plus légères, pour que les camps plus grands tiennent dans le budget d'un morceau
 const cyl = (r0: number, r1: number, h: number, p: { x?: number; y?: number; z?: number }, c: number): BufferGeometry => teindre(placer(new CylinderGeometry(r1, r0, h, 7), { ...p, y: (p.y ?? 0) + h / 2 }), c);
 
 function modeles(theme: ThemeVu, a: PaletteMonde): Modeles {

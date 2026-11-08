@@ -5,8 +5,8 @@ import type { Commandes } from "@cdj/ui/src/commandes";
 
 // Les commandes de Rush : clavier, manette, doigts. **Le jeu ne lit jamais une touche en dur** (règle M2) : il déclare ses actions (`ACTIONS_RUSH`) et le kit les rend réglables ; ici seulement la lecture de ce qui est tenu.
 // Le résultat de chaque tick est l'entrée de la simulation (`entree` de `@cdj/rush-sim`) : une direction parmi 32 (le déplacement), le coup, l'esquive et (lot BR0b) la VISÉE, séparée du déplacement :
-//   · PC : la souris vise (le point du sol sous le curseur, calculé par la scène : `visee`), le clic gauche frappe (maintenu = enchaînement), Espace esquive, ZQSD/WASD (lus par `event.code`) et les flèches déplacent ;
-//   · manette : le stick gauche ou la croix déplacent, le stick droit VISE s'il est poussé (sinon visée assistée), A frappe (maintenu = enchaînement), B esquive ;
+//   · PC : la souris vise (le point du sol sous le curseur, calculé par la scène : `visee`), le clic gauche frappe (maintenu = enchaînement), le clic droit ou E lance la compétence (lot BR5), Espace esquive, ZQSD/WASD (lus par `event.code`) et les flèches déplacent ;
+//   · manette : le stick gauche ou la croix déplacent, le stick droit VISE s'il est poussé (sinon visée assistée), A frappe (maintenu = enchaînement), B esquive, RB lance la compétence (lot BR5) ;
 //   · doigt : le joystick déplace, « Coup » (maintenu = enchaînement) et « Esquive » ; pas de visée (assistée).
 
 /** La direction de la croix (0 à 31, 0 vers la droite, 8 vers le bas) d'un déplacement (dx, dy) en axes d'écran, ou −1. */
@@ -31,6 +31,9 @@ export class Controles {
   /** Les boutons tactiles (un appui est aussi gardé quelques ticks : `appuyer`). */
   boutonCoup = false;
   boutonEsquive = false;
+  /** Lot BR5 : le bouton « Compétence » des doigts et le clic droit de la souris. */
+  boutonCompetence = false;
+  boutonSourisDroit = false;
   /** Le clic gauche de la souris (tenu : il enchaîne). */
   boutonSouris = false;
   /** La visée de la souris (0 à 31), ou −1 tant que le joueur n'a pas la souris : la scène la calcule (rayon sur le plan du sol). */
@@ -38,6 +41,7 @@ export class Controles {
   /** Un appui bref (une action du kit, une porte d'essai) : tenu encore quelques ticks. */
   private impulsionCoup = 0;
   private impulsionEsquive = 0;
+  private impulsionCompetence = 0;
   /** L'entrée imposée par une porte d'essai : (octet, ticks restants). */
   forcee: { e: number; reste: number } | null = null;
   private derniereDirection = -1;
@@ -65,7 +69,7 @@ export class Controles {
   private touche(e: KeyboardEvent, appui: boolean): void {
     if (!this.commandes) return;
     const id = this.commandes.actionDeTouche(e.code);
-    if (!id || !["haut", "bas", "gauche", "droite", "coup", "esquive"].includes(id)) return;
+    if (!id || !["haut", "bas", "gauche", "droite", "coup", "esquive", "competence"].includes(id)) return;
     // Espace ne fait ni défiler la page ni cliquer sur le bouton qui a le focus ; une touche tapée dans un champ (le panneau des réglages) reste à ce champ.
     const cible = e.target as HTMLElement | null;
     if (!(cible && /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(cible.tagName))) e.preventDefault();
@@ -80,12 +84,14 @@ export class Controles {
   action(id: string): void {
     if (id === "coup") this.impulsionCoup = 4;
     else if (id === "esquive") this.impulsionEsquive = 4;
+    else if (id === "competence") this.impulsionCompetence = 4;
   }
 
   /** Lot BR2 : les appuis gardés en mémoire sont oubliés (un appui qui a servi à choisir une carte ne doit pas frapper à la reprise du monde). */
   effacerAppuis(): void {
     this.impulsionCoup = 0;
     this.impulsionEsquive = 0;
+    this.impulsionCompetence = 0;
   }
 
   /** L'entrée du tick `tick` : la direction ne change pas plus d'une fois tous les `PAS_MIN_DIRECTION` ticks (la rediffusion reste courte). */
@@ -99,7 +105,9 @@ export class Controles {
     let coup = this.tenues.has("coup") || this.boutonCoup || this.boutonSouris || this.impulsionCoup > 0;
     let esquive = this.tenues.has("esquive") || this.boutonEsquive || this.impulsionEsquive > 0;
     if (this.impulsionCoup > 0) this.impulsionCoup--;
+    let competence = this.tenues.has("competence") || this.boutonCompetence || this.boutonSourisDroit || this.impulsionCompetence > 0;
     if (this.impulsionEsquive > 0) this.impulsionEsquive--;
+    if (this.impulsionCompetence > 0) this.impulsionCompetence--;
     let direction = directionDe8(dx, dy);
     let visee = this.visee();
     // Le doigt prend la place du clavier ; la manette complète.
@@ -119,6 +127,8 @@ export class Controles {
       if (this.commandes) {
         const lc = this.commandes.liaison("coup");
         const le = this.commandes.liaison("esquive");
+        const lk = this.commandes.liaison("competence");
+        if (lk && liaisonTenue(lk, pad)) competence = true;
         if (lc && liaisonTenue(lc, pad)) coup = true;
         if (le && liaisonTenue(le, pad)) esquive = true;
       }
@@ -140,6 +150,6 @@ export class Controles {
         this.tickVisee = tick;
       }
     }
-    return entree(this.derniereDirection, coup, esquive, this.derniereVisee);
+    return entree(this.derniereDirection, coup, esquive, this.derniereVisee, competence);
   }
 }
