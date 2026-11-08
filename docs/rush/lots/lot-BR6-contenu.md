@@ -30,6 +30,7 @@ Suite de BR5 (fusionné). Jeu `off` : golden **régénéré**, `RUSH_SIM_VERSION
 | foncer | 362 / 365 | 1:45 / **3:08** / 5:17 | 40 % |
 | un peu d'XP | 349 / 365 | 1:41 / **2:58** / 5:12 | 42 % |
 | beaucoup d'XP | 344 / 365 | 2:13 / **3:25** / 5:09 | 18 % |
+- **Correctif après relecture de Nathan : un chaman ne protège jamais un chaman** (deux chamans proches se rendaient invulnérables). Nouvelle mesure sur 368 jours : foncer 366 V, médiane 3:08 (1:48 / 5:05) ; un peu d'XP 353 V, 2:57 ; beaucoup d'XP 346 V, 3:22 ; la plus rapide : **39 / 44 / 17 %**. Les chiffres du tableau ci-dessus sont ceux d'avant ce correctif (écarts de quelques secondes).
 - **Les cibles de durée ne tiennent pas avec la règle d'équilibre** (voir §7). Diamant 365 / 365 (médiane 166 s). Boss : ≥ 58 / 60 pour chacun, sans carte (combat 180-217 s, chêne 152 s) et 60 / 60 avec ses cartes.
 
 ## 4. Médailles et pilote humanisé
