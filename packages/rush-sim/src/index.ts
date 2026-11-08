@@ -7,6 +7,7 @@ export * from "./reglagesSim";
 export * from "./niveau";
 export * from "./ameliorations";
 export * from "./bosses";
+export * from "./monstres";
 export * from "./generateur";
 export * from "./partie";
 export * from "./rediffusion";

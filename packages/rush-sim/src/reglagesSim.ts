@@ -108,6 +108,28 @@ export interface Reglages {
   signatureTourbillon: number;
   signatureBond: number;
   signatureBouclier: number;
+  /** Lot BR6 : l'XP des quatre nouveaux ennemis (cracheur, chaman, totem, porte-bouclier), celle d'un monstre de la salle d'épreuve en % (`xpEpreuve`) et celle d'un élite en % (`xpElite` : ×10, plus un cœur garanti). */
+  xpCracheur: number;
+  xpChaman: number;
+  xpTotem: number;
+  xpPorteBouclier: number;
+  xpEpreuve: number;
+  xpElite: number;
+  /** Lot BR6 : la part (%) des dégâts que le bouclier d'un chaman retire à l'allié qu'il protège (−70 %), la vie d'un élite (× ce nombre), sa taille (%) et la rapidité de ses attaques (la durée de ses annonces et de son cycle, en %). */
+  protectionChaman: number;
+  eliteVie: number;
+  eliteTaille: number;
+  eliteRapidite: number;
+  /** Lot BR6 — les cartes de fin de partie. Lame enflammée : les dégâts de chaque pulsation de la zone qui brûle en % d'un coup ordinaire, sa durée (ticks) et son rayon (cm). Frénésie : − % de durée des coups par palier de cadence accumulé (jusqu'à 5), et le temps (ticks) avant qu'elle retombe. Écrasement : + % de dégâts contre un ennemi étourdi. Bond sismique : l'onde de la seconde secousse en % de la première (dégâts) et de rayon. Bouclier ricochet : le nombre de rebonds. Seconde charge : rien (elle ajoute une charge). */
+  flammeDegats: number;
+  flammeDuree: number;
+  flammeRayon: number;
+  frenesieGain: number;
+  frenesieDuree: number;
+  ecrasementDegats: number;
+  sismiqueDegats: number;
+  sismiqueRayon: number;
+  ricochetRebonds: number;
 }
 
 export const REGLAGES_DEFAUT: Reglages = {
@@ -178,6 +200,25 @@ export const REGLAGES_DEFAUT: Reglages = {
   signatureTourbillon: 40,
   signatureBond: 60,
   signatureBouclier: 2,
+  xpCracheur: 10,
+  xpChaman: 14,
+  xpTotem: 20,
+  xpPorteBouclier: 16,
+  xpEpreuve: 250,
+  xpElite: 1000,
+  protectionChaman: 70,
+  eliteVie: 5,
+  eliteTaille: 150,
+  eliteRapidite: 80,
+  flammeDegats: 60,
+  flammeDuree: 180,
+  flammeRayon: 170,
+  frenesieGain: 5,
+  frenesieDuree: 90,
+  ecrasementDegats: 100,
+  sismiqueDegats: 70,
+  sismiqueRayon: 150,
+  ricochetRebonds: 4,
 };
 
 /** Les bornes de chaque réglage (le curseur de `?tune` et la validation d'un JSON collé). */
@@ -249,6 +290,25 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   signatureTourbillon: [0, 100],
   signatureBond: [0, 200],
   signatureBouclier: [0, 5],
+  xpCracheur: [0, 200],
+  xpChaman: [0, 200],
+  xpTotem: [0, 200],
+  xpPorteBouclier: [0, 200],
+  xpEpreuve: [50, 1000],
+  xpElite: [100, 3000],
+  protectionChaman: [0, 95],
+  eliteVie: [1, 10],
+  eliteTaille: [100, 250],
+  eliteRapidite: [40, 100],
+  flammeDegats: [10, 300],
+  flammeDuree: [30, 600],
+  flammeRayon: [80, 400],
+  frenesieGain: [1, 15],
+  frenesieDuree: [20, 300],
+  ecrasementDegats: [10, 300],
+  sismiqueDegats: [10, 300],
+  sismiqueRayon: [100, 300],
+  ricochetRebonds: [1, 10],
 };
 
 export const CLES_REGLAGES = Object.keys(REGLAGES_DEFAUT) as (keyof Reglages)[];

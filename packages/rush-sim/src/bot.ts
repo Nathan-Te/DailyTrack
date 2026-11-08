@@ -3,10 +3,10 @@ import { ANNONCE, BOSS, B_BELIER, B_CHENE, B_DUC, B_REINE, MARCHE, Z_BANDE, Z_IN
 import { C_BOND, C_BOUCLIER, C_TOURBILLON, RAYON_ARENE, RAYON_CHEVALIER, cm } from "./constantes";
 import { entree, type Changement } from "./entrees";
 import type { Contenu } from "./generateur";
-import { distance, dirVers, unitaire } from "./maths";
+import { distance, distance2, dirVers, unitaire } from "./maths";
 import { COS, SIN } from "./trig";
 import { caseDe, centreDeCase, champDeDistance, descendre, INACCESSIBLE } from "./niveau";
-import { CHAUVE, COUP, GELATON, ONDE, PLONGEON, Partie, pointDuSegment, type Resultat } from "./partie";
+import { CHAMAN, CHAUVE, COUP, CRACHEUR, GELATON, GELEE, ONDE, PLONGEON, PORTE_BOUCLIER, TOTEM, Partie, pointDuSegment, type Monstre, type Resultat } from "./partie";
 import type { Choix } from "./rediffusion";
 import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 
@@ -20,6 +20,8 @@ import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 // une carte (`PRIORITES`, la première de la liste qui est proposée). Elles servent à l'ÉQUILIBRE : aucune ne doit gagner tous les jours (`tools/mesures.ts`, `test/equilibre.test.ts`).
 // Lot BR5 : il choisit sa COMPÉTENCE au départ d'après le boss du jour (`competenceDuPilote`) et la lance quand elle est rechargée et que la cible vaut le coup ; les vases du chemin se brisent d'un coup au passage.
 // Lot BR4 : il ne se laisse plus BLOQUER (`suivreLeProgres` : sans progrès pendant `BLOCAGE_TICKS`, il lâche ce qu'il visait) et il a une version HUMANISÉE (`HUMAIN`) qui sert à calibrer les médailles, jamais à les fixer. Tout changement du pilote monte `RUSH_BOT_VERSION`.
+// Lot BR6 : il APPREND les nouveaux ennemis — le chaman et le totem d'abord (le bouclier du chaman et les gélatons du totem durent tant qu'ils vivent), le porte-bouclier par le flanc (sa garde para les coups de face), les projectiles du cracheur
+// esquivés (de côté, puis l'esquive au dernier moment) — et il combat la salle d'épreuve (portes fermées : il chasse les vagues, sans naviguer).
 // La stratégie « nettoyer » d'avant (une mesure, pas un Diamant) va d'abord à chaque monstre, du plus proche au plus loin, puis à l'arène : elle donne l'écart de temps entre foncer et tout nettoyer.
 
 /** La direction de la croix (0 à 31) la plus proche d'un vecteur. */
@@ -191,6 +193,22 @@ function suivreLeProgres(p: Partie, etat: EtatPilote): void {
   }
 }
 
+/** Lot BR6 — ce que vaut de tuer un type en premier : le chaman (qui protège tout le monde) puis le totem (qui invoque) puis le cracheur, en centimètres de distance « gagnée » dans le choix de la cible. */
+const BONUS_CIBLE: readonly number[] = [0, 0, 0, 600, 1500, 1200, 0];
+
+/**
+ * Lot BR6 — le point d'où frapper un porte-bouclier SANS que sa garde pare le coup : sur son flanc (112° de son bouclier), du côté où se trouve déjà le chevalier, à portée de coup. Le bouclier se tourne lentement (56°/s) et le chevalier tourne plus vite autour de lui.
+ */
+function flancDe(p: Partie, m: Monstre): { x: number; y: number } {
+  const c = p.c;
+  const a = dirVers(c.x - m.x, c.y - m.y);
+  const ecart = ((a - m.face + 64 + 128) % 128) - 64;
+  const cote = ecart >= 0 ? 1 : -1;
+  const k = (((m.face + cote * 40) % 128) + 128) % 128;
+  const r = p.rayonM(m) + RAYON_CHEVALIER + cm(110);
+  return { x: m.x + Math.trunc((COS[k]! * r) / 1024), y: m.y + Math.trunc((SIN[k]! * r) / 1024) };
+}
+
 /** Dans le niveau, avant l'arène : où aller et quoi frapper. */
 function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boolean } {
   const n = p.niveau!;
@@ -211,33 +229,76 @@ function naviguer(p: Partie, etat: EtatPilote): { direction: number; coup: boole
     }
     devant = centreDeCase(n, k);
   }
-  let bloque: { x: number; y: number; r: number; id: number } | null = null;
+  let bloque: { x: number; y: number; r: number; id: number; m?: Monstre } | null = null;
   let meilleur = Infinity;
   // Lot BR5 : une meute qui arrive (trois ennemis éveillés à moins de 5 m) ne se traverse pas en marchant : même « foncer » s'arrête pour la faucher.
-  const mobbe = p.monstres.filter((m) => m.hp > 0 && m.alerte !== 0 && distance(c.x, c.y, m.x, m.y) < cm(500)).length >= 3;
+  let proches = 0;
+  for (const m of p.actifs) if (m.hp > 0 && m.alerte !== 0 && distance2(c.x, c.y, m.x, m.y) < cm(500) * cm(500)) proches++;
+  const mobbe = proches >= 3;
   for (const m of p.monstres) {
-    if (m.hp <= 0 || ignore(p, etat, m.id)) continue;
+    if (m.hp <= 0 || m.x - c.x > cm(400) || c.x - m.x > cm(400) || m.y - c.y > cm(400) || c.y - m.y > cm(400) || ignore(p, etat, m.id)) continue;
     const d = distance(c.x, c.y, m.x, m.y);
     const barre = etat.strategie !== "foncer" || mobbe ? d < cm(360) : d < cm(170) || (d < cm(300) && distance(m.x, m.y, devant[0], devant[1]) < cm(240));
-    if (barre && d < meilleur) {
-      meilleur = d;
-      bloque = { x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : cm(48), id: m.id };
+    // Lot BR6 : un chaman ou un totem éveillé à portée passe avant le reste
+    const note = d - (m.alerte === 1 || m.laisse === 0 ? BONUS_CIBLE[m.type]! : 0);
+    if (barre && note < meilleur) {
+      meilleur = note;
+      bloque = { x: m.x, y: m.y, r: p.rayonM(m), id: m.id, m };
     }
   }
   etat.focus = 0;
   // Lot BR5 : une meute ou un camp qui s'éveille à moins de 10 m et qui n'est pas encore sur nous : on freine et on tient sa ligne (la course s'arrête quand on s'arrête) au lieu de foncer dedans à 7,5 m/s.
   if (p.course > 0 && !bloque) {
-    const eveilles = p.monstres.filter((m) => m.hp > 0 && m.alerte === 1 && distance(c.x, c.y, m.x, m.y) < cm(1000)).length;
+    let eveilles = 0;
+    for (const m of p.actifs) if (m.hp > 0 && m.alerte === 1 && distance2(c.x, c.y, m.x, m.y) < cm(1000) * cm(1000)) eveilles++;
     if (eveilles >= 3) return { direction: -1, coup: false };
   }
   const portee = p.porteeCoup(0) - cm(50);
   // `champ` : un obstacle encore loin se rejoint en suivant le champ de distance (la ligne droite peut buter sur un mur et le bloquer pour toujours).
-  const frapper = (b: { x: number; y: number; r: number }, champ?: Uint16Array): { direction: number; coup: boolean } => {
+  const frapper = (b: { x: number; y: number; r: number; m?: Monstre }, champ?: Uint16Array): { direction: number; coup: boolean } => {
     const d = distance(c.x, c.y, b.x, b.y) - b.r - RAYON_CHEVALIER;
+    // Lot BR6 : un porte-bouclier dont la garde parerait le coup se contourne par le flanc
+    if (b.m && p.garde(b.m, c.x, c.y) && d < cm(500)) {
+      const f = flancDe(p, b.m);
+      return { direction: croix(f.x - c.x, f.y - c.y), coup: false };
+    }
     if (d <= portee) return { direction: -1, coup: true };
     const pas = champ ? pasVers(p, champ) : -1;
     return { direction: pas >= 0 ? pas : croix(b.x - c.x, b.y - c.y), coup: false };
   };
+  // Lot BR6 — la salle d'épreuve : les portes sont fermées, il chasse les vagues, le chaman et le totem d'abord ; entre deux vagues il attend au centre.
+  if (p.epreuve.etat === 1) {
+    let cible: Monstre | null = null;
+    let note = Infinity;
+    for (const m of p.actifs) {
+      if (m.hp <= 0 || m.vague === 0 || ignore(p, etat, m.id)) continue;
+      const v = distance(c.x, c.y, m.x, m.y) - BONUS_CIBLE[m.type]!;
+      if (v < note) {
+        note = v;
+        cible = m;
+      }
+    }
+    if (cible) {
+      etat.focus = cible.id;
+      return frapper({ x: cible.x, y: cible.y, r: p.rayonM(cible), m: cible });
+    }
+    const e = n.epreuve;
+    return { direction: distance(c.x, c.y, e.x, e.y) > cm(250) ? croix(e.x - c.x, e.y - c.y) : -1, coup: false };
+  }
+  // Lot BR6 — un chaman ou un totem éveillé à moins de 11 m passe avant tout le reste, même loin : tant qu'il vit, son bouclier ou ses gélatons protègent les autres.
+  {
+    let prio: Monstre | null = null;
+    let dp = Infinity;
+    for (const m of p.actifs) {
+      if ((m.type !== CHAMAN && m.type !== TOTEM) || m.hp <= 0 || m.alerte !== 1 || ignore(p, etat, m.id)) continue;
+      const d = distance(c.x, c.y, m.x, m.y);
+      if (d < cm(1100) && d < dp) {
+        dp = d;
+        prio = m;
+      }
+    }
+    if (prio) bloque = { x: prio.x, y: prio.y, r: p.rayonM(prio), id: prio.id, m: prio };
+  }
   if (bloque) {
     etat.focus = bloque.id;
     // Lot BR5 : on ne se jette pas dans une foule (le coup d'élan pousse le chevalier au milieu d'elle) : il freine d'abord, la course tombe en quelques ticks, puis il frappe.
@@ -393,7 +454,7 @@ function competenceDuMoment(p: Partie): number | null {
   if (!p.competencePrete) return null;
   const g = p.golem && p.golem.hp > 0 && p.golemEveille && p.golem.etat !== 3 ? p.golem : null;
   const ennemis: { x: number; y: number; r: number; boss: boolean }[] = [];
-  for (const m of p.monstres) if (m.hp > 0 && eveille(m)) ennemis.push({ x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : m.type === GELATON ? cm(30) : cm(48), boss: false });
+  for (const m of p.actifs) if (m.hp > 0 && eveille(m)) ennemis.push({ x: m.x, y: m.y, r: p.rayonM(m), boss: false });
   if (g) ennemis.push({ x: g.x, y: g.y, r: g.r, boss: true });
   if (ennemis.length === 0) return null;
   const d = (e: { x: number; y: number; r: number }): number => distance(c.x, c.y, e.x, e.y) - e.r;
@@ -404,6 +465,14 @@ function competenceDuMoment(p: Partie): number | null {
   }
   let cible = ennemis[0]!;
   for (const e of ennemis) if (d(e) < d(cible)) cible = e;
+  // Lot BR6 : un chaman éveillé à portée (3 à 9 m) est visé de préférence (le bond l'atteint derrière la foule, le bouclier lancé la traverse)
+  if (c.comp !== C_TOURBILLON) {
+    for (const m of p.actifs) {
+      if (m.type !== CHAMAN || m.hp <= 0 || !eveille(m)) continue;
+      const dm = distance(c.x, c.y, m.x, m.y);
+      if (dm > cm(300) && dm < cm(850)) cible = { x: m.x, y: m.y, r: p.rayonM(m), boss: true };
+    }
+  }
   const v = croix(cible.x - c.x, cible.y - c.y);
   if (c.comp === C_BOND) {
     const portee = d(cible) + cible.r;
@@ -491,16 +560,52 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   for (const n of p.nuages) if (distance(c.x, c.y, n.x, n.y) < n.r + cm(120)) fuite = { x: n.x, y: n.y };
   // 3. Un monstre qui fonce sur nous : l'esquive est gardée pour l'onde quand elle approche (lot BR0c : l'esquive met 40 ticks à revenir).
   const ondeProche = p.zones.some((z) => z.type === ONDE && z.ti - tick <= 60) || p.ondes.some((o) => !o.touche);
-  for (const m of p.monstres) {
-    if (c.degat > 0 || m.gel > 0 || ondeProche) continue;
+  // Lot BR6 : plus de dégât de contact — on esquive ce qui est ANNONCÉ et arrive : le bond d'une gelée ou d'un gélaton (pendant son bond), le plongeon d'une chauve-souris.
+  for (const m of p.actifs) {
+    if (c.degat > 0 || m.gel > 0 || ondeProche || m.hp <= 0) continue;
     const d = distance(c.x, c.y, m.x, m.y);
-    if (percu(p, etat, `e${m.id}`, m.type === CHAUVE ? m.etat === PLONGEON && d < cm(230) : d < cm(48 + 42 + 35))) esquiver = true;
+    let danger = false;
+    if (m.type === CHAUVE) danger = m.etat === PLONGEON && d < cm(230);
+    else if (m.type === GELEE || m.type === GELATON) {
+      const du = p.dureesDe(m);
+      const a = m.type === GELATON ? du.gelatonAnnonce : du.geleeAnnonce;
+      const b = m.type === GELATON ? du.gelatonBond : du.geleeBond;
+      danger = m.alerte !== 2 && m.t >= a && m.t < a + b && d < cm(48 + 42 + 70);
+    }
+    if (percu(p, etat, `e${m.id}`, danger)) esquiver = true;
+  }
+  // Lot BR6 : les projectiles des cracheurs — on se décale s'ils arrivent (de côté), on esquive au dernier moment ; un coup les détruit aussi, mais on ne parie pas dessus.
+  let lateral: { dx: number; dy: number } | null = null;
+  for (const q of p.projectiles) {
+    const rx = c.x - q.x;
+    const ry = c.y - q.y;
+    const v2 = q.vx * q.vx + q.vy * q.vy;
+    if (v2 === 0) continue;
+    const tcpa = (rx * q.vx + ry * q.vy) / v2;
+    if (tcpa < 0 || tcpa > 40) continue;
+    const px = rx - q.vx * tcpa;
+    const py = ry - q.vy * tcpa;
+    if (Math.hypot(px, py) > cm(26) + RAYON_CHEVALIER + cm(30)) continue;
+    if (!percu(p, etat, `q${q.id}`, true)) continue;
+    // le côté : celui où le chevalier se trouve déjà par rapport à la ligne du tir
+    const cote = px * -q.vy + py * q.vx >= 0 ? 1 : -1;
+    const dx = -q.vy * cote;
+    const dy = q.vx * cote;
+    if (tcpa <= 7 && c.attente === 0 && (!h || tirer(etat, 100) >= h.rateEsquivePct)) {
+      esquiver = true;
+      dirEsquive = croix(dx, dy);
+    } else lateral = { dx, dy };
   }
 
   // 4. Dans le niveau, avant l'arène : naviguer (et ne frapper que ce qui barre la route). Dans l'arène : le combat.
   if (p.niveau && p.barriere < 0) {
     suivreLeProgres(p, etat);
     const nav = naviguer(p, etat);
+    // Lot BR6 : un projectile qui arrive : on se décale d'abord (le coup attendra)
+    if (lateral) {
+      nav.direction = croix(lateral.dx, lateral.dy);
+      nav.coup = false;
+    }
     // Lot BR4 : bloqué sans rien à lâcher : il pousse de côté un moment (le côté change à chaque fois).
     if (p.tick < etat.contourneJusqua && nav.direction >= 0 && !nav.coup) nav.direction = (nav.direction + (etat.contourne % 2 === 0 ? 8 : 24)) % 32;
     // Coincé contre le coin d'un mur en voulant avancer : il se décale de côté (alternativement) jusqu'à repartir.
@@ -516,11 +621,11 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
   // Où frapper : les monstres tout proches d'abord, sinon le golem.
   let cible: { x: number; y: number; r: number } | null = null;
   let meilleur = Infinity;
-  for (const m of p.monstres) {
+  for (const m of p.actifs) {
     const d = distance(c.x, c.y, m.x, m.y);
-    if (d < meilleur && d < cm(360)) {
+    if (d < meilleur && d < cm(360) && m.hp > 0) {
       meilleur = d;
-      cible = { x: m.x, y: m.y, r: m.type === CHAUVE ? cm(36) : cm(48) };
+      cible = { x: m.x, y: m.y, r: p.rayonM(m) };
     }
   }
   if (!cible && p.golem && p.golem.hp > 0) cible = { x: p.golem.x, y: p.golem.y, r: p.golem.r };
@@ -578,6 +683,10 @@ export function pilote(p: Partie, etat: EtatPilote = etatPilote()): number {
     const attendre = g && g.kind === B_DUC && g.sol === 0 && cible.x === g.x && cible.y === g.y;
     if (d > portee) direction = leurre || attendre ? -1 : croix(cible.x - c.x, cible.y - c.y);
     else coup = true;
+  }
+  if (lateral && !fuite) {
+    direction = croix(lateral.dx, lateral.dy);
+    coup = false;
   }
   // Le coup est TENU : la simulation enchaîne les trois coups en boucle (lot BR0b).
   const bouton = coup;
