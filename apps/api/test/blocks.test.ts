@@ -141,14 +141,14 @@ describe("Blocks sur le serveur", () => {
   it("lit le jour figé de l'image s'il se vérifie, l'ignore sinon", async () => {
     const fige = figerJourDuDiamant(JOUR);
     expect(contenuDeBlocks(JOUR, { [DATE]: fige })).toEqual({ ...dailyBlocks(JOUR), seuilsFiges: SEUILS_MEDAILLES });
-    const abime = { ...fige, contenu: { suite: fige.contenu.suite.slice(1) + "0" } };
+    const abime = { ...fige, contenu: { graine: fige.contenu.graine, empreinte: "00000000" } };
     expect(empreinteContenu(contenuDeBlocks(JOUR, { [DATE]: abime }))).toBe(empreinteContenu(dailyBlocks(JOUR)));
     const t = await monter({ frozen: { [DATE]: fige } });
     const info = await t.call("GET", "/api/blocks/info");
     expect(info.body.frozenDays).toEqual([DATE]);
   });
 
-  it("un jour figé fige ses seuils : le serveur sert et rend ceux du fichier, même si les constantes d'aujourd'hui sont d'autres ; l'empreinte du jour les couvre", async () => {
+  it("un jour figé fige ses seuils : le serveur sert et rend ceux du fichier, même si les seuils de la fiche d'aujourd'hui sont d'autres ; l'empreinte du jour les couvre", async () => {
     const ancien = { author: 7000, gold: 5000, silver: 3500, bronze: 1200 }; // un fichier figé par une version plus ancienne
     expect(ancien.author).not.toBe(SEUILS_MEDAILLES.author);
     const fige = { ...figerJourDuDiamant(JOUR), bot: 0, seuils: ancien };
@@ -156,7 +156,7 @@ describe("Blocks sur le serveur", () => {
     const t = await monter({ frozen: { [DATE]: fige } });
     const jour = await t.call("GET", `/api/blocks/day/${DATE}`);
     expect(jour.body.medals).toEqual({ author: ancien.author, gold: ancien.gold, silver: ancien.silver, bronze: ancien.bronze });
-    // Sans fichier : les constantes d'aujourd'hui.
+    // Sans fichier : les seuils de la fiche d'aujourd'hui.
     expect(seuilsDeBlocks(contenuDeBlocks(JOUR))).toEqual(SEUILS_MEDAILLES);
     // L'empreinte (comparée à chaque mise en production) change si les seuils changent : un fichier de seuils différents n'a pas l'empreinte du jour généré.
     const dossier = mkdtempSync(join(tmpdir(), "blocks-jours-"));

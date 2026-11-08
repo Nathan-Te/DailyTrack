@@ -3,6 +3,7 @@ import { daysFromCivil } from "@cdj/core";
 import { actionDe, BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, contenuDeScenario, dailyBlocks, decoderRediffusion, encoderRediffusion, enregistrer, ErreurRediffusion, MAX_CARACTERES, NB_ACTIONS, PLAFOND_PIECES, rejouer } from "../src/index";
 import { jouerGlouton } from "../src/glouton";
 import { activerReglesV1 } from "../src/v1";
+import { jouerDiamant } from "../src/diamant";
 import { contenuDEssai } from "./aide";
 
 activerReglesV1(); // les tests « v1 » ci-dessous (le jeu, lui, ne les active jamais)
@@ -77,5 +78,31 @@ describe("rediffusion et rejeu (règles v2 : un octet par pose, emplacement × 6
   it("une partie courte à la main (suite d'essai) se rejoue", () => {
     const c = contenuDEssai(["coin-0", "coin-0", "coin-0"], ["XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXXXX", "XXXXXX.."]);
     expect(rejouer({ ...c, jour: JOUR, g: BLOCKS_GENERATOR_VERSION }, enregistrer({ ...c, jour: JOUR }, [])).raison).toBe("bloquee");
+  });
+});
+
+describe("une rediffusion trichée est refusée (lot B8c : le serveur retire chaque série depuis la grille qu'il rejoue)", () => {
+  it("une partie jouée avec des pièces qui n'ont pas été tirées (ici des séries de dominos, bien plus faciles) ne se rejoue pas sur le vrai jour : action illégale, après la fin ou non terminée — jamais acceptée avec un autre score", () => {
+    for (let i = 0; i < 10; i++) {
+      const jour = JOUR + i;
+      const vrai = dailyBlocks(jour);
+      // Le tricheur joue SA suite de dominos (contenuDEssai : trois dominos à chaque série) et envoie ses poses comme celles du vrai jour.
+      const faux = { ...contenuDEssai([]), jour, graine: vrai.graine };
+      const triche = jouerDiamant(faux);
+      expect(triche.actions.length).toBeGreaterThan(20);
+      const code = refus(() => rejouer(vrai, enregistrer(vrai, triche.actions)));
+      expect(["action_illegale", "apres_la_fin", "non_terminee"], `jour ${jour} : ${code}`).toContain(code);
+    }
+  });
+
+  it("changer une seule pose d'une vraie partie change les séries suivantes (elles dépendent de la grille) : la fin de la rediffusion, écrite pour l'autre suite, est refusée ou rejoue un autre score", () => {
+    const vrai = dailyBlocks(JOUR + 2);
+    const { actions, resultat } = jouerGlouton(vrai);
+    // On déplace la première pose du premier emplacement vers une autre case légale ; les poses suivantes restent celles de la partie d'origine.
+    const modifie = [...actions];
+    modifie[0] = (modifie[0]! + 1) % 8 === 0 ? modifie[0]! - 1 : modifie[0]! + 1;
+    const code = refus(() => rejouer(vrai, enregistrer(vrai, modifie)));
+    if (code === "accepté") expect(rejouer(vrai, enregistrer(vrai, modifie)).score).not.toBe(resultat.score);
+    else expect(["action_illegale", "apres_la_fin", "non_terminee"]).toContain(code);
   });
 });

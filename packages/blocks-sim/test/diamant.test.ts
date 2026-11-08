@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { actionDe, contenuDeScenario, dailyBlocks, emplacementDe, jouer, Partie, PIECES, PLAFOND_PIECES, SCENARIOS, TAILLE_SERIE } from "../src/index";
+import { actionDe, contenuDeScenario, dailyBlocks, emplacementDe, jouer, Partie, PLAFOND_PIECES, SCENARIOS, TAILLE_SERIE } from "../src/index";
 import { coupDuDiamant, jouerDiamant, LARGEUR_FAISCEAU, piecesSansPlace, planDuDiamant, partieDuDiamant, POIDS_DIAMANT } from "../src/diamant";
 import { coupGlouton, jouerGlouton } from "../src/glouton";
 
@@ -9,26 +9,18 @@ const PREMIER = daysFromCivil(2026, 11, 2);
 const jours = (n: number): number[] => Array.from({ length: n }, (_, i) => PREMIER + i);
 
 describe("le bot Diamant (recherche en faisceau)", () => {
-  it("ne voit jamais les séries à venir (lot B8b) : changer toutes les pièces d'après la série en cours ne change pas son plan, ni celui du bot moyen", () => {
+  it("ne voit jamais les séries à venir (lots B8b et B8c) : son plan ne lit que la grille, le combo et les pièces restantes de la série — aucune autre information sur la partie ; changer le contenu du jour n'y change rien", () => {
     for (const j of jours(10)) {
       const c = dailyBlocks(j);
       for (const serie of Array.from({ length: 70 }, (_, i) => i)) {
-        // Les poses du Diamant jusqu'au début de la série `serie`, rejouées sur la suite réelle (p) et sur une suite qui n'en diffère que APRÈS la série en cours (q).
+        // Les poses du Diamant jusqu'au début de la série `serie`.
         const p = new Partie(c);
-        const menant: number[] = [];
-        while (!p.finie && p.serie < serie) {
-          const a = planDuDiamant(p)[0]!;
-          menant.push(a);
-          p.jouerAction(a);
-        }
+        while (!p.finie && p.serie < serie) p.jouerAction(planDuDiamant(p)[0]!);
         if (p.finie) continue;
-        const apres = (serie + 1) * TAILLE_SERIE;
-        const decalage = 1 + ((j + serie) % 39);
-        const q = new Partie({ ...c, suite: c.suite.map((id, i) => (i < apres ? id : (id + decalage) % PIECES.length)) });
-        for (const a of menant) q.jouerAction(a);
-        expect(q.serie).toBe(p.serie);
-        expect(planDuDiamant(q), `jour ${j}, série ${serie} : Diamant`).toEqual(planDuDiamant(p));
-        expect(coupGlouton(q), `jour ${j}, série ${serie} : bot moyen`).toEqual(coupGlouton(p));
+        // Une « partie » réduite à ce que le plan est censé lire : si le plan lisait autre chose (le contenu, la graine, la suite), il échouerait ou différerait.
+        const seul = { grille: p.grille, dernieresPieces: p.dernieresPieces, combo: p.combo, sansEffacement: p.sansEffacement, serie: p.serie, finie: p.finie };
+        expect(planDuDiamant(seul), `jour ${j}, série ${serie} : Diamant`).toEqual(planDuDiamant(p));
+        expect(coupGlouton({ grille: p.grille, pieces: p.pieces, finie: p.finie, combo: p.combo }), `jour ${j}, série ${serie} : bot moyen`).toEqual(coupGlouton(p));
       }
     }
   });

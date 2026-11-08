@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
-import { BLOCKS_BOT_VERSION, BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, BOTS_DE_REFERENCE, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, estScenario, rejouer, seuilsDuJour } from "../src/index";
+import { BLOCKS_BOT_VERSION, BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, BOTS_DE_REFERENCE, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, estScenario, rejouer } from "../src/index";
 import { jouerDiamant } from "../src/diamant";
 import { jouerFaible } from "../src/faible";
 import { jouerGlouton } from "../src/glouton";
@@ -11,7 +11,7 @@ const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-blocks.json", 
   sim: number;
   generateur: number;
   bot: number;
-  jours: { date: string; empreinte: string; seuils: unknown; arrets: Record<string, number> }[];
+  jours: { date: string; empreinte: string; arrets: Record<string, number> }[];
   rediffusions: { nom: string; date: string; scenario?: string; g: number; code: string; resultat: unknown }[];
 };
 
@@ -19,11 +19,8 @@ describe("golden de Blocks", () => {
   it("nomme les versions du code", () => {
     expect({ sim: golden.sim, generateur: golden.generateur, bot: golden.bot }).toEqual({ sim: BLOCKS_SIM_VERSION, generateur: BLOCKS_GENERATOR_VERSION, bot: BLOCKS_BOT_VERSION });
   });
-  it.each(golden.jours.map((j) => [j.date, j.empreinte]))("la suite du %s a l'empreinte %s", (date, empreinte) => {
+  it.each(golden.jours.map((j) => [j.date, j.empreinte]))("le tirage du %s a l'empreinte %s", (date, empreinte) => {
     expect(empreinteContenu(dailyBlocks(parseDay(date!)!))).toBe(empreinte);
-  });
-  it.each(golden.jours.map((j) => [j.date, j.seuils]))("les seuils du %s sont %j (les mêmes constantes tous les jours)", (date, seuils) => {
-    expect(seuilsDuJour(dailyBlocks(parseDay(date as string)!))).toEqual(seuils);
   });
   it.each(golden.jours.map((j) => [j.date, j.arrets]))("les bots de référence arrêtés après leur nombre de pièces donnent au %s les scores %j", (date, arrets) => {
     const c = dailyBlocks(parseDay(date as string)!);

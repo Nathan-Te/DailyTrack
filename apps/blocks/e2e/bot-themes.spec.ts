@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { dailyBlocks, grilleEnTexte, medailleDe, Partie, PIECES, PIECES_DU_DIAMANT, PREMIER_JOUR_BLOCKS, SEUILS_MEDAILLES, THEMES_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
+import { dailyBlocks, grilleEnTexte, medailleDe, Partie, PIECES_DU_DIAMANT, PREMIER_JOUR_BLOCKS, SEUILS_MEDAILLES, THEMES_BLOCKS, themeDuJour } from "@cdj/blocks-sim";
 import { partieDuDiamant } from "@cdj/blocks-sim/diamant";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
@@ -47,6 +48,9 @@ test.describe("Blocks : le bot Diamant (&bot)", () => {
     const s = SEUILS_MEDAILLES;
     const medailles = await page.locator(".jeu-medailles").innerText();
     for (const v of [s.author, s.gold, s.silver, s.bronze]) expect(medailles).toContain(String(v));
+    // Lot B8c : ces seuils sont ceux de la FICHE du jeu (`medailles.seuils`), lus tels quels par l'écran de fin.
+    const f = (JSON.parse(readFileSync(new URL("../../../config/jeux/blocks.json", import.meta.url), "utf8")) as { medailles: { seuils: Record<string, number> } }).medailles.seuils;
+    for (const v of [f.diamant, f.or, f.argent, f.bronze]) expect(medailles).toContain(String(v));
     expect(s.bronze).toBeLessThan(s.silver);
     expect(s.silver).toBeLessThan(s.gold);
     expect(s.gold).toBeLessThan(s.author);
@@ -85,6 +89,9 @@ test.describe("Blocks : les médailles de l'écran de fin", () => {
     const s = SEUILS_MEDAILLES;
     const medailles = await page.locator(".jeu-medailles").innerText();
     for (const v of [s.author, s.gold, s.silver, s.bronze]) expect(medailles).toContain(String(v));
+    // Lot B8c : ces seuils sont ceux de la FICHE du jeu (`medailles.seuils`), lus tels quels par l'écran de fin.
+    const f = (JSON.parse(readFileSync(new URL("../../../config/jeux/blocks.json", import.meta.url), "utf8")) as { medailles: { seuils: Record<string, number> } }).medailles.seuils;
+    for (const v of [f.diamant, f.or, f.argent, f.bronze]) expect(medailles).toContain(String(v));
     expect(medailles).not.toMatch(/\b0\b/);
     expect(await page.evaluate(() => window.__jeu.score())).toEqual([glouton.resultat.score, glouton.resultat.combo]);
     // Un score en dessous du Diamant : « encore … » vers la médaille suivante.
@@ -117,13 +124,13 @@ test.describe("Blocks : les thèmes du jour", () => {
     await autre.context.close();
   });
 
-  test("un thème forcé ne change pas la suite, mais la partie est un essai local, jamais classé (le kit lit `?theme=`, lot « manques de Blocks »)", async ({ browser }) => {
+  test("un thème forcé ne change pas le tirage, mais la partie est un essai local, jamais classé (le kit lit `?theme=`, lot « manques de Blocks »)", async ({ browser }) => {
     const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&theme=nuit`);
     await expect(page.locator("#jeu-archive")).toHaveText("Partie d'essai : non classée.");
     expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("nuit");
     await lancer(page);
-    const suite = dailyBlocks(jour).suite;
-    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual([0, 1, 2].map((k) => PIECES[suite[k]!]!.nom)); // la première série, aucune pièce suivante
+    const premiere = new Partie(dailyBlocks(jour)).pieces.map((p) => p!.nom);
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(premiere); // la première série (la même pour tous : grille vide), aucune pièce suivante
     await context.close();
   });
 });

@@ -363,10 +363,16 @@ export const FICHES_SERVEUR = [
     "medailles": {
       "methode": "pourcentage-diamant",
       "bareme": [
-        43,
-        19,
-        10
-      ]
+        42,
+        17,
+        8
+      ],
+      "seuils": {
+        "bronze": 850,
+        "argent": 1900,
+        "or": 4600,
+        "diamant": 11000
+      }
     },
     "versions": {
       "sim": "packages/blocks-sim/src/constantes.ts:BLOCKS_SIM_VERSION",

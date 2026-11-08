@@ -1,18 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { actionDe, compterPleines, contenuDeScenario, effacer, estClassable, estScenario, jouer, Partie, peutPoser, pleines, poser, SCENARIOS, type Grille, type Piece } from "../src/index";
+import { actionDe, compterPleines, completeUneLigne, contenuDeScenario, effacer, estClassable, estScenario, grilleDepuis, jouer, Partie, peutPoser, pleines, poser, SCENARIOS, type Grille, type Piece } from "../src/index";
+import { jouerDiamant } from "../src/diamant";
 
 describe("les scénarios d'essai", () => {
-  it("cinq scénarios (ordre ajouté, suivantes retiré au lot B8), jamais classables, une suite complète", () => {
-    expect([...SCENARIOS]).toEqual(["presque-plein", "blocage", "plateau-vide", "combo", "ordre"]);
+  it("six scénarios (coup-de-pouce ajouté au lot B8c, ordre au lot B8, suivantes retiré au lot B8), jamais classables, avec leurs séries imposées puis le tirage adapté", () => {
+    expect([...SCENARIOS]).toEqual(["presque-plein", "blocage", "plateau-vide", "combo", "ordre", "coup-de-pouce"]);
     for (const nom of SCENARIOS) {
       const c = contenuDeScenario(nom);
       expect(c.scenario).toBe(nom);
       expect(estClassable(c)).toBe(false);
-      expect(c.suite).toHaveLength(2000);
+      expect(c.suite).toBeUndefined();
       expect(estScenario(nom)).toBe(true);
+      // Toute partie de scénario se joue jusqu'au bout (les séries qui suivent celles qu'il impose sont tirées pour la grille du moment) et se rejoue.
+      const { actions, resultat } = jouerDiamant(c);
+      expect(jouer(c, actions)).toEqual(resultat);
     }
     expect(estScenario("autre")).toBe(false);
     expect(estScenario("suivantes")).toBe(false);
+  });
+  it("les séries imposées : `ordre` et `blocage` n'ont que la leur, `presque-plein` et `combo` deux, `plateau-vide` une ; `coup-de-pouce` aucune (la première série est tirée)", () => {
+    expect(Object.fromEntries(SCENARIOS.map((n) => [n, contenuDeScenario(n).imposees?.length ?? 0]))).toEqual({ "presque-plein": 2, blocage: 1, "plateau-vide": 1, combo: 2, ordre: 1, "coup-de-pouce": 0 });
+  });
+  it("coup-de-pouce : deux lignes attendent chacune une barre de 3 ; la série TIRÉE pour cette grille en contient une qui complète une ligne (quelle que soit la graine)", () => {
+    const c = contenuDeScenario("coup-de-pouce");
+    expect(c.depart).toEqual(grilleDepuis(["........", "........", "XXXXX...", "X.X.....", "X.XX....", "XXXXX...", "X.X.....", "........"]));
+    const p = new Partie(c);
+    const serie = p.pieces.map((x) => x!);
+    expect(serie).toHaveLength(3);
+    expect(completeUneLigne(p.grille, serie)).toBe(true);
+    // Elle y est toujours, sur d'autres graines aussi : le scénario exige le coup de pouce à 100 %.
+    for (let j = 1; j < 40; j++) {
+      const q = new Partie({ ...c, graine: c.graine + j });
+      expect(completeUneLigne(q.grille, q.pieces.map((x) => x!)), `graine +${j}`).toBe(true);
+    }
+    // Et la barre de 3 qui complète une ligne l'efface bel et bien.
+    const barre = serie.findIndex((x) => x.nom === "barre3-0");
+    if (barre >= 0) expect(p.poser(barre, 5, 2)).toMatchObject({ n: 1 });
   });
   it("presque-plein : une pose, 2 lignes et 1 colonne ; blocage : fin immédiate, trois pièces grisées ; plateau-vide : la grille se vide", () => {
     const a = new Partie(contenuDeScenario("presque-plein"));

@@ -41,7 +41,7 @@ export function rediffusionDuDiamant(contenu: Contenu): string {
 declare const __JOURS_FIGES__: readonly string[] | undefined;
 const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? [] : __JOURS_FIGES__;
 
-/** Le contenu d'un jour : un scénario d'essai ou une rampe réglée si l'adresse le demande (jamais en production), sinon le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
+/** Le contenu d'un jour : un scénario d'essai ou un tirage réglé si l'adresse le demande (jamais en production), sinon le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
 export async function contenuDuJour(jour: number, base: string, theme: string): Promise<Contenu> {
   // La palette et le décor du thème (celui du jour, ou `?theme=` : le kit le donne) sont prêts avant la scène ; un décor qui ne charge pas laisse le ciel en aplat.
   const [palette, decor] = await Promise.all([chargerPalette(theme), chargerDecorTheme(theme as ThemeBlocks).catch(() => null)]);
@@ -54,7 +54,7 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
 async function contenuSansPalette(jour: number, base: string): Promise<Contenu> {
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   if (essai.scenario) return contenuDeScenario(essai.scenario);
-  if (essai.rampe) return dailyBlocks(jour, BLOCKS_GENERATOR_VERSION, essai.rampe);
+  if (essai.reglage) return dailyBlocks(jour, BLOCKS_GENERATOR_VERSION, essai.reglage);
   const date = formatDay(jour);
   if (dateDemandable(date, import.meta.env.VITE_PRODUCTION === "1", JOURS_FIGES)) {
     try {

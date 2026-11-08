@@ -3,12 +3,12 @@ import { arrondir, BOTS_DE_REFERENCE, dailyBlocks, Partie, PLAFOND_PIECES, SEUIL
 import { LARGEUR_FAISCEAU, planDuDiamant } from "../src/diamant";
 import { jouerGlouton } from "../src/glouton";
 
-// `npm run calibrer:medailles -w @cdj/blocks-sim -- [--graines=1000] [--du=2026-11-02]` : le calibrage des médailles (lot B8b, seed § 5). Chaque seuil est le score d'un bot de référence ARRÊTÉ APRÈS UN NOMBRE FIXE DE PIÈCES
-// (`BOTS_DE_REFERENCE` : bronze = bot moyen à 45 pièces, argent = moyen à 90, or = fort à 150, Diamant = fort à 240 ; s'il meurt avant, son score final), en médiane sur N jours, arrondie. L'outil écrit
+// `npm run calibrer:medailles -w @cdj/blocks-sim -- [--graines=1000] [--du=2026-11-02]` : le calibrage des médailles (lots B8b et B8c, seed § 5). Chaque seuil est le score d'un bot de référence ARRÊTÉ APRÈS UN NOMBRE FIXE DE PIÈCES
+// (`BOTS_DE_REFERENCE` : bronze = bot moyen à 30 pièces, argent = moyen à 60, or = fort à 105, Diamant = fort à 180 ; s'il meurt avant, son score final), en médiane sur N jours, arrondie. L'outil écrit
 //   1. pour chaque médaille : le score du bot de référence (minimum, quartiles, médiane, maximum), la part des jours où il meurt avant son nombre de pièces, la variation d'un jour à l'autre (part des jours hors de ±25 % de
-//      la médiane), la valeur PROPOSÉE (médiane arrondie) et celle EN VIGUEUR (`SEUILS_MEDAILLES`) ;
-//   2. les contrôles de bon sens : les rapports argent / bronze, or / argent, Diamant / or (cible : entre 1,5 et 2,5) ; le bot moyen à 30 pièces (une première partie hésitante) rapporté au bronze ; la part des jours où le bot
-//      fort, joué sans arrêt, dépasse le Diamant (cible : presque toujours).
+//      la médiane), la valeur PROPOSÉE (médiane arrondie) et celle EN VIGUEUR (`medailles.seuils` de la fiche, lue par `SEUILS_MEDAILLES`) ;
+//   2. les contrôles de bon sens : les rapports argent / bronze, or / argent, Diamant / or (cible : entre 1,5 et 2,5) ; la part des jours où le bot fort, joué sans arrêt, dépasse le Diamant ;
+//   3. les seuils proposés EN CLAIR, dans la forme de la fiche (`"seuils": { "bronze": …, "argent": …, "or": …, "diamant": … }`) : Nathan les recopie dans `config/jeux/blocks.json`, puis `npm run fiches`.
 const arg = (n: string, d: string): string => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3) ?? d;
 const N = Number(arg("graines", "1000"));
 const du = arg("du", "2026-11-02");
@@ -16,9 +16,9 @@ const depart = daysFromCivil(Number(du.slice(0, 4)), Number(du.slice(5, 7)), Num
 const q = (a: readonly number[], p: number): number => [...a].sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor((a.length * p) / 100))]!;
 const resume = (a: readonly number[]) => ({ min: q(a, 0), q1: q(a, 25), mediane: q(a, 50), q3: q(a, 75), max: q(a, 100) });
 
-// Pour chaque bot, les scores aux nombres de pièces voulus (ceux de `BOTS_DE_REFERENCE`, plus 30 pour le bot moyen) ; un bot mort avant garde son score final. Le bot fort ne planifie que série par série : son score à `n` pièces est le même
+// Pour chaque bot, les scores aux nombres de pièces voulus (ceux de `BOTS_DE_REFERENCE`) ; un bot mort avant garde son score final. Le bot fort ne planifie que série par série : son score à `n` pièces est le même
 // qu'il s'arrête là ou qu'il continue.
-const comptes = (bot: "moyen" | "fort"): number[] => [...new Set([...Object.values(BOTS_DE_REFERENCE).filter((r) => r.bot === bot).map((r) => r.pieces), ...(bot === "moyen" ? [30] : [])])].sort((x, y) => x - y);
+const comptes = (bot: "moyen" | "fort"): number[] => [...new Set(Object.values(BOTS_DE_REFERENCE).filter((r) => r.bot === bot).map((r) => r.pieces))].sort((x, y) => x - y);
 const nM = comptes("moyen"), nF = comptes("fort");
 const moyen: Record<number, number[]> = Object.fromEntries(nM.map((n) => [n, [] as number[]]));
 const mortMoyen: Record<number, number> = Object.fromEntries(nM.map((n) => [n, 0]));
@@ -75,6 +75,13 @@ console.log(JSON.stringify({ jours: N, du, largeurFaisceau: LARGEUR_FAISCEAU, ta
 const [b, s, g, a] = tableau.map((t) => t.proposee) as [number, number, number, number];
 const rapports = { argentSurBronze: +(s / b).toFixed(2), orSurArgent: +(g / s).toFixed(2), diamantSurOr: +(a / g).toFixed(2) };
 const dansLaCible = Object.values(rapports).every((r) => r >= 1.5 && r <= 2.5);
-const m30 = resume(moyen[30]!);
 const depasse = finalFort.filter((v) => v >= a).length;
-console.log(JSON.stringify({ rapports, dansLaCible, moyenA30Pieces: { score: m30, mortAvant_pourcent: +((100 * mortMoyen[30]!) / N).toFixed(1), medianeSurBronze: +(m30.mediane / b).toFixed(2), partDesJoursAuDessusDuBronze_pourcent: +((100 * moyen[30]!.filter((v) => v >= b).length) / N).toFixed(1) }, botFortSansArret: { score: resume(finalFort), pieces: resume(posesFort), plafond: `${plafond}/${N}`, partDesJoursQuilDepasseLeDiamant_pourcent: +((100 * depasse) / N).toFixed(1) }, tempsMs }));
+console.log(
+  JSON.stringify({
+    rapports,
+    dansLaCible,
+    botFortSansArret: { score: resume(finalFort), pieces: resume(posesFort), plafond: `${plafond}/${N}`, partDesJoursQuilDepasseLeDiamant_pourcent: +((100 * depasse) / N).toFixed(1) },
+    tempsMs,
+    seuilsProposesPourLaFiche: { bronze: b, argent: s, or: g, diamant: a },
+  }),
+);

@@ -1,15 +1,15 @@
 import { writeFileSync } from "node:fs";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { BLOCKS_BOT_VERSION, BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, BOTS_DE_REFERENCE, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, jouer, seuils } from "../src/index";
+import { BLOCKS_BOT_VERSION, BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, BOTS_DE_REFERENCE, contenuDeScenario, dailyBlocks, empreinteContenu, enregistrer, jouer } from "../src/index";
 import { jouerDiamant } from "../src/diamant";
 import { jouerFaible } from "../src/faible";
 import { jouerGlouton } from "../src/glouton";
 
 const arrets = (c: ReturnType<typeof dailyBlocks>): Record<string, number> => Object.fromEntries((["bronze", "silver", "gold", "author"] as const).map((m) => [m, (BOTS_DE_REFERENCE[m].bot === "moyen" ? jouerGlouton(c, BOTS_DE_REFERENCE[m].pieces) : jouerDiamant(c, undefined, BOTS_DE_REFERENCE[m].pieces)).resultat.score]));
 
-// Le golden de Blocks : `npm run golden:blocks -w @cdj/blocks-sim`. Dix jours (l'empreinte de leur suite, les seuils des médailles — des constantes — et le score de chaque bot de référence arrêté après son nombre de pièces) et des rediffusions de référence : les bots faible et moyen sur deux jours et sur
+// Le golden de Blocks : `npm run golden:blocks -w @cdj/blocks-sim`. Dix jours (l'empreinte de leur tirage (la marche de référence, `empreinte.ts`) et le score de chaque bot de référence arrêté après son nombre de pièces) et des rediffusions de référence : les bots faible et moyen sur deux jours et sur
 // un scénario, les trois scénarios qui se jouent (« blocage » : fin immédiate, aucune pose), et **le bot Diamant** sur deux jours et sur « presque-plein » et « ordre ». Il ne se régénère jamais sans monter la version concernée
-// (`BLOCKS_SIM_VERSION` pour les règles, `BLOCKS_GENERATOR_VERSION` pour la suite, `BLOCKS_BOT_VERSION` pour les bots et les références des médailles).
+// (`BLOCKS_SIM_VERSION` pour les règles, `BLOCKS_GENERATOR_VERSION` pour le tirage, `BLOCKS_BOT_VERSION` pour les bots et les références des médailles). Lot B8c : les seuils des médailles sont la donnée de la fiche : ils ne sont plus au golden.
 const jours = Array.from({ length: 10 }, (_, i) => daysFromCivil(2026, 11, 2) + i * 3);
 
 const bots = { faible: jouerFaible, moyen: jouerGlouton, diamant: jouerDiamant } as const;
@@ -31,11 +31,11 @@ const parties = [
 });
 
 const sortie = {
-  _: "Golden de Blocks (lots B1, B3 et B8). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
+  _: "Golden de Blocks (lots B1, B3, B8 et B8c). Régénérer : npm run golden:blocks -w @cdj/blocks-sim, seulement en montant la version concernée.",
   sim: BLOCKS_SIM_VERSION,
   generateur: BLOCKS_GENERATOR_VERSION,
   bot: BLOCKS_BOT_VERSION,
-  jours: jours.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyBlocks(j)), seuils: seuils(), arrets: arrets(dailyBlocks(j)) })),
+  jours: jours.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyBlocks(j)), arrets: arrets(dailyBlocks(j)) })),
   rediffusions: parties,
 };
 writeFileSync(new URL("../test/fixtures/golden-blocks.json", import.meta.url), JSON.stringify(sortie, null, 2) + "\n");

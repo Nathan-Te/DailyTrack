@@ -1,4 +1,4 @@
-import { PART_DU_DIAMANT_MEDIAN } from "./medailles";
+import { BAREME_DE_LA_FICHE } from "./medailles";
 import type { Resultat } from "./partie";
 
 // LA VARIANTE de Blocks : `score` (lot B1). Le seul endroit qui sait comment ce jeu se classe : le score ↓, puis le combo maximal ↓, puis le premier arrivé (les deux départages ultimes de toute table :
@@ -9,7 +9,7 @@ export interface FicheVariante {
   colonnes: readonly { nom: string; sens: "asc" | "desc" }[];
   unite: "points";
   format: "entier";
-  /** Or, argent et bronze en pour cent du Diamant médian, dans cet ordre (le `bareme` de la fiche, à titre d'indication : la règle des seuils est `seuilsDepuis`, `medailles.ts`). */
+  /** Or, argent et bronze en pour cent du Diamant médian, dans cet ordre (le `bareme` de la fiche, à titre d'indication : les seuils sont `medailles.seuils` de la fiche, lus par `medailles.ts`). */
   bareme: readonly number[];
 }
 export interface Variante {
@@ -22,7 +22,7 @@ export interface Variante {
 
 const SCORE: Variante = {
   nom: "score",
-  fiche: { colonnes: [{ nom: "score", sens: "desc" }, { nom: "combo", sens: "desc" }], unite: "points", format: "entier", bareme: [PART_DU_DIAMANT_MEDIAN.gold, PART_DU_DIAMANT_MEDIAN.silver, PART_DU_DIAMANT_MEDIAN.bronze] },
+  fiche: { colonnes: [{ nom: "score", sens: "desc" }, { nom: "combo", sens: "desc" }], unite: "points", format: "entier", bareme: BAREME_DE_LA_FICHE },
   score: (r) => [r.score, r.combo],
 };
 

@@ -31,14 +31,14 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   medaille: (score, s) => medailleDe(score, s),
   nouvellePartie: (c, hote, o) => corps!.nouvellePartieBlocks(c, hote, o),
   rediffusionDiamant: (c) => corps!.rediffusionDuDiamant(c), // la partie du bot (le kit l'exige ; lot B5 : plus de fantôme, la partie du Diamant se revoit hors partie)
-  // Lot « manques de Blocks » : tout essai local est une partie non classable — un scénario, une rampe réglée (`?debug&tune`), `&bot`, `?scenario=partage` ; le kit ne la classe ni ne l'envoie, sans passer la page en archive.
+  // Lot « manques de Blocks » : tout essai local est une partie non classable — un scénario, un tirage réglé (`?debug&tune`), `&bot`, `?scenario=partage` ; le kit ne la classe ni ne l'envoie, sans passer la page en archive.
   // (Écrit ici, court, plutôt que par `lireEssai` (`essai.ts`) : celui-ci est dans le corps du jeu, à la demande, et n'a pas à entrer dans le premier chargement — budget `blocks.jsCss` ; `essai.test.ts` garde les deux d'accord.)
   classable: (adresse) => {
     if (BUILD_RESTRICTED) return true;
     const q = new URLSearchParams(adresse);
     const nom = q.get("scenario") ?? "";
-    const rampe = q.has("debug") && q.has("tune") && (q.get("rampe") ?? "").split(",").some((x) => /^\d+(\.\d+)?$/.test(x));
-    return !(estScenario(nom) || nom === "partage" || q.has("bot") || rampe);
+    const regle = q.has("debug") && q.has("tune") && ["rampe", "essais", "posable", "pouce"].some((cle) => (q.get(cle) ?? "").split(",").some((x) => /^\d+(\.\d+)?$/.test(x)));
+    return !(estScenario(nom) || nom === "partage" || q.has("bot") || regle);
   },
   sansFantome: true, // lot « manques de Blocks » : l'option du kit remplace le bouton, la ligne des Réglages et la commande cachés par `partie.css` (seed § 5 : une grille en transparence est illisible)
   formatScore: (score, langue, t) => ecrireScore(score[0] ?? 0, t, langue),

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { BLOCKS_GENERATOR_VERSION, dailyBlocks, PIECES } from "@cdj/blocks-sim";
+import { BLOCKS_GENERATOR_VERSION, completeUneLigne, contenuDeScenario, dailyBlocks, Partie } from "@cdj/blocks-sim";
+import { coupDuDiamant } from "@cdj/blocks-sim/diamant";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
 import { API, appareil, JOUR, lancer } from "./appareil";
@@ -114,26 +115,67 @@ test.describe("Blocks : les scénarios", () => {
     await context.close();
   });
 
-  test("?seed=AAAA-MM-JJ : le jour d'une date (la suite de ce jour-là), en archive", async ({ browser }) => {
+  test("?seed=AAAA-MM-JJ : le jour d'une date (le tirage de ce jour-là), en archive", async ({ browser }) => {
     for (const date of ["2026-11-02", "2026-11-03", "2026-11-04"]) {
       const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&seed=${date}`);
       await expect(page.locator("#jeu-archive")).toBeVisible();
       await lancer(page);
-      const suite = dailyBlocks(parseDay(date)!).suite;
-      expect(await page.evaluate(() => window.__blocks.pieces())).toEqual([0, 1, 2].map((k) => PIECES[suite[k]!]!.nom));
+      const premiere = new Partie(dailyBlocks(parseDay(date)!)).pieces.map((p) => p!.nom);
+      expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(premiere);
       await context.close();
     }
   });
 
-  test("`?debug&tune` : la rampe réglée change la suite du jour d'aujourd'hui, la partie est un essai (jamais classée ni envoyée), sans passer en archive", async ({ browser }) => {
+  test("`?debug&tune` : le tirage réglé s'applique au jour d'aujourd'hui, la partie est un essai (jamais classée ni envoyée), sans passer en archive", async ({ browser }) => {
     const { context, page } = await appareil(browser, `/?api=${API}&debug&manuel&tactile=0&tune&rampe=100,1`);
     await expect(page.locator("#jeu-archive")).toHaveText(CATALOGUE_KIT_FR["kit.fin.essai"]);
     await lancer(page);
-    // Le jour reste celui d'aujourd'hui (06/11/2026) : la suite est celle de ce jour avec la rampe 100, 1 (jamais celle du serveur).
-    const suite = dailyBlocks(parseDay(JOUR)!, BLOCKS_GENERATOR_VERSION, { pente: 100, rangMax: 1 }).suite;
-    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual([0, 1, 2].map((k) => PIECES[suite[k]!]!.nom));
+    // Le jour reste celui d'aujourd'hui (06/11/2026) : la partie est celle de ce jour avec la rampe 100, 1 (jamais celle du serveur).
+    const premiere = new Partie(dailyBlocks(parseDay(JOUR)!, BLOCKS_GENERATOR_VERSION, { rampe: { pente: 100, rangMax: 1 } })).pieces.map((p) => p!.nom);
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(premiere);
     expect(await page.evaluate(() => window.location.search)).not.toContain("seed="); // l'adresse n'est plus réécrite
     expect(await page.evaluate(() => window.__jeu.envoi().statut)).not.toBe("ranked");
+    await context.close();
+  });
+
+  // Lot B8c — le tirage adapté à la grille, vu du navigateur : le jeu tire les séries comme la simulation (Node), pour la grille du moment.
+  test("une partie à trois séries : à chaque série qui arrive, les pièces du jeu sont celles que la simulation tire pour cette grille", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
+    await lancer(page);
+    const attendue = new Partie(dailyBlocks(parseDay(JOUR)!));
+    const noms = (): string[] => attendue.pieces.map((p) => p?.nom ?? "");
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(noms());
+    const series = [noms().join()];
+    for (let pose = 0; pose < 9; pose++) {
+      const coup = coupDuDiamant(attendue)!; // le Diamant joue ses neuf premières poses : trois séries
+      await page.evaluate((a) => window.__jeu.action(a), `pose:${coup.emplacement}:${coup.col}:${coup.ligne}`);
+      attendue.poser(coup.emplacement, coup.col, coup.ligne);
+      if (pose % 3 === 2) {
+        series.push(noms().join());
+        expect(await page.evaluate(() => window.__blocks.pieces()), `série ${(pose + 1) / 3}`).toEqual(noms());
+      }
+    }
+    expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ poses: 9, score: attendue.score });
+    expect(new Set(series).size).toBe(4); // quatre séries différentes (les trois posées et celle qui attend)
+    await context.close();
+  });
+
+  // Lot B8c — `?scenario=coup-de-pouce` : deux lignes attendent chacune une barre de 3, et la série tirée pour cette grille contient une pièce qui en complète une.
+  test("coup-de-pouce : la série tirée contient une pièce qui complète une ligne ; la poser l'efface, combo 1 (essai local, jamais classé)", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=coup-de-pouce");
+    await expect(page.locator("#jeu-archive")).toBeVisible();
+    await lancer(page);
+    const attendue = new Partie(contenuDeScenario("coup-de-pouce"));
+    expect(await page.evaluate(() => window.__blocks.pieces())).toEqual(attendue.pieces.map((p) => p!.nom));
+    expect(completeUneLigne(attendue.grille, attendue.pieces.map((p) => p!))).toBe(true);
+    // La première pose qui efface une ligne (dans la simulation), rejouée dans le navigateur.
+    let coup: { e: number; c: number; l: number } | null = null;
+    for (let e = 0; e < 3 && !coup; e++) for (let l = 0; l < 8 && !coup; l++) for (let c = 0; c < 8 && !coup; c++) if ((attendue.apercu(e, c, l)?.lignes ?? 0) + (attendue.apercu(e, c, l)?.colonnes ?? 0) > 0) coup = { e, c, l };
+    expect(coup).not.toBeNull();
+    const pose = attendue.poser(coup!.e, coup!.c, coup!.l)!;
+    await page.evaluate((a) => window.__jeu.action(a), `pose:${coup!.e}:${coup!.c}:${coup!.l}`);
+    expect(await page.evaluate(() => window.__blocks.etat())).toMatchObject({ score: pose.gain, combo: 1, poses: 1 });
+    expect(pose.n).toBeGreaterThan(0);
     await context.close();
   });
 });

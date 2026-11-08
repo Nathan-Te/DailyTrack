@@ -16,7 +16,7 @@ import { FICHE } from "./fiche";
 import { fournirMusique } from "./kitSon";
 
 // « Blocks » : tout le jeu tient dans `brancherJeu` — la fiche, la définition (simulation, rendu, aide) et les catalogues. Les écrans, l'interrupteur, le serveur, les records, les amis… sont le kit.
-// Une partie d'essai (scénario, rampe réglée, `&bot`) n'est jamais classée ni envoyée : `classable` de la définition le dit au kit (`essai.ts`). Le traducteur, le thème forcé (`?theme=`) viennent du kit.
+// Une partie d'essai (scénario, tirage réglé, `&bot`) n'est jamais classée ni envoyée : `classable` de la définition le dit au kit (`essai.ts`). Le traducteur, le thème forcé (`?theme=`) viennent du kit.
 const musique = brancherMusique("blocks", gameStorage);
 fournirMusique(musique);
 void brancherJeu(FICHE, DEFINITION, {

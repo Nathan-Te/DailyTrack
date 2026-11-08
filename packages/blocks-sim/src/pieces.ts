@@ -57,22 +57,23 @@ function orientations(base: Art, mode: "fixe" | "tour" | "tourEtMiroir"): Art[] 
   return out;
 }
 
-// [famille, nom, art de base, orientations, poids]. **Poids de base du tirage v5 (lot B8b)**, réglés **sur la répartition des pièces et rien d'autre** (seed § 4 ; aucune cible de survie d'un bot : `npm run mesure:repartition`,
-// README du lot B8b) : au début de la suite (séries 0 à 10) dominos 6 à 9 %, pièces de 3 cases 20 à 25 %, de 4 cases 40 à 50 %, de 5 cases ou plus 15 à 22 % ; au plafond de la rampe (`suite.ts`, série 80 et au-delà)
-// dominos 3 à 6 %, 3 cases 12 à 18 %, 4 cases 35 à 45 %, 5 cases ou plus 30 à 40 %. Dominos 15 ; barres 16 (3), 12 (4), 7 (5) ; carrés 10 (2 × 2), 7 (3 × 3) ; coins 14 ; L et J 7 ; grand L et grand T 7 ; T 7 ; S et Z 7 ;
-// rectangles 8. **Un poids est par orientation** : une famille de plusieurs orientations pèse plus.
+// [famille, nom, art de base, orientations, poids]. **Poids de base du tirage v6 (lot B8c)**, réglés **sur la répartition des pièces et rien d'autre** (seed § 4 ; aucune cible de survie d'un bot : `npm run mesure:repartition`, README du lot B8c) : sur
+// les séries candidates (avant les exigences), au début de la suite (séries 0 à 10) dominos 6 à 9 %, pièces de 3 cases 20 à 25 %, de 4 cases 40 à 50 %, de 5 cases ou plus 15 à 22 % ; au plafond de la rampe (`suite.ts`, série 80 et au-delà)
+// dominos 3 à 6 %, 3 cases 12 à 18 %, 4 cases 35 à 45 %, 5 cases ou plus 30 à 40 %. Dominos 15 ; barres 15 (3), 11 (4), 6 (5) ; carrés 10 (2 × 2), 7 (3 × 3) ; coins 13 ; L et J 6 ; grand L et grand T 6 ; T 7 ; S et Z 7 ; rectangles 8
+// (le tirage v5 avait barres 16, 12 et 7, coins 14, L et J, grand L et grand T 7 : un léger retrait des grosses pièces compense le coup de pouce, qui les choisit un peu plus souvent). **Un poids est par orientation** : une famille de plusieurs
+// orientations pèse plus.
 const DEFINITIONS: readonly (readonly [Famille, string, Art, "fixe" | "tour" | "tourEtMiroir", number])[] = [
   ["petite", "domino", ["XX"], "tour", 15],
-  ["barre", "barre3", ["XXX"], "tour", 16],
-  ["barre", "barre4", ["XXXX"], "tour", 12],
-  ["barre", "barre5", ["XXXXX"], "tour", 7],
+  ["barre", "barre3", ["XXX"], "tour", 15],
+  ["barre", "barre4", ["XXXX"], "tour", 11],
+  ["barre", "barre5", ["XXXXX"], "tour", 6],
   ["carre", "carre2", ["XX", "XX"], "fixe", 10],
   ["carre", "carre3", ["XXX", "XXX", "XXX"], "fixe", 7],
-  ["coin", "coin", ["X.", "XX"], "tour", 14],
-  ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 7],
-  ["grandL", "grandl", ["X..", "X..", "XXX"], "tour", 7],
+  ["coin", "coin", ["X.", "XX"], "tour", 13],
+  ["l", "l", ["X.", "X.", "XX"], "tourEtMiroir", 6],
+  ["grandL", "grandl", ["X..", "X..", "XXX"], "tour", 6],
   ["tsz", "t", ["XXX", ".X."], "tour", 7],
-  ["tsz", "grandt", ["XXX", ".X.", ".X."], "tour", 7],
+  ["tsz", "grandt", ["XXX", ".X.", ".X."], "tour", 6],
   ["tsz", "s", [".XX", "XX."], "tour", 7],
   ["tsz", "z", ["XX.", ".XX"], "tour", 7],
   ["rectangle", "rect", ["XXX", "XXX"], "tour", 8],

@@ -1,14 +1,18 @@
+import { TAILLE_SERIE, type ReglageSaisi } from "./constantes";
 import { dailyBlocks, type Contenu } from "./generateur";
 import { grilleDepuis } from "./grille";
 import { type NomScenario } from "./nomsScenarios";
 import { pieceParNom } from "./pieces";
 
-// Les SCÉNARIOS D'ESSAI (seed § 9) : une grille de départ et le début de la suite (par séries de trois pièces) fixés à la main, puis la suite du jour 0 pour continuer à jouer. **Locaux, jamais classés** : leur rediffusion nomme le
+// Les SCÉNARIOS D'ESSAI (seed § 9) : une grille de départ et les premières séries (de trois pièces) imposées à la main, puis le tirage adapté à la grille du jour 0 (lot B8c) pour continuer à jouer — sauf `ordre` et `blocage`, qui n'ont que leur série. **Locaux, jamais classés** : leur rediffusion nomme le
 // scénario (`{ scenario }` dans l'enveloppe) et non un jour ; le serveur la refuse (`contenu_different`), et le jeu ne l'envoie pas (la page se met en archive, `apps/blocks/src/essai.ts`).
 
 interface Definition {
   depart: readonly string[];
+  /** Les pièces imposées, trois par série. */
   debut: readonly string[];
+  /** Un réglage du tirage propre au scénario (les séries tirées ensuite). */
+  reglage?: ReglageSaisi;
 }
 const DEFINITIONS: Record<NomScenario, Definition> = {
   // Une pose du rectangle 3 × 2 en (5, 6) remplit les lignes 6 et 7 ET la colonne 7 : 2 lignes + 1 colonne d'un coup (n = 3), sans vider la grille (les deux cases de la colonne 0 restent).
@@ -39,12 +43,20 @@ const DEFINITIONS: Record<NomScenario, Definition> = {
     depart: ["XX.X.XX.", "X.XXXXXX", ".XXXXXXX", "XXX.XX.X", "X.XXXXXX", "XXXXX.XX", "..XXXXX.", "..XXXXXX"],
     debut: ["coin-1", "domino-1", "carre2-0"],
   },
+  // Lot B8c — LE COUP DE POUCE. Deux lignes (2 et 5) attendent chacune une barre de 3 ; aucune série n'est imposée : la première série est TIRÉE pour cette grille, avec le coup de pouce exigé à 100 % (un jour ordinaire ne l'exige qu'environ
+  // une fois sur deux). Elle contient donc toujours une pièce qui complète une ligne (`scenarios.test.ts`).
+  "coup-de-pouce": {
+    depart: ["........", "........", "XXXXX...", "X.X.....", "X.XX....", "XXXXX...", "X.X.....", "........"],
+    debut: [],
+    reglage: { pouce: { pct: 100, pctFin: 100 } },
+  },
 };
 
-/** Le contenu d'un scénario : la grille de départ, le début de la suite, puis la suite du jour 0. */
+/** Le contenu d'un scénario : la grille de départ, les séries imposées, puis le tirage du jour 0, adapté à la grille. */
 export function contenuDeScenario(nom: NomScenario): Contenu {
   const d = DEFINITIONS[nom];
   const jour0 = dailyBlocks(0);
-  const debut = d.debut.map((n) => pieceParNom(n).id);
-  return { jour: 0, g: jour0.g, suite: [...debut, ...jour0.suite].slice(0, jour0.suite.length), depart: grilleDepuis(d.depart), scenario: nom };
+  const ids = d.debut.map((n) => pieceParNom(n).id);
+  const imposees = Array.from({ length: Math.floor(ids.length / TAILLE_SERIE) }, (_, s) => ids.slice(s * TAILLE_SERIE, (s + 1) * TAILLE_SERIE));
+  return { jour: 0, g: jour0.g, graine: jour0.graine, ...(imposees.length > 0 ? { imposees } : {}), depart: grilleDepuis(d.depart), scenario: nom, ...(d.reglage ? { reglage: d.reglage } : {}) };
 }

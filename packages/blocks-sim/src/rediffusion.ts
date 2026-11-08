@@ -4,7 +4,7 @@ import { BLOCKS_GENERATOR_VERSION, BLOCKS_SIM_VERSION, NB_ACTIONS, PLAFOND_PIECE
 import { dailyBlocks, type Contenu, reglesDe } from "./generateur";
 import { ErreurRejeu, jouer, type Resultat } from "./partie";
 
-// La rediffusion d'une partie de Blocks : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe`) et, pour charge, **la suite des poses : un octet chacune** (règles v2, lot B8 : `emplacement × 64 + ligne × 8 + colonne`,
+// La rediffusion d'une partie de Blocks : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe`) et, pour charge, **la suite des poses : un octet chacune** (règles v2 et v3, lots B8 et B8c : `emplacement × 64 + ligne × 8 + colonne`,
 // le coin haut-gauche de la boîte de la pièce posée ; règles v1 : `ligne × 8 + colonne`, une seule pièce à la fois). Une partie est la suite de ses poses : tout le reste se rejoue. 2 000 poses au plus (le plafond).
 // Les règles v1 ne se rejouent que pour un jour figé en v1 (`v1.ts`) : une rediffusion v2 d'un jour v1 (ou l'inverse) est refusée, `contenu_different`.
 
@@ -13,7 +13,7 @@ export const MAX_CARACTERES = 2800;
 export const LIMITES = { maxCaracteres: MAX_CARACTERES, sims: [1, BLOCKS_SIM_VERSION], generateurs: [3, BLOCKS_GENERATOR_VERSION] } as const;
 
 /** Le rejeu des règles v1, inscrit par `activerReglesV1` (`v1.ts`, le serveur) : le jeu ne l'a jamais, donc ne l'embarque pas. */
-export type RejeuAncien = (contenu: Pick<Contenu, "suite" | "depart">, actions: readonly number[]) => { resultat: Resultat } | { erreur: "action_illegale" | "apres_la_fin" | "non_terminee" | "trop_longue"; message: string };
+export type RejeuAncien = (contenu: { suite: readonly number[]; depart?: Contenu["depart"] }, actions: readonly number[]) => { resultat: Resultat } | { erreur: "action_illegale" | "apres_la_fin" | "non_terminee" | "trop_longue"; message: string };
 export const rejeuxAnciens = new Map<number, RejeuAncien>();
 
 export type CodeRefus = "format_illisible" | "version_inconnue" | "trop_longue" | "contenu_different" | "action_illegale" | "apres_la_fin" | "non_terminee";
@@ -69,7 +69,7 @@ export function rejouer(contenu: Contenu, rediffusion: string | Rediffusion): Re
       // Un jour figé en v1 : ses règles, au bit près (une pièce à la fois) — si le serveur les a activées.
       const rejeuV1 = rejeuxAnciens.get(1);
       if (!rejeuV1) throw new ErreurRediffusion("version_inconnue", "règles v1 non activées");
-      const v1 = rejeuV1(contenu, r.actions);
+      const v1 = rejeuV1({ suite: contenu.suite ?? [], depart: contenu.depart }, r.actions);
       if ("erreur" in v1) throw new ErreurRejeu(v1.erreur, v1.message);
       return v1.resultat;
     }

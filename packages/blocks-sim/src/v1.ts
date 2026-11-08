@@ -45,19 +45,20 @@ export function genererSuiteV3(graine: number, rampe: Rampe = RAMPE_PAR_DEFAUT_V
 }
 
 /** Rejoue une partie v1 : les actions sont `ligne × 8 + colonne`, une pose de la pièce du moment ; mêmes refus que le rejeu v2 (`null` + message en cas d'erreur, jamais d'exception). */
-export function jouerV1(contenu: { suite: readonly number[]; depart?: Grille }, actions: readonly number[]): { resultat: Resultat } | { erreur: "action_illegale" | "apres_la_fin" | "non_terminee" | "trop_longue"; message: string } {
+export function jouerV1(contenu: { suite?: readonly number[]; depart?: Grille }, actions: readonly number[]): { resultat: Resultat } | { erreur: "action_illegale" | "apres_la_fin" | "non_terminee" | "trop_longue"; message: string } {
   if (actions.length > PLAFOND_PIECES) return { erreur: "trop_longue", message: "trop de poses" };
+  const suite = contenu.suite ?? [];
   let g: Grille = contenu.depart ?? VIDE;
   let score = 0;
   let combo = 0;
   let comboMax = 0;
   let sans = 0;
   let rang = 0;
-  const fini = (): boolean => rang >= PLAFOND_PIECES || !tientQuelquePart(g, PIECES[contenu.suite[rang]!]!);
+  const fini = (): boolean => rang >= PLAFOND_PIECES || !tientQuelquePart(g, PIECES[suite[rang]!]!);
   for (let i = 0; i < actions.length; i++) {
     if (fini()) return { erreur: "apres_la_fin", message: `action ${i} après la fin de la partie` };
     const a = actions[i]!;
-    const p = PIECES[contenu.suite[rang]!]!;
+    const p = PIECES[suite[rang]!]!;
     const col = a % COLONNES;
     const ligne = Math.floor(a / COLONNES);
     if (!Number.isInteger(a) || a < 0 || a >= 64 || !peutPoser(g, p, col, ligne)) return { erreur: "action_illegale", message: `action ${i} illégale` };

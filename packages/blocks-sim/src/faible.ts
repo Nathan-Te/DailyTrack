@@ -1,5 +1,5 @@
 import { COLONNES, LIGNES, TAILLE_SERIE } from "./constantes";
-import type { Contenu } from "./generateur";
+import type { ContenuJouable } from "./generateur";
 import { compterPleines, peutPoser, pleines, poser } from "./grille";
 import { actionDe, Partie, type Resultat } from "./partie";
 
@@ -40,7 +40,7 @@ export function coupFaible(partie: Pick<Partie, "grille" | "pieces" | "finie">):
 }
 
 /** Joue une partie entière avec le bot faible : le résultat et les actions (octets). */
-export function jouerFaible(contenu: Pick<Contenu, "suite" | "depart">): { resultat: Resultat; actions: number[] } {
+export function jouerFaible(contenu: ContenuJouable): { resultat: Resultat; actions: number[] } {
   const partie = new Partie(contenu);
   const actions: number[] = [];
   while (!partie.finie) {
