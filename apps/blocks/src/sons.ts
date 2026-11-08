@@ -1,3 +1,4 @@
+import { ouvrirContexteAudio } from "@cdj/core/audio";
 import { type Evenement, notesDe } from "./sonsLogique";
 
 // Les sons de « Blocks » (lot B2) : Web Audio **procédural, sans fichier** (oscillateurs), sur le modèle de Tower. La décision (quelle note, quelle hauteur) est dans `sonsLogique.ts`, pure ; ici seulement la lecture.
@@ -16,13 +17,7 @@ export interface OptionsSons {
 }
 
 function contexteDuNavigateur(): ContexteAudio | null {
-  const Ctor = typeof window === "undefined" ? undefined : (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
-  if (!Ctor) return null;
-  try {
-    return new Ctor();
-  } catch {
-    return null;
-  }
+  return ouvrirContexteAudio<ContexteAudio>(); // lot S2 : session `ambient`, le son se mêle à celui du téléphone
 }
 
 export interface SonJoue {

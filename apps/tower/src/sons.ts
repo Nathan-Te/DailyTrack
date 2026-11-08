@@ -1,3 +1,4 @@
+import { ouvrirContexteAudio } from "@cdj/core/audio";
 import type { EvenementJeu } from "./evenements";
 import { hasardAffichage } from "./hasardAffichage";
 import { FiltreCris, type Couche, type VolumesFamilles, VOLUMES_DEFAUT, accepter, gainDe, sonDe } from "./sonsLogique";
@@ -32,13 +33,7 @@ export interface OptionsSons {
 }
 
 function contexteDuNavigateur(): ContexteAudio | null {
-  const Ctor = typeof window === "undefined" ? undefined : (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
-  if (!Ctor) return null;
-  try {
-    return new Ctor();
-  } catch {
-    return null;
-  }
+  return ouvrirContexteAudio<ContexteAudio>(); // lot S2 : session `ambient`, le son se mêle à celui du téléphone
 }
 
 export class Sons {

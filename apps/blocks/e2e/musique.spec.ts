@@ -4,10 +4,14 @@ import { lancer } from "./appareil";
 
 // « Blocks » — la musique (lot B6) : aucun son ni aucune requête avant un premier geste ; le menu et chaque thème jouent leur morceau ; « Couper la musique » met la sortie à zéro ; la couche du combo se synthétise à ×3. Le son n'est pas
 // entendu ici : on regarde ce que la page demande au réseau et à Web Audio (un espion posé avant la page sur `AudioContext`, voir `espion`).
+// Lot S2 : la musique se joue par Web Audio (morceau téléchargé, décodé, lu par un `AudioBufferSourceNode`), **jamais par un élément média** (il couperait la vidéo ou la musique du joueur) : l'espion compte
+// les décodages et les lectures d'éléments média, et le premier test vérifie qu'il n'y en a aucun.
 
 interface Espion {
   contextes: number;
-  musique: { gains: { gain: { value: number } }[]; oscillateurs: number; state: string } | null;
+  /** Les lectures d'un élément `<audio>` ou `<video>` (`play()`) : doit rester à zéro. */
+  lecturesMedia: number;
+  musique: { gains: { gain: { value: number } }[]; oscillateurs: number; state: string; decodes: number; sources: number } | null;
 }
 declare global {
   interface Window {
@@ -15,11 +19,17 @@ declare global {
   }
 }
 
-/** Pose l'espion avant la page : les contextes créés, et celui de la musique (le seul qui crée une source d'élément audio) avec ses gains et ses oscillateurs. */
+/** Pose l'espion avant la page : les contextes créés, et celui de la musique (le seul qui décode un fichier) avec ses gains, ses oscillateurs, ses décodages et ses lectures de morceaux. */
 async function espion(context: import("@playwright/test").BrowserContext): Promise<void> {
   await context.addInitScript(() => {
     const w = window as unknown as Window & Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-    w.__audio = { contextes: 0, musique: null };
+    w.__audio = { contextes: 0, lecturesMedia: 0, musique: null };
+    const jouerMedia = w.HTMLMediaElement?.prototype.play;
+    if (jouerMedia)
+      w.HTMLMediaElement.prototype.play = function (this: unknown) {
+        w.__audio.lecturesMedia++;
+        return jouerMedia.call(this);
+      };
     const Base = w.BaseAudioContext?.prototype;
     if (!Base) return;
     const gain = Base.createGain;
@@ -28,17 +38,23 @@ async function espion(context: import("@playwright/test").BrowserContext): Promi
       (this.__gains ??= []).push(g);
       return g;
     };
+    const source = Base.createBufferSource;
+    Base.createBufferSource = function (this: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      this.__sources = (this.__sources ?? 0) + 1;
+      return source.call(this);
+    };
     const osc = Base.createOscillator;
     Base.createOscillator = function (this: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       this.__oscs = (this.__oscs ?? 0) + 1;
       return osc.call(this);
     };
     const Ctx = w.AudioContext;
-    const media = Ctx.prototype.createMediaElementSource;
-    Ctx.prototype.createMediaElementSource = function (this: any, el: unknown) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const decoder = Ctx.prototype.decodeAudioData;
+    Ctx.prototype.decodeAudioData = function (this: any, ...a: unknown[]) { // eslint-disable-line @typescript-eslint/no-explicit-any
       const ctx = this;
-      w.__audio.musique = { get gains() { return ctx.__gains ?? []; }, get oscillateurs() { return ctx.__oscs ?? 0; }, get state() { return ctx.state; } };
-      return media.call(this, el);
+      ctx.__decodes = (ctx.__decodes ?? 0) + 1;
+      w.__audio.musique ??= { get gains() { return ctx.__gains ?? []; }, get oscillateurs() { return ctx.__oscs ?? 0; }, get state() { return ctx.state; }, get decodes() { return ctx.__decodes ?? 0; }, get sources() { return ctx.__sources ?? 0; } };
+      return decoder.apply(this, a);
     };
     class Espionne extends Ctx {
       constructor(...a: unknown[]) {
@@ -74,6 +90,11 @@ test.describe("Blocks : la musique", () => {
     await p.mouse.click(5, 5);
     await expect.poll(() => vus.includes("liste.json"), { timeout: 10_000 }).toBe(true);
     await expect.poll(() => vus.some((u) => u.startsWith("blocks-menu-") && u.endsWith(".m4a")), { timeout: 10_000 }).toBe(true);
+    // Lot S2 : le morceau est décodé puis lu par Web Audio ; aucun élément `<audio>` ni `<video>` n'existe ni ne joue (il couperait la vidéo ou la musique du joueur).
+    await expect.poll(() => p.evaluate(() => window.__audio.musique?.decodes ?? 0), { timeout: 10_000 }).toBeGreaterThan(0);
+    await expect.poll(() => p.evaluate(() => window.__audio.musique?.sources ?? 0), { timeout: 10_000 }).toBeGreaterThan(0);
+    expect(await p.evaluate(() => document.querySelectorAll("audio, video").length), "aucun élément média dans la page").toBe(0);
+    expect(await p.evaluate(() => window.__audio.lecturesMedia), "aucune lecture d'élément média").toBe(0);
     await ctx.close();
   });
 

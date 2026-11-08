@@ -15,6 +15,7 @@ import {
   type SawVoice,
   type SoundSpec,
 } from "./audioLogic";
+import { audioDisponible, ouvrirContexteAudio } from "@cdj/core/audio";
 import type { GameEvent } from "./events";
 import type { PlayerSettings } from "./settings";
 import { WIND_VOICES, type WindVoice } from "./wind";
@@ -90,7 +91,7 @@ export class JumpAudio {
   readonly available: boolean;
 
   constructor(private settings: PlayerSettings) {
-    this.available = typeof window !== "undefined" && !!(window.AudioContext ?? (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext);
+    this.available = typeof window !== "undefined" && audioDisponible();
     if (!this.available) return;
     const unlock = () => this.unlock();
     for (const type of UNLOCK_EVENTS) {
@@ -140,8 +141,8 @@ export class JumpAudio {
   }
 
   private build(): void {
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctor();
+    const ctx = ouvrirContexteAudio<AudioContext>(); // lot S2 : session `ambient`, le son se mêle à celui du téléphone
+    if (!ctx) throw new Error("Web Audio indisponible");
     this.ctx = ctx;
     this.master = ctx.createGain();
     this.master.connect(ctx.destination);

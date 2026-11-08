@@ -16,13 +16,14 @@ export const itemsDeNavigation = (dire: (cle: "portail.nav.aujourdhui" | "portai
 ];
 
 /** Le fronton d'une page de la salle : le titre en grand (moutarde, ombre terre), la date et le numéro de la journée dessous, le compte à rebours à droite. */
-export function frontonDePage(o: { titre: string; date: string; journee: string | null; legende: string; compte: string }): HTMLElement {
+export function frontonDePage(o: { titre: string; date: string; journee: string | null; legende: string; compte: string; embleme?: HTMLElement }): HTMLElement {
   return el(
     "section",
-    { classe: "salle-fronton classement-fronton" },
+    { classe: ["salle-fronton classement-fronton", o.embleme && "classement-fronton--embleme"] },
     el(
       "div",
       { classe: "salle-fronton__dedans" },
+      o.embleme ?? null,
       el(
         "div",
         { classe: "salle-fronton__titre" },

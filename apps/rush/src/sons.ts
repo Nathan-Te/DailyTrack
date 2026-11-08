@@ -3,6 +3,8 @@
 
 export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque" | "ramasse" | "niveau" | "carte" | "soin" | "ondeEpee" | "jarre" | "bois" | "tourbillon" | "bond" | "atterri" | "bouclier" | "elan" | "prete";
 
+import { ouvrirContexteAudio } from "@cdj/core/audio";
+
 type Ctx = AudioContext;
 interface Ton {
   de: number;
@@ -24,13 +26,7 @@ interface Souffle {
 }
 
 function nouveauContexte(): Ctx | null {
-  const Ctor = typeof window === "undefined" ? undefined : (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
-  if (!Ctor) return null;
-  try {
-    return new Ctor();
-  } catch {
-    return null;
-  }
+  return ouvrirContexteAudio<Ctx>(); // lot S2 : session `ambient`, le son se mêle à celui du téléphone
 }
 
 export class Sons {

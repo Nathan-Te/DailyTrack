@@ -1,7 +1,8 @@
+import { ouvrirContexteAudio } from "@cdj/core/audio";
 import type { ContexteAudio, Dependances, StockageMin } from "./lecteur";
 import type { JeuMusique } from "./types";
 
-// Les dépendances réelles du lecteur : le navigateur. Seul fichier du paquet qui touche `window`, `document`, `fetch`, `Audio` et le stockage ; tout le reste est injecté
+// Les dépendances réelles du lecteur : le navigateur. Seul fichier du paquet qui touche `window`, `document`, `fetch`, Web Audio et le stockage (lot S2 : jamais d'élément `<audio>`) ; tout le reste est injecté
 // (donc testé sans navigateur). Chargé avec le lecteur, à la demande.
 
 /** Le dossier de la musique sur le site : à la racine de l'origine, comme `/api/` (les jeux sont sous `/track/`, `/jump/`, `/tower/`). */
@@ -24,19 +25,9 @@ export function depsNavigateur(jeu: JeuMusique, stockage: StockageMin | null): D
     stockage,
     session: stockageDeLOnglet(),
     chargerListe: (url) => fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
-    creerAudio: () => new Audio(),
-    creerContexte: () => {
-      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctor) return null;
-      try {
-        const ctx = new Ctor();
-        const session = (navigator as { audioSession?: { type: string } }).audioSession;
-        if (session) session.type = "playback"; // iPhone : la musique passe aussi quand l'interrupteur est sur silence, comme le son des jeux
-        return ctx as unknown as ContexteAudio;
-      } catch {
-        return null;
-      }
-    },
+    telecharger: (url) => fetch(url).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status))))),
+    // Lot S2 : la session audio `ambient` est posée par la fonction commune : la musique se mêle à celle du joueur, elle ne la coupe pas.
+    creerContexte: () => ouvrirContexteAudio<ContexteAudio>(),
     cachee: () => document.hidden,
     ecouter: (cible, type, fn) => {
       const t: EventTarget = cible === "fenetre" ? window : document;
