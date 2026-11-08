@@ -12,8 +12,12 @@ import {
   createSurfacesTrack,
   createTestTrack,
   createVitesseTrack,
+  elementGrammaire,
   figureByName,
   FIGURES_LOT49,
+  SAUTS_LOT57,
+  TRANSITIONS_LOT57,
+  type ElementGrammaire,
   THEMES,
   type PaletteName,
   type ThemeName,
@@ -29,7 +33,7 @@ import { fr as textesFr } from "./catalogue.course.figures.fr";
 // secours du générateur est nécessaire (`circuitEngine.ts`).
 
 /** Les scénarios connus de l'adresse (`?scenario=`), sauf `figure` et `figure-<nom>` (une figure à part, voir `scenarioTrack`). */
-export const SCENARIOS = ["figures", "plat", "essai", "pilotage", "surfaces", "largeurs", "vitesse", "glace", "relief", "cuves", "air", "bas-cotes", "herbe"] as const;
+export const SCENARIOS = ["figures", "sauts", "plat", "essai", "pilotage", "surfaces", "largeurs", "vitesse", "glace", "relief", "cuves", "air", "bas-cotes", "herbe"] as const;
 export type Scenario = (typeof SCENARIOS)[number] | "figure";
 
 /**
@@ -62,11 +66,16 @@ export function scenarioTrack(scenario: string, params: URLSearchParams): Track 
       return createHerbeTrack();
     case "figures":
       return createFiguresTrack();
+    case "sauts":
+      // Lot 57 : la page des sauts et des transitions, posée sur le premier saut de la grammaire.
+      return createFigureTrack(SAUTS_LOT57[0]!.name);
     case "figure":
       return createFigureTrack(params.get("f") ?? "", Number(params.get("v") ?? 0) || 0, params.get("m") === "1");
     default:
       // Lot 49 : `?scenario=figure-<nom>` (`&v=1` la variante, `&m=1` le miroir), le lien de la page des nouvelles figures.
       if (scenario.startsWith("figure-")) return createFigureTrack(scenario.slice(7), Number(params.get("v") ?? 0) || 0, params.get("m") === "1");
+      // Lot 57 : `?scenario=saut-<nom>`, `?scenario=transition-<nom>` (`&v=`, `&m=1`).
+      if (elementGrammaire(scenario)) return createFigureTrack(scenario, Number(params.get("v") ?? 0) || 0, params.get("m") === "1");
       return createTestTrack();
   }
 }
@@ -74,6 +83,7 @@ export function scenarioTrack(scenario: string, params: URLSearchParams): Track 
 /** La figure demandée par l'adresse : `?scenario=figure&f=<nom>` (lot 20) ou `?scenario=figure-<nom>` (lot 49) ; `null` sinon. */
 export function figureDemandee(scenario: string | null, params: URLSearchParams): string | null {
   if (scenario === "figure") return params.get("f") ?? "";
+  if (elementGrammaire(scenario)) return scenario;
   return scenario?.startsWith("figure-") ? scenario.slice(7) : null;
 }
 
@@ -88,11 +98,12 @@ export const TEXTES_FIGURES = { fr: textesFr, en: textesEn };
  * la bibliothèque (lot 20, en français).
  */
 export const figureLabel = (name: string | null, t?: (cle: string) => string): string =>
-  t && name && FIGURES_LOT49.includes(name) ? t(`${cleFigure(name)}.titre`) : (figureByName(name)?.label ?? "");
+  t && name && (FIGURES_LOT49.includes(name) || elementGrammaire(name)) ? t(`${cleFigure(name)}.titre`) : (figureByName(name)?.label ?? elementGrammaire(name)?.label ?? "");
 
 /** La palette d'une figure propre à un thème (`only`, lot 22) : on l'essaie contre son décor ; `null` pour une figure de tous les thèmes. */
 export function figurePalette(name: string | null): PaletteName | null {
-  const only = figureByName(name)?.only?.[0] as ThemeName | undefined;
+  // Lot 57 : un élément de la grammaire se joue sur la palette du premier thème qu'on lui propose.
+  const only = (figureByName(name)?.only?.[0] ?? elementGrammaire(name)?.themes[0]) as ThemeName | undefined;
   return only ? THEMES[only].palette : null;
 }
 
@@ -109,16 +120,47 @@ export interface OutilsFigures {
  * qu'elle demande, ses thèmes, et deux liens (`?scenario=figure-<nom>`, la variante 2) qui gardent les autres paramètres de l'adresse (`debug`…).
  * Fermée (« ‹ TRACK », Échap, « Rouler le tour »), on roule le tour des figures. Deux clics du téléphone jusqu'à une figure.
  */
-export function pageFigures(o: OutilsFigures, search: string): { ouvert(): boolean; fermer(): void } {
-  const cadre = o.creerCadre({ id: "figures-index", titreAria: "figures.index.aria", retour: "jeu", onRetour: () => fermer() });
-  const lien = (nom: string, variante: number) => {
+export function pageFigures(o: OutilsFigures, search: string, sauts = false): { ouvert(): boolean; fermer(): void } {
+  const cadre = o.creerCadre({ id: "figures-index", titreAria: sauts ? "sauts.index.aria" : "figures.index.aria", retour: "jeu", onRetour: () => fermer() });
+  const lien = (nom: string, variante: number, miroir = false) => {
     const p = new URLSearchParams(search);
     for (const k of ["scenario", "f", "v", "m"]) p.delete(k);
-    p.set("scenario", `figure-${nom}`);
+    p.set("scenario", sauts ? nom : `figure-${nom}`);
     if (variante > 0) p.set("v", String(variante));
+    if (miroir) p.set("m", "1");
     return `?${p.toString()}`;
   };
+  /** Lot 57 : une ligne de la page des sauts et des transitions (titre, ce qu'il demande, ses parties, ses thèmes, ses variantes et le miroir). */
+  const ligne = (e: ElementGrammaire): HTMLElement => {
+    const pt = (x: string) => o.t(`sauts.partie.${x}`);
+    const pa = e.parties;
+    const boutons = [o.el("a", { classe: ["dj-bouton", "dj-bouton--marque"], attrs: { href: lien(e.name, 0) }, texte: o.t("figures.index.essayer") })];
+    if (e.variants > 1) boutons.push(o.el("a", { classe: ["dj-bouton", "dj-bouton--secondaire"], attrs: { href: lien(e.name, 1) }, texte: o.t("figures.index.variante") }));
+    boutons.push(o.el("a", { classe: ["dj-bouton", "dj-bouton--secondaire"], attrs: { href: lien(e.name, 0, true) }, texte: o.t("sauts.index.miroir") }));
+    return o.el(
+      "section",
+      { attrs: { "data-figure": e.name } },
+      o.el("h2", { classe: "etiquette__sous-titre", texte: o.t(`${cleFigure(e.name)}.titre`) }),
+      o.el("p", { classe: "note", texte: o.t(`${cleFigure(e.name)}.quoi`) }),
+      ...(pa
+        ? [o.el("p", { classe: "legende", texte: o.t("sauts.index.parties", { approche: pt(pa.approche), appel: pt(pa.appel), vol: pt(pa.vol), reception: pa.reception.map(pt).join(", "), sortie: pt(pa.sortie), vitesse: pt(pa.vitesse) }) })]
+        : []),
+      o.el("p", { classe: "legende", texte: o.t("figures.index.themes", { liste: e.themes.map((th) => o.t(`theme.${th}`)).join(", ") }) }),
+      o.el("div", { classe: ["actions", "actions--duo"] }, ...boutons),
+    );
+  };
   const dessiner = () => {
+    if (sauts) {
+      cadre.corps.replaceChildren(
+        o.el("h1", { classe: "etiquette__titre", texte: o.t("sauts.index.titre") }),
+        o.el("p", { classe: "note", texte: o.t("sauts.index.intro") }),
+        o.el("h2", { classe: "etiquette__titre", texte: o.t("sauts.index.sauts") }),
+        ...SAUTS_LOT57.map(ligne),
+        o.el("h2", { classe: "etiquette__titre", texte: o.t("sauts.index.transitions") }),
+        ...TRANSITIONS_LOT57.map(ligne),
+      );
+      return;
+    }
     const lignes: HTMLElement[] = [o.el("h1", { classe: "etiquette__titre", texte: o.t("figures.index.titre") }), o.el("p", { classe: "note", texte: o.t("figures.index.intro") })];
     for (const nom of FIGURES_LOT49) {
       const only = figureByName(nom)?.only;

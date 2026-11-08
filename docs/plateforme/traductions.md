@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2322 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2385 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1198,6 +1198,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.scenario.air` | Circuit de l'air | Air track |
 | `course.scenario.basCotes` | Bas-côtés et vibreurs | Shoulders and kerbs |
 | `course.scenario.herbe` | Circuit de l'herbe de course | Racing turf circuit |
+| `course.scenario.sauts` | Sauts et transitions | Jumps and transitions |
 | `course.scenario.figures` | Les figures | The figures |
 | `course.scenario.figure` | Figure : {nom} | Figure: {nom} |
 | `course.scenario.essai` | Circuit d'essai | Test track |
@@ -1303,6 +1304,42 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `figures.filDuRasoir.quoi` | Route de 14 m sans rebords, un virage au milieu : la précision d'abord. | A 14 m road with no barriers and a corner halfway: precision first. |
 | `figures.deversDescente.titre` | Relevés en descente | Banked turns downhill |
 | `figures.deversDescente.quoi` | La pente pousse, le dévers retient : on passe vite si l'on vise bien. | The slope pushes, the banking holds: aim well and you stay fast. |
+| `figures.sautBiais.titre` | Saut en biais | Cambered jump |
+| `figures.sautBiais.quoi` | La route et la rampe penchent d'un côté : on décolle de travers. Figer la caisse au frein pour retomber à plat. | The road and the kicker lean to one side: you take off tilted. Brake in the air to freeze the car and land flat. |
+| `figures.sautAngle.titre` | Réception en angle | Angled landing |
+| `figures.sautAngle.quoi` | On décolle à la fin d'un virage, la caisse tourne encore, et l'arrivée tourne aussi : laisser tourner, puis figer dans l'axe. | You take off at the end of a corner, still turning, and the landing turns too: let the car rotate, then freeze it in line. |
+| `figures.sautCourbe.titre` | Saut dans un virage | Jump in a corner |
+| `figures.sautCourbe.quoi` | La rampe est dans le virage : on décolle en tournant et on retombe décalé. Arriver droit sur le bord. | The kicker is in the corner: you take off turning and land offset. Reach the lip straight. |
+| `figures.sautReceptionRelevee.titre` | Réception dans un relevé | Landing in a banked turn |
+| `figures.sautReceptionRelevee.quoi` | On retombe au début d'un virage relevé : la pente aide à tourner dès le contact, pas trop vite à la rampe. | You land at the start of a banked turn: the slope helps you turn on touchdown. Not too fast on the kicker. |
+| `figures.sautDrop.titre` | Saut en contrebas | Drop |
+| `figures.sautDrop.quoi` | Deux niveaux plus bas, sans plaque : on vole longtemps, et le virage d'après arrive vite. | Two levels down, no boost pad: a long flight, and the next corner comes quickly. |
+| `figures.sautStepUp.titre` | Saut vers plus haut | Step-up |
+| `figures.sautStepUp.quoi` | Le bord d'en face est plus haut : il faut assez d'élan (la descente, ou la plaque), sinon c'est le mur. | The far edge is higher: you need enough speed (the downhill, or the pad), or it's the wall. |
+| `figures.sautElan.titre` | Saut à l'élan, sans freiner | Momentum jump, no braking |
+| `figures.sautElan.quoi` | Un vide au même niveau, sans plaque : sortir propre de la chicane, pied au plancher. Freiner, c'est tomber court. | A gap at the same level, no boost pad: a clean chicane exit, foot down. Brake and you fall short. |
+| `figures.sautDouble.titre` | Double saut enchaîné | Linked double jump |
+| `figures.sautDouble.quoi` | On retombe sur la pente du second appel : une réception trop longue fait rater le second saut. | You land on the slope to the second kicker: land too long and you miss the second jump. |
+| `figures.sautBosse.titre` | Appel sur une crête | Crest take-off |
+| `figures.sautBosse.quoi` | Pas de tremplin : le haut d'une montée raide fait décoller. | No kicker: the top of a steep climb sends you flying. |
+| `figures.sautHerbe.titre` | Réception sur un autre revêtement | Landing on another surface |
+| `figures.sautHerbe.quoi` | On retombe sur l'herbe de course (ou la terre) et on tourne dessus : l'adhérence change au contact. | You land on racing grass (or dirt) and turn on it: the grip changes on touchdown. |
+| `figures.sautChicane.titre` | Saut, puis chicane | Jump, then chicane |
+| `figures.sautChicane.quoi` | Une chute de deux niveaux, puis tout de suite une chicane : freiner dès que les roues touchent. | A two-level drop, then a chicane right away: brake as soon as the wheels touch. |
+| `figures.transitionCrete.titre` | Crête qui allège | Crest that unloads |
+| `figures.transitionCrete.quoi` | Le virage commence au sommet : la voiture est légère au moment de braquer. | The corner starts at the top: the car is light as you turn in. |
+| `figures.transitionCompression.titre` | Compression au creux | Compression |
+| `figures.transitionCompression.quoi` | Le virage commence au fond : la voiture s'écrase et tient mieux, on peut y entrer plus vite. | The corner starts at the bottom: the car squats and grips more, you can carry more speed. |
+| `figures.transitionDevers.titre` | Dévers qui naît et meurt | Camber in and out |
+| `figures.transitionDevers.quoi` | La route penche peu à peu avant un virage : vers l'intérieur, elle aide ; vers l'extérieur (variante 2), elle pousse dehors. | The road leans little by little before a corner: inwards it helps; outwards (variant 2) it pushes you wide. |
+| `figures.transitionPente.titre` | Virages en pente | Sloped corners |
+| `figures.transitionPente.quoi` | Le virage lui-même monte, puis un autre descend : freiner plus tôt dans la descente. | The corner itself climbs, then another one drops: brake earlier going down. |
+| `figures.transitionEsse.titre` | S relevé en descente | Banked S downhill |
+| `figures.transitionEsse.quoi` | Deux virages relevés qui plongent : le relevé change de côté pendant la descente. | Two banked corners that dive: the banking switches sides on the way down. |
+| `figures.transitionRetrecissement.titre` | Rétrécissement sur une crête | Narrowing over a crest |
+| `figures.transitionRetrecissement.quoi` | La route se resserre en montant, et un virage serré attend derrière la crête. | The road narrows as it climbs, and a tight corner waits behind the crest. |
+| `figures.transitionAppui.titre` | Revêtement qui change en appui | Surface change mid-corner |
+| `figures.transitionAppui.quoi` | La seconde moitié d'un long virage est sur la glace (ou l'herbe de course) : lever le pied en appui. | The second half of a long corner is ice (or racing grass): lift off while loaded. |
 
 ### garage (`garage.*`, `apps/web/src/catalogue.base.*.ts`)
 
@@ -1588,6 +1625,37 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `salon.arrivee.aide` | {recommencer} : rejouer · Tab : classement | {recommencer}: race again · Tab: leaderboard |
 | `salon.arrivee.terminee` | Session terminée | Session over |
 | `salon.arrivee.nonCompte` | Session terminée : tour non compté | Session over: lap not counted |
+
+### sauts (`sauts.*`, `apps/web/src/catalogue.course.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `sauts.index.aria` | Sauts et transitions | Jumps and transitions |
+| `sauts.index.titre` | Sauts et transitions | Jumps and transitions |
+| `sauts.index.intro` | Chaque élément se joue seul. Garde, retouche ou écarte : dis-le à l'agent. | Each element plays on its own. Keep, adjust or drop: tell the agent. |
+| `sauts.index.sauts` | Sauts | Jumps |
+| `sauts.index.transitions` | Transitions | Transitions |
+| `sauts.index.miroir` | Miroir | Mirror |
+| `sauts.index.parties` | Approche : {approche} · appel : {appel} · vol : {vol} · réception : {reception} · sortie : {sortie} · vitesse : {vitesse} | Approach: {approche} · take-off: {appel} · flight: {vol} · landing: {reception} · exit: {sortie} · speed: {vitesse} |
+| `sauts.partie.droite` | ligne droite | straight |
+| `sauts.partie.virage` | virage | corner |
+| `sauts.partie.descente` | descente | downhill |
+| `sauts.partie.chicane` | chicane | chicane |
+| `sauts.partie.plat` | tremplin plat | flat kicker |
+| `sauts.partie.devers` | tremplin en dévers | cambered kicker |
+| `sauts.partie.bosse` | crête | crest |
+| `sauts.partie.cuve` | bord de cuve | bowl lip |
+| `sauts.partie.marche` | marche | step |
+| `sauts.partie.axe` | dans l'axe | straight ahead |
+| `sauts.partie.tournant` | tournant | turning |
+| `sauts.partie.decalee` | décalée | offset |
+| `sauts.partie.angle` | en angle | at an angle |
+| `sauts.partie.basse` | plus basse | lower |
+| `sauts.partie.haute` | plus haute | higher |
+| `sauts.partie.surface` | autre revêtement | other surface |
+| `sauts.partie.etroite` | plus étroite | narrower |
+| `sauts.partie.boost` | plaque | boost pad |
+| `sauts.partie.elan` | élan | momentum |
 
 ### teinte (`teinte.*`, `apps/web/src/catalogue.base.*.ts`)
 

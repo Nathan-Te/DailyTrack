@@ -24,9 +24,12 @@ import {
   cuveTop,
   curveCenter,
   curveSize,
+  hasLift,
   isCurve,
   isWide,
+  liftAt,
   rippleAt,
+  roadHeightAt,
   turnsLeft,
   type BankSample,
   type Block,
@@ -81,6 +84,13 @@ export interface StyleRoute {
 
 const bank: BankSample = { h: 0, gp: 0, gq: 0 };
 const ripple = { h: 0, dq: 0 };
+const lift = { h: 0, gp: 0, gq: 0 };
+/** Lot 57 : la hauteur ajoutée au point (p, q) par un dévers, un virage en pente ou un virage-tremplin (0 ailleurs). */
+const liftH = (b: Block, p: number, q: number): number => {
+  if (!hasLift(b)) return 0;
+  liftAt(b, p, q, lift);
+  return lift.h;
+};
 
 /** Tranches d'un intervalle [q0, q1] du bloc droit, avec `steps` subdivisions. */
 export function straightRows(b: Block, q0: number, q1: number, steps: number, yOf: (q: number) => number, half?: number): Row[] {
@@ -89,7 +99,7 @@ export function straightRows(b: Block, q0: number, q1: number, steps: number, yO
     const q = q0 + ((q1 - q0) * i) / steps;
     const y = yOf(q);
     const hw = half ?? blockHalfWidth(b, q);
-    rows.push({ left: world(b, CELL / 2 + hw, q, y), right: world(b, CELL / 2 - hw, q, y) });
+    rows.push({ left: world(b, CELL / 2 + hw, q, y + liftH(b, CELL / 2 + hw, q)), right: world(b, CELL / 2 - hw, q, y + liftH(b, CELL / 2 - hw, q)) });
   }
   return rows;
 }
@@ -104,7 +114,7 @@ export function arcPoint(b: Block, r: number, a: number, y: number): V3 {
     bankAt(b, p, q, bank);
     y += bank.h;
   }
-  return world(b, p, q, y);
+  return world(b, p, q, y + liftH(b, p, q));
 }
 
 /** Tranches d'un virage ; `lissage` multiplie leur nombre (retouche 38b, palier 2 : rebords et route plus ronds là où l'œil les voit). */
@@ -135,7 +145,7 @@ export function onBlock(b: Block, lat: number, t: number, lift: number): V3 {
     return arcPoint(b, turnsLeft(b.kind) ? R - lat : R + lat, t * (Math.PI / 2), b.y0 + lift);
   }
   const q = t * CELL;
-  return world(b, CELL / 2 + lat, q, blockHeight(b, q) + lift);
+  return world(b, CELL / 2 + lat, q, roadHeightAt(b, CELL / 2 + lat, q) + lift);
 }
 
 function roadHeight(b: Block, q: number): number {
@@ -262,7 +272,7 @@ function addBandEnd(g: Builder, pal: Palette, b: Block, end: 0 | 1, reach: numbe
     let y: number;
     if (isCurve(b.kind) && end === 1) {
       const c = curveCenter(b.kind);
-      y = b.y0;
+      y = b.y0 + b.rise;
       p0 = world(b, c.cp, c.r + side * reach, y);
       p1 = world(b, c.cp, c.r + side * SHOULDER_EDGE, y);
     } else {
@@ -368,33 +378,75 @@ function addJumpMarks(g: Builder, b: Block) {
   }
 }
 
+// Lot 57 : les marques suivent la route en travers (dévers) : la hauteur se lit au point (p, q), pas seulement sur l'axe.
 function addKickMarks(g: Builder, b: Block) {
   const WARN = [0xffc21a, 0x16181f] as const;
-  const y = (q: number) => blockHeight(b, q) + 0.05;
+  const P = (p: number, q: number, up = 0.05) => world(b, p, q, roadHeightAt(b, p, q) + up);
   for (const qc of [KICK_START + 2.2, KICK_START + 5.4, KICK_START + 8.6]) {
-    for (const s of [-1, 1]) g.quad(world(b, CELL / 2, qc + 1.4, y(qc + 1.4)), world(b, CELL / 2, qc + 0.5, y(qc + 0.5)), world(b, CELL / 2 + s * 4, qc - 0.9, y(qc - 0.9)), world(b, CELL / 2 + s * 4, qc, y(qc)), 0xf4f1e6);
+    for (const s of [-1, 1]) g.quad(P(CELL / 2, qc + 1.4), P(CELL / 2, qc + 0.5), P(CELL / 2 + s * 4, qc - 0.9), P(CELL / 2 + s * 4, qc), 0xf4f1e6);
   }
   const cols = Math.round(blockWidth(b, CELL));
   const q0 = CELL - 1.4;
   for (let i = 0; i < cols; i++) {
     const pa = CELL / 2 - cols / 2 + i;
-    g.quad(world(b, pa, q0, y(q0) + 0.01), world(b, pa + 1, q0, y(q0) + 0.01), world(b, pa + 1, CELL, y(CELL) + 0.01), world(b, pa, CELL, y(CELL) + 0.01), WARN[i % 2]!);
-    g.quad(world(b, pa, CELL, y(CELL) - 0.05), world(b, pa + 1, CELL, y(CELL) - 0.05), world(b, pa + 1, CELL + 0.01, y(CELL) - 1.2), world(b, pa, CELL + 0.01, y(CELL) - 1.2), WARN[(i + 1) % 2]!);
+    g.quad(P(pa, q0, 0.06), P(pa + 1, q0, 0.06), P(pa + 1, CELL, 0.06), P(pa, CELL, 0.06), WARN[i % 2]!);
+    g.quad(P(pa, CELL, 0), P(pa + 1, CELL, 0), world(b, pa + 1, CELL + 0.01, roadHeightAt(b, pa + 1, CELL) - 1.2), world(b, pa, CELL + 0.01, roadHeightAt(b, pa, CELL) - 1.2), WARN[(i + 1) % 2]!);
   }
 }
 
-function addLandingMarks(g: Builder, b: Block) {
-  const y = (q: number) => blockHeight(b, q) + 0.05;
+/**
+ * Lot 57 : la rampe d'un virage-tremplin — trois chevrons dans l'axe de la sortie (là où l'on va : la réception) sur les derniers mètres de
+ * l'arc, et la bande d'alerte au bord.
+ */
+function addCurveKickMarks(g: Builder, b: Block) {
+  const WARN = [0xffc21a, 0x16181f] as const;
+  const { cp, r } = curveCenter(b.kind);
+  const back = cp > CELL / 2 ? -1 : 1; // vers l'entrée du virage (un virage à gauche sort vers les p croissants)
+  // Au bord, l'axe de la sortie est q (vers r + …) ; en remontant l'arc de d m, p s'écarte de cp de ≈ d (angle petit).
+  const P = (dp: number, dq: number, up = 0.06) => world(b, cp + back * dp, r + dq, roadHeightAt(b, cp + back * dp, r + dq) + up);
+  for (const d of [3, 6.2, 9.4]) {
+    for (const s of [-1, 1]) g.quad(P(d - 1.4, 0), P(d - 0.5, 0), P(d + 0.9, s * 4), P(d, s * 4), 0xf4f1e6);
+  }
+  const cols = Math.round(b.w0);
+  for (let i = 0; i < cols; i++) {
+    const o = -cols / 2 + i;
+    g.quad(P(1.4, o), P(1.4, o + 1), P(0, o + 1), P(0, o), WARN[i % 2]!);
+  }
+}
+
+/**
+ * Lot 57 : jamais de saut à l'aveugle — deux balises au début de la réception, de part et d'autre de la route (poteau de 6 m, panneau à chevrons vert
+ * tourné vers l'appel, flèche verte vers la route) : elles dépassent du bord de la rampe, même quand on retombe deux niveaux plus bas ; les chevrons
+ * peints sur la réception (ci-dessous) en montrent l'axe.
+ */
+function addLandingBeacons(g: Builder, b: Block, drop: number) {
+  const hw = blockHalfWidth(b, 0) + 0.6;
+  const top = 6 + drop; // plus on retombe bas, plus la balise monte : sa tête reste au-dessus du bord de l'appel
+  for (const s of [-1, 1]) {
+    const p = CELL / 2 + s * hw;
+    const y = roadHeightAt(b, p, 0.5);
+    const at = (dp: number, h: number) => world(b, p + dp, 0.5, y + h);
+    g.quad(at(-0.15, 0), at(0.15, 0), at(0.15, top), at(-0.15, top), 0xf4f1e6);
+    // Panneau : 2,4 m de large vers la route, flèche verte vers l'axe (la réception est entre les deux balises).
+    const i = -s * 2.4;
+    g.quad(at(0, top - 1.6), at(i, top - 1.6), at(i, top + 0.2), at(0, top + 0.2), 0x16181f);
+    g.tri(at(i * 0.15, top - 1.3), at(i * 0.15, top - 0.1), at(i * 0.9, top - 0.7), 0x2fd37b);
+  }
+}
+
+function addLandingMarks(g: Builder, b: Block, drop: number) {
+  addLandingBeacons(g, b, drop);
+  const P = (p: number, q: number) => world(b, p, q, roadHeightAt(b, p, q) + 0.05);
   const cols = Math.round(blockWidth(b, 0));
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < 2; j++) {
       const pa = CELL / 2 - cols / 2 + i;
       const qa = j * 1.2;
-      g.quad(world(b, pa, qa, y(qa)), world(b, pa + 1, qa, y(qa)), world(b, pa + 1, qa + 1.2, y(qa + 1.2)), world(b, pa, qa + 1.2, y(qa + 1.2)), (i + j) % 2 === 0 ? 0x2fd37b : 0xf4f1e6);
+      g.quad(P(pa, qa), P(pa + 1, qa), P(pa + 1, qa + 1.2), P(pa, qa + 1.2), (i + j) % 2 === 0 ? 0x2fd37b : 0xf4f1e6);
     }
   }
   for (const qc of [6, 10, 14]) {
-    for (const s of [-1, 1]) g.quad(world(b, CELL / 2, qc + 1.2, y(qc + 1.2)), world(b, CELL / 2, qc + 0.4, y(qc + 0.4)), world(b, CELL / 2 + s * 3.2, qc - 0.8, y(qc - 0.8)), world(b, CELL / 2 + s * 3.2, qc, y(qc)), 0x2fd37b);
+    for (const s of [-1, 1]) g.quad(P(CELL / 2, qc + 1.2), P(CELL / 2, qc + 0.4), P(CELL / 2 + s * 3.2, qc - 0.8), P(CELL / 2 + s * 3.2, qc), 0x2fd37b);
   }
 }
 
@@ -531,6 +583,7 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
         addRoad(c, pal, style, rows, color, floorY, true, b.surface === "road", skirt, base, run);
       }
       if (b.surface === "road") style.vibreurs(c.lumineux, rows, pal);
+      if (b.ramp) addCurveKickMarks(g, b);
     } else if (b.kind === "jump") {
       const swell = b.w0 !== b.w1 ? 8 : 1;
       addRoad(c, pal, style, straightRows(b, 0, JUMP_LIP, swell, (q) => blockHeight(b, q)), shade(color, 1.18), floorY, true, false, shade(skirt, 1.9), base, run);
@@ -543,14 +596,14 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       addRoad(c, pal, style, rows.slice(8), shade(color, 1.18), floorY, true, false, shade(skirt, 1.5), base, run);
       addKickMarks(g, b);
     } else if (b.shoulder) {
-      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 ? 16 : 1;
+      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 || b.tilt !== undefined ? 16 : 1;
       const band = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q), SHOULDER_EDGE);
       addRoad(c, pal, style, band, shoulderColor(pal, b.shoulder, b.index), floorY, true, false, skirt, { pillars, fence: pal.fence, band: true }, run);
       addShoulderMarks(g, b, band, b.w0 / 2, pal.scenery === "trees");
       rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q) + 0.03);
       addRoad(c, pal, style, rows, color, floorY, false, b.surface === "road", skirt, { bare: true }, run);
     } else {
-      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 ? 16 : 1;
+      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 || b.tilt !== undefined ? 16 : 1;
       rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q));
       addRoad(c, pal, style, rows, color, floorY, true, b.surface === "road", skirt, base, run);
     }
@@ -563,7 +616,10 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
     if (rows.length > 0 && next?.kind === "gap") addEndFace(g, rows[rows.length - 1]!, floorY, shade(skirt, 1.25), pillars);
     if (rows.length > 0 && prev?.kind === "gap") {
       addEndFace(g, rows[0]!, floorY, shade(skirt, 1.25), pillars);
-      addLandingMarks(g, b);
+      // La chute depuis l'appel : la somme des dénivelés des vides qui précèdent (négative vers le bas).
+      let drop = 0;
+      for (let k = b.index - 1; track.blocks[k]?.kind === "gap"; k--) drop -= track.blocks[k]!.rise;
+      addLandingMarks(g, b, Math.max(0, drop));
     }
     if (pillars && b.kind !== "gap") addPillar(g, pal, b, floorY, skirt);
     const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut";

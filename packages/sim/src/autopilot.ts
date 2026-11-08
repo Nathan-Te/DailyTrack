@@ -3,8 +3,8 @@ import { AXIS_MAX, COLLIDER_RADIUS, DEFAULT_CAR_PARAMS, makeInput, steerLimit, t
 import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
-import { trackJumps, type JumpInfo } from "./jump";
-import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, bankFactor, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { appelSlope, trackJumps, type JumpInfo } from "./jump";
+import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, CURVE_KICK, bankFactor, blockCells, hasLift, liftAt, type Lift, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
 import { cuveAmplitude } from "./cuve";
 import { SURFACES } from "./world";
 
@@ -127,6 +127,10 @@ function cuveWallSlope(W: number, inset: number): number {
   return dx / Math.sqrt(R * R - dx * dx);
 }
 
+const liftS: Lift = { h: 0, gp: 0, gq: 0 };
+/** Virage-tremplin : la trajectoire rejoint l'axe sur ce multiple de `CURVE_KICK` avant la rampe (mesuré : plus court, le coude fait tomber la vitesse de passage). */
+const RAMP_TAPER = 10;
+
 function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
   const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], roomR: [], half: [], blk: [], slope: [], pin: [], wall: [], wallExit: [] };
   const pt = { x: 0, z: 0 };
@@ -138,7 +142,16 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
     out.roomR.push(roomR);
     out.half.push(half);
     out.blk.push(b.index);
-    out.slope.push(isCurve(b.kind) ? 0 : blockSlope(b, q));
+    if (hasLift(b) && isCurve(b.kind)) {
+      // Lot 57 : virage en pente ou virage-tremplin — la pente dans le sens de la marche (gradient · tangente de l'arc).
+      const { cp } = curveCenter(b.kind);
+      const dp = p - cp;
+      const r = Math.sqrt(dp * dp + q * q) || 1;
+      liftAt(b, p, q, liftS);
+      // Tangente (unitaire) de l'arc dans le sens de la marche : q augmente, |dp| diminue.
+      const tp = (dp < 0 ? 1 : -1) * (q / r);
+      out.slope.push(liftS.gp * tp + liftS.gq * ((dp < 0 ? -dp : dp) / r));
+    } else out.slope.push(isCurve(b.kind) ? 0 : blockSlope(b, q));
     // Virage en cuve : la paroi extérieure est la ligne du pilote ; elle monte en rampe comme la paroi elle-même.
     if (wall && b.cuve) {
       const bit = isCurve(b.kind) ? b.cuve : b.cuve & CUVE_LEFT ? CUVE_LEFT : b.cuve;
@@ -167,7 +180,8 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
     const first = b.index === 0 ? 0 : 1; // le premier point d'un bloc est le dernier du précédent
     // Sur un tremplin, une rampe de saut, un vide et la réception qui suit, on reste au milieu : en l'air, on ne tourne pas.
     const prev = track.blocks[b.index - 1];
-    const calm = b.kind === "jump" || b.kind === "kick" || b.kind === "gap" || prev?.kind === "jump" || prev?.kind === "gap";
+    // Lot 57 : tout bloc d'appel (montée devant un vide) compte comme une rampe.
+    const calm = b.kind === "jump" || b.kind === "kick" || b.kind === "gap" || prev?.kind === "jump" || prev?.kind === "gap" || appelSlope(b, track.blocks[b.index + 1]) > 0;
     const open = b.open ? OPEN_EXTRA_MARGIN : 0;
     // Bas-côtés (lot 21) : le bord de la route n'est pas un mur, la marge est plus petite.
     const margin = b.shoulder ? SHOULDER_MARGIN : WALL_MARGIN;
@@ -183,7 +197,9 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
       const landing = prev?.kind === "gap";
       for (let i = first; i <= n; i++) {
         const a = (HALF_PI * i) / n;
-        const t = landing ? Math.min(1, (2 * i) / n) : 1;
+        let t = landing ? Math.min(1, (2 * i) / n) : 1;
+        // Lot 57 : virage-tremplin — la trajectoire rejoint l'axe avant la rampe et y reste jusqu'au bord (on décolle dans l'axe de la sortie).
+        if (b.ramp) t = Math.min(t, clamp(((n - i) * SPACING - CURVE_KICK) / (RAMP_TAPER * CURVE_KICK), 0.03, 1));
         const k = t * t * (3 - 2 * t);
         // Virage relevé : le bord intérieur est en contrebas et la rampe d'entrée y est raide ; on reste près de l'axe.
         // L'intérieur d'un virage à gauche est à gauche (normale positive).
@@ -574,6 +590,13 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
   const lips = jumps.map(({ jump }) => {
     const b = track.blocks[jump.kick]!;
     const pt = { x: 0, z: 0 };
+    if (isCurve(b.kind)) {
+      // Lot 57 : virage-tremplin — le bord est la sortie de l'arc, face au cap de sortie.
+      const { cp, r } = curveCenter(b.kind);
+      blockPoint(b, cp, r, pt);
+      const d = blockCells(b.cx, b.cz, b.dir, b.kind).next.dir;
+      return { x: pt.x, z: pt.z, fx: dirX(d), fz: dirZ(d) };
+    }
     blockPoint(b, CELL / 2, CELL, pt);
     return { x: pt.x, z: pt.z, fx: dirX(b.dir), fz: dirZ(b.dir) };
   });

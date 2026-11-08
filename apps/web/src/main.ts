@@ -959,7 +959,7 @@ settingsPanel = mountSettings(document.body, {
   openHowto: () => howto.open(),
 });
 // Lot 49 : la page des nouvelles figures (`?scenario=figures`), posée sur le tour des figures ; ouverte au chargement, le jeu est gelé tant qu'elle l'est.
-const pageFigures = scenario === "figures" && scenarios ? scenarios.pageFigures({ el: elDuSocle, creerCadre, t, onLangue }, location.search) : null;
+const pageFigures = (scenario === "figures" || scenario === "sauts") && scenarios ? scenarios.pageFigures({ el: elDuSocle, creerCadre, t, onLangue }, location.search, scenario === "sauts") : null;
 // Lot 41 : le Garage, chargé à la demande (`import()` : son code, sa feuille, ses textes) ; ouvert depuis l'accueil, la pause ou l'arrivée.
 let garageUi: GarageUi | null = null;
 const garageOuvert = () => !!garageUi?.estOuvert();

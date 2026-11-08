@@ -36,6 +36,7 @@ export const fr = {
   "course.scenario.air": "Circuit de l'air",
   "course.scenario.basCotes": "Bas-côtés et vibreurs",
   "course.scenario.herbe": "Circuit de l'herbe de course",
+  "course.scenario.sauts": "Sauts et transitions",
   "course.scenario.figures": "Les figures",
   "course.scenario.figure": "Figure : {nom}",
   "course.scenario.essai": "Circuit d'essai",
