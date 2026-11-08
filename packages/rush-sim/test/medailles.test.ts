@@ -111,9 +111,9 @@ describe("recalculées quand la version change, figées quand le jour l'est", ()
   });
 });
 
-describe("le pilote ne se laisse plus bloquer (jour 177 : le jour 295 du lot BR4 n'existe plus avec le générateur du lot BR5)", () => {
-  // Lot BR5 : le générateur a changé (camps de 10 à 20, meutes, vases) ; le jour 177 est un jour où « un peu d'XP » et « beaucoup d'XP » sont bloqués (trois fois) puis se dégagent.
-  const J295 = daysFromCivil(2026, 11, 2) + 177;
+describe("le pilote ne se laisse plus bloquer (jour 112 : le jour 295 du lot BR4 n'existe plus avec le générateur du lot BR5)", () => {
+  // Lot BR5 : le générateur a changé (camps de 10 à 20, meutes, vases) ; le jour 112 est un jour où « un peu d'XP » et « beaucoup d'XP » sont bloqués (une fois) puis se dégagent.
+  const J295 = daysFromCivil(2026, 11, 2) + 112;
   it("« un peu d'XP » et « beaucoup d'XP » : moins de 100 s, et le blocage est détecté (au BR4, le jour 295 les coinçait 30 s devant un mur à viser deux gelées qui ne pouvaient pas l'atteindre : 126 s et 122 s)", () => {
     const c = dailyRush(J295);
     for (const s of ["peu", "beaucoup"] as const) {

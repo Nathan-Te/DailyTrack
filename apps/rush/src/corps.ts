@@ -8,6 +8,8 @@ import {
   COMPETENCE,
   GELATON,
   competenceDuPilote,
+  etatPilote,
+  type Strategie,
   indiceCompetence,
   B_DUC,
   B_REINE,
@@ -649,11 +651,11 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         break;
       }
       case "gemme":
-        // ce que le vase ou le monstre laissait jaillit : une gemme (étincelles dorées), de la rage (violet) ou un cœur (rose)
-        eclats.gerbe(e.b === 1 ? "rage" : "etincelle", x, 0.6, z, 5, { vitesse: 2.6, taille: 0.07, haut: 3.2, duree: 0.35 });
+        // ce que le vase ou le monstre laissait jaillit : une gemme (étincelles dorées), une recharge (violet) ou un cœur (rose)
+        eclats.gerbe(e.b === 1 ? "recharge" : "etincelle", x, 0.6, z, 5, { vitesse: 2.6, taille: 0.07, haut: 3.2, duree: 0.35 });
         break;
       case "ramasse": {
-        // un tintement qui monte quand on en ramasse plusieurs de suite ; la rage et le cœur ont le leur
+        // un tintement qui monte quand on en ramasse plusieurs de suite ; la recharge et le cœur ont le leur
         const maintenant = performance.now();
         chaineGemmes = maintenant - dernierRamasse < 320 ? Math.min(8, chaineGemmes + 1) : 0;
         dernierRamasse = maintenant;
@@ -662,7 +664,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
           dernierSonRamasse = maintenant;
           son("ramasse", (e.b === 1 ? 1.4 : 1) + chaineGemmes * 0.07);
         }
-        eclats.gerbe(e.b === 1 ? "rage" : "etincelle", metres(partie.c.x), 1, metres(partie.c.y), 3, { vitesse: 2, taille: 0.06, haut: 2.4, duree: 0.3 });
+        eclats.gerbe(e.b === 1 ? "recharge" : "etincelle", metres(partie.c.x), 1, metres(partie.c.y), 3, { vitesse: 2, taille: 0.06, haut: 2.4, duree: 0.3 });
         break;
       }
       case "niveau":
@@ -725,10 +727,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         eclats.gerbe("poussiere", x + Math.cos(arriere) * 0.3, 0.12, z + Math.sin(arriere) * 0.3, 8, { vitesse: 3, taille: 0.14, haut: 0.9, duree: 0.4, gravite: 3 });
         break;
       }
-      case "rage":
-        // la jauge est pleine : un tintement et des étincelles violettes (le bouton pulse)
-        son("rage");
-        eclats.gerbe("rage", x, 1.1, z, 14, { vitesse: 3.5, taille: 0.1, haut: 3.5, duree: 0.5 });
+      case "prete":
+        // la compétence est rechargée : un tintement et des étincelles violettes (le bouton pulse)
+        son("prete");
+        eclats.gerbe("recharge", x, 1.1, z, 14, { vitesse: 3.5, taille: 0.1, haut: 3.5, duree: 0.5 });
         break;
       case "moulinet":
         // le 3ᵉ coup frappe tout autour : un nuage d'étincelles en couronne
@@ -1255,7 +1257,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     if (niveau) ui.niveau(partie.nv, partie.xp - partie.xpSeuil(partie.nv), partie.xpSeuil(partie.nv + 1) - partie.xpSeuil(partie.nv));
     else ui.niveau(null, 0, 1);
     gemmesVue.maj(partie.gemmes, partie.tick, temps, metres);
-    ui.rage(c.rage / partie.reglages.rageMax, partie.competencePrete);
+    ui.recharge(1 - c.recharge / partie.rechargeMax(), partie.competencePrete);
     ondesEpeeVue.maj(partie.ondesEpee, metres);
     if (g && partie.golemEveille) ui.boss(Math.max(0, g.hp) / g.hpMax, g.phase, nomBoss);
     else ui.boss(null, 1);
@@ -1383,7 +1385,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       camera: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z, fov: camera.fov }),
       piloter: () => pilote(partie),
       /** Joue `n` ticks au plus avec le pilote de la simulation (pas à pas, sans dessin) : de quoi finir une partie entière dans un test. */
-      jouerPilote: (n: number, attente = 0) => {
+      jouerPilote: (n: number, attente = 0, strategie: Strategie = "foncer") => {
+        const etatPil = etatPilote(strategie, -2, partie);
         // lot BR5 : le pilote choisit sa compétence au départ (celle qu'il joue pour le boss du jour)
         if (partie.attenteDepart) validerDepart(competenceDuPilote(partie.contenu.boss));
         // `attente` ticks immobile d'abord : une partie différente de celle du Diamant (qui serait refusée comme une copie)
@@ -1393,8 +1396,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         }
         for (let i = 0; i < n && !partie.finie; i++) {
           // lot BR2 : le pilote fait ses choix d'amélioration (ceux de « foncer »)
-          for (let garde = 0; partie.choix && ui.choixOuvert() && garde < 50; garde++) valider(choisirCarte(partie, "foncer"));
-          controles.forcee = { e: pilote(partie), reste: 1 };
+          for (let garde = 0; partie.choix && ui.choixOuvert() && garde < 50; garde++) valider(choisirCarte(partie, strategie));
+          controles.forcee = { e: pilote(partie, etatPil), reste: 1 };
           pasDeSimulation();
         }
       },

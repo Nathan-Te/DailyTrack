@@ -228,7 +228,7 @@ describe("le tirage des cartes (graine du jour + numéro du niveau)", () => {
     expect(AMELIORATIONS.find((a) => a.id === "soin")!.max).toBe(Infinity);
     expect(AMELIORATIONS.filter((a) => a.max === 3)).toHaveLength(11);
     expect(AMELIORATIONS.find((a) => a.id === "signature")!.max).toBe(2);
-    expect(AMELIORATIONS.filter((a) => a.famille === "competence").map((a) => a.id)).toEqual(["rage-vive", "maitrise", "echo", "signature"]);
+    expect(AMELIORATIONS.filter((a) => a.famille === "competence").map((a) => a.id)).toEqual(["recharge-vive", "maitrise", "echo", "signature"]);
   });
 });
 

@@ -143,15 +143,15 @@ export const BORNES_NIVEAU = {
   longueurMax: 10000,
   detoursMin: 2,
   detoursMax: 4,
-  /** Lot BR5 : un camp de 10 à 20 monstres (8 à 11 au BR1b). */
-  campMin: 10,
-  campMax: 20,
+  /** Lot BR5 : un camp de 12 à 22 monstres (8 à 11 au BR1b ; 10 à 20 au premier jet du lot : il faut un peu plus d'unités à faucher pour avoir à farmer). */
+  campMin: 12,
+  campMax: 22,
   /** Les monstres épars du chemin principal (hors groupes). */
   eparsMin: 0,
-  eparsMax: 3,
+  eparsMax: 5,
   /** Les groupes qui barrent le chemin (lot BR5 : 3 à 5, dont au moins une MEUTE de 6 à 12 gélatons ; les autres, de 2 à 4 monstres), l'alerte de 10 à 12 m. */
   groupesMin: 3,
-  groupesMax: 5,
+  groupesMax: 6,
   groupeTailleMin: 2,
   groupeTailleMax: 12,
   meuteMin: 6,
@@ -171,7 +171,7 @@ export const BORNES_NIVEAU = {
   /** La règle de densité : au plus 3 000 cm de chemin sans rencontre, soit ~4 s de course (7,49 m/s). */
   sansRencontreMax: 3000,
   /** Au plus autant de monstres dans tout le niveau (lot BR5 : 150 ; 50 au BR1b). */
-  monstresMax: 150,
+  monstresMax: 180,
 } as const;
 
 /** La vitesse de course du pilote et du joueur par défaut, en cm/s (468 × 1,6) : la règle de densité la lit. */
@@ -394,7 +394,7 @@ function tenter(rng: Rng): Plan | null {
     place.forEach((u, q) => {
       const s = lo + idiv((hi - lo) * u, 100);
       const nGroupes = rencontres.filter((r) => r.genre === "groupe").length;
-      if (q === 0 || (rng.chance(50) && nGroupes < B.groupesMax)) rencontres.push(nGroupes >= B.groupesMax ? { genre: "epars", s, alerte: 0, taille: 1, meute: false } : groupe(s));
+      if (q === 0 || (rng.chance(70) && nGroupes < B.groupesMax)) rencontres.push(nGroupes >= B.groupesMax ? { genre: "epars", s, alerte: 0, taille: 1, meute: false } : groupe(s));
       else rencontres.push({ genre: "epars", s, alerte: 0, taille: 1, meute: false });
     });
   }
@@ -408,7 +408,7 @@ function tenter(rng: Rng): Plan | null {
   }
   // des épars dans les étapes (au plus trois en tout)
   const etapes = rng.shuffle(Array.from({ length: nEtapes }, (_, i) => i + 1));
-  let aPoser = rng.int(2);
+  let aPoser = 1 + rng.int(3);
   for (const e of etapes) {
     if (aPoser === 0) break;
     const sEtape = cum[e]! + rng.int(401) - 200;

@@ -2799,8 +2799,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `carte.cadence.effet` | Coups {n} % plus rapides. | Strikes {n}% faster. |
 | `carte.moulinet.nom` | Moulinet | Windmill |
 | `carte.moulinet.effet` | Le 3ᵉ coup frappe tout autour. | The 3rd strike hits all around. |
-| `carte.rage_vive.nom` | Rage vive | Quick rage |
-| `carte.rage_vive.effet` | La jauge de rage monte {n} % plus vite. | The rage gauge fills {n} % faster. |
+| `carte.recharge_vive.nom` | Recharge vive | Quick recharge |
+| `carte.recharge_vive.effet` | Ta compétence se recharge {n} % plus vite. | Your skill recharges {n} % faster. |
 | `carte.maitrise.nom` | Maîtrise | Mastery |
 | `carte.maitrise.effet` | Compétence : +{n} % de dégâts, +{m} % de zone. | Skill: +{n} % damage, +{m} % area. |
 | `carte.echo.nom` | Écho | Echo |

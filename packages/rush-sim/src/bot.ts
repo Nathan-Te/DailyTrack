@@ -18,7 +18,7 @@ import { REGLAGES_DEFAUT, type Reglages } from "./reglagesSim";
 // la route : la simulation fait monter sa vitesse après ~1,2 s de calme) ; la stratégie « nettoyer » peut ne viser que les monstres d'UN camp (la mesure du coût d'un détour : `jouerLePilote(…, camp)`).
 // Lot BR2 : TROIS stratégies — FONCER (aucun détour), UN PEU D'XP (les monstres du chemin et les camps proches du chemin : `SEUIL_PEU_CM`) et BEAUCOUP D'XP (tous les camps) — chacune avec sa liste de priorités pour choisir
 // une carte (`PRIORITES`, la première de la liste qui est proposée). Elles servent à l'ÉQUILIBRE : aucune ne doit gagner tous les jours (`tools/mesures.ts`, `test/equilibre.test.ts`).
-// Lot BR5 : il choisit sa COMPÉTENCE au départ d'après le boss du jour (`competenceDuPilote`) et la lance quand la jauge de rage est pleine et que la cible vaut le coup ; les vases du chemin se brisent d'un coup au passage.
+// Lot BR5 : il choisit sa COMPÉTENCE au départ d'après le boss du jour (`competenceDuPilote`) et la lance quand elle est rechargée et que la cible vaut le coup ; les vases du chemin se brisent d'un coup au passage.
 // Lot BR4 : il ne se laisse plus BLOQUER (`suivreLeProgres` : sans progrès pendant `BLOCAGE_TICKS`, il lâche ce qu'il visait) et il a une version HUMANISÉE (`HUMAIN`) qui sert à calibrer les médailles, jamais à les fixer. Tout changement du pilote monte `RUSH_BOT_VERSION`.
 // La stratégie « nettoyer » d'avant (une mesure, pas un Diamant) va d'abord à chaque monstre, du plus proche au plus loin, puis à l'arène : elle donne l'écart de temps entre foncer et tout nettoyer.
 
@@ -31,9 +31,9 @@ export const STRATEGIES: readonly Strategie[] = ["foncer", "peu", "beaucoup"];
 export const SEUIL_PEU_CM = 3200;
 /** Les cartes de chaque stratégie, de la plus voulue à la moins voulue (la première proposée est prise ; sinon la première carte offerte). */
 export const PRIORITES: Readonly<Record<Strategie, readonly string[]>> = {
-  foncer: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "esquive-vive", "moulinet", "onde-epee", "maitrise", "allonge", "rage-vive", "coeur-en-plus", "soin", "signature", "echo", "esquive-longue", "vol-de-vie", "esquive-tranchante", "aimant"],
-  peu: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "moulinet", "onde-epee", "maitrise", "allonge", "rage-vive", "esquive-vive", "coeur-en-plus", "soin", "signature", "echo", "vol-de-vie", "esquive-longue", "esquive-tranchante", "aimant"],
-  beaucoup: ["bottes-legeres", "moulinet", "rage-vive", "cadence", "lame-lourde", "maitrise", "brise-pierre", "onde-epee", "signature", "allonge", "echo", "vol-de-vie", "aimant", "coeur-en-plus", "soin", "esquive-vive", "esquive-longue", "esquive-tranchante"],
+  foncer: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "esquive-vive", "moulinet", "onde-epee", "maitrise", "allonge", "recharge-vive", "coeur-en-plus", "soin", "signature", "echo", "esquive-longue", "vol-de-vie", "esquive-tranchante", "aimant"],
+  peu: ["bottes-legeres", "lame-lourde", "brise-pierre", "cadence", "moulinet", "onde-epee", "maitrise", "allonge", "recharge-vive", "esquive-vive", "coeur-en-plus", "soin", "signature", "echo", "vol-de-vie", "esquive-longue", "esquive-tranchante", "aimant"],
+  beaucoup: ["bottes-legeres", "moulinet", "recharge-vive", "cadence", "lame-lourde", "maitrise", "brise-pierre", "onde-epee", "signature", "allonge", "echo", "vol-de-vie", "aimant", "coeur-en-plus", "soin", "esquive-vive", "esquive-longue", "esquive-tranchante"],
 };
 
 /**
@@ -385,7 +385,7 @@ function percu(p: Partie, etat: EtatPilote, cle: string, vrai: boolean): boolean
 const eveille = (m: { laisse: number; alerte: number }): boolean => m.laisse === 0 || m.alerte === 1;
 
 /**
- * Lot BR5 — la compétence : le pilote la lance quand la jauge est pleine et que la cible vaut le coup. Rend la direction (0 à 31) vers laquelle appuyer — ou −2 pour « sans changer la direction » —, ou `null` pour ne rien lancer.
+ * Lot BR5 — la compétence : le pilote la lance dès qu'elle est rechargée et que la cible vaut le coup. Rend la direction (0 à 31) vers laquelle appuyer — ou −2 pour « sans changer la direction » —, ou `null` pour ne rien lancer.
  * Tourbillon : au moins trois ennemis éveillés tout autour, ou le boss à portée. Bond : un groupe (ou le boss) à 4 à 9 m, que l'onde de choc écrasera. Bouclier : un ennemi (ou deux alignés, ou le boss) à 3 à 9 m en ligne droite.
  */
 function competenceDuMoment(p: Partie): number | null {

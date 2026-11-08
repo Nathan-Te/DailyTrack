@@ -1,7 +1,7 @@
 // Les sons de Rush : Web Audio **procédural, sans fichier** (oscillateurs et bruit filtré). Aucun son avant le premier geste du joueur (règle des navigateurs et d'iOS). Le niveau est le volume du kit
 // (la musique commune en tient le réglage) ; à 0, rien ne se joue. La musique a son propre contexte : un effet ne la coupe jamais.
 
-export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque" | "ramasse" | "niveau" | "carte" | "soin" | "ondeEpee" | "jarre" | "bois" | "tourbillon" | "bond" | "atterri" | "bouclier" | "elan" | "rage";
+export type SonNom = "coup1" | "coup2" | "coup3" | "touche" | "toucheFort" | "toucheGolem" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "pierre" | "bloque" | "ramasse" | "niveau" | "carte" | "soin" | "ondeEpee" | "jarre" | "bois" | "tourbillon" | "bond" | "atterri" | "bouclier" | "elan" | "prete";
 
 type Ctx = AudioContext;
 interface Ton {
@@ -222,7 +222,7 @@ export class Sons {
         this.souffle(c, t, { duree: 0.26, vol: 0.42, filtre: 380, filtreVers: 4200, q: 1.3 });
         this.ton(c, t, { de: 160, vers: 640, duree: 0.2, type: "sawtooth", vol: 0.08 });
         break;
-      case "rage":
+      case "prete":
         for (const [i, f] of [440, 660, 880].entries()) this.ton(c, t, { de: f, duree: 0.16, type: "triangle", vol: 0.14, retard: i * 0.055 });
         break;
       case "tourbillon":

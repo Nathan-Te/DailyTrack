@@ -98,7 +98,7 @@ describe("la lisibilité des cinq boss et de leurs annonces sur chaque thème (l
   }
 });
 
-// Lot BR5 : ce qui est au JOUEUR se lit sur chaque thème sans jamais ressembler à un danger — le cercle d'atterrissage du bond (cyan), les gélatons (bleus, distincts des gelées vertes), la rage (violet), le cœur (rose). Même mesure : ΔE76 contre les deux tons du sol.
+// Lot BR5 : ce qui est au JOUEUR se lit sur chaque thème sans jamais ressembler à un danger — le cercle d'atterrissage du bond (cyan), les gélatons (bleus, distincts des gelées vertes), la recharge (violet), le cœur (rose). Même mesure : ΔE76 contre les deux tons du sol.
 describe("la lisibilité des compétences et du butin sur chaque thème (lot BR5)", () => {
   const teinte = (c: number): number => {
     const [, a, b] = lab(c);
@@ -106,7 +106,7 @@ describe("la lisibilité des compétences et du butin sur chaque thème (lot BR5
   };
   const ecartTeinte = (a: number, b: number): number => Math.abs(((teinte(a) - teinte(b) + 540) % 360) - 180);
   it("rien de ce qui est au joueur n'est de la famille du corail (le rouge reste réservé au danger)", () => {
-    for (const [nom, c] of Object.entries({ joueur: COULEURS.joueur, joueurClair: COULEURS.joueurClair, rage: COULEURS.rage, lame: COULEURS.lame, bouclier: COULEURS.bouclier, gelaton: GELATON_COULEUR })) {
+    for (const [nom, c] of Object.entries({ joueur: COULEURS.joueur, joueurClair: COULEURS.joueurClair, recharge: COULEURS.recharge, lame: COULEURS.lame, bouclier: COULEURS.bouclier, gelaton: GELATON_COULEUR })) {
       expect(ecart(c, COULEURS.corail), nom).toBeGreaterThanOrEqual(40);
       expect(ecartTeinte(c, COULEURS.corail), `${nom} : la teinte s'écarte d'au moins 45° de celle du corail`).toBeGreaterThanOrEqual(45);
     }
@@ -125,8 +125,8 @@ describe("la lisibilité des compétences et du butin sur chaque thème (lot BR5
         expect(plusPetit(GELATON_COULEUR, p), "gélaton").toBeGreaterThanOrEqual(25);
         expect(ecart(GELATON_COULEUR, COULEURS.gelee), "gélaton contre gelée").toBeGreaterThanOrEqual(25);
       });
-      it("la rage (violet) et le cœur (rose) tranchent sur le sol (≥ 25)", () => {
-        expect(plusPetit(COULEURS.rage, p), "rage").toBeGreaterThanOrEqual(25);
+      it("la recharge (violet) et le cœur (rose) tranchent sur le sol (≥ 25)", () => {
+        expect(plusPetit(COULEURS.recharge, p), "recharge").toBeGreaterThanOrEqual(25);
         expect(plusPetit(COULEURS.coeur, p), "cœur").toBeGreaterThanOrEqual(25);
       });
     });

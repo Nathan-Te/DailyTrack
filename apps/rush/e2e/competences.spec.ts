@@ -5,7 +5,7 @@ import { API, appareil, lancer } from "./appareil";
 // instances (moins de 200 appels de dessin à 40 puis 60 monstres, en haute et en basse qualité) et le coup d'élan en pleine course. Les règles sont dans `packages/rush-sim/test/` ; ici ce qu'on voit et ce qu'on touche, dans un navigateur.
 interface Vue {
   tick: number;
-  rage: number;
+  recharge: number;
   etat: number;
   comp: number;
   fente: number;
@@ -17,8 +17,8 @@ interface Vue {
 }
 const etat = (page: Page): Promise<Vue> =>
   page.evaluate(() => {
-    const p = window.__rush.partie() as unknown as Vue & { c: Vue["c"] & { rage: number; etat: number; comp: number; fente: number } };
-    return { tick: p.tick, rage: p.c.rage, etat: p.c.etat, comp: p.c.comp, fente: p.c.fente, course: (p as unknown as { course: number }).course, monstres: p.monstres, vases: p.vases, boucliers: p.boucliers, c: p.c };
+    const p = window.__rush.partie() as unknown as Vue & { c: Vue["c"] & { recharge: number; etat: number; comp: number; fente: number } };
+    return { tick: p.tick, recharge: p.c.recharge, etat: p.c.etat, comp: p.c.comp, fente: p.c.fente, course: (p as unknown as { course: number }).course, monstres: p.monstres, vases: p.vases, boucliers: p.boucliers, c: p.c };
   });
 const URL_JOUR = `/?api=${API}&debug&manuel&tactile=0`;
 
@@ -94,10 +94,10 @@ test.describe("Rush : le choix de la compétence au départ", () => {
 test.describe("Rush : les trois compétences", () => {
   const ADRESSE = (comp: string): string => `/?api=${API}&debug&manuel&tactile=0&scenario=mannequin&competence=${comp}`;
   const pleine = async (page: Page): Promise<void> => {
-    expect((await etat(page)).rage).toBeGreaterThanOrEqual(1000); // un scénario d'essai part la jauge pleine
+    expect((await etat(page)).recharge).toBe(0); // la compétence est prête au départ
   };
 
-  test("tourbillon : E lance la compétence, la jauge se vide, il tournoie et frappe les gelées autour (elles titubent), puis se termine", async ({ browser }) => {
+  test("tourbillon : E lance la compétence, elle se met en recharge, il tournoie et frappe les gelées autour (elles titubent), puis se termine", async ({ browser }) => {
     const { context, page } = await appareil(browser, ADRESSE("tourbillon"));
     await lancer(page);
     await pleine(page);
@@ -107,7 +107,7 @@ test.describe("Rush : les trois compétences", () => {
     await page.evaluate(() => window.__jeu.avancer(30));
     const v = await etat(page);
     expect(v.etat).toBe(3);
-    expect(v.rage).toBeLessThan(500);
+    expect(v.recharge).toBeGreaterThan(0); // elle est en recharge
     expect(await page.evaluate(() => window.__rush.sons())).toContain("tourbillon");
     await page.evaluate(() => window.__jeu.avancer(60));
     expect((await etat(page)).etat).not.toBe(3);

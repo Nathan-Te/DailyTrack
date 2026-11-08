@@ -12,7 +12,7 @@ import { COS, SIN } from "./trig";
 // La partie de Rush : 60 Hz, tout en entiers, l'état d'un seul tenant. À chaque tick, `avancer(entree)` applique l'octet d'entrée du tick (voir `entrees.ts`) puis fait avancer le monde : le chevalier, les apparitions,
 // les monstres, le golem, les zones annoncées, les ondes, les contacts. **Le même code joue la partie du joueur et la rediffusion du serveur** ; la vue (`apps/rush`) ne fait que lire cet état.
 // Le hasard (apparitions, pierres) vient d'une graine du contenu et n'est tiré qu'à des ticks fixés par l'état : une rediffusion refait les mêmes tirages.
-// Lot BR5 : un HACK & SLASH. La RAGE (une jauge qui monte aux coups, aux morts, aux vases et, très lentement, au temps) permet une COMPÉTENCE choisie au départ (tourbillon, bond écrasant, lancer de bouclier : `choisirCompetence`, un
+// Lot BR5 : un HACK & SLASH. Une COMPÉTENCE choisie au départ (prête au début, puis un TEMPS DE RECHARGE : `Chevalier.recharge`) (tourbillon, bond écrasant, lancer de bouclier : `choisirCompetence`, un
 // événement d'entrée de la rediffusion que le serveur valide) ; les GÉLATONS (meutes de petites gelées, un coup chacun) ; les VASES (groupes de petits cassables d'un coup, au contenu tiré de la graine) ; le COUP D'ÉLAN (frapper en pleine course fait une fente).
 // Lot BR2 : l'XP et les AMÉLIORATIONS. Un monstre tué ou un obstacle brisé lâche une gemme d'XP (elle vole vers le chevalier dans le rayon d'aimant et ne disparaît jamais) ; chaque niveau gagné FIGE le monde (`avancer` ne fait plus rien, le chrono
 // non plus : il compte les ticks) jusqu'à ce que le joueur choisisse une carte parmi trois (`choisir`, un événement d'entrée de la rediffusion que le serveur valide). Le tirage est celui de la graine du jour et du numéro du niveau (`ameliorations.ts`).
@@ -72,9 +72,9 @@ export interface Chevalier {
   elan: number;
   /** Lot BR2 : le nombre de cœurs au plus (3, et « Cœur en plus »). */
   coeursMax: number;
-  /** Lot BR5 : la jauge de rage (0 à `rageMax`), la compétence choisie (−1 : pas encore choisie), sa direction, les ticks restants de l'appui gardé en mémoire, l'« écho » armé (la prochaine utilisation ne rend rien), la fente du coup d'élan (les ticks restants)
-   * et, pour le bond, d'où il part et où il atterrit. */
-  rage: number;
+  /** Lot BR5 : les ticks de recharge qui restent avant de pouvoir relancer la compétence (0 : prête), la compétence choisie (−1 : pas encore choisie), sa direction, les ticks restants de l'appui gardé en mémoire, l'« écho » armé (la prochaine
+   * utilisation attend le temps plein), la fente du coup d'élan (les ticks restants) et, pour le bond, d'où il part et où il atterrit. */
+  recharge: number;
   comp: number;
   cDir: number;
   tampComp: number;
@@ -136,9 +136,9 @@ export interface VaseVivant {
   groupe: number;
 }
 
-/** Lot BR2 : une gemme d'XP posée au sol (un octaèdre ambre), qui vaut `v` points. Aimantée (`vers`), elle vole vers le chevalier jusqu'à être ramassée. Lot BR5 : `k` dit ce qu'elle est — 0 une gemme d'XP, 1 de la rage (`v` points de jauge), 2 un cœur (elle attend au sol tant que le chevalier a tous ses cœurs). */
+/** Lot BR2 : une gemme d'XP posée au sol (un octaèdre ambre), qui vaut `v` points. Aimantée (`vers`), elle vole vers le chevalier jusqu'à être ramassée. Lot BR5 : `k` dit ce qu'elle est — 0 une gemme d'XP, 1 une recharge (`v` ticks de recharge rendus), 2 un cœur (elle attend au sol tant que le chevalier a tous ses cœurs). */
 export const GEMME_XP = 0;
-export const GEMME_RAGE = 1;
+export const GEMME_RECHARGE = 1;
 export const GEMME_COEUR = 2;
 export interface Gemme {
   id: number;
@@ -259,7 +259,7 @@ export interface OndeGolem {
   touche: boolean;
 }
 
-export type GenreEvenement = "competence" | "pulsation" | "atterrissage" | "bouclier" | "bouclierRetour" | "bouclierTouche" | "elan" | "rage" | "division" | "choc" | "nuage" | "invoque" | "gemme" | "ramasse" | "niveau" | "carte" | "ondeEpee" | "tranchant" | "soin" | "moulinet" | "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "brise";
+export type GenreEvenement = "competence" | "prete" | "pulsation" | "atterrissage" | "bouclier" | "bouclierRetour" | "bouclierTouche" | "elan" | "division" | "choc" | "nuage" | "invoque" | "gemme" | "ramasse" | "niveau" | "carte" | "ondeEpee" | "tranchant" | "soin" | "moulinet" | "coup" | "touche" | "mort" | "esquive" | "frole" | "degats" | "annonce" | "impact" | "onde" | "phase2" | "victoire" | "defaite" | "apparition" | "bloque" | "sauve" | "alerte" | "barriere" | "eveil" | "brise";
 /** Ce que le rendu doit savoir d'un tick (sons, éclats, secousse) : jamais lu par la simulation. */
 export interface Evenement {
   k: GenreEvenement;
@@ -398,7 +398,7 @@ const A_SOIN = indiceAmelioration("soin");
 const A_VOL = indiceAmelioration("vol-de-vie");
 const A_BRISE = indiceAmelioration("brise-pierre");
 const A_AIMANT = indiceAmelioration("aimant");
-const A_RAGE_VIVE = indiceAmelioration("rage-vive");
+const A_RECHARGE_VIVE = indiceAmelioration("recharge-vive");
 const A_MAITRISE = indiceAmelioration("maitrise");
 const A_ECHO = indiceAmelioration("echo");
 const A_SIGNATURE = indiceAmelioration("signature");
@@ -487,14 +487,13 @@ export class Partie {
   private videDepuis = -1;
   /** Lot BR1 : le niveau du jour (grille), le centre de l'arène, le tick où la barrière s'est refermée (−1 : ouverte) et les cases de la porte. */
   readonly niveau: Niveau | null;
-  /** Lot BR5 : les vases du niveau (ceux qu'on a brisés sont retirés), les boucliers lancés, la compétence à choisir avant de partir (`jour` seulement : le chrono ne démarre pas) et les gains de rage coupés pendant les coups d'une compétence. */
+  /** Lot BR5 : les vases du niveau (ceux qu'on a brisés sont retirés), les boucliers lancés et la compétence à choisir avant de partir (`jour` seulement : le chrono ne démarre pas). */
   vases: VaseVivant[] = [];
   boucliers: Bouclier[] = [];
   attenteDepart = false;
-  private sansRage = false;
   private prochainVase = 0;
-  /** Les scénarios d'essai (hors `jour`) remplissent la jauge vite : de quoi juger une compétence à froid. */
-  private readonly rageRapide: boolean;
+  /** Les scénarios d'essai (hors `jour`) divisent le temps de recharge par 4 : de quoi juger une compétence à froid. */
+  private readonly essaiRapide: boolean;
   readonly ax: number;
   readonly ay: number;
   barriere = -1;
@@ -515,9 +514,9 @@ export class Partie {
     this.rt = reglages.rythme;
     this.durees = { gelatonAnnonce: this.dur(GELATON_ANNONCE), gelatonBond: this.dur(GELATON_BOND), gelatonCycle: this.dur(GELATON_ANNONCE) + this.dur(GELATON_BOND) + this.dur(GELATON_REPOS), geleeAnnonce: this.dur(GELEE_ANNONCE), geleeBond: this.dur(GELEE_BOND), geleeCycle: this.dur(GELEE_ANNONCE) + this.dur(GELEE_BOND) + this.dur(GELEE_REPOS), chauveAnnonce: this.dur(CHAUVE_ANNONCE), chauvePlongeon: this.dur(CHAUVE_PLONGEON) };
     this.immortel = contenu.scenario === "arene" || contenu.scenario === "vitrine" || contenu.scenario === "mannequin" || contenu.scenario === "bestiaire" || contenu.scenario === "horde";
-    this.rageRapide = contenu.scenario !== "jour" && contenu.scenario !== "cartes";
+    this.essaiRapide = contenu.scenario !== "jour" && contenu.scenario !== "cartes";
     this.attenteDepart = contenu.scenario === "jour" && contenu.competence < 0;
-    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false, calme: 0, elan: 0, coeursMax: COEURS, rage: this.rageRapide ? reglages.rageMax : 0, comp: contenu.competence >= 0 ? contenu.competence : this.attenteDepart ? -1 : 0, cDir: 0, tampComp: 0, echo: 0, fente: 0, bx: 0, by: 0, tx: 0, ty: 0 };
+    this.c = { x: this.niveau ? this.niveau.depart.x : 0, y: this.niveau ? this.niveau.depart.y : cm(520), dir: this.niveau ? this.niveau.depart.dir : 96, coeurs: COEURS, etat: LIBRE, t: 0, combo: 0, tampon: 0, tampEsq: 0, reprise: 0, attente: 0, esq: 0, degat: 0, kx: 0, ky: 0, marche: false, calme: 0, elan: 0, coeursMax: COEURS, recharge: 0, comp: contenu.competence >= 0 ? contenu.competence : this.attenteDepart ? -1 : 0, cDir: 0, tampComp: 0, echo: 0, fente: 0, bx: 0, by: 0, tx: 0, ty: 0 };
     if (contenu.scenario === "arene" || contenu.scenario === "bestiaire" || contenu.scenario === "horde") this.golem = null;
     else {
       // Lot BR3 : le boss du jour (le golem pour les scénarios d'essai qui n'en demandent pas un autre) ; ses points de vie sont un % de ceux du golem.
@@ -686,7 +685,7 @@ export class Partie {
     const compFront = front(competenceDe(entree), competenceDe(this.entreePrecedente));
     this.entreePrecedente = entree;
     this.mouvementChevalier(directionDe(entree), viseeDe(entree), coupFront, coupDe(entree), esquiveFront, compFront);
-    if (this.tick % 60 === 0) this.gagnerRage(this.rageRapide ? idiv(this.reglages.rageMax, 6) : this.reglages.rageTemps);
+    this.rechargerLaCompetence();
     if (this.niveau && this.barriere < 0 && distance(this.c.x, this.c.y, this.ax, this.ay) < RAYON_ARENE - ENTREE_ARENE) this.fermerBarriere();
     this.apparitions();
     for (const m of this.monstres) this.mouvementMonstre(m);
@@ -751,8 +750,8 @@ export class Partie {
       this.ev("esquive", c.x, c.y, d);
     }
 
-    // Lot BR5 : la compétence (jauge pleine) coupe un coup ; l'esquive, elle, passe avant (survivre) et la coupe aussi.
-    if (c.tampComp > 0 && c.comp >= 0 && c.rage >= this.reglages.rageMax && (c.etat === LIBRE || c.etat === COUP)) this.lancerCompetence(direction, visee);
+    // Lot BR5 : la compétence (rechargée) coupe un coup ; l'esquive, elle, passe avant (survivre) et la coupe aussi.
+    if (c.tampComp > 0 && c.comp >= 0 && c.recharge === 0 && (c.etat === LIBRE || c.etat === COUP)) this.lancerCompetence(direction, visee);
 
     if (c.etat === ESQUIVE) {
       // la marche est plus lente depuis BR0c (−10 %) : la course de l'esquive garde sa longueur (lot BR2 : « Esquive longue » l'allonge, les « Bottes légères » non)
@@ -988,7 +987,6 @@ export class Partie {
     }
     m.hp -= degats;
     m.flash = 7;
-    if (!this.sansRage) this.gagnerRage(this.reglages.rageTouche);
     m.gel = Math.max(m.gel, TITUBE[s]!); // elle glisse (le recul) puis titube
     const [ux, uy] = unitaire(m.x - sx, m.y - sy);
     const ex = ux === 0 && uy === 0 ? COS[c.dir]! : ux;
@@ -1004,7 +1002,6 @@ export class Partie {
     if (m.hp <= 0) {
       this.tues++;
       this.ev("mort", m.x, m.y, m.type, s);
-      if (!this.sansRage) this.gagnerRage(this.reglages.rageTue);
       const base = m.type === GELEE ? this.reglages.xpGelee : m.type === GELATON ? this.reglages.xpGelaton : this.reglages.xpChauve;
       const camp = (this.niveau?.monstres[m.id - 1]?.camp ?? -1) >= 0; // un monstre d'un camp (au bout d'un détour) vaut plus : le détour est un pari
       if (m.sbire === 0) this.lacher(m.x, m.y, camp ? idiv(base * this.reglages.xpCamp, 100) : base); // lot BR3 : les sbires d'un boss ne lâchent rien
@@ -1026,30 +1023,33 @@ export class Partie {
     if (casse) this.vases = this.vases.filter((v) => v.id >= 0);
   }
 
-  /** Le contenu d'un vase d'après son tirage (0 une gemme d'XP, 1 de la rage, 2 un cœur) : les seuils sont des réglages, le tirage vient de la graine du jour. */
+  /** Le contenu d'un vase d'après son tirage (0 une gemme d'XP, 1 une recharge, 2 un cœur) : les seuils sont des réglages, le tirage vient de la graine du jour. */
   contenuDuVase(tirage: number): number {
     const r = this.reglages;
-    return tirage < r.vaseGemme ? GEMME_XP : tirage < r.vaseGemme + r.vaseRage ? GEMME_RAGE : GEMME_COEUR;
+    return tirage < r.vaseGemme ? GEMME_XP : tirage < r.vaseGemme + r.vaseRecharge ? GEMME_RECHARGE : GEMME_COEUR;
   }
 
   private casserVase(v: VaseVivant): void {
     const contenu = this.contenuDuVase(v.tirage);
     v.id = -1 - v.id; // marqué brisé (retiré par `casserLesVases`)
     this.ev("brise", v.x, v.y, v.genre, contenu);
-    if (!this.sansRage) this.gagnerRage(this.reglages.rageVase);
     if (contenu === GEMME_XP) this.lacher(v.x, v.y, this.reglages.xpVase, GEMME_XP);
-    else if (contenu === GEMME_RAGE) this.lacher(v.x, v.y, this.reglages.rageButin, GEMME_RAGE);
+    else if (contenu === GEMME_RECHARGE) this.lacher(v.x, v.y, this.reglages.rechargeVase, GEMME_RECHARGE);
     else this.lacher(v.x, v.y, 1, GEMME_COEUR);
   }
 
-  /** La jauge de rage monte de `n` (+ « Rage vive »), sans dépasser son maximum. */
-  private gagnerRage(n: number): void {
+  /** Le temps de recharge plein de la compétence choisie, en ticks : celui de la compétence, raccourci de `rechargeVive` % par palier de « Recharge vive » (jamais sous 40 %), divisé par 4 dans un scénario d'essai. */
+  rechargeMax(): number {
+    const r = this.reglages;
+    const base = this.c.comp === C_BOND ? r.rechargeBond : this.c.comp === C_TOURBILLON ? r.rechargeTourbillon : r.rechargeBouclier;
+    const pct = Math.max(40, 100 - this.paliers[A_RECHARGE_VIVE]! * r.rechargeVive);
+    return Math.max(1, idiv(idiv(base * pct, 100), this.essaiRapide ? 4 : 1));
+  }
+
+  /** Un tick de recharge : quand elle tombe à zéro la compétence est prête (l'événement `prete`). */
+  private rechargerLaCompetence(): void {
     const c = this.c;
-    const max = this.reglages.rageMax;
-    if (n <= 0 || c.rage >= max) return;
-    const gain = idiv(n * (100 + this.paliers[A_RAGE_VIVE]! * this.reglages.rageVive), 100);
-    c.rage = Math.min(max, c.rage + gain);
-    if (c.rage >= max) this.ev("rage", c.x, c.y, max);
+    if (c.recharge > 0 && --c.recharge === 0) this.ev("prete", c.x, c.y, c.comp);
   }
 
   /** Les vases sont pleins pour le chevalier : il ne les traverse pas (les monstres, eux, passent). Il est repoussé le long du bord du vase. */
@@ -1073,7 +1073,6 @@ export class Partie {
     if (g.etat === RUGIT) return void this.ev("bloque", g.x, g.y);
     g.hp -= this.degatsContreGolem(degats, g);
     g.flash = 7;
-    if (!this.sansRage) this.gagnerRage(this.reglages.rageTouche);
     const phase2 = g.phase === 1 && g.hp > 0 && g.hp * 2 <= g.hpMax;
     this.ev("touche", g.x, g.y, s, phase2 ? 3 : 2); // b : 2 = le golem, 3 = le golem qui passe en phase 2 par ce coup
     if (this.contenu.scenario === "mannequin") g.hp = g.hpMax; // le mannequin ne meurt pas
@@ -1168,13 +1167,13 @@ export class Partie {
   ciblesBouclier(): number {
     return this.reglages.bouclierCibles + this.paliers[A_SIGNATURE]! * this.reglages.signatureBouclier;
   }
-  /** Le chevalier peut lancer sa compétence (jauge pleine, une compétence choisie, ni en esquive ni déjà en compétence). */
+  /** Le chevalier peut lancer sa compétence (rechargée, une compétence choisie, ni en esquive ni déjà en compétence). */
   get competencePrete(): boolean {
     const c = this.c;
-    return c.comp >= 0 && c.rage >= this.reglages.rageMax && (c.etat === LIBRE || c.etat === COUP);
+    return c.comp >= 0 && c.recharge === 0 && (c.etat === LIBRE || c.etat === COUP);
   }
 
-  /** Le chevalier lance sa compétence : la jauge se vide (« Écho » en rend une part, une fois sur deux), la direction est la visée, sinon ce que le joueur tient, sinon l'ennemi proche. */
+  /** Le chevalier lance sa compétence : la recharge démarre (« Écho » n'en fait attendre que la moitié, une fois sur deux), la direction est la visée, sinon ce que le joueur tient, sinon l'ennemi proche. */
   private lancerCompetence(direction: number, visee: number): void {
     const c = this.c;
     const cible = this.plusProche(cm(900));
@@ -1198,12 +1197,13 @@ export class Partie {
     c.calme = 0;
     c.elan = 0;
     c.fente = 0;
-    // la jauge : vidée ; « Écho » en garde une part la première fois, rien la seconde (une seconde utilisation à moitié prix)
+    // la recharge démarre ; « Écho » n'en fait attendre que la moitié la première fois (une seconde utilisation à moitié prix), le temps plein la suivante
+    const plein = this.rechargeMax();
     if (this.paliers[A_ECHO]! > 0 && c.echo === 0) {
-      c.rage = idiv(this.reglages.rageMax * this.reglages.echoRend, 100);
+      c.recharge = Math.max(1, idiv(plein * this.reglages.echoRecharge, 100));
       c.echo = 1;
     } else {
-      c.rage = 0;
+      c.recharge = plein;
       c.echo = 0;
     }
     c.bx = c.x;
@@ -1284,13 +1284,11 @@ export class Partie {
     const degats = this.degatsCompetence(this.reglages.tourbillonDegats);
     const force = idiv(cm(this.reglages.recul) * 10, 100); // une poussée très légère : repoussés plus loin que le rayon, les ennemis échapperaient aux passes suivantes
     this.coupId++;
-    this.sansRage = true;
     this.ev("pulsation", c.x, c.y, i, rayon);
     for (const m of this.monstres) if (m.hp > 0 && distance(c.x, c.y, m.x, m.y) - rayonDe(m.type) <= rayon) this.toucherMonstre(m, degats, 0, force, c.x, c.y);
     this.casserLesVases((v) => distance(c.x, c.y, v.x, v.y) - v.r <= rayon);
     const g = this.golem;
     if (g && g.hp > 0 && g.coup !== this.coupId && distance(c.x, c.y, g.x, g.y) - g.r <= rayon) this.toucherGolem(g, degats, 0);
-    this.sansRage = false;
   }
 
   /** L'atterrissage du bond : une onde de choc écrase tout autour, les ennemis sont étourdis et repoussés. */
@@ -1301,7 +1299,6 @@ export class Partie {
     const force = idiv(cm(this.reglages.recul) * 15, 10);
     const etourdi = this.etourdiBond();
     this.coupId++;
-    this.sansRage = true;
     this.ev("atterrissage", c.x, c.y, rayon);
     for (const m of this.monstres) {
       if (m.hp <= 0 || distance(c.x, c.y, m.x, m.y) - rayonDe(m.type) > rayon) continue;
@@ -1311,7 +1308,6 @@ export class Partie {
     this.casserLesVases((v) => distance(c.x, c.y, v.x, v.y) - v.r <= rayon);
     const g = this.golem;
     if (g && g.hp > 0 && g.coup !== this.coupId && distance(c.x, c.y, g.x, g.y) - g.r <= rayon) this.toucherGolem(g, degats, 0);
-    this.sansRage = false;
     this.pousserHorsDuGolem(c);
     this.pousserHorsDesVases(c);
   }
@@ -1329,7 +1325,6 @@ export class Partie {
     if (this.boucliers.length === 0) return;
     const c = this.c;
     const v = idiv(cm(VITESSE_BOUCLIER), 60);
-    this.sansRage = true;
     for (const b of this.boucliers) {
       b.age++;
       if (b.etat === 0) {
@@ -1372,7 +1367,6 @@ export class Partie {
         this.ev("bouclierRetour", b.x, b.y);
       } else if (retour && distance(b.x, b.y, c.x, c.y) <= RAMASSE) b.age = 9999;
     }
-    this.sansRage = false;
     this.boucliers = this.boucliers.filter((b) => b.age < 240);
   }
 
@@ -1454,7 +1448,9 @@ export class Partie {
         g.y += idiv((c.y - g.y) * pas, d);
       }
       if (distance(g.x, g.y, c.x, c.y) <= RAMASSE) {
-        if (g.k === GEMME_RAGE) this.gagnerRage(g.v);
+        if (g.k === GEMME_RECHARGE) {
+          if (c.recharge > 0 && (c.recharge = Math.max(0, c.recharge - g.v)) === 0) this.ev("prete", c.x, c.y, c.comp);
+        }
         else if (g.k === GEMME_COEUR) this.soigner(g.v);
         else this.xp += g.v;
         this.ev("ramasse", g.x, g.y, g.v, g.k);

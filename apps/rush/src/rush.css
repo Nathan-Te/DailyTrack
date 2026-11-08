@@ -256,7 +256,7 @@
   transform: translate(2px, 2px);
   box-shadow: 0 0 0 var(--dj-encre);
 }
-/* Lot BR5 : le bouton « Compétence » et sa jauge de rage (un anneau autour, --rage de 0 à 1) ; prêt, il s'illumine et pulse. Au doigt : au-dessus des deux autres ; au PC : une pastille ronde en bas à droite. Jamais de rouge (réservé au danger). */
+/* Lot BR5 : le bouton « Compétence » et son anneau de recharge (--recharge de 0 à 1) ; prêt, il s'illumine et pulse. Au doigt : au-dessus des deux autres ; au PC : une pastille ronde en bas à droite. Jamais de rouge (réservé au danger). */
 .rush-actions {
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -276,7 +276,7 @@
   position: absolute;
   inset: -9px;
   border-radius: 50%;
-  background: conic-gradient(var(--dj-diamant) calc(var(--rage, 0) * 360deg), var(--dj-papier) 0);
+  background: conic-gradient(var(--dj-diamant) calc(var(--recharge, 0) * 360deg), var(--dj-papier) 0);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
   opacity: 0.95;

@@ -71,14 +71,12 @@ export interface Reglages {
   aimantGain: number;
   /** Lot BR3 — l'AFFINITÉ du boss : chaque palier d'une carte que le boss favorise (`bosses.ts`, hors Brise-pierre qui a la sienne) MULTIPLIE les dégâts contre lui par (100 + ce %) / 100 : les paliers se composent. */
   affinite: number;
-  // --- Lot BR5 : la RAGE (la jauge des compétences). Elle monte quand on touche (`rageTouche`), qu'on tue (`rageTue`), qu'on casse un vase (`rageVase`) et très lentement avec le temps (`rageTemps` par seconde) ; elle ne se vide pas toute seule ;
-  // pleine (`rageMax`) elle permet UNE compétence, qui la vide. Un vase qui contient de la rage en rend `rageButin`. Les coups d'une compétence ne remplissent pas la jauge. ---
-  rageMax: number;
-  rageTouche: number;
-  rageTue: number;
-  rageVase: number;
-  rageTemps: number;
-  rageButin: number;
+  // --- Lot BR5 : le TEMPS DE RECHARGE des compétences (une jauge de rage au premier jet, remplacée à la demande de Nathan par un délai, plus lisible). La compétence choisie au départ est prête au début ; la lancer la met en recharge (en ticks, selon la compétence ;
+  // « Recharge vive » le raccourcit, « Écho » en laisse une part la première fois) ; un vase peut rendre `rechargeVase` ticks. Dans un scénario d'essai le délai est divisé par 4 (de quoi juger une compétence à froid). ---
+  rechargeTourbillon: number;
+  rechargeBond: number;
+  rechargeBouclier: number;
+  rechargeVase: number;
   /** Tourbillon : la durée (ticks), le rayon (cm), les dégâts de chaque passe en % d'un coup ordinaire (une passe tous les 12 ticks) et la vitesse de déplacement pendant la compétence en % de la marche. */
   tourbillonDuree: number;
   tourbillonRayon: number;
@@ -93,20 +91,20 @@ export interface Reglages {
   bouclierPortee: number;
   bouclierCibles: number;
   bouclierDegats: number;
-  /** Les VASES : la part (%) qui contient une gemme d'XP, la part (%) qui contient de la rage (le reste : un cœur, rarement) — le tirage de chaque vase est dans le niveau, ces seuils s'appliquent à la lecture — et l'XP d'un vase / d'un gélaton. */
+  /** Les VASES : la part (%) qui contient une gemme d'XP, la part (%) qui contient une recharge (le reste : un cœur, rarement) — le tirage de chaque vase est dans le niveau, ces seuils s'appliquent à la lecture — et l'XP d'un vase / d'un gélaton. */
   vaseGemme: number;
-  vaseRage: number;
+  vaseRecharge: number;
   xpVase: number;
   xpGelaton: number;
   /** Le COUP D'ÉLAN : frapper en pleine course fait une fente de `elanDistance` cm, dégâts à `elanDegats` % et recul à `elanRecul` %. */
   elanDistance: number;
   elanDegats: number;
   elanRecul: number;
-  /** Les cartes de compétence : Rage vive (+ % de rage gagnée par palier), Maîtrise (+ % de dégâts et + % de zone par palier), Écho (la part de la jauge rendue après une utilisation, en %), la carte propre à chaque compétence (Tourbillon : + % de durée ; Bond : + ticks d'étourdissement ; Bouclier : + cibles traversées, par palier). */
-  rageVive: number;
+  /** Les cartes de compétence : Recharge vive (− % de temps de recharge par palier, jamais sous 40 %), Maîtrise (+ % de dégâts et + % de zone par palier), Écho (la part du temps de recharge à attendre après la première utilisation, en %), la carte propre à chaque compétence (Tourbillon : + % de durée ; Bond : + ticks d'étourdissement ; Bouclier : + cibles traversées, par palier). */
+  rechargeVive: number;
   maitriseDegats: number;
   maitriseZone: number;
-  echoRend: number;
+  echoRecharge: number;
   signatureTourbillon: number;
   signatureBond: number;
   signatureBouclier: number;
@@ -123,18 +121,18 @@ export const REGLAGES_DEFAUT: Reglages = {
   engagement: 40,
   recul: 48,
   fenetreEsquive: 16,
-  golemVie: 1400,
+  golemVie: 2200,
   golemCadence: 80,
   rythme: 100,
   courseDelai: 42,
   courseMontee: 12,
   courseFacteur: 160,
   courseRayon: 1000,
-  xpGelee: 12,
-  xpChauve: 10,
-  xpBase: 40,
-  xpPas: 20,
-  xpCamp: 450,
+  xpGelee: 8,
+  xpChauve: 7,
+  xpBase: 70,
+  xpPas: 25,
+  xpCamp: 600,
   aimant: 300,
   lourdeDegats: 70,
   lourdeLenteur: 5,
@@ -151,12 +149,10 @@ export const REGLAGES_DEFAUT: Reglages = {
   briseDegats: 90,
   aimantGain: 33,
   affinite: 30,
-  rageMax: 1000,
-  rageTouche: 10,
-  rageTue: 30,
-  rageVase: 14,
-  rageTemps: 1,
-  rageButin: 150,
+  rechargeTourbillon: 900,
+  rechargeBond: 600,
+  rechargeBouclier: 480,
+  rechargeVase: 180,
   tourbillonDuree: 72,
   tourbillonRayon: 280,
   tourbillonDegats: 100,
@@ -168,17 +164,17 @@ export const REGLAGES_DEFAUT: Reglages = {
   bouclierPortee: 900,
   bouclierCibles: 3,
   bouclierDegats: 220,
-  vaseGemme: 70,
-  vaseRage: 25,
-  xpVase: 5,
-  xpGelaton: 3,
+  vaseGemme: 60,
+  vaseRecharge: 25,
+  xpVase: 3,
+  xpGelaton: 2,
   elanDistance: 300,
   elanDegats: 150,
   elanRecul: 200,
-  rageVive: 35,
+  rechargeVive: 15,
   maitriseDegats: 30,
   maitriseZone: 15,
-  echoRend: 50,
+  echoRecharge: 50,
   signatureTourbillon: 40,
   signatureBond: 60,
   signatureBouclier: 2,
@@ -207,7 +203,7 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   xpChauve: [0, 200],
   xpBase: [10, 1000],
   xpPas: [0, 500],
-  xpCamp: [50, 500],
+  xpCamp: [50, 1000],
   aimant: [100, 1500],
   lourdeDegats: [0, 100],
   lourdeLenteur: [0, 40],
@@ -224,12 +220,10 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   briseDegats: [0, 100],
   aimantGain: [0, 100],
   affinite: [0, 100],
-  rageMax: [100, 5000],
-  rageTouche: [0, 200],
-  rageTue: [0, 500],
-  rageVase: [0, 200],
-  rageTemps: [0, 50],
-  rageButin: [0, 1000],
+  rechargeTourbillon: [120, 3600],
+  rechargeBond: [120, 3600],
+  rechargeBouclier: [120, 3600],
+  rechargeVase: [0, 1200],
   tourbillonDuree: [24, 180],
   tourbillonRayon: [150, 500],
   tourbillonDegats: [20, 400],
@@ -242,16 +236,16 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   bouclierCibles: [1, 8],
   bouclierDegats: [50, 600],
   vaseGemme: [0, 100],
-  vaseRage: [0, 100],
+  vaseRecharge: [0, 100],
   xpVase: [0, 100],
   xpGelaton: [0, 100],
   elanDistance: [0, 600],
   elanDegats: [100, 400],
   elanRecul: [50, 500],
-  rageVive: [0, 100],
+  rechargeVive: [0, 30],
   maitriseDegats: [0, 100],
   maitriseZone: [0, 50],
-  echoRend: [0, 100],
+  echoRecharge: [0, 100],
   signatureTourbillon: [0, 100],
   signatureBond: [0, 200],
   signatureBouclier: [0, 5],

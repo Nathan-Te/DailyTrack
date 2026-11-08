@@ -44,7 +44,7 @@ import {
   type Monstre,
 } from "../src/index";
 
-// Lot BR5 — un hack & slash : la jauge de rage, les trois compétences choisies au départ (un événement d'entrée validé par le serveur), les gélatons, les vases, le coup d'élan, le pilote.
+// Lot BR5 — un hack & slash : le temps de recharge, les trois compétences choisies au départ (un événement d'entrée validé par le serveur), les gélatons, les vases, le coup d'élan, le pilote.
 const J = PREMIER_JOUR_RUSH;
 
 /** Un monstre posé n'importe où : immobile (`gel` 999) par défaut ; au repos (`laisse` > 0, `alerte` 0) quand on veut le voir se réveiller. */
@@ -75,7 +75,7 @@ const monstre = (type: number, x: number, y: number, o: Partial<Monstre> = {}): 
   sbire: 0,
   ...o,
 });
-/** La horde d'essai vidée : le chevalier au centre-bas de l'arène, la jauge pleine, regardant vers le haut (−y). */
+/** La horde d'essai vidée : le chevalier au centre-bas de l'arène, la compétence prête, regardant vers le haut (−y). */
 const arene = (competence: number, ameliorations: string[] = [], scenario: "horde" | "mannequin" = "horde"): Partie => {
   const p = new Partie(contenuScenario(scenario, { competence, ameliorations }), REGLAGES_DEFAUT, true);
   p.monstres = [];
@@ -102,69 +102,82 @@ const tournerN = (p: Partie, n: number, e = 0): void => {
 };
 const evenements = (p: Partie, genre: string): number => p.evenements.filter((e) => e.k === genre).length;
 
-describe("la jauge de rage (lot BR5)", () => {
-  const jour = (): Partie => new Partie({ ...dailyRush(J), competence: 0 }, REGLAGES_DEFAUT, true);
-  const devant = (p: Partie, type: number, d = 150): Monstre => {
+describe("le temps de recharge des compétences (lot BR5)", () => {
+  const jour = (comp = 0, ameliorations: string[] = []): Partie => new Partie({ ...dailyRush(J), competence: comp, ameliorations }, REGLAGES_DEFAUT, true);
+  it("la compétence est prête au départ ; la lancer la met en recharge, qui décompte tick après tick jusqu'à l'événement « prete »", () => {
+    const p = jour(C_BOND);
     p.monstres = [];
-    p.c.dir = 0;
-    return poser(p, type, d, 0, { hp: type === GELEE ? 100 : 10 });
-  };
-  it("elle part vide dans le jour et pleine dans un scénario d'essai", () => {
-    expect(jour().c.rage).toBe(0);
-    expect(new Partie(contenuScenario("horde")).c.rage).toBe(REGLAGES_DEFAUT.rageMax);
-    expect(new Partie(contenuScenario("mannequin", { competence: 1 })).c.rage).toBe(REGLAGES_DEFAUT.rageMax);
-  });
-  it("elle monte très lentement avec le temps, sans jamais se vider seule", () => {
-    const p = jour();
-    p.monstres = [];
-    let avant = 0;
-    for (let t = 0; t < 1800; t++) {
+    expect(p.c.recharge).toBe(0);
+    expect(p.competencePrete).toBe(true);
+    p.avancer(COMP(24));
+    expect(p.c.etat).toBe(COMPETENCE);
+    expect(p.c.recharge).toBe(p.rechargeMax() - 1); // le tick du lancement compte déjà
+    expect(p.rechargeMax()).toBe(REGLAGES_DEFAUT.rechargeBond);
+    expect(p.competencePrete).toBe(false);
+    // un second appui pendant la recharge ne fait rien
+    tournerN(p, 60, COMP());
+    expect(p.c.recharge).toBeLessThan(p.rechargeMax());
+    let prete = 0;
+    for (let t = 0; t < REGLAGES_DEFAUT.rechargeBond + 10; t++) {
       p.avancer(0);
-      expect(p.c.rage).toBeGreaterThanOrEqual(avant);
-      avant = p.c.rage;
+      prete += evenements(p, "prete");
+      p.vider();
+      if (p.c.recharge > 0) expect(p.competencePrete).toBe(false);
     }
-    expect(p.c.rage).toBe(30 * REGLAGES_DEFAUT.rageTemps); // 30 secondes
+    expect(p.c.recharge).toBe(0);
+    expect(prete).toBe(1);
+    expect(p.competencePrete).toBe(true);
   });
-  it("elle monte quand on touche un ennemi, quand on tue et quand on casse un vase", () => {
-    // toucher (sans tuer) : un coup de 16 contre 100 points de vie
-    let p = jour();
-    devant(p, GELEE);
-    tournerN(p, 12, entree(-1, true, false, 0));
-    expect(p.c.rage).toBe(REGLAGES_DEFAUT.rageTouche);
-    // tuer un gélaton (un coup) : toucher + tuer
-    p = jour();
-    devant(p, GELATON);
-    tournerN(p, 12, entree(-1, true, false, 0));
-    expect(p.c.rage).toBe(REGLAGES_DEFAUT.rageTouche + REGLAGES_DEFAUT.rageTue);
-    // casser un vase
-    p = jour();
+  it("chaque compétence a son délai, un scénario d'essai le divise par 4, et ni les coups ni le temps passé à se battre ne le changent", () => {
+    expect(jour(C_TOURBILLON).rechargeMax()).toBe(REGLAGES_DEFAUT.rechargeTourbillon);
+    expect(jour(C_BOUCLIER).rechargeMax()).toBe(REGLAGES_DEFAUT.rechargeBouclier);
+    expect(new Partie(contenuScenario("horde", { competence: C_TOURBILLON })).rechargeMax()).toBe(Math.trunc(REGLAGES_DEFAUT.rechargeTourbillon / 4));
+    const p = jour(C_BOND);
     p.monstres = [];
+    p.avancer(COMP(24));
+    const avant = p.c.recharge;
+    poser(p, GELATON, 150, 0, { gel: 0, alerte: 1 });
+    tournerN(p, 3, entree(-1, true, false, 0));
+    expect(p.c.recharge).toBe(avant - 3); // un coup, une mort : rien de plus (la barre de rage d'un premier jet n'existe plus)
+  });
+  it("« Recharge vive » raccourcit le délai de 15 % par palier, jamais sous 40 %", () => {
+    const base = jour(C_TOURBILLON).rechargeMax();
+    expect(jour(C_TOURBILLON, ["recharge-vive"]).rechargeMax()).toBe(Math.trunc((base * 85) / 100));
+    expect(jour(C_TOURBILLON, ["recharge-vive", "recharge-vive", "recharge-vive"]).rechargeMax()).toBe(Math.trunc((base * 55) / 100));
+    expect(Math.trunc(REGLAGES_DEFAUT.rechargeBond * 0.4)).toBeLessThanOrEqual(new Partie({ ...dailyRush(J), competence: C_BOND, ameliorations: ["recharge-vive", "recharge-vive", "recharge-vive"] }, { ...REGLAGES_DEFAUT, rechargeVive: 30 }).rechargeMax());
+  });
+  it("une recharge tombée d'un vase rend `rechargeVase` ticks (jamais sous zéro) ; selon le tirage : une gemme, une recharge ou un cœur", () => {
+    const p = jour(C_BOND);
+    p.monstres = [];
+    p.c.recharge = 500;
     p.c.dir = 0;
-    vase(p, 130, 0);
-    tournerN(p, 12, entree(-1, true, false, 0));
-    expect(p.c.rage).toBe(REGLAGES_DEFAUT.rageVase);
+    const v = vase(p, 130, 0);
+    v.tirage = REGLAGES_DEFAUT.vaseGemme; // le premier tirage de recharge
+    expect(p.contenuDuVase(v.tirage)).toBe(1);
+    tournerN(p, 12, entree(-1, true, false, 0)); // le vase est brisé
+    tournerN(p, 60); // la pastille vole au chevalier (aimant)
+    expect(p.gemmes.length).toBe(0);
+    expect(p.c.recharge).toBeLessThanOrEqual(500 - 72 - REGLAGES_DEFAUT.rechargeVase);
+    expect(p.contenuDuVase(REGLAGES_DEFAUT.vaseGemme + REGLAGES_DEFAUT.vaseRecharge)).toBe(2);
+    expect(p.contenuDuVase(0)).toBe(0);
+    // jamais sous zéro
+    const q = jour(C_BOND);
+    q.monstres = [];
+    q.c.recharge = 20;
+    q.c.dir = 0;
+    const w = vase(q, 130, 0);
+    w.tirage = REGLAGES_DEFAUT.vaseGemme;
+    tournerN(q, 80, entree(-1, true, false, 0));
+    expect(q.c.recharge).toBe(0);
   });
-  it("elle est plafonnée à son maximum (l'événement « rage » part une fois, à la dernière marche) et « Rage vive » l'accélère", () => {
-    const p = jour();
-    devant(p, GELATON);
-    p.c.rage = REGLAGES_DEFAUT.rageMax - 5;
-    tournerN(p, 12, entree(-1, true, false, 0));
-    expect(p.c.rage).toBe(REGLAGES_DEFAUT.rageMax);
-    expect(evenements(p, "rage")).toBe(1);
-    const v = new Partie({ ...dailyRush(J), competence: 0, ameliorations: ["rage-vive"] }, REGLAGES_DEFAUT, true);
-    devant(v, GELEE);
-    tournerN(v, 12, entree(-1, true, false, 0));
-    expect(v.c.rage).toBe(Math.trunc((REGLAGES_DEFAUT.rageTouche * (100 + REGLAGES_DEFAUT.rageVive)) / 100));
-  });
-  it("les coups d'une compétence ne remplissent pas la jauge", () => {
+  it("le tourbillon ne coûte rien de plus : six gélatons fauchés pendant la compétence, aucun effet sur la recharge", () => {
     const p = arene(C_TOURBILLON);
     for (let k = 0; k < 6; k++) poser(p, GELATON, Math.round(Math.cos((k * Math.PI) / 3) * 170), Math.round(Math.sin((k * Math.PI) / 3) * 170));
-    p.c.rage = REGLAGES_DEFAUT.rageMax;
     p.avancer(COMP());
-    expect(p.c.rage).toBe(0);
-    tournerN(p, 58); // la passe est tombée : six gélatons morts, et pas un point de rage (la montée du temps des scénarios part à la seconde)
+    const r0 = p.c.recharge;
+    tournerN(p, 58);
     expect(p.monstres.length).toBe(0);
-    expect(p.c.rage).toBe(0);
+    expect(p.c.recharge).toBe(r0 - 58);
   });
 });
 
@@ -246,7 +259,7 @@ describe("le tourbillon (lot BR5)", () => {
     const loin = poser(p, GELEE, 0, 520, { hp: 100 });
     p.avancer(COMP());
     expect(p.c.etat).toBe(COMPETENCE);
-    expect(p.c.rage).toBe(0);
+    expect(p.c.recharge).toBe(p.rechargeMax() - 1);
     let ticks = 1;
     let pulsations = 0;
     while (p.c.etat === COMPETENCE && ticks < 200) {
@@ -400,19 +413,21 @@ describe("le lancer de bouclier (lot BR5)", () => {
 });
 
 describe("les cartes de compétence (lot BR5)", () => {
-  it("Écho : après une utilisation, la moitié de la jauge reste ; l'utilisation suivante la vide ; la troisième en rend la moitié", () => {
+  it("Écho : la première utilisation n'attend que la moitié du délai ; la suivante le délai plein ; la troisième de nouveau la moitié", () => {
     const p = arene(C_TOURBILLON, ["echo"]);
-    const max = REGLAGES_DEFAUT.rageMax;
+    const plein = p.rechargeMax();
+    const moitie = Math.trunc((plein * REGLAGES_DEFAUT.echoRecharge) / 100);
     p.avancer(COMP());
-    expect(p.c.rage).toBe(Math.trunc((max * REGLAGES_DEFAUT.echoRend) / 100));
+    expect(p.c.recharge).toBe(moitie - 1);
+    p.c.recharge = 0;
     tournerN(p, REGLAGES_DEFAUT.tourbillonDuree);
-    p.c.rage = max;
+    p.c.recharge = 0;
     p.avancer(COMP());
-    expect(p.c.rage).toBe(0);
+    expect(p.c.recharge).toBe(plein - 1);
     tournerN(p, REGLAGES_DEFAUT.tourbillonDuree);
-    p.c.rage = max;
+    p.c.recharge = 0;
     p.avancer(COMP());
-    expect(p.c.rage).toBe(Math.trunc((max * REGLAGES_DEFAUT.echoRend) / 100));
+    expect(p.c.recharge).toBe(moitie - 1);
   });
   it("Maîtrise : plus de dégâts et plus de zone ; Signature : le tourbillon dure plus, le bond étourdit plus, le bouclier traverse plus", () => {
     const base = arene(C_TOURBILLON);
@@ -610,7 +625,7 @@ describe("le pilote et les compétences (lot BR5)", () => {
     expect(competenceDuPilote(4)).toBe(C_TOURBILLON); // vieux chêne
     for (let b = 0; b < 5; b++) expect(competenceDuPilote(b, true)).toBe(C_TOURBILLON);
   });
-  it("il lance sa compétence quand la jauge est pleine (au moins une fois par partie, en moyenne) et sa rediffusion contient son choix", () => {
+  it("il lance sa compétence dès qu'elle est rechargée (au moins une fois par partie, en moyenne) et sa rediffusion contient son choix", () => {
     let utilisations = 0;
     for (let k = 0; k < 6; k++) {
       const c = dailyRush(J + k);
@@ -618,10 +633,10 @@ describe("le pilote et les compétences (lot BR5)", () => {
       expect(j.competence).toBe(competenceDuPilote(c.boss));
       expect(j.resultat.victoire).toBe(true);
       expect(rejouer(c, enregistrer(c, j.changements, j.choix, j.competence))).toEqual(j.resultat);
-      // on rejoue la partie du pilote en comptant les chutes de la jauge : une compétence lancée
+      // on rejoue la partie du pilote en comptant les remontées du délai : une compétence lancée
       const q = new Partie(c);
       q.choisirCompetence(j.competence);
-      let rage = 0;
+      let recharge = 0;
       let kc = 0;
       let kch = 0;
       let e = 0;
@@ -632,8 +647,8 @@ describe("le pilote et les compétences (lot BR5)", () => {
         }
         while (kch < j.changements.length && j.changements[kch]!.tick <= q.tick) e = j.changements[kch++]!.e;
         q.avancer(e);
-        if (q.c.rage < rage - 100) utilisations++;
-        rage = q.c.rage;
+        if (q.c.recharge > recharge + 100) utilisations++;
+        recharge = q.c.recharge;
       }
     }
     expect(utilisations).toBeGreaterThanOrEqual(6);

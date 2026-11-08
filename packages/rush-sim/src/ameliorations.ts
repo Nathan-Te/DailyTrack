@@ -30,8 +30,8 @@ export const AMELIORATIONS: readonly Amelioration[] = [
   { id: "vol-de-vie", famille: "survie", max: 1, nvMin: 5 },
   { id: "brise-pierre", famille: "special", max: 3, nvMin: 5 },
   { id: "aimant", famille: "special", max: 3, nvMin: 2 },
-  // Lot BR5 : les cartes de COMPÉTENCE (la jauge de rage et les trois compétences choisies au départ). « Moulinet » est l'ancien « Tourbillon » (le 3ᵉ coup frappe tout autour) : le nom est libre pour la compétence.
-  { id: "rage-vive", famille: "competence", max: 3, nvMin: 1 },
+  // Lot BR5 : les cartes de COMPÉTENCE (les trois compétences et leur temps de recharge choisies au départ). « Moulinet » est l'ancien « Tourbillon » (le 3ᵉ coup frappe tout autour) : le nom est libre pour la compétence.
+  { id: "recharge-vive", famille: "competence", max: 3, nvMin: 1 },
   { id: "maitrise", famille: "competence", max: 3, nvMin: 2 },
   { id: "echo", famille: "competence", max: 1, nvMin: 4 },
   { id: "signature", famille: "competence", max: 2, nvMin: 3 },

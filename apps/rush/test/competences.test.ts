@@ -46,7 +46,7 @@ describe("les compétences choisies au départ", () => {
     }
     expect(carteVue(i, 0, REGLAGES_DEFAUT, traducteur("fr"), -1, 1).effet).toContain("1.0 s");
     const t = traducteur("fr");
-    for (const id of ["rage-vive", "maitrise", "echo", "signature"]) {
+    for (const id of ["recharge-vive", "maitrise", "echo", "signature"]) {
       const k = AMELIORATIONS.findIndex((a) => a.id === id);
       expect(AMELIORATIONS[k]!.famille).toBe("competence");
       expect(carteVue(k, 0, REGLAGES_DEFAUT, t).effet).not.toMatch(/[{}]/);

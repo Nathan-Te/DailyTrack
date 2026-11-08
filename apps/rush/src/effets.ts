@@ -8,9 +8,9 @@ import { COULEURS } from "./palette";
 
 // --- Les éclats --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const MAX_ECLATS = 600;
-export type GenreEclat = "etincelle" | "poussiere" | "gelee" | "pierre" | "chauve" | "feu" | "spore" | "reine" | "gelaton" | "jarre" | "bois" | "planche" | "rage" | "lame";
+export type GenreEclat = "etincelle" | "poussiere" | "gelee" | "pierre" | "chauve" | "feu" | "spore" | "reine" | "gelaton" | "jarre" | "bois" | "planche" | "recharge" | "lame";
 /** Les éclats LUMINEUX (étincelles, feu) dépassent 1 : le post-traitement les fait fleurir (bloom) ; les autres restent des couleurs mates. */
-const LUEUR: Partial<Record<GenreEclat, number>> = { etincelle: 2.2, feu: 1.9, rage: 1.8, lame: 1.9 };
+const LUEUR: Partial<Record<GenreEclat, number>> = { etincelle: 2.2, feu: 1.9, recharge: 1.8, lame: 1.9 };
 const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
   etincelle: [COULEURS.etincelle, 0xffffff, 0xffd166],
   poussiere: [COULEURS.poussiere, 0xcdbb94, 0xf2e6c8],
@@ -21,12 +21,12 @@ const COULEURS_ECLATS: Record<GenreEclat, readonly number[]> = {
   // Lot BR3 : les volutes de spores du vieux chêne (vert-jaune) et l'éclaboussure de la reine gelée qui se divise (bleu).
   spore: [COULEURS.sporesClair, 0x9dbb2a, 0xe4ee86],
   reine: [0x2f78b8, 0xa6d6f2, 0x6fb0e0],
-  // Lot BR5 : un gélaton qui éclate (bleu), les morceaux d'une jarre (terre cuite) et d'un tonneau / d'une caisse (bois), la rage (violet) et l'or pâle du tourbillon.
+  // Lot BR5 : un gélaton qui éclate (bleu), les morceaux d'une jarre (terre cuite) et d'un tonneau / d'une caisse (bois), la recharge (violet) et l'or pâle du tourbillon.
   gelaton: [0x3f8fe0, 0xb9dcff, 0x6fb4f0],
   jarre: [0xc9733e, 0xe7a468, 0x8f4a25, 0xf0c9a0],
   bois: [0xb07a43, 0x7c5230, 0xd2a468],
   planche: [0xd9a65f, 0x8f4a25, 0xb07a43],
-  rage: [COULEURS.rage, COULEURS.rageClair, 0xffffff],
+  recharge: [COULEURS.recharge, COULEURS.rechargeClair, 0xffffff],
   lame: [COULEURS.lame, 0xffffff, 0xfff2a8],
 };
 
@@ -530,7 +530,7 @@ function formeCoeur(): BufferGeometry {
   g.translate(0, 0, -0.08);
   return g;
 }
-export const GEMME_COULEURS = [new Color(COULEURS.lueur).multiplyScalar(1.25), new Color(COULEURS.rage).multiplyScalar(1.3), new Color(COULEURS.coeur).multiplyScalar(1.15)] as const;
+export const GEMME_COULEURS = [new Color(COULEURS.lueur).multiplyScalar(1.25), new Color(COULEURS.recharge).multiplyScalar(1.3), new Color(COULEURS.coeur).multiplyScalar(1.15)] as const;
 /** Les butins : des aplats sans lumière, un peu au-dessus de 1 : le bloom les fait briller. Elles tournent, flottent un peu et jaillissent à leur chute. */
 export class Gemmes {
   readonly maillage: InstancedMesh;

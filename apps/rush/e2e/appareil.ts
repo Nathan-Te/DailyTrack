@@ -47,7 +47,7 @@ export interface PorteScene {
   qualite(): "haute" | "basse";
   definirQualite(q: "haute" | "basse"): void;
   dessinerMaintenant(): void;
-  jouerPilote(ticks: number, attente?: number): void;
+  jouerPilote(ticks: number, attente?: number, strategie?: string): void;
   /** Lot BR4 : le fantôme (`null` : aucun). */
   fantome(): { tick: number; x: number; y: number; nv: number; visible: boolean; opacite: number; finie: boolean } | null;
 }
@@ -100,10 +100,11 @@ export async function lancer(page: Page, competence: number | "pilote" | null = 
  * Joue la partie du jour avec le pilote de la simulation (pas à pas, dans la page ; `attente` ticks immobile d'abord, pour ne pas jouer exactement la partie du Diamant, que le serveur refuserait comme une copie ; le pilote n'est pas parfait : 5 ticks d'attente le 06/11/2026 donnent une victoire (vérifié au lot BR0c)), puis rend ce que la simulation (Node, la même) trouve en rejouant les changements d'entrée que la page a enregistrés : c'est la preuve que
  * ce que le joueur a fait dans le navigateur est exactement ce que le serveur rejouera.
  */
-export async function jouerLeJour(page: Page, attente = 5): Promise<Resultat> {
-  const { changements, choix, competence } = await page.evaluate((attente) => {
-    window.__rush.jouerPilote(40_000, attente);
+export async function jouerLeJour(page: Page, attente = 5, strategie = "peu"): Promise<Resultat> {
+  // lot BR5 (économie) : « foncer » ne gagne plus de niveau (il faut farmer) : le pilote de ces essais joue « un peu d'XP », qui en gagne
+  const { changements, choix, competence } = await page.evaluate(([attente, strategie]) => {
+    window.__rush.jouerPilote(40_000, attente as number, strategie as string);
     return { changements: window.__rush.changements(), choix: window.__rush.choix(), competence: window.__rush.competence() };
-  }, attente);
+  }, [attente, strategie] as const);
   return jouer(dailyRush(parseDay(JOUR)!), changements, undefined, choix, competence);
 }

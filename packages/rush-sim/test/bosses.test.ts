@@ -527,15 +527,15 @@ describe("le pilote contre chaque boss (60 jours forcés)", () => {
     return { victoire: p.victoire, s: p.resultat().ticks / 60 };
   };
   const mediane = (v: number[]): number => [...v].sort((x, y) => x - y)[Math.floor(v.length / 2)]!;
-  it.each(BOSS_IDS.map((id, b) => [id, b] as const))("%s : au moins 58 victoires sur 60 ; sans carte ~25 à 50 s (lot BR5 : la compétence raccourcit le combat) ; avec une construction adaptée de 6 cartes bien plus court", (_id, b) => {
+  it.each(BOSS_IDS.map((id, b) => [id, b] as const))("%s : au moins 58 victoires sur 60 ; sans carte ~40 à 80 s (lot BR5) ; avec une construction adaptée de 6 cartes bien plus court", (_id, b) => {
     const sans = JOURS.map((k) => jouer1(b, k, []));
     expect(sans.filter((r) => r.victoire).length).toBeGreaterThanOrEqual(58);
     const m = mediane(sans.filter((r) => r.victoire).map((r) => r.s));
-    expect(m).toBeGreaterThanOrEqual(22); // BR3 : 38 — la compétence (lot BR5) raccourcit le combat ; BR6 rétablit l'équilibre
-    expect(m).toBeLessThanOrEqual(56);
+    expect(m).toBeGreaterThanOrEqual(35); // BR3 : 38 à 56 s ; lot BR5 : les points de vie du golem passent de 1 400 à 2 200 (il faut farmer) et la compétence raccourcit le combat
+    expect(m).toBeLessThanOrEqual(85);
     const avec = JOURS.slice(0, 20).map((k) => jouer1(b, k, construction(b, 6)));
     expect(avec.every((r) => r.victoire)).toBe(true);
-    expect(mediane(avec.map((r) => r.s))).toBeLessThanOrEqual(20);
+    expect(mediane(avec.map((r) => r.s))).toBeLessThanOrEqual(28); // BR3 : 20 s ; lot BR5 : boss à 2 200 points de vie de base
     expect(mediane(avec.map((r) => r.s))).toBeLessThan(m / 2);
   });
   it("le bélier : le pilote attire la charge contre le muret (il est étourdi plusieurs fois par combat)", () => {

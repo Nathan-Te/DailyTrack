@@ -82,11 +82,11 @@ export const COULEURS = {
   invocationClair: 0x9b7de0,
   poussiere: 0xe6d6b4,
   etincelle: 0xfff2a8,
-  /** Lot BR5 — ce qui est au JOUEUR (jamais de rouge : le rouge est réservé au danger) : le cercle d'atterrissage du bond (un cyan), la rage (un violet), le cœur rendu par un vase (un rose), le bouclier (acier clair), la lame du tourbillon (un or pâle). */
+  /** Lot BR5 — ce qui est au JOUEUR (jamais de rouge : le rouge est réservé au danger) : le cercle d'atterrissage du bond (un cyan), la recharge (un violet), le cœur rendu par un vase (un rose), le bouclier (acier clair), la lame du tourbillon (un or pâle). */
   joueur: 0x0a8fbf,
   joueurClair: 0x1fc4e6,
-  rage: 0xa56bff,
-  rageClair: 0xd6b8ff,
+  recharge: 0xa56bff,
+  rechargeClair: 0xd6b8ff,
   coeur: 0xff8fb3,
   bouclier: 0xcfe8ff,
   lame: 0xffe9a0,

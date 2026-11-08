@@ -20,7 +20,7 @@ const ICONES: Readonly<Record<string, string>> = {
   "brise-pierre": "M4 20 L10 8 L16 12 L12 20 Z M14 4 L21 11",
   aimant: "M5 4 L5 13 A7 7 0 0 0 19 13 L19 4 M5 8 L9 8 M15 8 L19 8",
   // Lot BR5 : les cartes de compétence.
-  "rage-vive": "M12 2 C12 7 7 9 7 14 A5 5 0 0 0 17 14 C17 11 15 10 14 8 C14 11 12 11 12 8 Z",
+  "recharge-vive": "M12 2 C12 7 7 9 7 14 A5 5 0 0 0 17 14 C17 11 15 10 14 8 C14 11 12 11 12 8 Z",
   maitrise: "M12 3 L14.6 9 L21 9.6 L16.2 13.8 L17.6 20 L12 16.8 L6.4 20 L7.8 13.8 L3 9.6 L9.4 9 Z",
   echo: "M3 12 A9 9 0 0 1 12 3 M21 12 A9 9 0 0 1 12 21 M7 12 A5 5 0 0 1 12 7 M17 12 A5 5 0 0 1 12 17 M12 11 L12 13",
   signature: "M4 20 L8 20 L19 9 L15 5 L4 16 Z M13 7 L17 11",
@@ -39,7 +39,7 @@ const NOMBRES: Readonly<Record<string, (r: Reglages) => Record<string, number | 
   "esquive-vive": (r) => ({ n: (r.esquiveVive / 60).toFixed(1) }),
   "vol-de-vie": (r) => ({ n: r.volVie }),
   aimant: (r) => ({ n: r.aimantGain }),
-  "rage-vive": (r) => ({ n: r.rageVive }),
+  "recharge-vive": (r) => ({ n: r.rechargeVive }),
   maitrise: (r) => ({ n: r.maitriseDegats, m: r.maitriseZone }),
 };
 

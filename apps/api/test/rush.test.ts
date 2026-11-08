@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { DUREE_TICKS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, VARIANTE, dailyRush, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsDuJour, themeDuJour, entreesDuBot } from "@cdj/rush-sim";
+import { jouerLePilote, DUREE_TICKS, RUSH_GENERATOR_VERSION, RUSH_SIM_VERSION, VARIANTE, dailyRush, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsDuJour, themeDuJour, entreesDuBot } from "@cdj/rush-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_RUSH } from "../scripts/rush-essais";
 import { contenuDeRush, contratRush, unitesDuRejeu } from "../src/rush";
@@ -87,7 +87,7 @@ describe("Rush sur le serveur", () => {
   it("valide les choix d'amélioration (lot BR2) : un choix n'est accepté qu'à un niveau gagné, au bon niveau, avec une carte qui existe ; il en manque un ou il y en a un de trop : refusé", async () => {
     const t = await monter();
     const c = dailyRush(JOUR);
-    const bot = entreesDuBot(c);
+    const bot = jouerLePilote(c, undefined, Infinity, "peu"); // (lot BR5 : le Diamant de ce jour peut être « foncer », qui ne gagne aucun niveau)
     expect(bot.choix.length).toBeGreaterThanOrEqual(1);
     const poster = async (n: number, choix: typeof bot.choix) => t.call("POST", "/api/rush/submit", { replay: enregistrer(c, bot.changements, choix, bot.competence), name: `Joueur${n}` }, { headers: entete(n) });
     expect((await poster(1, bot.choix)).status).toBe(200);
@@ -101,8 +101,8 @@ describe("Rush sur le serveur", () => {
       expect(r.status, `joueur ${n}`).toBe(400);
       expect(r.body.error).toBe("invalid_replay");
     }
-    // une autre carte valable est acceptée (c'est une autre partie, pas une erreur)
-    expect((await poster(6, bot.choix.map((x, i) => (i === 0 ? { ...x, carte: (x.carte + 1) % 3 } : x)))).status).toBe(200);
+    // une autre carte valable au dernier choix est acceptée (c'est une autre partie, pas une erreur ; lot BR5 : le dernier, pour ne pas changer les niveaux qui suivent)
+    expect((await poster(6, bot.choix.map((x, i, l) => (i === l.length - 1 ? { ...x, carte: (x.carte + 1) % 3 } : x)))).status).toBe(200);
   });
 
   it("valide la compétence choisie au départ (lot BR5) : absente, illisible ou autre jour : refusée ; chacune des trois est acceptée et change l'empreinte des entrées", async () => {
