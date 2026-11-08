@@ -29,3 +29,5 @@ export * from "./garage";
 export * from "./ressemblance";
 export * from "./rythmes";
 export * from "./variete";
+export * from "./grammaire";
+export * from "./sautsClasse";

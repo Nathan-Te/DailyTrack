@@ -6,6 +6,9 @@ import {
   SHOULDER_EDGE,
   WALL_HEIGHT,
   blockReachAt,
+  hasLift,
+  liftAt,
+  type Lift,
   rippleAt,
   type Ripple,
   bankAt,
@@ -149,6 +152,7 @@ export const FLAT_WORLD: World = {
 const wv = { x: 0, z: 0 };
 const bank: BankSample = { h: 0, gp: 0, gq: 0 };
 const ripple: Ripple = { h: 0, dq: 0 };
+const lift: Lift = { h: 0, gp: 0, gq: 0 };
 
 /** Contact le plus profond d'un disque avec les faces de bout (lot 21), dans le repère canonique du bloc. */
 const face = { depth: 0, np: 0, nq: 0 };
@@ -287,6 +291,14 @@ export function trackWorld(track: Track): World {
         out.gx += wv.x;
         out.gz += wv.z;
       }
+      // Lot 57 : dévers d'une droite, virage en pente, virage-tremplin (aucun bloc d'avant n'en a : rien ne change pour eux).
+      if (hasLift(b)) {
+        liftAt(b, p, q, lift);
+        out.height += lift.h;
+        canonVecToWorld(b.dir, lift.gp, lift.gq, wv);
+        out.gx += wv.x;
+        out.gz += wv.z;
+      }
       // Les plaques font la moitié de la largeur de la route (3,5 m de demi-largeur sur 14 m, comme avant le lot 12).
       const onPad = Math.abs(p - CELL / 2) <= blockPadHalfWidth(b) && Math.abs(q - CELL / 2) <= BOOST_HALF_LENGTH;
       out.boost = b.kind === "boost" && onPad;
@@ -306,6 +318,10 @@ export function trackWorld(track: Track): World {
       if (b.banked) {
         bankAt(b, p, q, bank);
         floor += bank.h;
+      }
+      if (hasLift(b)) {
+        liftAt(b, p, q, lift);
+        floor += lift.h;
       }
       if (y - floor > WALL_HEIGHT) return false;
 

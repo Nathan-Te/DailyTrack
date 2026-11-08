@@ -59,6 +59,14 @@ export const KERB_WIDTH = 1.5;
  */
 export const RIPPLE_HEIGHT = 0.15;
 export const RIPPLE_LENGTH = 6;
+/**
+ * Lot 57 — la grammaire des sauts et des transitions. Dévers d'une droite (`S/i` : la route penche vers la gauche, `S/j` : vers la droite) :
+ * pente en travers ; il naît et meurt sur un bloc (lissage cubique), jamais d'un coup. Virage en pente (`L2/+`, `R3/--`) : le virage monte
+ * (descend) d'un niveau par signe, en lissage cubique de l'arc (pente nulle à l'entrée et à la sortie). Virage-tremplin (`L2/k`) : les
+ * `CURVE_KICK` derniers mètres de l'arc montent d'un niveau (pente ≈ 0,25 sur l'axe, comme `K`).
+ */
+export const TILT_SLOPE = 0.25;
+export const CURVE_KICK = 16;
 
 export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "grandL" | "grandR" | "up" | "down" | "bump" | "jump" | "kick" | "gap" | "boost" | "turbo" | "cut";
 
@@ -117,6 +125,15 @@ export interface Block {
   /** Côtés dont la paroi continue celle du bloc précédent / se prolonge dans le suivant (pas de rampe de ce côté-là). */
   cuveIn: number;
   cuveOut: number;
+  /**
+   * Lot 57 (absents des blocs d'avant : leurs objets ne changent pas) — dévers d'une droite (`/i`, `/j`) : pente en travers à la sortie du
+   * bloc (positive = le bord gauche plus haut) et à son entrée (`tilt0`, la sortie du bloc précédent) ; la route passe de l'une à l'autre en
+   * lissage cubique (voir `liftAt`).
+   */
+  tilt?: number;
+  tilt0?: number;
+  /** Lot 57 — virage-tremplin (`/k`) : la fin du virage monte d'un niveau sur `CURVE_KICK` m, comme une rampe `K` ; on décolle en tournant. */
+  ramp?: true;
 }
 
 export interface Gate {
@@ -428,6 +445,9 @@ export interface ParsedToken {
   edge?: EdgeKind;
   /** Route bosselée (`u`). */
   bumpy?: true;
+  /** Lot 57 : dévers (pente en travers, positive = bord gauche plus haut), virage-tremplin. */
+  tilt?: number;
+  ramp?: true;
 }
 
 /**
@@ -455,8 +475,17 @@ export function parseToken(token: string, index = 0): ParsedToken {
   let width: { w0: number; w1: number } | undefined;
   let open = false;
   let outerWall = false;
+  let tilt = 0;
+  let ramp = false;
+  let climb = 0;
   for (const m of mods.match(/[enl]>[enl]|~.|./g) ?? []) {
-    if (m[0] === "~") {
+    if (m === "i" || m === "j") {
+      if (tilt) throw new Error(`Deux dévers : ${token}`);
+      tilt = m === "i" ? -TILT_SLOPE : TILT_SLOPE;
+    } else if (m === "k") ramp = true;
+    else if (m === "+") climb += SLOPE_RISE;
+    else if (m === "-") climb -= SLOPE_RISE;
+    else if (m[0] === "~") {
       const e = EDGE_LETTERS[m[1] ?? ""];
       if (!e) throw new Error(`Bord inconnu « ${m} » dans « ${token} » (position ${index}) : ~h herbe, ~t terre et gravier, ~p neige poudreuse, ~s sable, ~v vide, ~r rebords`);
       if (edge) throw new Error(`Deux bords sur « ${token} » (position ${index})`);
@@ -480,6 +509,8 @@ export function parseToken(token: string, index = 0): ParsedToken {
   if (bumpy && !RIPPLE_KINDS.has(kind)) throw new Error(`Seule une droite (S, U, D, P, T, C) peut être bosselée (${token})`);
   if (open && kind === "gap") throw new Error(`Un vide n'a pas de rebords à ouvrir (${token})`);
   if (outerWall && !isCurve(kind)) throw new Error(`Seul un virage prend un mur extérieur « /c » (${token}) : pour une droite, V, ML ou MR`);
+  // Lot 57 : un dévers sur une droite seulement (un virage se relève) ; /+, /-, /k sur un virage seulement, sans cuve, et /k ni relevé ni en pente.
+  if ((tilt && (isCurve(kind) || kind === "gap" || kind === "jump" || cuveSides)) || ((ramp || climb) && (!isCurve(kind) || outerWall)) || (ramp && (climb || banked))) throw new Error(`Bloc impossible : ${token}`);
   let cuve = cuveSides ?? 0;
   if (outerWall) cuve = turnsLeft(kind) ? CUVE_RIGHT : CUVE_LEFT; // le mur est du côté opposé au centre du virage
   if (cuve) {
@@ -491,6 +522,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
   return {
     kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}),
     ...(edge ? { edge } : {}), ...(bumpy ? { bumpy: true as const } : {}),
+    ...(tilt ? { tilt } : {}), ...(ramp ? { ramp: true as const, rise: SLOPE_RISE } : {}), ...(climb ? { rise: climb } : {}),
   };
 }
 
@@ -574,6 +606,80 @@ export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
   out.gq = slope * ((f * q) / r + off * bankD.v * dtq);
 }
 
+// --- Dévers, virages en pente, virages-tremplins (lot 57) --------------------------------------
+
+/** Ce qu'un bloc du lot 57 ajoute à la hauteur de la route (`blockHeight`, relevé et tôle ondulée compris ailleurs) : hauteur et gradient (p, q). */
+export interface Lift {
+  h: number;
+  gp: number;
+  gq: number;
+}
+
+/** Vrai si le bloc a une géométrie du lot 57 (dévers, virage en pente ou virage-tremplin) : les autres n'appellent jamais `liftAt`. */
+export const hasLift = (b: Block): boolean => b.tilt !== undefined || (isCurve(b.kind) && b.rise !== 0);
+
+/**
+ * Hauteur ajoutée par la géométrie du lot 57 au point canonique (p, q) — zéro pour tout autre bloc :
+ * - dévers d'une droite : `pente(q) × (p − axe)`, la pente allant de `tilt0` (entrée) à `tilt` (sortie) en lissage cubique ;
+ * - virage en pente : `rise × S(t)`, t = q / (q + |dp|) la fraction d'arc du relevé (`bankAt`), S le lissage cubique (pente nulle aux bouts) ;
+ * - virage-tremplin : `LEVEL × (1 − d / CURVE_KICK)` sur les `CURVE_KICK` derniers mètres, d = R × |dp| / r ≈ la distance au bord le long de l'axe.
+ * Polynômes et racines carrées seulement : déterministe partout.
+ */
+export function liftAt(b: Block, p: number, q: number, out: Lift): void {
+  out.h = 0;
+  out.gp = 0;
+  out.gq = 0;
+  if (b.tilt !== undefined) {
+    const lat = p - CELL / 2;
+    const t0 = b.tilt0 ?? 0;
+    const t1 = b.tilt;
+    if (t0 === t1) {
+      out.h = t1 * lat;
+      out.gp = t1;
+      return;
+    }
+    const x = q <= 0 ? 0 : q >= CELL ? 1 : q / CELL;
+    const k = t0 + (t1 - t0) * x * x * (3 - 2 * x);
+    out.h = k * lat;
+    out.gp = k;
+    out.gq = q <= 0 || q >= CELL ? 0 : ((t1 - t0) * 6 * x * (1 - x) * lat) / CELL;
+    return;
+  }
+  if (!isCurve(b.kind) || b.rise === 0 || q < 0) return;
+  const { cp, r: R } = curveCenter(b.kind);
+  const dp = p - cp;
+  const adp = dp < 0 ? -dp : dp;
+  const sgn = dp < 0 ? -1 : 1;
+  if (b.ramp) {
+    const r = Math.sqrt(dp * dp + q * q);
+    if (r < 1e-6) return;
+    const d = (R * adp) / r;
+    if (d >= CURVE_KICK) return;
+    const k = b.rise / CURVE_KICK;
+    out.h = b.rise - k * d;
+    // ∂d/∂p = R·signe(dp)·q² / r³, ∂d/∂q = −R·|dp|·q / r³
+    const r3 = r * r * r;
+    out.gp = (-k * R * sgn * q * q) / r3;
+    out.gq = (k * R * adp * q) / r3;
+    return;
+  }
+  const sum = q + adp;
+  if (sum < 1e-9) return;
+  const t = q / sum;
+  const ds = 6 * t * (1 - t) * b.rise;
+  out.h = b.rise * t * t * (3 - 2 * t);
+  out.gq = (ds * adp) / (sum * sum);
+  out.gp = (-ds * sgn * q) / (sum * sum);
+}
+
+const liftTmp: Lift = { h: 0, gp: 0, gq: 0 };
+/** Hauteur de la route au point (p, q) du bloc : `blockHeight` plus le lot 57 (sans relevé, cuve ni tôle ondulée). */
+export function roadHeightAt(b: Block, p: number, q: number): number {
+  if (!hasLift(b)) return blockHeight(b, q);
+  liftAt(b, p, q, liftTmp);
+  return blockHeight(b, q) + liftTmp.h;
+}
+
 /**
  * Construit un circuit à partir d'un texte : des blocs séparés par des espaces, posés l'un après l'autre
  * à partir de la cellule (0, 0), cap +z.
@@ -598,7 +704,7 @@ export function parseTrack(id: string, spec: string): Track {
   let edgeChain: EdgeKind = "wall";
 
   tokens.forEach((token, index) => {
-    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy } = parseToken(token, index);
+    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy, tilt, ramp } = parseToken(token, index);
     // Largeurs chaînées comme les hauteurs : un bloc sans largeur garde la sortie du précédent ; une largeur écrite doit
     // la prolonger exactement (seul le premier bloc la choisit), sinon la route aurait une marche.
     if (written && index > 0 && written.w0 !== width) {
@@ -616,13 +722,23 @@ export function parseTrack(id: string, spec: string): Track {
     // Bord (lot 21) : chaîné comme la largeur ; `o` met ce bloc seul sans rebords (le vide), quelle que soit la chaîne.
     if (writtenEdge) edgeChain = writtenEdge;
     const isLast = index === tokens.length - 1;
-    const edge = open ? "void" : effectiveEdge(edgeChain, kind, cuve ?? 0, banked, isLast ? (mark ?? "finish") : mark, delta);
+    const edge = open ? "void" : effectiveEdge(edgeChain, ramp ? "kick" : kind, cuve ?? 0, banked, isLast ? (mark ?? "finish") : mark, delta);
     if (writtenEdge && writtenEdge !== "wall" && edge === "wall" && (mark === "start" || mark === "finish")) throw new Error(`Le départ et l'arrivée gardent leurs rebords (${token})`);
     const shoulder = edge === "grass" || edge === "gravel" || edge === "snow" || edge === "sand" ? edge : null;
     const block: Block = {
       index, cx, cz, dir, kind, y0: y, rise: delta, open: edge === "void", shoulder, bumpy: bumpy === true, surface, banked, w0, w1, cuve: cuve ?? 0, cuveIn: 0, cuveOut: 0,
       ...(mark ? { mark } : {}),
     };
+    // Dévers (lot 57) : chaîné comme la largeur — il part de la sortie du bloc précédent (un vide le remet à plat) ; un virage ne commence
+    // jamais penché (il a son propre relevé).
+    const prevBlock = blocks[index - 1];
+    const tiltIn = prevBlock && prevBlock.kind !== "gap" ? (prevBlock.tilt ?? 0) : 0;
+    if (tiltIn && isCurve(kind)) throw new Error(`Dévers avant un virage : ${token}`);
+    if (tilt || tiltIn) {
+      block.tilt = tilt ?? 0;
+      block.tilt0 = tiltIn;
+    }
+    if (ramp) block.ramp = true;
     if (cuve && (index === 0 || index === tokens.length - 1)) throw new Error(`Le départ et l'arrivée gardent leurs rebords : pas de cuve (${token})`);
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
@@ -697,7 +813,7 @@ export function trackCenterline(track: Track): Centerline {
     blockPoint(b, p, q, pt);
     out.x.push(pt.x);
     out.z.push(pt.z);
-    out.y.push(blockHeight(b, q));
+    out.y.push(roadHeightAt(b, p, q));
     out.block.push(b.index);
   };
   for (const b of track.blocks) {

@@ -49,6 +49,9 @@ La surface (`turf`, `S/z`) est décrite dans `packages/sim/CLAUDE.md`, « Herbe 
 ## Nouvelles figures (lot 49)
 **`?scenario=figure-<nom>`** (`&v=1` la variante 2, `&m=1` le miroir ; `?scenario=figure&f=<nom>` du lot 20 reste) : une figure seule, en boucle (`createFigureTrack`), **sur la palette de […] **→ Détail : [docs/regles/web/nouvelles-figures-lot-49.md](../../docs/regles/web/nouvelles-figures-lot-49.md)**
 
+## Signalétique des sauts (lot 57)
+**Jamais de saut à l'aveugle** : toute réception porte deux balises (`addLandingBeacons`, `scene/route.ts` : poteau, panneau à flèche verte vers la route) dont la tête dépasse le bord de l'appel (d'autant plus hautes que la réception est basse), en plus du damier et des chevrons peints dans l'axe de la réception ; un virage-tremplin porte chevrons et bande d'alerte sur ses derniers mètres (`addCurveKickMarks`). Les marques se posent à la hauteur réelle du point (`roadHeightAt` : dévers compris). Page `?scenario=sauts` (`pageFigures(…, sauts)`, `scenarios.ts`), textes `sauts.*` et `figures.saut*` / `figures.transition*` du catalogue des figures. Règle complète : `docs/regles/sim/grammaire-des-sauts-lot-57.md`.
+
 ## Voiture (lots 40, 40b, 40c et 42)
 **Le catalogue et le choix (contrat commun des lots 40b, 41 et 42)** : `src/voiture/catalogue.ts` (`VOITURES: FicheVoiture[]` : `id`, `nom` et `description` = clés `voiture.<id>.*` fr + en, […] **→ Détail : [docs/regles/web/voiture-lots-40-40b-40c-et-42.md](../../docs/regles/web/voiture-lots-40-40b-40c-et-42.md)**
 
