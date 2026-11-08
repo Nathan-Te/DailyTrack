@@ -135,7 +135,7 @@ Le portail **n'est pas branché** : il reste silencieux (décision à prendre : 
 
 ## Hébergement et poids
 
-Les morceaux préparés sont des **fichiers statiques** servis à `/musique/` (site Firebase, comme `/api/`), nommés `<id>-<empreinte>.m4a` : le nom change quand le fichier change, donc **cache sans fin** (`firebase.json`, `Cache-Control: immutable`). Lus **en flux** (le navigateur demande des morceaux du fichier, jamais tout en mémoire). Ils ne sont **pas comptés dans le poids des jeux** : voir `docs/plateforme/budgets.md`, « La musique » (≈ 0,7 Mo par minute).
+Les morceaux préparés sont des **fichiers statiques** servis à `/musique/` (site Firebase, comme `/api/`), nommés `<id>-<empreinte>.m4a` : le nom change quand le fichier change, donc **cache sans fin** (`firebase.json`, `Cache-Control: immutable`). Lot S2 : **téléchargés en entier puis décodés** (Web Audio, jamais un élément `<audio>` : il couperait la vidéo ou la musique du joueur) ; **au plus deux morceaux décodés en mémoire** (celui qui joue et le suivant) ; le poids décodé par morceau est mesuré dans le README du lot S2 (`docs/plateforme/lots/lot-S2-son-melange.md`). Ils ne sont **pas comptés dans le poids des jeux** : voir `docs/plateforme/budgets.md`, « La musique » (≈ 0,7 Mo par minute).
 
 ## Si ça ne joue pas
 

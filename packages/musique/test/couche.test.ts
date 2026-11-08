@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { creerCouche } from "../src/couche";
 import { creerLecteur } from "../src/lecteur";
-import { COUCHE_ECART_MAX_S, COUCHE_LECTURES, GAMMES, arpegeDeMesure, debutMesure, ecartHorloge, etincelle, hzDeMidi, mesureSec, nappeTenue } from "../src/logique";
-import { banc, liste, piste, type Banc } from "./faux";
+import { CLE_REPRISE, COUCHE_ECART_MAX_S, COUCHE_LECTURES, GAMMES, ecrireReprise, arpegeDeMesure, debutMesure, ecartHorloge, etincelle, hzDeMidi, mesureSec, nappeTenue } from "../src/logique";
+import { FauxContexte, banc, liste, piste, StockageMemoire, type Banc } from "./faux";
 
 // La couche du jeu (lot B6) : un arpège calé sur la boucle, ou, quand l'horloge du flux n'est pas assez régulière, une nappe sans pulsation. Tout est essayé sur des faux (horloges que le test fait avancer).
+// Lot S2 : le lecteur lit la position du morceau sur l'horloge du contexte (Web Audio), donc, dans le lecteur, l'écart « flux − contexte » ne varie pas et l'arpège est calé ; la nappe et le recalage
+// sur un flux irrégulier sont essayés sur la couche seule (`creerCouche`), avec un flux que le test fait sauter.
 
 describe("la logique de la couche (pure)", () => {
   it("la mesure dure quatre temps ; le calage trouve le début de la mesure la plus proche, avance ou retard compris", () => {
@@ -50,21 +53,20 @@ describe("la logique de la couche (pure)", () => {
 
 const BLOCKS = liste(piste("b1", { jeux: ["blocks"], bpm: 90, tonique: 48, gamme: "maj", duree: 100 }));
 
-/** Un lecteur de Blocks qui joue `liste` : le premier geste a eu lieu. */
+/** Un lecteur de Blocks qui joue `liste` : le premier geste a eu lieu, le morceau a commencé à 2 s du fichier (reprise d'une page à l'autre : le fichier est à 2 s quand le contexte dit 10 s). */
 async function joue(contenu: unknown = BLOCKS): Promise<{ b: Banc; l: ReturnType<typeof creerLecteur> }> {
-  const b = banc("blocks", contenu);
+  const session = new StockageMemoire(new Map([[CLE_REPRISE, ecrireReprise({ id: "b1", t: 2, at: 999_900 })]]));
+  const b = banc("blocks", contenu, { session });
   const l = creerLecteur(b.deps);
   await b.pret();
   b.emettre("fenetre", "pointerdown");
   await b.pret();
   return { b, l };
 }
-/** `n` lectures de l'horloge du flux, une toutes les 250 ms ; `ecart(i)` : de combien le flux s'écarte à la lecture i. Finit à ctx 13,5 s / flux 5,5 s. */
-function lectures(b: Banc, n: number, ecart: (i: number) => number = () => 0): void {
-  for (let i = 0; i < n; i++) {
-    b.ctx.currentTime = 10 + 0.25 * i;
-    b.elements[0]!.jusqua(2 + 0.25 * i + ecart(i));
-  }
+/** `n` lectures de la position du morceau, une toutes les 250 ms. Finit à ctx 13,5 s / position 5,5 s (la première lecture est à ctx 10 s). */
+async function lectures(b: Banc, n: number): Promise<void> {
+  b.surveiller();
+  await b.avancer(0.25 * (n - 1));
 }
 /** Fait sonner le prochain pas de la boucle de la couche (125 ms). */
 function pas(b: Banc): void {
@@ -77,14 +79,14 @@ const triangles = (b: Banc) => b.ctx.oscillateurs.filter((o) => o.type === "tria
 describe("la couche dans le lecteur : un arpège calé sur la boucle", () => {
   it("rien n'est synthétisé tant que le jeu ne la demande pas, même quand le morceau a sa tonalité", async () => {
     const { b } = await joue();
-    lectures(b, COUCHE_LECTURES + 2);
+    await lectures(b, COUCHE_LECTURES + 2);
     expect(b.ctx.oscillateurs).toHaveLength(0);
     expect(b.attente.some((a) => a.ms === 125)).toBe(false);
   });
 
   it("entrée : un fondu d'environ 1 s ; les notes tombent sur la grille de la mesure du morceau (à la milliseconde près), à contretemps", async () => {
     const { b, l } = await joue();
-    lectures(b, COUCHE_LECTURES + 3); // ctx 13,5 s, flux 5,5 s : la mesure de 2,667 s a commencé à 5,333 s du fichier (ctx 13,333 s)
+    await lectures(b, COUCHE_LECTURES + 3); // ctx 13,5 s, flux 5,5 s : la mesure de 2,667 s a commencé à 5,333 s du fichier (ctx 13,333 s)
     l.couche(true);
     const porte = b.ctx.gains.at(-1)!;
     expect(porte.gain.appels.find((a) => a[0] === "cible")).toEqual(["cible", 1, 13.5, expect.closeTo(1 / 3, 9)]);
@@ -104,26 +106,9 @@ describe("la couche dans le lecteur : un arpège calé sur la boucle", () => {
     expect(demiTons.size).toBeGreaterThanOrEqual(3);
   });
 
-  it("recalage à chaque mesure : le flux prend 12 ms d'avance (sous le seuil des 20 ms), la mesure suivante les suit", async () => {
-    const { b, l } = await joue();
-    lectures(b, COUCHE_LECTURES + 3);
-    l.couche(true);
-    pas(b);
-    const avant = triangles(b).length;
-    // Deux secondes passent : ctx 15,5 s ; le flux, lui, dit 7,512 s au lieu de 7,5 s (+12 ms d'avance sur le contexte). La mesure suivante était visée à 16 s.
-    b.ctx.currentTime = 15.5;
-    b.elements[0]!.jusqua(7.512);
-    pas(b);
-    const nouvelles = triangles(b).slice(avant);
-    expect(nouvelles.length).toBe(8);
-    const debut = nouvelles[0]!.debut! - mesureSec(90) / 16;
-    expect(Math.abs(debut - 15.988)).toBeLessThan(0.001); // sur la grille de l'horloge du flux, pas sur celle qu'on avait visée (16 s)
-    expect(Math.abs(debut - 16)).toBeGreaterThan(0.01);
-  });
-
   it("sortie : un fondu d'environ 1 s, la nappe éventuelle s'arrête ensuite, et plus aucune note n'est programmée", async () => {
     const { b, l } = await joue();
-    lectures(b, COUCHE_LECTURES + 3);
+    await lectures(b, COUCHE_LECTURES + 3);
     l.couche(true);
     pas(b);
     l.couche(false);
@@ -145,48 +130,113 @@ describe("la couche dans le lecteur : un arpège calé sur la boucle", () => {
   });
 });
 
-describe("la couche dans le lecteur : la nappe, quand le calage n'est pas tenable", () => {
-  it("un flux lu par bonds (50 ms) donne une nappe : deux sons tenus et des étincelles, pas un seul arpège", async () => {
-    const { b, l } = await joue();
-    lectures(b, COUCHE_LECTURES + 3, (i) => (i % 2 ? 0.05 : 0));
-    l.couche(true);
-    pas(b);
-    expect(triangles(b)).toHaveLength(0);
-    const sines = b.ctx.oscillateurs.filter((o) => o.type === "sine");
+/** La couche seule, sur un contexte et un flux que le test pilote : le flux dit `flux.t` (secondes du fichier) quand le contexte dit `ctx.currentTime`. */
+function seule() {
+  const ctx = new FauxContexte();
+  const bus = ctx.createGain();
+  const flux = { t: 2 };
+  const attente: { ms: number; fn: () => void }[] = [];
+  const couche = creerCouche({
+    ctx,
+    bus,
+    piste: () => piste("b1", { jeux: ["blocks"], bpm: 90, tonique: 48, gamme: "maj", duree: 100 }),
+    flux: () => ({ genre: 1, t: flux.t }),
+    audible: () => true,
+    hasard: () => 0.5,
+    planifier: (ms, fn) => void attente.push({ ms, fn }),
+  });
+  /** Une lecture toutes les 250 ms : `ecart(i)` est de combien le flux s'écarte à la lecture i. Finit à ctx 13,5 s / flux 5,5 s. */
+  const lire = (n: number, ecart: (i: number) => number = () => 0, depart = (i: number) => 2 + 0.25 * i) => {
+    for (let i = 0; i < n; i++) {
+      ctx.currentTime = 10 + 0.25 * i;
+      flux.t = depart(i) + ecart(i);
+      couche.lire(1, flux.t - ctx.currentTime, flux.t);
+    }
+  };
+  const pas = () => {
+    const i = attente.findIndex((a) => a.ms === 125);
+    expect(i, "la boucle de la couche tourne").toBeGreaterThanOrEqual(0);
+    attente.splice(i, 1)[0]!.fn();
+  };
+  return { ctx, couche, flux, lire, pas, triangles: () => ctx.oscillateurs.filter((o) => o.type === "triangle") };
+}
+
+describe("la couche : la nappe, quand le calage n'est pas tenable (un flux dont l'horloge saute)", () => {
+  it("un flux lu par bonds (50 ms) donne une nappe : deux sons tenus et des étincelles, pas un seul arpège", () => {
+    const c = seule();
+    c.lire(COUCHE_LECTURES + 3, (i) => (i % 2 ? 0.05 : 0));
+    c.couche.regler(true);
+    c.pas();
+    expect(c.triangles()).toHaveLength(0);
+    const sines = c.ctx.oscillateurs.filter((o) => o.type === "sine");
     expect(sines.slice(0, 2).map((o) => Math.round(o.hz))).toEqual([Math.round(hzDeMidi(60)), Math.round(hzDeMidi(67))]);
     expect(sines.length).toBeGreaterThan(2); // + au moins une étincelle
     // Aucune grille : les étincelles ne sont pas sur les temps du morceau et ne dépendent pas du flux.
   });
 
-  it("tant qu'il n'y a pas assez de lectures, la couche est une nappe (prudence) ; ensuite, avec un flux régulier, l'arpège prend le relais", async () => {
+  it("tant qu'il n'y a pas assez de lectures, la couche est une nappe (prudence) ; ensuite, avec un flux régulier, l'arpège prend le relais", () => {
+    const c = seule();
+    c.lire(3);
+    c.couche.regler(true);
+    c.pas();
+    expect(c.triangles()).toHaveLength(0);
+    expect(c.ctx.oscillateurs.length).toBeGreaterThan(0);
+    c.lire(COUCHE_LECTURES + 3);
+    c.ctx.currentTime = 13.5;
+    c.pas();
+    expect(c.triangles().length).toBeGreaterThan(0);
+  });
+
+  it("recalage à chaque mesure : le flux prend 12 ms d'avance (sous le seuil des 20 ms), la mesure suivante les suit", () => {
+    const c = seule();
+    c.lire(COUCHE_LECTURES + 3);
+    c.couche.regler(true);
+    c.pas();
+    const avant = c.triangles().length;
+    // Deux secondes passent : ctx 15,5 s ; le flux, lui, dit 7,512 s au lieu de 7,5 s (+12 ms d'avance sur le contexte). La mesure suivante était visée à 16 s.
+    c.ctx.currentTime = 15.5;
+    c.flux.t = 7.512;
+    c.pas();
+    const nouvelles = c.triangles().slice(avant);
+    expect(nouvelles.length).toBe(8);
+    const debut = nouvelles[0]!.debut! - mesureSec(90) / 16;
+    expect(Math.abs(debut - 15.988)).toBeLessThan(0.001); // sur la grille de l'horloge du flux, pas sur celle qu'on avait visée (16 s)
+    expect(Math.abs(debut - 16)).toBeGreaterThan(0.01);
+  });
+
+  it("les premières secondes du flux (mise en mémoire) ne comptent pas dans la mesure de son horloge", () => {
+    const c = seule();
+    c.lire(COUCHE_LECTURES + 3, () => 0, (i) => (i < 3 ? 0.5 + i * 0.1 : 2 + 0.25 * i)); // trois lectures chaotiques sous 1 s
+    c.couche.regler(true);
+    c.pas();
+    expect(c.triangles().length).toBeGreaterThan(0);
+  });
+});
+
+describe("la couche dans le lecteur : l'horloge est celle du contexte, donc l'arpège est calé", () => {
+  it("la position du morceau suit l'horloge du contexte : après les premières lectures, l'arpège joue, jamais la nappe", async () => {
     const { b, l } = await joue();
-    lectures(b, 3);
+    await lectures(b, COUCHE_LECTURES + 3);
+    l.couche(true);
+    pas(b);
+    expect(triangles(b).length).toBeGreaterThan(0);
+    expect(b.ctx.oscillateurs.filter((o) => o.type === "sine")).toHaveLength(0);
+  });
+
+  it("tant que le lecteur n'a pas eu assez de lectures, la couche est une nappe (prudence)", async () => {
+    const { b, l } = await joue();
+    await lectures(b, 3);
     l.couche(true);
     pas(b);
     expect(triangles(b)).toHaveLength(0);
     expect(b.ctx.oscillateurs.length).toBeGreaterThan(0);
-    lectures(b, COUCHE_LECTURES + 3);
-    b.ctx.currentTime = 13.5;
-    pas(b);
-    expect(triangles(b).length).toBeGreaterThan(0);
-  });
-
-  it("les premières secondes du flux (mise en mémoire) ne comptent pas dans la mesure de son horloge", async () => {
-    const { b, l } = await joue();
-    for (let i = 0; i < COUCHE_LECTURES + 3; i++) {
-      b.ctx.currentTime = 10 + 0.25 * i;
-      b.elements[0]!.jusqua(i < 3 ? 0.5 + i * 0.1 : 2 + 0.25 * i); // trois lectures chaotiques sous 1 s
-    }
-    l.couche(true);
-    pas(b);
-    expect(triangles(b).length).toBeGreaterThan(0);
   });
 });
 
 describe("la couche dans le lecteur : les réglages et les cas où elle se tait", () => {
   const demande = async (contenu: unknown = BLOCKS) => {
     const { b, l } = await joue(contenu);
-    lectures(b, COUCHE_LECTURES + 3);
+    await lectures(b, COUCHE_LECTURES + 3);
     return { b, l };
   };
 

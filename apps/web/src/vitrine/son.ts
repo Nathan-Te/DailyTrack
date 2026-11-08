@@ -2,6 +2,7 @@
 // (la voiture virtuelle : ralenti, coup de gaz à l'arrêt, accélération sur six rapports, lever de pied, freinage, terre en dérive, turbo, vibreur, saut) avec le moteur d'avant
 // et deux approches : A (synthèse) et B (échantillons rendus hors ligne), pour les dix voitures du Garage — et donne le coût de chacune.
 // Nathan écoute (téléphone et ordinateur, au casque) et choisit ; rien de ceci n'est dans le jeu. Outil interne, en français, exempté des catalogues (comme le reste de la vitrine).
+import { ouvrirContexteAudio } from "@cdj/core/audio";
 import { boiteInitiale, pasBoite, type EtatBoite } from "../son/boite";
 import { creerCoucheRoues, type CoucheRoues } from "../son/coucheRoues";
 import { bruitBlanc, type EntreeMoteur, type Moteur } from "../son/moteur";
@@ -530,12 +531,12 @@ export async function monter(racine: HTMLElement, hote: HoteSon): Promise<Planch
 
   async function activerSon(): Promise<void> {
     if (!ctx) {
-      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctor) {
+      const ouvert = ouvrirContexteAudio<AudioContext>();
+      if (!ouvert) {
         hote.erreurs.push("planche son : Web Audio n'est pas disponible");
         return;
       }
-      ctx = new Ctor();
+      ctx = ouvert;
       maitre = ctx.createGain();
       maitre.gain.value = volume;
       maitre.connect(ctx.destination);

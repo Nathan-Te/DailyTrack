@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { creerLecteur } from "../src/lecteur";
+import { REESSAI_PRECHARGEMENT_MS, TAMPONS_MAX, creerLecteur } from "../src/lecteur";
 import type { PisteServie } from "../src/types";
 import { CLE_REGLAGES, CLE_REPRISE, FONDU_S, FONDU_SCENE_S, pistesDeLaScene, choisirSuivante, courbeFondu, departDeLaPage, ecrireReprise, lireReglages, niveauFinal, VALIDITE_REPRISE_MS } from "../src/logique";
 import { banc, liste, piste, StockageMemoire, type Banc } from "./faux";
@@ -64,48 +64,171 @@ describe("le fondu", () => {
 
   it("à la fin du morceau, le suivant entre en fondu pendant que celui-ci sort, puis il se tait", async () => {
     const { b, l } = await demarre("track", liste(piste("a"), piste("b")));
-    const [v0, v1] = b.elements;
+    const s0 = b.ctx.sources[0]!;
     expect(l.enCours()?.id).toBe("a");
-    expect(v0!.src).toBe("/musique/a-abcd1234.m4a");
-    v0!.duration = 120;
-    v0!.jusqua(120 - FONDU_S - 1); // loin de la fin : rien
-    expect(v1!.lectures).toBe(0);
-    v0!.jusqua(120 - FONDU_S + 0.1); // la fin approche
+    expect(s0.fichier).toBe("/musique/a-abcd1234.m4a");
+    expect(s0.decalage).toBe(0);
+    await b.avancer(107); // loin de la fin : rien
+    expect(b.ctx.sources).toHaveLength(1);
+    expect(l.enCours()?.id).toBe("a");
+    await b.avancer(10); // la position passe 116,85 s : la fin approche
     expect(l.enCours()?.id).toBe("b");
-    expect(v1!.src).toBe("/musique/b-abcd1234.m4a");
-    expect(v1!.lectures).toBe(1);
+    const s1 = b.ctx.sources[1]!;
+    expect(s1.fichier).toBe("/musique/b-abcd1234.m4a");
+    expect(s1.decalage).toBe(0);
+    expect(b.ctx.sources.filter((s) => s.joue)).toHaveLength(2); // pendant le fondu, les deux jouent
     // Les gains des deux voix : les deux courbes, de la durée du fondu.
     const gains = b.ctx.gains.filter((g) => g.gain.courbes().length > 0);
     expect(gains.length).toBe(2);
     for (const g of gains) expect(g.gain.courbes().at(-1)![3]).toBe(FONDU_S);
     // Le premier se tait quand son fondu est fini.
-    expect(v0!.paused).toBe(false);
+    expect(s0.joue).toBe(true);
     b.attente.filter((a) => a.ms > FONDU_S * 1000 - 1).forEach((a) => a.fn());
-    expect(v0!.paused).toBe(true);
+    expect(s0.joue).toBe(false);
+    expect(s1.joue).toBe(true);
     // Le morceau suivant n'est jamais le même que celui qui sort.
     expect(l.etat().precedent).toBe("a");
+  });
+
+  it("le suivant est téléchargé et décodé pendant que le premier joue : au moment du fondu, plus rien à attendre", async () => {
+    const { b, l } = await demarre("track", liste(piste("a"), piste("b")));
+    expect(b.etat.telechargements).toEqual(["/musique/a-abcd1234.m4a"]);
+    await b.avancer(1);
+    expect(b.etat.telechargements).toEqual(["/musique/a-abcd1234.m4a", "/musique/b-abcd1234.m4a"]);
+    expect(l.etat().tampons).toEqual(["a", "b"]);
+    expect(b.ctx.sources).toHaveLength(1); // préchargé, pas lancé
+    await b.avancer(116);
+    expect(l.enCours()?.id).toBe("b");
+    expect(b.etat.telechargements).toHaveLength(2); // le fondu n'a rien demandé au réseau
   });
 
   it("« Morceau suivant » : un fondu plus court, jamais le même morceau", async () => {
     const { b, l } = await demarre("track", DEUX, { hasard: [0, 0, 0, 0] });
     const avant = l.enCours()!.id;
     l.suivante();
+    await b.pret();
     expect(l.enCours()!.id).not.toBe(avant);
     const courbes = b.ctx.gains.flatMap((g) => g.gain.courbes()).map((c) => c[3]);
     expect(Math.min(...courbes)).toBeLessThan(FONDU_S);
   });
+
+  it("un morceau qui finit sans que le fondu l'ait relayé (la fin arrive avant le seuil) : le suivant entre tout de suite", async () => {
+    const { b, l } = await demarre("track", liste(piste("a"), piste("b")));
+    b.ctx.sources[0]!.finir();
+    await b.pret();
+    expect(l.enCours()?.id).toBe("b");
+  });
+
+  it("un morceau seul revient (un deuxième tampon du même fichier n'est pas décodé : il est partagé)", async () => {
+    const { b, l } = await demarre("track", liste(piste("seul", { duree: 20 })));
+    await b.avancer(20);
+    expect(l.enCours()?.id).toBe("seul");
+    expect(b.ctx.sources.length).toBeGreaterThan(1);
+    expect(b.ctx.decodes).toHaveLength(1);
+    expect(l.etat().tampons).toEqual(["seul"]);
+  });
+});
+
+describe("la mémoire : au plus deux morceaux décodés (lot S2)", () => {
+  it("pendant dix minutes de musique, avec fondus, « suivant » et changements de scène : jamais plus de deux tampons ni de deux lectures à la fois", async () => {
+    const L = liste(
+      piste("a", { duree: 60, scenes: ["menu", "theme:nuit"] }),
+      piste("b", { duree: 60, scenes: ["theme:nuit"] }),
+      piste("c", { duree: 60, scenes: ["theme:nuit"] }),
+      piste("d", { duree: 60, scenes: ["theme:stade"] }),
+      piste("e", { duree: 60, scenes: ["theme:stade"] }),
+    );
+    const b = banc("track", L, { hasard: [0.1, 0.4, 0.8, 0.3, 0.6, 0.9, 0.2, 0.5, 0.7] });
+    const l = creerLecteur(b.deps);
+    l.scene("theme:nuit");
+    await b.pret();
+    let pic = 0;
+    const regarder = () => {
+      pic = Math.max(pic, l.etat().tampons.length);
+      expect(l.etat().tampons.length).toBeLessThanOrEqual(TAMPONS_MAX);
+      expect(b.ctx.sources.filter((s) => s.joue).length).toBeLessThanOrEqual(2);
+    };
+    for (let seconde = 0; seconde < 600; seconde += 0.25) {
+      await b.avancer(0.25);
+      regarder();
+      if (seconde === 100) { l.suivante(); await b.pret(); regarder(); }
+      if (seconde === 200) { l.scene("theme:stade"); await b.pret(); regarder(); }
+      if (seconde === 201) { l.scene("theme:nuit"); await b.pret(); regarder(); } // une scène qui change pendant le fondu de la précédente
+      if (seconde === 300) { l.suivante(); l.suivante(); await b.pret(); regarder(); }
+      if (seconde === 400) { l.scene("menu"); await b.pret(); regarder(); }
+    }
+    expect(pic).toBe(2);
+    expect(l.enCours()).not.toBeNull();
+  });
+
+  it("un morceau lâché (fondu fini) est retiré de la mémoire du lecteur ; « arrêter » lâche tout", async () => {
+    const { b, l } = await demarre("track", liste(piste("a"), piste("b")));
+    await b.avancer(118);
+    expect(l.enCours()?.id).toBe("b");
+    expect(l.etat().tampons).toEqual(["a", "b"]);
+    b.attente.filter((a) => a.ms > FONDU_S * 1000 - 1).forEach((a) => a.fn());
+    expect(l.etat().tampons).toEqual(["b"]);
+    l.arreter();
+    expect(l.etat().tampons).toEqual([]);
+    expect(b.ctx.sources.every((s) => !s.joue)).toBe(true);
+  });
+});
+
+describe("le réseau et le décodage qui échouent", () => {
+  it("le suivant ne se charge pas : le morceau en cours continue, le préchargement est retenté plus tard ; le fondu se fait quand il arrive", async () => {
+    const { b, l } = await demarre("track", liste(piste("a"), piste("b")));
+    b.etat.echecs.add("/musique/b-abcd1234.m4a");
+    await b.avancer(1);
+    expect(l.enCours()?.id).toBe("a");
+    expect(l.etat().tampons).toEqual(["a"]); // l'échec ne reste pas en mémoire
+    expect(b.etat.telechargements.filter((u) => u.includes("/b-"))).toHaveLength(1);
+    await b.avancer(5);
+    expect(b.etat.telechargements.filter((u) => u.includes("/b-"))).toHaveLength(1); // pas de nouvel essai avant le délai
+    b.etat.echecs.clear();
+    b.etat.maintenant += REESSAI_PRECHARGEMENT_MS + 1;
+    await b.avancer(1);
+    expect(b.etat.telechargements.filter((u) => u.includes("/b-"))).toHaveLength(2);
+    expect(l.etat().tampons).toEqual(["a", "b"]);
+  });
+
+  it("le suivant est introuvable au moment du fondu : le morceau en cours finit, puis « suivant » ou la fin réessaie", async () => {
+    const { b, l } = await demarre("track", liste(piste("a"), piste("b")));
+    b.etat.echecs.add("/musique/b-abcd1234.m4a");
+    await b.avancer(119.75);
+    expect(l.enCours()?.id).toBe("a");
+    b.etat.echecs.clear();
+    b.ctx.sources[0]!.finir();
+    await b.pret();
+    expect(l.enCours()?.id).toBe("b");
+  });
+
+  it("le premier morceau ne se charge pas : le lecteur se tait sans lever, « suivant » réessaie", async () => {
+    const b = banc("track", liste(piste("a")));
+    b.etat.echecs.add("/musique/a-abcd1234.m4a");
+    const l = creerLecteur(b.deps);
+    await b.pret();
+    expect(l.enCours()).toBeNull();
+    expect(l.etat().tampons).toEqual([]);
+    b.etat.echecs.clear();
+    l.suivante();
+    await b.pret();
+    expect(l.enCours()?.id).toBe("a");
+  });
 });
 
 describe("le premier geste et les règles des navigateurs", () => {
-  it("le lecteur ne demande rien tant qu'il n'est pas créé : liste, contexte et éléments audio n'existent qu'après", async () => {
+  it("le lecteur ne demande rien tant qu'il n'est pas créé : liste, morceau et contexte audio n'existent qu'après, et jamais un élément audio", async () => {
     const b = banc("track", DEUX);
     expect(b.etat.requetes).toEqual([]);
-    expect(b.elements).toEqual([]);
+    expect(b.etat.telechargements).toEqual([]);
+    expect(b.ctx.sources).toEqual([]);
     expect(b.ecouteursDe("fenetre", "click")).toBe(0);
     creerLecteur(b.deps);
     await b.pret();
     expect(b.etat.requetes).toEqual(["/musique/liste.json"]);
-    expect(b.elements.length).toBe(2);
+    expect(b.etat.telechargements).toHaveLength(1);
+    expect(b.ctx.sources).toHaveLength(1);
+    expect(Object.keys(b.deps).sort()).not.toContain("creerAudio"); // lot S2 : plus d'élément média
   });
 
   it("un contexte suspendu (pas de geste valide) : la musique attend, chaque geste le réveille, puis les écouteurs de geste partent", async () => {
@@ -116,7 +239,6 @@ describe("le premier geste et les règles des navigateurs", () => {
     expect(b.ecouteursDe("fenetre", "touchend")).toBe(1);
     expect(l.etat().joue).toBe(false);
     b.ctx.resume = async function (this: typeof b.ctx) { this.state = "running"; };
-    b.elements[0]!.paused = true;
     b.emettre("fenetre", "touchend");
     await b.pret();
     expect(b.ctx.state).toBe("running");
@@ -133,16 +255,18 @@ describe("le premier geste et les règles des navigateurs", () => {
     for (const g of ["pointerdown", "keydown", "touchstart", "touchend", "click"]) expect(b.ecouteursDe("fenetre", g), g).toBe(1);
   });
 
-  it("une liste vide (aucun morceau pour ce jeu) : ni contexte, ni élément audio, rien ne joue", async () => {
+  it("une liste vide (aucun morceau pour ce jeu) : ni contexte, ni lecture, rien ne joue", async () => {
     const { b, l } = await demarre("portail", DEUX.pistes.length ? liste(piste("a", { jeux: ["track"] })) : DEUX);
-    expect(b.elements).toEqual([]);
+    expect(b.ctx.sources).toEqual([]);
+    expect(b.ctx.gains).toEqual([]);
+    expect(b.etat.telechargements).toEqual([]);
     expect(l.etat().active).toBe(false);
   });
 
   it("une réponse qui n'est pas une liste (page d'erreur, JSON d'une autre version) : le lecteur se tait sans lever", async () => {
     for (const contenu of ["<html>", { version: 2, pistes: [] }, null]) {
       const { b, l } = await demarre("track", contenu);
-      expect(b.elements).toEqual([]);
+      expect(b.ctx.sources).toEqual([]);
       expect(l.etat().active).toBe(false);
     }
   });
@@ -159,26 +283,25 @@ describe("le premier geste et les règles des navigateurs", () => {
 });
 
 describe("l'arrière-plan", () => {
-  it("l'onglet passe en arrière-plan : tout se met en pause et le contexte se suspend ; au retour la musique reprend", async () => {
+  it("l'onglet passe en arrière-plan : le contexte se suspend (son horloge, donc la position du morceau, s'arrête) ; au retour la musique reprend là où elle en était", async () => {
     const { b, l } = await demarre();
-    b.elements[0]!.paused = false;
+    await b.avancer(5);
     b.etat.cachee = true;
     b.emettre("document", "visibilitychange");
-    expect(b.elements.every((e) => e.paused)).toBe(true);
     expect(b.ctx.suspendus).toBe(1);
     expect(l.etat().enPause).toBe(true);
-    const reprisesAvant = b.elements[0]!.lectures;
+    expect(b.ctx.sources[0]!.joue).toBe(true); // la lecture n'est pas coupée : elle attend, au même endroit
     b.etat.cachee = false;
     b.emettre("document", "visibilitychange");
     expect(b.ctx.state).toBe("running");
-    expect(b.elements[0]!.paused).toBe(false);
-    expect(b.elements[0]!.lectures).toBe(reprisesAvant + 1);
+    expect(b.ctx.repris).toBeGreaterThan(0);
     expect(l.etat().enPause).toBe(false);
+    expect(l.enCours()?.id).toBe("a");
   });
 
   it("en arrière-plan, la position est gardée pour la reprise", async () => {
     const { b } = await demarre();
-    b.elements[0]!.currentTime = 42;
+    await b.avancer(42);
     b.etat.cachee = true;
     b.emettre("document", "visibilitychange");
     const r = JSON.parse(b.session.getItem(CLE_REPRISE)!);
@@ -191,9 +314,9 @@ describe("l'arrière-plan", () => {
     b.emettre("document", "visibilitychange");
     const avant = l.enCours()!.id;
     l.suivante();
-    b.elements[0]!.duration = 100;
-    b.elements[0]!.jusqua(99);
+    await b.avancer(200); // la surveillance tourne, mais n'enchaîne rien
     expect(l.enCours()!.id).toBe(avant);
+    expect(b.ctx.sources).toHaveLength(1);
   });
 });
 
@@ -203,18 +326,18 @@ describe("la reprise au changement de page", () => {
   it("le même morceau est repris là où il en était (même jeu, page suivante)", async () => {
     const { b, l } = await demarre("track", DEUX, { session: sessionAvec("b", 37.5, 999_000), maintenant: 1_000_000 });
     expect(l.enCours()?.id).toBe("b");
-    expect(b.elements[0]!.currentTime).toBe(37.5);
+    expect(b.ctx.sources[0]!.decalage).toBe(37.5);
   });
 
   it("de Track à Jump : si le morceau passe aussi dans Jump, il continue au même endroit ; sinon un autre entre en fondu, jamais celui qu'on vient d'entendre", async () => {
     const l2 = liste(piste("a", { jeux: ["track"] }), piste("b", { jeux: ["track", "jump"] }), piste("c", { jeux: ["jump"] }));
     const dansJump = await demarre("jump", l2, { session: sessionAvec("b", 20, 999_500) });
     expect(dansJump.l.enCours()?.id).toBe("b");
-    expect(dansJump.b.elements[0]!.currentTime).toBe(20);
+    expect(dansJump.b.ctx.sources[0]!.decalage).toBe(20);
     // `a` n'existe pas dans Jump : un autre morceau, en fondu d'entrée, depuis le début.
     const autre = await demarre("jump", l2, { session: sessionAvec("a", 20, 999_500) });
     expect(autre.l.enCours()?.id).not.toBe("a");
-    expect(autre.b.elements[0]!.currentTime).toBe(0);
+    expect(autre.b.ctx.sources[0]!.decalage).toBe(0);
     expect(autre.b.ctx.gains.some((g) => g.gain.courbes().length > 0)).toBe(true);
   });
 
@@ -229,7 +352,9 @@ describe("la reprise au changement de page", () => {
 
   it("le lecteur note sa position dans le stockage de l'onglet (pas dans celui de l'appareil)", async () => {
     const { b } = await demarre();
-    b.elements[0]!.jusqua(12);
+    await b.avancer(11.75);
+    b.etat.maintenant += 2000; // la position n'est notée qu'une fois par seconde
+    await b.avancer(0.25);
     expect(JSON.parse(b.session.getItem(CLE_REPRISE)!)).toMatchObject({ id: "a", t: 12 });
     expect(b.stockage.getItem(CLE_REPRISE)).toBeNull();
     b.emettre("fenetre", "pagehide");
@@ -327,17 +452,21 @@ describe("les scènes : un morceau par menu et par thème", () => {
     await b.pret();
     expect(l.enCours()!.id).toBe("accueil");
     l.scene("theme:nuit");
+    await b.pret();
     expect(["nuit", "deux"]).toContain(l.enCours()!.id);
     expect(b.ctx.gains.filter((g) => g.gain.courbes().length > 0).length).toBe(2); // un fondu sortant, un fondu entrant
     expect(b.ctx.gains.flatMap((g) => g.gain.courbes()).map((c) => c[3])).toContain(FONDU_SCENE_S);
     // « deux » passe dans la nuit et dans le stade : en passant de l'un à l'autre il continue sans coupure.
-    if (l.enCours()!.id !== "deux") l.suivante();
-    for (let i = 0; i < 6 && l.enCours()!.id !== "deux"; i++) l.suivante();
+    for (let i = 0; i < 6 && l.enCours()!.id !== "deux"; i++) {
+      l.suivante();
+      await b.pret();
+    }
     if (l.enCours()!.id === "deux") {
-      const lectures = b.elements.map((e) => e.lectures).join();
+      const lectures = b.ctx.sources.length;
       l.scene("theme:stade");
+      await b.pret();
       expect(l.enCours()!.id).toBe("deux");
-      expect(b.elements.map((e) => e.lectures).join()).toBe(lectures);
+      expect(b.ctx.sources.length).toBe(lectures);
     }
   });
 
@@ -350,8 +479,10 @@ describe("les scènes : un morceau par menu et par thème", () => {
     l.scene("theme:nuit");
     b.attente.filter((a) => a.ms > 1000).forEach((a) => a.fn());
     expect(l.enCours()).toBeNull();
-    expect(b.elements.every((e) => e.paused)).toBe(true);
+    expect(b.ctx.sources.every((s) => !s.joue)).toBe(true);
+    expect(l.etat().tampons).toEqual([]);
     l.scene("menu");
+    await b.pret();
     expect(l.enCours()?.id).toBe("accueil");
   });
 
@@ -368,7 +499,7 @@ describe("les scènes : un morceau par menu et par thème", () => {
     l2.scene("theme:nuit");
     await b2.pret();
     expect(l2.enCours()!.id).toBe("nuit");
-    expect(b2.elements[0]!.currentTime).toBe(30);
+    expect(b2.ctx.sources[0]!.decalage).toBe(30);
   });
 
   it("sans scène annoncée (un scénario d'essai) : tous les morceaux du jeu", async () => {
@@ -387,9 +518,26 @@ describe("les scènes : un morceau par menu et par thème", () => {
     b.etat.cachee = true;
     b.emettre("document", "visibilitychange");
     l.scene("theme:stade");
+    await b.pret();
     expect(l.enCours()!.id).toBe("accueil");
     b.etat.cachee = false;
     b.emettre("document", "visibilitychange");
+    await b.pret();
     expect(["stade", "deux"]).toContain(l.enCours()!.id);
+  });
+
+  it("la scène change pendant que le premier morceau se charge : le morceau arrivé est lâché, et un morceau de la nouvelle scène prend sa place", async () => {
+    const b = banc("track", L);
+    b.etat.retenir = true;
+    const l = creerLecteur(b.deps);
+    l.scene("menu");
+    await b.pret();
+    expect(l.enCours()).toBeNull(); // le téléchargement est en route
+    l.scene("theme:stade"); // le jeu a changé de scène entre-temps
+    await b.livrer(); // le morceau du menu arrive : il n'est plus de la scène
+    await b.livrer(); // celui du stade
+    expect(["stade", "deux"]).toContain(l.enCours()!.id);
+    expect(l.etat().tampons.length).toBeLessThanOrEqual(2);
+    expect(b.ctx.sources.filter((s) => s.joue)).toHaveLength(1);
   });
 });

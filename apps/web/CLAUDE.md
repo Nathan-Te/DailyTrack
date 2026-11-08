@@ -29,6 +29,7 @@ Chargé quand on lit un fichier de `apps/web`. Le jeu affiche ce que calcule `pa
 
 ## Son (lot 55, partie B)
 **Deux étages.** `audio.ts` / `audioLogic.ts` (premier chargement, **ne grossissent plus**) : volume, deux bus (`cdj:audio` : moteur / effets, muet par M), **le moteur et les pneus du lot 9 […] **→ Détail : [docs/regles/web/son-lot-55-partie-b.md](../../docs/regles/web/son-lot-55-partie-b.md)**
+**Session audio (lot S2) : `ambient`.** `audio.ts` et la planche son de la vitrine ouvrent leur contexte par `ouvrirContexteAudio` (`@cdj/core/audio`) : le son de Track se mêle à la vidéo ou à la musique du joueur, il ne la coupe pas (sur iPhone, l'interrupteur « silence » coupe aussi le jeu). Jamais `"playback"` ni `navigator.audioSession` dans ce dossier.
 
 ## Musique commune (lot « musique »)
  **→ Détail : [docs/regles/web/musique-commune-lot-musique.md](../../docs/regles/web/musique-commune-lot-musique.md)**

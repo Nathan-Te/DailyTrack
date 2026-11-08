@@ -21,25 +21,28 @@ import {
 import type { JeuMusique, PisteServie, Reglages } from "./types";
 
 // Le lecteur de musique commun (lot « musique »), **chargé à la demande au premier geste** (`demarrage.ts`) : jamais dans le premier chargement d'un jeu. Il joue la liste
-// de son jeu — tirage pondéré, jamais deux fois le même d'affilée, fondu enchaîné — **en flux** (un élément audio par morceau, jamais le fichier en mémoire), sur deux voix
-// reliées à un seul bus (niveau, compresseur). Tout ce qui touche au navigateur est injecté (`Dependances`) : les tests le remplacent par des faux.
+// de son jeu — tirage pondéré, jamais deux fois le même d'affilée, fondu enchaîné — sur deux voix reliées à un seul bus (niveau, compresseur). Tout ce qui touche au
+// navigateur est injecté (`Dependances`) : les tests le remplacent par des faux.
+//
+// **Lot S2 : par Web Audio seulement, jamais par un élément `<audio>`** (un élément média qui joue prend la main sur l'audio du téléphone et coupe la vidéo ou la musique du
+// joueur). Un morceau est téléchargé, décodé (`decodeAudioData`) puis lu par un `AudioBufferSourceNode`. **Au plus deux morceaux décodés à la fois** : celui qui joue et le
+// suivant (préchargé pendant que le premier joue ; pendant un fondu, celui qui sort et celui qui entre). Un morceau décodé pèse lourd (voir `packages/musique/CLAUDE.md`).
 //
 // Règles des navigateurs : rien n'est demandé au réseau avant le premier geste (ce module n'est chargé qu'à ce moment-là) ; le contexte est réveillé à chaque geste tant qu'il
-// ne joue pas (sur iPhone, seul un geste qui se termine le réveille) ; la musique se met en pause quand l'onglet passe en arrière-plan et reprend au retour ; la position
-// du morceau est gardée (stockage de l'onglet) pour que la page suivante reprenne au même endroit.
+// ne joue pas (sur iPhone, seul un geste qui se termine le réveille) ; la musique se met en pause quand l'onglet passe en arrière-plan (le contexte se suspend, donc son
+// horloge aussi : la position du morceau, qui se lit sur cette horloge, s'arrête) et reprend au retour ; la position du morceau est gardée (stockage de l'onglet) pour que la
+// page suivante reprenne au même endroit.
 
-/** Ce que le lecteur exige d'un élément audio (un `HTMLAudioElement` convient). */
-export interface ElementAudio {
-  src: string;
-  preload: string;
-  currentTime: number;
+/** Un morceau décodé (un `AudioBuffer` convient). */
+export interface TamponAudio {
   readonly duration: number;
-  readonly paused: boolean;
-  play(): Promise<void>;
-  pause(): void;
-  load?(): void;
-  addEventListener(type: string, fn: () => void): void;
-  removeAttribute?(nom: string): void;
+}
+/** Une lecture d'un tampon (un `AudioBufferSourceNode` convient) : elle ne se relance pas, on en crée une par morceau. */
+export interface SourceAudio extends NoeudAudio {
+  buffer: TamponAudio | null;
+  onended: (() => void) | null;
+  start(quand?: number, decalage?: number): void;
+  stop(quand?: number): void;
 }
 
 export interface ParamAudio {
@@ -70,7 +73,9 @@ export interface ContexteAudio {
   resume(): Promise<void>;
   suspend(): Promise<void>;
   createGain(): GainAudio;
-  createMediaElementSource(el: unknown): NoeudAudio;
+  /** Lot S2 : la lecture d'un morceau décodé (jamais un élément média). */
+  createBufferSource(): SourceAudio;
+  decodeAudioData(donnees: ArrayBuffer): Promise<TamponAudio>;
   /** Sans lui, la couche du jeu reste muette. */
   createOscillator?(): OscAudio;
   /** Le compresseur commun (sans lui, la musique passerait telle quelle). */
@@ -92,7 +97,8 @@ export interface Dependances {
   session: StockageMin | null;
   /** Lit `liste.json` : le JSON, ou rejette. */
   chargerListe(url: string): Promise<unknown>;
-  creerAudio(): ElementAudio;
+  /** Lot S2 : le fichier d'un morceau, en entier (les octets encodés ; le lecteur les décode). */
+  telecharger(url: string): Promise<ArrayBuffer>;
   creerContexte(): ContexteAudio | null;
   /** La page est cachée (onglet en arrière-plan). */
   cachee(): boolean;
@@ -123,10 +129,24 @@ export interface EtatLecteur {
   scene: string | null;
   /** Les morceaux de la scène (ceux qui peuvent jouer maintenant). */
   pistes: string[];
+  /** Les morceaux décodés (ou en cours de décodage) que le lecteur garde en mémoire : `TAMPONS_MAX` au plus. */
+  tampons: string[];
 }
 
+/** Le pas de la surveillance du morceau qui joue (position, fin proche, préchargement du suivant), en millisecondes. */
+export const PAS_SURVEILLANCE_MS = 250;
+/** Le délai avant de réessayer un préchargement qui a échoué (réseau, décodage). */
+export const REESSAI_PRECHARGEMENT_MS = 10_000;
+/** Combien de morceaux décodés le lecteur garde au plus : celui qui joue et le suivant. */
+export const TAMPONS_MAX = 2;
+
 interface Voix {
-  el: ElementAudio;
+  /** La lecture en cours (`null` : la voix est libre). */
+  source: SourceAudio | null;
+  /** Le début de la lecture sur l'horloge du contexte, et la position du morceau à cet instant : la position est `depart + (horloge − debut)`. */
+  debut: number;
+  depart: number;
+  duree: number;
   /** Le fondu de la voix (0 à 1). */
   gain: GainAudio;
   /** La correction de volume du morceau (`volumeDb`), avant le fondu. */
@@ -181,6 +201,15 @@ export function creerLecteur(d: Dependances): Lecteur {
   let arrete = false;
   let couche: Couche | undefined;
   let coucheVoulue = false;
+  /** Les morceaux décodés (ou en cours de téléchargement et de décodage), par identifiant : au plus `TAMPONS_MAX`. */
+  const tampons = new Map<string, Promise<TamponAudio>>();
+  /** Le morceau préchargé pour la suite (tiré d'avance : le fondu n'attend pas le réseau). */
+  let suivantChoisi: PisteServie | null = null;
+  /** Le morceau qu'on est en train de charger pour le lancer (le premier, ou celui d'un fondu) : il n'est pas encore sur une voix. */
+  let enChargement: PisteServie | null = null;
+  let prochainEssai = 0;
+  /** Le premier morceau se charge : un changement de scène attend (il est vérifié quand le morceau arrive). */
+  let premier = false;
 
   const prevenir = () => abonnes.forEach((f) => f());
   const voixActive = (): Voix | undefined => voix[active];
@@ -212,60 +241,152 @@ export function creerLecteur(d: Dependances): Lecteur {
     const t = d.maintenant();
     if (!force && t - derniereReprise < 1000) return;
     derniereReprise = t;
-    ecrire(d.session, CLE_REPRISE, ecrireReprise({ id: v.piste.id, t: v.el.currentTime, at: t }));
+    ecrire(d.session, CLE_REPRISE, ecrireReprise({ id: v.piste.id, t: position(v), at: t }));
   }
 
-  /** Lance `piste` sur la voix libre, avec un fondu d'entrée de `entree` secondes (0 : plein tout de suite). */
-  function lancer(piste: PisteServie, depart: number, entree: number): Voix | null {
-    if (!ctx) return null;
+  /** La position du morceau (secondes du fichier), lue sur l'horloge du contexte : elle s'arrête avec lui quand l'onglet est caché. */
+  function position(v: Voix): number {
+    if (!ctx || !v.source) return 0;
+    return Math.min(v.duree, v.depart + Math.max(0, ctx.currentTime - v.debut));
+  }
+
+  /** Arrête la lecture d'une voix et lâche son tampon (il part avec la source). */
+  function liberer(v: Voix): void {
+    const s = v.source;
+    v.source = null;
+    v.piste = null;
+    if (!s) return;
+    s.onended = null;
+    try {
+      s.stop();
+    } catch {
+      /* déjà arrêtée */
+    }
+    s.disconnect?.();
+  }
+
+  /** Ne garde en mémoire que les morceaux utiles : ceux des voix et le suivant préchargé. */
+  function purger(): void {
+    const utiles = new Set<string>(voix.flatMap((v) => (v.piste ? [v.piste.id] : [])));
+    if (suivantChoisi) utiles.add(suivantChoisi.id);
+    if (enChargement) utiles.add(enChargement.id);
+    for (const id of [...tampons.keys()]) if (!utiles.has(id)) tampons.delete(id);
+  }
+
+  /** Le morceau décodé (téléchargé et décodé une seule fois). L'appelant a déjà dit (voix, `suivantChoisi`, `enChargement`) quels morceaux sont utiles : les autres sont lâchés d'abord. */
+  function tampon(piste: PisteServie): Promise<TamponAudio> {
+    purger();
+    let p = tampons.get(piste.id);
+    if (!p) {
+      const c = ctx!;
+      p = d.telecharger(d.base + piste.fichier).then((octets) => c.decodeAudioData(octets));
+      tampons.set(piste.id, p);
+      const retrait = p;
+      p.catch(() => {
+        if (tampons.get(piste.id) === retrait) tampons.delete(piste.id); // un échec ne reste pas en mémoire : un autre essai repart de zéro
+      });
+    }
+    return p;
+  }
+
+  /** Lance `piste` (déjà décodé) sur la voix libre, avec un fondu d'entrée de `entree` secondes (0 : plein tout de suite). */
+  function lancer(piste: PisteServie, tamponDe: TamponAudio, depart: number, entree: number): Voix {
+    const c = ctx!;
     // La voix libre : l'autre que celle qui joue ; au démarrage (rien ne joue), la première.
     const libre = voix[active]?.piste ? voix[1 - active]! : voix[active]!;
+    liberer(libre);
     libre.genre = ++genre;
     libre.piste = piste;
-    const el = libre.el;
-    el.preload = "auto";
-    el.src = d.base + piste.fichier;
-    el.currentTime = depart > 0 ? depart : 0;
-    const t = ctx.currentTime;
+    const source = c.createBufferSource();
+    source.buffer = tamponDe;
+    source.connect(libre.correction);
+    const g = libre.genre;
+    source.onended = () => {
+      if (libre.genre === g && libre.source === source) surFin(libre);
+    };
+    const t = c.currentTime;
+    const decalage = Math.min(Math.max(0, depart), Math.max(0, tamponDe.duration - 1));
+    libre.source = source;
+    libre.debut = t;
+    libre.depart = decalage;
+    libre.duree = tamponDe.duration;
     libre.correction.gain.setValueAtTime(gainDeDb(piste.volumeDb), t);
     libre.gain.gain.cancelScheduledValues(t);
     if (entree > 0) {
       libre.gain.gain.setValueAtTime(0, t);
       libre.gain.gain.setValueCurveAtTime(courbeFondu().entree, t, entree);
     } else libre.gain.gain.setValueAtTime(1, t);
-    el.play().catch(() => undefined); // refusé avant un geste : `geste()` réessaie
+    source.start(t, decalage); // contexte suspendu (avant un geste) : la lecture démarre au réveil, `geste()` le réveille
     return libre;
   }
 
-  /** Enchaîne : le morceau en cours sort en fondu, le suivant entre en fondu. `duree` : la durée du fondu. */
+  /** Le morceau préchargé s'il peut encore servir : il est de la scène et ce n'est pas celui qui joue. */
+  function suivantValide(courantId: string | null | undefined): PisteServie | null {
+    const s = suivantChoisi;
+    return s && s.id !== courantId && candidats().some((p) => p.id === s.id) ? s : null;
+  }
+
+  /** Précharge le morceau qui suivra celui qui joue (un seul à la fois, et jamais un troisième tampon). */
+  function preparerSuivant(): void {
+    const courant = voixActive();
+    const autre = voix[1 - active];
+    if (!ctx || arrete || fondu || suivantChoisi || enChargement || !courant?.piste || autre?.piste || d.maintenant() < prochainEssai) return;
+    const choix = choisirSuivante(candidats(), courant.piste.id, d.hasard);
+    if (!choix) return;
+    suivantChoisi = choix;
+    tampon(choix).catch(() => {
+      if (suivantChoisi === choix) suivantChoisi = null;
+      prochainEssai = d.maintenant() + REESSAI_PRECHARGEMENT_MS;
+    });
+  }
+
+  /** Enchaîne : le morceau en cours sort en fondu, le suivant (préchargé, sinon chargé maintenant) entre en fondu. `duree` : la durée du fondu. */
   function enchainer(duree: number): void {
     if (fondu || !ctx || arrete) return;
     const courant = voixActive();
-    const suivant = choisirSuivante(candidats(), courant?.piste?.id ?? precedent, d.hasard);
+    const suivant = suivantValide(courant?.piste?.id) ?? choisirSuivante(candidats(), courant?.piste?.id ?? precedent, d.hasard);
     if (!suivant) return;
     fondu = true;
     const id = ++fonduId;
-    const t = ctx.currentTime;
-    const sortante = courant;
-    if (sortante?.piste) {
-      precedent = sortante.piste.id;
-      sortante.gain.gain.cancelScheduledValues(t);
-      sortante.gain.gain.setValueCurveAtTime(courbeFondu().sortie, t, duree);
-      const g = sortante.genre;
-      d.planifier(duree * 1000 + 50, () => {
-        if (sortante.genre === g) {
-          sortante.el.pause();
-          sortante.piste = null;
+    // Au plus deux morceaux décodés : un fondu en cours qu'on remplace coupe la voix qui sortait, et le préchargement devient le morceau qu'on charge.
+    const libre = voix[1 - active];
+    if (libre?.piste) liberer(libre);
+    suivantChoisi = null;
+    enChargement = suivant;
+    const pret = tampon(suivant);
+    pret.then(
+      (decode) => {
+        if (fonduId !== id || arrete || !ctx) return; // une autre demande est passée devant
+        enChargement = null;
+        const sortante = voixActive();
+        if (sortante?.piste) {
+          precedent = sortante.piste.id;
+          const t = ctx.currentTime;
+          sortante.gain.gain.cancelScheduledValues(t);
+          sortante.gain.gain.setValueCurveAtTime(courbeFondu().sortie, t, duree);
+          const g = sortante.genre;
+          d.planifier(duree * 1000 + 50, () => {
+            if (sortante.genre === g) {
+              liberer(sortante);
+              purger();
+            }
+          });
         }
-      });
-    }
-    const v = lancer(suivant, 0, duree);
-    if (v) active = voix.indexOf(v);
-    d.planifier(duree * 1000, () => {
-      if (fonduId === id) fondu = false;
-    });
-    noterReprise(true);
-    prevenir();
+        const v = lancer(suivant, decode, 0, duree);
+        active = voix.indexOf(v);
+        d.planifier(duree * 1000, () => {
+          if (fonduId === id) fondu = false;
+        });
+        noterReprise(true);
+        prevenir();
+      },
+      () => {
+        // Le réseau ou le décodage a échoué : le morceau en cours continue (ou finit en silence) ; la fin du morceau, « suivant » ou un changement de scène réessaie.
+        if (fonduId !== id) return;
+        fondu = false;
+        enChargement = null;
+      },
+    );
   }
 
   /** Le morceau en cours sort en fondu et rien ne le remplace (la scène n'a aucun morceau). */
@@ -278,11 +399,12 @@ export function creerLecteur(d: Dependances): Lecteur {
     const t = ctx.currentTime;
     courant.gain.gain.cancelScheduledValues(t);
     courant.gain.gain.setValueCurveAtTime(courbeFondu().sortie, t, duree);
+    suivantChoisi = null;
     const g = courant.genre;
     d.planifier(duree * 1000 + 50, () => {
       if (courant.genre === g) {
-        courant.el.pause();
-        courant.piste = null;
+        liberer(courant);
+        purger();
         prevenir();
       }
     });
@@ -291,7 +413,7 @@ export function creerLecteur(d: Dependances): Lecteur {
 
   /** La scène a changé : on garde le morceau en cours s'il y passe aussi, sinon on passe en fondu à un morceau de la scène (ou au silence). */
   function appliquerScene(): void {
-    if (!ctx || arrete || enPause || toutes.length === 0) return;
+    if (!ctx || arrete || enPause || premier || toutes.length === 0) return;
     const c = candidats();
     const v = voixActive();
     if (v?.piste && c.some((p) => p.id === v.piste!.id)) return;
@@ -301,28 +423,30 @@ export function creerLecteur(d: Dependances): Lecteur {
     enchainer(FONDU_SCENE_S);
   }
 
-  /** `timeupdate` de la voix active : la fin approche (fondu) ; la position est notée. */
-  function surTemps(v: Voix): void {
-    if (v !== voixActive() || enPause) return;
-    couche?.lire(v.genre, v.el.currentTime - ctx!.currentTime, v.el.currentTime);
+  /** Tous les `PAS_SURVEILLANCE_MS` : la position de la voix active est notée (reprise, couche) ; la fin approche (fondu) ; sinon le suivant se précharge. */
+  function surveiller(): void {
+    if (arrete) return;
+    d.planifier(PAS_SURVEILLANCE_MS, surveiller);
+    const v = voixActive();
+    if (!ctx || !v?.piste || !v.source || enPause) return;
+    const pos = position(v);
+    couche?.lire(v.genre, pos - ctx.currentTime, pos);
     if (fondu) return;
     noterReprise();
-    const dur = v.el.duration;
-    if (Number.isFinite(dur) && dur > 0 && dur - v.el.currentTime <= FONDU_S + 0.15) enchainer(FONDU_S);
+    if (v.duree > 0 && v.duree - pos <= FONDU_S + 0.15) enchainer(FONDU_S);
+    else preparerSuivant();
   }
 
+  /** Une lecture a fini toute seule (aucun fondu ne l'a relayée) : on enchaîne tout de suite. */
   function surFin(v: Voix): void {
-    // Un morceau qui finit sans fondu (durée inconnue du navigateur) : on enchaîne tout de suite.
     if (v === voixActive() && !fondu && !enPause) enchainer(FONDU_ENTREE_S);
   }
 
   function reveiller(): void {
     if (!ctx || arrete) return;
     if (ctx.state !== "running" && !d.cachee()) void ctx.resume().catch(() => undefined);
-    const v = voixActive();
-    if (v?.piste && v.el.paused && !enPause && !d.cachee()) v.el.play().catch(() => undefined);
     // Les écouteurs de geste restent tant que la musique ne joue pas vraiment.
-    if (ctx.state === "running" && v && !v.el.paused) retirerGestes();
+    if (ctx.state === "running" && voixActive()?.source) retirerGestes();
   }
 
   let retraits: (() => void)[] = [];
@@ -336,14 +460,11 @@ export function creerLecteur(d: Dependances): Lecteur {
     if (d.cachee()) {
       enPause = true;
       noterReprise(true);
-      for (const v of voix) if (!v.el.paused) v.el.pause();
-      void ctx.suspend().catch(() => undefined);
+      void ctx.suspend().catch(() => undefined); // l'horloge du contexte s'arrête : les lectures en cours attendent, au même endroit
     } else {
       enPause = false;
       void ctx.resume().catch(() => undefined);
-      const v = voixActive();
-      if (v?.piste) v.el.play().catch(() => undefined);
-      // Le fondu qui était en cours quand l'onglet est parti n'a plus de sens : l'autre voix reste en pause, sortie.
+      // Le fondu qui était en cours quand l'onglet est parti n'a plus de sens : on reprend la suite sans lui.
       fondu = false;
       fonduId++;
       appliquerScene();
@@ -378,18 +499,12 @@ export function creerLecteur(d: Dependances): Lecteur {
       comp.connect(c.destination);
     } else bus.connect(c.destination);
     voix = [0, 1].map(() => {
-      const el = d.creerAudio();
-      el.preload = "none";
       const correction = c.createGain();
       const gain = c.createGain();
       gain.gain.value = 0;
-      c.createMediaElementSource(el).connect(correction);
       correction.connect(gain);
       gain.connect(bus!);
-      const v: Voix = { el, gain, correction, piste: null, genre: 0 };
-      el.addEventListener("timeupdate", () => surTemps(v));
-      el.addEventListener("ended", () => surFin(v));
-      return v;
+      return { source: null, debut: 0, depart: 0, duree: 0, gain, correction, piste: null, genre: 0 } satisfies Voix;
     });
     appliquerNiveau();
     if (c.createOscillator) {
@@ -399,7 +514,7 @@ export function creerLecteur(d: Dependances): Lecteur {
         piste: () => voixActive()?.piste ?? null,
         flux: () => {
           const v = voixActive();
-          return v?.piste && !v.el.paused ? { genre: v.genre, t: v.el.currentTime } : null;
+          return v?.piste && v.source ? { genre: v.genre, t: position(v) } : null;
         },
         audible: () => !enPause && !d.cachee() && c.state === "running" && niveauFinal({ reglages, baisse, sourdine }) > 0,
         hasard: d.hasard,
@@ -409,13 +524,27 @@ export function creerLecteur(d: Dependances): Lecteur {
     }
     for (const g of GESTES) retraits.push(d.ecouter("fenetre", g, reveiller));
     desabonner.push(d.ecouter("document", "visibilitychange", arrierePlan), d.ecouter("fenetre", "pagehide", () => noterReprise(true)));
+    d.planifier(PAS_SURVEILLANCE_MS, surveiller);
     const choix = departDeLaPage(candidats(), lireReprise(lire(d.session, CLE_REPRISE)), d.maintenant(), d.hasard);
-    if (choix) {
-      const v = lancer(choix.piste, choix.depart, FONDU_ENTREE_S);
-      if (v) active = voix.indexOf(v);
-    }
     reveiller();
     prevenir();
+    if (!choix) return;
+    // Le premier morceau se télécharge et se décode avant de commencer ; si le jeu a changé de scène entre-temps, il passe son tour.
+    premier = true;
+    enChargement = choix.piste;
+    try {
+      const decode = await tampon(choix.piste);
+      premier = false;
+      enChargement = null;
+      if (arrete || fondu || voixActive()?.piste) return; // un « suivant » a pris la place
+      if (!candidats().some((p) => p.id === choix.piste.id)) return appliquerScene(); // la scène a changé pendant le chargement
+      active = voix.indexOf(lancer(choix.piste, decode, choix.depart, FONDU_ENTREE_S));
+      reveiller();
+      prevenir();
+    } catch {
+      premier = false;
+      enChargement = null;
+    }
   }
   void demarrer();
 
@@ -425,7 +554,7 @@ export function creerLecteur(d: Dependances): Lecteur {
       return {
         jeu: d.jeu,
         active: toutes.length > 0 && ctx !== null,
-        joue: ctx?.state === "running" && !!v && !v.el.paused,
+        joue: ctx?.state === "running" && !!v?.source,
         enCours: v?.piste ? { id: v.piste.id, titre: v.piste.titre, artiste: v.piste.artiste, credit: v.piste.credit } : null,
         precedent,
         reglages: { ...reglages },
@@ -434,6 +563,7 @@ export function creerLecteur(d: Dependances): Lecteur {
         enPause,
         scene,
         pistes: candidats().map((p) => p.id),
+        tampons: [...tampons.keys()],
       };
     },
     enCours: () => voixActive()?.piste ?? null,
@@ -480,7 +610,10 @@ export function creerLecteur(d: Dependances): Lecteur {
       arrete = true;
       retirerGestes();
       desabonner.forEach((f) => f());
-      for (const v of voix) v.el.pause();
+      for (const v of voix) liberer(v);
+      tampons.clear();
+      suivantChoisi = null;
+      enChargement = null;
     },
   };
 }
