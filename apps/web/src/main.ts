@@ -36,7 +36,7 @@ import { mountBoardPanel } from "./boardPanel";
 import { boardErrorEl, boardTitle, dayLines, linesEls, watchLinkEl } from "./boardView";
 import { loadRanks, rememberRank } from "./profile";
 import { button, el as makeEl } from "./dom";
-import { NeutralToneMapping, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three";
+import { Matrix4, NeutralToneMapping, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three";
 import {
   AXLE_FRONT,
   AXLE_REAR,
@@ -55,6 +55,7 @@ import {
   THEMES,
   createSurface,
   FX_BROKEN,
+  BOUCLE_RAYON,
   FX_CRUISE,
   FX_NO_BRAKE,
   TICK_RATE,
@@ -2053,6 +2054,27 @@ const camPos = { x: 0, y: 0, z: 0 };
 const carPose = new CarPose();
 const ghostPose3d = new CarPose();
 const camLift = new Vector3();
+/**
+ * Lot 58b — sur une boucle, la caisse est posée par son repère (avance, haut vers le centre de la boucle, gauche) : le cap et les pentes ne savent pas
+ * dire « à l'envers ». `boucleG` (la gauche, l'axe de la boucle) sert aussi à la caméra.
+ */
+const boucleM = new Matrix4();
+const boucleF = new Vector3();
+const boucleU = new Vector3();
+const boucleG = new Vector3();
+function poseEnBoucle(c: CarState) {
+  boucleF.set(c.vx, c.vy, c.vz);
+  if (boucleF.lengthSq() < 1e-6) boucleF.set(Math.sin(c.yaw), 0, Math.cos(c.yaw));
+  boucleF.normalize();
+  if (c.loopV < 0) boucleF.negate();
+  boucleU.set(c.nx, c.ny, c.nz).normalize();
+  boucleG.crossVectors(boucleU, boucleF).normalize();
+  boucleU.crossVectors(boucleF, boucleG);
+  boucleM.makeBasis(boucleG, boucleU, boucleF);
+  carMesh.quaternion.setFromRotationMatrix(boucleM);
+}
+/** Lot 58b : la caméra d'une boucle — sur le côté, à cette distance (m) de son axe, à hauteur de son centre ; elle regarde la voiture. */
+const BOUCLE_CAMERA = 26;
 // Vue capot : l'œil dans le repère de la voiture, et le regard « rivé à la caisse » (axe +z de la voiture = −z de la caméra).
 const hoodEye = new Vector3();
 const hoodBody = new Quaternion();
@@ -2352,7 +2374,8 @@ function frame(now: number) {
   const y = lerp(previous.y, car.y, alpha);
   const z = lerp(previous.z, car.z, alpha);
   const yaw = previous.yaw + wrapAngle(car.yaw - previous.yaw) * alpha;
-  const speed = carSpeed(car);
+  // Lot 58b : sur une boucle, la vitesse est celle du rail (la vitesse horizontale y tombe à zéro aux points verticaux).
+  const speed = car.loop ? Math.abs(car.loopV) : carSpeed(car);
   // Lot 19 : en l'air la caisse garde sa rotation ; le frein la fige. Petit indicateur discret tant que le frein agit (présentation seule).
   const freezing = phase === "racing" && !frozen && !car.grounded && car.air > AIR_HOP_SUBSTEPS && lastInput.brake > 0 && freinOuvert(car);
   if (freezing !== hudFreeze.classList.contains("on")) hudFreeze.classList.toggle("on", freezing);
@@ -2371,8 +2394,9 @@ function frame(now: number) {
   const pitchS = lerp(previous.pitch, car.pitch, alpha);
   const rollS = lerp(previous.roll, car.roll, alpha);
   carMesh.position.set(x, y, z);
-  carPose.follow(car.nx, car.ny, car.nz, elapsed, snapCamera);
+  carPose.follow(car.nx, car.ny, car.nz, elapsed, snapCamera || car.loop > 0);
   carPose.apply(carMesh, pitchS, yaw, rollS);
+  if (car.loop) poseEnBoucle(car);
   const wheelFollow = 1 - Math.exp(-30 * elapsed);
   for (let i = 0; i < 4; i++) {
     const ground = tel.wheels[i]!.ground;
@@ -2461,9 +2485,16 @@ function frame(now: number) {
   // Sur la paroi d'une cuve, la caméra penche avec la voiture (en partie) : son « haut » est entre la verticale et la normale.
   const camUp = carPose.cameraUp;
   camLift.copy(camUp).multiplyScalar(rig.height - (hood ? 0 : fastCam.lower));
-  const tx = x - Math.sin(camYaw) * back + camLift.x;
-  const ty = camBaseY + camLift.y;
-  const tz = z - Math.cos(camYaw) * back + camLift.z;
+  let tx = x - Math.sin(camYaw) * back + camLift.x;
+  let ty = camBaseY + camLift.y;
+  let tz = z - Math.cos(camYaw) * back + camLift.z;
+  const vueBoucle = car.loop > 0 && !hood && !freeActive;
+  if (vueBoucle) {
+    // Lot 58b : dans la boucle, la caméra se met sur le côté (vers la sortie), au niveau du centre de la boucle, et regarde la voiture.
+    tx = x + car.nx * BOUCLE_RAYON - boucleG.x * BOUCLE_CAMERA;
+    ty = y + car.ny * BOUCLE_RAYON + 2;
+    tz = z + car.nz * BOUCLE_RAYON - boucleG.z * BOUCLE_CAMERA;
+  }
   const follow = snapCamera ? 1 : 1 - Math.exp(-(rig.posLag - (hood ? 0 : fastCam.lag)) * elapsed);
   camPos.x += (tx - camPos.x) * follow;
   camPos.y += (ty - camPos.y) * follow;
@@ -2495,6 +2526,10 @@ function frame(now: number) {
     if (excess > 0) camera.quaternion.rotateTowards(hoodBody, excess);
   } else {
     camera.lookAt(x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight, camBaseY + camUp.y * rig.lookHeight, z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight);
+  }
+  if (vueBoucle) {
+    camera.up.set(0, 1, 0);
+    camera.lookAt(x, y, z);
   }
   if (freeActive) {
     // Caméra libre : sur une sphère autour de la voiture (lacet et hauteur au doigt, distance à la molette), le regard sur elle.

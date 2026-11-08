@@ -1,4 +1,5 @@
 import {
+  BOUCLE_Q,
   BOOST_HALF_LENGTH,
   CELL,
   FX_HALF_LENGTH,
@@ -277,7 +278,8 @@ export function trackWorld(track: Track): World {
       } else {
         const lat = p - CELL / 2;
         const hw = blockHalfWidth(b, q);
-        onRoad = lat >= -hw && lat <= hw;
+        // Lot 58b — boucle : la voie de gauche jusqu'à son pied, la voie de droite après.
+        onRoad = b.loop ? (q < BOUCLE_Q ? lat >= 0 && lat <= hw : lat <= 0 && lat >= -hw) : lat >= -hw && lat <= hw;
         if (!onRoad) side = b.shoulder !== null && lat >= -SHOULDER_EDGE && lat <= SHOULDER_EDGE;
       }
       if (!onRoad && !side) {
@@ -365,7 +367,28 @@ export function trackWorld(track: Track): World {
         const lat = p - CELL / 2;
         const hw = b.shoulder ? SHOULDER_EDGE : blockHalfWidth(b, q);
         const slope = b.shoulder ? 0 : blockHalfWidthSlope(b, q);
-        if (slope === 0) {
+        if (b.loop) {
+          // Lot 58b — boucle : les rebords de la voie ouverte (gauche avant le pied, droite après), et un bout de piste en travers de la voie de droite à
+          // l'entrée du bloc (on n'y passe pas sans la boucle).
+          const avant = q < BOUCLE_Q;
+          if (avant && lat < 0) {
+            // La voie de droite est fermée avant le pied : un mur en travers à l'entrée du bloc.
+            if (q < radius) {
+              depth = radius - q;
+              nq = -1;
+            }
+          } else if (avant || lat <= 0) {
+            const lo = avant ? 0 : -hw;
+            const hi = avant ? hw : 0;
+            if (lat > hi - radius) {
+              depth = lat - (hi - radius);
+              np = -1;
+            } else if (lat < lo + radius) {
+              depth = lo + radius - lat;
+              np = 1;
+            }
+          }
+        } else if (slope === 0) {
           const limit = hw - radius;
           if (lat > limit) {
             depth = lat - limit;

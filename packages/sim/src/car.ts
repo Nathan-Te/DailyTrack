@@ -344,6 +344,11 @@ export interface CarState {
   fx: number;
   fxTicks: number;
   fxSpeed: number;
+  /** Lot 58b — sur une boucle : l'indice du bloc + 1 (0 = sur la route), l'abscisse (m) et la vitesse (m/s) le long d'elle, l'écart en travers (m). */
+  loop: number;
+  loopS: number;
+  loopV: number;
+  loopW: number;
   /** Normale de la surface sous la voiture (lot 18) : (0, 1, 0) sur la route, inclinée sur la paroi d'une cuve. */
   nx: number;
   ny: number;
@@ -353,7 +358,7 @@ export interface CarState {
 export function createCar(x = 0, z = 0, yaw = 0, y = 0): CarState {
   return {
     x, z, yaw, vx: 0, vz: 0, yawRate: 0, steer: 0, tick: 0, y, vy: 0,
-    pitch: 0, pitchRate: 0, roll: 0, rollRate: 0, grounded: 1, air: 0, boost: 0, turbo: 0, cut: 0, drift: 0, fx: 0, fxTicks: 0, fxSpeed: 0, nx: 0, ny: 1, nz: 0,
+    pitch: 0, pitchRate: 0, roll: 0, rollRate: 0, grounded: 1, air: 0, boost: 0, turbo: 0, cut: 0, drift: 0, fx: 0, fxTicks: 0, fxSpeed: 0, loop: 0, loopS: 0, loopV: 0, loopW: 0, nx: 0, ny: 1, nz: 0,
   };
 }
 

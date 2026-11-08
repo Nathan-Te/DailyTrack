@@ -1,6 +1,7 @@
 import { TICK_RATE } from "./constants";
 import { AXIS_MAX, DEFAULT_CAR_PARAMS, NO_INPUT, copyCar, createCar, forwardSpeed, stepCar, type CarInput, type CarParams, type CarState } from "./car";
-import { FX_BROKEN, type Gate, type Track } from "./track";
+import { FX_BROKEN, CELL, cellKey, type Gate, type Track } from "./track";
+import { entrerBoucle, stepBoucle } from "./boucle";
 import { trackWorld, type ShellHit, type World } from "./world";
 
 /**
@@ -83,6 +84,7 @@ function respawn(race: RaceState): void {
     copyCar(createCar(s.x, s.z, s.yaw, s.y), car);
   }
   car.fx = 0; // lot 58 : la reprise repart sans effet (la voiture cassée est réparée)
+  car.loop = 0; // lot 58b : et sur la route
   car.fxTicks = 0;
   car.tick = tick + 1; // le chrono continue de tourner
   race.respawns += 1;
@@ -128,7 +130,15 @@ export function stepRace(race: RaceState, input: CarInput): void {
 
   const px = car.x;
   const pz = car.z;
-  stepCar(car, input, race.world, race.params);
+  // Lot 58b : sur une boucle, la voiture roule sur le rail (boucle.ts) ; ailleurs, et sur tout circuit sans boucle, le pas d'avant.
+  if (car.loop) stepBoucle(car, input, race.track.blocks[car.loop - 1]!, race.params);
+  else {
+    stepCar(car, input, race.world, race.params);
+    if (race.track.boucles) {
+      const b = race.track.cells.get(cellKey(Math.floor(car.x / CELL), Math.floor(car.z / CELL)));
+      if (b?.loop) entrerBoucle(car, b, px, pz);
+    }
+  }
 
   const gate = race.track.gates[race.nextGate];
   if (gate) {

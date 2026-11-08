@@ -85,6 +85,10 @@ export const FX_BROKEN = 6;
 /** Lettres des blocs à effet : direction bloquée, freins coupés, régulateur, fragile, remise à zéro. */
 export const EFFECT_LETTERS: Record<string, number> = { Ed: FX_NO_STEER, Ef: FX_NO_BRAKE, Er: FX_CRUISE, Ex: FX_FRAGILE, E0: FX_RESET };
 export const CROWN_SLOPE = 0.4;
+/** Lot 58b — la boucle (`O`, boucle.ts) : son rayon (m), l'avance (m) de son pied dans le bloc, la demi-largeur (m) d'une de ses deux voies. */
+export const BOUCLE_RAYON = 10;
+export const BOUCLE_Q = 12;
+export const BOUCLE_VOIE = 3.5;
 export const BANK_SLOPE_STEEP = 1;
 
 export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "grandL" | "grandR" | "up" | "down" | "bump" | "jump" | "kick" | "gap" | "boost" | "turbo" | "cut";
@@ -162,6 +166,8 @@ export interface Block {
   steep?: true;
   /** Lot 58b — mur roulable (`ML/m`, `MR/m`) : un mur latéral sans fond — on roule sur la paroi, ou l'on tombe. */
   floorless?: true;
+  /** Lot 58b — boucle (`O`, route étroite) : voie de gauche jusqu'au pied de la boucle, voie de droite après (boucle.ts). */
+  loop?: true;
 }
 
 export interface Gate {
@@ -198,6 +204,8 @@ export interface Track {
    * que `voidY`, qui reste celle du rendu : le sol lointain et le décor ne bougent pas). Absente partout ailleurs.
    */
   fallY?: number;
+  /** Lot 58b : vrai si le circuit a une boucle (`stepRace` ne regarde l'entrée d'une boucle que dans ce cas). */
+  boucles?: true;
 }
 
 /** Lettre → type de bloc, dans la notation texte des circuits. */
@@ -486,6 +494,7 @@ export interface ParsedToken {
   crown?: true;
   steep?: true;
   floorless?: true;
+  loop?: true;
 }
 
 /**
@@ -500,7 +509,8 @@ export function parseToken(token: string, index = 0): ParsedToken {
   const shaped = RISE_LETTERS[letter];
   const cuveSides = CUVE_LETTERS[letter];
   const fx = EFFECT_LETTERS[letter];
-  const kind: BlockKind | undefined = shaped ? shaped.kind : cuveSides || fx ? "straight" : BLOCK_LETTERS[letter];
+  const boucle = letter === "O";
+  const kind: BlockKind | undefined = shaped ? shaped.kind : cuveSides || fx || boucle ? "straight" : BLOCK_LETTERS[letter];
   if (!kind) throw new Error(`Bloc inconnu « ${token} » (position ${index})`);
   let mark: Mark | undefined;
   if (markName !== undefined) {
@@ -559,6 +569,8 @@ export function parseToken(token: string, index = 0): ParsedToken {
   // Lot 58 : la route bombée n'a ni rebords, ni dévers, ni relevé, ni cuve, ni pente de virage, ni tôle ondulée, ni transition de largeur ; le relevé fort
   // va aux virages large et ample.
   if ((crown && (tilt || ramp || climb || banked || cuveSides || outerWall || bumpy || kind === "gap" || kind === "jump" || kind === "kick" || (width && width.w0 !== width.w1))) || (steep && (!isCurve(kind) || curveSize(kind) !== 3 || outerWall))) throw new Error(`Bloc impossible : ${token}`);
+  // Lot 58b : une boucle n'a ni modificateur de forme (ni rebords ouverts, ni bosses, ni dévers, ni bas-côté) ni repère.
+  if (boucle && (open || bumpy || tilt || crown || mark || edge || (width && width.w0 !== width.w1))) throw new Error(`Bloc impossible : ${token}`);
   // Lot 58b : un mur roulable est un mur latéral (`ML`, `MR`) sans fond, ni repère.
   if (floorless && (cuveSides !== CUVE_LEFT && cuveSides !== CUVE_RIGHT)) throw new Error(`Bloc impossible : ${token}`);
   let cuve = cuveSides ?? 0;
@@ -573,7 +585,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
     kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}),
     ...(edge ? { edge } : {}), ...(bumpy ? { bumpy: true as const } : {}),
     ...(tilt ? { tilt } : {}), ...(ramp ? { ramp: true as const, rise: SLOPE_RISE } : {}), ...(climb ? { rise: climb } : {}),
-    ...(fx ? { fx } : {}), ...(crown ? { crown: true as const, open: true as const } : {}), ...(steep ? { steep: true as const } : {}), ...(floorless ? { floorless: true as const } : {}),
+    ...(fx ? { fx } : {}), ...(crown ? { crown: true as const, open: true as const } : {}), ...(steep ? { steep: true as const } : {}), ...(floorless ? { floorless: true as const } : {}), ...(boucle ? { loop: true as const } : {}),
   };
 }
 
@@ -787,7 +799,7 @@ export function parseTrack(id: string, spec: string): Track {
   let edgeChain: EdgeKind = "wall";
 
   tokens.forEach((token, index) => {
-    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy, tilt, ramp, fx, crown, steep, floorless } = parseToken(token, index);
+    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy, tilt, ramp, fx, crown, steep, floorless, loop } = parseToken(token, index);
     // Largeurs chaînées comme les hauteurs : un bloc sans largeur garde la sortie du précédent ; une largeur écrite doit
     // la prolonger exactement (seul le premier bloc la choisit), sinon la route aurait une marche.
     if (written && index > 0 && written.w0 !== width) {
@@ -826,6 +838,10 @@ export function parseTrack(id: string, spec: string): Track {
     if (fx) block.fx = fx;
     if (steep) block.steep = true;
     if (floorless) block.floorless = true;
+    if (loop) {
+      if (w0 !== ROAD_WIDTHS.e || w1 !== ROAD_WIDTHS.e) throw new Error(`Une boucle est sur la route étroite (14 m) : ${token}`);
+      block.loop = true;
+    }
     const crownIn = prevBlock && prevBlock.kind !== "gap" ? (prevBlock.crown ?? 0) : 0;
     if (crown || crownIn) {
       if (isCurve(kind) && crownIn !== (crown ? CROWN_SLOPE : 0)) throw new Error(`La route bombée naît et meurt sur une droite : ${token}`);
@@ -889,6 +905,7 @@ export function parseTrack(id: string, spec: string): Track {
   }
   const track: Track = { id, blocks, cells, gates, spawn, voidY: minY - FALL_DEPTH };
   if (minRoad < minY) track.fallY = minRoad - FALL_DEPTH;
+  if (blocks.some((b) => b.loop)) track.boucles = true;
   return track;
 }
 

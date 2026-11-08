@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2431 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2434 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -1038,6 +1038,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `blocs.famille.releve` | virage très relevé | steep banking |
 | `blocs.famille.tube` | tube de glace | ice tube |
 | `blocs.famille.mur` | mur roulable | wallride |
+| `blocs.famille.boucle` | boucle | loop |
 
 ### Cadre des écrans (`cadre.*`, `apps/web/src/catalogue.base.*.ts`)
 
@@ -1391,6 +1392,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `figures.blocTube.quoi` | Façon bobsleigh : des demi-tubes sur la glace de piste. Monte sur la paroi extérieure des virages, redescends dans le tube. Variante 2 : des virages plus serrés. | Bobsleigh style: half-pipes on track ice. Ride up the outer wall in the corners, drop back into the tube. Variant 2: tighter corners. |
 | `figures.blocMur.titre` | Mur roulable | Wallride |
 | `figures.blocMur.quoi` | Le fond disparaît : monte sur la paroi avant le vide et longe-la à pleine vitesse. Trop bas tu tombes, trop haut tu passes par-dessus. Variante 2 : plus long. | The floor disappears: climb the wall before the gap and ride it flat out. Too low you fall, too high you go over. Variant 2: longer. |
+| `figures.blocBoucle.titre` | Boucle | Loop |
+| `figures.blocBoucle.quoi` | Une boucle de 10 m de rayon : entre par la voie de gauche, à fond ; trop lent, tu décroches en haut. Variante 2 : deux boucles à la suite. | A loop with a 10 m radius: go in on the left lane, flat out; too slow and you fall off at the top. Variant 2: two loops in a row. |
 
 ### garage (`garage.*`, `apps/web/src/catalogue.base.*.ts`)
 

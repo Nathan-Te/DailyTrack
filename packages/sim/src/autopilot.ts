@@ -218,7 +218,9 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
         // Cuve droite : le pilote reste sur le fond (la paroi n'a pas d'intérêt en ligne droite).
         const floor = b.cuve && !wall ? b.w0 / 2 - (b.w0 / 2) * CUVE_RATIO - 0.3 : Infinity;
         const room = calm ? 0.5 : Math.min(floor, blockHalfWidth(b, q) - margin - open);
-        push(CELL / 2, q, b, room, room, blockHalfWidth(b, q));
+        // Lot 58b — boucle : le pilote garde l'axe ; le rebord entre les deux voies le range sur celle de gauche avant le pied (mesuré : une trajectoire au
+        // milieu de chaque voie le faisait freiner à 24 m/s au changement de voie), le rail fait le reste.
+        push(CELL / 2, q, b, b.loop ? 0.3 : room, b.loop ? 0.3 : room, blockHalfWidth(b, q));
       }
     }
   }

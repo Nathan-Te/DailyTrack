@@ -109,6 +109,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "blocs.famille.releve": "steep banking",
   "blocs.famille.tube": "ice tube",
   "blocs.famille.mur": "wallride",
+  "blocs.famille.boucle": "loop",
   "figures.blocDirection.titre": "Steering locked",
   "figures.blocDirection.quoi": "The purple gantry locks the steering for 1.5 s: line up before the strip. Variant 2: a jump with the steering locked.",
   "figures.blocFreins.titre": "No brakes",
@@ -127,4 +128,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "figures.blocTube.quoi": "Bobsleigh style: half-pipes on track ice. Ride up the outer wall in the corners, drop back into the tube. Variant 2: tighter corners.",
   "figures.blocMur.titre": "Wallride",
   "figures.blocMur.quoi": "The floor disappears: climb the wall before the gap and ride it flat out. Too low you fall, too high you go over. Variant 2: longer.",
+  "figures.blocBoucle.titre": "Loop",
+  "figures.blocBoucle.quoi": "A loop with a 10 m radius: go in on the left lane, flat out; too slow and you fall off at the top. Variant 2: two loops in a row.",
 };

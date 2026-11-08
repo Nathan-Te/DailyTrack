@@ -6,7 +6,12 @@
 // (chargé à la demande) ; le garde-corps de la Ville (lot 37) est porté ici (`gardeCorps`), pour tous les styles.
 import {
   BANK_SLOPE_STEEP,
+  BOUCLE_LONGUEUR,
+  BOUCLE_Q,
+  BOUCLE_VOIE,
   CELL,
+  createPoseBoucle,
+  poseBoucle,
   MUR_ROULABLE_BAS,
   MUR_ROULABLE_HAUT,
   CUVE_LEFT,
@@ -364,7 +369,6 @@ function addCuve(g: Builder, pal: Palette, style: StyleRoute, b: Block, color: n
       for (let k = 0; k + 1 < pts.length; k++) {
         const c = k === pts.length - 2 ? 0xffc21a : (k + i + b.index) % 2 === 0 ? wa : wb;
         g.quad(at(q0, pts[k]!), at(q0, pts[k + 1]!), at(q1, pts[k + 1]!), at(q1, pts[k]!), c);
-        g.quad(at(q0, pts[k + 1]!), at(q0, pts[k]!), at(q1, pts[k]!), at(q1, pts[k + 1]!), shade(c, 0.6));
       }
       const top = pts[0]!;
       const out: [number, number] = [top[0] + sign * 0.6, top[1]];
@@ -421,6 +425,57 @@ function addCuve(g: Builder, pal: Palette, style: StyleRoute, b: Block, color: n
       g.quad([a[0] + sx, a[1], a[2] + sz], [bb[0] + sx, bb[1], bb[2] + sz], [bb[0] + sx, floorY, bb[2] + sz], [a[0] + sx, floorY, a[2] + sz], style.jupe(pal));
     }
   }
+}
+
+/**
+ * Lot 58b — la boucle (bloc `O`) : la voie de gauche jusqu'au pied (avec ses rebords), la voie de droite après, un mur en travers de la voie de droite à
+ * l'entrée (on n'y passe pas sans la boucle), et le ruban de la boucle (deux faces) bordé de garde-corps tournés vers son centre. Les points du ruban
+ * viennent de la simulation (`poseBoucle`) : la voiture roule exactement dessus. Rend les tranches de la voie de sortie (pour les marques du bloc).
+ */
+function addBoucle(c: CalquesRoute, pal: Palette, style: StyleRoute, b: Block, color: number, floorY: number, skirt: number, base: Options, run: Parcours): Row[] {
+  const g = c.route;
+  const voie = (p0: number, p1: number, q0: number, q1: number): Row[] => [0, 1].map((k) => ({ left: world(b, p0, q0 + (q1 - q0) * k, b.y0), right: world(b, p1, q0 + (q1 - q0) * k, b.y0) }));
+  addRoad(c, pal, style, voie(CELL / 2 + 2 * BOUCLE_VOIE, CELL / 2, 0, BOUCLE_Q), color, floorY, true, b.surface === "road", skirt, base, run);
+  const sortie = voie(CELL / 2, CELL / 2 - 2 * BOUCLE_VOIE, BOUCLE_Q, CELL);
+  addRoad(c, pal, style, sortie, color, floorY, true, b.surface === "road", skirt, base, run);
+  // Le mur de la voie fermée, rayé d'alerte.
+  const WARN = [0xffc21a, 0x16181f] as const;
+  for (let i = 0; i < 7; i++) {
+    const p0 = CELL / 2 - i;
+    g.quad(world(b, p0, 0, b.y0), world(b, p0 - 1, 0, b.y0), world(b, p0 - 1, 0, b.y0 + WALL_HEIGHT), world(b, p0, 0, b.y0 + WALL_HEIGHT), WARN[i % 2]!);
+  }
+  // Des chevrons sur la voie d'entrée : on va dans la boucle.
+  for (const q of [3, 7]) {
+    const P = (dp: number, dq: number): V3 => world(b, CELL / 2 + BOUCLE_VOIE + dp, q + dq, b.y0 + 0.05);
+    for (const s of [-1, 1]) g.quad(P(0, 1.2), P(0, 0.4), P(s * 2.4, -0.8), P(s * 2.4, 0), 0xf4f1e6);
+  }
+  const N = 64;
+  const a = createPoseBoucle();
+  const d = createPoseBoucle();
+  const bord: V3[][] = [[], []];
+  const haut: V3[][] = [[], []];
+  const dessous: V3[][] = [[], []];
+  for (let i = 0; i <= N; i++) {
+    const s = (BOUCLE_LONGUEUR * i) / N;
+    for (const [k, w] of [[0, BOUCLE_VOIE], [1, -BOUCLE_VOIE]] as const) {
+      poseBoucle(b, s, w, k === 0 ? a : d);
+      const pnt = k === 0 ? a : d;
+      bord[k]!.push([pnt.x, pnt.y, pnt.z]);
+      dessous[k]!.push([pnt.x - pnt.ux * 0.15, pnt.y - pnt.uy * 0.15, pnt.z - pnt.uz * 0.15]);
+      haut[k]!.push([pnt.x + pnt.ux * 0.9, pnt.y + pnt.uy * 0.9, pnt.z + pnt.uz * 0.9]);
+    }
+  }
+  for (let i = 0; i < N; i++) {
+    const [l0, l1, r0, r1] = [bord[0]![i]!, bord[0]![i + 1]!, bord[1]![i]!, bord[1]![i + 1]!];
+    // Le dessus (la voiture roule dessus) et, 15 cm dessous, la face extérieure du ruban (le rendu est à deux faces : jamais deux quads au même endroit).
+    g.quad(l0, r0, r1, l1, color);
+    g.quad(dessous[0]![i]!, dessous[0]![i + 1]!, dessous[1]![i + 1]!, dessous[1]![i]!, shade(skirt, 1.1));
+    for (const k of [0, 1] as const) {
+      const c0 = (Math.floor(i / 2) + k) % 2 === 0 ? pal.wallA : pal.wallB;
+      g.quad(bord[k]![i]!, bord[k]![i + 1]!, haut[k]![i + 1]!, haut[k]![i]!, c0);
+    }
+  }
+  return sortie;
 }
 
 function addJumpMarks(g: Builder, b: Block) {
@@ -632,6 +687,8 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
     rebords.push(!b.open && !b.shoulder && !b.cuve && b.kind !== "gap");
     if (b.cuve) {
       addCuve(g, pal, style, b, color, floorY);
+    } else if (b.loop) {
+      rows = addBoucle(c, pal, style, b, color, floorY, skirt, base, run);
     } else if (b.kind === "gap") {
       // le vide d'un saut
     } else if (isCurve(b.kind)) {
@@ -687,7 +744,7 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       addLandingMarks(g, b, Math.max(0, drop));
     }
     if (pillars && b.kind !== "gap") addPillar(g, pal, b, floorY, skirt);
-    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut" || b.fx !== undefined;
+    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut" || b.fx !== undefined || b.loop === true;
     if (b.surface === "road" && !effect && !b.bumpy && b.kind !== "jump" && b.kind !== "bump" && b.kind !== "kick" && b.kind !== "gap") style.tirets(g, b, pal);
     addSurfaceMarks(g, b);
   }

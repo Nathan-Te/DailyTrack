@@ -1,4 +1,4 @@
-import type { FigureContext } from "./figures";
+import { reach, type FigureContext } from "./figures";
 import type { ElementGrammaire } from "./grammaire";
 
 // Lot 58 : des blocs plus complexes, à la Trackmania — **les idées seulement, jamais les fichiers, les modèles ni les noms** : tout est construit par le
@@ -8,8 +8,8 @@ import type { ElementGrammaire } from "./grammaire";
 // par `?scenario=blocs`. Ils attendent le choix de Nathan (garder, retoucher, écarter) avant d'entrer dans le générateur.
 
 export interface ElementBloc extends ElementGrammaire {
-  /** La famille du catalogue (README du lot 58) : effet, bombee, releve, tube, mur (lot 58b). */
-  famille: "effet" | "bombee" | "releve" | "tube" | "mur";
+  /** La famille du catalogue (README du lot 58) : effet, bombee, releve, tube, mur et boucle (lot 58b). */
+  famille: "effet" | "bombee" | "releve" | "tube" | "mur" | "boucle";
 }
 
 const SINCE = 22;
@@ -123,6 +123,17 @@ export const BLOCS_LOT58: readonly ElementBloc[] = [
       const w = c.wall;
       return ["S", w, w, w, ...Array<string>(c.variant === 0 ? 3 : 4).fill(`${w}/m`), w, w, "S"];
     },
+  }),
+  bloc({
+    name: "bloc-boucle",
+    label: "Boucle",
+    famille: "boucle",
+    off: 0,
+    variants: 2,
+    themes: ["stade", "canyon"],
+    // Lot 58b : une boucle de 10 m de rayon, sur la route étroite (on la rejoint, puis on reprend la largeur d'avant). On y entre par la voie de gauche, on
+    // en sort par celle de droite ; trop lent (≈ 35 m/s en roue libre), on décroche en haut. Variante 1 : deux boucles à la suite.
+    build: (c) => [...reach(c.width, "e"), "S", "S", "O", ...(c.variant === 1 ? ["S", "S", "O"] : []), "S", "S", ...reach("e", c.width)],
   }),
 ];
 

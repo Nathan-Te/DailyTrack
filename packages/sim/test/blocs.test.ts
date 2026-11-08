@@ -9,6 +9,9 @@ import {
   FX_NO_BRAKE,
   FX_NO_STEER,
   TICK_RATE,
+  BOUCLE_LONGUEUR,
+  BOUCLE_RAYON,
+  BOUCLE_VOIE,
   CELL,
   MUR_ROULABLE_BAS,
   bankAt,
@@ -375,6 +378,55 @@ describe("mur roulable (lot 58b)", () => {
   });
 });
 
+describe("boucle (lot 58b)", () => {
+  const spec = "S/e@start S S O S S S@finish";
+  /** Lancée à `v` m/s sur la voie de gauche, à 2 m du bloc de la boucle ; `gaz` : plein gaz ou roue libre. */
+  const essai = (v: number, gaz: boolean) => {
+    const race = lance(spec, v);
+    race.car.x = 16 + BOUCLE_VOIE;
+    race.car.z = 32 * 3 + 2;
+    let entree = -1;
+    let haut = 0;
+    let decroche = false;
+    for (let t = 0; t < 8 * TICK_RATE && race.finishMs < 0 && race.respawns === 0; t++) {
+      const avant = race.car.loop;
+      stepRace(race, makeInput(0, gaz ? 1 : 0, 0));
+      if (race.car.loop && entree < 0) entree = race.car.loopV;
+      if (race.car.loop) haut = Math.max(haut, race.car.y);
+      if (avant && !race.car.loop && race.car.loopS > 1 && race.car.loopS < BOUCLE_LONGUEUR - 1) decroche = true;
+    }
+    return { race, entree, haut, decroche };
+  };
+
+  it("à 44 m/s plein gaz : on monte à 20 m (le diamètre), on ressort sur la voie de droite et l'on finit", () => {
+    const { race, haut, decroche } = essai(44, true);
+    expect(decroche).toBe(false);
+    expect(haut).toBeCloseTo(2 * BOUCLE_RAYON, 0);
+    expect(race.finishMs).toBeGreaterThan(0);
+    expect(race.car.x - 16).toBeLessThan(0); // la voie de droite (cap +z : la droite est −x)
+  });
+
+  it("trop lent (roue libre à 30 m/s) : la voiture décroche avant le haut et tombe", () => {
+    const { decroche, haut } = essai(30, false);
+    expect(decroche).toBe(true);
+    expect(haut).toBeLessThan(2 * BOUCLE_RAYON);
+  });
+
+  it("la voie de droite est fermée avant le pied : on n'évite pas la boucle par la droite", () => {
+    const race = lance(spec, 30);
+    race.car.x = 16 - BOUCLE_VOIE;
+    jusqua(race, 32 * 4);
+    expect(race.car.z).toBeLessThan(32 * 3 + 1);
+  });
+
+  it("une boucle est sur la route étroite, sans repère ni bord ouvert ; un circuit sans boucle ne la regarde pas", () => {
+    expect(() => parseTrack("x", "S/n@start O S@finish")).toThrow();
+    expect(() => parseTrack("x", "S@start O/o S@finish")).toThrow();
+    expect(parseTrack("x", spec).boucles).toBe(true);
+    expect(parseTrack("x", "S@start S S@finish").boucles).toBeUndefined();
+  });
+});
+
 const WIDTHS: readonly WidthLetter[] = ["e", "n", "l"];
 
 describe("prototypes du lot 58", () => {
@@ -402,7 +454,7 @@ describe("prototypes du lot 58", () => {
   }
 
   it("une rediffusion d'un prototype se rejoue au temps près (déterminisme)", () => {
-    for (const nom of ["bloc-fragile", "bloc-regulateur", "bloc-releve-fort", "bloc-bombee"]) {
+    for (const nom of ["bloc-fragile", "bloc-regulateur", "bloc-releve-fort", "bloc-bombee", "bloc-tube", "bloc-mur", "bloc-boucle"]) {
       const track = createFigureTrack(nom)!;
       const run = bestPilotRun(track, { cut: false })!;
       const again = replayRace(track, decodeReplay(encodeReplay(run.replay)));
