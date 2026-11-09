@@ -93,11 +93,19 @@ async function capture(page: Page, nom: string): Promise<void> {
   await test.info().attach(nom, { body: png, contentType: "image/png" });
 }
 
-/** Les requêtes `/api/…` faites par la page. */
+/**
+ * Les requêtes `/api/…` faites par la page. **Les images d'avatar (`/api/avatars/<empreinte>`) n'en sont pas** : ce sont des fichiers immuables que le navigateur télécharge pour afficher la photo d'un joueur
+ * (l'accueil montre celle de tes amis, lot « avatars de l'accueil », 09/11/2026), pas des appels de données — « une seule requête à l'API » reste vrai. Mais une image ne doit **jamais** porter l'identifiant
+ * du joueur : si elle le porte, elle est comptée ici et le test échoue.
+ */
 function requetesApi(page: Page): { url: string; joueur: string | null }[] {
   const vues: { url: string; joueur: string | null }[] = [];
   page.on("request", (r) => {
-    if (new URL(r.url()).pathname.startsWith("/api/")) vues.push({ url: new URL(r.url()).pathname, joueur: r.headers()["x-player-id"] ?? null });
+    const chemin = new URL(r.url()).pathname;
+    if (!chemin.startsWith("/api/")) return;
+    const joueur = r.headers()["x-player-id"] ?? null;
+    if (chemin.startsWith("/api/avatars/") && r.method() === "GET" && joueur === null) return; // une image d'avatar, sans identité : pas un appel de l'API
+    vues.push({ url: chemin, joueur });
   });
   return vues;
 }
