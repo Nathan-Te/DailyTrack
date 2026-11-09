@@ -28,10 +28,11 @@ const salonUrl2 = (at: number, extra = "") => `/?mode=salon&api=demo&debug&salon
 
 // La rediffusion d'un bon pilote sur le circuit de la session (calculée ici, rejouée dans le navigateur).
 const circuit = salonCircuit(SESSION);
-const pilot = runPilot(circuit.track, { grip: 0.9 });
+// Lot 57b : sur un mur roulable (lot 58b) le pilote monte sur la paroi (`wall`), sinon il tombe : la session de ce test en a un depuis la v23.
+const pilot = runPilot(circuit.track, { grip: 0.9, wall: circuit.track.blocks.some((b) => b.floorless) });
 const code = encodeReplay(pilot.replay);
 const circuit2 = salonCircuit(SESSION2);
-const pilot2 = runPilot(circuit2.track, { grip: 0.9 });
+const pilot2 = runPilot(circuit2.track, { grip: 0.9, wall: circuit2.track.blocks.some((b) => b.floorless) });
 const code2 = encodeReplay(pilot2.replay);
 
 const loaded = (page: Page) => page.waitForFunction(() => window.__cdj?.salon?.trackId, undefined, { timeout: 60_000 });
