@@ -26,7 +26,7 @@ Avant : `br-a2-avant-*.png` (le jour, la salle d'épreuve, le boss, la vitrine ;
 | 3 | `br-a2-t3-*.png` (18 images) et les comparaisons | écarts restants : §5 |
 
 ## 4. Mesures
-**Golden** : `packages/rush-sim` non modifié ; `npx vitest run --project sqlite packages/rush-sim` (dont le golden et le déterminisme) vert, golden inchangé au bit près. **Tests** : `apps/rush` (unitaires) vert ; `e2e` de Rush vert (voir la fin du rapport de la PR pour la CI). `npm run consignes`, `npm run fiches` à jour.
+**Golden** : `packages/rush-sim` non modifié ; `npx vitest run --project sqlite packages/rush-sim` (dont le golden et le déterminisme) vert, golden inchangé au bit près. **Tests** : `apps/rush` (unitaires : 213 tests) vert ; **les 51 tests e2e de Rush (Chromium, en local) verts**, dont `monde.spec.ts` ; `packages/rush-sim` : 358 tests verts, aucun fichier du paquet modifié. `npm run consignes`, `npm run fiches` à jour.
 
 **Dessin** (`?debug&fps`, swiftshader : les **appels** et les **triangles** sont exacts, les ms ne disent rien ; image 1280 × 720, une image entière : ombres, scène, passes) — **jamais plus de 89 appels** :
 | scène | appels (haute) | triangles (haute) | appels (basse) | triangles (basse) |
