@@ -872,7 +872,14 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
     // Lot 58 (v22) : les blocs d'une famille nouvelle sont protégés des retouches du circuit fini (revêtement, bosses, rebords retirés, pente du biome).
     // Ni bas-côté sur elle ni sur les deux blocs qui la suivent (mesuré : un bas-côté de vide juste après le mur roulable, et la voiture qui en redescend tombait).
     if (rules58 && (done.figure.bloc || done.figure.grammaire)) {
-      for (let k = done.before; k < w.tokens.length; k++) shielded.add(k);
+      // Lot 57b (v23) : un saut ou une transition de la grammaire protège ses blocs spéciaux et sa route jusqu'à l'envol (la vitesse du bord est sa fenêtre), mais laisse libres les droites
+      // ordinaires de sa sortie : sans cela, le Rallye n'avait plus de place pour sa route bosselée (la marque du thème).
+      let fin = w.tokens.length;
+      if (done.figure.grammaire) {
+        const dernierVide = w.tokens.map((t, k) => (k >= done.before && /^G/.test(t) ? k : -1)).reduce((a, b) => Math.max(a, b), -1);
+        fin = dernierVide >= 0 ? dernierVide + 2 : done.before;
+      }
+      for (let k = done.before; k < w.tokens.length; k++) if (k < fin || !isPlainStraight(w.tokens[k]!)) shielded.add(k);
       if (done.figure.bloc) for (let k = done.before; k < w.tokens.length + 2; k++) sansBord.add(k);
     }
     width = widthAfter(done.tokens, width);
